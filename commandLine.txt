@@ -1,0 +1,33 @@
+BoxedWine [options] Program
+
+example:
+
+BoxedWine -root c:\root -m 64 /bin/wine notepad
+
+This will look for a file system in root, configure 64MB of emulated RAM and run "/bin/wine" in the file system with an argument of notepad
+
+BoxedWine -root c:\root -zip wine.zip /bin/wine notepad
+
+This will load the file system from wine.zip and write the changes to c:\root
+
+* options
+
+-bpp X : Value must be 16 or 32.  Most games are fine with 32-bit.
+
+-fullscreen : if no resolution is passed in via the resolution command line argument then the resolution will be the same as the monitor
+
+-gensrc : This is used for ahead of time (AOT) compiling and requires the source to be build with GENERATE_SOURCE.  With this enabled the user can run the program, then compile the output back into the program for a performance boost.  Currently I don't recommend using this, it should be considered experimental and the out put will not be compatible with future versions of BoxedWine.
+
+-m XX : How many megabytes the emulated RAM will have.  The default is 64.  This has no affect on the 64-bit windows build.
+
+-nosound : Disable /dev/dsp which will disable sound
+
+-resolution WxH : Initial emulated screen size.  Default is 800x600.  This is usual for apps/games that aren't full screen and won't change the screen size themselves.
+
+-root path : Path to the file system the emulated linux environment will used
+
+-uid X : Only useful if you want the emulated enviroment to report that it is root.  Useful if an app requires root privledges.  In that case set the uid to 0.
+
+-w path : Initial working directory, default is /home/username.  This path needs to reference a path in the emulated file system.
+
+-zip path : This will load the file system from the zip file.  Use -root option for the location where new files can be created.

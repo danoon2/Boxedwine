@@ -1,0 +1,84 @@
+SDL2             This will cause SDL2 to be used instead of SDL1.  You will need to link to the correct libraries.
+UNALIGNED_MEMORY This is necessary if the host isn't little endian, necessary for emscripten
+BOXEDWINE_64BIT_MMU    This will reserve 4GB of memory for each emulated process so that emulated memory can be mapped to host memory with a single offset.  Currently only Win64 build supports this.
+BOXEDWINE_VM     Requires: BOXEDWINE_64BIT_MMU. Translates x86 machine code to x64 on the fly.  Only supported on the Win64 build.
+BOXEDWINE_ZLIB   Will allow the file system to be in a zip file (-zip command line argument).  This requires that you link against zlib.
+BOXEDWINE_HAS_SETJMP  Will allow memory exception to be caught, this should be used for all builds.  Emscripten doesn't use it because it slows things down, but this also means some games won't work.
+BOXEDWINE_MSVC   Should use this on Windows platform
+
+To compile, you need one and only one of the follow 2 flags
+
+BOXEDWINE_ES     SDL OpenGL ES code will be used.  OpenGL calls will be translated to ES.
+BOXEDWINE_SDL    SDL OpenGL context will be used
+
+To compile for Windows it is recommended to use Visual Studio 2013 Community Edition
+https://www.visualstudio.com/en-us/news/releasenotes/vs2013-community-vs
+
+Javascript
+
+
+buildjsfs_sdl2.sh/shellfs.html
+This build script integrates the browserfs library [https://github.com/jvilk/BrowserFS].
+It introduces a writeable file store for the HOME_DIRECTORY directory. 
+3 options for setting variable storageMode:
+- STORAGE_DROPBOX (requires configuration - see below)
+- STORAGE_LOCAL_STORAGE
+- STORAGE_MEMORY (default)
+
+settings:
+By default uploading/downloading occurs inside the directory /root/home/username/files/.
+It is possible to modify this by appending a ?dir=somedir to the url, else change HOME_DIRECTORY in shell.html
+also possible to:
+ - specify an alternate root zip file system.
+ 	i.e. root=win32.zip. If not set it is assumed the root fs is boxedwine.zip and built from a directory called root.
+ - specify a zip file to appear uncompressed underneath the HOME_DIRECTORY.
+ 	i.e. app=chomp.zip would appear as /root/home/username/chomp/. Use: zip -r9qdgds 10m chomp.zip ./chomp/*
+ - change memory allocated to boxedwine via DEFAULT_MEMORY_ALLOCATION_MB or ?m=32 on url. Default is 64
+ - change the program to execute via ?p=/home/username/chomp/CHOMP.EXE. surround in quotes if path includes spaces.
+ - set the working directory via ?work=chomp. This simplifies p as it can then be relative to the working directory.
+ - set an overlay via ?overlay=more.zip;files.zip. Where each zip file contains additional files to add to the root file system. Existing files are overridden.
+ - use c:/ as shorthand for /home/username/.wine/c_drive/
+Some simplifications are possible:
+boxedwine.html?p=notepad - run notepad in the root fs
+boxedwine.html?root=win32&app=chomp&work=chomp&p=CHOMP.EXE - no need to add .zip for root and app zip file name
+boxedwine.html?app=chomp&p=CHOMP.EXE - if p does not start with a ‘/‘ and app is set, then the working directory is set to dir + app, i.e. /home/username/files/chomp
+
+Remote serving of DLL files (&remote=true)
+As the DLL files utilised will depend on what is executed, it makes sense to only provide the minimal number of DLL files and augment with files from the network.
+To use:
+create a directory with minimal required DLLs (same directory structure as main zip file). Reference this via &overlay=dll-min.zip
+create a directory /dlls with the additional DLLs from root/lib/wine
+call the build script with extra parameter 'remote' ie buildjsfs_sdl2.sh remote
+This will additionally build dlls.json that should be copied along with the dlls directory to your webserver.
+* adding the remote param also ensures that the original dlls in lib/wine are not zipped into the main zip file.
+
+Other configuration options:
+AUTO_RUN - indicates if start button is shown or page auto-runs. default true
+ALLOW_PARAM_OVERRIDE_FROM_URL - indicates if url can be appended with params as above for dir, app, m & p.
+ZLIB - boxedwine internally supports zip file systems, however recent builds of emscripten are not compatible. Therefore support for zipped file system is now provided by browserfs and ZLIB is no longer used in the emscripten build.
+
+
+notes on file system modes:
+DROPBOX - OAuth dance provided via dropbox.js library [https://github.com/dropbox/dropbox-js] and oauth_receiver.html.
+Because of this boxedwine must be served from a web server when using this option (make sure you copy and comment back in dropbox.min.js script).
+Also must set DROPBOX_APP_KEY and RECEIVE_URL (absolute path) inside the html.
+Remember to also set the receive_url in your dropbox app console.
+LOCAL_STORAGE - There are limits depending on browser and OS.
+MEMORY - likely to be slower then using the buildjs_*.sh version. More noticeable for larger file system images.
+
+other dials/tweaks for emscripten build files.
+see var Module inside the html file.
+
+misc notes:
+You can avoid using url params and hardcode the values straight into the html file.  Search for MANUAL: in html file. 
+
+Drag and drop is supported. Set AUTO_RUN to false. Simply drag a directory into the page. A dialog will appear and list entries for all executable files found. This is very useful.
+Getting files into/out of the emulator is provided behind the SHOW_UPLOAD_DOWNLOAD flag in the html. Jszip is used to download a directory as an archive.
+
+buildjs_sdl2.sh/zee-worker.js/shell.html
+This was the original build script used to build an emscripten target.  
+A folder named root containing the linux filesystem must exist in the current directory.
+The contents of the root directory is gzipped up and merged into the emscripten build itself.
+Upload/Download functionality is available
+AUTO_RUN, dir, m, work and p parameters are supported
+Drag and drop is also supported

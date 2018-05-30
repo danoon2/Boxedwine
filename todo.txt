@@ -1,0 +1,46 @@
+Current
+1) Continue to get more games to work.
+
+2) Get x64 dynamic recompiler to work with 16-bit games
+
+Future: Not in any particular order
+
+1) Find an alternative to for setjmp/longjmp, this really slows things down on Emscripten, but games like SimTower need it
+11/27/2017 * Currently waiting for WASM to support this.
+
+2) Get emscripten with webgl working, perhaps with glshim
+11/27/2017 * Haven't started this yet
+
+3) Implemented oss v4, but it can sound scratchy at times, like the intro to Diablo
+11/27/2017 * It could be that emulation isn't fast enough.  This should become more clear once the x64 dynamic recompiler is done
+
+4) Save/Load state (not sure how OpenGL would be handled)
+11/29/2017 * Added
+
+5) Android port (normal core, then maybe ARM64)
+11/29/2017 * Added
+
+Done
+
+* Get OpenGL to work on Windows
+11/27/2017 * I think this can be considered done
+
+* tcp sockets
+11/27/2017 * Mostly working
+
+* add MMX instructions
+11/27/2017 * This has been added, but not well tested
+
+* MMUless with ahead of time compiling (MMUless has been put on hold, I just don't think it will be very compatible with most games)
+11/27/2017 * This has been replaced with the x64 BOXEDWINE_64BIT_MMU flag.  This speeds things up quiet a bit because memory is now access as an offet.
+
+* On x86 platforms, research a dynamic recompiler, like DosBox or maybe something more ambitious like VirtualBox
+11/27/2017 * Implemented for x64.  This is more like a binaries translator from x32 to x64 with some hints of emulation. (MMU is emulated since all emulated processes are in one host process)
+
+On Hold
+
+* Research using less memory for the MMU (per process), perhaps a 2 index approach like the new JPC.  Currently is uses 20MB per process.
+11/27/2017 * Might revisit this in the future.  For now I'm not planning any work on this
+
+
+

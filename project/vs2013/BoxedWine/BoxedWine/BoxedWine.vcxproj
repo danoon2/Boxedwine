@@ -1,0 +1,588 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release SDL1|Win32">
+      <Configuration>Release SDL1</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release SDL1|x64">
+      <Configuration>Release SDL1</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Test|Win32">
+      <Configuration>Test</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Test|x64">
+      <Configuration>Test</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{AB172CEA-C4FE-4F1B-821E-2886B90344CB}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>BoxedWine</RootNamespace>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>NotSet</CharacterSet>
+    <PlatformToolset>v120_xp</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Test|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>NotSet</CharacterSet>
+    <PlatformToolset>v120_xp</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>NotSet</CharacterSet>
+    <PlatformToolset>v120_xp</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Test|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>NotSet</CharacterSet>
+    <PlatformToolset>v120_xp</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>NotSet</CharacterSet>
+    <PlatformToolset>v120_xp</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release SDL1|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>NotSet</CharacterSet>
+    <PlatformToolset>v120_xp</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>NotSet</CharacterSet>
+    <PlatformToolset>v120_xp</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>NotSet</CharacterSet>
+    <PlatformToolset>v120_xp</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Test|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Test|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release SDL1|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+    <IncludePath>..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;$(VC_IncludePath);..\..\..\..\lib\sdl2\include;$(WindowsSDK_IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+    <IncludePath>..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;$(VC_IncludePath);..\..\..\..\lib\sdl2\include;$(WindowsSDK_IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>false</LinkIncremental>
+    <IncludePath>..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;$(VC_IncludePath);..\..\..\..\lib\sdl2\include;$(WindowsSDK_IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Test|x64'">
+    <LinkIncremental>false</LinkIncremental>
+    <IncludePath>..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;$(VC_IncludePath);..\..\..\..\lib\sdl2\include;$(WindowsSDK_IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+    <IncludePath>..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;$(VC_IncludePath);..\..\..\..\lib\sdl2\include;$(WindowsSDK_IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release SDL1|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+    <IncludePath>..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;$(VC_IncludePath);..\..\..\..\lib\sdl2\include;$(WindowsSDK_IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+    <IncludePath>..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;$(VC_IncludePath);..\..\..\..\lib\sdl2\include;$(WindowsSDK_IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">
+    <LinkIncremental>false</LinkIncremental>
+    <IncludePath>..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;$(VC_IncludePath);..\..\..\..\lib\sdl2\include;$(WindowsSDK_IncludePath)</IncludePath>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>LOG_SYSCALLS;INCLUDE_CYCLES;BOXEDWINE_HAS_SETJMP;BOXEDWINE_ZLIB;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_MSVC;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>4996</DisableSpecificWarnings>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <BasicRuntimeChecks>StackFrameRuntimeCheck</BasicRuntimeChecks>
+      <PrecompiledHeaderFile>boxedwine.h</PrecompiledHeaderFile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <BufferSecurityCheck>true</BufferSecurityCheck>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>;..\..\..\..\lib\sdl2\lib\x86</AdditionalLibraryDirectories>
+      <AdditionalDependencies>opengl32.lib;..\Debug\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);sdl2.lib;SDL2main.lib</AdditionalDependencies>
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
+      <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
+      <IgnoreSpecificDefaultLibraries>
+      </IgnoreSpecificDefaultLibraries>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>BOXEDWINE_ZLIB;__TEST;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;_NO_DEBUG_HEAP=0;BOXEDWINE_MSVC;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>4996</DisableSpecificWarnings>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <PrecompiledHeaderFile>boxedwine.h</PrecompiledHeaderFile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>;..\..\..\..\lib\sdl2\lib\x86</AdditionalLibraryDirectories>
+      <AdditionalDependencies>opengl32.lib;..\Debug\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);sdl2.lib;SDL2main.lib</AdditionalDependencies>
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
+      <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
+      <IgnoreSpecificDefaultLibraries>
+      </IgnoreSpecificDefaultLibraries>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>BOXEDWINE_ZLIB;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;BOXEDWINE_VM;BOXEDWINE_64BIT_MMU;_NO_DEBUG_HEAP=0;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>4996</DisableSpecificWarnings>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <PrecompiledHeaderFile>boxedwine.h</PrecompiledHeaderFile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>..\x64\Debug</AdditionalLibraryDirectories>
+      <AdditionalDependencies>opengl32.lib;zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);sdl2.lib;SDL2main.lib</AdditionalDependencies>
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
+      <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
+      <IgnoreSpecificDefaultLibraries>
+      </IgnoreSpecificDefaultLibraries>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Test|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>SDL2;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;BOXEDWINE_ZLIB;BOXEDWINE_VM;BOXEDWINE_64BIT_MMU;__TEST;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;_NO_DEBUG_HEAP=0;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>4996</DisableSpecificWarnings>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <PrecompiledHeaderFile>boxedwine.h</PrecompiledHeaderFile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>;..\..\..\..\lib\sdl2\lib\x64</AdditionalLibraryDirectories>
+      <AdditionalDependencies>opengl32.lib;..\x64\Debug\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);sdl2.lib;SDL2main.lib</AdditionalDependencies>
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
+      <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
+      <IgnoreSpecificDefaultLibraries>
+      </IgnoreSpecificDefaultLibraries>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>SDL2;INCLUDE_CYCLES;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>4996</DisableSpecificWarnings>
+      <UndefinePreprocessorDefinitions>
+      </UndefinePreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <PrecompiledHeaderFile>boxedwine.h</PrecompiledHeaderFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalLibraryDirectories>;..\..\..\..\lib\sdl2\lib\x86</AdditionalLibraryDirectories>
+      <AdditionalDependencies>opengl32.lib;..\Release\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);sdl2.lib;SDL2main.lib</AdditionalDependencies>
+      <Profile>true</Profile>
+      <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
+      <IgnoreSpecificDefaultLibraries>
+      </IgnoreSpecificDefaultLibraries>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release SDL1|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>INCLUDE_CYCLES;BOXEDWINE_ZLIB;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>4996</DisableSpecificWarnings>
+      <UndefinePreprocessorDefinitions>
+      </UndefinePreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <PrecompiledHeaderFile>boxedwine.h</PrecompiledHeaderFile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalLibraryDirectories>;..\..\..\..\lib\sdl2\lib\x86</AdditionalLibraryDirectories>
+      <AdditionalDependencies>opengl32.lib;..\Release\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);sdl2.lib;SDL2main.lib</AdditionalDependencies>
+      <Profile>true</Profile>
+      <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
+      <IgnoreSpecificDefaultLibraries>
+      </IgnoreSpecificDefaultLibraries>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>BOXEDWINE_ZLIB;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;BOXEDWINE_VM;BOXEDWINE_64BIT_MMU;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>4996</DisableSpecificWarnings>
+      <UndefinePreprocessorDefinitions>
+      </UndefinePreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <PrecompiledHeaderFile>boxedwine.h</PrecompiledHeaderFile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalLibraryDirectories>;..\..\..\..\lib\sdl2\lib\x64</AdditionalLibraryDirectories>
+      <AdditionalDependencies>opengl32.lib;..\x64\Release\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);sdl2.lib;SDL2main.lib</AdditionalDependencies>
+      <Profile>true</Profile>
+      <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
+      <IgnoreSpecificDefaultLibraries>
+      </IgnoreSpecificDefaultLibraries>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>BOXEDWINE_ZLIB;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;BOXEDWINE_VM;BOXEDWINE_64BIT_MMU;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>4996</DisableSpecificWarnings>
+      <UndefinePreprocessorDefinitions>
+      </UndefinePreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <PrecompiledHeaderFile>boxedwine.h</PrecompiledHeaderFile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalLibraryDirectories>;..\..\..\..\lib\sdl2\lib\x64</AdditionalLibraryDirectories>
+      <AdditionalDependencies>opengl32.lib;..\x64\Release\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);sdl2.lib;SDL2main.lib</AdditionalDependencies>
+      <Profile>true</Profile>
+      <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
+      <IgnoreSpecificDefaultLibraries>
+      </IgnoreSpecificDefaultLibraries>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\..\include\block.h" />
+    <ClInclude Include="..\..\..\..\include\boxedwine.h" />
+    <ClInclude Include="..\..\..\..\include\bufferaccess.h" />
+    <ClInclude Include="..\..\..\..\include\crc.h" />
+    <ClInclude Include="..\..\..\..\include\devdsp.h" />
+    <ClInclude Include="..\..\..\..\include\devfb.h" />
+    <ClInclude Include="..\..\..\..\include\devinput.h" />
+    <ClInclude Include="..\..\..\..\include\devmixer.h" />
+    <ClInclude Include="..\..\..\..\include\devnull.h" />
+    <ClInclude Include="..\..\..\..\include\devtty.h" />
+    <ClInclude Include="..\..\..\..\include\devurandom.h" />
+    <ClInclude Include="..\..\..\..\include\ea.h" />
+    <ClInclude Include="..\..\..\..\include\filepath.h" />
+    <ClInclude Include="..\..\..\..\include\jit.h" />
+    <ClInclude Include="..\..\..\..\include\kepoll.h" />
+    <ClInclude Include="..\..\..\..\include\kerror.h" />
+    <ClInclude Include="..\..\..\..\include\kfile.h" />
+    <ClInclude Include="..\..\..\..\include\kfiledescriptor.h" />
+    <ClInclude Include="..\..\..\..\include\kfilelock.h" />
+    <ClInclude Include="..\..\..\..\include\kmmap.h" />
+    <ClInclude Include="..\..\..\..\include\knativesocket.h" />
+    <ClInclude Include="..\..\..\..\include\kobject.h" />
+    <ClInclude Include="..\..\..\..\include\kpoll.h" />
+    <ClInclude Include="..\..\..\..\include\kprocess.h" />
+    <ClInclude Include="..\..\..\..\include\kscheduler.h" />
+    <ClInclude Include="..\..\..\..\include\ksignal.h" />
+    <ClInclude Include="..\..\..\..\include\ksocket.h" />
+    <ClInclude Include="..\..\..\..\include\ksocketmsg.h" />
+    <ClInclude Include="..\..\..\..\include\ksocketobject.h" />
+    <ClInclude Include="..\..\..\..\include\kstat.h" />
+    <ClInclude Include="..\..\..\..\include\ksystem.h" />
+    <ClInclude Include="..\..\..\..\include\kthread.h" />
+    <ClInclude Include="..\..\..\..\include\ktimer.h" />
+    <ClInclude Include="..\..\..\..\include\kunixsocket.h" />
+    <ClInclude Include="..\..\..\..\include\loader.h" />
+    <ClInclude Include="..\..\..\..\include\log.h" />
+    <ClInclude Include="..\..\..\..\include\meminfo.h" />
+    <ClInclude Include="..\..\..\..\include\memory.h" />
+    <ClInclude Include="..\..\..\..\include\platform.h" />
+    <ClInclude Include="..\..\..\..\include\reg.h" />
+    <ClInclude Include="..\..\..\..\lib\zlib\contrib\minizip\crypt.h" />
+    <ClInclude Include="..\..\..\..\lib\zlib\contrib\minizip\ioapi.h" />
+    <ClInclude Include="..\..\..\..\lib\zlib\contrib\minizip\mztools.h" />
+    <ClInclude Include="..\..\..\..\lib\zlib\contrib\minizip\unzip.h" />
+    <ClInclude Include="..\..\..\..\lib\zlib\contrib\minizip\zip.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\common\cpu.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\common\fpu.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\common\lazyFlags.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\instructions.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normalCPU.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_arith.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_bit.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_conditions.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_cpu_init.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_cpu_init_mmx.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_fpu.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_incdec.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_mmx.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_move.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_other.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_pushpop.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_setcc.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_shift.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_shift_op.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_strings.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_strings_op.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_xchg.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_code_page.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_copy_on_write_page.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_file_map.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_invalid_page.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_memory.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_native_page.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_no_page.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_ondemand_page.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_page.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_ram.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_ro_page.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_rw_page.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_wo_page.h" />
+    <ClInclude Include="..\..\..\..\source\io\fs.h" />
+    <ClInclude Include="..\..\..\..\source\io\fsdiropennode.h" />
+    <ClInclude Include="..\..\..\..\source\io\fsfilenode.h" />
+    <ClInclude Include="..\..\..\..\source\io\fsfileopennode.h" />
+    <ClInclude Include="..\..\..\..\source\io\fsnode.h" />
+    <ClInclude Include="..\..\..\..\source\io\fsopennode.h" />
+    <ClInclude Include="..\..\..\..\source\io\fsvirtualnode.h" />
+    <ClInclude Include="..\..\..\..\source\io\fsvirtualopennode.h" />
+    <ClInclude Include="..\..\..\..\source\io\fszip.h" />
+    <ClInclude Include="..\..\..\..\source\io\fszipnode.h" />
+    <ClInclude Include="..\..\..\..\source\io\fszipopennode.h" />
+    <ClInclude Include="..\..\..\..\source\kernel\loader\kelf.h" />
+    <ClInclude Include="..\..\..\..\source\opengl\glcommon.h" />
+    <ClInclude Include="..\..\..\..\source\opengl\glfunctions.h" />
+    <ClInclude Include="..\..\..\..\source\opengl\glfunctions_ext.h" />
+    <ClInclude Include="..\..\..\..\source\opengl\glMarshal.h" />
+    <ClInclude Include="..\..\..\..\source\sdl\sdlopengl.h" />
+    <ClInclude Include="..\..\..\..\source\sdl\sdlwindow.h" />
+    <ClInclude Include="..\..\..\..\source\sdl\wnd.h" />
+    <ClInclude Include="..\..\..\..\source\util\boxedptr.h" />
+    <ClInclude Include="..\..\..\..\source\util\karray.h" />
+    <ClInclude Include="..\..\..\..\source\util\klist.h" />
+    <ClInclude Include="..\..\..\..\source\util\ringbuffer.h" />
+    <ClInclude Include="..\..\..\..\source\util\stringutil.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\..\..\lib\zlib\contrib\minizip\ioapi.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\zlib\contrib\minizip\mztools.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\zlib\contrib\minizip\unzip.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\zlib\contrib\minizip\zip.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\platform\windows\platform.cpp" />
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\common\cpu.cpp" />
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\common\fpu.cpp" />
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\common\lazyFlags.cpp" />
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\decoder.cpp" />
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\normal\instructions.cpp" />
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\normal\normalCPU.cpp" />
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\normal\normal_shift.cpp" />
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\normal\normal_strings.cpp" />
+    <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_code_page.cpp" />
+    <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_copy_on_write_page.cpp" />
+    <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_file_map.cpp" />
+    <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_invalid_page.cpp" />
+    <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_memory.cpp" />
+    <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_native_page.cpp" />
+    <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_no_page.cpp" />
+    <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_ondemand_page.cpp" />
+    <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_ram.cpp" />
+    <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_ro_page.cpp" />
+    <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_rw_page.cpp" />
+    <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_wo_page.cpp" />
+    <ClCompile Include="..\..\..\..\source\io\fs.cpp" />
+    <ClCompile Include="..\..\..\..\source\io\fsdiropennode.cpp" />
+    <ClCompile Include="..\..\..\..\source\io\fsfilenode.cpp" />
+    <ClCompile Include="..\..\..\..\source\io\fsfileopennode.cpp" />
+    <ClCompile Include="..\..\..\..\source\io\fsnode.cpp" />
+    <ClCompile Include="..\..\..\..\source\io\fsopennode.cpp" />
+    <ClCompile Include="..\..\..\..\source\io\fsvirtualnode.cpp" />
+    <ClCompile Include="..\..\..\..\source\io\fszip.cpp" />
+    <ClCompile Include="..\..\..\..\source\io\fszipnode.cpp" />
+    <ClCompile Include="..\..\..\..\source\io\fszipopennode.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\devs\devdsp.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\devs\devfb.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\devs\devinput.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\devs\devmixer.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\devs\devnull.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\devs\devtty.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\devs\devurandom.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\devs\devzero.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\kepoll.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\kfile.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\kfiledescriptor.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\kfilelock.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\kmemory.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\knativesocket.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\kobject.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\kpoll.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\kprocess.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\kscheduler.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\ksignal.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\ksocket.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\ksocketobject.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\ksystem.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\kthread.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\kunixsocket.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\loader\loader.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\proc\bufferaccess.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\proc\meminfo.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\proc\self.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\syscall.cpp" />
+    <ClCompile Include="..\..\..\..\source\opengl\glcommon.cpp" />
+    <ClCompile Include="..\..\..\..\source\opengl\glext.cpp" />
+    <ClCompile Include="..\..\..\..\source\opengl\glfunctions_ext1.cpp" />
+    <ClCompile Include="..\..\..\..\source\opengl\glfunctions_ext2.cpp" />
+    <ClCompile Include="..\..\..\..\source\opengl\glfunctions_ext3.cpp" />
+    <ClCompile Include="..\..\..\..\source\opengl\glMarshal.cpp" />
+    <ClCompile Include="..\..\..\..\source\opengl\glMarshalSize.cpp" />
+    <ClCompile Include="..\..\..\..\source\opengl\glMarshalVertex.cpp" />
+    <ClCompile Include="..\..\..\..\source\opengl\sdl\sdlgl.cpp" />
+    <ClCompile Include="..\..\..\..\source\sdl\main.cpp" />
+    <ClCompile Include="..\..\..\..\source\sdl\sdlopengl.cpp" />
+    <ClCompile Include="..\..\..\..\source\sdl\sdlwindows.cpp" />
+    <ClCompile Include="..\..\..\..\source\sdl\winedrv.cpp" />
+    <ClCompile Include="..\..\..\..\source\test\testCPU.cpp" />
+    <ClCompile Include="..\..\..\..\source\util\crc.cpp" />
+    <ClCompile Include="..\..\..\..\source\util\log.cpp" />
+    <ClCompile Include="..\..\..\..\source\util\stringutil.cpp" />
+    <ClCompile Include="..\boxedwine.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="ClassDiagram.cd" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

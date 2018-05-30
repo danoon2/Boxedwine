@@ -1,0 +1,1432 @@
+/*
+ *  Copyright (C) 2016  The BoxedWine Team
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+ */
+#include "boxedwine.h"
+
+#include "log.h"
+#include "kscheduler.h"
+#include "ksignal.h"
+#include "ksocket.h"
+#include "kepoll.h"
+
+#include <stdarg.h>
+#include <errno.h>
+
+U64 sysCallTime;
+extern struct Block emptyBlock;
+//#undef LOG_SYSCALLS
+#undef LOG_OPS
+#define LOG_OPS
+#ifdef LOG_OPS
+void logsyscall(const char* fmt, ...) {
+    va_list args;
+    static bool log = false;
+    va_start(args, fmt);
+    if (1) {
+        char tmp[256];
+        vsprintf(tmp, fmt, args);       
+    }
+    va_end(args);
+}
+
+#define LOGSYS logsyscall
+#elif defined LOG_SYSCALLS
+#define LOGSYS klog
+#else
+#define LOGSYS if (0) klog
+#endif
+
+
+#define ARG1 EBX
+#define ARG2 ECX
+#define ARG3 EDX
+#define ARG4 ESI
+#define ARG5 EDI
+#define ARG6 EBP
+
+#define SARG2 readd(ARG2)
+#define SARG3 readd(ARG2+4)
+#define SARG4 readd(ARG2+8)
+#define SARG5 readd(ARG2+12)
+#define SARG6 readd(ARG2+16)
+#define SARG7 readd(ARG2+20)
+
+typedef U32 (*SyscallFunc)(CPU* cpu, U32 eipCount);
+
+#ifdef LOG_SYSCALLS
+#define SYS_LOG if (0) printf
+#else
+#define SYS_LOG if (0) printf
+#endif
+
+static U32 syscall_exit(CPU* cpu, U32 eipCount) {
+    SYS_LOG("exit: status=%d", ARG1);
+    return cpu->thread->process->exit(ARG1);
+}
+
+static U32 syscall_read(CPU* cpu, U32 eipCount) {
+    SYS_LOG("read: fd=%d buf=0x%X len=%d", ARG1, ARG2, ARG3);
+    return cpu->thread->process->read((FD)ARG1, ARG2, ARG3);
+}
+
+static U32 syscall_write(CPU* cpu, U32 eipCount) {
+    SYS_LOG("write: fd=%d buf=0x%X len=%d", ARG1, ARG2, ARG3);
+    return cpu->thread->process->write((FD)ARG1, ARG2, ARG3);
+}
+
+static U32 syscall_open(CPU* cpu, U32 eipCount) {
+    char tmp[MAX_FILEPATH_LEN];
+    SYS_LOG("open: name=%s flags=%x", getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+    return cpu->thread->process->open(getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+}
+
+static U32 syscall_close(CPU* cpu, U32 eipCount) {
+    SYS_LOG("close: fd=%d", ARG1);
+    return cpu->thread->process->close(ARG1);
+}
+
+static U32 syscall_waitpid(CPU* cpu, U32 eipCount) {
+    SYS_LOG("waitpid: pid=%d status=%d options=%x", ARG1, ARG2, ARG3);
+    return KSystem::waitpid((S32)ARG1, ARG2, ARG3);
+}
+
+static U32 syscall_link(CPU* cpu, U32 eipCount) {
+    char tmp1[MAX_FILEPATH_LEN];
+    char tmp2[MAX_FILEPATH_LEN];
+    SYS_LOG("link: path1=%X(%s) path2=%X(%s)", ARG1, getNativeString(ARG1, tmp1, sizeof(tmp1)), ARG2, getNativeString(ARG2, tmp2, sizeof(tmp2)));
+    return cpu->thread->process->link(getNativeString(ARG1, tmp1, sizeof(tmp1)), getNativeString(ARG2, tmp2, sizeof(tmp2)));
+}
+
+static U32 syscall_unlink(CPU* cpu, U32 eipCount) {
+    char tmp[MAX_FILEPATH_LEN];
+    SYS_LOG("unlink: path=%X(%s)", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)));
+    return cpu->thread->process->unlinkFile(getNativeString(ARG1, tmp, sizeof(tmp)));
+}
+
+static void readStringArray(U32 address, std::vector<std::string>& results) {
+    char tmp2[MAX_FILEPATH_LEN];
+
+    while (true) {
+        U32 p = readd(address);		
+        char* str = getNativeString(p, tmp2, sizeof(tmp2));
+        address+=4;
+
+        if (!str || !str[0])
+            break;		
+        results.push_back(str);
+    }
+}
+
+static U32 syscall_execve(CPU* cpu, U32 eipCount) {
+    char tmp[MAX_FILEPATH_LEN];
+    std::vector<std::string> args;
+    std::vector<std::string> envs;
+
+    readStringArray(ARG2, args);
+    readStringArray(ARG3, envs);
+
+    SYS_LOG("execve: path=%X(%s) argv=%X envp=%X", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)), ARG2, ARG3);
+    if (cpu->thread->process->execve(getNativeString(ARG1, tmp, sizeof(tmp)), args, envs))
+        return -K_CONTINUE;
+    return -ENOENT;
+}
+
+static U32 syscall_chdir(CPU* cpu, U32 eipCount) {
+    char tmp[MAX_FILEPATH_LEN];
+    SYS_LOG("chdir: path=%X(%s)", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)));
+    return cpu->thread->process->chdir(getNativeString(ARG1, tmp, sizeof(tmp)));
+}
+
+static U32 syscall_time(CPU* cpu, U32 eipCount) {
+    U32 result = (U32)(Platform::getSystemTimeAsMicroSeconds() / 1000000l);
+    if (ARG1)
+        writed(ARG1, result);
+    SYS_LOG("time: tloc=%X", ARG1);
+    return result;
+}
+
+static U32 syscall_chmod(CPU* cpu, U32 eipCount) {
+    char tmp[MAX_FILEPATH_LEN];
+    SYS_LOG("chmod: path=%X (%s) mode=%o", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+    return cpu->thread->process->chmod(getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+}
+
+static U32 syscall_lseek(CPU* cpu, U32 eipCount) {
+    SYS_LOG("lseek: fildes=%d offset=%d whence=%d", ARG1, ARG2, ARG3);
+    return cpu->thread->process->lseek((FD)ARG1, (S32)ARG2, ARG3);
+}
+
+static U32 syscall_getpid(CPU* cpu, U32 eipCount) {
+    SYS_LOG("getpid:");
+    return cpu->thread->process->id;
+}
+
+static U32 syscall_getuid(CPU* cpu, U32 eipCount) {
+    SYS_LOG("getuid:");
+    return cpu->thread->process->userId;
+}
+
+static U32 syscall_ptrace(CPU* cpu, U32 eipCount) {
+    return -K_EPERM;
+}
+
+static U32 syscall_alarm(CPU* cpu, U32 eipCount) {
+    SYS_LOG("alarm: seconds=%d", ARG1);
+    return cpu->thread->process->alarm(ARG1);
+}
+
+static U32 syscall_utime(CPU* cpu, U32 eipCount) {
+    char tmp[MAX_FILEPATH_LEN];
+    SYS_LOG("utime: filename=%s times=%X", getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+    return 0;
+}
+
+static U32 syscall_access(CPU* cpu, U32 eipCount) {
+    char tmp[MAX_FILEPATH_LEN];
+    SYS_LOG("access: filename=%s flags=0x%X", getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+    return cpu->thread->process->access(getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+}
+
+static U32 syscall_sync(CPU* cpu, U32 eipCount) {
+    SYS_LOG("sync:");
+    return 0; 
+}
+
+static U32 syscall_kill(CPU* cpu, U32 eipCount) {
+    SYS_LOG("kill: pid=%d signal=%d", ARG1, ARG2);
+    return KSystem::kill(ARG1, ARG2);
+}
+
+static U32 syscall_rename(CPU* cpu, U32 eipCount) {
+    char tmp[MAX_FILEPATH_LEN];
+    char tmp2[MAX_FILEPATH_LEN];
+
+    SYS_LOG("rename: oldName=%X(%s) newName=%X(%s)", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)), ARG2, getNativeString(ARG2, tmp2, sizeof(tmp2)));
+    return cpu->thread->process->rename(getNativeString(ARG1, tmp, sizeof(tmp)), getNativeString(ARG2, tmp2, sizeof(tmp2)));
+}
+
+static U32 syscall_mkdir(CPU* cpu, U32 eipCount) {
+    char tmp[MAX_FILEPATH_LEN];
+    SYS_LOG("mkdir: path=%X (%s) mode=%X", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+    return cpu->thread->process->mkdir(getNativeString(ARG1, tmp, sizeof(tmp)));
+}
+
+static U32 syscall_rmdir(CPU* cpu, U32 eipCount) {
+    char tmp[MAX_FILEPATH_LEN];
+    SYS_LOG("rmdir: path=%X(%s)", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)));
+    return cpu->thread->process->rmdir(getNativeString(ARG1, tmp, sizeof(tmp)));
+}
+
+static U32 syscall_dup(CPU* cpu, U32 eipCount) {
+    SYS_LOG("dup: fildes=%d", ARG1);
+    return cpu->thread->process->dup(ARG1);
+}
+
+static U32 syscall_pipe(CPU* cpu, U32 eipCount) {
+    SYS_LOG("pipe: fildes=%X", ARG1);
+    return ksocketpair(K_AF_UNIX, K_SOCK_STREAM, 0, ARG1, 0);
+}
+
+static U32 syscall_times(CPU* cpu, U32 eipCount) {
+    SYS_LOG("times: buf=%X", ARG1);
+    return KSystem::times(ARG1);
+}
+
+static U32 syscall_brk(CPU* cpu, U32 eipCount) {
+    SYS_LOG("brk: address=%.8X", ARG1);
+    return cpu->thread->process->brk(ARG1);
+}
+
+static U32 syscall_getgid(CPU* cpu, U32 eipCount) {
+    SYS_LOG("getgid:");
+    return cpu->thread->process->groupId;
+}
+
+static U32 syscall_geteuid(CPU* cpu, U32 eipCount) {
+    SYS_LOG("geteuid:");
+    return cpu->thread->process->effectiveUserId;
+}
+
+static U32 syscall_getegid(CPU* cpu, U32 eipCount) {
+    SYS_LOG("getegid:");
+    return cpu->thread->process->effectiveGroupId;
+}
+
+static U32 syscall_ioctl(CPU* cpu, U32 eipCount) {
+    SYS_LOG("ioctl: fd=%d request=%d", ARG1, ARG2);
+    return cpu->thread->process->ioctl(ARG1, ARG2);
+}
+
+static U32 syscall_setpgid(CPU* cpu, U32 eipCount) {	
+    SYS_LOG("setpgid: pid=%d pgid=%d", ARG1, ARG2);
+    return KSystem::setpgid(ARG1, ARG2);
+}
+
+static U32 syscall_umask(CPU* cpu, U32 eipCount) {	
+    SYS_LOG("umask: cmask=%X", ARG1);
+    return cpu->thread->process->umask(ARG1);
+}
+
+static U32 syscall_getpgid(CPU* cpu, U32 eipCount) {	
+    SYS_LOG("getpgid: pid=%d", ARG1);
+    return KSystem::getpgid(ARG1);
+}
+
+static U32 syscall_dup2(CPU* cpu, U32 eipCount) {	
+    SYS_LOG("dup2: fildes1=%d fildes2=%d", ARG1, ARG2);
+    return cpu->thread->process->dup2(ARG1, ARG2);
+}
+
+static U32 syscall_getppid(CPU* cpu, U32 eipCount) {	
+    SYS_LOG("getppid:");
+    return cpu->thread->process->parentId;
+}
+
+static U32 syscall_getpgrp(CPU* cpu, U32 eipCount) {	
+    SYS_LOG("getpgrp:");
+    return cpu->thread->process->groupId;;
+}
+
+static U32 syscall_setsid(CPU* cpu, U32 eipCount) {	
+    SYS_LOG("setsid:");
+#ifdef _DEBUG
+    klog("setsid not implemented");
+#endif
+    return 0;
+}
+
+static U32 syscall_setrlimit(CPU* cpu, U32 eipCount) {	
+    SYS_LOG("setrlimit:");
+#ifdef _DEBUG
+    klog("setrlimit not implemented");
+#endif
+    return 0;
+}
+
+static U32 syscall_getrusuage(CPU* cpu, U32 eipCount) {	
+    SYS_LOG("getrusage: who=%d usuage=%X", ARG1, ARG2);
+    return cpu->thread->process->getrusuage(ARG1, ARG2);
+}
+
+static U32 syscall_gettimeofday(CPU* cpu, U32 eipCount) {	
+    SYS_LOG("gettimeofday: tv=%X tz=%X", ARG1, ARG2);
+    return KSystem::gettimeofday(ARG1, ARG2);
+}
+
+static U32 syscall_symlink(CPU* cpu, U32 eipCount) {
+    char tmp[MAX_FILEPATH_LEN];
+    char tmp2[MAX_FILEPATH_LEN];
+    SYS_LOG("symlink: path1=%X(%s) path2=%X(%s)", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)), ARG2, getNativeString(ARG2, tmp2, sizeof(tmp2)));
+    return cpu->thread->process->symlink(getNativeString(ARG1, tmp, sizeof(tmp)), getNativeString(ARG2, tmp2, sizeof(tmp2)));
+}
+
+static U32 syscall_readlink(CPU* cpu, U32 eipCount) {
+    char tmp[MAX_FILEPATH_LEN];    
+    char tmp2[MAX_FILEPATH_LEN];    
+
+    U32 result = cpu->thread->process->readlink(getNativeString(ARG1, tmp, sizeof(tmp)), ARG1, ARG2);
+    SYS_LOG("readlink: path=%X (%s) buffer=%X (%s) bufSize=%d", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)), ARG1, (result==0?getNativeString(ARG1, tmp2, sizeof(tmp2)):""), ARG3);
+    return result;
+}
+
+static U32 syscall_mmap64(CPU* cpu, U32 eipCount) {
+    SYS_LOG("mmap: address=%.8X len=%d prot=%X flags=%X fd=%d offset=%d", readd(ARG1), readd(ARG1+4), readd(ARG1+8), readd(ARG1+12), readd(ARG1+16), readd(ARG1+20));
+    return cpu->thread->process->mmap(readd(ARG1), readd(ARG1+4), readd(ARG1+8), readd(ARG1+12), readd(ARG1+16), readd(ARG1+20));
+}
+
+static U32 syscall_unmap(CPU* cpu, U32 eipCount) {
+    SYS_LOG("munmap: address=%X len=%d", ARG1, ARG2);
+    return cpu->thread->process->unmap(ARG1, ARG2);
+}
+
+static U32 syscall_ftruncate(CPU* cpu, U32 eipCount) {
+    SYS_LOG("ftruncate: fd=%X len=%d", ARG1, ARG2);
+    return cpu->thread->process->ftruncate64(ARG1, ARG2);
+}
+
+static U32 syscall_fchmod(CPU* cpu, U32 eipCount) {	
+    SYS_LOG("fchmod: fd=%X mod=%X", ARG1, ARG2);
+#ifdef _DEBUG
+    klog("fchmod not implemented");
+#endif
+    return 0;
+}
+
+static U32 syscall_setpriority(CPU* cpu, U32 eipCount) {	
+    SYS_LOG("setpriority: which=%d, who=%d, prio=%d", ARG1, ARG2, ARG3);
+#ifdef _DEBUG
+    klog("setpriority not implemented");
+#endif
+    return 0;
+}
+
+static U32 syscall_statfs(CPU* cpu, U32 eipCount) {
+    char tmp[MAX_FILEPATH_LEN];
+    SYS_LOG("statfs: path=%X(%s) buf=%X", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+    return cpu->thread->process->statfs(getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+}
+
+static U32 syscall_ioperm(CPU* cpu, U32 eipCount) {	
+    SYS_LOG("ioperm: from=%X num=%d turn_on=%X", ARG1, ARG2, ARG3);
+#ifdef _DEBUG
+    klog("ioperm not implemented: from=0x%X len=%d on=%d", ARG1, ARG2, ARG3);
+#endif
+    return 0;
+}
+
+static U32 syscall_socketcall(CPU* cpu, U32 eipCount) {
+    U32 result = 0;
+    char tmp[MAX_FILEPATH_LEN];
+
+    switch (ARG1) {
+        case 1: // SYS_SOCKET
+            SYS_LOG("SYS_SOCKET: domain=%d(%s) type=%d(%s) protocol=%d(%s)", SARG2, SARG2==K_AF_UNIX?"AF_UNIX":(SARG2==K_AF_INET)?"AF_INET":"", (SARG3 & 0xFF), (SARG3 & 0xFF)==K_SOCK_STREAM?"SOCK_STREAM":((SARG3 & 0xFF)==K_SOCK_DGRAM)?"AF_SOCK_DGRAM":"", SARG4, (SARG4 == 0)?"IPPROTO_IP":(SARG4==6)?"IPPROTO_TCP":(SARG4==17)?"IPPROTO_UDP":"");
+            result = ksocket(SARG2, SARG3 & 0xFF, SARG4);
+            break;
+        case 2: // SYS_BIND
+            SYS_LOG("SYS_BIND: socket=%d address=%X(%s) len=%d", SARG2, SARG3, socketAddressName(SARG3, SARG4, tmp, sizeof(tmp)), SARG4);
+            result = kbind(SARG2, SARG3, SARG4);
+            break;
+        case 3: // SYS_CONNECT
+            SYS_LOG("SYS_CONNECT: socket=%d address=%X(%s) len=%d", SARG2, SARG3, socketAddressName(SARG3, SARG4, tmp, sizeof(tmp)), SARG4);
+            result = kconnect(SARG2, SARG3, SARG4);
+            break;
+        case 4: // SYS_LISTEN				
+            SYS_LOG("SYS_LISTEN: socket=%d backlog=%d", SARG2, SARG3);
+            result = klisten(SARG2, SARG3);
+            break;
+        case 5: // SYS_ACCEPT
+            SYS_LOG("SYS_ACCEPT: socket=%d address=%X(%s) len=%d", SARG2, SARG3, socketAddressName(SARG3, SARG4, tmp, sizeof(tmp)), SARG4);
+            result = kaccept(SARG2, SARG3, SARG4);
+            break;			
+        case 6: // SYS_GETSOCKNAME
+            SYS_LOG("SYS_GETSOCKNAME: socket=%d address=%X len=%d", SARG2, SARG3, SARG4);
+            result = kgetsockname(SARG2, SARG3, SARG4);
+            break;			
+        case 7: // SYS_GETPEERNAME
+            SYS_LOG("SYS_GETPEERNAME: socket=%d address=%X len=%d", SARG2, SARG3, SARG4);
+            result = kgetpeername(SARG2, SARG3, SARG4);
+            break;		
+        case 8: // SYS_SOCKETPAIR
+            SYS_LOG("SYS_SOCKETPAIR: af=%d(%s) type=%d(%s) socks=%X", SARG2, SARG2==K_AF_UNIX?"AF_UNIX":(SARG2==K_AF_INET)?"AF_INET":"", SARG3, SARG3==K_SOCK_STREAM?"SOCK_STREAM":(SARG3==K_SOCK_DGRAM)?"AF_SOCK_DGRAM":"", SARG5);
+            result = ksocketpair(SARG2, SARG3, SARG4, SARG5, 0);
+            break;
+        case 9: // SYS_SEND
+            SYS_LOG("SYS_SEND: socket=%d buffer=%X len=%d flags=%X", SARG2, SARG3, SARG4, SARG5);
+            result = ksend(SARG2, SARG3, SARG4, SARG5);
+            break;
+        case 10: // SYS_RECV
+            SYS_LOG("SYS_RECV: socket=%d buffer=%X len=%d flags=%X", SARG2, SARG3, SARG4, SARG5);
+            result = krecv(SARG2, SARG3, SARG4, SARG5);
+            break;
+        case 11: // SYS_SENDTO
+            SYS_LOG("SYS_SENDTO: socket=%d buffer=%X len=%d flags=%X dest=%s", SARG2, SARG3, SARG4, SARG5, socketAddressName(SARG6, SARG7, tmp, sizeof(tmp)));
+            result = ksendto(SARG2, SARG3, SARG4, SARG5, SARG6, SARG7);
+            break;
+        case 12: // SYS_RECVFROM
+            SYS_LOG("SYS_RECVFROM: socket=%d buffer=%X len=%d flags=%X address=%s", SARG2, SARG3, SARG4, SARG5, socketAddressName(SARG6, SARG7, tmp, sizeof(tmp)));
+            result = krecvfrom(SARG2, SARG3, SARG4, SARG5, SARG6, SARG7);
+            break;
+        case 13: // SYS_SHUTDOWN
+            SYS_LOG("SYS_SHUTDOWN: socket=%d how=%d", SARG2, SARG3);
+            result = kshutdown(SARG2, SARG3);
+            break;
+        case 14: // SYS_SETSOCKOPT
+            SYS_LOG("SYS_SETSOCKOPT: socket=%d level=%d name=%d value=%d, len=%d", SARG2, SARG3, SARG4, SARG5, SARG6);
+            result = ksetsockopt(SARG2, SARG3, SARG4, SARG5, SARG6);
+            break;
+        case 15: // SYS_GETSOCKOPT
+            SYS_LOG("SYS_GETSOCKOPT: socket=%d level=%d name=%d value=%d, len=%d", SARG2, SARG3, SARG4, SARG5, SARG6);
+            result = kgetsockopt(SARG2, SARG3, SARG4, SARG5, SARG6);
+            break;		
+        case 16: // SYS_SENDMSG
+            SYS_LOG("SYS_SENDMSG: socket=%d message=%X flags=%X", SARG2, SARG3, SARG4);
+            result = ksendmsg(SARG2, SARG3, SARG4);
+            break;
+        case 17: // SYS_RECVMSG
+            SYS_LOG("SYS_RECVMSG: socket=%d message=%X flags=%X", SARG2, SARG3, SARG4);
+            result = krecvmsg(SARG2, SARG3, SARG4);
+            break;
+        //case 18: // SYS_ACCEPT4
+        default:
+            kpanic("Unknown socket syscall: %d",ARG1);
+    }
+    return result;
+}
+
+static U32 syscall_setitimer(CPU* cpu, U32 eipCount) {
+    SYS_LOG("setitimer :which=%d newValue=%d(%d.%.06d) oldValue=%d", ARG1, ARG2, (ARG2?readd(ARG2+8):0), (ARG2?readd(ARG2+12):0), ARG3);
+    return cpu->thread->process->setitimer(ARG1, ARG2, ARG3);
+}
+
+static U32 syscall_iopl(CPU* cpu, U32 eipCount) {
+    SYS_LOG("iopl: level=%1", ARG1);
+    return 0;
+}
+
+static U32 syscall_wait4(CPU* cpu, U32 eipCount) {
+    SYS_LOG("wait4: pid=%d status=%d options=%x rusage=%X", ARG1, ARG2, ARG3, ARG4);
+#ifdef _DEBUG
+        if (ARG4) {
+            kwarn("__NR_wait4 rusuage not implemented");
+        }
+#endif
+    return KSystem::waitpid((S32)ARG1, ARG2, ARG3);
+}
+
+static U32 syscall_sysinfo(CPU* cpu, U32 eipCount) {
+    SYS_LOG("sysinfo: address=%X", ARG1);
+    return KSystem::sysinfo(ARG1);
+}
+
+static U32 syscall_ipc(CPU* cpu, U32 eipCount) {
+    // ARG5 holds the pointer to be copied
+    if (ARG1 == 21) { // IPCOP_shmat
+        SYS_LOG("ipc: IPCOP_shmat shmid=%d shmaddr=%d shmflg=%X", ARG2, ARG5, ARG3);
+        return KSystem::shmat(ARG2, ARG5, ARG3, ARG4);
+    }  else if (ARG1 == 22) { // IPCOP_shmdt
+        SYS_LOG("ipc IPCOP_shmdt shmaddr=%d", ARG5);
+        return KSystem::shmdt(ARG5);
+    } else if (ARG1 == 23) { // IPCOP_shmget
+        //result = -1; // :TODO: this crashes hsetroot
+        SYS_LOG("ipc: IPCOP_shmget key=%d size=%d flags=%X", ARG2, ARG3, ARG4);
+        return KSystem::shmget(ARG2, ARG3, ARG4);
+    } else if (ARG1 == 24) { // IPCOP_shmctl 
+        SYS_LOG("ipc: IPCOP_shmctl shmid=%d cmd=%d buf=%X", ARG2, ARG3, ARG5);
+        return KSystem::shmctl(ARG2, ARG3, ARG5);
+    } else {
+        kpanic("__NR_ipc op %d not implemented", ARG1);
+        return 0;
+    }
+}
+
+static U32 syscall_fsync(CPU* cpu, U32 eipCount) {
+    SYS_LOG("fsync: fd=%d", ARG1);
+    return 0;
+}
+
+static U32 syscall_sigreturn(CPU* cpu, U32 eipCount) {
+    SYS_LOG("sigreturn:");
+    return cpu->thread->sigreturn();
+}
+
+static U32 syscall_clone(CPU* cpu, U32 eipCount) {
+    SYS_LOG("clone: flags=%X child_stack=%X ptid=%X tls=%X ctid=%X", ARG1, ARG2, ARG3, ARG4, ARG5);
+    return cpu->thread->process->clone(ARG1, ARG2, ARG3, ARG4, ARG5);
+}
+
+static U32 syscall_uname(CPU* cpu, U32 eipCount) {
+    SYS_LOG("uname: name=%.8X", ARG1);
+    return KSystem::uname(ARG1);
+}
+
+static U32 syscall_modify_ldt(CPU* cpu, U32 eipCount) {
+    SYS_LOG("modify_ldt: func=%d ptr=%X(index=%d address=%X limit=%X flags=%X) count=%d", ARG1, ARG2, readd(ARG2),  readd(ARG2+4), readd(ARG2+8), readd(ARG2+12), ARG3);
+    return cpu->thread->modify_ldt(ARG1, ARG2, ARG3);
+}
+
+static U32 syscall_mprotect(CPU* cpu, U32 eipCount) {
+    SYS_LOG("mprotect: address=%X len=%d prot=%X", ARG1, ARG2, ARG3);
+    return cpu->thread->process->mprotect(ARG1, ARG2, ARG3);
+}
+
+static U32 syscall_fchdir(CPU* cpu, U32 eipCount) {
+    SYS_LOG("fchdir: fd=%d", ARG1);
+    return cpu->thread->process->fchdir(ARG1);
+}
+
+static U32 syscall_llseek(CPU* cpu, U32 eipCount) {
+    SYS_LOG("llseek: fildes=%d offset=%.8X%.8X pResult=%X whence=%d", ARG1, ARG2, ARG3, ARG4, ARG5);
+    S64 r64 = cpu->thread->process->llseek(ARG1, ((U64)ARG2)<<32|ARG3, ARG5);
+    if (ARG4) {
+        writeq(ARG4, r64);
+    }
+    return (U32)r64;
+}
+
+static U32 syscall_getdents(CPU* cpu, U32 eipCount) {
+    SYS_LOG("getdents: fd=%d dir=%X count=%d", ARG1, ARG2, ARG3);
+    return cpu->thread->process->getdents(ARG1, ARG2, ARG3, false);
+}
+
+static U32 syscall_newselect(CPU* cpu, U32 eipCount) {
+    SYS_LOG("newselect: nfd=%d readfds=%X writefds=%X errorfds=%X timeout=%d", ARG1, ARG2, ARG3, ARG4, ARG5);
+    return kselect(ARG1, ARG2, ARG3, ARG4, ARG5);
+}
+
+static U32 syscall_flock(CPU* cpu, U32 eipCount) {
+    SYS_LOG("flock: fd=%d operation=%d", ARG1, ARG2);
+#ifdef _DEBUG
+    klog("flock not implemented");
+#endif
+    return 0;
+}
+
+static U32 syscall_msync(CPU* cpu, U32 eipCount) {
+    SYS_LOG("msync addr=%X length=%d flags=%X", ARG1, ARG2, ARG3);
+    return cpu->thread->process->msync(ARG1, ARG2, ARG3);
+}
+
+static U32 syscall_writev(CPU* cpu, U32 eipCount) {
+    SYS_LOG("writev: filds=%d iov=0x%X iovcn=%d", ARG1, ARG2, ARG3);
+    return cpu->thread->process->writev(ARG1, ARG2, ARG3);
+}
+
+static U32 syscall_fdatasync(CPU* cpu, U32 eipCount) {
+    SYS_LOG("fdatasync: fd=%d", ARG1);
+    return 0;
+}
+
+static U32 syscall_mlock(CPU* cpu, U32 eipCount) {
+    SYS_LOG("mlock: address=0x%X len=%d", ARG1, ARG2);
+    return cpu->thread->process->mlock(ARG1, ARG2);
+}
+
+static U32 syscall_sched_getparam(CPU* cpu, U32 eipCount) {
+    SYS_LOG("sched_getparam: pid=%d params=%X", ARG1, ARG2);
+    return -K_EPERM;
+}
+
+static U32 syscall_sched_getscheduler(CPU* cpu, U32 eipCount) {
+    SYS_LOG("sched_getscheduler: pid=%d params=%X", ARG1, ARG2);
+    return 0; // SCHED_OTHER
+}
+
+static U32 syscall_sched_yield(CPU* cpu, U32 eipCount) {
+    SYS_LOG("yield:");
+    cpu->yield = true;
+    return 0;
+}
+
+static U32 syscall_sched_get_priority_max(CPU* cpu, U32 eipCount) {
+    SYS_LOG("sched_get_priority_max: policy=%d", ARG1);
+    return 32;
+}
+
+static U32 syscall_sched_get_priority_min(CPU* cpu, U32 eipCount) {
+    SYS_LOG("sched_get_priority_min: policy=%d", ARG1);
+    return 0;
+}
+
+static U32 syscall_nanosleep(CPU* cpu, U32 eipCount) {
+    SYS_LOG("nanosleep: req=%X(%d.%.09d sec)", ARG1, readd(ARG1), readd(ARG1+4));
+    return cpu->thread->sleep(readd(ARG1)*1000+readd(ARG1+4)/1000000);
+}
+
+static U32 syscall_mremap(CPU* cpu, U32 eipCount) {
+    SYS_LOG("mremap: oldaddress=%x oldsize=%d newsize=%d flags=%X", ARG1, ARG2, ARG3, ARG4);
+    return cpu->thread->process->mremap(ARG1, ARG2, ARG3, ARG4);
+}
+
+static U32 syscall_vm86(CPU* cpu, U32 eipCount) {
+    kpanic("Application tried to enter DOS mode (vm86).  BoxedWine does not support this.");
+    return 0;
+}
+
+static U32 syscall_poll(CPU* cpu, U32 eipCount) {
+    SYS_LOG("poll: pfds=%X nfds=%d timeout=%X", ARG1, ARG2, ARG3);
+    return kpoll(ARG1, ARG2, ARG3);		
+}
+
+static U32 syscall_prctl(CPU* cpu, U32 eipCount) {
+    SYS_LOG("prctl: options=%d", ARG1);
+    return cpu->thread->process->prctl(ARG1, ARG2);
+}
+
+static U32 syscall_rt_sigaction(CPU* cpu, U32 eipCount) {
+    SYS_LOG("rt_sigaction: sig=%d act=%X oact=%X", ARG1, ARG2, ARG3);
+    return cpu->thread->process->sigaction(ARG1, ARG2, ARG3, ARG4);
+}
+
+static U32 syscall_rt_sigprocmask(CPU* cpu, U32 eipCount) {
+    SYS_LOG("rt_sigprocmask: how=%d set=%X oset=%X", ARG1, ARG2, ARG3);
+    U32 result = cpu->thread->sigprocmask(ARG1, ARG2, ARG3, ARG4);
+    EAX = result;
+    cpu->eip.u32+=eipCount;
+    cpu->thread->runSignals();
+    return -K_CONTINUE;
+}
+
+static U32 syscall_rt_sigsuspend(CPU* cpu, U32 eipCount) {
+    SYS_LOG("rt_sigsuspend: mask=%X", ARG1);
+    return cpu->thread->sigsuspend(ARG1, ARG2);
+}
+
+static U32 syscall_pread64(CPU* cpu, U32 eipCount) {
+    SYS_LOG("pread64: fd=%d buf=%X len=%d offset=%d", ARG1, ARG2, ARG3, ARG4);
+    return cpu->thread->process->pread64(ARG1, ARG2, ARG3, ARG4 | ((U64)ARG5) << 32);
+}
+
+static U32 syscall_pwrite64(CPU* cpu, U32 eipCount) {
+    SYS_LOG("pwrite64: fd=%d buf=%X len=%d offset=%d", ARG1, ARG2, ARG3, ARG4);
+    return cpu->thread->process->pwrite64(ARG1, ARG2, ARG3, ARG4 | ((U64)ARG5) << 32);
+}
+
+static U32 syscall_getcwd(CPU* cpu, U32 eipCount) {
+    SYS_LOG("getcwd: buf=%X size=%d (%s)", ARG1, ARG2, cpu->thread->process->currentDirectory.c_str());
+    return cpu->thread->process->getcwd(ARG1, ARG2);
+}
+
+static U32 syscall_sigaltstack(CPU* cpu, U32 eipCount) {
+    SYS_LOG("sigaltstack ss=%X oss=%X", ARG1, ARG2);
+    return cpu->thread->signalstack(ARG1, ARG2);
+}
+
+static U32 syscall_vfork(CPU* cpu, U32 eipCount) {
+    SYS_LOG("vfork:");
+    return cpu->thread->process->clone(0x01000000 |0x00200000 | 0x00004000, 0, 0, 0, 0);
+}
+
+static U32 syscall_ugetrlimit(CPU* cpu, U32 eipCount) {
+    SYS_LOG("ugetrlimit: resource=%d rlim=%X", ARG1, ARG2);
+    return KSystem::ugetrlimit(ARG1, ARG2);
+}
+
+static U32 syscall_mmap2(CPU* cpu, U32 eipCount) {
+    SYS_LOG("mmap2: address=%.8X len=0x%X(%d) prot=%X flags=%X fd=%d offset=%d", ARG1, ARG2, ARG2, ARG3, ARG4, ARG5, ARG6);
+    return cpu->thread->process->mmap(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6*4096l);
+}
+
+static U32 syscall_ftruncate64(CPU* cpu, U32 eipCount) {
+    U64 len = ARG2 | ((U64)ARG3 << 32);
+    SYS_LOG("ftruncate64: fildes=%d length=%llu", ARG1, len);
+    return cpu->thread->process->ftruncate64(ARG1, len);
+}
+
+static U32 syscall_stat64(CPU* cpu, U32 eipCount) {    
+    char tmp[MAX_FILEPATH_LEN];
+    SYS_LOG("stat64: path=%s buf=%X", getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+    return cpu->thread->process->stat64(getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+}
+
+static U32 syscall_lstat64(CPU* cpu, U32 eipCount) {
+    char tmp[MAX_FILEPATH_LEN];
+    SYS_LOG("lstat64: path=%s buf=%X", getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+    return cpu->thread->process->lstat64(getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+}
+
+static U32 syscall_fstat64(CPU* cpu, U32 eipCount) {
+    SYS_LOG("fstat64: fildes=%d buf=%X", ARG1, ARG2);
+    return cpu->thread->process->fstat64(ARG1, ARG2);
+}
+
+static U32 syscall_lchown32(CPU* cpu, U32 eipCount) {
+    char tmp[MAX_FILEPATH_LEN];
+    SYS_LOG("lchown32: path=%s owner=%d group=%d", getNativeString(ARG1, tmp, sizeof(tmp)), ARG2, ARG3);
+    return 0;
+}
+
+static U32 syscall_getuid32(CPU* cpu, U32 eipCount) {
+    SYS_LOG("getuid32:");
+    return cpu->thread->process->userId;
+}
+
+static U32 syscall_getgid32(CPU* cpu, U32 eipCount) {
+    SYS_LOG("getgid32:");
+    return cpu->thread->process->groupId;
+}
+
+static U32 syscall_geteuid32(CPU* cpu, U32 eipCount) {
+    SYS_LOG("geteuid32:");
+    return cpu->thread->process->effectiveUserId;
+}
+
+static U32 syscall_getegid32(CPU* cpu, U32 eipCount) {
+    SYS_LOG("getegid32:");
+    return cpu->thread->process->effectiveGroupId;
+}
+
+static U32 syscall_getgroups32(CPU* cpu, U32 eipCount) {
+    SYS_LOG("getgroups32: size=%d list=%X", ARG1, ARG2);
+    if (ARG2!=0) {
+        writed(ARG2, cpu->thread->process->groupId);
+    }
+    return 1;
+}
+
+static U32 syscall_setgroups32(CPU* cpu, U32 eipCount) {
+    SYS_LOG("setgroups32: size=%d list=%X", ARG1, ARG2);
+    if (ARG1) {
+        cpu->thread->process->groupId = readd(ARG2);
+    }
+    return 0;
+}
+
+static U32 syscall_fchown32(CPU* cpu, U32 eipCount) {
+    SYS_LOG("fchown32: fd=%d owner=%d group=%d", ARG1, ARG2, ARG3);
+    return 0;
+}
+
+static U32 syscall_setresuid32(CPU* cpu, U32 eipCount) {
+    SYS_LOG("setresuid3: ruid=%d euid=%d suid=%d", ARG1, ARG2, ARG3);
+    if (ARG1!=0xFFFFFFFF)
+        cpu->thread->process->userId = ARG1;
+    if (ARG2!=0xFFFFFFFF)
+        cpu->thread->process->effectiveUserId = ARG2;
+    return 0;
+}
+
+static U32 syscall_getresuid32(CPU* cpu, U32 eipCount) {
+    SYS_LOG("getresuid32: ruid=%X(%d) euid=%X(%d) suid=%X(%d)", ARG1, cpu->thread->process->userId, ARG2, cpu->thread->process->effectiveUserId, ARG3, cpu->thread->process->userId);
+    if (ARG1)
+        writed(ARG1, cpu->thread->process->userId);
+    if (ARG2)
+        writed(ARG2, cpu->thread->process->effectiveUserId);
+    if (ARG3)
+        writed(ARG3, cpu->thread->process->userId);
+    return 0;
+}
+
+static U32 syscall_setresgid32(CPU* cpu, U32 eipCount) {
+    SYS_LOG("setresgid32: rgid=%d egid=%d sgid=%d", ARG1, ARG2, ARG3);
+    if (ARG1!=0xFFFFFFFF)
+        cpu->thread->process->groupId = ARG1;
+    if (ARG2!=0xFFFFFFFF)
+        cpu->thread->process->effectiveGroupId = ARG2;
+    return 0;
+}
+
+static U32 syscall_getresgid32(CPU* cpu, U32 eipCount) {
+    SYS_LOG("getresgid32: rgid=%X(%d) egid=%X(%d) sgid=%X(%d)", ARG1, cpu->thread->process->groupId, ARG2, cpu->thread->process->groupId, ARG3, cpu->thread->process->groupId);
+    if (ARG1)
+        writed(ARG1, cpu->thread->process->groupId);
+    if (ARG2)
+        writed(ARG2, cpu->thread->process->effectiveGroupId);
+    if (ARG3)
+        writed(ARG3, cpu->thread->process->groupId);
+    return 0;
+}
+
+static U32 syscall_chown32(CPU* cpu, U32 eipCount) {
+    char tmp[MAX_FILEPATH_LEN];
+    SYS_LOG("chown32: path=%s owner=%d group=%d", getNativeString(ARG1, tmp, sizeof(tmp)), ARG2, ARG3);
+    return 0;
+}
+
+static U32 syscall_setuid32(CPU* cpu, U32 eipCount) {
+    SYS_LOG("setuid32: uid=%d", ARG1);
+    cpu->thread->process->effectiveUserId = ARG1;
+    return 0;
+}
+
+static U32 syscall_setgid32(CPU* cpu, U32 eipCount) {
+    SYS_LOG("setgid32: gid=%d", ARG1);
+    cpu->thread->process->groupId = ARG1;
+    return 0;
+}
+
+static U32 syscall_mincore(CPU* cpu, U32 eipCount) {
+    SYS_LOG("mincore: address=%X length=%d vec=%X", ARG1, ARG2, ARG3);
+    return cpu->thread->process->mincore(ARG1, ARG2, ARG3);
+}
+
+static U32 syscall_madvise(CPU* cpu, U32 eipCount) {
+    SYS_LOG("madvise: address=%X len=%d advise=%d", ARG1, ARG2, ARG3);
+    return 0;
+}
+
+static U32 syscall_getdents64(CPU* cpu, U32 eipCount) {
+    SYS_LOG("getdents64: fd=%d dir=%X count=%d", ARG1, ARG2, ARG3);
+    return cpu->thread->process->getdents(ARG1, ARG2, ARG3, true);
+}
+
+static U32 syscall_fcntl64(CPU* cpu, U32 eipCount) {
+    SYS_LOG("fcntl64: fildes=%d cmd=%d arg=%d", ARG1, ARG2, ARG3);
+    return cpu->thread->process->fcntrl(ARG1, ARG2, ARG3);
+}
+
+static U32 syscall_gettid(CPU* cpu, U32 eipCount) {
+    SYS_LOG("gettid:");
+    return cpu->thread->id;
+}
+
+static U32 syscall_fsetxattr(CPU* cpu, U32 eipCount) {
+    SYS_LOG("fsetxattr:");
+    return -K_ENOTSUP;
+}
+
+static U32 syscall_fgetxattr(CPU* cpu, U32 eipCount) {
+    SYS_LOG("fgetxattr:");
+    return -K_ENOTSUP;
+}
+
+static U32 syscall_flistxattr(CPU* cpu, U32 eipCount) {
+    SYS_LOG("flistxattr:");
+    return -K_ENOTSUP;
+}
+
+static U32 syscall_futex(CPU* cpu, U32 eipCount) {
+    SYS_LOG("futex: address=%X op=%d", ARG1, ARG2);
+    return cpu->thread->futex(ARG1, ARG2, ARG3, ARG4);
+}
+
+static U32 syscall_sched_setaffinity(CPU* cpu, U32 eipCount) {
+    SYS_LOG("sched_setaffinity: pid=%d cpusetsize=d cpu_set_t=%X", ARG1, ARG2, ARG3);
+    return 0;
+}
+
+static U32 syscall_sched_getaffinity(CPU* cpu, U32 eipCount) {
+    SYS_LOG("sched_getaffinity: pid=%d cpusetsize=%d mask=%X", ARG1, ARG2, ARG3);
+#ifdef _DEBUG
+     kwarn("__NR_sched_getaffinity not implemented");
+#endif
+    return -K_EPERM;
+}
+
+static U32 syscall_set_thread_area(CPU* cpu, U32 eipCount) {
+    SYS_LOG("set_thread_area: u_info=%X", ARG1);
+    return cpu->thread->process->set_thread_area(ARG1);
+}
+
+static U32 syscall_exit_group(CPU* cpu, U32 eipCount) {
+    SYS_LOG("exit_group: code=%d", ARG1);
+    return cpu->thread->process->exitgroup(ARG1);		
+}
+
+static U32 syscall_epoll_create(CPU* cpu, U32 eipCount) {
+    SYS_LOG("epoll_create: size=%d", ARG1);
+    return cpu->thread->process->epollcreate(ARG1, 0);
+}
+
+static U32 syscall_epoll_ctl(CPU* cpu, U32 eipCount) {
+    SYS_LOG("epoll_ctl: epfd=%d op=%d fd=%d events=%X", ARG1, ARG2, ARG3, ARG4);
+    return cpu->thread->process->epollctl(ARG1, ARG2, ARG3, ARG4);
+}
+
+static U32 syscall_epoll_wait(CPU* cpu, U32 eipCount) {
+    SYS_LOG("epoll_wait: epfd=%d events=%X maxevents=%d timeout=%d", ARG1, ARG2, ARG3, ARG4);
+    return cpu->thread->process->epollwait(ARG1, ARG2, ARG3, ARG4);
+}
+
+static U32 syscall_set_tid_address(CPU* cpu, U32 eipCount) {
+    SYS_LOG("set_tid_address: address=%X", ARG1);
+    cpu->thread->clear_child_tid = ARG1;
+    return cpu->thread->id;
+}
+
+static U32 syscall_clock_gettime(CPU* cpu, U32 eipCount) {
+    SYS_LOG("clock_gettime: clock_id=%d tp=%X", ARG1, ARG2);
+    return KSystem::clock_gettime(ARG1, ARG2);
+}
+
+static U32 syscall_clock_getres(CPU* cpu, U32 eipCount) {
+    SYS_LOG("clock_getres: clock_id=%d res=%X", ARG1, ARG2);
+    return KSystem::clock_getres(ARG1, ARG2);
+}
+
+static U32 syscall_statfs64(CPU* cpu, U32 eipCount) {
+    char tmp[MAX_FILEPATH_LEN];
+    SYS_LOG("fstatfs64: path=%X(%s) len=%d buf=%X", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)), ARG2, ARG3);
+    return cpu->thread->process->statfs64(getNativeString(ARG1, tmp, sizeof(tmp)), ARG3);
+}
+
+static U32 syscall_fstatfs64(CPU* cpu, U32 eipCount) {
+    SYS_LOG("fstatfs64: fd=%d len=%d buf=%X", ARG1, ARG2, ARG3);
+    return cpu->thread->process->fstatfs64(ARG1, ARG3);
+}
+
+static U32 syscall_tgkill(CPU* cpu, U32 eipCount) {
+    SYS_LOG("tgkill: threadGroupId=%d threadId=%d signal=%d", ARG1, ARG2, ARG3);
+    return KSystem::tgkill(ARG1, ARG2, ARG3);
+}
+
+static U32 syscall_utimes(CPU* cpu, U32 eipCount) {
+    char tmp[MAX_FILEPATH_LEN];
+    SYS_LOG("utimes: fileName=%s times=%X", getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+    return cpu->thread->process->utimes(getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+}
+
+static U32 syscall_fadvise64(CPU* cpu, U32 eipCount) {
+    SYS_LOG("fadvise64_64: fd=%d", ARG1);
+    return 0;
+}
+
+static U32 syscall_inotify_init(CPU* cpu, U32 eipCount) {
+    SYS_LOG("inotify_init:");
+    return -K_ENOSYS;
+}
+
+static U32 syscall_openat(CPU* cpu, U32 eipCount) {
+    char tmp[MAX_FILEPATH_LEN];
+    SYS_LOG("openat: dirfd=%d name=%s flags=%x", ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3);
+    return cpu->thread->process->openat(ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3);
+}
+
+static U32 syscall_mkdirat(CPU* cpu, U32 eipCount) {
+    char tmp[MAX_FILEPATH_LEN];
+    SYS_LOG("mkdirat: dirfd=%d path=%s mode=%x", ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3);
+    return cpu->thread->process->mkdirat(ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3);
+}
+
+static U32 syscall_fchownat(CPU* cpu, U32 eipCount) {
+    char tmp[MAX_FILEPATH_LEN];
+    SYS_LOG("fchown32: pathname=%X(%s) owner=%d group=%d flags=%d", ARG2, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, ARG4, ARG5);
+    return 0;
+}
+
+static U32 syscall_fstatat64(CPU* cpu, U32 eipCount) {
+    char tmp[MAX_FILEPATH_LEN];
+    SYS_LOG("statat64: dirfd=%d path=%s buf=%X flags=%x", ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, ARG4);
+    return cpu->thread->process->fstatat64(ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, ARG4);
+}
+
+static U32 syscall_unlinkat(CPU* cpu, U32 eipCount) {
+    char tmp[MAX_FILEPATH_LEN];
+    SYS_LOG("unlinkat: dirfd=%d path=%s flags=%x", ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3);
+    return cpu->thread->process->unlinkat(ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3);
+}
+
+static U32 syscall_symlinkat(CPU* cpu, U32 eipCount) {
+    char tmp[MAX_FILEPATH_LEN];
+    char tmp2[MAX_FILEPATH_LEN];
+    SYS_LOG("symlinkat: oldpath=%x(%s) dirfd=%d newpath=%X(%s)", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)), ARG2, ARG3, getNativeString(ARG3, tmp2, sizeof(tmp2)));
+    return cpu->thread->process->symlinkat(getNativeString(ARG1, tmp, sizeof(tmp)), ARG2, getNativeString(ARG3, tmp2, sizeof(tmp2)));
+}
+
+static U32 syscall_readlinkat(CPU* cpu, U32 eipCount) {
+    char tmp[MAX_FILEPATH_LEN];    
+    char tmp2[MAX_FILEPATH_LEN];    
+    U32 result = cpu->thread->process->readlinkat(ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, ARG4);
+    SYS_LOG("readlinkat: dirfd=%d pathname=%X(%s) buf=%X(%s) bufsiz=%d", ARG1, ARG2, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, getNativeString(ARG3, tmp2, sizeof(tmp2)), ARG4);
+    return result;
+}
+
+static U32 syscall_fchmodat(CPU* cpu, U32 eipCount) {
+    char tmp[MAX_FILEPATH_LEN];
+    SYS_LOG("fchmodat pathname=%X(%s) mode=%X flags=%X", ARG2, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, ARG4);
+    return 0;
+}
+
+static U32 syscall_faccessat(CPU* cpu, U32 eipCount) {
+    char tmp[MAX_FILEPATH_LEN];
+    SYS_LOG("faccessat dirfd=%X pathname=%X(%s) mode=%X flags=%X", ARG1, ARG2, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, ARG4);
+    return cpu->thread->process->faccessat(ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, ARG4);
+}
+
+static U32 syscall_set_robust_list(CPU* cpu, U32 eipCount) {
+    SYS_LOG("set_robust_list:");
+#ifdef _DEBUG
+        kwarn("syscall __NR_set_robust_list not implemented");
+#endif
+    return -K_ENOSYS;
+}
+
+static U32 syscall_sync_file_range(CPU* cpu, U32 eipCount) {
+    SYS_LOG("sync_file_range:");
+    return 0;
+}
+
+static U32 syscall_utimensat(CPU* cpu, U32 eipCount) {
+    char tmp[MAX_FILEPATH_LEN];
+    SYS_LOG("utimensat dirfd=%d path=%X(%s) times=%X flags=%X", ARG1, ARG2, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, ARG4);
+    return cpu->thread->process->utimesat(ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, ARG4);
+}
+
+static U32 syscall_epoll_create1(CPU* cpu, U32 eipCount) {
+    SYS_LOG("epoll_create1: falgs=%X", ARG1);
+    return cpu->thread->process->epollcreate(0, ARG1);
+}
+
+static U32 syscall_pipe2(CPU* cpu, U32 eipCount) {
+    SYS_LOG("pipe2 fildes=%X", ARG1);
+    return ksocketpair(K_AF_UNIX, K_SOCK_STREAM, 0, ARG1, ARG2);
+}
+
+static U32 syscall_prlimit64(CPU* cpu, U32 eipCount) {
+    SYS_LOG("prlimit64 pid=%d resource=%d newlimit=%X oldlimit=%X", ARG1, ARG2, ARG3, ARG4);
+    return KSystem::prlimit64(ARG1, ARG2, ARG3, ARG4);
+}
+
+static U32 syscall_sendmmsg(CPU* cpu, U32 eipCount) {
+    SYS_LOG("sendmmsg fd=%d address=%X vlen=%d flags=%X", ARG1, ARG2, ARG3, ARG4);
+    return ksendmmsg(ARG1, ARG2, ARG3, ARG4);
+}
+
+static const SyscallFunc syscallFunc[] = {
+    0,                  // 0
+    syscall_exit,       // 1 __NR_exit
+    0,                  // 2
+    syscall_read,       // 3 __NR_read
+    syscall_write,      // 4 __NR_write
+    syscall_open,       // 5 __NR_open
+    syscall_close,      // 6 __NR_close
+    syscall_waitpid,    // 7 __NR_waitpid
+    0,                  // 8
+    syscall_link,       // 9 __NR_link
+    syscall_unlink,     // 10 __NR_unlink
+    syscall_execve,     // 11 __NR_execve
+    syscall_chdir,      // 12 __NR_chdir
+    syscall_time,       // 13 __NR_time
+    0,                  // 14
+    syscall_chmod,      // 15 __NR_chmod
+    0,                  // 16
+    0,                  // 17
+    0,                  // 18
+    syscall_lseek,      // 19 __NR_lseek
+    syscall_getpid,     // 20 __NR_getpid
+    0,                  // 21
+    0,                  // 22
+    0,                  // 23
+    syscall_getuid,     // 24 __NR_getuid
+    0,                  // 25
+    syscall_ptrace,     // 26 __NR_ptrace
+    syscall_alarm,      // 27 __NR_alarm
+    0,                  // 28
+    0,                  // 29
+    syscall_utime,      // 30 __NR_utime
+    0,                  // 31
+    0,                  // 32
+    syscall_access,     // 33 __NR_access
+    0,                  // 34
+    0,                  // 35
+    syscall_sync,       // 36 __NR_sync
+    syscall_kill,       // 37 __NR_kill
+    syscall_rename,     // 38 __NR_rename
+    syscall_mkdir,      // 39 __NR_mkdir
+    syscall_rmdir,      // 40 __NR_rmdir
+    syscall_dup,        // 41 __NR_dup
+    syscall_pipe,       // 42 __NR_pipe
+    syscall_times,      // 43 __NR_times
+    0,                  // 44
+    syscall_brk,        // 45 __NR_brk
+    0,                  // 46
+    syscall_getgid,     // 47 __NR_getgid
+    0,                  // 48
+    syscall_geteuid,    // 49 __NR_geteuid
+    syscall_getegid,    // 50 __NR_getegid
+    0,                  // 51
+    0,                  // 52
+    0,                  // 53
+    syscall_ioctl,      // 54 __NR_ioctl
+    0,                  // 55
+    0,                  // 56
+    syscall_setpgid,    // 57 __NR_setpgid
+    0,                  // 58
+    0,                  // 59
+    syscall_umask,      // 60 __NR_umask
+    0,                  // 61
+    0,                  // 62
+    syscall_dup2,       // 63 __NR_dup2
+    syscall_getppid,    // 64 __NR_getppid
+    syscall_getpgrp,    // 65 __NR_getpgrp
+    syscall_setsid,     // 66 __NR_setsid
+    0,                  // 67
+    0,                  // 68
+    0,                  // 69
+    0,                  // 70
+    0,                  // 71
+    0,                  // 72
+    0,                  // 73
+    0,                  // 74
+    syscall_setrlimit,  // 75 __NR_setrlimit 
+    0,                  // 76
+    syscall_getrusuage, // 77 __NR_getrusage
+    syscall_gettimeofday,// 78__NR_gettimeofday
+    0,                  // 79
+    0,                  // 80
+    0,                  // 81
+    0,                  // 82
+    syscall_symlink,    // 83 __NR_symlink
+    0,                  // 84
+    syscall_readlink,   // 85 __NR_readlink
+    0,                  // 86
+    0,                  // 87
+    0,                  // 88
+    0,                  // 89
+    syscall_mmap64,     // 90 __NR_mmap
+    syscall_unmap,      // 91 __NR_munmap
+    0,                  // 92
+    syscall_ftruncate,  // 93 __NR_ftruncate
+    syscall_fchmod,     // 94 __NR_fchmod
+    0,                  // 95
+    0,                  // 96
+    syscall_setpriority,// 97 __NR_setpriority
+    0,                  // 98
+    syscall_statfs,     // 99 __NR_statfs
+    0,                  // 100
+    syscall_ioperm,     // 101 __NR_ioperm
+    syscall_socketcall, // 102 __NR_socketcall
+    0,                  // 103
+    syscall_setitimer,  // 104 __NR_setitimer 
+    0,                  // 105
+    0,                  // 106
+    0,                  // 107
+    0,                  // 108
+    0,                  // 109
+    syscall_iopl,       // 110 __NR_iopl
+    0,                  // 111
+    0,                  // 112
+    0,                  // 113
+    syscall_wait4,      // 114 __NR_wait4
+    0,                  // 115
+    syscall_sysinfo,    // 116 __NR_sysinfo
+    syscall_ipc,        // 117 __NR_ipc
+    syscall_fsync,      // 118 __NR_fsync
+    syscall_sigreturn,  // 119 __NR_sigreturn
+    syscall_clone,      // 120 __NR_clone
+    0,                  // 121
+    syscall_uname,      // 122 __NR_uname
+    syscall_modify_ldt, // 123 __NR_modify_ldt
+    0,                  // 124
+    syscall_mprotect,   // 125 __NR_mprotect
+    0,                  // 126
+    0,                  // 127
+    0,                  // 128
+    0,                  // 129
+    0,                  // 130
+    0,                  // 131
+    syscall_getpgid,    // 132 __NR_getpgid
+    syscall_fchdir,     // 133 __NR_fchdir
+    0,                  // 134
+    0,                  // 135
+    0,                  // 136
+    0,                  // 137
+    0,                  // 138
+    0,                  // 139
+    syscall_llseek,     // 140 __NR__llseek
+    syscall_getdents,   // 141 __NR_getdents
+    syscall_newselect,  // 142 __NR_newselect
+    syscall_flock,      // 143 __NR_flock
+    syscall_msync,      // 144 __NR_msync
+    0,                  // 145
+    syscall_writev,     // 146  __NR_writev
+    0,                  // 147
+    syscall_fdatasync,  // 148 __NR_fdatasync
+    0,                  // 149
+    syscall_mlock,      // 150 __NR_mlock
+    0,                  // 151
+    0,                  // 152
+    0,                  // 153
+    0,                  // 154
+    syscall_sched_getparam, // 155 __NR_sched_getparam
+    0,                  // 156
+    syscall_sched_getscheduler, // 157 __NR_sched_getscheduler
+    syscall_sched_yield,// 158 __NR_sched_yield
+    syscall_sched_get_priority_max, // 159 __NR_sched_get_priority_max
+    syscall_sched_get_priority_min, // 160 __NR_sched_get_priority_min
+    0,                  // 161
+    syscall_nanosleep,  // 162 __NR_nanosleep
+    syscall_mremap,     // 163 __NR_mremap
+    0,                  // 164
+    0,                  // 165
+    syscall_vm86,       // 166 __NR_vm86
+    0,                  // 167
+    syscall_poll,       // 168 __NR_poll
+    0,                  // 169
+    0,                  // 170
+    0,                  // 171
+    syscall_prctl,      // 172 __NR_prctl
+    0,                  // 173
+    syscall_rt_sigaction,// 174 __NR_rt_sigaction
+    syscall_rt_sigprocmask, // 175 __NR_rt_sigprocmask
+    0,                  // 176
+    0,                  // 177
+    0,                  // 178
+    syscall_rt_sigsuspend, // 179 __NR_rt_sigsuspend
+    syscall_pread64,    // 180 __NR_pread64
+    syscall_pwrite64,   // 181 __NR_pwrite64
+    0,                  // 182
+    syscall_getcwd,     // 183 __NR_getcwd
+    0,                  // 184
+    0,                  // 185
+    syscall_sigaltstack,// 186 __NR_sigaltstack
+    0,                  // 187
+    0,                  // 188
+    0,                  // 189
+    syscall_vfork,      // 190 __NR_vfork
+    syscall_ugetrlimit, // 191 __NR_ugetrlimit
+    syscall_mmap2,      // 192 __NR_mmap2
+    0,                  // 193
+    syscall_ftruncate64,// 194 __NR_ftruncate64
+    syscall_stat64,     // 195 __NR_stat64
+    syscall_lstat64,    // 196 __NR_lstat64
+    syscall_fstat64,    // 197 __NR_fstat64
+    syscall_lchown32,   // 198 __NR_lchown32
+    syscall_getuid32,   // 199 __NR_getuid32
+    syscall_getgid32,   // 200 __NR_getgid32
+    syscall_geteuid32,  // 201 __NR_geteuid32
+    syscall_getegid32,  // 202 __NR_getegid32
+    0,                  // 203
+    0,                  // 204
+    syscall_getgroups32,// 205 __NR_getgroups32
+    syscall_setgroups32,// 206 __NR_setgroups32
+    syscall_fchown32,   // 207 __NR_fchown32
+    syscall_setresuid32,// 208 __NR_setresuid32
+    syscall_getresuid32,// 209 __NR_getresuid32
+    syscall_setresgid32,// 210 __NR_setresgid32
+    syscall_getresgid32,// 211 __NR_getresgid32
+    syscall_chown32,    // 212 __NR_chown32
+    syscall_setuid32,   // 213 __NR_setuid32
+    syscall_setgid32,   // 214 __NR_setgid32
+    0,                  // 215
+    0,                  // 216
+    0,                  // 217
+    syscall_mincore,    // 218 __NR_mincore
+    syscall_madvise,    // 219 __NR_madvise
+    syscall_getdents64, // 220 __NR_getdents64
+    syscall_fcntl64,    // 221 __NR_fcntl64
+    0,                  // 222
+    0,                  // 223
+    syscall_gettid,     // 224 __NR_gettid
+    0,                  // 225
+    0,                  // 226
+    0,                  // 227
+    syscall_fsetxattr,  // 228 __NR_fsetxattr
+    0,                  // 229
+    0,                  // 230
+    syscall_fgetxattr,  // 231 __NR_fgetxattr
+    0,                  // 232
+    0,                  // 233
+    syscall_flistxattr, // 234 __NR_flistxattr
+    0,                  // 235
+    0,                  // 236
+    0,                  // 237
+    0,                  // 238 __NR_tkill
+    0,                  // 239
+    syscall_futex,      // 240 __NR_futex
+    syscall_sched_setaffinity, // 241 __NR_sched_setaffinity
+    syscall_sched_getaffinity, // 242 __NR_sched_getaffinity
+    syscall_set_thread_area, // 243 __NR_set_thread_area
+    0,                  // 244
+    0,                  // 245
+    0,                  // 246
+    0,                  // 247
+    0,                  // 248
+    0,                  // 249
+    0,                  // 250
+    0,                  // 251
+    syscall_exit_group, // 252 __NR_exit_group
+    0,                  // 253
+    syscall_epoll_create, // 254 __NR_epoll_create
+    syscall_epoll_ctl,  // 255 __NR_epoll_ctl
+    syscall_epoll_wait, // 256 __NR_epoll_wait
+    0,                  // 257
+    syscall_set_tid_address, // 258 __NR_set_tid_address
+    0,                  // 259
+    0,                  // 260
+    0,                  // 261
+    0,                  // 262
+    0,                  // 263
+    0,                  // 264
+    syscall_clock_gettime, // 265 __NR_clock_gettime
+    syscall_clock_getres, // 266 __NR_clock_getres
+    0,                  // 267
+    syscall_statfs64,   // 268 __NR_statfs64
+    syscall_fstatfs64,  // 269 __NR_fstatfs64
+    syscall_tgkill,     // 270 __NR_tgkill
+    syscall_utimes,     // 271 __NR_utimes
+    syscall_fadvise64,  // 272 __NR_fadvise64
+    0,                  // 273
+    0,                  // 274
+    0,                  // 275
+    0,                  // 276
+    0,                  // 277
+    0,                  // 278
+    0,                  // 279
+    0,                  // 280
+    0,                  // 281
+    0,                  // 282
+    0,                  // 283
+    0,                  // 284
+    0,                  // 285
+    0,                  // 286
+    0,                  // 287
+    0,                  // 288
+    0,                  // 289
+    0,                  // 290
+    syscall_inotify_init,// 291 __NR_inotify_init
+    0,                  // 292 __NR_inotify_add_watch
+    0,                  // 293 __NR_inotify_rm_watch
+    0,                  // 294
+    syscall_openat,     // 295 __NR_openat
+    syscall_mkdirat,    // 296 __NR_mkdirat
+    0,                  // 297
+    syscall_fchownat,   // 298 __NR_fchownat
+    0,                  // 299
+    syscall_fstatat64,  // 300 __NR_fstatat64
+    syscall_unlinkat,   // 301 __NR_unlinkat
+    0,                  // 302
+    0,                  // 303
+    syscall_symlinkat,  // 304 __NR_symlinkat
+    syscall_readlinkat, // 305 __NR_readlinkat
+    syscall_fchmodat,   // 306 __NR_fchmodat
+    syscall_faccessat,  // 307 __NR_faccessat
+    0,                  // 308
+    0,                  // 309
+    0,                  // 310
+    syscall_set_robust_list, // 311 __NR_set_robust_list
+    0,                  // 312
+    0,                  // 313
+    syscall_sync_file_range, // 314 __NR_sync_file_range
+    0,                  // 315
+    0,                  // 316
+    0,                  // 317
+    0,                  // 318__NR_getcpu
+    0,                  // 319
+    syscall_utimensat,  // 320 __NR_utimensat
+    0,                  // 321
+    0,                  // 322
+    0,                  // 323
+    0,                  // 324
+    0,                  // 325
+    0,                  // 326
+    0,                  // 327  __NR_signalfd4
+    0,                  // 328
+    syscall_epoll_create1, // 329 __NR_epoll_create1
+    0,                  // 330
+    syscall_pipe2,      // 331 __NR_pipe2
+    0,                  // 332
+    0,                  // 333
+    0,                  // 334
+    0,                  // 335
+    0,                  // 336
+    0,                  // 337
+    0,                  // 338
+    0,                  // 339
+    syscall_prlimit64,  // 340 __NR_prlimit64
+    0,                  // 341 __NR_name_to_handle_at
+    0,                  // 342 __NR_open_by_handle_at
+    0,                  // 340
+    0,                  // 341
+    0,                  // 342
+    0,                  // 343
+    0,                  // 344
+    syscall_sendmmsg    // 345 __NR_sendmmsg 
+};
+
+void ksyscall(CPU* cpu, U32 eipCount) {
+    U32 result;
+
+    SYS_LOG("%0.4X/%0.4X %s ", cpu->thread->process->id, cpu->thread->id, cpu->thread->process->name.c_str());
+    if (!syscallFunc[EAX]) {
+        result = -K_ENOSYS;
+    } else {
+        result = syscallFunc[EAX](cpu, eipCount);
+    }
+
+    SYS_LOG(" result=%d(0x%X)\n", result, result);
+
+    if (result==-K_CONTINUE) {
+
+    } else if (result==-K_WAIT) {
+        waitThread(KThread::currentThread());		
+    } else {
+        EAX = result;
+        cpu->eip.u32+=eipCount;
+    }
+}
+

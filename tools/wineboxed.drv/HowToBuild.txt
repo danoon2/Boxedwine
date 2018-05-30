@@ -1,0 +1,11 @@
+To build
+
+1) Download Wine source for the version you want to run this driver to run on
+2) remove files in dll/winex11.drv and replace them with the files in this directory
+3) configure / make wine
+
+Even if this builds there are 2 things that could prevent it from working
+
+1) WINE_GDI_DRIVER_VERSION was bumped, currently this supports 46 and 47 (I've tested Wine 1.6.2 and Wine 2.0).  I have not tried versions of Wine before 1.6.2 but Wine 1.4 would be the ealiest this driver could possibly work with because it uses the dib engine that was introduced in 1.4.
+
+2) The source version that was used to build winex11.drv replacement needs to closely match the version that it will run on.  This is because if there are any changes in the client/server protocol with wineserver then you will probably see "Can't store handle for event queue fd"

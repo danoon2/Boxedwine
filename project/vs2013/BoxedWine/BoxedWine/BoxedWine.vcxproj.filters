@@ -1,0 +1,630 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\decoder.cpp">
+      <Filter>source\emulation\cpu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\normal\normalCPU.cpp">
+      <Filter>source\emulation\cpu\normal</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\common\lazyFlags.cpp">
+      <Filter>source\emulation\cpu\common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\common\cpu.cpp">
+      <Filter>source\emulation\cpu\common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\normal\instructions.cpp">
+      <Filter>source\emulation\cpu\normal</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\normal\normal_strings.cpp">
+      <Filter>source\emulation\cpu\normal</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\normal\normal_shift.cpp">
+      <Filter>source\emulation\cpu\normal</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\common\fpu.cpp">
+      <Filter>source\emulation\cpu\common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\syscall.cpp">
+      <Filter>source\kernel</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\kprocess.cpp">
+      <Filter>source\kernel</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\kthread.cpp">
+      <Filter>source\kernel</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\io\fs.cpp">
+      <Filter>source\io</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\io\fsnode.cpp">
+      <Filter>source\io</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\io\fsopennode.cpp">
+      <Filter>source\io</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\kpoll.cpp">
+      <Filter>source\kernel</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\kepoll.cpp">
+      <Filter>source\kernel</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\kfile.cpp">
+      <Filter>source\kernel</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\kfiledescriptor.cpp">
+      <Filter>source\kernel</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\kscheduler.cpp">
+      <Filter>source\kernel</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\ksignal.cpp">
+      <Filter>source\kernel</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\ksocket.cpp">
+      <Filter>source\kernel</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\proc\bufferaccess.cpp">
+      <Filter>source\kernel\proc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\loader\loader.cpp">
+      <Filter>source\kernel\loader</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\devs\devdsp.cpp">
+      <Filter>source\kernel\devs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\devs\devfb.cpp">
+      <Filter>source\kernel\devs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\devs\devinput.cpp">
+      <Filter>source\kernel\devs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\devs\devmixer.cpp">
+      <Filter>source\kernel\devs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\devs\devnull.cpp">
+      <Filter>source\kernel\devs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\devs\devtty.cpp">
+      <Filter>source\kernel\devs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\devs\devurandom.cpp">
+      <Filter>source\kernel\devs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\devs\devzero.cpp">
+      <Filter>source\kernel\devs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_file_map.cpp">
+      <Filter>source\emulation\softmmu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_memory.cpp">
+      <Filter>source\emulation\softmmu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_invalid_page.cpp">
+      <Filter>source\emulation\softmmu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_ondemand_page.cpp">
+      <Filter>source\emulation\softmmu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_rw_page.cpp">
+      <Filter>source\emulation\softmmu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_ro_page.cpp">
+      <Filter>source\emulation\softmmu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_wo_page.cpp">
+      <Filter>source\emulation\softmmu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_copy_on_write_page.cpp">
+      <Filter>source\emulation\softmmu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_code_page.cpp">
+      <Filter>source\emulation\softmmu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\proc\meminfo.cpp">
+      <Filter>source\kernel\proc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\sdl\main.cpp">
+      <Filter>source\sdl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\io\fsfilenode.cpp">
+      <Filter>source\io</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\io\fszipnode.cpp">
+      <Filter>source\io</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\io\fszip.cpp">
+      <Filter>source\io</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\io\fsfileopennode.cpp">
+      <Filter>source\io</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\io\fsdiropennode.cpp">
+      <Filter>source\io</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\io\fszipopennode.cpp">
+      <Filter>source\io</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\io\fsvirtualnode.cpp">
+      <Filter>source\io</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\platform\windows\platform.cpp">
+      <Filter>platform\windows</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\opengl\glcommon.cpp">
+      <Filter>opengl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\opengl\glfunctions_ext1.cpp">
+      <Filter>opengl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\opengl\glfunctions_ext2.cpp">
+      <Filter>opengl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\opengl\glfunctions_ext3.cpp">
+      <Filter>opengl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\opengl\glMarshal.cpp">
+      <Filter>opengl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\opengl\glMarshalSize.cpp">
+      <Filter>opengl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\opengl\glMarshalVertex.cpp">
+      <Filter>opengl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\opengl\glext.cpp">
+      <Filter>opengl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\opengl\sdl\sdlgl.cpp">
+      <Filter>opengl\sdl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\sdl\sdlopengl.cpp">
+      <Filter>source\sdl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\sdl\sdlwindows.cpp">
+      <Filter>source\sdl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\sdl\winedrv.cpp">
+      <Filter>source\sdl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\ksystem.cpp">
+      <Filter>source\kernel</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\proc\self.cpp">
+      <Filter>source\kernel\proc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\kunixsocket.cpp">
+      <Filter>source\kernel</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\knativesocket.cpp">
+      <Filter>source\kernel</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\ksocketobject.cpp">
+      <Filter>source\kernel</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_no_page.cpp">
+      <Filter>source\emulation\softmmu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\util\crc.cpp">
+      <Filter>source\util</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\util\log.cpp">
+      <Filter>source\util</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\testCPU.cpp">
+      <Filter>source\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_native_page.cpp">
+      <Filter>source\emulation\softmmu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\zlib\contrib\minizip\ioapi.c">
+      <Filter>minizip</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\zlib\contrib\minizip\mztools.c">
+      <Filter>minizip</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\zlib\contrib\minizip\unzip.c">
+      <Filter>minizip</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\zlib\contrib\minizip\zip.c">
+      <Filter>minizip</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\kobject.cpp">
+      <Filter>source\kernel</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\kfilelock.cpp">
+      <Filter>source\kernel</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_ram.cpp">
+      <Filter>source\emulation\softmmu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\kmemory.cpp">
+      <Filter>source\kernel</Filter>
+    </ClCompile>
+    <ClCompile Include="..\boxedwine.cpp">
+      <Filter>platform\windows</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\util\stringutil.cpp">
+      <Filter>source\util</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\..\include\block.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\bufferaccess.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\devdsp.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\devfb.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\devinput.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\devnull.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\devurandom.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\devtty.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\ea.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\filepath.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\kepoll.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\kerror.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\kfile.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\kfilelock.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\kfiledescriptor.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\kmmap.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\kobject.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\kpoll.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\kprocess.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\kscheduler.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\ksignal.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\ksocket.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\kstat.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\ksystem.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\kthread.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\loader.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\log.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\meminfo.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\memory.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\platform.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\reg.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\opengl\glcommon.h">
+      <Filter>opengl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\jit.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\crc.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\sdl\wnd.h">
+      <Filter>source\sdl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\sdl\sdlwindow.h">
+      <Filter>source\sdl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\sdl\sdlopengl.h">
+      <Filter>source\sdl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\ktimer.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_file_map.h">
+      <Filter>source\emulation\softmmu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_page.h">
+      <Filter>source\emulation\softmmu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_memory.h">
+      <Filter>source\emulation\softmmu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\kernel\loader\kelf.h">
+      <Filter>source\kernel\loader</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\opengl\glfunctions.h">
+      <Filter>opengl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\opengl\glfunctions_ext.h">
+      <Filter>opengl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\opengl\glMarshal.h">
+      <Filter>opengl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normalCPU.h">
+      <Filter>source\emulation\cpu\normal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\instructions.h">
+      <Filter>source\emulation\cpu\normal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_arith.h">
+      <Filter>source\emulation\cpu\normal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_conditions.h">
+      <Filter>source\emulation\cpu\normal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_cpu_init.h">
+      <Filter>source\emulation\cpu\normal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_incdec.h">
+      <Filter>source\emulation\cpu\normal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_pushpop.h">
+      <Filter>source\emulation\cpu\normal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_setcc.h">
+      <Filter>source\emulation\cpu\normal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_shift.h">
+      <Filter>source\emulation\cpu\normal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_shift_op.h">
+      <Filter>source\emulation\cpu\normal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_strings.h">
+      <Filter>source\emulation\cpu\normal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_strings_op.h">
+      <Filter>source\emulation\cpu\normal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_xchg.h">
+      <Filter>source\emulation\cpu\normal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_bit.h">
+      <Filter>source\emulation\cpu\normal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_mmx.h">
+      <Filter>source\emulation\cpu\normal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_cpu_init_mmx.h">
+      <Filter>source\emulation\cpu\normal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\common\fpu.h">
+      <Filter>source\emulation\cpu\common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_fpu.h">
+      <Filter>source\emulation\cpu\normal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_other.h">
+      <Filter>source\emulation\cpu\normal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_move.h">
+      <Filter>source\emulation\cpu\normal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\common\lazyFlags.h">
+      <Filter>source\emulation\cpu\common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\common\cpu.h">
+      <Filter>source\emulation\cpu\common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\io\fs.h">
+      <Filter>source\io</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\io\fsnode.h">
+      <Filter>source\io</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\io\fsopennode.h">
+      <Filter>source\io</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_invalid_page.h">
+      <Filter>source\emulation\softmmu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_ondemand_page.h">
+      <Filter>source\emulation\softmmu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_rw_page.h">
+      <Filter>source\emulation\softmmu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_ro_page.h">
+      <Filter>source\emulation\softmmu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_wo_page.h">
+      <Filter>source\emulation\softmmu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_copy_on_write_page.h">
+      <Filter>source\emulation\softmmu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_code_page.h">
+      <Filter>source\emulation\softmmu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\io\fsfilenode.h">
+      <Filter>source\io</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\io\fszipnode.h">
+      <Filter>source\io</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\io\fszip.h">
+      <Filter>source\io</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\io\fsfileopennode.h">
+      <Filter>source\io</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\io\fsdiropennode.h">
+      <Filter>source\io</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\io\fszipopennode.h">
+      <Filter>source\io</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\io\fsvirtualopennode.h">
+      <Filter>source\io</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\io\fsvirtualnode.h">
+      <Filter>source\io</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\devmixer.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\kunixsocket.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\ksocketmsg.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\knativesocket.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\ksocketobject.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_no_page.h">
+      <Filter>source\emulation\softmmu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\boxedwine.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_native_page.h">
+      <Filter>source\emulation\softmmu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\zlib\contrib\minizip\crypt.h">
+      <Filter>minizip</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\zlib\contrib\minizip\ioapi.h">
+      <Filter>minizip</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\zlib\contrib\minizip\mztools.h">
+      <Filter>minizip</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\zlib\contrib\minizip\unzip.h">
+      <Filter>minizip</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\zlib\contrib\minizip\zip.h">
+      <Filter>minizip</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_ram.h">
+      <Filter>source\emulation\softmmu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\util\klist.h">
+      <Filter>source\util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\util\ringbuffer.h">
+      <Filter>source\util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\util\boxedptr.h">
+      <Filter>source\util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\util\karray.h">
+      <Filter>source\util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\util\stringutil.h">
+      <Filter>source\util</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="include">
+      <UniqueIdentifier>{521b3115-a375-45ae-8840-39b6929ab6cb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="platform">
+      <UniqueIdentifier>{730b15ed-7cf5-4f0e-a233-13c4300d7c1b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="platform\windows">
+      <UniqueIdentifier>{810bbc45-25a0-42fa-8bde-e229106c972c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source">
+      <UniqueIdentifier>{798ce3bd-21f8-4784-890c-e52ed7aefa67}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\emulation">
+      <UniqueIdentifier>{196ebad4-64c8-4055-a7ef-842c0b2dec50}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\io">
+      <UniqueIdentifier>{5b3e5919-cc13-4e9d-8957-daad643caddc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\kernel">
+      <UniqueIdentifier>{f0ffff08-162d-4396-84d4-6b4765374b1e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\kernel\devs">
+      <UniqueIdentifier>{1b8edd26-4dfd-4b12-a554-6de1d16bcab9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\kernel\loader">
+      <UniqueIdentifier>{e47e2dfc-2680-4e68-984f-88a33fb921d6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\kernel\proc">
+      <UniqueIdentifier>{7a1ab29b-2d35-4f08-8ce5-ce49a3cd1835}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\sdl">
+      <UniqueIdentifier>{90c464bf-108e-4f85-88e5-fa61083787c5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\test">
+      <UniqueIdentifier>{22aaa7cb-e4a1-49e8-9844-58102a85f567}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\util">
+      <UniqueIdentifier>{61d9f8bc-45fb-4306-81d6-fcd7fe308745}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="opengl">
+      <UniqueIdentifier>{e54df08a-a4a1-4839-a6e6-d58ee8102ea6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="opengl\sdl">
+      <UniqueIdentifier>{8e8c72e1-51c4-424b-bfcf-ad07de7342b6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\emulation\softmmu">
+      <UniqueIdentifier>{0b40ed43-c940-475f-a783-ceaf5a1355c5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\emulation\cpu">
+      <UniqueIdentifier>{bd50481e-bf26-40ec-a17d-5be2c1ced3c8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\emulation\cpu\normal">
+      <UniqueIdentifier>{1776cbff-d684-4c5e-8003-a9a9e76b5e8a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\emulation\cpu\common">
+      <UniqueIdentifier>{a36bc840-2690-48cc-861b-43704b7f4f78}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="minizip">
+      <UniqueIdentifier>{63031e16-f5cd-4f1e-bb8c-aee7a81314a8}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="ClassDiagram.cd" />
+  </ItemGroup>
+</Project>
