@@ -1063,15 +1063,20 @@ private:
 
 class DecodedBlock;
 
-class DecoderData {
-public:
-    DecodedOp* ops;
+typedef U8 (*pfnFetchByte)(U32* pEip);
+
+class DecodedBlock {
+public:   
+    static DecodedBlock* currentBlock;
+
+    DecodedOp* op;
     U32 opCount;
     U32 bytes;
+    U32 runCount;
 
-    virtual U8 fetchByte()=0;
+    virtual void run(CPU* cpu) = 0;
+    virtual void dealloc(bool delayed) = 0;
 };
-
-void decodeBlock(DecoderData* data, U32 isBig, U32 maxInstructions, U32 stopIfThrowsException);
+void decodeBlock(pfnFetchByte fetchByte, U32 eip, U32 isBig, U32 maxInstructions, U32 stopIfThrowsException, DecodedBlock* block);
 
 #endif

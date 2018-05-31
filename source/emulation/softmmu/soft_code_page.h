@@ -39,12 +39,12 @@ public:
     void writed(U32 address, U32 value);
     U8* physicalAddress(U32 address);
     
-    void addCode(U32 eip, DecodedOp* op, U32 len);
-    DecodedOp* getCode(U32 eip);
+    void addCode(U32 eip, DecodedBlock* block, U32 len);
+    DecodedBlock* getCode(U32 eip);
 private:
     class CodePageEntry {
     public:
-        DecodedOp* block;
+        DecodedBlock* block;
         U32 offset;
 	    U32 len;
         CodePageEntry* next;
@@ -53,8 +53,9 @@ private:
 	    CodePageEntry* linkedNext;
         CodePage* page;
     };
-    void removeBlockAt(U32 address);
-    void addCode(U32 eip, DecodedOp* op, U32 len, CodePageEntry* link);
+    void removeBlockAt(U32 address, U32 len);
+    CodePageEntry* findCode(U32 address, U32 len);
+    void addCode(U32 eip, DecodedBlock* block, U32 len, CodePageEntry* link);
     CodePageEntry* entries[CODE_ENTRIES];
 
     static CodePageEntry* freeCodePageEntries;

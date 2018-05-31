@@ -2344,7 +2344,8 @@ public:
     U16 fetch16();
     U32 fetch32();
 
-    DecoderData* data;
+    pfnFetchByte fetchByte;
+    U32* eip;
     U8 opLen;
 };
 
@@ -4601,7 +4602,7 @@ static const Decode* const decoder[] = {
 
 U8 DecodeData::fetch8() {
     this->opLen++;
-    return this->data->fetchByte();
+    return this->fetchByte(this->eip);
 }
 
 U16 DecodeData::fetch16() {
@@ -4650,24 +4651,29 @@ DecodedOp* DecodedOp::alloc() {
 }
 
 void DecodedOp::dealloc(bool deallocNext) {
-    if (this->inst!=InstructionCount) {
-        if (deallocNext && this->next) {
-            this->next->dealloc(deallocNext);
-        }
-        this->next = freeOps;
-        this->inst = InstructionCount;
-        freeOps = this;
+#ifdef _DEBUG
+    if (this->inst == InstructionCount) {
+        kpanic("tried to dealloc a DecodedOp that was already deallocated");
     }
+#endif
+    if (deallocNext && this->next) {
+        this->next->dealloc(deallocNext);
+    }
+    this->next = freeOps;
+    this->inst = InstructionCount;
+    freeOps = this;
 }
 
-void decodeBlock(DecoderData* data, U32 isBig, U32 maxInstructions, U32 stopIfThrowsException) {
+DecodedBlock* DecodedBlock::currentBlock;
+
+void decodeBlock(pfnFetchByte fetchByte, U32 eip, U32 isBig, U32 maxInstructions, U32 stopIfThrowsException, DecodedBlock* block) {
     DecodeData d;    
     DecodedOp* op = DecodedOp::alloc();
 
-    d.data = data;
-    data->ops = op;
-    data->opCount = 0;
-    data->bytes = 0;
+    d.fetchByte = fetchByte;
+    d.eip = &eip;
+    
+    block->op = op;
     while (1) {
         d.opLen = 0;
         d.ds = DS;
@@ -4683,12 +4689,12 @@ void decodeBlock(DecoderData* data, U32 isBig, U32 maxInstructions, U32 stopIfTh
         decoder[d.inst]->decode(&d, op);
         op->len = d.opLen;
         op->ea16 = d.ea16;
-        data->bytes += d.opLen;
-        data->opCount++;
+        block->bytes += d.opLen;
+        block->opCount++;
 #ifdef _DEBUG
         op->originalOp = d.inst;
 #endif
-        if ((maxInstructions && maxInstructions<=data->opCount) || instructionInfo[op->inst].branch || (stopIfThrowsException && instructionInfo[op->inst].throwsException))
+        if ((maxInstructions && maxInstructions<=block->opCount) || instructionInfo[op->inst].branch || (stopIfThrowsException && instructionInfo[op->inst].throwsException))
             break;
         op->next = DecodedOp::alloc();
         op = op->next;

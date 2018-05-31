@@ -186,7 +186,7 @@
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <PrecompiledHeaderFile>boxedwine.h</PrecompiledHeaderFile>
-      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -252,7 +252,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
-      <Optimization>Disabled</Optimization>
+      <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>SDL2;INCLUDE_CYCLES;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -360,7 +360,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\..\..\include\block.h" />
     <ClInclude Include="..\..\..\..\include\boxedwine.h" />
     <ClInclude Include="..\..\..\..\include\bufferaccess.h" />
     <ClInclude Include="..\..\..\..\include\crc.h" />
@@ -371,15 +370,12 @@
     <ClInclude Include="..\..\..\..\include\devnull.h" />
     <ClInclude Include="..\..\..\..\include\devtty.h" />
     <ClInclude Include="..\..\..\..\include\devurandom.h" />
-    <ClInclude Include="..\..\..\..\include\ea.h" />
-    <ClInclude Include="..\..\..\..\include\filepath.h" />
     <ClInclude Include="..\..\..\..\include\jit.h" />
     <ClInclude Include="..\..\..\..\include\kepoll.h" />
     <ClInclude Include="..\..\..\..\include\kerror.h" />
     <ClInclude Include="..\..\..\..\include\kfile.h" />
     <ClInclude Include="..\..\..\..\include\kfiledescriptor.h" />
     <ClInclude Include="..\..\..\..\include\kfilelock.h" />
-    <ClInclude Include="..\..\..\..\include\kmmap.h" />
     <ClInclude Include="..\..\..\..\include\knativesocket.h" />
     <ClInclude Include="..\..\..\..\include\kobject.h" />
     <ClInclude Include="..\..\..\..\include\kpoll.h" />
@@ -571,7 +567,9 @@
     <ClCompile Include="..\..\..\..\source\sdl\sdlopengl.cpp" />
     <ClCompile Include="..\..\..\..\source\sdl\sdlwindows.cpp" />
     <ClCompile Include="..\..\..\..\source\sdl\winedrv.cpp" />
-    <ClCompile Include="..\..\..\..\source\test\testCPU.cpp" />
+    <ClCompile Include="..\..\..\..\source\test\testCPU.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Use</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="..\..\..\..\source\util\crc.cpp" />
     <ClCompile Include="..\..\..\..\source\util\log.cpp" />
     <ClCompile Include="..\..\..\..\source\util\stringutil.cpp" />

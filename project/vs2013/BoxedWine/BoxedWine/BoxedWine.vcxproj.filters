@@ -249,9 +249,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\..\..\include\block.h">
-      <Filter>include</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
       <Filter>include</Filter>
     </ClInclude>
@@ -273,12 +270,6 @@
     <ClInclude Include="..\..\..\..\include\devtty.h">
       <Filter>include</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\include\ea.h">
-      <Filter>include</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\include\filepath.h">
-      <Filter>include</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\include\kepoll.h">
       <Filter>include</Filter>
     </ClInclude>
@@ -292,9 +283,6 @@
       <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\include\kfiledescriptor.h">
-      <Filter>include</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\include\kmmap.h">
       <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\include\kobject.h">

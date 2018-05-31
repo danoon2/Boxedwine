@@ -71,26 +71,86 @@ NormalCPU::NormalCPU() {
     initNormalOps();
 }
 
-U8 NormalCPU::Block::fetchByte() {
-    return readb(this->eip++);
+U8 fetchByte(U32 *eip) {
+    return readb((*eip)++);
+}
+
+class NormalBlock : public DecodedBlock {
+public:
+    static NormalBlock* alloc(NormalCPU* cpu);
+    virtual void dealloc(bool delayed);  
+
+    virtual void run(CPU* cpu);
+
+private:
+    void init();
+    NormalBlock* next;
+};
+
+void NormalBlock::run(CPU* cpu) {
+    DecodedOp* op = this->op;
+    while (op->next) {
+        op->log(cpu);
+        normalOps[op->inst](cpu, op);
+        cpu->eip.u32+=op->len;
+        op = op->next;
+    }
+    op->log(cpu);
+    normalOps[op->inst](cpu, op); // the last op in the block is responsible for updating eip
+    this->runCount++;
+    cpu->blockInstructionCount+=this->opCount;
+}
+
+static NormalBlock* freeBlocks;
+
+void NormalBlock::init() {
+    this->next = 0;
+    this->op = NULL;
+    this->bytes = 0;
+    this->opCount = 0;
+    this->runCount = 0;
+}
+
+NormalBlock* NormalBlock::alloc(NormalCPU* cpu) {
+    NormalBlock* result;
+
+    if (freeBlocks) {
+        result = freeBlocks;
+        freeBlocks = freeBlocks->next;
+    } else {
+        NormalBlock* blocks = new NormalBlock[1024];
+
+        freeBlocks = &blocks[1];
+        freeBlocks->next = 0;
+        for (int i=2;i<1024;i++) {
+            blocks[i].next = freeBlocks;
+            freeBlocks = &blocks[i];            
+        }
+        result = &blocks[0];
+    }
+    result->init();
+    return result;
+}
+
+void NormalBlock::dealloc(bool delayed) {
+    this->op->dealloc(true);
+    this->next = freeBlocks;
+    this->op = NULL;
+    freeBlocks = this;
 }
 
 void NormalCPU::run() {
-    Block data;
-    DecodedOp* op = NULL;
+    DecodedBlock* block = NULL;
     U32 startIp = this->eip.u32 + this->seg[CS].address;
-    static U32 lastStartIP;
 
     Page* page = this->thread->memory->mmu[startIp >> PAGE_SHIFT];
     if (page->type == Page::Type::Code_Page) {
         CodePage* codePage = (CodePage*)page;
-        op = codePage->getCode(startIp);
+        block = codePage->getCode(startIp);
     }
-    if (!op) {
-        data.eip = startIp;
-        data.thread = this->thread;
-        decodeBlock(&data, this->big, 0, 1);
-        op = data.ops;
+    if (!block) {
+        block = NormalBlock::alloc(this);
+        decodeBlock(fetchByte, startIp, this->big, 0, 1, block);
 
         // might have changed after a read
         page = this->thread->memory->mmu[startIp >> PAGE_SHIFT];
@@ -108,16 +168,9 @@ void NormalCPU::run() {
                 kpanic("Unhandled code caching page type: %d", page->type);
             }
         }
-        codePage->addCode(startIp, op, data.bytes);
+        codePage->addCode(startIp, block, block->bytes);
     }
-    while (op->next) {
-        op->log(this);
-        normalOps[op->inst](this, op);
-        this->eip.u32+=op->len;
-        op = op->next;
-    }
-    op->log(this);
-    normalOps[op->inst](this, op); // the last op in the block is responsible for updating eip
-    lastStartIP = startIp;
-    this->blockInstructionCount+=data.opCount;
+    DecodedBlock::currentBlock = block;
+    block->run(this);
+    DecodedBlock::currentBlock = NULL;
 }

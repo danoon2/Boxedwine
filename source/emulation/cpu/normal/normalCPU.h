@@ -9,13 +9,6 @@ class NormalCPU : public CPU {
 public:
     NormalCPU();
     void run();
-private:
-    class Block: public DecoderData {
-    public:
-        U32 eip;
-        KThread* thread;
-        U8 fetchByte();
-    };
 };
 
 #endif

@@ -21,7 +21,8 @@ void CodePage::freeCodePageEntry(CodePageEntry* entry) {
 	U32 offset = entry->offset >> CODE_ENTRIES_SHIFT;
 	CodePageEntry** entries = entry->page->entries;
    
-    entry->block->dealloc(true);
+    if (entry->block)
+        entry->block->dealloc(false);
 
 	// remove any entries linked to this one from other pages
 	if (entry->linkedPrev) {
@@ -70,29 +71,41 @@ CodePage::~CodePage() {
     }
 }
 
-void CodePage::removeBlockAt(U32 address) {
-    /*
-    Memory* memory = thread->process->memory;
-    DecodedOp* block = getBlockAt(memory, address, 1);
+// :TODO: what if address+len is in the next page
+CodePage::CodePageEntry* CodePage::findCode(U32 address, U32 len) {
+    U32 offset = address & PAGE_MASK;
 
-    while (block) {
-        if (block) {
-            if (block==thread->cpu->currentBlock) {
-                if (address < thread->cpu->seg[CS].address + thread->cpu->eip.u32) {
-                    delayFreeBlock(block);
-                } else {
-                    delayFreeBlockAndKillCurrentBlock(block);
-                }
-            } else {
-                freeBlock(block);
-            }
+    for (U32 i=0;i<CODE_ENTRIES;i++) {
+        CodePageEntry* entry = entries[i];
+        while (entry) {
+            if (((entry->offset <= offset && offset < (entry->offset + entry->len)) || (entry->offset <= (offset + len) && (offset + len) < (entry->offset + entry->len))) && !entry->linkedPrev)
+                return entry;
+            entry = entry->next;
         }
-        block = getBlockAt(memory, address, 1);
     }
-    */
+    return 0;
 }
 
-void CodePage::addCode(U32 eip, DecodedOp* op, U32 len, CodePageEntry* link) {
+void CodePage::removeBlockAt(U32 address, U32 len) {
+    CodePageEntry* entry = findCode(address, len);
+
+    while (entry) {
+        if (entry->block==DecodedBlock::currentBlock) {
+            KThread* thread = KThread::currentThread();
+
+            if (address < thread->cpu->seg[CS].address + thread->cpu->eip.u32) {
+                entry->block->dealloc(true);
+                entry->block = NULL; // so that freeCodePageEntry won't dealloc it
+            } else {
+                kpanic("self modifying code tried to modify current running block");
+            }
+        }
+        freeCodePageEntry(entry);
+        entry = findCode(address, len);
+    }
+}
+
+void CodePage::addCode(U32 eip, DecodedBlock* block, U32 len, CodePageEntry* link) {
     U32 offset = eip & PAGE_MASK;
 
     CodePageEntry** entry = &this->entries[offset >> CODE_ENTRIES_SHIFT];
@@ -107,7 +120,7 @@ void CodePage::addCode(U32 eip, DecodedOp* op, U32 len, CodePageEntry* link) {
         *entry = add;
     }
     (*entry)->offset = offset;
-    (*entry)->block = op;
+    (*entry)->block = block;
 	(*entry)->page = this;
 	if (offset+len>PAGE_SIZE)
 		(*entry)->len = PAGE_SIZE-offset;
@@ -122,15 +135,15 @@ void CodePage::addCode(U32 eip, DecodedOp* op, U32 len, CodePageEntry* link) {
 	}
 	if (offset + len > PAGE_SIZE) {
 		U32 nextPage = (eip + 0xFFF) & 0xFFFFF000;
-		this->addCode(nextPage, op, len - (nextPage - eip), *entry);
+		this->addCode(nextPage, NULL, len - (nextPage - eip), *entry);
 	}
 }
 
-void CodePage::addCode(U32 eip, DecodedOp* op, U32 len) {
+void CodePage::addCode(U32 eip, DecodedBlock* op, U32 len) {
     this->addCode(eip, op, len, NULL);
 }
 
-DecodedOp* CodePage::getCode(U32 eip) {
+DecodedBlock* CodePage::getCode(U32 eip) {
     U32 offset = eip & PAGE_MASK;
     CodePageEntry* entry = this->entries[offset >> CODE_ENTRIES_SHIFT];
     while (entry) {
@@ -143,21 +156,21 @@ DecodedOp* CodePage::getCode(U32 eip) {
 
 void CodePage::writeb(U32 address, U8 value) {    
     if (value!=this->readb(address)) {
-        removeBlockAt(address);
+        removeBlockAt(address, 1);
         RWPage::writeb(address, value);
     }
 }
 
 void CodePage::writew(U32 address, U16 value) {
     if (value!=this->readw(address)) {
-        removeBlockAt(address);
+        removeBlockAt(address, 2);
         RWPage::writew(address, value);
     }
 }
 
 void CodePage::writed(U32 address, U32 value) {
     if (value!=this->readd(address)) {
-        removeBlockAt(address);
+        removeBlockAt(address, 3);
         RWPage::writed(address, value);
     }
 }
