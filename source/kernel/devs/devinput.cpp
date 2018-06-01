@@ -586,7 +586,8 @@ void queueEvent(DevInput* queue, U32 type, U32 code, U32 value, U64 time) {
     data.type = type;
     data.code = code;
     data.value = value;
-    queue->eventQueue.push(data);
+    if (queue)
+        queue->eventQueue.push(data);
 }
 
 /*

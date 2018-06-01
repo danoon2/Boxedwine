@@ -149,15 +149,15 @@ struct Data {
 };
 
 #define endData() {0}
-#define allocData(var1, var2, result, flags, fCF, fOF) { 1, var1, var2, result, 0, flags, 0, fCF, fOF, 0, 0, 0, 0, 0, 1, 1, 0, 0 }
-#define allocDataNoOF(var1, var2, result, flags, fCF) { 1, var1, var2, result, 0, flags, 0, fCF, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0 }
-#define allocDataFlags(var1, var2, fCF, fOF, fSF, fZF) { 1, var1, var2, 0, 0, 0, 0, fCF, fOF, fZF, fSF, 1, 0, 0, 1, 1, 0, 0 }
+#define allocData(var1, var2, result, flags, fCF, fOF) { 1, var1, var2, result, 0, flags, 0, fCF, fOF, 0, 0, 0, 0, 0, true,  0, 0, 1, 0, 0 }
+#define allocDataNoOF(var1, var2, result, flags, fCF) {  1, var1, var2, result, 0, flags, 0, fCF, 0,   0, 0, 0, 0, 0, false, 0, 0, 1, 0, 0 }
+#define allocDataFlags(var1, var2, fCF, fOF, fSF, fZF) { 1, var1, var2, 0, 0, 0, 0, fCF, fOF, fZF, fSF, 1, 0, 0, true, 0, 0, 1, 1, 1 }
 #define allocDataFlagsWithAF(var1, var2, result, flags, fCF, fOF, fSF, fZF, fAF, hasOF, hasZF, hasSF) { 1, var1, var2, result, 0, flags, 0, fCF, fOF, fZF, fSF, 0, 0, 0, hasOF, fAF, 1, 1, hasZF, hasSF }
-#define allocDataConst(var1, var2, result, constant, constantWidth, flags, fCF, fOF) { 1, var1, var2, result, 0, flags, constant, fCF, fOF, 0, 0, 0, 0, constantWidth, 1, 1, 0, 0 }
-#define allocDataConstNoOF(var1, var2, result, constant, constantWidth, flags, fCF) { 1, var1, var2, result, 0, flags, constant, fCF, 0, 0, 0, 0, 0, constantWidth, 0, 1, 0, 0 }
-#define allocDatavar2(var1, var2, resultvar1, resultvar2) { 1, var1, var2, resultvar1, resultvar2, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0 }
-#define allocDataConstvar2(var1, var2, result, flags, fCF, fOF, constant, var2Result) { 1, var1, var2, result, var2Result, flags, constant, fCF, fOF, 0, 0, 0, 1, 0, 1, 1, 0, 0 }
-#define allocDataNoFlags(var1, var2, result) {1, var1, var2, result, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+#define allocDataConst(var1, var2, result, constant, constantWidth, flags, fCF, fOF) { 1, var1, var2, result, 0, flags, constant, fCF, fOF, 0, 0, 0, 0, constantWidth, true, 0, 0, 1, 0, 0 }
+#define allocDataConstNoOF(var1, var2, result, constant, constantWidth, flags, fCF) { 1, var1, var2, result, 0, flags, constant, fCF, 0, 0, 0, 0, 0, constantWidth, false, 0, 0, 1, 0, 0 }
+#define allocDatavar2(var1, var2, resultvar1, resultvar2) { 1, var1, var2, resultvar1, resultvar2, 0, 0, 0, 0, 0, 0, 1, 1, 0, true, 0, 0, 1, 0, 0 }
+#define allocDataConstvar2(var1, var2, result, flags, fCF, fOF, constant, var2Result) { 1, var1, var2, result, var2Result, flags, constant, fCF, fOF, 0, 0, 0, 1, 0, true, 0, 0, 1, 0, 0 }
+#define allocDataNoFlags(var1, var2, result) {1, var1, var2, result, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, false, 0, 0, 0, 0, 0}
 
 void pushConstant(struct Data* data) {
     if (data->constantWidth==8) {
@@ -2552,6 +2552,20 @@ static struct Data lahf[] = {
         allocDatavar2(0xFFFFFF02, 0xFFFFFFFF, 0xFFFFFF02, 0xFFFF02FF),
         endData()
 };
+
+/*
+__asm clc;
+__asm mov al, 1;
+__asm rol al, 0;
+__asm setc bl;
+al=1, bl=0
+
+__asm clc;
+__asm mov al, 1;
+__asm rol al, 8;
+__asm setc bl;
+al=1, bl=1
+*/
 
 static struct Data rolb[] = {
         allocData(0x40, 1, 0x80, 0, false, true),

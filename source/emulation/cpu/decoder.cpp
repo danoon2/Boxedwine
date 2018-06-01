@@ -3049,8 +3049,10 @@ public:
         if (this->imm) {
             op->imm = this->imm;
         } else {
-            fetchImm(data, op);
+            fetchImm(data, op);            
             op->imm&=0x1f;
+            if (op->imm==0)
+                op->inst = Nop;
             switch (G(rm)) {
                 case 0: op->imm &= 0x7; break;
                 case 1: op->imm &= 0x7; break;
@@ -3058,9 +3060,6 @@ public:
                 case 3: op->imm = op->imm % 9; break;
                 default: break;
             }
-        }
-        if (op->imm==0) {
-            op->inst = Nop;
         }
     }
 private:
@@ -3090,6 +3089,8 @@ public:
         } else {
             fetchImm(data, op);
             op->imm&=0x1f;
+            if (op->imm==0)
+                op->inst = Nop;
             switch (G(rm)) {
                 case 0: op->imm &= 0xf; break;
                 case 1: op->imm &= 0xf; break;
@@ -3097,9 +3098,6 @@ public:
                 case 3: op->imm = op->imm % 17; break;
                 default: break;
             }
-        }
-        if (op->imm==0) {
-            op->inst = Nop;
         }
     }
 private:
@@ -3129,9 +3127,8 @@ public:
         } else {
             fetchImm(data, op);
             op->imm&=0x1f;
-        }
-        if (op->imm==0) {
-            op->inst = Nop;
+            if (op->imm==0)
+                op->inst = Nop;
         }
     }
 private:

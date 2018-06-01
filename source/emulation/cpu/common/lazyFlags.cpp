@@ -256,27 +256,27 @@ static LazyFlagsDec32 flagsDec32;
 const LazyFlags* FLAGS_DEC32 = &flagsDec32;
 
 class LazyFlagsNeg8 : public LazyFlagsDefault8 {
-    U32 getCF(CPU* cpu) const {return cpu->dst.u8!=0;}
-    U32 getOF(CPU* cpu) const {return cpu->dst.u8 == 0x80;}
-    U32 getAF(CPU* cpu) const {return cpu->dst.u8 & 0x0f;}
+    U32 getCF(CPU* cpu) const {return cpu->src.u8!=0;}
+    U32 getOF(CPU* cpu) const {return cpu->src.u8 == 0x80;}
+    U32 getAF(CPU* cpu) const {return cpu->src.u8 & 0x0f;}
 };
 
 static LazyFlagsNeg8 flagsNeg8;
 const LazyFlags* FLAGS_NEG8 = &flagsNeg8;
 
 class LazyFlagsNeg16 : public LazyFlagsDefault16 {
-    U32 getCF(CPU* cpu) const {return cpu->dst.u16!=0;}
-    U32 getOF(CPU* cpu) const {return cpu->dst.u16 == 0x8000;}
-    U32 getAF(CPU* cpu) const {return cpu->dst.u16 & 0x0f;}
+    U32 getCF(CPU* cpu) const {return cpu->src.u16!=0;}
+    U32 getOF(CPU* cpu) const {return cpu->src.u16 == 0x8000;}
+    U32 getAF(CPU* cpu) const {return cpu->src.u16 & 0x0f;}
 };
 
 static LazyFlagsNeg16 flagsNeg16;
 const LazyFlags* FLAGS_NEG16 = &flagsNeg16;
 
 class LazyFlagsNeg32 : public LazyFlagsDefault32 {
-    U32 getCF(CPU* cpu) const {return cpu->dst.u32!=0;}
-    U32 getOF(CPU* cpu) const {return cpu->dst.u32 == 0x80000000;}
-    U32 getAF(CPU* cpu) const {return cpu->dst.u32 & 0x0f;}
+    U32 getCF(CPU* cpu) const {return cpu->src.u32!=0;}
+    U32 getOF(CPU* cpu) const {return cpu->src.u32 == 0x80000000;}
+    U32 getAF(CPU* cpu) const {return cpu->src.u32 & 0x0f;}
 };
 
 static LazyFlagsNeg32 flagsNeg32;
