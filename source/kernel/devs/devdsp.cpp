@@ -34,6 +34,7 @@ public:
         memset(&this->want, 0, sizeof(this->want));
         memset(&this->got, 0, sizeof(this->got));
 
+        this->pos = 0;
         this->isDspOpen = false;
         this->sameFormat = false;
         this->dspFmt = AFMT_U8;
@@ -169,6 +170,8 @@ U32 DevDsp::readNative(U8* buffer, U32 len){
 U32 DevDsp::writeNative(U8* buffer, U32 len) {    
     U32 result;
 
+    if (!this->isDspOpen)
+        this->openAudio();
     SDL_LockAudio();
     if (!this->sameFormat) {
         S32 adjustedLen = (S32)(ceil(len / cvt.len_ratio));
@@ -185,9 +188,9 @@ U32 DevDsp::writeNative(U8* buffer, U32 len) {
         }
         this->cvt.buf = this->cvtBuf;
         memcpy(this->cvt.buf, buffer, len);
-        SDL_ConvertAudio(&cvt);
-        audioBuffer.write(this->cvt.buf, (size_t)this->cvt.buf+cvt.len_cvt);
-        result = cvt.len_cvt;
+        SDL_ConvertAudio(&this->cvt);
+        audioBuffer.write(this->cvt.buf, this->cvt.len_cvt);
+        result = this->cvt.len_cvt;
     } else {
         audioBuffer.write(buffer, len);
         result = len;

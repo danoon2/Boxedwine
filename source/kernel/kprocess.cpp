@@ -154,7 +154,9 @@ void KProcess::removeThread(KThread* thread) {
 }
 
 KThread* KProcess::getThreadById(U32 tid) {
-    return this->threads[id];
+    if (this->threads.count(tid))
+        return this->threads[tid];
+    return NULL;
 }
 
 U32 KProcess::getThreadCount() {
@@ -447,7 +449,7 @@ KThread* KProcess::startProcess(const std::string& currentDirectory, U32 argc, c
     this->setupCommandlineNode();
     this->exe = pargs[0];
     this->name = Fs::getFileNameFromPath(this->exe);
-
+    
     for (i=0;i<argc;i++) {
         if (i>0)
             this->commandLine+=" ";
