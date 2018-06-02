@@ -48,6 +48,7 @@ U32 BufferAccess::readNative(U8* buffer, U32 len) {
     if (pos+len>this->buffer.length())
         len = this->buffer.length()-pos;
     memcpy(buffer, this->buffer.c_str()+pos, len);
+    this->pos+=len;
     return len;
 }
 
