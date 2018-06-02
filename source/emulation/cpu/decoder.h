@@ -1077,6 +1077,6 @@ public:
     virtual void run(CPU* cpu) = 0;
     virtual void dealloc(bool delayed) = 0;
 };
-void decodeBlock(pfnFetchByte fetchByte, U32 eip, U32 isBig, U32 maxInstructions, U32 stopIfThrowsException, DecodedBlock* block);
+void decodeBlock(pfnFetchByte fetchByte, U32 eip, U32 isBig, U32 maxInstructions, U32 maxLen, U32 stopIfThrowsException, DecodedBlock* block);
 
 #endif

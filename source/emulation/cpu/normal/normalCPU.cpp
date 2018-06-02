@@ -150,7 +150,7 @@ void NormalCPU::run() {
     }
     if (!block) {
         block = NormalBlock::alloc(this);
-        decodeBlock(fetchByte, startIp, this->big, 0, 1, block);
+        decodeBlock(fetchByte, startIp, this->big, 0, PAGE_SIZE, 1, block);
 
         // might have changed after a read
         page = this->thread->memory->mmu[startIp >> PAGE_SHIFT];

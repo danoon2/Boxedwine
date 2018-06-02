@@ -4663,7 +4663,7 @@ void DecodedOp::dealloc(bool deallocNext) {
 
 DecodedBlock* DecodedBlock::currentBlock;
 
-void decodeBlock(pfnFetchByte fetchByte, U32 eip, U32 isBig, U32 maxInstructions, U32 stopIfThrowsException, DecodedBlock* block) {
+void decodeBlock(pfnFetchByte fetchByte, U32 eip, U32 isBig, U32 maxInstructions, U32 maxLen, U32 stopIfThrowsException, DecodedBlock* block) {
     DecodeData d;    
     DecodedOp* op = DecodedOp::alloc();
 
@@ -4684,10 +4684,15 @@ void decodeBlock(pfnFetchByte fetchByte, U32 eip, U32 isBig, U32 maxInstructions
         }
         d.inst = d.opCode+d.fetch8();
         decoder[d.inst]->decode(&d, op);
+        block->opCount++;
+        if (maxLen && d.opLen+block->bytes>maxLen) {
+            op->inst = Nop;
+            op->len = 0;
+            break;
+        }
         op->len = d.opLen;
         op->ea16 = d.ea16;
-        block->bytes += d.opLen;
-        block->opCount++;
+        block->bytes += d.opLen;        
 #ifdef _DEBUG
         op->originalOp = d.inst;
 #endif
