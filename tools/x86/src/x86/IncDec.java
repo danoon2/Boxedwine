@@ -45,6 +45,7 @@ public class IncDec extends Base {
 
     public void incDecBase(FileOutputStream fos, FileOutputStream fos_init, String enumName, String name, String flagName, String destLoad, String destSave1, String destSave2, String op, boolean eaa, String bits) throws IOException {
         out(fos, "void OPCALL "+name+"(CPU* cpu, DecodedOp* op) {");
+        out(fos, "    START_OP(cpu, op);");
         if (eaa)
             out(fos, "    U32 eaa = eaa(cpu, op);");
         out(fos, "    cpu->oldCF=cpu->getCF();");
@@ -52,6 +53,7 @@ public class IncDec extends Base {
         out(fos, "    cpu->result.u" + bits + "=cpu->dst.u" + bits + " " + op + " 1;");
         out(fos, "    cpu->lazyFlags = " + flagName + ";");
         out(fos, "    " + destSave1 + "cpu->result.u" + bits + destSave2 + ";");
+        out(fos, "    NEXT();");
         out(fos, "}");
 
         out(fos_init, "INIT_CPU("+enumName+", "+name+")");

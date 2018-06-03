@@ -98,7 +98,9 @@ public class Shift extends Base {
 
     public void dshift(FileOutputStream fos, FileOutputStream fos_init, String func, String name, String ename, String source) throws IOException {
         out(fos, "void OPCALL "+name+"(CPU* cpu, DecodedOp* op) {");
+        out(fos, "    START_OP(cpu, op);");
         out(fos, "    "+func+"(cpu, "+source+");");
+        out(fos, "    NEXT();");
         out(fos, "}");
 
         out(fos_init, "INIT_CPU("+ename+", "+name+")");
@@ -150,10 +152,12 @@ public class Shift extends Base {
         }
         if (fos_op!=null) {
             out(fos_op, "void OPCALL " + name + "_op(CPU* cpu, DecodedOp* op) {");
+            out(fos_op, "    START_OP(cpu, op);");
             if (eaa)
                 out(fos_op, "    " + name + "(cpu, eaa(cpu, op), " + shiftSource + ");");
             else
                 out(fos_op, "    " + name + "(cpu, op->reg, " + shiftSource + ");");
+            out(fos_op, "    NEXT();");
             out(fos_op, "}");
         }
 

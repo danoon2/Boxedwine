@@ -49,6 +49,7 @@ public class Arith extends Base {
 
     public void dmul16(FileOutputStream fos, FileOutputStream fos_init, String name, String ename, String arg1, String arg2) throws IOException {
         out(fos, "void OPCALL "+name+"(CPU* cpu, DecodedOp* op) {");
+        out(fos, "    START_OP(cpu, op);");
         out(fos, "    S32 res=(S16)("+arg1+") * (S32)((S16)"+arg2+");");
         out(fos, "    cpu->fillFlagsNoCFOF();");
         out(fos, "    if ((res >= -32767) && (res <= 32767)) {");
@@ -57,6 +58,7 @@ public class Arith extends Base {
         out(fos, "        cpu->addFlag(CF|OF);");
         out(fos, "    }");
         out(fos, "    cpu->reg[op->reg].u16 = (U16)res;");
+        out(fos, "    NEXT();");
         out(fos, "}");
 
         out(fos_init, "INIT_CPU("+ename+", "+name+")");
@@ -64,6 +66,7 @@ public class Arith extends Base {
 
     public void dmul32(FileOutputStream fos, FileOutputStream fos_init, String name, String ename, String arg1, String arg2) throws IOException {
         out(fos, "void OPCALL "+name+"(CPU* cpu, DecodedOp* op) {");
+        out(fos, "    START_OP(cpu, op);");
         out(fos, "    S64 res=(S32)("+arg1+") * (S64)((S32)"+arg2+");");
         out(fos, "    cpu->fillFlagsNoCFOF();");
         out(fos, "    if (res>=-2147483647l && res<=2147483647l) {");
@@ -72,6 +75,7 @@ public class Arith extends Base {
         out(fos, "        cpu->addFlag(CF|OF);");
         out(fos, "    }");
         out(fos, "    cpu->reg[op->reg].u32 = (U32)res;");
+        out(fos, "    NEXT();");
         out(fos, "}");
 
         out(fos_init, "INIT_CPU("+ename+", "+name+")");
@@ -79,7 +83,8 @@ public class Arith extends Base {
 
     public void divInternal(FileOutputStream fos, FileOutputStream fos_init, String func, String name, String ename, String source) throws IOException {
         out(fos, "void OPCALL "+name+"(CPU* cpu, DecodedOp* op) {");
-        out(fos, "    if ("+func+"(cpu, "+source+")) cpu->eip.u32+=op->len;");
+        out(fos, "    START_OP(cpu, op);");
+        out(fos, "    if ("+func+"(cpu, "+source+")) {NEXT();} else {NEXT_DONE();}");
         out(fos, "}");
 
         out(fos_init, "INIT_CPU("+ename+", "+name+")");
@@ -108,6 +113,7 @@ public class Arith extends Base {
 
     public void mul8internal(FileOutputStream fos, FileOutputStream fos_init, String name, String source, boolean signed) throws IOException {
         out(fos, "void OPCALL "+name+"(CPU* cpu, DecodedOp* op) {");
+        out(fos, "    START_OP(cpu, op);");
         if (signed) {
             out(fos, "    AX = (S16)((S8)AL) * (S8)("+source+");");
             out(fos, "    if ((S16)AX<-128 || (S16)AX>127) {");
@@ -123,6 +129,7 @@ public class Arith extends Base {
             out(fos, "        cpu->flags&=~(CF|OF);");
             out(fos, "    }");
         }
+        out(fos, "    NEXT();");
         out(fos, "}");
 
         String mixed;
@@ -143,6 +150,7 @@ public class Arith extends Base {
 
     public void mul16internal(FileOutputStream fos, FileOutputStream fos_init, String name, String source, boolean signed) throws IOException {
         out(fos, "void OPCALL "+name+"(CPU* cpu, DecodedOp* op) {");
+        out(fos, "    START_OP(cpu, op);");
         if (signed) {
             out(fos, "    S32 result = (S32)((S16)AX) * ((S16)("+source+"));");
             out(fos, "    cpu->fillFlagsNoCFOF();");
@@ -164,6 +172,7 @@ public class Arith extends Base {
             out(fos, "        cpu->flags&=~(CF|OF);");
             out(fos, "    }");
         }
+        out(fos, "    NEXT();");
         out(fos, "}");
 
         String mixed;
@@ -184,6 +193,7 @@ public class Arith extends Base {
 
     public void mul32internal(FileOutputStream fos, FileOutputStream fos_init, String name, String source, boolean signed) throws IOException {
         out(fos, "void OPCALL "+name+"(CPU* cpu, DecodedOp* op) {");
+        out(fos, "    START_OP(cpu, op);");
         if (signed) {
             out(fos, "    S64 result = (S64)((S32)EAX) * ((S32)("+source+"));");
             out(fos, "    cpu->fillFlagsNoCFOF();");
@@ -205,6 +215,7 @@ public class Arith extends Base {
             out(fos, "        cpu->flags&=~(CF|OF);");
             out(fos, "    }");
         }
+        out(fos, "    NEXT();");
         out(fos, "}");
 
         String mixed;
@@ -294,6 +305,7 @@ public class Arith extends Base {
 
     public void arithbase(FileOutputStream fos, FileOutputStream fos_init, String enumName, String functionName, String flagName, String source, String loadDest, String saveDest1, String saveDest2, String op, boolean cf, boolean result, boolean eaa, String bits, boolean flags)  throws IOException {
         out(fos, "void OPCALL "+functionName+"(CPU* cpu, DecodedOp* op) {");
+        out(fos, "    START_OP(cpu, op);");
         if (eaa)
             out(fos, "    U32 eaa = eaa(cpu, op);");
         if (cf)
@@ -308,6 +320,7 @@ public class Arith extends Base {
         } else {
             out(fos, "    "+saveDest1+loadDest+op+source+saveDest2+";");
         }
+        out(fos, "    NEXT();");
         out(fos, "}");
 
         out(fos_init, "INIT_CPU("+enumName+", "+functionName+")");

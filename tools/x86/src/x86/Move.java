@@ -20,6 +20,17 @@ public class Move extends Base {
 
     public void mov(FileOutputStream fos, FileOutputStream fos_init, String functionName, String enumName, String assign) throws IOException {
         out(fos, "void OPCALL normal_"+functionName+"(CPU* cpu, DecodedOp* op) {");
+        out(fos, "    START_OP(cpu, op);");
+        out(fos, "    "+assign+";");
+        out(fos, "    NEXT();");
+        out(fos, "}");
+
+        out(fos_init, "INIT_CPU("+enumName+", normal_"+functionName+")");
+    }
+
+    public void movs(FileOutputStream fos, FileOutputStream fos_init, String functionName, String enumName, String assign) throws IOException {
+        out(fos, "void OPCALL normal_"+functionName+"(CPU* cpu, DecodedOp* op) {");
+        out(fos, "    START_OP(cpu, op);");
         out(fos, "    "+assign+";");
         out(fos, "}");
 
@@ -48,8 +59,8 @@ public class Move extends Base {
         mov(fos, fos_init, "movr16s16", "MovR16S16", "cpu->reg[op->reg].u16 = cpu->seg[op->rm].value;");
         mov(fos, fos_init, "movr32s16", "MovR32S16", "cpu->reg[op->reg].u32 = cpu->seg[op->rm].value");
         mov(fos, fos_init, "move16s16", "MovE16S16", "writew(eaa(cpu, op), cpu->seg[op->reg].value)");
-        mov(fos, fos_init, "movs16e16", "MovS16E16", "if (cpu->setSegment(op->reg, readw(eaa(cpu, op)))) {cpu->eip.u32+=op->len;}");
-        mov(fos, fos_init, "movs16r16", "MovS16R16", "if (cpu->setSegment(op->rm, cpu->reg[op->reg].u16)) {cpu->eip.u32+=op->len;}");
+        movs(fos, fos_init, "movs16e16", "MovS16E16", "if (cpu->setSegment(op->reg, readw(eaa(cpu, op)))) {\r\n        NEXT();\r\n    } else {\r\n        NEXT_DONE();\r\n    }");
+        movs(fos, fos_init, "movs16r16", "MovS16R16", "if (cpu->setSegment(op->rm, cpu->reg[op->reg].u16)) {\r\n        NEXT();\r\n    } else {\r\n        NEXT_DONE();\r\n    }");
 
         mov(fos, fos_init, "movAlOb", "MovAlOb", "AL = readb(cpu->seg[op->base].address+op->disp)");
         mov(fos, fos_init, "movAxOw", "MovAxOw", "AX = readw(cpu->seg[op->base].address+op->disp)");

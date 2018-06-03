@@ -74,6 +74,7 @@ public class Strings extends Base {
         out(fos_h, "void "+name+"32r(CPU* cpu, U32 base);");
 
         out(fos_op, "void OPCALL "+name+"_op(CPU* cpu, DecodedOp* op) {");
+        out(fos_op, "    START_OP(cpu, op);");
         out(fos_op, "    if (op->ea16) {");
         out(fos_op, "        if (op->repZero || op->repNotZero) {");
         out(fos_op, "            "+name+"16r(cpu, op->base);");
@@ -87,6 +88,7 @@ public class Strings extends Base {
         out(fos_op, "            "+name+"32(cpu, op->base);");
         out(fos_op, "        }");
         out(fos_op, "    }");
+        out(fos_op, "    NEXT();");
         out(fos_op, "}");
 
         movsBody(fos, name+"16", bits, SI, DI, CX, inc, false);
@@ -137,6 +139,7 @@ public class Strings extends Base {
         out(fos_h, "void "+name+"32r(CPU* cpu, U32 rep_zero, U32 base);");
 
         out(fos_op, "void OPCALL "+name+"_op(CPU* cpu, DecodedOp* op) {");
+        out(fos_op, "    START_OP(cpu, op);");
         out(fos_op, "    if (op->ea16) {");
         out(fos_op, "        if (op->repZero || op->repNotZero) {");
         out(fos_op, "            "+name+"16r(cpu, op->repZero, op->base);");
@@ -150,6 +153,7 @@ public class Strings extends Base {
         out(fos_op, "            "+name+"32(cpu, op->repZero, op->base);");
         out(fos_op, "        }");
         out(fos_op, "    }");
+        out(fos_op, "    NEXT();");
         out(fos_op, "}");
 
         cmpsBody(fos, name+"16", width, bits, SI, DI, CX, inc, false);
@@ -194,6 +198,7 @@ public class Strings extends Base {
         out(fos_h, "void "+name+"32(CPU* cpu, U32 rep_zero);");
         out(fos_h, "void "+name+"32r(CPU* cpu, U32 rep_zero);");
         out(fos_op, "void OPCALL "+name+"_op(CPU* cpu, DecodedOp* op) {");
+        out(fos_op, "    START_OP(cpu, op);");
         out(fos_op, "    if (op->ea16) {");
         out(fos_op, "        if (op->repZero || op->repNotZero) {");
         out(fos_op, "            "+name+"16r(cpu, op->repZero);");
@@ -207,6 +212,7 @@ public class Strings extends Base {
         out(fos_op, "            "+name+"32(cpu, op->repZero);");
         out(fos_op, "        }");
         out(fos_op, "    }");
+        out(fos_op, "    NEXT();");
         out(fos_op, "}");
 
         scasBody(fos, name+"16", width, bits, AX, DI, CX, inc, false);
@@ -242,6 +248,7 @@ public class Strings extends Base {
         out(fos_h, "void "+name+"32(CPU* cpu, U32 base);");
         out(fos_h, "void "+name+"32r(CPU* cpu, U32 base);");
         out(fos_op, "void OPCALL "+name+"_op(CPU* cpu, DecodedOp* op) {");
+        out(fos_op, "    START_OP(cpu, op);");
         out(fos_op, "    if (op->ea16) {");
         out(fos_op, "        if (op->repZero || op->repNotZero) {");
         out(fos_op, "            "+name+"16r(cpu, op->base);");
@@ -255,6 +262,7 @@ public class Strings extends Base {
         out(fos_op, "            "+name+"32(cpu, op->base);");
         out(fos_op, "        }");
         out(fos_op, "    }");
+        out(fos_op, "    NEXT();");
         out(fos_op, "}");
 
         lodsBody(fos, name+"16", bits, SI, CX, AX, inc, false);
@@ -290,6 +298,7 @@ public class Strings extends Base {
         out(fos_h, "void "+name+"32(CPU* cpu);");
         out(fos_h, "void "+name+"32r(CPU* cpu);");
         out(fos_op, "void OPCALL "+name+"_op(CPU* cpu, DecodedOp* op) {");
+        out(fos_op, "    START_OP(cpu, op);");
         out(fos_op, "    if (op->ea16) {");
         out(fos_op, "        if (op->repZero || op->repNotZero) {");
         out(fos_op, "            "+name+"16r(cpu);");
@@ -303,6 +312,7 @@ public class Strings extends Base {
         out(fos_op, "            "+name+"32(cpu);");
         out(fos_op, "        }");
         out(fos_op, "    }");
+        out(fos_op, "    NEXT();");
         out(fos_op, "}");
 
         stosBody(fos, name+"16", bits, DI, CX, AX, inc, false);

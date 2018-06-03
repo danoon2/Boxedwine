@@ -20,6 +20,7 @@ public class Bit extends Base {
 
     public void bitR16(FileOutputStream fos, FileOutputStream fos_init, String functionName, String enumName, String op, boolean imm) throws IOException {
         out(fos, "void OPCALL "+functionName+"(CPU* cpu, DecodedOp* op) {");
+        out(fos, "    START_OP(cpu, op);");
         if (imm) {
             out(fos, "    U16 mask = (U16)op->imm;");
         } else {
@@ -30,6 +31,7 @@ public class Bit extends Base {
         if (op.length()>0) {
             out(fos, "    "+op);
         }
+        out(fos, "    NEXT();");
         out(fos, "}");
 
         out(fos_init, "INIT_CPU("+enumName+", "+functionName+")");
@@ -41,6 +43,7 @@ public class Bit extends Base {
 
     public void bitE16(FileOutputStream fos, FileOutputStream fos_init, String functionName, String enumName, String op, boolean imm) throws IOException {
         out(fos, "void OPCALL "+functionName+"(CPU* cpu, DecodedOp* op) {");
+        out(fos, "    START_OP(cpu, op);");
         if (imm) {
             out(fos, "    U16 mask = (U16)op->imm;");
         } else {
@@ -57,6 +60,7 @@ public class Bit extends Base {
         if (op.length()>0) {
             out(fos, "    "+op);
         }
+        out(fos, "    NEXT();");
         out(fos, "}");
 
         out(fos_init, "INIT_CPU("+enumName+", "+functionName+")");
@@ -68,6 +72,7 @@ public class Bit extends Base {
 
     public void bitR32(FileOutputStream fos, FileOutputStream fos_init, String functionName, String enumName, String op, boolean imm) throws IOException {
         out(fos, "void OPCALL "+functionName+"(CPU* cpu, DecodedOp* op) {");
+        out(fos, "    START_OP(cpu, op);");
         if (imm) {
             out(fos, "    U32 mask = op->imm;");
         } else {
@@ -78,6 +83,7 @@ public class Bit extends Base {
         if (op.length()>0) {
             out(fos, "    "+op);
         }
+        out(fos, "    NEXT();");
         out(fos, "}");
 
         out(fos_init, "INIT_CPU("+enumName+", "+functionName+")");
@@ -89,6 +95,7 @@ public class Bit extends Base {
 
     public void bitE32(FileOutputStream fos, FileOutputStream fos_init, String functionName, String enumName, String op, boolean imm) throws IOException {
         out(fos, "void OPCALL "+functionName+"(CPU* cpu, DecodedOp* op) {");
+        out(fos, "    START_OP(cpu, op);");
         if (imm) {
             out(fos, "    U32 mask = op->imm;");
         } else {
@@ -105,6 +112,7 @@ public class Bit extends Base {
         if (op.length()>0) {
             out(fos, "    "+op);
         }
+        out(fos, "    NEXT();");
         out(fos, "}");
 
         out(fos_init, "INIT_CPU("+enumName+", "+functionName+")");
@@ -116,6 +124,7 @@ public class Bit extends Base {
 
     public void bsf(FileOutputStream fos, FileOutputStream fos_init, String bits, String functionName, String enumName, String load) throws IOException {
         out(fos, "void OPCALL "+functionName+"(CPU* cpu, DecodedOp* op) {");
+        out(fos, "    START_OP(cpu, op);");
         out(fos, "    U"+bits+" value="+load+";");
         out(fos, "    cpu->fillFlagsNoZF();");
         out(fos, "    if (value==0) {");
@@ -126,12 +135,14 @@ public class Bit extends Base {
         out(fos, "        cpu->removeZF();");
         out(fos, "        cpu->reg[op->reg].u"+bits+"=result;");
         out(fos, "    }");
+        out(fos, "    NEXT();");
         out(fos, "}");
         out(fos_init, "INIT_CPU("+enumName+", "+functionName+")");
     }
 
     public void bsr(FileOutputStream fos, FileOutputStream fos_init, String bits, String functionName, String enumName, String load) throws IOException {
         out(fos, "void OPCALL "+functionName+"(CPU* cpu, DecodedOp* op) {");
+        out(fos, "    START_OP(cpu, op);");
         out(fos, "    U"+bits+" value="+load+";");
         out(fos, "    cpu->fillFlagsNoZF();");
         out(fos, "    if (value==0) {");
@@ -147,6 +158,7 @@ public class Bit extends Base {
         out(fos, "        cpu->removeZF();");
         out(fos, "        cpu->reg[op->reg].u"+bits+"=result;");
         out(fos, "    }");
+        out(fos, "    NEXT();");
         out(fos, "}");
         out(fos_init, "INIT_CPU("+enumName+", "+functionName+")");
     }

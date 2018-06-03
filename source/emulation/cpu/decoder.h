@@ -1027,6 +1027,10 @@ public:
 
 extern const InstructionInfo instructionInfo[];
 
+class DecodedOp;
+
+typedef void (OPCALL *OpCallback)(CPU* cpu, DecodedOp* op);
+
 class DecodedOp {
 public:    
     static DecodedOp* alloc();
@@ -1034,6 +1038,7 @@ public:
     void log(CPU* cpu);
 
     DecodedOp* next;
+    OpCallback pfn;
 
     U32 disp;
 

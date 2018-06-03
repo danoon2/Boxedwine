@@ -20,9 +20,11 @@ public class Xchg extends Base {
 
     public void xchg8(FileOutputStream fos, FileOutputStream fos_init, String functionName, String enumName, String load, String store, String storeEnd) throws IOException {
         out(fos, "void OPCALL "+functionName+"(CPU* cpu, DecodedOp* op) {");
+        out(fos, "    START_OP(cpu, op);");
         out(fos, "    U8 tmp = "+load+";");
         out(fos, "    "+store+"*cpu->reg8[op->reg]"+storeEnd+";");
         out(fos, "    *cpu->reg8[op->reg] = tmp;");
+        out(fos, "    NEXT();");
         out(fos, "}");
 
         out(fos_init, "INIT_CPU("+enumName+", "+functionName+")");
@@ -30,9 +32,11 @@ public class Xchg extends Base {
 
     public void xchg16(FileOutputStream fos, FileOutputStream fos_init, String functionName, String enumName, String load, String store, String storeEnd) throws IOException {
         out(fos, "void OPCALL "+functionName+"(CPU* cpu, DecodedOp* op) {");
+        out(fos, "    START_OP(cpu, op);");
         out(fos, "    U16 tmp = "+load+";");
         out(fos, "    "+store+"cpu->reg[op->reg].u16"+storeEnd+";");
         out(fos, "    cpu->reg[op->reg].u16 = tmp;");
+        out(fos, "    NEXT();");
         out(fos, "}");
 
         out(fos_init, "INIT_CPU("+enumName+", "+functionName+")");
@@ -40,9 +44,11 @@ public class Xchg extends Base {
 
     public void xchg32(FileOutputStream fos, FileOutputStream fos_init, String functionName, String enumName, String load, String store, String storeEnd) throws IOException {
         out(fos, "void OPCALL "+functionName+"(CPU* cpu, DecodedOp* op) {");
+        out(fos, "    START_OP(cpu, op);");
         out(fos, "    U32 tmp = "+load+";");
         out(fos, "    "+store+"cpu->reg[op->reg].u32"+storeEnd+";");
         out(fos, "    cpu->reg[op->reg].u32 = tmp;");
+        out(fos, "    NEXT();");
         out(fos, "}");
 
         out(fos_init, "INIT_CPU("+enumName+", "+functionName+")");
@@ -50,6 +56,7 @@ public class Xchg extends Base {
 
     public void cmpxchg16(FileOutputStream fos, FileOutputStream fos_init, String functionName, String enumName, String local, String load, String store) throws IOException {
         out(fos, "void OPCALL "+functionName+"(CPU* cpu, DecodedOp* op) {");
+        out(fos, "    START_OP(cpu, op);");
         if (local!=null)
             out(fos, "    "+local);
         out(fos, "    cpu->dst.u16 = AX;");
@@ -61,6 +68,7 @@ public class Xchg extends Base {
         out(fos, "    } else {");
         out(fos, "        AX = cpu->src.u16;");
         out(fos, "    }");
+        out(fos, "    NEXT();");
         out(fos, "}");
 
         out(fos_init, "INIT_CPU("+enumName+", "+functionName+")");
@@ -68,6 +76,7 @@ public class Xchg extends Base {
 
     public void cmpxchg32(FileOutputStream fos, FileOutputStream fos_init, String functionName, String enumName, String local, String load, String store) throws IOException {
         out(fos, "void OPCALL "+functionName+"(CPU* cpu, DecodedOp* op) {");
+        out(fos, "    START_OP(cpu, op);");
         if (local!=null)
             out(fos, "    "+local);
         out(fos, "    cpu->dst.u32 = EAX;");
@@ -79,6 +88,7 @@ public class Xchg extends Base {
         out(fos, "    } else {");
         out(fos, "        EAX = cpu->src.u32;");
         out(fos, "    }");
+        out(fos, "    NEXT();");
         out(fos, "}");
 
         out(fos_init, "INIT_CPU("+enumName+", "+functionName+")");

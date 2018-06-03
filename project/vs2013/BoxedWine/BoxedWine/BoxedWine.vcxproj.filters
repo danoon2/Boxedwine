@@ -549,6 +549,9 @@
     <ClInclude Include="..\..\..\..\source\util\stringutil.h">
       <Filter>source\util</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_jump.h">
+      <Filter>source\emulation\cpu\normal</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">

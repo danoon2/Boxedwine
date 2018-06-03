@@ -57,77 +57,110 @@ void OPCALL emms(CPU* cpu, DecodedOp* op) {
 /* Data Movement */
 
 void OPCALL movPqR32(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* rmrq=&cpu->reg_mmx[op->reg];
     rmrq->ud.d0 = cpu->reg[op->rm].u32;
     rmrq->ud.d1 = 0;
+    NEXT();
 }
 
 void OPCALL movPqE32(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* rmrq=&cpu->reg_mmx[op->reg];
     rmrq->ud.d0 = readd(eaa(cpu, op));
     rmrq->ud.d1 = 0;
+    NEXT();
 }
 
 void OPCALL movR32Pq(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     cpu->reg[op->reg].u32 = cpu->reg_mmx[op->rm].ud.d0;
+    NEXT();
 }
 
 void OPCALL movE32Pq(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     writed(eaa(cpu, op), cpu->reg_mmx[op->reg].ud.d0);
+    NEXT();
 }
 
 void OPCALL movPqMmx(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     cpu->reg_mmx[op->reg].q = cpu->reg_mmx[op->rm].q;
+    NEXT();
 }
 
 void OPCALL movPqE64(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     cpu->reg_mmx[op->reg].q = readq(eaa(cpu, op));
+    NEXT();
 }
 
 void OPCALL movE64Pq(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     writeq(eaa(cpu, op), cpu->reg_mmx[op->reg].q);
+    NEXT();
 }
 
 void OPCALL movMmxPq(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     cpu->reg_mmx[op->reg].q = cpu->reg_mmx[op->rm].q;
+    NEXT();
 }
 
 /* Boolean Logic */
 
 void OPCALL pxorMmx(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     cpu->reg_mmx[op->reg].q ^= cpu->reg_mmx[op->rm].q;
+    NEXT();
 }
 
 void OPCALL pxorE64(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     cpu->reg_mmx[op->reg].q ^= readq(eaa(cpu, op));
+    NEXT();
 }
 
 void OPCALL porMmx(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     cpu->reg_mmx[op->reg].q |= cpu->reg_mmx[op->rm].q;
+    NEXT();
 }
 
 void OPCALL porE64(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     cpu->reg_mmx[op->reg].q |= readq(eaa(cpu, op));
+    NEXT();
 }
 
 void OPCALL pandMmx(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     cpu->reg_mmx[op->reg].q &= cpu->reg_mmx[op->rm].q;
+    NEXT();
 }
 
 void OPCALL pandE64(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     cpu->reg_mmx[op->reg].q &= readq(eaa(cpu, op));
+    NEXT();
 }
 
 void OPCALL pandnMmx(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     cpu->reg_mmx[op->reg].q = ~cpu->reg_mmx[op->reg].q & cpu->reg_mmx[op->rm].q;
+    NEXT();
 }
 
 void OPCALL pandnE64(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     cpu->reg_mmx[op->reg].q = ~cpu->reg_mmx[op->reg].q & readq(eaa(cpu, op));
+    NEXT();
 }
 
 /* Shift */
 void OPCALL psllwMmx(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg* src=&cpu->reg_mmx[op->rm];
 
@@ -139,9 +172,11 @@ void OPCALL psllwMmx(CPU* cpu, DecodedOp* op) {
 		dest->uw.w2 <<= src->ub.b0;
 		dest->uw.w3 <<= src->ub.b0;
 	}
+    NEXT();
 }
 
 void OPCALL psllwE64(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg src;
     
@@ -155,9 +190,11 @@ void OPCALL psllwE64(CPU* cpu, DecodedOp* op) {
 		dest->uw.w2 <<= src.ub.b0;
 		dest->uw.w3 <<= src.ub.b0;
 	}
+    NEXT();
 }
 
 void OPCALL psrlwMmx(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg* src=&cpu->reg_mmx[op->rm];
 
@@ -169,9 +206,11 @@ void OPCALL psrlwMmx(CPU* cpu, DecodedOp* op) {
 		dest->uw.w2 >>= src->ub.b0;
 		dest->uw.w3 >>= src->ub.b0;
 	}
+    NEXT();
 }
 
 void OPCALL psrlwE64(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg src;
     
@@ -185,9 +224,11 @@ void OPCALL psrlwE64(CPU* cpu, DecodedOp* op) {
 		dest->uw.w2 >>= src.ub.b0;
 		dest->uw.w3 >>= src.ub.b0;
 	}
+    NEXT();
 }
 
 void OPCALL psrawMmx(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     U8 shift;
 
@@ -200,9 +241,11 @@ void OPCALL psrawMmx(CPU* cpu, DecodedOp* op) {
 	dest->sw.w1 >>= shift;
 	dest->sw.w2 >>= shift;
 	dest->sw.w3 >>= shift;
+    NEXT();
 }
 
 void OPCALL psrawE64(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg src;
     
@@ -215,36 +258,44 @@ void OPCALL psrawE64(CPU* cpu, DecodedOp* op) {
 	dest->sw.w1 >>= src.ub.b0;
 	dest->sw.w2 >>= src.ub.b0;
 	dest->sw.w3 >>= src.ub.b0;
+    NEXT();
 }
 
 void OPCALL psllw(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     
     dest->uw.w0 >>= (U8)op->imm;
 	dest->uw.w1 >>= (U8)op->imm;
 	dest->uw.w2 >>= (U8)op->imm;
 	dest->uw.w3 >>= (U8)op->imm;	
+    NEXT();
 }
 
 void OPCALL psraw(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     
     dest->sw.w0 >>= (U8)op->imm;
 	dest->sw.w1 >>= (U8)op->imm;
 	dest->sw.w2 >>= (U8)op->imm;
 	dest->sw.w3 >>= (U8)op->imm;	
+    NEXT();
 }
 
 void OPCALL psrlw(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     
     dest->uw.w0 <<= (U8)op->imm;
 	dest->uw.w1 <<= (U8)op->imm;
 	dest->uw.w2 <<= (U8)op->imm;
 	dest->uw.w3 <<= (U8)op->imm;	
+    NEXT();
 }
 
 void OPCALL pslldMmx(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg* src=&cpu->reg_mmx[op->rm];
 
@@ -254,9 +305,11 @@ void OPCALL pslldMmx(CPU* cpu, DecodedOp* op) {
 		dest->ud.d0 <<= src->ub.b0;
 		dest->ud.d1 <<= src->ub.b0;
 	}
+    NEXT();
 }
 
 void OPCALL pslldE64(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg src;
     
@@ -268,9 +321,11 @@ void OPCALL pslldE64(CPU* cpu, DecodedOp* op) {
 		dest->ud.d0 <<= src.ub.b0;
 		dest->ud.d1 <<= src.ub.b0;
 	}
+    NEXT();
 }
 
 void OPCALL psrldMmx(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg* src=&cpu->reg_mmx[op->rm];
 
@@ -280,9 +335,11 @@ void OPCALL psrldMmx(CPU* cpu, DecodedOp* op) {
 		dest->ud.d0 >>= src->ub.b0;
 		dest->ud.d1 >>= src->ub.b0;
 	}
+    NEXT();
 }
 
 void OPCALL psrldE64(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg src;
     
@@ -294,9 +351,11 @@ void OPCALL psrldE64(CPU* cpu, DecodedOp* op) {
 		dest->ud.d0 >>= src.ub.b0;
 		dest->ud.d1 >>= src.ub.b0;
 	}
+    NEXT();
 }
 
 void OPCALL psradMmx(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     U8 shift;
 
@@ -307,9 +366,11 @@ void OPCALL psradMmx(CPU* cpu, DecodedOp* op) {
     }
 	dest->sd.d0 >>= shift;
 	dest->sd.d1 >>= shift;	
+    NEXT();
 }
 
 void OPCALL psradE64(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg src;
     
@@ -320,30 +381,38 @@ void OPCALL psradE64(CPU* cpu, DecodedOp* op) {
     }
 	dest->sd.d0 >>= src.ub.b0;
 	dest->sd.d1 >>= src.ub.b0;	
+    NEXT();
 }
 
 void OPCALL pslld(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     
     dest->ud.d0 >>= (U8)op->imm;
 	dest->ud.d1 >>= (U8)op->imm;
+    NEXT();
 }
 
 void OPCALL psrad(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     
     dest->sd.d0 >>= (U8)op->imm;
 	dest->sd.d1 >>= (U8)op->imm;
+    NEXT();
 }
 
 void OPCALL psrld(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     
     dest->ud.d0 <<= (U8)op->imm;
 	dest->ud.d1 <<= (U8)op->imm;
+    NEXT();
 }
 
 void OPCALL psllqMmx(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg* src=&cpu->reg_mmx[op->rm];
 
@@ -352,9 +421,11 @@ void OPCALL psllqMmx(CPU* cpu, DecodedOp* op) {
     } else {
 		dest->q <<= src->ub.b0;
 	}
+    NEXT();
 }
 
 void OPCALL psllqE64(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg src;
     
@@ -365,9 +436,11 @@ void OPCALL psllqE64(CPU* cpu, DecodedOp* op) {
     } else {
 		dest->q <<= src.ub.b0;
 	}
+    NEXT();
 }
 
 void OPCALL psrlqMmx(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg* src=&cpu->reg_mmx[op->rm];
 
@@ -376,9 +449,11 @@ void OPCALL psrlqMmx(CPU* cpu, DecodedOp* op) {
     } else {
 		dest->q >>= src->ub.b0;
 	}
+    NEXT();
 }
 
 void OPCALL psrlqE64(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg src;
     
@@ -389,18 +464,24 @@ void OPCALL psrlqE64(CPU* cpu, DecodedOp* op) {
     } else {
 		dest->q >>= src.ub.b0;
 	}
+    NEXT();
 }
 
-void OPCALL psllq(CPU* cpu, DecodedOp* op) {    
+void OPCALL psllq(CPU* cpu, DecodedOp* op) {   
+    START_OP(cpu, op);
     cpu->reg_mmx[op->reg].q >>= (U8)op->imm;
+    NEXT();
 }
 
 void OPCALL psrlq(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     cpu->reg_mmx[op->reg].q <<= (U8)op->imm;
+    NEXT();
 }
 
 /* Math */
 void OPCALL paddbMmx(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg* src=&cpu->reg_mmx[op->rm];
 
@@ -412,9 +493,11 @@ void OPCALL paddbMmx(CPU* cpu, DecodedOp* op) {
 	dest->ub.b5 += src->ub.b5;
 	dest->ub.b6 += src->ub.b6;
 	dest->ub.b7 += src->ub.b7;
+    NEXT();
 }
 
 void OPCALL paddbE64(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg src;
     
@@ -428,9 +511,11 @@ void OPCALL paddbE64(CPU* cpu, DecodedOp* op) {
 	dest->ub.b5 += src.ub.b5;
 	dest->ub.b6 += src.ub.b6;
 	dest->ub.b7 += src.ub.b7;
+    NEXT();
 }
 
 void OPCALL paddwMmx(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg* src=&cpu->reg_mmx[op->rm];
 
@@ -438,9 +523,11 @@ void OPCALL paddwMmx(CPU* cpu, DecodedOp* op) {
 	dest->uw.w1 += src->uw.w1;
 	dest->uw.w2 += src->uw.w2;
 	dest->uw.w3 += src->uw.w3;
+    NEXT();
 }
 
 void OPCALL paddwE64(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg src;
     
@@ -450,17 +537,21 @@ void OPCALL paddwE64(CPU* cpu, DecodedOp* op) {
 	dest->uw.w1 += src.uw.w1;
 	dest->uw.w2 += src.uw.w2;
 	dest->uw.w3 += src.uw.w3;
+    NEXT();
 }
 
 void OPCALL padddMmx(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg* src=&cpu->reg_mmx[op->rm];
 
     dest->ud.d0 += src->ud.d0;
 	dest->ud.d1 += src->ud.d1;
+    NEXT();
 }
 
 void OPCALL padddE64(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg src;
     
@@ -468,9 +559,11 @@ void OPCALL padddE64(CPU* cpu, DecodedOp* op) {
 
     dest->ud.d0 += src.ud.d0;
 	dest->ud.d1 += src.ud.d1;
+    NEXT();
 }
 
 void OPCALL paddsbMmx(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg* src=&cpu->reg_mmx[op->rm];
 
@@ -482,9 +575,11 @@ void OPCALL paddsbMmx(CPU* cpu, DecodedOp* op) {
 	dest->sb.b5 = SaturateWordSToByteS((S16)dest->sb.b5+(S16)src->sb.b5);
 	dest->sb.b6 = SaturateWordSToByteS((S16)dest->sb.b6+(S16)src->sb.b6);
 	dest->sb.b7 = SaturateWordSToByteS((S16)dest->sb.b7+(S16)src->sb.b7);
+    NEXT();
 }
 
 void OPCALL paddsbE64(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg src;
     
@@ -498,9 +593,11 @@ void OPCALL paddsbE64(CPU* cpu, DecodedOp* op) {
 	dest->sb.b5 = SaturateWordSToByteS((S16)dest->sb.b5+(S16)src.sb.b5);
 	dest->sb.b6 = SaturateWordSToByteS((S16)dest->sb.b6+(S16)src.sb.b6);
 	dest->sb.b7 = SaturateWordSToByteS((S16)dest->sb.b7+(S16)src.sb.b7);
+    NEXT();
 }
 
 void OPCALL paddswMmx(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg* src=&cpu->reg_mmx[op->rm];
 
@@ -508,9 +605,11 @@ void OPCALL paddswMmx(CPU* cpu, DecodedOp* op) {
 	dest->sw.w1 = SaturateDwordSToWordS((S32)dest->sw.w1+(S32)src->sw.w1);
 	dest->sw.w2 = SaturateDwordSToWordS((S32)dest->sw.w2+(S32)src->sw.w2);
 	dest->sw.w3 = SaturateDwordSToWordS((S32)dest->sw.w3+(S32)src->sw.w3);
+    NEXT();
 }
 
 void OPCALL paddswE64(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg src;
     
@@ -520,9 +619,11 @@ void OPCALL paddswE64(CPU* cpu, DecodedOp* op) {
 	dest->sw.w1 = SaturateDwordSToWordS((S32)dest->sw.w1+(S32)src.sw.w1);
 	dest->sw.w2 = SaturateDwordSToWordS((S32)dest->sw.w2+(S32)src.sw.w2);
 	dest->sw.w3 = SaturateDwordSToWordS((S32)dest->sw.w3+(S32)src.sw.w3);
+    NEXT();
 }
 
 void OPCALL paddusbMmx(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg* src=&cpu->reg_mmx[op->rm];
 
@@ -534,9 +635,11 @@ void OPCALL paddusbMmx(CPU* cpu, DecodedOp* op) {
 	dest->ub.b5 = SaturateWordSToByteU((S16)dest->ub.b5+(S16)src->ub.b5);
 	dest->ub.b6 = SaturateWordSToByteU((S16)dest->ub.b6+(S16)src->ub.b6);
 	dest->ub.b7 = SaturateWordSToByteU((S16)dest->ub.b7+(S16)src->ub.b7);
+    NEXT();
 }
 
 void OPCALL paddusbE64(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg src;
     
@@ -550,9 +653,11 @@ void OPCALL paddusbE64(CPU* cpu, DecodedOp* op) {
 	dest->ub.b5 = SaturateWordSToByteU((S16)dest->ub.b5+(S16)src.ub.b5);
 	dest->ub.b6 = SaturateWordSToByteU((S16)dest->ub.b6+(S16)src.ub.b6);
 	dest->ub.b7 = SaturateWordSToByteU((S16)dest->ub.b7+(S16)src.ub.b7);
+    NEXT();
 }
 
 void OPCALL padduswMmx(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg* src=&cpu->reg_mmx[op->rm];
 
@@ -560,9 +665,11 @@ void OPCALL padduswMmx(CPU* cpu, DecodedOp* op) {
 	dest->uw.w1 = SaturateDwordSToWordU((S32)dest->uw.w1+(S32)src->uw.w1);
 	dest->uw.w2 = SaturateDwordSToWordU((S32)dest->uw.w2+(S32)src->uw.w2);
 	dest->uw.w3 = SaturateDwordSToWordU((S32)dest->uw.w3+(S32)src->uw.w3);
+    NEXT();
 }
 
 void OPCALL padduswE64(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg src;
     
@@ -572,9 +679,11 @@ void OPCALL padduswE64(CPU* cpu, DecodedOp* op) {
 	dest->uw.w1 = SaturateDwordSToWordU((S32)dest->uw.w1+(S32)src.uw.w1);
 	dest->uw.w2 = SaturateDwordSToWordU((S32)dest->uw.w2+(S32)src.uw.w2);
 	dest->uw.w3 = SaturateDwordSToWordU((S32)dest->uw.w3+(S32)src.uw.w3);
+    NEXT();
 }
 
 void OPCALL psubbMmx(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg* src=&cpu->reg_mmx[op->rm];
 
@@ -586,9 +695,11 @@ void OPCALL psubbMmx(CPU* cpu, DecodedOp* op) {
 	dest->ub.b5 -= src->ub.b5;
 	dest->ub.b6 -= src->ub.b6;
 	dest->ub.b7 -= src->ub.b7;
+    NEXT();
 }
 
 void OPCALL psubbE64(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg src;
     
@@ -602,9 +713,11 @@ void OPCALL psubbE64(CPU* cpu, DecodedOp* op) {
 	dest->ub.b5 -= src.ub.b5;
 	dest->ub.b6 -= src.ub.b6;
 	dest->ub.b7 -= src.ub.b7;
+    NEXT();
 }
 
 void OPCALL psubwMmx(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg* src=&cpu->reg_mmx[op->rm];
 
@@ -612,9 +725,11 @@ void OPCALL psubwMmx(CPU* cpu, DecodedOp* op) {
 	dest->uw.w1 -= src->uw.w1;
 	dest->uw.w2 -= src->uw.w2;
 	dest->uw.w3 -= src->uw.w3;
+    NEXT();
 }
 
 void OPCALL psubwE64(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg src;
     
@@ -624,17 +739,21 @@ void OPCALL psubwE64(CPU* cpu, DecodedOp* op) {
 	dest->uw.w1 -= src.uw.w1;
 	dest->uw.w2 -= src.uw.w2;
 	dest->uw.w3 -= src.uw.w3;
+    NEXT();
 }
 
 void OPCALL psubdMmx(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg* src=&cpu->reg_mmx[op->rm];
 
     dest->ud.d0 -= src->ud.d0;
 	dest->ud.d1 -= src->ud.d1;
+    NEXT();
 }
 
 void OPCALL psubdE64(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg src;
     
@@ -642,9 +761,11 @@ void OPCALL psubdE64(CPU* cpu, DecodedOp* op) {
 
     dest->ud.d0 -= src.ud.d0;
 	dest->ud.d1 -= src.ud.d1;
+    NEXT();
 }
 
 void OPCALL psubsbMmx(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg* src=&cpu->reg_mmx[op->rm];
 
@@ -656,9 +777,11 @@ void OPCALL psubsbMmx(CPU* cpu, DecodedOp* op) {
 	dest->sb.b5 = SaturateWordSToByteS((S16)dest->sb.b5-(S16)src->sb.b5);
 	dest->sb.b6 = SaturateWordSToByteS((S16)dest->sb.b6-(S16)src->sb.b6);
 	dest->sb.b7 = SaturateWordSToByteS((S16)dest->sb.b7-(S16)src->sb.b7);
+    NEXT();
 }
 
 void OPCALL psubsbE64(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg src;
     
@@ -672,9 +795,11 @@ void OPCALL psubsbE64(CPU* cpu, DecodedOp* op) {
 	dest->sb.b5 = SaturateWordSToByteS((S16)dest->sb.b5-(S16)src.sb.b5);
 	dest->sb.b6 = SaturateWordSToByteS((S16)dest->sb.b6-(S16)src.sb.b6);
 	dest->sb.b7 = SaturateWordSToByteS((S16)dest->sb.b7-(S16)src.sb.b7);
+    NEXT();
 }
 
 void OPCALL psubswMmx(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg* src=&cpu->reg_mmx[op->rm];
 
@@ -682,9 +807,11 @@ void OPCALL psubswMmx(CPU* cpu, DecodedOp* op) {
 	dest->sw.w1 = SaturateDwordSToWordS((S32)dest->sw.w1-(S32)src->sw.w1);
 	dest->sw.w2 = SaturateDwordSToWordS((S32)dest->sw.w2-(S32)src->sw.w2);
 	dest->sw.w3 = SaturateDwordSToWordS((S32)dest->sw.w3-(S32)src->sw.w3);
+    NEXT();
 }
 
 void OPCALL psubswE64(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg src;
     
@@ -694,9 +821,11 @@ void OPCALL psubswE64(CPU* cpu, DecodedOp* op) {
 	dest->sw.w1 = SaturateDwordSToWordS((S32)dest->sw.w1-(S32)src.sw.w1);
 	dest->sw.w2 = SaturateDwordSToWordS((S32)dest->sw.w2-(S32)src.sw.w2);
 	dest->sw.w3 = SaturateDwordSToWordS((S32)dest->sw.w3-(S32)src.sw.w3);
+    NEXT();
 }
 
 void OPCALL psubusbMmx(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg* src=&cpu->reg_mmx[op->rm];
     MMX_reg result;
@@ -711,9 +840,11 @@ void OPCALL psubusbMmx(CPU* cpu, DecodedOp* op) {
 	if (dest->ub.b6>src->ub.b6) result.ub.b6 = dest->ub.b6 - src->ub.b6;
 	if (dest->ub.b7>src->ub.b7) result.ub.b7 = dest->ub.b7 - src->ub.b7;
 	dest->q = result.q;
+    NEXT();
 }
 
 void OPCALL psubusbE64(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg src;
     MMX_reg result;
@@ -730,9 +861,11 @@ void OPCALL psubusbE64(CPU* cpu, DecodedOp* op) {
 	if (dest->ub.b6>src.ub.b6) result.ub.b6 = dest->ub.b6 - src.ub.b6;
 	if (dest->ub.b7>src.ub.b7) result.ub.b7 = dest->ub.b7 - src.ub.b7;
 	dest->q = result.q;
+    NEXT();
 }
 
 void OPCALL psubuswMmx(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg* src=&cpu->reg_mmx[op->rm];
     MMX_reg result;
@@ -747,9 +880,11 @@ void OPCALL psubuswMmx(CPU* cpu, DecodedOp* op) {
 	if (dest->ub.b6>src->ub.b6) result.ub.b6 = dest->ub.b6 - src->ub.b6;
 	if (dest->ub.b7>src->ub.b7) result.ub.b7 = dest->ub.b7 - src->ub.b7;
 	dest->q = result.q;
+    NEXT();
 }
 
 void OPCALL psubuswE64(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg src;
     MMX_reg result;
@@ -766,9 +901,11 @@ void OPCALL psubuswE64(CPU* cpu, DecodedOp* op) {
 	if (dest->ub.b6>src.ub.b6) result.ub.b6 = dest->ub.b6 - src.ub.b6;
 	if (dest->ub.b7>src.ub.b7) result.ub.b7 = dest->ub.b7 - src.ub.b7;
 	dest->q = result.q;
+    NEXT();
 }
 
 void OPCALL pmulhwMmx(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg* src=&cpu->reg_mmx[op->rm];
     
@@ -776,9 +913,11 @@ void OPCALL pmulhwMmx(CPU* cpu, DecodedOp* op) {
 	dest->uw.w1 = (U16)(((S32)dest->sw.w1 * (S32)src->sw.w1) >> 16);
 	dest->uw.w2 = (U16)(((S32)dest->sw.w2 * (S32)src->sw.w2) >> 16);
 	dest->uw.w3 = (U16)(((S32)dest->sw.w3 * (S32)src->sw.w3) >> 16);
+    NEXT();
 }
 
 void OPCALL pmulhwE64(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg src;    
     
@@ -788,9 +927,11 @@ void OPCALL pmulhwE64(CPU* cpu, DecodedOp* op) {
 	dest->uw.w1 = (U16)(((S32)dest->sw.w1 * (S32)src.sw.w1) >> 16);
 	dest->uw.w2 = (U16)(((S32)dest->sw.w2 * (S32)src.sw.w2) >> 16);
 	dest->uw.w3 = (U16)(((S32)dest->sw.w3 * (S32)src.sw.w3) >> 16);
+    NEXT();
 }
 
 void OPCALL pmullwMmx(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg* src=&cpu->reg_mmx[op->rm];
     
@@ -798,9 +939,11 @@ void OPCALL pmullwMmx(CPU* cpu, DecodedOp* op) {
 	dest->uw.w1 = (U16)((S32)dest->sw.w1 * (S32)src->sw.w1);
 	dest->uw.w2 = (U16)((S32)dest->sw.w2 * (S32)src->sw.w2);
 	dest->uw.w3 = (U16)((S32)dest->sw.w3 * (S32)src->sw.w3);
+    NEXT();
 }
 
 void OPCALL pmullwE64(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg src;    
     
@@ -810,9 +953,11 @@ void OPCALL pmullwE64(CPU* cpu, DecodedOp* op) {
 	dest->uw.w1 = (U16)((S32)dest->sw.w1 * (S32)src.sw.w1);
 	dest->uw.w2 = (U16)((S32)dest->sw.w2 * (S32)src.sw.w2);
 	dest->uw.w3 = (U16)((S32)dest->sw.w3 * (S32)src.sw.w3);
+    NEXT();
 }
 
 void OPCALL pmaddwdMmx(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg* src=&cpu->reg_mmx[op->rm];
     
@@ -825,9 +970,11 @@ void OPCALL pmaddwdMmx(CPU* cpu, DecodedOp* op) {
 		dest->ud.d1 = 0x80000000;
 	else
 		dest->sd.d1 = (S32)dest->sw.w2 * (S32)src->sw.w2 + (S32)dest->sw.w3 * (S32)src->sw.w3;
+    NEXT();
 }
 
 void OPCALL pmaddwdE64(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg src;    
     
@@ -842,10 +989,12 @@ void OPCALL pmaddwdE64(CPU* cpu, DecodedOp* op) {
 		dest->ud.d1 = 0x80000000;
 	else
 		dest->sd.d1 = (S32)dest->sw.w2 * (S32)src.sw.w2 + (S32)dest->sw.w3 * (S32)src.sw.w3;
+    NEXT();
 }
 
 /* Comparison */
 void OPCALL pcmpeqbMmx(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg* src=&cpu->reg_mmx[op->rm];
     
@@ -857,9 +1006,11 @@ void OPCALL pcmpeqbMmx(CPU* cpu, DecodedOp* op) {
 	dest->ub.b5 = dest->ub.b5==src->ub.b5?0xff:0;
 	dest->ub.b6 = dest->ub.b6==src->ub.b6?0xff:0;
 	dest->ub.b7 = dest->ub.b7==src->ub.b7?0xff:0;
+    NEXT();
 }
 
 void OPCALL pcmpeqbE64(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg src;    
     
@@ -873,9 +1024,11 @@ void OPCALL pcmpeqbE64(CPU* cpu, DecodedOp* op) {
 	dest->ub.b5 = dest->ub.b5==src.ub.b5?0xff:0;
 	dest->ub.b6 = dest->ub.b6==src.ub.b6?0xff:0;
 	dest->ub.b7 = dest->ub.b7==src.ub.b7?0xff:0;
+    NEXT();
 }
 
 void OPCALL pcmpeqwMmx(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg* src=&cpu->reg_mmx[op->rm];
     
@@ -883,9 +1036,11 @@ void OPCALL pcmpeqwMmx(CPU* cpu, DecodedOp* op) {
 	dest->uw.w1 = dest->uw.w1==src->uw.w1?0xffff:0;
 	dest->uw.w2 = dest->uw.w2==src->uw.w2?0xffff:0;
 	dest->uw.w3 = dest->uw.w3==src->uw.w3?0xffff:0;
+    NEXT();
 }
 
 void OPCALL pcmpeqwE64(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg src;    
     
@@ -895,17 +1050,21 @@ void OPCALL pcmpeqwE64(CPU* cpu, DecodedOp* op) {
 	dest->uw.w1 = dest->uw.w1==src.uw.w1?0xffff:0;
 	dest->uw.w2 = dest->uw.w2==src.uw.w2?0xffff:0;
 	dest->uw.w3 = dest->uw.w3==src.uw.w3?0xffff:0;
+    NEXT();
 }
 
 void OPCALL pcmpeqdMmx(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg* src=&cpu->reg_mmx[op->rm];
     
     dest->ud.d0 = dest->ud.d0==src->ud.d0?0xffffffff:0;
 	dest->ud.d1 = dest->ud.d1==src->ud.d1?0xffffffff:0;
+    NEXT();
 }
 
 void OPCALL pcmpeqdE64(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg src;    
     
@@ -913,9 +1072,11 @@ void OPCALL pcmpeqdE64(CPU* cpu, DecodedOp* op) {
 
 	dest->ud.d0 = dest->ud.d0==src.ud.d0?0xffffffff:0;
 	dest->ud.d1 = dest->ud.d1==src.ud.d1?0xffffffff:0;
+    NEXT();
 }
 
 void OPCALL pcmpgtbMmx(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg* src=&cpu->reg_mmx[op->rm];
     
@@ -927,9 +1088,11 @@ void OPCALL pcmpgtbMmx(CPU* cpu, DecodedOp* op) {
 	dest->ub.b5 = dest->sb.b5>src->sb.b5?0xff:0;
 	dest->ub.b6 = dest->sb.b6>src->sb.b6?0xff:0;
 	dest->ub.b7 = dest->sb.b7>src->sb.b7?0xff:0;
+    NEXT();
 }
 
 void OPCALL pcmpgtbE64(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg src;    
     
@@ -943,9 +1106,11 @@ void OPCALL pcmpgtbE64(CPU* cpu, DecodedOp* op) {
 	dest->ub.b5 = dest->sb.b5>src.sb.b5?0xff:0;
 	dest->ub.b6 = dest->sb.b6>src.sb.b6?0xff:0;
 	dest->ub.b7 = dest->sb.b7>src.sb.b7?0xff:0;
+    NEXT();
 }
 
 void OPCALL pcmpgtwMmx(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg* src=&cpu->reg_mmx[op->rm];
     
@@ -953,9 +1118,11 @@ void OPCALL pcmpgtwMmx(CPU* cpu, DecodedOp* op) {
 	dest->uw.w1 = dest->sw.w1>src->sw.w1?0xffff:0;
 	dest->uw.w2 = dest->sw.w2>src->sw.w2?0xffff:0;
 	dest->uw.w3 = dest->sw.w3>src->sw.w3?0xffff:0;
+    NEXT();
 }
 
 void OPCALL pcmpgtwE64(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg src;    
     
@@ -965,17 +1132,21 @@ void OPCALL pcmpgtwE64(CPU* cpu, DecodedOp* op) {
 	dest->uw.w1 = dest->sw.w1>src.sw.w1?0xffff:0;
 	dest->uw.w2 = dest->sw.w2>src.sw.w2?0xffff:0;
 	dest->uw.w3 = dest->sw.w3>src.sw.w3?0xffff:0;
+    NEXT();
 }
 
 void OPCALL pcmpgtdMmx(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg* src=&cpu->reg_mmx[op->rm];
     
     dest->ud.d0 = dest->sd.d0>src->sd.d0?0xffffffff:0;
 	dest->ud.d1 = dest->sd.d1>src->sd.d1?0xffffffff:0;
+    NEXT();
 }
 
 void OPCALL pcmpgtdE64(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg src;    
     
@@ -983,10 +1154,12 @@ void OPCALL pcmpgtdE64(CPU* cpu, DecodedOp* op) {
 
 	dest->ud.d0 = dest->sd.d0>src.sd.d0?0xffffffff:0;
 	dest->ud.d1 = dest->sd.d1>src.sd.d1?0xffffffff:0;
+    NEXT();
 }
 
 /* Data Packing */
 void OPCALL packsswbMmx(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg* src=&cpu->reg_mmx[op->rm];
     
@@ -998,9 +1171,11 @@ void OPCALL packsswbMmx(CPU* cpu, DecodedOp* op) {
 	dest->sb.b5 = SaturateWordSToByteS(src->sw.w1);
 	dest->sb.b6 = SaturateWordSToByteS(src->sw.w2);
 	dest->sb.b7 = SaturateWordSToByteS(src->sw.w3);
+    NEXT();
 }
 
 void OPCALL packsswbE64(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg src;    
     
@@ -1014,9 +1189,11 @@ void OPCALL packsswbE64(CPU* cpu, DecodedOp* op) {
 	dest->sb.b5 = SaturateWordSToByteS(src.sw.w1);
 	dest->sb.b6 = SaturateWordSToByteS(src.sw.w2);
 	dest->sb.b7 = SaturateWordSToByteS(src.sw.w3);
+    NEXT();
 }
 
 void OPCALL packssdwMmx(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg* src=&cpu->reg_mmx[op->rm];
     
@@ -1024,9 +1201,11 @@ void OPCALL packssdwMmx(CPU* cpu, DecodedOp* op) {
 	dest->sw.w1 = SaturateDwordSToWordS(dest->sd.d1);
 	dest->sw.w2 = SaturateDwordSToWordS(src->sd.d0);
 	dest->sw.w3 = SaturateDwordSToWordS(src->sd.d1);
+    NEXT();
 }
 
 void OPCALL packssdwE64(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg src;    
     
@@ -1036,9 +1215,11 @@ void OPCALL packssdwE64(CPU* cpu, DecodedOp* op) {
 	dest->sw.w1 = SaturateDwordSToWordS(dest->sd.d1);
 	dest->sw.w2 = SaturateDwordSToWordS(src.sd.d0);
 	dest->sw.w3 = SaturateDwordSToWordS(src.sd.d1);
+    NEXT();
 }
 
 void OPCALL packuswbMmx(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg* src=&cpu->reg_mmx[op->rm];
     
@@ -1050,9 +1231,11 @@ void OPCALL packuswbMmx(CPU* cpu, DecodedOp* op) {
 	dest->ub.b5 = SaturateWordSToByteU(src->sw.w1);
 	dest->ub.b6 = SaturateWordSToByteU(src->sw.w2);
 	dest->ub.b7 = SaturateWordSToByteU(src->sw.w3);
+    NEXT();
 }
 
 void OPCALL packuswbE64(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg src;    
     
@@ -1066,9 +1249,11 @@ void OPCALL packuswbE64(CPU* cpu, DecodedOp* op) {
 	dest->ub.b5 = SaturateWordSToByteU(src.sw.w1);
 	dest->ub.b6 = SaturateWordSToByteU(src.sw.w2);
 	dest->ub.b7 = SaturateWordSToByteU(src.sw.w3);
+    NEXT();
 }
 
 void OPCALL punpckhbwMmx(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg* src=&cpu->reg_mmx[op->rm];
     
@@ -1080,9 +1265,11 @@ void OPCALL punpckhbwMmx(CPU* cpu, DecodedOp* op) {
 	dest->ub.b5 = src->ub.b6;
 	dest->ub.b6 = dest->ub.b7;
 	dest->ub.b7 = src->ub.b7;
+    NEXT();
 }
 
 void OPCALL punpckhbwE64(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg src;    
     
@@ -1096,9 +1283,11 @@ void OPCALL punpckhbwE64(CPU* cpu, DecodedOp* op) {
 	dest->ub.b5 = src.ub.b6;
 	dest->ub.b6 = dest->ub.b7;
 	dest->ub.b7 = src.ub.b7;
+    NEXT();
 }
 
 void OPCALL punpckhwdMmx(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg* src=&cpu->reg_mmx[op->rm];
     
@@ -1106,9 +1295,11 @@ void OPCALL punpckhwdMmx(CPU* cpu, DecodedOp* op) {
 	dest->uw.w1 = src->uw.w2;
 	dest->uw.w2 = dest->uw.w3;
 	dest->uw.w3 = src->uw.w3;
+    NEXT();
 }
 
 void OPCALL punpckhwdE64(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg src;    
     
@@ -1118,17 +1309,21 @@ void OPCALL punpckhwdE64(CPU* cpu, DecodedOp* op) {
 	dest->uw.w1 = src.uw.w2;
 	dest->uw.w2 = dest->uw.w3;
 	dest->uw.w3 = src.uw.w3;
+    NEXT();
 }
 
 void OPCALL punpckhdqMmx(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg* src=&cpu->reg_mmx[op->rm];
     
     dest->ud.d0 = dest->ud.d1;
 	dest->ud.d1 = src->ud.d1;
+    NEXT();
 }
 
 void OPCALL punpckhdqE64(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg src;    
     
@@ -1136,9 +1331,11 @@ void OPCALL punpckhdqE64(CPU* cpu, DecodedOp* op) {
 
 	dest->ud.d0 = dest->ud.d1;
 	dest->ud.d1 = src.ud.d1;
+    NEXT();
 }
 
 void OPCALL punpcklbwMmx(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg* src=&cpu->reg_mmx[op->rm];
     
@@ -1150,9 +1347,11 @@ void OPCALL punpcklbwMmx(CPU* cpu, DecodedOp* op) {
 	dest->ub.b2 = dest->ub.b1;
 	dest->ub.b1 = src->ub.b0;
 	dest->ub.b0 = dest->ub.b0;
+    NEXT();
 }
 
 void OPCALL punpcklbwE64(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg src;    
     
@@ -1166,9 +1365,11 @@ void OPCALL punpcklbwE64(CPU* cpu, DecodedOp* op) {
 	dest->ub.b2 = dest->ub.b1;
 	dest->ub.b1 = src.ub.b0;
 	dest->ub.b0 = dest->ub.b0;
+    NEXT();
 }
 
 void OPCALL punpcklwdMmx(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg* src=&cpu->reg_mmx[op->rm];
     
@@ -1176,9 +1377,11 @@ void OPCALL punpcklwdMmx(CPU* cpu, DecodedOp* op) {
 	dest->uw.w2 = dest->uw.w1;
 	dest->uw.w1 = src->uw.w0;
 	dest->uw.w0 = dest->uw.w0;
+    NEXT();
 }
 
 void OPCALL punpcklwdE64(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg src;    
     
@@ -1188,20 +1391,25 @@ void OPCALL punpcklwdE64(CPU* cpu, DecodedOp* op) {
 	dest->uw.w2 = dest->uw.w1;
 	dest->uw.w1 = src.uw.w0;
 	dest->uw.w0 = dest->uw.w0;
+    NEXT();
 }
 
 void OPCALL punpckldqMmx(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg* src=&cpu->reg_mmx[op->rm];
     
     dest->ud.d1 = src->ud.d0;
+    NEXT();
 }
 
 void OPCALL punpckldqE64(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     MMX_reg* dest=&cpu->reg_mmx[op->reg];
     MMX_reg src;    
     
     src.q = readq(eaa(cpu, op));
 
 	dest->ud.d1 = src.ud.d0;
+    NEXT();
 }

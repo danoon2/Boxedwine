@@ -32,18 +32,22 @@ public class SetCC extends Base {
 
     public void cc(FileOutputStream fos, FileOutputStream fos_init, String name, String condition) throws IOException {
         out(fos, "void OPCALL "+name+"_reg(CPU* cpu, DecodedOp* op) {");
+        out(fos, "    START_OP(cpu, op);");
         out(fos, "    if ("+condition+") {");
         out(fos, "        *cpu->reg8[op->reg] = 1;");
         out(fos, "    } else {");
         out(fos, "        *cpu->reg8[op->reg] = 0;");
         out(fos, "    }");
+        out(fos, "    NEXT();");
         out(fos, "}");
         out(fos, "void OPCALL "+name+"_mem(CPU* cpu, DecodedOp* op) {");
+        out(fos, "    START_OP(cpu, op);");
         out(fos, "    if ("+condition+") {");
         out(fos, "        writeb(eaa(cpu, op), 1);");
         out(fos, "    } else {");
         out(fos, "        writeb(eaa(cpu, op), 0);");
         out(fos, "    }");
+        out(fos, "    NEXT();");
         out(fos, "}");
 
         String mixed = name.substring(0, 1).toUpperCase() + name.substring(1);

@@ -413,6 +413,7 @@
     <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_cpu_init_mmx.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_fpu.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_incdec.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_jump.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_mmx.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_move.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_other.h" />

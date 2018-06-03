@@ -33,24 +33,32 @@ public class Conditions extends Base {
 
     public void condition(FileOutputStream fos, FileOutputStream fos_init, String name, String condition) throws IOException {
         out(fos, "void OPCALL "+name+"_16_reg(CPU* cpu, DecodedOp* op) {");
+        out(fos, "    START_OP(cpu, op);");
         out(fos, "    if ("+condition+") {");
         out(fos, "        cpu->reg[op->reg].u16 = cpu->reg[op->rm].u16;");
         out(fos, "    }");
+        out(fos, "    NEXT();");
         out(fos, "}");
         out(fos, "void OPCALL "+name+"_16_mem(CPU* cpu, DecodedOp* op) {");
+        out(fos, "    START_OP(cpu, op);");
         out(fos, "    if ("+condition+") {");
         out(fos, "        cpu->reg[op->reg].u16 = readw(eaa(cpu, op));");
         out(fos, "    }");
+        out(fos, "    NEXT();");
         out(fos, "}");
         out(fos, "void OPCALL "+name+"_32_reg(CPU* cpu, DecodedOp* op) {");
+        out(fos, "    START_OP(cpu, op);");
         out(fos, "    if ("+condition+") {");
         out(fos, "        cpu->reg[op->reg].u32 = cpu->reg[op->rm].u32;");
         out(fos, "    }");
+        out(fos, "    NEXT();");
         out(fos, "}");
         out(fos, "void OPCALL "+name+"_32_mem(CPU* cpu, DecodedOp* op) {");
+        out(fos, "    START_OP(cpu, op);");
         out(fos, "    if ("+condition+") {");
         out(fos, "        cpu->reg[op->reg].u32 = readd(eaa(cpu, op));");
         out(fos, "    }");
+        out(fos, "    NEXT();");
         out(fos, "}");
 
         String mixed = name.substring(0, 1).toUpperCase() + name.substring(1);

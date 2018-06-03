@@ -17,6 +17,7 @@
  */
 
 void OPCALL movsb_op(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
             movsb16r(cpu, op->base);
@@ -30,8 +31,10 @@ void OPCALL movsb_op(CPU* cpu, DecodedOp* op) {
             movsb32(cpu, op->base);
         }
     }
+    NEXT();
 }
 void OPCALL movsw_op(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
             movsw16r(cpu, op->base);
@@ -45,8 +48,10 @@ void OPCALL movsw_op(CPU* cpu, DecodedOp* op) {
             movsw32(cpu, op->base);
         }
     }
+    NEXT();
 }
 void OPCALL movsd_op(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
             movsd16r(cpu, op->base);
@@ -60,8 +65,10 @@ void OPCALL movsd_op(CPU* cpu, DecodedOp* op) {
             movsd32(cpu, op->base);
         }
     }
+    NEXT();
 }
 void OPCALL cmpsb_op(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
             cmpsb16r(cpu, op->repZero, op->base);
@@ -75,8 +82,10 @@ void OPCALL cmpsb_op(CPU* cpu, DecodedOp* op) {
             cmpsb32(cpu, op->repZero, op->base);
         }
     }
+    NEXT();
 }
 void OPCALL cmpsw_op(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
             cmpsw16r(cpu, op->repZero, op->base);
@@ -90,8 +99,10 @@ void OPCALL cmpsw_op(CPU* cpu, DecodedOp* op) {
             cmpsw32(cpu, op->repZero, op->base);
         }
     }
+    NEXT();
 }
 void OPCALL cmpsd_op(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
             cmpsd16r(cpu, op->repZero, op->base);
@@ -105,8 +116,10 @@ void OPCALL cmpsd_op(CPU* cpu, DecodedOp* op) {
             cmpsd32(cpu, op->repZero, op->base);
         }
     }
+    NEXT();
 }
 void OPCALL stosb_op(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
             stosb16r(cpu);
@@ -120,8 +133,10 @@ void OPCALL stosb_op(CPU* cpu, DecodedOp* op) {
             stosb32(cpu);
         }
     }
+    NEXT();
 }
 void OPCALL stosw_op(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
             stosw16r(cpu);
@@ -135,8 +150,10 @@ void OPCALL stosw_op(CPU* cpu, DecodedOp* op) {
             stosw32(cpu);
         }
     }
+    NEXT();
 }
 void OPCALL stosd_op(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
             stosd16r(cpu);
@@ -150,8 +167,10 @@ void OPCALL stosd_op(CPU* cpu, DecodedOp* op) {
             stosd32(cpu);
         }
     }
+    NEXT();
 }
 void OPCALL lodsb_op(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
             lodsb16r(cpu, op->base);
@@ -165,8 +184,10 @@ void OPCALL lodsb_op(CPU* cpu, DecodedOp* op) {
             lodsb32(cpu, op->base);
         }
     }
+    NEXT();
 }
 void OPCALL lodsw_op(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
             lodsw16r(cpu, op->base);
@@ -180,8 +201,10 @@ void OPCALL lodsw_op(CPU* cpu, DecodedOp* op) {
             lodsw32(cpu, op->base);
         }
     }
+    NEXT();
 }
 void OPCALL lodsd_op(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
             lodsd16r(cpu, op->base);
@@ -195,8 +218,10 @@ void OPCALL lodsd_op(CPU* cpu, DecodedOp* op) {
             lodsd32(cpu, op->base);
         }
     }
+    NEXT();
 }
 void OPCALL scasb_op(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
             scasb16r(cpu, op->repZero);
@@ -210,8 +235,10 @@ void OPCALL scasb_op(CPU* cpu, DecodedOp* op) {
             scasb32(cpu, op->repZero);
         }
     }
+    NEXT();
 }
 void OPCALL scasw_op(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
             scasw16r(cpu, op->repZero);
@@ -225,8 +252,10 @@ void OPCALL scasw_op(CPU* cpu, DecodedOp* op) {
             scasw32(cpu, op->repZero);
         }
     }
+    NEXT();
 }
 void OPCALL scasd_op(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
             scasd16r(cpu, op->repZero);
@@ -240,4 +269,5 @@ void OPCALL scasd_op(CPU* cpu, DecodedOp* op) {
             scasd32(cpu, op->repZero);
         }
     }
+    NEXT();
 }

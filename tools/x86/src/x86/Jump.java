@@ -39,7 +39,8 @@ public class Jump extends Base {
 
     public void jump(FileOutputStream fos, FileOutputStream fos_init, String functionName, String enumName, String condition) throws IOException {
         out(fos, "void OPCALL "+functionName+"(CPU* cpu, DecodedOp* op) {");
-        out(fos, "    cpu->eip.u32+=op->len; if ("+condition+") cpu->eip.u32+=op->imm;");
+        out(fos, "    START_OP(cpu, op);");
+        out(fos, "    if ("+condition+") {cpu->eip.u32+=op->imm; NEXT_BRANCH1();} else {NEXT_BRANCH2();}");
         out(fos, "}");
 
         out(fos_init, "INIT_CPU("+enumName+", "+functionName+")");

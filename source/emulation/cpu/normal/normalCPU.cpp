@@ -8,6 +8,13 @@
 #define eaa3(cpu, op) cpu->seg[op->base].address + cpu->reg[op->rm].u32 + (cpu->reg[op->sibIndex].u32 << + op->sibScale) + op->disp
 #define eaa(cpu, op) (op->ea16)?(eaa1(cpu, op)):(eaa3(cpu, op))
 
+//#define START_OP(cpu, op) op->log(cpu)
+#define START_OP(cpu, op)
+#define NEXT() cpu->eip.u32+=op->len; op->next->pfn(cpu, op->next)
+#define NEXT_DONE()
+#define NEXT_BRANCH1() cpu->eip.u32+=op->len
+#define NEXT_BRANCH2() cpu->eip.u32+=op->len
+
 #include "instructions.h"
 #include "normal_arith.h"
 #include "normal_conditions.h"
@@ -25,8 +32,6 @@
 #include "normal_other.h"
 #include "normal_jump.h"
 #include "normal_move.h"
-
-typedef void (OPCALL *OpCallback)(CPU* cpu, DecodedOp* op);
 
 static OpCallback normalOps[NUMBER_OF_OPS];
 static U32 normalOpsInitialized;
@@ -88,15 +93,7 @@ private:
 };
 
 void NormalBlock::run(CPU* cpu) {
-    DecodedOp* op = this->op;
-    while (op->next) {
-        op->log(cpu);
-        normalOps[op->inst](cpu, op);
-        cpu->eip.u32+=op->len;
-        op = op->next;
-    }
-    op->log(cpu);
-    normalOps[op->inst](cpu, op); // the last op in the block is responsible for updating eip
+    this->op->pfn(cpu, this->op);
     this->runCount++;
     cpu->blockInstructionCount+=this->opCount;
 }
@@ -150,8 +147,13 @@ void NormalCPU::run() {
     }
     if (!block) {
         block = NormalBlock::alloc(this);
-        decodeBlock(fetchByte, startIp, this->big, 0, PAGE_SIZE, 1, block);
+        decodeBlock(fetchByte, startIp, this->big, 0, PAGE_SIZE, 0, block);
 
+        DecodedOp* op = block->op;
+        while (op) {
+            op->pfn = normalOps[op->inst];
+            op = op->next;
+        }
         // might have changed after a read
         page = this->thread->memory->mmu[startIp >> PAGE_SHIFT];
 
