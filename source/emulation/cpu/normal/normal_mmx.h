@@ -51,7 +51,9 @@ U16 SaturateDwordSToWordU(S32 value)
 
 // EMMS
 void OPCALL emms(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
     cpu->fpu.reset();
+    NEXT();
 }
 
 /* Data Movement */
