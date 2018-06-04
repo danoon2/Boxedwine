@@ -24,30 +24,30 @@
 
 class wRECT {
 public:
-    S32 left {};
-    S32 top {};
-    S32 right {};
-    S32 bottom {};
+    S32 left;
+    S32 top;
+    S32 right;
+    S32 bottom;
 };
 
 class Wnd {
 public:
-    U32 surface {};
+    U32 surface;
     wRECT windowRect;
     wRECT clientRect;
     std::string text;
-    PixelFormat* pixelFormat {};
-    U32 pixelFormatIndex {};
-    void* openGlContext {};
-    U32 activated {};
-    U32 processId {};
-    U32 hwnd {};
+    PixelFormat* pixelFormat;
+    U32 pixelFormatIndex;
+    void* openGlContext;
+    U32 activated;
+    U32 processId;
+    U32 hwnd;
 #ifdef SDL2
-    void* sdlTexture {};
-    int sdlTextureHeight {};
-    int sdlTextureWidth {};
+    void* sdlTexture;
+    int sdlTextureHeight;
+    int sdlTextureWidth;
 #else
-    void* sdlSurface {};
+    void* sdlSurface;
 #endif
 };
 

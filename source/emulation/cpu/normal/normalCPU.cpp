@@ -2,7 +2,7 @@
 
 #include "../decoder.h"
 #include "normalCPU.h"
-#include "../../source/emulation/softmmu/soft_code_page.h"
+#include "../../softmmu/soft_code_page.h"
 
 #define eaa1(cpu, op) cpu->seg[op->base].address + (U16)(cpu->reg[op->rm].u16 + (S16)cpu->reg[op->sibIndex].u16 + op->disp)
 #define eaa3(cpu, op) cpu->seg[op->base].address + cpu->reg[op->rm].u32 + (cpu->reg[op->sibIndex].u32 << + op->sibScale) + op->disp

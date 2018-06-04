@@ -98,7 +98,7 @@ public:
 private:
     static std::unordered_map<void*, SHM*> shm;
     static std::unordered_map<U32, KProcess*> processes;
-    static std::unordered_map<std::string, BoxedPtr<MappedFileCache>> fileCache;
+    static std::unordered_map<std::string, BoxedPtr<MappedFileCache> > fileCache;
 };
 
 void initCallbacksInProcess(KProcess* process);

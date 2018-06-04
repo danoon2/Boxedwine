@@ -55,7 +55,7 @@ public:
     U32 getChildCount();
     void addChild(BoxedPtr<FsNode> node);
     void removeChildByName(const std::string& name);
-    void getAllChildren(std::vector<BoxedPtr<FsNode>>& results);
+    void getAllChildren(std::vector<BoxedPtr<FsNode> > & results);
 
 protected:
     BoxedPtr<FsNode> parent;
@@ -63,7 +63,7 @@ protected:
 private:
     const bool isDir;
     bool hasLoadedChildrenFromFileSystem;    
-    std::unordered_map<std::string, BoxedPtr<FsNode>> childrenByName;
+    std::unordered_map<std::string, BoxedPtr<FsNode> > childrenByName;
     void loadChildren();
 };
 

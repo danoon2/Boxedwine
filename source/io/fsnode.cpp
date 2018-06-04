@@ -76,7 +76,7 @@ void FsNode::addChild(BoxedPtr<FsNode> node) {
      this->childrenByName.erase(name);
  }
 
- void FsNode::getAllChildren(std::vector<BoxedPtr<FsNode>>& results) {
+ void FsNode::getAllChildren(std::vector<BoxedPtr<FsNode> > & results) {
     for (auto& n : this->childrenByName) {
         results.push_back(n.second);
     }

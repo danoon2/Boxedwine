@@ -38,7 +38,7 @@ U32 screenCy = 600;
 unsigned int KSystem::nextThreadId=10;
 std::unordered_map<void*, SHM*> KSystem::shm;
 std::unordered_map<U32, KProcess*> KSystem::processes;
-std::unordered_map<std::string, BoxedPtr<MappedFileCache>> KSystem::fileCache;
+std::unordered_map<std::string, BoxedPtr<MappedFileCache> > KSystem::fileCache;
 
 U32 getProcessCount() {
     return KSystem::getProcesses().size();
@@ -373,8 +373,8 @@ void KSystem::writeStat(const std::string& path, U32 buf, bool is64, U64 st_dev,
      }
 }
 
-static std::unordered_map<U32, BoxedPtr<SHM>> publicShm;
-static std::unordered_map<U32, BoxedPtr<SHM>> shmKey;
+static std::unordered_map<U32, BoxedPtr<SHM> > publicShm;
+static std::unordered_map<U32, BoxedPtr<SHM> > shmKey;
 
 #define IPC_CREAT  00001000   /* create if key is nonexistent */
 #define IPC_EXCL   00002000   /* fail if key exists */

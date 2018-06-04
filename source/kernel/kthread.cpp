@@ -867,14 +867,14 @@ KListNode<KThread*>* KThread::getWaitNofiyNode() {
     // this one node will handle all cases, except for syscalls that can wait on multiple objects, like select and poll
     if (!this->waitNode.isInList())
         return &this->waitNode;
-    BoxedPtr<KListNode<KThread*>> p = new KListNode<KThread*>(this);
+    BoxedPtr<KListNode<KThread*> > p = new KListNode<KThread*>(this);
     this->extraWaitNodes.add(p);
     return p.get();
 }
 
 void KThread::clearWaitNofifyNodes() {
     this->waitNode.remove();
-    this->extraWaitNodes.for_each([](BoxedPtr<KListNode<KThread*>>& node) {
+    this->extraWaitNodes.for_each([](BoxedPtr<KListNode<KThread*> > & node) {
         node->remove();
     });
     this->extraWaitNodes.removeAll();

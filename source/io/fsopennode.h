@@ -38,7 +38,7 @@ public:
     std::string openedPath; // when call fchdir, we should set the current directory to what was passed in, not what was linked to
 
 private:
-    std::vector<BoxedPtr<FsNode>> dirEntries;
+    std::vector<BoxedPtr<FsNode> > dirEntries;
     void loadDirEntries();
 
     friend FsNode;

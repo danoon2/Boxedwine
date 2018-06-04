@@ -53,7 +53,7 @@ public:
     KUnixSocketObject* connecting;
     KList<KUnixSocketObject*> pendingConnections; // weak, if object is destroyed it should remove itself from this list
     ringbuffer<S8> recvBuffer;
-    std::queue<BoxedPtr<KSocketMsg>> msgs;	
+    std::queue<BoxedPtr<KSocketMsg> > msgs;	
 
     KListNode<KUnixSocketObject*> pendingConnectionNode;
 

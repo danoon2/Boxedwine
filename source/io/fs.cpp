@@ -90,7 +90,7 @@ BoxedPtr<FsNode> Fs::getNodeFromLocalPath(const std::string& currentDirectory, c
     std::vector<std::string> parts;
     Fs::splitPath(fullpath, parts);
     BoxedPtr<FsNode> node = Fs::rootNode;
-    std::vector<BoxedPtr<FsNode>> nodes;
+    std::vector<BoxedPtr<FsNode> > nodes;
 
     nodes.push_back(node);
     for (U32 i=0;i<parts.size();) {
@@ -175,7 +175,7 @@ U32 Fs::makeLocalDirs(const std::string& path) {
     BoxedPtr<FsNode> lastNode;
     std::vector<std::string> missingParts;
     BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath("", path, lastNode, missingParts, false);    
-    std::vector<BoxedPtr<FsNode>> nodes;
+    std::vector<BoxedPtr<FsNode> > nodes;
     bool notFound = false;
 
     if (!node) {

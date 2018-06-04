@@ -47,7 +47,7 @@ public:
     static void remotePathToLocal(std::string& path);
     static U32 makeLocalDirs(const std::string& path);
     static std::string getParentPath(const std::string& path);
-    static std::string Fs::getNativeParentPath(const std::string& path);
+    static std::string getNativeParentPath(const std::string& path);
     static std::string getFileNameFromPath(const std::string& path);
     static std::string localPathToRemote(const std::string& path);
     static U32 readFile(const std::string& path, U8* buffer, U32 bufferLen);

@@ -2156,6 +2156,6 @@ U32 KProcess::shmdt(U32 shmaddr) {
     return -K_EINVAL;
 }
 
-const std::unordered_map<U32, BoxedPtr<MappedFile>>& KProcess::getMappedFiles() {
+const std::unordered_map<U32, BoxedPtr<MappedFile> > & KProcess::getMappedFiles() {
     return this->mappedFiles;
 }

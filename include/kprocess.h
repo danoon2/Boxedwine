@@ -198,43 +198,43 @@ public:
     BoxedPtr<SHM> allocSHM(U32 key, U32 afterIndex);
     BoxedPtr<SHM> getSHM(U32 key);
     void attachSHM(U32 address, const BoxedPtr<SHM>& shm);
-    const std::unordered_map<U32, BoxedPtr<MappedFile>>& getMappedFiles();
+    const std::unordered_map<U32, BoxedPtr<MappedFile> > & getMappedFiles();
 
-    U32 id {};
-    U32 parentId {};
-    U32 groupId {};
-    U32 userId {};
-    U32 effectiveUserId {};
-    U32 effectiveGroupId {};
-    U64 pendingSignals {};
-    U32 signaled {};
-    U32 exitCode {};
-    U32 umaskValue {};
-    bool terminated {};
-    Memory* memory {};     
+    U32 id;
+    U32 parentId;
+    U32 groupId;
+    U32 userId;
+    U32 effectiveUserId;
+    U32 effectiveGroupId;
+    U64 pendingSignals;
+    U32 signaled;
+    U32 exitCode;
+    U32 umaskValue;
+    bool terminated;
+    Memory* memory;     
     std::string currentDirectory;
-    U32 brkEnd {};    
+    U32 brkEnd;    
     KSigAction sigActions[MAX_SIG_ACTIONS];
     KProcessTimer timer;
     std::string commandLine;
     std::string exe;
     std::string name;
     std::vector<std::string> path;        
-    KThread* waitingThread {};
-    U32 loaderBaseAddress {};
-    U32 phdr {};
-    U32 phnum {};
-    U32 phentsize {};
-    U32 entry {};
-    U32 eventQueueFD {};    
+    KThread* waitingThread;
+    U32 loaderBaseAddress;
+    U32 phdr;
+    U32 phnum;
+    U32 phentsize;
+    U32 entry;
+    U32 eventQueueFD;    
     U32 usedTLS[TLS_ENTRIES];
-    KThread* wakeOnExitOrExec {};
+    KThread* wakeOnExitOrExec;
 private:
     std::unordered_map<U32, KFileDescriptor*> fds;
     std::unordered_map<U32, user_desc> ldt;
-    std::unordered_map<U32, BoxedPtr<SHM>> privateShm; // key is shmid
-    std::unordered_map<U32, BoxedPtr<AttachedSHM>> attachedShm; // key is attached address
-    std::unordered_map<U32, BoxedPtr<MappedFile>> mappedFiles; // key is address
+    std::unordered_map<U32, BoxedPtr<SHM> > privateShm; // key is shmid
+    std::unordered_map<U32, BoxedPtr<AttachedSHM> > attachedShm; // key is attached address
+    std::unordered_map<U32, BoxedPtr<MappedFile> > mappedFiles; // key is address
     std::unordered_map<U32, KThread*> threads;
 
     KFileDescriptor* openFileDescriptor(const std::string& currentDirectory, const std::string& localPath, U32 accessFlags, U32 descriptorFlags, S32 handle, U32 afterHandle);

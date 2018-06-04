@@ -81,7 +81,7 @@ public:
 #endif
         return _data[idx];
     }
-    U32 size() const {return this->size()}
+    U32 size() const {return this->size();}
 
 private:
     T* _data;

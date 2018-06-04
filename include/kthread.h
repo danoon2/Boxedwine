@@ -79,45 +79,45 @@ public:
     U32 sigsuspend(U32 mask, U32 sigsetSize);
     U32 sleep(U32 ms);
 
-    U32 id {};
-    U64 sigMask {}; // :TODO: what happens when this is changed while in a signal
-    U64 inSigMask {};
-    U32 alternateStack {};
-    U32 alternateStackSize {};
-    CPU* cpu {};
-    U32 stackPageStart {};
-    U32 stackPageCount {};
-    KProcess* process {};   
-    Memory* memory {};
-    bool     interrupted {};
-    U32     inSignal {};    
+    U32 id;
+    U64 sigMask; // :TODO: what happens when this is changed while in a signal
+    U64 inSigMask;
+    U32 alternateStack;
+    U32 alternateStackSize;
+    CPU* cpu;
+    U32 stackPageStart;
+    U32 stackPageCount;
+    KProcess* process;   
+    Memory* memory;
+    bool interrupted;
+    U32 inSignal;    
 
-    U32     clear_child_tid {};
-    U64     userTime {};
-    U64     kernelTime {};
-    U32     inSysCall {};
-    KThread* waitingForSignalToEnd {};
-    U64 waitingForSignalToEndMaskToRestore {};
+    U32 clear_child_tid;
+    U64 userTime;
+    U64 kernelTime;
+    U32 inSysCall;
+    KThread* waitingForSignalToEnd;
+    U64 waitingForSignalToEndMaskToRestore;
     struct user_desc tls[TLS_ENTRIES];
-    U64 pendingSignals {};
-    bool waiting {};
-    U32 waitStartTime {};
-    U32 waitType {};
+    U64 pendingSignals;
+    bool waiting;
+    U32 waitStartTime;
+    U32 waitType;
     KThreadTimer timer;
-    void* glContext {};
-    void* currentContext {};
-    bool log {}; // syscalls
-    struct OpenGLVetexPointer glVertextPointer {};
-    struct OpenGLVetexPointer glNormalPointer {};
-    struct OpenGLVetexPointer glFogPointer {};
-    struct OpenGLVetexPointer glFogPointerEXT {};
-    struct OpenGLVetexPointer glColorPointer {};
-    struct OpenGLVetexPointer glSecondaryColorPointer {};
-    struct OpenGLVetexPointer glSecondaryColorPointerEXT {};
-    struct OpenGLVetexPointer glIndexPointer {};
-    struct OpenGLVetexPointer glTexCoordPointer {};
-    struct OpenGLVetexPointer glEdgeFlagPointer {};
-    struct OpenGLVetexPointer glEdgeFlagPointerEXT {};
+    void* glContext;
+    void* currentContext;
+    bool log; // syscalls
+    struct OpenGLVetexPointer glVertextPointer;
+    struct OpenGLVetexPointer glNormalPointer;
+    struct OpenGLVetexPointer glFogPointer;
+    struct OpenGLVetexPointer glFogPointerEXT;
+    struct OpenGLVetexPointer glColorPointer;
+    struct OpenGLVetexPointer glSecondaryColorPointer;
+    struct OpenGLVetexPointer glSecondaryColorPointerEXT;
+    struct OpenGLVetexPointer glIndexPointer;
+    struct OpenGLVetexPointer glTexCoordPointer;
+    struct OpenGLVetexPointer glEdgeFlagPointer;
+    struct OpenGLVetexPointer glEdgeFlagPointerEXT;
 
     inline static KThread* currentThread() {return runningThread;}
     inline static void setCurrentThread(KThread* thread) {runningThread = thread;}
@@ -130,7 +130,7 @@ public:
 private:
     static KThread* runningThread;    
 
-    KArray<BoxedPtr<KListNode<KThread*>>> extraWaitNodes;
+    KArray<BoxedPtr<KListNode<KThread*> > > extraWaitNodes;
     KListNode<KThread*> waitNode;
 };
 
