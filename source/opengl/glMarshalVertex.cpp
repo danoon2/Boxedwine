@@ -5,7 +5,7 @@
 #include "glcommon.h"
 
 #ifndef BOXEDWINE_64BIT_MMU
-U32 updateVertexPointer(CPU* cpu, struct OpenGLVetexPointer* p, U32 count) {
+U32 updateVertexPointer(CPU* cpu, OpenGLVetexPointer* p, U32 count) {
     U32 usingArrayBuffer = ARRAY_BUFFER();
 
     if (ARRAY_BUFFER()) {

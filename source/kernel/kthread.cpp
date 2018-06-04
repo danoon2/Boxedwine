@@ -90,7 +90,30 @@ KThread::KThread(U32 id, KProcess* process) :
     timer(this), 
     scheduledThreadNode(this),
     waitThreadNode(this),
-    waitNode(this)
+    waitNode(this),
+    sigMask(0),
+    inSigMask(0),
+    alternateStack(0),
+    alternateStackSize(0),
+    cpu(NULL),
+    stackPageStart(0),
+    stackPageCount(0),
+    memory(0),
+    interrupted(false),
+    inSignal(0),
+    clear_child_tid(0),
+    userTime(0),
+    kernelTime(0),
+    inSysCall(0),
+    waitingForSignalToEnd(NULL),
+    waitingForSignalToEndMaskToRestore(0),
+    pendingSignals(0),
+    waiting(false),
+    waitStartTime(0),
+    waitType(0),
+    glContext(0),
+    currentContext(0),
+    log(false)
     {
     int i;
 

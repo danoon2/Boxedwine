@@ -45,7 +45,28 @@ bool KProcessTimer::run() {
     return result;
 }
 
-KProcess::KProcess(U32 id) : id(id), timer(this) {
+KProcess::KProcess(U32 id) : id(id), 
+    timer(this),
+    parentId(0),
+    groupId(0),
+    userId(0),
+    effectiveUserId(0),
+    effectiveGroupId(0),
+    pendingSignals(0),
+    signaled(0),
+    exitCode(0),
+    umaskValue(0),
+    terminated(false),
+    memory(NULL),
+    brkEnd(0), 
+    waitingThread(NULL),
+    loaderBaseAddress(0),
+    phdr(0),
+    phnum(0),
+    phentsize(0),
+    entry(0),
+    eventQueueFD(0),
+    wakeOnExitOrExec(NULL) {
     initCallbacksInProcess(this);
 
     for (int i=0;i<LDT_ENTRIES;i++) {

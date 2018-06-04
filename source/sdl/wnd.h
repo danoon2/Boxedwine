@@ -24,6 +24,7 @@
 
 class wRECT {
 public:
+    wRECT() : left(0), top(0), right(0), bottom(0) {}
     S32 left;
     S32 top;
     S32 right;
@@ -32,6 +33,14 @@ public:
 
 class Wnd {
 public:
+    Wnd() : surface(0), pixelFormat(NULL), pixelFormatIndex(0), openGlContext(NULL), activated(0), processId(0), hwnd(0)
+#ifdef SDL2
+        , sdlTexture(NULL), sdlTextureHeight(0), sdlTextureWidth(0)
+#else
+        , sdlSurface(NULL)
+#endif
+    {}
+
     U32 surface;
     wRECT windowRect;
     wRECT clientRect;

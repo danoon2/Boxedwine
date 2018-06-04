@@ -27,7 +27,9 @@
 #define TLS_ENTRIES 10
 #define TLS_ENTRY_START_INDEX 10
 
-struct OpenGLVetexPointer {
+class OpenGLVetexPointer {
+public:
+    OpenGLVetexPointer() : size(0), type(0), stride(0), count(0), ptr(0), marshal(NULL), marshal_size(0), refreshEachCall(0) {}
     U32 size;
     U32 type;
     U32 stride;
@@ -107,17 +109,17 @@ public:
     void* glContext;
     void* currentContext;
     bool log; // syscalls
-    struct OpenGLVetexPointer glVertextPointer;
-    struct OpenGLVetexPointer glNormalPointer;
-    struct OpenGLVetexPointer glFogPointer;
-    struct OpenGLVetexPointer glFogPointerEXT;
-    struct OpenGLVetexPointer glColorPointer;
-    struct OpenGLVetexPointer glSecondaryColorPointer;
-    struct OpenGLVetexPointer glSecondaryColorPointerEXT;
-    struct OpenGLVetexPointer glIndexPointer;
-    struct OpenGLVetexPointer glTexCoordPointer;
-    struct OpenGLVetexPointer glEdgeFlagPointer;
-    struct OpenGLVetexPointer glEdgeFlagPointerEXT;
+    OpenGLVetexPointer glVertextPointer;
+    OpenGLVetexPointer glNormalPointer;
+    OpenGLVetexPointer glFogPointer;
+    OpenGLVetexPointer glFogPointerEXT;
+    OpenGLVetexPointer glColorPointer;
+    OpenGLVetexPointer glSecondaryColorPointer;
+    OpenGLVetexPointer glSecondaryColorPointerEXT;
+    OpenGLVetexPointer glIndexPointer;
+    OpenGLVetexPointer glTexCoordPointer;
+    OpenGLVetexPointer glEdgeFlagPointer;
+    OpenGLVetexPointer glEdgeFlagPointerEXT;
 
     inline static KThread* currentThread() {return runningThread;}
     inline static void setCurrentThread(KThread* thread) {runningThread = thread;}
