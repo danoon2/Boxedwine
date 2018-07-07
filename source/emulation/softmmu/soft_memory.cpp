@@ -179,10 +179,60 @@ void writed(U32 address, U32 value) {
     }
 }
 
+U8* Memory::callbackRam;
+U32 Memory::callbackRamPos;
+
+void Memory::addCallback(OpCallback func) {
+    U64 funcAddress = (U64)func;
+    U8* address = callbackRam+callbackRamPos;
+    
+    *address=0xFE;
+    address++;
+    *address=0x38;
+    address++;
+    *address=(U8)funcAddress;
+    address++;
+    *address=(U8)(funcAddress >> 8);
+    address++;
+    *address=(U8)(funcAddress >> 16);
+    address++;
+    *address=(U8)(funcAddress >> 24);
+    callbackRamPos+=6;
+    if (sizeof(func)==8) {
+        address++;
+        *address=(U8)(funcAddress >> 32);
+        address++;
+        *address=(U8)(funcAddress >> 40);
+        address++;
+        *address=(U8)(funcAddress >> 48);
+        address++;
+        *address=(U8)(funcAddress >> 56);
+        callbackRamPos+=4;
+    }
+}
+
+class CallbackPage : public NativePage {
+    protected:
+    CallbackPage(U8* nativeAddress, U32 address, U32 flags) : NativePage(nativeAddress, address, flags) {
+    }
+public:
+    static CallbackPage* CallbackPage::alloc(U8* page, U32 address, U32 flags) {
+        return new CallbackPage(page, address, flags);
+    }
+    void close() {}
+};
+
 Memory::Memory(KProcess* process) : process(process) {
     for (int i=0;i<NUMBER_OF_PAGES;i++) {
         this->mmu[i] = invalidPage;
     }
+
+    if (!callbackRam) {
+        callbackRam = ramPageAlloc();
+        addCallback(onExitSignal);
+    }
+
+    this->mmu[CALL_BACK_ADDRESS>>PAGE_SHIFT] = NativePage::alloc(callbackRam, CALL_BACK_ADDRESS, PAGE_READ|PAGE_EXEC);
 }
 
 Memory::~Memory() {
@@ -196,6 +246,7 @@ void Memory::reset() {
         this->mmu[i]->close();
         this->mmu[i] = invalidPage;
     }
+    this->mmu[CALL_BACK_ADDRESS>>PAGE_SHIFT] = NativePage::alloc(callbackRam, CALL_BACK_ADDRESS, PAGE_READ|PAGE_EXEC);
 }
 
 void Memory::reset(U32 page, U32 pageCount) {
@@ -230,6 +281,7 @@ void Memory::clone(Memory* from) {
                 continue;
             }
         }
+        page = from->mmu[i]; // above code could have changed this
         if (page->type == Page::Type::RO_Page || page->type == Page::Type::RW_Page || page->type == Page::Type::WO_Page || page->type == Page::Type::NO_Page || page->type == Page::Type::Code_Page) {
             RWPage* p = (RWPage*)from->mmu[i];
             if (!page->mapShared()) {
@@ -268,7 +320,7 @@ void Memory::clone(Memory* from) {
         } else if (page->type == Page::Type::Invalid_Page) { 
             this->mmu[i] = from->mmu[i];
         } else {
-            kpanic("unhandled case when cloning memory");
+            kpanic("unhandled case when cloning memory: page type = %d", page->type);
         }
     }
 }

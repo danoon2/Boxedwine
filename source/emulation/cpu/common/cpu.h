@@ -269,6 +269,9 @@ public:
     void push16(U16 value);
     void push32(U32 value);
 
+    U32 push32_r(U32 esp, U32 value);
+    U32 push16_r(U32 esp, U16 value);
+
     U32 setSegment(U32 seg, U32 value);
     void prepareException(int code, int error);
     void call(U32 big, U32 selector, U32 offset, U32 oldEip);

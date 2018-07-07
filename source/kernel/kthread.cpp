@@ -565,13 +565,14 @@ U32 KThread::sigreturn() {
     return -K_CONTINUE;
 }
 
-void OPCALL onExitSignal(CPU* cpu, struct Op* op) {
+void OPCALL onExitSignal(CPU* cpu, DecodedOp* op) {
     U32 context;	
     U64 count = cpu->instructionCount;
 
     cpu->pop32(); // signal
     cpu->pop32(); // address
     context = cpu->pop32();
+    cpu->thread->waitStartTime = cpu->pop32();
     cpu->thread->interrupted = cpu->pop32()!=0;
 
 #ifdef LOG_OPS
@@ -623,7 +624,7 @@ void KThread::runSignal(U32 signal, U32 trapNo, U32 errorNo) {
 
 #ifdef LOG_OPS
         klog("runSignal %d", signal);
-        klog("    before signal %.8X EAX=%.8X ECX=%.8X EDX=%.8X EBX=%.8X ESP=%.8X EBP=%.8X ESI=%.8X EDI=%.8X fs=%d(%X) fs18=%X", cpu->eip.u32, cpu->reg[0].u32, cpu->reg[1].u32, cpu->reg[2].u32, cpu->reg[3].u32, cpu->reg[4].u32, cpu->reg[5].u32, cpu->reg[6].u32, cpu->reg[7].u32, cpu->segValue[4], cpu->segAddress[4], cpu->segAddress[4]?readd(thread, cpu->segAddress[4]+0x18):0);
+        klog("    before signal %.8X EAX=%.8X ECX=%.8X EDX=%.8X EBX=%.8X ESP=%.8X EBP=%.8X ESI=%.8X EDI=%.8X fs=%d(%X) fs18=%X", cpu->eip.u32, cpu->reg[0].u32, cpu->reg[1].u32, cpu->reg[2].u32, cpu->reg[3].u32, cpu->reg[4].u32, cpu->reg[5].u32, cpu->reg[6].u32, cpu->reg[7].u32, cpu->seg[4].value, cpu->seg[4].address, cpu->seg[4].address?readd(cpu->seg[4].address+0x18):0);
 #endif
         this->inSigMask=action->mask | this->sigMask;
         if (action->flags & K_SA_RESETHAND) {
@@ -678,9 +679,6 @@ void KThread::runSignal(U32 signal, U32 trapNo, U32 errorNo) {
         }
 #ifdef LOG_OPS
         klog("    context %X interrupted %d", context, interrupted);
-#endif
-#ifdef BOXEDWINE_VM
-        x64_addSignalExit(cpu);
 #endif
         cpu->push32(SIG_RETURN_ADDRESS);
         this->cpu->eip.u32 = action->handlerAndSigAction;

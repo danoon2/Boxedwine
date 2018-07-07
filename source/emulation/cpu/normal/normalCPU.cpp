@@ -70,6 +70,7 @@ static void initNormalOps() {
     normalOps[LMSWRreg] = 0; 
     normalOps[LMSW] = 0;
     normalOps[INVLPG] = 0;
+    normalOps[Callback] = 0;
 }
 
 NormalCPU::NormalCPU() {
@@ -151,7 +152,8 @@ void NormalCPU::run() {
 
         DecodedOp* op = block->op;
         while (op) {
-            op->pfn = normalOps[op->inst];
+            if (!op->pfn) // callback will be set by decoder
+                op->pfn = normalOps[op->inst];
             op = op->next;
         }
         // might have changed after a read
@@ -161,7 +163,7 @@ void NormalCPU::run() {
         if (page->type == Page::Type::Code_Page) {
             codePage = (CodePage*)page;
         } else {
-            if (page->type == Page::Type::RO_Page || page->type == Page::Type::RW_Page || page->type == Page::Type::Copy_On_Write_Page) {
+            if (page->type == Page::Type::RO_Page || page->type == Page::Type::RW_Page || page->type == Page::Type::Copy_On_Write_Page || page->type == Page::Type::Native_Page) {
                 RWPage* p = (RWPage*)page;
                 codePage = CodePage::alloc(p->page, p->address, p->flags);
                 this->thread->memory->mmu[startIp >> PAGE_SHIFT] = codePage;

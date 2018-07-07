@@ -151,4 +151,6 @@ public:
 #define RESTORE_SIGNAL_MASK 0xF000000000000000l
 #define SIGSUSPEND_RETURN 0x0FFFFFFFFFFFFFFFl
 
+void OPCALL onExitSignal(CPU* cpu, DecodedOp* op);
+
 #endif

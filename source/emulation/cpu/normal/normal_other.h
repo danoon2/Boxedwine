@@ -95,22 +95,22 @@ void OPCALL normal_cwq(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_callAp(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    cpu->call(0, op->disp, op->imm, cpu->eip.u32+op->len);
+    cpu->call(0, op->imm, op->disp, cpu->eip.u32+op->len);
     NEXT_DONE();
 }
 void OPCALL normal_callFar(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    cpu->call(1, op->disp, op->imm, cpu->eip.u32+op->len);
+    cpu->call(1, op->imm, op->disp, cpu->eip.u32+op->len);
     NEXT_DONE();
 }
 void OPCALL normal_jmpAp(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    cpu->jmp(0, op->disp, op->imm, cpu->eip.u32+op->len);
+    cpu->jmp(0, op->imm, op->disp, cpu->eip.u32+op->len);
     NEXT_DONE();
 }
 void OPCALL normal_jmpFar(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    cpu->jmp(1, op->disp, op->imm, cpu->eip.u32+op->len);
+    cpu->jmp(1, op->imm, op->disp, cpu->eip.u32+op->len);
     NEXT_DONE();
 }
 void OPCALL normal_retf16(CPU* cpu, DecodedOp* op) {
@@ -200,6 +200,11 @@ void OPCALL normal_int99(CPU* cpu, DecodedOp* op) {
         kpanic("Uknown int 99 call: %d", index);
     }
     NEXT();
+}
+void OPCALL normal_intIb(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
+    cpu->thread->signalIllegalInstruction(5);// 5=ILL_PRVOPC  // :TODO: just a guess
+    NEXT_DONE();
 }
 void OPCALL normal_xlat(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);

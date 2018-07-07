@@ -26,6 +26,11 @@
 class KProcess;
 class Page;
 
+class CPU;
+class DecodedOp;
+
+typedef void (OPCALL *OpCallback)(CPU* cpu, DecodedOp* op);
+
 class Memory {
 public:   
     Memory(KProcess* process);
@@ -47,12 +52,15 @@ public:
     bool isPageAllocated(U32 page);
 
     KProcess* process;
-    Page* mmu[NUMBER_OF_PAGES];
+    Page* mmu[NUMBER_OF_PAGES];    
 #ifdef LOG_OPS
     U32 log;
 #endif
 
 private:
+    static U8* callbackRam;
+    static U32 callbackRamPos;
+    void addCallback(OpCallback func);
     U8* nativeAddressStart;
 };
 

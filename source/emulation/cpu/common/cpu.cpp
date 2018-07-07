@@ -58,11 +58,97 @@ void CPU::reset() {
 }
 
 void CPU::call(U32 big, U32 selector, U32 offset, U32 oldEip) {
-    kpanic("CPU::call not implemented");
+     if (this->flags & VM) {
+        U32 esp = THIS_ESP; //  // don't set ESP until we are done with memory Writes / push so that we are reentrant
+        if (big) {
+            esp = push32_r(esp, this->seg[CS].value);
+            esp = push32_r(esp, oldEip);
+            this->eip.u32 = offset;
+        } else {
+            esp = push16_r(esp, this->seg[CS].value);
+            esp = push16_r(esp, oldEip & 0xFFFF);
+            this->eip.u32 = offset & 0xffff;
+        } 
+        THIS_ESP = esp;
+        this->big = 0;
+        this->seg[CS].address = selector << 4;;
+        this->seg[CS].value = selector;
+    } else {
+        U32 rpl=selector & 3;
+        U32 index = selector >> 3;
+        struct user_desc* ldt;
+        U32 esp;
+
+        if (CPU_CHECK_COND(this, (selector & 0xfffc)==0, "CALL:CS selector zero", EXCEPTION_GP,0))
+            return;
+            
+        if (index>=LDT_ENTRIES) {
+            CPU_CHECK_COND(this, 0, "CALL:CS beyond limits", EXCEPTION_GP,selector & 0xfffc);
+            return;
+        }
+        ldt = this->thread->getLDT(index);
+
+        if (this->thread->isLdtEmpty(ldt)) {
+            prepareException(EXCEPTION_NP,selector & 0xfffc);
+            return;
+        }
+       
+        esp = THIS_ESP;
+        // commit point
+        if (big) {
+            esp = push32_r(esp, this->seg[CS].value);
+            esp = push32_r(esp, oldEip);
+            this->eip.u32=offset;
+        } else {
+            esp = push16_r(esp, this->seg[CS].value);
+            esp = push16_r(esp, oldEip);
+            this->eip.u32=offset & 0xffff;
+        }
+        THIS_ESP = esp; // don't set ESP until we are done with Memory Writes / CPU_Push so that we are reentrant
+        this->big = ldt->seg_32bit;
+        this->seg[CS].address = ldt->base_addr;
+        this->seg[CS].value = (selector & 0xfffc) | this->cpl;
+    }
 }
 
 void CPU::jmp(U32 big, U32 selector, U32 offset, U32 oldEip) {
-    kpanic("CPU::jmp not implemented");
+    if (this->flags & VM) {
+        if (!big) {
+            this->eip.u32 = offset & 0xffff;
+        } else {
+            this->eip.u32 = offset;
+        }
+        this->seg[CS].address = selector << 4;;
+        this->seg[CS].value = selector;
+        this->big = 0;
+    } else {
+        U32 rpl=selector & 3;
+        U32 index = selector >> 3;
+        struct user_desc* ldt;
+
+        if (CPU_CHECK_COND(this, (selector & 0xfffc)==0, "JMP:CS selector zero", EXCEPTION_GP,0))
+            return;
+            
+        if (index>=LDT_ENTRIES) {
+            if (CPU_CHECK_COND(this, 0, "JMP:CS beyond limits", EXCEPTION_GP,selector & 0xfffc))
+                return;
+        }
+        ldt = this->thread->getLDT(index);
+
+        if (this->thread->isLdtEmpty(ldt)) {
+            prepareException(EXCEPTION_NP,selector & 0xfffc);
+            return;
+        }
+
+        this->big = ldt->seg_32bit;
+        this->seg[CS].address = ldt->base_addr;
+        this->seg[CS].value = (selector & 0xfffc) | this->cpl;
+        if (!big) {
+            this->eip.u32 = offset & 0xffff;
+        } else {
+            this->eip.u32 = offset;
+        }
+    }
 }
 
 
@@ -929,10 +1015,22 @@ void CPU::push16(U16 value) {
     THIS_ESP = new_esp;
 }
 
+U32 CPU::push16_r(U32 esp, U16 value) {
+    U32 new_esp=(esp & this->stackNotMask) | ((esp - 2) & this->stackMask);
+    writew(this->seg[SS].address + (new_esp & this->stackMask) ,value);
+    return new_esp;
+}
+
 void CPU::push32(U32 value) {
     U32 new_esp=(THIS_ESP & this->stackNotMask) | ((THIS_ESP - 4) & this->stackMask);
     writed(this->seg[SS].address + (new_esp & this->stackMask) ,value);
     THIS_ESP = new_esp;
+}
+
+U32 CPU::push32_r(U32 esp, U32 value) {
+    U32 new_esp=(esp & this->stackNotMask) | ((esp - 4) & this->stackMask);
+    writed(this->seg[SS].address + (new_esp & this->stackMask) ,value);
+    return new_esp;
 }
 
 void CPU::clone(CPU* from) {

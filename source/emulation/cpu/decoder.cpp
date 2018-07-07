@@ -975,7 +975,8 @@ const InstructionInfo instructionInfo[] = {
     {0, 0, 0, 0, 0, 0, 0}, // PaddwMmx 
     {0, 64, 0, 0, 0, 0, 0}, // PaddwE64
     {0, 0, 0, 0, 0, 0, 0}, // PadddMmx 
-    {0, 64, 0, 0, 0, 0} // PadddE64
+    {0, 64, 0, 0, 0, 0}, // PadddE64
+    {1, 0, 0, 0, 0, 0} // Callback
 };
 
 
@@ -3257,6 +3258,16 @@ public:
         switch (G(rm)) {
         case 0x00: func(data, op, rm, IncR8, IncE8); break;
         case 0x01: func(data, op, rm, DecR8, DecE8); break;
+        case 0x07:
+            if (sizeof(op->pfn)==8) {
+                U64 address = data->fetch32();
+                address |= ((U64)data->fetch32()) << 32;
+                op->pfn = (OpCallback)address;
+            } else {
+                op->pfn = (OpCallback)data->fetch32();
+            }
+            op->inst = Callback;
+            break;
         default: op->inst = Invalid; op->reg = rm; op->imm = data->inst; break;
         }	
     }
@@ -4501,7 +4512,7 @@ static const Decode* const decoder[] = {
     0, 0, 0, 0, 0, 0, 0, 0,
     // 0x200
     &decodeAddEbGb, &decodeAddEdGd, &decodeAddGbEb, &decodeAddGdEd, &decodeAddAlIb, &decodeAddEaxId, &decodePushEs32, &decodePopEs32,
-    &decodeOrEbGb, &decodeOrEdGd, &decodeOrGbEb, &decodeOrGdEd, &decodeOrAlIb, &decodeOrEaxId, &decodePushCs16, &decode2Byte,
+    &decodeOrEbGb, &decodeOrEdGd, &decodeOrGbEb, &decodeOrGdEd, &decodeOrAlIb, &decodeOrEaxId, &decodePushCs32, &decode2Byte,
     // 0x210
     &decodeAdcEbGb, &decodeAdcEdGd, &decodeAdcGbEb, &decodeAdcGdEd, &decodeAdcAlIb, &decodeAdcEaxId, &decodePushSs32, &decodePopSs32,
     &decodeSbbEbGb, &decodeSbbEdGd, &decodeSbbGbEb, &decodeSbbGdEd, &decodeSbbAlIb, &decodeSbbEaxId, &decodePushDs32, &decodePopDs32,
@@ -4625,6 +4636,7 @@ void DecodedOp::init() {
     this->lock = 0;
     this->repZero = 0;
     this->repNotZero = 0;
+    this->pfn = NULL;
 }
 DecodedOp* DecodedOp::alloc() {
     DecodedOp* result;
