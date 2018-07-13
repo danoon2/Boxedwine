@@ -160,6 +160,47 @@ U32 FsFileNode::getMode() {
     return result;
 }
 
+S32 translateErr(U32 e) {
+    switch (e) {
+    case EPERM: return K_EPERM;
+    case ENOENT: return K_ENOENT;
+    case ESRCH: return K_ESRCH;
+    case EINTR: return K_EINTR;
+    case EIO: return K_EIO;
+    case ENXIO: return K_ENXIO;
+    //case E2BIG: return K_E2BIG;
+    case ENOEXEC: return K_ENOEXEC;
+    case EBADF: return K_EBADF;
+    case ECHILD: return K_ECHILD;
+    case EAGAIN: return K_EAGAIN;
+    case ENOMEM: return K_ENOMEM;
+    case EACCES: return K_EACCES;
+    case EFAULT: return K_EFAULT;
+    case EBUSY: return K_EBUSY;
+    case EEXIST: return K_EEXIST;
+    case EXDEV: return K_EXDEV;
+    case ENODEV: return K_ENODEV;
+    case ENOTDIR: return K_ENOTDIR;
+    case EISDIR: return K_EISDIR;
+    case ENFILE: return K_ENFILE;
+    case EMFILE: return K_EMFILE;
+    case ENOTTY: return K_ENOTTY;
+    case EFBIG: return K_EFBIG;
+    case ENOSPC: return K_ENOSPC;
+    case ESPIPE: return K_ESPIPE;
+    case EROFS: return K_EROFS;
+    //case EMLINK: return K_EMLINK;
+    case EPIPE: return K_EPIPE;
+    //case EDOM: return K_EDOM;
+    //case EDEADLK: return K_EDEADLK;
+    case ENAMETOOLONG: return K_ENAMETOOLONG;
+    case ENOLCK: return K_ENOLCK;
+    case ENOSYS: return K_ENOSYS;
+    case ENOTEMPTY: return K_ENOTEMPTY;
+    default: return K_EIO;
+    }
+}
+
 U32 FsFileNode::rename(const std::string& path) {
     U32 result;
     S64* tmpPos = NULL;
@@ -193,7 +234,7 @@ U32 FsFileNode::rename(const std::string& path) {
         parent->addChild(this);
         this->parent = parent;
     } else {
-        kpanic("Failed to rename %s to %s.  errno=%d", this->nativePath.c_str(), nativePath.c_str(), errno);
+        result = -translateErr(errno);
     }
     int i=0;
     this->openNodes.for_each([&tmpPos,&i](KListNode<FsOpenNode*>* n) {
@@ -201,8 +242,6 @@ U32 FsFileNode::rename(const std::string& path) {
         openNode->reopen();
         openNode->seek(tmpPos[i++]);
     });
-    if (result!=0)
-        result = -K_EIO;    
     return result;
 }
 
@@ -211,12 +250,9 @@ U32 FsFileNode::removeDir() {
         return -K_ENOTDIR;
     if (this->getChildCount()) {
         return -K_ENOTEMPTY;
-    }
-    
+    }    
     if (Fs::doesNativePathExist(this->nativePath) && ::rmdir(this->nativePath.c_str()) < 0) {
-        if (errno == ENOTEMPTY)
-            return -K_ENOTEMPTY;
-        return -K_EIO;
+        return -translateErr(errno);
     }
     this->getParent()->removeChildByName(this->name);
     return 0;
