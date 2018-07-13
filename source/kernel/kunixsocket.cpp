@@ -254,7 +254,7 @@ U32 KUnixSocketObject::read(U32 buffer, U32 len) {
         if (todo > this->recvBuffer.getOccupied())
             todo = (U32)this->recvBuffer.getOccupied();
 
-        this->recvBuffer.read(tmp, len);
+        this->recvBuffer.read(tmp, todo);
         
         memcopyFromNative(buffer, tmp, todo);
 
