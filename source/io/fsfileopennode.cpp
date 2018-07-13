@@ -31,7 +31,8 @@ S64 FsFileOpenNode::seek(S64 pos) {
 }
 
 void FsFileOpenNode::close() {
-    ::close(this->handle);
+    if (this->handle!=0xFFFFFFFF)
+        ::close(this->handle);
     this->handle = 0xFFFFFFFF;
 }
 

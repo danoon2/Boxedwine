@@ -216,11 +216,27 @@ U32 FsFileNode::rename(const std::string& path) {
         });
     }
 
-    std::string nativePath = Fs::localPathToRemote(path);
+    BoxedPtr<FsNode> parent = Fs::getNodeFromLocalPath("", Fs::getParentPath(path), true);
+    if (!parent) {
+        return -K_ENOENT;
+    }
+
+    std::string nativePath = Fs::localPathToRemote(parent->path+"/"+Fs::getFileNameFromPath(path));
 
     if (Fs::doesNativePathExist(nativePath)) {
         BoxedPtr<FsNode> existingNode = Fs::getNodeFromLocalPath("", path, false);
-        existingNode->remove();
+        if (existingNode->isDirectory()!=this->isDirectory()) {
+            if (existingNode->isDirectory())
+                return -K_EISDIR;
+            return -K_ENOTDIR;
+        }
+        if (existingNode->isDirectory()) {
+            U32 result = existingNode->removeDir();
+            if (result!=0)
+                return result;
+        } else {
+            existingNode->remove();
+        }
     }
     result = ::rename(this->nativePath.c_str(), nativePath.c_str());
 
