@@ -63,7 +63,7 @@ void OPCALL pushSeg16(CPU* cpu, DecodedOp* op){
 }
 void OPCALL popSeg16(CPU* cpu, DecodedOp* op){
     START_OP(cpu, op);
-    if (cpu->setSegment(op->reg, cpu->peek16(0))) {cpu->pop16(); NEXT();} else {NEXT_DONE();}
+    if (cpu->setSegment(op->reg, cpu->peek16(0))) {ESP = (ESP & cpu->stackNotMask) | ((ESP + 2 ) & cpu->stackMask); NEXT();} else {NEXT_DONE();}
 }
 void OPCALL pushSeg32(CPU* cpu, DecodedOp* op){
     START_OP(cpu, op);
@@ -72,7 +72,7 @@ void OPCALL pushSeg32(CPU* cpu, DecodedOp* op){
 }
 void OPCALL popSeg32(CPU* cpu, DecodedOp* op){
     START_OP(cpu, op);
-    if (cpu->setSegment(op->reg, cpu->peek32(0))) {cpu->pop32(); NEXT();} else {NEXT_DONE();}
+    if (cpu->setSegment(op->reg, cpu->peek32(0))) {ESP = (ESP & cpu->stackNotMask) | ((ESP + 4 ) & cpu->stackMask); NEXT();} else {NEXT_DONE();}
 }
 void OPCALL pushA16(CPU* cpu, DecodedOp* op){
     START_OP(cpu, op);

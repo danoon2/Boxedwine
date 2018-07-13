@@ -1003,6 +1003,7 @@ enum Instruction {
     PadddE64,
 
     Callback,
+    Done,
     InstructionCount
 };
 

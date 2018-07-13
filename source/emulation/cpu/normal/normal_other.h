@@ -73,6 +73,10 @@ void OPCALL normal_nop(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     NEXT();
 }
+void OPCALL normal_done(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
+    NEXT_DONE();
+}
 void OPCALL normal_wait(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     NEXT();

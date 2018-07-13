@@ -976,7 +976,8 @@ const InstructionInfo instructionInfo[] = {
     {0, 64, 0, 0, 0, 0, 0}, // PaddwE64
     {0, 0, 0, 0, 0, 0, 0}, // PadddMmx 
     {0, 64, 0, 0, 0, 0}, // PadddE64
-    {1, 0, 0, 0, 0, 0} // Callback
+    {1, 0, 0, 0, 0, 0}, // Callback
+    {1, 0, 0, 0, 0, 0} // Done
 };
 
 
@@ -4296,39 +4297,39 @@ DecodeRepZ decodeRepZ;                                           // REPZ
 DecodeRM decodeLar16(LarR16R16, LarR16E16);                      // LAR
 DecodeRM decodeLsl16(LslR16R16, LslR16E16);                      // LSL
 
-DecodeRM decodeCmovO_16(CmovO_R16R16, CmovO_R16E16);             // CMOVO
-DecodeRM decodeCmovNO_16(CmovNO_R16R16, CmovNO_R16E16);          // CMOVNO
-DecodeRM decodeCmovB_16(CmovB_R16R16, CmovB_R16E16);             // CMOVB
-DecodeRM decodeCmovNB_16(CmovNB_R16R16, CmovNB_R16E16);          // CMOVNB
-DecodeRM decodeCmovZ_16(CmovZ_R16R16, CmovZ_R16E16);             // CMOVZ
-DecodeRM decodeCmovNZ_16(CmovNZ_R16R16, CmovNZ_R16E16);          // CMOVNZ
-DecodeRM decodeCmovBE_16(CmovBE_R16R16, CmovBE_R16E16);          // CMOVBE
-DecodeRM decodeCmovNBE_16(CmovNBE_R16R16, CmovNBE_R16E16);       // CMOVNBE
-DecodeRM decodeCmovS_16(CmovS_R16R16, CmovS_R16E16);             // CMOVS
-DecodeRM decodeCmovNS_16(CmovNS_R16R16, CmovNS_R16E16);          // CMOVNS
-DecodeRM decodeCmovP_16(CmovP_R16R16, CmovP_R16E16);             // CMOVP
-DecodeRM decodeCmovNP_16(CmovNP_R16R16, CmovNP_R16E16);          // CMOVNP
-DecodeRM decodeCmovL_16(CmovL_R16R16, CmovL_R16E16);             // CMOVL
-DecodeRM decodeCmovNL_16(CmovNL_R16R16, CmovNL_R16E16);          // CMOVNL
-DecodeRM decodeCmovLE_16(CmovLE_R16R16, CmovLE_R16E16);          // CMOVLE
-DecodeRM decodeCmovNLE_16(CmovNLE_R16R16, CmovNLE_R16E16);       // CMOVNLE
+DecodeRMr decodeCmovO_16(CmovO_R16R16, CmovO_R16E16);             // CMOVO
+DecodeRMr decodeCmovNO_16(CmovNO_R16R16, CmovNO_R16E16);          // CMOVNO
+DecodeRMr decodeCmovB_16(CmovB_R16R16, CmovB_R16E16);             // CMOVB
+DecodeRMr decodeCmovNB_16(CmovNB_R16R16, CmovNB_R16E16);          // CMOVNB
+DecodeRMr decodeCmovZ_16(CmovZ_R16R16, CmovZ_R16E16);             // CMOVZ
+DecodeRMr decodeCmovNZ_16(CmovNZ_R16R16, CmovNZ_R16E16);          // CMOVNZ
+DecodeRMr decodeCmovBE_16(CmovBE_R16R16, CmovBE_R16E16);          // CMOVBE
+DecodeRMr decodeCmovNBE_16(CmovNBE_R16R16, CmovNBE_R16E16);       // CMOVNBE
+DecodeRMr decodeCmovS_16(CmovS_R16R16, CmovS_R16E16);             // CMOVS
+DecodeRMr decodeCmovNS_16(CmovNS_R16R16, CmovNS_R16E16);          // CMOVNS
+DecodeRMr decodeCmovP_16(CmovP_R16R16, CmovP_R16E16);             // CMOVP
+DecodeRMr decodeCmovNP_16(CmovNP_R16R16, CmovNP_R16E16);          // CMOVNP
+DecodeRMr decodeCmovL_16(CmovL_R16R16, CmovL_R16E16);             // CMOVL
+DecodeRMr decodeCmovNL_16(CmovNL_R16R16, CmovNL_R16E16);          // CMOVNL
+DecodeRMr decodeCmovLE_16(CmovLE_R16R16, CmovLE_R16E16);          // CMOVLE
+DecodeRMr decodeCmovNLE_16(CmovNLE_R16R16, CmovNLE_R16E16);       // CMOVNLE
 
-DecodeRM decodeCmovO_32(CmovO_R32R32, CmovO_R32E32);             // CMOVO
-DecodeRM decodeCmovNO_32(CmovNO_R32R32, CmovNO_R32E32);          // CMOVNO
-DecodeRM decodeCmovB_32(CmovB_R32R32, CmovB_R32E32);             // CMOVB
-DecodeRM decodeCmovNB_32(CmovNB_R32R32, CmovNB_R32E32);          // CMOVNB
-DecodeRM decodeCmovZ_32(CmovZ_R32R32, CmovZ_R32E32);             // CMOVZ
-DecodeRM decodeCmovNZ_32(CmovNZ_R32R32, CmovNZ_R32E32);          // CMOVNZ
-DecodeRM decodeCmovBE_32(CmovBE_R32R32, CmovBE_R32E32);          // CMOVBE
-DecodeRM decodeCmovNBE_32(CmovNBE_R32R32, CmovNBE_R32E32);       // CMOVNBE
-DecodeRM decodeCmovS_32(CmovS_R32R32, CmovS_R32E32);             // CMOVS
-DecodeRM decodeCmovNS_32(CmovNS_R32R32, CmovNS_R32E32);          // CMOVNS
-DecodeRM decodeCmovP_32(CmovP_R32R32, CmovP_R32E32);             // CMOVP
-DecodeRM decodeCmovNP_32(CmovNP_R32R32, CmovNP_R32E32);          // CMOVNP
-DecodeRM decodeCmovL_32(CmovL_R32R32, CmovL_R32E32);             // CMOVL
-DecodeRM decodeCmovNL_32(CmovNL_R32R32, CmovNL_R32E32);          // CMOVNL
-DecodeRM decodeCmovLE_32(CmovLE_R32R32, CmovLE_R32E32);          // CMOVLE
-DecodeRM decodeCmovNLE_32(CmovNLE_R32R32, CmovNLE_R32E32);       // CMOVNLE
+DecodeRMr decodeCmovO_32(CmovO_R32R32, CmovO_R32E32);             // CMOVO
+DecodeRMr decodeCmovNO_32(CmovNO_R32R32, CmovNO_R32E32);          // CMOVNO
+DecodeRMr decodeCmovB_32(CmovB_R32R32, CmovB_R32E32);             // CMOVB
+DecodeRMr decodeCmovNB_32(CmovNB_R32R32, CmovNB_R32E32);          // CMOVNB
+DecodeRMr decodeCmovZ_32(CmovZ_R32R32, CmovZ_R32E32);             // CMOVZ
+DecodeRMr decodeCmovNZ_32(CmovNZ_R32R32, CmovNZ_R32E32);          // CMOVNZ
+DecodeRMr decodeCmovBE_32(CmovBE_R32R32, CmovBE_R32E32);          // CMOVBE
+DecodeRMr decodeCmovNBE_32(CmovNBE_R32R32, CmovNBE_R32E32);       // CMOVNBE
+DecodeRMr decodeCmovS_32(CmovS_R32R32, CmovS_R32E32);             // CMOVS
+DecodeRMr decodeCmovNS_32(CmovNS_R32R32, CmovNS_R32E32);          // CMOVNS
+DecodeRMr decodeCmovP_32(CmovP_R32R32, CmovP_R32E32);             // CMOVP
+DecodeRMr decodeCmovNP_32(CmovNP_R32R32, CmovNP_R32E32);          // CMOVNP
+DecodeRMr decodeCmovL_32(CmovL_R32R32, CmovL_R32E32);             // CMOVL
+DecodeRMr decodeCmovNL_32(CmovNL_R32R32, CmovNL_R32E32);          // CMOVNL
+DecodeRMr decodeCmovLE_32(CmovLE_R32R32, CmovLE_R32E32);          // CMOVLE
+DecodeRMr decodeCmovNLE_32(CmovNLE_R32R32, CmovNLE_R32E32);       // CMOVNLE
 
 DecodeRM decodeSetO(SetO_R8, SetO_E8);                           // SETO
 DecodeRM decodeSetNO(SetNO_R8, SetNO_E8);                        // SETNO
@@ -4698,7 +4699,7 @@ void decodeBlock(pfnFetchByte fetchByte, U32 eip, U32 isBig, U32 maxInstructions
         decoder[d.inst]->decode(&d, op);
         block->opCount++;
         if (maxLen && d.opLen+block->bytes>maxLen) {
-            op->inst = Nop;
+            op->inst = Done;
             op->len = 0;
             break;
         }
