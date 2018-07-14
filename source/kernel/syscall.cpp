@@ -67,54 +67,104 @@ void logsyscall(const char* fmt, ...) {
 
 typedef U32 (*SyscallFunc)(CPU* cpu, U32 eipCount);
 
+#define SYSCALL_PROCESS     0x01
+#define SYSCALL_THREAD      0x02
+#define SYSCALL_FILE        0x04
+#define SYSCALL_READ        0x08
+#define SYSCALL_WRITE       0x10
+#define SYSCALL_SYSTEM      0x20
+#define SYSCALL_SIGNAL      0x40
+#define SYSCALL_MEMORY      0x80
+#define SYSCALL_SOCKET      0x100
+
 #ifdef LOG_SYSCALLS
-#define SYS_LOG if (0) printf
+
+static U32 syscallMask = 0xFFF & ~SYSCALL_MEMORY;
+
+void sysLog(U32 type, CPU* cpu, const char* msg, ...) {
+    va_list argptr;
+    va_start(argptr, msg);
+    if (type & syscallMask) {
+        vprintf( msg, argptr);
+    }
+    va_end(argptr);
+}
+
+void sysLog1(U32 type, CPU* cpu, const char* msg, ...) {
+    va_list argptr;
+    va_start(argptr, msg);
+    if (type & syscallMask) {
+        printf("%0.4X/%0.4X %s ", cpu->thread->process->id, cpu->thread->id, cpu->thread->process->name.c_str());
+        vprintf( msg, argptr);
+    }
+    va_end(argptr);
+}
+
+#define SYS_LOG if (syscallMask) sysLog
+#define SYS_LOG1 if (syscallMask) sysLog1
 #else
-#define SYS_LOG if (0) printf
+#define SYS_LOG 
+#define SYS_LOG1 
 #endif
 
 static U32 syscall_exit(CPU* cpu, U32 eipCount) {
-    SYS_LOG("exit: status=%d", ARG1);
-    return cpu->thread->process->exit(ARG1);
+    SYS_LOG1(SYSCALL_PROCESS, cpu, "exit: status=%d", ARG1);
+    U32 result = cpu->thread->process->exit(ARG1);
+    SYS_LOG(SYSCALL_PROCESS, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_read(CPU* cpu, U32 eipCount) {
-    SYS_LOG("read: fd=%d buf=0x%X len=%d", ARG1, ARG2, ARG3);
-    return cpu->thread->process->read((FD)ARG1, ARG2, ARG3);
+    SYS_LOG1(SYSCALL_READ, cpu, "read: fd=%d buf=0x%X len=%d", ARG1, ARG2, ARG3);
+    U32 result = cpu->thread->process->read((FD)ARG1, ARG2, ARG3);
+    SYS_LOG(SYSCALL_READ, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_write(CPU* cpu, U32 eipCount) {
-    SYS_LOG("write: fd=%d buf=0x%X len=%d", ARG1, ARG2, ARG3);
-    return cpu->thread->process->write((FD)ARG1, ARG2, ARG3);
+    SYS_LOG1(SYSCALL_WRITE, cpu, "write: fd=%d buf=0x%X len=%d", ARG1, ARG2, ARG3);
+    U32 result = cpu->thread->process->write((FD)ARG1, ARG2, ARG3);
+    SYS_LOG(SYSCALL_WRITE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_open(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];
-    SYS_LOG("open: name=%s flags=%x", getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
-    return cpu->thread->process->open(getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+    SYS_LOG1(SYSCALL_FILE, cpu, "open: name=%s flags=%x", getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+    U32 result = cpu->thread->process->open(getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_close(CPU* cpu, U32 eipCount) {
-    SYS_LOG("close: fd=%d", ARG1);
-    return cpu->thread->process->close(ARG1);
+    SYS_LOG1(SYSCALL_FILE, cpu, "close: fd=%d", ARG1);
+    U32 result = cpu->thread->process->close(ARG1);
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_waitpid(CPU* cpu, U32 eipCount) {
-    SYS_LOG("waitpid: pid=%d status=%d options=%x", ARG1, ARG2, ARG3);
-    return KSystem::waitpid((S32)ARG1, ARG2, ARG3);
+    SYS_LOG1(SYSCALL_PROCESS, cpu, "waitpid: pid=%d status=%d options=%x", ARG1, ARG2, ARG3);
+    U32 result = KSystem::waitpid((S32)ARG1, ARG2, ARG3);
+    SYS_LOG(SYSCALL_PROCESS, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_link(CPU* cpu, U32 eipCount) {
     char tmp1[MAX_FILEPATH_LEN];
     char tmp2[MAX_FILEPATH_LEN];
-    SYS_LOG("link: path1=%X(%s) path2=%X(%s)", ARG1, getNativeString(ARG1, tmp1, sizeof(tmp1)), ARG2, getNativeString(ARG2, tmp2, sizeof(tmp2)));
-    return cpu->thread->process->link(getNativeString(ARG1, tmp1, sizeof(tmp1)), getNativeString(ARG2, tmp2, sizeof(tmp2)));
+    SYS_LOG1(SYSCALL_FILE, cpu, "link: path1=%X(%s) path2=%X(%s)", ARG1, getNativeString(ARG1, tmp1, sizeof(tmp1)), ARG2, getNativeString(ARG2, tmp2, sizeof(tmp2)));
+    U32 result = cpu->thread->process->link(getNativeString(ARG1, tmp1, sizeof(tmp1)), getNativeString(ARG2, tmp2, sizeof(tmp2)));
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_unlink(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];
-    SYS_LOG("unlink: path=%X(%s)", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)));
-    return cpu->thread->process->unlinkFile(getNativeString(ARG1, tmp, sizeof(tmp)));
+    SYS_LOG1(SYSCALL_FILE, cpu, "unlink: path=%X(%s)", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)));
+    U32 result = cpu->thread->process->unlinkFile(getNativeString(ARG1, tmp, sizeof(tmp)));
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static void readStringArray(U32 address, std::vector<std::string>& results) {
@@ -139,45 +189,56 @@ static U32 syscall_execve(CPU* cpu, U32 eipCount) {
     readStringArray(ARG2, args);
     readStringArray(ARG3, envs);
 
-    SYS_LOG("execve: path=%X(%s) argv=%X envp=%X", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)), ARG2, ARG3);
-    if (cpu->thread->process->execve(getNativeString(ARG1, tmp, sizeof(tmp)), args, envs))
+    SYS_LOG1(SYSCALL_PROCESS, cpu, "execve: path=%X(%s) argv=%X envp=%X", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)), ARG2, ARG3);
+    if (cpu->thread->process->execve(getNativeString(ARG1, tmp, sizeof(tmp)), args, envs)) {
+        SYS_LOG(SYSCALL_PROCESS, cpu, "\n");
         return -K_CONTINUE;
+    }
+    SYS_LOG(SYSCALL_PROCESS, cpu, " result=FAILED\n");
     return -ENOENT;
 }
 
 static U32 syscall_chdir(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];
-    SYS_LOG("chdir: path=%X(%s)", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)));
-    return cpu->thread->process->chdir(getNativeString(ARG1, tmp, sizeof(tmp)));
+    SYS_LOG1(SYSCALL_PROCESS, cpu, "chdir: path=%X(%s)", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)));
+    U32 result = cpu->thread->process->chdir(getNativeString(ARG1, tmp, sizeof(tmp)));
+    SYS_LOG(SYSCALL_PROCESS, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_time(CPU* cpu, U32 eipCount) {
     U32 result = (U32)(Platform::getSystemTimeAsMicroSeconds() / 1000000l);
     if (ARG1)
         writed(ARG1, result);
-    SYS_LOG("time: tloc=%X", ARG1);
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "time: tloc=%X result=%d(0x%X)\n", ARG1, result, result);
     return result;
 }
 
 static U32 syscall_chmod(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];
-    SYS_LOG("chmod: path=%X (%s) mode=%o", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
-    return cpu->thread->process->chmod(getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+    SYS_LOG1(SYSCALL_FILE, cpu, "chmod: path=%X (%s) mode=%o", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+    U32 result = cpu->thread->process->chmod(getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_lseek(CPU* cpu, U32 eipCount) {
-    SYS_LOG("lseek: fildes=%d offset=%d whence=%d", ARG1, ARG2, ARG3);
-    return cpu->thread->process->lseek((FD)ARG1, (S32)ARG2, ARG3);
+    SYS_LOG1(SYSCALL_FILE, cpu, "lseek: fildes=%d offset=%d whence=%d", ARG1, ARG2, ARG3);
+    U32 result = cpu->thread->process->lseek((FD)ARG1, (S32)ARG2, ARG3);
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
-static U32 syscall_getpid(CPU* cpu, U32 eipCount) {
-    SYS_LOG("getpid:");
-    return cpu->thread->process->id;
+static U32 syscall_getpid(CPU* cpu, U32 eipCount) {    
+    U32 result = cpu->thread->process->id;
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "getpid: result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_getuid(CPU* cpu, U32 eipCount) {
-    SYS_LOG("getuid:");
-    return cpu->thread->process->userId;
+    U32 result = cpu->thread->process->userId;
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "getuid: result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_ptrace(CPU* cpu, U32 eipCount) {
@@ -185,153 +246,199 @@ static U32 syscall_ptrace(CPU* cpu, U32 eipCount) {
 }
 
 static U32 syscall_alarm(CPU* cpu, U32 eipCount) {
-    SYS_LOG("alarm: seconds=%d", ARG1);
-    return cpu->thread->process->alarm(ARG1);
+    SYS_LOG1(SYSCALL_PROCESS, cpu, "alarm: seconds=%d", ARG1);
+    U32 result = cpu->thread->process->alarm(ARG1);
+    SYS_LOG(SYSCALL_PROCESS, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_utime(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];
-    SYS_LOG("utime: filename=%s times=%X", getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
-    return 0;
+    SYS_LOG1(SYSCALL_FILE, cpu, "utime: filename=%s times=%X", getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+    U32 result = 0;
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X) IGNOREDED\n", result, result);
+    return result;
 }
 
 static U32 syscall_access(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];
-    SYS_LOG("access: filename=%s flags=0x%X", getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
-    return cpu->thread->process->access(getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+    SYS_LOG1(SYSCALL_FILE, cpu, "access: filename=%s flags=0x%X", getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+    U32 result = cpu->thread->process->access(getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_sync(CPU* cpu, U32 eipCount) {
-    SYS_LOG("sync:");
-    return 0; 
+    SYS_LOG1(SYSCALL_FILE, cpu, "sync:");
+    U32 result = 0; 
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X) IGNOREDED\n", result, result);
+    return result;
 }
 
 static U32 syscall_kill(CPU* cpu, U32 eipCount) {
-    SYS_LOG("kill: pid=%d signal=%d", ARG1, ARG2);
-    return KSystem::kill(ARG1, ARG2);
+    SYS_LOG1(SYSCALL_SIGNAL|SYSCALL_PROCESS, cpu, "kill: pid=%d signal=%d", ARG1, ARG2);
+    U32 result = KSystem::kill(ARG1, ARG2);
+    SYS_LOG(SYSCALL_SIGNAL|SYSCALL_PROCESS, cpu, " result=%d(0x%X) IGNOREDED\n", result, result);
+    return result;
 }
 
 static U32 syscall_rename(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];
     char tmp2[MAX_FILEPATH_LEN];
 
-    SYS_LOG("rename: oldName=%X(%s) newName=%X(%s)", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)), ARG2, getNativeString(ARG2, tmp2, sizeof(tmp2)));
-    return cpu->thread->process->rename(getNativeString(ARG1, tmp, sizeof(tmp)), getNativeString(ARG2, tmp2, sizeof(tmp2)));
+    SYS_LOG1(SYSCALL_FILE, cpu, "rename: oldName=%X(%s) newName=%X(%s)", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)), ARG2, getNativeString(ARG2, tmp2, sizeof(tmp2)));
+    U32 result = cpu->thread->process->rename(getNativeString(ARG1, tmp, sizeof(tmp)), getNativeString(ARG2, tmp2, sizeof(tmp2)));
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_mkdir(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];
-    SYS_LOG("mkdir: path=%X (%s) mode=%X", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
-    return cpu->thread->process->mkdir(getNativeString(ARG1, tmp, sizeof(tmp)));
+    SYS_LOG1(SYSCALL_FILE, cpu, "mkdir: path=%X (%s) mode=%X", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+    U32 result = cpu->thread->process->mkdir(getNativeString(ARG1, tmp, sizeof(tmp)));
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_rmdir(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];
-    SYS_LOG("rmdir: path=%X(%s)", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)));
-    return cpu->thread->process->rmdir(getNativeString(ARG1, tmp, sizeof(tmp)));
+    SYS_LOG1(SYSCALL_FILE, cpu, "rmdir: path=%X(%s)", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)));
+    U32 result = cpu->thread->process->rmdir(getNativeString(ARG1, tmp, sizeof(tmp)));
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_dup(CPU* cpu, U32 eipCount) {
-    SYS_LOG("dup: fildes=%d", ARG1);
-    return cpu->thread->process->dup(ARG1);
+    SYS_LOG1(SYSCALL_FILE, cpu, "dup: fildes=%d", ARG1);
+    U32 result = cpu->thread->process->dup(ARG1);
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_pipe(CPU* cpu, U32 eipCount) {
-    SYS_LOG("pipe: fildes=%X", ARG1);
-    return ksocketpair(K_AF_UNIX, K_SOCK_STREAM, 0, ARG1, 0);
+    SYS_LOG1(SYSCALL_FILE, cpu, "pipe: fildes=%X", ARG1);
+    U32 result = ksocketpair(K_AF_UNIX, K_SOCK_STREAM, 0, ARG1, 0);
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_times(CPU* cpu, U32 eipCount) {
-    SYS_LOG("times: buf=%X", ARG1);
-    return KSystem::times(ARG1);
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "times: buf=%X", ARG1);
+    U32 result = KSystem::times(ARG1);
+    SYS_LOG(SYSCALL_SYSTEM, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_brk(CPU* cpu, U32 eipCount) {
-    SYS_LOG("brk: address=%.8X", ARG1);
-    return cpu->thread->process->brk(ARG1);
+    SYS_LOG1(SYSCALL_MEMORY|SYSCALL_PROCESS, cpu, "brk: address=%.8X", ARG1);
+    U32 result = cpu->thread->process->brk(ARG1);
+    SYS_LOG(SYSCALL_MEMORY|SYSCALL_PROCESS, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
-static U32 syscall_getgid(CPU* cpu, U32 eipCount) {
-    SYS_LOG("getgid:");
-    return cpu->thread->process->groupId;
+static U32 syscall_getgid(CPU* cpu, U32 eipCount) {    
+    U32 result = cpu->thread->process->groupId;
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "getgid: result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_geteuid(CPU* cpu, U32 eipCount) {
-    SYS_LOG("geteuid:");
-    return cpu->thread->process->effectiveUserId;
+    U32 result = cpu->thread->process->effectiveUserId;
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "geteuid: result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_getegid(CPU* cpu, U32 eipCount) {
-    SYS_LOG("getegid:");
-    return cpu->thread->process->effectiveGroupId;
+    U32 result = cpu->thread->process->effectiveGroupId;
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "getegid: result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_ioctl(CPU* cpu, U32 eipCount) {
-    SYS_LOG("ioctl: fd=%d request=%d", ARG1, ARG2);
-    return cpu->thread->process->ioctl(ARG1, ARG2);
+    SYS_LOG1(SYSCALL_FILE, cpu, "ioctl: fd=%d request=%d", ARG1, ARG2);
+    U32 result = cpu->thread->process->ioctl(ARG1, ARG2);
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_setpgid(CPU* cpu, U32 eipCount) {	
-    SYS_LOG("setpgid: pid=%d pgid=%d", ARG1, ARG2);
-    return KSystem::setpgid(ARG1, ARG2);
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "setpgid: pid=%d pgid=%d", ARG1, ARG2);
+    U32 result = KSystem::setpgid(ARG1, ARG2);
+    SYS_LOG(SYSCALL_SYSTEM, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_umask(CPU* cpu, U32 eipCount) {	
-    SYS_LOG("umask: cmask=%X", ARG1);
-    return cpu->thread->process->umask(ARG1);
+    SYS_LOG1(SYSCALL_PROCESS, cpu, "umask: cmask=%X", ARG1);
+    U32 result = cpu->thread->process->umask(ARG1);
+    SYS_LOG(SYSCALL_PROCESS, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_getpgid(CPU* cpu, U32 eipCount) {	
-    SYS_LOG("getpgid: pid=%d", ARG1);
-    return KSystem::getpgid(ARG1);
+    U32 result = KSystem::getpgid(ARG1);
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "getpgid: result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_dup2(CPU* cpu, U32 eipCount) {	
-    SYS_LOG("dup2: fildes1=%d fildes2=%d", ARG1, ARG2);
-    return cpu->thread->process->dup2(ARG1, ARG2);
+    SYS_LOG1(SYSCALL_FILE, cpu, "dup2: fildes1=%d fildes2=%d", ARG1, ARG2);
+    U32 result = cpu->thread->process->dup2(ARG1, ARG2);
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_getppid(CPU* cpu, U32 eipCount) {	
-    SYS_LOG("getppid:");
-    return cpu->thread->process->parentId;
+    U32 result = cpu->thread->process->parentId;
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "getppid: result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_getpgrp(CPU* cpu, U32 eipCount) {	
-    SYS_LOG("getpgrp:");
-    return cpu->thread->process->groupId;;
+    U32 result = cpu->thread->process->groupId;;
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "getpgrp: result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_setsid(CPU* cpu, U32 eipCount) {	
-    SYS_LOG("setsid:");
 #ifdef _DEBUG
     klog("setsid not implemented");
 #endif
-    return 0;
+    U32 result = 0;
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "setsid: result=%d(0x%X) IGNORED\n", result, result);
+    return result;
 }
 
 static U32 syscall_setrlimit(CPU* cpu, U32 eipCount) {	
-    SYS_LOG("setrlimit:");
 #ifdef _DEBUG
     klog("setrlimit not implemented");
 #endif
-    return 0;
+    U32 result = 0;
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "setrlimit: result=%d(0x%X) IGNORED\n", result, result);
+    return result;
 }
 
 static U32 syscall_getrusuage(CPU* cpu, U32 eipCount) {	
-    SYS_LOG("getrusage: who=%d usuage=%X", ARG1, ARG2);
-    return cpu->thread->process->getrusuage(ARG1, ARG2);
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "getrusage: who=%d usuage=%X", ARG1, ARG2);
+    U32 result = cpu->thread->process->getrusuage(ARG1, ARG2);
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_gettimeofday(CPU* cpu, U32 eipCount) {	
-    SYS_LOG("gettimeofday: tv=%X tz=%X", ARG1, ARG2);
-    return KSystem::gettimeofday(ARG1, ARG2);
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "gettimeofday: tv=%X tz=%X", ARG1, ARG2);
+    U32 result = KSystem::gettimeofday(ARG1, ARG2);
+    SYS_LOG(SYSCALL_SYSTEM, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_symlink(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];
     char tmp2[MAX_FILEPATH_LEN];
-    SYS_LOG("symlink: path1=%X(%s) path2=%X(%s)", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)), ARG2, getNativeString(ARG2, tmp2, sizeof(tmp2)));
-    return cpu->thread->process->symlink(getNativeString(ARG1, tmp, sizeof(tmp)), getNativeString(ARG2, tmp2, sizeof(tmp2)));
+    SYS_LOG1(SYSCALL_FILE, cpu, "symlink: path1=%X(%s) path2=%X(%s)", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)), ARG2, getNativeString(ARG2, tmp2, sizeof(tmp2)));
+    U32 result = cpu->thread->process->symlink(getNativeString(ARG1, tmp, sizeof(tmp)), getNativeString(ARG2, tmp2, sizeof(tmp2)));
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_readlink(CPU* cpu, U32 eipCount) {
@@ -339,53 +446,64 @@ static U32 syscall_readlink(CPU* cpu, U32 eipCount) {
     char tmp2[MAX_FILEPATH_LEN];    
 
     U32 result = cpu->thread->process->readlink(getNativeString(ARG1, tmp, sizeof(tmp)), ARG1, ARG2);
-    SYS_LOG("readlink: path=%X (%s) buffer=%X (%s) bufSize=%d", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)), ARG1, (result==0?getNativeString(ARG1, tmp2, sizeof(tmp2)):""), ARG3);
+    SYS_LOG1(SYSCALL_FILE, cpu, "readlink: path=%X (%s) buffer=%X (%s) bufSize=%d result=%d(0x%X)\n", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)), ARG1, (result==0?getNativeString(ARG1, tmp2, sizeof(tmp2)):""), ARG3, result, result);
     return result;
 }
 
 static U32 syscall_mmap64(CPU* cpu, U32 eipCount) {
-    SYS_LOG("mmap: address=%.8X len=%d prot=%X flags=%X fd=%d offset=%d", readd(ARG1), readd(ARG1+4), readd(ARG1+8), readd(ARG1+12), readd(ARG1+16), readd(ARG1+20));
-    return cpu->thread->process->mmap(readd(ARG1), readd(ARG1+4), readd(ARG1+8), readd(ARG1+12), readd(ARG1+16), readd(ARG1+20));
+    SYS_LOG1(SYSCALL_MEMORY, cpu, "mmap: address=%.8X len=%d prot=%X flags=%X fd=%d offset=%d", readd(ARG1), readd(ARG1+4), readd(ARG1+8), readd(ARG1+12), readd(ARG1+16), readd(ARG1+20));
+    U32 result = cpu->thread->process->mmap(readd(ARG1), readd(ARG1+4), readd(ARG1+8), readd(ARG1+12), readd(ARG1+16), readd(ARG1+20));
+    SYS_LOG(SYSCALL_MEMORY, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_unmap(CPU* cpu, U32 eipCount) {
-    SYS_LOG("munmap: address=%X len=%d", ARG1, ARG2);
-    return cpu->thread->process->unmap(ARG1, ARG2);
+    SYS_LOG1(SYSCALL_MEMORY, cpu, "munmap: address=%X len=%d", ARG1, ARG2);
+    U32 result = cpu->thread->process->unmap(ARG1, ARG2);
+    SYS_LOG(SYSCALL_MEMORY, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_ftruncate(CPU* cpu, U32 eipCount) {
-    SYS_LOG("ftruncate: fd=%X len=%d", ARG1, ARG2);
-    return cpu->thread->process->ftruncate64(ARG1, ARG2);
+    SYS_LOG1(SYSCALL_FILE, cpu, "ftruncate: fd=%X len=%d", ARG1, ARG2);
+    U32 result = cpu->thread->process->ftruncate64(ARG1, ARG2);
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_fchmod(CPU* cpu, U32 eipCount) {	
-    SYS_LOG("fchmod: fd=%X mod=%X", ARG1, ARG2);
 #ifdef _DEBUG
     klog("fchmod not implemented");
 #endif
-    return 0;
+    U32 result = 0;
+    SYS_LOG1(SYSCALL_FILE, cpu, "fchmod: fd=%X mod=%X result=%d(0x%X) IGNORED\n", ARG1, ARG2, result, result);
+    return result;
 }
 
-static U32 syscall_setpriority(CPU* cpu, U32 eipCount) {	
-    SYS_LOG("setpriority: which=%d, who=%d, prio=%d", ARG1, ARG2, ARG3);
+static U32 syscall_setpriority(CPU* cpu, U32 eipCount) {	    
 #ifdef _DEBUG
     klog("setpriority not implemented");
 #endif
-    return 0;
+    U32 result = 0;
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "setpriority: which=%d, who=%d, prio=%d result=%d(0x%X) IGNORED\n", ARG1, ARG2, ARG3, result, result);
+    return result;
 }
 
 static U32 syscall_statfs(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];
-    SYS_LOG("statfs: path=%X(%s) buf=%X", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
-    return cpu->thread->process->statfs(getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+    SYS_LOG1(SYSCALL_FILE, cpu, "statfs: path=%X(%s) buf=%X", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+    U32 result = cpu->thread->process->statfs(getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
-static U32 syscall_ioperm(CPU* cpu, U32 eipCount) {	
-    SYS_LOG("ioperm: from=%X num=%d turn_on=%X", ARG1, ARG2, ARG3);
+static U32 syscall_ioperm(CPU* cpu, U32 eipCount) {	    
 #ifdef _DEBUG
     klog("ioperm not implemented: from=0x%X len=%d on=%d", ARG1, ARG2, ARG3);
 #endif
-    return 0;
+    U32 result = 0;
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "ioperm: from=%X num=%d turn_on=%X result=%d(0x%X) IGNORED\n", ARG1, ARG2, ARG3, result, result);
+    return result;
 }
 
 static U32 syscall_socketcall(CPU* cpu, U32 eipCount) {
@@ -394,242 +512,290 @@ static U32 syscall_socketcall(CPU* cpu, U32 eipCount) {
 
     switch (ARG1) {
         case 1: // SYS_SOCKET
-            SYS_LOG("SYS_SOCKET: domain=%d(%s) type=%d(%s) protocol=%d(%s)", SARG2, SARG2==K_AF_UNIX?"AF_UNIX":(SARG2==K_AF_INET)?"AF_INET":"", (SARG3 & 0xFF), (SARG3 & 0xFF)==K_SOCK_STREAM?"SOCK_STREAM":((SARG3 & 0xFF)==K_SOCK_DGRAM)?"AF_SOCK_DGRAM":"", SARG4, (SARG4 == 0)?"IPPROTO_IP":(SARG4==6)?"IPPROTO_TCP":(SARG4==17)?"IPPROTO_UDP":"");
+            SYS_LOG1(SYSCALL_SOCKET, cpu, "SYS_SOCKET: domain=%d(%s) type=%d(%s) protocol=%d(%s)", SARG2, SARG2==K_AF_UNIX?"AF_UNIX":(SARG2==K_AF_INET)?"AF_INET":"", (SARG3 & 0xFF), (SARG3 & 0xFF)==K_SOCK_STREAM?"SOCK_STREAM":((SARG3 & 0xFF)==K_SOCK_DGRAM)?"AF_SOCK_DGRAM":"", SARG4, (SARG4 == 0)?"IPPROTO_IP":(SARG4==6)?"IPPROTO_TCP":(SARG4==17)?"IPPROTO_UDP":"");
             result = ksocket(SARG2, SARG3 & 0xFF, SARG4);
             break;
         case 2: // SYS_BIND
-            SYS_LOG("SYS_BIND: socket=%d address=%X(%s) len=%d", SARG2, SARG3, socketAddressName(SARG3, SARG4, tmp, sizeof(tmp)), SARG4);
+            SYS_LOG1(SYSCALL_SOCKET, cpu, "SYS_BIND: socket=%d address=%X(%s) len=%d", SARG2, SARG3, socketAddressName(SARG3, SARG4, tmp, sizeof(tmp)), SARG4);
             result = kbind(SARG2, SARG3, SARG4);
             break;
         case 3: // SYS_CONNECT
-            SYS_LOG("SYS_CONNECT: socket=%d address=%X(%s) len=%d", SARG2, SARG3, socketAddressName(SARG3, SARG4, tmp, sizeof(tmp)), SARG4);
+            SYS_LOG1(SYSCALL_SOCKET, cpu, "SYS_CONNECT: socket=%d address=%X(%s) len=%d", SARG2, SARG3, socketAddressName(SARG3, SARG4, tmp, sizeof(tmp)), SARG4);
             result = kconnect(SARG2, SARG3, SARG4);
             break;
         case 4: // SYS_LISTEN				
-            SYS_LOG("SYS_LISTEN: socket=%d backlog=%d", SARG2, SARG3);
+            SYS_LOG1(SYSCALL_SOCKET, cpu, "SYS_LISTEN: socket=%d backlog=%d", SARG2, SARG3);
             result = klisten(SARG2, SARG3);
             break;
         case 5: // SYS_ACCEPT
-            SYS_LOG("SYS_ACCEPT: socket=%d address=%X(%s) len=%d", SARG2, SARG3, socketAddressName(SARG3, SARG4, tmp, sizeof(tmp)), SARG4);
+            SYS_LOG1(SYSCALL_SOCKET, cpu, "SYS_ACCEPT: socket=%d address=%X(%s) len=%d", SARG2, SARG3, socketAddressName(SARG3, SARG4, tmp, sizeof(tmp)), SARG4);
             result = kaccept(SARG2, SARG3, SARG4);
             break;			
         case 6: // SYS_GETSOCKNAME
-            SYS_LOG("SYS_GETSOCKNAME: socket=%d address=%X len=%d", SARG2, SARG3, SARG4);
+            SYS_LOG1(SYSCALL_SOCKET, cpu, "SYS_GETSOCKNAME: socket=%d address=%X len=%d", SARG2, SARG3, SARG4);
             result = kgetsockname(SARG2, SARG3, SARG4);
             break;			
         case 7: // SYS_GETPEERNAME
-            SYS_LOG("SYS_GETPEERNAME: socket=%d address=%X len=%d", SARG2, SARG3, SARG4);
+            SYS_LOG1(SYSCALL_SOCKET, cpu, "SYS_GETPEERNAME: socket=%d address=%X len=%d", SARG2, SARG3, SARG4);
             result = kgetpeername(SARG2, SARG3, SARG4);
             break;		
         case 8: // SYS_SOCKETPAIR
-            SYS_LOG("SYS_SOCKETPAIR: af=%d(%s) type=%d(%s) socks=%X", SARG2, SARG2==K_AF_UNIX?"AF_UNIX":(SARG2==K_AF_INET)?"AF_INET":"", SARG3, SARG3==K_SOCK_STREAM?"SOCK_STREAM":(SARG3==K_SOCK_DGRAM)?"AF_SOCK_DGRAM":"", SARG5);
+            SYS_LOG1(SYSCALL_SOCKET, cpu, "SYS_SOCKETPAIR: af=%d(%s) type=%d(%s) socks=%X", SARG2, SARG2==K_AF_UNIX?"AF_UNIX":(SARG2==K_AF_INET)?"AF_INET":"", SARG3, SARG3==K_SOCK_STREAM?"SOCK_STREAM":(SARG3==K_SOCK_DGRAM)?"AF_SOCK_DGRAM":"", SARG5);
             result = ksocketpair(SARG2, SARG3, SARG4, SARG5, 0);
             break;
         case 9: // SYS_SEND
-            SYS_LOG("SYS_SEND: socket=%d buffer=%X len=%d flags=%X", SARG2, SARG3, SARG4, SARG5);
+            SYS_LOG1(SYSCALL_SOCKET, cpu, "SYS_SEND: socket=%d buffer=%X len=%d flags=%X", SARG2, SARG3, SARG4, SARG5);
             result = ksend(SARG2, SARG3, SARG4, SARG5);
             break;
         case 10: // SYS_RECV
-            SYS_LOG("SYS_RECV: socket=%d buffer=%X len=%d flags=%X", SARG2, SARG3, SARG4, SARG5);
+            SYS_LOG1(SYSCALL_SOCKET, cpu, "SYS_RECV: socket=%d buffer=%X len=%d flags=%X", SARG2, SARG3, SARG4, SARG5);
             result = krecv(SARG2, SARG3, SARG4, SARG5);
             break;
         case 11: // SYS_SENDTO
-            SYS_LOG("SYS_SENDTO: socket=%d buffer=%X len=%d flags=%X dest=%s", SARG2, SARG3, SARG4, SARG5, socketAddressName(SARG6, SARG7, tmp, sizeof(tmp)));
+            SYS_LOG1(SYSCALL_SOCKET, cpu, "SYS_SENDTO: socket=%d buffer=%X len=%d flags=%X dest=%s", SARG2, SARG3, SARG4, SARG5, socketAddressName(SARG6, SARG7, tmp, sizeof(tmp)));
             result = ksendto(SARG2, SARG3, SARG4, SARG5, SARG6, SARG7);
             break;
         case 12: // SYS_RECVFROM
-            SYS_LOG("SYS_RECVFROM: socket=%d buffer=%X len=%d flags=%X address=%s", SARG2, SARG3, SARG4, SARG5, socketAddressName(SARG6, SARG7, tmp, sizeof(tmp)));
+            SYS_LOG1(SYSCALL_SOCKET, cpu, "SYS_RECVFROM: socket=%d buffer=%X len=%d flags=%X address=%s", SARG2, SARG3, SARG4, SARG5, socketAddressName(SARG6, SARG7, tmp, sizeof(tmp)));
             result = krecvfrom(SARG2, SARG3, SARG4, SARG5, SARG6, SARG7);
             break;
         case 13: // SYS_SHUTDOWN
-            SYS_LOG("SYS_SHUTDOWN: socket=%d how=%d", SARG2, SARG3);
+            SYS_LOG1(SYSCALL_SOCKET, cpu, "SYS_SHUTDOWN: socket=%d how=%d", SARG2, SARG3);
             result = kshutdown(SARG2, SARG3);
             break;
         case 14: // SYS_SETSOCKOPT
-            SYS_LOG("SYS_SETSOCKOPT: socket=%d level=%d name=%d value=%d, len=%d", SARG2, SARG3, SARG4, SARG5, SARG6);
+            SYS_LOG1(SYSCALL_SOCKET, cpu, "SYS_SETSOCKOPT: socket=%d level=%d name=%d value=%d, len=%d", SARG2, SARG3, SARG4, SARG5, SARG6);
             result = ksetsockopt(SARG2, SARG3, SARG4, SARG5, SARG6);
             break;
         case 15: // SYS_GETSOCKOPT
-            SYS_LOG("SYS_GETSOCKOPT: socket=%d level=%d name=%d value=%d, len=%d", SARG2, SARG3, SARG4, SARG5, SARG6);
+            SYS_LOG1(SYSCALL_SOCKET, cpu, "SYS_GETSOCKOPT: socket=%d level=%d name=%d value=%d, len=%d", SARG2, SARG3, SARG4, SARG5, SARG6);
             result = kgetsockopt(SARG2, SARG3, SARG4, SARG5, SARG6);
             break;		
         case 16: // SYS_SENDMSG
-            SYS_LOG("SYS_SENDMSG: socket=%d message=%X flags=%X", SARG2, SARG3, SARG4);
+            SYS_LOG1(SYSCALL_SOCKET, cpu, "SYS_SENDMSG: socket=%d message=%X flags=%X", SARG2, SARG3, SARG4);
             result = ksendmsg(SARG2, SARG3, SARG4);
             break;
         case 17: // SYS_RECVMSG
-            SYS_LOG("SYS_RECVMSG: socket=%d message=%X flags=%X", SARG2, SARG3, SARG4);
+            SYS_LOG1(SYSCALL_SOCKET, cpu, "SYS_RECVMSG: socket=%d message=%X flags=%X", SARG2, SARG3, SARG4);
             result = krecvmsg(SARG2, SARG3, SARG4);
             break;
         //case 18: // SYS_ACCEPT4
         default:
             kpanic("Unknown socket syscall: %d",ARG1);
     }
+    SYS_LOG(SYSCALL_SOCKET, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }
 
 static U32 syscall_setitimer(CPU* cpu, U32 eipCount) {
-    SYS_LOG("setitimer :which=%d newValue=%d(%d.%.06d) oldValue=%d", ARG1, ARG2, (ARG2?readd(ARG2+8):0), (ARG2?readd(ARG2+12):0), ARG3);
-    return cpu->thread->process->setitimer(ARG1, ARG2, ARG3);
+    SYS_LOG1(SYSCALL_SIGNAL, cpu, "setitimer :which=%d newValue=%d(%d.%.06d) oldValue=%d", ARG1, ARG2, (ARG2?readd(ARG2+8):0), (ARG2?readd(ARG2+12):0), ARG3);
+    U32 result = cpu->thread->process->setitimer(ARG1, ARG2, ARG3);
+    SYS_LOG(SYSCALL_SIGNAL, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
-static U32 syscall_iopl(CPU* cpu, U32 eipCount) {
-    SYS_LOG("iopl: level=%1", ARG1);
-    return 0;
+static U32 syscall_iopl(CPU* cpu, U32 eipCount) {    
+    U32 result = 0;
+    SYS_LOG1(SYSCALL_SIGNAL, cpu, "iopl: level=%1 result=%d(0x%X) IGNORED\n", ARG1, result, result);
+    return result;
 }
 
 static U32 syscall_wait4(CPU* cpu, U32 eipCount) {
-    SYS_LOG("wait4: pid=%d status=%d options=%x rusage=%X", ARG1, ARG2, ARG3, ARG4);
+    SYS_LOG1(SYSCALL_PROCESS, cpu, "wait4: pid=%d status=%d options=%x rusage=%X", ARG1, ARG2, ARG3, ARG4);
 #ifdef _DEBUG
         if (ARG4) {
             kwarn("__NR_wait4 rusuage not implemented");
         }
 #endif
-    return KSystem::waitpid((S32)ARG1, ARG2, ARG3);
+    U32 result = KSystem::waitpid((S32)ARG1, ARG2, ARG3);
+    SYS_LOG(SYSCALL_PROCESS, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_sysinfo(CPU* cpu, U32 eipCount) {
-    SYS_LOG("sysinfo: address=%X", ARG1);
-    return KSystem::sysinfo(ARG1);
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "sysinfo: address=%X", ARG1);
+    U32 result = KSystem::sysinfo(ARG1);
+    SYS_LOG(SYSCALL_SYSTEM, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_ipc(CPU* cpu, U32 eipCount) {
+    U32 result;
+
     // ARG5 holds the pointer to be copied
     if (ARG1 == 21) { // IPCOP_shmat
-        SYS_LOG("ipc: IPCOP_shmat shmid=%d shmaddr=%d shmflg=%X", ARG2, ARG5, ARG3);
-        return KSystem::shmat(ARG2, ARG5, ARG3, ARG4);
+        SYS_LOG1(SYSCALL_SYSTEM|SYSCALL_MEMORY, cpu, "ipc: IPCOP_shmat shmid=%d shmaddr=%d shmflg=%X", ARG2, ARG5, ARG3);
+        result = KSystem::shmat(ARG2, ARG5, ARG3, ARG4);
     }  else if (ARG1 == 22) { // IPCOP_shmdt
-        SYS_LOG("ipc IPCOP_shmdt shmaddr=%d", ARG5);
-        return KSystem::shmdt(ARG5);
+        SYS_LOG1(SYSCALL_SYSTEM|SYSCALL_MEMORY, cpu, "ipc IPCOP_shmdt shmaddr=%d", ARG5);
+        result = KSystem::shmdt(ARG5);
     } else if (ARG1 == 23) { // IPCOP_shmget
         //result = -1; // :TODO: this crashes hsetroot
-        SYS_LOG("ipc: IPCOP_shmget key=%d size=%d flags=%X", ARG2, ARG3, ARG4);
-        return KSystem::shmget(ARG2, ARG3, ARG4);
+        SYS_LOG1(SYSCALL_SYSTEM|SYSCALL_MEMORY, cpu, "ipc: IPCOP_shmget key=%d size=%d flags=%X", ARG2, ARG3, ARG4);
+        result = KSystem::shmget(ARG2, ARG3, ARG4);
     } else if (ARG1 == 24) { // IPCOP_shmctl 
-        SYS_LOG("ipc: IPCOP_shmctl shmid=%d cmd=%d buf=%X", ARG2, ARG3, ARG5);
-        return KSystem::shmctl(ARG2, ARG3, ARG5);
+        SYS_LOG1(SYSCALL_SYSTEM|SYSCALL_MEMORY, cpu, "ipc: IPCOP_shmctl shmid=%d cmd=%d buf=%X", ARG2, ARG3, ARG5);
+        result = KSystem::shmctl(ARG2, ARG3, ARG5);
     } else {
         kpanic("__NR_ipc op %d not implemented", ARG1);
-        return 0;
+        result = 0;
     }
+    SYS_LOG(SYSCALL_SYSTEM, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
-static U32 syscall_fsync(CPU* cpu, U32 eipCount) {
-    SYS_LOG("fsync: fd=%d", ARG1);
-    return 0;
+static U32 syscall_fsync(CPU* cpu, U32 eipCount) {    
+    U32 result = 0;
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "fsync: fd=%d result=%d(0x%X) IGNORED\n", ARG1, result, result);
+    return result;
 }
 
 static U32 syscall_sigreturn(CPU* cpu, U32 eipCount) {
-    SYS_LOG("sigreturn:");
-    return cpu->thread->sigreturn();
+    SYS_LOG1(SYSCALL_SIGNAL, cpu, "sigreturn:");
+    U32 result = cpu->thread->sigreturn();
+    SYS_LOG(SYSCALL_SIGNAL, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_clone(CPU* cpu, U32 eipCount) {
-    SYS_LOG("clone: flags=%X child_stack=%X ptid=%X tls=%X ctid=%X", ARG1, ARG2, ARG3, ARG4, ARG5);
-    return cpu->thread->process->clone(ARG1, ARG2, ARG3, ARG4, ARG5);
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "clone: flags=%X child_stack=%X ptid=%X tls=%X ctid=%X", ARG1, ARG2, ARG3, ARG4, ARG5);
+    U32 result = cpu->thread->process->clone(ARG1, ARG2, ARG3, ARG4, ARG5);
+    SYS_LOG(SYSCALL_SYSTEM, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_uname(CPU* cpu, U32 eipCount) {
-    SYS_LOG("uname: name=%.8X", ARG1);
-    return KSystem::uname(ARG1);
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "uname: name=%.8X", ARG1);
+    U32 result = KSystem::uname(ARG1);
+    SYS_LOG(SYSCALL_SYSTEM, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_modify_ldt(CPU* cpu, U32 eipCount) {
-    SYS_LOG("modify_ldt: func=%d ptr=%X(index=%d address=%X limit=%X flags=%X) count=%d", ARG1, ARG2, readd(ARG2),  readd(ARG2+4), readd(ARG2+8), readd(ARG2+12), ARG3);
-    return cpu->thread->modify_ldt(ARG1, ARG2, ARG3);
+    SYS_LOG1(SYSCALL_PROCESS, cpu, "modify_ldt: func=%d ptr=%X(index=%d address=%X limit=%X flags=%X) count=%d", ARG1, ARG2, readd(ARG2),  readd(ARG2+4), readd(ARG2+8), readd(ARG2+12), ARG3);
+    U32 result = cpu->thread->modify_ldt(ARG1, ARG2, ARG3);
+    SYS_LOG(SYSCALL_PROCESS, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_mprotect(CPU* cpu, U32 eipCount) {
-    SYS_LOG("mprotect: address=%X len=%d prot=%X", ARG1, ARG2, ARG3);
-    return cpu->thread->process->mprotect(ARG1, ARG2, ARG3);
+    SYS_LOG1(SYSCALL_MEMORY, cpu, "mprotect: address=%X len=%d prot=%X", ARG1, ARG2, ARG3);
+    U32 result = cpu->thread->process->mprotect(ARG1, ARG2, ARG3);
+    SYS_LOG(SYSCALL_MEMORY, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_fchdir(CPU* cpu, U32 eipCount) {
-    SYS_LOG("fchdir: fd=%d", ARG1);
-    return cpu->thread->process->fchdir(ARG1);
+    SYS_LOG1(SYSCALL_PROCESS, cpu, "fchdir: fd=%d", ARG1);
+    U32 result = cpu->thread->process->fchdir(ARG1);
+    SYS_LOG(SYSCALL_PROCESS, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_llseek(CPU* cpu, U32 eipCount) {
-    SYS_LOG("llseek: fildes=%d offset=%.8X%.8X pResult=%X whence=%d", ARG1, ARG2, ARG3, ARG4, ARG5);
+    SYS_LOG1(SYSCALL_FILE, cpu, "llseek: fildes=%d offset=%.8X%.8X pResult=%X whence=%d", ARG1, ARG2, ARG3, ARG4, ARG5);
     S64 r64 = cpu->thread->process->llseek(ARG1, ((U64)ARG2)<<32|ARG3, ARG5);
     if (ARG4) {
         writeq(ARG4, r64);
     }
-    return (U32)r64;
+    U32 result = (U32)r64;
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_getdents(CPU* cpu, U32 eipCount) {
-    SYS_LOG("getdents: fd=%d dir=%X count=%d", ARG1, ARG2, ARG3);
-    return cpu->thread->process->getdents(ARG1, ARG2, ARG3, false);
+    SYS_LOG1(SYSCALL_FILE, cpu, "getdents: fd=%d dir=%X count=%d", ARG1, ARG2, ARG3);
+    U32 result = cpu->thread->process->getdents(ARG1, ARG2, ARG3, false);
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_newselect(CPU* cpu, U32 eipCount) {
-    SYS_LOG("newselect: nfd=%d readfds=%X writefds=%X errorfds=%X timeout=%d", ARG1, ARG2, ARG3, ARG4, ARG5);
-    return kselect(ARG1, ARG2, ARG3, ARG4, ARG5);
+    SYS_LOG1(SYSCALL_PROCESS, cpu, "newselect: nfd=%d readfds=%X writefds=%X errorfds=%X timeout=%d", ARG1, ARG2, ARG3, ARG4, ARG5);
+    U32 result = kselect(ARG1, ARG2, ARG3, ARG4, ARG5);
+    SYS_LOG(SYSCALL_PROCESS, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
-static U32 syscall_flock(CPU* cpu, U32 eipCount) {
-    SYS_LOG("flock: fd=%d operation=%d", ARG1, ARG2);
+static U32 syscall_flock(CPU* cpu, U32 eipCount) {    
 #ifdef _DEBUG
     klog("flock not implemented");
 #endif
-    return 0;
+    U32 result = 0;
+    SYS_LOG1(SYSCALL_FILE, cpu, "flock: fd=%d operation=%d result=%d(0x%X) IGNORED\n", ARG1, ARG2, result, result);
+    return result;
 }
 
 static U32 syscall_msync(CPU* cpu, U32 eipCount) {
-    SYS_LOG("msync addr=%X length=%d flags=%X", ARG1, ARG2, ARG3);
-    return cpu->thread->process->msync(ARG1, ARG2, ARG3);
+    SYS_LOG1(SYSCALL_MEMORY, cpu, "msync addr=%X length=%d flags=%X", ARG1, ARG2, ARG3);
+    U32 result = cpu->thread->process->msync(ARG1, ARG2, ARG3);
+    SYS_LOG(SYSCALL_MEMORY, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_writev(CPU* cpu, U32 eipCount) {
-    SYS_LOG("writev: filds=%d iov=0x%X iovcn=%d", ARG1, ARG2, ARG3);
-    return cpu->thread->process->writev(ARG1, ARG2, ARG3);
+    SYS_LOG1(SYSCALL_WRITE, cpu, "writev: filds=%d iov=0x%X iovcn=%d", ARG1, ARG2, ARG3);
+    U32 result = cpu->thread->process->writev(ARG1, ARG2, ARG3);
+    SYS_LOG(SYSCALL_WRITE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
-static U32 syscall_fdatasync(CPU* cpu, U32 eipCount) {
-    SYS_LOG("fdatasync: fd=%d", ARG1);
-    return 0;
+static U32 syscall_fdatasync(CPU* cpu, U32 eipCount) {    
+    U32 result = 0;
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "fdatasync: fd=%d result=%d(0x%X) IGNORED\n", ARG1, result, result);
+    return result;
 }
 
 static U32 syscall_mlock(CPU* cpu, U32 eipCount) {
-    SYS_LOG("mlock: address=0x%X len=%d", ARG1, ARG2);
-    return cpu->thread->process->mlock(ARG1, ARG2);
+    SYS_LOG1(SYSCALL_MEMORY, cpu, "mlock: address=0x%X len=%d", ARG1, ARG2);
+    U32 result = cpu->thread->process->mlock(ARG1, ARG2);
+    SYS_LOG(SYSCALL_MEMORY, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
-static U32 syscall_sched_getparam(CPU* cpu, U32 eipCount) {
-    SYS_LOG("sched_getparam: pid=%d params=%X", ARG1, ARG2);
-    return -K_EPERM;
+static U32 syscall_sched_getparam(CPU* cpu, U32 eipCount) {    
+    U32 result = -K_EPERM;
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "sched_getparam: pid=%d params=%X result=%d(0x%X) IGNORED\n", ARG1, ARG2, result, result);
+    return result;
 }
 
-static U32 syscall_sched_getscheduler(CPU* cpu, U32 eipCount) {
-    SYS_LOG("sched_getscheduler: pid=%d params=%X", ARG1, ARG2);
-    return 0; // SCHED_OTHER
+static U32 syscall_sched_getscheduler(CPU* cpu, U32 eipCount) {    
+    U32 result = 0; // SCHED_OTHER
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "sched_getscheduler: pid=%d params=%X result=%d(0x%X) IGNORED\n", ARG1, ARG2, result, result);
+    return result;
 }
 
-static U32 syscall_sched_yield(CPU* cpu, U32 eipCount) {
-    SYS_LOG("yield:");
+static U32 syscall_sched_yield(CPU* cpu, U32 eipCount) {    
     cpu->yield = true;
-    return 0;
+    U32 result = 0;
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "yield: result=%d(0x%X)\n", result, result);
+    return result;
 }
 
-static U32 syscall_sched_get_priority_max(CPU* cpu, U32 eipCount) {
-    SYS_LOG("sched_get_priority_max: policy=%d", ARG1);
-    return 32;
+static U32 syscall_sched_get_priority_max(CPU* cpu, U32 eipCount) {    
+    U32 result = 32;
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "sched_get_priority_max: policy=%d result=%d(0x%X)\n", ARG1, result, result);
+    return result;
 }
 
 static U32 syscall_sched_get_priority_min(CPU* cpu, U32 eipCount) {
-    SYS_LOG("sched_get_priority_min: policy=%d", ARG1);
-    return 0;
+    U32 result = 0;
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "sched_get_priority_min: policy=%d result=%d(0x%X)\n", ARG1, result, result);
+    return result;
 }
 
 static U32 syscall_nanosleep(CPU* cpu, U32 eipCount) {
-    SYS_LOG("nanosleep: req=%X(%d.%.09d sec)", ARG1, readd(ARG1), readd(ARG1+4));
-    return cpu->thread->sleep(readd(ARG1)*1000+readd(ARG1+4)/1000000);
+    SYS_LOG1(SYSCALL_THREAD, cpu, "nanosleep: req=%X(%d.%.09d sec)", ARG1, readd(ARG1), readd(ARG1+4));
+    U32 result = cpu->thread->sleep(readd(ARG1)*1000+readd(ARG1+4)/1000000);
+    SYS_LOG(SYSCALL_THREAD, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_mremap(CPU* cpu, U32 eipCount) {
-    SYS_LOG("mremap: oldaddress=%x oldsize=%d newsize=%d flags=%X", ARG1, ARG2, ARG3, ARG4);
-    return cpu->thread->process->mremap(ARG1, ARG2, ARG3, ARG4);
+    SYS_LOG1(SYSCALL_MEMORY, cpu, "mremap: oldaddress=%x oldsize=%d newsize=%d flags=%X", ARG1, ARG2, ARG3, ARG4);
+    U32 result = cpu->thread->process->mremap(ARG1, ARG2, ARG3, ARG4);
+    SYS_LOG(SYSCALL_MEMORY, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_vm86(CPU* cpu, U32 eipCount) {
@@ -638,422 +804,543 @@ static U32 syscall_vm86(CPU* cpu, U32 eipCount) {
 }
 
 static U32 syscall_poll(CPU* cpu, U32 eipCount) {
-    SYS_LOG("poll: pfds=%X nfds=%d timeout=%X", ARG1, ARG2, ARG3);
-    return kpoll(ARG1, ARG2, ARG3);		
+    SYS_LOG1(SYSCALL_PROCESS, cpu, "poll: pfds=%X nfds=%d timeout=%X", ARG1, ARG2, ARG3);
+    U32 result = kpoll(ARG1, ARG2, ARG3);		
+    SYS_LOG(SYSCALL_PROCESS, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_prctl(CPU* cpu, U32 eipCount) {
-    SYS_LOG("prctl: options=%d", ARG1);
-    return cpu->thread->process->prctl(ARG1, ARG2);
+    SYS_LOG1(SYSCALL_PROCESS, cpu, "prctl: options=%d", ARG1);
+    U32 result = cpu->thread->process->prctl(ARG1, ARG2);
+    SYS_LOG(SYSCALL_PROCESS, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_rt_sigaction(CPU* cpu, U32 eipCount) {
-    SYS_LOG("rt_sigaction: sig=%d act=%X oact=%X", ARG1, ARG2, ARG3);
-    return cpu->thread->process->sigaction(ARG1, ARG2, ARG3, ARG4);
+    SYS_LOG1(SYSCALL_SIGNAL, cpu, "rt_sigaction: sig=%d act=%X oact=%X", ARG1, ARG2, ARG3);
+    U32 result = cpu->thread->process->sigaction(ARG1, ARG2, ARG3, ARG4);
+    SYS_LOG(SYSCALL_SIGNAL, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_rt_sigprocmask(CPU* cpu, U32 eipCount) {
-    SYS_LOG("rt_sigprocmask: how=%d set=%X oset=%X", ARG1, ARG2, ARG3);
+    SYS_LOG1(SYSCALL_SIGNAL, cpu, "rt_sigprocmask: how=%d set=%X oset=%X", ARG1, ARG2, ARG3);
     U32 result = cpu->thread->sigprocmask(ARG1, ARG2, ARG3, ARG4);
     EAX = result;
     cpu->eip.u32+=eipCount;
     cpu->thread->runSignals();
+    SYS_LOG(SYSCALL_SIGNAL, cpu, " result=%d(0x%X)\n", result, result);
     return -K_CONTINUE;
 }
 
 static U32 syscall_rt_sigsuspend(CPU* cpu, U32 eipCount) {
-    SYS_LOG("rt_sigsuspend: mask=%X", ARG1);
-    return cpu->thread->sigsuspend(ARG1, ARG2);
+    SYS_LOG1(SYSCALL_SIGNAL, cpu, "rt_sigsuspend: mask=%X", ARG1);
+    U32 result = cpu->thread->sigsuspend(ARG1, ARG2);
+    SYS_LOG(SYSCALL_SIGNAL, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_pread64(CPU* cpu, U32 eipCount) {
-    SYS_LOG("pread64: fd=%d buf=%X len=%d offset=%d", ARG1, ARG2, ARG3, ARG4);
-    return cpu->thread->process->pread64(ARG1, ARG2, ARG3, ARG4 | ((U64)ARG5) << 32);
+    SYS_LOG1(SYSCALL_READ, cpu, "pread64: fd=%d buf=%X len=%d offset=%d", ARG1, ARG2, ARG3, ARG4);
+    U32 result = cpu->thread->process->pread64(ARG1, ARG2, ARG3, ARG4 | ((U64)ARG5) << 32);
+    SYS_LOG(SYSCALL_READ, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_pwrite64(CPU* cpu, U32 eipCount) {
-    SYS_LOG("pwrite64: fd=%d buf=%X len=%d offset=%d", ARG1, ARG2, ARG3, ARG4);
-    return cpu->thread->process->pwrite64(ARG1, ARG2, ARG3, ARG4 | ((U64)ARG5) << 32);
+    SYS_LOG1(SYSCALL_WRITE, cpu, "pwrite64: fd=%d buf=%X len=%d offset=%d", ARG1, ARG2, ARG3, ARG4);
+    U32 result = cpu->thread->process->pwrite64(ARG1, ARG2, ARG3, ARG4 | ((U64)ARG5) << 32);
+    SYS_LOG(SYSCALL_WRITE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_getcwd(CPU* cpu, U32 eipCount) {
-    SYS_LOG("getcwd: buf=%X size=%d (%s)", ARG1, ARG2, cpu->thread->process->currentDirectory.c_str());
-    return cpu->thread->process->getcwd(ARG1, ARG2);
+    SYS_LOG1(SYSCALL_PROCESS, cpu, "getcwd: buf=%X size=%d (%s)", ARG1, ARG2, cpu->thread->process->currentDirectory.c_str());
+    U32 result = cpu->thread->process->getcwd(ARG1, ARG2);
+    SYS_LOG(SYSCALL_PROCESS, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_sigaltstack(CPU* cpu, U32 eipCount) {
-    SYS_LOG("sigaltstack ss=%X oss=%X", ARG1, ARG2);
-    return cpu->thread->signalstack(ARG1, ARG2);
+    SYS_LOG1(SYSCALL_SIGNAL, cpu, "sigaltstack ss=%X oss=%X", ARG1, ARG2);
+    U32 result = cpu->thread->signalstack(ARG1, ARG2);
+    SYS_LOG(SYSCALL_SIGNAL, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
-static U32 syscall_vfork(CPU* cpu, U32 eipCount) {
-    SYS_LOG("vfork:");
-    return cpu->thread->process->clone(0x01000000 |0x00200000 | 0x00004000, 0, 0, 0, 0);
+static U32 syscall_vfork(CPU* cpu, U32 eipCount) {    
+    U32 result = cpu->thread->process->clone(0x01000000 |0x00200000 | 0x00004000, 0, 0, 0, 0);
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "vfork: result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_ugetrlimit(CPU* cpu, U32 eipCount) {
-    SYS_LOG("ugetrlimit: resource=%d rlim=%X", ARG1, ARG2);
-    return KSystem::ugetrlimit(ARG1, ARG2);
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "ugetrlimit: resource=%d rlim=%X", ARG1, ARG2);
+    U32 result = KSystem::ugetrlimit(ARG1, ARG2);
+    SYS_LOG(SYSCALL_SYSTEM, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_mmap2(CPU* cpu, U32 eipCount) {
-    SYS_LOG("mmap2: address=%.8X len=0x%X(%d) prot=%X flags=%X fd=%d offset=%d", ARG1, ARG2, ARG2, ARG3, ARG4, ARG5, ARG6);
-    return cpu->thread->process->mmap(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6*4096l);
+    SYS_LOG1(SYSCALL_MEMORY, cpu, "mmap2: address=%.8X len=0x%X(%d) prot=%X flags=%X fd=%d offset=%d", ARG1, ARG2, ARG2, ARG3, ARG4, ARG5, ARG6);
+    U32 result = cpu->thread->process->mmap(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6*4096l);
+    SYS_LOG(SYSCALL_MEMORY, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_ftruncate64(CPU* cpu, U32 eipCount) {
     U64 len = ARG2 | ((U64)ARG3 << 32);
-    SYS_LOG("ftruncate64: fildes=%d length=%llu", ARG1, len);
-    return cpu->thread->process->ftruncate64(ARG1, len);
+    SYS_LOG1(SYSCALL_FILE, cpu, "ftruncate64: fildes=%d length=%llu", ARG1, len);
+    U32 result = cpu->thread->process->ftruncate64(ARG1, len);
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_stat64(CPU* cpu, U32 eipCount) {    
     char tmp[MAX_FILEPATH_LEN];
-    SYS_LOG("stat64: path=%s buf=%X", getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
-    return cpu->thread->process->stat64(getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+    SYS_LOG1(SYSCALL_FILE, cpu, "stat64: path=%s buf=%X", getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+    U32 result = cpu->thread->process->stat64(getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_lstat64(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];
-    SYS_LOG("lstat64: path=%s buf=%X", getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
-    return cpu->thread->process->lstat64(getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+    SYS_LOG1(SYSCALL_FILE, cpu, "lstat64: path=%s buf=%X", getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+    U32 result = cpu->thread->process->lstat64(getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_fstat64(CPU* cpu, U32 eipCount) {
-    SYS_LOG("fstat64: fildes=%d buf=%X", ARG1, ARG2);
-    return cpu->thread->process->fstat64(ARG1, ARG2);
+    SYS_LOG1(SYSCALL_FILE, cpu, "fstat64: fildes=%d buf=%X", ARG1, ARG2);
+    U32 result = cpu->thread->process->fstat64(ARG1, ARG2);
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_lchown32(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];
-    SYS_LOG("lchown32: path=%s owner=%d group=%d", getNativeString(ARG1, tmp, sizeof(tmp)), ARG2, ARG3);
-    return 0;
+    U32 result = 0;
+    SYS_LOG1(SYSCALL_FILE, cpu, "lchown32: path=%s owner=%d group=%d result=%d(0x%X) IGNORED\n", getNativeString(ARG1, tmp, sizeof(tmp)), ARG2, ARG3, result, result);
+    return result;
 }
 
 static U32 syscall_getuid32(CPU* cpu, U32 eipCount) {
-    SYS_LOG("getuid32:");
-    return cpu->thread->process->userId;
+    U32 result = cpu->thread->process->userId;
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "getuid32: result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_getgid32(CPU* cpu, U32 eipCount) {
-    SYS_LOG("getgid32:");
-    return cpu->thread->process->groupId;
+    U32 result = cpu->thread->process->groupId;
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "getgid32: result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_geteuid32(CPU* cpu, U32 eipCount) {
-    SYS_LOG("geteuid32:");
-    return cpu->thread->process->effectiveUserId;
+    U32 result = cpu->thread->process->effectiveUserId;
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "geteuid32: result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_getegid32(CPU* cpu, U32 eipCount) {
-    SYS_LOG("getegid32:");
-    return cpu->thread->process->effectiveGroupId;
+    U32 result = cpu->thread->process->effectiveGroupId;
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "getegid32: result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_getgroups32(CPU* cpu, U32 eipCount) {
-    SYS_LOG("getgroups32: size=%d list=%X", ARG1, ARG2);
     if (ARG2!=0) {
         writed(ARG2, cpu->thread->process->groupId);
     }
-    return 1;
+    U32 result = 1;
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "getgroups32: size=%d list=%X result=%d(0x%X)\n", ARG1, ARG2, result, result);
+    return result;
 }
 
 static U32 syscall_setgroups32(CPU* cpu, U32 eipCount) {
-    SYS_LOG("setgroups32: size=%d list=%X", ARG1, ARG2);
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "setgroups32: size=%d list=%X", ARG1, ARG2);
     if (ARG1) {
         cpu->thread->process->groupId = readd(ARG2);
     }
-    return 0;
+    U32 result = 0;
+    SYS_LOG(SYSCALL_SYSTEM, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_fchown32(CPU* cpu, U32 eipCount) {
-    SYS_LOG("fchown32: fd=%d owner=%d group=%d", ARG1, ARG2, ARG3);
-    return 0;
+    U32 result = 0;
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "fchown32: fd=%d owner=%d group=%d result=%d(0x%X) IGNORED\n", ARG1, ARG2, ARG3, result, result);
+    return result;
 }
 
 static U32 syscall_setresuid32(CPU* cpu, U32 eipCount) {
-    SYS_LOG("setresuid3: ruid=%d euid=%d suid=%d", ARG1, ARG2, ARG3);
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "setresuid3: ruid=%d euid=%d suid=%d", ARG1, ARG2, ARG3);
     if (ARG1!=0xFFFFFFFF)
         cpu->thread->process->userId = ARG1;
     if (ARG2!=0xFFFFFFFF)
         cpu->thread->process->effectiveUserId = ARG2;
-    return 0;
+    U32 result = 0;
+    SYS_LOG(SYSCALL_SYSTEM, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_getresuid32(CPU* cpu, U32 eipCount) {
-    SYS_LOG("getresuid32: ruid=%X(%d) euid=%X(%d) suid=%X(%d)", ARG1, cpu->thread->process->userId, ARG2, cpu->thread->process->effectiveUserId, ARG3, cpu->thread->process->userId);
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "getresuid32: ruid=%X(%d) euid=%X(%d) suid=%X(%d)", ARG1, cpu->thread->process->userId, ARG2, cpu->thread->process->effectiveUserId, ARG3, cpu->thread->process->userId);
     if (ARG1)
         writed(ARG1, cpu->thread->process->userId);
     if (ARG2)
         writed(ARG2, cpu->thread->process->effectiveUserId);
     if (ARG3)
         writed(ARG3, cpu->thread->process->userId);
-    return 0;
+    U32 result = 0;
+    SYS_LOG(SYSCALL_SYSTEM, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_setresgid32(CPU* cpu, U32 eipCount) {
-    SYS_LOG("setresgid32: rgid=%d egid=%d sgid=%d", ARG1, ARG2, ARG3);
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "setresgid32: rgid=%d egid=%d sgid=%d", ARG1, ARG2, ARG3);
     if (ARG1!=0xFFFFFFFF)
         cpu->thread->process->groupId = ARG1;
     if (ARG2!=0xFFFFFFFF)
         cpu->thread->process->effectiveGroupId = ARG2;
-    return 0;
+    U32 result = 0;
+    SYS_LOG(SYSCALL_SYSTEM, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_getresgid32(CPU* cpu, U32 eipCount) {
-    SYS_LOG("getresgid32: rgid=%X(%d) egid=%X(%d) sgid=%X(%d)", ARG1, cpu->thread->process->groupId, ARG2, cpu->thread->process->groupId, ARG3, cpu->thread->process->groupId);
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "getresgid32: rgid=%X(%d) egid=%X(%d) sgid=%X(%d)", ARG1, cpu->thread->process->groupId, ARG2, cpu->thread->process->groupId, ARG3, cpu->thread->process->groupId);
     if (ARG1)
         writed(ARG1, cpu->thread->process->groupId);
     if (ARG2)
         writed(ARG2, cpu->thread->process->effectiveGroupId);
     if (ARG3)
         writed(ARG3, cpu->thread->process->groupId);
-    return 0;
+    U32 result = 0;
+    SYS_LOG(SYSCALL_SYSTEM, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_chown32(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];
-    SYS_LOG("chown32: path=%s owner=%d group=%d", getNativeString(ARG1, tmp, sizeof(tmp)), ARG2, ARG3);
-    return 0;
+    SYS_LOG1(SYSCALL_FILE, cpu, "chown32: path=%s owner=%d group=%d", getNativeString(ARG1, tmp, sizeof(tmp)), ARG2, ARG3);
+    U32 result = 0;
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X) IGNORED\n", result, result);
+    return result;
 }
 
 static U32 syscall_setuid32(CPU* cpu, U32 eipCount) {
-    SYS_LOG("setuid32: uid=%d", ARG1);
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "setuid32: uid=%d", ARG1);
     cpu->thread->process->effectiveUserId = ARG1;
-    return 0;
+    U32 result = 0;
+    SYS_LOG(SYSCALL_SYSTEM, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_setgid32(CPU* cpu, U32 eipCount) {
-    SYS_LOG("setgid32: gid=%d", ARG1);
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "setgid32: gid=%d", ARG1);
     cpu->thread->process->groupId = ARG1;
-    return 0;
+    U32 result = 0;
+    SYS_LOG(SYSCALL_SYSTEM, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_mincore(CPU* cpu, U32 eipCount) {
-    SYS_LOG("mincore: address=%X length=%d vec=%X", ARG1, ARG2, ARG3);
-    return cpu->thread->process->mincore(ARG1, ARG2, ARG3);
+    SYS_LOG1(SYSCALL_PROCESS, cpu, "mincore: address=%X length=%d vec=%X", ARG1, ARG2, ARG3);
+    U32 result = cpu->thread->process->mincore(ARG1, ARG2, ARG3);
+    SYS_LOG(SYSCALL_PROCESS, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
-static U32 syscall_madvise(CPU* cpu, U32 eipCount) {
-    SYS_LOG("madvise: address=%X len=%d advise=%d", ARG1, ARG2, ARG3);
-    return 0;
+static U32 syscall_madvise(CPU* cpu, U32 eipCount) {    
+    U32 result = 0;
+    SYS_LOG1(SYSCALL_MEMORY, cpu, "madvise: address=%X len=%d advise=%d result=%d(0x%X) IGNORED\n", ARG1, ARG2, ARG3, result, result);
+    return result;
 }
 
 static U32 syscall_getdents64(CPU* cpu, U32 eipCount) {
-    SYS_LOG("getdents64: fd=%d dir=%X count=%d", ARG1, ARG2, ARG3);
-    return cpu->thread->process->getdents(ARG1, ARG2, ARG3, true);
+    SYS_LOG1(SYSCALL_FILE, cpu, "getdents64: fd=%d dir=%X count=%d", ARG1, ARG2, ARG3);
+    U32 result = cpu->thread->process->getdents(ARG1, ARG2, ARG3, true);
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_fcntl64(CPU* cpu, U32 eipCount) {
-    SYS_LOG("fcntl64: fildes=%d cmd=%d arg=%d", ARG1, ARG2, ARG3);
-    return cpu->thread->process->fcntrl(ARG1, ARG2, ARG3);
+    SYS_LOG1(SYSCALL_FILE, cpu, "fcntl64: fildes=%d cmd=%d arg=%d", ARG1, ARG2, ARG3);
+    U32 result = cpu->thread->process->fcntrl(ARG1, ARG2, ARG3);
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
-static U32 syscall_gettid(CPU* cpu, U32 eipCount) {
-    SYS_LOG("gettid:");
-    return cpu->thread->id;
+static U32 syscall_gettid(CPU* cpu, U32 eipCount) {    
+    U32 result = cpu->thread->id;
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "gettid: result=%d(0x%X)\n", result, result);
+    return result;
 }
 
-static U32 syscall_fsetxattr(CPU* cpu, U32 eipCount) {
-    SYS_LOG("fsetxattr:");
-    return -K_ENOTSUP;
+static U32 syscall_fsetxattr(CPU* cpu, U32 eipCount) {    
+    U32 result = -K_ENOTSUP;
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "fsetxattr: result = ENOTSUP IGNORED");
+    return result;
 }
 
 static U32 syscall_fgetxattr(CPU* cpu, U32 eipCount) {
-    SYS_LOG("fgetxattr:");
-    return -K_ENOTSUP;
+    U32 result = -K_ENOTSUP;
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "fgetxattr: result = ENOTSUP IGNORED");
+    return result;
 }
 
 static U32 syscall_flistxattr(CPU* cpu, U32 eipCount) {
-    SYS_LOG("flistxattr:");
-    return -K_ENOTSUP;
+    U32 result = -K_ENOTSUP;
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "flistxattr: result = ENOTSUP IGNORED");
+    return result;
 }
 
 static U32 syscall_futex(CPU* cpu, U32 eipCount) {
-    SYS_LOG("futex: address=%X op=%d", ARG1, ARG2);
-    return cpu->thread->futex(ARG1, ARG2, ARG3, ARG4);
+    SYS_LOG1(SYSCALL_THREAD, cpu, "futex: address=%X op=%d", ARG1, ARG2);
+    U32 result = cpu->thread->futex(ARG1, ARG2, ARG3, ARG4);
+    SYS_LOG(SYSCALL_THREAD, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
-static U32 syscall_sched_setaffinity(CPU* cpu, U32 eipCount) {
-    SYS_LOG("sched_setaffinity: pid=%d cpusetsize=d cpu_set_t=%X", ARG1, ARG2, ARG3);
-    return 0;
+static U32 syscall_sched_setaffinity(CPU* cpu, U32 eipCount) {    
+    U32 result = 0;
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "sched_setaffinity: pid=%d cpusetsize=d cpu_set_t=%X result=%d(0x%X) IGNORED\n", ARG1, ARG2, ARG3, result, result);
+    return result;
 }
 
-static U32 syscall_sched_getaffinity(CPU* cpu, U32 eipCount) {
-    SYS_LOG("sched_getaffinity: pid=%d cpusetsize=%d mask=%X", ARG1, ARG2, ARG3);
+static U32 syscall_sched_getaffinity(CPU* cpu, U32 eipCount) {    
 #ifdef _DEBUG
      kwarn("__NR_sched_getaffinity not implemented");
 #endif
-    return -K_EPERM;
+    U32 result = -K_EPERM;
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "sched_getaffinity: pid=%d cpusetsize=%d mask=%X result=%d(0x%X) IGNORED\n", ARG1, ARG2, ARG3, result, result);
+    return result;
 }
 
 static U32 syscall_set_thread_area(CPU* cpu, U32 eipCount) {
-    SYS_LOG("set_thread_area: u_info=%X", ARG1);
-    return cpu->thread->process->set_thread_area(ARG1);
+    SYS_LOG1(SYSCALL_THREAD, cpu, "set_thread_area: u_info=%X", ARG1);
+    U32 result = cpu->thread->process->set_thread_area(ARG1);
+    SYS_LOG(SYSCALL_THREAD, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_exit_group(CPU* cpu, U32 eipCount) {
-    SYS_LOG("exit_group: code=%d", ARG1);
-    return cpu->thread->process->exitgroup(ARG1);		
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "exit_group: code=%d", ARG1);
+    U32 result = cpu->thread->process->exitgroup(ARG1);		
+    SYS_LOG(SYSCALL_SYSTEM, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_epoll_create(CPU* cpu, U32 eipCount) {
-    SYS_LOG("epoll_create: size=%d", ARG1);
-    return cpu->thread->process->epollcreate(ARG1, 0);
+    SYS_LOG1(SYSCALL_PROCESS, cpu, "epoll_create: size=%d", ARG1);
+    U32 result = cpu->thread->process->epollcreate(ARG1, 0);
+    SYS_LOG(SYSCALL_PROCESS, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_epoll_ctl(CPU* cpu, U32 eipCount) {
-    SYS_LOG("epoll_ctl: epfd=%d op=%d fd=%d events=%X", ARG1, ARG2, ARG3, ARG4);
-    return cpu->thread->process->epollctl(ARG1, ARG2, ARG3, ARG4);
+    SYS_LOG1(SYSCALL_PROCESS, cpu, "epoll_ctl: epfd=%d op=%d fd=%d events=%X", ARG1, ARG2, ARG3, ARG4);
+    U32 result = cpu->thread->process->epollctl(ARG1, ARG2, ARG3, ARG4);
+    SYS_LOG(SYSCALL_PROCESS, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_epoll_wait(CPU* cpu, U32 eipCount) {
-    SYS_LOG("epoll_wait: epfd=%d events=%X maxevents=%d timeout=%d", ARG1, ARG2, ARG3, ARG4);
-    return cpu->thread->process->epollwait(ARG1, ARG2, ARG3, ARG4);
+    SYS_LOG1(SYSCALL_PROCESS|SYSCALL_THREAD, cpu, "epoll_wait: epfd=%d events=%X maxevents=%d timeout=%d", ARG1, ARG2, ARG3, ARG4);
+    U32 result = cpu->thread->process->epollwait(ARG1, ARG2, ARG3, ARG4);
+    SYS_LOG(SYSCALL_PROCESS|SYSCALL_THREAD, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_set_tid_address(CPU* cpu, U32 eipCount) {
-    SYS_LOG("set_tid_address: address=%X", ARG1);
+    SYS_LOG1(SYSCALL_THREAD, cpu, "set_tid_address: address=%X", ARG1);
     cpu->thread->clear_child_tid = ARG1;
-    return cpu->thread->id;
+    U32 result = cpu->thread->id;
+    SYS_LOG(SYSCALL_THREAD, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_clock_gettime(CPU* cpu, U32 eipCount) {
-    SYS_LOG("clock_gettime: clock_id=%d tp=%X", ARG1, ARG2);
-    return KSystem::clock_gettime(ARG1, ARG2);
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "clock_gettime: clock_id=%d tp=%X", ARG1, ARG2);
+    U32 result = KSystem::clock_gettime(ARG1, ARG2);
+    SYS_LOG(SYSCALL_SYSTEM, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_clock_getres(CPU* cpu, U32 eipCount) {
-    SYS_LOG("clock_getres: clock_id=%d res=%X", ARG1, ARG2);
-    return KSystem::clock_getres(ARG1, ARG2);
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "clock_getres: clock_id=%d res=%X", ARG1, ARG2);
+    U32 result = KSystem::clock_getres(ARG1, ARG2);
+    SYS_LOG(SYSCALL_SYSTEM, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_statfs64(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];
-    SYS_LOG("fstatfs64: path=%X(%s) len=%d buf=%X", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)), ARG2, ARG3);
-    return cpu->thread->process->statfs64(getNativeString(ARG1, tmp, sizeof(tmp)), ARG3);
+    SYS_LOG1(SYSCALL_FILE, cpu, "fstatfs64: path=%X(%s) len=%d buf=%X", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)), ARG2, ARG3);
+    U32 result = cpu->thread->process->statfs64(getNativeString(ARG1, tmp, sizeof(tmp)), ARG3);
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_fstatfs64(CPU* cpu, U32 eipCount) {
-    SYS_LOG("fstatfs64: fd=%d len=%d buf=%X", ARG1, ARG2, ARG3);
-    return cpu->thread->process->fstatfs64(ARG1, ARG3);
+    SYS_LOG1(SYSCALL_FILE, cpu, "fstatfs64: fd=%d len=%d buf=%X", ARG1, ARG2, ARG3);
+    U32 result = cpu->thread->process->fstatfs64(ARG1, ARG3);
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_tgkill(CPU* cpu, U32 eipCount) {
-    SYS_LOG("tgkill: threadGroupId=%d threadId=%d signal=%d", ARG1, ARG2, ARG3);
-    return KSystem::tgkill(ARG1, ARG2, ARG3);
+    SYS_LOG1(SYSCALL_SIGNAL, cpu, "tgkill: threadGroupId=%d threadId=%d signal=%d", ARG1, ARG2, ARG3);
+    U32 result = KSystem::tgkill(ARG1, ARG2, ARG3);
+    SYS_LOG(SYSCALL_SIGNAL, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_utimes(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];
-    SYS_LOG("utimes: fileName=%s times=%X", getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
-    return cpu->thread->process->utimes(getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+    SYS_LOG1(SYSCALL_FILE, cpu, "utimes: fileName=%s times=%X", getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+    U32 result = cpu->thread->process->utimes(getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
-static U32 syscall_fadvise64(CPU* cpu, U32 eipCount) {
-    SYS_LOG("fadvise64_64: fd=%d", ARG1);
-    return 0;
+static U32 syscall_fadvise64(CPU* cpu, U32 eipCount) {    
+    U32 result = 0;
+    SYS_LOG1(SYSCALL_FILE, cpu, "fadvise64_64: fd=%d result=%d(0x%X) IGNORED\n", ARG1, result, result);
+    return result;
 }
 
-static U32 syscall_inotify_init(CPU* cpu, U32 eipCount) {
-    SYS_LOG("inotify_init:");
-    return -K_ENOSYS;
+static U32 syscall_inotify_init(CPU* cpu, U32 eipCount) {    
+    U32 result = -K_ENOSYS;
+    SYS_LOG1(SYSCALL_FILE, cpu, "inotify_init: result=%d(0x%X) IGNORED\n", result, result);
+    return result;
 }
 
 static U32 syscall_openat(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];
-    SYS_LOG("openat: dirfd=%d name=%s flags=%x", ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3);
-    return cpu->thread->process->openat(ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3);
+    SYS_LOG1(SYSCALL_FILE, cpu, "openat: dirfd=%d name=%s flags=%x", ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3);
+    U32 result = cpu->thread->process->openat(ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3);
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_mkdirat(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];
-    SYS_LOG("mkdirat: dirfd=%d path=%s mode=%x", ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3);
-    return cpu->thread->process->mkdirat(ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3);
+    SYS_LOG1(SYSCALL_FILE, cpu, "mkdirat: dirfd=%d path=%s mode=%x", ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3);
+    U32 result = cpu->thread->process->mkdirat(ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3);
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_fchownat(CPU* cpu, U32 eipCount) {
-    char tmp[MAX_FILEPATH_LEN];
-    SYS_LOG("fchown32: pathname=%X(%s) owner=%d group=%d flags=%d", ARG2, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, ARG4, ARG5);
-    return 0;
+    char tmp[MAX_FILEPATH_LEN];    
+    U32 result = 0;
+    SYS_LOG1(SYSCALL_FILE, cpu, "fchown32: pathname=%X(%s) owner=%d group=%d flags=%d result=%d(0x%X) IGNORED\n", ARG2, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, ARG4, ARG5, result, result);
+    return result;
 }
 
 static U32 syscall_fstatat64(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];
-    SYS_LOG("statat64: dirfd=%d path=%s buf=%X flags=%x", ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, ARG4);
-    return cpu->thread->process->fstatat64(ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, ARG4);
+    SYS_LOG1(SYSCALL_FILE, cpu, "statat64: dirfd=%d path=%s buf=%X flags=%x", ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, ARG4);
+    U32 result = cpu->thread->process->fstatat64(ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, ARG4);
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_unlinkat(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];
-    SYS_LOG("unlinkat: dirfd=%d path=%s flags=%x", ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3);
-    return cpu->thread->process->unlinkat(ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3);
+    SYS_LOG1(SYSCALL_FILE, cpu, "unlinkat: dirfd=%d path=%s flags=%x", ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3);
+    U32 result = cpu->thread->process->unlinkat(ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3);
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_symlinkat(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];
     char tmp2[MAX_FILEPATH_LEN];
-    SYS_LOG("symlinkat: oldpath=%x(%s) dirfd=%d newpath=%X(%s)", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)), ARG2, ARG3, getNativeString(ARG3, tmp2, sizeof(tmp2)));
-    return cpu->thread->process->symlinkat(getNativeString(ARG1, tmp, sizeof(tmp)), ARG2, getNativeString(ARG3, tmp2, sizeof(tmp2)));
+    SYS_LOG1(SYSCALL_FILE, cpu, "symlinkat: oldpath=%x(%s) dirfd=%d newpath=%X(%s)", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)), ARG2, ARG3, getNativeString(ARG3, tmp2, sizeof(tmp2)));
+    U32 result = cpu->thread->process->symlinkat(getNativeString(ARG1, tmp, sizeof(tmp)), ARG2, getNativeString(ARG3, tmp2, sizeof(tmp2)));
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_readlinkat(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];    
     char tmp2[MAX_FILEPATH_LEN];    
-    U32 result = cpu->thread->process->readlinkat(ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, ARG4);
-    SYS_LOG("readlinkat: dirfd=%d pathname=%X(%s) buf=%X(%s) bufsiz=%d", ARG1, ARG2, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, getNativeString(ARG3, tmp2, sizeof(tmp2)), ARG4);
+    SYS_LOG1(SYSCALL_FILE, cpu, "readlinkat: dirfd=%d pathname=%X(%s) buf=%X(%s) bufsiz=%d", ARG1, ARG2, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, getNativeString(ARG3, tmp2, sizeof(tmp2)), ARG4);
+    U32 result = cpu->thread->process->readlinkat(ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, ARG4);    
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }
 
 static U32 syscall_fchmodat(CPU* cpu, U32 eipCount) {
-    char tmp[MAX_FILEPATH_LEN];
-    SYS_LOG("fchmodat pathname=%X(%s) mode=%X flags=%X", ARG2, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, ARG4);
-    return 0;
+    char tmp[MAX_FILEPATH_LEN];    
+    U32 result = 0;
+    SYS_LOG1(SYSCALL_FILE, cpu, "fchmodat pathname=%X(%s) mode=%X flags=%X result=%d(0x%X) IGNORED\n", ARG2, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, ARG4, result, result);
+    return result;
 }
 
 static U32 syscall_faccessat(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];
-    SYS_LOG("faccessat dirfd=%X pathname=%X(%s) mode=%X flags=%X", ARG1, ARG2, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, ARG4);
-    return cpu->thread->process->faccessat(ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, ARG4);
+    SYS_LOG1(SYSCALL_FILE, cpu, "faccessat dirfd=%X pathname=%X(%s) mode=%X flags=%X", ARG1, ARG2, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, ARG4);
+    U32 result = cpu->thread->process->faccessat(ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, ARG4);
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
-static U32 syscall_set_robust_list(CPU* cpu, U32 eipCount) {
-    SYS_LOG("set_robust_list:");
+static U32 syscall_set_robust_list(CPU* cpu, U32 eipCount) {    
 #ifdef _DEBUG
         kwarn("syscall __NR_set_robust_list not implemented");
 #endif
-    return -K_ENOSYS;
+    U32 result = -K_ENOSYS;
+    SYS_LOG1(SYSCALL_THREAD, cpu, "set_robust_list: result=%d(0x%X) IGNORED\n", result, result);
+    return result;
 }
 
-static U32 syscall_sync_file_range(CPU* cpu, U32 eipCount) {
-    SYS_LOG("sync_file_range:");
-    return 0;
+static U32 syscall_sync_file_range(CPU* cpu, U32 eipCount) {    
+    U32 result = 0;
+    SYS_LOG1(SYSCALL_THREAD, cpu, "sync_file_range: result=%d(0x%X) IGNORED\n", result, result);
+    return result;
 }
 
 static U32 syscall_utimensat(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];
-    SYS_LOG("utimensat dirfd=%d path=%X(%s) times=%X flags=%X", ARG1, ARG2, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, ARG4);
-    return cpu->thread->process->utimesat(ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, ARG4);
+    SYS_LOG1(SYSCALL_FILE, cpu, "utimensat dirfd=%d path=%X(%s) times=%X flags=%X", ARG1, ARG2, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, ARG4);
+    U32 result = cpu->thread->process->utimesat(ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, ARG4);
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_epoll_create1(CPU* cpu, U32 eipCount) {
-    SYS_LOG("epoll_create1: falgs=%X", ARG1);
-    return cpu->thread->process->epollcreate(0, ARG1);
+    SYS_LOG1(SYSCALL_PROCESS, cpu, "epoll_create1: falgs=%X", ARG1);
+    U32 result = cpu->thread->process->epollcreate(0, ARG1);
+    SYS_LOG(SYSCALL_PROCESS, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_pipe2(CPU* cpu, U32 eipCount) {
-    SYS_LOG("pipe2 fildes=%X", ARG1);
-    return ksocketpair(K_AF_UNIX, K_SOCK_STREAM, 0, ARG1, ARG2);
+    SYS_LOG1(SYSCALL_SOCKET, cpu, "pipe2 fildes=%X", ARG1);
+    U32 result = ksocketpair(K_AF_UNIX, K_SOCK_STREAM, 0, ARG1, ARG2);
+    SYS_LOG(SYSCALL_SOCKET, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_prlimit64(CPU* cpu, U32 eipCount) {
-    SYS_LOG("prlimit64 pid=%d resource=%d newlimit=%X oldlimit=%X", ARG1, ARG2, ARG3, ARG4);
-    return KSystem::prlimit64(ARG1, ARG2, ARG3, ARG4);
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "prlimit64 pid=%d resource=%d newlimit=%X oldlimit=%X", ARG1, ARG2, ARG3, ARG4);
+    U32 result = KSystem::prlimit64(ARG1, ARG2, ARG3, ARG4);
+    SYS_LOG(SYSCALL_SYSTEM, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_sendmmsg(CPU* cpu, U32 eipCount) {
-    SYS_LOG("sendmmsg fd=%d address=%X vlen=%d flags=%X", ARG1, ARG2, ARG3, ARG4);
-    return ksendmmsg(ARG1, ARG2, ARG3, ARG4);
+    SYS_LOG1(SYSCALL_SOCKET, cpu, "sendmmsg fd=%d address=%X vlen=%d flags=%X", ARG1, ARG2, ARG3, ARG4);
+    U32 result = ksendmmsg(ARG1, ARG2, ARG3, ARG4);
+    SYS_LOG(SYSCALL_SOCKET, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static const SyscallFunc syscallFunc[] = {
@@ -1410,15 +1697,12 @@ static const SyscallFunc syscallFunc[] = {
 
 void ksyscall(CPU* cpu, U32 eipCount) {
     U32 result;
-
-    SYS_LOG("%0.4X/%0.4X %s ", cpu->thread->process->id, cpu->thread->id, cpu->thread->process->name.c_str());
+    
     if (!syscallFunc[EAX]) {
         result = -K_ENOSYS;
     } else {
         result = syscallFunc[EAX](cpu, eipCount);
-    }
-
-    SYS_LOG(" result=%d(0x%X)\n", result, result);
+    }    
 
     if (result==-K_CONTINUE) {
 
