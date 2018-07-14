@@ -139,7 +139,7 @@ void NormalBlock::dealloc(bool delayed) {
 
 void NormalCPU::run() {
     DecodedBlock* block = NULL;
-    U32 startIp = this->eip.u32 + this->seg[CS].address;
+    U32 startIp = (this->big?this->eip.u32:this->eip.u32 & 0xFFFF) + this->seg[CS].address;
 
     Page* page = this->thread->memory->mmu[startIp >> PAGE_SHIFT];
     if (page->type == Page::Type::Code_Page) {
