@@ -177,7 +177,7 @@ U32 KEPoll::wait(U32 events, U32 maxevents, U32 timeout) {
     U32 pollCount=0;
 
     for( const auto& n : this->data ) {
-        if (pollCount>256) {
+        if (pollCount>=256) {
             kpanic("Wasn't expect a poll count of more than 256");
             break;
         }

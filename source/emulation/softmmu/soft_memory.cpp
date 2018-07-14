@@ -221,7 +221,7 @@ public:
     void close() {}
 };
 
-Memory::Memory(KProcess* process) : process(process) {
+Memory::Memory(KProcess* process) : process(process), nativeAddressStart(0) {
     for (int i=0;i<NUMBER_OF_PAGES;i++) {
         this->mmu[i] = invalidPage;
     }

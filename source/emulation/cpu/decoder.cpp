@@ -1040,7 +1040,6 @@ static void outS(U32 s, CPU* cpu) {
         case 3: fwrite("DS", 2, 1, (FILE*)cpu->logFile); break;
         case 4: fwrite("FS", 2, 1, (FILE*)cpu->logFile); break;
         case 5: fwrite("GS", 2, 1, (FILE*)cpu->logFile); break;
-        case 6: fwrite("", 3, 1, (FILE*)cpu->logFile); break;
     }
 }
 

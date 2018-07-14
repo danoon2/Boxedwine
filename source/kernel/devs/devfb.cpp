@@ -185,7 +185,7 @@ U32 GET_SHIFT(U32 n) {
     U32 i;
 
     for (i=0;i<32;i++) {
-        if (n & (1<<i))
+        if (n & ((U32)1<<i))
             return i;
     }
     return 0;
@@ -196,7 +196,7 @@ U32 COUNT_BITS(U32 n) {
     U32 result = 0;
 
     for (i=0;i<32;i++) {
-        if (n & (1<<i)) {
+        if (n & ((U32)1<<i)) {
             result++;
         } else if (result) {
             return result;
