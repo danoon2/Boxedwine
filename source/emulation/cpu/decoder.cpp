@@ -3635,7 +3635,7 @@ public:
                 default:op->inst = Invalid; op->reg = rm; op->imm = data->inst; break;
             }
         } else {
-            decodeEa32(data, op, rm);
+            decodeEa(data, op, rm);
             switch ((rm >> 3) & 7) {
                 case 0: op->inst = FLD_DOUBLE_REAL; break;
                 case 1: op->inst = FISTTP64; break;
