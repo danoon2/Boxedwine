@@ -73,10 +73,12 @@ void FsNode::addChild(BoxedPtr<FsNode> node) {
 }
 
  void FsNode::removeChildByName(const std::string& name) {
-     this->childrenByName.erase(name);
+    this->loadChildren();
+    this->childrenByName.erase(name);
  }
 
  void FsNode::getAllChildren(std::vector<BoxedPtr<FsNode> > & results) {
+    this->loadChildren();
     for (auto& n : this->childrenByName) {
         results.push_back(n.second);
     }
