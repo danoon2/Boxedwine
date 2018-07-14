@@ -217,6 +217,7 @@ KNativeSocketObject::KNativeSocketObject(U32 domain, U32 type, U32 protocol) : K
         nativeProtocol = IPPROTO_RAW;
     } else {
         this->error = -K_EPROTOTYPE;
+        nativeProtocol = IPPROTO_IP;
     }
     this->nativeSocket = (S32)socket(AF_INET, nativeType, nativeProtocol);
 }
@@ -390,7 +391,7 @@ U32 KNativeSocketObject::bind(KFileDescriptor* fd, U32 address, U32 len) {
 
 U32 KNativeSocketObject::connect(KFileDescriptor* fd, U32 address, U32 len) {
     char buffer[1024];
-    int result = 0;
+    U32 result = 0;
 
     if (this->connecting) {
         if (this->isWriteReady()) {
@@ -401,12 +402,12 @@ U32 KNativeSocketObject::connect(KFileDescriptor* fd, U32 address, U32 len) {
             return 0;
         } else {
             int error=0;
-            socklen_t len = 4;
-            if (::getsockopt(this->nativeSocket, SOL_SOCKET, SO_ERROR, (char*)&error, &len) < 0) {
+            socklen_t errLen = 4;
+            if (::getsockopt(this->nativeSocket, SOL_SOCKET, SO_ERROR, (char*)&error, &errLen) < 0) {
                 return -K_EIO;
             }
             if (error) {
-                U32 result = translateNativeSocketError(error);
+                result = translateNativeSocketError(error);
                 if (result!=-K_EWOULDBLOCK) {
                     return result;
                 }
@@ -452,7 +453,7 @@ U32 KNativeSocketObject::accept(KFileDescriptor* fd, U32 address, U32 len) {
     S32 result = (S32)::accept(this->nativeSocket, &addr, &addrlen);
     if (result>=0) {
         BoxedPtr<KNativeSocketObject> s = new KNativeSocketObject(this->domain, this->type, this->protocol);
-        KFileDescriptor* fd = KThread::currentThread()->process->allocFileDescriptor(s, K_O_RDWR, 0, -1, 0);
+        KFileDescriptor* resultFD = KThread::currentThread()->process->allocFileDescriptor(s, K_O_RDWR, 0, -1, 0);
 
         s->nativeSocket = result;
         setNativeBlocking(result, false);
@@ -462,7 +463,7 @@ U32 KNativeSocketObject::accept(KFileDescriptor* fd, U32 address, U32 len) {
         if (len) {
             writed(len, addrlen);
         }
-        return fd->handle;
+        return resultFD->handle;
     }
     return handleNativeSocketError(KThread::currentThread(), this, false);
 }
@@ -478,7 +479,7 @@ U32 KNativeSocketObject::getsockname(KFileDescriptor* fd, U32 address, U32 plen)
         writed(plen, len);
         this->error = 0;
     }
-    delete buf;
+    delete[] buf;
     return result;
 }
 

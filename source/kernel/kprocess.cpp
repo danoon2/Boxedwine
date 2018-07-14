@@ -1031,11 +1031,11 @@ U32 KProcess::readlinkInDirectory(const std::string& currentDirectory, const std
             return -K_EINVAL;
         }
         BoxedPtr<KFile> p = (KFile*)fd->kobject.get();
-        const std::string& path =  p->openFile->node->path;
-        U32 len = path.length();
-        if (path.length()>(int)bufSize)
+        const std::string& fdpath =  p->openFile->node->path;
+        U32 len = fdpath.length();
+        if (fdpath.length()>(int)bufSize)
             len=bufSize;
-        memcopyFromNative(buffer, path.c_str(), len);
+        memcopyFromNative(buffer, fdpath.c_str(), len);
         return len;        
     }
 
@@ -1131,7 +1131,7 @@ U32 KProcess::mmap(U32 addr, U32 len, S32 prot, S32 flags, FD fildes, U64 off) {
             BoxedPtr<MappedFile> mappedFile = new MappedFile();
 
             mappedFile->address = pageStart << PAGE_SHIFT;
-            mappedFile->len = pageCount << PAGE_SHIFT;
+            mappedFile->len = ((U64)pageCount) << PAGE_SHIFT;
             mappedFile->offset = off;     
             mappedFile->file = (KFile*)fd->kobject.get();
 
@@ -1406,9 +1406,7 @@ U32 KProcess::exitgroup(U32 code) {
     }
 
     if (parent && parent->sigActions[K_SIGCHLD].handlerAndSigAction!=K_SIG_DFL) {
-        if (parent->sigActions[K_SIGCHLD].handlerAndSigAction==K_SIG_IGN) {
-            delete this;
-        } else {
+        if (parent->sigActions[K_SIGCHLD].handlerAndSigAction!=K_SIG_IGN) {
             parent->signalCHLD(CLD_EXITED, this->id, this->userId, this->exitCode);
         }
     }
@@ -1673,7 +1671,7 @@ U32 KProcess::prctl(U32 option, U32 arg2) {
 }
 
 U32 KProcess::sigaction(U32 sig, U32 act, U32 oact, U32 sigsetSize) {
-    if (sig == K_SIGKILL || sig == K_SIGSTOP || sig>MAX_SIG_ACTIONS) {
+    if (sig == K_SIGKILL || sig == K_SIGSTOP || sig>MAX_SIG_ACTIONS || sig>=MAX_SIG_ACTIONS) {
         return -K_EINVAL;
     }
     if (oact!=0) {

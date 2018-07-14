@@ -276,13 +276,13 @@ bool ElfLoader::loadProgram(KProcess* process, FsOpenNode* openNode, U32* eip) {
         if (phdr.p_type==PT_LOAD) {
             if (!reloc) {
                 U32 addr = phdr.p_paddr;
-                U32 len = phdr.p_memsz;
+                U32 sectionLen = phdr.p_memsz;
 
                 if (phdr.p_paddr & 0xFFF) {
                     addr &= 0xFFFFF000;
-                    len+=(phdr.p_memsz+(phdr.p_paddr-addr));
+                    sectionLen+=(phdr.p_memsz+(phdr.p_paddr-addr));
                 }
-                process->mmap(addr, len, K_PROT_READ | K_PROT_WRITE | K_PROT_EXEC, K_MAP_PRIVATE | K_MAP_ANONYMOUS | K_MAP_FIXED, -1, 0);
+                process->mmap(addr, sectionLen, K_PROT_READ | K_PROT_WRITE | K_PROT_EXEC, K_MAP_PRIVATE | K_MAP_ANONYMOUS | K_MAP_FIXED, -1, 0);
             }
             if (phdr.p_filesz>0) {
                 if (phdr.p_offset<=hdr->e_phoff && hdr->e_phoff<phdr.p_offset+phdr.p_filesz) {

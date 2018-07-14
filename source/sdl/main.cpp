@@ -666,8 +666,8 @@ int main(int argc, char **argv) {
                 int count = 0;
                 
                 for (auto& n : KSystem::getProcesses()) {
-                    KProcess* process = n.second;
-                    if (process && !process->isStopped() && !process->isTerminated()) {
+                    KProcess* openProcess = n.second;
+                    if (openProcess && !openProcess->isStopped() && !openProcess->isTerminated()) {
                         count++;
                     }
                 }

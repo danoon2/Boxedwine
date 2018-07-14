@@ -31,7 +31,9 @@ bool Fs::initFileSystem(const std::string& rootPath, const std::string& zipPath)
             Fs::nativePathSeperator = "/";        
     }
 
-    MKDIR(rootPath.c_str());
+    if (MKDIR(rootPath.c_str())==0) {
+        klog("Created root directory: %s", rootPath.c_str());
+    }
 
     BoxedPtr<FsNode> parent(NULL);
     rootNode = new FsFileNode(Fs::nextNodeId++, 0, "/", "", true, parent);

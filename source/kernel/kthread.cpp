@@ -822,8 +822,10 @@ U32 KThread::sigprocmask(U32 how, U32 set, U32 oset, U32 sigsetSize) {
             mask = readd(set);
         else if (sigsetSize==8)
             mask = readq(set);
-        else
+        else {
             klog("sigprocmask: can't handle sigsetSize=%d", sigsetSize);
+            mask = 0; // removes warning
+        }
         if (how == K_SIG_BLOCK) {
             this->sigMask|=mask;
             //klog("syscall_sigprocmask block %X(%X)", set, thread->sigMask);

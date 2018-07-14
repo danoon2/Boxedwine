@@ -116,7 +116,7 @@ U32 KSystem::tgkill(U32 threadGroupId, U32 threadId, U32 signal) {
         KProcess* process = p.second;
         for (auto& t : process->getThreads()) {
             KThread* thread = t.second;
-            if (threadId==thread->id) {
+            if (thread && threadId==thread->id) {
                 result = thread;
                 break;
             }

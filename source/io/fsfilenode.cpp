@@ -231,7 +231,7 @@ U32 FsFileNode::rename(const std::string& path) {
             return -K_ENOTDIR;
         }
         if (existingNode->isDirectory()) {
-            U32 result = existingNode->removeDir();
+            result = existingNode->removeDir();
             if (result!=0)
                 return result;
         } else {
@@ -246,9 +246,9 @@ U32 FsFileNode::rename(const std::string& path) {
         this->nativePath = nativePath;
         this->name = Fs::getFileNameFromPath(path);
         std::string parentPath = Fs::getParentPath(path);
-        BoxedPtr<FsNode> parent = Fs::getNodeFromLocalPath("", parentPath, false);
-        parent->addChild(this);
-        this->parent = parent;
+        BoxedPtr<FsNode> parentNode = Fs::getNodeFromLocalPath("", parentPath, false);
+        parentNode->addChild(this);
+        this->parent = parentNode;
     } else {
         result = -translateErr(errno);
     }

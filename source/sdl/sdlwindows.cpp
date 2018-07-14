@@ -707,7 +707,7 @@ void sdlSwapBuffers(KThread* thread) {
 }
 
 #ifdef SDL2
-S8 b[1024*1024*4];
+static S8 sdlBuffer[1024*1024*4];
 #endif
 
 #ifdef BOXEDWINE_VM
@@ -792,12 +792,12 @@ void wndBlt(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32 yOrg, U32 width, 
             }
 
             for (y = 0; y < height; y++) {
-                memcopyToNative(bits+(height-y-1)*pitch, b+y*pitch, pitch);
+                memcopyToNative(bits+(height-y-1)*pitch, sdlBuffer+y*pitch, pitch);
             } 
             if (bits_per_pixel!=32) {
                 // SDL_ConvertPixels(width, height, )
             }
-            SDL_UpdateTexture(sdlTexture, NULL, b, pitch);
+            SDL_UpdateTexture(sdlTexture, NULL, sdlBuffer, pitch);
         }
     #else		
         {     
@@ -1387,6 +1387,8 @@ void sdlCreateAndSetCursor(KThread* thread, char* moduleName, char* resourceName
         for (y=0;y<height;y++) {
             dst = dstPitch*y;
             src = srcPitch*y;
+            data_bits[dst] = 0;
+            mask_bits[dst] = 0;
             for (x=0;x<(width+7)/8;src++,dst++,x++) {
                 int j;
 
@@ -1406,13 +1408,9 @@ void sdlCreateAndSetCursor(KThread* thread, char* moduleName, char* resourceName
                     }
                     if (aBit)
                         data_bits[dst] |= (1 << j);
-                    else
-                        data_bits[dst] &= ~(1 << j);
 
                     if (xBit)
                         mask_bits[dst] |= (1 << j);
-                    else
-                        mask_bits[dst] &= (1 << j);
                 }
             }
         }

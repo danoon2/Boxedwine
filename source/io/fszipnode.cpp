@@ -18,7 +18,8 @@ bool FsZipNode::moveToFileSystem() {
     U8 buffer[4096];
     U32 read = from->readNative(buffer, 4096);
     while (read) {
-        ::write(to, buffer, read);
+        if (::write(to, buffer, read)!=read)
+            return false;
         read = from->readNative(buffer, 4096);
     }
     ::close(to);

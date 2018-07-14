@@ -23,6 +23,10 @@
 
 extern FILE* logFile;
 
+// this will help static analysis
+#ifdef BOXEDWINE_MSVC
+__declspec(noreturn)
+#endif
 void kpanic(const char* msg, ...);
 void kwarn(const char* msg, ...);
 void klog(const char* msg, ...);

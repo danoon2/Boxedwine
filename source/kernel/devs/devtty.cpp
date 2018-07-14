@@ -102,11 +102,8 @@ void DevTTY::writeTermios(U32 address) {
     }
 }
 
-static U8 buffer[PAGE_SIZE+1];
-
 U32 DevTTY::writeNative(U8* buffer, U32 len) {
-    ::write(1, buffer, len);    
-    return len;
+    return ::write(1, buffer, len);    
 }
 
 

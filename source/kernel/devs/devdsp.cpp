@@ -334,13 +334,13 @@ U32 DevDsp::ioctl(U32 request) {
 
     case 0x500C: // SNDCTL_DSP_GETOSPACE
     {
-        int len = this->dspBufferLen-(int)this->dspFragSize;
-        if (len<0)
-            len = 0;
+        int osLen = this->dspBufferLen-(int)this->dspFragSize;
+        if (osLen<0)
+            osLen = 0;
 		writed(IOCTL_ARG1, ((DSP_BUFFER_SIZE - this->dspBufferLen) / this->dspFragSize)); // fragments
 		writed(IOCTL_ARG1 + 4, DSP_BUFFER_SIZE / this->dspFragSize);
 		writed(IOCTL_ARG1 + 8, this->dspFragSize);
-		writed(IOCTL_ARG1 + 12, DSP_BUFFER_SIZE - len);
+		writed(IOCTL_ARG1 + 12, DSP_BUFFER_SIZE - osLen);
         return 0;
     }
     case 0x500F: // SNDCTL_DSP_GETCAPS

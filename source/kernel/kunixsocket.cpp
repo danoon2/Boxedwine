@@ -671,9 +671,9 @@ U32 KUnixSocketObject::recvmsg(KFileDescriptor* fd, U32 address, U32 flags) {
         U32 i=0;
 
         for (;i<hdr.msg_controllen/16 && i<msg->objects.size();i++) {
-            KFileDescriptor* fd = thread->process->allocFileDescriptor(msg->objects[i].object, msg->objects[i].accessFlags, 0, -1, 0);
+            KFileDescriptor* recvFd = thread->process->allocFileDescriptor(msg->objects[i].object, msg->objects[i].accessFlags, 0, -1, 0);
             writeCMsgHdr(hdr.msg_control + i * 16, 16, K_SOL_SOCKET, K_SCM_RIGHTS);
-            writed(hdr.msg_control + i * 16 + 12, fd->handle);
+            writed(hdr.msg_control + i * 16 + 12, recvFd->handle);
         }
         writed(address + 20, i * 20);
     }

@@ -39,7 +39,6 @@
 //#undef LOG_OPS
 
 extern jmp_buf runBlockJump;
-extern U8* ram;
 
 void Memory::log_pf(KThread* thread, U32 address) {
     U32 start = 0;
@@ -443,7 +442,8 @@ bool Memory::findFirstAvailablePage(U32 startingPage, U32 pageCount, U32* result
             bool success = true;
 
             for (j=1;j<pageCount;j++) {
-                if (this->mmu[i+j]->type!=Page::Type::Invalid_Page && (!canBeReMapped || !(this->mmu[i]->flags & PAGE_MAPPED))) {
+                U32 nextPage = i+j; // could be done a different way, but this helps the static analysis
+                if (nextPage < NUMBER_OF_PAGES && this->mmu[nextPage]->type!=Page::Type::Invalid_Page && (!canBeReMapped || !(this->mmu[i]->flags & PAGE_MAPPED))) {
                     success = false;
                     break;
                 }
