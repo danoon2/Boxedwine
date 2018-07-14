@@ -1387,11 +1387,12 @@ void sdlCreateAndSetCursor(KThread* thread, char* moduleName, char* resourceName
         for (y=0;y<height;y++) {
             dst = dstPitch*y;
             src = srcPitch*y;
-            data_bits[dst] = 0;
-            mask_bits[dst] = 0;
+
             for (x=0;x<(width+7)/8;src++,dst++,x++) {
                 int j;
 
+                data_bits[dst] = 0;
+                mask_bits[dst] = 0;
                 for (j=0;j<8;j++) {
                     U8 aBit = (and_bits[src] >> j) & 0x1;
                     U8 xBit = (xor_bits[src] >> j) & 0x1;
