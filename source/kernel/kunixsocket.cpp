@@ -681,12 +681,13 @@ U32 KUnixSocketObject::recvmsg(KFileDescriptor* fd, U32 address, U32 flags) {
     for (U32 i=0;i<hdr.msg_iovlen;i++) {
         U32 p = readd(hdr.msg_iov + 8 * i);
         U32 len = readd(hdr.msg_iov + 8 * i + 4);
-        U32 dataLen = msg->data[pos] | msg->data[pos + 1] | msg->data[pos + 2] | msg->data[pos + 3];
+        U32 dataLen = msg->data[pos] | (((U32)msg->data[pos + 1]) << 8) | (((U32)msg->data[pos + 2]) << 16) | (((U32)msg->data[pos + 3]) << 24);
         pos+=4;
         if (len<dataLen) {
             kpanic("unhandled socket msg logic");
         }
         memcopyFromNative(p, (S8*)msg->data.data() + pos, dataLen);
+        pos+=dataLen;
         result+=dataLen;
     }  
     if (this->connection)
