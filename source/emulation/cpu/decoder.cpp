@@ -4293,8 +4293,8 @@ DecodeLock decodeLock;                                           // LOCK
 DecodeRepNZ decodeRepNZ;                                         // REPNZ
 DecodeRepZ decodeRepZ;                                           // REPZ
 
-DecodeRM decodeLar16(LarR16R16, LarR16E16);                      // LAR
-DecodeRM decodeLsl16(LslR16R16, LslR16E16);                      // LSL
+DecodeRMr decodeLar16(LarR16R16, LarR16E16);                      // LAR
+DecodeRMr decodeLsl16(LslR16R16, LslR16E16);                      // LSL
 
 DecodeRMr decodeCmovO_16(CmovO_R16R16, CmovO_R16E16);             // CMOVO
 DecodeRMr decodeCmovNO_16(CmovNO_R16R16, CmovNO_R16E16);          // CMOVNO
@@ -4347,7 +4347,7 @@ DecodeRM decodeSetNL(SetNL_R8, SetNL_E8);                        // SETNL
 DecodeRM decodeSetLE(SetLE_R8, SetLE_E8);                        // SETLE
 DecodeRM decodeSetNLE(SetNLE_R8, SetNLE_E8);                     // SETNLE
 
-DecodeRM decodeXadd32(XaddR32R32, XaddR32E32); // XADD
+DecodeRMr decodeXadd32(XaddR32R32, XaddR32E32); // XADD
 DecodeGroup decodeCmpXchg8b(Invalid, CmpXchg8b, Invalid, Invalid, Invalid, Invalid, Invalid, Invalid); // CMPXCHG8B
 
 DecodeReg decodeBswapEAX(Bswap32, 0);
