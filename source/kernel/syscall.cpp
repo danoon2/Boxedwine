@@ -445,8 +445,8 @@ static U32 syscall_readlink(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];    
     char tmp2[MAX_FILEPATH_LEN];    
 
-    U32 result = cpu->thread->process->readlink(getNativeString(ARG1, tmp, sizeof(tmp)), ARG1, ARG2);
-    SYS_LOG1(SYSCALL_FILE, cpu, "readlink: path=%X (%s) buffer=%X (%s) bufSize=%d result=%d(0x%X)\n", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)), ARG1, (result==0?getNativeString(ARG1, tmp2, sizeof(tmp2)):""), ARG3, result, result);
+    U32 result = cpu->thread->process->readlink(getNativeString(ARG1, tmp, sizeof(tmp)), ARG2, ARG3);
+    SYS_LOG1(SYSCALL_FILE, cpu, "readlink: path=%X (%s) buffer=%X (%s) bufSize=%d result=%d(0x%X)\n", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)), ARG2, (((int)result)>0?getNativeString(ARG2, tmp2, sizeof(tmp2)):""), ARG3, result, result);
     return result;
 }
 

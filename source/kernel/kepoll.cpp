@@ -186,8 +186,6 @@ U32 KEPoll::wait(U32 events, U32 maxevents, U32 timeout) {
         pollData[pollCount].fd = next->fd;
         pollData[pollCount].data = next->data;
         pollCount++;	
-        if (pollCount==maxevents)
-            break;
     }
     result = internal_poll(pollData, pollCount, timeout);
     if (result >= 0) {
@@ -197,6 +195,10 @@ U32 KEPoll::wait(U32 events, U32 maxevents, U32 timeout) {
                 writed(events + result * 12, pollData[i].revents);        
                 writeq(events + result * 12 + 4, pollData[i].data);
                 result++;
+                if (result>=maxevents) {
+                    kwarn("possible starvation in epoll, more events are ready than can be received.");
+                    break;
+                }
             }        
         }
     }

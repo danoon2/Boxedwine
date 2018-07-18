@@ -1042,8 +1042,11 @@ U32 KProcess::readlinkInDirectory(const std::string& currentDirectory, const std
     BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath(currentDirectory, path, false);
     if (!node || !node->isLink())
         return -K_EINVAL;
-    memcopyFromNative(buffer, node->link.c_str(), node->link.length());
-    return node->link.length(); 
+    U32 len = node->link.length();
+    if (len>bufSize)
+        len = bufSize;
+    memcopyFromNative(buffer, node->link.c_str(), len);
+    return len; 
 }
 
 U32 KProcess::readlinkat(FD dirfd, const std::string& path, U32 buf, U32 bufsiz) {
