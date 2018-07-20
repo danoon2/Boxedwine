@@ -1475,6 +1475,59 @@ void EdGd(int instruction, struct Data* data) {
     }
 }
 
+void EdGdEax(int instruction, struct Data* data) {
+    while (data->valid) {
+        int ed;
+        int gd;
+        int rm;
+
+        for (ed = 1; ed < 8; ed++) {
+            for (gd = 1; gd < 8; gd++) {
+                Reg* e;
+                Reg* g;
+
+                if (ed == gd)
+                    continue;
+                rm = ed | (gd << 3) | 0xC0;
+                newInstructionWithRM(instruction, rm, data->flags);
+                pushConstant(data);
+                e = &cpu->reg[ed];
+                g = &cpu->reg[gd];
+                e->u32 = data->var1;
+                g->u32 = data->var2;
+                EAX = data->constant;
+                runTestCPU();
+                assertResult(data, cpu, instruction, e->u32, EAX, -1, -1, 0, 0);
+            }
+        }
+
+        for (gd = 1; gd < 8; gd++) {
+            Reg* g;
+            U32 result;
+
+            rm = (gd << 3);
+            if (cpu->big)
+                rm += 5;
+            else
+                rm += 6;
+            newInstructionWithRM(instruction, rm, data->flags);
+            if (cpu->big)
+                pushCode32(200);
+            else
+                pushCode16(200);
+            pushConstant(data);
+            writed(cpu->seg[DS].address + 200, data->var1);
+            g = &cpu->reg[gd];
+            g->u32 = data->var2;
+            EAX = data->constant;
+            runTestCPU();
+            result = readd(cpu->seg[DS].address + 200);
+            assertResult(data, cpu, instruction, result, EAX, -1, -1, 0, 0);
+        }
+        data++;
+    }
+}
+
 void EdGdCl(int instruction, struct Data* data) {
     while (data->valid) {
         int ed;
@@ -3224,10 +3277,256 @@ static struct Data shrd32[] = {
         endData()
 };
 
+static struct Data xadd[] = {
+    {1, 100000, 200200, 300200, 100000, 0, 0, 0, 0, 0, 0, 0, 1, 0, true, 0, 0, 1, 0, 0},
+    {1, 0xFFFFFFFF, 1, 0, 0xFFFFFFFF, 0, 0, 1, 0, 0, 0, 0, 1, 0, true, 0, 0, 1, 0, 0},
+    endData()
+};
+
+#ifdef BOXEDWINE_MSVC
+#define X86_TEST(op, d, a, c)                  \
+    {                                           \
+        struct Data* data = d;                  \
+        U32 flagMask = CF|OF|ZF|PF|SF|AF;       \
+                                                \
+        while (data->valid) {                   \
+            U32 result;                         \
+            U32 flags = data->flags;            \
+            __asm {                             \
+                __asm mov ebx, data                  \
+                __asm mov eax, [ebx].var1            \
+                __asm mov ecx, [ebx].var2            \
+                __asm mov edx, flags                 \
+                                                \
+                __asm push edx                       \
+                __asm popf                           \
+                                                \
+                __asm op a, c                        \
+                __asm mov result, eax                \
+                                                \
+                __asm pushf                          \
+                __asm pop edx                        \
+                __asm mov flags, edx                 \
+            }                                   \
+            if (!data->dontUseResultAndCheckSFZF)   \
+                assertTrue(result == data->result); \
+            if (data->dontUseResultAndCheckSFZF || data->hasSF) \
+                assertTrue((flags & SF)!=0 == data->fSF!=0);    \
+            if (data->dontUseResultAndCheckSFZF || data->hasZF) \
+                assertTrue((flags & ZF)!=0 == data->fZF!=0);    \
+            if (data->hasCF)                                    \
+                assertTrue((flags & CF)!=0 == data->fCF!=0);    \
+            if (data->hasOF)                                    \
+                assertTrue((flags & OF)!=0 == data->fOF!=0);    \
+            if (data->hasAF)                                    \
+                assertTrue((flags & AF)!=0 == data->fAF!=0);    \
+            data++;                                             \
+        }                                                       \
+    }                                           
+
+#define X86_TEST1(op, d, a)                  \
+    {                                           \
+        struct Data* data = d;                  \
+        U32 flagMask = CF|OF|ZF|PF|SF|AF;       \
+                                                \
+        while (data->valid) {                   \
+            U32 result;                         \
+            U32 flags = data->flags;            \
+            __asm {                             \
+                __asm mov ebx, data                  \
+                __asm mov eax, [ebx].var1            \
+                __asm mov ecx, [ebx].var2            \
+                __asm mov edx, flags                 \
+                                                \
+                __asm push edx                       \
+                __asm popf                           \
+                                                \
+                __asm op a                        \
+                __asm mov result, eax                \
+                                                \
+                __asm pushf                          \
+                __asm pop edx                        \
+                __asm mov flags, edx                 \
+            }                                   \
+            if (!data->dontUseResultAndCheckSFZF)   \
+                assertTrue(result == data->result); \
+            if (data->dontUseResultAndCheckSFZF || data->hasSF) \
+                assertTrue((flags & SF)!=0 == data->fSF!=0);    \
+            if (data->dontUseResultAndCheckSFZF || data->hasZF) \
+                assertTrue((flags & ZF)!=0 == data->fZF!=0);    \
+            if (data->hasCF)                                    \
+                assertTrue((flags & CF)!=0 == data->fCF!=0);    \
+            if (data->hasOF)                                    \
+                assertTrue((flags & OF)!=0 == data->fOF!=0);    \
+            if (data->hasAF)                                    \
+                assertTrue((flags & AF)!=0 == data->fAF!=0);    \
+            data++;                                             \
+        }                                                       \
+    } 
+
+#define X86_TEST0(op, d)                  \
+    {                                           \
+        struct Data* data = d;                  \
+        U32 flagMask = CF|OF|ZF|PF|SF|AF;       \
+                                                \
+        while (data->valid) {                   \
+            U32 result;                         \
+            U32 flags = data->flags;            \
+            __asm {                             \
+                __asm mov ebx, data                  \
+                __asm mov eax, [ebx].var1            \
+                __asm mov ecx, [ebx].var2            \
+                __asm mov edx, flags                 \
+                                                \
+                __asm push edx                       \
+                __asm popf                           \
+                                                \
+                __asm op                         \
+                __asm mov result, eax                \
+                                                \
+                __asm pushf                          \
+                __asm pop edx                        \
+                __asm mov flags, edx                 \
+            }                                   \
+            if (!data->dontUseResultAndCheckSFZF)   \
+                assertTrue(result == data->result); \
+            if (data->dontUseResultAndCheckSFZF || data->hasSF) \
+                assertTrue((flags & SF)!=0 == data->fSF!=0);    \
+            if (data->dontUseResultAndCheckSFZF || data->hasZF) \
+                assertTrue((flags & ZF)!=0 == data->fZF!=0);    \
+            if (data->hasCF)                                    \
+                assertTrue((flags & CF)!=0 == data->fCF!=0);    \
+            if (data->hasOF)                                    \
+                assertTrue((flags & OF)!=0 == data->fOF!=0);    \
+            if (data->hasAF)                                    \
+                assertTrue((flags & AF)!=0 == data->fAF!=0);    \
+            data++;                                             \
+        }                                                       \
+    } 
+
+#define X86_TEST2C(op, d, a, c, imm)                  \
+    {                                           \
+        struct Data* data = d;                  \
+        U32 flagMask = CF|OF|ZF|PF|SF|AF;       \
+                                                \
+            U32 result;                         \
+            U32 flags = data->flags;            \
+            __asm {                             \
+                __asm mov ebx, data                  \
+                __asm mov eax, [ebx].var1            \
+                __asm mov ecx, [ebx].var2            \
+                __asm mov edx, flags                 \
+                                                \
+                __asm push edx                       \
+                __asm popf                           \
+                                                \
+                __asm op a, c, imm                        \
+                __asm mov result, eax                \
+                                                \
+                __asm pushf                          \
+                __asm pop edx                        \
+                __asm mov flags, edx                 \
+            }                                   \
+            if (!data->dontUseResultAndCheckSFZF)   \
+                assertTrue(result == data->result); \
+            if (data->dontUseResultAndCheckSFZF || data->hasSF) \
+                assertTrue((flags & SF)!=0 == data->fSF!=0);    \
+            if (data->dontUseResultAndCheckSFZF || data->hasZF) \
+                assertTrue((flags & ZF)!=0 == data->fZF!=0);    \
+            if (data->hasCF)                                    \
+                assertTrue((flags & CF)!=0 == data->fCF!=0);    \
+            if (data->hasOF)                                    \
+                assertTrue((flags & OF)!=0 == data->fOF!=0);    \
+            if (data->hasAF)                                    \
+                assertTrue((flags & AF)!=0 == data->fAF!=0);    \
+    } 
+
+#define X86_TEST1C(op, d, a, imm)                  \
+    {                                           \
+        struct Data* data = d;                  \
+        U32 flagMask = CF|OF|ZF|PF|SF|AF;       \
+                                                \
+            U32 result;                         \
+            U32 flags = data->flags;            \
+            __asm {                             \
+                __asm mov ebx, data                  \
+                __asm mov eax, [ebx].var1            \
+                __asm mov ecx, [ebx].var2            \
+                __asm mov edx, flags                 \
+                                                \
+                __asm push edx                       \
+                __asm popf                           \
+                                                \
+                __asm op a, imm                        \
+                __asm mov result, eax                \
+                                                \
+                __asm pushf                          \
+                __asm pop edx                        \
+                __asm mov flags, edx                 \
+            }                                   \
+            if (!data->dontUseResultAndCheckSFZF)   \
+                assertTrue(result == data->result); \
+            if (data->dontUseResultAndCheckSFZF || data->hasSF) \
+                assertTrue((flags & SF)!=0 == data->fSF!=0);    \
+            if (data->dontUseResultAndCheckSFZF || data->hasZF) \
+                assertTrue((flags & ZF)!=0 == data->fZF!=0);    \
+            if (data->hasCF)                                    \
+                assertTrue((flags & CF)!=0 == data->fCF!=0);    \
+            if (data->hasOF)                                    \
+                assertTrue((flags & OF)!=0 == data->fOF!=0);    \
+            if (data->hasAF)                                    \
+                assertTrue((flags & AF)!=0 == data->fAF!=0);    \
+    } 
+
+#define X86_TEST0C(op, d, imm)                  \
+    {                                           \
+        struct Data* data = d;                  \
+        U32 flagMask = CF|OF|ZF|PF|SF|AF;       \
+                                                \
+            U32 result;                         \
+            U32 flags = data->flags;            \
+            __asm {                             \
+                __asm mov ebx, data                  \
+                __asm mov eax, [ebx].var1            \
+                __asm mov ecx, [ebx].var2            \
+                __asm mov edx, flags                 \
+                                                \
+                __asm push edx                       \
+                __asm popf                           \
+                                                \
+                __asm op imm                        \
+                __asm mov result, eax                \
+                                                \
+                __asm pushf                          \
+                __asm pop edx                        \
+                __asm mov flags, edx                 \
+            }                                   \
+            if (!data->dontUseResultAndCheckSFZF)   \
+                assertTrue(result == data->result); \
+            if (data->dontUseResultAndCheckSFZF || data->hasSF) \
+                assertTrue((flags & SF)!=0 == data->fSF!=0);    \
+            if (data->dontUseResultAndCheckSFZF || data->hasZF) \
+                assertTrue((flags & ZF)!=0 == data->fZF!=0);    \
+            if (data->hasCF)                                    \
+                assertTrue((flags & CF)!=0 == data->fCF!=0);    \
+            if (data->hasOF)                                    \
+                assertTrue((flags & OF)!=0 == data->fOF!=0);    \
+            if (data->hasAF)                                    \
+                assertTrue((flags & AF)!=0 == data->fAF!=0);    \
+    }
+#else
+#define X86_TEST0C(op, d, imm)
+#define X86_TEST1C(op, d, a, imm)
+#define X86_TEST2C(op, d, a, c, imm) 
+#define X86_TEST0(op, d)
+#define X86_TEST1(op, d, a)
+#define X86_TEST(op, d, a, c)
+#endif
+
 void testAdd0x000() {cpu->big = false;EbGb(0x00, addb);}
-void testAdd0x200() {cpu->big = true;EbGb(0x00, addb);}
-void testAdd0x001() {cpu->big = false;EwGw(0x01, addw);}
-void testAdd0x201() {cpu->big = true;EdGd(0x01, addd);}
+void testAdd0x200() {cpu->big = true;EbGb(0x00, addb);X86_TEST(add, addb, al, cl)}
+void testAdd0x001() {cpu->big = false;EwGw(0x01, addw);X86_TEST(add, addw, ax, cx)}
+void testAdd0x201() {cpu->big = true;EdGd(0x01, addd);X86_TEST(add, addd, eax, ecx)}
 void testAdd0x002() {cpu->big = false;GbEb(0x02, addb);}
 void testAdd0x202() {cpu->big = true;GbEb(0x02, addb);}
 void testAdd0x003() {cpu->big = false;GwEw(0x03, addw);}
@@ -3238,9 +3537,9 @@ void testAdd0x005() {cpu->big = false;AxIw(0x05, addw);}
 void testAdd0x205() {cpu->big = true;EaxId(0x05, addd);}
 
 void testOr0x008() {cpu->big = false;EbGb(0x08, orb);}
-void testOr0x208() {cpu->big = true;EbGb(0x08, orb);}
-void testOr0x009() {cpu->big = false;EwGw(0x09, orw);}
-void testOr0x209() {cpu->big = true;EdGd(0x09, ord);}
+void testOr0x208() {cpu->big = true;EbGb(0x08, orb);X86_TEST(or, orb, al, cl)}
+void testOr0x009() {cpu->big = false;EwGw(0x09, orw);X86_TEST(or, orw, ax, cx)}
+void testOr0x209() {cpu->big = true;EdGd(0x09, ord);X86_TEST(or, ord, eax, ecx)}
 void testOr0x00a() {cpu->big = false;GbEb(0x0a, orb);}
 void testOr0x20a() {cpu->big = true;GbEb(0x0a, orb);}
 void testOr0x00b() {cpu->big = false;GwEw(0x0b, orw);}
@@ -3251,9 +3550,9 @@ void testOr0x00d() {cpu->big = false;AxIw(0x0d, orw);}
 void testOr0x20d() {cpu->big = true;EaxId(0x0d, ord);}
 
 void testAdc0x010() {cpu->big = false;EbGb(0x10, adcb);}
-void testAdc0x210() {cpu->big = true;EbGb(0x10, addb);}
-void testAdc0x011() {cpu->big = false;EwGw(0x11, adcw);}
-void testAdc0x211() {cpu->big = true;EdGd(0x11, adcd);}
+void testAdc0x210() {cpu->big = true;EbGb(0x10, addb);X86_TEST(adc, adcb, al, cl)}
+void testAdc0x011() {cpu->big = false;EwGw(0x11, adcw);X86_TEST(adc, adcw, ax, cx)}
+void testAdc0x211() {cpu->big = true;EdGd(0x11, adcd);X86_TEST(adc, adcd, eax, ecx)}
 void testAdc0x012() {cpu->big = false;GbEb(0x12, adcb);}
 void testAdc0x212() {cpu->big = true;GbEb(0x12, adcb);}
 void testAdc0x013() {cpu->big = false;GwEw(0x13, adcw);}
@@ -3264,9 +3563,9 @@ void testAdc0x015() {cpu->big = false;AxIw(0x15, adcw);}
 void testAdc0x215() {cpu->big = true;EaxId(0x15, adcd);}
 
 void testSbb0x018() {cpu->big = false;EbGb(0x18, sbbb);}
-void testSbb0x218() {cpu->big = true;EbGb(0x18, sbbb);}
-void testSbb0x019() {cpu->big = false;EwGw(0x19, sbbw);}
-void testSbb0x219() {cpu->big = true;EdGd(0x19, sbbd);}
+void testSbb0x218() {cpu->big = true;EbGb(0x18, sbbb);X86_TEST(sbb, sbbb, al, cl)}
+void testSbb0x019() {cpu->big = false;EwGw(0x19, sbbw);X86_TEST(sbb, sbbw, ax, cx)}
+void testSbb0x219() {cpu->big = true;EdGd(0x19, sbbd);X86_TEST(sbb, sbbd, eax, ecx)}
 void testSbb0x01a() {cpu->big = false;GbEb(0x1a, sbbb);}
 void testSbb0x21a() {cpu->big = true;GbEb(0x1a, sbbb);}
 void testSbb0x01b() {cpu->big = false;GwEw(0x1b, sbbw);}
@@ -3277,9 +3576,9 @@ void testSbb0x01d() {cpu->big = false;AxIw(0x1d, sbbw);}
 void testSbb0x21d() {cpu->big = true;EaxId(0x1d, sbbd);}
 
 void testAnd0x020() {cpu->big = false;EbGb(0x20, andb);}
-void testAnd0x220() {cpu->big = true;EbGb(0x20, andb);}
-void testAnd0x021() {cpu->big = false;EwGw(0x21, andw);}
-void testAnd0x221() {cpu->big = true;EdGd(0x21, andd);}
+void testAnd0x220() {cpu->big = true;EbGb(0x20, andb);X86_TEST(and, andb, al, cl)}
+void testAnd0x021() {cpu->big = false;EwGw(0x21, andw);X86_TEST(and, andw, ax, cx)}
+void testAnd0x221() {cpu->big = true;EdGd(0x21, andd);X86_TEST(and, andd, eax, ecx)}
 void testAnd0x022() {cpu->big = false;GbEb(0x22, andb);}
 void testAnd0x222() {cpu->big = true;GbEb(0x22, andb);}
 void testAnd0x023() {cpu->big = false;GwEw(0x23, andw);}
@@ -3293,9 +3592,9 @@ void testDaa0x027() {cpu->big = false;EbReg(0x27, 0, daa);}
 void testDaa0x227() {cpu->big = true;EbReg(0x27, 0, daa);}
 
 void testSub0x028() {cpu->big = false;EbGb(0x28, subb);}
-void testSub0x228() {cpu->big = true;EbGb(0x28, subb);}
-void testSub0x029() {cpu->big = false;EwGw(0x29, subw);}
-void testSub0x229() {cpu->big = true;EdGd(0x29, subd);}
+void testSub0x228() {cpu->big = true;EbGb(0x28, subb);X86_TEST(sub, subb, al, cl)}
+void testSub0x029() {cpu->big = false;EwGw(0x29, subw);X86_TEST(sub, subw, ax, cx)}
+void testSub0x229() {cpu->big = true;EdGd(0x29, subd);X86_TEST(sub, subd, eax, ecx)}
 void testSub0x02a() {cpu->big = false;GbEb(0x2a, subb);}
 void testSub0x22a() {cpu->big = true;GbEb(0x2a, subb);}
 void testSub0x02b() {cpu->big = false;GwEw(0x2b, subw);}
@@ -3309,9 +3608,9 @@ void testDas0x02f() {cpu->big = false;EbReg(0x2f, 0, das);}
 void testDas0x22f() {cpu->big = true;EbReg(0x2f, 0, das);}
 
 void testXor0x030() {cpu->big = false;EbGb(0x30, xorb);}
-void testXor0x230() {cpu->big = true;EbGb(0x30, xorb);}
-void testXor0x031() {cpu->big = false;EwGw(0x31, xorw);}
-void testXor0x231() {cpu->big = true;EdGd(0x31, xord);}
+void testXor0x230() {cpu->big = true;EbGb(0x30, xorb);X86_TEST(xor, xorb, al, cl)}
+void testXor0x031() {cpu->big = false;EwGw(0x31, xorw);X86_TEST(xor, xorw, ax, cx)}
+void testXor0x231() {cpu->big = true;EdGd(0x31, xord);X86_TEST(xor, xord, eax, ecx)}
 void testXor0x032() {cpu->big = false;GbEb(0x32, xorb);}
 void testXor0x232() {cpu->big = true;GbEb(0x32, xorb);}
 void testXor0x033() {cpu->big = false;GwEw(0x33, xorw);}
@@ -3325,9 +3624,9 @@ void testAaa0x037() {cpu->big = false;EwReg(0x37, 0, aaa);}
 void testAaa0x237() {cpu->big = true;EwReg(0x37, 0, aaa);}
 
 void testCmp0x038() {cpu->big = false;EbGb(0x38, cmpb);}
-void testCmp0x238() {cpu->big = true;EbGb(0x38, cmpb);}
-void testCmp0x039() {cpu->big = false;EwGw(0x39, cmpw);}
-void testCmp0x239() {cpu->big = true;EdGd(0x39, cmpd);}
+void testCmp0x238() {cpu->big = true;EbGb(0x38, cmpb);X86_TEST(cmp, cmpb, al, cl)}
+void testCmp0x039() {cpu->big = false;EwGw(0x39, cmpw);X86_TEST(cmp, cmpw, ax, cx)}
+void testCmp0x239() {cpu->big = true;EdGd(0x39, cmpd);X86_TEST(cmp, cmpd, eax, ecx)}
 void testCmp0x03a() {cpu->big = false;GbEb(0x3a, cmpb);}
 void testCmp0x23a() {cpu->big = true;GbEb(0x3a, cmpb);}
 void testCmp0x03b() {cpu->big = false;GwEw(0x3b, cmpw);}
@@ -3340,8 +3639,8 @@ void testCmp0x23d() {cpu->big = true;EaxId(0x3d, cmpd);}
 void testAas0x03f() {cpu->big = false;EwReg(0x3f, 0, aas);}
 void testAas0x23f() {cpu->big = true;EwReg(0x3f, 0, aas);}
 
-void testIncAx0x040() {cpu->big = false;EwReg(0x40, 0, incw);}
-void testIncEax0x240() {cpu->big = true;EdReg(0x40, 0, incd);}
+void testIncAx0x040() {cpu->big = false;EwReg(0x40, 0, incw);X86_TEST1(inc, incw, ax)}
+void testIncEax0x240() {cpu->big = true;EdReg(0x40, 0, incd);X86_TEST1(inc, incd, eax)}
 void testIncCx0x041() {cpu->big = false;EwReg(0x41, 1, incw);}
 void testIncEcx0x241() {cpu->big = true;EdReg(0x41, 1, incd);}
 void testIncDx0x042() {cpu->big = false;EwReg(0x42, 2, incw);}
@@ -3357,8 +3656,8 @@ void testIncEsi0x246() {cpu->big = true;EdReg(0x46, 6, incd);}
 void testIncDi0x047() {cpu->big = false;EwReg(0x47, 7, incw);}
 void testIncEdi0x247() {cpu->big = true;EdReg(0x47, 7, incd);}
 
-void testDecAx0x048() {cpu->big = false;EwReg(0x48, 0, decw);}
-void testDecEax0x248() {cpu->big = true;EdReg(0x48, 0, decd);}
+void testDecAx0x048() {cpu->big = false;EwReg(0x48, 0, decw);X86_TEST1(dec, decw, ax)}
+void testDecEax0x248() {cpu->big = true;EdReg(0x48, 0, decd);X86_TEST1(dec, decd, eax)}
 void testDecCx0x049() {cpu->big = false;EwReg(0x49, 1, decw);}
 void testDecEcx0x249() {cpu->big = true;EdReg(0x49, 1, decd);}
 void testDecDx0x04a() {cpu->big = false;EwReg(0x4a, 2, decw);}
@@ -3411,8 +3710,8 @@ void testPopEdi0x25f() {cpu->big = true;Pop32(0x5f, &cpu->reg[7]);}
 void testPush0x068() {cpu->big = false;push16(0x68);}
 void testPush0x268() {cpu->big = true;push32(0x68);}
 
-void testIMul0x069() {cpu->big = false;GwEw(0x69, imulw);}
-void testIMul0x269() {cpu->big = true;GdEd(0x69, imuld);}
+void testIMul0x069() {cpu->big = false;GwEw(0x69, imulw);X86_TEST2C(imul, &imulw[0], ax, cx, 2) X86_TEST2C(imul, &imulw[1], ax, cx, 2) X86_TEST2C(imul, &imulw[2], ax, cx, 0xFFFE) X86_TEST2C(imul, &imulw[3], ax, cx, 300) X86_TEST2C(imul, &imulw[4], ax, cx, 300)}
+void testIMul0x269() {cpu->big = true;GdEd(0x69, imuld);X86_TEST2C(imul, &imuld[0], eax, ecx, 2) X86_TEST2C(imul, &imuld[1], eax, ecx, 2) X86_TEST2C(imul, &imuld[2], eax, ecx, 0xFFFFFFFE) X86_TEST2C(imul, &imuld[3], eax, ecx, 400000) X86_TEST2C(imul, &imuld[4], eax, ecx, 400000)}
 
 void testPush0x06a() {cpu->big = false;push16s8(0x6a);}
 void testPush0x26a() {cpu->big = true;push32s8(0x6a);}
@@ -3493,9 +3792,9 @@ void testGrp10x283() {
 }
 
 void testTest0x084() {cpu->big = false;EbGb(0x84, testb);}
-void testTest0x284() {cpu->big = true;EbGb(0x84, testb);}
-void testTest0x085() {cpu->big = false;EwGw(0x85, testw);}
-void testTest0x285() {cpu->big = true;EdGd(0x85, testd);}
+void testTest0x284() {cpu->big = true;EbGb(0x84, testb); X86_TEST(test, testb, al, cl)}
+void testTest0x085() {cpu->big = false;EwGw(0x85, testw); X86_TEST(test, testw, ax, cx)}
+void testTest0x285() {cpu->big = true;EdGd(0x85, testd); X86_TEST(test, testd, eax, ecx)}
 
 void testXchg0x086() {cpu->big = false;EbGb(0x86, xchgb);}
 void testXchg0x286() {cpu->big = true;EbGb(0x86, xchgb);}
@@ -3539,8 +3838,8 @@ void testXchgEsiEax0x296() {cpu->big = true;Reg32Reg32(0x96, xchgd, &cpu->reg[0]
 void testXchgDiAx0x097() {cpu->big = false;Reg16Reg16(0x97, xchgw, &cpu->reg[0], &cpu->reg[7]);}
 void testXchgEdiEax0x297() {cpu->big = true;Reg32Reg32(0x97, xchgd, &cpu->reg[0], &cpu->reg[7]);}
 
-void testCbw0x098() {cpu->big = false;EwReg(0x98, 0, cbw);}
-void testCwde0x298() {cpu->big = true;EdReg(0x98, 0, cwde);}
+void testCbw0x098() {cpu->big = false;EwReg(0x98, 0, cbw); X86_TEST0(cbw, cbw)}
+void testCwde0x298() {cpu->big = true;EdReg(0x98, 0, cwde); X86_TEST0(cwde, cwde)}
 void testCwd0x099() {cpu->big = false;Reg16Reg16(0x99, cwd, &cpu->reg[0], &cpu->reg[2]);}
 void testCdq0x299() {cpu->big = true;Reg32Reg32(0x99, cdq, &cpu->reg[0], &cpu->reg[2]);}
 
@@ -3592,13 +3891,88 @@ void testMovEdiId0x2bf() {cpu->big = true;EdRegId(0xbf, &cpu->reg[7], 7, movd);}
 void testGrp20x0c0() {
     cpu->big = false;
     EbIb(0xC0, 0, rolb);
+    X86_TEST1C(rol, &rolb[0], al, 1) 
+    X86_TEST1C(rol, &rolb[1], al, 1) 
+    X86_TEST1C(rol, &rolb[2], al, 1) 
+    X86_TEST1C(rol, &rolb[3], al, 4) 
+    X86_TEST1C(rol, &rolb[4], al, 12) 
+    X86_TEST1C(rol, &rolb[5], al, 0) 
+    X86_TEST1C(rol, &rolb[6], al, 8)
+    X86_TEST1C(rol, &rolb[7], al, 8)
+    X86_TEST1C(rol, &rolb[8], al, 9)
+    X86_TEST1C(rol, &rolb[9], al, 32)
+
     EbIb(0xC0, 1, rorb);
+    X86_TEST1C(ror, &rorb[0], al, 1) 
+    X86_TEST1C(ror, &rorb[1], al, 1) 
+    X86_TEST1C(ror, &rorb[2], al, 1) 
+    X86_TEST1C(ror, &rorb[3], al, 4) 
+    X86_TEST1C(ror, &rorb[4], al, 12) 
+    X86_TEST1C(ror, &rorb[5], al, 0) 
+    X86_TEST1C(ror, &rorb[6], al, 8)
+    X86_TEST1C(ror, &rorb[7], al, 8)
+    X86_TEST1C(ror, &rorb[8], al, 9)
+    X86_TEST1C(ror, &rorb[9], al, 32)
+
     EbIb(0xC0, 2, rclb);
+    X86_TEST1C(rcl, &rclb[0], al, 1) 
+    X86_TEST1C(rcl, &rclb[1], al, 1) 
+    X86_TEST1C(rcl, &rclb[2], al, 1) 
+    X86_TEST1C(rcl, &rclb[3], al, 5) 
+    X86_TEST1C(rcl, &rclb[4], al, 14) 
+    X86_TEST1C(rcl, &rclb[5], al, 0) 
+    X86_TEST1C(rcl, &rclb[6], al, 9)
+    X86_TEST1C(rcl, &rclb[7], al, 9)
+    X86_TEST1C(rcl, &rclb[8], al, 10)
+    X86_TEST1C(rcl, &rclb[9], al, 32)
+    X86_TEST1C(rcl, &rclb[10], al, 1)
+    X86_TEST1C(rcl, &rclb[11], al, 2)
+
     EbIb(0xC0, 3, rcrb);
+    X86_TEST1C(rcr, &rcrb[0], al, 1) 
+    X86_TEST1C(rcr, &rcrb[1], al, 1) 
+    X86_TEST1C(rcr, &rcrb[2], al, 1) 
+    X86_TEST1C(rcr, &rcrb[3], al, 5) 
+    X86_TEST1C(rcr, &rcrb[4], al, 14) 
+    X86_TEST1C(rcr, &rcrb[5], al, 0) 
+    X86_TEST1C(rcr, &rcrb[6], al, 9)
+    X86_TEST1C(rcr, &rcrb[7], al, 9)
+    X86_TEST1C(rcr, &rcrb[8], al, 10)
+    X86_TEST1C(rcr, &rcrb[9], al, 32)
+    X86_TEST1C(rcr, &rcrb[10], al, 1)
+    X86_TEST1C(rcr, &rcrb[11], al, 2)
+
     EbIb(0xC0, 4, shlb);
+    X86_TEST1C(shl, &shlb[0], al, 1) 
+    X86_TEST1C(shl, &shlb[1], al, 1) 
+    X86_TEST1C(shl, &shlb[2], al, 1) 
+    X86_TEST1C(shl, &shlb[3], al, 4) 
+    X86_TEST1C(shl, &shlb[4], al, 12) 
+    X86_TEST1C(shl, &shlb[5], al, 0) 
+    X86_TEST1C(shl, &shlb[6], al, 32)
+
     EbIb(0xC0, 5, shrb);
+    X86_TEST1C(shr, &shrb[0], al, 1) 
+    X86_TEST1C(shr, &shrb[1], al, 1) 
+    X86_TEST1C(shr, &shrb[2], al, 1) 
+    X86_TEST1C(shr, &shrb[3], al, 1) 
+    X86_TEST1C(shr, &shrb[4], al, 4) 
+    X86_TEST1C(shr, &shrb[5], al, 12) 
+    X86_TEST1C(shr, &shrb[6], al, 0)
+    X86_TEST1C(shr, &shrb[7], al, 32)
+
     EbIb(0xC0, 6, shlb);
+
     EbIb(0xC0, 7, sarb);
+    X86_TEST1C(sar, &sarb[0], al, 1) 
+    X86_TEST1C(sar, &sarb[1], al, 1) 
+    X86_TEST1C(sar, &sarb[2], al, 1) 
+    X86_TEST1C(sar, &sarb[3], al, 7) 
+    X86_TEST1C(sar, &sarb[4], al, 1) 
+    X86_TEST1C(sar, &sarb[5], al, 4) 
+    X86_TEST1C(sar, &sarb[6], al, 12)
+    X86_TEST1C(sar, &sarb[7], al, 0)
+    X86_TEST1C(sar, &sarb[8], al, 32)
 }
 
 void testGrp20x2c0() {
@@ -3738,10 +4112,10 @@ void testGrp20x2d3() {
     EdCl(0xD3, 7, sard);
 }
 
-void testAam0x0d4() {cpu->big = false;EwRegIb(0xd4, 0, aam);}
+void testAam0x0d4() {cpu->big = false;EwRegIb(0xd4, 0, aam);X86_TEST0(aam, aam)}
 void testAam0x2d4() {cpu->big = true;EwRegIb(0xd4, 0, aam);}
 
-void testAad0x0d5() {cpu->big = false;EwRegIb(0xd5, 0, aad);}
+void testAad0x0d5() {cpu->big = false;EwRegIb(0xd5, 0, aad);X86_TEST0(aad, aad)}
 void testAad0x2d5() {cpu->big = true;EwRegIb(0xd5, 0, aad);}
 
 void testSalc0x0d6() {cpu->big=false; EbReg(0xd6, 0, salc);}
@@ -4875,21 +5249,30 @@ void testGrp50x2ff() {
 void testBt0x1a3() {
     cpu->big=false;
     EwGwEffective(0x1a3, btw);
+    X86_TEST(bt, btw, ax, cx);
 }
 
 void testBt0x3a3() {
     cpu->big=true;
     EdGdEffective(0x1a3, btd);
+    X86_TEST(bt, btd, eax, ecx);
 }
 
 void testShld0x1a4() {
     cpu->big=false;
     EwGw(0x1a4, shld16);
+    X86_TEST(bt, btw, ax, cx);
 }
 
 void testShld0x3a4() {
     cpu->big=true;
     EdGd(0x1a4, shld32);
+    X86_TEST2C(shld, &shld32[0], eax, ecx, 12);
+    X86_TEST2C(shld, &shld32[1], eax, ecx, 1);
+    X86_TEST2C(shld, &shld32[2], eax, ecx, 1);
+    X86_TEST2C(shld, &shld32[3], eax, ecx, 1);
+    X86_TEST2C(shld, &shld32[4], eax, ecx, 2);
+    X86_TEST2C(shld, &shld32[5], eax, ecx, 40);
 }
 
 void testShld0x1a5() {
@@ -4915,6 +5298,14 @@ void testBts0x3ab() {
 void testShrd0x1ac() {
     cpu->big=false;
     EwGw(0x1ac, shrd16);
+
+    X86_TEST2C(shrd, &shrd16[0], ax, cx, 4);
+    X86_TEST2C(shrd, &shrd16[1], ax, cx, 1);
+    X86_TEST2C(shrd, &shrd16[2], ax, cx, 1);
+    X86_TEST2C(shrd, &shrd16[3], ax, cx, 1);
+    X86_TEST2C(shrd, &shrd16[4], ax, cx, 2);
+    X86_TEST2C(shrd, &shrd16[5], ax, cx, 17);
+    X86_TEST2C(shrd, &shrd16[6], ax, cx, 17);
 }
 
 void testShrd0x3ac() {
@@ -4930,6 +5321,92 @@ void testShrd0x1ad() {
 void testShrd0x3ad() {
     cpu->big=true;
     EdGdCl(0x1ad, shrd32);
+}
+
+/*
+int valid;
+    U32 var1;
+    U32 var2;
+    U32 result;
+    U32 resultvar2;
+    U32 flags;
+    U32 constant;    
+    int fCF;
+    int fOF;
+    int fZF;
+    int fSF;
+    int dontUseResultAndCheckSFZF;
+    int useResultvar2;
+    int constantWidth;
+    bool hasOF;
+    int fAF;
+    U32 hasAF;
+    U32 hasCF;
+    U32 hasZF;
+    U32 hasSF;
+    */
+
+static struct Data cmpxchgd[] = {
+    // 1, D, S, D(result), EAX(result), flags, EAX, CF, OF, ZF, SF, 0, 1, 0, 1, 0, 0, 1, 1, 1
+      {1, 1, 2, 2        , 1          , 0    , 1  ,  0,  0,  1,  0, 0, 1, 0, 1, 0, 0, 1, 1, 1},
+      {1, 1, 2, 1        , 1          , 0    , 9  ,  0,  0,  0,  0, 0, 1, 0, 1, 0, 0, 1, 1, 1},
+      {1, 9, 2, 9        , 9          , 0    , 1  ,  1,  0,  0,  1, 0, 1, 0, 1, 0, 0, 1, 1, 1},
+    endData()
+};
+
+void testCmpXchg0x3b1() {
+    cpu->big=true;
+    EdGdEax(0x3b1, cmpxchgd);
+#ifdef BOXEDWINE_MSVC
+    {  
+        struct Data* data = cmpxchgd;
+        U32 flagMask = CF|OF|ZF|PF|SF|AF;
+
+        while (data->valid) {
+            U32 result;
+            U32 result2 = data->constant;
+            U32 flags = data->flags;
+            __asm {
+                mov ebx, data;
+                mov ecx, [ebx].var1;
+                mov edx, [ebx].var2;
+                mov eax, result2;
+                mov ebx, flags;
+
+                push ebx
+                popf
+
+                cmpxchg ecx, edx
+                mov result, ecx
+                mov result2, eax
+
+                pushf
+                pop ebx
+                mov flags, ebx
+            }
+            assertTrue(result2 == data->resultvar2);
+            if (!data->dontUseResultAndCheckSFZF)
+                assertTrue(result == data->result);
+            if (data->dontUseResultAndCheckSFZF || data->hasSF)
+                assertTrue((flags & SF)!=0 == data->fSF!=0);
+            if (data->dontUseResultAndCheckSFZF || data->hasZF)
+                assertTrue((flags & ZF)!=0 == data->fZF!=0);
+            if (data->hasCF)
+                assertTrue((flags & CF)!=0 == data->fCF!=0);
+            if (data->hasOF)
+                assertTrue((flags & OF)!=0 == data->fOF!=0);
+            if (data->hasAF)
+                assertTrue((flags & AF)!=0 == data->fAF!=0);
+            data++;
+        }
+    } 
+#endif
+}
+
+void testXadd0x3c1() {
+    cpu->big=true;
+    EdGd(0x3c1, xadd);
+    X86_TEST(xadd, xadd, eax, ecx)
 }
 
 void run(void (*functionPtr)(), char* name) {
@@ -5800,7 +6277,6 @@ int main(int argc, char **argv) {
     run(testDecDi0x04f,  "Dec DI  04f");
     run(testDecEdi0x24f, "Dec EDI 24f");
 
-    
     run(testPushAx0x050,  "Push Ax  050");
     run(testPushEax0x250, "Push Eax 250");
     run(testPushCx0x051,  "Push Cx  051");
@@ -6016,6 +6492,8 @@ int main(int argc, char **argv) {
     run(testShrd0x3ac, "SHRD 3ac");
     run(testShrd0x1ad, "SHRD 1ad");
     run(testShrd0x3ad, "SHRD 3ad");
+    run(testCmpXchg0x3b1, "CMPXCHG 3b1");
+    run(testXadd0x3c1, "XADD 3c1");
     printf("%d tests FAILED\n", totalFails);
     SDL_Delay(5000);
     return 0;
