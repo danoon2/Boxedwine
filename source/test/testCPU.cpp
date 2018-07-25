@@ -99,6 +99,10 @@ void newInstruction(int instruction, int flags) {
     cseip=CODE_ADDRESS;
     cpu->lazyFlags = FLAGS_NONE;
     cpu->flags = flags;
+    if (flags & DF)
+        cpu->df = -1;
+    else
+        cpu->df = 1;
     //cpu.blocks.clear();
     EAX=0;
     ECX=0;
@@ -3853,6 +3857,186 @@ void testSahf0x29e() {cpu->big = true;flags(0x9e, sahf, &cpu->reg[0]);}
 void testLahf0x09f() {cpu->big = false;flags(0x9f, lahf, &cpu->reg[0]);}
 void testLahf0x29f() {cpu->big = true;flags(0x9f, lahf, &cpu->reg[0]);}
 
+void strTest(U8 width, U8 prefix, U8 inst, U32 startFlags, const char* str1, U32 str1Len, const char* str2, U32 str2Len, U32 startESI,U32 startEDI, U32 startECX, U32 endESI, U32 endEDI, U32 endECX, bool checkEndFlags, bool endCF, bool endZF, U32 esAddress) {
+    if (prefix) {
+        newInstruction(prefix, startFlags);
+        pushCode8(inst);
+    } else {
+        newInstruction(inst, startFlags);
+    }
+    cpu->seg[ES].address = esAddress;
+    EDI = startEDI;
+    ESI = startESI;
+    ECX = startECX;
+    
+    if (startFlags & DF) {
+        U32 offset = 0;
+        if (width==2)
+            offset = 1;
+        else if (width==4)
+            offset = 3;
+        for (U32 i=0;i<str1Len;i++) {
+            writeb(cpu->seg[DS].address+SI-i+offset, str1[i]);
+        }
+        for (U32 i=0;i<str2Len;i++) {
+            writeb(cpu->seg[ES].address+DI-i+offset, str2[i]);
+        }
+    } else {
+        if (str1)
+            memcopyFromNative(cpu->seg[DS].address+SI, str1, str1Len);
+        if (str2)
+            memcopyFromNative(cpu->seg[ES].address+DI, str2, str2Len);
+    }
+
+    runTestCPU();
+    assertTrue(EDI==endEDI);
+    assertTrue(ESI==endESI);    
+    assertTrue(ECX==endECX);    
+    if (checkEndFlags) {
+        bool hasCF=cpu->getCF()!=0;
+        assertTrue(endCF==hasCF);
+
+        bool hasZF=cpu->getZF()!=0;
+        assertTrue(endZF==hasZF);
+    }
+    cpu->seg[ES].address = 0;
+}
+
+#define STR_TEST(esiStr, editStr, startECX, OP, checkEndFlags, endCF, endZF, newECX) \
+{                                                                                   \
+    U32 cfValue;                                                                    \
+    U32 zfValue;                                                                    \
+    U32 esiValue = (U32)esiStr;                                                     \
+    U32 ediValue = (U32)editStr;                                                    \
+    U32 ecxValue;                                                                   \
+    __asm {                                                                         \
+        __asm mov esi, esiValue                                                    \
+        __asm mov edi, ediValue                                                    \
+        __asm mov ecx, startECX                                                    \
+        __asm OP                                                                   \
+        __asm mov eax, 0                                                           \
+        __asm setb al                                                              \
+        __asm mov cfValue, eax                                                     \
+        __asm setz al                                                              \
+        __asm mov zfValue, eax                                                     \
+        __asm mov ecxValue, ecx                                                         \
+    }                                                                               \
+    if (checkEndFlags) {                                                            \
+        bool hasCF=cfValue!=0;                                                      \
+        assertTrue(endCF==hasCF);                                                   \
+                                                                                    \
+        bool hasZF=zfValue!=0;                                                      \
+        assertTrue(endZF==hasZF);                                                   \
+    }                                                                               \
+    assertTrue(ecxValue==newECX);                                                   \
+}
+
+void testCmpsb0x0a6() {
+    cpu->big = false;
+
+    // SI > DI (DF)
+    strTest(1, 0, 0xa6, DF, "1", 1, "0", 1, 0x12340010, 0x12340020, 0, 0x1234000F, 0x1234001F, 0, true, false, false, HEAP_ADDRESS+256);
+
+    // SI > DI
+    strTest(1, 0, 0xa6, 0, "1", 1, "0", 1, 0x12340010, 0x12340020, 0, 0x12340011, 0x12340021, 0, true, false, false, HEAP_ADDRESS+256);
+
+    // SI < DI
+    strTest(1, 0, 0xa6, 0, "0", 1, "1", 1, 0x12340010, 0x12340020, 0, 0x12340011, 0x12340021, 0, true, true, false, HEAP_ADDRESS+256);
+
+    // SI == DI
+    // this will test 16-bit wrapping
+    strTest(1, 0, 0xa6, 0, "1", 1, "1", 1, 0x12340010, 0x1234FFFF, 0, 0x12340011, 0x12340000, 0, true, false, true, HEAP_ADDRESS-0x10000+200);
+
+    // repz
+    strTest(1, 0xf3, 0xa6, 0, "abcd", 4, "abce", 4, 0x12340000, 0x12340000, 0x12340010, 0x12340004, 0x12340004, 0x1234000C, true, true, false, HEAP_ADDRESS+256);
+
+    // repnz
+    strTest(1, 0xf2, 0xa6, 0, "abcd", 4, "123d", 4, 0x12340000, 0x12340000, 0x12340010, 0x12340004, 0x12340004, 0x1234000C, true, false, true, HEAP_ADDRESS+256);
+
+    // repnz (DF)
+    strTest(1, 0xf2, 0xa6, DF, "abcd", 4, "123d", 4, 0x12340020, 0x12340010, 0x12340010, 0x1234001C, 0x1234000C, 0x1234000C, true, false, true, HEAP_ADDRESS+256);    
+}
+
+void testCmpsb0x2a6() {
+    cpu->big = true;
+    
+    // ESI > EDI
+    STR_TEST("1", "0", 0, cmpsb, true, false, false, 0);
+    strTest(1, 0, 0xa6, 0, "1", 1, "0", 1, 0, 1, 0, 1, 2, 0, true, false, false, HEAP_ADDRESS+256);
+
+
+    // ESI < EDI
+    STR_TEST("0", "1", 0, cmpsb, true, true, false, 0);
+    strTest(1, 0, 0xa6, 0, "0", 1, "1", 1, 0, 1, 0, 1, 2, 0, true, true, false, HEAP_ADDRESS+256);
+
+    // ESI == EDI
+    STR_TEST("1", "1", 0, cmpsb, true, false, true, 0);
+    strTest(1, 0, 0xa6, 0, "1", 1, "1", 1, 0, 1, 0, 1, 2, 0, true, false, true, HEAP_ADDRESS+256);
+
+    // repz
+    STR_TEST("abcd", "abce", 10, repz cmpsb, true, true, false, 6);
+    strTest(1, 0xf3, 0xa6, 0, "abcd", 4, "abce", 4, 0, 256, 256, 4, 260, 252, true, true, false, HEAP_ADDRESS);
+    
+    // repnz
+    STR_TEST("123d", "abcd", 10, repnz cmpsb, true, false, true, 6);
+    strTest(1, 0xf2, 0xa6, 0, "123d", 4, "abcd", 4, 0, 256, 256, 4, 260, 252, true, false, true, HEAP_ADDRESS);
+}
+
+void testCmpsw0x0a7() {
+    cpu->big = false;
+
+    // SI > DI (DF)
+    strTest(2, 0, 0xa7, DF, "21", 2, "11", 2, 0x12340010, 0x12340020, 0, 0x1234000E, 0x1234001E, 0, true, false, false, HEAP_ADDRESS+256);
+
+    // SI > DI
+    strTest(2, 0, 0xa7, 0, "12", 2, "11", 2, 0x12340010, 0x12340020, 0, 0x12340012, 0x12340022, 0, true, false, false, HEAP_ADDRESS+256);
+
+    // SI < DI
+    strTest(2, 0, 0xa7, 0, "11", 2, "12", 2, 0x12340010, 0x12340020, 0, 0x12340012, 0x12340022, 0, true, true, false, HEAP_ADDRESS+256);
+
+    // SI == DI
+    // this will test 16-bit wrapping
+    strTest(2, 0, 0xa7, 0, "11", 2, "11", 2, 0x12340010, 0x1234FFFE, 0, 0x12340012, 0x12340000, 0, true, false, true, HEAP_ADDRESS-0x10000+200);
+
+    // repz
+    strTest(2, 0xf3, 0xa7, 0, "abcdefgh", 8, "abcdefgi", 8, 0x12340000, 0x12340000, 0x12340010, 0x12340008, 0x12340008, 0x1234000C, true, true, false, HEAP_ADDRESS+256);
+
+    // repnz
+    strTest(2, 0xf2, 0xa7, 0, "abcdefgh", 8, "123456gh", 8, 0x12340000, 0x12340000, 0x12340010, 0x12340008, 0x12340008, 0x1234000C, true, false, true, HEAP_ADDRESS+256);
+
+    // repnz (DF)
+    strTest(2, 0xf2, 0xa7, DF, "abcdefgh", 8, "123456gh", 8, 0x12340020, 0x12340010, 0x12340010, 0x12340018, 0x12340008, 0x1234000C, true, false, true, HEAP_ADDRESS+256);    
+}
+
+void testCmpsd0x2a7() {
+    cpu->big = true;
+
+    // reminder, little endian, so the biggest part of the 4 byte word is the last byte
+
+    // ESI > EDI (DF)
+    // since this is reversed, the biggest part of the number is the first byte
+    strTest(4, 0, 0xa7, DF, "4321", 4, "1999", 4, 0x00000010, 0x00000020, 0, 0x0000000C, 0x0000001C, 0, true, false, false, HEAP_ADDRESS+256);
+
+    // ESI > EDI
+    strTest(4, 0, 0xa7, 0, "2222", 4, "4321", 4, 0x00000010, 0x00000020, 0, 0x00000014, 0x00000024, 0, true, false, false, HEAP_ADDRESS+256);
+
+    // ESI < EDI
+    strTest(4, 0, 0xa7, 0, "4321", 4, "2222", 4, 0x00000010, 0x00000020, 0, 0x00000014, 0x00000024, 0, true, true, false, HEAP_ADDRESS+256);
+
+    // SI == DI
+    strTest(4, 0, 0xa7, 0, "1234", 4, "1234", 4, 0x00000010, 0x00000020, 0, 0x00000014, 0x00000024, 0, true, false, true, HEAP_ADDRESS+256);
+
+    // repz
+    STR_TEST("abcdefghijklmnop", "abcdefghijklmnoq", 10, repz cmpsd, true, true, false, 6);
+    strTest(4, 0xf3, 0xa7, 0, "abcdefghijklmnop", 16, "abcdefghijklmnoq", 16, 0x00000010, 0x00000020, 0x00000010, 0x00000020, 0x00000030, 0x0000000C, true, true, false, HEAP_ADDRESS+256);
+
+    // repnz
+    strTest(4, 0xf2, 0xa7, 0, "abcdefghijklmnop", 16, "123456781234mnop", 16, 0x00000010, 0x00000020, 0x00000010, 0x00000020, 0x00000030, 0x0000000C, true, false, true, HEAP_ADDRESS+256);
+
+    // repz (DF)
+    strTest(4, 0xf3, 0xa7, DF, "abcdefghijklmnop", 16, "abcdefghijklmnoq", 16, 0x00000010, 0x00000020, 0x00000010, 0x00000000, 0x00000010, 0x0000000C, true, true, false, HEAP_ADDRESS+256);    
+}
+
 // :TODO: 0xa0 - 0xaf
 
 void testMovAlIb0x0b0() {cpu->big = false;EbRegIb(0xb0, cpu->reg8[0], 0, movb);}
@@ -5261,7 +5445,6 @@ void testBt0x3a3() {
 void testShld0x1a4() {
     cpu->big=false;
     EwGw(0x1a4, shld16);
-    X86_TEST(bt, btw, ax, cx);
 }
 
 void testShld0x3a4() {
@@ -6393,7 +6576,12 @@ int main(int argc, char **argv) {
     run(testLahf0x29f, "Lahf 29f");
 
     // :TODO: 0xa0 - 0xaf
+    run(testCmpsb0x0a6, "Cmpsb 0a6");
+    run(testCmpsb0x2a6, "Cmpsb 2a6");
 
+    run(testCmpsw0x0a7, "Cmpsw 0a7");
+    run(testCmpsd0x2a7, "Cmpsd 2a7");
+    
     run(testMovAlIb0x0b0, "Mov 0b0");
     run(testMovAlIb0x2b0, "Mov 2b0");
     run(testMovClIb0x0b1, "Mov 0b1");
