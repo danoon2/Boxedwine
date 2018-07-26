@@ -35,8 +35,8 @@ void movsb16r(CPU* cpu, U32 base) {
         writeb(dBase+DI, readb(sBase+SI));
         DI+=inc;
         SI+=inc;
+        CX--;
     }
-    CX=0;
 }
 void movsb32(CPU* cpu, U32 base) {
     U32 dBase = cpu->seg[ES].address;
@@ -56,8 +56,8 @@ void movsb32r(CPU* cpu, U32 base) {
         writeb(dBase+EDI, readb(sBase+ESI));
         EDI+=inc;
         ESI+=inc;
+        ECX--;
     }
-    ECX=0;
 }
 void movsw16(CPU* cpu, U32 base) {
     U32 dBase = cpu->seg[ES].address;
@@ -77,8 +77,8 @@ void movsw16r(CPU* cpu, U32 base) {
         writew(dBase+DI, readw(sBase+SI));
         DI+=inc;
         SI+=inc;
+        CX--;
     }
-    CX=0;
 }
 void movsw32(CPU* cpu, U32 base) {
     U32 dBase = cpu->seg[ES].address;
@@ -98,8 +98,8 @@ void movsw32r(CPU* cpu, U32 base) {
         writew(dBase+EDI, readw(sBase+ESI));
         EDI+=inc;
         ESI+=inc;
+        ECX--;
     }
-    ECX=0;
 }
 void movsd16(CPU* cpu, U32 base) {
     U32 dBase = cpu->seg[ES].address;
@@ -119,8 +119,8 @@ void movsd16r(CPU* cpu, U32 base) {
         writed(dBase+DI, readd(sBase+SI));
         DI+=inc;
         SI+=inc;
+        CX--;
     }
-    CX=0;
 }
 void movsd32(CPU* cpu, U32 base) {
     U32 dBase = cpu->seg[ES].address;
@@ -140,8 +140,8 @@ void movsd32r(CPU* cpu, U32 base) {
         writed(dBase+EDI, readd(sBase+ESI));
         EDI+=inc;
         ESI+=inc;
+        ECX--;
     }
-    ECX=0;
 }
 void cmpsb16(CPU* cpu, U32 rep_zero, U32 base) {
     U32 dBase = cpu->seg[ES].address;
@@ -383,8 +383,8 @@ void stosb16r(CPU* cpu) {
     for (i=0;i<count;i++) {
         writeb(dBase+DI, AL);
         DI+=inc;
+        CX--;
     }
-    CX=0;
 }
 void stosb32(CPU* cpu) {
     writeb(cpu->seg[ES].address+EDI, AL);
@@ -398,8 +398,8 @@ void stosb32r(CPU* cpu) {
     for (i=0;i<count;i++) {
         writeb(dBase+EDI, AL);
         EDI+=inc;
+        ECX--;
     }
-    ECX=0;
 }
 void stosw16(CPU* cpu) {
     writew(cpu->seg[ES].address+DI, AX);
@@ -413,8 +413,8 @@ void stosw16r(CPU* cpu) {
     for (i=0;i<count;i++) {
         writew(dBase+DI, AX);
         DI+=inc;
+        CX--;
     }
-    CX=0;
 }
 void stosw32(CPU* cpu) {
     writew(cpu->seg[ES].address+EDI, AX);
@@ -428,8 +428,8 @@ void stosw32r(CPU* cpu) {
     for (i=0;i<count;i++) {
         writew(dBase+EDI, AX);
         EDI+=inc;
+        ECX--;
     }
-    ECX=0;
 }
 void stosd16(CPU* cpu) {
     writed(cpu->seg[ES].address+DI, EAX);
@@ -443,8 +443,8 @@ void stosd16r(CPU* cpu) {
     for (i=0;i<count;i++) {
         writed(dBase+DI, EAX);
         DI+=inc;
+        CX--;
     }
-    CX=0;
 }
 void stosd32(CPU* cpu) {
     writed(cpu->seg[ES].address+EDI, EAX);
@@ -458,8 +458,8 @@ void stosd32r(CPU* cpu) {
     for (i=0;i<count;i++) {
         writed(dBase+EDI, EAX);
         EDI+=inc;
+        ECX--;
     }
-    ECX=0;
 }
 void lodsb16(CPU* cpu, U32 base) {
     AL = readb(cpu->seg[base].address+SI);
@@ -473,8 +473,8 @@ void lodsb16r(CPU* cpu, U32 base) {
     for (i=0;i<count;i++) {
         AL = readb(sBase+SI);
         SI+=inc;
+        CX--;
     }
-    CX=0;
 }
 void lodsb32(CPU* cpu, U32 base) {
     AL = readb(cpu->seg[base].address+ESI);
@@ -488,8 +488,8 @@ void lodsb32r(CPU* cpu, U32 base) {
     for (i=0;i<count;i++) {
         AL = readb(sBase+ESI);
         ESI+=inc;
+        ECX--;
     }
-    ECX=0;
 }
 void lodsw16(CPU* cpu, U32 base) {
     AX = readw(cpu->seg[base].address+SI);
@@ -503,8 +503,8 @@ void lodsw16r(CPU* cpu, U32 base) {
     for (i=0;i<count;i++) {
         AX = readw(sBase+SI);
         SI+=inc;
+        CX--;
     }
-    CX=0;
 }
 void lodsw32(CPU* cpu, U32 base) {
     AX = readw(cpu->seg[base].address+ESI);
@@ -518,8 +518,8 @@ void lodsw32r(CPU* cpu, U32 base) {
     for (i=0;i<count;i++) {
         AX = readw(sBase+ESI);
         ESI+=inc;
+        ECX--;
     }
-    ECX=0;
 }
 void lodsd16(CPU* cpu, U32 base) {
     EAX = readd(cpu->seg[base].address+SI);
@@ -533,8 +533,8 @@ void lodsd16r(CPU* cpu, U32 base) {
     for (i=0;i<count;i++) {
         EAX = readd(sBase+SI);
         SI+=inc;
+        CX--;
     }
-    CX=0;
 }
 void lodsd32(CPU* cpu, U32 base) {
     EAX = readd(cpu->seg[base].address+ESI);
@@ -548,8 +548,8 @@ void lodsd32r(CPU* cpu, U32 base) {
     for (i=0;i<count;i++) {
         EAX = readd(sBase+ESI);
         ESI+=inc;
+        ECX--;
     }
-    ECX=0;
 }
 void scasb16(CPU* cpu, U32 rep_zero) {
     U32 dBase = cpu->seg[ES].address;
