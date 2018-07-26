@@ -1800,6 +1800,8 @@ U32 KProcess::mincore(U32 address, U32 length, U32 vec) {
     U32 page = address >> PAGE_SHIFT;
 
     for (i=0;i<pages;i++) {
+        if (page+i>=NUMBER_OF_PAGES)
+            return -K_ENOMEM;
         if (this->memory->isPageAllocated(page+i))
             writeb(vec, 1);
         else
