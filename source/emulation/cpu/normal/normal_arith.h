@@ -1176,14 +1176,6 @@ void OPCALL teste8r8(CPU* cpu, DecodedOp* op) {
     cpu->lazyFlags = FLAGS_TEST8;
     NEXT();
 }
-void OPCALL testr8e8(CPU* cpu, DecodedOp* op) {
-    START_OP(cpu, op);
-    cpu->dst.u8 = *cpu->reg8[op->reg];
-    cpu->src.u8 = readb(eaa(cpu, op));
-    cpu->result.u8 = cpu->dst.u8 & cpu->src.u8;
-    cpu->lazyFlags = FLAGS_TEST8;
-    NEXT();
-}
 void OPCALL test8_reg(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     cpu->dst.u8 = *cpu->reg8[op->reg];
@@ -1218,14 +1210,6 @@ void OPCALL teste16r16(CPU* cpu, DecodedOp* op) {
     cpu->lazyFlags = FLAGS_TEST16;
     NEXT();
 }
-void OPCALL testr16e16(CPU* cpu, DecodedOp* op) {
-    START_OP(cpu, op);
-    cpu->dst.u16 = cpu->reg[op->reg].u16;
-    cpu->src.u16 = readw(eaa(cpu, op));
-    cpu->result.u16 = cpu->dst.u16 & cpu->src.u16;
-    cpu->lazyFlags = FLAGS_TEST16;
-    NEXT();
-}
 void OPCALL test16_reg(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     cpu->dst.u16 = cpu->reg[op->reg].u16;
@@ -1256,14 +1240,6 @@ void OPCALL teste32r32(CPU* cpu, DecodedOp* op) {
     U32 eaa = eaa(cpu, op);
     cpu->dst.u32 = readd(eaa);
     cpu->src.u32 = cpu->reg[op->reg].u32;
-    cpu->result.u32 = cpu->dst.u32 & cpu->src.u32;
-    cpu->lazyFlags = FLAGS_TEST32;
-    NEXT();
-}
-void OPCALL testr32e32(CPU* cpu, DecodedOp* op) {
-    START_OP(cpu, op);
-    cpu->dst.u32 = cpu->reg[op->reg].u32;
-    cpu->src.u32 = readd(eaa(cpu, op));
     cpu->result.u32 = cpu->dst.u32 & cpu->src.u32;
     cpu->lazyFlags = FLAGS_TEST32;
     NEXT();

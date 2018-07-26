@@ -133,17 +133,14 @@ const InstructionInfo instructionInfo[] = {
     {0, 0, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // CmpR32I32
     {0, 32, 32, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // CmpE32I32
     // CF, AF, OF are always 0
-    {0, 8, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestR8E8
     {0, 8, 8, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestE8R8
     {0, 0, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestR8R8
     {0, 0, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestR8I8
     {0, 8, 8, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestE8I8
-    {0, 16, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestR16E16
     {0, 16, 16, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestE16R16
     {0, 0, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestR16R16
 /*080*/    {0, 0, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestR16I16
     {0, 16, 16, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestE16I16
-    {0, 32, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestR32E32
     {0, 32, 32, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestE32R32
     {0, 0, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestR32R32
     {0, 0, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestR32I32
@@ -1487,17 +1484,14 @@ const LogInstruction instructionLog[] = {
     {"Cmp", 32, logR, true},
     {"Cmp", 32, logE, true},
 
-    {"Test", 8, logRE},
     {"Test", 8, logER},
     {"Test", 8, logRR},
     {"Test", 8, logR, true},
     {"Test", 8, logE, true},
-    {"Test", 16, logRE},
     {"Test", 16, logER},
     {"Test", 16, logRR},
     {"Test", 16, logR, true},
     {"Test", 16, logE, true},
-    {"Test", 32, logRE},
     {"Test", 32, logER},
     {"Test", 32, logRR},
     {"Test", 32, logR, true},
