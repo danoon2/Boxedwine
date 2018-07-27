@@ -23,6 +23,7 @@
 #include "soft_rw_page.h"
 #include "soft_invalid_page.h"
 #include "soft_wo_page.h"
+#include "soft_no_page.h"
 #include "soft_copy_on_write_page.h"
 #include "soft_ram.h"
 
@@ -62,7 +63,7 @@ void FilePage::ondemmandFile(U32 address) {
     } else if (read) { 
         memory->mmu[page] = CopyOnWritePage::alloc(ram, address, this->flags);
     } else {
-        KThread::currentThread()->seg_access(address);
+        memory->mmu[page] = NOPage::alloc(ram, address, this->flags);
     }
     this->close();
 }

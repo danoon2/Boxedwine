@@ -13,7 +13,7 @@ extern U32 wine_callbackSize;
 
 #define EXCEPTION_DIVIDE 0
 #define EXCEPTION_BOUND 5
-#define EXCEPTION_PERMISSION 13
+#define EXCEPTION_GPF 13
 #define EXCEPTION_PAGE_FAULT 14
 
 #define AL cpu->reg[0].u8

@@ -2,6 +2,7 @@
 
 #include "soft_ondemand_page.h"
 #include "soft_ro_page.h"
+#include "soft_no_page.h"
 #include "soft_rw_page.h"
 #include "soft_invalid_page.h"
 #include "soft_wo_page.h"
@@ -23,7 +24,7 @@ void OnDemandPage::ondemmand(U32 address) {
     } else if (read) {
         memory->mmu[page] = ROPage::alloc(NULL, page << PAGE_SHIFT, this->flags);
     } else {
-        memory->mmu[page] = invalidPage;
+        memory->mmu[page] = NOPage::alloc(NULL, page << PAGE_SHIFT, this->flags);
     }
     this->close();
 }

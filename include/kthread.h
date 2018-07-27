@@ -64,8 +64,8 @@ public:
     U32 signal(U32 signal, bool wait);
     void cleanup();
 
-    void seg_mapper(U32 address);
-    void seg_access(U32 address);
+    void seg_mapper(U32 address, bool readFault, bool writeFault);
+    void seg_access(U32 address, bool readFault, bool writeFault);
     bool runSignals();
     void runSignal(U32 signal, U32 trapNo, U32 errorNo);
     void signalIllegalInstruction(int code);    
