@@ -579,7 +579,7 @@ void marshalBackPixels(CPU* cpu, U32 is3d, GLsizei width, GLsizei height, GLsize
 }
 
 U32 marshalBackp(CPU* cpu, GLvoid* buffer, U32 size) { 
-    return cpu->memory->mapNativeMemory(buffer, size);
+    return cpu->thread->memory->mapNativeMemory(buffer, size);
 }
 
 // instance is in the instance number within the function, so if the same function calls this 3 times, each call will have a difference instance

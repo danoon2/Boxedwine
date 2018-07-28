@@ -107,7 +107,7 @@ void glcommon_glGetStringi(CPU* cpu) {
     {
     const GLubyte* result = GL_FUNC(ext_glGetStringi)(ARG1, ARG2);
     if (result) {
-        EAX = cpu->memory->mapNativeMemory((void*)result, (U32)strlen((const char*)result)+1);
+        EAX = cpu->thread->memory->mapNativeMemory((void*)result, (U32)strlen((const char*)result)+1);
     } else {
         EAX = 0;
     }
@@ -151,7 +151,7 @@ void glcommon_glGetString(CPU* cpu) {
         result = "GL_EXT_texture3D";
         GL_LOG("glGetString GLenum name=GL_EXTENSIONS ret=%s", result);
     }
-    EAX = cpu->memory->mapNativeMemory((void*)result, strlen(result)+1);
+    EAX = cpu->thread->memory->mapNativeMemory((void*)result, strlen(result)+1);
 }
 
 // GLAPI void APIENTRY glGetTexImage( GLenum target, GLint level, GLenum format, GLenum type, GLvoid *pixels ) {

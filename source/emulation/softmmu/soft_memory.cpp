@@ -737,6 +737,8 @@ U32 Memory::mapNativeMemory(void* hostAddress, U32 size) {
 
         // just assume we are in the middle, hopefully OpenGL won't want more than 128MB before or after this initial address
         this->nativeAddressStart = ((U8*)hostAddress - ((U32)hostAddress & 0xFFF)) - 0x08000000;
+        if (this->nativeAddressStart>hostAddress) // did we wrap?
+            this->nativeAddressStart = (U8*)0x1000;
         for (i=0;i<0x10000;i++) {
             this->mmu[i+ADDRESS_PROCESS_NATIVE] = NativePage::alloc(this->nativeAddressStart+PAGE_SIZE*i, (ADDRESS_PROCESS_NATIVE<<PAGE_SHIFT)+PAGE_SIZE*i, PAGE_READ | PAGE_WRITE);
         }
@@ -744,13 +746,13 @@ U32 Memory::mapNativeMemory(void* hostAddress, U32 size) {
     }
     U32 pageCount = (size+PAGE_MASK)>>PAGE_SHIFT;
     // hopefully this won't happen much, because it will leak address space
-    if (!findFirstAvailablePage(0xD0000000, pageCount, &result, false)) {
+    if (!findFirstAvailablePage(ADDRESS_PROCESS_MMAP_START, pageCount, &result, false)) {
         kpanic("mapNativeMemory failed to map address: size=%d", size);
     }
 
     for (U32 i=0;i<pageCount;i++) {
         this->mmu[result+i]->close();
-        this->mmu[result+i] = NativePage::alloc((U8*)hostAddress+PAGE_SIZE*i, (ADDRESS_PROCESS_NATIVE<<PAGE_SHIFT)+PAGE_SIZE*i, PAGE_READ | PAGE_WRITE);
+        this->mmu[result+i] = NativePage::alloc((U8*)hostAddress+PAGE_SIZE*i, (result<<PAGE_SHIFT)+PAGE_SIZE*i, PAGE_READ | PAGE_WRITE);
     }
     return result<<PAGE_SHIFT;
 }

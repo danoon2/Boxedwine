@@ -753,7 +753,6 @@ void KThread::clone(KThread* from) {
     this->waitingForSignalToEndMaskToRestore = from->waitingForSignalToEndMaskToRestore;
     this->cpu->clone(from->cpu);
     this->cpu->thread = this;
-    this->cpu->memory = this->memory;
 }
 
 U32 KThread::modify_ldt(U32 func, U32 ptr, U32 count) {

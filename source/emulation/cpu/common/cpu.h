@@ -229,7 +229,6 @@ public:
     U32 stackMask;
 
     KThread* thread;
-    Memory* memory;
     void* logFile;
 
     U32 getCF();
