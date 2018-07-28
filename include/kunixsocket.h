@@ -48,7 +48,6 @@ public:
 
     BoxedPtr<FsNode> node;
 
-    // std::weak_ptr is not a drop in replacement for BoxedPtr, never thought I would miss objective c :)
     KUnixSocketObject* connection;
     KUnixSocketObject* connecting;
     KList<KUnixSocketObject*> pendingConnections; // weak, if object is destroyed it should remove itself from this list

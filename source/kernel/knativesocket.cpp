@@ -513,11 +513,13 @@ U32 KNativeSocketObject::setsockopt(KFileDescriptor* fd, U32 level, U32 name, U3
                     kpanic("KNativeSocketObject::setsockopt SO_RCVBUF expecting len of 4");
                 this->recvLen = readd(value);
                 ::setsockopt(this->nativeSocket, SOL_SOCKET, SO_RCVBUF, (const char*)&this->recvLen, 4);
+                break;
             case K_SO_SNDBUF:
                 if (len != 4)
                     kpanic("KNativeSocketObject::setsockopt SO_SNDBUF expecting len of 4");
                 this->sendLen = readd(value);
                 ::setsockopt(this->nativeSocket, SOL_SOCKET, SO_SNDBUF, (const char*)&this->recvLen, 4);
+                break;
             default:
                 kwarn("KNativeSocketObject::setsockopt name %d not implemented", name);
         }
@@ -543,8 +545,6 @@ U32 KNativeSocketObject::getsockopt(KFileDescriptor* fd, U32 level, U32 name, U3
         } else if (name == K_SO_ERROR) {
             if (len != 4)
                 kpanic("KNativeSocketObject::getsockopt SO_ERROR expecting len of 4");
-            ::getsockopt(this->nativeSocket, SOL_SOCKET, SO_ERROR, (char*)&this->error, &len);
-            this->error = translateNativeSocketError(this->error);
             writed(value, this->error);
         } else if (name == K_SO_TYPE) { 
             if (len != 4)
