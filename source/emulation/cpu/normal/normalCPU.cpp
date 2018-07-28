@@ -36,6 +36,17 @@
 static OpCallback normalOps[NUMBER_OF_OPS];
 static U32 normalOpsInitialized;
 
+void OPCALL normal_sidt(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);    
+    U32 eaa = eaa(cpu, op);
+    writew(eaa, 1023); // limit
+    writed(eaa, 0); // base
+#ifdef _DEBUG
+    klog("sidt not implemented");
+#endif
+    NEXT();
+}
+
 static void initNormalOps() {
     if (normalOpsInitialized)
         return;
@@ -62,7 +73,7 @@ static void initNormalOps() {
     normalOps[VERWR16] = 0; 
     normalOps[VERWE16] = 0;
     normalOps[SGDT] = 0;
-    normalOps[SIDT] = 0;
+    normalOps[SIDT] = normal_sidt;
     normalOps[LGDT] = 0;
     normalOps[LIDT] = 0;
     normalOps[SMSWRreg] = 0; 

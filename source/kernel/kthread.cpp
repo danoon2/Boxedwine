@@ -619,6 +619,7 @@ void KThread::runSignal(U32 signal, U32 trapNo, U32 errorNo) {
         U32 stack = this->cpu->reg[4].u32;
         U32 interrupted = 0;
         bool altStack = (action->flags & K_SA_ONSTACK) != 0;
+        ChangeThread c(this);
 
         cpu->fillFlags();        
 
@@ -640,12 +641,12 @@ void KThread::runSignal(U32 signal, U32 trapNo, U32 errorNo) {
 		if (altStack)
 			context = this->alternateStack + this->alternateStackSize - CONTEXT_SIZE;
 		else
-	        context = cpu->seg[SS].address + (ESP & cpu->stackMask) - CONTEXT_SIZE;
+	        context = this->cpu->seg[SS].address + (ESP & this->cpu->stackMask) - CONTEXT_SIZE;        
         writeToContext(this, stack, context, altStack, trapNo, errorNo);
         
-        cpu->stackMask = 0xFFFFFFFF;
-        cpu->stackNotMask = 0;
-        cpu->seg[SS].address = 0;
+        this->cpu->stackMask = 0xFFFFFFFF;
+        this->cpu->stackNotMask = 0;
+        this->cpu->seg[SS].address = 0;
         this->cpu->reg[4].u32 = context;
 
         this->cpu->reg[4].u32 &= ~15;
@@ -658,11 +659,11 @@ void KThread::runSignal(U32 signal, U32 trapNo, U32 errorNo) {
                 writed(address+i*4, this->process->sigActions[signal].sigInfo[i]);
             }
                         
-            cpu->push32(interrupted);
-            cpu->push32(this->waitStartTime);
-            cpu->push32(context);
-            cpu->push32(address);			
-            cpu->push32(signal);
+            this->cpu->push32(interrupted);
+            this->cpu->push32(this->waitStartTime);
+            this->cpu->push32(context);
+            this->cpu->push32(address);			
+            this->cpu->push32(signal);
             this->cpu->reg[0].u32 = signal;
             this->cpu->reg[1].u32 = address;
             this->cpu->reg[2].u32 = context;	
@@ -670,25 +671,25 @@ void KThread::runSignal(U32 signal, U32 trapNo, U32 errorNo) {
             this->cpu->reg[0].u32 = signal;
             this->cpu->reg[1].u32 = 0;
             this->cpu->reg[2].u32 = 0;	
-            cpu->push32(interrupted);
-            cpu->push32(this->waitStartTime);
-            cpu->push32(context);
-            cpu->push32(0);			
-            cpu->push32(signal);
+            this->cpu->push32(interrupted);
+            this->cpu->push32(this->waitStartTime);
+            this->cpu->push32(context);
+            this->cpu->push32(0);			
+            this->cpu->push32(signal);
         }
 #ifdef LOG_OPS
         klog("    context %X interrupted %d", context, interrupted);
 #endif
-        cpu->push32(SIG_RETURN_ADDRESS);
+        this->cpu->push32(SIG_RETURN_ADDRESS);
         this->cpu->eip.u32 = action->handlerAndSigAction;
 
         this->inSignal++;				
 
-        cpu->setSegment(CS, 0xf);        
-        cpu->setSegment(SS, 0x17);
-        cpu->setSegment(DS, 0x17);
-        cpu->setSegment(ES, 0x17);
-        cpu->big = 1;
+        this->cpu->setSegment(CS, 0xf);        
+        this->cpu->setSegment(SS, 0x17);
+        this->cpu->setSegment(DS, 0x17);
+        this->cpu->setSegment(ES, 0x17);
+        this->cpu->big = 1;
     }    
     this->process->pendingSignals &= ~(1 << (signal - 1));
     this->pendingSignals &= ~(1 << (signal - 1));
