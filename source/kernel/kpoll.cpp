@@ -74,7 +74,7 @@ S32 internal_poll(KPollData* data, U32 count, U32 timeout) {
         if (!thread->timer.active) {
             if (timeout<0xF0000000)
                 timeout+=thread->waitStartTime;
-            thread->timer.millies = timeout;
+            thread->timer.millies = timeout+getMilliesSinceStart();
             addTimer(&thread->timer);
         }
     } else {		
@@ -94,7 +94,7 @@ S32 internal_poll(KPollData* data, U32 count, U32 timeout) {
         if (!thread->timer.active) {
             if (timeout<0xF0000000)
                 timeout+=thread->waitStartTime;
-            thread->timer.millies = timeout;
+            thread->timer.millies = timeout+getMilliesSinceStart();
             addTimer(&thread->timer);
         }
     }	

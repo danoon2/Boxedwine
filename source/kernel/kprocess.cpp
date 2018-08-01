@@ -616,7 +616,7 @@ U32 KProcess::execve(const std::string& path, std::vector<std::string>& args, co
     if (!openNode) {
         return 0;
     }
-            
+    args[0] = node->path;        
     if (interpreter.length()) {
         args.insert(args.begin(), interpreterArgs.begin(), interpreterArgs.end());
         args.insert(args.begin(), interpreter);
@@ -628,15 +628,6 @@ U32 KProcess::execve(const std::string& path, std::vector<std::string>& args, co
     this->name = Fs::getFileNameFromPath(this->exe);
 
     i=0;
-    this->commandLine = "";
-    if (loader.length()) {
-        cmdLine.push_back(loader);
-    }
-    if (interpreter.length()) {
-        cmdLine.push_back(interpreter);
-    }
-    cmdLine.push_back(node->path);
-    cmdLine.insert( cmdLine.end(), args.begin()+1, args.end() );
     this->commandLine = stringJoin(args, "\0");
             
     this->path.clear();
@@ -835,7 +826,36 @@ U32 KProcess::link(const std::string& from, const std::string& to) {
     if (fromNode->isDirectory()) {
         return -K_EPERM;
     }
-    kpanic("Hard link not implemented");
+
+    FsOpenNode* fromOpenNode = fromNode->open(K_O_RDONLY);
+    if (!fromOpenNode)
+        return -K_EIO;
+
+    BoxedPtr<FsNode> toParentNode = Fs::getNodeFromLocalPath(this->currentDirectory, Fs::getParentPath(to), false);
+    if (!toParentNode)
+        return -K_ENOENT;
+
+    toNode = Fs::addFileNode(to, "", false, toParentNode);
+    FsOpenNode* toOpenNode = toNode->open(K_O_WRONLY|K_O_CREAT);
+    if (!toOpenNode) {
+        fromOpenNode->close();
+        return -K_EIO;
+    }
+
+    while (1) {
+        U8 buffer[PAGE_SIZE];
+        U32 r = fromOpenNode->readNative(buffer, PAGE_SIZE);	
+        toOpenNode->writeNative(buffer, r);
+        if (r<PAGE_SIZE)
+            break;
+    }
+    toOpenNode->close();
+    fromOpenNode->close();
+    toNode->hardLinkCount++;
+    fromNode->hardLinkCount++;
+#ifdef _DEBUG
+    kwarn("Hard link not implemented");
+#endif
     return 0;
 }
 
@@ -1824,11 +1844,11 @@ U32 KProcess::fcntrl(FD fildes, U32 cmd, U32 arg) {
             }
             return 0;
         case K_F_DUPFD: {
-            KFileDescriptor* result = this->allocFileDescriptor(fd->kobject, fd->accessFlags, fd->descriptorFlags, arg, 0);        
+            KFileDescriptor* result = this->allocFileDescriptor(fd->kobject, fd->accessFlags, fd->descriptorFlags, -1, arg);        
             return result->handle;
         }
         case K_F_DUPFD_CLOEXEC: {
-            KFileDescriptor* result = this->allocFileDescriptor(fd->kobject, fd->accessFlags, fd->descriptorFlags, arg, 0);
+            KFileDescriptor* result = this->allocFileDescriptor(fd->kobject, fd->accessFlags, fd->descriptorFlags, -1, arg);
             result->descriptorFlags=FD_CLOEXEC;
             return result->handle;
         }

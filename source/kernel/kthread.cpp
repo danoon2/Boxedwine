@@ -44,7 +44,7 @@ void KThread::cleanup() {
         wakeThread(this->waitingForSignalToEnd);
         this->waitingForSignalToEnd = 0;
     }    
-    if (this->clear_child_tid) {
+    if (this->clear_child_tid && this->process && this->process->memory->isValidWriteAddress(this->clear_child_tid, 4)) {
         writed(this->clear_child_tid, 0);
         this->futex(this->clear_child_tid, 1, 1, 0);
         this->clear_child_tid = 0;

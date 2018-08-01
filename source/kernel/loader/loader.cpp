@@ -117,6 +117,7 @@ FsOpenNode* ElfLoader::inspectNode(KProcess* process, const std::string& current
             interpreter = "";
         } else if (interpreter.length()) {
             stringSplit(interpreterArgs,interpreter,' ');
+            interpreter = interpreterArgs[0];
             interpreterArgs.erase(interpreterArgs.begin());
         }
         openNode->close();

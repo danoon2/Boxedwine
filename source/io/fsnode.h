@@ -33,7 +33,7 @@ public:
     virtual bool canRead();
     virtual bool canWrite();
 
-    U32 getHardLinkCount() {return 1;}
+    U32 getHardLinkCount() {return this->hardLinkCount;}
     bool isLink() {return this->link.size()>0;}
     bool isDirectory() {return this->isDir;}
     BoxedPtr<FsNode> getParent() {return this->parent;}
@@ -45,7 +45,8 @@ public:
     std::string name;
     const std::string link;
     const U32 id;
-    const U32 rdev;        
+    const U32 rdev;  
+    U32 hardLinkCount;
     std::vector<KFileLock> locks;        
     KList<FsOpenNode*> openNodes;
     const Type type;

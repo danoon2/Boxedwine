@@ -12,7 +12,8 @@ FsNode::FsNode(Type type, U32 id, U32 rdev, const std::string& path, const std::
     isDir(isDirectory), 
     parent(parent), 
     name(Fs::getFileNameFromPath(path)), 
-    hasLoadedChildrenFromFileSystem(false) {   
+    hasLoadedChildrenFromFileSystem(false),
+    hardLinkCount(1) {   
 }
 
 void FsNode::removeOpenNode(FsOpenNode* node) {
@@ -39,6 +40,7 @@ void FsNode::loadChildren() {
         Platform::listNodes(nativePath, results);
         for (auto& n : results) {
             std::string localPath = this->path+"/"+n.name;
+            Fs::remotePathToLocal(localPath);
             if (!stringHasEnding(localPath, ".link")) {
                 Fs::addFileNode(localPath, "", n.isDirectory, this);
             } else {
