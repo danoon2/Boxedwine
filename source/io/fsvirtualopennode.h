@@ -24,6 +24,7 @@ public:
     virtual U32 writeNative(U8* buffer, U32 len) = 0;
     virtual void close() {}
     virtual void reopen() {}
+    virtual bool isOpen() {return true;}
 };
 
 #endif

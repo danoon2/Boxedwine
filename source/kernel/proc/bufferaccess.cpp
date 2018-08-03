@@ -85,6 +85,10 @@ bool BufferAccess::canMap() {
 void BufferAccess::close() {
 }
 
+bool BufferAccess::isOpen() {
+    return true;
+}
+
 void BufferAccess::reopen() {
     this->pos = 0;
 }

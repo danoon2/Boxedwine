@@ -24,6 +24,7 @@ public:
     virtual U32 writeNative(U8* buffer, U32 len);
     virtual void close();
     virtual void reopen();
+    virtual bool isOpen();
 
 private:
     BoxedPtr<FsZipNode> zipNode;

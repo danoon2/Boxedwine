@@ -685,7 +685,8 @@ void KProcess::signalCHLD(U32 code, U32 childPid, U32 sendingUID, S32 exitCode) 
     this->sigActions[K_SIGCHLD].sigInfo[3] = childPid;
     this->sigActions[K_SIGCHLD].sigInfo[4] = sendingUID;
     this->sigActions[K_SIGCHLD].sigInfo[5] = exitCode;
-    signalProcess(K_SIGCHLD);
+    //signalProcess(K_SIGCHLD);
+    kwarn("Ate SIGCHLD");
 }
 
 void KProcess::signalALRM() {
@@ -1790,7 +1791,7 @@ U32 KProcess::stat64(const std::string& path, U32 buffer) {
         return -K_ENOENT;
     }
     U64 len = node->length();
-    KSystem::writeStat(node->path, buffer, true, 1, node->id, (isLink?K__S_IFLNK:0) | node->getMode(), node->rdev, len, 4096, (len + 4095) / 4096, node->lastModified(), node->getHardLinkCount());
+    KSystem::writeStat(node->path, buffer, true, 1, node->id, node->getMode(), node->rdev, len, 4096, (len + 4095) / 4096, node->lastModified(), node->getHardLinkCount());
     return 0;
 }
 
@@ -1800,8 +1801,17 @@ U32 KProcess::lstat64(const std::string& path, U32 buffer) {
         return -K_ENOENT;
     }
  
-    U64 len = node->length();
-    KSystem::writeStat(node->path, buffer, true, 1, node->id, (node->isLink()?K__S_IFLNK:0) | node->getMode(), node->rdev, len, 4096, (len + 4095) / 4096, node->lastModified(), node->getHardLinkCount());
+    U64 len;
+    U32 mode;
+
+    if (node->isLink()) {
+        len = node->link.length();
+        mode = K__S_IFLNK | (node->getMode() & 0xFFF);
+    } else {
+        len = node->length();
+        mode = node->getMode();
+    }
+    KSystem::writeStat(node->path, buffer, true, 1, node->id, mode, node->rdev, len, 4096, (len + 4095) / 4096, node->lastModified(), node->getHardLinkCount());
     return 0;
 }
 

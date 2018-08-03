@@ -8,8 +8,11 @@
 #define eaa3(cpu, op) cpu->seg[op->base].address + cpu->reg[op->rm].u32 + (cpu->reg[op->sibIndex].u32 << + op->sibScale) + op->disp
 #define eaa(cpu, op) (op->ea16)?(eaa1(cpu, op)):(eaa3(cpu, op))
 
-//#define START_OP(cpu, op) op->log(cpu)
+#ifdef _DEBUG
+#define START_OP(cpu, op) op->log(cpu)
+#else
 #define START_OP(cpu, op)
+#endif
 #define NEXT() cpu->eip.u32+=op->len; op->next->pfn(cpu, op->next)
 #define NEXT_DONE()
 #define NEXT_BRANCH1() cpu->eip.u32+=op->len

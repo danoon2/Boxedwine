@@ -18,6 +18,9 @@
 
 FsFileNode::FsFileNode(U32 id, U32 rdev, const std::string& path, const std::string& link, bool isDirectory, BoxedPtr<FsNode> parent) : FsNode(File, id, rdev, path, link, isDirectory, parent) {
     this->nativePath = Fs::localPathToRemote(path);
+    if (link.length()) {
+        this->nativePath+=".link";
+    }
 }
 
 bool FsFileNode::remove() {
@@ -36,8 +39,10 @@ bool FsFileNode::remove() {
 
         this->openNodes.for_each([&tmpPos,&i](KListNode<FsOpenNode*>* n) {
             FsOpenNode* openNode = n->data;
-            tmpPos[i++] = openNode->getFilePointer();
-            openNode->close();
+            if (openNode->isOpen()) {
+                tmpPos[i++] = openNode->getFilePointer();
+                openNode->close();
+            }
         });
         
         Fs::makeLocalDirs("/tmp/del");
@@ -84,6 +89,8 @@ U64 FsFileNode::lastModified() {
 U64 FsFileNode::length() {
     struct stat buf;
 
+    if (this->isDirectory())
+        return 4096;
     if (stat(this->nativePath.c_str(), &buf)==0) {
         return buf.st_size;
     }
@@ -211,8 +218,10 @@ U32 FsFileNode::rename(const std::string& path) {
         tmpPos = new S64[this->openNodes.size()];
         this->openNodes.for_each([&tmpPos,&i](KListNode<FsOpenNode*>* n) {
             FsOpenNode* openNode = n->data;
-            tmpPos[i++] = openNode->getFilePointer();
-            openNode->close();
+            if (openNode->isOpen()) {
+                tmpPos[i++] = openNode->getFilePointer();
+                openNode->close();
+            }
         });
     }
 
@@ -222,6 +231,9 @@ U32 FsFileNode::rename(const std::string& path) {
     }
 
     std::string nativePath = Fs::localPathToRemote(parent->path+"/"+Fs::getFileNameFromPath(path));
+
+    if (this->isLink())
+        nativePath+=".link";
 
     if (Fs::doesNativePathExist(nativePath)) {
         BoxedPtr<FsNode> existingNode = Fs::getNodeFromLocalPath("", path, false);

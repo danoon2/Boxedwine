@@ -29,6 +29,10 @@ S64 FsDirOpenNode::seek(S64 pos) {
 void FsDirOpenNode::close() {
 }
 
+bool FsDirOpenNode::isOpen() {
+    return true;
+}
+
 U32 FsDirOpenNode::ioctl(U32 request) {
     return -K_ENODEV;
 }

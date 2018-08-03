@@ -36,8 +36,12 @@ void FsFileOpenNode::close() {
     this->handle = 0xFFFFFFFF;
 }
 
+bool FsFileOpenNode::isOpen() {
+    return this->handle!=0xFFFFFFFF;
+}
+
 void FsFileOpenNode::reopen() {
-    int openFlags = 0;
+    int openFlags = O_BINARY;
     int flags = this->flags;
                         
     if ((flags & K_O_ACCMODE)==K_O_RDONLY) {

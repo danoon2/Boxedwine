@@ -32,6 +32,7 @@ public:
     virtual U32 writeNative(U8* buffer, U32 len)=0;
     virtual void close()=0;
     virtual void reopen()=0;
+    virtual bool isOpen()=0;
 
     BoxedPtr<FsNode> const node;
     const U32 flags;     

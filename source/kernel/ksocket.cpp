@@ -33,10 +33,10 @@ const char* socketAddressName(U32 address, U32 len, char* result, U32 cbResult) 
     if (family == K_AF_UNIX) {
         return getNativeString(address + 2, result, cbResult);
     } else if (family == K_AF_NETLINK) {
-        sprintf(result, "port %d", readd(address + 4));
+        sprintf(result, "port %u", readd(address + 4));
         return result;
     } else if (family == K_AF_INET) {
-        sprintf(result, "AF_INET %d.%d.%d.%d:%d", readb(address + 4), readb(address + 5), readb(address + 6), readb(address + 7), readb(address + 3) | (readb(address + 2) << 8));
+        sprintf(result, "AF_INET %u.%u.%u.%u:%u", readb(address + 4), readb(address + 5), readb(address + 6), readb(address + 7), readb(address + 3) | (((U32)readb(address + 2)) << 8));
         return result;
     }
     return "Unknown address family";

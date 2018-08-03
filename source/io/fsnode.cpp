@@ -39,7 +39,10 @@ void FsNode::loadChildren() {
         std::vector<Platform::ListNodeResult> results;
         Platform::listNodes(nativePath, results);
         for (auto& n : results) {
-            std::string localPath = this->path+"/"+n.name;
+            std::string localPath = this->path;
+            if (!stringHasEnding(localPath, "/"))
+                localPath+="/";
+            localPath+=n.name;
             Fs::remotePathToLocal(localPath);
             if (!stringHasEnding(localPath, ".link")) {
                 Fs::addFileNode(localPath, "", n.isDirectory, this);

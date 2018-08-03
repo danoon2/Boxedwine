@@ -56,6 +56,10 @@ static void setupZipRead(U64 zipOffset, U64 zipFileOffset) {
 void FsZipOpenNode::close() {
 }
 
+bool FsZipOpenNode::isOpen() {
+    return true;
+}
+
 U32 FsZipOpenNode::ioctl(U32 request) {
     return -K_ENODEV;
 }
