@@ -1,6 +1,5 @@
-#ifdef BOXEDWINE_ZLIB
 #include "boxedwine.h"
-
+#ifdef BOXEDWINE_ZLIB
 #undef OF
 #define STRICTUNZIP
 extern "C"

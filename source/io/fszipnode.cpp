@@ -1,6 +1,5 @@
-#ifdef BOXEDWINE_ZLIB
 #include "boxedwine.h"
-
+#ifdef BOXEDWINE_ZLIB
 #include "fszipnode.h"
 #include "fsfilenode.h"
 #include UNISTD
