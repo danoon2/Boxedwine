@@ -52,7 +52,7 @@ public:
     bool isPageAllocated(U32 page);
 
     KProcess* process;
-    Page* mmu[NUMBER_OF_PAGES];    
+    Page* mmu[K_NUMBER_OF_PAGES];    
 #ifdef LOG_OPS
     U32 log;
 #endif

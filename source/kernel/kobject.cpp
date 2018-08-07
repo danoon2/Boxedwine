@@ -23,14 +23,14 @@ U32 KObject::writev(U32 iov, S32 iovcnt) {
 }
 
 U32 KObject::read(U32 address, U32 len) {
-    if (PAGE_SIZE-(address & (PAGE_SIZE-1)) >= len) {
+    if (K_PAGE_SIZE-(address & (K_PAGE_SIZE-1)) >= len) {
         U8* ram = getPhysicalAddress(address);
         U32 result;
 
         if (ram) {
             result = this->readNative(ram, len);	
         } else {
-            char tmp[PAGE_SIZE];
+            char tmp[K_PAGE_SIZE];
             result = this->readNative((U8*)tmp, len);
             memcopyFromNative(address, tmp, result);
         }        
@@ -38,7 +38,7 @@ U32 KObject::read(U32 address, U32 len) {
     } else {		
         U32 result = 0;
         while (len) {
-            U32 todo = PAGE_SIZE-(address & (PAGE_SIZE-1));
+            U32 todo = K_PAGE_SIZE-(address & (K_PAGE_SIZE-1));
             S32 didRead;
             U8* ram = getPhysicalAddress(address);
 
@@ -47,7 +47,7 @@ U32 KObject::read(U32 address, U32 len) {
             if (ram) {
                 didRead=this->readNative(ram, todo);		
             } else {
-                char tmp[PAGE_SIZE];
+                char tmp[K_PAGE_SIZE];
                 didRead = this->readNative((U8*)tmp, todo);
                 memcopyFromNative(address, tmp, didRead);
             }
@@ -64,9 +64,9 @@ U32 KObject::read(U32 address, U32 len) {
 U32 KObject::write(U32 address, U32 len) {
     U32 wrote = 0;
     while (len) {
-        U32 todo = PAGE_SIZE-(address & (PAGE_SIZE-1));
+        U32 todo = K_PAGE_SIZE-(address & (K_PAGE_SIZE-1));
         U8* ram = getPhysicalAddress(address);
-        char tmp[PAGE_SIZE];
+        char tmp[K_PAGE_SIZE];
 
         if (todo>len)
             todo = len;

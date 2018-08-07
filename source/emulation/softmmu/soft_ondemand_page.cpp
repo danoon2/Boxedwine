@@ -13,18 +13,18 @@ OnDemandPage* OnDemandPage::alloc(U32 flags) {
 
 void OnDemandPage::ondemmand(U32 address) {
     Memory* memory = KThread::currentThread()->memory;
-    U32 page = address >> PAGE_SHIFT;
+    U32 page = address >> K_PAGE_SHIFT;
     bool read = this->canRead() || this->canExec();
     bool write = this->canWrite();
     
     if (read && write) {
-        memory->mmu[page] = RWPage::alloc(NULL, page << PAGE_SHIFT, this->flags);
+        memory->mmu[page] = RWPage::alloc(NULL, page << K_PAGE_SHIFT, this->flags);
     } else if (write) {
-        memory->mmu[page] = WOPage::alloc(NULL, page << PAGE_SHIFT, this->flags);
+        memory->mmu[page] = WOPage::alloc(NULL, page << K_PAGE_SHIFT, this->flags);
     } else if (read) {
-        memory->mmu[page] = ROPage::alloc(NULL, page << PAGE_SHIFT, this->flags);
+        memory->mmu[page] = ROPage::alloc(NULL, page << K_PAGE_SHIFT, this->flags);
     } else {
-        memory->mmu[page] = NOPage::alloc(NULL, page << PAGE_SHIFT, this->flags);
+        memory->mmu[page] = NOPage::alloc(NULL, page << K_PAGE_SHIFT, this->flags);
     }
     this->close();
 }

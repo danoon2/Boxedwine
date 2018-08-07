@@ -844,10 +844,10 @@ U32 KProcess::link(const std::string& from, const std::string& to) {
     }
 
     while (1) {
-        U8 buffer[PAGE_SIZE];
-        U32 r = fromOpenNode->readNative(buffer, PAGE_SIZE);	
+        U8 buffer[K_PAGE_SIZE];
+        U32 r = fromOpenNode->readNative(buffer, K_PAGE_SIZE);	
         toOpenNode->writeNative(buffer, r);
-        if (r<PAGE_SIZE)
+        if (r<K_PAGE_SIZE)
             break;
     }
     toOpenNode->close();
@@ -911,7 +911,7 @@ U32 KProcess::write(FD fildes, U32 bufferAddress, U32 bufferLen) {
 U32 KProcess::brk(U32 address) {
     if (address > this->brkEnd) {
         U32 len = address-this->brkEnd;
-        U32 alreadyAllocated = ROUND_UP_TO_PAGE(this->brkEnd) - this->brkEnd;
+        U32 alreadyAllocated = K_ROUND_UP_TO_PAGE(this->brkEnd) - this->brkEnd;
 
         if (len<=alreadyAllocated) {
             this->brkEnd+=len;
@@ -1088,8 +1088,8 @@ U32 KProcess::mmap(U32 addr, U32 len, S32 prot, S32 flags, FD fildes, U64 off) {
     bool read = (prot & K_PROT_READ)!=0;
     bool write = (prot & K_PROT_WRITE)!=0;
     bool exec = (prot & K_PROT_EXEC)!=0;
-    U32 pageStart = addr >> PAGE_SHIFT;
-    U32 pageCount = (len+PAGE_SIZE-1)>>PAGE_SHIFT;
+    U32 pageStart = addr >> K_PAGE_SHIFT;
+    U32 pageCount = (len+K_PAGE_SIZE-1)>>K_PAGE_SHIFT;
     KFileDescriptor* fd = 0;
 
     if ((shared && priv) || (!shared && !priv)) {
@@ -1112,7 +1112,7 @@ U32 KProcess::mmap(U32 addr, U32 len, S32 prot, S32 flags, FD fildes, U64 off) {
         }
     }        
     if (flags & K_MAP_FIXED) {
-        if (addr & (PAGE_SIZE-1)) {
+        if (addr & (K_PAGE_SIZE-1)) {
 #ifdef _DEBUG
             klog("tried to call mmap with invalid address: %X", addr);
             return -K_EINVAL;
@@ -1129,7 +1129,7 @@ U32 KProcess::mmap(U32 addr, U32 len, S32 prot, S32 flags, FD fildes, U64 off) {
         }
         if (addr!=0 && pageStart+pageCount> ADDRESS_PROCESS_MMAP_START)
             return -K_ENOMEM;
-        addr = pageStart << PAGE_SHIFT;	
+        addr = pageStart << K_PAGE_SHIFT;	
     }
     if (fd) {
         U32 result = fd->kobject->map(addr, len, prot, flags, off);
@@ -1154,8 +1154,8 @@ U32 KProcess::mmap(U32 addr, U32 len, S32 prot, S32 flags, FD fildes, U64 off) {
         if (fd) {	
             BoxedPtr<MappedFile> mappedFile = new MappedFile();
 
-            mappedFile->address = pageStart << PAGE_SHIFT;
-            mappedFile->len = ((U64)pageCount) << PAGE_SHIFT;
+            mappedFile->address = pageStart << K_PAGE_SHIFT;
+            mappedFile->len = ((U64)pageCount) << K_PAGE_SHIFT;
             mappedFile->offset = off;     
             mappedFile->file = (KFile*)fd->kobject.get();
 
@@ -1163,7 +1163,7 @@ U32 KProcess::mmap(U32 addr, U32 len, S32 prot, S32 flags, FD fildes, U64 off) {
             if (!cache) {
                 cache = new MappedFileCache(mappedFile->file->openFile->node->path);
                 cache->file = mappedFile->file;
-                U32 size = ((U32)((fd->kobject->length() + PAGE_SIZE-1) >> PAGE_SHIFT));
+                U32 size = ((U32)((fd->kobject->length() + K_PAGE_SIZE-1) >> K_PAGE_SHIFT));
                 cache->data = new U8*[size];
                 memset(cache->data, 0, size*sizeof(U8*));
             }
@@ -1178,8 +1178,8 @@ U32 KProcess::mmap(U32 addr, U32 len, S32 prot, S32 flags, FD fildes, U64 off) {
 }
 
 U32 KProcess::unmap(U32 address, U32 len) {
-    U32 pageStart = address >> PAGE_SHIFT;
-    U32 pageCount = (len+PAGE_SIZE-1)>>PAGE_SHIFT;
+    U32 pageStart = address >> K_PAGE_SHIFT;
+    U32 pageCount = (len+K_PAGE_SIZE-1)>>K_PAGE_SHIFT;
     
     this->memory->reset(pageStart, pageCount);
     return 0;
@@ -1459,8 +1459,8 @@ U32 KProcess::mprotect(U32 address, U32 len, U32 prot) {
     bool read = (prot & K_PROT_READ)!=0;
     bool write = (prot & K_PROT_WRITE)!=0;
     bool exec = (prot & K_PROT_EXEC)!=0;
-    U32 pageStart = address >> PAGE_SHIFT;
-    U32 pageCount = (len+PAGE_SIZE-1)>>PAGE_SHIFT;
+    U32 pageStart = address >> K_PAGE_SHIFT;
+    U32 pageCount = (len+K_PAGE_SIZE-1)>>K_PAGE_SHIFT;
     U32 permissions = 0;
     U32 i;
 
@@ -1634,12 +1634,12 @@ U32 KProcess::mremap(U32 oldaddress, U32 oldsize, U32 newsize, U32 flags) {
     if (oldsize==0) {
         kpanic("mremap not implemented for oldsize==0");
     }
-    U32 pageStart = oldaddress>>PAGE_SHIFT;
-    U32 oldPageCount = oldsize>>PAGE_SHIFT;
-    U32 pageFlags = this->memory->mmu[oldaddress >> PAGE_SHIFT]->flags;
+    U32 pageStart = oldaddress>>K_PAGE_SHIFT;
+    U32 oldPageCount = oldsize>>K_PAGE_SHIFT;
+    U32 pageFlags = this->memory->mmu[oldaddress >> K_PAGE_SHIFT]->flags;
 
     for (U32 i=0;i<oldPageCount;i++) {
-        if (this->memory->mmu[oldaddress >> PAGE_SHIFT]->flags!=pageFlags) {
+        if (this->memory->mmu[oldaddress >> K_PAGE_SHIFT]->flags!=pageFlags) {
             return -K_EFAULT;
         }
     }
@@ -1826,11 +1826,11 @@ U32 KProcess::fstat64(FD handle, U32 buf) {
 
 U32 KProcess::mincore(U32 address, U32 length, U32 vec) {
     U32 i;
-    U32 pages = (length+PAGE_SIZE+1)/PAGE_SIZE;
-    U32 page = address >> PAGE_SHIFT;
+    U32 pages = (length+K_PAGE_SIZE+1)/K_PAGE_SIZE;
+    U32 page = address >> K_PAGE_SHIFT;
 
     for (i=0;i<pages;i++) {
-        if (page+i>=NUMBER_OF_PAGES)
+        if (page+i>=K_NUMBER_OF_PAGES)
             return -K_ENOMEM;
         if (this->memory->isPageAllocated(page+i))
             writeb(vec, 1);
@@ -2197,12 +2197,12 @@ void KProcess::attachSHM(U32 address, const BoxedPtr<SHM>& shm) {
 
 U32 KProcess::shmdt(U32 shmaddr) {
     S32 shmid = -1;
-    U32 page = shmaddr >> PAGE_SHIFT;
+    U32 page = shmaddr >> K_PAGE_SHIFT;
 
     if (this->attachedShm.count(shmaddr)) {
         BoxedPtr<AttachedSHM> attached = this->attachedShm[shmaddr];
         if (attached) {
-            this->memory->reset(shmaddr >> PAGE_SHIFT, attached->shm->pages.size());
+            this->memory->reset(shmaddr >> K_PAGE_SHIFT, attached->shm->pages.size());
             this->attachedShm.erase(shmaddr);
             return 0;
         }

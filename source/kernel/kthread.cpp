@@ -68,7 +68,7 @@ void KThread::reset() {
 
 void KThread::setupStack() {
     U32 page = 0;
-    U32 pageCount = MAX_STACK_SIZE >> PAGE_SHIFT; // 1MB for max stack
+    U32 pageCount = MAX_STACK_SIZE >> K_PAGE_SHIFT; // 1MB for max stack
     pageCount+=2; // guard pages
     if (!this->memory->findFirstAvailablePage(ADDRESS_PROCESS_STACK_START, pageCount, &page, false))
 		if (!this->memory->findFirstAvailablePage(0xC0000, pageCount, &page, false))
@@ -81,7 +81,7 @@ void KThread::setupStack() {
     this->memory->allocPages(page, 1, 0, 0, 0, 0);
     this->stackPageCount = pageCount;
     this->stackPageStart = page;
-    this->cpu->reg[4].u32 = (this->stackPageStart + this->stackPageCount - 1) << PAGE_SHIFT; // one page away from the top    
+    this->cpu->reg[4].u32 = (this->stackPageStart + this->stackPageCount - 1) << K_PAGE_SHIFT; // one page away from the top    
 }
 
 KThread::KThread(U32 id, KProcess* process) : 

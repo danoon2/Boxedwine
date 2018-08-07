@@ -570,13 +570,13 @@ U32 DevFB::ioctl(U32 request) {
 }
 
 U32 DevFB::map(U32 address, U32 len, S32 prot, S32 flags, U64 off) {
-    U32 pageStart = fb_fix_screeninfo.smem_start >> PAGE_SHIFT;
-    U32 pageCount = (len+PAGE_SIZE-1)>>PAGE_SHIFT;
+    U32 pageStart = fb_fix_screeninfo.smem_start >> K_PAGE_SHIFT;
+    U32 pageCount = (len+K_PAGE_SIZE-1)>>K_PAGE_SHIFT;
     U32 i;
     Memory* memory = KThread::currentThread()->memory;
 
     if (len<fb_fix_screeninfo.smem_len) {
-        pageCount=fb_fix_screeninfo.smem_len >> PAGE_SHIFT;
+        pageCount=fb_fix_screeninfo.smem_len >> K_PAGE_SHIFT;
     }
     if ((flags & K_MAP_FIXED) && address!=fb_fix_screeninfo.smem_start) {
         kpanic("Mapping /dev/fb at fixed address not supported");

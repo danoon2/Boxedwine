@@ -260,7 +260,7 @@ bool ElfLoader::loadProgram(KProcess* process, FsOpenNode* openNode, U32* eip) {
         reloc = 0;
         len-=address;
     } else {
-        reloc = ADDRESS_PROCESS_LOADER<<PAGE_SHIFT;
+        reloc = ADDRESS_PROCESS_LOADER<<K_PAGE_SHIFT;
         address = reloc;
     }
 

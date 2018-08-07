@@ -66,18 +66,18 @@ void setup() {
         cpu = thread->cpu;
         KThread::setCurrentThread(thread);
 
-        process->memory->allocPages((STACK_ADDRESS >> PAGE_SHIFT)-17, 17, PAGE_READ|PAGE_WRITE, 0, 0, 0);
-        process->memory->allocPages(CODE_ADDRESS >> PAGE_SHIFT, 17, PAGE_READ|PAGE_WRITE|PAGE_EXEC, 0, 0, 0);
-        process->memory->allocPages(HEAP_ADDRESS >> PAGE_SHIFT, 17, PAGE_READ|PAGE_WRITE, 0, 0, 0);
+        process->memory->allocPages((STACK_ADDRESS >> K_PAGE_SHIFT)-17, 17, PAGE_READ|PAGE_WRITE, 0, 0, 0);
+        process->memory->allocPages(CODE_ADDRESS >> K_PAGE_SHIFT, 17, PAGE_READ|PAGE_WRITE|PAGE_EXEC, 0, 0, 0);
+        process->memory->allocPages(HEAP_ADDRESS >> K_PAGE_SHIFT, 17, PAGE_READ|PAGE_WRITE, 0, 0, 0);
     }
 
     cpu->seg[CS].address = CODE_ADDRESS;
     cpu->seg[DS].address = HEAP_ADDRESS;
-    cpu->seg[SS].address = STACK_ADDRESS-PAGE_SIZE*17;
+    cpu->seg[SS].address = STACK_ADDRESS-K_PAGE_SIZE*17;
 
-    zeroMemory(CODE_ADDRESS, PAGE_SIZE*17);
-    zeroMemory(STACK_ADDRESS-PAGE_SIZE*17, PAGE_SIZE*17);
-    zeroMemory(HEAP_ADDRESS, PAGE_SIZE*17);
+    zeroMemory(CODE_ADDRESS, K_PAGE_SIZE*17);
+    zeroMemory(STACK_ADDRESS-K_PAGE_SIZE*17, K_PAGE_SIZE*17);
+    zeroMemory(HEAP_ADDRESS, K_PAGE_SIZE*17);
 }
 
 void pushCode8(int value) {
@@ -5650,9 +5650,9 @@ void runLeaGd(int rm, int hasSib, U32 sib, int hasDisp8, int hasDisp32, S32 disp
 }
 
 void initMem32() {
-    zeroMemory(CODE_ADDRESS, PAGE_SIZE*17);
-    zeroMemory(STACK_ADDRESS-PAGE_SIZE*17, PAGE_SIZE*17);
-    zeroMemory(HEAP_ADDRESS, PAGE_SIZE*17);
+    zeroMemory(CODE_ADDRESS, K_PAGE_SIZE*17);
+    zeroMemory(STACK_ADDRESS-K_PAGE_SIZE*17, K_PAGE_SIZE*17);
+    zeroMemory(HEAP_ADDRESS, K_PAGE_SIZE*17);
 
     cpu->big = true;
     EAX = 0x12345678;
@@ -6063,9 +6063,9 @@ void runLeaGw(int rm, int hasDisp8, int hasDisp16, U32 d, U16 result, U32 seg) {
 }
 
 void initMem16() {
-    zeroMemory(CODE_ADDRESS, PAGE_SIZE*17);
-    zeroMemory(STACK_ADDRESS-PAGE_SIZE*17, PAGE_SIZE*17);
-    zeroMemory(HEAP_ADDRESS, PAGE_SIZE*17);
+    zeroMemory(CODE_ADDRESS, K_PAGE_SIZE*17);
+    zeroMemory(STACK_ADDRESS-K_PAGE_SIZE*17, K_PAGE_SIZE*17);
+    zeroMemory(HEAP_ADDRESS, K_PAGE_SIZE*17);
 
     cpu->big = false;
     EAX = 0x12345678;

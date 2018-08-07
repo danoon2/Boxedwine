@@ -14,27 +14,27 @@ CopyOnWritePage* CopyOnWritePage::alloc(U8* page, U32 address, U32 flags) {
 
 void CopyOnWritePage::copyOnWrite(U32 address) {	
     Memory* memory = KThread::currentThread()->memory;
-    U32 page = address >> PAGE_SHIFT;
+    U32 page = address >> K_PAGE_SHIFT;
     bool read = this->canRead() | this->canExec();
     bool write = this->canWrite();
     U8* ram;
 
     if (ramPageRefCount(this->page)>1) {
         ram = ramPageAlloc();
-        memcpy(ram, this->page, PAGE_SIZE);
+        memcpy(ram, this->page, K_PAGE_SIZE);
     } else {
         ram = this->page;
         ramPageIncRef(ram);
     }    
 
     if (read && write) {
-        memory->mmu[page] = RWPage::alloc(ram, page << PAGE_SHIFT, this->flags);
+        memory->mmu[page] = RWPage::alloc(ram, page << K_PAGE_SHIFT, this->flags);
     } else if (write) {
-        memory->mmu[page] = WOPage::alloc(ram, page << PAGE_SHIFT, this->flags);
+        memory->mmu[page] = WOPage::alloc(ram, page << K_PAGE_SHIFT, this->flags);
     } else if (read) {
-        memory->mmu[page] = ROPage::alloc(ram, page << PAGE_SHIFT, this->flags);
+        memory->mmu[page] = ROPage::alloc(ram, page << K_PAGE_SHIFT, this->flags);
     } else {
-        memory->mmu[page] = NOPage::alloc(ram, page << PAGE_SHIFT, this->flags);
+        memory->mmu[page] = NOPage::alloc(ram, page << K_PAGE_SHIFT, this->flags);
     }
 
     this->close();

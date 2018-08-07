@@ -155,14 +155,14 @@ void NormalCPU::run() {
     DecodedBlock* block = NULL;
     U32 startIp = (this->big?this->eip.u32:this->eip.u32 & 0xFFFF) + this->seg[CS].address;
 
-    Page* page = this->thread->memory->mmu[startIp >> PAGE_SHIFT];
+    Page* page = this->thread->memory->mmu[startIp >> K_PAGE_SHIFT];
     if (page->type == Page::Type::Code_Page) {
         CodePage* codePage = (CodePage*)page;
         block = codePage->getCode(startIp);
     }
     if (!block) {
         block = NormalBlock::alloc(this);
-        decodeBlock(fetchByte, startIp, this->big, 0, PAGE_SIZE, 0, block);
+        decodeBlock(fetchByte, startIp, this->big, 0, K_PAGE_SIZE, 0, block);
 
         DecodedOp* op = block->op;
         while (op) {
@@ -171,7 +171,7 @@ void NormalCPU::run() {
             op = op->next;
         }
         // might have changed after a read
-        page = this->thread->memory->mmu[startIp >> PAGE_SHIFT];
+        page = this->thread->memory->mmu[startIp >> K_PAGE_SHIFT];
 
         CodePage* codePage; 
         if (page->type == Page::Type::Code_Page) {
@@ -180,7 +180,7 @@ void NormalCPU::run() {
             if (page->type == Page::Type::RO_Page || page->type == Page::Type::RW_Page || page->type == Page::Type::Copy_On_Write_Page || page->type == Page::Type::Native_Page) {
                 RWPage* p = (RWPage*)page;
                 codePage = CodePage::alloc(p->page, p->address, p->flags);
-                this->thread->memory->mmu[startIp >> PAGE_SHIFT] = codePage;
+                this->thread->memory->mmu[startIp >> K_PAGE_SHIFT] = codePage;
                 p->close();
             } else {
                 kpanic("Unhandled code caching page type: %d", page->type);

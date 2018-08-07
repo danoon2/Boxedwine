@@ -590,7 +590,7 @@ U32 KNativeSocketObject::sendmsg(KFileDescriptor* fd, U32 address, U32 flags) {
 }
 
 U32 KNativeSocketObject::recvmsg(KFileDescriptor* fd, U32 address, U32 flags) {
-    char tmp[PAGE_SIZE];
+    char tmp[K_PAGE_SIZE];
     MsgHdr hdr;
     U32 result = 0;
 

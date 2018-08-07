@@ -73,7 +73,7 @@ CodePage::~CodePage() {
 
 // :TODO: what if address+len is in the next page
 CodePage::CodePageEntry* CodePage::findCode(U32 address, U32 len) {
-    U32 offset = address & PAGE_MASK;
+    U32 offset = address & K_PAGE_MASK;
 
     for (U32 i=0;i<CODE_ENTRIES;i++) {
         CodePageEntry* entry = entries[i];
@@ -106,7 +106,7 @@ void CodePage::removeBlockAt(U32 address, U32 len) {
 }
 
 void CodePage::addCode(U32 eip, DecodedBlock* block, U32 len, CodePageEntry* link) {
-    U32 offset = eip & PAGE_MASK;
+    U32 offset = eip & K_PAGE_MASK;
 
     CodePageEntry** entry = &this->entries[offset >> CODE_ENTRIES_SHIFT];
 
@@ -122,8 +122,8 @@ void CodePage::addCode(U32 eip, DecodedBlock* block, U32 len, CodePageEntry* lin
     (*entry)->offset = offset;
     (*entry)->block = block;
 	(*entry)->page = this;
-	if (offset+len>PAGE_SIZE)
-		(*entry)->len = PAGE_SIZE-offset;
+	if (offset+len>K_PAGE_SIZE)
+		(*entry)->len = K_PAGE_SIZE-offset;
 	else
 		(*entry)->len = len;
 	if (link) {
@@ -133,7 +133,7 @@ void CodePage::addCode(U32 eip, DecodedBlock* block, U32 len, CodePageEntry* lin
             kpanic("Code block too big");
         }
 	}
-	if (offset + len > PAGE_SIZE) {
+	if (offset + len > K_PAGE_SIZE) {
 		U32 nextPage = (eip + 0xFFF) & 0xFFFFF000;
 		this->addCode(nextPage, NULL, len - (nextPage - eip), *entry);
 	}
@@ -144,7 +144,7 @@ void CodePage::addCode(U32 eip, DecodedBlock* op, U32 len) {
 }
 
 DecodedBlock* CodePage::getCode(U32 eip) {
-    U32 offset = eip & PAGE_MASK;
+    U32 offset = eip & K_PAGE_MASK;
     CodePageEntry* entry = this->entries[offset >> CODE_ENTRIES_SHIFT];
     while (entry) {
         if (entry->offset == offset && !entry->linkedPrev)

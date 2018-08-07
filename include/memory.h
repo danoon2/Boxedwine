@@ -30,11 +30,11 @@ public:
     U8** data;
 };
 
-#define PAGE_SIZE 4096
-#define PAGE_MASK 0xFFF
-#define PAGE_SHIFT 12
-#define NUMBER_OF_PAGES 0x100000
-#define ROUND_UP_TO_PAGE(x) ((x + 0xFFF) & 0xFFFFF000)
+#define K_PAGE_SIZE 4096
+#define K_PAGE_MASK 0xFFF
+#define K_PAGE_SHIFT 12
+#define K_NUMBER_OF_PAGES 0x100000
+#define K_ROUND_UP_TO_PAGE(x) ((x + 0xFFF) & 0xFFFFF000)
 
 class Memory;
 class KProcess;

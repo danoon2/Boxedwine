@@ -14,7 +14,7 @@ U32 updateVertexPointer(CPU* cpu, OpenGLVetexPointer* p, U32 count) {
     }
     if (p->ptr) {        
         U32 datasize = count * p->size * (p->stride?p->stride:getDataSize(p->type));    
-        U32 available = PAGE_SIZE - (p->ptr & PAGE_MASK) + (1 << PAGE_SHIFT);
+        U32 available = K_PAGE_SIZE - (p->ptr & K_PAGE_MASK) + (1 << K_PAGE_SHIFT);
 
 #ifndef UNALIGNED_MEMORY
         if (count == 0 || available > datasize) {

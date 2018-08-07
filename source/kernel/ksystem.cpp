@@ -164,7 +164,7 @@ U32 KSystem::sysinfo(U32 address) {
     writew(address, KSystem::processes.size()); address+=2;
     writed(address, 0); address+=4;
     writed(address, 0); address+=4;
-    writed(address, PAGE_SIZE);
+    writed(address, K_PAGE_SIZE);
     return 0;
 }
 
@@ -412,7 +412,7 @@ U32 KSystem::shmget(U32 key, U32 size, U32 flags) {
     result->cgid = thread->process->effectiveGroupId;
     result->ctime = Platform::getSystemTimeAsMicroSeconds();
     result->len = size;
-    U32 pageCount = (size+PAGE_SIZE-1) / PAGE_SIZE;
+    U32 pageCount = (size+K_PAGE_SIZE-1) / K_PAGE_SIZE;
     for (U32 i=0;i<pageCount;i++) {
         result->pages.push_back(ramPageAlloc());
     }
@@ -440,18 +440,18 @@ U32 KSystem::shmat(U32 shmid, U32 shmaddr, U32 shmflg, U32 rtnAddr) {
         return -K_EINVAL;
     }
     if (shmaddr && (shmflg & SHM_RND)) {
-        shmaddr = shmaddr & ~PAGE_MASK;
+        shmaddr = shmaddr & ~K_PAGE_MASK;
     }
-    if (shmaddr && (shmaddr & PAGE_MASK)) {
+    if (shmaddr && (shmaddr & K_PAGE_MASK)) {
         return -K_EINVAL;
     }
     if (shmflg & SHM_REMAP) {
         kpanic("syscall_shmat SHM_REMAP not implemented");
     }
     if (!shmaddr) {
-        shmaddr = ADDRESS_PROCESS_MMAP_START << PAGE_SHIFT;
+        shmaddr = ADDRESS_PROCESS_MMAP_START << K_PAGE_SHIFT;
     }
-    if (thread->process->memory->findFirstAvailablePage(shmaddr >> PAGE_SHIFT, (shm->len + PAGE_SIZE - 1) / PAGE_SIZE, &result, 0)) {
+    if (thread->process->memory->findFirstAvailablePage(shmaddr >> K_PAGE_SHIFT, (shm->len + K_PAGE_SIZE - 1) / K_PAGE_SIZE, &result, 0)) {
         return -K_EINVAL;
     }
     if (shmflg & SHM_RDONLY) {
@@ -459,7 +459,7 @@ U32 KSystem::shmat(U32 shmid, U32 shmaddr, U32 shmflg, U32 rtnAddr) {
     } else {
         permissions = PAGE_READ|PAGE_WRITE;
     }
-    thread->process->memory->map(result >> PAGE_SHIFT, shm->pages, permissions);    
+    thread->process->memory->map(result >> K_PAGE_SHIFT, shm->pages, permissions);    
     thread->process->attachSHM(result, shm);
     return 0;
 }
