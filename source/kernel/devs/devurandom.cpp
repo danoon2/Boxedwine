@@ -21,9 +21,11 @@
 #include <stdlib.h>
 #include <time.h>
 
+static bool srand_initialized = false;
+
 class DevURandom : public FsVirtualOpenNode {
 public:
-    DevURandom(const BoxedPtr<FsNode>& node, U32 flags) : FsVirtualOpenNode(node, flags) {srand((U32)time(0));}
+    DevURandom(const BoxedPtr<FsNode>& node, U32 flags) : FsVirtualOpenNode(node, flags) {if (!srand_initialized) {srand((U32)time(0)); srand_initialized = true;}}
     virtual U32 readNative(U8* buffer, U32 len);
     virtual U32 writeNative(U8* buffer, U32 len) {return 0;}
 };
