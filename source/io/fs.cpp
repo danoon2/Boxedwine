@@ -2,7 +2,9 @@
 
 #include "fsfilenode.h"
 #include "fsvirtualnode.h"
+#ifdef BOXEDWINE_ZLIB
 #include "fszip.h"
+#endif
 
 #include <stdio.h>
 #include <fcntl.h>

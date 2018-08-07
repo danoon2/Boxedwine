@@ -3,7 +3,9 @@
 
 #include "fsnode.h"
 
+#ifdef BOXEDWINE_ZLIB
 class FsZipNode;
+#endif
 
 class FsFileNode : public FsNode {
 public:
@@ -20,12 +22,14 @@ public:
 private:
     friend class FsFileOpenNode;
     friend class FsDirOpenNode;
-    friend class FsZip;
-    friend class FsZipNode;
     friend class Platform;
 
     void ensurePathIsLocal();
+#ifdef BOXEDWINE_ZLIB
+    friend class FsZip;
+    friend class FsZipNode;
     BoxedPtr<FsZipNode> zipNode;
+#endif
     std::string nativePath;
 };
 

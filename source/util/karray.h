@@ -6,7 +6,7 @@
 template <typename T> 
 class KArray {
 public:
-    KArray() : _data(0), _size(0), _reserved(0) {}
+    KArray() : _data(0), _reserved(0), _size(0) {}
     KArray(U32 reserved) {
         this->_data = new T[reserved];
         this->_size = 0;

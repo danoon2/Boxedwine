@@ -184,6 +184,7 @@ void NormalCPU::run() {
                 p->close();
             } else {
                 kpanic("Unhandled code caching page type: %d", page->type);
+		codePage = nullptr;
             }
         }
         codePage->addCode(startIp, block, block->bytes);

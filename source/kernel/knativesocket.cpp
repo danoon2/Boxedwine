@@ -35,17 +35,16 @@ void updateWaitingList() {
 
     maxSocketId = 0;
     waitingNativeSockets.for_each([] (KListNode<KNativeSocketObject*>* node) {
-        BOOL errorSet = 0;
+        bool errorSet = false;
 #ifndef BOXEDWINE_MSVC
-        if (s->nativeSocket>=FD_SETSIZE) {
-            kpanic("updateWaitingList %s socket is too large to select on", s->nativeSocket);
-            break;
+        if (node->data->nativeSocket>=FD_SETSIZE) {
+            kpanic("updateWaitingList %s socket is too large to select on", node->data->nativeSocket);
         }
 #endif
         if (node->data->waitingOnReadThread.size()) {
             FD_SET(node->data->nativeSocket, &waitingReadset);
             FD_SET(node->data->nativeSocket, &waitingErrorset);
-            errorSet = 1;
+            errorSet = true;
         }
         if (node->data->waitingOnWriteThread.size()) {
             FD_SET(node->data->nativeSocket, &waitingWriteset);
@@ -235,7 +234,7 @@ U32 KNativeSocketObject::ioctl(U32 request) {
         U32 result = ioctlsocket(this->nativeSocket, FIONREAD, &value);
 #else        
         int value=0;
-        U32 result = ioctl(this->nativeSocket, FIONREAD, &value);        
+        U32 result = ::ioctl(this->nativeSocket, FIONREAD, &value);        
 #endif
         if (result!=0)
             return handleNativeSocketError(KThread::currentThread(), this, true);
@@ -256,7 +255,7 @@ S64 KNativeSocketObject::getPos() {
     return 0;
 }
 
-void setNativeBlocking(int nativeSocket, boolean blocking) {
+void setNativeBlocking(int nativeSocket, bool blocking) {
 #ifdef WIN32
     u_long mode = blocking?0:1;
     ioctlsocket(nativeSocket, FIONBIO, &mode);           
@@ -421,8 +420,8 @@ U32 KNativeSocketObject::connect(KFileDescriptor* fd, U32 address, U32 len) {
     memcopyToNative(address, buffer, len);
     if (::connect(this->nativeSocket, (struct sockaddr*)buffer, len)==0) {
         int error;
-        len = 4;
-        ::getsockopt(this->nativeSocket, SOL_SOCKET, SO_ERROR, (char*)&error, (int*)&len);
+        socklen_t optLen = 4;
+        ::getsockopt(this->nativeSocket, SOL_SOCKET, SO_ERROR, (char*)&error, &optLen);
         if (error==0) {
             this->connected = true;
             return 0;
@@ -449,7 +448,7 @@ U32 KNativeSocketObject::listen(KFileDescriptor* fd, U32 backlog) {
 
 U32 KNativeSocketObject::accept(KFileDescriptor* fd, U32 address, U32 len) {
     struct sockaddr addr;
-    int addrlen = sizeof(struct sockaddr);
+    socklen_t addrlen = sizeof(struct sockaddr);
     S32 result = (S32)::accept(this->nativeSocket, &addr, &addrlen);
     if (result>=0) {
         BoxedPtr<KNativeSocketObject> s = new KNativeSocketObject(this->domain, this->type, this->protocol);
@@ -469,7 +468,7 @@ U32 KNativeSocketObject::accept(KFileDescriptor* fd, U32 address, U32 len) {
 }
 
 U32 KNativeSocketObject::getsockname(KFileDescriptor* fd, U32 address, U32 plen) {    
-    int len = (int)readd( plen);
+    socklen_t len = (socklen_t)readd( plen);
     char* buf = new char[len];
     U32 result = ::getsockname(this->nativeSocket, (struct sockaddr*)buf, &len);
     if (result)
@@ -484,7 +483,7 @@ U32 KNativeSocketObject::getsockname(KFileDescriptor* fd, U32 address, U32 plen)
 }
 
 U32 KNativeSocketObject::getpeername(KFileDescriptor* fd, U32 address, U32 plen) {
-    int len = (int)readd( plen);
+    socklen_t len = (socklen_t)readd( plen);
     char* buf = new char[len];
 
     S32 result = ::getpeername(this->nativeSocket, (struct sockaddr*)buf, &len);
@@ -530,7 +529,7 @@ U32 KNativeSocketObject::setsockopt(KFileDescriptor* fd, U32 level, U32 name, U3
 }
 
 U32 KNativeSocketObject::getsockopt(KFileDescriptor* fd, U32 level, U32 name, U32 value, U32 len_address) {
-    int len = (int)readd(len_address);
+    socklen_t len = (socklen_t)readd(len_address);
     if (level == K_SOL_SOCKET) {
         if (name == K_SO_RCVBUF) {
             if (len!=4)
@@ -602,7 +601,7 @@ U32 KNativeSocketObject::recvmsg(KFileDescriptor* fd, U32 address, U32 flags) {
         if (this->type == K_SOCK_DGRAM && this->domain==K_AF_INET && hdr.msg_namelen>=sizeof(struct sockaddr_in)) {
             struct sockaddr_in in;
             S32 r;
-            int inLen = sizeof(struct sockaddr_in);
+            socklen_t inLen = sizeof(struct sockaddr_in);
 
             if (len>sizeof(tmp))
                 len = sizeof(tmp);
@@ -662,7 +661,7 @@ U32 KNativeSocketObject::recvfrom(KFileDescriptor* fd, U32 buffer, U32 length, U
         kwarn("krecvfrom unsupported flags: %d", flags);
     }
     int inLen=0;
-    int outLen=0;
+    socklen_t outLen=0;
     char* fromBuffer = NULL;
 
     if (address_len) {

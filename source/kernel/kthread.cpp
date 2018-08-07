@@ -25,6 +25,7 @@
 #include "../emulation/cpu/normal/normalCPU.h"
 
 #include <string.h>
+#include <setjmp.h>
 
 KThread* KThread::runningThread;
 
@@ -85,12 +86,7 @@ void KThread::setupStack() {
 }
 
 KThread::KThread(U32 id, KProcess* process) : 
-    id(id), 
-    process(process), 
-    timer(this), 
-    scheduledThreadNode(this),
-    waitThreadNode(this),
-    waitNode(this),
+    id(id),   
     sigMask(0),
     inSigMask(0),
     alternateStack(0),
@@ -98,6 +94,7 @@ KThread::KThread(U32 id, KProcess* process) :
     cpu(NULL),
     stackPageStart(0),
     stackPageCount(0),
+    process(process),
     memory(0),
     interrupted(false),
     inSignal(0),
@@ -111,9 +108,13 @@ KThread::KThread(U32 id, KProcess* process) :
     waiting(false),
     waitStartTime(0),
     waitType(0),
+    timer(this),
     glContext(0),
     currentContext(0),
-    log(false)
+    log(false),
+    scheduledThreadNode(this),
+    waitThreadNode(this),
+    waitNode(this)
     {
     int i;
 
@@ -717,7 +718,7 @@ void KThread::seg_mapper(U32 address, bool readFault, bool writeFault) {
 #ifdef BOXEDWINE_HAS_SETJMP
         longjmp(runBlockJump, 1);		
 #else
-        runUntil(thread, eip);
+        kpanic("setjmp is required for this app but it was compiled into boxedwine");
 #endif
     } else {
         this->memory->log_pf(this, address);
@@ -739,7 +740,7 @@ void KThread::seg_access(U32 address, bool readFault, bool writeFault) {
 #ifdef BOXEDWINE_HAS_SETJMP
         longjmp(runBlockJump, 1);		
 #else 
-        runUntil(thread, eip);
+        kpanic("setjmp is required for this app but it was compiled into boxedwine");
 #endif
     } else {
         this->memory->log_pf(this, address);

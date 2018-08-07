@@ -176,7 +176,7 @@ void printStacks() {
     for (auto& n : KSystem::getProcesses()) {
         KProcess* process = n.second;
 
-        klog("process %X %s%s", process->id, process->terminated?"TERMINATED ":"", process->commandLine);
+        klog("process %X %s%s", process->id, process->terminated?"TERMINATED ":"", process->commandLine.c_str());
         for (auto& t : process->getThreads()) {
             KThread* thread = t.second;
             CPU* cpu=thread->cpu;
@@ -400,7 +400,7 @@ U32 KSystem::shmget(U32 key, U32 size, U32 flags) {
         index=1;
         while (publicShm.count(index)) {
             index++;
-            if (index>=0x400000000)
+            if (index>=0x40000000)
                 return -K_ENOSPC;
         }        
         result = new SHM(index, key);

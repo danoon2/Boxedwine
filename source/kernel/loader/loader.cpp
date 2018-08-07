@@ -124,13 +124,13 @@ FsOpenNode* ElfLoader::inspectNode(KProcess* process, const std::string& current
         delete openNode;
     }
     if (!interpreter.length() && !isElf) {
-        return false;
+        return NULL;
     }
     if (interpreter.length()) {
         interpreterNode = Fs::getNodeFromLocalPath(currentDirectory, interpreter, true);	
         if (!interpreterNode) {
             printf("Interpreter not found: %s\n", interpreter.c_str());
-            return false;
+            return NULL;
         }
         openNode = interpreterNode->open(K_O_RDONLY);		
         loader = ElfLoader::getInterpreter(openNode, &isElf);

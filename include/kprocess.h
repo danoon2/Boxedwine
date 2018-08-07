@@ -94,9 +94,9 @@ public:
         this->shm->lpid = pid;
         this->shm->decAttach();
     }
-    const U32 pid;
-    const U32 address;
     BoxedPtr<SHM> shm;
+    const U32 address;
+    const U32 pid;
 };
 
 class KProcess {

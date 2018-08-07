@@ -1,3 +1,5 @@
+#ifdef BOXEDWINE_ZLIB
+
 #ifndef __FSZIPENODE_H__
 #define __FSZIPNODE_H__
 
@@ -27,5 +29,5 @@ private:
     fsZipInfo zipInfo;
     BoxedPtr<FsFileNode> fileNode;
 };
-
+#endif
 #endif

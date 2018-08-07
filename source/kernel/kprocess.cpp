@@ -46,7 +46,6 @@ bool KProcessTimer::run() {
 }
 
 KProcess::KProcess(U32 id) : id(id), 
-    timer(this),
     parentId(0),
     groupId(0),
     userId(0),
@@ -59,6 +58,7 @@ KProcess::KProcess(U32 id) : id(id),
     terminated(false),
     memory(NULL),
     brkEnd(0), 
+    timer(this),
     waitingThread(NULL),
     loaderBaseAddress(0),
     phdr(0),
@@ -1494,7 +1494,7 @@ U32 KProcess::fchdir(FD fildes) {
     if (p->openFile->openedPath.length())
         this->currentDirectory = p->openFile->openedPath;
     else
-        this->currentDirectory, p->openFile->node->path;
+        this->currentDirectory = p->openFile->node->path;
     return 0;
 }
 

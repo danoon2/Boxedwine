@@ -81,8 +81,10 @@ U64 FsFileNode::lastModified() {
     if (stat(this->nativePath.c_str(), &buf)==0) {
         return buf.st_mtime*1000l;
     }
+#ifdef BOXEDWINE_ZLIB
     if (this->zipNode)
         return this->zipNode->lastModified();
+#endif
     return 0;
 }
 
@@ -94,12 +96,15 @@ U64 FsFileNode::length() {
     if (stat(this->nativePath.c_str(), &buf)==0) {
         return buf.st_size;
     }
+#ifdef BOXEDWINE_ZLIB
     if (this->zipNode)
         return this->zipNode->length();
+#endif
     return 0;
 }
 
 void FsFileNode::ensurePathIsLocal() {
+#ifdef BOXEDWINE_ZLIB
     if (this->zipNode && !Fs::doesNativePathExist(this->nativePath)) {
         if (this->isDirectory()) {
             Fs::makeLocalDirs(this->path);
@@ -109,6 +114,7 @@ void FsFileNode::ensurePathIsLocal() {
             this->zipNode->moveToFileSystem();
         }
     }
+#endif
 }
 
 FsOpenNode* FsFileNode::open(U32 flags) {
@@ -144,8 +150,10 @@ FsOpenNode* FsFileNode::open(U32 flags) {
     }
     f = ::open(this->nativePath.c_str(), openFlags, 0666);	
     if (!f || f==0xFFFFFFFF) {
+#ifdef BOXEDWINE_ZLIB
         if (this->zipNode && (flags & K_O_ACCMODE)==K_O_RDONLY)
             return this->zipNode->open(flags);
+#endif
         return 0;
     }
     return new FsFileOpenNode(this, flags, f);

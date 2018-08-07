@@ -1,3 +1,4 @@
+#ifdef BOXEDWINE_ZLIB
 #include "boxedwine.h"
 
 #undef OF
@@ -89,3 +90,4 @@ bool FsZip::init(const std::string& zipPath) {
 #endif
     return true;
 }
+#endif

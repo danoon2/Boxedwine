@@ -4,7 +4,13 @@
 #include "ksocket.h"
 #include "kstat.h"
 
-KUnixSocketObject::KUnixSocketObject(U32 pid, U32 domain, U32 type, U32 protocol) : KSocketObject(KTYPE_UNIX_SOCKET, domain, type, protocol), recvBuffer(1024*1024), pid(0), connecting(NULL), connection(NULL), pendingConnectionNode(this) {
+KUnixSocketObject::KUnixSocketObject(U32 pid, U32 domain, U32 type, U32 protocol) : KSocketObject(KTYPE_UNIX_SOCKET, domain, type, protocol), 
+    connection(NULL),
+    connecting(NULL), 
+    recvBuffer(1024*1024),
+    pendingConnectionNode(this), 
+    pid(0)
+{
 }
 
 KUnixSocketObject::~KUnixSocketObject() {
@@ -581,7 +587,7 @@ U32 KUnixSocketObject::sendmsg(KFileDescriptor* fd, U32 address, U32 flags) {
 
     if (!this->connection) {
         if (this->type == K_SOCK_STREAM) {
-            return ENOTCONN;
+            return K_ENOTCONN;
         }
         kpanic("KUnixSocketObject::sendmsg not implemented for type: %d", this->type);
         return 0;

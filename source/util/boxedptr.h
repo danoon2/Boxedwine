@@ -68,7 +68,7 @@ public:
         other.ptr = ptr;
         ptr = tmp;
     }
-private:
+// private:
     T *ptr;
  };
  

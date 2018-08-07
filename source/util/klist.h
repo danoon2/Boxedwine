@@ -11,7 +11,7 @@ class KList;
 template <typename T>  
 class KListNode : public BoxedPtrBase {
 public:
-    KListNode(T data) : prev(NULL), next(NULL), data(data), list(NULL) {}        
+    KListNode(T data) : data(data), prev(NULL), next(NULL), list(NULL) {}        
     T data;
 
     void remove() {

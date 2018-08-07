@@ -984,7 +984,7 @@ typedef void (*LogFormat)(const LogInstruction* inst, DecodedOp* op, CPU* cpu);
 
 struct LogInstruction {
     const char* name;
-    U32 width;
+    S32 width;
     LogFormat pfnFormat;
     bool imm;
     const char* postfix;
@@ -1133,7 +1133,7 @@ static void outE8(DecodedOp* op, CPU* cpu) {
 }
 
 static void logRR(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, inst->name);
+    fprintf((FILE*)cpu->logFile, "%s", inst->name);
     fwrite(" ", 1, 1, (FILE*)cpu->logFile);
     if (inst->width==32) {
         outR32(op->reg, cpu);
@@ -1153,7 +1153,7 @@ static void logRR(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
 }
 
 static void logRE(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, inst->name);
+    fprintf((FILE*)cpu->logFile, "%s", inst->name);
     fwrite(" ", 1, 1, (FILE*)cpu->logFile);
     if (inst->width==32) {
         outR32(op->reg, cpu);
@@ -1173,7 +1173,7 @@ static void logRE(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
 }
 
 static void logER(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, inst->name);
+    fprintf((FILE*)cpu->logFile, "%s", inst->name);
     fwrite(" ", 1, 1, (FILE*)cpu->logFile);
     if (inst->width==32) {
         outE32(op, cpu);
@@ -1193,7 +1193,7 @@ static void logER(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
 }
 
 static void logRE8(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, inst->name);
+    fprintf((FILE*)cpu->logFile, "%s", inst->name);
     fwrite(" ", 1, 1, (FILE*)cpu->logFile);
     if (inst->width==32) {
         outR32(op->reg, cpu);
@@ -1213,7 +1213,7 @@ static void logRE8(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
 }
 
 static void logRR8(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, inst->name);
+    fprintf((FILE*)cpu->logFile, "%s", inst->name);
     fwrite(" ", 1, 1, (FILE*)cpu->logFile);
     if (inst->width==32) {
         outR32(op->reg, cpu);
@@ -1233,7 +1233,7 @@ static void logRR8(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
 }
 
 static void logRE16(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, inst->name);
+    fprintf((FILE*)cpu->logFile, "%s", inst->name);
     fwrite(" ", 1, 1, (FILE*)cpu->logFile);
     if (inst->width==32) {
         outR32(op->reg, cpu);
@@ -1253,7 +1253,7 @@ static void logRE16(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
 }
 
 static void logRR16(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, inst->name);
+    fprintf((FILE*)cpu->logFile, "%s", inst->name);
     fwrite(" ", 1, 1, (FILE*)cpu->logFile);
     if (inst->width==32) {
         outR32(op->reg, cpu);
@@ -1273,7 +1273,7 @@ static void logRR16(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
 }
 
 static void logR(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, inst->name);
+    fprintf((FILE*)cpu->logFile, "%s", inst->name);
     fwrite(" ", 1, 1, (FILE*)cpu->logFile);
     if (inst->width==32) {
         outR32(op->reg, cpu);
@@ -1287,7 +1287,7 @@ static void logR(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
 }
 
 static void logE(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, inst->name);
+    fprintf((FILE*)cpu->logFile, "%s", inst->name);
     fwrite(" ", 1, 1, (FILE*)cpu->logFile);
     if (inst->width==32) {
         outE32(op, cpu);
@@ -1303,56 +1303,56 @@ static void logE(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
 }
 
 static void logS(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, inst->name);
+    fprintf((FILE*)cpu->logFile, "%s", inst->name);
 }
 
 static void logSR(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, inst->name);
+    fprintf((FILE*)cpu->logFile, "%s", inst->name);
 }
 
 static void logRS(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, inst->name);
+    fprintf((FILE*)cpu->logFile, "%s", inst->name);
 }
 
 static void logSE(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, inst->name);
+    fprintf((FILE*)cpu->logFile, "%s", inst->name);
 }
 
 static void logES(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, inst->name);
+    fprintf((FILE*)cpu->logFile, "%s", inst->name);
 }
 
 static void logName(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, inst->name);
+    fprintf((FILE*)cpu->logFile, "%s", inst->name);
     fwrite(" ", 1, 1, (FILE*)cpu->logFile);
 }
 
 static void logCsEip(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, inst->name);
+    fprintf((FILE*)cpu->logFile, "%s", inst->name);
 }
 
 static void logMM(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, inst->name);
+    fprintf((FILE*)cpu->logFile, "%s", inst->name);
 }
 
 static void logME(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, inst->name);
+    fprintf((FILE*)cpu->logFile, "%s", inst->name);
 }
 
 static void logMR(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, inst->name);
+    fprintf((FILE*)cpu->logFile, "%s", inst->name);
 }
 
 static void logM(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, inst->name);
+    fprintf((FILE*)cpu->logFile, "%s", inst->name);
 }
 
 static void logRM(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, inst->name);
+    fprintf((FILE*)cpu->logFile, "%s", inst->name);
 }
 
 static void logEM(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, inst->name);
+    fprintf((FILE*)cpu->logFile, "%s", inst->name);
 }
 
 const LogInstruction instructionLog[] = {
@@ -3146,8 +3146,6 @@ public:
         case 7: func(data, op, rm, SarR8Cl, SarE8Cl); break;
         }	
     }
-private:
-    U32 imm;
 };
 
 class DecodeGrp2_Cl_16 : public DecodeFunc {
@@ -3166,8 +3164,6 @@ public:
         case 7: func(data, op, rm, SarR16Cl, SarE16Cl); break;
         }	
     }
-private:
-    U32 imm;
 };
 
 class DecodeGrp2_Cl_32 : public DecodeFunc {
@@ -3186,8 +3182,6 @@ public:
         case 7: func(data, op, rm, SarR32Cl, SarE32Cl); break;
         }	
     }
-private:
-    U32 imm;
 };
 
 class DecodeGrp3_8 : public DecodeFunc {
@@ -4407,7 +4401,7 @@ DecodeRMr decodePaddb(PaddbMmx, PaddbE64);
 DecodeRMr decodePaddw(PaddwMmx, PaddwE64);
 DecodeRMr decodePaddd(PadddMmx, PadddE64);
 
-static const Decode* const decoder[] = {
+const Decode* const decoder[] = {
     // 0x000
     &decodeAddEbGb, &decodeAddEwGw, &decodeAddGbEb, &decodeAddGwEw, &decodeAddAlIb, &decodeAddAxIw, &decodePushEs16, &decodePopEs16,
     &decodeOrEbGb, &decodeOrEwGw, &decodeOrGbEb, &decodeOrGwEw, &decodeOrAlIb, &decodeOrAxIw, &decodePushCs16, &decode2Byte,

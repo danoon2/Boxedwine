@@ -215,7 +215,7 @@ class CallbackPage : public NativePage {
     CallbackPage(U8* nativeAddress, U32 address, U32 flags) : NativePage(nativeAddress, address, flags) {
     }
 public:
-    static CallbackPage* CallbackPage::alloc(U8* page, U32 address, U32 flags) {
+    static CallbackPage* alloc(U8* page, U32 address, U32 flags) {
         return new CallbackPage(page, address, flags);
     }
     void close() {}
@@ -491,7 +491,7 @@ void memcopyFromNative(U32 address, const char* p, U32 len) {
 #ifdef UNALIGNED_MEMORY
     U32 i;
     for (i=0;i<len;i++) {
-        writeb(thread, address+i, p[i]);
+        writeb(address+i, p[i]);
     }
 #else
     U32 i;
@@ -531,7 +531,7 @@ void memcopyFromNative(U32 address, const char* p, U32 len) {
 void memcopyToNative(U32 address, char* p, U32 len) {
 #ifdef UNALIGNED_MEMORY
     for (U32 i=0;i<len;i++) {
-        p[i] = readb(thread, address+i);
+        p[i] = readb(address+i);
     }
 #else
     if (len>4) {
@@ -759,7 +759,7 @@ U32 Memory::mapNativeMemory(void* hostAddress, U32 size) {
 
 void Memory::map(U32 startPage, const std::vector<U8*>& pages, U32 permissions) {
     U32 result = 0;
-    bool read = (permissions & PAGE_READ)!=0 || (permissions && PAGE_EXEC)!=0;
+    bool read = (permissions & PAGE_READ)!=0 || (permissions & PAGE_EXEC)!=0;
     bool write = (permissions & PAGE_WRITE)!=0;
 
     for (U32 page=0;page<pages.size();page++) {

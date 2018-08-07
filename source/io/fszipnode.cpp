@@ -1,3 +1,4 @@
+#ifdef BOXEDWINE_ZLIB
 #include "boxedwine.h"
 
 #include "fszipnode.h"
@@ -75,3 +76,4 @@ U32 FsZipNode::setTimes(U64 lastAccessTime, U32 lastAccessTimeNano, U64 lastModi
 
 void FsZipNode::close() {
 }
+#endif

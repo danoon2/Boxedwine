@@ -3,17 +3,18 @@
 #include "kstat.h"
 
 FsNode::FsNode(Type type, U32 id, U32 rdev, const std::string& path, const std::string& link, bool isDirectory, BoxedPtr<FsNode> parent) : 
-    type(type), 
+    path(path),
+    name(Fs::getFileNameFromPath(path)),
+    link(link),
     id(id), 
-    rdev(rdev), 
-    path(path), 
-    kobject(0), 
-    link(link), 
-    isDir(isDirectory), 
-    parent(parent), 
-    name(Fs::getFileNameFromPath(path)), 
-    hasLoadedChildrenFromFileSystem(false),
-    hardLinkCount(1) {   
+    rdev(rdev),
+    hardLinkCount(1),
+    type(type),  
+    kobject(0),  
+    parent(parent),
+    isDir(isDirectory),  
+    hasLoadedChildrenFromFileSystem(false)
+ {   
 }
 
 void FsNode::removeOpenNode(FsOpenNode* node) {

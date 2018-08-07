@@ -253,7 +253,7 @@ void mainloop() {
     U32 count=0;
     while (1) {
         SDL_Event e;
-        BOOL ran = runSlice();
+        bool ran = runSlice();
         
         while (SDL_PollEvent(&e)) {
             if (e.type == SDL_QUIT) {
@@ -368,7 +368,7 @@ FsOpenNode* openKernelCommandLine(const BoxedPtr<FsNode>& node, U32 flags) {
     return new BufferAccess(node, flags, "");
 }
 
-int main(int argc, char **argv) {
+int main(int argc, const char **argv) {
     int i;
     const char* root = ".";
     const char* zip = "";
@@ -379,7 +379,7 @@ int main(int argc, char **argv) {
     int groupId = GID;
     int effectiveUserId = UID;
     int effectiveGroupId = GID;
-    char* workingDir = "/home/username";
+    const char* workingDir = "/home/username";
     char pwd[MAX_FILEPATH_LEN];
 	U32 sound = 1;
     bool resolutionSet = false;
@@ -538,7 +538,7 @@ int main(int argc, char **argv) {
     argc = argc-i;
     if (argc==0) {
         argv[0]="/usr/bin/wine";
-            argv[1]="/home/username/chomp/CHOMP.EXE";
+        argv[1]="/home/username/chomp/CHOMP.EXE";
         argc=2;
         //argv[0]="/init.sh";
         //argc=1;

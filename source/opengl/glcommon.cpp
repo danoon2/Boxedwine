@@ -416,7 +416,8 @@ void gl_init() {
 }
 
 #else
-#include "cpu.h"
+Int99Callback* int99Callback;
+U32 int99CallbackSize;
 void gl_init() {
     int99CallbackSize=0;
 }

@@ -1,3 +1,5 @@
+#ifdef BOXEDWINE_ZLIB
+
 #ifndef __FSZIP_H__
 #define __FSZIP_H__
 
@@ -28,4 +30,5 @@ public:
     static bool init(const std::string& zipPath);
     static unzFile zipfile;
 };
+#endif
 #endif

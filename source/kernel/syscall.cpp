@@ -77,9 +77,11 @@ typedef U32 (*SyscallFunc)(CPU* cpu, U32 eipCount);
 #define SYSCALL_MEMORY      0x80
 #define SYSCALL_SOCKET      0x100
 
-#ifdef LOG_SYSCALLS
-
+#ifdef _DEBUG
 static U32 syscallMask = 0xFFF & ~SYSCALL_MEMORY;
+#else
+static U32 syscallMask = 0;
+#endif
 
 void sysLog(U32 type, CPU* cpu, const char* msg, ...) {
     va_list argptr;
@@ -102,10 +104,6 @@ void sysLog1(U32 type, CPU* cpu, const char* msg, ...) {
 
 #define SYS_LOG if (syscallMask) sysLog
 #define SYS_LOG1 if (syscallMask) sysLog1
-#else
-#define SYS_LOG 
-#define SYS_LOG1 
-#endif
 
 static U32 syscall_exit(CPU* cpu, U32 eipCount) {
     SYS_LOG1(SYSCALL_PROCESS, cpu, "exit: status=%d", ARG1);

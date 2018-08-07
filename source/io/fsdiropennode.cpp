@@ -67,12 +67,12 @@ bool FsDirOpenNode::canMap() {
 }
 
 U32 FsDirOpenNode::readNative(U8* buffer, U32 len) {
-    kpanic("FsDirOpenNode::readNative not implemented: %s", node->path);
+    kpanic("FsDirOpenNode::readNative not implemented: %s", node->path.c_str());
     return 0;
 }
 
 U32 FsDirOpenNode::writeNative(U8* buffer, U32 len) {
-    kpanic("FsDirOpenNode::writeNative not implemented: %s", node->path);
+    kpanic("FsDirOpenNode::writeNative not implemented: %s", node->path.c_str());
     return 0;
 }
 

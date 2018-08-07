@@ -16,15 +16,14 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
+#include "boxedwine.h"
 #include <sys/time.h>
 #include <dirent.h>
 #include <string.h>
 
-#include "log.h"
 #include "pixelformat.h"
-#include "fsapi.h"
 
-unsigned long long int getSystemTimeAsMicroSeconds() {
+unsigned long long int Platform::getSystemTimeAsMicroSeconds() {
 	struct timeval  tv;
 	gettimeofday(&tv, NULL);
 	return ((unsigned long long int)tv.tv_sec) * 1000000l + (tv.tv_usec);
@@ -34,49 +33,40 @@ unsigned long long int getSystemTimeAsMicroSeconds() {
 #ifdef __THIS_HANGS__
 // error TypeError: asm.js type error: missing definition of function _testSetjmp
 #include <emscripten.h>
-void startMicroCounter()
+void Platform::startMicroCounter()
 {    
 }
 
-unsigned long long int getMicroCounter()
+unsigned long long int Platform::getMicroCounter()
 {
     return (unsigned long long int)(emscripten_get_now()*1000000.0);
 }
 #else
 long long int CounterStart;
-void startMicroCounter()
+void Platform::startMicroCounter()
 {
     CounterStart = getSystemTimeAsMicroSeconds();
 }
 
-unsigned long long int getMicroCounter()
+unsigned long long int Platform::getMicroCounter()
 {
     return getSystemTimeAsMicroSeconds()-CounterStart;
 }
 #endif
 
-int listNodes(struct FsNode* dir, struct FsNode** nodes, int maxCount) {
+void Platform::listNodes(const std::string& nativePath, std::vector<ListNodeResult>& results) {
 	DIR *dp = NULL;
 	struct dirent *dptr = NULL;
-	U32 result = 0;
 
-	dp = opendir(dir->reserved1);
+	dp = opendir(nativePath.c_str());
 	if (dp) {
-		nodes[result++]=getNodeFromLocalPath(dir->path, ".", FALSE);
-                nodes[result++]=getNodeFromLocalPath(dir->path, "..", FALSE);
         	while(NULL != (dptr = readdir(dp))) {
 			if (strcmp(dptr->d_name, ".") && strcmp(dptr->d_name, ".."))  {
-				nodes[result] = getNodeFromLocalPath(dir->path, dptr->d_name, TRUE);
-				result++;
-				if (result==maxCount) {
-					kwarn("hit the maximum number of files that can be returned in a director for %s", dir->reserved1);
-					break;
-				}
+				results.push_back(ListNodeResult(dptr->d_name, (dptr->d_type & DT_DIR)!=0));
 			}
         	}
         	closedir(dp);
     	}
-	return result;
 }
 
 int getPixelFormats(PixelFormat* pfs, int maxPfs) {
