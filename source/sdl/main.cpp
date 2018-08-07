@@ -695,7 +695,7 @@ int boxedmain(int argc, const char **argv) {
 }
 
 int main(int argc, char **argv) {
-    boxedmain(argc, (const char **)argv);
+    return boxedmain(argc, (const char **)argv);
 }
 
 #endif
