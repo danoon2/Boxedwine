@@ -368,7 +368,7 @@ FsOpenNode* openKernelCommandLine(const BoxedPtr<FsNode>& node, U32 flags) {
     return new BufferAccess(node, flags, "");
 }
 
-int main(int argc, const char **argv) {
+int boxedmain(int argc, const char **argv) {
     int i;
     const char* root = ".";
     const char* zip = "";
@@ -383,6 +383,7 @@ int main(int argc, const char **argv) {
     char pwd[MAX_FILEPATH_LEN];
 	U32 sound = 1;
     bool resolutionSet = false;
+    bool euidSet = false;
 
     klog("Starting ...");
 
@@ -407,12 +408,15 @@ int main(int argc, const char **argv) {
         } else if (!strcmp(argv[i], "-uid") && i+1<argc) {
             userId = atoi(argv[i+1]);
             i++;
+            if (!euidSet)
+                effectiveUserId = userId;
         } else if (!strcmp(argv[i], "-gid") && i+1<argc) {
             groupId = atoi(argv[i+1]);
             i++;
         } else if (!strcmp(argv[i], "-euid") && i+1<argc) {
             effectiveUserId = atoi(argv[i+1]);
             i++;
+            euidSet = true;
         } else if (!strcmp(argv[i], "-egid") && i+1<argc) {
             effectiveGroupId = atoi(argv[i+1]);
             i++;
@@ -658,7 +662,7 @@ int main(int argc, const char **argv) {
             if (lastTitleUpdate+5000 < t) {
                 char tmp[256];
                 lastTitleUpdate = t;
-                sprintf(tmp, "BoxedWine %d MIPS", getMIPS());
+                sprintf(tmp, "BoxedWine %u MIPS", getMIPS());
                 fbSetCaption(tmp, "BoxedWine");
                 checkWaitingNativeSockets(0); // just so it doesn't starve if the system is busy
             }
@@ -688,6 +692,10 @@ int main(int argc, const char **argv) {
     SDL_Quit();
     
     return 0;
+}
+
+int main(int argc, char **argv) {
+    boxedmain(argc, (const char **)argv);
 }
 
 #endif
