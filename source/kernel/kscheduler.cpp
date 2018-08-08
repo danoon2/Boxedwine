@@ -102,6 +102,8 @@ void runThreadSlice(KThread* thread) {
         } while (cpu->blockInstructionCount < contextTime && !cpu->yield);	
 
 #ifdef BOXEDWINE_HAS_SETJMP
+    } else {
+        cpu->nextBlock = NULL;
     }
 #endif
 

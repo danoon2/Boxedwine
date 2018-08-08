@@ -1069,6 +1069,15 @@ class DecodedBlock;
 
 typedef U8 (*pfnFetchByte)(U32* pEip);
 
+class DecodedBlockFromNode {
+public:
+    static DecodedBlockFromNode* alloc();
+    virtual void dealloc();
+
+    DecodedBlock* block;
+    DecodedBlockFromNode* next;
+};
+
 class DecodedBlock {
 public:   
     static DecodedBlock* currentBlock;
@@ -1078,8 +1087,16 @@ public:
     U32 bytes;
     U32 runCount;
 
+    DecodedBlock* next1;
+    DecodedBlock* next2;    
+
     virtual void run(CPU* cpu) = 0;
     virtual void dealloc(bool delayed) = 0;
+
+    void addReferenceFrom(DecodedBlock* block);
+    void removeReferenceFrom(DecodedBlock* block);
+protected:
+    DecodedBlockFromNode* referencedFrom;
 };
 void decodeBlock(pfnFetchByte fetchByte, U32 eip, U32 isBig, U32 maxInstructions, U32 maxLen, U32 stopIfThrowsException, DecodedBlock* block);
 

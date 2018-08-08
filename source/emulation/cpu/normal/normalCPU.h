@@ -9,6 +9,8 @@ class NormalCPU : public CPU {
 public:
     NormalCPU();
     void run();
+
+    virtual DecodedBlock* getNextBlock();
 };
 
 #endif

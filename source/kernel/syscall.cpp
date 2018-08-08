@@ -1710,5 +1710,6 @@ void ksyscall(CPU* cpu, U32 eipCount) {
         EAX = result;
         cpu->eip.u32+=eipCount;
     }
+    cpu->nextBlock = NULL;
 }
 

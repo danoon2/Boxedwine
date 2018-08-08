@@ -14,9 +14,9 @@
 #define START_OP(cpu, op)
 #endif
 #define NEXT() cpu->eip.u32+=op->len; op->next->pfn(cpu, op->next)
-#define NEXT_DONE()
-#define NEXT_BRANCH1() cpu->eip.u32+=op->len
-#define NEXT_BRANCH2() cpu->eip.u32+=op->len
+#define NEXT_DONE() cpu->nextBlock = cpu->getNextBlock();
+#define NEXT_BRANCH1() cpu->eip.u32+=op->len; if (!DecodedBlock::currentBlock->next1) {DecodedBlock::currentBlock->next1 = cpu->getNextBlock(); DecodedBlock::currentBlock->next1->addReferenceFrom(DecodedBlock::currentBlock);} cpu->nextBlock = DecodedBlock::currentBlock->next1
+#define NEXT_BRANCH2() cpu->eip.u32+=op->len; if (!DecodedBlock::currentBlock->next2) {DecodedBlock::currentBlock->next2 = cpu->getNextBlock(); DecodedBlock::currentBlock->next2->addReferenceFrom(DecodedBlock::currentBlock);} cpu->nextBlock = DecodedBlock::currentBlock->next2
 
 #include "instructions.h"
 #include "normal_arith.h"
@@ -100,7 +100,7 @@ public:
     static NormalBlock* alloc(NormalCPU* cpu);
     virtual void dealloc(bool delayed);  
 
-    virtual void run(CPU* cpu);
+    void run(CPU* cpu);
 
 private:
     void init();
@@ -121,6 +121,9 @@ void NormalBlock::init() {
     this->bytes = 0;
     this->opCount = 0;
     this->runCount = 0;
+    this->next1 = NULL;
+    this->next2 = NULL;
+    this->referencedFrom = NULL;
 }
 
 NormalBlock* NormalBlock::alloc(NormalCPU* cpu) {
@@ -149,11 +152,18 @@ void NormalBlock::dealloc(bool delayed) {
     this->next = freeBlocks;
     this->op = NULL;
     freeBlocks = this;
+    if (this->next1)
+        this->next1->removeReferenceFrom(this);
+    if (this->next2)
+        this->next2->removeReferenceFrom(this);
 }
 
-void NormalCPU::run() {
-    DecodedBlock* block = NULL;
+DecodedBlock* NormalCPU::getNextBlock() {
+    if (!this->thread->process) // exit was called, don't need to pre-cache the next block
+        return NULL;
+
     U32 startIp = (this->big?this->eip.u32:this->eip.u32 & 0xFFFF) + this->seg[CS].address;
+    DecodedBlock* block = NULL;
 
     Page* page = this->thread->memory->mmu[startIp >> K_PAGE_SHIFT];
     if (page->type == Page::Type::Code_Page) {
@@ -189,7 +199,14 @@ void NormalCPU::run() {
         }
         codePage->addCode(startIp, block, block->bytes);
     }
-    DecodedBlock::currentBlock = block;
-    block->run(this);
+    return block;
+}
+
+void NormalCPU::run() {        
+    if (this->nextBlock)
+        DecodedBlock::currentBlock = this->nextBlock;
+    else
+        DecodedBlock::currentBlock = this->getNextBlock();
+    DecodedBlock::currentBlock->run(this);
     DecodedBlock::currentBlock = NULL;
 }

@@ -4661,6 +4661,63 @@ void DecodedOp::dealloc(bool deallocNext) {
     freeOps = this;
 }
 
+static DecodedBlockFromNode* freeFromNodes;
+DecodedBlockFromNode* DecodedBlockFromNode::alloc() {
+    DecodedBlockFromNode* result;
+
+    if (freeFromNodes) {
+        result = freeFromNodes;
+        freeFromNodes = freeFromNodes->next;
+    } else {
+        DecodedBlockFromNode* nodes = new DecodedBlockFromNode[1024];
+
+        freeFromNodes = &nodes[1];
+        freeFromNodes->next = 0;
+        for (int i=2;i<1024;i++) {
+            nodes[i].next = freeFromNodes;
+            freeFromNodes = &nodes[i];            
+        }
+        result = &nodes[0];
+    }
+    result->next = NULL;
+    result->block = NULL;
+    return result;
+}
+void DecodedBlockFromNode::dealloc() {
+    this->next = freeFromNodes;
+    this->block = NULL;
+    freeFromNodes = this;
+}
+
+void DecodedBlock::addReferenceFrom(DecodedBlock* block) {
+    DecodedBlockFromNode* node = DecodedBlockFromNode::alloc();
+    node->block = block;
+    node->next = this->referencedFrom;
+    this->referencedFrom = node;
+}
+
+void DecodedBlock::removeReferenceFrom(DecodedBlock* block) {
+    DecodedBlockFromNode* from = this->referencedFrom;
+	DecodedBlockFromNode* prev = NULL;
+
+	while (from) {
+		if (from->block == block) {
+			DecodedBlockFromNode* removed = from;
+
+			if (prev) {					
+				prev->next = from->next;					
+			} else {
+				this->referencedFrom = from->next;
+			}
+			from = from->next;
+			removed->dealloc();
+			continue;
+		}
+		prev = from;
+		from = from->next;
+	}
+}
+
 DecodedBlock* DecodedBlock::currentBlock;
 
 void decodeBlock(pfnFetchByte fetchByte, U32 eip, U32 isBig, U32 maxInstructions, U32 maxLen, U32 stopIfThrowsException, DecodedBlock* block) {

@@ -231,6 +231,8 @@ public:
     KThread* thread;
     void* logFile;
 
+    DecodedBlock* nextBlock;
+    
     U32 getCF();
     U32 getSF();
     U32 getZF();
@@ -286,6 +288,7 @@ public:
     void reset();
 
     virtual void run()=0;
+    virtual DecodedBlock* getNextBlock() = 0;
 };
 
 #endif

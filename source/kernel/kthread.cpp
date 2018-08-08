@@ -596,7 +596,7 @@ void OPCALL onExitSignal(CPU* cpu, DecodedOp* op) {
         cpu->thread->waitingForSignalToEndMaskToRestore = SIGSUSPEND_RETURN;
     }
 
-    //cpu->nextBlock = getBlock(cpu, cpu->eip.u32);
+    cpu->nextBlock = cpu->getNextBlock();
 
     /*
     if (action->flags & K_SA_RESTORER) {
