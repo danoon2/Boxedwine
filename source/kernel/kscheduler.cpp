@@ -93,7 +93,7 @@ void runThreadSlice(KThread* thread) {
     cpu->blockInstructionCount = 0;
     cpu->blockInstructionCount = 0;
     cpu->yield = false;
-
+    cpu->nextBlock = NULL; // another thread that just ran could have modified this
 #ifdef BOXEDWINE_HAS_SETJMP
     if (setjmp(runBlockJump)==0) {
 #endif
