@@ -261,7 +261,7 @@ bool fbinit;
 bool bOpenGL;
 
 #ifdef SDL2
-static SDL_Window *sdlWindow;
+extern SDL_Window *sdlWindow;
 static SDL_GLContext sdlContext;
 static SDL_Renderer *sdlRenderer;
 static SDL_Texture* sdlTexture;
