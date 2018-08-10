@@ -624,7 +624,7 @@
         var initialSetup = function(){
             console.log("running initial setup");
             setConfiguration();
-            loadScreen();
+            //loadScreen();
 
             Module["addRunDependency"]("setupBoxedWine");
             if(Config.storageMode === STORAGE_DROPBOX){

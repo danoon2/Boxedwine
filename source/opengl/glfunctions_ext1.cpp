@@ -996,7 +996,7 @@ void glcommon_glBufferAddressRangeNV(CPU* cpu) {
         kpanic("ext_glBufferAddressRangeNV is NULL");
     {
     GL_FUNC(ext_glBufferAddressRangeNV)(ARG1, ARG2, llARG3, ARG4);
-    GL_LOG ("glBufferAddressRangeNV GLenum pname=%d, GLuint index=%d, GLuint64EXT address="PRIu64", GLsizeiptr length=%d",ARG1,ARG2,llARG3,ARG4);
+    GL_LOG ("glBufferAddressRangeNV GLenum pname=%d, GLuint index=%d, GLuint64EXT address=" PRIu64 ", GLsizeiptr length=%d",ARG1,ARG2,llARG3,ARG4);
     }
 }
 void glcommon_glBufferData(CPU* cpu) {
@@ -1348,7 +1348,7 @@ void glcommon_glClientWaitSync(CPU* cpu) {
         kpanic("ext_glClientWaitSync is NULL");
     {
     EAX=GL_FUNC(ext_glClientWaitSync)(marshalSync(cpu, ARG1), ARG2, llARG3);
-    GL_LOG ("glClientWaitSync GLsync sync=%d, GLbitfield flags=%d, GLuint64 timeout="PRIu64"",ARG1,ARG2,llARG3);
+    GL_LOG ("glClientWaitSync GLsync sync=%d, GLbitfield flags=%d, GLuint64 timeout=" PRIu64 "",ARG1,ARG2,llARG3);
     }
 }
 void glcommon_glClipControl(CPU* cpu) {
