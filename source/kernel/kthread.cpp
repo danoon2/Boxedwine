@@ -255,10 +255,12 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime) {
         if (f) {
             if (f->wake) {
                 freeFutex(f);
+                this->waitStartTime = 0;
                 return 0;
             }
             if (f->expireTimeInMillies<=getMilliesSinceStart()) {
                 freeFutex(f);
+                this->waitStartTime = 0;
                 return -K_ETIMEDOUT;
             }
             this->timer.millies = f->expireTimeInMillies;
