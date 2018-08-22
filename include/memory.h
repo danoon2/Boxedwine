@@ -67,6 +67,72 @@ U32 getNativeStringLen(U32 address);
 void memcopyFromNative(U32 address, const char* p, U32 len);
 void memcopyToNative(U32 address, char* p, U32 len);
 
+class KProcess;
+class Page;
+
+class CPU;
+class DecodedOp;
+class DecodedBlock;
+
+typedef void (OPCALL *OpCallback)(CPU* cpu, DecodedOp* op);
+
+class Memory {
+public:   
+    Memory();
+    ~Memory();
+
+    void log_pf(KThread* thread, U32 address);
+    void clone(Memory* from);
+    void reset();
+    void reset(U32 page, U32 pageCount);
+
+    void map(U32 startPage, const std::vector<U8*>& pages, U32 permissions);
+    U32 mapNativeMemory(void* buf, U32 len);
+
+    bool findFirstAvailablePage(U32 startingPage, U32 pageCount, U32* result, bool canBeMapped);
+    void protectPage(U32 i, U32 permissions);
+    void allocPages(U32 page, U32 pageCount, U8 permissions, FD fd, U64 offset, const BoxedPtr<MappedFile>& mappedFile);
+    bool isValidReadAddress(U32 address, U32 len);
+    bool isValidWriteAddress(U32 address, U32 len);
+    bool isPageAllocated(U32 page);
+    DecodedBlock* getCodeBlock(U32 eip);
+    void addCodeBlock(U32 startIp, DecodedBlock* block);
+
+    U32 getPageFlags(U32 page);
+
+#ifdef BOXEDWINE_DEFAULT_MMU
+    Page* mmu[K_NUMBER_OF_PAGES];    
+#endif
+
+#ifdef BOXEDWINE_64BIT_MMU
+    U8 flags[K_NUMBER_OF_PAGES];
+    U8 nativeFlags[K_NUMBER_OF_PAGES];
+    U32 allocated;
+    U64 id;    
+    void* codeCache[K_NUMBER_OF_PAGES]; // 4 MB 
+    U64 ids[K_NUMBER_OF_PAGES];
+
+    void removeBlock(DecodedBlock* block, U32 ip);
+    void clearCodePageFromCache(U32 page);
+#endif
+
+#ifdef LOG_OPS
+    U32 log;
+#endif
+
+private:
+#ifdef BOXEDWINE_DEFAULT_MMU
+    static U8* callbackRam;
+    static U32 callbackRamPos;    
+    U8* nativeAddressStart;
+#endif
+#ifdef BOXEDWINE_64BIT_MMU
+    U32 callbackPos;    
+    void* internalAddCodeBlock(U32 startIp, DecodedBlock* block);
+#endif
+    void addCallback(OpCallback func);
+};
+
 #include "../source/emulation/softmmu/soft_memory.h"
 #include "../source/emulation/softmmu/soft_page.h"
 #endif

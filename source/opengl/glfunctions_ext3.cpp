@@ -2721,7 +2721,10 @@ void glcommon_glVDPAURegisterOutputSurfaceNV(CPU* cpu) {
     if (!ext_glVDPAURegisterOutputSurfaceNV)
         kpanic("ext_glVDPAURegisterOutputSurfaceNV is NULL");
     {
-    EAX=(GLvdpauSurfaceNV)GL_FUNC(ext_glVDPAURegisterOutputSurfaceNV)((void*)marshalp(cpu, 0, ARG1, 0), ARG2, ARG3, (GLuint*)marshalp(cpu, 0, ARG4, 0));
+    GLvdpauSurfaceNV result=(GLvdpauSurfaceNV)GL_FUNC(ext_glVDPAURegisterOutputSurfaceNV)((void*)marshalp(cpu, 0, ARG1, 0), ARG2, ARG3, (GLuint*)marshalp(cpu, 0, ARG4, 0));
+    if (sizeof(GLvdpauSurfaceNV)>4 && result>0xFFFFFFFFl)
+        kwarn("problem with glVDPAURegisterOutputSurfaceNV");
+    EAX=(U32)result;
     GL_LOG ("glVDPAURegisterOutputSurfaceNV const void* vdpSurface=%.08x, GLenum target=%d, GLsizei numTextureNames=%d, const GLuint* textureNames=%.08x",ARG1,ARG2,ARG3,ARG4);
     }
 }
@@ -2729,7 +2732,10 @@ void glcommon_glVDPAURegisterVideoSurfaceNV(CPU* cpu) {
     if (!ext_glVDPAURegisterVideoSurfaceNV)
         kpanic("ext_glVDPAURegisterVideoSurfaceNV is NULL");
     {
-    EAX=(GLvdpauSurfaceNV)GL_FUNC(ext_glVDPAURegisterVideoSurfaceNV)((void*)marshalp(cpu, 0, ARG1, 0), ARG2, ARG3, (GLuint*)marshalp(cpu, 0, ARG4, 0));
+    GLvdpauSurfaceNV result=(GLvdpauSurfaceNV)GL_FUNC(ext_glVDPAURegisterVideoSurfaceNV)((void*)marshalp(cpu, 0, ARG1, 0), ARG2, ARG3, (GLuint*)marshalp(cpu, 0, ARG4, 0));
+    if (sizeof(GLvdpauSurfaceNV)>4 && result>0xffffffffl)
+        kwarn("problem with glVDPAURegisterVideoSurfaceNV");
+    EAX=(U32)result;
     GL_LOG ("glVDPAURegisterVideoSurfaceNV const void* vdpSurface=%.08x, GLenum target=%d, GLsizei numTextureNames=%d, const GLuint* textureNames=%.08x",ARG1,ARG2,ARG3,ARG4);
     }
 }

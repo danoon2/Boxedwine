@@ -247,6 +247,12 @@
     <ClCompile Include="..\..\..\..\source\util\stringutil.cpp">
       <Filter>source\util</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\platform\windows\memory64.cpp">
+      <Filter>platform\windows</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\hardmmu\hard_memory.cpp">
+      <Filter>source\emulation\hardmmu</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -552,6 +558,9 @@
     <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_jump.h">
       <Filter>source\emulation\cpu\normal</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\hardmmu\hard_memory.h">
+      <Filter>source\emulation\hardmmu</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
@@ -613,6 +622,9 @@
     </Filter>
     <Filter Include="minizip">
       <UniqueIdentifier>{63031e16-f5cd-4f1e-bb8c-aee7a81314a8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\emulation\hardmmu">
+      <UniqueIdentifier>{4f68ad4a-87b4-418f-a461-919898090deb}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

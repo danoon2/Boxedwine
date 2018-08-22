@@ -17,6 +17,8 @@
  */
 #include "boxedwine.h"
 
+#ifdef BOXEDWINE_DEFAULT_MMU
+
 #include "soft_memory.h"
 #include "soft_file_map.h"
 #include "soft_ro_page.h"
@@ -24,7 +26,6 @@
 #include "soft_invalid_page.h"
 #include "soft_wo_page.h"
 #include "soft_no_page.h"
-#include "soft_copy_on_write_page.h"
 #include "soft_ram.h"
 
 FilePage* FilePage::alloc(const BoxedPtr<MappedFile>& mapped, U32 index, U32 flags) {
@@ -42,6 +43,7 @@ void FilePage::ondemmandFile(U32 address) {
     address = address & (~K_PAGE_MASK);
     if (!write) {
         ram = mapped->systemCacheEntry->data[this->index];                
+        this->flags |= PAGE_SHARED_SYSTEM;
     } 
     if (!ram) {
         ram = ramPageAlloc();
@@ -58,7 +60,7 @@ void FilePage::ondemmandFile(U32 address) {
     } else if (write) {
         memory->mmu[page] = WOPage::alloc(ram, address, this->flags);
     } else if (read) { 
-        memory->mmu[page] = CopyOnWritePage::alloc(ram, address, this->flags);
+        memory->mmu[page] = ROPage::alloc(ram, address, this->flags);
     } else {
         memory->mmu[page] = NOPage::alloc(ram, address, this->flags);
     }
@@ -100,3 +102,5 @@ U8* FilePage::physicalAddress( U32 address) {
     ondemmandFile(address);
     return ::getPhysicalAddress(address);
 }
+
+#endif

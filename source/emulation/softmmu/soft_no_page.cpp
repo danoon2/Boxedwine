@@ -1,5 +1,7 @@
 #include "boxedwine.h"
 
+#ifdef BOXEDWINE_DEFAULT_MMU
+
 #include "soft_no_page.h"
 
 NOPage* NOPage::alloc(U8* page, U32 address, U32 flags) {
@@ -36,3 +38,5 @@ void NOPage::writed(U32 address, U32 value) {
 U8* NOPage::physicalAddress(U32 address) {
     return 0;
 }
+
+#endif

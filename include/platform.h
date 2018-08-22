@@ -30,29 +30,11 @@
 #include "platformtypes.h"
 #define FD S32
 
-#ifdef BOXEDWINE_VM
-void platformStartThread(struct KThread* thread);
-void* allocExecutable64kBlock(struct Memory* memory);
-void freeExecutableMemory(struct Memory* memory);
-void getRegs(U64* regs);
+#ifndef BOXEDWINE_64BIT_MMU
+#define BOXEDWINE_DEFAULT_MMU 1
 #endif
 
-#if defined BOXEDWINE_64BIT_MMU && !defined BOXEDWINE_VM
-void platformRunThreadSlice(struct KThread* thread);
-#endif
-
-#ifdef BOXEDWINE_64BIT_MMU
-void makeCodePageReadOnly(struct Memory* memory, U32 page);
-BOOL clearCodePageReadOnly(struct Memory* memory, U32 page);
-#endif
-
-#ifdef BOXEDWINE_VM
-#include <SDL.h>
-#define IS_THREAD_WAITING(thread) thread->waitingMutex
-void killThread(struct KThread* thread);
-#else
 #define IS_THREAD_WAITING(thread) thread->waitNode
-#endif
 
 #ifdef BOXEDWINE_HAS_SETJMP
 #include <setjmp.h>

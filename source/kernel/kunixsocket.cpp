@@ -116,7 +116,7 @@ U32 KUnixSocketObject::internal_write(U32 buffer, U32 len) {
     //printf("internal_write: %0.8X size=%d capacity=%d writeLen=%d", (int)&this->connection->recvBuffer, (int)this->connection->recvBuffer.size(), (int)this->connection->recvBuffer.capacity(), len);
 
     if (len>this->connection->recvBuffer.getFree())
-        len = this->connection->recvBuffer.getFree();
+        len = (U32)this->connection->recvBuffer.getFree();
     while (len) {
         S8 tmp[4096];
         U32 todo = len;
@@ -183,7 +183,7 @@ U32 KUnixSocketObject::writeNative(U8* buffer, U32 len) {
         return -K_WAIT;                
     }   
     if (len>this->connection->recvBuffer.getFree())
-        len = this->connection->recvBuffer.getFree();
+        len = (U32)this->connection->recvBuffer.getFree();
     this->connection->recvBuffer.write((S8*)buffer, len);
     //printf("    writeNative: %0.8X size=%d capacity=%d writeLen=%d", (int)&this->connection->recvBuffer, (int)this->connection->recvBuffer.size(), (int)this->connection->recvBuffer.capacity(), len);
     return len;
@@ -228,7 +228,7 @@ U32 KUnixSocketObject::readNative(U8* buffer, U32 len) {
     }
     //printf("readNative: %0.8X size=%d capacity=%d writeLen=%d", (int)&this->recvBuffer, (int)this->recvBuffer.size(), (int)this->recvBuffer.capacity(), len);
     if (len>this->recvBuffer.getOccupied())
-        len = this->recvBuffer.getOccupied();
+        len = (U32)this->recvBuffer.getOccupied();
     this->recvBuffer.read((S8*)buffer, len);
     if (this->connection)
         this->connection->wakeAndResetWaitingOnWriteThreads();

@@ -46,7 +46,7 @@ S64 BufferAccess::seek(S64 pos) {
 U32 BufferAccess::readNative(U8* buffer, U32 len) {
     U32 pos = (U32)this->pos;
     if (pos+len>this->buffer.length())
-        len = this->buffer.length()-pos;
+        len = (U32)this->buffer.length()-pos;
     memcpy(buffer, this->buffer.c_str()+pos, len);
     this->pos+=len;
     return len;

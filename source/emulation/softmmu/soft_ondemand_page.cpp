@@ -1,5 +1,7 @@
 #include "boxedwine.h"
 
+#ifdef BOXEDWINE_DEFAULT_MMU
+
 #include "soft_ondemand_page.h"
 #include "soft_ro_page.h"
 #include "soft_no_page.h"
@@ -63,3 +65,5 @@ U8* OnDemandPage::physicalAddress(U32 address) {
     ondemmand(address);
     return ::getPhysicalAddress(address);
 }
+
+#endif

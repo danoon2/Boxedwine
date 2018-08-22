@@ -27,6 +27,10 @@ void removeTimer(KTimer* timer);
 
 bool runSlice();
 void runThreadSlice(KThread* thread);
+void platformRunThreadSlice(KThread* thread);
+#ifdef BOXEDWINE_DEFAULT_MMU
+#define platformRunThreadSlice runThreadSlice
+#endif
 void waitThread(KThread* thread);
 void scheduleThread(KThread* thread);
 U32 getMIPS();

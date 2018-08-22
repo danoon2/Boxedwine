@@ -67,7 +67,6 @@ KProcess::KProcess(U32 id) : id(id),
     entry(0),
     eventQueueFD(0),
     wakeOnExitOrExec(NULL) {
-    initCallbacksInProcess(this);
 
     for (int i=0;i<LDT_ENTRIES;i++) {
         this->ldt[i].seg_not_present = 1;
@@ -181,7 +180,7 @@ KThread* KProcess::getThreadById(U32 tid) {
 }
 
 U32 KProcess::getThreadCount() {
-    return this->threads.size();
+    return (U32)this->threads.size();
 }
 
 FsOpenNode* openCommandLine(const BoxedPtr<FsNode>& node, U32 flags) {
@@ -360,7 +359,7 @@ static void setupThreadStack(KThread* thread, CPU* cpu, const std::string& progr
         a[i]=ESP;
     }
 
-    pushThreadStack(thread, cpu, args.size(), a, env.size(), e);
+    pushThreadStack(thread, cpu, (U32)args.size(), a, (U32)env.size(), e);
 }
 
 U32 KProcess::getNextFileDescriptorHandle(int after) {
@@ -454,7 +453,7 @@ KThread* KProcess::startProcess(const std::string& currentDirectory, U32 argc, c
     std::vector<std::string> interpreterArgs;
     std::vector<std::string> args;
     std::vector<std::string> env;
-    this->memory = new Memory(this);		
+    this->memory = new Memory();		
     KThread* thread = this->createThread();
     U32 i;
     FsOpenNode* openNode = NULL;
@@ -1042,7 +1041,14 @@ U32 KProcess::symlink(const std::string& target, const std::string& linkpath) {
 
 U32 KProcess::readlinkInDirectory(const std::string& currentDirectory, const std::string& path, U32 buffer, U32 bufSize) {
     // :TODO: move these to the virtual filesystem
-    if (stringStartsWith(path, "/proc/self/fd/")) {
+    if (!strcmp(path.c_str(), "/proc/self/exe")) {
+        const std::string& exe = KThread::currentThread()->process->exe;
+        U32 len = (U32)exe.length();
+        if (len>bufSize)
+            len = bufSize;
+        memcopyFromNative(buffer, exe.c_str(), len);
+        return len;
+    } else if (stringStartsWith(path, "/proc/self/fd/")) {
         FD h = atoi(path.c_str()+14);
         KFileDescriptor* fd = this->getFileDescriptor(h);
 
@@ -1053,8 +1059,8 @@ U32 KProcess::readlinkInDirectory(const std::string& currentDirectory, const std
         }
         BoxedPtr<KFile> p = (KFile*)fd->kobject.get();
         const std::string& fdpath =  p->openFile->node->path;
-        U32 len = fdpath.length();
-        if (fdpath.length()>(int)bufSize)
+        U32 len = (U32)fdpath.length();
+        if ((int)fdpath.length()>(int)bufSize)
             len=bufSize;
         memcopyFromNative(buffer, fdpath.c_str(), len);
         return len;        
@@ -1063,7 +1069,7 @@ U32 KProcess::readlinkInDirectory(const std::string& currentDirectory, const std
     BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath(currentDirectory, path, false);
     if (!node || !node->isLink())
         return -K_EINVAL;
-    U32 len = node->link.length();
+    U32 len = (U32)node->link.length();
     if (len>bufSize)
         len = bufSize;
     memcopyFromNative(buffer, node->link.c_str(), len);
@@ -1341,7 +1347,7 @@ U32 KProcess::clone(U32 flags, U32 child_stack, U32 ptid, U32 tls, U32 ctid) {
 
     if ((flags & 0xFFFFFF00)==(K_CLONE_CHILD_SETTID|K_CLONE_CHILD_CLEARTID) || (flags & 0xFFFFFF00)==(K_CLONE_PARENT_SETTID)) {        
         KProcess* newProcess = new KProcess(KSystem::nextThreadId++);
-        Memory* newMemory = new Memory(newProcess);		
+        Memory* newMemory = new Memory();		
         newProcess->memory = newMemory;
         KThread* newThread = newProcess->createThread();
 
@@ -1636,10 +1642,10 @@ U32 KProcess::mremap(U32 oldaddress, U32 oldsize, U32 newsize, U32 flags) {
     }
     U32 pageStart = oldaddress>>K_PAGE_SHIFT;
     U32 oldPageCount = oldsize>>K_PAGE_SHIFT;
-    U32 pageFlags = this->memory->mmu[oldaddress >> K_PAGE_SHIFT]->flags;
+    U32 pageFlags = this->memory->getPageFlags(oldaddress >> K_PAGE_SHIFT);
 
     for (U32 i=0;i<oldPageCount;i++) {
-        if (this->memory->mmu[oldaddress >> K_PAGE_SHIFT]->flags!=pageFlags) {
+        if (this->memory->getPageFlags((oldaddress >> K_PAGE_SHIFT)+i)!=pageFlags) {
             return -K_EFAULT;
         }
     }
@@ -1781,7 +1787,7 @@ U32 KProcess::getcwd(U32 buffer, U32 size) {
     if (this->currentDirectory.length()+1>size)
         return -K_ERANGE;
     writeNativeString(buffer, this->currentDirectory.c_str());
-    return this->currentDirectory.length()+1;
+    return (U32)this->currentDirectory.length()+1;
 }
 
 U32 KProcess::stat64(const std::string& path, U32 buffer) {
@@ -2202,7 +2208,7 @@ U32 KProcess::shmdt(U32 shmaddr) {
     if (this->attachedShm.count(shmaddr)) {
         BoxedPtr<AttachedSHM> attached = this->attachedShm[shmaddr];
         if (attached) {
-            this->memory->reset(shmaddr >> K_PAGE_SHIFT, attached->shm->pages.size());
+            this->memory->reset(shmaddr >> K_PAGE_SHIFT, (U32)attached->shm->pages.size());
             this->attachedShm.erase(shmaddr);
             return 0;
         }

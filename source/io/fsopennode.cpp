@@ -92,7 +92,7 @@ void FsOpenNode::loadDirEntries() {
 
 U32 FsOpenNode::getDirectoryEntryCount() {
     this->loadDirEntries();
-    return this->dirEntries.size();
+    return (U32)this->dirEntries.size();
 }
 
 BoxedPtr<FsNode> FsOpenNode::getDirectoryEntry(U32 index, std::string& name) {

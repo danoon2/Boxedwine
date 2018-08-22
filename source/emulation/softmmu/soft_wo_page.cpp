@@ -1,5 +1,7 @@
 #include "boxedwine.h"
 
+#ifdef BOXEDWINE_DEFAULT_MMU
+
 #include "soft_wo_page.h"
 
 WOPage* WOPage::alloc(U8* page, U32 address, U32 flags) {
@@ -24,3 +26,5 @@ U32 WOPage::readd(U32 address) {
 U8* WOPage::physicalAddress(U32 address) {
     return 0;
 }
+
+#endif

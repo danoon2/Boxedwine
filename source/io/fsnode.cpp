@@ -70,7 +70,7 @@ BoxedPtr<FsNode> FsNode::getChildByName(const std::string& name) {
 
 U32 FsNode::getChildCount() {
     this->loadChildren();
-    return this->childrenByName.size();
+    return (U32)this->childrenByName.size();
 }
 
 void FsNode::addChild(BoxedPtr<FsNode> node) {

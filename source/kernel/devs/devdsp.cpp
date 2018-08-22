@@ -109,7 +109,7 @@ public:
 
 
 void audioCallback(void *userdata, U8* stream, S32 len) {
-    S32 available = audioBuffer.getFree();
+    S32 available = (S32)audioBuffer.getFree();
     DevDsp* data = (DevDsp*)userdata;
 
     if (data->pauseEnabled() && available > data->pauseAtLen) {

@@ -1,5 +1,6 @@
 #include "boxedwine.h"
 
+#ifdef BOXEDWINE_DEFAULT_MMU
 #include "soft_code_page.h"
 
 CodePage::CodePageEntry* CodePage::freeCodePageEntries;
@@ -86,19 +87,34 @@ CodePage::CodePageEntry* CodePage::findCode(U32 address, U32 len) {
     return 0;
 }
 
+void OPCALL emptyOp(CPU* cpu, DecodedOp* op) {
+    cpu->nextBlock = NULL;
+}
+
+
 void CodePage::removeBlockAt(U32 address, U32 len) {
     CodePageEntry* entry = findCode(address, len);
 
     while (entry) {
         if (entry->block==DecodedBlock::currentBlock) {
             KThread* thread = KThread::currentThread();
+            U32 ip;
 
-            if (address < thread->cpu->seg[CS].address + thread->cpu->eip.u32) {
-                entry->block->dealloc(true);
-                entry->block = NULL; // so that freeCodePageEntry won't dealloc it
-            } else {
-                kpanic("self modifying code tried to modify current running block");
+            if (thread->cpu->big)
+                ip = thread->cpu->seg[CS].address + thread->cpu->eip.u32;
+            else
+                ip = thread->cpu->seg[CS].address + thread->cpu->eip.u16;
+            if (address >= ip) {
+                // we don't have a pointer to the current op, so just set them all
+                DecodedOp* op = DecodedBlock::currentBlock->op;
+                while (op) {
+                    op->pfn = emptyOp; // This will cause the current block to return
+                    op = op->next;
+                }
             }
+
+            entry->block->dealloc(true);
+            entry->block = NULL; // so that freeCodePageEntry won't dealloc it
         }
         freeCodePageEntry(entry);
         entry = findCode(address, len);
@@ -178,3 +194,4 @@ void CodePage::writed(U32 address, U32 value) {
 U8* CodePage::physicalAddress(U32 address) {
     return NULL;
 }
+#endif

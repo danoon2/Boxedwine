@@ -570,6 +570,7 @@ U32 DevFB::ioctl(U32 request) {
 }
 
 U32 DevFB::map(U32 address, U32 len, S32 prot, S32 flags, U64 off) {
+#ifdef BOXEDWINE_DEFAULT_MMU
     U32 pageStart = fb_fix_screeninfo.smem_start >> K_PAGE_SHIFT;
     U32 pageCount = (len+K_PAGE_SIZE-1)>>K_PAGE_SHIFT;
     U32 i;
@@ -587,6 +588,11 @@ U32 DevFB::map(U32 address, U32 len, S32 prot, S32 flags, U64 off) {
         }
         memory->mmu[i+pageStart]=new FBPage(flags);
     }
+#elif defined BOXEDWINE_64BIT_MMU
+    kpanic("frame buffer not implemented for BOXEDWINE_64BIT_MMU");
+#else
+    frame buffer mmu not handled
+#endif
     return fb_fix_screeninfo.smem_start;
 }
 

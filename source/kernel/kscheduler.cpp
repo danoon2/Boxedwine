@@ -154,7 +154,7 @@ bool runSlice() {
     sysCallTime = 0;    
 
     KThread::setCurrentThread(currentThread);
-    runThreadSlice(currentThread);
+    platformRunThreadSlice(currentThread);
 
     endTime = Platform::getMicroCounter();
     diff = endTime-startTime;

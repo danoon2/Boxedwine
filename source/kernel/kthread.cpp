@@ -707,15 +707,13 @@ extern jmp_buf runBlockJump;
 // bit 4 - 0 = n/a, 1 = fault was an instruction fetch
 
 void KThread::seg_mapper(U32 address, bool readFault, bool writeFault) {
-    Memory* memory = this->process->memory;
-
-    if (memory->process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_IGN && memory->process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_DFL) {
+    if (this->process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_IGN && this->process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_DFL) {
         U32 eip = this->cpu->eip.u32;
 
-        memory->process->sigActions[K_SIGSEGV].sigInfo[0] = K_SIGSEGV;		
-        memory->process->sigActions[K_SIGSEGV].sigInfo[1] = 0;
-        memory->process->sigActions[K_SIGSEGV].sigInfo[2] = 1; // SEGV_MAPERR
-        memory->process->sigActions[K_SIGSEGV].sigInfo[3] = address;
+        this->process->sigActions[K_SIGSEGV].sigInfo[0] = K_SIGSEGV;		
+        this->process->sigActions[K_SIGSEGV].sigInfo[1] = 0;
+        this->process->sigActions[K_SIGSEGV].sigInfo[2] = 1; // SEGV_MAPERR
+        this->process->sigActions[K_SIGSEGV].sigInfo[3] = address;
         this->runSignal(K_SIGSEGV, EXCEPTION_PAGE_FAULT, (writeFault?2:0));
 #ifdef BOXEDWINE_HAS_SETJMP
         longjmp(runBlockJump, 1);		
@@ -728,15 +726,13 @@ void KThread::seg_mapper(U32 address, bool readFault, bool writeFault) {
 }
 
 void KThread::seg_access(U32 address, bool readFault, bool writeFault) {
-    Memory* memory = this->process->memory;
-
-    if (memory->process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_IGN && memory->process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_DFL) {
+    if (this->process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_IGN && this->process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_DFL) {
         U32 eip = this->cpu->eip.u32;
 
-        memory->process->sigActions[K_SIGSEGV].sigInfo[0] = K_SIGSEGV;		
-        memory->process->sigActions[K_SIGSEGV].sigInfo[1] = 0;
-        memory->process->sigActions[K_SIGSEGV].sigInfo[2] = 2; // SEGV_ACCERR
-        memory->process->sigActions[K_SIGSEGV].sigInfo[3] = address;        
+        this->process->sigActions[K_SIGSEGV].sigInfo[0] = K_SIGSEGV;		
+        this->process->sigActions[K_SIGSEGV].sigInfo[1] = 0;
+        this->process->sigActions[K_SIGSEGV].sigInfo[2] = 2; // SEGV_ACCERR
+        this->process->sigActions[K_SIGSEGV].sigInfo[3] = address;        
         this->runSignal(K_SIGSEGV, EXCEPTION_PAGE_FAULT, 1 | (writeFault?2:0)); 
         printf("seg fault %X\n", address);
 #ifdef BOXEDWINE_HAS_SETJMP

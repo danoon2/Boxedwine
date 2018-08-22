@@ -17,7 +17,7 @@
  */
 #include "boxedwine.h"
 
-#ifndef BOXEDWINE_64BIT_MMU
+#ifdef BOXEDWINE_DEFAULT_MMU
 #include "kscheduler.h"
 #include "soft_file_map.h"
 #include "ksignal.h"
@@ -210,18 +210,7 @@ void Memory::addCallback(OpCallback func) {
     }
 }
 
-class CallbackPage : public NativePage {
-    protected:
-    CallbackPage(U8* nativeAddress, U32 address, U32 flags) : NativePage(nativeAddress, address, flags) {
-    }
-public:
-    static CallbackPage* alloc(U8* page, U32 address, U32 flags) {
-        return new CallbackPage(page, address, flags);
-    }
-    void close() {}
-};
-
-Memory::Memory(KProcess* process) : process(process), nativeAddressStart(0) {
+Memory::Memory() : nativeAddressStart(0) {
     for (int i=0;i<K_NUMBER_OF_PAGES;i++) {
         this->mmu[i] = invalidPage;
     }
@@ -347,7 +336,7 @@ void writeMemory(U32 address, U8* data, int len) {
     }
 }
 
-void Memory::allocPages(U32 page, U32 pageCount, U8 permissions, U32 fd, U64 offset, const BoxedPtr<MappedFile>& mappedFile) {
+void Memory::allocPages(U32 page, U32 pageCount, U8 permissions, FD fd, U64 offset, const BoxedPtr<MappedFile>& mappedFile) {
     KThread* thread = KThread::currentThread();
 
     if (mappedFile) {
@@ -382,6 +371,17 @@ void Memory::protectPage(U32 i, U32 permissions) {
     } else if (page->type == Page::Type::RO_Page || page->type == Page::Type::RW_Page || page->type == Page::Type::WO_Page || page->type == Page::Type::NO_Page) {
         RWPage* p = (RWPage*)page;
 
+        if ((permissions & PAGE_WRITE) && (flags & PAGE_SHARED_SYSTEM)) {
+            U8* ram = ramPageAlloc();
+            memcpy(ram, p->page, K_PAGE_SIZE);
+            flags &= ~PAGE_SHARED_SYSTEM;
+            if (permissions & PAGE_READ) {
+                this->mmu[i] = RWPage::alloc(ram, p->address, flags);            
+            } else {
+                this->mmu[i] = WOPage::alloc(ram, p->address, flags);            
+            }
+            page->close();
+        }
         if ((permissions & PAGE_READ) && (permissions & PAGE_WRITE)) {
             if (page->type != Page::Type::RW_Page) {
                 this->mmu[i] = RWPage::alloc(p->page, p->address, flags);
@@ -644,88 +644,6 @@ char* getNativeStringW(U32 address, char* buffer, U32 cbBuffer) {
     return buffer;
 }
 
-/*
-static U32 callbackPage;
-static U8* callbackAddress;
-static int callbackPos;
-static void* callbacks[512];
-
-void addCallback(void (OPCALL *func)(struct CPU*, struct Op*)) {
-    U64 funcAddress = (U64)func;
-    U8* address = callbackAddress+callbackPos*(4+sizeof(void*));
-    callbacks[callbackPos++] = address;
-    
-    *address=0xFE;
-    address++;
-    *address=0x38;
-    address++;
-    *address=(U8)funcAddress;
-    address++;
-    *address=(U8)(funcAddress >> 8);
-    address++;
-    *address=(U8)(funcAddress >> 16);
-    address++;
-    *address=(U8)(funcAddress >> 24);
-    if (sizeof(func)==8) {
-        address++;
-        *address=(U8)(funcAddress >> 32);
-        address++;
-        *address=(U8)(funcAddress >> 40);
-        address++;
-        *address=(U8)(funcAddress >> 48);
-        address++;
-        *address=(U8)(funcAddress >> 56);
-    }
-}
-*/
-void initCallbacksInProcess(KProcess* process) {
-    /*
-    U32 page = CALL_BACK_ADDRESS >> PAGE_SHIFT;
-
-    process->memory->mmu[page] = &ramPageRO;
-    process->memory->flags[page] = PAGE_READ|PAGE_EXEC|PAGE_IN_RAM;
-    process->memory->ramPage[page] = callbackPage;
-    process->memory->read[page] = TO_TLB(callbackPage,  CALL_BACK_ADDRESS);
-    incrementRamRef(callbackPage);
-    */
-}
-/*
-void initCallbacks() {
-    callbackPage = allocRamPage();
-    callbackAddress = getAddressOfRamPage(callbackPage);
-    addCallback(onExitSignal);
-}
-
-void initBlockCache() {
-}
-
-struct Block* getBlock(struct CPU* cpu, U32 eip) {
-    struct Block* block;	
-    U32 ip;
-
-    if (cpu->big)
-        ip = cpu->segAddress[CS] + eip;
-    else
-        ip = cpu->segAddress[CS] + (eip & 0xFFFF);
-
-    U32 page = ip >> PAGE_SHIFT;
-    U32 flags = cpu->memory->flags[page];
-    if (IS_PAGE_IN_RAM(flags)) {
-        block = getCode(cpu->memory->ramPage[page], ip & 0xFFF);
-        if (!block) {
-            block = decodeBlock(cpu, eip);
-            addCode(block, cpu, ip, block->eipCount);
-        }
-    } else {		
-        block = decodeBlock(cpu, eip);
-        addCode(block, cpu, ip, block->eipCount);
-    }
-    cpu->memory->write[page]=0;
-    cpu->memory->mmu[page] = &codePage;
-    return block;
-}
-*/
-
 U32 Memory::mapNativeMemory(void* hostAddress, U32 size) {
     U32 result = 0;
 
@@ -776,4 +694,37 @@ void Memory::map(U32 startPage, const std::vector<U8*>& pages, U32 permissions) 
     }
 }
 
+DecodedBlock* Memory::getCodeBlock(U32 startIp) {
+    Page* page = this->mmu[startIp >> K_PAGE_SHIFT];
+    if (page->type == Page::Type::Code_Page) {
+        CodePage* codePage = (CodePage*)page;
+        return codePage->getCode(startIp);
+    }
+    return NULL;
+}
+
+void Memory::addCodeBlock(U32 startIp, DecodedBlock* block) {
+    // might have changed after a read
+    Page* page = this->mmu[startIp >> K_PAGE_SHIFT];
+
+    CodePage* codePage; 
+    if (page->type == Page::Type::Code_Page) {
+        codePage = (CodePage*)page;
+    } else {
+        if (page->type == Page::Type::RO_Page || page->type == Page::Type::RW_Page || page->type == Page::Type::Copy_On_Write_Page || page->type == Page::Type::Native_Page) {
+            RWPage* p = (RWPage*)page;
+            codePage = CodePage::alloc(p->page, p->address, p->flags);
+            this->mmu[startIp >> K_PAGE_SHIFT] = codePage;
+            p->close();
+        } else {
+            kpanic("Unhandled code caching page type: %d", page->type);
+		    codePage = nullptr;
+        }
+    }
+    codePage->addCode(startIp, block, block->bytes);
+}
+
+U32 Memory::getPageFlags(U32 page) {
+    return this->mmu[page]->flags;
+}
 #endif

@@ -1,5 +1,7 @@
 #include "boxedwine.h"
 
+#ifdef BOXEDWINE_DEFAULT_MMU
+
 #include "soft_copy_on_write_page.h"
 #include "soft_ro_page.h"
 #include "soft_rw_page.h"
@@ -59,3 +61,5 @@ U8* CopyOnWritePage::physicalAddress(U32 address) {
     copyOnWrite(address);
     return ::getPhysicalAddress(address);
 }
+
+#endif

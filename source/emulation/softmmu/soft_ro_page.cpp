@@ -1,5 +1,7 @@
 #include "boxedwine.h"
 
+#ifdef BOXEDWINE_DEFAULT_MMU
+
 #include "soft_ro_page.h"
 
 ROPage* ROPage::alloc(U8* page, U32 address, U32 flags) {
@@ -21,3 +23,5 @@ void ROPage::writed(U32 address, U32 value) {
 U8* ROPage::physicalAddress(U32 address) {
     return 0;
 }
+
+#endif

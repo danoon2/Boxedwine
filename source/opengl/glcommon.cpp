@@ -33,10 +33,6 @@
 
 #include "glMarshal.h"
 
-#ifdef BOXEDWINE_64BIT_MMU
-#include "../emulation/hardmmu/hard_memory.h"
-#endif
-
 float fARG(CPU* cpu, U32 arg) {
     struct int2Float i;
     i.i = arg;
@@ -151,7 +147,7 @@ void glcommon_glGetString(CPU* cpu) {
         result = "GL_EXT_texture3D";
         GL_LOG("glGetString GLenum name=GL_EXTENSIONS ret=%s", result);
     }
-    EAX = cpu->thread->memory->mapNativeMemory((void*)result, strlen(result)+1);
+    EAX = cpu->thread->memory->mapNativeMemory((void*)result, (U32)(strlen(result)+1));
 }
 
 // GLAPI void APIENTRY glGetTexImage( GLenum target, GLint level, GLenum format, GLenum type, GLvoid *pixels ) {
@@ -321,7 +317,9 @@ void glcommon_glGetPointerv(CPU* cpu) {
     {
         GLvoid* params;
         GL_FUNC(glGetPointerv)(ARG1, &params);
-        writed(ARG2, getHostAddress(params));
+        if ((U64)params>0xFFFFFFFFl)
+            kwarn("problem with glGetPointerv");
+        writed(ARG2, (U32)params);
     }
 #else
     switch (ARG1) {

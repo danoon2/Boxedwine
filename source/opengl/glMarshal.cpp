@@ -20,15 +20,15 @@ GLvoid* marshalPixels(CPU* cpu, U32 is3d, GLsizei width, GLsizei height, GLsizei
 GLvoid** bufferpp;
 U32 bufferpp_len;
 
-GLvoid** marshalpp(CPU* cpu, U32 buffer, U32 count, U32 sizes, S32 bytesPerCount) {
+GLvoid** marshalpp(CPU* cpu, U32 buffer, U32 count, U32 sizes, S32 bytesPerCount, U32 autoCharWidth) {
     U32 i;
 
     if (bufferpp && bufferpp_len<count) {
-        kfree(bufferpp, KALLOC_OPENGL);
+        delete[] bufferpp;
         bufferpp=0;
     }
     if (!bufferpp) {
-        bufferpp = (GLvoid**)kalloc(sizeof(GLvoid*)*count, KALLOC_OPENGL);
+        bufferpp = new GLvoid*[count];
         bufferpp_len = count;
     }
     for (i=0;i<count;i++) {
@@ -45,7 +45,7 @@ GLvoid* marshalp(CPU* cpu, U32 instance, U32 buffer, U32 len) {
 
 // this won't marshal the data, but rather map it into the address space, reserving "size" amount of address space
 U32 marshalBackp(CPU* cpu, GLvoid* buffer, U32 size) {
-    return mapNativeMemory(cpu->memory, buffer, size);
+    return cpu->thread->memory->mapNativeMemory(buffer, size);
 }
 
 U32 marshalBackSync(CPU* cpu, GLsync sync) {

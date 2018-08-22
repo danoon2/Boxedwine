@@ -44,6 +44,7 @@ class KThread;
 class SHM : public BoxedPtrBase {
 public:
     SHM(U32 id, U32 key) : id(id), key(key) {}
+    virtual ~SHM();
 
     void incAttach() {this->nattch++;}
     void decAttach() {this->nattch--;}
@@ -100,8 +101,6 @@ private:
     static std::unordered_map<U32, KProcess*> processes;
     static std::unordered_map<std::string, BoxedPtr<MappedFileCache> > fileCache;
 };
-
-void initCallbacksInProcess(KProcess* process);
 
 // returns pid
 U32 getProcessCount();

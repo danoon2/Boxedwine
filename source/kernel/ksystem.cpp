@@ -41,7 +41,7 @@ std::unordered_map<U32, KProcess*> KSystem::processes;
 std::unordered_map<std::string, BoxedPtr<MappedFileCache> > KSystem::fileCache;
 
 U32 getProcessCount() {
-    return KSystem::getProcesses().size();
+    return (U32)KSystem::getProcesses().size();
 }
 
 U32 KSystem::uname(U32 address) {
@@ -161,7 +161,7 @@ U32 KSystem::sysinfo(U32 address) {
     writed(address, 0); address+=4;
     writed(address, 0); address+=4;
     writed(address, 0); address+=4;
-    writew(address, KSystem::processes.size()); address+=2;
+    writew(address, (U32)KSystem::processes.size()); address+=2;
     writed(address, 0); address+=4;
     writed(address, 0); address+=4;
     writed(address, K_PAGE_SIZE);
@@ -380,6 +380,12 @@ static std::unordered_map<U32, BoxedPtr<SHM> > shmKey;
 #define IPC_EXCL   00002000   /* fail if key exists */
 
 #define PRIVATE_SHMID 0x40000000
+
+SHM::~SHM() {
+    for (U32 i=0;i<(U32)this->pages.size();i++) {
+        ramPageDecRef(this->pages[i]);
+    }
+}
 
 U32 KSystem::shmget(U32 key, U32 size, U32 flags) {
     KThread* thread = KThread::currentThread();

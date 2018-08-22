@@ -7348,7 +7348,7 @@ void glcommon_glGetUniformOffsetEXT(CPU* cpu) {
     if (!ext_glGetUniformOffsetEXT)
         kpanic("ext_glGetUniformOffsetEXT is NULL");
     {
-    EAX=(GLintptr)GL_FUNC(ext_glGetUniformOffsetEXT)(ARG1, ARG2);
+    EAX=(U32)(GLintptr)GL_FUNC(ext_glGetUniformOffsetEXT)(ARG1, ARG2);
     GL_LOG ("glGetUniformOffsetEXT GLuint program=%d, GLint location=%d",ARG1,ARG2);
     }
 }

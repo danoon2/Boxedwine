@@ -208,7 +208,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>BOXEDWINE_ZLIB;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;BOXEDWINE_VM;BOXEDWINE_64BIT_MMU;_NO_DEBUG_HEAP=0;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_ZLIB;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;BOXEDWINE_64BIT_MMU;_NO_DEBUG_HEAP=0;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -316,14 +316,14 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>BOXEDWINE_ZLIB;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;BOXEDWINE_VM;BOXEDWINE_64BIT_MMU;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_ZLIB;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;BOXEDWINE_64BIT_MMU;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
       <UndefinePreprocessorDefinitions>
       </UndefinePreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <PrecompiledHeaderFile>boxedwine.h</PrecompiledHeaderFile>
-      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -430,6 +430,7 @@
     <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_strings.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_strings_op.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_xchg.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\hardmmu\hard_memory.h" />
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_code_page.h" />
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_copy_on_write_page.h" />
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_file_map.h" />
@@ -501,6 +502,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\platform\windows\memory64.cpp" />
     <ClCompile Include="..\..\..\..\platform\windows\platform.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\common\cpu.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\common\fpu.cpp" />
@@ -510,6 +512,7 @@
     <ClCompile Include="..\..\..\..\source\emulation\cpu\normal\normalCPU.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\normal\normal_shift.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\normal\normal_strings.cpp" />
+    <ClCompile Include="..\..\..\..\source\emulation\hardmmu\hard_memory.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_code_page.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_copy_on_write_page.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_file_map.cpp" />
@@ -582,6 +585,7 @@
     <ClCompile Include="..\..\..\..\source\util\stringutil.cpp" />
     <ClCompile Include="..\boxedwine.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

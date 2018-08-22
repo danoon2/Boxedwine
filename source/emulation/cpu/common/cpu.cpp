@@ -251,7 +251,7 @@ std::string getFunctionName(const std::string& name, U32 moduleEip) {
         thread->log = false;
         thread->process->dup2(fd->handle, 1); // replace stdout with tty9    
         while (!process->terminated) {
-            runThreadSlice(thread);
+            platformRunThreadSlice(thread);
         }
     }
     KThread::setCurrentThread(currentThread);

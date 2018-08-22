@@ -19,7 +19,7 @@
 #ifndef __KFMMAP_H__
 #define __KFMMAP_H__
 
-#ifndef BOXEDWINE_64BIT_MMU
+#ifdef BOXEDWINE_DEFAULT_MMU
 
 #include "soft_page.h"
 

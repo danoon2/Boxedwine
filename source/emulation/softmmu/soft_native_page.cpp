@@ -1,5 +1,7 @@
 #include "boxedwine.h"
 
+#ifdef BOXEDWINE_DEFAULT_MMU
+
 #include "soft_native_page.h"
 #include "soft_memory.h"
 
@@ -57,3 +59,5 @@ void NativePage::writed(U32 address, U32 value) {
 U8* NativePage::physicalAddress(U32 address) {
     return this->nativeAddress+(address-this->address);
 }
+
+#endif
