@@ -427,6 +427,7 @@ void* Memory::internalAddCodeBlock(U32 startIp, DecodedBlock* block) {
         cacheBlock->linkTo = to;
         to->linkFrom = cacheBlock;
     }
+    makeCodePageReadOnly(this, startIp>>K_PAGE_SHIFT);
     return cacheBlock;
 }
 
@@ -440,10 +441,11 @@ void Memory::removeBlock(DecodedBlock* block, U32 ip) {
     cacheBlock = cacheblocks[(ip & 0xFFF)>>BLOCK_CACHE_SHIFT];
     while (cacheBlock && cacheBlock->block) {
         if (cacheBlock->block == block) {
-            if (prev)
+            if (prev) {
                 prev->next = cacheBlock->next;
-            else
+            } else {
                 cacheblocks[(ip & 0xFFF)>>BLOCK_CACHE_SHIFT] = cacheBlock->next;
+            }
             if (cacheBlock->linkTo) {
                 cacheBlock->linkTo->linkFrom = NULL;
                 this->removeBlock(block, cacheBlock->linkTo->ip);
@@ -482,7 +484,8 @@ void Memory::clearCodePageFromCache(U32 page) {
         }
         delete[] cacheblocks;
         this->codeCache[page] = 0;
-    }   
+    }  
+    clearCodePageReadOnly(this, page);
 }
 
 U32 Memory::getPageFlags(U32 page) {
