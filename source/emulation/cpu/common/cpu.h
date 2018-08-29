@@ -232,7 +232,8 @@ public:
     void* logFile;
 
     DecodedBlock* nextBlock;
-    
+    DecodedBlock* delayedFreeBlock;
+
     U32 getCF();
     U32 getSF();
     U32 getZF();

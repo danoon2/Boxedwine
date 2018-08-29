@@ -227,7 +227,7 @@ void writeNativeStringW(U32 address, const char* str) {
 
 char* getNativeString(U32 address, char* buffer, U32 cbResult) {
     if (!address) {
-        buffer=0;
+        buffer[0]=0;
         return buffer;
     }
     return (char*)getNativeAddress(KThread::currentThread()->memory, address);
@@ -238,7 +238,7 @@ char* getNativeStringW(U32 address, char* buffer, U32 cbResult) {
     U32 i=0;
 
     if (!address) {
-        buffer=0;
+        buffer[0]=0;
         return buffer;
     }
     do {
@@ -462,6 +462,10 @@ void Memory::removeBlock(DecodedBlock* block, U32 ip) {
     }
 }
 
+static void OPCALL emptyOp(CPU* cpu, DecodedOp* op) {
+    cpu->nextBlock = NULL;
+}
+
 void Memory::clearCodePageFromCache(U32 page) {
     BlockCache** cacheblocks = (BlockCache**)this->codeCache[page];
     if (cacheblocks) {
@@ -475,6 +479,12 @@ void Memory::clearCodePageFromCache(U32 page) {
                 this->removeBlock(block, cacheBlock->ip);
 
                 if (DecodedBlock::currentBlock == block) {
+                    // we don't have a pointer to the current op, so just set them all
+                    DecodedOp* op = DecodedBlock::currentBlock->op;
+                    while (op) {
+                        op->pfn = emptyOp; // This will cause the current block to return
+                        op = op->next;
+                    }
                     block->dealloc(true);
                 } else {
                     block->dealloc(false);

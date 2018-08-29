@@ -108,6 +108,11 @@ private:
 };
 
 void NormalBlock::run(CPU* cpu) {
+#ifdef _DEBUG
+    if (this==NULL || this->op==NULL || this->op->pfn==NULL) {
+        kpanic("NormalBlock::run is about to crash");
+    }
+#endif
     this->op->pfn(cpu, this->op);
     this->runCount++;
     cpu->blockInstructionCount+=this->opCount;
@@ -148,21 +153,48 @@ NormalBlock* NormalBlock::alloc(NormalCPU* cpu) {
 }
 
 void NormalBlock::dealloc(bool delayed) {
-    this->op->dealloc(true);
-    this->next = freeBlocks;
-    this->op = NULL;
-    freeBlocks = this;
-    if (this->next1)
+    CPU* cpu = KThread::currentThread()->cpu;
+    if (cpu->delayedFreeBlock) {
+        DecodedBlock* b = cpu->delayedFreeBlock;        
+        cpu->delayedFreeBlock = NULL;
+        b->dealloc(false);
+    }
+    if (delayed) {
+        cpu->delayedFreeBlock = this;
+    } else {
+        this->op->dealloc(true);
+        this->next = freeBlocks;
+        this->op = NULL;
+        freeBlocks = this;
+    }
+    if (this->next1) {
         this->next1->removeReferenceFrom(this);
-    if (this->next2)
+        this->next1 = NULL;
+    }
+    if (this->next2) {
         this->next2->removeReferenceFrom(this);
+        this->next2 = NULL;
+    }
+    DecodedBlockFromNode* from = this->referencedFrom;
+    while (from) {
+        DecodedBlockFromNode* n = from->next;
+        if (from->block->next1 == this) {
+            from->block->next1 = NULL;
+        }
+        if (from->block->next2 == this) {
+            from->block->next2 = NULL;
+        }
+        from->dealloc();
+        from = n;
+    }
+    this->referencedFrom = NULL;
 }
 
 DecodedBlock* NormalCPU::getNextBlock() {
     if (!this->thread->process) // exit was called, don't need to pre-cache the next block
         return NULL;
 
-    U32 startIp = (this->big?this->eip.u32:this->eip.u32 & 0xFFFF) + this->seg[CS].address;
+    U32 startIp = (this->big?this->eip.u32:this->eip.u16) + this->seg[CS].address;
     DecodedBlock* block = this->thread->memory->getCodeBlock(startIp);
 
     if (!block) {

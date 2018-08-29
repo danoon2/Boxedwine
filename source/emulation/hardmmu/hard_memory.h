@@ -25,6 +25,11 @@
 #define NATIVE_FLAG_READONLY 0x02
 
 INLINE void* getNativeAddress(Memory* memory, U32 address) {
+#ifdef _DEBUG
+    if (memory->ids[address >> K_PAGE_SHIFT]==0) {
+        kpanic("bad memory access");
+    }
+#endif
     return (void*)(address + memory->ids[address >> K_PAGE_SHIFT]);
 }
 

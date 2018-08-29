@@ -706,7 +706,7 @@ extern jmp_buf runBlockJump;
 // bit 3 - 0 = n/a, 1 = use of reserved bit detected
 // bit 4 - 0 = n/a, 1 = fault was an instruction fetch
 
-void KThread::seg_mapper(U32 address, bool readFault, bool writeFault) {
+void KThread::seg_mapper(U32 address, bool readFault, bool writeFault, bool throwException) {
     if (this->process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_IGN && this->process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_DFL) {
         U32 eip = this->cpu->eip.u32;
 
@@ -715,17 +715,19 @@ void KThread::seg_mapper(U32 address, bool readFault, bool writeFault) {
         this->process->sigActions[K_SIGSEGV].sigInfo[2] = 1; // SEGV_MAPERR
         this->process->sigActions[K_SIGSEGV].sigInfo[3] = address;
         this->runSignal(K_SIGSEGV, EXCEPTION_PAGE_FAULT, (writeFault?2:0));
+        if (throwException) {
 #ifdef BOXEDWINE_HAS_SETJMP
-        longjmp(runBlockJump, 1);		
+            longjmp(runBlockJump, 1);		
 #else
-        kpanic("setjmp is required for this app but it was compiled into boxedwine");
+            kpanic("setjmp is required for this app but it was compiled into boxedwine");
 #endif
+        }
     } else {
         this->memory->log_pf(this, address);
     }
 }
 
-void KThread::seg_access(U32 address, bool readFault, bool writeFault) {
+void KThread::seg_access(U32 address, bool readFault, bool writeFault, bool throwException) {
     if (this->process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_IGN && this->process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_DFL) {
         U32 eip = this->cpu->eip.u32;
 
@@ -734,12 +736,13 @@ void KThread::seg_access(U32 address, bool readFault, bool writeFault) {
         this->process->sigActions[K_SIGSEGV].sigInfo[2] = 2; // SEGV_ACCERR
         this->process->sigActions[K_SIGSEGV].sigInfo[3] = address;        
         this->runSignal(K_SIGSEGV, EXCEPTION_PAGE_FAULT, 1 | (writeFault?2:0)); 
-        printf("seg fault %X\n", address);
+        if (throwException) {
 #ifdef BOXEDWINE_HAS_SETJMP
-        longjmp(runBlockJump, 1);		
+            longjmp(runBlockJump, 1);		
 #else 
-        kpanic("setjmp is required for this app but it was compiled into boxedwine");
+            kpanic("setjmp is required for this app but it was compiled into boxedwine");
 #endif
+        }
     } else {
         this->memory->log_pf(this, address);
     }

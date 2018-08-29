@@ -60,10 +60,11 @@ void assertTrue(int b) {
 void setup() {
     if (!memory) {      
         KProcess* process = new KProcess(KSystem::nextThreadId++);
-        memory = new Memory(process);
+        memory = new Memory();
         process->memory = memory;
         KThread* thread = new KThread(KSystem::nextThreadId++, process);
         cpu = thread->cpu;
+        thread->memory = memory;
         KThread::setCurrentThread(thread);
 
         process->memory->allocPages((STACK_ADDRESS >> K_PAGE_SHIFT)-17, 17, PAGE_READ|PAGE_WRITE, 0, 0, 0);
@@ -126,7 +127,11 @@ void newInstructionWithRM(int instruction, int rm, int flags) {
 void runTestCPU() {    
     pushCode8(0x70); // jump causes the decoder to stop building the block
     pushCode8(0);
+    pushCode8(0x70); // jump will fetch the next block as well
+    pushCode8(0);
+    cpu->nextBlock = NULL;
     cpu->run();
+    KThread::currentThread()->memory->clearCodePageFromCache(CODE_ADDRESS>>K_PAGE_SHIFT);
 }
 
 struct Data {
@@ -3287,7 +3292,7 @@ static struct Data xadd[] = {
     endData()
 };
 
-#ifdef BOXEDWINE_MSVC
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
 #define X86_TEST(op, d, a, c)                  \
     {                                           \
         struct Data* data = d;                  \
@@ -3518,6 +3523,35 @@ static struct Data xadd[] = {
             if (data->hasAF)                                    \
                 assertTrue((flags & AF)!=0 == data->fAF!=0);    \
     }
+
+#define STR_TEST(esiStr, editStr, startECX, OP, checkEndFlags, endCF, endZF, newECX) \
+{                                                                                   \
+    U32 cfValue;                                                                    \
+    U32 zfValue;                                                                    \
+    U32 esiValue = (U32)esiStr;                                                     \
+    U32 ediValue = (U32)editStr;                                                    \
+    U32 ecxValue;                                                                   \
+    __asm {                                                                         \
+        __asm mov esi, esiValue                                                    \
+        __asm mov edi, ediValue                                                    \
+        __asm mov ecx, startECX                                                    \
+        __asm OP                                                                   \
+        __asm mov eax, 0                                                           \
+        __asm setb al                                                              \
+        __asm mov cfValue, eax                                                     \
+        __asm setz al                                                              \
+        __asm mov zfValue, eax                                                     \
+        __asm mov ecxValue, ecx                                                         \
+    }                                                                               \
+    if (checkEndFlags) {                                                            \
+        bool hasCF=cfValue!=0;                                                      \
+        assertTrue(endCF==hasCF);                                                   \
+                                                                                    \
+        bool hasZF=zfValue!=0;                                                      \
+        assertTrue(endZF==hasZF);                                                   \
+    }                                                                               \
+    assertTrue(ecxValue==newECX);                                                   \
+}
 #else
 #define X86_TEST0C(op, d, imm)
 #define X86_TEST1C(op, d, a, imm)
@@ -3525,6 +3559,7 @@ static struct Data xadd[] = {
 #define X86_TEST0(op, d)
 #define X86_TEST1(op, d, a)
 #define X86_TEST(op, d, a, c)
+#define STR_TEST(esiStr, editStr, startECX, OP, checkEndFlags, endCF, endZF, newECX)
 #endif
 
 void testAdd0x000() {cpu->big = false;EbGb(0x00, addb);}
@@ -3900,35 +3935,6 @@ void strTest(U8 width, U8 prefix, U8 inst, U32 startFlags, const char* str1, U32
         assertTrue(endZF==hasZF);
     }
     cpu->seg[ES].address = 0;
-}
-
-#define STR_TEST(esiStr, editStr, startECX, OP, checkEndFlags, endCF, endZF, newECX) \
-{                                                                                   \
-    U32 cfValue;                                                                    \
-    U32 zfValue;                                                                    \
-    U32 esiValue = (U32)esiStr;                                                     \
-    U32 ediValue = (U32)editStr;                                                    \
-    U32 ecxValue;                                                                   \
-    __asm {                                                                         \
-        __asm mov esi, esiValue                                                    \
-        __asm mov edi, ediValue                                                    \
-        __asm mov ecx, startECX                                                    \
-        __asm OP                                                                   \
-        __asm mov eax, 0                                                           \
-        __asm setb al                                                              \
-        __asm mov cfValue, eax                                                     \
-        __asm setz al                                                              \
-        __asm mov zfValue, eax                                                     \
-        __asm mov ecxValue, ecx                                                         \
-    }                                                                               \
-    if (checkEndFlags) {                                                            \
-        bool hasCF=cfValue!=0;                                                      \
-        assertTrue(endCF==hasCF);                                                   \
-                                                                                    \
-        bool hasZF=zfValue!=0;                                                      \
-        assertTrue(endZF==hasZF);                                                   \
-    }                                                                               \
-    assertTrue(ecxValue==newECX);                                                   \
 }
 
 void testCmpsb0x0a6() {
@@ -5540,7 +5546,7 @@ static struct Data cmpxchgd[] = {
 void testCmpXchg0x3b1() {
     cpu->big=true;
     EdGdEax(0x3b1, cmpxchgd);
-#ifdef BOXEDWINE_MSVC
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
     {  
         struct Data* data = cmpxchgd;
         U32 flagMask = CF|OF|ZF|PF|SF|AF;

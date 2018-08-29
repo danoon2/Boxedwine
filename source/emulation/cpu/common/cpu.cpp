@@ -56,6 +56,7 @@ void CPU::reset() {
     this->stackNotMask = 0;
     this->stackMask = 0xFFFFFFFF;
     this->nextBlock = NULL;
+    this->delayedFreeBlock = NULL;
 }
 
 void CPU::call(U32 big, U32 selector, U32 offset, U32 oldEip) {
