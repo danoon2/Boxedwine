@@ -408,6 +408,7 @@ KFileDescriptor* KProcess::openFileDescriptor(const std::string& currentDirector
             return NULL;
         }
         node = Fs::addFileNode(parent->path+"/"+fileName, "", false, parent);
+        Fs::makeLocalDirs(parent->path);
     }
     if (node->kobject) {
         kobject = node->kobject;
@@ -654,7 +655,7 @@ U32 KProcess::execve(const std::string& path, std::vector<std::string>& args, co
         wakeThread(this->wakeOnExitOrExec);
         this->wakeOnExitOrExec = NULL;
     }        
-    //klog("%d/%d exec %s (cwd=%s)", thread->id, process->id, process->commandLine, process->currentDirectory);
+    //klog("%d/%d exec %s (cwd=%s)", KThread::currentThread()->id, this->id, this->commandLine.c_str(), this->currentDirectory.c_str());
     return 1;
 }
 

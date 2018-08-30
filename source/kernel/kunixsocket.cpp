@@ -311,7 +311,7 @@ class UnixSocketNode : public FsNode {
 public:
     UnixSocketNode(U32 id, U32 rdev, const std::string& path, BoxedPtr<FsNode> parent) : FsNode(Socket, id, rdev, path, "", false, parent) {}
     U32 rename(const std::string& path) {return -K_EIO;}
-    bool remove() {return false;}
+    bool remove() {if (!this->parent) return false; this->removeNodeFromParent(); return true;}
     U64 lastModified() {return 0;}
     U64 length() {return 0;}
     FsOpenNode* open(U32 flags) {kwarn("unixsocket_open was called, this shouldn't happen.  syscall_open should detect we have a kobject already"); return NULL;}

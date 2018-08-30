@@ -74,7 +74,7 @@ bool FsZip::init(const std::string& zipPath) {
             if (tm.tm_year>1900)
                 tm.tm_year-=1900;
 
-            zipInfo[i].lastModified = mktime(&tm);
+            zipInfo[i].lastModified = mktime(&tm)*1000l;
 
             unzGoToNextFile(zipfile);
         }

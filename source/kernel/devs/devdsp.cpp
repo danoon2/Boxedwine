@@ -27,6 +27,8 @@
 
 ringbuffer<U8> audioBuffer(1024*1024);
 U8 audioSilence;
+static bool closeWhenDone = false;
+static bool isAudioOpen = false;
 
 class DevDsp : public FsVirtualOpenNode {
 public:
@@ -50,9 +52,7 @@ public:
     }
 
     ~DevDsp() {
-        if (this->isDspOpen) {
-            SDL_CloseAudio();
-        }
+        this->closeAudio();
         if (this->cvtBuf) {
             SDL_free(this->cvtBuf);
         }
@@ -60,7 +60,16 @@ public:
 
     void closeAudio() {
         if (this->isDspOpen) {
-            SDL_CloseAudio();
+            bool needClose = true;
+            SDL_LockAudio();
+            if (audioBuffer.getOccupied()) {                
+                closeWhenDone = true;
+                needClose = false;
+            }
+            SDL_UnlockAudio();
+            if (needClose) {
+                SDL_CloseAudio();
+            }
             this->isDspOpen = false;
         }
     }
@@ -109,9 +118,14 @@ public:
 
 
 void audioCallback(void *userdata, U8* stream, S32 len) {
-    S32 available = (S32)audioBuffer.getFree();
+    S32 available = (S32)audioBuffer.getOccupied();
     DevDsp* data = (DevDsp*)userdata;
 
+    if (available==0 && closeWhenDone) {
+        SDL_CloseAudio();
+        closeWhenDone = false;
+        return;
+    }
     if (data->pauseEnabled() && available > data->pauseAtLen) {
 		available = data->pauseAtLen;
     }
@@ -141,9 +155,13 @@ void DevDsp::openAudio() {
     this->want.callback = audioCallback;
 	this->want.userdata = this;
 
+    if (closeWhenDone) {
+        SDL_CloseAudio();
+        closeWhenDone = false;
+    }
     if (SDL_OpenAudio(&this->want, &this->got) < 0) {
         printf("Failed to open audio: %s\n", SDL_GetError());
-    } 
+    }
     if (this->want.freq != this->got.freq || this->want.channels != this->got.channels || this->want.format != this->got.format) {
         this->sameFormat = false;
         SDL_BuildAudioCVT(&this->cvt, this->want.format, this->want.channels, this->want.freq, this->got.format, this->got.channels, this->got.freq);
@@ -172,6 +190,8 @@ U32 DevDsp::writeNative(U8* buffer, U32 len) {
 
     if (!this->isDspOpen)
         this->openAudio();
+    static int ii;    
+    ii++;
     SDL_LockAudio();
     if (!this->sameFormat) {
         S32 adjustedLen = (S32)(ceil(len / cvt.len_ratio));
@@ -189,12 +209,24 @@ U32 DevDsp::writeNative(U8* buffer, U32 len) {
         this->cvt.buf = this->cvtBuf;
         memcpy(this->cvt.buf, buffer, len);
         SDL_ConvertAudio(&this->cvt);
-        audioBuffer.write(this->cvt.buf, this->cvt.len_cvt);
-        result = this->cvt.len_cvt;
-    } else {
-        audioBuffer.write(buffer, len);
-        result = len;
-    }   
+        if (this->cvt.len_cvt>audioBuffer.getFree()) {
+            KThread* thread = KThread::currentThread();
+		    this->dspWaitingToWriteThread.addToBack(thread->getWaitNofiyNode());
+            result = -K_WAIT;
+        } else {
+            result = audioBuffer.write(this->cvt.buf, this->cvt.len_cvt);
+            result = this->cvt.len;
+        }
+    } else {      
+        if (this->cvt.len_cvt>audioBuffer.getFree()) {
+            KThread* thread = KThread::currentThread();
+		    this->dspWaitingToWriteThread.addToBack(thread->getWaitNofiyNode());
+            result = -K_WAIT;
+        } else {
+            audioBuffer.write(buffer, len);
+            result = len;
+        }
+    }       
     SDL_UnlockAudio();	
     return result;
 }

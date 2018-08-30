@@ -40,7 +40,8 @@ void removeTimer(KTimer* timer) {
 
 void wakeThread(KThread* thread) {
     if (!thread->waiting) {
-        kpanic("wakeThread: tried to wake a thread that is not asleep");
+        kwarn("wakeThread: tried to wake a thread that is not asleep");
+        return;
     }
     thread->waiting = false;
     if (thread->timer.active) {

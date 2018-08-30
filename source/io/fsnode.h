@@ -22,7 +22,7 @@ public:
 
     virtual U32 rename(const std::string& path)=0; //return 0 if success, else errno
     virtual bool remove()=0;
-    virtual U64 lastModified()=0;
+    virtual U64 lastModified()=0; // returns ms since 1970
     virtual U64 length()=0;
     virtual FsOpenNode* open(U32 flags)=0;    
     virtual U32 getType(bool checkForLink)=0;
