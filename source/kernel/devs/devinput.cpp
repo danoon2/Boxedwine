@@ -650,6 +650,8 @@ void onMouseButtonDown(U32 button) {
 */
 
 void postSendEvent(DevInput* events, U64 time) {
+    if (!events)
+        return;
     queueEvent(events, K_EV_SYN, K_SYN_REPORT, 0, time);
     if (events->asyncProcessId) {
         KProcess* process = KSystem::getProcess(events->asyncProcessId);

@@ -371,17 +371,6 @@ void Memory::protectPage(U32 i, U32 permissions) {
     } else if (page->type == Page::Type::RO_Page || page->type == Page::Type::RW_Page || page->type == Page::Type::WO_Page || page->type == Page::Type::NO_Page) {
         RWPage* p = (RWPage*)page;
 
-        if ((permissions & PAGE_WRITE) && (flags & PAGE_SHARED_SYSTEM)) {
-            U8* ram = ramPageAlloc();
-            memcpy(ram, p->page, K_PAGE_SIZE);
-            flags &= ~PAGE_SHARED_SYSTEM;
-            if (permissions & PAGE_READ) {
-                this->mmu[i] = RWPage::alloc(ram, p->address, flags);            
-            } else {
-                this->mmu[i] = WOPage::alloc(ram, p->address, flags);            
-            }
-            page->close();
-        }
         if ((permissions & PAGE_READ) && (permissions & PAGE_WRITE)) {
             if (page->type != Page::Type::RW_Page) {
                 this->mmu[i] = RWPage::alloc(p->page, p->address, flags);

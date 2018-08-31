@@ -253,6 +253,15 @@
     <ClCompile Include="..\..\..\..\source\emulation\hardmmu\hard_memory.cpp">
       <Filter>source\emulation\hardmmu</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\x64\x64asm.cpp">
+      <Filter>source\emulation\cpu\x64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\x64\x64ops.cpp">
+      <Filter>source\emulation\cpu\x64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\x64\x64CPU.cpp">
+      <Filter>source\emulation\cpu\x64</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -561,6 +570,9 @@
     <ClInclude Include="..\..\..\..\source\emulation\hardmmu\hard_memory.h">
       <Filter>source\emulation\hardmmu</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\x64\x64CPU.h">
+      <Filter>source\emulation\cpu\x64</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
@@ -625,6 +637,9 @@
     </Filter>
     <Filter Include="source\emulation\hardmmu">
       <UniqueIdentifier>{4f68ad4a-87b4-418f-a461-919898090deb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\emulation\cpu\x64">
+      <UniqueIdentifier>{3659be72-a412-43be-81fc-ede5407a336d}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

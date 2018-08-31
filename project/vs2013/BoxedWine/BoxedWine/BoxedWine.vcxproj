@@ -430,6 +430,7 @@
     <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_strings.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_strings_op.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_xchg.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\x64\x64CPU.h" />
     <ClInclude Include="..\..\..\..\source\emulation\hardmmu\hard_memory.h" />
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_code_page.h" />
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_copy_on_write_page.h" />
@@ -512,6 +513,9 @@
     <ClCompile Include="..\..\..\..\source\emulation\cpu\normal\normalCPU.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\normal\normal_shift.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\normal\normal_strings.cpp" />
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\x64\x64asm.cpp" />
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\x64\x64CPU.cpp" />
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\x64\x64ops.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\hardmmu\hard_memory.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_code_page.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_copy_on_write_page.cpp" />

@@ -1699,7 +1699,9 @@ void ksyscall(CPU* cpu, U32 eipCount) {
     if (!syscallFunc[EAX]) {
         result = -K_ENOSYS;
     } else {
+        U64 startTime = Platform::getMicroCounter();
         result = syscallFunc[EAX](cpu, eipCount);
+        sysCallTime+=(Platform::getMicroCounter()-startTime);  
     }    
 
     if (result==-K_CONTINUE) {

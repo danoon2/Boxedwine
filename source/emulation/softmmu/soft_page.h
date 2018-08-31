@@ -28,7 +28,6 @@ class KThread;
 #define PAGE_WRITE 0x02
 #define PAGE_EXEC 0x04
 #define PAGE_SHARED 0x08
-#define PAGE_SHARED_SYSTEM 0x10
 #define PAGE_MAPPED 0x20
 #define PAGE_PERMISSION_MASK 0x07
 

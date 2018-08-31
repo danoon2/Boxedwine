@@ -27,6 +27,7 @@
 #include "soft_wo_page.h"
 #include "soft_no_page.h"
 #include "soft_ram.h"
+#include "soft_copy_on_write_page.h"
 
 FilePage* FilePage::alloc(const BoxedPtr<MappedFile>& mapped, U32 index, U32 flags) {
     return new FilePage(mapped, index, flags);
@@ -41,9 +42,8 @@ void FilePage::ondemmandFile(U32 address) {
     U8* ram=NULL;
 
     address = address & (~K_PAGE_MASK);
-    if (!write) {
-        ram = mapped->systemCacheEntry->data[this->index];                
-        this->flags |= PAGE_SHARED_SYSTEM;
+    if (read && !write) {
+        ram = mapped->systemCacheEntry->data[this->index];   
     } 
     if (!ram) {
         ram = ramPageAlloc();
@@ -60,7 +60,7 @@ void FilePage::ondemmandFile(U32 address) {
     } else if (write) {
         memory->mmu[page] = WOPage::alloc(ram, address, this->flags);
     } else if (read) { 
-        memory->mmu[page] = ROPage::alloc(ram, address, this->flags);
+        memory->mmu[page] = CopyOnWritePage::alloc(ram, address, this->flags);
     } else {
         memory->mmu[page] = NOPage::alloc(ram, address, this->flags);
     }
