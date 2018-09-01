@@ -31,9 +31,9 @@ U8 audioSilence;
 static bool closeWhenDone = false;
 static bool isAudioOpen = false;
 
-class DevDsp : public FsVirtualOpenNode {
+class DevDspData {
 public:
-    DevDsp(const BoxedPtr<FsNode>& node, U32 flags) : FsVirtualOpenNode(node, flags) {        
+    DevDspData() {
         memset(&this->want, 0, sizeof(this->want));
         memset(&this->got, 0, sizeof(this->got));
 
@@ -48,53 +48,18 @@ public:
         this->pauseAtLen = 0xFFFFFFFF;
         this->cvtBufLen = 0;
         this->cvtBuf = NULL;
+        this->cvtBufPos = NULL;
     }
 
-    ~DevDsp() {
-        this->closeAudio();
+    ~DevDspData() {
         if (this->cvtBuf) {
             SDL_free(this->cvtBuf);
         }
     }
 
-    void closeAudio() {
-        if (this->isDspOpen) {
-            bool needClose = true;
-            SDL_LockAudio();
-            if (audioBuffer.getOccupied()) {                
-                closeWhenDone = true;
-                needClose = false;
-            }
-            SDL_UnlockAudio();
-            if (needClose) {
-                SDL_CloseAudio();
-            }
-            this->isDspOpen = false;
-        }
-    }
-
-    U32 bytesPerSample() {
-        if (this->want.format == AUDIO_S16LSB || this->want.format == AUDIO_S16MSB || this->want.format == AUDIO_U16LSB || this->want.format == AUDIO_U16MSB)
-            return 2;
-#ifdef SDL2
-        else if (this->want.format == AUDIO_F32LSB)
-             return 4;
-#endif
-         else
-            return 1;
-    }
-
-    void openAudio();
-
     bool pauseEnabled() {
         return this->pauseAtLen!=0xFFFFFFFF;
     }
-
-    virtual bool setLength(S64 length);
-    virtual U32 ioctl(U32 request);
-    virtual U32 readNative(U8* buffer, U32 len);
-    virtual U32 writeNative(U8* buffer, U32 len);
-    virtual void waitForEvents(U32 events);
 
     S64 pos;
 
@@ -108,32 +73,123 @@ public:
 	S32 pauseAtLen;
     SDL_AudioCVT cvt;
     int cvtBufLen;
+    int cvtBufPos;
     unsigned char* cvtBuf;
+};
+
+class DevDsp : public FsVirtualOpenNode {
+public:
+    DevDsp(const BoxedPtr<FsNode>& node, U32 flags) : FsVirtualOpenNode(node, flags) {                
+        this->data = new DevDspData();
+    }
+
+    ~DevDsp() {
+        this->closeAudio();
+        delete this->data;
+    }
+
+    void closeAudio() {
+        if (this->data->isDspOpen) {
+            bool needClose = true;
+            SDL_LockAudio();
+            if (audioBuffer.getOccupied() || (this->data->cvtBufPos!=0 && this->data->cvtBufPos<this->data->cvt.len_cvt)) {                
+                closeWhenDone = true;
+                needClose = false;
+            }
+            SDL_UnlockAudio();
+            if (needClose) {
+                SDL_CloseAudio();
+                delete this->data;                
+            }
+            this->data = new DevDspData();
+        }
+    }
+
+    U32 bytesPerSample() {
+        if (this->data->want.format == AUDIO_S16LSB || this->data->want.format == AUDIO_S16MSB || this->data->want.format == AUDIO_U16LSB || this->data->want.format == AUDIO_U16MSB)
+            return 2;
+#ifdef SDL2
+        else if (this->data->want.format == AUDIO_F32LSB)
+             return 4;
+#endif
+         else
+            return 1;
+    }
+
+    void openAudio();    
+
+    virtual bool setLength(S64 length);
+    virtual U32 ioctl(U32 request);
+    virtual U32 readNative(U8* buffer, U32 len);
+    virtual U32 writeNative(U8* buffer, U32 len);
+    virtual void waitForEvents(U32 events);    
+
+    DevDspData* data;
 };
 
 
 void audioCallback(void *userdata, U8* stream, S32 len) {
     S32 available = (S32)audioBuffer.getOccupied();
-    DevDsp* data = (DevDsp*)userdata;
+    DevDspData* data = (DevDspData*)userdata;
+    S32 originalAvailable = available;
+    S32 originalLen = len;
 
-    if (available==0 && closeWhenDone) {
-        SDL_CloseAudio();
+    if (available<len) {
+        int ii=0;
+    }
+    if (available==0 && closeWhenDone && (data->cvtBufPos==0 || data->cvtBufPos>=data->cvt.len_cvt)) {
         closeWhenDone = false;
+        delete data;
+        SDL_CloseAudio(); // might not return since it can kill audio thread   
         return;
     }
     if (data->pauseEnabled() && available > data->pauseAtLen) {
 		available = data->pauseAtLen;
     }
-    if (available>len)
-        available = len;
-   if (available) {
-       audioBuffer.read(stream, available);
-       len-=available;
-       stream+=available;
-   }
-   if (len) {
-       memset(stream, audioSilence, len);
-   }
+    if (!data->sameFormat) {
+        if (data->cvtBufPos<data->cvt.len_cvt) {
+            S32 todo = data->cvt.len_cvt - data->cvtBufPos;
+            if (todo>len)
+                todo = len;
+            memcpy(stream, data->cvt.buf+data->cvtBufPos, todo);
+            data->cvtBufPos+=todo;
+            stream+=todo;
+            len-=todo;
+        }
+        if (len) {   
+            data->cvt.len = available;
+            if (data->cvtBufLen && data->cvtBufLen < data->cvt.len * data->cvt.len_mult) {
+                data->cvtBufLen = 0;
+                SDL_free(data->cvtBuf);
+                data->cvtBuf = NULL;
+            }
+            if (!data->cvtBufLen) {
+                data->cvtBufLen = data->cvt.len * data->cvt.len_mult;
+                data->cvtBuf = (Uint8 *)SDL_malloc(data->cvt.len * data->cvt.len_mult);
+            }
+            data->cvt.buf = data->cvtBuf;    
+            audioBuffer.read(data->cvt.buf, available);
+            SDL_ConvertAudio(&data->cvt);
+            S32 todo = data->cvt.len_cvt;
+            if (todo>len)
+                todo = len;
+            memcpy(stream, data->cvt.buf, todo);
+            stream+=todo;
+            len-=todo;
+            data->cvtBufPos=todo;
+        }
+    } else {
+        if (available>len)
+            available = len;
+        if (available) {
+            audioBuffer.read(stream, available);
+            len-=available;
+            stream+=available;
+        }
+    }
+    if (len) {
+        memset(stream, audioSilence, len);
+    }
    	
     if (data->pauseEnabled())
 		data->pauseAtLen -= available;
@@ -147,29 +203,29 @@ void audioCallback(void *userdata, U8* stream, S32 len) {
 
 void DevDsp::openAudio() {
     //want.samples = 4096;    
-    this->want.callback = audioCallback;
-	this->want.userdata = this;
+    this->data->want.callback = audioCallback;
+	this->data->want.userdata = this->data;
 
     if (closeWhenDone) {
         SDL_CloseAudio();
         closeWhenDone = false;
     }
-    if (SDL_OpenAudio(&this->want, &this->got) < 0) {
+    if (SDL_OpenAudio(&this->data->want, &this->data->got) < 0) {
         printf("Failed to open audio: %s\n", SDL_GetError());
     }
-    if (this->want.freq != this->got.freq || this->want.channels != this->got.channels || this->want.format != this->got.format) {
-        this->sameFormat = false;
-        SDL_BuildAudioCVT(&this->cvt, this->want.format, this->want.channels, this->want.freq, this->got.format, this->got.channels, this->got.freq);
+    if (this->data->want.freq != this->data->got.freq || this->data->want.channels != this->data->got.channels || this->data->want.format != this->data->got.format) {
+        this->data->sameFormat = false;
+        SDL_BuildAudioCVT(&this->data->cvt, this->data->want.format, this->data->want.channels, this->data->want.freq, this->data->got.format, this->data->got.channels, this->data->got.freq);
     } else {
-        this->sameFormat = true;
+        this->data->sameFormat = true;
     }
-	this->isDspOpen = true;
+	this->data->isDspOpen = true;
     
     SDL_PauseAudio(0);
-	this->pauseAtLen = 0xFFFFFFFF;
-	this->dspFragSize = this->got.size;
+	this->data->pauseAtLen = 0xFFFFFFFF;
+	this->data->dspFragSize = this->data->got.size;
 
-	printf("openAudio: freq=%d(got %d) format=%d(%x/got %x) channels=%d(got %d)\n", this->want.freq, this->got.freq, this->dspFmt, this->want.format, this->got.format, this->want.channels, this->got.channels);
+	printf("openAudio: freq=%d(got %d) format=%d(%x/got %x) channels=%d(got %d)\n", this->data->want.freq, this->data->got.freq, this->data->dspFmt, this->data->want.format, this->data->got.format, this->data->want.channels, this->data->got.channels);
 }
 
 bool DevDsp::setLength(S64 len) {
@@ -183,47 +239,20 @@ U32 DevDsp::readNative(U8* buffer, U32 len){
 U32 DevDsp::writeNative(U8* buffer, U32 len) {    
     U32 result;
 
-    if (!this->isDspOpen)
+    if (!this->data->isDspOpen)
         this->openAudio();
     static int ii;    
     ii++;
     SDL_LockAudio();
-    if (!this->sameFormat) {
-        S32 adjustedLen = (S32)(ceil(len / cvt.len_ratio));
-     
-        this->cvt.len = len;
-        if (this->cvtBufLen && this->cvtBufLen < this->cvt.len * this->cvt.len_mult) {
-            this->cvtBufLen = 0;
-            SDL_free(this->cvtBuf);
-            this->cvtBuf = NULL;
-        }
-        if (!this->cvtBufLen) {
-            this->cvtBufLen = this->cvt.len * this->cvt.len_mult;
-            this->cvtBuf = (Uint8 *)SDL_malloc(this->cvt.len * this->cvt.len_mult);
-        }
-        this->cvt.buf = this->cvtBuf;
-        memcpy(this->cvt.buf, buffer, len);
-        SDL_ConvertAudio(&this->cvt);
-        if (this->cvt.len_cvt>audioBuffer.getFree()) {
-            KThread* thread = KThread::currentThread();
-		    this->dspWaitingToWriteThread.addToBack(thread->getWaitNofiyNode());
-            result = -K_WAIT;
-            printf("DevDsp::write wait\n");
-        } else {
-            result = audioBuffer.write(this->cvt.buf, this->cvt.len_cvt);
-            result = this->cvt.len;
-        }
-    } else {      
-        if (this->cvt.len_cvt>audioBuffer.getFree()) {
-            KThread* thread = KThread::currentThread();
-		    this->dspWaitingToWriteThread.addToBack(thread->getWaitNofiyNode());
-            result = -K_WAIT;
-            printf("DevDsp::write wait\n");
-        } else {
-            audioBuffer.write(buffer, len);
-            result = len;
-        }
-    }       
+    if (len>audioBuffer.getFree()) {
+        KThread* thread = KThread::currentThread();
+		this->data->dspWaitingToWriteThread.addToBack(thread->getWaitNofiyNode());
+        result = -K_WAIT;
+        printf("DevDsp::write wait\n");
+    } else {
+        audioBuffer.write(buffer, len);
+        result = len;
+    }
     SDL_UnlockAudio();	
     return result;
 }
@@ -243,9 +272,9 @@ U32 DevDsp::ioctl(U32 request) {
         if (len!=4) {
             kpanic("SNDCTL_DSP_SPEED was expecting a len of 4");
         }
-		this->want.freq = readd(IOCTL_ARG1);
+		this->data->want.freq = readd(IOCTL_ARG1);
 		if (write)
-            writed(IOCTL_ARG1, this->want.freq);
+            writed(IOCTL_ARG1, this->data->want.freq);
         return 0;
     case 0x5003: { // SNDCTL_DSP_STEREO
         U32 fmt;
@@ -254,18 +283,18 @@ U32 DevDsp::ioctl(U32 request) {
             kpanic("SNDCTL_DSP_STEREO was expecting a len of 4");
         }
         fmt = readd(IOCTL_ARG1);
-		if (fmt != this->want.channels - 1) {
+		if (fmt != this->data->want.channels - 1) {
             this->closeAudio();
         }
         if (fmt == 0) {
-            this->want.channels = 1;
+            this->data->want.channels = 1;
         } else if (fmt == 1) {
-            this->want.channels = 2;
+            this->data->want.channels = 2;
         } else {
             kpanic("SNDCTL_DSP_STEREO wasn't expecting a value of %d", fmt);
         }
         if (write)
-            writed(IOCTL_ARG1, this->want.channels - 1);
+            writed(IOCTL_ARG1, this->data->want.channels - 1);
         return 0;
     }
     case 0x5005: { // SNDCTL_DSP_SETFMT 
@@ -275,7 +304,7 @@ U32 DevDsp::ioctl(U32 request) {
             kpanic("SNDCTL_DSP_SETFMT was expecting a len of 4");
         }
         fmt = readd(IOCTL_ARG1);
-		if (fmt != AFMT_QUERY && fmt != this->dspFmt) {
+		if (fmt != AFMT_QUERY && fmt != this->data->dspFmt) {
             this->closeAudio();
         }
         switch (fmt) {
@@ -284,69 +313,69 @@ U32 DevDsp::ioctl(U32 request) {
         case AFMT_MU_LAW:
         case AFMT_A_LAW:
         case AFMT_IMA_ADPCM:
-			this->dspFmt = AFMT_U8;
-			this->want.format = AUDIO_U8;
+			this->data->dspFmt = AFMT_U8;
+			this->data->want.format = AUDIO_U8;
             break;
         case AFMT_U8:
-			this->dspFmt = AFMT_U8;
-			this->want.format = AUDIO_U8;
+			this->data->dspFmt = AFMT_U8;
+			this->data->want.format = AUDIO_U8;
             break;
         case AFMT_S16_LE:
-			this->dspFmt = AFMT_S16_LE;
-			this->want.format = AUDIO_S16LSB;
+			this->data->dspFmt = AFMT_S16_LE;
+			this->data->want.format = AUDIO_S16LSB;
             break;
         case AFMT_S16_BE:
-			this->dspFmt = AFMT_S16_BE;
-            this->want.format = AUDIO_S16MSB;
+			this->data->dspFmt = AFMT_S16_BE;
+            this->data->want.format = AUDIO_S16MSB;
             break;
         case AFMT_S8:
-			this->dspFmt = AFMT_S8;
-            this->want.format = AUDIO_S8;
+			this->data->dspFmt = AFMT_S8;
+            this->data->want.format = AUDIO_S8;
             break;
         case AFMT_U16_LE:
-			this->dspFmt = AFMT_U16_LE;
-            this->want.format = AUDIO_U16LSB;
+			this->data->dspFmt = AFMT_U16_LE;
+            this->data->want.format = AUDIO_U16LSB;
             break;
         case AFMT_U16_BE:
-			this->dspFmt = AFMT_U16_BE;
-            this->want.format = AUDIO_U16MSB;
+			this->data->dspFmt = AFMT_U16_BE;
+            this->data->want.format = AUDIO_U16MSB;
             break;
         case AFMT_MPEG:
-			this->dspFmt = AFMT_U8;
-            this->want.format = AUDIO_U8;
+			this->data->dspFmt = AFMT_U8;
+            this->data->want.format = AUDIO_U8;
             break;
 #ifdef SDL2
         case AFMT_FLOAT:
-            this->dspFmt = AFMT_FLOAT;
-            this->want.format = AUDIO_F32LSB;
+            this->data->dspFmt = AFMT_FLOAT;
+            this->data->want.format = AUDIO_F32LSB;
             break;
 #endif
         }
         if (write)
-			writed(IOCTL_ARG1, this->dspFmt);
-		else if (this->dspFmt != fmt) {
+			writed(IOCTL_ARG1, this->data->dspFmt);
+		else if (this->data->dspFmt != fmt) {
             kpanic("SNDCTL_DSP_SETFMT dspFmt!=fmt and can't write result");
         }
         return 0;
         }
     case 0x5006: {// SOUND_PCM_WRITE_CHANNELS
         U32 channels = readd(IOCTL_ARG1);
-		if (channels != this->want.channels) {
+		if (channels != this->data->want.channels) {
             this->closeAudio();
         }
         if (channels==1) {
-            this->want.channels = 1;
+            this->data->want.channels = 1;
         } else if (channels == 2) {
-            this->want.channels = 2;
+            this->data->want.channels = 2;
         } else {
-            this->want.channels = 2;
+            this->data->want.channels = 2;
         }
         if (write)
-            writed(IOCTL_ARG1, this->want.channels);
+            writed(IOCTL_ARG1, this->data->want.channels);
         return 0;
         }
     case 0x500A: // SNDCTL_DSP_SETFRAGMENT
-		this->dspFragSize = 1 << (readd(IOCTL_ARG1) & 0xFFFF);
+		this->data->dspFragSize = 1 << (readd(IOCTL_ARG1) & 0xFFFF);
         return 0;
     case 0x500B: // SNDCTL_DSP_GETFMTS
         writed(IOCTL_ARG1, AFMT_U8 | AFMT_S16_LE | AFMT_S16_BE | AFMT_S8 | AFMT_U16_BE | AFMT_FLOAT);
@@ -363,12 +392,12 @@ U32 DevDsp::ioctl(U32 request) {
 
     case 0x500C: // SNDCTL_DSP_GETOSPACE
     {
-        int osLen = audioBuffer.getOccupied()-(int)this->dspFragSize;
+        S32 osLen = ((S32)audioBuffer.getOccupied()-(S32)this->data->dspFragSize);
         if (osLen<0)
             osLen = 0;
-		writed(IOCTL_ARG1, ((DSP_BUFFER_SIZE - audioBuffer.getOccupied()) / this->dspFragSize)); // fragments
-		writed(IOCTL_ARG1 + 4, DSP_BUFFER_SIZE / this->dspFragSize);
-		writed(IOCTL_ARG1 + 8, this->dspFragSize);
+		writed(IOCTL_ARG1, ((DSP_BUFFER_SIZE - (U32)audioBuffer.getOccupied()) / this->data->dspFragSize)); // fragments
+		writed(IOCTL_ARG1 + 4, DSP_BUFFER_SIZE / this->data->dspFragSize);
+		writed(IOCTL_ARG1 + 8, this->data->dspFragSize);
 		writed(IOCTL_ARG1 + 12, DSP_BUFFER_SIZE - osLen);
         return 0;
     }
@@ -378,10 +407,10 @@ U32 DevDsp::ioctl(U32 request) {
     case 0x5010: // SNDCTL_DSP_SETTRIGGER
         if (readd(IOCTL_ARG1) & PCM_ENABLE_OUTPUT) {
             SDL_PauseAudio(0);
-			this->pauseAtLen = 0xFFFFFFFF;
+			this->data->pauseAtLen = 0xFFFFFFFF;
         } else {            
-			this->pauseAtLen = audioBuffer.getOccupied();
-			if (this->pauseAtLen == 0) {
+			this->data->pauseAtLen = (U32)audioBuffer.getOccupied();
+			if (this->data->pauseAtLen == 0) {
                 SDL_PauseAudio(0);
             }
         }
@@ -389,20 +418,20 @@ U32 DevDsp::ioctl(U32 request) {
     case 0x5012: // SNDCTL_DSP_GETOPTR
         writed(IOCTL_ARG1, 0); // Total # of bytes processed
         writed(IOCTL_ARG1 + 4, 0); // # of fragment transitions since last time
-        if (pauseEnabled()) {
-			writed(IOCTL_ARG1 + 8, this->pauseAtLen); // Current DMA pointer value
-			if (this->pauseAtLen == 0) {
+        if (data->pauseEnabled()) {
+			writed(IOCTL_ARG1 + 8, this->data->pauseAtLen); // Current DMA pointer value
+			if (this->data->pauseAtLen == 0) {
                 SDL_PauseAudio(0);
             }
         } else {
-			writed(IOCTL_ARG1 + 8, audioBuffer.getOccupied()); // Current DMA pointer value
+			writed(IOCTL_ARG1 + 8, (U32)audioBuffer.getOccupied()); // Current DMA pointer value
         }
         return 0;
     case 0x5016: // SNDCTL_DSP_SETDUPLEX
         return -K_EINVAL;
     case 0x5017: // SNDCTL_DSP_GETODELAY 
         if (write) {
-			writed(IOCTL_ARG1, audioBuffer.getOccupied());
+			writed(IOCTL_ARG1, (U32)audioBuffer.getOccupied());
             return 0;
         }
     case 0x580C: // SNDCTL_ENGINEINFO
@@ -449,7 +478,7 @@ U32 DevDsp::ioctl(U32 request) {
 void DevDsp::waitForEvents(U32 events) {
     if (events & K_POLLOUT) {
         KThread* thread = KThread::currentThread();
-		this->dspWaitingToWriteThread.addToBack(thread->getWaitNofiyNode());
+		this->data->dspWaitingToWriteThread.addToBack(thread->getWaitNofiyNode());
     }
 }
 
