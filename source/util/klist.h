@@ -74,7 +74,21 @@ public:
         node->list = this;
         count++;
     } 
-
+    void addToFront(KListNode<T>* node) {
+        if (node->list) {
+            kpanic("Node already in list");
+        }
+        if (!this->first) {
+            first = node;
+            last = node;
+        } else {
+            node->next = first;
+            first->prev = node;
+            first = node;
+        }
+        node->list = this;
+        count++;
+    }
     void for_each(std::function<void(KListNode<T>*)> f) {
         KListNode<T>* node = first;
         while (node) {

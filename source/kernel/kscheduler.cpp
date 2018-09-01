@@ -62,7 +62,7 @@ void wakeThreads(U32 wakeType) {
 }
 
 void scheduleThread(KThread* thread) {
-    scheduledThreads.addToBack(&thread->scheduledThreadNode);
+    scheduledThreads.addToFront(&thread->scheduledThreadNode);
 }
 
 void unscheduleThread(KThread* thread) {	
@@ -124,10 +124,6 @@ void runTimers() {
     });
 }
 
-#ifdef INCLUDE_CYCLES
-U64 elapsedTimeMHz;
-U64 elapsedCyclesMHz;
-#endif
 extern U64 sysCallTime;
 U64 elapsedTimeMIPS;
 U64 elapsedInstructionsMIPS;

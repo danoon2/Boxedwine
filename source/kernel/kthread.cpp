@@ -258,14 +258,12 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime) {
                 this->waitStartTime = 0;
                 return 0;
             }
-            if (f->expireTimeInMillies<=getMilliesSinceStart()) {
+            if (f->expireTimeInMillies<getMilliesSinceStart()) {
                 freeFutex(f);
                 this->waitStartTime = 0;
                 return -K_ETIMEDOUT;
             }
             this->timer.millies = f->expireTimeInMillies;
-            if (f->expireTimeInMillies<0xF0000000)
-                this->timer.millies+=this->waitStartTime;
             addTimer(&this->timer);
             return -K_WAIT;
         }
@@ -282,8 +280,6 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime) {
         f = allocFutex(this, ramAddress, millies);
         this->waitStartTime = getMilliesSinceStart();			
         this->timer.millies = f->expireTimeInMillies;
-        if (f->expireTimeInMillies<0xF0000000)
-            this->timer.millies+=this->waitStartTime;
         addTimer(&this->timer);
         return -K_WAIT;
     } else if (op==FUTEX_WAKE_PRIVATE || op==FUTEX_WAKE) {

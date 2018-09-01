@@ -3,13 +3,11 @@
 
 #include "../common/cpu.h"
 
-class KThread;
-
 class NormalCPU : public CPU {
 public:
     NormalCPU();
-    void run();
 
+    virtual void run();
     virtual DecodedBlock* getNextBlock();
 };
 

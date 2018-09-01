@@ -72,7 +72,7 @@ public class Other extends Base {
         inst(fos, fos_init, "normal_cld", "Cld", "cpu->fillFlags();\r\n    cpu->removeFlag(DF);\r\n    cpu->df=1;\r\n    NEXT();");
         inst(fos, fos_init, "normal_std", "Std", "cpu->fillFlags();\r\n    cpu->addFlag(DF);\r\n    cpu->df=-1;\r\n    NEXT();");
 
-        inst(fos, fos_init, "normal_rdtsc", "Rdtsc", "U64 t = cpu->instructionCount+op->imm;\r\n    EAX = (U32)t;\r\n    EDX = (U32)(t >> 32);\r\n    NEXT();");
+        inst(fos, fos_init, "normal_rdtsc", "Rdtsc", "U64 t = cpu->blockInstructionCount+cpu->instructionCount+op->imm;\r\n    EAX = (U32)t;\r\n    EDX = (U32)(t >> 32);\r\n    NEXT();");
         inst(fos, fos_init, "normal_cpuid", "CPUID", "cpu->cpuid();\r\n    NEXT();");
 
         inst(fos, fos_init, "normal_enter16", "Enter16", "cpu->enter(0, op->imm, op->reg);\r\n    NEXT();");
