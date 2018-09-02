@@ -24,11 +24,11 @@ bool FsZip::init(const std::string& zipPath) {
 
         zipfile = unzOpen(zipPath.c_str());
         if (!zipfile) {
-            klog("Could not load zip file: %s", zipPath);
+            klog("Could not load zip file: %s", zipPath.c_str());
         }
 
         if (unzGetGlobalInfo( zipfile, &global_info ) != UNZ_OK) {
-            klog("Could not read file global info from zip file: %s", zipPath);
+            klog("Could not read file global info from zip file: %s", zipPath.c_str());
             unzClose( zipfile );
             return false;
         }
@@ -40,7 +40,7 @@ bool FsZip::init(const std::string& zipPath) {
 
             zipInfo[i].filename="/";
             if ( unzGetCurrentFileInfo(zipfile, &file_info, tmp, MAX_FILEPATH_LEN, NULL, 0, NULL, 0 ) != UNZ_OK ) {
-                klog("Could not read file info from zip file: %s", zipPath);
+                klog("Could not read file info from zip file: %s", zipPath.c_str());
                 unzClose( zipfile );
                 return false;
             }
