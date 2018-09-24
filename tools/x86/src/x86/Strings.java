@@ -9,6 +9,9 @@ public class Strings extends Base {
             FileOutputStream fos_c = new FileOutputStream("normal_strings.cpp");
             FileOutputStream fos_h = new FileOutputStream("normal_strings.h");
             FileOutputStream fos_op = new FileOutputStream("normal_strings_op.h");
+            FileOutputStream fos32 = new FileOutputStream("../dynamic/dynamic_strings.h");
+
+            out(fos32, "#include \"../normal/normal_strings.h\"");
 
             fos_c.write(header.getBytes());
             fos_h.write(header.getBytes());
@@ -19,25 +22,25 @@ public class Strings extends Base {
             out(fos_h, "#include \"../common/cpu.h\"");
             out(fos_c, "#include \"boxedwine.h\"");
 
-            movs(fos_c, fos_h, fos_op, fos_init, "movsb", "b", "SI", "DI", "CX", 0);
-            movs(fos_c, fos_h, fos_op, fos_init, "movsw", "w", "SI", "DI", "CX", 1);
-            movs(fos_c, fos_h, fos_op, fos_init, "movsd", "d", "SI", "DI", "CX", 2);
+            movs(fos_c, fos_h, fos_op, fos_init, fos32, "movsb", "b", "SI", "DI", "CX", 0);
+            movs(fos_c, fos_h, fos_op, fos_init, fos32, "movsw", "w", "SI", "DI", "CX", 1);
+            movs(fos_c, fos_h, fos_op, fos_init, fos32, "movsd", "d", "SI", "DI", "CX", 2);
 
-            cmps(fos_c, fos_h, fos_op, fos_init, "cmpsb", "b", "8", "SI", "DI", "CX", 0);
-            cmps(fos_c, fos_h, fos_op, fos_init, "cmpsw", "w", "16", "SI", "DI", "CX", 1);
-            cmps(fos_c, fos_h, fos_op, fos_init, "cmpsd", "d", "32", "SI", "DI", "CX", 2);
+            cmps(fos_c, fos_h, fos_op, fos_init, fos32, "cmpsb", "b", "8", "SI", "DI", "CX", 0);
+            cmps(fos_c, fos_h, fos_op, fos_init, fos32, "cmpsw", "w", "16", "SI", "DI", "CX", 1);
+            cmps(fos_c, fos_h, fos_op, fos_init, fos32, "cmpsd", "d", "32", "SI", "DI", "CX", 2);
 
-            stos(fos_c, fos_h, fos_op, fos_init, "stosb", "b", "DI", "CX", "AL", 0);
-            stos(fos_c, fos_h, fos_op, fos_init, "stosw", "w", "DI", "CX", "AX", 1);
-            stos(fos_c, fos_h, fos_op, fos_init, "stosd", "d", "DI", "CX", "EAX", 2);
+            stos(fos_c, fos_h, fos_op, fos_init, fos32, "stosb", "b", "DI", "CX", "AL", 0);
+            stos(fos_c, fos_h, fos_op, fos_init, fos32, "stosw", "w", "DI", "CX", "AX", 1);
+            stos(fos_c, fos_h, fos_op, fos_init, fos32, "stosd", "d", "DI", "CX", "EAX", 2);
 
-            lods(fos_c, fos_h, fos_op, fos_init, "lodsb", "b", "SI", "CX", "AL", 0);
-            lods(fos_c, fos_h, fos_op, fos_init, "lodsw", "w", "SI", "CX", "AX", 1);
-            lods(fos_c, fos_h, fos_op, fos_init, "lodsd", "d", "SI", "CX", "EAX", 2);
+            lods(fos_c, fos_h, fos_op, fos_init, fos32, "lodsb", "b", "SI", "CX", "AL", 0);
+            lods(fos_c, fos_h, fos_op, fos_init, fos32, "lodsw", "w", "SI", "CX", "AX", 1);
+            lods(fos_c, fos_h, fos_op, fos_init, fos32, "lodsd", "d", "SI", "CX", "EAX", 2);
 
-            scas(fos_c, fos_h, fos_op, fos_init, "scasb", "b", "8", "AL", "DI", "CX", 0);
-            scas(fos_c, fos_h, fos_op, fos_init, "scasw", "w", "16", "AX", "DI", "CX", 1);
-            scas(fos_c, fos_h, fos_op, fos_init, "scasd", "d", "32", "EAX", "DI", "CX", 2);
+            scas(fos_c, fos_h, fos_op, fos_init, fos32, "scasb", "b", "8", "AL", "DI", "CX", 0);
+            scas(fos_c, fos_h, fos_op, fos_init, fos32, "scasw", "w", "16", "AX", "DI", "CX", 1);
+            scas(fos_c, fos_h, fos_op, fos_init, fos32, "scasd", "d", "32", "EAX", "DI", "CX", 2);
 
             fos_c.close();
             out(fos_h, "#endif");
@@ -61,19 +64,20 @@ public class Strings extends Base {
         out(fos, "        write"+bits+"(dBase+"+DI+", read"+bits+"(sBase+"+SI+"));");
         out(fos, "        "+DI+"+=inc;");
         out(fos, "        "+SI+"+=inc;");
+        if (repeat)
+            out(fos, "        "+CX+"--;");
         if (repeat) {
             out(fos, "    }");
-            out(fos, "    " + CX + "=0;");
         }
         out(fos, "}");
     }
-    public void movs(FileOutputStream fos, FileOutputStream fos_h, FileOutputStream fos_op, FileOutputStream fos_init, String name, String bits, String SI, String DI, String CX, int inc) throws  IOException {
+    public void movs(FileOutputStream fos, FileOutputStream fos_h, FileOutputStream fos_op, FileOutputStream fos_init, FileOutputStream fos32, String name, String bits, String SI, String DI, String CX, int inc) throws  IOException {
         out(fos_h, "void "+name+"16(CPU* cpu, U32 base);");
         out(fos_h, "void "+name+"16r(CPU* cpu, U32 base);");
         out(fos_h, "void "+name+"32(CPU* cpu, U32 base);");
         out(fos_h, "void "+name+"32r(CPU* cpu, U32 base);");
 
-        out(fos_op, "void OPCALL "+name+"_op(CPU* cpu, DecodedOp* op) {");
+        out(fos_op, "void OPCALL normal_"+name+"_op(CPU* cpu, DecodedOp* op) {");
         out(fos_op, "    START_OP(cpu, op);");
         out(fos_op, "    if (op->ea16) {");
         out(fos_op, "        if (op->repZero || op->repNotZero) {");
@@ -98,6 +102,23 @@ public class Strings extends Base {
 
         String mixed = name.substring(0, 1).toUpperCase() + name.substring(1);
         out(fos_init, "INIT_CPU("+mixed+", "+name+"_op)");
+
+        out(fos32, "void OPCALL dynamic_"+name+"_op(CPU* cpu, DecodedOp* op) {");
+        out(fos32, "    if (op->ea16) {");
+        out(fos32, "        if (op->repZero || op->repNotZero) {");
+        out(fos32, "            callHostFunction("+name+"16r, false, false, false, 2, 0, DYN_PARAM_CPU, op->base, DYN_PARAM_CONST_32);");
+        out(fos32, "        } else { ");
+        out(fos32, "            callHostFunction("+name+"16, false, false, false, 2, 0, DYN_PARAM_CPU, op->base, DYN_PARAM_CONST_32);");
+        out(fos32, "        }");
+        out(fos32, "    } else { ");
+        out(fos32, "        if (op->repZero || op->repNotZero) {");
+        out(fos32, "            callHostFunction("+name+"32r, false, false, false, 2, 0, DYN_PARAM_CPU, op->base, DYN_PARAM_CONST_32);");
+        out(fos32, "        } else { ");
+        out(fos32, "            callHostFunction("+name+"32, false, false, false, 2, 0, DYN_PARAM_CPU, op->base, DYN_PARAM_CONST_32);");
+        out(fos32, "        }");
+        out(fos32, "    }");
+        out(fos32, "    INCREMENT_EIP(op->len);");
+        out(fos32, "}");
     }
 
     public void cmpsBody(FileOutputStream fos, String name, String width, String bits, String SI, String DI, String CX, int inc, boolean repeat) throws IOException {
@@ -132,13 +153,13 @@ public class Strings extends Base {
         out(fos, "}");
     }
 
-    public void cmps(FileOutputStream fos, FileOutputStream fos_h, FileOutputStream fos_op, FileOutputStream fos_init, String name, String width, String bits, String SI, String DI, String CX, int inc) throws  IOException {
+    public void cmps(FileOutputStream fos, FileOutputStream fos_h, FileOutputStream fos_op, FileOutputStream fos_init, FileOutputStream fos32, String name, String width, String bits, String SI, String DI, String CX, int inc) throws  IOException {
         out(fos_h, "void "+name+"16(CPU* cpu, U32 rep_zero, U32 base);");
         out(fos_h, "void "+name+"16r(CPU* cpu, U32 rep_zero, U32 base);");
         out(fos_h, "void "+name+"32(CPU* cpu, U32 rep_zero, U32 base);");
         out(fos_h, "void "+name+"32r(CPU* cpu, U32 rep_zero, U32 base);");
 
-        out(fos_op, "void OPCALL "+name+"_op(CPU* cpu, DecodedOp* op) {");
+        out(fos_op, "void OPCALL normal_"+name+"_op(CPU* cpu, DecodedOp* op) {");
         out(fos_op, "    START_OP(cpu, op);");
         out(fos_op, "    if (op->ea16) {");
         out(fos_op, "        if (op->repZero || op->repNotZero) {");
@@ -163,6 +184,23 @@ public class Strings extends Base {
 
         String mixed = name.substring(0, 1).toUpperCase() + name.substring(1);
         out(fos_init, "INIT_CPU("+mixed+", "+name+"_op)");
+
+        out(fos32, "void OPCALL dynamic_"+name+"_op(CPU* cpu, DecodedOp* op) {");
+        out(fos32, "    if (op->ea16) {");
+        out(fos32, "        if (op->repZero || op->repNotZero) {");
+        out(fos32, "            callHostFunction("+name+"16r, false, false, false, 3, 0, DYN_PARAM_CPU, op->repZero, DYN_PARAM_CONST_32, op->base, DYN_PARAM_CONST_32);");
+        out(fos32, "        } else { ");
+        out(fos32, "            callHostFunction("+name+"16, false, false, false, 3, 0, DYN_PARAM_CPU, op->repZero, DYN_PARAM_CONST_32, op->base, DYN_PARAM_CONST_32);");
+        out(fos32, "        }");
+        out(fos32, "    } else { ");
+        out(fos32, "        if (op->repZero || op->repNotZero) {");
+        out(fos32, "            callHostFunction("+name+"32r, false, false, false, 3, 0, DYN_PARAM_CPU, op->repZero, DYN_PARAM_CONST_32, op->base, DYN_PARAM_CONST_32);");
+        out(fos32, "        } else { ");
+        out(fos32, "            callHostFunction("+name+"32, false, false, false, 3, 0, DYN_PARAM_CPU, op->repZero, DYN_PARAM_CONST_32, op->base, DYN_PARAM_CONST_32);");
+        out(fos32, "        }");
+        out(fos32, "    }");
+        out(fos32, "    INCREMENT_EIP(op->len);");
+        out(fos32, "}");
     }
 
     public void scasBody(FileOutputStream fos, String name, String width, String bits, String AX, String DI, String CX, int inc, boolean repeat) throws IOException {
@@ -192,12 +230,12 @@ public class Strings extends Base {
         }
         out(fos, "}");
     }
-    public void scas(FileOutputStream fos, FileOutputStream fos_h, FileOutputStream fos_op, FileOutputStream fos_init, String name, String width, String bits, String AX, String DI, String CX, int inc) throws  IOException {
+    public void scas(FileOutputStream fos, FileOutputStream fos_h, FileOutputStream fos_op, FileOutputStream fos_init, FileOutputStream fos32, String name, String width, String bits, String AX, String DI, String CX, int inc) throws  IOException {
         out(fos_h, "void "+name+"16(CPU* cpu, U32 rep_zero);");
         out(fos_h, "void "+name+"16r(CPU* cpu, U32 rep_zero);");
         out(fos_h, "void "+name+"32(CPU* cpu, U32 rep_zero);");
         out(fos_h, "void "+name+"32r(CPU* cpu, U32 rep_zero);");
-        out(fos_op, "void OPCALL "+name+"_op(CPU* cpu, DecodedOp* op) {");
+        out(fos_op, "void OPCALL normal_"+name+"_op(CPU* cpu, DecodedOp* op) {");
         out(fos_op, "    START_OP(cpu, op);");
         out(fos_op, "    if (op->ea16) {");
         out(fos_op, "        if (op->repZero || op->repNotZero) {");
@@ -222,6 +260,23 @@ public class Strings extends Base {
 
         String mixed = name.substring(0, 1).toUpperCase() + name.substring(1);
         out(fos_init, "INIT_CPU("+mixed+", "+name+"_op)");
+
+        out(fos32, "void OPCALL dynamic_"+name+"_op(CPU* cpu, DecodedOp* op) {");
+        out(fos32, "    if (op->ea16) {");
+        out(fos32, "        if (op->repZero || op->repNotZero) {");
+        out(fos32, "            callHostFunction("+name+"16r, false, false, false, 2, 0, DYN_PARAM_CPU, op->repZero, DYN_PARAM_CONST_32);");
+        out(fos32, "        } else { ");
+        out(fos32, "            callHostFunction("+name+"16, false, false, false, 2, 0, DYN_PARAM_CPU, op->repZero, DYN_PARAM_CONST_32);");
+        out(fos32, "        }");
+        out(fos32, "    } else { ");
+        out(fos32, "        if (op->repZero || op->repNotZero) {");
+        out(fos32, "            callHostFunction("+name+"32r, false, false, false, 2, 0, DYN_PARAM_CPU, op->repZero, DYN_PARAM_CONST_32);");
+        out(fos32, "        } else { ");
+        out(fos32, "            callHostFunction("+name+"32, false, false, false, 2, 0, DYN_PARAM_CPU, op->repZero, DYN_PARAM_CONST_32);");
+        out(fos32, "        }");
+        out(fos32, "    }");
+        out(fos32, "    INCREMENT_EIP(op->len);");
+        out(fos32, "}");
     }
 
     public void lodsBody(FileOutputStream fos, String name, String bits, String SI, String CX, String AX, int inc, boolean repeat) throws IOException {
@@ -234,20 +289,20 @@ public class Strings extends Base {
             out(fos, "    for (i=0;i<count;i++) {");
             out(fos, "        "+AX+" = read"+bits+"(sBase+"+SI+");");
             out(fos, "        "+SI+"+=inc;");
+            out(fos, "        "+CX+"--;");
             out(fos, "    }");
-            out(fos, "    " + CX + "=0;");
         } else {
             out(fos, "    "+AX+" = read"+bits+"(cpu->seg[base].address+"+SI+");");
             out(fos, "    "+SI+"+=cpu->df"+(inc>0?" << "+String.valueOf(inc):"")+";");
         }
         out(fos, "}");
     }
-    public void lods(FileOutputStream fos, FileOutputStream fos_h, FileOutputStream fos_op, FileOutputStream fos_init, String name, String bits, String SI, String CX, String AX, int inc) throws  IOException {
+    public void lods(FileOutputStream fos, FileOutputStream fos_h, FileOutputStream fos_op, FileOutputStream fos_init, FileOutputStream fos32, String name, String bits, String SI, String CX, String AX, int inc) throws  IOException {
         out(fos_h, "void "+name+"16(CPU* cpu, U32 base);");
         out(fos_h, "void "+name+"16r(CPU* cpu, U32 base);");
         out(fos_h, "void "+name+"32(CPU* cpu, U32 base);");
         out(fos_h, "void "+name+"32r(CPU* cpu, U32 base);");
-        out(fos_op, "void OPCALL "+name+"_op(CPU* cpu, DecodedOp* op) {");
+        out(fos_op, "void OPCALL normal_"+name+"_op(CPU* cpu, DecodedOp* op) {");
         out(fos_op, "    START_OP(cpu, op);");
         out(fos_op, "    if (op->ea16) {");
         out(fos_op, "        if (op->repZero || op->repNotZero) {");
@@ -272,6 +327,23 @@ public class Strings extends Base {
 
         String mixed = name.substring(0, 1).toUpperCase() + name.substring(1);
         out(fos_init, "INIT_CPU("+mixed+", "+name+"_op)");
+
+        out(fos32, "void OPCALL dynamic_"+name+"_op(CPU* cpu, DecodedOp* op) {");
+        out(fos32, "    if (op->ea16) {");
+        out(fos32, "        if (op->repZero || op->repNotZero) {");
+        out(fos32, "            callHostFunction("+name+"16r, false, false, false, 2, 0, DYN_PARAM_CPU, op->base, DYN_PARAM_CONST_32);");
+        out(fos32, "        } else { ");
+        out(fos32, "            callHostFunction("+name+"16, false, false, false, 2, 0, DYN_PARAM_CPU, op->base, DYN_PARAM_CONST_32);");
+        out(fos32, "        }");
+        out(fos32, "    } else { ");
+        out(fos32, "        if (op->repZero || op->repNotZero) {");
+        out(fos32, "            callHostFunction("+name+"32r, false, false, false, 2, 0, DYN_PARAM_CPU, op->base, DYN_PARAM_CONST_32);");
+        out(fos32, "        } else { ");
+        out(fos32, "            callHostFunction("+name+"32, false, false, false, 2, 0, DYN_PARAM_CPU, op->base, DYN_PARAM_CONST_32);");
+        out(fos32, "        }");
+        out(fos32, "    }");
+        out(fos32, "    INCREMENT_EIP(op->len);");
+        out(fos32, "}");
     }
 
     public void stosBody(FileOutputStream fos, String name, String bits, String DI, String CX, String AX, int inc, boolean repeat) throws IOException {
@@ -284,20 +356,20 @@ public class Strings extends Base {
             out(fos, "    for (i=0;i<count;i++) {");
             out(fos, "        write"+bits+"(dBase+"+DI+", "+AX+");");
             out(fos, "        "+DI+"+=inc;");
+            out(fos, "        "+CX+"--;");
             out(fos, "    }");
-            out(fos, "    " + CX + "=0;");
         } else {
             out(fos, "    write"+bits+"(cpu->seg[ES].address+"+DI+", "+AX+");");
             out(fos, "    "+DI+"+=cpu->df"+(inc>0?" << "+String.valueOf(inc):"")+";");
         }
         out(fos, "}");
     }
-    public void stos(FileOutputStream fos, FileOutputStream fos_h, FileOutputStream fos_op, FileOutputStream fos_init, String name, String bits, String DI, String CX, String AX, int inc) throws  IOException {
+    public void stos(FileOutputStream fos, FileOutputStream fos_h, FileOutputStream fos_op, FileOutputStream fos_init, FileOutputStream fos32, String name, String bits, String DI, String CX, String AX, int inc) throws  IOException {
         out(fos_h, "void "+name+"16(CPU* cpu);");
         out(fos_h, "void "+name+"16r(CPU* cpu);");
         out(fos_h, "void "+name+"32(CPU* cpu);");
         out(fos_h, "void "+name+"32r(CPU* cpu);");
-        out(fos_op, "void OPCALL "+name+"_op(CPU* cpu, DecodedOp* op) {");
+        out(fos_op, "void OPCALL normal_"+name+"_op(CPU* cpu, DecodedOp* op) {");
         out(fos_op, "    START_OP(cpu, op);");
         out(fos_op, "    if (op->ea16) {");
         out(fos_op, "        if (op->repZero || op->repNotZero) {");
@@ -322,5 +394,22 @@ public class Strings extends Base {
 
         String mixed = name.substring(0, 1).toUpperCase() + name.substring(1);
         out(fos_init, "INIT_CPU("+mixed+", "+name+"_op)");
+
+        out(fos32, "void OPCALL dynamic_"+name+"_op(CPU* cpu, DecodedOp* op) {");
+        out(fos32, "    if (op->ea16) {");
+        out(fos32, "        if (op->repZero || op->repNotZero) {");
+        out(fos32, "            callHostFunction("+name+"16r, false, false, false, 1, 0, DYN_PARAM_CPU);");
+        out(fos32, "        } else { ");
+        out(fos32, "            callHostFunction("+name+"16, false, false, false, 1, 0, DYN_PARAM_CPU);");
+        out(fos32, "        }");
+        out(fos32, "    } else { ");
+        out(fos32, "        if (op->repZero || op->repNotZero) {");
+        out(fos32, "            callHostFunction("+name+"32r, false, false, false, 1, 0, DYN_PARAM_CPU);");
+        out(fos32, "        } else { ");
+        out(fos32, "            callHostFunction("+name+"32, false, false, false, 1, 0, DYN_PARAM_CPU);");
+        out(fos32, "        }");
+        out(fos32, "    }");
+        out(fos32, "    INCREMENT_EIP(op->len);");
+        out(fos32, "}");
     }
 }

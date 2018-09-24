@@ -10,101 +10,212 @@ public class Xchg extends Base {
     public void generate(FileOutputStream fos_init) {
         try {
             FileOutputStream fos = new FileOutputStream("normal_xchg.h");
+            FileOutputStream fos32 = new FileOutputStream("../dynamic/dynamic_xchg.h");
+
+            out(fos, "#include \"../common/common_xchg.h\"");
+            out(fos32, "#include \"../common/common_xchg.h\"");
+
+            FileOutputStream fosOps_h = new FileOutputStream("../common/common_xchg.h");
+            FileOutputStream fosOps_cpp = new FileOutputStream("../common/common_xchg.cpp");
+
+            out(fosOps_cpp, "#include \"boxedwine.h\"");
+
             fos.write(header.getBytes());
-            generateAll(fos, fos_init);
+            generateAll(fos, fos_init, fosOps_h, fosOps_cpp, fos32);
             fos.close();
         } catch (IOException e) {
 
         }
     }
 
-    public void xchg8(FileOutputStream fos, FileOutputStream fos_init, String functionName, String enumName, String load, String store, String storeEnd) throws IOException {
-        out(fos, "void OPCALL "+functionName+"(CPU* cpu, DecodedOp* op) {");
+    public void xchg8(FileOutputStream fos, FileOutputStream fos_init, FileOutputStream fos32, String functionName, String enumName, boolean reg) throws IOException {
+        out(fos, "void OPCALL normal_"+functionName+"(CPU* cpu, DecodedOp* op) {");
         out(fos, "    START_OP(cpu, op);");
-        out(fos, "    U8 tmp = "+load+";");
-        out(fos, "    "+store+"*cpu->reg8[op->reg]"+storeEnd+";");
+        if (reg) {
+            out(fos, "    U8 tmp = *cpu->reg8[op->rm];");
+            out(fos, "    *cpu->reg8[op->rm] = *cpu->reg8[op->reg];");
+        } else {
+            out(fos, "    U32 address = eaa(cpu, op);");
+            out(fos, "    U8 tmp = readb(address);");
+            out(fos, "    writeb(address, *cpu->reg8[op->reg]);");
+        }
         out(fos, "    *cpu->reg8[op->reg] = tmp;");
         out(fos, "    NEXT();");
         out(fos, "}");
 
         out(fos_init, "INIT_CPU("+enumName+", "+functionName+")");
+
+        out(fos32, "void OPCALL dynamic_"+functionName+"(CPU* cpu, DecodedOp* op) {");
+        if (reg) {
+            out(fos32, "    movToRegFromCpu(DYN_DEST, OFFSET_REG8(op->rm), DYN_8bit);");
+            out(fos32, "    movToCpuFromCpu(OFFSET_REG8(op->rm), OFFSET_REG8(op->reg), DYN_8bit, DYN_SRC);");
+            out(fos32, "    movToCpuFromReg(OFFSET_REG8(op->reg), DYN_DEST, DYN_8bit);");
+        } else {
+            out(fos32, "    calculateEaa(op, DYN_ADDRESS);");
+            out(fos32, "    movFromMem(DYN_8bit, DYN_ADDRESS);");
+            out(fos32, "    movToRegFromCpu(DYN_DEST, OFFSET_REG8(op->reg), DYN_8bit);");
+            out(fos32, "    movToMemFromReg(DYN_ADDRESS, DYN_DEST, DYN_8bit);");
+            out(fos32, "    movToCpuFromReg(OFFSET_REG8(op->reg), DYN_READ_RESULT, DYN_8bit);");
+        }
+        out(fos32, "    INCREMENT_EIP(op->len);");
+        out(fos32, "}");
     }
 
-    public void xchg16(FileOutputStream fos, FileOutputStream fos_init, String functionName, String enumName, String load, String store, String storeEnd) throws IOException {
-        out(fos, "void OPCALL "+functionName+"(CPU* cpu, DecodedOp* op) {");
+    public void xchg16(FileOutputStream fos, FileOutputStream fos_init, FileOutputStream fos32, String functionName, String enumName, boolean reg) throws IOException {
+        out(fos, "void OPCALL normal_"+functionName+"(CPU* cpu, DecodedOp* op) {");
         out(fos, "    START_OP(cpu, op);");
-        out(fos, "    U16 tmp = "+load+";");
-        out(fos, "    "+store+"cpu->reg[op->reg].u16"+storeEnd+";");
+        if (reg) {
+            out(fos, "    U16 tmp = cpu->reg[op->rm].u16;");
+            out(fos, "    cpu->reg[op->rm].u16 = cpu->reg[op->reg].u16;");
+        } else {
+            out(fos, "    U32 address = eaa(cpu, op);");
+            out(fos, "    U16 tmp = readw(address);");
+            out(fos, "    writew(address, cpu->reg[op->reg].u16);");
+        }
         out(fos, "    cpu->reg[op->reg].u16 = tmp;");
         out(fos, "    NEXT();");
         out(fos, "}");
 
         out(fos_init, "INIT_CPU("+enumName+", "+functionName+")");
+
+        out(fos32, "void OPCALL dynamic_"+functionName+"(CPU* cpu, DecodedOp* op) {");
+        if (reg) {
+            out(fos32, "    movToRegFromCpu(DYN_DEST, offsetof(CPU, reg[op->rm].u16), DYN_16bit);");
+            out(fos32, "    movToCpuFromCpu(offsetof(CPU, reg[op->rm].u16), offsetof(CPU, reg[op->reg].u16), DYN_16bit, DYN_SRC);");
+            out(fos32, "    movToCpuFromReg(offsetof(CPU, reg[op->reg].u16), DYN_DEST, DYN_16bit);");
+        } else {
+            out(fos32, "    calculateEaa(op, DYN_ADDRESS);");
+            out(fos32, "    movFromMem(DYN_16bit, DYN_ADDRESS);");
+            out(fos32, "    movToRegFromCpu(DYN_DEST, offsetof(CPU, reg[op->reg].u16), DYN_16bit);");
+            out(fos32, "    movToMemFromReg(DYN_ADDRESS, DYN_DEST, DYN_16bit);");
+            out(fos32, "    movToCpuFromReg(offsetof(CPU, reg[op->reg].u16), DYN_READ_RESULT, DYN_16bit);");
+        }
+        out(fos32, "    INCREMENT_EIP(op->len);");
+        out(fos32, "}");
     }
 
-    public void xchg32(FileOutputStream fos, FileOutputStream fos_init, String functionName, String enumName, String load, String store, String storeEnd) throws IOException {
-        out(fos, "void OPCALL "+functionName+"(CPU* cpu, DecodedOp* op) {");
+    public void xchg32(FileOutputStream fos, FileOutputStream fos_init, FileOutputStream fos32, String functionName, String enumName, boolean reg) throws IOException {
+        out(fos, "void OPCALL normal_"+functionName+"(CPU* cpu, DecodedOp* op) {");
         out(fos, "    START_OP(cpu, op);");
-        out(fos, "    U32 tmp = "+load+";");
-        out(fos, "    "+store+"cpu->reg[op->reg].u32"+storeEnd+";");
+        if (reg) {
+            out(fos, "    U32 tmp = cpu->reg[op->rm].u32;");
+            out(fos, "    cpu->reg[op->rm].u32 = cpu->reg[op->reg].u32;");
+        } else {
+            out(fos, "    U32 address = eaa(cpu, op);");
+            out(fos, "    U32 tmp = readd(address);");
+            out(fos, "    writed(address, cpu->reg[op->reg].u32);");
+        }
         out(fos, "    cpu->reg[op->reg].u32 = tmp;");
         out(fos, "    NEXT();");
         out(fos, "}");
 
         out(fos_init, "INIT_CPU("+enumName+", "+functionName+")");
+
+        out(fos32, "void OPCALL dynamic_"+functionName+"(CPU* cpu, DecodedOp* op) {");
+        if (reg) {
+            out(fos32, "    movToRegFromCpu(DYN_DEST, offsetof(CPU, reg[op->rm].u32), DYN_32bit);");
+            out(fos32, "    movToCpuFromCpu(offsetof(CPU, reg[op->rm].u32), offsetof(CPU, reg[op->reg].u32), DYN_32bit, DYN_SRC);");
+            out(fos32, "    movToCpuFromReg(offsetof(CPU, reg[op->reg].u32), DYN_DEST, DYN_32bit);");
+        } else {
+            out(fos32, "    calculateEaa(op, DYN_ADDRESS);");
+            out(fos32, "    movFromMem(DYN_32bit, DYN_ADDRESS);");
+            out(fos32, "    movToRegFromCpu(DYN_DEST, offsetof(CPU, reg[op->reg].u32), DYN_32bit);");
+            out(fos32, "    movToMemFromReg(DYN_ADDRESS, DYN_DEST, DYN_32bit);");
+            out(fos32, "    movToCpuFromReg(offsetof(CPU, reg[op->reg].u32), DYN_READ_RESULT, DYN_32bit);");
+        }
+        out(fos32, "    INCREMENT_EIP(op->len);");
+        out(fos32, "}");
     }
 
-    public void cmpxchg16(FileOutputStream fos, FileOutputStream fos_init, String functionName, String enumName, String local, String load, String store) throws IOException {
-        out(fos, "void OPCALL "+functionName+"(CPU* cpu, DecodedOp* op) {");
+    public void cmpxchg16(FileOutputStream fos, FileOutputStream fos_init, FileOutputStream fosOps_h, FileOutputStream fosOps_cpp, FileOutputStream fos32, String functionName, String enumName, boolean address) throws IOException {
+        out(fosOps_h, "void common_"+functionName+"(CPU* cpu, "+(address?"U32 address":"U32 dstReg")+", U32 srcReg);");
+        out(fosOps_cpp, "void common_"+functionName+"(CPU* cpu, "+(address?"U32 address":"U32 dstReg")+", U32 srcReg){");
+        out(fosOps_cpp, "    cpu->dst.u16 = AX;");
+        out(fosOps_cpp, "    cpu->src.u16 = "+(address?"readw(address)":"cpu->reg[dstReg].u16")+";");
+        out(fosOps_cpp, "    cpu->result.u16 = cpu->dst.u16 - cpu->src.u16;");
+        out(fosOps_cpp, "    cpu->lazyFlags = FLAGS_CMP16;");
+        out(fosOps_cpp, "    if (AX == cpu->src.u16) {");
+        if (address)
+            out(fosOps_cpp, "        writew(address, cpu->reg[srcReg].u16);");
+        else
+            out(fosOps_cpp, "        cpu->reg[dstReg].u16 = cpu->reg[srcReg].u16;");
+        out(fosOps_cpp, "    } else {");
+        out(fosOps_cpp, "        AX = cpu->src.u16;");
+        out(fosOps_cpp, "    }");
+        out(fosOps_cpp, "}");
+
+        out(fos, "void OPCALL normal_"+functionName+"(CPU* cpu, DecodedOp* op) {");
         out(fos, "    START_OP(cpu, op);");
-        if (local!=null)
-            out(fos, "    "+local);
-        out(fos, "    cpu->dst.u16 = AX;");
-        out(fos, "    cpu->src.u16 = "+load+";");
-        out(fos, "    cpu->result.u16 = cpu->dst.u16 - cpu->src.u16;");
-        out(fos, "    cpu->lazyFlags = FLAGS_CMP16;");
-        out(fos, "    if (AX == cpu->src.u16) {");
-        out(fos, "        "+store+";");
-        out(fos, "    } else {");
-        out(fos, "        AX = cpu->src.u16;");
-        out(fos, "    }");
+        if (address)
+            out(fos, "    common_"+functionName+"(cpu, eaa(cpu, op), op->reg);");
+        else
+            out(fos, "    common_"+functionName+"(cpu, op->reg, op->rm);");
         out(fos, "    NEXT();");
         out(fos, "}");
 
         out(fos_init, "INIT_CPU("+enumName+", "+functionName+")");
+
+        out(fos32, "void OPCALL dynamic_"+functionName+"(CPU* cpu, DecodedOp* op) {");
+        if (address) {
+            out(fos32, "    calculateEaa(op, DYN_ADDRESS);");
+            out(fos32, "    callHostFunction(common_" + functionName + ", false, false, false, 3, 0, DYN_PARAM_CPU, DYN_ADDRESS, DYN_PARAM_REG_32, op->reg, DYN_PARAM_CONST_32);");
+        } else {
+            out(fos32, "    callHostFunction(common_" + functionName + ", false, false, false, 3, 0, DYN_PARAM_CPU, op->reg, DYN_PARAM_CONST_32, op->rm, DYN_PARAM_CONST_32);");
+        }
+        out(fos32, "    INCREMENT_EIP(op->len);");
+        out(fos32, "}");
     }
 
-    public void cmpxchg32(FileOutputStream fos, FileOutputStream fos_init, String functionName, String enumName, String local, String load, String store) throws IOException {
-        out(fos, "void OPCALL "+functionName+"(CPU* cpu, DecodedOp* op) {");
+    public void cmpxchg32(FileOutputStream fos, FileOutputStream fos_init, FileOutputStream fosOps_h, FileOutputStream fosOps_cpp,  FileOutputStream fos32, String functionName, String enumName, boolean address) throws IOException {
+        out(fosOps_h, "void common_"+functionName+"(CPU* cpu, "+(address?"U32 address":"U32 dstReg")+", U32 srcReg);");
+        out(fosOps_cpp, "void common_"+functionName+"(CPU* cpu, "+(address?"U32 address":"U32 dstReg")+", U32 srcReg){");
+        out(fosOps_cpp, "    cpu->dst.u32 = EAX;");
+        out(fosOps_cpp, "    cpu->src.u32 = "+(address?"readd(address)":"cpu->reg[dstReg].u32")+";");
+        out(fosOps_cpp, "    cpu->result.u32 = cpu->dst.u32 - cpu->src.u32;");
+        out(fosOps_cpp, "    cpu->lazyFlags = FLAGS_CMP32;");
+        out(fosOps_cpp, "    if (EAX == cpu->src.u32) {");
+        if (address)
+            out(fosOps_cpp, "        writed(address, cpu->reg[srcReg].u32);");
+        else
+            out(fosOps_cpp, "        cpu->reg[dstReg].u32 = cpu->reg[srcReg].u32;");
+        out(fosOps_cpp, "    } else {");
+        out(fosOps_cpp, "        EAX = cpu->src.u32;");
+        out(fosOps_cpp, "    }");
+        out(fosOps_cpp, "}");
+
+        out(fos, "void OPCALL normal_"+functionName+"(CPU* cpu, DecodedOp* op) {");
         out(fos, "    START_OP(cpu, op);");
-        if (local!=null)
-            out(fos, "    "+local);
-        out(fos, "    cpu->dst.u32 = EAX;");
-        out(fos, "    cpu->src.u32 = "+load+";");
-        out(fos, "    cpu->result.u32 = cpu->dst.u32 - cpu->src.u32;");
-        out(fos, "    cpu->lazyFlags = FLAGS_CMP32;");
-        out(fos, "    if (EAX == cpu->src.u32) {");
-        out(fos, "        "+store+";");
-        out(fos, "    } else {");
-        out(fos, "        EAX = cpu->src.u32;");
-        out(fos, "    }");
+        if (address)
+            out(fos, "    common_"+functionName+"(cpu, eaa(cpu, op), op->reg);");
+        else
+            out(fos, "    common_"+functionName+"(cpu, op->reg, op->rm);");
         out(fos, "    NEXT();");
         out(fos, "}");
 
         out(fos_init, "INIT_CPU("+enumName+", "+functionName+")");
+
+        out(fos32, "void OPCALL dynamic_"+functionName+"(CPU* cpu, DecodedOp* op) {");
+        if (address) {
+            out(fos32, "    calculateEaa(op, DYN_ADDRESS);");
+            out(fos32, "    callHostFunction(common_" + functionName + ", false, false, false, 3, 0, DYN_PARAM_CPU, DYN_ADDRESS, DYN_PARAM_REG_32, op->reg, DYN_PARAM_CONST_32);");
+        } else {
+            out(fos32, "    callHostFunction(common_" + functionName + ", false, false, false, 3, 0, DYN_PARAM_CPU, op->reg, DYN_PARAM_CONST_32, op->rm, DYN_PARAM_CONST_32);");
+        }
+        out(fos32, "    INCREMENT_EIP(op->len);");
+        out(fos32, "}");
     }
 
-    public void generateAll(FileOutputStream fos, FileOutputStream fos_init) throws IOException {
-        xchg8(fos, fos_init, "xchgr8r8", "XchgR8R8","*cpu->reg8[op->rm]", "*cpu->reg8[op->rm] = ", "");
-        xchg8(fos, fos_init, "xchge8r8", "XchgE8R8", "readb(eaa(cpu, op))", "writeb(eaa(cpu, op), ", ")");
-        xchg16(fos, fos_init, "xchgr16r16", "XchgR16R16", "cpu->reg[op->rm].u16", "cpu->reg[op->rm].u16 = ", "");
-        xchg16(fos, fos_init, "xchge16r16", "XchgE16R16", "readw(eaa(cpu, op))", "writew(eaa(cpu, op), ", ")");
-        xchg32(fos, fos_init, "xchgr32r32", "XchgR32R32", "cpu->reg[op->rm].u32", "cpu->reg[op->rm].u32 = ", "");
-        xchg32(fos, fos_init, "xchge32r32", "XchgE32R32", "readd(eaa(cpu, op))", "writed(eaa(cpu, op), ", ")");
+    public void generateAll(FileOutputStream fos, FileOutputStream fos_init, FileOutputStream fosOps_h, FileOutputStream fosOps_cpp,  FileOutputStream fos32) throws IOException {
+        xchg8(fos, fos_init, fos32, "xchgr8r8", "XchgR8R8", true);
+        xchg8(fos, fos_init, fos32, "xchge8r8", "XchgE8R8", false);
+        xchg16(fos, fos_init, fos32, "xchgr16r16", "XchgR16R16", true);
+        xchg16(fos, fos_init, fos32, "xchge16r16", "XchgE16R16", false);
+        xchg32(fos, fos_init, fos32, "xchgr32r32", "XchgR32R32", true);
+        xchg32(fos, fos_init, fos32, "xchge32r32", "XchgE32R32", false);
 
-        cmpxchg16(fos, fos_init, "cmpxchgr16r16", "CmpXchgR16R16", null, "cpu->reg[op->reg].u16", "cpu->reg[op->reg].u16 = cpu->reg[op->rm].u16");
-        cmpxchg16(fos, fos_init, "cmpxchge16r16", "CmpXchgE16R16", "U32 address = eaa(cpu, op);", "readw(address)", "writew(address, cpu->reg[op->reg].u16)");
-        cmpxchg32(fos, fos_init, "cmpxchgr32r32", "CmpXchgR32R32", null, "cpu->reg[op->reg].u32", "cpu->reg[op->reg].u32 = cpu->reg[op->rm].u32");
-        cmpxchg32(fos, fos_init, "cmpxchge32r32", "CmpXchgE32R32", "U32 address = eaa(cpu, op);", "readd(address)", "writed(address, cpu->reg[op->reg].u32)");
+        cmpxchg16(fos, fos_init, fosOps_h, fosOps_cpp, fos32, "cmpxchgr16r16", "CmpXchgR16R16", false);
+        cmpxchg16(fos, fos_init, fosOps_h, fosOps_cpp, fos32, "cmpxchge16r16", "CmpXchgE16R16", true);
+        cmpxchg32(fos, fos_init, fosOps_h, fosOps_cpp, fos32, "cmpxchgr32r32", "CmpXchgR32R32", false);
+        cmpxchg32(fos, fos_init, fosOps_h, fosOps_cpp, fos32, "cmpxchge32r32", "CmpXchgE32R32", true);
     }
 }

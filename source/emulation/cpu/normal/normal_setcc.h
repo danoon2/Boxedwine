@@ -16,7 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-void OPCALL setO_reg(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_setO_reg(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (cpu->getOF()) {
         *cpu->reg8[op->reg] = 1;
@@ -25,7 +25,7 @@ void OPCALL setO_reg(CPU* cpu, DecodedOp* op) {
     }
     NEXT();
 }
-void OPCALL setO_mem(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_setO_mem(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (cpu->getOF()) {
         writeb(eaa(cpu, op), 1);
@@ -34,7 +34,7 @@ void OPCALL setO_mem(CPU* cpu, DecodedOp* op) {
     }
     NEXT();
 }
-void OPCALL setNO_reg(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_setNO_reg(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (!cpu->getOF()) {
         *cpu->reg8[op->reg] = 1;
@@ -43,7 +43,7 @@ void OPCALL setNO_reg(CPU* cpu, DecodedOp* op) {
     }
     NEXT();
 }
-void OPCALL setNO_mem(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_setNO_mem(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (!cpu->getOF()) {
         writeb(eaa(cpu, op), 1);
@@ -52,7 +52,7 @@ void OPCALL setNO_mem(CPU* cpu, DecodedOp* op) {
     }
     NEXT();
 }
-void OPCALL setB_reg(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_setB_reg(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (cpu->getCF()) {
         *cpu->reg8[op->reg] = 1;
@@ -61,7 +61,7 @@ void OPCALL setB_reg(CPU* cpu, DecodedOp* op) {
     }
     NEXT();
 }
-void OPCALL setB_mem(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_setB_mem(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (cpu->getCF()) {
         writeb(eaa(cpu, op), 1);
@@ -70,7 +70,7 @@ void OPCALL setB_mem(CPU* cpu, DecodedOp* op) {
     }
     NEXT();
 }
-void OPCALL setNB_reg(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_setNB_reg(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (!cpu->getCF()) {
         *cpu->reg8[op->reg] = 1;
@@ -79,7 +79,7 @@ void OPCALL setNB_reg(CPU* cpu, DecodedOp* op) {
     }
     NEXT();
 }
-void OPCALL setNB_mem(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_setNB_mem(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (!cpu->getCF()) {
         writeb(eaa(cpu, op), 1);
@@ -88,7 +88,7 @@ void OPCALL setNB_mem(CPU* cpu, DecodedOp* op) {
     }
     NEXT();
 }
-void OPCALL setZ_reg(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_setZ_reg(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (cpu->getZF()) {
         *cpu->reg8[op->reg] = 1;
@@ -97,7 +97,7 @@ void OPCALL setZ_reg(CPU* cpu, DecodedOp* op) {
     }
     NEXT();
 }
-void OPCALL setZ_mem(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_setZ_mem(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (cpu->getZF()) {
         writeb(eaa(cpu, op), 1);
@@ -106,7 +106,7 @@ void OPCALL setZ_mem(CPU* cpu, DecodedOp* op) {
     }
     NEXT();
 }
-void OPCALL setNZ_reg(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_setNZ_reg(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (!cpu->getZF()) {
         *cpu->reg8[op->reg] = 1;
@@ -115,7 +115,7 @@ void OPCALL setNZ_reg(CPU* cpu, DecodedOp* op) {
     }
     NEXT();
 }
-void OPCALL setNZ_mem(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_setNZ_mem(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (!cpu->getZF()) {
         writeb(eaa(cpu, op), 1);
@@ -124,7 +124,7 @@ void OPCALL setNZ_mem(CPU* cpu, DecodedOp* op) {
     }
     NEXT();
 }
-void OPCALL setBE_reg(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_setBE_reg(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (cpu->getZF() || cpu->getCF()) {
         *cpu->reg8[op->reg] = 1;
@@ -133,7 +133,7 @@ void OPCALL setBE_reg(CPU* cpu, DecodedOp* op) {
     }
     NEXT();
 }
-void OPCALL setBE_mem(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_setBE_mem(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (cpu->getZF() || cpu->getCF()) {
         writeb(eaa(cpu, op), 1);
@@ -142,7 +142,7 @@ void OPCALL setBE_mem(CPU* cpu, DecodedOp* op) {
     }
     NEXT();
 }
-void OPCALL setNBE_reg(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_setNBE_reg(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (!cpu->getZF() && !cpu->getCF()) {
         *cpu->reg8[op->reg] = 1;
@@ -151,7 +151,7 @@ void OPCALL setNBE_reg(CPU* cpu, DecodedOp* op) {
     }
     NEXT();
 }
-void OPCALL setNBE_mem(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_setNBE_mem(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (!cpu->getZF() && !cpu->getCF()) {
         writeb(eaa(cpu, op), 1);
@@ -160,7 +160,7 @@ void OPCALL setNBE_mem(CPU* cpu, DecodedOp* op) {
     }
     NEXT();
 }
-void OPCALL setS_reg(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_setS_reg(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (cpu->getSF()) {
         *cpu->reg8[op->reg] = 1;
@@ -169,7 +169,7 @@ void OPCALL setS_reg(CPU* cpu, DecodedOp* op) {
     }
     NEXT();
 }
-void OPCALL setS_mem(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_setS_mem(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (cpu->getSF()) {
         writeb(eaa(cpu, op), 1);
@@ -178,7 +178,7 @@ void OPCALL setS_mem(CPU* cpu, DecodedOp* op) {
     }
     NEXT();
 }
-void OPCALL setNS_reg(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_setNS_reg(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (!cpu->getSF()) {
         *cpu->reg8[op->reg] = 1;
@@ -187,7 +187,7 @@ void OPCALL setNS_reg(CPU* cpu, DecodedOp* op) {
     }
     NEXT();
 }
-void OPCALL setNS_mem(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_setNS_mem(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (!cpu->getSF()) {
         writeb(eaa(cpu, op), 1);
@@ -196,7 +196,7 @@ void OPCALL setNS_mem(CPU* cpu, DecodedOp* op) {
     }
     NEXT();
 }
-void OPCALL setP_reg(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_setP_reg(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (cpu->getPF()) {
         *cpu->reg8[op->reg] = 1;
@@ -205,7 +205,7 @@ void OPCALL setP_reg(CPU* cpu, DecodedOp* op) {
     }
     NEXT();
 }
-void OPCALL setP_mem(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_setP_mem(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (cpu->getPF()) {
         writeb(eaa(cpu, op), 1);
@@ -214,7 +214,7 @@ void OPCALL setP_mem(CPU* cpu, DecodedOp* op) {
     }
     NEXT();
 }
-void OPCALL setNP_reg(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_setNP_reg(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (!cpu->getPF()) {
         *cpu->reg8[op->reg] = 1;
@@ -223,7 +223,7 @@ void OPCALL setNP_reg(CPU* cpu, DecodedOp* op) {
     }
     NEXT();
 }
-void OPCALL setNP_mem(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_setNP_mem(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (!cpu->getPF()) {
         writeb(eaa(cpu, op), 1);
@@ -232,7 +232,7 @@ void OPCALL setNP_mem(CPU* cpu, DecodedOp* op) {
     }
     NEXT();
 }
-void OPCALL setL_reg(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_setL_reg(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (cpu->getSF()!=cpu->getOF()) {
         *cpu->reg8[op->reg] = 1;
@@ -241,7 +241,7 @@ void OPCALL setL_reg(CPU* cpu, DecodedOp* op) {
     }
     NEXT();
 }
-void OPCALL setL_mem(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_setL_mem(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (cpu->getSF()!=cpu->getOF()) {
         writeb(eaa(cpu, op), 1);
@@ -250,7 +250,7 @@ void OPCALL setL_mem(CPU* cpu, DecodedOp* op) {
     }
     NEXT();
 }
-void OPCALL setNL_reg(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_setNL_reg(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (cpu->getSF()==cpu->getOF()) {
         *cpu->reg8[op->reg] = 1;
@@ -259,7 +259,7 @@ void OPCALL setNL_reg(CPU* cpu, DecodedOp* op) {
     }
     NEXT();
 }
-void OPCALL setNL_mem(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_setNL_mem(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (cpu->getSF()==cpu->getOF()) {
         writeb(eaa(cpu, op), 1);
@@ -268,7 +268,7 @@ void OPCALL setNL_mem(CPU* cpu, DecodedOp* op) {
     }
     NEXT();
 }
-void OPCALL setLE_reg(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_setLE_reg(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (cpu->getZF() || cpu->getSF()!=cpu->getOF()) {
         *cpu->reg8[op->reg] = 1;
@@ -277,7 +277,7 @@ void OPCALL setLE_reg(CPU* cpu, DecodedOp* op) {
     }
     NEXT();
 }
-void OPCALL setLE_mem(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_setLE_mem(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (cpu->getZF() || cpu->getSF()!=cpu->getOF()) {
         writeb(eaa(cpu, op), 1);
@@ -286,7 +286,7 @@ void OPCALL setLE_mem(CPU* cpu, DecodedOp* op) {
     }
     NEXT();
 }
-void OPCALL setNLE_reg(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_setNLE_reg(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (!cpu->getZF() && cpu->getSF()==cpu->getOF()) {
         *cpu->reg8[op->reg] = 1;
@@ -295,7 +295,7 @@ void OPCALL setNLE_reg(CPU* cpu, DecodedOp* op) {
     }
     NEXT();
 }
-void OPCALL setNLE_mem(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_setNLE_mem(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (!cpu->getZF() && cpu->getSF()==cpu->getOF()) {
         writeb(eaa(cpu, op), 1);

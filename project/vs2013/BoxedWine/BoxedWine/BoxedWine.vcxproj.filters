@@ -253,6 +253,33 @@
     <ClCompile Include="..\..\..\..\source\emulation\hardmmu\hard_memory.cpp">
       <Filter>source\emulation\hardmmu</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\x32\x32CPU.cpp">
+      <Filter>source\emulation\cpu\x32</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\common\common_arith.cpp">
+      <Filter>source\emulation\cpu\common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\common\common_pushpop.cpp">
+      <Filter>source\emulation\cpu\common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\common\common_xchg.cpp">
+      <Filter>source\emulation\cpu\common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\common\common_bit.cpp">
+      <Filter>source\emulation\cpu\common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\common\common_other.cpp">
+      <Filter>source\emulation\cpu\common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\common\common_mmx.cpp">
+      <Filter>source\emulation\cpu\common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\common\common_fpu.cpp">
+      <Filter>source\emulation\cpu\common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\platform\windows\dynamic.cpp">
+      <Filter>platform\windows</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -390,9 +417,6 @@
     <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_conditions.h">
       <Filter>source\emulation\cpu\normal</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_cpu_init.h">
-      <Filter>source\emulation\cpu\normal</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_incdec.h">
       <Filter>source\emulation\cpu\normal</Filter>
     </ClInclude>
@@ -421,9 +445,6 @@
       <Filter>source\emulation\cpu\normal</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_mmx.h">
-      <Filter>source\emulation\cpu\normal</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_cpu_init_mmx.h">
       <Filter>source\emulation\cpu\normal</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\emulation\cpu\common\fpu.h">
@@ -561,6 +582,87 @@
     <ClInclude Include="..\..\..\..\source\emulation\hardmmu\hard_memory.h">
       <Filter>source\emulation\hardmmu</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\x32\x32CPU.h">
+      <Filter>source\emulation\cpu\x32</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\common\cpu_init.h">
+      <Filter>source\emulation\cpu\common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\common\cpu_init_fpu.h">
+      <Filter>source\emulation\cpu\common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\common\cpu_init_mmx.h">
+      <Filter>source\emulation\cpu\common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\common\common_arith.h">
+      <Filter>source\emulation\cpu\common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\common\common_pushpop.h">
+      <Filter>source\emulation\cpu\common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\common\common_xchg.h">
+      <Filter>source\emulation\cpu\common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\common\common_bit.h">
+      <Filter>source\emulation\cpu\common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\common\common_other.h">
+      <Filter>source\emulation\cpu\common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\common\common_mmx.h">
+      <Filter>source\emulation\cpu\common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\common\common_mmx_def.h">
+      <Filter>source\emulation\cpu\common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\common\common_fpu.h">
+      <Filter>source\emulation\cpu\common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\common\common_fpu_def.h">
+      <Filter>source\emulation\cpu\common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_arith.h">
+      <Filter>source\emulation\cpu\dynamic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_bit.h">
+      <Filter>source\emulation\cpu\dynamic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_conditions.h">
+      <Filter>source\emulation\cpu\dynamic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_fpu.h">
+      <Filter>source\emulation\cpu\dynamic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_incdec.h">
+      <Filter>source\emulation\cpu\dynamic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_jump.h">
+      <Filter>source\emulation\cpu\dynamic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_mmx.h">
+      <Filter>source\emulation\cpu\dynamic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_mov.h">
+      <Filter>source\emulation\cpu\dynamic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_other.h">
+      <Filter>source\emulation\cpu\dynamic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_pushpop.h">
+      <Filter>source\emulation\cpu\dynamic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_setcc.h">
+      <Filter>source\emulation\cpu\dynamic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_shift.h">
+      <Filter>source\emulation\cpu\dynamic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_strings.h">
+      <Filter>source\emulation\cpu\dynamic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_xchg.h">
+      <Filter>source\emulation\cpu\dynamic</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
@@ -625,6 +727,12 @@
     </Filter>
     <Filter Include="source\emulation\hardmmu">
       <UniqueIdentifier>{4f68ad4a-87b4-418f-a461-919898090deb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\emulation\cpu\x32">
+      <UniqueIdentifier>{e80bd918-375f-4341-916a-4301b88a0c8f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\emulation\cpu\dynamic">
+      <UniqueIdentifier>{e1841181-9a19-4729-b1a7-f486eca82f6f}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

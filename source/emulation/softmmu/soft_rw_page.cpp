@@ -63,7 +63,6 @@ void RWPage::writed(U32 address, U32 value) {
         this->page[address++ - this->address] = (U8)(value >> 16);
         this->page[address - this->address] = (U8)(value >> 24);
 #else
-    U32 prev = *(U32*)(&this->page[address - this->address]);
         *(U32*)(&this->page[address - this->address]) = value;
 #endif
 }

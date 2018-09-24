@@ -26,7 +26,7 @@ CPU::CPU() {
 
     this->reset();
 
-    this->logFile = NULL;//fopen("log1.txt", "w");
+    this->logFile = NULL;//fopen("good.txt", "w");
 }
 
 void CPU::reset() {
@@ -408,6 +408,9 @@ U32 CPU::lsl(U32 selector, U32 limit) {
 
 U32 CPU::setSegment(U32 seg, U32 value) {
     value &= 0xffff;
+    if (seg>=6) {
+        kpanic("CPU::setSegment invalid segment: %d", seg);
+    }
     if (this->flags & VM) {
         this->seg[seg].address = value << 4;
         this->seg[seg].value = value;
@@ -903,7 +906,7 @@ void CPU::setFlags(U32 flags, U32 mask) {
 
 void CPU::addFlag(U32 flags) {
 #ifdef _DEBUG
-    if (this->lazyFlags!=FLAGS_NONE) {
+    if (this->lazyFlags!=FLAGS_NONE && (flags & (CF|AF|OF|SF|ZF|PF))) {
         kpanic("CPU::fillFlags must be called before CPU::addFlag");
     }
 #endif
@@ -912,7 +915,7 @@ void CPU::addFlag(U32 flags) {
 
 void CPU::removeFlag(U32 flags) {
 #ifdef _DEBUG
-    if (this->lazyFlags!=FLAGS_NONE) {
+    if (this->lazyFlags!=FLAGS_NONE && (flags & (CF|AF|OF|SF|ZF|PF))) {
         kpanic("CPU::fillFlags must be called before CPU::removeFlag");
     }
 #endif
@@ -1066,4 +1069,138 @@ void CPU::clone(CPU* from) {
     //KThread* thread;
     //Memory* memory;
     //void* logFile;
+}
+
+U32 common_getCF(CPU* cpu) {
+    return cpu->getCF();
+}
+
+U32 common_condition_o(CPU* cpu) {
+    return cpu->getOF();
+}
+
+U32 common_condition_no(CPU* cpu) {
+    return !cpu->getOF();
+}
+
+U32 common_condition_b(CPU* cpu) {
+    return cpu->getCF();
+}
+
+U32 common_condition_nb(CPU* cpu) {
+    return !cpu->getCF();
+}
+
+U32 common_condition_z(CPU* cpu) {
+    return cpu->getZF();
+}
+
+U32 common_condition_nz(CPU* cpu) {
+    return !cpu->getZF();
+}
+
+U32 common_condition_be(CPU* cpu) {
+    return cpu->getZF() || cpu->getCF();
+}
+
+U32 common_condition_nbe(CPU* cpu) {
+    return !cpu->getZF() && !cpu->getCF();
+}
+
+U32 common_condition_s(CPU* cpu) {
+    return cpu->getSF();
+}
+
+U32 common_condition_ns(CPU* cpu) {
+    return !cpu->getSF();
+}
+
+U32 common_condition_p(CPU* cpu) {
+    return cpu->getPF();
+}
+
+U32 common_condition_np(CPU* cpu) {
+    return !cpu->getPF();
+}
+
+U32 common_condition_l(CPU* cpu) {
+    return cpu->getSF()!=cpu->getOF();
+}
+
+U32 common_condition_nl(CPU* cpu) {
+    return cpu->getSF()==cpu->getOF();
+}
+
+U32 common_condition_le(CPU* cpu) {
+    return cpu->getZF() || cpu->getSF()!=cpu->getOF();
+}
+
+U32 common_condition_nle(CPU* cpu) {
+    return !cpu->getZF() && cpu->getSF()==cpu->getOF();
+}
+
+U32 common_pop32(CPU* cpu) {
+    return cpu->pop32();
+}
+
+U16 common_pop16(CPU* cpu) {
+    return cpu->pop16();
+}
+
+void common_push16(CPU* cpu, U16 value) {
+    cpu->push16(value);
+}
+
+void common_push32(CPU* cpu, U32 value) {
+    cpu->push32(value);
+}
+
+U32 common_peek32(CPU* cpu, U32 index) {
+    return cpu->peek32(index);
+}
+
+U16 common_peek16(CPU* cpu, U32 index) {
+    return cpu->peek16(index);
+}
+
+U32 common_setSegment(CPU* cpu, U32 seg, U32 value) {
+    return cpu->setSegment(seg, value);
+}
+
+void common_setFlags(CPU* cpu, U32 flags, U32 mask) {
+    cpu->setFlags(flags, mask);
+}
+
+void common_fillFlags(CPU* cpu) {
+    cpu->fillFlags();
+}
+
+void common_call(CPU* cpu, U32 big, U32 selector, U32 offset, U32 oldEip) {
+    cpu->call(big, selector, offset, oldEip);
+}
+
+void common_jmp(CPU* cpu, U32 big, U32 selector, U32 offset, U32 oldEip) {
+    cpu->jmp(big, selector, offset, oldEip);
+}
+
+void common_ret(CPU* cpu, U32 big, U32 bytes) {
+    cpu->ret(big, bytes);
+}
+
+void common_iret(CPU* cpu, U32 big, U32 oldEip) {
+    cpu->iret(big, oldEip);
+}
+
+void common_enter(CPU* cpu, U32 big, U32 bytes, U32 level) {
+    cpu->enter(big, bytes, level);
+}
+
+void common_rdtsc(CPU* cpu, U32 extra) {
+    U64 t = cpu->instructionCount+extra;
+    EAX = (U32)t;
+    EDX = (U32)(t >> 32);
+}
+
+void common_log(CPU* cpu, DecodedOp* op) {
+    op->log(cpu);
 }

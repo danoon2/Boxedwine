@@ -16,7 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-void OPCALL inc8_reg(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_inc8_reg(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     cpu->oldCF=cpu->getCF();
     cpu->dst.u8=*cpu->reg8[op->reg];
@@ -25,7 +25,7 @@ void OPCALL inc8_reg(CPU* cpu, DecodedOp* op) {
     *cpu->reg8[op->reg] = cpu->result.u8;
     NEXT();
 }
-void OPCALL inc8_mem32(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_inc8_mem32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     U32 eaa = eaa(cpu, op);
     cpu->oldCF=cpu->getCF();
@@ -35,7 +35,7 @@ void OPCALL inc8_mem32(CPU* cpu, DecodedOp* op) {
     writeb(eaa, cpu->result.u8);
     NEXT();
 }
-void OPCALL inc16_reg(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_inc16_reg(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     cpu->oldCF=cpu->getCF();
     cpu->dst.u16=cpu->reg[op->reg].u16;
@@ -44,7 +44,7 @@ void OPCALL inc16_reg(CPU* cpu, DecodedOp* op) {
     cpu->reg[op->reg].u16 = cpu->result.u16;
     NEXT();
 }
-void OPCALL inc16_mem32(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_inc16_mem32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     U32 eaa = eaa(cpu, op);
     cpu->oldCF=cpu->getCF();
@@ -54,7 +54,7 @@ void OPCALL inc16_mem32(CPU* cpu, DecodedOp* op) {
     writew(eaa, cpu->result.u16);
     NEXT();
 }
-void OPCALL inc32_reg(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_inc32_reg(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     cpu->oldCF=cpu->getCF();
     cpu->dst.u32=cpu->reg[op->reg].u32;
@@ -63,7 +63,7 @@ void OPCALL inc32_reg(CPU* cpu, DecodedOp* op) {
     cpu->reg[op->reg].u32 = cpu->result.u32;
     NEXT();
 }
-void OPCALL inc32_mem32(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_inc32_mem32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     U32 eaa = eaa(cpu, op);
     cpu->oldCF=cpu->getCF();
@@ -73,7 +73,7 @@ void OPCALL inc32_mem32(CPU* cpu, DecodedOp* op) {
     writed(eaa, cpu->result.u32);
     NEXT();
 }
-void OPCALL dec8_reg(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_dec8_reg(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     cpu->oldCF=cpu->getCF();
     cpu->dst.u8=*cpu->reg8[op->reg];
@@ -82,7 +82,7 @@ void OPCALL dec8_reg(CPU* cpu, DecodedOp* op) {
     *cpu->reg8[op->reg] = cpu->result.u8;
     NEXT();
 }
-void OPCALL dec8_mem32(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_dec8_mem32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     U32 eaa = eaa(cpu, op);
     cpu->oldCF=cpu->getCF();
@@ -92,7 +92,7 @@ void OPCALL dec8_mem32(CPU* cpu, DecodedOp* op) {
     writeb(eaa, cpu->result.u8);
     NEXT();
 }
-void OPCALL dec16_reg(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_dec16_reg(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     cpu->oldCF=cpu->getCF();
     cpu->dst.u16=cpu->reg[op->reg].u16;
@@ -101,7 +101,7 @@ void OPCALL dec16_reg(CPU* cpu, DecodedOp* op) {
     cpu->reg[op->reg].u16 = cpu->result.u16;
     NEXT();
 }
-void OPCALL dec16_mem32(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_dec16_mem32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     U32 eaa = eaa(cpu, op);
     cpu->oldCF=cpu->getCF();
@@ -111,7 +111,7 @@ void OPCALL dec16_mem32(CPU* cpu, DecodedOp* op) {
     writew(eaa, cpu->result.u16);
     NEXT();
 }
-void OPCALL dec32_reg(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_dec32_reg(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     cpu->oldCF=cpu->getCF();
     cpu->dst.u32=cpu->reg[op->reg].u32;
@@ -120,7 +120,7 @@ void OPCALL dec32_reg(CPU* cpu, DecodedOp* op) {
     cpu->reg[op->reg].u32 = cpu->result.u32;
     NEXT();
 }
-void OPCALL dec32_mem32(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_dec32_mem32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     U32 eaa = eaa(cpu, op);
     cpu->oldCF=cpu->getCF();

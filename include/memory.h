@@ -104,6 +104,11 @@ public:
     Page* mmu[K_NUMBER_OF_PAGES];    
 #endif
 
+#ifdef BOXEDWINE_DYNAMIC
+    std::vector<void*> dynamicExecutableMemory;
+    U32 dynamicExecutableMemoryPos;
+#endif
+
 #ifdef BOXEDWINE_64BIT_MMU
     U8 flags[K_NUMBER_OF_PAGES];
     U8 nativeFlags[K_NUMBER_OF_PAGES];

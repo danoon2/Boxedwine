@@ -9,6 +9,8 @@ public:
 
     virtual void run();
     virtual DecodedBlock* getNextBlock();
+
+    OpCallback firstOp;
 };
 
 #endif

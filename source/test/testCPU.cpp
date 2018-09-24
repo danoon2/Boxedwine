@@ -131,7 +131,9 @@ void runTestCPU() {
     pushCode8(0);
     cpu->nextBlock = NULL;
     cpu->run();
+#ifdef BOXEDWINE_64BIT_MMU
     KThread::currentThread()->memory->clearCodePageFromCache(CODE_ADDRESS>>K_PAGE_SHIFT);
+#endif
 }
 
 struct Data {
@@ -534,7 +536,7 @@ void EbGb(int instruction, struct Data* data) {
                 cpu->reg[G8(rm)].u32 = DEFAULT;
                 *e=data->var1;
                 *g=data->var2;
-                runTestCPU();
+                runTestCPU();                
                 assertResult(data, cpu, instruction, *e, *g, E8(rm), G8(rm), 0, 8);
             }
         }
@@ -6315,7 +6317,7 @@ void test16BitMemoryAccess() {
 
 int main(int argc, char **argv) {	
     printf("Please wait, these first 2 tests can take a while\n");
-    run(test32BitMemoryAccess, "32-bit Memory Access");
+    //run(test32BitMemoryAccess, "32-bit Memory Access");
     run(test16BitMemoryAccess, "16-bit Memory Access");
 
     run(testAdd0x000, "Add 000");

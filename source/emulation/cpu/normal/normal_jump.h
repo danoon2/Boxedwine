@@ -16,67 +16,67 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-void OPCALL jumpO(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_jumpO(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (cpu->getOF()) {cpu->eip.u32+=op->imm; NEXT_BRANCH1();} else {NEXT_BRANCH2();}
 }
-void OPCALL jumpNO(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_jumpNO(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (!cpu->getOF()) {cpu->eip.u32+=op->imm; NEXT_BRANCH1();} else {NEXT_BRANCH2();}
 }
-void OPCALL jumpB(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_jumpB(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (cpu->getCF()) {cpu->eip.u32+=op->imm; NEXT_BRANCH1();} else {NEXT_BRANCH2();}
 }
-void OPCALL jumpNB(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_jumpNB(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (!cpu->getCF()) {cpu->eip.u32+=op->imm; NEXT_BRANCH1();} else {NEXT_BRANCH2();}
 }
-void OPCALL jumpZ(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_jumpZ(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (cpu->getZF()) {cpu->eip.u32+=op->imm; NEXT_BRANCH1();} else {NEXT_BRANCH2();}
 }
-void OPCALL jumpNZ(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_jumpNZ(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (!cpu->getZF()) {cpu->eip.u32+=op->imm; NEXT_BRANCH1();} else {NEXT_BRANCH2();}
 }
-void OPCALL jumpBE(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_jumpBE(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (cpu->getZF() || cpu->getCF()) {cpu->eip.u32+=op->imm; NEXT_BRANCH1();} else {NEXT_BRANCH2();}
 }
-void OPCALL jumpNBE(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_jumpNBE(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (!cpu->getZF() && !cpu->getCF()) {cpu->eip.u32+=op->imm; NEXT_BRANCH1();} else {NEXT_BRANCH2();}
 }
-void OPCALL jumpS(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_jumpS(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (cpu->getSF()) {cpu->eip.u32+=op->imm; NEXT_BRANCH1();} else {NEXT_BRANCH2();}
 }
-void OPCALL jumpNS(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_jumpNS(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (!cpu->getSF()) {cpu->eip.u32+=op->imm; NEXT_BRANCH1();} else {NEXT_BRANCH2();}
 }
-void OPCALL jumpP(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_jumpP(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (cpu->getPF()) {cpu->eip.u32+=op->imm; NEXT_BRANCH1();} else {NEXT_BRANCH2();}
 }
-void OPCALL jumpNP(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_jumpNP(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (!cpu->getPF()) {cpu->eip.u32+=op->imm; NEXT_BRANCH1();} else {NEXT_BRANCH2();}
 }
-void OPCALL jumpL(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_jumpL(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (cpu->getSF()!=cpu->getOF()) {cpu->eip.u32+=op->imm; NEXT_BRANCH1();} else {NEXT_BRANCH2();}
 }
-void OPCALL jumpNL(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_jumpNL(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (cpu->getSF()==cpu->getOF()) {cpu->eip.u32+=op->imm; NEXT_BRANCH1();} else {NEXT_BRANCH2();}
 }
-void OPCALL jumpLE(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_jumpLE(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (cpu->getZF() || cpu->getSF()!=cpu->getOF()) {cpu->eip.u32+=op->imm; NEXT_BRANCH1();} else {NEXT_BRANCH2();}
 }
-void OPCALL jumpNLE(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_jumpNLE(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (!cpu->getZF() && cpu->getSF()==cpu->getOF()) {cpu->eip.u32+=op->imm; NEXT_BRANCH1();} else {NEXT_BRANCH2();}
 }

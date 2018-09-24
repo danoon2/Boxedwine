@@ -34,6 +34,9 @@ Memory::Memory() : allocated(0), callbackPos(0) {
 
     allocNativeMemory(this, CALL_BACK_ADDRESS >> K_PAGE_SHIFT, 1, PAGE_READ | PAGE_EXEC | PAGE_WRITE);
     this->addCallback(onExitSignal);
+#ifdef BOXEDWINE_DYNAMIC
+    this->dynamicExecutableMemoryPos = 0;
+#endif
 }
 
 Memory::~Memory() {

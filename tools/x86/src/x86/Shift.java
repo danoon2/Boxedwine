@@ -10,6 +10,9 @@ public class Shift extends Base {
             FileOutputStream fos_c = new FileOutputStream("normal_shift.cpp");
             FileOutputStream fos_h = new FileOutputStream("normal_shift.h");
             FileOutputStream fos_op = new FileOutputStream("normal_shift_op.h");
+            FileOutputStream fos32 = new FileOutputStream("../dynamic/dynamic_shift.h");
+
+            out(fos32, "#include \"../normal/normal_shift.h\"");
 
             fos_c.write(header.getBytes());
             fos_h.write(header.getBytes());
@@ -20,72 +23,72 @@ public class Shift extends Base {
             out(fos_h, "#include \"../common/cpu.h\"");
             out(fos_op, "#include \"normal_shift.h\"");
             
-            shiftInst8(fos_c, fos_h, fos_op, fos_init, "rol8", "op->imm", "1", "3", rol8, 0, 0, false);
-            shiftInst8(fos_c, fos_h, fos_op, fos_init, "rol8cl", "CL & 0x1f", "4", "4", rol8, 7, 0, true);
-            shiftInst16(fos_c, fos_h, fos_op, fos_init, "rol16", "op->imm", "1", "3", rol16, 0, 0, false);
-            shiftInst16(fos_c, fos_h, fos_op, fos_init, "rol16cl", "CL & 0x1f", "4", "4", rol16, 0xf, 0, true);
-            shiftInst32(fos_c, fos_h, fos_op, fos_init, "rol32", "op->imm", "1", "3", rol32, 0, 0, false);
-            shiftInst32(fos_c, fos_h, fos_op, fos_init, "rol32cl", "CL & 0x1f", "4", "4", rol32, 0, 0, true);
+            shiftInst8(fos_c, fos_h, fos_op, fos_init, fos32, "rol8", false, "1", "3", rol8, 0, 0, false);
+            shiftInst8(fos_c, fos_h, fos_op, fos_init, fos32, "rol8cl", true, "4", "4", rol8, 7, 0, true);
+            shiftInst16(fos_c, fos_h, fos_op, fos_init, fos32, "rol16", false, "1", "3", rol16, 0, 0, false);
+            shiftInst16(fos_c, fos_h, fos_op, fos_init, fos32, "rol16cl", true, "4", "4", rol16, 0xf, 0, true);
+            shiftInst32(fos_c, fos_h, fos_op, fos_init, fos32, "rol32", false, "1", "3", rol32, 0, 0, false);
+            shiftInst32(fos_c, fos_h, fos_op, fos_init, fos32, "rol32cl", true, "4", "4", rol32, 0, 0, true);
 
-            shiftInst8(fos_c, fos_h, fos_op, fos_init, "ror8", "op->imm", "1", "3", ror8, 0, 0, false);
-            shiftInst8(fos_c, fos_h, fos_op, fos_init, "ror8cl", "CL & 0x1f", "4", "4", ror8, 7, 0, true);
-            shiftInst16(fos_c, fos_h, fos_op, fos_init, "ror16", "op->imm", "1", "3", ror16, 0, 0, false);
-            shiftInst16(fos_c, fos_h, fos_op, fos_init, "ror16cl", "CL & 0x1f", "4", "4", ror16, 0xf, 0, true);
-            shiftInst32(fos_c, fos_h, fos_op, fos_init, "ror32", "op->imm", "1", "3", ror32, 0, 0, false);
-            shiftInst32(fos_c, fos_h, fos_op, fos_init, "ror32cl", "CL & 0x1f", "4", "4", ror32, 0, 0, true);
+            shiftInst8(fos_c, fos_h, fos_op, fos_init, fos32, "ror8", false, "1", "3", ror8, 0, 0, false);
+            shiftInst8(fos_c, fos_h, fos_op, fos_init, fos32, "ror8cl", true, "4", "4", ror8, 7, 0, true);
+            shiftInst16(fos_c, fos_h, fos_op, fos_init, fos32, "ror16", false, "1", "3", ror16, 0, 0, false);
+            shiftInst16(fos_c, fos_h, fos_op, fos_init, fos32, "ror16cl", true, "4", "4", ror16, 0xf, 0, true);
+            shiftInst32(fos_c, fos_h, fos_op, fos_init, fos32, "ror32", false, "1", "3", ror32, 0, 0, false);
+            shiftInst32(fos_c, fos_h, fos_op, fos_init, fos32, "ror32cl", true, "4", "4", ror32, 0, 0, true);
 
-            shiftInst8(fos_c, fos_h, fos_op, fos_init, "rcl8", "op->imm", "8", "10", rcl8, 0, 0, false);
-            shiftInst8(fos_c, fos_h, fos_op, fos_init, "rcl8cl", "CL & 0x1f", "7", "9", rcl8, 0, 9, true);
-            shiftInst16(fos_c, fos_h, fos_op, fos_init, "rcl16", "op->imm", "8", "10", rcl16, 0, 0, false);
-            shiftInst16(fos_c, fos_h, fos_op, fos_init, "rcl16cl", "CL & 0x1f", "7", "9", rcl16, 0, 17, true);
-            shiftInst32(fos_c, fos_h, fos_op, fos_init, "rcl32", "op->imm", "8", "10", rcl32, 0, 0, false);
-            shiftInst32(fos_c, fos_h, fos_op, fos_init, "rcl32cl", "CL & 0x1f", "7", "9", rcl32, 0, 0, true);
+            shiftInst8(fos_c, fos_h, fos_op, fos_init, fos32, "rcl8", false, "8", "10", rcl8, 0, 0, false);
+            shiftInst8(fos_c, fos_h, fos_op, fos_init, fos32, "rcl8cl", true, "7", "9", rcl8, 0, 9, true);
+            shiftInst16(fos_c, fos_h, fos_op, fos_init, fos32, "rcl16", false, "8", "10", rcl16, 0, 0, false);
+            shiftInst16(fos_c, fos_h, fos_op, fos_init, fos32, "rcl16cl", true, "7", "9", rcl16, 0, 17, true);
+            shiftInst32(fos_c, fos_h, fos_op, fos_init, fos32, "rcl32", false, "8", "10", rcl32, 0, 0, false);
+            shiftInst32(fos_c, fos_h, fos_op, fos_init, fos32, "rcl32cl", true, "7", "9", rcl32, 0, 0, true);
 
-            shiftInst8(fos_c, fos_h, fos_op, fos_init, "rcr8", "op->imm", "8", "10", rcr8, 0, 0, false);
-            shiftInst8(fos_c, fos_h, fos_op, fos_init, "rcr8cl", "CL & 0x1f", "7", "9", rcr8, 0, 9, true);
-            shiftInst16(fos_c, fos_h, fos_op, fos_init, "rcr16", "op->imm", "8", "10", rcr16, 0, 0, false);
-            shiftInst16(fos_c, fos_h, fos_op, fos_init, "rcr16cl", "CL & 0x1f", "7", "9", rcr16, 0, 17, true);
-            shiftInst32(fos_c, fos_h, fos_op, fos_init, "rcr32", "op->imm", "8", "10", rcr32, 0, 0, false);
-            shiftInst32(fos_c, fos_h, fos_op, fos_init, "rcr32cl", "CL & 0x1f", "7", "9", rcr32, 0, 0, true);
+            shiftInst8(fos_c, fos_h, fos_op, fos_init, fos32, "rcr8", false, "8", "10", rcr8, 0, 0, false);
+            shiftInst8(fos_c, fos_h, fos_op, fos_init, fos32, "rcr8cl", true, "7", "9", rcr8, 0, 9, true);
+            shiftInst16(fos_c, fos_h, fos_op, fos_init, fos32, "rcr16", false, "8", "10", rcr16, 0, 0, false);
+            shiftInst16(fos_c, fos_h, fos_op, fos_init, fos32, "rcr16cl", true, "7", "9", rcr16, 0, 17, true);
+            shiftInst32(fos_c, fos_h, fos_op, fos_init, fos32, "rcr32", false, "8", "10", rcr32, 0, 0, false);
+            shiftInst32(fos_c, fos_h, fos_op, fos_init, fos32, "rcr32cl", true, "7", "9", rcr32, 0, 0, true);
 
-            shiftInst8(fos_c, fos_h, fos_op, fos_init, "shl8", "op->imm", "1", "3", shl8, 0, 0, false);
-            shiftInst8(fos_c, fos_h, fos_op, fos_init, "shl8cl", "CL & 0x1f", "4", "4", shl8, 0, 0, true);
-            shiftInst16(fos_c, fos_h, fos_op, fos_init, "shl16", "op->imm", "1", "3", shl16, 0, 0, false);
-            shiftInst16(fos_c, fos_h, fos_op, fos_init, "shl16cl", "CL & 0x1f", "4", "4", shl16, 0, 0, true);
-            shiftInst32(fos_c, fos_h, fos_op, fos_init, "shl32", "op->imm", "1", "3", shl32, 0, 0, false);
-            shiftInst32(fos_c, fos_h, fos_op, fos_init, "shl32cl", "CL & 0x1f", "4", "4", shl32, 0, 0, true);
+            shiftInst8(fos_c, fos_h, fos_op, fos_init, fos32, "shl8", false, "1", "3", shl8, 0, 0, false);
+            shiftInst8(fos_c, fos_h, fos_op, fos_init, fos32, "shl8cl", true, "4", "4", shl8, 0, 0, true);
+            shiftInst16(fos_c, fos_h, fos_op, fos_init, fos32, "shl16", false, "1", "3", shl16, 0, 0, false);
+            shiftInst16(fos_c, fos_h, fos_op, fos_init, fos32, "shl16cl", true, "4", "4", shl16, 0, 0, true);
+            shiftInst32(fos_c, fos_h, fos_op, fos_init, fos32, "shl32", false, "1", "3", shl32, 0, 0, false);
+            shiftInst32(fos_c, fos_h, fos_op, fos_init, fos32, "shl32cl", true, "4", "4", shl32, 0, 0, true);
 
-            shiftInst8(fos_c, fos_h, fos_op, fos_init, "shr8", "op->imm", "1", "3", shr8, 0, 0, false);
-            shiftInst8(fos_c, fos_h, fos_op, fos_init, "shr8cl", "CL & 0x1f", "4", "4", shr8, 0, 0, true);
-            shiftInst16(fos_c, fos_h, fos_op, fos_init, "shr16", "op->imm", "1", "3", shr16, 0, 0, false);
-            shiftInst16(fos_c, fos_h, fos_op, fos_init, "shr16cl", "CL & 0x1f", "4", "4", shr16, 0, 0, true);
-            shiftInst32(fos_c, fos_h, fos_op, fos_init, "shr32", "op->imm", "1", "3", shr32, 0, 0, false);
-            shiftInst32(fos_c, fos_h, fos_op, fos_init, "shr32cl", "CL & 0x1f", "4", "4", shr32, 0, 0, true);
+            shiftInst8(fos_c, fos_h, fos_op, fos_init, fos32, "shr8", false, "1", "3", shr8, 0, 0, false);
+            shiftInst8(fos_c, fos_h, fos_op, fos_init, fos32, "shr8cl", true, "4", "4", shr8, 0, 0, true);
+            shiftInst16(fos_c, fos_h, fos_op, fos_init, fos32, "shr16", false, "1", "3", shr16, 0, 0, false);
+            shiftInst16(fos_c, fos_h, fos_op, fos_init, fos32, "shr16cl", true, "4", "4", shr16, 0, 0, true);
+            shiftInst32(fos_c, fos_h, fos_op, fos_init, fos32, "shr32", false, "1", "3", shr32, 0, 0, false);
+            shiftInst32(fos_c, fos_h, fos_op, fos_init, fos32, "shr32cl", true, "4", "4", shr32, 0, 0, true);
 
-            shiftInst8(fos_c, fos_h, fos_op, fos_init, "sar8", "op->imm", "1", "3", sar8, 0, 0, false);
-            shiftInst8(fos_c, fos_h, fos_op, fos_init, "sar8cl", "CL & 0x1f", "4", "4", sar8, 0, 0, true);
-            shiftInst16(fos_c, fos_h, fos_op, fos_init, "sar16", "op->imm", "1", "3", sar16, 0, 0, false);
-            shiftInst16(fos_c, fos_h, fos_op, fos_init, "sar16cl", "CL & 0x1f", "4", "4", sar16, 0, 0, true);
-            shiftInst32(fos_c, fos_h, fos_op, fos_init, "sar32", "op->imm", "1", "3", sar32, 0, 0, false);
-            shiftInst32(fos_c, fos_h, fos_op, fos_init, "sar32cl", "CL & 0x1f", "4", "4", sar32, 0, 0, true);
+            shiftInst8(fos_c, fos_h, fos_op, fos_init, fos32, "sar8", false, "1", "3", sar8, 0, 0, false);
+            shiftInst8(fos_c, fos_h, fos_op, fos_init, fos32, "sar8cl", true, "4", "4", sar8, 0, 0, true);
+            shiftInst16(fos_c, fos_h, fos_op, fos_init, fos32, "sar16", false, "1", "3", sar16, 0, 0, false);
+            shiftInst16(fos_c, fos_h, fos_op, fos_init, fos32, "sar16cl", true, "4", "4", sar16, 0, 0, true);
+            shiftInst32(fos_c, fos_h, fos_op, fos_init, fos32, "sar32", false, "1", "3", sar32, 0, 0, false);
+            shiftInst32(fos_c, fos_h, fos_op, fos_init, fos32, "sar32cl", true, "4", "4", sar32, 0, 0, true);
 
-            dshift(fos_op, fos_init, "dshlr16r16", "normal_dshlr16r16", "DshlR16R16", "op->reg, op->rm, op->imm");
-            dshift(fos_op, fos_init, "dshle16r16", "normal_dshle16r16", "DshlE16R16", "op->reg, eaa(cpu, op), op->imm");
-            dshift(fos_op, fos_init, "dshlr32r32", "normal_dshlr32r32", "DshlR32R32", "op->reg, op->rm, op->imm");
-            dshift(fos_op, fos_init, "dshle32r32", "normal_dshle32r32", "DshlE32R32", "op->reg, eaa(cpu, op), op->imm");
-            dshift(fos_op, fos_init, "dshlclr16r16", "normal_dshlclr16r16", "DshlClR16R16", "op->reg, op->rm");
-            dshift(fos_op, fos_init, "dshlcle16r16", "normal_dshlcle16r16", "DshlClE16R16", "op->reg, eaa(cpu, op)");
-            dshift(fos_op, fos_init, "dshlclr32r32", "normal_dshlclr32r32", "DshlClR32R32", "op->reg, op->rm");
-            dshift(fos_op, fos_init, "dshlcle32r32", "normal_dshlcle32r32", "DshlClE32R32", "op->reg, eaa(cpu, op)");
+            dshift(fos_op, fos_init, fos32, "dshlr16r16", "dshlr16r16", "DshlR16R16", false, false);
+            dshift(fos_op, fos_init, fos32, "dshle16r16", "dshle16r16", "DshlE16R16", true, false);
+            dshift(fos_op, fos_init, fos32, "dshlr32r32", "dshlr32r32", "DshlR32R32", false, false);
+            dshift(fos_op, fos_init, fos32, "dshle32r32", "dshle32r32", "DshlE32R32", true, false);
+            dshift(fos_op, fos_init, fos32, "dshlclr16r16", "dshlclr16r16", "DshlClR16R16", false, true);
+            dshift(fos_op, fos_init, fos32, "dshlcle16r16", "dshlcle16r16", "DshlClE16R16", true, true);
+            dshift(fos_op, fos_init, fos32, "dshlclr32r32", "dshlclr32r32", "DshlClR32R32", false, true);
+            dshift(fos_op, fos_init, fos32, "dshlcle32r32", "dshlcle32r32", "DshlClE32R32", true, true);
 
-            dshift(fos_op, fos_init, "dshrr16r16", "normal_dshrr16r16", "DshrR16R16", "op->reg, op->rm, op->imm");
-            dshift(fos_op, fos_init, "dshre16r16", "normal_dshre16r16", "DshrE16R16", "op->reg, eaa(cpu, op), op->imm");
-            dshift(fos_op, fos_init, "dshrr32r32", "normal_dshrr32r32", "DshrR32R32", "op->reg, op->rm, op->imm");
-            dshift(fos_op, fos_init, "dshre32r32", "normal_dshre32r32", "DshrE32R32", "op->reg, eaa(cpu, op), op->imm");
-            dshift(fos_op, fos_init, "dshrclr16r16", "normal_dshrclr16r16", "DshrClR16R16", "op->reg, op->rm");
-            dshift(fos_op, fos_init, "dshrcle16r16", "normal_dshrcle16r16", "DshrClE16R16", "op->reg, eaa(cpu, op)");
-            dshift(fos_op, fos_init, "dshrclr32r32", "normal_dshrclr32r32", "DshrClR32R32", "op->reg, op->rm");
-            dshift(fos_op, fos_init, "dshrcle32r32", "normal_dshrcle32r32", "DshrClE32R32", "op->reg, eaa(cpu, op)");
+            dshift(fos_op, fos_init, fos32, "dshrr16r16", "dshrr16r16", "DshrR16R16", false, false);
+            dshift(fos_op, fos_init, fos32, "dshre16r16", "dshre16r16", "DshrE16R16", true, false);
+            dshift(fos_op, fos_init, fos32, "dshrr32r32", "dshrr32r32", "DshrR32R32", false, false);
+            dshift(fos_op, fos_init, fos32, "dshre32r32", "dshre32r32", "DshrE32R32", true, false);
+            dshift(fos_op, fos_init, fos32, "dshrclr16r16", "dshrclr16r16", "DshrClR16R16", false, true);
+            dshift(fos_op, fos_init, fos32, "dshrcle16r16", "dshrcle16r16", "DshrClE16R16", true, true);
+            dshift(fos_op, fos_init, fos32, "dshrclr32r32", "dshrclr32r32", "DshrClR32R32", false, true);
+            dshift(fos_op, fos_init, fos32, "dshrcle32r32", "dshrcle32r32", "DshrClE32R32", true, true);
 
             fos_c.close();
             out(fos_h, "#endif");
@@ -96,14 +99,47 @@ public class Shift extends Base {
         }
     }
 
-    public void dshift(FileOutputStream fos, FileOutputStream fos_init, String func, String name, String ename, String source) throws IOException {
-        out(fos, "void OPCALL "+name+"(CPU* cpu, DecodedOp* op) {");
+    public void dshift(FileOutputStream fos, FileOutputStream fos_init, FileOutputStream fos32, String func, String name, String ename, boolean eaa, boolean cl) throws IOException {
+        String source;
+
+        if (eaa) {
+            if (cl) {
+                source = "op->reg, eaa(cpu, op)";
+            } else {
+                source = "op->reg, eaa(cpu, op), op->imm";
+            }
+        } else {
+            if (cl) {
+                source = "op->reg, op->rm";
+            } else {
+                source = "op->reg, op->rm, op->imm";
+            }
+        }
+        out(fos, "void OPCALL normal_"+name+"(CPU* cpu, DecodedOp* op) {");
         out(fos, "    START_OP(cpu, op);");
         out(fos, "    "+func+"(cpu, "+source+");");
         out(fos, "    NEXT();");
         out(fos, "}");
 
         out(fos_init, "INIT_CPU("+ename+", "+name+")");
+
+        out(fos32, "void OPCALL dynamic_"+name+"(CPU* cpu, DecodedOp* op) {");
+        if (eaa) {
+            out(fos32, "    calculateEaa(op, DYN_ADDRESS);");
+            if (cl) {
+                out(fos32, "    callHostFunction(" + name + ", false, false, false, 3, 0, DYN_PARAM_CPU, op->reg, DYN_PARAM_CONST_32, DYN_ADDRESS, DYN_PARAM_REG_32);");
+            } else {
+                out(fos32, "    callHostFunction(" + name + ", false, false, false, 4, 0, DYN_PARAM_CPU, op->reg, DYN_PARAM_CONST_32, DYN_ADDRESS, DYN_PARAM_REG_32, op->imm, DYN_PARAM_CONST_32);");
+            }
+        } else {
+            if (cl) {
+                out(fos32, "    callHostFunction(" + name + ", false, false, false, 3, 0, DYN_PARAM_CPU, op->reg, DYN_PARAM_CONST_32, op->rm, DYN_PARAM_CONST_32);");
+            } else {
+                out(fos32, "    callHostFunction(" + name + ", false, false, false, 4, 0, DYN_PARAM_CPU, op->reg, DYN_PARAM_CONST_32, op->rm, DYN_PARAM_CONST_32, op->imm, DYN_PARAM_CONST_32);");
+            }
+        }
+        out(fos32, "    INCREMENT_EIP(op->len);");
+        out(fos32, "}");
     }
 
     static public String rol8 = "cpu->fillFlagsNoCFOF();\r\n    result = (var1 << var2) | (var1 >> (8 - var2));\r\n    cpu->setCF(result & 1);\r\n    cpu->setOF((result & 1) ^ (result >> 7));";
@@ -128,22 +164,22 @@ public class Shift extends Base {
     static public String sar16 = "result = (S16)var1 >> var2;\r\n    cpu->lazyFlags = FLAGS_SAR16;\r\n    cpu->result.u16 = result;\r\n    cpu->src.u16=var2;\r\n    cpu->dst.u16 = var1;";
     static public String sar32 = "result = (S32)var1 >> var2;\r\n    cpu->lazyFlags = FLAGS_SAR32;\r\n    cpu->result.u32 = result;\r\n    cpu->src.u32=var2;\r\n    cpu->dst.u32 = var1;";
 
-    public void shiftInst8(FileOutputStream fos, FileOutputStream fos_h, FileOutputStream fos_op, FileOutputStream fos_init, String name, String source, String rcycles, String mcycles, String inst, int mask, int mod, boolean checkForZero) throws IOException {
-        shiftBase(fos, fos_h, fos_op, fos_init, name+"_reg", false, "8", source, "*cpu->reg8[reg]", "*cpu->reg8[reg] = ", "", rcycles, inst, mask, mod, checkForZero);
-        shiftBase(fos, fos_h, fos_op, fos_init, name+"_mem", true, "8", source, "readb(eaa)", "writeb(eaa, ", ")", mcycles, inst, mask, mod, checkForZero);
+    public void shiftInst8(FileOutputStream fos, FileOutputStream fos_h, FileOutputStream fos_op, FileOutputStream fos_init, FileOutputStream fos32, String name, boolean cl, String rcycles, String mcycles, String inst, int mask, int mod, boolean checkForZero) throws IOException {
+        shiftBase(fos, fos_h, fos_op, fos_init, fos32, name+"_reg", false, "8", cl, "*cpu->reg8[reg]", "*cpu->reg8[reg] = ", "", rcycles, inst, mask, mod, checkForZero);
+        shiftBase(fos, fos_h, fos_op, fos_init, fos32, name+"_mem", true, "8", cl, "readb(eaa)", "writeb(eaa, ", ")", mcycles, inst, mask, mod, checkForZero);
     }
 
-    public void shiftInst16(FileOutputStream fos, FileOutputStream fos_h, FileOutputStream fos_op, FileOutputStream fos_init, String name, String source, String rcycles, String mcycles, String inst, int mask, int mod, boolean checkForZero) throws IOException {
-        shiftBase(fos, fos_h, fos_op, fos_init, name+"_reg", false, "16", source, "cpu->reg[reg].u16", "cpu->reg[reg].u16 = ", "", rcycles, inst, mask, mod, checkForZero);
-        shiftBase(fos, fos_h, fos_op, fos_init, name+"_mem", true, "16", source, "readw(eaa)", "writew(eaa, ", ")", mcycles, inst, mask, mod, checkForZero);
+    public void shiftInst16(FileOutputStream fos, FileOutputStream fos_h, FileOutputStream fos_op, FileOutputStream fos_init, FileOutputStream fos32, String name, boolean cl, String rcycles, String mcycles, String inst, int mask, int mod, boolean checkForZero) throws IOException {
+        shiftBase(fos, fos_h, fos_op, fos_init, fos32, name+"_reg", false, "16", cl, "cpu->reg[reg].u16", "cpu->reg[reg].u16 = ", "", rcycles, inst, mask, mod, checkForZero);
+        shiftBase(fos, fos_h, fos_op, fos_init, fos32, name+"_mem", true, "16", cl, "readw(eaa)", "writew(eaa, ", ")", mcycles, inst, mask, mod, checkForZero);
     }
 
-    public void shiftInst32(FileOutputStream fos, FileOutputStream fos_h, FileOutputStream fos_op, FileOutputStream fos_init, String name, String source, String rcycles, String mcycles, String inst, int mask, int mod, boolean checkForZero) throws IOException {
-        shiftBase(fos, fos_h, fos_op, fos_init, name+"_reg", false, "32", source, "cpu->reg[reg].u32", "cpu->reg[reg].u32 = ", "", rcycles, inst, mask, mod, checkForZero);
-        shiftBase(fos, fos_h, fos_op, fos_init, name+"_mem", true, "32", source, "readd(eaa)", "writed(eaa, ", ")", mcycles, inst, mask, mod, checkForZero);
+    public void shiftInst32(FileOutputStream fos, FileOutputStream fos_h, FileOutputStream fos_op, FileOutputStream fos_init, FileOutputStream fos32, String name, boolean cl, String rcycles, String mcycles, String inst, int mask, int mod, boolean checkForZero) throws IOException {
+        shiftBase(fos, fos_h, fos_op, fos_init, fos32, name+"_reg", false, "32", cl, "cpu->reg[reg].u32", "cpu->reg[reg].u32 = ", "", rcycles, inst, mask, mod, checkForZero);
+        shiftBase(fos, fos_h, fos_op, fos_init, fos32, name+"_mem", true, "32", cl, "readd(eaa)", "writed(eaa, ", ")", mcycles, inst, mask, mod, checkForZero);
     }
 
-    public void shiftBase(FileOutputStream fos, FileOutputStream fos_h, FileOutputStream fos_op, FileOutputStream fos_init, String name, boolean eaa, String bits, String shiftSource, String source, String destSave1, String destSave2, String cycles, String inst, int mask, int mod, boolean checkForZero) throws IOException {
+    public void shiftBase(FileOutputStream fos, FileOutputStream fos_h, FileOutputStream fos_op, FileOutputStream fos_init, FileOutputStream fos32, String name, boolean eaa, String bits, boolean useCL, String source, String destSave1, String destSave2, String cycles, String inst, int mask, int mod, boolean checkForZero) throws IOException {
         if (fos_h!=null) {
             if (eaa)
                 out(fos_h, "void " + name + "(CPU* cpu, U32 eaa, U32 var2);");
@@ -151,14 +187,40 @@ public class Shift extends Base {
                 out(fos_h, "void " + name + "(CPU* cpu, U32 reg, U32 var2);");
         }
         if (fos_op!=null) {
-            out(fos_op, "void OPCALL " + name + "_op(CPU* cpu, DecodedOp* op) {");
+            out(fos_op, "void OPCALL normal_" + name + "_op(CPU* cpu, DecodedOp* op) {");
             out(fos_op, "    START_OP(cpu, op);");
+            String shiftSource = (useCL?"CL & 0x1F":"op->imm");
             if (eaa)
                 out(fos_op, "    " + name + "(cpu, eaa(cpu, op), " + shiftSource + ");");
             else
                 out(fos_op, "    " + name + "(cpu, op->reg, " + shiftSource + ");");
             out(fos_op, "    NEXT();");
             out(fos_op, "}");
+
+            out(fos32, "void OPCALL dynamic_"+name+"_op(CPU* cpu, DecodedOp* op) {");
+            String param;
+            String paramType;
+
+            if (useCL) {
+                // reg = CL & 0x1F;
+                out(fos32, "    movToRegFromCpu(DYN_SRC, offsetof(CPU, reg[1].u8), DYN_8bit);");
+                out(fos32, "    instRegImm('&', DYN_SRC, DYN_8bit, 0x1F);");
+                out(fos32, "    movToRegFromReg(DYN_SRC, DYN_32bit, DYN_SRC, DYN_8bit);");
+                param = "DYN_SRC";
+                paramType = "DYN_PARAM_REG_32";
+            } else {
+                // op->imm
+                param = "op->imm";
+                paramType = "DYN_PARAM_CONST_32";
+            }
+            if (eaa) {
+                out(fos32, "    calculateEaa(op, DYN_ADDRESS);");
+                out(fos32, "    callHostFunction(" + name + ", false, false, false, 3, 0, DYN_PARAM_CPU, DYN_ADDRESS, DYN_PARAM_REG_32, "+param+", "+paramType+");");
+            } else {
+                out(fos32, "    callHostFunction(" + name + ", false, false, false, 3, 0, DYN_PARAM_CPU, op->reg, DYN_PARAM_CONST_32, "+param+", "+paramType+");");
+            }
+            out(fos32, "    INCREMENT_EIP(op->len);");
+            out(fos32, "}");
         }
 
         if (eaa)

@@ -643,7 +643,7 @@ U32 KNativeSocketObject::sendto(KFileDescriptor* fd, U32 message, U32 length, U3
     memcopyToNative(message, tmp, length);
     result = ::sendto(this->nativeSocket, tmp, length, nativeFlags, &dest, len);
     delete[] tmp;
-    if (result>=0) {
+    if ((S32)result>=0) {
         this->error = 0;
         return result;
     }
@@ -673,7 +673,7 @@ U32 KNativeSocketObject::recvfrom(KFileDescriptor* fd, U32 buffer, U32 length, U
     outLen = inLen;
     // :TODO: what about tmp size
     U32 result = :: recvfrom(this->nativeSocket, tmp, length, nativeFlags, (struct sockaddr*)fromBuffer, &outLen);
-    if (result>=0) {
+    if ((S32)result>=0) {
         memcopyFromNative(buffer, tmp, result);
         memcopyFromNative(address, (char*)fromBuffer, inLen);
         writed(address_len, outLen);

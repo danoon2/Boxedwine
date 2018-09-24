@@ -974,7 +974,8 @@ const InstructionInfo instructionInfo[] = {
     {0, 0, 0, 0, 0, 0, 0}, // PadddMmx 
     {0, 64, 0, 0, 0, 0}, // PadddE64
     {1, 0, 0, 0, 0, 0}, // Callback
-    {1, 0, 0, 0, 0, 0} // Done
+    {1, 0, 0, 0, 0, 0}, // Done
+    {0, 0, 0, 0, 0, 0} // Custom1
 };
 
 
@@ -3246,16 +3247,17 @@ public:
         switch (G(rm)) {
         case 0x00: func(data, op, rm, IncR8, IncE8); break;
         case 0x01: func(data, op, rm, DecR8, DecE8); break;
-        case 0x07:
-            if (sizeof(op->pfn)==8) {
+        case 0x07: {
+#ifdef BOXEDWINE_64
                 U64 address = data->fetch32();
                 address |= ((U64)data->fetch32()) << 32;
                 op->pfn = (OpCallback)address;
-            } else {
+#else
                 op->pfn = (OpCallback)data->fetch32();
-            }
+#endif
             op->inst = Callback;
             break;
+        }
         default: op->inst = Invalid; op->reg = rm; op->imm = data->inst; break;
         }	
     }

@@ -1,3 +1,4 @@
+#include "../common/common_bit.h"
 /*
  *  Copyright (C) 2016  The BoxedWine Team
  *
@@ -16,419 +17,203 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-void OPCALL btr16r16(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_btr16r16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U16 mask=1 << (cpu->reg[op->rm].u16 & 15);
-    cpu->fillFlagsNoCF();
-    cpu->setCF(cpu->reg[op->reg].u16 & mask);
+    common_btr16r16(cpu, op->rm, op->reg);
     NEXT();
 }
-void OPCALL btr16(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_btr16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U16 mask = (U16)op->imm;
-    cpu->fillFlagsNoCF();
-    cpu->setCF(cpu->reg[op->reg].u16 & mask);
+    common_btr16(cpu, op->imm, op->reg);
     NEXT();
 }
-void OPCALL bte16r16(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_bte16r16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U16 mask=1 << (cpu->reg[op->reg].u16 & 15);
-    U32 address = eaa(cpu, op);
-    U16 value;
-    cpu->fillFlagsNoCF();
-    address+=(((S16)cpu->reg[op->reg].u16)>>4)*2;
-    value = readw(address);
-    cpu->setCF(value & mask);
+    common_bte16r16(cpu, eaa(cpu,op), op->reg);
     NEXT();
 }
-void OPCALL bte16(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_bte16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U16 mask = (U16)op->imm;
-    U32 address = eaa(cpu, op);
-    U16 value;
-    cpu->fillFlagsNoCF();
-    value = readw(address);
-    cpu->setCF(value & mask);
+    common_bte16(cpu, op->imm, eaa(cpu,op), op->reg);
     NEXT();
 }
-void OPCALL btr32r32(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_btr32r32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U32 mask=1 << (cpu->reg[op->rm].u32 & 31);
-    cpu->fillFlagsNoCF();
-    cpu->setCF(cpu->reg[op->reg].u32 & mask);
+    common_btr32r32(cpu, op->rm, op->reg);
     NEXT();
 }
-void OPCALL btr32(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_btr32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U32 mask = op->imm;
-    cpu->fillFlagsNoCF();
-    cpu->setCF(cpu->reg[op->reg].u32 & mask);
+    common_btr32(cpu, op->imm, op->reg);
     NEXT();
 }
-void OPCALL bte32r32(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_bte32r32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U32 mask=1 << (cpu->reg[op->reg].u32 & 31);
-    U32 address = eaa(cpu, op);
-    U32 value;
-    cpu->fillFlagsNoCF();
-    address+=(((S32)cpu->reg[op->reg].u32)>>5)*4;
-    value = readd(address);
-    cpu->setCF(value & mask);
+    common_bte32r32(cpu, eaa(cpu,op), op->reg);
     NEXT();
 }
-void OPCALL bte32(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_bte32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U32 mask = op->imm;
-    U32 address = eaa(cpu, op);
-    U32 value;
-    cpu->fillFlagsNoCF();
-    value = readd(address);
-    cpu->setCF(value & mask);
+    common_bte32(cpu, op->imm, eaa(cpu,op), op->reg);
     NEXT();
 }
-void OPCALL btsr16r16(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_btsr16r16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U16 mask=1 << (cpu->reg[op->rm].u16 & 15);
-    cpu->fillFlagsNoCF();
-    cpu->setCF(cpu->reg[op->reg].u16 & mask);
-    cpu->reg[op->reg].u16 |= mask;
+    common_btsr16r16(cpu, op->rm, op->reg);
     NEXT();
 }
-void OPCALL btsr16(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_btsr16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U16 mask = (U16)op->imm;
-    cpu->fillFlagsNoCF();
-    cpu->setCF(cpu->reg[op->reg].u16 & mask);
-    cpu->reg[op->reg].u16 |= mask;
+    common_btsr16(cpu, op->imm, op->reg);
     NEXT();
 }
-void OPCALL btse16r16(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_btse16r16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U16 mask=1 << (cpu->reg[op->reg].u16 & 15);
-    U32 address = eaa(cpu, op);
-    U16 value;
-    cpu->fillFlagsNoCF();
-    address+=(((S16)cpu->reg[op->reg].u16)>>4)*2;
-    value = readw(address);
-    cpu->setCF(value & mask);
-    writew(address, value | mask);
+    common_btse16r16(cpu, eaa(cpu,op), op->reg);
     NEXT();
 }
-void OPCALL btse16(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_btse16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U16 mask = (U16)op->imm;
-    U32 address = eaa(cpu, op);
-    U16 value;
-    cpu->fillFlagsNoCF();
-    value = readw(address);
-    cpu->setCF(value & mask);
-    writew(address, value | mask);
+    common_btse16(cpu, op->imm, eaa(cpu,op), op->reg);
     NEXT();
 }
-void OPCALL btsr32r32(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_btsr32r32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U32 mask=1 << (cpu->reg[op->rm].u32 & 31);
-    cpu->fillFlagsNoCF();
-    cpu->setCF(cpu->reg[op->reg].u32 & mask);
-    cpu->reg[op->reg].u32 |= mask;
+    common_btsr32r32(cpu, op->rm, op->reg);
     NEXT();
 }
-void OPCALL btsr32(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_btsr32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U32 mask = op->imm;
-    cpu->fillFlagsNoCF();
-    cpu->setCF(cpu->reg[op->reg].u32 & mask);
-    cpu->reg[op->reg].u32 |= mask;
+    common_btsr32(cpu, op->imm, op->reg);
     NEXT();
 }
-void OPCALL btse32r32(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_btse32r32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U32 mask=1 << (cpu->reg[op->reg].u32 & 31);
-    U32 address = eaa(cpu, op);
-    U32 value;
-    cpu->fillFlagsNoCF();
-    address+=(((S32)cpu->reg[op->reg].u32)>>5)*4;
-    value = readd(address);
-    cpu->setCF(value & mask);
-    writed(address, value | mask);
+    common_btse32r32(cpu, eaa(cpu,op), op->reg);
     NEXT();
 }
-void OPCALL btse32(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_btse32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U32 mask = op->imm;
-    U32 address = eaa(cpu, op);
-    U32 value;
-    cpu->fillFlagsNoCF();
-    value = readd(address);
-    cpu->setCF(value & mask);
-    writed(address, value | mask);
+    common_btse32(cpu, op->imm, eaa(cpu,op), op->reg);
     NEXT();
 }
-void OPCALL btrr16r16(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_btrr16r16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U16 mask=1 << (cpu->reg[op->rm].u16 & 15);
-    cpu->fillFlagsNoCF();
-    cpu->setCF(cpu->reg[op->reg].u16 & mask);
-    cpu->reg[op->reg].u16 &= ~mask;
+    common_btrr16r16(cpu, op->rm, op->reg);
     NEXT();
 }
-void OPCALL btrr16(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_btrr16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U16 mask = (U16)op->imm;
-    cpu->fillFlagsNoCF();
-    cpu->setCF(cpu->reg[op->reg].u16 & mask);
-    cpu->reg[op->reg].u16 &= ~mask;
+    common_btrr16(cpu, op->imm, op->reg);
     NEXT();
 }
-void OPCALL btre16r16(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_btre16r16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U16 mask=1 << (cpu->reg[op->reg].u16 & 15);
-    U32 address = eaa(cpu, op);
-    U16 value;
-    cpu->fillFlagsNoCF();
-    address+=(((S16)cpu->reg[op->reg].u16)>>4)*2;
-    value = readw(address);
-    cpu->setCF(value & mask);
-    writew(address, value & ~mask);
+    common_btre16r16(cpu, eaa(cpu,op), op->reg);
     NEXT();
 }
-void OPCALL btre16(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_btre16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U16 mask = (U16)op->imm;
-    U32 address = eaa(cpu, op);
-    U16 value;
-    cpu->fillFlagsNoCF();
-    value = readw(address);
-    cpu->setCF(value & mask);
-    writew(address, value & ~mask);
+    common_btre16(cpu, op->imm, eaa(cpu,op), op->reg);
     NEXT();
 }
-void OPCALL btrr32r32(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_btrr32r32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U32 mask=1 << (cpu->reg[op->rm].u32 & 31);
-    cpu->fillFlagsNoCF();
-    cpu->setCF(cpu->reg[op->reg].u32 & mask);
-    cpu->reg[op->reg].u32 &= ~mask;
+    common_btrr32r32(cpu, op->rm, op->reg);
     NEXT();
 }
-void OPCALL btrr32(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_btrr32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U32 mask = op->imm;
-    cpu->fillFlagsNoCF();
-    cpu->setCF(cpu->reg[op->reg].u32 & mask);
-    cpu->reg[op->reg].u32 &= ~mask;
+    common_btrr32(cpu, op->imm, op->reg);
     NEXT();
 }
-void OPCALL btre32r32(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_btre32r32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U32 mask=1 << (cpu->reg[op->reg].u32 & 31);
-    U32 address = eaa(cpu, op);
-    U32 value;
-    cpu->fillFlagsNoCF();
-    address+=(((S32)cpu->reg[op->reg].u32)>>5)*4;
-    value = readd(address);
-    cpu->setCF(value & mask);
-    writed(address, value & ~mask);
+    common_btre32r32(cpu, eaa(cpu,op), op->reg);
     NEXT();
 }
-void OPCALL btre32(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_btre32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U32 mask = op->imm;
-    U32 address = eaa(cpu, op);
-    U32 value;
-    cpu->fillFlagsNoCF();
-    value = readd(address);
-    cpu->setCF(value & mask);
-    writed(address, value & ~mask);
+    common_btre32(cpu, op->imm, eaa(cpu,op), op->reg);
     NEXT();
 }
-void OPCALL btcr16r16(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_btcr16r16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U16 mask=1 << (cpu->reg[op->rm].u16 & 15);
-    cpu->fillFlagsNoCF();
-    cpu->setCF(cpu->reg[op->reg].u16 & mask);
-    cpu->reg[op->reg].u16 ^= mask;
+    common_btcr16r16(cpu, op->rm, op->reg);
     NEXT();
 }
-void OPCALL btcr16(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_btcr16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U16 mask = (U16)op->imm;
-    cpu->fillFlagsNoCF();
-    cpu->setCF(cpu->reg[op->reg].u16 & mask);
-    cpu->reg[op->reg].u16 ^= mask;
+    common_btcr16(cpu, op->imm, op->reg);
     NEXT();
 }
-void OPCALL btce16r16(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_btce16r16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U16 mask=1 << (cpu->reg[op->reg].u16 & 15);
-    U32 address = eaa(cpu, op);
-    U16 value;
-    cpu->fillFlagsNoCF();
-    address+=(((S16)cpu->reg[op->reg].u16)>>4)*2;
-    value = readw(address);
-    cpu->setCF(value & mask);
-    writew(address, value ^ mask);
+    common_btce16r16(cpu, eaa(cpu,op), op->reg);
     NEXT();
 }
-void OPCALL btce16(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_btce16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U16 mask = (U16)op->imm;
-    U32 address = eaa(cpu, op);
-    U16 value;
-    cpu->fillFlagsNoCF();
-    value = readw(address);
-    cpu->setCF(value & mask);
-    writew(address, value ^ mask);
+    common_btce16(cpu, op->imm, eaa(cpu,op), op->reg);
     NEXT();
 }
-void OPCALL btcr32r32(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_btcr32r32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U32 mask=1 << (cpu->reg[op->rm].u32 & 31);
-    cpu->fillFlagsNoCF();
-    cpu->setCF(cpu->reg[op->reg].u32 & mask);
-    cpu->reg[op->reg].u32 ^= mask;
+    common_btcr32r32(cpu, op->rm, op->reg);
     NEXT();
 }
-void OPCALL btcr32(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_btcr32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U32 mask = op->imm;
-    cpu->fillFlagsNoCF();
-    cpu->setCF(cpu->reg[op->reg].u32 & mask);
-    cpu->reg[op->reg].u32 ^= mask;
+    common_btcr32(cpu, op->imm, op->reg);
     NEXT();
 }
-void OPCALL btce32r32(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_btce32r32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U32 mask=1 << (cpu->reg[op->reg].u32 & 31);
-    U32 address = eaa(cpu, op);
-    U32 value;
-    cpu->fillFlagsNoCF();
-    address+=(((S32)cpu->reg[op->reg].u32)>>5)*4;
-    value = readd(address);
-    cpu->setCF(value & mask);
-    writed(address, value ^ mask);
+    common_btce32r32(cpu, eaa(cpu,op), op->reg);
     NEXT();
 }
-void OPCALL btce32(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_btce32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U32 mask = op->imm;
-    U32 address = eaa(cpu, op);
-    U32 value;
-    cpu->fillFlagsNoCF();
-    value = readd(address);
-    cpu->setCF(value & mask);
-    writed(address, value ^ mask);
+    common_btce32(cpu, op->imm, eaa(cpu,op), op->reg);
     NEXT();
 }
-void OPCALL bsfr16r16(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_bsfr16r16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U16 value=cpu->reg[op->rm].u16;
-    cpu->fillFlagsNoZF();
-    if (value==0) {
-        cpu->addZF();
-    } else {
-        U16 result = 0;
-        while ((value & 0x01)==0) { result++; value>>=1; }
-        cpu->removeZF();
-        cpu->reg[op->reg].u16=result;
-    }
+    common_bsfr16r16(cpu, op->rm, op->reg);
     NEXT();
 }
-void OPCALL bsfr16e16(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_bsfr16e16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U16 value=readw(eaa(cpu, op));
-    cpu->fillFlagsNoZF();
-    if (value==0) {
-        cpu->addZF();
-    } else {
-        U16 result = 0;
-        while ((value & 0x01)==0) { result++; value>>=1; }
-        cpu->removeZF();
-        cpu->reg[op->reg].u16=result;
-    }
+    common_bsfr16e16(cpu, eaa(cpu, op), op->reg);
     NEXT();
 }
-void OPCALL bsfr32r32(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_bsfr32r32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U32 value=cpu->reg[op->rm].u32;
-    cpu->fillFlagsNoZF();
-    if (value==0) {
-        cpu->addZF();
-    } else {
-        U32 result = 0;
-        while ((value & 0x01)==0) { result++; value>>=1; }
-        cpu->removeZF();
-        cpu->reg[op->reg].u32=result;
-    }
+    common_bsfr32r32(cpu, op->rm, op->reg);
     NEXT();
 }
-void OPCALL bsfr32e32(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_bsfr32e32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U32 value=readd(eaa(cpu, op));
-    cpu->fillFlagsNoZF();
-    if (value==0) {
-        cpu->addZF();
-    } else {
-        U32 result = 0;
-        while ((value & 0x01)==0) { result++; value>>=1; }
-        cpu->removeZF();
-        cpu->reg[op->reg].u32=result;
-    }
+    common_bsfr32e32(cpu, eaa(cpu, op), op->reg);
     NEXT();
 }
-void OPCALL bsrr16r16(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_bsrr16r16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U16 value=cpu->reg[op->rm].u16;
-    cpu->fillFlagsNoZF();
-    if (value==0) {
-        cpu->addZF();
-    } else {
-        U16 result = 15;
-        while ((value & 0x8000)==0) { result--; value<<=1; }
-        cpu->removeZF();
-        cpu->reg[op->reg].u16=result;
-    }
+    common_bsrr16r16(cpu, op->rm, op->reg);
     NEXT();
 }
-void OPCALL bsrr16e16(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_bsrr16e16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U16 value=readw(eaa(cpu, op));
-    cpu->fillFlagsNoZF();
-    if (value==0) {
-        cpu->addZF();
-    } else {
-        U16 result = 15;
-        while ((value & 0x8000)==0) { result--; value<<=1; }
-        cpu->removeZF();
-        cpu->reg[op->reg].u16=result;
-    }
+    common_bsrr16e16(cpu, eaa(cpu, op), op->reg);
     NEXT();
 }
-void OPCALL bsrr32r32(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_bsrr32r32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U32 value=cpu->reg[op->rm].u32;
-    cpu->fillFlagsNoZF();
-    if (value==0) {
-        cpu->addZF();
-    } else {
-        U32 result = 31;
-        while ((value & 0x80000000)==0) { result--; value<<=1; }
-        cpu->removeZF();
-        cpu->reg[op->reg].u32=result;
-    }
+    common_bsrr32r32(cpu, op->rm, op->reg);
     NEXT();
 }
-void OPCALL bsrr32e32(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_bsrr32e32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U32 value=readd(eaa(cpu, op));
-    cpu->fillFlagsNoZF();
-    if (value==0) {
-        cpu->addZF();
-    } else {
-        U32 result = 31;
-        while ((value & 0x80000000)==0) { result--; value<<=1; }
-        cpu->removeZF();
-        cpu->reg[op->reg].u32=result;
-    }
+    common_bsrr32e32(cpu, eaa(cpu, op), op->reg);
     NEXT();
 }

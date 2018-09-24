@@ -1,0 +1,61 @@
+#include "../common/common_xchg.h"
+void OPCALL dynamic_xchgr8r8(CPU* cpu, DecodedOp* op) {
+    movToRegFromCpu(DYN_DEST, OFFSET_REG8(op->rm), DYN_8bit);
+    movToCpuFromCpu(OFFSET_REG8(op->rm), OFFSET_REG8(op->reg), DYN_8bit, DYN_SRC);
+    movToCpuFromReg(OFFSET_REG8(op->reg), DYN_DEST, DYN_8bit);
+    INCREMENT_EIP(op->len);
+}
+void OPCALL dynamic_xchge8r8(CPU* cpu, DecodedOp* op) {
+    calculateEaa(op, DYN_ADDRESS);
+    movFromMem(DYN_8bit, DYN_ADDRESS);
+    movToRegFromCpu(DYN_DEST, OFFSET_REG8(op->reg), DYN_8bit);
+    movToMemFromReg(DYN_ADDRESS, DYN_DEST, DYN_8bit);
+    movToCpuFromReg(OFFSET_REG8(op->reg), DYN_READ_RESULT, DYN_8bit);
+    INCREMENT_EIP(op->len);
+}
+void OPCALL dynamic_xchgr16r16(CPU* cpu, DecodedOp* op) {
+    movToRegFromCpu(DYN_DEST, offsetof(CPU, reg[op->rm].u16), DYN_16bit);
+    movToCpuFromCpu(offsetof(CPU, reg[op->rm].u16), offsetof(CPU, reg[op->reg].u16), DYN_16bit, DYN_SRC);
+    movToCpuFromReg(offsetof(CPU, reg[op->reg].u16), DYN_DEST, DYN_16bit);
+    INCREMENT_EIP(op->len);
+}
+void OPCALL dynamic_xchge16r16(CPU* cpu, DecodedOp* op) {
+    calculateEaa(op, DYN_ADDRESS);
+    movFromMem(DYN_16bit, DYN_ADDRESS);
+    movToRegFromCpu(DYN_DEST, offsetof(CPU, reg[op->reg].u16), DYN_16bit);
+    movToMemFromReg(DYN_ADDRESS, DYN_DEST, DYN_16bit);
+    movToCpuFromReg(offsetof(CPU, reg[op->reg].u16), DYN_READ_RESULT, DYN_16bit);
+    INCREMENT_EIP(op->len);
+}
+void OPCALL dynamic_xchgr32r32(CPU* cpu, DecodedOp* op) {
+    movToRegFromCpu(DYN_DEST, offsetof(CPU, reg[op->rm].u32), DYN_32bit);
+    movToCpuFromCpu(offsetof(CPU, reg[op->rm].u32), offsetof(CPU, reg[op->reg].u32), DYN_32bit, DYN_SRC);
+    movToCpuFromReg(offsetof(CPU, reg[op->reg].u32), DYN_DEST, DYN_32bit);
+    INCREMENT_EIP(op->len);
+}
+void OPCALL dynamic_xchge32r32(CPU* cpu, DecodedOp* op) {
+    calculateEaa(op, DYN_ADDRESS);
+    movFromMem(DYN_32bit, DYN_ADDRESS);
+    movToRegFromCpu(DYN_DEST, offsetof(CPU, reg[op->reg].u32), DYN_32bit);
+    movToMemFromReg(DYN_ADDRESS, DYN_DEST, DYN_32bit);
+    movToCpuFromReg(offsetof(CPU, reg[op->reg].u32), DYN_READ_RESULT, DYN_32bit);
+    INCREMENT_EIP(op->len);
+}
+void OPCALL dynamic_cmpxchgr16r16(CPU* cpu, DecodedOp* op) {
+    callHostFunction(common_cmpxchgr16r16, false, false, false, 3, 0, DYN_PARAM_CPU, op->reg, DYN_PARAM_CONST_32, op->rm, DYN_PARAM_CONST_32);
+    INCREMENT_EIP(op->len);
+}
+void OPCALL dynamic_cmpxchge16r16(CPU* cpu, DecodedOp* op) {
+    calculateEaa(op, DYN_ADDRESS);
+    callHostFunction(common_cmpxchge16r16, false, false, false, 3, 0, DYN_PARAM_CPU, DYN_ADDRESS, DYN_PARAM_REG_32, op->reg, DYN_PARAM_CONST_32);
+    INCREMENT_EIP(op->len);
+}
+void OPCALL dynamic_cmpxchgr32r32(CPU* cpu, DecodedOp* op) {
+    callHostFunction(common_cmpxchgr32r32, false, false, false, 3, 0, DYN_PARAM_CPU, op->reg, DYN_PARAM_CONST_32, op->rm, DYN_PARAM_CONST_32);
+    INCREMENT_EIP(op->len);
+}
+void OPCALL dynamic_cmpxchge32r32(CPU* cpu, DecodedOp* op) {
+    calculateEaa(op, DYN_ADDRESS);
+    callHostFunction(common_cmpxchge32r32, false, false, false, 3, 0, DYN_PARAM_CPU, DYN_ADDRESS, DYN_PARAM_REG_32, op->reg, DYN_PARAM_CONST_32);
+    INCREMENT_EIP(op->len);
+}

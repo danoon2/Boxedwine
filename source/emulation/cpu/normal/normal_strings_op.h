@@ -16,7 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-void OPCALL movsb_op(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_movsb_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
@@ -33,7 +33,7 @@ void OPCALL movsb_op(CPU* cpu, DecodedOp* op) {
     }
     NEXT();
 }
-void OPCALL movsw_op(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_movsw_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
@@ -50,7 +50,7 @@ void OPCALL movsw_op(CPU* cpu, DecodedOp* op) {
     }
     NEXT();
 }
-void OPCALL movsd_op(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_movsd_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
@@ -67,7 +67,7 @@ void OPCALL movsd_op(CPU* cpu, DecodedOp* op) {
     }
     NEXT();
 }
-void OPCALL cmpsb_op(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_cmpsb_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
@@ -84,7 +84,7 @@ void OPCALL cmpsb_op(CPU* cpu, DecodedOp* op) {
     }
     NEXT();
 }
-void OPCALL cmpsw_op(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_cmpsw_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
@@ -101,7 +101,7 @@ void OPCALL cmpsw_op(CPU* cpu, DecodedOp* op) {
     }
     NEXT();
 }
-void OPCALL cmpsd_op(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_cmpsd_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
@@ -118,7 +118,7 @@ void OPCALL cmpsd_op(CPU* cpu, DecodedOp* op) {
     }
     NEXT();
 }
-void OPCALL stosb_op(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_stosb_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
@@ -135,7 +135,7 @@ void OPCALL stosb_op(CPU* cpu, DecodedOp* op) {
     }
     NEXT();
 }
-void OPCALL stosw_op(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_stosw_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
@@ -152,7 +152,7 @@ void OPCALL stosw_op(CPU* cpu, DecodedOp* op) {
     }
     NEXT();
 }
-void OPCALL stosd_op(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_stosd_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
@@ -169,7 +169,7 @@ void OPCALL stosd_op(CPU* cpu, DecodedOp* op) {
     }
     NEXT();
 }
-void OPCALL lodsb_op(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_lodsb_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
@@ -186,7 +186,7 @@ void OPCALL lodsb_op(CPU* cpu, DecodedOp* op) {
     }
     NEXT();
 }
-void OPCALL lodsw_op(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_lodsw_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
@@ -203,7 +203,7 @@ void OPCALL lodsw_op(CPU* cpu, DecodedOp* op) {
     }
     NEXT();
 }
-void OPCALL lodsd_op(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_lodsd_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
@@ -220,7 +220,7 @@ void OPCALL lodsd_op(CPU* cpu, DecodedOp* op) {
     }
     NEXT();
 }
-void OPCALL scasb_op(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_scasb_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
@@ -237,7 +237,7 @@ void OPCALL scasb_op(CPU* cpu, DecodedOp* op) {
     }
     NEXT();
 }
-void OPCALL scasw_op(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_scasw_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
@@ -254,7 +254,7 @@ void OPCALL scasw_op(CPU* cpu, DecodedOp* op) {
     }
     NEXT();
 }
-void OPCALL scasd_op(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_scasd_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {

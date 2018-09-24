@@ -1,0 +1,45 @@
+#include "boxedwine.h"
+void common_cmpxchgr16r16(CPU* cpu, U32 dstReg, U32 srcReg){
+    cpu->dst.u16 = AX;
+    cpu->src.u16 = cpu->reg[dstReg].u16;
+    cpu->result.u16 = cpu->dst.u16 - cpu->src.u16;
+    cpu->lazyFlags = FLAGS_CMP16;
+    if (AX == cpu->src.u16) {
+        cpu->reg[dstReg].u16 = cpu->reg[srcReg].u16;
+    } else {
+        AX = cpu->src.u16;
+    }
+}
+void common_cmpxchge16r16(CPU* cpu, U32 address, U32 srcReg){
+    cpu->dst.u16 = AX;
+    cpu->src.u16 = readw(address);
+    cpu->result.u16 = cpu->dst.u16 - cpu->src.u16;
+    cpu->lazyFlags = FLAGS_CMP16;
+    if (AX == cpu->src.u16) {
+        writew(address, cpu->reg[srcReg].u16);
+    } else {
+        AX = cpu->src.u16;
+    }
+}
+void common_cmpxchgr32r32(CPU* cpu, U32 dstReg, U32 srcReg){
+    cpu->dst.u32 = EAX;
+    cpu->src.u32 = cpu->reg[dstReg].u32;
+    cpu->result.u32 = cpu->dst.u32 - cpu->src.u32;
+    cpu->lazyFlags = FLAGS_CMP32;
+    if (EAX == cpu->src.u32) {
+        cpu->reg[dstReg].u32 = cpu->reg[srcReg].u32;
+    } else {
+        EAX = cpu->src.u32;
+    }
+}
+void common_cmpxchge32r32(CPU* cpu, U32 address, U32 srcReg){
+    cpu->dst.u32 = EAX;
+    cpu->src.u32 = readd(address);
+    cpu->result.u32 = cpu->dst.u32 - cpu->src.u32;
+    cpu->lazyFlags = FLAGS_CMP32;
+    if (EAX == cpu->src.u32) {
+        writed(address, cpu->reg[srcReg].u32);
+    } else {
+        EAX = cpu->src.u32;
+    }
+}

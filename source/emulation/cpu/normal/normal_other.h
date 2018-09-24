@@ -1,3 +1,4 @@
+#include "../common/common_other.h"
 /*
  *  Copyright (C) 2016  The BoxedWine Team
  *
@@ -16,24 +17,20 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-void OPCALL bound16(CPU* cpu, DecodedOp* op){
+void OPCALL normal_bound16(CPU* cpu, DecodedOp* op){
     START_OP(cpu, op);
-    U32 eaa = eaa(cpu, op);
-    if (cpu->reg[op->reg].u16<readw(eaa) || cpu->reg[op->reg].u16>readw(eaa+2)) {
-        cpu->prepareException(EXCEPTION_BOUND, 0);
-        NEXT_DONE();
-    } else { 
+    if (common_bound16(cpu, op->reg, eaa(cpu, op))) {
         NEXT();
+    } else { 
+        NEXT_DONE();
     }
 }
-void OPCALL bound32(CPU* cpu, DecodedOp* op){
+void OPCALL normal_bound32(CPU* cpu, DecodedOp* op){
     START_OP(cpu, op);
-    U32 eaa = eaa(cpu, op);
-    if (cpu->reg[op->reg].u32<readd(eaa) || cpu->reg[op->reg].u32>readd(eaa+4)) {
-        cpu->prepareException(EXCEPTION_BOUND, 0);
-        NEXT_DONE();
-    } else { 
+    if (common_bound32(cpu, op->reg, eaa(cpu, op))) {
         NEXT();
+    } else { 
+        NEXT_DONE();
     }
 }
 void OPCALL normal_daa(CPU* cpu, DecodedOp* op) {
@@ -183,6 +180,7 @@ void OPCALL normal_invalid(CPU* cpu, DecodedOp* op) {
 void OPCALL normal_int80(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     ksyscall(cpu, op->len);
+ NEXT_DONE();
 }
 void OPCALL normal_int98(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
@@ -242,33 +240,29 @@ void OPCALL normal_stc(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_cli(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    cpu->fillFlags();
     cpu->removeFlag(IF);
     NEXT();
 }
 void OPCALL normal_sti(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    cpu->fillFlags();
     cpu->addFlag(IF);
     NEXT();
 }
 void OPCALL normal_cld(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    cpu->fillFlags();
     cpu->removeFlag(DF);
     cpu->df=1;
     NEXT();
 }
 void OPCALL normal_std(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    cpu->fillFlags();
     cpu->addFlag(DF);
     cpu->df=-1;
     NEXT();
 }
 void OPCALL normal_rdtsc(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U64 t = cpu->blockInstructionCount+cpu->instructionCount+op->imm;
+    U64 t = cpu->instructionCount+op->imm;
     EAX = (U32)t;
     EDX = (U32)(t >> 32);
     NEXT();
@@ -579,22 +573,10 @@ NEXT();
 }
 void OPCALL normal_cmpxchgg8b(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U32 address = eaa(cpu, op);
-    U64 value1 = ((U64)EDX) << 32 | EAX;
-    U64 value2 = readq(address);
-    cpu->fillFlags();
-    if (value1 == value2) {
-        cpu->addZF();
-        writed(address, EBX);
-        writed(address + 4, ECX);
-    } else {
-        cpu->removeZF();
-        EDX = (U32)(value2 >> 32);
-        EAX = (U32)value2;
-    }
+    common_cmpxchgg8b(cpu, eaa(cpu, op));
     NEXT();
 }
-void OPCALL loadSegment16(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_loadSegment16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     U32 eaa = eaa(cpu, op);
     U16 val = readw(eaa);
@@ -606,7 +588,7 @@ void OPCALL loadSegment16(CPU* cpu, DecodedOp* op) {
         NEXT_DONE();
     }
 }
-void OPCALL loadSegment32(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_loadSegment32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     U32 eaa = eaa(cpu, op);
     U32 val = readd(eaa);

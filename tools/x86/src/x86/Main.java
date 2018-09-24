@@ -20,7 +20,7 @@ public class Main {
         ops.add(new Move());
 
         try {
-            FileOutputStream fos_init = new FileOutputStream("normal_cpu_init.h");
+            FileOutputStream fos_init = new FileOutputStream("../common/cpu_init.h");
 
             for (Base b : ops) {
                 b.generate(fos_init);

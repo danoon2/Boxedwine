@@ -48,7 +48,7 @@ public:
         this->pauseAtLen = 0xFFFFFFFF;
         this->cvtBufLen = 0;
         this->cvtBuf = NULL;
-        this->cvtBufPos = NULL;
+        this->cvtBufPos = 0;
     }
 
     ~DevDspData() {
@@ -134,9 +134,6 @@ void audioCallback(void *userdata, U8* stream, S32 len) {
     S32 originalAvailable = available;
     S32 originalLen = len;
 
-    if (available<len) {
-        int ii=0;
-    }
     if (available==0 && closeWhenDone && (data->cvtBufPos==0 || data->cvtBufPos>=data->cvt.len_cvt)) {
         closeWhenDone = false;
         delete data;
@@ -241,8 +238,6 @@ U32 DevDsp::writeNative(U8* buffer, U32 len) {
 
     if (!this->data->isDspOpen)
         this->openAudio();
-    static int ii;    
-    ii++;
     SDL_LockAudio();
     if (len>audioBuffer.getFree()) {
         KThread* thread = KThread::currentThread();

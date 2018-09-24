@@ -73,7 +73,7 @@ void Memory::log_pf(KThread* thread, U32 address) {
 }
 
 
-U8 readb(U32 address) {
+U8 __cdecl readb(U32 address) {
     int index = address >> 12;
 #ifdef LOG_OPS
     KThread* thread = KThread::currentThread();
@@ -221,12 +221,21 @@ Memory::Memory() : nativeAddressStart(0) {
     }
 
     this->mmu[CALL_BACK_ADDRESS>>K_PAGE_SHIFT] = NativePage::alloc(callbackRam, CALL_BACK_ADDRESS, PAGE_READ|PAGE_EXEC);
+
+#ifdef BOXEDWINE_DYNAMIC
+    this->dynamicExecutableMemoryPos = 0;
+#endif
 }
 
 Memory::~Memory() {
     for (int i=0;i<K_NUMBER_OF_PAGES;i++) {
         this->mmu[i]->close();
     }
+#ifdef BOXEDWINE_DYNAMIC
+    for (U32 i=0;i<this->dynamicExecutableMemory.size();i++) {
+        //freeExecutable64kBlock(this->dynamicExecutableMemory[i]);
+    }
+#endif
 }
 
 void Memory::reset() {

@@ -129,6 +129,11 @@ KThread::KThread(U32 id, KProcess* process) :
     if (process->name=="services.exe") {
         this->log=true;
     }
+    char tmp[10];
+    itoa(id, tmp, 10);
+    strcat(tmp, ".txt");
+    if (id==0x1c)
+    this->cpu->logFile = fopen(tmp, "w");
 }
 
 bool KThread::isLdtEmpty(struct user_desc* desc) {

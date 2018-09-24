@@ -3,10 +3,7 @@
 #include "../decoder.h"
 #include "normalCPU.h"
 #include "../../softmmu/soft_code_page.h"
-
-#define eaa1(cpu, op) cpu->seg[op->base].address + (U16)(cpu->reg[op->rm].u16 + (S16)cpu->reg[op->sibIndex].u16 + op->disp)
-#define eaa3(cpu, op) cpu->seg[op->base].address + cpu->reg[op->rm].u32 + (cpu->reg[op->sibIndex].u32 << + op->sibScale) + op->disp
-#define eaa(cpu, op) (op->ea16)?(eaa1(cpu, op)):(eaa3(cpu, op))
+#include "../x32/x32CPU.h"
 
 #ifdef _DEBUG
 #define START_OP(cpu, op) op->log(cpu)
@@ -57,10 +54,10 @@ static void initNormalOps() {
     for (int i=0;i<InstructionCount;i++) {
         normalOps[i] = normal_invalid;
     }
-#define INIT_CPU(e, f) normalOps[e] = f;
-#include "normal_cpu_init.h"
-#include "normal_cpu_init_mmx.h"
-#include "normal_cpu_init_fpu.h"
+#define INIT_CPU(e, f) normalOps[e] = normal_##f;
+#include "../common/cpu_init.h"
+#include "../common/cpu_init_mmx.h"
+#include "../common/cpu_init_fpu.h"
 #undef INIT_CPU    
     
     normalOps[SLDTReg] = 0; 
@@ -87,8 +84,13 @@ static void initNormalOps() {
     normalOps[Callback] = 0;
 }
 
-NormalCPU::NormalCPU() {
+NormalCPU::NormalCPU() {   
     initNormalOps();
+#ifdef BOXEDWINE_DYNAMIC32
+    this->firstOp = firstX32Op;
+#else
+    this->firstOp = NULL;
+#endif
 }
 
 U8 fetchByte(U32 *eip) {
@@ -112,7 +114,7 @@ void NormalBlock::run(CPU* cpu) {
     if (this==NULL || this->op==NULL || this->op->pfn==NULL) {
         kpanic("NormalBlock::run is about to crash");
     }
-#endif
+#endif  
     this->op->pfn(cpu, this->op);
     this->runCount++;
     cpu->blockInstructionCount+=this->opCount;
@@ -154,12 +156,12 @@ NormalBlock* NormalBlock::alloc(NormalCPU* cpu) {
 
 void NormalBlock::dealloc(bool delayed) {
     CPU* cpu = KThread::currentThread()->cpu;
-    if (cpu->delayedFreeBlock) {
+    if (cpu->delayedFreeBlock && cpu->delayedFreeBlock!=DecodedBlock::currentBlock) {
         DecodedBlock* b = cpu->delayedFreeBlock;        
         cpu->delayedFreeBlock = NULL;
         b->dealloc(false);
     }
-    if (delayed) {
+    if ((delayed && !cpu->delayedFreeBlock) || this==DecodedBlock::currentBlock) {
         cpu->delayedFreeBlock = this;
     } else {
         this->op->dealloc(true);
@@ -208,6 +210,13 @@ DecodedBlock* NormalCPU::getNextBlock() {
             op = op->next;
         }
         this->thread->memory->addCodeBlock(startIp, block);
+        if (this->firstOp) {
+            op = DecodedOp::alloc();
+            op->inst = Custom1;
+            op->pfn = this->firstOp;
+            op->next = block->op;
+            block->op = op;
+        }
     }
     return block;
 }

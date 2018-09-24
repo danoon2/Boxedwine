@@ -292,4 +292,39 @@ public:
     virtual DecodedBlock* getNextBlock() = 0;
 };
 
+// until I can figure out how to call cpp function directly from asm
+U32 common_getCF(CPU* cpu);
+U32 common_condition_o(CPU* cpu);
+U32 common_condition_no(CPU* cpu);
+U32 common_condition_b(CPU* cpu);
+U32 common_condition_nb(CPU* cpu);
+U32 common_condition_z(CPU* cpu);
+U32 common_condition_nz(CPU* cpu);
+U32 common_condition_be(CPU* cpu);
+U32 common_condition_nbe(CPU* cpu);
+U32 common_condition_s(CPU* cpu);
+U32 common_condition_ns(CPU* cpu);
+U32 common_condition_p(CPU* cpu);
+U32 common_condition_np(CPU* cpu);
+U32 common_condition_l(CPU* cpu);
+U32 common_condition_nl(CPU* cpu);
+U32 common_condition_le(CPU* cpu);
+U32 common_condition_nle(CPU* cpu);
+
+U32 common_pop32(CPU* cpu);
+U16 common_pop16(CPU* cpu);
+void common_push16(CPU* cpu, U16 value);
+void common_push32(CPU* cpu, U32 value);
+U32 common_peek32(CPU* cpu, U32 index);
+U16 common_peek16(CPU* cpu, U32 index);
+U32 common_setSegment(CPU* cpu, U32 seg, U32 value);
+void common_setFlags(CPU* cpu, U32 flags, U32 mask);
+void common_fillFlags(CPU* cpu);
+void common_call(CPU* cpu, U32 big, U32 selector, U32 offset, U32 oldEip);
+void common_jmp(CPU* cpu, U32 big, U32 selector, U32 offset, U32 oldEip);
+void common_ret(CPU* cpu, U32 big, U32 bytes);
+void common_iret(CPU* cpu, U32 big, U32 oldEip);
+void common_enter(CPU* cpu, U32 big, U32 bytes, U32 level);
+void common_rdtsc(CPU* cpu, U32 extra);
+void common_log(CPU* cpu, DecodedOp* op);
 #endif

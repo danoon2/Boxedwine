@@ -1,3 +1,4 @@
+#include "../common/common_xchg.h"
 /*
  *  Copyright (C) 2016  The BoxedWine Team
  *
@@ -16,99 +17,68 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-void OPCALL xchgr8r8(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_xchgr8r8(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     U8 tmp = *cpu->reg8[op->rm];
     *cpu->reg8[op->rm] = *cpu->reg8[op->reg];
     *cpu->reg8[op->reg] = tmp;
     NEXT();
 }
-void OPCALL xchge8r8(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_xchge8r8(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U8 tmp = readb(eaa(cpu, op));
-    writeb(eaa(cpu, op), *cpu->reg8[op->reg]);
+    U32 address = eaa(cpu, op);
+    U8 tmp = readb(address);
+    writeb(address, *cpu->reg8[op->reg]);
     *cpu->reg8[op->reg] = tmp;
     NEXT();
 }
-void OPCALL xchgr16r16(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_xchgr16r16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     U16 tmp = cpu->reg[op->rm].u16;
     cpu->reg[op->rm].u16 = cpu->reg[op->reg].u16;
     cpu->reg[op->reg].u16 = tmp;
     NEXT();
 }
-void OPCALL xchge16r16(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_xchge16r16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U16 tmp = readw(eaa(cpu, op));
-    writew(eaa(cpu, op), cpu->reg[op->reg].u16);
+    U32 address = eaa(cpu, op);
+    U16 tmp = readw(address);
+    writew(address, cpu->reg[op->reg].u16);
     cpu->reg[op->reg].u16 = tmp;
     NEXT();
 }
-void OPCALL xchgr32r32(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_xchgr32r32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     U32 tmp = cpu->reg[op->rm].u32;
     cpu->reg[op->rm].u32 = cpu->reg[op->reg].u32;
     cpu->reg[op->reg].u32 = tmp;
     NEXT();
 }
-void OPCALL xchge32r32(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_xchge32r32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U32 tmp = readd(eaa(cpu, op));
-    writed(eaa(cpu, op), cpu->reg[op->reg].u32);
+    U32 address = eaa(cpu, op);
+    U32 tmp = readd(address);
+    writed(address, cpu->reg[op->reg].u32);
     cpu->reg[op->reg].u32 = tmp;
     NEXT();
 }
-void OPCALL cmpxchgr16r16(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_cmpxchgr16r16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    cpu->dst.u16 = AX;
-    cpu->src.u16 = cpu->reg[op->reg].u16;
-    cpu->result.u16 = cpu->dst.u16 - cpu->src.u16;
-    cpu->lazyFlags = FLAGS_CMP16;
-    if (AX == cpu->src.u16) {
-        cpu->reg[op->reg].u16 = cpu->reg[op->rm].u16;
-    } else {
-        AX = cpu->src.u16;
-    }
+    common_cmpxchgr16r16(cpu, op->reg, op->rm);
     NEXT();
 }
-void OPCALL cmpxchge16r16(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_cmpxchge16r16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U32 address = eaa(cpu, op);
-    cpu->dst.u16 = AX;
-    cpu->src.u16 = readw(address);
-    cpu->result.u16 = cpu->dst.u16 - cpu->src.u16;
-    cpu->lazyFlags = FLAGS_CMP16;
-    if (AX == cpu->src.u16) {
-        writew(address, cpu->reg[op->reg].u16);
-    } else {
-        AX = cpu->src.u16;
-    }
+    common_cmpxchge16r16(cpu, eaa(cpu, op), op->reg);
     NEXT();
 }
-void OPCALL cmpxchgr32r32(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_cmpxchgr32r32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    cpu->dst.u32 = EAX;
-    cpu->src.u32 = cpu->reg[op->reg].u32;
-    cpu->result.u32 = cpu->dst.u32 - cpu->src.u32;
-    cpu->lazyFlags = FLAGS_CMP32;
-    if (EAX == cpu->src.u32) {
-        cpu->reg[op->reg].u32 = cpu->reg[op->rm].u32;
-    } else {
-        EAX = cpu->src.u32;
-    }
+    common_cmpxchgr32r32(cpu, op->reg, op->rm);
     NEXT();
 }
-void OPCALL cmpxchge32r32(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_cmpxchge32r32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U32 address = eaa(cpu, op);
-    cpu->dst.u32 = EAX;
-    cpu->src.u32 = readd(address);
-    cpu->result.u32 = cpu->dst.u32 - cpu->src.u32;
-    cpu->lazyFlags = FLAGS_CMP32;
-    if (EAX == cpu->src.u32) {
-        writed(address, cpu->reg[op->reg].u32);
-    } else {
-        EAX = cpu->src.u32;
-    }
+    common_cmpxchge32r32(cpu, eaa(cpu, op), op->reg);
     NEXT();
 }

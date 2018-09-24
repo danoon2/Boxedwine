@@ -1,6 +1,10 @@
 #ifndef __CPU_DECODER_H__
 #define __CPU_DECODER_H__
 
+#define eaa1(cpu, op) cpu->seg[op->base].address + (U16)(cpu->reg[op->rm].u16 + (S16)cpu->reg[op->sibIndex].u16 + op->disp)
+#define eaa3(cpu, op) cpu->seg[op->base].address + cpu->reg[op->rm].u32 + (cpu->reg[op->sibIndex].u32 << + op->sibScale) + op->disp
+#define eaa(cpu, op) (op->ea16)?(eaa1(cpu, op)):(eaa3(cpu, op))
+
 #define CF		0x00000001
 #define PF		0x00000004
 #define AF		0x00000010
@@ -1001,6 +1005,7 @@ enum Instruction {
 
     Callback,
     Done,
+    Custom1,
     InstructionCount
 };
 
@@ -1035,6 +1040,7 @@ public:
     static DecodedOp* alloc();
     void dealloc(bool deallocNext);    
     void log(CPU* cpu);
+    bool needsToSetFlags();
 
     DecodedOp* next;
     OpCallback pfn;

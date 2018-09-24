@@ -170,7 +170,6 @@ int seh_filter(unsigned int code, struct _EXCEPTION_POINTERS* ep, KThread* threa
             return EXCEPTION_CONTINUE_EXECUTION;
         } else {
             thread->seg_mapper(address, ep->ExceptionRecord->ExceptionInformation[0]==0, ep->ExceptionRecord->ExceptionInformation[0]!=0, false);
-            thread->cpu->logFile = fopen("crash.txt", "w");
             return EXCEPTION_EXECUTE_HANDLER;
         }
     }   
