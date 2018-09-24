@@ -652,7 +652,7 @@ U32 Memory::mapNativeMemory(void* hostAddress, U32 size) {
         U32 i;
 
         // just assume we are in the middle, hopefully OpenGL won't want more than 128MB before or after this initial address
-        this->nativeAddressStart = ((U8*)hostAddress - ((U32)hostAddress & 0xFFF)) - 0x08000000;
+        this->nativeAddressStart = ((U8*)hostAddress - ((uintptr_t)hostAddress & 0xFFF)) - 0x08000000;
         if (this->nativeAddressStart>hostAddress) // did we wrap?
             this->nativeAddressStart = (U8*)0x1000;
         for (i=0;i<0x10000;i++) {
