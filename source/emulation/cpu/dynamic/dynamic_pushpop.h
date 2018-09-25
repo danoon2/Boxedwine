@@ -46,16 +46,16 @@ void OPCALL dynamic_pushSeg16(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL dynamic_popSeg16(CPU* cpu, DecodedOp* op) {
     callHostFunction(common_peek16, true, false, false, 2, 0, DYN_PARAM_CPU, 0, DYN_PARAM_CONST_32);
-    callHostFunction(common_setSegment, true, false, true, 3, 0, DYN_PARAM_CPU, op->reg, DYN_PARAM_CONST_32, DYN_CALL_RESULT, DYN_PARAM_REG_32);
-    if (cpu->stackMask==0xFFFFFFFF) {
-        movToRegFromCpu(DYN_SRC, offsetof(CPU, reg[4].u32), DYN_32bit);
-        instRegImm('+', DYN_SRC, DYN_32bit, 2);
-        movToCpuFromReg(offsetof(CPU, reg[4].u32), DYN_DEST, DYN_32bit);
-    } else {
-        movToRegFromCpu(DYN_SRC, offsetof(CPU, reg[4].u16), DYN_16bit);
-        instRegImm('+', DYN_SRC, DYN_16bit, 2);
-        movToCpuFromReg(offsetof(CPU, reg[4].u16), DYN_DEST, DYN_16bit);
-    }
+    callHostFunction(common_setSegment, true, false, true, 3, 0, DYN_PARAM_CPU, op->reg, DYN_PARAM_CONST_32, DYN_CALL_RESULT, DYN_PARAM_REG_16);
+    movToRegFromCpu(DYN_DEST, offsetof(CPU, stackMask), DYN_32bit);
+    movToRegFromCpu(DYN_SRC, offsetof(CPU, reg[4].u32), DYN_32bit);
+    movToRegFromReg(DYN_ADDRESS, DYN_32bit, DYN_SRC, DYN_32bit);
+    instRegImm('+', DYN_SRC, DYN_32bit, 2);
+    instRegReg('&', DYN_SRC, DYN_DEST, DYN_32bit);
+    movToRegFromCpu(DYN_DEST, offsetof(CPU, stackNotMask), DYN_32bit);
+    instRegReg('&', DYN_ADDRESS, DYN_DEST, DYN_32bit);
+    instRegReg('|', DYN_SRC, DYN_ADDRESS, DYN_32bit);
+    movToCpuFromReg(offsetof(CPU, reg[4].u32), DYN_SRC, DYN_32bit);
     INCREMENT_EIP(op->len);
 }
 void OPCALL dynamic_pushSeg32(CPU* cpu, DecodedOp* op) {
@@ -65,15 +65,15 @@ void OPCALL dynamic_pushSeg32(CPU* cpu, DecodedOp* op) {
 void OPCALL dynamic_popSeg32(CPU* cpu, DecodedOp* op) {
     callHostFunction(common_peek32, true, false, false, 2, 0, DYN_PARAM_CPU, 0, DYN_PARAM_CONST_32);
     callHostFunction(common_setSegment, true, false, true, 3, 0, DYN_PARAM_CPU, op->reg, DYN_PARAM_CONST_32, DYN_CALL_RESULT, DYN_PARAM_REG_32);
-    if (cpu->stackMask==0xFFFFFFFF) {
-        movToRegFromCpu(DYN_SRC, offsetof(CPU, reg[4].u32), DYN_32bit);
-        instRegImm('+', DYN_SRC, DYN_32bit, 4);
-        movToCpuFromReg(offsetof(CPU, reg[4].u32), DYN_DEST, DYN_32bit);
-    } else {
-        movToRegFromCpu(DYN_SRC, offsetof(CPU, reg[4].u16), DYN_16bit);
-        instRegImm('+', DYN_SRC, DYN_16bit, 4);
-        movToCpuFromReg(offsetof(CPU, reg[4].u16), DYN_DEST, DYN_16bit);
-    }
+    movToRegFromCpu(DYN_DEST, offsetof(CPU, stackMask), DYN_32bit);
+    movToRegFromCpu(DYN_SRC, offsetof(CPU, reg[4].u32), DYN_32bit);
+    movToRegFromReg(DYN_ADDRESS, DYN_32bit, DYN_SRC, DYN_32bit);
+    instRegImm('+', DYN_SRC, DYN_32bit, 4);
+    instRegReg('&', DYN_SRC, DYN_DEST, DYN_32bit);
+    movToRegFromCpu(DYN_DEST, offsetof(CPU, stackNotMask), DYN_32bit);
+    instRegReg('&', DYN_ADDRESS, DYN_DEST, DYN_32bit);
+    instRegReg('|', DYN_SRC, DYN_ADDRESS, DYN_32bit);
+    movToCpuFromReg(offsetof(CPU, reg[4].u32), DYN_SRC, DYN_32bit);
     INCREMENT_EIP(op->len);
 }
 void OPCALL dynamic_pushA16(CPU* cpu, DecodedOp* op) {
@@ -116,7 +116,7 @@ void OPCALL dynamic_pushf16(CPU* cpu, DecodedOp* op) {
     callHostFunction(common_fillFlags, false, false, false, 1, 0, DYN_PARAM_CPU);
     movToRegFromCpu(DYN_SRC, offsetof(CPU, flags), DYN_32bit);
     instRegImm('|', DYN_SRC, DYN_32bit, 2);
-    callHostFunction(common_push16, false, false, false, 3, 0, DYN_PARAM_CPU, DYN_SRC, DYN_PARAM_REG_32);
+    callHostFunction(common_push16, false, false, false, 2, 0, DYN_PARAM_CPU, DYN_SRC, DYN_PARAM_REG_32);
     INCREMENT_EIP(op->len);
 }
 void OPCALL dynamic_pushf32(CPU* cpu, DecodedOp* op) {
@@ -124,6 +124,6 @@ void OPCALL dynamic_pushf32(CPU* cpu, DecodedOp* op) {
     movToRegFromCpu(DYN_SRC, offsetof(CPU, flags), DYN_32bit);
     instRegImm('|', DYN_SRC, DYN_32bit, 2);
     instRegImm('&', DYN_SRC, DYN_32bit, 0xFCFFFF);
-    callHostFunction(common_push32, false, false, false, 3, 0, DYN_PARAM_CPU, DYN_SRC, DYN_PARAM_REG_32);
+    callHostFunction(common_push32, false, false, false, 2, 0, DYN_PARAM_CPU, DYN_SRC, DYN_PARAM_REG_32);
     INCREMENT_EIP(op->len);
 }

@@ -77,13 +77,13 @@ void OPCALL dynamic_retf16(CPU* cpu, DecodedOp* op) {
     movToRegFromCpu(DYN_SRC, offsetof(CPU, eip.u32), DYN_32bit);
     instRegImm('+', DYN_SRC, DYN_32bit, op->len);
     movToCpuFromReg(offsetof(CPU, eip.u32), DYN_SRC, DYN_32bit);
-    callHostFunction(common_ret, false, false, false, 3, 0, DYN_PARAM_CPU, 1, DYN_PARAM_CONST_32, 0, DYN_PARAM_CONST_32, op->imm, DYN_PARAM_CONST_32);
+    callHostFunction(common_ret, false, false, false, 3, 0, DYN_PARAM_CPU, 0, DYN_PARAM_CONST_32, op->imm, DYN_PARAM_CONST_32);
 }
 void OPCALL dynamic_retf32(CPU* cpu, DecodedOp* op) {
     movToRegFromCpu(DYN_SRC, offsetof(CPU, eip.u32), DYN_32bit);
     instRegImm('+', DYN_SRC, DYN_32bit, op->len);
     movToCpuFromReg(offsetof(CPU, eip.u32), DYN_SRC, DYN_32bit);
-    callHostFunction(common_ret, false, false, false, 3, 0, DYN_PARAM_CPU, 1, DYN_PARAM_CONST_32, 1, DYN_PARAM_CONST_32, op->imm, DYN_PARAM_CONST_32);
+    callHostFunction(common_ret, false, false, false, 3, 0, DYN_PARAM_CPU, 1, DYN_PARAM_CONST_32, op->imm, DYN_PARAM_CONST_32);
 }
 void OPCALL dynamic_iret(CPU* cpu, DecodedOp* op) {
     movToRegFromCpu(DYN_SRC, offsetof(CPU, eip.u32), DYN_32bit);
@@ -209,11 +209,11 @@ void OPCALL dynamic_cpuid(CPU* cpu, DecodedOp* op) {
     INCREMENT_EIP(op->len);
 }
 void OPCALL dynamic_enter16(CPU* cpu, DecodedOp* op) {
-    callHostFunction(common_enter, true, false, false, 1, 0, DYN_PARAM_CPU, 0, DYN_PARAM_CONST_32, op->imm, DYN_PARAM_CONST_32, op->reg, DYN_PARAM_CONST_32);
+    callHostFunction(common_enter, true, false, false, 4, 0, DYN_PARAM_CPU, 0, DYN_PARAM_CONST_32, op->imm, DYN_PARAM_CONST_32, op->reg, DYN_PARAM_CONST_32);
     INCREMENT_EIP(op->len);
 }
 void OPCALL dynamic_enter32(CPU* cpu, DecodedOp* op) {
-    callHostFunction(common_enter, true, false, false, 1, 0, DYN_PARAM_CPU, 1, DYN_PARAM_CONST_32, op->imm, DYN_PARAM_CONST_32, op->reg, DYN_PARAM_CONST_32);
+    callHostFunction(common_enter, true, false, false, 4, 0, DYN_PARAM_CPU, 1, DYN_PARAM_CONST_32, op->imm, DYN_PARAM_CONST_32, op->reg, DYN_PARAM_CONST_32);
     INCREMENT_EIP(op->len);
 }
 void OPCALL dynamic_leave16(CPU* cpu, DecodedOp* op) {

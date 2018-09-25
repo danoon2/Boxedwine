@@ -961,6 +961,18 @@ void incrementEip(U32 inc) {
 void OPCALL x32_sidt(CPU* cpu, DecodedOp* op) {
 }
 
+void x32_onExitSignal(CPU* cpu) {
+    onExitSignal(cpu, NULL);
+}
+
+void OPCALL x32_callback(CPU* cpu, DecodedOp* op) {
+    if (op->pfn == onExitSignal) {
+        callHostFunction(x32_onExitSignal, false, false, false, 1, 0, DYN_PARAM_CPU);
+    } else {
+        kpanic("x32CPU::x32_callback unhandled callback");
+    }
+}
+
 void OPCALL x32_invalid_op(CPU* cpu, DecodedOp* op) {
     kpanic("Invalid instruction %x\n", op->inst);
 }
@@ -1011,7 +1023,7 @@ static void initX32Ops() {
     x32Ops[LMSWRreg] = 0; 
     x32Ops[LMSW] = 0;
     x32Ops[INVLPG] = 0;
-    x32Ops[Callback] = 0;
+    x32Ops[Callback] = x32_callback;
 }
 
 void OPCALL firstX32Op(CPU* cpu, DecodedOp* op) {
