@@ -788,7 +788,7 @@ void movCC(void* condition, DecodedOp* op, DynWidth width, bool useAddress) {
         movToCpuFromReg(offsetof(CPU, reg[op->reg].u16), DYN_EAX, DYN_16bit);
     }
 
-    outBuffer[pos] = (U8)(outBufferPos-pos);
+    outBuffer[pos] = (U8)(outBufferPos-pos-1);
 }
 
 void setCC(void* condition, DecodedOp* op, bool useAddress) {
