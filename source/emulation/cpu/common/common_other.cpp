@@ -85,7 +85,7 @@ void common_loopnz32(CPU* cpu, U32 offset1, U32 offset2) {
     if (ECX!=0 && !cpu->getZF()) {
         cpu->eip.u32+=offset1;
     } else {
-        cpu->eip.u32+=offset1;
+        cpu->eip.u32+=offset2;
     }
 }
 void common_loopnz(CPU* cpu, U32 offset1, U32 offset2){
@@ -101,7 +101,7 @@ void common_loopz32(CPU* cpu, U32 offset1, U32 offset2) {
     if (ECX!=0 && cpu->getZF()) {
         cpu->eip.u32+=offset1;
     } else {
-        cpu->eip.u32+=offset1;
+        cpu->eip.u32+=offset2;
     }
 }
 void common_loopz(CPU* cpu, U32 offset1, U32 offset2){
@@ -117,7 +117,7 @@ void common_loop32(CPU* cpu, U32 offset1, U32 offset2) {
     if (ECX!=0) {
         cpu->eip.u32+=offset1;
     } else {
-        cpu->eip.u32+=offset1;
+        cpu->eip.u32+=offset2;
     }
 }
 void common_loop(CPU* cpu, U32 offset1, U32 offset2){
@@ -132,7 +132,7 @@ void common_jcxz32(CPU* cpu, U32 offset1, U32 offset2) {
     if (ECX==0) {
         cpu->eip.u32+=offset1;
     } else {
-        cpu->eip.u32+=offset1;
+        cpu->eip.u32+=offset2;
     }
 }
 void common_jcxz(CPU* cpu, U32 offset1, U32 offset2){
