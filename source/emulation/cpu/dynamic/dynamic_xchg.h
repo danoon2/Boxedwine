@@ -42,20 +42,20 @@ void OPCALL dynamic_xchge32r32(CPU* cpu, DecodedOp* op) {
     INCREMENT_EIP(op->len);
 }
 void OPCALL dynamic_cmpxchgr16r16(CPU* cpu, DecodedOp* op) {
-    callHostFunction(common_cmpxchgr16r16, false, false, false, 3, 0, DYN_PARAM_CPU, op->reg, DYN_PARAM_CONST_32, op->rm, DYN_PARAM_CONST_32);
+    callHostFunction(NULL, common_cmpxchgr16r16, false, false, false, 3, 0, DYN_PARAM_CPU, op->reg, DYN_PARAM_CONST_32, op->rm, DYN_PARAM_CONST_32);
     INCREMENT_EIP(op->len);
 }
 void OPCALL dynamic_cmpxchge16r16(CPU* cpu, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
-    callHostFunction(common_cmpxchge16r16, false, false, false, 3, 0, DYN_PARAM_CPU, DYN_ADDRESS, DYN_PARAM_REG_32, op->reg, DYN_PARAM_CONST_32);
+    callHostFunction(NULL, common_cmpxchge16r16, false, false, false, 3, 0, DYN_PARAM_CPU, DYN_ADDRESS, DYN_PARAM_REG_32, op->reg, DYN_PARAM_CONST_32);
     INCREMENT_EIP(op->len);
 }
 void OPCALL dynamic_cmpxchgr32r32(CPU* cpu, DecodedOp* op) {
-    callHostFunction(common_cmpxchgr32r32, false, false, false, 3, 0, DYN_PARAM_CPU, op->reg, DYN_PARAM_CONST_32, op->rm, DYN_PARAM_CONST_32);
+    callHostFunction(NULL, common_cmpxchgr32r32, false, false, false, 3, 0, DYN_PARAM_CPU, op->reg, DYN_PARAM_CONST_32, op->rm, DYN_PARAM_CONST_32);
     INCREMENT_EIP(op->len);
 }
 void OPCALL dynamic_cmpxchge32r32(CPU* cpu, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
-    callHostFunction(common_cmpxchge32r32, false, false, false, 3, 0, DYN_PARAM_CPU, DYN_ADDRESS, DYN_PARAM_REG_32, op->reg, DYN_PARAM_CONST_32);
+    callHostFunction(NULL, common_cmpxchge32r32, false, false, false, 3, 0, DYN_PARAM_CPU, DYN_ADDRESS, DYN_PARAM_REG_32, op->reg, DYN_PARAM_CONST_32);
     INCREMENT_EIP(op->len);
 }

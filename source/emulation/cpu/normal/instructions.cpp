@@ -328,6 +328,7 @@ void dshrcle32r32(CPU* cpu, U32 reg, U32 address) {
 }
 
 void daa(CPU* cpu) {
+    cpu->lazyFlags=FLAGS_NONE;
     if (((AL & 0x0F)>0x09) || cpu->getAF()) {
         if ((AL > 0x99) || cpu->getCF()) {
             AL+=0x60;
@@ -348,11 +349,11 @@ void daa(CPU* cpu) {
     }
     cpu->setSF(AL & 0x80);
     cpu->setZF(AL == 0);
-    cpu->setPFonValue(AL);
-    cpu->lazyFlags=FLAGS_NONE;
+    cpu->setPFonValue(AL);    
 }
 
 void das(CPU* cpu) {
+    cpu->lazyFlags=FLAGS_NONE;
     U8 osigned=AL & 0x80;
     if (((AL & 0x0f) > 9) || cpu->getAF()) {
         if ((AL>0x99) || cpu->getCF()) {
@@ -375,11 +376,11 @@ void das(CPU* cpu) {
     cpu->setOF(osigned && ((AL & 0x80)==0));
     cpu->setSF(AL & 0x80);
     cpu->setZF(AL==0);
-    cpu->setPFonValue(AL);
-    cpu->lazyFlags=FLAGS_NONE;
+    cpu->setPFonValue(AL);    
 }
 
 void aaa(CPU* cpu) {
+    cpu->lazyFlags=FLAGS_NONE;
     cpu->setSF((AL>=0x7a) && (AL<=0xf9));
     if ((AL & 0xf) > 9) {
         cpu->setOF((AL & 0xf0)==0x70);
@@ -400,11 +401,11 @@ void aaa(CPU* cpu) {
         cpu->removeAF();
     }
     cpu->setPFonValue(AL);
-    AL &= 0x0F;
-    cpu->lazyFlags=FLAGS_NONE;
+    AL &= 0x0F;    
 }
 
 void aas(CPU* cpu) {
+    cpu->lazyFlags=FLAGS_NONE;
     if ((AL & 0x0f)>9) {
         cpu->setSF(AL>0x85);
         AX -= 0x106;
@@ -425,33 +426,32 @@ void aas(CPU* cpu) {
     }
     cpu->setZF(AL == 0);
     cpu->setPFonValue(AL);
-    AL &= 0x0F;
-    cpu->lazyFlags=FLAGS_NONE;
+    AL &= 0x0F;    
 }
 
 void aad(CPU* cpu, U32 value) {
     AL = AH * value + AL;
     AH = 0;
+    cpu->lazyFlags = FLAGS_NONE;
     cpu->setSF(AL & 0x80);
     cpu->setZF(AL == 0);		
     cpu->setPFonValue(AL);
     cpu->removeCF();
     cpu->removeOF();
-    cpu->removeAF();
-    cpu->lazyFlags = FLAGS_NONE;
+    cpu->removeAF();    
 }
 
 U32 aam(CPU* cpu, U32 value) {
     if (value) {
         AH = AL / value;
         AL = AL % value;
+        cpu->lazyFlags = FLAGS_NONE;
         cpu->setSF(AL & 0x80);
         cpu->setZF(AL == 0);		
         cpu->setPFonValue(AL);
         cpu->removeCF();
         cpu->removeOF();
-        cpu->removeAF();
-        cpu->lazyFlags = FLAGS_NONE;
+        cpu->removeAF();        
         return 1;
     } else {
         cpu->prepareException(EXCEPTION_DIVIDE, 0);

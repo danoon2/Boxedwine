@@ -127,15 +127,15 @@ public class Shift extends Base {
         if (eaa) {
             out(fos32, "    calculateEaa(op, DYN_ADDRESS);");
             if (cl) {
-                out(fos32, "    callHostFunction(" + name + ", false, false, false, 3, 0, DYN_PARAM_CPU, op->reg, DYN_PARAM_CONST_32, DYN_ADDRESS, DYN_PARAM_REG_32);");
+                out(fos32, "    callHostFunction(NULL, " + name + ", false, false, false, 3, 0, DYN_PARAM_CPU, op->reg, DYN_PARAM_CONST_32, DYN_ADDRESS, DYN_PARAM_REG_32);");
             } else {
-                out(fos32, "    callHostFunction(" + name + ", false, false, false, 4, 0, DYN_PARAM_CPU, op->reg, DYN_PARAM_CONST_32, DYN_ADDRESS, DYN_PARAM_REG_32, op->imm, DYN_PARAM_CONST_32);");
+                out(fos32, "    callHostFunction(NULL, " + name + ", false, false, false, 4, 0, DYN_PARAM_CPU, op->reg, DYN_PARAM_CONST_32, DYN_ADDRESS, DYN_PARAM_REG_32, op->imm, DYN_PARAM_CONST_32);");
             }
         } else {
             if (cl) {
-                out(fos32, "    callHostFunction(" + name + ", false, false, false, 3, 0, DYN_PARAM_CPU, op->reg, DYN_PARAM_CONST_32, op->rm, DYN_PARAM_CONST_32);");
+                out(fos32, "    callHostFunction(NULL, " + name + ", false, false, false, 3, 0, DYN_PARAM_CPU, op->reg, DYN_PARAM_CONST_32, op->rm, DYN_PARAM_CONST_32);");
             } else {
-                out(fos32, "    callHostFunction(" + name + ", false, false, false, 4, 0, DYN_PARAM_CPU, op->reg, DYN_PARAM_CONST_32, op->rm, DYN_PARAM_CONST_32, op->imm, DYN_PARAM_CONST_32);");
+                out(fos32, "    callHostFunction(NULL, " + name + ", false, false, false, 4, 0, DYN_PARAM_CPU, op->reg, DYN_PARAM_CONST_32, op->rm, DYN_PARAM_CONST_32, op->imm, DYN_PARAM_CONST_32);");
             }
         }
         out(fos32, "    INCREMENT_EIP(op->len);");
@@ -215,9 +215,9 @@ public class Shift extends Base {
             }
             if (eaa) {
                 out(fos32, "    calculateEaa(op, DYN_ADDRESS);");
-                out(fos32, "    callHostFunction(" + name + ", false, false, false, 3, 0, DYN_PARAM_CPU, DYN_ADDRESS, DYN_PARAM_REG_32, "+param+", "+paramType+");");
+                out(fos32, "    callHostFunction(NULL, " + name + ", false, false, false, 3, 0, DYN_PARAM_CPU, DYN_ADDRESS, DYN_PARAM_REG_32, "+param+", "+paramType+");");
             } else {
-                out(fos32, "    callHostFunction(" + name + ", false, false, false, 3, 0, DYN_PARAM_CPU, op->reg, DYN_PARAM_CONST_32, "+param+", "+paramType+");");
+                out(fos32, "    callHostFunction(NULL, " + name + ", false, false, false, 3, 0, DYN_PARAM_CPU, op->reg, DYN_PARAM_CONST_32, "+param+", "+paramType+");");
             }
             out(fos32, "    INCREMENT_EIP(op->len);");
             out(fos32, "}");

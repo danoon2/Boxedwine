@@ -1204,3 +1204,7 @@ void common_rdtsc(CPU* cpu, U32 extra) {
 void common_log(CPU* cpu, DecodedOp* op) {
     op->log(cpu);
 }
+
+DecodedBlock* common_getNextBlock(CPU* cpu) {
+    return cpu->getNextBlock();
+}

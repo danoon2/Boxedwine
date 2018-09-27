@@ -327,4 +327,5 @@ void common_iret(CPU* cpu, U32 big, U32 oldEip);
 void common_enter(CPU* cpu, U32 big, U32 bytes, U32 level);
 void common_rdtsc(CPU* cpu, U32 extra);
 void common_log(CPU* cpu, DecodedOp* op);
+DecodedBlock* common_getNextBlock(CPU* cpu);
 #endif

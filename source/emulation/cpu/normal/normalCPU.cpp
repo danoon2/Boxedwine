@@ -222,10 +222,12 @@ DecodedBlock* NormalCPU::getNextBlock() {
 }
 
 void NormalCPU::run() {    
-    if (this->nextBlock)
-        DecodedBlock::currentBlock = this->nextBlock;
-    else
-        DecodedBlock::currentBlock = this->getNextBlock();
+    DecodedBlock::currentBlock = this->nextBlock;
     DecodedBlock::currentBlock->run(this);
+#ifdef _DEBUG
+    if (!this->nextBlock && !this->yield) {
+        kpanic("NormalCPU::run no block set");
+    }
     DecodedBlock::currentBlock = NULL;
+#endif
 }

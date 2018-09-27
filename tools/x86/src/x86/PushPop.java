@@ -114,12 +114,12 @@ public class PushPop extends Base {
         out(fos_init, "INIT_CPU(PopE"+bits+", popE"+name+"_mem)");
 
         out(fos32, "void OPCALL dynamic_pushE"+name+"_reg(CPU* cpu, DecodedOp* op) {");
-        out(fos32, "    callHostFunction(common_push"+bits+", false, false, false, 2, 0, DYN_PARAM_CPU, offsetof(CPU, reg[op->reg].u"+bits+"), DYN_PARAM_CPU_ADDRESS_"+bits+");");
+        out(fos32, "    callHostFunction(NULL, common_push"+bits+", false, false, false, 2, 0, DYN_PARAM_CPU, offsetof(CPU, reg[op->reg].u"+bits+"), DYN_PARAM_CPU_ADDRESS_"+bits+");");
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
 
         out(fos32, "void OPCALL dynamic_popE"+name+"_reg(CPU* cpu, DecodedOp* op) {");
-        out(fos32, "    callHostFunction(common_pop"+bits+", true, false, false, 1, 0, DYN_PARAM_CPU);");
+        out(fos32, "    callHostFunction(NULL, common_pop"+bits+", true, false, false, 1, 0, DYN_PARAM_CPU);");
         out(fos32, "    movToCpuFromReg(offsetof(CPU, reg[op->reg].u"+bits+"), DYN_CALL_RESULT, DYN_"+bits+"bit);");
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
@@ -127,13 +127,13 @@ public class PushPop extends Base {
         out(fos32, "void OPCALL dynamic_pushE"+name+"_mem(CPU* cpu, DecodedOp* op) {");
         out(fos32, "    calculateEaa(op, DYN_ADDRESS);");
         out(fos32, "    movFromMem(DYN_"+bits+"bit, DYN_ADDRESS);");
-        out(fos32, "    callHostFunction(common_push"+bits+", false, false, false, 2, 0, DYN_PARAM_CPU, DYN_READ_RESULT, DYN_PARAM_REG_"+bits+");");
+        out(fos32, "    callHostFunction(NULL, common_push"+bits+", false, false, false, 2, 0, DYN_PARAM_CPU, DYN_READ_RESULT, DYN_PARAM_REG_"+bits+");");
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
 
         out(fos32, "void OPCALL dynamic_popE"+name+"_mem(CPU* cpu, DecodedOp* op) {");
         out(fos32, "    calculateEaa(op, DYN_ADDRESS);");
-        out(fos32, "    callHostFunction(common_pop"+bits+", true, false, false, 1, 0, DYN_PARAM_CPU);");
+        out(fos32, "    callHostFunction(NULL, common_pop"+bits+", true, false, false, 1, 0, DYN_PARAM_CPU);");
         out(fos32, "    movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_"+bits+"bit);");
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
@@ -154,13 +154,13 @@ public class PushPop extends Base {
         out(fos_init, "INIT_CPU(PopSeg" + bits + ", popSeg" + bits + ")");
 
         out(fos32, "void OPCALL dynamic_pushSeg"+bits+"(CPU* cpu, DecodedOp* op) {");
-        out(fos32, "    callHostFunction(common_push"+bits+", false, false, false, 2, 0, DYN_PARAM_CPU, offsetof(CPU, seg[op->reg].value), DYN_PARAM_CPU_ADDRESS_"+bits+");");
+        out(fos32, "    callHostFunction(blockDone, common_push"+bits+", false, false, false, 2, 0, DYN_PARAM_CPU, offsetof(CPU, seg[op->reg].value), DYN_PARAM_CPU_ADDRESS_"+bits+");");
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
 
         out(fos32, "void OPCALL dynamic_popSeg"+bits+"(CPU* cpu, DecodedOp* op) {");
-        out(fos32, "    callHostFunction(common_peek"+bits+", true, false, false, 2, 0, DYN_PARAM_CPU, 0, DYN_PARAM_CONST_32);");
-        out(fos32, "    callHostFunction(common_setSegment, true, false, true, 3, 0, DYN_PARAM_CPU, op->reg, DYN_PARAM_CONST_32, DYN_CALL_RESULT, DYN_PARAM_REG_"+bits+");");
+        out(fos32, "    callHostFunction(NULL, common_peek"+bits+", true, false, false, 2, 0, DYN_PARAM_CPU, 0, DYN_PARAM_CONST_32);");
+        out(fos32, "    callHostFunction(blockDone, common_setSegment, true, false, true, 3, 0, DYN_PARAM_CPU, op->reg, DYN_PARAM_CONST_32, DYN_CALL_RESULT, DYN_PARAM_REG_"+bits+");");
         // ESP = (ESP & cpu->stackNotMask) | ((ESP + 4 ) & cpu->stackMask);
         out(fos32, "    movToRegFromCpu(DYN_DEST, offsetof(CPU, stackMask), DYN_32bit);");
         out(fos32, "    movToRegFromCpu(DYN_SRC, offsetof(CPU, reg[4].u32), DYN_32bit);");
@@ -185,7 +185,7 @@ public class PushPop extends Base {
         out(fos_init, "INIT_CPU(PushA" + bits + ", pushA" + bits + ")");
 
         out(fos32, "void OPCALL dynamic_pushA"+bits+"(CPU* cpu, DecodedOp* op) {");
-        out(fos32, "    callHostFunction(common_pushA"+bits+", false, false, false, 1, 0, DYN_PARAM_CPU);");
+        out(fos32, "    callHostFunction(NULL, common_pushA"+bits+", false, false, false, 1, 0, DYN_PARAM_CPU);");
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
     }
@@ -200,7 +200,7 @@ public class PushPop extends Base {
         out(fos_init, "INIT_CPU(PopA" + bits + ", popA" + bits + ")");
 
         out(fos32, "void OPCALL dynamic_popA"+bits+"(CPU* cpu, DecodedOp* op) {");
-        out(fos32, "    callHostFunction(common_popA"+bits+", false, false, false, 1, 0, DYN_PARAM_CPU);");
+        out(fos32, "    callHostFunction(NULL, common_popA"+bits+", false, false, false, 1, 0, DYN_PARAM_CPU);");
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
     }
@@ -215,7 +215,7 @@ public class PushPop extends Base {
         out(fos_init, "INIT_CPU(Push" + bits + ", push" + bits + "imm)");
 
         out(fos32, "void OPCALL dynamic_push"+bits+"imm(CPU* cpu, DecodedOp* op) {");
-        out(fos32, "    callHostFunction(common_push"+bits+", false, false, false, 2, 0, DYN_PARAM_CPU, op->imm, DYN_PARAM_CONST_"+bits+");");
+        out(fos32, "    callHostFunction(NULL, common_push"+bits+", false, false, false, 2, 0, DYN_PARAM_CPU, op->imm, DYN_PARAM_CONST_"+bits+");");
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
     }
@@ -231,12 +231,12 @@ public class PushPop extends Base {
         out(fos_init, "INIT_CPU(PushF" + bits + ", pushf" + bits + ")");
 
         out(fos32, "void OPCALL dynamic_pushf"+bits+"(CPU* cpu, DecodedOp* op) {");
-        out(fos32, "    callHostFunction(common_fillFlags, false, false, false, 1, 0, DYN_PARAM_CPU);");
+        out(fos32, "    callHostFunction(NULL, common_fillFlags, false, false, false, 1, 0, DYN_PARAM_CPU);");
         out(fos32, "    movToRegFromCpu(DYN_SRC, offsetof(CPU, flags), DYN_32bit);");
         out(fos32, "    instRegImm(\'|\', DYN_SRC, DYN_32bit, 2);");
         if (mask.length()!=0)
             out(fos32, "    instRegImm(\'&\', DYN_SRC, DYN_32bit, "+mask+");");
-        out(fos32, "    callHostFunction(common_push"+bits+", false, false, false, 2, 0, DYN_PARAM_CPU, DYN_SRC, DYN_PARAM_REG_32);");
+        out(fos32, "    callHostFunction(NULL, common_push"+bits+", false, false, false, 2, 0, DYN_PARAM_CPU, DYN_SRC, DYN_PARAM_REG_32);");
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
     }
@@ -253,8 +253,8 @@ public class PushPop extends Base {
 
         out(fos32, "void OPCALL dynamic_popf"+bits+"(CPU* cpu, DecodedOp* op) {");
         out(fos32, "    movToCpu(offsetof(CPU, lazyFlags), Dyn_PtrSize, (DYN_PTR_SIZE)FLAGS_NONE);");
-        out(fos32, "    callHostFunction(common_pop"+bits+", true, false, false, 1, 0, DYN_PARAM_CPU);");
-        out(fos32, "    callHostFunction(common_setFlags, false, false, false, 3, 0, DYN_PARAM_CPU, DYN_CALL_RESULT, DYN_PARAM_REG_"+bits+", FMASK_ALL"+(mask.length()!=0?" & "+mask:"")+", DYN_PARAM_CONST_"+bits+");");
+        out(fos32, "    callHostFunction(NULL, common_pop"+bits+", true, false, false, 1, 0, DYN_PARAM_CPU);");
+        out(fos32, "    callHostFunction(NULL, common_setFlags, false, false, false, 3, 0, DYN_PARAM_CPU, DYN_CALL_RESULT, DYN_PARAM_REG_"+bits+", FMASK_ALL"+(mask.length()!=0?" & "+mask:"")+", DYN_PARAM_CONST_"+bits+");");
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
     }

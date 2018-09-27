@@ -1,5 +1,5 @@
 void OPCALL dynamic_inc8_reg(CPU* cpu, DecodedOp* op) {
-    callHostFunction(common_getCF, true, false, false, 1, 0, DYN_PARAM_CPU);
+    callHostFunction(NULL, common_getCF, true, false, false, 1, 0, DYN_PARAM_CPU);
     movToCpuFromReg(offsetof(CPU, oldCF), DYN_CALL_RESULT, DYN_32bit);
     movToCpuFromCpu(offsetof(CPU, dst.u8), OFFSET_REG8(op->reg), DYN_8bit, DYN_DEST);
     instRegImm('+', DYN_DEST, DYN_8bit, 1);
@@ -9,7 +9,7 @@ void OPCALL dynamic_inc8_reg(CPU* cpu, DecodedOp* op) {
     INCREMENT_EIP(op->len);
 }
 void OPCALL dynamic_inc8_mem32(CPU* cpu, DecodedOp* op) {
-    callHostFunction(common_getCF, true, false, false, 1, 0, DYN_PARAM_CPU);
+    callHostFunction(NULL, common_getCF, true, false, false, 1, 0, DYN_PARAM_CPU);
     movToCpuFromReg(offsetof(CPU, oldCF), DYN_CALL_RESULT, DYN_32bit);
     calculateEaa(op, DYN_ADDRESS);
     movToCpuFromMem(offsetof(CPU, dst.u8), DYN_8bit, DYN_ADDRESS);
@@ -20,7 +20,7 @@ void OPCALL dynamic_inc8_mem32(CPU* cpu, DecodedOp* op) {
     INCREMENT_EIP(op->len);
 }
 void OPCALL dynamic_inc16_reg(CPU* cpu, DecodedOp* op) {
-    callHostFunction(common_getCF, true, false, false, 1, 0, DYN_PARAM_CPU);
+    callHostFunction(NULL, common_getCF, true, false, false, 1, 0, DYN_PARAM_CPU);
     movToCpuFromReg(offsetof(CPU, oldCF), DYN_CALL_RESULT, DYN_32bit);
     movToCpuFromCpu(offsetof(CPU, dst.u16), offsetof(CPU, reg[op->reg].u16), DYN_16bit, DYN_DEST);
     instRegImm('+', DYN_DEST, DYN_16bit, 1);
@@ -30,7 +30,7 @@ void OPCALL dynamic_inc16_reg(CPU* cpu, DecodedOp* op) {
     INCREMENT_EIP(op->len);
 }
 void OPCALL dynamic_inc16_mem32(CPU* cpu, DecodedOp* op) {
-    callHostFunction(common_getCF, true, false, false, 1, 0, DYN_PARAM_CPU);
+    callHostFunction(NULL, common_getCF, true, false, false, 1, 0, DYN_PARAM_CPU);
     movToCpuFromReg(offsetof(CPU, oldCF), DYN_CALL_RESULT, DYN_32bit);
     calculateEaa(op, DYN_ADDRESS);
     movToCpuFromMem(offsetof(CPU, dst.u16), DYN_16bit, DYN_ADDRESS);
@@ -41,7 +41,7 @@ void OPCALL dynamic_inc16_mem32(CPU* cpu, DecodedOp* op) {
     INCREMENT_EIP(op->len);
 }
 void OPCALL dynamic_inc32_reg(CPU* cpu, DecodedOp* op) {
-    callHostFunction(common_getCF, true, false, false, 1, 0, DYN_PARAM_CPU);
+    callHostFunction(NULL, common_getCF, true, false, false, 1, 0, DYN_PARAM_CPU);
     movToCpuFromReg(offsetof(CPU, oldCF), DYN_CALL_RESULT, DYN_32bit);
     movToCpuFromCpu(offsetof(CPU, dst.u32), offsetof(CPU, reg[op->reg].u32), DYN_32bit, DYN_DEST);
     instRegImm('+', DYN_DEST, DYN_32bit, 1);
@@ -51,7 +51,7 @@ void OPCALL dynamic_inc32_reg(CPU* cpu, DecodedOp* op) {
     INCREMENT_EIP(op->len);
 }
 void OPCALL dynamic_inc32_mem32(CPU* cpu, DecodedOp* op) {
-    callHostFunction(common_getCF, true, false, false, 1, 0, DYN_PARAM_CPU);
+    callHostFunction(NULL, common_getCF, true, false, false, 1, 0, DYN_PARAM_CPU);
     movToCpuFromReg(offsetof(CPU, oldCF), DYN_CALL_RESULT, DYN_32bit);
     calculateEaa(op, DYN_ADDRESS);
     movToCpuFromMem(offsetof(CPU, dst.u32), DYN_32bit, DYN_ADDRESS);
@@ -62,7 +62,7 @@ void OPCALL dynamic_inc32_mem32(CPU* cpu, DecodedOp* op) {
     INCREMENT_EIP(op->len);
 }
 void OPCALL dynamic_dec8_reg(CPU* cpu, DecodedOp* op) {
-    callHostFunction(common_getCF, true, false, false, 1, 0, DYN_PARAM_CPU);
+    callHostFunction(NULL, common_getCF, true, false, false, 1, 0, DYN_PARAM_CPU);
     movToCpuFromReg(offsetof(CPU, oldCF), DYN_CALL_RESULT, DYN_32bit);
     movToCpuFromCpu(offsetof(CPU, dst.u8), OFFSET_REG8(op->reg), DYN_8bit, DYN_DEST);
     instRegImm('-', DYN_DEST, DYN_8bit, 1);
@@ -72,7 +72,7 @@ void OPCALL dynamic_dec8_reg(CPU* cpu, DecodedOp* op) {
     INCREMENT_EIP(op->len);
 }
 void OPCALL dynamic_dec8_mem32(CPU* cpu, DecodedOp* op) {
-    callHostFunction(common_getCF, true, false, false, 1, 0, DYN_PARAM_CPU);
+    callHostFunction(NULL, common_getCF, true, false, false, 1, 0, DYN_PARAM_CPU);
     movToCpuFromReg(offsetof(CPU, oldCF), DYN_CALL_RESULT, DYN_32bit);
     calculateEaa(op, DYN_ADDRESS);
     movToCpuFromMem(offsetof(CPU, dst.u8), DYN_8bit, DYN_ADDRESS);
@@ -83,7 +83,7 @@ void OPCALL dynamic_dec8_mem32(CPU* cpu, DecodedOp* op) {
     INCREMENT_EIP(op->len);
 }
 void OPCALL dynamic_dec16_reg(CPU* cpu, DecodedOp* op) {
-    callHostFunction(common_getCF, true, false, false, 1, 0, DYN_PARAM_CPU);
+    callHostFunction(NULL, common_getCF, true, false, false, 1, 0, DYN_PARAM_CPU);
     movToCpuFromReg(offsetof(CPU, oldCF), DYN_CALL_RESULT, DYN_32bit);
     movToCpuFromCpu(offsetof(CPU, dst.u16), offsetof(CPU, reg[op->reg].u16), DYN_16bit, DYN_DEST);
     instRegImm('-', DYN_DEST, DYN_16bit, 1);
@@ -93,7 +93,7 @@ void OPCALL dynamic_dec16_reg(CPU* cpu, DecodedOp* op) {
     INCREMENT_EIP(op->len);
 }
 void OPCALL dynamic_dec16_mem32(CPU* cpu, DecodedOp* op) {
-    callHostFunction(common_getCF, true, false, false, 1, 0, DYN_PARAM_CPU);
+    callHostFunction(NULL, common_getCF, true, false, false, 1, 0, DYN_PARAM_CPU);
     movToCpuFromReg(offsetof(CPU, oldCF), DYN_CALL_RESULT, DYN_32bit);
     calculateEaa(op, DYN_ADDRESS);
     movToCpuFromMem(offsetof(CPU, dst.u16), DYN_16bit, DYN_ADDRESS);
@@ -104,7 +104,7 @@ void OPCALL dynamic_dec16_mem32(CPU* cpu, DecodedOp* op) {
     INCREMENT_EIP(op->len);
 }
 void OPCALL dynamic_dec32_reg(CPU* cpu, DecodedOp* op) {
-    callHostFunction(common_getCF, true, false, false, 1, 0, DYN_PARAM_CPU);
+    callHostFunction(NULL, common_getCF, true, false, false, 1, 0, DYN_PARAM_CPU);
     movToCpuFromReg(offsetof(CPU, oldCF), DYN_CALL_RESULT, DYN_32bit);
     movToCpuFromCpu(offsetof(CPU, dst.u32), offsetof(CPU, reg[op->reg].u32), DYN_32bit, DYN_DEST);
     instRegImm('-', DYN_DEST, DYN_32bit, 1);
@@ -114,7 +114,7 @@ void OPCALL dynamic_dec32_reg(CPU* cpu, DecodedOp* op) {
     INCREMENT_EIP(op->len);
 }
 void OPCALL dynamic_dec32_mem32(CPU* cpu, DecodedOp* op) {
-    callHostFunction(common_getCF, true, false, false, 1, 0, DYN_PARAM_CPU);
+    callHostFunction(NULL, common_getCF, true, false, false, 1, 0, DYN_PARAM_CPU);
     movToCpuFromReg(offsetof(CPU, oldCF), DYN_CALL_RESULT, DYN_32bit);
     calculateEaa(op, DYN_ADDRESS);
     movToCpuFromMem(offsetof(CPU, dst.u32), DYN_32bit, DYN_ADDRESS);

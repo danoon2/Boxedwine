@@ -8,6 +8,7 @@
 // to prevent unnecessary push/pop, it would be nice to use esi/edi instead of ecx/edx
 // but then 8 bit math operations would be very hard because you can't reference esi/edi from 8-bit
 
+typedef void (*pfnAdditionalReturnCode)();
 
 /********************************************************/
 /* Following is required to be defined for dynamic code */
@@ -95,7 +96,15 @@ void movCC(void* condition, DecodedOp* op, DynWidth width, bool useAddress=false
 void setCC(void* condition, DecodedOp* op, bool useAddress=false);
 
 // call into emulator, like setFlags, getCF, etc
-void callHostFunction(void* address, bool hasReturn=false, bool returnIfTrue=false, bool returnIfFalse=false, U32 argCount=0, U32 arg1=0, DynCallParamType arg1Type=DYN_PARAM_CONST_32, U32 arg2=0, DynCallParamType arg2Type=DYN_PARAM_CONST_32, U32 arg3=0, DynCallParamType arg3Type=DYN_PARAM_CONST_32, U32 arg4=0, DynCallParamType arg4Type=DYN_PARAM_CONST_32, U32 arg5=0, DynCallParamType arg5Type=DYN_PARAM_CONST_32);
+void callHostFunction(pfnAdditionalReturnCode pfnOnReturn, void* address, bool hasReturn=false, bool returnIfTrue=false, bool returnIfFalse=false, U32 argCount=0, U32 arg1=0, DynCallParamType arg1Type=DYN_PARAM_CONST_32, U32 arg2=0, DynCallParamType arg2Type=DYN_PARAM_CONST_32, U32 arg3=0, DynCallParamType arg3Type=DYN_PARAM_CONST_32, U32 arg4=0, DynCallParamType arg4Type=DYN_PARAM_CONST_32, U32 arg5=0, DynCallParamType arg5Type=DYN_PARAM_CONST_32);
+
+// set up the cpu to the correct next block
+
+// this is called for cases where we don't know ahead of time where the next block will be, so we need to look it up
+void blockDone();
+// next block is also set in common_other.cpp for loop instructions, so don't use this as a hook for something else
+void blockNext1();
+void blockNext2();
 
 /********************************************************/
 /* End required for dynamic code                        */
@@ -692,7 +701,7 @@ void movToMemFromImm(DynReg addressReg, DynWidth width, U32 imm) {
 
 }
 
-void callHostFunction(void* address, bool hasReturn, bool returnIfTrue, bool returnIfFalse, U32 argCount, U32 arg1, DynCallParamType arg1Type, U32 arg2, DynCallParamType arg2Type, U32 arg3, DynCallParamType arg3Type, U32 arg4, DynCallParamType arg4Type, U32 arg5, DynCallParamType arg5Type) {
+void callHostFunction(pfnAdditionalReturnCode pfnOnReturn, void* address, bool hasReturn, bool returnIfTrue, bool returnIfFalse, U32 argCount, U32 arg1, DynCallParamType arg1Type, U32 arg2, DynCallParamType arg2Type, U32 arg3, DynCallParamType arg3Type, U32 arg4, DynCallParamType arg4Type, U32 arg5, DynCallParamType arg5Type) {
     if (regUsed[DYN_EAX] && !hasReturn)
         outb(0x50);
     if (regUsed[DYN_ECX])
@@ -745,11 +754,15 @@ void callHostFunction(void* address, bool hasReturn, bool returnIfTrue, bool ret
             outb(0x74); // jz
         } else if (returnIfFalse) {
             outb(0x75); // jnz
-        }        
-        outb(0x03); // jump 3, skip ret    
+        }       
+        U32 pos = outBufferPos;
+        outb(0); 
+        if (pfnOnReturn)
+            pfnOnReturn();
         outb(0x5f); // pop edi
         outb(0x5b); // pop ebx
         outb(0xc3); // ret, assumes we don't clean up stack (calling convention or fast call)
+        outBuffer[pos] = (U8)(outBufferPos-pos-1);
     }
 }
 
@@ -760,7 +773,7 @@ void callHostFunction(void* address, bool hasReturn, bool returnIfTrue, bool ret
 void movCC(void* condition, DecodedOp* op, DynWidth width, bool useAddress) {    
     if (useAddress)
         calculateEaa( op, DYN_ADDRESS);
-    callHostFunction(condition, true, false, false, 1, 0, DYN_PARAM_CPU);
+    callHostFunction(NULL, condition, true, false, false, 1, 0, DYN_PARAM_CPU);
 
     // test eax, eax
     outb(0x85);
@@ -794,7 +807,7 @@ void movCC(void* condition, DecodedOp* op, DynWidth width, bool useAddress) {
 void setCC(void* condition, DecodedOp* op, bool useAddress) {
     if (useAddress)
         calculateEaa( op, DYN_ADDRESS);
-    callHostFunction(condition, true, false, false, 1, 0, DYN_PARAM_CPU);
+    callHostFunction(NULL, condition, true, false, false, 1, 0, DYN_PARAM_CPU);
 
     // test eax, eax
     outb(0x85);
@@ -958,6 +971,134 @@ void incrementEip(U32 inc) {
     }
 }
 
+void blockDone() {
+    // cpu->nextBlock = cpu->getNextBlock();
+    callHostFunction(NULL, common_getNextBlock, true, false, false, 1, 0, DYN_PARAM_CPU);
+    movToCpuFromReg(offsetof(CPU, nextBlock), DYN_CALL_RESULT, DYN_32bit);
+}
+
+static void updateNext1(CPU* cpu) {
+    DecodedBlock::currentBlock->next1 = cpu->getNextBlock(); 
+    DecodedBlock::currentBlock->next1->addReferenceFrom(DecodedBlock::currentBlock);
+}
+
+// next block is also set in common_other.cpp for loop instructions, so don't use this as a hook for something else
+void blockNext1() {
+    // if (!DecodedBlock::currentBlock->next1) {
+    //    DecodedBlock::currentBlock->next1 = cpu->getNextBlock(); 
+    //    DecodedBlock::currentBlock->next1->addReferenceFrom(DecodedBlock::currentBlock);
+    // } 
+    // cpu->nextBlock = DecodedBlock::currentBlock->next1
+    
+    // mov edx, DecodedBlock::currentBlock
+    outb(0x8b);
+    outb(0x15);
+    outd((U32)&DecodedBlock::currentBlock);
+
+    // mov ecx, DecodedBlock::currentBlock->next1
+    outb(0x8b);    
+    if (offsetof(DecodedBlock, next1)<128) {
+        outb(0x4a);
+        outb(offsetof(DecodedBlock, next1));
+    } else {
+        outb(0x8a);
+        outd(offsetof(DecodedBlock, next1));
+    }
+
+    // test ecx, ecx
+    outb(0x85);
+    outb(0xc9);
+
+    // jnz 
+    outb(0x75);
+    U32 pos = outBufferPos;
+    outb(0);
+    
+    callHostFunction(NULL, updateNext1, false, false, false, 1, 0, DYN_PARAM_CPU);
+
+    // edx is not preserved across function calls
+    // mov edx, DecodedBlock::currentBlock
+    outb(0x8b);
+    outb(0x15);
+    outd((U32)&DecodedBlock::currentBlock);
+
+    // mov ecx, DecodedBlock::currentBlock->next1
+    outb(0x8b);    
+    if (offsetof(DecodedBlock, next1)<128) {
+        outb(0x4a);
+        outb(offsetof(DecodedBlock, next1));
+    } else {
+        outb(0x8a);
+        outd(offsetof(DecodedBlock, next1));
+    }
+
+    outBuffer[pos] = (U8)(outBufferPos-pos-1);
+
+    // cpu->nextBlock = DecodedBlock::currentBlock->next1
+    movToCpuFromReg(offsetof(CPU, nextBlock), DYN_ECX, DYN_32bit);
+    
+}
+
+static void updateNext2(CPU* cpu) {
+    DecodedBlock::currentBlock->next2 = cpu->getNextBlock(); 
+    DecodedBlock::currentBlock->next2->addReferenceFrom(DecodedBlock::currentBlock);
+}
+
+void blockNext2() {
+    // if (!DecodedBlock::currentBlock->next2) {
+    //    DecodedBlock::currentBlock->next2 = cpu->getNextBlock(); 
+    //    DecodedBlock::currentBlock->next2->addReferenceFrom(DecodedBlock::currentBlock);
+    // } 
+    // cpu->nextBlock = DecodedBlock::currentBlock->next2
+    
+    // mov edx, DecodedBlock::currentBlock
+    outb(0x8b);
+    outb(0x15);
+    outd((U32)&DecodedBlock::currentBlock);
+
+    // mov ecx, DecodedBlock::currentBlock->next1
+    outb(0x8b);    
+    if (offsetof(DecodedBlock, next2)<128) {
+        outb(0x4a);
+        outb(offsetof(DecodedBlock, next2));
+    } else {
+        outb(0x8a);
+        outd(offsetof(DecodedBlock, next2));
+    }
+
+    // test ecx, ecx
+    outb(0x85);
+    outb(0xc9);
+
+    // jnz 
+    outb(0x75);
+    U32 pos = outBufferPos;
+    outb(1);
+    
+    callHostFunction(NULL, updateNext2, false, false, false, 1, 0, DYN_PARAM_CPU);
+
+    // edx is not preserved across function calls
+    // mov edx, DecodedBlock::currentBlock
+    outb(0x8b);
+    outb(0x15);
+    outd((U32)&DecodedBlock::currentBlock);
+
+    // mov ecx, DecodedBlock::currentBlock->next2
+    outb(0x8b);    
+    if (offsetof(DecodedBlock, next2)<128) {
+        outb(0x4a);
+        outb(offsetof(DecodedBlock, next2));
+    } else {
+        outb(0x8a);
+        outd(offsetof(DecodedBlock, next2));
+    }
+
+    outBuffer[pos] = (U8)(outBufferPos-pos-1);
+
+    // cpu->nextBlock = DecodedBlock::currentBlock->next2
+    movToCpuFromReg(offsetof(CPU, nextBlock), DYN_ECX, DYN_32bit);
+}
+
 void OPCALL x32_sidt(CPU* cpu, DecodedOp* op) {
 }
 
@@ -967,7 +1108,7 @@ void x32_onExitSignal(CPU* cpu) {
 
 void OPCALL x32_callback(CPU* cpu, DecodedOp* op) {
     if (op->pfn == onExitSignal) {
-        callHostFunction(x32_onExitSignal, false, false, false, 1, 0, DYN_PARAM_CPU);
+        callHostFunction(NULL, x32_onExitSignal, false, false, false, 1, 0, DYN_PARAM_CPU);
     } else {
         kpanic("x32CPU::x32_callback unhandled callback");
     }
@@ -1046,7 +1187,7 @@ void OPCALL firstX32Op(CPU* cpu, DecodedOp* op) {
             memset(regUsed, 0, sizeof(regUsed));
 #ifndef __TEST
 #ifdef _DEBUG
-            callHostFunction(common_log, false, false, false, 2, 0, DYN_PARAM_CPU, (DYN_PTR_SIZE)o, DYN_PARAM_CONST_PTR);
+            //callHostFunction(NULL, common_log, false, false, false, 2, 0, DYN_PARAM_CPU, (DYN_PTR_SIZE)o, DYN_PARAM_CONST_PTR);
 #endif
 #endif
             x32Ops[o->inst](cpu, o);            
@@ -1087,7 +1228,7 @@ void OPCALL firstX32Op(CPU* cpu, DecodedOp* op) {
         //op->next->dealloc(true);
         //op->next = NULL;
 #endif
-        op->pfn = (OpCallback)begin; // :TODO: if function is expected to pop stack because of the two passed params, then this will not work
+        op->pfn = (OpCallback)begin; // :TODO: if function is expected to pop stack because of the two passed params, then this will not work        
         op->pfn(cpu, op);
     } else {
         op->next->pfn(cpu, op->next);
