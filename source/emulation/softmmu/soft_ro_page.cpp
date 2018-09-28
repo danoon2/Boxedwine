@@ -24,4 +24,9 @@ U8* ROPage::physicalAddress(U32 address) {
     return 0;
 }
 
+U8* ROPage::getRWAddress(U32 address) {
+    KThread::currentThread()->seg_access(address, false, true);
+    return NULL;
+}
+
 #endif

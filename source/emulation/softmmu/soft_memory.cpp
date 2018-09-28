@@ -40,6 +40,8 @@
 
 extern jmp_buf runBlockJump;
 
+Page** Memory::currentMMU;
+
 void Memory::log_pf(KThread* thread, U32 address) {
     U32 start = 0;
     U32 i;
@@ -83,7 +85,7 @@ U8 __cdecl readb(U32 address) {
         fprintf(logFile, "readb %X @%X\n", result, address);
     return result;
 #else
-    return KThread::currentThread()->memory->mmu[index]->readb(address);
+    return Memory::currentMMU[index]->readb(address);
 #endif
 }
 
@@ -93,7 +95,7 @@ void writeb(U32 address, U8 value) {
     if (memory->log && thread->cpu->log)
         fprintf(logFile, "writeb %X @%X\n", value, address);
 #endif
-    KThread::currentThread()->memory->mmu[index]->writeb(address, value);
+    Memory::currentMMU[index]->writeb(address, value);
 }
 
 U16 readw(U32 address) {
@@ -113,7 +115,7 @@ U16 readw(U32 address) {
 #else
     if ((address & 0xFFF) < 0xFFF) {
         int index = address >> 12;
-        return KThread::currentThread()->memory->mmu[index]->readw(address);
+        return Memory::currentMMU[index]->readw(address);
     }
     return readb(address) | (readb(address+1) << 8);
 #endif
@@ -128,7 +130,7 @@ void writew(U32 address, U16 value) {
 #endif
     if ((address & 0xFFF) < 0xFFF) {
         int index = address >> 12;
-        KThread::currentThread()->memory->mmu[index]->writew(address, value);
+        Memory::currentMMU[index]->writew(address, value);
     } else {
         writeb(address, (U8)value);
         writeb(address+1, (U8)(value >> 8));
@@ -153,7 +155,7 @@ U32 readd(U32 address) {
 #else
     if ((address & 0xFFF) < 0xFFD) {
         int index = address >> 12;
-        return KThread::currentThread()->memory->mmu[index]->readd(address);
+        return Memory::currentMMU[index]->readd(address);
     } else {
         return readb(address) | (readb(address+1) << 8) | (readb(address+2) << 16) | (readb(address+3) << 24);
     }
@@ -169,7 +171,7 @@ void writed(U32 address, U32 value) {
 #endif    
     if ((address & 0xFFF) < 0xFFD) {
         int index = address >> 12;
-        KThread::currentThread()->memory->mmu[index]->writed(address, value);		
+        Memory::currentMMU[index]->writed(address, value);		
     } else {
         writeb(address, value);
         writeb(address+1, value >> 8);
@@ -483,6 +485,11 @@ bool Memory::isPageAllocated(U32 page) {
 U8* getPhysicalAddress(U32 address) {
     int index = address >> 12;
     return KThread::currentThread()->process->memory->mmu[index]->physicalAddress(address);
+}
+
+U8* getRWAddress(U32 address) {
+    int index = address >> 12;
+    return KThread::currentThread()->process->memory->mmu[index]->getRWAddress(address);
 }
 
 void memcopyFromNative(U32 address, const char* p, U32 len) {

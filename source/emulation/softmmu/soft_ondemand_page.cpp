@@ -66,4 +66,8 @@ U8* OnDemandPage::physicalAddress(U32 address) {
     return ::getPhysicalAddress(address);
 }
 
+U8* OnDemandPage::getRWAddress(U32 address) {
+    ondemmand(address);
+    return ::getRWAddress(address);
+}
 #endif

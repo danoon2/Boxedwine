@@ -66,7 +66,9 @@ void setup() {
         cpu = thread->cpu;
         thread->memory = memory;
         KThread::setCurrentThread(thread);
-
+#ifdef BOXEDWINE_DEFAULT_MMU
+        Memory::currentMMU = thread->process->memory->mmu;
+#endif
         process->memory->allocPages((STACK_ADDRESS >> K_PAGE_SHIFT)-17, 17, PAGE_READ|PAGE_WRITE, 0, 0, 0);
         process->memory->allocPages(CODE_ADDRESS >> K_PAGE_SHIFT, 17, PAGE_READ|PAGE_WRITE|PAGE_EXEC, 0, 0, 0);
         process->memory->allocPages(HEAP_ADDRESS >> K_PAGE_SHIFT, 17, PAGE_READ|PAGE_WRITE, 0, 0, 0);
@@ -129,7 +131,7 @@ void runTestCPU() {
     pushCode8(0);
     pushCode8(0x70); // jump will fetch the next block as well
     pushCode8(0);
-    cpu->nextBlock = NULL;
+    cpu->nextBlock = cpu->getNextBlock();
     cpu->run();
 #ifdef BOXEDWINE_64BIT_MMU
     KThread::currentThread()->memory->clearCodePageFromCache(CODE_ADDRESS>>K_PAGE_SHIFT);
@@ -6317,7 +6319,7 @@ void test16BitMemoryAccess() {
 
 int main(int argc, char **argv) {	
     printf("Please wait, these first 2 tests can take a while\n");
-    //run(test32BitMemoryAccess, "32-bit Memory Access");
+    run(test32BitMemoryAccess, "32-bit Memory Access");
     run(test16BitMemoryAccess, "16-bit Memory Access");
 
     run(testAdd0x000, "Add 000");

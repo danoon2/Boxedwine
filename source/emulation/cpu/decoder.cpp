@@ -4663,6 +4663,20 @@ void DecodedOp::dealloc(bool deallocNext) {
     freeOps = this;
 }
 
+bool DecodedOp::needsToSetFlags() {
+    U32 needsToSet = instructionInfo[this->inst].flagsSets;
+    DecodedOp* n = this->next;
+    while (n && needsToSet) {
+        if (instructionInfo[n->inst].flagsUsed & needsToSet) {
+            return true;
+        }
+        needsToSet &= ~ instructionInfo[n->inst].flagsSets;
+        needsToSet &= ~ instructionInfo[n->inst].flagsUndefined;
+        n = n->next;
+    }
+    return needsToSet!=0;
+}
+
 static DecodedBlockFromNode* freeFromNodes;
 DecodedBlockFromNode* DecodedBlockFromNode::alloc() {
     DecodedBlockFromNode* result;

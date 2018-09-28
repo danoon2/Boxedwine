@@ -56,6 +56,7 @@ void readMemory(U8* data, U32 address, int len);
 void writeMemory(U32 address, U8* data, int len);
 
 U8* getPhysicalAddress(U32 address);
+U8* getRWAddress(U32 address);
 
 char* getNativeString(U32 address, char* buffer, U32 cbBuffer);
 char* getNativeStringW(U32 address, char* buffer, U32 cbBuffer);
@@ -102,6 +103,7 @@ public:
 
 #ifdef BOXEDWINE_DEFAULT_MMU
     Page* mmu[K_NUMBER_OF_PAGES];    
+    static Page** currentMMU;
 #endif
 
 #ifdef BOXEDWINE_DYNAMIC

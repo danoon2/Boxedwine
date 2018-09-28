@@ -256,6 +256,9 @@ std::string getFunctionName(const std::string& name, U32 moduleEip) {
         }
     }
     KThread::setCurrentThread(currentThread);
+#ifdef BOXEDWINE_DEFAULT_MMU
+    Memory::currentMMU = currentThread->process->memory->mmu;
+#endif
     KSystem::eraseProcess(process->id);
     delete process;
     const char* p = strstr(tty9Buffer.c_str(), "\r\n");

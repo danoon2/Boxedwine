@@ -150,7 +150,10 @@ bool runSlice() {
     sdlUpdateContextForThread(currentThread);    
     sysCallTime = 0;    
 
-    KThread::setCurrentThread(currentThread);
+    KThread::setCurrentThread(currentThread);    
+#ifdef BOXEDWINE_DEFAULT_MMU
+    Memory::currentMMU = currentThread->process->memory->mmu;
+#endif
     platformRunThreadSlice(currentThread);
 
     endTime = Platform::getMicroCounter();

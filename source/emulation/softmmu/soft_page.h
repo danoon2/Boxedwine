@@ -58,6 +58,7 @@ public:
     virtual U32 readd(U32 address)=0;
     virtual void writed(U32 address, U32 value)=0;
     virtual U8* physicalAddress(U32 address)=0;
+    virtual U8* getRWAddress(U32 address)=0;
     virtual bool inRam()=0;
     virtual void close() = 0;
 

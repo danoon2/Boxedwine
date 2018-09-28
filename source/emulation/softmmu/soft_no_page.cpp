@@ -39,4 +39,9 @@ U8* NOPage::physicalAddress(U32 address) {
     return 0;
 }
 
+U8* NOPage::getRWAddress(U32 address) {
+    KThread::currentThread()->seg_access(address, true, false);
+    return NULL;
+}
+
 #endif

@@ -71,4 +71,8 @@ U8* RWPage::physicalAddress(U32 address) {
     return &this->page[address - this->address];
 }
 
+U8* RWPage::getRWAddress(U32 address) {
+    return &this->page[address - this->address];
+}
+
 #endif

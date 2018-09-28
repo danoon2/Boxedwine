@@ -87,9 +87,17 @@ void movToMemFromReg(DynReg addressReg, DynReg reg, DynWidth width);
 void movToMemFromImm(DynReg addressReg, DynWidth width, U32 imm);
 
 // arith
-void instRegImm(U32 inst, DynReg reg, DynWidth regWidth, U32 imm);
 void instRegReg(char inst, DynReg reg, DynReg rm, DynWidth regWidth);
+void instMemReg(char inst, DynReg addressReg, DynReg rm, DynWidth regWidth);
+void instCPUReg(char inst, U32 dstOffset, DynReg rm, DynWidth regWidth);
+
+void instRegImm(U32 inst, DynReg reg, DynWidth regWidth, U32 imm);
+void instMemImm(char inst, DynReg addressReg, DynWidth regWidth, U32 imm);
+void instCPUImm(char inst, U32 dstOffset, DynWidth regWidth, U32 imm);
+
 void instReg(char inst, DynReg reg, DynWidth regWidth);
+void instMem(char inst, DynReg addressReg, DynWidth regWidth);
+void instCPU(char inst, U32 dstOffset, DynWidth regWidth);
 
 // conditional, didn't want to create more complicated generic routines to handle these, so they are special
 void movCC(void* condition, DecodedOp* op, DynWidth width, bool useAddress=false);
@@ -131,9 +139,11 @@ void incrementEip(U32 inc);
 #include "../dynamic/dynamic_mmx.h"
 #include "../dynamic/dynamic_fpu.h"
 
-U8* outBuffer;
-U32 outBufferSize;
-U32 outBufferPos;
+static U8* outBuffer;
+static U32 outBufferSize;
+static U32 outBufferPos;
+
+static std::vector<U32> patch;
 
 // per instruction, not per block.  
 // will allow us to determin if ecx or edx needs to be saved before calling an external function
@@ -205,7 +215,7 @@ void calculateEaa(DecodedOp* op, DynReg reg) {
         }
 
         // seg[6] is always 0
-        if (op->base<6) { 
+        if (op->base==GS || op->base==FS) { 
             // add eax, [cpu->seg[op->base].address]
             outb(0x03);
             outb(0x47 | (reg << 3));
@@ -242,7 +252,7 @@ void calculateEaa(DecodedOp* op, DynReg reg) {
             }
         } else {
             // seg[6] is always 0
-            if (op->base<6) { 
+            if (op->base==GS || op->base==FS) {  
                 initiallized = true;
                 // mov eax, [cpu->seg[op->base].address]
                 outb(0x8b);
@@ -465,25 +475,22 @@ void movFromMem(DynWidth width, DynReg addressReg) {
     // push addressReg
     outb(0x50+addressReg);
 
+    void* address;
+
     // call read
     if (width == DYN_32bit) {
-        outb(0xb8);
-        outd((U32)readd);
-        outb(0xff);
-        outb(0xd0);
+        address = readd;
     } else if (width == DYN_16bit) {
-        outb(0xb8);
-        outd((U32)readw);
-        outb(0xff);
-        outb(0xd0);
+        address = readw;
     } else if (width == DYN_8bit) {
-        outb(0xb8);
-        outd((U32)readb);
-        outb(0xff);
-        outb(0xd0);
+        address = readb;
     } else {
         kpanic("unknown width in x32CPU::movFromMem %d", width);
     }
+
+    outb(0xe8);
+    patch.push_back(outBufferPos);
+    outd((U32)address);
 
     // add esp, 4
     outb(0x83);
@@ -506,25 +513,22 @@ void movToMem(DynReg addressReg, DynWidth width) {
     // push addressReg
     outb(0x50+addressReg);
 
+    void* address;
+
     // call write
     if (width == DYN_32bit) {
-        outb(0xb8);
-        outd((U32)writed);
-        outb(0xff);
-        outb(0xd0);
+        address = writed;        
     } else if (width == DYN_16bit) {
-        outb(0xb8);
-        outd((U32)writew);
-        outb(0xff);
-        outb(0xd0);
+        address = writew;
     } else if (width == DYN_8bit) {
-        outb(0xb8);
-        outd((U32)writeb);
-        outb(0xff);
-        outb(0xd0);
+        address = writeb;
     } else {
         kpanic("unknown width in x32CPU::movToMemFromReg %d", width);
     }    
+
+    outb(0xe8);
+    patch.push_back(outBufferPos);
+    outd((U32)address);
 }
 
 void pushValue(U32 arg, DynCallParamType argType) {
@@ -702,8 +706,11 @@ void movToMemFromImm(DynReg addressReg, DynWidth width, U32 imm) {
 }
 
 void callHostFunction(pfnAdditionalReturnCode pfnOnReturn, void* address, bool hasReturn, bool returnIfTrue, bool returnIfFalse, U32 argCount, U32 arg1, DynCallParamType arg1Type, U32 arg2, DynCallParamType arg2Type, U32 arg3, DynCallParamType arg3Type, U32 arg4, DynCallParamType arg4Type, U32 arg5, DynCallParamType arg5Type) {
-    if (regUsed[DYN_EAX] && !hasReturn)
+    if (hasReturn) {
+        regUsed[DYN_EAX]=true;
+    } else if (regUsed[DYN_EAX] && !hasReturn) {
         outb(0x50);
+    }
     if (regUsed[DYN_ECX])
         outb(0x51);
     if (regUsed[DYN_EDX])
@@ -724,13 +731,10 @@ void callHostFunction(pfnAdditionalReturnCode pfnOnReturn, void* address, bool h
         pushValue(arg1, arg1Type);
     }                
 
-    // mov eax, address
-    outb(0xb8);
+    // call address
+    outb(0xe8);
+    patch.push_back(outBufferPos);
     outd((U32)address);
-
-    // call eax
-    outb(0xff);
-    outb(0xd0);
 
     // sub esp, 4*argCount
     if (argCount) {
@@ -877,6 +881,200 @@ void instRegImm(U32 inst, DynReg reg, DynWidth regWidth, U32 imm) {
         kpanic("unknown regWidth in x32CPU::instRegImm + %d", regWidth);
     }
 }
+void instCPUReg(char inst, U32 dstOffset, DynReg rm, DynWidth regWidth) {
+    U8 i=0;
+    switch (inst) {
+        case '+':
+            i=0x01;
+            break;
+        case '-':
+            i=0x29;
+            break;
+        case '|':
+            i=0x09;
+            break;
+        case '&':
+            i=0x21;
+            break;
+        case '^':
+            i=0x31;
+            break;
+        default:
+            kpanic("unhandled op in x32CPU::instCPUReg %c", inst);
+            break;
+    }
+    // add [offset], rm
+    if (regWidth==DYN_32bit) {            
+        outb(i);
+        outb(0x47 | rm << 3);
+    } else if (regWidth == DYN_16bit) {
+        outb(0x66);
+        outb(i);
+        outb(0x47 | rm << 3);
+    } else if (regWidth == DYN_8bit) {
+        outb(i-1);
+        outb(0x47 | rm << 3);
+    } else {
+        kpanic("unknown regWidth in x32CPU::instCPUReg + %d", regWidth);
+    }
+    if (dstOffset>127)
+        kpanic("x32CPU::instCPUReg register offset expected to be less than 128: %d", dstOffset);
+    outb((U8)dstOffset);
+}
+void instCPUImm(char inst, U32 dstOffset, DynWidth regWidth, U32 imm) {
+    S32 s = (S32)imm;
+    bool oneByte = s>=-128 && s<=127;
+
+    U32 i=0;
+    switch (inst) {
+        case '+':
+            i=0;
+            break;
+        case '-':
+            i=5;
+            break;
+        case '|':
+            i=1;
+            break;
+        case '&':
+            i=4;
+            break;
+        case '^':
+            i=6;
+            break;
+        default:
+            kpanic("unhandled op in x32CPU::instCPUImm %c", inst);
+            break;
+    }
+    // add [reg], imm
+    if (regWidth==DYN_32bit) {            
+        outb(oneByte?0x83:0x81);
+        outb(0x47 | (i<<3));
+        outb((U8)dstOffset);
+
+        if (oneByte) {
+            outb((U8)imm);
+        } else {
+            outd(imm);
+        }
+    } else if (regWidth == DYN_16bit) {
+        outb(0x66);
+        outb(oneByte?0x83:0x81);
+        outb(0x47 | (i<<3));
+        outb((U8)dstOffset);
+        if (oneByte) {
+            outb((U8)imm);
+        } else {
+            outw((U16)imm);
+        }
+    } else if (regWidth == DYN_8bit) {
+        outb(0x80);
+        outb(0x47 | (i<<3));
+        outb((U8)dstOffset);
+        outb((U8)imm);
+    } else {
+        kpanic("unknown regWidth in x32CPU::instCPUImm + %d", regWidth);
+    }
+    if (dstOffset>127)
+        kpanic("x32CPU::instCPUImm register offset expected to be less than 128: %d", dstOffset);
+}
+void instMemImm(char inst, DynReg addressReg, DynWidth regWidth, U32 imm) {
+    S32 s = (S32)imm;
+    bool oneByte = s>=-128 && s<=127;
+
+    callHostFunction(NULL, getRWAddress, true, false, false, 1, addressReg, DYN_PARAM_REG_32);
+
+    U32 i=0;
+    switch (inst) {
+        case '+':
+            i=0;
+            break;
+        case '-':
+            i=5;
+            break;
+        case '|':
+            i=1;
+            break;
+        case '&':
+            i=4;
+            break;
+        case '^':
+            i=6;
+            break;
+        default:
+            kpanic("unhandled op in x32CPU::instCPUImm %c", inst);
+            break;
+    }
+    // add [reg], imm
+    if (regWidth==DYN_32bit) {            
+        outb(oneByte?0x83:0x81);
+        outb(i<<3);
+
+        if (oneByte) {
+            outb((U8)imm);
+        } else {
+            outd(imm);
+        }
+    } else if (regWidth == DYN_16bit) {
+        outb(0x66);
+        outb(oneByte?0x83:0x81);
+        outb(i<<3);
+        if (oneByte) {
+            outb((U8)imm);
+        } else {
+            outw((U16)imm);
+        }
+    } else if (regWidth == DYN_8bit) {
+        outb(0x80);
+        outb(i<<3);
+        outb((U8)imm);
+    } else {
+        kpanic("unknown regWidth in x32CPU::instMemImm + %d", regWidth);
+    }
+}
+void instMemReg(char inst, DynReg addressReg, DynReg rm, DynWidth regWidth) {
+    U8 i=0;   
+
+    // :TODO: probably should assum ecx is available
+    if (rm==DYN_EAX) {
+        movToRegFromReg(DYN_ECX, regWidth, rm, regWidth);
+        rm = DYN_ECX;
+    }
+    callHostFunction(NULL, getRWAddress, true, false, false, 1, addressReg, DYN_PARAM_REG_32);
+
+    switch (inst) {
+        case '+':
+            i=0x01;
+            break;
+        case '-':
+            i=0x29;
+            break;
+        case '|':
+            i=0x09;
+            break;
+        case '&':
+            i=0x21;
+            break;
+        case '^':
+            i=0x31;
+            break;
+        default:
+            kpanic("unhandled op in x32CPU::instCPUReg %c", inst);
+            break;
+    }
+    // add [eax], rm
+    if (regWidth==DYN_32bit) {            
+        outb(i);
+    } else if (regWidth == DYN_16bit) {
+        outb(0x66);
+        outb(i);
+    } else if (regWidth == DYN_8bit) {
+        outb(i-1);        
+    } else {
+        kpanic("unknown regWidth in x32CPU::instCPUReg + %d", regWidth);
+    }
+    outb((rm << 3));
+}
 
 // inst can be +, |, -, &, ^
 void instRegReg(char inst, DynReg reg, DynReg rm, DynWidth regWidth) {
@@ -956,6 +1154,88 @@ void instReg(char inst, DynReg reg, DynWidth regWidth) {
     }
 }
 
+void instMem(char inst, DynReg addressReg, DynWidth regWidth) {
+    callHostFunction(NULL, getRWAddress, true, false, false, 1, addressReg, DYN_PARAM_REG_32);
+
+    switch (inst) {
+    case '~':
+        if (regWidth==DYN_32bit) {
+            outb(0xf7);
+        } else if (regWidth==DYN_16bit) {
+            outb(0x66);
+            outb(0xf7);
+        } else if (regWidth==DYN_8bit) {
+            outb(0xf6); 
+        } else {
+            kpanic("unhandled regWidth in x32CPU::instMem %d", regWidth);
+        }
+        outb(0x10);
+        break;
+    case '-':
+        if (regWidth==DYN_32bit) {
+            outb(0xf7);          
+        } else if (regWidth==DYN_16bit) {
+            outb(0x66);
+            outb(0xf7);          
+        } else if (regWidth==DYN_8bit) {
+            outb(0xf6);  
+        } else {
+            kpanic("unhandled regWidth in x32CPU::instMem %d", regWidth);
+        }
+        outb(0x18);
+        break;
+    default:
+        kpanic("unhandled op in x32CPU::instMem %c", inst);
+        break;
+    }
+}
+
+void instCPU(char inst, U32 dstOffset, DynWidth regWidth) {
+    switch (inst) {
+    case '~':
+        if (regWidth==DYN_32bit) {
+            outb(0xf7);
+        } else if (regWidth==DYN_16bit) {
+            outb(0x66);
+            outb(0xf7);
+        } else if (regWidth==DYN_8bit) {
+            outb(0xf6); 
+        } else {
+            kpanic("unhandled regWidth in x32CPU::instCPU %d", regWidth);
+        }
+        if (dstOffset<128) {
+            outb(0x57);
+            outb((U8)dstOffset);
+        } else {
+            outb(0x97);
+            outd(dstOffset);
+        }
+        break;
+    case '-':
+        if (regWidth==DYN_32bit) {
+            outb(0xf7);          
+        } else if (regWidth==DYN_16bit) {
+            outb(0x66);
+            outb(0xf7);          
+        } else if (regWidth==DYN_8bit) {
+            outb(0xf6);  
+        } else {
+            kpanic("unhandled regWidth in x32CPU::instCPU %d", regWidth);
+        }
+        if (dstOffset<128) {
+            outb(0x5f);
+            outb((U8)dstOffset);
+        } else {
+            outb(0x9f);
+            outd(dstOffset);
+        }
+        break;
+    default:
+        kpanic("unhandled op in x32CPU::instCPU %c", inst);
+        break;
+    }
+}
+
 void incrementEip(U32 inc) {
     S32 d = (S32)inc;
     if (d>=-128 && d<=127) {
@@ -977,9 +1257,10 @@ void blockDone() {
     movToCpuFromReg(offsetof(CPU, nextBlock), DYN_CALL_RESULT, DYN_32bit);
 }
 
-static void updateNext1(CPU* cpu) {
+static DecodedBlock* updateNext1(CPU* cpu) {
     DecodedBlock::currentBlock->next1 = cpu->getNextBlock(); 
     DecodedBlock::currentBlock->next1->addReferenceFrom(DecodedBlock::currentBlock);
+    return DecodedBlock::currentBlock->next1;
 }
 
 // next block is also set in common_other.cpp for loop instructions, so don't use this as a hook for something else
@@ -995,53 +1276,38 @@ void blockNext1() {
     outb(0x15);
     outd((U32)&DecodedBlock::currentBlock);
 
-    // mov ecx, DecodedBlock::currentBlock->next1
+    // mov eax, DecodedBlock::currentBlock->next1
     outb(0x8b);    
     if (offsetof(DecodedBlock, next1)<128) {
-        outb(0x4a);
+        outb(0x42);
         outb(offsetof(DecodedBlock, next1));
     } else {
-        outb(0x8a);
+        outb(0x82);
         outd(offsetof(DecodedBlock, next1));
     }
 
-    // test ecx, ecx
+    // test eax, eax
     outb(0x85);
-    outb(0xc9);
+    outb(0xc0);
 
     // jnz 
     outb(0x75);
     U32 pos = outBufferPos;
     outb(0);
     
-    callHostFunction(NULL, updateNext1, false, false, false, 1, 0, DYN_PARAM_CPU);
-
-    // edx is not preserved across function calls
-    // mov edx, DecodedBlock::currentBlock
-    outb(0x8b);
-    outb(0x15);
-    outd((U32)&DecodedBlock::currentBlock);
-
-    // mov ecx, DecodedBlock::currentBlock->next1
-    outb(0x8b);    
-    if (offsetof(DecodedBlock, next1)<128) {
-        outb(0x4a);
-        outb(offsetof(DecodedBlock, next1));
-    } else {
-        outb(0x8a);
-        outd(offsetof(DecodedBlock, next1));
-    }
+    callHostFunction(NULL, updateNext1, true, false, false, 1, 0, DYN_PARAM_CPU);
 
     outBuffer[pos] = (U8)(outBufferPos-pos-1);
 
     // cpu->nextBlock = DecodedBlock::currentBlock->next1
-    movToCpuFromReg(offsetof(CPU, nextBlock), DYN_ECX, DYN_32bit);
+    movToCpuFromReg(offsetof(CPU, nextBlock), DYN_EAX, DYN_32bit);
     
 }
 
-static void updateNext2(CPU* cpu) {
+static DecodedBlock* updateNext2(CPU* cpu) {
     DecodedBlock::currentBlock->next2 = cpu->getNextBlock(); 
     DecodedBlock::currentBlock->next2->addReferenceFrom(DecodedBlock::currentBlock);
+    return DecodedBlock::currentBlock->next2;
 }
 
 void blockNext2() {
@@ -1056,47 +1322,31 @@ void blockNext2() {
     outb(0x15);
     outd((U32)&DecodedBlock::currentBlock);
 
-    // mov ecx, DecodedBlock::currentBlock->next1
+    // mov eax, DecodedBlock::currentBlock->next1
     outb(0x8b);    
     if (offsetof(DecodedBlock, next2)<128) {
-        outb(0x4a);
+        outb(0x42);
         outb(offsetof(DecodedBlock, next2));
     } else {
-        outb(0x8a);
+        outb(0x82);
         outd(offsetof(DecodedBlock, next2));
     }
 
-    // test ecx, ecx
+    // test eax, eax
     outb(0x85);
-    outb(0xc9);
+    outb(0xc0);
 
     // jnz 
     outb(0x75);
     U32 pos = outBufferPos;
     outb(1);
     
-    callHostFunction(NULL, updateNext2, false, false, false, 1, 0, DYN_PARAM_CPU);
-
-    // edx is not preserved across function calls
-    // mov edx, DecodedBlock::currentBlock
-    outb(0x8b);
-    outb(0x15);
-    outd((U32)&DecodedBlock::currentBlock);
-
-    // mov ecx, DecodedBlock::currentBlock->next2
-    outb(0x8b);    
-    if (offsetof(DecodedBlock, next2)<128) {
-        outb(0x4a);
-        outb(offsetof(DecodedBlock, next2));
-    } else {
-        outb(0x8a);
-        outd(offsetof(DecodedBlock, next2));
-    }
+    callHostFunction(NULL, updateNext2, true, false, false, 1, 0, DYN_PARAM_CPU);
 
     outBuffer[pos] = (U8)(outBufferPos-pos-1);
 
     // cpu->nextBlock = DecodedBlock::currentBlock->next2
-    movToCpuFromReg(offsetof(CPU, nextBlock), DYN_ECX, DYN_32bit);
+    movToCpuFromReg(offsetof(CPU, nextBlock), DYN_EAX, DYN_32bit);
 }
 
 void OPCALL x32_sidt(CPU* cpu, DecodedOp* op) {
@@ -1176,13 +1426,13 @@ void OPCALL firstX32Op(CPU* cpu, DecodedOp* op) {
         initX32Ops();
         DecodedOp* o = op->next;
         outBufferPos = 0;
+        patch.clear();
         outb(0x53); // push ebx
         outb(0x57); // push edi , will hold cpu
         // on win32 cx contains cpu
         // mov edi, ecx
         outb(0x89);
         outb(0xcf);
-        movToCpu(offsetof(CPU, nextBlock), DYN_32bit, 0);
         while (o) {
             memset(regUsed, 0, sizeof(regUsed));
 #ifndef __TEST
@@ -1211,11 +1461,15 @@ void OPCALL firstX32Op(CPU* cpu, DecodedOp* op) {
                 memory->dynamicExecutableMemory.push_back(mem);
             }
         }
-        void* begin = (U8*)mem+memory->dynamicExecutableMemoryPos;
+        U8* begin = (U8*)mem+memory->dynamicExecutableMemoryPos;
         memcpy(begin, outBuffer, outBufferPos);
         memory->dynamicExecutableMemoryPos+=outBufferPos;
         
-
+        for (U32 i=0;i<patch.size();i++) {
+            U32 pos = patch[i];
+            U32* value = (U32*)(&begin[pos]);
+            *value = *value - (U32)(begin+pos+4);
+        }
         bool b= false;
         if (b) {
             printf("\n");

@@ -39,4 +39,9 @@ U8* InvalidPage::physicalAddress(U32 address) {
     return 0;
 }
 
+U8* InvalidPage::getRWAddress(U32 address) {
+    KThread::currentThread()->seg_mapper(address, true, false);
+    return NULL;
+}
+
 #endif

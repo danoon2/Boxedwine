@@ -62,4 +62,9 @@ U8* CopyOnWritePage::physicalAddress(U32 address) {
     return ::getPhysicalAddress(address);
 }
 
+U8* CopyOnWritePage::getRWAddress(U32 address) {
+    copyOnWrite(address);
+    return ::getRWAddress(address);
+}
+
 #endif

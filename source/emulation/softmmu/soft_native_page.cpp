@@ -60,4 +60,7 @@ U8* NativePage::physicalAddress(U32 address) {
     return this->nativeAddress+(address-this->address);
 }
 
+U8* NativePage::getRWAddress(U32 address) {
+    return this->nativeAddress+(address-this->address);
+}
 #endif

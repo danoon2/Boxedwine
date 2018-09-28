@@ -103,4 +103,9 @@ U8* FilePage::physicalAddress( U32 address) {
     return ::getPhysicalAddress(address);
 }
 
+U8* FilePage::getRWAddress(U32 address) {
+    ondemmandFile(address);
+    return ::getRWAddress(address);
+}
+
 #endif

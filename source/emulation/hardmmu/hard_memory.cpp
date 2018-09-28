@@ -509,4 +509,8 @@ U8* getPhysicalAddress(U32 address) {
     return (U8*)getNativeAddress(KThread::currentThread()->process->memory, address);
 }
 
+U8* getRWAddress(U32 address) {
+    return (U8*)getNativeAddress(KThread::currentThread()->process->memory, address);
+}
+
 #endif

@@ -34,6 +34,7 @@ public:
     void writew(U32 address, U16 value);
     void writed(U32 address, U32 value);
     U8* physicalAddress(U32 address);
+    U8* getRWAddress(U32 address);
 
 private:
     void copyOnWrite(U32 address);

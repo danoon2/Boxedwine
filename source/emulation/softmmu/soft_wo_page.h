@@ -34,6 +34,7 @@ public:
     U16 readw(U32 address);
     U32 readd(U32 address);
     U8* physicalAddress(U32 address);
+    U8* getRWAddress(U32 address);
 };
 
 #endif

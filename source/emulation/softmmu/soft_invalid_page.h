@@ -34,6 +34,7 @@ public:
     U32 readd(U32 address);
     void writed(U32 address, U32 value);
     U8* physicalAddress(U32 address);
+    U8* getRWAddress(U32 address);
     bool inRam() {return false;}
     void close() {}
 };

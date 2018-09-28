@@ -186,7 +186,7 @@ void CodePage::writew(U32 address, U16 value) {
 
 void CodePage::writed(U32 address, U32 value) {
     if (value!=this->readd(address)) {
-        removeBlockAt(address, 3);
+        removeBlockAt(address, 4);
         RWPage::writed(address, value);
     }
 }
@@ -194,4 +194,10 @@ void CodePage::writed(U32 address, U32 value) {
 U8* CodePage::physicalAddress(U32 address) {
     return NULL;
 }
+
+U8* CodePage::getRWAddress(U32 address) {
+    removeBlockAt(address, 4);
+    return RWPage::getRWAddress(address);
+}
+
 #endif

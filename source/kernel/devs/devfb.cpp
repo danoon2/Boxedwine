@@ -415,6 +415,7 @@ public:
     U32 readd(U32 address);
     void writed(U32 address, U32 value);
     U8* physicalAddress(U32 address);
+    U8* getRWAddress(U32 address);
     bool inRam() {return true;}
     void close() {delete this;}
 };
@@ -456,6 +457,11 @@ void FBPage::writed(U32 address, U32 value) {
 }
 
 U8* FBPage::physicalAddress(U32 address) {
+    updateAvailable=1;
+    return &((U8*)screenPixels)[address-ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS];
+}
+
+U8* FBPage::getRWAddress(U32 address) {
     updateAvailable=1;
     return &((U8*)screenPixels)[address-ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS];
 }

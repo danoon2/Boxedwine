@@ -910,3 +910,17 @@ void KThread::clearWaitNofifyNodes() {
     });
     this->extraWaitNodes.removeAll();
 }
+
+ChangeThread::ChangeThread(KThread* thread) {
+    this->savedThread = KThread::currentThread();
+    KThread::setCurrentThread(thread);
+#ifdef BOXEDWINE_DEFAULT_MMU
+    Memory::currentMMU = thread->process->memory->mmu;
+#endif
+}
+ChangeThread::~ChangeThread() {
+    KThread::setCurrentThread(savedThread);
+#ifdef BOXEDWINE_DEFAULT_MMU
+    Memory::currentMMU = savedThread->process->memory->mmu;
+#endif
+}

@@ -138,13 +138,8 @@ private:
 
 class ChangeThread {
 public:
-    ChangeThread(KThread* thread) {
-        this->savedThread = KThread::currentThread();
-        KThread::setCurrentThread(thread);
-    }
-    ~ChangeThread() {
-        KThread::setCurrentThread(savedThread);
-    }
+    ChangeThread(KThread* thread);
+    ~ChangeThread();
     KThread* savedThread;
 };
 
