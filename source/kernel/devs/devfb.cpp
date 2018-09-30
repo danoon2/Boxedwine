@@ -414,8 +414,11 @@ public:
     void writew(U32 address, U16 value);
     U32 readd(U32 address);
     void writed(U32 address, U32 value);
-    U8* physicalAddress(U32 address);
-    U8* getRWAddress(U32 address);
+    U8* getCurrentReadPtr();
+    U8* getCurrentWritePtr();
+    U8* getReadAddress(U32 address, U32 len);
+    U8* getWriteAddress(U32 address, U32 len);
+    U8* getReadWriteAddress(U32 address, U32 len);
     bool inRam() {return true;}
     void close() {delete this;}
 };
@@ -456,12 +459,25 @@ void FBPage::writed(U32 address, U32 value) {
         ((U32*)screenPixels)[(address-ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS)>>2] = value;
 }
 
-U8* FBPage::physicalAddress(U32 address) {
+U8* FBPage::getCurrentReadPtr() {
+    return NULL;
+}
+
+U8* FBPage::getCurrentWritePtr() {
+    return NULL;
+}
+
+U8* FBPage::getReadAddress(U32 address, U32 len) {    
     updateAvailable=1;
     return &((U8*)screenPixels)[address-ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS];
 }
 
-U8* FBPage::getRWAddress(U32 address) {
+U8* FBPage::getWriteAddress(U32 address, U32 len) {
+    updateAvailable=1;
+    return &((U8*)screenPixels)[address-ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS];
+}
+
+U8* FBPage::getReadWriteAddress(U32 address, U32 len) {
     updateAvailable=1;
     return &((U8*)screenPixels)[address-ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS];
 }
@@ -589,10 +605,10 @@ U32 DevFB::map(U32 address, U32 len, S32 prot, S32 flags, U64 off) {
         kpanic("Mapping /dev/fb at fixed address not supported");
     }
     for (i=0;i<pageCount;i++) {
-        if (memory->mmu[i+pageStart]->type!=Page::Type::Invalid_Page && memory->mmu[i+pageStart]->type!=Page::Type::Frame_Buffer) {
+        if (memory->getPage(i+pageStart)->type!=Page::Type::Invalid_Page && memory->getPage(i+pageStart)->type!=Page::Type::Frame_Buffer) {
             kpanic("Something else got mapped into the framebuffer address");
         }
-        memory->mmu[i+pageStart]=new FBPage(flags);
+        memory->setPage(i+pageStart, new FBPage(flags));
     }
 #elif defined BOXEDWINE_64BIT_MMU
     kpanic("frame buffer not implemented for BOXEDWINE_64BIT_MMU");

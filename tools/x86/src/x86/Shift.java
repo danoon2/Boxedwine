@@ -203,7 +203,7 @@ public class Shift extends Base {
 
             if (useCL) {
                 // reg = CL & 0x1F;
-                out(fos32, "    movToRegFromCpu(DYN_SRC, offsetof(CPU, reg[1].u8), DYN_8bit);");
+                out(fos32, "    movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[1].u8), DYN_8bit);");
                 out(fos32, "    instRegImm('&', DYN_SRC, DYN_8bit, 0x1F);");
                 out(fos32, "    movToRegFromReg(DYN_SRC, DYN_32bit, DYN_SRC, DYN_8bit);");
                 param = "DYN_SRC";

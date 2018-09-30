@@ -35,12 +35,23 @@ void NOPage::writed(U32 address, U32 value) {
     KThread::currentThread()->seg_access(address, false, true);
 }
 
-U8* NOPage::physicalAddress(U32 address) {
-    return 0;
+U8* NOPage::getCurrentReadPtr() {
+    return NULL;
 }
 
-U8* NOPage::getRWAddress(U32 address) {
-    KThread::currentThread()->seg_access(address, true, false);
+U8* NOPage::getCurrentWritePtr() {
+    return NULL;
+}
+
+U8* NOPage::getReadAddress(U32 address, U32 len) {    
+    return NULL;
+}
+
+U8* NOPage::getWriteAddress(U32 address, U32 len) {
+    return NULL;
+}
+
+U8* NOPage::getReadWriteAddress(U32 address, U32 len) {
     return NULL;
 }
 

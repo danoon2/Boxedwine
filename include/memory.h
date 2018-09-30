@@ -55,8 +55,10 @@ void zeroMemory(U32 address, int len);
 void readMemory(U8* data, U32 address, int len);
 void writeMemory(U32 address, U8* data, int len);
 
-U8* getPhysicalAddress(U32 address);
-U8* getRWAddress(U32 address);
+U8* getPhysicalReadAddress(U32 address, U32 len);
+U8* getPhysicalWriteAddress(U32 address, U32 len);
+U8* getPhysicalAddress(U32 address, U32 len);
+U8* getPhysicalReadWriteAddressThrow(U32 address, U32 len);
 
 char* getNativeString(U32 address, char* buffer, U32 cbBuffer);
 char* getNativeStringW(U32 address, char* buffer, U32 cbBuffer);
@@ -101,9 +103,21 @@ public:
 
     U32 getPageFlags(U32 page);
 
+    void onThreadChanged();
+
 #ifdef BOXEDWINE_DEFAULT_MMU
-    Page* mmu[K_NUMBER_OF_PAGES];    
+private:
+    Page* mmu[K_NUMBER_OF_PAGES];        
+    U8* mmuReadPtr[K_NUMBER_OF_PAGES];
+    U8* mmuWritePtr[K_NUMBER_OF_PAGES];
+
+public:
+    inline void setPage(U32 index, Page* page);
+    inline Page* getPage(U32 index) {return this->mmu[index];}
+
     static Page** currentMMU;
+    static U8** currentMMUReadPtr;
+    static U8** currentMMUWritePtr;
 #endif
 
 #ifdef BOXEDWINE_DYNAMIC
@@ -140,6 +154,6 @@ private:
     void addCallback(OpCallback func);
 };
 
-#include "../source/emulation/softmmu/soft_memory.h"
 #include "../source/emulation/softmmu/soft_page.h"
+#include "../source/emulation/softmmu/soft_memory.h"
 #endif

@@ -23,7 +23,7 @@ U32 updateVertexPointer(CPU* cpu, OpenGLVetexPointer* p, U32 count) {
             if (p->marshal_size) {
                 free(p->marshal);
             }            
-            p->marshal = getPhysicalAddress(p->ptr);
+            p->marshal = getPhysicalAddress(p->ptr, (datasize?datasize:available));
             p->marshal_size = 0;
             
             if (p->marshal) {

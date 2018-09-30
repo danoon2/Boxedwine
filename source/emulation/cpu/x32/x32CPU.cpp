@@ -5,8 +5,6 @@
 #include "../common/lazyFlags.h"
 
 // cdecl calling convention states EAX, ECX, and EDX are caller saved
-// to prevent unnecessary push/pop, it would be nice to use esi/edi instead of ecx/edx
-// but then 8 bit math operations would be very hard because you can't reference esi/edi from 8-bit
 
 typedef void (*pfnAdditionalReturnCode)();
 
@@ -14,9 +12,13 @@ typedef void (*pfnAdditionalReturnCode)();
 /* Following is required to be defined for dynamic code */
 /********************************************************/
 
+U32 allocReg();
+void freeReg(U32 reg);
+
 #define INCREMENT_EIP(x) incrementEip(x)
 
 #define OFFSET_REG8(x) (x>=4?offsetof(CPU, reg[x-4].h8):offsetof(CPU, reg[x].u8))
+#define CPU_OFFSET_OF(x) offsetof(CPU, x)
 
 // DynReg is a required type, but the values inside are local to this function
 enum DynReg {
@@ -36,7 +38,7 @@ enum DynReg {
 #define DYN_PTR_SIZE U32
 
 enum DynWidth {
-    DYN_8bit,
+    DYN_8bit=0,
     DYN_16bit,
     DYN_32bit,
 };
@@ -215,7 +217,7 @@ void calculateEaa(DecodedOp* op, DynReg reg) {
         }
 
         // seg[6] is always 0
-        if (op->base==GS || op->base==FS) { 
+        if (op->base<6) { 
             // add eax, [cpu->seg[op->base].address]
             outb(0x03);
             outb(0x47 | (reg << 3));
@@ -252,7 +254,7 @@ void calculateEaa(DecodedOp* op, DynReg reg) {
             }
         } else {
             // seg[6] is always 0
-            if (op->base==GS || op->base==FS) {  
+            if (op->base<6) { 
                 initiallized = true;
                 // mov eax, [cpu->seg[op->base].address]
                 outb(0x8b);
@@ -464,8 +466,136 @@ void movToReg(DynReg reg, DynWidth width, U32 imm) {
 
 void movFromMem(DynWidth width, DynReg addressReg) {
     regUsed[DYN_EAX] = true;
+    U32 firstCheckPos=0;
 
-    // set EAX so don't push it then clobber the result with a pop
+    // make sure we only use the fast path if the entire read will take place on the same page
+    if (width==DYN_16bit) {
+        // if ((address & 0xFFF) < 0xFFF)
+    
+        // mov eax, addressReg
+        outb(0x89);
+        outb(0xc0 | (addressReg<<3));
+
+        // and eax, 0xfff
+        outb(0x25);
+        outd(0xFFF);
+
+        // cmp eax, 0xfff
+        outb(0x3D);
+        outd(0xfff);
+
+        // jnb
+        outb(0x73);
+        firstCheckPos = outBufferPos;
+        outb(0);
+
+    } else if (width==DYN_32bit) {
+        // if ((address & 0xFFF) < 0xFFD)
+
+        // mov eax, addressReg
+        outb(0x89);
+        outb(0xc0 | (addressReg<<3));
+
+        // and eax, 0xfff
+        outb(0x25);
+        outd(0xFFF);
+
+        // cmp eax, 0xffd
+        outb(0x3D);
+        outd(0xffd);
+
+        // jnb
+        outb(0x73);
+        firstCheckPos = outBufferPos;
+        outb(0);
+    }
+
+    // int index = address >> 12;
+    // if (Memory::currentMMUReadPtr[index])
+    //     return *(U32*)(&Memory::currentMMUReadPtr[index][address & 0xFFF]);
+    // else
+    //     return readd(address);
+
+    // mov eax, addressReg
+    outb(0x89);
+    outb(0xc0 | (addressReg<<3));
+
+    // address >> 12 , address * sizeof(U8*)
+    // shr eax, 10
+    outb(0xc1);
+    outb(0xe8);
+    outb(0x0a);
+
+    // and eax, 0xfffffffc
+    outb(0x25);
+    outd(0xfffffffc);
+
+    // mov eax, [currentMMUReadPtr+sizeof(U8*)*index];
+    outb(0x8b);
+    outb(0x80);
+    outd((U32)Memory::currentMMUReadPtr);
+
+    // test eax, eax
+    outb(0x85);
+    outb(0xc0);
+
+    // jz
+    outb(0x74);
+    U32 jzPos = outBufferPos;
+    outb(0); // skip over cached read
+
+    // mov eax, [eax+(address & 0xFFF)]
+    U32 reg;
+    bool pushedReg = false;
+    if (!regUsed[DYN_ECX]) {
+        reg = DYN_ECX;
+    } else if (!regUsed[DYN_EDX]) {
+        reg = DYN_EDX;
+    } else {
+        reg = DYN_ECX;
+        pushedReg = true;
+        outb(0x51);
+    }
+
+    // mov reg, addressReg
+    outb(0x89);
+    outb(0xc0|reg|(addressReg<<3));
+
+    // and reg, 0xfff
+    outb(0x81);
+    outb(0xe0+reg);
+    outd(0xfff);
+
+    // mov eax, [eax+reg]
+    if (width==DYN_8bit) {
+        outb(0x8a);
+        outb(0x04);
+        outb(reg << 3);
+    } else if (width==DYN_16bit) {
+        outb(0x66);
+        outb(0x8b);
+        outb(0x04);
+        outb(reg << 3);
+    } else if (width==DYN_32bit) {
+        outb(0x8b);
+        outb(0x04);
+        outb(reg << 3);
+    }
+
+    if (pushedReg) {
+        outb(0x59);
+    }
+
+    // jmp over slow read
+    outb(0xeb);
+    U32 slowPos = outBufferPos;
+    outb(0);
+
+    outBuffer[jzPos] = (U8)(outBufferPos-jzPos-1);
+    if (firstCheckPos)
+        outBuffer[firstCheckPos] = (U8)(outBufferPos-firstCheckPos-1);
+
+    // will set EAX so don't push it then clobber the result with a pop
 
     if (regUsed[DYN_ECX])
         outb(0x51);
@@ -501,34 +631,14 @@ void movFromMem(DynWidth width, DynReg addressReg) {
         outb(0x5a);
     if (regUsed[DYN_ECX])
         outb(0x59);
+
+    outBuffer[slowPos] =  (U8)(outBufferPos-slowPos-1);
 }
 
 void movToCpuFromMem(U32 dstOffset, DynWidth dstWidth, DynReg addressReg) {
     movFromMem(dstWidth, addressReg);
     // mov [cpu+srcOffset], eax
     movToCpuFromReg(dstOffset, DYN_EAX, dstWidth);
-}
-
-void movToMem(DynReg addressReg, DynWidth width) {    
-    // push addressReg
-    outb(0x50+addressReg);
-
-    void* address;
-
-    // call write
-    if (width == DYN_32bit) {
-        address = writed;        
-    } else if (width == DYN_16bit) {
-        address = writew;
-    } else if (width == DYN_8bit) {
-        address = writeb;
-    } else {
-        kpanic("unknown width in x32CPU::movToMemFromReg %d", width);
-    }    
-
-    outb(0xe8);
-    patch.push_back(outBufferPos);
-    outd((U32)address);
 }
 
 void pushValue(U32 arg, DynCallParamType argType) {
@@ -644,65 +754,305 @@ void pushValue(U32 arg, DynCallParamType argType) {
     }
 }
 
-void movToMemFromReg(DynReg addressReg, DynReg reg, DynWidth width) {
-    if (regUsed[DYN_EAX])
-        outb(0x50);
-    if (regUsed[DYN_ECX])
+bool isParamTypeReg(DynCallParamType paramType) {
+    return paramType==DYN_PARAM_REG_8 || paramType==DYN_PARAM_REG_16 || paramType==DYN_PARAM_REG_32;
+}
+
+// will inline the following code (this code is for 32-bit, but it will do a similiar thing for 16-bit and 8-bit
+//
+// if ((address & 0xFFF) < 0xFFD) {
+//      int index = address >> 12;
+//      if (Memory::currentMMUWritePtr[index])
+//          *(U32*)(&Memory::currentMMUWritePtr[index][address & 0xFFF]) = value;
+//      else
+//          Memory::currentMMU[index]->writed(address, value);		
+//  } else {
+//      Memory::currentMMU[index]->writed(address, value);		
+//  }
+void movToMem(DynReg addressReg, DynWidth width, U32 value, DynCallParamType paramType) {    
+    U32 firstCheckPos=0;
+
+    U32 reg1;
+    bool pushedReg1 = false;
+    bool isParamReg = isParamTypeReg(paramType);
+    if (!regUsed[DYN_EAX] && !(isParamReg && value == DYN_EAX)) {
+        reg1 = DYN_EAX;
+    } else if (!regUsed[DYN_ECX] && !(isParamReg && value == DYN_ECX)) {
+        reg1 = DYN_ECX;
+    } else if (!regUsed[DYN_EDX] && !(isParamReg && value == DYN_EDX)) {
+        reg1 = DYN_EDX;
+    } else {
+        if (isParamReg && value == DYN_EAX) {
+            reg1 = DYN_EDX;
+        } else {
+            reg1 = DYN_EAX;
+        }
+        outb(0x50+reg1);
+        pushedReg1 = true;
+    }
+
+    // make sure we only use the fast path if the entire read will take place on the same page
+    if (width==DYN_16bit) {
+        // if ((address & 0xFFF) < 0xFFF)
+    
+        // mov eax, addressReg
+        outb(0x89);
+        outb(0xc0 | (addressReg<<3) | reg1);
+
+        // and eax, 0xfff
+        if (reg1==DYN_EAX) {
+            outb(0x25);
+            outd(0xFFF);
+        } else {
+            outb(0x81);
+            outb(0xe0|reg1);
+            outd(0xfff);
+        }
+
+        // cmp eax, 0xfff
+        if (reg1==DYN_EAX) {
+            outb(0x3D);
+            outd(0xfff);
+        } else {
+            outb(0x81);
+            outb(0xf8|reg1);
+            outd(0xfff);
+        }
+
+        // jnb
+        outb(0x73);
+        firstCheckPos = outBufferPos;
+        outb(0);
+
+    } else if (width==DYN_32bit) {
+        // if ((address & 0xFFF) < 0xFFD)
+
+        // mov eax, addressReg
+        outb(0x89);
+        outb(0xc0 | (addressReg<<3) | reg1);
+
+        // and eax, 0xfff
+        if (reg1==DYN_EAX) {
+            outb(0x25);
+            outd(0xFFF);
+        } else {
+            outb(0x81);
+            outb(0xe0|reg1);
+            outd(0xfff);
+        }
+
+        // cmp eax, 0xffd
+        if (reg1==DYN_EAX) {
+            outb(0x3D);
+            outd(0xffd);
+        } else {
+            outb(0x81);
+            outb(0xf8|reg1);
+            outd(0xffd);
+        }
+
+        // jnb
+        outb(0x73);
+        firstCheckPos = outBufferPos;
+        outb(0);
+    }
+
+    // int index = address >> 12;
+    // if (Memory::currentMMUWritePtr[index])
+    //     *(U32*)(&Memory::currentMMUWritePtr[index][address & 0xFFF]) = value;
+    // else
+    //     Memory::currentMMU[index]->writed(address, value);	
+
+    // mov reg1, addressReg
+    outb(0x89);
+    outb(0xc0 | (addressReg<<3) | reg1);
+
+    // address >> 12 , address * sizeof(U8*)
+    // shr reg1, 10
+    outb(0xc1);
+    outb(0xe8 | reg1);
+    outb(0x0a);
+
+    // and eax, 0xfffffffc
+    if (reg1==DYN_EAX) {
+        outb(0x25);
+        outd(0xfffffffc);
+    } else {
+        outb(0x81);
+        outb(0xe0|reg1);
+        outd(0xfffffffc);
+    }
+
+    // mov reg1, [currentMMUWritePtr+sizeof(U8*)*index];
+    outb(0x8b);
+    outb(0x80|reg1|(reg1<<3));
+    outd((U32)Memory::currentMMUWritePtr);
+
+    // test reg1, reg1
+    outb(0x85);
+    outb(0xc0 | reg1 | (reg1 << 3));
+
+    // jz
+    outb(0x74);
+    U32 jzPos = outBufferPos;
+    outb(0); // skip over cached read
+
+    // mov eax, [eax+(address & 0xFFF)]
+    U32 reg2;
+    bool pushedReg2 = false;
+    if (!regUsed[DYN_ECX] && reg1!=DYN_ECX && !(isParamReg && value == DYN_ECX)) {
+        reg2 = DYN_ECX;
+    } else if (!regUsed[DYN_EDX] && reg1!=DYN_EDX && !(isParamReg && value == DYN_EDX)) {
+        reg2 = DYN_EDX;
+    } else {
+        if ((isParamReg && value == DYN_ECX) || reg1 == DYN_ECX) {
+            if (reg1==DYN_EAX) {
+                reg2 = DYN_EDX;
+            } else {
+                reg2 = DYN_EAX;
+            }
+        } else {
+            reg2 = DYN_ECX;
+        }
+        pushedReg2 = true;
+        outb(0x50+reg2);
+    }
+
+    // mov reg2, addressReg
+    outb(0x89);
+    outb(0xc0|reg2|(addressReg<<3));
+
+    // and reg, 0xfff
+    outb(0x81);
+    outb(0xe0+reg2);
+    outd(0xfff);
+
+    // mov [eax+reg2], value
+    if (paramType == DYN_PARAM_CONST_8 || paramType == DYN_PARAM_CONST_16 || paramType == DYN_PARAM_CONST_32) {
+        if (width==DYN_8bit) {
+            outb(0xc6);
+            outb(0x04);
+            outb(reg1 | (reg2 << 3));
+            outb((U8)value);
+        } else if (width==DYN_16bit) {
+            outb(0x66);
+            outb(0xc7);
+            outb(0x04);
+            outb(reg1 | (reg2 << 3));
+            outw((U16)value);
+        } else if (width==DYN_32bit) {
+            outb(0xc7);
+            outb(0x04);
+            outb(reg1 | (reg2 << 3));
+            outd((U32)value);
+        }
+    } else if (paramType == DYN_PARAM_REG_8 || paramType == DYN_PARAM_REG_16 || paramType == DYN_PARAM_REG_32) {
+        if (width==DYN_8bit) {
+            outb(0x88);
+            outb(0x04|(value<<3));
+            outb(reg1 | (reg2 << 3));
+        } else if (width==DYN_16bit) {
+            outb(0x66);
+            outb(0x89);
+            outb(0x04|(value<<3));
+            outb(reg1 | (reg2 << 3));
+        } else if (width==DYN_32bit) {
+            outb(0x89);
+            outb(0x04|(value<<3));
+            outb(reg1 | (reg2 << 3));
+        }
+    } else {
+        kpanic("x32CPU::movToMem unknown param type: %d", paramType);
+    }
+    if (pushedReg2) {
+        outb(0x58+reg2);
+    }
+
+    // jmp over slow slow
+    outb(0xeb);
+    U32 slowPos = outBufferPos;
+    outb(0);
+
+    outBuffer[jzPos] = (U8)(outBufferPos-jzPos-1);
+    if (firstCheckPos)
+        outBuffer[firstCheckPos] = (U8)(outBufferPos-firstCheckPos-1);
+
+    if (regUsed[DYN_EAX] && (reg1!=DYN_EAX || !pushedReg1))
+        outb(0x50);  
+    if (regUsed[DYN_ECX] && (reg1!=DYN_ECX || !pushedReg1))
         outb(0x51);
-    if (regUsed[DYN_EDX])
+    if (regUsed[DYN_EDX] && (reg1!=DYN_EDX || !pushedReg1))
         outb(0x52);
 
+    pushValue(value, paramType);
+
+    // push addressReg
+    outb(0x50+addressReg);
+
+    void* address;
+
+    // call write
+    if (width == DYN_32bit) {
+        address = writed;        
+    } else if (width == DYN_16bit) {
+        address = writew;
+    } else if (width == DYN_8bit) {
+        address = writeb;
+    } else {
+        kpanic("unknown width in x32CPU::movToMem %d", width);
+    }    
+
+    outb(0xe8);
+    patch.push_back(outBufferPos);
+    outd((U32)address);
+
+    // add esp, 8
+    outb(0x83);
+    outb(0xc4);
+    outb(0x08);
+
+    if (regUsed[DYN_EDX] && (reg1!=DYN_EDX || !pushedReg1))
+        outb(0x5a);
+    if (regUsed[DYN_ECX] && (reg1!=DYN_ECX || !pushedReg1))
+        outb(0x59);
+    if (regUsed[DYN_EAX] && (reg1!=DYN_EAX || !pushedReg1))
+        outb(0x58);  
+
+    outBuffer[slowPos] =  (U8)(outBufferPos-slowPos-1);
+    if (pushedReg1) {
+        outb(0x58+reg1);
+    }
+}
+
+void movToMemFromReg(DynReg addressReg, DynReg reg, DynWidth width) {
     // push reg
+    DynCallParamType paramType;
+
     if (width==DYN_8bit)
-        pushValue(reg, DYN_PARAM_REG_8);
+        paramType = DYN_PARAM_REG_8;
     else if (width==DYN_16bit)
-        pushValue(reg, DYN_PARAM_REG_16);
+        paramType = DYN_PARAM_REG_16;
     else if (width==DYN_32bit)
-        pushValue(reg, DYN_PARAM_REG_32);
+        paramType = DYN_PARAM_REG_32;
     else
         kpanic("unknown width %d in x32CPU::movToMemFromReg", width);
 
-    movToMem(addressReg, width);
-
-    // add esp, 8
-    outb(0x83);
-    outb(0xc4);
-    outb(0x08);
-
-    if (regUsed[DYN_EDX])
-        outb(0x5a);
-    if (regUsed[DYN_ECX])
-        outb(0x59);
-    if (regUsed[DYN_EAX])
-        outb(0x58);    
+    movToMem(addressReg, width, reg, paramType);          
 }
 
-void movToMemFromImm(DynReg addressReg, DynWidth width, U32 imm) {
-    if (regUsed[DYN_EAX])
-        outb(0x50);  
-    if (regUsed[DYN_ECX])
-        outb(0x51);
-    if (regUsed[DYN_EDX])
-        outb(0x52);
+void movToMemFromImm(DynReg addressReg, DynWidth width, U32 imm) {    
+    DynCallParamType paramType;
 
-    // push imm
-    outb(0x68);
-    outd(imm);
+    if (width==DYN_8bit)
+        paramType = DYN_PARAM_CONST_8;
+    else if (width==DYN_16bit)
+        paramType = DYN_PARAM_CONST_16;
+    else if (width==DYN_32bit)
+        paramType = DYN_PARAM_CONST_32;
+    else
+        kpanic("unknown width %d in x32CPU::movToMemFromImm", width);
 
-    movToMem(addressReg, width);    
-
-    // add esp, 8
-    outb(0x83);
-    outb(0xc4);
-    outb(0x08);
-    
-    if (regUsed[DYN_EDX])
-        outb(0x5a);
-    if (regUsed[DYN_ECX])
-        outb(0x59);
-    if (regUsed[DYN_EAX])
-        outb(0x58);
-
+    movToMem(addressReg, width, imm, paramType);    
 }
 
 void callHostFunction(pfnAdditionalReturnCode pfnOnReturn, void* address, bool hasReturn, bool returnIfTrue, bool returnIfFalse, U32 argCount, U32 arg1, DynCallParamType arg1Type, U32 arg2, DynCallParamType arg2Type, U32 arg3, DynCallParamType arg3Type, U32 arg4, DynCallParamType arg4Type, U32 arg5, DynCallParamType arg5Type) {
@@ -978,11 +1328,13 @@ void instCPUImm(char inst, U32 dstOffset, DynWidth regWidth, U32 imm) {
     if (dstOffset>127)
         kpanic("x32CPU::instCPUImm register offset expected to be less than 128: %d", dstOffset);
 }
+
 void instMemImm(char inst, DynReg addressReg, DynWidth regWidth, U32 imm) {
     S32 s = (S32)imm;
     bool oneByte = s>=-128 && s<=127;
 
-    callHostFunction(NULL, getRWAddress, true, false, false, 1, addressReg, DYN_PARAM_REG_32);
+    // :TODO: getPhysicalReadWriteAddressThrow will fail if the read spans two pages
+    callHostFunction(NULL, getPhysicalReadWriteAddressThrow, true, false, false, 2, addressReg, DYN_PARAM_REG_32, 1<<regWidth, DYN_PARAM_CONST_32);
 
     U32 i=0;
     switch (inst) {
@@ -1040,7 +1392,7 @@ void instMemReg(char inst, DynReg addressReg, DynReg rm, DynWidth regWidth) {
         movToRegFromReg(DYN_ECX, regWidth, rm, regWidth);
         rm = DYN_ECX;
     }
-    callHostFunction(NULL, getRWAddress, true, false, false, 1, addressReg, DYN_PARAM_REG_32);
+    callHostFunction(NULL, getPhysicalReadWriteAddressThrow, true, false, false, 2, addressReg, DYN_PARAM_REG_32, 1<<regWidth, DYN_PARAM_CONST_32);
 
     switch (inst) {
         case '+':
@@ -1155,7 +1507,7 @@ void instReg(char inst, DynReg reg, DynWidth regWidth) {
 }
 
 void instMem(char inst, DynReg addressReg, DynWidth regWidth) {
-    callHostFunction(NULL, getRWAddress, true, false, false, 1, addressReg, DYN_PARAM_REG_32);
+    callHostFunction(NULL, getPhysicalReadWriteAddressThrow, true, false, false, 2, addressReg, DYN_PARAM_REG_32, 1<<regWidth, DYN_PARAM_CONST_32);
 
     switch (inst) {
     case '~':
@@ -1470,7 +1822,7 @@ void OPCALL firstX32Op(CPU* cpu, DecodedOp* op) {
             U32* value = (U32*)(&begin[pos]);
             *value = *value - (U32)(begin+pos+4);
         }
-        bool b= false;
+        bool b = false;
         if (b) {
             printf("\n");
             for (U32 i=0;i<outBufferPos;i++) {

@@ -20,15 +20,14 @@ void OnDemandPage::ondemmand(U32 address) {
     bool write = this->canWrite();
     
     if (read && write) {
-        memory->mmu[page] = RWPage::alloc(NULL, page << K_PAGE_SHIFT, this->flags);
+        memory->setPage(page, RWPage::alloc(NULL, page << K_PAGE_SHIFT, this->flags));
     } else if (write) {
-        memory->mmu[page] = WOPage::alloc(NULL, page << K_PAGE_SHIFT, this->flags);
+        memory->setPage(page, WOPage::alloc(NULL, page << K_PAGE_SHIFT, this->flags));
     } else if (read) {
-        memory->mmu[page] = ROPage::alloc(NULL, page << K_PAGE_SHIFT, this->flags);
+        memory->setPage(page, ROPage::alloc(NULL, page << K_PAGE_SHIFT, this->flags));
     } else {
-        memory->mmu[page] = NOPage::alloc(NULL, page << K_PAGE_SHIFT, this->flags);
+        memory->setPage(page, NOPage::alloc(NULL, page << K_PAGE_SHIFT, this->flags));
     }
-    this->close();
 }
 
 U8 OnDemandPage::readb(U32 address) {
@@ -61,13 +60,27 @@ void OnDemandPage::writed(U32 address, U32 value) {
     ::writed(address, value);
 }
 
-U8* OnDemandPage::physicalAddress(U32 address) {
-    ondemmand(address);
-    return ::getPhysicalAddress(address);
+U8* OnDemandPage::getCurrentReadPtr() {
+    return NULL;
 }
 
-U8* OnDemandPage::getRWAddress(U32 address) {
-    ondemmand(address);
-    return ::getRWAddress(address);
+U8* OnDemandPage::getCurrentWritePtr() {
+    return NULL;
 }
+
+U8* OnDemandPage::getReadAddress(U32 address, U32 len) {    
+    ondemmand(address);
+    return KThread::currentThread()->memory->getPage(address>>K_PAGE_SHIFT)->getReadAddress(address, len);
+}
+
+U8* OnDemandPage::getWriteAddress(U32 address, U32 len) {
+    ondemmand(address);
+    return KThread::currentThread()->memory->getPage(address>>K_PAGE_SHIFT)->getWriteAddress(address, len);
+}
+
+U8* OnDemandPage::getReadWriteAddress(U32 address, U32 len) {
+    ondemmand(address);
+    return KThread::currentThread()->memory->getPage(address>>K_PAGE_SHIFT)->getReadWriteAddress(address, len);
+}
+
 #endif

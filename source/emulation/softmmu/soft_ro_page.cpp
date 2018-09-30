@@ -20,12 +20,23 @@ void ROPage::writed(U32 address, U32 value) {
     KThread::currentThread()->seg_access(address, false, true);
 }
 
-U8* ROPage::physicalAddress(U32 address) {
-    return 0;
+U8* ROPage::getCurrentReadPtr() {
+    return this->page;
 }
 
-U8* ROPage::getRWAddress(U32 address) {
-    KThread::currentThread()->seg_access(address, false, true);
+U8* ROPage::getCurrentWritePtr() {
+    return NULL;
+}
+
+U8* ROPage::getReadAddress(U32 address, U32 len) {    
+    return &this->page[address - this->address];
+}
+
+U8* ROPage::getWriteAddress(U32 address, U32 len) {
+    return NULL;
+}
+
+U8* ROPage::getReadWriteAddress(U32 address, U32 len) {
     return NULL;
 }
 

@@ -35,12 +35,23 @@ void InvalidPage::writed(U32 address, U32 value) {
     KThread::currentThread()->seg_mapper(address, false, true);
 }
 
-U8* InvalidPage::physicalAddress(U32 address) {
-    return 0;
+U8* InvalidPage::getCurrentReadPtr() {
+    return NULL;
 }
 
-U8* InvalidPage::getRWAddress(U32 address) {
-    KThread::currentThread()->seg_mapper(address, true, false);
+U8* InvalidPage::getCurrentWritePtr() {
+    return NULL;
+}
+
+U8* InvalidPage::getReadAddress(U32 address, U32 len) {    
+    return NULL;
+}
+
+U8* InvalidPage::getWriteAddress(U32 address, U32 len) {
+    return NULL;
+}
+
+U8* InvalidPage::getReadWriteAddress(U32 address, U32 len) {
     return NULL;
 }
 

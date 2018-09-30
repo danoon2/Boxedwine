@@ -594,7 +594,7 @@ GLvoid* marshalp(CPU* cpu, U32 instance, U32 buffer, U32 len) {
     }
     // :TODO: a lot of work needs to be done here, marshalp needs to be removed and instead marshal the correct type of array, like marshalf.
     // This is also important to make things work with UNALIGNED_MEMORY
-    return (GLvoid*)getPhysicalAddress(buffer);
+    return (GLvoid*)getPhysicalAddress(buffer, 1);
 }
 
 U32 marshalBackSync(CPU* cpu, GLsync sync) {

@@ -191,13 +191,24 @@ void CodePage::writed(U32 address, U32 value) {
     }
 }
 
-U8* CodePage::physicalAddress(U32 address) {
+U8* CodePage::getCurrentReadPtr() {
+    return this->page;
+}
+
+U8* CodePage::getCurrentWritePtr() {
     return NULL;
 }
 
-U8* CodePage::getRWAddress(U32 address) {
-    removeBlockAt(address, 4);
-    return RWPage::getRWAddress(address);
+U8* CodePage::getReadAddress(U32 address, U32 len) {    
+    return &this->page[address - this->address];
+}
+
+U8* CodePage::getWriteAddress(U32 address, U32 len) {
+    return NULL;
+}
+
+U8* CodePage::getReadWriteAddress(U32 address, U32 len) {
+    return NULL;
 }
 
 #endif

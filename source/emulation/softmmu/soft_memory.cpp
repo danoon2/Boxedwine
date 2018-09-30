@@ -41,6 +41,8 @@
 extern jmp_buf runBlockJump;
 
 Page** Memory::currentMMU;
+U8** Memory::currentMMUReadPtr;
+U8** Memory::currentMMUWritePtr;
 
 void Memory::log_pf(KThread* thread, U32 address) {
     U32 start = 0;
@@ -55,11 +57,11 @@ void Memory::log_pf(KThread* thread, U32 address) {
     printf("Valid address ranges:\n");
     for (i=0;i<K_NUMBER_OF_PAGES;i++) {
         if (!start) {
-            if (process->memory->mmu[i] != invalidPage) {
+            if (process->memory->getPage(i) != invalidPage) {
                 start = i;
             }
         } else {
-            if (process->memory->mmu[i] == invalidPage) {
+            if (process->memory->getPage(i) == invalidPage) {
                 printf("    %.8X - %.8X\n", start*K_PAGE_SIZE, i*K_PAGE_SIZE);
                 start = 0;
             }
@@ -72,112 +74,6 @@ void Memory::log_pf(KThread* thread, U32 address) {
     }
     cpu->walkStack(cpu->eip.u32, EBP, 2);
     kpanic("pf");
-}
-
-
-U8 __cdecl readb(U32 address) {
-    int index = address >> 12;
-#ifdef LOG_OPS
-    KThread* thread = KThread::currentThread();
-    Memory* memory = thread->memory;
-    U8 result = thread->memory->mmu[index]->readb(address);;
-    if (memory->log && thread->cpu->log)
-        fprintf(logFile, "readb %X @%X\n", result, address);
-    return result;
-#else
-    return Memory::currentMMU[index]->readb(address);
-#endif
-}
-
-void writeb(U32 address, U8 value) {
-    int index = address >> 12;
-#ifdef LOG_OPS
-    if (memory->log && thread->cpu->log)
-        fprintf(logFile, "writeb %X @%X\n", value, address);
-#endif
-    Memory::currentMMU[index]->writeb(address, value);
-}
-
-U16 readw(U32 address) {
-#ifdef LOG_OPS
-    U16 result;
-    KThread* thread = KThread::currentThread();
-    Memory* memory = thread->memory;
-
-    if((address & 0xFFF) < 0xFFF) {
-        result = thread->memory->mmu[index]->readw(address);
-    } else {
-        result = readb(address) | (readb(address+1) << 8);
-    }
-    if (memory->log && thread->cpu->log)
-        fprintf(logFile, "readw %X @%X\n", result, address);
-    return result;
-#else
-    if ((address & 0xFFF) < 0xFFF) {
-        int index = address >> 12;
-        return Memory::currentMMU[index]->readw(address);
-    }
-    return readb(address) | (readb(address+1) << 8);
-#endif
-}
-
-void writew(U32 address, U16 value) {
-#ifdef LOG_OPS
-    KThread* thread = KThread::currentThread();
-    Memory* memory = thread->memory;
-    if (memory->log && thread->cpu->log)
-        fprintf(logFile, "writew %X @%X\n", value, address);
-#endif
-    if ((address & 0xFFF) < 0xFFF) {
-        int index = address >> 12;
-        Memory::currentMMU[index]->writew(address, value);
-    } else {
-        writeb(address, (U8)value);
-        writeb(address+1, (U8)(value >> 8));
-    }
-}
-
-U32 readd(U32 address) {
-#ifdef LOG_OPS
-    U32 result;
-    KThread* thread = KThread::currentThread();
-    Memory* memory = thread->memory;
-
-    if ((address & 0xFFF) < 0xFFD) {
-        int index = address >> 12;
-        result = thread->memory->mmu[index]->readd(address);
-    } else {
-        result = readb(address) | (readb(address+1) << 8) | (readb(address+2) << 16) | (readb(address+3) << 24);
-    }
-    if (memory->log && thread->cpu->log)
-        fprintf(logFile, "readd %X @%X\n", result, address);
-    return result;
-#else
-    if ((address & 0xFFF) < 0xFFD) {
-        int index = address >> 12;
-        return Memory::currentMMU[index]->readd(address);
-    } else {
-        return readb(address) | (readb(address+1) << 8) | (readb(address+2) << 16) | (readb(address+3) << 24);
-    }
-#endif
-}
-
-void writed(U32 address, U32 value) {
-#ifdef LOG_OPS
-    KThread* thread = KThread::currentThread();
-    Memory* memory = thread->memory;
-    if (memory->log && thread->cpu->log)
-        fprintf(logFile, "writed %X @%X\n", value, address);
-#endif    
-    if ((address & 0xFFF) < 0xFFD) {
-        int index = address >> 12;
-        Memory::currentMMU[index]->writed(address, value);		
-    } else {
-        writeb(address, value);
-        writeb(address+1, value >> 8);
-        writeb(address+2, value >> 16);
-        writeb(address+3, value >> 24);
-    }
 }
 
 U8* Memory::callbackRam;
@@ -215,6 +111,8 @@ void Memory::addCallback(OpCallback func) {
 Memory::Memory() : nativeAddressStart(0) {
     for (int i=0;i<K_NUMBER_OF_PAGES;i++) {
         this->mmu[i] = invalidPage;
+        this->mmuReadPtr[i] = NULL;
+        this->mmuWritePtr[i] = NULL;
     }
 
     if (!callbackRam) {
@@ -222,7 +120,7 @@ Memory::Memory() : nativeAddressStart(0) {
         addCallback(onExitSignal);
     }
 
-    this->mmu[CALL_BACK_ADDRESS>>K_PAGE_SHIFT] = NativePage::alloc(callbackRam, CALL_BACK_ADDRESS, PAGE_READ|PAGE_EXEC);
+    this->setPage(CALL_BACK_ADDRESS>>K_PAGE_SHIFT, NativePage::alloc(callbackRam, CALL_BACK_ADDRESS, PAGE_READ|PAGE_EXEC));
 
 #ifdef BOXEDWINE_DYNAMIC
     this->dynamicExecutableMemoryPos = 0;
@@ -242,82 +140,78 @@ Memory::~Memory() {
 
 void Memory::reset() {
     for (int i=0;i<K_NUMBER_OF_PAGES;i++) {
-        this->mmu[i]->close();
-        this->mmu[i] = invalidPage;
+        this->setPage(i, invalidPage);
     }
-    this->mmu[CALL_BACK_ADDRESS>>K_PAGE_SHIFT] = NativePage::alloc(callbackRam, CALL_BACK_ADDRESS, PAGE_READ|PAGE_EXEC);
+    this->setPage(CALL_BACK_ADDRESS>>K_PAGE_SHIFT, NativePage::alloc(callbackRam, CALL_BACK_ADDRESS, PAGE_READ|PAGE_EXEC));
 }
 
 void Memory::reset(U32 page, U32 pageCount) {
     for (U32 i=page;i<page+pageCount;i++) {
-        this->mmu[i]->close();
-        this->mmu[i] = invalidPage;
+        this->setPage(i, invalidPage);
     }
 }
 
 void Memory::clone(Memory* from) {
     for (int i=0;i<0x100000;i++) {
-        Page* page = from->mmu[i];
+        Page* page = from->getPage(i);
 
-        this->mmu[i]->close();
         if (page->type == Page::Type::On_Demand_Page) {
             if (page->mapShared()) {
-                OnDemandPage*  p = (OnDemandPage*)from->mmu[i];
+                OnDemandPage*  p = (OnDemandPage*)from->getPage(i);
                 p->ondemmand(i<<K_PAGE_SHIFT);
                 // fall through
             } else {                
-                this->mmu[i] = OnDemandPage::alloc(page->flags);
+                this->setPage(i, OnDemandPage::alloc(page->flags));
                 continue;
             }
         }
         if (page->type == Page::Type::File_Page) {
-            FilePage* p = (FilePage*)from->mmu[i];
+            FilePage* p = (FilePage*)from->getPage(i);
             if (page->mapShared()) {                
                 p->ondemmandFile(i<<K_PAGE_SHIFT);
                 // fall through
             } else {
-                this->mmu[i] = FilePage::alloc(p->mapped, p->index, p->flags);
+                this->setPage(i, FilePage::alloc(p->mapped, p->index, p->flags));
                 continue;
             }
         }
-        page = from->mmu[i]; // above code could have changed this
+        page = from->getPage(i); // above code could have changed this
         if (page->type == Page::Type::RO_Page || page->type == Page::Type::RW_Page || page->type == Page::Type::WO_Page || page->type == Page::Type::NO_Page || page->type == Page::Type::Code_Page) {
-            RWPage* p = (RWPage*)from->mmu[i];
+            RWPage* p = (RWPage*)from->getPage(i);
             if (!page->mapShared()) {
                 if (page->type == Page::Type::WO_Page) {
                     U8* ram = ramPageAlloc();
                     memcpy(ram, p->page, K_PAGE_SIZE);
-                    this->mmu[i] = WOPage::alloc(ram, p->address, p->flags);
+                    this->setPage(i, WOPage::alloc(ram, p->address, p->flags));
                 } else if (page->type == Page::Type::NO_Page) {
                     U8* ram = ramPageAlloc();
                     memcpy(ram, p->page, K_PAGE_SIZE);
-                    this->mmu[i] = NOPage::alloc(ram, p->address, p->flags);
+                    this->setPage(i, NOPage::alloc(ram, p->address, p->flags));
                 } else {
-                    this->mmu[i] = CopyOnWritePage::alloc(p->page, p->address, p->flags);                    
-                    from->mmu[i] = CopyOnWritePage::alloc(p->page, p->address, p->flags);
-                    p->close();
+                    this->setPage(i, CopyOnWritePage::alloc(p->page, p->address, p->flags));
+                    from->setPage(i, CopyOnWritePage::alloc(p->page, p->address, p->flags));
                 }                
             } else {
                 if (page->type == Page::Type::RO_Page) {
-                    this->mmu[i] = ROPage::alloc(p->page, p->address, p->flags);
+                    this->setPage(i, ROPage::alloc(p->page, p->address, p->flags));
                 } else if (page->type == Page::Type::RW_Page) {
-                    this->mmu[i] = RWPage::alloc(p->page, p->address, p->flags);
+                    this->setPage(i, RWPage::alloc(p->page, p->address, p->flags));
                 } else if (page->type == Page::Type::WO_Page) {
-                    this->mmu[i] = WOPage::alloc(p->page, p->address, p->flags);
+                    this->setPage(i, WOPage::alloc(p->page, p->address, p->flags));
                 } else if (page->type == Page::Type::NO_Page) {
-                    this->mmu[i] = NOPage::alloc(p->page, p->address, p->flags);
+                    this->setPage(i, NOPage::alloc(p->page, p->address, p->flags));
                 } else if (page->type == Page::Type::Code_Page) {
-                    this->mmu[i] = CodePage::alloc(p->page, p->address, p->flags);
+                    this->setPage(i, CodePage::alloc(p->page, p->address, p->flags));
                 }
             }
         } else if (page->type == Page::Type::Copy_On_Write_Page) {
-            CopyOnWritePage* p = (CopyOnWritePage*)from->mmu[i];
-            this->mmu[i] = CopyOnWritePage::alloc(p->page, p->address, p->flags);
+            CopyOnWritePage* p = (CopyOnWritePage*)from->getPage(i);
+            this->setPage(i, CopyOnWritePage::alloc(p->page, p->address, p->flags));
         } else if (page->type == Page::Type::Native_Page) {
-            NativePage* p = (NativePage*)from->mmu[i];
-            this->mmu[i] = NativePage::alloc(p->nativeAddress, p->address, p->flags);
+            NativePage* p = (NativePage*)from->getPage(i);
+            this->setPage(i, NativePage::alloc(p->nativeAddress, p->address, p->flags));
         } else if (page->type == Page::Type::Invalid_Page) { 
-            this->mmu[i] = from->mmu[i];
+            this->setPage(i, from->getPage(i));
         } else {
             kpanic("unhandled case when cloning memory: page type = %d", page->type);
         }
@@ -358,68 +252,60 @@ void Memory::allocPages(U32 page, U32 pageCount, U8 permissions, FD fd, U64 offs
         }    
 
         for (U32 i=0;i<pageCount;i++) {
-            this->mmu[page+i]->close();
-            this->mmu[page+i] = FilePage::alloc(mappedFile, filePage++, permissions);
+            this->setPage(page+i, FilePage::alloc(mappedFile, filePage++, permissions));
         }
     } else {
         for (U32 i=0;i<pageCount;i++) {
-            this->mmu[page+i]->close();
-            this->mmu[page+i] = OnDemandPage::alloc(permissions);
+            this->setPage(page+i, OnDemandPage::alloc(permissions));
         }
     }    
 }
 
 void Memory::protectPage(U32 i, U32 permissions) {
     KThread* thread = KThread::currentThread();
-    Page* page = this->mmu[i];
+    Page* page = this->getPage(i);
 
     U32 flags = page->flags;
     flags&=~PAGE_PERMISSION_MASK;
     flags|=(permissions & PAGE_PERMISSION_MASK);
 
     if (page->type == Page::Type::Invalid_Page) {
-        this->mmu[i] = OnDemandPage::alloc(flags);
+        this->setPage(i, OnDemandPage::alloc(flags));
     } else if (page->type == Page::Type::RO_Page || page->type == Page::Type::RW_Page || page->type == Page::Type::WO_Page || page->type == Page::Type::NO_Page) {
         RWPage* p = (RWPage*)page;
 
         if ((permissions & PAGE_READ) && (permissions & PAGE_WRITE)) {
             if (page->type != Page::Type::RW_Page) {
-                this->mmu[i] = RWPage::alloc(p->page, p->address, flags);
-                page->close();
+                this->setPage(i, RWPage::alloc(p->page, p->address, flags));
             }
         } else if (permissions & PAGE_WRITE) {
             if (page->type != Page::Type::WO_Page) {
-                this->mmu[i] = WOPage::alloc(p->page, p->address, flags);
-                page->close();
+                this->setPage(i, WOPage::alloc(p->page, p->address, flags));
             }
         } else if (permissions & PAGE_READ) {
             if (page->type != Page::Type::RO_Page) {
-                this->mmu[i] = ROPage::alloc(p->page, p->address, flags);
-                page->close();
+                this->setPage(i, ROPage::alloc(p->page, p->address, flags));
             }
         } else {
             if (page->type != Page::Type::NO_Page) {
-                this->mmu[i] = NOPage::alloc(p->page, p->address, flags);
-                page->close();
+                this->setPage(i, NOPage::alloc(p->page, p->address, flags));
             }
         }
     } else if (page->type == Page::Type::Copy_On_Write_Page) {
         if ((permissions & PAGE_READ) && (permissions & PAGE_WRITE)) {
             page->flags = flags;
         } else if (permissions & PAGE_WRITE) {
-            CopyOnWritePage* p = (CopyOnWritePage*)this->mmu[i];
+            CopyOnWritePage* p = (CopyOnWritePage*)this->getPage(i);
             U8* ram = ramPageAlloc();
             memcpy(ram, p->page, K_PAGE_SIZE);
-            this->mmu[i] = WOPage::alloc(ram, p->address, flags);            
-            page->close();
+            this->setPage(i, WOPage::alloc(ram, p->address, flags));
         } else if (permissions & PAGE_READ) {
             page->flags = flags;
         } else {
-            CopyOnWritePage* p = (CopyOnWritePage*)this->mmu[i];
+            CopyOnWritePage* p = (CopyOnWritePage*)this->getPage(i);
             U8* ram = ramPageAlloc();
             memcpy(ram, p->page, K_PAGE_SIZE);
-            this->mmu[i] = NOPage::alloc(ram, p->address, flags);
-            page->close();
+            this->setPage(i, NOPage::alloc(ram, p->address, flags));
         }
     } else if (page->type == Page::Type::File_Page || page->type == Page::Type::On_Demand_Page) {
         page->flags = flags;
@@ -437,13 +323,13 @@ bool Memory::findFirstAvailablePage(U32 startingPage, U32 pageCount, U32* result
     U32 i;
     
     for (i=startingPage;i<K_NUMBER_OF_PAGES;i++) {
-        if (this->mmu[i]->type==Page::Type::Invalid_Page || (canBeReMapped && (this->mmu[i]->flags & PAGE_MAPPED))) {
+        if (this->getPage(i)->type==Page::Type::Invalid_Page || (canBeReMapped && (this->getPage(i)->flags & PAGE_MAPPED))) {
             U32 j;
             bool success = true;
 
             for (j=1;j<pageCount;j++) {
                 U32 nextPage = i+j; // could be done a different way, but this helps the static analysis
-                if (nextPage < K_NUMBER_OF_PAGES && this->mmu[nextPage]->type!=Page::Type::Invalid_Page && (!canBeReMapped || !(this->mmu[i]->flags & PAGE_MAPPED))) {
+                if (nextPage < K_NUMBER_OF_PAGES && this->getPage(nextPage)->type!=Page::Type::Invalid_Page && (!canBeReMapped || !(this->getPage(i)->flags & PAGE_MAPPED))) {
                     success = false;
                     break;
                 }
@@ -462,7 +348,7 @@ bool Memory::isValidReadAddress(U32 address, U32 len) {
     U32 startPage = address>>K_PAGE_SHIFT;
     U32 endPage = (address+len-1)>>K_PAGE_SHIFT;
     for (U32 i=startPage;i<=endPage;i++) {
-        if (!this->mmu[address >> K_PAGE_SHIFT]->canRead())
+        if (!this->getPage(address >> K_PAGE_SHIFT)->canRead())
             return false;
     }
     return true;
@@ -472,24 +358,50 @@ bool Memory::isValidWriteAddress(U32 address, U32 len) {
     U32 startPage = address>>K_PAGE_SHIFT;
     U32 endPage = (address+len-1)>>K_PAGE_SHIFT;
     for (U32 i=startPage;i<=endPage;i++) {
-        if (!this->mmu[address >> K_PAGE_SHIFT]->canWrite())
+        if (!this->getPage(address >> K_PAGE_SHIFT)->canWrite())
             return false;
     }
     return true;
 }
 
 bool Memory::isPageAllocated(U32 page) {
-    return this->mmu[page]->type!=Page::Type::Invalid_Page;
+    return this->getPage(page)->type!=Page::Type::Invalid_Page;
 }
 
-U8* getPhysicalAddress(U32 address) {
+U8* getPhysicalReadAddress(U32 address, U32 len) {
     int index = address >> 12;
-    return KThread::currentThread()->process->memory->mmu[index]->physicalAddress(address);
+    if (len<=K_PAGE_SIZE-(address & K_PAGE_MASK)) {
+        return Memory::currentMMU[index]->getReadAddress(address, len);
+    }
+    return NULL;
 }
 
-U8* getRWAddress(U32 address) {
+U8* getPhysicalWriteAddress(U32 address, U32 len) {
     int index = address >> 12;
-    return KThread::currentThread()->process->memory->mmu[index]->getRWAddress(address);
+    if (len<=K_PAGE_SIZE-(address & K_PAGE_MASK)) {
+        return Memory::currentMMU[index]->getWriteAddress(address, len);
+    }
+    return NULL;
+}
+
+U8* getPhysicalAddress(U32 address, U32 len) {
+    int index = address >> 12;
+    if (len<=K_PAGE_SIZE-(address & K_PAGE_MASK)) {
+        return Memory::currentMMU[index]->getReadWriteAddress(address, len);
+    }
+    return NULL;
+}
+
+U8* getPhysicalReadWriteAddressThrow(U32 address, U32 len) {
+    int index = address >> 12;
+    U8* result = NULL;
+    if (len<=K_PAGE_SIZE-(address & K_PAGE_MASK)) {
+        result = Memory::currentMMU[index]->getReadWriteAddress(address, len);
+    }
+    if (!result) {
+        KThread::currentThread()->seg_access(address, true, false);
+    }
+    return result;
 }
 
 void memcopyFromNative(U32 address, const char* p, U32 len) {
@@ -502,12 +414,12 @@ void memcopyFromNative(U32 address, const char* p, U32 len) {
     U32 i;
 
     if (len>4) {
-        U8* ram = getPhysicalAddress(address);
+        U32 todo = K_PAGE_SIZE-(address & (K_PAGE_SIZE-1));
+        if (todo>len)
+            todo=len;
+        U8* ram = getPhysicalWriteAddress(address, todo);
     
-        if (ram) {
-            U32 todo = K_PAGE_SIZE-(address & (K_PAGE_SIZE-1));
-            if (todo>len)
-                todo=len;
+        if (ram) {            
             while (1) {
                 memcpy(ram, p, todo);
                 len-=todo;
@@ -516,7 +428,7 @@ void memcopyFromNative(U32 address, const char* p, U32 len) {
                 }
                 address+=todo;
                 p+=todo;
-                ram = getPhysicalAddress(address);
+                ram = getPhysicalWriteAddress(address, todo);
                 if (!ram) {
                     break;
                 }
@@ -540,12 +452,12 @@ void memcopyToNative(U32 address, char* p, U32 len) {
     }
 #else
     if (len>4) {
-        U8* ram = getPhysicalAddress(address);
+        U32 todo = K_PAGE_SIZE-(address & (K_PAGE_SIZE-1));
+        if (todo>len)
+            todo=len;
+        U8* ram = getPhysicalReadAddress(address, len);
     
-        if (ram) {
-            U32 todo = K_PAGE_SIZE-(address & (K_PAGE_SIZE-1));
-            if (todo>len)
-                todo=len;
+        if (ram) {            
             while (1) {
                 memcpy(p, ram, todo);
                 len-=todo;
@@ -554,7 +466,7 @@ void memcopyToNative(U32 address, char* p, U32 len) {
                 }
                 address+=todo;
                 p+=todo;
-                ram = getPhysicalAddress(address);
+                ram = getPhysicalReadAddress(address, todo);
                 if (!ram) {
                     break;
                 }
@@ -663,7 +575,7 @@ U32 Memory::mapNativeMemory(void* hostAddress, U32 size) {
         if (this->nativeAddressStart>hostAddress) // did we wrap?
             this->nativeAddressStart = (U8*)0x1000;
         for (i=0;i<0x10000;i++) {
-            this->mmu[i+ADDRESS_PROCESS_NATIVE] = NativePage::alloc(this->nativeAddressStart+K_PAGE_SIZE*i, (ADDRESS_PROCESS_NATIVE<<K_PAGE_SHIFT)+K_PAGE_SIZE*i, PAGE_READ | PAGE_WRITE);
+            this->setPage(i+ADDRESS_PROCESS_NATIVE, NativePage::alloc(this->nativeAddressStart+K_PAGE_SIZE*i, (ADDRESS_PROCESS_NATIVE<<K_PAGE_SHIFT)+K_PAGE_SIZE*i, PAGE_READ | PAGE_WRITE));
         }
         return mapNativeMemory(hostAddress, size);
     }
@@ -674,8 +586,7 @@ U32 Memory::mapNativeMemory(void* hostAddress, U32 size) {
     }
 
     for (U32 i=0;i<pageCount;i++) {
-        this->mmu[result+i]->close();
-        this->mmu[result+i] = NativePage::alloc((U8*)hostAddress+K_PAGE_SIZE*i, (result<<K_PAGE_SHIFT)+K_PAGE_SIZE*i, PAGE_READ | PAGE_WRITE);
+        this->setPage(result+i, NativePage::alloc((U8*)hostAddress+K_PAGE_SIZE*i, (result<<K_PAGE_SHIFT)+K_PAGE_SIZE*i, PAGE_READ | PAGE_WRITE));
     }
     return result<<K_PAGE_SHIFT;
 }
@@ -686,21 +597,20 @@ void Memory::map(U32 startPage, const std::vector<U8*>& pages, U32 permissions) 
     bool write = (permissions & PAGE_WRITE)!=0;
 
     for (U32 page=0;page<pages.size();page++) {
-        this->mmu[startPage+page]->close();
         if (read && write) {
-            this->mmu[startPage+page] = RWPage::alloc(pages[page], (startPage+page)<<K_PAGE_SHIFT, permissions);
+            this->setPage(startPage+page, RWPage::alloc(pages[page], (startPage+page)<<K_PAGE_SHIFT, permissions));
         } else if (read) {
-            this->mmu[startPage+page] = ROPage::alloc(pages[page], (startPage+page)<<K_PAGE_SHIFT, permissions);
+            this->setPage(startPage+page, ROPage::alloc(pages[page], (startPage+page)<<K_PAGE_SHIFT, permissions));
         } else if (write) {
-            this->mmu[startPage+page] = WOPage::alloc(pages[page], (startPage+page)<<K_PAGE_SHIFT, permissions);
+            this->setPage(startPage+page, WOPage::alloc(pages[page], (startPage+page)<<K_PAGE_SHIFT, permissions));
         } else {
-            this->mmu[startPage+page] = NOPage::alloc(pages[page], (startPage+page)<<K_PAGE_SHIFT, permissions);
+            this->setPage(startPage+page, NOPage::alloc(pages[page], (startPage+page)<<K_PAGE_SHIFT, permissions));
         }
     }
 }
 
 DecodedBlock* Memory::getCodeBlock(U32 startIp) {
-    Page* page = this->mmu[startIp >> K_PAGE_SHIFT];
+    Page* page = this->getPage(startIp >> K_PAGE_SHIFT);
     if (page->type == Page::Type::Code_Page) {
         CodePage* codePage = (CodePage*)page;
         return codePage->getCode(startIp);
@@ -710,7 +620,7 @@ DecodedBlock* Memory::getCodeBlock(U32 startIp) {
 
 void Memory::addCodeBlock(U32 startIp, DecodedBlock* block) {
     // might have changed after a read
-    Page* page = this->mmu[startIp >> K_PAGE_SHIFT];
+    Page* page = this->getPage(startIp >> K_PAGE_SHIFT);
 
     CodePage* codePage; 
     if (page->type == Page::Type::Code_Page) {
@@ -719,8 +629,7 @@ void Memory::addCodeBlock(U32 startIp, DecodedBlock* block) {
         if (page->type == Page::Type::RO_Page || page->type == Page::Type::RW_Page || page->type == Page::Type::Copy_On_Write_Page || page->type == Page::Type::Native_Page) {
             RWPage* p = (RWPage*)page;
             codePage = CodePage::alloc(p->page, p->address, p->flags);
-            this->mmu[startIp >> K_PAGE_SHIFT] = codePage;
-            p->close();
+            this->setPage(startIp >> K_PAGE_SHIFT, codePage);
         } else {
             kpanic("Unhandled code caching page type: %d", page->type);
 		    codePage = nullptr;
@@ -730,6 +639,20 @@ void Memory::addCodeBlock(U32 startIp, DecodedBlock* block) {
 }
 
 U32 Memory::getPageFlags(U32 page) {
-    return this->mmu[page]->flags;
+    return this->getPage(page)->flags;
+}
+
+void Memory::onThreadChanged() {
+    Memory::currentMMU = this->mmu;
+    Memory::currentMMUReadPtr = this->mmuReadPtr;
+    Memory::currentMMUWritePtr = this->mmuWritePtr;
+}
+
+void Memory::setPage(U32 index, Page* page) {
+    Page* p = this->mmu[index]; 
+    this->mmu[index] = page; 
+    this->mmuReadPtr[index] = page->getCurrentReadPtr();
+    this->mmuWritePtr[index] = page->getCurrentWritePtr();
+    p->close();
 }
 #endif

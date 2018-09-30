@@ -10,7 +10,7 @@ FsOpenNode::~FsOpenNode() {
 
 U32 FsOpenNode::read(U32 address, U32 len) {
     if (K_PAGE_SIZE-(address & (K_PAGE_SIZE-1)) >= len) {
-        U8* ram = getPhysicalAddress(address);
+        U8* ram = getPhysicalWriteAddress(address, len);
         U32 result;
         S64 pos = this->getFilePointer();
 
@@ -39,7 +39,7 @@ U32 FsOpenNode::read(U32 address, U32 len) {
         while (len) {
             U32 todo = K_PAGE_SIZE-(address & (K_PAGE_SIZE-1));
             S32 didRead;
-            U8* ram = getPhysicalAddress(address);
+            U8* ram = getPhysicalWriteAddress(address, todo);
 
             if (todo>len)
                 todo = len;
@@ -64,7 +64,7 @@ U32 FsOpenNode::write(U32 address, U32 len) {
     U32 wrote = 0;
     while (len) {
         U32 todo = K_PAGE_SIZE-(address & (K_PAGE_SIZE-1));
-        U8* ram = getPhysicalAddress(address);
+        U8* ram = getPhysicalReadAddress(address, todo);
         char tmp[K_PAGE_SIZE];
 
         if (todo>len)

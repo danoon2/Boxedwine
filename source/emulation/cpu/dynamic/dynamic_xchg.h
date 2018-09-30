@@ -14,31 +14,31 @@ void OPCALL dynamic_xchge8r8(CPU* cpu, DecodedOp* op) {
     INCREMENT_EIP(op->len);
 }
 void OPCALL dynamic_xchgr16r16(CPU* cpu, DecodedOp* op) {
-    movToRegFromCpu(DYN_DEST, offsetof(CPU, reg[op->rm].u16), DYN_16bit);
-    movToCpuFromCpu(offsetof(CPU, reg[op->rm].u16), offsetof(CPU, reg[op->reg].u16), DYN_16bit, DYN_SRC);
-    movToCpuFromReg(offsetof(CPU, reg[op->reg].u16), DYN_DEST, DYN_16bit);
+    movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(reg[op->rm].u16), DYN_16bit);
+    movToCpuFromCpu(CPU_OFFSET_OF(reg[op->rm].u16), CPU_OFFSET_OF(reg[op->reg].u16), DYN_16bit, DYN_SRC);
+    movToCpuFromReg(CPU_OFFSET_OF(reg[op->reg].u16), DYN_DEST, DYN_16bit);
     INCREMENT_EIP(op->len);
 }
 void OPCALL dynamic_xchge16r16(CPU* cpu, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
     movFromMem(DYN_16bit, DYN_ADDRESS);
-    movToRegFromCpu(DYN_DEST, offsetof(CPU, reg[op->reg].u16), DYN_16bit);
+    movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(reg[op->reg].u16), DYN_16bit);
     movToMemFromReg(DYN_ADDRESS, DYN_DEST, DYN_16bit);
-    movToCpuFromReg(offsetof(CPU, reg[op->reg].u16), DYN_READ_RESULT, DYN_16bit);
+    movToCpuFromReg(CPU_OFFSET_OF(reg[op->reg].u16), DYN_READ_RESULT, DYN_16bit);
     INCREMENT_EIP(op->len);
 }
 void OPCALL dynamic_xchgr32r32(CPU* cpu, DecodedOp* op) {
-    movToRegFromCpu(DYN_DEST, offsetof(CPU, reg[op->rm].u32), DYN_32bit);
-    movToCpuFromCpu(offsetof(CPU, reg[op->rm].u32), offsetof(CPU, reg[op->reg].u32), DYN_32bit, DYN_SRC);
-    movToCpuFromReg(offsetof(CPU, reg[op->reg].u32), DYN_DEST, DYN_32bit);
+    movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(reg[op->rm].u32), DYN_32bit);
+    movToCpuFromCpu(CPU_OFFSET_OF(reg[op->rm].u32), CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit, DYN_SRC);
+    movToCpuFromReg(CPU_OFFSET_OF(reg[op->reg].u32), DYN_DEST, DYN_32bit);
     INCREMENT_EIP(op->len);
 }
 void OPCALL dynamic_xchge32r32(CPU* cpu, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
     movFromMem(DYN_32bit, DYN_ADDRESS);
-    movToRegFromCpu(DYN_DEST, offsetof(CPU, reg[op->reg].u32), DYN_32bit);
+    movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit);
     movToMemFromReg(DYN_ADDRESS, DYN_DEST, DYN_32bit);
-    movToCpuFromReg(offsetof(CPU, reg[op->reg].u32), DYN_READ_RESULT, DYN_32bit);
+    movToCpuFromReg(CPU_OFFSET_OF(reg[op->reg].u32), DYN_READ_RESULT, DYN_32bit);
     INCREMENT_EIP(op->len);
 }
 void OPCALL dynamic_cmpxchgr16r16(CPU* cpu, DecodedOp* op) {

@@ -56,11 +56,24 @@ void NativePage::writed(U32 address, U32 value) {
 #endif
 }
 
-U8* NativePage::physicalAddress(U32 address) {
+U8* NativePage::getCurrentReadPtr() {
     return this->nativeAddress+(address-this->address);
 }
 
-U8* NativePage::getRWAddress(U32 address) {
+U8* NativePage::getCurrentWritePtr() {
     return this->nativeAddress+(address-this->address);
 }
+
+U8* NativePage::getReadAddress(U32 address, U32 len) {    
+    return this->nativeAddress+(address-this->address);
+}
+
+U8* NativePage::getWriteAddress(U32 address, U32 len) {
+    return this->nativeAddress+(address-this->address);
+}
+
+U8* NativePage::getReadWriteAddress(U32 address, U32 len) {
+    return this->nativeAddress+(address-this->address);
+}
+
 #endif

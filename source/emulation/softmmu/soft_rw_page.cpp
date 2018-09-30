@@ -67,11 +67,23 @@ void RWPage::writed(U32 address, U32 value) {
 #endif
 }
 
-U8* RWPage::physicalAddress(U32 address) {
+U8* RWPage::getCurrentReadPtr() {
+    return this->page;
+}
+
+U8* RWPage::getCurrentWritePtr() {
+    return this->page;
+}
+
+U8* RWPage::getReadAddress(U32 address, U32 len) {    
     return &this->page[address - this->address];
 }
 
-U8* RWPage::getRWAddress(U32 address) {
+U8* RWPage::getWriteAddress(U32 address, U32 len) {
+    return &this->page[address - this->address];
+}
+
+U8* RWPage::getReadWriteAddress(U32 address, U32 len) {
     return &this->page[address - this->address];
 }
 

@@ -57,8 +57,11 @@ public:
     virtual void writew(U32 address, U16 value)=0;
     virtual U32 readd(U32 address)=0;
     virtual void writed(U32 address, U32 value)=0;
-    virtual U8* physicalAddress(U32 address)=0;
-    virtual U8* getRWAddress(U32 address)=0;
+    virtual U8* getCurrentReadPtr()=0; // might have permission, but may not ready
+    virtual U8* getCurrentWritePtr()=0; // might have permission, but may not be ready
+    virtual U8* getReadAddress(U32 address, U32 len)=0; // if has permission, will make ready 
+    virtual U8* getWriteAddress(U32 address, U32 len)=0; // if has permission, will make ready
+    virtual U8* getReadWriteAddress(U32 address, U32 len)=0; // if has permission, will make ready
     virtual bool inRam()=0;
     virtual void close() = 0;
 

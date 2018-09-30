@@ -80,15 +80,15 @@ public class Xchg extends Base {
 
         out(fos32, "void OPCALL dynamic_"+functionName+"(CPU* cpu, DecodedOp* op) {");
         if (reg) {
-            out(fos32, "    movToRegFromCpu(DYN_DEST, offsetof(CPU, reg[op->rm].u16), DYN_16bit);");
-            out(fos32, "    movToCpuFromCpu(offsetof(CPU, reg[op->rm].u16), offsetof(CPU, reg[op->reg].u16), DYN_16bit, DYN_SRC);");
-            out(fos32, "    movToCpuFromReg(offsetof(CPU, reg[op->reg].u16), DYN_DEST, DYN_16bit);");
+            out(fos32, "    movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(reg[op->rm].u16), DYN_16bit);");
+            out(fos32, "    movToCpuFromCpu(CPU_OFFSET_OF(reg[op->rm].u16), CPU_OFFSET_OF(reg[op->reg].u16), DYN_16bit, DYN_SRC);");
+            out(fos32, "    movToCpuFromReg(CPU_OFFSET_OF(reg[op->reg].u16), DYN_DEST, DYN_16bit);");
         } else {
             out(fos32, "    calculateEaa(op, DYN_ADDRESS);");
             out(fos32, "    movFromMem(DYN_16bit, DYN_ADDRESS);");
-            out(fos32, "    movToRegFromCpu(DYN_DEST, offsetof(CPU, reg[op->reg].u16), DYN_16bit);");
+            out(fos32, "    movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(reg[op->reg].u16), DYN_16bit);");
             out(fos32, "    movToMemFromReg(DYN_ADDRESS, DYN_DEST, DYN_16bit);");
-            out(fos32, "    movToCpuFromReg(offsetof(CPU, reg[op->reg].u16), DYN_READ_RESULT, DYN_16bit);");
+            out(fos32, "    movToCpuFromReg(CPU_OFFSET_OF(reg[op->reg].u16), DYN_READ_RESULT, DYN_16bit);");
         }
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
@@ -113,15 +113,15 @@ public class Xchg extends Base {
 
         out(fos32, "void OPCALL dynamic_"+functionName+"(CPU* cpu, DecodedOp* op) {");
         if (reg) {
-            out(fos32, "    movToRegFromCpu(DYN_DEST, offsetof(CPU, reg[op->rm].u32), DYN_32bit);");
-            out(fos32, "    movToCpuFromCpu(offsetof(CPU, reg[op->rm].u32), offsetof(CPU, reg[op->reg].u32), DYN_32bit, DYN_SRC);");
-            out(fos32, "    movToCpuFromReg(offsetof(CPU, reg[op->reg].u32), DYN_DEST, DYN_32bit);");
+            out(fos32, "    movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(reg[op->rm].u32), DYN_32bit);");
+            out(fos32, "    movToCpuFromCpu(CPU_OFFSET_OF(reg[op->rm].u32), CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit, DYN_SRC);");
+            out(fos32, "    movToCpuFromReg(CPU_OFFSET_OF(reg[op->reg].u32), DYN_DEST, DYN_32bit);");
         } else {
             out(fos32, "    calculateEaa(op, DYN_ADDRESS);");
             out(fos32, "    movFromMem(DYN_32bit, DYN_ADDRESS);");
-            out(fos32, "    movToRegFromCpu(DYN_DEST, offsetof(CPU, reg[op->reg].u32), DYN_32bit);");
+            out(fos32, "    movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit);");
             out(fos32, "    movToMemFromReg(DYN_ADDRESS, DYN_DEST, DYN_32bit);");
-            out(fos32, "    movToCpuFromReg(offsetof(CPU, reg[op->reg].u32), DYN_READ_RESULT, DYN_32bit);");
+            out(fos32, "    movToCpuFromReg(CPU_OFFSET_OF(reg[op->reg].u32), DYN_READ_RESULT, DYN_32bit);");
         }
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");

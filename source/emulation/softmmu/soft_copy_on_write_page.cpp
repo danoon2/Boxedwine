@@ -30,16 +30,14 @@ void CopyOnWritePage::copyOnWrite(U32 address) {
     }    
 
     if (read && write) {
-        memory->mmu[page] = RWPage::alloc(ram, page << K_PAGE_SHIFT, this->flags);
+        memory->setPage(page, RWPage::alloc(ram, page << K_PAGE_SHIFT, this->flags));
     } else if (write) {
-        memory->mmu[page] = WOPage::alloc(ram, page << K_PAGE_SHIFT, this->flags);
+        memory->setPage(page, WOPage::alloc(ram, page << K_PAGE_SHIFT, this->flags));
     } else if (read) {
-        memory->mmu[page] = ROPage::alloc(ram, page << K_PAGE_SHIFT, this->flags);
+        memory->setPage(page, ROPage::alloc(ram, page << K_PAGE_SHIFT, this->flags));
     } else {
-        memory->mmu[page] = NOPage::alloc(ram, page << K_PAGE_SHIFT, this->flags);
+        memory->setPage(page, NOPage::alloc(ram, page << K_PAGE_SHIFT, this->flags));
     }
-
-    this->close();
 }
 
 void CopyOnWritePage::writeb( U32 address, U8 value) {
@@ -57,14 +55,26 @@ void CopyOnWritePage::writed(U32 address, U32 value) {
     ::writed(address, value);
 }
 
-U8* CopyOnWritePage::physicalAddress(U32 address) {
-    copyOnWrite(address);
-    return ::getPhysicalAddress(address);
+U8* CopyOnWritePage::getCurrentReadPtr() {
+    return this->page;
 }
 
-U8* CopyOnWritePage::getRWAddress(U32 address) {
+U8* CopyOnWritePage::getCurrentWritePtr() {
+    return NULL;
+}
+
+U8* CopyOnWritePage::getReadAddress(U32 address, U32 len) {    
+    return &this->page[address - this->address];
+}
+
+U8* CopyOnWritePage::getWriteAddress(U32 address, U32 len) {
     copyOnWrite(address);
-    return ::getRWAddress(address);
+    return KThread::currentThread()->memory->getPage(address>>K_PAGE_SHIFT)->getWriteAddress(address, len);
+}
+
+U8* CopyOnWritePage::getReadWriteAddress(U32 address, U32 len) {
+    copyOnWrite(address);
+    return KThread::currentThread()->memory->getPage(address>>K_PAGE_SHIFT)->getReadWriteAddress(address, len);
 }
 
 #endif

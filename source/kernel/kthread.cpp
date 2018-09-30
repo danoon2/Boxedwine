@@ -248,7 +248,7 @@ void threadClearFutexes(KThread* thread) {
 }
 
 U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime) {
-    U8* ramAddress = getPhysicalAddress(addr);
+    U8* ramAddress = getPhysicalReadAddress(addr, 4);
 
     if (ramAddress==0) {
         kpanic("Could not find futex address: %0.8X", addr);
@@ -914,13 +914,7 @@ void KThread::clearWaitNofifyNodes() {
 ChangeThread::ChangeThread(KThread* thread) {
     this->savedThread = KThread::currentThread();
     KThread::setCurrentThread(thread);
-#ifdef BOXEDWINE_DEFAULT_MMU
-    Memory::currentMMU = thread->process->memory->mmu;
-#endif
 }
 ChangeThread::~ChangeThread() {
     KThread::setCurrentThread(savedThread);
-#ifdef BOXEDWINE_DEFAULT_MMU
-    Memory::currentMMU = savedThread->process->memory->mmu;
-#endif
 }

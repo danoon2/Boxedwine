@@ -56,15 +56,14 @@ void FilePage::ondemmandFile(U32 address) {
     }
 
     if (read && write) {
-        memory->mmu[page] = RWPage::alloc(ram, address, this->flags);
+        memory->setPage(page, RWPage::alloc(ram, address, this->flags));
     } else if (write) {
-        memory->mmu[page] = WOPage::alloc(ram, address, this->flags);
+        memory->setPage(page, WOPage::alloc(ram, address, this->flags));
     } else if (read) { 
-        memory->mmu[page] = CopyOnWritePage::alloc(ram, address, this->flags);
+        memory->setPage(page, CopyOnWritePage::alloc(ram, address, this->flags));
     } else {
-        memory->mmu[page] = NOPage::alloc(ram, address, this->flags);
+        memory->setPage(page, NOPage::alloc(ram, address, this->flags));
     }
-    this->close();
 }
 
 U8 FilePage::readb(U32 address) {	
@@ -97,15 +96,31 @@ void FilePage::writed(U32 address, U32 value) {
     ::writed(address, value);
 }
 
-
-U8* FilePage::physicalAddress( U32 address) {
-    ondemmandFile(address);
-    return ::getPhysicalAddress(address);
+U8* FilePage::getCurrentReadPtr() {
+    return NULL;
 }
 
-U8* FilePage::getRWAddress(U32 address) {
+U8* FilePage::getCurrentWritePtr() {
+    return NULL;
+}
+
+U8* FilePage::getReadAddress(U32 address, U32 len) {    
     ondemmandFile(address);
-    return ::getRWAddress(address);
+    return KThread::currentThread()->memory->getPage(address>>K_PAGE_SHIFT)->getReadAddress(address, len);
+}
+
+U8* FilePage::getWriteAddress(U32 address, U32 len) {
+    if (!this->canWrite())
+        return NULL;
+    ondemmandFile(address);
+    return KThread::currentThread()->memory->getPage(address>>K_PAGE_SHIFT)->getWriteAddress(address, len);
+}
+
+U8* FilePage::getReadWriteAddress(U32 address, U32 len) {
+    if (!this->canWrite())
+        return NULL;
+    ondemmandFile(address);
+    return KThread::currentThread()->memory->getPage(address>>K_PAGE_SHIFT)->getReadWriteAddress(address, len);
 }
 
 #endif

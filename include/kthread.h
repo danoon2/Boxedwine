@@ -122,7 +122,7 @@ public:
     OpenGLVetexPointer glEdgeFlagPointerEXT;
 
     inline static KThread* currentThread() {return runningThread;}
-    inline static void setCurrentThread(KThread* thread) {runningThread = thread;}
+    inline static void setCurrentThread(KThread* thread){runningThread = thread; thread->memory->onThreadChanged();}
 
     KListNode<KThread*> scheduledThreadNode;
     KListNode<KThread*> waitThreadNode;

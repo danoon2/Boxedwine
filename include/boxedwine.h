@@ -21,6 +21,7 @@
 #include "../source/emulation/cpu/common/cpu.h"
 #include "kpoll.h"
 #include "ktimer.h"
+#include "memory.h"
 #include "kthread.h"
 #include "kfilelock.h"
 #include "kobject.h"
@@ -31,7 +32,6 @@
 #include "kfile.h"
 #include "ksystem.h"
 #include "kprocess.h"
-#include "memory.h"
 #include "kscheduler.h"
 
 #include "log.h"
