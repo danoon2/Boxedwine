@@ -1794,7 +1794,7 @@ void OPCALL firstX32Op(CPU* cpu, DecodedOp* op) {
 #ifdef __TEST
     if (DecodedBlock::currentBlock->runCount == 0) {
 #else
-    if (0) {
+    if (DecodedBlock::currentBlock->runCount == 50) {
 #endif
         initX32Ops();
         DecodedOp* o = op->next;
