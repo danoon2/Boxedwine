@@ -89,6 +89,7 @@ CodePage::CodePageEntry* CodePage::findCode(U32 address, U32 len) {
 
 static void OPCALL emptyOp(CPU* cpu, DecodedOp* op) {
     cpu->nextBlock = NULL;
+    cpu->yield = true;
 }
 
 

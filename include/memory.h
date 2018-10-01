@@ -58,7 +58,6 @@ void writeMemory(U32 address, U8* data, int len);
 U8* getPhysicalReadAddress(U32 address, U32 len);
 U8* getPhysicalWriteAddress(U32 address, U32 len);
 U8* getPhysicalAddress(U32 address, U32 len);
-U8* getPhysicalReadWriteAddressThrow(U32 address, U32 len);
 
 char* getNativeString(U32 address, char* buffer, U32 cbBuffer);
 char* getNativeStringW(U32 address, char* buffer, U32 cbBuffer);

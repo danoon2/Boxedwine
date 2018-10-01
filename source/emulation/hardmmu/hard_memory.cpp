@@ -467,6 +467,7 @@ void Memory::removeBlock(DecodedBlock* block, U32 ip) {
 
 static void OPCALL emptyOp(CPU* cpu, DecodedOp* op) {
     cpu->nextBlock = NULL;
+    cpu->yield = true;
 }
 
 void Memory::clearCodePageFromCache(U32 page) {
@@ -505,11 +506,18 @@ U32 Memory::getPageFlags(U32 page) {
     return this->flags[page];
 }
 
-U8* getPhysicalAddress(U32 address) {
+void Memory::onThreadChanged() {
+}
+
+U8* getPhysicalAddress(U32 address, U32 len) {
     return (U8*)getNativeAddress(KThread::currentThread()->process->memory, address);
 }
 
-U8* getRWAddress(U32 address) {
+U8* getPhysicalReadAddress(U32 address, U32 len) {
+    return (U8*)getNativeAddress(KThread::currentThread()->process->memory, address);
+}
+
+U8* getPhysicalWriteAddress(U32 address, U32 len) {
     return (U8*)getNativeAddress(KThread::currentThread()->process->memory, address);
 }
 

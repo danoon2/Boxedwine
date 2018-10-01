@@ -14,7 +14,7 @@
 GLvoid* marshalPixels(CPU* cpu, U32 is3d, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type,  U32 pixels) {
     if (pixels == 0)
         return 0;
-    return (GLvoid*)getPhysicalAddress(pixels);
+    return (GLvoid*)getPhysicalAddress(pixels, 0);
 }
 
 GLvoid** bufferpp;
@@ -32,7 +32,7 @@ GLvoid** marshalpp(CPU* cpu, U32 buffer, U32 count, U32 sizes, S32 bytesPerCount
         bufferpp_len = count;
     }
     for (i=0;i<count;i++) {
-        bufferpp[i] = (GLvoid*)getPhysicalAddress(readd(buffer+i*4));
+        bufferpp[i] = (GLvoid*)getPhysicalAddress(readd(buffer+i*4), 0);
     }
     return bufferpp;
 }
@@ -40,7 +40,7 @@ GLvoid** marshalpp(CPU* cpu, U32 buffer, U32 count, U32 sizes, S32 bytesPerCount
 GLvoid* marshalp(CPU* cpu, U32 instance, U32 buffer, U32 len) {
     if (buffer == 0)
         return NULL;
-    return (GLvoid*)getPhysicalAddress(buffer);
+    return (GLvoid*)getPhysicalAddress(buffer, 0);
 }
 
 // this won't marshal the data, but rather map it into the address space, reserving "size" amount of address space

@@ -13,39 +13,39 @@
 // be used
 
 #ifdef BOXEDWINE_64BIT_MMU
-#define marshald(cpu, address, count) (GLdouble*)getPhysicalAddress(address)
-#define marshalf(cpu, address, count) (GLfloat*)getPhysicalAddress(address)
-#define marshali(cpu, address, count) (GLint*)getPhysicalAddress(address)
-#define marshalc(cpu, address, count) (GLchar*)getPhysicalAddress(address)
-#define marshalac(cpu, address, count) (GLcharARB*)getPhysicalAddress(address)
-#define marshale(cpu, address, count) (GLenum*)getPhysicalAddress(address)
-#define marshal2e(cpu, address, count) (GLenum*)getPhysicalAddress(address)
-#define marshal3e(cpu, address, count) (GLenum*)getPhysicalAddress(address)
-#define marshalui(cpu, address, count) (GLuint*)getPhysicalAddress(address)
-#define marshals(cpu, address, count) (GLshort*)getPhysicalAddress(address)
-#define marshalus(cpu, address, count) (GLushort*)getPhysicalAddress(address)
-#define marshalb(cpu, address, count) (GLbyte*)getPhysicalAddress(address)
-#define marshalub(cpu, address, count) (GLubyte*)getPhysicalAddress(address)
-#define marshalbool(cpu, address, count) (GLboolean*)getPhysicalAddress(address)
-#define marshal2d(cpu, address, count) (GLdouble*)getPhysicalAddress(address)
-#define marshal2f(cpu, address, count) (GLfloat*)getPhysicalAddress(address)
-#define marshal2i(cpu, address, count) (GLint*)getPhysicalAddress(address)
-#define marshal3i(cpu, address, count) (GLint*)getPhysicalAddress(address)
-#define marshal4i(cpu, address, count) (GLint*)getPhysicalAddress(address)
-#define marshal5i(cpu, address, count) (GLint*)getPhysicalAddress(address)
-#define marshal3f(cpu, address, count) (GLfloat*)getPhysicalAddress(address)
-#define marshal3ui(cpu, address, count) (GLuint*)getPhysicalAddress(address)
-#define marshali64(cpu, address, count) (GLint64*)getPhysicalAddress(address)
-#define marshalui64(cpu, address, count) (GLuint64*)getPhysicalAddress(address)
+#define marshald(cpu, address, count) (GLdouble*)getPhysicalAddress(address, 0)
+#define marshalf(cpu, address, count) (GLfloat*)getPhysicalAddress(address, 0)
+#define marshali(cpu, address, count) (GLint*)getPhysicalAddress(address, 0)
+#define marshalc(cpu, address, count) (GLchar*)getPhysicalAddress(address, 0)
+#define marshalac(cpu, address, count) (GLcharARB*)getPhysicalAddress(address, 0)
+#define marshale(cpu, address, count) (GLenum*)getPhysicalAddress(address, 0)
+#define marshal2e(cpu, address, count) (GLenum*)getPhysicalAddress(address, 0)
+#define marshal3e(cpu, address, count) (GLenum*)getPhysicalAddress(address, 0)
+#define marshalui(cpu, address, count) (GLuint*)getPhysicalAddress(address, 0)
+#define marshals(cpu, address, count) (GLshort*)getPhysicalAddress(address, 0)
+#define marshalus(cpu, address, count) (GLushort*)getPhysicalAddress(address, 0)
+#define marshalb(cpu, address, count) (GLbyte*)getPhysicalAddress(address, 0)
+#define marshalub(cpu, address, count) (GLubyte*)getPhysicalAddress(address, 0)
+#define marshalbool(cpu, address, count) (GLboolean*)getPhysicalAddress(address, 0)
+#define marshal2d(cpu, address, count) (GLdouble*)getPhysicalAddress(address, 0)
+#define marshal2f(cpu, address, count) (GLfloat*)getPhysicalAddress(address, 0)
+#define marshal2i(cpu, address, count) (GLint*)getPhysicalAddress(address, 0)
+#define marshal3i(cpu, address, count) (GLint*)getPhysicalAddress(address, 0)
+#define marshal4i(cpu, address, count) (GLint*)getPhysicalAddress(address, 0)
+#define marshal5i(cpu, address, count) (GLint*)getPhysicalAddress(address, 0)
+#define marshal3f(cpu, address, count) (GLfloat*)getPhysicalAddress(address, 0)
+#define marshal3ui(cpu, address, count) (GLuint*)getPhysicalAddress(address, 0)
+#define marshali64(cpu, address, count) (GLint64*)getPhysicalAddress(address, 0)
+#define marshalui64(cpu, address, count) (GLuint64*)getPhysicalAddress(address, 0)
 
-#define marshal2ui(cpu, address, count) (GLuint*)getPhysicalAddress(address)
-#define marshal3ui(cpu, address, count) (GLuint*)getPhysicalAddress(address)
-#define marshal4ui(cpu, address, count) (GLuint*)getPhysicalAddress(address)
-#define marshal2s(cpu, address, count) (GLshort*)getPhysicalAddress(address)
-#define marshal2us(cpu, address, count) (GLushort*)getPhysicalAddress(address)
-#define marshal2b(cpu, address, count) (GLbyte*)getPhysicalAddress(address)
-#define marshal2ub(cpu, address, count) (GLubyte*)getPhysicalAddress(address)
-#define marshal2bool(cpu, address, count) (GLboolean*)getPhysicalAddress(address)
+#define marshal2ui(cpu, address, count) (GLuint*)getPhysicalAddress(address, 0)
+#define marshal3ui(cpu, address, count) (GLuint*)getPhysicalAddress(address, 0)
+#define marshal4ui(cpu, address, count) (GLuint*)getPhysicalAddress(address, 0)
+#define marshal2s(cpu, address, count) (GLshort*)getPhysicalAddress(address, 0)
+#define marshal2us(cpu, address, count) (GLushort*)getPhysicalAddress(address, 0)
+#define marshal2b(cpu, address, count) (GLbyte*)getPhysicalAddress(address, 0)
+#define marshal2ub(cpu, address, count) (GLubyte*)getPhysicalAddress(address, 0)
+#define marshal2bool(cpu, address, count) (GLboolean*)getPhysicalAddress(address, 0)
 #define marshalBackd(cpu, address, buffer, count) {}
 #define marshalBackc(cpu, address, buffer, count) {}
 #define marshalBackac(cpu, address, buffer, count) {}
@@ -61,15 +61,15 @@
 #define marshalBackui64(cpu, address, buffer, count) {}
 #define marshalBacki64(cpu, address, buffer, count) {}
 
-#define marshalsz(cpu, address) (GLchar*)getPhysicalAddress(address)
+#define marshalsz(cpu, address) (GLchar*)getPhysicalAddress(address, 0)
 
-#define marshalType(cpu, type, count, address) (GLvoid*)getPhysicalAddress(address)
+#define marshalType(cpu, type, count, address) (GLvoid*)getPhysicalAddress(address, 0)
 #define marshalBackType(cpu, type, count, buffer, address) {}
 
 GLvoid* marshalPixels(CPU* cpu, U32 is3d, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type,  U32 pixels);
 #define marshalBackPixels(cpu, is3d, width, height, depth, format, type, address, pixels) {}
 
-#define marshalPixel(cpu, format, type, pixel) (GLvoid*)getPhysicalAddress(pixel)
+#define marshalPixel(cpu, format, type, pixel) (GLvoid*)getPhysicalAddress(pixel, 0)
 
 #define updateVertexPointers(cpu, count)
 #define marshalVetextPointer(cpu, size, type, stride, ptr) marshalp(cpu, 0, ptr, 0)

@@ -223,7 +223,7 @@ DecodedBlock* NormalCPU::getNextBlock() {
 
 void NormalCPU::run() {    
     DecodedBlock::currentBlock = this->nextBlock;
-    DecodedBlock::currentBlock->run(this);
+    DecodedBlock::currentBlock->run(this);    
 #ifdef _DEBUG
     if (!this->nextBlock && !this->yield) {
         kpanic("NormalCPU::run no block set");

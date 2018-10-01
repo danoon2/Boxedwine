@@ -60,19 +60,19 @@ public class IncDec extends Base {
         out(fos_init, "INIT_CPU("+enumName+", "+name+")");
 
         out(fos32, "void OPCALL dynamic_"+name+"(CPU* cpu, DecodedOp* op) {");
-        out(fos32, "    callHostFunction(NULL, common_getCF, true, false, false, 1, 0, DYN_PARAM_CPU);");
-        out(fos32, "    movToCpuFromReg(CPU_OFFSET_OF(oldCF), DYN_CALL_RESULT, DYN_32bit);");
+        out(fos32, "    callHostFunction(NULL, common_getCF, true, false, false, 1, 0, DYN_PARAM_CPU, false);");
+        out(fos32, "    movToCpuFromReg(CPU_OFFSET_OF(oldCF), DYN_CALL_RESULT, DYN_32bit, true);");
         if (eaa) {
             out(fos32, "    calculateEaa(op, DYN_ADDRESS);");
-            out(fos32, "    movToCpuFromMem(CPU_OFFSET_OF(dst.u"+bits+"), DYN_"+bits+"bit, DYN_ADDRESS);");
-            out(fos32, "    instRegImm('"+op+"', DYN_READ_RESULT, DYN_"+bits+"bit, 1);");
-            out(fos32, "    movToCpuFromReg(CPU_OFFSET_OF(result.u"+bits+"), DYN_READ_RESULT, DYN_"+bits+"bit);");
-            out(fos32, "    movToMemFromReg(DYN_ADDRESS, DYN_READ_RESULT, DYN_"+bits+"bit);");
+            out(fos32, "    movToCpuFromMem(CPU_OFFSET_OF(dst.u"+bits+"), DYN_"+bits+"bit, DYN_ADDRESS, false, false);");
+            out(fos32, "    instRegImm('"+op+"', DYN_CALL_RESULT, DYN_"+bits+"bit, 1);");
+            out(fos32, "    movToCpuFromReg(CPU_OFFSET_OF(result.u"+bits+"), DYN_CALL_RESULT, DYN_"+bits+"bit, false);");
+            out(fos32, "    movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_"+bits+"bit, true, true);");
         } else {
-            out(fos32, "    movToCpuFromCpu(CPU_OFFSET_OF(dst.u" + bits + "), " + x32Dest + ", DYN_" + bits + "bit, DYN_DEST);");
+            out(fos32, "    movToCpuFromCpu(CPU_OFFSET_OF(dst.u" + bits + "), " + x32Dest + ", DYN_" + bits + "bit, DYN_DEST, false);");
             out(fos32, "    instRegImm('"+op+"', DYN_DEST, DYN_"+bits+"bit, 1);");
-            out(fos32, "    movToCpuFromReg(CPU_OFFSET_OF(result.u"+bits+"), DYN_DEST, DYN_"+bits+"bit);");
-            out(fos32, "    movToCpuFromReg("+x32Dest+", DYN_DEST, DYN_"+bits+"bit);");
+            out(fos32, "    movToCpuFromReg(CPU_OFFSET_OF(result.u"+bits+"), DYN_DEST, DYN_"+bits+"bit, false);");
+            out(fos32, "    movToCpuFromReg("+x32Dest+", DYN_DEST, DYN_"+bits+"bit, true);");
         }
         out(fos32, "    movToCpu(CPU_OFFSET_OF(lazyFlags), Dyn_PtrSize, (DYN_PTR_SIZE)" + flagName + ");");
         out(fos32, "    INCREMENT_EIP(op->len);");

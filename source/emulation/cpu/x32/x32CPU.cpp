@@ -12,15 +12,13 @@ typedef void (*pfnAdditionalReturnCode)();
 /* Following is required to be defined for dynamic code */
 /********************************************************/
 
-U32 allocReg();
-void freeReg(U32 reg);
-
 #define INCREMENT_EIP(x) incrementEip(x)
 
 #define OFFSET_REG8(x) (x>=4?offsetof(CPU, reg[x-4].h8):offsetof(CPU, reg[x].u8))
 #define CPU_OFFSET_OF(x) offsetof(CPU, x)
 
-// DynReg is a required type, but the values inside are local to this function
+// DynReg is a required type, but the values inside are local to this file
+// Used only these 4 because it is possible to use 8-bit calls with them, like add al, cl
 enum DynReg {
     DYN_EAX=0,
     DYN_ECX=1,
@@ -28,7 +26,6 @@ enum DynReg {
     DYN_EBX=3,    
 };
 
-#define DYN_READ_RESULT DYN_EAX
 #define DYN_CALL_RESULT DYN_EAX
 #define DYN_SRC DYN_ECX
 #define DYN_DEST DYN_EDX
@@ -63,42 +60,42 @@ enum DynCallParamType {
 #define Dyn_PtrSize DYN_32bit
 
 // helper, can be done with multiple other calls
-void movToCpuFromMem(U32 dstOffset, DynWidth dstWidth, DynReg addressReg);
-void movToCpuFromCpu(U32 dstOffset, U32 srcOffset, DynWidth width, DynReg tmpReg);
+void movToCpuFromMem(U32 dstOffset, DynWidth dstWidth, DynReg addressReg, bool doneWithAddressReg, bool doneWithCallResult);
+void movToCpuFromCpu(U32 dstOffset, U32 srcOffset, DynWidth width, DynReg tmpReg, bool doneWithTmpReg);
 void calculateEaa(DecodedOp* op, DynReg reg);
 
 // REG to REG
-void movToRegFromRegSignExtend(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidth);
-void movToRegFromReg(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidth);
+void movToRegFromRegSignExtend(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidth, bool doneWithSrcReg);
+void movToRegFromReg(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidth, bool doneWithSrcReg);
 
 // to Reg
 void movToReg(DynReg reg, DynWidth width, U32 imm);
 
 // to CPU
-void movToCpuFromReg(U32 dstOffset, DynReg reg, DynWidth width);
+void movToCpuFromReg(U32 dstOffset, DynReg reg, DynWidth width, bool doneWithReg);
 void movToCpu(U32 dstOffset, DynWidth dstWidth, U32 imm);
 
 // from CPU
 void movToRegFromCpu(DynReg reg, U32 srcOffset, DynWidth width);
 
 // from Mem to DYN_READ_RESULT
-void movFromMem(DynWidth width, DynReg addressReg);
+void movFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg);
 
 // to Mem
-void movToMemFromReg(DynReg addressReg, DynReg reg, DynWidth width);
-void movToMemFromImm(DynReg addressReg, DynWidth width, U32 imm);
+void movToMemFromReg(DynReg addressReg, DynReg reg, DynWidth width, bool doneWithAddressReg, bool doneWithReg);
+void movToMemFromImm(DynReg addressReg, DynWidth width, U32 imm, bool doneWithAddressReg);
 
 // arith
-void instRegReg(char inst, DynReg reg, DynReg rm, DynWidth regWidth);
-void instMemReg(char inst, DynReg addressReg, DynReg rm, DynWidth regWidth);
-void instCPUReg(char inst, U32 dstOffset, DynReg rm, DynWidth regWidth);
+void instRegReg(char inst, DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg);
+void instMemReg(char inst, DynReg addressReg, DynReg rm, DynWidth regWidth, bool doneWithAddressReg, bool doneWithRmReg);
+void instCPUReg(char inst, U32 dstOffset, DynReg rm, DynWidth regWidth, bool doneWithRmReg);
 
 void instRegImm(U32 inst, DynReg reg, DynWidth regWidth, U32 imm);
-void instMemImm(char inst, DynReg addressReg, DynWidth regWidth, U32 imm);
+void instMemImm(char inst, DynReg addressReg, DynWidth regWidth, U32 imm, bool doneWithAddressReg);
 void instCPUImm(char inst, U32 dstOffset, DynWidth regWidth, U32 imm);
 
 void instReg(char inst, DynReg reg, DynWidth regWidth);
-void instMem(char inst, DynReg addressReg, DynWidth regWidth);
+void instMem(char inst, DynReg addressReg, DynWidth regWidth, bool doneWithAddressReg);
 void instCPU(char inst, U32 dstOffset, DynWidth regWidth);
 
 // conditional, didn't want to create more complicated generic routines to handle these, so they are special
@@ -106,7 +103,7 @@ void movCC(void* condition, DecodedOp* op, DynWidth width, bool useAddress=false
 void setCC(void* condition, DecodedOp* op, bool useAddress=false);
 
 // call into emulator, like setFlags, getCF, etc
-void callHostFunction(pfnAdditionalReturnCode pfnOnReturn, void* address, bool hasReturn=false, bool returnIfTrue=false, bool returnIfFalse=false, U32 argCount=0, U32 arg1=0, DynCallParamType arg1Type=DYN_PARAM_CONST_32, U32 arg2=0, DynCallParamType arg2Type=DYN_PARAM_CONST_32, U32 arg3=0, DynCallParamType arg3Type=DYN_PARAM_CONST_32, U32 arg4=0, DynCallParamType arg4Type=DYN_PARAM_CONST_32, U32 arg5=0, DynCallParamType arg5Type=DYN_PARAM_CONST_32);
+void callHostFunction(pfnAdditionalReturnCode pfnOnReturn, void* address, bool hasReturn=false, bool returnIfTrue=false, bool returnIfFalse=false, U32 argCount=0, U32 arg1=0, DynCallParamType arg1Type=DYN_PARAM_CONST_32, bool doneWithArg1=true, U32 arg2=0, DynCallParamType arg2Type=DYN_PARAM_CONST_32, bool doneWithArg2=true, U32 arg3=0, DynCallParamType arg3Type=DYN_PARAM_CONST_32, bool doneWithArg3=true, U32 arg4=0, DynCallParamType arg4Type=DYN_PARAM_CONST_32, bool doneWithArg4=true, U32 arg5=0, DynCallParamType arg5Type=DYN_PARAM_CONST_32, bool doneWithArg5=true);
 
 // set up the cpu to the correct next block
 
@@ -148,7 +145,7 @@ static U32 outBufferPos;
 static std::vector<U32> patch;
 
 // per instruction, not per block.  
-// will allow us to determin if ecx or edx needs to be saved before calling an external function
+// will allow us to determine if ecx or edx needs to be saved before calling an external function
 // :TODO: optimize so that unnecessary push/pop of ecx/edx don't happen if the op is done with these regs
 bool regUsed[4]; 
 
@@ -293,10 +290,10 @@ void calculateEaa(DecodedOp* op, DynReg reg) {
     }
 }
 
-void movToRegFromRegSignExtend(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidth) {
+void movToRegFromRegSignExtend(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidth, bool doneWithSrcReg) {
     regUsed[dst] = true;
     if (dstWidth<=srcWidth) {
-        movToRegFromReg(dst, dstWidth, src, srcWidth);
+        movToRegFromReg(dst, dstWidth, src, srcWidth, doneWithSrcReg);
     } else {
         if (dstWidth==DYN_32bit) {
             if (srcWidth==DYN_16bit) {
@@ -322,10 +319,13 @@ void movToRegFromRegSignExtend(DynReg dst, DynWidth dstWidth, DynReg src, DynWid
         } else {
             kpanic("unknown width in x32CPU::movToRegFromRegSignExtend %d <= %d", dstWidth, srcWidth);
         }
+        if (doneWithSrcReg) {
+            regUsed[src] = false;
+        }
     }
 }
 
-void movToRegFromReg(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidth) {
+void movToRegFromReg(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidth, bool doneWithSrcReg) {
     regUsed[dst] = true;
     if (dstWidth<=srcWidth) {
         if (dst==src) // downsizing doesn't need anything
@@ -372,6 +372,9 @@ void movToRegFromReg(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidt
             kpanic("unknown width in x32CPU::movToRegFromReg %d <= %d", dstWidth, srcWidth);
         }
     }
+    if (doneWithSrcReg) {
+        regUsed[src] = false;
+    }
 }
 
 void movToRegFromCpu(DynReg reg, U32 srcOffset, DynWidth width) {
@@ -397,7 +400,7 @@ void movToRegFromCpu(DynReg reg, U32 srcOffset, DynWidth width) {
     }
 }
 
-void movToCpuFromReg(U32 dstOffset, DynReg reg, DynWidth width) {
+void movToCpuFromReg(U32 dstOffset, DynReg reg, DynWidth width, bool doneWithReg) {
     // mov [edi+dstOffset], reg
     if (width == DYN_32bit) {
         outb(0x89);
@@ -416,14 +419,17 @@ void movToCpuFromReg(U32 dstOffset, DynReg reg, DynWidth width) {
         outb(0x87|(reg << 3));
         outd(dstOffset);
     }
+    if (doneWithReg) {
+        regUsed[reg] = false;
+    }
 }
 
-void movToCpuFromCpu(U32 dstOffset, U32 srcOffset, DynWidth width, DynReg tmpReg) {
+void movToCpuFromCpu(U32 dstOffset, U32 srcOffset, DynWidth width, DynReg tmpReg, bool doneWithTmpReg) {
     // mov tmpReg, [cpu+srcOffset]
     movToRegFromCpu(tmpReg, srcOffset, width);
 
     // mov [cpu+dstOffset], tmpReg
-    movToCpuFromReg(dstOffset, tmpReg, width);    
+    movToCpuFromReg(dstOffset, tmpReg, width, doneWithTmpReg);    
 }
 
 void movToCpu(U32 dstOffset, DynWidth dstWidth, U32 imm) {
@@ -464,7 +470,7 @@ void movToReg(DynReg reg, DynWidth width, U32 imm) {
     outd(imm);
 }
 
-void movFromMem(DynWidth width, DynReg addressReg) {
+void movFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg) {
     regUsed[DYN_EAX] = true;
     U32 firstCheckPos=0;
 
@@ -552,6 +558,9 @@ void movFromMem(DynWidth width, DynReg addressReg) {
     } else if (!regUsed[DYN_EDX]) {
         reg = DYN_EDX;
     } else {
+#ifdef _DEBUG
+        klog("movFromMem ran out of regs");
+#endif
         reg = DYN_ECX;
         pushedReg = true;
         outb(0x51);
@@ -597,9 +606,9 @@ void movFromMem(DynWidth width, DynReg addressReg) {
 
     // will set EAX so don't push it then clobber the result with a pop
 
-    if (regUsed[DYN_ECX])
+    if (regUsed[DYN_ECX] && addressReg!=DYN_ECX)
         outb(0x51);
-    if (regUsed[DYN_EDX])
+    if (regUsed[DYN_EDX] && addressReg!=DYN_EDX)
         outb(0x52);
 
     // push addressReg
@@ -627,18 +636,21 @@ void movFromMem(DynWidth width, DynReg addressReg) {
     outb(0xc4);
     outb(0x04);
     
-    if (regUsed[DYN_EDX])
+    if (regUsed[DYN_EDX] && addressReg!=DYN_EDX)
         outb(0x5a);
-    if (regUsed[DYN_ECX])
+    if (regUsed[DYN_ECX] && addressReg!=DYN_ECX)
         outb(0x59);
 
     outBuffer[slowPos] =  (U8)(outBufferPos-slowPos-1);
+    if (doneWithAddressReg) {
+        regUsed[addressReg] = false;
+    }
 }
 
-void movToCpuFromMem(U32 dstOffset, DynWidth dstWidth, DynReg addressReg) {
-    movFromMem(dstWidth, addressReg);
+void movToCpuFromMem(U32 dstOffset, DynWidth dstWidth, DynReg addressReg, bool doneWithAddressReg, bool doneWithCallResult) {
+    movFromMem(dstWidth, addressReg, doneWithAddressReg);
     // mov [cpu+srcOffset], eax
-    movToCpuFromReg(dstOffset, DYN_EAX, dstWidth);
+    movToCpuFromReg(dstOffset, DYN_CALL_RESULT, dstWidth, doneWithCallResult);
 }
 
 void pushValue(U32 arg, DynCallParamType argType) {
@@ -758,7 +770,7 @@ bool isParamTypeReg(DynCallParamType paramType) {
     return paramType==DYN_PARAM_REG_8 || paramType==DYN_PARAM_REG_16 || paramType==DYN_PARAM_REG_32;
 }
 
-// will inline the following code (this code is for 32-bit, but it will do a similiar thing for 16-bit and 8-bit
+// will inline the following code snippet (this code is for 32-bit, but it will do a similiar thing for 16-bit and 8-bit)
 //
 // if ((address & 0xFFF) < 0xFFD) {
 //      int index = address >> 12;
@@ -781,7 +793,12 @@ void movToMem(DynReg addressReg, DynWidth width, U32 value, DynCallParamType par
         reg1 = DYN_ECX;
     } else if (!regUsed[DYN_EDX] && !(isParamReg && value == DYN_EDX)) {
         reg1 = DYN_EDX;
+    } else if (!regUsed[DYN_EBX] && !(isParamReg && value == DYN_EBX)) {
+        reg1 = DYN_EBX;
     } else {
+#ifdef _DEBUG
+        klog("movToMem ran out of regs 1");
+#endif
         if (isParamReg && value == DYN_EAX) {
             reg1 = DYN_EDX;
         } else {
@@ -904,7 +921,12 @@ void movToMem(DynReg addressReg, DynWidth width, U32 value, DynCallParamType par
         reg2 = DYN_ECX;
     } else if (!regUsed[DYN_EDX] && reg1!=DYN_EDX && !(isParamReg && value == DYN_EDX)) {
         reg2 = DYN_EDX;
+    } else if (!regUsed[DYN_EBX] && reg1!=DYN_EBX && !(isParamReg && value == DYN_EBX)) {
+        reg2 = DYN_EBX;
     } else {
+#ifdef _DEBUG
+        klog("movToMem ran out of regs 2");
+#endif
         if ((isParamReg && value == DYN_ECX) || reg1 == DYN_ECX) {
             if (reg1==DYN_EAX) {
                 reg2 = DYN_EDX;
@@ -1024,7 +1046,7 @@ void movToMem(DynReg addressReg, DynWidth width, U32 value, DynCallParamType par
     }
 }
 
-void movToMemFromReg(DynReg addressReg, DynReg reg, DynWidth width) {
+void movToMemFromReg(DynReg addressReg, DynReg reg, DynWidth width, bool doneWithAddressReg, bool doneWithReg) {
     // push reg
     DynCallParamType paramType;
 
@@ -1037,10 +1059,16 @@ void movToMemFromReg(DynReg addressReg, DynReg reg, DynWidth width) {
     else
         kpanic("unknown width %d in x32CPU::movToMemFromReg", width);
 
-    movToMem(addressReg, width, reg, paramType);          
+    movToMem(addressReg, width, reg, paramType);   
+    if (doneWithAddressReg) {
+        regUsed[addressReg] = false;
+    }
+    if (doneWithReg) {
+        regUsed[reg] = false;
+    }
 }
 
-void movToMemFromImm(DynReg addressReg, DynWidth width, U32 imm) {    
+void movToMemFromImm(DynReg addressReg, DynWidth width, U32 imm, bool doneWithAddressReg) {    
     DynCallParamType paramType;
 
     if (width==DYN_8bit)
@@ -1053,17 +1081,58 @@ void movToMemFromImm(DynReg addressReg, DynWidth width, U32 imm) {
         kpanic("unknown width %d in x32CPU::movToMemFromImm", width);
 
     movToMem(addressReg, width, imm, paramType);    
+    if (doneWithAddressReg) {
+        regUsed[addressReg] = false;
+    }
 }
 
-void callHostFunction(pfnAdditionalReturnCode pfnOnReturn, void* address, bool hasReturn, bool returnIfTrue, bool returnIfFalse, U32 argCount, U32 arg1, DynCallParamType arg1Type, U32 arg2, DynCallParamType arg2Type, U32 arg3, DynCallParamType arg3Type, U32 arg4, DynCallParamType arg4Type, U32 arg5, DynCallParamType arg5Type) {
+void callHostFunction(pfnAdditionalReturnCode pfnOnReturn, void* address, bool hasReturn, bool returnIfTrue, bool returnIfFalse, U32 argCount, U32 arg1, DynCallParamType arg1Type, bool doneWithArg1, U32 arg2, DynCallParamType arg2Type, bool doneWithArg2, U32 arg3, DynCallParamType arg3Type, bool doneWithArg3, U32 arg4, DynCallParamType arg4Type, bool doneWithArg4, U32 arg5, DynCallParamType arg5Type, bool doneWithArg5) {
+    bool regDone[4]={false, false, false, false};
+
+    if (argCount>=5) {
+        if (isParamTypeReg(arg5Type) && doneWithArg5) {
+            if (arg5>4)
+                kpanic("x32CPU::callHostFunction bad param 5: arg=%d argType=%d", arg5, arg5Type);
+            regDone[arg5] = true;
+        }
+    }
+    if (argCount>=4) {
+        if (isParamTypeReg(arg4Type) && doneWithArg4) {
+            if (arg4>4)
+                kpanic("x32CPU::callHostFunction bad param 4: arg=%d argType=%d", arg4, arg4Type);
+            regDone[arg4] = true;
+        }
+    }
+    if (argCount>=3) {
+        if (isParamTypeReg(arg3Type) && doneWithArg3) {
+            if (arg3>4)
+                kpanic("x32CPU::callHostFunction bad param 3: arg=%d argType=%d", arg3, arg3Type);
+            regDone[arg3] = true;
+        }
+    }
+    if (argCount>=2) {
+        if (isParamTypeReg(arg2Type) && doneWithArg2) {
+            if (arg2>4)
+                kpanic("x32CPU::callHostFunction bad param 5: arg=%d argType=%d", arg2, arg2Type);
+            regDone[arg2] = true;
+        }
+    }
+    if (argCount>=1) {
+        if (isParamTypeReg(arg1Type) && doneWithArg1) {
+            if (arg1>4)
+                kpanic("x32CPU::callHostFunction bad param 5: arg=%d argType=%d", arg1, arg1Type);
+            regDone[arg1] = true;
+        }
+    } 
+
     if (hasReturn) {
         regUsed[DYN_EAX]=true;
-    } else if (regUsed[DYN_EAX] && !hasReturn) {
+    } else if (regUsed[DYN_EAX] && !hasReturn && !regDone[DYN_EAX]) {
         outb(0x50);
     }
-    if (regUsed[DYN_ECX])
+    if (regUsed[DYN_ECX] && !regDone[DYN_ECX])
         outb(0x51);
-    if (regUsed[DYN_EDX])
+    if (regUsed[DYN_EDX] && !regDone[DYN_EDX])
         outb(0x52);
     if (argCount>=5) {
         pushValue(arg5, arg5Type);
@@ -1092,11 +1161,11 @@ void callHostFunction(pfnAdditionalReturnCode pfnOnReturn, void* address, bool h
         outb(0xc4);
         outb(0x04*argCount);
     }
-    if (regUsed[DYN_EDX])
+    if (regUsed[DYN_EDX] && !regDone[DYN_EDX])
         outb(0x5a);
-    if (regUsed[DYN_ECX])
+    if (regUsed[DYN_ECX] && !regDone[DYN_ECX])
         outb(0x59);    
-    if (regUsed[DYN_EAX] && !hasReturn)
+    if (regUsed[DYN_EAX] && !hasReturn && !regDone[DYN_EAX])
         outb(0x58);
 
     if (hasReturn && (returnIfTrue || returnIfFalse)) {
@@ -1118,6 +1187,10 @@ void callHostFunction(pfnAdditionalReturnCode pfnOnReturn, void* address, bool h
         outb(0xc3); // ret, assumes we don't clean up stack (calling convention or fast call)
         outBuffer[pos] = (U8)(outBufferPos-pos-1);
     }
+    for (int i=0;i<4;i++) {
+        if (regDone[i])
+            regUsed[i] = false;
+    }
 }
 
 // (useAddress)
@@ -1138,7 +1211,7 @@ void movCC(void* condition, DecodedOp* op, DynWidth width, bool useAddress) {
     outb(0); // jump over amount  
 
     if (useAddress) {
-        movFromMem(width, DYN_ADDRESS);        
+        movFromMem(width, DYN_ADDRESS, true);        
     } else {              
 
         // mov eax, cpu->reg[op->rm].u32
@@ -1150,9 +1223,9 @@ void movCC(void* condition, DecodedOp* op, DynWidth width, bool useAddress) {
     }
 
     if (width == DYN_32bit) {
-        movToCpuFromReg(offsetof(CPU, reg[op->reg].u32), DYN_EAX, DYN_32bit);
+        movToCpuFromReg(offsetof(CPU, reg[op->reg].u32), DYN_EAX, DYN_32bit, true);
     } else {
-        movToCpuFromReg(offsetof(CPU, reg[op->reg].u16), DYN_EAX, DYN_16bit);
+        movToCpuFromReg(offsetof(CPU, reg[op->reg].u16), DYN_EAX, DYN_16bit, true);
     }
 
     outBuffer[pos] = (U8)(outBufferPos-pos-1);
@@ -1173,9 +1246,9 @@ void setCC(void* condition, DecodedOp* op, bool useAddress) {
     outb(0xc0);
 
     if (useAddress) {
-        movToMemFromReg(DYN_ADDRESS, DYN_EAX, DYN_8bit);
+        movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_8bit, true, true);
     } else {    
-        movToCpuFromReg( OFFSET_REG8(op->reg), DYN_EAX, DYN_8bit);
+        movToCpuFromReg( OFFSET_REG8(op->reg), DYN_CALL_RESULT, DYN_8bit, true);
     }
 }
 
@@ -1231,7 +1304,7 @@ void instRegImm(U32 inst, DynReg reg, DynWidth regWidth, U32 imm) {
         kpanic("unknown regWidth in x32CPU::instRegImm + %d", regWidth);
     }
 }
-void instCPUReg(char inst, U32 dstOffset, DynReg rm, DynWidth regWidth) {
+void instCPUReg(char inst, U32 dstOffset, DynReg rm, DynWidth regWidth, bool doneWithRmReg) {
     U8 i=0;
     switch (inst) {
         case '+':
@@ -1270,6 +1343,9 @@ void instCPUReg(char inst, U32 dstOffset, DynReg rm, DynWidth regWidth) {
     if (dstOffset>127)
         kpanic("x32CPU::instCPUReg register offset expected to be less than 128: %d", dstOffset);
     outb((U8)dstOffset);
+    if (doneWithRmReg) {
+        regUsed[rm] = false;
+    }
 }
 void instCPUImm(char inst, U32 dstOffset, DynWidth regWidth, U32 imm) {
     S32 s = (S32)imm;
@@ -1329,107 +1405,60 @@ void instCPUImm(char inst, U32 dstOffset, DynWidth regWidth, U32 imm) {
         kpanic("x32CPU::instCPUImm register offset expected to be less than 128: %d", dstOffset);
 }
 
-void instMemImm(char inst, DynReg addressReg, DynWidth regWidth, U32 imm) {
-    S32 s = (S32)imm;
-    bool oneByte = s>=-128 && s<=127;
+void instMemImm(char inst, DynReg addressReg, DynWidth regWidth, U32 imm, bool doneWithAddressReg) {
+    DynReg reg;
+    bool pushed = false;
 
-    // :TODO: getPhysicalReadWriteAddressThrow will fail if the read spans two pages
-    callHostFunction(NULL, getPhysicalReadWriteAddressThrow, true, false, false, 2, addressReg, DYN_PARAM_REG_32, 1<<regWidth, DYN_PARAM_CONST_32);
-
-    U32 i=0;
-    switch (inst) {
-        case '+':
-            i=0;
-            break;
-        case '-':
-            i=5;
-            break;
-        case '|':
-            i=1;
-            break;
-        case '&':
-            i=4;
-            break;
-        case '^':
-            i=6;
-            break;
-        default:
-            kpanic("unhandled op in x32CPU::instCPUImm %c", inst);
-            break;
+    if (addressReg==DYN_EAX) {
+        kpanic("x32CPU::instMemImm doesn't handle passing the address reg in EAX");
     }
-    // add [reg], imm
-    if (regWidth==DYN_32bit) {            
-        outb(oneByte?0x83:0x81);
-        outb(i<<3);
-
-        if (oneByte) {
-            outb((U8)imm);
-        } else {
-            outd(imm);
-        }
-    } else if (regWidth == DYN_16bit) {
-        outb(0x66);
-        outb(oneByte?0x83:0x81);
-        outb(i<<3);
-        if (oneByte) {
-            outb((U8)imm);
-        } else {
-            outw((U16)imm);
-        }
-    } else if (regWidth == DYN_8bit) {
-        outb(0x80);
-        outb(i<<3);
-        outb((U8)imm);
+    if (!regUsed[DYN_EAX] && addressReg != DYN_EAX) {
+        reg = DYN_EAX;
     } else {
-        kpanic("unknown regWidth in x32CPU::instMemImm + %d", regWidth);
+        outb(0x50);
+        reg = DYN_EAX;
+        pushed = true;
+#ifdef _DEBUG
+        klog("TODO: x32CPU::instMem pushed EAX.");
+#endif
+    }    
+    movFromMem(regWidth, addressReg, false);
+    instRegImm(inst, DYN_EAX, regWidth, imm);
+    movToMemFromReg(addressReg, DYN_EAX, regWidth, true, true);
+    if (pushed) {
+        outb(0x58);
     }
 }
-void instMemReg(char inst, DynReg addressReg, DynReg rm, DynWidth regWidth) {
-    U8 i=0;   
+void instMemReg(char inst, DynReg addressReg, DynReg rm, DynWidth regWidth, bool doneWithAddressReg, bool doneWithRmReg) {
+    DynReg reg;
+    bool pushed = false;
 
-    // :TODO: probably should assum ecx is available
+    if (addressReg==DYN_EAX) {
+        kpanic("x32CPU::instMemReg doesn't handle passing the address reg in EAX");
+    }
     if (rm==DYN_EAX) {
-        movToRegFromReg(DYN_ECX, regWidth, rm, regWidth);
-        rm = DYN_ECX;
+        kpanic("x32CPU::instMemReg doesn't handle passing the rm reg in EAX");
     }
-    callHostFunction(NULL, getPhysicalReadWriteAddressThrow, true, false, false, 2, addressReg, DYN_PARAM_REG_32, 1<<regWidth, DYN_PARAM_CONST_32);
-
-    switch (inst) {
-        case '+':
-            i=0x01;
-            break;
-        case '-':
-            i=0x29;
-            break;
-        case '|':
-            i=0x09;
-            break;
-        case '&':
-            i=0x21;
-            break;
-        case '^':
-            i=0x31;
-            break;
-        default:
-            kpanic("unhandled op in x32CPU::instCPUReg %c", inst);
-            break;
-    }
-    // add [eax], rm
-    if (regWidth==DYN_32bit) {            
-        outb(i);
-    } else if (regWidth == DYN_16bit) {
-        outb(0x66);
-        outb(i);
-    } else if (regWidth == DYN_8bit) {
-        outb(i-1);        
+    if (!regUsed[DYN_EAX] && addressReg != DYN_EAX && rm != DYN_EAX) {
+        reg = DYN_EAX;
     } else {
-        kpanic("unknown regWidth in x32CPU::instCPUReg + %d", regWidth);
+        outb(0x50);
+        reg = DYN_EAX;
+        pushed = true;
+#ifdef _DEBUG
+        klog("TODO: x32CPU::instMem pushed EAX.");
+#endif
+    }    
+    movFromMem(regWidth, addressReg, false);
+    instRegReg(inst, DYN_EAX, rm, regWidth, doneWithRmReg);
+    movToMemFromReg(addressReg, DYN_EAX, regWidth, true, true);
+    if (pushed) {
+        outb(0x58);
     }
-    outb((rm << 3));
 }
 
 // inst can be +, |, -, &, ^
-void instRegReg(char inst, DynReg reg, DynReg rm, DynWidth regWidth) {
+void instRegReg(char inst, DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) {
     U8 i=0;
     switch (inst) {
         case '+':
@@ -1464,6 +1493,9 @@ void instRegReg(char inst, DynReg reg, DynReg rm, DynWidth regWidth) {
         outb(0xC0 | rm << 3 | reg);
     } else {
         kpanic("unknown regWidth in x32CPU::instRegImm + %d", regWidth);
+    }
+    if (doneWithRmReg) {
+        regUsed[rm] = false;
     }
 }
 
@@ -1506,39 +1538,28 @@ void instReg(char inst, DynReg reg, DynWidth regWidth) {
     }
 }
 
-void instMem(char inst, DynReg addressReg, DynWidth regWidth) {
-    callHostFunction(NULL, getPhysicalReadWriteAddressThrow, true, false, false, 2, addressReg, DYN_PARAM_REG_32, 1<<regWidth, DYN_PARAM_CONST_32);
+void instMem(char inst, DynReg addressReg, DynWidth regWidth, bool doneWithAddressReg) {
+    DynReg reg;
+    bool pushed = false;
 
-    switch (inst) {
-    case '~':
-        if (regWidth==DYN_32bit) {
-            outb(0xf7);
-        } else if (regWidth==DYN_16bit) {
-            outb(0x66);
-            outb(0xf7);
-        } else if (regWidth==DYN_8bit) {
-            outb(0xf6); 
-        } else {
-            kpanic("unhandled regWidth in x32CPU::instMem %d", regWidth);
-        }
-        outb(0x10);
-        break;
-    case '-':
-        if (regWidth==DYN_32bit) {
-            outb(0xf7);          
-        } else if (regWidth==DYN_16bit) {
-            outb(0x66);
-            outb(0xf7);          
-        } else if (regWidth==DYN_8bit) {
-            outb(0xf6);  
-        } else {
-            kpanic("unhandled regWidth in x32CPU::instMem %d", regWidth);
-        }
-        outb(0x18);
-        break;
-    default:
-        kpanic("unhandled op in x32CPU::instMem %c", inst);
-        break;
+    if (addressReg==DYN_EAX) {
+        kpanic("x32CPU::instMem doesn't handle passing the address reg in EAX");
+    }
+    if (!regUsed[DYN_EAX] && addressReg != DYN_EAX) {
+        reg = DYN_EAX;
+    } else {
+        outb(0x50);
+        reg = DYN_EAX;
+        pushed = true;
+#ifdef _DEBUG
+        klog("TODO: x32CPU::instMem pushed EAX.");
+#endif
+    }    
+    movFromMem(regWidth, addressReg, false);
+    instReg(inst, DYN_EAX, regWidth);
+    movToMemFromReg(addressReg, DYN_EAX, regWidth, true, true);   
+    if (pushed) {
+        outb(0x58);
     }
 }
 
@@ -1605,8 +1626,8 @@ void incrementEip(U32 inc) {
 
 void blockDone() {
     // cpu->nextBlock = cpu->getNextBlock();
-    callHostFunction(NULL, common_getNextBlock, true, false, false, 1, 0, DYN_PARAM_CPU);
-    movToCpuFromReg(offsetof(CPU, nextBlock), DYN_CALL_RESULT, DYN_32bit);
+    callHostFunction(NULL, common_getNextBlock, true, false, false, 1, 0, DYN_PARAM_CPU, false);
+    movToCpuFromReg(offsetof(CPU, nextBlock), DYN_CALL_RESULT, DYN_32bit, true);
 }
 
 static DecodedBlock* updateNext1(CPU* cpu) {
@@ -1652,7 +1673,7 @@ void blockNext1() {
     outBuffer[pos] = (U8)(outBufferPos-pos-1);
 
     // cpu->nextBlock = DecodedBlock::currentBlock->next1
-    movToCpuFromReg(offsetof(CPU, nextBlock), DYN_EAX, DYN_32bit);
+    movToCpuFromReg(offsetof(CPU, nextBlock), DYN_CALL_RESULT, DYN_32bit, true);
     
 }
 
@@ -1698,7 +1719,7 @@ void blockNext2() {
     outBuffer[pos] = (U8)(outBufferPos-pos-1);
 
     // cpu->nextBlock = DecodedBlock::currentBlock->next2
-    movToCpuFromReg(offsetof(CPU, nextBlock), DYN_EAX, DYN_32bit);
+    movToCpuFromReg(offsetof(CPU, nextBlock), DYN_CALL_RESULT, DYN_32bit, true);
 }
 
 void OPCALL x32_sidt(CPU* cpu, DecodedOp* op) {
@@ -1773,7 +1794,7 @@ void OPCALL firstX32Op(CPU* cpu, DecodedOp* op) {
 #ifdef __TEST
     if (DecodedBlock::currentBlock->runCount == 0) {
 #else
-    if (DecodedBlock::currentBlock->runCount == 50) {
+    if (0) {
 #endif
         initX32Ops();
         DecodedOp* o = op->next;
@@ -1789,7 +1810,7 @@ void OPCALL firstX32Op(CPU* cpu, DecodedOp* op) {
             memset(regUsed, 0, sizeof(regUsed));
 #ifndef __TEST
 #ifdef _DEBUG
-            //callHostFunction(NULL, common_log, false, false, false, 2, 0, DYN_PARAM_CPU, (DYN_PTR_SIZE)o, DYN_PARAM_CONST_PTR);
+            callHostFunction(NULL, common_log, false, false, false, 2, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)o, DYN_PARAM_CONST_PTR, false);
 #endif
 #endif
             x32Ops[o->inst](cpu, o);            

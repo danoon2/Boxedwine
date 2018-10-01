@@ -66,11 +66,6 @@ void setup() {
         cpu = thread->cpu;
         thread->memory = memory;
         KThread::setCurrentThread(thread);
-#ifdef BOXEDWINE_DEFAULT_MMU
-        Memory::currentMMU = thread->process->memory->mmu;
-        Memory::currentMMUReadPtr = thread->process->memory->mmuReadPtr;
-        Memory::currentMMUWritePtr = thread->process->memory->mmuWritePtr;
-#endif
         process->memory->allocPages((STACK_ADDRESS >> K_PAGE_SHIFT)-17, 17, PAGE_READ|PAGE_WRITE, 0, 0, 0);
         process->memory->allocPages(CODE_ADDRESS >> K_PAGE_SHIFT, 17, PAGE_READ|PAGE_WRITE|PAGE_EXEC, 0, 0, 0);
         process->memory->allocPages(HEAP_ADDRESS >> K_PAGE_SHIFT, 17, PAGE_READ|PAGE_WRITE, 0, 0, 0);

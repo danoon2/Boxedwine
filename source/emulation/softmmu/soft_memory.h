@@ -19,6 +19,8 @@
 #ifndef __SOFT_MEMORY_H__
 #define __SOFT_MEMORY_H__
 
+#ifdef BOXEDWINE_DEFAULT_MMU
+
 inline U8 readb(U32 address) {
     int index = address >> 12;
 #ifdef LOG_OPS
@@ -139,4 +141,5 @@ inline void writed(U32 address, U32 value) {
     }
 }
 
+#endif
 #endif

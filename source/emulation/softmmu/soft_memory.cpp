@@ -392,18 +392,6 @@ U8* getPhysicalAddress(U32 address, U32 len) {
     return NULL;
 }
 
-U8* getPhysicalReadWriteAddressThrow(U32 address, U32 len) {
-    int index = address >> 12;
-    U8* result = NULL;
-    if (len<=K_PAGE_SIZE-(address & K_PAGE_MASK)) {
-        result = Memory::currentMMU[index]->getReadWriteAddress(address, len);
-    }
-    if (!result) {
-        KThread::currentThread()->seg_access(address, true, false);
-    }
-    return result;
-}
-
 void memcopyFromNative(U32 address, const char* p, U32 len) {
 #ifdef UNALIGNED_MEMORY
     U32 i;

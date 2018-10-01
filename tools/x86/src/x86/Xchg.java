@@ -48,14 +48,14 @@ public class Xchg extends Base {
         out(fos32, "void OPCALL dynamic_"+functionName+"(CPU* cpu, DecodedOp* op) {");
         if (reg) {
             out(fos32, "    movToRegFromCpu(DYN_DEST, OFFSET_REG8(op->rm), DYN_8bit);");
-            out(fos32, "    movToCpuFromCpu(OFFSET_REG8(op->rm), OFFSET_REG8(op->reg), DYN_8bit, DYN_SRC);");
-            out(fos32, "    movToCpuFromReg(OFFSET_REG8(op->reg), DYN_DEST, DYN_8bit);");
+            out(fos32, "    movToCpuFromCpu(OFFSET_REG8(op->rm), OFFSET_REG8(op->reg), DYN_8bit, DYN_SRC, true);");
+            out(fos32, "    movToCpuFromReg(OFFSET_REG8(op->reg), DYN_DEST, DYN_8bit, true);");
         } else {
             out(fos32, "    calculateEaa(op, DYN_ADDRESS);");
-            out(fos32, "    movFromMem(DYN_8bit, DYN_ADDRESS);");
+            out(fos32, "    movFromMem(DYN_8bit, DYN_ADDRESS, false);");
             out(fos32, "    movToRegFromCpu(DYN_DEST, OFFSET_REG8(op->reg), DYN_8bit);");
-            out(fos32, "    movToMemFromReg(DYN_ADDRESS, DYN_DEST, DYN_8bit);");
-            out(fos32, "    movToCpuFromReg(OFFSET_REG8(op->reg), DYN_READ_RESULT, DYN_8bit);");
+            out(fos32, "    movToMemFromReg(DYN_ADDRESS, DYN_DEST, DYN_8bit, true, true);");
+            out(fos32, "    movToCpuFromReg(OFFSET_REG8(op->reg), DYN_CALL_RESULT, DYN_8bit, true);");
         }
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
@@ -81,14 +81,14 @@ public class Xchg extends Base {
         out(fos32, "void OPCALL dynamic_"+functionName+"(CPU* cpu, DecodedOp* op) {");
         if (reg) {
             out(fos32, "    movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(reg[op->rm].u16), DYN_16bit);");
-            out(fos32, "    movToCpuFromCpu(CPU_OFFSET_OF(reg[op->rm].u16), CPU_OFFSET_OF(reg[op->reg].u16), DYN_16bit, DYN_SRC);");
-            out(fos32, "    movToCpuFromReg(CPU_OFFSET_OF(reg[op->reg].u16), DYN_DEST, DYN_16bit);");
+            out(fos32, "    movToCpuFromCpu(CPU_OFFSET_OF(reg[op->rm].u16), CPU_OFFSET_OF(reg[op->reg].u16), DYN_16bit, DYN_SRC, true);");
+            out(fos32, "    movToCpuFromReg(CPU_OFFSET_OF(reg[op->reg].u16), DYN_DEST, DYN_16bit, true);");
         } else {
             out(fos32, "    calculateEaa(op, DYN_ADDRESS);");
-            out(fos32, "    movFromMem(DYN_16bit, DYN_ADDRESS);");
+            out(fos32, "    movFromMem(DYN_16bit, DYN_ADDRESS, false);");
             out(fos32, "    movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(reg[op->reg].u16), DYN_16bit);");
-            out(fos32, "    movToMemFromReg(DYN_ADDRESS, DYN_DEST, DYN_16bit);");
-            out(fos32, "    movToCpuFromReg(CPU_OFFSET_OF(reg[op->reg].u16), DYN_READ_RESULT, DYN_16bit);");
+            out(fos32, "    movToMemFromReg(DYN_ADDRESS, DYN_DEST, DYN_16bit, true, true);");
+            out(fos32, "    movToCpuFromReg(CPU_OFFSET_OF(reg[op->reg].u16), DYN_CALL_RESULT, DYN_16bit, true);");
         }
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
@@ -114,14 +114,14 @@ public class Xchg extends Base {
         out(fos32, "void OPCALL dynamic_"+functionName+"(CPU* cpu, DecodedOp* op) {");
         if (reg) {
             out(fos32, "    movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(reg[op->rm].u32), DYN_32bit);");
-            out(fos32, "    movToCpuFromCpu(CPU_OFFSET_OF(reg[op->rm].u32), CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit, DYN_SRC);");
-            out(fos32, "    movToCpuFromReg(CPU_OFFSET_OF(reg[op->reg].u32), DYN_DEST, DYN_32bit);");
+            out(fos32, "    movToCpuFromCpu(CPU_OFFSET_OF(reg[op->rm].u32), CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit, DYN_SRC, true);");
+            out(fos32, "    movToCpuFromReg(CPU_OFFSET_OF(reg[op->reg].u32), DYN_DEST, DYN_32bit, true);");
         } else {
             out(fos32, "    calculateEaa(op, DYN_ADDRESS);");
-            out(fos32, "    movFromMem(DYN_32bit, DYN_ADDRESS);");
+            out(fos32, "    movFromMem(DYN_32bit, DYN_ADDRESS, false);");
             out(fos32, "    movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit);");
-            out(fos32, "    movToMemFromReg(DYN_ADDRESS, DYN_DEST, DYN_32bit);");
-            out(fos32, "    movToCpuFromReg(CPU_OFFSET_OF(reg[op->reg].u32), DYN_READ_RESULT, DYN_32bit);");
+            out(fos32, "    movToCpuFromReg(CPU_OFFSET_OF(reg[op->reg].u32), DYN_CALL_RESULT, DYN_32bit, true);");
+            out(fos32, "    movToMemFromReg(DYN_ADDRESS, DYN_DEST, DYN_32bit, true, true);");
         }
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
@@ -158,9 +158,9 @@ public class Xchg extends Base {
         out(fos32, "void OPCALL dynamic_"+functionName+"(CPU* cpu, DecodedOp* op) {");
         if (address) {
             out(fos32, "    calculateEaa(op, DYN_ADDRESS);");
-            out(fos32, "    callHostFunction(NULL, common_" + functionName + ", false, false, false, 3, 0, DYN_PARAM_CPU, DYN_ADDRESS, DYN_PARAM_REG_32, op->reg, DYN_PARAM_CONST_32);");
+            out(fos32, "    callHostFunction(NULL, common_" + functionName + ", false, false, false, 3, 0, DYN_PARAM_CPU, false, DYN_ADDRESS, DYN_PARAM_REG_32, true, op->reg, DYN_PARAM_CONST_32, false);");
         } else {
-            out(fos32, "    callHostFunction(NULL, common_" + functionName + ", false, false, false, 3, 0, DYN_PARAM_CPU, op->reg, DYN_PARAM_CONST_32, op->rm, DYN_PARAM_CONST_32);");
+            out(fos32, "    callHostFunction(NULL, common_" + functionName + ", false, false, false, 3, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false, op->rm, DYN_PARAM_CONST_32, false);");
         }
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
@@ -197,9 +197,9 @@ public class Xchg extends Base {
         out(fos32, "void OPCALL dynamic_"+functionName+"(CPU* cpu, DecodedOp* op) {");
         if (address) {
             out(fos32, "    calculateEaa(op, DYN_ADDRESS);");
-            out(fos32, "    callHostFunction(NULL, common_" + functionName + ", false, false, false, 3, 0, DYN_PARAM_CPU, DYN_ADDRESS, DYN_PARAM_REG_32, op->reg, DYN_PARAM_CONST_32);");
+            out(fos32, "    callHostFunction(NULL, common_" + functionName + ", false, false, false, 3, 0, DYN_PARAM_CPU, false, DYN_ADDRESS, DYN_PARAM_REG_32, true, op->reg, DYN_PARAM_CONST_32, false);");
         } else {
-            out(fos32, "    callHostFunction(NULL, common_" + functionName + ", false, false, false, 3, 0, DYN_PARAM_CPU, op->reg, DYN_PARAM_CONST_32, op->rm, DYN_PARAM_CONST_32);");
+            out(fos32, "    callHostFunction(NULL, common_" + functionName + ", false, false, false, 3, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false, op->rm, DYN_PARAM_CONST_32, false);");
         }
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
