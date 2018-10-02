@@ -69,22 +69,36 @@ public class Conditions extends Base {
         out(fos_init, "INIT_CPU(Cmov"+name+"_R16E16, cmov"+name+"_16_mem)");
 
         out(fos32, "void OPCALL dynamic_cmov"+name+"_16_reg(CPU* cpu, DecodedOp* op) {");
-        out(fos32, "    movCC(common_condition_"+name.toLowerCase()+", op, DYN_16bit);");
+        out(fos32, "    callHostFunction(common_condition_"+name.toLowerCase()+", true, 1, 0, DYN_PARAM_CPU, false);");
+        out(fos32, "    startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);");
+        out(fos32, "    movToCpuFromCpu(CPU_OFFSET_OF(reg[op->reg].u16), CPU_OFFSET_OF(reg[op->rm].u16), DYN_16bit, DYN_SRC, true);");
+        out(fos32, "    endIf();");
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
 
         out(fos32, "void OPCALL dynamic_cmov"+name+"_16_mem(CPU* cpu, DecodedOp* op) {");
-        out(fos32, "    movCC(common_condition_"+name.toLowerCase()+", op, DYN_16bit, true);");
+        out(fos32, "    calculateEaa( op, DYN_ADDRESS);");
+        out(fos32, "    callHostFunction(common_condition_"+name.toLowerCase()+", true, 1, 0, DYN_PARAM_CPU, false);");
+        out(fos32, "    startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);");
+        out(fos32, "    movToCpuFromMem(CPU_OFFSET_OF(reg[op->reg].u16), DYN_16bit, DYN_ADDRESS, true, true);");
+        out(fos32, "    endIf();");
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
 
         out(fos32, "void OPCALL dynamic_cmov"+name+"_32_reg(CPU* cpu, DecodedOp* op) {");
-        out(fos32, "    movCC(common_condition_"+name.toLowerCase()+", op, DYN_32bit);");
+        out(fos32, "    callHostFunction(common_condition_"+name.toLowerCase()+", true, 1, 0, DYN_PARAM_CPU, false);");
+        out(fos32, "    startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);");
+        out(fos32, "    movToCpuFromCpu(CPU_OFFSET_OF(reg[op->reg].u32), CPU_OFFSET_OF(reg[op->rm].u32), DYN_32bit, DYN_SRC, true);");
+        out(fos32, "    endIf();");
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
 
         out(fos32, "void OPCALL dynamic_cmov"+name+"_32_mem(CPU* cpu, DecodedOp* op) {");
-        out(fos32, "    movCC(common_condition_"+name.toLowerCase()+", op, DYN_32bit, true);");
+        out(fos32, "    calculateEaa( op, DYN_ADDRESS);");
+        out(fos32, "    callHostFunction(common_condition_"+name.toLowerCase()+", true, 1, 0, DYN_PARAM_CPU, false);");
+        out(fos32, "    startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);");
+        out(fos32, "    movToCpuFromMem(CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit, DYN_ADDRESS, true, true);");
+        out(fos32, "    endIf();");
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
     }

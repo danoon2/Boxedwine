@@ -6,8 +6,6 @@
 
 // cdecl calling convention states EAX, ECX, and EDX are caller saved
 
-typedef void (*pfnAdditionalReturnCode)();
-
 /********************************************************/
 /* Following is required to be defined for dynamic code */
 /********************************************************/
@@ -24,6 +22,11 @@ enum DynReg {
     DYN_ECX=1,
     DYN_EDX=2,
     DYN_EBX=3,    
+};
+
+enum DynCondition {
+    DYN_EQUALS_ZERO,
+    DYN_NOT_EQUALS_ZERO
 };
 
 #define DYN_CALL_RESULT DYN_EAX
@@ -98,12 +101,13 @@ void instReg(char inst, DynReg reg, DynWidth regWidth);
 void instMem(char inst, DynReg addressReg, DynWidth regWidth, bool doneWithAddressReg);
 void instCPU(char inst, U32 dstOffset, DynWidth regWidth);
 
-// conditional, didn't want to create more complicated generic routines to handle these, so they are special
-void movCC(void* condition, DecodedOp* op, DynWidth width, bool useAddress=false);
-void setCC(void* condition, DecodedOp* op, bool useAddress=false);
+// if conditions
+void startIf(DynReg reg, DynCondition condition, bool doneWithReg);
+void startElse();
+void endIf();
 
 // call into emulator, like setFlags, getCF, etc
-void callHostFunction(pfnAdditionalReturnCode pfnOnReturn, void* address, bool hasReturn=false, bool returnIfTrue=false, bool returnIfFalse=false, U32 argCount=0, U32 arg1=0, DynCallParamType arg1Type=DYN_PARAM_CONST_32, bool doneWithArg1=true, U32 arg2=0, DynCallParamType arg2Type=DYN_PARAM_CONST_32, bool doneWithArg2=true, U32 arg3=0, DynCallParamType arg3Type=DYN_PARAM_CONST_32, bool doneWithArg3=true, U32 arg4=0, DynCallParamType arg4Type=DYN_PARAM_CONST_32, bool doneWithArg4=true, U32 arg5=0, DynCallParamType arg5Type=DYN_PARAM_CONST_32, bool doneWithArg5=true);
+void callHostFunction(void* address, bool hasReturn=false, U32 argCount=0, U32 arg1=0, DynCallParamType arg1Type=DYN_PARAM_CONST_32, bool doneWithArg1=true, U32 arg2=0, DynCallParamType arg2Type=DYN_PARAM_CONST_32, bool doneWithArg2=true, U32 arg3=0, DynCallParamType arg3Type=DYN_PARAM_CONST_32, bool doneWithArg3=true, U32 arg4=0, DynCallParamType arg4Type=DYN_PARAM_CONST_32, bool doneWithArg4=true, U32 arg5=0, DynCallParamType arg5Type=DYN_PARAM_CONST_32, bool doneWithArg5=true);
 
 // set up the cpu to the correct next block
 
@@ -143,6 +147,7 @@ static U32 outBufferSize;
 static U32 outBufferPos;
 
 static std::vector<U32> patch;
+static std::vector<U32> ifJump;
 
 // per instruction, not per block.  
 // will allow us to determine if ecx or edx needs to be saved before calling an external function
@@ -781,7 +786,7 @@ bool isParamTypeReg(DynCallParamType paramType) {
 //  } else {
 //      Memory::currentMMU[index]->writed(address, value);		
 //  }
-void movToMem(DynReg addressReg, DynWidth width, U32 value, DynCallParamType paramType) {    
+void movToMem(DynReg addressReg, DynWidth width, U32 value, DynCallParamType paramType, bool doneWithValueReg) {    
     U32 firstCheckPos=0;
 
     U32 reg1;
@@ -990,7 +995,7 @@ void movToMem(DynReg addressReg, DynWidth width, U32 value, DynCallParamType par
         outb(0x58+reg2);
     }
 
-    // jmp over slow slow
+    // jmp over slow path
     outb(0xeb);
     U32 slowPos = outBufferPos;
     outb(0);
@@ -999,11 +1004,11 @@ void movToMem(DynReg addressReg, DynWidth width, U32 value, DynCallParamType par
     if (firstCheckPos)
         outBuffer[firstCheckPos] = (U8)(outBufferPos-firstCheckPos-1);
 
-    if (regUsed[DYN_EAX] && (reg1!=DYN_EAX || !pushedReg1))
+    if (regUsed[DYN_EAX] && (reg1!=DYN_EAX || !pushedReg1) && (!doneWithValueReg || value!=DYN_EAX))
         outb(0x50);  
-    if (regUsed[DYN_ECX] && (reg1!=DYN_ECX || !pushedReg1))
+    if (regUsed[DYN_ECX] && (reg1!=DYN_ECX || !pushedReg1) && (!doneWithValueReg || value!=DYN_ECX))
         outb(0x51);
-    if (regUsed[DYN_EDX] && (reg1!=DYN_EDX || !pushedReg1))
+    if (regUsed[DYN_EDX] && (reg1!=DYN_EDX || !pushedReg1) && (!doneWithValueReg || value!=DYN_EDX))
         outb(0x52);
 
     pushValue(value, paramType);
@@ -1033,11 +1038,11 @@ void movToMem(DynReg addressReg, DynWidth width, U32 value, DynCallParamType par
     outb(0xc4);
     outb(0x08);
 
-    if (regUsed[DYN_EDX] && (reg1!=DYN_EDX || !pushedReg1))
+    if (regUsed[DYN_EDX] && (reg1!=DYN_EDX || !pushedReg1) && (!doneWithValueReg || value!=DYN_EDX))
         outb(0x5a);
-    if (regUsed[DYN_ECX] && (reg1!=DYN_ECX || !pushedReg1))
+    if (regUsed[DYN_ECX] && (reg1!=DYN_ECX || !pushedReg1) && (!doneWithValueReg || value!=DYN_ECX))
         outb(0x59);
-    if (regUsed[DYN_EAX] && (reg1!=DYN_EAX || !pushedReg1))
+    if (regUsed[DYN_EAX] && (reg1!=DYN_EAX || !pushedReg1) && (!doneWithValueReg || value!=DYN_EAX))
         outb(0x58);  
 
     outBuffer[slowPos] =  (U8)(outBufferPos-slowPos-1);
@@ -1059,7 +1064,7 @@ void movToMemFromReg(DynReg addressReg, DynReg reg, DynWidth width, bool doneWit
     else
         kpanic("unknown width %d in x32CPU::movToMemFromReg", width);
 
-    movToMem(addressReg, width, reg, paramType);   
+    movToMem(addressReg, width, reg, paramType, doneWithReg);   
     if (doneWithAddressReg) {
         regUsed[addressReg] = false;
     }
@@ -1080,13 +1085,13 @@ void movToMemFromImm(DynReg addressReg, DynWidth width, U32 imm, bool doneWithAd
     else
         kpanic("unknown width %d in x32CPU::movToMemFromImm", width);
 
-    movToMem(addressReg, width, imm, paramType);    
+    movToMem(addressReg, width, imm, paramType, false);    
     if (doneWithAddressReg) {
         regUsed[addressReg] = false;
     }
 }
 
-void callHostFunction(pfnAdditionalReturnCode pfnOnReturn, void* address, bool hasReturn, bool returnIfTrue, bool returnIfFalse, U32 argCount, U32 arg1, DynCallParamType arg1Type, bool doneWithArg1, U32 arg2, DynCallParamType arg2Type, bool doneWithArg2, U32 arg3, DynCallParamType arg3Type, bool doneWithArg3, U32 arg4, DynCallParamType arg4Type, bool doneWithArg4, U32 arg5, DynCallParamType arg5Type, bool doneWithArg5) {
+void callHostFunction(void* address, bool hasReturn, U32 argCount, U32 arg1, DynCallParamType arg1Type, bool doneWithArg1, U32 arg2, DynCallParamType arg2Type, bool doneWithArg2, U32 arg3, DynCallParamType arg3Type, bool doneWithArg3, U32 arg4, DynCallParamType arg4Type, bool doneWithArg4, U32 arg5, DynCallParamType arg5Type, bool doneWithArg5) {
     bool regDone[4]={false, false, false, false};
 
     if (argCount>=5) {
@@ -1168,87 +1173,9 @@ void callHostFunction(pfnAdditionalReturnCode pfnOnReturn, void* address, bool h
     if (regUsed[DYN_EAX] && !hasReturn && !regDone[DYN_EAX])
         outb(0x58);
 
-    if (hasReturn && (returnIfTrue || returnIfFalse)) {
-        // test eax, eax
-        outb(0x85);
-        outb(0xc0);
-
-        if (returnIfTrue) {
-            outb(0x74); // jz
-        } else if (returnIfFalse) {
-            outb(0x75); // jnz
-        }       
-        U32 pos = outBufferPos;
-        outb(0); 
-        if (pfnOnReturn)
-            pfnOnReturn();
-        outb(0x5f); // pop edi
-        outb(0x5b); // pop ebx
-        outb(0xc3); // ret, assumes we don't clean up stack (calling convention or fast call)
-        outBuffer[pos] = (U8)(outBufferPos-pos-1);
-    }
     for (int i=0;i<4;i++) {
         if (regDone[i])
             regUsed[i] = false;
-    }
-}
-
-// (useAddress)
-//     if (condition) cpu->reg[op->reg].u32 = readd(eaa(cpu, op));
-// else
-//     if(condition) cpu->reg[op->reg].u32 = cpu->reg[op->rm].u32;
-void movCC(void* condition, DecodedOp* op, DynWidth width, bool useAddress) {    
-    if (useAddress)
-        calculateEaa( op, DYN_ADDRESS);
-    callHostFunction(NULL, condition, true, false, false, 1, 0, DYN_PARAM_CPU);
-
-    // test eax, eax
-    outb(0x85);
-    outb(0xc0);
-    outb(0x74); // jz, jump over if not true
-
-    U32 pos = outBufferPos;
-    outb(0); // jump over amount  
-
-    if (useAddress) {
-        movFromMem(width, DYN_ADDRESS, true);        
-    } else {              
-
-        // mov eax, cpu->reg[op->rm].u32
-        if (width == DYN_32bit) {
-            movToRegFromCpu(DYN_EAX, offsetof(CPU, reg[op->rm].u32), DYN_32bit);
-        } else {
-            movToRegFromCpu(DYN_EAX, offsetof(CPU, reg[op->rm].u16), DYN_16bit);
-        }        
-    }
-
-    if (width == DYN_32bit) {
-        movToCpuFromReg(offsetof(CPU, reg[op->reg].u32), DYN_EAX, DYN_32bit, true);
-    } else {
-        movToCpuFromReg(offsetof(CPU, reg[op->reg].u16), DYN_EAX, DYN_16bit, true);
-    }
-
-    outBuffer[pos] = (U8)(outBufferPos-pos-1);
-}
-
-void setCC(void* condition, DecodedOp* op, bool useAddress) {
-    if (useAddress)
-        calculateEaa( op, DYN_ADDRESS);
-    callHostFunction(NULL, condition, true, false, false, 1, 0, DYN_PARAM_CPU);
-
-    // test eax, eax
-    outb(0x85);
-    outb(0xc0);
-    
-    //setnz al
-    outb(0x0f);
-    outb(0x95);
-    outb(0xc0);
-
-    if (useAddress) {
-        movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_8bit, true, true);
-    } else {    
-        movToCpuFromReg( OFFSET_REG8(op->reg), DYN_CALL_RESULT, DYN_8bit, true);
     }
 }
 
@@ -1609,6 +1536,47 @@ void instCPU(char inst, U32 dstOffset, DynWidth regWidth) {
     }
 }
 
+void startIf(DynReg reg, DynCondition condition, bool doneWithReg) {
+    // test reg, reg
+    outb(0x85);
+    outb(0xc0 | reg | (reg << 3));
+
+    if (condition==DYN_NOT_EQUALS_ZERO) {
+        outb(0x74); // jz, jump over if not true
+    } else if (condition==DYN_EQUALS_ZERO) {
+        outb(0x75); // jnz, jump over not true
+    } else {
+        kpanic("x32CPU::startIf unknown condition %d", condition);
+    }
+
+    ifJump.push_back(outBufferPos);
+    outb(0); // jump over amount
+    if (doneWithReg)
+        regUsed[reg] = false;
+}
+
+void startElse() {    
+    outb(0xeb); // previous block should jump over else statement
+    U32 pos = outBufferPos;
+    outb(0); // jump over amount
+
+    // if statement will jump here if it wasn't true
+    endIf();
+
+    ifJump.push_back(pos);
+}
+
+void endIf() {
+    U32 pos = ifJump.back();
+    U32 amount = outBufferPos-pos-1;
+    if (amount>127) {
+        kpanic("x32CPU::endIf large if/else blocks not supported: %d", amount);
+    }
+    ifJump.pop_back();
+    outBuffer[pos] = (U8)(amount);
+}
+
+
 void incrementEip(U32 inc) {
     S32 d = (S32)inc;
     if (d>=-128 && d<=127) {
@@ -1626,8 +1594,11 @@ void incrementEip(U32 inc) {
 
 void blockDone() {
     // cpu->nextBlock = cpu->getNextBlock();
-    callHostFunction(NULL, common_getNextBlock, true, false, false, 1, 0, DYN_PARAM_CPU, false);
+    callHostFunction(common_getNextBlock, true, 1, 0, DYN_PARAM_CPU, false);
     movToCpuFromReg(offsetof(CPU, nextBlock), DYN_CALL_RESULT, DYN_32bit, true);
+    outb(0x5f); // pop edi
+    outb(0x5b); // pop ebx
+    outb(0xc3); // ret
 }
 
 static DecodedBlock* updateNext1(CPU* cpu) {
@@ -1668,7 +1639,7 @@ void blockNext1() {
     U32 pos = outBufferPos;
     outb(0);
     
-    callHostFunction(NULL, updateNext1, true, false, false, 1, 0, DYN_PARAM_CPU);
+    callHostFunction(updateNext1, true, 1, 0, DYN_PARAM_CPU);
 
     outBuffer[pos] = (U8)(outBufferPos-pos-1);
 
@@ -1714,7 +1685,7 @@ void blockNext2() {
     U32 pos = outBufferPos;
     outb(1);
     
-    callHostFunction(NULL, updateNext2, true, false, false, 1, 0, DYN_PARAM_CPU);
+    callHostFunction(updateNext2, true, 1, 0, DYN_PARAM_CPU);
 
     outBuffer[pos] = (U8)(outBufferPos-pos-1);
 
@@ -1731,7 +1702,7 @@ void x32_onExitSignal(CPU* cpu) {
 
 void OPCALL x32_callback(CPU* cpu, DecodedOp* op) {
     if (op->pfn == onExitSignal) {
-        callHostFunction(NULL, x32_onExitSignal, false, false, false, 1, 0, DYN_PARAM_CPU);
+        callHostFunction(x32_onExitSignal, false, 1, 0, DYN_PARAM_CPU);
     } else {
         kpanic("x32CPU::x32_callback unhandled callback");
     }
@@ -1810,10 +1781,13 @@ void OPCALL firstX32Op(CPU* cpu, DecodedOp* op) {
             memset(regUsed, 0, sizeof(regUsed));
 #ifndef __TEST
 #ifdef _DEBUG
-            callHostFunction(NULL, common_log, false, false, false, 2, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)o, DYN_PARAM_CONST_PTR, false);
+            callHostFunction(common_log, false, 2, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)o, DYN_PARAM_CONST_PTR, false);
 #endif
 #endif
-            x32Ops[o->inst](cpu, o);            
+            x32Ops[o->inst](cpu, o); 
+            if (ifJump.size()) {
+                kpanic("x32CPU::firstX32Op if statement was not closed in instruction: %d", op->inst);
+            }
             o = o->next;
         }
         outb(0x5f); // pop edi

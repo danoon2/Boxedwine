@@ -47,10 +47,14 @@ public class Jump extends Base {
         out(fos_init, "INIT_CPU(Jump"+name+", jump"+name+")");
 
         out(fos32, "void OPCALL dynamic_jump"+name+"(CPU* cpu, DecodedOp* op) {");
+        out(fos32, "    callHostFunction(common_condition_"+name.toLowerCase()+", true, 1, 0, DYN_PARAM_CPU, false);");
+        out(fos32, "    startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);");
         out(fos32, "    INCREMENT_EIP(op->len);");
-        out(fos32, "    callHostFunction(blockNext2, common_condition_"+name.toLowerCase()+", true, false, true, 1, 0, DYN_PARAM_CPU, false);");
-        out(fos32, "    INCREMENT_EIP(op->imm);");
+        out(fos32, "    blockNext2();");
+        out(fos32, "    startElse();");
+        out(fos32, "    INCREMENT_EIP(op->imm+op->len);");
         out(fos32, "    blockNext1();");
+        out(fos32, "    endIf();");
         out(fos32, "}");
     }
 }

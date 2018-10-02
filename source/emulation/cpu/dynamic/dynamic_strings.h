@@ -2,15 +2,15 @@
 void OPCALL dynamic_movsb_op(CPU* cpu, DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            callHostFunction(NULL, movsb16r, false, false, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction(movsb16r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         } else { 
-            callHostFunction(NULL, movsb16, false, false, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction(movsb16, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         }
     } else { 
         if (op->repZero || op->repNotZero) {
-            callHostFunction(NULL, movsb32r, false, false, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction(movsb32r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         } else { 
-            callHostFunction(NULL, movsb32, false, false, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction(movsb32, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         }
     }
     INCREMENT_EIP(op->len);
@@ -18,15 +18,15 @@ void OPCALL dynamic_movsb_op(CPU* cpu, DecodedOp* op) {
 void OPCALL dynamic_movsw_op(CPU* cpu, DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            callHostFunction(NULL, movsw16r, false, false, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction(movsw16r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         } else { 
-            callHostFunction(NULL, movsw16, false, false, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction(movsw16, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         }
     } else { 
         if (op->repZero || op->repNotZero) {
-            callHostFunction(NULL, movsw32r, false, false, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction(movsw32r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         } else { 
-            callHostFunction(NULL, movsw32, false, false, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction(movsw32, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         }
     }
     INCREMENT_EIP(op->len);
@@ -34,15 +34,15 @@ void OPCALL dynamic_movsw_op(CPU* cpu, DecodedOp* op) {
 void OPCALL dynamic_movsd_op(CPU* cpu, DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            callHostFunction(NULL, movsd16r, false, false, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction(movsd16r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         } else { 
-            callHostFunction(NULL, movsd16, false, false, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction(movsd16, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         }
     } else { 
         if (op->repZero || op->repNotZero) {
-            callHostFunction(NULL, movsd32r, false, false, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction(movsd32r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         } else { 
-            callHostFunction(NULL, movsd32, false, false, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction(movsd32, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         }
     }
     INCREMENT_EIP(op->len);
@@ -50,15 +50,15 @@ void OPCALL dynamic_movsd_op(CPU* cpu, DecodedOp* op) {
 void OPCALL dynamic_cmpsb_op(CPU* cpu, DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            callHostFunction(NULL, cmpsb16r, false, false, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction(cmpsb16r, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
         } else { 
-            callHostFunction(NULL, cmpsb16, false, false, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction(cmpsb16, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
         }
     } else { 
         if (op->repZero || op->repNotZero) {
-            callHostFunction(NULL, cmpsb32r, false, false, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction(cmpsb32r, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
         } else { 
-            callHostFunction(NULL, cmpsb32, false, false, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction(cmpsb32, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
         }
     }
     INCREMENT_EIP(op->len);
@@ -66,15 +66,15 @@ void OPCALL dynamic_cmpsb_op(CPU* cpu, DecodedOp* op) {
 void OPCALL dynamic_cmpsw_op(CPU* cpu, DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            callHostFunction(NULL, cmpsw16r, false, false, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction(cmpsw16r, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
         } else { 
-            callHostFunction(NULL, cmpsw16, false, false, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction(cmpsw16, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
         }
     } else { 
         if (op->repZero || op->repNotZero) {
-            callHostFunction(NULL, cmpsw32r, false, false, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction(cmpsw32r, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
         } else { 
-            callHostFunction(NULL, cmpsw32, false, false, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction(cmpsw32, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
         }
     }
     INCREMENT_EIP(op->len);
@@ -82,15 +82,15 @@ void OPCALL dynamic_cmpsw_op(CPU* cpu, DecodedOp* op) {
 void OPCALL dynamic_cmpsd_op(CPU* cpu, DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            callHostFunction(NULL, cmpsd16r, false, false, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction(cmpsd16r, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
         } else { 
-            callHostFunction(NULL, cmpsd16, false, false, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction(cmpsd16, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
         }
     } else { 
         if (op->repZero || op->repNotZero) {
-            callHostFunction(NULL, cmpsd32r, false, false, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction(cmpsd32r, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
         } else { 
-            callHostFunction(NULL, cmpsd32, false, false, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction(cmpsd32, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
         }
     }
     INCREMENT_EIP(op->len);
@@ -98,15 +98,15 @@ void OPCALL dynamic_cmpsd_op(CPU* cpu, DecodedOp* op) {
 void OPCALL dynamic_stosb_op(CPU* cpu, DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            callHostFunction(NULL, stosb16r, false, false, false, 1, 0, DYN_PARAM_CPU, false);
+            callHostFunction(stosb16r, false, 1, 0, DYN_PARAM_CPU, false);
         } else { 
-            callHostFunction(NULL, stosb16, false, false, false, 1, 0, DYN_PARAM_CPU, false);
+            callHostFunction(stosb16, false, 1, 0, DYN_PARAM_CPU, false);
         }
     } else { 
         if (op->repZero || op->repNotZero) {
-            callHostFunction(NULL, stosb32r, false, false, false, 1, 0, DYN_PARAM_CPU, false);
+            callHostFunction(stosb32r, false, 1, 0, DYN_PARAM_CPU, false);
         } else { 
-            callHostFunction(NULL, stosb32, false, false, false, 1, 0, DYN_PARAM_CPU, false);
+            callHostFunction(stosb32, false, 1, 0, DYN_PARAM_CPU, false);
         }
     }
     INCREMENT_EIP(op->len);
@@ -114,15 +114,15 @@ void OPCALL dynamic_stosb_op(CPU* cpu, DecodedOp* op) {
 void OPCALL dynamic_stosw_op(CPU* cpu, DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            callHostFunction(NULL, stosw16r, false, false, false, 1, 0, DYN_PARAM_CPU, false);
+            callHostFunction(stosw16r, false, 1, 0, DYN_PARAM_CPU, false);
         } else { 
-            callHostFunction(NULL, stosw16, false, false, false, 1, 0, DYN_PARAM_CPU, false);
+            callHostFunction(stosw16, false, 1, 0, DYN_PARAM_CPU, false);
         }
     } else { 
         if (op->repZero || op->repNotZero) {
-            callHostFunction(NULL, stosw32r, false, false, false, 1, 0, DYN_PARAM_CPU, false);
+            callHostFunction(stosw32r, false, 1, 0, DYN_PARAM_CPU, false);
         } else { 
-            callHostFunction(NULL, stosw32, false, false, false, 1, 0, DYN_PARAM_CPU, false);
+            callHostFunction(stosw32, false, 1, 0, DYN_PARAM_CPU, false);
         }
     }
     INCREMENT_EIP(op->len);
@@ -130,15 +130,15 @@ void OPCALL dynamic_stosw_op(CPU* cpu, DecodedOp* op) {
 void OPCALL dynamic_stosd_op(CPU* cpu, DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            callHostFunction(NULL, stosd16r, false, false, false, 1, 0, DYN_PARAM_CPU, false);
+            callHostFunction(stosd16r, false, 1, 0, DYN_PARAM_CPU, false);
         } else { 
-            callHostFunction(NULL, stosd16, false, false, false, 1, 0, DYN_PARAM_CPU, false);
+            callHostFunction(stosd16, false, 1, 0, DYN_PARAM_CPU, false);
         }
     } else { 
         if (op->repZero || op->repNotZero) {
-            callHostFunction(NULL, stosd32r, false, false, false, 1, 0, DYN_PARAM_CPU, false);
+            callHostFunction(stosd32r, false, 1, 0, DYN_PARAM_CPU, false);
         } else { 
-            callHostFunction(NULL, stosd32, false, false, false, 1, 0, DYN_PARAM_CPU, false);
+            callHostFunction(stosd32, false, 1, 0, DYN_PARAM_CPU, false);
         }
     }
     INCREMENT_EIP(op->len);
@@ -146,15 +146,15 @@ void OPCALL dynamic_stosd_op(CPU* cpu, DecodedOp* op) {
 void OPCALL dynamic_lodsb_op(CPU* cpu, DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            callHostFunction(NULL, lodsb16r, false, false, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction(lodsb16r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         } else { 
-            callHostFunction(NULL, lodsb16, false, false, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction(lodsb16, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         }
     } else { 
         if (op->repZero || op->repNotZero) {
-            callHostFunction(NULL, lodsb32r, false, false, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction(lodsb32r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         } else { 
-            callHostFunction(NULL, lodsb32, false, false, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction(lodsb32, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         }
     }
     INCREMENT_EIP(op->len);
@@ -162,15 +162,15 @@ void OPCALL dynamic_lodsb_op(CPU* cpu, DecodedOp* op) {
 void OPCALL dynamic_lodsw_op(CPU* cpu, DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            callHostFunction(NULL, lodsw16r, false, false, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction(lodsw16r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         } else { 
-            callHostFunction(NULL, lodsw16, false, false, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction(lodsw16, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         }
     } else { 
         if (op->repZero || op->repNotZero) {
-            callHostFunction(NULL, lodsw32r, false, false, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction(lodsw32r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         } else { 
-            callHostFunction(NULL, lodsw32, false, false, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction(lodsw32, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         }
     }
     INCREMENT_EIP(op->len);
@@ -178,15 +178,15 @@ void OPCALL dynamic_lodsw_op(CPU* cpu, DecodedOp* op) {
 void OPCALL dynamic_lodsd_op(CPU* cpu, DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            callHostFunction(NULL, lodsd16r, false, false, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction(lodsd16r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         } else { 
-            callHostFunction(NULL, lodsd16, false, false, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction(lodsd16, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         }
     } else { 
         if (op->repZero || op->repNotZero) {
-            callHostFunction(NULL, lodsd32r, false, false, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction(lodsd32r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         } else { 
-            callHostFunction(NULL, lodsd32, false, false, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction(lodsd32, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         }
     }
     INCREMENT_EIP(op->len);
@@ -194,15 +194,15 @@ void OPCALL dynamic_lodsd_op(CPU* cpu, DecodedOp* op) {
 void OPCALL dynamic_scasb_op(CPU* cpu, DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            callHostFunction(NULL, scasb16r, false, false, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
+            callHostFunction(scasb16r, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
         } else { 
-            callHostFunction(NULL, scasb16, false, false, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
+            callHostFunction(scasb16, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
         }
     } else { 
         if (op->repZero || op->repNotZero) {
-            callHostFunction(NULL, scasb32r, false, false, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
+            callHostFunction(scasb32r, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
         } else { 
-            callHostFunction(NULL, scasb32, false, false, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
+            callHostFunction(scasb32, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
         }
     }
     INCREMENT_EIP(op->len);
@@ -210,15 +210,15 @@ void OPCALL dynamic_scasb_op(CPU* cpu, DecodedOp* op) {
 void OPCALL dynamic_scasw_op(CPU* cpu, DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            callHostFunction(NULL, scasw16r, false, false, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
+            callHostFunction(scasw16r, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
         } else { 
-            callHostFunction(NULL, scasw16, false, false, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
+            callHostFunction(scasw16, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
         }
     } else { 
         if (op->repZero || op->repNotZero) {
-            callHostFunction(NULL, scasw32r, false, false, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
+            callHostFunction(scasw32r, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
         } else { 
-            callHostFunction(NULL, scasw32, false, false, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
+            callHostFunction(scasw32, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
         }
     }
     INCREMENT_EIP(op->len);
@@ -226,15 +226,15 @@ void OPCALL dynamic_scasw_op(CPU* cpu, DecodedOp* op) {
 void OPCALL dynamic_scasd_op(CPU* cpu, DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            callHostFunction(NULL, scasd16r, false, false, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
+            callHostFunction(scasd16r, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
         } else { 
-            callHostFunction(NULL, scasd16, false, false, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
+            callHostFunction(scasd16, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
         }
     } else { 
         if (op->repZero || op->repNotZero) {
-            callHostFunction(NULL, scasd32r, false, false, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
+            callHostFunction(scasd32r, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
         } else { 
-            callHostFunction(NULL, scasd32, false, false, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
+            callHostFunction(scasd32, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
         }
     }
     INCREMENT_EIP(op->len);

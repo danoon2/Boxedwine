@@ -162,7 +162,7 @@ public class Arith extends Base {
         if (x32LoadArg2.length()!=0) {
             out(fos32, "    " + x32LoadArg2);
         }
-        out(fos32, "    callHostFunction(NULL, common_dimul16, false, false, false, 4, 0, DYN_PARAM_CPU, false, "+x32Arg1+", "+x32Arg1Type+", "+(x32Arg1Type.contains("REG")?"true":"false")+", "+x32Arg2+", "+x32Arg2Type+", "+(x32Arg2Type.contains("REG")?"true":"false")+", op->reg, DYN_PARAM_CONST_32, false);");
+        out(fos32, "    callHostFunction(common_dimul16, false, 4, 0, DYN_PARAM_CPU, false, "+x32Arg1+", "+x32Arg1Type+", "+(x32Arg1Type.contains("REG")?"true":"false")+", "+x32Arg2+", "+x32Arg2Type+", "+(x32Arg2Type.contains("REG")?"true":"false")+", op->reg, DYN_PARAM_CONST_32, false);");
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
     }
@@ -181,7 +181,7 @@ public class Arith extends Base {
         if (x32LoadArg2.length()!=0) {
             out(fos32, "    " + x32LoadArg2);
         }
-        out(fos32, "    callHostFunction(NULL, common_dimul32, false, false, false, 4, 0, DYN_PARAM_CPU, false, "+x32Arg1+", "+x32Arg1Type+", "+(x32Arg1Type.contains("REG")?"true":"false")+", "+x32Arg2+", "+x32Arg2Type+", "+(x32Arg2Type.contains("REG")?"true":"false")+", op->reg, DYN_PARAM_CONST_32, false);");
+        out(fos32, "    callHostFunction(common_dimul32, false, 4, 0, DYN_PARAM_CPU, false, "+x32Arg1+", "+x32Arg1Type+", "+(x32Arg1Type.contains("REG")?"true":"false")+", "+x32Arg2+", "+x32Arg2Type+", "+(x32Arg2Type.contains("REG")?"true":"false")+", op->reg, DYN_PARAM_CONST_32, false);");
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
     }
@@ -198,7 +198,10 @@ public class Arith extends Base {
         if (x32Load.length()!=0) {
             out(fos32, "    "+x32Load);
         }
-        out(fos32, "    callHostFunction(blockDone, "+func+", true, false, true, 2, 0, DYN_PARAM_CPU, false, "+x32Arg+", "+x32ArgType+", "+(x32ArgType.contains("REG")?"true":"false")+");");
+        out(fos32, "    callHostFunction("+func+", true, 2, 0, DYN_PARAM_CPU, false, "+x32Arg+", "+x32ArgType+", "+(x32ArgType.contains("REG")?"true":"false")+");");
+        out(fos32, "    startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);");
+        out(fos32, "    blockDone();");
+        out(fos32, "    endIf();");
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
     }
@@ -247,7 +250,7 @@ public class Arith extends Base {
         if (x32Load.length()!=0) {
             out(fos32, "    "+x32Load);
         }
-        out(fos32, "    callHostFunction(NULL, "+(signed?"common_imul8":"common_mul8")+", false, false, false, 2, 0, DYN_PARAM_CPU, false, "+x32Arg+", "+x32ArgType+", "+(x32ArgType.contains("REG")?"true":"false")+");");
+        out(fos32, "    callHostFunction("+(signed?"common_imul8":"common_mul8")+", false, 2, 0, DYN_PARAM_CPU, false, "+x32Arg+", "+x32ArgType+", "+(x32ArgType.contains("REG")?"true":"false")+");");
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
     }
@@ -282,7 +285,7 @@ public class Arith extends Base {
         if (x32Load.length()!=0) {
             out(fos32, "    "+x32Load);
         }
-        out(fos32, "    callHostFunction(NULL, "+(signed?"common_imul16":"common_mul16")+", false, false, false, 2, 0, DYN_PARAM_CPU, false, "+x32Arg+", "+x32ArgType+", "+(x32ArgType.contains("REG")?"true":"false")+");");
+        out(fos32, "    callHostFunction("+(signed?"common_imul16":"common_mul16")+", false, 2, 0, DYN_PARAM_CPU, false, "+x32Arg+", "+x32ArgType+", "+(x32ArgType.contains("REG")?"true":"false")+");");
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
     }
@@ -317,7 +320,7 @@ public class Arith extends Base {
         if (x32Load.length()!=0) {
             out(fos32, "    "+x32Load);
         }
-        out(fos32, "    callHostFunction(NULL, "+(signed?"common_imul32":"common_mul32")+", false, false, false, 2, 0, DYN_PARAM_CPU, false, "+x32Arg+", "+x32ArgType+", "+(x32ArgType.contains("REG")?"true":"false")+");");
+        out(fos32, "    callHostFunction("+(signed?"common_imul32":"common_mul32")+", false, 2, 0, DYN_PARAM_CPU, false, "+x32Arg+", "+x32ArgType+", "+(x32ArgType.contains("REG")?"true":"false")+");");
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
     }
@@ -344,16 +347,25 @@ public class Arith extends Base {
     public String arithDynRR(String op, boolean result, boolean cf, boolean flags, String bits, String name) {
         String dyn;
         if (result) {
-            dyn =    "    if (!op->needsToSetFlags()) {\r\n"+
-                    "        movToRegFromCpu(DYN_SRC, "+offsetof(bits, "op->rm")+", DYN_"+bits+"bit);\r\n";
-            if (cf) {
-                if (!bits.equals("32")) {
-                    dyn += "        movToRegFromReg(DYN_CALL_RESULT, DYN_" + bits + "bit, DYN_CALL_RESULT, DYN_32bit, false);\r\n";
+            dyn =    "    if (!op->needsToSetFlags()) {\r\n";
+            if ((op=="^" || op=="-") && !cf) {
+                dyn+="        if (op->rm==op->reg) {\r\n";
+                dyn+="            movToCpu("+ offsetof(bits, "op->reg") +", DYN_"+bits+"bit, 0);\r\n";
+                dyn+="        } else {\r\n";
+                dyn += "            movToRegFromCpu(DYN_SRC, " + offsetof(bits, "op->rm") + ", DYN_" + bits + "bit);\r\n";
+                dyn += "            instCPUReg('" + op + "', " + offsetof(bits, "op->reg") + ", DYN_SRC, DYN_" + bits + "bit, true);\r\n";
+                dyn+="        }\r\n";
+            } else {
+                dyn += "        movToRegFromCpu(DYN_SRC, " + offsetof(bits, "op->rm") + ", DYN_" + bits + "bit);\r\n";
+                if (cf) {
+                    if (!bits.equals("32")) {
+                        dyn += "        movToRegFromReg(DYN_CALL_RESULT, DYN_" + bits + "bit, DYN_CALL_RESULT, DYN_32bit, false);\r\n";
+                    }
+                    dyn += "        instRegReg('+', DYN_SRC, DYN_CALL_RESULT, DYN_" + bits + "bit, true);\r\n";
                 }
-                dyn+=  "        instRegReg('+', DYN_SRC, DYN_CALL_RESULT, DYN_" + bits + "bit, true);\r\n";
+                dyn += "        instCPUReg('" + op + "', " + offsetof(bits, "op->reg") + ", DYN_SRC, DYN_" + bits + "bit, true);\r\n";
             }
-            dyn+=    "        instCPUReg('" + op + "', "+offsetof(bits, "op->reg")+", DYN_SRC, DYN_"+bits+"bit, true);\r\n"+
-                    "    } else {\r\n"+
+            dyn+=   "    } else {\r\n"+
                     "        movToCpuFromCpu(CPU_OFFSET_OF(src.u"+bits+"), "+offsetof(bits, "op->rm")+", DYN_"+bits+"bit, DYN_SRC, false);\r\n"+
                     "        movToCpuFromCpu(CPU_OFFSET_OF(dst.u"+bits+"), "+offsetof(bits, "op->reg")+", DYN_"+bits+"bit, DYN_DEST, false);\r\n"+
                     "        instRegReg('" + op + "', DYN_DEST, DYN_SRC, DYN_"+bits+"bit, true);\r\n";
@@ -781,7 +793,7 @@ public class Arith extends Base {
         }
 
         if (cf) {
-            out(fos32, "    callHostFunction(NULL, common_getCF, true, false, false, 1, 0, DYN_PARAM_CPU, false);");
+            out(fos32, "    callHostFunction(common_getCF, true, 1, 0, DYN_PARAM_CPU, false);");
             out(fos32, "    movToCpuFromReg(CPU_OFFSET_OF(oldCF), DYN_CALL_RESULT, DYN_32bit, false);");
         }
         out(fos32, x32withFlags);

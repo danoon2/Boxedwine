@@ -56,12 +56,25 @@ public class SetCC extends Base {
         out(fos_init, "INIT_CPU(Set"+name+"_E8, set"+name+"_mem)");
 
         out(fos32, "void OPCALL dynamic_set"+name+"_reg(CPU* cpu, DecodedOp* op) {");
-        out(fos32, "    setCC(common_condition_"+name.toLowerCase()+", op);");
+        out(fos32, "    callHostFunction(common_condition_"+name.toLowerCase()+", true, 1, 0, DYN_PARAM_CPU, false);");
+        out(fos32, "    startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);");
+        out(fos32, "    movToCpu(OFFSET_REG8(op->reg), DYN_8bit, 1);");
+        out(fos32, "    startElse();");
+        out(fos32, "    movToCpu(OFFSET_REG8(op->reg), DYN_8bit, 0);");
+        out(fos32, "    endIf();");
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
 
         out(fos32, "void OPCALL dynamic_set"+name+"_mem(CPU* cpu, DecodedOp* op) {");
-        out(fos32, "    setCC(common_condition_"+name.toLowerCase()+", op, true);");
+        out(fos32, "    callHostFunction(common_condition_"+name.toLowerCase()+", true, 1, 0, DYN_PARAM_CPU, false);");
+        out(fos32, "    calculateEaa(op, DYN_ADDRESS);");
+        out(fos32, "    startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);");
+        out(fos32, "    movToReg(DYN_SRC, DYN_8bit, 1);");
+        out(fos32, "    startElse();");
+        out(fos32, "    movToReg(DYN_SRC, DYN_8bit, 0);");
+        out(fos32, "    endIf();");
+        // don't put this movToMem in the if statement because it is big and will be inlines once in each block of the if statement
+        out(fos32, "    movToMemFromReg(DYN_ADDRESS, DYN_SRC, DYN_8bit, true, true);");
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
     }

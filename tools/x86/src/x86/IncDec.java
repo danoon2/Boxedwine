@@ -60,7 +60,7 @@ public class IncDec extends Base {
         out(fos_init, "INIT_CPU("+enumName+", "+name+")");
 
         out(fos32, "void OPCALL dynamic_"+name+"(CPU* cpu, DecodedOp* op) {");
-        out(fos32, "    callHostFunction(NULL, common_getCF, true, false, false, 1, 0, DYN_PARAM_CPU, false);");
+        out(fos32, "    callHostFunction(common_getCF, true, 1, 0, DYN_PARAM_CPU, false);");
         out(fos32, "    movToCpuFromReg(CPU_OFFSET_OF(oldCF), DYN_CALL_RESULT, DYN_32bit, true);");
         if (eaa) {
             out(fos32, "    calculateEaa(op, DYN_ADDRESS);");

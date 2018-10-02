@@ -158,9 +158,9 @@ public class Xchg extends Base {
         out(fos32, "void OPCALL dynamic_"+functionName+"(CPU* cpu, DecodedOp* op) {");
         if (address) {
             out(fos32, "    calculateEaa(op, DYN_ADDRESS);");
-            out(fos32, "    callHostFunction(NULL, common_" + functionName + ", false, false, false, 3, 0, DYN_PARAM_CPU, false, DYN_ADDRESS, DYN_PARAM_REG_32, true, op->reg, DYN_PARAM_CONST_32, false);");
+            out(fos32, "    callHostFunction(common_" + functionName + ", false, 3, 0, DYN_PARAM_CPU, false, DYN_ADDRESS, DYN_PARAM_REG_32, true, op->reg, DYN_PARAM_CONST_32, false);");
         } else {
-            out(fos32, "    callHostFunction(NULL, common_" + functionName + ", false, false, false, 3, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false, op->rm, DYN_PARAM_CONST_32, false);");
+            out(fos32, "    callHostFunction(common_" + functionName + ", false, 3, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false, op->rm, DYN_PARAM_CONST_32, false);");
         }
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
@@ -197,9 +197,9 @@ public class Xchg extends Base {
         out(fos32, "void OPCALL dynamic_"+functionName+"(CPU* cpu, DecodedOp* op) {");
         if (address) {
             out(fos32, "    calculateEaa(op, DYN_ADDRESS);");
-            out(fos32, "    callHostFunction(NULL, common_" + functionName + ", false, false, false, 3, 0, DYN_PARAM_CPU, false, DYN_ADDRESS, DYN_PARAM_REG_32, true, op->reg, DYN_PARAM_CONST_32, false);");
+            out(fos32, "    callHostFunction(common_" + functionName + ", false, 3, 0, DYN_PARAM_CPU, false, DYN_ADDRESS, DYN_PARAM_REG_32, true, op->reg, DYN_PARAM_CONST_32, false);");
         } else {
-            out(fos32, "    callHostFunction(NULL, common_" + functionName + ", false, false, false, 3, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false, op->rm, DYN_PARAM_CONST_32, false);");
+            out(fos32, "    callHostFunction(common_" + functionName + ", false, 3, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false, op->rm, DYN_PARAM_CONST_32, false);");
         }
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");

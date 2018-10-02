@@ -75,11 +75,17 @@ void OPCALL dynamic_move16s16(CPU* cpu, DecodedOp* op) {
 void OPCALL dynamic_movs16e16(CPU* cpu, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
     movFromMem(DYN_16bit, DYN_ADDRESS, true);
-    callHostFunction(blockDone, common_setSegment, true, false, true, 3, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false, DYN_CALL_RESULT, DYN_PARAM_REG_16, true);
+    callHostFunction(common_setSegment, true, 3, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false, DYN_CALL_RESULT, DYN_PARAM_REG_16, true);
+    startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
+    blockDone();
+    endIf();
     INCREMENT_EIP(op->len);
 }
 void OPCALL dynamic_movs16r16(CPU* cpu, DecodedOp* op) {
-    callHostFunction(blockDone, common_setSegment, true, false, true, 3, 0, DYN_PARAM_CPU, false, op->rm, DYN_PARAM_CONST_32, false, CPU_OFFSET_OF(reg[op->reg].u16), DYN_PARAM_CPU_ADDRESS_16, false);
+    callHostFunction(common_setSegment, true, 3, 0, DYN_PARAM_CPU, false, op->rm, DYN_PARAM_CONST_32, false, CPU_OFFSET_OF(reg[op->reg].u16), DYN_PARAM_CPU_ADDRESS_16, false);
+    startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
+    blockDone();
+    endIf();
     INCREMENT_EIP(op->len);
 }
 void OPCALL dynamic_movAlOb(CPU* cpu, DecodedOp* op) {
