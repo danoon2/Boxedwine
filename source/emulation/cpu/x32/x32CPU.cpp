@@ -1502,6 +1502,27 @@ void instMemReg(char inst, DynReg addressReg, DynReg rm, DynWidth regWidth, bool
 
 // inst can be +, |, -, &, ^
 void instRegReg(char inst, DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) {
+    if (inst == '<' || inst == '>' || inst == ')') {
+        U8 group;
+        if (inst == '<')
+            group = 0xe0;
+        else if (inst == '>')
+            group = 0xe8;
+        else if (inst == ')')
+            group = 0xf8;
+
+        if (regWidth==DYN_32bit) {
+            outb(0xd3);
+        } else if (regWidth==DYN_16bit) {
+            outb(0x66);
+            outb(0xd3);
+        } if (regWidth==DYN_8bit) {
+            outb(0xd2);
+        }
+        outb(group | reg);
+        return;
+    }
+
     U8 i=0;
     switch (inst) {
         case '+':
