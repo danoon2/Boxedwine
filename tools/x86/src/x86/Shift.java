@@ -23,54 +23,54 @@ public class Shift extends Base {
             out(fos_h, "#include \"../common/cpu.h\"");
             out(fos_op, "#include \"normal_shift.h\"");
             
-            shiftInst8(fos_c, fos_h, fos_op, fos_init, fos32, "rol8", false, "1", "3", rol8, 0, 0, false);
-            shiftInst8(fos_c, fos_h, fos_op, fos_init, fos32, "rol8cl", true, "4", "4", rol8, 7, 0, true);
-            shiftInst16(fos_c, fos_h, fos_op, fos_init, fos32, "rol16", false, "1", "3", rol16, 0, 0, false);
-            shiftInst16(fos_c, fos_h, fos_op, fos_init, fos32, "rol16cl", true, "4", "4", rol16, 0xf, 0, true);
-            shiftInst32(fos_c, fos_h, fos_op, fos_init, fos32, "rol32", false, "1", "3", rol32, 0, 0, false);
-            shiftInst32(fos_c, fos_h, fos_op, fos_init, fos32, "rol32cl", true, "4", "4", rol32, 0, 0, true);
+            shiftInst8(fos_c, fos_h, fos_op, fos_init, fos32, "rol8", false, "1", "3", rol8, 0, 0, false, rol8_reg, rol8_mem);
+            shiftInst8(fos_c, fos_h, fos_op, fos_init, fos32, "rol8cl", true, "4", "4", rol8, 7, 0, true, "", "");
+            shiftInst16(fos_c, fos_h, fos_op, fos_init, fos32, "rol16", false, "1", "3", rol16, 0, 0, false, rol16_reg, rol16_mem);
+            shiftInst16(fos_c, fos_h, fos_op, fos_init, fos32, "rol16cl", true, "4", "4", rol16, 0xf, 0, true, "", "");
+            shiftInst32(fos_c, fos_h, fos_op, fos_init, fos32, "rol32", false, "1", "3", rol32, 0, 0, false, rol32_reg, rol32_mem);
+            shiftInst32(fos_c, fos_h, fos_op, fos_init, fos32, "rol32cl", true, "4", "4", rol32, 0, 0, true, "", "");
 
-            shiftInst8(fos_c, fos_h, fos_op, fos_init, fos32, "ror8", false, "1", "3", ror8, 0, 0, false);
-            shiftInst8(fos_c, fos_h, fos_op, fos_init, fos32, "ror8cl", true, "4", "4", ror8, 7, 0, true);
-            shiftInst16(fos_c, fos_h, fos_op, fos_init, fos32, "ror16", false, "1", "3", ror16, 0, 0, false);
-            shiftInst16(fos_c, fos_h, fos_op, fos_init, fos32, "ror16cl", true, "4", "4", ror16, 0xf, 0, true);
-            shiftInst32(fos_c, fos_h, fos_op, fos_init, fos32, "ror32", false, "1", "3", ror32, 0, 0, false);
-            shiftInst32(fos_c, fos_h, fos_op, fos_init, fos32, "ror32cl", true, "4", "4", ror32, 0, 0, true);
+            shiftInst8(fos_c, fos_h, fos_op, fos_init, fos32, "ror8", false, "1", "3", ror8, 0, 0, false, ror8_reg, ror8_mem);
+            shiftInst8(fos_c, fos_h, fos_op, fos_init, fos32, "ror8cl", true, "4", "4", ror8, 7, 0, true, "", "");
+            shiftInst16(fos_c, fos_h, fos_op, fos_init, fos32, "ror16", false, "1", "3", ror16, 0, 0, false, ror16_reg, ror16_mem);
+            shiftInst16(fos_c, fos_h, fos_op, fos_init, fos32, "ror16cl", true, "4", "4", ror16, 0xf, 0, true, "", "");
+            shiftInst32(fos_c, fos_h, fos_op, fos_init, fos32, "ror32", false, "1", "3", ror32, 0, 0, false, ror32_reg, ror32_mem);
+            shiftInst32(fos_c, fos_h, fos_op, fos_init, fos32, "ror32cl", true, "4", "4", ror32, 0, 0, true, "", "");
 
-            shiftInst8(fos_c, fos_h, fos_op, fos_init, fos32, "rcl8", false, "8", "10", rcl8, 0, 0, false);
-            shiftInst8(fos_c, fos_h, fos_op, fos_init, fos32, "rcl8cl", true, "7", "9", rcl8, 0, 9, true);
-            shiftInst16(fos_c, fos_h, fos_op, fos_init, fos32, "rcl16", false, "8", "10", rcl16, 0, 0, false);
-            shiftInst16(fos_c, fos_h, fos_op, fos_init, fos32, "rcl16cl", true, "7", "9", rcl16, 0, 17, true);
-            shiftInst32(fos_c, fos_h, fos_op, fos_init, fos32, "rcl32", false, "8", "10", rcl32, 0, 0, false);
-            shiftInst32(fos_c, fos_h, fos_op, fos_init, fos32, "rcl32cl", true, "7", "9", rcl32, 0, 0, true);
+            shiftInst8(fos_c, fos_h, fos_op, fos_init, fos32, "rcl8", false, "8", "10", rcl8, 0, 0, false, "", "");
+            shiftInst8(fos_c, fos_h, fos_op, fos_init, fos32, "rcl8cl", true, "7", "9", rcl8, 0, 9, true, "", "");
+            shiftInst16(fos_c, fos_h, fos_op, fos_init, fos32, "rcl16", false, "8", "10", rcl16, 0, 0, false, "", "");
+            shiftInst16(fos_c, fos_h, fos_op, fos_init, fos32, "rcl16cl", true, "7", "9", rcl16, 0, 17, true, "", "");
+            shiftInst32(fos_c, fos_h, fos_op, fos_init, fos32, "rcl32", false, "8", "10", rcl32, 0, 0, false, "", "");
+            shiftInst32(fos_c, fos_h, fos_op, fos_init, fos32, "rcl32cl", true, "7", "9", rcl32, 0, 0, true, "", "");
 
-            shiftInst8(fos_c, fos_h, fos_op, fos_init, fos32, "rcr8", false, "8", "10", rcr8, 0, 0, false);
-            shiftInst8(fos_c, fos_h, fos_op, fos_init, fos32, "rcr8cl", true, "7", "9", rcr8, 0, 9, true);
-            shiftInst16(fos_c, fos_h, fos_op, fos_init, fos32, "rcr16", false, "8", "10", rcr16, 0, 0, false);
-            shiftInst16(fos_c, fos_h, fos_op, fos_init, fos32, "rcr16cl", true, "7", "9", rcr16, 0, 17, true);
-            shiftInst32(fos_c, fos_h, fos_op, fos_init, fos32, "rcr32", false, "8", "10", rcr32, 0, 0, false);
-            shiftInst32(fos_c, fos_h, fos_op, fos_init, fos32, "rcr32cl", true, "7", "9", rcr32, 0, 0, true);
+            shiftInst8(fos_c, fos_h, fos_op, fos_init, fos32, "rcr8", false, "8", "10", rcr8, 0, 0, false, "", "");
+            shiftInst8(fos_c, fos_h, fos_op, fos_init, fos32, "rcr8cl", true, "7", "9", rcr8, 0, 9, true, "", "");
+            shiftInst16(fos_c, fos_h, fos_op, fos_init, fos32, "rcr16", false, "8", "10", rcr16, 0, 0, false, "", "");
+            shiftInst16(fos_c, fos_h, fos_op, fos_init, fos32, "rcr16cl", true, "7", "9", rcr16, 0, 17, true, "", "");
+            shiftInst32(fos_c, fos_h, fos_op, fos_init, fos32, "rcr32", false, "8", "10", rcr32, 0, 0, false, "", "");
+            shiftInst32(fos_c, fos_h, fos_op, fos_init, fos32, "rcr32cl", true, "7", "9", rcr32, 0, 0, true, "", "");
 
-            shiftInst8(fos_c, fos_h, fos_op, fos_init, fos32, "shl8", false, "1", "3", shl8, 0, 0, false);
-            shiftInst8(fos_c, fos_h, fos_op, fos_init, fos32, "shl8cl", true, "4", "4", shl8, 0, 0, true);
-            shiftInst16(fos_c, fos_h, fos_op, fos_init, fos32, "shl16", false, "1", "3", shl16, 0, 0, false);
-            shiftInst16(fos_c, fos_h, fos_op, fos_init, fos32, "shl16cl", true, "4", "4", shl16, 0, 0, true);
-            shiftInst32(fos_c, fos_h, fos_op, fos_init, fos32, "shl32", false, "1", "3", shl32, 0, 0, false);
-            shiftInst32(fos_c, fos_h, fos_op, fos_init, fos32, "shl32cl", true, "4", "4", shl32, 0, 0, true);
+            shiftInst8(fos_c, fos_h, fos_op, fos_init, fos32, "shl8", false, "1", "3", shl8, 0, 0, false, shl8_reg, shl8_mem);
+            shiftInst8(fos_c, fos_h, fos_op, fos_init, fos32, "shl8cl", true, "4", "4", shl8, 0, 0, true, shl8_reg_cl, shl8_mem_cl);
+            shiftInst16(fos_c, fos_h, fos_op, fos_init, fos32, "shl16", false, "1", "3", shl16, 0, 0, false, shl16_reg, shl16_mem);
+            shiftInst16(fos_c, fos_h, fos_op, fos_init, fos32, "shl16cl", true, "4", "4", shl16, 0, 0, true, shl16_reg_cl, shl16_mem_cl);
+            shiftInst32(fos_c, fos_h, fos_op, fos_init, fos32, "shl32", false, "1", "3", shl32, 0, 0, false, shl32_reg, shl32_mem);
+            shiftInst32(fos_c, fos_h, fos_op, fos_init, fos32, "shl32cl", true, "4", "4", shl32, 0, 0, true, shl32_reg_cl, shl32_mem_cl);
 
-            shiftInst8(fos_c, fos_h, fos_op, fos_init, fos32, "shr8", false, "1", "3", shr8, 0, 0, false);
-            shiftInst8(fos_c, fos_h, fos_op, fos_init, fos32, "shr8cl", true, "4", "4", shr8, 0, 0, true);
-            shiftInst16(fos_c, fos_h, fos_op, fos_init, fos32, "shr16", false, "1", "3", shr16, 0, 0, false);
-            shiftInst16(fos_c, fos_h, fos_op, fos_init, fos32, "shr16cl", true, "4", "4", shr16, 0, 0, true);
-            shiftInst32(fos_c, fos_h, fos_op, fos_init, fos32, "shr32", false, "1", "3", shr32, 0, 0, false);
-            shiftInst32(fos_c, fos_h, fos_op, fos_init, fos32, "shr32cl", true, "4", "4", shr32, 0, 0, true);
+            shiftInst8(fos_c, fos_h, fos_op, fos_init, fos32, "shr8", false, "1", "3", shr8, 0, 0, false, shr8_reg, shr8_mem);
+            shiftInst8(fos_c, fos_h, fos_op, fos_init, fos32, "shr8cl", true, "4", "4", shr8, 0, 0, true, shr8_reg_cl, shr8_mem_cl);
+            shiftInst16(fos_c, fos_h, fos_op, fos_init, fos32, "shr16", false, "1", "3", shr16, 0, 0, false, shr16_reg, shr16_mem);
+            shiftInst16(fos_c, fos_h, fos_op, fos_init, fos32, "shr16cl", true, "4", "4", shr16, 0, 0, true, shr16_reg_cl, shr16_mem_cl);
+            shiftInst32(fos_c, fos_h, fos_op, fos_init, fos32, "shr32", false, "1", "3", shr32, 0, 0, false, shr32_reg, shr32_mem);
+            shiftInst32(fos_c, fos_h, fos_op, fos_init, fos32, "shr32cl", true, "4", "4", shr32, 0, 0, true, shr32_reg_cl, shr32_mem_cl);
 
-            shiftInst8(fos_c, fos_h, fos_op, fos_init, fos32, "sar8", false, "1", "3", sar8, 0, 0, false);
-            shiftInst8(fos_c, fos_h, fos_op, fos_init, fos32, "sar8cl", true, "4", "4", sar8, 0, 0, true);
-            shiftInst16(fos_c, fos_h, fos_op, fos_init, fos32, "sar16", false, "1", "3", sar16, 0, 0, false);
-            shiftInst16(fos_c, fos_h, fos_op, fos_init, fos32, "sar16cl", true, "4", "4", sar16, 0, 0, true);
-            shiftInst32(fos_c, fos_h, fos_op, fos_init, fos32, "sar32", false, "1", "3", sar32, 0, 0, false);
-            shiftInst32(fos_c, fos_h, fos_op, fos_init, fos32, "sar32cl", true, "4", "4", sar32, 0, 0, true);
+            shiftInst8(fos_c, fos_h, fos_op, fos_init, fos32, "sar8", false, "1", "3", sar8, 0, 0, false, sar8_reg, sar8_mem);
+            shiftInst8(fos_c, fos_h, fos_op, fos_init, fos32, "sar8cl", true, "4", "4", sar8, 0, 0, true, sar8_reg_cl, sar8_mem_cl);
+            shiftInst16(fos_c, fos_h, fos_op, fos_init, fos32, "sar16", false, "1", "3", sar16, 0, 0, false, sar16_reg, sar16_mem);
+            shiftInst16(fos_c, fos_h, fos_op, fos_init, fos32, "sar16cl", true, "4", "4", sar16, 0, 0, true, sar16_reg_cl, sar8_mem_cl);
+            shiftInst32(fos_c, fos_h, fos_op, fos_init, fos32, "sar32", false, "1", "3", sar32, 0, 0, false, sar32_reg, sar32_mem);
+            shiftInst32(fos_c, fos_h, fos_op, fos_init, fos32, "sar32cl", true, "4", "4", sar32, 0, 0, true, sar32_reg_cl, sar32_mem_cl);
 
             dshift(fos_op, fos_init, fos32, "dshlr16r16", "dshlr16r16", "DshlR16R16", false, false);
             dshift(fos_op, fos_init, fos32, "dshle16r16", "dshle16r16", "DshlE16R16", true, false);
@@ -143,11 +143,101 @@ public class Shift extends Base {
     }
 
     static public String rol8 = "cpu->fillFlagsNoCFOF();\r\n    result = (var1 << var2) | (var1 >> (8 - var2));\r\n    cpu->setCF(result & 1);\r\n    cpu->setOF((result & 1) ^ (result >> 7));";
+    static public String rol8_mem =
+            "        movFromMem(DYN_8bit, DYN_ADDRESS, false);\r\n" +
+            "        movToRegFromReg(DYN_DEST, DYN_8bit, DYN_CALL_RESULT, DYN_8bit, false);\r\n" +
+            "        instRegImm('>', DYN_CALL_RESULT, DYN_8bit, 8-op->imm);\r\n" +
+            "        instRegImm('<', DYN_DEST, DYN_8bit, op->imm);\r\n" +
+            "        instRegReg('|', DYN_DEST, DYN_CALL_RESULT, DYN_8bit, true);\r\n" +
+            "        movToMemFromReg(DYN_ADDRESS, DYN_DEST, DYN_8bit, true, true);";
+    static public String rol8_reg =
+            "        movToRegFromCpu(DYN_SRC, OFFSET_REG8(op->reg), DYN_8bit);\r\n" +
+            "        movToRegFromReg(DYN_DEST, DYN_8bit, DYN_SRC, DYN_8bit, false);\r\n" +
+            "        instRegImm('>', DYN_SRC, DYN_8bit, 8-op->imm);\r\n" +
+            "        instRegImm('<', DYN_DEST, DYN_8bit, op->imm);\r\n" +
+            "        instRegReg('|', DYN_DEST, DYN_SRC, DYN_8bit, true);\r\n" +
+            "        movToCpuFromReg(OFFSET_REG8(op->reg), DYN_DEST, DYN_8bit, true);";
+
     static public String rol16 = "cpu->fillFlagsNoCFOF();\r\n    result = (var1 << var2) | (var1 >> (16 - var2));\r\n    cpu->setCF(result & 1);\r\n    cpu->setOF((result & 1) ^ (result >> 15));";
+    static public String rol16_mem =
+            "        movFromMem(DYN_16bit, DYN_ADDRESS, false);\r\n" +
+            "        movToRegFromReg(DYN_DEST, DYN_16bit, DYN_CALL_RESULT, DYN_16bit, false);\r\n" +
+            "        instRegImm('>', DYN_CALL_RESULT, DYN_16bit, 16-op->imm);\r\n" +
+            "        instRegImm('<', DYN_DEST, DYN_16bit, op->imm);\r\n" +
+            "        instRegReg('|', DYN_DEST, DYN_CALL_RESULT, DYN_16bit, true);\r\n" +
+            "        movToMemFromReg(DYN_ADDRESS, DYN_DEST, DYN_16bit, true, true);";
+    static public String rol16_reg =
+            "        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[op->reg].u16), DYN_16bit);\r\n" +
+            "        movToRegFromReg(DYN_DEST, DYN_16bit, DYN_SRC, DYN_16bit, false);\r\n" +
+            "        instRegImm('>', DYN_SRC, DYN_16bit, 16-op->imm);\r\n" +
+            "        instRegImm('<', DYN_DEST, DYN_16bit, op->imm);\r\n" +
+            "        instRegReg('|', DYN_DEST, DYN_SRC, DYN_16bit, true);\r\n" +
+            "        movToCpuFromReg(CPU_OFFSET_OF(reg[op->reg].u16), DYN_DEST, DYN_16bit, true);";
+
     static public String rol32 = "cpu->fillFlagsNoCFOF();\r\n    result = (var1 << var2) | (var1 >> (32 - var2));\r\n    cpu->setCF(result & 1);\r\n    cpu->setOF((result & 1) ^ (result >> 31));";
+    static public String rol32_mem =
+            "        movFromMem(DYN_32bit, DYN_ADDRESS, false);\r\n" +
+            "        movToRegFromReg(DYN_DEST, DYN_32bit, DYN_CALL_RESULT, DYN_32bit, false);\r\n" +
+            "        instRegImm('>', DYN_CALL_RESULT, DYN_32bit, 32-op->imm);\r\n" +
+            "        instRegImm('<', DYN_DEST, DYN_32bit, op->imm);\r\n" +
+            "        instRegReg('|', DYN_DEST, DYN_CALL_RESULT, DYN_32bit, true);\r\n" +
+            "        movToMemFromReg(DYN_ADDRESS, DYN_DEST, DYN_32bit, true, true);";
+    static public String rol32_reg =
+            "        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit);\r\n" +
+            "        movToRegFromReg(DYN_DEST, DYN_32bit, DYN_SRC, DYN_32bit, false);\r\n" +
+            "        instRegImm('>', DYN_SRC, DYN_32bit, 32-op->imm);\r\n" +
+            "        instRegImm('<', DYN_DEST, DYN_32bit, op->imm);\r\n" +
+            "        instRegReg('|', DYN_DEST, DYN_SRC, DYN_32bit, true);\r\n" +
+            "        movToCpuFromReg(CPU_OFFSET_OF(reg[op->reg].u32), DYN_DEST, DYN_32bit, true);";
+
     static public String ror8 = "cpu->fillFlagsNoCFOF();\r\n    result = (var1 >> var2) | (var1 << (8 - var2));\r\n    cpu->setCF(result & 0x80);\r\n    cpu->setOF((result ^ (result<<1)) & 0x80);";
+    static public String ror8_mem =
+            "        movFromMem(DYN_8bit, DYN_ADDRESS, false);\r\n" +
+            "        movToRegFromReg(DYN_DEST, DYN_8bit, DYN_CALL_RESULT, DYN_8bit, false);\r\n" +
+            "        instRegImm('<', DYN_CALL_RESULT, DYN_8bit, 8-op->imm);\r\n" +
+            "        instRegImm('>', DYN_DEST, DYN_8bit, op->imm);\r\n" +
+            "        instRegReg('|', DYN_DEST, DYN_CALL_RESULT, DYN_8bit, true);\r\n" +
+            "        movToMemFromReg(DYN_ADDRESS, DYN_DEST, DYN_8bit, true, true);";
+    static public String ror8_reg =
+            "        movToRegFromCpu(DYN_SRC, OFFSET_REG8(op->reg), DYN_8bit);\r\n" +
+            "        movToRegFromReg(DYN_DEST, DYN_8bit, DYN_SRC, DYN_8bit, false);\r\n" +
+            "        instRegImm('<', DYN_SRC, DYN_8bit, 8-op->imm);\r\n" +
+            "        instRegImm('>', DYN_DEST, DYN_8bit, op->imm);\r\n" +
+            "        instRegReg('|', DYN_DEST, DYN_SRC, DYN_8bit, true);\r\n" +
+            "        movToCpuFromReg(OFFSET_REG8(op->reg), DYN_DEST, DYN_8bit, true);";
+
     static public String ror16 = "cpu->fillFlagsNoCFOF();\r\n    result = (var1 >> var2) | (var1 << (16 - var2));\r\n    cpu->setCF(result & 0x8000);\r\n    cpu->setOF((result ^ (result<<1)) & 0x8000);";
+    static public String ror16_mem =
+            "        movFromMem(DYN_16bit, DYN_ADDRESS, false);\r\n" +
+            "        movToRegFromReg(DYN_DEST, DYN_16bit, DYN_CALL_RESULT, DYN_16bit, false);\r\n" +
+            "        instRegImm('<', DYN_CALL_RESULT, DYN_16bit, 16-op->imm);\r\n" +
+            "        instRegImm('>', DYN_DEST, DYN_16bit, op->imm);\r\n" +
+            "        instRegReg('|', DYN_DEST, DYN_CALL_RESULT, DYN_16bit, true);\r\n" +
+            "        movToMemFromReg(DYN_ADDRESS, DYN_DEST, DYN_16bit, true, true);";
+    static public String ror16_reg =
+            "        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[op->reg].u16), DYN_16bit);\r\n" +
+            "        movToRegFromReg(DYN_DEST, DYN_16bit, DYN_SRC, DYN_16bit, false);\r\n" +
+            "        instRegImm('<', DYN_SRC, DYN_16bit, 16-op->imm);\r\n" +
+            "        instRegImm('>', DYN_DEST, DYN_16bit, op->imm);\r\n" +
+            "        instRegReg('|', DYN_DEST, DYN_SRC, DYN_16bit, true);\r\n" +
+            "        movToCpuFromReg(CPU_OFFSET_OF(reg[op->reg].u16), DYN_DEST, DYN_16bit, true);";
+
     static public String ror32 = "cpu->fillFlagsNoCFOF();\r\n    result = (var1 >> var2) | (var1 << (32 - var2));\r\n    cpu->setCF(result & 0x80000000);\r\n    cpu->setOF((result ^ (result<<1)) & 0x80000000);";
+    static public String ror32_mem =
+            "        movFromMem(DYN_32bit, DYN_ADDRESS, false);\r\n" +
+            "        movToRegFromReg(DYN_DEST, DYN_32bit, DYN_CALL_RESULT, DYN_32bit, false);\r\n" +
+            "        instRegImm('<', DYN_CALL_RESULT, DYN_32bit, 32-op->imm);\r\n" +
+            "        instRegImm('>', DYN_DEST, DYN_32bit, op->imm);\r\n" +
+            "        instRegReg('|', DYN_DEST, DYN_CALL_RESULT, DYN_32bit, true);\r\n" +
+            "        movToMemFromReg(DYN_ADDRESS, DYN_DEST, DYN_32bit, true, true);";
+    static public String ror32_reg =
+            "        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit);\r\n" +
+            "        movToRegFromReg(DYN_DEST, DYN_32bit, DYN_SRC, DYN_32bit, false);\r\n" +
+            "        instRegImm('<', DYN_SRC, DYN_32bit, 32-op->imm);\r\n" +
+            "        instRegImm('>', DYN_DEST, DYN_32bit, op->imm);\r\n" +
+            "        instRegReg('|', DYN_DEST, DYN_SRC, DYN_32bit, true);\r\n" +
+            "        movToCpuFromReg(CPU_OFFSET_OF(reg[op->reg].u32), DYN_DEST, DYN_32bit, true);";
+
     static public String rcl8 = "cpu->fillFlagsNoOF();\r\n    result = (var1 << var2) | ((cpu->flags & CF) << (var2-1)) | (var1 >> (9-var2));\r\n    cpu->setCF(((var1 >> (8-var2)) & 1));\r\n    cpu->setOF((cpu->flags & CF) ^ (result >> 7));";
     static public String rcl16 = "cpu->fillFlagsNoOF();\r\n    result = (var1 << var2) | ((cpu->flags & CF) << (var2-1)) | (var1 >> (17-var2));\r\n    cpu->setCF(((var1 >> (16-var2)) & 1));\r\n    cpu->setOF((cpu->flags & CF) ^ (result >> 15));";
     static public String rcl32 = "cpu->fillFlagsNoOF();\r\n    if (var2==1) {\r\n        result = (var1 << var2) | (cpu->flags & CF);\r\n    } else {\r\n        result = (var1 << var2) | ((cpu->flags & CF) << (var2-1)) | (var1 >> (33-var2));\r\n    }\r\n    cpu->setCF(((var1 >> (32-var2)) & 1));\r\n    cpu->setOF((cpu->flags & CF) ^ (result >> 31));";
@@ -155,31 +245,111 @@ public class Shift extends Base {
     static public String rcr16 = "cpu->fillFlagsNoOF();\r\n    result = (var1 >> var2) | ((cpu->flags & CF) << (16-var2)) | (var1 << (17-var2));\r\n    cpu->setCF((var1 >> (var2 - 1)) & 1);\r\n    cpu->setOF((result ^ (result<<1)) & 0x8000);";
     static public String rcr32 = "cpu->fillFlagsNoOF();\r\n    if (var2==1) {\r\n        result = (var1 >> var2) | ((cpu->flags & CF) << 31);\r\n    } else {\r\n        result = (var1 >> var2) | ((cpu->flags & CF) << (32-var2)) | (var1 << (33-var2));\r\n    }\r\n    cpu->setCF((var1 >> (var2 - 1)) & 1);\r\n    cpu->setOF((result ^ (result<<1)) & 0x80000000);";
     static public String shl8 = "result = var1 << var2;\r\n    cpu->lazyFlags = FLAGS_SHL8;\r\n    cpu->result.u8 = result;\r\n    cpu->src.u8=var2;\r\n    cpu->dst.u8 = var1;";
+    static public String shl8_mem = "        instMemImm('<', DYN_ADDRESS, DYN_8bit, op->imm, true);";
+    static public String shl8_reg = "        instCPUImm('<', OFFSET_REG8(op->reg), DYN_8bit, op->imm);";
+    static public String shl8_reg_cl =
+            "        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[1].u8), DYN_8bit);\r\n" +
+            "        instCPUReg('<', OFFSET_REG8(op->reg), DYN_SRC, DYN_8bit, true);";
+    static public String shl8_mem_cl =
+            "        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[1].u8), DYN_8bit);\r\n"+
+            "        instMemReg('<', DYN_ADDRESS, DYN_SRC, DYN_8bit, true, true);";
+
     static public String shl16 = "result = var1 << var2;\r\n    cpu->lazyFlags = FLAGS_SHL16;\r\n    cpu->result.u16 = result;\r\n    cpu->src.u16=var2;\r\n    cpu->dst.u16 = var1;";
+    static public String shl16_mem = "        instMemImm('<', DYN_ADDRESS, DYN_16bit, op->imm, true);";
+    static public String shl16_reg = "        instCPUImm('<', CPU_OFFSET_OF(reg[op->reg].u16), DYN_16bit, op->imm);";
+    static public String shl16_reg_cl =
+            "        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[1].u8), DYN_8bit);\r\n" +
+            "        instCPUReg('<', CPU_OFFSET_OF(reg[op->reg].u16), DYN_SRC, DYN_16bit, true);";
+    static public String shl16_mem_cl =
+            "        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[1].u8), DYN_8bit);\r\n"+
+            "        instMemReg('<', DYN_ADDRESS, DYN_SRC, DYN_16bit, true, true);";
+
     static public String shl32 = "result = var1 << var2;\r\n    cpu->lazyFlags = FLAGS_SHL32;\r\n    cpu->result.u32 = result;\r\n    cpu->src.u32=var2;\r\n    cpu->dst.u32 = var1;";
+    static public String shl32_mem = "        instMemImm('<', DYN_ADDRESS, DYN_32bit, op->imm, true);";
+    static public String shl32_reg = "        instCPUImm('<', CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit, op->imm);";
+    static public String shl32_reg_cl =
+            "        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[1].u8), DYN_8bit);\r\n" +
+            "        instCPUReg('<', CPU_OFFSET_OF(reg[op->reg].u32), DYN_SRC, DYN_32bit, true);";
+    static public String shl32_mem_cl =
+            "        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[1].u8), DYN_8bit);\r\n"+
+            "        instMemReg('<', DYN_ADDRESS, DYN_SRC, DYN_32bit, true, true);";
+
     static public String shr8 = "result = var1 >> var2;\r\n    cpu->lazyFlags = FLAGS_SHR8;\r\n    cpu->result.u8 = result;\r\n    cpu->src.u8=var2;\r\n    cpu->dst.u8 = var1;";
+    static public String shr8_mem = "        instMemImm('>', DYN_ADDRESS, DYN_8bit, op->imm, true);";
+    static public String shr8_reg = "        instCPUImm('>', OFFSET_REG8(op->reg), DYN_8bit, op->imm);";
+    static public String shr8_reg_cl =
+            "        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[1].u8), DYN_8bit);\r\n" +
+            "        instCPUReg('>', OFFSET_REG8(op->reg), DYN_SRC, DYN_8bit, true);";
+    static public String shr8_mem_cl =
+            "        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[1].u8), DYN_8bit);\r\n"+
+            "        instMemReg('>', DYN_ADDRESS, DYN_SRC, DYN_8bit, true, true);";
+
     static public String shr16 = "result = var1 >> var2;\r\n    cpu->lazyFlags = FLAGS_SHR16;\r\n    cpu->result.u16 = result;\r\n    cpu->src.u16=var2;\r\n    cpu->dst.u16 = var1;";
+    static public String shr16_mem = "        instMemImm('>', DYN_ADDRESS, DYN_16bit, op->imm, true);";
+    static public String shr16_reg = "        instCPUImm('>', CPU_OFFSET_OF(reg[op->reg].u16), DYN_16bit, op->imm);";
+    static public String shr16_reg_cl =
+            "        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[1].u8), DYN_8bit);\r\n" +
+            "        instCPUReg('>', CPU_OFFSET_OF(reg[op->reg].u16), DYN_SRC, DYN_16bit, true);";
+    static public String shr16_mem_cl =
+            "        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[1].u8), DYN_8bit);\r\n"+
+            "        instMemReg('>', DYN_ADDRESS, DYN_SRC, DYN_16bit, true, true);";
+
     static public String shr32 = "result = var1 >> var2;\r\n    cpu->lazyFlags = FLAGS_SHR32;\r\n    cpu->result.u32 = result;\r\n    cpu->src.u32=var2;\r\n    cpu->dst.u32 = var1;";
+    static public String shr32_mem = "        instMemImm('>', DYN_ADDRESS, DYN_32bit, op->imm, true);";
+    static public String shr32_reg = "        instCPUImm('>', CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit, op->imm);";
+    static public String shr32_reg_cl =
+            "        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[1].u8), DYN_8bit);\r\n" +
+            "        instCPUReg('>', CPU_OFFSET_OF(reg[op->reg].u32), DYN_SRC, DYN_32bit, true);";
+    static public String shr32_mem_cl =
+            "        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[1].u8), DYN_8bit);\r\n"+
+            "        instMemReg('>', DYN_ADDRESS, DYN_SRC, DYN_32bit, true, true);";
+
     static public String sar8 = "result = (S8)var1 >> var2;\r\n    cpu->lazyFlags = FLAGS_SAR8;\r\n    cpu->result.u8 = result;\r\n    cpu->src.u8=var2;\r\n    cpu->dst.u8 = var1;";
+    static public String sar8_mem = "        instMemImm(')', DYN_ADDRESS, DYN_8bit, op->imm, true);";
+    static public String sar8_reg = "        instCPUImm(')', OFFSET_REG8(op->reg), DYN_8bit, op->imm);";
+    static public String sar8_reg_cl =
+            "        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[1].u8), DYN_8bit);\r\n" +
+            "        instCPUReg(')', OFFSET_REG8(op->reg), DYN_SRC, DYN_8bit, true);";
+    static public String sar8_mem_cl =
+            "        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[1].u8), DYN_8bit);\r\n"+
+            "        instMemReg(')', DYN_ADDRESS, DYN_SRC, DYN_8bit, true, true);";
+
     static public String sar16 = "result = (S16)var1 >> var2;\r\n    cpu->lazyFlags = FLAGS_SAR16;\r\n    cpu->result.u16 = result;\r\n    cpu->src.u16=var2;\r\n    cpu->dst.u16 = var1;";
+    static public String sar16_mem = "        instMemImm(')', DYN_ADDRESS, DYN_16bit, op->imm, true);";
+    static public String sar16_reg = "        instCPUImm(')', CPU_OFFSET_OF(reg[op->reg].u16), DYN_16bit, op->imm);";
+    static public String sar16_reg_cl =
+            "        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[1].u8), DYN_8bit);\r\n" +
+            "        instCPUReg(')', CPU_OFFSET_OF(reg[op->reg].u16), DYN_SRC, DYN_16bit, true);";
+    static public String sar16_mem_cl =
+            "        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[1].u8), DYN_8bit);\r\n"+
+            "        instMemReg(')', DYN_ADDRESS, DYN_SRC, DYN_16bit, true, true);";
+
     static public String sar32 = "result = (S32)var1 >> var2;\r\n    cpu->lazyFlags = FLAGS_SAR32;\r\n    cpu->result.u32 = result;\r\n    cpu->src.u32=var2;\r\n    cpu->dst.u32 = var1;";
+    static public String sar32_mem = "        instMemImm(')', DYN_ADDRESS, DYN_32bit, op->imm, true);";
+    static public String sar32_reg = "        instCPUImm(')', CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit, op->imm);";
+    static public String sar32_reg_cl =
+            "        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[1].u8), DYN_8bit);\r\n" +
+            "        instCPUReg(')', CPU_OFFSET_OF(reg[op->reg].u32), DYN_SRC, DYN_32bit, true);";
+    static public String sar32_mem_cl =
+            "        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[1].u8), DYN_8bit);\r\n"+
+            "        instMemReg(')', DYN_ADDRESS, DYN_SRC, DYN_32bit, true, true);";
 
-    public void shiftInst8(FileOutputStream fos, FileOutputStream fos_h, FileOutputStream fos_op, FileOutputStream fos_init, FileOutputStream fos32, String name, boolean cl, String rcycles, String mcycles, String inst, int mask, int mod, boolean checkForZero) throws IOException {
-        shiftBase(fos, fos_h, fos_op, fos_init, fos32, name+"_reg", false, "8", cl, "*cpu->reg8[reg]", "*cpu->reg8[reg] = ", "", rcycles, inst, mask, mod, checkForZero);
-        shiftBase(fos, fos_h, fos_op, fos_init, fos32, name+"_mem", true, "8", cl, "readb(eaa)", "writeb(eaa, ", ")", mcycles, inst, mask, mod, checkForZero);
+    public void shiftInst8(FileOutputStream fos, FileOutputStream fos_h, FileOutputStream fos_op, FileOutputStream fos_init, FileOutputStream fos32, String name, boolean cl, String rcycles, String mcycles, String inst, int mask, int mod, boolean checkForZero, String dynReg, String dynMem) throws IOException {
+        shiftBase(fos, fos_h, fos_op, fos_init, fos32, name+"_reg", false, "8", cl, "*cpu->reg8[reg]", "*cpu->reg8[reg] = ", "", rcycles, inst, mask, mod, checkForZero, dynReg);
+        shiftBase(fos, fos_h, fos_op, fos_init, fos32, name+"_mem", true, "8", cl, "readb(eaa)", "writeb(eaa, ", ")", mcycles, inst, mask, mod, checkForZero, dynMem);
     }
 
-    public void shiftInst16(FileOutputStream fos, FileOutputStream fos_h, FileOutputStream fos_op, FileOutputStream fos_init, FileOutputStream fos32, String name, boolean cl, String rcycles, String mcycles, String inst, int mask, int mod, boolean checkForZero) throws IOException {
-        shiftBase(fos, fos_h, fos_op, fos_init, fos32, name+"_reg", false, "16", cl, "cpu->reg[reg].u16", "cpu->reg[reg].u16 = ", "", rcycles, inst, mask, mod, checkForZero);
-        shiftBase(fos, fos_h, fos_op, fos_init, fos32, name+"_mem", true, "16", cl, "readw(eaa)", "writew(eaa, ", ")", mcycles, inst, mask, mod, checkForZero);
+    public void shiftInst16(FileOutputStream fos, FileOutputStream fos_h, FileOutputStream fos_op, FileOutputStream fos_init, FileOutputStream fos32, String name, boolean cl, String rcycles, String mcycles, String inst, int mask, int mod, boolean checkForZero, String dynReg, String dynMem) throws IOException {
+        shiftBase(fos, fos_h, fos_op, fos_init, fos32, name+"_reg", false, "16", cl, "cpu->reg[reg].u16", "cpu->reg[reg].u16 = ", "", rcycles, inst, mask, mod, checkForZero, dynReg);
+        shiftBase(fos, fos_h, fos_op, fos_init, fos32, name+"_mem", true, "16", cl, "readw(eaa)", "writew(eaa, ", ")", mcycles, inst, mask, mod, checkForZero, dynMem);
     }
 
-    public void shiftInst32(FileOutputStream fos, FileOutputStream fos_h, FileOutputStream fos_op, FileOutputStream fos_init, FileOutputStream fos32, String name, boolean cl, String rcycles, String mcycles, String inst, int mask, int mod, boolean checkForZero) throws IOException {
-        shiftBase(fos, fos_h, fos_op, fos_init, fos32, name+"_reg", false, "32", cl, "cpu->reg[reg].u32", "cpu->reg[reg].u32 = ", "", rcycles, inst, mask, mod, checkForZero);
-        shiftBase(fos, fos_h, fos_op, fos_init, fos32, name+"_mem", true, "32", cl, "readd(eaa)", "writed(eaa, ", ")", mcycles, inst, mask, mod, checkForZero);
+    public void shiftInst32(FileOutputStream fos, FileOutputStream fos_h, FileOutputStream fos_op, FileOutputStream fos_init, FileOutputStream fos32, String name, boolean cl, String rcycles, String mcycles, String inst, int mask, int mod, boolean checkForZero, String dynReg, String dynMem) throws IOException {
+        shiftBase(fos, fos_h, fos_op, fos_init, fos32, name+"_reg", false, "32", cl, "cpu->reg[reg].u32", "cpu->reg[reg].u32 = ", "", rcycles, inst, mask, mod, checkForZero, dynReg);
+        shiftBase(fos, fos_h, fos_op, fos_init, fos32, name+"_mem", true, "32", cl, "readd(eaa)", "writed(eaa, ", ")", mcycles, inst, mask, mod, checkForZero, dynMem);
     }
 
-    public void shiftBase(FileOutputStream fos, FileOutputStream fos_h, FileOutputStream fos_op, FileOutputStream fos_init, FileOutputStream fos32, String name, boolean eaa, String bits, boolean useCL, String source, String destSave1, String destSave2, String cycles, String inst, int mask, int mod, boolean checkForZero) throws IOException {
+    public void shiftBase(FileOutputStream fos, FileOutputStream fos_h, FileOutputStream fos_op, FileOutputStream fos_init, FileOutputStream fos32, String name, boolean eaa, String bits, boolean useCL, String source, String destSave1, String destSave2, String cycles, String inst, int mask, int mod, boolean checkForZero, String dyn) throws IOException {
         if (fos_h!=null) {
             if (eaa)
                 out(fos_h, "void " + name + "(CPU* cpu, U32 eaa, U32 var2);");
@@ -201,6 +371,15 @@ public class Shift extends Base {
             String param;
             String paramType;
 
+            if (dyn.length()>0) {
+                out(fos32, "    if (!op->needsToSetFlags()) {");
+                if (eaa)
+                    out(fos32, "        calculateEaa(op, DYN_ADDRESS);");
+                out(fos32, dyn);
+                out(fos32, "        INCREMENT_EIP(op->len);");
+                out(fos32, "        return;");
+                out(fos32, "    }");
+            }
             if (useCL) {
                 // reg = CL & 0x1F;
                 out(fos32, "    movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[1].u8), DYN_8bit);");
@@ -215,13 +394,13 @@ public class Shift extends Base {
             }
             if (eaa) {
                 out(fos32, "    calculateEaa(op, DYN_ADDRESS);");
-                out(fos32, "    callHostFunction(" + name + ", false, 3, 0, DYN_PARAM_CPU, false, DYN_ADDRESS, DYN_PARAM_REG_32, true, "+param+", "+paramType+", "+(useCL?"true":"false")+");");
+                out(fos32, "    callHostFunction(" + name + ", false, 3, 0, DYN_PARAM_CPU, false, DYN_ADDRESS, DYN_PARAM_REG_32, true, " + param + ", " + paramType + ", " + (useCL ? "true" : "false") + ");");
             } else {
-                out(fos32, "    callHostFunction(" + name + ", false, 3, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false, "+param+", "+paramType+", "+(useCL?"true":"false")+");");
+                out(fos32, "    callHostFunction(" + name + ", false, 3, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false, " + param + ", " + paramType + ", " + (useCL ? "true" : "false") + ");");
             }
-            out(fos32, "    INCREMENT_EIP(op->len);");
-            out(fos32, "}");
         }
+        out(fos32, "    INCREMENT_EIP(op->len);");
+        out(fos32, "}");
 
         if (eaa)
             out(fos, "void " + name + "(CPU* cpu, U32 eaa, U32 var2) {");

@@ -1179,8 +1179,49 @@ void callHostFunction(void* address, bool hasReturn, U32 argCount, U32 arg1, Dyn
     }
 }
 
-// inst can be +, |, - , &, ^
+// inst can be +, |, - , &, ^, <, >, )
 void instRegImm(U32 inst, DynReg reg, DynWidth regWidth, U32 imm) {
+    if (inst == '<' || inst == '>' || inst == ')') {
+        U8 group;
+        if (inst == '<')
+            group = 0xe0;
+        else if (inst == '>')
+            group = 0xe8;
+        else if (inst == ')')
+            group = 0xf8;
+
+        if (regWidth==DYN_32bit) {
+            if (imm==1) {
+                outb(0xd1);
+                outb(group+reg);
+            } else {
+                outb(0xc1);
+                outb(group+reg);
+                outb((U8)imm);
+            }
+        } else if (regWidth==DYN_16bit) {
+            outb(0x66);
+            if (imm==1) {
+                outb(0xd1);
+                outb(group+reg);
+            } else {
+                outb(0xc1);
+                outb(group+reg);
+                outb((U8)imm);
+            }
+        } if (regWidth==DYN_8bit) {
+            if (imm==1) {
+                outb(0xd0);
+                outb(group+reg);
+            } else {
+                outb(0xc0);
+                outb(group+reg);
+                outb((U8)imm);
+            }
+        }
+        return;
+    }
+
     S32 s = (S32)imm;
     bool oneByte = s>=-128 && s<=127;
 
@@ -1232,6 +1273,35 @@ void instRegImm(U32 inst, DynReg reg, DynWidth regWidth, U32 imm) {
     }
 }
 void instCPUReg(char inst, U32 dstOffset, DynReg rm, DynWidth regWidth, bool doneWithRmReg) {
+    if (dstOffset>127)
+        kpanic("x32CPU::instCPUReg register offset expected to be less than 128: %d", dstOffset);
+
+    if (inst == '<' || inst == '>' || inst == ')') {
+        U8 group;
+        if (inst == '<')
+            group = 0x67;
+        else if (inst == '>')
+            group = 0x6f;
+        else if (inst == ')')
+            group = 0x7f;
+
+        if (regWidth==DYN_32bit) {
+            outb(0xd3);
+            outb(group);
+            outb((U8)dstOffset);
+        } else if (regWidth==DYN_16bit) {
+            outb(0x66);
+            outb(0xd3);
+            outb(group);
+            outb((U8)dstOffset);
+        } if (regWidth==DYN_8bit) {
+            outb(0xd2);
+            outb(group);
+            outb((U8)dstOffset);
+        }
+        return;
+    }
+
     U8 i=0;
     switch (inst) {
         case '+':
@@ -1266,15 +1336,63 @@ void instCPUReg(char inst, U32 dstOffset, DynReg rm, DynWidth regWidth, bool don
         outb(0x47 | rm << 3);
     } else {
         kpanic("unknown regWidth in x32CPU::instCPUReg + %d", regWidth);
-    }
-    if (dstOffset>127)
-        kpanic("x32CPU::instCPUReg register offset expected to be less than 128: %d", dstOffset);
+    }    
     outb((U8)dstOffset);
     if (doneWithRmReg) {
         regUsed[rm] = false;
     }
 }
 void instCPUImm(char inst, U32 dstOffset, DynWidth regWidth, U32 imm) {
+    if (dstOffset>127)
+        kpanic("x32CPU::instCPUImm register offset expected to be less than 128: %d", dstOffset);
+
+    if (inst == '<' || inst == '>' || inst == ')') {
+        U8 group;
+        if (inst == '<')
+            group = 0x67;
+        else if (inst == '>')
+            group = 0x6f;
+        else if (inst == ')')
+            group = 0x7f;
+
+        if (regWidth==DYN_32bit) {
+            if (imm==1) {
+                outb(0xd1);
+                outb(group);
+                outb((U8)dstOffset);
+            } else {
+                outb(0xc1);
+                outb(group);
+                outb((U8)dstOffset);
+                outb((U8)imm);
+            }
+        } else if (regWidth==DYN_16bit) {
+            outb(0x66);
+            if (imm==1) {
+                outb(0xd1);
+                outb(group);
+                outb((U8)dstOffset);
+            } else {
+                outb(0xc1);
+                outb(group);
+                outb((U8)dstOffset);
+                outb((U8)imm);
+            }
+        } if (regWidth==DYN_8bit) {
+            if (imm==1) {
+                outb(0xd0);
+                outb(group);
+                outb((U8)dstOffset);
+            } else {
+                outb(0xc0);
+                outb(group);
+                outb((U8)dstOffset);
+                outb((U8)imm);
+            }
+        }
+        return;
+    }
+
     S32 s = (S32)imm;
     bool oneByte = s>=-128 && s<=127;
 
@@ -1327,9 +1445,7 @@ void instCPUImm(char inst, U32 dstOffset, DynWidth regWidth, U32 imm) {
         outb((U8)imm);
     } else {
         kpanic("unknown regWidth in x32CPU::instCPUImm + %d", regWidth);
-    }
-    if (dstOffset>127)
-        kpanic("x32CPU::instCPUImm register offset expected to be less than 128: %d", dstOffset);
+    }    
 }
 
 void instMemImm(char inst, DynReg addressReg, DynWidth regWidth, U32 imm, bool doneWithAddressReg) {
