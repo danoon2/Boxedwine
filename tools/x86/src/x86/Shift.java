@@ -123,7 +123,7 @@ public class Shift extends Base {
 
         out(fos_init, "INIT_CPU("+ename+", "+name+")");
 
-        out(fos32, "void OPCALL dynamic_"+name+"(CPU* cpu, DecodedOp* op) {");
+        out(fos32, "void dynamic_"+name+"(DynamicData* data, DecodedOp* op) {");
         if (eaa) {
             out(fos32, "    calculateEaa(op, DYN_ADDRESS);");
             if (cl) {
@@ -367,7 +367,7 @@ public class Shift extends Base {
             out(fos_op, "    NEXT();");
             out(fos_op, "}");
 
-            out(fos32, "void OPCALL dynamic_"+name+"_op(CPU* cpu, DecodedOp* op) {");
+            out(fos32, "void dynamic_"+name+"_op(DynamicData* data, DecodedOp* op) {");
             String param;
             String paramType;
 

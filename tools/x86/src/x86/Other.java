@@ -190,7 +190,7 @@ public class Other extends Base {
 
         out(fos_init, "INIT_CPU(Bound" + bits + ", bound" + bits + ")");
 
-        out(fos32, "void OPCALL dynamic_bound"+bits+"(CPU* cpu, DecodedOp* op) {");
+        out(fos32, "void dynamic_bound"+bits+"(DynamicData* data, DecodedOp* op) {");
         out(fos32, "    calculateEaa(op, DYN_ADDRESS);");
         out(fos32, "    callHostFunction(common_bound"+bits+", true, 3, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false, DYN_ADDRESS, DYN_PARAM_REG_32, true);");
         out(fos32, "    startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);");
@@ -215,7 +215,7 @@ public class Other extends Base {
         out(fos_init, "INIT_CPU("+ename+", "+name+")");
         
         if (x32.length()>0) {
-            out(fos32, "void OPCALL dynamic_"+name+"(CPU* cpu, DecodedOp* op) {");
+            out(fos32, "void dynamic_"+name+"(DynamicData* data, DecodedOp* op) {");
             out(fos32, "    "+x32);
             if (x32Eip) {
                 out(fos32, "    INCREMENT_EIP(op->len);");
@@ -240,7 +240,7 @@ public class Other extends Base {
 
         out(fos_init, "INIT_CPU("+ename+", "+name+")");
 
-        out(fos32, "void OPCALL dynamic_"+name+"(CPU* cpu, DecodedOp* op) {");
+        out(fos32, "void dynamic_"+name+"(DynamicData* data, DecodedOp* op) {");
         out(fos32, "    calculateEaa(op, DYN_ADDRESS);");
         out(fos32, "    movFromMem(DYN_"+bits+"bit, DYN_ADDRESS, false);");
         out(fos32, "    movToRegFromReg(DYN_DEST, DYN_"+bits+"bit, DYN_CALL_RESULT, DYN_"+bits+"bit, true);");

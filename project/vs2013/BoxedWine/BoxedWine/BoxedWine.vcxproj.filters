@@ -663,6 +663,9 @@
     <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_xchg.h">
       <Filter>source\emulation\cpu\dynamic</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic.h">
+      <Filter>source\emulation\cpu\dynamic</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">

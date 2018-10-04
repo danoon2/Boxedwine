@@ -55,7 +55,7 @@ public class SetCC extends Base {
         out(fos_init, "INIT_CPU(Set"+name+"_R8, set"+name+"_reg)");
         out(fos_init, "INIT_CPU(Set"+name+"_E8, set"+name+"_mem)");
 
-        out(fos32, "void OPCALL dynamic_set"+name+"_reg(CPU* cpu, DecodedOp* op) {");
+        out(fos32, "void dynamic_set"+name+"_reg(DynamicData* data, DecodedOp* op) {");
         out(fos32, "    callHostFunction(common_condition_"+name.toLowerCase()+", true, 1, 0, DYN_PARAM_CPU, false);");
         out(fos32, "    startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);");
         out(fos32, "    movToCpu(OFFSET_REG8(op->reg), DYN_8bit, 1);");
@@ -65,7 +65,7 @@ public class SetCC extends Base {
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
 
-        out(fos32, "void OPCALL dynamic_set"+name+"_mem(CPU* cpu, DecodedOp* op) {");
+        out(fos32, "void dynamic_set"+name+"_mem(DynamicData* data, DecodedOp* op) {");
         out(fos32, "    callHostFunction(common_condition_"+name.toLowerCase()+", true, 1, 0, DYN_PARAM_CPU, false);");
         out(fos32, "    calculateEaa(op, DYN_ADDRESS);");
         out(fos32, "    startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);");

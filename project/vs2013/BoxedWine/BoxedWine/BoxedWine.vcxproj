@@ -422,6 +422,7 @@
     <ClInclude Include="..\..\..\..\source\emulation\cpu\common\cpu_init_mmx.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\common\fpu.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\common\lazyFlags.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_arith.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_bit.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_conditions.h" />

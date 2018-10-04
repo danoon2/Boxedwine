@@ -157,7 +157,7 @@ public class Arith extends Base {
 
         out(fos_init, "INIT_CPU("+ename+", "+name+")");
 
-        out(fos32, "void OPCALL dynamic_"+name+"(CPU* cpu, DecodedOp* op) {");
+        out(fos32, "void dynamic_"+name+"(DynamicData* data, DecodedOp* op) {");
         out(fos32, "    "+x32LoadArg1);
         if (x32LoadArg2.length()!=0) {
             out(fos32, "    " + x32LoadArg2);
@@ -176,7 +176,7 @@ public class Arith extends Base {
 
         out(fos_init, "INIT_CPU("+ename+", "+name+")");
 
-        out(fos32, "void OPCALL dynamic_"+name+"(CPU* cpu, DecodedOp* op) {");
+        out(fos32, "void dynamic_"+name+"(DynamicData* data, DecodedOp* op) {");
         out(fos32, "    "+x32LoadArg1);
         if (x32LoadArg2.length()!=0) {
             out(fos32, "    " + x32LoadArg2);
@@ -194,7 +194,7 @@ public class Arith extends Base {
 
         out(fos_init, "INIT_CPU("+ename+", "+name+")");
 
-        out(fos32, "void OPCALL dynamic_"+name+"(CPU* cpu, DecodedOp* op) {");
+        out(fos32, "void dynamic_"+name+"(DynamicData* data, DecodedOp* op) {");
         if (x32Load.length()!=0) {
             out(fos32, "    "+x32Load);
         }
@@ -246,7 +246,7 @@ public class Arith extends Base {
         }
         out(fos_init, "INIT_CPU(" + mixed + ", " + name + ")");
 
-        out(fos32, "void OPCALL dynamic_"+name+"(CPU* cpu, DecodedOp* op) {");
+        out(fos32, "void dynamic_"+name+"(DynamicData* data, DecodedOp* op) {");
         if (x32Load.length()!=0) {
             out(fos32, "    "+x32Load);
         }
@@ -281,7 +281,7 @@ public class Arith extends Base {
         }
         out(fos_init, "INIT_CPU(" + mixed + ", " + name + ")");
 
-        out(fos32, "void OPCALL dynamic_"+name+"(CPU* cpu, DecodedOp* op) {");
+        out(fos32, "void dynamic_"+name+"(DynamicData* data, DecodedOp* op) {");
         if (x32Load.length()!=0) {
             out(fos32, "    "+x32Load);
         }
@@ -316,7 +316,7 @@ public class Arith extends Base {
         }
         out(fos_init, "INIT_CPU(" + mixed + ", " + name + ")");
 
-        out(fos32, "void OPCALL dynamic_"+name+"(CPU* cpu, DecodedOp* op) {");
+        out(fos32, "void dynamic_"+name+"(DynamicData* data, DecodedOp* op) {");
         if (x32Load.length()!=0) {
             out(fos32, "    "+x32Load);
         }
@@ -793,7 +793,7 @@ public class Arith extends Base {
 
         out(fos_init, "INIT_CPU("+enumName+", "+functionName+")");
 
-        out(fos32, "void OPCALL dynamic_"+functionName+"(CPU* cpu, DecodedOp* op) {");
+        out(fos32, "void dynamic_"+functionName+"(DynamicData* data, DecodedOp* op) {");
         if (result && flags && x32noFlags.length()!=0) {
             out(fos32, "    if (op->needsToSetFlags() {");
         }

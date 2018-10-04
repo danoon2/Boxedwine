@@ -103,7 +103,7 @@ public class Strings extends Base {
         String mixed = name.substring(0, 1).toUpperCase() + name.substring(1);
         out(fos_init, "INIT_CPU("+mixed+", "+name+"_op)");
 
-        out(fos32, "void OPCALL dynamic_"+name+"_op(CPU* cpu, DecodedOp* op) {");
+        out(fos32, "void dynamic_"+name+"_op(DynamicData* data, DecodedOp* op) {");
         out(fos32, "    if (op->ea16) {");
         out(fos32, "        if (op->repZero || op->repNotZero) {");
         out(fos32, "            callHostFunction("+name+"16r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);");
@@ -185,7 +185,7 @@ public class Strings extends Base {
         String mixed = name.substring(0, 1).toUpperCase() + name.substring(1);
         out(fos_init, "INIT_CPU("+mixed+", "+name+"_op)");
 
-        out(fos32, "void OPCALL dynamic_"+name+"_op(CPU* cpu, DecodedOp* op) {");
+        out(fos32, "void dynamic_"+name+"_op(DynamicData* data, DecodedOp* op) {");
         out(fos32, "    if (op->ea16) {");
         out(fos32, "        if (op->repZero || op->repNotZero) {");
         out(fos32, "            callHostFunction("+name+"16r, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);");
@@ -261,7 +261,7 @@ public class Strings extends Base {
         String mixed = name.substring(0, 1).toUpperCase() + name.substring(1);
         out(fos_init, "INIT_CPU("+mixed+", "+name+"_op)");
 
-        out(fos32, "void OPCALL dynamic_"+name+"_op(CPU* cpu, DecodedOp* op) {");
+        out(fos32, "void dynamic_"+name+"_op(DynamicData* data, DecodedOp* op) {");
         out(fos32, "    if (op->ea16) {");
         out(fos32, "        if (op->repZero || op->repNotZero) {");
         out(fos32, "            callHostFunction("+name+"16r, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);");
@@ -328,7 +328,7 @@ public class Strings extends Base {
         String mixed = name.substring(0, 1).toUpperCase() + name.substring(1);
         out(fos_init, "INIT_CPU("+mixed+", "+name+"_op)");
 
-        out(fos32, "void OPCALL dynamic_"+name+"_op(CPU* cpu, DecodedOp* op) {");
+        out(fos32, "void dynamic_"+name+"_op(DynamicData* data, DecodedOp* op) {");
         out(fos32, "    if (op->ea16) {");
         out(fos32, "        if (op->repZero || op->repNotZero) {");
         out(fos32, "            callHostFunction("+name+"16r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);");
@@ -395,7 +395,7 @@ public class Strings extends Base {
         String mixed = name.substring(0, 1).toUpperCase() + name.substring(1);
         out(fos_init, "INIT_CPU("+mixed+", "+name+"_op)");
 
-        out(fos32, "void OPCALL dynamic_"+name+"_op(CPU* cpu, DecodedOp* op) {");
+        out(fos32, "void dynamic_"+name+"_op(DynamicData* data, DecodedOp* op) {");
         out(fos32, "    if (op->ea16) {");
         out(fos32, "        if (op->repZero || op->repNotZero) {");
         out(fos32, "            callHostFunction("+name+"16r, false, 1, 0, DYN_PARAM_CPU, false);");

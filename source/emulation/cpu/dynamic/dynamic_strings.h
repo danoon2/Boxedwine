@@ -1,5 +1,5 @@
 #include "../normal/normal_strings.h"
-void OPCALL dynamic_movsb_op(CPU* cpu, DecodedOp* op) {
+void dynamic_movsb_op(DynamicData* data, DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
             callHostFunction(movsb16r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
@@ -15,7 +15,7 @@ void OPCALL dynamic_movsb_op(CPU* cpu, DecodedOp* op) {
     }
     INCREMENT_EIP(op->len);
 }
-void OPCALL dynamic_movsw_op(CPU* cpu, DecodedOp* op) {
+void dynamic_movsw_op(DynamicData* data, DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
             callHostFunction(movsw16r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
@@ -31,7 +31,7 @@ void OPCALL dynamic_movsw_op(CPU* cpu, DecodedOp* op) {
     }
     INCREMENT_EIP(op->len);
 }
-void OPCALL dynamic_movsd_op(CPU* cpu, DecodedOp* op) {
+void dynamic_movsd_op(DynamicData* data, DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
             callHostFunction(movsd16r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
@@ -47,7 +47,7 @@ void OPCALL dynamic_movsd_op(CPU* cpu, DecodedOp* op) {
     }
     INCREMENT_EIP(op->len);
 }
-void OPCALL dynamic_cmpsb_op(CPU* cpu, DecodedOp* op) {
+void dynamic_cmpsb_op(DynamicData* data, DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
             callHostFunction(cmpsb16r, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
@@ -63,7 +63,7 @@ void OPCALL dynamic_cmpsb_op(CPU* cpu, DecodedOp* op) {
     }
     INCREMENT_EIP(op->len);
 }
-void OPCALL dynamic_cmpsw_op(CPU* cpu, DecodedOp* op) {
+void dynamic_cmpsw_op(DynamicData* data, DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
             callHostFunction(cmpsw16r, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
@@ -79,7 +79,7 @@ void OPCALL dynamic_cmpsw_op(CPU* cpu, DecodedOp* op) {
     }
     INCREMENT_EIP(op->len);
 }
-void OPCALL dynamic_cmpsd_op(CPU* cpu, DecodedOp* op) {
+void dynamic_cmpsd_op(DynamicData* data, DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
             callHostFunction(cmpsd16r, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
@@ -95,7 +95,7 @@ void OPCALL dynamic_cmpsd_op(CPU* cpu, DecodedOp* op) {
     }
     INCREMENT_EIP(op->len);
 }
-void OPCALL dynamic_stosb_op(CPU* cpu, DecodedOp* op) {
+void dynamic_stosb_op(DynamicData* data, DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
             callHostFunction(stosb16r, false, 1, 0, DYN_PARAM_CPU, false);
@@ -111,7 +111,7 @@ void OPCALL dynamic_stosb_op(CPU* cpu, DecodedOp* op) {
     }
     INCREMENT_EIP(op->len);
 }
-void OPCALL dynamic_stosw_op(CPU* cpu, DecodedOp* op) {
+void dynamic_stosw_op(DynamicData* data, DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
             callHostFunction(stosw16r, false, 1, 0, DYN_PARAM_CPU, false);
@@ -127,7 +127,7 @@ void OPCALL dynamic_stosw_op(CPU* cpu, DecodedOp* op) {
     }
     INCREMENT_EIP(op->len);
 }
-void OPCALL dynamic_stosd_op(CPU* cpu, DecodedOp* op) {
+void dynamic_stosd_op(DynamicData* data, DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
             callHostFunction(stosd16r, false, 1, 0, DYN_PARAM_CPU, false);
@@ -143,7 +143,7 @@ void OPCALL dynamic_stosd_op(CPU* cpu, DecodedOp* op) {
     }
     INCREMENT_EIP(op->len);
 }
-void OPCALL dynamic_lodsb_op(CPU* cpu, DecodedOp* op) {
+void dynamic_lodsb_op(DynamicData* data, DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
             callHostFunction(lodsb16r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
@@ -159,7 +159,7 @@ void OPCALL dynamic_lodsb_op(CPU* cpu, DecodedOp* op) {
     }
     INCREMENT_EIP(op->len);
 }
-void OPCALL dynamic_lodsw_op(CPU* cpu, DecodedOp* op) {
+void dynamic_lodsw_op(DynamicData* data, DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
             callHostFunction(lodsw16r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
@@ -175,7 +175,7 @@ void OPCALL dynamic_lodsw_op(CPU* cpu, DecodedOp* op) {
     }
     INCREMENT_EIP(op->len);
 }
-void OPCALL dynamic_lodsd_op(CPU* cpu, DecodedOp* op) {
+void dynamic_lodsd_op(DynamicData* data, DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
             callHostFunction(lodsd16r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
@@ -191,7 +191,7 @@ void OPCALL dynamic_lodsd_op(CPU* cpu, DecodedOp* op) {
     }
     INCREMENT_EIP(op->len);
 }
-void OPCALL dynamic_scasb_op(CPU* cpu, DecodedOp* op) {
+void dynamic_scasb_op(DynamicData* data, DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
             callHostFunction(scasb16r, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
@@ -207,7 +207,7 @@ void OPCALL dynamic_scasb_op(CPU* cpu, DecodedOp* op) {
     }
     INCREMENT_EIP(op->len);
 }
-void OPCALL dynamic_scasw_op(CPU* cpu, DecodedOp* op) {
+void dynamic_scasw_op(DynamicData* data, DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
             callHostFunction(scasw16r, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
@@ -223,7 +223,7 @@ void OPCALL dynamic_scasw_op(CPU* cpu, DecodedOp* op) {
     }
     INCREMENT_EIP(op->len);
 }
-void OPCALL dynamic_scasd_op(CPU* cpu, DecodedOp* op) {
+void dynamic_scasd_op(DynamicData* data, DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
             callHostFunction(scasd16r, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);

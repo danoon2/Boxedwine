@@ -28,7 +28,7 @@ public class Move extends Base {
 
         out(fos_init, "INIT_CPU("+enumName+", "+functionName+")");
 
-        out(fos32, "void OPCALL dynamic_"+functionName+"(CPU* cpu, DecodedOp* op) {");
+        out(fos32, "void dynamic_"+functionName+"(DynamicData* data, DecodedOp* op) {");
         out(fos32, "    "+x32);
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
@@ -42,7 +42,7 @@ public class Move extends Base {
 
         out(fos_init, "INIT_CPU("+enumName+", "+functionName+")");
 
-        out(fos32, "void OPCALL dynamic_"+functionName+"(CPU* cpu, DecodedOp* op) {");
+        out(fos32, "void dynamic_"+functionName+"(DynamicData* data, DecodedOp* op) {");
         out(fos32, "    "+x32+"");
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");

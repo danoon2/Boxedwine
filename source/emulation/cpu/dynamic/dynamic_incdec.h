@@ -1,4 +1,4 @@
-void OPCALL dynamic_inc8_reg(CPU* cpu, DecodedOp* op) {
+void dynamic_inc8_reg(DynamicData* data, DecodedOp* op) {
     callHostFunction(common_getCF, true, 1, 0, DYN_PARAM_CPU, false);
     movToCpuFromReg(CPU_OFFSET_OF(oldCF), DYN_CALL_RESULT, DYN_32bit, true);
     movToCpuFromCpu(CPU_OFFSET_OF(dst.u8), OFFSET_REG8(op->reg), DYN_8bit, DYN_DEST, false);
@@ -8,7 +8,7 @@ void OPCALL dynamic_inc8_reg(CPU* cpu, DecodedOp* op) {
     movToCpu(CPU_OFFSET_OF(lazyFlags), Dyn_PtrSize, (DYN_PTR_SIZE)FLAGS_INC8);
     INCREMENT_EIP(op->len);
 }
-void OPCALL dynamic_inc8_mem32(CPU* cpu, DecodedOp* op) {
+void dynamic_inc8_mem32(DynamicData* data, DecodedOp* op) {
     callHostFunction(common_getCF, true, 1, 0, DYN_PARAM_CPU, false);
     movToCpuFromReg(CPU_OFFSET_OF(oldCF), DYN_CALL_RESULT, DYN_32bit, true);
     calculateEaa(op, DYN_ADDRESS);
@@ -19,7 +19,7 @@ void OPCALL dynamic_inc8_mem32(CPU* cpu, DecodedOp* op) {
     movToCpu(CPU_OFFSET_OF(lazyFlags), Dyn_PtrSize, (DYN_PTR_SIZE)FLAGS_INC8);
     INCREMENT_EIP(op->len);
 }
-void OPCALL dynamic_inc16_reg(CPU* cpu, DecodedOp* op) {
+void dynamic_inc16_reg(DynamicData* data, DecodedOp* op) {
     callHostFunction(common_getCF, true, 1, 0, DYN_PARAM_CPU, false);
     movToCpuFromReg(CPU_OFFSET_OF(oldCF), DYN_CALL_RESULT, DYN_32bit, true);
     movToCpuFromCpu(CPU_OFFSET_OF(dst.u16), CPU_OFFSET_OF(reg[op->reg].u16), DYN_16bit, DYN_DEST, false);
@@ -29,7 +29,7 @@ void OPCALL dynamic_inc16_reg(CPU* cpu, DecodedOp* op) {
     movToCpu(CPU_OFFSET_OF(lazyFlags), Dyn_PtrSize, (DYN_PTR_SIZE)FLAGS_INC16);
     INCREMENT_EIP(op->len);
 }
-void OPCALL dynamic_inc16_mem32(CPU* cpu, DecodedOp* op) {
+void dynamic_inc16_mem32(DynamicData* data, DecodedOp* op) {
     callHostFunction(common_getCF, true, 1, 0, DYN_PARAM_CPU, false);
     movToCpuFromReg(CPU_OFFSET_OF(oldCF), DYN_CALL_RESULT, DYN_32bit, true);
     calculateEaa(op, DYN_ADDRESS);
@@ -40,7 +40,7 @@ void OPCALL dynamic_inc16_mem32(CPU* cpu, DecodedOp* op) {
     movToCpu(CPU_OFFSET_OF(lazyFlags), Dyn_PtrSize, (DYN_PTR_SIZE)FLAGS_INC16);
     INCREMENT_EIP(op->len);
 }
-void OPCALL dynamic_inc32_reg(CPU* cpu, DecodedOp* op) {
+void dynamic_inc32_reg(DynamicData* data, DecodedOp* op) {
     callHostFunction(common_getCF, true, 1, 0, DYN_PARAM_CPU, false);
     movToCpuFromReg(CPU_OFFSET_OF(oldCF), DYN_CALL_RESULT, DYN_32bit, true);
     movToCpuFromCpu(CPU_OFFSET_OF(dst.u32), CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit, DYN_DEST, false);
@@ -50,7 +50,7 @@ void OPCALL dynamic_inc32_reg(CPU* cpu, DecodedOp* op) {
     movToCpu(CPU_OFFSET_OF(lazyFlags), Dyn_PtrSize, (DYN_PTR_SIZE)FLAGS_INC32);
     INCREMENT_EIP(op->len);
 }
-void OPCALL dynamic_inc32_mem32(CPU* cpu, DecodedOp* op) {
+void dynamic_inc32_mem32(DynamicData* data, DecodedOp* op) {
     callHostFunction(common_getCF, true, 1, 0, DYN_PARAM_CPU, false);
     movToCpuFromReg(CPU_OFFSET_OF(oldCF), DYN_CALL_RESULT, DYN_32bit, true);
     calculateEaa(op, DYN_ADDRESS);
@@ -61,7 +61,7 @@ void OPCALL dynamic_inc32_mem32(CPU* cpu, DecodedOp* op) {
     movToCpu(CPU_OFFSET_OF(lazyFlags), Dyn_PtrSize, (DYN_PTR_SIZE)FLAGS_INC32);
     INCREMENT_EIP(op->len);
 }
-void OPCALL dynamic_dec8_reg(CPU* cpu, DecodedOp* op) {
+void dynamic_dec8_reg(DynamicData* data, DecodedOp* op) {
     callHostFunction(common_getCF, true, 1, 0, DYN_PARAM_CPU, false);
     movToCpuFromReg(CPU_OFFSET_OF(oldCF), DYN_CALL_RESULT, DYN_32bit, true);
     movToCpuFromCpu(CPU_OFFSET_OF(dst.u8), OFFSET_REG8(op->reg), DYN_8bit, DYN_DEST, false);
@@ -71,7 +71,7 @@ void OPCALL dynamic_dec8_reg(CPU* cpu, DecodedOp* op) {
     movToCpu(CPU_OFFSET_OF(lazyFlags), Dyn_PtrSize, (DYN_PTR_SIZE)FLAGS_DEC8);
     INCREMENT_EIP(op->len);
 }
-void OPCALL dynamic_dec8_mem32(CPU* cpu, DecodedOp* op) {
+void dynamic_dec8_mem32(DynamicData* data, DecodedOp* op) {
     callHostFunction(common_getCF, true, 1, 0, DYN_PARAM_CPU, false);
     movToCpuFromReg(CPU_OFFSET_OF(oldCF), DYN_CALL_RESULT, DYN_32bit, true);
     calculateEaa(op, DYN_ADDRESS);
@@ -82,7 +82,7 @@ void OPCALL dynamic_dec8_mem32(CPU* cpu, DecodedOp* op) {
     movToCpu(CPU_OFFSET_OF(lazyFlags), Dyn_PtrSize, (DYN_PTR_SIZE)FLAGS_DEC8);
     INCREMENT_EIP(op->len);
 }
-void OPCALL dynamic_dec16_reg(CPU* cpu, DecodedOp* op) {
+void dynamic_dec16_reg(DynamicData* data, DecodedOp* op) {
     callHostFunction(common_getCF, true, 1, 0, DYN_PARAM_CPU, false);
     movToCpuFromReg(CPU_OFFSET_OF(oldCF), DYN_CALL_RESULT, DYN_32bit, true);
     movToCpuFromCpu(CPU_OFFSET_OF(dst.u16), CPU_OFFSET_OF(reg[op->reg].u16), DYN_16bit, DYN_DEST, false);
@@ -92,7 +92,7 @@ void OPCALL dynamic_dec16_reg(CPU* cpu, DecodedOp* op) {
     movToCpu(CPU_OFFSET_OF(lazyFlags), Dyn_PtrSize, (DYN_PTR_SIZE)FLAGS_DEC16);
     INCREMENT_EIP(op->len);
 }
-void OPCALL dynamic_dec16_mem32(CPU* cpu, DecodedOp* op) {
+void dynamic_dec16_mem32(DynamicData* data, DecodedOp* op) {
     callHostFunction(common_getCF, true, 1, 0, DYN_PARAM_CPU, false);
     movToCpuFromReg(CPU_OFFSET_OF(oldCF), DYN_CALL_RESULT, DYN_32bit, true);
     calculateEaa(op, DYN_ADDRESS);
@@ -103,7 +103,7 @@ void OPCALL dynamic_dec16_mem32(CPU* cpu, DecodedOp* op) {
     movToCpu(CPU_OFFSET_OF(lazyFlags), Dyn_PtrSize, (DYN_PTR_SIZE)FLAGS_DEC16);
     INCREMENT_EIP(op->len);
 }
-void OPCALL dynamic_dec32_reg(CPU* cpu, DecodedOp* op) {
+void dynamic_dec32_reg(DynamicData* data, DecodedOp* op) {
     callHostFunction(common_getCF, true, 1, 0, DYN_PARAM_CPU, false);
     movToCpuFromReg(CPU_OFFSET_OF(oldCF), DYN_CALL_RESULT, DYN_32bit, true);
     movToCpuFromCpu(CPU_OFFSET_OF(dst.u32), CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit, DYN_DEST, false);
@@ -113,7 +113,7 @@ void OPCALL dynamic_dec32_reg(CPU* cpu, DecodedOp* op) {
     movToCpu(CPU_OFFSET_OF(lazyFlags), Dyn_PtrSize, (DYN_PTR_SIZE)FLAGS_DEC32);
     INCREMENT_EIP(op->len);
 }
-void OPCALL dynamic_dec32_mem32(CPU* cpu, DecodedOp* op) {
+void dynamic_dec32_mem32(DynamicData* data, DecodedOp* op) {
     callHostFunction(common_getCF, true, 1, 0, DYN_PARAM_CPU, false);
     movToCpuFromReg(CPU_OFFSET_OF(oldCF), DYN_CALL_RESULT, DYN_32bit, true);
     calculateEaa(op, DYN_ADDRESS);

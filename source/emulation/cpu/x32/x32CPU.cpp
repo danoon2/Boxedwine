@@ -3,6 +3,7 @@
 
 #include "x32CPU.h"
 #include "../common/lazyFlags.h"
+#include "../dynamic/dynamic.h"
 
 // cdecl calling convention states EAX, ECX, and EDX are caller saved
 
@@ -1829,14 +1830,14 @@ void blockNext2() {
     movToCpuFromReg(offsetof(CPU, nextBlock), DYN_CALL_RESULT, DYN_32bit, true);
 }
 
-void OPCALL x32_sidt(CPU* cpu, DecodedOp* op) {
+void x32_sidt(DynamicData* data, DecodedOp* op) {
 }
 
 void x32_onExitSignal(CPU* cpu) {
     onExitSignal(cpu, NULL);
 }
 
-void OPCALL x32_callback(CPU* cpu, DecodedOp* op) {
+void x32_callback(DynamicData* data, DecodedOp* op) {
     if (op->pfn == onExitSignal) {
         callHostFunction(x32_onExitSignal, false, 1, 0, DYN_PARAM_CPU);
     } else {
@@ -1844,11 +1845,11 @@ void OPCALL x32_callback(CPU* cpu, DecodedOp* op) {
     }
 }
 
-void OPCALL x32_invalid_op(CPU* cpu, DecodedOp* op) {
+void x32_invalid_op(DynamicData* data, DecodedOp* op) {
     kpanic("Invalid instruction %x\n", op->inst);
 }
 
-static OpCallback x32Ops[NUMBER_OF_OPS];
+static pfnDynamicOp x32Ops[NUMBER_OF_OPS];
 static U32 x32OpsInitialized;
 
 static void initX32Ops() {
@@ -1903,13 +1904,16 @@ void OPCALL firstX32Op(CPU* cpu, DecodedOp* op) {
 #else
     if (DecodedBlock::currentBlock->runCount == 50) {
 #endif
+        DynamicData data;
+        data.cpu = cpu;
+
         initX32Ops();
         DecodedOp* o = op->next;
         outBufferPos = 0;
         patch.clear();
         outb(0x53); // push ebx
         outb(0x57); // push edi , will hold cpu
-        // on win32 cx contains cpu
+        // on win32 ecx contains cpu
         // mov edi, ecx
         outb(0x89);
         outb(0xcf);
@@ -1920,7 +1924,7 @@ void OPCALL firstX32Op(CPU* cpu, DecodedOp* op) {
             callHostFunction(common_log, false, 2, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)o, DYN_PARAM_CONST_PTR, false);
 #endif
 #endif
-            x32Ops[o->inst](cpu, o); 
+            x32Ops[o->inst](&data, o); 
             if (ifJump.size()) {
                 kpanic("x32CPU::firstX32Op if statement was not closed in instruction: %d", op->inst);
             }

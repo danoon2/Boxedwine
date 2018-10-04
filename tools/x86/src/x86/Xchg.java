@@ -45,7 +45,7 @@ public class Xchg extends Base {
 
         out(fos_init, "INIT_CPU("+enumName+", "+functionName+")");
 
-        out(fos32, "void OPCALL dynamic_"+functionName+"(CPU* cpu, DecodedOp* op) {");
+        out(fos32, "void dynamic_"+functionName+"(DynamicData* data, DecodedOp* op) {");
         if (reg) {
             out(fos32, "    movToRegFromCpu(DYN_DEST, OFFSET_REG8(op->rm), DYN_8bit);");
             out(fos32, "    movToCpuFromCpu(OFFSET_REG8(op->rm), OFFSET_REG8(op->reg), DYN_8bit, DYN_SRC, true);");
@@ -78,7 +78,7 @@ public class Xchg extends Base {
 
         out(fos_init, "INIT_CPU("+enumName+", "+functionName+")");
 
-        out(fos32, "void OPCALL dynamic_"+functionName+"(CPU* cpu, DecodedOp* op) {");
+        out(fos32, "void dynamic_"+functionName+"(DynamicData* data, DecodedOp* op) {");
         if (reg) {
             out(fos32, "    movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(reg[op->rm].u16), DYN_16bit);");
             out(fos32, "    movToCpuFromCpu(CPU_OFFSET_OF(reg[op->rm].u16), CPU_OFFSET_OF(reg[op->reg].u16), DYN_16bit, DYN_SRC, true);");
@@ -111,7 +111,7 @@ public class Xchg extends Base {
 
         out(fos_init, "INIT_CPU("+enumName+", "+functionName+")");
 
-        out(fos32, "void OPCALL dynamic_"+functionName+"(CPU* cpu, DecodedOp* op) {");
+        out(fos32, "void dynamic_"+functionName+"(DynamicData* data, DecodedOp* op) {");
         if (reg) {
             out(fos32, "    movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(reg[op->rm].u32), DYN_32bit);");
             out(fos32, "    movToCpuFromCpu(CPU_OFFSET_OF(reg[op->rm].u32), CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit, DYN_SRC, true);");
@@ -155,7 +155,7 @@ public class Xchg extends Base {
 
         out(fos_init, "INIT_CPU("+enumName+", "+functionName+")");
 
-        out(fos32, "void OPCALL dynamic_"+functionName+"(CPU* cpu, DecodedOp* op) {");
+        out(fos32, "void dynamic_"+functionName+"(DynamicData* data, DecodedOp* op) {");
         if (address) {
             out(fos32, "    calculateEaa(op, DYN_ADDRESS);");
             out(fos32, "    callHostFunction(common_" + functionName + ", false, 3, 0, DYN_PARAM_CPU, false, DYN_ADDRESS, DYN_PARAM_REG_32, true, op->reg, DYN_PARAM_CONST_32, false);");
@@ -194,7 +194,7 @@ public class Xchg extends Base {
 
         out(fos_init, "INIT_CPU("+enumName+", "+functionName+")");
 
-        out(fos32, "void OPCALL dynamic_"+functionName+"(CPU* cpu, DecodedOp* op) {");
+        out(fos32, "void dynamic_"+functionName+"(DynamicData* data, DecodedOp* op) {");
         if (address) {
             out(fos32, "    calculateEaa(op, DYN_ADDRESS);");
             out(fos32, "    callHostFunction(common_" + functionName + ", false, 3, 0, DYN_PARAM_CPU, false, DYN_ADDRESS, DYN_PARAM_REG_32, true, op->reg, DYN_PARAM_CONST_32, false);");
