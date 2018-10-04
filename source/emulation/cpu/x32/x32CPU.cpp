@@ -151,7 +151,6 @@ static std::vector<U32> ifJump;
 
 // per instruction, not per block.  
 // will allow us to determine if ecx or edx needs to be saved before calling an external function
-// :TODO: optimize so that unnecessary push/pop of ecx/edx don't happen if the op is done with these regs
 bool regUsed[4]; 
 
 void ensureBufferSize(U32 grow) {
@@ -1179,7 +1178,7 @@ void callHostFunction(void* address, bool hasReturn, U32 argCount, U32 arg1, Dyn
     }
 }
 
-// inst can be +, |, - , &, ^, <, >, )
+// inst can be +, |, - , &, ^, <, >, ) right parens is for signed right shift
 void instRegImm(U32 inst, DynReg reg, DynWidth regWidth, U32 imm) {
     if (inst == '<' || inst == '>' || inst == ')') {
         U8 group;
@@ -1500,7 +1499,7 @@ void instMemReg(char inst, DynReg addressReg, DynReg rm, DynWidth regWidth, bool
     }
 }
 
-// inst can be +, |, -, &, ^
+// inst can be +, |, -, &, ^, <, >, ) right parens is for signed right shift
 void instRegReg(char inst, DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) {
     if (inst == '<' || inst == '>' || inst == ')') {
         U8 group;

@@ -382,17 +382,23 @@ public class Arith extends Base {
                 dyn+="        movToCpu(CPU_OFFSET_OF(lazyFlags), Dyn_PtrSize, (DYN_PTR_SIZE)" + "FLAGS_"+name.toUpperCase()+bits + ");\r\n";
             dyn+=    "    }";
         } else {
-            dyn =    "    movToCpuFromCpu(CPU_OFFSET_OF(src.u"+bits+"), "+offsetof(bits, "op->rm")+", DYN_"+bits+"bit, DYN_SRC, false);\r\n"+
-                    "    movToCpuFromCpu(CPU_OFFSET_OF(dst.u"+bits+"), "+offsetof(bits, "op->reg")+", DYN_"+bits+"bit, DYN_DEST, false);\r\n"+
-                    "    instRegReg('" + op + "', DYN_DEST, DYN_SRC, DYN_"+bits+"bit, true);\r\n";
+            dyn = "    if (op->rm == op->reg) {\r\n"+
+                    "        movToCpuFromCpu(CPU_OFFSET_OF(src.u"+bits+"), "+offsetof(bits, "op->rm")+", DYN_"+bits+"bit, DYN_SRC, false);\r\n"+
+                    "        movToCpuFromReg(CPU_OFFSET_OF(dst.u"+bits+"), DYN_SRC, DYN_"+bits+"bit, false);\r\n"+
+                    "        movToCpuFromReg(CPU_OFFSET_OF(result.u"+bits+"), DYN_SRC, DYN_"+bits+"bit, true);\r\n"+
+                    "    } else {\r\n"+
+                "        movToCpuFromCpu(CPU_OFFSET_OF(src.u"+bits+"), "+offsetof(bits, "op->rm")+", DYN_"+bits+"bit, DYN_SRC, false);\r\n"+
+                    "        movToCpuFromCpu(CPU_OFFSET_OF(dst.u"+bits+"), "+offsetof(bits, "op->reg")+", DYN_"+bits+"bit, DYN_DEST, false);\r\n"+
+                    "        instRegReg('" + op + "', DYN_DEST, DYN_SRC, DYN_"+bits+"bit, true);\r\n";
             if (cf) {
                 if (!bits.equals("32")) {
-                    dyn += "    movToRegFromReg(DYN_CALL_RESULT, DYN_" + bits + "bit, DYN_CALL_RESULT, DYN_32bit, false);\r\n";
+                    dyn += "        movToRegFromReg(DYN_CALL_RESULT, DYN_" + bits + "bit, DYN_CALL_RESULT, DYN_32bit, false);\r\n";
                 }
-                dyn+="    instRegReg('" + op + "', DYN_DEST, DYN_CALL_RESULT, DYN_" + bits + "bit, true);\r\n";
+                dyn+="        instRegReg('" + op + "', DYN_DEST, DYN_CALL_RESULT, DYN_" + bits + "bit, true);\r\n";
             }
 
-            dyn+=    "    movToCpuFromReg(CPU_OFFSET_OF(result.u"+bits+"), DYN_DEST, DYN_"+bits+"bit, true);";
+            dyn+=    "        movToCpuFromReg(CPU_OFFSET_OF(result.u"+bits+"), DYN_DEST, DYN_"+bits+"bit, true);\r\n";
+            dyn+="    }\r\n";
             if (flags)
                 dyn+="\r\n    movToCpu(CPU_OFFSET_OF(lazyFlags), Dyn_PtrSize, (DYN_PTR_SIZE)" + "FLAGS_"+name.toUpperCase()+bits + ");";
         }

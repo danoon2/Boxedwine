@@ -1099,6 +1099,9 @@ U32 KProcess::mmap(U32 addr, U32 len, S32 prot, S32 flags, FD fildes, U64 off) {
     U32 pageCount = (len+K_PAGE_SIZE-1)>>K_PAGE_SHIFT;
     KFileDescriptor* fd = 0;
 
+    if (0xFFFFFFFF-addr<len) {
+        return -K_EINVAL;
+    }
     if ((shared && priv) || (!shared && !priv)) {
         return -K_EINVAL;
     }

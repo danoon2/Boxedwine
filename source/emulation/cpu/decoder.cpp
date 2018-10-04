@@ -4664,15 +4664,47 @@ void DecodedOp::dealloc(bool deallocNext) {
 }
 
 bool DecodedOp::needsToSetFlags() {
-    U32 needsToSet = instructionInfo[this->inst].flagsSets;
+    U32 needsToSet = instructionInfo[this->inst].flagsSets & ~MAYBE;
     DecodedOp* n = this->next;
     while (n && needsToSet) {
         if (instructionInfo[n->inst].flagsUsed & needsToSet) {
             return true;
         }
-        needsToSet &= ~ instructionInfo[n->inst].flagsSets;
-        needsToSet &= ~ instructionInfo[n->inst].flagsUndefined;
+        if (!(instructionInfo[n->inst].flagsSets & MAYBE)) {
+            needsToSet &= ~ instructionInfo[n->inst].flagsSets;
+            needsToSet &= ~ instructionInfo[n->inst].flagsUndefined;
+        }
         n = n->next;
+    }
+    if (needsToSet) {
+        if (DecodedBlock::currentBlock->next1 && DecodedBlock::currentBlock->next2) {
+            U32 needsToSet1 = needsToSet;
+            n = DecodedBlock::currentBlock->next1->op;
+            while (n && needsToSet1) {
+                if (instructionInfo[n->inst].flagsUsed & needsToSet1) {
+                    return true;
+                }
+                if (!(instructionInfo[n->inst].flagsSets & MAYBE)) {
+                    needsToSet1 &= ~ instructionInfo[n->inst].flagsSets;
+                    needsToSet1 &= ~ instructionInfo[n->inst].flagsUndefined;
+                }
+                n = n->next;
+            }
+
+            U32 needsToSet2 = needsToSet;
+            n = DecodedBlock::currentBlock->next2->op;
+            while (n && needsToSet2) {
+                if (instructionInfo[n->inst].flagsUsed & needsToSet2) {
+                    return true;
+                }
+                if (!(instructionInfo[n->inst].flagsSets & MAYBE)) {
+                    needsToSet2 &= ~ instructionInfo[n->inst].flagsSets;
+                    needsToSet2 &= ~ instructionInfo[n->inst].flagsUndefined;
+                }
+                n = n->next;
+            }
+            needsToSet = needsToSet1 | needsToSet2;
+        }
     }
     return needsToSet!=0;
 }

@@ -1761,10 +1761,17 @@ void OPCALL dynamic_xor32_mem(CPU* cpu, DecodedOp* op) {
     INCREMENT_EIP(op->len);
 }
 void OPCALL dynamic_cmpr8r8(CPU* cpu, DecodedOp* op) {
-    movToCpuFromCpu(CPU_OFFSET_OF(src.u8), OFFSET_REG8(op->rm), DYN_8bit, DYN_SRC, false);
-    movToCpuFromCpu(CPU_OFFSET_OF(dst.u8), OFFSET_REG8(op->reg), DYN_8bit, DYN_DEST, false);
-    instRegReg('-', DYN_DEST, DYN_SRC, DYN_8bit, true);
-    movToCpuFromReg(CPU_OFFSET_OF(result.u8), DYN_DEST, DYN_8bit, true);
+    if (op->rm == op->reg) {
+        movToCpuFromCpu(CPU_OFFSET_OF(src.u8), OFFSET_REG8(op->rm), DYN_8bit, DYN_SRC, false);
+        movToCpuFromReg(CPU_OFFSET_OF(dst.u8), DYN_SRC, DYN_8bit, false);
+        movToCpuFromReg(CPU_OFFSET_OF(result.u8), DYN_SRC, DYN_8bit, true);
+    } else {
+        movToCpuFromCpu(CPU_OFFSET_OF(src.u8), OFFSET_REG8(op->rm), DYN_8bit, DYN_SRC, false);
+        movToCpuFromCpu(CPU_OFFSET_OF(dst.u8), OFFSET_REG8(op->reg), DYN_8bit, DYN_DEST, false);
+        instRegReg('-', DYN_DEST, DYN_SRC, DYN_8bit, true);
+        movToCpuFromReg(CPU_OFFSET_OF(result.u8), DYN_DEST, DYN_8bit, true);
+    }
+
     movToCpu(CPU_OFFSET_OF(lazyFlags), Dyn_PtrSize, (DYN_PTR_SIZE)FLAGS_CMP8);
     INCREMENT_EIP(op->len);
 }
@@ -1804,10 +1811,17 @@ void OPCALL dynamic_cmp8_mem(CPU* cpu, DecodedOp* op) {
     INCREMENT_EIP(op->len);
 }
 void OPCALL dynamic_cmpr16r16(CPU* cpu, DecodedOp* op) {
-    movToCpuFromCpu(CPU_OFFSET_OF(src.u16), CPU_OFFSET_OF(reg[op->rm].u16), DYN_16bit, DYN_SRC, false);
-    movToCpuFromCpu(CPU_OFFSET_OF(dst.u16), CPU_OFFSET_OF(reg[op->reg].u16), DYN_16bit, DYN_DEST, false);
-    instRegReg('-', DYN_DEST, DYN_SRC, DYN_16bit, true);
-    movToCpuFromReg(CPU_OFFSET_OF(result.u16), DYN_DEST, DYN_16bit, true);
+    if (op->rm == op->reg) {
+        movToCpuFromCpu(CPU_OFFSET_OF(src.u16), CPU_OFFSET_OF(reg[op->rm].u16), DYN_16bit, DYN_SRC, false);
+        movToCpuFromReg(CPU_OFFSET_OF(dst.u16), DYN_SRC, DYN_16bit, false);
+        movToCpuFromReg(CPU_OFFSET_OF(result.u16), DYN_SRC, DYN_16bit, true);
+    } else {
+        movToCpuFromCpu(CPU_OFFSET_OF(src.u16), CPU_OFFSET_OF(reg[op->rm].u16), DYN_16bit, DYN_SRC, false);
+        movToCpuFromCpu(CPU_OFFSET_OF(dst.u16), CPU_OFFSET_OF(reg[op->reg].u16), DYN_16bit, DYN_DEST, false);
+        instRegReg('-', DYN_DEST, DYN_SRC, DYN_16bit, true);
+        movToCpuFromReg(CPU_OFFSET_OF(result.u16), DYN_DEST, DYN_16bit, true);
+    }
+
     movToCpu(CPU_OFFSET_OF(lazyFlags), Dyn_PtrSize, (DYN_PTR_SIZE)FLAGS_CMP16);
     INCREMENT_EIP(op->len);
 }
@@ -1847,10 +1861,17 @@ void OPCALL dynamic_cmp16_mem(CPU* cpu, DecodedOp* op) {
     INCREMENT_EIP(op->len);
 }
 void OPCALL dynamic_cmpr32r32(CPU* cpu, DecodedOp* op) {
-    movToCpuFromCpu(CPU_OFFSET_OF(src.u32), CPU_OFFSET_OF(reg[op->rm].u32), DYN_32bit, DYN_SRC, false);
-    movToCpuFromCpu(CPU_OFFSET_OF(dst.u32), CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit, DYN_DEST, false);
-    instRegReg('-', DYN_DEST, DYN_SRC, DYN_32bit, true);
-    movToCpuFromReg(CPU_OFFSET_OF(result.u32), DYN_DEST, DYN_32bit, true);
+    if (op->rm == op->reg) {
+        movToCpuFromCpu(CPU_OFFSET_OF(src.u32), CPU_OFFSET_OF(reg[op->rm].u32), DYN_32bit, DYN_SRC, false);
+        movToCpuFromReg(CPU_OFFSET_OF(dst.u32), DYN_SRC, DYN_32bit, false);
+        movToCpuFromReg(CPU_OFFSET_OF(result.u32), DYN_SRC, DYN_32bit, true);
+    } else {
+        movToCpuFromCpu(CPU_OFFSET_OF(src.u32), CPU_OFFSET_OF(reg[op->rm].u32), DYN_32bit, DYN_SRC, false);
+        movToCpuFromCpu(CPU_OFFSET_OF(dst.u32), CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit, DYN_DEST, false);
+        instRegReg('-', DYN_DEST, DYN_SRC, DYN_32bit, true);
+        movToCpuFromReg(CPU_OFFSET_OF(result.u32), DYN_DEST, DYN_32bit, true);
+    }
+
     movToCpu(CPU_OFFSET_OF(lazyFlags), Dyn_PtrSize, (DYN_PTR_SIZE)FLAGS_CMP32);
     INCREMENT_EIP(op->len);
 }
@@ -1890,10 +1911,17 @@ void OPCALL dynamic_cmp32_mem(CPU* cpu, DecodedOp* op) {
     INCREMENT_EIP(op->len);
 }
 void OPCALL dynamic_testr8r8(CPU* cpu, DecodedOp* op) {
-    movToCpuFromCpu(CPU_OFFSET_OF(src.u8), OFFSET_REG8(op->rm), DYN_8bit, DYN_SRC, false);
-    movToCpuFromCpu(CPU_OFFSET_OF(dst.u8), OFFSET_REG8(op->reg), DYN_8bit, DYN_DEST, false);
-    instRegReg('&', DYN_DEST, DYN_SRC, DYN_8bit, true);
-    movToCpuFromReg(CPU_OFFSET_OF(result.u8), DYN_DEST, DYN_8bit, true);
+    if (op->rm == op->reg) {
+        movToCpuFromCpu(CPU_OFFSET_OF(src.u8), OFFSET_REG8(op->rm), DYN_8bit, DYN_SRC, false);
+        movToCpuFromReg(CPU_OFFSET_OF(dst.u8), DYN_SRC, DYN_8bit, false);
+        movToCpuFromReg(CPU_OFFSET_OF(result.u8), DYN_SRC, DYN_8bit, true);
+    } else {
+        movToCpuFromCpu(CPU_OFFSET_OF(src.u8), OFFSET_REG8(op->rm), DYN_8bit, DYN_SRC, false);
+        movToCpuFromCpu(CPU_OFFSET_OF(dst.u8), OFFSET_REG8(op->reg), DYN_8bit, DYN_DEST, false);
+        instRegReg('&', DYN_DEST, DYN_SRC, DYN_8bit, true);
+        movToCpuFromReg(CPU_OFFSET_OF(result.u8), DYN_DEST, DYN_8bit, true);
+    }
+
     movToCpu(CPU_OFFSET_OF(lazyFlags), Dyn_PtrSize, (DYN_PTR_SIZE)FLAGS_TEST8);
     INCREMENT_EIP(op->len);
 }
@@ -1924,10 +1952,17 @@ void OPCALL dynamic_test8_mem(CPU* cpu, DecodedOp* op) {
     INCREMENT_EIP(op->len);
 }
 void OPCALL dynamic_testr16r16(CPU* cpu, DecodedOp* op) {
-    movToCpuFromCpu(CPU_OFFSET_OF(src.u16), CPU_OFFSET_OF(reg[op->rm].u16), DYN_16bit, DYN_SRC, false);
-    movToCpuFromCpu(CPU_OFFSET_OF(dst.u16), CPU_OFFSET_OF(reg[op->reg].u16), DYN_16bit, DYN_DEST, false);
-    instRegReg('&', DYN_DEST, DYN_SRC, DYN_16bit, true);
-    movToCpuFromReg(CPU_OFFSET_OF(result.u16), DYN_DEST, DYN_16bit, true);
+    if (op->rm == op->reg) {
+        movToCpuFromCpu(CPU_OFFSET_OF(src.u16), CPU_OFFSET_OF(reg[op->rm].u16), DYN_16bit, DYN_SRC, false);
+        movToCpuFromReg(CPU_OFFSET_OF(dst.u16), DYN_SRC, DYN_16bit, false);
+        movToCpuFromReg(CPU_OFFSET_OF(result.u16), DYN_SRC, DYN_16bit, true);
+    } else {
+        movToCpuFromCpu(CPU_OFFSET_OF(src.u16), CPU_OFFSET_OF(reg[op->rm].u16), DYN_16bit, DYN_SRC, false);
+        movToCpuFromCpu(CPU_OFFSET_OF(dst.u16), CPU_OFFSET_OF(reg[op->reg].u16), DYN_16bit, DYN_DEST, false);
+        instRegReg('&', DYN_DEST, DYN_SRC, DYN_16bit, true);
+        movToCpuFromReg(CPU_OFFSET_OF(result.u16), DYN_DEST, DYN_16bit, true);
+    }
+
     movToCpu(CPU_OFFSET_OF(lazyFlags), Dyn_PtrSize, (DYN_PTR_SIZE)FLAGS_TEST16);
     INCREMENT_EIP(op->len);
 }
@@ -1958,10 +1993,17 @@ void OPCALL dynamic_test16_mem(CPU* cpu, DecodedOp* op) {
     INCREMENT_EIP(op->len);
 }
 void OPCALL dynamic_testr32r32(CPU* cpu, DecodedOp* op) {
-    movToCpuFromCpu(CPU_OFFSET_OF(src.u32), CPU_OFFSET_OF(reg[op->rm].u32), DYN_32bit, DYN_SRC, false);
-    movToCpuFromCpu(CPU_OFFSET_OF(dst.u32), CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit, DYN_DEST, false);
-    instRegReg('&', DYN_DEST, DYN_SRC, DYN_32bit, true);
-    movToCpuFromReg(CPU_OFFSET_OF(result.u32), DYN_DEST, DYN_32bit, true);
+    if (op->rm == op->reg) {
+        movToCpuFromCpu(CPU_OFFSET_OF(src.u32), CPU_OFFSET_OF(reg[op->rm].u32), DYN_32bit, DYN_SRC, false);
+        movToCpuFromReg(CPU_OFFSET_OF(dst.u32), DYN_SRC, DYN_32bit, false);
+        movToCpuFromReg(CPU_OFFSET_OF(result.u32), DYN_SRC, DYN_32bit, true);
+    } else {
+        movToCpuFromCpu(CPU_OFFSET_OF(src.u32), CPU_OFFSET_OF(reg[op->rm].u32), DYN_32bit, DYN_SRC, false);
+        movToCpuFromCpu(CPU_OFFSET_OF(dst.u32), CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit, DYN_DEST, false);
+        instRegReg('&', DYN_DEST, DYN_SRC, DYN_32bit, true);
+        movToCpuFromReg(CPU_OFFSET_OF(result.u32), DYN_DEST, DYN_32bit, true);
+    }
+
     movToCpu(CPU_OFFSET_OF(lazyFlags), Dyn_PtrSize, (DYN_PTR_SIZE)FLAGS_TEST32);
     INCREMENT_EIP(op->len);
 }
