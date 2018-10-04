@@ -638,6 +638,7 @@ void CDECL boxeddrv_SetCursor(HCURSOR cursor) {
         BITMAP bm;
 
         if (info.hbmColor) {
+            GetObjectW(info.hbmMask, sizeof(bmMask), &bmMask);
             mono = CopyImage( cursor, IMAGE_CURSOR, bmMask.bmWidth, bmMask.bmHeight, LR_MONOCHROME | LR_COPYFROMRESOURCE );
             if (mono) {
                 ICONINFOEXW info2;    
