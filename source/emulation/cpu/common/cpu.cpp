@@ -1195,7 +1195,7 @@ void common_enter(CPU* cpu, U32 big, U32 bytes, U32 level) {
 }
 
 void common_rdtsc(CPU* cpu, U32 extra) {
-    U64 t = cpu->instructionCount+extra;
+    U64 t = cpu->instructionCount+cpu->blockInstructionCount+extra;
     EAX = (U32)t;
     EDX = (U32)(t >> 32);
 }

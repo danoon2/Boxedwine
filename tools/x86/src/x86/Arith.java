@@ -338,313 +338,64 @@ public class Arith extends Base {
         arith32(fos, fos_init, fos32, name, op, cf, result, "32", flags, iform, hasRE);
     }
 
-    public String offsetof(String bits, String x) {
-        if (bits.equals("8"))
-            return "OFFSET_REG8("+x+")";
-        return "CPU_OFFSET_OF(reg["+x+"].u"+bits+")";
-    }
-
     public String arithDynRR(String op, boolean result, boolean cf, boolean flags, String bits, String name) {
-        String dyn;
-        if (result) {
-            dyn =    "    if (!op->needsToSetFlags()) {\r\n";
-            if ((op=="^" || op=="-") && !cf) {
-                dyn+="        if (op->rm==op->reg) {\r\n";
-                dyn+="            movToCpu("+ offsetof(bits, "op->reg") +", DYN_"+bits+"bit, 0);\r\n";
-                dyn+="        } else {\r\n";
-                dyn += "            movToRegFromCpu(DYN_SRC, " + offsetof(bits, "op->rm") + ", DYN_" + bits + "bit);\r\n";
-                dyn += "            instCPUReg('" + op + "', " + offsetof(bits, "op->reg") + ", DYN_SRC, DYN_" + bits + "bit, true);\r\n";
-                dyn+="        }\r\n";
-            } else {
-                dyn += "        movToRegFromCpu(DYN_SRC, " + offsetof(bits, "op->rm") + ", DYN_" + bits + "bit);\r\n";
-                if (cf) {
-                    if (!bits.equals("32")) {
-                        dyn += "        movToRegFromReg(DYN_CALL_RESULT, DYN_" + bits + "bit, DYN_CALL_RESULT, DYN_32bit, false);\r\n";
-                    }
-                    dyn += "        instRegReg('+', DYN_SRC, DYN_CALL_RESULT, DYN_" + bits + "bit, true);\r\n";
-                }
-                dyn += "        instCPUReg('" + op + "', " + offsetof(bits, "op->reg") + ", DYN_SRC, DYN_" + bits + "bit, true);\r\n";
-            }
-            dyn+=   "    } else {\r\n"+
-                    "        movToCpuFromCpu(CPU_OFFSET_OF(src.u"+bits+"), "+offsetof(bits, "op->rm")+", DYN_"+bits+"bit, DYN_SRC, false);\r\n"+
-                    "        movToCpuFromCpu(CPU_OFFSET_OF(dst.u"+bits+"), "+offsetof(bits, "op->reg")+", DYN_"+bits+"bit, DYN_DEST, false);\r\n"+
-                    "        instRegReg('" + op + "', DYN_DEST, DYN_SRC, DYN_"+bits+"bit, true);\r\n";
-
-            if (cf) {
-                if (!bits.equals("32")) {
-                    dyn += "        movToRegFromReg(DYN_CALL_RESULT, DYN_" + bits + "bit, DYN_CALL_RESULT, DYN_32bit, false);\r\n";
-                }
-                dyn+=  "        instRegReg('" + op + "', DYN_DEST, DYN_CALL_RESULT, DYN_" + bits + "bit, true);\r\n";
-            }
-            dyn+=    "        movToCpuFromReg(CPU_OFFSET_OF(result.u"+bits+"), DYN_DEST, DYN_"+bits+"bit, false);\r\n"+
-                    "        movToCpuFromReg("+offsetof(bits, "op->reg")+", DYN_DEST, DYN_"+bits+"bit, true);\r\n";
-            if (flags)
-                dyn+="        movToCpu(CPU_OFFSET_OF(lazyFlags), Dyn_PtrSize, (DYN_PTR_SIZE)" + "FLAGS_"+name.toUpperCase()+bits + ");\r\n";
-            dyn+=    "    }";
-        } else {
-            dyn = "    if (op->rm == op->reg) {\r\n"+
-                    "        movToCpuFromCpu(CPU_OFFSET_OF(src.u"+bits+"), "+offsetof(bits, "op->rm")+", DYN_"+bits+"bit, DYN_SRC, false);\r\n"+
-                    "        movToCpuFromReg(CPU_OFFSET_OF(dst.u"+bits+"), DYN_SRC, DYN_"+bits+"bit, false);\r\n"+
-                    "        movToCpuFromReg(CPU_OFFSET_OF(result.u"+bits+"), DYN_SRC, DYN_"+bits+"bit, true);\r\n"+
-                    "    } else {\r\n"+
-                "        movToCpuFromCpu(CPU_OFFSET_OF(src.u"+bits+"), "+offsetof(bits, "op->rm")+", DYN_"+bits+"bit, DYN_SRC, false);\r\n"+
-                    "        movToCpuFromCpu(CPU_OFFSET_OF(dst.u"+bits+"), "+offsetof(bits, "op->reg")+", DYN_"+bits+"bit, DYN_DEST, false);\r\n"+
-                    "        instRegReg('" + op + "', DYN_DEST, DYN_SRC, DYN_"+bits+"bit, true);\r\n";
-            if (cf) {
-                if (!bits.equals("32")) {
-                    dyn += "        movToRegFromReg(DYN_CALL_RESULT, DYN_" + bits + "bit, DYN_CALL_RESULT, DYN_32bit, false);\r\n";
-                }
-                dyn+="        instRegReg('" + op + "', DYN_DEST, DYN_CALL_RESULT, DYN_" + bits + "bit, true);\r\n";
-            }
-
-            dyn+=    "        movToCpuFromReg(CPU_OFFSET_OF(result.u"+bits+"), DYN_DEST, DYN_"+bits+"bit, true);\r\n";
-            dyn+="    }\r\n";
-            if (flags)
-                dyn+="\r\n    movToCpu(CPU_OFFSET_OF(lazyFlags), Dyn_PtrSize, (DYN_PTR_SIZE)" + "FLAGS_"+name.toUpperCase()+bits + ");";
-        }
-        return dyn;
+        return "    dynamic_arith(data, op, DYN_Reg, DYN_Reg, DYN_"+bits+"bit, '"+op+"', "+(cf?"true":"false")+", "+(result?"true":"false")+", FLAGS_"+name.toUpperCase()+bits+");";
     }
 
     public String arithDynER(String op, boolean result, boolean cf, boolean flags, String bits, String name) {
-        String dyn;
-        if (result) {
-            dyn =    "    if (!op->needsToSetFlags()) {\r\n"+
-                    "        calculateEaa(op, DYN_ADDRESS);\r\n"+
-                    "        movToRegFromCpu(DYN_SRC, "+offsetof(bits, "op->reg")+", DYN_"+bits+"bit);\r\n";
-            if (cf) {
-                if (!bits.equals("32")) {
-                    dyn += "        movToRegFromReg(DYN_CALL_RESULT, DYN_" + bits + "bit, DYN_CALL_RESULT, DYN_32bit, false);\r\n";
-                }
-                dyn+=  "        instRegReg('+', DYN_SRC, DYN_CALL_RESULT, DYN_" + bits + "bit, true);\r\n";
-            }
-            dyn+=    "        instMemReg('" + op + "', DYN_ADDRESS, DYN_SRC, DYN_"+bits+"bit, true, true);\r\n"+
-                    "    } else {\r\n";
-            if (cf)
-                dyn+="        movToRegFromReg(DYN_DEST, DYN_"+bits+"bit, DYN_CALL_RESULT, DYN_32bit, true);\r\n";
-
-            dyn+=    "        movToCpuFromCpu(CPU_OFFSET_OF(src.u"+bits+"), "+offsetof(bits, "op->reg")+", DYN_"+bits+"bit, DYN_SRC, false);\r\n"+
-                    "        calculateEaa(op, DYN_ADDRESS);\r\n"+
-                    "        movToCpuFromMem(CPU_OFFSET_OF(dst.u"+bits+"), DYN_"+bits+"bit, DYN_ADDRESS, false, false);\r\n"+
-                    "        instRegReg('"+op+"', DYN_CALL_RESULT, DYN_SRC, DYN_"+bits+"bit, true);\r\n";
-            if (cf)
-                dyn+="        instRegReg('" + op + "', DYN_CALL_RESULT, DYN_DEST, DYN_"+bits+"bit, true);\r\n";
-            dyn +=   "        movToCpuFromReg(CPU_OFFSET_OF(result.u"+bits+"), DYN_CALL_RESULT, DYN_"+bits+"bit, false);\r\n"+
-                    "        movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_"+bits+"bit, true, true);\r\n";
-            if (flags)
-                dyn+="        movToCpu(CPU_OFFSET_OF(lazyFlags), Dyn_PtrSize, (DYN_PTR_SIZE)" + "FLAGS_"+name.toUpperCase()+bits + ");\r\n";
-            dyn+="    }";
-        } else {
-            dyn = "";
-            if (cf)
-                dyn+="    movToRegFromReg(DYN_DEST, DYN_"+bits+"bit, DYN_CALL_RESULT, DYN_32bit, true);\r\n";
-            dyn +=   "    movToCpuFromCpu(CPU_OFFSET_OF(src.u"+bits+"), "+offsetof(bits, "op->reg")+", DYN_"+bits+"bit, DYN_SRC, false);\r\n"+
-                    "    calculateEaa(op, DYN_ADDRESS);\r\n"+
-                    "    movToCpuFromMem(CPU_OFFSET_OF(dst.u"+bits+"), DYN_"+bits+"bit, DYN_ADDRESS, true, false);\r\n"+
-                    "    instRegReg('"+op+"', DYN_CALL_RESULT, DYN_SRC, DYN_"+bits+"bit, true);\r\n";
-            if (cf)
-                dyn+="    instRegReg('" + op + "', DYN_CALL_RESULT, DYN_DEST, DYN_"+bits+"bit, true);\r\n";
-            dyn +=   "    movToCpuFromReg(CPU_OFFSET_OF(result.u"+bits+"), DYN_CALL_RESULT, DYN_"+bits+"bit, true);";
-            if (flags)
-                dyn+="\r\n    movToCpu(CPU_OFFSET_OF(lazyFlags), Dyn_PtrSize, (DYN_PTR_SIZE)" + "FLAGS_"+name.toUpperCase()+bits + ");";
-        }
-        return dyn;
+        return "    dynamic_arith(data, op, DYN_Reg, DYN_Mem, DYN_"+bits+"bit, '"+op+"', "+(cf?"true":"false")+", "+(result?"true":"false")+", FLAGS_"+name.toUpperCase()+bits+");";
     }
 
     public String arithDynRE(String op, boolean result, boolean cf, boolean flags, String bits, String name) {
-        String dyn;
-
-        if (result) {
-            dyn =    "    if (!op->needsToSetFlags()) {\r\n"+
-                    "        calculateEaa(op, DYN_ADDRESS);\r\n";
-            if (cf) {
-                dyn += "        movToRegFromCpu(DYN_DEST, " + offsetof(bits, "op->reg") + ", DYN_" + bits + "bit);\r\n";
-
-                if (!bits.equals("32")) {
-                    dyn += "        movToRegFromReg(DYN_CALL_RESULT, DYN_" + bits + "bit, DYN_CALL_RESULT, DYN_32bit, false);\r\n";
-                }
-
-                dyn+= "        instRegReg('" + op + "', DYN_DEST, DYN_CALL_RESULT, DYN_" + bits + "bit, true);\r\n" +
-                        "        movFromMem(DYN_" + bits + "bit, DYN_ADDRESS, true);\r\n" +
-                        "        instRegReg('" + op + "', DYN_DEST, DYN_CALL_RESULT, DYN_" + bits + "bit, true);\r\n" + "" +
-                        "        movToCpuFromReg(" + offsetof(bits, "op->reg") + ", DYN_DEST, DYN_" + bits + "bit, true);\r\n";
-            } else {
-                dyn += "        movFromMem(DYN_" + bits + "bit, DYN_ADDRESS, true);\r\n" +
-                        "        instCPUReg('" + op + "', " + offsetof(bits, "op->reg") + ", DYN_CALL_RESULT, DYN_" + bits + "bit, true);\r\n";
-            }
-            dyn +=   "    } else {\r\n";
-            if (cf)
-                dyn+="        movToRegFromReg(DYN_SRC, DYN_"+bits+"bit, DYN_CALL_RESULT, DYN_32bit, true);\r\n";
-
-            dyn +=   "        calculateEaa(op, DYN_ADDRESS);\r\n"+
-                    "        movToCpuFromMem(CPU_OFFSET_OF(src.u"+bits+"), DYN_"+bits+"bit, DYN_ADDRESS, true, false);\r\n"+
-                    "        movToCpuFromCpu(CPU_OFFSET_OF(dst.u"+bits+"), "+offsetof(bits, "op->reg")+", DYN_"+bits+"bit, DYN_DEST, false);\r\n"+
-                    "        instRegReg('" + op + "', DYN_DEST, DYN_CALL_RESULT, DYN_"+bits+"bit, true);\r\n";
-            if (cf)
-                dyn+="        instRegReg('" + op + "', DYN_DEST, DYN_SRC, DYN_"+bits+"bit, true);\r\n";
-
-            dyn +=   "        movToCpuFromReg(CPU_OFFSET_OF(result.u"+bits+"), DYN_DEST, DYN_"+bits+"bit, false);\r\n"+
-                    "        movToCpuFromReg("+offsetof(bits, "op->reg")+", DYN_DEST, DYN_"+bits+"bit, true);\r\n";
-            if (flags)
-                dyn+="        movToCpu(CPU_OFFSET_OF(lazyFlags), Dyn_PtrSize, (DYN_PTR_SIZE)" + "FLAGS_"+name.toUpperCase()+bits + ");\r\n";
-            dyn +=   "    }";
-        } else {
-            dyn = "";
-            if (cf)
-                dyn+="    movToRegFromReg(DYN_SRC, DYN_"+bits+"bit, DYN_CALL_RESULT, DYN_32bit, true);\r\n";
-
-            dyn +=   "    calculateEaa(op, DYN_ADDRESS);\r\n"+
-                    "    movToCpuFromMem(CPU_OFFSET_OF(src.u"+bits+"), DYN_"+bits+"bit, DYN_ADDRESS, true, false);\r\n"+
-                    "    movToCpuFromCpu(CPU_OFFSET_OF(dst.u"+bits+"), "+offsetof(bits, "op->reg")+", DYN_"+bits+"bit, DYN_DEST, false);\r\n"+
-                    "    instRegReg('" + op + "', DYN_DEST, DYN_CALL_RESULT, DYN_"+bits+"bit, true);\r\n";
-            if (cf)
-                dyn+="    instRegReg('" + op + "', DYN_DEST, DYN_SRC, DYN_"+bits+"bit, true);\r\n";
-
-            dyn +=   "    movToCpuFromReg(CPU_OFFSET_OF(result.u"+bits+"), DYN_DEST, DYN_"+bits+"bit, true);";
-            if (flags)
-                dyn+="\r\n    movToCpu(CPU_OFFSET_OF(lazyFlags), Dyn_PtrSize, (DYN_PTR_SIZE)" + "FLAGS_"+name.toUpperCase()+bits + ");";
-        }
-        return dyn;
+        return "    dynamic_arith(data, op, DYN_Mem, DYN_Reg, DYN_"+bits+"bit, '"+op+"', "+(cf?"true":"false")+", "+(result?"true":"false")+", FLAGS_"+name.toUpperCase()+bits+");";
     }
     public String arithDynRI(String op, boolean result, boolean cf, boolean flags, String bits, String name) {
-        String dyn;
-        if (result) {
-            dyn =    "    if (!op->needsToSetFlags()) {\r\n";
-
-            if (cf) {
-                if (!bits.equals("32")) {
-                    dyn += "        movToRegFromReg(DYN_CALL_RESULT, DYN_"+bits+"bit, DYN_CALL_RESULT, DYN_32bit, false);\r\n";
-                }
-                dyn += "        instRegImm('+', DYN_CALL_RESULT, DYN_"+bits+"bit, op->imm);\r\n" +
-                        "        instCPUReg('" + op + "', "+offsetof(bits, "op->reg")+", DYN_CALL_RESULT, DYN_"+bits+"bit, true);\r\n";
-            } else {
-                dyn += "        instCPUImm('" + op + "', "+offsetof(bits, "op->reg")+", DYN_"+bits+"bit, op->imm);\r\n";
-            }
-
-            dyn +=   "    } else {\r\n"+
-                    "        movToCpu(CPU_OFFSET_OF(src.u"+bits+"), DYN_"+bits+"bit, op->imm);\r\n"+
-                    "        movToCpuFromCpu(CPU_OFFSET_OF(dst.u"+bits+"), "+offsetof(bits, "op->reg")+", DYN_"+bits+"bit, DYN_DEST, false);\r\n"+
-                    "        instRegImm('" + op + "', DYN_DEST, DYN_"+bits+"bit, op->imm);\r\n";
-
-            if(cf) {
-                if (!bits.equals("32")) {
-                    dyn += "        movToRegFromReg(DYN_CALL_RESULT, DYN_"+bits+"bit, DYN_CALL_RESULT, DYN_32bit, false);\r\n";
-                }
-                dyn+=     "        instRegReg('" + op + "', DYN_DEST, DYN_CALL_RESULT, DYN_"+bits+"bit, true);\r\n";
-            }
-            dyn +=   "        movToCpuFromReg(CPU_OFFSET_OF(result.u"+bits+"), DYN_DEST, DYN_"+bits+"bit, false);\r\n"+
-                    "        movToCpuFromReg("+offsetof(bits, "op->reg")+", DYN_DEST, DYN_"+bits+"bit, true);\r\n";
-
-            if (flags)
-                dyn+="        movToCpu(CPU_OFFSET_OF(lazyFlags), Dyn_PtrSize, (DYN_PTR_SIZE)" + "FLAGS_"+name.toUpperCase()+bits + ");\r\n";
-            dyn +=   "    }";
-        } else {
-            dyn =    "    movToCpu(CPU_OFFSET_OF(src.u"+bits+"), DYN_"+bits+"bit, op->imm);\r\n"+
-                    "    movToCpuFromCpu(CPU_OFFSET_OF(dst.u"+bits+"), "+offsetof(bits, "op->reg")+", DYN_"+bits+"bit, DYN_DEST, false);\r\n"+
-                    "    instRegImm('" + op + "', DYN_DEST, DYN_"+bits+"bit, op->imm);\r\n";
-            if (cf)
-                dyn+="    movToRegFromReg(DYN_CALL_RESULT, DYN_"+bits+"bit, DYN_CALL_RESULT, DYN_32bit, false);\r\n"+
-                        "    instRegReg('" + op + "', DYN_DEST, DYN_CALL_RESULT, DYN_"+bits+"bit, true);\r\n";
-
-            dyn +=   "    movToCpuFromReg(CPU_OFFSET_OF(result.u"+bits+"), DYN_DEST, DYN_"+bits+"bit, true);";
-
-            if (flags)
-                dyn+="\r\n    movToCpu(CPU_OFFSET_OF(lazyFlags), Dyn_PtrSize, (DYN_PTR_SIZE)" + "FLAGS_"+name.toUpperCase()+bits + ");";
-        }
-        return dyn;
+        return "    dynamic_arith(data, op, DYN_Const, DYN_Reg, DYN_"+bits+"bit, '"+op+"', "+(cf?"true":"false")+", "+(result?"true":"false")+", FLAGS_"+name.toUpperCase()+bits+");";
     }
 
     public String arithDynEI(String op, boolean result, boolean cf, boolean flags, String bits, String name) {
-        String dyn ;
-
-        if (result) {
-            dyn =    "    if (!op->needsToSetFlags()) {\r\n"+
-                    "        calculateEaa(op, DYN_ADDRESS);\r\n";
-            if (cf) {
-                if (!bits.equals("32")) {
-                    dyn += "        movToRegFromReg(DYN_CALL_RESULT, DYN_"+bits+"bit, DYN_CALL_RESULT, DYN_32bit, false);\r\n";
-                }
-                // instMemReg can handle EAX being passed in
-                dyn +=  "        instRegImm('+', DYN_CALL_RESULT, DYN_"+bits+"bit, op->imm);\r\n" +
-                        "        movToRegFromReg(DYN_SRC, DYN_"+bits+"bit, DYN_CALL_RESULT, DYN_"+bits+"bit, true);\r\n"+
-                        "        instMemReg('" + op + "', DYN_ADDRESS, DYN_SRC, DYN_"+bits+"bit, true, true);\r\n";
-            } else {
-                dyn += "        instMemImm('" + op + "', DYN_ADDRESS, DYN_"+bits+"bit, op->imm, true);\r\n";
-            }
-            dyn +=   "    } else {\r\n";
-            if (cf)
-                dyn+="        movToRegFromReg(DYN_SRC, DYN_"+bits+"bit, DYN_CALL_RESULT, DYN_32bit, true);\r\n";
-
-            dyn+=    "        movToCpu(CPU_OFFSET_OF(src.u"+bits+"), DYN_"+bits+"bit, op->imm);\r\n"+
-                    "        calculateEaa(op, DYN_ADDRESS);\r\n"+
-                    "        movToCpuFromMem(CPU_OFFSET_OF(dst.u"+bits+"), DYN_"+bits+"bit, DYN_ADDRESS, false, false);\r\n"+
-                    "        instRegImm('" + op + "', DYN_CALL_RESULT, DYN_"+bits+"bit, op->imm);\r\n";
-            if (cf)
-                dyn+="        instRegReg('" + op + "', DYN_CALL_RESULT, DYN_SRC, DYN_"+bits+"bit, true);\r\n";
-
-            dyn +=   "        movToCpuFromReg(CPU_OFFSET_OF(result.u"+bits+"), DYN_CALL_RESULT, DYN_"+bits+"bit, false);\r\n"+
-                     "        movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_"+bits+"bit, true, true);\r\n";
-            if (flags)
-                dyn+="        movToCpu(CPU_OFFSET_OF(lazyFlags), Dyn_PtrSize, (DYN_PTR_SIZE)" + "FLAGS_"+name.toUpperCase()+bits + ");\r\n";
-            dyn +=   "    }";
-        } else {
-            dyn = "";
-            if (cf)
-                dyn+="    movToRegFromReg(DYN_SRC, DYN_"+bits+"bit, DYN_CALL_RESULT, DYN_32bit, true);\r\n";
-
-            dyn +=   "    movToCpu(CPU_OFFSET_OF(src.u"+bits+"), DYN_"+bits+"bit, op->imm);\r\n"+
-                    "    calculateEaa(op, DYN_ADDRESS);\r\n"+
-                    "    movToCpuFromMem(CPU_OFFSET_OF(dst.u"+bits+"), DYN_"+bits+"bit, DYN_ADDRESS, true, false);\r\n"+
-                    "    instRegImm('" + op + "', DYN_CALL_RESULT, DYN_"+bits+"bit, op->imm);\r\n";
-            if (cf)
-                dyn+="    instRegReg('" + op + "', DYN_CALL_RESULT, DYN_SRC, DYN_"+bits+"bit, true);\r\n";
-
-            dyn +=   "    movToCpuFromReg(CPU_OFFSET_OF(result.u"+bits+"), DYN_CALL_RESULT, DYN_"+bits+"bit, true);";
-
-            if (flags)
-                dyn+="\r\n    movToCpu(CPU_OFFSET_OF(lazyFlags), Dyn_PtrSize, (DYN_PTR_SIZE)" + "FLAGS_"+name.toUpperCase()+bits + ");";
-        }
-        return dyn;
+        return "    dynamic_arith(data, op, DYN_Const, DYN_Mem, DYN_"+bits+"bit, '"+op+"', "+(cf?"true":"false")+", "+(result?"true":"false")+", FLAGS_"+name.toUpperCase()+bits+");";
     }
 
     public void arith32(FileOutputStream fos, FileOutputStream fos_init, FileOutputStream fos32, String name, String op, boolean cf, boolean result, String bits, boolean flags, boolean iform, boolean hasRE)  throws IOException {
         String mixed = name.substring(0, 1).toUpperCase() + name.substring(1);
 
-        arithbase(fos, fos_init, fos32, mixed + "R32R32", name + "r32r32", "FLAGS_" + name.toUpperCase() + bits, "cpu->reg[op->rm].u32", "cpu->reg[op->reg].u32", "cpu->reg[op->reg].u32 = ", "", op, cf, result, false, bits, flags, arithDynRR(op, result, cf, flags, bits, name), "", false);
-        arithbase(fos, fos_init, fos32, mixed + "E32R32", name + "e32r32", "FLAGS_" + name.toUpperCase() + bits, "cpu->reg[op->reg].u32", "readd(eaa)", "writed(eaa, ", ")", op, cf, result, true, bits, flags, arithDynER(op, result, cf, flags, bits, name), "", false);
+        arithbase(fos, fos_init, fos32, mixed + "R32R32", name + "r32r32", "FLAGS_" + name.toUpperCase() + bits, "cpu->reg[op->rm].u32", "cpu->reg[op->reg].u32", "cpu->reg[op->reg].u32 = ", "", op, cf, result, false, bits, flags, arithDynRR(op, result, cf, flags, bits, name), "", false, false);
+        arithbase(fos, fos_init, fos32, mixed + "E32R32", name + "e32r32", "FLAGS_" + name.toUpperCase() + bits, "cpu->reg[op->reg].u32", "readd(eaa)", "writed(eaa, ", ")", op, cf, result, true, bits, flags, arithDynER(op, result, cf, flags, bits, name), "", false, false);
         if (hasRE) {
-            arithbase(fos, fos_init, fos32, mixed + "R32E32", name + "r32e32", "FLAGS_" + name.toUpperCase() + bits, "readd(eaa(cpu, op))", "cpu->reg[op->reg].u32", "cpu->reg[op->reg].u32 = ", "", op, cf, result, false, bits, flags, arithDynRE(op, result, cf, flags, bits, name), "", false);
+            arithbase(fos, fos_init, fos32, mixed + "R32E32", name + "r32e32", "FLAGS_" + name.toUpperCase() + bits, "readd(eaa(cpu, op))", "cpu->reg[op->reg].u32", "cpu->reg[op->reg].u32 = ", "", op, cf, result, false, bits, flags, arithDynRE(op, result, cf, flags, bits, name), "", false, false);
         }
         if (iform) {
-            arithbase(fos, fos_init, fos32, mixed + "R32I32", name + "32_reg", "FLAGS_" + name.toUpperCase() + bits, "op->imm", "cpu->reg[op->reg].u32", "cpu->reg[op->reg].u32 = ", "", op, cf, result, false, bits, flags, arithDynRI(op, result, cf, flags, bits, name), "", false);
-            arithbase(fos, fos_init, fos32, mixed + "E32I32", name + "32_mem", "FLAGS_" + name.toUpperCase() + bits, "op->imm", "readd(eaa)", "writed(eaa, ", ")", op, cf, result, true, bits, flags, arithDynEI(op, result, cf, flags, bits, name), "", false);
+            arithbase(fos, fos_init, fos32, mixed + "R32I32", name + "32_reg", "FLAGS_" + name.toUpperCase() + bits, "op->imm", "cpu->reg[op->reg].u32", "cpu->reg[op->reg].u32 = ", "", op, cf, result, false, bits, flags, arithDynRI(op, result, cf, flags, bits, name), "", false, false);
+            arithbase(fos, fos_init, fos32, mixed + "E32I32", name + "32_mem", "FLAGS_" + name.toUpperCase() + bits, "op->imm", "readd(eaa)", "writed(eaa, ", ")", op, cf, result, true, bits, flags, arithDynEI(op, result, cf, flags, bits, name), "", false, false);
         }
     }
 
     public void arith16(FileOutputStream fos, FileOutputStream fos_init, FileOutputStream fos32, String name, String op, boolean cf, boolean result, String bits, boolean flags, boolean iform, boolean hasRE)  throws IOException {
         String mixed = name.substring(0, 1).toUpperCase() + name.substring(1);
 
-        arithbase(fos, fos_init, fos32, mixed + "R16R16", name+"r16r16", "FLAGS_"+name.toUpperCase()+bits, "cpu->reg[op->rm].u16", "cpu->reg[op->reg].u16", "cpu->reg[op->reg].u16 = ", "", op, cf, result, false, bits, flags, arithDynRR(op, result, cf, flags, bits, name), "", false);
-        arithbase(fos, fos_init, fos32, mixed + "E16R16", name+"e16r16", "FLAGS_"+name.toUpperCase()+bits, "cpu->reg[op->reg].u16", "readw(eaa)", "writew(eaa, ", ")", op, cf, result, true, bits, flags, arithDynER(op, result, cf, flags, bits, name), "", false);
+        arithbase(fos, fos_init, fos32, mixed + "R16R16", name+"r16r16", "FLAGS_"+name.toUpperCase()+bits, "cpu->reg[op->rm].u16", "cpu->reg[op->reg].u16", "cpu->reg[op->reg].u16 = ", "", op, cf, result, false, bits, flags, arithDynRR(op, result, cf, flags, bits, name), "", false, false);
+        arithbase(fos, fos_init, fos32, mixed + "E16R16", name+"e16r16", "FLAGS_"+name.toUpperCase()+bits, "cpu->reg[op->reg].u16", "readw(eaa)", "writew(eaa, ", ")", op, cf, result, true, bits, flags, arithDynER(op, result, cf, flags, bits, name), "", false, false);
         if (hasRE) {
-            arithbase(fos, fos_init, fos32, mixed + "R16E16", name + "r16e16", "FLAGS_" + name.toUpperCase() + bits, "readw(eaa(cpu, op))", "cpu->reg[op->reg].u16", "cpu->reg[op->reg].u16 = ", "", op, cf, result, false, bits, flags, arithDynRE(op, result, cf, flags, bits, name), "", false);
+            arithbase(fos, fos_init, fos32, mixed + "R16E16", name + "r16e16", "FLAGS_" + name.toUpperCase() + bits, "readw(eaa(cpu, op))", "cpu->reg[op->reg].u16", "cpu->reg[op->reg].u16 = ", "", op, cf, result, false, bits, flags, arithDynRE(op, result, cf, flags, bits, name), "", false, false);
         }
         if (iform) {
-            arithbase(fos, fos_init, fos32, mixed + "R16I16", name + "16_reg", "FLAGS_" + name.toUpperCase() + bits, "op->imm", "cpu->reg[op->reg].u16", "cpu->reg[op->reg].u16 = ", "", op, cf, result, false, bits, flags, arithDynRI(op, result, cf, flags, bits, name), "", false);
-            arithbase(fos, fos_init, fos32, mixed + "E16I16", name + "16_mem", "FLAGS_" + name.toUpperCase() + bits, "op->imm", "readw(eaa)", "writew(eaa, ", ")", op, cf, result, true, bits, flags, arithDynEI(op, result, cf, flags, bits, name),"", false);
+            arithbase(fos, fos_init, fos32, mixed + "R16I16", name + "16_reg", "FLAGS_" + name.toUpperCase() + bits, "op->imm", "cpu->reg[op->reg].u16", "cpu->reg[op->reg].u16 = ", "", op, cf, result, false, bits, flags, arithDynRI(op, result, cf, flags, bits, name), "", false, false);
+            arithbase(fos, fos_init, fos32, mixed + "E16I16", name + "16_mem", "FLAGS_" + name.toUpperCase() + bits, "op->imm", "readw(eaa)", "writew(eaa, ", ")", op, cf, result, true, bits, flags, arithDynEI(op, result, cf, flags, bits, name),"", false, false);
         }
     }
 
     public void arith8(FileOutputStream fos, FileOutputStream fos_init, FileOutputStream fos32, String name, String op, boolean cf, boolean result, String bits, boolean flags, boolean iform, boolean hasRE)  throws IOException {
         String mixed = name.substring(0, 1).toUpperCase() + name.substring(1);
 
-        arithbase(fos, fos_init, fos32, mixed + "R8R8", name+"r8r8", "FLAGS_"+name.toUpperCase()+bits, "*cpu->reg8[op->rm]", "*cpu->reg8[op->reg]", "*cpu->reg8[op->reg] = ", "", op, cf, result, false, bits, flags, arithDynRR(op, result, cf, flags, bits, name),"", false);
-        arithbase(fos, fos_init, fos32, mixed + "E8R8", name+"e8r8", "FLAGS_"+name.toUpperCase()+bits, "*cpu->reg8[op->reg]", "readb(eaa)", "writeb(eaa, ", ")", op, cf, result, true, bits, flags, arithDynER(op, result, cf, flags, bits, name),"", false);
+        arithbase(fos, fos_init, fos32, mixed + "R8R8", name+"r8r8", "FLAGS_"+name.toUpperCase()+bits, "*cpu->reg8[op->rm]", "*cpu->reg8[op->reg]", "*cpu->reg8[op->reg] = ", "", op, cf, result, false, bits, flags, arithDynRR(op, result, cf, flags, bits, name),"", false, false);
+        arithbase(fos, fos_init, fos32, mixed + "E8R8", name+"e8r8", "FLAGS_"+name.toUpperCase()+bits, "*cpu->reg8[op->reg]", "readb(eaa)", "writeb(eaa, ", ")", op, cf, result, true, bits, flags, arithDynER(op, result, cf, flags, bits, name),"", false, false);
         if (hasRE) {
-            arithbase(fos, fos_init, fos32, mixed + "R8E8", name + "r8e8", "FLAGS_" + name.toUpperCase() + bits, "readb(eaa(cpu, op))", "*cpu->reg8[op->reg]", "*cpu->reg8[op->reg] = ", "", op, cf, result, false, bits, flags, arithDynRE(op, result, cf, flags, bits, name), "", false);
+            arithbase(fos, fos_init, fos32, mixed + "R8E8", name + "r8e8", "FLAGS_" + name.toUpperCase() + bits, "readb(eaa(cpu, op))", "*cpu->reg8[op->reg]", "*cpu->reg8[op->reg] = ", "", op, cf, result, false, bits, flags, arithDynRE(op, result, cf, flags, bits, name), "", false, false);
         }
         if (iform) {
-            arithbase(fos, fos_init, fos32, mixed + "R8I8", name + "8_reg", "FLAGS_" + name.toUpperCase() + bits, "op->imm", "*cpu->reg8[op->reg]", "*cpu->reg8[op->reg] = ", "", op, cf, result, false, bits, flags, arithDynRI(op, result, cf, flags, bits, name),"", false);
-            arithbase(fos, fos_init, fos32, mixed + "E8I8", name + "8_mem", "FLAGS_" + name.toUpperCase() + bits, "op->imm", "readb(eaa)", "writeb(eaa, ", ")", op, cf, result, true, bits, flags, arithDynEI(op, result, cf, flags, bits, name),"", false);
+            arithbase(fos, fos_init, fos32, mixed + "R8I8", name + "8_reg", "FLAGS_" + name.toUpperCase() + bits, "op->imm", "*cpu->reg8[op->reg]", "*cpu->reg8[op->reg] = ", "", op, cf, result, false, bits, flags, arithDynRI(op, result, cf, flags, bits, name),"", false, false);
+            arithbase(fos, fos_init, fos32, mixed + "E8I8", name + "8_mem", "FLAGS_" + name.toUpperCase() + bits, "op->imm", "readb(eaa)", "writeb(eaa, ", ")", op, cf, result, true, bits, flags, arithDynEI(op, result, cf, flags, bits, name),"", false, false);
         }
     }
 
@@ -672,7 +423,7 @@ public class Arith extends Base {
         } else {
             dyn = "instCPU('"+op+"', CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit);";
         }
-        arithbase(fos, fos_init, fos32, mixed + "R32", name + "r32", "FLAGS_" + name.toUpperCase() + bits, flags?"0":"", "cpu->reg[op->reg].u32", "cpu->reg[op->reg].u32 = ", "", op, cf, result, false, bits, flags, dyn,"", flags);
+        arithbase(fos, fos_init, fos32, mixed + "R32", name + "r32", "FLAGS_" + name.toUpperCase() + bits, flags?"0":"", "cpu->reg[op->reg].u32", "cpu->reg[op->reg].u32 = ", "", op, cf, result, false, bits, flags, dyn,"", flags, true);
 
         if (flags) {
             dyn =   "    calculateEaa(op, DYN_ADDRESS);\r\n"+
@@ -689,7 +440,7 @@ public class Arith extends Base {
             dyn =   "    calculateEaa(op, DYN_ADDRESS);\r\n"+
                     "    instMem('"+op+"', DYN_ADDRESS, DYN_32bit, true);";
         }
-        arithbase(fos, fos_init, fos32, mixed + "E32", name + "e32", "FLAGS_" + name.toUpperCase() + bits, flags?"0":"", "readd(eaa)", "writed(eaa, ", ")", op, cf, result, true, bits, flags, dyn,"", flags);
+        arithbase(fos, fos_init, fos32, mixed + "E32", name + "e32", "FLAGS_" + name.toUpperCase() + bits, flags?"0":"", "readd(eaa)", "writed(eaa, ", ")", op, cf, result, true, bits, flags, dyn,"", flags, true);
     }
 
     public void arithSingle16(FileOutputStream fos, FileOutputStream fos_init, FileOutputStream fos32, String name, String op, boolean cf, boolean result, String bits, boolean flags)  throws IOException {
@@ -710,7 +461,7 @@ public class Arith extends Base {
         } else {
             dyn = "instCPU('"+op+"', CPU_OFFSET_OF(reg[op->reg].u16), DYN_16bit);";
         }
-        arithbase(fos, fos_init, fos32, mixed + "R16", name+"r16", "FLAGS_"+name.toUpperCase()+bits, flags?"0":"", "cpu->reg[op->reg].u16", "cpu->reg[op->reg].u16 = ", "", op, cf, result, false, bits, flags, dyn, "", flags);
+        arithbase(fos, fos_init, fos32, mixed + "R16", name+"r16", "FLAGS_"+name.toUpperCase()+bits, flags?"0":"", "cpu->reg[op->reg].u16", "cpu->reg[op->reg].u16 = ", "", op, cf, result, false, bits, flags, dyn, "", flags, true);
 
         if (flags) {
             dyn =   "    calculateEaa(op, DYN_ADDRESS);\r\n"+
@@ -727,7 +478,7 @@ public class Arith extends Base {
             dyn =   "    calculateEaa(op, DYN_ADDRESS);\r\n"+
                     "    instMem('"+op+"', DYN_ADDRESS, DYN_16bit, true);";
         }
-        arithbase(fos, fos_init, fos32, mixed + "E16", name+"e16", "FLAGS_"+name.toUpperCase()+bits, flags?"0":"", "readw(eaa)", "writew(eaa, ", ")", op, cf, result, true, bits, flags, dyn,"", flags);
+        arithbase(fos, fos_init, fos32, mixed + "E16", name+"e16", "FLAGS_"+name.toUpperCase()+bits, flags?"0":"", "readw(eaa)", "writew(eaa, ", ")", op, cf, result, true, bits, flags, dyn,"", flags, true);
     }
 
     public void arithSingle8(FileOutputStream fos, FileOutputStream fos_init, FileOutputStream fos32, String name, String op, boolean cf, boolean result, String bits, boolean flags)  throws IOException {
@@ -748,7 +499,7 @@ public class Arith extends Base {
         } else {
             dyn = "instCPU('"+op+"', OFFSET_REG8(op->reg), DYN_8bit);";
         }
-        arithbase(fos, fos_init, fos32, mixed + "R8", name+"r8", "FLAGS_"+name.toUpperCase()+bits, flags?"0":"", "*cpu->reg8[op->reg]", "*cpu->reg8[op->reg] = ", "", op, cf, result, false, bits, flags, dyn,"", flags);
+        arithbase(fos, fos_init, fos32, mixed + "R8", name+"r8", "FLAGS_"+name.toUpperCase()+bits, flags?"0":"", "*cpu->reg8[op->reg]", "*cpu->reg8[op->reg] = ", "", op, cf, result, false, bits, flags, dyn,"", flags, true);
 
         if (flags) {
             dyn =   "    calculateEaa(op, DYN_ADDRESS);\r\n"+
@@ -765,10 +516,10 @@ public class Arith extends Base {
             dyn =   "    calculateEaa(op, DYN_ADDRESS);\r\n"+
                     "    instMem(\'"+op+"\', DYN_ADDRESS, DYN_8bit, true);";
         }
-        arithbase(fos, fos_init, fos32, mixed + "E8", name+"e8", "FLAGS_"+name.toUpperCase()+bits, flags?"0":"", "readb(eaa)", "writeb(eaa, ", ")", op, cf, result, true, bits, flags, dyn,"", flags);
+        arithbase(fos, fos_init, fos32, mixed + "E8", name+"e8", "FLAGS_"+name.toUpperCase()+bits, flags?"0":"", "readb(eaa)", "writeb(eaa, ", ")", op, cf, result, true, bits, flags, dyn,"", flags, true);
     }
 
-    public void arithbase(FileOutputStream fos, FileOutputStream fos_init, FileOutputStream fos32, String enumName, String functionName, String flagName, String source, String loadDest, String saveDest1, String saveDest2, String op, boolean cf, boolean result, boolean eaa, String bits, boolean flags, String x32withFlags, String x32noFlags, boolean reverse)  throws IOException {
+    public void arithbase(FileOutputStream fos, FileOutputStream fos_init, FileOutputStream fos32, String enumName, String functionName, String flagName, String source, String loadDest, String saveDest1, String saveDest2, String op, boolean cf, boolean result, boolean eaa, String bits, boolean flags, String x32withFlags, String x32noFlags, boolean reverse, boolean dynEip)  throws IOException {
         out(fos, "void OPCALL normal_"+functionName+"(CPU* cpu, DecodedOp* op) {");
         out(fos, "    START_OP(cpu, op);");
         if (eaa)
@@ -798,13 +549,9 @@ public class Arith extends Base {
             out(fos32, "    if (op->needsToSetFlags() {");
         }
 
-        if (cf) {
-            out(fos32, "    callHostFunction(common_getCF, true, 1, 0, DYN_PARAM_CPU, false);");
-            out(fos32, "    movToCpuFromReg(CPU_OFFSET_OF(oldCF), DYN_CALL_RESULT, DYN_32bit, false);");
-        }
         out(fos32, x32withFlags);
-
-        out(fos32, "    INCREMENT_EIP(op->len);");
+        if (dynEip)
+            out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
     }
 }

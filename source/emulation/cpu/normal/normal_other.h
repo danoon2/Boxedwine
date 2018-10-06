@@ -262,7 +262,7 @@ void OPCALL normal_std(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_rdtsc(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U64 t = cpu->instructionCount+op->imm;
+    U64 t = cpu->instructionCount+cpu->blockInstructionCount+op->imm;
     EAX = (U32)t;
     EDX = (U32)(t >> 32);
     NEXT();

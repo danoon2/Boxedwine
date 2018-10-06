@@ -1018,6 +1018,11 @@ enum Instruction {
 #define FS 4
 #define GS 5
 
+#define DECODE_BRANCH_1 0x01
+#define DECODE_BRANCH_2 0x02
+// jump location is not at a fixed offset
+#define DECODE_BRANCH_NO_CACHE 0x04
+
 class InstructionInfo {
 public:    
     U32  branch;
@@ -1041,6 +1046,7 @@ public:
     void dealloc(bool deallocNext);    
     void log(CPU* cpu);
     bool needsToSetFlags();
+    static bool willOverwriteFlags(DecodedBlock* block, DecodedOp* op, U32 flags, U32 depth=2);
 
     DecodedOp* next;
     OpCallback pfn;

@@ -341,22 +341,22 @@ const InstructionInfo instructionInfo[] = {
     {0, 16, 0, 0, 0, 0, 0}, // Outsw
     {0, 32, 0, 0, 0, 0, 0}, // Outsd
 
-    {1, 0, 0, 0, OF, 0, 0}, // JumpO
-    {1, 0, 0, 0, OF, 0, 0}, // JumpNO
-    {1, 0, 0, 0, CF, 0, 0}, // JumpB
-    {1, 0, 0, 0, CF, 0, 0}, // JumpNB
-    {1, 0, 0, 0, ZF, 0, 0}, // JumpZ
-    {1, 0, 0, 0, ZF, 0, 0}, // JumpNZ
-    {1, 0, 0, 0, CF|ZF, 0, 0}, // JumpBE
-    {1, 0, 0, 0, CF|ZF, 0, 0}, // JumpNBE
-    {1, 0, 0, 0, SF, 0, 0}, // JumpS
-    {1, 0, 0, 0, SF, 0, 0}, // JumpNS
-    {1, 0, 0, 0, PF, 0, 0}, // JumpP
-    {1, 0, 0, 0, PF, 0, 0}, // JumpNP
-    {1, 0, 0, 0, SF|OF, 0, 0}, // JumpL
-    {1, 0, 0, 0, SF|OF, 0, 0}, // JumpNL
-    {1, 0, 0, 0, SF|OF|ZF, 0, 0}, // JumpLE
-    {1, 0, 0, 0, SF|OF|ZF, 0, 0}, // JumpNLE
+    {DECODE_BRANCH_1|DECODE_BRANCH_2, 0, 0, 0, OF, 0, 0}, // JumpO
+    {DECODE_BRANCH_1|DECODE_BRANCH_2, 0, 0, 0, OF, 0, 0}, // JumpNO
+    {DECODE_BRANCH_1|DECODE_BRANCH_2, 0, 0, 0, CF, 0, 0}, // JumpB
+    {DECODE_BRANCH_1|DECODE_BRANCH_2, 0, 0, 0, CF, 0, 0}, // JumpNB
+    {DECODE_BRANCH_1|DECODE_BRANCH_2, 0, 0, 0, ZF, 0, 0}, // JumpZ
+    {DECODE_BRANCH_1|DECODE_BRANCH_2, 0, 0, 0, ZF, 0, 0}, // JumpNZ
+    {DECODE_BRANCH_1|DECODE_BRANCH_2, 0, 0, 0, CF|ZF, 0, 0}, // JumpBE
+    {DECODE_BRANCH_1|DECODE_BRANCH_2, 0, 0, 0, CF|ZF, 0, 0}, // JumpNBE
+    {DECODE_BRANCH_1|DECODE_BRANCH_2, 0, 0, 0, SF, 0, 0}, // JumpS
+    {DECODE_BRANCH_1|DECODE_BRANCH_2, 0, 0, 0, SF, 0, 0}, // JumpNS
+    {DECODE_BRANCH_1|DECODE_BRANCH_2, 0, 0, 0, PF, 0, 0}, // JumpP
+    {DECODE_BRANCH_1|DECODE_BRANCH_2, 0, 0, 0, PF, 0, 0}, // JumpNP
+    {DECODE_BRANCH_1|DECODE_BRANCH_2, 0, 0, 0, SF|OF, 0, 0}, // JumpL
+    {DECODE_BRANCH_1|DECODE_BRANCH_2, 0, 0, 0, SF|OF, 0, 0}, // JumpNL
+    {DECODE_BRANCH_1|DECODE_BRANCH_2, 0, 0, 0, SF|OF|ZF, 0, 0}, // JumpLE
+    {DECODE_BRANCH_1|DECODE_BRANCH_2, 0, 0, 0, SF|OF|ZF, 0, 0}, // JumpNLE
 
     {0, 0, 0, 0, 0, 0, 0}, // MovR8R8
     {0, 0, 8, 0, 0, 0, 0}, // MovE8R8
@@ -408,34 +408,34 @@ const InstructionInfo instructionInfo[] = {
     {0, 0, 0, 0, 0, 0, 0}, // Nop
     {0, 0, 0, 0, 0, 0, 0}, // Cwd
     {0, 0, 0, 0, 0, 0, 0}, // Cwq
-    {1, 0, 32, 0, 0, 0, 1}, // CallAp
-    {1, 0, 64, 0, 0, 0, 1}, // CallFar
-    {1, 0, 0, 0, 0, 0, 1}, // JmpAp
-    {1, 0, 0, 0, 0, 0, 1}, // JmpFar
+    {DECODE_BRANCH_NO_CACHE, 0, 32, 0, 0, 0, 1}, // CallAp
+    {DECODE_BRANCH_NO_CACHE, 0, 64, 0, 0, 0, 1}, // CallFar
+    {DECODE_BRANCH_NO_CACHE, 0, 0, 0, 0, 0, 1}, // JmpAp
+    {DECODE_BRANCH_NO_CACHE, 0, 0, 0, 0, 0, 1}, // JmpFar
     {0, 0, 0, 0, 0, 0, 0}, // Wait
     {0, 0, 0, CF|AF|ZF|SF|PF, 0, 0, 0}, // Sahf - OF not part of lower 8-bits of flags
     {0, 0, 0, 0, CF|AF|ZF|SF|PF, 0, 0}, // Lahf - OF not part of lower 8-bits of flags
     {0, 0, 0, 0, CF, 0, 0}, // Salc
-    {1, 16, 0, 0, 0, 0, 0}, // Retn16Iw
-    {1, 32, 0, 0, 0, 0, 0}, // Retn32Iw
-    {1, 16, 0, 0, 0, 0, 0}, // Retn16
-    {1, 32, 0, 0, 0, 0, 0}, // Retn32
-    {1, 32, 0, 0, 0, 0, 1}, // Retf16
-    {1, 64, 0, 0, 0, 0, 1}, // Retf32
+    {DECODE_BRANCH_NO_CACHE, 16, 0, 0, 0, 0, 0}, // Retn16Iw
+    {DECODE_BRANCH_NO_CACHE, 32, 0, 0, 0, 0, 0}, // Retn32Iw
+    {DECODE_BRANCH_NO_CACHE, 16, 0, 0, 0, 0, 0}, // Retn16
+    {DECODE_BRANCH_NO_CACHE, 32, 0, 0, 0, 0, 0}, // Retn32
+    {DECODE_BRANCH_NO_CACHE, 32, 0, 0, 0, 0, 1}, // Retf16
+    {DECODE_BRANCH_NO_CACHE, 64, 0, 0, 0, 0, 1}, // Retf32
     // not sure about the read/write for this, these will run a signal which will push a bunch of stuff on the stack
-    {1, 0, 1, 0, 0, 0, 0}, // Invalid 
-    {1, 0, 1, 0, 0, 0, 0}, // Int3,
-    {1, 1, 1, 0, 0, 0, 0}, // Int80 Syscall
+    {DECODE_BRANCH_NO_CACHE, 0, 1, 0, 0, 0, 0}, // Invalid 
+    {DECODE_BRANCH_NO_CACHE, 0, 1, 0, 0, 0, 0}, // Int3,
+    {DECODE_BRANCH_NO_CACHE, 1, 1, 0, 0, 0, 0}, // Int80 Syscall
     {0, 1, 1, 0, 0, 0, 0}, // Int98 Wine callback
     {0, 1, 1, 0, 0, 0, 0}, // Int99 OpenGL callback
-    {1, 0, 1, 0, 0, 0, 0}, // IntIb,
-    {1, 0, 1, 0, OF, 0, 0}, // IntO,
+    {DECODE_BRANCH_NO_CACHE, 0, 1, 0, 0, 0, 0}, // IntIb,
+    {DECODE_BRANCH_NO_CACHE, 0, 1, 0, OF, 0, 0}, // IntO,
 
-    {1, 48, 0, CF|SF|ZF|PF|OF|AF, 0, 0, 0}, // Iret
-    {1, 96, 0, CF|SF|ZF|PF|OF|AF, 0, 0, 0}, // Iret32
+    {DECODE_BRANCH_NO_CACHE, 48, 0, CF|SF|ZF|PF|OF|AF, 0, 0, 0}, // Iret
+    {DECODE_BRANCH_NO_CACHE, 96, 0, CF|SF|ZF|PF|OF|AF, 0, 0, 0}, // Iret32
     {0, 1, 0, 0, 0, 0, 0}, // Xlat
-    {1, 0, 1, 0, 0, 0, 0}, // ICEBP
-    {1, 0, 0, 0, 0, 0, 0}, // Hlt
+    {DECODE_BRANCH_NO_CACHE, 0, 1, 0, 0, 0, 0}, // ICEBP
+    {DECODE_BRANCH_NO_CACHE, 0, 0, 0, 0, 0, 0}, // Hlt
     {0, 0, 0, CF, CF, 0, 0}, // Cmc
     {0, 0, 0, CF, 0, 0, 0}, // Clc
     {0, 0, 0, CF, 0, 0, 0}, // Stc
@@ -700,10 +700,10 @@ const InstructionInfo instructionInfo[] = {
     {0, 0, 80, 0, 0, 0, 0}, // FBSTP_PACKED_BCD
     {0, 0, 64, 0, 0, 0, 0}, // FISTP_QWORD_INTEGER
 
-    {1, 0, 0, 0, ZF, 0}, // LoopNZ
-    {1, 0, 0, 0, ZF, 0}, // LoopZ
-    {1, 0, 0, 0, 0, 0}, // Loop
-    {1, 0, 0, 0, 0, 0}, // Jcxz
+    {DECODE_BRANCH_1|DECODE_BRANCH_2, 0, 0, 0, ZF, 0}, // LoopNZ
+    {DECODE_BRANCH_1|DECODE_BRANCH_2, 0, 0, 0, ZF, 0}, // LoopZ
+    {DECODE_BRANCH_1|DECODE_BRANCH_2, 0, 0, 0, 0, 0}, // Loop
+    {DECODE_BRANCH_1|DECODE_BRANCH_2, 0, 0, 0, 0, 0}, // Jcxz
 
     {0, 0, 0, 0, 0, 0}, // InAlIb
     {0, 0, 0, 0, 0, 0}, // InAxIb
@@ -718,23 +718,23 @@ const InstructionInfo instructionInfo[] = {
     {0, 0, 0, 0, 0, 0}, // OutDxAx
     {0, 0, 0, 0, 0, 0}, // OutDxEax
 
-    {1, 0, 16, 0, 0, 0, 0}, // CallJw
-    {1, 0, 32, 0, 0, 0, 0}, // CallJd
-    {1, 0, 0, 0, 0, 0, 0}, // JmpJw
-    {1, 0, 0, 0, 0, 0, 0}, // JmpJd
-    {1, 0, 0, 0, 0, 0, 0}, // JmpJb
-    {1, 0, 16, 0, 0, 0, 0}, // CallR16 
-    {1, 0, 32, 0, 0, 0, 0}, // CallR32 
-    {1, 16, 16, 0, 0, 0, 0}, // CallE16
-    {1, 32, 32, 0, 0, 0, 0}, // CallE32
-    {1, 32, 32, 0, 0, 0, 1}, // CallFarE16
-    {1, 64, 64, 0, 0, 0, 1}, // CallFarE32
-    {1, 0, 0, 0, 0, 0, 0}, // JmpR16 
-    {1, 0, 0, 0, 0, 0, 0}, // JmpR32 
-    {1, 16, 0, 0, 0, 0, 0}, // JmpE16
-    {1, 32, 0, 0, 0, 0, 0}, // JmpE32
-    {1, 32, 0, 0, 0, 0, 1}, // JmpFarE16
-    {1, 64, 0, 0, 0, 0, 1}, // JmpFarE32
+    {DECODE_BRANCH_1, 0, 16, 0, 0, 0, 0}, // CallJw
+    {DECODE_BRANCH_1, 0, 32, 0, 0, 0, 0}, // CallJd
+    {DECODE_BRANCH_1, 0, 0, 0, 0, 0, 0}, // JmpJw
+    {DECODE_BRANCH_1, 0, 0, 0, 0, 0, 0}, // JmpJd
+    {DECODE_BRANCH_1, 0, 0, 0, 0, 0, 0}, // JmpJb
+    {DECODE_BRANCH_NO_CACHE, 0, 16, 0, 0, 0, 0}, // CallR16 
+    {DECODE_BRANCH_NO_CACHE, 0, 32, 0, 0, 0, 0}, // CallR32 
+    {DECODE_BRANCH_NO_CACHE, 16, 16, 0, 0, 0, 0}, // CallE16
+    {DECODE_BRANCH_NO_CACHE, 32, 32, 0, 0, 0, 0}, // CallE32
+    {DECODE_BRANCH_NO_CACHE, 32, 32, 0, 0, 0, 1}, // CallFarE16
+    {DECODE_BRANCH_NO_CACHE, 64, 64, 0, 0, 0, 1}, // CallFarE32
+    {DECODE_BRANCH_NO_CACHE, 0, 0, 0, 0, 0, 0}, // JmpR16 
+    {DECODE_BRANCH_NO_CACHE, 0, 0, 0, 0, 0, 0}, // JmpR32 
+    {DECODE_BRANCH_NO_CACHE, 16, 0, 0, 0, 0, 0}, // JmpE16
+    {DECODE_BRANCH_NO_CACHE, 32, 0, 0, 0, 0, 0}, // JmpE32
+    {DECODE_BRANCH_NO_CACHE, 32, 0, 0, 0, 0, 1}, // JmpFarE16
+    {DECODE_BRANCH_NO_CACHE, 64, 0, 0, 0, 0, 1}, // JmpFarE32
 
     {0, 0, 0, ZF, 0, 0, 0}, // LarR16R16
     {0, 16, 0, ZF, 0, 0, 0}, // LarR16E16
@@ -973,8 +973,8 @@ const InstructionInfo instructionInfo[] = {
     {0, 64, 0, 0, 0, 0, 0}, // PaddwE64
     {0, 0, 0, 0, 0, 0, 0}, // PadddMmx 
     {0, 64, 0, 0, 0, 0}, // PadddE64
-    {1, 0, 0, 0, 0, 0}, // Callback
-    {1, 0, 0, 0, 0, 0}, // Done
+    {DECODE_BRANCH_NO_CACHE, 0, 0, 0, 0, 0}, // Callback
+    {DECODE_BRANCH_NO_CACHE, 0, 0, 0, 0, 0}, // Done
     {0, 0, 0, 0, 0, 0} // Custom1
 };
 
@@ -2342,6 +2342,7 @@ public:
 
     pfnFetchByte fetchByte;
     U32* eip;
+    U32 opCountSoFarInThisBlock;
     U8 opLen;
 };
 
@@ -3755,6 +3756,20 @@ private:
     Instruction inst[8];
 };
 
+class DecodeRdtsc : public Decode {
+public:
+    DecodeRdtsc(Instruction reg) {
+        this->reg = reg;
+    }
+    void decode(DecodeData* data, DecodedOp* op) const {
+        op->inst = reg;
+        op->imm = data->opCountSoFarInThisBlock;
+    }
+
+private:
+    Instruction reg;
+};
+
 DecodeRM decodeAddEbGb(AddR8R8, AddE8R8);         // ADD Eb,Gb
 DecodeRM decodeAddEwGw(AddR16R16, AddE16R16);   // ADD Ew,Gw
 DecodeRM decodeAddEdGd(AddR32R32, AddE32R32);   // ADD Ed,Gd
@@ -4215,7 +4230,7 @@ DecodeInst decodeCli(Cli);                                       // CLI
 DecodeInst decodeSti(Sti);                                       // STI
 DecodeInst decodeCld(Cld);                                       // CLD
 DecodeInst decodeStd(Std);                                       // STD
-DecodeInst decodeRdtsc(Rdtsc);                                   // RDTSC
+DecodeRdtsc decodeRdtsc(Rdtsc);                                   // RDTSC
 DecodeInst decodeCPUID(CPUID);                                   // CPUID
 
 DecodeInstrMem decodeMovsb(Movsb);                  // MOVSB
@@ -4665,48 +4680,46 @@ void DecodedOp::dealloc(bool deallocNext) {
 
 bool DecodedOp::needsToSetFlags() {
     U32 needsToSet = instructionInfo[this->inst].flagsSets & ~MAYBE;
-    DecodedOp* n = this->next;
-    while (n && needsToSet) {
-        if (instructionInfo[n->inst].flagsUsed & needsToSet) {
-            return true;
+    return !DecodedOp::willOverwriteFlags(DecodedBlock::currentBlock, this, needsToSet);
+}
+
+bool DecodedOp::willOverwriteFlags(DecodedBlock* block, DecodedOp* op, U32 flags, U32 depth) {
+    DecodedOp* n = op->next;
+    DecodedOp* lastOp = op;
+
+    while (n && flags) {
+        if (instructionInfo[n->inst].flagsUsed & flags) {
+            return false;
         }
         if (!(instructionInfo[n->inst].flagsSets & MAYBE)) {
-            needsToSet &= ~ instructionInfo[n->inst].flagsSets;
-            needsToSet &= ~ instructionInfo[n->inst].flagsUndefined;
+            flags &= ~ instructionInfo[n->inst].flagsSets;
+            flags &= ~ instructionInfo[n->inst].flagsUndefined;
         }
+        lastOp = n;
         n = n->next;
     }
-    if (needsToSet) {
-        if (DecodedBlock::currentBlock->next1 && DecodedBlock::currentBlock->next2) {
-            U32 needsToSet1 = needsToSet;
-            n = DecodedBlock::currentBlock->next1->op;
-            while (n && needsToSet1) {
-                if (instructionInfo[n->inst].flagsUsed & needsToSet1) {
-                    return true;
-                }
-                if (!(instructionInfo[n->inst].flagsSets & MAYBE)) {
-                    needsToSet1 &= ~ instructionInfo[n->inst].flagsSets;
-                    needsToSet1 &= ~ instructionInfo[n->inst].flagsUndefined;
-                }
-                n = n->next;
-            }
+    if (flags && (instructionInfo[lastOp->inst].branch & DECODE_BRANCH_1) && depth>0) {
+        // :TODO: maybe decode the missing branch?
+        if (block->next1 && (block->next2 || !(instructionInfo[lastOp->inst].branch & DECODE_BRANCH_2))) {
+            U32 needsToSet1 = flags;
+            if (DecodedOp::willOverwriteFlags(block->next1, block->next1->op, flags, depth-1)) {
+                needsToSet1 = 0;
+            }            
 
-            U32 needsToSet2 = needsToSet;
-            n = DecodedBlock::currentBlock->next2->op;
-            while (n && needsToSet2) {
-                if (instructionInfo[n->inst].flagsUsed & needsToSet2) {
-                    return true;
+            U32 needsToSet2 = 0;
+            if ((instructionInfo[lastOp->inst].branch & DECODE_BRANCH_2)) {
+                needsToSet2 = flags;
+                // :TODO: maybe decode the missing branch?
+                if (block->next2) {
+                    if (DecodedOp::willOverwriteFlags(block->next2, block->next2->op, flags, depth-1)) {
+                        needsToSet2 = 0;
+                    } 
                 }
-                if (!(instructionInfo[n->inst].flagsSets & MAYBE)) {
-                    needsToSet2 &= ~ instructionInfo[n->inst].flagsSets;
-                    needsToSet2 &= ~ instructionInfo[n->inst].flagsUndefined;
-                }
-                n = n->next;
             }
-            needsToSet = needsToSet1 | needsToSet2;
+            flags = needsToSet1 | needsToSet2;
         }
     }
-    return needsToSet!=0;
+    return flags==0;
 }
 
 static DecodedBlockFromNode* freeFromNodes;
@@ -4774,7 +4787,8 @@ void decodeBlock(pfnFetchByte fetchByte, U32 eip, U32 isBig, U32 maxInstructions
 
     d.fetchByte = fetchByte;
     d.eip = &eip;
-    
+    d.opCountSoFarInThisBlock = 0;
+
     block->op = op;
     while (1) {
         d.opLen = 0;
@@ -4789,6 +4803,7 @@ void decodeBlock(pfnFetchByte fetchByte, U32 eip, U32 isBig, U32 maxInstructions
         }
         d.inst = d.opCode+d.fetch8();
         decoder[d.inst]->decode(&d, op);
+        d.opCountSoFarInThisBlock++;
         block->opCount++;
         if (maxLen && d.opLen+block->bytes>maxLen) {
             op->inst = Done;

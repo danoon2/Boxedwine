@@ -92,7 +92,6 @@ void runThreadSlice(KThread* thread) {
 
     cpu = thread->cpu;
     cpu->blockInstructionCount = 0;
-    cpu->blockInstructionCount = 0;
     cpu->yield = false;
     cpu->nextBlock = cpu->getNextBlock(); // another thread that just ran could have modified this
 #ifdef BOXEDWINE_HAS_SETJMP
@@ -151,7 +150,10 @@ bool runSlice() {
     sysCallTime = 0;    
 
     ChangeThread c(currentThread);
+    static U64 rdtsc;
+    currentThread->cpu->instructionCount = rdtsc;
     platformRunThreadSlice(currentThread);
+    rdtsc = currentThread->cpu->instructionCount;
 
     endTime = Platform::getMicroCounter();
     diff = endTime-startTime;

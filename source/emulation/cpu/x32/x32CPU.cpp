@@ -22,7 +22,8 @@ enum DynReg {
     DYN_EAX=0,
     DYN_ECX=1,
     DYN_EDX=2,
-    DYN_EBX=3,    
+    DYN_EBX=3,  
+    DYN_NOT_SET=0xff
 };
 
 enum DynCondition {
@@ -128,6 +129,7 @@ void incrementEip(U32 inc);
 #include "../normal/instructions.h"
 #include "../common/common_arith.h"
 #include "../common/common_pushpop.h"
+#include "../dynamic/dynamic_func.h"
 #include "../dynamic/dynamic_arith.h"
 #include "../dynamic/dynamic_mov.h"
 #include "../dynamic/dynamic_incdec.h"
@@ -471,8 +473,13 @@ void movToCpu(U32 dstOffset, DynWidth dstWidth, U32 imm) {
 
 void movToReg(DynReg reg, DynWidth width, U32 imm) {
     regUsed[reg] = true;
-    outb(0xb8+reg);
-    outd(imm);
+    if (imm==0) {
+        outb(0x31);
+        outb(0xc0|reg|(reg << 3));
+    } else {
+        outb(0xb8+reg);
+        outd(imm);
+    }
 }
 
 void movFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg) {
@@ -531,19 +538,16 @@ void movFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg) {
     outb(0x89);
     outb(0xc0 | (addressReg<<3));
 
-    // address >> 12 , address * sizeof(U8*)
-    // shr eax, 10
+    // address >> 12
+    // shr eax, 12
     outb(0xc1);
     outb(0xe8);
-    outb(0x0a);
-
-    // and eax, 0xfffffffc
-    outb(0x25);
-    outd(0xfffffffc);
+    outb(0x0c);
 
     // mov eax, [currentMMUReadPtr+sizeof(U8*)*index];
     outb(0x8b);
-    outb(0x80);
+    outb(0x04);
+    outb(0x85);
     outd((U32)Memory::currentMMUReadPtr);
 
     // test eax, eax
@@ -558,23 +562,26 @@ void movFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg) {
     // mov eax, [eax+(address & 0xFFF)]
     U32 reg;
     bool pushedReg = false;
-    if (!regUsed[DYN_ECX]) {
-        reg = DYN_ECX;
-    } else if (!regUsed[DYN_EDX]) {
-        reg = DYN_EDX;
+    if (doneWithAddressReg) {
+        reg = addressReg;
     } else {
-#ifdef _DEBUG
-        klog("movFromMem ran out of regs");
-#endif
-        reg = DYN_ECX;
-        pushedReg = true;
-        outb(0x51);
+        if (!regUsed[DYN_ECX]) {
+            reg = DYN_ECX;
+        } else if (!regUsed[DYN_EDX]) {
+            reg = DYN_EDX;
+        } else {
+    #ifdef _DEBUG
+            klog("movFromMem ran out of regs");
+    #endif
+            reg = DYN_ECX;
+            pushedReg = true;
+            outb(0x51);
+        }
+
+        // mov reg, addressReg
+        outb(0x89);
+        outb(0xc0|reg|(addressReg<<3));
     }
-
-    // mov reg, addressReg
-    outb(0x89);
-    outb(0xc0|reg|(addressReg<<3));
-
     // and reg, 0xfff
     outb(0x81);
     outb(0xe0+reg);
@@ -889,25 +896,16 @@ void movToMem(DynReg addressReg, DynWidth width, U32 value, DynCallParamType par
     outb(0x89);
     outb(0xc0 | (addressReg<<3) | reg1);
 
-    // address >> 12 , address * sizeof(U8*)
+    // address >> 12
     // shr reg1, 10
     outb(0xc1);
     outb(0xe8 | reg1);
-    outb(0x0a);
-
-    // and eax, 0xfffffffc
-    if (reg1==DYN_EAX) {
-        outb(0x25);
-        outd(0xfffffffc);
-    } else {
-        outb(0x81);
-        outb(0xe0|reg1);
-        outd(0xfffffffc);
-    }
+    outb(0x0c);
 
     // mov reg1, [currentMMUWritePtr+sizeof(U8*)*index];
     outb(0x8b);
-    outb(0x80|reg1|(reg1<<3));
+    outb(0x04|(reg1<<3));
+    outb(0x85|(reg1<<3));
     outd((U32)Memory::currentMMUWritePtr);
 
     // test reg1, reg1
@@ -1906,6 +1904,7 @@ void OPCALL firstX32Op(CPU* cpu, DecodedOp* op) {
 #endif
         DynamicData data;
         data.cpu = cpu;
+        data.block = DecodedBlock::currentBlock;
 
         initX32Ops();
         DecodedOp* o = op->next;
@@ -1928,7 +1927,20 @@ void OPCALL firstX32Op(CPU* cpu, DecodedOp* op) {
             if (ifJump.size()) {
                 kpanic("x32CPU::firstX32Op if statement was not closed in instruction: %d", op->inst);
             }
-            o = o->next;
+            if (data.skipToOp) {
+                o = data.skipToOp;
+                data.skipToOp = NULL;
+            } else if (data.done) {
+#ifndef __TEST
+#ifdef _DEBUG
+                if (o->next)
+                    callHostFunction(common_log, false, 2, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)o->next, DYN_PARAM_CONST_PTR, false);
+#endif
+#endif
+                break;
+            } else {
+                o = o->next;
+            }
         }
         outb(0x5f); // pop edi
         outb(0x5b); // pop ebx

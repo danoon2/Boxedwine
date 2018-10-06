@@ -427,6 +427,7 @@
     <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_bit.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_conditions.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_fpu.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_func.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_incdec.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_jump.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_mmx.h" />
