@@ -39,6 +39,15 @@ bool Fs::initFileSystem(const std::string& rootPath, const std::string& zipPath)
 
     BoxedPtr<FsNode> parent(NULL);
     rootNode = new FsFileNode(Fs::nextNodeId++, 0, "/", "", true, parent);
+
+    BoxedPtr<FsNode> dir = Fs::getNodeFromLocalPath("", "/tmp/del", false, NULL);
+    if (dir) {
+        std::vector<BoxedPtr<FsNode> > children;
+        dir->getAllChildren(children);
+        for (int i=0;i<children.size();i++) {
+            children[i]->remove();
+        }
+    }
 #ifdef BOXEDWINE_ZLIB
     return FsZip::init(zipPath);
 #endif
