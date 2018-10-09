@@ -797,7 +797,11 @@ U32 KProcess::chdir(const std::string& path) {
         return -K_ENOENT;
     if (!node->isDirectory())
         return -K_ENOTDIR;
-    this->currentDirectory = path;
+    if (stringStartsWith(path, "/")) {
+        this->currentDirectory = path;
+    } else {
+        this->currentDirectory = this->currentDirectory+"/"+path;
+    }
     return 0;
 }
 
