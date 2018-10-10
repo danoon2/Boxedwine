@@ -423,6 +423,10 @@ public:
     void close() {delete this;}
 };
 
+Page* allocFBPage(U32 flags) {
+    return new FBPage(flags);
+}
+
 U8 FBPage::readb(U32 address) {	
     if (!bOpenGL && (address-ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS)<fb_fix_screeninfo.smem_len)
         return ((U8*)screenPixels)[address-ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS];

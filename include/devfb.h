@@ -28,4 +28,6 @@ void fbSetCaption(const char* title, const char* icon);
 void fbSwapOpenGL();
 void flipFBNoCheck();
 
+Page* allocFBPage(U32 flags);
+
 #endif

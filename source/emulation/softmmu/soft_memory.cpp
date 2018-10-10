@@ -32,6 +32,7 @@
 #include "soft_code_page.h"
 #include "soft_native_page.h"
 #include "soft_ram.h"
+#include "devfb.h"
 
 #include <string.h>
 #include <setjmp.h>
@@ -212,6 +213,8 @@ void Memory::clone(Memory* from) {
             this->setPage(i, NativePage::alloc(p->nativeAddress, p->address, p->flags));
         } else if (page->type == Page::Type::Invalid_Page) { 
             this->setPage(i, from->getPage(i));
+        } else if (page->type == Page::Type::Frame_Buffer) { 
+            this->setPage(i, allocFBPage(from->getPageFlags(i)));
         } else {
             kpanic("unhandled case when cloning memory: page type = %d", page->type);
         }
