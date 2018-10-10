@@ -335,7 +335,7 @@ static void pushThreadStack(KThread* thread, CPU* cpu, int argc, U32* a, int env
 static void setupThreadStack(KThread* thread, CPU* cpu, const std::string& programName, const std::vector<std::string>& args, const std::vector<std::string>& env) {
     U32 a[MAX_ARG_COUNT];
     U32 e[MAX_ARG_COUNT];
-    U32 i;
+    int i;
 
     cpu->push32(0);
     cpu->push32(0);
@@ -354,7 +354,7 @@ static void setupThreadStack(KThread* thread, CPU* cpu, const std::string& progr
         //klog("    %s", env[i]);
         e[i]=ESP;
     }
-    for (i=0;i<args.size();i++) {
+    for (i=args.size()-1;i>=0;i--) {
         writeStackString(thread, cpu, args[i].c_str());
         a[i]=ESP;
     }
@@ -608,7 +608,7 @@ U32 KProcess::execve(const std::string& path, std::vector<std::string>& args, co
     std::string name;
     std::vector<std::string> cmdLine;
 
-    node = this->findInPath(args[0]);
+    node = this->findInPath(path);
     if (!node) {
         return 0;
     }
@@ -1696,10 +1696,7 @@ U32 KProcess::prctl(U32 option, U32 arg2) {
     if (option == 15) { // PR_SET_NAME
         char tmp[MAX_FILEPATH_LEN];
         this->name = getNativeString(arg2, tmp, sizeof(tmp));
-        if (this->name=="services.exe") {
-            KThread::currentThread()->log=true;
-        }
-        return -1; // :TODO: why does returning 0 cause WINE to have a stack overflow
+        return 0;
     } else if (option == 38) { // PR_SET_NO_NEW_PRIVS
         return 0;
     } else {
