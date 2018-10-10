@@ -333,9 +333,9 @@ U32 KUnixSocketObject::bind(KFileDescriptor* fd, U32 address, U32 len) {
         BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath(KThread::currentThread()->process->currentDirectory, name, true);
         if (node) {
             return -K_EADDRINUSE;
-        }
-        BoxedPtr<FsNode> parentNode = Fs::getNodeFromLocalPath("", KThread::currentThread()->process->currentDirectory, true);
+        }        
         std::string fullpath = Fs::getFullPath(KThread::currentThread()->process->currentDirectory, name);
+        BoxedPtr<FsNode> parentNode = Fs::getNodeFromLocalPath("", Fs::getParentPath(fullpath), true);
         BoxedPtr<UnixSocketNode> socketNode = new UnixSocketNode(0, 2, fullpath, parentNode);
         parentNode->addChild(socketNode);
         BoxedPtr<KUnixSocketObject> s = (KUnixSocketObject*)fd->kobject.get();
