@@ -7,6 +7,7 @@
 #include <memory>
 #include <queue>
 #include <functional>
+#include <set>
 
 #include "../source/util/boxedptr.h"
 

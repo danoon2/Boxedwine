@@ -16,6 +16,8 @@
 #include "kstat.h"
 #include "fszipnode.h"
 
+std::set<std::string> FsFileNode::nonExecFileFullPaths;
+
 FsFileNode::FsFileNode(U32 id, U32 rdev, const std::string& path, const std::string& link, bool isDirectory, BoxedPtr<FsNode> parent) : FsNode(File, id, rdev, path, link, isDirectory, parent) {
     this->nativePath = Fs::localPathToRemote(path);
     if (link.length()) {
@@ -169,7 +171,10 @@ U32 FsFileNode::getType(bool checkForLink) {
 }
 
 U32 FsFileNode::getMode() {
-    U32 result = K__S_IREAD | K__S_IEXEC | (FsFileNode::getType(false) << 12);
+    U32 result = K__S_IREAD | (FsFileNode::getType(false) << 12);
+    if (!FsFileNode::nonExecFileFullPaths.count(this->path)) {
+        result|=K__S_IEXEC;
+    }
     if (KThread::currentThread()->process->userId == 0 ||  stringStartsWith(this->path, "/tmp") ||  stringStartsWith(this->path, "/var") ||  stringStartsWith(this->path, "/home")) {
         result|=K__S_IWRITE;
     }

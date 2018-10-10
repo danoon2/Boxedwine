@@ -642,6 +642,11 @@ void KThread::runSignal(U32 signal, U32 trapNo, U32 errorNo) {
                 interrupted = 1;
             wakeThread(this);
         }		
+
+        // move to front of the queue
+        unscheduleThread(this);
+        scheduleThread(this);
+
 		if (altStack)
 			context = this->alternateStack + this->alternateStackSize - CONTEXT_SIZE;
 		else

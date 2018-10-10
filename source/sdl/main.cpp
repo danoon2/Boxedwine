@@ -39,6 +39,7 @@
 #include "devmixer.h"
 #include "sdlwindow.h"
 #include "procselfexe.h"
+#include "../io/fsfilenode.h"
 
 void gl_init();
 #ifdef __EMSCRIPTEN__
@@ -461,6 +462,13 @@ int boxedmain(int argc, const char **argv) {
                 klog("-bpp must be 16 or 32");
                 bits_per_pixel = 32;
             }
+        } else if (!strcmp(argv[i], "-noexecfiles")) {
+            std::vector<std::string> files;
+            stringSplit(files, argv[i+1], ':');
+            for (int f=0;f<files.size();f++) {
+                FsFileNode::nonExecFileFullPaths.insert(files[f]);
+            }
+            i++;
         } else {
             break;
         }
@@ -519,7 +527,9 @@ int boxedmain(int argc, const char **argv) {
     Fs::makeLocalDirs("/proc");
     BoxedPtr<FsNode> rootNode = Fs::getNodeFromLocalPath("", "/", true);
     BoxedPtr<FsNode> devNode = Fs::addFileNode("/dev", "", true, rootNode);
+    BoxedPtr<FsNode> inputNode = Fs::addFileNode("/dev/input", "", true, devNode);
     BoxedPtr<FsNode> procNode = Fs::addFileNode("/proc", "", true, rootNode);
+    BoxedPtr<FsNode> procSelfNode = Fs::addFileNode("/proc/self", "", true, procNode);
 
     Fs::addVirtualFile("/dev/tty0", openDevTTY, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, mdev(4, 0), devNode);
     Fs::addVirtualFile("/dev/tty", openDevTTY, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, mdev(4, 0), devNode);
@@ -529,11 +539,11 @@ int boxedmain(int argc, const char **argv) {
     Fs::addVirtualFile("/dev/null", openDevNull, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, mdev(1, 3), devNode);
     Fs::addVirtualFile("/dev/zero", openDevZero, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, mdev(1, 5), devNode);
     Fs::addVirtualFile("/proc/meminfo", openMemInfo, K__S_IREAD, mdev(0, 0), procNode);
-    Fs::addVirtualFile("/proc/self/exe", openProcSelfExe, K__S_IREAD, mdev(0, 0), procNode);
+    Fs::addVirtualFile("/proc/self/exe", openProcSelfExe, K__S_IREAD, mdev(0, 0), procSelfNode);
     Fs::addVirtualFile("/proc/cmdline", openKernelCommandLine, K__S_IREAD, mdev(0, 0), procNode); // kernel command line
     Fs::addVirtualFile("/dev/fb0", openDevFB, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, mdev(0x1d, 0), devNode);
-    Fs::addVirtualFile("/dev/input/event3", openDevInputTouch, K__S_IWRITE|K__S_IREAD|K__S_IFCHR, mdev(0xd, 0x43), devNode);
-    Fs::addVirtualFile("/dev/input/event4", openDevInputKeyboard, K__S_IWRITE|K__S_IREAD|K__S_IFCHR, mdev(0xd, 0x44), devNode);
+    Fs::addVirtualFile("/dev/input/event3", openDevInputTouch, K__S_IWRITE|K__S_IREAD|K__S_IFCHR, mdev(0xd, 0x43), inputNode);
+    Fs::addVirtualFile("/dev/input/event4", openDevInputKeyboard, K__S_IWRITE|K__S_IREAD|K__S_IFCHR, mdev(0xd, 0x44), inputNode);
 	if (sound) {
 		Fs::addVirtualFile("/dev/dsp", openDevDsp, K__S_IWRITE | K__S_IREAD | K__S_IFCHR, mdev(14, 3), devNode);
 		Fs::addVirtualFile("/dev/mixer", openDevMixer, K__S_IWRITE | K__S_IREAD | K__S_IFCHR, mdev(14, 0), devNode);
@@ -662,7 +672,7 @@ int boxedmain(int argc, const char **argv) {
             if (lastTitleUpdate+5000 < t) {
                 char tmp[256];
                 lastTitleUpdate = t;
-                sprintf(tmp, "BoxedWine %u MIPS", getMIPS());
+                sprintf(tmp, "BoxedWine 18R2 Beta 1 %u MIPS", getMIPS());
                 fbSetCaption(tmp, "BoxedWine");
                 checkWaitingNativeSockets(0); // just so it doesn't starve if the system is busy
             }

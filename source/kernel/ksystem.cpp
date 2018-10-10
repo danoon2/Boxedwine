@@ -327,16 +327,20 @@ U32 KSystem::gettimeofday(U32 tv, U32 tz) {
 }
 
 void KSystem::writeStat(const std::string& path, U32 buf, bool is64, U64 st_dev, U64 st_ino, U32 st_mode, U64 st_rdev, U64 st_size, U32 st_blksize, U64 st_blocks, U64 mtime, U32 linkCount) {
+    if (!path.compare("/tmp/.X11-unix")) {
+        st_mode= K__S_IFDIR |K__S_ISVTX | K__S_IRWXU | K__S_IRWXG | K__S_IRWXO;
+    }
+
      if (is64) {
         U32 t = (U32)(mtime/1000); // ms to sec
         U32 n = (U32)(mtime % 1000) * 1000000;
-
+        
         writeq(buf, st_dev);buf+=8;//st_dev               // 0
         buf+=4; // padding                                          // 8
         writed(buf, (U32)st_ino); buf += 4;//__st_ino     // 12
         writed(buf, st_mode); buf += 4;//st_mode          // 16
         writed(buf, linkCount); buf += 4;//st_nlink       // 20
-        if (!path.compare("/etc/sudoers")) {
+        if (!path.compare("/etc/sudoers") || !path.compare("/tmp/.X11-unix")) {
             writed(buf, 0); buf += 4;//st_uid             // 24
             writed(buf, 0); buf += 4;//st_gid               // 28
         } else {
@@ -361,8 +365,13 @@ void KSystem::writeStat(const std::string& path, U32 buf, bool is64, U64 st_dev,
         writed(buf, (U32)st_ino); buf += 4;//st_ino
         writed(buf, st_mode); buf += 4;//st_mode
         writed(buf, linkCount); buf += 4;//st_nlink
-        writed(buf, KThread::currentThread()->process->userId); buf += 4;//st_uid
-        writed(buf, KThread::currentThread()->process->groupId); buf += 4;//st_gid
+        if (!path.compare("/etc/sudoers") || !path.compare("/tmp/.X11-unix")) {
+            writed(buf, 0); buf += 4;//st_uid
+            writed(buf, 0); buf += 4;//st_gid
+        } else {
+            writed(buf, KThread::currentThread()->process->userId); buf += 4;//st_uid
+            writed(buf, KThread::currentThread()->process->groupId); buf += 4;//st_gid
+        } 
         writed(buf, (U32)st_rdev); buf += 4;//st_rdev
         writed(buf, (U32)st_size); buf += 4;//st_size
         writed(buf, t); buf += 4;//st_atime

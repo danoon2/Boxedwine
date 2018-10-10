@@ -62,6 +62,7 @@ void wakeThreads(U32 wakeType) {
 }
 
 void scheduleThread(KThread* thread) {
+    thread->cpu->yield = false;
     scheduledThreads.addToFront(&thread->scheduledThreadNode);
 }
 
@@ -137,11 +138,8 @@ bool runSlice() {
 
     KListNode<KThread*>* node = scheduledThreads.front();
     KThread* currentThread = (KThread*)node->data;
-    node->remove();
-    scheduledThreads.addToBack(node);
 
-    //flipFB();
-	
+    flipFB();	
     U64 startTime = Platform::getMicroCounter();
     U64 endTime;
     U64 diff;
@@ -176,6 +174,10 @@ bool runSlice() {
     // this is how we signal to delete the current thread, since we can't delete it in the syscall, maybe we should use smart_ptr for threads
     if (!currentThread->process) {
         delete currentThread;
+    } else if (!currentThread->waiting) {
+        // make sure we are behind any threads that were recently scheduled
+        node->remove();
+        scheduledThreads.addToBack(node);
     }
     return true;
 }

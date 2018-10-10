@@ -57,7 +57,16 @@ public:
 
 class DevInput : public FsVirtualOpenNode {
 public:
-    DevInput(const BoxedPtr<FsNode>& node, U32 flags) : FsVirtualOpenNode(node, flags) {}
+    DevInput(const BoxedPtr<FsNode>& node, U32 flags) : 
+        FsVirtualOpenNode(node, flags), 
+        asyncProcessId(0),
+        asyncProcessFd(0), 
+        bustype(0),
+        vendor(0),
+        product(0),
+        version(0),
+        mask(0),
+        prop(0) {}
     virtual U32 ioctl(U32 request);
     virtual U32 readNative(U8* buffer, U32 len);
     virtual U32 writeNative(U8* buffer, U32 len);
@@ -291,8 +300,8 @@ void DevInput::setAsync(bool isAsync) {
             kpanic("touch_setAsync only supports one process: %d tried to attached but %d already has it", process->id, this->asyncProcessId);
         } else {
             this->asyncProcessId = process->id;
-            kpanic("input async needs file descriptor");
-            //this->asyncProcessFd = fd;
+            // :TODO: pass in fildes
+            this->asyncProcessFd = KThread::currentThread()->cpu->reg[3].u32;
         }
     } else {
         if (process->id == this->asyncProcessId) {
@@ -655,8 +664,9 @@ void postSendEvent(DevInput* events, U64 time) {
     queueEvent(events, K_EV_SYN, K_SYN_REPORT, 0, time);
     if (events->asyncProcessId) {
         KProcess* process = KSystem::getProcess(events->asyncProcessId);
-        if (process)
+        if (process) {
             process->signalIO(K_POLL_IN, 0, events->asyncProcessFd);		
+        }
     }
     events->waitingToReadThreads.for_each([](KListNode<KThread*>* node) {
         wakeThread(node->data);
