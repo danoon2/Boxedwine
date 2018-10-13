@@ -753,7 +753,8 @@ void wndBlt(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32 yOrg, U32 width, 
         Wnd* wnd = getWnd(hwnd);
         wRECT r;
         U32 y;    
-        int pitch = (width*((bits_per_pixel+7)/8)+3) & ~3;
+        int bpp = bits_per_pixel==8?32:bits_per_pixel;
+        int pitch = (width*((bpp+7)/8)+3) & ~3;
         static int i;
 
         readRect(thread, rect, &r);
@@ -780,9 +781,9 @@ void wndBlt(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32 yOrg, U32 width, 
             }
             if (!sdlTexture) {
                 U32 format = SDL_PIXELFORMAT_ARGB8888;
-                if (bits_per_pixel == 16) {
+                if (bpp == 16) {
                     format = SDL_PIXELFORMAT_RGB565;
-                } else if (bits_per_pixel == 15) {
+                } else if (bpp == 15) {
                     format = SDL_PIXELFORMAT_RGB555;
                 }
                 sdlTexture = SDL_CreateTexture(sdlRenderer, format, SDL_TEXTUREACCESS_STREAMING, width, height);
@@ -1027,7 +1028,7 @@ U32 sdlGetGammaRamp(KThread* thread, U32 ramp) {
         for (i=0;i<256;i++) {
             writew(ramp+i*2, r[i]);
             writew(ramp+i*2+512, g[i]);
-            writew(ramp+i*2+124, b[i]);
+            writew(ramp+i*2+1024, b[i]);
         }
         return 1;
     }

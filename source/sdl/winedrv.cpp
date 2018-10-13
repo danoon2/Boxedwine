@@ -303,7 +303,7 @@ void boxeddrv_ChangeDisplaySettingsEx(CPU* cpu) {
 
         if (dmFields & DM_BITSPERPEL) {
             bits_per_pixel = readd(devmode + 168);
-            if (bits_per_pixel<=8)
+            if (bits_per_pixel<8)
                 bits_per_pixel = 32; // let the dib driver handle it
         }
         if (dmFields & DM_PELSWIDTH) {

@@ -365,6 +365,8 @@ struct window_surface *create_surface(HWND window, const RECT *rect, struct wind
     surface->info.bmiHeader.biHeight      = height; /* bottom-up */
     surface->info.bmiHeader.biPlanes      = 1;
     surface->info.bmiHeader.biBitCount    = boxeddrv_GetDeviceCaps(NULL, BITSPIXEL);
+    if (surface->info.bmiHeader.biBitCount<=8)
+        surface->info.bmiHeader.biBitCount = 32;
     surface->info.bmiHeader.biSizeImage   = get_dib_image_size(&surface->info);
     surface->info.bmiHeader.biCompression = BI_RGB;
     surface->info.bmiHeader.biClrUsed     = 0;

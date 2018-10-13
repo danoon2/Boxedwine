@@ -458,8 +458,8 @@ int boxedmain(int argc, const char **argv) {
         } else if (!strcmp(argv[i], "-bpp")) {
             bits_per_pixel = atoi(argv[i+1]);
             i++;
-            if (bits_per_pixel!=16 && bits_per_pixel!=32) {
-                klog("-bpp must be 16 or 32");
+            if (bits_per_pixel!=16 && bits_per_pixel!=32 && bits_per_pixel!=8) {
+                klog("-bpp must be 8, 16 or 32");
                 bits_per_pixel = 32;
             }
         } else if (!strcmp(argv[i], "-noexecfiles")) {
