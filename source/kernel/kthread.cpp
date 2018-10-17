@@ -163,9 +163,10 @@ U32 KThread::signal(U32 signal, bool wait) {
         // don't return -K_WAIT, we don't want to re-enter tgkill, instead we will return 0 once the thread wakes up
 
         // must set CPU state before runSignal since it will be stored
-        this->cpu->reg[0].u32 = 0; 
-        this->cpu->eip.u32+=2;
-
+        if (this==KThread::currentThread()) {
+            this->cpu->reg[0].u32 = 0; 
+            this->cpu->eip.u32+=2;
+        }
         this->runSignal(signal, -1, 0);
         if (wait) {
             this->waitingForSignalToEnd = KThread::currentThread();       
