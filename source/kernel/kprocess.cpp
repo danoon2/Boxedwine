@@ -802,6 +802,9 @@ U32 KProcess::chdir(const std::string& path) {
     } else {
         this->currentDirectory = this->currentDirectory+"/"+path;
     }
+    if (stringHasEnding(this->currentDirectory, "/")) {
+        this->currentDirectory = this->currentDirectory.substr(0, this->currentDirectory.length()-1);
+    }
     return 0;
 }
 
@@ -1509,6 +1512,9 @@ U32 KProcess::fchdir(FD fildes) {
         this->currentDirectory = p->openFile->openedPath;
     else
         this->currentDirectory = p->openFile->node->path;
+    if (stringHasEnding(this->currentDirectory, "/")) {
+        this->currentDirectory = this->currentDirectory.substr(0, this->currentDirectory.length()-1);
+    }
     return 0;
 }
 

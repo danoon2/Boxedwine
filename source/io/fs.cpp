@@ -95,6 +95,28 @@ std::string Fs::getFullPath(const std::string& currentDirectory, const std::stri
     return fullpath;
 }
 
+bool cleanPath(std::vector<std::string>& parts) {
+    for (U32 i=0;i<parts.size();) {
+        if (parts[i].length()==0) { // ignore double slashes
+            parts.erase(parts.begin()+i, parts.begin()+i+1);
+            continue;
+        }
+        if (parts[i]==".") {
+            i++;
+            continue;
+        }
+        if (parts[i]=="..") {
+            if (i==0)
+                return false;
+            parts.erase(parts.begin()+i-1, parts.begin()+i+1);
+            i--;
+            continue;
+        }
+        i++;
+    }
+    return true;
+}
+
 BoxedPtr<FsNode> Fs::getNodeFromLocalPath(const std::string& currentDirectory, const std::string& path, BoxedPtr<FsNode>& lastNode, std::vector<std::string>& missingParts, bool followLink, bool* isLink) {
     std::string fullpath = Fs::getFullPath(currentDirectory, path);
 
@@ -106,6 +128,9 @@ BoxedPtr<FsNode> Fs::getNodeFromLocalPath(const std::string& currentDirectory, c
     std::vector<BoxedPtr<FsNode> > nodes;
 
     nodes.push_back(node);
+
+    if (!cleanPath(parts))
+        return NULL;
     for (U32 i=0;i<parts.size();) {
         if (parts[i].length()==0) { // ignore double slashes
             i++;
@@ -113,15 +138,6 @@ BoxedPtr<FsNode> Fs::getNodeFromLocalPath(const std::string& currentDirectory, c
         }
         if (parts[i]==".") {
             i++;
-            continue;
-        }
-        if (parts[i]=="..") {
-            if (i==0)
-                return NULL;
-            parts.erase(parts.begin()+i-1, parts.begin()+i+1);
-            nodes.pop_back();
-            node = nodes.back();
-            i--;
             continue;
         }
         node = node->getChildByName(parts[i]);
@@ -144,14 +160,14 @@ BoxedPtr<FsNode> Fs::getNodeFromLocalPath(const std::string& currentDirectory, c
             parts.insert(parts.begin()+i, linkParts.begin(), linkParts.end());
             if (stringStartsWith(node->link, "/")) {
                 parts.erase(parts.begin(), parts.begin()+i);
-                i=0;     
-                node = Fs::rootNode;
-                nodes.clear();
-                nodes.push_back(node);
-            } else {
-                nodes.pop_back();
-                node = nodes.back(); // do it again, it might be another link
-            }            
+            }   
+            if (!cleanPath(parts))
+                return NULL;
+
+            nodes.clear();
+            node = Fs::rootNode;
+            nodes.push_back(node);
+            i=0;
             continue;
         }
         i++;
