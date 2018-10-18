@@ -457,18 +457,18 @@ const InstructionInfo instructionInfo[] = {
     {0, 8, 8, 0, 0, 0, 0}, // Movsb
     {0, 16, 16, 0, 0, 0, 0}, // Movsw,
     {0, 32, 32, 0, 0, 0, 0}, // Movsd,
-    {0, 16, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // Cmpsb
-    {0, 32, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // Cmpsw
-    {0, 64, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // Cmpsd
+    {0, 16, 0, CF|AF|ZF|SF|OF|PF|MAYBE, 0, 0, 0}, // Cmpsb
+    {0, 32, 0, CF|AF|ZF|SF|OF|PF|MAYBE, 0, 0, 0}, // Cmpsw
+    {0, 64, 0, CF|AF|ZF|SF|OF|PF|MAYBE, 0, 0, 0}, // Cmpsd
     {0, 0, 8, 0, 0, 0, 0}, // Stosb
     {0, 0, 16, 0, 0, 0, 0}, // Stosw
     {0, 0, 32, 0, 0, 0, 0}, // Stosd
     {0, 8, 0, 0, 0, 0, 0}, // Lodsb
     {0, 16, 0, 0, 0, 0, 0}, // Lodsw,
     {0, 32, 0, 0, 0, 0, 0}, // Lodsd,
-    {0, 8, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // Scasb
-    {0, 16, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // Scasw
-    {0, 32, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // Scasd
+    {0, 8, 0, CF|AF|ZF|SF|OF|PF|MAYBE, 0, 0, 0}, // Scasb
+    {0, 16, 0, CF|AF|ZF|SF|OF|PF|MAYBE, 0, 0, 0}, // Scasw
+    {0, 32, 0, CF|AF|ZF|SF|OF|PF|MAYBE, 0, 0, 0}, // Scasd
 
     {0, 0, 0, OF|CF, 0, 0, 0}, // RolR8I8
     {0, 8, 8, OF|CF, 0, 0, 0}, // RolE8I8
