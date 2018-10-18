@@ -70,5 +70,9 @@ void sdlShowWnd(KThread* thread, Wnd* wnd, U32 bShow);
 U32 sdlGetGammaRamp(KThread* thread, U32 ramp);
 unsigned int sdlGetMouseState(KThread* thread,int* x, int* y);
 bool isBoxedWineDriverActive();
-
+U32 sdlVirtualKeyToChar(U32 virtKey);
+U32 sdlVirtualKeyToScanCode(U32 virtKey);
+U32 sdlVirtualKeyToScanCodeEx(U32 virtKey);
+U32 sdlScanCodeToVirtualKey(U32 code);
+U32 sdlScanCodeToVirtualKeyEx(U32 code);
 #endif

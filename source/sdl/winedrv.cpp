@@ -575,7 +575,31 @@ void boxeddrv_IsClipboardFormatAvailable(CPU* cpu) {
 
 // UINT CDECL drv_MapVirtualKeyEx(UINT wCode, UINT wMapType, HKL hkl)
 void boxeddrv_MapVirtualKeyEx(CPU* cpu) {
-    notImplemented("boxeddrv_MapVirtualKeyEx not implemented");
+    U32 wCode = ARG1;
+    U32 wMapType = ARG2;
+    U32 hkl = ARG3;
+
+    if (wMapType == 2) { // MAPVK_VK_TO_CHAR
+        EAX = sdlVirtualKeyToChar(wCode);
+        return;
+    }
+    if (wMapType == 4) { // MAPVK_VK_TO_VSC_EX
+        EAX = sdlVirtualKeyToScanCodeEx(wCode);
+        return;
+    }
+    if (wMapType == 0) { // MAPVK_VK_TO_VSC
+        EAX = sdlVirtualKeyToScanCode(wCode);
+        return;
+    }
+    if (wMapType == 1) { // MAPVK_VSC_TO_VK
+        EAX = sdlScanCodeToVirtualKey(wCode);
+        return;
+    }
+    if (wMapType == 3) { // MAPVK_VSC_TO_VK_EX
+        EAX = sdlScanCodeToVirtualKey(wCode);
+        return;
+    }
+    klog("boxeddrv_MapVirtualKeyEx not implemented");
     EAX = 0;
 }
 
