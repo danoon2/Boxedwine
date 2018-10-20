@@ -115,6 +115,7 @@ void dynamic_iret32(DynamicData* data, DecodedOp* op) {
 void dynamic_sahf(DynamicData* data, DecodedOp* op) {
     callHostFunction(common_fillFlags, false, 1, 0, DYN_PARAM_CPU, false);
     callHostFunction(common_setFlags, false, 3, 0, DYN_PARAM_CPU, false, CPU_OFFSET_OF(reg[0].h8), DYN_PARAM_CPU_ADDRESS_8, false, FMASK_ALL & 0xFF, DYN_PARAM_CONST_32, false);
+    data->currentLazyFlags=FLAGS_NONE;
     INCREMENT_EIP(op->len);
 }
 void dynamic_lahf(DynamicData* data, DecodedOp* op) {
@@ -123,6 +124,7 @@ void dynamic_lahf(DynamicData* data, DecodedOp* op) {
     instRegImm('&', DYN_SRC, DYN_32bit, SF|ZF|AF|PF|CF);
     instRegImm('|', DYN_SRC, DYN_32bit, 2);
     movToCpuFromReg(CPU_OFFSET_OF(reg[0].h8), DYN_SRC, DYN_8bit, true);
+    data->currentLazyFlags=FLAGS_NONE;
     INCREMENT_EIP(op->len);
 }
 void dynamic_salc(DynamicData* data, DecodedOp* op) {
@@ -193,14 +195,17 @@ void dynamic_hlt(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_cmc(DynamicData* data, DecodedOp* op) {
     callHostFunction(common_cmc, false, 1, 0, DYN_PARAM_CPU, false);
+    data->currentLazyFlags=FLAGS_NONE;
     INCREMENT_EIP(op->len);
 }
 void dynamic_clc(DynamicData* data, DecodedOp* op) {
     callHostFunction(common_clc, false, 1, 0, DYN_PARAM_CPU, false);
+    data->currentLazyFlags=FLAGS_NONE;
     INCREMENT_EIP(op->len);
 }
 void dynamic_stc(DynamicData* data, DecodedOp* op) {
     callHostFunction(common_stc, false, 1, 0, DYN_PARAM_CPU, false);
+    data->currentLazyFlags=FLAGS_NONE;
     INCREMENT_EIP(op->len);
 }
 void dynamic_cli(DynamicData* data, DecodedOp* op) {
@@ -490,6 +495,7 @@ void dynamic_bswap32(DynamicData* data, DecodedOp* op) {
 void dynamic_cmpxchgg8b(DynamicData* data, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
     callHostFunction(common_cmpxchgg8b, false, 2, 0, DYN_PARAM_CPU, false, DYN_ADDRESS, DYN_PARAM_REG_32, true);
+    data->currentLazyFlags=FLAGS_NONE;
     INCREMENT_EIP(op->len);
 }
 void dynamic_loadSegment16(DynamicData* data, DecodedOp* op) {

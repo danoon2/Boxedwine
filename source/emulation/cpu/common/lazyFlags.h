@@ -5,12 +5,14 @@ class CPU;
 
 class LazyFlags {
 public:
+    LazyFlags(U32 width) : width(width) {}
     virtual U32 getCF(CPU* cpu) const=0;
     virtual U32 getSF(CPU* cpu) const=0;
     virtual U32 getZF(CPU* cpu) const=0;
     virtual U32 getOF(CPU* cpu) const=0;
     virtual U32 getAF(CPU* cpu) const=0;
     virtual U32 getPF(CPU* cpu) const=0;
+    U32 width;
 };
 
 extern const LazyFlags* FLAGS_NONE;

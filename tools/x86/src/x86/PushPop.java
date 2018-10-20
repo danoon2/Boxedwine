@@ -240,6 +240,7 @@ public class PushPop extends Base {
         if (mask.length()!=0)
             out(fos32, "    instRegImm(\'&\', DYN_SRC, DYN_32bit, "+mask+");");
         out(fos32, "    callHostFunction(common_push"+bits+", false, 2, 0, DYN_PARAM_CPU, false, DYN_SRC, DYN_PARAM_REG_32, true);");
+        out(fos32, "    data->currentLazyFlags=FLAGS_NONE;");
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
     }
@@ -258,6 +259,7 @@ public class PushPop extends Base {
         out(fos32, "    movToCpu(CPU_OFFSET_OF(lazyFlags), Dyn_PtrSize, (DYN_PTR_SIZE)FLAGS_NONE);");
         out(fos32, "    callHostFunction(common_pop"+bits+", true, 1, 0, DYN_PARAM_CPU, false);");
         out(fos32, "    callHostFunction(common_setFlags, false, 3, 0, DYN_PARAM_CPU, false, DYN_CALL_RESULT, DYN_PARAM_REG_"+bits+", true, FMASK_ALL"+(mask.length()!=0?" & "+mask:"")+", DYN_PARAM_CONST_"+bits+", false);");
+        out(fos32, "    data->currentLazyFlags=FLAGS_NONE;");
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
     }

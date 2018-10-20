@@ -67,6 +67,7 @@ public class Arith extends Base {
 
         out(fosOps_h, "void common_imul8(CPU* cpu, U8 src);");
         out(fosOps_cpp, "void common_imul8(CPU* cpu, U8 src) {");
+        out(fosOps_cpp, "    cpu->fillFlagsNoCFOF();");
         out(fosOps_cpp, "    AX = (S16)((S8)AL) * (S8)(src);");
         out(fosOps_cpp, "    if ((S16)AX<-128 || (S16)AX>127) {");
         out(fosOps_cpp, "        cpu->flags|=CF|OF;");
@@ -77,6 +78,7 @@ public class Arith extends Base {
 
         out(fosOps_h, "void common_mul8(CPU* cpu, U8 src);");
         out(fosOps_cpp, "void common_mul8(CPU* cpu, U8 src) {");
+        out(fosOps_cpp, "    cpu->fillFlagsNoCFOF();");
         out(fosOps_cpp, "    AX = AL * src;");
         out(fosOps_cpp, "    if (AH) {");
         out(fosOps_cpp, "        cpu->flags|=CF|OF;");
@@ -163,6 +165,7 @@ public class Arith extends Base {
             out(fos32, "    " + x32LoadArg2);
         }
         out(fos32, "    callHostFunction(common_dimul16, false, 4, 0, DYN_PARAM_CPU, false, "+x32Arg1+", "+x32Arg1Type+", "+(x32Arg1Type.contains("REG")?"true":"false")+", "+x32Arg2+", "+x32Arg2Type+", "+(x32Arg2Type.contains("REG")?"true":"false")+", op->reg, DYN_PARAM_CONST_32, false);");
+        out(fos32, "    data->currentLazyFlags=FLAGS_NONE;");
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
     }
@@ -182,6 +185,7 @@ public class Arith extends Base {
             out(fos32, "    " + x32LoadArg2);
         }
         out(fos32, "    callHostFunction(common_dimul32, false, 4, 0, DYN_PARAM_CPU, false, "+x32Arg1+", "+x32Arg1Type+", "+(x32Arg1Type.contains("REG")?"true":"false")+", "+x32Arg2+", "+x32Arg2Type+", "+(x32Arg2Type.contains("REG")?"true":"false")+", op->reg, DYN_PARAM_CONST_32, false);");
+        out(fos32, "    data->currentLazyFlags=FLAGS_NONE;");
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
     }
@@ -251,6 +255,7 @@ public class Arith extends Base {
             out(fos32, "    "+x32Load);
         }
         out(fos32, "    callHostFunction("+(signed?"common_imul8":"common_mul8")+", false, 2, 0, DYN_PARAM_CPU, false, "+x32Arg+", "+x32ArgType+", "+(x32ArgType.contains("REG")?"true":"false")+");");
+        out(fos32, "    data->currentLazyFlags=FLAGS_NONE;");
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
     }
@@ -419,6 +424,7 @@ public class Arith extends Base {
                     "        movToCpuFromReg(CPU_OFFSET_OF(result.u32), DYN_DEST, DYN_32bit, false);\r\n"+
                     "        movToCpuFromReg(CPU_OFFSET_OF(reg[op->reg].u32), DYN_DEST, DYN_32bit, true);\r\n"+
                     "        movToCpu(CPU_OFFSET_OF(lazyFlags), Dyn_PtrSize, (DYN_PTR_SIZE)" + "FLAGS_"+name.toUpperCase()+bits + ");\r\n"+
+                    "        data->currentLazyFlags=FLAGS_"+name.toUpperCase()+bits + ";\r\n"+
                     "    }";
         } else {
             dyn = "instCPU('"+op+"', CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit);";
@@ -435,6 +441,7 @@ public class Arith extends Base {
                     "        movToCpuFromReg(CPU_OFFSET_OF(result.u32), DYN_CALL_RESULT, DYN_32bit, false);\r\n"+
                     "        movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_32bit, true, true);\r\n"+
                     "        movToCpu(CPU_OFFSET_OF(lazyFlags), Dyn_PtrSize, (DYN_PTR_SIZE)" + "FLAGS_"+name.toUpperCase()+bits + ");\r\n"+
+                    "        data->currentLazyFlags=FLAGS_"+name.toUpperCase()+bits + ";\r\n"+
                     "    }";
         } else {
             dyn =   "    calculateEaa(op, DYN_ADDRESS);\r\n"+
@@ -457,6 +464,7 @@ public class Arith extends Base {
                     "        movToCpuFromReg(CPU_OFFSET_OF(result.u16), DYN_DEST, DYN_16bit, false);\r\n"+
                     "        movToCpuFromReg(CPU_OFFSET_OF(reg[op->reg].u16), DYN_DEST, DYN_16bit, true);\r\n"+
                     "        movToCpu(CPU_OFFSET_OF(lazyFlags), Dyn_PtrSize, (DYN_PTR_SIZE)" + "FLAGS_"+name.toUpperCase()+bits + ");\r\n"+
+                    "        data->currentLazyFlags=FLAGS_"+name.toUpperCase()+bits + ";\r\n"+
                     "    }";
         } else {
             dyn = "instCPU('"+op+"', CPU_OFFSET_OF(reg[op->reg].u16), DYN_16bit);";
@@ -473,6 +481,7 @@ public class Arith extends Base {
                     "        movToCpuFromReg(CPU_OFFSET_OF(result.u16), DYN_CALL_RESULT, DYN_16bit, false);\r\n"+
                     "        movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_16bit, true, true);\r\n"+
                     "        movToCpu(CPU_OFFSET_OF(lazyFlags), Dyn_PtrSize, (DYN_PTR_SIZE)" + "FLAGS_"+name.toUpperCase()+bits + ");\r\n"+
+                    "        data->currentLazyFlags=FLAGS_"+name.toUpperCase()+bits + ";\r\n"+
                     "    }";
         } else {
             dyn =   "    calculateEaa(op, DYN_ADDRESS);\r\n"+
@@ -495,6 +504,7 @@ public class Arith extends Base {
                     "        movToCpuFromReg(CPU_OFFSET_OF(result.u8), DYN_DEST, DYN_8bit, false);\r\n"+
                     "        movToCpuFromReg(OFFSET_REG8(op->reg), DYN_DEST, DYN_8bit, true);\r\n"+
                     "        movToCpu(CPU_OFFSET_OF(lazyFlags), Dyn_PtrSize, (DYN_PTR_SIZE)" + "FLAGS_"+name.toUpperCase()+bits + ");\r\n"+
+                    "        data->currentLazyFlags=FLAGS_"+name.toUpperCase()+bits + ";\r\n"+
                     "    }";
         } else {
             dyn = "instCPU('"+op+"', OFFSET_REG8(op->reg), DYN_8bit);";
@@ -511,6 +521,7 @@ public class Arith extends Base {
                     "        movToCpuFromReg(CPU_OFFSET_OF(result.u8), DYN_CALL_RESULT, DYN_8bit, false);\r\n"+
                     "        movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_8bit, true, true);\r\n"+
                     "        movToCpu(CPU_OFFSET_OF(lazyFlags), Dyn_PtrSize, (DYN_PTR_SIZE)" + "FLAGS_"+name.toUpperCase()+bits + ");\r\n"+
+                    "        data->currentLazyFlags=FLAGS_"+name.toUpperCase()+bits + ";\r\n"+
                     "    }";
         } else {
             dyn =   "    calculateEaa(op, DYN_ADDRESS);\r\n"+

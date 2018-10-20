@@ -1,5 +1,5 @@
 void dynamic_cmovO_16_reg(DynamicData* data, DecodedOp* op) {
-    callHostFunction(common_condition_o, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, O, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromCpu(CPU_OFFSET_OF(reg[op->reg].u16), CPU_OFFSET_OF(reg[op->rm].u16), DYN_16bit, DYN_SRC, true);
     endIf();
@@ -7,14 +7,14 @@ void dynamic_cmovO_16_reg(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_cmovO_16_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa( op, DYN_ADDRESS);
-    callHostFunction(common_condition_o, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, O, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromMem(CPU_OFFSET_OF(reg[op->reg].u16), DYN_16bit, DYN_ADDRESS, true, true);
     endIf();
     INCREMENT_EIP(op->len);
 }
 void dynamic_cmovO_32_reg(DynamicData* data, DecodedOp* op) {
-    callHostFunction(common_condition_o, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, O, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromCpu(CPU_OFFSET_OF(reg[op->reg].u32), CPU_OFFSET_OF(reg[op->rm].u32), DYN_32bit, DYN_SRC, true);
     endIf();
@@ -22,14 +22,14 @@ void dynamic_cmovO_32_reg(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_cmovO_32_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa( op, DYN_ADDRESS);
-    callHostFunction(common_condition_o, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, O, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromMem(CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit, DYN_ADDRESS, true, true);
     endIf();
     INCREMENT_EIP(op->len);
 }
 void dynamic_cmovNO_16_reg(DynamicData* data, DecodedOp* op) {
-    callHostFunction(common_condition_no, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, NO, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromCpu(CPU_OFFSET_OF(reg[op->reg].u16), CPU_OFFSET_OF(reg[op->rm].u16), DYN_16bit, DYN_SRC, true);
     endIf();
@@ -37,14 +37,14 @@ void dynamic_cmovNO_16_reg(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_cmovNO_16_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa( op, DYN_ADDRESS);
-    callHostFunction(common_condition_no, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, NO, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromMem(CPU_OFFSET_OF(reg[op->reg].u16), DYN_16bit, DYN_ADDRESS, true, true);
     endIf();
     INCREMENT_EIP(op->len);
 }
 void dynamic_cmovNO_32_reg(DynamicData* data, DecodedOp* op) {
-    callHostFunction(common_condition_no, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, NO, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromCpu(CPU_OFFSET_OF(reg[op->reg].u32), CPU_OFFSET_OF(reg[op->rm].u32), DYN_32bit, DYN_SRC, true);
     endIf();
@@ -52,14 +52,14 @@ void dynamic_cmovNO_32_reg(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_cmovNO_32_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa( op, DYN_ADDRESS);
-    callHostFunction(common_condition_no, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, NO, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromMem(CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit, DYN_ADDRESS, true, true);
     endIf();
     INCREMENT_EIP(op->len);
 }
 void dynamic_cmovB_16_reg(DynamicData* data, DecodedOp* op) {
-    callHostFunction(common_condition_b, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, B, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromCpu(CPU_OFFSET_OF(reg[op->reg].u16), CPU_OFFSET_OF(reg[op->rm].u16), DYN_16bit, DYN_SRC, true);
     endIf();
@@ -67,14 +67,14 @@ void dynamic_cmovB_16_reg(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_cmovB_16_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa( op, DYN_ADDRESS);
-    callHostFunction(common_condition_b, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, B, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromMem(CPU_OFFSET_OF(reg[op->reg].u16), DYN_16bit, DYN_ADDRESS, true, true);
     endIf();
     INCREMENT_EIP(op->len);
 }
 void dynamic_cmovB_32_reg(DynamicData* data, DecodedOp* op) {
-    callHostFunction(common_condition_b, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, B, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromCpu(CPU_OFFSET_OF(reg[op->reg].u32), CPU_OFFSET_OF(reg[op->rm].u32), DYN_32bit, DYN_SRC, true);
     endIf();
@@ -82,14 +82,14 @@ void dynamic_cmovB_32_reg(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_cmovB_32_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa( op, DYN_ADDRESS);
-    callHostFunction(common_condition_b, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, B, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromMem(CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit, DYN_ADDRESS, true, true);
     endIf();
     INCREMENT_EIP(op->len);
 }
 void dynamic_cmovNB_16_reg(DynamicData* data, DecodedOp* op) {
-    callHostFunction(common_condition_nb, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, NB, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromCpu(CPU_OFFSET_OF(reg[op->reg].u16), CPU_OFFSET_OF(reg[op->rm].u16), DYN_16bit, DYN_SRC, true);
     endIf();
@@ -97,14 +97,14 @@ void dynamic_cmovNB_16_reg(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_cmovNB_16_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa( op, DYN_ADDRESS);
-    callHostFunction(common_condition_nb, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, NB, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromMem(CPU_OFFSET_OF(reg[op->reg].u16), DYN_16bit, DYN_ADDRESS, true, true);
     endIf();
     INCREMENT_EIP(op->len);
 }
 void dynamic_cmovNB_32_reg(DynamicData* data, DecodedOp* op) {
-    callHostFunction(common_condition_nb, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, NB, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromCpu(CPU_OFFSET_OF(reg[op->reg].u32), CPU_OFFSET_OF(reg[op->rm].u32), DYN_32bit, DYN_SRC, true);
     endIf();
@@ -112,44 +112,44 @@ void dynamic_cmovNB_32_reg(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_cmovNB_32_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa( op, DYN_ADDRESS);
-    callHostFunction(common_condition_nb, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, NB, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromMem(CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit, DYN_ADDRESS, true, true);
     endIf();
     INCREMENT_EIP(op->len);
 }
 void dynamic_cmovZ_16_reg(DynamicData* data, DecodedOp* op) {
-    callHostFunction(common_condition_z, true, 1, 0, DYN_PARAM_CPU, false);
-    startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
+    setConditionInReg(data, NZ, DYN_CALL_RESULT);
+    startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
     movToCpuFromCpu(CPU_OFFSET_OF(reg[op->reg].u16), CPU_OFFSET_OF(reg[op->rm].u16), DYN_16bit, DYN_SRC, true);
     endIf();
     INCREMENT_EIP(op->len);
 }
 void dynamic_cmovZ_16_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa( op, DYN_ADDRESS);
-    callHostFunction(common_condition_z, true, 1, 0, DYN_PARAM_CPU, false);
-    startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
+    setConditionInReg(data, NZ, DYN_CALL_RESULT);
+    startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
     movToCpuFromMem(CPU_OFFSET_OF(reg[op->reg].u16), DYN_16bit, DYN_ADDRESS, true, true);
     endIf();
     INCREMENT_EIP(op->len);
 }
 void dynamic_cmovZ_32_reg(DynamicData* data, DecodedOp* op) {
-    callHostFunction(common_condition_z, true, 1, 0, DYN_PARAM_CPU, false);
-    startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
+    setConditionInReg(data, NZ, DYN_CALL_RESULT);
+    startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
     movToCpuFromCpu(CPU_OFFSET_OF(reg[op->reg].u32), CPU_OFFSET_OF(reg[op->rm].u32), DYN_32bit, DYN_SRC, true);
     endIf();
     INCREMENT_EIP(op->len);
 }
 void dynamic_cmovZ_32_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa( op, DYN_ADDRESS);
-    callHostFunction(common_condition_z, true, 1, 0, DYN_PARAM_CPU, false);
-    startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
+    setConditionInReg(data, NZ, DYN_CALL_RESULT);
+    startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
     movToCpuFromMem(CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit, DYN_ADDRESS, true, true);
     endIf();
     INCREMENT_EIP(op->len);
 }
 void dynamic_cmovNZ_16_reg(DynamicData* data, DecodedOp* op) {
-    callHostFunction(common_condition_nz, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, NZ, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromCpu(CPU_OFFSET_OF(reg[op->reg].u16), CPU_OFFSET_OF(reg[op->rm].u16), DYN_16bit, DYN_SRC, true);
     endIf();
@@ -157,14 +157,14 @@ void dynamic_cmovNZ_16_reg(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_cmovNZ_16_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa( op, DYN_ADDRESS);
-    callHostFunction(common_condition_nz, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, NZ, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromMem(CPU_OFFSET_OF(reg[op->reg].u16), DYN_16bit, DYN_ADDRESS, true, true);
     endIf();
     INCREMENT_EIP(op->len);
 }
 void dynamic_cmovNZ_32_reg(DynamicData* data, DecodedOp* op) {
-    callHostFunction(common_condition_nz, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, NZ, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromCpu(CPU_OFFSET_OF(reg[op->reg].u32), CPU_OFFSET_OF(reg[op->rm].u32), DYN_32bit, DYN_SRC, true);
     endIf();
@@ -172,14 +172,14 @@ void dynamic_cmovNZ_32_reg(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_cmovNZ_32_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa( op, DYN_ADDRESS);
-    callHostFunction(common_condition_nz, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, NZ, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromMem(CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit, DYN_ADDRESS, true, true);
     endIf();
     INCREMENT_EIP(op->len);
 }
 void dynamic_cmovBE_16_reg(DynamicData* data, DecodedOp* op) {
-    callHostFunction(common_condition_be, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, BE, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromCpu(CPU_OFFSET_OF(reg[op->reg].u16), CPU_OFFSET_OF(reg[op->rm].u16), DYN_16bit, DYN_SRC, true);
     endIf();
@@ -187,14 +187,14 @@ void dynamic_cmovBE_16_reg(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_cmovBE_16_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa( op, DYN_ADDRESS);
-    callHostFunction(common_condition_be, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, BE, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromMem(CPU_OFFSET_OF(reg[op->reg].u16), DYN_16bit, DYN_ADDRESS, true, true);
     endIf();
     INCREMENT_EIP(op->len);
 }
 void dynamic_cmovBE_32_reg(DynamicData* data, DecodedOp* op) {
-    callHostFunction(common_condition_be, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, BE, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromCpu(CPU_OFFSET_OF(reg[op->reg].u32), CPU_OFFSET_OF(reg[op->rm].u32), DYN_32bit, DYN_SRC, true);
     endIf();
@@ -202,14 +202,14 @@ void dynamic_cmovBE_32_reg(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_cmovBE_32_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa( op, DYN_ADDRESS);
-    callHostFunction(common_condition_be, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, BE, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromMem(CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit, DYN_ADDRESS, true, true);
     endIf();
     INCREMENT_EIP(op->len);
 }
 void dynamic_cmovNBE_16_reg(DynamicData* data, DecodedOp* op) {
-    callHostFunction(common_condition_nbe, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, NBE, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromCpu(CPU_OFFSET_OF(reg[op->reg].u16), CPU_OFFSET_OF(reg[op->rm].u16), DYN_16bit, DYN_SRC, true);
     endIf();
@@ -217,14 +217,14 @@ void dynamic_cmovNBE_16_reg(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_cmovNBE_16_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa( op, DYN_ADDRESS);
-    callHostFunction(common_condition_nbe, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, NBE, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromMem(CPU_OFFSET_OF(reg[op->reg].u16), DYN_16bit, DYN_ADDRESS, true, true);
     endIf();
     INCREMENT_EIP(op->len);
 }
 void dynamic_cmovNBE_32_reg(DynamicData* data, DecodedOp* op) {
-    callHostFunction(common_condition_nbe, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, NBE, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromCpu(CPU_OFFSET_OF(reg[op->reg].u32), CPU_OFFSET_OF(reg[op->rm].u32), DYN_32bit, DYN_SRC, true);
     endIf();
@@ -232,14 +232,14 @@ void dynamic_cmovNBE_32_reg(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_cmovNBE_32_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa( op, DYN_ADDRESS);
-    callHostFunction(common_condition_nbe, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, NBE, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromMem(CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit, DYN_ADDRESS, true, true);
     endIf();
     INCREMENT_EIP(op->len);
 }
 void dynamic_cmovS_16_reg(DynamicData* data, DecodedOp* op) {
-    callHostFunction(common_condition_s, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, S, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromCpu(CPU_OFFSET_OF(reg[op->reg].u16), CPU_OFFSET_OF(reg[op->rm].u16), DYN_16bit, DYN_SRC, true);
     endIf();
@@ -247,14 +247,14 @@ void dynamic_cmovS_16_reg(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_cmovS_16_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa( op, DYN_ADDRESS);
-    callHostFunction(common_condition_s, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, S, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromMem(CPU_OFFSET_OF(reg[op->reg].u16), DYN_16bit, DYN_ADDRESS, true, true);
     endIf();
     INCREMENT_EIP(op->len);
 }
 void dynamic_cmovS_32_reg(DynamicData* data, DecodedOp* op) {
-    callHostFunction(common_condition_s, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, S, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromCpu(CPU_OFFSET_OF(reg[op->reg].u32), CPU_OFFSET_OF(reg[op->rm].u32), DYN_32bit, DYN_SRC, true);
     endIf();
@@ -262,44 +262,44 @@ void dynamic_cmovS_32_reg(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_cmovS_32_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa( op, DYN_ADDRESS);
-    callHostFunction(common_condition_s, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, S, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromMem(CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit, DYN_ADDRESS, true, true);
     endIf();
     INCREMENT_EIP(op->len);
 }
 void dynamic_cmovNS_16_reg(DynamicData* data, DecodedOp* op) {
-    callHostFunction(common_condition_ns, true, 1, 0, DYN_PARAM_CPU, false);
-    startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
+    setConditionInReg(data, S, DYN_CALL_RESULT);
+    startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
     movToCpuFromCpu(CPU_OFFSET_OF(reg[op->reg].u16), CPU_OFFSET_OF(reg[op->rm].u16), DYN_16bit, DYN_SRC, true);
     endIf();
     INCREMENT_EIP(op->len);
 }
 void dynamic_cmovNS_16_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa( op, DYN_ADDRESS);
-    callHostFunction(common_condition_ns, true, 1, 0, DYN_PARAM_CPU, false);
-    startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
+    setConditionInReg(data, S, DYN_CALL_RESULT);
+    startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
     movToCpuFromMem(CPU_OFFSET_OF(reg[op->reg].u16), DYN_16bit, DYN_ADDRESS, true, true);
     endIf();
     INCREMENT_EIP(op->len);
 }
 void dynamic_cmovNS_32_reg(DynamicData* data, DecodedOp* op) {
-    callHostFunction(common_condition_ns, true, 1, 0, DYN_PARAM_CPU, false);
-    startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
+    setConditionInReg(data, S, DYN_CALL_RESULT);
+    startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
     movToCpuFromCpu(CPU_OFFSET_OF(reg[op->reg].u32), CPU_OFFSET_OF(reg[op->rm].u32), DYN_32bit, DYN_SRC, true);
     endIf();
     INCREMENT_EIP(op->len);
 }
 void dynamic_cmovNS_32_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa( op, DYN_ADDRESS);
-    callHostFunction(common_condition_ns, true, 1, 0, DYN_PARAM_CPU, false);
-    startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
+    setConditionInReg(data, S, DYN_CALL_RESULT);
+    startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
     movToCpuFromMem(CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit, DYN_ADDRESS, true, true);
     endIf();
     INCREMENT_EIP(op->len);
 }
 void dynamic_cmovP_16_reg(DynamicData* data, DecodedOp* op) {
-    callHostFunction(common_condition_p, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, P, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromCpu(CPU_OFFSET_OF(reg[op->reg].u16), CPU_OFFSET_OF(reg[op->rm].u16), DYN_16bit, DYN_SRC, true);
     endIf();
@@ -307,14 +307,14 @@ void dynamic_cmovP_16_reg(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_cmovP_16_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa( op, DYN_ADDRESS);
-    callHostFunction(common_condition_p, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, P, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromMem(CPU_OFFSET_OF(reg[op->reg].u16), DYN_16bit, DYN_ADDRESS, true, true);
     endIf();
     INCREMENT_EIP(op->len);
 }
 void dynamic_cmovP_32_reg(DynamicData* data, DecodedOp* op) {
-    callHostFunction(common_condition_p, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, P, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromCpu(CPU_OFFSET_OF(reg[op->reg].u32), CPU_OFFSET_OF(reg[op->rm].u32), DYN_32bit, DYN_SRC, true);
     endIf();
@@ -322,14 +322,14 @@ void dynamic_cmovP_32_reg(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_cmovP_32_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa( op, DYN_ADDRESS);
-    callHostFunction(common_condition_p, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, P, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromMem(CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit, DYN_ADDRESS, true, true);
     endIf();
     INCREMENT_EIP(op->len);
 }
 void dynamic_cmovNP_16_reg(DynamicData* data, DecodedOp* op) {
-    callHostFunction(common_condition_np, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, NP, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromCpu(CPU_OFFSET_OF(reg[op->reg].u16), CPU_OFFSET_OF(reg[op->rm].u16), DYN_16bit, DYN_SRC, true);
     endIf();
@@ -337,14 +337,14 @@ void dynamic_cmovNP_16_reg(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_cmovNP_16_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa( op, DYN_ADDRESS);
-    callHostFunction(common_condition_np, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, NP, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromMem(CPU_OFFSET_OF(reg[op->reg].u16), DYN_16bit, DYN_ADDRESS, true, true);
     endIf();
     INCREMENT_EIP(op->len);
 }
 void dynamic_cmovNP_32_reg(DynamicData* data, DecodedOp* op) {
-    callHostFunction(common_condition_np, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, NP, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromCpu(CPU_OFFSET_OF(reg[op->reg].u32), CPU_OFFSET_OF(reg[op->rm].u32), DYN_32bit, DYN_SRC, true);
     endIf();
@@ -352,14 +352,14 @@ void dynamic_cmovNP_32_reg(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_cmovNP_32_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa( op, DYN_ADDRESS);
-    callHostFunction(common_condition_np, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, NP, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromMem(CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit, DYN_ADDRESS, true, true);
     endIf();
     INCREMENT_EIP(op->len);
 }
 void dynamic_cmovL_16_reg(DynamicData* data, DecodedOp* op) {
-    callHostFunction(common_condition_l, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, L, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromCpu(CPU_OFFSET_OF(reg[op->reg].u16), CPU_OFFSET_OF(reg[op->rm].u16), DYN_16bit, DYN_SRC, true);
     endIf();
@@ -367,14 +367,14 @@ void dynamic_cmovL_16_reg(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_cmovL_16_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa( op, DYN_ADDRESS);
-    callHostFunction(common_condition_l, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, L, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromMem(CPU_OFFSET_OF(reg[op->reg].u16), DYN_16bit, DYN_ADDRESS, true, true);
     endIf();
     INCREMENT_EIP(op->len);
 }
 void dynamic_cmovL_32_reg(DynamicData* data, DecodedOp* op) {
-    callHostFunction(common_condition_l, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, L, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromCpu(CPU_OFFSET_OF(reg[op->reg].u32), CPU_OFFSET_OF(reg[op->rm].u32), DYN_32bit, DYN_SRC, true);
     endIf();
@@ -382,14 +382,14 @@ void dynamic_cmovL_32_reg(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_cmovL_32_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa( op, DYN_ADDRESS);
-    callHostFunction(common_condition_l, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, L, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromMem(CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit, DYN_ADDRESS, true, true);
     endIf();
     INCREMENT_EIP(op->len);
 }
 void dynamic_cmovNL_16_reg(DynamicData* data, DecodedOp* op) {
-    callHostFunction(common_condition_nl, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, NL, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromCpu(CPU_OFFSET_OF(reg[op->reg].u16), CPU_OFFSET_OF(reg[op->rm].u16), DYN_16bit, DYN_SRC, true);
     endIf();
@@ -397,14 +397,14 @@ void dynamic_cmovNL_16_reg(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_cmovNL_16_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa( op, DYN_ADDRESS);
-    callHostFunction(common_condition_nl, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, NL, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromMem(CPU_OFFSET_OF(reg[op->reg].u16), DYN_16bit, DYN_ADDRESS, true, true);
     endIf();
     INCREMENT_EIP(op->len);
 }
 void dynamic_cmovNL_32_reg(DynamicData* data, DecodedOp* op) {
-    callHostFunction(common_condition_nl, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, NL, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromCpu(CPU_OFFSET_OF(reg[op->reg].u32), CPU_OFFSET_OF(reg[op->rm].u32), DYN_32bit, DYN_SRC, true);
     endIf();
@@ -412,14 +412,14 @@ void dynamic_cmovNL_32_reg(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_cmovNL_32_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa( op, DYN_ADDRESS);
-    callHostFunction(common_condition_nl, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, NL, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromMem(CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit, DYN_ADDRESS, true, true);
     endIf();
     INCREMENT_EIP(op->len);
 }
 void dynamic_cmovLE_16_reg(DynamicData* data, DecodedOp* op) {
-    callHostFunction(common_condition_le, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, LE, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromCpu(CPU_OFFSET_OF(reg[op->reg].u16), CPU_OFFSET_OF(reg[op->rm].u16), DYN_16bit, DYN_SRC, true);
     endIf();
@@ -427,14 +427,14 @@ void dynamic_cmovLE_16_reg(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_cmovLE_16_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa( op, DYN_ADDRESS);
-    callHostFunction(common_condition_le, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, LE, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromMem(CPU_OFFSET_OF(reg[op->reg].u16), DYN_16bit, DYN_ADDRESS, true, true);
     endIf();
     INCREMENT_EIP(op->len);
 }
 void dynamic_cmovLE_32_reg(DynamicData* data, DecodedOp* op) {
-    callHostFunction(common_condition_le, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, LE, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromCpu(CPU_OFFSET_OF(reg[op->reg].u32), CPU_OFFSET_OF(reg[op->rm].u32), DYN_32bit, DYN_SRC, true);
     endIf();
@@ -442,14 +442,14 @@ void dynamic_cmovLE_32_reg(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_cmovLE_32_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa( op, DYN_ADDRESS);
-    callHostFunction(common_condition_le, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, LE, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromMem(CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit, DYN_ADDRESS, true, true);
     endIf();
     INCREMENT_EIP(op->len);
 }
 void dynamic_cmovNLE_16_reg(DynamicData* data, DecodedOp* op) {
-    callHostFunction(common_condition_nle, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, NLE, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromCpu(CPU_OFFSET_OF(reg[op->reg].u16), CPU_OFFSET_OF(reg[op->rm].u16), DYN_16bit, DYN_SRC, true);
     endIf();
@@ -457,14 +457,14 @@ void dynamic_cmovNLE_16_reg(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_cmovNLE_16_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa( op, DYN_ADDRESS);
-    callHostFunction(common_condition_nle, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, NLE, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromMem(CPU_OFFSET_OF(reg[op->reg].u16), DYN_16bit, DYN_ADDRESS, true, true);
     endIf();
     INCREMENT_EIP(op->len);
 }
 void dynamic_cmovNLE_32_reg(DynamicData* data, DecodedOp* op) {
-    callHostFunction(common_condition_nle, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, NLE, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromCpu(CPU_OFFSET_OF(reg[op->reg].u32), CPU_OFFSET_OF(reg[op->rm].u32), DYN_32bit, DYN_SRC, true);
     endIf();
@@ -472,7 +472,7 @@ void dynamic_cmovNLE_32_reg(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_cmovNLE_32_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa( op, DYN_ADDRESS);
-    callHostFunction(common_condition_nle, true, 1, 0, DYN_PARAM_CPU, false);
+    setConditionInReg(data, NLE, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     movToCpuFromMem(CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit, DYN_ADDRESS, true, true);
     endIf();

@@ -22,6 +22,8 @@ U8 parity_lookup[256] = {
   };
 
 class LazyFlagsNone : public LazyFlags {
+public:
+    LazyFlagsNone(U32 width) : LazyFlags(width) {}
     U32 getCF(CPU* cpu) const {return cpu->flags & CF;}
     U32 getSF(CPU* cpu) const {return cpu->flags & SF;}
     U32 getZF(CPU* cpu) const {return cpu->flags & ZF;}
@@ -30,24 +32,32 @@ class LazyFlagsNone : public LazyFlags {
     U32 getPF(CPU* cpu) const {return cpu->flags & PF;}
 };
 
-static LazyFlagsNone flagsNone;
+static LazyFlagsNone flagsNone(0);
 const LazyFlags* FLAGS_NONE = &flagsNone;
 
 class LazyFlagsDefault : public LazyFlags {
+public:
+    LazyFlagsDefault(U32 width) : LazyFlags(width) {}
     U32 getPF(CPU* cpu) const {return parity_lookup[cpu->result.u8];}
 };
 
 class LazyFlagsDefault8 : public LazyFlagsDefault {
+public:
+    LazyFlagsDefault8() : LazyFlagsDefault(8) {}
     U32 getSF(CPU* cpu) const {return cpu->result.u8 & 0x80;}
     U32 getZF(CPU* cpu) const {return cpu->result.u8==0;}
 };
 
 class LazyFlagsDefault16 : public LazyFlagsDefault {
+public:
+    LazyFlagsDefault16() : LazyFlagsDefault(16) {}
     U32 getSF(CPU* cpu) const {return cpu->result.u16 & 0x8000;}
     U32 getZF(CPU* cpu) const {return cpu->result.u16==0;}
 };
 
 class LazyFlagsDefault32 : public LazyFlagsDefault {
+public:
+    LazyFlagsDefault32() : LazyFlagsDefault(32) {}
     U32 getSF(CPU* cpu) const {return cpu->result.u32 & 0x80000000;}
     U32 getZF(CPU* cpu) const {return cpu->result.u32==0;}
 };

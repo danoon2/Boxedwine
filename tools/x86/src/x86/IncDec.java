@@ -75,6 +75,7 @@ public class IncDec extends Base {
             out(fos32, "    movToCpuFromReg("+x32Dest+", DYN_DEST, DYN_"+bits+"bit, true);");
         }
         out(fos32, "    movToCpu(CPU_OFFSET_OF(lazyFlags), Dyn_PtrSize, (DYN_PTR_SIZE)" + flagName + ");");
+        out(fos32, "    data->currentLazyFlags="+flagName+";");
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
     }

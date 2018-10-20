@@ -20,6 +20,7 @@ void common_dimul32(CPU* cpu, U32 arg1, U32 arg2, U32 regResult) {
     cpu->reg[regResult].u32 = (U32)res;
 }
 void common_imul8(CPU* cpu, U8 src) {
+    cpu->fillFlagsNoCFOF();
     AX = (S16)((S8)AL) * (S8)(src);
     if ((S16)AX<-128 || (S16)AX>127) {
         cpu->flags|=CF|OF;
@@ -28,6 +29,7 @@ void common_imul8(CPU* cpu, U8 src) {
     }
 }
 void common_mul8(CPU* cpu, U8 src) {
+    cpu->fillFlagsNoCFOF();
     AX = AL * src;
     if (AH) {
         cpu->flags|=CF|OF;

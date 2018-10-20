@@ -5,11 +5,12 @@
 
 class DynamicData {
 public:
-    DynamicData() : cpu(NULL), skipToOp(NULL), block(NULL), done(false) {}
+    DynamicData() : cpu(NULL), skipToOp(NULL), block(NULL), done(false), currentLazyFlags(NULL) {}
     CPU* cpu;
     DecodedOp* skipToOp;
     DecodedBlock* block;
     bool done;
+    const LazyFlags* currentLazyFlags;
 };
 
 typedef void (*pfnDynamicOp)(DynamicData* data, DecodedOp* op);

@@ -31,6 +31,13 @@ enum DynCondition {
     DYN_NOT_EQUALS_ZERO
 };
 
+enum DynConditionEvaluate {
+    DYN_EQUALS,
+    DYN_NOT_EQUALS,
+    DYN_LESS_THAN_UNSIGNED,
+    DYN_LESS_THAN_EQUAL_UNSIGNED
+};
+
 #define DYN_CALL_RESULT DYN_EAX
 #define DYN_SRC DYN_ECX
 #define DYN_DEST DYN_EDX
@@ -60,6 +67,25 @@ enum DynCallParamType {
     DYN_PARAM_CPU_ADDRESS_16,
     DYN_PARAM_CPU_ADDRESS_32,
     DYN_PARAM_CPU,
+};
+
+enum DynConditional {
+    O,
+    NO,
+    B,
+    NB,
+    Z,
+    NZ,
+    BE,
+    NBE,
+    S,
+    NS,
+    P,
+    NP,
+    L,
+    NL,
+    LE,
+    NLE
 };
 
 #define Dyn_PtrSize DYN_32bit
@@ -107,6 +133,9 @@ void instCPU(char inst, U32 dstOffset, DynWidth regWidth);
 void startIf(DynReg reg, DynCondition condition, bool doneWithReg);
 void startElse();
 void endIf();
+void evaluateToReg(DynReg reg, DynWidth dstWidth, DynReg left, DynReg right, DynWidth regWidth, DynConditionEvaluate condition, bool doneWithLeftReg, bool doneWithRightReg);
+void setCPU(DynamicData* data, U32 offset, DynWidth regWidth, DynConditional condition);
+void setMem(DynamicData* data, DynReg addressReg, DynWidth regWidth, DynConditional condition, bool doneWithAddressReg);
 
 // call into emulator, like setFlags, getCF, etc
 void callHostFunction(void* address, bool hasReturn=false, U32 argCount=0, U32 arg1=0, DynCallParamType arg1Type=DYN_PARAM_CONST_32, bool doneWithArg1=true, U32 arg2=0, DynCallParamType arg2Type=DYN_PARAM_CONST_32, bool doneWithArg2=true, U32 arg3=0, DynCallParamType arg3Type=DYN_PARAM_CONST_32, bool doneWithArg3=true, U32 arg4=0, DynCallParamType arg4Type=DYN_PARAM_CONST_32, bool doneWithArg4=true, U32 arg5=0, DynCallParamType arg5Type=DYN_PARAM_CONST_32, bool doneWithArg5=true);
@@ -1711,6 +1740,119 @@ void endIf() {
     outBuffer[pos] = (U8)(amount);
 }
 
+void evaluateToReg(DynReg reg, DynWidth dstWidth, DynReg left, DynReg right, DynWidth regWidth, DynConditionEvaluate condition, bool doneWithLeftReg, bool doneWithRightReg) {
+    if (reg>=4) {
+        kpanic("x32CPU::evaluateToRegFromRegs doesn't support reg %d", reg);
+    }
+    // cmp left, right
+    if (regWidth==DYN_32bit) {
+        outb(0x39);
+    } else if (regWidth==DYN_16bit) {
+        outb(0x66);
+        outb(0x39);
+    } else if (regWidth==DYN_8bit) {
+        outb(0x38);
+    } else {
+        kpanic("x32CPU::evaluateToRegFromRegs reg width %d", regWidth);
+    }
+    outb(0xc0 | right | (left << 3));
+
+    switch (condition) {
+    case DYN_EQUALS:        
+        // setz reg
+        outb(0x0f);
+        outb(0x95);
+        outb(0xc0+reg);
+        break;
+    case DYN_NOT_EQUALS:
+        // setnz reg
+        outb(0x0f);
+        outb(0x94);
+        outb(0xc0+reg);
+        break;
+    case DYN_LESS_THAN_UNSIGNED:
+        // setb reg
+        outb(0x0f);
+        outb(0x92);
+        outb(0xc0+reg);
+        break;
+    case DYN_LESS_THAN_EQUAL_UNSIGNED:
+        // setbe reg
+        outb(0x0f);
+        outb(0x96);
+        outb(0xc0+reg);
+        break;
+    default:
+        kpanic("x32CPU::evaluateToRegFromRegs unknown condition %d", condition);
+    }
+    if (dstWidth!=DYN_8bit) {
+        movToRegFromReg(reg, dstWidth, reg, DYN_8bit, false);
+    }
+    if (doneWithLeftReg)
+        regUsed[left] = false;
+    if (doneWithRightReg)
+        regUsed[right] = false;
+}
+
+// this is good generic code to copy for other implementations that don't have something like setcc
+/*
+void setCPU(DynamicData* data, U32 offset, DynWidth regWidth, DynConditional condition) {
+    setConditionInReg(data, condition, DYN_CALL_RESULT);
+    startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
+    movToCpu(offset, regWidth, 0);
+    startElse();
+    movToCpu(offset, regWidth, 1);
+    endIf();
+}
+*/
+
+void setCPU(DynamicData* data, U32 offset, DynWidth regWidth, DynConditional condition) {
+    setConditionInReg(data, condition, DYN_CALL_RESULT);
+    
+    // test reg, reg
+    outb(0x85);
+    outb(0xc0 | DYN_CALL_RESULT | (DYN_CALL_RESULT << 3));
+
+    // setnz al
+    outb(0x0f);
+    outb(0x95);
+    outb(0xc0);
+
+    if (regWidth!=DYN_8bit) {
+        movToRegFromReg(DYN_EAX, regWidth, DYN_EAX, DYN_8bit, false);
+    }
+    movToCpuFromReg(offset, DYN_EAX, regWidth, true);
+}
+
+/*
+void setMem(DynamicData* data, DynReg addressReg, DynWidth regWidth, DynConditional condition, bool doneWithAddressReg) {
+    setConditionInReg(data, condition, DYN_CALL_RESULT);
+    startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
+    movToReg(DYN_SRC, regWidth, 0);
+    startElse();
+    movToReg(DYN_SRC, regWidth, 1);
+    endIf();
+    // don't put this movToMem in the if statement because it is big and will be inlines once in each block of the if statement
+    movToMemFromReg(DYN_ADDRESS, DYN_SRC, regWidth, doneWithAddressReg, true);
+}
+*/
+void setMem(DynamicData* data, DynReg addressReg, DynWidth regWidth, DynConditional condition, bool doneWithAddressReg) {
+    setConditionInReg(data, condition, DYN_CALL_RESULT);
+    
+    // test reg, reg
+    outb(0x85);
+    outb(0xc0 | DYN_CALL_RESULT | (DYN_CALL_RESULT << 3));
+
+    // setnz al
+    outb(0x0f);
+    outb(0x95);
+    outb(0xc0);
+
+    if (regWidth!=DYN_8bit) {
+        movToRegFromReg(DYN_EAX, regWidth, DYN_EAX, DYN_8bit, false);
+    }
+    movToMemFromReg(addressReg, DYN_EAX, regWidth, doneWithAddressReg, true);
+}
 
 void incrementEip(U32 inc) {
     S32 d = (S32)inc;

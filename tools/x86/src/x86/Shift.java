@@ -68,7 +68,7 @@ public class Shift extends Base {
             shiftInst8(fos_c, fos_h, fos_op, fos_init, fos32, "sar8", false, "1", "3", sar8, 0, 0, false, sar8_reg, sar8_mem);
             shiftInst8(fos_c, fos_h, fos_op, fos_init, fos32, "sar8cl", true, "4", "4", sar8, 0, 0, true, sar8_reg_cl, sar8_mem_cl);
             shiftInst16(fos_c, fos_h, fos_op, fos_init, fos32, "sar16", false, "1", "3", sar16, 0, 0, false, sar16_reg, sar16_mem);
-            shiftInst16(fos_c, fos_h, fos_op, fos_init, fos32, "sar16cl", true, "4", "4", sar16, 0, 0, true, sar16_reg_cl, sar8_mem_cl);
+            shiftInst16(fos_c, fos_h, fos_op, fos_init, fos32, "sar16cl", true, "4", "4", sar16, 0, 0, true, sar16_reg_cl, sar16_mem_cl);
             shiftInst32(fos_c, fos_h, fos_op, fos_init, fos32, "sar32", false, "1", "3", sar32, 0, 0, false, sar32_reg, sar32_mem);
             shiftInst32(fos_c, fos_h, fos_op, fos_init, fos32, "sar32cl", true, "4", "4", sar32, 0, 0, true, sar32_reg_cl, sar32_mem_cl);
 
@@ -398,6 +398,11 @@ public class Shift extends Base {
             } else {
                 out(fos32, "    callHostFunction(" + name + ", false, 3, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false, " + param + ", " + paramType + ", " + (useCL ? "true" : "false") + ");");
             }
+        }
+        if (name.startsWith("ro") || name.startsWith("rc")) {
+            out(fos32, "    data->currentLazyFlags=FLAGS_NONE;");
+        } else {
+            out(fos32, "    data->currentLazyFlags=FLAGS_"+name.substring(0, 3).toUpperCase()+bits+";");
         }
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");

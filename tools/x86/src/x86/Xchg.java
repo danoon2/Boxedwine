@@ -162,6 +162,7 @@ public class Xchg extends Base {
         } else {
             out(fos32, "    callHostFunction(common_" + functionName + ", false, 3, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false, op->rm, DYN_PARAM_CONST_32, false);");
         }
+        out(fos32, "    data->currentLazyFlags=FLAGS_CMP16;");
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
     }
@@ -201,6 +202,7 @@ public class Xchg extends Base {
         } else {
             out(fos32, "    callHostFunction(common_" + functionName + ", false, 3, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false, op->rm, DYN_PARAM_CONST_32, false);");
         }
+        out(fos32, "    data->currentLazyFlags=FLAGS_CMP32;");
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
     }

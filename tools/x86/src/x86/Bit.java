@@ -59,6 +59,7 @@ public class Bit extends Base {
         } else {
             out(fos32, "    callHostFunction(common_" + functionName + ", false, 3, 0, DYN_PARAM_CPU, false, op->rm, DYN_PARAM_CONST_32, false, op->reg, DYN_PARAM_CONST_32, false);");
         }
+        out(fos32, "    data->currentLazyFlags=FLAGS_NONE;");
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
 
@@ -104,6 +105,7 @@ public class Bit extends Base {
             out(fos32, "    callHostFunction(common_" + functionName + ", false, 3, 0, DYN_PARAM_CPU, false, DYN_ADDRESS, DYN_PARAM_REG_32, true, op->reg, DYN_PARAM_CONST_32, false);");
         }
         out(fos32, "    INCREMENT_EIP(op->len);");
+        out(fos32, "    data->currentLazyFlags=FLAGS_NONE;");
         out(fos32, "}");
 
         if (!imm) {
@@ -141,6 +143,7 @@ public class Bit extends Base {
         } else {
             out(fos32, "    callHostFunction(common_" + functionName + ", false, 3, 0, DYN_PARAM_CPU, false, op->rm, DYN_PARAM_CONST_32, false, op->reg, DYN_PARAM_CONST_32, false);");
         }
+        out(fos32, "    data->currentLazyFlags=FLAGS_NONE;");
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
 
@@ -185,6 +188,7 @@ public class Bit extends Base {
         } else {
             out(fos32, "    callHostFunction(common_" + functionName + ", false, 3, 0, DYN_PARAM_CPU, false, DYN_ADDRESS, DYN_PARAM_REG_32, true, op->reg, DYN_PARAM_CONST_32, false);");
         }
+        out(fos32, "    data->currentLazyFlags=FLAGS_NONE;");
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
 
@@ -233,6 +237,7 @@ public class Bit extends Base {
         } else {
             out(fos32, "    callHostFunction(common_" + functionName + ", false, 3, 0, DYN_PARAM_CPU, false, op->rm, DYN_PARAM_CONST_32, false, op->reg, DYN_PARAM_CONST_32, false);");
         }
+        out(fos32, "    data->currentLazyFlags=FLAGS_NONE;");
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
     }
@@ -280,6 +285,7 @@ public class Bit extends Base {
         } else {
             out(fos32, "    callHostFunction(common_" + functionName + ", false, 3, 0, DYN_PARAM_CPU, false, op->rm, DYN_PARAM_CONST_32, false, op->reg, DYN_PARAM_CONST_32, false);");
         }
+        out(fos32, "    data->currentLazyFlags=FLAGS_NONE;");
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
     }

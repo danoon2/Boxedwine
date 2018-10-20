@@ -291,6 +291,7 @@ void dynamic_arith(DynamicData* data, DecodedOp* op, DynArg src, DynArg dst, Dyn
             }
         }
         movToCpu(CPU_OFFSET_OF(lazyFlags), Dyn_PtrSize, (DYN_PTR_SIZE)flags);
+        data->currentLazyFlags = flags;
     }
 
     if (!needResultReg || jmpReg==DYN_NOT_SET) {
@@ -325,5 +326,96 @@ void dynamic_arith(DynamicData* data, DecodedOp* op, DynArg src, DynArg dst, Dyn
             INCREMENT_EIP(op->len);
             data->skipToOp = op->next;
         }
+    }
+}
+
+DynWidth getWidthOfCondition(const LazyFlags* flags) {
+    if (flags->width==32)
+        return DYN_32bit;
+    if (flags->width==16)
+        return DYN_16bit;
+    if (flags->width==8)
+        return DYN_8bit;
+    kpanic("getWidthOfCondition: invalid flag width: %d", flags->width);
+    return DYN_32bit;
+}
+
+void setConditionInReg(DynamicData* data, DynConditional condition, DynReg reg) {
+    if (data->currentLazyFlags==FLAGS_NONE) {
+        U32 flag = 0;
+        bool not = false;
+
+        switch (condition) {
+        case O: flag = OF; break;
+        case NO: flag = OF; not = true; break;
+        case B: flag = CF; break;
+        case NB: flag = CF; not = true; break;
+        case Z: flag = ZF; break;
+        case NZ: flag = ZF; not = true; break;
+        case S: flag = SF; break;
+        case NS: flag = SF; not = true; break;
+        case P: flag = PF; break;
+        case NP: flag = PF; not = true; break;
+        }
+        if (flag) {
+            movToRegFromCpu(reg, CPU_OFFSET_OF(flags), DYN_32bit);
+            if (not)
+                instReg('~', reg, DYN_32bit);
+            instRegImm('&', reg, DYN_32bit, flag);
+            return;
+        }
+    } else if (data->currentLazyFlags && condition==NZ) {
+        DynWidth width = getWidthOfCondition(data->currentLazyFlags);
+        if (width==DYN_32bit) {
+            movToRegFromCpu(reg, CPU_OFFSET_OF(result.u32), DYN_32bit);
+        } else if (width==DYN_16bit) {
+            movToRegFromCpu(reg, CPU_OFFSET_OF(result.u16), DYN_16bit);
+            movToRegFromReg(reg, DYN_32bit, reg, DYN_16bit, false);
+        } else if (width==DYN_8bit) {
+            movToRegFromCpu(reg, CPU_OFFSET_OF(result.u8), DYN_8bit);
+            movToRegFromReg(reg, DYN_32bit, reg, DYN_8bit, false);
+        } else {
+            kpanic("setConditionInReg: unknown condition width: %d", width);
+        }
+        return;
+    } else if (data->currentLazyFlags && condition==S) {
+        DynWidth width = getWidthOfCondition(data->currentLazyFlags);
+        if (width==DYN_32bit) {
+            movToRegFromCpu(reg, CPU_OFFSET_OF(result.u32), DYN_32bit);
+            instRegImm('&', reg, DYN_32bit, 0x80000000);
+        } else if (width==DYN_16bit) {
+            movToRegFromCpu(reg, CPU_OFFSET_OF(result.u16), DYN_16bit);
+            instRegImm('&', reg, DYN_16bit, 0x8000);
+            movToRegFromReg(reg, DYN_32bit, reg, DYN_16bit, false);            
+        } else if (width==DYN_8bit) {
+            movToRegFromCpu(reg, CPU_OFFSET_OF(result.u8), DYN_8bit);
+            instRegImm('&', reg, DYN_8bit, 0x80);
+            movToRegFromReg(reg, DYN_32bit, reg, DYN_8bit, false);            
+        } else {
+            kpanic("setConditionInReg: unknown condition width: %d", width);
+        }
+        return;
+    } else if (data->currentLazyFlags && condition==B) {
+        int ii=0;
+    }
+    switch (condition) {
+    case O: callHostFunction(common_condition_o, true, 1, 0, DYN_PARAM_CPU, false); break;
+    case NO: callHostFunction(common_condition_no, true, 1, 0, DYN_PARAM_CPU, false); break;
+    case B: callHostFunction(common_condition_b, true, 1, 0, DYN_PARAM_CPU, false); break;
+    case NB: callHostFunction(common_condition_nb, true, 1, 0, DYN_PARAM_CPU, false); break;
+    case Z: callHostFunction(common_condition_z, true, 1, 0, DYN_PARAM_CPU, false); break;
+    case NZ: callHostFunction(common_condition_nz, true, 1, 0, DYN_PARAM_CPU, false); break;
+    case BE: callHostFunction(common_condition_be, true, 1, 0, DYN_PARAM_CPU, false); break;
+    case NBE: callHostFunction(common_condition_nbe, true, 1, 0, DYN_PARAM_CPU, false); break;
+    case S: callHostFunction(common_condition_s, true, 1, 0, DYN_PARAM_CPU, false); break;
+    case NS: callHostFunction(common_condition_ns, true, 1, 0, DYN_PARAM_CPU, false); break;
+    case P: callHostFunction(common_condition_p, true, 1, 0, DYN_PARAM_CPU, false); break;
+    case NP: callHostFunction(common_condition_np, true, 1, 0, DYN_PARAM_CPU, false); break;
+    case L: callHostFunction(common_condition_l, true, 1, 0, DYN_PARAM_CPU, false); break;
+    case NL: callHostFunction(common_condition_nl, true, 1, 0, DYN_PARAM_CPU, false); break;
+    case LE: callHostFunction(common_condition_le, true, 1, 0, DYN_PARAM_CPU, false); break;
+    case NLE: callHostFunction(common_condition_nle, true, 1, 0, DYN_PARAM_CPU, false); break;
+    default:
+        kpanic("setConditionInReg: unknown condition %d", condition);
     }
 }

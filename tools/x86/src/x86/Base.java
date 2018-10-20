@@ -27,4 +27,17 @@ abstract public class Base {
         line=line+"\r\n";
         fos.write(line.getBytes());
     }
+
+    public void setCondition(FileOutputStream fos32, String name, boolean isTrue) throws IOException {
+        if (name.equals("NS")) {
+            out(fos32, "    setConditionInReg(data, S, DYN_CALL_RESULT);");
+            out(fos32, "    startIf(DYN_CALL_RESULT, "+(isTrue?"DYN_NOT_EQUALS_ZERO":"DYN_EQUALS_ZERO")+", true);");
+        } else if (name.equals("Z")) {
+            out(fos32, "    setConditionInReg(data, NZ, DYN_CALL_RESULT);");
+            out(fos32, "    startIf(DYN_CALL_RESULT, "+(isTrue?"DYN_NOT_EQUALS_ZERO":"DYN_EQUALS_ZERO")+", true);");
+        } else {
+            out(fos32, "    setConditionInReg(data, " + name + ", DYN_CALL_RESULT);");
+            out(fos32, "    startIf(DYN_CALL_RESULT, "+(isTrue?"DYN_EQUALS_ZERO":"DYN_NOT_EQUALS_ZERO")+", true);");
+        }
+    }
 }
