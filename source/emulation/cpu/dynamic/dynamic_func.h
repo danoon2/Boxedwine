@@ -329,6 +329,534 @@ void dynamic_arith(DynamicData* data, DecodedOp* op, DynArg src, DynArg dst, Dyn
     }
 }
 
+void genCF(const LazyFlags* flags, DynReg reg) {
+    if (reg!=DYN_EAX) {
+        kpanic("genCF expects reg to be DYN_EAX");
+    }
+    if (flags == FLAGS_NONE) {
+        movToRegFromCpu(reg, CPU_OFFSET_OF(flags), DYN_32bit);
+        instRegImm('&', reg, DYN_32bit, CF);
+    } else if (flags == FLAGS_ADD8) {
+        // cpu->result.u8<cpu->dst.u8;
+        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(result.u8), DYN_8bit);
+        movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(dst.u8), DYN_8bit);
+        evaluateToReg(reg, DYN_32bit, DYN_SRC, false, DYN_DEST, 0, DYN_8bit, DYN_LESS_THAN_UNSIGNED, true, true);
+    } else if (flags == FLAGS_ADD16) {
+        // cpu->result.u16<cpu->dst.u16;
+        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(result.u16), DYN_16bit);
+        movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(dst.u16), DYN_16bit);
+        evaluateToReg(reg, DYN_32bit, DYN_SRC, false, DYN_DEST, 0, DYN_16bit, DYN_LESS_THAN_UNSIGNED, true, true);
+    } else if (flags == FLAGS_ADD32) {
+        // cpu->result.u32<cpu->dst.u32;
+        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(result.u32), DYN_32bit);
+        movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(dst.u32), DYN_32bit);
+        evaluateToReg(reg, DYN_32bit, DYN_SRC, false, DYN_DEST, 0, DYN_32bit, DYN_LESS_THAN_UNSIGNED, true, true);
+    } else if (flags == FLAGS_OR8) {
+        // 0
+        movToReg(reg, DYN_32bit, 0);
+    } else if (flags == FLAGS_OR16) {
+        // 0
+        movToReg(reg, DYN_32bit, 0);
+    } else if (flags == FLAGS_OR32) {
+        // 0
+        movToReg(reg, DYN_32bit, 0);
+    } else if (flags == FLAGS_ADC8) {
+        // (cpu->result.u8 < cpu->dst.u8) || (cpu->oldCF && (cpu->result.u8 == cpu->dst.u8));
+        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(result.u8), DYN_8bit);
+        movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(dst.u8), DYN_8bit);
+        evaluateToReg(reg, DYN_32bit, DYN_SRC, false, DYN_DEST, 0, DYN_8bit, DYN_EQUALS, false, false);
+        evaluateToReg(DYN_SRC, DYN_32bit, DYN_SRC, false, DYN_DEST, 0, DYN_8bit, DYN_LESS_THAN_UNSIGNED, false, false);
+        movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(oldCF), DYN_32bit);
+        // shortcut, we know oldCF will be 0 or 1, we also know that evaluateToReg will be 0 or 1
+        instRegReg('&', DYN_SRC, DYN_DEST, DYN_32bit, true);
+        instRegReg('|', reg, DYN_SRC, DYN_32bit, true);
+    } else if (flags == FLAGS_ADC16) {
+        // (cpu->result.u16 < cpu->dst.u16) || (cpu->oldCF && (cpu->result.u16 == cpu->dst.u16));
+        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(result.u16), DYN_16bit);
+        movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(dst.u16), DYN_16bit);
+        evaluateToReg(reg, DYN_32bit, DYN_SRC, false, DYN_DEST, 0, DYN_16bit, DYN_EQUALS, false, false);
+        evaluateToReg(DYN_SRC, DYN_32bit, DYN_SRC, false, DYN_DEST, 0, DYN_16bit, DYN_LESS_THAN_UNSIGNED, false, false);
+        movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(oldCF), DYN_32bit);
+        // shortcut, we know oldCF will be 0 or 1, we also know that evaluateToReg will be 0 or 1
+        instRegReg('&', DYN_SRC, DYN_DEST, DYN_32bit, true);
+        instRegReg('|', reg, DYN_SRC, DYN_32bit, true);
+    } else if (flags == FLAGS_ADC32) {
+        // (cpu->result.u32 < cpu->dst.u32) || (cpu->oldCF && (cpu->result.u32 == cpu->dst.u32));
+        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(result.u32), DYN_32bit);
+        movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(dst.u32), DYN_32bit);
+        evaluateToReg(reg, DYN_32bit, DYN_SRC, false, DYN_DEST, 0, DYN_32bit, DYN_EQUALS, false, false);
+        evaluateToReg(DYN_SRC, DYN_32bit, DYN_SRC, false, DYN_DEST, 0, DYN_32bit, DYN_LESS_THAN_UNSIGNED, false, false);
+        movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(oldCF), DYN_32bit);
+        // shortcut, we know oldCF will be 0 or 1, we also know that evaluateToReg will be 0 or 1
+        instRegReg('&', DYN_SRC, DYN_DEST, DYN_32bit, true);
+        instRegReg('|', reg, DYN_SRC, DYN_32bit, true);
+    } else if (flags == FLAGS_SBB8) {
+        // (cpu->dst.u8 < cpu->result.u8) || (cpu->oldCF && (cpu->src.u8==0xff));
+        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u8), DYN_8bit);
+        evaluateToReg(reg, DYN_32bit, DYN_SRC, true, DYN_NOT_SET, 0xff, DYN_8bit, DYN_EQUALS, true, false);
+        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(oldCF), DYN_32bit);
+        // shortcut, we know oldCF will be 0 or 1, we also know that evaluateToReg will be 0 or 1
+        instRegReg('&', reg, DYN_SRC, DYN_32bit, true);
+
+        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(result.u8), DYN_8bit);
+        movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(dst.u8), DYN_8bit);        
+        evaluateToReg(DYN_SRC, DYN_32bit, DYN_DEST, false, DYN_SRC, 0, DYN_8bit, DYN_LESS_THAN_UNSIGNED, true, false);
+
+        instRegReg('|', reg, DYN_SRC, DYN_32bit, true);
+    } else if (flags == FLAGS_SBB16) {
+        // (cpu->dst.u16 < cpu->result.u16) || (cpu->oldCF && (cpu->src.u16==0xffff));
+        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u16), DYN_16bit);
+        evaluateToReg(reg, DYN_32bit, DYN_SRC, true, DYN_NOT_SET, 0xffff, DYN_16bit, DYN_EQUALS, true, false);
+        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(oldCF), DYN_32bit);
+        // shortcut, we know oldCF will be 0 or 1, we also know that evaluateToReg will be 0 or 1
+        instRegReg('&', reg, DYN_SRC, DYN_32bit, true);
+
+        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(result.u16), DYN_16bit);
+        movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(dst.u16), DYN_16bit);        
+        evaluateToReg(DYN_SRC, DYN_32bit, DYN_DEST, false, DYN_SRC, 0, DYN_16bit, DYN_LESS_THAN_UNSIGNED, true, false);
+
+        instRegReg('|', reg, DYN_SRC, DYN_32bit, true);
+    } else if (flags == FLAGS_SBB32) {
+        // (cpu->dst.u32 < cpu->result.u32) || (cpu->oldCF && (cpu->src.u32==0xffffffff));
+        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u32), DYN_32bit);
+        evaluateToReg(reg, DYN_32bit, DYN_SRC, true, DYN_NOT_SET, 0xffffffff, DYN_32bit, DYN_EQUALS, true, false);
+        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(oldCF), DYN_32bit);
+        // shortcut, we know oldCF will be 0 or 1, we also know that evaluateToReg will be 0 or 1
+        instRegReg('&', reg, DYN_SRC, DYN_32bit, true);
+
+        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(result.u32), DYN_32bit);
+        movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(dst.u32), DYN_32bit);        
+        evaluateToReg(DYN_SRC, DYN_32bit, DYN_DEST, false, DYN_SRC, 0, DYN_32bit, DYN_LESS_THAN_UNSIGNED, true, false);
+
+        instRegReg('|', reg, DYN_SRC, DYN_32bit, true);
+    } else if (flags == FLAGS_AND8) {
+        // 0
+        movToReg(reg, DYN_32bit, 0);
+    } else if (flags == FLAGS_AND16) {
+        // 0
+        movToReg(reg, DYN_32bit, 0);
+    } else if (flags == FLAGS_AND32) {
+        // 0
+        movToReg(reg, DYN_32bit, 0);
+    } else if (flags == FLAGS_SUB8) {
+        // cpu->dst.u8<cpu->src.u8;
+        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u8), DYN_8bit);
+        movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(dst.u8), DYN_8bit);
+        evaluateToReg(reg, DYN_32bit, DYN_DEST, false, DYN_SRC, 0, DYN_8bit, DYN_LESS_THAN_UNSIGNED, true, true);
+    } else if (flags == FLAGS_SUB16) {
+        // cpu->dst.u16<cpu->src.u16;
+        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u16), DYN_16bit);
+        movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(dst.u16), DYN_16bit);
+        evaluateToReg(reg, DYN_32bit, DYN_DEST, false, DYN_SRC, 0, DYN_16bit, DYN_LESS_THAN_UNSIGNED, true, true);
+    } else if (flags == FLAGS_SUB32) {
+        // cpu->dst.u32<cpu->src.u32;
+        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u32), DYN_32bit);
+        movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(dst.u32), DYN_32bit);
+        evaluateToReg(reg, DYN_32bit, DYN_DEST, false, DYN_SRC, 0, DYN_32bit, DYN_LESS_THAN_UNSIGNED, true, true);
+    } else if (flags == FLAGS_XOR8) {
+        // 0
+        movToReg(reg, DYN_32bit, 0);
+    } else if (flags == FLAGS_XOR16) {
+        // 0
+        movToReg(reg, DYN_32bit, 0);
+    } else if (flags == FLAGS_XOR32) {
+        // 0
+        movToReg(reg, DYN_32bit, 0);
+    } else if (flags == FLAGS_INC8) {
+        // cpu->oldCF;
+        movToRegFromCpu(reg, CPU_OFFSET_OF(oldCF), DYN_32bit);
+    } else if (flags == FLAGS_INC16) {
+        // cpu->oldCF;
+        movToRegFromCpu(reg, CPU_OFFSET_OF(oldCF), DYN_32bit);
+    } else if (flags == FLAGS_INC32) {
+        // cpu->oldCF;
+        movToRegFromCpu(reg, CPU_OFFSET_OF(oldCF), DYN_32bit);
+    } else if (flags == FLAGS_DEC8) {
+        // cpu->oldCF;
+        movToRegFromCpu(reg, CPU_OFFSET_OF(oldCF), DYN_32bit);
+    } else if (flags == FLAGS_DEC16) {
+        // cpu->oldCF;
+        movToRegFromCpu(reg, CPU_OFFSET_OF(oldCF), DYN_32bit);
+    } else if (flags == FLAGS_DEC32) {
+        // cpu->oldCF;
+        movToRegFromCpu(reg, CPU_OFFSET_OF(oldCF), DYN_32bit);
+    } else if (flags == FLAGS_SHL8) {
+        // ((cpu->dst.u8 << (cpu->src.u8-1)) & 0x80) >> 7
+        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u8), DYN_8bit);
+        movToRegFromCpu(reg, CPU_OFFSET_OF(dst.u8), DYN_8bit);
+        instRegImm('-', DYN_SRC, DYN_8bit, 1);
+        instRegReg('<', reg, DYN_SRC, DYN_8bit, true);
+        instRegImm('&', reg, DYN_8bit, 0x80);
+        instRegImm('>', reg, DYN_8bit, 7);
+        movToRegFromReg(reg, DYN_32bit, reg, DYN_8bit, false);
+    } else if (flags == FLAGS_SHL16) {
+        // ((cpu->dst.u16 << (cpu->src.u8-1)) & 0x8000)>>15
+        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u16), DYN_16bit);
+        movToRegFromCpu(reg, CPU_OFFSET_OF(dst.u16), DYN_16bit);
+        instRegImm('-', DYN_SRC, DYN_16bit, 1);
+        instRegReg('<', reg, DYN_SRC, DYN_16bit, true);
+        instRegImm('&', reg, DYN_16bit, 0x8000);
+        instRegImm('>', reg, DYN_16bit, 15);
+        movToRegFromReg(reg, DYN_32bit, reg, DYN_16bit, false);
+    } else if (flags == FLAGS_SHL32) {
+        // (cpu->dst.u32 >> (32 - cpu->src.u8)) & 1;
+        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u32), DYN_32bit); // ok to use src.u32 instead of src.u8
+        movToRegFromCpu(reg, CPU_OFFSET_OF(dst.u32), DYN_32bit);
+        movToReg(DYN_DEST, DYN_32bit, 32);
+        instRegReg('-', DYN_DEST, DYN_SRC, DYN_32bit, true);
+        instRegReg('>', reg, DYN_DEST, DYN_32bit, true);
+        instRegImm('&', reg, DYN_32bit, 1);
+    } else if (flags == FLAGS_SHR8 || flags == FLAGS_SHR8_N1) {
+        // (cpu->dst.u8 >> (cpu->src.u8 - 1)) & 1;
+        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u8), DYN_8bit);
+        movToRegFromCpu(reg, CPU_OFFSET_OF(dst.u8), DYN_8bit);
+        instRegImm('-', DYN_SRC, DYN_8bit, 1);
+        instRegReg('>', reg, DYN_SRC, DYN_8bit, true);
+        instRegImm('&', reg, DYN_8bit, 0x1);
+        movToRegFromReg(reg, DYN_32bit, reg, DYN_8bit, false);
+    } else if (flags == FLAGS_SHR16 || flags == FLAGS_SHR16_N1) {
+        // (cpu->dst.u16 >> (cpu->src.u8 - 1)) & 1;
+        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u16), DYN_16bit);
+        movToRegFromCpu(reg, CPU_OFFSET_OF(dst.u16), DYN_16bit);
+        instRegImm('-', DYN_SRC, DYN_16bit, 1);
+        instRegReg('>', reg, DYN_SRC, DYN_16bit, true);
+        instRegImm('&', reg, DYN_16bit, 1);
+        movToRegFromReg(reg, DYN_32bit, reg, DYN_16bit, false);
+    } else if (flags == FLAGS_SHR32 || flags == FLAGS_SHR32_N1) {
+        // (cpu->dst.u32 >> (cpu->src.u8 - 1)) & 1;
+        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u32), DYN_32bit); // ok to use src.u32 instead of src.u8
+        movToRegFromCpu(reg, CPU_OFFSET_OF(dst.u32), DYN_32bit);
+        instRegImm('-', DYN_SRC, DYN_32bit, 1);
+        instRegReg('>', reg, DYN_SRC, DYN_32bit, true);
+        instRegImm('&', reg, DYN_32bit, 1);
+    } else if (flags == FLAGS_SHR8_1) {
+        // cpu->dst.u8 & 1;
+        movToRegFromCpu(reg, CPU_OFFSET_OF(dst.u8), DYN_8bit);
+        instRegImm('&', reg, DYN_8bit, 0x1);
+        movToRegFromReg(reg, DYN_32bit, reg, DYN_8bit, false);
+    } else if (flags == FLAGS_SHR16_1) {
+        // cpu->dst.u16 & 1;
+        movToRegFromCpu(reg, CPU_OFFSET_OF(dst.u16), DYN_16bit);
+        instRegImm('&', reg, DYN_16bit, 1);
+        movToRegFromReg(reg, DYN_32bit, reg, DYN_16bit, false);
+    } else if (flags == FLAGS_SHR32_1) {
+        // cpu->dst.u32  & 1;
+        movToRegFromCpu(reg, CPU_OFFSET_OF(dst.u32), DYN_32bit);
+        instRegImm('&', reg, DYN_32bit, 1);
+    } else if (flags == FLAGS_SAR8) {
+        // (((S8) cpu->dst.u8) >> (cpu->src.u8 - 1)) & 1;
+        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u8), DYN_8bit);
+        movToRegFromCpu(reg, CPU_OFFSET_OF(dst.u8), DYN_8bit);
+        instRegImm('-', DYN_SRC, DYN_8bit, 1);
+        instRegReg(')', reg, DYN_SRC, DYN_8bit, true);
+        instRegImm('&', reg, DYN_8bit, 0x1);
+        movToRegFromReg(reg, DYN_32bit, reg, DYN_8bit, false);
+    } else if (flags == FLAGS_SAR16) {
+        // (((S16) cpu->dst.u16) >> (cpu->src.u8 - 1)) & 1;
+        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u16), DYN_16bit);
+        movToRegFromCpu(reg, CPU_OFFSET_OF(dst.u16), DYN_16bit);
+        instRegImm('-', DYN_SRC, DYN_16bit, 1);
+        instRegReg(')', reg, DYN_SRC, DYN_16bit, true);
+        instRegImm('&', reg, DYN_16bit, 1);
+        movToRegFromReg(reg, DYN_32bit, reg, DYN_16bit, false);
+    } else if (flags == FLAGS_SAR32) {
+        // (((S32) cpu->dst.u32) >> (cpu->src.u8 - 1)) & 1;
+        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u32), DYN_32bit); // ok to use src.u32 instead of src.u8
+        movToRegFromCpu(reg, CPU_OFFSET_OF(dst.u32), DYN_32bit);
+        instRegImm('-', DYN_SRC, DYN_32bit, 1);
+        instRegReg(')', reg, DYN_SRC, DYN_32bit, true);
+        instRegImm('&', reg, DYN_32bit, 1);
+    } else if (flags == FLAGS_TEST8) {
+        // 0
+        movToReg(reg, DYN_32bit, 0);
+    } else if (flags == FLAGS_TEST16) {
+        // 0
+        movToReg(reg, DYN_32bit, 0);
+    } else if (flags == FLAGS_TEST32) {
+        // 0
+        movToReg(reg, DYN_32bit, 0);
+    } else if (flags == FLAGS_DSHL16) {
+        // ((cpu->dst.u16 << (cpu->src.u8-1)) & 0x8000)>>15;
+        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u16), DYN_16bit);
+        movToRegFromCpu(reg, CPU_OFFSET_OF(dst.u16), DYN_16bit);
+        instRegImm('-', DYN_SRC, DYN_16bit, 1);
+        instRegReg('<', reg, DYN_SRC, DYN_16bit, true);
+        instRegImm('&', reg, DYN_16bit, 0x8000);
+        instRegImm('>', reg, DYN_16bit, 15);
+        movToRegFromReg(reg, DYN_32bit, reg, DYN_16bit, false);
+    } else if (flags == FLAGS_DSHL32) {
+        // (cpu->dst.u32 >> (32 - cpu->src.u8)) & 1;
+        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u32), DYN_32bit); // ok to use src.u32 instead of src.u8
+        movToRegFromCpu(reg, CPU_OFFSET_OF(dst.u32), DYN_32bit);
+        movToReg(DYN_DEST, DYN_32bit, 32);
+        instRegReg('-', DYN_DEST, DYN_SRC, DYN_32bit, true);
+        instRegReg('>', reg, DYN_DEST, DYN_32bit, true);
+        instRegImm('&', reg, DYN_32bit, 1);
+    } else if (flags == FLAGS_DSHR16) {
+        // (cpu->dst.u32 >> (cpu->src.u8 - 1)) & 1;
+        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u16), DYN_16bit);
+        movToRegFromCpu(reg, CPU_OFFSET_OF(dst.u16), DYN_16bit);
+        instRegImm('-', DYN_SRC, DYN_16bit, 1);
+        instRegReg('>', reg, DYN_SRC, DYN_16bit, true);
+        instRegImm('&', reg, DYN_16bit, 1);
+        movToRegFromReg(reg, DYN_32bit, reg, DYN_16bit, false);
+    } else if (flags == FLAGS_DSHR32) {
+        // (cpu->dst.u32 >> (cpu->src.u8 - 1)) & 1;
+        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u32), DYN_32bit); // ok to use src.u32 instead of src.u8
+        movToRegFromCpu(reg, CPU_OFFSET_OF(dst.u32), DYN_32bit);
+        instRegImm('-', DYN_SRC, DYN_32bit, 1);
+        instRegReg('>', reg, DYN_SRC, DYN_32bit, true);
+        instRegImm('&', reg, DYN_32bit, 1);
+    } else if (flags == FLAGS_NEG8) {
+        // cpu->src.u8!=0;
+        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u8), DYN_8bit);
+        evaluateToReg(reg, DYN_32bit, DYN_SRC, true, DYN_NOT_SET, 0, DYN_8bit, DYN_NOT_EQUALS, true, false);
+    } else if (flags == FLAGS_NEG16) {
+        // cpu->src.u16!=0;
+        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u16), DYN_16bit);
+        evaluateToReg(reg, DYN_32bit, DYN_SRC, true, DYN_NOT_SET, 0, DYN_16bit, DYN_NOT_EQUALS, true, false);
+    } else if (flags == FLAGS_NEG32) {
+        // cpu->src.u32!=0;
+        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u32), DYN_32bit);
+        evaluateToReg(reg, DYN_32bit, DYN_SRC, true, DYN_NOT_SET, 0, DYN_32bit, DYN_NOT_EQUALS, true, false);
+    } else {
+        kpanic("genCF unknown flags");
+    }
+}
+
+void genOF(const LazyFlags* flags, DynReg reg) {
+    if (reg!=DYN_EAX) {
+        kpanic("genCF expects reg to be DYN_EAX");
+    }
+    if (flags == FLAGS_NONE) {
+        movToRegFromCpu(reg, CPU_OFFSET_OF(flags), DYN_32bit);
+        instRegImm('&', reg, DYN_32bit, CF);
+    } else if (flags == FLAGS_ADD8 || flags == FLAGS_ADC8) {
+        // ((cpu->dst.u8 ^ cpu->src.u8 ^ 0x80) & (cpu->result.u8 ^ cpu->src.u8)) & 0x80;        
+        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u8), DYN_8bit);
+        movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(dst.u8), DYN_8bit);
+        movToRegFromCpu(reg, CPU_OFFSET_OF(result.u8), DYN_8bit);
+        instRegReg('^', DYN_DEST, DYN_SRC, DYN_8bit, false);
+        instRegImm('^', DYN_DEST, DYN_8bit, 0x80);
+        instRegReg('^', reg, DYN_SRC, DYN_8bit, true);
+        instRegReg('&', reg, DYN_DEST, DYN_8bit, true);
+        instRegImm('&', reg, DYN_8bit, 0x80);
+        movToRegFromReg(reg, DYN_32bit, reg, DYN_8bit, false);
+    } else if (flags == FLAGS_ADD16 || flags == FLAGS_ADC16) {
+        // ((cpu->dst.u16 ^ cpu->src.u16 ^ 0x8000) & (cpu->result.u16 ^ cpu->src.u16)) & 0x8000;
+        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u16), DYN_16bit);
+        movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(dst.u16), DYN_16bit);
+        movToRegFromCpu(reg, CPU_OFFSET_OF(result.u16), DYN_16bit);
+        instRegReg('^', DYN_DEST, DYN_SRC, DYN_16bit, false);
+        instRegImm('^', DYN_DEST, DYN_16bit, 0x8000);
+        instRegReg('^', reg, DYN_SRC, DYN_16bit, true);
+        instRegReg('&', reg, DYN_DEST, DYN_16bit, true);
+        instRegImm('&', reg, DYN_16bit, 0x8000);
+        movToRegFromReg(reg, DYN_32bit, reg, DYN_16bit, false);
+    } else if (flags == FLAGS_ADD32 || flags == FLAGS_ADC32) {
+        // ((cpu->dst.u32 ^ cpu->src.u32 ^ 0x80000000) & (cpu->result.u32 ^ cpu->src.u32)) & 0x80000000;
+        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u32), DYN_32bit);
+        movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(dst.u32), DYN_32bit);
+        movToRegFromCpu(reg, CPU_OFFSET_OF(result.u32), DYN_32bit);
+        instRegReg('^', DYN_DEST, DYN_SRC, DYN_32bit, false);
+        instRegImm('^', DYN_DEST, DYN_32bit, 0x80000000);
+        instRegReg('^', reg, DYN_SRC, DYN_32bit, true);
+        instRegReg('&', reg, DYN_DEST, DYN_32bit, true);
+        instRegImm('&', reg, DYN_32bit, 0x80000000);
+        movToRegFromReg(reg, DYN_32bit, reg, DYN_32bit, false);
+    } else if (flags == FLAGS_OR8) {
+        // 0
+        movToReg(reg, DYN_32bit, 0);
+    } else if (flags == FLAGS_OR16) {
+        // 0
+        movToReg(reg, DYN_32bit, 0);
+    } else if (flags == FLAGS_OR32) {
+        // 0
+        movToReg(reg, DYN_32bit, 0);
+    } else if (flags == FLAGS_AND8) {
+        // 0
+        movToReg(reg, DYN_32bit, 0);
+    } else if (flags == FLAGS_AND16) {
+        // 0
+        movToReg(reg, DYN_32bit, 0);
+    } else if (flags == FLAGS_AND32) {
+        // 0
+        movToReg(reg, DYN_32bit, 0);
+    } else if (flags == FLAGS_SUB8 || flags == FLAGS_SBB8 || flags == FLAGS_CMP8) {
+        // ((cpu->dst.u8 ^ cpu->src.u8) & (cpu->dst.u8 ^ cpu->result.u8)) & 0x80;
+        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u8), DYN_8bit);
+        movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(dst.u8), DYN_8bit);
+        movToRegFromCpu(reg, CPU_OFFSET_OF(result.u8), DYN_8bit);
+        instRegReg('^', DYN_SRC, DYN_DEST, DYN_8bit, false);
+        instRegReg('^', reg, DYN_DEST, DYN_8bit, true);
+        instRegReg('&', reg, DYN_SRC, DYN_8bit, true);
+        instRegImm('&', reg, DYN_8bit, 0x80);
+        movToRegFromReg(reg, DYN_32bit, reg, DYN_8bit, false);
+    } else if (flags == FLAGS_SUB16 || flags == FLAGS_SBB16 || flags == FLAGS_CMP16) {
+        // ((cpu->dst.u16 ^ cpu->src.u16) & (cpu->dst.u16 ^ cpu->result.u16)) & 0x8000;
+        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u16), DYN_16bit);
+        movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(dst.u16), DYN_16bit);
+        movToRegFromCpu(reg, CPU_OFFSET_OF(result.u16), DYN_16bit);
+        instRegReg('^', DYN_SRC, DYN_DEST, DYN_16bit, false);
+        instRegReg('^', reg, DYN_DEST, DYN_16bit, true);
+        instRegReg('&', reg, DYN_SRC, DYN_16bit, true);
+        instRegImm('&', reg, DYN_16bit, 0x8000);
+        movToRegFromReg(reg, DYN_32bit, reg, DYN_16bit, false);
+    } else if (flags == FLAGS_SUB32 || flags == FLAGS_SBB32 || flags == FLAGS_CMP32) {
+        // ((cpu->dst.u32 ^ cpu->src.u32) & (cpu->dst.u32 ^ cpu->result.u32)) & 0x80000000;
+        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u32), DYN_32bit);
+        movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(dst.u32), DYN_32bit);
+        movToRegFromCpu(reg, CPU_OFFSET_OF(result.u32), DYN_32bit);
+        instRegReg('^', DYN_SRC, DYN_DEST, DYN_32bit, false);
+        instRegReg('^', reg, DYN_DEST, DYN_32bit, true);
+        instRegReg('&', reg, DYN_SRC, DYN_32bit, true);
+        instRegImm('&', reg, DYN_32bit, 0x80000000);
+    } else if (flags == FLAGS_XOR8) {
+        // 0
+        movToReg(reg, DYN_32bit, 0);
+    } else if (flags == FLAGS_XOR16) {
+        // 0
+        movToReg(reg, DYN_32bit, 0);
+    } else if (flags == FLAGS_XOR32) {
+        // 0
+        movToReg(reg, DYN_32bit, 0);
+    } else if (flags == FLAGS_INC8) {
+        // cpu->result.u8 == 0x80;
+        movToRegFromCpu(reg, CPU_OFFSET_OF(result.u8), DYN_8bit);
+        evaluateToReg(reg, DYN_32bit, reg, true, DYN_NOT_SET, 0x80, DYN_8bit, DYN_EQUALS, false, false);
+    } else if (flags == FLAGS_INC16) {
+        // cpu->result.u16 == 0x8000;
+        movToRegFromCpu(reg, CPU_OFFSET_OF(result.u16), DYN_16bit);
+        evaluateToReg(reg, DYN_32bit, reg, true, DYN_NOT_SET, 0x8000, DYN_16bit, DYN_EQUALS, false, false);
+    } else if (flags == FLAGS_INC32) {
+        // cpu->result.u32 == 0x80000000;
+        movToRegFromCpu(reg, CPU_OFFSET_OF(result.u32), DYN_32bit);
+        evaluateToReg(reg, DYN_32bit, reg, true, DYN_NOT_SET, 0x80000000, DYN_32bit, DYN_EQUALS, false, false);
+    } else if (flags == FLAGS_DEC8) {
+        // cpu->result.u8 == 0x7f;
+        movToRegFromCpu(reg, CPU_OFFSET_OF(result.u8), DYN_8bit);
+        evaluateToReg(reg, DYN_32bit, reg, true, DYN_NOT_SET, 0x7f, DYN_8bit, DYN_EQUALS, false, false);
+    } else if (flags == FLAGS_DEC16) {
+        // cpu->result.u16 == 0x7fff;
+        movToRegFromCpu(reg, CPU_OFFSET_OF(result.u16), DYN_16bit);
+        evaluateToReg(reg, DYN_32bit, reg, true, DYN_NOT_SET, 0x7fff, DYN_16bit, DYN_EQUALS, false, false);
+    } else if (flags == FLAGS_DEC32) {
+        // cpu->result.u32 == 0x7fffffff;
+        movToRegFromCpu(reg, CPU_OFFSET_OF(result.u32), DYN_32bit);
+        evaluateToReg(reg, DYN_32bit, reg, true, DYN_NOT_SET, 0x7fffffff, DYN_32bit, DYN_EQUALS, false, false);
+    } else if (flags == FLAGS_SHL8) {
+        // (cpu->result.u8 ^ cpu->dst.u8) & 0x80;
+        movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(dst.u8), DYN_8bit);
+        movToRegFromCpu(reg, CPU_OFFSET_OF(result.u8), DYN_8bit);
+        instRegReg('^', reg, DYN_DEST, DYN_8bit, true);
+        instRegImm('&', reg, DYN_8bit, 0x80);
+        movToRegFromReg(reg, DYN_32bit, reg, DYN_8bit, false);
+    } else if (flags == FLAGS_SHL16) {
+        // (cpu->result.u16 ^ cpu->dst.u16) & 0x8000;
+        movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(dst.u16), DYN_16bit);
+        movToRegFromCpu(reg, CPU_OFFSET_OF(result.u16), DYN_16bit);
+        instRegReg('^', reg, DYN_DEST, DYN_16bit, true);
+        instRegImm('&', reg, DYN_16bit, 0x8000);
+        movToRegFromReg(reg, DYN_32bit, reg, DYN_16bit, false);
+    } else if (flags == FLAGS_SHL32) {
+        // (cpu->result.u32 ^ cpu->dst.u32) & 0x80000000;
+        movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(dst.u32), DYN_32bit);
+        movToRegFromCpu(reg, CPU_OFFSET_OF(result.u32), DYN_32bit);
+        instRegReg('^', reg, DYN_DEST, DYN_32bit, true);
+        instRegImm('&', reg, DYN_32bit, 0x80000000);
+    } else if (flags == FLAGS_SHR8) {
+        // if ((cpu->src.u8&0x1f)==1) return (cpu->dst.u8 >= 0x80); else return 0;
+        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u8), DYN_8bit);
+        movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(dst.u8), DYN_8bit);
+        instRegImm('&', DYN_SRC, DYN_8bit, 0x1f);
+        evaluateToReg(reg, DYN_8bit, DYN_SRC, true, DYN_NOT_SET, 1, DYN_8bit, DYN_EQUALS, true, false);
+        instRegImm('>', DYN_DEST, DYN_8bit, 7); // mov top bit to bottom
+        instRegReg('&', reg, DYN_DEST, DYN_8bit, true);
+        movToRegFromReg(reg, DYN_32bit, reg, DYN_8bit, false);
+    } else if (flags == FLAGS_SHR16) {
+        // if ((cpu->src.u8&0x1f)==1) return (cpu->dst.u16 >= 0x8000); else return 0;
+        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u16), DYN_16bit);
+        movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(dst.u16), DYN_16bit);
+        instRegImm('&', DYN_SRC, DYN_16bit, 0x1f);
+        evaluateToReg(reg, DYN_16bit, DYN_SRC, true, DYN_NOT_SET, 1, DYN_16bit, DYN_EQUALS, true, false);
+        instRegImm('>', DYN_DEST, DYN_16bit, 15); // mov top bit to bottom
+        instRegReg('&', reg, DYN_DEST, DYN_16bit, true);
+        movToRegFromReg(reg, DYN_32bit, reg, DYN_16bit, false);
+    } else if (flags == FLAGS_SHR32) {
+        // if ((cpu->src.u8&0x1f)==1) return (cpu->dst.u32 >= 0x80000000); else return 0;
+        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u32), DYN_32bit);
+        movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(dst.u32), DYN_32bit);
+        instRegImm('&', DYN_SRC, DYN_32bit, 0x1f);
+        evaluateToReg(reg, DYN_32bit, DYN_SRC, true, DYN_NOT_SET, 1, DYN_32bit, DYN_EQUALS, true, false);
+        instRegImm('>', DYN_DEST, DYN_32bit, 31); // mov top bit to bottom
+        instRegReg('&', reg, DYN_DEST, DYN_32bit, true);
+    } else if (flags == FLAGS_SHR8_1) {
+        // (cpu->dst.u8 >= 0x80);
+        movToRegFromCpu(reg, CPU_OFFSET_OF(dst.u8), DYN_8bit);
+        evaluateToReg(reg, DYN_32bit, reg, true, DYN_NOT_SET, 0x80, DYN_8bit, DYN_GREATER_THAN_EQUAL_UNSIGNED, false, false);
+    } else if (flags == FLAGS_SHR16_1) {
+        // (cpu->dst.u16 >= 0x8000);
+        movToRegFromCpu(reg, CPU_OFFSET_OF(dst.u16), DYN_16bit);
+        evaluateToReg(reg, DYN_32bit, reg, true, DYN_NOT_SET, 0x8000, DYN_16bit, DYN_GREATER_THAN_EQUAL_UNSIGNED, false, false);
+    } else if (flags == FLAGS_SHR32_1) {
+        // (cpu->dst.u32 >= 0x80000000);
+        movToRegFromCpu(reg, CPU_OFFSET_OF(dst.u32), DYN_32bit);
+        evaluateToReg(reg, DYN_32bit, reg, true, DYN_NOT_SET, 0x80000000, DYN_32bit, DYN_GREATER_THAN_EQUAL_UNSIGNED, false, false);
+    } else if (flags == FLAGS_SHR8_N1) {
+        // 0
+        movToReg(reg, DYN_32bit, 0);
+    } else if (flags == FLAGS_SHR16_N1) {
+        // 0
+        movToReg(reg, DYN_32bit, 0);
+    } else if (flags == FLAGS_SHR32_N1) {
+        // 0
+        movToReg(reg, DYN_32bit, 0);
+    } else if (flags == FLAGS_SAR8) {
+        // 0
+        movToReg(reg, DYN_32bit, 0);
+    } else if (flags == FLAGS_SAR16) {
+        // 0
+        movToReg(reg, DYN_32bit, 0);
+    } else if (flags == FLAGS_SAR32) {
+        // 0
+        movToReg(reg, DYN_32bit, 0);
+    } else if (flags == FLAGS_TEST8) {
+        // 0
+        movToReg(reg, DYN_32bit, 0);
+    } else if (flags == FLAGS_TEST16) {
+        // 0
+        movToReg(reg, DYN_32bit, 0);
+    } else if (flags == FLAGS_TEST32) {
+        // 0
+        movToReg(reg, DYN_32bit, 0);
+    } else if (flags == FLAGS_DSHL16 || flags == FLAGS_DSHR16) {
+        // (cpu->result.u16 ^ cpu->dst.u16) & 0x8000;
+        movToRegFromCpu(reg, CPU_OFFSET_OF(result.u16), DYN_16bit);
+        movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(dst.u16), DYN_16bit);
+        instRegReg('^', reg, DYN_DEST, DYN_16bit, true);
+        instRegImm('&', reg, DYN_16bit, 0x8000);
+        movToRegFromReg(reg, DYN_32bit, reg, DYN_16bit, false);
+    } else if (flags == FLAGS_DSHL32 || flags == FLAGS_DSHR32) {
+        // (cpu->result.u32 ^ cpu->dst.u32) & 0x80000000;
+        movToRegFromCpu(reg, CPU_OFFSET_OF(result.u32), DYN_32bit);
+        movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(dst.u32), DYN_32bit);
+        instRegReg('^', reg, DYN_DEST, DYN_32bit, true);
+        instRegImm('&', reg, DYN_32bit, 0x80000000);
+    } else if (flags == FLAGS_NEG8) {
+        // cpu->src.u8 == 0x80;
+        movToRegFromCpu(reg, CPU_OFFSET_OF(src.u8), DYN_8bit);
+        evaluateToReg(reg, DYN_32bit, reg, true, DYN_NOT_SET, 0x80, DYN_8bit, DYN_EQUALS, false, false);
+    } else if (flags == FLAGS_NEG16) {
+        // return cpu->src.u16 == 0x8000;
+        movToRegFromCpu(reg, CPU_OFFSET_OF(src.u16), DYN_16bit);
+        evaluateToReg(reg, DYN_32bit, reg, true, DYN_NOT_SET, 0x8000, DYN_16bit, DYN_EQUALS, false, false);
+    } else if (flags == FLAGS_NEG32) {
+        // cpu->src.u32 == 0x80000000;
+        movToRegFromCpu(reg, CPU_OFFSET_OF(src.u32), DYN_32bit);
+        evaluateToReg(reg, DYN_32bit, reg, true, DYN_NOT_SET, 0x80000000, DYN_32bit, DYN_EQUALS, false, false);
+    }
+}
+
 DynWidth getWidthOfCondition(const LazyFlags* flags) {
     if (flags->width==32)
         return DYN_32bit;
@@ -338,6 +866,55 @@ DynWidth getWidthOfCondition(const LazyFlags* flags) {
         return DYN_8bit;
     kpanic("getWidthOfCondition: invalid flag width: %d", flags->width);
     return DYN_32bit;
+}
+
+void genNZ(const LazyFlags* flags, DynReg reg) {
+    DynWidth width = getWidthOfCondition(flags);
+    if (width==DYN_32bit) {
+        movToRegFromCpu(reg, CPU_OFFSET_OF(result.u32), DYN_32bit);
+    } else if (width==DYN_16bit) {
+        movToRegFromCpu(reg, CPU_OFFSET_OF(result.u16), DYN_16bit);
+        movToRegFromReg(reg, DYN_32bit, reg, DYN_16bit, false);
+    } else if (width==DYN_8bit) {
+        movToRegFromCpu(reg, CPU_OFFSET_OF(result.u8), DYN_8bit);
+        movToRegFromReg(reg, DYN_32bit, reg, DYN_8bit, false);
+    } else {
+        kpanic("setConditionInReg: unknown condition width: %d", width);
+    }
+}
+
+void genZ(const LazyFlags* flags, DynReg reg) {
+    DynWidth width = getWidthOfCondition(flags);
+    if (width==DYN_32bit) {
+        movToRegFromCpu(reg, CPU_OFFSET_OF(result.u32), DYN_32bit);
+        evaluateToReg(reg, DYN_32bit, reg, true, DYN_NOT_SET, 0, DYN_32bit, DYN_EQUALS, false, false);
+    } else if (width==DYN_16bit) {
+        movToRegFromCpu(reg, CPU_OFFSET_OF(result.u16), DYN_16bit);
+        evaluateToReg(reg, DYN_32bit, reg, true, DYN_NOT_SET, 0, DYN_16bit, DYN_EQUALS, false, false);
+    } else if (width==DYN_8bit) {
+        movToRegFromCpu(reg, CPU_OFFSET_OF(result.u8), DYN_8bit);
+        evaluateToReg(reg, DYN_32bit, reg, true, DYN_NOT_SET, 0, DYN_8bit, DYN_EQUALS, false, false);
+    } else {
+        kpanic("setConditionInReg: unknown condition width: %d", width);
+    }
+}
+
+void genS(const LazyFlags* flags, DynReg reg) {
+    DynWidth width = getWidthOfCondition(flags);
+    if (width==DYN_32bit) {
+        movToRegFromCpu(reg, CPU_OFFSET_OF(result.u32), DYN_32bit);
+        instRegImm('&', reg, DYN_32bit, 0x80000000);
+    } else if (width==DYN_16bit) {
+        movToRegFromCpu(reg, CPU_OFFSET_OF(result.u16), DYN_16bit);
+        instRegImm('&', reg, DYN_16bit, 0x8000);
+        movToRegFromReg(reg, DYN_32bit, reg, DYN_16bit, false);            
+    } else if (width==DYN_8bit) {
+        movToRegFromCpu(reg, CPU_OFFSET_OF(result.u8), DYN_8bit);
+        instRegImm('&', reg, DYN_8bit, 0x80);
+        movToRegFromReg(reg, DYN_32bit, reg, DYN_8bit, false);            
+    } else {
+        kpanic("setConditionInReg: unknown condition width: %d", width);
+    }
 }
 
 void setConditionInReg(DynamicData* data, DynConditional condition, DynReg reg) {
@@ -365,38 +942,84 @@ void setConditionInReg(DynamicData* data, DynConditional condition, DynReg reg) 
             return;
         }
     } else if (data->currentLazyFlags && condition==NZ) {
-        DynWidth width = getWidthOfCondition(data->currentLazyFlags);
-        if (width==DYN_32bit) {
-            movToRegFromCpu(reg, CPU_OFFSET_OF(result.u32), DYN_32bit);
-        } else if (width==DYN_16bit) {
-            movToRegFromCpu(reg, CPU_OFFSET_OF(result.u16), DYN_16bit);
-            movToRegFromReg(reg, DYN_32bit, reg, DYN_16bit, false);
-        } else if (width==DYN_8bit) {
-            movToRegFromCpu(reg, CPU_OFFSET_OF(result.u8), DYN_8bit);
-            movToRegFromReg(reg, DYN_32bit, reg, DYN_8bit, false);
-        } else {
-            kpanic("setConditionInReg: unknown condition width: %d", width);
-        }
+        genNZ(data->currentLazyFlags, reg);
         return;
     } else if (data->currentLazyFlags && condition==S) {
-        DynWidth width = getWidthOfCondition(data->currentLazyFlags);
-        if (width==DYN_32bit) {
-            movToRegFromCpu(reg, CPU_OFFSET_OF(result.u32), DYN_32bit);
-            instRegImm('&', reg, DYN_32bit, 0x80000000);
-        } else if (width==DYN_16bit) {
-            movToRegFromCpu(reg, CPU_OFFSET_OF(result.u16), DYN_16bit);
-            instRegImm('&', reg, DYN_16bit, 0x8000);
-            movToRegFromReg(reg, DYN_32bit, reg, DYN_16bit, false);            
-        } else if (width==DYN_8bit) {
-            movToRegFromCpu(reg, CPU_OFFSET_OF(result.u8), DYN_8bit);
-            instRegImm('&', reg, DYN_8bit, 0x80);
-            movToRegFromReg(reg, DYN_32bit, reg, DYN_8bit, false);            
-        } else {
-            kpanic("setConditionInReg: unknown condition width: %d", width);
-        }
+        genS(data->currentLazyFlags, reg);
         return;
     } else if (data->currentLazyFlags && condition==B) {
-        int ii=0;
+        genCF(data->currentLazyFlags, reg);
+        return;
+    } else if (data->currentLazyFlags && condition==O) {
+        genOF(data->currentLazyFlags, reg);
+        return;
+    } else if (data->currentLazyFlags && condition==BE) {
+        if (data->currentLazyFlags==FLAGS_SUB8) {
+            movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u8), DYN_8bit);
+            movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(dst.u8), DYN_8bit);
+            evaluateToReg(reg, DYN_32bit, DYN_DEST, false, DYN_SRC, 0, DYN_8bit, DYN_LESS_THAN_EQUAL_UNSIGNED, true, true);
+        } else if (data->currentLazyFlags==FLAGS_SUB16) {
+            movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u16), DYN_16bit);
+            movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(dst.u16), DYN_16bit);
+            evaluateToReg(reg, DYN_32bit, DYN_DEST, false, DYN_SRC, 0, DYN_16bit, DYN_LESS_THAN_EQUAL_UNSIGNED, true, true);
+        } else if (data->currentLazyFlags==FLAGS_SUB32) {
+            movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u32), DYN_32bit);
+            movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(dst.u32), DYN_32bit);
+            evaluateToReg(reg, DYN_32bit, DYN_DEST, false, DYN_SRC, 0, DYN_32bit, DYN_LESS_THAN_EQUAL_UNSIGNED, true, true);
+        }  else {
+            // cpu->getZF() || cpu->getCF()
+            genCF(data->currentLazyFlags, reg);
+            // must come after genCF, since genCF can clobber DYN_SRC
+            genZ(data->currentLazyFlags, DYN_SRC);
+            instRegReg('|', reg, DYN_SRC, DYN_32bit, true);
+        }
+        return;
+    } else if (data->currentLazyFlags && condition==L) {
+        if (data->currentLazyFlags==FLAGS_SUB8) {
+            movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u8), DYN_8bit);
+            movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(dst.u8), DYN_8bit);
+            evaluateToReg(reg, DYN_32bit, DYN_DEST, false, DYN_SRC, 0, DYN_8bit, DYN_LESS_THAN_SIGNED, true, true);
+        } else if (data->currentLazyFlags==FLAGS_SUB16) {
+            movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u16), DYN_16bit);
+            movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(dst.u16), DYN_16bit);
+            evaluateToReg(reg, DYN_32bit, DYN_DEST, false, DYN_SRC, 0, DYN_16bit, DYN_LESS_THAN_SIGNED, true, true);
+        } else if (data->currentLazyFlags==FLAGS_SUB32) {
+            movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u32), DYN_32bit);
+            movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(dst.u32), DYN_32bit);
+            evaluateToReg(reg, DYN_32bit, DYN_DEST, false, DYN_SRC, 0, DYN_32bit, DYN_LESS_THAN_SIGNED, true, true);
+        } else {
+            // cpu->getSF()!=cpu->getOF()        
+            genOF(data->currentLazyFlags, reg);
+            genS(data->currentLazyFlags, DYN_SRC);
+            evaluateToReg(reg, DYN_32bit, reg, true, DYN_NOT_SET, 0, DYN_32bit, DYN_EQUALS, false, false);
+            evaluateToReg(DYN_SRC, DYN_32bit, DYN_SRC, true, DYN_NOT_SET, 0, DYN_32bit, DYN_EQUALS, false, false);
+            evaluateToReg(reg, DYN_32bit, reg, false, DYN_SRC, 0, DYN_32bit, DYN_NOT_EQUALS, false, true);
+        }
+        return;
+    } else if (data->currentLazyFlags && condition==LE) {
+        if (data->currentLazyFlags==FLAGS_SUB8) {
+            movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u8), DYN_8bit);
+            movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(dst.u8), DYN_8bit);
+            evaluateToReg(reg, DYN_32bit, DYN_DEST, false, DYN_SRC, 0, DYN_8bit, DYN_LESS_THAN_EQUAL_SIGNED, true, true);
+        } else if (data->currentLazyFlags==FLAGS_SUB16) {
+            movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u16), DYN_16bit);
+            movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(dst.u16), DYN_16bit);
+            evaluateToReg(reg, DYN_32bit, DYN_DEST, false, DYN_SRC, 0, DYN_16bit, DYN_LESS_THAN_EQUAL_SIGNED, true, true);
+        } else if (data->currentLazyFlags==FLAGS_SUB32) {
+            movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u32), DYN_32bit);
+            movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(dst.u32), DYN_32bit);
+            evaluateToReg(reg, DYN_32bit, DYN_DEST, false, DYN_SRC, 0, DYN_32bit, DYN_LESS_THAN_EQUAL_SIGNED, true, true);
+        } else {
+            // cpu->getZF() || cpu->getSF()!=cpu->getOF()       
+            genOF(data->currentLazyFlags, reg);
+            genS(data->currentLazyFlags, DYN_SRC);
+            evaluateToReg(reg, DYN_32bit, reg, true, DYN_NOT_SET, 0, DYN_32bit, DYN_EQUALS, false, false);
+            evaluateToReg(DYN_SRC, DYN_32bit, DYN_SRC, true, DYN_NOT_SET, 0, DYN_32bit, DYN_EQUALS, false, false);
+            evaluateToReg(reg, DYN_32bit, reg, false, DYN_SRC, 0, DYN_32bit, DYN_NOT_EQUALS, false, true);
+            genZ(data->currentLazyFlags, DYN_SRC);
+            instRegReg('|', reg, DYN_SRC, DYN_32bit, true);
+        }
+        return;
     }
     switch (condition) {
     case O: callHostFunction(common_condition_o, true, 1, 0, DYN_PARAM_CPU, false); break;

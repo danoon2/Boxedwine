@@ -35,7 +35,10 @@ enum DynConditionEvaluate {
     DYN_EQUALS,
     DYN_NOT_EQUALS,
     DYN_LESS_THAN_UNSIGNED,
-    DYN_LESS_THAN_EQUAL_UNSIGNED
+    DYN_LESS_THAN_EQUAL_UNSIGNED,
+    DYN_GREATER_THAN_EQUAL_UNSIGNED,
+    DYN_LESS_THAN_SIGNED,
+    DYN_LESS_THAN_EQUAL_SIGNED,
 };
 
 #define DYN_CALL_RESULT DYN_EAX
@@ -133,7 +136,7 @@ void instCPU(char inst, U32 dstOffset, DynWidth regWidth);
 void startIf(DynReg reg, DynCondition condition, bool doneWithReg);
 void startElse();
 void endIf();
-void evaluateToReg(DynReg reg, DynWidth dstWidth, DynReg left, DynReg right, DynWidth regWidth, DynConditionEvaluate condition, bool doneWithLeftReg, bool doneWithRightReg);
+void evaluateToReg(DynReg reg, DynWidth dstWidth, DynReg left, bool isRightConst, DynReg right, U32 rightConst, DynWidth regWidth, DynConditionEvaluate condition, bool doneWithLeftReg, bool doneWithRightReg);
 void setCPU(DynamicData* data, U32 offset, DynWidth regWidth, DynConditional condition);
 void setMem(DynamicData* data, DynReg addressReg, DynWidth regWidth, DynConditional condition, bool doneWithAddressReg);
 
@@ -1740,46 +1743,114 @@ void endIf() {
     outBuffer[pos] = (U8)(amount);
 }
 
-void evaluateToReg(DynReg reg, DynWidth dstWidth, DynReg left, DynReg right, DynWidth regWidth, DynConditionEvaluate condition, bool doneWithLeftReg, bool doneWithRightReg) {
+void evaluateToReg(DynReg reg, DynWidth dstWidth, DynReg left, bool isRightConst, DynReg right, U32 rightConst, DynWidth regWidth, DynConditionEvaluate condition, bool doneWithLeftReg, bool doneWithRightReg) {
     if (reg>=4) {
         kpanic("x32CPU::evaluateToRegFromRegs doesn't support reg %d", reg);
     }
     // cmp left, right
-    if (regWidth==DYN_32bit) {
-        outb(0x39);
-    } else if (regWidth==DYN_16bit) {
-        outb(0x66);
-        outb(0x39);
-    } else if (regWidth==DYN_8bit) {
-        outb(0x38);
+    if (isRightConst) {
+        S32 sRightConst = (S32)rightConst;
+        bool isOneByte = sRightConst>=-128 && sRightConst<=127;
+        if (isOneByte && (regWidth==DYN_32bit || regWidth==DYN_16bit)) {
+            if (regWidth==DYN_32bit) {
+                outb(0x83);
+            } else if (regWidth==DYN_16bit) {
+                outb(0x66);
+                outb(0x83);
+            } else {
+                kpanic("x32CPU::evaluateToRegFromRegs reg width %d", regWidth);
+            }
+            outb(0xf8 | left);
+            outb((U8)rightConst);
+        } else {
+            if (reg==DYN_EAX) {
+                if (regWidth==DYN_32bit) {
+                    outb(0x3d);
+                    outd(rightConst);
+                } else if (regWidth==DYN_16bit) {
+                    outb(0x66);
+                    outb(0x3d);
+                    outw((U16)rightConst);
+                } else if (regWidth==DYN_8bit) {
+                    outb(0x3c);
+                    outb((U8)rightConst);
+                } else {
+                    kpanic("x32CPU::evaluateToRegFromRegs reg width %d", regWidth);
+                }
+            } else {
+                if (regWidth==DYN_32bit) {
+                    outb(0x81);
+                    outb(0xf8 | left);
+                    outd(rightConst);
+                } else if (regWidth==DYN_16bit) {
+                    outb(0x66);
+                    outb(0x81);
+                    outb(0xf8 | left);
+                    outw((U16)rightConst);
+                } else if (regWidth==DYN_8bit) {
+                    outb(0x80);
+                    outb(0xf8 | left);
+                    outb((U8)rightConst);
+                } else {
+                    kpanic("x32CPU::evaluateToRegFromRegs reg width %d", regWidth);
+                }                                
+            }            
+        }
     } else {
-        kpanic("x32CPU::evaluateToRegFromRegs reg width %d", regWidth);
+        if (regWidth==DYN_32bit) {
+            outb(0x39);
+        } else if (regWidth==DYN_16bit) {
+            outb(0x66);
+            outb(0x39);
+        } else if (regWidth==DYN_8bit) {
+            outb(0x38);
+        } else {
+            kpanic("x32CPU::evaluateToRegFromRegs reg width %d", regWidth);
+        }
+        outb(0xc0 | right | (left << 3));
     }
-    outb(0xc0 | right | (left << 3));
 
     switch (condition) {
     case DYN_EQUALS:        
         // setz reg
         outb(0x0f);
-        outb(0x95);
+        outb(0x94);
         outb(0xc0+reg);
         break;
     case DYN_NOT_EQUALS:
         // setnz reg
         outb(0x0f);
-        outb(0x94);
+        outb(0x95);
         outb(0xc0+reg);
         break;
     case DYN_LESS_THAN_UNSIGNED:
-        // setb reg
+        // setnbe reg
         outb(0x0f);
-        outb(0x92);
+        outb(0x97);
         outb(0xc0+reg);
         break;
     case DYN_LESS_THAN_EQUAL_UNSIGNED:
+        // setnb reg
+        outb(0x0f);
+        outb(0x93);
+        outb(0xc0+reg);
+        break;
+    case DYN_GREATER_THAN_EQUAL_UNSIGNED:
         // setbe reg
         outb(0x0f);
         outb(0x96);
+        outb(0xc0+reg);
+        break;
+    case DYN_LESS_THAN_SIGNED:
+        // setnle reg
+        outb(0x0f);
+        outb(0x9f);
+        outb(0xc0+reg);
+        break;
+    case DYN_LESS_THAN_EQUAL_SIGNED:
+        // setnl reg
+        outb(0x0f);
+        outb(0x9d);
         outb(0xc0+reg);
         break;
     default:
@@ -1792,6 +1863,7 @@ void evaluateToReg(DynReg reg, DynWidth dstWidth, DynReg left, DynReg right, Dyn
         regUsed[left] = false;
     if (doneWithRightReg)
         regUsed[right] = false;
+    regUsed[reg] = true;
 }
 
 // this is good generic code to copy for other implementations that don't have something like setcc
@@ -1807,6 +1879,30 @@ void setCPU(DynamicData* data, U32 offset, DynWidth regWidth, DynConditional con
 */
 
 void setCPU(DynamicData* data, U32 offset, DynWidth regWidth, DynConditional condition) {
+    U8 setnz = 0x95;
+    // changing conditions to ones that are optimized
+    if (condition==Z) {
+        condition = NZ;
+        setnz = 0x94; // change to setz
+    } else if (condition == NS) {
+        condition = S;
+        setnz = 0x94; // change to setz
+    } else if (condition == NB) {
+        condition = B;
+        setnz = 0x94; // change to setz
+    } else if (condition == NO) {
+        condition = O;
+        setnz = 0x94; // change to setz
+    } else if (condition == NBE) {
+        condition = BE;
+        setnz = 0x94; // change to setz
+    } else if (condition == NLE) {
+        condition = LE;
+        setnz = 0x94; // change to setz
+    } else if (condition == NL) {
+        condition = L;
+        setnz = 0x94; // change to setz
+    }
     setConditionInReg(data, condition, DYN_CALL_RESULT);
     
     // test reg, reg
@@ -1815,7 +1911,7 @@ void setCPU(DynamicData* data, U32 offset, DynWidth regWidth, DynConditional con
 
     // setnz al
     outb(0x0f);
-    outb(0x95);
+    outb(setnz);
     outb(0xc0);
 
     if (regWidth!=DYN_8bit) {
@@ -1837,6 +1933,29 @@ void setMem(DynamicData* data, DynReg addressReg, DynWidth regWidth, DynConditio
 }
 */
 void setMem(DynamicData* data, DynReg addressReg, DynWidth regWidth, DynConditional condition, bool doneWithAddressReg) {
+    U8 setnz = 0x95;
+    if (condition==Z) {
+        condition = NZ;
+        setnz = 0x94; // change to setz
+    } else if (condition == NS) {
+        condition = S;
+        setnz = 0x94; // change to setz
+    } else if (condition == NB) {
+        condition = B;
+        setnz = 0x94; // change to setz
+    } else if (condition == NO) {
+        condition = O;
+        setnz = 0x94; // change to setz
+    } else if (condition == NBE) {
+        condition = BE;
+        setnz = 0x94; // change to setz
+    } else if (condition == NLE) {
+        condition = LE;
+        setnz = 0x94; // change to setz
+    } else if (condition == NL) {
+        condition = L;
+        setnz = 0x94; // change to setz
+    }
     setConditionInReg(data, condition, DYN_CALL_RESULT);
     
     // test reg, reg
@@ -1845,7 +1964,7 @@ void setMem(DynamicData* data, DynReg addressReg, DynWidth regWidth, DynConditio
 
     // setnz al
     outb(0x0f);
-    outb(0x95);
+    outb(setnz);
     outb(0xc0);
 
     if (regWidth!=DYN_8bit) {

@@ -3250,9 +3250,9 @@ static struct Data shld16[] = {
         allocDataConst(0x2080, 0x8000, 0x4101, 1, 8, 0, false, false),
         allocDataConstNoOF(0x4080, 0x8000, 0x0202, 2, 8, 0, true),
         //allocDataConstNoOF(0x1234, 0x5678, 0x6785, 20, 8, 0, true), // undefined
-        allocDataConst(0x8080, 0x8000, 0x0001, 17, 8, 0, true, true),
-        allocDataConst(0x4080, 0x4000, 0x8000, 17, 8, 0, false, true),
-        allocDataConst(0x2080, 0x2000, 0x4000, 17, 8, 0, false, false),
+        //allocDataConst(0x8080, 0x8000, 0x0001, 17, 8, 0, true, true),
+        //allocDataConst(0x4080, 0x4000, 0x8000, 17, 8, 0, false, true),
+        //allocDataConst(0x2080, 0x2000, 0x4000, 17, 8, 0, false, false),
         endData()
 };
 

@@ -245,21 +245,21 @@ const InstructionInfo instructionInfo[] = {
 
     {0, 0, 0, CF|ZF|SF|OF|PF, 0, AF, 0}, // DshlR16R16
     {0, 16, 16, CF|ZF|SF|OF|PF, 0, AF, 0}, // DshlE16R16
-    {0, 0, 0, CF|ZF|SF|OF|PF, 0, AF, 0}, // DshlClR16R16
-    {0, 16, 16, CF|ZF|SF|OF|PF, 0, AF, 0}, // DshlClE16R16
+    {0, 0, 0, CF|ZF|SF|OF|PF|MAYBE, 0, AF, 0}, // DshlClR16R16
+    {0, 16, 16, CF|ZF|SF|OF|PF|MAYBE, 0, AF, 0}, // DshlClE16R16
     {0, 0, 0, CF|ZF|SF|OF|PF, 0, AF, 0}, // DshrR16R16
     {0, 16, 16, CF|ZF|SF|OF|PF, 0, AF, 0}, // DshrE16R16
-    {0, 0, 0, CF|ZF|SF|OF|PF, 0, AF, 0}, // DshrClR16R16
-    {0, 16, 16, CF|ZF|SF|OF|PF, 0, AF, 0}, // DshrClE16R16
+    {0, 0, 0, CF|ZF|SF|OF|PF|MAYBE, 0, AF, 0}, // DshrClR16R16
+    {0, 16, 16, CF|ZF|SF|OF|PF|MAYBE, 0, AF, 0}, // DshrClE16R16
 
     {0, 0, 0, CF|ZF|SF|OF|PF, 0, AF, 0}, // DshlR32R32
     {0, 32, 32, CF|ZF|SF|OF|PF, 0, AF, 0}, // DshlE32R32
-    {0, 0, 0, CF|ZF|SF|OF|PF, 0, AF, 0}, // DshlClR32R32
-    {0, 32, 32, CF|ZF|SF|OF|PF, 0, AF, 0}, // DshlClE32R32
+    {0, 0, 0, CF|ZF|SF|OF|PF|MAYBE, 0, AF, 0}, // DshlClR32R32
+    {0, 32, 32, CF|ZF|SF|OF|PF|MAYBE, 0, AF, 0}, // DshlClE32R32
     {0, 0, 0, CF|ZF|SF|OF|PF, 0, AF, 0}, // DshrR32R32
     {0, 32, 32, CF|ZF|SF|OF|PF, 0, AF, 0}, // DshrE32R32
-    {0, 0, 0, CF|ZF|SF|OF|PF, 0, AF, 0}, // DshrClR32R32
-    {0, 32, 32, CF|ZF|SF|OF|PF, 0, AF, 0}, // DshrClE32R32
+    {0, 0, 0, CF|ZF|SF|OF|PF|MAYBE, 0, AF, 0}, // DshrClR32R32
+    {0, 32, 32, CF|ZF|SF|OF|PF|MAYBE, 0, AF, 0}, // DshrClE32R32
 
     {0, 0, 0, CF|OF, 0, AF|ZF|SF|PF, 0}, // DimulR16R16
     {0, 16, 0, CF|OF, 0, AF|ZF|SF|PF, 0}, // DimulR16E16

@@ -85,7 +85,7 @@ public class Other extends Base {
         inst(fos, fos_init, "cld", "Cld", "cpu->removeFlag(DF);\r\n    cpu->df=1;\r\n    NEXT();", fos32, fosOps_h, fosOps_cpp, "cpu->removeFlag(DF);\r\n    cpu->df=1;", "", "callHostFunction(common_cld, false, 1, 0, DYN_PARAM_CPU, false);", true, false);
         inst(fos, fos_init, "std", "Std", "cpu->addFlag(DF);\r\n    cpu->df=-1;\r\n    NEXT();", fos32, fosOps_h, fosOps_cpp, "cpu->addFlag(DF);\r\n    cpu->df=-1;", "", "callHostFunction(common_std, false, 1, 0, DYN_PARAM_CPU, false);", true, false);
 
-        inst(fos, fos_init, "rdtsc", "Rdtsc", "U64 t = cpu->instructionCount+op->imm;\r\n    EAX = (U32)t;\r\n    EDX = (U32)(t >> 32);\r\n    NEXT();", fos32, fosOps_h, fosOps_cpp, "", "", "callHostFunction(common_rdtsc, false, 2, 0, DYN_PARAM_CPU, false, op->imm, DYN_PARAM_CONST_32, false);", true, false);
+        inst(fos, fos_init, "rdtsc", "Rdtsc", "U64 t = cpu->instructionCount+cpu->blockInstructionCount+op->imm;\r\n    EAX = (U32)t;\r\n    EDX = (U32)(t >> 32);\r\n    NEXT();", fos32, fosOps_h, fosOps_cpp, "", "", "callHostFunction(common_rdtsc, false, 2, 0, DYN_PARAM_CPU, false, op->imm, DYN_PARAM_CONST_32, false);", true, false);
         inst(fos, fos_init, "cpuid", "CPUID", "cpu->cpuid();\r\n    NEXT();", fos32, fosOps_h, fosOps_cpp, "cpu->cpuid();", "", "callHostFunction(common_cpuid, false, 1, 0, DYN_PARAM_CPU, false);", true, false);
 
         inst(fos, fos_init, "enter16", "Enter16", "cpu->enter(0, op->imm, op->reg);\r\n    NEXT();", fos32, fosOps_h, fosOps_cpp, "", "", "callHostFunction(common_enter, false, 4, 0, DYN_PARAM_CPU, false, 0, DYN_PARAM_CONST_32, false, op->imm, DYN_PARAM_CONST_32, false, op->reg, DYN_PARAM_CONST_32, false);", true, false);

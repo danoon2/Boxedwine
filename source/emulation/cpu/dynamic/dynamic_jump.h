@@ -9,8 +9,8 @@ void dynamic_jumpO(DynamicData* data, DecodedOp* op) {
     endIf();
 }
 void dynamic_jumpNO(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, NO, DYN_CALL_RESULT);
-    startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
+    setConditionInReg(data, O, DYN_CALL_RESULT);
+    startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     INCREMENT_EIP(op->len);
     blockNext2();
     startElse();
@@ -29,8 +29,8 @@ void dynamic_jumpB(DynamicData* data, DecodedOp* op) {
     endIf();
 }
 void dynamic_jumpNB(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, NB, DYN_CALL_RESULT);
-    startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
+    setConditionInReg(data, B, DYN_CALL_RESULT);
+    startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     INCREMENT_EIP(op->len);
     blockNext2();
     startElse();
@@ -69,8 +69,8 @@ void dynamic_jumpBE(DynamicData* data, DecodedOp* op) {
     endIf();
 }
 void dynamic_jumpNBE(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, NBE, DYN_CALL_RESULT);
-    startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
+    setConditionInReg(data, BE, DYN_CALL_RESULT);
+    startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     INCREMENT_EIP(op->len);
     blockNext2();
     startElse();
@@ -129,8 +129,8 @@ void dynamic_jumpL(DynamicData* data, DecodedOp* op) {
     endIf();
 }
 void dynamic_jumpNL(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, NL, DYN_CALL_RESULT);
-    startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
+    setConditionInReg(data, L, DYN_CALL_RESULT);
+    startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     INCREMENT_EIP(op->len);
     blockNext2();
     startElse();
@@ -149,8 +149,8 @@ void dynamic_jumpLE(DynamicData* data, DecodedOp* op) {
     endIf();
 }
 void dynamic_jumpNLE(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, NLE, DYN_CALL_RESULT);
-    startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
+    setConditionInReg(data, LE, DYN_CALL_RESULT);
+    startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
     INCREMENT_EIP(op->len);
     blockNext2();
     startElse();

@@ -6,7 +6,7 @@ class CPU;
 class LazyFlags {
 public:
     LazyFlags(U32 width) : width(width) {}
-    virtual U32 getCF(CPU* cpu) const=0;
+    virtual U32 getCF(CPU* cpu) const=0; // will always return 0 or 1, optimizations count on this
     virtual U32 getSF(CPU* cpu) const=0;
     virtual U32 getZF(CPU* cpu) const=0;
     virtual U32 getOF(CPU* cpu) const=0;
@@ -49,6 +49,12 @@ extern const LazyFlags* FLAGS_SHL32;
 extern const LazyFlags* FLAGS_SHR8;
 extern const LazyFlags* FLAGS_SHR16;
 extern const LazyFlags* FLAGS_SHR32;
+extern const LazyFlags* FLAGS_SHR8_1;
+extern const LazyFlags* FLAGS_SHR16_1;
+extern const LazyFlags* FLAGS_SHR32_1;
+extern const LazyFlags* FLAGS_SHR8_N1;
+extern const LazyFlags* FLAGS_SHR16_N1;
+extern const LazyFlags* FLAGS_SHR32_N1;
 extern const LazyFlags* FLAGS_SAR8;
 extern const LazyFlags* FLAGS_SAR16;
 extern const LazyFlags* FLAGS_SAR32;

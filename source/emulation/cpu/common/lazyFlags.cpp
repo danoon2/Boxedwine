@@ -293,7 +293,7 @@ static LazyFlagsNeg32 flagsNeg32;
 const LazyFlags* FLAGS_NEG32 = &flagsNeg32;
 
 class LazyFlagsShl8 : public LazyFlagsDefault8 {
-    U32 getCF(CPU* cpu) const {if (cpu->src.u8>8) return 0; else return (cpu->dst.u8 >> (8-cpu->src.u8)) & 1;}
+    U32 getCF(CPU* cpu) const {return ((cpu->dst.u8 << (cpu->src.u8-1)) & 0x80) >> 7;}
     U32 getOF(CPU* cpu) const {return (cpu->result.u8 ^ cpu->dst.u8) & 0x80;}
     U32 getAF(CPU* cpu) const {return cpu->src.u8 & 0x1f;}
 };
@@ -302,7 +302,7 @@ static LazyFlagsShl8 flagsShl8;
 const LazyFlags* FLAGS_SHL8 = &flagsShl8;
 
 class LazyFlagsShl16 : public LazyFlagsDefault16 {
-    U32 getCF(CPU* cpu) const {if (cpu->src.u8>16) return 0; else return (cpu->dst.u16 >> (16-cpu->src.u8)) & 1;}
+    U32 getCF(CPU* cpu) const {return ((cpu->dst.u16 << (cpu->src.u8-1)) & 0x8000)>>15;}
     U32 getOF(CPU* cpu) const {return (cpu->result.u16 ^ cpu->dst.u16) & 0x8000;}
     U32 getAF(CPU* cpu) const {return cpu->src.u16 & 0x1f;}
 };
@@ -320,7 +320,7 @@ static LazyFlagsShl32 flagsShl32;
 const LazyFlags* FLAGS_SHL32 = &flagsShl32;
 
 class LazyFlagsDshl16 : public LazyFlagsDefault16 {
-    U32 getCF(CPU* cpu) const {if (cpu->src.u8>16) return (cpu->dst2.u16 >> (32-cpu->src.u8)) & 1; else return (cpu->dst.u16 >> (16-cpu->src.u8)) & 1;}
+    U32 getCF(CPU* cpu) const {return (cpu->dst.u16 >> (16-cpu->src.u8)) & 1;}
     U32 getOF(CPU* cpu) const {return (cpu->result.u16 ^ cpu->dst.u16) & 0x8000;}
     U32 getAF(CPU* cpu) const {return 0;}
 };
@@ -381,6 +381,60 @@ class LazyFlagsShr32 : public LazyFlagsDefault32 {
 
 static LazyFlagsShr32 flagsShr32;
 const LazyFlags* FLAGS_SHR32 = &flagsShr32;
+
+class LazyFlagsShr8_1 : public LazyFlagsDefault8 {
+    U32 getCF(CPU* cpu) const {return cpu->dst.u8 & 1;}
+    U32 getOF(CPU* cpu) const {return (cpu->dst.u8 >= 0x80);}
+    U32 getAF(CPU* cpu) const {return cpu->src.u8 & 0x1f;}
+};
+
+static LazyFlagsShr8_1 flagsShr8_1;
+const LazyFlags* FLAGS_SHR8_1 = &flagsShr8_1;
+
+class LazyFlagsShr16_1 : public LazyFlagsDefault16 {
+    U32 getCF(CPU* cpu) const {return cpu->dst.u16 & 1;}
+    U32 getOF(CPU* cpu) const {return (cpu->dst.u16 >= 0x8000);}
+    U32 getAF(CPU* cpu) const {return cpu->src.u16 & 0x1f;}
+};
+
+static LazyFlagsShr16_1 flagsShr16_1;
+const LazyFlags* FLAGS_SHR16_1 = &flagsShr16_1;
+
+class LazyFlagsShr32_1 : public LazyFlagsDefault32 {
+    U32 getCF(CPU* cpu) const {return cpu->dst.u32 & 1;}
+    U32 getOF(CPU* cpu) const {return (cpu->dst.u32 >= 0x80000000);}
+    U32 getAF(CPU* cpu) const {return cpu->src.u32 & 0x1f;}
+};
+
+static LazyFlagsShr32_1 flagsShr32_1;
+const LazyFlags* FLAGS_SHR32_1 = &flagsShr32_1;
+
+class LazyFlagsShr8_N1 : public LazyFlagsDefault8 {
+    U32 getCF(CPU* cpu) const {return cpu->dst.u8 & 1;}
+    U32 getOF(CPU* cpu) const {return 0;}
+    U32 getAF(CPU* cpu) const {return cpu->src.u8 & 0x1f;}
+};
+
+static LazyFlagsShr8_N1 flagsShr8_N1;
+const LazyFlags* FLAGS_SHR8_N1 = &flagsShr8_N1;
+
+class LazyFlagsShr16_N1 : public LazyFlagsDefault16 {
+    U32 getCF(CPU* cpu) const {return cpu->dst.u16 & 1;}
+    U32 getOF(CPU* cpu) const {return 0;}
+    U32 getAF(CPU* cpu) const {return cpu->src.u16 & 0x1f;}
+};
+
+static LazyFlagsShr16_N1 flagsShr16_N1;
+const LazyFlags* FLAGS_SHR16_N1 = &flagsShr16_N1;
+
+class LazyFlagsShr32_N1 : public LazyFlagsDefault32 {
+    U32 getCF(CPU* cpu) const {return cpu->dst.u32 & 1;}
+    U32 getOF(CPU* cpu) const {return 0;}
+    U32 getAF(CPU* cpu) const {return cpu->src.u32 & 0x1f;}
+};
+
+static LazyFlagsShr32_N1 flagsShr32_N1;
+const LazyFlags* FLAGS_SHR32_N1 = &flagsShr32_N1;
 
 class LazyFlagsSar8 : public LazyFlagsDefault8 {
     U32 getCF(CPU* cpu) const {return (((S8) cpu->dst.u8) >> (cpu->src.u8 - 1)) & 1;}

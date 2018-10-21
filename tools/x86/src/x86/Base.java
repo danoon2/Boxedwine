@@ -32,6 +32,21 @@ abstract public class Base {
         if (name.equals("NS")) {
             out(fos32, "    setConditionInReg(data, S, DYN_CALL_RESULT);");
             out(fos32, "    startIf(DYN_CALL_RESULT, "+(isTrue?"DYN_NOT_EQUALS_ZERO":"DYN_EQUALS_ZERO")+", true);");
+        } else if (name.equals("NB")) {
+            out(fos32, "    setConditionInReg(data, B, DYN_CALL_RESULT);");
+            out(fos32, "    startIf(DYN_CALL_RESULT, "+(isTrue?"DYN_NOT_EQUALS_ZERO":"DYN_EQUALS_ZERO")+", true);");
+        } else if (name.equals("NO")) {
+            out(fos32, "    setConditionInReg(data, O, DYN_CALL_RESULT);");
+            out(fos32, "    startIf(DYN_CALL_RESULT, "+(isTrue?"DYN_NOT_EQUALS_ZERO":"DYN_EQUALS_ZERO")+", true);");
+        } else if (name.equals("NL")) {
+            out(fos32, "    setConditionInReg(data, L, DYN_CALL_RESULT);");
+            out(fos32, "    startIf(DYN_CALL_RESULT, "+(isTrue?"DYN_NOT_EQUALS_ZERO":"DYN_EQUALS_ZERO")+", true);");
+        } else if (name.equals("NLE")) {
+            out(fos32, "    setConditionInReg(data, LE, DYN_CALL_RESULT);");
+            out(fos32, "    startIf(DYN_CALL_RESULT, "+(isTrue?"DYN_NOT_EQUALS_ZERO":"DYN_EQUALS_ZERO")+", true);");
+        } else if (name.equals("NBE")) {
+            out(fos32, "    setConditionInReg(data, BE, DYN_CALL_RESULT);");
+            out(fos32, "    startIf(DYN_CALL_RESULT, "+(isTrue?"DYN_NOT_EQUALS_ZERO":"DYN_EQUALS_ZERO")+", true);");
         } else if (name.equals("Z")) {
             out(fos32, "    setConditionInReg(data, NZ, DYN_CALL_RESULT);");
             out(fos32, "    startIf(DYN_CALL_RESULT, "+(isTrue?"DYN_NOT_EQUALS_ZERO":"DYN_EQUALS_ZERO")+", true);");

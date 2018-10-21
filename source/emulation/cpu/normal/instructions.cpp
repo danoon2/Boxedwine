@@ -144,7 +144,10 @@ void dshlr16r16(CPU* cpu, U32 reg, U32 rm, U32 imm) {
     cpu->dst2.u32 = cpu->reg[rm].u16;
     tmp = (cpu->dst.u32<<16)|cpu->dst2.u32;
     result=tmp << cpu->src.u8;
-    if (imm>16) result |= ((U32)(cpu->reg[rm].u16) << (imm - 16));
+    if (imm>16) {
+        klog("dshlr16r16: imm=%x",imm);
+        result |= ((U32)(cpu->reg[rm].u16) << (imm - 16));
+    }
     cpu->result.u16=(U16)(result >> 16);
     cpu->reg[reg].u16 = cpu->result.u16;
     cpu->lazyFlags=FLAGS_DSHL16;
@@ -159,7 +162,10 @@ void dshle16r16(CPU* cpu, U32 reg, U32 address, U32 imm) {
     cpu->dst2.u32 = cpu->reg[reg].u16;
     tmp = (cpu->dst.u32<<16)|cpu->dst2.u32;
     result=tmp << cpu->src.u8;
-    if (imm>16) result |= ((U32)(cpu->reg[reg].u16) << (imm - 16));
+    if (imm>16) {
+        klog("dshle16r16: imm=%x",imm);
+        result |= ((U32)(cpu->reg[reg].u16) << (imm - 16));
+    }
     cpu->result.u16=(U16)(result >> 16);
     writew(address, cpu->result.u16);
     cpu->lazyFlags=FLAGS_DSHL16;
@@ -186,12 +192,15 @@ void dshlclr16r16(CPU* cpu, U32 reg, U32 rm) {
         U32 result;
         U32 tmp;
 
-        cpu->src.u32 = CL;
+        cpu->src.u32 = CL & 0x1f;
         cpu->dst.u32 = cpu->reg[reg].u16;
         cpu->dst2.u32 = cpu->reg[rm].u16;
         tmp = (cpu->dst.u32<<16)|cpu->dst2.u32;
         result=tmp << cpu->src.u8;
-        if (cpu->src.u32>16) result |= ((U32)(cpu->reg[rm].u16) << (cpu->src.u32 - 16));
+        if (cpu->src.u32>16) {
+            klog("error: dshlclr16r16 cl=%x",CL);
+            result |= ((U32)(cpu->reg[rm].u16) << (cpu->src.u32 - 16));
+        }
         cpu->result.u16=(U16)(result >> 16);
         cpu->reg[reg].u16 = cpu->result.u16;
         cpu->lazyFlags=FLAGS_DSHL16;
@@ -203,12 +212,15 @@ void dshlcle16r16(CPU* cpu, U32 reg, U32 address) {
         U32 result;
         U32 tmp;
 
-        cpu->src.u32 = CL;
+        cpu->src.u32 = CL & 0x1f;
         cpu->dst.u32 = readw(address);
         cpu->dst2.u32 = cpu->reg[reg].u16;
         tmp = (cpu->dst.u32<<16)|cpu->dst2.u32;
         result=tmp << cpu->src.u8;
-        if (cpu->src.u32>16) result |= ((U32)(cpu->reg[reg].u16) << (cpu->src.u32 - 16));
+        if (cpu->src.u32>16) {
+            klog("error: dshlcle16r16 cl=%x",CL);
+            result |= ((U32)(cpu->reg[reg].u16) << (cpu->src.u32 - 16));
+        }
         cpu->result.u16=(U16)(result >> 16);
         writew(address, cpu->result.u16);
         cpu->lazyFlags=FLAGS_DSHL16;
@@ -243,7 +255,10 @@ void dshrr16r16(CPU* cpu, U32 reg, U32 rm, U32 imm) {
     cpu->src.u32 = imm;
     cpu->dst.u32 = (cpu->reg[reg].u16)|((U32)(cpu->reg[rm].u16)<<16);
     result=cpu->dst.u32 >> cpu->src.u8;
-    if (imm>16) result |= ((U32)(cpu->reg[rm].u16) << (32 - imm));
+    if (imm>16) {
+        klog("error: dshrr16r16 imm=%x",imm);
+        result |= ((U32)(cpu->reg[rm].u16) << (32 - imm));
+    }
     cpu->result.u16=(U16)result;
     cpu->reg[reg].u16 = cpu->result.u16;
     cpu->lazyFlags=FLAGS_DSHR16;
@@ -255,7 +270,10 @@ void dshre16r16(CPU* cpu, U32 reg, U32 address, U32 imm) {
     cpu->src.u32 = imm;
     cpu->dst.u32 = readw(address)|((U32)(cpu->reg[reg].u16)<<16);
     result=cpu->dst.u32 >> cpu->src.u8;
-    if (imm>16) result |= ((U32)(cpu->reg[reg].u16) << (32 - imm));
+    if (imm>16) {
+        klog("error: dshre16r16 imm=%x",imm);
+        result |= ((U32)(cpu->reg[reg].u16) << (32 - imm));
+    }
     cpu->result.u16=(U16)result;
     writew(address, cpu->result.u16);
     cpu->lazyFlags=FLAGS_DSHR16;
@@ -281,10 +299,13 @@ void dshrclr16r16(CPU* cpu, U32 reg, U32 rm) {
     if (CL & 0x1f) {
         U32 result;
 
-        cpu->src.u32 = CL;
+        cpu->src.u32 = CL & 0x1f;
         cpu->dst.u32 = (cpu->reg[reg].u16)|((U32)(cpu->reg[rm].u16)<<16);
         result=cpu->dst.u32 >> cpu->src.u8;
-        if (cpu->src.u32>16) result |= ((U32)(cpu->reg[rm].u16) << (32 - cpu->src.u32));
+        if (cpu->src.u32>16) {
+            klog("error: dshrclr16r16 cl=%x",CL);
+            result |= ((U32)(cpu->reg[rm].u16) << (32 - cpu->src.u32));
+        }
         cpu->result.u16=(U16)result;
         cpu->reg[reg].u16 = cpu->result.u16;
         cpu->lazyFlags=FLAGS_DSHR16;
@@ -295,10 +316,13 @@ void dshrcle16r16(CPU* cpu, U32 reg, U32 address) {
     if (CL & 0x1f) {
         U32 result;
 
-        cpu->src.u32 = CL;
+        cpu->src.u32 = CL & 0x1f;
         cpu->dst.u32 = readw(address)|((U32)(cpu->reg[reg].u16)<<16);
         result=cpu->dst.u32 >> cpu->src.u8;
-        if (cpu->src.u32>16) result |= ((U32)(cpu->reg[reg].u16) << (32 - cpu->src.u32));
+        if (cpu->src.u32>16) {
+            klog("error: dshrcle16r16 cl=%x",CL);
+            result |= ((U32)(cpu->reg[reg].u16) << (32 - cpu->src.u32));
+        }
         cpu->result.u16=(U16)result;
         writew(address, cpu->result.u16);
         cpu->lazyFlags=FLAGS_DSHR16;
