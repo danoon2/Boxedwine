@@ -1042,3 +1042,24 @@ void setConditionInReg(DynamicData* data, DynConditional condition, DynReg reg) 
         kpanic("setConditionInReg: unknown condition %d", condition);
     }
 }
+
+void dynamic_pushReg32(DynamicData* data, DynReg reg, bool doneWithReg) {    
+    if (!data->cpu->thread->process->hasSetStackMask && !data->cpu->thread->process->hasSetSeg[SS]) {
+        movToRegFromCpu(DYN_ADDRESS, CPU_OFFSET_OF(reg[4].u32), DYN_32bit);
+        instRegImm('-', DYN_ADDRESS, DYN_32bit, 4);
+        movToMemFromReg(DYN_ADDRESS, reg, DYN_32bit, false, doneWithReg);
+        movToCpuFromReg(CPU_OFFSET_OF(reg[4].u32), DYN_ADDRESS, DYN_32bit, true);
+    } else {
+        callHostFunction(common_push32, false, 2, 0, DYN_PARAM_CPU, false, DYN_SRC, DYN_PARAM_REG_32, doneWithReg);
+    }
+}
+
+void dynamic_pop32(DynamicData* data) {
+    if (!data->cpu->thread->process->hasSetStackMask && !data->cpu->thread->process->hasSetSeg[SS]) {
+        movToRegFromCpu(DYN_ADDRESS, CPU_OFFSET_OF(reg[4].u32), DYN_32bit);
+        movFromMem(DYN_32bit, DYN_ADDRESS, true);
+        instCPUImm('+', CPU_OFFSET_OF(reg[4].u32), DYN_32bit, 4);
+    } else {
+        callHostFunction(common_pop32, true, 1, 0, DYN_PARAM_CPU, false);
+    }    
+}

@@ -20,24 +20,52 @@ void dynamic_popEw_mem(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(op->len);
 }
 void dynamic_pushEd_reg(DynamicData* data, DecodedOp* op) {
-    callHostFunction(common_push32, false, 2, 0, DYN_PARAM_CPU, false, CPU_OFFSET_OF(reg[op->reg].u32), DYN_PARAM_CPU_ADDRESS_32, false);
+    if (!data->cpu->thread->process->hasSetStackMask && !data->cpu->thread->process->hasSetSeg[SS]) {
+        movToRegFromCpu(DYN_ADDRESS, CPU_OFFSET_OF(reg[4].u32), DYN_32bit);
+        instRegImm('-', DYN_ADDRESS, DYN_32bit, 4);
+        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit);
+        movToMemFromReg(DYN_ADDRESS, DYN_SRC, DYN_32bit, false, true);
+        movToCpuFromReg(CPU_OFFSET_OF(reg[4].u32), DYN_ADDRESS, DYN_32bit, true);
+    } else {
+        callHostFunction(common_push32, false, 2, 0, DYN_PARAM_CPU, false, CPU_OFFSET_OF(reg[op->reg].u32), DYN_PARAM_CPU_ADDRESS_32, false);
+    }
     INCREMENT_EIP(op->len);
 }
 void dynamic_popEd_reg(DynamicData* data, DecodedOp* op) {
-    callHostFunction(common_pop32, true, 1, 0, DYN_PARAM_CPU, false);
-    movToCpuFromReg(CPU_OFFSET_OF(reg[op->reg].u32), DYN_CALL_RESULT, DYN_32bit, true);
+    if (!data->cpu->thread->process->hasSetStackMask && !data->cpu->thread->process->hasSetSeg[SS]) {
+        movToRegFromCpu(DYN_ADDRESS, CPU_OFFSET_OF(reg[4].u32), DYN_32bit);
+        movToCpuFromMem(CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit, DYN_ADDRESS, true, true);
+        instCPUImm('+', CPU_OFFSET_OF(reg[4].u32), DYN_32bit, 4);
+    } else {
+        callHostFunction(common_pop32, true, 1, 0, DYN_PARAM_CPU, false);
+        movToCpuFromReg(CPU_OFFSET_OF(reg[op->reg].u32), DYN_CALL_RESULT, DYN_32bit, true);
+    }
     INCREMENT_EIP(op->len);
 }
 void dynamic_pushEd_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
     movFromMem(DYN_32bit, DYN_ADDRESS, true);
-    callHostFunction(common_push32, false, 2, 0, DYN_PARAM_CPU, false, DYN_CALL_RESULT, DYN_PARAM_REG_32, true);
+    if (!data->cpu->thread->process->hasSetStackMask && !data->cpu->thread->process->hasSetSeg[SS]) {
+        movToRegFromCpu(DYN_ADDRESS, CPU_OFFSET_OF(reg[4].u32), DYN_32bit);
+        instRegImm('-', DYN_ADDRESS, DYN_32bit, 4);
+        movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_32bit, false, true);
+        movToCpuFromReg(CPU_OFFSET_OF(reg[4].u32), DYN_ADDRESS, DYN_32bit, true);
+    } else {
+        callHostFunction(common_push32, false, 2, 0, DYN_PARAM_CPU, false, DYN_CALL_RESULT, DYN_PARAM_REG_32, true);
+    }
     INCREMENT_EIP(op->len);
 }
 void dynamic_popEd_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
-    callHostFunction(common_pop32, true, 1, 0, DYN_PARAM_CPU, false);
-    movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_32bit, true, true);
+    if (!data->cpu->thread->process->hasSetStackMask && !data->cpu->thread->process->hasSetSeg[SS]) {
+        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[4].u32), DYN_32bit);
+        movFromMem(DYN_32bit, DYN_SRC, true);
+        movToCpuFromReg(CPU_OFFSET_OF(reg[op->reg].u32), DYN_CALL_RESULT, DYN_32bit, true);
+        instCPUImm('+', CPU_OFFSET_OF(reg[4].u32), DYN_32bit, 4);
+    } else {
+        callHostFunction(common_pop32, true, 1, 0, DYN_PARAM_CPU, false);
+        movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_32bit, true, true);
+    }
     INCREMENT_EIP(op->len);
 }
 void dynamic_pushSeg16(DynamicData* data, DecodedOp* op) {
@@ -103,7 +131,14 @@ void dynamic_push16imm(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(op->len);
 }
 void dynamic_push32imm(DynamicData* data, DecodedOp* op) {
-    callHostFunction(common_push32, false, 2, 0, DYN_PARAM_CPU, false, op->imm, DYN_PARAM_CONST_32, false);
+     if (!data->cpu->thread->process->hasSetStackMask && !data->cpu->thread->process->hasSetSeg[SS]) {
+         movToRegFromCpu(DYN_ADDRESS, CPU_OFFSET_OF(reg[4].u32), DYN_32bit);
+         instRegImm('-', DYN_ADDRESS, DYN_32bit, 4);
+         movToMemFromImm(DYN_ADDRESS, DYN_32bit, op->imm, false);
+         movToCpuFromReg(CPU_OFFSET_OF(reg[4].u32), DYN_ADDRESS, DYN_32bit, true);
+     } else {
+         callHostFunction(common_push32, false, 2, 0, DYN_PARAM_CPU, false, op->imm, DYN_PARAM_CONST_32, false);
+     }
     INCREMENT_EIP(op->len);
 }
 void dynamic_popf16(DynamicData* data, DecodedOp* op) {

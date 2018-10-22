@@ -114,27 +114,73 @@ public class PushPop extends Base {
         out(fos_init, "INIT_CPU(PopE"+bits+", popE"+name+"_mem)");
 
         out(fos32, "void dynamic_pushE"+name+"_reg(DynamicData* data, DecodedOp* op) {");
-        out(fos32, "    callHostFunction(common_push"+bits+", false, 2, 0, DYN_PARAM_CPU, false, CPU_OFFSET_OF(reg[op->reg].u"+bits+"), DYN_PARAM_CPU_ADDRESS_"+bits+", false);");
+        if (bits.equals("32")) {
+            out(fos32, "    if (!data->cpu->thread->process->hasSetStackMask && !data->cpu->thread->process->hasSetSeg[SS]) {");
+            out(fos32, "        movToRegFromCpu(DYN_ADDRESS, CPU_OFFSET_OF(reg[4].u32), DYN_32bit);");
+            out(fos32, "        instRegImm('-', DYN_ADDRESS, DYN_32bit, 4);");
+            out(fos32, "        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit);");
+            out(fos32, "        movToMemFromReg(DYN_ADDRESS, DYN_SRC, DYN_32bit, false, true);");
+            out(fos32, "        movToCpuFromReg(CPU_OFFSET_OF(reg[4].u32), DYN_ADDRESS, DYN_32bit, true);");
+            out(fos32, "    } else {");
+            out(fos32, "        callHostFunction(common_push32, false, 2, 0, DYN_PARAM_CPU, false, CPU_OFFSET_OF(reg[op->reg].u32), DYN_PARAM_CPU_ADDRESS_32, false);");
+            out(fos32, "    }");
+        } else {
+            out(fos32, "    callHostFunction(common_push" + bits + ", false, 2, 0, DYN_PARAM_CPU, false, CPU_OFFSET_OF(reg[op->reg].u" + bits + "), DYN_PARAM_CPU_ADDRESS_" + bits + ", false);");
+        }
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
 
         out(fos32, "void dynamic_popE"+name+"_reg(DynamicData* data, DecodedOp* op) {");
-        out(fos32, "    callHostFunction(common_pop"+bits+", true, 1, 0, DYN_PARAM_CPU, false);");
-        out(fos32, "    movToCpuFromReg(CPU_OFFSET_OF(reg[op->reg].u"+bits+"), DYN_CALL_RESULT, DYN_"+bits+"bit, true);");
+        if (bits.equals("32")) {
+            out(fos32, "    if (!data->cpu->thread->process->hasSetStackMask && !data->cpu->thread->process->hasSetSeg[SS]) {");
+            out(fos32, "        movToRegFromCpu(DYN_ADDRESS, CPU_OFFSET_OF(reg[4].u32), DYN_32bit);");
+            out(fos32, "        movToCpuFromMem(CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit, DYN_ADDRESS, true, true);");
+            out(fos32, "        instCPUImm('+', CPU_OFFSET_OF(reg[4].u32), DYN_32bit, 4);");
+            out(fos32, "    } else {");
+            out(fos32, "        callHostFunction(common_pop32, true, 1, 0, DYN_PARAM_CPU, false);");
+            out(fos32, "        movToCpuFromReg(CPU_OFFSET_OF(reg[op->reg].u32), DYN_CALL_RESULT, DYN_32bit, true);");
+            out(fos32, "    }");
+        } else {
+            out(fos32, "    callHostFunction(common_pop" + bits + ", true, 1, 0, DYN_PARAM_CPU, false);");
+            out(fos32, "    movToCpuFromReg(CPU_OFFSET_OF(reg[op->reg].u" + bits + "), DYN_CALL_RESULT, DYN_" + bits + "bit, true);");
+        }
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
 
         out(fos32, "void dynamic_pushE"+name+"_mem(DynamicData* data, DecodedOp* op) {");
         out(fos32, "    calculateEaa(op, DYN_ADDRESS);");
-        out(fos32, "    movFromMem(DYN_"+bits+"bit, DYN_ADDRESS, true);");
-        out(fos32, "    callHostFunction(common_push"+bits+", false, 2, 0, DYN_PARAM_CPU, false, DYN_CALL_RESULT, DYN_PARAM_REG_"+bits+", true);");
+        out(fos32, "    movFromMem(DYN_" + bits + "bit, DYN_ADDRESS, true);");
+        if (bits.equals("32")) {
+            out(fos32, "    if (!data->cpu->thread->process->hasSetStackMask && !data->cpu->thread->process->hasSetSeg[SS]) {");
+            out(fos32, "        movToRegFromCpu(DYN_ADDRESS, CPU_OFFSET_OF(reg[4].u32), DYN_32bit);");
+            out(fos32, "        instRegImm('-', DYN_ADDRESS, DYN_32bit, 4);");
+            out(fos32, "        movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_32bit, false, true);");
+            out(fos32, "        movToCpuFromReg(CPU_OFFSET_OF(reg[4].u32), DYN_ADDRESS, DYN_32bit, true);");
+            out(fos32, "    } else {");
+            out(fos32, "        callHostFunction(common_push32, false, 2, 0, DYN_PARAM_CPU, false, DYN_CALL_RESULT, DYN_PARAM_REG_32, true);");
+            out(fos32, "    }");
+        } else {
+            out(fos32, "    callHostFunction(common_push" + bits + ", false, 2, 0, DYN_PARAM_CPU, false, DYN_CALL_RESULT, DYN_PARAM_REG_" + bits + ", true);");
+        }
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
 
         out(fos32, "void dynamic_popE"+name+"_mem(DynamicData* data, DecodedOp* op) {");
         out(fos32, "    calculateEaa(op, DYN_ADDRESS);");
-        out(fos32, "    callHostFunction(common_pop"+bits+", true, 1, 0, DYN_PARAM_CPU, false);");
-        out(fos32, "    movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_"+bits+"bit, true, true);");
+        if (bits.equals("32")) {
+            out(fos32, "    if (!data->cpu->thread->process->hasSetStackMask && !data->cpu->thread->process->hasSetSeg[SS]) {");
+            out(fos32, "        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[4].u32), DYN_32bit);");
+            out(fos32, "        movFromMem(DYN_32bit, DYN_SRC, true);");
+            out(fos32, "        movToCpuFromReg(CPU_OFFSET_OF(reg[op->reg].u32), DYN_CALL_RESULT, DYN_32bit, true);");
+            out(fos32, "        instCPUImm('+', CPU_OFFSET_OF(reg[4].u32), DYN_32bit, 4);");
+            out(fos32, "    } else {");
+            out(fos32, "        callHostFunction(common_pop32, true, 1, 0, DYN_PARAM_CPU, false);");
+            out(fos32, "        movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_32bit, true, true);");
+            out(fos32, "    }");
+        } else {
+            out(fos32, "    callHostFunction(common_pop" + bits + ", true, 1, 0, DYN_PARAM_CPU, false);");
+            out(fos32, "    movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_" + bits + "bit, true, true);");
+        }
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
     }
@@ -218,7 +264,18 @@ public class PushPop extends Base {
         out(fos_init, "INIT_CPU(Push" + bits + ", push" + bits + "imm)");
 
         out(fos32, "void dynamic_push"+bits+"imm(DynamicData* data, DecodedOp* op) {");
-        out(fos32, "    callHostFunction(common_push"+bits+", false, 2, 0, DYN_PARAM_CPU, false, op->imm, DYN_PARAM_CONST_"+bits+", false);");
+        if (bits.equals("32")) {
+            out(fos32, "     if (!data->cpu->thread->process->hasSetStackMask && !data->cpu->thread->process->hasSetSeg[SS]) {");
+            out(fos32, "         movToRegFromCpu(DYN_ADDRESS, CPU_OFFSET_OF(reg[4].u32), DYN_32bit);");
+            out(fos32, "         instRegImm('-', DYN_ADDRESS, DYN_32bit, 4);");
+            out(fos32, "         movToMemFromImm(DYN_ADDRESS, DYN_32bit, op->imm, false);");
+            out(fos32, "         movToCpuFromReg(CPU_OFFSET_OF(reg[4].u32), DYN_ADDRESS, DYN_32bit, true);");
+            out(fos32, "     } else {");
+            out(fos32, "         callHostFunction(common_push32, false, 2, 0, DYN_PARAM_CPU, false, op->imm, DYN_PARAM_CONST_32, false);");
+            out(fos32, "     }");
+        } else {
+            out(fos32, "    callHostFunction(common_push" + bits + ", false, 2, 0, DYN_PARAM_CPU, false, op->imm, DYN_PARAM_CONST_" + bits + ", false);");
+        }
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
     }
