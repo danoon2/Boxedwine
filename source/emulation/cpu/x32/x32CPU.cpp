@@ -282,7 +282,7 @@ void calculateEaa(DecodedOp* op, DynReg reg) {
                 }
             }
             // seg[6] is always 0
-            if (op->base<6) { 
+            if (op->base<6 && KThread::currentThread()->process->hasSetSeg[op->base]) { 
                 // add eax, [cpu->seg[op->base].address]
                 outb(0x03);
                 outb(0x47 | (reg << 3));
@@ -290,7 +290,7 @@ void calculateEaa(DecodedOp* op, DynReg reg) {
             }
         } else {
             // seg[6] is always 0
-            if (op->base<6) { 
+            if (op->base<6 && KThread::currentThread()->process->hasSetSeg[op->base]) { 
                 initiallized = true;
                 // mov eax, [cpu->seg[op->base].address]
                 outb(0x8b);

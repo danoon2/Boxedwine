@@ -229,6 +229,8 @@ public:
     U32 eventQueueFD;    
     U32 usedTLS[TLS_ENTRIES];
     KThread* wakeOnExitOrExec;
+    bool hasSetStackMask;
+    bool hasSetSeg[6];
 private:
     std::unordered_map<U32, KFileDescriptor*> fds;
     std::unordered_map<U32, user_desc> ldt;

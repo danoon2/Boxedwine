@@ -66,7 +66,8 @@ KProcess::KProcess(U32 id) : id(id),
     phentsize(0),
     entry(0),
     eventQueueFD(0),
-    wakeOnExitOrExec(NULL) {
+    wakeOnExitOrExec(NULL),
+    hasSetStackMask(false) {
 
     for (int i=0;i<LDT_ENTRIES;i++) {
         this->ldt[i].seg_not_present = 1;
@@ -88,6 +89,9 @@ KProcess::KProcess(U32 id) : id(id),
 
     memset(this->sigActions, 0, sizeof(KSigAction)*MAX_SIG_ACTIONS);
 
+    for (int i=0;i<6;i++) {
+        this->hasSetSeg[i] = false;
+    }
     KSystem::addProcess(this->id, this);
 }
 
@@ -138,6 +142,11 @@ void KProcess::onExec() {
     this->ldt[2].seg_32bit = 1;
     this->ldt[2].seg_not_present = 0;
     this->ldt[2].read_exec_only = 0;
+
+    for (int i=0;i<6;i++) {
+        this->hasSetSeg[i] = false;
+    }
+    this->hasSetStackMask = false;
 }
 
 KProcess::~KProcess() {
@@ -235,6 +244,11 @@ void KProcess::clone(KProcess* from) {
     this->phdr = from->phdr;
     this->phnum = from->phnum;
     this->entry = from->entry;
+
+    for (int i=0;i<6;i++) {
+        this->hasSetSeg[i] = from->hasSetSeg[i];
+    }
+    this->hasSetStackMask = from->hasSetStackMask;
 }
 
 static void writeStackString(KThread* thread, CPU * cpu, const char* s) {
