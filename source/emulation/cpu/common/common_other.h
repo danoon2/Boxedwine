@@ -1,18 +1,8 @@
 U32 common_bound16(CPU* cpu, U32 reg, U32 address);
 U32 common_bound32(CPU* cpu, U32 reg, U32 address);
-void common_cwd(CPU* cpu);
-void common_cwq(CPU* cpu);
-void common_salc(CPU* cpu);
 void common_int98(CPU* cpu);
 void common_int99(CPU* cpu);
 void common_intIb(CPU* cpu);
-void common_cmc(CPU* cpu);
-void common_clc(CPU* cpu);
-void common_stc(CPU* cpu);
-void common_cli(CPU* cpu);
-void common_sti(CPU* cpu);
-void common_cld(CPU* cpu);
-void common_std(CPU* cpu);
 void common_cpuid(CPU* cpu);
 void common_loopnz32(CPU* cpu, U32 offset1, U32 offset2);
 void common_loopnz(CPU* cpu, U32 offset1, U32 offset2);

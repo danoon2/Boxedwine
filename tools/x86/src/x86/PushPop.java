@@ -291,13 +291,16 @@ public class PushPop extends Base {
         out(fos_init, "INIT_CPU(PushF" + bits + ", pushf" + bits + ")");
 
         out(fos32, "void dynamic_pushf"+bits+"(DynamicData* data, DecodedOp* op) {");
-        out(fos32, "    callHostFunction(common_fillFlags, false, 1, 0, DYN_PARAM_CPU, false);");
+        out(fos32, "    dynamic_fillFlags(data);");
         out(fos32, "    movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(flags), DYN_32bit);");
         out(fos32, "    instRegImm(\'|\', DYN_SRC, DYN_32bit, 2);");
         if (mask.length()!=0)
             out(fos32, "    instRegImm(\'&\', DYN_SRC, DYN_32bit, "+mask+");");
-        out(fos32, "    callHostFunction(common_push"+bits+", false, 2, 0, DYN_PARAM_CPU, false, DYN_SRC, DYN_PARAM_REG_32, true);");
-        out(fos32, "    data->currentLazyFlags=FLAGS_NONE;");
+        if (bits.equals("32")) {
+            out(fos32, "    dynamic_pushReg32(data, DYN_SRC, true);");
+        } else {
+            out(fos32, "    callHostFunction(common_push" + bits + ", false, 2, 0, DYN_PARAM_CPU, false, DYN_SRC, DYN_PARAM_REG_32, true);");
+        }
         out(fos32, "    INCREMENT_EIP(op->len);");
         out(fos32, "}");
     }

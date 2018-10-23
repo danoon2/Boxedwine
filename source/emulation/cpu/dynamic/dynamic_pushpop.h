@@ -156,19 +156,17 @@ void dynamic_popf32(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(op->len);
 }
 void dynamic_pushf16(DynamicData* data, DecodedOp* op) {
-    callHostFunction(common_fillFlags, false, 1, 0, DYN_PARAM_CPU, false);
+    dynamic_fillFlags(data);
     movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(flags), DYN_32bit);
     instRegImm('|', DYN_SRC, DYN_32bit, 2);
     callHostFunction(common_push16, false, 2, 0, DYN_PARAM_CPU, false, DYN_SRC, DYN_PARAM_REG_32, true);
-    data->currentLazyFlags=FLAGS_NONE;
     INCREMENT_EIP(op->len);
 }
 void dynamic_pushf32(DynamicData* data, DecodedOp* op) {
-    callHostFunction(common_fillFlags, false, 1, 0, DYN_PARAM_CPU, false);
+    dynamic_fillFlags(data);
     movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(flags), DYN_32bit);
     instRegImm('|', DYN_SRC, DYN_32bit, 2);
     instRegImm('&', DYN_SRC, DYN_32bit, 0xFCFFFF);
-    callHostFunction(common_push32, false, 2, 0, DYN_PARAM_CPU, false, DYN_SRC, DYN_PARAM_REG_32, true);
-    data->currentLazyFlags=FLAGS_NONE;
+    dynamic_pushReg32(data, DYN_SRC, true);
     INCREMENT_EIP(op->len);
 }

@@ -74,6 +74,9 @@ void setup() {
     cpu->seg[CS].address = CODE_ADDRESS;
     cpu->seg[DS].address = HEAP_ADDRESS;
     cpu->seg[SS].address = STACK_ADDRESS-K_PAGE_SIZE*17;
+    cpu->thread->process->hasSetSeg[CS] = true;
+    cpu->thread->process->hasSetSeg[DS] = true;
+    cpu->thread->process->hasSetSeg[SS] = true;
 
     zeroMemory(CODE_ADDRESS, K_PAGE_SIZE*17);
     zeroMemory(STACK_ADDRESS-K_PAGE_SIZE*17, K_PAGE_SIZE*17);

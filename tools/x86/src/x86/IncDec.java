@@ -70,7 +70,7 @@ public class IncDec extends Base {
             out(fos32, "        instCPUImm('"+op+"', "+x32Dest+", DYN_"+bits+"bit, 1);");
         }
         out(fos32, "    } else {");
-        out(fos32, "        callHostFunction(common_getCF, true, 1, 0, DYN_PARAM_CPU, false);");
+        out(fos32, "        dynamic_getCF(data);");
         out(fos32, "        movToCpuFromReg(CPU_OFFSET_OF(oldCF), DYN_CALL_RESULT, DYN_32bit, true);");
         if (eaa) {
             out(fos32, "        movToCpuFromMem(CPU_OFFSET_OF(dst.u"+bits+"), DYN_"+bits+"bit, DYN_ADDRESS, false, false);");

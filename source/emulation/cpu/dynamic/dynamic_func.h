@@ -67,7 +67,7 @@ U32 cpuOffsetSrc(DynWidth width) {
         return 0;
     }
 }
-
+void dynamic_getCF(DynamicData* data);
 void dynamic_arith(DynamicData* data, DecodedOp* op, DynArg src, DynArg dst, DynWidth width, char inst, bool cf, bool store, const LazyFlags* flags) {
     bool isJump = op->next->inst==JumpZ || op->next->inst==JumpNZ;
     bool isSet = op->next->inst==SetZ_E8 || op->next->inst==SetZ_R8 || op->next->inst==SetNZ_E8 || op->next->inst==SetNZ_R8;
@@ -76,7 +76,7 @@ void dynamic_arith(DynamicData* data, DecodedOp* op, DynArg src, DynArg dst, Dyn
     bool needsToSetFlags = op->needsToSetFlags();
 
     if (cf) {
-        callHostFunction(common_getCF, true, 1, 0, DYN_PARAM_CPU, false);
+        dynamic_getCF(data);
     }   
     if (!needsToSetFlags && !store) {
         // I've seen a test followed by a cmp when running Quake 2.  Very weird
@@ -1062,4 +1062,19 @@ void dynamic_pop32(DynamicData* data) {
     } else {
         callHostFunction(common_pop32, true, 1, 0, DYN_PARAM_CPU, false);
     }    
+}
+
+void dynamic_fillFlags(DynamicData* data) {
+    if (data->currentLazyFlags!=FLAGS_NONE) {
+        callHostFunction(common_fillFlags, false, 1, 0, DYN_PARAM_CPU, false);
+    }
+    data->currentLazyFlags=FLAGS_NONE;
+}
+
+void dynamic_getCF(DynamicData* data) {
+    if (data->currentLazyFlags) {
+        genCF(data->currentLazyFlags, DYN_EAX);
+    } else {
+        callHostFunction(common_getCF, true, 1, 0, DYN_PARAM_CPU, false);
+    }
 }

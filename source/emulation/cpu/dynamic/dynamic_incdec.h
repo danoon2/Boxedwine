@@ -2,7 +2,7 @@ void dynamic_inc8_reg(DynamicData* data, DecodedOp* op) {
     if (!op->needsToSetFlags()) {
         instCPUImm('+', OFFSET_REG8(op->reg), DYN_8bit, 1);
     } else {
-        callHostFunction(common_getCF, true, 1, 0, DYN_PARAM_CPU, false);
+        dynamic_getCF(data);
         movToCpuFromReg(CPU_OFFSET_OF(oldCF), DYN_CALL_RESULT, DYN_32bit, true);
         movToCpuFromCpu(CPU_OFFSET_OF(dst.u8), OFFSET_REG8(op->reg), DYN_8bit, DYN_DEST, false);
         instRegImm('+', DYN_DEST, DYN_8bit, 1);
@@ -18,7 +18,7 @@ void dynamic_inc8_mem32(DynamicData* data, DecodedOp* op) {
     if (!op->needsToSetFlags()) {
         instMemImm('+', DYN_ADDRESS, DYN_8bit, 1, true);
     } else {
-        callHostFunction(common_getCF, true, 1, 0, DYN_PARAM_CPU, false);
+        dynamic_getCF(data);
         movToCpuFromReg(CPU_OFFSET_OF(oldCF), DYN_CALL_RESULT, DYN_32bit, true);
         movToCpuFromMem(CPU_OFFSET_OF(dst.u8), DYN_8bit, DYN_ADDRESS, false, false);
         instRegImm('+', DYN_CALL_RESULT, DYN_8bit, 1);
@@ -33,7 +33,7 @@ void dynamic_inc16_reg(DynamicData* data, DecodedOp* op) {
     if (!op->needsToSetFlags()) {
         instCPUImm('+', CPU_OFFSET_OF(reg[op->reg].u16), DYN_16bit, 1);
     } else {
-        callHostFunction(common_getCF, true, 1, 0, DYN_PARAM_CPU, false);
+        dynamic_getCF(data);
         movToCpuFromReg(CPU_OFFSET_OF(oldCF), DYN_CALL_RESULT, DYN_32bit, true);
         movToCpuFromCpu(CPU_OFFSET_OF(dst.u16), CPU_OFFSET_OF(reg[op->reg].u16), DYN_16bit, DYN_DEST, false);
         instRegImm('+', DYN_DEST, DYN_16bit, 1);
@@ -49,7 +49,7 @@ void dynamic_inc16_mem32(DynamicData* data, DecodedOp* op) {
     if (!op->needsToSetFlags()) {
         instMemImm('+', DYN_ADDRESS, DYN_16bit, 1, true);
     } else {
-        callHostFunction(common_getCF, true, 1, 0, DYN_PARAM_CPU, false);
+        dynamic_getCF(data);
         movToCpuFromReg(CPU_OFFSET_OF(oldCF), DYN_CALL_RESULT, DYN_32bit, true);
         movToCpuFromMem(CPU_OFFSET_OF(dst.u16), DYN_16bit, DYN_ADDRESS, false, false);
         instRegImm('+', DYN_CALL_RESULT, DYN_16bit, 1);
@@ -64,7 +64,7 @@ void dynamic_inc32_reg(DynamicData* data, DecodedOp* op) {
     if (!op->needsToSetFlags()) {
         instCPUImm('+', CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit, 1);
     } else {
-        callHostFunction(common_getCF, true, 1, 0, DYN_PARAM_CPU, false);
+        dynamic_getCF(data);
         movToCpuFromReg(CPU_OFFSET_OF(oldCF), DYN_CALL_RESULT, DYN_32bit, true);
         movToCpuFromCpu(CPU_OFFSET_OF(dst.u32), CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit, DYN_DEST, false);
         instRegImm('+', DYN_DEST, DYN_32bit, 1);
@@ -80,7 +80,7 @@ void dynamic_inc32_mem32(DynamicData* data, DecodedOp* op) {
     if (!op->needsToSetFlags()) {
         instMemImm('+', DYN_ADDRESS, DYN_32bit, 1, true);
     } else {
-        callHostFunction(common_getCF, true, 1, 0, DYN_PARAM_CPU, false);
+        dynamic_getCF(data);
         movToCpuFromReg(CPU_OFFSET_OF(oldCF), DYN_CALL_RESULT, DYN_32bit, true);
         movToCpuFromMem(CPU_OFFSET_OF(dst.u32), DYN_32bit, DYN_ADDRESS, false, false);
         instRegImm('+', DYN_CALL_RESULT, DYN_32bit, 1);
@@ -95,7 +95,7 @@ void dynamic_dec8_reg(DynamicData* data, DecodedOp* op) {
     if (!op->needsToSetFlags()) {
         instCPUImm('-', OFFSET_REG8(op->reg), DYN_8bit, 1);
     } else {
-        callHostFunction(common_getCF, true, 1, 0, DYN_PARAM_CPU, false);
+        dynamic_getCF(data);
         movToCpuFromReg(CPU_OFFSET_OF(oldCF), DYN_CALL_RESULT, DYN_32bit, true);
         movToCpuFromCpu(CPU_OFFSET_OF(dst.u8), OFFSET_REG8(op->reg), DYN_8bit, DYN_DEST, false);
         instRegImm('-', DYN_DEST, DYN_8bit, 1);
@@ -111,7 +111,7 @@ void dynamic_dec8_mem32(DynamicData* data, DecodedOp* op) {
     if (!op->needsToSetFlags()) {
         instMemImm('-', DYN_ADDRESS, DYN_8bit, 1, true);
     } else {
-        callHostFunction(common_getCF, true, 1, 0, DYN_PARAM_CPU, false);
+        dynamic_getCF(data);
         movToCpuFromReg(CPU_OFFSET_OF(oldCF), DYN_CALL_RESULT, DYN_32bit, true);
         movToCpuFromMem(CPU_OFFSET_OF(dst.u8), DYN_8bit, DYN_ADDRESS, false, false);
         instRegImm('-', DYN_CALL_RESULT, DYN_8bit, 1);
@@ -126,7 +126,7 @@ void dynamic_dec16_reg(DynamicData* data, DecodedOp* op) {
     if (!op->needsToSetFlags()) {
         instCPUImm('-', CPU_OFFSET_OF(reg[op->reg].u16), DYN_16bit, 1);
     } else {
-        callHostFunction(common_getCF, true, 1, 0, DYN_PARAM_CPU, false);
+        dynamic_getCF(data);
         movToCpuFromReg(CPU_OFFSET_OF(oldCF), DYN_CALL_RESULT, DYN_32bit, true);
         movToCpuFromCpu(CPU_OFFSET_OF(dst.u16), CPU_OFFSET_OF(reg[op->reg].u16), DYN_16bit, DYN_DEST, false);
         instRegImm('-', DYN_DEST, DYN_16bit, 1);
@@ -142,7 +142,7 @@ void dynamic_dec16_mem32(DynamicData* data, DecodedOp* op) {
     if (!op->needsToSetFlags()) {
         instMemImm('-', DYN_ADDRESS, DYN_16bit, 1, true);
     } else {
-        callHostFunction(common_getCF, true, 1, 0, DYN_PARAM_CPU, false);
+        dynamic_getCF(data);
         movToCpuFromReg(CPU_OFFSET_OF(oldCF), DYN_CALL_RESULT, DYN_32bit, true);
         movToCpuFromMem(CPU_OFFSET_OF(dst.u16), DYN_16bit, DYN_ADDRESS, false, false);
         instRegImm('-', DYN_CALL_RESULT, DYN_16bit, 1);
@@ -157,7 +157,7 @@ void dynamic_dec32_reg(DynamicData* data, DecodedOp* op) {
     if (!op->needsToSetFlags()) {
         instCPUImm('-', CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit, 1);
     } else {
-        callHostFunction(common_getCF, true, 1, 0, DYN_PARAM_CPU, false);
+        dynamic_getCF(data);
         movToCpuFromReg(CPU_OFFSET_OF(oldCF), DYN_CALL_RESULT, DYN_32bit, true);
         movToCpuFromCpu(CPU_OFFSET_OF(dst.u32), CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit, DYN_DEST, false);
         instRegImm('-', DYN_DEST, DYN_32bit, 1);
@@ -173,7 +173,7 @@ void dynamic_dec32_mem32(DynamicData* data, DecodedOp* op) {
     if (!op->needsToSetFlags()) {
         instMemImm('-', DYN_ADDRESS, DYN_32bit, 1, true);
     } else {
-        callHostFunction(common_getCF, true, 1, 0, DYN_PARAM_CPU, false);
+        dynamic_getCF(data);
         movToCpuFromReg(CPU_OFFSET_OF(oldCF), DYN_CALL_RESULT, DYN_32bit, true);
         movToCpuFromMem(CPU_OFFSET_OF(dst.u32), DYN_32bit, DYN_ADDRESS, false, false);
         instRegImm('-', DYN_CALL_RESULT, DYN_32bit, 1);
