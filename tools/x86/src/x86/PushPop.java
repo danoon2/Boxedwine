@@ -171,7 +171,7 @@ public class PushPop extends Base {
             out(fos32, "    if (!data->cpu->thread->process->hasSetStackMask && !data->cpu->thread->process->hasSetSeg[SS]) {");
             out(fos32, "        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[4].u32), DYN_32bit);");
             out(fos32, "        movFromMem(DYN_32bit, DYN_SRC, true);");
-            out(fos32, "        movToCpuFromReg(CPU_OFFSET_OF(reg[op->reg].u32), DYN_CALL_RESULT, DYN_32bit, true);");
+            out(fos32, "        movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_32bit, true, true);");
             out(fos32, "        instCPUImm('+', CPU_OFFSET_OF(reg[4].u32), DYN_32bit, 4);");
             out(fos32, "    } else {");
             out(fos32, "        callHostFunction(common_pop32, true, 1, 0, DYN_PARAM_CPU, false);");

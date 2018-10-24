@@ -60,7 +60,7 @@ void dynamic_popEd_mem(DynamicData* data, DecodedOp* op) {
     if (!data->cpu->thread->process->hasSetStackMask && !data->cpu->thread->process->hasSetSeg[SS]) {
         movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[4].u32), DYN_32bit);
         movFromMem(DYN_32bit, DYN_SRC, true);
-        movToCpuFromReg(CPU_OFFSET_OF(reg[op->reg].u32), DYN_CALL_RESULT, DYN_32bit, true);
+        movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_32bit, true, true);
         instCPUImm('+', CPU_OFFSET_OF(reg[4].u32), DYN_32bit, 4);
     } else {
         callHostFunction(common_pop32, true, 1, 0, DYN_PARAM_CPU, false);
