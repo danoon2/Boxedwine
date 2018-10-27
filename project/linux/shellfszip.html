@@ -71,7 +71,6 @@
         var SOUND_ENABLED = true;
         var ALLOW_PARAM_OVERRIDE_FROM_URL = true;
         var SHOW_UPLOAD_DOWNLOAD = true;
-        var DEFAULT_MEMORY_ALLOCATION_MB = 64;
         var ROOT = "/root";
         var HOME_DIRECTORY = ROOT + "/home/username/files/";
         var dirPrefix = getFileDirectory();
@@ -413,15 +412,6 @@
             Module["addRunDependency"]("setupBoxedWine");
             initFileSystem();
         }
-        function getMemoryAllocation()
-        {
-            var mmemoryInMB =  getParameter("m");
-            if(!ALLOW_PARAM_OVERRIDE_FROM_URL || mmemoryInMB==="" || mmemoryInMB < 16){
-                mmemoryInMB = "" + DEFAULT_MEMORY_ALLOCATION_MB;
-            }
-            console.log("setting allocated memory (Mbytes) to: "+mmemoryInMB);
-            return mmemoryInMB;
-        }
         function getExecutable()
         {
             var prog =  getParameter("p");
@@ -549,7 +539,7 @@
             return false;
         }
         function getEmulatorParams() {
-            var params = ["-root", "/root", "-m", getMemoryAllocation(), "-zip", rootZipFile];
+            var params = ["-root", "/root", "-m", "-zip", rootZipFile];
             //fixme: currently turning sound off breaks build.
             //if(!isSoundEnabled){
             //    params.push("-nosound");

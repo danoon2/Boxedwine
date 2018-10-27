@@ -33,7 +33,6 @@ also possible to:
  	i.e. root=win32.zip. If not set it is assumed the root fs is boxedwine.zip and built from a directory called root.
  - specify a zip file to appear uncompressed underneath the HOME_DIRECTORY.
  	i.e. app=chomp.zip would appear as /root/home/username/chomp/. Use: zip -r9qdgds 10m chomp.zip ./chomp/*
- - change memory allocated to boxedwine via DEFAULT_MEMORY_ALLOCATION_MB or ?m=32 on url. Default is 64
  - change the program to execute via ?p=/home/username/chomp/CHOMP.EXE. surround in quotes if path includes spaces.
  - set the working directory via ?work=chomp. This simplifies p as it can then be relative to the working directory.
  - set an overlay via ?overlay=more.zip;files.zip. Where each zip file contains additional files to add to the root file system. Existing files are overridden.

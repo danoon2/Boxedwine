@@ -13,7 +13,6 @@
         let DEFAULT_SOUND_ENABLED = true;
         let DEFAULT_ZLIB_ENABLED = false;
         let DEFAULT_RETRIEVE_REMOTE_DLL_FILES = false;
-        let DEFAULT_MEMORY_ALLOCATION_MB = 64;
         let DEFAULT_HOME_DIRECTORY = ROOT + "/home/username/files/";
         let DEFAULT_BPP = 32;
         let DEFAULT_ROOT_ZIP_FILE = "boxedwine.zip";
@@ -635,15 +634,6 @@
                 initFileSystem();
             }
         }
-        function getMemoryAllocation()
-        {
-            var mmemoryInMB =  getParameter("m");
-            if(!allowParameterOverride() || mmemoryInMB==="" || mmemoryInMB < 16){
-                mmemoryInMB = "" + DEFAULT_MEMORY_ALLOCATION_MB;
-            }
-            console.log("setting allocated memory (Mbytes) to: "+mmemoryInMB);
-            return mmemoryInMB;
-        }
         function getExecutable()
         {
             var prog =  getParameter("p");
@@ -771,7 +761,7 @@
             return false;
         }
         function getEmulatorParams() {
-            var params = ["-root", "/root", "-m", getMemoryAllocation()];
+            var params = ["-root", "/root"];
             if(Config.isZlibEnabled) {
                 params.push("-zip");
                 params.push(Config.rootZipFile);
