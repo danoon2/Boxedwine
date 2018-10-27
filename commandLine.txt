@@ -2,9 +2,9 @@ BoxedWine [options] Program
 
 example:
 
-BoxedWine -root c:\root -m 64 /bin/wine notepad
+BoxedWine -root c:\root /bin/wine notepad
 
-This will look for a file system in root, configure 64MB of emulated RAM and run "/bin/wine" in the file system with an argument of notepad
+This will look for a file system in root and run "/bin/wine" in the file system with an argument of notepad
 
 BoxedWine -root c:\root -zip wine.zip /bin/wine notepad
 
@@ -17,8 +17,6 @@ This will load the file system from wine.zip and write the changes to c:\root
 -fullscreen : if no resolution is passed in via the resolution command line argument then the resolution will be the same as the monitor
 
 -gensrc : This is used for ahead of time (AOT) compiling and requires the source to be build with GENERATE_SOURCE.  With this enabled the user can run the program, then compile the output back into the program for a performance boost.  Currently I don't recommend using this, it should be considered experimental and the out put will not be compatible with future versions of BoxedWine.
-
--m XX : How many megabytes the emulated RAM will have.  The default is 64.  This has no affect on the 64-bit windows build.
 
 -nosound : Disable /dev/dsp which will disable sound
 
