@@ -40,6 +40,7 @@
 #include "sdlwindow.h"
 #include "procselfexe.h"
 #include "../io/fsfilenode.h"
+#include "recorder.h"
 
 void gl_init();
 #ifdef __EMSCRIPTEN__
@@ -375,7 +376,6 @@ int boxedmain(int argc, const char **argv) {
     const char* zip = "";
     const char* ppenv[32];
     int envc=0;
-    int mb=64;
     int userId = UID;
     int groupId = GID;
     int effectiveUserId = UID;
@@ -404,7 +404,6 @@ int boxedmain(int argc, const char **argv) {
 #endif
             i++;
         } else if (!strcmp(argv[i], "-m") && i+1<argc) {
-            mb = atoi(argv[i+1]);
             i++;
         } else if (!strcmp(argv[i], "-uid") && i+1<argc) {
             userId = atoi(argv[i+1]);
@@ -469,7 +468,28 @@ int boxedmain(int argc, const char **argv) {
                 FsFileNode::nonExecFileFullPaths.insert(files[f]);
             }
             i++;
-        } else {
+        } 
+#ifdef BOXEDWINE_RECORDER
+        else if (!strcmp(argv[i], "-record")) {
+            if (!Fs::doesNativePathExist(argv[i+1])) {
+                mkdir(argv[i+1]);
+                if (!Fs::doesNativePathExist(argv[i+1])) {
+                    klog("-record path does not exist and could not be created: %s", argv[i+1]);
+                    return 1;
+                }
+            }
+            Recorder::start(argv[i+1]);
+            i++;
+        }  else if (!strcmp(argv[i], "-automation")) {
+            if (!Fs::doesNativePathExist(argv[i+1])) {
+                klog("-automation directory does not exist %s", argv[i+1]);
+                return 1;
+            }
+            Player::start(argv[i+1]);
+            i++;
+        }
+#endif
+        else {
             break;
         }
     }    
@@ -491,6 +511,14 @@ int boxedmain(int argc, const char **argv) {
         safe_strcat(base, "root", sizeof(curdir));
         root=base;
     }
+#ifdef BOXEDWINE_RECORDER
+    if (Recorder::instance) {
+        Recorder::instance->initCommandLine(root, zip, workingDir, &argv[i], argc-i);
+    } 
+    if (Player::instance) {
+        Player::instance->initCommandLine(root, zip, workingDir, &argv[i], argc-i);
+    }
+#endif
     klog("Using root directory: %s", root);
     if (!Fs::initFileSystem(root, zip)) {
         kwarn("root %s does not exist", root);
@@ -593,6 +621,11 @@ int boxedmain(int argc, const char **argv) {
             U32 t;
 #endif
 
+#ifdef BOXEDWINE_RECORDER
+            if (Player::instance) {
+                Player::instance->runSlice();
+            }
+#endif
 #ifdef BOXEDWINE_VM
             sdlCustomEvent = SDL_RegisterEvents(1);
             sdlMainThreadId = SDL_ThreadID();
@@ -600,6 +633,13 @@ int boxedmain(int argc, const char **argv) {
             while (platformThreadCount && SDL_WaitEvent(&e)) {
 #else
             while (SDL_PollEvent(&e)) {
+                if (Player::instance) {
+                    if (e.type == SDL_QUIT) {
+                        SDL_Quit();
+                        return 1;
+                    }
+                    continue;
+                }
 #endif
                 if (e.type == SDL_QUIT) {
 #ifdef GENERATE_SOURCE
@@ -609,9 +649,25 @@ int boxedmain(int argc, const char **argv) {
                     SDL_Quit();
                     return 0;
                 } else if (e.type == SDL_MOUSEMOTION) { 
+#ifdef BOXEDWINE_RECORDER
+                    if (Recorder::instance) {
+                        Recorder::instance->onMouseMove(e.motion.x, e.motion.y);
+                    }
+#endif
                     if (!sdlMouseMouse(e.motion.x, e.motion.y))
                         onMouseMove(e.motion.x, e.motion.y);
                 } else if (e.type == SDL_MOUSEBUTTONDOWN) {
+#ifdef BOXEDWINE_RECORDER
+                    if (Recorder::instance) {
+                        if (e.button.button==SDL_BUTTON_LEFT) {
+                            Recorder::instance->onMouseButton(1, 0, e.motion.x, e.motion.y);
+                        } else if (e.button.button == SDL_BUTTON_MIDDLE) {
+                            Recorder::instance->onMouseButton(1, 2, e.motion.x, e.motion.y);
+                        } else if (e.button.button == SDL_BUTTON_RIGHT) {
+                            Recorder::instance->onMouseButton(1, 1, e.motion.x, e.motion.y);
+                        }
+                    }
+#endif
                     if (e.button.button==SDL_BUTTON_LEFT) {
                         if (!sdlMouseButton(1, 0, e.motion.x, e.motion.y))
                             onMouseButtonDown(0);
@@ -623,6 +679,17 @@ int boxedmain(int argc, const char **argv) {
                             onMouseButtonDown(1);
                     }
                 } else if (e.type == SDL_MOUSEBUTTONUP) {
+#ifdef BOXEDWINE_RECORDER
+                    if (Recorder::instance) {
+                        if (e.button.button==SDL_BUTTON_LEFT) {
+                            Recorder::instance->onMouseButton(0, 0, e.motion.x, e.motion.y);
+                        } else if (e.button.button == SDL_BUTTON_MIDDLE) {
+                            Recorder::instance->onMouseButton(0, 2, e.motion.x, e.motion.y);
+                        } else if (e.button.button == SDL_BUTTON_RIGHT) {
+                            Recorder::instance->onMouseButton(0, 1, e.motion.x, e.motion.y);
+                        }
+                    }
+#endif
                     if (e.button.button==SDL_BUTTON_LEFT) {
                         if (!sdlMouseButton(0, 0, e.motion.x, e.motion.y))
                             onMouseButtonUp(0);
@@ -643,13 +710,39 @@ int boxedmain(int argc, const char **argv) {
                     }
 #endif
                 } else if (e.type == SDL_KEYDOWN) {
-                    if (e.key.keysym.sym==SDLK_SCROLLOCK) {
-                        printStacks();
-                    } else if (!sdlKey(e.key.keysym.sym, 1))
-                        onKeyDown(translate(e.key.keysym.sym));
+#ifdef BOXEDWINE_RECORDER
+                    if (e.key.keysym.sym == SDLK_F11 && Recorder::instance) {
+                        Recorder::instance->takeScreenShot();
+                    } else {
+                        if (Recorder::instance) {
+                            Recorder::instance->onKey(e.key.keysym.sym, 1);
+                        }
+#endif
+                        if (e.key.keysym.sym==SDLK_SCROLLOCK) {
+                            printStacks();
+                        } else if (!sdlKey(e.key.keysym.sym, 1)) {
+                            onKeyDown(translate(e.key.keysym.sym));
+                        }
+#ifdef BOXEDWINE_RECORDER
+                    }
+#endif
                 } else if (e.type == SDL_KEYUP) {
-                    if (!sdlKey(e.key.keysym.sym, 0))
-                        onKeyUp(translate(e.key.keysym.sym));
+#ifdef BOXEDWINE_RECORDER
+                    if (e.key.keysym.sym== SDLK_F11 && Recorder::instance) {
+                        // eat this one
+                    } else {
+#endif
+#ifdef BOXEDWINE_RECORDER
+                        if (Recorder::instance) {
+                            Recorder::instance->onKey(e.key.keysym.sym, 0);
+                        }
+#endif
+                        if (!sdlKey(e.key.keysym.sym, 0)) {
+                            onKeyUp(translate(e.key.keysym.sym));
+                        }
+#ifdef BOXEDWINE_RECORDER
+                    }
+#endif
                 }
 #ifdef SDL2
                 else if (e.type == SDL_WINDOWEVENT) {
@@ -698,6 +791,18 @@ int boxedmain(int argc, const char **argv) {
 #ifdef GENERATE_SOURCE
     if (gensrc)
         writeSource();
+#endif
+#ifdef BOXEDWINE_RECORDER
+    if (Recorder::instance) {
+        Recorder::instance->close();
+    }
+    if (Player::instance) {
+        if (Player::instance->nextCommand=="DONE") {
+            klog("script: success");
+        } else {
+            klog("script: failed");
+        }
+    }
 #endif
     SDL_Quit();
     

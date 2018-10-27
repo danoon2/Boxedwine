@@ -34,6 +34,8 @@
 #include "ksystem.h"
 #include "kprocess.h"
 #include "kscheduler.h"
+#include "recorder.h"
+#include "player.h"
 
 #include "log.h"
 #include "kerror.h"

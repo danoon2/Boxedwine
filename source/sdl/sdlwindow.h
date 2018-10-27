@@ -75,4 +75,9 @@ U32 sdlVirtualKeyToScanCode(U32 virtKey);
 U32 sdlVirtualKeyToScanCodeEx(U32 virtKey);
 U32 sdlScanCodeToVirtualKey(U32 code);
 U32 sdlScanCodeToVirtualKeyEx(U32 code);
+bool sdlScreenShot(std::string filepath, U32* crc);
+bool sdlPartialScreenShot(std::string filepath, U32 x, U32 y, U32 w, U32 h, U32* crc);
+void sdlPushWindowSurface();
+void sdlPopWindowSurface();
+void sdlDrawRectOnPushedSurfaceAndDisplay(U32 x, U32 y, U32 w, U32 h, U8 r, U8 g, U8 b, U8 a);
 #endif

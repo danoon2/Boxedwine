@@ -21,6 +21,7 @@
 #include <SDL.h>
 #include "sdlwindow.h"
 #include "kscheduler.h"
+#include "crc.h"
 
 #ifdef BOXEDWINE_VM
 extern U32 sdlCustomEvent;
@@ -916,6 +917,11 @@ void sdlDrawAllWindows(KThread* thread, U32 hWnd, int count) {
         SDL_UpdateRect(surface, 0, 0, 0, 0);
     }
 #endif
+#ifdef BOXEDWINE_RECORDER
+    if (Player::instance) {
+        Player::instance->screenChanged();
+    }
+#endif
 }
 
 Wnd* wndCreate(KThread* thread, U32 processId, U32 hwnd, U32 windowRect, U32 clientRect) {
@@ -1177,9 +1183,14 @@ void writeLittleEndian_2(U8* buffer, U16 value) {
     buffer[1] = (U8)(value >> 8);
 }
 
+static int lastX;
+static int lastY;
+
 int sdlMouseMouse(int x, int y) {
     Wnd* wnd;
 
+    lastX = x;
+    lastY = y;
     if (!hwndToWnd.size())
         return 0;
     wnd = getWndFromPoint(x, y);
@@ -2137,6 +2148,13 @@ unsigned int sdlGetMouseState(KThread* thread,int* x, int* y) {
         return result;
     }
 #endif
+#ifdef BOXEDWINE_RECORDER
+    if (Player::instance) {
+        *x = lastX;
+        *y = lastY;
+        return 0;
+    }
+#endif
     return SDL_GetMouseState(x, y);
 }
 
@@ -2321,4 +2339,127 @@ U32 sdlScanCodeToVirtualKeyEx(U32 code) {
         c=scanCodeToVkEx[code];
     }
     return c;
+}
+
+static SDL_Texture* screenCopyTexture;
+
+void sdlPushWindowSurface() {
+    SDL_Surface* src = SDL_GetWindowSurface(sdlWindow);
+    SDL_Rect r;
+    U32 depth;
+
+    if (bits_per_pixel==15)
+        depth = 15;
+    else if (bits_per_pixel==16)
+        depth = 16;
+    else
+        depth = 32;
+    r.x = 0;
+    r.y = 0;
+    r.w = src->w;
+    r.h = src->h;
+
+    U32 format = SDL_PIXELFORMAT_ARGB8888;
+    if (bits_per_pixel == 16) {
+        format = SDL_PIXELFORMAT_RGB565;
+    } else if (bits_per_pixel == 15) {
+        format = SDL_PIXELFORMAT_RGB555;
+    }
+    screenCopyTexture = SDL_CreateTexture(sdlRenderer, format, SDL_TEXTUREACCESS_STREAMING, src->w, src->h);
+    U32 len = src->w * src->h * src->format->BytesPerPixel;
+    U8* pixels = new unsigned char[len];
+
+    if (!SDL_RenderReadPixels(sdlRenderer, &src->clip_rect, src->format->format, pixels, src->w * src->format->BytesPerPixel)) {
+        SDL_UpdateTexture(screenCopyTexture, NULL, pixels, src->w * src->format->BytesPerPixel);
+    }
+    delete[] pixels;
+}
+
+void sdlPopWindowSurface() {
+    SDL_Surface* dst = SDL_GetWindowSurface(sdlWindow);
+    SDL_Rect rect;
+    rect.x = 0;
+    rect.y = 0;
+    rect.w = dst->w;
+    rect.h = dst->h;    
+        
+    SDL_RenderCopy(sdlRenderer, screenCopyTexture, NULL, &rect);	
+    SDL_RenderPresent(sdlRenderer);
+
+    SDL_DestroyTexture(screenCopyTexture);
+    screenCopyTexture = NULL;
+}
+
+void sdlDrawRectOnPushedSurfaceAndDisplay(U32 x, U32 y, U32 w, U32 h, U8 r, U8 g, U8 b, U8 a) {
+    SDL_Surface* dst = SDL_GetWindowSurface(sdlWindow);
+    SDL_Rect rect;
+    rect.x = 0;
+    rect.y = 0;
+    rect.w = dst->w;
+    rect.h = dst->h;    
+        
+    SDL_RenderCopy(sdlRenderer, screenCopyTexture, NULL, &rect);	
+
+    rect.x = x;
+    rect.y = y;
+    rect.w = w;
+    rect.h = h;
+
+    SDL_SetRenderDrawColor(sdlRenderer, r, g, b, a);
+    SDL_SetRenderDrawBlendMode(sdlRenderer, SDL_BLENDMODE_BLEND);
+    SDL_RenderFillRect(sdlRenderer, &rect);
+    SDL_SetRenderDrawBlendMode(sdlRenderer, SDL_BLENDMODE_NONE);
+
+    SDL_RenderPresent(sdlRenderer);
+}
+
+bool sdlInternalScreenShot(std::string filepath, SDL_Rect* r, U32* crc) {
+    SDL_Surface* saveSurface = NULL;
+    SDL_Surface* infoSurface = NULL;
+    infoSurface = SDL_GetWindowSurface(sdlWindow);
+    if (infoSurface == NULL) {
+        klog("sdlScreenshot: %s", SDL_GetError());
+    } else {
+        if (!r)
+            r = &infoSurface->clip_rect;
+        U32 len = r->w * r->h * infoSurface->format->BytesPerPixel;
+        U8* pixels = new unsigned char[len];
+
+        if (SDL_RenderReadPixels(sdlRenderer, r, infoSurface->format->format, pixels, r->w * infoSurface->format->BytesPerPixel)) {
+            klog("sdlScreenshot: %s", SDL_GetError());
+            delete[] pixels;
+            return false;
+        } else {
+            saveSurface = SDL_CreateRGBSurfaceFrom(pixels, r->w, r->h, infoSurface->format->BitsPerPixel, r->w * infoSurface->format->BytesPerPixel, infoSurface->format->Rmask, infoSurface->format->Gmask, infoSurface->format->Bmask, infoSurface->format->Amask);
+            if (!saveSurface) {
+                klog("sdlScreenshot: %s", SDL_GetError());
+                delete[] pixels;
+                return false;
+            }
+            if (filepath.length()) {
+                SDL_SaveBMP(saveSurface, filepath.c_str());
+            }
+            if (crc) {
+                *crc = crc32b(pixels, len);
+            }
+            SDL_FreeSurface(saveSurface);
+        }
+        delete[] pixels;
+        SDL_FreeSurface(infoSurface);
+    }
+    return true;
+}
+
+bool sdlPartialScreenShot(std::string filepath, U32 x, U32 y, U32 w, U32 h, U32* crc) {
+    SDL_Rect r;
+    r.x = x;
+    r.y = y;
+    r.w = w;
+    r.h = h;
+    return sdlInternalScreenShot(filepath, &r, crc);
+}
+
+bool sdlScreenShot(std::string filepath, U32* crc) {
+    return sdlInternalScreenShot(filepath, NULL, crc);
+
 }
