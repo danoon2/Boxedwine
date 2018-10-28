@@ -446,7 +446,7 @@ void memcopyToNative(U32 address, char* p, U32 len) {
         U32 todo = K_PAGE_SIZE-(address & (K_PAGE_SIZE-1));
         if (todo>len)
             todo=len;
-        U8* ram = getPhysicalReadAddress(address, len);
+        U8* ram = getPhysicalReadAddress(address, todo);
     
         if (ram) {            
             while (1) {
