@@ -368,7 +368,7 @@ void genCF(const LazyFlags* flags, DynReg reg) {
         evaluateToReg(DYN_SRC, DYN_32bit, DYN_SRC, false, DYN_DEST, 0, DYN_8bit, DYN_LESS_THAN_UNSIGNED, false, false);
         movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(oldCF), DYN_32bit);
         // shortcut, we know oldCF will be 0 or 1, we also know that evaluateToReg will be 0 or 1
-        instRegReg('&', DYN_SRC, DYN_DEST, DYN_32bit, true);
+        instRegReg('&', reg, DYN_DEST, DYN_32bit, true);
         instRegReg('|', reg, DYN_SRC, DYN_32bit, true);
     } else if (flags == FLAGS_ADC16) {
         // (cpu->result.u16 < cpu->dst.u16) || (cpu->oldCF && (cpu->result.u16 == cpu->dst.u16));
@@ -378,7 +378,7 @@ void genCF(const LazyFlags* flags, DynReg reg) {
         evaluateToReg(DYN_SRC, DYN_32bit, DYN_SRC, false, DYN_DEST, 0, DYN_16bit, DYN_LESS_THAN_UNSIGNED, false, false);
         movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(oldCF), DYN_32bit);
         // shortcut, we know oldCF will be 0 or 1, we also know that evaluateToReg will be 0 or 1
-        instRegReg('&', DYN_SRC, DYN_DEST, DYN_32bit, true);
+        instRegReg('&', reg, DYN_DEST, DYN_32bit, true);
         instRegReg('|', reg, DYN_SRC, DYN_32bit, true);
     } else if (flags == FLAGS_ADC32) {
         // (cpu->result.u32 < cpu->dst.u32) || (cpu->oldCF && (cpu->result.u32 == cpu->dst.u32));
@@ -388,7 +388,7 @@ void genCF(const LazyFlags* flags, DynReg reg) {
         evaluateToReg(DYN_SRC, DYN_32bit, DYN_SRC, false, DYN_DEST, 0, DYN_32bit, DYN_LESS_THAN_UNSIGNED, false, false);
         movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(oldCF), DYN_32bit);
         // shortcut, we know oldCF will be 0 or 1, we also know that evaluateToReg will be 0 or 1
-        instRegReg('&', DYN_SRC, DYN_DEST, DYN_32bit, true);
+        instRegReg('&', reg, DYN_DEST, DYN_32bit, true);
         instRegReg('|', reg, DYN_SRC, DYN_32bit, true);
     } else if (flags == FLAGS_SBB8) {
         // (cpu->dst.u8 < cpu->result.u8) || (cpu->oldCF && (cpu->src.u8==0xff));
