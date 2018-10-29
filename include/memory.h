@@ -111,7 +111,7 @@ private:
     U8* mmuWritePtr[K_NUMBER_OF_PAGES];
 
 public:
-    inline void setPage(U32 index, Page* page);
+    void setPage(U32 index, Page* page);
     inline Page* getPage(U32 index) {return this->mmu[index];}
 
     static Page** currentMMU;
