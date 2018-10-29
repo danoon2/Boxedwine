@@ -2359,13 +2359,7 @@ void sdlPushWindowSurface() {
     r.w = src->w;
     r.h = src->h;
 
-    U32 format = SDL_PIXELFORMAT_ARGB8888;
-    if (bits_per_pixel == 16) {
-        format = SDL_PIXELFORMAT_RGB565;
-    } else if (bits_per_pixel == 15) {
-        format = SDL_PIXELFORMAT_RGB555;
-    }
-    screenCopyTexture = SDL_CreateTexture(sdlRenderer, format, SDL_TEXTUREACCESS_STREAMING, src->w, src->h);
+    screenCopyTexture = SDL_CreateTexture(sdlRenderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, src->w, src->h);
     U32 len = src->w * src->h * src->format->BytesPerPixel;
     U8* pixels = new unsigned char[len];
 
