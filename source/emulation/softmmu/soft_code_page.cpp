@@ -75,8 +75,10 @@ CodePage::~CodePage() {
 // :TODO: what if address+len is in the next page
 CodePage::CodePageEntry* CodePage::findCode(U32 address, U32 len) {
     U32 offset = address & K_PAGE_MASK;
-
-    for (U32 i=0;i<CODE_ENTRIES;i++) {
+    U32 stop = offset + (len+31) >> CODE_ENTRIES_SHIFT;
+    if (stop>=CODE_ENTRIES)
+        stop = CODE_ENTRIES-1;
+    for (U32 i=0;i<=stop;i++) {
         CodePageEntry* entry = entries[i];
         while (entry) {
             if (((entry->offset <= offset && offset < (entry->offset + entry->len)) || (entry->offset <= (offset + len) && (offset + len) < (entry->offset + entry->len))) && !entry->linkedPrev)
