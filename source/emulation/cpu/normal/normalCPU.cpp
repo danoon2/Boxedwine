@@ -69,9 +69,7 @@ static void initNormalOps() {
     normalOps[LTRR16] = 0; 
     normalOps[LTRE16] = 0;
     normalOps[VERRR16] = 0; 
-    normalOps[VERRE16] = 0;
     normalOps[VERWR16] = 0; 
-    normalOps[VERWE16] = 0;
     normalOps[SGDT] = 0;
     normalOps[SIDT] = normal_sidt;
     normalOps[LGDT] = 0;

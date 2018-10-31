@@ -3317,6 +3317,23 @@ public:
     }
 };
 
+class DecodeGrp6_16 : public DecodeFunc {
+public:
+    void decode(DecodeData* data, DecodedOp* op) const {
+        U8 rm = data->fetch8();
+
+        switch (G(rm)) {
+        case 0x00: func(data, op, rm, SLDTReg, SLDTE16); break;
+        case 0x01: func(data, op, rm, STRReg, STRE16); break;
+        case 0x02: func(data, op, rm, LLDTR16, LLDTE16); break;
+        case 0x03: func(data, op, rm, LTRR16, LTRE16); break;
+        case 0x04: func(data, op, rm, VERRR16, VERRE16); break;
+        case 0x05: func(data, op, rm, VERWR16, VERWE16); break;
+        default: op->inst = Invalid; op->reg = rm; op->imm = data->inst; break;
+        }	
+    }
+};
+
 class DecodeGrp7_32 : public DecodeFunc {
 public:
     void decode(DecodeData* data, DecodedOp* op) const {
@@ -4073,6 +4090,7 @@ DecodeGrp3_32 decodeGroup3_32;                                   // GRP3 Ed(,Id)
 DecodeGrp4_8 decodeGroup4_8;                                     // GRP4 Eb
 DecodeGrp5_16 decodeGroup5_16;                                   // GRP5 Ew
 DecodeGrp5_32 decodeGroup5_32;                                   // GRP5 Ed
+DecodeGrp6_16 decodeGroup6_16;                                   // GRP6
 DecodeGrp6_32 decodeGroup6_32;                                   // GRP6
 DecodeGrp7_32 decodeGroup7_32;                                   // GRP7
 DecodeGrp8_16 decodeGroup8_16;
@@ -4468,7 +4486,7 @@ const Decode* const decoder[] = {
     &decodeLock, &decodeICEBP, &decodeRepNZ, &decodeRepZ, &decodeHlt, &decodeCmc, &decodeGroup3_8, &decodeGroup3_16,
     &decodeClc, &decodeStc, &decodeCli, &decodeSti, &decodeCld, &decodeStd, &decodeGroup4_8, &decodeGroup5_16,
     // 0x100
-    0, 0, &decodeLar16, &decodeLsl16, 0, 0, 0, 0,
+    &decodeGroup6_16, 0, &decodeLar16, &decodeLsl16, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0,
     // 0x110
     0, 0, 0, 0, 0, 0, 0, 0,

@@ -473,6 +473,16 @@ void dynamic_lslr16e16(DynamicData* data, DecodedOp* op) {
     callHostFunction(common_lslr16e16, false, 3, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false, DYN_ADDRESS, DYN_PARAM_REG_32, true);
     INCREMENT_EIP(op->len);
 }
+void dynamic_verre16(DynamicData* data, DecodedOp* op) {
+    calculateEaa(op, DYN_ADDRESS);
+    callHostFunction(common_verre16, false, 2, 0, DYN_PARAM_CPU, false, DYN_ADDRESS, DYN_PARAM_REG_32, true);
+    INCREMENT_EIP(op->len);
+}
+void dynamic_verwe16(DynamicData* data, DecodedOp* op) {
+    calculateEaa(op, DYN_ADDRESS);
+    callHostFunction(common_verre16, false, 2, 0, DYN_PARAM_CPU, false, DYN_ADDRESS, DYN_PARAM_REG_32, true);
+    INCREMENT_EIP(op->len);
+}
 void dynamic_xaddr32r32(DynamicData* data, DecodedOp* op) {
     if (!op->needsToSetFlags()) {
         movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit);

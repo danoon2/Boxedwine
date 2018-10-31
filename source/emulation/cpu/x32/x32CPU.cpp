@@ -2142,9 +2142,7 @@ static void initX32Ops() {
     x32Ops[LTRR16] = 0; 
     x32Ops[LTRE16] = 0;
     x32Ops[VERRR16] = 0; 
-    x32Ops[VERRE16] = 0;
     x32Ops[VERWR16] = 0; 
-    x32Ops[VERWE16] = 0;
     x32Ops[SGDT] = 0;
     x32Ops[SIDT] = x32_sidt;
     x32Ops[LGDT] = 0;

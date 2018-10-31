@@ -129,6 +129,12 @@ void common_lslr16r16(CPU* cpu, U32 dstReg, U32 srcReg){
 void common_lslr16e16(CPU* cpu, U32 reg, U32 address){
     cpu->reg[reg].u16 = cpu->lsl(readw(address), cpu->reg[reg].u16);
 }
+void common_verre16(CPU* cpu, U32 address){
+    cpu->verr(readw(address));
+}
+void common_verwe16(CPU* cpu, U32 address){
+    cpu->verw(readw(address));
+}
 void common_cmpxchgg8b(CPU* cpu, U32 address){
     U64 value1 = ((U64)EDX) << 32 | EAX;
     U64 value2 = readq(address);

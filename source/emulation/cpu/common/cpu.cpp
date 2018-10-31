@@ -1112,6 +1112,38 @@ void CPU::clone(CPU* from) {
     //void* logFile;
 }
 
+void CPU::verr(U32 selector) {
+    this->fillFlags();
+    if (selector == 0) {
+        this->removeZF();
+        return;
+    }
+    U32 index = selector >> 3;
+    struct user_desc* ldt = this->thread->getLDT(index);
+
+    if (!ldt || ldt->seg_not_present) {
+        this->removeZF();
+    } else {
+        this->addZF();
+    }
+}
+
+void CPU::verw(U32 selector) {
+    this->fillFlags();
+    if (selector == 0) {
+        this->removeZF();
+        return;
+    }
+    U32 index = selector >> 3;
+    struct user_desc* ldt = this->thread->getLDT(index);
+
+    if (!ldt || ldt->seg_not_present || ldt->read_exec_only) {
+        this->removeZF();
+    } else {
+        this->addZF();
+    }
+}
+
 U32 common_getCF(CPU* cpu) {
     return cpu->getCF();
 }

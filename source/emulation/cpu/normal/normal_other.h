@@ -544,6 +544,16 @@ void OPCALL normal_lslr16e16(CPU* cpu, DecodedOp* op) {
     cpu->reg[op->reg].u16 = cpu->lsl(readw(eaa(cpu, op)), cpu->reg[op->reg].u16);
     NEXT();
 }
+void OPCALL normal_verre16(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
+    cpu->verr(readw(eaa(cpu, op)));
+    NEXT();
+}
+void OPCALL normal_verwe16(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
+    cpu->verw(readw(eaa(cpu, op)));
+    NEXT();
+}
 void OPCALL normal_xaddr32r32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     cpu->src.u32 = cpu->reg[op->reg].u32;

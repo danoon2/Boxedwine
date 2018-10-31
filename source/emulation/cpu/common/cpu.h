@@ -287,6 +287,8 @@ public:
     void walkStack(U32 eip, U32 ebp, U32 indent);
     void clone(CPU* from);
     void reset();
+    void verr(U32 selector);
+    void verw(U32 selector);
 
     virtual void run()=0;
     virtual DecodedBlock* getNextBlock() = 0;
