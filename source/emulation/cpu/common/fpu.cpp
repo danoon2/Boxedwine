@@ -65,16 +65,22 @@ struct FPU_Float {
 #define FPU_GET_TOP(fpu) (((fpu)->sw & 0x3800) >> 11)
 #define FPU_SET_TOP(fpu, val) (fpu)->sw &= ~0x3800; (fpu)->sw |= (val & 7) << 11
 
+void FPU::LOG_STACK() {
 #ifdef LOG_FPU
-void OPCALL LOG_STACK() {
     U32 i;
 
     for (i=0;i<8;i++) {
-        LOG("    %f %d %d", this->regs[STV(i)].d, this->tags[STV(i)], STV(i));
+        if (isnan(this->regs[STV(i)].d)) {
+            LOG("    NAN %f %d %d", this->regs[STV(i)].d, this->tags[STV(i)], STV(i));
+        } else if (isinf(this->regs[STV(i)].d)) {
+            LOG("    INF %f %d %d", this->regs[STV(i)].d, this->tags[STV(i)], STV(i));
+        } else {
+            LOG("    %f %d %d", this->regs[STV(i)].d, this->tags[STV(i)], STV(i));
+        }
     }
     LOG("    %f %d %d", this->regs[8].d, this->tags[8], 8);
-}
 #endif
+}
 
 void FPU::SetTag(U32 tag) {
     int i;
@@ -86,6 +92,28 @@ void FPU::SetCW(U16 word) {
     this->cw = word;
     this->cw_mask_all = word | 0x3f;
     this->round = ((word >> 10) & 3);
+
+#ifdef LOG_FPU
+    const char* r;
+    switch (this->round) {
+        case ROUND_Nearest:
+            r = "Nearest";
+            break;
+        case ROUND_Down:
+            r = "Down";
+            break;
+        case ROUND_Up:
+            r = "Up";
+            break;
+        case ROUND_Chop:
+            r = "Chop";
+            break;
+        default:
+            r = "Unknown";
+            break;
+    }
+    LOG("SetCW %X (%s)", word, r);
+#endif
 }   
 
 #define FPU_SET_C0(fpu, C) (fpu)->sw &= ~0x0100; if (C != 0) (fpu)->sw |= 0x0100    
@@ -153,7 +181,7 @@ double FPU::FROUND(double in) {
 #define BIAS80 16383
 #define BIAS64 1023
 
-double FPU::FLD80(U64 eind, U32 begin) {
+double FPU::FLD80(U64 eind, S16 begin) {
     S64 exp64 = (((begin & 0x7fff) - BIAS80));
     S64 blah = ((exp64 > 0) ? exp64 : -exp64) & 0x3ff;
     S64 exp64final = ((exp64 > 0) ? blah : -blah) + BIAS64;
@@ -208,9 +236,10 @@ void FPU::FLD_F32(U32 value, int store_to) {
     struct FPU_Float f;
     f.i = value;
     this->regs[store_to].d = f.f;
+    this->regs[store_to].isIntegerLoaded = 0;
 #ifdef LOG_FPU
     LOG("FPU_FLD_F32 %f", f.f);
-    LOG_STACK(fpu);
+    LOG_STACK();
 #endif
 }
 
@@ -218,28 +247,31 @@ void FPU::FLD_F64(U64 value, int store_to) {
     this->regs[store_to].l = value;
 #ifdef LOG_FPU
     LOG("FPU_FLD_F64 %f", this->regs[store_to].d);
-    LOG_STACK(fpu);
+    LOG_STACK();
 #endif
 
 }
 
-void FPU::FLD_F80(U64 low, U32 high) {
+void FPU::FLD_F80(U64 low, S16 high) {
     this->regs[this->top].d = FLD80(low, high);
+    this->regs[this->top].isIntegerLoaded = 0;
 }
 
 void FPU::FLD_I16(S16 value, int store_to) {
     this->regs[store_to].d = value;
+    this->regs[store_to].isIntegerLoaded = 0;
 #ifdef LOG_FPU
     LOG("FPU_FLD_I16 %d -> %f", value, this->regs[store_to].d);
-    LOG_STACK(fpu);
+    LOG_STACK();
 #endif
 }
 
 void FPU::FLD_I32(S32 value, int store_to) {
     this->regs[store_to].d = value;
+    this->regs[store_to].isIntegerLoaded = 0;
 #ifdef LOG_FPU
     LOG("FPU_FLD_I32 %d -> %f", value, this->regs[store_to].d);
-    LOG_STACK(fpu);
+    LOG_STACK();
 #endif
 }
 
@@ -270,9 +302,10 @@ void FPU::FBLD(U8 data[], int store_to) {
     temp += ( (in&0xf) * base );
     if(in&0x80) temp *= -1.0;
     this->regs[store_to].d = temp; 
+    this->regs[store_to].isIntegerLoaded = 0;
 #ifdef LOG_FPU
     LOG("FPU_FBLD %c%c%c%c%c%c%c%c%c%c -> %f", data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8], data[9], this->regs[store_to].d);
-    LOG_STACK(fpu);
+    LOG_STACK();
 #endif
 }
 
@@ -312,7 +345,7 @@ void FPU::FST_I16(CPU* cpu, U32 addr) {
     writew(addr, value);
 #ifdef LOG_FPU
     LOG("FPU_FST_I16 %f -> %d", this->regs[this->top].d, value);
-    LOG_STACK(this);
+    LOG_STACK();
 #endif
 }
 
@@ -321,7 +354,7 @@ void FPU::FSTT_I16(CPU* cpu, U32 addr) {
     writew(addr, value);
 #ifdef LOG_FPU
     LOG("FPU_FSTT_I16 %f -> %d", this->regs[this->top].d, value);
-    LOG_STACK(this);
+    LOG_STACK();
 #endif
 }
 
@@ -330,7 +363,7 @@ void FPU::FSTT_I32(CPU* cpu, U32 addr) {
     writed(addr, value);
 #ifdef LOG_FPU
     LOG("FPU_FSTT_I32 %f -> %d", this->regs[this->top].d, value);
-    LOG_STACK(this);
+    LOG_STACK();
 #endif
 }
 
@@ -339,7 +372,7 @@ void FPU::FST_I32(CPU* cpu, U32 addr) {
     writed(addr, value);
 #ifdef LOG_FPU
     LOG("FPU_FST_I32 %f -> %d", this->regs[this->top].d, value);
-    LOG_STACK(this);
+    LOG_STACK();
 #endif
 }
 
@@ -395,7 +428,7 @@ void FPU::FADD(int op1, int op2) {
     this->regs[op1].isIntegerLoaded = 0;
 #ifdef LOG_FPU
     LOG("FPU_FADD %f + %f = %f", d, this->regs[op2].d, this->regs[op1].d);
-    LOG_STACK(fpu);
+    LOG_STACK();
 #endif
     //flags and such :)
 }
@@ -411,7 +444,7 @@ void FPU::FDIV(int st, int other) {
         LOG("*** FPU DIVIDE BY ZERO ***");
     }
     LOG("FPU_FDIV %f / %f = %f", d, this->regs[other].d, this->regs[st].d);
-    LOG_STACK(fpu);
+    LOG_STACK();
 #endif
     //flags and such :)
 }
@@ -427,7 +460,7 @@ void FPU::FDIVR(int st, int other) {
         LOG("*** FPU DIVIDE BY ZERO ***");
     }
     LOG("FPU_FDIVR %f / %f = %f", this->regs[other].d, d, this->regs[st].d);
-    LOG_STACK(fpu);
+    LOG_STACK();
 #endif
     // flags and such :)
 }
@@ -440,7 +473,7 @@ void FPU::FMUL(int st, int other) {
     this->regs[st].isIntegerLoaded = 0;
 #ifdef LOG_FPU
     LOG("FPU_FMUL %f * %f = %f", d, this->regs[other].d, this->regs[st].d);
-    LOG_STACK(fpu);
+    LOG_STACK();
 #endif
     //flags and such :)
 }
@@ -453,7 +486,7 @@ void FPU::FSUB(int st, int other) {
     this->regs[st].isIntegerLoaded = 0;
 #ifdef LOG_FPU
     LOG("FPU_FSUB %f - %f = %f", d, this->regs[other].d, this->regs[st].d);
-    LOG_STACK(fpu);
+    LOG_STACK();
 #endif
     //flags and such :)
 }
@@ -466,7 +499,7 @@ void FPU::FSUBR(int st, int other) {
     this->regs[st].isIntegerLoaded = 0;
 #ifdef LOG_FPU
     LOG("FPU_FSUBR %f - %f = %f", this->regs[other].d, d, this->regs[st].d);
-    LOG_STACK(fpu);
+    LOG_STACK();
 #endif
     //flags and such :)
 }
@@ -479,9 +512,9 @@ void FPU::FXCH(int st, int other) {
     this->tags[st] = tag;
     this->regs[st] = reg;
 #ifdef LOG_FPU
-    LOG("    FPU_FXCH %f <-> %f", this->regs[other].d, this->regs[st].d);
+    LOG("FPU_FXCH %f (%d) <-> %f (%d)", this->regs[other].d, other, this->regs[st].d, st);
     LOG("    after");
-    LOG_STACK(fpu);
+    LOG_STACK();
 #endif
 }
 
@@ -490,7 +523,7 @@ void FPU::FST(int st, int other) {
     this->regs[other] = this->regs[st];
 #ifdef LOG_FPU
     LOG("FPU_FST %f", this->regs[st].d);
-    LOG_STACK(fpu);
+    LOG_STACK();
 #endif
 }
 
@@ -519,6 +552,10 @@ void FPU::FCOMI(CPU* cpu, int st, int other) {
 }
 
 void FPU::FCOM(int st, int other) {
+#ifdef LOG_FPU
+    LOG("FPU_FCOM %f %f", this->regs[st].d, this->regs[other].d);
+    LOG_STACK();
+#endif
     if (((this->tags[st] != TAG_Valid) && (this->tags[st] != TAG_Zero)) ||
             ((this->tags[other] != TAG_Valid) && (this->tags[other] != TAG_Zero)) || isnan(this->regs[st].d) || isnan(this->regs[other].d)) {
         FPU_SET_C3(this, 1);
@@ -555,8 +592,26 @@ void FPU::FRNDINT() {
     this->regs[this->top].d = (double) (temp);
     this->regs[this->top].isIntegerLoaded = 0;
 #ifdef LOG_FPU
-    LOG("FPU_FRNDINT %d -> %d", value, this->regs[this->top].d);
-    LOG_STACK(fpu);
+    const char* r;
+    switch (this->round) {
+        case ROUND_Nearest:
+            r = "Nearest";
+            break;
+        case ROUND_Down:
+            r = "Down";
+            break;
+        case ROUND_Up:
+            r = "Up";
+            break;
+        case ROUND_Chop:
+            r = "Chop";
+            break;
+        default:
+            r = "Unknown";
+            break;
+    }
+    LOG("FPU_FRNDINT %s %f -> %f", r, value, this->regs[this->top].d);
+    LOG_STACK();
 #endif
 }
 
@@ -578,7 +633,7 @@ void FPU::FPREM() {
         LOG("*** FPU DIVIDE BY ZERO ***");
     }
     LOG("FPU_FPREM %f / %f r=%f", valtop, valdiv, this->regs[this->top].d);
-    LOG_STACK(fpu);
+    LOG_STACK();
 #endif
 }
 
@@ -714,6 +769,9 @@ int FPU::GetTag() {
 
 U32 FPU::SW() {
     FPU_SET_TOP(this, this->top); 
+#ifdef LOG_FPU
+    LOG("SW=%0.8X", this->sw);
+#endif
     return this->sw;
 }
 
@@ -769,6 +827,7 @@ void FPU::FRSTOR(CPU* cpu, U32 addr) {
             
     for (i = 0; i < 8; i++) {
         this->regs[STV(i)].d = FLD80(readq(addr + start), readw(addr + start + 8));
+        this->regs[STV(i)].isIntegerLoaded = 0;
         start += 10;
     }
 }
@@ -799,43 +858,51 @@ void FPU::FABS() {
 
 void FPU::FTST() {
     this->regs[8].d = 0.0;
+    this->regs[this->top].isIntegerLoaded = 0;
     FCOM(this->top, 8);
 }
 
 void FPU::FLD1() {
     PREP_PUSH();
     this->regs[this->top].d = 1.0;
+    this->regs[this->top].isIntegerLoaded = 0;
 }
 
 void FPU::FLDL2T() {
     PREP_PUSH();
     this->regs[this->top].d = L2T;
+    this->regs[this->top].isIntegerLoaded = 0;
 }
 
 void FPU::FLDL2E() {
     PREP_PUSH();
     this->regs[this->top].d = L2E;
+    this->regs[this->top].isIntegerLoaded = 0;
 }
 
 void FPU::FLDPI() {
     PREP_PUSH();
     this->regs[this->top].d = PI;
+    this->regs[this->top].isIntegerLoaded = 0;
 }
 
 void FPU::FLDLG2() {
     PREP_PUSH();
     this->regs[this->top].d = LG2;
+    this->regs[this->top].isIntegerLoaded = 0;
 }
 
 void FPU::FLDLN2() {
     PREP_PUSH();
     this->regs[this->top].d = LN2;
+    this->regs[this->top].isIntegerLoaded = 0;
 }
 
 void FPU::FLDZ() {
     PREP_PUSH();
     this->regs[this->top].d = 0.0;
     this->tags[this->top] = TAG_Zero;
+    this->regs[this->top].isIntegerLoaded = 0;
 }
 
 

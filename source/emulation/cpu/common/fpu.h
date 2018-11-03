@@ -40,11 +40,11 @@ public:
     void PREP_PUSH();
     void FPOP();
     double FROUND(double in);
-    double FLD80(U64 eind, U32 begin);
+    double FLD80(U64 eind, S16 begin);
     void ST80(CPU* cpu, U32 addr, int reg);
     void FLD_F32(U32 value, int store_to);
     void FLD_F64(U64 value, int store_to);
-    void FLD_F80(U64 low, U32 high);
+    void FLD_F80(U64 low, S16 high);
     void FLD_I16(S16 value, int store_to);
     void FLD_I32(S32 value, int store_to);
     void FLD_I64(S64 value, int store_to);
@@ -123,6 +123,7 @@ private:
     void SetTag(U32 tag);
     void SetCW(U16 word);
     int GetTag();
+    void LOG_STACK();
 
     struct FPU_Reg regs[9];
     U32 tags[9];
