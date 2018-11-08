@@ -1763,7 +1763,7 @@ void evaluateToReg(DynReg reg, DynWidth dstWidth, DynReg left, bool isRightConst
             outb(0xf8 | left);
             outb((U8)rightConst);
         } else {
-            if (reg==DYN_EAX) {
+            if (left==DYN_EAX) {
                 if (regWidth==DYN_32bit) {
                     outb(0x3d);
                     outd(rightConst);
