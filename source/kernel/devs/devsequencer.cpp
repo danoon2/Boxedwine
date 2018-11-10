@@ -74,7 +74,6 @@ U32 DevSequencer::ioctl(U32 request) {
     CPU* cpu = thread->cpu;
     bool read = (request & 0x40000000) != 0;
     bool write = (request & 0x80000000) != 0;
-    U32 i;
 
     switch (request & 0xFFFF) {     
     case 0x5100: // LINUX_SNDCTL_SEQ_RESET	
@@ -181,7 +180,7 @@ void MIDI_RawOutByte(U8 data) {
 
 U32 DevSequencer::writeNative(U8* buffer, U32 len) {
 #ifdef BOXEDWINE_MIDI
-    for (int i=0;i<len;i+=4) {
+    for (U32 i=0;i<len;i+=4) {
         if (buffer[i]==5) {
             MIDI_RawOutByte(buffer[i+1]);
         } else {

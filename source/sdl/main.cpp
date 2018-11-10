@@ -465,7 +465,7 @@ int boxedmain(int argc, const char **argv) {
         } else if (!strcmp(argv[i], "-noexecfiles")) {
             std::vector<std::string> files;
             stringSplit(files, argv[i+1], ':');
-            for (int f=0;f<files.size();f++) {
+            for (U32 f=0;f<files.size();f++) {
                 FsFileNode::nonExecFileFullPaths.insert(files[f]);
             }
             i++;

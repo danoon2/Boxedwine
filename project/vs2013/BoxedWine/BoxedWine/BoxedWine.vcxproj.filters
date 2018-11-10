@@ -289,9 +289,6 @@
     <ClCompile Include="..\..\..\..\source\kernel\devs\devsequencer.cpp">
       <Filter>source\kernel\devs</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\source\kernel\devs\mixer.cpp">
-      <Filter>source\kernel\devs</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\platform\windows\winmidi.cpp">
       <Filter>platform\windows</Filter>
     </ClCompile>

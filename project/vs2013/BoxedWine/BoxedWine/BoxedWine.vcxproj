@@ -585,7 +585,6 @@
     <ClCompile Include="..\..\..\..\source\kernel\devs\devtty.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\devs\devurandom.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\devs\devzero.cpp" />
-    <ClCompile Include="..\..\..\..\source\kernel\devs\mixer.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\kepoll.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\kfile.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\kfiledescriptor.cpp" />

@@ -44,7 +44,7 @@ bool Fs::initFileSystem(const std::string& rootPath, const std::string& zipPath)
     if (dir) {
         std::vector<BoxedPtr<FsNode> > children;
         dir->getAllChildren(children);
-        for (int i=0;i<children.size();i++) {
+        for (U32 i=0;i<children.size();i++) {
             children[i]->remove();
         }
     }

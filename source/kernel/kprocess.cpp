@@ -360,7 +360,7 @@ static void setupThreadStack(KThread* thread, CPU* cpu, const std::string& progr
     if (env.size()>MAX_ARG_COUNT)
         kpanic("Too many env: %d is max", MAX_ARG_COUNT);
     //klog("env");
-    for (i=0;i<env.size();i++) {
+    for (i=0;i<(int)env.size();i++) {
         writeStackString(thread, cpu, env[i].c_str());
         if (strncmp(env[i].c_str(), "PATH=", 5)==0) {
             stringSplit(cpu->thread->process->path,env[i].substr(5),':');
@@ -368,7 +368,7 @@ static void setupThreadStack(KThread* thread, CPU* cpu, const std::string& progr
         //klog("    %s", env[i]);
         e[i]=ESP;
     }
-    for (i=args.size()-1;i>=0;i--) {
+    for (i=(int)args.size()-1;i>=0;i--) {
         writeStackString(thread, cpu, args[i].c_str());
         a[i]=ESP;
     }
