@@ -65,8 +65,8 @@ inline U16 readw(U32 address) {
     return result;
 #else
     if ((address & 0xFFF) < 0xFFF) {
-#ifndef UNALIGNED_MEMORY
         int index = address >> 12;
+#ifndef UNALIGNED_MEMORY
         if (Memory::currentMMUReadPtr[index])
             return *(U16*)(&Memory::currentMMUReadPtr[index][address & 0xFFF]);
 #endif
@@ -84,8 +84,8 @@ inline void writew(U32 address, U16 value) {
         fprintf(logFile, "writew %X @%X\n", value, address);
 #endif
     if ((address & 0xFFF) < 0xFFF) {
-#ifndef UNALIGNED_MEMORY
         int index = address >> 12;
+#ifndef UNALIGNED_MEMORY
         if (Memory::currentMMUWritePtr[index])
             *(U16*)(&Memory::currentMMUWritePtr[index][address & 0xFFF]) = value;
         else
@@ -114,8 +114,8 @@ inline U32 readd(U32 address) {
     return result;
 #else
     if ((address & 0xFFF) < 0xFFD) {
-#ifndef UNALIGNED_MEMORY
         int index = address >> 12;
+#ifndef UNALIGNED_MEMORY
         if (Memory::currentMMUReadPtr[index])
             return *(U32*)(&Memory::currentMMUReadPtr[index][address & 0xFFF]);
 #endif
@@ -134,8 +134,8 @@ inline void writed(U32 address, U32 value) {
         fprintf(logFile, "writed %X @%X\n", value, address);
 #endif    
     if ((address & 0xFFF) < 0xFFD) {
-#ifndef UNALIGNED_MEMORY
         int index = address >> 12;
+#ifndef UNALIGNED_MEMORY
         if (Memory::currentMMUWritePtr[index])
             *(U32*)(&Memory::currentMMUWritePtr[index][address & 0xFFF]) = value;
         else
