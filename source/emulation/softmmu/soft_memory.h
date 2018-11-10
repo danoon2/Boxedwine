@@ -141,5 +141,25 @@ inline void writed(U32 address, U32 value) {
     }
 }
 
+inline U64 readq(U32 address) {
+    if ((address & 0xFFF) < 0xFF9) {
+        int index = address >> 12;
+        if (Memory::currentMMUWritePtr[index]) {
+            return *(U64*)(&Memory::currentMMUReadPtr[index][address & 0xFFF]);
+        }
+    }
+    return readd(address) | ((U64)readd(address + 4) << 32);
+}
+
+inline void writeq(U32 address, U64 value) {
+    if ((address & 0xFFF) < 0xFF9) {
+        int index = address >> 12;
+        if (Memory::currentMMUWritePtr[index]) {
+            *(U64*)(&Memory::currentMMUWritePtr[index][address & 0xFFF]) = value;
+            return;
+        }
+    }
+    writed(address, (U32)value); writed(address + 4, (U32)(value >> 32));
+}
 #endif
 #endif

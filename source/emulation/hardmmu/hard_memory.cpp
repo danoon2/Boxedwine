@@ -314,6 +314,14 @@ void writed(U32 address, U32 value) {
     *(U32*)getNativeAddress(KThread::currentThread()->memory, address) = value;
 }
 
+U64 readq(U32 address) {
+    return *(U64*)getNativeAddress(KThread::currentThread()->memory, address);
+}
+
+void writeq(U32 address, U64 value) {
+    *(U64*)getNativeAddress(KThread::currentThread()->memory, address) = value;
+}
+
 void Memory::addCallback(OpCallback func) {
     U64 funcAddress = (U64)func;
 

@@ -48,8 +48,8 @@ void writew(U32 address, U16 value);
 U32 readd(U32 address);
 void writed(U32 address, U32 value);
 
-INLINE U64 readq(U32 address) {return readd(address) | ((U64)readd(address + 4) << 32);}
-INLINE void writeq(U32 address, U64 value) {writed(address, (U32)value); writed(address + 4, (U32)(value >> 32));}
+U64 readq(U32 address);
+void writeq(U32 address, U64 value);
 
 void zeroMemory(U32 address, int len);
 void readMemory(U8* data, U32 address, int len);
