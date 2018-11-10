@@ -81,7 +81,8 @@ void waitThread(KThread* thread) {
     waitThreads.addToBack(&thread->waitThreadNode);
 }
 
-U32 contextTime = 100000;
+S32 contextTime = 100000;
+S32 contextTimeRemaining = 100000;
 #ifdef BOXEDWINE_HAS_SETJMP
 jmp_buf runBlockJump;
 #endif
@@ -100,7 +101,7 @@ void runThreadSlice(KThread* thread) {
 #endif
         do {
             cpu->run();
-        } while (cpu->blockInstructionCount < contextTime && !cpu->yield);	
+        } while (cpu->blockInstructionCount < contextTimeRemaining && !cpu->yield);	
 
 #ifdef BOXEDWINE_HAS_SETJMP
     } else {
@@ -135,50 +136,58 @@ bool runSlice() {
 
     if (scheduledThreads.isEmpty())
         return false;
-
-    KListNode<KThread*>* node = scheduledThreads.front();
-    KThread* currentThread = (KThread*)node->data;
+    
 
     flipFB();	
-    U64 startTime = Platform::getMicroCounter();
-    U64 endTime;
-    U64 diff;
+    U64 elapsedTime = 0;
 
-    sdlUpdateContextForThread(currentThread);    
-    sysCallTime = 0;    
+    contextTimeRemaining = contextTime;
+    while (!scheduledThreads.isEmpty() && elapsedTime<9000) {
+        U64 threadStartTime = Platform::getMicroCounter();
+        KListNode<KThread*>* node = scheduledThreads.front();
+        KThread* currentThread = (KThread*)node->data;
+        sdlUpdateContextForThread(currentThread);    
+        sysCallTime = 0;    
 
-    ChangeThread c(currentThread);
-    static U64 rdtsc;
-    currentThread->cpu->instructionCount = rdtsc;
-    platformRunThreadSlice(currentThread);
-    rdtsc = currentThread->cpu->instructionCount;
+        ChangeThread c(currentThread);
+        static U64 rdtsc;
+        currentThread->cpu->instructionCount = rdtsc;
+        platformRunThreadSlice(currentThread);
+        rdtsc = currentThread->cpu->instructionCount;
 
-    endTime = Platform::getMicroCounter();
-    diff = endTime-startTime;
-        
-    elapsedTimeMIPS+=diff-sysCallTime;
+        U64 threadEndTime = Platform::getMicroCounter();        
+        U64 diff = threadEndTime - threadStartTime;
 
-    if (currentThread->cpu->blockInstructionCount) {
-        if (diff>20000) {
-            contextTime-=2000;
-        } else if (diff<10000) {
-            contextTime+=2000;
+        elapsedTime+=diff;
+
+        elapsedTimeMIPS+=diff;        
+        elapsedInstructionsMIPS+=currentThread->cpu->blockInstructionCount;
+
+        currentThread->userTime+=diff-sysCallTime;
+        currentThread->kernelTime+=sysCallTime;
+
+        if (currentThread->cpu->blockInstructionCount) {
+            contextTimeRemaining = (U32)(contextTime * (10000-elapsedTime) / 10000);
+        }
+        // this is how we signal to delete the current thread, since we can't delete it in the syscall, maybe we should use smart_ptr for threads
+        if (!currentThread->process) {
+            delete currentThread;
+        } else if (!currentThread->waiting) {
+            // make sure we are behind any threads that were recently scheduled
+            node->remove();
+            scheduledThreads.addToBack(node);
         }
     }
-
-    elapsedInstructionsMIPS+=currentThread->cpu->blockInstructionCount;
-
-    currentThread->userTime+=diff;
-    currentThread->kernelTime+=sysCallTime;
-
-    // this is how we signal to delete the current thread, since we can't delete it in the syscall, maybe we should use smart_ptr for threads
-    if (!currentThread->process) {
-        delete currentThread;
-    } else if (!currentThread->waiting) {
-        // make sure we are behind any threads that were recently scheduled
-        node->remove();
-        scheduledThreads.addToBack(node);
+    if (!scheduledThreads.isEmpty()) {
+        if (elapsedTime>11000) {
+            if (contextTime>100000)
+                contextTime-=20000;
+        } else if (elapsedTime<9500) {
+            contextTime+=20000;
+        }
     }
+    //klog("ran slice in %dus %d", (U32)elapsedTime, contextTime);    
+    
     return true;
 }
 

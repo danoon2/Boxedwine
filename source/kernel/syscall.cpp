@@ -1693,6 +1693,7 @@ static const SyscallFunc syscallFunc[] = {
     syscall_sendmmsg    // 345 __NR_sendmmsg 
 };
 
+extern S32 contextTime; // about the # instruction per 10 ms
 void ksyscall(CPU* cpu, U32 eipCount) {
     U32 result;
     
@@ -1701,7 +1702,9 @@ void ksyscall(CPU* cpu, U32 eipCount) {
     } else {
         U64 startTime = Platform::getMicroCounter();
         result = syscallFunc[EAX](cpu, eipCount);
-        sysCallTime+=(Platform::getMicroCounter()-startTime);  
+        U64 diff = Platform::getMicroCounter()-startTime;
+        sysCallTime+=diff;  
+        cpu->blockInstructionCount+=(U32)(contextTime*diff/10000);
     }    
 
     if (result==-K_CONTINUE) {
