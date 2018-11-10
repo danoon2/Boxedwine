@@ -245,7 +245,7 @@ void KProcess::clone(KProcess* from) {
     this->phnum = from->phnum;
     this->entry = from->entry;
 
-    for (int i=0;i<6;i++) {
+    for (i=0;i<6;i++) {
         this->hasSetSeg[i] = from->hasSetSeg[i];
     }
     this->hasSetStackMask = from->hasSetStackMask;

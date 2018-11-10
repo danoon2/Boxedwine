@@ -122,45 +122,45 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;$(VC_IncludePath);..\..\..\..\lib\sdl2\include;$(WindowsSDK_IncludePath)</IncludePath>
+    <IncludePath>..\..\..\..\lib\fluidsynth\src\midi;..\..\..\..\lib\fluidsynth\src\bindings;..\..\..\..\lib\fluidsynth\src\drivers;..\..\..\..\lib\fluidsynth\src\rvoice;..\..\..\..\lib\fluidsynth\src\sfloader;..\..\..\..\lib\fluidsynth\src\synth;..\..\..\..\lib\fluidsynth\src\utils;..\..\..\..\lib\fluidsynth\include;..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;$(VC_IncludePath);..\..\..\..\lib\sdl2\include;$(WindowsSDK_IncludePath)</IncludePath>
     <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
     <RunCodeAnalysis>true</RunCodeAnalysis>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;$(VC_IncludePath);..\..\..\..\lib\sdl2\include;$(WindowsSDK_IncludePath)</IncludePath>
+    <IncludePath>..\..\..\..\lib\fluidsynth\src\midi;..\..\..\..\lib\fluidsynth\src\bindings;..\..\..\..\lib\fluidsynth\src\drivers;..\..\..\..\lib\fluidsynth\src\rvoice;..\..\..\..\lib\fluidsynth\src\sfloader;..\..\..\..\lib\fluidsynth\src\synth;..\..\..\..\lib\fluidsynth\src\utils;..\..\..\..\lib\fluidsynth\include;..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;$(VC_IncludePath);..\..\..\..\lib\sdl2\include;$(WindowsSDK_IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;$(VC_IncludePath);..\..\..\..\lib\sdl2\include;$(WindowsSDK_IncludePath)</IncludePath>
+    <IncludePath>..\..\..\..\lib\fluidsynth\src\midi;..\..\..\..\lib\fluidsynth\src\bindings;..\..\..\..\lib\fluidsynth\src\drivers;..\..\..\..\lib\fluidsynth\src\rvoice;..\..\..\..\lib\fluidsynth\src\sfloader;..\..\..\..\lib\fluidsynth\src\synth;..\..\..\..\lib\fluidsynth\src\utils;..\..\..\..\lib\fluidsynth\include;..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;$(VC_IncludePath);..\..\..\..\lib\sdl2\include;$(WindowsSDK_IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Test|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;$(VC_IncludePath);..\..\..\..\lib\sdl2\include;$(WindowsSDK_IncludePath)</IncludePath>
+    <IncludePath>..\..\..\..\lib\fluidsynth\src\midi;..\..\..\..\lib\fluidsynth\src\bindings;..\..\..\..\lib\fluidsynth\src\drivers;..\..\..\..\lib\fluidsynth\src\rvoice;..\..\..\..\lib\fluidsynth\src\sfloader;..\..\..\..\lib\fluidsynth\src\synth;..\..\..\..\lib\fluidsynth\src\utils;..\..\..\..\lib\fluidsynth\include;..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;$(VC_IncludePath);..\..\..\..\lib\sdl2\include;$(WindowsSDK_IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;$(VC_IncludePath);..\..\..\..\lib\sdl2\include;$(WindowsSDK_IncludePath)</IncludePath>
+    <IncludePath>..\..\..\..\lib\fluidsynth\src\midi;..\..\..\..\lib\fluidsynth\src\bindings;..\..\..\..\lib\fluidsynth\src\drivers;..\..\..\..\lib\fluidsynth\src\rvoice;..\..\..\..\lib\fluidsynth\src\sfloader;..\..\..\..\lib\fluidsynth\src\synth;..\..\..\..\lib\fluidsynth\src\utils;..\..\..\..\lib\fluidsynth\include;..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;$(VC_IncludePath);..\..\..\..\lib\sdl2\include;$(WindowsSDK_IncludePath)</IncludePath>
     <CodeAnalysisRuleSet>NativeRecommendedRules.ruleset</CodeAnalysisRuleSet>
     <RunCodeAnalysis>false</RunCodeAnalysis>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release SDL1|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;$(VC_IncludePath);..\..\..\..\lib\sdl2\include;$(WindowsSDK_IncludePath)</IncludePath>
+    <IncludePath>..\..\..\..\lib\fluidsynth\src\midi;..\..\..\..\lib\fluidsynth\src\bindings;..\..\..\..\lib\fluidsynth\src\drivers;..\..\..\..\lib\fluidsynth\src\rvoice;..\..\..\..\lib\fluidsynth\src\sfloader;..\..\..\..\lib\fluidsynth\src\synth;..\..\..\..\lib\fluidsynth\src\utils;..\..\..\..\lib\fluidsynth\include;..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;$(VC_IncludePath);..\..\..\..\lib\sdl2\include;$(WindowsSDK_IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;$(VC_IncludePath);..\..\..\..\lib\sdl2\include;$(WindowsSDK_IncludePath)</IncludePath>
+    <IncludePath>..\..\..\..\lib\fluidsynth\src\midi;..\..\..\..\lib\fluidsynth\src\bindings;..\..\..\..\lib\fluidsynth\src\drivers;..\..\..\..\lib\fluidsynth\src\rvoice;..\..\..\..\lib\fluidsynth\src\sfloader;..\..\..\..\lib\fluidsynth\src\synth;..\..\..\..\lib\fluidsynth\src\utils;..\..\..\..\lib\fluidsynth\include;..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;$(VC_IncludePath);..\..\..\..\lib\sdl2\include;$(WindowsSDK_IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;$(VC_IncludePath);..\..\..\..\lib\sdl2\include;$(WindowsSDK_IncludePath)</IncludePath>
+    <IncludePath>..\..\..\..\lib\fluidsynth\src\midi;..\..\..\..\lib\fluidsynth\src\bindings;..\..\..\..\lib\fluidsynth\src\drivers;..\..\..\..\lib\fluidsynth\src\rvoice;..\..\..\..\lib\fluidsynth\src\sfloader;..\..\..\..\lib\fluidsynth\src\synth;..\..\..\..\lib\fluidsynth\src\utils;..\..\..\..\lib\fluidsynth\include;..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;$(VC_IncludePath);..\..\..\..\lib\sdl2\include;$(WindowsSDK_IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>BOXEDWINE_RECORDER;BOXEDWINE_DYNAMIC32;BOXEDWINE_DYNAMIC;LOG_SYSCALLS;INCLUDE_CYCLES;BOXEDWINE_HAS_SETJMP;BOXEDWINE_ZLIB;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_MSVC;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_MIDI;BOXEDWINE_RECORDER;BOXEDWINE_DYNAMIC32;BOXEDWINE_DYNAMIC;LOG_SYSCALLS;INCLUDE_CYCLES;BOXEDWINE_HAS_SETJMP;BOXEDWINE_ZLIB;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_MSVC;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -174,7 +174,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>;..\..\..\..\lib\sdl2\lib\x86</AdditionalLibraryDirectories>
-      <AdditionalDependencies>opengl32.lib;..\Debug\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);sdl2.lib;SDL2main.lib</AdditionalDependencies>
+      <AdditionalDependencies>winmm.lib;opengl32.lib;..\Debug\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);sdl2.lib;SDL2main.lib</AdditionalDependencies>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <IgnoreSpecificDefaultLibraries>
@@ -208,7 +208,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>BOXEDWINE_RECORDER;BOXEDWINE_64;BOXEDWINE_ZLIB;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;BOXEDWINE_64BIT_MMU;_NO_DEBUG_HEAP=0;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_MIDI;BOXEDWINE_RECORDER;BOXEDWINE_64;BOXEDWINE_ZLIB;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;BOXEDWINE_64BIT_MMU;_NO_DEBUG_HEAP=0;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -260,7 +260,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>BOXEDWINE_RECORDER;BOXEDWINE_DYNAMIC32;BOXEDWINE_DYNAMIC;SDL2;INCLUDE_CYCLES;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_MIDI;BOXEDWINE_RECORDER;BOXEDWINE_DYNAMIC32;BOXEDWINE_DYNAMIC;SDL2;INCLUDE_CYCLES;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
       <UndefinePreprocessorDefinitions>
@@ -276,7 +276,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>;..\..\..\..\lib\sdl2\lib\x86</AdditionalLibraryDirectories>
-      <AdditionalDependencies>opengl32.lib;..\Release\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);sdl2.lib;SDL2main.lib</AdditionalDependencies>
+      <AdditionalDependencies>winmm.lib;opengl32.lib;..\Release\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);sdl2.lib;SDL2main.lib</AdditionalDependencies>
       <Profile>true</Profile>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <IgnoreSpecificDefaultLibraries>
@@ -289,7 +289,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>INCLUDE_CYCLES;BOXEDWINE_ZLIB;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_MIDI;INCLUDE_CYCLES;BOXEDWINE_ZLIB;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
       <UndefinePreprocessorDefinitions>
@@ -316,7 +316,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>BOXEDWINE_RECORDER;BOXEDWINE_64;BOXEDWINE_ZLIB;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;BOXEDWINE_64BIT_MMU;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_MIDI;BOXEDWINE_RECORDER;BOXEDWINE_64;BOXEDWINE_ZLIB;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;BOXEDWINE_64BIT_MMU;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
       <UndefinePreprocessorDefinitions>
@@ -343,7 +343,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>BOXEDWINE_64;BOXEDWINE_ZLIB;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;BOXEDWINE_VM;BOXEDWINE_64BIT_MMU;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_MIDI;BOXEDWINE_64;BOXEDWINE_ZLIB;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;BOXEDWINE_VM;BOXEDWINE_64BIT_MMU;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
       <UndefinePreprocessorDefinitions>
@@ -374,6 +374,7 @@
     <ClInclude Include="..\..\..\..\include\devinput.h" />
     <ClInclude Include="..\..\..\..\include\devmixer.h" />
     <ClInclude Include="..\..\..\..\include\devnull.h" />
+    <ClInclude Include="..\..\..\..\include\devsequencer.h" />
     <ClInclude Include="..\..\..\..\include\devtty.h" />
     <ClInclude Include="..\..\..\..\include\devurandom.h" />
     <ClInclude Include="..\..\..\..\include\jit.h" />
@@ -400,6 +401,7 @@
     <ClInclude Include="..\..\..\..\include\log.h" />
     <ClInclude Include="..\..\..\..\include\meminfo.h" />
     <ClInclude Include="..\..\..\..\include\memory.h" />
+    <ClInclude Include="..\..\..\..\include\mixer.h" />
     <ClInclude Include="..\..\..\..\include\platform.h" />
     <ClInclude Include="..\..\..\..\include\player.h" />
     <ClInclude Include="..\..\..\..\include\recorder.h" />
@@ -534,6 +536,7 @@
     <ClCompile Include="..\..\..\..\platform\windows\dynamic.cpp" />
     <ClCompile Include="..\..\..\..\platform\windows\memory64.cpp" />
     <ClCompile Include="..\..\..\..\platform\windows\platform.cpp" />
+    <ClCompile Include="..\..\..\..\platform\windows\winmidi.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\common\common_arith.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\common\common_bit.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\common\common_fpu.cpp" />
@@ -578,9 +581,11 @@
     <ClCompile Include="..\..\..\..\source\kernel\devs\devinput.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\devs\devmixer.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\devs\devnull.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\devs\devsequencer.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\devs\devtty.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\devs\devurandom.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\devs\devzero.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\devs\mixer.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\kepoll.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\kfile.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\kfiledescriptor.cpp" />

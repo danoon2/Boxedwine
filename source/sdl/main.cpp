@@ -37,6 +37,7 @@
 #include "devdsp.h"
 #include "sdlwindow.h"
 #include "devmixer.h"
+#include "devsequencer.h"
 #include "sdlwindow.h"
 #include "procselfexe.h"
 #include "../io/fsfilenode.h"
@@ -526,7 +527,7 @@ int boxedmain(int argc, const char **argv) {
     }
     initSDL();
     initWine();
-    gl_init();
+    gl_init();    
     strcpy(pwd, "PWD=");
     strcat(pwd, workingDir);
 
@@ -575,6 +576,7 @@ int boxedmain(int argc, const char **argv) {
 	if (sound) {
 		Fs::addVirtualFile("/dev/dsp", openDevDsp, K__S_IWRITE | K__S_IREAD | K__S_IFCHR, mdev(14, 3), devNode);
 		Fs::addVirtualFile("/dev/mixer", openDevMixer, K__S_IWRITE | K__S_IREAD | K__S_IFCHR, mdev(14, 0), devNode);
+        Fs::addVirtualFile("/dev/sequencer", openDevSequencer, K__S_IWRITE | K__S_IREAD | K__S_IFCHR, mdev(14, 1), devNode);
 	}
 
     argc = argc-i;

@@ -114,4 +114,8 @@ void freeExecutable64kBlock(void* p);
 void* allocExecutable64kBlock();
 #endif
 
+#ifdef BOXEDWINE_MIDI
+void PlayMsg(U8* msg);
+void PlaySysex(U8 * sysex,U32 len);
+#endif
 #endif

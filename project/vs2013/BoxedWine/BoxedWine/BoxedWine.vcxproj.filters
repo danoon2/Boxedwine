@@ -286,6 +286,15 @@
     <ClCompile Include="..\..\..\..\source\util\player.cpp">
       <Filter>source\util</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\devs\devsequencer.cpp">
+      <Filter>source\kernel\devs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\devs\mixer.cpp">
+      <Filter>source\kernel\devs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\platform\windows\winmidi.cpp">
+      <Filter>platform\windows</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -679,6 +688,12 @@
       <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\include\player.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\devsequencer.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\mixer.h">
       <Filter>include</Filter>
     </ClInclude>
   </ItemGroup>
