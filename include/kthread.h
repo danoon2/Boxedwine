@@ -71,6 +71,7 @@ public:
     void signalIllegalInstruction(int code);    
     void clone(KThread* from);
     void setupStack();
+    void setTLS(struct user_desc* desc);
 
     // syscalls
     U32 futex(U32 addr, U32 op, U32 value, U32 pTime) ;
@@ -99,8 +100,7 @@ public:
     U64 kernelTime;
     U32 inSysCall;
     KThread* waitingForSignalToEnd;
-    U64 waitingForSignalToEndMaskToRestore;
-    struct user_desc tls[TLS_ENTRIES];
+    U64 waitingForSignalToEndMaskToRestore;    
     U64 pendingSignals;
     bool waiting;
     U32 waitStartTime;
@@ -133,6 +133,11 @@ private:
     static KThread* runningThread;    
 
     KArray<BoxedPtr<KListNode<KThread*> > > extraWaitNodes;
+    BOXEDWINE_MUTEX extraWaitNodesMutex;
+
+    struct user_desc tls[TLS_ENTRIES];
+    BOXEDWINE_MUTEX tlsMutex;
+
     KListNode<KThread*> waitNode;
 };
 

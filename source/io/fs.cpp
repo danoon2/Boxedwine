@@ -13,6 +13,8 @@
 #include MKDIR_INCLUDE
 
 U32 Fs::nextNodeId=1;
+BOXEDWINE_MUTEX Fs::nextNodeIdMutex;
+
 BoxedPtr<FsNode> Fs::rootNode;
 std::string Fs::nativePathSeperator;
 std::string Fs::rootFileSystem;
@@ -72,6 +74,7 @@ std::string Fs::localPathToRemote(const std::string& path) {
 }
 
 BoxedPtr<FsNode> Fs::addVirtualFile(const std::string& path, OpenVirtualNode func, U32 mode, U32 rdev, const BoxedPtr<FsNode>& parent) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(Fs::nextNodeIdMutex);
     BoxedPtr<FsNode> result = new FsVirtualNode(Fs::nextNodeId++, rdev, path, func, mode, parent);
     parent->addChild(result);
     return result;
@@ -176,6 +179,7 @@ BoxedPtr<FsNode> Fs::getNodeFromLocalPath(const std::string& currentDirectory, c
 }
 
 BoxedPtr<FsNode> Fs::addFileNode(const std::string& path, const std::string& link, bool isDirectory, const BoxedPtr<FsNode>& parent) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(Fs::nextNodeIdMutex);
     BoxedPtr<FsFileNode> result = new FsFileNode(Fs::nextNodeId++, 0, path, link, isDirectory, parent);
     parent->addChild(result);
     return result;

@@ -208,7 +208,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>BOXEDWINE_MIDI;BOXEDWINE_RECORDER;BOXEDWINE_64;BOXEDWINE_ZLIB;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;BOXEDWINE_64BIT_MMU;_NO_DEBUG_HEAP=0;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_MULTI_THREADED;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;BOXEDWINE_64;BOXEDWINE_ZLIB;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;BOXEDWINE_64BIT_MMU;_NO_DEBUG_HEAP=0;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -491,6 +491,8 @@
     <ClInclude Include="..\..\..\..\source\opengl\glfunctions.h" />
     <ClInclude Include="..\..\..\..\source\opengl\glfunctions_ext.h" />
     <ClInclude Include="..\..\..\..\source\opengl\glMarshal.h" />
+    <ClInclude Include="..\..\..\..\source\sdl\mainloop.h" />
+    <ClInclude Include="..\..\..\..\source\sdl\multiThreaded\sdlcallback.h" />
     <ClInclude Include="..\..\..\..\source\sdl\sdlopengl.h" />
     <ClInclude Include="..\..\..\..\source\sdl\sdlwindow.h" />
     <ClInclude Include="..\..\..\..\source\sdl\wnd.h" />
@@ -499,6 +501,7 @@
     <ClInclude Include="..\..\..\..\source\util\klist.h" />
     <ClInclude Include="..\..\..\..\source\util\ringbuffer.h" />
     <ClInclude Include="..\..\..\..\source\util\stringutil.h" />
+    <ClInclude Include="..\..\..\..\source\util\synchronization.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\..\lib\zlib\contrib\minizip\ioapi.c">
@@ -616,8 +619,11 @@
     <ClCompile Include="..\..\..\..\source\opengl\glMarshalVertex.cpp" />
     <ClCompile Include="..\..\..\..\source\opengl\sdl\sdlgl.cpp" />
     <ClCompile Include="..\..\..\..\source\sdl\main.cpp" />
+    <ClCompile Include="..\..\..\..\source\sdl\multiThreaded\sdlcallback.cpp" />
+    <ClCompile Include="..\..\..\..\source\sdl\multiThreaded\threadedMainloop.cpp" />
     <ClCompile Include="..\..\..\..\source\sdl\sdlopengl.cpp" />
     <ClCompile Include="..\..\..\..\source\sdl\sdlwindows.cpp" />
+    <ClCompile Include="..\..\..\..\source\sdl\singleThreaded\mainloop.cpp" />
     <ClCompile Include="..\..\..\..\source\sdl\winedrv.cpp" />
     <ClCompile Include="..\..\..\..\source\test\testCPU.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Use</PrecompiledHeader>
@@ -627,6 +633,7 @@
     <ClCompile Include="..\..\..\..\source\util\player.cpp" />
     <ClCompile Include="..\..\..\..\source\util\recorder.cpp" />
     <ClCompile Include="..\..\..\..\source\util\stringutil.cpp" />
+    <ClCompile Include="..\..\..\..\source\util\synchronization.cpp" />
     <ClCompile Include="..\boxedwine.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>

@@ -49,4 +49,6 @@ public:
     KListNode<KNativeSocketObject*> waitingNode;
 };
 
+bool checkWaitingNativeSockets(int timeout);
+
 #endif

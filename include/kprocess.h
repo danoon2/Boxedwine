@@ -125,6 +125,8 @@ public:
     void signalIO(U32 code, S32 band, FD fd);
     void signalCHLD(U32 code, U32 childPid, U32 sendingUID, S32 exitCode);
     void signalALRM();
+    void printStack();
+    U32 signal(U32 signal);
 
     // syscalls    
     U32 access(const std::string& path, U32 mode);
@@ -194,11 +196,10 @@ public:
     U32 writev(FD handle, U32 iov, S32 iovcnt);
 
     user_desc* getLDT(U32 index);
-    const std::unordered_map<U32, KThread*>& getThreads();
     BoxedPtr<SHM> allocSHM(U32 key, U32 afterIndex);
     BoxedPtr<SHM> getSHM(U32 key);
     void attachSHM(U32 address, const BoxedPtr<SHM>& shm);
-    const std::unordered_map<U32, BoxedPtr<MappedFile> > & getMappedFiles();
+    void printMappedFiles();
 
     U32 id;
     U32 parentId;
@@ -226,18 +227,31 @@ public:
     U32 phnum;
     U32 phentsize;
     U32 entry;
-    U32 eventQueueFD;    
-    U32 usedTLS[TLS_ENTRIES];
+    U32 eventQueueFD;        
     KThread* wakeOnExitOrExec;
     bool hasSetStackMask;
     bool hasSetSeg[6];
 private:
     std::unordered_map<U32, KFileDescriptor*> fds;
+    BOXEDWINE_MUTEX fdsMutex;
+
     std::unordered_map<U32, user_desc> ldt;
+    BOXEDWINE_MUTEX ldtMutex;
+
     std::unordered_map<U32, BoxedPtr<SHM> > privateShm; // key is shmid
+    BOXEDWINE_MUTEX privateShmMutex;
+
     std::unordered_map<U32, BoxedPtr<AttachedSHM> > attachedShm; // key is attached address
+    BOXEDWINE_MUTEX attachedShmMutex;
+
     std::unordered_map<U32, BoxedPtr<MappedFile> > mappedFiles; // key is address
+    BOXEDWINE_MUTEX mappedFilesMutex;
+
     std::unordered_map<U32, KThread*> threads;
+    BOXEDWINE_MUTEX threadsMutex;
+
+    U32 usedTLS[TLS_ENTRIES];
+    BOXEDWINE_MUTEX usedTlsMutex;
 
     KFileDescriptor* openFileDescriptor(const std::string& currentDirectory, const std::string& localPath, U32 accessFlags, U32 descriptorFlags, S32 handle, U32 afterHandle);
     void cleanupProcess();

@@ -339,12 +339,6 @@ U32 DevDsp::ioctl(U32 request) {
 			this->data->dspFmt = AFMT_U8;
             this->data->want.format = AUDIO_U8;
             break;
-#ifdef SDL2
-        case AFMT_FLOAT:
-            this->data->dspFmt = AFMT_FLOAT;
-            this->data->want.format = AUDIO_F32LSB;
-            break;
-#endif
         }
         if (write)
 			writed(IOCTL_ARG1, this->data->dspFmt);
@@ -373,7 +367,7 @@ U32 DevDsp::ioctl(U32 request) {
 		this->data->dspFragSize = 1 << (readd(IOCTL_ARG1) & 0xFFFF);
         return 0;
     case 0x500B: // SNDCTL_DSP_GETFMTS
-        writed(IOCTL_ARG1, AFMT_U8 | AFMT_S16_LE | AFMT_S16_BE | AFMT_S8 | AFMT_U16_BE | AFMT_FLOAT);
+        writed(IOCTL_ARG1, AFMT_U8 | AFMT_S16_LE | AFMT_S16_BE | AFMT_S8 | AFMT_U16_BE);
         return 0;
 
 		//typedef struct audio_buf_info {
@@ -438,7 +432,7 @@ U32 DevDsp::ioctl(U32 request) {
             writed(p, -1); p+=4; // int pid;
             writed(p, PCM_CAP_OUTPUT); p+=4; // int caps;			/* PCM_CAP_INPUT, PCM_CAP_OUTPUT */
             writed(p, 0); p+=4; // int iformats
-            writed(p, AFMT_U8 | AFMT_S16_LE | AFMT_S16_BE | AFMT_S8 | AFMT_U16_BE | AFMT_FLOAT); p+=4; // int oformats;
+            writed(p, AFMT_U8 | AFMT_S16_LE | AFMT_S16_BE | AFMT_S8 | AFMT_U16_BE); p+=4; // int oformats;
             writed(p, 0); p+=4; // int magic;			/* Reserved for internal use */
             writeNativeString(p, ""); p+=64; // oss_cmd_t cmd;		/* Command using the device (if known) */
             writed(p, 0); p+=4; // int card_number;

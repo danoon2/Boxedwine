@@ -40,8 +40,9 @@ std::unordered_map<void*, SHM*> KSystem::shm;
 std::unordered_map<U32, KProcess*> KSystem::processes;
 std::unordered_map<std::string, BoxedPtr<MappedFileCache> > KSystem::fileCache;
 
-U32 getProcessCount() {
-    return (U32)KSystem::getProcesses().size();
+U32 KSystem::getProcessCount() {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(processesMutex);
+    return (U32)KSystem::processes.size();
 }
 
 U32 KSystem::uname(U32 address) {
@@ -109,22 +110,23 @@ U32 KSystem::clock_getres(U32 clk_id, U32 timespecAddress) {
     return 0;
 }
 
-U32 KSystem::tgkill(U32 threadGroupId, U32 threadId, U32 signal) {
+KThread* KSystem::getThreadById(U32 threadId) {
     KThread* result = NULL;
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(processesMutex);
 
     for (auto& p : processes) {
         KProcess* process = p.second;
-        for (auto& t : process->getThreads()) {
-            KThread* thread = t.second;
-            if (thread && threadId==thread->id) {
-                result = thread;
-                break;
-            }
-        }
+        result = process->getThreadById(threadId);
         if (result) {
             break;
         }
     }
+    return result;
+}
+
+U32 KSystem::tgkill(U32 threadGroupId, U32 threadId, U32 signal) {
+    KThread* result = KSystem::getThreadById(threadId);
+
     if (!result) {
         return -K_ESRCH;;
     }
@@ -151,6 +153,8 @@ U32 KSystem::tgkill(U32 threadGroupId, U32 threadId, U32 signal) {
 */
 
 U32 KSystem::sysinfo(U32 address) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(processesMutex);
+
     writed(address, getMilliesSinceStart()/1000); address+=4;
     writed(address, 0); address+=4;
     writed(address, 0); address+=4;
@@ -172,53 +176,34 @@ U32 syscall_ioperm(U32 from, U32 num, U32 turn_on) {
     return 0;
 }
 
-void printStacks() {
-    for (auto& n : KSystem::getProcesses()) {
+void KSystem::printStacks() {
+    for (auto& n : KSystem::processes) {
         KProcess* process = n.second;
 
         klog("process %X %s%s", process->id, process->terminated?"TERMINATED ":"", process->commandLine.c_str());
-        for (auto& t : process->getThreads()) {
-            KThread* thread = t.second;
-            CPU* cpu=thread->cpu;
-
-            klog("  thread %X %s", thread->id, thread->waiting?"WAITING":"RUNNING");
-            if (thread->waiting) {
-                  
-            } else {
-                std::string name = process->getModuleName(cpu->seg[CS].address+cpu->eip.u32);
-
-                klog("    0x%08d %s", process->getModuleEip(cpu->seg[CS].address+cpu->eip.u32), name.length()?name.c_str():"Unknown");
-            }
-            cpu->walkStack(cpu->eip.u32, EBP, 6);
-        }
+        process->printStack();
     }
 }
 
 U32 KSystem::kill(S32 pid, U32 signal) {
     KProcess* process = 0;
 
-    if (pid>0)
+    if (pid>0) {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(processesMutex);
         process = KSystem::processes[pid];
-    else {
+    } else {
         kpanic("kill with pid = %d not implemented", pid);
     }
     if (!process)
         return -K_ESRCH;
     if (signal!=0) {
-        for (auto& t : process->getThreads()) {
-            KThread* thread = t.second;
-
-            if (((U64)1 << (signal-1)) & ~(thread->inSignal?thread->inSigMask:thread->sigMask)) {
-                return thread->signal(signal, true);
-            }
-        }
-        // didn't find a thread that could handle it
-        process->pendingSignals |= ((U64)1 << (signal-1));
+        return process->signal(signal);
     }
     return 0;
 }
 
 U32 KSystem::waitpid(S32 pid, U32 statusAddress, U32 options) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(processesMutex);
     KProcess* process = 0;
     U32 result;
     KThread* thread = KThread::currentThread();
@@ -291,10 +276,12 @@ U32 KSystem::times(U32 buf) {
 U32 KSystem::setpgid(U32 pid, U32 gpid) {	
     KProcess* process;
 
-    if (pid==0)
+    if (pid==0) {
         process = KThread::currentThread()->process;
-    else
+    } else {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(processesMutex);
         process = processes[pid];
+    }
     if (!process) {
         return 0; // :TODO:
         return -K_ESRCH;
@@ -311,8 +298,10 @@ U32 KSystem::getpgid(U32 pid) {
     KProcess* process;
     if (pid==0)
         process = KThread::currentThread()->process;
-    else
+    else {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(processesMutex);
         process = processes[pid];
+    }
     if (!process)
         return -K_ESRCH;
     return process->groupId;
@@ -553,6 +542,7 @@ U32 KSystem::prlimit64(U32 pid, U32 resource, U32 newlimit, U32 oldlimit) {
     if (pid==0) {
         process = KThread::currentThread()->process;
     } else {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(processesMutex);
         process = processes[pid];
         if (!process)
             return -K_ESRCH;
@@ -679,6 +669,7 @@ void KSystem::eraseFileCache(const std::string& name) {
 }
 
 KProcess* KSystem::getProcess(U32 id) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(processesMutex);
     if (KSystem::processes.count(id))
         return KSystem::processes[id];
     return NULL;
@@ -690,14 +681,24 @@ BoxedPtr<MappedFileCache> KSystem::getFileCache(const std::string& name) {
     return NULL;
 }
 
-const std::unordered_map<U32, KProcess*>& KSystem::getProcesses() {
-    return KSystem::processes;
-}
-
 void KSystem::eraseProcess(U32 id) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(processesMutex);
     KSystem::processes.erase(id);
 }
 
 void KSystem::addProcess(U32 id, KProcess* process) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(processesMutex);
     KSystem::processes[id] = process;
+}
+
+U32 KSystem::getRunningProcessCount() {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(processesMutex);
+    U32 count = 0;
+    for (auto& n : KSystem::processes) {
+        KProcess* openProcess = n.second;
+        if (openProcess && !openProcess->isStopped() && !openProcess->isTerminated()) {
+            count++;
+        }
+    }
+    return count;
 }

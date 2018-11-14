@@ -164,4 +164,88 @@ void Recorder::close() {
     fclose(this->file);
 }
 
+void BOXEDWINE_RECORDER_HANDLE_MOUSE_MOVE(void* p) {
+    SDL_Event* e = (SDL_Event*)p;
+    if (Recorder::instance) {
+        Recorder::instance->onMouseMove(e->motion.x, e->motion.y);
+    }
+}
+
+void BOXEDWINE_RECORDER_HANDLE_MOUSE_BUTTON_DOWN(void* p) {
+    SDL_Event* e = (SDL_Event*)p;
+    if (Recorder::instance) {
+        if (e->button.button==SDL_BUTTON_LEFT) {
+            Recorder::instance->onMouseButton(1, 0, e->motion.x, e->motion.y);
+        } else if (e->button.button == SDL_BUTTON_MIDDLE) {
+            Recorder::instance->onMouseButton(1, 2, e->motion.x, e->motion.y);
+        } else if (e->button.button == SDL_BUTTON_RIGHT) {
+            Recorder::instance->onMouseButton(1, 1, e->motion.x, e->motion.y);
+        }
+    }
+}
+
+void BOXEDWINE_RECORDER_HANDLE_MOUSE_BUTTON_UP(void* p) {
+    SDL_Event* e = (SDL_Event*)p;
+    if (Recorder::instance) {
+        if (e->button.button==SDL_BUTTON_LEFT) {
+            Recorder::instance->onMouseButton(0, 0, e->motion.x, e->motion.y);
+        } else if (e->button.button == SDL_BUTTON_MIDDLE) {
+            Recorder::instance->onMouseButton(0, 2, e->motion.x, e->motion.y);
+        } else if (e->button.button == SDL_BUTTON_RIGHT) {
+            Recorder::instance->onMouseButton(0, 1, e->motion.x, e->motion.y);
+        }
+    }
+}
+
+bool BOXEDWINE_RECORDER_HANDLE_KEY_DOWN(void* p) {
+    SDL_Event* e = (SDL_Event*)p;
+    if (Recorder::instance) {
+        if (e->key.keysym.sym == SDLK_F11) {
+            Recorder::instance->takeScreenShot();
+            return true;
+        } else {
+            Recorder::instance->onKey(e->key.keysym.sym, 1);
+        }
+    }
+    return false;
+}
+
+bool BOXEDWINE_RECORDER_HANDLE_KEY_UP(void* p) {
+    SDL_Event* e = (SDL_Event*)p;
+    if (Recorder::instance) {
+        if (e->key.keysym.sym == SDLK_F11) {
+            return true;
+        }    
+        Recorder::instance->onKey(e->key.keysym.sym, 0);
+    }
+    return false;
+}
+
+void BOXEDWINE_RECORDER_QUIT() {
+    if (Recorder::instance) {
+        Recorder::instance->close();
+    }
+    if (Player::instance) {
+        if (Player::instance->nextCommand=="DONE") {
+            klog("script: success");
+        } else {
+            klog("script: failed");
+        }
+    }
+}
+
+void BOXEDWINE_RECORDER_RUN_SLICE() {
+    if (Player::instance) {
+        Player::instance->runSlice();
+    }
+}
+
+void BOXEDWINE_RECORDER_INIT(std::string root, std::string zip, std::string working, const char **argv, U32 argc) {
+    if (Recorder::instance) {
+        Recorder::instance->initCommandLine(root, zip, working, argv, argc);
+    } 
+    if (Player::instance) {
+        Player::instance->initCommandLine(root, zip, working, argv, argc);
+    }
+}
 #endif

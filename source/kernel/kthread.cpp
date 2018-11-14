@@ -142,11 +142,17 @@ bool KThread::isLdtEmpty(struct user_desc* desc) {
 
 struct user_desc* KThread::getLDT(U32 index) {
     if (index>=TLS_ENTRY_START_INDEX && index<TLS_ENTRIES+TLS_ENTRY_START_INDEX) {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(tlsMutex);
         return &this->tls[index-TLS_ENTRY_START_INDEX];
     } else if (index<LDT_ENTRIES) {
         return this->process->getLDT(index);
     }
     return NULL;
+}
+
+void KThread::setTLS(struct user_desc* desc) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(tlsMutex);
+    this->tls[desc->entry_number-TLS_ENTRY_START_INDEX] = *desc;   
 }
 
 U32 KThread::signal(U32 signal, bool wait) {
@@ -905,12 +911,14 @@ KListNode<KThread*>* KThread::getWaitNofiyNode() {
     if (!this->waitNode.isInList())
         return &this->waitNode;
     BoxedPtr<KListNode<KThread*> > p = new KListNode<KThread*>(this);
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(extraWaitNodesMutex);
     this->extraWaitNodes.add(p);
     return p.get();
 }
 
 void KThread::clearWaitNofifyNodes() {
     this->waitNode.remove();
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(extraWaitNodesMutex);
     this->extraWaitNodes.for_each([](BoxedPtr<KListNode<KThread*> > & node) {
         node->remove();
     });

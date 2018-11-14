@@ -22,45 +22,10 @@
 #include "sdlwindow.h"
 #include "kscheduler.h"
 #include "crc.h"
-
-#ifdef BOXEDWINE_VM
-extern U32 sdlCustomEvent;
-extern SDL_threadID sdlMainThreadId;
-
-static struct SdlCallback* freeSdlCallbacks;
-static SDL_mutex* freeSdlCallbacksMutex;
-
-struct SdlCallback* allocSdlCallback(struct KThread* thread) {
-    if (!freeSdlCallbacksMutex)
-        freeSdlCallbacksMutex = SDL_CreateMutex();
-    SDL_LockMutex(freeSdlCallbacksMutex);
-    if (freeSdlCallbacks) {
-        struct SdlCallback* result = freeSdlCallbacks;
-        freeSdlCallbacks = freeSdlCallbacks->next;
-        result->thread = thread;
-        SDL_UnlockMutex(freeSdlCallbacksMutex);
-        return result;
-    } else {
-        struct SdlCallback* result = malloc(sizeof(struct SdlCallback));
-        memset(result, 0, sizeof(struct SdlCallback));
-        result->sdlEvent.type = sdlCustomEvent;
-        result->thread = thread;
-        result->sdlEvent.user.data1 = result;
-        result->mutex = SDL_CreateMutex();
-        result->cond = SDL_CreateCond();
-        SDL_UnlockMutex(freeSdlCallbacksMutex);
-        return result;
-    }    
-}
-
-void freeSdlCallback(struct SdlCallback* callback) {
-    SDL_LockMutex(freeSdlCallbacksMutex);
-    callback->next = freeSdlCallbacks;
-    freeSdlCallbacks = callback;
-    SDL_UnlockMutex(freeSdlCallbacksMutex);
-}
-
-#endif
+#include "devfb.h"
+#include "devinput.h"
+#include "kunixsocket.h"
+#include "multiThreaded\sdlcallback.h"
 
 int bits_per_pixel = 32;
 int default_horz_res = 800;
@@ -424,26 +389,7 @@ SDL_Surface* surface;
 void loadExtensions();
 #endif
 
-#ifdef BOXEDWINE_VM
-static void mainThreadDeleteContext(struct SdlCallback* callback) {
-    sdlDeleteContext(callback->thread, callback->iArg1);
-}
-#endif
-
-void sdlDeleteContext(KThread* thread, U32 context) {
-#ifdef BOXEDWINE_VM
-    if (0) {
-        struct SdlCallback* callback = allocSdlCallback(thread);
-        callback->func = mainThreadDeleteContext;
-        callback->iArg1 = context;
-        BOXEDWINE_LOCK(thread, callback->mutex);
-        SDL_PushEvent(&callback->sdlEvent);
-        BOXEDWINE_WAIT(thread, callback->cond, callback->mutex);
-        BOXEDWINE_UNLOCK(thread, callback->mutex);
-        freeSdlCallback(callback);
-        return;
-    }
-#endif
+void sdlDeleteContext(KThread* thread, U32 context) {    
 #ifdef SDL2
     KThread* contextThread = thread->process->getThreadById(context);
     if (contextThread && contextThread->glContext) {
@@ -465,12 +411,6 @@ void sdlUpdateContextForThread(KThread* thread) {
     }
 #endif
 }
-
-#ifdef BOXEDWINE_VM
-static void mainMakeCurrent(struct SdlCallback* callback) {
-    callback->result = sdlMakeCurrent(callback->thread, callback->iArg1);
-}
-#endif
 
 U32 sdlMakeCurrent(KThread* thread, U32 arg) {
 #ifdef SDL2
@@ -497,79 +437,29 @@ U32 sdlMakeCurrent(KThread* thread, U32 arg) {
 #endif
 }
 
-#ifdef BOXEDWINE_VM
-static void mainShareLists(struct SdlCallback* callback) {
-    callback->result = sdlShareLists(callback->thread, callback->iArg1, callback->iArg2);
-}
-#endif
-
 U32 sdlShareLists(KThread* thread, U32 srcContext, U32 destContext) {
-#ifdef BOXEDWINE_VM
-    if (0) {
-        struct SdlCallback* callback = allocSdlCallback(thread);
-        U32 result;
-
-        callback->func = mainShareLists;
-        callback->iArg1 = srcContext;
-        callback->iArg2 = destContext;
-        BOXEDWINE_LOCK(thread, callback->mutex);
-        SDL_PushEvent(&callback->sdlEvent);
-        BOXEDWINE_WAIT(thread, callback->cond, callback->mutex);
-        BOXEDWINE_UNLOCK(thread, callback->mutex);
-        result = callback->result;
-        freeSdlCallback(callback);        
-        return result;
-    }
-#endif
-    {
 #ifdef SDL2
-        KThread* srcThread = thread->process->getThreadById(srcContext);
-        KThread* destThread = thread->process->getThreadById(destContext);
-        if (srcThread && destThread && srcThread->glContext && destThread->glContext) {
-            if (destThread->currentContext) {
-                kpanic("Wasn't expecting the OpenGL context that will share a list to already be current");
-            }
-            if (srcThread->currentContext != sdlCurrentContext) {
-                kpanic("Something went wrong with sdlShareLists");
-            }
-            //SDL_GL_DeleteContext(destThread->glContext);
-            //SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1); 
-            //destThread->glContext = SDL_GL_CreateContext(sdlWindow);
-            //SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 0); 
-            return 1;
+    KThread* srcThread = thread->process->getThreadById(srcContext);
+    KThread* destThread = thread->process->getThreadById(destContext);
+    if (srcThread && destThread && srcThread->glContext && destThread->glContext) {
+        if (destThread->currentContext) {
+            kpanic("Wasn't expecting the OpenGL context that will share a list to already be current");
         }
-#endif
-        return 0;
+        if (srcThread->currentContext != sdlCurrentContext) {
+            kpanic("Something went wrong with sdlShareLists");
+        }
+        //SDL_GL_DeleteContext(destThread->glContext);
+        //SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1); 
+        //destThread->glContext = SDL_GL_CreateContext(sdlWindow);
+        //SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 0); 
+        return 1;
     }
-}
-
-#ifdef BOXEDWINE_VM
-static void mainCreateOpenglWindow(struct SdlCallback* callback) {
-    callback->result = sdlCreateOpenglWindow(callback->thread, callback->pArg1, callback->iArg1, callback->iArg2, callback->iArg3, callback->iArg4);
-}
 #endif
+    return 0;
+}
 
 U32 sdlCreateOpenglWindow(KThread* thread, Wnd* wnd, int major, int minor, int profile, int flags) {
-#ifdef BOXEDWINE_VM
-    if (SDL_ThreadID()!=sdlMainThreadId) {
-        struct SdlCallback* callback = allocSdlCallback(thread);
-        U32 result;
-
-        callback->func = mainCreateOpenglWindow;
-        callback->pArg1 = wnd;
-        callback->iArg1 = major;
-        callback->iArg2 = minor;
-        callback->iArg3 = profile;
-        callback->iArg4 = flags;
-        BOXEDWINE_LOCK(thread, callback->mutex);
-        SDL_PushEvent(&callback->sdlEvent);
-        BOXEDWINE_WAIT(thread, callback->cond, callback->mutex);
-        BOXEDWINE_UNLOCK(thread, callback->mutex);
-        result = callback->result;
-        freeSdlCallback(callback);        
-        return result;
-    }
-#endif
+    DISPATCH_MAIN_THREAD_BLOCK_BEGIN_RETURN
 #ifdef SDL2
     if (wnd->openGlContext) {
         if (thread->glContext) {
@@ -629,27 +519,11 @@ U32 sdlCreateOpenglWindow(KThread* thread, Wnd* wnd, int major, int minor, int p
     SDL_SetVideoMode(wnd->windowRect.right-wnd->windowRect.left, wnd->windowRect.bottom-wnd->windowRect.top, wnd->pixelFormat->cDepthBits, SDL_OPENGL);        
     return 0x200;
 #endif
+    DISPATCH_MAIN_THREAD_BLOCK_END
 }
-
-#ifdef BOXEDWINE_VM
-static void mainScreenResized(struct SdlCallback* callback) {
-    sdlScreenResized(callback->thread);
-}
-#endif
 
 void sdlScreenResized(KThread* thread) {
-#ifdef BOXEDWINE_VM
-    if (SDL_ThreadID()!=sdlMainThreadId) {
-        struct SdlCallback* callback = allocSdlCallback(thread);
-        callback->func = mainScreenResized;
-        BOXEDWINE_LOCK(thread, callback->mutex);
-        SDL_PushEvent(&callback->sdlEvent);
-        BOXEDWINE_WAIT(thread, callback->cond, callback->mutex);
-        BOXEDWINE_UNLOCK(thread, callback->mutex);
-        freeSdlCallback(callback);        
-        return;
-    }
-#endif
+    DISPATCH_MAIN_THREAD_BLOCK_BEGIN
 #ifdef SDL2
     if (thread->glContext)
         SDL_SetWindowSize(sdlWindow, screenCx, screenCy);
@@ -658,6 +532,7 @@ void sdlScreenResized(KThread* thread) {
 #else
     displayChanged(thread);
 #endif
+    DISPATCH_MAIN_THREAD_BLOCK_END
 }
 
 static void displayChanged(KThread* thread) {
@@ -681,25 +556,7 @@ static void displayChanged(KThread* thread) {
 #endif
 }
 
-#ifdef BOXEDWINE_VM
-static void mainSwapBuffers(struct SdlCallback* callback) {
-    sdlSwapBuffers(callback->thread);
-}
-#endif
-
 void sdlSwapBuffers(KThread* thread) {
-#ifdef BOXEDWINE_VM
-    if (0) {
-        struct SdlCallback* callback = allocSdlCallback(thread);
-        callback->func = mainSwapBuffers;
-        BOXEDWINE_LOCK(thread, callback->mutex);
-        SDL_PushEvent(&callback->sdlEvent);
-        BOXEDWINE_WAIT(thread, callback->cond, callback->mutex);
-        BOXEDWINE_UNLOCK(thread, callback->mutex);
-        freeSdlCallback(callback);        
-        return;
-    }
-#endif
 #ifdef SDL2
     SDL_GL_SwapWindow(sdlWindow);
 #else
@@ -711,176 +568,112 @@ void sdlSwapBuffers(KThread* thread) {
 static S8 sdlBuffer[1024*1024*4];
 #endif
 
-#ifdef BOXEDWINE_VM
-static void mainWndBlt(struct SdlCallback* callback) {
-    wndBlt(callback->thread, callback->iArg1, callback->iArg2, callback->iArg3, callback->iArg4, callback->iArg5, callback->iArg6, callback->iArg7);
-}
-#endif
-
-#ifdef BOXEDWINE_VM
-static SDL_mutex* wndBltMutex;
-#endif
-
 void wndBlt(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32 yOrg, U32 width, U32 height, U32 rect) {
+    BOXEDWINE_CRITICAL_SECTION
 #ifdef SDL2
     if (!sdlRenderer) {
         return;
     }
 #endif
-#ifdef BOXEDWINE_VM
-    if (0) {
-        struct SdlCallback* callback = allocSdlCallback(thread);
-        callback->func = mainWndBlt;
-        callback->iArg1 = hwnd;
-        callback->iArg2 = bits;
-        callback->iArg3 = xOrg;
-        callback->iArg4 = yOrg;
-        callback->iArg5 = width;
-        callback->iArg6 = height;
-        callback->iArg7 = rect;
-        BOXEDWINE_LOCK(thread, callback->mutex);
-        SDL_PushEvent(&callback->sdlEvent);
-        BOXEDWINE_WAIT(thread, callback->cond, callback->mutex);
-        BOXEDWINE_UNLOCK(thread, callback->mutex);
-        freeSdlCallback(callback);        
+    Wnd* wnd = getWnd(hwnd);
+    wRECT r;
+    U32 y;    
+    int bpp = bits_per_pixel==8?32:bits_per_pixel;
+    int pitch = (width*((bpp+7)/8)+3) & ~3;
+    static int i;
+
+    readRect(thread, rect, &r);
+
+    if (!firstWindowCreated) {
+        displayChanged(thread);
+    }
+#ifndef SDL2
+    if (!surface)
         return;
-    }
-    if (!wndBltMutex) {
-        wndBltMutex = SDL_CreateMutex();
-    }
-    BOXEDWINE_LOCK(thread, wndBltMutex);
 #endif
+    if (wnd)
+#ifdef SDL2
     {
-        Wnd* wnd = getWnd(hwnd);
-        wRECT r;
-        U32 y;    
-        int bpp = bits_per_pixel==8?32:bits_per_pixel;
-        int pitch = (width*((bpp+7)/8)+3) & ~3;
-        static int i;
-
-        readRect(thread, rect, &r);
-
-        if (!firstWindowCreated) {
-            displayChanged(thread);
-        }
-    #ifndef SDL2
-        if (!surface)
-            return;
-    #endif
-        if (wnd)
-    #ifdef SDL2
-        {
-            SDL_Texture *sdlTexture = NULL;
+        SDL_Texture *sdlTexture = NULL;
         
-            if (wnd->sdlTexture) {
-                sdlTexture = (SDL_Texture*)wnd->sdlTexture;
-                if (sdlTexture && (wnd->sdlTextureHeight != height || wnd->sdlTextureWidth != width)) {
-                    SDL_DestroyTexture(sdlTexture);
-                    wnd->sdlTexture = NULL;
-                    sdlTexture = NULL;
-                }
+        if (wnd->sdlTexture) {
+            sdlTexture = (SDL_Texture*)wnd->sdlTexture;
+            if (sdlTexture && (wnd->sdlTextureHeight != height || wnd->sdlTextureWidth != width)) {
+                SDL_DestroyTexture(sdlTexture);
+                wnd->sdlTexture = NULL;
+                sdlTexture = NULL;
             }
-            if (!sdlTexture) {
-                U32 format = SDL_PIXELFORMAT_ARGB8888;
-                if (bpp == 16) {
-                    format = SDL_PIXELFORMAT_RGB565;
-                } else if (bpp == 15) {
-                    format = SDL_PIXELFORMAT_RGB555;
-                }
-                sdlTexture = SDL_CreateTexture(sdlRenderer, format, SDL_TEXTUREACCESS_STREAMING, width, height);
-                wnd->sdlTexture = sdlTexture;
-                wnd->sdlTextureHeight = height;
-                wnd->sdlTextureWidth = width;
-            }
-
-            for (y = 0; y < height; y++) {
-                memcopyToNative(bits+(height-y-1)*pitch, sdlBuffer+y*pitch, pitch);
-            } 
-            if (bits_per_pixel!=32) {
-                // SDL_ConvertPixels(width, height, )
-            }
-            SDL_UpdateTexture(sdlTexture, NULL, sdlBuffer, pitch);
         }
-    #else		
-        {     
-            SDL_Surface* s = NULL;
-            if (wnd->surface) {
-                s = wnd->sdlSurface;
-                if (s && (s->w!=width || s->h!=height || s->format->BitsPerPixel!=bits_per_pixel)) {
-                    SDL_FreeSurface(s);
-                    wnd->sdlSurface = NULL;
-                    s = NULL;
-                }
+        if (!sdlTexture) {
+            U32 format = SDL_PIXELFORMAT_ARGB8888;
+            if (bpp == 16) {
+                format = SDL_PIXELFORMAT_RGB565;
+            } else if (bpp == 15) {
+                format = SDL_PIXELFORMAT_RGB555;
             }
-            if (!s) {
-                U32 rMask = 0x00FF0000;
-                U32 gMask = 0x0000FF00;
-                U32 bMask = 0x000000FF;
+            sdlTexture = SDL_CreateTexture(sdlRenderer, format, SDL_TEXTUREACCESS_STREAMING, width, height);
+            wnd->sdlTexture = sdlTexture;
+            wnd->sdlTextureHeight = height;
+            wnd->sdlTextureWidth = width;
+        }
 
-                if (bits_per_pixel==15) {
-                    rMask = 0x7C00;
-                    gMask = 0x03E0;
-                    bMask = 0x001F;
-                } else if (bits_per_pixel == 16) {
-                    rMask = 0xF800;
-                    gMask = 0x07E0;
-                    bMask = 0x001F;
-                }
-                s = SDL_CreateRGBSurface(0, width, height, bits_per_pixel, rMask, gMask, bMask, 0);
-                wnd->sdlSurface = s;
-            }
-            if (SDL_MUSTLOCK(s)) {
-                SDL_LockSurface(s);
-            }
-            for (y = 0; y < height; y++) {
-                memcopyToNative(thread, bits+(height-y-1)*pitch, (U8*)(s->pixels)+y*s->pitch, pitch);
-            }   
-            if (SDL_MUSTLOCK(s)) {
-                SDL_UnlockSurface(s);
-            }      
-        }	
-    #endif
+        for (y = 0; y < height; y++) {
+            memcopyToNative(bits+(height-y-1)*pitch, sdlBuffer+y*pitch, pitch);
+        } 
+        if (bits_per_pixel!=32) {
+            // SDL_ConvertPixels(width, height, )
+        }
+        SDL_UpdateTexture(sdlTexture, NULL, sdlBuffer, pitch);
     }
-#ifdef BOXEDWINE_VM
-    BOXEDWINE_UNLOCK(thread, wndBltMutex);
+#else		
+    {     
+        SDL_Surface* s = NULL;
+        if (wnd->surface) {
+            s = wnd->sdlSurface;
+            if (s && (s->w!=width || s->h!=height || s->format->BitsPerPixel!=bits_per_pixel)) {
+                SDL_FreeSurface(s);
+                wnd->sdlSurface = NULL;
+                s = NULL;
+            }
+        }
+        if (!s) {
+            U32 rMask = 0x00FF0000;
+            U32 gMask = 0x0000FF00;
+            U32 bMask = 0x000000FF;
+
+            if (bits_per_pixel==15) {
+                rMask = 0x7C00;
+                gMask = 0x03E0;
+                bMask = 0x001F;
+            } else if (bits_per_pixel == 16) {
+                rMask = 0xF800;
+                gMask = 0x07E0;
+                bMask = 0x001F;
+            }
+            s = SDL_CreateRGBSurface(0, width, height, bits_per_pixel, rMask, gMask, bMask, 0);
+            wnd->sdlSurface = s;
+        }
+        if (SDL_MUSTLOCK(s)) {
+            SDL_LockSurface(s);
+        }
+        for (y = 0; y < height; y++) {
+            memcopyToNative(thread, bits+(height-y-1)*pitch, (U8*)(s->pixels)+y*s->pitch, pitch);
+        }   
+        if (SDL_MUSTLOCK(s)) {
+            SDL_UnlockSurface(s);
+        }      
+    }	
 #endif
 }
-
-#ifdef BOXEDWINE_VM
-static void mainDrawAllWindows(struct SdlCallback* callback) {
-    sdlDrawAllWindows(callback->thread, callback->iArg1, callback->iArg2);
-}
-#endif
-
-#ifdef BOXEDWINE_VM
-static SDL_mutex* drawAllMutex;
-#endif
 
 U32 sdlUpdated;
 
 void sdlDrawAllWindows(KThread* thread, U32 hWnd, int count) {    
+    BOXEDWINE_CRITICAL_SECTION
     int i;
 #ifdef SDL2
     if (!sdlRenderer)
         return;
-#endif
-#ifdef BOXEDWINE_VM
-    if (0) {
-        struct SdlCallback* callback = allocSdlCallback(thread);
-        callback->func = mainDrawAllWindows;
-        callback->iArg1 = hWnd;
-        callback->iArg2 = count;
-        BOXEDWINE_LOCK(thread, callback->mutex);
-        SDL_PushEvent(&callback->sdlEvent);
-        BOXEDWINE_WAIT(thread, callback->cond, callback->mutex);
-        BOXEDWINE_UNLOCK(thread, callback->mutex);
-        freeSdlCallback(callback);        
-        return;
-    }
-    if (!drawAllMutex) {
-        drawAllMutex = SDL_CreateMutex();
-    }
-    BOXEDWINE_LOCK(thread, drawAllMutex);
 #endif
 #ifdef SDL2
     SDL_SetRenderDrawColor(sdlRenderer, 58, 110, 165, 255 );
@@ -956,27 +749,7 @@ void readRect(KThread* thread, U32 address, wRECT* rect) {
     }
 }
 
-#ifdef BOXEDWINE_VM
-static void mainSdlShowWnd(struct SdlCallback* callback) {
-    sdlShowWnd(callback->thread, callback->pArg1, callback->iArg1);
-}
-#endif
-
 void sdlShowWnd(KThread* thread, Wnd* wnd, U32 bShow) {
-#ifdef BOXEDWINE_VM
-    if (0) {
-        struct SdlCallback* callback = allocSdlCallback(thread);
-        callback->func = mainSdlShowWnd;
-        callback->pArg1 = wnd;
-        callback->iArg1 = bShow;
-        BOXEDWINE_LOCK(thread, callback->mutex);
-        SDL_PushEvent(&callback->sdlEvent);
-        BOXEDWINE_WAIT(thread, callback->cond, callback->mutex);
-        BOXEDWINE_UNLOCK(thread, callback->mutex);
-        freeSdlCallback(callback);        
-        return;
-    }
-#endif
 #ifdef SDL2
     if (!bShow && wnd && wnd->sdlTexture) {
         SDL_DestroyTexture((SDL_Texture*)wnd->sdlTexture);
@@ -998,33 +771,11 @@ void updateScreen() {
     // this mechanism probably won't work well if multiple threads are updating the screen, there could be flickering
 }
 
-#ifdef BOXEDWINE_VM
-static void mainGetGammaRamp(struct SdlCallback* callback) {
-    callback->result = sdlGetGammaRamp(callback->thread, callback->iArg1);
-}
-#endif
-
 U32 sdlGetGammaRamp(KThread* thread, U32 ramp) {
     U16 r[256];
     U16 g[256];
     U16 b[256];
 
-#ifdef BOXEDWINE_VM
-    if (0) {
-        struct SdlCallback* callback = allocSdlCallback(thread);
-        U32 result;
-
-        callback->func = mainGetGammaRamp;
-        callback->iArg1 = ramp;
-        BOXEDWINE_LOCK(thread, callback->mutex);
-        SDL_PushEvent(&callback->sdlEvent);
-        BOXEDWINE_WAIT(thread, callback->cond, callback->mutex);
-        result = callback->result;
-        BOXEDWINE_UNLOCK(thread, callback->mutex);
-        freeSdlCallback(callback);        
-        return result;
-    }
-#endif
 #ifdef SDL2
     if (SDL_GetWindowGammaRamp(sdlWindow, r, g, b)==0) {
 #else
@@ -1052,29 +803,7 @@ void sdlGetPalette(KThread* thread, U32 start, U32 count, U32 entries) {
     }
 }
 
-#ifdef BOXEDWINE_VM
-static void mainGetNearestColor(struct SdlCallback* callback) {
-    callback->result = sdlGetNearestColor(callback->thread, callback->iArg1);
-}
-#endif
-
 U32 sdlGetNearestColor(KThread* thread, U32 color) {
-#ifdef BOXEDWINE_VM
-    if (0) {
-        struct SdlCallback* callback = allocSdlCallback(thread);
-        U32 result;
-
-        callback->func = mainGetNearestColor;
-        callback->iArg1 = color;
-        BOXEDWINE_LOCK(thread, callback->mutex);
-        SDL_PushEvent(&callback->sdlEvent);
-        BOXEDWINE_WAIT(thread, callback->cond, callback->mutex);
-        result = callback->result;
-        BOXEDWINE_UNLOCK(thread, callback->mutex);
-        freeSdlCallback(callback);        
-        return result;
-    }
-#endif
 #ifdef SDL2
     return SDL_MapRGB(SDL_GetWindowSurface(sdlWindow)->format, color & 0xFF, (color >> 8) & 0xFF, (color >> 16) & 0xFF);
 #else
@@ -1169,8 +898,6 @@ typedef struct tagINPUT
 #define MOUSEEVENTF_VIRTUALDESK     0x4000
 #define MOUSEEVENTF_ABSOLUTE        0x8000
 
-U32 unixsocket_write_native_nowait(const BoxedPtr<KObject>& obj, U8* value, int len);
-
 void writeLittleEndian_4(U8* buffer, U32 value) {
     buffer[0] = (U8)value;
     buffer[1] = (U8)(value >> 8);
@@ -1212,7 +939,7 @@ int sdlMouseMouse(int x, int y) {
                 writeLittleEndian_4(buffer+20, getMilliesSinceStart()); // time
                 writeLittleEndian_4(buffer+24, 0); // dwExtraInfo
 
-                unixsocket_write_native_nowait(fd->kobject, buffer, 28);
+                KUnixSocketObject::unixsocket_write_native_nowait(fd->kobject, buffer, 28);
             }
         }
     }
@@ -1243,7 +970,7 @@ int sdlMouseWheel(int amount, int x, int y) {
                 writeLittleEndian_4(buffer+20, getMilliesSinceStart()); // time
                 writeLittleEndian_4(buffer+24, 0); // dwExtraInfo
 
-                unixsocket_write_native_nowait(fd->kobject, buffer, 28);
+                KUnixSocketObject::unixsocket_write_native_nowait(fd->kobject, buffer, 28);
             }
         }
     }
@@ -1288,7 +1015,7 @@ int sdlMouseButton(U32 down, U32 button, int x, int y) {
                 writeLittleEndian_4(buffer+20, getMilliesSinceStart()); // time
                 writeLittleEndian_4(buffer+24, 0); // dwExtraInfo
 
-                unixsocket_write_native_nowait(fd->kobject, buffer, 28);
+                KUnixSocketObject::unixsocket_write_native_nowait(fd->kobject, buffer, 28);
             }
         }
     }
@@ -1310,32 +1037,7 @@ const char* getCursorName(char* moduleName, char* resourceName, int resource) {
     return cursorName;
 }
 
-#ifdef BOXEDWINE_VM
-static void mainSetCursor(struct SdlCallback* callback) {
-    callback->result = sdlSetCursor(callback->thread, callback->pArg1, callback->pArg2, callback->iArg1);
-}
-#endif
-
 U32 sdlSetCursor(KThread* thread, char* moduleName, char* resourceName, int resource) {
-#ifdef BOXEDWINE_VM
-    if (0) {
-        struct SdlCallback* callback = allocSdlCallback(thread);
-        U32 result;
-
-        callback->func = mainSetCursor;
-        callback->pArg1 = moduleName;
-        callback->pArg2 = resourceName;
-        callback->iArg1 = resource;
-        BOXEDWINE_LOCK(thread, callback->mutex);
-        SDL_PushEvent(&callback->sdlEvent);
-        BOXEDWINE_WAIT(thread, callback->cond, callback->mutex);
-        result = callback->result;
-        BOXEDWINE_UNLOCK(thread, callback->mutex);
-        freeSdlCallback(callback);        
-        return result;
-    }
-#endif
-
     const char* name = getCursorName(moduleName, resourceName, resource);
     if (cursors.count(name)) {
         SDL_Cursor* cursor = cursors[name];
@@ -1347,93 +1049,63 @@ U32 sdlSetCursor(KThread* thread, char* moduleName, char* resourceName, int reso
     return 0;
 }
 
-#ifdef BOXEDWINE_VM
-static void mainCreateAndSetCursor(struct SdlCallback* callback) {
-    sdlCreateAndSetCursor(callback->thread, callback->pArg1, callback->pArg2, callback->iArg1, callback->pArg3, callback->pArg4, callback->iArg2, callback->iArg3, callback->iArg4, callback->iArg5);
-}
-
-#endif
-
 void sdlCreateAndSetCursor(KThread* thread, char* moduleName, char* resourceName, int resource, U8* and_bits, U8* xor_bits, int width, int height, int hotX, int hotY) {
-#ifdef BOXEDWINE_VM
-    if (0) {
-        struct SdlCallback* callback = allocSdlCallback(thread);
-        callback->func = mainCreateAndSetCursor;
-        callback->pArg1 = moduleName;
-        callback->pArg2 = resourceName;
-        callback->iArg1 = resource;
-        callback->pArg3 = and_bits;
-        callback->pArg4 = xor_bits;
-        callback->iArg2 = width;
-        callback->iArg3 = height;
-        callback->iArg4 = hotX;
-        callback->iArg5 = hotY;
-        BOXEDWINE_LOCK(thread, callback->mutex);
-        SDL_PushEvent(&callback->sdlEvent);
-        BOXEDWINE_WAIT(thread, callback->cond, callback->mutex);
-        BOXEDWINE_UNLOCK(thread, callback->mutex);
-        freeSdlCallback(callback);        
-        return;
-    }
-#endif
-    {
-        SDL_Cursor* cursor;
-        int byteCount = (width+31) / 31 * 4 * height;
-        int dst,src,y, x;
-        U8 data_bits[64*64/8];
-        U8 mask_bits[64*64/8];
-        U32 srcPitch = (width+31)/32*4;
-        U32 dstPitch = (width+7)/8;
+    SDL_Cursor* cursor;
+    int byteCount = (width+31) / 31 * 4 * height;
+    int dst,src,y, x;
+    U8 data_bits[64*64/8];
+    U8 mask_bits[64*64/8];
+    U32 srcPitch = (width+31)/32*4;
+    U32 dstPitch = (width+7)/8;
 
-        // AND | XOR | Windows cursor pixel | SDL
-        // --------------------------------------
-        // 0  |  0  | black                 | transparent
-        // 0  |  1  | white                 | White
-        // 1  |  0  | transparent           | Inverted color if possible, black if not
-        // 1  |  1  | invert                | Black
+    // AND | XOR | Windows cursor pixel | SDL
+    // --------------------------------------
+    // 0  |  0  | black                 | transparent
+    // 0  |  1  | white                 | White
+    // 1  |  0  | transparent           | Inverted color if possible, black if not
+    // 1  |  1  | invert                | Black
 
-        // 0 0 -> 1 1
-        // 0 1 -> 0 1
-        // 1 0 -> 0 0
-        // 1 1 -> 1 0
-        for (y=0;y<height;y++) {
-            dst = dstPitch*y;
-            src = srcPitch*y;
+    // 0 0 -> 1 1
+    // 0 1 -> 0 1
+    // 1 0 -> 0 0
+    // 1 1 -> 1 0
+    for (y=0;y<height;y++) {
+        dst = dstPitch*y;
+        src = srcPitch*y;
 
-            for (x=0;x<(width+7)/8;src++,dst++,x++) {
-                int j;
+        for (x=0;x<(width+7)/8;src++,dst++,x++) {
+            int j;
 
-                data_bits[dst] = 0;
-                mask_bits[dst] = 0;
-                for (j=0;j<8;j++) {
-                    U8 aBit = (and_bits[src] >> j) & 0x1;
-                    U8 xBit = (xor_bits[src] >> j) & 0x1;
+            data_bits[dst] = 0;
+            mask_bits[dst] = 0;
+            for (j=0;j<8;j++) {
+                U8 aBit = (and_bits[src] >> j) & 0x1;
+                U8 xBit = (xor_bits[src] >> j) & 0x1;
 
-                    if (aBit && xBit) {
-                        xBit = 0;
-                    } else if (aBit && !xBit) {
-                        aBit = 0;
-                    } else if (!aBit && xBit) {
+                if (aBit && xBit) {
+                    xBit = 0;
+                } else if (aBit && !xBit) {
+                    aBit = 0;
+                } else if (!aBit && xBit) {
                 
-                    } else if (!aBit && !xBit) {
-                        aBit = 1;
-                        xBit = 1;
-                    }
-                    if (aBit)
-                        data_bits[dst] |= (1 << j);
-
-                    if (xBit)
-                        mask_bits[dst] |= (1 << j);
+                } else if (!aBit && !xBit) {
+                    aBit = 1;
+                    xBit = 1;
                 }
+                if (aBit)
+                    data_bits[dst] |= (1 << j);
+
+                if (xBit)
+                    mask_bits[dst] |= (1 << j);
             }
         }
+    }
 
-        cursor = SDL_CreateCursor(data_bits, mask_bits, width, height, hotX, hotY);
-        if (cursor) {
-            const char* name = getCursorName(moduleName, resourceName, resource);
-            cursors[name] = cursor;
-            SDL_SetCursor(cursor);
-        }
+    cursor = SDL_CreateCursor(data_bits, mask_bits, width, height, hotX, hotY);
+    if (cursor) {
+        const char* name = getCursorName(moduleName, resourceName, resource);
+        cursors[name] = cursor;
+        SDL_SetCursor(cursor);
     }
 }
 
@@ -1956,7 +1628,7 @@ int sdlKey(U32 key, U32 down) {
                 writeLittleEndian_4(buffer+20, 0); // pad
                 writeLittleEndian_4(buffer+24, 0); // pad
 
-                unixsocket_write_native_nowait(fd->kobject, buffer, 28);
+                KUnixSocketObject::unixsocket_write_native_nowait(fd->kobject, buffer, 28);
             }
         }
     }
@@ -2124,30 +1796,7 @@ done:
     return ret;
 }
 
-#ifdef BOXEDWINE_VM
-static void mainGetMouseState(struct SdlCallback* callback) {
-    callback->result = sdlGetMouseState(callback->thread, callback->pArg1, callback->pArg2);
-}
-#endif
-
 unsigned int sdlGetMouseState(KThread* thread,int* x, int* y) {
-#ifdef BOXEDWINE_VM
-    if (0) {
-        struct SdlCallback* callback = allocSdlCallback(thread);
-        U32 result;
-
-        callback->func = mainGetMouseState;
-        callback->pArg1 = x;
-        callback->pArg2 = y;
-        BOXEDWINE_LOCK(thread, callback->mutex);
-        SDL_PushEvent(&callback->sdlEvent);
-        BOXEDWINE_WAIT(thread, callback->cond, callback->mutex);
-        BOXEDWINE_UNLOCK(thread, callback->mutex);
-        result = callback->result;
-        freeSdlCallback(callback);        
-        return result;
-    }
-#endif
 #ifdef BOXEDWINE_RECORDER
     if (Player::instance) {
         *x = lastX;
@@ -2456,4 +2105,255 @@ bool sdlPartialScreenShot(std::string filepath, U32 x, U32 y, U32 w, U32 h, U32*
 bool sdlScreenShot(std::string filepath, U32* crc) {
     return sdlInternalScreenShot(filepath, NULL, crc);
 
+}
+
+#ifdef SDL2
+#define SDLK_NUMLOCK SDL_SCANCODE_NUMLOCKCLEAR
+#define SDLK_SCROLLOCK SDLK_SCROLLLOCK
+#endif
+U32 translate(U32 key) {
+    switch (key) {
+        case SDLK_ESCAPE:
+            return K_KEY_ESC;
+        case SDLK_1:
+            return K_KEY_1;
+        case SDLK_2:
+            return K_KEY_2;
+        case SDLK_3:
+            return K_KEY_3;
+        case SDLK_4:
+            return K_KEY_4;
+        case SDLK_5:
+            return K_KEY_5;
+        case SDLK_6:
+            return K_KEY_6;
+        case SDLK_7:
+            return K_KEY_7;
+        case SDLK_8:
+            return K_KEY_8;
+        case SDLK_9:
+            return K_KEY_9;
+        case SDLK_0:
+            return K_KEY_0;
+        case SDLK_MINUS:
+            return K_KEY_MINUS;
+        case SDLK_EQUALS:
+            return K_KEY_EQUAL;
+        case SDLK_BACKSPACE:
+            return K_KEY_BACKSPACE;
+        case SDLK_TAB:
+            return K_KEY_TAB;
+        case SDLK_q:
+            return K_KEY_Q;
+        case SDLK_w:
+            return K_KEY_W;
+        case SDLK_e:
+            return K_KEY_E;
+        case SDLK_r:
+            return K_KEY_R;
+        case SDLK_t:
+            return K_KEY_T;
+        case SDLK_y:
+            return K_KEY_Y;
+        case SDLK_u:
+            return K_KEY_U;
+        case SDLK_i:
+            return K_KEY_I;
+        case SDLK_o:
+            return K_KEY_O;
+        case SDLK_p:
+            return K_KEY_P;
+        case SDLK_LEFTBRACKET:
+            return K_KEY_LEFTBRACE;
+        case SDLK_RIGHTBRACKET:
+            return K_KEY_RIGHTBRACE;
+        case SDLK_RETURN:
+            return K_KEY_ENTER;
+        case SDLK_LCTRL:
+            return K_KEY_LEFTCTRL;
+        case SDLK_RCTRL:
+            return K_KEY_RIGHTCTRL;
+        case SDLK_a:
+            return K_KEY_A;
+        case SDLK_s:
+            return K_KEY_S;
+        case SDLK_d:
+            return K_KEY_D;
+        case SDLK_f:
+            return K_KEY_F;
+        case SDLK_g:
+            return K_KEY_G;
+        case SDLK_h:
+            return K_KEY_H;
+        case SDLK_j:
+            return K_KEY_J;
+        case SDLK_k:
+            return K_KEY_K;
+        case SDLK_l:
+            return K_KEY_L;
+        case SDLK_SEMICOLON:
+            return K_KEY_SEMICOLON;
+        case SDLK_QUOTE:
+            return K_KEY_APOSTROPHE;
+        case SDLK_BACKQUOTE:
+            return K_KEY_GRAVE;
+        case SDLK_LSHIFT:
+            return K_KEY_LEFTSHIFT;
+        case SDLK_RSHIFT:
+            return K_KEY_RIGHTSHIFT;
+        case SDLK_BACKSLASH:
+            return K_KEY_BACKSLASH;
+        case SDLK_z:
+            return K_KEY_Z;
+        case SDLK_x:
+            return K_KEY_X;
+        case SDLK_c:
+            return K_KEY_C;
+        case SDLK_v:
+            return K_KEY_V;
+        case SDLK_b:
+            return K_KEY_B;
+        case SDLK_n:
+            return K_KEY_N;
+        case SDLK_m:
+            return K_KEY_M;
+        case SDLK_COMMA:
+            return K_KEY_COMMA;
+        case SDLK_PERIOD:
+            return K_KEY_DOT;
+        case SDLK_SLASH:
+            return K_KEY_SLASH;
+        case SDLK_LALT:
+             return K_KEY_LEFTALT;
+        case SDLK_RALT:
+            return K_KEY_RIGHTALT;
+        case SDLK_SPACE:
+            return K_KEY_SPACE;
+        case SDLK_CAPSLOCK:
+            return K_KEY_CAPSLOCK;
+        case SDLK_F1:
+            return K_KEY_F1;
+        case SDLK_F2:
+            return K_KEY_F2;
+        case SDLK_F3:
+            return K_KEY_F3;
+        case SDLK_F4:
+            return K_KEY_F4;
+        case SDLK_F5:
+            return K_KEY_F5;
+        case SDLK_F6:
+            return K_KEY_F6;
+        case SDLK_F7:
+            return K_KEY_F7;
+        case SDLK_F8:
+            return K_KEY_F8;
+        case SDLK_F9:
+            return K_KEY_F9;
+        case SDLK_F10:
+            return K_KEY_F10;
+        case SDLK_NUMLOCK:
+            return K_KEY_NUMLOCK;
+        case SDLK_SCROLLOCK:
+            return K_KEY_SCROLLLOCK;
+        case SDLK_F11:
+            return K_KEY_F11;
+        case SDLK_F12:
+            return K_KEY_F12;
+        case SDLK_HOME:
+            return K_KEY_HOME;
+        case SDLK_UP:
+            return K_KEY_UP;
+        case SDLK_PAGEUP:
+            return K_KEY_PAGEUP;
+        case SDLK_LEFT:
+            return K_KEY_LEFT;
+        case SDLK_RIGHT:
+            return K_KEY_RIGHT;
+        case SDLK_END:
+            return K_KEY_END;
+        case SDLK_DOWN:
+            return K_KEY_DOWN;
+        case SDLK_PAGEDOWN:
+            return K_KEY_PAGEDOWN;
+        case SDLK_INSERT:
+            return K_KEY_INSERT;
+        case SDLK_DELETE:
+            return K_KEY_DELETE;
+        case SDLK_PAUSE:
+            return K_KEY_PAUSE;
+        default:
+            kwarn("Unhandled key: %d", key);
+            return 0;
+    }
+}
+
+bool handlSdlEvent(void* p) {
+    SDL_Event* e=(SDL_Event*)p;
+    if (Player::instance) {
+        if (e->type == SDL_QUIT) {
+            return false;
+        }
+        return true;
+    }
+    if (e->type == SDL_QUIT) {
+        return false;
+    } else if (e->type == SDL_MOUSEMOTION) { 
+        BOXEDWINE_RECORDER_HANDLE_MOUSE_MOVE(e);
+        if (!sdlMouseMouse(e->motion.x, e->motion.y))
+            onMouseMove(e->motion.x, e->motion.y);
+    } else if (e->type == SDL_MOUSEBUTTONDOWN) {
+        BOXEDWINE_RECORDER_HANDLE_MOUSE_BUTTON_DOWN(e);
+        if (e->button.button==SDL_BUTTON_LEFT) {
+            if (!sdlMouseButton(1, 0, e->motion.x, e->motion.y))
+                onMouseButtonDown(0);
+        } else if (e->button.button == SDL_BUTTON_MIDDLE) {
+            if (!sdlMouseButton(1, 2, e->motion.x, e->motion.y))
+                onMouseButtonDown(2);
+        } else if (e->button.button == SDL_BUTTON_RIGHT) {
+            if (!sdlMouseButton(1, 1, e->motion.x, e->motion.y))
+                onMouseButtonDown(1);
+        }
+    } else if (e->type == SDL_MOUSEBUTTONUP) {
+        BOXEDWINE_RECORDER_HANDLE_MOUSE_BUTTON_UP(e);
+        if (e->button.button==SDL_BUTTON_LEFT) {
+            if (!sdlMouseButton(0, 0, e->motion.x, e->motion.y))
+                onMouseButtonUp(0);
+        } else if (e->button.button == SDL_BUTTON_MIDDLE) {
+            if (!sdlMouseButton(0, 2, e->motion.x, e->motion.y))
+                onMouseButtonUp(2);
+        } else if (e->button.button == SDL_BUTTON_RIGHT) {
+            if (!sdlMouseButton(0, 1, e->motion.x, e->motion.y))
+                onMouseButtonUp(1);
+        }
+#ifdef SDL2
+    } else if (e->type == SDL_MOUSEWHEEL) {
+        // Handle up/down mouse wheel movements
+        int x, y;
+        SDL_GetMouseState(&x, &y);
+        if (!sdlMouseWheel(e->wheel.y*80, x, y)) {
+            onMouseWheel(e->wheel.y);
+        }
+#endif
+    } else if (e->type == SDL_KEYDOWN) {
+        if (!BOXEDWINE_RECORDER_HANDLE_KEY_DOWN(e)) {
+            if (e->key.keysym.sym==SDLK_SCROLLOCK) {
+                KSystem::printStacks();
+            } else if (!sdlKey(e->key.keysym.sym, 1)) {
+                onKeyDown(translate(e->key.keysym.sym));
+            }
+        }
+    } else if (e->type == SDL_KEYUP) {
+        if (!BOXEDWINE_RECORDER_HANDLE_KEY_UP(e)) {
+            if (!sdlKey(e->key.keysym.sym, 0)) {
+                onKeyUp(translate(e->key.keysym.sym));
+            }
+        }
+    }
+#ifdef SDL2
+    else if (e->type == SDL_WINDOWEVENT) {
+        if (!isBoxedWineDriverActive())
+            flipFBNoCheck();
+    }
+#endif
+    return true;
 }

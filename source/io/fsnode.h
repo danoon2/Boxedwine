@@ -46,9 +46,7 @@ public:
     const std::string link;
     const U32 id;
     const U32 rdev;  
-    U32 hardLinkCount;
-    std::vector<KFileLock> locks;        
-    KList<FsOpenNode*> openNodes;
+    U32 hardLinkCount;    
     const Type type;
     BoxedPtr<KObject> kobject;
 
@@ -58,13 +56,26 @@ public:
     void removeChildByName(const std::string& name);
     void getAllChildren(std::vector<BoxedPtr<FsNode> > & results);
 
+    void addLock(KFileLock* lock);
+    KFileLock* FsNode::getLock(KFileLock* lock);
+
+    void addOpenNode(KListNode<FsOpenNode*>* node);
 protected:
     BoxedPtr<FsNode> parent;
+
+    KList<FsOpenNode*> openNodes;
+    BOXEDWINE_MUTEX openNodesMutex;
 
 private:
     const bool isDir;
     bool hasLoadedChildrenFromFileSystem;    
+
     std::unordered_map<std::string, BoxedPtr<FsNode> > childrenByName;
+    BOXEDWINE_MUTEX childrenByNameMutex;
+
+    std::vector<KFileLock> locks;       
+    BOXEDWINE_MUTEX locksMutex;    
+
     void loadChildren();
 };
 

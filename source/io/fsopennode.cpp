@@ -1,7 +1,7 @@
 #include "boxedwine.h"
 
 FsOpenNode::FsOpenNode(BoxedPtr<FsNode> node, U32 flags) : node(node), flags(flags), listNode(this) {
-    node->openNodes.addToBack(&this->listNode);
+    node->addOpenNode(&this->listNode);
 }
 
 FsOpenNode::~FsOpenNode() {
@@ -82,6 +82,7 @@ U32 FsOpenNode::write(U32 address, U32 len) {
 }
 
 void FsOpenNode::loadDirEntries() {
+    BOXEDWINE_CRITICAL_SECTION;
     if (this->dirEntries.size()==0) {
         this->dirEntries.push_back(this->node);
         if (this->node->getParent())

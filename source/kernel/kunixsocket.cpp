@@ -94,7 +94,7 @@ void KUnixSocketObject::waitForEvents(U32 events) {
 
 U32 KUnixSocketObject::internal_write(U32 buffer, U32 len) {
     U32 count=0;
-
+    
     if (this->type == K_SOCK_DGRAM) {
         if (!strcmp(this->destAddress.data, "/dev/log")) {
             char tmp[MAX_FILEPATH_LEN];
@@ -189,7 +189,7 @@ U32 KUnixSocketObject::writeNative(U8* buffer, U32 len) {
     return len;
 }
 
-U32 unixsocket_write_native_nowait(const BoxedPtr<KObject>& obj, U8* value, int len) {
+U32 KUnixSocketObject::unixsocket_write_native_nowait(const BoxedPtr<KObject>& obj, U8* value, int len) {
     if (obj->type!=KTYPE_UNIX_SOCKET)
         return 0;
     BoxedPtr<KUnixSocketObject> s = (KUnixSocketObject*)obj.get();
@@ -379,7 +379,7 @@ U32 KUnixSocketObject::connect(KFileDescriptor* fd, U32 address, U32 len) {
             if (this->connection) {
                 this->connected = 1;
                 return 0;
-            }            
+            }     
             if (this->connecting) {
                 if (this->blocking) {
                     waitOnSocketConnect(thread);

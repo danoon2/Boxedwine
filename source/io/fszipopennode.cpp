@@ -95,6 +95,7 @@ bool FsZipOpenNode::canMap() {
 
 U32 FsZipOpenNode::readNative(U8* buffer, U32 len) {
     U32 result;
+    BOXEDWINE_CRITICAL_SECTION;
 
     setupZipRead(this->offset, this->pos);    
     result = unzReadCurrentFile(FsZip::zipfile, buffer, len);

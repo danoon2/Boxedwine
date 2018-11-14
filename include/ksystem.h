@@ -73,9 +73,12 @@ public:
     static void eraseFileCache(const std::string& name);
     static KProcess* getProcess(U32 id);
     static BoxedPtr<MappedFileCache> getFileCache(const std::string& name);
-    static const std::unordered_map<U32, KProcess*>& getProcesses();
     static void eraseProcess(U32 id);
     static void addProcess(U32 id, KProcess* process);
+    static KThread* getThreadById(U32 threadId);
+    static U32 getRunningProcessCount();
+    static U32 getProcessCount();
+    static void printStacks();
 
     // syscalls
     static U32 clock_getres(U32 clk_id, U32 timespecAddress);
@@ -99,16 +102,12 @@ public:
 private:
     static std::unordered_map<void*, SHM*> shm;
     static std::unordered_map<U32, KProcess*> processes;
+    static BOXEDWINE_MUTEX processesMutex;
     static std::unordered_map<std::string, BoxedPtr<MappedFileCache> > fileCache;
 };
 
-// returns pid
-U32 getProcessCount();
-
 U32 getMilliesSinceStart();
-void printStacks();
 void runThreadSlice(KThread* thread);
-
 void ksyscall(CPU* cpu, U32 eipCount);
 
 #endif

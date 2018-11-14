@@ -66,6 +66,7 @@ private:
     static BoxedPtr<FsNode> getNodeFromLocalPath(const std::string& currentDirectory, const std::string& path, BoxedPtr<FsNode>& lastNode, std::vector<std::string>& missingParts, bool followLink, bool* isLink=NULL);
 
     static U32 nextNodeId;    
+    static BOXEDWINE_MUTEX nextNodeIdMutex;
 };
 
 #endif

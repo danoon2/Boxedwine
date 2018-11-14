@@ -292,6 +292,18 @@
     <ClCompile Include="..\..\..\..\platform\windows\winmidi.cpp">
       <Filter>platform\windows</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\util\synchronization.cpp">
+      <Filter>source\util</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\sdl\singleThreaded\mainloop.cpp">
+      <Filter>source\sdl\singleThreaded</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\sdl\multiThreaded\sdlcallback.cpp">
+      <Filter>source\sdl\multiThreaded</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\sdl\multiThreaded\threadedMainloop.cpp">
+      <Filter>source\sdl\multiThreaded</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -693,6 +705,15 @@
     <ClInclude Include="..\..\..\..\include\mixer.h">
       <Filter>include</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\source\util\synchronization.h">
+      <Filter>source\util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\sdl\mainloop.h">
+      <Filter>source\sdl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\sdl\multiThreaded\sdlcallback.h">
+      <Filter>source\sdl\multiThreaded</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
@@ -763,6 +784,12 @@
     </Filter>
     <Filter Include="source\emulation\cpu\dynamic">
       <UniqueIdentifier>{e1841181-9a19-4729-b1a7-f486eca82f6f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\sdl\singleThreaded">
+      <UniqueIdentifier>{14e8b5db-a6c7-4986-ba35-63b7955ad64e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\sdl\multiThreaded">
+      <UniqueIdentifier>{02bfdf2e-8559-4081-908a-a49b47b0a328}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

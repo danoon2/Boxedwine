@@ -46,17 +46,22 @@ public:
     virtual U32 setsockopt(KFileDescriptor* fd, U32 level, U32 name, U32 value, U32 len);
     virtual U32 shutdown(KFileDescriptor* fd, U32 how);
 
-    BoxedPtr<FsNode> node;
-
+    BoxedPtr<FsNode> node;    
     KUnixSocketObject* connection;
-    KUnixSocketObject* connecting;
+
+    static U32 unixsocket_write_native_nowait(const BoxedPtr<KObject>& obj, U8* value, int len);
+
+private:        
     KList<KUnixSocketObject*> pendingConnections; // weak, if object is destroyed it should remove itself from this list
-    ringbuffer<S8> recvBuffer;
+    KUnixSocketObject* connecting;
+    BOXEDWINE_CONDITION pendingConnectionsCond; // protects both pendingConnections and connecting
+
+    ringbuffer<S8> recvBuffer;    
     std::queue<BoxedPtr<KSocketMsg> > msgs;	
+    BOXEDWINE_CONDITION cond;
 
     KListNode<KUnixSocketObject*> pendingConnectionNode;
 
-private:
     U32 pid;
     U32 internal_write(U32 buffer, U32 len);
 };

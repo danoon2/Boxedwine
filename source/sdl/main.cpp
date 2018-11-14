@@ -42,23 +42,14 @@
 #include "procselfexe.h"
 #include "../io/fsfilenode.h"
 #include "recorder.h"
+#include "mainloop.h"
 
 void gl_init();
-#ifdef __EMSCRIPTEN__
-#include <emscripten/emscripten.h>
-#endif
 extern int bits_per_pixel;
 
 #include CURDIR_INCLUDE
 
-U32 lastTitleUpdate = 0;
 extern U32 sdlFullScreen;
-
-#ifdef BOXEDWINE_VM
-U32 sdlCustomEvent;
-SDL_threadID sdlMainThreadId;
-extern U32 platformThreadCount;
-#endif
 
 #ifndef __TEST
 
@@ -67,253 +58,6 @@ char curdir[1024];
 U32 getMilliesSinceStart() {
     return SDL_GetTicks();
 }
-#ifdef SDL2
-#define SDLK_NUMLOCK SDL_SCANCODE_NUMLOCKCLEAR
-#define SDLK_SCROLLOCK SDLK_SCROLLLOCK
-#endif
-U32 translate(U32 key) {
-    switch (key) {
-        case SDLK_ESCAPE:
-            return K_KEY_ESC;
-        case SDLK_1:
-            return K_KEY_1;
-        case SDLK_2:
-            return K_KEY_2;
-        case SDLK_3:
-            return K_KEY_3;
-        case SDLK_4:
-            return K_KEY_4;
-        case SDLK_5:
-            return K_KEY_5;
-        case SDLK_6:
-            return K_KEY_6;
-        case SDLK_7:
-            return K_KEY_7;
-        case SDLK_8:
-            return K_KEY_8;
-        case SDLK_9:
-            return K_KEY_9;
-        case SDLK_0:
-            return K_KEY_0;
-        case SDLK_MINUS:
-            return K_KEY_MINUS;
-        case SDLK_EQUALS:
-            return K_KEY_EQUAL;
-        case SDLK_BACKSPACE:
-            return K_KEY_BACKSPACE;
-        case SDLK_TAB:
-            return K_KEY_TAB;
-        case SDLK_q:
-            return K_KEY_Q;
-        case SDLK_w:
-            return K_KEY_W;
-        case SDLK_e:
-            return K_KEY_E;
-        case SDLK_r:
-            return K_KEY_R;
-        case SDLK_t:
-            return K_KEY_T;
-        case SDLK_y:
-            return K_KEY_Y;
-        case SDLK_u:
-            return K_KEY_U;
-        case SDLK_i:
-            return K_KEY_I;
-        case SDLK_o:
-            return K_KEY_O;
-        case SDLK_p:
-            return K_KEY_P;
-        case SDLK_LEFTBRACKET:
-            return K_KEY_LEFTBRACE;
-        case SDLK_RIGHTBRACKET:
-            return K_KEY_RIGHTBRACE;
-        case SDLK_RETURN:
-            return K_KEY_ENTER;
-        case SDLK_LCTRL:
-            return K_KEY_LEFTCTRL;
-        case SDLK_RCTRL:
-            return K_KEY_RIGHTCTRL;
-        case SDLK_a:
-            return K_KEY_A;
-        case SDLK_s:
-            return K_KEY_S;
-        case SDLK_d:
-            return K_KEY_D;
-        case SDLK_f:
-            return K_KEY_F;
-        case SDLK_g:
-            return K_KEY_G;
-        case SDLK_h:
-            return K_KEY_H;
-        case SDLK_j:
-            return K_KEY_J;
-        case SDLK_k:
-            return K_KEY_K;
-        case SDLK_l:
-            return K_KEY_L;
-        case SDLK_SEMICOLON:
-            return K_KEY_SEMICOLON;
-        case SDLK_QUOTE:
-            return K_KEY_APOSTROPHE;
-        case SDLK_BACKQUOTE:
-            return K_KEY_GRAVE;
-        case SDLK_LSHIFT:
-            return K_KEY_LEFTSHIFT;
-        case SDLK_RSHIFT:
-            return K_KEY_RIGHTSHIFT;
-        case SDLK_BACKSLASH:
-            return K_KEY_BACKSLASH;
-        case SDLK_z:
-            return K_KEY_Z;
-        case SDLK_x:
-            return K_KEY_X;
-        case SDLK_c:
-            return K_KEY_C;
-        case SDLK_v:
-            return K_KEY_V;
-        case SDLK_b:
-            return K_KEY_B;
-        case SDLK_n:
-            return K_KEY_N;
-        case SDLK_m:
-            return K_KEY_M;
-        case SDLK_COMMA:
-            return K_KEY_COMMA;
-        case SDLK_PERIOD:
-            return K_KEY_DOT;
-        case SDLK_SLASH:
-            return K_KEY_SLASH;
-        case SDLK_LALT:
-             return K_KEY_LEFTALT;
-        case SDLK_RALT:
-            return K_KEY_RIGHTALT;
-        case SDLK_SPACE:
-            return K_KEY_SPACE;
-        case SDLK_CAPSLOCK:
-            return K_KEY_CAPSLOCK;
-        case SDLK_F1:
-            return K_KEY_F1;
-        case SDLK_F2:
-            return K_KEY_F2;
-        case SDLK_F3:
-            return K_KEY_F3;
-        case SDLK_F4:
-            return K_KEY_F4;
-        case SDLK_F5:
-            return K_KEY_F5;
-        case SDLK_F6:
-            return K_KEY_F6;
-        case SDLK_F7:
-            return K_KEY_F7;
-        case SDLK_F8:
-            return K_KEY_F8;
-        case SDLK_F9:
-            return K_KEY_F9;
-        case SDLK_F10:
-            return K_KEY_F10;
-        case SDLK_NUMLOCK:
-            return K_KEY_NUMLOCK;
-        case SDLK_SCROLLOCK:
-            return K_KEY_SCROLLLOCK;
-        case SDLK_F11:
-            return K_KEY_F11;
-        case SDLK_F12:
-            return K_KEY_F12;
-        case SDLK_HOME:
-            return K_KEY_HOME;
-        case SDLK_UP:
-            return K_KEY_UP;
-        case SDLK_PAGEUP:
-            return K_KEY_PAGEUP;
-        case SDLK_LEFT:
-            return K_KEY_LEFT;
-        case SDLK_RIGHT:
-            return K_KEY_RIGHT;
-        case SDLK_END:
-            return K_KEY_END;
-        case SDLK_DOWN:
-            return K_KEY_DOWN;
-        case SDLK_PAGEDOWN:
-            return K_KEY_PAGEDOWN;
-        case SDLK_INSERT:
-            return K_KEY_INSERT;
-        case SDLK_DELETE:
-            return K_KEY_DELETE;
-        case SDLK_PAUSE:
-            return K_KEY_PAUSE;
-        default:
-            kwarn("Unhandled key: %d", key);
-            return 0;
-    }
-}
-
-#ifdef __EMSCRIPTEN__
-extern U32 sdlUpdated;
-
-void mainloop() {
-    U32 startTime = SDL_GetTicks();
-    U32 t;
-    U32 count=0;
-    while (1) {
-        SDL_Event e;
-        bool ran = runSlice();
-        
-        while (SDL_PollEvent(&e)) {
-            if (e.type == SDL_QUIT) {
-                SDL_Quit();
-            }  else if (e.type == SDL_MOUSEMOTION) {
-                if (!sdlMouseMouse(e.motion.x, e.motion.y))
-                    onMouseMove(e.motion.x, e.motion.y);
-            } else if (e.type == SDL_MOUSEBUTTONDOWN) {
-                if (e.button.button==SDL_BUTTON_LEFT) {
-                    if (!sdlMouseButton(1, 0, e.motion.x, e.motion.y))
-                        onMouseButtonDown(0);
-                } else if (e.button.button == SDL_BUTTON_MIDDLE) {
-                    if (!sdlMouseButton(1, 2, e.motion.x, e.motion.y))
-                        onMouseButtonDown(2);
-                } else if (e.button.button == SDL_BUTTON_RIGHT) {
-                    if (!sdlMouseButton(1, 1, e.motion.x, e.motion.y))
-                        onMouseButtonDown(1);
-                }
-            } else if (e.type == SDL_MOUSEBUTTONUP) {
-                if (e.button.button==SDL_BUTTON_LEFT) {
-                    if (!sdlMouseButton(0, 0, e.motion.x, e.motion.y))
-                        onMouseButtonUp(0);
-                } else if (e.button.button == SDL_BUTTON_MIDDLE) {
-                    if (!sdlMouseButton(0, 2, e.motion.x, e.motion.y))    
-                        onMouseButtonUp(2);
-                } else if (e.button.button == SDL_BUTTON_RIGHT) {
-                    if (!sdlMouseButton(0, 1, e.motion.x, e.motion.y))
-                        onMouseButtonUp(1);
-                }
-            } else if (e.type == SDL_KEYDOWN) {
-                if (e.key.keysym.sym==SDLK_SCROLLOCK) {
-                    printStacks();
-                }
-                if (!sdlKey(e.key.keysym.sym, 1))
-                    onKeyDown(translate(e.key.keysym.sym));
-            } else if (e.type == SDL_KEYUP) {
-                if (!sdlKey(e.key.keysym.sym, 0))
-                    onKeyUp(translate(e.key.keysym.sym));
-            }
-        };
-        t = getMilliesSinceStart();                
-        if (lastTitleUpdate+1000 < t) {
-            lastTitleUpdate = t;
-            EM_ASM_INT({
-                document.title="BoxedWine " + $0 + " MIPS";
-            }, getMIPS());
-        }
-        if (!ran) {
-            break;
-        }
-        if ((SDL_GetTicks()-startTime)>250 || sdlUpdated) {
-           sdlUpdated=0;
-           break;
-        }
-    };
-}
-#endif
 
 // This parses a resolution given as a string in the format of: '800x600'
 // with the width being the first number
@@ -349,10 +93,6 @@ int parse_resolution(const char *resolutionString, U32 *width, U32 *height)
     return true;
 }
 
-U64 cpuTime;
-U64 cpuInstructions;
-extern U32 contextTime;
-extern int allocatedOpMemory;
 extern int sdlScale;
 extern const char* sdlScaleQuality;
 U32 gensrc;
@@ -361,7 +101,6 @@ U32 gensrc;
 void writeSource();
 #endif
 
-bool checkWaitingNativeSockets(int timeout);
 void initWine();
 void initSDL();
 
@@ -512,14 +251,7 @@ int boxedmain(int argc, const char **argv) {
         safe_strcat(base, "root", sizeof(curdir));
         root=base;
     }
-#ifdef BOXEDWINE_RECORDER
-    if (Recorder::instance) {
-        Recorder::instance->initCommandLine(root, zip, workingDir, &argv[i], argc-i);
-    } 
-    if (Player::instance) {
-        Player::instance->initCommandLine(root, zip, workingDir, &argv[i], argc-i);
-    }
-#endif
+    BOXEDWINE_RECORDER_INIT(root, zip, workingDir, &argv[i], argc-i);
     klog("Using root directory: %s", root);
     if (!Fs::initFileSystem(root, zip)) {
         kwarn("root %s does not exist", root);
@@ -606,206 +338,15 @@ int boxedmain(int argc, const char **argv) {
     klog("Launching %s", argv[0]);
     KProcess* process = new KProcess(KSystem::nextThreadId++);    
     if (process->startProcess(workingDir, argc, (const char**)argv, envc, ppenv, userId, groupId, effectiveUserId, effectiveGroupId)) {
-#ifdef __EMSCRIPTEN__
-                EM_ASM(
-#ifndef SDL2
-                       SDL.defaults.copyOnLock = false;
-                       SDL.defaults.discardOnLock = true;
-#endif
-                       //SDL.defaults.opaqueFrontBuffer = false;
-                );
-                emscripten_set_main_loop(mainloop, 0, 1);
-#else
-        while (getProcessCount()>0) {
-            SDL_Event e;
-#ifndef BOXEDWINE_VM
-            bool ran = runSlice();
-            U32 t;
-#endif
-
-#ifdef BOXEDWINE_RECORDER
-            if (Player::instance) {
-                Player::instance->runSlice();
-            }
-#endif
-#ifdef BOXEDWINE_VM
-            sdlCustomEvent = SDL_RegisterEvents(1);
-            sdlMainThreadId = SDL_ThreadID();
-
-            while (platformThreadCount && SDL_WaitEvent(&e)) {
-#else
-            while (SDL_PollEvent(&e)) {
-                if (Player::instance) {
-                    if (e.type == SDL_QUIT) {
-                        SDL_Quit();
-                        return 1;
-                    }
-                    continue;
-                }
-#endif
-                if (e.type == SDL_QUIT) {
-#ifdef GENERATE_SOURCE
-                    if (gensrc)
-                        writeSource();
-#endif
-                    SDL_Quit();
-                    return 0;
-                } else if (e.type == SDL_MOUSEMOTION) { 
-#ifdef BOXEDWINE_RECORDER
-                    if (Recorder::instance) {
-                        Recorder::instance->onMouseMove(e.motion.x, e.motion.y);
-                    }
-#endif
-                    if (!sdlMouseMouse(e.motion.x, e.motion.y))
-                        onMouseMove(e.motion.x, e.motion.y);
-                } else if (e.type == SDL_MOUSEBUTTONDOWN) {
-#ifdef BOXEDWINE_RECORDER
-                    if (Recorder::instance) {
-                        if (e.button.button==SDL_BUTTON_LEFT) {
-                            Recorder::instance->onMouseButton(1, 0, e.motion.x, e.motion.y);
-                        } else if (e.button.button == SDL_BUTTON_MIDDLE) {
-                            Recorder::instance->onMouseButton(1, 2, e.motion.x, e.motion.y);
-                        } else if (e.button.button == SDL_BUTTON_RIGHT) {
-                            Recorder::instance->onMouseButton(1, 1, e.motion.x, e.motion.y);
-                        }
-                    }
-#endif
-                    if (e.button.button==SDL_BUTTON_LEFT) {
-                        if (!sdlMouseButton(1, 0, e.motion.x, e.motion.y))
-                            onMouseButtonDown(0);
-                    } else if (e.button.button == SDL_BUTTON_MIDDLE) {
-                        if (!sdlMouseButton(1, 2, e.motion.x, e.motion.y))
-                            onMouseButtonDown(2);
-                    } else if (e.button.button == SDL_BUTTON_RIGHT) {
-                        if (!sdlMouseButton(1, 1, e.motion.x, e.motion.y))
-                            onMouseButtonDown(1);
-                    }
-                } else if (e.type == SDL_MOUSEBUTTONUP) {
-#ifdef BOXEDWINE_RECORDER
-                    if (Recorder::instance) {
-                        if (e.button.button==SDL_BUTTON_LEFT) {
-                            Recorder::instance->onMouseButton(0, 0, e.motion.x, e.motion.y);
-                        } else if (e.button.button == SDL_BUTTON_MIDDLE) {
-                            Recorder::instance->onMouseButton(0, 2, e.motion.x, e.motion.y);
-                        } else if (e.button.button == SDL_BUTTON_RIGHT) {
-                            Recorder::instance->onMouseButton(0, 1, e.motion.x, e.motion.y);
-                        }
-                    }
-#endif
-                    if (e.button.button==SDL_BUTTON_LEFT) {
-                        if (!sdlMouseButton(0, 0, e.motion.x, e.motion.y))
-                            onMouseButtonUp(0);
-                    } else if (e.button.button == SDL_BUTTON_MIDDLE) {
-                        if (!sdlMouseButton(0, 2, e.motion.x, e.motion.y))
-                            onMouseButtonUp(2);
-                    } else if (e.button.button == SDL_BUTTON_RIGHT) {
-                        if (!sdlMouseButton(0, 1, e.motion.x, e.motion.y))
-                            onMouseButtonUp(1);
-                    }
-#ifdef SDL2
-                } else if (e.type == SDL_MOUSEWHEEL) {
-                    // Handle up/down mouse wheel movements
-                    int x, y;
-                    SDL_GetMouseState(&x, &y);
-                    if (!sdlMouseWheel(e.wheel.y*80, x, y)) {
-                        onMouseWheel(e.wheel.y);
-                    }
-#endif
-                } else if (e.type == SDL_KEYDOWN) {
-#ifdef BOXEDWINE_RECORDER
-                    if (e.key.keysym.sym == SDLK_F11 && Recorder::instance) {
-                        Recorder::instance->takeScreenShot();
-                    } else {
-                        if (Recorder::instance) {
-                            Recorder::instance->onKey(e.key.keysym.sym, 1);
-                        }
-#endif
-                        if (e.key.keysym.sym==SDLK_SCROLLOCK) {
-                            printStacks();
-                        } else if (!sdlKey(e.key.keysym.sym, 1)) {
-                            onKeyDown(translate(e.key.keysym.sym));
-                        }
-#ifdef BOXEDWINE_RECORDER
-                    }
-#endif
-                } else if (e.type == SDL_KEYUP) {
-#ifdef BOXEDWINE_RECORDER
-                    if (e.key.keysym.sym== SDLK_F11 && Recorder::instance) {
-                        // eat this one
-                    } else {
-#endif
-#ifdef BOXEDWINE_RECORDER
-                        if (Recorder::instance) {
-                            Recorder::instance->onKey(e.key.keysym.sym, 0);
-                        }
-#endif
-                        if (!sdlKey(e.key.keysym.sym, 0)) {
-                            onKeyUp(translate(e.key.keysym.sym));
-                        }
-#ifdef BOXEDWINE_RECORDER
-                    }
-#endif
-                }
-#ifdef SDL2
-                else if (e.type == SDL_WINDOWEVENT) {
-                    if (!isBoxedWineDriverActive())
-                        flipFBNoCheck();
-                }
-#endif
-#ifdef BOXEDWINE_VM
-                else if (e.type == sdlCustomEvent) {
-                    struct SdlCallback* callback = e.user.data1;
-                    callback->func(callback);
-                    SDL_LockMutex(callback->mutex);
-                    SDL_CondSignal(callback->cond);
-                    SDL_UnlockMutex(callback->mutex);
-                }
-#endif
-            };
-#ifndef BOXEDWINE_VM
-            t = getMilliesSinceStart();
-            if (lastTitleUpdate+5000 < t) {
-                char tmp[256];
-                lastTitleUpdate = t;
-                sprintf(tmp, "BoxedWine 18R2 Beta 2 %u MIPS", getMIPS());
-                fbSetCaption(tmp, "BoxedWine");
-                checkWaitingNativeSockets(0); // just so it doesn't starve if the system is busy
-            }
-            if (!ran) {
-                int count = 0;
-                
-                for (auto& n : KSystem::getProcesses()) {
-                    KProcess* openProcess = n.second;
-                    if (openProcess && !openProcess->isStopped() && !openProcess->isTerminated()) {
-                        count++;
-                    }
-                }
-                if (count==0) {
-                    break;
-                }
-                if (!checkWaitingNativeSockets(20))
-                    SDL_Delay(20);
-            }
-#endif
+        if (!doMainLoop()) {
+            return 0; // doMainLoop should have handled any cleanup, like SDL_Quit if necessary
         }
-#endif
     }
 #ifdef GENERATE_SOURCE
     if (gensrc)
         writeSource();
 #endif
-#ifdef BOXEDWINE_RECORDER
-    if (Recorder::instance) {
-        Recorder::instance->close();
-    }
-    if (Player::instance) {
-        if (Player::instance->nextCommand=="DONE") {
-            klog("script: success");
-        } else {
-            klog("script: failed");
-        }
-    }
-#endif
+    BOXEDWINE_RECORDER_QUIT();
     SDL_Quit();
     
     return 0;

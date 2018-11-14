@@ -26,6 +26,7 @@ FsFileNode::FsFileNode(U32 id, U32 rdev, const std::string& path, const std::str
 }
 
 bool FsFileNode::remove() {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->openNodesMutex);
     bool result = false;
     bool exists = Fs::doesNativePathExist(this->nativePath);
 
@@ -107,6 +108,7 @@ U64 FsFileNode::length() {
 
 void FsFileNode::ensurePathIsLocal() {
 #ifdef BOXEDWINE_ZLIB
+    BOXEDWINE_CRITICAL_SECTION;
     if (this->zipNode && !Fs::doesNativePathExist(this->nativePath)) {
         if (this->isDirectory()) {
             Fs::makeLocalDirs(this->path);
@@ -223,6 +225,7 @@ S32 translateErr(U32 e) {
 }
 
 U32 FsFileNode::rename(const std::string& path) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->openNodesMutex);
     U32 result;
     S64* tmpPos = NULL;
 

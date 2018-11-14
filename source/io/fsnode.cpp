@@ -18,6 +18,7 @@ FsNode::FsNode(Type type, U32 id, U32 rdev, const std::string& path, const std::
 }
 
 void FsNode::removeOpenNode(FsOpenNode* node) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->openNodesMutex);
     node->listNode.remove();
 }
 
@@ -30,10 +31,12 @@ bool FsNode::canWrite() {
 }
 
 void FsNode::removeNodeFromParent() {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->childrenByNameMutex);
     this->parent->childrenByName.erase(this->name);
 }
 
 void FsNode::loadChildren() {
+    // don't need to protect from threads since this is private
     if (!this->hasLoadedChildrenFromFileSystem) {
         this->hasLoadedChildrenFromFileSystem = true;
         std::string nativePath = Fs::localPathToRemote(this->path);
@@ -62,6 +65,7 @@ void FsNode::loadChildren() {
 }
 
 BoxedPtr<FsNode> FsNode::getChildByName(const std::string& name) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->childrenByNameMutex);
     this->loadChildren();
     if (this->childrenByName.count(name))
         return this->childrenByName[name];
@@ -69,23 +73,58 @@ BoxedPtr<FsNode> FsNode::getChildByName(const std::string& name) {
 }
 
 U32 FsNode::getChildCount() {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->childrenByNameMutex);
     this->loadChildren();
     return (U32)this->childrenByName.size();
 }
 
 void FsNode::addChild(BoxedPtr<FsNode> node) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->childrenByNameMutex);
     this->loadChildren();
     this->childrenByName[node->name] = node;
 }
 
- void FsNode::removeChildByName(const std::string& name) {
+void FsNode::removeChildByName(const std::string& name) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->childrenByNameMutex);
     this->loadChildren();
     this->childrenByName.erase(name);
- }
+}
 
- void FsNode::getAllChildren(std::vector<BoxedPtr<FsNode> > & results) {
+void FsNode::getAllChildren(std::vector<BoxedPtr<FsNode> > & results) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->childrenByNameMutex);
     this->loadChildren();
     for (auto& n : this->childrenByName) {
         results.push_back(n.second);
     }
+}
+
+void FsNode::addLock(KFileLock* lock) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->locksMutex);
+    this->locks.push_back(*lock);
+}
+
+KFileLock* FsNode::getLock(KFileLock* lock) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->locksMutex);
+    U64 l1 = lock->l_start;
+    U64 l2 = l1+lock->l_len;
+
+    if (lock->l_len == 0)
+        l2 = 0xFFFFFFFF;
+    for( auto& n : this->locks ) {
+        KFileLock* next = &n;
+        U64 s1 = next->l_start;
+        U64 s2 = s1+next->l_len;
+        
+        if (next->l_len == 0)
+            s2 = 0xFFFFFFFF;
+        if ((s1>=l1 && s1<=l2) || (s2>=l1 && s2<=l2)) {
+            return next;
+        }
+    }
+    return NULL;
  }
+
+void FsNode::addOpenNode(KListNode<FsOpenNode*>* node) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->openNodesMutex);
+    this->openNodes.addToBack(node);
+}

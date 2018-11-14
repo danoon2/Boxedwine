@@ -22,31 +22,6 @@
 #include "platform.h"
 #include "wnd.h"
 
-#ifdef BOXEDWINE_VM
-
-struct SdlCallback {
-    SDL_Event sdlEvent;
-    SDL_mutex* mutex;
-    SDL_cond* cond;
-    struct KThread* thread;
-    U32 iArg1;
-    U32 iArg2;
-    U32 iArg3;
-    U32 iArg4;
-    U32 iArg5;
-    U32 iArg6;
-    U32 iArg7;
-    void* pArg1;
-    void* pArg2;
-    void* pArg3;
-    void* pArg4;
-    void (*func)(struct SdlCallback*);
-    U32 result;
-    struct SdlCallback* next;
-};
-
-#endif
-
 int sdlMouseMouse(int x, int y);
 int sdlMouseButton(U32 down, U32 button, int x, int y);
 int sdlMouseWheel(int amount, int x, int y);
@@ -80,4 +55,5 @@ bool sdlPartialScreenShot(std::string filepath, U32 x, U32 y, U32 w, U32 h, U32*
 void sdlPushWindowSurface();
 void sdlPopWindowSurface();
 void sdlDrawRectOnPushedSurfaceAndDisplay(U32 x, U32 y, U32 w, U32 h, U8 r, U8 g, U8 b, U8 a);
+bool handlSdlEvent(void* e);
 #endif

@@ -46,30 +46,14 @@ bool KFile::isAsync() {
 KFileLock* KFile::getLock(KFileLock* lock) {
     FsOpenNode* openNode = this->openFile;
     BoxedPtr<FsNode> node = openNode->node;
-    U64 l1 = lock->l_start;
-    U64 l2 = l1+lock->l_len;
-
-    if (lock->l_len == 0)
-        l2 = 0xFFFFFFFF;
-    for( auto& n : node->locks ) {
-        KFileLock* next = &n;
-        U64 s1 = next->l_start;
-        U64 s2 = s1+next->l_len;
-        
-        if (next->l_len == 0)
-            s2 = 0xFFFFFFFF;
-        if ((s1>=l1 && s1<=l2) || (s2>=l1 && s2<=l2)) {
-            return next;
-        }
-    }
-    return 0;
+    return node->getLock(lock);
 }
 
 U32 KFile::setLock(KFileLock* lock, bool wait) {    
     // :TODO: unlock, auto remove lock if process exits
     if (lock->l_type == K_F_UNLCK) {
     } else {
-        this->openFile->node->locks.push_back(*lock);
+        this->openFile->node->addLock(lock);
     }
     return 0;
 }

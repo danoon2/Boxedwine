@@ -173,22 +173,26 @@ void KProcess::cleanupProcess() {
 }
 
 KThread* KProcess::createThread() {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(threadsMutex);
     KThread* thread = new KThread(KSystem::nextThreadId++, this);
     this->threads[thread->id] = thread;
     return thread;
 }
 
 void KProcess::removeThread(KThread* thread) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(threadsMutex);
     this->threads.erase(thread->id);
 }
 
 KThread* KProcess::getThreadById(U32 tid) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(threadsMutex);
     if (this->threads.count(tid))
         return this->threads[tid];
     return NULL;
 }
 
 U32 KProcess::getThreadCount() {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(threadsMutex);
     return (U32)this->threads.size();
 }
 
@@ -220,7 +224,7 @@ void KProcess::clone(KProcess* from) {
         this->fds[n.first] = this->allocFileDescriptor(fd->kobject, fd->accessFlags, fd->descriptorFlags, n.first, 0);
         this->fds[n.first]->refCount = fd->refCount;
     }
-
+    // :TODO: not thread safe if from has multiple threads
     this->mappedFiles = from->mappedFiles;
     std::copy(from->sigActions, from->sigActions+MAX_SIG_ACTIONS, this->sigActions);
     this->path = from->path;
@@ -377,6 +381,7 @@ static void setupThreadStack(KThread* thread, CPU* cpu, const std::string& progr
 }
 
 U32 KProcess::getNextFileDescriptorHandle(int after) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(fdsMutex);
     U32 i=after;
 
     while (1) {
@@ -387,6 +392,7 @@ U32 KProcess::getNextFileDescriptorHandle(int after) {
 }
 
 KFileDescriptor* KProcess::allocFileDescriptor(const BoxedPtr<KObject>& kobject, U32 accessFlags, U32 descriptorFlags, S32 handle, U32 afterHandle) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(fdsMutex);
     KFileDescriptor* result;
 
     if (handle<0) {
@@ -530,7 +536,7 @@ KThread* KProcess::startProcess(const std::string& currentDirectory, U32 argc, c
 }
 
 U32 KProcess::exit(U32 code) {
-    if (this->threads.size()==1)
+    if (this->getThreadCount()==1)
         return this->exitgroup(code);
 
     KThread::currentThread()->cpu->yield = true;
@@ -540,12 +546,14 @@ U32 KProcess::exit(U32 code) {
 }
 
 KFileDescriptor* KProcess::getFileDescriptor(FD handle) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(fdsMutex);
     if (this->fds.count(handle))
         return this->fds[handle];
     return NULL;
 }
 
 void KProcess::clearFdHandle(FD handle) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(fdsMutex);
     this->fds.erase(handle);
 }
 
@@ -558,6 +566,7 @@ bool KProcess::isTerminated() {
 }
 
 std::string KProcess::getModuleName(U32 eip) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mappedFilesMutex);
     for (auto& n : this->mappedFiles) {
         BoxedPtr<MappedFile> mappedFile = n.second;
         if (eip>=mappedFile->address && eip<mappedFile->address+mappedFile->len)
@@ -567,6 +576,7 @@ std::string KProcess::getModuleName(U32 eip) {
 }
 
 U32 KProcess::getModuleEip(U32 eip) {    
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mappedFilesMutex);
     if (eip<0xd0000000)
         return eip;
     for (auto& n : this->mappedFiles) {
@@ -674,6 +684,7 @@ U32 KProcess::execve(const std::string& path, std::vector<std::string>& args, co
 }
 
 void KProcess::signalProcess(U32 signal) {	
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(threadsMutex);
     this->pendingSignals |= ((U64)1 << (signal-1));
     // give each thread a chance to run a signal, some or all of them might have the signal masked off.  
     // In that case when the user unmasks the signal with sigprocmask it will be caught then
@@ -990,6 +1001,7 @@ U32 KProcess::getrusuage(U32 who, U32 usage) {
     U32 kernelMicroSeconds = 0;
 
     if (who==0) { // RUSAGE_SELF
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(threadsMutex);
         for (auto& t : this->threads ) {
             KThread* thread = t.second;
             userSeconds += (U32)(thread->userTime / 1000000l);
@@ -1183,6 +1195,7 @@ U32 KProcess::mmap(U32 addr, U32 len, S32 prot, S32 flags, FD fildes, U64 off) {
         if (shared)
             permissions|=PAGE_SHARED;
         if (fd) {	
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mappedFilesMutex);
             BoxedPtr<MappedFile> mappedFile = new MappedFile();
 
             mappedFile->address = pageStart << K_PAGE_SHIFT;
@@ -1479,7 +1492,7 @@ U32 KProcess::exitgroup(U32 code) {
     this->exitCode = code;
     KThread::currentThread()->cpu->yield = true;   
     KThread::currentThread()->process = NULL;  // signal to scheduler to delete this thread
-    if (getProcessCount()==1) {        
+    if (KSystem::getProcessCount()==1) {        
         // no one left to wait on this process, with no processes running main will exit boxedwine
         KSystem::eraseProcess(this->id);
     }
@@ -1627,6 +1640,7 @@ U32 KProcess::getdents(FD fildes, U32 dirp, U32 count, bool is64) {
 }
 
 U32 KProcess::msync(U32 addr, U32 len, U32 flags) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mappedFilesMutex);
     for (auto& n : this->mappedFiles) {
         BoxedPtr<MappedFile> m = n.second;
         if (m->address<=addr && addr+len<m->address+m->len) {
@@ -1955,7 +1969,8 @@ U32 KProcess::fcntrl(FD fildes, U32 cmd, U32 arg) {
 }
 
 U32 KProcess::set_thread_area(U32 info) {
-    struct user_desc desc;
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(usedTlsMutex);
+    struct user_desc desc;    
 
     readMemory((U8*)&desc, info, sizeof(struct user_desc));
     if (desc.entry_number==-1) {
@@ -1978,7 +1993,8 @@ U32 KProcess::set_thread_area(U32 info) {
             return -K_ESRCH;
         }
         this->usedTLS[desc.entry_number-TLS_ENTRY_START_INDEX]=1;
-        KThread::currentThread()->tls[desc.entry_number-TLS_ENTRY_START_INDEX] = desc;            
+
+        KThread::currentThread()->setTLS(&desc);
     }
     return 0;
 }
@@ -2193,16 +2209,14 @@ U32 KProcess::utimesat(FD dirfd, const std::string& path, U32 times, U32 flags) 
 }
 
 user_desc* KProcess::getLDT(U32 index) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(ldtMutex);
     if (this->ldt.count(index))
         return &this->ldt[index];
     return NULL;
 }
 
-const std::unordered_map<U32, KThread*>& KProcess::getThreads() {
-    return this->threads;
-}
-
 BoxedPtr<SHM> KProcess::allocSHM(U32 key, U32 afterIndex) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(privateShmMutex);
     BoxedPtr<SHM> result;
 
     while (this->privateShm.count(afterIndex)) {
@@ -2216,17 +2230,20 @@ BoxedPtr<SHM> KProcess::allocSHM(U32 key, U32 afterIndex) {
 }
 
 BoxedPtr<SHM> KProcess::getSHM(U32 key) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(privateShmMutex);
     if (this->privateShm.count(key))
         return this->privateShm[key];
     return NULL;
 }
 
 void KProcess::attachSHM(U32 address, const BoxedPtr<SHM>& shm) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(attachedShmMutex);
     BoxedPtr<AttachedSHM> attached = new AttachedSHM(shm, address, this->id);
     this->attachedShm[address] = attached;
 }
 
 U32 KProcess::shmdt(U32 shmaddr) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(attachedShmMutex);
     S32 shmid = -1;
     U32 page = shmaddr >> K_PAGE_SHIFT;
 
@@ -2241,6 +2258,41 @@ U32 KProcess::shmdt(U32 shmaddr) {
     return -K_EINVAL;
 }
 
-const std::unordered_map<U32, BoxedPtr<MappedFile> > & KProcess::getMappedFiles() {
-    return this->mappedFiles;
+void KProcess::printStack() {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(threadsMutex);
+    for (auto& t : this->threads) {
+        KThread* thread = t.second;
+        CPU* cpu=thread->cpu;
+
+        klog("  thread %X %s", thread->id, thread->waiting?"WAITING":"RUNNING");
+        if (thread->waiting) {
+                  
+        } else {
+            std::string name = this->getModuleName(cpu->seg[CS].address+cpu->eip.u32);
+
+            klog("    0x%08d %s", this->getModuleEip(cpu->seg[CS].address+cpu->eip.u32), name.length()?name.c_str():"Unknown");
+        }
+        cpu->walkStack(cpu->eip.u32, EBP, 6);
+    }
+}
+
+U32 KProcess::signal(U32 signal) {
+    for (auto& t : this->threads) {
+        KThread* thread = t.second;
+
+        if (((U64)1 << (signal-1)) & ~(thread->inSignal?thread->inSigMask:thread->sigMask)) {
+            return thread->signal(signal, true);
+        }
+    }
+    // didn't find a thread that could handle it
+    this->pendingSignals |= ((U64)1 << (signal-1));
+    return 0;
+}
+
+void KProcess::printMappedFiles() {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mappedFilesMutex);
+    for (auto& n : this->mappedFiles) {
+        const BoxedPtr<MappedFile>& mappedFile = n.second;
+        printf("    %.8X - %.8X %s\n", mappedFile->address, mappedFile->address+(int)mappedFile->len, mappedFile->file->openFile->node->path.c_str());
+    }
 }

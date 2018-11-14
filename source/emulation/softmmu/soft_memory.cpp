@@ -69,10 +69,7 @@ void Memory::log_pf(KThread* thread, U32 address) {
         }
     }
     printf("Mapped Files:\n");
-    for (auto& n : process->getMappedFiles()) {
-        const BoxedPtr<MappedFile>& mappedFile = n.second;
-        printf("    %.8X - %.8X %s\n", mappedFile->address, mappedFile->address+(int)mappedFile->len, mappedFile->file->openFile->node->path.c_str());
-    }
+    process->printMappedFiles();
     cpu->walkStack(cpu->eip.u32, EBP, 2);
     kpanic("pf");
 }
