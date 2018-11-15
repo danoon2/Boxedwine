@@ -1,5 +1,6 @@
 #include <emscripten/emscripten.h>
 #include "boxedwine.h"
+#include <SDL.h>
 #include "../sdlwindow.h"
 
 extern U32 sdlUpdated;

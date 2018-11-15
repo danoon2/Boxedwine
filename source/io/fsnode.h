@@ -57,7 +57,7 @@ public:
     void getAllChildren(std::vector<BoxedPtr<FsNode> > & results);
 
     void addLock(KFileLock* lock);
-    KFileLock* FsNode::getLock(KFileLock* lock);
+    KFileLock* getLock(KFileLock* lock);
 
     void addOpenNode(KListNode<FsOpenNode*>* node);
 protected:

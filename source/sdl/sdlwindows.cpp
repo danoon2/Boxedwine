@@ -25,7 +25,7 @@
 #include "devfb.h"
 #include "devinput.h"
 #include "kunixsocket.h"
-#include "multiThreaded\sdlcallback.h"
+#include "multiThreaded/sdlcallback.h"
 
 int bits_per_pixel = 32;
 int default_horz_res = 800;
@@ -2289,12 +2289,14 @@ U32 translate(U32 key) {
 
 bool handlSdlEvent(void* p) {
     SDL_Event* e=(SDL_Event*)p;
+#ifdef BOXEDWINE_RECORDER
     if (Player::instance) {
         if (e->type == SDL_QUIT) {
             return false;
         }
         return true;
     }
+#endif
     if (e->type == SDL_QUIT) {
         return false;
     } else if (e->type == SDL_MOUSEMOTION) { 
