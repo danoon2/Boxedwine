@@ -14,15 +14,15 @@
 #include "platform.h"
 #include "log.h"
 
-#include "../source/util/synchronization.h"
 #include "../source/util/ringbuffer.h"
 #include "../source/util/klist.h"
+#include "ktimer.h"
+#include "../source/util/synchronization.h"
 #include "../source/util/karray.h"
 #include "../source/util/stringutil.h"
 
 #include "../source/emulation/cpu/common/cpu.h"
 #include "kpoll.h"
-#include "ktimer.h"
 #include "memory.h"
 #include "kthread.h"
 #include "kfilelock.h"

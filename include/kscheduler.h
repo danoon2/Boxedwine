@@ -19,9 +19,8 @@
 #ifndef __KSCHEDULER_H__
 #define __KSCHEDULER_H__
 
+void scheduleThread(KThread* thread);
 void unscheduleThread(KThread* thread); // will not return if thread is current thread and BOXEDWINE_VM
-void wakeThread(KThread* thread);
-void wakeThreads(U32 wakeType);
 void addTimer(KTimer* timer);
 void removeTimer(KTimer* timer);
 
@@ -31,8 +30,6 @@ void platformRunThreadSlice(KThread* thread);
 #ifdef BOXEDWINE_DEFAULT_MMU
 #define platformRunThreadSlice runThreadSlice
 #endif
-void waitThread(KThread* thread);
-void scheduleThread(KThread* thread);
 U32 getMIPS();
 
 #endif

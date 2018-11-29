@@ -38,47 +38,19 @@ void removeTimer(KTimer* timer) {
     timer->active = false;
 }
 
-void wakeThread(KThread* thread) {
-    if (!thread->waiting) {
-        kwarn("wakeThread: tried to wake a thread that is not asleep");
-        return;
-    }
-    thread->waiting = false;
-    if (thread->timer.active) {
-        removeTimer(&thread->timer);
-    }
-    thread->clearWaitNofifyNodes();
-    thread->waitThreadNode.remove();
-
-    scheduleThread(thread);
-}
-
-void wakeThreads(U32 wakeType) {
-    waitThreads.for_each([wakeType](KListNode<KThread*>* node) {
-        if (node->data->waitType == wakeType) {
-            wakeThread(node->data);
-        }
-    });
-}
-
 void scheduleThread(KThread* thread) {
+#ifdef _DEBUG
+    if (thread->waitingCond) {
+        kpanic("can't schedule a thread that is waiting");
+    }
+#endif
     thread->cpu->yield = false;
     scheduledThreads.addToFront(&thread->scheduledThreadNode);
 }
 
-void unscheduleThread(KThread* thread) {	
-    if (thread->waiting) {
-        // will wake up all threads waiting on this this
-        wakeThread(thread);
-    }
+void unscheduleThread(KThread* thread) {	    
     thread->scheduledThreadNode.remove();
     thread->cpu->yield = true;
-}
-
-void waitThread(KThread* thread) {
-    unscheduleThread(thread);
-    thread->waiting = true;
-    waitThreads.addToBack(&thread->waitThreadNode);
 }
 
 S32 contextTime = 100000;
@@ -172,7 +144,7 @@ bool runSlice() {
         // this is how we signal to delete the current thread, since we can't delete it in the syscall, maybe we should use smart_ptr for threads
         if (!currentThread->process) {
             delete currentThread;
-        } else if (!currentThread->waiting) {
+        } else if (!currentThread->waitingCond) {
             // make sure we are behind any threads that were recently scheduled
             node->remove();
             scheduledThreads.addToBack(node);

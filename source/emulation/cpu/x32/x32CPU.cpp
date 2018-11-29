@@ -2159,7 +2159,7 @@ void OPCALL firstX32Op(CPU* cpu, DecodedOp* op) {
 #ifdef __TEST
     if (DecodedBlock::currentBlock->runCount == 0) {
 #else
-    if (DecodedBlock::currentBlock->runCount == 50) {
+    if (0) {
 #endif
         DynamicData data;
         data.cpu = cpu;

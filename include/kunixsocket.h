@@ -22,7 +22,7 @@ public:
     virtual bool isOpen();
     virtual bool isReadReady();
     virtual bool isWriteReady();
-    virtual void waitForEvents(U32 events);
+    virtual void waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events);
     virtual U32  write(U32 buffer, U32 len);
     virtual U32  writeNative(U8* buffer, U32 len);
     virtual U32  writev(U32 iov, S32 iovcnt);
@@ -54,16 +54,15 @@ public:
 private:        
     KList<KUnixSocketObject*> pendingConnections; // weak, if object is destroyed it should remove itself from this list
     KUnixSocketObject* connecting;
-    BOXEDWINE_CONDITION pendingConnectionsCond; // protects both pendingConnections and connecting
+
+    BOXEDWINE_CONDITION lockCond;
 
     ringbuffer<S8> recvBuffer;    
     std::queue<BoxedPtr<KSocketMsg> > msgs;	
-    BOXEDWINE_CONDITION cond;
 
     KListNode<KUnixSocketObject*> pendingConnectionNode;
 
-    U32 pid;
-    U32 internal_write(U32 buffer, U32 len);
+    U32 internal_write(BOXEDWINE_CONDITION& cond, U32 buffer, U32 len);
 };
 
 #endif

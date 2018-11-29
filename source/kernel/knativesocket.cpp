@@ -41,12 +41,12 @@ void updateWaitingList() {
             kpanic("updateWaitingList %s socket is too large to select on", node->data->nativeSocket);
         }
 #endif
-        if (node->data->waitingOnReadThread.size()) {
+        if (node->data->readingCond.waitCount()) {
             FD_SET(node->data->nativeSocket, &waitingReadset);
             FD_SET(node->data->nativeSocket, &waitingErrorset);
             errorSet = true;
         }
-        if (node->data->waitingOnWriteThread.size()) {
+        if (node->data->writingCond.waitCount()) {
             FD_SET(node->data->nativeSocket, &waitingWriteset);
             if (!errorSet)
                 FD_SET(node->data->nativeSocket, &waitingErrorset);
@@ -64,8 +64,8 @@ void addWaitingNativeSocket(KNativeSocketObject* s) {
 
 void removeWaitingSocket(KNativeSocketObject* s) {
     s->waitingNode.remove();
-    s->wakeAndResetWaitingOnReadThreads();
-    s->wakeAndResetWaitingOnWriteThreads();
+    BOXEDWINE_CONDITION_SIGNAL_ALL_NEED_LOCK(s->readingCond);
+    BOXEDWINE_CONDITION_SIGNAL_ALL_NEED_LOCK(s->writingCond);
 }
 
 bool checkWaitingNativeSockets(int timeout) {
@@ -84,15 +84,17 @@ bool checkWaitingNativeSockets(int timeout) {
         if (result) {
             waitingNativeSockets.for_each([] (KListNode<KNativeSocketObject*>* node) {
                 U32 found = 0;
-                if (FD_ISSET(node->data->nativeSocket, &waitingReadset) && node->data->wakeAndResetWaitingOnReadThreads()) {
+                if (FD_ISSET(node->data->nativeSocket, &waitingReadset) && node->data->readingCond.waitCount()) {
+                    BOXEDWINE_CONDITION_SIGNAL_ALL_NEED_LOCK(node->data->readingCond);
                     found = 1;
                 }
-                if (FD_ISSET(node->data->nativeSocket, &waitingWriteset) && node->data->wakeAndResetWaitingOnWriteThreads()) {
+                if (FD_ISSET(node->data->nativeSocket, &waitingWriteset) && node->data->writingCond.waitCount()) {
+                    BOXEDWINE_CONDITION_SIGNAL_ALL_NEED_LOCK(node->data->writingCond);
                     found = 1;
                 }
                 if (FD_ISSET(node->data->nativeSocket, &waitingErrorset)) {
-                    node->data->wakeAndResetWaitingOnWriteThreads();
-                    node->data->wakeAndResetWaitingOnReadThreads();
+                    BOXEDWINE_CONDITION_SIGNAL_ALL_NEED_LOCK(node->data->readingCond);
+                    BOXEDWINE_CONDITION_SIGNAL_ALL_NEED_LOCK(node->data->writingCond);
                     found = 1;
                 }
                 if (found)
@@ -152,26 +154,34 @@ S32 translateNativeSocketError(int error) {
     return result;
 }
 
-S32 handleNativeSocketError(KThread* thread, KNativeSocketObject* s, bool write) {
+S32 handleNativeSocketError(KNativeSocketObject* s, bool write) {
 #ifdef WIN32
     S32 result = translateNativeSocketError(WSAGetLastError());
 #else
     S32 result = translateNativeSocketError(errno);
 #endif
-    if (result == -K_EWOULDBLOCK) {
-        if (write) {
-            s->waitOnSocketWrite(thread);
-        } else {
-            s->waitOnSocketRead(thread);
-        }
-        addWaitingNativeSocket(s);        
-        result = -K_WAIT;
-    }
     s->error = -result;
+    if (result == -K_EWOULDBLOCK) {
+        addWaitingNativeSocket(s);        
+        if (write) {
+            BOXEDWINE_CONDITION_LOCK(s->writingCond);
+            BOXEDWINE_CONDITION_WAIT(s->writingCond);
+            BOXEDWINE_CONDITION_UNLOCK(s->writingCond);            
+        } else {
+            BOXEDWINE_CONDITION_LOCK(s->readingCond);
+            BOXEDWINE_CONDITION_WAIT(s->readingCond);
+            BOXEDWINE_CONDITION_UNLOCK(s->readingCond);
+        }        
+        result = -K_WAIT;
+    }    
     return result;
 }
 
-KNativeSocketObject::KNativeSocketObject(U32 domain, U32 type, U32 protocol) : KSocketObject(KTYPE_NATIVE_SOCKET, domain, type, protocol), connecting(false), waitingNode(this) {
+KNativeSocketObject::KNativeSocketObject(U32 domain, U32 type, U32 protocol) : KSocketObject(KTYPE_NATIVE_SOCKET, domain, type, protocol), 
+    connecting(false),
+    readingCond("KNativeSocketObject::readingCond"),
+    writingCond("KNativeSocketObject::writingCond"),
+    waitingNode(this) {
 #ifdef WIN32
     if (!winsock_intialized) {
         WSADATA wsaData;
@@ -237,7 +247,7 @@ U32 KNativeSocketObject::ioctl(U32 request) {
         U32 result = ::ioctl(this->nativeSocket, FIONREAD, &value);        
 #endif
         if (result!=0)
-            return handleNativeSocketError(KThread::currentThread(), this, true);
+            return handleNativeSocketError(this, true);
         return value;
     }
     return -K_ENOTTY;
@@ -327,12 +337,12 @@ bool KNativeSocketObject::isWriteReady() {
     return FD_ISSET(this->nativeSocket,&sready)!=0;
 }
 
-void KNativeSocketObject::waitForEvents(U32 events) {
+void KNativeSocketObject::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) {
     if (events & K_POLLIN) {
-        this->waitOnSocketRead(KThread::currentThread());
+        BOXEDWINE_CONDITION_ADD_CHILD_CONDITION(parentCondition, this->readingCond);
     }
     if (events & K_POLLOUT) {
-        this->waitOnSocketWrite(KThread::currentThread());
+        BOXEDWINE_CONDITION_ADD_CHILD_CONDITION(parentCondition, this->writingCond);
     }
     addWaitingNativeSocket(this);
 }
@@ -343,7 +353,7 @@ U32 KNativeSocketObject::writeNative(U8* buffer, U32 len) {
         this->error = 0;
         return result;
     }
-    return handleNativeSocketError(KThread::currentThread(), this, true);
+    return handleNativeSocketError(this, true);
 }
 
 U32 KNativeSocketObject::readNative(U8* buffer, U32 len) {
@@ -352,7 +362,7 @@ U32 KNativeSocketObject::readNative(U8* buffer, U32 len) {
         this->error = 0;
         return result;
     }
-    return handleNativeSocketError(KThread::currentThread(), this, false);
+    return handleNativeSocketError(this, false);
 }
 
 U32 KNativeSocketObject::stat(U32 address, bool is64) {
@@ -383,7 +393,7 @@ U32 KNativeSocketObject::bind(KFileDescriptor* fd, U32 address, U32 len) {
             this->error = 0;
             return 0;
         }
-        return handleNativeSocketError(KThread::currentThread(), this, false);
+        return handleNativeSocketError(this, false);
     }
     return -K_EAFNOSUPPORT;
 }
@@ -413,8 +423,9 @@ U32 KNativeSocketObject::connect(KFileDescriptor* fd, U32 address, U32 len) {
             }
         }
         addWaitingNativeSocket(this); 
-        waitOnSocketWrite(KThread::currentThread());
-        return -K_WAIT;
+        BOXEDWINE_CONDITION_LOCK(this->writingCond);
+        BOXEDWINE_CONDITION_WAIT(this->writingCond);
+        BOXEDWINE_CONDITION_UNLOCK(this->writingCond);
     }
 
     memcopyToNative(address, buffer, len);
@@ -429,7 +440,7 @@ U32 KNativeSocketObject::connect(KFileDescriptor* fd, U32 address, U32 len) {
         this->connecting = false;
         return -K_ECONNREFUSED;
     }   
-    result = handleNativeSocketError(KThread::currentThread(), this, true);
+    result = handleNativeSocketError(this, true);
     if (result == -K_WAIT) {            
         this->connecting = true;
     }
@@ -443,7 +454,7 @@ U32 KNativeSocketObject::listen(KFileDescriptor* fd, U32 backlog) {
         return result;
     }
     this->listening = false;
-    return handleNativeSocketError(KThread::currentThread(), this, false);
+    return handleNativeSocketError(this, false);
 }
 
 U32 KNativeSocketObject::accept(KFileDescriptor* fd, U32 address, U32 len) {
@@ -464,7 +475,7 @@ U32 KNativeSocketObject::accept(KFileDescriptor* fd, U32 address, U32 len) {
         }
         return resultFD->handle;
     }
-    return handleNativeSocketError(KThread::currentThread(), this, false);
+    return handleNativeSocketError(this, false);
 }
 
 U32 KNativeSocketObject::getsockname(KFileDescriptor* fd, U32 address, U32 plen) {    
@@ -472,7 +483,7 @@ U32 KNativeSocketObject::getsockname(KFileDescriptor* fd, U32 address, U32 plen)
     char* buf = new char[len];
     U32 result = ::getsockname(this->nativeSocket, (struct sockaddr*)buf, &len);
     if (result)
-        result = handleNativeSocketError(KThread::currentThread(), this, false);
+        result = handleNativeSocketError(this, false);
     else {
         memcopyFromNative(address, buf, len);
         writed(plen, len);
@@ -492,7 +503,7 @@ U32 KNativeSocketObject::getpeername(KFileDescriptor* fd, U32 address, U32 plen)
         writed(plen, len);
         this->error = 0;
     } else {
-        result = handleNativeSocketError(KThread::currentThread(), this, false);
+        result = handleNativeSocketError(this, false);
     }
     delete[] buf;
     return result;
@@ -616,7 +627,7 @@ U32 KNativeSocketObject::recvmsg(KFileDescriptor* fd, U32 address, U32 flags) {
             else if (result)
                 break;
             else
-                result = handleNativeSocketError(KThread::currentThread(), this, false);
+                result = handleNativeSocketError(this, false);
         } else {
             result += this->read(p, len);
         }
@@ -647,7 +658,7 @@ U32 KNativeSocketObject::sendto(KFileDescriptor* fd, U32 message, U32 length, U3
         this->error = 0;
         return result;
     }
-    return handleNativeSocketError(KThread::currentThread(), this, true);
+    return handleNativeSocketError(this, true);
 }
 
 U32 KNativeSocketObject::recvfrom(KFileDescriptor* fd, U32 buffer, U32 length, U32 flags, U32 address, U32 address_len) {
@@ -679,7 +690,7 @@ U32 KNativeSocketObject::recvfrom(KFileDescriptor* fd, U32 buffer, U32 length, U
         writed(address_len, outLen);
         this->error = 0;
     } else {
-        result = handleNativeSocketError(KThread::currentThread(), this, false);
+        result = handleNativeSocketError(this, false);
         if (result == 0) { // WSAEMSGSIZE for example
             result = length;
             memcopyFromNative(address, (char*)fromBuffer, inLen);

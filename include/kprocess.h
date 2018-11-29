@@ -227,8 +227,8 @@ public:
     U32 phnum;
     U32 phentsize;
     U32 entry;
-    U32 eventQueueFD;        
-    KThread* wakeOnExitOrExec;
+    U32 eventQueueFD;     
+    BOXEDWINE_CONDITION exitOrExecCond;
     bool hasSetStackMask;
     bool hasSetSeg[6];
 private:

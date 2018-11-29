@@ -19,9 +19,6 @@
 #ifndef __KTHREAD_H__
 #define __KTHREAD_H__
 
-#define WAIT_NONE 0
-#define WAIT_PID 1
-
 #define MAX_POLL_DATA 256
 
 #define TLS_ENTRIES 10
@@ -42,15 +39,6 @@ public:
 
 class KProcess;
 class Memory;
-
-class KThreadTimer : public KTimer {
-public:
-    KThreadTimer(KThread* thread) : thread(thread){};
-
-    bool run();
-private:
-    KThread* thread;
-};
 
 class KThread {
 public:
@@ -99,13 +87,9 @@ public:
     U64 userTime;
     U64 kernelTime;
     U32 inSysCall;
-    KThread* waitingForSignalToEnd;
+    BOXEDWINE_CONDITION waitingForSignalToEndCond;
     U64 waitingForSignalToEndMaskToRestore;    
     U64 pendingSignals;
-    bool waiting;
-    U32 waitStartTime;
-    U32 waitType;
-    KThreadTimer timer;
     void* glContext;
     void* currentContext;
     bool log; // syscalls
@@ -127,16 +111,25 @@ public:
     KListNode<KThread*> scheduledThreadNode;
     KListNode<KThread*> waitThreadNode;
 
-    KListNode<KThread*>* getWaitNofiyNode();
-    void clearWaitNofifyNodes();
+    BOXEDWINE_CONDITION *waitingCond;
+    BOXEDWINE_CONDITION pollCond;
+    BoxedWineConditionTimer condTimer;
+
+    U32 condStartWaitTime;
 private:
+    void clearFutexes();
+
     static KThread* runningThread;    
+
+    BOXEDWINE_CONDITION sleepCond;      
 
     KArray<BoxedPtr<KListNode<KThread*> > > extraWaitNodes;
     BOXEDWINE_MUTEX extraWaitNodesMutex;
 
     struct user_desc tls[TLS_ENTRIES];
     BOXEDWINE_MUTEX tlsMutex;
+
+    static BOXEDWINE_MUTEX futexesMutex;
 
     KListNode<KThread*> waitNode;
 };
@@ -148,8 +141,8 @@ public:
     KThread* savedThread;
 };
 
-#define RESTORE_SIGNAL_MASK 0xF000000000000000l
-#define SIGSUSPEND_RETURN 0x0FFFFFFFFFFFFFFFl
+#define SIGSUSPEND_RETURN 0xF000000000000000l
+#define RESTORE_SIGNAL_MASK 0x0FFFFFFFFFFFFFFFl
 
 void OPCALL onExitSignal(CPU* cpu, DecodedOp* op);
 

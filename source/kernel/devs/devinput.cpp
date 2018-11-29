@@ -66,11 +66,12 @@ public:
         product(0),
         version(0),
         mask(0),
-        prop(0) {}
+        prop(0),
+        bufferCond("DevInput::bufferCond") {}
     virtual U32 ioctl(U32 request);
     virtual U32 readNative(U8* buffer, U32 len);
     virtual U32 writeNative(U8* buffer, U32 len);
-    virtual void waitForEvents(U32 events);
+    virtual void waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events);
     virtual void setAsync(bool isAsync);
     virtual bool isAsync();
     virtual bool isWriteReady();
@@ -85,7 +86,7 @@ public:
     std::string name;
     U32 mask;
     U32 prop;
-    KList<KThread*> waitingToReadThreads;
+    BOXEDWINE_CONDITION bufferCond;
     std::queue<EventData> eventQueue;
 };
 
@@ -152,10 +153,9 @@ U32 DevInput::writeNative(U8* buffer, U32 len) {
     return len;
 }
 
-void DevInput::waitForEvents(U32 events) {
+void DevInput::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) {
     if (events & K_POLLIN) {
-        KThread* thread = KThread::currentThread();
-        this->waitingToReadThreads.addToBack(thread->getWaitNofiyNode());
+        BOXEDWINE_CONDITION_ADD_CHILD_CONDITION(parentCondition, this->bufferCond);
     }
 }
 
@@ -668,9 +668,9 @@ void postSendEvent(DevInput* events, U64 time) {
             process->signalIO(K_POLL_IN, 0, events->asyncProcessFd);		
         }
     }
-    events->waitingToReadThreads.for_each([](KListNode<KThread*>* node) {
-        wakeThread(node->data);
-    });
+    BOXEDWINE_CONDITION_LOCK(events->bufferCond);
+    BOXEDWINE_CONDITION_SIGNAL_ALL(events->bufferCond);
+    BOXEDWINE_CONDITION_UNLOCK(events->bufferCond);
 }
 
 void onMouseButtonUp(U32 button) {

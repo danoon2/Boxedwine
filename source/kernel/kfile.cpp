@@ -70,8 +70,8 @@ bool KFile::isWriteReady() {
     return this->openFile->isWriteReady();
 }
 
-void KFile::waitForEvents(U32 events) {
-    this->openFile->waitForEvents(events);
+void KFile::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) {
+    this->openFile->waitForEvents(parentCondition, events);
 }
 
 U32 KFile::write(U32 buffer, U32 len) {

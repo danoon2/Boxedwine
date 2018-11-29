@@ -42,6 +42,7 @@ KFileDescriptor::KFileDescriptor(KProcess* process, const BoxedPtr<KObject>& kob
     this->accessFlags = accessFlags;
     this->descriptorFlags = descriptorFlags;
     this->kobject = kobject;  
+    this->kobject->pid = process->id;
 }
 
 void KFileDescriptor::close() {

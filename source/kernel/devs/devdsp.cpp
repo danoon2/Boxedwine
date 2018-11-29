@@ -33,7 +33,7 @@ static bool isAudioOpen = false;
 
 class DevDspData {
 public:
-    DevDspData() {
+    DevDspData() : bufferCond("DevDspData::bufferCond") {
         memset(&this->want, 0, sizeof(this->want));
         memset(&this->got, 0, sizeof(this->got));
 
@@ -69,7 +69,7 @@ public:
     SDL_AudioSpec got;
     bool sameFormat;
 	U32 dspFragSize;
-	KList<KThread*> dspWaitingToWriteThread;
+    BOXEDWINE_CONDITION bufferCond;
 	S32 pauseAtLen;
     SDL_AudioCVT cvt;
     int cvtBufLen;
@@ -122,7 +122,7 @@ public:
     virtual U32 ioctl(U32 request);
     virtual U32 readNative(U8* buffer, U32 len);
     virtual U32 writeNative(U8* buffer, U32 len);
-    virtual void waitForEvents(U32 events);    
+    virtual void waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events);    
 
     DevDspData* data;
 };
@@ -191,11 +191,9 @@ void audioCallback(void *userdata, U8* stream, S32 len) {
     if (data->pauseEnabled())
 		data->pauseAtLen -= available;
 
-    if (data->dspWaitingToWriteThread.size()) {
-        data->dspWaitingToWriteThread.for_each([] (KListNode<KThread*>* node) {
-		    wakeThread(node->data);
-        });
-    }
+    BOXEDWINE_CONDITION_LOCK(data->bufferCond);
+    BOXEDWINE_CONDITION_SIGNAL_ALL(data->bufferCond);
+    BOXEDWINE_CONDITION_UNLOCK(data->bufferCond);
 }
 
 void DevDsp::openAudio() {
@@ -234,22 +232,19 @@ U32 DevDsp::readNative(U8* buffer, U32 len){
 }
 
 U32 DevDsp::writeNative(U8* buffer, U32 len) {    
-    U32 result;
-
     if (!this->data->isDspOpen)
         this->openAudio();
     SDL_LockAudio();
-    if (len>audioBuffer.getFree()) {
-        KThread* thread = KThread::currentThread();
-		this->data->dspWaitingToWriteThread.addToBack(thread->getWaitNofiyNode());
-        result = -K_WAIT;
-        printf("DevDsp::write wait\n");
-    } else {
-        audioBuffer.write(buffer, len);
-        result = len;
+    BOXEDWINE_CONDITION_LOCK(data->bufferCond);
+    while (len>audioBuffer.getFree()) {
+        SDL_UnlockAudio();
+        BOXEDWINE_CONDITION_WAIT(data->bufferCond);
+        SDL_LockAudio();
     }
+    audioBuffer.write(buffer, len);
+    BOXEDWINE_CONDITION_UNLOCK(data->bufferCond);
     SDL_UnlockAudio();	
-    return result;
+    return len;
 }
 
 U32 DevDsp::ioctl(U32 request) {
@@ -464,10 +459,9 @@ U32 DevDsp::ioctl(U32 request) {
     return -K_ENODEV;
 }
 
-void DevDsp::waitForEvents(U32 events) {
+void DevDsp::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) {
     if (events & K_POLLOUT) {
-        KThread* thread = KThread::currentThread();
-		this->data->dspWaitingToWriteThread.addToBack(thread->getWaitNofiyNode());
+        BOXEDWINE_CONDITION_ADD_CHILD_CONDITION(parentCondition, this->data->bufferCond);
     }
 }
 

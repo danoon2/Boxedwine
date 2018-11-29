@@ -79,9 +79,9 @@ bool KSignal::isOpen() {
     return true;
 }
 
-void KSignal::waitForEvents(U32 events) {
+void KSignal::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) {
     if (events & K_POLLIN) {
-		this->waitingThreads.addToBack(KThread::currentThread()->getWaitNofiyNode());
+        kpanic("waiting on a signal not implemented yet");
     }
 }
 

@@ -22,52 +22,6 @@ KSocketObject::KSocketObject(U32 objectType, U32 domain, U32 type, U32 protocol)
 {
 }    
 
-void KSocketObject::waitOnSocketRead(KThread* thread) {
-    this->waitingOnReadThread.addToBack(thread->getWaitNofiyNode());
-}
-
-void KSocketObject::waitOnSocketWrite(KThread* thread) {
-    this->waitingOnWriteThread.addToBack(thread->getWaitNofiyNode());
-}
-
-void KSocketObject::waitOnSocketConnect(KThread* thread) {
-    this->waitingOnConnectThread.addToBack(thread->getWaitNofiyNode());
-}
-
-U32 KSocketObject::wakeAndResetWaitingOnReadThreads() {
-    U32 result = this->waitingOnReadThread.size();
-    if (result) {
-        this->waitingOnReadThread.for_each([](KListNode<KThread*>* node) {
-            wakeThread(node->data);
-        }); 
-    }
-    return result;
-}
-
-U32 KSocketObject::wakeAndResetWaitingOnWriteThreads() {
-    U32 result = this->waitingOnWriteThread.size();
-
-    if (result) {
-        this->waitingOnWriteThread.for_each([](KListNode<KThread*>* node) {
-            wakeThread(node->data);
-        });
-    }
-
-    return result;
-}
-
-U32 KSocketObject::wakeAndResetWaitingOnConnectionThreads() {
-    U32 result = this->waitingOnConnectThread.size();
-
-    if (result) {
-        this->waitingOnConnectThread.for_each([](KListNode<KThread*>* node) {
-            wakeThread(node->data);
-        });
-    }
-
-    return result;
-}
-
 void KSocketObject::readMsgHdr(U32 address, MsgHdr* hdr) {
     hdr->msg_name = readd(address);address+=4;
     hdr->msg_namelen = readd(address); address += 4;

@@ -71,7 +71,7 @@ bool FsFileOpenNode::isAsync() {
     return false;
 }
 
-void FsFileOpenNode::waitForEvents(U32 events) {
+void FsFileOpenNode::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) {
     kwarn("FsFileOpenNode::::waitForEvents not implemented");
 }
 

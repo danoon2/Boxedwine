@@ -64,7 +64,7 @@ bool KEPoll::isOpen() {
     return false;
 }
 
-void KEPoll::waitForEvents(U32 events) {
+void KEPoll::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) {
     kpanic("KEPoll::waitForEvents not implemented yet");
 }
 

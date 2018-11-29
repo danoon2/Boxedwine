@@ -304,6 +304,9 @@
     <ClCompile Include="..\..\..\..\source\sdl\multiThreaded\threadedMainloop.cpp">
       <Filter>source\sdl\multiThreaded</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\ktimer.cpp">
+      <Filter>source\kernel</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">

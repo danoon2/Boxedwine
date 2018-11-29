@@ -12,12 +12,6 @@ public:
     };    
 
     KSocketObject(U32 objectType, U32 domain, U32 type, U32 protocol);
-    void waitOnSocketRead(KThread* thread);
-    void waitOnSocketWrite(KThread* thread);
-    void waitOnSocketConnect(KThread* thread);
-    U32 wakeAndResetWaitingOnReadThreads();
-    U32 wakeAndResetWaitingOnWriteThreads();
-    U32 wakeAndResetWaitingOnConnectionThreads();
 
     virtual U32 accept(KFileDescriptor* fd, U32 address, U32 len) = 0;
     virtual U32 bind(KFileDescriptor* fd, U32 address, U32 len) = 0;
@@ -48,10 +42,7 @@ public:
 
     bool inClosed;
     bool outClosed;
-    
-    KList<KThread*> waitingOnConnectThread;
-    KList<KThread*> waitingOnReadThread;
-    KList<KThread*> waitingOnWriteThread;    
+
     U32 flags;
     int error;
 

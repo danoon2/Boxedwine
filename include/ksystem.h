@@ -79,6 +79,7 @@ public:
     static U32 getRunningProcessCount();
     static U32 getProcessCount();
     static void printStacks();
+    static void wakeThreadsWaitingOnProcessStateChanged();
 
     // syscalls
     static U32 clock_getres(U32 clk_id, U32 timespecAddress);
@@ -99,10 +100,10 @@ public:
     static U32 uname(U32 address);
     static U32 waitpid(S32 pid, U32 statusAddress, U32 options);        
 
+    static BOXEDWINE_CONDITION processesCond;
 private:
     static std::unordered_map<void*, SHM*> shm;
-    static std::unordered_map<U32, KProcess*> processes;
-    static BOXEDWINE_MUTEX processesMutex;
+    static std::unordered_map<U32, KProcess*> processes;    
     static std::unordered_map<std::string, BoxedPtr<MappedFileCache> > fileCache;
 };
 

@@ -31,7 +31,7 @@ public:
     virtual U32  ioctl(U32 request);	
     virtual void setAsync(bool isAsync);
     virtual bool isAsync();
-    virtual void waitForEvents(U32 events);
+    virtual void waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events);
     virtual bool isWriteReady();
     virtual bool isReadReady();
     virtual U32 readNative(U8* buffer, U32 len);

@@ -27,7 +27,7 @@
 
 class KObject : public BoxedPtrBase {
 protected:
-    KObject(U32 type) {this->type = type;}
+    KObject(U32 type);
 public:
     virtual ~KObject() {};    
     virtual U32  ioctl(U32 request)=0;
@@ -44,7 +44,7 @@ public:
     virtual bool isOpen()=0;
     virtual bool isReadReady()=0;
     virtual bool isWriteReady()=0;
-    virtual void waitForEvents(U32 events)=0;
+    virtual void waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events)=0;
     virtual U32  write(U32 buffer, U32 len);
     virtual U32  writeNative(U8* buffer, U32 len)=0;
     virtual U32  writev(U32 iov, S32 iovcnt);
@@ -55,6 +55,7 @@ public:
     virtual bool canMap()=0;
 
     U32 type;
+    U32 pid;
 };
 
 #endif

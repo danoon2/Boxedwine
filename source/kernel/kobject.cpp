@@ -1,6 +1,14 @@
 #include "boxedwine.h"
 #include "kobject.h"
 
+KObject::KObject(U32 type) : type(type) {
+    if (KThread::currentThread()) {
+        this->pid = KThread::currentThread()->process->id;
+    } else {
+        this->pid = 0;
+    }
+}
+
 U32 KObject::writev(U32 iov, S32 iovcnt) {
     U32 len=0;
     S32 i;

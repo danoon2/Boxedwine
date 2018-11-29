@@ -603,6 +603,7 @@
     <ClCompile Include="..\..\..\..\source\kernel\ksocketobject.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\ksystem.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\kthread.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\ktimer.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\kunixsocket.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\loader\loader.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\proc\bufferaccess.cpp" />

@@ -27,7 +27,7 @@ bool doMainLoop() {
         if (lastTitleUpdate+5000 < t) {
             char tmp[256];
             lastTitleUpdate = t;
-            sprintf(tmp, "BoxedWine 18R2 Beta 2 %u MIPS", getMIPS());
+            sprintf(tmp, "BoxedWine 19R3 Alpha %u MIPS", getMIPS());
             fbSetCaption(tmp, "BoxedWine");
             checkWaitingNativeSockets(0); // just so it doesn't starve if the system is busy
         }

@@ -22,6 +22,7 @@
 class KTimer {
 public:
     KTimer() : node(this), millies(0), resetMillies(0), active(false) {}
+    ~KTimer();
 
     virtual bool run()=0; // return true of the timer should be removed, don't remove a timer manually in run because it will invalidate the iterator
 

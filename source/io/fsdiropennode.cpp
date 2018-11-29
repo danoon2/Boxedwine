@@ -46,7 +46,7 @@ bool FsDirOpenNode::isAsync() {
     return false;
 }
 
-void FsDirOpenNode::waitForEvents(U32 events) {
+void FsDirOpenNode::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) {
     kwarn("FsDirOpenNode::waitForEvents not implemented");
 }
 

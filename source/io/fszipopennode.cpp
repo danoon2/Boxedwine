@@ -73,7 +73,7 @@ bool FsZipOpenNode::isAsync() {
     return false;
 }
 
-void FsZipOpenNode::waitForEvents(U32 events) {
+void FsZipOpenNode::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) {
     kwarn("FsZipOpenNode::waitForEvents not implemented");
 }
 

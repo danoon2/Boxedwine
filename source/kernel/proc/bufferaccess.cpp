@@ -70,7 +70,7 @@ bool BufferAccess::isAsync() {
     return false;
 }
 
-void BufferAccess::waitForEvents(U32 events) {
+void BufferAccess::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) {
     kpanic("BufferAccess::waitForEvents not implemented");
 }
 

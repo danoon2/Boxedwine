@@ -14,8 +14,7 @@ public:
     KListNode(T data) : data(data), prev(NULL), next(NULL), list(NULL) {}        
     T data;
 
-    void remove() {
-        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(list->mutex);
+    void remove() {        
         if (!this->list) {
             return;
         }
@@ -61,7 +60,6 @@ public:
     }
     bool isEmpty() {return first==NULL;}
     void addToBack(KListNode<T>* node) {
-        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
         if (node->list) {
             kpanic("Node already in list");
         }
@@ -77,7 +75,6 @@ public:
         count++;
     } 
     void addToFront(KListNode<T>* node) {
-        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
         if (node->list) {
             kpanic("Node already in list");
         }
@@ -93,7 +90,6 @@ public:
         count++;
     }
     void for_each(std::function<void(KListNode<T>*)> f) {
-        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
         KListNode<T>* node = first;
         while (node) {
             KListNode<T>* next = node->next;
@@ -105,12 +101,12 @@ public:
     KListNode<T>* front() {return first;}
     KListNode<T>* back() {return last;}
     U32 size() {return this->count;}
+
 private:
     friend KListNode<T>;
     KListNode<T>* first;
     KListNode<T>* last;
-    U32 count;
-    BOXEDWINE_MUTEX mutex;
+    U32 count;    
 };
 
 #endif

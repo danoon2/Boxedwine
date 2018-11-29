@@ -78,7 +78,7 @@ typedef U32 (*SyscallFunc)(CPU* cpu, U32 eipCount);
 #define SYSCALL_SOCKET      0x100
 
 #ifdef _DEBUG
-static U32 syscallMask = 0xfff;
+static U32 syscallMask = 0xfff & ~SYSCALL_MEMORY;
 #else
 static U32 syscallMask = 0;
 #endif
@@ -1710,7 +1710,7 @@ void ksyscall(CPU* cpu, U32 eipCount) {
     if (result==-K_CONTINUE) {
 
     } else if (result==-K_WAIT) {
-        waitThread(KThread::currentThread());		
+        		
     } else {
         EAX = result;
         cpu->eip.u32+=eipCount;

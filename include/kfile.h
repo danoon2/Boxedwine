@@ -37,7 +37,7 @@ public:
     virtual bool isOpen();
     virtual bool isReadReady();
     virtual bool isWriteReady();
-    virtual void waitForEvents(U32 events);
+    virtual void waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events);
     virtual U32  write(U32 buffer, U32 len);
     virtual U32  writeNative(U8* buffer, U32 len);
     virtual U32  read(U32 buffer, U32 len);

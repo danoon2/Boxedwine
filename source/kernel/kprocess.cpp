@@ -66,7 +66,7 @@ KProcess::KProcess(U32 id) : id(id),
     phentsize(0),
     entry(0),
     eventQueueFD(0),
-    wakeOnExitOrExec(NULL),
+    exitOrExecCond("KProcess::exitOrExecCond"),
     hasSetStackMask(false) {
 
     for (int i=0;i<LDT_ENTRIES;i++) {
@@ -675,10 +675,10 @@ U32 KProcess::execve(const std::string& path, std::vector<std::string>& args, co
     openNode->close();
     delete openNode;
 
-    if (this->wakeOnExitOrExec) {
-        wakeThread(this->wakeOnExitOrExec);
-        this->wakeOnExitOrExec = NULL;
-    }        
+    BOXEDWINE_CONDITION_LOCK(this->exitOrExecCond);
+    BOXEDWINE_CONDITION_SIGNAL_ALL(this->exitOrExecCond);
+    BOXEDWINE_CONDITION_UNLOCK(this->exitOrExecCond);
+       
     //klog("%d/%d exec %s (cwd=%s)", KThread::currentThread()->id, this->id, this->commandLine.c_str(), this->currentDirectory.c_str());
     return 1;
 }
@@ -1420,9 +1420,10 @@ U32 KProcess::clone(U32 flags, U32 child_stack, U32 ptid, U32 tls, U32 ctid) {
         newThread->cpu->reg[0].u32 = 0;
         //runThreadSlice(newThread); // if the new thread runs before the current thread, it will likely call exec which will prevent unnessary copy on write actions when running the current thread first        
         if (vFork) {
-            newProcess->wakeOnExitOrExec = KThread::currentThread();         
+            BOXEDWINE_CONDITION_LOCK(newProcess->exitOrExecCond);
             scheduleThread(newThread);
-            waitThread(KThread::currentThread());            
+            BOXEDWINE_CONDITION_WAIT(newProcess->exitOrExecCond);
+            BOXEDWINE_CONDITION_UNLOCK(newProcess->exitOrExecCond);            
         } else {
             //klog("starting %d/%d", newThread->process->id, newThread->id);            
             scheduleThread(newThread);
@@ -1466,12 +1467,14 @@ U32 KProcess::clone(U32 flags, U32 child_stack, U32 ptid, U32 tls, U32 ctid) {
 U32 KProcess::exitgroup(U32 code) {
     KProcess* parent = KSystem::getProcess(this->parentId);
     
+    BOXEDWINE_CONDITION_LOCK(KSystem::processesCond);
     this->terminated = true;
-    wakeThreads(WAIT_PID);
-    if (this->wakeOnExitOrExec) {
-        wakeThread(this->wakeOnExitOrExec);
-        this->wakeOnExitOrExec = NULL;
-    }
+    KSystem::wakeThreadsWaitingOnProcessStateChanged();
+    BOXEDWINE_CONDITION_UNLOCK(KSystem::processesCond);
+
+    BOXEDWINE_CONDITION_LOCK(this->exitOrExecCond);
+    BOXEDWINE_CONDITION_SIGNAL_ALL(this->exitOrExecCond);
+    BOXEDWINE_CONDITION_UNLOCK(this->exitOrExecCond);
 
     if (parent && parent->sigActions[K_SIGCHLD].handlerAndSigAction!=K_SIG_DFL) {
         if (parent->sigActions[K_SIGCHLD].handlerAndSigAction!=K_SIG_IGN) {
@@ -2263,11 +2266,11 @@ void KProcess::printStack() {
     for (auto& t : this->threads) {
         KThread* thread = t.second;
         CPU* cpu=thread->cpu;
-
-        klog("  thread %X %s", thread->id, thread->waiting?"WAITING":"RUNNING");
-        if (thread->waiting) {
-                  
+        
+        if (thread->waitingCond) {            
+            klog("  thread %X WAITING %s", thread->id, thread->waitingCond->name.c_str());
         } else {
+            klog("  thread %X RUNNING", thread->id);
             std::string name = this->getModuleName(cpu->seg[CS].address+cpu->eip.u32);
 
             klog("    0x%08d %s", this->getModuleEip(cpu->seg[CS].address+cpu->eip.u32), name.length()?name.c_str():"Unknown");
