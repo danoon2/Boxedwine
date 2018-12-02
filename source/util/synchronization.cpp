@@ -76,7 +76,7 @@ bool BoxedWineConditionTimer::run() {
     return false; // signal will remove timer
 }
 
-BoxedWineCondition::BoxedWineCondition(std::string name) : parent(NULL), name(name) {
+BoxedWineCondition::BoxedWineCondition(std::string name) : name(name), parent(NULL) {
 }
 
 BoxedWineCondition::~BoxedWineCondition() {

@@ -106,9 +106,9 @@ KThread::KThread(U32 id, KProcess* process) :
     log(false),
     scheduledThreadNode(this),
     waitThreadNode(this),
-    waitingCond(0),
-    condStartWaitTime(0),
+    waitingCond(0),    
     pollCond("KThread::pollCond"),
+    condStartWaitTime(0),
     sleepCond("KThread::sleepCond"),
     waitNode(this)
     {
@@ -219,14 +219,8 @@ struct futex* allocFutex(KThread* thread, U8* address, U32 millies) {
         if (system_futex[i].thread==0) {
             system_futex[i].thread = thread;
             system_futex[i].address = address;
-#ifdef BOXEDWINE_VM
-            if (!system_futex[i].cond) {
-                system_futex[i].cond = SDL_CreateCond();
-            }
-#else
             system_futex[i].expireTimeInMillies = millies;
             system_futex[i].wake = false;
-#endif
             return &system_futex[i];
         }
     }

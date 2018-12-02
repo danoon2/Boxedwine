@@ -14,7 +14,7 @@ void Player::readCommand() {
         U32 result = fread(&tmp[count], 1, 1, this->file);
         if (!result) {
             tmp[count] = 0;
-            if (count>0 && (this->nextCommand.size()!=0 || !strcmp(tmp, "DONE"))) {
+            if (count>0) {
                 if (this->nextCommand.size()==0) {
                     this->nextCommand = tmp;
                 } else {
@@ -106,6 +106,8 @@ void Player::runSlice() {
             klog("script: done waiting %s", this->nextValue.c_str());
             instance->readCommand();
         }
+    } else if (this->nextCommand=="DONE") {
+        //exit(0);, let it exit gracefully
     }
     if (Platform::getMicroCounter()>this->lastCommandTime+1000000*60*5) {
         klog("script timed out %s", this->directory.c_str());

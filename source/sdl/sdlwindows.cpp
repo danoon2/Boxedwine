@@ -623,6 +623,17 @@ void wndBlt(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32 yOrg, U32 width, 
         if (bits_per_pixel!=32) {
             // SDL_ConvertPixels(width, height, )
         }
+#ifdef BOXEDWINE_RECORDER
+        U32 toCopy = pitch*height;
+        if (wnd->bitsSize<toCopy) {
+            if (wnd->bits) {
+                delete[] wnd->bits;
+            }
+            wnd->bits = new U8[toCopy];
+            wnd->bitsSize = toCopy;
+        }
+        memcpy(wnd->bits, sdlBuffer, toCopy);
+#endif
         SDL_UpdateTexture(sdlTexture, NULL, sdlBuffer, pitch);
     }
 #else		
@@ -668,12 +679,76 @@ void wndBlt(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32 yOrg, U32 width, 
 
 U32 sdlUpdated;
 
+#ifdef BOXEDWINE_RECORDER
+U8* recorderBuffer;
+U32 recorderBufferSize;
+#endif
+
 void sdlDrawAllWindows(KThread* thread, U32 hWnd, int count) {    
     BOXEDWINE_CRITICAL_SECTION
     int i;
 #ifdef SDL2
     if (!sdlRenderer)
         return;
+#endif
+#ifdef BOXEDWINE_RECORDER
+    if (Recorder::instance || Player::instance) {
+        int bpp = bits_per_pixel==8?32:bits_per_pixel;
+        S32 bytesPerPixel = (bpp+7)/8;
+        S32 recorderPitch = (screenCx*((bpp+7)/8)+3) & ~3;
+        if (recorderPitch*screenCy>recorderBufferSize) {
+            if (recorderBuffer) {
+                delete[] recorderBuffer;
+            }
+            recorderBuffer = new U8[recorderPitch*screenCy];
+            recorderBufferSize = recorderPitch*screenCy;
+        }
+        if (bpp==32) {
+            U32* pixel = (U32*)recorderBuffer;
+            for (U32 i=0;i<screenCy*screenCx;i++, pixel++) {
+                *pixel = 165 | (110 << 8) | (58 << 16) | (255 << 24);
+            }
+        } else {
+            memset(recorderBuffer, 0, recorderBufferSize);
+        }        
+        for (i=count-1;i>=0;i--) {
+            Wnd* wnd = getWnd(readd(hWnd+i*4));
+            if (wnd && wnd->sdlTextureWidth && wnd->sdlTexture) {
+                int width = wnd->sdlTextureWidth;
+                int height = wnd->sdlTextureHeight;
+                S32 top = wnd->windowRect.top;
+                S32 left = wnd->windowRect.left;
+                S32 srcTopAdjust = 0;
+                S32 srcLeftAdjust = 0;
+
+                if (top<0) {
+                    srcTopAdjust = -top;
+                    top = 0;
+                }
+                if (top>=(S32)screenCy)
+                    continue;
+                if (left>=(S32)screenCx)
+                    continue;
+                if (left<0) {
+                    srcLeftAdjust = -left;
+                    left = 0;
+                }
+                if (top+height>(S32)screenCy)
+                    height = screenCy-top;
+                int pitch = (width*((bpp+7)/8)+3) & ~3;
+                if (left+width>(S32)screenCx)
+                    width = screenCx - left;       
+                int copyPitch = (width*((bpp+7)/8)+3) & ~3;
+                for (int y=0;y<height;y++) {
+                    S32 offset = recorderPitch*(y+top)+(left*bytesPerPixel);
+                    if (offset<0 || offset+copyPitch>(S32)recorderBufferSize || copyPitch<0) {
+                        kpanic("script recorder overwrote memory when copying screen");
+                    }
+                    memcpy(recorderBuffer+offset, wnd->bits+pitch*(y+srcTopAdjust)+(srcLeftAdjust*bytesPerPixel), copyPitch);
+                }
+            }        	
+        }
+    }
 #endif
 #ifdef SDL2
     SDL_SetRenderDrawColor(sdlRenderer, 58, 110, 165, 255 );
@@ -2056,39 +2131,60 @@ void sdlDrawRectOnPushedSurfaceAndDisplay(U32 x, U32 y, U32 w, U32 h, U8 r, U8 g
     SDL_RenderPresent(sdlRenderer);
 }
 
-bool sdlInternalScreenShot(std::string filepath, SDL_Rect* r, U32* crc) {
-    SDL_Surface* saveSurface = NULL;
-    SDL_Surface* infoSurface = NULL;
-    infoSurface = SDL_GetWindowSurface(sdlWindow);
-    if (infoSurface == NULL) {
-        klog("sdlScreenshot: %s", SDL_GetError());
-    } else {
-        if (!r)
-            r = &infoSurface->clip_rect;
-        U32 len = r->w * r->h * infoSurface->format->BytesPerPixel;
-        U8* pixels = new unsigned char[len];
+bool sdlInternalScreenShot(std::string filepath, SDL_Rect* r, U32* crc) {    
+    U8* pixels = NULL;
+    SDL_Surface* s;
+    U32 rMask;
+    U32 gMask;
+    U32 bMask;
+    int bpp = bits_per_pixel==8?32:bits_per_pixel;
 
-        if (SDL_RenderReadPixels(sdlRenderer, r, infoSurface->format->format, pixels, r->w * infoSurface->format->BytesPerPixel)) {
-            klog("sdlScreenshot: %s", SDL_GetError());
-            delete[] pixels;
-            return false;
-        } else {
-            saveSurface = SDL_CreateRGBSurfaceFrom(pixels, r->w, r->h, infoSurface->format->BitsPerPixel, r->w * infoSurface->format->BytesPerPixel, infoSurface->format->Rmask, infoSurface->format->Gmask, infoSurface->format->Bmask, infoSurface->format->Amask);
-            if (!saveSurface) {
-                klog("sdlScreenshot: %s", SDL_GetError());
-                delete[] pixels;
-                return false;
-            }
-            if (filepath.length()) {
-                SDL_SaveBMP(saveSurface, filepath.c_str());
-            }
-            if (crc) {
-                *crc = crc32b(pixels, len);
-            }
-            SDL_FreeSurface(saveSurface);
+    if (bpp==32) {
+        rMask = 0x00FF0000;
+        gMask = 0x0000FF00;
+        bMask = 0x000000FF;
+    } else if (bpp==16) {
+        rMask = 0xF800;
+        gMask = 0x07E0;
+        bMask = 0x001F;
+    } else {
+        kpanic("Unhandled bpp for screen shot: %d", bpp);
+    }
+    if (r) {
+        int inPitch = (screenCx*((bpp+7)/8)+3) & ~3;
+        int outPitch = (r->w*((bpp+7)/8)+3) & ~3;        
+        U32 bytesPerPixel = (bpp+7)/8;
+
+        pixels = new unsigned char[outPitch*r->h];
+
+        for (int y=0;y<r->h;y++) {
+            memcpy(pixels+y*outPitch, recorderBuffer+(y+r->y)*inPitch+(r->x*bytesPerPixel), outPitch);
         }
+        s = SDL_CreateRGBSurfaceFrom(pixels, r->w, r->h, bpp, outPitch, rMask, gMask, bMask, 0);
+        if (crc) {
+            U32 len = outPitch*r->h;
+            *crc = crc32b(pixels, len);
+        }
+    } else {               
+        int pitch = (screenCx*((bpp+7)/8)+3) & ~3;
+        s = SDL_CreateRGBSurfaceFrom(recorderBuffer, screenCx, screenCy, bpp, pitch, rMask, gMask, bMask, 0);
+        if (crc) {
+            U32 len = pitch*screenCy;
+            *crc = crc32b(recorderBuffer, len);
+        }
+    }
+
+    if (!s) {
+        klog("sdlScreenshot: %s", SDL_GetError());
         delete[] pixels;
-        SDL_FreeSurface(infoSurface);
+        return false;
+    }
+    if (filepath.length()) {
+        SDL_SaveBMP(s, filepath.c_str());
+    }    
+    SDL_FreeSurface(s);
+    if (pixels) {
+        delete[] pixels;
     }
     return true;
 }

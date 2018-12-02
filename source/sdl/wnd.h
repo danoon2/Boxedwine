@@ -34,6 +34,9 @@ public:
 class Wnd {
 public:
     Wnd() : surface(0), pixelFormat(NULL), pixelFormatIndex(0), openGlContext(NULL), activated(0), processId(0), hwnd(0)
+#ifdef BOXEDWINE_RECORDER
+        , bits(0), bitsSize(0)
+#endif
 #ifdef SDL2
         , sdlTexture(NULL), sdlTextureHeight(0), sdlTextureWidth(0)
 #else
@@ -51,6 +54,10 @@ public:
     U32 activated;
     U32 processId;
     U32 hwnd;
+#ifdef BOXEDWINE_RECORDER
+    U8* bits;
+    U32 bitsSize;
+#endif
 #ifdef SDL2
     void* sdlTexture;
     int sdlTextureHeight;
