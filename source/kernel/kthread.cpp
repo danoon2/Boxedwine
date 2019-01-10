@@ -22,12 +22,15 @@
 #include "ksignal.h"
 #include "kscheduler.h"
 #include "ksignal.h"
-#include "../emulation/cpu/normal/normalCPU.h"
-
 #include <string.h>
 #include <setjmp.h>
 
+#ifdef BOXEDWINE_X64
+__declspec(thread) 
+#endif
 KThread* KThread::runningThread;
+
+BOXEDWINE_MUTEX KThread::futexesMutex;
 
 KThread::~KThread() {    
     this->cleanup();
@@ -45,11 +48,11 @@ void KThread::cleanup() {
         this->waitThreadNode.remove();
         this->waitingCond = NULL;
     }
-    this->clearFutexes();
-    unscheduleThread(this);
+    this->clearFutexes();    
     if (this->process) {
         this->process->removeThread(this);
     }
+    unscheduleThread(this);
 }
 
 void KThread::reset() {
@@ -119,7 +122,7 @@ KThread::KThread(U32 id, KProcess* process) :
         this->tls[i].seg_not_present = 1;
         this->tls[i].read_exec_only = 1;
     }
-    this->cpu = new NormalCPU();
+    this->cpu = CPU::allocCPU();
     this->cpu->thread = this;
     this->memory = process->memory;
     if (process->name=="services.exe") {
@@ -256,12 +259,14 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime) {
         struct futex* f=getFutex(this, ramAddress);
         U32 millies;
 
-        if (f) {
+restart:
+        while (f) {
             BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(f->cond);
             if (f->wake) {
                 freeFutex(f);
                 return 0;
             }
+            BOXEDWINE_MUTEX_UNLOCK(KThread::futexesMutex);
             if (f->expireTimeInMillies<0x7FFFFFFF) {
                 S32 diff = f->expireTimeInMillies - getMilliesSinceStart();
                 if (diff<=0) {
@@ -272,6 +277,7 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime) {
             } else {
                 BOXEDWINE_CONDITION_WAIT(f->cond);
             }
+            BOXEDWINE_MUTEX_LOCK(KThread::futexesMutex);
         }
         if (pTime == 0) {
             millies = 0xFFFFFFFF;
@@ -284,6 +290,7 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime) {
             return -K_EWOULDBLOCK;
         }
         f = allocFutex(this, ramAddress, millies);
+        BOXEDWINE_MUTEX_UNLOCK(KThread::futexesMutex);
         BOXEDWINE_CONDITION_LOCK(f->cond);
         if (millies<0x7FFFFFFF) {
             BOXEDWINE_CONDITION_WAIT_TIMEOUT(f->cond, millies);
@@ -291,6 +298,8 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime) {
             BOXEDWINE_CONDITION_WAIT(f->cond);
         }
         BOXEDWINE_CONDITION_UNLOCK(f->cond);
+        BOXEDWINE_MUTEX_LOCK(KThread::futexesMutex);
+        goto restart;
     } else if (op==FUTEX_WAKE_PRIVATE || op==FUTEX_WAKE) {
         int i;
         U32 count = 0;
@@ -591,7 +600,7 @@ void OPCALL onExitSignal(CPU* cpu, DecodedOp* op) {
 #endif
     readFromContext(cpu, context);
 #ifdef LOG_OPS
-    klog("    after  context %.8X EAX=%.8X ECX=%.8X EDX=%.8X EBX=%.8X ESP=%.8X EBP=%.8X ESI=%.8X EDI=%.8X fs=%d(%X) fs18=%X", cpu->eip.u32, cpu->reg[0].u32, cpu->reg[1].u32, cpu->reg[2].u32, cpu->reg[3].u32, cpu->reg[4].u32, cpu->reg[5].u32, cpu->reg[6].u32, cpu->reg[7].u32, cpu->segValue[4], cpu->segAddress[4], cpu->segAddress[4] ? readd(cpu->segAddress[4] + 0x18) : 0);
+    klog("    after  context %.8X EAX=%.8X ECX=%.8X EDX=%.8X EBX=%.8X ESP=%.8X EBP=%.8X ESI=%.8X EDI=%.8X fs=%d(%X) fs18=%X", cpu->eip.u32, cpu->reg[0].u32, cpu->reg[1].u32, cpu->reg[2].u32, cpu->reg[3].u32, cpu->reg[4].u32, cpu->reg[5].u32, cpu->reg[6].u32, cpu->reg[7].u32, cpu->seg[4].value, cpu->seg[4].address, cpu->seg[4].address ? readd(cpu->seg[4].address + 0x18) : 0);
 #endif
     cpu->instructionCount = count;
     cpu->thread->inSignal--;
@@ -649,9 +658,10 @@ void KThread::runSignal(U32 signal, U32 trapNo, U32 errorNo) {
         }		
 
         // move to front of the queue
+#ifndef BOXEDWINE_MULTI_THREADED
         unscheduleThread(this);
         scheduleThread(this);
-
+#endif
 		if (altStack) {
 			context = this->alternateStack + this->alternateStackSize - CONTEXT_SIZE;
         } else {
@@ -916,4 +926,8 @@ ChangeThread::ChangeThread(KThread* thread) {
 }
 ChangeThread::~ChangeThread() {
     KThread::setCurrentThread(savedThread);
+}
+
+void common_signalIllegalInstruction(CPU* cpu, int code) {
+    cpu->thread->signalIllegalInstruction(code);
 }

@@ -136,6 +136,18 @@ public:
     void clearCodePageFromCache(U32 page);
 #endif
 
+#ifdef BOXEDWINE_X64
+    U8* x64Mem;
+    U32 x64MemPos;
+    U32 x64AvailableMem;
+    U8* executableMemory;
+    U8 executable64kBlocks[0x10000];
+    BOXEDWINE_MUTEX executableMemoryMutex;
+
+    void** opToAddressPages[0x100000];
+    U32* hostToEip[0x100000];
+#endif
+
 #ifdef LOG_OPS
     U32 log;
 #endif

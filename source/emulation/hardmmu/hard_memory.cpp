@@ -37,6 +37,15 @@ Memory::Memory() : allocated(0), callbackPos(0) {
 #ifdef BOXEDWINE_DYNAMIC
     this->dynamicExecutableMemoryPos = 0;
 #endif
+#ifdef BOXEDWINE_X64
+    this->x64Mem = NULL;
+    this->x64MemPos = 0;
+    this->x64AvailableMem = 0;
+    this->executableMemory = NULL;;
+    memset(this->executable64kBlocks, 0, sizeof(this->executable64kBlocks));
+    memset(this->opToAddressPages, 0, sizeof(this->opToAddressPages));
+    memset(this->hostToEip, 0, sizeof(this->hostToEip));
+#endif
 }
 
 Memory::~Memory() {

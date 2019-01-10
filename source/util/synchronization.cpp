@@ -1,11 +1,10 @@
 #include "boxedwine.h"
 #ifdef BOXEDWINE_MULTI_THREADED
 #include <SDL.h>
-BOXEDWINE_CONDITION waitPidCond;
 
 BoxedWineCriticalSection::BoxedWineCriticalSection(BoxedWineMutex* mutex) {
     this->mutex = mutex;
-    this->mutex->lock();
+    this->mutex->lock();    
 }
 BoxedWineCriticalSection::~BoxedWineCriticalSection() {
     this->mutex->unlock();
@@ -35,6 +34,13 @@ void BoxedWineMutex::unlock() {
     SDL_UnlockMutex((SDL_mutex*)this->m);
 }
 
+BoxedWineCondition::BoxedWineCondition(std::string name) : name(name) {
+    this->m = SDL_CreateMutex();
+    this->c = SDL_CreateCond();
+    this->parent = NULL;
+    this->lockOwner = 0;
+}
+
 BoxedWineCondition::BoxedWineCondition() {
     this->m = SDL_CreateMutex();
     this->c = SDL_CreateCond();
@@ -47,16 +53,57 @@ BoxedWineCondition::~BoxedWineCondition() {
 
 void BoxedWineCondition::lock() {
     SDL_LockMutex((SDL_mutex*)this->m);
+    if (KThread::currentThread()) {
+        this->lockOwner = KThread::currentThread()->id;
+    } else {
+        this->lockOwner = (U32)-1;
+    }
 }
  
+bool BoxedWineCondition::tryLock() {
+    if (SDL_TryLockMutex((SDL_mutex*)this->m)==0) {
+        if (KThread::currentThread()) {
+            this->lockOwner = KThread::currentThread()->id;
+        } else {
+            this->lockOwner = (U32)-1;
+        }
+        return true;
+    }
+    return false;
+}
+
 void BoxedWineCondition::signal() {
-    SDL_CondSignal((SDL_cond*)this->c);
+    if (this->parent) {
+        while(!this->parent->tryLock()) {
+            this->unlock();
+            this->lock();
+        }
+        this->parent->signal();
+        this->parent->unlock();
+        this->parent->children.clear();
+    } else {
+        SDL_CondSignal((SDL_cond*)this->c);
+    }
 }
 
 void BoxedWineCondition::signalAll() {
+    if (this->parent) {
+        while(!this->parent->tryLock()) {
+            this->unlock();
+            this->lock();
+        }
+        this->parent->signalAll();
+        this->parent->unlock();
+        this->parent->children.clear();
+    }
     SDL_CondBroadcast((SDL_cond*)this->c);
 }
 
+void BoxedWineCondition::signalAllLock() {
+    this->lock();
+    this->signalAll();
+    this->unlock();
+}
 void BoxedWineCondition::wait() {
     SDL_CondWait((SDL_cond*)this->c, (SDL_mutex*)this->m);
 }
@@ -66,7 +113,18 @@ void BoxedWineCondition::waitWithTimeout(U32 ms) {
 }
 
 void BoxedWineCondition::unlock() {
+    this->lockOwner = 0;
     SDL_UnlockMutex((SDL_mutex*)this->m);
+}
+
+void BoxedWineCondition::addChildCondition(BoxedWineCondition& cond) {
+    // this (parent) should be be locked while we call this
+    cond.parent = this;
+    this->children.push_back(&cond);
+}
+
+U32 BoxedWineCondition::waitCount() {
+    return 0;  // :TODO: remove this function
 }
 
 #else 

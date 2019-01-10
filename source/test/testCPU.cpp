@@ -131,10 +131,16 @@ void runTestCPU() {
     pushCode8(0);
     pushCode8(0x70); // jump will fetch the next block as well
     pushCode8(0);
-    cpu->nextBlock = cpu->getNextBlock();
+    cpu->nextBlock = cpu->getNextBlock();    
     cpu->run();
 #ifdef BOXEDWINE_64BIT_MMU
     KThread::currentThread()->memory->clearCodePageFromCache(CODE_ADDRESS>>K_PAGE_SHIFT);
+#endif
+#ifdef BOXEDWINE_X64
+    memset(memory->opToAddressPages[CODE_ADDRESS>>K_PAGE_SHIFT], 0, sizeof(void*)*K_PAGE_SIZE);
+    memory->x64MemPos = 0;
+    memory->x64AvailableMem = 64*1024;
+    memset((U8*)memory->id+CODE_ADDRESS, 0, K_PAGE_SIZE);
 #endif
 }
 
@@ -3854,8 +3860,8 @@ void testMovEbGb0x28a() {cpu->big = true;GbEb(0x8a, movb);}
 void testMovEwGw0x08b() {cpu->big = false;GwEw(0x8b, movw);}
 void testMovEdGd0x28b() {cpu->big = true;GdEd(0x8b, movd);}
 
-void testMovEwWw0x08c() {cpu->big = false;EwSw(0x8c, movw);}
-void testMovEwWw0x28c() {cpu->big = true;EdSw(0x8c, movw);}
+void testMovEwSw0x08c() {cpu->big = false;EwSw(0x8c, movw);}
+void testMovEwSw0x28c() {cpu->big = true;EdSw(0x8c, movw);}
 
 void testLeaGw0x08d() {cpu->big = false;LeaGw();}
 void testLeaGd0x28d() {cpu->big = true;LeaGd();}
@@ -6403,9 +6409,10 @@ int main(int argc, char **argv) {
     run(testSub0x02d, "Sub 02d");
     run(testSub0x22d, "Sub 22d");
 
+#ifndef BOXEDWINE_X64
     run(testDas0x02f, "DAS 02f");
     run(testDas0x22f, "DAS 22f");
-
+#endif
     run(testXor0x030, "Xor 030");
     run(testXor0x230, "Xor 230");
     run(testXor0x031, "Xor 031");
@@ -6418,8 +6425,10 @@ int main(int argc, char **argv) {
     run(testXor0x234, "Xor 234");
     run(testXor0x035, "Xor 035");
     run(testXor0x235, "Xor 235");
+#ifndef BOXEDWINE_X64
     run(testAaa0x037, "AAA 037");
     run(testAaa0x237, "AAA 237");
+#endif
     run(testCmp0x038, "Cmp 038");
     run(testCmp0x238, "Cmp 238");
     run(testCmp0x039, "Cmp 039");
@@ -6432,10 +6441,10 @@ int main(int argc, char **argv) {
     run(testCmp0x23c, "Cmp 23c");
     run(testCmp0x03d, "Cmp 03d");
     run(testCmp0x23d, "Cmp 23d");
-
+#ifndef BOXEDWINE_X64
     run(testAas0x03f, "AAS 03f");
     run(testAas0x23f, "AAS 23f");
-
+#endif
     run(testIncAx0x040,  "Inc AX  040");
     run(testIncEax0x240, "Inc EAX 240");
     run(testIncCx0x041,  "Inc CX  041");
@@ -6543,8 +6552,8 @@ int main(int argc, char **argv) {
     run(testMovEwGw0x08b, "Mov 08b");
     run(testMovEdGd0x28b, "Mov 28b");
 
-    run(testMovEwWw0x08c, "Mov 08c");
-    run(testMovEwWw0x28c, "Mov 28c");
+    run(testMovEwSw0x08c, "Mov 08c");
+    run(testMovEwSw0x28c, "Mov 28c");
 
     run(testLeaGw0x08d, "Lea 08d");
     run(testLeaGd0x28d, "Lea 28d");
@@ -6643,12 +6652,12 @@ int main(int argc, char **argv) {
     run(testGrp20x2d2, "Grp2 2d2");
     run(testGrp20x0d3, "Grp2 0d3");
     run(testGrp20x2d3, "Grp2 2d3");
-
+#ifndef BOXEDWINE_X64
     run(testAam0x0d4, "AAM 0d4");
     run(testAam0x2d4, "AAM 2d4");
     run(testAad0x0d5, "AAD 0d5");
     run(testAad0x2d5, "AAD 2d5");
-
+#endif
     run(testSalc0x0d6, "Salc 0d6");
     run(testSalc0x2d6, "Salc 2d6");
 
@@ -6658,9 +6667,10 @@ int main(int argc, char **argv) {
     run(testFPU0x0d8, "FPU 0d8");
     run(testFPU0x2d8, "FPU 2d8");
 
+#ifndef BOXEDWINE_X64
     run(testFPU0x0d9, "FPU 0d9");
     run(testFPU0x2d9, "FPU 2d9");    
-
+#endif
     run(testCmc0x0f5, "Cmc 0f5");
     run(testCmc0x2f5, "Cmc 2f5");
     

@@ -123,12 +123,22 @@ void common_larr16r16(CPU* cpu, U32 dstReg, U32 srcReg){
 void common_larr16e16(CPU* cpu, U32 reg, U32 address){
     cpu->reg[reg].u16 = cpu->lar(readw(address), cpu->reg[reg].u16);
 }
+
+U32 common_lar(CPU* cpu, U32 selector, U32 ar) {
+    return cpu->lar(selector, ar);
+}
+
 void common_lslr16r16(CPU* cpu, U32 dstReg, U32 srcReg){
     cpu->reg[dstReg].u16 = cpu->lsl(cpu->reg[srcReg].u16, cpu->reg[dstReg].u16);
 }
 void common_lslr16e16(CPU* cpu, U32 reg, U32 address){
     cpu->reg[reg].u16 = cpu->lsl(readw(address), cpu->reg[reg].u16);
 }
+
+U32 common_lsl(CPU* cpu, U32 selector, U32 limit) {
+    return cpu->lsl(selector, limit);
+}
+
 void common_verre16(CPU* cpu, U32 address){
     cpu->verr(readw(address));
 }

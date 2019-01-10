@@ -11,7 +11,7 @@ void Player::readCommand() {
     this->nextCommand="";
     this->nextValue="";
     while (true) {
-        U32 result = fread(&tmp[count], 1, 1, this->file);
+        U32 result = (U32)fread(&tmp[count], 1, 1, this->file);
         if (!result) {
             tmp[count] = 0;
             if (count>0) {

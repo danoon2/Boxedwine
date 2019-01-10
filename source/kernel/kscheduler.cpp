@@ -17,6 +17,7 @@
  */
 #include "boxedwine.h"
 
+#ifndef BOXEDWINE_MULTI_THREADED
 #include "devfb.h"
 #include "kscheduler.h"
 
@@ -172,3 +173,10 @@ U32 getMIPS() {
     }
     return result;
 }
+
+void waitForProcessToFinish(KProcess* process, KThread* thread) {
+    while (!process->terminated) {
+        platformRunThreadSlice(thread);
+    }
+}
+#endif

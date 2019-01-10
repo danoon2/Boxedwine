@@ -1693,18 +1693,26 @@ static const SyscallFunc syscallFunc[] = {
     syscall_sendmmsg    // 345 __NR_sendmmsg 
 };
 
+#ifndef BOXEDWINE_MULTI_THREADED
 extern S32 contextTime; // about the # instruction per 10 ms
+#endif
 void ksyscall(CPU* cpu, U32 eipCount) {
     U32 result;
     
-    if (!syscallFunc[EAX]) {
+    if (EAX>345) {
+        result = -K_ENOSYS;
+    } else if (!syscallFunc[EAX]) {
         result = -K_ENOSYS;
     } else {
+#ifndef BOXEDWINE_MULTI_THREADED
         U64 startTime = Platform::getMicroCounter();
+#endif
         result = syscallFunc[EAX](cpu, eipCount);
+#ifndef BOXEDWINE_MULTI_THREADED
         U64 diff = Platform::getMicroCounter()-startTime;
         sysCallTime+=diff;  
         cpu->blockInstructionCount+=(U32)(contextTime*diff/10000);
+#endif
     }    
 
     if (result==-K_CONTINUE) {

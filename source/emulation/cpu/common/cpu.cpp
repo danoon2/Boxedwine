@@ -4,6 +4,17 @@
 #include "bufferaccess.h"
 #include "kstat.h"
 
+#ifdef BOXEDWINE_X64
+#include "../x64/x64CPU.h"
+CPU* CPU::allocCPU() {
+    return new x64CPU();
+}
+#else
+#include "../normal/normalCPU.h"
+CPU* CPU::allocCPU() {
+    return new NormalCPU();
+}
+#endif
 U32 CPU_CHECK_COND(CPU* cpu, U32 cond, const char* msg, int exc, int sel) {
     if (cond) {
         kwarn(msg);
@@ -36,6 +47,9 @@ void CPU::reset() {
     for (int i=0;i<7;i++) {
         this->seg[i].value = 0;
         this->seg[i].address = 0;        
+    }
+    for (int i=0;i<6;i++) {
+        this->mightSetSeg[i] = false;
     }
     for (int i=0;i<9;i++) {
         this->reg[i].u32 = 0;
@@ -262,9 +276,7 @@ std::string getFunctionName(const std::string& name, U32 moduleEip) {
     if (fd) {
         thread->log = false;
         thread->process->dup2(fd->handle, 1); // replace stdout with tty9    
-        while (!process->terminated) {
-            platformRunThreadSlice(thread);
-        }
+        waitForProcessToFinish(thread->process, thread);
     }
     ChangeThread c(thread);
     KSystem::eraseProcess(process->id);

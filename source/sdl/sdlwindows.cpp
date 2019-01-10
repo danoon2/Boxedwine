@@ -2132,6 +2132,7 @@ void sdlDrawRectOnPushedSurfaceAndDisplay(U32 x, U32 y, U32 w, U32 h, U8 r, U8 g
 }
 
 bool sdlInternalScreenShot(std::string filepath, SDL_Rect* r, U32* crc) {    
+#ifdef BOXEDWINE_RECORDER
     U8* pixels = NULL;
     SDL_Surface* s;
     U32 rMask;
@@ -2187,6 +2188,9 @@ bool sdlInternalScreenShot(std::string filepath, SDL_Rect* r, U32* crc) {
         delete[] pixels;
     }
     return true;
+#else
+    return false;
+#endif
 }
 
 bool sdlPartialScreenShot(std::string filepath, U32 x, U32 y, U32 w, U32 h, U32* crc) {

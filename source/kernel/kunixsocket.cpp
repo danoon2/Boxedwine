@@ -44,7 +44,7 @@ KUnixSocketObject::~KUnixSocketObject() {
 }
 
 void KUnixSocketObject::setBlocking(bool blocking) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->cond);
+    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->lockCond);
     this->blocking = blocking;
 }
 
@@ -76,7 +76,7 @@ bool KUnixSocketObject::isOpen() {
 }
 
 bool KUnixSocketObject::isReadReady() {
-    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->cond);
+    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->lockCond);
     return this->inClosed || this->recvBuffer.getOccupied() || this->pendingConnections.size() || this->msgs.size();
 }
 

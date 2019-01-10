@@ -25,19 +25,30 @@ private:
 
 class BoxedWineCondition {
 public:
+    BoxedWineCondition(std::string name);
     BoxedWineCondition();
     ~BoxedWineCondition();
 
+    bool tryLock();
     void lock();
     void signal();
     void signalAll();
+    void signalAllLock();
     void wait();
     void waitWithTimeout(U32 ms);
     void unlock();
+    void addChildCondition(BoxedWineCondition& cond);
+    U32 waitCount();
+
+    const std::string name;
 
 private:
+    BoxedWineCondition* parent;
+    std::vector<BoxedWineCondition*> children;  
+
     void* m;
     void* c;
+    U32 lockOwner;
 };
 
 class BoxedWineCriticalSectionCond {
@@ -65,7 +76,10 @@ private:
 #define BOXEDWINE_CONDITION_WAIT(cond) cond.wait()
 #define BOXEDWINE_CONDITION_WAIT_TIMEOUT(cond, t) cond.waitWithTimeout(t)
 #define BOXEDWINE_CONDITION_WAIT_TYPE(x, type) cond.wait()
+#define BOXEDWINE_CONDITION_ADD_CHILD_CONDITION(parent, cond) (parent).addChildCondition(cond)
+#define BOXEDWINE_CONDITION_SIGNAL_ALL_NEED_LOCK(cond) (cond).signalAllLock()
 
+#define BoxedWineConditionTimer BoxedWineCondition
 #else
 #define BOXEDWINE_CRITICAL_SECTION
 #define BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(csMutex)

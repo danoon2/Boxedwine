@@ -307,6 +307,21 @@
     <ClCompile Include="..\..\..\..\source\kernel\ktimer.cpp">
       <Filter>source\kernel</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\x64\x64CPU.cpp">
+      <Filter>source\emulation\cpu\x64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\platform\windows\platformThreads.cpp">
+      <Filter>platform\windows</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\x64\x64Data.cpp">
+      <Filter>source\emulation\cpu\x64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\x64\x64Ops.cpp">
+      <Filter>source\emulation\cpu\x64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\x64\x64Asm.cpp">
+      <Filter>source\emulation\cpu\x64</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -717,6 +732,18 @@
     <ClInclude Include="..\..\..\..\source\sdl\multiThreaded\sdlcallback.h">
       <Filter>source\sdl\multiThreaded</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\x64\x64CPU.h">
+      <Filter>source\emulation\cpu\x64</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\x64\x64Data.h">
+      <Filter>source\emulation\cpu\x64</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\x64\x64Asm.h">
+      <Filter>source\emulation\cpu\x64</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\x64\x64Ops.h">
+      <Filter>source\emulation\cpu\x64</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
@@ -793,6 +820,9 @@
     </Filter>
     <Filter Include="source\sdl\multiThreaded">
       <UniqueIdentifier>{02bfdf2e-8559-4081-908a-a49b47b0a328}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\emulation\cpu\x64">
+      <UniqueIdentifier>{0cac0668-e773-41da-9b57-accb214a243c}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

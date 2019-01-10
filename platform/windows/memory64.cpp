@@ -4,9 +4,6 @@
 #ifdef BOXEDWINE_64BIT_MMU
 static U32 gran = 0x10;
 
-#define NATIVE_FLAG_COMMITTED 0x01
-#define NATIVE_FLAG_READONLY 0x02
-
 #include "../../source/emulation/hardmmu/hard_memory.h"
 
 void allocNativeMemory(Memory* memory, U32 page, U32 pageCount, U32 flags) {
@@ -119,7 +116,45 @@ void releaseNativeMemory(Memory* memory) {
     memset(memory->nativeFlags, 0, sizeof(memory->nativeFlags));
     memset(memory->ids, 0, sizeof(memory->ids));
     memory->allocated = 0;
+#ifdef BOXEDWINE_X64
+    VirtualFree(memory->executableMemory, 0, MEM_RELEASE);
+    memset(memory->executable64kBlocks, 0, sizeof(memory->executable64kBlocks));
+    memory->executableMemory = NULL;
+
+    for (i=0;i<K_NUMBER_OF_PAGES;i++) {
+        if (memory->opToAddressPages[i]) {
+            delete[] memory->opToAddressPages[i];
+            memory->opToAddressPages[i] = NULL;
+        }
+        if (memory->hostToEip[i]) {
+            delete[] memory->hostToEip[i];
+            memory->hostToEip[i] = NULL;
+        }
+    }
+    memory->x64Mem = 0;
+    memory->x64MemPos = 0;
+    memory->x64AvailableMem = 0;
+#endif
 }
+
+#ifdef BOXEDWINE_X64
+void* allocExecutable64kBlock(Memory* memory) {
+    U32 i;
+
+    if (!memory->executableMemory) {
+        memory->executableMemory = (U8*)reserveNext4GBMemory();
+    }
+    for (i=0;i<0x10000;i++) {
+        if (!memory->executable64kBlocks[i]) {
+            memory->executable64kBlocks[i]=1;
+            memory->x64AvailableMem += 64*1024; 
+            return VirtualAlloc(memory->executableMemory+i*64*1024, 64*1024, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+        }
+    }
+    kpanic("Ran out of code pages in x64dynamic");
+    return 0;
+}
+#endif
 
 void makeCodePageReadOnly(Memory* memory, U32 page) {
     DWORD oldProtect;
@@ -152,7 +187,7 @@ bool clearCodePageReadOnly(Memory* memory, U32 page) {
     return result;
 }
 
-int seh_filter(unsigned int code, struct _EXCEPTION_POINTERS* ep, KThread* thread)
+static int seh_filter(unsigned int code, struct _EXCEPTION_POINTERS* ep, KThread* thread)
 {
     if (code == EXCEPTION_ACCESS_VIOLATION) {
         U32 address = getHostAddress(thread, (void*)ep->ExceptionRecord->ExceptionInformation[1]);
@@ -175,7 +210,7 @@ int seh_filter(unsigned int code, struct _EXCEPTION_POINTERS* ep, KThread* threa
     }   
     return EXCEPTION_CONTINUE_SEARCH;
 }
-
+#ifndef BOXEDWINE_MULTI_THREADED
 void platformRunThreadSlice(KThread* thread) {
     __try {
         runThreadSlice(thread);
@@ -183,4 +218,5 @@ void platformRunThreadSlice(KThread* thread) {
         thread->cpu->nextBlock = NULL;
     }
 }
+#endif
 #endif

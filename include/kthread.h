@@ -119,6 +119,9 @@ public:
 private:
     void clearFutexes();
 
+#ifdef BOXEDWINE_X64
+    __declspec(thread) 
+#endif
     static KThread* runningThread;    
 
     BOXEDWINE_CONDITION sleepCond;      
@@ -145,5 +148,7 @@ public:
 #define RESTORE_SIGNAL_MASK 0x0FFFFFFFFFFFFFFFl
 
 void OPCALL onExitSignal(CPU* cpu, DecodedOp* op);
+
+void common_signalIllegalInstruction(CPU* cpu, int code);
 
 #endif

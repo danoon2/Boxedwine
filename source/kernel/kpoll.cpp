@@ -22,16 +22,27 @@
 #include "kscheduler.h"
 
 S32 internal_poll(KPollData* data, U32 count, U32 timeout) {
-    while (true) {
-        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(thread->pollCond);
+    KPollData* firstData=data;
+
+    while (true) {        
         S32 result = 0;
         U32 i;
         KThread* thread = KThread::currentThread();
+        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(thread->pollCond);
         bool interrupted = !thread->inSignal && thread->interrupted;
-        KPollData* firstData=data;
-
+        
         if (interrupted)
             thread->interrupted = false;
+        
+        data = firstData;
+        // gather locks before we check the data so that we don't miss one
+        for (i=0;i<count;i++) {
+            KFileDescriptor* fd = thread->process->getFileDescriptor(data->fd);
+            fd->kobject->waitForEvents(thread->pollCond, data->events);
+            data++;
+        } 
+
+        data = firstData;
         for (i=0;i<count;i++) {
             KFileDescriptor* fd = thread->process->getFileDescriptor(data->fd);
             data->revents = 0;
@@ -53,13 +64,16 @@ S32 internal_poll(KPollData* data, U32 count, U32 timeout) {
         }
         if (result>0) {	
             thread->condStartWaitTime = 0;
+            thread->pollCond.signalAll(); // will release child locks we gathered above
             return result;
         }
         if (timeout==0) {
+            thread->pollCond.signalAll(); // will release child locks we gathered above
             return 0;
         }	
         if (interrupted) {
             thread->condStartWaitTime = 0;
+            thread->pollCond.signalAll(); // will release child locks we gathered above
             return -K_EINTR;
         }
         if (!thread->condStartWaitTime) {
@@ -68,16 +82,11 @@ S32 internal_poll(KPollData* data, U32 count, U32 timeout) {
             U32 diff = getMilliesSinceStart()-thread->condStartWaitTime;
             if (diff>timeout) {
                 thread->condStartWaitTime = 0;
+                thread->pollCond.signalAll(); // will release child locks we gathered above
                 return 0;
             }
             timeout-=diff;
-        }
-        data = firstData;
-        for (i=0;i<count;i++) {
-            KFileDescriptor* fd = thread->process->getFileDescriptor(data->fd);
-            fd->kobject->waitForEvents(thread->pollCond, data->events);
-            data++;
-        }            
+        }          
         BOXEDWINE_CONDITION_WAIT_TIMEOUT(thread->pollCond, timeout);
     }
 }

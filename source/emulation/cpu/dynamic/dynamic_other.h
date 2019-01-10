@@ -503,7 +503,8 @@ void dynamic_xaddr32r32(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_xaddr32e32(DynamicData* data, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
-    if (!op->needsToSetFlags()) {
+
+    if (!op->needsToSetFlags()) {
         movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit);
         movFromMem(DYN_32bit, DYN_ADDRESS, false);
         instRegReg('+', DYN_SRC, DYN_CALL_RESULT, DYN_32bit, false);

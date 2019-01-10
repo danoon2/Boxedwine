@@ -4808,6 +4808,7 @@ void decodeBlock(pfnFetchByte fetchByte, U32 eip, U32 isBig, U32 maxInstructions
     d.opCountSoFarInThisBlock = 0;
 
     block->op = op;
+    block->bytes = 0;
     while (1) {
         d.opLen = 0;
         d.ds = DS;

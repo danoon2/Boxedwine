@@ -23,26 +23,13 @@
 
 inline U8 readb(U32 address) {
     int index = address >> 12;
-#ifdef LOG_OPS
-    KThread* thread = KThread::currentThread();
-    Memory* memory = thread->memory;
-    U8 result = thread->memory->mmu[index]->readb(address);;
-    if (memory->log && thread->cpu->log)
-        fprintf(logFile, "readb %X @%X\n", result, address);
-    return result;
-#else
     if (Memory::currentMMUReadPtr[index])
         return Memory::currentMMUReadPtr[index][address & 0xFFF];
     return Memory::currentMMU[index]->readb(address);
-#endif
 }
 
 inline void writeb(U32 address, U8 value) {
     int index = address >> 12;
-#ifdef LOG_OPS
-    if (memory->log && thread->cpu->log)
-        fprintf(logFile, "writeb %X @%X\n", value, address);
-#endif
     if (Memory::currentMMUWritePtr[index])
         Memory::currentMMUWritePtr[index][address & 0xFFF] = value;
     else
@@ -50,20 +37,6 @@ inline void writeb(U32 address, U8 value) {
 }
 
 inline U16 readw(U32 address) {
-#ifdef LOG_OPS
-    U16 result;
-    KThread* thread = KThread::currentThread();
-    Memory* memory = thread->memory;
-
-    if((address & 0xFFF) < 0xFFF) {
-        result = thread->memory->mmu[index]->readw(address);
-    } else {
-        result = readb(address) | (readb(address+1) << 8);
-    }
-    if (memory->log && thread->cpu->log)
-        fprintf(logFile, "readw %X @%X\n", result, address);
-    return result;
-#else
     if ((address & 0xFFF) < 0xFFF) {
         int index = address >> 12;
 #ifndef UNALIGNED_MEMORY
@@ -73,16 +46,9 @@ inline U16 readw(U32 address) {
         return Memory::currentMMU[index]->readw(address);
     }
     return readb(address) | (readb(address+1) << 8);
-#endif
 }
 
 inline void writew(U32 address, U16 value) {
-#ifdef LOG_OPS
-    KThread* thread = KThread::currentThread();
-    Memory* memory = thread->memory;
-    if (memory->log && thread->cpu->log)
-        fprintf(logFile, "writew %X @%X\n", value, address);
-#endif
     if ((address & 0xFFF) < 0xFFF) {
         int index = address >> 12;
 #ifndef UNALIGNED_MEMORY
@@ -98,21 +64,6 @@ inline void writew(U32 address, U16 value) {
 }
 
 inline U32 readd(U32 address) {
-#ifdef LOG_OPS
-    U32 result;
-    KThread* thread = KThread::currentThread();
-    Memory* memory = thread->memory;
-
-    if ((address & 0xFFF) < 0xFFD) {
-        int index = address >> 12;
-        result = thread->memory->mmu[index]->readd(address);
-    } else {
-        result = readb(address) | (readb(address+1) << 8) | (readb(address+2) << 16) | (readb(address+3) << 24);
-    }
-    if (memory->log && thread->cpu->log)
-        fprintf(logFile, "readd %X @%X\n", result, address);
-    return result;
-#else
     if ((address & 0xFFF) < 0xFFD) {
         int index = address >> 12;
 #ifndef UNALIGNED_MEMORY
@@ -123,16 +74,9 @@ inline U32 readd(U32 address) {
     } else {
         return readb(address) | (readb(address+1) << 8) | (readb(address+2) << 16) | (readb(address+3) << 24);
     }
-#endif
 }
 
 inline void writed(U32 address, U32 value) {
-#ifdef LOG_OPS
-    KThread* thread = KThread::currentThread();
-    Memory* memory = thread->memory;
-    if (memory->log && thread->cpu->log)
-        fprintf(logFile, "writed %X @%X\n", value, address);
-#endif    
     if ((address & 0xFFF) < 0xFFD) {
         int index = address >> 12;
 #ifndef UNALIGNED_MEMORY

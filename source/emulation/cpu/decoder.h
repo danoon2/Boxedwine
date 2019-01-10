@@ -1037,6 +1037,7 @@ public:
 extern const InstructionInfo instructionInfo[];
 
 class DecodedOp;
+class DecodedBlock;
 
 typedef void (OPCALL *OpCallback)(CPU* cpu, DecodedOp* op);
 
@@ -1077,8 +1078,6 @@ private:
     void init();
 };
 
-class DecodedBlock;
-
 typedef U8 (*pfnFetchByte)(U32* pEip);
 
 class DecodedBlockFromNode {
@@ -1102,8 +1101,8 @@ public:
     DecodedBlock* next1;
     DecodedBlock* next2;    
 
-    virtual void run(CPU* cpu) = 0;
-    virtual void dealloc(bool delayed) = 0;
+    virtual void run(CPU* cpu) {};
+    virtual void dealloc(bool delayed) {};
 
     void addReferenceFrom(DecodedBlock* block);
     void removeReferenceFrom(DecodedBlock* block);

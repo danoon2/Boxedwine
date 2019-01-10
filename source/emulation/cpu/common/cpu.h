@@ -202,6 +202,8 @@ class Memory;
 
 class CPU {
 public:
+    static CPU* allocCPU();
+
     CPU();
 
     Reg reg[9];
@@ -233,6 +235,8 @@ public:
 
     DecodedBlock* nextBlock;
     DecodedBlock* delayedFreeBlock;
+
+    bool mightSetSeg[6];
 
     U32 getCF();
     U32 getSF();
@@ -292,6 +296,7 @@ public:
 
     virtual void run()=0;
     virtual DecodedBlock* getNextBlock() = 0;
+    virtual void restart() {}
 };
 
 // until I can figure out how to call cpp function directly from asm

@@ -109,9 +109,14 @@ INLINE void safe_strcat(char* dest, const char* src, int bufferSize) {
     strcat(dest, src);
 }
 
-#ifdef BOXEDWINE_DYNAMIC
+#if defined BOXEDWINE_DYNAMIC
 void freeExecutable64kBlock(void* p);
 void* allocExecutable64kBlock();
+#endif
+
+#ifdef BOXEDWINE_X64
+class Memory;
+void* allocExecutable64kBlock(Memory* memory);
 #endif
 
 #ifdef BOXEDWINE_MIDI

@@ -27,7 +27,6 @@
 #define RINGBUFFER_H
 
 #include <algorithm>
-#include <memory.h>
 
 
 template<typename T> class ringbuffer {

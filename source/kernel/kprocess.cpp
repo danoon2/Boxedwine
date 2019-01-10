@@ -542,6 +542,9 @@ U32 KProcess::exit(U32 code) {
     KThread::currentThread()->cpu->yield = true;
     KThread::currentThread()->cleanup();
     KThread::currentThread()->process = NULL; // signal to scheduler to delete this thread
+#ifdef BOXEDWINE_X64
+    unscheduleCurrentThread();
+#endif
     return 0;
 }
 
@@ -679,6 +682,8 @@ U32 KProcess::execve(const std::string& path, std::vector<std::string>& args, co
     BOXEDWINE_CONDITION_SIGNAL_ALL(this->exitOrExecCond);
     BOXEDWINE_CONDITION_UNLOCK(this->exitOrExecCond);
        
+    KThread::currentThread()->cpu->restart();
+
     //klog("%d/%d exec %s (cwd=%s)", KThread::currentThread()->id, this->id, this->commandLine.c_str(), this->currentDirectory.c_str());
     return 1;
 }
@@ -1465,16 +1470,7 @@ U32 KProcess::clone(U32 flags, U32 child_stack, U32 ptid, U32 tls, U32 ctid) {
 }
 
 U32 KProcess::exitgroup(U32 code) {
-    KProcess* parent = KSystem::getProcess(this->parentId);
-    
-    BOXEDWINE_CONDITION_LOCK(KSystem::processesCond);
-    this->terminated = true;
-    KSystem::wakeThreadsWaitingOnProcessStateChanged();
-    BOXEDWINE_CONDITION_UNLOCK(KSystem::processesCond);
-
-    BOXEDWINE_CONDITION_LOCK(this->exitOrExecCond);
-    BOXEDWINE_CONDITION_SIGNAL_ALL(this->exitOrExecCond);
-    BOXEDWINE_CONDITION_UNLOCK(this->exitOrExecCond);
+    KProcess* parent = KSystem::getProcess(this->parentId);        
 
     if (parent && parent->sigActions[K_SIGCHLD].handlerAndSigAction!=K_SIG_DFL) {
         if (parent->sigActions[K_SIGCHLD].handlerAndSigAction!=K_SIG_IGN) {
@@ -1495,10 +1491,23 @@ U32 KProcess::exitgroup(U32 code) {
     this->exitCode = code;
     KThread::currentThread()->cpu->yield = true;   
     KThread::currentThread()->process = NULL;  // signal to scheduler to delete this thread
+
+    BOXEDWINE_CONDITION_LOCK(KSystem::processesCond);
+    this->terminated = true;
+    KSystem::wakeThreadsWaitingOnProcessStateChanged();
+    BOXEDWINE_CONDITION_UNLOCK(KSystem::processesCond);
+
+    BOXEDWINE_CONDITION_LOCK(this->exitOrExecCond);
+    BOXEDWINE_CONDITION_SIGNAL_ALL(this->exitOrExecCond);
+    BOXEDWINE_CONDITION_UNLOCK(this->exitOrExecCond);
+
     if (KSystem::getProcessCount()==1) {        
         // no one left to wait on this process, with no processes running main will exit boxedwine
         KSystem::eraseProcess(this->id);
-    }
+    }   
+#ifdef BOXEDWINE_X64
+    unscheduleCurrentThread(); // won't return
+#endif
     return -K_CONTINUE;
 }
 

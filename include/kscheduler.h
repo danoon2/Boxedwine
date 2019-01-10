@@ -20,13 +20,18 @@
 #define __KSCHEDULER_H__
 
 void scheduleThread(KThread* thread);
-void unscheduleThread(KThread* thread); // will not return if thread is current thread and BOXEDWINE_VM
+void unscheduleThread(KThread* thread);
+#ifdef BOXEDWINE_X64
+void unscheduleCurrentThread(); // will not return
+#endif
+
 void addTimer(KTimer* timer);
 void removeTimer(KTimer* timer);
 
 bool runSlice();
 void runThreadSlice(KThread* thread);
 void platformRunThreadSlice(KThread* thread);
+void waitForProcessToFinish(KProcess* process, KThread* thread);
 #ifdef BOXEDWINE_DEFAULT_MMU
 #define platformRunThreadSlice runThreadSlice
 #endif
