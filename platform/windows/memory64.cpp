@@ -81,7 +81,27 @@ void freeNativeMemory(Memory* memory, U32 page, U32 pageCount) {
             memory->allocated-=(gran << K_PAGE_SHIFT);
         }
         granPage+=gran;
-    }    
+    }  
+#if BOXEDWINE_X64
+    for (int p=page;p<page+pageCount;p++)
+    {
+        void** entries = memory->opToAddressPages[p];
+
+        if (entries) {
+            U32 i;
+            for (i=0;i<K_PAGE_SIZE;i++) {
+                if (memory->opToAddressPages[p][i]) {
+                    U64 host = (U64)memory->opToAddressPages[p][i];
+                    if (memory->hostToEip[((U32)host)>>K_PAGE_SHIFT]) {
+                        memory->hostToEip[((U32)host)>>K_PAGE_SHIFT][host & 0xFFF]=0;
+                    }
+                }
+            }
+            memory->opToAddressPages[p] = NULL;
+            delete[] entries;
+        }
+    }
+#endif
 }
 
 static void* reserveNext4GBMemory() {

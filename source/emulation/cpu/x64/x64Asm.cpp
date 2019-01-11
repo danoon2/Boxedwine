@@ -1121,6 +1121,8 @@ void X64Asm::syncRegsToHost(S8 excludeReg) {
 
 void X64Asm::callHost(void* pfn) {
     U8 tmp = getTmpReg();
+    
+    write8(0xfc); // cld
 
     writeToRegFromValue(tmp, true, (U64)pfn, 8);
 
@@ -1231,14 +1233,14 @@ void X64Asm::setSeg(U8 seg, U8 rm) {
 
     // calling convention RCX, RDX, R8, R9 for first 4 parameters    
 
+    // put value into R8, set before ECX and EDX in case rm referes to them
+    zeroReg(0, true);
+    writeToRegFromE(0, true, rm, 2);
+
     // call U32 common_setSegment(CPU* cpu, U32 seg, U32 value)
     writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
     
-    writeToRegFromValue(2, false, seg, 4); // value param, must pass 4 so that upper part of reg is zero'd out
-
-    // put value into R8
-    zeroReg(0, true);
-    writeToRegFromE(0, true, rm, 2);
+    writeToRegFromValue(2, false, seg, 4); // value param, must pass 4 so that upper part of reg is zero'd out    
 
     callHost(common_setSegment);
     
@@ -1829,9 +1831,8 @@ static U8 fetchByte(U32 *eip) {
 }
 
 static void x64log(CPU* cpu, U32 eip) {
-    if (!cpu->logFile) {
-        cpu->logFile = fopen("t.txt", "w");
-    }
+    if (!cpu->logFile)
+        return;
     static DecodedBlock* block;
     if (!block) {
         block = new DecodedBlock();
@@ -2154,8 +2155,8 @@ void X64Asm::lsl(bool big, U8 rm) {
         zeroReg(0, true);
     writeToRegFromReg(0, true, G(rm), false, (big?4:2)); // load reg first in case it is ECX or EDX which will be overwritten
 
-    zeroReg(2, false);
     writeToRegFromE(2, false, rm, 2); // load before overwriting ECX
+    andReg(2, false, 0x0000ffff); // zero out top 2 bytes, can't do this before writeToRegFromE in case rm references edx
 
     writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
             
@@ -2182,8 +2183,8 @@ void X64Asm::lar(bool big, U8 rm) {
         zeroReg(0, true);
     writeToRegFromReg(0, true, G(rm), false, (big?4:2)); // load reg first in case it is ECX or EDX which will be overwritten
 
-    zeroReg(2, false);
     writeToRegFromE(2, false, rm, 2); // load before overwriting ECX
+    andReg(2, false, 0x0000ffff); // zero out top 2 bytes, can't do this before writeToRegFromE in case rm references edx
 
     writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
             
