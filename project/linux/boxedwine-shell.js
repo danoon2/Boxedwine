@@ -77,6 +77,8 @@
             var bpp =  getParameter("bpp");
             if(!allowParameterOverride()){
                 bpp = DEFAULT_BPP;
+            }else if(bpp == "8") {
+                bpp = 8;
             }else if(bpp == "16") {
                 bpp = 16;
             }else if(bpp == "32"){
