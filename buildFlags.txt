@@ -51,6 +51,12 @@ call the build script with extra parameter 'remote' ie buildjsfs_sdl2.sh remote
 This will additionally build dlls.json that should be copied along with the dlls directory to your webserver.
 * adding the remote param also ensures that the original dlls in lib/wine are not zipped into the main zip file.
 
+Alternative serving of zip file systems
+The default browserfs ZipFs takes as an argument the zipped contents of the file system and lazily unzips files upon request.
+Using the &range=true parameter changes the behaviour to only request the individual zip file entries on demand.
+This approach has the advantage that the zipped filesystems do not need to be curated to be as small as possible, but it has the disadvantage that
+the network requests are synchronous (may block ui thread and also potentially crash the emulator when retrieving large files) and the web server must support range requests.
+
 Other configuration options:
 AUTO_RUN - indicates if start button is shown or page auto-runs. default true
 ALLOW_PARAM_OVERRIDE_FROM_URL - indicates if url can be appended with params as above for dir, app, m & p.

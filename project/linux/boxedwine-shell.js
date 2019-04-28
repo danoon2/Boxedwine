@@ -12,6 +12,7 @@
         let DEFAULT_AUTO_RUN = true;
         let DEFAULT_SOUND_ENABLED = true;
         let DEFAULT_ZLIB_ENABLED = false;
+        let DEFAULT_USE_RANGE_REQUESTS = false;
         let DEFAULT_RETRIEVE_REMOTE_DLL_FILES = false;
         let DEFAULT_HOME_DIRECTORY = ROOT + "/home/username/files/";
         let DEFAULT_BPP = 32;
@@ -65,6 +66,7 @@
             Config.isSoundEnabled = getSound();
             Config.isZlibEnabled = getZlibParameter();
             Config.bpp = getBitsPerPixel();
+            Config.useRangeRequests = getUseRangeRequests();
         }
         function allowParameterOverride() {
             if(Config.urlParams.length >0) {
@@ -107,6 +109,24 @@
             }
             console.log("setting auto run to: "+auto);
             return auto;
+        }
+        function getUseRangeRequests(){
+            var range =  getParameter("range");
+            if(!allowParameterOverride()){
+                range = DEFAULT_USE_RANGE_REQUESTS;
+            }else if(range == "true") {
+                range = true;
+            }else if(range == "false"){
+                range = false;
+            }else{
+                range = DEFAULT_USE_RANGE_REQUESTS;
+            }
+            if(range && Config.isZlibEnabled){
+                console.log("parameter mismatch. Can't use range requests if ZLib option enabled. Setting range to false");
+                range = false;
+            }
+            console.log("setting range to: "+range);
+            return range;
         }
         function getRetrieveDlls(){
             var retrieveEnabled =  getParameter("remote");
@@ -254,7 +274,6 @@
             client.authenticate(auth_callback);
             document.getElementById('startbtn').textContent = "Start";
         }
-
         function initFileSystem()
         {
             console.log("Use Storage mode: "+Config.storageMode);
@@ -273,44 +292,156 @@
                 buildFileSystem(new BrowserFS.FileSystem.InMemory(), false);
             }
         }
-
+        //function from browserfs
+        function syncGet(url, offset, length)
+        {
+          let req = new XMLHttpRequest();
+          req.open('GET', url, false);
+          let data = null;
+          let err = null;
+          // Classic hack to download binary data as a string.
+          req.overrideMimeType('text/plain; charset=x-user-defined');
+          let end = offset + length - 1;
+          let range = "bytes=" + offset + "-" + end;
+          req.setRequestHeader('Range', range);
+          req.onreadystatechange = function(e) {
+            if (req.readyState === 4) {
+              if (req.status === 200 || req.status === 206) {
+                    // Convert the text into a buffer.
+                    const text = req.responseText;
+                    data = new Int8Array(text.length);
+                    // Throw away the upper bits of each character.
+                    for (let i = 0; i < text.length; i++) {
+                      // This will automatically throw away the upper bit of each
+                      // character for us.
+                      data[i] = text.charCodeAt(i);
+                    }
+                    return;
+              } else {
+                err = "XHR error.";
+                return;
+              }
+            }
+          };
+          req.send();
+          if (err) {
+            throw err;
+          }
+          return data;
+        }
+        function getFileSize(p  )
+        {
+            return new Promise(function(resolve, reject) {
+                  const req = new XMLHttpRequest();
+                  req.open('HEAD', p);
+                  req.onreadystatechange = function(e) {
+                    if (req.readyState === 4) {
+                      if (req.status === 200) {
+                        try {
+                          resolve(parseInt(req.getResponseHeader('Content-Length') || '-1', 10));
+                        } catch (e) {
+                          throw e;
+                        }
+                      } else {
+                        throw new Error("Unable to get file size");
+                      }
+                    }
+                  };
+                  req.onerror = function() {
+                      reject(Error("Network Error"));
+                  };
+                  req.send();
+              }).then(function(result, err) {
+                  if (err != null) {
+                      throw new Error(err);
+                  } else {
+                      return result;
+                  }
+            }, function(err) {
+                  throw new Error("Something when wrong when getting file size");
+            });
+        }
+        function getCentralOffset(buffer)
+        {
+            let ENDSIG = 101010256;
+            let ENDHDR = 22;
+            let ENDTOT = 10;
+            let ENDSIZ = 12;
+            let ENDOFF = 16;
+            let ENDNRD = 4;
+            var pos =0;
+            var offset = buffer.byteLength - ENDHDR;
+            var top = Math.max(0, offset - 65536);
+            var result = 0;
+            do {
+                if (offset < top)
+                    throw new Error("not a zip file?");
+                pos = offset--;
+                result = (((buffer[pos++]) | (buffer[pos++]) << 8) | ((buffer[pos++]) | (buffer[pos++]) << 8) << 16);
+            } while (result != ENDSIG);
+            pos = ( pos + ENDTOT - ENDNRD);
+            var count = ((buffer[pos++]) | (buffer[pos++]) << 8);
+            pos = ( pos + ENDOFF - ENDSIZ);
+            return (((buffer[pos++]) | (buffer[pos++]) << 8) | ((buffer[pos++]) | (buffer[pos++]) << 8) << 16);
+        }
         function buildFileSystem(writableStorage, isDropBox)
         {
             spinnerElement.style.display = '';
             spinnerElement.hidden = false;
             var Buffer = BrowserFS.BFSRequire('buffer').Buffer;
-
             buildExtraFileSystems(Buffer, function(extraFSs) {
                 buildAppFileSystems(function(homeAdapter) {
-                    var rootMfs = new BrowserFS.FileSystem.MountableFileSystem();
-
-                    var rootListingObject = {};
-                    rootListingObject[Config.rootZipFile] =  null;
-
-                    BrowserFS.FileSystem.XmlHttpRequest.Create({"index":rootListingObject, "baseUrl":""}, function(e2, xmlHttpFs){
-                        if(e2){
-                            console.log(e2);
-                        }
-                        rootMfs.mount('/temp', xmlHttpFs);
-                        rootMfs.readFile('/temp/' + Config.rootZipFile, null, flag_r, function callback(e, contents){
-                            if(e){
-                                console.log(e);
-                            }
-                            if(Config.isZlibEnabled) {
-                                Module.FS_createDataFile("/", Config.rootZipFile, contents, true, true);
-                                contents = null;
-                                buildBrowserFileSystem(writableStorage, isDropBox, homeAdapter, extraFSs);
-                            }else{
-                                BrowserFS.FileSystem.ZipFS.Create({"zipData":new Buffer(contents)}, function(e3, zipfs){
-                                    if(e3){
-                                        console.log(e3);
-                                    }
-                                    buildBrowserFileSystem(writableStorage, isDropBox, homeAdapter, extraFSs, zipfs);
-                                });
-                            }
-                            rootMfs = null;
+                    if(Config.useRangeRequests) {
+                        buildRemoteZipFile(Config.rootZipFile, function callback(zipfs) {
+                            buildBrowserFileSystem(writableStorage, isDropBox, homeAdapter, extraFSs, zipfs);
                         });
-                    });
+                    } else {
+                        var rootListingObject = {};
+                        rootListingObject[Config.rootZipFile] =  null;
+                        BrowserFS.FileSystem.XmlHttpRequest.Create({"index":rootListingObject, "baseUrl":""}, function(e2, xmlHttpFs){
+                            if(e2){
+                                console.log(e2);
+                            }
+                            var rootMfs = new BrowserFS.FileSystem.MountableFileSystem();
+                            rootMfs.mount('/temp', xmlHttpFs);
+                            rootMfs.readFile('/temp/' + Config.rootZipFile, null, flag_r, function callback(e, contents){
+                                if(e){
+                                    console.log(e);
+                                }
+                                if(Config.isZlibEnabled) {
+                                    Module.FS_createDataFile("/", Config.rootZipFile, contents, true, true);
+                                    contents = null;
+                                    buildBrowserFileSystem(writableStorage, isDropBox, homeAdapter, extraFSs);
+                                }else{
+                                    BrowserFS.FileSystem.ZipFS.Create({"zipData":new Buffer(contents)}, function(e3, zipfs){
+                                        if(e3){
+                                            console.log(e3);
+                                        }
+                                        buildBrowserFileSystem(writableStorage, isDropBox, homeAdapter, extraFSs, zipfs);
+                                    });
+                                }
+                                rootMfs = null;
+                            });
+                        });
+                    }
+                });
+            });
+        }
+        function buildRemoteZipFile(zipFilename, zipFileCallback)
+        {
+            var Buffer = BrowserFS.BFSRequire('buffer').Buffer;
+            getFileSize(zipFilename).then(function(fileSizeAsString) {
+                let fileSizeAsInt = Number(fileSizeAsString);
+                let blockSize = fileSizeAsInt > 100000 ? 100000 : fileSizeAsInt - 22;
+                let lastPartOfFile = syncGet(zipFilename, fileSizeAsInt - blockSize, blockSize);
+                let centralOffset = getCentralOffset(new Uint8Array(lastPartOfFile));
+                let remainingLength = fileSizeAsInt - centralOffset;
+                let contents = syncGet(zipFilename, centralOffset, remainingLength);
+                BrowserFS.FileSystem.ZipFS.Create({"name": zipFilename , "zipData":new Buffer(contents)}, function(e3, zipfs){
+                    if(e3){
+                        console.log(e3);
+                    }
+                    zipFileCallback(zipfs);
                 });
             });
         }
@@ -318,30 +449,38 @@
         {
             var Buffer = BrowserFS.BFSRequire('buffer').Buffer;
             if(Config.appZipFile.length > 0){
-                var listingObject = {};
-                listingObject[Config.appZipFile] =  null;
-                var mfs = new BrowserFS.FileSystem.MountableFileSystem();
-                BrowserFS.FileSystem.XmlHttpRequest.Create({"index":listingObject, "baseUrl":""}, function(e2, xmlHttpFs){
-                    if(e2){
-                        console.log(e2);
-                    }
-                    mfs.mount('/temp', xmlHttpFs);
-                    mfs.readFile('/temp/' + Config.appZipFile, null, flag_r, function callback(e, contents){
-                        if(e){
-                            console.log(e);
+
+                if(Config.useRangeRequests) {
+                    buildRemoteZipFile(Config.appZipFile, function callback(additionalZipfs) {
+                        let homeAdapter = new BrowserFS.FileSystem.FolderAdapter("/", additionalZipfs);
+                        adapterCallback(homeAdapter);
+                    });
+                } else {
+                    var listingObject = {};
+                    listingObject[Config.appZipFile] =  null;
+                    var mfs = new BrowserFS.FileSystem.MountableFileSystem();
+                    BrowserFS.FileSystem.XmlHttpRequest.Create({"index":listingObject, "baseUrl":""}, function(e2, xmlHttpFs){
+                        if(e2){
+                            console.log(e2);
                         }
-                        BrowserFS.FileSystem.ZipFS.Create({"zipData":new Buffer(contents)}, function(e3, additionalZipfs){
-                            if(e3){
-                                console.log(e3);
+                        mfs.mount('/temp', xmlHttpFs);
+                        mfs.readFile('/temp/' + Config.appZipFile, null, flag_r, function callback(e, contents){
+                            if(e){
+                                console.log(e);
                             }
-                            homeAdapter = new BrowserFS.FileSystem.FolderAdapter("/", additionalZipfs);
-                            adapterCallback(homeAdapter);
-                            mfs = null;
+                            BrowserFS.FileSystem.ZipFS.Create({"zipData":new Buffer(contents)}, function(e3, additionalZipfs){
+                                if(e3){
+                                    console.log(e3);
+                                }
+                                let homeAdapter = new BrowserFS.FileSystem.FolderAdapter("/", additionalZipfs);
+                                adapterCallback(homeAdapter);
+                                mfs = null;
+                            });
                         });
                     });
-                });
+                }
             }else{
-                homeAdapter = new BrowserFS.FileSystem.FolderAdapter("/", new BrowserFS.FileSystem.InMemory());
+                let homeAdapter = new BrowserFS.FileSystem.FolderAdapter("/", new BrowserFS.FileSystem.InMemory());
                 adapterCallback(homeAdapter);
             }
         }
