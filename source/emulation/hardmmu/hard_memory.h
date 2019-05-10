@@ -22,7 +22,7 @@
 #ifdef BOXEDWINE_64BIT_MMU
 
 #define NATIVE_FLAG_COMMITTED 0x01
-#define NATIVE_FLAG_READONLY 0x02
+#define NATIVE_FLAG_CODEPAGE_READONLY 0x02
 
 INLINE void* getNativeAddress(Memory* memory, U32 address) {
 #ifdef _DEBUG

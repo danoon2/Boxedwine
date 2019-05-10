@@ -294,6 +294,8 @@ public:
     void verr(U32 selector);
     void verw(U32 selector);
 
+    U32 getEipAddress();
+
     virtual void run()=0;
     virtual DecodedBlock* getNextBlock() = 0;
     virtual void restart() {}

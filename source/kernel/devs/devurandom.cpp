@@ -21,18 +21,24 @@
 #include <stdlib.h>
 #include <time.h>
 
-static bool srand_initialized = false;
+#include <random>
 
 class DevURandom : public FsVirtualOpenNode {
 public:
-    DevURandom(const BoxedPtr<FsNode>& node, U32 flags) : FsVirtualOpenNode(node, flags) {if (!srand_initialized) {srand((U32)time(0)); srand_initialized = true;}}
+    DevURandom(const BoxedPtr<FsNode>& node, U32 flags);
     virtual U32 readNative(U8* buffer, U32 len);
     virtual U32 writeNative(U8* buffer, U32 len) {return 0;}
+
+    std::mt19937 gen;
+    std::uniform_int_distribution<size_t> dist;
 };
+
+DevURandom::DevURandom(const BoxedPtr<FsNode>& node, U32 flags) : FsVirtualOpenNode(node, flags) , gen{std::random_device{}()}, dist{0, 255} {
+}
 
 U32 DevURandom::readNative(U8* buffer, U32 len) {
     for (U32 i=0;i<len;i++) {
-        buffer[i] = (U8)rand();
+        buffer[i] = (U8)dist(gen);
     }
     return len;
 }

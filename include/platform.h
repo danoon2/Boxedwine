@@ -34,8 +34,6 @@
 #define BOXEDWINE_DEFAULT_MMU 1
 #endif
 
-#define IS_THREAD_WAITING(thread) thread->waitNode
-
 #ifdef BOXEDWINE_HAS_SETJMP
 #include <setjmp.h>
 #endif
@@ -116,7 +114,7 @@ void* allocExecutable64kBlock();
 
 #ifdef BOXEDWINE_X64
 class Memory;
-void* allocExecutable64kBlock(Memory* memory);
+void allocExecutable64kBlock(Memory* memory, U32 page);
 #endif
 
 #ifdef BOXEDWINE_MIDI

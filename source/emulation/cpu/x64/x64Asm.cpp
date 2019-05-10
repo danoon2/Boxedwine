@@ -21,7 +21,7 @@
 #define CPU_OFFSET_EDI (U32)(offsetof(CPU, reg[7].u32))
 #define CPU_OFFSET_FLAGS (U32)(offsetof(CPU, flags))
 
-X64Asm::X64Asm(x64CPU* cpu) : X64Data(cpu), tmp1InUse(false), tmp2InUse(false), tmp3InUse(false) {
+X64Asm::X64Asm(x64CPU* cpu) : X64Data(cpu), parent(NULL), tmp1InUse(false), tmp2InUse(false), tmp3InUse(false) {
 }
 
 void X64Asm::setDisplacement32(U32 disp32) {
@@ -1576,13 +1576,6 @@ void X64Asm::write16Buffer(U8* buffer, U16 value) {
     buffer[0] = (U8)value;
     buffer[1] = (U8)(value >> 8);
 
-}
-
-U8* X64Asm::getHostEip(U32 eip) {
-    if (this->cpu->opToAddressPages[eip >> K_PAGE_SHIFT] && this->cpu->opToAddressPages[eip >> K_PAGE_SHIFT][eip & K_PAGE_MASK]) {
-        return (U8*)(this->cpu->opToAddressPages[eip >> K_PAGE_SHIFT][eip & K_PAGE_MASK]);
-    }
-    return NULL;
 }
 
 void X64Asm::addTodoLinkJump(U32 eip) {

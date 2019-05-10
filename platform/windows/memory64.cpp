@@ -44,13 +44,13 @@ void freeNativeMemory(Memory* memory, U32 page, U32 pageCount) {
     for (i=0;i<pageCount;i++) {
         DWORD oldProtect;
 
-        if ((memory->nativeFlags[page] & NATIVE_FLAG_READONLY)) {
+        if ((memory->nativeFlags[page] & NATIVE_FLAG_CODEPAGE_READONLY)) {
             if (!VirtualProtect(getNativeAddress(memory, (page+i) << K_PAGE_SHIFT), (1 << K_PAGE_SHIFT), PAGE_READWRITE, &oldProtect)) {
                 LPSTR messageBuffer = NULL;
                 size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
                 kpanic("failed to unprotect memory: %s", messageBuffer);
             }
-            memory->nativeFlags[page] &= ~NATIVE_FLAG_READONLY;
+            memory->nativeFlags[page] &= ~NATIVE_FLAG_CODEPAGE_READONLY;
         }
         memory->clearCodePageFromCache(page+i);
         memory->flags[page+i] = 0;
@@ -82,27 +82,17 @@ void freeNativeMemory(Memory* memory, U32 page, U32 pageCount) {
         }
         granPage+=gran;
     }  
-#if BOXEDWINE_X64
-    for (int p=page;p<page+pageCount;p++)
-    {
-        void** entries = memory->opToAddressPages[p];
-
-        if (entries) {
-            U32 i;
-            for (i=0;i<K_PAGE_SIZE;i++) {
-                if (memory->opToAddressPages[p][i]) {
-                    U64 host = (U64)memory->opToAddressPages[p][i];
-                    if (memory->hostToEip[((U32)host)>>K_PAGE_SHIFT]) {
-                        memory->hostToEip[((U32)host)>>K_PAGE_SHIFT][host & 0xFFF]=0;
-                    }
-                }
-            }
-            memory->opToAddressPages[p] = NULL;
-            delete[] entries;
-        }
-    }
-#endif
 }
+
+#ifdef BOXEDWINE_X64
+void allocExecutable64kBlock(Memory* memory, U32 page) {
+    if (!VirtualAlloc((void*)((page << K_PAGE_SHIFT) | memory->executableMemoryId), 64*1024, MEM_COMMIT, PAGE_EXECUTE_READWRITE)) {
+        LPSTR messageBuffer = NULL;
+        size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
+        kpanic("failed to commit memory: %s", messageBuffer);
+    }
+}
+#endif
 
 static void* reserveNext4GBMemory() {
     void* p;
@@ -117,7 +107,11 @@ static void* reserveNext4GBMemory() {
 }
 
 void reserveNativeMemory(Memory* memory) {    
-    memory->id = (U64)reserveNext4GBMemory();    
+    memory->id = (U64)reserveNext4GBMemory();
+#ifdef BOXEDWINE_X64
+    memory->executableMemoryId = (U64)reserveNext4GBMemory();
+    memory->nextExecutablePage = 0;
+#endif
 }
 
 void releaseNativeMemory(Memory* memory) {
@@ -134,59 +128,30 @@ void releaseNativeMemory(Memory* memory) {
     }    
     memset(memory->flags, 0, sizeof(memory->flags));
     memset(memory->nativeFlags, 0, sizeof(memory->nativeFlags));
-    memset(memory->ids, 0, sizeof(memory->ids));
+    memset(memory->ids, 0, sizeof(memory->ids));    
     memory->allocated = 0;
 #ifdef BOXEDWINE_X64
-    VirtualFree(memory->executableMemory, 0, MEM_RELEASE);
-    memset(memory->executable64kBlocks, 0, sizeof(memory->executable64kBlocks));
-    memory->executableMemory = NULL;
-
-    for (i=0;i<K_NUMBER_OF_PAGES;i++) {
-        if (memory->opToAddressPages[i]) {
-            delete[] memory->opToAddressPages[i];
-            memory->opToAddressPages[i] = NULL;
-        }
-        if (memory->hostToEip[i]) {
-            delete[] memory->hostToEip[i];
-            memory->hostToEip[i] = NULL;
-        }
-    }
-    memory->x64Mem = 0;
-    memory->x64MemPos = 0;
-    memory->x64AvailableMem = 0;
+    memory->executableMemoryReleased();    
+    if (!VirtualFree((void*)memory->executableMemoryId, 0, MEM_RELEASE)) {
+        LPSTR messageBuffer = NULL;
+        size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
+        kpanic("failed to release executable memory: %s", messageBuffer);
+    } 
+    memory->executableMemoryId = 0;
 #endif
 }
-
-#ifdef BOXEDWINE_X64
-void* allocExecutable64kBlock(Memory* memory) {
-    U32 i;
-
-    if (!memory->executableMemory) {
-        memory->executableMemory = (U8*)reserveNext4GBMemory();
-    }
-    for (i=0;i<0x10000;i++) {
-        if (!memory->executable64kBlocks[i]) {
-            memory->executable64kBlocks[i]=1;
-            memory->x64AvailableMem += 64*1024; 
-            return VirtualAlloc(memory->executableMemory+i*64*1024, 64*1024, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
-        }
-    }
-    kpanic("Ran out of code pages in x64dynamic");
-    return 0;
-}
-#endif
 
 void makeCodePageReadOnly(Memory* memory, U32 page) {
     DWORD oldProtect;
 
     // :TODO: would the granularity ever be more than 4k?  should I check: SYSTEM_INFO System_Info; GetSystemInfo(&System_Info);
-    if (!(memory->nativeFlags[page] & NATIVE_FLAG_READONLY)) {
+    if (!(memory->nativeFlags[page] & NATIVE_FLAG_CODEPAGE_READONLY)) {
         if (!VirtualProtect(getNativeAddress(memory, page << K_PAGE_SHIFT), (1 << K_PAGE_SHIFT), PAGE_READONLY, &oldProtect)) {
             LPSTR messageBuffer = NULL;
             size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
             kpanic("failed to protect memory: %s", messageBuffer);
         }
-        memory->nativeFlags[page] |= NATIVE_FLAG_READONLY;
+        memory->nativeFlags[page] |= NATIVE_FLAG_CODEPAGE_READONLY;
     }
 }
 
@@ -195,13 +160,13 @@ bool clearCodePageReadOnly(Memory* memory, U32 page) {
     bool result = false;
 
     // :TODO: would the granularity ever be more than 4k?  should I check: SYSTEM_INFO System_Info; GetSystemInfo(&System_Info);
-    if (memory->nativeFlags[page] & NATIVE_FLAG_READONLY) {
+    if (memory->nativeFlags[page] & NATIVE_FLAG_CODEPAGE_READONLY) {
         if (!VirtualProtect(getNativeAddress(memory, page << K_PAGE_SHIFT), (1 << K_PAGE_SHIFT), PAGE_READWRITE, &oldProtect)) {
             LPSTR messageBuffer = NULL;
             size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
             kpanic("failed to unprotect memory: %s", messageBuffer);
         }
-        memory->nativeFlags[page] &= ~NATIVE_FLAG_READONLY;
+        memory->nativeFlags[page] &= ~NATIVE_FLAG_CODEPAGE_READONLY;
         result = true;
     }
     return result;
@@ -211,7 +176,7 @@ static int seh_filter(unsigned int code, struct _EXCEPTION_POINTERS* ep, KThread
 {
     if (code == EXCEPTION_ACCESS_VIOLATION) {
         U32 address = getHostAddress(thread, (void*)ep->ExceptionRecord->ExceptionInformation[1]);
-        if (thread->process->memory->nativeFlags[address>>K_PAGE_SHIFT] & NATIVE_FLAG_READONLY) {
+        if (thread->process->memory->nativeFlags[address>>K_PAGE_SHIFT] & NATIVE_FLAG_CODEPAGE_READONLY) {
             DWORD oldProtect;
             U32 page = address>>K_PAGE_SHIFT;
 
@@ -220,7 +185,7 @@ static int seh_filter(unsigned int code, struct _EXCEPTION_POINTERS* ep, KThread
                 size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
                 kpanic("failed to unprotect memory: %s", messageBuffer);
             }
-            thread->process->memory->nativeFlags[page] &= ~NATIVE_FLAG_READONLY;
+            thread->process->memory->nativeFlags[page] &= ~NATIVE_FLAG_CODEPAGE_READONLY;
             thread->process->memory->clearCodePageFromCache(page);
             return EXCEPTION_CONTINUE_EXECUTION;
         } else {

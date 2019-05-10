@@ -28,7 +28,7 @@
 
 #define CPU_OFFSET_MEM (U32)(offsetof(x64CPU, memOffset))
 #define CPU_OFFSET_NEG_MEM (U32)(offsetof(x64CPU, negMemOffset))
-#define CPU_OFFSET_OP_PAGES (U32)(offsetof(x64CPU, opToAddressPages))
+#define CPU_OFFSET_OP_PAGES (U32)(offsetof(x64CPU, eipToHostInstruction))
 
 #define CPU_OFFSET_EIP (U32)(offsetof(x64CPU, eip.u32))
 
@@ -126,7 +126,6 @@ private:
     U8 getTmpReg();
     void releaseTmpReg(U8 reg);
     bool isTmpReg(U8 reg);
-    U8* getHostEip(U32 eip);
 
     void push(S32 reg, bool isRegRex, U32 value, S32 bytes);
     void pushNativeReg(U8 reg, bool isRegRex);

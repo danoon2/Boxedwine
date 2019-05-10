@@ -116,6 +116,7 @@ public:
     BoxedWineConditionTimer condTimer;
 
     U32 condStartWaitTime;
+    bool srand_initialized;
 private:
     void clearFutexes();
 
@@ -126,15 +127,10 @@ private:
 
     BOXEDWINE_CONDITION sleepCond;      
 
-    KArray<BoxedPtr<KListNode<KThread*> > > extraWaitNodes;
-    BOXEDWINE_MUTEX extraWaitNodesMutex;
-
     struct user_desc tls[TLS_ENTRIES];
     BOXEDWINE_MUTEX tlsMutex;
 
     static BOXEDWINE_MUTEX futexesMutex;
-
-    KListNode<KThread*> waitNode;
 };
 
 class ChangeThread {

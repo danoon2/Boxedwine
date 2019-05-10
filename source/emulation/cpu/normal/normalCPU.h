@@ -10,6 +10,8 @@ public:
     virtual void run();
     virtual DecodedBlock* getNextBlock();
 
+    static OpCallback getFunctionForOp(DecodedOp* op);
+
     OpCallback firstOp;
 };
 

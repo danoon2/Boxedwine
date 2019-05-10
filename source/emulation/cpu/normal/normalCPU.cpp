@@ -82,6 +82,11 @@ static void initNormalOps() {
     normalOps[Callback] = 0;
 }
 
+OpCallback NormalCPU::getFunctionForOp(DecodedOp* op) {
+    initNormalOps();
+    return normalOps[op->inst];
+}
+
 NormalCPU::NormalCPU() {   
     initNormalOps();
 #ifdef BOXEDWINE_DYNAMIC32

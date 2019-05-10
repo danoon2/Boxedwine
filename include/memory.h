@@ -35,6 +35,7 @@ public:
 #define K_PAGE_SHIFT 12
 #define K_NUMBER_OF_PAGES 0x100000
 #define K_ROUND_UP_TO_PAGE(x) ((x + 0xFFF) & 0xFFFFF000)
+#define K_MAX_X86_OP_LEN 15
 
 class Memory;
 class KProcess;
@@ -75,6 +76,7 @@ class Page;
 class CPU;
 class DecodedOp;
 class DecodedBlock;
+class X64CodeChunk;
 
 typedef void (OPCALL *OpCallback)(CPU* cpu, DecodedOp* op);
 
@@ -128,24 +130,37 @@ public:
     U8 flags[K_NUMBER_OF_PAGES];
     U8 nativeFlags[K_NUMBER_OF_PAGES];
     U32 allocated;
-    U64 id;    
-    void* codeCache[K_NUMBER_OF_PAGES]; // 4 MB 
+    U64 id; 
     U64 ids[K_NUMBER_OF_PAGES];
-
-    void removeBlock(DecodedBlock* block, U32 ip);
-    void clearCodePageFromCache(U32 page);
-#endif
-
 #ifdef BOXEDWINE_X64
-    U8* x64Mem;
-    U32 x64MemPos;
-    U32 x64AvailableMem;
-    U8* executableMemory;
-    U8 executable64kBlocks[0x10000];
     BOXEDWINE_MUTEX executableMemoryMutex;
+private:
+// 128 bytes
+#define EXECUTABLE_MIN_SIZE_POWER 7
+// 64k bytes
+#define EXECUTABLE_MAX_SIZE_POWER 16
+#define EXECUTABLE_SIZES 10
 
-    void** opToAddressPages[0x100000];
-    U32* hostToEip[0x100000];
+    X64CodeChunk* hostCodeChunks[K_NUMBER_OF_PAGES];
+    void* freeExecutableMemory[EXECUTABLE_SIZES];
+public:
+    X64CodeChunk* getCodeChunkContainingHostAddress(void* hostAddress);
+    X64CodeChunk* getCodeChunkContainingEip(U32 eip);
+    void addCodeChunk(X64CodeChunk* chunk);
+    void removeCodeChunk(X64CodeChunk* chunk);
+    void* getExistingHostAddress(U32 eip);
+    void* allocateExcutableMemory(U32 size, U32* allocatedSize);
+    void freeExcutableMemory(void* hostMemory, U32 size);
+    void executableMemoryReleased();
+    U64 executableMemoryId;
+    U32 nextExecutablePage;
+
+    void** eipToHostInstruction[K_NUMBER_OF_PAGES];
+#else
+    void* codeCache[K_NUMBER_OF_PAGES]; // 4 MB 
+    void removeBlock(DecodedBlock* block, U32 ip);    
+#endif        
+    void clearCodePageFromCache(U32 page);
 #endif
 
 #ifdef LOG_OPS
@@ -160,7 +175,9 @@ private:
 #endif
 #ifdef BOXEDWINE_64BIT_MMU
     U32 callbackPos;    
+#ifndef BOXEDWINE_X64
     void* internalAddCodeBlock(U32 startIp, DecodedBlock* block);
+#endif
 #endif
     void addCallback(OpCallback func);
 };

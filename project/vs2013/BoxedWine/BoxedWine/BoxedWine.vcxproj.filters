@@ -322,6 +322,9 @@
     <ClCompile Include="..\..\..\..\source\emulation\cpu\x64\x64Asm.cpp">
       <Filter>source\emulation\cpu\x64</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\x64\x64CodeChunk.cpp">
+      <Filter>source\emulation\cpu\x64</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -742,6 +745,9 @@
       <Filter>source\emulation\cpu\x64</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\emulation\cpu\x64\x64Ops.h">
+      <Filter>source\emulation\cpu\x64</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\x64\x64CodeChunk.h">
       <Filter>source\emulation\cpu\x64</Filter>
     </ClInclude>
   </ItemGroup>

@@ -42,6 +42,7 @@ public:
     void* commit();
 
     U32 ip;
+    U32 startOfDataIp;
     U32 startOfOpIp;
     bool done;
     U32 op;
@@ -87,7 +88,6 @@ public:
         U8 offsetSize;
     };
     std::vector<TodoJump> todoJump;
-
   
     U32* ipAddress;
     U32* ipAddressBufferPos;

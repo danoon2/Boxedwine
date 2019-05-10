@@ -22,29 +22,28 @@
 #include <string.h>
 #include <setjmp.h>
 #include "hard_memory.h"
+#include "../cpu/x64/x64CodeChunk.h"
 
 extern jmp_buf runBlockJump;
 
 Memory::Memory() : allocated(0), callbackPos(0) {
     memset(flags, 0, sizeof(flags));
     memset(nativeFlags, 0, sizeof(nativeFlags));
+    memset(ids, 0, sizeof(ids));
+#ifndef BOXEDWINE_X64
     memset(codeCache, 0, sizeof(codeCache));
     memset(ids, 0, sizeof(ids));
+#else
+    memset(this->hostCodeChunks, 0, sizeof(this->hostCodeChunks));
+    memset(this->eipToHostInstruction, 0, sizeof(this->eipToHostInstruction));
+    memset(this->freeExecutableMemory, 0, sizeof(this->freeExecutableMemory));
+#endif    
     reserveNativeMemory(this);
 
     allocNativeMemory(this, CALL_BACK_ADDRESS >> K_PAGE_SHIFT, 1, PAGE_READ | PAGE_EXEC | PAGE_WRITE);
     this->addCallback(onExitSignal);
 #ifdef BOXEDWINE_DYNAMIC
     this->dynamicExecutableMemoryPos = 0;
-#endif
-#ifdef BOXEDWINE_X64
-    this->x64Mem = NULL;
-    this->x64MemPos = 0;
-    this->x64AvailableMem = 0;
-    this->executableMemory = NULL;;
-    memset(this->executable64kBlocks, 0, sizeof(this->executable64kBlocks));
-    memset(this->opToAddressPages, 0, sizeof(this->opToAddressPages));
-    memset(this->hostToEip, 0, sizeof(this->hostToEip));
 #endif
 }
 
@@ -405,6 +404,7 @@ void freeCacheBlock(BlockCache* cacheBlock) {
 }
 
 DecodedBlock* Memory::getCodeBlock(U32 startIp) {
+#ifndef BOXEDWINE_X64
     BlockCache** cacheBlocks = (BlockCache**)this->codeCache[startIp >> K_PAGE_SHIFT];
     BlockCache* cacheBlock;
     if (!cacheBlocks)
@@ -416,13 +416,17 @@ DecodedBlock* Memory::getCodeBlock(U32 startIp) {
             return cacheBlock->block;
         cacheBlock = cacheBlock->next;
     }
-    return 0;
+#endif
+    return NULL;
 }
 
 void Memory::addCodeBlock(U32 startIp, DecodedBlock* block) {
+#ifndef BOXEDWINE_X64
     this->internalAddCodeBlock(startIp, block);
+#endif
 }
 
+#ifndef BOXEDWINE_X64
 void* Memory::internalAddCodeBlock(U32 startIp, DecodedBlock* block) {
     BlockCache** cacheBlocks = (BlockCache**)this->codeCache[startIp >> K_PAGE_SHIFT];
     U32 index = (startIp & 0xFFF)>>BLOCK_CACHE_SHIFT;
@@ -446,6 +450,7 @@ void* Memory::internalAddCodeBlock(U32 startIp, DecodedBlock* block) {
     }
     makeCodePageReadOnly(this, startIp>>K_PAGE_SHIFT);
     return cacheBlock;
+    return NULL;
 }
 
 void Memory::removeBlock(DecodedBlock* block, U32 ip) {
@@ -478,6 +483,7 @@ void Memory::removeBlock(DecodedBlock* block, U32 ip) {
         cacheBlock = cacheBlock->next;
     }
 }
+#endif
 
 static void OPCALL emptyOp(CPU* cpu, DecodedOp* op) {
     cpu->nextBlock = NULL;
@@ -485,6 +491,23 @@ static void OPCALL emptyOp(CPU* cpu, DecodedOp* op) {
 }
 
 void Memory::clearCodePageFromCache(U32 page) {
+#ifdef BOXEDWINE_X64
+    void** table = this->eipToHostInstruction[page];
+    if (table) {
+        for (U32 i=0;i<K_PAGE_SIZE;i++) {
+            void* hostAddress = table[i];
+            if (hostAddress) {
+                X64CodeChunk* chunk = this->getCodeChunkContainingHostAddress(hostAddress);
+                if (chunk) { 
+                    i+=chunk->getHostAddressLen();
+                    chunk->dealloc();                
+                }
+            }
+        }
+        delete[] table;
+        this->eipToHostInstruction[page] = NULL;
+    }
+#else
     BlockCache** cacheblocks = (BlockCache**)this->codeCache[page];
     if (cacheblocks) {
         U32 i;
@@ -513,6 +536,7 @@ void Memory::clearCodePageFromCache(U32 page) {
         delete[] cacheblocks;
         this->codeCache[page] = 0;
     }  
+#endif
     clearCodePageReadOnly(this, page);
 }
 
@@ -534,5 +558,126 @@ U8* getPhysicalReadAddress(U32 address, U32 len) {
 U8* getPhysicalWriteAddress(U32 address, U32 len) {
     return (U8*)getNativeAddress(KThread::currentThread()->process->memory, address);
 }
+
+#ifdef BOXEDWINE_X64
+// called when X64CodeChunk is being dealloc'd
+void Memory::removeCodeChunk(X64CodeChunk* chunk) {
+    U32 page = ((U32)chunk->getHostAddress()) >> K_PAGE_SHIFT;
+    X64CodeChunk* result = this->hostCodeChunks[page];    
+    if (this->hostCodeChunks[page] == chunk) {
+        this->hostCodeChunks[page] = chunk->getNext();
+    }
+    chunk->removeFromList();
+}
+
+// called when X64CodeChunk is being alloc'd
+void Memory::addCodeChunk(X64CodeChunk* chunk) {
+    U32 page = ((U32)chunk->getHostAddress()) >> K_PAGE_SHIFT;
+    X64CodeChunk* result = this->hostCodeChunks[page];
+    this->hostCodeChunks[page] = chunk;
+
+    if (result) {
+        chunk->setNext(result);
+    }
+}
+
+// only called during code patching, if this become a performance problem maybe we could just it up
+// like with soft_code_page
+X64CodeChunk* Memory::getCodeChunkContainingHostAddress(void* hostAddress) {
+    U32 page = ((U32)hostAddress) >> K_PAGE_SHIFT;
+    X64CodeChunk* result = this->hostCodeChunks[page];
+    while (result) {
+        if (result->containsHostAddress(hostAddress)) {
+            return result;
+        }
+        result = result->getNext();
+    }
+    page--;
+    // look to see if a chunk that starts in a previous page contains this address
+    // chunks do not overlap, so find the first previous page with a chunk then
+    // check on the chunks in that page
+    while (page>0) {
+        if (this->hostCodeChunks[page]) {
+            X64CodeChunk* result = this->hostCodeChunks[page];
+            while (result) {
+                if (result->containsHostAddress(hostAddress)) {
+                    return result;
+                }
+                result = result->getNext();
+            }
+            break;
+        }
+        page--;
+    }
+    return NULL;
+}
+
+// also only called during code patching
+X64CodeChunk* Memory::getCodeChunkContainingEip(U32 eip) {
+    for (U32 i=0;i<K_MAX_X86_OP_LEN;i++) {
+        void* hostAddress = getExistingHostAddress(eip-i);
+        if (hostAddress) {
+            X64CodeChunk* result = this->getCodeChunkContainingHostAddress(hostAddress);
+            if (result->containsEip(eip)) {
+                return result;
+            }
+            return NULL;
+        }
+    }
+    return NULL;
+}
+
+// call during code translation, this needs to be fast
+void* Memory::getExistingHostAddress(U32 eip) {
+    U32 page = eip >> K_PAGE_SHIFT;
+    U32 offset = eip & K_PAGE_MASK;
+    if (this->eipToHostInstruction[page])
+        return this->eipToHostInstruction[page][offset];
+    return NULL;
+}
+
+void* Memory::allocateExcutableMemory(U32 requestedSize, U32* allocatedSize) {
+    U32 size = 2; 
+    U32 powerOf2Size = 1;
+    while (size < requestedSize) {
+        size <<= 1; 
+        powerOf2Size++;
+    }
+    if (powerOf2Size<EXECUTABLE_MIN_SIZE_POWER) {
+        powerOf2Size = EXECUTABLE_MIN_SIZE_POWER;
+        size = 1 << EXECUTABLE_MIN_SIZE_POWER;
+    } else if (powerOf2Size>EXECUTABLE_MAX_SIZE_POWER) {
+        kpanic("x64 code chunk was larger than 64k");
+    }
+    if (allocatedSize) {
+        *allocatedSize = size;
+    }
+    if (this->freeExecutableMemory[powerOf2Size-EXECUTABLE_MIN_SIZE_POWER]) {
+        void* result = this->freeExecutableMemory[powerOf2Size-EXECUTABLE_MIN_SIZE_POWER];
+        void* next = *(void**)result;
+        this->freeExecutableMemory[powerOf2Size-EXECUTABLE_MIN_SIZE_POWER] = next;
+        return result;
+    }
+    void* result = (void*)(this->executableMemoryId | (this->nextExecutablePage << K_PAGE_SHIFT));
+    allocExecutable64kBlock(this, this->nextExecutablePage);
+    this->nextExecutablePage+=16;
+    
+    U32 count = 65536 / size;
+    for (U32 i=1;i<count;i++) {
+        void* nextFree = this->freeExecutableMemory[powerOf2Size-EXECUTABLE_MIN_SIZE_POWER];
+        this->freeExecutableMemory[powerOf2Size-EXECUTABLE_MIN_SIZE_POWER] = ((U8*)result)+size*i;
+        *((void**)this->freeExecutableMemory[powerOf2Size-EXECUTABLE_MIN_SIZE_POWER]) = nextFree;
+    }   
+    return result;
+}
+
+void Memory::freeExcutableMemory(void* hostMemory, U32 size) {
+    //kpanic("TODO");
+}
+
+void Memory::executableMemoryReleased() {
+    memset(this->freeExecutableMemory, 0, sizeof(this->freeExecutableMemory));
+}
+#endif
 
 #endif

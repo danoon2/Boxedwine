@@ -66,40 +66,28 @@ void* x64CPU::init() {
     data.writeToRegFromValue(6, false, ESI, 4);
     data.writeToRegFromValue(7, false, EDI, 4);        
     
-    cpu->opToAddressPages = cpu->thread->memory->opToAddressPages;
-    if (!cpu->opToAddressPages[cpu->eip.u32 >> K_PAGE_SHIFT] || !cpu->opToAddressPages[cpu->eip.u32 >> K_PAGE_SHIFT][cpu->eip.u32 & K_PAGE_MASK]) {
-        result = data.commit();
-        translateEip(cpu->eip.u32);
-        // no reason to jump, since it should be next in memory
-    } else {
-        data.jumpTo(this->eip.u32);
-        result = data.commit();
-        link(&data, result);  
-    }
+    void* existingHostAddress = cpu->thread->memory->getExistingHostAddress(cpu->eip.u32);
+    data.jumpTo(this->eip.u32);
+    result = data.commit();
+    link(&data, result);  
+    this->eipToHostInstruction = this->thread->memory->eipToHostInstruction;
     return result;
 }
 
 void* x64CPU::translateEipInternal(X64Asm* parent, U32 ip) {
     U32 address = this->seg[CS].address+ip;
+    void* result = this->thread->memory->getExistingHostAddress(address);
 
-    this->opToAddressPages = this->thread->memory->opToAddressPages;   
-    if (!this->opToAddressPages[address >> K_PAGE_SHIFT] || !this->opToAddressPages[address >> K_PAGE_SHIFT][address & K_PAGE_MASK]) {
+    if (!result) {
         X64Asm data(this);
         data.ip = ip;
-        if (this->opToAddressPages[(address-1) >> K_PAGE_SHIFT] && this->opToAddressPages[(address-1) >> K_PAGE_SHIFT][(address-1) & K_PAGE_MASK]) {
-            U8 inst = readb(address-1);
-            if (inst == 0xf0) {
-                // we tried to jump over a lock instruction, so just ignore this
-                //return cpu->opToAddressPages[address >> PAGE_SHIFT][address & PAGE_MASK];
-            }
-        }        
+        data.startOfDataIp = ip;       
         data.parent = parent;
         translateData(&data);
-        void* result = data.commit();
-        commitMappedAddresses(&data, result);
+        result = data.commit();
         link(&data, result);        
     }
-    return this->opToAddressPages[address >> K_PAGE_SHIFT][address & K_PAGE_MASK];
+    return result;
 }
 
 #ifdef __TEST
@@ -115,7 +103,8 @@ void x64CPU::link(X64Asm* data, void* address) {
 
     for (i=0;i<data->todoJump.size();i++) {
         U32 eip = this->seg[CS].address+data->todoJump[i].eip;
-        if (!this->opToAddressPages[eip >> K_PAGE_SHIFT] || !this->opToAddressPages[eip >> K_PAGE_SHIFT][eip & K_PAGE_MASK]) {            
+        void* hostAddress = this->thread->memory->getExistingHostAddress(eip);
+        if (!hostAddress) {
             X64Asm* p = data->parent;
             bool found = false;
 
@@ -133,7 +122,16 @@ void x64CPU::link(X64Asm* data, void* address) {
             if (found) {
                 continue;
             }
-            translateEipInternal(data, data->todoJump[i].eip);
+            if (!data->cpu->thread->memory->isValidReadAddress(data->todoJump[i].eip, 1)) {
+                // hope that the program will fill this in later
+                continue;
+            }
+            U32 next = data->todoJump[i].eip;
+            if (readb(next) || readb(next+1) || readb(next+2) || readb(next+3)) {
+                hostAddress = translateEipInternal(data, next);
+            } else {
+                int ii=0;
+            }
         }
 
         U8* translatedOffset = (U8*)translateEipInternal(data, data->todoJump[i].eip);
@@ -161,27 +159,8 @@ void x64CPU::link(X64Asm* data, void* address) {
     markCodePageReadOnly(data);
 }
 
-void x64CPU::mapAddressIntoProcess(X64Asm* data, U32 ip, void* address) {
-    void** table = data->cpu->opToAddressPages[ip >> K_PAGE_SHIFT];
-    U32* eipTable = data->cpu->thread->memory->hostToEip[((U32)address) >> K_PAGE_SHIFT];
-
-    if (!table) {
-        table = new void*[K_PAGE_SIZE];
-        memset(table, 0, sizeof(void*)*K_PAGE_SIZE);
-        data->cpu->opToAddressPages[ip >> K_PAGE_SHIFT] = table;
-    }
-    table[ip & K_PAGE_MASK] = address;
-
-    if (!eipTable) {
-        eipTable = new U32[K_PAGE_SIZE];
-        memset(eipTable, 0, sizeof(U32)*K_PAGE_SIZE);
-        data->cpu->thread->memory->hostToEip[((U32)address) >> K_PAGE_SHIFT] = eipTable;
-    }
-    eipTable[((U32)address) & K_PAGE_MASK] = ip;
-}
-
 void x64CPU::markCodePageReadOnly(X64Asm* data) {
-    S32 pageCount = (data->ip-data->startOfOpIp+K_PAGE_MASK) >> K_PAGE_SHIFT;
+    S32 pageCount = (data->ip-data->startOfDataIp+K_PAGE_MASK) >> K_PAGE_SHIFT;
     U32 pageStart = data->ip >> K_PAGE_SHIFT;
 #ifndef __TEST
     for (int i=0;i<pageCount;i++) {
@@ -190,21 +169,17 @@ void x64CPU::markCodePageReadOnly(X64Asm* data) {
 #endif
 }
 
-void x64CPU::commitMappedAddresses(X64Asm* data, void* address) {
-    for (int i=data->ipAddressCount-1;i>=0;i--) {
-        mapAddressIntoProcess(data, data->ipAddress[i], (U8*)address+data->ipAddressBufferPos[i]);
+void x64CPU::makePendingCodePagesReadOnly() {
+    for (int i=0;i<this->pendingCodePages.size();i++) {
+        ::makeCodePageReadOnly(this->thread->memory, this->pendingCodePages[i]);
     }
-    data->ipAddressCount = 0;
-    data->ipAddressBufferSize = sizeof(data->ipAddressBuffer)/sizeof(data->ipAddressBuffer[0]);
+    this->pendingCodePages.clear();
 }
 
 void* x64CPU::translateEip(U32 ip) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->thread->memory->executableMemoryMutex);
     void* result = translateEipInternal(NULL, ip);
-    for (int i=0;i<this->pendingCodePages.size();i++) {
-        //::makeCodePageReadOnly(this->thread->memory, this->pendingCodePages[i]);
-    }
-    this->pendingCodePages.clear();
+    makePendingCodePagesReadOnly();
     return result;
 }
 
@@ -244,7 +219,8 @@ void x64CPU::translateData(X64Asm* data) {
 
     while (1) {  
         U32 address = data->cpu->seg[CS].address+data->ip;
-        if (this->opToAddressPages[address >> K_PAGE_SHIFT] && this->opToAddressPages[address >> K_PAGE_SHIFT][address & K_PAGE_MASK]) {
+        void* hostAddress = this->thread->memory->getExistingHostAddress(address);
+        if (hostAddress) {
             data->jumpTo(data->ip);
             break;
         }
@@ -258,6 +234,25 @@ void x64CPU::translateData(X64Asm* data) {
 #endif
         data->resetForNewOp();
     }     
+}
+
+static U8 fetchByte(U32 *eip) {
+    return readb((*eip)++);
+}
+
+DecodedOp* x64CPU::getExistingOp(U32 eip) {
+    if (this->big) {
+        eip+=this->seg[CS].address;
+    } else {
+        eip=this->seg[CS].address + (eip & 0xFFFF);
+    }        
+
+    static DecodedBlock* block;
+    if (!block) {
+        block = new DecodedBlock();
+    }
+    decodeBlock(fetchByte, eip, this->big, 4, 64, 1, block);
+    return block->op;
 }
 
 #endif

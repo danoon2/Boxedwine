@@ -3,12 +3,9 @@
 #ifdef BOXEDWINE_X64
 
 #include "x64Data.h"
+#include "x64CodeChunk.h"
 
 X64Data::X64Data(x64CPU* cpu) : cpu(cpu) {
-    if (!cpu->thread->memory->x64Mem) {
-       cpu->thread->memory->x64Mem = (U8*)allocExecutable64kBlock(cpu->thread->memory);
-    }
-
     this->ipAddress = this->ipAddressBuffer;
     this->ipAddressBufferPos = this->ipAddressBufferPosBuffer;
     this->ipAddressCount = 0;
@@ -19,6 +16,9 @@ X64Data::X64Data(x64CPU* cpu) : cpu(cpu) {
     this->bufferSize = sizeof(this->bufferInternal);
     this->bufferPos = 0;
     this->done = false;
+    this->ip = 0;
+    this->startOfDataIp = 0;
+    this->startOfOpIp = 0;
 }
 
 X64Data::~X64Data() {
@@ -153,14 +153,8 @@ void X64Data::mapAddress(U32 ip, U32 bufferPos) {
 }
 
 void* X64Data::commit() {
-    if (cpu->thread->memory->x64AvailableMem<this->bufferPos) {
-        allocExecutable64kBlock(cpu->thread->memory);
-    }
-    void* result = cpu->thread->memory->x64Mem+cpu->thread->memory->x64MemPos;
-    memcpy(result, this->buffer, this->bufferPos);
-    cpu->thread->memory->x64MemPos+=this->bufferPos;
-    cpu->thread->memory->x64AvailableMem-=this->bufferPos;
-    return result;
+    X64CodeChunk* chunk = X64CodeChunk::allocChunk(this->cpu, this->ipAddressCount, this->ipAddress, this->ipAddressBufferPos, this->buffer, this->bufferPos, this->startOfDataIp, this->ip-this->startOfDataIp);
+    return chunk->getHostAddress();
 }
 
 #endif

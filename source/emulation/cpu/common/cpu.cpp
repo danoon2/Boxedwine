@@ -1156,6 +1156,12 @@ void CPU::verw(U32 selector) {
     }
 }
 
+U32 CPU::getEipAddress() {
+    if (this->big)
+        return this->eip.u32+this->seg[CS].address;
+    return (this->eip.u32 & 0xFFFF) + this->seg[CS].address;
+}
+
 U32 common_getCF(CPU* cpu) {
     return cpu->getCF();
 }

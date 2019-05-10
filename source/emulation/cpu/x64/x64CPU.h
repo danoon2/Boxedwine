@@ -20,23 +20,24 @@ public:
     jmp_buf* jmpBuf;
     BOXEDWINE_CONDITION endCond;
 
-    void*** opToAddressPages;
     U32 negSegAddress[6];
 
     U64 memOffset;
     U64 negMemOffset;
     bool inException;
+    void*** eipToHostInstruction;
+    DecodedOp* getExistingOp(U32 eip);
 #ifdef __TEST
     void addReturnFromTest();
 #endif
-private:
-    void* translateEipInternal(X64Asm* parent, U32 ip);
-    void translateData(X64Asm* data);
-    void translateInstruction(X64Asm* data);
-    void commitMappedAddresses(X64Asm* data, void* address);
-    void markCodePageReadOnly(X64Asm* data);
-    void mapAddressIntoProcess(X64Asm* data, U32 ip, void* address);
+
+    void translateInstruction(X64Asm* data);    
     void link(X64Asm* data, void* address);
+    void makePendingCodePagesReadOnly();
+private:        
+    void* translateEipInternal(X64Asm* parent, U32 ip);
+    void translateData(X64Asm* data);        
+    void markCodePageReadOnly(X64Asm* data);
 
     std::vector<U32> pendingCodePages;
 };

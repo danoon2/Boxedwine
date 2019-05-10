@@ -112,8 +112,7 @@ KThread::KThread(U32 id, KProcess* process) :
     waitingCond(0),    
     pollCond("KThread::pollCond"),
     condStartWaitTime(0),
-    sleepCond("KThread::sleepCond"),
-    waitNode(this)
+    sleepCond("KThread::sleepCond")
     {
     int i;
 
