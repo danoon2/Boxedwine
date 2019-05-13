@@ -672,7 +672,7 @@ void* Memory::allocateExcutableMemory(U32 requestedSize, U32* allocatedSize) {
 }
 
 void Memory::freeExcutableMemory(void* hostMemory, U32 size) {
-    //kpanic("TODO");
+    memset(hostMemory, 0, size);
 }
 
 void Memory::executableMemoryReleased() {

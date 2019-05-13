@@ -43,7 +43,9 @@ LONG handleChangedUnpatchedCode(struct _EXCEPTION_POINTERS *ep, x64CPU* cpu) {
                         
     unsigned char* hostAddress = (unsigned char*)ep->ContextRecord->Rip;
     X64CodeChunk* chunk = cpu->thread->memory->getCodeChunkContainingHostAddress(hostAddress);
-    chunk->updateStartingAtHostAddress(hostAddress);   
+    U32 startOfEip = chunk->getEipThatContainsHostAddress(hostAddress, NULL);
+    chunk->deallocAndRetranslate();   
+    ep->ContextRecord->Rip = (U64)cpu->thread->memory->getExistingHostAddress(startOfEip);
     return EXCEPTION_CONTINUE_EXECUTION;
 }
 

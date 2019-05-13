@@ -34,9 +34,9 @@ public:
     void translateInstruction(X64Asm* data);    
     void link(X64Asm* data, void* address);
     void makePendingCodePagesReadOnly();
+    void translateData(X64Asm* data);
 private:        
-    void* translateEipInternal(X64Asm* parent, U32 ip);
-    void translateData(X64Asm* data);        
+    void* translateEipInternal(X64Asm* parent, U32 ip);            
     void markCodePageReadOnly(X64Asm* data);
 
     std::vector<U32> pendingCodePages;

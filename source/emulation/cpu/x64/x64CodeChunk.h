@@ -12,12 +12,11 @@ public:
     void dealloc();
 
     // will address to the middle of the instruction
-    U32 fromEip;
-    void* fromHost;
+    void* fromHostOffset;
 
     // will point to the start of the instruction
     U32 toEip;
-    void* toHost;
+    void* toHostInstruction;
 
     KListNode<X64CodeChunkLink*> linkTo;
     KListNode<X64CodeChunkLink*> linkFrom;
@@ -28,7 +27,7 @@ public:
     static X64CodeChunk* allocChunk(x64CPU* cpu, U32 instructionCount, U32* eipInstructionAddress, U32* hostInstructionIndex, U8* hostInstructionBuffer, U32 hostInstructionBufferLen, U32 eip, U32 eipLen);
 
     void dealloc();    
-    void updateStartingAtHostAddress(void* hostAddress);
+    void deallocAndRetranslate();
     void patch(U32 eip, U32 len);
 
     U32 getEipThatContainsHostAddress(void* hostAddress, void** startOfHostInstruction);
@@ -43,8 +42,10 @@ public:
     void setNext(X64CodeChunk* n) {this->next = n; if (n) n->prev=this;}
     void removeFromList();
 
-    void addLinkFrom(X64CodeChunk* from);
+    void addLinkFrom(X64CodeChunk* from, U32 toEip, void* toHostInstruction, void* fromHostOffset);
 private:
+    void detachFromHost();
+    void internalDealloc();
     U32 getStartOfInstructionByEip(U32 eip, U8** hostAddress, U32* index);
 
     x64CPU* cpu;

@@ -5,6 +5,7 @@
 #include "x64CPU.h"
 #include "x64Asm.h"
 #include "../../hardmmu/hard_memory.h"
+#include "x64CodeChunk.h"
 
 x64CPU::x64CPU() : nativeHandle(0), jmpBuf(NULL), endCond("x64CPU::endcond"), inException(false) {
 }
@@ -140,20 +141,14 @@ void x64CPU::link(X64Asm* data, void* address) {
 
         if (size==4) {
             data->write32Buffer(offset, (U32)(translatedOffset - offset - 4));
-        } else if (size==2) {
-            S32 off = (S32)(translatedOffset - offset - 2);
-            if (off>=-32,768 && off<=32,767) {
-                data->write16Buffer(offset, (U16)off);
-            } else {
-                kpanic("x64:offset does not fit into 2 bytes");
-            } 
-        } else if (size==1) {
-            S32 off = (S32)(translatedOffset - offset - 1);
-            if (off>=-128 && off<=127) {
-                *offset = (U8)off;
-            } else {
-                kpanic("x64: offset does not fit into 1 bytes");
-            }            
+
+            X64CodeChunk* fromChunk = this->thread->memory->getCodeChunkContainingHostAddress(offset);
+            X64CodeChunk* toChunk = this->thread->memory->getCodeChunkContainingHostAddress(translatedOffset);
+            if (fromChunk != toChunk) {
+                toChunk->addLinkFrom(fromChunk, eip, translatedOffset, offset);
+            }
+        } else {
+            kpanic("x64CPU only supports 4 byte jumps so that we can patch it easily later");
         }
     }
     markCodePageReadOnly(data);
