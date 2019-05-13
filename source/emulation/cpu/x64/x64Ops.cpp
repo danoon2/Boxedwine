@@ -448,7 +448,7 @@ static U32 aas(X64Asm* data) {
 
 // AAM Ib
 static U32 aam(X64Asm* data) {
-    kpanic("aam not implemented");
+    data->aam(data->fetch8());
     return 0;
 }
 

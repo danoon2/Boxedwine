@@ -201,7 +201,7 @@ void X64CodeChunk::patch(U32 eipAddress, U32 len) {
 
                 // if there is a link from this old instruction, then remove it, the cpu->link code below will re-create it
                 this->linksTo.for_each([host,oldHostInstructionLen] (KListNode<X64CodeChunkLink*>* link) {
-                    if (link->data->fromHostOffset>=host & link->data->fromHostOffset<(U8*)host+oldHostInstructionLen) {
+                    if (link->data->fromHostOffset>=host && link->data->fromHostOffset<(U8*)host+oldHostInstructionLen) {
                         link->data->dealloc();
                     }
                 });

@@ -50,6 +50,7 @@ public:
     void pushCpuOffset32(U32 offset);
     void popSeg(U8 seg, U8 bytes);
     void daa();
+    void aam(U8 ib);
     void salc();
     void incReg(U8 reg, bool isRegRex, U8 bytes);
     void decReg(U8 reg, bool isRegRex, U8 bytes);

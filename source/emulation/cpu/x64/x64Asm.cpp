@@ -1456,6 +1456,66 @@ void X64Asm::daa() {
     popNativeFlags();
 }
 
+/*
+AH = AL / value;
+AL = AL % value;
+cpu->lazyFlags = FLAGS_NONE;
+cpu->setSF(AL & 0x80);
+cpu->setZF(AL == 0);		
+cpu->setPFonValue(AL);
+cpu->removeCF();
+cpu->removeOF();
+cpu->removeAF();   
+*/
+void X64Asm::aam(U8 value) {
+    U32 tmpReg = getTmpReg();
+    U32 tmpReg2 = getTmpReg();
+
+    if (value==0) {
+        kpanic("X64Asm::aam divide by 0 not handled");
+    }
+    pushNativeFlags();
+    popNativeReg(tmpReg, true);
+
+    // mov tmpReg2, value
+    write8(0x66);
+    write8(0x41);
+    write8(0xb8+tmpReg2);
+    write16(value);
+
+    // movzx  ax,al 
+    write8(0x66);
+    write8(0x0f);
+    write8(0xb6);
+    write8(0xc0);
+
+    // div tmpReg
+    write8(0x41);
+    write8(0xf6);
+    write8(0xf0 | tmpReg2);
+
+    releaseTmpReg(tmpReg2);
+
+    // xchg al, ah
+    write8(0x86);
+    write8(0xe0);
+
+    setSF_onAL(tmpReg);
+    setZF_onAL(tmpReg);
+    setPF_onAL(tmpReg);
+    
+    // AND HOST_TMP, ~(CF|AF|OF)
+    write8(REX_BASE | REX_MOD_RM);
+    write8(0x80);
+    write8(0xC0 | (4<<3) | tmpReg);
+    write8(~(CF|AF|OF));
+
+    pushNativeReg(tmpReg, true);
+    releaseTmpReg(tmpReg);    
+
+    popNativeFlags();
+}
+
 void X64Asm::salc() {
     pushNativeFlags(); // save flags since we don't want sbb to affect them
     // sbb al, al
