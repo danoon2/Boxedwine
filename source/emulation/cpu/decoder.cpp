@@ -4615,7 +4615,7 @@ const Decode* const decoder[] = {
     &decodePushFs32, &decodePopFs32, &decodeCPUID, &decodeBtEdGd, &decodeDshlEdGd, &decodeDshlClEdGd, 0, 0,
     &decodePushGs32, &decodePopGs32, 0, &decodeBtsEdGd, &decodeDshrEdGd, &decodeDshrClEdGd, 0, &decodeDimulGdEd,
     // 0x3b0
-    0, &decodeCmpXchgEdGd, 0, &decodeBtrEdGd, 0, 0, &decodeMovGdXz8, &decodeMovGdXz16,
+    0, &decodeCmpXchgEdGd, &decodeLss32, &decodeBtrEdGd, &decodeLfs32, &decodeLgs32, &decodeMovGdXz8, &decodeMovGdXz16,
     0, 0, &decodeGroup8_32, &decodeBtcEwGw, &decodeBsfGdEd, &decodeBsrGdEd, &decodeMovGdSx8, &decodeMovGdSx16,
     // 0x3c0
     0, &decodeXadd32, 0, 0, 0, 0, 0, &decodeCmpXchg8b,

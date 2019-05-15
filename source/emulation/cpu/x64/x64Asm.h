@@ -93,7 +93,7 @@ public:
     void writeToMemAddressFromReg(U8 seg, U8 reg, bool isRegRex, U32 disp, U8 bytes);
     void writeToMemFromValue(U64 value, U8 reg2, bool isReg2Rex, S8 reg3, bool isReg3Rex, U8 reg3Shift, S32 displacement, U8 bytes, bool translateToHost);
     void setSeg(U8 seg, U8 rm);
-    void loadSeg(U8 seg, U8 rm);
+    void loadSeg(U8 seg, U8 rm, bool b32);
     void writeXchgEspEax();
     void writeXchgSpAx();
     void bswapEsp();

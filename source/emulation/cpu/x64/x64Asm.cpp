@@ -2053,21 +2053,26 @@ void X64Asm::string(bool hasSi, bool hasDi, bool ea16) {
 // U32 selector = readw(eaa+2);
 // if (cpu->setSegment(op->imm, selector)) {
 //    cpu->reg[op->reg].u16 = val;
-void X64Asm::loadSeg(U8 seg, U8 rm) {
+void X64Asm::loadSeg(U8 seg, U8 rm, bool b32) {
     if (rm<0xC0) {
         // in case an exception is thrown, the exception will need to store the regs
         // also this will help will saving ECX and EDX as required by Window ABI
         syncRegsFromHost(); 
 
-        getNativeAddressInRegFromE(1, true, rm);
-        
+        getNativeAddressInRegFromE(HOST_TMP3, true, rm);
+        this->tmp3InUse = true;
+
         // read selector and put it into R8 for function call
+        this->tmp2InUse = true;
         zeroReg(0, true);
-        writeToRegFromMem(0, true, 1, true, -1, false, 0, 2, 2, false);
+        writeToRegFromMem(0, true, HOST_TMP3, true, -1, false, 0, b32?4:2, 2, false);
 
         // read value now in case it triggers an exception
-        zeroReg(0, true);
-        writeToRegFromMem(1, true, 1, true, -1, false, 0, 0, 2, false);
+        this->tmp1InUse = true;
+        zeroReg(1, true);
+        writeToRegFromMem(1, true, HOST_TMP3, true, -1, false, 0, 0, b32?4:2, false);
+
+        this->tmp3InUse = false;
 
         // calling convention RCX, RDX, R8, R9 for first 4 parameters    
 
@@ -2077,10 +2082,13 @@ void X64Asm::loadSeg(U8 seg, U8 rm) {
         writeToRegFromValue(2, false, seg, 4); // value param, must pass 4 so that upper part of reg is zero'd out
 
 
-        pushNativeReg(1, true); // save value so we don't read it again
+        pushNativeReg(1, true); // save value so we don't read it again        
 
         callHost(common_setSegment);
     
+        this->tmp1InUse = false;
+        this->tmp2InUse = false;
+
         doIf(0, false, 0, [this]() {
             syncRegsToHost();
             popNativeReg(1, true); // don't need, but will balance previous push

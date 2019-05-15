@@ -1426,32 +1426,53 @@ static U32 movEspId(X64Asm* data) {
 }
 
 // LES
-static U32 les(X64Asm* data) {
-    data->loadSeg(ES, data->fetch8());
-    return 1;
+static U32 les16(X64Asm* data) {
+    data->loadSeg(ES, data->fetch8(), false);
+    return 0;
+}
+static U32 les32(X64Asm* data) {
+    data->loadSeg(ES, data->fetch8(), true);
+    return 0;
 }
 
 // LSS
-static U32 lss(X64Asm* data) {
-    data->loadSeg(SS, data->fetch8());
-    return 1;
+static U32 lss16(X64Asm* data) {
+    data->loadSeg(SS, data->fetch8(), false);
+    return 0;
+}
+static U32 lss32(X64Asm* data) {
+    data->loadSeg(SS, data->fetch8(), true);
+    return 0;
 }
 
+
 // LFS
-static U32 lfs(X64Asm* data) {
-    data->loadSeg(FS, data->fetch8());
-    return 1;
+static U32 lfs16(X64Asm* data) {
+    data->loadSeg(FS, data->fetch8(), false);
+    return 0;
+}
+static U32 lfs32(X64Asm* data) {
+    data->loadSeg(FS, data->fetch8(), true);
+    return 0;
 }
 
 // LGS
-static U32 lgs(X64Asm* data) {
-    data->loadSeg(GS, data->fetch8());
-    return 1;
+static U32 lgs16(X64Asm* data) {
+    data->loadSeg(GS, data->fetch8(), false);
+    return 0;
+}
+static U32 lgs32(X64Asm* data) {
+    data->loadSeg(GS, data->fetch8(), true);
+    return 0;
 }
 
 // LDS
-static U32 lds(X64Asm* data) {
-    data->loadSeg(DS, data->fetch8());
+static U32 lds16(X64Asm* data) {
+    data->loadSeg(DS, data->fetch8(), false);
+    return 0;
+}
+static U32 lds32(X64Asm* data) {
+    data->loadSeg(DS, data->fetch8(), true);
     return 0;
 }
 
@@ -1827,7 +1848,7 @@ X64Decoder x64Decoder[1024] = {
     keepSameImm8, keepSameImm8, keepSameImm8, keepSameImm8, keepSameImm8, keepSameImm8, keepSameImm8, keepSameImm8,
     keepSameImm16, keepSameImm16, keepSameImm16, keepSameImm16, movSpIw, keepSameImm16, keepSameImm16, keepSameImm16,
     // C0
-    inst8RMimm8SafeG, inst16RMimm8SafeG, retn16Iw, retn16, les, lds, inst8RMimm8, inst16RMimm16,
+    inst8RMimm8SafeG, inst16RMimm8SafeG, retn16Iw, retn16, les16, lds16, inst8RMimm8, inst16RMimm16,
     enter16, leave16, retf16Iw, retf16, int3, intIb, invalidOp, invalidOp,
     // D0
     inst8RMSafeG, inst16RMSafeG, inst8RMSafeG, inst16RMSafeG, aam, aad, salc, xlat,
@@ -1873,7 +1894,7 @@ X64Decoder x64Decoder[1024] = {
     push16FS, pop16FS, x64cpuid, inst16RM, inst16RMimm8, inst16RM, invalidOp, invalidOp,
     push16GS, pop16GS, invalidOp, inst16RM, inst16RMimm8, inst16RM, invalidOp, inst16RM,
     // 1b0
-    invalidOp, inst16RM, lss, invalidOp, lfs, lgs, inst16E8RM, invalidOp,
+    invalidOp, inst16RM, lss16, invalidOp, lfs16, lgs16, inst16E8RM, invalidOp,
     invalidOp, inst16RMimm8SafeG, inst16RMimm8SafeG, invalidOp, invalidOp, inst16RM, inst16E8RM, invalidOp,
     // 1c0
     invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp,
@@ -1925,7 +1946,7 @@ X64Decoder x64Decoder[1024] = {
     keepSameImm8, keepSameImm8, keepSameImm8, keepSameImm8, keepSameImm8, keepSameImm8, keepSameImm8, keepSameImm8,
     keepSameImm32, keepSameImm32, keepSameImm32, keepSameImm32, movEspId, keepSameImm32, keepSameImm32, keepSameImm32,
     // 2c0
-    inst8RMimm8SafeG, inst32RMimm8SafeG, retn32Iw, retn32, invalidOp, invalidOp, inst8RMimm8, inst32RMimm32,
+    inst8RMimm8SafeG, inst32RMimm8SafeG, retn32Iw, retn32, les32, lds32, inst8RMimm8, inst32RMimm32,
     enter32, leave32, retf32Iw, retf32, int3, intIb, invalidOp, iret32,
     // 2d0
     inst8RMSafeG, inst32RMSafeG, inst8RMSafeG, inst32RMSafeG, aam, aad, salc, xlat,
@@ -1971,7 +1992,7 @@ X64Decoder x64Decoder[1024] = {
     push32FS, pop32FS, x64cpuid, inst32RM, inst32RMimm8, inst32RM, invalidOp, invalidOp,
     push32GS, pop32GS, invalidOp, inst32RM, inst32RMimm8, inst32RM, inst32RM, inst32RM,
     // 3b0
-    invalidOp, inst32RM, invalidOp, inst32RM, invalidOp, invalidOp, inst32E8RM, inst32E16RM,
+    invalidOp, inst32RM, lss32, inst32RM, lfs32, lgs32, inst32E8RM, inst32E16RM,
     invalidOp, invalidOp, inst32RMimm8SafeG, inst32RM, inst32RM, inst32RM, inst32E8RM, inst32E16RM,
     // 3c0
     invalidOp, inst32RM, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, inst32RMSafeG,
