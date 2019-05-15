@@ -25,10 +25,11 @@ X64CodeChunk* X64CodeChunk::allocChunk(x64CPU* cpu, U32 instructionCount, U32* e
     result->hostLen = hostInstructionBufferLen;
     result->emulatedInstructionLen = (U8*)result->hostAddress+result->hostAddressSize-instructionCount*sizeof(U8)-instructionCount*sizeof(U32);
     result->hostInstructionLen = (U32*)((U8*)result->hostAddress+result->hostAddressSize-instructionCount*sizeof(U32));// should be aligned to 4 byte boundry
+
     if (instructionCount) {
         for (U32 i=0;i<instructionCount;i++) {
             if (i==instructionCount-1) {
-                result->emulatedInstructionLen[i] = eipLen-(eipInstructionAddress[i]-eip);
+                result->emulatedInstructionLen[i] = eipLen-(eipInstructionAddress[i]-(result->emulatedAddress+cpu->seg[CS].address));
                 result->hostInstructionLen[i] = hostInstructionBufferLen-hostInstructionIndex[i];
             } else {
                 result->emulatedInstructionLen[i] = eipInstructionAddress[i+1]-eipInstructionAddress[i];

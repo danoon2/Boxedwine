@@ -35,7 +35,9 @@ public:
     void link(X64Asm* data, void* address);
     void makePendingCodePagesReadOnly();
     void translateData(X64Asm* data);
-private:        
+
+    virtual void setSeg(U32 index, U32 address, U32 value);
+private:          
     void* translateEipInternal(X64Asm* parent, U32 ip);            
     void markCodePageReadOnly(X64Asm* data);
 

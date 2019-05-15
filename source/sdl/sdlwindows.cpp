@@ -686,7 +686,6 @@ U32 recorderBufferSize;
 
 void sdlDrawAllWindows(KThread* thread, U32 hWnd, int count) {    
     BOXEDWINE_CRITICAL_SECTION
-    int i;
 #ifdef SDL2
     if (!sdlRenderer)
         return;
@@ -711,7 +710,7 @@ void sdlDrawAllWindows(KThread* thread, U32 hWnd, int count) {
         } else {
             memset(recorderBuffer, 0, recorderBufferSize);
         }        
-        for (i=count-1;i>=0;i--) {
+        for (int i=count-1;i>=0;i--) {
             Wnd* wnd = getWnd(readd(hWnd+i*4));
             if (wnd && wnd->sdlTextureWidth && wnd->sdlTexture) {
                 int width = wnd->sdlTextureWidth;
@@ -753,7 +752,7 @@ void sdlDrawAllWindows(KThread* thread, U32 hWnd, int count) {
 #ifdef SDL2
     SDL_SetRenderDrawColor(sdlRenderer, 58, 110, 165, 255 );
     SDL_RenderClear(sdlRenderer);    
-    for (i=count-1;i>=0;i--) {
+    for (int i=count-1;i>=0;i--) {
         Wnd* wnd = getWnd(readd(hWnd+i*4));
         if (wnd && wnd->sdlTextureWidth && wnd->sdlTexture) {
             SDL_Rect dstrect;
@@ -769,7 +768,7 @@ void sdlDrawAllWindows(KThread* thread, U32 hWnd, int count) {
 #else
     if (surface) {
         SDL_FillRect(surface, NULL, SDL_MapRGB(surface->format, 58, 110, 165));
-        for (i=count-1;i>=0;i--) {
+        for (int i=count-1;i>=0;i--) {
             struct Wnd* wnd = getWnd(readd(thread, hWnd+i*4));
             if (wnd && wnd->sdlSurface) {
                 SDL_Rect dstrect;

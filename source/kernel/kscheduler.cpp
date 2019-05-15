@@ -56,9 +56,6 @@ void unscheduleThread(KThread* thread) {
 
 S32 contextTime = 100000;
 S32 contextTimeRemaining = 100000;
-#ifdef BOXEDWINE_HAS_SETJMP
-jmp_buf runBlockJump;
-#endif
 int count;
 extern struct Block emptyBlock;
 
@@ -70,7 +67,7 @@ void runThreadSlice(KThread* thread) {
     cpu->yield = false;
     cpu->nextBlock = cpu->getNextBlock(); // another thread that just ran could have modified this
 #ifdef BOXEDWINE_HAS_SETJMP
-    if (setjmp(runBlockJump)==0) {
+    if (setjmp(cpu->runBlockJump)==0) {
 #endif
         do {
             cpu->run();

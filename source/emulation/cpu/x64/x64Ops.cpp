@@ -1014,7 +1014,7 @@ static U32 callAp(X64Asm* data) {
     U16 offset = data->fetch16();
     U16 sel = data->fetch16();
     data->call(false, sel, offset, data->ip);
-    data->done = false;
+    data->done = true;
     return 0;
 }
 
@@ -1022,7 +1022,7 @@ static U32 callFar32(X64Asm* data) {
     U32 offset = data->fetch32();
     U16 sel = data->fetch16();
     data->call(true, sel, offset, data->ip);
-    data->done = false;
+    data->done = true;
     return 0;
 }
 
@@ -1093,18 +1093,21 @@ static U32 retf32(X64Asm* data) {
 // IRET
 static U32 iret(X64Asm* data) {
     data->iret(0, data->ip);
+    data->done = true;
     return 0;
 }
 
 // IRET
 static U32 iret32(X64Asm* data) {
     data->iret(1, data->ip);
+    data->done = true;
     return 0;
 }
 
 // INT 3
 static U32 int3(X64Asm* data) {
     data->signalIllegalInstruction(3);
+    data->done = true;
     return 0;
 }
 
@@ -1119,6 +1122,7 @@ static U32 intIb(X64Asm* data) {
         data->int99(data->ip-data->startOfOpIp);
     } else {
         data->signalIllegalInstruction(i);
+        data->done = true;
     }
     return 0;
 }

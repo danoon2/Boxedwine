@@ -10,8 +10,12 @@
 x64CPU::x64CPU() : nativeHandle(0), jmpBuf(NULL), endCond("x64CPU::endcond"), inException(false) {
 }
 
-jmp_buf runBlockJump;
 typedef void (*StartCPU)();
+
+void x64CPU::setSeg(U32 index, U32 address, U32 value) {
+    CPU::setSeg(index, address, value);
+    this->negSegAddress[index] = (U32)(-((S32)(this->seg[index].address)));
+}
 
 void x64CPU::run() {    
     while (true) {
@@ -20,7 +24,7 @@ void x64CPU::run() {
         for (int i=0;i<6;i++) {
             this->negSegAddress[i] = (U32)(-((S32)(this->seg[i].address)));
         }
-        if (setjmp(runBlockJump)==0) {
+        if (setjmp(this->runBlockJump)==0) {
             StartCPU start = (StartCPU)this->init();
 #ifdef __TEST
             addReturnFromTest();
@@ -34,7 +38,7 @@ void x64CPU::run() {
 }
 
 void x64CPU::restart() {
-    longjmp(runBlockJump, 1);
+    longjmp(this->runBlockJump, 1);
 }
 
 DecodedBlock* x64CPU::getNextBlock() {
@@ -123,13 +127,12 @@ void x64CPU::link(X64Asm* data, void* address) {
             if (found) {
                 continue;
             }
-            if (!data->cpu->thread->memory->isValidReadAddress(data->todoJump[i].eip, 1)) {
+            if (!data->cpu->thread->memory->isValidReadAddress(eip, 1)) {
                 // hope that the program will fill this in later
                 continue;
             }
-            U32 next = data->todoJump[i].eip;
-            if (readb(next) || readb(next+1) || readb(next+2) || readb(next+3)) {
-                hostAddress = translateEipInternal(data, next);
+            if (readb(eip) || readb(eip+1) || readb(eip+2) || readb(eip+3)) {
+                hostAddress = translateEipInternal(data, data->todoJump[i].eip);
             } else {
                 int ii=0;
             }
@@ -144,7 +147,7 @@ void x64CPU::link(X64Asm* data, void* address) {
 
             X64CodeChunk* fromChunk = this->thread->memory->getCodeChunkContainingHostAddress(offset);
             X64CodeChunk* toChunk = this->thread->memory->getCodeChunkContainingHostAddress(translatedOffset);
-            if (fromChunk != toChunk) {
+            if (fromChunk != toChunk && fromChunk && toChunk) {
                 toChunk->addLinkFrom(fromChunk, eip, translatedOffset, offset);
             }
         } else {
@@ -156,7 +159,7 @@ void x64CPU::link(X64Asm* data, void* address) {
 
 void x64CPU::markCodePageReadOnly(X64Asm* data) {
     S32 pageCount = (data->ip-data->startOfDataIp+K_PAGE_MASK) >> K_PAGE_SHIFT;
-    U32 pageStart = data->ip >> K_PAGE_SHIFT;
+    U32 pageStart = (data->ip+this->seg[CS].address) >> K_PAGE_SHIFT;
 #ifndef __TEST
     for (int i=0;i<pageCount;i++) {
         pendingCodePages.push_back(pageStart+i);        
@@ -179,18 +182,7 @@ void* x64CPU::translateEip(U32 ip) {
 }
 
 void x64CPU::translateInstruction(X64Asm* data) {
-#ifdef LOG_OPS
-    x64_writeToMemFromReg(data, 0, FALSE, HOST_CPU, TRUE, -1, FALSE, 0, CPU_OFFSET_EAX, 4, FALSE);
-    x64_writeToMemFromReg(data, 1, FALSE, HOST_CPU, TRUE, -1, FALSE, 0, CPU_OFFSET_ECX, 4, FALSE);
-    x64_writeToMemFromReg(data, 2, FALSE, HOST_CPU, TRUE, -1, FALSE, 0, CPU_OFFSET_EDX, 4, FALSE);
-    x64_writeToMemFromReg(data, 3, FALSE, HOST_CPU, TRUE, -1, FALSE, 0, CPU_OFFSET_EBX, 4, FALSE);
-    x64_writeToMemFromReg(data, HOST_ESP, TRUE, HOST_CPU, TRUE, -1, FALSE, 0, CPU_OFFSET_ESP, 4, FALSE);
-    x64_writeToMemFromReg(data, 5, FALSE, HOST_CPU, TRUE, -1, FALSE, 0, CPU_OFFSET_EBP, 4, FALSE);
-    x64_writeToMemFromReg(data, 6, FALSE, HOST_CPU, TRUE, -1, FALSE, 0, CPU_OFFSET_ESI, 4, FALSE);
-    x64_writeToMemFromReg(data, 7, FALSE, HOST_CPU, TRUE, -1, FALSE, 0, CPU_OFFSET_EDI, 4, FALSE);
-    x64_writeToMemFromValue(data, (U32)&data->memStart[data->memPos], HOST_CPU, TRUE, -1, FALSE, 0, CPU_OFFSET_CMD_ARG, 4, FALSE);
-    x64_writeCmd(data, CMD_PRINT, data->ip, 0);
-#endif
+//
 #ifdef _DEBUG
     //data->logOp(data->ip);
     // just makes debugging the asm output easier

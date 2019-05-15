@@ -13,6 +13,8 @@
 
 // R8 and R9 are caller saved for Windows
 // R10 and R11 are caller saved for Linux
+//
+// calling convention RCX, RDX, R8, R9 for first 4 parameters on Windows, X64Asm::callHost is hard coded to use HOST_TMP3, this can not overlap with parameters
 #define HOST_TMP2         0
 #define HOST_TMP          1
 #define HOST_TMP3         2

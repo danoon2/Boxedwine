@@ -4821,7 +4821,7 @@ void decodeBlock(pfnFetchByte fetchByte, U32 eip, U32 isBig, U32 maxInstructions
             d.opCode = 0;
             d.ea16 = 1;
         }
-        d.inst = d.opCode+d.fetch8();
+        d.inst = d.opCode+d.fetch8();        
         decoder[d.inst]->decode(&d, op);
         d.opCountSoFarInThisBlock++;
         block->opCount++;
@@ -4844,7 +4844,7 @@ void decodeBlock(pfnFetchByte fetchByte, U32 eip, U32 isBig, U32 maxInstructions
 }
 
 void DecodedOp::log(CPU* cpu) {
-    if (cpu->logFile) {
+    if (cpu->logFile && this->inst<=PadddE64) {
         U32 pos = ftell((FILE*)cpu->logFile); // :TODO: should be 64-bit
         fprintf((FILE*)cpu->logFile, "%04X %08X ", cpu->thread->id, cpu->eip.u32);
         instructionLog[this->inst].pfnFormat(&instructionLog[this->inst], this, cpu);

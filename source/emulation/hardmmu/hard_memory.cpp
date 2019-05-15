@@ -24,8 +24,6 @@
 #include "hard_memory.h"
 #include "../cpu/x64/x64CodeChunk.h"
 
-extern jmp_buf runBlockJump;
-
 Memory::Memory() : allocated(0), callbackPos(0) {
     memset(flags, 0, sizeof(flags));
     memset(nativeFlags, 0, sizeof(nativeFlags));
@@ -659,10 +657,16 @@ void* Memory::allocateExcutableMemory(U32 requestedSize, U32* allocatedSize) {
         return result;
     }
     void* result = (void*)(this->executableMemoryId | (this->nextExecutablePage << K_PAGE_SHIFT));
-    allocExecutable64kBlock(this, this->nextExecutablePage);
-    this->nextExecutablePage+=16;
+    U32 count = (size+65535)/65536;
+    if (count>1) {
+        int ii=0;
+    }
+    for (U32 i=0;i<count;i++) {
+        allocExecutable64kBlock(this, this->nextExecutablePage);
+        this->nextExecutablePage+=16;
+    }
     
-    U32 count = 65536 / size;
+    count = 65536 / size;
     for (U32 i=1;i<count;i++) {
         void* nextFree = this->freeExecutableMemory[powerOf2Size-EXECUTABLE_MIN_SIZE_POWER];
         this->freeExecutableMemory[powerOf2Size-EXECUTABLE_MIN_SIZE_POWER] = ((U8*)result)+size*i;

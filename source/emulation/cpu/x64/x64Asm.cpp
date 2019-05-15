@@ -622,13 +622,16 @@ void X64Asm::writeToRegFromE(U8 reg, bool isRegRex, U8 rm, U8 bytes) {
 // it is ok to trash current op data
 void X64Asm::getNativeAddressInRegFromE(U8 reg, bool isRegRex, U8 rm) {
     this->op = 0x8d;
-    this->operandPrefix = false;    
-    if (isRegRex) {
-        this->rex = REX_BASE | REX_MOD_REG;
+    if (this->cpu->big) {
+        this->operandPrefix = false;    
     } else {
-        this->rex = 0;
+        this->operandPrefix = true;
     }
-    rm = (rm & ~0x38) | reg;
+    this->rex = REX_BASE | REX_64;
+    if (isRegRex) {
+        this->rex |= REX_MOD_REG;
+    }
+    rm = (rm & ~0x38) | (reg << 3);
     translateRM(rm, false, true, false, false, 0);
 }
 
@@ -1112,6 +1115,10 @@ void X64Asm::syncRegsToHost(S8 excludeReg) {
         writeToRegFromMem(6, false, HOST_CPU, true, -1, false, 0, CPU_OFFSET_ESI, 4, false);
     if (excludeReg!=7)
         writeToRegFromMem(7, false, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EDI, 4, false);
+
+    writeToRegFromMem(HOST_SS, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_SS_ADDRESS, 4, false);
+    writeToRegFromMem(HOST_DS, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_DS_ADDRESS, 4, false);
+
     U8 tmpReg = getTmpReg();
     writeToRegFromMem(tmpReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_FLAGS, 4, false);
     pushNativeReg(tmpReg, true);
@@ -1120,8 +1127,12 @@ void X64Asm::syncRegsToHost(S8 excludeReg) {
 }
 
 void X64Asm::callHost(void* pfn) {
-    U8 tmp = getTmpReg();
+    U8 tmp = HOST_TMP3;
     
+    if (this->tmp3InUse) {
+        kpanic("x64Asm::callHost tmp3InUse already in use");        
+    }
+    tmp3InUse = true;
     write8(0xfc); // cld
 
     writeToRegFromValue(tmp, true, (U64)pfn, 8);
@@ -1508,7 +1519,7 @@ void X64Asm::aam(U8 value) {
     write8(REX_BASE | REX_MOD_RM);
     write8(0x80);
     write8(0xC0 | (4<<3) | tmpReg);
-    write8(~(CF|AF|OF));
+    write8((U8)(~(CF|AF|OF)));
 
     pushNativeReg(tmpReg, true);
     releaseTmpReg(tmpReg);    
@@ -2147,26 +2158,44 @@ void X64Asm::callE(bool big, U8 rm) {
     releaseTmpReg(tmpReg);
 }
 
-void X64Asm::callFar(bool big, U8 rm) {
-    getNativeAddressInRegFromE(1, true, rm);
-
-     syncRegsFromHost(); 
-
+void X64Asm::callJmp(bool big, U8 rm, void* pfn) {
+    syncRegsFromHost(); 
+     
     // calling convention RCX, RDX, R8, R9 for first 4 parameters
 
     // call void common_call(CPU* cpu, U32 big, U32 selector, U32 offset, U32 oldEip)
     writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
-    writeToRegFromValue(2, false, big?1:0, 8); // big param
-    zeroReg(0, true);
+    if (big) {
+        writeToRegFromValue(2, false, 1, 4); // big param
+    } else {
+        zeroReg(2, false);
+    }    
     U8 bytes = (big?4:2);
-    writeToRegFromMem(0, true, 1, true, -1, false, 0, 0, bytes, false); // seg
-    writeToRegFromMem(1, true, 1, true, -1, false, 0, bytes, 2, false); // offset
+
+    if (this->tmp3InUse) {
+        kpanic("X64Asm::callFar tmp3InUse was in use");
+    }
+    this->tmp3InUse = true;
+    if (HOST_TMP3==0 || HOST_TMP3==1) {
+        kpanic("X64Asm::callFar incorrectly assumed HOST_TMP3");
+    }
+    getNativeAddressInRegFromE(HOST_TMP3, true, rm);
+    zeroReg(0, true);
+    zeroReg(1, true);
+    writeToRegFromMem(1, true, HOST_TMP3, true, -1, false, 0, 0, bytes, false); // offset
+    writeToRegFromMem(0, true, HOST_TMP3, true, -1, false, 0, bytes, 2, false); // seg
+    releaseTmpReg(HOST_TMP3);
+
     pushNativeValue32(this->ip); // oldEip param
     
-    callHost(common_call);
+    callHost(pfn);
     popNativeReg(0, false); // balances pushing oldEip, we don't care about the reg
     syncRegsToHost();
-    doJmp();    
+    doJmp();  
+}
+
+void X64Asm::callFar(bool big, U8 rm) {    
+    callJmp(big, rm, common_call);   
 }
 
 void X64Asm::jmpE(bool big, U8 rm) {
@@ -2177,25 +2206,7 @@ void X64Asm::jmpE(bool big, U8 rm) {
 }
 
 void X64Asm::jmpFar(bool big, U8 rm) {
-    getNativeAddressInRegFromE(1, true, rm);
-
-    syncRegsFromHost(); 
-
-    // calling convention RCX, RDX, R8, R9 for first 4 parameters
-
-    // call void common_jmp(CPU* cpu, U32 big, U32 selector, U32 offset, U32 oldEip)
-    writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
-    writeToRegFromValue(2, false, big?1:0, 8); // big param
-    zeroReg(0, true);
-    U8 bytes = (big?4:2);
-    writeToRegFromMem(0, true, 1, true, -1, false, 0, 0, bytes, false); // seg
-    writeToRegFromMem(1, true, 1, true, -1, false, 0, bytes, 2, false); // offset
-    pushNativeValue32(this->ip); // oldEip param
-    
-    callHost(common_jmp);
-    popNativeReg(0, false); // balances pushing oldEip, we don't care about the reg
-    syncRegsToHost();
-    doJmp();    
+    callJmp(big, rm, common_jmp);       
 }
 
 void X64Asm::lsl(bool big, U8 rm) {

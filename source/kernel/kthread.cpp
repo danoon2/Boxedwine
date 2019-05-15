@@ -719,8 +719,6 @@ void KThread::runSignal(U32 signal, U32 trapNo, U32 errorNo) {
     this->pendingSignals &= ~(1 << (signal - 1));
 }
 
-extern jmp_buf runBlockJump;
-
 // bit 0 - 0 = no page found, 1 = protection fault
 // bit 1 - 0 = read access, 1 = write access
 // bit 2 - 0 = kernel-mode access, 1 = user mode access
@@ -738,7 +736,7 @@ void KThread::seg_mapper(U32 address, bool readFault, bool writeFault, bool thro
         this->runSignal(K_SIGSEGV, EXCEPTION_PAGE_FAULT, (writeFault?2:0));
         if (throwException) {
 #ifdef BOXEDWINE_HAS_SETJMP
-            longjmp(runBlockJump, 1);		
+            longjmp(this->cpu->runBlockJump, 1);		
 #else
             kpanic("setjmp is required for this app but it was compiled into boxedwine");
 #endif
@@ -759,7 +757,7 @@ void KThread::seg_access(U32 address, bool readFault, bool writeFault, bool thro
         this->runSignal(K_SIGSEGV, EXCEPTION_PAGE_FAULT, 1 | (writeFault?2:0)); 
         if (throwException) {
 #ifdef BOXEDWINE_HAS_SETJMP
-            longjmp(runBlockJump, 1);		
+            longjmp(this->cpu->runBlockJump, 1);		
 #else 
             kpanic("setjmp is required for this app but it was compiled into boxedwine");
 #endif

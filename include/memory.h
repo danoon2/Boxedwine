@@ -138,8 +138,8 @@ private:
 // 128 bytes
 #define EXECUTABLE_MIN_SIZE_POWER 7
 // 64k bytes
-#define EXECUTABLE_MAX_SIZE_POWER 16
-#define EXECUTABLE_SIZES 10
+#define EXECUTABLE_MAX_SIZE_POWER 22
+#define EXECUTABLE_SIZES 16
 
     X64CodeChunk* hostCodeChunks[K_NUMBER_OF_PAGES];
     void* freeExecutableMemory[EXECUTABLE_SIZES];

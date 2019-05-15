@@ -39,8 +39,6 @@
 
 //#undef LOG_OPS
 
-extern jmp_buf runBlockJump;
-
 Page** Memory::currentMMU;
 U8** Memory::currentMMUReadPtr;
 U8** Memory::currentMMUWritePtr;

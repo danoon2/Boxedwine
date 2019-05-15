@@ -105,7 +105,7 @@ public:
     void callE(bool big, U8 rm);
     void callFar(bool big, U8 rm);
     void jmpE(bool big, U8 rm);
-    void jmpFar(bool big, U8 rm);
+    void jmpFar(bool big, U8 rm);    
     void lsl(bool big, U8 rm);
     void lar(bool big, U8 rm);
     void invalidOp(U32 op);
@@ -150,6 +150,7 @@ private:
     void setSF_onAL(U8 flagReg);
 
     void callHost(void* pfn);
+    void callJmp(bool big, U8 rm, void* pfn);
 
     void translateMemory(U32 rm, bool checkG, bool isG8bit, bool isE8bit);
     void setRM(U8 rm, bool checkG, bool checkE, bool isG8bit, bool isE8bit);

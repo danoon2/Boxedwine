@@ -238,6 +238,8 @@ public:
 
     bool mightSetSeg[6];
 
+    jmp_buf runBlockJump;
+
     U32 getCF();
     U32 getSF();
     U32 getZF();
@@ -299,6 +301,7 @@ public:
     virtual void run()=0;
     virtual DecodedBlock* getNextBlock() = 0;
     virtual void restart() {}
+    virtual void setSeg(U32 index, U32 address, U32 value);
 };
 
 // until I can figure out how to call cpp function directly from asm

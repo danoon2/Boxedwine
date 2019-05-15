@@ -40,13 +40,20 @@ CPU::CPU() {
     this->logFile = NULL;//fopen("good.txt", "w");
 }
 
+void CPU::setSeg(U32 index, U32 address, U32 value) {
+    this->seg[index].address = address;
+    this->seg[index].value = value;
+    if (this->seg[index].address) {
+        this->thread->process->hasSetSeg[index] = true;
+    }
+}
+
 void CPU::reset() {
     this->flags = 0;
     this->eip.u32 = 0;
     this->instructionCount = 0;
     for (int i=0;i<7;i++) {
-        this->seg[i].value = 0;
-        this->seg[i].address = 0;        
+        this->setSeg(i, 0, 0);       
     }
     for (int i=0;i<6;i++) {
         this->mightSetSeg[i] = false;
@@ -87,11 +94,7 @@ void CPU::call(U32 big, U32 selector, U32 offset, U32 oldEip) {
         } 
         THIS_ESP = esp;
         this->big = 0;
-        this->seg[CS].address = selector << 4;;
-        this->seg[CS].value = selector;
-        if (this->seg[CS].address) {
-            this->thread->process->hasSetSeg[CS] = true;
-        }
+        this->setSeg(CS, selector << 4, selector);
     } else {
         U32 rpl=selector & 3;
         U32 index = selector >> 3;
@@ -125,11 +128,7 @@ void CPU::call(U32 big, U32 selector, U32 offset, U32 oldEip) {
         }
         THIS_ESP = esp; // don't set ESP until we are done with Memory Writes / CPU_Push so that we are reentrant
         this->big = ldt->seg_32bit;
-        this->seg[CS].address = ldt->base_addr;
-        this->seg[CS].value = (selector & 0xfffc) | this->cpl;
-        if (this->seg[CS].address) {
-            this->thread->process->hasSetSeg[CS] = true;
-        }
+        this->setSeg(CS, ldt->base_addr, (selector & 0xfffc) | this->cpl);
     }
 }
 
@@ -140,12 +139,8 @@ void CPU::jmp(U32 big, U32 selector, U32 offset, U32 oldEip) {
         } else {
             this->eip.u32 = offset;
         }
-        this->seg[CS].address = selector << 4;;
-        this->seg[CS].value = selector;
+        this->setSeg(CS, selector << 4, selector);
         this->big = 0;
-        if (this->seg[CS].address) {
-            this->thread->process->hasSetSeg[CS] = true;
-        }
     } else {
         U32 rpl=selector & 3;
         U32 index = selector >> 3;
@@ -166,15 +161,11 @@ void CPU::jmp(U32 big, U32 selector, U32 offset, U32 oldEip) {
         }
 
         this->big = ldt->seg_32bit;
-        this->seg[CS].address = ldt->base_addr;
-        this->seg[CS].value = (selector & 0xfffc) | this->cpl;
+        this->setSeg(CS, ldt->base_addr, (selector & 0xfffc) | this->cpl);
         if (!big) {
             this->eip.u32 = offset & 0xffff;
         } else {
             this->eip.u32 = offset;
-        }
-        if (this->seg[CS].address) {
-            this->thread->process->hasSetSeg[CS] = true;
         }
     }
 }
@@ -435,17 +426,9 @@ U32 CPU::setSegment(U32 seg, U32 value) {
         kpanic("CPU::setSegment invalid segment: %d", seg);
     }
     if (this->flags & VM) {
-        this->seg[seg].address = value << 4;
-        this->seg[seg].value = value;
-        if (this->seg[seg].address) {
-            this->thread->process->hasSetSeg[seg] = true;
-        }
+        this->setSeg(seg, value << 4, value);
     } else  if ((value & 0xfffc)==0) {
-        this->seg[seg].value = value;
-        this->seg[seg].address = 0;	// ??
-        if (this->seg[seg].address) {
-            this->thread->process->hasSetSeg[seg] = true;
-        }
+        this->setSeg(seg, 0, value);
     } else {
         U32 index = value >> 3;
         struct user_desc* ldt = this->thread->getLDT(index);
@@ -461,11 +444,7 @@ U32 CPU::setSegment(U32 seg, U32 value) {
                 this->prepareException(EXCEPTION_NP,value & 0xfffc);
             return 0;
         }
-        this->seg[seg].value = value;
-        this->seg[seg].address = ldt->base_addr;
-        if (this->seg[seg].address) {
-            this->thread->process->hasSetSeg[seg] = true;
-        }
+        this->setSeg(seg, ldt->base_addr, value);        
         if (seg == SS) {
             if (ldt->seg_32bit) {
                 this->stackMask = 0xffffffff;
@@ -534,14 +513,10 @@ void CPU::ret(U32 big, U32 bytes) {
                 offset = pop16();
                 selector = pop16();
             }
-            this->seg[CS].address = ldt->base_addr;
+            this->setSeg(CS, ldt->base_addr, selector);
             this->big = ldt->seg_32bit;
-            this->seg[CS].value = selector;
             this->eip.u32 = offset;
             THIS_ESP = (THIS_ESP & this->stackNotMask) | ((THIS_ESP + bytes ) & this->stackMask);
-            if (this->seg[CS].address) {
-                this->thread->process->hasSetSeg[CS] = true;
-            }
         } else {
             // Return to outer level
             U32 n_esp;
@@ -580,20 +555,11 @@ void CPU::ret(U32 big, U32 bytes) {
 
             this->cpl = rpl; // don't think paging tables need to be messed with, this isn't 100% cpu emulator since we are assuming a user space program
 
-                
-            this->seg[CS].address = ldt->base_addr;
-            if (this->seg[CS].address) {
-                this->thread->process->hasSetSeg[CS] = true;
-            }
+            this->setSeg(CS, ldt->base_addr, (selector & 0xfffc) | this->cpl);
             this->big = ldt->seg_32bit;
-            this->seg[CS].value = (selector & 0xfffc) | this->cpl;
             this->eip.u32 = offset;
 
-            this->seg[SS].address = ssLdt->base_addr;
-            if (this->seg[SS].address) {
-                this->thread->process->hasSetSeg[SS] = true;
-            }
-            this->seg[SS].value = n_ss;
+            this->setSeg(SS, ssLdt->base_addr, n_ss);                
 
             if (ssLdt->seg_32bit) {
                 this->stackMask = 0xFFFFFFFF;
@@ -720,12 +686,8 @@ void CPU::iret(U32 big, U32 oldeip) {
 
             // commit point
             ESP = (ESP & this->stackNotMask) | ((ESP + (big?12:6)) & this->stackMask);
-            this->seg[CS].address = ldt->base_addr;
-            if (this->seg[CS].address) {
-                this->thread->process->hasSetSeg[CS] = true;
-            }
+            this->setSeg(CS, ldt->base_addr, n_cs_sel);
             this->big = ldt->seg_32bit;
-            this->seg[CS].value = n_cs_sel;
             this->eip.u32 = n_eip;     
             mask = this->cpl !=0 ? (FMASK_NORMAL | NT) : FMASK_ALL;
             if (((this->flags & IOPL) >> 12) < this->cpl) mask &= ~IF;
@@ -763,12 +725,8 @@ void CPU::iret(U32 big, U32 oldeip) {
                 return;
 
             // commit point
-            this->seg[CS].address = ldt->base_addr;
-            if (this->seg[CS].address) {
-                this->thread->process->hasSetSeg[CS] = true;
-            }
+            this->setSeg(CS, ldt->base_addr, n_cs_sel);
             this->big = ldt->seg_32bit;
-            this->seg[CS].value = n_cs_sel;
             mask = this->cpl !=0 ? (FMASK_NORMAL | NT) : FMASK_ALL;
             if (((this->flags & IOPL) >> 12) < this->cpl) mask &= ~IF;
             this->setFlags(n_flags, mask);
@@ -777,11 +735,7 @@ void CPU::iret(U32 big, U32 oldeip) {
             this->cpl = n_cs_rpl;
             this->eip.u32 = n_eip;
 
-            this->seg[SS].address = ssLdt->base_addr;
-            if (this->seg[SS].address) {
-                this->thread->process->hasSetSeg[CS] = true;
-            }
-            this->seg[SS].value = n_ss;
+            this->setSeg(SS, ssLdt->base_addr, n_ss);
 
             if (ssLdt->seg_32bit) {
                 this->stackMask = 0xffffffff;

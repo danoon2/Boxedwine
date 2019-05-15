@@ -30,34 +30,27 @@ X64Data::~X64Data() {
 U8 X64Data::fetch8() {
     U32 address;
 
-    if (this->cpu->big)
+    if (this->cpu->big) {
         address = this->ip + this->cpu->seg[CS].address;
-    else
-        address = (this->ip & 0xFFFF) + this->cpu->seg[CS].address;
-    this->ip++;
+        this->ip++;
+    } else {
+        address = (this->ip & 0xFFFF) + this->cpu->seg[CS].address;    
+        this->ip++;
+        this->ip &= 0xFFFF;
+    }
     return readb(address);
 }
 
 U16 X64Data::fetch16() {
-    U32 address;
-
-    if (this->cpu->big)
-        address = this->ip + this->cpu->seg[CS].address;
-    else
-        address = (this->ip & 0xFFFF) + this->cpu->seg[CS].address;
-    this->ip+=2;
-    return readw(address);
+    U16 result = this->fetch8();
+    result |= ((U16)this->fetch8()) << 8;
+    return result;
 }
 
 U32 X64Data::fetch32() {
-    U32 address;
-
-    if (this->cpu->big)
-        address = this->ip + this->cpu->seg[CS].address;
-    else
-        address = (this->ip & 0xFFFF) + this->cpu->seg[CS].address;
-    this->ip+=4;
-    return readd(address);
+    U32 result = this->fetch16();
+    result |= ((U32)this->fetch16()) << 16;
+    return result;
 }
 
 void X64Data::write8(U8 data) {
