@@ -53,6 +53,12 @@ U32 X64Data::fetch32() {
     return result;
 }
 
+U64 X64Data::fetch64() {
+    U64 result = this->fetch32();
+    result |= ((U64)this->fetch32()) << 32;
+    return result;
+}
+
 void X64Data::write8(U8 data) {
     if (this->bufferPos>=this->bufferSize) {
         U8* b = new U8[this->bufferSize*2];

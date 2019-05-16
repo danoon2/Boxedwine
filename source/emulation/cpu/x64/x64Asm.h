@@ -105,7 +105,8 @@ public:
     void callE(bool big, U8 rm);
     void callFar(bool big, U8 rm);
     void jmpE(bool big, U8 rm);
-    void jmpFar(bool big, U8 rm);    
+    void jmpFar(bool big, U8 rm);  
+    void callCallback(void* pfn);
     void lsl(bool big, U8 rm);
     void lar(bool big, U8 rm);
     void invalidOp(U32 op);

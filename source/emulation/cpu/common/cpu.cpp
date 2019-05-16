@@ -6,6 +6,8 @@
 
 #ifdef BOXEDWINE_X64
 #include "../x64/x64CPU.h"
+#include "../../hardmmu/hard_memory.h"
+
 CPU* CPU::allocCPU() {
     return new x64CPU();
 }
@@ -1029,7 +1031,17 @@ void CPU::push16(U16 value) {
 
 U32 CPU::push16_r(U32 esp, U16 value) {
     U32 new_esp=(esp & this->stackNotMask) | ((esp - 2) & this->stackMask);
-    writew(this->seg[SS].address + (new_esp & this->stackMask) ,value);
+    U32 address = this->seg[SS].address + (new_esp & this->stackMask);
+#ifdef BOXEDWINE_X64
+    if (this->thread->memory->nativeFlags[address>>K_PAGE_SHIFT] & NATIVE_FLAG_CODEPAGE_READONLY) {
+        clearCodePageReadOnly(this->thread->memory, address >> K_PAGE_SHIFT);
+        writew(address ,value);
+        makeCodePageReadOnly(this->thread->memory, address >> K_PAGE_SHIFT);
+    } else 
+#endif
+    {
+        writew(address ,value);
+    }
     return new_esp;
 }
 
@@ -1041,7 +1053,18 @@ void CPU::push32(U32 value) {
 
 U32 CPU::push32_r(U32 esp, U32 value) {
     U32 new_esp=(esp & this->stackNotMask) | ((esp - 4) & this->stackMask);
-    writed(this->seg[SS].address + (new_esp & this->stackMask) ,value);
+    U32 address = this->seg[SS].address + (new_esp & this->stackMask);
+
+#ifdef BOXEDWINE_X64
+    if (this->thread->memory->nativeFlags[address>>K_PAGE_SHIFT] & NATIVE_FLAG_CODEPAGE_READONLY) {
+        clearCodePageReadOnly(this->thread->memory, address >> K_PAGE_SHIFT);
+        writed(address ,value);
+        makeCodePageReadOnly(this->thread->memory, address >> K_PAGE_SHIFT);
+    } else 
+#endif
+    {
+        writed(address ,value);
+    }
     return new_esp;
 }
 

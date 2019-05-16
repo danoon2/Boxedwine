@@ -34,6 +34,7 @@ public:
     U8 fetch8();
     U16 fetch16();
     U32 fetch32();    
+    U64 fetch64();
 
     void write8(U8 data);
     void write16(U16 data);

@@ -6,6 +6,9 @@
 #include "x64Data.h"
 #include "x64Asm.h"
 
+#define G(rm) ((rm >> 3) & 7)
+#define E(rm) (rm & 7)
+
 static U32 segOffset[] = {CPU_OFFSET_ES, CPU_OFFSET_CS, CPU_OFFSET_SS, CPU_OFFSET_DS, CPU_OFFSET_FS, CPU_OFFSET_GS};
 
 // push es 0x06 removed
@@ -131,7 +134,14 @@ static U32 inst16RM(X64Asm* data) {
 // GRP2 Eb,CL
 // GRP4 Eb
 static U32 inst8RMSafeG(X64Asm* data) {
-    data->translateRM(data->fetch8(), false, true, false, true, 0);
+    U8 rm = data->fetch8();
+    if (G(rm)==7) {        
+        void* pfn = (void*)data->fetch64();
+        data->callCallback(pfn);
+        data->done = true;
+        return 0;
+    }
+    data->translateRM(rm, false, true, false, true, 0);
     return 0;
 }
 

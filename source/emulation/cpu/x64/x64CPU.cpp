@@ -80,6 +80,9 @@ void* x64CPU::init() {
 }
 
 void* x64CPU::translateEipInternal(X64Asm* parent, U32 ip) {
+    if (!this->big) {
+        ip = ip & 0xFFFF;
+    }
     U32 address = this->seg[CS].address+ip;
     void* result = this->thread->memory->getExistingHostAddress(address);
 
@@ -188,6 +191,9 @@ void x64CPU::translateInstruction(X64Asm* data) {
     // just makes debugging the asm output easier
     data->writeToMemFromValue(data->ip, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EIP, 4, false);
 #endif
+    if (data->ip==0x54C562) {
+        int ii=0;
+    }
     data->startOfOpIp = data->ip;        
     while (1) {  
         data->op = data->fetch8();            
@@ -233,13 +239,15 @@ DecodedOp* x64CPU::getExistingOp(U32 eip) {
     } else {
         eip=this->seg[CS].address + (eip & 0xFFFF);
     }        
-
-    static DecodedBlock* block;
-    if (!block) {
-        block = new DecodedBlock();
+    if (this->eipToHostInstruction[eip >> K_PAGE_SHIFT] && this->eipToHostInstruction[eip >> K_PAGE_SHIFT][eip & K_PAGE_MASK]) {
+        static DecodedBlock* block;
+        if (!block) {
+            block = new DecodedBlock();
+        }
+        decodeBlock(fetchByte, eip, this->big, 4, 64, 1, block);
+        return block->op;
     }
-    decodeBlock(fetchByte, eip, this->big, 4, 64, 1, block);
-    return block->op;
+    return NULL;
 }
 
 #endif

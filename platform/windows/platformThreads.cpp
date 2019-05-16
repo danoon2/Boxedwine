@@ -69,7 +69,7 @@ LONG handleCodePatch(struct _EXCEPTION_POINTERS *ep, x64CPU* cpu, U32 address) {
 #endif
     // get the emulated eip of the op that corresponds to the host address where the exception happened
     X64CodeChunk* chunk = cpu->thread->memory->getCodeChunkContainingHostAddress((void*)ep->ContextRecord->Rip);
-    cpu->eip.u32 = chunk->getEipThatContainsHostAddress((void*)ep->ContextRecord->Rip, NULL) - cpu->seg[CS].address;
+    cpu->eip.u32 = chunk->getEipThatContainsHostAddress((void*)ep->ContextRecord->Rip, NULL);
 
     // get the emulated op that caused the write
     DecodedOp* op = cpu->getExistingOp(cpu->eip.u32);
@@ -77,35 +77,75 @@ LONG handleCodePatch(struct _EXCEPTION_POINTERS *ep, x64CPU* cpu, U32 address) {
         // change permission of the page so that we can write to it
         // :TODO: what if memWidth is a string
         U32 memWidth = instructionInfo[op->inst].writeMemWidth/8;
+        if (op->repNotZero || op->repZero) {
+            //memWidth*=op->ea16?CX:ECX;
+        }
         U32 page1 = address >> K_PAGE_SHIFT;
         U32 page2 = (address+memWidth-1) >> K_PAGE_SHIFT;
 
-        ::clearCodePageReadOnly(cpu->thread->memory, page1);
+        bool clearedPage1 = false;
+        bool clearedPage2 = false;
+
+        if (cpu->thread->memory->nativeFlags[page1] & NATIVE_FLAG_CODEPAGE_READONLY) {
+            ::clearCodePageReadOnly(cpu->thread->memory, page1);
+            clearedPage1 = true;
+        }
         // did the write span two pages?
         if (page1!=page2) {
-            ::clearCodePageReadOnly(cpu->thread->memory, page2);
+            if (cpu->thread->memory->nativeFlags[page2] & NATIVE_FLAG_CODEPAGE_READONLY) {
+                ::clearCodePageReadOnly(cpu->thread->memory, page2);
+                clearedPage2 = true;
+            }
         }
 
+        static DecodedBlock b;
+        DecodedBlock::currentBlock = &b;
+        b.next1 = &b;
+        b.next2 = &b;
         // do the write
         op->pfn = NormalCPU::getFunctionForOp(op);
         op->next = DecodedOp::alloc();
         op->next->inst = Done;
         op->next->pfn = NormalCPU::getFunctionForOp(op->next);
-        syncFromException(cpu, ep);        
+        syncFromException(cpu, ep); 
+
+        // for string instruction, we modify (add memory offset and segment) rdi and rsi so that the native string instruction can be used, this code will revert it back to the original values
+        // uses si
+        if (op->inst==Lodsb || op->inst==Lodsw || op->inst==Lodsd) {
+            ESI=(U32)ep->ContextRecord->R8;
+        }
+        // uses di
+        if (op->inst==Stosb || op->inst==Stosw || op->inst==Stosd ||
+            op->inst==Scasb || op->inst==Scasw || op->inst==Scasd) {
+            EDI=(U32)ep->ContextRecord->R10;
+        }
+        // uses si and di
+        if (op->inst==Movsb || op->inst==Movsw || op->inst==Movsd ||
+            op->inst==Cmpsb || op->inst==Cmpsw || op->inst==Cmpsd) {
+            ESI=(U32)ep->ContextRecord->R8;
+            EDI=(U32)ep->ContextRecord->R10;
+        }
+        if (cpu->flags & DF) {
+            cpu->df = -1;
+        } else {
+            cpu->df = 1;
+        }
         op->pfn(cpu, op);        
         syncToException(cpu, ep);
         op->dealloc(true);                        
 
         // change the page(s) we wrote to back to read-only
-        ::makeCodePageReadOnly(cpu->thread->memory, page1);  
-        if (page1!=page2) {
+        if (clearedPage1) {
+            ::makeCodePageReadOnly(cpu->thread->memory, page1);  
+        }
+        if (clearedPage2) {
             ::makeCodePageReadOnly(cpu->thread->memory, page2);
         }
 
         // if the instruction has not been translated into x64 then we can ignore it
-        X64CodeChunk* chunk = cpu->thread->memory->getCodeChunkContainingEip(address - cpu->seg[CS].address);
-        if (chunk) {
-            chunk->patch(address, memWidth);
+        X64CodeChunk* dstChunk = cpu->thread->memory->getCodeChunkContainingEip(address - cpu->seg[CS].address);
+        if (dstChunk) {
+            dstChunk->patch(address, memWidth);
         }                                          
 
         // eip was ajusted after running this instruction                        

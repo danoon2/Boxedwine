@@ -1984,13 +1984,20 @@ void X64Asm::bswapSp() {
     write8(0xC8+HOST_ESP);
 }
 
-// :TODO: if an exception happens during a string, esi and edi should be adjusted before passing the exception to Linux/Wine
 void X64Asm::string(bool hasSi, bool hasDi, bool ea16) {
     U8 tmpReg = getTmpReg();
-
+    U8 tmpESI = getTmpReg();
+    U8 tmpEDI = getTmpReg();    
+    
+    if (tmpESI!=HOST_TMP2) {
+        kpanic("X64Asm::string tmpEDI!=HOST_TMP2");
+    }
+    if (tmpEDI!=HOST_TMP3) {
+        kpanic("X64Asm::string tmpEDI!=HOST_TMP3");
+    }
     if (hasDi) {
-        if (ea16) {            
-            pushNativeReg(7, false);
+        writeToRegFromReg(tmpEDI, true, 7, false, 4); // necessary to exception handling can get original edi
+        if (ea16) {                 
             pushNativeFlags();
             andReg(7, false, 0x0000ffff);
             popNativeFlags();
@@ -1998,8 +2005,8 @@ void X64Asm::string(bool hasSi, bool hasDi, bool ea16) {
         addWithLea(7, false, 7, false, getRegForSeg(ES, tmpReg), true, 0, 0, 4);
     }
     if (hasSi) {
-        if (ea16) {            
-            pushNativeReg(6, false);
+        writeToRegFromReg(tmpESI, true, 6, false, 4); // necessary to exception handling can get original esi
+        if (ea16) {                        
             pushNativeFlags();
             andReg(6, false, 0x0000ffff);
             popNativeFlags();
@@ -2018,35 +2025,37 @@ void X64Asm::string(bool hasSi, bool hasDi, bool ea16) {
     writeOp();
 
     tmpReg = getTmpReg();
-    U8 tmpReg2 = getTmpReg();
     writeToRegFromMem(tmpReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_NEG_MEM, 8, false);
     if (hasSi) {
         addWithLea(6, false, 6, false, tmpReg, true, 0, 0, 8);    
-        addWithLea(6, false, 6, false, getRegForNegSeg(this->ds, tmpReg2), true, 0, 0, 4);
+    }
+    if (hasDi) {
+        addWithLea(7, false, 7, false, tmpReg, true, 0, 0, 8);
+    }
+    if (hasSi) {
+        addWithLea(6, false, 6, false, getRegForNegSeg(this->ds, tmpReg), true, 0, 0, 4);
         if (ea16) {
-            popNativeReg(tmpReg2, true);
             pushNativeFlags();
-            andReg(tmpReg2, true, 0xFFFF0000);
+            andReg(tmpESI, true, 0xFFFF0000);
             andReg(6, false, 0x0000FFFF);
-            orRegReg(6, false, tmpReg2, true);
+            orRegReg(6, false, tmpESI, true);
             popNativeFlags();
         }
     }
     if (hasDi) {
-        addWithLea(7, false, 7, false, tmpReg, true, 0, 0, 8);    
-        addWithLea(7, false, 7, false, getRegForNegSeg(ES, tmpReg2), true, 0, 0, 4);
+        addWithLea(7, false, 7, false, getRegForNegSeg(ES, tmpReg), true, 0, 0, 4);
         if (ea16) {
-            popNativeReg(tmpReg2, true);
             pushNativeFlags();
-            andReg(tmpReg2, true, 0xFFFF0000);
+            andReg(tmpEDI, true, 0xFFFF0000);
             andReg(7, false, 0x0000FFFF);
-            orRegReg(7, false, tmpReg2, true);
+            orRegReg(7, false, tmpEDI, true);
             popNativeFlags();
         }
     }    
         
     releaseTmpReg(tmpReg);
-    releaseTmpReg(tmpReg2);
+    releaseTmpReg(tmpESI);
+    releaseTmpReg(tmpEDI);
 }
 
 // U16 val = readw(eaa);
@@ -2160,6 +2169,9 @@ void X64Asm::leave(bool big) {
 
 void X64Asm::callE(bool big, U8 rm) {
     U8 tmpReg = getTmpReg();
+    if (!big) {
+        zeroReg(tmpReg, true);
+    }
     writeToRegFromE(tmpReg, true, rm, (big?4:2));
     push(-1, false, this->ip, (big?4:2)); 
     jmpReg(tmpReg, true);
@@ -2208,6 +2220,9 @@ void X64Asm::callFar(bool big, U8 rm) {
 
 void X64Asm::jmpE(bool big, U8 rm) {
     U8 tmpReg = getTmpReg();
+    if (!big) {
+        zeroReg(tmpReg, true);
+    }
     writeToRegFromE(tmpReg, true, rm, (big?4:2));
     jmpReg(tmpReg, true);
     releaseTmpReg(tmpReg);
@@ -2215,6 +2230,17 @@ void X64Asm::jmpE(bool big, U8 rm) {
 
 void X64Asm::jmpFar(bool big, U8 rm) {
     callJmp(big, rm, common_jmp);       
+}
+
+// call back signature
+// void OPCALL onExitSignal(CPU* cpu, DecodedOp* op) 
+void X64Asm::callCallback(void* pfn) {
+    syncRegsFromHost();
+    writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
+    writeToRegFromValue(2, false, 0, 8);
+    callHost(pfn);
+    syncRegsToHost();
+    doJmp();
 }
 
 void X64Asm::lsl(bool big, U8 rm) {
@@ -2274,11 +2300,15 @@ void X64Asm::lar(bool big, U8 rm) {
 }
 
 static void x64_invalidOp(U32 op) {
+    //kpanic("x64_invalidOp: 0x%X", op);
 }
 
 void X64Asm::invalidOp(U32 op) {
+    //syncRegsFromHost(); 
     writeToRegFromValue(1, false, op, 4);
     callHost(x64_invalidOp);
+    //syncRegsToHost();
+    //doJmp();
 }
 
 void X64Asm::cpuid() {
