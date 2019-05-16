@@ -1986,7 +1986,7 @@ void X64Asm::bswapSp() {
 
 void X64Asm::string(bool hasSi, bool hasDi, bool ea16) {
     U8 tmpReg = getTmpReg();
-    U8 tmpESI = getTmpReg();
+    U8 tmpESI = getTmpReg(); // maybe sync to cpu instead?
     U8 tmpEDI = getTmpReg();    
     
     if (tmpESI!=HOST_TMP2) {

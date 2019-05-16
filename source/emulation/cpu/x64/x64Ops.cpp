@@ -132,8 +132,14 @@ static U32 inst16RM(X64Asm* data) {
 
 // GRP2 Eb,1
 // GRP2 Eb,CL
-// GRP4 Eb
 static U32 inst8RMSafeG(X64Asm* data) {
+    U8 rm = data->fetch8();
+    data->translateRM(rm, false, true, false, true, 0);
+    return 0;
+}
+
+// GRP4 Eb
+static U32 instGrp4(X64Asm* data) {
     U8 rm = data->fetch8();
     if (G(rm)==7) {        
         void* pfn = (void*)data->fetch64();
@@ -1622,6 +1628,16 @@ static U32 hlt(X64Asm* data) {
     return 0;
 }
 
+static U32 cli(X64Asm* data) {
+    data->write8(0x90); // nop
+    return 0;
+}
+
+static U32 sti(X64Asm* data) {
+    data->write8(0x90); // nop
+    return 0;
+}
+
 static U32 invalidOp(X64Asm* data) {
     data->invalidOp(data->inst);
     data->done = true;
@@ -1868,7 +1884,7 @@ X64Decoder x64Decoder[1024] = {
     callJw, jmpJw, jmpAp, jmpJb, invalidOp, invalidOp, invalidOp, invalidOp,
     // F0
     lock, invalidOp, repnz, repz, hlt, keepSame, grp3b, grp3w,
-    keepSame, keepSame, keepSame, keepSame, keepSame, keepSame, inst8RMSafeG, grp5w,
+    keepSame, keepSame, cli, sti, keepSame, keepSame, instGrp4, grp5w,
 
     // 100
     invalidOp, invalidOp, lar, lsl, invalidOp, invalidOp, invalidOp, invalidOp,
@@ -1966,7 +1982,7 @@ X64Decoder x64Decoder[1024] = {
     callJd, jmpJd, jmpFar32, jmpJb, invalidOp, invalidOp, invalidOp, invalidOp,
     // 2f0
     lock, invalidOp, repnz, repz, hlt, keepSame, grp3b, grp3d,
-    keepSame, keepSame, keepSame, keepSame, keepSame, keepSame, inst8RMSafeG, grp5d,
+    keepSame, keepSame, cli, sti, keepSame, keepSame, instGrp4, grp5d,
 
     // 300
     invalidOp, inst32RMSafeG, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp,

@@ -125,6 +125,7 @@ LONG handleCodePatch(struct _EXCEPTION_POINTERS *ep, x64CPU* cpu, U32 address) {
             ESI=(U32)ep->ContextRecord->R8;
             EDI=(U32)ep->ContextRecord->R10;
         }
+        // :TODO: what about ecx for 16-bit strings, what about esi and rdi for strings that are 1/2 done
         if (cpu->flags & DF) {
             cpu->df = -1;
         } else {

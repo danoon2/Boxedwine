@@ -191,9 +191,6 @@ void x64CPU::translateInstruction(X64Asm* data) {
     // just makes debugging the asm output easier
     data->writeToMemFromValue(data->ip, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EIP, 4, false);
 #endif
-    if (data->ip==0x54C562) {
-        int ii=0;
-    }
     data->startOfOpIp = data->ip;        
     while (1) {  
         data->op = data->fetch8();            
