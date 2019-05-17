@@ -43,6 +43,27 @@ LONG handleChangedUnpatchedCode(struct _EXCEPTION_POINTERS *ep, x64CPU* cpu) {
                         
     unsigned char* hostAddress = (unsigned char*)ep->ContextRecord->Rip;
     X64CodeChunk* chunk = cpu->thread->memory->getCodeChunkContainingHostAddress(hostAddress);
+    if (!chunk) {
+        /* some debug code
+        U32 toEip = *(((U32*)hostAddress)+2);
+        KThread* thread = KThread::currentThread();
+        Memory* memory = thread->memory;
+
+        for (U32 i=0;i<K_NUMBER_OF_PAGES;i++) {
+            X64CodeChunk* chunk = memory->hostCodeChunks[i];
+            while (chunk) {
+                if (chunk->hasLinkTo(hostAddress)) {
+                    int ii=0;
+                }
+                if (chunk->hasLinkToEip(toEip)) {
+                    int ii=0;
+                }
+                chunk = chunk->getNext();
+            }
+        }
+        */
+        kpanic("handleChangedUnpatchedCode: could not find chunk");
+    }
     U32 startOfEip = chunk->getEipThatContainsHostAddress(hostAddress, NULL);
     chunk->deallocAndRetranslate();   
     ep->ContextRecord->Rip = (U64)cpu->thread->memory->getExistingHostAddress(startOfEip);
@@ -69,7 +90,7 @@ LONG handleCodePatch(struct _EXCEPTION_POINTERS *ep, x64CPU* cpu, U32 address) {
 #endif
     // get the emulated eip of the op that corresponds to the host address where the exception happened
     X64CodeChunk* chunk = cpu->thread->memory->getCodeChunkContainingHostAddress((void*)ep->ContextRecord->Rip);
-    cpu->eip.u32 = chunk->getEipThatContainsHostAddress((void*)ep->ContextRecord->Rip, NULL);
+    cpu->eip.u32 = chunk->getEipThatContainsHostAddress((void*)ep->ContextRecord->Rip, NULL)-cpu->seg[CS].address;
 
     // get the emulated op that caused the write
     DecodedOp* op = cpu->getExistingOp(cpu->eip.u32);
@@ -114,12 +135,12 @@ LONG handleCodePatch(struct _EXCEPTION_POINTERS *ep, x64CPU* cpu, U32 address) {
         if (op->inst==Lodsb || op->inst==Lodsw || op->inst==Lodsd) {
             ESI=(U32)ep->ContextRecord->R8;
         }
-        // uses di
+        // uses di (Examples: Real Deal installer rdeal101.exe)
         if (op->inst==Stosb || op->inst==Stosw || op->inst==Stosd ||
             op->inst==Scasb || op->inst==Scasw || op->inst==Scasd) {
             EDI=(U32)ep->ContextRecord->R10;
         }
-        // uses si and di
+        // uses si and di (Examples: Real Deal installer rdeal101.exe)
         if (op->inst==Movsb || op->inst==Movsw || op->inst==Movsd ||
             op->inst==Cmpsb || op->inst==Cmpsw || op->inst==Cmpsd) {
             ESI=(U32)ep->ContextRecord->R8;
@@ -167,9 +188,10 @@ public:
 };
 
 LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
+    BOXEDWINE_CRITICAL_SECTION;
     KThread* currentThread = KThread::currentThread();
     if (!currentThread) {
-        return EXCEPTION_CONTINUE_SEARCH;;
+        return EXCEPTION_CONTINUE_SEARCH;
     }
     x64CPU* cpu = (x64CPU*)currentThread->cpu;
     if (cpu!=(x64CPU*)ep->ContextRecord->R13) {
@@ -192,13 +214,14 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
         if (*((U8*)ep->ContextRecord->Rip)==0xce) {            
             return handleChangedUnpatchedCode(ep, cpu);
         } else {
+            int ii=0;
         }
     } else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION && (ep->ContextRecord->Rip & 0xFFFFFFFF00000000l)==(U64)cpu->thread->memory->executableMemoryId) {      
         U32 inst = *((U32*)ep->ContextRecord->Rip);
 
         if (inst==0x088B4466 || inst==0xC8048B4A) {            
             return handleMissingCode(ep, cpu, inst);
-        } else {                
+        } else {  
             // check if the emulated memory caused the exception
             if ((ep->ExceptionRecord->ExceptionInformation[1] & 0xFFFFFFFF00000000l) == cpu->thread->memory->id) {                
                 U32 address = (U32)ep->ExceptionRecord->ExceptionInformation[1];

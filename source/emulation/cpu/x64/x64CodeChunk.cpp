@@ -13,23 +13,24 @@ void X64CodeChunkLink::dealloc() {
     delete this;
 }
 
-X64CodeChunk* X64CodeChunk::allocChunk(x64CPU* cpu, U32 instructionCount, U32* eipInstructionAddress, U32* hostInstructionIndex, U8* hostInstructionBuffer, U32 hostInstructionBufferLen, U32 eip, U32 eipLen) {
+X64CodeChunk* X64CodeChunk::allocChunk(U32 instructionCount, U32* eipInstructionAddress, U32* hostInstructionIndex, U8* hostInstructionBuffer, U32 hostInstructionBufferLen, U32 eip, U32 eipLen) {
     X64CodeChunk* result = new X64CodeChunk();
+    CPU* cpu = KThread::currentThread()->cpu;
     result->next = NULL;
     result->prev = NULL;
-    result->cpu = cpu;
     result->instructionCount = instructionCount;
-    result->emulatedAddress = eip;
+    result->emulatedAddress = eip+cpu->seg[CS].address;
     result->emulatedLen = eipLen;
     result->hostAddress = cpu->thread->memory->allocateExcutableMemory(hostInstructionBufferLen+instructionCount*sizeof(U32)+instructionCount*sizeof(U8), &result->hostAddressSize); 
     result->hostLen = hostInstructionBufferLen;
     result->emulatedInstructionLen = (U8*)result->hostAddress+result->hostAddressSize-instructionCount*sizeof(U8)-instructionCount*sizeof(U32);
     result->hostInstructionLen = (U32*)((U8*)result->hostAddress+result->hostAddressSize-instructionCount*sizeof(U32));// should be aligned to 4 byte boundry
+    memset(result->hostAddress, 0xce, hostInstructionBufferLen);
 
     if (instructionCount) {
         for (U32 i=0;i<instructionCount;i++) {
             if (i==instructionCount-1) {
-                result->emulatedInstructionLen[i] = eipLen-(eipInstructionAddress[i]-(result->emulatedAddress+cpu->seg[CS].address));
+                result->emulatedInstructionLen[i] = eipLen-(eipInstructionAddress[i]-result->emulatedAddress);
                 result->hostInstructionLen[i] = hostInstructionBufferLen-hostInstructionIndex[i];
             } else {
                 result->emulatedInstructionLen[i] = eipInstructionAddress[i+1]-eipInstructionAddress[i];
@@ -48,6 +49,9 @@ X64CodeChunk* X64CodeChunk::allocChunk(x64CPU* cpu, U32 instructionCount, U32* e
                 memset(table, 0, sizeof(void*)*K_PAGE_SIZE);
                 cpu->thread->memory->eipToHostInstruction[page] = table;
             }
+            if (table[offset]) {
+                kpanic("X64CodeChunk::allocChunk eip already mapped");
+            }
             table[offset] = (U8*)result->hostAddress + hostInstructionIndex[i];
         }        
     }
@@ -58,6 +62,7 @@ X64CodeChunk* X64CodeChunk::allocChunk(x64CPU* cpu, U32 instructionCount, U32* e
 
 void X64CodeChunk::detachFromHost() {
     U32 eip = this->emulatedAddress;
+    CPU* cpu = KThread::currentThread()->cpu;
     for (U32 i=0;i<this->instructionCount;i++) {
         if (cpu->thread->memory->eipToHostInstruction[eip >> K_PAGE_SHIFT]) { // might span multiple pages and the other pages are already deleted
             cpu->thread->memory->eipToHostInstruction[eip >> K_PAGE_SHIFT][eip & K_PAGE_MASK] = NULL;
@@ -75,8 +80,15 @@ void X64CodeChunk::dealloc() {
     this->internalDealloc();
 }
 
-void X64CodeChunk::internalDealloc() {
-    cpu->thread->memory->freeExcutableMemory(this->hostAddress, this->hostAddressSize);
+void X64CodeChunk::internalDealloc() {    
+    KThread::currentThread()->memory->freeExcutableMemory(this->hostAddress, this->hostAddressSize);
+#ifdef _DEBUG
+    // tag it so that we can see where it came from when debugging
+    U32* p = (U32*)this->hostAddress;
+    p++;
+    p++;
+    *p = this->emulatedAddress;
+#endif
     delete this;
 }
 
@@ -138,30 +150,30 @@ void X64CodeChunk::deallocAndRetranslate() {
     // remove this chunk and its mappings from being used (since it is about to be replaced)
     detachFromHost(); 
 
-    X64Asm data(this->cpu);
-    data.ip = this->emulatedAddress;
+    x64CPU* cpu = (x64CPU*)KThread::currentThread()->cpu;
+    X64Asm data(cpu);
+    data.ip = this->emulatedAddress-cpu->seg[CS].address;
     data.startOfDataIp = data.ip;       
-    this->cpu->translateData(&data);
-    if (data.ip>this->emulatedAddress+this->emulatedLen) {
+    cpu->translateData(&data);
 
-        kpanic("X64CodeChunk::deallocAndRetranslate new chunk has more instructions");
-        // :TODO: see if the new instructions overlap with another chunk
-    }
     void* result = data.commit();
     X64CodeChunk* chunk = cpu->thread->memory->getCodeChunkContainingHostAddress(result);
-    this->cpu->link(&data, result);    
-
-    this->linksFrom.for_each([chunk, this] (KListNode<X64CodeChunkLink*>* link) {
+    cpu->link(&data, result);    
+    cpu->makePendingCodePagesReadOnly();
+    this->linksFrom.for_each([chunk, cpu] (KListNode<X64CodeChunkLink*>* link) {
+        U32 hostOpLen = (U32)link->data->toHostInstruction - (U32)link->data->fromHostOffset - *((S32*)link->data->fromHostOffset)+1;
         link->data->linkFrom.remove();
         chunk->linksFrom.addToBack(&link->data->linkFrom);
-        U64 destHost = (U64)this->cpu->thread->memory->getExistingHostAddress(link->data->toEip);
+        U64 destHost = (U64)cpu->thread->memory->getExistingHostAddress(link->data->toEip);
         U32 fromInstructionIndex;        
         X64CodeChunk* fromChunk = cpu->thread->memory->getCodeChunkContainingHostAddress(link->data->fromHostOffset);
         void* srcHostInstruction = NULL;
         U32 srcEip = fromChunk->getEipThatContainsHostAddress(link->data->fromHostOffset, &srcHostInstruction);
         fromChunk->getStartOfInstructionByEip(srcEip, NULL, &fromInstructionIndex);
-        U64 srcHost = (U64)srcHostInstruction;         
-        *((U32*)link->data->fromHostOffset) = (U32)(destHost-srcHost-fromChunk->hostInstructionLen[fromInstructionIndex]);
+        U64 srcHost = (U64)srcHostInstruction;   
+        U64 endOfJump = (U64)link->data->fromHostOffset - srcHost + 4;
+
+        *((U32*)link->data->fromHostOffset) = (U32)(destHost-srcHost-endOfJump);
         link->data->toHostInstruction = (void*)destHost;
     });
 
@@ -171,6 +183,38 @@ void X64CodeChunk::deallocAndRetranslate() {
     this->internalDealloc(); // don't call dealloc() because the new chunk occupies the memory cache and we don't want to mess with it
 }
 
+bool X64CodeChunk::hasLinkTo(void* hostAddress) {
+    bool found = false;
+
+    this->linksFrom.for_each([&found, hostAddress] (KListNode<X64CodeChunkLink*>* link) {
+        if (link->data->toHostInstruction==hostAddress) {
+            found = true;
+        }
+    });
+    this->linksTo.for_each([&found, hostAddress] (KListNode<X64CodeChunkLink*>* link) {
+        if (link->data->toHostInstruction==hostAddress) {
+            found = true;
+        }
+    });
+    return found;
+}
+
+bool X64CodeChunk::hasLinkToEip(U32 eip) {
+    bool found = false;
+
+    this->linksFrom.for_each([&found, eip] (KListNode<X64CodeChunkLink*>* link) {
+        if (link->data->toEip==eip) {
+            found = true;
+        }
+    });
+    this->linksTo.for_each([&found, eip] (KListNode<X64CodeChunkLink*>* link) {
+        if (link->data->toEip==eip) {
+            found = true;
+        }
+    });
+    return found;
+}
+
 // if the patch doesn't change the size of the instructions then the patch will happen now, otherwise
 // an invalid instruction will be caught later and the code rewritten in the above function, updateStartingAtHostAddress
 void X64CodeChunk::patch(U32 eipAddress, U32 len) {    
@@ -178,6 +222,7 @@ void X64CodeChunk::patch(U32 eipAddress, U32 len) {
     U8* host = NULL;
     U32 eip = this->getStartOfInstructionByEip(eipAddress, &host, &eipIndex);
     S32 todo = len + (eipAddress - eip);
+    x64CPU* cpu = (x64CPU*)KThread::currentThread()->cpu;
 
     while (todo>0) {
         X64Asm data(cpu);                                

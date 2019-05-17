@@ -135,9 +135,7 @@ public:
 #ifdef BOXEDWINE_X64
     BOXEDWINE_MUTEX executableMemoryMutex;
 private:
-// 128 bytes
 #define EXECUTABLE_MIN_SIZE_POWER 7
-// 64k bytes
 #define EXECUTABLE_MAX_SIZE_POWER 22
 #define EXECUTABLE_SIZES 16
 

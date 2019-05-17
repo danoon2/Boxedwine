@@ -111,50 +111,34 @@ void x64CPU::link(X64Asm* data, void* address) {
 
     for (i=0;i<data->todoJump.size();i++) {
         U32 eip = this->seg[CS].address+data->todoJump[i].eip;
-        void* hostAddress = this->thread->memory->getExistingHostAddress(eip);
-        if (!hostAddress) {
-            X64Asm* p = data->parent;
-            bool found = false;
+        bool toChunkCreated = false;
+        U8* toHostAddress = (U8*)this->thread->memory->getExistingHostAddress(eip);
 
-            while (p && !found) {
-                U32 i;
-                for (i=0;i<p->ipAddressCount;i++) {
-                    if (p->ipAddress[i]==eip) {
-                        p->todoJump.push_back(X64Data::TodoJump(eip, p->ipAddressBufferPos[i], 4));                        
-                        found = true;
-                        break;
-                    }
-                }
-                p = p->parent;
-            }
-            if (found) {
-                continue;
-            }
-            if (!data->cpu->thread->memory->isValidReadAddress(eip, 1)) {
-                // hope that the program will fill this in later
-                continue;
-            }
-            if (readb(eip) || readb(eip+1) || readb(eip+2) || readb(eip+3)) {
-                hostAddress = translateEipInternal(data, data->todoJump[i].eip);
-            } else {
-                int ii=0;
-            }
+        if (!toHostAddress) {
+            U8 op = 0xce;
+            U32 hostIndex = 0;
+            X64CodeChunk* chunk = X64CodeChunk::allocChunk(1, &eip, &hostIndex, &op, 1, eip-this->seg[CS].address, 1);
+            toHostAddress = (U8*)chunk->getHostAddress();            
+            toChunkCreated = true;
         }
-
-        U8* translatedOffset = (U8*)translateEipInternal(data, data->todoJump[i].eip);
         U8* offset = (U8*)address+data->todoJump[i].bufferPos;
         U8 size = data->todoJump[i].offsetSize;
 
         if (size==4) {
-            data->write32Buffer(offset, (U32)(translatedOffset - offset - 4));
+            data->write32Buffer(offset, (U32)(toHostAddress - offset - 4));
 
-            X64CodeChunk* fromChunk = this->thread->memory->getCodeChunkContainingHostAddress(offset);
-            X64CodeChunk* toChunk = this->thread->memory->getCodeChunkContainingHostAddress(translatedOffset);
+            X64CodeChunk* fromChunk = this->thread->memory->getCodeChunkContainingHostAddress(address);
+            if (!fromChunk) {
+                kpanic("x64CPU::link fromChunk missing");
+            }
+            X64CodeChunk* toChunk = this->thread->memory->getCodeChunkContainingHostAddress(toHostAddress);
             if (fromChunk != toChunk && fromChunk && toChunk) {
-                toChunk->addLinkFrom(fromChunk, eip, translatedOffset, offset);
+                toChunk->addLinkFrom(fromChunk, eip, toHostAddress, offset);
+            } else if (toChunkCreated) {
+                kpanic("x64CPU::link failed to add a link to a chunk");
             }
         } else {
-            kpanic("x64CPU only supports 4 byte jumps so that we can patch it easily later");
+            kpanic("x64CPU::link only supports 4 byte jumps so that we can patch it easily later");
         }
     }
     markCodePageReadOnly(data);
@@ -179,6 +163,7 @@ void x64CPU::makePendingCodePagesReadOnly() {
 
 void* x64CPU::translateEip(U32 ip) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->thread->memory->executableMemoryMutex);
+
     void* result = translateEipInternal(NULL, ip);
     makePendingCodePagesReadOnly();
     return result;

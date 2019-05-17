@@ -152,7 +152,7 @@ void X64Data::mapAddress(U32 ip, U32 bufferPos) {
 }
 
 void* X64Data::commit() {
-    X64CodeChunk* chunk = X64CodeChunk::allocChunk(this->cpu, this->ipAddressCount, this->ipAddress, this->ipAddressBufferPos, this->buffer, this->bufferPos, this->startOfDataIp, this->ip-this->startOfDataIp);
+    X64CodeChunk* chunk = X64CodeChunk::allocChunk(this->ipAddressCount, this->ipAddress, this->ipAddressBufferPos, this->buffer, this->bufferPos, this->startOfDataIp, this->ip-this->startOfDataIp);
     return chunk->getHostAddress();
 }
 

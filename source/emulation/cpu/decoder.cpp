@@ -4645,6 +4645,7 @@ U32 DecodeData::fetch32() {
 }
 
 static DecodedOp* freeOps;
+BOXEDWINE_MUTEX freeOpsMutex;
 
 void DecodedOp::init() {
     this->next = 0;
@@ -4663,6 +4664,7 @@ void DecodedOp::init() {
 }
 DecodedOp* DecodedOp::alloc() {
     DecodedOp* result;
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(freeOpsMutex);
 
     if (freeOps) {
         result = freeOps;
@@ -4683,6 +4685,8 @@ DecodedOp* DecodedOp::alloc() {
 }
 
 void DecodedOp::dealloc(bool deallocNext) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(freeOpsMutex);
+
 #ifdef _DEBUG
     if (this->inst == InstructionCount) {
         kpanic("tried to dealloc a DecodedOp that was already deallocated");

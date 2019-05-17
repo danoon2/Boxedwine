@@ -571,6 +571,18 @@ void Memory::removeCodeChunk(X64CodeChunk* chunk) {
 // called when X64CodeChunk is being alloc'd
 void Memory::addCodeChunk(X64CodeChunk* chunk) {
     U32 page = ((U32)chunk->getHostAddress()) >> K_PAGE_SHIFT;
+#ifdef _DEBUG
+    U32 lastPage = page+(((U32)chunk->getHostAddress()+chunk->getHostAddressLen()) >> K_PAGE_SHIFT);
+    for (U32 i=page;i<=lastPage;i++) {
+        X64CodeChunk* result = this->hostCodeChunks[i];
+        while (result) {
+            if (result->containsHostAddress(chunk->getHostAddress())) {
+                kpanic("Memory::addCodeChunk chunks can not overlap");
+            }
+            result = result->getNext();
+        }
+    }
+#endif
     X64CodeChunk* result = this->hostCodeChunks[page];
     this->hostCodeChunks[page] = chunk;
 
@@ -676,11 +688,14 @@ void* Memory::allocateExcutableMemory(U32 requestedSize, U32* allocatedSize) {
 }
 
 void Memory::freeExcutableMemory(void* hostMemory, U32 size) {
-    memset(hostMemory, 0, size);
+    memset(hostMemory, 0xcd, size);
 }
 
 void Memory::executableMemoryReleased() {
+#ifdef BOXEDWINE_X64
+    memset(this->hostCodeChunks, 0, sizeof(this->hostCodeChunks));
     memset(this->freeExecutableMemory, 0, sizeof(this->freeExecutableMemory));
+#endif   
 }
 #endif
 
