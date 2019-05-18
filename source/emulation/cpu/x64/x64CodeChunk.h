@@ -36,7 +36,7 @@ public:
     U32 getHostAddressLen() {return this->hostLen;}
 
     bool containsHostAddress(void* hostAddress) {return hostAddress>=this->hostAddress && hostAddress<=(U8*)this->hostAddress+this->hostLen;}
-    bool containsEip(U32 eip) {return eip>=this->emulatedAddress && eip<=this->emulatedAddress+this->emulatedLen;}
+    bool containsEip(U32 eip) {return eip>=this->emulatedAddress && eip<this->emulatedAddress+this->emulatedLen;}
     X64CodeChunk* getNext() {return this->next;}
 
     void setNext(X64CodeChunk* n) {this->next = n; if (n) n->prev=this;}

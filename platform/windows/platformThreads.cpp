@@ -213,6 +213,16 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
     if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_ILLEGAL_INSTRUCTION) {
         if (*((U8*)ep->ContextRecord->Rip)==0xce) {            
             return handleChangedUnpatchedCode(ep, cpu);
+        } if (*((U8*)ep->ContextRecord->Rip)==0xcd) { 
+            // free'd chunks are filled in with 0xcd, if this one is free'd, it is possible another thread replaced the chunk
+            // while this thread jumped to it and this thread waited in the critical section at the top of this function.
+            void* host = cpu->thread->memory->getExistingHostAddress(cpu->eip.u32+cpu->seg[CS].address);
+            if (host) {
+                ep->ContextRecord->Rip = (U64)host;
+                return EXCEPTION_CONTINUE_EXECUTION;
+            } else {
+                kpanic("x64 seh_filter tried to run code in a free'd chunk");
+            }
         } else {
             int ii=0;
         }

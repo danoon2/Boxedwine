@@ -1655,7 +1655,8 @@ void X64Asm::addTodoLinkJump(U32 eip) {
 
 #define JUMP_TO_SIZE 5
 
-void X64Asm::jumpTo(U32 eip) {    
+void X64Asm::jumpTo(U32 eip) {  
+    this->writeToMemFromValue(eip, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EIP, 4, false);
     write8(0xE9);
     write32(0);
     addTodoLinkJump(eip);
@@ -1663,8 +1664,10 @@ void X64Asm::jumpTo(U32 eip) {
 
 void X64Asm::doLoop(U32 eip) {
     // :TODO: maybe find one byte offset
-    write8(JUMP_TO_SIZE); // skip over the next jmp
+    U32 pos = this->bufferPos;
+    write8(0); // skip over the next jmp
     jumpTo(this->ip); // jump to next instruction after this because condition was not met
+    this->buffer[pos] = this->bufferPos-pos-1;
     jumpTo(eip); // jmp to offset because condition was met
 }
 

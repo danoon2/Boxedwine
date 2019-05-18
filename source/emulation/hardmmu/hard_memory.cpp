@@ -689,6 +689,10 @@ void* Memory::allocateExcutableMemory(U32 requestedSize, U32* allocatedSize) {
 
 void Memory::freeExcutableMemory(void* hostMemory, U32 size) {
     memset(hostMemory, 0xcd, size);
+    // :TODO: when this recycled, make sure we delay the recycling in case another thread is also waiting in seh_filter 
+    // for its turn to jump to this chunk at the same time another thread retranslated it
+    //
+    // I saw this in the Real Deal installer
 }
 
 void Memory::executableMemoryReleased() {
