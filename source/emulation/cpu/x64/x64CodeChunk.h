@@ -9,7 +9,7 @@ public:
     static X64CodeChunkLink* alloc();
 
     X64CodeChunkLink() : linkTo(this), linkFrom(this) {}
-    void dealloc();
+    void dealloc();    
 
     // will address to the middle of the instruction
     void* fromHostOffset;
@@ -29,6 +29,7 @@ public:
     void dealloc();    
     void deallocAndRetranslate();
     void patch(U32 eip, U32 len);
+    void makeLive();
 
     U32 getEipThatContainsHostAddress(void* hostAddress, void** startOfHostInstruction);
 
@@ -42,10 +43,11 @@ public:
     void setNext(X64CodeChunk* n) {this->next = n; if (n) n->prev=this;}
     void removeFromList();
 
-    void addLinkFrom(X64CodeChunk* from, U32 toEip, void* toHostInstruction, void* fromHostOffset);
+    X64CodeChunkLink* addLinkFrom(X64CodeChunk* from, U32 toEip, void* toHostInstruction, void* fromHostOffset);
     bool hasLinkTo(void* hostAddress);
     bool hasLinkToEip(U32 eip);
 
+    void* getHostFromEip(U32 eip) {U8* result=NULL; this->getStartOfInstructionByEip(eip, &result, NULL); return result;}
 private:
     void detachFromHost();
     void internalDealloc();

@@ -1629,10 +1629,26 @@ void X64Asm::popA32() {
 }
 
 void X64Asm::jumpConditional(U8 condition, U32 eip) {    
-    write8(0x0F);
-    write8(0x80+condition);
-    write32(0);
-    addTodoLinkJump(eip);
+    if (this->calculatedEipLen==0 || (eip>=this->startOfDataIp && eip<this->startOfDataIp+this->calculatedEipLen)) {
+        write8(0x0F);
+        write8(0x80+condition);
+        write32(0);
+        addTodoLinkJump(eip, true);
+    } else {
+        write8(0x70+condition);
+        doLoop(eip);
+    }
+}
+
+void X64Asm::write64Buffer(U8* buffer, U64 value) {
+    buffer[0] = (U8)value;
+    buffer[1] = (U8)(value >> 8);
+    buffer[2] = (U8)(value >> 16);
+    buffer[3] = (U8)(value >> 24);
+    buffer[4] = (U8)(value >> 32);
+    buffer[5] = (U8)(value >> 40);
+    buffer[6] = (U8)(value >> 48);
+    buffer[7] = (U8)(value >> 56);
 }
 
 void X64Asm::write32Buffer(U8* buffer, U32 value) {
@@ -1640,7 +1656,6 @@ void X64Asm::write32Buffer(U8* buffer, U32 value) {
     buffer[1] = (U8)(value >> 8);
     buffer[2] = (U8)(value >> 16);
     buffer[3] = (U8)(value >> 24);
-
 }
 
 void X64Asm::write16Buffer(U8* buffer, U16 value) {
@@ -1649,17 +1664,26 @@ void X64Asm::write16Buffer(U8* buffer, U16 value) {
 
 }
 
-void X64Asm::addTodoLinkJump(U32 eip) {
-    this->todoJump.push_back(TodoJump(eip, this->bufferPos-4, 4));
+void X64Asm::addTodoLinkJump(U32 eip, bool sameChunk) {
+    this->todoJump.push_back(TodoJump(eip, this->bufferPos-(sameChunk?4:11), (sameChunk?4:8), sameChunk));
 }
 
-#define JUMP_TO_SIZE 5
-
 void X64Asm::jumpTo(U32 eip) {  
+#ifdef _DEBUG
+    this->writeToMemFromValue(this->startOfOpIp, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EIP_FROM, 4, false);
+#endif
     this->writeToMemFromValue(eip, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EIP, 4, false);
-    write8(0xE9);
-    write32(0);
-    addTodoLinkJump(eip);
+    if (this->calculatedEipLen==0 || (eip>=this->startOfDataIp && eip<this->startOfDataIp+this->calculatedEipLen)) {
+        write8(0xE9);
+        write32(0);
+        addTodoLinkJump(eip, true);
+    } else {
+        writeToRegFromValue(HOST_TMP, true, 0x0101010101010101l, 8);
+        write8(0x41);
+        write8(0xff);
+        write8(0x20 | HOST_TMP);
+        addTodoLinkJump(eip, false);
+    }
 }
 
 void X64Asm::doLoop(U32 eip) {

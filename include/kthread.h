@@ -82,6 +82,7 @@ public:
     Memory* memory;
     bool interrupted;
     U32 inSignal;    
+    bool exiting;
 
     U32 clear_child_tid;
     U64 userTime;
@@ -108,12 +109,15 @@ public:
     inline static KThread* currentThread() {return runningThread;}
     inline static void setCurrentThread(KThread* thread){runningThread = thread; thread->memory->onThreadChanged();}
 
-    KListNode<KThread*> scheduledThreadNode;
-    KListNode<KThread*> waitThreadNode;
-
     BOXEDWINE_CONDITION *waitingCond;
     BOXEDWINE_CONDITION pollCond;
+#ifdef BOXEDWINE_MULTI_THREADED
+#else
+    KListNode<KThread*> scheduledThreadNode;
+    KListNode<KThread*> waitThreadNode;
+        
     BoxedWineConditionTimer condTimer;
+#endif
 
     U32 condStartWaitTime;
     bool srand_initialized;

@@ -1744,6 +1744,9 @@ static U32 addressSize16(X64Asm* data) {
 // LOCK
 static U32 lock(X64Asm* data) {
     data->lockPrefix = true;
+    if (data->ip-1 == data->startOfOpIp) {
+        data->mapAddress(data->ip, data->bufferPos);
+    }
     return 1;
 }
 

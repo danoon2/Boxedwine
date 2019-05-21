@@ -43,11 +43,13 @@ void KThread::cleanup() {
         this->futex(this->clear_child_tid, 1, 1, 0);
         this->clear_child_tid = 0;
     }
+#ifndef BOXEDWINE_MULTI_THREADED
     if (this->waitingCond) {
         BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(*this->waitingCond);
         this->waitThreadNode.remove();
         this->waitingCond = NULL;
     }
+#endif
     this->clearFutexes();    
     if (this->process) {
         this->process->removeThread(this);
@@ -97,6 +99,7 @@ KThread::KThread(U32 id, KProcess* process) :
     memory(0),
     interrupted(false),
     inSignal(0),
+    exiting(false),
     clear_child_tid(0),
     userTime(0),
     kernelTime(0),
@@ -107,10 +110,12 @@ KThread::KThread(U32 id, KProcess* process) :
     glContext(0),
     currentContext(0),
     log(false),
-    scheduledThreadNode(this),
-    waitThreadNode(this),
-    waitingCond(0),    
+    waitingCond(0),
     pollCond("KThread::pollCond"),
+#ifndef BOXEDWINE_MULTI_THREADED
+    scheduledThreadNode(this),
+    waitThreadNode(this),            
+#endif
     condStartWaitTime(0),
     sleepCond("KThread::sleepCond")
     {
@@ -649,13 +654,14 @@ void KThread::runSignal(U32 signal, U32 trapNo, U32 errorNo) {
         } else if (!(action->flags & K_SA_NODEFER)) {
             this->inSigMask|= (U64)1 << (signal-1);
         }	
+#ifndef BOXEDWINE_MULTI_THREADED
         if (this->waitingCond) {
             if (!(action->flags & K_SA_RESTART))
                 interrupted = 1;
             this->waitThreadNode.remove();
             this->waitingCond = NULL;
         }		
-
+#endif
         // move to front of the queue
 #ifndef BOXEDWINE_MULTI_THREADED
         unscheduleThread(this);

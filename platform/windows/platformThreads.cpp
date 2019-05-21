@@ -31,6 +31,8 @@ void syncToException(x64CPU* cpu, struct _EXCEPTION_POINTERS *ep) {
     ep->ContextRecord->Rbp = EBP;
     ep->ContextRecord->Rsi = ESI;
     ep->ContextRecord->Rdi = EDI;
+    ep->ContextRecord->R14 = cpu->seg[SS].address;
+    ep->ContextRecord->R15 = cpu->seg[DS].address;
     cpu->fillFlags();
     ep->ContextRecord->EFlags = cpu->flags;
 }
@@ -187,6 +189,11 @@ public:
     x64CPU* cpu;
 };
 
+void OPCALL unscheduleCallback(CPU* cpu, DecodedOp* op) {
+    jmp_buf* jmpBuf = ((x64CPU*)KThread::currentThread()->cpu)->jmpBuf;
+    longjmp(*jmpBuf,1);
+}
+
 LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
     BOXEDWINE_CRITICAL_SECTION;
     KThread* currentThread = KThread::currentThread();
@@ -197,17 +204,18 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
     if (cpu!=(x64CPU*)ep->ContextRecord->R13) {
         return EXCEPTION_CONTINUE_SEARCH;
     }
+    if (currentThread->exiting) {
+        X64Asm data(cpu);
+        data.callCallback(unscheduleCallback);
+        ep->ContextRecord->Rip = (U64)data.commit(true)->getHostAddress();        
+        return EXCEPTION_CONTINUE_EXECUTION;
+    }
     if (cpu->inException) {
-        EAX = (U32)ep->ContextRecord->Rax;
-        ECX = (U32)ep->ContextRecord->Rcx;
-        EDX = (U32)ep->ContextRecord->Rdx;
-        EBX = (U32)ep->ContextRecord->Rbx;
-        ESP = (U32)ep->ContextRecord->R11;
-        EBP = (U32)ep->ContextRecord->Rbp;
-        ESI = (U32)ep->ContextRecord->Rsi;
-        EDI = (U32)ep->ContextRecord->Rdi;
+        syncFromException(cpu, ep);
         cpu->thread->seg_mapper((U32)ep->ExceptionRecord->ExceptionInformation[1], ep->ExceptionRecord->ExceptionInformation[0]==0, ep->ExceptionRecord->ExceptionInformation[0]==1);
-        return EXCEPTION_CONTINUE_SEARCH;
+        syncToException(cpu, ep);
+        ep->ContextRecord->Rip = (U64)cpu->translateEip(cpu->eip.u32); 
+        return EXCEPTION_CONTINUE_EXECUTION;
     } 
     InException inException(cpu);
     if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_ILLEGAL_INSTRUCTION) {
@@ -240,17 +248,15 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
                 if (cpu->thread->memory->nativeFlags[address>>K_PAGE_SHIFT] & NATIVE_FLAG_CODEPAGE_READONLY) {
                     return handleCodePatch(ep, cpu, address);
                 }
-            }             
-
-            EAX = (U32)ep->ContextRecord->Rax;
-            ECX = (U32)ep->ContextRecord->Rcx;
-            EDX = (U32)ep->ContextRecord->Rdx;
-            EBX = (U32)ep->ContextRecord->Rbx;
-            ESP = (U32)ep->ContextRecord->R11;
-            EBP = (U32)ep->ContextRecord->Rbp;
-            ESI = (U32)ep->ContextRecord->Rsi;
-            EDI = (U32)ep->ContextRecord->Rdi;
+            }   
+#ifdef _DEBUG
+            void* fromHost = cpu->thread->memory->getExistingHostAddress(cpu->fromEip);
+#endif
+            syncFromException(cpu, ep);
             cpu->thread->seg_mapper((U32)ep->ExceptionRecord->ExceptionInformation[1], ep->ExceptionRecord->ExceptionInformation[0]==0, ep->ExceptionRecord->ExceptionInformation[0]==1);
+            syncToException(cpu, ep);
+            ep->ContextRecord->Rip = (U64)cpu->translateEip(cpu->eip.u32); 
+            return EXCEPTION_CONTINUE_EXECUTION;
         }
     }
     return EXCEPTION_CONTINUE_SEARCH;
@@ -263,6 +269,8 @@ DWORD WINAPI platformThreadProc(LPVOID lpThreadParameter) {
     KThread* thread = (KThread*)lpThreadParameter;
     x64CPU* cpu = (x64CPU*)thread->cpu;
     jmp_buf jmpBuf;
+    U32 threadId = thread->id;
+    U32 processId = thread->process->id;
 
     KThread::setCurrentThread(thread);
     // :TODO: hopefully this will eventually go away.  For now this prevents a signal from being generated which isn't handled yet
@@ -275,7 +283,13 @@ DWORD WINAPI platformThreadProc(LPVOID lpThreadParameter) {
         cpu->jmpBuf = &jmpBuf;
         cpu->run();
     }
-    
+    KProcess* process = KSystem::getProcess(processId);
+    if (process) {
+        thread = process->getThreadById(threadId);
+        if (thread) {
+            delete thread;
+        }
+    }
     BOXEDWINE_CONDITION_LOCK(cpu->endCond);
     BOXEDWINE_CONDITION_SIGNAL(cpu->endCond);
     BOXEDWINE_CONDITION_UNLOCK(cpu->endCond);
@@ -297,12 +311,25 @@ void scheduleThread(KThread* thread) {
 void unscheduleThread(KThread* thread) {
     if (thread==KThread::currentThread())
         return;
-    kpanic("unscheduleThread not implemented yet");
+    // get these before the thread exits
+    KProcess* process = thread->process; 
+#ifdef _DEBUG
+    DWORD nativeThreadId = GetThreadId((HANDLE)((x64CPU*)thread->cpu)->nativeHandle);    
+#endif
+    U32 threadId = thread->id;    
+
+    thread->exiting = true;
+    BoxedWineCondition* cond = thread->waitingCond;
+    if (cond) {
+        cond->signal();
+    }    
+    while (process->getThreadById(threadId)) {
+        SDL_Delay(10);
+    }
 }
 
 void unscheduleCurrentThread() {
     jmp_buf* jmpBuf = ((x64CPU*)KThread::currentThread()->cpu)->jmpBuf;
-    delete KThread::currentThread();
     longjmp(*jmpBuf,1);
 }
 
@@ -314,5 +341,11 @@ void removeTimer(KTimer* timer) {
     if (timer->active)
         kpanic("removeTimer not implemented yet");
 }
+
+#ifdef BOXEDWINE_MULTI_THREADED
+void ATOMIC_WRITE64(U64* pTarget, U64 value) {
+    InterlockedExchange64((volatile LONGLONG *)pTarget, (LONGLONG)value);
+}
+#endif
 
 #endif

@@ -31,6 +31,7 @@
 #define CPU_OFFSET_OP_PAGES (U32)(offsetof(x64CPU, eipToHostInstruction))
 
 #define CPU_OFFSET_EIP (U32)(offsetof(x64CPU, eip.u32))
+#define CPU_OFFSET_EIP_FROM (U32)(offsetof(x64CPU, fromEip))
 
 class X64Asm : public X64Data {
 public:  
@@ -112,6 +113,7 @@ public:
     void invalidOp(U32 op);
     void cpuid();
     void setNativeFlags(U32 flags, U32 mask);
+    void write64Buffer(U8* buffer, U64 value);
     void write32Buffer(U8* buffer, U32 value); 
     void write16Buffer(U8* buffer, U16 value); 
     void pushNativeFlags();
@@ -168,7 +170,7 @@ private:
     void setDisplacement32(U32 disp32);
     void setDisplacement8(U8 disp8);  
 
-    void addTodoLinkJump(U32 eip);       
+    void addTodoLinkJump(U32 eip, bool sameChunk);       
     void doLoop(U32 eip);
     void jmpReg(U8 reg, bool isRex);
     void jmpNativeReg(U8 reg, bool isRegRex);

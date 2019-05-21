@@ -27,12 +27,16 @@ public:
     bool inException;
     void*** eipToHostInstruction;
     DecodedOp* getExistingOp(U32 eip);
+
+#ifdef _DEBUG
+    U32 fromEip;
+#endif
 #ifdef __TEST
     void addReturnFromTest();
 #endif
 
     void translateInstruction(X64Asm* data);    
-    void link(X64Asm* data, void* address);
+    void link(X64Asm* data, X64CodeChunk* fromChunk, U32 offsetIntoChunk=0);
     void makePendingCodePagesReadOnly();
     void translateData(X64Asm* data);
 

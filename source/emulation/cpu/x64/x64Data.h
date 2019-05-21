@@ -42,11 +42,12 @@ public:
     void write64(U64 data);
 
     void resetForNewOp();
-    void* commit();
+    X64CodeChunk* commit(bool makeLive);
 
     U32 ip;
     U32 startOfDataIp;
     U32 startOfOpIp;
+    U32 calculatedEipLen;
     bool done;
     U32 op;
     U32 inst; // full op, like 0x200 while op would be 0x00
@@ -84,11 +85,12 @@ public:
 
     static class TodoJump {
     public:
-        TodoJump() : eip(0), bufferPos(0), offsetSize(0) {}
-        TodoJump(U32 eip, U32 bufferPos, U8 offsetSize) : eip(eip), bufferPos(bufferPos), offsetSize(offsetSize) {}
+        TodoJump() : eip(0), bufferPos(0), offsetSize(0), sameChunk(true) {}
+        TodoJump(U32 eip, U32 bufferPos, U8 offsetSize, bool sameChunk) : eip(eip), bufferPos(bufferPos), offsetSize(offsetSize), sameChunk(sameChunk) {}
         U32 eip;
         U32 bufferPos;
         U8 offsetSize;
+        bool sameChunk;
     };
     std::vector<TodoJump> todoJump;
   

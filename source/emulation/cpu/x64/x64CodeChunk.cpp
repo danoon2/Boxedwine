@@ -21,11 +21,11 @@ X64CodeChunk* X64CodeChunk::allocChunk(U32 instructionCount, U32* eipInstruction
     result->instructionCount = instructionCount;
     result->emulatedAddress = eip+cpu->seg[CS].address;
     result->emulatedLen = eipLen;
-    result->hostAddress = cpu->thread->memory->allocateExcutableMemory(hostInstructionBufferLen+instructionCount*sizeof(U32)+instructionCount*sizeof(U8), &result->hostAddressSize); 
+    result->hostAddress = cpu->thread->memory->allocateExcutableMemory(hostInstructionBufferLen+instructionCount*sizeof(U32)+instructionCount*sizeof(U8)+4, &result->hostAddressSize); // +4 for a guard
     result->hostLen = hostInstructionBufferLen;
     result->emulatedInstructionLen = (U8*)result->hostAddress+result->hostAddressSize-instructionCount*sizeof(U8)-instructionCount*sizeof(U32);
     result->hostInstructionLen = (U32*)((U8*)result->hostAddress+result->hostAddressSize-instructionCount*sizeof(U32));// should be aligned to 4 byte boundry
-    memset(result->hostAddress, 0xce, hostInstructionBufferLen);
+    memset(result->hostAddress, 0xce, result->hostAddressSize);
 
     if (instructionCount) {
         for (U32 i=0;i<instructionCount;i++) {
@@ -38,26 +38,36 @@ X64CodeChunk* X64CodeChunk::allocChunk(U32 instructionCount, U32* eipInstruction
             }
             if (result->emulatedInstructionLen[i]>K_MAX_X86_OP_LEN) {
                 kpanic("X64CodeChunk::allocChunk emulatedInstructionLen sanity check failed");
-            }
-            U32 eip = eipInstructionAddress[i];
-            U32 page = eip >> K_PAGE_SHIFT;
-            U32 offset = eip & K_PAGE_MASK;
-
-            void** table = cpu->thread->memory->eipToHostInstruction[page];
-            if (!table) {
-                table = new void*[K_PAGE_SIZE];
-                memset(table, 0, sizeof(void*)*K_PAGE_SIZE);
-                cpu->thread->memory->eipToHostInstruction[page] = table;
-            }
-            if (table[offset]) {
-                kpanic("X64CodeChunk::allocChunk eip already mapped");
-            }
-            table[offset] = (U8*)result->hostAddress + hostInstructionIndex[i];
+            }           
         }        
     }
     memcpy(result->hostAddress, hostInstructionBuffer, hostInstructionBufferLen);
-    cpu->thread->memory->addCodeChunk(result);    
     return result;
+}
+
+void X64CodeChunk::makeLive() {
+    CPU* cpu = KThread::currentThread()->cpu;
+    U32 eip = this->emulatedAddress;
+    U8* host = (U8*)this->hostAddress;
+
+    for (U32 i=0;i<instructionCount;i++) {        
+        U32 page = eip >> K_PAGE_SHIFT;
+        U32 offset = eip & K_PAGE_MASK;
+
+        void** table = cpu->thread->memory->eipToHostInstruction[page];
+        if (!table) {
+            table = new void*[K_PAGE_SIZE];
+            memset(table, 0, sizeof(void*)*K_PAGE_SIZE);
+            cpu->thread->memory->eipToHostInstruction[page] = table;
+        }
+        if (table[offset]) {
+            kpanic("X64CodeChunk::allocChunk eip already mapped");
+        }
+        table[offset] = host;
+        eip+=this->emulatedInstructionLen[i];
+        host+=this->hostInstructionLen[i];
+    }        
+    cpu->thread->memory->addCodeChunk(this);    
 }
 
 void X64CodeChunk::detachFromHost() {
@@ -135,7 +145,10 @@ U32 X64CodeChunk::getStartOfInstructionByEip(U32 eip, U8** host, U32* index) {
     return 0;
 }
 
-void X64CodeChunk::addLinkFrom(X64CodeChunk* from, U32 toEip, void* toHostInstruction, void* fromHostOffset) {
+X64CodeChunkLink* X64CodeChunk::addLinkFrom(X64CodeChunk* from, U32 toEip, void* toHostInstruction, void* fromHostOffset) {
+    if (from==this) {
+        kpanic("X64CodeChunk::addLinkFrom can not link to itself");
+    }
     X64CodeChunkLink* link = X64CodeChunkLink::alloc();
 
     link->toEip = toEip;
@@ -144,6 +157,7 @@ void X64CodeChunk::addLinkFrom(X64CodeChunk* from, U32 toEip, void* toHostInstru
 
     from->linksTo.addToBack(&link->linkTo);
     this->linksFrom.addToBack(&link->linkFrom);
+    return link;
 }
 
 void X64CodeChunk::deallocAndRetranslate() {     
@@ -151,31 +165,33 @@ void X64CodeChunk::deallocAndRetranslate() {
     detachFromHost(); 
 
     x64CPU* cpu = (x64CPU*)KThread::currentThread()->cpu;
+    X64Asm data1(cpu);
+    data1.ip = this->emulatedAddress-cpu->seg[CS].address;
+    data1.startOfDataIp = data1.ip;       
+    cpu->translateData(&data1);
+    
     X64Asm data(cpu);
     data.ip = this->emulatedAddress-cpu->seg[CS].address;
     data.startOfDataIp = data.ip;       
+    data.calculatedEipLen = data1.ip-data1.startOfDataIp;
     cpu->translateData(&data);
 
-    void* result = data.commit();
-    X64CodeChunk* chunk = cpu->thread->memory->getCodeChunkContainingHostAddress(result);
-    cpu->link(&data, result);    
-    cpu->makePendingCodePagesReadOnly();
-    this->linksFrom.for_each([chunk, cpu] (KListNode<X64CodeChunkLink*>* link) {
-        U32 hostOpLen = (U32)link->data->toHostInstruction - (U32)link->data->fromHostOffset - *((S32*)link->data->fromHostOffset)+1;
+    X64CodeChunk* chunk = data.commit(false);
+    cpu->link(&data, chunk);    
+    cpu->makePendingCodePagesReadOnly();    
+
+    this->linksFrom.for_each([chunk, cpu] (KListNode<X64CodeChunkLink*>* link) {        
+        U64 destHost = (U64)chunk->getHostFromEip(link->data->toEip);
+        if (destHost==0) {
+            kpanic("X64CodeChunk::deallocAndRetranslate failed to relink");
+        }
+
         link->data->linkFrom.remove();
         chunk->linksFrom.addToBack(&link->data->linkFrom);
-        U64 destHost = (U64)cpu->thread->memory->getExistingHostAddress(link->data->toEip);
-        U32 fromInstructionIndex;        
-        X64CodeChunk* fromChunk = cpu->thread->memory->getCodeChunkContainingHostAddress(link->data->fromHostOffset);
-        void* srcHostInstruction = NULL;
-        U32 srcEip = fromChunk->getEipThatContainsHostAddress(link->data->fromHostOffset, &srcHostInstruction);
-        fromChunk->getStartOfInstructionByEip(srcEip, NULL, &fromInstructionIndex);
-        U64 srcHost = (U64)srcHostInstruction;   
-        U64 endOfJump = (U64)link->data->fromHostOffset - srcHost + 4;
-
-        *((U32*)link->data->fromHostOffset) = (U32)(destHost-srcHost-endOfJump);
-        link->data->toHostInstruction = (void*)destHost;
+        
+        ATOMIC_WRITE64((U64*)&link->data->toHostInstruction, destHost);
     });
+    chunk->makeLive();
 
     // :TODO: retranslate entire chunk
     // :TODO: if it doesn't fit then get new address
@@ -227,7 +243,8 @@ void X64CodeChunk::patch(U32 eipAddress, U32 len) {
     while (todo>0) {
         X64Asm data(cpu);                                
         data.ip = eip;
-        data.startOfDataIp = eip;
+        data.startOfDataIp = this->emulatedAddress;
+        data.calculatedEipLen = this->emulatedLen;
         cpu->translateInstruction(&data);
 
         U32 newInstructionLen = data.ip - data.startOfDataIp;
@@ -253,7 +270,7 @@ void X64CodeChunk::patch(U32 eipAddress, U32 len) {
                 });
 
                 // in case the new instruction is a call/jump
-                cpu->link(&data, (void*)host);
+                cpu->link(&data, this, (U32)(host-(U8*)this->getHostAddress()));
 
                 todo-=newInstructionLen;
                 eip+=newInstructionLen;

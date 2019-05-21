@@ -1482,7 +1482,12 @@ U32 KProcess::exitgroup(U32 code) {
     for (auto& n : tmp) {
         KThread* thread = n.second;
         if (thread!=KThread::currentThread()) {
+#ifdef BOXEDWINE_X64
+            // will be deleted when thread exits
+            unscheduleThread(thread);
+#else
             delete thread;
+#endif
         }
     }
     KThread::currentThread()->cleanup(); // must happen before we clear memory

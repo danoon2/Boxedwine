@@ -72,9 +72,11 @@ void* x64CPU::init() {
     data.writeToRegFromValue(7, false, EDI, 4);        
     
     void* existingHostAddress = cpu->thread->memory->getExistingHostAddress(cpu->eip.u32);
-    data.jumpTo(this->eip.u32);
-    result = data.commit();
-    link(&data, result);  
+    data.calculatedEipLen = 1; // will force the long x64 chunk jump
+    data.jumpTo(this->eip.u32);        
+    X64CodeChunk* chunk = data.commit(true);
+    result = chunk->getHostAddress();
+    link(&data, chunk);
     this->eipToHostInstruction = this->thread->memory->eipToHostInstruction;
     return result;
 }
@@ -87,13 +89,22 @@ void* x64CPU::translateEipInternal(X64Asm* parent, U32 ip) {
     void* result = this->thread->memory->getExistingHostAddress(address);
 
     if (!result) {
+        X64Asm data1(this);
+        data1.ip = ip;
+        data1.startOfDataIp = ip;       
+        data1.parent = parent;
+        translateData(&data1);
+
         X64Asm data(this);
         data.ip = ip;
-        data.startOfDataIp = ip;       
+        data.startOfDataIp = ip;  
+        data.calculatedEipLen = data1.ip - data1.startOfDataIp;
         data.parent = parent;
-        translateData(&data);
-        result = data.commit();
-        link(&data, result);        
+        translateData(&data);        
+        X64CodeChunk* chunk = data.commit(false);
+        result = chunk->getHostAddress();
+        link(&data, chunk);
+        chunk->makeLive();
     }
     return result;
 }
@@ -102,43 +113,40 @@ void* x64CPU::translateEipInternal(X64Asm* parent, U32 ip) {
 void x64CPU::addReturnFromTest() {
     X64Asm data(this);
     data.addReturnFromTest();
-    data.commit();
+    data.commit(true);
 }
 #endif
 
-void x64CPU::link(X64Asm* data, void* address) {
+void x64CPU::link(X64Asm* data, X64CodeChunk* fromChunk, U32 offsetIntoChunk) {
     U32 i;
-
+    if (!fromChunk) {
+        kpanic("x64CPU::link fromChunk missing");
+    }
     for (i=0;i<data->todoJump.size();i++) {
-        U32 eip = this->seg[CS].address+data->todoJump[i].eip;
-        bool toChunkCreated = false;
-        U8* toHostAddress = (U8*)this->thread->memory->getExistingHostAddress(eip);
-
-        if (!toHostAddress) {
-            U8 op = 0xce;
-            U32 hostIndex = 0;
-            X64CodeChunk* chunk = X64CodeChunk::allocChunk(1, &eip, &hostIndex, &op, 1, eip-this->seg[CS].address, 1);
-            toHostAddress = (U8*)chunk->getHostAddress();            
-            toChunkCreated = true;
-        }
-        U8* offset = (U8*)address+data->todoJump[i].bufferPos;
+        U32 eip = this->seg[CS].address+data->todoJump[i].eip;        
+        U8* offset = (U8*)fromChunk->getHostAddress()+offsetIntoChunk+data->todoJump[i].bufferPos;
         U8 size = data->todoJump[i].offsetSize;
 
-        if (size==4) {
-            data->write32Buffer(offset, (U32)(toHostAddress - offset - 4));
+        if (size==4 && data->todoJump[i].sameChunk) {
+            data->write32Buffer(offset, (U32)((U8*)fromChunk->getHostFromEip(eip) - offset - 4));            
+        } else if (size==8 && !data->todoJump[i].sameChunk) {
+            U8* toHostAddress = (U8*)this->thread->memory->getExistingHostAddress(eip);
 
-            X64CodeChunk* fromChunk = this->thread->memory->getCodeChunkContainingHostAddress(address);
-            if (!fromChunk) {
-                kpanic("x64CPU::link fromChunk missing");
+            if (!toHostAddress) {
+                U8 op = 0xce;
+                U32 hostIndex = 0;
+                X64CodeChunk* chunk = X64CodeChunk::allocChunk(1, &eip, &hostIndex, &op, 1, eip-this->seg[CS].address, 1);
+                chunk->makeLive();
+                toHostAddress = (U8*)chunk->getHostAddress();            
             }
             X64CodeChunk* toChunk = this->thread->memory->getCodeChunkContainingHostAddress(toHostAddress);
-            if (fromChunk != toChunk && fromChunk && toChunk) {
-                toChunk->addLinkFrom(fromChunk, eip, toHostAddress, offset);
-            } else if (toChunkCreated) {
-                kpanic("x64CPU::link failed to add a link to a chunk");
+            if (!toChunk) {
+                kpanic("x64CPU::link to chunk missing");
             }
+            X64CodeChunkLink* link = toChunk->addLinkFrom(fromChunk, eip, toHostAddress, offset);
+            data->write64Buffer(offset, (U64)&link->toHostInstruction);
         } else {
-            kpanic("x64CPU::link only supports 4 byte jumps so that we can patch it easily later");
+            kpanic("x64CPU::link unexpected patch size");
         }
     }
     markCodePageReadOnly(data);

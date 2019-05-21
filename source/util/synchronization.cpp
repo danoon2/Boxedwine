@@ -27,7 +27,7 @@ BoxedWineMutex::~BoxedWineMutex() {
 }
 
 void BoxedWineMutex::lock() {
-    SDL_LockMutex((SDL_mutex*)this->m);
+    SDL_LockMutex((SDL_mutex*)this->m);    
 }
 
 void BoxedWineMutex::unlock() {
@@ -105,11 +105,23 @@ void BoxedWineCondition::signalAllLock() {
     this->unlock();
 }
 void BoxedWineCondition::wait() {
-    SDL_CondWait((SDL_cond*)this->c, (SDL_mutex*)this->m);
+    KThread::currentThread()->waitingCond = this;
+    SDL_CondWait((SDL_cond*)this->c, (SDL_mutex*)this->m);    
+    KThread::currentThread()->waitingCond = NULL;
+    if (KThread::currentThread()->exiting) {
+        this->unlock();
+        unscheduleCurrentThread();
+    }
 }
 
 void BoxedWineCondition::waitWithTimeout(U32 ms) {
+    KThread::currentThread()->waitingCond = this;
     SDL_CondWaitTimeout((SDL_cond*)this->c, (SDL_mutex*)this->m, ms);
+    KThread::currentThread()->waitingCond = NULL;
+    if (KThread::currentThread()->exiting) {
+        this->unlock();
+        unscheduleCurrentThread();
+    }
 }
 
 void BoxedWineCondition::unlock() {

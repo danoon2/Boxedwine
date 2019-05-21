@@ -117,6 +117,10 @@ class Memory;
 void allocExecutable64kBlock(Memory* memory, U32 page);
 #endif
 
+#ifdef BOXEDWINE_MULTI_THREADED
+void ATOMIC_WRITE64(U64* pTarget, U64 value);
+#endif
+
 #ifdef BOXEDWINE_MIDI
 void PlayMsg(U8* msg);
 void PlaySysex(U8 * sysex,U32 len);
