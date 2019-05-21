@@ -409,7 +409,7 @@
                                     console.log(e);
                                 }
                                 if(Config.isZlibEnabled) {
-                                    Module.FS_createDataFile("/", Config.rootZipFile, contents, true, true);
+                                    FS.createDataFile("/", Config.rootZipFile, contents, true, true);
                                     contents = null;
                                     buildBrowserFileSystem(writableStorage, isDropBox, homeAdapter, extraFSs);
                                 }else{
@@ -680,13 +680,13 @@
                 var filename = extractLastPartOfPath(fullPath);
                 try {
                     var contents = fs.readFileSync(file, null, flag_r);
-                    Module.FS_createDataFile("root" + parent, filename, contents, true, true);
+                    FS.createDataFile("root" + parent, filename, contents, true, true);
                 }catch(ef) {
                     if(ef.message === "File exists"){
                         try {
-                        Module.FS_unlink("root" + parent + "/" + filename);
-                        var contents = fs.readFileSync(file, null, flag_r);
-                        Module.FS_createDataFile("root" + parent, filename, contents, true, true);
+                            FS.unlink("root" + parent + "/" + filename);
+                            var contents = fs.readFileSync(file, null, flag_r);
+                            FS.createDataFile("root" + parent, filename, contents, true, true);
                         }catch(ef) {
                             console.log("file replace error:" + ef.message + " for: " + parent + "/" + filename);
                         }
@@ -1122,7 +1122,7 @@ function createFolder(parent, dir)
 {
     var created = true;
     try{
-        Module.FS_createFolder(parent, dir, true, true);
+        FS.createFolder(parent, dir, true, true);
         //console.log(entry + " is a dir parent="+parent+" dir="+dir);
         //console.log("Directory created :" + parent + "/" +  dir);
     }catch(ef){
@@ -1133,7 +1133,7 @@ function createFolder(parent, dir)
             try{
                 //yeah, like that would work! FS.rmdir(parent + dir);
                 FS.rename(parent + dir,parent + dir + calcBackupFilename());
-                Module.FS_createFolder(parent, dir, true, true);
+                FS.createFolder(parent, dir, true, true);
                 console.log("Directory replaced: " + parent + dir);
             }catch(eef){
                 console.log("eef="+eef);
@@ -1152,7 +1152,7 @@ function createFolder(parent, dir)
 function createFile(dir, name, buf)
 {
     try{
-        Module.FS_createDataFile(dir, name, buf, true, true);
+        FS.createDataFile(dir, name, buf, true, true);
         //console.log("File created :" + dir + "/" + name);
     }catch(e){
       if(e.message === "File exists"){
@@ -1161,7 +1161,7 @@ function createFile(dir, name, buf)
         if(replace){
             try{
                 FS.unlink(dir + name);
-                Module.FS_createDataFile(dir, name, buf, true, true);
+                FS.createDataFile(dir, name, buf, true, true);
                 console.log("File replaced: " + dir + name);
             }catch(ee){
                 console.log("ee="+ee);
