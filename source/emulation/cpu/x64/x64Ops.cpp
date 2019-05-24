@@ -1655,6 +1655,18 @@ static U32 inb(X64Asm* data) {
     return 0;
 }
 
+static U32 inw(X64Asm* data) {
+    U8 port = data->fetch8();
+    data->writeToRegFromValue(0, false, 0xFFFF, 2);
+    return 0;
+}
+
+static U32 ind(X64Asm* data) {
+    U8 port = data->fetch8();
+    data->writeToRegFromValue(0, false, 0xFFFFFFFF, 4);
+    return 0;
+}
+
 // SEG ES
 static U32 segES(X64Asm* data) {
     data->ds = ES;
@@ -1883,7 +1895,7 @@ X64Decoder x64Decoder[1024] = {
     inst8RMSafeG, inst16RMSafeG, inst8RMSafeG, inst16RMSafeG, aam, aad, salc, xlat,
     instFPU, instFPU, instFPU, instFPU, instFPU, instFPU, instFPU, instFPU,
     // E0
-    x64loopnz, x64loopz, x64loop, x64jcxz, inb, invalidOp, outb, invalidOp,
+    x64loopnz, x64loopz, x64loop, x64jcxz, inb, inw, outb, invalidOp,
     callJw, jmpJw, jmpAp, jmpJb, invalidOp, invalidOp, invalidOp, invalidOp,
     // F0
     lock, invalidOp, repnz, repz, hlt, keepSame, grp3b, grp3w,
@@ -1981,7 +1993,7 @@ X64Decoder x64Decoder[1024] = {
     inst8RMSafeG, inst32RMSafeG, inst8RMSafeG, inst32RMSafeG, aam, aad, salc, xlat,
     instFPU, instFPU, instFPU, instFPU, instFPU, instFPU, instFPU, instFPU,
     // 2e0
-    x64loopnz, x64loopz, x64loop, x64jcxz, inb, invalidOp, outb, invalidOp,
+    x64loopnz, x64loopz, x64loop, x64jcxz, inb, ind, outb, invalidOp,
     callJd, jmpJd, jmpFar32, jmpJb, invalidOp, invalidOp, invalidOp, invalidOp,
     // 2f0
     lock, invalidOp, repnz, repz, hlt, keepSame, grp3b, grp3d,

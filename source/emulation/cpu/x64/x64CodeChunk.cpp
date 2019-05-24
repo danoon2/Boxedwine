@@ -250,7 +250,7 @@ void X64CodeChunk::patch(U32 eipAddress, U32 len) {
         U32 newInstructionLen = data.ip - data.startOfDataIp;
         U32 oldInstructionLen = this->emulatedInstructionLen[eipIndex];
 
-        if (newInstructionLen == oldInstructionLen) {
+        if (0) {
             U32 oldHostInstructionLen = this->hostInstructionLen[eipIndex];
             U32 newHostInstructionLen = data.bufferPos;
 

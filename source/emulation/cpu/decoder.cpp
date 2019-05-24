@@ -4849,6 +4849,7 @@ void decodeBlock(pfnFetchByte fetchByte, U32 eip, U32 isBig, U32 maxInstructions
 
 void DecodedOp::log(CPU* cpu) {
     if (cpu->logFile && this->inst<=PadddE64) {
+        BOXEDWINE_CRITICAL_SECTION;
         U32 pos = ftell((FILE*)cpu->logFile); // :TODO: should be 64-bit
         fprintf((FILE*)cpu->logFile, "%04X %08X ", cpu->thread->id, cpu->eip.u32);
         instructionLog[this->inst].pfnFormat(&instructionLog[this->inst], this, cpu);
@@ -4874,7 +4875,7 @@ void DecodedOp::log(CPU* cpu) {
         if (endPos-pos<55) {
             fwrite("                                                       ", 55-(endPos-pos), 1, (FILE*)cpu->logFile);
         }
-        fprintf((FILE*)cpu->logFile, " EAX=%0.8X ECX=%0.8X EDX=%0.8X EBX=%0.8X ESP=%0.8X EBP=%0.8X ESI=%0.8X EDI=%0.8X", EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI);
+        fprintf((FILE*)cpu->logFile, " EAX=%0.8X ECX=%0.8X EDX=%0.8X EBX=%0.8X ESP=%0.8X EBP=%0.8X ESI=%0.8X EDI=%0.8X SS=%0.8X DS=%0.8X", EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI, cpu->seg[SS].address, cpu->seg[DS].address);
         fwrite("\n", 1, 1, (FILE*)cpu->logFile);
         fflush((FILE*)cpu->logFile);
     }

@@ -817,8 +817,9 @@ void X64Asm::pushE32(U8 rm) {
 void X64Asm::popw(U8 rm) {
     if (rm<0xC0) {     
         U32 tmpReg = getTmpReg();
-        popReg16(tmpReg, true);
+        popReg(tmpReg, true, 2, false); // just peek, we don't want to modify ESP until after the write succeeds incase there is an exception
         writeToEFromReg(rm, tmpReg, true, 2);
+        adjustStack(tmpReg, 2);
         releaseTmpReg(tmpReg);
     } else {
         popReg16(rm & 7, false);
@@ -828,8 +829,9 @@ void X64Asm::popw(U8 rm) {
 void X64Asm::popd(U8 rm) {
     if (rm<0xC0) {     
         U32 tmpReg = getTmpReg();
-        popReg32(tmpReg, true);
+        popReg(tmpReg, true, 4, false); // just peek, we don't want to modify ESP until after the write succeeds incase there is an exception
         writeToEFromReg(rm, tmpReg, true, 4);
+        adjustStack(tmpReg, 4);
         releaseTmpReg(tmpReg);
     } else {
         popReg32(rm & 7, false);
@@ -973,7 +975,7 @@ void X64Asm::writeToRegFromReg(U8 toReg, bool isToReg1Rex, U8 fromReg, bool isFr
     write8(0xC0 | toReg | (fromReg << 3));
 }
 
-void X64Asm::adjustStack(bool big, U8 tmpReg, S8 bytes) {
+void X64Asm::adjustStack(U8 tmpReg, S8 bytes) {
     // tmpReg = HOST_ESP + bytes
     addWithLea(tmpReg, true, HOST_ESP, true, -1, false, 0, bytes, 4);
 
@@ -1031,7 +1033,7 @@ void X64Asm::popReg(U8 reg, bool isRegRex, S8 bytes, bool commit) {
             allocatedTmpReg = true;
             tmpReg = getTmpReg();
         }
-        adjustStack(bytes==4, tmpReg, bytes);
+        adjustStack(tmpReg, bytes);
     }
     if (allocatedTmpReg)
         releaseTmpReg(tmpReg);
@@ -1222,6 +1224,7 @@ void X64Asm::popSeg(U8 seg, U8 bytes) {
     writeToRegFromValue(2, false, seg, 4); // value param, must pass 4 so that upper part of reg is zero'd out
     if (bytes==2)
         zeroReg(0, true); // upper 2 bytes need to be 0
+    // R8 for 3rd param
     popReg(0, true, bytes, false); // peek stack for seg param    
 
     callHost(common_setSegment);
@@ -1232,7 +1235,7 @@ void X64Asm::popSeg(U8 seg, U8 bytes) {
     }, [this, bytes]() {
         syncRegsToHost();
         U8 tmpReg = getTmpReg();
-        adjustStack(bytes==4, tmpReg, (S8)bytes);
+        adjustStack(tmpReg, (S8)bytes);
         releaseTmpReg(tmpReg);
     });   
 }
@@ -1678,6 +1681,10 @@ void X64Asm::jumpTo(U32 eip) {
         write32(0);
         addTodoLinkJump(eip, true);
     } else {
+        // when a chunk gets modified/replaced other chunks that point to it via this jump need to get updated
+        // it is not possible to modify the executable code directly in an atomic way, so instead of embedding
+        // where we will jump directly into the instruction, we will encode an instruction that reads the jump
+        // address from memory (data).  That memory location can be atomically updated.
         writeToRegFromValue(HOST_TMP, true, 0x0101010101010101l, 8);
         write8(0x41);
         write8(0xff);
@@ -1730,9 +1737,9 @@ void X64Asm::jmp(bool big, U32 sel, U32 offset, U32 oldEip) {
 
     // call void common_jmp(cpu, false, sel, offset, oldEip)
     writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
-    writeToRegFromValue(2, false, big, 8); // big param
-    writeToRegFromValue(0, true, sel, 8); // sel param
-    writeToRegFromValue(1, true, offset, 8); // offset param
+    writeToRegFromValue(2, false, big, 4); // big param
+    writeToRegFromValue(0, true, sel, 4); // sel param
+    writeToRegFromValue(1, true, offset, 4); // offset param
     pushNativeValue32(oldEip); // oldEip param
     
     callHost(common_jmp);
@@ -1749,9 +1756,9 @@ void X64Asm::call(bool big, U32 sel, U32 offset, U32 oldEip) {
 
     // call void common_call(CPU* cpu, U32 big, U32 selector, U32 offset, U32 oldEip)
     writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
-    writeToRegFromValue(2, false, big, 8); // big param
-    writeToRegFromValue(0, true, sel, 8); // sel param
-    writeToRegFromValue(1, true, offset, 8); // offset param
+    writeToRegFromValue(2, false, big, 4); // big param
+    writeToRegFromValue(0, true, sel, 4); // sel param
+    writeToRegFromValue(1, true, offset, 4); // offset param
     pushNativeValue32(oldEip); // oldEip param
     
     callHost(common_call);
@@ -1880,8 +1887,8 @@ void X64Asm::retf(U32 big, U32 bytes) {
 
     // call void common_ret(CPU* cpu, U32 big, U32 bytes)
     writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
-    writeToRegFromValue(2, false, big, 8); // big param
-    writeToRegFromValue(0, true, bytes, 8); // bytes param
+    writeToRegFromValue(2, false, big, 4); // big param
+    writeToRegFromValue(0, true, bytes, 4); // bytes param
     
     callHost(common_ret);
     syncRegsToHost();
@@ -1895,8 +1902,8 @@ void X64Asm::iret(U32 big, U32 oldEip) {
 
     // call void common_iret(CPU* cpu, U32 big, U32 oldEip)
     writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
-    writeToRegFromValue(2, false, big, 8); // big param
-    writeToRegFromValue(0, true, oldEip, 8); // sel param
+    writeToRegFromValue(2, false, big, 4); // big param
+    writeToRegFromValue(0, true, oldEip, 4); // sel param
     
     callHost(common_iret);
     syncRegsToHost();
@@ -1910,7 +1917,7 @@ void X64Asm::signalIllegalInstruction(int code) {
 
     // void common_signalIllegalInstruction(CPU* cpu, int code)
     writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
-    writeToRegFromValue(2, false, code, 8); // code param
+    writeToRegFromValue(2, false, code, 4); // code param
     
     callHost(common_signalIllegalInstruction);
     syncRegsToHost();
@@ -1954,7 +1961,7 @@ void X64Asm::syscall(U32 opLen, U32 eip) {
 
     // void ksyscall(cpu, op->len)
     writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
-    writeToRegFromValue(2, false, opLen, 8); // opLen param
+    writeToRegFromValue(2, false, opLen, 4); // opLen param
     
     callHost(ksyscall);
     syncRegsToHost();
@@ -1968,7 +1975,7 @@ void X64Asm::int98(U32 opLen) {
 
     // void common_int98(CPU* cpu)
     writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
-    writeToRegFromValue(2, false, opLen, 8); // opLen param
+    writeToRegFromValue(2, false, opLen, 4); // opLen param
 
     callHost(common_int98);
     syncRegsToHost();
@@ -1982,7 +1989,7 @@ void X64Asm::int99(U32 opLen) {
 
     // void common_int99(CPU* cpu)
     writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
-    writeToRegFromValue(2, false, opLen, 8); // opLen param
+    writeToRegFromValue(2, false, opLen, 4); // opLen param
 
     callHost(common_int99);
     syncRegsToHost();
@@ -2180,7 +2187,7 @@ void X64Asm::enter(bool big, U32 bytes, U32 level) {
         //sub  esp, bytes
         if (bytes) {
             U8 tmpReg = getTmpReg();
-            adjustStack(big, tmpReg, -((S32)bytes));
+            adjustStack(tmpReg, -((S32)bytes));
             releaseTmpReg(tmpReg);
         }
     }
@@ -2264,7 +2271,7 @@ void X64Asm::jmpFar(bool big, U8 rm) {
 void X64Asm::callCallback(void* pfn) {
     syncRegsFromHost();
     writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
-    writeToRegFromValue(2, false, 0, 8);
+    writeToRegFromValue(2, false, 0, 4);
     callHost(pfn);
     syncRegsToHost();
     doJmp();
