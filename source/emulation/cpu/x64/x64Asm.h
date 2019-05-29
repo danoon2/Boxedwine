@@ -99,7 +99,7 @@ public:
     void writeXchgSpAx();
     void bswapEsp();
     void bswapSp();
-    void string(bool hasSi, bool hasDi, bool ea16);
+    void string32(bool hasSi, bool hasDi);
     void writeToRegFromValue(U8 reg, bool isRexReg, U64 value, U8 bytes);
     void enter(bool big, U32 bytes, U32 level);
     void leave(bool big);
@@ -122,6 +122,12 @@ public:
     bool tmp1InUse;
     bool tmp2InUse;
     bool tmp3InUse;
+    void stos16(void* pfn, U32 size, bool repeat);
+    void scas16(void* pfn, U32 size, bool repeat, bool repeatZero);
+    void movs16(void* pfn, U32 size, bool repeat, U32 base);
+    void lods16(void* pfn, U32 size, bool repeat, U32 base);
+    void cmps16(void* pfn, U32 size, bool repeat, bool repeatZero, U32 base);
+    void doJmp();
 
 #ifdef __TEST
     void addReturnFromTest();
@@ -146,8 +152,7 @@ private:
     void syncRegsFromHost();
     void syncRegsToHost(S8 excludeReg=-1);
     void adjustStack(U8 tmpReg, S8 bytes);
-    void doIf(U8 reg, bool isRexReg, U32 equalsValue, std::function<void(void)> ifBlock, std::function<void(void)> elseBlock);
-    void doJmp();
+    void doIf(U8 reg, bool isRexReg, U32 equalsValue, std::function<void(void)> ifBlock, std::function<void(void)> elseBlock);    
     void setPF_onAL(U8 flagReg);
     void setZF_onAL(U8 flagReg);
     void setSF_onAL(U8 flagReg);

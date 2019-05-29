@@ -5,6 +5,7 @@
 #include "x64Ops.h"
 #include "x64Data.h"
 #include "x64Asm.h"
+#include "../normal/normal_strings.h"
 
 #define G(rm) ((rm >> 3) & 7)
 #define E(rm) (rm & 7)
@@ -1136,7 +1137,14 @@ static U32 intIb(X64Asm* data) {
         data->int98(data->ip-data->startOfOpIp);
     } else if (i==0x99) {
         data->int99(data->ip-data->startOfOpIp);
-    } else {
+    }
+#ifdef __TEST
+    else if (i==0x97) {
+        data->addReturnFromTest();
+        data->done = true;
+    }
+#endif
+    else {
         data->signalIllegalInstruction(i);
         data->done = true;
     }
@@ -1399,33 +1407,218 @@ static U32 bswapEsp(X64Asm* data) {
     return 0;
 }
 
-// MOVSB
-// MOVSW
-// CMPSB
-// CMPSW
-// MOVSD
-// CMPSD
-static U32 stringDiSi(X64Asm* data) {    
-    data->string(true, true, data->ea16);
+static void mov16(X64Asm* data, void* pfn, U8 size, bool repeat, U32 base) {
+    data->movs16(pfn, size, repeat, base);
+}
+
+static void cmp16(X64Asm* data, void* pfn, U8 size, bool repeat, bool rep_zero, U32 base) {
+    data->cmps16(pfn, size, repeat, rep_zero, base);
+}
+
+static void sto16(X64Asm* data, void* pfn, U8 size, bool repeat) {
+    data->stos16(pfn, size, repeat);
+}
+
+static void lod16(X64Asm* data, void* pfn, U8 size, bool repeat, U32 base) {
+    data->lods16(pfn, size, repeat, base);
+}
+
+static void sca16(X64Asm* data, void* pfn, U8 size, bool repeat, bool rep_zero) {
+    data->scas16(pfn, size, repeat, rep_zero);
+}
+
+static U32 movsb(X64Asm* data) {
+    if (!data->ea16) {
+        data->string32(true, true);
+    } else {
+        if (data->repNotZeroPrefix || data->repZeroPrefix) {
+            mov16(data, movsb16r, 1, true, data->ds);
+        } else {
+            mov16(data, movsb16, 1, false, data->ds);
+        }
+    }
     return 0;
 }
 
-// STOSB
-// STOSW
-// SCASB
-// SCASW
-// STOSD
-// SCASD
-static U32 stringDi(X64Asm* data) {        
-    data->string(false, true, data->ea16);
+static U32 movsw(X64Asm* data) {
+    if (!data->ea16) {
+        data->string32(true, true);
+    } else {
+        if (data->repNotZeroPrefix || data->repZeroPrefix) {
+            mov16(data, movsw16r, 2, true, data->ds);
+        } else {
+            mov16(data, movsw16, 2, false, data->ds);
+        }
+    }
     return 0;
 }
 
-// LODSB
-// LODSW
-// LODSD
-static U32 stringSi(X64Asm* data) {    
-    data->string(true, false, data->ea16);
+static U32 movsd(X64Asm* data) {
+    if (!data->ea16) {
+        data->string32(true, true);
+    } else {
+        if (data->repNotZeroPrefix || data->repZeroPrefix) {
+            mov16(data, movsd16r, 4, true, data->ds);
+        } else {
+            mov16(data, movsd16, 4, false, data->ds);
+        }
+    }
+    return 0;
+}
+
+static U32 cmpsb(X64Asm* data) {
+    if (!data->ea16) {
+        data->string32(true, true);
+    } else {
+        if (data->repNotZeroPrefix || data->repZeroPrefix) {
+            cmp16(data, cmpsb16r, 1, true, data->repZeroPrefix, data->ds);
+        } else {
+            cmp16(data, cmpsb16, 1, false, data->repZeroPrefix, data->ds);
+        }
+    }
+    return 0;
+}
+
+static U32 cmpsw(X64Asm* data) {
+    if (!data->ea16) {
+        data->string32(true, true);
+    } else {
+        if (data->repNotZeroPrefix || data->repZeroPrefix) {
+            cmp16(data, cmpsw16r, 2, true, data->repZeroPrefix, data->ds);
+        } else {
+            cmp16(data, cmpsw16, 2, false, data->repZeroPrefix, data->ds);
+        }
+    }
+    return 0;
+}
+
+static U32 cmpsd(X64Asm* data) {
+    if (!data->ea16) {
+        data->string32(true, true);
+    } else {
+        if (data->repNotZeroPrefix || data->repZeroPrefix) {
+            cmp16(data, cmpsd16r, 4, true, data->repZeroPrefix, data->ds);
+        } else {
+            cmp16(data, cmpsd16, 4, false, data->repZeroPrefix, data->ds);
+        }
+    }
+    return 0;
+}
+
+static U32 stosb(X64Asm* data) {
+    if (!data->ea16) {
+        data->string32(false, true);
+    } else {
+        if (data->repNotZeroPrefix || data->repZeroPrefix) {
+            sto16(data, stosb16r, 1, true);
+        } else {
+            sto16(data, stosb16, 1, false);
+        }
+    }
+    return 0;
+}
+
+static U32 stosw(X64Asm* data) {
+    if (!data->ea16) {
+        data->string32(false, true);
+    } else {
+        if (data->repNotZeroPrefix || data->repZeroPrefix) {
+            sto16(data, stosw16r, 2, true);
+        } else {
+            sto16(data, stosw16, 2, false);
+        }
+    }
+    return 0;
+}
+
+static U32 stosd(X64Asm* data) {
+    if (!data->ea16) {
+        data->string32(false, true);
+    } else {
+        if (data->repNotZeroPrefix || data->repZeroPrefix) {
+            sto16(data, stosd16r, 4, true);
+        } else {
+            sto16(data, stosd16, 4, false);
+        }
+    }
+    return 0;
+}
+
+static U32 lodsb(X64Asm* data) {
+    if (!data->ea16) {
+        data->string32(true, false);
+    } else {
+        if (data->repNotZeroPrefix || data->repZeroPrefix) {
+            lod16(data, lodsb16r, 1, true, data->ds);
+        } else {
+            lod16(data, lodsb16, 1, false, data->ds);
+        }
+    }
+    return 0;
+}
+
+static U32 lodsw(X64Asm* data) {
+    if (!data->ea16) {
+        data->string32(true, false);
+    } else {
+        if (data->repNotZeroPrefix || data->repZeroPrefix) {
+            lod16(data, lodsw16r, 2, true, data->ds);
+        } else {
+            lod16(data, lodsw16, 2, false, data->ds);
+        }
+    }
+    return 0;
+}
+
+static U32 lodsd(X64Asm* data) {
+    if (!data->ea16) {
+        data->string32(true, false);
+    } else {
+        if (data->repNotZeroPrefix || data->repZeroPrefix) {
+            lod16(data, lodsd16r, 4, true, data->ds);
+        } else {
+            lod16(data, lodsd16, 4, false, data->ds);
+        }
+    }
+    return 0;
+}
+
+static U32 scasb(X64Asm* data) {
+    if (!data->ea16) {
+        data->string32(false, true);
+    } else {
+        if (data->repNotZeroPrefix || data->repZeroPrefix) {
+            sca16(data, scasb16r, 1, true, data->repZeroPrefix);
+        } else {
+            sca16(data, scasb16, 1, false, data->repZeroPrefix);
+        }
+    }
+    return 0;
+}
+
+static U32 scasw(X64Asm* data) {
+    if (!data->ea16) {
+        data->string32(false, true);
+    } else {
+        if (data->repNotZeroPrefix || data->repZeroPrefix) {
+            sca16(data, scasw16r, 2, true, data->repZeroPrefix);
+        } else {
+            sca16(data, scasw16, 2, false, data->repZeroPrefix);
+        }
+    }
+    return 0;
+}
+
+static U32 scasd(X64Asm* data) {
+    if (!data->ea16) {
+        data->string32(false, true);
+    } else {
+        if (data->repNotZeroPrefix || data->repZeroPrefix) {
+            sca16(data, scasd16r, 4, true, data->repZeroPrefix);
+        } else {
+            sca16(data, scasd16, 4, false, data->repZeroPrefix);
+        }
+    }
     return 0;
 }
 
@@ -1883,8 +2076,8 @@ X64Decoder x64Decoder[1024] = {
     keepSame, keepSame, keepSame, keepSame, xchgSpAx, keepSame, keepSame, keepSame,
     keepSame, keepSame, callAp, keepSame, pushFlags16, popFlags16, keepSame, keepSame,
     // A0
-    movAlOb, movAxOw, movObAl, movOwAx, stringDiSi, stringDiSi, stringDiSi, stringDiSi,
-    keepSameImm8, keepSameImm16, stringDi, stringDi, stringSi, stringSi, stringDi, stringDi,
+    movAlOb, movAxOw, movObAl, movOwAx, movsb, movsw, cmpsb, cmpsw,
+    keepSameImm8, keepSameImm16, stosb, stosw, lodsb, lodsw, scasb, scasw,
     // B0
     keepSameImm8, keepSameImm8, keepSameImm8, keepSameImm8, keepSameImm8, keepSameImm8, keepSameImm8, keepSameImm8,
     keepSameImm16, keepSameImm16, keepSameImm16, keepSameImm16, movSpIw, keepSameImm16, keepSameImm16, keepSameImm16,
@@ -1981,8 +2174,8 @@ X64Decoder x64Decoder[1024] = {
     keepSame, keepSame, keepSame, keepSame, xchgEspEax, keepSame, keepSame, keepSame,
     keepSame, keepSame, callFar32, keepSame, pushFlags32, popFlags32, keepSame, keepSame,
     // 2a0
-    movAlOb, movEaxOd, movObAl, movOdEax, stringDiSi, stringDiSi, stringDiSi, stringDiSi,
-    keepSameImm8, keepSameImm32, stringDi, stringDi, stringSi, stringSi, stringDi, stringDi,
+    movAlOb, movEaxOd, movObAl, movOdEax, movsb, movsd, cmpsb, cmpsd,
+    keepSameImm8, keepSameImm32, stosb, stosd, lodsb, lodsd, scasb, scasd,
     // 2b0
     keepSameImm8, keepSameImm8, keepSameImm8, keepSameImm8, keepSameImm8, keepSameImm8, keepSameImm8, keepSameImm8,
     keepSameImm32, keepSameImm32, keepSameImm32, keepSameImm32, movEspId, keepSameImm32, keepSameImm32, keepSameImm32,

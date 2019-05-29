@@ -27,6 +27,8 @@ public:
     bool inException;
     void*** eipToHostInstruction;
     DecodedOp* getExistingOp(U32 eip);
+    U32 stringRepeat;
+    U32 stringWritesToDi;
 
 #ifdef _DEBUG
     U32 fromEip;

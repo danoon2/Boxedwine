@@ -26,9 +26,6 @@ void x64CPU::run() {
         }
         if (setjmp(this->runBlockJump)==0) {
             StartCPU start = (StartCPU)this->init();
-#ifdef __TEST
-            addReturnFromTest();
-#endif
             start();
 #ifdef __TEST
             return;
@@ -71,9 +68,8 @@ void* x64CPU::init() {
     data.writeToRegFromValue(6, false, ESI, 4);
     data.writeToRegFromValue(7, false, EDI, 4);        
     
-    void* existingHostAddress = cpu->thread->memory->getExistingHostAddress(cpu->eip.u32);
     data.calculatedEipLen = 1; // will force the long x64 chunk jump
-    data.jumpTo(this->eip.u32);        
+    data.doJmp();
     X64CodeChunk* chunk = data.commit(true);
     result = chunk->getHostAddress();
     link(&data, chunk);
@@ -182,7 +178,9 @@ void x64CPU::translateInstruction(X64Asm* data) {
 #ifdef _DEBUG
     //data->logOp(data->ip);
     // just makes debugging the asm output easier
+#ifndef __TEST
     data->writeToMemFromValue(data->ip, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EIP, 4, false);
+#endif
 #endif
     data->startOfOpIp = data->ip;        
     while (1) {  
@@ -212,9 +210,6 @@ void x64CPU::translateData(X64Asm* data) {
         if (data->done) {
             break;
         }
-#ifdef __TEST
-        break;
-#endif
         data->resetForNewOp();
     }     
 }

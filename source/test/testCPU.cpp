@@ -24,6 +24,7 @@
 
 #include "..\emulation\softmmu\soft_memory.h"
 #include "..\emulation\hardmmu\hard_memory.h"
+#include "..\emulation\cpu\x64\x64CPU.h"
 static int cseip;
 
 #define G(rm) ((rm >> 3) & 7)
@@ -127,20 +128,20 @@ void newInstructionWithRM(int instruction, int rm, int flags) {
 }
 
 void runTestCPU() {    
+#ifdef BOXEDWINE_64
+    pushCode8(0xcd);
+    pushCode8(0x97); // will cause TEST specific return code to be inserted
+    ((x64CPU*)cpu)->translateEip(cpu->eip.u32);
+#else
     pushCode8(0x70); // jump causes the decoder to stop building the block
     pushCode8(0);
     pushCode8(0x70); // jump will fetch the next block as well
     pushCode8(0);
     cpu->nextBlock = cpu->getNextBlock();    
+#endif
     cpu->run();
 #ifdef BOXEDWINE_64BIT_MMU
     KThread::currentThread()->memory->clearCodePageFromCache(CODE_ADDRESS>>K_PAGE_SHIFT);
-#endif
-#ifdef BOXEDWINE_X64
-    memset(memory->opToAddressPages[CODE_ADDRESS>>K_PAGE_SHIFT], 0, sizeof(void*)*K_PAGE_SIZE);
-    memory->x64MemPos = 0;
-    memory->x64AvailableMem = 64*1024;
-    memset((U8*)memory->id+CODE_ADDRESS, 0, K_PAGE_SIZE);
 #endif
 }
 

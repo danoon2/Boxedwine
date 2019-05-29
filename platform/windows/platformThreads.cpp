@@ -98,13 +98,18 @@ LONG handleCodePatch(struct _EXCEPTION_POINTERS *ep, x64CPU* cpu, U32 address) {
     DecodedOp* op = cpu->getExistingOp(cpu->eip.u32);
     if (op) {             
         // change permission of the page so that we can write to it
-        // :TODO: what if memWidth is a string
         U32 memWidth = instructionInfo[op->inst].writeMemWidth/8;
-        if (op->repNotZero || op->repZero) {
-            //memWidth*=op->ea16?CX:ECX;
-        }
         U32 page1 = address >> K_PAGE_SHIFT;
         U32 page2 = (address+memWidth-1) >> K_PAGE_SHIFT;
+
+        if (op->repNotZero || op->repZero) {
+            // :TODO: might need to support more than just two pages
+            if (ep->ContextRecord->EFlags & DF) {
+                page2 = page1-1; // fixes rebal assault gog installer
+            } else {
+                page2 = page1+1;
+            }
+        }        
 
         bool clearedPage1 = false;
         bool clearedPage2 = false;
@@ -135,20 +140,19 @@ LONG handleCodePatch(struct _EXCEPTION_POINTERS *ep, x64CPU* cpu, U32 address) {
         // for string instruction, we modify (add memory offset and segment) rdi and rsi so that the native string instruction can be used, this code will revert it back to the original values
         // uses si
         if (op->inst==Lodsb || op->inst==Lodsw || op->inst==Lodsd) {
-            ESI=(U32)ep->ContextRecord->R8;
+            ESI=(U32)(ep->ContextRecord->Rsi - cpu->memOffset - cpu->seg[op->base].address);
         }
-        // uses di (Examples: Real Deal installer rdeal101.exe)
+        // uses di (Examples: diablo 1 will trigger this in the middle of the Stosd when creating a new game)
         if (op->inst==Stosb || op->inst==Stosw || op->inst==Stosd ||
             op->inst==Scasb || op->inst==Scasw || op->inst==Scasd) {
-            EDI=(U32)ep->ContextRecord->R10;
+            EDI=(U32)(ep->ContextRecord->Rdi - cpu->memOffset - cpu->seg[ES].address);
         }
-        // uses si and di (Examples: Real Deal installer rdeal101.exe)
+        // uses si and di
         if (op->inst==Movsb || op->inst==Movsw || op->inst==Movsd ||
             op->inst==Cmpsb || op->inst==Cmpsw || op->inst==Cmpsd) {
-            ESI=(U32)ep->ContextRecord->R8;
-            EDI=(U32)ep->ContextRecord->R10;
+            ESI=(U32)(ep->ContextRecord->Rsi - cpu->memOffset - cpu->seg[op->base].address);
+            EDI=(U32)(ep->ContextRecord->Rdi - cpu->memOffset - cpu->seg[ES].address);
         }
-        // :TODO: what about ecx for 16-bit strings, what about esi and rdi for strings that are 1/2 done
         if (cpu->flags & DF) {
             cpu->df = -1;
         } else {
@@ -258,6 +262,8 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
             ep->ContextRecord->Rip = (U64)cpu->translateEip(cpu->eip.u32); 
             return EXCEPTION_CONTINUE_EXECUTION;
         }
+    } else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_FLT_STACK_CHECK) {
+        kpanic("EXCEPTION_FLT_STACK_CHECK");
     }
     return EXCEPTION_CONTINUE_SEARCH;
 }

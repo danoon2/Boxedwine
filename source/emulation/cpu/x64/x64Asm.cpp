@@ -4,6 +4,7 @@
 
 #include "x64Asm.h"
 #include "../common/common_other.h"
+#include "../source/emulation/hardmmu/hard_memory.h"
 
 #define G(rm) ((rm >> 3) & 7)
 #define E(rm) (rm & 7)
@@ -20,6 +21,9 @@
 #define CPU_OFFSET_ESI (U32)(offsetof(CPU, reg[6].u32))
 #define CPU_OFFSET_EDI (U32)(offsetof(CPU, reg[7].u32))
 #define CPU_OFFSET_FLAGS (U32)(offsetof(CPU, flags))
+
+#define CPU_OFFSET_STRING_REPEAT (U32)(offsetof(x64CPU, stringRepeat))
+#define CPU_OFFSET_STRING_WRITES_DI (U32)(offsetof(x64CPU, stringWritesToDi))
 
 X64Asm::X64Asm(x64CPU* cpu) : X64Data(cpu), parent(NULL), tmp1InUse(false), tmp2InUse(false), tmp3InUse(false) {
 }
@@ -2018,33 +2022,13 @@ void X64Asm::bswapSp() {
     write8(0xC8+HOST_ESP);
 }
 
-void X64Asm::string(bool hasSi, bool hasDi, bool ea16) {
+void X64Asm::string32(bool hasSi, bool hasDi) {    
     U8 tmpReg = getTmpReg();
-    U8 tmpESI = getTmpReg(); // maybe sync to cpu instead?
-    U8 tmpEDI = getTmpReg();    
-    
-    if (tmpESI!=HOST_TMP2) {
-        kpanic("X64Asm::string tmpEDI!=HOST_TMP2");
-    }
-    if (tmpEDI!=HOST_TMP3) {
-        kpanic("X64Asm::string tmpEDI!=HOST_TMP3");
-    }
+
     if (hasDi) {
-        writeToRegFromReg(tmpEDI, true, 7, false, 4); // necessary to exception handling can get original edi
-        if (ea16) {                 
-            pushNativeFlags();
-            andReg(7, false, 0x0000ffff);
-            popNativeFlags();
-        }
         addWithLea(7, false, 7, false, getRegForSeg(ES, tmpReg), true, 0, 0, 4);
     }
     if (hasSi) {
-        writeToRegFromReg(tmpESI, true, 6, false, 4); // necessary to exception handling can get original esi
-        if (ea16) {                        
-            pushNativeFlags();
-            andReg(6, false, 0x0000ffff);
-            popNativeFlags();
-        }
         addWithLea(6, false, 6, false, getRegForSeg(this->ds, tmpReg), true, 0, 0, 4);
     }
     releaseTmpReg(tmpReg);
@@ -2068,28 +2052,12 @@ void X64Asm::string(bool hasSi, bool hasDi, bool ea16) {
     }
     if (hasSi) {
         addWithLea(6, false, 6, false, getRegForNegSeg(this->ds, tmpReg), true, 0, 0, 4);
-        if (ea16) {
-            pushNativeFlags();
-            andReg(tmpESI, true, 0xFFFF0000);
-            andReg(6, false, 0x0000FFFF);
-            orRegReg(6, false, tmpESI, true);
-            popNativeFlags();
-        }
     }
     if (hasDi) {
         addWithLea(7, false, 7, false, getRegForNegSeg(ES, tmpReg), true, 0, 0, 4);
-        if (ea16) {
-            pushNativeFlags();
-            andReg(tmpEDI, true, 0xFFFF0000);
-            andReg(7, false, 0x0000FFFF);
-            orRegReg(7, false, tmpEDI, true);
-            popNativeFlags();
-        }
     }    
         
     releaseTmpReg(tmpReg);
-    releaseTmpReg(tmpESI);
-    releaseTmpReg(tmpEDI);
 }
 
 // U16 val = readw(eaa);
@@ -2383,8 +2351,14 @@ void X64Asm::writeOp(bool isG8bit) {
     U8 g8 = 0xFF;
     U8 g8Temp = 0;
     U8 tmpReg = HOST_TMP3;// hack, we should guarantee this isn't used in rm, sib;
-
+    bool isTmpRegAllocated = false;
+    
     if (this->rex && this->has_rm && isG8bit && G(this->rm)>=4) {        
+        if (this->tmp3InUse) {
+            kpanic("X64Asm::writeOp was in use");
+        }
+        isTmpRegAllocated = true;
+        this->tmp3InUse = true;
         g8=G(this->rm);
         g8Temp = (g8==4?1:0);
 
@@ -2456,6 +2430,182 @@ void X64Asm::writeOp(bool isG8bit) {
         // pop rax
         popNativeReg(g8Temp, false);
     }
+    if (isTmpRegAllocated) {
+        releaseTmpReg(tmpReg);
+    }
+}
+
+#define CLEAR_BUFFER_SIZE 10
+
+U32* clearCodeReadOnly(x64CPU* cpu, U32* buffer, U32 size) {
+    U32 startAddress;
+    U32 stopAddress;
+
+    if (cpu->df==1) {
+        startAddress = DI+cpu->seg[ES].address;
+        if (cpu->stringRepeat) {
+            stopAddress = startAddress + size * CX;
+        } else {
+            stopAddress = startAddress + size;
+        }
+    } else {
+        stopAddress = DI+cpu->seg[ES].address + size;
+        if (cpu->stringRepeat) {
+            startAddress = stopAddress - size * CX;
+        } else {
+            startAddress = stopAddress - size;
+        }
+    }
+    U32 pageStart = startAddress >> K_PAGE_SHIFT;
+    U32 pageStop = stopAddress >> K_PAGE_SHIFT;    
+    U32 count = 0;
+
+    for (U32 page = pageStart; page <= pageStop; page++ ) {
+        if (cpu->thread->memory->nativeFlags[page] & NATIVE_FLAG_CODEPAGE_READONLY) {
+            if (count+1>=CLEAR_BUFFER_SIZE) {
+                kpanic("clearCodeReadOnly doesn't support dynamic reallocation");
+            }
+            buffer[count+1] = page;
+            count++;
+            ::clearCodePageReadOnly(cpu->thread->memory, page);
+        }
+    }
+    buffer[0] = count;
+    return buffer;
+}
+
+void restoreCodeReadOnly(x64CPU* cpu, U32* buffer, U32* usedBuffer) {
+    U32 count = usedBuffer[0];
+    for (U32 i=0;i<count;i++) {
+        ::makeCodePageReadOnly(cpu->thread->memory, usedBuffer[i+1]);  
+    }
+    if (buffer!=usedBuffer) {
+        delete[] usedBuffer;
+    }
+}
+
+typedef void (*pfnStringNoArgs)(CPU* cpu);
+
+void x64_stringNoArgs(x64CPU* cpu, pfnStringNoArgs pfn, U32 size) {
+    U32 buffer[CLEAR_BUFFER_SIZE];
+    U32* p;
+
+    if (cpu->flags & DF) {
+        cpu->df = -1;
+    } else {
+        cpu->df = 1;
+    }
+    if (cpu->stringWritesToDi) {
+        p = clearCodeReadOnly(cpu, buffer, size);
+    }
+    pfn(cpu);
+    if (cpu->stringWritesToDi) {
+        restoreCodeReadOnly(cpu, buffer, p);
+    }
+    cpu->fillFlags();
+}
+
+typedef void (*pfnString1Arg)(CPU* cpu, U32 arg1);
+
+void x64_string1Arg(x64CPU* cpu, pfnString1Arg pfn, U32 arg1, U32 size) {
+    U32 buffer[CLEAR_BUFFER_SIZE];
+    U32* p;
+
+    if (cpu->flags & DF) {
+        cpu->df = -1;
+    } else {
+        cpu->df = 1;
+    }
+    if (cpu->stringWritesToDi) {
+        p = clearCodeReadOnly(cpu, buffer, size);
+    }
+    pfn(cpu, arg1);
+    if (cpu->stringWritesToDi) {
+        restoreCodeReadOnly(cpu, buffer, p);
+    }
+    cpu->fillFlags();
+}
+
+typedef void (*pfnString2Arg)(CPU* cpu, U32 arg1, U32 arg2);
+
+void x64_string2Arg(x64CPU* cpu, pfnString2Arg pfn, U32 arg1, U32 arg2) {
+    U32 buffer[CLEAR_BUFFER_SIZE];
+    U32 size = arg2 >> 16;
+    U32* p;
+
+    arg2&=0xFFFF;
+    if (cpu->flags & DF) {
+        cpu->df = -1;
+    } else {
+        cpu->df = 1;
+    }
+    if (cpu->stringWritesToDi) {
+        p = clearCodeReadOnly(cpu, buffer, size);
+    }
+    pfn(cpu, arg1, arg2);
+    if (cpu->stringWritesToDi) {
+        restoreCodeReadOnly(cpu, buffer, p);
+    }
+    cpu->fillFlags();
+}
+
+void X64Asm::stos16(void* pfn, U32 size, bool repeat) {
+    writeToMemFromValue(1, HOST_CPU, true, -1, false, 0, CPU_OFFSET_STRING_WRITES_DI, 4, false);
+    writeToMemFromValue(repeat?1:0, HOST_CPU, true, -1, false, 0, CPU_OFFSET_STRING_REPEAT, 4, false);
+    syncRegsFromHost(); 
+    writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
+    writeToRegFromValue(2, false, (U64)pfn, 8);
+    writeToRegFromValue(0, true, size, 4);
+    callHost(x64_stringNoArgs);
+    syncRegsToHost();
+}
+
+void X64Asm::scas16(void* pfn, U32 size, bool repeat, bool repeatZero) {
+    writeToMemFromValue(0, HOST_CPU, true, -1, false, 0, CPU_OFFSET_STRING_WRITES_DI, 4, false);
+    writeToMemFromValue(repeat?1:0, HOST_CPU, true, -1, false, 0, CPU_OFFSET_STRING_REPEAT, 4, false);
+    syncRegsFromHost(); 
+    writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
+    writeToRegFromValue(2, false, (U64)pfn, 8);
+    writeToRegFromValue(0, true, (U32)repeatZero?1:0, 4);
+    writeToRegFromValue(1, true, size, 4);
+    callHost(x64_string1Arg);
+    syncRegsToHost();
+}
+
+void X64Asm::movs16(void* pfn, U32 size, bool repeat, U32 base) {
+    writeToMemFromValue(1, HOST_CPU, true, -1, false, 0, CPU_OFFSET_STRING_WRITES_DI, 4, false);
+    writeToMemFromValue(repeat?1:0, HOST_CPU, true, -1, false, 0, CPU_OFFSET_STRING_REPEAT, 4, false);
+    syncRegsFromHost(); 
+    writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
+    writeToRegFromValue(2, false, (U64)pfn, 8);
+    writeToRegFromValue(0, true, base, 4);
+    writeToRegFromValue(1, true, size, 4);
+    callHost(x64_string1Arg);
+    syncRegsToHost();
+}
+
+void X64Asm::lods16(void* pfn, U32 size, bool repeat, U32 base) {
+    writeToMemFromValue(0, HOST_CPU, true, -1, false, 0, CPU_OFFSET_STRING_WRITES_DI, 4, false);
+    writeToMemFromValue(repeat?1:0, HOST_CPU, true, -1, false, 0, CPU_OFFSET_STRING_REPEAT, 4, false);
+    syncRegsFromHost(); 
+    writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
+    writeToRegFromValue(2, false, (U64)pfn, 8);
+    writeToRegFromValue(0, true, base, 4);
+    writeToRegFromValue(1, true, size, 4);
+    callHost(x64_string1Arg);
+    syncRegsToHost();
+}
+
+void X64Asm::cmps16(void* pfn, U32 size, bool repeat, bool repeatZero, U32 base) {
+    writeToMemFromValue(0, HOST_CPU, true, -1, false, 0, CPU_OFFSET_STRING_WRITES_DI, 4, false);
+    writeToMemFromValue(repeat?1:0, HOST_CPU, true, -1, false, 0, CPU_OFFSET_STRING_REPEAT, 4, false);
+    syncRegsFromHost(); 
+    writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
+    writeToRegFromValue(2, false, (U64)pfn, 8);
+    writeToRegFromValue(0, true, (U32)repeatZero?1:0, 4);
+    writeToRegFromValue(1, true, base|(size<<16), 4);
+    callHost(x64_string2Arg);
+    syncRegsToHost();
 }
 
 #ifdef __TEST
