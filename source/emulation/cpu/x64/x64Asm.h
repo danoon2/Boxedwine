@@ -128,6 +128,8 @@ public:
     void lods16(void* pfn, U32 size, bool repeat, U32 base);
     void cmps16(void* pfn, U32 size, bool repeat, bool repeatZero, U32 base);
     void doJmp();
+    void bound32(U8 rm);
+    void bound16(U8 rm);
 
 #ifdef __TEST
     void addReturnFromTest();

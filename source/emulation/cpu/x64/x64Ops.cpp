@@ -915,13 +915,13 @@ static U32 pushIb32(X64Asm* data) {
 
 // BOUND
 static U32 bound16(X64Asm* data) {
-    kpanic("bound16 not implemented");
+    data->bound16(data->fetch8());
     return 0;
 }
 
 // BOUND
-static U32 bound32(X64Asm* data) {
-    kpanic("bound32 not implemented");
+static U32 bound32(X64Asm* data) {   
+    data->bound32(data->fetch8());
     return 0;
 }
 

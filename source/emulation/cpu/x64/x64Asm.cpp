@@ -2608,6 +2608,47 @@ void X64Asm::cmps16(void* pfn, U32 size, bool repeat, bool repeatZero, U32 base)
     syncRegsToHost();
 }
 
+// :TODO: could be inlined
+// U32 common_bound16(CPU* cpu, U32 reg, U32 address)
+void X64Asm::bound16(U8 rm) {
+    syncRegsFromHost();
+    if (this->tmp2InUse || HOST_TMP2!=0) {
+        kpanic("X64Asm::bound32 R8 was already in use");
+    }
+    this->tmp2InUse = true;
+    getNativeAddressInRegFromE(HOST_TMP2, true, rm);
+    writeToRegFromValue(2, false, G(rm), 4);
+    writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
+    callHost(common_bound32);
+    releaseTmpReg(HOST_TMP2);
+    doIf(0, false, 0, [this]() {
+        syncRegsToHost();
+        doJmp();
+    }, [this, rm]() {
+        syncRegsToHost();
+    });
+}
+
+// U32 common_bound32(CPU* cpu, U32 reg, U32 address)
+void X64Asm::bound32(U8 rm) {
+    syncRegsFromHost();
+    if (this->tmp2InUse || HOST_TMP2!=0) {
+        kpanic("X64Asm::bound32 R8 was already in use");
+    }
+    this->tmp2InUse = true;
+    getNativeAddressInRegFromE(HOST_TMP2, true, rm);
+    writeToRegFromValue(2, false, G(rm), 4);
+    writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
+    callHost(common_bound32);
+    releaseTmpReg(HOST_TMP2);
+    doIf(0, false, 0, [this]() {
+        syncRegsToHost();
+        doJmp();
+    }, [this, rm]() {
+        syncRegsToHost();
+    }); 
+}
+
 #ifdef __TEST
 void X64Asm::addReturnFromTest() {
     U8 tmpReg = getTmpReg();
