@@ -1679,6 +1679,7 @@ void X64Asm::jumpTo(U32 eip) {
 #ifdef _DEBUG
     this->writeToMemFromValue(this->startOfOpIp, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EIP_FROM, 4, false);
 #endif
+    // :TODO: is this necessary?  who uses it?
     this->writeToMemFromValue(eip, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EIP, 4, false);
     if (this->calculatedEipLen==0 || (eip>=this->startOfDataIp && eip<this->startOfDataIp+this->calculatedEipLen)) {
         write8(0xE9);
@@ -1707,29 +1708,69 @@ void X64Asm::doLoop(U32 eip) {
 }
 
 void X64Asm::jcxz(U32 eip, bool ea16) {
-    if (ea16)
-        write8(0x67);
-    write8(0xe3);    
-    doLoop(eip);
+    if (!ea16) {
+        write8(0xe3);    
+        doLoop(eip);
+    } else {
+        pushNativeFlags(); // this shouldn't change flags
+        decReg(1, false, 2);
+        // test cx, cx
+        write8(0x66);
+        write8(0x85);
+        write8(0xc9);
+        // jz 
+        write8(0x75);
+        U32 pos = this->bufferPos;
+        write8(0); // jump over because we exit loop when cx==0
+        popNativeFlags();
+        jumpTo(eip);
+        if (this->bufferPos-pos-1>127) {
+            kpanic("X64Asm::jcxz tried to jump too far");
+        }
+        this->buffer[pos] = this->bufferPos-pos-1;
+        popNativeFlags();
+    }   
 }
 
 void X64Asm::loop(U32 eip, bool ea16) {
-    if (ea16)
-        write8(0x67);
-    write8(0xe2);    
-    doLoop(eip);
+    if (!ea16) {
+        write8(0xe2);    
+        doLoop(eip);
+    } else {
+        pushNativeFlags(); // this shouldn't change flags
+        decReg(1, false, 2);
+        // test cx, cx
+        write8(0x66);
+        write8(0x85);
+        write8(0xc9);
+        // jz 
+        write8(0x74);
+        U32 pos = this->bufferPos;
+        write8(0); // jump over because we exit loop when cx==0
+        popNativeFlags();
+        jumpTo(eip);
+        if (this->bufferPos-pos-1>127) {
+            kpanic("X64Asm::loop tried to jump too far");
+        }
+        this->buffer[pos] = this->bufferPos-pos-1;
+        popNativeFlags();
+    }
 }
 
 void X64Asm::loopz(U32 eip, bool ea16) {
-    if (ea16)
-        write8(0x67);
+    if (ea16) {
+        // :TODO:
+        kpanic("16-bit X64Asm::loopz not implemented");
+    }
     write8(0xe1);    
     doLoop(eip);
 }
 
 void X64Asm::loopnz(U32 eip, bool ea16) {
-    if (ea16)
-        write8(0x67);
+    if (ea16) {
+        // :TODO:
+        kpanic("16-bit X64Asm::loopnz not implemented");
+    }
     write8(0xe0);    
     doLoop(eip);
 }
