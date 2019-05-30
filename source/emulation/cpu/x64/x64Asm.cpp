@@ -2343,7 +2343,7 @@ void X64Asm::lar(bool big, U8 rm) {
 }
 
 static void x64_invalidOp(U32 op) {
-    //kpanic("x64_invalidOp: 0x%X", op);
+    kpanic("x64_invalidOp: 0x%X", op);
 }
 
 void X64Asm::invalidOp(U32 op) {

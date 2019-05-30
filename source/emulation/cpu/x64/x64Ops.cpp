@@ -126,6 +126,8 @@ static U32 inst8RMGWritten(X64Asm* data) {
 // DIMUL Gw,Ew
 // CMPXCHG Ew,Gw
 // BSR Gw,Ew
+// BTS Ew,Gw (Roller Coaster Tycoon demo)
+// BSF Gw,Ew (Roller Coaster Tycoon demo)
 static U32 inst16RM(X64Asm* data) {
     data->translateRM(data->fetch8(), true, true, false, false, 0);
     return 0;
@@ -2128,8 +2130,8 @@ X64Decoder x64Decoder[1024] = {
     push16FS, pop16FS, x64cpuid, inst16RM, inst16RMimm8, inst16RM, invalidOp, invalidOp,
     push16GS, pop16GS, invalidOp, inst16RM, inst16RMimm8, inst16RM, invalidOp, inst16RM,
     // 1b0
-    invalidOp, inst16RM, lss16, invalidOp, lfs16, lgs16, inst16E8RM, invalidOp,
-    invalidOp, inst16RMimm8SafeG, inst16RMimm8SafeG, invalidOp, invalidOp, inst16RM, inst16E8RM, invalidOp,
+    invalidOp, inst16RM, lss16, inst16RM, lfs16, lgs16, inst16E8RM, invalidOp,
+    invalidOp, inst16RMimm8SafeG, inst16RMimm8SafeG, invalidOp, inst16RM, inst16RM, inst16E8RM, invalidOp,
     // 1c0
     invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp,
     keepSame, keepSame, keepSame, keepSame, bswapSp, keepSame, keepSame, keepSame,

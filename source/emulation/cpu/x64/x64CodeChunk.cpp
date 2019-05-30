@@ -241,6 +241,7 @@ void X64CodeChunk::patch(U32 eipAddress, U32 len) {
     x64CPU* cpu = (x64CPU*)KThread::currentThread()->cpu;
 
     while (todo>0) {
+        /*
         X64Asm data(cpu);                                
         data.ip = eip;
         data.startOfDataIp = this->emulatedAddress;
@@ -278,6 +279,7 @@ void X64CodeChunk::patch(U32 eipAddress, U32 len) {
                 continue;
             }
         }
+        */
         U32 remainingLen = this->hostLen - (U32)(host - (U8*)this->hostAddress);
         memset(host, 0xce, remainingLen);
         break;
