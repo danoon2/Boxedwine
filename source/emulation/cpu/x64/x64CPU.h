@@ -25,6 +25,7 @@ public:
     U64 memOffset;
     U64 negMemOffset;
     bool inException;
+	bool restarting;
     void*** eipToHostInstruction;
     DecodedOp* getExistingOp(U32 eip);
     U32 stringRepeat;

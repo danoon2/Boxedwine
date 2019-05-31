@@ -7,7 +7,7 @@
 #include "../../hardmmu/hard_memory.h"
 #include "x64CodeChunk.h"
 
-x64CPU::x64CPU() : nativeHandle(0), jmpBuf(NULL), endCond("x64CPU::endcond"), inException(false) {
+x64CPU::x64CPU() : nativeHandle(0), jmpBuf(NULL), endCond("x64CPU::endcond"), inException(false), restarting(false) {
 }
 
 typedef void (*StartCPU)();
@@ -24,6 +24,7 @@ void x64CPU::run() {
         for (int i=0;i<6;i++) {
             this->negSegAddress[i] = (U32)(-((S32)(this->seg[i].address)));
         }
+		this->restarting = false;
         if (setjmp(this->runBlockJump)==0) {
             StartCPU start = (StartCPU)this->init();
             start();
@@ -35,6 +36,12 @@ void x64CPU::run() {
 }
 
 void x64CPU::restart() {
+	this->memOffset = this->thread->process->memory->id;
+	this->negMemOffset = (U64)(-(S64)this->memOffset);
+	for (int i = 0; i < 6; i++) {
+		this->negSegAddress[i] = (U32)(-((S32)(this->seg[i].address)));
+	}
+	this->restarting = true;
     longjmp(this->runBlockJump, 1);
 }
 

@@ -205,9 +205,14 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
         return EXCEPTION_CONTINUE_SEARCH;
     }
     x64CPU* cpu = (x64CPU*)currentThread->cpu;
+	if (cpu->restarting) {
+		ep->ContextRecord->Rip = (U64)cpu->init();
+		cpu->restarting = false;
+		return EXCEPTION_CONTINUE_EXECUTION;
+	}
     if (cpu!=(x64CPU*)ep->ContextRecord->R13) {
         return EXCEPTION_CONTINUE_SEARCH;
-    }
+    }	
     if (currentThread->exiting) {
         X64Asm data(cpu);
         data.callCallback(unscheduleCallback);
