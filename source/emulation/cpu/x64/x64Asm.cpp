@@ -1712,8 +1712,6 @@ void X64Asm::jcxz(U32 eip, bool ea16) {
         write8(0xe3);    
         doLoop(eip);
     } else {
-        pushNativeFlags(); // this shouldn't change flags
-        decReg(1, false, 2);
         // test cx, cx
         write8(0x66);
         write8(0x85);
@@ -1721,14 +1719,13 @@ void X64Asm::jcxz(U32 eip, bool ea16) {
         // jz 
         write8(0x75);
         U32 pos = this->bufferPos;
-        write8(0); // jump over because we exit loop when cx==0
+        write8(0);
         popNativeFlags();
         jumpTo(eip);
         if (this->bufferPos-pos-1>127) {
             kpanic("X64Asm::jcxz tried to jump too far");
         }
         this->buffer[pos] = this->bufferPos-pos-1;
-        popNativeFlags();
     }   
 }
 
@@ -1746,7 +1743,7 @@ void X64Asm::loop(U32 eip, bool ea16) {
         // jz 
         write8(0x74);
         U32 pos = this->bufferPos;
-        write8(0); // jump over because we exit loop when cx==0
+        write8(0);
         popNativeFlags();
         jumpTo(eip);
         if (this->bufferPos-pos-1>127) {
