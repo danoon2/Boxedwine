@@ -5,6 +5,9 @@
 #include "x64Asm.h"
 #include "../common/common_other.h"
 #include "../source/emulation/hardmmu/hard_memory.h"
+#ifdef X64_EMULATE_FPU
+#include "../common/common_fpu.h"
+#endif
 
 #define G(rm) ((rm >> 3) & 7)
 #define E(rm) (rm & 7)
@@ -24,6 +27,7 @@
 
 #define CPU_OFFSET_STRING_REPEAT (U32)(offsetof(x64CPU, stringRepeat))
 #define CPU_OFFSET_STRING_WRITES_DI (U32)(offsetof(x64CPU, stringWritesToDi))
+#define CPU_OFFSET_ARG5 (U32)(offsetof(x64CPU, arg5))
 
 X64Asm::X64Asm(x64CPU* cpu) : X64Data(cpu), parent(NULL), tmp1InUse(false), tmp2InUse(false), tmp3InUse(false) {
 }
@@ -704,14 +708,13 @@ void X64Asm::push(S32 reg, bool isRegRex, U32 value, S32 bytes) {
         isRegRex = true;
     }
 
-    // store flags because the &, - instructions will affect flags
-    pushNativeFlags();
-
     // tmpReg = HOST_ESP - bytes
     addWithLea(tmpReg, true, HOST_ESP, true, -1, false, 0, -bytes, 4);
 
     // tmpReg &= cpu->stackMask
+    pushNativeFlags();
     andWriteToRegFromCPU(tmpReg, true, CPU_OFFSET_STACK_MASK);
+    popNativeFlags(); // the following write can throw an exception, so make sure out stack is fine in case the rest of this instruction is skipped
 
     // [ss:tmpReg] = reg
     if (reg>=0) {
@@ -719,6 +722,8 @@ void X64Asm::push(S32 reg, bool isRegRex, U32 value, S32 bytes) {
     } else {
         writeToMemFromValue(value, tmpReg, true, HOST_SS, true, 0, false, bytes, true);
     }
+
+    pushNativeFlags();
 
     // HOST_ESP = HOST_ESP & cpu->stackNotMask
     andWriteToRegFromCPU(HOST_ESP, true, CPU_OFFSET_STACK_NOT_MASK);
@@ -862,12 +867,6 @@ void X64Asm::pushNativeValue8(U8 value) {
     write8(value);
 }
 
-void X64Asm::pushNativeValue64(U64 value) {
-    U8 tmp = getTmpReg();
-    writeToRegFromValue(tmp, true, value, 8);
-    releaseTmpReg(tmp);
-}
-
 void X64Asm::pushNativeFlags() {
     write8(0x9c);
 }
@@ -983,6 +982,7 @@ void X64Asm::adjustStack(U8 tmpReg, S8 bytes) {
     // tmpReg = HOST_ESP + bytes
     addWithLea(tmpReg, true, HOST_ESP, true, -1, false, 0, bytes, 4);
 
+    pushNativeFlags();
     // tmpReg &= cpu->stackMask
     andWriteToRegFromCPU(tmpReg, true, CPU_OFFSET_STACK_MASK);
 
@@ -991,6 +991,7 @@ void X64Asm::adjustStack(U8 tmpReg, S8 bytes) {
 
     // HOST_ESP = HOST_ESP | tmpReg
     orRegReg(HOST_ESP, true, tmpReg, true);
+    popNativeFlags();
 }
 
 // :TODO: is there a way to do this without changing flags so that I don't have to save them, 
@@ -1020,14 +1021,13 @@ void X64Asm::popReg(U8 reg, bool isRegRex, S8 bytes, bool commit) {
         allocatedTmpReg = true;
     }
 
-    // store flags because the &, - instructions will affect flags
-    pushNativeFlags();    
-
     // tmpReg = HOST_ESP
     writeToRegFromReg(tmpReg, true, HOST_ESP, true, 4);
 
     // tmpReg &= cpu->stackMask
+    pushNativeFlags();  
     andWriteToRegFromCPU(tmpReg, true, CPU_OFFSET_STACK_MASK);
+    popNativeFlags(); // the following write can throw an exception, so make sure out stack is fine in case the rest of this instruction is skipped
 
     // reg = [ss:tmpReg]    
     writeToRegFromMem(reg, isRegRex, tmpReg, true, HOST_SS, true, 0, false, bytes, true);
@@ -1041,9 +1041,6 @@ void X64Asm::popReg(U8 reg, bool isRegRex, S8 bytes, bool commit) {
     }
     if (allocatedTmpReg)
         releaseTmpReg(tmpReg);
-
-    // restore original flags
-    popNativeFlags();
 }
 
 U8 X64Asm::getTmpReg() {
@@ -1132,6 +1129,10 @@ void X64Asm::syncRegsToHost(S8 excludeReg) {
     releaseTmpReg(tmpReg);
 }
 
+void badStack(CPU* cpu) {
+    kpanic("native stack is unaligned");
+}
+
 void X64Asm::callHost(void* pfn) {
     U8 tmp = HOST_TMP3;
     
@@ -1139,6 +1140,31 @@ void X64Asm::callHost(void* pfn) {
         kpanic("x64Asm::callHost tmp3InUse already in use");        
     }
     tmp3InUse = true;
+
+#ifdef _DEBUG
+    // test rsp,0xf
+    write8(0x48);
+    write8(0xf7);
+    write8(0xc4);
+    write32(0xf);
+
+    // jz :1
+    write8(0x74);
+    U32 pos = this->bufferPos;
+    write8(0);
+    writeToRegFromValue(tmp, true, (U64)badStack, 8);
+    write8(REX_BASE | REX_64);
+    write8(0x83);
+    write8(0xEC);
+    write8(0x20);    
+
+    // call tmp
+    write8(REX_BASE | REX_MOD_RM);
+    write8(0xFF);
+    write8(0xd0 | tmp);
+    this->buffer[pos] = this->bufferPos - pos - 1;
+#endif
+
     write8(0xfc); // cld
 
     writeToRegFromValue(tmp, true, (U64)pfn, 8);
@@ -1720,7 +1746,6 @@ void X64Asm::jcxz(U32 eip, bool ea16) {
         write8(0x75);
         U32 pos = this->bufferPos;
         write8(0);
-        popNativeFlags();
         jumpTo(eip);
         if (this->bufferPos-pos-1>127) {
             kpanic("X64Asm::jcxz tried to jump too far");
@@ -1772,22 +1797,29 @@ void X64Asm::loopnz(U32 eip, bool ea16) {
     doLoop(eip);
 }
 
+void x64_jmp(x64CPU* cpu, U32 big, U32 selector, U32 offset) {
+    cpu->jmp(big, selector, offset, cpu->arg5);
+}
+
 void X64Asm::jmp(bool big, U32 sel, U32 offset, U32 oldEip) {
     syncRegsFromHost(); 
 
     // calling convention RCX, RDX, R8, R9 for first 4 parameters
 
+    writeToMemFromValue(oldEip, HOST_CPU, true, -1, false, 0, CPU_OFFSET_ARG5, 4, false);
     // call void common_jmp(cpu, false, sel, offset, oldEip)
     writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
     writeToRegFromValue(2, false, big, 4); // big param
     writeToRegFromValue(0, true, sel, 4); // sel param
     writeToRegFromValue(1, true, offset, 4); // offset param
-    pushNativeValue32(oldEip); // oldEip param
     
-    callHost(common_jmp);
-    popNativeReg(0, false); // balances pushing oldEip, we don't care about the reg
+    callHost(x64_jmp);
     syncRegsToHost();
     doJmp();
+}
+
+void x64_call(x64CPU* cpu, U32 big, U32 selector, U32 offset) {
+    cpu->call(big, selector, offset, cpu->arg5);
 }
 
 // common_jmp(cpu, false, sel, offset, oldEip);
@@ -1795,16 +1827,15 @@ void X64Asm::call(bool big, U32 sel, U32 offset, U32 oldEip) {
     syncRegsFromHost(); 
 
     // calling convention RCX, RDX, R8, R9 for first 4 parameters
+    writeToMemFromValue(oldEip, HOST_CPU, true, -1, false, 0, CPU_OFFSET_ARG5, 4, false);
 
     // call void common_call(CPU* cpu, U32 big, U32 selector, U32 offset, U32 oldEip)
     writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
     writeToRegFromValue(2, false, big, 4); // big param
     writeToRegFromValue(0, true, sel, 4); // sel param
     writeToRegFromValue(1, true, offset, 4); // offset param
-    pushNativeValue32(oldEip); // oldEip param
     
-    callHost(common_call);
-    popNativeReg(0, false); // balances pushing oldEip, we don't care about the reg
+    callHost(x64_call);
     syncRegsToHost();
     doJmp();
 }
@@ -2130,8 +2161,7 @@ void X64Asm::loadSeg(U8 seg, U8 rm, bool b32) {
 
         writeToRegFromValue(2, false, seg, 4); // value param, must pass 4 so that upper part of reg is zero'd out
 
-
-        pushNativeReg(1, true); // save value so we don't read it again        
+        writeToMemFromReg(1, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_ARG5, 4, false);
 
         callHost(common_setSegment);
     
@@ -2140,16 +2170,15 @@ void X64Asm::loadSeg(U8 seg, U8 rm, bool b32) {
 
         doIf(0, false, 0, [this]() {
             syncRegsToHost();
-            popNativeReg(1, true); // don't need, but will balance previous push
             doJmp();
         }, [this, rm]() {
             syncRegsToHost();
             // put the value we stored on the native stack into the emulator reg
             U8 r = G(rm);
             if (r==4) {
-                popNativeReg(HOST_ESP, true);
+                writeToRegFromMem(HOST_ESP, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_ARG5, 4, false);
             } else {
-                popNativeReg(r, false);
+                writeToRegFromMem(r, false, HOST_CPU, true, -1, false, 0, CPU_OFFSET_ARG5, 4, false);
             }
         }); 
     } else {
@@ -2218,19 +2247,10 @@ void X64Asm::callE(bool big, U8 rm) {
     releaseTmpReg(tmpReg);
 }
 
-void X64Asm::callJmp(bool big, U8 rm, void* pfn) {
+void X64Asm::callJmp(bool big, U8 rm, bool jmp) {
     syncRegsFromHost(); 
      
     // calling convention RCX, RDX, R8, R9 for first 4 parameters
-
-    // call void common_call(CPU* cpu, U32 big, U32 selector, U32 offset, U32 oldEip)
-    writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
-    if (big) {
-        writeToRegFromValue(2, false, 1, 4); // big param
-    } else {
-        zeroReg(2, false);
-    }    
-    U8 bytes = (big?4:2);
 
     if (this->tmp3InUse) {
         kpanic("X64Asm::callFar tmp3InUse was in use");
@@ -2240,22 +2260,34 @@ void X64Asm::callJmp(bool big, U8 rm, void* pfn) {
         kpanic("X64Asm::callFar incorrectly assumed HOST_TMP3");
     }
     getNativeAddressInRegFromE(HOST_TMP3, true, rm);
+
+    writeToMemFromValue(this->ip, HOST_CPU, true, -1, false, 0, CPU_OFFSET_ARG5, 4, false);
+    // call void common_call(CPU* cpu, U32 big, U32 selector, U32 offset, U32 oldEip)
+    writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
+    if (big) {
+        writeToRegFromValue(2, false, 1, 4); // big param
+    } else {
+        zeroReg(2, false);
+    }    
+    U8 bytes = (big?4:2);
+    
     zeroReg(0, true);
     zeroReg(1, true);
     writeToRegFromMem(1, true, HOST_TMP3, true, -1, false, 0, 0, bytes, false); // offset
     writeToRegFromMem(0, true, HOST_TMP3, true, -1, false, 0, bytes, 2, false); // seg
     releaseTmpReg(HOST_TMP3);
-
-    pushNativeValue32(this->ip); // oldEip param
     
-    callHost(pfn);
-    popNativeReg(0, false); // balances pushing oldEip, we don't care about the reg
+    if (jmp) {
+        callHost(x64_jmp);
+    } else {
+        callHost(x64_call);
+    }
     syncRegsToHost();
     doJmp();  
 }
 
 void X64Asm::callFar(bool big, U8 rm) {    
-    callJmp(big, rm, common_call);   
+    callJmp(big, rm, false);   
 }
 
 void X64Asm::jmpE(bool big, U8 rm) {
@@ -2269,7 +2301,7 @@ void X64Asm::jmpE(bool big, U8 rm) {
 }
 
 void X64Asm::jmpFar(bool big, U8 rm) {
-    callJmp(big, rm, common_jmp);       
+    callJmp(big, rm, true);       
 }
 
 // call back signature
@@ -2686,6 +2718,312 @@ void X64Asm::bound32(U8 rm) {
         syncRegsToHost();
     }); 
 }
+
+#ifdef X64_EMULATE_FPU
+void X64Asm::callFpuNoArg(PFN_FPU pfn) {
+    syncRegsFromHost();
+    writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
+    callHost(pfn);
+    syncRegsToHost();
+}
+
+void X64Asm::callFpuWithAddress(PFN_FPU_ADDRESS pfn, U8 rm) {
+    syncRegsFromHost();
+    getNativeAddressInRegFromE(2, false, rm);    
+    writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
+    callHost(pfn);
+    syncRegsToHost();
+}
+
+void X64Asm::callFpuWithArg(PFN_FPU_REG pfn, U32 arg) {
+    syncRegsFromHost();
+    writeToRegFromValue(2, false, (U32)rm, 4);
+    getNativeAddressInRegFromE(2, false, rm);
+    writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
+    callHost(pfn);
+    syncRegsToHost();
+}
+
+void X64Asm::fpu0(U8 rm) {
+    if (rm >= 0xc0) {
+        switch (G(rm)) {
+        case 0: callFpuWithArg(common_FADD_ST0_STj, E(rm)); break;
+        case 1: callFpuWithArg(common_FMUL_ST0_STj, E(rm)); break;
+        case 2: callFpuWithArg(common_FCOM_STi, E(rm)); break;
+        case 3: callFpuWithArg(common_FCOM_STi_Pop, E(rm)); break;
+        case 4: callFpuWithArg(common_FSUB_ST0_STj, E(rm)); break;
+        case 5: callFpuWithArg(common_FSUBR_ST0_STj, E(rm)); break;
+        case 6: callFpuWithArg(common_FDIV_ST0_STj, E(rm)); break;
+        case 7: callFpuWithArg(common_FDIVR_ST0_STj, E(rm)); break;
+        }
+    } else {
+        switch (G(rm)) {
+            case 0: callFpuWithAddress(common_FADD_SINGLE_REAL, rm); break;
+            case 1: callFpuWithAddress(common_FMUL_SINGLE_REAL, rm); break;
+            case 2: callFpuWithAddress(common_FCOM_SINGLE_REAL, rm); break;
+            case 3: callFpuWithAddress(common_FCOM_SINGLE_REAL_Pop, rm); break;
+            case 4: callFpuWithAddress(common_FSUB_SINGLE_REAL, rm); break;
+            case 5: callFpuWithAddress(common_FSUBR_SINGLE_REAL, rm); break;
+            case 6: callFpuWithAddress(common_FDIV_SINGLE_REAL, rm); break;
+            case 7: callFpuWithAddress(common_FDIVR_SINGLE_REAL, rm); break;
+        }
+    }
+}
+
+void X64Asm::fpu1(U8 rm) {
+    if (rm >= 0xc0) {	
+        switch ((rm >> 3) & 7) {
+            case 0: callFpuWithArg(common_FLD_STi, E(rm)); break;
+            case 1: callFpuWithArg(common_FXCH_STi, E(rm)); break;
+            case 2: callFpuNoArg(common_FNOP); break;
+            case 3: callFpuWithArg(common_FST_STi_Pop, E(rm)); break;
+            case 4:
+            {
+                switch (rm & 7) {
+                    case 0: callFpuNoArg(common_FCHS); break;
+                    case 1: callFpuNoArg(common_FABS); break;
+                    case 4: callFpuNoArg(common_FTST); break;
+                    case 5: callFpuNoArg(common_FXAM); break;
+                    default: invalidOp(this->inst); break;
+                }
+                break;
+            }
+            case 5:
+            {
+                switch (rm & 7) {
+                    case 0: callFpuNoArg(common_FLD1); break;
+                    case 1: callFpuNoArg(common_FLDL2T); break;
+                    case 2: callFpuNoArg(common_FLDL2E); break;
+                    case 3: callFpuNoArg(common_FLDPI); break;
+                    case 4: callFpuNoArg(common_FLDLG2); break;
+                    case 5: callFpuNoArg(common_FLDLN2); break;
+                    case 6: callFpuNoArg(common_FLDZ); break;
+                    case 7: invalidOp(this->inst); break;
+                }
+                break;
+            }
+            case 6:
+            {
+                switch (rm & 7) {
+                    case 0: callFpuNoArg(common_F2XM1); break;
+                    case 1: callFpuNoArg(common_FYL2X); break;
+                    case 2: callFpuNoArg(common_FPTAN); break;
+                    case 3: callFpuNoArg(common_FPATAN); break;
+                    case 4: callFpuNoArg(common_FXTRACT); break;
+                    case 5: callFpuNoArg(common_FPREM_nearest); break;
+                    case 6: callFpuNoArg(common_FDECSTP); break;
+                    case 7: callFpuNoArg(common_FINCSTP); break;
+                }
+                break;
+            }
+            case 7:
+            {
+                switch (rm & 7) {
+                    case 0: callFpuNoArg(common_FPREM); break;
+                    case 1: callFpuNoArg(common_FYL2XP1); break;
+                    case 2: callFpuNoArg(common_FSQRT); break;
+                    case 3: callFpuNoArg(common_FSINCOS); break;
+                    case 4: callFpuNoArg(common_FRNDINT); break;
+                    case 5: callFpuNoArg(common_FSCALE); break;
+                    case 6: callFpuNoArg(common_FSIN); break;
+                    case 7: callFpuNoArg(common_FCOS); break;
+                }
+                break;
+            }
+        }
+    } else {
+        switch ((rm >> 3) & 7) {
+            case 0: callFpuWithAddress(common_FLD_SINGLE_REAL, rm); break;
+            case 1: invalidOp(this->inst); break;
+            case 2: callFpuWithAddress(common_FST_SINGLE_REAL, rm); break;
+            case 3: callFpuWithAddress(common_FST_SINGLE_REAL_Pop, rm); break;
+            case 4: callFpuWithAddress(common_FLDENV, rm); break;
+            case 5: callFpuWithAddress(common_FLDCW, rm); break;
+            case 6: callFpuWithAddress(common_FNSTENV, rm); break;
+            case 7: callFpuWithAddress(common_FNSTCW, rm); break;
+        }
+    }
+}
+
+void X64Asm::fpu2(U8 rm) {
+    if (rm >= 0xc0) {       
+        switch ((rm >> 3) & 7) {
+            case 0: callFpuWithArg(common_FCMOV_ST0_STj_CF, E(rm)); break;
+            case 1: callFpuWithArg(common_FCMOV_ST0_STj_ZF, E(rm)); break;
+            case 2: callFpuWithArg(common_FCMOV_ST0_STj_CF_OR_ZF, E(rm)); break;
+            case 3: callFpuWithArg(common_FCMOV_ST0_STj_PF, E(rm)); break;
+            case 5:
+                if ((rm & 7)==1) {
+                    callFpuNoArg(common_FUCOMPP);
+                    break;
+                }
+            // intentional fall through
+            default:
+                invalidOp(this->inst); break;
+        }
+    } else {
+        switch ((rm >> 3) & 7) {
+            case 0: callFpuWithAddress(common_FIADD_DWORD_INTEGER, rm); break;
+            case 1: callFpuWithAddress(common_FIMUL_DWORD_INTEGER, rm); break;
+            case 2: callFpuWithAddress(common_FICOM_DWORD_INTEGER, rm); break;
+            case 3: callFpuWithAddress(common_FICOM_DWORD_INTEGER_Pop, rm); break;
+            case 4: callFpuWithAddress(common_FISUB_DWORD_INTEGER, rm); break;
+            case 5: callFpuWithAddress(common_FISUBR_DWORD_INTEGER, rm); break;
+            case 6: callFpuWithAddress(common_FIDIV_DWORD_INTEGER, rm); break;
+            case 7: callFpuWithAddress(common_FIDIVR_DWORD_INTEGER, rm); break;
+        }
+    }
+}
+
+void X64Asm::fpu3(U8 rm) {
+    if (rm >= 0xc0) {
+        switch ((rm >> 3) & 7) {
+            case 0: callFpuWithArg(common_FCMOV_ST0_STj_NCF, E(rm)); break;
+            case 1: callFpuWithArg(common_FCMOV_ST0_STj_NZF, E(rm)); break;
+            case 2: callFpuWithArg(common_FCMOV_ST0_STj_NCF_AND_NZF, E(rm)); break;
+            case 3: callFpuWithArg(common_FCMOV_ST0_STj_NPF, E(rm)); break;
+            case 4:
+            {
+                switch (rm & 7) {
+                    case 2: callFpuNoArg(common_FNCLEX); break;
+                    case 3: callFpuNoArg(common_FNINIT); break;
+                    default: invalidOp(this->inst); break;
+                }
+                break;
+            }
+            case 5: callFpuWithArg(common_FUCOMI_ST0_STj, E(rm)); break;
+            case 6: callFpuWithArg(common_FCOMI_ST0_STj_Pop, E(rm)); break;
+            default: invalidOp(this->inst); break;
+        }
+    } else {
+        switch ((rm >> 3) & 7) {
+            case 0: callFpuWithAddress(common_FILD_DWORD_INTEGER, rm); break;
+            case 1: callFpuWithAddress(common_FISTTP32, rm); break;
+            case 2: callFpuWithAddress(common_FIST_DWORD_INTEGER, rm); break;
+            case 3: callFpuWithAddress(common_FIST_DWORD_INTEGER_Pop, rm); break;
+            case 5: callFpuWithAddress(common_FLD_EXTENDED_REAL, rm); break;
+            case 7: callFpuWithAddress(common_FSTP_EXTENDED_REAL, rm); break;
+            default: invalidOp(this->inst); break;
+        }
+    }
+}
+
+void X64Asm::fpu4(U8 rm) {
+    if (rm >= 0xc0) {
+        switch ((rm >> 3) & 7) {
+            case 0: callFpuWithArg(common_FADD_STi_ST0, E(rm)); break;
+            case 1: callFpuWithArg(common_FMUL_STi_ST0, E(rm)); break;
+            case 2: callFpuWithArg(common_FCOM_STi, E(rm)); break;
+            case 3: callFpuWithArg(common_FCOM_STi_Pop, E(rm)); break;
+            case 4: callFpuWithArg(common_FSUBR_STi_ST0, E(rm)); break;
+            case 5: callFpuWithArg(common_FSUB_STi_ST0, E(rm)); break;
+            case 6: callFpuWithArg(common_FDIVR_STi_ST0, E(rm)); break;
+            case 7: callFpuWithArg(common_FDIV_STi_ST0, E(rm)); break;
+        }
+    } else  {
+        switch ((rm >> 3) & 7) {
+            case 0: callFpuWithAddress(common_FADD_DOUBLE_REAL, rm); break;
+            case 1: callFpuWithAddress(common_FMUL_DOUBLE_REAL, rm); break;
+            case 2: callFpuWithAddress(common_FCOM_DOUBLE_REAL, rm); break;
+            case 3: callFpuWithAddress(common_FCOM_DOUBLE_REAL_Pop, rm); break;
+            case 4: callFpuWithAddress(common_FSUB_DOUBLE_REAL, rm); break;
+            case 5: callFpuWithAddress(common_FSUBR_DOUBLE_REAL, rm); break;
+            case 6: callFpuWithAddress(common_FDIV_DOUBLE_REAL, rm); break;
+            case 7: callFpuWithAddress(common_FDIVR_DOUBLE_REAL, rm); break;
+        }
+    }
+}
+
+void X64Asm::fpu5(U8 rm) {
+    if (rm >= 0xc0) {
+        switch ((rm >> 3) & 7) {
+            case 0: callFpuWithArg(common_FFREE_STi, E(rm)); break;
+            case 1: callFpuWithArg(common_FXCH_STi, E(rm)); break;
+            case 2: callFpuWithArg(common_FST_STi, E(rm)); break;
+            case 3: callFpuWithArg(common_FST_STi_Pop, E(rm)); break;
+            case 4: callFpuWithArg(common_FUCOM_STi, E(rm)); break;
+            case 5: callFpuWithArg(common_FUCOM_STi_Pop, E(rm)); break;
+            default: invalidOp(this->inst); break;
+        }
+    } else {
+        switch ((rm >> 3) & 7) {
+            case 0: callFpuWithAddress(common_FLD_DOUBLE_REAL, rm); break;
+            case 1: callFpuWithAddress(common_FISTTP64, rm); break;
+            case 2: callFpuWithAddress(common_FST_DOUBLE_REAL, rm); break;
+            case 3: callFpuWithAddress(common_FST_DOUBLE_REAL_Pop, rm); break;
+            case 4: callFpuWithAddress(common_FRSTOR, rm); break;
+            case 5: invalidOp(this->inst); break;
+            case 6: callFpuWithAddress(common_FNSAVE, rm); break;
+            case 7: callFpuWithAddress(common_FNSTSW, rm); break;
+        }
+    }
+}
+
+void X64Asm::fpu6(U8 rm) {
+    if (rm >= 0xc0) {
+        switch ((rm >> 3) & 7) {
+            case 0: callFpuWithArg(common_FADD_STi_ST0_Pop, E(rm)); break;
+            case 1: callFpuWithArg(common_FMUL_STi_ST0_Pop, E(rm)); break;
+            case 2: callFpuWithArg(common_FCOM_STi_Pop, E(rm)); break;
+            case 3:
+                if ((rm & 7) == 1)
+                    callFpuNoArg(common_FCOMPP);
+                else {
+                    invalidOp(this->inst); 
+                }
+                break;
+            break;
+            case 4: callFpuWithArg(common_FSUBR_STi_ST0_Pop, E(rm)); break;
+            case 5: callFpuWithArg(common_FSUB_STi_ST0_Pop, E(rm)); break;
+            case 6: callFpuWithArg(common_FDIVR_STi_ST0_Pop, E(rm)); break;
+            case 7: callFpuWithArg(common_FDIV_STi_ST0_Pop, E(rm)); break;
+        }
+    } else {
+        switch ((rm >> 3) & 7) {
+            case 0: callFpuWithAddress(common_FIADD_WORD_INTEGER, rm); break;
+            case 1: callFpuWithAddress(common_FIMUL_WORD_INTEGER, rm); break;
+            case 2: callFpuWithAddress(common_FICOM_WORD_INTEGER, rm); break;
+            case 3: callFpuWithAddress(common_FICOM_WORD_INTEGER_Pop, rm); break;
+            case 4: callFpuWithAddress(common_FISUB_WORD_INTEGER, rm); break;
+            case 5: callFpuWithAddress(common_FISUBR_WORD_INTEGER, rm); break;
+            case 6: callFpuWithAddress(common_FIDIV_WORD_INTEGER, rm); break;
+            case 7: callFpuWithAddress(common_FIDIVR_WORD_INTEGER, rm); break;
+        }
+    }
+}
+
+void X64Asm::fpu7(U8 rm) {
+    if (rm >= 0xc0) {
+        switch ((rm >> 3) & 7) {
+            case 0: callFpuWithArg(common_FFREEP_STi, E(rm)); break;
+            case 1: callFpuWithArg(common_FXCH_STi, E(rm)); break;
+            case 2:
+            case 3: callFpuWithArg(common_FST_STi_Pop, E(rm)); break;
+            case 4:
+                if ((rm & 7)==0)
+                    callFpuNoArg(common_FNSTSW_AX);
+                else {
+                    invalidOp(this->inst);
+                }
+                break;
+            case 5: callFpuWithArg(common_FUCOMI_ST0_STj_Pop, E(rm)); break;
+            case 6: callFpuWithArg(common_FCOMI_ST0_STj_Pop, E(rm)); break;
+            case 7: invalidOp(this->inst); break;
+        }
+    } else  {
+        switch ((rm >> 3) & 7) {
+            case 0: callFpuWithAddress(common_FILD_WORD_INTEGER, rm); break;
+            case 1: callFpuWithAddress(common_FISTTP16, rm); break;
+            case 2: callFpuWithAddress(common_FIST_WORD_INTEGER, rm); break;
+            case 3: callFpuWithAddress(common_FIST_WORD_INTEGER_Pop, rm); break;
+            case 4: callFpuWithAddress(common_FBLD_PACKED_BCD, rm); break;
+            case 5: callFpuWithAddress(common_FILD_QWORD_INTEGER, rm); break;
+            case 6: callFpuWithAddress(common_FBSTP_PACKED_BCD, rm); break;
+            case 7: callFpuWithAddress(common_FISTP_QWORD_INTEGER, rm); break;
+        }
+    }
+}
+#endif
 
 #ifdef __TEST
 void X64Asm::addReturnFromTest() {

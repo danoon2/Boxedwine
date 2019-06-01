@@ -33,6 +33,12 @@
 #define CPU_OFFSET_EIP (U32)(offsetof(x64CPU, eip.u32))
 #define CPU_OFFSET_EIP_FROM (U32)(offsetof(x64CPU, fromEip))
 
+#ifdef X64_EMULATE_FPU
+typedef void (*PFN_FPU_REG)(CPU* cpu, U32 reg);
+typedef void (*PFN_FPU_ADDRESS)(CPU* cpu, U32 address);
+typedef void (*PFN_FPU)(CPU* cpu);
+#endif
+
 class X64Asm : public X64Data {
 public:  
     X64Asm(x64CPU* cpu);
@@ -130,6 +136,16 @@ public:
     void doJmp();
     void bound32(U8 rm);
     void bound16(U8 rm);
+#ifdef X64_EMULATE_FPU
+    void fpu0(U8 rm);
+    void fpu1(U8 rm);
+    void fpu2(U8 rm);
+    void fpu3(U8 rm);
+    void fpu4(U8 rm);
+    void fpu5(U8 rm);
+    void fpu6(U8 rm);
+    void fpu7(U8 rm);
+#endif
 
 #ifdef __TEST
     void addReturnFromTest();
@@ -141,7 +157,6 @@ private:
 
     void push(S32 reg, bool isRegRex, U32 value, S32 bytes);
     void pushNativeReg(U8 reg, bool isRegRex);
-    void pushNativeValue64(U64 value);
     void pushNativeValue32(U32 value);
     void pushNativeValue8(U8 value);
     void popNativeReg(U8 reg, bool isRegRex);
@@ -160,7 +175,7 @@ private:
     void setSF_onAL(U8 flagReg);
 
     void callHost(void* pfn);
-    void callJmp(bool big, U8 rm, void* pfn);
+    void callJmp(bool big, U8 rm, bool jmp);
 
     void translateMemory(U32 rm, bool checkG, bool isG8bit, bool isE8bit);
     void setRM(U8 rm, bool checkG, bool checkE, bool isG8bit, bool isE8bit);
@@ -186,6 +201,12 @@ private:
     void writeToEFromReg(U8 rm, U8 reg, bool isRegRex, U8 bytes); // will trash current op data
     void writeToRegFromE(U8 reg, bool isRegRex, U8 rm, U8 bytes); // will trash current op data
     void getNativeAddressInRegFromE(U8 reg, bool isRegRex, U8 rm); // will trash current op data    
+
+#ifdef X64_EMULATE_FPU
+    void callFpuNoArg(PFN_FPU pfn);
+    void callFpuWithAddress(PFN_FPU_ADDRESS pfn, U8 rm);
+    void callFpuWithArg(PFN_FPU_REG pfn, U32 arg);
+#endif
 };
 #endif
 #endif

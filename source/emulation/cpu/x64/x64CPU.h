@@ -30,7 +30,7 @@ public:
     DecodedOp* getExistingOp(U32 eip);
     U32 stringRepeat;
     U32 stringWritesToDi;
-
+    U32 arg5;
 #ifdef _DEBUG
     U32 fromEip;
 #endif

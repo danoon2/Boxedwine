@@ -228,6 +228,9 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
     } 
     InException inException(cpu);
     if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_ILLEGAL_INSTRUCTION) {
+        if (ep->ContextRecord->Rsp & 0xf) {
+            kpanic("seh_filter: bad stack alignment");
+        }
         if (*((U8*)ep->ContextRecord->Rip)==0xce) {            
             return handleChangedUnpatchedCode(ep, cpu);
         } if (*((U8*)ep->ContextRecord->Rip)==0xcd) { 
@@ -246,9 +249,13 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
     } else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION && (ep->ContextRecord->Rip & 0xFFFFFFFF00000000l)==(U64)cpu->thread->memory->executableMemoryId) {      
         U32 inst = *((U32*)ep->ContextRecord->Rip);
 
-        if (inst==0x088B4466 || inst==0xC8048B4A) {            
+        if (inst==0x088B4466 || inst==0xC8048B4A) {      
+            // rip is not adjusted so we don't need to check for stack alignment
             return handleMissingCode(ep, cpu, inst);
         } else {  
+            if (ep->ContextRecord->Rsp & 0xf) {
+                kpanic("seh_filter: bad stack alignment");
+            }
             // check if the emulated memory caused the exception
             if ((ep->ExceptionRecord->ExceptionInformation[1] & 0xFFFFFFFF00000000l) == cpu->thread->memory->id) {                
                 U32 address = (U32)ep->ExceptionRecord->ExceptionInformation[1];

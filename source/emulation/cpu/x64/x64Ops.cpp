@@ -1997,12 +1997,55 @@ static U32 mmxRegG(X64Asm* data) {
 // FPU ESC 5
 // FPU ESC 6
 // FPU ESC 7
+
+#ifdef X64_EMULATE_FPU
+static U32 instFPU0(X64Asm* data) {
+    data->fpu0(data->fetch8());
+    return 0;
+}
+
+static U32 instFPU1(X64Asm* data) {
+    data->fpu1(data->fetch8());
+    return 0;
+}
+
+static U32 instFPU2(X64Asm* data) {
+    data->fpu2(data->fetch8());
+    return 0;
+}
+
+static U32 instFPU3(X64Asm* data) {
+    data->fpu3(data->fetch8());
+    return 0;
+}
+
+static U32 instFPU4(X64Asm* data) {
+    data->fpu4(data->fetch8());
+    return 0;
+}
+
+static U32 instFPU5(X64Asm* data) {
+    data->fpu5(data->fetch8());
+    return 0;
+}
+
+static U32 instFPU6(X64Asm* data) {
+    data->fpu6(data->fetch8());
+    return 0;
+}
+
+static U32 instFPU7(X64Asm* data) {
+    data->fpu7(data->fetch8());
+    return 0;
+}
+#else
 static U32 instFPU(X64Asm* data) {
     // don't check G, because G is a function not a reg
     // don't check E, we never load or store to ESP
     data->translateRM(data->fetch8(), false, false, false, false, 0);
     return 0;
 }
+#endif
 
 // GRP2 Ew,1
 // GRP2 Ew,CL
@@ -2088,7 +2131,11 @@ X64Decoder x64Decoder[1024] = {
     enter16, leave16, retf16Iw, retf16, int3, intIb, invalidOp, invalidOp,
     // D0
     inst8RMSafeG, inst16RMSafeG, inst8RMSafeG, inst16RMSafeG, aam, aad, salc, xlat,
-    instFPU, instFPU, instFPU, instFPU, instFPU, instFPU, instFPU, instFPU,
+#ifdef X64_EMULATE_FPU
+    instFPU0, instFPU1, instFPU2, instFPU3, instFPU4, instFPU5, instFPU6, instFPU7,
+#else
+	instFPU, instFPU, instFPU, instFPU, instFPU, instFPU, instFPU, instFPU,
+#endif
     // E0
     x64loopnz, x64loopz, x64loop, x64jcxz, inb, inw, outb, invalidOp,
     callJw, jmpJw, jmpAp, jmpJb, invalidOp, invalidOp, invalidOp, invalidOp,
@@ -2186,7 +2233,11 @@ X64Decoder x64Decoder[1024] = {
     enter32, leave32, retf32Iw, retf32, int3, intIb, invalidOp, iret32,
     // 2d0
     inst8RMSafeG, inst32RMSafeG, inst8RMSafeG, inst32RMSafeG, aam, aad, salc, xlat,
-    instFPU, instFPU, instFPU, instFPU, instFPU, instFPU, instFPU, instFPU,
+#ifdef X64_EMULATE_FPU
+    instFPU0, instFPU1, instFPU2, instFPU3, instFPU4, instFPU5, instFPU6, instFPU7,
+#else
+	instFPU, instFPU, instFPU, instFPU, instFPU, instFPU, instFPU, instFPU,
+#endif
     // 2e0
     x64loopnz, x64loopz, x64loop, x64jcxz, inb, ind, outb, invalidOp,
     callJd, jmpJd, jmpFar32, jmpJb, invalidOp, invalidOp, invalidOp, invalidOp,
