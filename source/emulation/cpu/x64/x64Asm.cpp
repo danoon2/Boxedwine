@@ -978,7 +978,7 @@ void X64Asm::writeToRegFromReg(U8 toReg, bool isToReg1Rex, U8 fromReg, bool isFr
     write8(0xC0 | toReg | (fromReg << 3));
 }
 
-void X64Asm::adjustStack(U8 tmpReg, S8 bytes) {
+void X64Asm::adjustStack(U8 tmpReg, S32 bytes) {
     // tmpReg = HOST_ESP + bytes
     addWithLea(tmpReg, true, HOST_ESP, true, -1, false, 0, bytes, 4);
 
@@ -2253,11 +2253,11 @@ void X64Asm::callJmp(bool big, U8 rm, bool jmp) {
     // calling convention RCX, RDX, R8, R9 for first 4 parameters
 
     if (this->tmp3InUse) {
-        kpanic("X64Asm::callFar tmp3InUse was in use");
+        kpanic("X64Asm::callJmp tmp3InUse was in use");
     }
     this->tmp3InUse = true;
     if (HOST_TMP3==0 || HOST_TMP3==1) {
-        kpanic("X64Asm::callFar incorrectly assumed HOST_TMP3");
+        kpanic("X64Asm::callJmp incorrectly assumed HOST_TMP3");
     }
     getNativeAddressInRegFromE(HOST_TMP3, true, rm);
 
