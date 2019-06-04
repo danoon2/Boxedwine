@@ -608,6 +608,9 @@ void X64Asm::writeToEFromReg(U8 rm, U8 reg, bool isRegRex, U8 bytes) {
 // it is ok to trash current op data
 void X64Asm::writeToRegFromE(U8 reg, bool isRegRex, U8 rm, U8 bytes) {
     this->operandPrefix = false;
+    this->multiBytePrefix = false;
+    this->repZeroPrefix = false;
+    this->repNotZeroPrefix = false;
     if (isRegRex) {
         this->rex = REX_BASE | REX_MOD_REG;
     } else {
