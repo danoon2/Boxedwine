@@ -1844,8 +1844,35 @@ static U32 outb(X64Asm* data) {
     return 0;
 }
 
+static U32 outb_dx(X64Asm* data) {
+    return 0;
+}
+
+static U32 outw(X64Asm* data) {
+    U8 port = data->fetch8();
+    return 0;
+}
+
+static U32 outw_dx(X64Asm* data) {
+    return 0;
+}
+
+static U32 outd(X64Asm* data) {
+    U8 port = data->fetch8();
+    return 0;
+}
+
+static U32 outd_dx(X64Asm* data) {
+    return 0;
+}
+
 static U32 inb(X64Asm* data) {
     U8 port = data->fetch8();
+    data->writeToRegFromValue(0, false, 0xFF, 1);
+    return 0;
+}
+
+static U32 inb_dx(X64Asm* data) {
     data->writeToRegFromValue(0, false, 0xFF, 1);
     return 0;
 }
@@ -1856,8 +1883,18 @@ static U32 inw(X64Asm* data) {
     return 0;
 }
 
+static U32 inw_dx(X64Asm* data) {
+    data->writeToRegFromValue(0, false, 0xFFFF, 2);
+    return 0;
+}
+
 static U32 ind(X64Asm* data) {
     U8 port = data->fetch8();
+    data->writeToRegFromValue(0, false, 0xFFFFFFFF, 4);
+    return 0;
+}
+
+static U32 ind_dx(X64Asm* data) {
     data->writeToRegFromValue(0, false, 0xFFFFFFFF, 4);
     return 0;
 }
@@ -2137,8 +2174,8 @@ X64Decoder x64Decoder[1024] = {
 	instFPU, instFPU, instFPU, instFPU, instFPU, instFPU, instFPU, instFPU,
 #endif
     // E0
-    x64loopnz, x64loopz, x64loop, x64jcxz, inb, inw, outb, invalidOp,
-    callJw, jmpJw, jmpAp, jmpJb, invalidOp, invalidOp, invalidOp, invalidOp,
+    x64loopnz, x64loopz, x64loop, x64jcxz, inb, inw, outb, outw,
+    callJw, jmpJw, jmpAp, jmpJb, inb_dx, inw_dx, outb_dx, outw_dx,
     // F0
     lock, invalidOp, repnz, repz, hlt, keepSame, grp3b, grp3w,
     keepSame, keepSame, cli, sti, keepSame, keepSame, instGrp4, grp5w,
@@ -2239,8 +2276,8 @@ X64Decoder x64Decoder[1024] = {
 	instFPU, instFPU, instFPU, instFPU, instFPU, instFPU, instFPU, instFPU,
 #endif
     // 2e0
-    x64loopnz, x64loopz, x64loop, x64jcxz, inb, ind, outb, invalidOp,
-    callJd, jmpJd, jmpFar32, jmpJb, invalidOp, invalidOp, invalidOp, invalidOp,
+    x64loopnz, x64loopz, x64loop, x64jcxz, inb, ind, outb, outd,
+    callJd, jmpJd, jmpFar32, jmpJb, inb_dx, ind_dx, outb_dx, outd_dx,
     // 2f0
     lock, invalidOp, repnz, repz, hlt, keepSame, grp3b, grp3d,
     keepSame, keepSame, cli, sti, keepSame, keepSame, instGrp4, grp5d,
