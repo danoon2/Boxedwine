@@ -1781,20 +1781,71 @@ void X64Asm::loop(U32 eip, bool ea16) {
 
 void X64Asm::loopz(U32 eip, bool ea16) {
     if (ea16) {
-        // :TODO:
-        kpanic("16-bit X64Asm::loopz not implemented");
+        doLoop16(0xe1, eip);
+    } else {
+        write8(0xe1);    
+        doLoop(eip);
     }
-    write8(0xe1);    
-    doLoop(eip);
 }
 
+void X64Asm::doLoop16(U8 inst, U32 eip) {
+    // mov r8d, ECX
+    write8(0x41);
+    write8(0x89);
+    write8(0xc8);
+
+    // movzx ECX, CX
+    write8(0x0f);
+    write8(0xb7);
+    write8(0xc9);
+
+    // loopnz 1:
+    write8(inst); 
+    write8(2); 
+
+    // jmp 2:
+    write8(0xeb);
+    U32 pos2 = this->bufferPos;
+    write8(0);
+
+    // 1:
+    // mov r8w, CX
+    write8(0x66);
+    write8(0x41);
+    write8(0x89);
+    write8(0xc8);
+
+    // mov ECX, r8d
+    write8(0x44);
+    write8(0x89);
+    write8(0xc1);
+
+    // jmp eip
+    jumpTo(eip);
+
+    // 2: 
+    this->buffer[pos2] = this->bufferPos - pos2 -1;
+
+    // mov r8w, CX
+    write8(0x66);
+    write8(0x41);
+    write8(0x89);
+    write8(0xc8);
+
+    // mov ECX, r8d
+    write8(0x44);
+    write8(0x89);
+    write8(0xc1);
+
+    // continue to next instruction
+}
 void X64Asm::loopnz(U32 eip, bool ea16) {
     if (ea16) {
-        // :TODO:
-        kpanic("16-bit X64Asm::loopnz not implemented");
-    }
-    write8(0xe0);    
-    doLoop(eip);
+        doLoop16(0xe0, eip);
+    } else {
+        write8(0xe0);    
+        doLoop(eip);
+    }    
 }
 
 void x64_jmp(x64CPU* cpu, U32 big, U32 selector, U32 offset) {

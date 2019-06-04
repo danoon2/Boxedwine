@@ -211,6 +211,7 @@ private:
 
     void addTodoLinkJump(U32 eip, bool sameChunk);       
     void doLoop(U32 eip);
+    void doLoop16(U8 inst, U32 eip);
     void jmpReg(U8 reg, bool isRex);
     void jmpNativeReg(U8 reg, bool isRegRex);
     void shiftRightReg(U8 reg, bool isRegRex, U8 shiftAmount);
