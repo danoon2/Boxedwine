@@ -1086,6 +1086,7 @@ bool X64Asm::isTmpReg(U8 tmpReg) {
 }
 
 void X64Asm::syncRegsFromHost() {
+    writeToMemFromValue(this->startOfOpIp, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EIP, 4, false);
     writeToMemFromReg(0, false, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EAX, 4, false);
     writeToMemFromReg(1, false, HOST_CPU, true, -1, false, 0, CPU_OFFSET_ECX, 4, false);
     writeToMemFromReg(2, false, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EDX, 4, false);
@@ -2052,15 +2053,14 @@ static U8 fetchByte(U32 *eip) {
     return readb((*eip)++);
 }
 
-static void x64log(CPU* cpu, U32 eip) {
+static void x64log(CPU* cpu) {
     if (!cpu->logFile)
         return;
     static DecodedBlock* block;
     if (!block) {
         block = new DecodedBlock();
     }
-    decodeBlock(fetchByte, eip+cpu->seg[CS].address, cpu->big, 1, K_PAGE_SIZE, 0, block);
-    cpu->eip.u32 = eip;
+    decodeBlock(fetchByte, cpu->eip.u32+cpu->seg[CS].address, cpu->big, 1, K_PAGE_SIZE, 0, block);
     block->op->log(cpu);
     block->op->dealloc(false);
 }
@@ -2071,15 +2071,13 @@ void X64Asm::logOp(U32 eip) {
     // calling convention RCX, RDX, R8, R9 for first 4 parameters
 
     writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param    
-    writeToRegFromValue(2, false, eip, 4);
     callHost(x64log);
 
     syncRegsToHost();
 }
 
-void X64Asm::syscall(U32 opLen, U32 eip) {
-    syncRegsFromHost(); 
-    writeToMemFromValue(eip, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EIP, 4, false);
+void X64Asm::syscall(U32 opLen) {
+    syncRegsFromHost();     
 
     // calling convention RCX, RDX, R8, R9 for first 4 parameters
 
@@ -2312,7 +2310,7 @@ void X64Asm::callJmp(bool big, U8 rm, bool jmp) {
     }
     getNativeAddressInRegFromE(HOST_TMP3, true, rm);
 
-    writeToMemFromValue(this->ip, HOST_CPU, true, -1, false, 0, CPU_OFFSET_ARG5, 4, false);
+    writeToMemFromValue(this->ip, HOST_CPU, true, -1, false, 0, CPU_OFFSET_ARG5, 4, false); // next ip
     // call void common_call(CPU* cpu, U32 big, U32 selector, U32 offset, U32 oldEip)
     writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
     if (big) {
