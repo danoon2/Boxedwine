@@ -31,6 +31,10 @@
 #include <errno.h>
 #include <time.h> 
 
+#ifdef BOXEDWINE_X64
+#include "../emulation/cpu/x64/x64Asm.h"
+#endif
+
 #define MAX_ARG_COUNT 1024
 
 bool KProcessTimer::run() {
@@ -931,6 +935,9 @@ U32 KProcess::read(FD fildes, U32 bufferAddress, U32 bufferLen) {
     if (!fd->canRead()) {
         return -K_EINVAL;
     }
+#ifdef BOXEDWINE_X64
+    X64AsmCodeMemoryWrite w((x64CPU*)KThread::currentThread()->cpu, bufferAddress, bufferLen);
+#endif
     return fd->kobject->read(bufferAddress, bufferLen);
 }
 

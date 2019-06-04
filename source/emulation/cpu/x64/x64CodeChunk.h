@@ -28,7 +28,7 @@ public:
 
     void dealloc();    
     void deallocAndRetranslate();
-    void patch(U32 eip, U32 len);
+    void invalidateStartingAt(U32 eipAddress);
     void makeLive();
 
     U32 getEipThatContainsHostAddress(void* hostAddress, void** startOfHostInstruction);
@@ -38,6 +38,7 @@ public:
 
     bool containsHostAddress(void* hostAddress) {return hostAddress>=this->hostAddress && hostAddress<=(U8*)this->hostAddress+this->hostLen;}
     bool containsEip(U32 eip) {return eip>=this->emulatedAddress && eip<this->emulatedAddress+this->emulatedLen;}
+    bool containsEip(U32 eip, U32 len);
     X64CodeChunk* getNext() {return this->next;}
 
     void setNext(X64CodeChunk* n) {this->next = n; if (n) n->prev=this;}
@@ -48,6 +49,9 @@ public:
     bool hasLinkToEip(U32 eip);
 
     void* getHostFromEip(U32 eip) {U8* result=NULL; this->getStartOfInstructionByEip(eip, &result, NULL); return result;}
+    U32 getEip() {return emulatedAddress;}
+    U32 getEipLen() {return emulatedLen;}
+
 private:
     void detachFromHost();
     void internalDealloc();

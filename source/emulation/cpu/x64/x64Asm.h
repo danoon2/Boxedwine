@@ -39,6 +39,23 @@ typedef void (*PFN_FPU_ADDRESS)(CPU* cpu, U32 address);
 typedef void (*PFN_FPU)(CPU* cpu);
 #endif
 
+#define CLEAR_BUFFER_SIZE 10
+
+class X64AsmCodeMemoryWrite {
+public:
+    X64AsmCodeMemoryWrite(x64CPU* cpu);
+    X64AsmCodeMemoryWrite(x64CPU* cpu, U32 address, U32 len);
+    ~X64AsmCodeMemoryWrite();
+
+    void invalidateCode(U32 address, U32 len);
+    void invalidateStringWriteToDi(bool repeat, U32 size);
+    void restoreCodePageReadOnly();
+private:
+    U32 buffer[CLEAR_BUFFER_SIZE];
+    U32 count;
+    x64CPU* cpu;
+};
+
 class X64Asm : public X64Data {
 public:  
     X64Asm(x64CPU* cpu);

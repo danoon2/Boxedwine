@@ -622,7 +622,6 @@ X64CodeChunk* Memory::getCodeChunkContainingHostAddress(void* hostAddress) {
     return NULL;
 }
 
-// also only called during code patching
 X64CodeChunk* Memory::getCodeChunkContainingEip(U32 eip) {
     for (U32 i=0;i<K_MAX_X86_OP_LEN;i++) {
         void* hostAddress = getExistingHostAddress(eip-i);
@@ -635,6 +634,16 @@ X64CodeChunk* Memory::getCodeChunkContainingEip(U32 eip) {
         }
     }
     return NULL;
+}
+
+void Memory::invalideHostCode(U32 eip, U32 len) {
+    for (U32 i=eip;i<eip+len;i++) {
+        X64CodeChunk* chunk = getCodeChunkContainingEip(i);
+        if (chunk) {
+            chunk->invalidateStartingAt(i);
+            i=chunk->getEip()+chunk->getEipLen()-1;
+        }
+    }
 }
 
 // call during code translation, this needs to be fast

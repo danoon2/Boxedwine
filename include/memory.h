@@ -143,6 +143,7 @@ private:
     void* freeExecutableMemory[EXECUTABLE_SIZES];
 public:
     X64CodeChunk* getCodeChunkContainingHostAddress(void* hostAddress);
+    void invalideHostCode(U32 eip, U32 len);
     X64CodeChunk* getCodeChunkContainingEip(U32 eip);
     void addCodeChunk(X64CodeChunk* chunk);
     void removeCodeChunk(X64CodeChunk* chunk);

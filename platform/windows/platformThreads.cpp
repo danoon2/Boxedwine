@@ -98,33 +98,8 @@ LONG handleCodePatch(struct _EXCEPTION_POINTERS *ep, x64CPU* cpu, U32 address) {
     DecodedOp* op = cpu->getExistingOp(cpu->eip.u32);
     if (op) {             
         // change permission of the page so that we can write to it
-        U32 memWidth = instructionInfo[op->inst].writeMemWidth/8;
-        U32 page1 = address >> K_PAGE_SHIFT;
-        U32 page2 = (address+memWidth-1) >> K_PAGE_SHIFT;
-
-        if (op->repNotZero || op->repZero) {
-            // :TODO: might need to support more than just two pages
-            if (ep->ContextRecord->EFlags & DF) {
-                page2 = page1-1; // fixes rebal assault gog installer
-            } else {
-                page2 = page1+1;
-            }
-        }        
-
-        bool clearedPage1 = false;
-        bool clearedPage2 = false;
-
-        if (cpu->thread->memory->nativeFlags[page1] & NATIVE_FLAG_CODEPAGE_READONLY) {
-            ::clearCodePageReadOnly(cpu->thread->memory, page1);
-            clearedPage1 = true;
-        }
-        // did the write span two pages?
-        if (page1!=page2) {
-            if (cpu->thread->memory->nativeFlags[page2] & NATIVE_FLAG_CODEPAGE_READONLY) {
-                ::clearCodePageReadOnly(cpu->thread->memory, page2);
-                clearedPage2 = true;
-            }
-        }
+        U32 len = instructionInfo[op->inst].writeMemWidth/8;
+         X64AsmCodeMemoryWrite w(cpu);
 
         static DecodedBlock b;
         DecodedBlock::currentBlock = &b;
@@ -141,17 +116,26 @@ LONG handleCodePatch(struct _EXCEPTION_POINTERS *ep, x64CPU* cpu, U32 address) {
         // uses si
         if (op->inst==Lodsb || op->inst==Lodsw || op->inst==Lodsd) {
             ESI=(U32)(ep->ContextRecord->Rsi - cpu->memOffset - cpu->seg[op->base].address);
+            // doesn't write            
         }
         // uses di (Examples: diablo 1 will trigger this in the middle of the Stosd when creating a new game)
-        if (op->inst==Stosb || op->inst==Stosw || op->inst==Stosd ||
+        else if (op->inst==Stosb || op->inst==Stosw || op->inst==Stosd ||
             op->inst==Scasb || op->inst==Scasw || op->inst==Scasd) {
             EDI=(U32)(ep->ContextRecord->Rdi - cpu->memOffset - cpu->seg[ES].address);
+            if (instructionInfo[op->inst].writeMemWidth) {
+                w.invalidateStringWriteToDi(op->repNotZero || op->repZero, instructionInfo[op->inst].writeMemWidth/8);
+            }
         }
         // uses si and di
-        if (op->inst==Movsb || op->inst==Movsw || op->inst==Movsd ||
+        else if (op->inst==Movsb || op->inst==Movsw || op->inst==Movsd ||
             op->inst==Cmpsb || op->inst==Cmpsw || op->inst==Cmpsd) {
             ESI=(U32)(ep->ContextRecord->Rsi - cpu->memOffset - cpu->seg[op->base].address);
             EDI=(U32)(ep->ContextRecord->Rdi - cpu->memOffset - cpu->seg[ES].address);
+            if (instructionInfo[op->inst].writeMemWidth) {
+                w.invalidateStringWriteToDi(op->repNotZero || op->repZero, instructionInfo[op->inst].writeMemWidth/8);
+            }
+        } else {
+            w.invalidateCode(address, len);
         }
         if (cpu->flags & DF) {
             cpu->df = -1;
@@ -161,20 +145,6 @@ LONG handleCodePatch(struct _EXCEPTION_POINTERS *ep, x64CPU* cpu, U32 address) {
         op->pfn(cpu, op);        
         syncToException(cpu, ep);
         op->dealloc(true);                        
-
-        // change the page(s) we wrote to back to read-only
-        if (clearedPage1) {
-            ::makeCodePageReadOnly(cpu->thread->memory, page1);  
-        }
-        if (clearedPage2) {
-            ::makeCodePageReadOnly(cpu->thread->memory, page2);
-        }
-
-        // if the instruction has not been translated into x64 then we can ignore it
-        X64CodeChunk* dstChunk = cpu->thread->memory->getCodeChunkContainingEip(address - cpu->seg[CS].address);
-        if (dstChunk) {
-            dstChunk->patch(address, memWidth);
-        }                                          
 
         // eip was ajusted after running this instruction                        
         U32 a = cpu->getEipAddress();

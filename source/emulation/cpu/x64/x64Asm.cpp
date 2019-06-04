@@ -2505,103 +2505,98 @@ void X64Asm::writeOp(bool isG8bit) {
     }
 }
 
-#define CLEAR_BUFFER_SIZE 10
 
-U32* clearCodeReadOnly(x64CPU* cpu, U32* buffer, U32 size) {
-    U32 startAddress;
-    U32 stopAddress;
+X64AsmCodeMemoryWrite::X64AsmCodeMemoryWrite(x64CPU* cpu, U32 address, U32 len) : count(0), cpu(cpu) {
+    this->invalidateCode(address, len);
+}
+
+X64AsmCodeMemoryWrite::X64AsmCodeMemoryWrite(x64CPU* cpu) : count(0), cpu(cpu) {
+}
+
+void X64AsmCodeMemoryWrite::invalidateStringWriteToDi(bool repeat, U32 size) {
+    U32 addressStart;
+    U32 addressLen;
+
+    if (repeat) {
+        addressLen = size * (cpu->big?ECX:CX);
+    } else {
+        addressLen = size;
+    }
 
     if (cpu->df==1) {
-        startAddress = DI+cpu->seg[ES].address;
-        if (cpu->stringRepeat) {
-            stopAddress = startAddress + size * CX;
-        } else {
-            stopAddress = startAddress + size;
-        }
+        addressStart = (this->cpu->big?EDI:DI)+cpu->seg[ES].address;
     } else {
-        stopAddress = DI+cpu->seg[ES].address + size;
-        if (cpu->stringRepeat) {
-            startAddress = stopAddress - size * CX;
-        } else {
-            startAddress = stopAddress - size;
-        }
+        addressStart = (this->cpu->big?EDI:DI)+cpu->seg[ES].address + size - addressLen;
     }
-    U32 pageStart = startAddress >> K_PAGE_SHIFT;
-    U32 pageStop = stopAddress >> K_PAGE_SHIFT;    
-    U32 count = 0;
+    invalidateCode(addressStart, addressLen);
+}
 
+void X64AsmCodeMemoryWrite::invalidateCode(U32 addressStart, U32 addressLen) {
+    U32 pageStart = addressStart >> K_PAGE_SHIFT;
+    U32 pageStop = (addressStart+addressLen) >> K_PAGE_SHIFT;  
+    
     for (U32 page = pageStart; page <= pageStop; page++ ) {
         if (cpu->thread->memory->nativeFlags[page] & NATIVE_FLAG_CODEPAGE_READONLY) {
-            if (count+1>=CLEAR_BUFFER_SIZE) {
+            if (count>=CLEAR_BUFFER_SIZE) {
                 kpanic("clearCodeReadOnly doesn't support dynamic reallocation");
             }
-            buffer[count+1] = page;
+            buffer[count] = page;
             count++;
             ::clearCodePageReadOnly(cpu->thread->memory, page);
         }
     }
-    buffer[0] = count;
-    return buffer;
+    if (count) {
+        this->cpu->thread->memory->invalideHostCode(addressStart, addressLen);
+    }
 }
 
-void restoreCodeReadOnly(x64CPU* cpu, U32* buffer, U32* usedBuffer) {
-    U32 count = usedBuffer[0];
-    for (U32 i=0;i<count;i++) {
-        ::makeCodePageReadOnly(cpu->thread->memory, usedBuffer[i+1]);  
+X64AsmCodeMemoryWrite::~X64AsmCodeMemoryWrite() {
+    this->restoreCodePageReadOnly();
+}
+
+void X64AsmCodeMemoryWrite::restoreCodePageReadOnly() {
+    for (U32 i=0;i<this->count;i++) {
+        ::makeCodePageReadOnly(cpu->thread->memory, buffer[i]);  
     }
-    if (buffer!=usedBuffer) {
-        delete[] usedBuffer;
-    }
+    this->count = 0;
 }
 
 typedef void (*pfnStringNoArgs)(CPU* cpu);
 
 void x64_stringNoArgs(x64CPU* cpu, pfnStringNoArgs pfn, U32 size) {
-    U32 buffer[CLEAR_BUFFER_SIZE];
-    U32* p;
-
     if (cpu->flags & DF) {
         cpu->df = -1;
     } else {
         cpu->df = 1;
     }
+    X64AsmCodeMemoryWrite w(cpu);
     if (cpu->stringWritesToDi) {
-        p = clearCodeReadOnly(cpu, buffer, size);
+        w.invalidateStringWriteToDi(cpu->stringRepeat!=0, size);
     }
     pfn(cpu);
-    if (cpu->stringWritesToDi) {
-        restoreCodeReadOnly(cpu, buffer, p);
-    }
     cpu->fillFlags();
 }
 
 typedef void (*pfnString1Arg)(CPU* cpu, U32 arg1);
 
 void x64_string1Arg(x64CPU* cpu, pfnString1Arg pfn, U32 arg1, U32 size) {
-    U32 buffer[CLEAR_BUFFER_SIZE];
-    U32* p;
-
     if (cpu->flags & DF) {
         cpu->df = -1;
     } else {
         cpu->df = 1;
     }
+    X64AsmCodeMemoryWrite w(cpu);
     if (cpu->stringWritesToDi) {
-        p = clearCodeReadOnly(cpu, buffer, size);
+        w.invalidateStringWriteToDi(cpu->stringRepeat!=0, size);
     }
     pfn(cpu, arg1);
-    if (cpu->stringWritesToDi) {
-        restoreCodeReadOnly(cpu, buffer, p);
-    }
     cpu->fillFlags();
 }
 
 typedef void (*pfnString2Arg)(CPU* cpu, U32 arg1, U32 arg2);
 
 void x64_string2Arg(x64CPU* cpu, pfnString2Arg pfn, U32 arg1, U32 arg2) {
-    U32 buffer[CLEAR_BUFFER_SIZE];
     U32 size = arg2 >> 16;
-    U32* p;
 
     arg2&=0xFFFF;
     if (cpu->flags & DF) {
@@ -2609,13 +2604,11 @@ void x64_string2Arg(x64CPU* cpu, pfnString2Arg pfn, U32 arg1, U32 arg2) {
     } else {
         cpu->df = 1;
     }
+    X64AsmCodeMemoryWrite w(cpu);
     if (cpu->stringWritesToDi) {
-        p = clearCodeReadOnly(cpu, buffer, size);
+        w.invalidateStringWriteToDi(cpu->stringRepeat!=0, size);
     }
     pfn(cpu, arg1, arg2);
-    if (cpu->stringWritesToDi) {
-        restoreCodeReadOnly(cpu, buffer, p);
-    }
     cpu->fillFlags();
 }
 

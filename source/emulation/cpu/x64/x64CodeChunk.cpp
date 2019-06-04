@@ -193,9 +193,6 @@ void X64CodeChunk::deallocAndRetranslate() {
     });
     chunk->makeLive();
 
-    // :TODO: retranslate entire chunk
-    // :TODO: if it doesn't fit then get new address
-    // :TODO: 
     this->internalDealloc(); // don't call dealloc() because the new chunk occupies the memory cache and we don't want to mess with it
 }
 
@@ -231,60 +228,12 @@ bool X64CodeChunk::hasLinkToEip(U32 eip) {
     return found;
 }
 
-// if the patch doesn't change the size of the instructions then the patch will happen now, otherwise
-// an invalid instruction will be caught later and the code rewritten in the above function, updateStartingAtHostAddress
-void X64CodeChunk::patch(U32 eipAddress, U32 len) {    
+void X64CodeChunk::invalidateStartingAt(U32 eipAddress) {    
     U32 eipIndex = 0;
     U8* host = NULL;
     U32 eip = this->getStartOfInstructionByEip(eipAddress, &host, &eipIndex);
-    S32 todo = len + (eipAddress - eip);
-    x64CPU* cpu = (x64CPU*)KThread::currentThread()->cpu;
-
-    while (todo>0) {
-        /*
-        X64Asm data(cpu);                                
-        data.ip = eip;
-        data.startOfDataIp = this->emulatedAddress;
-        data.calculatedEipLen = this->emulatedLen;
-        cpu->translateInstruction(&data);
-
-        U32 newInstructionLen = data.ip - data.startOfDataIp;
-        U32 oldInstructionLen = this->emulatedInstructionLen[eipIndex];
-
-        if (0) {
-            U32 oldHostInstructionLen = this->hostInstructionLen[eipIndex];
-            U32 newHostInstructionLen = data.bufferPos;
-
-            if (newHostInstructionLen<=oldHostInstructionLen) {
-                // this will happen if the code is changed but it doesn't change the length of the instruction, mainly this will apply to offsets in the instruction
-                                
-                memcpy(host, data.buffer, data.bufferPos);
-                for (unsigned int i=data.bufferPos;i<oldHostInstructionLen;i++) {
-                    host[i]=(U8)0x90; // nop
-                }
-
-                // if there is a link from this old instruction, then remove it, the cpu->link code below will re-create it
-                this->linksTo.for_each([host,oldHostInstructionLen] (KListNode<X64CodeChunkLink*>* link) {
-                    if (link->data->fromHostOffset>=host && link->data->fromHostOffset<(U8*)host+oldHostInstructionLen) {
-                        link->data->dealloc();
-                    }
-                });
-
-                // in case the new instruction is a call/jump
-                cpu->link(&data, this, (U32)(host-(U8*)this->getHostAddress()));
-
-                todo-=newInstructionLen;
-                eip+=newInstructionLen;
-                host+=oldHostInstructionLen;
-                continue;
-            }
-        }
-        */
-        U32 remainingLen = this->hostLen - (U32)(host - (U8*)this->hostAddress);
-        memset(host, 0xce, remainingLen);
-        break;
-    }
-    cpu->makePendingCodePagesReadOnly();
+    U32 remainingLen = this->hostLen - (U32)(host - (U8*)this->hostAddress);
+    memset(host, 0xce, remainingLen);
 }    
 
 void X64CodeChunk::removeFromList() {
@@ -294,5 +243,21 @@ void X64CodeChunk::removeFromList() {
     if (this->next) {
         this->next->prev = this->prev;
     }
+}
+
+bool X64CodeChunk::containsEip(U32 eip, U32 len) {
+    // do we begin in this chunk?
+    if (this->containsEip(eip)) {
+        return true;
+    }
+    // do we end in this chunk?
+    if (this->containsEip(eip+len-1)) {
+        return true;
+    }
+    // we we span this chunk
+    if (eip < this->emulatedAddress && eip+len>this->emulatedAddress+this->emulatedLen) {
+        return true;
+    }
+    return false;
 }
 #endif
