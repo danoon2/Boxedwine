@@ -229,6 +229,8 @@ public:
     U32 entry;
     U32 eventQueueFD;     
     BOXEDWINE_CONDITION exitOrExecCond;
+    static BOXEDWINE_MUTEX exitGroupMutex;
+
     bool hasSetStackMask;
     bool hasSetSeg[6];
 private:

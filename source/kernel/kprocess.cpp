@@ -37,6 +37,8 @@
 
 #define MAX_ARG_COUNT 1024
 
+BOXEDWINE_MUTEX KProcess::exitGroupMutex;
+
 bool KProcessTimer::run() {
     bool result = false;
     if (this->resetMillies==0) {
@@ -540,13 +542,16 @@ KThread* KProcess::startProcess(const std::string& currentDirectory, U32 argc, c
 }
 
 U32 KProcess::exit(U32 code) {
+    this->exitCode = code;
     if (this->getThreadCount()==1)
-        return this->exitgroup(code);
+        return this->exitgroup(code);    
 
     KThread::currentThread()->cpu->yield = true;
     KThread::currentThread()->cleanup();
     KThread::currentThread()->process = NULL; // signal to scheduler to delete this thread
-#ifdef BOXEDWINE_X64
+
+#ifdef BOXEDWINE_MULTI_THREADED
+    KThread::currentThread()->exiting = true;
     unscheduleCurrentThread();
 #endif
     return 0;
@@ -1485,16 +1490,19 @@ U32 KProcess::exitgroup(U32 code) {
         }
     }
 
-    std::unordered_map<U32, KThread*> tmp = this->threads;
-    for (auto& n : tmp) {
-        KThread* thread = n.second;
-        if (thread!=KThread::currentThread()) {
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(KProcess::exitGroupMutex);
+        std::unordered_map<U32, KThread*> tmp = this->threads;
+        for (auto& n : tmp) {
+            KThread* thread = n.second;
+            if (thread!=KThread::currentThread()) {
 #ifdef BOXEDWINE_X64
-            // will be deleted when thread exits
-            unscheduleThread(thread);
+                // will be deleted when thread exits
+                unscheduleThread(thread);
 #else
-            delete thread;
+                delete thread;
 #endif
+            }
         }
     }
     KThread::currentThread()->cleanup(); // must happen before we clear memory

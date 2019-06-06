@@ -100,6 +100,9 @@ KThread::KThread(U32 id, KProcess* process) :
     interrupted(false),
     inSignal(0),
     exiting(false),
+#ifdef BOXEDWINE_MULTI_THREADED
+    exited(false),
+#endif
     clear_child_tid(0),
     userTime(0),
     kernelTime(0),

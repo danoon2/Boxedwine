@@ -83,7 +83,9 @@ public:
     bool interrupted;
     U32 inSignal;    
     bool exiting;
-
+#ifdef BOXEDWINE_MULTI_THREADED
+    bool exited;
+#endif
     U32 clear_child_tid;
     U64 userTime;
     U64 kernelTime;

@@ -271,13 +271,15 @@ DWORD WINAPI platformThreadProc(LPVOID lpThreadParameter) {
         cpu->jmpBuf = &jmpBuf;
         cpu->run();
     }
-    KProcess* process = KSystem::getProcess(processId);
-    if (process) {
-        thread = process->getThreadById(threadId);
-        if (thread) {
-            delete thread;
-        }
+    thread->exited = true;
+    while (thread->process) {
+        SDL_Delay(10);
     }
+
+    // in case we exited because of an exit syscall, but the process is also in the middle of an exit_group
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(KProcess::exitGroupMutex);
+    delete thread;
+
     BOXEDWINE_CONDITION_LOCK(cpu->endCond);
     BOXEDWINE_CONDITION_SIGNAL(cpu->endCond);
     BOXEDWINE_CONDITION_UNLOCK(cpu->endCond);
@@ -299,20 +301,23 @@ void scheduleThread(KThread* thread) {
 void unscheduleThread(KThread* thread) {
     if (thread==KThread::currentThread())
         return;
-    // get these before the thread exits
-    KProcess* process = thread->process; 
+
 #ifdef _DEBUG
     DWORD nativeThreadId = GetThreadId((HANDLE)((x64CPU*)thread->cpu)->nativeHandle);    
 #endif
-    U32 threadId = thread->id;    
-
     thread->exiting = true;
     BoxedWineCondition* cond = thread->waitingCond;
     if (cond) {
         cond->signal();
     }    
-    while (process->getThreadById(threadId)) {
+    while (!thread->exited) {
         SDL_Delay(10);
+    }
+    // another thread in this process could have called exit while we are in the middle of an exit_group
+    KProcess* process = thread->process;
+    if (process) {
+        process->removeThread(thread);
+        thread->process = NULL;
     }
 }
 
