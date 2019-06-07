@@ -307,12 +307,12 @@ static U32 push16ES(X64Asm* data) {
 static void popSeg16(X64Asm* data, U32 seg) {
     // setSegment might throw an exception so we need to sync the regs
     data->popSeg(seg, 2);
-    data->cpu->mightSetSeg[seg] = true;
+    data->cpu->thread->process->hasSetSeg[seg] = true;
 }
 
 static void popSeg32(X64Asm* data, U32 seg) {
     data->popSeg(seg, 4);
-    data->cpu->mightSetSeg[seg] = true;
+    data->cpu->thread->process->hasSetSeg[seg] = true;
 }
 
 // POP ES

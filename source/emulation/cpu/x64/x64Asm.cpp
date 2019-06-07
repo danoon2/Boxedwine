@@ -395,15 +395,23 @@ void X64Asm::translateMemory(U32 rm, bool checkG, bool isG8bit, bool isE8bit) {
                     setRM(rm, checkG, false, isG8bit, isE8bit);
                 } else {                    
                     // converts [reg] to HOST_TMP = reg+SEG; [HOST_TMP+HOST_MEM]
-                
-                    U32 tmpReg = getTmpReg();
+                                    
                     // don't need to worry about E(rm) == 5, that is handled below
-                    // HOST_TMP = reg + SEG
-                    addWithLea(tmpReg, true, E(rm), false, getRegForSeg(this->ds, tmpReg), true, 0, 0, 4);
+                    if (!this->cpu->thread->process->hasSetSeg[this->ds]) {
+                        // [HOST_MEM + reg]
+                        this->rex |= REX_BASE | REX_MOD_RM;    
+                        setRM((rm & ~(7)) | 4, checkG, false, isG8bit, isE8bit);
+                        setSib(HOST_MEM | (E(rm) << 3), false); 
+                    } else {
+                        U32 tmpReg = getTmpReg();
 
-                    // [HOST_MEM + HOST_TMP]
-                    writeHostPlusTmp((rm & ~(7)) | 4, checkG, isG8bit, isE8bit, tmpReg);
-                    releaseTmpReg(tmpReg);
+                        // HOST_TMP = reg + SEG
+                        addWithLea(tmpReg, true, E(rm), false, getRegForSeg(this->ds, tmpReg), true, 0, 0, 4);
+
+                        // [HOST_MEM + HOST_TMP]
+                        writeHostPlusTmp((rm & ~(7)) | 4, checkG, isG8bit, isE8bit, tmpReg);
+                        releaseTmpReg(tmpReg);
+                    }                    
                 }
                 break;
             case 0x05:
@@ -414,15 +422,23 @@ void X64Asm::translateMemory(U32 rm, bool checkG, bool isG8bit, bool isE8bit) {
                     setSib(5 | (4 << 3), false); // 5 is for [disp32], 4 is for 0 value index
                     setDisplacement32(this->fetch32());
                 } else {
-                    // converts [disp32] to HOST_TMP = [SEG + disp32]; [HOST_TMP+HOST_MEM]
+                    if (!this->cpu->thread->process->hasSetSeg[this->ds]) {
+                        // converts [disp32] to [HOST_MEM+disp32]
+                        this->rex |= REX_BASE | REX_MOD_RM;    
+                        setRM((rm & ~(0xC7)) | 4 | 0x80, checkG, false, isG8bit, isE8bit);
+                        setSib(HOST_MEM | 0x20, false); 
+                        this->setDisplacement32(this->fetch32());
+                    } else {
+                        // converts [disp32] to HOST_TMP = [SEG + disp32]; [HOST_TMP+HOST_MEM]
 
-                    U32 tmpReg = getTmpReg();
-                    // HOST_TMP = SEG + disp32
-                    addWithLea(tmpReg, true, getRegForSeg(this->ds, tmpReg), true, -1, false, 0, this->fetch32(), 4);
+                        U32 tmpReg = getTmpReg();
+                        // HOST_TMP = SEG + disp32
+                        addWithLea(tmpReg, true, getRegForSeg(this->ds, tmpReg), true, -1, false, 0, this->fetch32(), 4);
 
-                    // [HOST_MEM + HOST_TMP]
-                    writeHostPlusTmp((rm & ~(7)) | 4, checkG, isG8bit, isE8bit, tmpReg);
-                    releaseTmpReg(tmpReg);
+                        // [HOST_MEM + HOST_TMP]
+                        writeHostPlusTmp((rm & ~(7)) | 4, checkG, isG8bit, isE8bit, tmpReg);
+                        releaseTmpReg(tmpReg);
+                    }
                 }                
                 break;
             case 0x04: {
@@ -715,10 +731,11 @@ void X64Asm::push(S32 reg, bool isRegRex, U32 value, S32 bytes) {
     addWithLea(tmpReg, true, HOST_ESP, true, -1, false, 0, -bytes, 4);
 
     // tmpReg &= cpu->stackMask
-    pushNativeFlags();
-    andWriteToRegFromCPU(tmpReg, true, CPU_OFFSET_STACK_MASK);
-    popNativeFlags(); // the following write can throw an exception, so make sure out stack is fine in case the rest of this instruction is skipped
-
+    if (this->cpu->thread->process->hasSetSeg[SS]) {
+		pushNativeFlags();
+    	andWriteToRegFromCPU(tmpReg, true, CPU_OFFSET_STACK_MASK);
+    	popNativeFlags(); // the following write can throw an exception, so make sure out stack is fine in case the rest of this instruction is skipped
+	}
     // [ss:tmpReg] = reg
     if (reg>=0) {
         writeToMemFromReg(reg, isRegRex, tmpReg, true, HOST_SS, true, 0, false, bytes, true);
@@ -726,18 +743,20 @@ void X64Asm::push(S32 reg, bool isRegRex, U32 value, S32 bytes) {
         writeToMemFromValue(value, tmpReg, true, HOST_SS, true, 0, false, bytes, true);
     }
 
-    pushNativeFlags();
+	if (this->cpu->thread->process->hasSetSeg[SS]) {
+    	pushNativeFlags();
 
-    // HOST_ESP = HOST_ESP & cpu->stackNotMask
-    andWriteToRegFromCPU(HOST_ESP, true, CPU_OFFSET_STACK_NOT_MASK);
+    	// HOST_ESP = HOST_ESP & cpu->stackNotMask
+    	andWriteToRegFromCPU(HOST_ESP, true, CPU_OFFSET_STACK_NOT_MASK);
 
-    // HOST_ESP = HOST_ESP | tmpReg
-    orRegReg(HOST_ESP, true, tmpReg, true);
-
-    releaseTmpReg(tmpReg);
-
-    // restore original flags
-    popNativeFlags();
+    	// HOST_ESP = HOST_ESP | tmpReg
+    	orRegReg(HOST_ESP, true, tmpReg, true);
+		// restore original flags
+    	popNativeFlags();
+	} else {
+    	writeToRegFromReg(HOST_ESP, true, tmpReg, true, 4);
+	}
+    releaseTmpReg(tmpReg);    
 }
 
 void X64Asm::pushfw() {
@@ -982,19 +1001,23 @@ void X64Asm::writeToRegFromReg(U8 toReg, bool isToReg1Rex, U8 fromReg, bool isFr
 }
 
 void X64Asm::adjustStack(U8 tmpReg, S32 bytes) {
-    // tmpReg = HOST_ESP + bytes
-    addWithLea(tmpReg, true, HOST_ESP, true, -1, false, 0, bytes, 4);
+	if (!this->cpu->thread->process->hasSetSeg[SS]) {
+        addWithLea(HOST_ESP, true, HOST_ESP, true, -1, false, 0, bytes, 4);
+	} else {
+        // tmpReg = HOST_ESP + bytes
+        addWithLea(tmpReg, true, HOST_ESP, true, -1, false, 0, bytes, 4);
 
-    pushNativeFlags();
-    // tmpReg &= cpu->stackMask
-    andWriteToRegFromCPU(tmpReg, true, CPU_OFFSET_STACK_MASK);
+        pushNativeFlags();
+        // tmpReg &= cpu->stackMask
+        andWriteToRegFromCPU(tmpReg, true, CPU_OFFSET_STACK_MASK);
 
-    // HOST_ESP = HOST_ESP & cpu->stackNotMask
-    andWriteToRegFromCPU(HOST_ESP, true, CPU_OFFSET_STACK_NOT_MASK);
+        // HOST_ESP = HOST_ESP & cpu->stackNotMask
+        andWriteToRegFromCPU(HOST_ESP, true, CPU_OFFSET_STACK_NOT_MASK);
 
-    // HOST_ESP = HOST_ESP | tmpReg
-    orRegReg(HOST_ESP, true, tmpReg, true);
-    popNativeFlags();
+        // HOST_ESP = HOST_ESP | tmpReg
+        orRegReg(HOST_ESP, true, tmpReg, true);
+        popNativeFlags();
+    }
 }
 
 // :TODO: is there a way to do this without changing flags so that I don't have to save them, 
@@ -1028,10 +1051,11 @@ void X64Asm::popReg(U8 reg, bool isRegRex, S8 bytes, bool commit) {
     writeToRegFromReg(tmpReg, true, HOST_ESP, true, 4);
 
     // tmpReg &= cpu->stackMask
-    pushNativeFlags();  
-    andWriteToRegFromCPU(tmpReg, true, CPU_OFFSET_STACK_MASK);
-    popNativeFlags(); // the following write can throw an exception, so make sure out stack is fine in case the rest of this instruction is skipped
-
+    if (this->cpu->thread->process->hasSetSeg[SS]) {
+        pushNativeFlags();  
+        andWriteToRegFromCPU(tmpReg, true, CPU_OFFSET_STACK_MASK);
+        popNativeFlags(); // the following write can throw an exception, so make sure out stack is fine in case the rest of this instruction is skipped
+    }
     // reg = [ss:tmpReg]    
     writeToRegFromMem(reg, isRegRex, tmpReg, true, HOST_SS, true, 0, false, bytes, true);
     
@@ -1272,6 +1296,7 @@ void X64Asm::popSeg(U8 seg, U8 bytes) {
         adjustStack(tmpReg, (S8)bytes);
         releaseTmpReg(tmpReg);
     });   
+    this->cpu->thread->process->hasSetSeg[seg] = true;
 }
 
 void X64Asm::setSeg(U8 seg, U8 rm) {
@@ -1298,6 +1323,7 @@ void X64Asm::setSeg(U8 seg, U8 rm) {
     }, [this]() {
         syncRegsToHost();
     });   
+    this->cpu->thread->process->hasSetSeg[seg] = true;
 }
 
 void X64Asm::setSF_onAL(U8 flagReg) {
@@ -2233,6 +2259,7 @@ void X64Asm::loadSeg(U8 seg, U8 rm, bool b32) {
                 writeToRegFromMem(r, false, HOST_CPU, true, -1, false, 0, CPU_OFFSET_ARG5, 4, false);
             }
         }); 
+        this->cpu->thread->process->hasSetSeg[seg] = true;
     } else {
         kpanic("Invalid op: loadSeg rm=%x", rm);
     }

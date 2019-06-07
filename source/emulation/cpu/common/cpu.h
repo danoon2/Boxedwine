@@ -236,8 +236,6 @@ public:
     DecodedBlock* nextBlock;
     DecodedBlock* delayedFreeBlock;
 
-    bool mightSetSeg[6];
-
     jmp_buf runBlockJump;
 
     U32 getCF();

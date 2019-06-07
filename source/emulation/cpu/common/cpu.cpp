@@ -57,9 +57,6 @@ void CPU::reset() {
     for (int i=0;i<7;i++) {
         this->setSeg(i, 0, 0);       
     }
-    for (int i=0;i<6;i++) {
-        this->mightSetSeg[i] = false;
-    }
     for (int i=0;i<9;i++) {
         this->reg[i].u32 = 0;
     }
