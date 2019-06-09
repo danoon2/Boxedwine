@@ -69,6 +69,9 @@ LONG handleChangedUnpatchedCode(struct _EXCEPTION_POINTERS *ep, x64CPU* cpu) {
     U32 startOfEip = chunk->getEipThatContainsHostAddress(hostAddress, NULL);
     chunk->deallocAndRetranslate();   
     ep->ContextRecord->Rip = (U64)cpu->thread->memory->getExistingHostAddress(startOfEip);
+    if (ep->ContextRecord->Rip==0) {
+        kpanic("x64::handleChangedUnpatchedCode failed to translate code in exception");
+    }
     return EXCEPTION_CONTINUE_EXECUTION;
 }
 
@@ -112,6 +115,12 @@ LONG handleCodePatch(struct _EXCEPTION_POINTERS *ep, x64CPU* cpu, U32 address) {
         op->next->pfn = NormalCPU::getFunctionForOp(op->next);
         syncFromException(cpu, ep); 
 
+        if (cpu->flags & DF) {
+            cpu->df = -1;
+        } else {
+            cpu->df = 1;
+        }
+
         // for string instruction, we modify (add memory offset and segment) rdi and rsi so that the native string instruction can be used, this code will revert it back to the original values
         // uses si
         if (op->inst==Lodsb || op->inst==Lodsw || op->inst==Lodsd) {
@@ -136,19 +145,20 @@ LONG handleCodePatch(struct _EXCEPTION_POINTERS *ep, x64CPU* cpu, U32 address) {
             }
         } else {
             w.invalidateCode(address, len);
-        }
-        if (cpu->flags & DF) {
-            cpu->df = -1;
-        } else {
-            cpu->df = 1;
-        }
+        }        
         op->pfn(cpu, op);        
-        syncToException(cpu, ep);
-        op->dealloc(true);                        
+        syncToException(cpu, ep);        
 
         // eip was ajusted after running this instruction                        
         U32 a = cpu->getEipAddress();
+        if (!cpu->eipToHostInstruction[a >> K_PAGE_SHIFT] || !cpu->eipToHostInstruction[a >> K_PAGE_SHIFT][a & K_PAGE_MASK]) {
+            cpu->translateEip(cpu->eip.u32);
+        }
         ep->ContextRecord->Rip = (U64)cpu->eipToHostInstruction[a >> K_PAGE_SHIFT][a & K_PAGE_MASK];
+        if (ep->ContextRecord->Rip==0) {
+            kpanic("x64::handleCodePatch failed to translate code");
+        }
+        op->dealloc(true);
         return EXCEPTION_CONTINUE_EXECUTION;
     } else {                        
         kpanic("Threw an exception from a host location that doesn't map to an emulated instruction");
@@ -194,6 +204,9 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
         cpu->thread->seg_mapper((U32)ep->ExceptionRecord->ExceptionInformation[1], ep->ExceptionRecord->ExceptionInformation[0]==0, ep->ExceptionRecord->ExceptionInformation[0]==1);
         syncToException(cpu, ep);
         ep->ContextRecord->Rip = (U64)cpu->translateEip(cpu->eip.u32); 
+        if (ep->ContextRecord->Rip==0) {
+            kpanic("x64::seh_filter failed to translate code in exception");
+        }
         return EXCEPTION_CONTINUE_EXECUTION;
     } 
     InException inException(cpu);
@@ -209,6 +222,9 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
             void* host = cpu->thread->memory->getExistingHostAddress(cpu->eip.u32+cpu->seg[CS].address);
             if (host) {
                 ep->ContextRecord->Rip = (U64)host;
+                if (ep->ContextRecord->Rip==0) {
+                    kpanic("x64::seh_filter failed to translate code in illegal instruction");
+                }
                 return EXCEPTION_CONTINUE_EXECUTION;
             } else {
                 kpanic("x64 seh_filter tried to run code in a free'd chunk");
@@ -242,6 +258,9 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
             cpu->thread->seg_mapper((U32)ep->ExceptionRecord->ExceptionInformation[1], ep->ExceptionRecord->ExceptionInformation[0]==0, ep->ExceptionRecord->ExceptionInformation[0]==1);
             syncToException(cpu, ep);
             ep->ContextRecord->Rip = (U64)cpu->translateEip(cpu->eip.u32); 
+            if (ep->ContextRecord->Rip==0) {
+                kpanic("x64::seh_filter failed to translate code");
+            }
             return EXCEPTION_CONTINUE_EXECUTION;
         }
     } else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_FLT_STACK_CHECK) {
