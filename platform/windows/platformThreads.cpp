@@ -9,7 +9,7 @@
 
 #ifdef BOXEDWINE_MULTI_THREADED
 
-void syncFromException(x64CPU* cpu, struct _EXCEPTION_POINTERS *ep) {
+void syncFromException(x64CPU* cpu, struct _EXCEPTION_POINTERS *ep, bool includeFPU) {
     EAX = (U32)ep->ContextRecord->Rax;
     ECX = (U32)ep->ContextRecord->Rcx;
     EDX = (U32)ep->ContextRecord->Rdx;
@@ -20,9 +20,24 @@ void syncFromException(x64CPU* cpu, struct _EXCEPTION_POINTERS *ep) {
     EDI = (U32)ep->ContextRecord->Rdi;
     cpu->flags = ep->ContextRecord->EFlags;
     cpu->lazyFlags = FLAGS_NONE;
+
+    if (includeFPU) {
+        cpu->fpu.SetCW(ep->ContextRecord->FltSave.ControlWord);
+        cpu->fpu.SetSW(ep->ContextRecord->FltSave.StatusWord);
+        cpu->fpu.SetTagFromAbridged(ep->ContextRecord->FltSave.TagWord); 
+        for (U32 i=0;i<8;i++) {
+            if (!(ep->ContextRecord->FltSave.TagWord & (1 << i))) {
+                cpu->fpu.setReg(i, 0.0);
+            } else {
+                U32 index = (cpu->fpu.GetTop()-i) & 7;
+                double d = cpu->fpu.FLD80(ep->ContextRecord->FltSave.FloatRegisters[index].Low, (S16)ep->ContextRecord->FltSave.FloatRegisters[index].High);
+                cpu->fpu.setReg(i, d);
+            }
+        }
+    }
 }
 
-void syncToException(x64CPU* cpu, struct _EXCEPTION_POINTERS *ep) {
+void syncToException(x64CPU* cpu, struct _EXCEPTION_POINTERS *ep, bool includeFPU) {
     ep->ContextRecord->Rax = EAX;
     ep->ContextRecord->Rcx = ECX;
     ep->ContextRecord->Rdx = EDX;
@@ -35,6 +50,21 @@ void syncToException(x64CPU* cpu, struct _EXCEPTION_POINTERS *ep) {
     ep->ContextRecord->R15 = cpu->seg[DS].address;
     cpu->fillFlags();
     ep->ContextRecord->EFlags = cpu->flags;
+
+    if (includeFPU) {
+        ep->ContextRecord->FltSave.ControlWord = cpu->fpu.CW();
+        ep->ContextRecord->FltSave.StatusWord = cpu->fpu.SW();
+        ep->ContextRecord->FltSave.TagWord = cpu->fpu.GetAbridgedTag();
+        for (U32 i=0;i<8;i++) {
+            if (!(ep->ContextRecord->FltSave.TagWord & (1 << i))) {
+                ep->ContextRecord->FltSave.FloatRegisters[i].Low = 0;
+                ep->ContextRecord->FltSave.FloatRegisters[i].High = 0;
+            } else {
+                U32 index = (cpu->fpu.GetTop()-i) & 7;
+                cpu->fpu.ST80(i, &ep->ContextRecord->FltSave.FloatRegisters[index].Low, (ULONGLONG*)&ep->ContextRecord->FltSave.FloatRegisters[index].High);
+            }
+        }
+    }
 }
 
 LONG handleChangedUnpatchedCode(struct _EXCEPTION_POINTERS *ep, x64CPU* cpu) {
@@ -102,8 +132,8 @@ LONG handleCodePatch(struct _EXCEPTION_POINTERS *ep, x64CPU* cpu, U32 address) {
     if (op) {             
         // change permission of the page so that we can write to it
         U32 len = instructionInfo[op->inst].writeMemWidth/8;
-         X64AsmCodeMemoryWrite w(cpu);
-
+        X64AsmCodeMemoryWrite w(cpu);
+        bool includeFPU = (op->originalOp>=0xd8 && op->originalOp<=0xdf) || (op->originalOp>=0x2d8 && op->originalOp<=0x2df);
         static DecodedBlock b;
         DecodedBlock::currentBlock = &b;
         b.next1 = &b;
@@ -113,7 +143,7 @@ LONG handleCodePatch(struct _EXCEPTION_POINTERS *ep, x64CPU* cpu, U32 address) {
         op->next = DecodedOp::alloc();
         op->next->inst = Done;
         op->next->pfn = NormalCPU::getFunctionForOp(op->next);
-        syncFromException(cpu, ep); 
+        syncFromException(cpu, ep, includeFPU); 
 
         if (cpu->flags & DF) {
             cpu->df = -1;
@@ -147,7 +177,7 @@ LONG handleCodePatch(struct _EXCEPTION_POINTERS *ep, x64CPU* cpu, U32 address) {
             w.invalidateCode(address, len);
         }        
         op->pfn(cpu, op);        
-        syncToException(cpu, ep);        
+        syncToException(cpu, ep, includeFPU);        
 
         // eip was ajusted after running this instruction                        
         U32 a = cpu->getEipAddress();
@@ -200,9 +230,9 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
         return EXCEPTION_CONTINUE_EXECUTION;
     }
     if (cpu->inException) {
-        syncFromException(cpu, ep);
+        syncFromException(cpu, ep, true);
         cpu->thread->seg_mapper((U32)ep->ExceptionRecord->ExceptionInformation[1], ep->ExceptionRecord->ExceptionInformation[0]==0, ep->ExceptionRecord->ExceptionInformation[0]==1);
-        syncToException(cpu, ep);
+        syncToException(cpu, ep, true);
         ep->ContextRecord->Rip = (U64)cpu->translateEip(cpu->eip.u32); 
         if (ep->ContextRecord->Rip==0) {
             kpanic("x64::seh_filter failed to translate code in exception");
@@ -254,9 +284,9 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
 #ifdef _DEBUG
             void* fromHost = cpu->thread->memory->getExistingHostAddress(cpu->fromEip);
 #endif
-            syncFromException(cpu, ep);
+            syncFromException(cpu, ep, true);
             cpu->thread->seg_mapper((U32)ep->ExceptionRecord->ExceptionInformation[1], ep->ExceptionRecord->ExceptionInformation[0]==0, ep->ExceptionRecord->ExceptionInformation[0]==1);
-            syncToException(cpu, ep);
+            syncToException(cpu, ep, true);
             ep->ContextRecord->Rip = (U64)cpu->translateEip(cpu->eip.u32); 
             if (ep->ContextRecord->Rip==0) {
                 kpanic("x64::seh_filter failed to translate code");

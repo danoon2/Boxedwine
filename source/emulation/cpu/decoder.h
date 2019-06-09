@@ -1056,8 +1056,10 @@ public:
 
     U32 imm;
 
-#ifdef _DEBUG
+#if defined _DEBUG || defined BOXEDWINE_X64
     U16 originalOp;    
+#endif
+#ifdef _DEBUG
     Instruction inst;
 #else
     U16 inst;

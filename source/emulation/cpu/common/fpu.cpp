@@ -82,10 +82,40 @@ void FPU::LOG_STACK() {
 #endif
 }
 
+void FPU::setReg(U32 index, double value) {
+    this->regs[index].d = value;
+    this->regs[index].isIntegerLoaded = false;
+}
+
+void FPU::SetTagFromAbridged(U8 tag) {
+    for (U32 i = 0; i < 8; i++) {
+        if (!(tag & (1 << i))) {
+            this->tags[i] = TAG_Empty;
+        } else {
+            this->tags[i] = TAG_Valid;
+        }
+    }
+}
+
+U8 FPU::GetAbridgedTag() {
+    U8 tag = 0;
+    for(U32 i = 0; i < 8; i++) {
+        if (this->tags[i] != TAG_Empty) {
+            tag |= (1 << i);
+        }
+    }
+    return tag;
+}
+
 void FPU::SetTag(U32 tag) {
     int i;
     for (i = 0; i < 8; i++)
         this->tags[i] = ((tag >> (2 * i)) & 3);
+}
+
+void FPU::SetSW(U16 word) {
+    this->sw = word;
+    this->top = FPU_GET_TOP(this);
 }
 
 void FPU::SetCW(U16 word) {
@@ -231,6 +261,22 @@ void FPU::ST80(CPU* cpu, U32 addr, int reg) {
     writew(addr + 8, ((sign80 << 15) | (exp80final)));
 }
 
+void FPU::ST80(U32 reg, U64* pLow, U64* pHigh) {
+    S64 value = ((struct FPU_Reg*)&this->regs[reg])->l;
+    U16 sign80 = (value & (0x8000000000000000l)) != 0 ? 1 : 0;
+    S64 exp80 = value & (0x7ff0000000000000l);
+    U16 exp80final = (U16)(exp80 >> 52);
+    S64 mant80 = value & (0x000fffffffffffffl);
+    S64 mant80final = (mant80 << 11);
+    if (this->regs[reg].d != 0) { //Zero is a special case
+        // Elvira wants the 8 and tcalc doesn't
+        mant80final |= 0x8000000000000000l;
+        //Ca-cyber doesn't like this when result is zero.
+        exp80final += (BIAS80 - BIAS64);
+    }
+    *pLow = mant80final;
+    *pHigh = (U16)(((sign80 << 15) | (exp80final)));
+}
 
 void FPU::FLD_F32(U32 value, int store_to) {
     struct FPU_Float f;

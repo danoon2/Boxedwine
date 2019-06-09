@@ -42,6 +42,7 @@ public:
     double FROUND(double in);
     double FLD80(U64 eind, S16 begin);
     void ST80(CPU* cpu, U32 addr, int reg);
+    void ST80(U32 reg, U64* pLow, U64* pHigh);
     void FLD_F32(U32 value, int store_to);
     void FLD_F64(U64 value, int store_to);
     void FLD_F80(U64 low, S16 high);
@@ -114,14 +115,21 @@ public:
     void FFREE_STi(U32 st);
 
     inline U32 STV(U32 i) {return ((this->top + (i)) & 7);}
-    inline U32 CW() {return this->cw;}
+    inline U32 CW() {return this->cw;}    
     U32 SW();
 
     void FDECSTP();
     void FINCSTP();
-private:
-    void SetTag(U32 tag);
+
     void SetCW(U16 word);
+    void SetSW(U16 word);
+    void SetTag(U32 tag);
+
+    void SetTagFromAbridged(U8 tag);
+    U8 GetAbridgedTag();
+    void setReg(U32 index, double value);
+    inline U32 GetTop() {return this->top;}
+private:    
     int GetTag();
     void LOG_STACK();
 
