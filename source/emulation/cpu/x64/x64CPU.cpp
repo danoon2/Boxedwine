@@ -181,15 +181,14 @@ void* x64CPU::translateEip(U32 ip) {
 }
 
 void x64CPU::translateInstruction(X64Asm* data) {
-//
+    data->startOfOpIp = data->ip;        
 #ifdef _DEBUG
     //data->logOp(data->ip);
     // just makes debugging the asm output easier
 #ifndef __TEST
     data->writeToMemFromValue(data->ip, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EIP, 4, false);
 #endif
-#endif
-    data->startOfOpIp = data->ip;        
+#endif      
     while (1) {  
         data->op = data->fetch8();            
         data->inst = data->baseOp + data->op;            

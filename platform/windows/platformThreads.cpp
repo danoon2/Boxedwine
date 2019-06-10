@@ -100,6 +100,9 @@ LONG handleChangedUnpatchedCode(struct _EXCEPTION_POINTERS *ep, x64CPU* cpu) {
     chunk->deallocAndRetranslate();   
     ep->ContextRecord->Rip = (U64)cpu->thread->memory->getExistingHostAddress(startOfEip);
     if (ep->ContextRecord->Rip==0) {
+        ep->ContextRecord->Rip = (U64)cpu->translateEip(startOfEip-cpu->seg[CS].address);
+    }
+    if (ep->ContextRecord->Rip==0) {
         kpanic("x64::handleChangedUnpatchedCode failed to translate code in exception");
     }
     return EXCEPTION_CONTINUE_EXECUTION;

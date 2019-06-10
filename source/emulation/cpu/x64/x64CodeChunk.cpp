@@ -181,15 +181,14 @@ void X64CodeChunk::deallocAndRetranslate() {
     cpu->makePendingCodePagesReadOnly();    
 
     this->linksFrom.for_each([chunk, cpu] (KListNode<X64CodeChunkLink*>* link) {        
-        U64 destHost = (U64)chunk->getHostFromEip(link->data->toEip);
-        if (destHost==0) {
-            kpanic("X64CodeChunk::deallocAndRetranslate failed to relink");
-        }
+        U64 destHost = (U64)chunk->getHostFromEip(link->data->toEip);        
 
         link->data->linkFrom.remove();
-        chunk->linksFrom.addToBack(&link->data->linkFrom);
+        if (destHost) {
+            chunk->linksFrom.addToBack(&link->data->linkFrom);
         
-        ATOMIC_WRITE64((U64*)&link->data->toHostInstruction, destHost);
+            ATOMIC_WRITE64((U64*)&link->data->toHostInstruction, destHost);
+        }
     });
     chunk->makeLive();
 
