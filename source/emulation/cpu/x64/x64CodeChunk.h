@@ -48,7 +48,7 @@ public:
     bool hasLinkTo(void* hostAddress);
     bool hasLinkToEip(U32 eip);
 
-    void* getHostFromEip(U32 eip) {U8* result=NULL; this->getStartOfInstructionByEip(eip, &result, NULL); return result;}
+    void* getHostFromEip(U32 eip) {U8* result=NULL; if (this->getStartOfInstructionByEip(eip, &result, NULL)==eip) {return result;} else {return 0;}}
     U32 getEip() {return emulatedAddress;}
     U32 getEipLen() {return emulatedLen;}
 

@@ -84,6 +84,47 @@ void* x64CPU::init() {
     return result;
 }
 
+X64CodeChunk* x64CPU::translateChunk(X64Asm* parent, U32 ip) {
+    X64Asm data1(this);
+    data1.ip = ip;
+    data1.startOfDataIp = ip;       
+    data1.parent = parent;
+    translateData(&data1);
+
+    X64Asm data(this);
+    data.ip = ip;
+    data.startOfDataIp = ip;  
+    data.calculatedEipLen = data1.ip - data1.startOfDataIp;
+    data.parent = parent;
+    translateData(&data);        
+    S32 failedJumpOpIndex = this->preLinkCheck(&data);
+
+    if (failedJumpOpIndex==-1) {
+        X64CodeChunk* chunk = data.commit(false);
+        link(&data, chunk);
+        return chunk;
+    } else {
+        X64Asm data2(this);
+        data2.ip = ip;
+        data2.startOfDataIp = ip;       
+        data2.parent = parent;
+        data2.stopAfterInstruction = failedJumpOpIndex;
+        translateData(&data2);
+
+        X64Asm data3(this);
+        data3.ip = ip;
+        data3.startOfDataIp = ip;  
+        data3.calculatedEipLen = data2.ip - data2.startOfDataIp;
+        data3.parent = parent;
+        data3.stopAfterInstruction = failedJumpOpIndex;
+        translateData(&data3);
+
+        X64CodeChunk* chunk = data3.commit(false);
+        link(&data3, chunk);
+        return chunk;
+    }    
+}
+
 void* x64CPU::translateEipInternal(X64Asm* parent, U32 ip) {
     if (!this->big) {
         ip = ip & 0xFFFF;
@@ -92,21 +133,8 @@ void* x64CPU::translateEipInternal(X64Asm* parent, U32 ip) {
     void* result = this->thread->memory->getExistingHostAddress(address);
 
     if (!result) {
-        X64Asm data1(this);
-        data1.ip = ip;
-        data1.startOfDataIp = ip;       
-        data1.parent = parent;
-        translateData(&data1);
-
-        X64Asm data(this);
-        data.ip = ip;
-        data.startOfDataIp = ip;  
-        data.calculatedEipLen = data1.ip - data1.startOfDataIp;
-        data.parent = parent;
-        translateData(&data);        
-        X64CodeChunk* chunk = data.commit(false);
+        X64CodeChunk* chunk = this->translateChunk(parent, ip);
         result = chunk->getHostAddress();
-        link(&data, chunk);
         chunk->makeLive();
     }
     return result;
@@ -120,6 +148,28 @@ void x64CPU::addReturnFromTest() {
 }
 #endif
 
+S32 x64CPU::preLinkCheck(X64Asm* data) {
+    for (S32 i=0;i<data->todoJump.size();i++) {
+        U32 eip = this->seg[CS].address+data->todoJump[i].eip;        
+        U8 size = data->todoJump[i].offsetSize;
+
+        if (size==4 && data->todoJump[i].sameChunk) {
+            bool found = false;
+
+            for (U32 ip=0;ip<data->ipAddressCount;ip++) {
+                if (data->ipAddress[ip] == eip) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                return data->todoJump[i].opIndex;
+            }
+        }
+    }
+    return -1;
+}
+
 void x64CPU::link(X64Asm* data, X64CodeChunk* fromChunk, U32 offsetIntoChunk) {
     U32 i;
     if (!fromChunk) {
@@ -131,7 +181,11 @@ void x64CPU::link(X64Asm* data, X64CodeChunk* fromChunk, U32 offsetIntoChunk) {
         U8 size = data->todoJump[i].offsetSize;
 
         if (size==4 && data->todoJump[i].sameChunk) {
-            data->write32Buffer(offset, (U32)((U8*)fromChunk->getHostFromEip(eip) - offset - 4));            
+            U8* host = (U8*)fromChunk->getHostFromEip(eip);
+            if (!host) {
+                kpanic("x64CPU::link can not link into the middle of an instruction");
+            }
+            data->write32Buffer(offset, (U32)(host - offset - 4));            
         } else if (size==8 && !data->todoJump[i].sameChunk) {
             U8* toHostAddress = (U8*)this->thread->memory->getExistingHostAddress(eip);
 
@@ -188,7 +242,7 @@ void x64CPU::translateInstruction(X64Asm* data) {
 #ifndef __TEST
     data->writeToMemFromValue(data->ip, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EIP, 4, false);
 #endif
-#endif      
+#endif    
     while (1) {  
         data->op = data->fetch8();            
         data->inst = data->baseOp + data->op;            
@@ -214,6 +268,9 @@ void x64CPU::translateData(X64Asm* data) {
         data->mapAddress(address, data->bufferPos);
         translateInstruction(data);
         if (data->done) {
+            break;
+        }
+        if (data->stopAfterInstruction!=-1 && data->ipAddressCount==data->stopAfterInstruction) {
             break;
         }
         data->resetForNewOp();

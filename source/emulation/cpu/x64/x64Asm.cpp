@@ -1692,7 +1692,7 @@ void X64Asm::popA32() {
 }
 
 void X64Asm::jumpConditional(U8 condition, U32 eip) {    
-    if (this->calculatedEipLen==0 || (eip>=this->startOfDataIp && eip<this->startOfDataIp+this->calculatedEipLen)) {
+    if (this->stopAfterInstruction!=(S32)this->ipAddressCount && (this->calculatedEipLen==0 || (eip>=this->startOfDataIp && eip<this->startOfDataIp+this->calculatedEipLen))) {
         write8(0x0F);
         write8(0x80+condition);
         write32(0);
@@ -1728,7 +1728,7 @@ void X64Asm::write16Buffer(U8* buffer, U16 value) {
 }
 
 void X64Asm::addTodoLinkJump(U32 eip, bool sameChunk) {
-    this->todoJump.push_back(TodoJump(eip, this->bufferPos-(sameChunk?4:11), (sameChunk?4:8), sameChunk));
+    this->todoJump.push_back(TodoJump(eip, this->bufferPos-(sameChunk?4:11), (sameChunk?4:8), sameChunk, this->ipAddressCount));
 }
 
 void X64Asm::jumpTo(U32 eip) {  
@@ -1737,7 +1737,7 @@ void X64Asm::jumpTo(U32 eip) {
 #endif
     // :TODO: is this necessary?  who uses it?
     this->writeToMemFromValue(eip, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EIP, 4, false);
-    if (this->calculatedEipLen==0 || (eip>=this->startOfDataIp && eip<this->startOfDataIp+this->calculatedEipLen)) {
+    if (this->stopAfterInstruction!=(S32)this->ipAddressCount && (this->calculatedEipLen==0 || (eip>=this->startOfDataIp && eip<this->startOfDataIp+this->calculatedEipLen))) {
         write8(0xE9);
         write32(0);
         addTodoLinkJump(eip, true);

@@ -86,14 +86,16 @@ public:
     static class TodoJump {
     public:
         TodoJump() : eip(0), bufferPos(0), offsetSize(0), sameChunk(true) {}
-        TodoJump(U32 eip, U32 bufferPos, U8 offsetSize, bool sameChunk) : eip(eip), bufferPos(bufferPos), offsetSize(offsetSize), sameChunk(sameChunk) {}
+        TodoJump(U32 eip, U32 bufferPos, U8 offsetSize, bool sameChunk, U32 opIndex) : eip(eip), bufferPos(bufferPos), offsetSize(offsetSize), sameChunk(sameChunk), opIndex(opIndex) {}
         U32 eip;
         U32 bufferPos;
         U8 offsetSize;
         bool sameChunk;
+        U32 opIndex;
     };
     std::vector<TodoJump> todoJump;
-  
+    S32 stopAfterInstruction;
+
     U32* ipAddress;
     U32* ipAddressBufferPos;
     U32 ipAddressCount;

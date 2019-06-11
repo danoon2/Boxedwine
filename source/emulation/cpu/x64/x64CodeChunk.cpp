@@ -165,21 +165,8 @@ void X64CodeChunk::deallocAndRetranslate() {
     detachFromHost(); 
 
     x64CPU* cpu = (x64CPU*)KThread::currentThread()->cpu;
-    X64Asm data1(cpu);
-    data1.ip = this->emulatedAddress-cpu->seg[CS].address;
-    data1.startOfDataIp = data1.ip;       
-    cpu->translateData(&data1);
-    
-    X64Asm data(cpu);
-    data.ip = this->emulatedAddress-cpu->seg[CS].address;
-    data.startOfDataIp = data.ip;       
-    data.calculatedEipLen = data1.ip-data1.startOfDataIp;
-    cpu->translateData(&data);
-
-    X64CodeChunk* chunk = data.commit(false);
-    cpu->link(&data, chunk);    
-    cpu->makePendingCodePagesReadOnly();    
-
+    X64CodeChunk* chunk = cpu->translateChunk(NULL, this->emulatedAddress-cpu->seg[CS].address);
+    cpu->makePendingCodePagesReadOnly();
     this->linksFrom.for_each([chunk, cpu] (KListNode<X64CodeChunkLink*>* link) {        
         U64 destHost = (U64)chunk->getHostFromEip(link->data->toEip);        
 

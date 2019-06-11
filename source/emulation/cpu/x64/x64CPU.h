@@ -40,11 +40,13 @@ public:
 
     void translateInstruction(X64Asm* data);    
     void link(X64Asm* data, X64CodeChunk* fromChunk, U32 offsetIntoChunk=0);
+    S32 preLinkCheck(X64Asm* data); // returns the index of the jump that failed
     void makePendingCodePagesReadOnly();
     void translateData(X64Asm* data);
+    X64CodeChunk* translateChunk(X64Asm* parent, U32 ip);
 
     virtual void setSeg(U32 index, U32 address, U32 value);
-private:          
+private:      
     void* translateEipInternal(X64Asm* parent, U32 ip);            
     void markCodePageReadOnly(X64Asm* data);
 

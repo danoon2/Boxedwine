@@ -20,6 +20,7 @@ X64Data::X64Data(x64CPU* cpu) : cpu(cpu) {
     this->startOfDataIp = 0;
     this->startOfOpIp = 0;
     this->calculatedEipLen = 0;
+    this->stopAfterInstruction = -1;
 }
 
 X64Data::~X64Data() {
