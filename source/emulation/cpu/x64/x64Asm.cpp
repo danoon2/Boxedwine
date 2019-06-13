@@ -5,6 +5,8 @@
 #include "x64Asm.h"
 #include "../common/common_other.h"
 #include "../source/emulation/hardmmu/hard_memory.h"
+
+// still doesn't work
 #ifdef X64_EMULATE_FPU
 #include "../common/common_fpu.h"
 #endif
@@ -28,6 +30,7 @@
 #define CPU_OFFSET_STRING_REPEAT (U32)(offsetof(x64CPU, stringRepeat))
 #define CPU_OFFSET_STRING_WRITES_DI (U32)(offsetof(x64CPU, stringWritesToDi))
 #define CPU_OFFSET_ARG5 (U32)(offsetof(x64CPU, arg5))
+#define CPU_OFFSET_FPU_STATE (U32)(offsetof(x64CPU, fpuState))
 
 X64Asm::X64Asm(x64CPU* cpu) : X64Data(cpu), parent(NULL), tmp1InUse(false), tmp2InUse(false), tmp3InUse(false) {
 }
@@ -1127,6 +1130,15 @@ void X64Asm::syncRegsFromHost() {
     popNativeReg(tmpReg, true);
     writeToMemFromReg(tmpReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_FLAGS, 4, false);
     releaseTmpReg(tmpReg);
+
+#ifndef X64_EMULATE_FPU
+    // fxsave
+    write8(0x41);
+    write8(0x0f);
+    write8(0xae);
+    write8(0x80 | HOST_CPU);
+    write32(CPU_OFFSET_FPU_STATE);
+#endif
 }
 
 void X64Asm::syncRegsToHost(S8 excludeReg) {
@@ -1155,6 +1167,15 @@ void X64Asm::syncRegsToHost(S8 excludeReg) {
     pushNativeReg(tmpReg, true);
     popNativeFlags();
     releaseTmpReg(tmpReg);
+
+#ifndef X64_EMULATE_FPU
+    // fxrstor
+    write8(0x41);
+    write8(0x0f);
+    write8(0xae);
+    write8(0x88 | HOST_CPU);
+    write32(CPU_OFFSET_FPU_STATE);
+#endif
 }
 
 void badStack(CPU* cpu) {
@@ -2471,7 +2492,7 @@ void X64Asm::cpuid() {
     writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
             
     callHost(common_cpuid);
-    syncRegsToHost(G(rm));
+    syncRegsToHost();
 }
 
 void X64Asm::setNativeFlags(U32 flags, U32 mask) {

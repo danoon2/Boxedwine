@@ -31,6 +31,8 @@ public:
     U32 stringRepeat;
     U32 stringWritesToDi;
     U32 arg5;
+    __declspec(align(16)) U8 fpuState[512];
+
 #ifdef _DEBUG
     U32 fromEip;
 #endif

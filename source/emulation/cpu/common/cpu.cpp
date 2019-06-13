@@ -194,13 +194,6 @@ void CPU::prepareException(int code, int error) {
         process->sigActions[K_SIGSEGV].sigInfo[3] = this->eip.u32; // address
         process->sigActions[K_SIGSEGV].sigInfo[4] = 4; // trap #, TRAP_x86_OFLOW
         this->thread->runSignal(K_SIGSEGV, 4, error);
-    } else if (code==EXCEPTION_DIVIDE && error == 1 && (process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_IGN && process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_DFL)) {
-        process->sigActions[K_SIGSEGV].sigInfo[0] = K_SIGSEGV;		
-        process->sigActions[K_SIGSEGV].sigInfo[1] = 0;
-        process->sigActions[K_SIGSEGV].sigInfo[2] = 0;
-        process->sigActions[K_SIGSEGV].sigInfo[3] = this->eip.u32; // address
-        process->sigActions[K_SIGSEGV].sigInfo[4] = 4; // trap #, TRAP_x86_OFLOW
-        this->thread->runSignal(K_SIGSEGV, 4, error);
     } else if (code==EXCEPTION_NP &&  (process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_IGN && process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_DFL)) {
         process->sigActions[K_SIGSEGV].sigInfo[0] = K_SIGSEGV;		
         process->sigActions[K_SIGSEGV].sigInfo[1] = 0;

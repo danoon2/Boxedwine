@@ -21,6 +21,7 @@ void syncFromException(x64CPU* cpu, struct _EXCEPTION_POINTERS *ep, bool include
     cpu->flags = ep->ContextRecord->EFlags;
     cpu->lazyFlags = FLAGS_NONE;
 
+#ifndef X64_EMULATE_FPU
     if (includeFPU) {
         cpu->fpu.SetCW(ep->ContextRecord->FltSave.ControlWord);
         cpu->fpu.SetSW(ep->ContextRecord->FltSave.StatusWord);
@@ -35,6 +36,7 @@ void syncFromException(x64CPU* cpu, struct _EXCEPTION_POINTERS *ep, bool include
             }
         }
     }
+#endif
 }
 
 void syncToException(x64CPU* cpu, struct _EXCEPTION_POINTERS *ep, bool includeFPU) {
@@ -51,6 +53,7 @@ void syncToException(x64CPU* cpu, struct _EXCEPTION_POINTERS *ep, bool includeFP
     cpu->fillFlags();
     ep->ContextRecord->EFlags = cpu->flags;
 
+#ifndef X64_EMULATE_FPU
     if (includeFPU) {
         ep->ContextRecord->FltSave.ControlWord = cpu->fpu.CW();
         ep->ContextRecord->FltSave.StatusWord = cpu->fpu.SW();
@@ -65,6 +68,7 @@ void syncToException(x64CPU* cpu, struct _EXCEPTION_POINTERS *ep, bool includeFP
             }
         }
     }
+#endif
 }
 
 LONG handleChangedUnpatchedCode(struct _EXCEPTION_POINTERS *ep, x64CPU* cpu) {
@@ -280,7 +284,7 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
                 U32 address = (U32)ep->ExceptionRecord->ExceptionInformation[1];
             
                 // check if emulated memory that caused the exception is a page that has code
-                if (cpu->thread->memory->nativeFlags[address>>K_PAGE_SHIFT] & NATIVE_FLAG_CODEPAGE_READONLY) {
+                if (cpu->thread->memory->nativeFlags[address>>K_PAGE_SHIFT] & NATIVE_FLAG_CODEPAGE_READONLY) {                    
                     return handleCodePatch(ep, cpu, address);
                 }
             }   
@@ -298,6 +302,19 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
         }
     } else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_FLT_STACK_CHECK) {
         kpanic("EXCEPTION_FLT_STACK_CHECK");
+    } else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_FLT_DIVIDE_BY_ZERO) {
+        syncFromException(cpu, ep, true);
+        cpu->prepareException(EXCEPTION_DIVIDE, 0);
+        syncToException(cpu, ep, true);
+        ep->ContextRecord->Rip = (U64)cpu->translateEip(cpu->eip.u32); 
+        if (ep->ContextRecord->Rip==0) {
+            kpanic("x64::seh_filter failed to translate code");
+        }
+        return EXCEPTION_CONTINUE_EXECUTION;        
+    } else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_DATATYPE_MISALIGNMENT) {
+		// :TODO: figure out how AC got set, I've only seen this while op logging
+        ep->ContextRecord->EFlags&=~AC;
+        return EXCEPTION_CONTINUE_EXECUTION;
     }
     return EXCEPTION_CONTINUE_SEARCH;
 }
