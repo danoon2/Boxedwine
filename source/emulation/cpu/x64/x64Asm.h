@@ -185,6 +185,8 @@ private:
     void popReg(U8 reg, bool isRegRex, S8 bytes, bool commit);
     void syncRegsFromHost();
     void syncRegsToHost(S8 excludeReg=-1);
+    void minSyncRegsFromHost();
+    void minSyncRegsToHost();
     void adjustStack(U8 tmpReg, S32 bytes);
     void doIf(U8 reg, bool isRexReg, U32 equalsValue, std::function<void(void)> ifBlock, std::function<void(void)> elseBlock);    
     void setPF_onAL(U8 flagReg);

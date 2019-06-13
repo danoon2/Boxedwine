@@ -16,7 +16,7 @@ bool doMainLoop() {
 
     while (platformThreadCount && SDL_WaitEvent(&e)) {
         if (e.type == sdlCustomEvent) {
-            struct SdlCallback* callback = (struct SdlCallback*)e.user.data1;
+            SdlCallback* callback = (SdlCallback*)e.user.data1;
             callback->result = (U32)callback->pfn();
             BOXEDWINE_CONDITION_LOCK(callback->cond);
             BOXEDWINE_CONDITION_SIGNAL(callback->cond);

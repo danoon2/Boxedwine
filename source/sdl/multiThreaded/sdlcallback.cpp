@@ -7,32 +7,31 @@
 extern U32 sdlCustomEvent;
 extern SDL_threadID sdlMainThreadId;
 
-static struct SdlCallback* freeSdlCallbacks;
+static SdlCallback* freeSdlCallbacks;
 static BOXEDWINE_MUTEX freeSdlCallbacksMutex;
 
-struct SdlCallback* allocSdlCallback() {
+SdlCallback* allocSdlCallback() {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(freeSdlCallbacksMutex);
     if (freeSdlCallbacks) {
-        struct SdlCallback* result = freeSdlCallbacks;
+        SdlCallback* result = freeSdlCallbacks;
         freeSdlCallbacks = freeSdlCallbacks->next;
         return result;
     } else {
-        struct SdlCallback* result = (struct SdlCallback*)malloc(sizeof(struct SdlCallback));
-        memset(result, 0, sizeof(struct SdlCallback));
+        SdlCallback* result = new SdlCallback();
         result->sdlEvent.type = sdlCustomEvent;
         result->sdlEvent.user.data1 = result;
         return result;
     }    
 }
 
-void freeSdlCallback(struct SdlCallback* callback) {
+void freeSdlCallback(SdlCallback* callback) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(freeSdlCallbacksMutex);
     callback->next = freeSdlCallbacks;
     freeSdlCallbacks = callback;
 }
 
 U32 sdlDispatch(std::function<U32()> p) {
-    struct SdlCallback* callback = allocSdlCallback();
+    SdlCallback* callback = allocSdlCallback();
     callback->pfn = p;
     BOXEDWINE_CONDITION_LOCK(callback->cond);
     SDL_PushEvent(&callback->sdlEvent);

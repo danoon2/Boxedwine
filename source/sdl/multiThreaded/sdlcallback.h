@@ -3,12 +3,13 @@
 
 #ifdef BOXEDWINE_MULTI_THREADED
 
-struct SdlCallback {
+class SdlCallback {
+public:
     SDL_Event sdlEvent;
     BOXEDWINE_CONDITION cond;
     std::function<U32()> pfn;
     U32 result;
-    struct SdlCallback* next;
+    SdlCallback* next;
 };
 
 U32 sdlDispatch(std::function<U32()> p);

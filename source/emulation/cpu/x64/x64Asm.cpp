@@ -1115,6 +1115,22 @@ bool X64Asm::isTmpReg(U8 tmpReg) {
     return tmpReg == HOST_TMP || tmpReg == HOST_TMP2 || tmpReg == HOST_TMP3;
 }
 
+void X64Asm::minSyncRegsFromHost() {
+    writeToMemFromReg(0, false, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EAX, 4, false);
+    writeToMemFromReg(1, false, HOST_CPU, true, -1, false, 0, CPU_OFFSET_ECX, 4, false);
+    writeToMemFromReg(2, false, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EDX, 4, false);
+    writeToMemFromReg(HOST_ESP, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_ESP, 4, false);
+
+#ifndef X64_EMULATE_FPU
+    // fxsave
+    write8(0x41);
+    write8(0x0f);
+    write8(0xae);
+    write8(0x80 | HOST_CPU);
+    write32(CPU_OFFSET_FPU_STATE);
+#endif
+}
+
 void X64Asm::syncRegsFromHost() {
     writeToMemFromValue(this->startOfOpIp, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EIP, 4, false);
     writeToMemFromReg(0, false, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EAX, 4, false);
@@ -1137,6 +1153,22 @@ void X64Asm::syncRegsFromHost() {
     write8(0x0f);
     write8(0xae);
     write8(0x80 | HOST_CPU);
+    write32(CPU_OFFSET_FPU_STATE);
+#endif
+}
+
+void X64Asm::minSyncRegsToHost() {
+    writeToRegFromMem(0, false, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EAX, 4, false); // EAX is volitile
+    writeToRegFromMem(1, false, HOST_CPU, true, -1, false, 0, CPU_OFFSET_ECX, 4, false); // ECX is volitile
+    writeToRegFromMem(2, false, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EDX, 4, false); // EDX is volitile
+    writeToRegFromMem(HOST_ESP, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_ESP, 4, false); // R11 is volitile
+
+#ifndef X64_EMULATE_FPU
+    // fxrstor
+    write8(0x41);
+    write8(0x0f);
+    write8(0xae);
+    write8(0x88 | HOST_CPU);
     write32(CPU_OFFSET_FPU_STATE);
 #endif
 }
@@ -2141,30 +2173,29 @@ void X64Asm::syscall(U32 opLen) {
 }
 
 void X64Asm::int98(U32 opLen) {
-    syncRegsFromHost(); 
+    minSyncRegsFromHost();
 
     // calling convention RCX, RDX, R8, R9 for first 4 parameters
 
     // void common_int98(CPU* cpu)
     writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
-    writeToRegFromValue(2, false, opLen, 4); // opLen param
 
     callHost(common_int98);
-    syncRegsToHost();
+
+    minSyncRegsToHost();
     //doJmp();
 }
 
 void X64Asm::int99(U32 opLen) {
-    syncRegsFromHost(); 
+    minSyncRegsFromHost();
 
     // calling convention RCX, RDX, R8, R9 for first 4 parameters
 
     // void common_int99(CPU* cpu)
     writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
-    writeToRegFromValue(2, false, opLen, 4); // opLen param
 
     callHost(common_int99);
-    syncRegsToHost();
+    minSyncRegsToHost();
     //doJmp();
 }
 

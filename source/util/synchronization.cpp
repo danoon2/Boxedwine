@@ -44,6 +44,8 @@ BoxedWineCondition::BoxedWineCondition(std::string name) : name(name) {
 BoxedWineCondition::BoxedWineCondition() {
     this->m = SDL_CreateMutex();
     this->c = SDL_CreateCond();
+    this->parent = NULL;
+    this->lockOwner = 0;
 }
 
 BoxedWineCondition::~BoxedWineCondition() {
