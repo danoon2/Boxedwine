@@ -1823,6 +1823,35 @@ static U32 hlt(X64Asm* data) {
     return 0;
 }
 
+static U32 grp6_16(X64Asm* data) {
+    U8 rm = data->fetch8();
+
+    switch (G(rm)) {
+    case 0x00:
+        kpanic("SLDT not implemented");
+        break;
+    case 0x01:
+        kpanic("STR not implemented");
+        break;
+    case 0x02:
+        kpanic("LLDT not implemented");
+        break;
+    case 0x03:
+        kpanic("LTR not implemented");
+        break;
+    case 0x04:
+        data->verr(rm);
+        break;
+    case 0x05:
+        data->verw(rm);
+        break;
+    default: 
+        kpanic("invalid grp6");
+        break;
+    }	
+    return 0;
+}
+
 static U32 cli(X64Asm* data) {
     data->write8(0x90); // nop
     return 0;
@@ -2181,7 +2210,7 @@ X64Decoder x64Decoder[1024] = {
     keepSame, keepSame, cli, sti, keepSame, keepSame, instGrp4, grp5w,
 
     // 100
-    invalidOp, invalidOp, lar, lsl, invalidOp, invalidOp, invalidOp, invalidOp,
+    grp6_16, invalidOp, lar, lsl, invalidOp, invalidOp, invalidOp, invalidOp,
     invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp,
     // 110
     invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp,

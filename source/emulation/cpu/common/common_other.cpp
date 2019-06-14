@@ -145,6 +145,14 @@ void common_verre16(CPU* cpu, U32 address){
 void common_verwe16(CPU* cpu, U32 address){
     cpu->verw(readw(address));
 }
+
+void common_verr(CPU* cpu, U32 selector){
+    cpu->verr(selector);
+}
+void common_verw(CPU* cpu, U32 selector){
+    cpu->verw(selector);
+}
+
 void common_cmpxchgg8b(CPU* cpu, U32 address){
     U64 value1 = ((U64)EDX) << 32 | EAX;
     U64 value2 = readq(address);

@@ -133,6 +133,8 @@ public:
     void callCallback(void* pfn);
     void lsl(bool big, U8 rm);
     void lar(bool big, U8 rm);
+    void verw(U8 rm);
+    void verr(U8 rm);
     void invalidOp(U32 op);
     void cpuid();
     void setNativeFlags(U32 flags, U32 mask);

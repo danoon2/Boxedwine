@@ -2522,6 +2522,34 @@ void X64Asm::lar(bool big, U8 rm) {
     syncRegsToHost(G(rm));
 }
 
+void X64Asm::verw(U8 rm) {
+    syncRegsFromHost(); 
+
+    // calling convention RCX, RDX, R8, R9 for first 4 parameters
+
+    // call void common_verw(CPU* cpu, U32 selector)
+    zeroReg(2, false);
+    writeToRegFromE(2, false, rm, 2);
+    writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
+            
+    callHost(common_verw);
+    syncRegsToHost();
+}
+
+void X64Asm::verr(U8 rm) {
+    syncRegsFromHost(); 
+
+    // calling convention RCX, RDX, R8, R9 for first 4 parameters
+
+    // call void common_verr(CPU* cpu, U32 selector)
+    zeroReg(2, false);
+    writeToRegFromE(2, false, rm, 2);
+    writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
+            
+    callHost(common_verr);
+    syncRegsToHost();
+}
+
 static void x64_invalidOp(U32 op) {
     kpanic("x64_invalidOp: 0x%X", op);
 }
@@ -2833,7 +2861,7 @@ void X64Asm::bound16(U8 rm) {
     getNativeAddressInRegFromE(HOST_TMP2, true, rm);
     writeToRegFromValue(2, false, G(rm), 4);
     writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
-    callHost(common_bound32);
+    callHost(common_bound16);
     releaseTmpReg(HOST_TMP2);
     doIf(0, false, 0, [this]() {
         syncRegsToHost();
