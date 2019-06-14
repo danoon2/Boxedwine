@@ -182,8 +182,11 @@ LONG handleCodePatch(struct _EXCEPTION_POINTERS *ep, x64CPU* cpu, U32 address) {
             }
         } else {
             w.invalidateCode(address, len);
-        }        
-        op->pfn(cpu, op);        
+        }       
+        FILE* f = (FILE*)cpu->logFile;
+        cpu->logFile = NULL;
+        op->pfn(cpu, op);   
+        cpu->logFile = f;
         syncToException(cpu, ep, includeFPU);        
 
         // eip was ajusted after running this instruction                        

@@ -2279,7 +2279,9 @@ void X64Asm::loadSeg(U8 seg, U8 rm, bool b32) {
 
         // read value now in case it triggers an exception
         this->tmp1InUse = true;
-        zeroReg(1, true);
+        if (!b32) {
+            zeroReg(1, true);
+        }
         writeToRegFromMem(1, true, HOST_TMP3, true, -1, false, 0, 0, b32?4:2, false);
 
         this->tmp3InUse = false;
@@ -2301,14 +2303,14 @@ void X64Asm::loadSeg(U8 seg, U8 rm, bool b32) {
         doIf(0, false, 0, [this]() {
             syncRegsToHost();
             doJmp();
-        }, [this, rm]() {
+        }, [this, rm, b32]() {
             syncRegsToHost();
             // put the value we stored on the native stack into the emulator reg
             U8 r = G(rm);
             if (r==4) {
-                writeToRegFromMem(HOST_ESP, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_ARG5, 4, false);
+                writeToRegFromMem(HOST_ESP, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_ARG5, b32?4:2, false);
             } else {
-                writeToRegFromMem(r, false, HOST_CPU, true, -1, false, 0, CPU_OFFSET_ARG5, 4, false);
+                writeToRegFromMem(r, false, HOST_CPU, true, -1, false, 0, CPU_OFFSET_ARG5, b32?4:2, false);
             }
         }); 
         this->cpu->thread->process->hasSetSeg[seg] = true;
@@ -2467,9 +2469,18 @@ void X64Asm::lsl(bool big, U8 rm) {
             writeToRegFromReg(G(rm), false, 0, false, 4);
         }
     } else {
+        U8 tmpReg = getTmpReg();
+        if (G(rm)==0) {
+            writeToRegFromReg(tmpReg, true, 0, false, 4);
+        }
         // fill in the previous upper 2 bytes
         writeToRegFromMem(G(rm), false, HOST_CPU, true, -1, false, 0, (U32)(offsetof(CPU, reg[G(rm)].u32)), 4, false);
-        writeToRegFromReg(G(rm), false, 0, false, 2);
+        if (G(rm)==0) {
+            writeToRegFromReg(G(rm), false, tmpReg, true, 2);
+        } else {
+            writeToRegFromReg(G(rm), false, 0, false, 2);
+        }
+        releaseTmpReg(tmpReg);
     }
     syncRegsToHost(G(rm));
 }
@@ -2495,9 +2506,18 @@ void X64Asm::lar(bool big, U8 rm) {
             writeToRegFromReg(G(rm), false, 0, false, 4);
         }
     } else {
+        U8 tmpReg = getTmpReg();
+        if (G(rm)==0) {
+            writeToRegFromReg(tmpReg, true, 0, false, 4);
+        }
         // fill in the previous upper 2 bytes
         writeToRegFromMem(G(rm), false, HOST_CPU, true, -1, false, 0, (U32)(offsetof(CPU, reg[G(rm)].u32)), 4, false);
-        writeToRegFromReg(G(rm), false, 0, false, 2);
+        if (G(rm)==0) {
+            writeToRegFromReg(G(rm), false, tmpReg, true, 2);
+        } else {
+            writeToRegFromReg(G(rm), false, 0, false, 2);
+        }
+        releaseTmpReg(tmpReg);
     }
     syncRegsToHost(G(rm));
 }
