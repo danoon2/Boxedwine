@@ -99,6 +99,13 @@ KProcess::KProcess(U32 id) : id(id),
         this->hasSetSeg[i] = false;
     }
     KSystem::addProcess(this->id, this);
+
+#ifdef BOXEDWINE_X64
+    this->nextNativeAddress = ADDRESS_PROCESS_NATIVE;
+    for (int i=0;i<NUMBER_OF_STRINGS;i++) {
+        this->glStrings[i] = 0;
+    }
+#endif
 }
 
 void KProcess::onExec() {
@@ -2328,3 +2335,14 @@ void KProcess::printMappedFiles() {
         printf("    %.8X - %.8X %s\n", mappedFile->address, mappedFile->address+(int)mappedFile->len, mappedFile->file->openFile->node->path.c_str());
     }
 }
+
+#ifdef BOXEDWINE_X64
+#include "../emulation/hardmmu/hard_memory.h"
+U32 KProcess::allocNative(U32 len) {
+    U32 page = this->nextNativeAddress >> K_PAGE_SHIFT;
+    U32 pageCount = (len+K_PAGE_SIZE-1) >> K_PAGE_SHIFT;
+    allocNativeMemory(this->memory, page, pageCount, 0);
+    this->nextNativeAddress+=pageCount*K_PAGE_SIZE;
+    return page << K_PAGE_SHIFT;
+}
+#endif

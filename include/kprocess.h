@@ -233,6 +233,11 @@ public:
 
     bool hasSetStackMask;
     bool hasSetSeg[6];
+#ifdef BOXEDWINE_X64
+    U32 nextNativeAddress;
+    U32 glStrings[NUMBER_OF_STRINGS];
+    U32 allocNative(U32 len);
+#endif
 private:
     std::unordered_map<U32, KFileDescriptor*> fds;
     BOXEDWINE_MUTEX fdsMutex;
