@@ -14,7 +14,19 @@ bool doMainLoop() {
     sdlCustomEvent = SDL_RegisterEvents(1);
     sdlMainThreadId = SDL_ThreadID();
 
-    while (platformThreadCount && SDL_WaitEvent(&e)) {
+    while (platformThreadCount) {
+#ifdef BOXEDWINE_RECORDER
+        if (Player::instance || Recorder::instance) {
+            SDL_WaitEventTimeout(&e, 10);
+            BOXEDWINE_RECORDER_RUN_SLICE();
+        } else if (!SDL_WaitEvent(&e)) {
+            break;
+        }
+#else
+        if (!SDL_WaitEvent(&e)) {
+            break;
+        }
+#endif        
         if (e.type == sdlCustomEvent) {
             SdlCallback* callback = (SdlCallback*)e.user.data1;
             callback->result = (U32)callback->pfn();
