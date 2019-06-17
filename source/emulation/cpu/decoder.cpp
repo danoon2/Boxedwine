@@ -3254,7 +3254,7 @@ public:
                 address |= ((U64)data->fetch32()) << 32;
                 op->pfn = (OpCallback)address;
 #else
-                op->pfn = (OpCallback)data->fetch32();
+                op->pfn = (OpCallback)(uintptr_t)data->fetch32();
 #endif
             op->inst = Callback;
             break;
@@ -4875,7 +4875,7 @@ void DecodedOp::log(CPU* cpu) {
         if (endPos-pos<55) {
             fwrite("                                                       ", 55-(endPos-pos), 1, (FILE*)cpu->logFile);
         }
-        fprintf((FILE*)cpu->logFile, " EAX=%0.8X ECX=%0.8X EDX=%0.8X EBX=%0.8X ESP=%0.8X EBP=%0.8X ESI=%0.8X EDI=%0.8X SS=%0.8X DS=%0.8X", EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI, cpu->seg[SS].address, cpu->seg[DS].address);
+        fprintf((FILE*)cpu->logFile, " EAX=%.8X ECX=%.8X EDX=%.8X EBX=%.8X ESP=%.8X EBP=%.8X ESI=%.8X EDI=%.8X SS=%.8X DS=%.8X", EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI, cpu->seg[SS].address, cpu->seg[DS].address);
         fwrite("\n", 1, 1, (FILE*)cpu->logFile);
         fflush((FILE*)cpu->logFile);
     }

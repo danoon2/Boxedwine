@@ -680,7 +680,7 @@ void boxeddrv_SetCursorBits(CPU* cpu) {
         height=-height;
     }
     size = pitch*height;
-    if (size>sizeof(data)) {
+    if (size>(int)sizeof(data)) {
         klog("boxeddrv_SetCursorBits too large of cursor\n");
         return;
     }

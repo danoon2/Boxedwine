@@ -50,7 +50,7 @@ U32 updateVertexPointer(CPU* cpu, OpenGLVetexPointer* p, U32 count) {
             free(p->marshal);
             p->marshal_size = 0;
         }
-        p->marshal = (U8*)p->ptr;
+        p->marshal = (U8*)(uintptr_t)p->ptr;
     }
     return 1;
 }
@@ -125,7 +125,7 @@ void updateVertexPointers(CPU* cpu, U32 count) {
 GLvoid* marshalVetextPointer(CPU* cpu, GLint size, GLenum type, GLsizei stride, U32 ptr) {
     if (ARRAY_BUFFER()) {        
         cpu->thread->glVertextPointer.refreshEachCall = 0;
-        return (GLvoid*)ptr;
+        return (GLvoid*)(uintptr_t)ptr;
     } else {
         cpu->thread->glVertextPointer.size = size;
         cpu->thread->glVertextPointer.type = type;
@@ -140,7 +140,7 @@ GLvoid* marshalVetextPointer(CPU* cpu, GLint size, GLenum type, GLsizei stride, 
 GLvoid* marshalNormalPointer(CPU* cpu, GLenum type, GLsizei stride, U32 ptr) {
     if (ARRAY_BUFFER()) {        
         cpu->thread->glNormalPointer.refreshEachCall = 0;
-        return (GLvoid*)ptr;
+        return (GLvoid*)(uintptr_t)ptr;
     } else {
         cpu->thread->glNormalPointer.size = 1;
         cpu->thread->glNormalPointer.type = type;
@@ -155,7 +155,7 @@ GLvoid* marshalNormalPointer(CPU* cpu, GLenum type, GLsizei stride, U32 ptr) {
 GLvoid* marshalFogPointer(CPU* cpu, GLenum type, GLsizei stride, U32 ptr) {
     if (ARRAY_BUFFER()) {        
         cpu->thread->glFogPointer.refreshEachCall = 0;
-        return (GLvoid*)ptr;
+        return (GLvoid*)(uintptr_t)ptr;
     } else {
         cpu->thread->glFogPointer.size = 1;
         cpu->thread->glFogPointer.type = type;
@@ -170,7 +170,7 @@ GLvoid* marshalFogPointer(CPU* cpu, GLenum type, GLsizei stride, U32 ptr) {
 GLvoid* marshalFogPointerEXT(CPU* cpu, GLenum type, GLsizei stride, U32 ptr) {
     if (ARRAY_BUFFER()) {        
         cpu->thread->glFogPointerEXT.refreshEachCall = 0;
-        return (GLvoid*)ptr;
+        return (GLvoid*)(uintptr_t)ptr;
     } else {
         cpu->thread->glFogPointerEXT.size = 1;
         cpu->thread->glFogPointerEXT.type = type;
@@ -185,7 +185,7 @@ GLvoid* marshalFogPointerEXT(CPU* cpu, GLenum type, GLsizei stride, U32 ptr) {
 GLvoid* marshalColorPointer(CPU* cpu, GLint size, GLenum type, GLsizei stride, U32 ptr) {
     if (ARRAY_BUFFER()) {        
         cpu->thread->glColorPointer.refreshEachCall = 0;
-        return (GLvoid*)ptr;
+        return (GLvoid*)(uintptr_t)ptr;
     } else {
         cpu->thread->glColorPointer.size = size;
         cpu->thread->glColorPointer.type = type;
@@ -200,7 +200,7 @@ GLvoid* marshalColorPointer(CPU* cpu, GLint size, GLenum type, GLsizei stride, U
 GLvoid* marshalSecondaryColorPointer(CPU* cpu, GLint size, GLenum type, GLsizei stride, U32 ptr) {
     if (ARRAY_BUFFER()) {        
         cpu->thread->glSecondaryColorPointer.refreshEachCall = 0;
-        return (GLvoid*)ptr;
+        return (GLvoid*)(uintptr_t)ptr;
     } else {        
         cpu->thread->glSecondaryColorPointer.size = size;
         cpu->thread->glSecondaryColorPointer.type = type;
@@ -215,7 +215,7 @@ GLvoid* marshalSecondaryColorPointer(CPU* cpu, GLint size, GLenum type, GLsizei 
 GLvoid* marshalSecondaryColorPointerEXT(CPU* cpu, GLint size, GLenum type, GLsizei stride, U32 ptr) {
     if (ARRAY_BUFFER()) {        
         cpu->thread->glSecondaryColorPointerEXT.refreshEachCall = 0;
-        return (GLvoid*)ptr;
+        return (GLvoid*)(uintptr_t)ptr;
     } else {        
         cpu->thread->glSecondaryColorPointerEXT.size = size;
         cpu->thread->glSecondaryColorPointerEXT.type = type;
@@ -230,7 +230,7 @@ GLvoid* marshalSecondaryColorPointerEXT(CPU* cpu, GLint size, GLenum type, GLsiz
 GLvoid* marshalIndexPointer(CPU* cpu,  GLenum type, GLsizei stride, U32 ptr) {
     if (ARRAY_BUFFER()) {        
         cpu->thread->glIndexPointer.refreshEachCall = 0;
-        return (GLvoid*)ptr;
+        return (GLvoid*)(uintptr_t)ptr;
     } else {
         cpu->thread->glIndexPointer.size = 1;
         cpu->thread->glIndexPointer.type = type;
@@ -245,7 +245,7 @@ GLvoid* marshalIndexPointer(CPU* cpu,  GLenum type, GLsizei stride, U32 ptr) {
 GLvoid* marshalTexCoordPointer(CPU* cpu, GLint size, GLenum type, GLsizei stride, U32 ptr) {
     if (ARRAY_BUFFER()) {        
         cpu->thread->glTexCoordPointer.refreshEachCall = 0;
-        return (GLvoid*)ptr;
+        return (GLvoid*)(uintptr_t)ptr;
     } else {
         cpu->thread->glTexCoordPointer.size = size;
         cpu->thread->glTexCoordPointer.type = type;
@@ -260,7 +260,7 @@ GLvoid* marshalTexCoordPointer(CPU* cpu, GLint size, GLenum type, GLsizei stride
 GLvoid* marshalEdgeFlagPointer(CPU* cpu, GLsizei stride, U32 ptr) {
     if (ARRAY_BUFFER()) {        
         cpu->thread->glEdgeFlagPointer.refreshEachCall = 0;
-        return (GLvoid*)ptr;
+        return (GLvoid*)(uintptr_t)ptr;
     } else {
         cpu->thread->glEdgeFlagPointer.size = 1;
         cpu->thread->glEdgeFlagPointer.type = GL_BYTE;
@@ -275,7 +275,7 @@ GLvoid* marshalEdgeFlagPointer(CPU* cpu, GLsizei stride, U32 ptr) {
 const GLboolean* marshalEdgeFlagPointerEXT(CPU* cpu, GLsizei stride, GLsizei count, U32 ptr) {
     if (ARRAY_BUFFER()) {        
         cpu->thread->glEdgeFlagPointerEXT.refreshEachCall = 0;
-        return (const GLboolean*)ptr;
+        return (const GLboolean*)(uintptr_t)ptr;
     } else {
         cpu->thread->glEdgeFlagPointerEXT.size = 1;
         cpu->thread->glEdgeFlagPointerEXT.type = GL_BYTE;

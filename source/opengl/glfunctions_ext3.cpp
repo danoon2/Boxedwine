@@ -969,7 +969,7 @@ void glcommon_glTexImage3D(CPU* cpu) {
     if (!ext_glTexImage3D)
         kpanic("ext_glTexImage3D is NULL");
     {
-    GL_FUNC(ext_glTexImage3D)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8, ARG9, PIXEL_UNPACK_BUFFER()?(GLvoid*)ARG10:marshalPixels(cpu, 1, ARG4, ARG5, ARG6, ARG8, ARG9, ARG10));
+    GL_FUNC(ext_glTexImage3D)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8, ARG9, PIXEL_UNPACK_BUFFER()?(GLvoid*)pARG10:marshalPixels(cpu, 1, ARG4, ARG5, ARG6, ARG8, ARG9, ARG10));
     GL_LOG ("glTexImage3D GLenum target=%d, GLint level=%d, GLint internalformat=%d, GLsizei width=%d, GLsizei height=%d, GLsizei depth=%d, GLint border=%d, GLenum format=%d, GLenum type=%d, const void* pixels=%.08x",ARG1,ARG2,ARG3,ARG4,ARG5,ARG6,ARG7,ARG8,ARG9,ARG10);
     }
 }
@@ -4879,7 +4879,7 @@ void glcommon_glVertexAttribPointer(CPU* cpu) {
     if (!ext_glVertexAttribPointer)
         kpanic("ext_glVertexAttribPointer is NULL");
     {
-    GL_FUNC(ext_glVertexAttribPointer)(ARG1, ARG2, ARG3, bARG4, ARG5, (ARRAY_BUFFER()?(void*)ARG6:(void*)marshalp(cpu, 0, ARG6, 0)));
+    GL_FUNC(ext_glVertexAttribPointer)(ARG1, ARG2, ARG3, bARG4, ARG5, (ARRAY_BUFFER()?(void*)pARG6:(void*)marshalp(cpu, 0, ARG6, 0)));
     GL_LOG ("glVertexAttribPointer GLuint index=%d, GLint size=%d, GLenum type=%d, GLboolean normalized=%d, GLsizei stride=%d, const void* pointer=%.08x",ARG1,ARG2,ARG3,bARG4,ARG5,ARG6);
     }
 }
@@ -4887,7 +4887,7 @@ void glcommon_glVertexAttribPointerARB(CPU* cpu) {
     if (!ext_glVertexAttribPointerARB)
         kpanic("ext_glVertexAttribPointerARB is NULL");
     {
-    GL_FUNC(ext_glVertexAttribPointerARB)(ARG1, ARG2, ARG3, bARG4, ARG5, (ARRAY_BUFFER()?(void*)ARG6:(void*)marshalp(cpu, 0, ARG6, 0)));
+    GL_FUNC(ext_glVertexAttribPointerARB)(ARG1, ARG2, ARG3, bARG4, ARG5, (ARRAY_BUFFER()?(void*)pARG6:(void*)marshalp(cpu, 0, ARG6, 0)));
     GL_LOG ("glVertexAttribPointerARB GLuint index=%d, GLint size=%d, GLenum type=%d, GLboolean normalized=%d, GLsizei stride=%d, const void* pointer=%.08x",ARG1,ARG2,ARG3,bARG4,ARG5,ARG6);
     }
 }

@@ -230,7 +230,7 @@ U32 KSystem::waitpid(S32 pid, U32 statusAddress, U32 options) {
                             break;
                         }
                     } else {
-                        if (p->groupId == -pid) {
+                        if (p->groupId == (U32)(-pid)) {
                             process = p;
                             break;
                         }

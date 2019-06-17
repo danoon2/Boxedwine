@@ -417,7 +417,7 @@ U32 KNativeSocketObject::connect(KFileDescriptor* fd, U32 address, U32 len) {
             }
             if (error) {
                 result = translateNativeSocketError(error);
-                if (result!=-K_EWOULDBLOCK) {
+                if (result!=(U32)(-K_EWOULDBLOCK)) {
                     return result;
                 }
             }
@@ -441,7 +441,7 @@ U32 KNativeSocketObject::connect(KFileDescriptor* fd, U32 address, U32 len) {
         return -K_ECONNREFUSED;
     }   
     result = handleNativeSocketError(this, true);
-    if (result == -K_WAIT) {            
+    if (result == (U32)(-K_WAIT)) {            
         this->connecting = true;
     }
     return result;

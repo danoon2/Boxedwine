@@ -19,35 +19,36 @@ CodePage::CodePageEntry* CodePage::allocCodePageEntry() {
 }
 
 void CodePage::freeCodePageEntry(CodePageEntry* entry) {	
-	U32 offset = entry->offset >> CODE_ENTRIES_SHIFT;
-	CodePageEntry** entries = entry->page->entries;
+    U32 offset = entry->offset >> CODE_ENTRIES_SHIFT;
+    CodePageEntry** entries = entry->page->entries;
    
     if (entry->block)
         entry->block->dealloc(false);
 
-	// remove any entries linked to this one from other pages
-	if (entry->linkedPrev) {
-		entry->linkedPrev->linkedNext = NULL;
-		freeCodePageEntry(entry->linkedPrev);
-		entry->linkedPrev = NULL;
-	}
-	if (entry->linkedNext) {
-		entry->linkedNext->linkedPrev = NULL;
-		freeCodePageEntry(entry->linkedNext);
-		entry->linkedNext = NULL;
-	}
+    // remove any entries linked to this one from other pages
+    if (entry->linkedPrev) {
+        entry->linkedPrev->linkedNext = NULL;
+        freeCodePageEntry(entry->linkedPrev);
+        entry->linkedPrev = NULL;
+    }
+    if (entry->linkedNext) {
+        entry->linkedNext->linkedPrev = NULL;
+        freeCodePageEntry(entry->linkedNext);
+        entry->linkedNext = NULL;
+    }
 
-	// remove this entry from this page's list
-	if (entry->prev)
-		entry->prev->next = entry->next;
-	else
-		entries[offset] = entry->next;
-    if (entry->next)
+    // remove this entry from this page's list
+    if (entry->prev) {
+        entry->prev->next = entry->next;
+    } else {
+        entries[offset] = entry->next;
+    }
+    if (entry->next) {
         entry->next->prev = entry->prev;
-
-	// add the entry to the free list
-	entry->next = freeCodePageEntries;
-	freeCodePageEntries = entry; 
+    }
+    // add the entry to the free list
+    entry->next = freeCodePageEntries;
+    freeCodePageEntries = entry; 
 }
 
 CodePage* CodePage::alloc(U8* page, U32 address, U32 flags) {

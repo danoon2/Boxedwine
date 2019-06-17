@@ -2012,7 +2012,7 @@ U32 KProcess::set_thread_area(U32 info) {
     struct user_desc desc;    
 
     readMemory((U8*)&desc, info, sizeof(struct user_desc));
-    if (desc.entry_number==-1) {
+    if (desc.entry_number==(U32)(-1)) {
         U32 i;
 
         for (i=0;i<TLS_ENTRIES;i++) {
@@ -2021,7 +2021,7 @@ U32 KProcess::set_thread_area(U32 info) {
                 break;
             }
         }
-        if (desc.entry_number==-1) {
+        if (desc.entry_number==(U32)(-1)) {
             kwarn("__NR_set_thread_area ran out of TLS slots");
             return -K_ESRCH;
         }

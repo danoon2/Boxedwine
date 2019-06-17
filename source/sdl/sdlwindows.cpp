@@ -612,7 +612,7 @@ void wndBlt(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32 yOrg, U32 width, 
         
         if (wnd->sdlTexture) {
             sdlTexture = (SDL_Texture*)wnd->sdlTexture;
-            if (sdlTexture && (wnd->sdlTextureHeight != height || wnd->sdlTextureWidth != width)) {
+            if (sdlTexture && (((U32)wnd->sdlTextureHeight) != height || ((U32)wnd->sdlTextureWidth) != width)) {
                 SDL_DestroyTexture(sdlTexture);
                 wnd->sdlTexture = NULL;
                 sdlTexture = NULL;

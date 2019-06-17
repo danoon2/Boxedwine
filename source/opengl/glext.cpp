@@ -6,7 +6,7 @@
 
 static std::unordered_map<std::string, void*> glFunctionMap;
 
-char* glIsLoaded[GL_FUNC_COUNT];
+const char* glIsLoaded[GL_FUNC_COUNT];
 
 void glExtensionsLoaded() {
     void* pfn = NULL;

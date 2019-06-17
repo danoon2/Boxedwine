@@ -96,7 +96,7 @@ void sysLog1(U32 type, CPU* cpu, const char* msg, ...) {
     va_list argptr;
     va_start(argptr, msg);
     if (type & syscallMask) {
-        printf("%0.4X/%0.4X %s ", cpu->thread->process->id, cpu->thread->id, cpu->thread->process->name.c_str());
+        printf("%.4X/%.4X %s ", cpu->thread->process->id, cpu->thread->id, cpu->thread->process->name.c_str());
         vprintf( msg, argptr);
     }
     va_end(argptr);
@@ -1720,9 +1720,9 @@ void ksyscall(CPU* cpu, U32 eipCount) {
 #endif
     }    
 
-    if (result==-K_CONTINUE) {
+    if (result==(U32)(-K_CONTINUE)) {
 
-    } else if (result==-K_WAIT) {
+    } else if (result==(U32)(-K_WAIT)) {
         		
     } else {
         EAX = result;

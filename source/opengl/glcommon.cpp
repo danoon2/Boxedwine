@@ -138,9 +138,7 @@ void glcommon_glGetString(CPU* cpu) {
         static char ext[8192]={0};
         index = STRING_GL_EXTENSIONS;
         if (ext[0]==0) {
-            int i;
-
-            for (i=0;i<sizeof(extentions)/sizeof(char*);i++) {
+            for (U32 i=0;i<sizeof(extentions)/sizeof(char*);i++) {
                 if (strstr(result, extentions[i])) {
                     if (ext[0]!=0)
                         strcat(ext, " ");
@@ -180,7 +178,7 @@ void glcommon_glGetTexImage(CPU* cpu) {
 
     //GL_LOG("glGetTexImage GLenum target=%d, GLint level=%d, GLenum format=%d, GLenum type=%d, GLvoid *pixels=%.08x", ARG1, ARG2, ARG3, ARG4, ARG5);
     if (b) {
-        pixels = (GLvoid*)ARG5;
+        pixels = (GLvoid*)pARG5;
     } else {
         GL_FUNC(glGetTexLevelParameteriv)(target, level, GL_TEXTURE_WIDTH, &width);
         GL_FUNC(glGetTexLevelParameteriv)(target, level, GL_TEXTURE_HEIGHT, &height);
@@ -366,7 +364,7 @@ void glcommon_glReadPixels(CPU* cpu) {
     GL_LOG("glReadPixels GLint x=%d, GLint y=%d, GLsizei width=%d, GLsizei height=%d, GLenum format=%d, GLenum type=%d, GLvoid *pixels=%.08x", ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7);
 
     if (b)
-        pixels = (GLvoid*)ARG7;
+        pixels = (GLvoid*)pARG7;
     else
         pixels = marshalPixels(cpu, 0, width, height, 1, format, type, ARG7);
     GL_FUNC(glReadPixels)(ARG1, ARG2, width, height, format, type, pixels);

@@ -587,7 +587,7 @@ GLvoid* marshalp(CPU* cpu, U32 instance, U32 buffer, U32 len) {
     if (buffer == 0)
         return NULL;
     if (buffer <0x10000) {
-        return (GLvoid*)buffer;
+        return (GLvoid*)(uintptr_t)buffer;
     }
     if ((buffer & 0xFFF) + len > 0xFFF) {
         return marshalub(cpu, buffer, len);
@@ -721,7 +721,7 @@ GLvoid* marshalGetConvolutionFilter(CPU* cpu, U32 target, U32 format, U32 type, 
     U32 len = 0;
 
     if (PIXEL_PACK_BUFFER())
-        return (GLubyte*)image;
+        return (GLubyte*)(uintptr_t)image;
     if (ext_glGetConvolutionParameteriv) {
         ext_glGetConvolutionParameteriv(target, GL_CONVOLUTION_WIDTH, &width);
         ext_glGetConvolutionParameteriv(target, GL_CONVOLUTION_WIDTH, &height);

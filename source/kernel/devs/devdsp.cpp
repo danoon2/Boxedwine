@@ -58,7 +58,7 @@ public:
     }
 
     bool pauseEnabled() {
-        return this->pauseAtLen!=0xFFFFFFFF;
+        return this->pauseAtLen!=-1;
     }
 
     S64 pos;
@@ -273,7 +273,7 @@ U32 DevDsp::ioctl(U32 request) {
             kpanic("SNDCTL_DSP_STEREO was expecting a len of 4");
         }
         fmt = readd(IOCTL_ARG1);
-		if (fmt != this->data->want.channels - 1) {
+        if (fmt != (U32)(this->data->want.channels - 1)) {
             this->closeAudio();
         }
         if (fmt == 0) {
