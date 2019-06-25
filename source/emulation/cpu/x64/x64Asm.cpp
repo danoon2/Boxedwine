@@ -641,6 +641,9 @@ void X64Asm::writeToRegFromE(U8 reg, bool isRegRex, U8 rm, U8 bytes) {
         }
         this->op = 0x8b;
     } else if (bytes==4) {
+        if (!this->cpu->big) {
+            this->operandPrefix = true;
+        }
         this->op = 0x8b;
     } else {
         kpanic("writeToRegFromE didn't handle toBytes: %d", bytes);
