@@ -64,6 +64,7 @@ public:
 
     void translateRM(U8 rm, bool checkG, bool checkE, bool isG8bit, bool isE8bit, U8 immWidth);
     void writeOp(bool isG8bit=false);
+    void addDynamicCheck(bool panic);
 
     void setImmediate8(U8 value);
     void setImmediate16(U16 value);
@@ -173,6 +174,7 @@ private:
     U8 getTmpReg();
     void releaseTmpReg(U8 reg);
     bool isTmpReg(U8 reg);
+    void internal_addDynamicCheck(U32 address, U32 len, bool needsFlags, bool useCall);
 
     void push(S32 reg, bool isRegRex, U32 value, S32 bytes);
     void pushNativeReg(U8 reg, bool isRegRex);

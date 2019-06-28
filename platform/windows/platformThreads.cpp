@@ -100,8 +100,10 @@ LONG handleChangedUnpatchedCode(struct _EXCEPTION_POINTERS *ep, x64CPU* cpu) {
         */
         kpanic("handleChangedUnpatchedCode: could not find chunk");
     }
-    U32 startOfEip = chunk->getEipThatContainsHostAddress(hostAddress, NULL);
-    chunk->deallocAndRetranslate();   
+    U32 startOfEip = chunk->getEipThatContainsHostAddress(hostAddress, NULL, NULL);
+    if (!chunk->isDynamicAware() || !chunk->retranslateSingleInstruction(cpu, hostAddress)) {        
+        chunk->deallocAndRetranslate();   
+    }
     ep->ContextRecord->Rip = (U64)cpu->thread->memory->getExistingHostAddress(startOfEip);
     if (ep->ContextRecord->Rip==0) {
         ep->ContextRecord->Rip = (U64)cpu->translateEip(startOfEip-cpu->seg[CS].address);
@@ -132,10 +134,10 @@ LONG handleCodePatch(struct _EXCEPTION_POINTERS *ep, x64CPU* cpu, U32 address) {
 #endif
     // get the emulated eip of the op that corresponds to the host address where the exception happened
     X64CodeChunk* chunk = cpu->thread->memory->getCodeChunkContainingHostAddress((void*)ep->ContextRecord->Rip);
-    cpu->eip.u32 = chunk->getEipThatContainsHostAddress((void*)ep->ContextRecord->Rip, NULL)-cpu->seg[CS].address;
+    cpu->eip.u32 = chunk->getEipThatContainsHostAddress((void*)ep->ContextRecord->Rip, NULL, NULL)-cpu->seg[CS].address;
 
     // get the emulated op that caused the write
-    DecodedOp* op = cpu->getExistingOp(cpu->eip.u32);
+    DecodedOp* op = cpu->getOp(cpu->eip.u32, true);
     if (op) {             
         // change permission of the page so that we can write to it
         U32 len = instructionInfo[op->inst].writeMemWidth/8;
@@ -157,7 +159,6 @@ LONG handleCodePatch(struct _EXCEPTION_POINTERS *ep, x64CPU* cpu, U32 address) {
         } else {
             cpu->df = 1;
         }
-
         // for string instruction, we modify (add memory offset and segment) rdi and rsi so that the native string instruction can be used, this code will revert it back to the original values
         // uses si
         if (op->inst==Lodsb || op->inst==Lodsw || op->inst==Lodsd) {
@@ -182,9 +183,9 @@ LONG handleCodePatch(struct _EXCEPTION_POINTERS *ep, x64CPU* cpu, U32 address) {
             }
         } else {
             w.invalidateCode(address, len);
-        }       
+        }  
         FILE* f = (FILE*)cpu->logFile;
-        cpu->logFile = NULL;
+        cpu->logFile = NULL;       
         op->pfn(cpu, op);   
         cpu->logFile = f;
         syncToException(cpu, ep, includeFPU);        
@@ -218,8 +219,12 @@ void OPCALL unscheduleCallback(CPU* cpu, DecodedOp* op) {
     longjmp(*jmpBuf,1);
 }
 
+U32 exceptionCount;
+U32 dynamicCodeExceptionCount;
+
 LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
     BOXEDWINE_CRITICAL_SECTION;
+    exceptionCount++;
     KThread* currentThread = KThread::currentThread();
     if (!currentThread) {
         return EXCEPTION_CONTINUE_SEARCH;
@@ -278,6 +283,18 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
         if (inst==0x088B4466 || inst==0xC8048B4A) {      
             // rip is not adjusted so we don't need to check for stack alignment
             return handleMissingCode(ep, cpu, inst);
+        } else if (inst==0xcdcdcdcd) {
+            // this thread was waiting on the critical section and the thread that was currently in this handler removed the code we were running
+            void* host = cpu->thread->memory->getExistingHostAddress(cpu->eip.u32+cpu->seg[CS].address);
+            if (host) {
+                ep->ContextRecord->Rip = (U64)host;
+                if (ep->ContextRecord->Rip==0) {
+                    kpanic("x64::seh_filter failed to translate code in illegal instruction");
+                }
+                return EXCEPTION_CONTINUE_EXECUTION;
+            } else {
+                kpanic("x64 seh_filter tried to run code in a free'd chunk");
+            }
         } else {  
             if (ep->ContextRecord->Rsp & 0xf) {
                 kpanic("seh_filter: bad stack alignment");
@@ -288,11 +305,13 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
             
                 // check if emulated memory that caused the exception is a page that has code
                 if (cpu->thread->memory->nativeFlags[address>>K_PAGE_SHIFT] & NATIVE_FLAG_CODEPAGE_READONLY) {                    
+                    dynamicCodeExceptionCount++;
                     return handleCodePatch(ep, cpu, address);
                 }
             }   
 #ifdef _DEBUG
             void* fromHost = cpu->thread->memory->getExistingHostAddress(cpu->fromEip);
+            X64CodeChunk* chunk = cpu->thread->memory->getCodeChunkContainingHostAddress((void*)ep->ContextRecord->Rip);
 #endif
             syncFromException(cpu, ep, true);
             cpu->thread->seg_mapper((U32)ep->ExceptionRecord->ExceptionInformation[1], ep->ExceptionRecord->ExceptionInformation[0]==0, ep->ExceptionRecord->ExceptionInformation[0]==1);
@@ -350,11 +369,13 @@ DWORD WINAPI platformThreadProc(LPVOID lpThreadParameter) {
 
     // in case we exited because of an exit syscall, but the process is also in the middle of an exit_group
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(KProcess::exitGroupMutex);
-    delete thread;
 
     BOXEDWINE_CONDITION_LOCK(cpu->endCond);
     BOXEDWINE_CONDITION_SIGNAL(cpu->endCond);
     BOXEDWINE_CONDITION_UNLOCK(cpu->endCond);
+
+    delete thread;
+    
     platformThreadCount--;
     if (platformThreadCount==0) {
         SDL_Event sdlevent;

@@ -1521,7 +1521,6 @@ U32 KProcess::exitgroup(U32 code) {
 
     BOXEDWINE_CONDITION_LOCK(KSystem::processesCond);
     this->terminated = true;
-    KSystem::wakeThreadsWaitingOnProcessStateChanged();
     BOXEDWINE_CONDITION_UNLOCK(KSystem::processesCond);
 
     BOXEDWINE_CONDITION_LOCK(this->exitOrExecCond);
@@ -1531,7 +1530,12 @@ U32 KProcess::exitgroup(U32 code) {
     if (KSystem::getProcessCount()==1) {        
         // no one left to wait on this process, with no processes running main will exit boxedwine
         KSystem::eraseProcess(this->id);
-    }   
+    }  
+
+    BOXEDWINE_CONDITION_LOCK(KSystem::processesCond);
+    KSystem::wakeThreadsWaitingOnProcessStateChanged(); // after this the process could be deleted
+    BOXEDWINE_CONDITION_UNLOCK(KSystem::processesCond);
+     
 #ifdef BOXEDWINE_X64
     unscheduleCurrentThread(); // won't return
 #endif

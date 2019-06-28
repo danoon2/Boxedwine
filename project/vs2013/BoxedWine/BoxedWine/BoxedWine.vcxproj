@@ -263,11 +263,10 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>BOXEDWINE_MIDI;BOXEDWINE_RECORDER;BOXEDWINE_DYNAMIC32;BOXEDWINE_DYNAMIC;SDL2;INCLUDE_CYCLES;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_MIDI;BOXEDWINE_RECORDER;SDL2;INCLUDE_CYCLES;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
-      <UndefinePreprocessorDefinitions>
-      </UndefinePreprocessorDefinitions>
+      <UndefinePreprocessorDefinitions>BOXEDWINE_DYNAMIC32;BOXEDWINE_DYNAMIC</UndefinePreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <PrecompiledHeaderFile>boxedwine.h</PrecompiledHeaderFile>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
@@ -564,6 +563,7 @@
     <ClCompile Include="..\..\..\..\source\emulation\cpu\normal\normalCPU.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\normal\normal_shift.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\normal\normal_strings.cpp" />
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\srcgen.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\x32\x32CPU.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\x64\x64Asm.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\x64\x64CodeChunk.cpp" />

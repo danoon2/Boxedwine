@@ -96,6 +96,8 @@ public:
     std::vector<TodoJump> todoJump;
     S32 stopAfterInstruction;
 
+    U8 calculateEipLen(U32 eip);
+
     U32* ipAddress;
     U32* ipAddressBufferPos;
     U32 ipAddressCount;
@@ -106,6 +108,7 @@ public:
     U32 bufferSize;
     U32 bufferPos;
     U8 bufferInternal[256];
+    bool dynamic;
 
     bool skipWriteOp;
     bool isG8bitWritten;

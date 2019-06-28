@@ -4,6 +4,7 @@
 
 #include "x64Data.h"
 #include "x64CodeChunk.h"
+#include "../../hardmmu/hard_memory.h"
 
 X64Data::X64Data(x64CPU* cpu) : cpu(cpu) {
     this->ipAddress = this->ipAddressBuffer;
@@ -21,11 +22,18 @@ X64Data::X64Data(x64CPU* cpu) : cpu(cpu) {
     this->startOfOpIp = 0;
     this->calculatedEipLen = 0;
     this->stopAfterInstruction = -1;
+    this->dynamic = false;
 }
 
 X64Data::~X64Data() {
     if (this->buffer!=this->bufferInternal) {
         delete[] this->buffer;
+    }
+    if (this->ipAddress!=this->ipAddressBuffer) {
+        delete[] this->ipAddress;
+    }
+    if (this->ipAddressBufferPos!=this->ipAddressBufferPosBuffer) {
+        delete[] this->ipAddressBufferPos;
     }
 }
 
@@ -130,6 +138,18 @@ void X64Data::resetForNewOp() {
     this->isG8bitWritten = false;
 }
 
+U8 X64Data::calculateEipLen(U32 eip) {    
+    for (U32 i=0;i<this->ipAddressCount;i++) {
+        if (this->ipAddress[i]==eip) {
+            if (i==this->ipAddressCount-1) {
+                return this->ip-this->ipAddress[i];
+            }
+            return this->ipAddress[i+1]-this->ipAddress[i];
+        }
+    }
+    return 0;
+}
+
 void X64Data::mapAddress(U32 ip, U32 bufferPos) {
     if (this->ipAddressCount>=this->ipAddressBufferSize) {
         U32* ipAddressOld = this->ipAddress;
@@ -154,7 +174,7 @@ void X64Data::mapAddress(U32 ip, U32 bufferPos) {
 }
 
 X64CodeChunk* X64Data::commit(bool makeLive) {
-    X64CodeChunk* chunk = X64CodeChunk::allocChunk(this->ipAddressCount, this->ipAddress, this->ipAddressBufferPos, this->buffer, this->bufferPos, this->startOfDataIp, this->ip-this->startOfDataIp);
+    X64CodeChunk* chunk = X64CodeChunk::allocChunk(this->ipAddressCount, this->ipAddress, this->ipAddressBufferPos, this->buffer, this->bufferPos, this->startOfDataIp, this->ip-this->startOfDataIp, this->dynamic);
     if (makeLive) {
         chunk->makeLive();
     }

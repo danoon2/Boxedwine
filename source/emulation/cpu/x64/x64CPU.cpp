@@ -6,6 +6,7 @@
 #include "x64Asm.h"
 #include "../../hardmmu/hard_memory.h"
 #include "x64CodeChunk.h"
+#include "../normal/normalCPU.h"
 
 x64CPU::x64CPU() : nativeHandle(0), jmpBuf(NULL), endCond("x64CPU::endcond"), inException(false), restarting(false) {
 }
@@ -80,6 +81,7 @@ void* x64CPU::init() {
     X64CodeChunk* chunk = data.commit(true);
     result = chunk->getHostAddress();
     link(&data, chunk);
+    this->pendingCodePages.clear();
     this->eipToHostInstruction = this->thread->memory->eipToHostInstruction;
     return result;
 }
@@ -96,7 +98,7 @@ X64CodeChunk* x64CPU::translateChunk(X64Asm* parent, U32 ip) {
     data.startOfDataIp = ip;  
     data.calculatedEipLen = data1.ip - data1.startOfDataIp;
     data.parent = parent;
-    translateData(&data);        
+    translateData(&data, &data1);        
     S32 failedJumpOpIndex = this->preLinkCheck(&data);
 
     if (failedJumpOpIndex==-1) {
@@ -117,7 +119,7 @@ X64CodeChunk* x64CPU::translateChunk(X64Asm* parent, U32 ip) {
         data3.calculatedEipLen = data2.ip - data2.startOfDataIp;
         data3.parent = parent;
         data3.stopAfterInstruction = failedJumpOpIndex;
-        translateData(&data3);
+        translateData(&data3, &data2);
 
         X64CodeChunk* chunk = data3.commit(false);
         link(&data3, chunk);
@@ -192,7 +194,7 @@ void x64CPU::link(X64Asm* data, X64CodeChunk* fromChunk, U32 offsetIntoChunk) {
             if (!toHostAddress) {
                 U8 op = 0xce;
                 U32 hostIndex = 0;
-                X64CodeChunk* chunk = X64CodeChunk::allocChunk(1, &eip, &hostIndex, &op, 1, eip-this->seg[CS].address, 1);
+                X64CodeChunk* chunk = X64CodeChunk::allocChunk(1, &eip, &hostIndex, &op, 1, eip-this->seg[CS].address, 1, false);
                 chunk->makeLive();
                 toHostAddress = (U8*)chunk->getHostAddress();            
             }
@@ -210,18 +212,23 @@ void x64CPU::link(X64Asm* data, X64CodeChunk* fromChunk, U32 offsetIntoChunk) {
 }
 
 void x64CPU::markCodePageReadOnly(X64Asm* data) {
-    S32 pageCount = (data->ip-data->startOfDataIp+K_PAGE_MASK) >> K_PAGE_SHIFT;
-    U32 pageStart = (data->ip+this->seg[CS].address) >> K_PAGE_SHIFT;
+    U32 pageStart = (data->startOfDataIp+this->seg[CS].address) >> K_PAGE_SHIFT;
+    U32 pageEnd = (data->startOfDataIp+this->seg[CS].address) >> K_PAGE_SHIFT;
+    S32 pageCount = pageEnd-pageStart+1;
+
 #ifndef __TEST
-    for (int i=0;i<pageCount;i++) {
+    for (int i=0;i<pageCount;i++) {        
         pendingCodePages.push_back(pageStart+i);        
     }
-#endif
+#endif    
 }
 
 void x64CPU::makePendingCodePagesReadOnly() {
     for (int i=0;i<this->pendingCodePages.size();i++) {
-        ::makeCodePageReadOnly(this->thread->memory, this->pendingCodePages[i]);
+        // the chunk could cross a page and be a mix of dynamic and non dynamic code
+        if (this->thread->memory->dynamicCodePageUpdateCount[this->pendingCodePages[i]]!=0xff) {
+            ::makeCodePageReadOnly(this->thread->memory, this->pendingCodePages[i]);
+        }
     }
     this->pendingCodePages.clear();
 }
@@ -234,7 +241,7 @@ void* x64CPU::translateEip(U32 ip) {
     return result;
 }
 
-void x64CPU::translateInstruction(X64Asm* data) {
+void x64CPU::translateInstruction(X64Asm* data, X64Asm* firstPass) {
     data->startOfOpIp = data->ip;        
 #ifdef _DEBUG
     //data->logOp(data->ip);
@@ -243,6 +250,13 @@ void x64CPU::translateInstruction(X64Asm* data) {
     data->writeToMemFromValue(data->ip, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EIP, 4, false);
 #endif
 #endif    
+    if (data->dynamic) {
+        data->addDynamicCheck(false);
+    } else {
+#ifdef _DEBUG
+        data->addDynamicCheck(true);
+#endif
+    }    
     while (1) {  
         data->op = data->fetch8();            
         data->inst = data->baseOp + data->op;            
@@ -255,9 +269,13 @@ void x64CPU::translateInstruction(X64Asm* data) {
     }
 }
 
-void x64CPU::translateData(X64Asm* data) {
+void x64CPU::translateData(X64Asm* data, X64Asm* firstPass) {
     Memory* memory = data->cpu->thread->memory;
 
+    U32 codePage = (data->ip+data->cpu->seg[CS].address) >> K_PAGE_SHIFT;
+    if (this->thread->memory->dynamicCodePageUpdateCount[codePage]==MAX_DYNAMIC_CODE_PAGE_COUNT) {
+        data->dynamic = true;
+    }
     while (1) {  
         U32 address = data->cpu->seg[CS].address+data->ip;
         void* hostAddress = this->thread->memory->getExistingHostAddress(address);
@@ -265,8 +283,31 @@ void x64CPU::translateData(X64Asm* data) {
             data->jumpTo(data->ip);
             break;
         }
+        if (firstPass) {
+            U32 nextEipLen = firstPass->calculateEipLen(data->ip+data->cpu->seg[CS].address);
+            U32 page = (data->ip+data->cpu->seg[CS].address+nextEipLen) >> K_PAGE_SHIFT;
+
+            if (page!=codePage) {
+                codePage = page;
+                if (data->dynamic) {                    
+                    if (this->thread->memory->dynamicCodePageUpdateCount[codePage] == MAX_DYNAMIC_CODE_PAGE_COUNT) {
+                        // continue to cross from my dynamic page into another dynamic page
+                    } else {
+                        // we will continue to emit code that will self check for modified code, even though the page we spill into is not dynamic
+                    }
+                } else {
+                    if (this->thread->memory->dynamicCodePageUpdateCount[codePage] == MAX_DYNAMIC_CODE_PAGE_COUNT) {
+                        // we crossed a page boundry from a non dynamic page to a dynamic page
+                        data->dynamic = true; // the instructions from this point on will do their own check
+                    } else {
+                        // continue to cross from one non dynamic page into another non dynamic page
+                    }
+                }
+            }
+        }
         data->mapAddress(address, data->bufferPos);
-        translateInstruction(data);
+        U32 page = address >> K_PAGE_SHIFT;
+        translateInstruction(data, firstPass);
         if (data->done) {
             break;
         }
@@ -281,13 +322,13 @@ static U8 fetchByte(U32 *eip) {
     return readb((*eip)++);
 }
 
-DecodedOp* x64CPU::getExistingOp(U32 eip) {
+DecodedOp* x64CPU::getOp(U32 eip, bool existing) {
     if (this->big) {
         eip+=this->seg[CS].address;
     } else {
         eip=this->seg[CS].address + (eip & 0xFFFF);
     }        
-    if (this->eipToHostInstruction[eip >> K_PAGE_SHIFT] && this->eipToHostInstruction[eip >> K_PAGE_SHIFT][eip & K_PAGE_MASK]) {
+    if (!existing || (this->eipToHostInstruction[eip >> K_PAGE_SHIFT] && this->eipToHostInstruction[eip >> K_PAGE_SHIFT][eip & K_PAGE_MASK])) {
         static DecodedBlock* block;
         if (!block) {
             block = new DecodedBlock();

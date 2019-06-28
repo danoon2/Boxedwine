@@ -24,14 +24,14 @@ public:
 
 class X64CodeChunk {
 public:
-    static X64CodeChunk* allocChunk(U32 instructionCount, U32* eipInstructionAddress, U32* hostInstructionIndex, U8* hostInstructionBuffer, U32 hostInstructionBufferLen, U32 eip, U32 eipLen);
+    static X64CodeChunk* allocChunk(U32 instructionCount, U32* eipInstructionAddress, U32* hostInstructionIndex, U8* hostInstructionBuffer, U32 hostInstructionBufferLen, U32 eip, U32 eipLen, bool dynamic);
 
     void dealloc();    
     void deallocAndRetranslate();
     void invalidateStartingAt(U32 eipAddress);
     void makeLive();
 
-    U32 getEipThatContainsHostAddress(void* hostAddress, void** startOfHostInstruction);
+    U32 getEipThatContainsHostAddress(void* hostAddress, void** startOfHostInstruction, U32* index);
 
     void* getHostAddress() {return this->hostAddress;}
     U32 getHostAddressLen() {return this->hostLen;}
@@ -39,9 +39,11 @@ public:
     bool containsHostAddress(void* hostAddress) {return hostAddress>=this->hostAddress && hostAddress<=(U8*)this->hostAddress+this->hostLen;}
     bool containsEip(U32 eip) {return eip>=this->emulatedAddress && eip<this->emulatedAddress+this->emulatedLen;}
     bool containsEip(U32 eip, U32 len);
-    X64CodeChunk* getNext() {return this->next;}
+    X64CodeChunk* getNextChunkInHostPage() {return this->nextHost;}
+    X64CodeChunk* getNextChunkInEmulationPage() {return this->nextEmulation;}
 
-    void setNext(X64CodeChunk* n) {this->next = n; if (n) n->prev=this;}
+    void addNextHostChunk(X64CodeChunk* n) {this->nextHost = n; if (n) n->prevHost=this;}
+    void addNextEmulationChunk(X64CodeChunk* n) {this->nextEmulation = n; if (n) n->prevEmulation=this;}
     void removeFromList();
 
     X64CodeChunkLink* addLinkFrom(X64CodeChunk* from, U32 toEip, void* toHostInstruction, void* fromHostOffset);
@@ -50,12 +52,14 @@ public:
 
     void* getHostFromEip(U32 eip) {U8* result=NULL; if (this->getStartOfInstructionByEip(eip, &result, NULL)==eip) {return result;} else {return 0;}}
     U32 getEip() {return emulatedAddress;}
-    U32 getEipLen() {return emulatedLen;}
+    U32 getEipLen() {return emulatedLen;}    
+    bool isDynamicAware() {return this->dynamic;}
+    U32 getStartOfInstructionByEip(U32 eip, U8** hostAddress, U32* index);
 
+    bool retranslateSingleInstruction(x64CPU* cpu, void* address);
 private:
     void detachFromHost();
-    void internalDealloc();
-    U32 getStartOfInstructionByEip(U32 eip, U8** hostAddress, U32* index);
+    void internalDealloc();    
 
     U32 emulatedAddress;
     U32 emulatedLen;
@@ -69,11 +73,15 @@ private:
     U32 instructionCount;
     
     // double linked list for chunks in the page
-    X64CodeChunk* next;
-    X64CodeChunk* prev;
+    X64CodeChunk* nextHost;
+    X64CodeChunk* prevHost;
+    X64CodeChunk* nextEmulation;
+    X64CodeChunk* prevEmulation;
 
     KList<X64CodeChunkLink*> linksTo;
     KList<X64CodeChunkLink*> linksFrom;
+
+    bool dynamic; // will include a check of the original vs current code bytes to make sure it is still valid at a per instruction level
 };
 
 #endif

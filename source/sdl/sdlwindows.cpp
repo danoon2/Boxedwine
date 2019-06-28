@@ -344,6 +344,7 @@ static Wnd* getFirstVisibleWnd() {
 SDL_Window *sdlWindow;
 SDL_Renderer *sdlRenderer;
 SDL_GLContext *sdlCurrentContext;
+BOXEDWINE_MUTEX sdlMutex;
 #ifdef BOXEDWINE_VM
 SDL_GLContext *sdlInitContext;
 #endif
@@ -550,6 +551,7 @@ void sdlScreenResized(KThread* thread) {
 }
 
 static void displayChanged(KThread* thread) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(sdlMutex);
 #ifndef SDL2
     U32 flags;
 #endif
@@ -583,7 +585,7 @@ static S8 sdlBuffer[1024*1024*4];
 #endif
 
 void wndBlt(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32 yOrg, U32 width, U32 height, U32 rect) {
-    BOXEDWINE_CRITICAL_SECTION
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(sdlMutex);
 #ifdef SDL2
     if (!sdlRenderer) {
         return;
@@ -699,7 +701,7 @@ U32 recorderBufferSize;
 #endif
 
 void sdlDrawAllWindows(KThread* thread, U32 hWnd, int count) {    
-    BOXEDWINE_CRITICAL_SECTION
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(sdlMutex);
 #ifdef SDL2
     if (!sdlRenderer)
         return;

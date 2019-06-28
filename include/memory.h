@@ -132,6 +132,9 @@ public:
     U32 allocated;
     U64 id; 
     U64 ids[K_NUMBER_OF_PAGES];
+#define MAX_DYNAMIC_CODE_PAGE_COUNT 0xFF
+    U8 dynamicCodePageUpdateCount[K_NUMBER_OF_PAGES];
+
 #ifdef BOXEDWINE_X64
     BOXEDWINE_MUTEX executableMemoryMutex;
 private:
@@ -139,7 +142,8 @@ private:
 #define EXECUTABLE_MAX_SIZE_POWER 22
 #define EXECUTABLE_SIZES 16
 
-    X64CodeChunk* hostCodeChunks[K_NUMBER_OF_PAGES];
+    X64CodeChunk* codeChunksByHostPage[K_NUMBER_OF_PAGES];
+    X64CodeChunk* codeChunksByEmulationPage[K_NUMBER_OF_PAGES];
     void* freeExecutableMemory[EXECUTABLE_SIZES];
 public:
     X64CodeChunk* getCodeChunkContainingHostAddress(void* hostAddress);
@@ -147,6 +151,7 @@ public:
     X64CodeChunk* getCodeChunkContainingEip(U32 eip);
     void addCodeChunk(X64CodeChunk* chunk);
     void removeCodeChunk(X64CodeChunk* chunk);
+    void makePageDynamic(U32 page);
     void* getExistingHostAddress(U32 eip);
     void* allocateExcutableMemory(U32 size, U32* allocatedSize);
     void freeExcutableMemory(void* hostMemory, U32 size);

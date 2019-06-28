@@ -146,6 +146,9 @@ void makeCodePageReadOnly(Memory* memory, U32 page) {
 
     // :TODO: would the granularity ever be more than 4k?  should I check: SYSTEM_INFO System_Info; GetSystemInfo(&System_Info);
     if (!(memory->nativeFlags[page] & NATIVE_FLAG_CODEPAGE_READONLY)) {
+        if (memory->dynamicCodePageUpdateCount[page]==0xff) {
+            kpanic("makeCodePageReadOnly: tried to make a dynamic code page read-only");
+        }
         if (!VirtualProtect(getNativeAddress(memory, page << K_PAGE_SHIFT), (1 << K_PAGE_SHIFT), PAGE_READONLY, &oldProtect)) {
             LPSTR messageBuffer = NULL;
             size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
@@ -160,7 +163,7 @@ bool clearCodePageReadOnly(Memory* memory, U32 page) {
     bool result = false;
 
     // :TODO: would the granularity ever be more than 4k?  should I check: SYSTEM_INFO System_Info; GetSystemInfo(&System_Info);
-    if (memory->nativeFlags[page] & NATIVE_FLAG_CODEPAGE_READONLY) {
+    if (memory->nativeFlags[page] & NATIVE_FLAG_CODEPAGE_READONLY) {        
         if (!VirtualProtect(getNativeAddress(memory, page << K_PAGE_SHIFT), (1 << K_PAGE_SHIFT), PAGE_READWRITE, &oldProtect)) {
             LPSTR messageBuffer = NULL;
             size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);

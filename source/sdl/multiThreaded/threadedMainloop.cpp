@@ -3,10 +3,14 @@
 #include "../sdlwindow.h"
 #include <SDL.h>
 #include "sdlcallback.h"
+#include "devfb.h"
 
 U32 sdlCustomEvent;
 SDL_threadID sdlMainThreadId;
 extern U32 platformThreadCount;
+extern U32 exceptionCount;
+extern U32 dynamicCodeExceptionCount;
+static U32 lastTitleUpdate = 0;
 
 bool doMainLoop() {
     SDL_Event e;
@@ -19,14 +23,19 @@ bool doMainLoop() {
         if (Player::instance || Recorder::instance) {
             SDL_WaitEventTimeout(&e, 10);
             BOXEDWINE_RECORDER_RUN_SLICE();
-        } else if (!SDL_WaitEvent(&e)) {
-            break;
+        } else  {
+            SDL_WaitEventTimeout(&e, 5000);
         }
 #else
-        if (!SDL_WaitEvent(&e)) {
-            break;
+        SDL_WaitEventTimeout(&e, 5000);
+#endif      
+        U32 t = getMilliesSinceStart();
+        if (lastTitleUpdate+5000 < t) {
+            char tmp[256];
+            lastTitleUpdate = t;
+            sprintf(tmp, "BoxedWine 19R1 Alpha %u/%u", dynamicCodeExceptionCount, exceptionCount);
+            fbSetCaption(tmp, "BoxedWine");
         }
-#endif        
         if (e.type == sdlCustomEvent) {
             SdlCallback* callback = (SdlCallback*)e.user.data1;
             callback->result = (U32)callback->pfn();

@@ -325,6 +325,9 @@
     <ClCompile Include="..\..\..\..\source\emulation\cpu\x64\x64CodeChunk.cpp">
       <Filter>source\emulation\cpu\x64</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\srcgen.cpp">
+      <Filter>source\emulation\cpu</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">

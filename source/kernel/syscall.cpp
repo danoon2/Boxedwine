@@ -78,7 +78,7 @@ typedef U32 (*SyscallFunc)(CPU* cpu, U32 eipCount);
 #define SYSCALL_SOCKET      0x100
 
 #ifdef _DEBUG
-static U32 syscallMask = 0xfff & ~SYSCALL_MEMORY;
+static U32 syscallMask = 0;
 #else
 static U32 syscallMask = 0;
 #endif

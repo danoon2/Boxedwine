@@ -5,6 +5,7 @@
 #include "x64Asm.h"
 #include "../common/common_other.h"
 #include "../source/emulation/hardmmu/hard_memory.h"
+#include "../normal/normalCPU.h"
 
 // still doesn't work
 #ifdef X64_EMULATE_FPU
@@ -1810,6 +1811,165 @@ void X64Asm::jumpTo(U32 eip) {
     }
 }
 
+void x64_changed(x64CPU* cpu) {
+    kpanic("Self modifying code was not trapped");
+}
+
+void X64Asm::internal_addDynamicCheck(U32 address, U32 len, bool needsFlags, bool panic) {
+    U8 tmpReg1 = getTmpReg();
+    U8 tmpReg2 = getTmpReg();
+
+    writeToRegFromValue(tmpReg2, true, this->cpu->thread->memory->id + address, 8);
+    // :TODO: check if flags really need to be saved
+    if (needsFlags) {
+        pushNativeFlags();
+        pushNativeReg(0, true);
+    }
+    if (len<=4) {        
+        if (len==1) {
+            U8 original = readb(address);
+
+            // mov tmpReg2, [ip]        
+            writeToRegFromMem(tmpReg2, true, tmpReg2, true, -1, false, 0, 0, 1, false);
+
+            // cmp tmpReg2, original
+            write8(0x41);
+            write8(0x80);
+            write8(0xf8+tmpReg2);
+            write8(original);
+        } else if (len==2) {
+            U16 original = readw(address);
+
+            // mov tmpReg2, [ip]        
+            writeToRegFromMem(tmpReg2, true, tmpReg2, true, -1, false, 0, 0, 2, false);
+
+            // cmp tmpReg2, original
+            write8(0x66);
+            write8(0x41);
+            write8(0x81);
+            write8(0xf8+tmpReg2);
+            write16(original);
+        } else {
+            U32 original = readd(address);
+
+            if (len==3) {
+                original&=0x00FFFFFF;
+            }
+
+            // mov tmpReg2, [ip]        
+            writeToRegFromMem(tmpReg2, true, tmpReg2, true, -1, false, 0, 0, 4, false);
+
+            if (len==3) {
+                // and tmpReg2, 0x00FFFFFF
+                write8(0x41);
+                write8(0x81);
+                write8(0xe0+tmpReg2);
+                write32(0x00FFFFFF);;
+            }
+            // cmp tmpReg2, original
+            write8(0x41);
+            write8(0x81);
+            write8(0xf8+tmpReg2);
+            write32(original);
+        }
+    } else if (len<=8) {
+        U64 original = readq(address);
+
+        if (len==5) {
+            original&=0x000000FFFFFFFFFFl;
+        } else if (len==6) {            
+            original&=0x0000FFFFFFFFFFFFl;
+        } else if (len==7) {
+            original&=0x00FFFFFFFFFFFFFFl;
+        }
+        // mov tmpReg1, original
+        writeToRegFromValue(tmpReg1, true, original, 8);
+
+        // mov tmpReg2, [ip]        
+        writeToRegFromMem(tmpReg2, true, tmpReg2, true, -1, false, 0, 0, 8, false);
+
+        U32 shift = 0;
+        if (len==5) {
+            shift = 24;
+        } else if (len==6) {
+            shift = 16;
+        } else if (len==7) {
+            shift = 8;
+        }
+
+        if (shift) {
+            // shl tmpReg2, 16
+            write8(0x49);
+            write8(0xc1);
+            write8(0xe0+tmpReg2);
+            write8(shift);
+
+            // shr tmpReg2, 16
+            write8(0x49);
+            write8(0xc1);
+            write8(0xe8+tmpReg2);
+            write8(shift);
+        }
+
+        // cmp tmpReg2, tmpReg1
+        write8(0x4d);
+        write8(0x39);
+        write8(0xc0 | tmpReg1 | (tmpReg2 << 3));            
+    }
+    // jz amount, will jump over the code to retranslate since the original and current x86 code are the same
+    U32 pos;
+    if (!panic) {
+        write8(0x74);
+        pos = this->bufferPos;
+        write8(0);
+    } else {
+        write8(0x0f);
+        write8(0x84);
+        pos = this->bufferPos;
+        write32(0);
+    }
+    if (needsFlags) {
+        popNativeReg(0, true);
+        popNativeFlags();
+    }
+    if (!panic) {
+        write8(0xce); // will cause an exception that will retranslate this chunk
+        this->buffer[pos] = this->bufferPos-pos-1;
+    } else {
+        syncRegsFromHost();
+        writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
+        callHost(x64_changed);
+        syncRegsToHost();
+
+        U32 tmp = this->bufferPos;
+        this->bufferPos = pos;
+        write32(tmp-pos-4);
+        this->bufferPos = tmp;
+    }
+    if (needsFlags) {
+        popNativeReg(0, true);
+        popNativeFlags();
+    }
+    releaseTmpReg(tmpReg1);
+    releaseTmpReg(tmpReg2);
+}
+
+void X64Asm::addDynamicCheck(bool panic) {
+    DecodedBlock* block = NormalCPU::getBlockForInspectionButNotUsed(this->ip+this->cpu->seg[CS].address, this->cpu->big);
+    U32 len = block->op->len;
+    DecodedBlock::currentBlock = block;
+    // :TODO: why doesn't this work
+    bool needsFlags = true; //block->op->needsToSetFlags() || instructionInfo[block->op->inst].flagsUsed;
+    DecodedBlock::currentBlock = NULL;
+    // :TODO: maybe find a way to cache this block for the next instruction?       
+    if (len>8) {
+        internal_addDynamicCheck(this->startOfOpIp + this->cpu->seg[CS].address+8, len-8, needsFlags, panic);    
+        len = 8;
+    }
+    internal_addDynamicCheck(this->startOfOpIp + this->cpu->seg[CS].address, len, needsFlags, panic);    
+    block->dealloc(false); 
+}
+
 void X64Asm::doLoop(U32 eip) {
     // :TODO: maybe find one byte offset
     U32 pos = this->bufferPos;
@@ -2738,7 +2898,9 @@ X64AsmCodeMemoryWrite::~X64AsmCodeMemoryWrite() {
 
 void X64AsmCodeMemoryWrite::restoreCodePageReadOnly() {
     for (U32 i=0;i<this->count;i++) {
-        ::makeCodePageReadOnly(cpu->thread->memory, buffer[i]);  
+        if (cpu->thread->memory->dynamicCodePageUpdateCount[buffer[i]]!=MAX_DYNAMIC_CODE_PAGE_COUNT) {
+            ::makeCodePageReadOnly(cpu->thread->memory, buffer[i]);  
+        }
     }
     this->count = 0;
 }

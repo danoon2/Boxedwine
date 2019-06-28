@@ -32,9 +32,11 @@ Memory::Memory() : allocated(0), callbackPos(0) {
     memset(codeCache, 0, sizeof(codeCache));
     memset(ids, 0, sizeof(ids));
 #else
-    memset(this->hostCodeChunks, 0, sizeof(this->hostCodeChunks));
+    memset(this->codeChunksByHostPage, 0, sizeof(this->codeChunksByHostPage));
+    memset(this->codeChunksByEmulationPage, 0, sizeof(this->codeChunksByEmulationPage));
     memset(this->eipToHostInstruction, 0, sizeof(this->eipToHostInstruction));
     memset(this->freeExecutableMemory, 0, sizeof(this->freeExecutableMemory));
+    memset(this->dynamicCodePageUpdateCount, 0, sizeof(this->dynamicCodePageUpdateCount));
 #endif    
     reserveNativeMemory(this);
 
@@ -90,8 +92,8 @@ void Memory::reset(U32 page, U32 pageCount) {
 }
 
 void Memory::clone(Memory* from) {
-
     int i=0;    
+
     for (i=0;i<0x100000;i++) {
         if (from->ids[i]) {
             if ((from->flags[i] & PAGE_SHARED) && (from->flags[i] & PAGE_WRITE)) {
@@ -505,6 +507,7 @@ void Memory::clearCodePageFromCache(U32 page) {
         delete[] table;
         this->eipToHostInstruction[page] = NULL;
     }
+    this->dynamicCodePageUpdateCount[page] = 0;
 #else
     BlockCache** cacheblocks = (BlockCache**)this->codeCache[page];
     if (cacheblocks) {
@@ -560,34 +563,79 @@ U8* getPhysicalWriteAddress(U32 address, U32 len) {
 #ifdef BOXEDWINE_X64
 // called when X64CodeChunk is being dealloc'd
 void Memory::removeCodeChunk(X64CodeChunk* chunk) {
-    U32 page = ((U32)chunk->getHostAddress()) >> K_PAGE_SHIFT;
-    X64CodeChunk* result = this->hostCodeChunks[page];    
-    if (this->hostCodeChunks[page] == chunk) {
-        this->hostCodeChunks[page] = chunk->getNext();
+    U32 hostPage = ((U32)chunk->getHostAddress()) >> K_PAGE_SHIFT;
+    U32 emulationPage = (chunk->getEip()) >> K_PAGE_SHIFT;
+    X64CodeChunk* result = this->codeChunksByHostPage[hostPage];    
+    if (this->codeChunksByHostPage[hostPage] == chunk) {
+        this->codeChunksByHostPage[hostPage] = chunk->getNextChunkInHostPage();
+    }
+    result = this->codeChunksByEmulationPage[emulationPage];    
+    if (this->codeChunksByEmulationPage[emulationPage] == chunk) {
+        this->codeChunksByEmulationPage[emulationPage] = chunk->getNextChunkInEmulationPage();
     }
     chunk->removeFromList();
 }
 
 // called when X64CodeChunk is being alloc'd
 void Memory::addCodeChunk(X64CodeChunk* chunk) {
-    U32 page = ((U32)chunk->getHostAddress()) >> K_PAGE_SHIFT;
+    U32 hostPage = ((U32)chunk->getHostAddress()) >> K_PAGE_SHIFT;
+    U32 emulationPage = (chunk->getEip()) >> K_PAGE_SHIFT;
 #ifdef _DEBUG
-    U32 lastPage = page+(((U32)chunk->getHostAddress()+chunk->getHostAddressLen()) >> K_PAGE_SHIFT);
-    for (U32 i=page;i<=lastPage;i++) {
-        X64CodeChunk* result = this->hostCodeChunks[i];
+    U32 lastPage = hostPage+(((U32)chunk->getHostAddress()+chunk->getHostAddressLen()) >> K_PAGE_SHIFT);
+    for (U32 i=hostPage;i<=lastPage;i++) {
+        X64CodeChunk* result = this->codeChunksByHostPage[i];
         while (result) {
             if (result->containsHostAddress(chunk->getHostAddress())) {
                 kpanic("Memory::addCodeChunk chunks can not overlap");
             }
-            result = result->getNext();
+            result = result->getNextChunkInHostPage();
         }
     }
 #endif
-    X64CodeChunk* result = this->hostCodeChunks[page];
-    this->hostCodeChunks[page] = chunk;
+    X64CodeChunk* result = this->codeChunksByHostPage[hostPage];
+    this->codeChunksByHostPage[hostPage] = chunk;
 
     if (result) {
-        chunk->setNext(result);
+        chunk->addNextHostChunk(result);
+    }
+
+    result = this->codeChunksByEmulationPage[emulationPage];
+    this->codeChunksByEmulationPage[emulationPage] = chunk;
+
+    if (result) {
+        chunk->addNextEmulationChunk(result);
+    }
+}
+
+void Memory::makePageDynamic(U32 page) {
+    X64CodeChunk* result = this->codeChunksByEmulationPage[page];
+    while (result) {
+        if (!result->isDynamicAware()) {
+            result->invalidateStartingAt(result->getEip());
+        }
+        result = result->getNextChunkInEmulationPage();
+    }
+    if (this->nativeFlags[page] & NATIVE_FLAG_CODEPAGE_READONLY) {
+        ::clearCodePageReadOnly(this, page);
+    }
+    U32 eip = page << K_PAGE_SHIFT;
+    page--;
+    // look to see if a chunk that starts in a previous page contains this address
+    // chunks do not overlap, so find the first previous page with a chunk then
+    // check on the chunks in that page
+    while (page>0) {
+        if (this->codeChunksByEmulationPage[page]) {
+            X64CodeChunk* result = this->codeChunksByEmulationPage[page];
+            while (result) {
+                if (result->containsEip(eip)) {
+                    result->invalidateStartingAt(eip);
+                    return;
+                }
+                result = result->getNextChunkInHostPage();
+            }
+            break;
+        }
+        page--;
     }
 }
 
@@ -595,25 +643,25 @@ void Memory::addCodeChunk(X64CodeChunk* chunk) {
 // like with soft_code_page
 X64CodeChunk* Memory::getCodeChunkContainingHostAddress(void* hostAddress) {
     U32 page = ((U32)hostAddress) >> K_PAGE_SHIFT;
-    X64CodeChunk* result = this->hostCodeChunks[page];
+    X64CodeChunk* result = this->codeChunksByHostPage[page];
     while (result) {
         if (result->containsHostAddress(hostAddress)) {
             return result;
         }
-        result = result->getNext();
+        result = result->getNextChunkInHostPage();
     }
     page--;
     // look to see if a chunk that starts in a previous page contains this address
     // chunks do not overlap, so find the first previous page with a chunk then
     // check on the chunks in that page
     while (page>0) {
-        if (this->hostCodeChunks[page]) {
-            X64CodeChunk* result = this->hostCodeChunks[page];
+        if (this->codeChunksByHostPage[page]) {
+            X64CodeChunk* result = this->codeChunksByHostPage[page];
             while (result) {
                 if (result->containsHostAddress(hostAddress)) {
                     return result;
                 }
-                result = result->getNext();
+                result = result->getNextChunkInHostPage();
             }
             break;
         }
@@ -639,9 +687,20 @@ X64CodeChunk* Memory::getCodeChunkContainingEip(U32 eip) {
 void Memory::invalideHostCode(U32 eip, U32 len) {
     for (U32 i=eip;i<eip+len;i++) {
         X64CodeChunk* chunk = getCodeChunkContainingEip(i);
-        if (chunk) {
+        if (chunk && !chunk->isDynamicAware()) {
             chunk->invalidateStartingAt(i);
             i=chunk->getEip()+chunk->getEipLen()-1;
+        }
+    }
+
+    U32 startPage = eip >> K_PAGE_SHIFT;
+    U32 endPage = (eip+len) >> K_PAGE_SHIFT;
+    for (U32 page = startPage; page <= endPage; page++) {
+        if (dynamicCodePageUpdateCount[page]!=MAX_DYNAMIC_CODE_PAGE_COUNT) {
+            dynamicCodePageUpdateCount[page]++;
+            if (dynamicCodePageUpdateCount[page]==MAX_DYNAMIC_CODE_PAGE_COUNT) {
+                this->makePageDynamic(page);
+            }
         }
     }
 }
@@ -679,9 +738,6 @@ void* Memory::allocateExcutableMemory(U32 requestedSize, U32* allocatedSize) {
     }
     void* result = (void*)(this->executableMemoryId | (this->nextExecutablePage << K_PAGE_SHIFT));
     U32 count = (size+65535)/65536;
-    if (count>1) {
-        int ii=0;
-    }
     for (U32 i=0;i<count;i++) {
         allocExecutable64kBlock(this, this->nextExecutablePage);
         this->nextExecutablePage+=16;
@@ -706,7 +762,8 @@ void Memory::freeExcutableMemory(void* hostMemory, U32 size) {
 
 void Memory::executableMemoryReleased() {
 #ifdef BOXEDWINE_X64
-    memset(this->hostCodeChunks, 0, sizeof(this->hostCodeChunks));
+    memset(this->codeChunksByHostPage, 0, sizeof(this->codeChunksByHostPage));
+    memset(this->codeChunksByEmulationPage, 0, sizeof(this->codeChunksByEmulationPage));
     memset(this->freeExecutableMemory, 0, sizeof(this->freeExecutableMemory));
 #endif   
 }

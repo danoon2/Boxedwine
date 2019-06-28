@@ -13,11 +13,13 @@ void X64CodeChunkLink::dealloc() {
     delete this;
 }
 
-X64CodeChunk* X64CodeChunk::allocChunk(U32 instructionCount, U32* eipInstructionAddress, U32* hostInstructionIndex, U8* hostInstructionBuffer, U32 hostInstructionBufferLen, U32 eip, U32 eipLen) {
+X64CodeChunk* X64CodeChunk::allocChunk(U32 instructionCount, U32* eipInstructionAddress, U32* hostInstructionIndex, U8* hostInstructionBuffer, U32 hostInstructionBufferLen, U32 eip, U32 eipLen, bool dynamic) {
     X64CodeChunk* result = new X64CodeChunk();
     CPU* cpu = KThread::currentThread()->cpu;
-    result->next = NULL;
-    result->prev = NULL;
+    result->nextHost = NULL;
+    result->prevHost = NULL;
+    result->nextEmulation = NULL;
+    result->prevEmulation = NULL;
     result->instructionCount = instructionCount;
     result->emulatedAddress = eip+cpu->seg[CS].address;
     result->emulatedLen = eipLen;
@@ -25,8 +27,8 @@ X64CodeChunk* X64CodeChunk::allocChunk(U32 instructionCount, U32* eipInstruction
     result->hostLen = hostInstructionBufferLen;
     result->emulatedInstructionLen = (U8*)result->hostAddress+result->hostAddressSize-instructionCount*sizeof(U8)-instructionCount*sizeof(U32);
     result->hostInstructionLen = (U32*)((U8*)result->hostAddress+result->hostAddressSize-instructionCount*sizeof(U32));// should be aligned to 4 byte boundry
+    result->dynamic = dynamic;
     memset(result->hostAddress, 0xce, result->hostAddressSize);
-
     if (instructionCount) {
         for (U32 i=0;i<instructionCount;i++) {
             if (i==instructionCount-1) {
@@ -90,8 +92,7 @@ void X64CodeChunk::dealloc() {
     this->internalDealloc();
 }
 
-void X64CodeChunk::internalDealloc() {    
-    KThread::currentThread()->memory->freeExcutableMemory(this->hostAddress, this->hostAddressSize);
+void X64CodeChunk::internalDealloc() {        
 #ifdef _DEBUG
     // tag it so that we can see where it came from when debugging
     U32* p = (U32*)this->hostAddress;
@@ -99,10 +100,11 @@ void X64CodeChunk::internalDealloc() {
     p++;
     *p = this->emulatedAddress;
 #endif
+    KThread::currentThread()->memory->freeExcutableMemory(this->hostAddress, this->hostAddressSize);
     delete this;
 }
 
-U32 X64CodeChunk::getEipThatContainsHostAddress(void* address, void** startOfHostInstruction) {
+U32 X64CodeChunk::getEipThatContainsHostAddress(void* address, void** startOfHostInstruction, U32* index) {
     if (this->containsHostAddress(address)) {
         U8* p = (U8*)this->hostAddress;
         U32 result = this->emulatedAddress;
@@ -112,6 +114,9 @@ U32 X64CodeChunk::getEipThatContainsHostAddress(void* address, void** startOfHos
             if (address>=p && address<p+len) {
                 if (startOfHostInstruction) {
                     *startOfHostInstruction = p;
+                }
+                if (index) {
+                    *index = i;
                 }
                 return result;
             }
@@ -217,17 +222,34 @@ bool X64CodeChunk::hasLinkToEip(U32 eip) {
 void X64CodeChunk::invalidateStartingAt(U32 eipAddress) {    
     U32 eipIndex = 0;
     U8* host = NULL;
+    U32 currentEip = KThread::currentThread()->cpu->eip.u32+KThread::currentThread()->cpu->seg[CS].address;    
     U32 eip = this->getStartOfInstructionByEip(eipAddress, &host, &eipIndex);
-    U32 remainingLen = this->hostLen - (U32)(host - (U8*)this->hostAddress);
-    memset(host, 0xce, remainingLen);
+    // make sure we won't invalidate the current instruction, *2 just to be sure 
+    // getStartOfInstructionByEip doesn't roll back to the current instruction
+    if (currentEip>=eip && currentEip<this->emulatedAddress+this->emulatedLen) {
+        eip = this->getStartOfInstructionByEip(currentEip, &host, &eipIndex);
+        if (eipIndex==this->instructionCount-1) {
+            // :TODO: maybe clear the instructions before?
+            return; // the current instruction is the last
+        }
+        eip = this->getStartOfInstructionByEip(eip+this->emulatedInstructionLen[eipIndex], &host, &eipIndex);
+    }
+    U32 remainingLen = this->hostLen - (U32)(host - (U8*)this->hostAddress);    
+    memset(host, 0xce, remainingLen); 
 }    
 
 void X64CodeChunk::removeFromList() {
-    if (this->prev) {
-        this->prev->next = this->next;
+    if (this->prevHost) {
+        this->prevHost->nextHost = this->nextHost;
     }
-    if (this->next) {
-        this->next->prev = this->prev;
+    if (this->nextHost) {
+        this->nextHost->prevHost = this->prevHost;
+    }
+    if (this->prevEmulation) {
+        this->prevEmulation->nextEmulation = this->nextEmulation;
+    }
+    if (this->nextEmulation) {
+        this->nextEmulation->prevEmulation = this->prevEmulation;
     }
 }
 
@@ -242,6 +264,24 @@ bool X64CodeChunk::containsEip(U32 eip, U32 len) {
     }
     // we we span this chunk
     if (eip < this->emulatedAddress && eip+len>this->emulatedAddress+this->emulatedLen) {
+        return true;
+    }
+    return false;
+}
+
+bool X64CodeChunk::retranslateSingleInstruction(x64CPU* cpu, void* address) {
+    void* startofHostInstruction;
+    U32 index;
+    U32 eip = this->getEipThatContainsHostAddress(address, &startofHostInstruction, &index);
+    X64Asm data(cpu);
+    data.ip = eip;
+    data.startOfDataIp = eip;
+    data.dynamic = this->dynamic;
+    cpu->translateInstruction(&data, NULL);
+    U32 eipLen = data.ip - data.startOfOpIp;
+    U32 hostLen = data.bufferPos;
+    if (eipLen = this->emulatedInstructionLen[index] && hostLen == this->hostInstructionLen[index]) {
+        memcpy(startofHostInstruction, data.buffer, hostLen);
         return true;
     }
     return false;

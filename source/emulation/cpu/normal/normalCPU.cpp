@@ -97,12 +97,15 @@ NormalCPU::NormalCPU() {
 }
 
 U8 fetchByte(U32 *eip) {
+    if (*eip - KThread::currentThread()->cpu->seg[CS].address == 0xFFFF && !KThread::currentThread()->cpu->big) {
+        kpanic("eip wrapped around.");
+    }
     return readb((*eip)++);
 }
 
 class NormalBlock : public DecodedBlock {
 public:
-    static NormalBlock* alloc(NormalCPU* cpu);
+    static NormalBlock* alloc();
     virtual void dealloc(bool delayed);  
 
     void run(CPU* cpu);
@@ -136,7 +139,7 @@ void NormalBlock::init() {
     this->referencedFrom = NULL;
 }
 
-NormalBlock* NormalBlock::alloc(NormalCPU* cpu) {
+NormalBlock* NormalBlock::alloc() {
     NormalBlock* result;
 
     if (freeBlocks) {
@@ -195,6 +198,12 @@ void NormalBlock::dealloc(bool delayed) {
     this->referencedFrom = NULL;
 }
 
+DecodedBlock* NormalCPU::getBlockForInspectionButNotUsed(U32 address, U32 big) {
+    DecodedBlock* block = NormalBlock::alloc();
+    decodeBlock(fetchByte, address, big, 0, K_PAGE_SIZE, 0, block);
+    return block;
+}
+
 DecodedBlock* NormalCPU::getNextBlock() {
     if (!this->thread->process) // exit was called, don't need to pre-cache the next block
         return NULL;
@@ -203,7 +212,7 @@ DecodedBlock* NormalCPU::getNextBlock() {
     DecodedBlock* block = this->thread->memory->getCodeBlock(startIp);
 
     if (!block) {
-        block = NormalBlock::alloc(this);
+        block = NormalBlock::alloc();
         decodeBlock(fetchByte, startIp, this->big, 0, K_PAGE_SIZE, 0, block);
 
         DecodedOp* op = block->op;
