@@ -174,7 +174,7 @@ private:
     U8 getTmpReg();
     void releaseTmpReg(U8 reg);
     bool isTmpReg(U8 reg);
-    void internal_addDynamicCheck(U32 address, U32 len, bool needsFlags, bool useCall);
+    void internal_addDynamicCheck(U32 address, U32 len, U32 needsFlags, bool useCall);
 
     void push(S32 reg, bool isRegRex, U32 value, S32 bytes);
     void pushNativeReg(U8 reg, bool isRegRex);
@@ -225,6 +225,10 @@ private:
     void writeToEFromReg(U8 rm, U8 reg, bool isRegRex, U8 bytes); // will trash current op data
     void writeToRegFromE(U8 reg, bool isRegRex, U8 rm, U8 bytes); // will trash current op data
     void getNativeAddressInRegFromE(U8 reg, bool isRegRex, U8 rm); // will trash current op data    
+
+    void pushFlagsToReg(U8 reg, bool isRexReg, bool includeOF);
+    void popFlagsFromReg(U8 reg, bool isRexReg, bool includeOF);
+    void xchange4(U8 reg1, bool isRexReg1, U8 reg2, bool isRexReg2);
 
 #ifdef X64_EMULATE_FPU
     void callFpuNoArg(PFN_FPU pfn);

@@ -226,7 +226,7 @@ void x64CPU::markCodePageReadOnly(X64Asm* data) {
 void x64CPU::makePendingCodePagesReadOnly() {
     for (int i=0;i<this->pendingCodePages.size();i++) {
         // the chunk could cross a page and be a mix of dynamic and non dynamic code
-        if (this->thread->memory->dynamicCodePageUpdateCount[this->pendingCodePages[i]]!=0xff) {
+        if (this->thread->memory->dynamicCodePageUpdateCount[this->pendingCodePages[i]]!=MAX_DYNAMIC_CODE_PAGE_COUNT) {
             ::makeCodePageReadOnly(this->thread->memory, this->pendingCodePages[i]);
         }
     }

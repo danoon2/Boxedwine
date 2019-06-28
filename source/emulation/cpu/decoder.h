@@ -1047,7 +1047,7 @@ public:
     void dealloc(bool deallocNext);    
     void log(CPU* cpu);
     bool needsToSetFlags();
-    static bool willOverwriteFlags(DecodedBlock* block, DecodedOp* op, U32 flags, U32 depth=2);
+    static U32 getNeededFlags(DecodedBlock* block, DecodedOp* op, U32 flags, U32 depth=2);
 
     DecodedOp* next;
     OpCallback pfn;

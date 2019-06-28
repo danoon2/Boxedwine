@@ -4702,16 +4702,23 @@ void DecodedOp::dealloc(bool deallocNext) {
 
 bool DecodedOp::needsToSetFlags() {
     U32 needsToSet = instructionInfo[this->inst].flagsSets & ~MAYBE;
-    return !DecodedOp::willOverwriteFlags(DecodedBlock::currentBlock, this, needsToSet);
+    return DecodedOp::getNeededFlags(DecodedBlock::currentBlock, this, needsToSet)!=0;
 }
 
-bool DecodedOp::willOverwriteFlags(DecodedBlock* block, DecodedOp* op, U32 flags, U32 depth) {
+U32 DecodedOp::getNeededFlags(DecodedBlock* block, DecodedOp* op, U32 flags, U32 depth) {
     DecodedOp* n = op->next;
     DecodedOp* lastOp = op;
 
     while (n && flags) {
         if (instructionInfo[n->inst].flagsUsed & flags) {
-            return false;
+            U32 result = instructionInfo[n->inst].flagsUsed & flags;
+            flags &= ~ instructionInfo[n->inst].flagsSets;
+            flags &= ~ instructionInfo[n->inst].flagsUndefined;
+            flags &= ~result;
+            if (flags && op->next) {
+                result |= DecodedOp::getNeededFlags(block, op->next, flags, depth);
+            }
+            return result;
         }
         if (!(instructionInfo[n->inst].flagsSets & MAYBE)) {
             flags &= ~ instructionInfo[n->inst].flagsSets;
@@ -4723,25 +4730,20 @@ bool DecodedOp::willOverwriteFlags(DecodedBlock* block, DecodedOp* op, U32 flags
     if (flags && (instructionInfo[lastOp->inst].branch & DECODE_BRANCH_1) && depth>0) {
         // :TODO: maybe decode the missing branch?
         if (block->next1 && (block->next2 || !(instructionInfo[lastOp->inst].branch & DECODE_BRANCH_2))) {
-            U32 needsToSet1 = flags;
-            if (DecodedOp::willOverwriteFlags(block->next1, block->next1->op, flags, depth-1)) {
-                needsToSet1 = 0;
-            }            
+            U32 needsToSet1 = DecodedOp::getNeededFlags(block->next1, block->next1->op, flags, depth-1);          
 
             U32 needsToSet2 = 0;
             if ((instructionInfo[lastOp->inst].branch & DECODE_BRANCH_2)) {
                 needsToSet2 = flags;
                 // :TODO: maybe decode the missing branch?
                 if (block->next2) {
-                    if (DecodedOp::willOverwriteFlags(block->next2, block->next2->op, flags, depth-1)) {
-                        needsToSet2 = 0;
-                    } 
+                    needsToSet2 = (DecodedOp::getNeededFlags(block->next2, block->next2->op, flags, depth-1));
                 }
             }
             flags = needsToSet1 | needsToSet2;
         }
     }
-    return flags==0;
+    return flags;
 }
 
 static DecodedBlockFromNode* freeFromNodes;

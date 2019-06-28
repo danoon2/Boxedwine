@@ -146,7 +146,7 @@ void makeCodePageReadOnly(Memory* memory, U32 page) {
 
     // :TODO: would the granularity ever be more than 4k?  should I check: SYSTEM_INFO System_Info; GetSystemInfo(&System_Info);
     if (!(memory->nativeFlags[page] & NATIVE_FLAG_CODEPAGE_READONLY)) {
-        if (memory->dynamicCodePageUpdateCount[page]==0xff) {
+        if (memory->dynamicCodePageUpdateCount[page]==MAX_DYNAMIC_CODE_PAGE_COUNT) {
             kpanic("makeCodePageReadOnly: tried to make a dynamic code page read-only");
         }
         if (!VirtualProtect(getNativeAddress(memory, page << K_PAGE_SHIFT), (1 << K_PAGE_SHIFT), PAGE_READONLY, &oldProtect)) {
