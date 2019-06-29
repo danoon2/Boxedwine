@@ -30,7 +30,7 @@ void syncFromException(x64CPU* cpu, struct _EXCEPTION_POINTERS *ep, bool include
             if (!(ep->ContextRecord->FltSave.TagWord & (1 << i))) {
                 cpu->fpu.setReg(i, 0.0);
             } else {
-                U32 index = (cpu->fpu.GetTop()-i) & 7;
+                U32 index = (i-cpu->fpu.GetTop()) & 7;
                 double d = cpu->fpu.FLD80(ep->ContextRecord->FltSave.FloatRegisters[index].Low, (S16)ep->ContextRecord->FltSave.FloatRegisters[index].High);
                 cpu->fpu.setReg(i, d);
             }
@@ -59,11 +59,11 @@ void syncToException(x64CPU* cpu, struct _EXCEPTION_POINTERS *ep, bool includeFP
         ep->ContextRecord->FltSave.StatusWord = cpu->fpu.SW();
         ep->ContextRecord->FltSave.TagWord = cpu->fpu.GetAbridgedTag();
         for (U32 i=0;i<8;i++) {
+            U32 index = (i-cpu->fpu.GetTop()) & 7;
             if (!(ep->ContextRecord->FltSave.TagWord & (1 << i))) {
-                ep->ContextRecord->FltSave.FloatRegisters[i].Low = 0;
-                ep->ContextRecord->FltSave.FloatRegisters[i].High = 0;
-            } else {
-                U32 index = (cpu->fpu.GetTop()-i) & 7;
+                ep->ContextRecord->FltSave.FloatRegisters[index].Low = 0;
+                ep->ContextRecord->FltSave.FloatRegisters[index].High = 0;
+            } else {                
                 cpu->fpu.ST80(i, &ep->ContextRecord->FltSave.FloatRegisters[index].Low, (ULONGLONG*)&ep->ContextRecord->FltSave.FloatRegisters[index].High);
             }
         }
