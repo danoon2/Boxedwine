@@ -2331,10 +2331,10 @@ X64Decoder x64Decoder[1024] = {
     invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp,
     // 360
     mmx, mmx, mmx, mmx, mmx, mmx, mmx, mmx,
-    mmx, mmx, mmx, mmx, invalidOp, invalidOp, mmxRegG, mmx,
+    mmx, mmx, mmx, mmx, invalidOp, invalidOp, mmxRegE, mmx,
     // 370
     invalidOp, mmxImm8, mmxImm8, mmxImm8, mmx, mmx, mmx, keepSame,
-    invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, mmxRegE, mmx,
+    invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, mmxRegG, mmx,
     // 380
     jump32, jump32, jump32, jump32, jump32, jump32, jump32, jump32,
     jump32, jump32, jump32, jump32, jump32, jump32, jump32, jump32,
