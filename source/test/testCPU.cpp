@@ -99,7 +99,7 @@ void pushCode32(int value) {
     cseip+=4;
 }
 
-void newInstruction(int instruction, int flags) {
+void newInstruction(int flags) {
     cseip=CODE_ADDRESS;
     cpu->lazyFlags = FLAGS_NONE;
     cpu->flags = flags;
@@ -117,6 +117,10 @@ void newInstruction(int instruction, int flags) {
     ESI=0;
     EDI=0;
     cpu->eip.u32=0;   
+}
+
+void newInstruction(int instruction, int flags) {    
+    newInstruction(flags);
     if (instruction>0xFF)
         pushCode8(0x0F);
     pushCode8(instruction & 0xFF);
@@ -128,7 +132,7 @@ void newInstructionWithRM(int instruction, int rm, int flags) {
 }
 
 void runTestCPU() {    
-#ifdef BOXEDWINE_64
+#ifdef BOXEDWINE_64    
     pushCode8(0xcd);
     pushCode8(0x97); // will cause TEST specific return code to be inserted
     ((x64CPU*)cpu)->translateEip(cpu->eip.u32);
@@ -141,7 +145,13 @@ void runTestCPU() {
 #endif
     cpu->run();
 #ifdef BOXEDWINE_64BIT_MMU
-    KThread::currentThread()->memory->clearCodePageFromCache(CODE_ADDRESS>>K_PAGE_SHIFT);
+    KThread::currentThread()->memory->clearCodePageFromCache(CODE_ADDRESS>>K_PAGE_SHIFT);    
+#endif
+#ifdef BOXEDWINE_64
+    x64CPU* c = (x64CPU*)cpu;
+    for (int i=0;i<8;i++) {
+        c->reg_mmx[i].q = *((U64*)(c->fpuState+32+i*16));
+    }
 #endif
 }
 
@@ -5609,6 +5619,263 @@ void testXadd0x3c1() {
     X86_TEST(xadd, xadd, eax, ecx)
 }
 
+void testMmxEmms() {
+
+}
+
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+#define X86_TEST_MMX(d1, d2, result, inst)     \
+ { U64 tmp = 0; U64 data1=d1; U64 data2=d2; \
+ __asm {    \
+    __asm movq mm0, data1  \
+    __asm movq mm1, data2  \
+    __asm inst mm0, mm1    \
+    __asm movq tmp, mm0 \
+    __asm emms             \
+}                           \
+if (result!=tmp) {failed("failed");}}
+#else
+#define X86_TEST_MMX(data1, data2, r, inst)
+#endif
+#define MMX_MEM_VALUE64_DEFAULT 0x1234567890abcdefl
+#define MMX_MEM_VALUE64 0xaabbccddeeff2468l
+#define MMX_MEM_VALUE64_OFFSET 16
+#define MMX_MEM_VALUE32 0x84726ac1
+#define MMX_MEM_VALUE32_OFFSET 24
+#define MMX_MEM_VALUE_TMP_OFFSET 32
+
+void initMmxTest() {    
+    newInstruction(0);
+    writeq(cpu->seg[DS].address, MMX_MEM_VALUE64_DEFAULT);
+    writeq(cpu->seg[DS].address+MMX_MEM_VALUE64_OFFSET, MMX_MEM_VALUE64);
+    writed(cpu->seg[DS].address+MMX_MEM_VALUE32_OFFSET, MMX_MEM_VALUE32);
+    for (int i=0;i<8;i++) {
+        // movq  mm0, QWORD PTR ds:0x0
+        pushCode8(0x0f);
+        pushCode8(0x6F);
+        pushCode8(0x04 | (i<<3));
+        pushCode8(0x25);
+        pushCode32(0);
+    }
+    cpu->big = 1;
+}
+
+void loadMMX(U8 reg, U32 index, U64 value) {
+    writeq(cpu->seg[DS].address+MMX_MEM_VALUE_TMP_OFFSET+index*16, value);
+    pushCode8(0x0f);
+    pushCode8(0x6F);
+    pushCode8(0x04 | (reg<<3));
+    pushCode8(0x25);
+    pushCode32(MMX_MEM_VALUE_TMP_OFFSET+index*16);
+}
+
+void testMmxMovd() {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    U32 data = 0x12345678;
+    U64 result = 0;
+
+    __asm {
+        movd mm0, data
+        movq result, mm0
+        emms
+    }
+    if (result!=0x12345678l) {
+        failed("movd failed");
+    }
+#endif    
+    for (U8 m=0;m<8;m++) {
+        for (U8 r=0;r<8;r++) {
+            initMmxTest();            
+            pushCode8(0x0f);
+            pushCode8(0x6E);
+            pushCode8(0xC0 | (m<<3) | r);
+            cpu->reg[r].u32 = MMX_MEM_VALUE32;
+            runTestCPU();
+            for (U8 m1=0;m1<8;m1++) {
+                if (m1==m) {
+                    if (cpu->reg_mmx[m].q!=(U64)MMX_MEM_VALUE32) {
+                        failed("movd failed");
+                    }
+                } else {
+                    if (cpu->reg_mmx[m1].q!=MMX_MEM_VALUE64_DEFAULT) {
+                        failed("movd failed");
+                    }
+                }
+            }
+        }
+        initMmxTest();         
+        pushCode8(0x0f);
+        pushCode8(0x6E);
+        pushCode8(0x04 | (m<<3));
+        pushCode8(0x25);
+        pushCode32(MMX_MEM_VALUE32_OFFSET);
+        runTestCPU();
+        for (U8 m1=0;m1<8;m1++) {
+            if (m1==m) {
+                if (cpu->reg_mmx[m].q!=MMX_MEM_VALUE32) {
+                    failed("movd failed");
+                }
+            } else {
+                if (cpu->reg_mmx[m1].q!=MMX_MEM_VALUE64_DEFAULT) {
+                    failed("movd failed");
+                }
+            }
+        }
+    }    
+}
+
+void testMmx64(U8 op, U64 value1, U64 value2, U64 result) {
+    for (U8 m=0;m<8;m++) {
+        for (U8 from=0;from<8;from++) {
+            if (m==from) {
+                continue;
+            }
+            initMmxTest();            
+            loadMMX(m, 0, value1);
+            loadMMX(from, 1, value2);
+            pushCode8(0x0f);
+            pushCode8(op);
+            pushCode8(0xC0 | (m << 3) | from);            
+            runTestCPU();
+            for (U8 m1=0;m1<8;m1++) {
+                if (m1==m || m1==from) {
+                    if (cpu->reg_mmx[m].q!=result) {
+                        failed("mmx failed");
+                    }
+                } else {
+                    if (cpu->reg_mmx[m1].q!=MMX_MEM_VALUE64_DEFAULT) {
+                        failed("mmx failed");
+                    }
+                }
+            }
+        }
+        initMmxTest();         
+        loadMMX(m, 0, value1);
+        writeq(cpu->seg[DS].address+MMX_MEM_VALUE_TMP_OFFSET+16, value2);
+        pushCode8(0x0f);
+        pushCode8(op);
+        pushCode8(0x04 | (m<<3));
+        pushCode8(0x25);
+        pushCode32(MMX_MEM_VALUE_TMP_OFFSET+16);
+        runTestCPU();
+        for (U8 m1=0;m1<8;m1++) {
+            if (m1==m) {
+                if (cpu->reg_mmx[m].q!=result) {
+                    failed("mmx failed");
+                }
+            } else {
+                if (cpu->reg_mmx[m1].q!=MMX_MEM_VALUE64_DEFAULT) {
+                    failed("mmx failed");
+                }
+            }
+        }
+    }    
+}
+
+void testMmxMovq() {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    U64 data = 0x1234567890abcdefl;
+    U64 result = 0;
+
+    __asm {
+        movq mm0, data
+        movq result, mm0
+        emms
+    }
+    if (result!=0x1234567890abcdefl) {
+        failed("movq failed");
+    }
+#endif    
+    testMmx64(0x6f, MMX_MEM_VALUE64_DEFAULT, MMX_MEM_VALUE64, MMX_MEM_VALUE64);
+}
+
+void testMmxPaddb() {
+    X86_TEST_MMX(0x33445566778899aal, 0x5566778899aaddccl, 0x88aaccee10327676, paddb);
+    testMmx64(0xfc, 0x33445566778899aal, 0x5566778899aaddccl, 0x88aaccee10327676);
+}
+
+void testMmxPaddw() {
+    X86_TEST_MMX(0x33445566778899aal, 0x5566778899aaddccl, 0x88aaccee11327776, paddw);
+    testMmx64(0xfd, 0x33445566778899aal, 0x5566778899aaddccl, 0x88aaccee11327776);
+}
+
+void testMmxPaddd() {
+    X86_TEST_MMX(0x33445566778899aal, 0x5566778899aaddccl, 0x88aaccee11337776, paddd);
+    testMmx64(0xfe, 0x33445566778899aal, 0x5566778899aaddccl, 0x88aaccee11337776);
+}
+
+void testMmxPaddsb() {
+    X86_TEST_MMX(0x33445566778899aal, 0x5566778899aa11ccl, 0x7f7f7fee1080aa80, paddsb);
+    testMmx64(0xec, 0x33445566778899aal, 0x5566778899aa11ccl, 0x7f7f7fee1080aa80);
+}
+
+void testMmxPaddsw() {
+    X86_TEST_MMX(0x33445566778899aal, 0x5566778899aa11ccl, 0x7fff7fff1132ab76, paddsw);
+    testMmx64(0xed, 0x33445566778899aal, 0x5566778899aa11ccl, 0x7fff7fff1132ab76);
+}
+
+void testMmxPaddusb() {
+    X86_TEST_MMX(0x33445566778899aal, 0x5566778899aa11ccl, 0x88aacceeffffaaff, paddusb);
+    testMmx64(0xdc, 0x33445566778899aal, 0x5566778899aa11ccl, 0x88aacceeffffaaff);
+}
+
+void testMmxPaddusw() {
+    X86_TEST_MMX(0x33445566778899aal, 0x5566778899aa11ccl, 0x88aacceeffffab76, paddusw);
+    testMmx64(0xdd, 0x33445566778899aal, 0x5566778899aa11ccl, 0x88aacceeffffab76);
+}
+
+void testMmxPsubb() {
+    X86_TEST_MMX(0x33445566778899aal, 0x1188226699abcdefl, 0x22bc3300deddccbbl, psubb);
+    testMmx64(0xf8, 0x33445566778899aal, 0x1188226699abcdefl, 0x22bc3300deddccbbl);
+}
+
+void testMmxPsubw() {
+    X86_TEST_MMX(0x33445566778899aal, 0x1188226699abcdefl, 0x21bc3300ddddcbbbl, psubw);
+    testMmx64(0xf9, 0x33445566778899aal, 0x1188226699abcdefl, 0x21bc3300ddddcbbbl);
+}
+
+void testMmxPsubd() {
+    X86_TEST_MMX(0x33445566778899aal, 0x1188226699abcdefl, 0x21bc3300dddccbbbl, psubd);
+    testMmx64(0xfa, 0x33445566778899aal, 0x1188226699abcdefl, 0x21bc3300dddccbbbl);
+}
+
+void testMmxPsubsb() {
+    X86_TEST_MMX(0x33445566778899aal, 0x1188226699abcdefl, 0x227f33007fddccbbl, psubsb);
+    testMmx64(0xe8, 0x33445566778899aal, 0x1188226699abcdefl, 0x227f33007fddccbbl);
+}
+
+void testMmxPsubsw() {
+    X86_TEST_MMX(0x33445566778899aal, 0x1188226699abcdefl, 0x21bc33007fffcbbbl, psubsw);
+    testMmx64(0xe9, 0x33445566778899aal, 0x1188226699abcdefl, 0x21bc33007fffcbbbl);
+}
+
+void testMmxPsubusb() {
+    X86_TEST_MMX(0x33445566778899aal, 0x1188226699abcdefl, 0x2200330000000000l, psubusb);
+    testMmx64(0xd8, 0x33445566778899aal, 0x1188226699abcdefl, 0x2200330000000000l);
+}
+
+void testMmxPsubusw() {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    // picked numbers that would give different results than paddsw
+    U64 data1 = 0x33445566778899aal;
+    U64 data2 = 0x1188226699abcdefl;
+    U64 result = 0;
+
+    __asm {
+        movq mm0, data1
+        movq mm1, data2
+        psubusw mm0, mm1
+        movq result, mm0
+        emms
+    }
+    if (result!=0x21bc330000000000l) {
+        failed("paddsb failed");
+    }
+#endif 
+    X86_TEST_MMX(0x33445566778899aal, 0x1188226699abcdefl, 0x21bc330000000000l, psubusw);
+    testMmx64(0xd9, 0x33445566778899aal, 0x1188226699abcdefl, 0x21bc330000000000l);
+}
+
 void run(void (*functionPtr)(), char* name) {
     didFail = 0;
     setup();
@@ -6703,6 +6970,30 @@ int main(int argc, char **argv) {
     run(testShrd0x3ad, "SHRD 3ad");
     run(testCmpXchg0x3b1, "CMPXCHG 3b1");
     run(testXadd0x3c1, "XADD 3c1");
+
+    run(testMmxMovd, "MOVD 36e");
+    run(testMmxMovq, "MOVQ 36f");
+
+    run(testMmxPaddb, "PADDB 3fc");
+    run(testMmxPaddw, "PADDW 3fd");
+    run(testMmxPaddd, "PADDD 3fe");
+
+    run(testMmxPaddsb, "PADDSB 3ec");
+    run(testMmxPaddsw, "PADDSW 3ed");
+
+    run(testMmxPaddusb, "PADDUSB 3dc");
+    run(testMmxPaddusw, "PADDUSB 3dd");
+
+    run(testMmxPsubb, "PSUBB 3f8");
+    run(testMmxPsubw, "PSUBW 3f9");
+    run(testMmxPsubd, "PSUBD 3fa");
+
+    run(testMmxPsubsb, "PSUBSB 3e8");
+    run(testMmxPsubsw, "PSUBSW 3e9");
+
+    run(testMmxPsubusb, "PSUBUSB 3d8");
+    run(testMmxPsubusw, "PSUBUSB 3d9");
+
     printf("%d tests FAILED\n", totalFails);
     SDL_Delay(5000);
     return 0;

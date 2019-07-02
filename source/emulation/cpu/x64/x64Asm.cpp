@@ -3451,7 +3451,17 @@ void X64Asm::addReturnFromTest() {
     writeToMemFromReg(7, false, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EDI, 4, false);
     writeToMemFromReg(tmpReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_FLAGS, 4, false);
     releaseTmpReg(tmpReg);
+    if (cpu->big) {
+        // fxsave cpu->fpuState
+        write8(0x41);
+        write8(0x0f);
+        write8(0xae);
+        write8(0x85);
+        write32((U32)(offsetof(x64CPU, fpuState)));
+    }
+
     popNativeFlags();
+
     write8(0xc3); // retn
 }
 #endif

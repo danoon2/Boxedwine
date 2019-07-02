@@ -739,14 +739,10 @@ void common_psubuswMmx(CPU* cpu, U32 r1, U32 r2) {
     MMX_reg result;
 
     result.q = 0;
-	if (dest->ub.b0>src->ub.b0) result.ub.b0 = dest->ub.b0 - src->ub.b0;
-	if (dest->ub.b1>src->ub.b1) result.ub.b1 = dest->ub.b1 - src->ub.b1;
-	if (dest->ub.b2>src->ub.b2) result.ub.b2 = dest->ub.b2 - src->ub.b2;
-	if (dest->ub.b3>src->ub.b3) result.ub.b3 = dest->ub.b3 - src->ub.b3;
-	if (dest->ub.b4>src->ub.b4) result.ub.b4 = dest->ub.b4 - src->ub.b4;
-	if (dest->ub.b5>src->ub.b5) result.ub.b5 = dest->ub.b5 - src->ub.b5;
-	if (dest->ub.b6>src->ub.b6) result.ub.b6 = dest->ub.b6 - src->ub.b6;
-	if (dest->ub.b7>src->ub.b7) result.ub.b7 = dest->ub.b7 - src->ub.b7;
+	if (dest->uw.w0>src->uw.w0) result.uw.w0 = dest->uw.w0 - src->uw.w0;
+    if (dest->uw.w1>src->uw.w1) result.uw.w1 = dest->uw.w1 - src->uw.w1;
+    if (dest->uw.w2>src->uw.w2) result.uw.w2 = dest->uw.w2 - src->uw.w2;
+    if (dest->uw.w3>src->uw.w3) result.uw.w3 = dest->uw.w3 - src->uw.w3;
 	dest->q = result.q;
 }
 
@@ -758,14 +754,10 @@ void common_psubuswE64(CPU* cpu, U32 reg, U32 address) {
     src.q = readq(address);
 
     result.q = 0;
-	if (dest->ub.b0>src.ub.b0) result.ub.b0 = dest->ub.b0 - src.ub.b0;
-	if (dest->ub.b1>src.ub.b1) result.ub.b1 = dest->ub.b1 - src.ub.b1;
-	if (dest->ub.b2>src.ub.b2) result.ub.b2 = dest->ub.b2 - src.ub.b2;
-	if (dest->ub.b3>src.ub.b3) result.ub.b3 = dest->ub.b3 - src.ub.b3;
-	if (dest->ub.b4>src.ub.b4) result.ub.b4 = dest->ub.b4 - src.ub.b4;
-	if (dest->ub.b5>src.ub.b5) result.ub.b5 = dest->ub.b5 - src.ub.b5;
-	if (dest->ub.b6>src.ub.b6) result.ub.b6 = dest->ub.b6 - src.ub.b6;
-	if (dest->ub.b7>src.ub.b7) result.ub.b7 = dest->ub.b7 - src.ub.b7;
+	if (dest->uw.w0>src.uw.w0) result.uw.w0 = dest->uw.w0 - src.uw.w0;
+    if (dest->uw.w1>src.uw.w1) result.uw.w1 = dest->uw.w1 - src.uw.w1;
+    if (dest->uw.w2>src.uw.w2) result.uw.w2 = dest->uw.w2 - src.uw.w2;
+    if (dest->uw.w3>src.uw.w3) result.uw.w3 = dest->uw.w3 - src.uw.w3;
 	dest->q = result.q;
 }
 
