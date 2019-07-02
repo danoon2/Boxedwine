@@ -221,10 +221,10 @@ void common_psrawE64(CPU* cpu, U32 reg, U32 address) {
 void common_psllw(CPU* cpu, U32 reg, U8 imm) {
     MMX_reg* dest=&cpu->reg_mmx[reg];
     
-    dest->uw.w0 >>= imm;
-	dest->uw.w1 >>= imm;
-	dest->uw.w2 >>= imm;
-	dest->uw.w3 >>= imm;	
+    dest->uw.w0 <<= imm;
+	dest->uw.w1 <<= imm;
+	dest->uw.w2 <<= imm;
+	dest->uw.w3 <<= imm;	
 }
 
 void common_psraw(CPU* cpu, U32 reg, U8 imm) {

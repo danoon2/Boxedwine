@@ -5634,8 +5634,20 @@ void testMmxEmms() {
     __asm emms             \
 }                           \
 if (result!=tmp) {failed("failed");}}
+
+#define X86_TEST_MMX_IMM(d1, d2, result, inst)     \
+ { U64 tmp = 0; U64 data1=d1; U64 data2=d2; \
+ __asm {    \
+    __asm movq mm0, data1  \
+    __asm inst mm0, data2    \
+    __asm movq tmp, mm0 \
+    __asm emms             \
+}                           \
+if (result!=tmp) {failed("failed");}}
+
 #else
 #define X86_TEST_MMX(data1, data2, r, inst)
+#define X86_TEST_MMX_IMM(data1, data2, r, inst)
 #endif
 #define MMX_MEM_VALUE64_DEFAULT 0x1234567890abcdefl
 #define MMX_MEM_VALUE64 0xaabbccddeeff2468l
@@ -5772,6 +5784,29 @@ void testMmx64(U8 op, U64 value1, U64 value2, U64 result) {
     }    
 }
 
+void testMmx64imm8(U8 op, U8 g, U64 value1, U8 value2, U64 result) {
+    for (U8 m=0;m<8;m++) {
+        initMmxTest();            
+        loadMMX(m, 0, value1);
+        pushCode8(0x0f);
+        pushCode8(op);
+        pushCode8(0xC0 | m | (g<<3));            
+        pushCode8(value2);
+        runTestCPU();
+        for (U8 m1=0;m1<8;m1++) {
+            if (m1==m) {
+                if (cpu->reg_mmx[m].q!=result) {
+                    failed("mmx failed");
+                }
+            } else {
+                if (cpu->reg_mmx[m1].q!=MMX_MEM_VALUE64_DEFAULT) {
+                    failed("mmx failed");
+                }
+            }
+        }
+    }    
+}
+
 void testMmxMovq() {
 #if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
     U64 data = 0x1234567890abcdefl;
@@ -5874,6 +5909,148 @@ void testMmxPsubusw() {
 #endif 
     X86_TEST_MMX(0x33445566778899aal, 0x1188226699abcdefl, 0x21bc330000000000l, psubusw);
     testMmx64(0xd9, 0x33445566778899aal, 0x1188226699abcdefl, 0x21bc330000000000l);
+}
+
+void testMmxPmulhw() {
+    X86_TEST_MMX(0x03e8fc1800007fff, 0x03e803e855557fff, 0x000ffff000003fff, pmulhw);
+    testMmx64(0xe5, 0x03e8fc1800007fff, 0x03e803e855557fff, 0x000ffff000003fff);
+}
+
+void testMmxPmullw() {
+    X86_TEST_MMX(0x03e8fc1800007fff, 0x03e803e855557fff, 0x4240bdc000000001, pmullw);
+    testMmx64(0xd5, 0x03e8fc1800007fff, 0x03e803e855557fff, 0x4240bdc000000001);
+}
+
+void testMmxPmaddwd() {
+    X86_TEST_MMX(0x03e9fc1800007fff, 0x03e803e855557fff, 0x000003e83fff0001, pmaddwd);
+    testMmx64(0xf5, 0x03e9fc1800007fff, 0x03e803e855557fff, 0x000003e83fff0001);
+}
+
+void testMmxPcmpeqb() {
+    X86_TEST_MMX(0x030000feff011234, 0x03010001fffe1234, 0xff00ff00ff00ffff, pcmpeqb);
+    testMmx64(0x74, 0x030000feff011234, 0x03010001fffe1234, 0xff00ff00ff00ffff);
+}
+
+void testMmxPcmpeqw() {
+    X86_TEST_MMX(0x030000feff011234, 0x03010001fffe1234, 0x000000000000ffff, pcmpeqw);
+    testMmx64(0x75, 0x030000feff011234, 0x03010001fffe1234, 0x000000000000ffff);
+}
+
+void testMmxPcmpeqd() {
+    X86_TEST_MMX(0x030000feff011234, 0x03010001ff011234, 0x00000000ffffffff, pcmpeqd);
+    testMmx64(0x76, 0x030000feff011234, 0x03010001ff011234, 0x00000000ffffffff);
+}
+
+void testMmxPcmpgtb() {
+    X86_TEST_MMX(0x030100feff011234, 0x03000001fffe1234, 0x00ff000000ff0000, pcmpgtb);
+    testMmx64(0x64, 0x030100feff011234, 0x03000001fffe1234, 0x00ff000000ff0000);
+}
+
+void testMmxPcmpgtw() {
+    X86_TEST_MMX(0x0301fffefffe1334, 0x03000001fffe1234, 0xffff00000000ffff, pcmpgtw);
+    testMmx64(0x65, 0x0301fffefffe1334, 0x03000001fffe1234, 0xffff00000000ffff);
+}
+
+void testMmxPcmpgtd() {
+    X86_TEST_MMX(0x03010001ff011234, 0x03000ffefffe1234, 0xffffffff00000000, pcmpgtd);
+    testMmx64(0x66, 0x03010001ff011234, 0x03000ffefffe1234, 0xffffffff00000000);
+}
+
+void testMmxPackssdw() {
+    X86_TEST_MMX(0x00000030ffee1234, 0x00030000fffff234, 0x7ffff23400308000, packssdw);
+    testMmx64(0x6b, 0x00000030ffee1234, 0x00030000fffff234, 0x7ffff23400308000);
+}
+
+void testMmxPacksswb() {
+    X86_TEST_MMX(0x000300300300fffe, 0x00eb00000fff0034, 0x7f007f3403307ffe, packsswb);
+    testMmx64(0x63, 0x000300300300fffe, 0x00eb00000fff0034, 0x7f007f3403307ffe);
+}
+
+void testMmxPackuswb() {
+    X86_TEST_MMX(0x000300300300fffe, 0x00eb00000fff0034, 0xeb00ff340330ff00, packuswb);
+    testMmx64(0x67, 0x000300300300fffe, 0x00eb00000fff0034, 0xeb00ff340330ff00);
+}
+
+void testMmxPunpckhbw() {
+    X86_TEST_MMX(0x1122334455667788, 0x9900aabbccddeeff, 0x99110022aa33bb44, punpckhbw);
+    testMmx64(0x68, 0x1122334455667788, 0x9900aabbccddeeff, 0x99110022aa33bb44);
+}
+
+void testMmxPunpckhdq() {
+    X86_TEST_MMX(0x1122334455667788, 0x9900aabbccddeeff, 0x9900aabb11223344, punpckhdq);
+    testMmx64(0x6a, 0x1122334455667788, 0x9900aabbccddeeff, 0x9900aabb11223344);
+}
+
+void testMmxPunpckhwd() {
+    X86_TEST_MMX(0x1122334455667788, 0x9900aabbccddeeff, 0x99001122aabb3344, punpckhwd);
+    testMmx64(0x69, 0x1122334455667788, 0x9900aabbccddeeff, 0x99001122aabb3344);
+}
+
+void testMmxPunpcklbw() {
+    X86_TEST_MMX(0x1122334455667788, 0x9900aabbccddeeff, 0xcc55dd66ee77ff88, punpcklbw);
+    testMmx64(0x60, 0x1122334455667788, 0x9900aabbccddeeff, 0xcc55dd66ee77ff88);
+}
+
+void testMmxPunpckldq() {
+    X86_TEST_MMX(0x1122334455667788, 0x9900aabbccddeeff, 0xccddeeff55667788, punpckldq);
+    testMmx64(0x62, 0x1122334455667788, 0x9900aabbccddeeff, 0xccddeeff55667788);
+}
+
+void testMmxPunpcklwd() {
+    X86_TEST_MMX(0x1122334455667788, 0x9900aabbccddeeff, 0xccdd5566eeff7788, punpcklwd);
+    testMmx64(0x61, 0x1122334455667788, 0x9900aabbccddeeff, 0xccdd5566eeff7788);
+}
+
+void testMmxPxor() {
+    #if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)    
+    U64 data1 = 0x1122334455667788;
+    U64 data2 = 0x9900aabbccddeeff;
+    U64 result = 0;
+
+    __asm {
+        movq mm0, data1
+        movq mm1, data2
+        pxor mm0, mm1
+        movq result, mm0
+        emms
+    }
+    if (result!=0x882299ff99bb9977) {
+        failed("paddsb failed");
+    }
+#endif 
+    X86_TEST_MMX(0x1122334455667788, 0x9900aabbccddeeff, 0x882299ff99bb9977, pxor);
+    testMmx64(0xef, 0x1122334455667788, 0x9900aabbccddeeff, 0x882299ff99bb9977);
+}
+
+void testMmxPor() {
+    X86_TEST_MMX(0x1122334455667788, 0x9900aabbccddeeff, 0x9922bbffddffffff, por);
+    testMmx64(0xeb, 0x1122334455667788, 0x9900aabbccddeeff, 0x9922bbffddffffff);
+}
+
+void testMmxPand() {
+    X86_TEST_MMX(0x1122334455667788, 0x9900aabbccddeeff, 0x1100220044446688, pand);
+    testMmx64(0xdb, 0x1122334455667788, 0x9900aabbccddeeff, 0x1100220044446688);
+}
+
+void testMmxPandn() {
+    X86_TEST_MMX(0x1122334455667788, 0x9900aabbccddeeff, 0x880088bb88998877, pandn);
+    testMmx64(0xdf, 0x1122334455667788, 0x9900aabbccddeeff, 0x880088bb88998877);
+}
+
+void testMmxPsllwImm8() {
+    X86_TEST_MMX_IMM(0x0102f00712345678, 1, 0x0204e00e2468acf0, psllw);
+    testMmx64imm8(0x71, 6, 0x0102f00712345678, 1, 0x0204e00e2468acf0);
+
+    X86_TEST_MMX_IMM(0x0102f00712345678, 8, 0x0200070034007800, psllw);
+    testMmx64imm8(0x71, 6, 0x0102f00712345678, 8, 0x0200070034007800);
+}
+
+void testMmxPsllw() {
+    X86_TEST_MMX(0x0102f00712345678, 1, 0x0204e00e2468acf0, psllw);
+    testMmx64(0xf1, 0x0102f00712345678, 1, 0x0204e00e2468acf0);
+
+    X86_TEST_MMX(0x0102f00712345678, 8, 0x0200070034007800, psllw);
+    testMmx64(0xf1, 0x0102f00712345678, 8, 0x0200070034007800);
 }
 
 void run(void (*functionPtr)(), char* name) {
@@ -6993,6 +7170,35 @@ int main(int argc, char **argv) {
 
     run(testMmxPsubusb, "PSUBUSB 3d8");
     run(testMmxPsubusw, "PSUBUSB 3d9");
+    
+    run(testMmxPmullw, "PMULLW 3d5");
+    run(testMmxPmulhw, "PMULHW 3e5");
+    run(testMmxPmaddwd, "PMULLW 3f5");
+
+    run(testMmxPcmpeqb, "PCMPEQB 374");
+    run(testMmxPcmpeqw, "PCMPEQW 375");
+    run(testMmxPcmpeqd, "PCMPEQD 376");
+
+    run(testMmxPcmpgtb, "PCMPGTB 364");
+    run(testMmxPcmpgtw, "PCMPGTW 365");
+    run(testMmxPcmpgtd, "PCMPGTD 366");
+
+    run(testMmxPackssdw, "PACKSSDW 36b");
+    run(testMmxPacksswb, "PACKSSWB 363");
+    run(testMmxPackuswb, "PACKUSWB 367");
+    run(testMmxPunpckhbw, "PUNPCKHBW 368");
+    run(testMmxPunpckhdq, "PUNPCKHDQ 36a");
+    run(testMmxPunpckhwd, "PUNPCKHWD 369");
+    run(testMmxPunpcklbw, "PUNPCKLBW 360");
+    run(testMmxPunpckldq, "PUNPCKLDQ 362");
+    run(testMmxPunpcklwd, "PUNPCKLWD 361");
+
+    run(testMmxPxor, "PXOR 3ef");
+    run(testMmxPor, "POR 3eb");
+    run(testMmxPand, "PAND 3db");
+    run(testMmxPandn, "PANDN 3df");
+    run(testMmxPsllw, "PSLLW 3f1");
+    run(testMmxPsllwImm8, "PSLLW 371");
 
     printf("%d tests FAILED\n", totalFails);
     SDL_Delay(5000);
