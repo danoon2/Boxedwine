@@ -1868,6 +1868,11 @@ static U32 invalidOp(X64Asm* data) {
     return 0;
 }
 
+static U32 sse1(X64Asm* data) {
+    kpanic("SSE1 not supported yet");
+    return 0;
+}
+
 static U32 outb(X64Asm* data) {
     U8 port = data->fetch8();
     return 0;
@@ -2047,11 +2052,6 @@ static U32 mmxImm8(X64Asm* data) {
 
 static U32 mmxRegE(X64Asm* data) {
     data->translateRM(data->fetch8(), false, true, false, false, 0);
-    return 0;
-}
-
-static U32 mmxRegG(X64Asm* data) {
-    data->translateRM(data->fetch8(), true, false, false, false, 0);
     return 0;
 }
 
@@ -2353,11 +2353,11 @@ X64Decoder x64Decoder[1024] = {
     invalidOp, inst32RMSafeG, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp,
     invalidOp, invalidOp, invalidOp, keepSame, invalidOp, invalidOp, invalidOp, invalidOp,
     // 310
-    invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp,
+    sse1, sse1, sse1, sse1, sse1, sse1, sse1, sse1,
     invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp,
     // 320
     invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp,
-    invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp,
+    sse1, sse1, sse1, sse1, sse1, sse1, sse1, sse1,
     // 330
     invalidOp, rdtsc, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp,
     invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp,
@@ -2365,14 +2365,14 @@ X64Decoder x64Decoder[1024] = {
     inst32RM, inst32RM, inst32RM, inst32RM, inst32RM, inst32RM, inst32RM, inst32RM,
     inst32RM, inst32RM, inst32RM, inst32RM, inst32RM, inst32RM, inst32RM, inst32RM,
     // 350
-    invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp,
-    invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp,
+    sse1, sse1, sse1, sse1, sse1, sse1, sse1, sse1,
+    sse1, sse1, invalidOp, invalidOp, sse1, sse1, sse1, sse1,
     // 360
     mmx, mmx, mmx, mmx, mmx, mmx, mmx, mmx,
     mmx, mmx, mmx, mmx, invalidOp, invalidOp, mmxRegE, mmx,
     // 370
-    mmxImm8, mmxImm8, mmxImm8, mmxImm8, mmx, mmx, mmx, keepSame,
-    invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, mmxRegG, mmx,
+    sse1, mmxImm8, mmxImm8, mmxImm8, mmx, mmx, mmx, keepSame,
+    invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, mmxRegE, mmx,
     // 380
     jump32, jump32, jump32, jump32, jump32, jump32, jump32, jump32,
     jump32, jump32, jump32, jump32, jump32, jump32, jump32, jump32,
@@ -2386,17 +2386,17 @@ X64Decoder x64Decoder[1024] = {
     invalidOp, inst32RM, lss32, inst32RM, lfs32, lgs32, inst32E8RM, inst32E16RM,
     invalidOp, invalidOp, inst32RMimm8SafeG, inst32RM, inst32RM, inst32RM, inst32E8RM, inst32E16RM,
     // 3c0
-    invalidOp, inst32RM, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, inst32RMSafeG,
+    invalidOp, inst32RM, sse1, invalidOp, sse1, sse1, sse1, inst32RMSafeG,
     keepSame, keepSame, keepSame, keepSame, bswapEsp, keepSame, keepSame, keepSame,
     // 3d0
-    invalidOp, mmx, mmx, mmx, mmx, mmx, invalidOp, mmxRegG,
-    mmx, mmx, mmx, mmx, mmx, mmx, mmx, mmx,
+    invalidOp, mmx, mmx, mmx, invalidOp, mmx, invalidOp, sse1,
+    mmx, mmx, sse1, mmx, mmx, mmx, sse1, mmx,
     // 3e0
-    mmx, mmx, mmx, mmx, mmx, mmx, invalidOp, mmx,
-    mmx, mmx, mmx, mmx, mmx, mmx, mmx, mmx,
+    sse1, mmx, mmx, sse1, sse1, mmx, invalidOp, sse1,
+    mmx, mmx, sse1, mmx, mmx, mmx, sse1, mmx,
     // 3f0
-    invalidOp, mmx, mmx, mmx, invalidOp, mmx, mmx, mmx,
-    mmx, mmx, mmx, mmx, mmx, mmx, mmx, invalidOp,
+    invalidOp, mmx, mmx, mmx, invalidOp, mmx, sse1, sse1,
+    mmx, mmx, mmx, invalidOp, mmx, mmx, mmx, invalidOp,
 };
 
 #endif

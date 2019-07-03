@@ -239,10 +239,10 @@ void common_psraw(CPU* cpu, U32 reg, U8 imm) {
 void common_psrlw(CPU* cpu, U32 reg, U8 imm) {
     MMX_reg* dest=&cpu->reg_mmx[reg];
     
-    dest->uw.w0 <<= imm;
-	dest->uw.w1 <<= imm;
-	dest->uw.w2 <<= imm;
-	dest->uw.w3 <<= imm;	
+    dest->uw.w0 >>= imm;
+	dest->uw.w1 >>= imm;
+	dest->uw.w2 >>= imm;
+	dest->uw.w3 >>= imm;	
 }
 
 void common_pslldMmx(CPU* cpu, U32 r1, U32 r2) {
@@ -326,8 +326,8 @@ void common_psradE64(CPU* cpu, U32 reg, U32 address) {
 void common_pslld(CPU* cpu, U32 reg, U8 imm) {
     MMX_reg* dest=&cpu->reg_mmx[reg];
     
-    dest->ud.d0 >>= imm;
-	dest->ud.d1 >>= imm;
+    dest->ud.d0 <<= imm;
+	dest->ud.d1 <<= imm;
 }
 
 void common_psrad(CPU* cpu, U32 reg, U8 imm) {
@@ -340,8 +340,8 @@ void common_psrad(CPU* cpu, U32 reg, U8 imm) {
 void common_psrld(CPU* cpu, U32 reg, U8 imm) {
     MMX_reg* dest=&cpu->reg_mmx[reg];
     
-    dest->ud.d0 <<= imm;
-	dest->ud.d1 <<= imm;
+    dest->ud.d0 >>= imm;
+	dest->ud.d1 >>= imm;
 }
 
 void common_psllqMmx(CPU* cpu, U32 r1, U32 r2) {
@@ -393,11 +393,11 @@ void common_psrlqE64(CPU* cpu, U32 reg, U32 address) {
 }
 
 void common_psllq(CPU* cpu, U32 reg, U8 imm) {   
-    cpu->reg_mmx[reg].q >>= imm;
+    cpu->reg_mmx[reg].q <<= imm;
 }
 
 void common_psrlq(CPU* cpu, U32 reg, U8 imm) {
-    cpu->reg_mmx[reg].q <<= imm;
+    cpu->reg_mmx[reg].q >>= imm;
 }
 
 /* Math */
