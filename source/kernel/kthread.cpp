@@ -793,7 +793,7 @@ U32 KThread::modify_ldt(U32 func, U32 ptr, U32 count) {
         U32 flags = readd(ptr + 12);
 
         if (index>=0 && index<LDT_ENTRIES) {
-            struct user_desc* ldt = this->getLDT(index);;            
+            struct user_desc* ldt = this->getLDT(index);            
             
             ldt->entry_number = index;
             ldt->limit = limit;

@@ -6,6 +6,7 @@
 #include "../common/common_other.h"
 #include "../source/emulation/hardmmu/hard_memory.h"
 #include "../normal/normalCPU.h"
+#include "../normal/instructions.h"
 
 // still doesn't work
 #ifdef X64_EMULATE_FPU
@@ -1597,6 +1598,28 @@ void X64Asm::daa() {
     popNativeFlags();
 }
 
+// :TODO: maybe make native versions
+void X64Asm::das() {
+    syncRegsFromHost(); 
+    writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param    
+    callHost(::das);
+    syncRegsToHost();
+}
+
+void X64Asm::aaa() {
+    syncRegsFromHost(); 
+    writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param    
+    callHost(::aaa);
+    syncRegsToHost();
+}
+
+void X64Asm::aas() {
+    syncRegsFromHost(); 
+    writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param    
+    callHost(::aas);
+    syncRegsToHost();
+}
+
 /*
 AH = AL / value;
 AL = AL % value;
@@ -2262,35 +2285,29 @@ void X64Asm::jmpReg(U8 reg, bool isRex) {
     // and HOST_TMP, 0xFFF
     andReg(HOST_TMP, true, K_PAGE_MASK);
 
-    // push rax
-    pushNativeReg(0, false);        
+    popFlagsFromReg(HOST_TMP3, true, true); 
     
     // rax=cpu->opToAddressPages
     // mov rax, [HOST_CPU];
-    writeToRegFromMem(0, false, HOST_CPU, true, -1, false, 0, CPU_OFFSET_OP_PAGES, 8, false);
+    writeToRegFromMem(HOST_TMP3, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_OP_PAGES, 8, false);
     
     // rax = cpu->opToAddressPages[page]
     // mov RAX, [RAX+HOST_TEMP2<<3] // 3 sizeof(void*)
-    writeToRegFromMem(0, false, 0, false, HOST_TMP2, true, 3, 0, 8, false); 
+    writeToRegFromMem(HOST_TMP3, true, HOST_TMP3, true, HOST_TMP2, true, 3, 0, 8, false); 
 
     // will move address to RAX and test that it exists, if it doesn't then we
     // will catch the exception.  We leave the address/index we need in HOST_TMP
     // and HOST_TMP2
 
     // mov RAX, [RAX + HOST_TMP << 3]
-    writeToRegFromMem(0, false, 0, false, HOST_TMP, true, 3, 0, 8, false); 
+    writeToRegFromMem(HOST_TMP3, true, HOST_TMP3, true, HOST_TMP, true, 3, 0, 8, false); 
 
     // This will test that the value we are about to jump to exists
     // mov HOST_TMP, [RAX]
-    writeToRegFromMem(HOST_TMP, true, 0, false, -1, false, 0, 0, 2, false);
+    writeToRegFromMem(HOST_TMP, true, HOST_TMP3, true, -1, false, 0, 0, 2, false);
 
     // mov HOST_TMP, RAX
-    writeToRegFromReg(HOST_TMP, true, 0, false, 8);
-
-    // pop rax
-    popNativeReg(0, false);    
-
-    popFlagsFromReg(HOST_TMP3, true, true);
+    writeToRegFromReg(HOST_TMP, true, HOST_TMP3, true, 8);      
 
     // jmp HOST_TMP
     jmpNativeReg(HOST_TMP, true);

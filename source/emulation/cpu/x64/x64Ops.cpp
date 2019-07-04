@@ -449,19 +449,19 @@ static U32 daa(X64Asm* data) {
 
 // DAS
 static U32 das(X64Asm* data) {
-    kpanic("das not implemented");
+    data->das();
     return 0;
 }
 
 // AAA
 static U32 aaa(X64Asm* data) {
-    kpanic("aaa not implemented");
+    data->aaa();
     return 0;
 }
 
 // AAS
 static U32 aas(X64Asm* data) {
-    kpanic("aas not implemented");
+    data->aas();
     return 0;
 }
 
@@ -1869,7 +1869,8 @@ static U32 invalidOp(X64Asm* data) {
 }
 
 static U32 sse1(X64Asm* data) {
-    kpanic("SSE1 not supported yet");
+    klog("tried to use SSE1");
+    data->signalIllegalInstruction(5); // 5=ILL_PRVOPC
     return 0;
 }
 

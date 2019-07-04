@@ -72,6 +72,10 @@ void setup() {
         process->memory->allocPages(HEAP_ADDRESS >> K_PAGE_SHIFT, 17, PAGE_READ|PAGE_WRITE, 0, 0, 0);
     }
 
+    for (int i=0;i<6;i++) {
+        cpu->seg[i].address = 0;
+        cpu->seg[i].value = 0;
+    }
     cpu->seg[CS].address = CODE_ADDRESS;
     cpu->seg[DS].address = HEAP_ADDRESS;
     cpu->seg[SS].address = STACK_ADDRESS-K_PAGE_SIZE*17;
@@ -82,6 +86,8 @@ void setup() {
     zeroMemory(CODE_ADDRESS, K_PAGE_SIZE*17);
     zeroMemory(STACK_ADDRESS-K_PAGE_SIZE*17, K_PAGE_SIZE*17);
     zeroMemory(HEAP_ADDRESS, K_PAGE_SIZE*17);
+
+    ESP=4096;
 }
 
 void pushCode8(int value) {
@@ -1805,14 +1811,19 @@ void Reg32Reg32(int instruction, struct Data* data, Reg* r1, Reg* r2) {
 
 void push16Reg(int instruction, Reg* reg) {
     newInstruction(instruction, 0);
-    reg->u32 = 0xDDDD1234;
+    U32 value = 0xDDDD1234;
     ESP-=2;
+    if (reg==&cpu->reg[4]) {
+        value = reg->u16;
+    } else {
+        reg->u32 = value;
+    }    
     writew(cpu->seg[SS].address+ESP, 0xAAAA);
     writew(cpu->seg[SS].address+ESP-2, 0xCCCC);
     writew(cpu->seg[SS].address+ESP-4, 0xBBBB);
     runTestCPU();
     assertTrue(ESP==4092);
-    assertTrue(readw(cpu->seg[SS].address+ESP)==0x1234);
+    assertTrue(readw(cpu->seg[SS].address+ESP)==(U16)value);
     assertTrue(readw(cpu->seg[SS].address+ESP+2)==0xAAAA);
     assertTrue(readw(cpu->seg[SS].address+ESP-2)==0xBBBB);
 }
@@ -1833,14 +1844,19 @@ void Pushf(int instruction) {
 
 void push32Reg(int instruction, Reg* reg) {
     newInstruction(instruction, 0);
-    reg->u32 = 0x56781234;
+    U32 value = 0x56781234;
     ESP-=4;
+    if (reg==&cpu->reg[4]) {
+        value = reg->u32;
+    } else {
+        reg->u32 = value;
+    }
     writed(cpu->seg[SS].address+ESP, 0xAAAAAAAA);
     writed(cpu->seg[SS].address+ESP-4, 0xCCCCCCCC);
     writed(cpu->seg[SS].address+ESP-8, 0xBBBBBBBB);
     runTestCPU();
     assertTrue(ESP==4088);
-    assertTrue(readd(cpu->seg[SS].address+ESP)==0x56781234);
+    assertTrue(readd(cpu->seg[SS].address+ESP)==value);
     assertTrue(readd(cpu->seg[SS].address+ESP+4)==0xAAAAAAAA);
     assertTrue(readd(cpu->seg[SS].address+ESP-4)==0xBBBBBBBB);
 }
@@ -1861,17 +1877,38 @@ void Pushfd(int instruction) {
 
 void Pop16(int instruction, Reg* reg) {
     newInstruction(instruction, 0);
-    ESP-=2;
+    SP-=2;
     reg->u32=0xDDDDDDDD;
-    writew(cpu->seg[SS].address+ESP, 0xAAAA);
-    writew(cpu->seg[SS].address+ESP-2, 0x1234);
-    writew(cpu->seg[SS].address+ESP-4, 0xBBBB);
-    ESP-=2;
+    writew(cpu->seg[SS].address+SP, 0xAAAA);
+    writew(cpu->seg[SS].address+SP-2, 0x1234);
+    writew(cpu->seg[SS].address+SP-4, 0xBBBB);
+    SP-=2;
     runTestCPU();
-    assertTrue(ESP==4094);
+    assertTrue(SP==4094);
     assertTrue(reg->u32 == 0xDDDD1234);
-    assertTrue(readw(cpu->seg[SS].address+ESP)==0xAAAA);
-    assertTrue(readw(cpu->seg[SS].address+ESP-4)==0xBBBB);
+    assertTrue(readw(cpu->seg[SS].address+SP)==0xAAAA);
+    assertTrue(readw(cpu->seg[SS].address+SP-4)==0xBBBB);
+}
+
+void Pop16_SP(int instruction, Reg* reg) {
+    newInstruction(instruction, 0);
+    SP-=2;
+    U16 value = SP-2;
+    cpu->stackMask=0xffff;
+    cpu->stackNotMask=0xffff0000;
+    cpu->thread->process->hasSetSeg[SS]=true;
+    reg->h16=0xDDDD;
+    writew(cpu->seg[SS].address+SP, 0xAAAA);
+    writew(cpu->seg[SS].address+SP-2, value);
+    writew(cpu->seg[SS].address+SP-4, 0xBBBB);
+    SP-=2;
+    runTestCPU();
+    assertTrue(SP==4092);
+    assertTrue(reg->u32 == ((0xDDDD << 16) | value));
+    assertTrue(readw(cpu->seg[SS].address+4094)==0xAAAA);
+    assertTrue(readw(cpu->seg[SS].address+4090)==0xBBBB);
+    cpu->stackMask=0xffffffff;
+    cpu->stackNotMask=0;
 }
 
 void Popf(int instruction) {
@@ -1901,6 +1938,19 @@ void Pop32(int instruction, Reg* reg) {
     assertTrue(reg->u32 == 0x56781234);
     assertTrue(readd(cpu->seg[SS].address+ESP)==0xAAAAAAAA);
     assertTrue(readd(cpu->seg[SS].address+ESP-8)==0xBBBBBBBB);
+}
+
+void Pop32_SP(int instruction, Reg* reg) {
+    newInstruction(instruction, 0);
+    ESP-=4;
+    writed(cpu->seg[SS].address+ESP, 0xAAAAAAAA);
+    writed(cpu->seg[SS].address+ESP-4, ESP-4);
+    writed(cpu->seg[SS].address+ESP-8, 0xBBBBBBBB);
+    ESP-=4;
+    runTestCPU();
+    assertTrue(ESP==4088);
+    assertTrue(readd(cpu->seg[SS].address+4092)==0xAAAAAAAA);
+    assertTrue(readd(cpu->seg[SS].address+4084)==0xBBBBBBBB);
 }
 
 void Popfd(int instruction) {
@@ -3741,8 +3791,8 @@ void testPushDx0x052() {cpu->big = false;push16Reg(0x52, &cpu->reg[2]);}
 void testPushEdx0x252() {cpu->big = true;push32Reg(0x52, &cpu->reg[2]);}
 void testPushBx0x053() {cpu->big = false;push16Reg(0x53, &cpu->reg[3]);}
 void testPushEbx0x253() {cpu->big = true;push32Reg(0x53, &cpu->reg[3]);}
-//void testPushSp0x054() {cpu->big = false;push16(0x54, ESP);}
-//void testPushEsp0x254() {cpu->big = true;push32(0x54, ESP);}
+void testPushSp0x054() {cpu->big = false;push16Reg(0x54, &cpu->reg[4]);}
+void testPushEsp0x254() {cpu->big = true;push32Reg(0x54, &cpu->reg[4]);}
 void testPushBp0x055() {cpu->big = false;push16Reg(0x55, &cpu->reg[5]);}
 void testPushEbp0x255() {cpu->big = true;push32Reg(0x55, &cpu->reg[5]);}
 void testPushSi0x056() {cpu->big = false;push16Reg(0x56, &cpu->reg[6]);}
@@ -3758,8 +3808,8 @@ void testPopDx0x05a() {cpu->big = false;Pop16(0x5a, &cpu->reg[2]);}
 void testPopEdx0x25a() {cpu->big = true;Pop32(0x5a, &cpu->reg[2]);}
 void testPopBx0x05b() {cpu->big = false;Pop16(0x5b, &cpu->reg[3]);}
 void testPopEbx0x25b() {cpu->big = true;Pop32(0x5b, &cpu->reg[3]);}
-//void testPopSp0x05c() {cpu->big = false;Pop16(0x5c, ESP);}
-//void testPopEsp0x25c() {cpu->big = true;Pop32(0x5c, ESP);}
+void testPopSp0x05c() {cpu->big = false;Pop16_SP(0x5c, &cpu->reg[4]);}
+void testPopEsp0x25c() {cpu->big = true;Pop32_SP(0x5c, &cpu->reg[4]);}
 void testPopBp0x05d() {cpu->big = false;Pop16(0x5d, &cpu->reg[5]);}
 void testPopEbp0x25d() {cpu->big = true;Pop32(0x5d, &cpu->reg[5]);}
 void testPopSi0x05e() {cpu->big = false;Pop16(0x5e, &cpu->reg[6]);}
@@ -6242,6 +6292,199 @@ void testMmxPsrad() {
     testMmx64(0xe2, 0xf102f00772345678, 16, 0xfffff10200007234);
 }
 
+void testPushSeg16(int inst, U8 seg) {
+    U16 prevStack = cpu->reg[4].u16;
+    writew(cpu->seg[SS].address+cpu->reg[4].u16-2, 0x2222);
+    cpu->seg[seg].value = 0x107;
+    cpu->big = 0;
+    newInstruction(inst, 0);
+    runTestCPU();
+    if (cpu->reg[4].u16!=prevStack-2) {
+        failed("stack wasn't decremented by 2");
+    }
+    if (readw(cpu->seg[SS].address+cpu->reg[4].u16)!=0x107) {
+        failed("seg value was not found");
+    }
+}
+
+void testPopSeg16(int inst, U8 seg) {
+    struct user_desc* ldt = cpu->thread->process->getLDT(0x20);
+    ldt->entry_number=0x20;
+    ldt->base_addr = 0;
+    ldt->seg_32bit = 1;
+    ldt->seg_not_present = 0;
+
+    newInstruction(inst, 0);
+    cpu->reg[4].u32-=2;
+    U32 prevStack = cpu->reg[4].u32;
+    writed(cpu->seg[SS].address+cpu->reg[4].u16, 0x107);
+    cpu->seg[seg].value = 0;
+    cpu->big = 0;    
+    runTestCPU();
+    if (cpu->reg[4].u16!=prevStack+2) {
+        failed("stack wasn't incremented by 2");
+    }
+    if (cpu->seg[seg].value!=0x107) {
+        failed("seg value was not set");
+    }
+}
+
+void testPushSeg32(int inst, U8 seg) {
+    U32 prevStack = cpu->reg[4].u32;
+    writed(cpu->seg[SS].address+cpu->reg[4].u32-4, 0x22222222);
+    cpu->seg[seg].value = 0x107;
+    cpu->big = 1;
+    newInstruction(inst, 0);
+    runTestCPU();
+    if (cpu->reg[4].u32!=prevStack-4) {
+        failed("stack wasn't decremented by 4");
+    }
+    if (readd(cpu->seg[SS].address+cpu->reg[4].u32)!=0x107) {
+        failed("seg value was not found");
+    }
+}
+
+void testPopSeg32(int inst, U8 seg) {
+    struct user_desc* ldt = cpu->thread->process->getLDT(0x20);
+    ldt->entry_number=0x20;
+    ldt->base_addr = 0;
+    ldt->seg_32bit = 1;
+    ldt->seg_not_present = 0;
+
+    newInstruction(inst, 0);
+    cpu->reg[4].u32-=4;
+    U32 prevStack = cpu->reg[4].u32;
+    writed(cpu->seg[SS].address+cpu->reg[4].u32, 0x107);
+    cpu->seg[seg].value = 0;
+    cpu->big = 1;    
+    runTestCPU();
+    if (cpu->reg[4].u32!=prevStack+4) {
+        failed("stack wasn't incremented by 4");
+    }
+    if (cpu->seg[seg].value!=0x107) {
+        failed("seg value was not set");
+    }
+}
+
+void testPushEs0x006() {
+    testPushSeg16(0x06, ES);
+}
+
+void testPushEs0x206() {
+    testPushSeg32(0x06, ES);
+}
+
+void testPopEs0x007() {
+    testPopSeg16(0x07, ES);
+}
+
+void testPopEs0x207() {
+    testPopSeg32(0x07, ES);
+}
+
+void testPushCs0x00e() {
+    testPushSeg16(0x0e, CS);
+}
+
+void testPushCs0x20e() {
+    testPushSeg32(0x0e, CS);
+}
+
+void testPushSs0x016() {
+    testPushSeg16(0x16, SS);
+}
+
+void testPushSs0x216() {
+    testPushSeg32(0x16, SS);
+}
+
+void testPopSs0x017() {
+    testPopSeg16(0x17, SS);
+}
+
+void testPopSs0x217() {
+    testPopSeg32(0x17, SS);
+}
+
+void testPushDs0x01e() {
+    testPushSeg16(0x1e, DS);
+}
+
+void testPushDs0x21e() {
+    testPushSeg32(0x1e, DS);
+}
+
+void testPopDs0x01f() {
+    testPopSeg16(0x1f, DS);
+}
+
+void testPopDs0x21f() {
+    testPopSeg32(0x1f, DS);
+}
+
+void testSeg(int inst, U8 seg) {
+    U32 address = HEAP_ADDRESS;
+    U32 offset = 3*1024;
+    if (seg==CS) {
+        address = CODE_ADDRESS;
+    } else {
+        cpu->seg[seg].address = HEAP_ADDRESS+512;
+    }
+    EAX = 0;
+    writeb(cpu->seg[seg].address+offset, 0xbf);
+    newInstruction(inst, 0);
+    pushCode8(0xa1);
+    if (cpu->big) {
+        pushCode32(offset);
+    } else {
+        pushCode16(offset);
+    }
+    runTestCPU();
+    if (EAX!=0xbf) {
+        failed("seg prefix failed");
+    }
+}
+
+void testSegEs0x026() {
+    cpu->big = 0;
+    testSeg(0x26, ES);
+}
+
+void testSegEs0x226() {
+    cpu->big = 1;
+    testSeg(0x26, ES);
+}
+
+void testSegCs0x02e() {
+    cpu->big = 0;
+    testSeg(0x2e, CS);
+}
+
+void testSegCs0x22e() {
+    cpu->big = 1;
+    testSeg(0x2e, CS);
+}
+
+void testSegSs0x036() {
+    cpu->big = 0;
+    testSeg(0x36, SS);
+}
+
+void testSegSs0x236() {
+    cpu->big = 1;
+    testSeg(0x36, SS);
+}
+
+void testSegDs0x03e() {
+    cpu->big = 0;
+    testSeg(0x3e, DS);
+}
+
+void testSegDs0x23e() {
+    cpu->big = 1;
+    testSeg(0x3e, DS);
+}
+
 void run(void (*functionPtr)(), char* name) {
     didFail = 0;
     setup();
@@ -6974,7 +7217,10 @@ int main(int argc, char **argv) {
     run(testAdd0x204, "Add 204");
     run(testAdd0x005, "Add 005");
     run(testAdd0x205, "Add 205");
-
+    run(testPushEs0x006, "Push ES 006");
+    run(testPushEs0x206, "Push ES 206");
+    run(testPopEs0x007, "Pop ES 007");
+    run(testPopEs0x207, "Pop ES 207");
     run(testOr0x008, "Or  008");
     run(testOr0x208, "Or  208");
     run(testOr0x009, "Or  009");
@@ -6987,7 +7233,9 @@ int main(int argc, char **argv) {
     run(testOr0x20c, "Or  20c");
     run(testOr0x00d, "Or  00d");
     run(testOr0x20d, "Or  20d");
-
+    run(testPushCs0x00e, "Push CS 00e");
+    run(testPushCs0x20e, "Push CS 20e");
+    // 0x0f is a prefix byte
     run(testAdc0x010, "Adc 010");
     run(testAdc0x210, "Adc 210");
     run(testAdc0x011, "Adc 011");
@@ -7000,7 +7248,10 @@ int main(int argc, char **argv) {
     run(testAdc0x214, "Adc 214");
     run(testAdc0x015, "Adc 015");
     run(testAdc0x215, "Adc 215");
-
+    run(testPushSs0x016, "Push SS 016");
+    run(testPushSs0x216, "Push SS 216");
+    run(testPopSs0x017, "Pop SS 017");
+    run(testPopSs0x217, "Pop SS 217");
     run(testSbb0x018, "Sbb 018");
     run(testSbb0x218, "Sbb 218");
     run(testSbb0x019, "Sbb 019");
@@ -7013,7 +7264,10 @@ int main(int argc, char **argv) {
     run(testSbb0x21c, "Sbb 21c");
     run(testSbb0x01d, "Sbb 01d");
     run(testSbb0x21d, "Sbb 21d");
-
+    run(testPushDs0x01e, "Push DS 01e");
+    run(testPushDs0x21e, "Push DS 21e");
+    run(testPopDs0x01f, "Pop DS 01f");
+    run(testPopDs0x21f, "Pop DS 21f");
     run(testAnd0x020, "And 020");
     run(testAnd0x220, "And 220");
     run(testAnd0x021, "And 021");
@@ -7026,10 +7280,10 @@ int main(int argc, char **argv) {
     run(testAnd0x224, "And 224");
     run(testAnd0x025, "And 025");
     run(testAnd0x225, "And 225");
-
+    run(testSegEs0x026, "Seg ES 026");
+    run(testSegEs0x226, "Seg ES 226");
     run(testDaa0x027, "DAA 027");
     run(testDaa0x227, "DAA 227");
-
     run(testSub0x028, "Sub 028");
     run(testSub0x228, "Sub 228");
     run(testSub0x029, "Sub 029");
@@ -7042,11 +7296,10 @@ int main(int argc, char **argv) {
     run(testSub0x22c, "Sub 22c");
     run(testSub0x02d, "Sub 02d");
     run(testSub0x22d, "Sub 22d");
-
-#ifndef BOXEDWINE_X64
+    run(testSegCs0x02e, "Seg CS 02e");
+    run(testSegCs0x22e, "Seg CS 22e");
     run(testDas0x02f, "DAS 02f");
     run(testDas0x22f, "DAS 22f");
-#endif
     run(testXor0x030, "Xor 030");
     run(testXor0x230, "Xor 230");
     run(testXor0x031, "Xor 031");
@@ -7059,10 +7312,10 @@ int main(int argc, char **argv) {
     run(testXor0x234, "Xor 234");
     run(testXor0x035, "Xor 035");
     run(testXor0x235, "Xor 235");
-#ifndef BOXEDWINE_X64
+    run(testSegSs0x036, "Seg SS 036");
+    run(testSegSs0x236, "Seg SS 236");
     run(testAaa0x037, "AAA 037");
     run(testAaa0x237, "AAA 237");
-#endif
     run(testCmp0x038, "Cmp 038");
     run(testCmp0x238, "Cmp 238");
     run(testCmp0x039, "Cmp 039");
@@ -7075,10 +7328,10 @@ int main(int argc, char **argv) {
     run(testCmp0x23c, "Cmp 23c");
     run(testCmp0x03d, "Cmp 03d");
     run(testCmp0x23d, "Cmp 23d");
-#ifndef BOXEDWINE_X64
+    run(testSegDs0x03e, "Seg DS 03e");
+    run(testSegDs0x23e, "Seg DS 23e");
     run(testAas0x03f, "AAS 03f");
     run(testAas0x23f, "AAS 23f");
-#endif
     run(testIncAx0x040,  "Inc AX  040");
     run(testIncEax0x240, "Inc EAX 240");
     run(testIncCx0x041,  "Inc CX  041");
@@ -7095,7 +7348,6 @@ int main(int argc, char **argv) {
     run(testIncEsi0x246, "Inc ESI 246");
     run(testIncDi0x047,  "Inc DI  047");
     run(testIncEdi0x247, "Inc EDI 247");
-
     run(testDecAx0x048,  "Dec AX  048");
     run(testDecEax0x248, "Dec EAX 248");
     run(testDecCx0x049,  "Dec CX  049");
@@ -7112,7 +7364,6 @@ int main(int argc, char **argv) {
     run(testDecEsi0x24e, "Dec ESI 24e");
     run(testDecDi0x04f,  "Dec DI  04f");
     run(testDecEdi0x24f, "Dec EDI 24f");
-
     run(testPushAx0x050,  "Push Ax  050");
     run(testPushEax0x250, "Push Eax 250");
     run(testPushCx0x051,  "Push Cx  051");
@@ -7121,15 +7372,14 @@ int main(int argc, char **argv) {
     run(testPushEdx0x252, "Push Edx 252");
     run(testPushBx0x053,  "Push Bx  053");
     run(testPushEbx0x253, "Push Ebx 253");
-    //run(testPushSp0x054,  "Push Sp  054");
-    //run(testPushEsp0x254, "Push Esp 254");
+    run(testPushSp0x054,  "Push Sp  054");
+    run(testPushEsp0x254, "Push Esp 254");
     run(testPushBp0x055,  "Push Bp  055");
     run(testPushEbp0x255, "Push Ebp 255");
     run(testPushSi0x056,  "Push Si  056");
     run(testPushEsi0x256, "Push Esi 256");
     run(testPushDi0x057,  "Push Di  057");
     run(testPushEdi0x257, "Push Edi 257");
-
     run(testPopAx0x058,  "Pop Ax  058");
     run(testPopEax0x258, "Pop Eax 258");
     run(testPopCx0x059,  "Pop Cx  059");
@@ -7138,8 +7388,8 @@ int main(int argc, char **argv) {
     run(testPopEdx0x25a, "Pop Edx 25a");
     run(testPopBx0x05b,  "Pop Bx  05b");
     run(testPopEbx0x25b, "Pop Ebx 25b");
-    //run(testPopSp0x05c,  "Pop Sp  05c");
-    //run(testPopEsp0x25c, "Pop Esp 25c");
+    run(testPopSp0x05c,  "Pop Sp  05c");
+    run(testPopEsp0x25c, "Pop Esp 25c");
     run(testPopBp0x05d,  "Pop Bp  05d");
     run(testPopEbp0x25d, "Pop Ebp 25d");
     run(testPopSi0x05e,  "Pop Si  05e");

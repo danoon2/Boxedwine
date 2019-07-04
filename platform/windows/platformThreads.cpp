@@ -118,11 +118,11 @@ LONG handleMissingCode(struct _EXCEPTION_POINTERS *ep, x64CPU* cpu, U32 inst) {
     U32 page = (U32)ep->ContextRecord->R8;
     U32 offset = (U32)ep->ContextRecord->R9;
 
-    cpu->translateEip(((page << K_PAGE_SHIFT) | offset) - cpu->seg[CS].address);
-    if (inst==0xC8048B4A) {
-        ep->ContextRecord->Rax = (U64)(cpu->eipToHostInstruction[page]);
+    cpu->translateEip(((page << K_PAGE_SHIFT) | offset) - cpu->seg[CS].address);  
+    if (inst==0xCA148B4F) {
+        ep->ContextRecord->R10 = (U64)(cpu->eipToHostInstruction[page]);
     } else {
-        ep->ContextRecord->Rax = (U64)(cpu->eipToHostInstruction[page][offset]);
+        ep->ContextRecord->R10 = (U64)(cpu->eipToHostInstruction[page][offset]);
     }
     return EXCEPTION_CONTINUE_EXECUTION;
 }
@@ -240,8 +240,8 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
     }	
     if (currentThread->exiting) {
         X64Asm data(cpu);
-        data.callCallback(unscheduleCallback);
-        ep->ContextRecord->Rip = (U64)data.commit(true)->getHostAddress();        
+        data.callCallback(unscheduleCallback);        
+        ep->ContextRecord->Rip = (U64)data.commit(true)->getHostAddress();                
         return EXCEPTION_CONTINUE_EXECUTION;
     }
     if (cpu->inException) {
@@ -280,7 +280,7 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
     } else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION && (ep->ContextRecord->Rip & 0xFFFFFFFF00000000l)==(U64)cpu->thread->memory->executableMemoryId) {      
         U32 inst = *((U32*)ep->ContextRecord->Rip);
 
-        if (inst==0x088B4466 || inst==0xC8048B4A) {      
+        if (inst==0x0A8B4566 || inst==0xCA148B4F) { // if these constants change, update handleMissingCode too     
             // rip is not adjusted so we don't need to check for stack alignment
             return handleMissingCode(ep, cpu, inst);
         } else if (inst==0xcdcdcdcd) {
