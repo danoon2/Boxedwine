@@ -34,6 +34,7 @@ std::unordered_map<U32, KProcess*> KSystem::processes;
 std::unordered_map<std::string, BoxedPtr<MappedFileCache> > KSystem::fileCache;
 
 BOXEDWINE_CONDITION KSystem::processesCond("KSystem::processesCond");
+BOXEDWINE_MUTEX KSystem::fileCacheMutex;
 
 U32 KSystem::getProcessCount() {
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(processesCond);
@@ -665,6 +666,7 @@ U32 KSystem::prlimit64(U32 pid, U32 resource, U32 newlimit, U32 oldlimit) {
 }
 
 void KSystem::eraseFileCache(const std::string& name) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(KSystem::fileCacheMutex);
     KSystem::fileCache.erase(name);
 }
 
@@ -676,9 +678,15 @@ KProcess* KSystem::getProcess(U32 id) {
 }
 
 BoxedPtr<MappedFileCache> KSystem::getFileCache(const std::string& name) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(KSystem::fileCacheMutex);
     if (KSystem::fileCache.count(name))
         return KSystem::fileCache[name];
     return NULL;
+}
+
+void KSystem::setFileCache(const std::string& name, const BoxedPtr<MappedFileCache>& fileCache) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(KSystem::fileCacheMutex);
+    KSystem::fileCache[name] = fileCache;
 }
 
 void KSystem::eraseProcess(U32 id) {

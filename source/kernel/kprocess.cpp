@@ -1230,6 +1230,7 @@ U32 KProcess::mmap(U32 addr, U32 len, S32 prot, S32 flags, FD fildes, U64 off) {
             BoxedPtr<MappedFileCache> cache = KSystem::getFileCache(mappedFile->file->openFile->node->path);
             if (!cache) {
                 cache = new MappedFileCache(mappedFile->file->openFile->node->path);
+                KSystem::setFileCache(mappedFile->file->openFile->node->path, cache);
                 cache->file = mappedFile->file;
                 U32 size = ((U32)((fd->kobject->length() + K_PAGE_SIZE-1) >> K_PAGE_SHIFT));
                 cache->data = new U8*[size];

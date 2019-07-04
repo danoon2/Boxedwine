@@ -31,7 +31,7 @@ bool FsNode::canWrite() {
 }
 
 void FsNode::removeNodeFromParent() {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->childrenByNameMutex);
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->parent->childrenByNameMutex);
     this->parent->childrenByName.erase(this->name);
 }
 

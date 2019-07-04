@@ -73,6 +73,7 @@ public:
     static void eraseFileCache(const std::string& name);
     static KProcess* getProcess(U32 id);
     static BoxedPtr<MappedFileCache> getFileCache(const std::string& name);
+    static void setFileCache(const std::string& name, const BoxedPtr<MappedFileCache>& fileCache);
     static void eraseProcess(U32 id);
     static void addProcess(U32 id, KProcess* process);
     static KThread* getThreadById(U32 threadId);
@@ -105,6 +106,7 @@ private:
     static std::unordered_map<void*, SHM*> shm;
     static std::unordered_map<U32, KProcess*> processes;    
     static std::unordered_map<std::string, BoxedPtr<MappedFileCache> > fileCache;
+    static BOXEDWINE_MUTEX fileCacheMutex;
 };
 
 U32 getMilliesSinceStart();

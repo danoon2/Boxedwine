@@ -347,6 +347,7 @@ int boxedmain(int argc, const char **argv) {
         writeSource();
 #endif
     BOXEDWINE_RECORDER_QUIT();
+    klog("Boxedwine shutdown");
     SDL_Quit();
     
     return 0;

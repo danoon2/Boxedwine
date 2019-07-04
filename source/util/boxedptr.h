@@ -1,6 +1,10 @@
 #ifndef __BOXEDPTR_H__
 #define __BOXEDPTR_H__
 
+#ifdef BOXEDWINE_MULTI_THREADED
+#include <atomic>
+#endif
+
 class BoxedPtrBase {
 public:        
     BoxedPtrBase() : _retainCount(0) {}
@@ -16,7 +20,11 @@ public:
     }
     int retainCount() {return this->_retainCount;}
 private:
+#ifdef BOXEDWINE_MULTI_THREADED
+    std::atomic<int> _retainCount;
+#else
     int _retainCount;
+#endif
 };
 
 template <typename T> 
