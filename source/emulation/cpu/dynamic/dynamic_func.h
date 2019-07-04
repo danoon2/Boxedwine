@@ -83,7 +83,7 @@ void dynamic_arith(DynamicData* data, DecodedOp* op, DynArg src, DynArg dst, Dyn
         INCREMENT_EIP(op->len);
         return;
     }
-    if (!needsToSetFlags || (needResultReg && DecodedOp::getNeededFlags(data->block, op->next, instructionInfo[op->inst].flagsSets)!=0)) {
+    if (!needsToSetFlags || (needResultReg && DecodedOp::getNeededFlags(data->block, op->next, instructionInfo[op->inst].flagsSets)==0)) {
         if (src == DYN_Reg) {            
             if (dst==DYN_Reg) {
                 movToRegFromCpu(DYN_SRC, cpuOffset(op->rm, width), width);
