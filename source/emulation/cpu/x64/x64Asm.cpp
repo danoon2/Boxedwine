@@ -131,7 +131,7 @@ void X64Asm::doMemoryInstruction(U8 op, U8 reg1, bool isReg1Rex, U8 reg2, bool i
         rex |= REX_BASE | REX_MOD_REG;
     if (isReg2Rex)
         rex |= REX_BASE | REX_MOD_RM;
-    if (isReg3Rex)
+    if (isReg3Rex && reg3!=-1)
         rex |= REX_BASE | REX_SIB_INDEX;
     if (bytes == 8)
         rex |= REX_64;
@@ -1491,8 +1491,7 @@ void X64Asm::daa() {
     U32 tmpReg = getTmpReg();
     U32 tmpReg2 = getTmpReg();
 
-    pushNativeFlags();
-    popNativeReg(tmpReg, true);
+    pushFlagsToReg(tmpReg, true, true);
 
     /*
     if (flags & CF) {
@@ -1592,10 +1591,8 @@ void X64Asm::daa() {
     setZF_onAL(tmpReg);
     setPF_onAL(tmpReg);
     
-    pushNativeReg(tmpReg, true);
+    popFlagsFromReg(tmpReg, true, true);
     releaseTmpReg(tmpReg);
-
-    popNativeFlags();
 }
 
 // :TODO: maybe make native versions
@@ -1638,8 +1635,7 @@ void X64Asm::aam(U8 value) {
     if (value==0) {
         kpanic("X64Asm::aam divide by 0 not handled");
     }
-    pushNativeFlags();
-    popNativeReg(tmpReg, true);
+    pushFlagsToReg(tmpReg, true, true);
 
     // mov tmpReg2, value
     write8(0x66);
@@ -1674,10 +1670,8 @@ void X64Asm::aam(U8 value) {
     write8(0xC0 | (4<<3) | tmpReg);
     write8((U8)(~(CF|AF|OF)));
 
-    pushNativeReg(tmpReg, true);
+    popFlagsFromReg(tmpReg, true, true);
     releaseTmpReg(tmpReg);    
-
-    popNativeFlags();
 }
 
 void X64Asm::salc() {
@@ -1903,67 +1897,95 @@ void X64Asm::popFlagsFromReg(U8 reg, bool isRexReg, bool includeOF) {
     }
 }
 
-void X64Asm::internal_addDynamicCheck(U32 address, U32 len, U32 needsFlags, bool panic) {    
-    U8 tmpReg3 = getTmpReg();
+void X64Asm::internal_addDynamicCheck(U32 address, U32 len, U32 needsFlags, bool panic, U8 tmpReg3) {    
     bool saveAllFlags = (needsFlags & OF) != 0;
     bool saveLowBitFlags = needsFlags!=0 && !saveAllFlags;    
     
-    if (saveAllFlags) {
-        pushFlagsToReg(tmpReg3, true, true);
-    } else if (saveLowBitFlags) {
-        pushFlagsToReg(tmpReg3, true, false);
-    }
     {
         U8 tmpReg1 = getTmpReg();
         U8 tmpReg2 = getTmpReg();
-        writeToRegFromValue(tmpReg2, true, this->cpu->thread->memory->id + address, 8);
+        bool inlineCmp = false;
+
+        if ((S32)address>=0 && (len==1 || len==2 || len==4)) {
+            inlineCmp = true;
+        } else {
+            writeToRegFromValue(tmpReg2, true, address, 4);
+        }
 
         if (len<=4) {        
             if (len==1) {
                 U8 original = readb(address);
 
-                // mov tmpReg2, [ip]        
-                writeToRegFromMem(tmpReg2, true, tmpReg2, true, -1, false, 0, 0, 1, false);
+                if (inlineCmp) {
+                    write8(0x41);
+                    write8(0x80);
+                    write8(0xb8 | HOST_MEM);
+                    write8(0x24);
+                    write32(address);
+                    write8(original);
+                } else {
+                    // mov tmpReg2, [ip]        
+                    writeToRegFromMem(tmpReg2, true, HOST_MEM, true, tmpReg2, true, 0, 0, 1, false);
 
-                // cmp tmpReg2, original
-                write8(0x41);
-                write8(0x80);
-                write8(0xf8+tmpReg2);
-                write8(original);
+                    // cmp tmpReg2, original
+                    write8(0x41);
+                    write8(0x80);
+                    write8(0xf8+tmpReg2);
+                    write8(original);
+                }
             } else if (len==2) {
                 U16 original = readw(address);
 
-                // mov tmpReg2, [ip]        
-                writeToRegFromMem(tmpReg2, true, tmpReg2, true, -1, false, 0, 0, 2, false);
+                if (inlineCmp) {
+                    write8(0x66);
+                    write8(0x41);
+                    write8(0x81);
+                    write8(0xb8 | HOST_MEM);
+                    write8(0x24);
+                    write32(address);
+                    write16(original);
+                } else {
+                    // mov tmpReg2, [ip]        
+                    writeToRegFromMem(tmpReg2, true, HOST_MEM, true, tmpReg2, true, 0, 0, 2, false);
 
-                // cmp tmpReg2, original
-                write8(0x66);
-                write8(0x41);
-                write8(0x81);
-                write8(0xf8+tmpReg2);
-                write16(original);
+                    // cmp tmpReg2, original
+                    write8(0x66);
+                    write8(0x41);
+                    write8(0x81);
+                    write8(0xf8+tmpReg2);
+                    write16(original);
+                }
             } else {
                 U32 original = readd(address);
 
-                if (len==3) {
-                    original&=0x00FFFFFF;
-                }
-
-                // mov tmpReg2, [ip]        
-                writeToRegFromMem(tmpReg2, true, tmpReg2, true, -1, false, 0, 0, 4, false);
-
-                if (len==3) {
-                    // and tmpReg2, 0x00FFFFFF
+                if (inlineCmp) {
                     write8(0x41);
                     write8(0x81);
-                    write8(0xe0+tmpReg2);
-                    write32(0x00FFFFFF);;
+                    write8(0xb8 | HOST_MEM);
+                    write8(0x24);
+                    write32(address);
+                    write32(original);
+                } else {
+                    if (len==3) {
+                        original&=0x00FFFFFF;
+                    }
+
+                    // mov tmpReg2, [ip]        
+                    writeToRegFromMem(tmpReg2, true, HOST_MEM, true, tmpReg2, true, 0, 0, 4, false);
+
+                    if (len==3) {
+                        // and tmpReg2, 0x00FFFFFF
+                        write8(0x41);
+                        write8(0x81);
+                        write8(0xe0+tmpReg2);
+                        write32(0x00FFFFFF);;
+                    }
+                    // cmp tmpReg2, original
+                    write8(0x41);
+                    write8(0x81);
+                    write8(0xf8+tmpReg2);
+                    write32(original);
                 }
-                // cmp tmpReg2, original
-                write8(0x41);
-                write8(0x81);
-                write8(0xf8+tmpReg2);
-                write32(original);
             }
         } else if (len<=8) {
             U64 original = readq(address);
@@ -1979,7 +2001,7 @@ void X64Asm::internal_addDynamicCheck(U32 address, U32 len, U32 needsFlags, bool
             writeToRegFromValue(tmpReg1, true, original, 8);
 
             // mov tmpReg2, [ip]        
-            writeToRegFromMem(tmpReg2, true, tmpReg2, true, -1, false, 0, 0, 8, false);
+            writeToRegFromMem(tmpReg2, true, HOST_MEM, true, tmpReg2, true, 0, 0, 8, false);
 
             U32 shift = 0;
             if (len==5) {
@@ -2043,25 +2065,36 @@ void X64Asm::internal_addDynamicCheck(U32 address, U32 len, U32 needsFlags, bool
         this->bufferPos = pos;
         write32(tmp-pos-4);
         this->bufferPos = tmp;
-    }
-    if (saveAllFlags) {
-        popFlagsFromReg(tmpReg3, true, true);
-    } else if (saveLowBitFlags) {
-        popFlagsFromReg(tmpReg3, true, false);
-    }  
-    releaseTmpReg(tmpReg3);
+    }    
 }
 
 void X64Asm::addDynamicCheck(bool panic) {
     DecodedBlock* block = NormalCPU::getBlockForInspectionButNotUsed(this->ip+this->cpu->seg[CS].address, this->cpu->big);
     U32 len = block->op->len;
     U32 needsFlags = instructionInfo[block->op->inst].flagsUsed | DecodedOp::getNeededFlags(block, block->op, OF|SF|ZF|PF|AF|CF);
+    U32 address = this->startOfOpIp + this->cpu->seg[CS].address;
+    U8 tmpReg3 = getTmpReg();
+    bool saveAllFlags = (needsFlags & OF) != 0;
+    bool saveLowBitFlags = needsFlags!=0 && !saveAllFlags;    
+    
+    if (saveAllFlags) {
+        pushFlagsToReg(tmpReg3, true, true);
+    } else if (saveLowBitFlags) {
+        pushFlagsToReg(tmpReg3, true, false);
+    }
+
     // :TODO: maybe find a way to cache this block for the next instruction?       
     if (len>8) {
-        internal_addDynamicCheck(this->startOfOpIp + this->cpu->seg[CS].address+8, len-8, needsFlags, panic);    
+        internal_addDynamicCheck(address+8, len-8, needsFlags, panic, tmpReg3);    
         len = 8;
     }
-    internal_addDynamicCheck(this->startOfOpIp + this->cpu->seg[CS].address, len, needsFlags, panic);    
+    internal_addDynamicCheck(address, len, needsFlags, panic, tmpReg3);    
+    if (saveAllFlags) {
+        popFlagsFromReg(tmpReg3, true, true);
+    } else if (saveLowBitFlags) {
+        popFlagsFromReg(tmpReg3, true, false);
+    }  
+    releaseTmpReg(tmpReg3);
     block->dealloc(false); 
 }
 

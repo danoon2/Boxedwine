@@ -177,7 +177,7 @@ private:
     U8 getTmpReg();
     void releaseTmpReg(U8 reg);
     bool isTmpReg(U8 reg);
-    void internal_addDynamicCheck(U32 address, U32 len, U32 needsFlags, bool useCall);
+    void internal_addDynamicCheck(U32 address, U32 len, U32 needsFlags, bool useCall, U8 tmpReg3);
 
     void push(S32 reg, bool isRegRex, U32 value, S32 bytes);
     void pushNativeReg(U8 reg, bool isRegRex);
