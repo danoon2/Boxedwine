@@ -26,6 +26,7 @@
 #include "devinput.h"
 #include "kunixsocket.h"
 #include "multiThreaded/sdlcallback.h"
+#include "../emulation/hardmmu/hard_memory.h"
 
 int bits_per_pixel = 32;
 int default_horz_res = 800;
@@ -633,24 +634,32 @@ void wndBlt(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32 yOrg, U32 width, 
             wnd->sdlTextureWidth = width;
         }
 
+#ifndef BOXEDWINE_64BIT_MMU
         for (y = 0; y < height; y++) {
             memcopyToNative(bits+(height-y-1)*pitch, sdlBuffer+y*pitch, pitch);
         } 
+#endif
         if (bits_per_pixel!=32) {
             // SDL_ConvertPixels(width, height, )
         }
 #ifdef BOXEDWINE_RECORDER
-        U32 toCopy = pitch*height;
-        if (wnd->bitsSize<toCopy) {
-            if (wnd->bits) {
-                delete[] wnd->bits;
+        if (Recorder::instance || Player::instance) {
+            U32 toCopy = pitch*height;
+            if (wnd->bitsSize<toCopy) {
+                if (wnd->bits) {
+                    delete[] wnd->bits;
+                }
+                wnd->bits = new U8[toCopy];
+                wnd->bitsSize = toCopy;
             }
-            wnd->bits = new U8[toCopy];
-            wnd->bitsSize = toCopy;
+            memcpy(wnd->bits, sdlBuffer, toCopy);
         }
-        memcpy(wnd->bits, sdlBuffer, toCopy);
-#endif
+#endif        
+#ifdef BOXEDWINE_64BIT_MMU
+        SDL_UpdateTexture(sdlTexture, NULL, getNativeAddress(KThread::currentThread()->process->memory, bits), pitch);
+#else
         SDL_UpdateTexture(sdlTexture, NULL, sdlBuffer, pitch);
+#endif
     }
 #else		
     {     
@@ -776,7 +785,12 @@ void sdlDrawAllWindows(KThread* thread, U32 hWnd, int count) {
             dstrect.y = wnd->windowRect.top*sdlScale/100;
             dstrect.w = wnd->sdlTextureWidth*sdlScale/100;
             dstrect.h = wnd->sdlTextureHeight*sdlScale/100;
-            SDL_RenderCopy(sdlRenderer, (SDL_Texture*)wnd->sdlTexture, NULL, &dstrect);	
+
+#ifdef BOXEDWINE_64BIT_MMU
+            SDL_RenderCopyEx(sdlRenderer, (SDL_Texture*)wnd->sdlTexture, NULL, &dstrect, 0, NULL, SDL_FLIP_VERTICAL);
+#else
+            SDL_RenderCopy(sdlRenderer, (SDL_Texture*)wnd->sdlTexture, NULL, &dstrect);	            
+#endif
         }        	
     } 
     SDL_RenderPresent(sdlRenderer);
