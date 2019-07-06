@@ -150,7 +150,7 @@ U32 X64CodeChunk::getStartOfInstructionByEip(U32 eip, U8** host, U32* index) {
     return 0;
 }
 
-X64CodeChunkLink* X64CodeChunk::addLinkFrom(X64CodeChunk* from, U32 toEip, void* toHostInstruction, void* fromHostOffset) {
+X64CodeChunkLink* X64CodeChunk::addLinkFrom(X64CodeChunk* from, U32 toEip, void* toHostInstruction, void* fromHostOffset, bool direct) {
     if (from==this) {
         kpanic("X64CodeChunk::addLinkFrom can not link to itself");
     }
@@ -159,6 +159,7 @@ X64CodeChunkLink* X64CodeChunk::addLinkFrom(X64CodeChunk* from, U32 toEip, void*
     link->toEip = toEip;
     link->toHostInstruction = toHostInstruction;
     link->fromHostOffset = fromHostOffset;
+    link->direct = direct;
 
     from->linksTo.addToBack(&link->linkTo);
     this->linksFrom.addToBack(&link->linkFrom);
@@ -173,14 +174,24 @@ void X64CodeChunk::deallocAndRetranslate() {
     X64CodeChunk* chunk = cpu->translateChunk(NULL, this->emulatedAddress-cpu->seg[CS].address);
     cpu->makePendingCodePagesReadOnly();
     this->linksFrom.for_each([chunk, cpu] (KListNode<X64CodeChunkLink*>* link) {        
-        U64 destHost = (U64)chunk->getHostFromEip(link->data->toEip);        
+        U64 destHost = (U64)chunk->getHostFromEip(link->data->toEip);
 
         link->data->linkFrom.remove();
+
         if (destHost) {
             chunk->linksFrom.addToBack(&link->data->linkFrom);
-        
-            ATOMIC_WRITE64((U64*)&link->data->toHostInstruction, destHost);
-        }
+            if (link->data->direct) {
+                U32 fromInstructionIndex;        
+                X64CodeChunk* fromChunk = cpu->thread->memory->getCodeChunkContainingHostAddress(link->data->fromHostOffset);
+                void* srcHostInstruction = NULL;
+                U32 srcEip = fromChunk->getEipThatContainsHostAddress(link->data->fromHostOffset, &srcHostInstruction, &fromInstructionIndex);
+                U64 srcHost = (U64)srcHostInstruction;   
+                U64 endOfJump = (U64)link->data->fromHostOffset - srcHost + 4;
+                *((U32*)link->data->fromHostOffset) = (U32)(destHost-srcHost-endOfJump);
+            } else {
+                ATOMIC_WRITE64((U64*)&link->data->toHostInstruction, destHost);
+            }
+        }                                            
     });
     chunk->makeLive();
 

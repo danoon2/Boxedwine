@@ -218,7 +218,7 @@ private:
     void setDisplacement32(U32 disp32);
     void setDisplacement8(U8 disp8);  
 
-    void addTodoLinkJump(U32 eip, bool sameChunk);       
+    void addTodoLinkJump(U32 eip, U32 size, bool sameChunk);       
     void doLoop(U32 eip);
     void doLoop16(U8 inst, U32 eip);
     void jmpReg(U8 reg, bool isRex);

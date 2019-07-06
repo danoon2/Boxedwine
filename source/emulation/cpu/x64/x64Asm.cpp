@@ -1767,7 +1767,7 @@ void X64Asm::jumpConditional(U8 condition, U32 eip) {
         write8(0x0F);
         write8(0x80+condition);
         write32(0);
-        addTodoLinkJump(eip, true);
+        addTodoLinkJump(eip, 4, true);
     } else {
         write8(0x70+condition);
         doLoop(eip);
@@ -1798,8 +1798,8 @@ void X64Asm::write16Buffer(U8* buffer, U16 value) {
 
 }
 
-void X64Asm::addTodoLinkJump(U32 eip, bool sameChunk) {
-    this->todoJump.push_back(TodoJump(eip, this->bufferPos-(sameChunk?4:11), (sameChunk?4:8), sameChunk, this->ipAddressCount));
+void X64Asm::addTodoLinkJump(U32 eip, U32 size, bool sameChunk) {
+    this->todoJump.push_back(TodoJump(eip, this->bufferPos-(size==4?4:11), size, sameChunk, this->ipAddressCount));
 }
 
 void X64Asm::jumpTo(U32 eip) {  
@@ -1811,17 +1811,23 @@ void X64Asm::jumpTo(U32 eip) {
     if (this->stopAfterInstruction!=(S32)this->ipAddressCount && (this->calculatedEipLen==0 || (eip>=this->startOfDataIp && eip<this->startOfDataIp+this->calculatedEipLen))) {
         write8(0xE9);
         write32(0);
-        addTodoLinkJump(eip, true);
+        addTodoLinkJump(eip, 4, true);
     } else {
         // when a chunk gets modified/replaced other chunks that point to it via this jump need to get updated
         // it is not possible to modify the executable code directly in an atomic way, so instead of embedding
         // where we will jump directly into the instruction, we will encode an instruction that reads the jump
         // address from memory (data).  That memory location can be atomically updated.
-        writeToRegFromValue(HOST_TMP, true, 0x0101010101010101l, 8);
-        write8(0x41);
-        write8(0xff);
-        write8(0x20 | HOST_TMP);
-        addTodoLinkJump(eip, false);
+        if (0) {
+            write8(0xE9);
+            write32(0);
+            addTodoLinkJump(eip, 4, false);
+        } else {
+            writeToRegFromValue(HOST_TMP, true, 0x0101010101010101l, 8);
+            write8(0x41);
+            write8(0xff);
+            write8(0x20 | HOST_TMP);
+            addTodoLinkJump(eip, 8, false);
+        }
     }
 }
 

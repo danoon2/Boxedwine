@@ -188,6 +188,22 @@ void x64CPU::link(X64Asm* data, X64CodeChunk* fromChunk, U32 offsetIntoChunk) {
                 kpanic("x64CPU::link can not link into the middle of an instruction");
             }
             data->write32Buffer(offset, (U32)(host - offset - 4));            
+        } else if (size==4 && !data->todoJump[i].sameChunk) {
+            U8* toHostAddress = (U8*)this->thread->memory->getExistingHostAddress(eip);
+
+            if (!toHostAddress) {
+                U8 op = 0xce;
+                U32 hostIndex = 0;
+                X64CodeChunk* chunk = X64CodeChunk::allocChunk(1, &eip, &hostIndex, &op, 1, eip-this->seg[CS].address, 1, false);
+                chunk->makeLive();
+                toHostAddress = (U8*)chunk->getHostAddress();            
+            }
+            X64CodeChunk* toChunk = this->thread->memory->getCodeChunkContainingHostAddress(toHostAddress);
+            if (!toChunk) {
+                kpanic("x64CPU::link to chunk missing");
+            }
+            X64CodeChunkLink* link = toChunk->addLinkFrom(fromChunk, eip, toHostAddress, offset, true);
+            data->write32Buffer(offset, (U32)(toHostAddress - offset - 4));            
         } else if (size==8 && !data->todoJump[i].sameChunk) {
             U8* toHostAddress = (U8*)this->thread->memory->getExistingHostAddress(eip);
 
@@ -202,7 +218,7 @@ void x64CPU::link(X64Asm* data, X64CodeChunk* fromChunk, U32 offsetIntoChunk) {
             if (!toChunk) {
                 kpanic("x64CPU::link to chunk missing");
             }
-            X64CodeChunkLink* link = toChunk->addLinkFrom(fromChunk, eip, toHostAddress, offset);
+            X64CodeChunkLink* link = toChunk->addLinkFrom(fromChunk, eip, toHostAddress, offset, false);
             data->write64Buffer(offset, (U64)&link->toHostInstruction);
         } else {
             kpanic("x64CPU::link unexpected patch size");

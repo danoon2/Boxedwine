@@ -17,6 +17,7 @@ public:
     // will point to the start of the instruction
     U32 toEip;
     void* toHostInstruction;
+    bool direct;
 
     KListNode<X64CodeChunkLink*> linkTo;
     KListNode<X64CodeChunkLink*> linkFrom;
@@ -46,7 +47,7 @@ public:
     void addNextEmulationChunk(X64CodeChunk* n) {this->nextEmulation = n; if (n) n->prevEmulation=this;}
     void removeFromList();
 
-    X64CodeChunkLink* addLinkFrom(X64CodeChunk* from, U32 toEip, void* toHostInstruction, void* fromHostOffset);
+    X64CodeChunkLink* addLinkFrom(X64CodeChunk* from, U32 toEip, void* toHostInstruction, void* fromHostOffset, bool direct);
     bool hasLinkTo(void* hostAddress);
     bool hasLinkToEip(U32 eip);
 
