@@ -1135,15 +1135,6 @@ void X64Asm::minSyncRegsFromHost() {
     writeToMemFromReg(1, false, HOST_CPU, true, -1, false, 0, CPU_OFFSET_ECX, 4, false);
     writeToMemFromReg(2, false, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EDX, 4, false);
     writeToMemFromReg(HOST_ESP, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_ESP, 4, false);
-
-#ifndef X64_EMULATE_FPU
-    // fxsave
-    write8(0x41);
-    write8(0x0f);
-    write8(0xae);
-    write8(0x80 | HOST_CPU);
-    write32(CPU_OFFSET_FPU_STATE);
-#endif
 }
 
 void X64Asm::syncRegsFromHost() {
@@ -1177,15 +1168,6 @@ void X64Asm::minSyncRegsToHost() {
     writeToRegFromMem(1, false, HOST_CPU, true, -1, false, 0, CPU_OFFSET_ECX, 4, false); // ECX is volitile
     writeToRegFromMem(2, false, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EDX, 4, false); // EDX is volitile
     writeToRegFromMem(HOST_ESP, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_ESP, 4, false); // R11 is volitile
-
-#ifndef X64_EMULATE_FPU
-    // fxrstor
-    write8(0x41);
-    write8(0x0f);
-    write8(0xae);
-    write8(0x88 | HOST_CPU);
-    write32(CPU_OFFSET_FPU_STATE);
-#endif
 }
 
 void X64Asm::syncRegsToHost(S8 excludeReg) {
