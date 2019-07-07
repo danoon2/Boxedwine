@@ -284,7 +284,7 @@ bool X64CodeChunk::containsEip(U32 eip, U32 len) {
 bool X64CodeChunk::retranslateSingleInstruction(x64CPU* cpu, void* address) {
     void* startofHostInstruction;
     U32 index;
-    U32 eip = this->getEipThatContainsHostAddress(address, &startofHostInstruction, &index);
+    U32 eip = this->getEipThatContainsHostAddress(address, &startofHostInstruction, &index) - cpu->seg[CS].address;
     X64Asm data(cpu);
     data.ip = eip;
     data.startOfDataIp = eip;
