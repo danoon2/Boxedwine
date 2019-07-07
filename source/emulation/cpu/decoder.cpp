@@ -740,6 +740,8 @@ const InstructionInfo instructionInfo[] = {
     {0, 16, 0, ZF, 0, 0, 0}, // LarR16E16
     {0, 0, 0, ZF, 0, 0, 0}, // LslR16R16
     {0, 16, 0, ZF, 0, 0, 0}, // LslR16E16
+    {0, 0, 0, ZF, 0, 0, 0}, // LslR32R32
+    {0, 16, 0, ZF, 0, 0, 0}, // LslR32E32 (intentional 16-bit read)
 
     {0, 0, 0, 0, OF, 0, 0}, // CmovO_R16R16 
     {0, 16, 0, 0, OF, 0, 0}, // CmovO_R16E16
@@ -2092,6 +2094,8 @@ const LogInstruction instructionLog[] = {
     {"Lar", 16, logRE},
     {"Lsl", 16, logRR},
     {"Lsl", 16, logRE},
+    {"Lsl", 32, logRR},
+    {"Lsl", 32, logRE},
 
     {"CmovO", 16, logRR},
     {"CmovO", 16, logRE},
@@ -4318,6 +4322,7 @@ DecodeRepZ decodeRepZ;                                           // REPZ
 
 DecodeRMr decodeLar16(LarR16R16, LarR16E16);                      // LAR
 DecodeRMr decodeLsl16(LslR16R16, LslR16E16);                      // LSL
+DecodeRMr decodeLsl32(LslR32R32, LslR32E32);                      // LSL
 
 DecodeRMr decodeCmovO_16(CmovO_R16R16, CmovO_R16E16);             // CMOVO
 DecodeRMr decodeCmovNO_16(CmovNO_R16R16, CmovNO_R16E16);          // CMOVNO
@@ -4582,7 +4587,7 @@ const Decode* const decoder[] = {
     &decodeLock, &decodeICEBP, &decodeRepNZ, &decodeRepZ, &decodeHlt, &decodeCmc, &decodeGroup3_8, &decodeGroup3_32,
     &decodeClc, &decodeStc, &decodeCli, &decodeSti, &decodeCld, &decodeStd, &decodeGroup4_8, &decodeGroup5_32,
     // 0x300
-    &decodeGroup6_32, &decodeGroup7_32, 0, 0, 0, 0, 0, 0,
+    &decodeGroup6_32, &decodeGroup7_32, 0, &decodeLsl32, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0,
     // 0x310
     0, 0, 0, 0, 0, 0, 0, 0,

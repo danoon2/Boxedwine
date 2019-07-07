@@ -135,7 +135,15 @@ void common_lslr16e16(CPU* cpu, U32 reg, U32 address){
     cpu->reg[reg].u16 = cpu->lsl(readw(address), cpu->reg[reg].u16);
 }
 
+void common_lslr32r32(CPU* cpu, U32 dstReg, U32 srcReg){
+    cpu->reg[dstReg].u32 = cpu->lsl(cpu->reg[srcReg].u32, cpu->reg[dstReg].u32);
+}
+void common_lslr32e32(CPU* cpu, U32 reg, U32 address){
+    cpu->reg[reg].u32 = cpu->lsl(readw(address), cpu->reg[reg].u32); // intentional 16-bit read
+}
+
 U32 common_lsl(CPU* cpu, U32 selector, U32 limit) {
+    if (!cpu->logFile) cpu->logFile = fopen("lsl.txt", "w");
     return cpu->lsl(selector, limit);
 }
 

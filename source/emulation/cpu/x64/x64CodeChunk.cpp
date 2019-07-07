@@ -233,7 +233,8 @@ bool X64CodeChunk::hasLinkToEip(U32 eip) {
 void X64CodeChunk::invalidateStartingAt(U32 eipAddress) {    
     U32 eipIndex = 0;
     U8* host = NULL;
-    U32 currentEip = KThread::currentThread()->cpu->eip.u32+KThread::currentThread()->cpu->seg[CS].address;    
+    x64CPU* cpu = (x64CPU*)KThread::currentThread()->cpu;
+    U32 currentEip = (cpu->big?cpu->eip.u32:cpu->eip.u16)+KThread::currentThread()->cpu->seg[CS].address;    
     U32 eip = this->getStartOfInstructionByEip(eipAddress, &host, &eipIndex);
     // make sure we won't invalidate the current instruction, *2 just to be sure 
     // getStartOfInstructionByEip doesn't roll back to the current instruction

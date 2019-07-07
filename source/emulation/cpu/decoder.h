@@ -769,6 +769,8 @@ enum Instruction {
     LarR16E16,
     LslR16R16,
     LslR16E16,
+    LslR32R32,
+    LslR32E32,
 
     CmovO_R16R16, 
     CmovO_R16E16,

@@ -17,6 +17,8 @@ void common_larr16e16(CPU* cpu, U32 reg, U32 address);
 U32 common_lar(CPU* cpu, U32 selector, U32 ar);
 void common_lslr16r16(CPU* cpu, U32 dstReg, U32 srcReg);
 void common_lslr16e16(CPU* cpu, U32 reg, U32 address);
+void common_lslr32r32(CPU* cpu, U32 dstReg, U32 srcReg);
+void common_lslr32e32(CPU* cpu, U32 reg, U32 address);
 U32 common_lsl(CPU* cpu, U32 selector, U32 limit);
 void common_verre16(CPU* cpu, U32 address);
 void common_verwe16(CPU* cpu, U32 address);

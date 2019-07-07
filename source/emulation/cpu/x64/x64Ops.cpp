@@ -1788,7 +1788,7 @@ static U32 grp5d(X64Asm* data) {
         data->callE(true, rm);     
         data->done = true;
     } else if (g==3) { // call far Ed
-        data->callFar(false, rm);
+        data->callFar(true, rm);
         data->done = true;
     } else if (g==4) { // jmp near Ed
         data->jmpE(true, rm);
@@ -1807,6 +1807,10 @@ static U32 grp5d(X64Asm* data) {
 // LSL
 static U32 lsl(X64Asm* data) {
     data->lsl(false, data->fetch8());
+    return 0;
+}
+static U32 lsl32(X64Asm* data) {
+    data->lsl(true, data->fetch8());
     return 0;
 }
 
@@ -2351,7 +2355,7 @@ X64Decoder x64Decoder[1024] = {
     keepSame, keepSame, cli, sti, keepSame, keepSame, instGrp4, grp5d,
 
     // 300
-    invalidOp, inst32RMSafeG, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp,
+    invalidOp, inst32RMSafeG, invalidOp, lsl32, invalidOp, invalidOp, invalidOp, invalidOp,
     invalidOp, invalidOp, invalidOp, keepSame, invalidOp, invalidOp, invalidOp, invalidOp,
     // 310
     sse1, sse1, sse1, sse1, sse1, sse1, sse1, sse1,

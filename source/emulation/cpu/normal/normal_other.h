@@ -544,6 +544,16 @@ void OPCALL normal_lslr16e16(CPU* cpu, DecodedOp* op) {
     cpu->reg[op->reg].u16 = cpu->lsl(readw(eaa(cpu, op)), cpu->reg[op->reg].u16);
     NEXT();
 }
+void OPCALL normal_lslr32r32(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
+    cpu->reg[op->reg].u32 = cpu->lsl(cpu->reg[op->rm].u32, cpu->reg[op->reg].u32);
+    NEXT();
+}
+void OPCALL normal_lslr32e32(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
+    cpu->reg[op->reg].u32 = cpu->lsl(readw(eaa(cpu, op)), cpu->reg[op->reg].u32); // intentional 16-bit read
+    NEXT();
+}
 void OPCALL normal_verre16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     cpu->verr(readw(eaa(cpu, op)));

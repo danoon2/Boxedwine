@@ -657,6 +657,7 @@ void X64Asm::writeToRegFromE(U8 reg, bool isRegRex, U8 rm, U8 bytes) {
 // it is ok to trash current op data
 void X64Asm::getNativeAddressInRegFromE(U8 reg, bool isRegRex, U8 rm) {
     this->op = 0x8d;
+    this->multiBytePrefix = false;
     if (this->cpu->big) {
         this->operandPrefix = false;    
     } else {
@@ -1803,6 +1804,9 @@ void X64Asm::addTodoLinkJump(U32 eip, U32 size, bool sameChunk) {
 }
 
 void X64Asm::jumpTo(U32 eip) {  
+    if (!this->cpu->big) {
+        eip = eip & 0xffff;
+    }
 #ifdef _DEBUG
     this->writeToMemFromValue(this->startOfOpIp, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EIP_FROM, 4, false);
 #endif
@@ -1818,6 +1822,7 @@ void X64Asm::jumpTo(U32 eip) {
         // where we will jump directly into the instruction, we will encode an instruction that reads the jump
         // address from memory (data).  That memory location can be atomically updated.
         if (0) {
+            // this can result in random crashes, but it gives about a 5% boost, maybe in the future I can figure out when to use it
             write8(0xE9);
             write32(0);
             addTodoLinkJump(eip, 4, false);
