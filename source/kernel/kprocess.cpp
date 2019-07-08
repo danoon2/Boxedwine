@@ -697,10 +697,11 @@ U32 KProcess::execve(const std::string& path, std::vector<std::string>& args, co
     BOXEDWINE_CONDITION_LOCK(this->exitOrExecCond);
     BOXEDWINE_CONDITION_SIGNAL_ALL(this->exitOrExecCond);
     BOXEDWINE_CONDITION_UNLOCK(this->exitOrExecCond);
-       
-    KThread::currentThread()->cpu->restart();
 
     //klog("%d/%d exec %s (cwd=%s)", KThread::currentThread()->id, this->id, this->commandLine.c_str(), this->currentDirectory.c_str());
+
+    KThread::currentThread()->cpu->restart();
+    
     return 1;
 }
 

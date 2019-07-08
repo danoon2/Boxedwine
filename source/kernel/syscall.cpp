@@ -170,11 +170,10 @@ static void readStringArray(U32 address, std::vector<std::string>& results) {
 
     while (true) {
         U32 p = readd(address);		
+        if (!p)
+            break;
         char* str = getNativeString(p, tmp2, sizeof(tmp2));
-        address+=4;
-
-        if (!str || !str[0])
-            break;		
+        address+=4;	
         results.push_back(str);
     }
 }
