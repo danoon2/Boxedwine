@@ -8,10 +8,7 @@
 #include "../normal/normalCPU.h"
 #include "../normal/instructions.h"
 
-// still doesn't work
-#ifdef X64_EMULATE_FPU
 #include "../common/common_fpu.h"
-#endif
 
 #define G(rm) ((rm >> 3) & 7)
 #define E(rm) (rm & 7)
@@ -1154,14 +1151,14 @@ void X64Asm::syncRegsFromHost() {
     writeToMemFromReg(tmpReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_FLAGS, 4, false);
     releaseTmpReg(tmpReg);
 
-#ifndef X64_EMULATE_FPU
-    // fxsave
-    write8(0x41);
-    write8(0x0f);
-    write8(0xae);
-    write8(0x80 | HOST_CPU);
-    write32(CPU_OFFSET_FPU_STATE);
-#endif
+    if (!this->cpu->thread->process->emulateFPU) {
+        // fxsave
+        write8(0x41);
+        write8(0x0f);
+        write8(0xae);
+        write8(0x80 | HOST_CPU);
+        write32(CPU_OFFSET_FPU_STATE);
+    }
 }
 
 void X64Asm::minSyncRegsToHost() {
@@ -1198,14 +1195,18 @@ void X64Asm::syncRegsToHost(S8 excludeReg) {
     popNativeFlags();
     releaseTmpReg(tmpReg);
 
-#ifndef X64_EMULATE_FPU
-    // fxrstor
-    write8(0x41);
-    write8(0x0f);
-    write8(0xae);
-    write8(0x88 | HOST_CPU);
-    write32(CPU_OFFSET_FPU_STATE);
-#endif
+    if (!cpu->thread->process->emulateFPU) {
+        // fninit
+        write8(0xDB);
+        write8(0xE3);
+
+        // fxrstor
+        write8(0x41);
+        write8(0x0f);
+        write8(0xae);
+        write8(0x88 | HOST_CPU);
+        write32(CPU_OFFSET_FPU_STATE);
+    }
 }
 
 void badStack(CPU* cpu) {
@@ -1474,7 +1475,9 @@ void X64Asm::daa() {
     U32 tmpReg = getTmpReg();
     U32 tmpReg2 = getTmpReg();
 
-    pushFlagsToReg(tmpReg, true, true);
+    // pushFlagsToReg can not be used if the flags need to be modified
+    pushNativeFlags();
+    popNativeReg(tmpReg, true);
 
     /*
     if (flags & CF) {
@@ -1574,8 +1577,9 @@ void X64Asm::daa() {
     setZF_onAL(tmpReg);
     setPF_onAL(tmpReg);
     
-    popFlagsFromReg(tmpReg, true, true);
+    pushNativeReg(tmpReg, true);
     releaseTmpReg(tmpReg);
+    popNativeFlags();
 }
 
 // :TODO: maybe make native versions
@@ -3172,7 +3176,11 @@ void X64Asm::bound32(U8 rm) {
     }); 
 }
 
-#ifdef X64_EMULATE_FPU
+void common_fpu_write_address(x64CPU* cpu, PFN_FPU_ADDRESS pfn, U32 address, U32 len) {
+    X64AsmCodeMemoryWrite w(cpu, address, len);
+    pfn(cpu, address);
+}
+
 void X64Asm::callFpuNoArg(PFN_FPU pfn) {
     syncRegsFromHost();
     writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
@@ -3188,10 +3196,19 @@ void X64Asm::callFpuWithAddress(PFN_FPU_ADDRESS pfn, U8 rm) {
     syncRegsToHost();
 }
 
+void X64Asm::callFpuWithAddressWrite(PFN_FPU_ADDRESS pfn, U8 rm, U32 len) {
+    syncRegsFromHost();
+    getNativeAddressInRegFromE(0, true, rm);    
+    writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
+    writeToRegFromValue(2, false, (U64)pfn, 8);
+    writeToRegFromValue(1, true, len, 4);
+    callHost(common_fpu_write_address);
+    syncRegsToHost();
+}
+
 void X64Asm::callFpuWithArg(PFN_FPU_REG pfn, U32 arg) {
     syncRegsFromHost();
-    writeToRegFromValue(2, false, (U32)rm, 4);
-    getNativeAddressInRegFromE(2, false, rm);
+    writeToRegFromValue(2, false, (U32)arg, 4);
     writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
     callHost(pfn);
     syncRegsToHost();
@@ -3288,12 +3305,12 @@ void X64Asm::fpu1(U8 rm) {
         switch ((rm >> 3) & 7) {
             case 0: callFpuWithAddress(common_FLD_SINGLE_REAL, rm); break;
             case 1: invalidOp(this->inst); break;
-            case 2: callFpuWithAddress(common_FST_SINGLE_REAL, rm); break;
-            case 3: callFpuWithAddress(common_FST_SINGLE_REAL_Pop, rm); break;
+            case 2: callFpuWithAddressWrite(common_FST_SINGLE_REAL, rm, 4); break;
+            case 3: callFpuWithAddressWrite(common_FST_SINGLE_REAL_Pop, rm, 4); break;
             case 4: callFpuWithAddress(common_FLDENV, rm); break;
             case 5: callFpuWithAddress(common_FLDCW, rm); break;
-            case 6: callFpuWithAddress(common_FNSTENV, rm); break;
-            case 7: callFpuWithAddress(common_FNSTCW, rm); break;
+            case 6: callFpuWithAddressWrite(common_FNSTENV, rm, (cpu->big?12:6)); break;
+            case 7: callFpuWithAddressWrite(common_FNSTCW, rm, 2); break;
         }
     }
 }
@@ -3351,11 +3368,11 @@ void X64Asm::fpu3(U8 rm) {
     } else {
         switch ((rm >> 3) & 7) {
             case 0: callFpuWithAddress(common_FILD_DWORD_INTEGER, rm); break;
-            case 1: callFpuWithAddress(common_FISTTP32, rm); break;
-            case 2: callFpuWithAddress(common_FIST_DWORD_INTEGER, rm); break;
-            case 3: callFpuWithAddress(common_FIST_DWORD_INTEGER_Pop, rm); break;
+            case 1: callFpuWithAddressWrite(common_FISTTP32, rm, 4); break;
+            case 2: callFpuWithAddressWrite(common_FIST_DWORD_INTEGER, rm, 4); break;
+            case 3: callFpuWithAddressWrite(common_FIST_DWORD_INTEGER_Pop, rm, 4); break;
             case 5: callFpuWithAddress(common_FLD_EXTENDED_REAL, rm); break;
-            case 7: callFpuWithAddress(common_FSTP_EXTENDED_REAL, rm); break;
+            case 7: callFpuWithAddressWrite(common_FSTP_EXTENDED_REAL, rm, 10); break;
             default: invalidOp(this->inst); break;
         }
     }
@@ -3401,13 +3418,13 @@ void X64Asm::fpu5(U8 rm) {
     } else {
         switch ((rm >> 3) & 7) {
             case 0: callFpuWithAddress(common_FLD_DOUBLE_REAL, rm); break;
-            case 1: callFpuWithAddress(common_FISTTP64, rm); break;
-            case 2: callFpuWithAddress(common_FST_DOUBLE_REAL, rm); break;
-            case 3: callFpuWithAddress(common_FST_DOUBLE_REAL_Pop, rm); break;
+            case 1: callFpuWithAddressWrite(common_FISTTP64, rm, 8); break;
+            case 2: callFpuWithAddressWrite(common_FST_DOUBLE_REAL, rm, 8); break;
+            case 3: callFpuWithAddressWrite(common_FST_DOUBLE_REAL_Pop, rm, 8); break;
             case 4: callFpuWithAddress(common_FRSTOR, rm); break;
             case 5: invalidOp(this->inst); break;
-            case 6: callFpuWithAddress(common_FNSAVE, rm); break;
-            case 7: callFpuWithAddress(common_FNSTSW, rm); break;
+            case 6: callFpuWithAddressWrite(common_FNSAVE, rm, (cpu->big?28:14)+80); break;
+            case 7: callFpuWithAddressWrite(common_FNSTSW, rm, 2); break;
         }
     }
 }
@@ -3466,13 +3483,13 @@ void X64Asm::fpu7(U8 rm) {
     } else  {
         switch ((rm >> 3) & 7) {
             case 0: callFpuWithAddress(common_FILD_WORD_INTEGER, rm); break;
-            case 1: callFpuWithAddress(common_FISTTP16, rm); break;
-            case 2: callFpuWithAddress(common_FIST_WORD_INTEGER, rm); break;
-            case 3: callFpuWithAddress(common_FIST_WORD_INTEGER_Pop, rm); break;
+            case 1: callFpuWithAddressWrite(common_FISTTP16, rm, 2); break;
+            case 2: callFpuWithAddressWrite(common_FIST_WORD_INTEGER, rm, 2); break;
+            case 3: callFpuWithAddressWrite(common_FIST_WORD_INTEGER_Pop, rm, 2); break;
             case 4: callFpuWithAddress(common_FBLD_PACKED_BCD, rm); break;
             case 5: callFpuWithAddress(common_FILD_QWORD_INTEGER, rm); break;
-            case 6: callFpuWithAddress(common_FBSTP_PACKED_BCD, rm); break;
-            case 7: callFpuWithAddress(common_FISTP_QWORD_INTEGER, rm); break;
+            case 6: callFpuWithAddressWrite(common_FBSTP_PACKED_BCD, rm, 10); break;
+            case 7: callFpuWithAddressWrite(common_FISTP_QWORD_INTEGER, rm, 8); break;
         }
     }
 }
@@ -3507,5 +3524,4 @@ void X64Asm::addReturnFromTest() {
 
     write8(0xc3); // retn
 }
-#endif
 #endif

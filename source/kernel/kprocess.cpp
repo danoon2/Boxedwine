@@ -75,6 +75,9 @@ KProcess::KProcess(U32 id) : id(id),
     exitOrExecCond("KProcess::exitOrExecCond"),
     hasSetStackMask(false) {
 
+#ifdef BOXEDWINE_X64
+    emulateFPU=false;
+#endif
     for (int i=0;i<LDT_ENTRIES;i++) {
         this->ldt[i].seg_not_present = 1;
         this->ldt[i].read_exec_only = 1;

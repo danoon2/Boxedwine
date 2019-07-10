@@ -33,11 +33,9 @@
 #define CPU_OFFSET_EIP (U32)(offsetof(x64CPU, eip.u32))
 #define CPU_OFFSET_EIP_FROM (U32)(offsetof(x64CPU, fromEip))
 
-#ifdef X64_EMULATE_FPU
 typedef void (*PFN_FPU_REG)(CPU* cpu, U32 reg);
 typedef void (*PFN_FPU_ADDRESS)(CPU* cpu, U32 address);
 typedef void (*PFN_FPU)(CPU* cpu);
-#endif
 
 #define CLEAR_BUFFER_SIZE 10
 
@@ -159,7 +157,7 @@ public:
     void doJmp();
     void bound32(U8 rm);
     void bound16(U8 rm);
-#ifdef X64_EMULATE_FPU
+
     void fpu0(U8 rm);
     void fpu1(U8 rm);
     void fpu2(U8 rm);
@@ -168,7 +166,6 @@ public:
     void fpu5(U8 rm);
     void fpu6(U8 rm);
     void fpu7(U8 rm);
-#endif
 
 #ifdef __TEST
     void addReturnFromTest();
@@ -233,11 +230,10 @@ private:
     void popFlagsFromReg(U8 reg, bool isRexReg, bool includeOF);
     void xchange4(U8 reg1, bool isRexReg1, U8 reg2, bool isRexReg2);
 
-#ifdef X64_EMULATE_FPU
     void callFpuNoArg(PFN_FPU pfn);
     void callFpuWithAddress(PFN_FPU_ADDRESS pfn, U8 rm);
+    void callFpuWithAddressWrite(PFN_FPU_ADDRESS pfn, U8 rm, U32 len);
     void callFpuWithArg(PFN_FPU_REG pfn, U32 arg);
-#endif
 };
 #endif
 #endif

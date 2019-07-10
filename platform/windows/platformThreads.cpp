@@ -21,8 +21,7 @@ void syncFromException(x64CPU* cpu, struct _EXCEPTION_POINTERS *ep, bool include
     cpu->flags = ep->ContextRecord->EFlags;
     cpu->lazyFlags = FLAGS_NONE;
 
-#ifndef X64_EMULATE_FPU
-    if (includeFPU) {
+    if (includeFPU && !cpu->thread->process->emulateFPU) {
         cpu->fpu.SetCW(ep->ContextRecord->FltSave.ControlWord);
         cpu->fpu.SetSW(ep->ContextRecord->FltSave.StatusWord);
         cpu->fpu.SetTagFromAbridged(ep->ContextRecord->FltSave.TagWord); 
@@ -36,7 +35,6 @@ void syncFromException(x64CPU* cpu, struct _EXCEPTION_POINTERS *ep, bool include
             }
         }
     }
-#endif
 }
 
 void syncToException(x64CPU* cpu, struct _EXCEPTION_POINTERS *ep, bool includeFPU) {
@@ -53,8 +51,7 @@ void syncToException(x64CPU* cpu, struct _EXCEPTION_POINTERS *ep, bool includeFP
     cpu->fillFlags();
     ep->ContextRecord->EFlags = cpu->flags;
 
-#ifndef X64_EMULATE_FPU
-    if (includeFPU) {
+    if (includeFPU && !cpu->thread->process->emulateFPU) {
         ep->ContextRecord->FltSave.ControlWord = cpu->fpu.CW();
         ep->ContextRecord->FltSave.StatusWord = cpu->fpu.SW();
         ep->ContextRecord->FltSave.TagWord = cpu->fpu.GetAbridgedTag();
@@ -68,7 +65,6 @@ void syncToException(x64CPU* cpu, struct _EXCEPTION_POINTERS *ep, bool includeFP
             }
         }
     }
-#endif
 }
 
 LONG handleChangedUnpatchedCode(struct _EXCEPTION_POINTERS *ep, x64CPU* cpu) {

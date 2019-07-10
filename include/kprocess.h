@@ -237,6 +237,7 @@ public:
     U32 nextNativeAddress;
     U32 glStrings[NUMBER_OF_STRINGS];
     U32 allocNative(U32 len);
+    bool emulateFPU;
 #endif
 private:
     std::unordered_map<U32, KFileDescriptor*> fds;
