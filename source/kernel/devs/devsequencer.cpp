@@ -19,6 +19,8 @@
 
 #include "../../io/fsvirtualopennode.h"
 
+extern bool soundEnabled;
+
 class DevSequencer : public FsVirtualOpenNode {
 public:
     DevSequencer(const BoxedPtr<FsNode>& node, U32 flags) : FsVirtualOpenNode(node, flags) {}
@@ -143,38 +145,40 @@ static struct {
 } midi;
 
 void MIDI_RawOutByte(U8 data) {
-	/* Test for a realtime MIDI message */
-	if (data>=0xf8) {
-		midi.rt_buf[0]=data;
-		PlayMsg(midi.rt_buf);
-		return;
-	}	 
-	/* Test for a active sysex tranfer */
-	if (midi.status==0xf0) {
-		if (!(data&0x80)) { 
-			if (midi.sysex.used<(SYSEX_SIZE-1)) midi.sysex.buf[midi.sysex.used++]=data;
-			return;
-		} else {
-			midi.sysex.buf[midi.sysex.used++]=0xf7;
-			PlaySysex(midi.sysex.buf,midi.sysex.used);
-		}
-	}
-	if (data&0x80) {
-		midi.status=data;
-		midi.cmd_pos=0;
-		midi.cmd_len=MIDI_evt_len[data];
-		if (midi.status==0xf0) {
-			midi.sysex.buf[0]=0xf0;
-			midi.sysex.used=1;
-		}
-	}
-	if (midi.cmd_len) {
-		midi.cmd_buf[midi.cmd_pos++]=data;
-		if (midi.cmd_pos >= midi.cmd_len) {
-			PlayMsg(midi.cmd_buf);
-			midi.cmd_pos=1;		//Use Running status
-		}
-	}
+    if (soundEnabled) {
+	    /* Test for a realtime MIDI message */
+	    if (data>=0xf8) {
+		    midi.rt_buf[0]=data;
+		    PlayMsg(midi.rt_buf);
+		    return;
+	    }	 
+	    /* Test for a active sysex tranfer */
+	    if (midi.status==0xf0) {
+		    if (!(data&0x80)) { 
+			    if (midi.sysex.used<(SYSEX_SIZE-1)) midi.sysex.buf[midi.sysex.used++]=data;
+			    return;
+		    } else {
+			    midi.sysex.buf[midi.sysex.used++]=0xf7;
+			    PlaySysex(midi.sysex.buf,midi.sysex.used);
+		    }
+	    }
+	    if (data&0x80) {
+		    midi.status=data;
+		    midi.cmd_pos=0;
+		    midi.cmd_len=MIDI_evt_len[data];
+		    if (midi.status==0xf0) {
+			    midi.sysex.buf[0]=0xf0;
+			    midi.sysex.used=1;
+		    }
+	    }
+	    if (midi.cmd_len) {
+		    midi.cmd_buf[midi.cmd_pos++]=data;
+		    if (midi.cmd_pos >= midi.cmd_len) {
+			    PlayMsg(midi.cmd_buf);
+			    midi.cmd_pos=1;		//Use Running status
+		    }
+	    }
+    }
 }
 #endif
 

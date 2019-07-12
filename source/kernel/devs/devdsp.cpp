@@ -25,6 +25,8 @@
 #include <SDL.h>
 #include <string.h>
 
+extern bool soundEnabled;
+
 #define DSP_BUFFER_SIZE 1024*256
 ringbuffer<U8> audioBuffer(DSP_BUFFER_SIZE);
 U8 audioSilence;
@@ -91,14 +93,20 @@ public:
     void closeAudio() {
         if (this->data->isDspOpen) {
             bool needClose = true;
-            SDL_LockAudio();
+            if (soundEnabled) {
+                SDL_LockAudio();
+            }
             if (audioBuffer.getOccupied() || (this->data->cvtBufPos!=0 && this->data->cvtBufPos<this->data->cvt.len_cvt)) {                
                 closeWhenDone = true;
                 needClose = false;
             }
-            SDL_UnlockAudio();
+            if (soundEnabled) {
+                SDL_UnlockAudio();
+            }
             if (needClose) {
-                SDL_CloseAudio();
+                if (soundEnabled) {
+                    SDL_CloseAudio();
+                }
                 delete this->data;                
             }
             this->data = new DevDspData();
@@ -202,21 +210,29 @@ void DevDsp::openAudio() {
 	this->data->want.userdata = this->data;
 
     if (closeWhenDone) {
-        SDL_CloseAudio();
+        if (soundEnabled) {
+            SDL_CloseAudio();
+        }
         closeWhenDone = false;
     }
-    if (SDL_OpenAudio(&this->data->want, &this->data->got) < 0) {
-        printf("Failed to open audio: %s\n", SDL_GetError());
-    }
-    if (this->data->want.freq != this->data->got.freq || this->data->want.channels != this->data->got.channels || this->data->want.format != this->data->got.format) {
-        this->data->sameFormat = false;
-        SDL_BuildAudioCVT(&this->data->cvt, this->data->want.format, this->data->want.channels, this->data->want.freq, this->data->got.format, this->data->got.channels, this->data->got.freq);
-    } else {
+    if (!soundEnabled) {
         this->data->sameFormat = true;
+    } else {
+        if (SDL_OpenAudio(&this->data->want, &this->data->got) < 0) {
+            printf("Failed to open audio: %s\n", SDL_GetError());
+        }
+        if (this->data->want.freq != this->data->got.freq || this->data->want.channels != this->data->got.channels || this->data->want.format != this->data->got.format) {
+            this->data->sameFormat = false;
+            SDL_BuildAudioCVT(&this->data->cvt, this->data->want.format, this->data->want.channels, this->data->want.freq, this->data->got.format, this->data->got.channels, this->data->got.freq);
+        } else {
+            this->data->sameFormat = true;
+        }
     }
 	this->data->isDspOpen = true;
     
-    SDL_PauseAudio(0);
+    if (soundEnabled) {
+        SDL_PauseAudio(0);
+    }
 	this->data->pauseAtLen = 0xFFFFFFFF;
 	this->data->dspFragSize = this->data->got.size;
 
@@ -232,18 +248,20 @@ U32 DevDsp::readNative(U8* buffer, U32 len){
 }
 
 U32 DevDsp::writeNative(U8* buffer, U32 len) {    
-    if (!this->data->isDspOpen)
-        this->openAudio();
-    SDL_LockAudio();
-    BOXEDWINE_CONDITION_LOCK(data->bufferCond);
-    while (len>audioBuffer.getFree()) {
-        SDL_UnlockAudio();
-        BOXEDWINE_CONDITION_WAIT(data->bufferCond);
+    if (soundEnabled) {
+        if (!this->data->isDspOpen)
+            this->openAudio();
         SDL_LockAudio();
+        BOXEDWINE_CONDITION_LOCK(data->bufferCond);
+        while (len>audioBuffer.getFree()) {
+            SDL_UnlockAudio();
+            BOXEDWINE_CONDITION_WAIT(data->bufferCond);
+            SDL_LockAudio();
+        }
+        audioBuffer.write(buffer, len);
+        BOXEDWINE_CONDITION_UNLOCK(data->bufferCond);
+        SDL_UnlockAudio();	
     }
-    audioBuffer.write(buffer, len);
-    BOXEDWINE_CONDITION_UNLOCK(data->bufferCond);
-    SDL_UnlockAudio();	
     return len;
 }
 
@@ -390,12 +408,16 @@ U32 DevDsp::ioctl(U32 request) {
         return 0;
     case 0x5010: // SNDCTL_DSP_SETTRIGGER
         if (readd(IOCTL_ARG1) & PCM_ENABLE_OUTPUT) {
-            SDL_PauseAudio(0);
+            if (soundEnabled) {
+                SDL_PauseAudio(0);
+            }
 			this->data->pauseAtLen = 0xFFFFFFFF;
         } else {            
 			this->data->pauseAtLen = (U32)audioBuffer.getOccupied();
 			if (this->data->pauseAtLen == 0) {
-                SDL_PauseAudio(0);
+                if (soundEnabled) {
+                    SDL_PauseAudio(0);
+                }
             }
         }
         return 0;
@@ -405,7 +427,9 @@ U32 DevDsp::ioctl(U32 request) {
         if (data->pauseEnabled()) {
 			writed(IOCTL_ARG1 + 8, this->data->pauseAtLen); // Current DMA pointer value
 			if (this->data->pauseAtLen == 0) {
-                SDL_PauseAudio(0);
+                if (soundEnabled) {
+                    SDL_PauseAudio(0);
+                }
             }
         } else {
 			writed(IOCTL_ARG1 + 8, (U32)audioBuffer.getOccupied()); // Current DMA pointer value

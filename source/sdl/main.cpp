@@ -110,6 +110,9 @@ FsOpenNode* openKernelCommandLine(const BoxedPtr<FsNode>& node, U32 flags) {
     return new BufferAccess(node, flags, "");
 }
 
+bool soundEnabled = true;
+bool videoEnabled = true;
+
 int boxedmain(int argc, const char **argv) {
     int i;
     const char* root = ".";
@@ -121,8 +124,7 @@ int boxedmain(int argc, const char **argv) {
     int effectiveUserId = UID;
     int effectiveGroupId = GID;
     const char* workingDir = "/home/username";
-    char pwd[MAX_FILEPATH_LEN];
-	U32 sound = 1;
+    char pwd[MAX_FILEPATH_LEN];	
     bool resolutionSet = false;
     bool euidSet = false;
 
@@ -166,7 +168,9 @@ int boxedmain(int argc, const char **argv) {
         } else if (!strcmp(argv[i], "-gensrc")) {
             gensrc = 1;
 		} else if (!strcmp(argv[i], "-nosound")) {
-			sound = 0;
+			soundEnabled = false;
+        } else if (!strcmp(argv[i], "-novideo")) {
+			videoEnabled = false;
         } else if (!strcmp(argv[i], "-env")) {
 			ppenv[envc++] = argv[i+1];
             i++;
@@ -305,11 +309,9 @@ int boxedmain(int argc, const char **argv) {
     Fs::addVirtualFile("/dev/fb0", openDevFB, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, mdev(0x1d, 0), devNode);
     Fs::addVirtualFile("/dev/input/event3", openDevInputTouch, K__S_IWRITE|K__S_IREAD|K__S_IFCHR, mdev(0xd, 0x43), inputNode);
     Fs::addVirtualFile("/dev/input/event4", openDevInputKeyboard, K__S_IWRITE|K__S_IREAD|K__S_IFCHR, mdev(0xd, 0x44), inputNode);
-	if (sound) {
-		Fs::addVirtualFile("/dev/dsp", openDevDsp, K__S_IWRITE | K__S_IREAD | K__S_IFCHR, mdev(14, 3), devNode);
-		Fs::addVirtualFile("/dev/mixer", openDevMixer, K__S_IWRITE | K__S_IREAD | K__S_IFCHR, mdev(14, 0), devNode);
-        Fs::addVirtualFile("/dev/sequencer", openDevSequencer, K__S_IWRITE | K__S_IREAD | K__S_IFCHR, mdev(14, 1), devNode);
-	}
+	Fs::addVirtualFile("/dev/dsp", openDevDsp, K__S_IWRITE | K__S_IREAD | K__S_IFCHR, mdev(14, 3), devNode);
+	Fs::addVirtualFile("/dev/mixer", openDevMixer, K__S_IWRITE | K__S_IREAD | K__S_IFCHR, mdev(14, 0), devNode);
+    Fs::addVirtualFile("/dev/sequencer", openDevSequencer, K__S_IWRITE | K__S_IREAD | K__S_IFCHR, mdev(14, 1), devNode);
 
     argc = argc-i;
     if (argc==0) {
@@ -321,7 +323,14 @@ int boxedmain(int argc, const char **argv) {
     } else {
         argv = &argv[i];
     }
-    if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_AUDIO) != 0) {
+    U32 flags = SDL_INIT_EVENTS;
+    if (videoEnabled) {
+        flags|=SDL_INIT_VIDEO;
+    }
+    if (soundEnabled) {
+        flags|=SDL_INIT_AUDIO;
+    }
+    if (SDL_Init(flags) != 0) {
         klog("SDL_Init Error: %s", SDL_GetError());
         return 0;
     }
@@ -345,12 +354,10 @@ int boxedmain(int argc, const char **argv) {
 #ifdef GENERATE_SOURCE
     if (gensrc)
         writeSource();
-#endif
-    BOXEDWINE_RECORDER_QUIT();
+#endif    
     klog("Boxedwine shutdown");
     SDL_Quit();
-    
-    return 0;
+    return BOXEDWINE_RECORDER_QUIT();
 }
 
 int main(int argc, char **argv) {

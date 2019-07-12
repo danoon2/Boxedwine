@@ -28,7 +28,7 @@ void BOXEDWINE_RECORDER_HANDLE_MOUSE_BUTTON_DOWN(void* e);
 void BOXEDWINE_RECORDER_HANDLE_MOUSE_BUTTON_UP(void* e);
 bool BOXEDWINE_RECORDER_HANDLE_KEY_DOWN(void* e);
 bool BOXEDWINE_RECORDER_HANDLE_KEY_UP(void* e);
-void BOXEDWINE_RECORDER_QUIT();
+U32 BOXEDWINE_RECORDER_QUIT();
 void BOXEDWINE_RECORDER_RUN_SLICE();
 void BOXEDWINE_RECORDER_INIT(std::string root, std::string zip, std::string working, const char **argv, U32 argc);
 #else
@@ -37,7 +37,7 @@ void BOXEDWINE_RECORDER_INIT(std::string root, std::string zip, std::string work
 #define BOXEDWINE_RECORDER_HANDLE_MOUSE_BUTTON_UP(x)
 #define BOXEDWINE_RECORDER_HANDLE_KEY_DOWN(x) false
 #define BOXEDWINE_RECORDER_HANDLE_KEY_UP(x) false
-#define BOXEDWINE_RECORDER_QUIT()
+#define BOXEDWINE_RECORDER_QUIT() 0
 #define BOXEDWINE_RECORDER_RUN_SLICE();
 #define BOXEDWINE_RECORDER_INIT(root, zip, working, argv, argc)
 #endif

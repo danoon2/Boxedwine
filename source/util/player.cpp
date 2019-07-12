@@ -45,6 +45,7 @@ void Player::readCommand() {
     this->lastCommandTime = Platform::getMicroCounter();
     if (this->nextCommand.length()==0) {
         klog("script did not finish properly: failed");
+        sdlScreenShot("failed.bmp", NULL);
         exit(1);
     }
 }
@@ -87,7 +88,7 @@ void Player::runSlice() {
         instance->readCommand();
         return;
     } 
-    if (Platform::getMicroCounter()<this->lastCommandTime+250000)
+    if (Platform::getMicroCounter()<this->lastCommandTime+1000000)
         return;
     if (this->nextCommand=="MOUSEDOWN" || this->nextCommand=="MOUSEUP") {
         std::vector<std::string> items;
@@ -111,6 +112,7 @@ void Player::runSlice() {
     }
     if (Platform::getMicroCounter()>this->lastCommandTime+1000000*60*5) {
         klog("script timed out %s", this->directory.c_str());
+        sdlScreenShot("failed.bmp", NULL);
         exit(1);
     }
 }

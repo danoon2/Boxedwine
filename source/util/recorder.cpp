@@ -221,17 +221,21 @@ bool BOXEDWINE_RECORDER_HANDLE_KEY_UP(void* p) {
     return false;
 }
 
-void BOXEDWINE_RECORDER_QUIT() {
+U32 BOXEDWINE_RECORDER_QUIT() {
     if (Recorder::instance) {
         Recorder::instance->close();
     }
     if (Player::instance) {
         if (Player::instance->nextCommand=="DONE") {
             klog("script: success");
+            return 1;
         } else {
             klog("script: failed");
+            klog("  nextCommand is: %s", Player::instance->nextCommand.c_str());
+            sdlScreenShot("failed.bmp", NULL);
         }
     }
+    return 0;
 }
 
 void BOXEDWINE_RECORDER_RUN_SLICE() {

@@ -34,6 +34,7 @@ int default_vert_res = 600;
 int default_bits_per_pixel = 32;
 int sdlScale = 100;
 const char* sdlScaleQuality = "0";
+extern bool videoEnabled;
 
 static int firstWindowCreated;
 U32 sdlFullScreen;
@@ -331,7 +332,7 @@ static Wnd* getFirstVisibleWnd() {
     for (auto& n : hwndToWnd) {
         Wnd* wnd = n.second;
 #ifdef SDL2
-        if (wnd->sdlTexture || wnd->openGlContext) {
+        if (wnd->sdlTextureWidth || wnd->openGlContext) {
 #else
         if (wnd->sdlSurface) {
 #endif
@@ -357,6 +358,8 @@ static void destroySDL2(KThread* thread) {
         if (wnd->sdlTexture) {
             SDL_DestroyTexture((SDL_Texture*)wnd->sdlTexture);
             wnd->sdlTexture = NULL;
+            wnd->sdlTextureHeight = 0;
+            wnd->sdlTextureWidth = 0;
         }
     }
 
@@ -557,20 +560,22 @@ static void displayChanged(KThread* thread) {
     U32 flags;
 #endif
     firstWindowCreated = 1;
+    if (videoEnabled) {
 #ifdef SDL2
-    destroySDL2(thread);
-    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, sdlScaleQuality);
+        destroySDL2(thread);
+        SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, sdlScaleQuality);
 
-    sdlWindow = SDL_CreateWindow("BoxedWine", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, screenCx*sdlScale/100, screenCy*sdlScale/100, SDL_WINDOW_SHOWN|(sdlFullScreen?SDL_WINDOW_FULLSCREEN:0));
-    sdlRenderer = SDL_CreateRenderer(sdlWindow, -1, 0);	
+        sdlWindow = SDL_CreateWindow("BoxedWine", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, screenCx*sdlScale/100, screenCy*sdlScale/100, SDL_WINDOW_SHOWN|(sdlFullScreen?SDL_WINDOW_FULLSCREEN:0));
+        sdlRenderer = SDL_CreateRenderer(sdlWindow, -1, 0);	
 #else
-    flags = SDL_HWSURFACE;
-    if (surface && SDL_MUSTLOCK(surface)) {
-        SDL_UnlockSurface(surface);
-    }
-    printf("Switching to %dx%d@%d\n", screenCx, screenCy, bits_per_pixel);
-    surface = SDL_SetVideoMode(screenCx, screenCy, 32, flags);
+        flags = SDL_HWSURFACE;
+        if (surface && SDL_MUSTLOCK(surface)) {
+            SDL_UnlockSurface(surface);
+        }
+        printf("Switching to %dx%d@%d\n", screenCx, screenCy, bits_per_pixel);
+        surface = SDL_SetVideoMode(screenCx, screenCy, 32, flags);
 #endif
+    }
 }
 
 void sdlSwapBuffers(KThread* thread) {
@@ -587,11 +592,6 @@ static S8 sdlBuffer[1024*1024*4];
 
 void wndBlt(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32 yOrg, U32 width, U32 height, U32 rect) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(sdlMutex);
-#ifdef SDL2
-    if (!sdlRenderer) {
-        return;
-    }
-#endif
     Wnd* wnd = getWnd(hwnd);
     wRECT r;
     U32 y;    
@@ -628,12 +628,13 @@ void wndBlt(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32 yOrg, U32 width, 
             } else if (bpp == 15) {
                 format = SDL_PIXELFORMAT_RGB555;
             }
-            sdlTexture = SDL_CreateTexture(sdlRenderer, format, SDL_TEXTUREACCESS_STREAMING, width, height);
-            wnd->sdlTexture = sdlTexture;
+            if (videoEnabled && sdlRenderer) {
+                sdlTexture = SDL_CreateTexture(sdlRenderer, format, SDL_TEXTUREACCESS_STREAMING, width, height);
+                wnd->sdlTexture = sdlTexture;
+            }
             wnd->sdlTextureHeight = height;
             wnd->sdlTextureWidth = width;
         }
-
 #ifndef BOXEDWINE_64BIT_MMU
         for (y = 0; y < height; y++) {
             memcopyToNative(bits+(height-y-1)*pitch, sdlBuffer+y*pitch, pitch);
@@ -652,14 +653,21 @@ void wndBlt(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32 yOrg, U32 width, 
                 wnd->bits = new U8[toCopy];
                 wnd->bitsSize = toCopy;
             }
+#ifdef BOXEDWINE_64BIT_MMU
+            for (y = 0; y < height; y++) {
+                memcopyToNative(bits+(height-y-1)*pitch, sdlBuffer+y*pitch, pitch);
+            } 
+#endif
             memcpy(wnd->bits, sdlBuffer, toCopy);
         }
 #endif        
+        if (videoEnabled && sdlRenderer) {
 #ifdef BOXEDWINE_64BIT_MMU
-        SDL_UpdateTexture(sdlTexture, NULL, getNativeAddress(KThread::currentThread()->process->memory, bits), pitch);
+            SDL_UpdateTexture(sdlTexture, NULL, getNativeAddress(KThread::currentThread()->process->memory, bits), pitch);
 #else
-        SDL_UpdateTexture(sdlTexture, NULL, sdlBuffer, pitch);
+            SDL_UpdateTexture(sdlTexture, NULL, sdlBuffer, pitch);
 #endif
+        }
     }
 #else		
     {     
@@ -711,10 +719,6 @@ U32 recorderBufferSize;
 
 void sdlDrawAllWindows(KThread* thread, U32 hWnd, int count) {    
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(sdlMutex);
-#ifdef SDL2
-    if (!sdlRenderer)
-        return;
-#endif
 #ifdef BOXEDWINE_RECORDER
     if (Recorder::instance || Player::instance) {
         int bpp = bits_per_pixel==8?32:bits_per_pixel;
@@ -737,7 +741,7 @@ void sdlDrawAllWindows(KThread* thread, U32 hWnd, int count) {
         }        
         for (int i=count-1;i>=0;i--) {
             Wnd* wnd = getWnd(readd(hWnd+i*4));
-            if (wnd && wnd->sdlTextureWidth && wnd->sdlTexture) {
+            if (wnd && wnd->sdlTextureWidth) {
                 int width = wnd->sdlTextureWidth;
                 int height = wnd->sdlTextureHeight;
                 S32 top = wnd->windowRect.top;
@@ -775,25 +779,27 @@ void sdlDrawAllWindows(KThread* thread, U32 hWnd, int count) {
     }
 #endif
 #ifdef SDL2
-    SDL_SetRenderDrawColor(sdlRenderer, 58, 110, 165, 255 );
-    SDL_RenderClear(sdlRenderer);    
-    for (int i=count-1;i>=0;i--) {
-        Wnd* wnd = getWnd(readd(hWnd+i*4));
-        if (wnd && wnd->sdlTextureWidth && wnd->sdlTexture) {
-            SDL_Rect dstrect;
-            dstrect.x = wnd->windowRect.left*sdlScale/100;
-            dstrect.y = wnd->windowRect.top*sdlScale/100;
-            dstrect.w = wnd->sdlTextureWidth*sdlScale/100;
-            dstrect.h = wnd->sdlTextureHeight*sdlScale/100;
+    if (videoEnabled && sdlRenderer) {
+        SDL_SetRenderDrawColor(sdlRenderer, 58, 110, 165, 255 );
+        SDL_RenderClear(sdlRenderer);    
+        for (int i=count-1;i>=0;i--) {
+            Wnd* wnd = getWnd(readd(hWnd+i*4));
+            if (wnd && wnd->sdlTextureWidth && wnd->sdlTexture) {
+                SDL_Rect dstrect;
+                dstrect.x = wnd->windowRect.left*sdlScale/100;
+                dstrect.y = wnd->windowRect.top*sdlScale/100;
+                dstrect.w = wnd->sdlTextureWidth*sdlScale/100;
+                dstrect.h = wnd->sdlTextureHeight*sdlScale/100;
 
 #ifdef BOXEDWINE_64BIT_MMU
-            SDL_RenderCopyEx(sdlRenderer, (SDL_Texture*)wnd->sdlTexture, NULL, &dstrect, 0, NULL, SDL_FLIP_VERTICAL);
+                SDL_RenderCopyEx(sdlRenderer, (SDL_Texture*)wnd->sdlTexture, NULL, &dstrect, 0, NULL, SDL_FLIP_VERTICAL);
 #else
-            SDL_RenderCopy(sdlRenderer, (SDL_Texture*)wnd->sdlTexture, NULL, &dstrect);	            
+               SDL_RenderCopy(sdlRenderer, (SDL_Texture*)wnd->sdlTexture, NULL, &dstrect);	            
 #endif
-        }        	
-    } 
-    SDL_RenderPresent(sdlRenderer);
+            }
+        }   
+        SDL_RenderPresent(sdlRenderer);
+    }
     sdlUpdated=1;
 #else
     if (surface) {
@@ -855,9 +861,13 @@ void readRect(KThread* thread, U32 address, wRECT* rect) {
 
 void sdlShowWnd(KThread* thread, Wnd* wnd, U32 bShow) {
 #ifdef SDL2
-    if (!bShow && wnd && wnd->sdlTexture) {
-        SDL_DestroyTexture((SDL_Texture*)wnd->sdlTexture);
-        wnd->sdlTexture = NULL;
+    if (!bShow && wnd) {
+        if (wnd->sdlTexture) {
+            SDL_DestroyTexture((SDL_Texture*)wnd->sdlTexture);
+            wnd->sdlTexture = NULL;
+        }
+        wnd->sdlTextureHeight = 0;
+        wnd->sdlTextureWidth = 0;
     }
 #else
     if (!bShow && wnd && wnd->sdlSurface) {
@@ -880,18 +890,20 @@ U32 sdlGetGammaRamp(KThread* thread, U32 ramp) {
     U16 g[256];
     U16 b[256];
 
+    if (videoEnabled) {
 #ifdef SDL2
-    if (SDL_GetWindowGammaRamp(sdlWindow, r, g, b)==0) {
+        if (SDL_GetWindowGammaRamp(sdlWindow, r, g, b)==0) {
 #else
-    if (SDL_GetGammaRamp(r, g, b)==0) {
+        if (SDL_GetGammaRamp(r, g, b)==0) {
 #endif
-        int i;
-        for (i=0;i<256;i++) {
-            writew(ramp+i*2, r[i]);
-            writew(ramp+i*2+512, g[i]);
-            writew(ramp+i*2+1024, b[i]);
+            int i;
+            for (i=0;i<256;i++) {
+                writew(ramp+i*2, r[i]);
+                writew(ramp+i*2+512, g[i]);
+                writew(ramp+i*2+1024, b[i]);
+            }
+            return 1;
         }
-        return 1;
     }
     return 0;
 }
@@ -908,6 +920,9 @@ void sdlGetPalette(KThread* thread, U32 start, U32 count, U32 entries) {
 }
 
 U32 sdlGetNearestColor(KThread* thread, U32 color) {
+    if (!videoEnabled) {
+        return color;
+    }
 #ifdef SDL2
     return SDL_MapRGB(SDL_GetWindowSurface(sdlWindow)->format, color & 0xFF, (color >> 8) & 0xFF, (color >> 16) & 0xFF);
 #else
@@ -2161,9 +2176,15 @@ void sdlDrawRectOnPushedSurfaceAndDisplay(U32 x, U32 y, U32 w, U32 h, U8 r, U8 g
 }
 
 bool sdlInternalScreenShot(std::string filepath, SDL_Rect* r, U32* crc) {    
+    if (!recorderBuffer) {
+        if (filepath.length()) {
+            klog("failed to save screenshot, %s, because recorderBuffer was NULL", filepath.c_str());
+        }
+        return false;
+    }
 #ifdef BOXEDWINE_RECORDER
     U8* pixels = NULL;
-    SDL_Surface* s;
+    SDL_Surface* s = NULL;
     U32 rMask;
     U32 gMask;
     U32 bMask;
@@ -2212,7 +2233,9 @@ bool sdlInternalScreenShot(std::string filepath, SDL_Rect* r, U32* crc) {
     if (filepath.length()) {
         SDL_SaveBMP(s, filepath.c_str());
     }    
-    SDL_FreeSurface(s);
+    if (s) {
+        SDL_FreeSurface(s);
+    }
     if (pixels) {
         delete[] pixels;
     }
