@@ -53,9 +53,21 @@ This will additionally build dlls.json that should be copied along with the dlls
 
 Alternative serving of zip file systems
 The default browserfs ZipFs takes as an argument the zipped contents of the file system and lazily unzips files upon request.
-Using the &range=true parameter changes the behaviour to only request the individual zip file entries on demand.
-This approach has the advantage that the zipped filesystems do not need to be curated to be as small as possible, but it has the disadvantage that
-the network requests are synchronous (may block ui thread and also potentially crash the emulator when retrieving large files) and the web server must support range requests.
+Using the &ondemand parameter changes the behaviour to only request the individual zip file entries on demand.
+This can affect the loading of &root and/or &app filesystems
+ie
+&ondemand=root&overlay=ondemand-Wine1.7.55-v7 
+- files in common-Wine1.7.55-v7 are downloaded on startup, any files not found are loaded on demand from root.zip
+&ondemand=app&overlay=game-common&app=game&p=GAME.EXE
+- files in game-common.zip are downloaded on startup, any files not found are loaded on demand from game.zip
+&ondemand=root-app&overlay=common-Wine1.7.55-v7;game-common.zip&app=game&p=GAME.EXE
+- combination of above
+
+This approach has the advantage that the downloaded zipped filesystems are smaller, but it has the disadvantage that
+the network requests for on demand files are synchronous (may block ui thread and also potentially crash the emulator when retrieving large files) and the web server must support range requests.
+Provided in /project/linux/buildFiles is common-Wine1.7.55-v7.zip which contains the minimum files necessary to load a basic wine application
+To generate your own minimal set of files follow the instructions in /tools/common/Main.java
+
 
 Other configuration options:
 AUTO_RUN - indicates if start button is shown or page auto-runs. default true

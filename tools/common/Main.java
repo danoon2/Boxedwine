@@ -6,18 +6,19 @@ import java.util.ArrayList;
 import java.util.List;
 /*
 Small utility to build a filesystem consisting of files that are commonly used
-To be used in conjunction with &range=true parameter
+To be used in conjunction with &ondemand parameter
 
 Input:
 1. The output from the browser console when running boxedwine emscripten port with the Module parameter logReadFiles : true (see boxedwine-shell.js)
-2. Directory path to a *COPY* of the complete boxedwine filesystem that was used to generate the above
+2. Directory path to a *COPY* of the filesystem (either root or application) that was used to generate the above
 
 Output:
 The above referenced boxedwine filesystem will be stripped of all files not referenced in the logfile
 
 The output can then be zipped up and referenced using &overlay=common.zip
-Note: the overlay parameter expects that the zip file structure does not begin with /root
-
+Note: 
+1. the overlay parameter expects that the zip file structure does not begin with /root in the case of a root overlay
+2. If you are using this to produce a minimal set of files for use with &app then make sure the overlay directory begins with /home/username/files
  */
 public class Main {
 
@@ -100,6 +101,12 @@ public class Main {
                     recurseDelete(directory, filesAndPaths, file);
                 }else{
                     recurseSubdirectory(directory, filesAndPaths, file);
+                }
+            }
+            subDirs = outputDir.listFiles();
+            if(subDirs == null || subDirs.length == 0) {
+                if(outputDir.isDirectory()) {
+                    outputDir.delete();
                 }
             }
         } else {

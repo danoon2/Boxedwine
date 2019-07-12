@@ -6,13 +6,17 @@
         let STORAGE_LOCAL_STORAGE = "LOCAL_STORAGE";
         let STORAGE_MEMORY = "MEMORY";
 
+        let ONDEMAND_DEFAULT = "notset";
+        let ONDEMAND_ROOT = "root";
+        let ONDEMAND_APP = "app";
+        let ONDEMAND_ROOT_AND_APP = "root-app";
+
         let DROPBOX_APP_KEY = 'put key in here';
         let RECEIVE_URL = "http://put url in here/oauth_receiver.html";
 
         let DEFAULT_AUTO_RUN = true;
         let DEFAULT_SOUND_ENABLED = true;
         let DEFAULT_ZLIB_ENABLED = false;
-        let DEFAULT_USE_RANGE_REQUESTS = false;
         let DEFAULT_RETRIEVE_REMOTE_DLL_FILES = false;
         let DEFAULT_HOME_DIRECTORY = ROOT + "/home/username/files/";
         let DEFAULT_BPP = 32;
@@ -111,22 +115,23 @@
             return auto;
         }
         function getUseRangeRequests(){
-            var range =  getParameter("range");
+            var ondemand =  getParameter("ondemand");
+            
             if(!allowParameterOverride()){
-                range = DEFAULT_USE_RANGE_REQUESTS;
-            }else if(range == "true") {
-                range = true;
-            }else if(range == "false"){
-                range = false;
+                ondemand = ONDEMAND_DEFAULT;
+            }else if(ondemand == ONDEMAND_ROOT) {
+            }else if(ondemand == ONDEMAND_APP) {
+            }else if(ondemand == ONDEMAND_ROOT_AND_APP){
             }else{
-                range = DEFAULT_USE_RANGE_REQUESTS;
+                ondemand = ONDEMAND_DEFAULT;
             }
-            if(range && Config.isZlibEnabled){
-                console.log("parameter mismatch. Can't use range requests if ZLib option enabled. Setting range to false");
-                range = false;
+            
+            if(ondemand != ONDEMAND_DEFAULT && Config.isZlibEnabled){
+                console.log("parameter mismatch. Can't use ondemand requests if ZLib option enabled. Turning off ondemand");
+                ondemand = ONDEMAND_DEFAULT;
             }
-            console.log("setting range to: "+range);
-            return range;
+            console.log("setting ondemand to: "+ondemand);
+            return ondemand;
         }
         function getRetrieveDlls(){
             var retrieveEnabled =  getParameter("remote");
@@ -391,7 +396,7 @@
             var Buffer = BrowserFS.BFSRequire('buffer').Buffer;
             buildExtraFileSystems(Buffer, function(extraFSs) {
                 buildAppFileSystems(function(homeAdapter) {
-                    if(Config.useRangeRequests) {
+                    if(Config.useRangeRequests == ONDEMAND_ROOT || Config.useRangeRequests == ONDEMAND_ROOT_AND_APP) {
                         buildRemoteZipFile(Config.rootZipFile, function callback(zipfs) {
                             buildBrowserFileSystem(writableStorage, isDropBox, homeAdapter, extraFSs, zipfs);
                         });
@@ -450,7 +455,7 @@
             var Buffer = BrowserFS.BFSRequire('buffer').Buffer;
             if(Config.appZipFile.length > 0){
 
-                if(Config.useRangeRequests) {
+                if(Config.useRangeRequests == ONDEMAND_APP || Config.useRangeRequests == ONDEMAND_ROOT_AND_APP) {
                     buildRemoteZipFile(Config.appZipFile, function callback(additionalZipfs) {
                         let homeAdapter = new BrowserFS.FileSystem.FolderAdapter("/", additionalZipfs);
                         adapterCallback(homeAdapter);
@@ -682,7 +687,7 @@
                     var contents = fs.readFileSync(file, null, flag_r);
                     FS.createDataFile("root" + parent, filename, contents, true, true);
                 }catch(ef) {
-                    if(ef.message === "File exists"){
+                    if(ef.message === "File exists" || ef.message === "FS error"){
                         try {
                             FS.unlink("root" + parent + "/" + filename);
                             var contents = fs.readFileSync(file, null, flag_r);
