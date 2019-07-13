@@ -55,6 +55,10 @@
 #define PACKED( s ) __pragma( pack(push, 1) ) s __pragma( pack(pop) )
 #define socklen_t int
 #else
+#include <limits.h>
+#if ( __WORDSIZE == 64 )
+#define BOXEDWINE_64   1
+#endif
 #define OPCALL
 #define platform_getcwd getcwd
 #define UNISTD <unistd.h>

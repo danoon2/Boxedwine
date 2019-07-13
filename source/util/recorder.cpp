@@ -92,7 +92,7 @@ void Recorder::takeScreenShot() {
     r.x = 0;
     r.y = 0;
     r.w = 0;
-    r.y = 0;
+    r.h = 0;
     sdlPushWindowSurface();
     while (SDL_WaitEvent(&e)) {
         if (e.type == SDL_KEYUP) {

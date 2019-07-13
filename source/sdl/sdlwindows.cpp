@@ -2185,9 +2185,9 @@ bool sdlInternalScreenShot(std::string filepath, SDL_Rect* r, U32* crc) {
 #ifdef BOXEDWINE_RECORDER
     U8* pixels = NULL;
     SDL_Surface* s = NULL;
-    U32 rMask;
-    U32 gMask;
-    U32 bMask;
+    U32 rMask=0;
+    U32 gMask=0;
+    U32 bMask=0;
     int bpp = bits_per_pixel==8?32:bits_per_pixel;
 
     if (bpp==32) {

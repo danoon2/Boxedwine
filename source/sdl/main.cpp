@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include MKDIR_INCLUDE
 
 #include <SDL.h>
 #include "kscheduler.h"
@@ -216,7 +217,7 @@ int boxedmain(int argc, const char **argv) {
 #ifdef BOXEDWINE_RECORDER
         else if (!strcmp(argv[i], "-record")) {
             if (!Fs::doesNativePathExist(argv[i+1])) {
-                mkdir(argv[i+1]);
+                MKDIR(argv[i+1]);
                 if (!Fs::doesNativePathExist(argv[i+1])) {
                     klog("-record path does not exist and could not be created: %s", argv[i+1]);
                     return 1;

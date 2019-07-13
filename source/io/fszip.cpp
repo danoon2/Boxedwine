@@ -35,7 +35,7 @@ bool FsZip::init(const std::string& zipPath) {
         zipInfo = new fsZipInfo[global_info.number_entry];
         for (i = 0; i < global_info.number_entry; ++i) {
             unz_file_info file_info;
-            struct tm tm;
+            struct tm tm={0};
             char tmp[MAX_FILEPATH_LEN];
 
             zipInfo[i].filename="/";

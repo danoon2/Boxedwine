@@ -54,7 +54,7 @@ bool Player::start(std::string directory) {
     Player::instance = new Player();
     std::string script = std::string(directory+"/script.txt");
     instance->directory = directory;
-    instance->file = fopen(script.c_str(), "r");
+    instance->file = fopen(script.c_str(), "rb");
     instance->lastCommandTime = 0;
     if (!instance->file) {
         klog("script not found: %s", script.c_str());
