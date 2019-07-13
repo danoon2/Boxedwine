@@ -23,7 +23,7 @@ void Player::readCommand() {
                 break;
             }
             klog("script finished: success");
-            exit(0);
+            exit(1);
         }
         count++;
         if (tmp[count-1]=='=') {
@@ -46,7 +46,7 @@ void Player::readCommand() {
     if (this->nextCommand.length()==0) {
         klog("script did not finish properly: failed");
         sdlScreenShot("failed.bmp", NULL);
-        exit(1);
+        exit(0);
     }
 }
 
@@ -58,13 +58,13 @@ bool Player::start(std::string directory) {
     instance->lastCommandTime = 0;
     if (!instance->file) {
         klog("script not found: %s", script.c_str());
-        exit(1);
+        exit(0);
     }
     instance->readCommand();
     instance->version = instance->nextValue;
     if (instance->version!="1") {
         klog("script is wrong version, was expecting 1 and instead got %s", instance->version);
-        exit(1);
+        exit(0);
     }
     instance->readCommand();
     return true;
@@ -82,7 +82,7 @@ void Player::runSlice() {
         stringSplit(items, this->nextValue, ',');
         if (items.size()!=2) {
             klog("script: %s MOVETO should have 2 values: %s", this->directory.c_str(), this->nextValue.c_str());
-            exit(1);
+            exit(0);
         }
         sdlMouseMouse(atoi(items[0].c_str()), atoi(items[1].c_str()));
         instance->readCommand();
@@ -95,7 +95,7 @@ void Player::runSlice() {
         stringSplit(items, this->nextValue, ',');
         if (items.size()!=3) {
             klog("script: %s %s should have 3 values: %s", this->directory.c_str(), this->nextCommand.c_str(), this->nextValue.c_str());
-            exit(1);
+            exit(0);
         }
         sdlMouseButton((this->nextCommand=="MOUSEDOWN")?1:0, atoi(items[0].c_str()), atoi(items[1].c_str()), atoi(items[2].c_str()));
         instance->readCommand();
@@ -108,12 +108,12 @@ void Player::runSlice() {
             instance->readCommand();
         }
     } else if (this->nextCommand=="DONE") {
-        //exit(0);, let it exit gracefully
+        //exit(1);, let it exit gracefully
     }
     if (Platform::getMicroCounter()>this->lastCommandTime+1000000*60*5) {
         klog("script timed out %s", this->directory.c_str());
         sdlScreenShot("failed.bmp", NULL);
-        exit(1);
+        exit(0);
     }
 }
 

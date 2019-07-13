@@ -8,7 +8,7 @@ Recorder* Recorder::instance;
 void Recorder::start(std::string directory) {
     Recorder::instance = new Recorder();
     instance->directory = directory;
-    instance->file = fopen(std::string(directory+"/script.txt").c_str(), "w");
+    instance->file = fopen(std::string(directory+"/script.txt").c_str(), "wb");
     instance->screenShotCount = 0;
     instance->out("VERSION=1\r\n");
 }
