@@ -2175,14 +2175,14 @@ void sdlDrawRectOnPushedSurfaceAndDisplay(U32 x, U32 y, U32 w, U32 h, U8 r, U8 g
     SDL_RenderPresent(sdlRenderer);
 }
 
-bool sdlInternalScreenShot(std::string filepath, SDL_Rect* r, U32* crc) {    
-    if (!recorderBuffer) {
+bool sdlInternalScreenShot(std::string filepath, SDL_Rect* r, U32* crc) {       
+#ifdef BOXEDWINE_RECORDER
+     if (!recorderBuffer) {
         if (filepath.length()) {
             klog("failed to save screenshot, %s, because recorderBuffer was NULL", filepath.c_str());
         }
         return false;
     }
-#ifdef BOXEDWINE_RECORDER
     U8* pixels = NULL;
     SDL_Surface* s = NULL;
     U32 rMask=0;

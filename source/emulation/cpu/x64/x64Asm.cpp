@@ -3493,7 +3493,6 @@ void X64Asm::fpu7(U8 rm) {
         }
     }
 }
-#endif
 
 #ifdef __TEST
 void X64Asm::addReturnFromTest() {
@@ -3524,4 +3523,5 @@ void X64Asm::addReturnFromTest() {
 
     write8(0xc3); // retn
 }
+#endif
 #endif
