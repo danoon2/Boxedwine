@@ -199,7 +199,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>;..\..\..\..\lib\sdl2\lib\x86</AdditionalLibraryDirectories>
-      <AdditionalDependencies>opengl32.lib;..\Debug\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);sdl2.lib;SDL2main.lib</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;..\Test\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);sdl2.lib;SDL2main.lib</AdditionalDependencies>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <IgnoreSpecificDefaultLibraries>
@@ -251,7 +251,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>;..\..\..\..\lib\sdl2\lib\x64</AdditionalLibraryDirectories>
-      <AdditionalDependencies>opengl32.lib;..\x64\Debug\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);sdl2.lib;SDL2main.lib</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;..\x64\Test\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);sdl2.lib;SDL2main.lib</AdditionalDependencies>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <IgnoreSpecificDefaultLibraries>
