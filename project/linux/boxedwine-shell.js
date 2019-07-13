@@ -714,7 +714,7 @@
                 try{
                     FS.lookupPath("/root" + parent + "/" + dir, { follow: true });
                 }catch(ef){
-                    if(ef.message == "No such file or directory") {
+                    if(ef.message == "No such file or directory"  || ef.message === "FS error") {
                         try{
                             FS.createFolder("/root/" + parent, dir, true, true);
                         }catch(cef) {
@@ -1131,7 +1131,7 @@ function createFolder(parent, dir)
         //console.log(entry + " is a dir parent="+parent+" dir="+dir);
         //console.log("Directory created :" + parent + "/" +  dir);
     }catch(ef){
-      if(ef.message === "File exists"){
+      if(ef.message === "File exists" || ef.message === "FS error"){
         console.log("Directory already exists! :" + parent + dir);
         var replace = confirm("Directory already exists: " + parent + dir+" continue?");
         if(replace){
@@ -1160,7 +1160,7 @@ function createFile(dir, name, buf)
         FS.createDataFile(dir, name, buf, true, true);
         //console.log("File created :" + dir + "/" + name);
     }catch(e){
-      if(e.message === "File exists"){
+      if(e.message === "File exists" || e.message === "FS error"){
         console.log("File already exists!: " + dir + name);
         var replace = confirm("File already exists: " + dir + name+" replace?");
         if(replace){
