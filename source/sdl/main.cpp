@@ -51,6 +51,8 @@ extern int bits_per_pixel;
 #include CURDIR_INCLUDE
 
 extern U32 sdlFullScreen;
+bool soundEnabled = true;
+bool videoEnabled = true;
 
 #ifndef __TEST
 
@@ -110,9 +112,6 @@ void initSDL();
 FsOpenNode* openKernelCommandLine(const BoxedPtr<FsNode>& node, U32 flags) {
     return new BufferAccess(node, flags, "");
 }
-
-bool soundEnabled = true;
-bool videoEnabled = true;
 
 int boxedmain(int argc, const char **argv) {
     int i;

@@ -22,9 +22,9 @@
 #include <stdio.h>
 #include <SDL.h>
 
-#include "..\emulation\softmmu\soft_memory.h"
-#include "..\emulation\hardmmu\hard_memory.h"
-#include "..\emulation\cpu\x64\x64CPU.h"
+#include "../emulation/softmmu/soft_memory.h"
+#include "../emulation/hardmmu/hard_memory.h"
+#include "../emulation/cpu/x64/x64CPU.h"
 static int cseip;
 
 #define G(rm) ((rm >> 3) & 7)
@@ -138,7 +138,7 @@ void newInstructionWithRM(int instruction, int rm, int flags) {
 }
 
 void runTestCPU() {    
-#ifdef BOXEDWINE_64    
+#ifdef BOXEDWINE_X64    
     pushCode8(0xcd);
     pushCode8(0x97); // will cause TEST specific return code to be inserted
     ((x64CPU*)cpu)->translateEip(cpu->eip.u32);
@@ -153,7 +153,7 @@ void runTestCPU() {
 #ifdef BOXEDWINE_64BIT_MMU
     KThread::currentThread()->memory->clearCodePageFromCache(CODE_ADDRESS>>K_PAGE_SHIFT);    
 #endif
-#ifdef BOXEDWINE_64
+#ifdef BOXEDWINE_X64
     x64CPU* c = (x64CPU*)cpu;
     for (int i=0;i<8;i++) {
         c->reg_mmx[i].q = *((U64*)(c->fpuState+32+i*16));
@@ -212,7 +212,7 @@ void assertResult(struct Data* data, CPU* cpu, int instruction, U32 resultvar1, 
     if (!data->dontUseResultAndCheckSFZF && data->result != resultvar1) {
         failed("instruction: %d var1: %d != %d", instruction, resultvar1, data->result);
     }
-    if (data->hasCF && cpu->getCF() != data->fCF) {
+    if (data->hasCF && cpu->getCF() != (U32)data->fCF) {
         cpu->getCF();
         failed("instruction: %d CF", instruction);
     }
@@ -1904,7 +1904,7 @@ void Pop16_SP(int instruction, Reg* reg) {
     SP-=2;
     runTestCPU();
     assertTrue(SP==4092);
-    assertTrue(reg->u32 == ((0xDDDD << 16) | value));
+    assertTrue(reg->u32 == ((U32)(0xDDDD << 16) | value));
     assertTrue(readw(cpu->seg[SS].address+4094)==0xAAAA);
     assertTrue(readw(cpu->seg[SS].address+4090)==0xBBBB);
     cpu->stackMask=0xffffffff;
@@ -2571,7 +2571,7 @@ static struct Data imulw[] = {
         allocDataConst(0, 0xFFFE, 0xFFFC, 2, 16, 0, false, false), // -2 * 2 = -4
         allocDataConst(0, 0xFFFE, 4, 0xFFFE, 16, CF|OF, false, false), // -2 * -2 = 4 (also, make sure it clears the flags)
         allocDataConst(0, 300, 0x5F90, 300, 16, 0, true, true), // 300 x 300 = 0x15F90
-        allocDataConst(0, -300, 0xA070, 300, 16, 0, true, true),
+        allocDataConst(0, (U32)(-300), 0xA070, 300, 16, 0, true, true),
         endData()
 };
 
@@ -2580,7 +2580,7 @@ static struct Data imuld[] = {
         allocDataConst(0, 0xFFFFFFFE, 0xFFFFFFFC, 2, 32, 0, false, false), // -2 * 2 = -4
         allocDataConst(0, 0xFFFFFFFE, 4, 0xFFFFFFFE, 32, CF|OF, false, false), // -2 * -2 = 4 (also, make sure it clears the flags)
         allocDataConst(0, 300000, 0xF08EB000, 400000, 32, 0, true, true), // = 1BF08EB000
-        allocDataConst(0, -300000, 0x0F715000, 400000, 32, 0, true, true),
+        allocDataConst(0, (U32)(-300000), 0x0F715000, 400000, 32, 0, true, true),
         endData()
 };
 
@@ -2589,7 +2589,7 @@ static struct Data imulw_s8[] = {
         allocDataConst(0, 0xFFFE, 0xFFFC, 2, 8, 0, false, false), // -2 * 2 = -4
         allocDataConst(0, 0xFFFE, 4, 0xFE, 8, CF|OF, false, false), // -2 * -2 = 4 (also, make sure it clears the flags)
         allocDataConst(0, 3000, 0xD048, 127, 8, 0, true, true), // 3000 x 127 = 0x5D048
-        allocDataConst(0, -3000, 0x2FB8, 127, 8, 0, true, true),
+        allocDataConst(0, (U32)(-3000), 0x2FB8, 127, 8, 0, true, true),
         endData()
 };
 
@@ -2598,7 +2598,7 @@ static struct Data imuld_s8[] = {
         allocDataConst(0, 0xFFFFFFFE, 0xFFFFFFFC, 2, 8, 0, false, false), // -2 * 2 = -4
         allocDataConst(0, 0xFFFFFFFE, 4, 0xFE, 8, CF|OF, false, false), // -2 * -2 = 4 (also, make sure it clears the flags)
         allocDataConst(0, 300000000, 0xDEEFDD00, 127, 8, 0, true, true), // = 8DEEFDD00
-        allocDataConst(0, -300000000, 0x21102300, 127, 8, 0, true, true),
+        allocDataConst(0, (U32)(-300000000), 0x21102300, 127, 8, 0, true, true),
         endData()
 };
 
@@ -3180,7 +3180,7 @@ static struct Data negw[] = {
 
 static struct Data negd[] = {
         allocData(0, 0, 0x0, 0, false, false),
-        allocData(20458512, 0, -20458512, 0, true, false),
+        allocData(20458512, 0, (U32)(-20458512), 0, true, false),
         endData()
 };
 
@@ -3226,7 +3226,7 @@ static struct Data imulAx[] = {
 static struct Data imulEax[] = {
         allocDataConstvar2(0, 2, 4, 0, false, false, 2, 0),
         allocDataConstvar2(0, 0xFFFFFFFA, 0xFFFFFFF4, 0, false, false, 2, 0xFFFFFFFF), // -6 x 2 = -12
-        allocDataConstvar2(0, -60000, 0x1729f800, 0, true, true, 3000000, 0xFFFFFFD6), // -60000 x 3000000 = -180000000000
+        allocDataConstvar2(0, (U32)(-60000), 0x1729f800, 0, true, true, 3000000, 0xFFFFFFD6), // -60000 x 3000000 = -180000000000
         endData()
 };
 
@@ -6485,7 +6485,7 @@ void testSegDs0x23e() {
     testSeg(0x3e, DS);
 }
 
-void run(void (*functionPtr)(), char* name) {
+void run(void (*functionPtr)(), const char* name) {
     didFail = 0;
     setup();
     functionPtr();
@@ -7659,6 +7659,8 @@ int main(int argc, char **argv) {
 
     printf("%d tests FAILED\n", totalFails);
     SDL_Delay(5000);
+    if (totalFails)
+        return 1;
     return 0;
 }
 
