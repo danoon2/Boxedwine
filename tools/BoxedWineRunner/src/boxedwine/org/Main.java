@@ -19,6 +19,7 @@ public class Main {
     static String boxedWineExe = "boxedwine";
     static Vector<String> extraCommands = new Vector<>();
     static boolean verbose = false;
+    static boolean atleastOneFailed = false;
 
     static class Results {
         int exitCode;
@@ -164,6 +165,7 @@ public class Main {
                 System.out.println("OK   "+name+" completed in "+results.timeToComplete+" seconds");
             } else {
                 System.out.println("FAILED "+name);
+                atleastOneFailed = true;
                 if (results.scriptFinished) {
                     System.out.println("    Script succeeded but Boxedwine did not exit cleanly");
                 }
@@ -178,6 +180,9 @@ public class Main {
     }
 
     public static void main(String[] args) {
+        for (int i=0;i<args.length;i++) {
+            System.out.println(args[i]);
+        }
         if (args.length<2) {
             System.out.print("You must pass in <zip dir> and <script dir>");
             return;
@@ -226,5 +231,8 @@ public class Main {
         int minutes = elapsedTime / 60;
         int seconds = elapsedTime - minutes*60;
         System.out.println("Total Time: "+minutes+"m "+seconds+"s");
+        if (atleastOneFailed) {
+            System.exit(1);
+        }
     }
 }
