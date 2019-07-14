@@ -433,6 +433,9 @@ enum Instruction {
     MovGdSxR16,
     MovGdSxE16,
 
+    MovRdCRx,
+    MovCRxRd,
+
     LeaR16,
     LeaR32,
 

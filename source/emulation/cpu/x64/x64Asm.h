@@ -157,6 +157,8 @@ public:
     void doJmp();
     void bound32(U8 rm);
     void bound16(U8 rm);
+    void movRdCrx(U32 which, U32 reg);
+    void movCrxRd(U32 which, U32 reg);
 
     void fpu0(U8 rm);
     void fpu1(U8 rm);

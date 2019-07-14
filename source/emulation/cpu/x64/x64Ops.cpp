@@ -1866,6 +1866,18 @@ static U32 sti(X64Asm* data) {
     return 0;
 }
 
+static U32 movRdCrx(X64Asm* data) {
+    U8 rm = data->fetch8();
+    data->movRdCrx(G(rm), E(rm));
+    return 0;
+}
+
+static U32 movCrxRd(X64Asm* data) {
+    U8 rm = data->fetch8();
+    data->movCrxRd(G(rm), E(rm));
+    return 0;
+}
+
 static U32 invalidOp(X64Asm* data) {
     data->invalidOp(data->inst);
     data->done = true;
@@ -2286,7 +2298,7 @@ X64Decoder x64Decoder[1024] = {
     invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp,
     invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp,
     // 120
-    invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp,
+    movRdCrx, invalidOp, movCrxRd, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp,
     invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp,
     // 130
     invalidOp, rdtsc, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp,
@@ -2384,7 +2396,7 @@ X64Decoder x64Decoder[1024] = {
     sse1, sse1, sse1, sse1, sse1, sse1, sse1, sse1,
     invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp,
     // 320
-    invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp,
+    movRdCrx, invalidOp, movCrxRd, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp,
     sse1, sse1, sse1, sse1, sse1, sse1, sse1, sse1,
     // 330
     invalidOp, rdtsc, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp,

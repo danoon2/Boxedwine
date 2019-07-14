@@ -222,3 +222,19 @@ void OPCALL normal_leaR32(CPU* cpu, DecodedOp* op) {
     cpu->reg[op->reg].u32 = eaa(cpu, op);
     NEXT();
 }
+void OPCALL normal_movRdCRx(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
+    if (cpu->readCrx(op->rm, op->reg)) {
+        NEXT();
+    } else {
+        NEXT_DONE();
+    };
+}
+void OPCALL normal_movCRxRd(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
+    if (cpu->writeCrx(op->rm, cpu->reg[op->reg].u32)) {
+        NEXT();
+    } else {
+        NEXT_DONE();
+    };
+}

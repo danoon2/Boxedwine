@@ -3171,7 +3171,36 @@ void X64Asm::bound32(U8 rm) {
     doIf(0, false, 0, [this]() {
         syncRegsToHost();
         doJmp();
-    }, [this, rm]() {
+    }, [this]() {
+        syncRegsToHost();
+    }); 
+}
+
+void X64Asm::movRdCrx(U32 which, U32 reg) {
+    syncRegsFromHost();
+    writeToRegFromValue(0, true, reg, 4);
+    writeToRegFromValue(2, false, which, 4);
+    writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
+    callHost(common_readCrx);
+    doIf(0, false, 0, [this]() {
+        syncRegsToHost();
+        doJmp();
+    }, [this]() {
+        syncRegsToHost();
+    }); 
+}
+
+void X64Asm::movCrxRd(U32 which, U32 reg) {
+    syncRegsFromHost();
+    writeToRegFromReg(0, true, reg, false, 4);
+    writeToRegFromValue(2, false, which, 4);
+    writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
+    callHost(common_readCrx);
+    releaseTmpReg(HOST_TMP2);
+    doIf(0, false, 0, [this]() {
+        syncRegsToHost();
+        doJmp();
+    }, [this]() {
         syncRegsToHost();
     }); 
 }

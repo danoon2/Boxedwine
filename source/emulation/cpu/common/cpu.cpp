@@ -1129,6 +1129,16 @@ U32 CPU::getEipAddress() {
     return (this->eip.u32 & 0xFFFF) + this->seg[CS].address;
 }
 
+U32 CPU::readCrx(U32 which, U32 reg) {
+    this->prepareException(EXCEPTION_GP, 0);
+    return 0;
+}
+
+U32 CPU::writeCrx(U32 which, U32 value) {
+    this->prepareException(EXCEPTION_GP, 0);
+    return 0;
+}
+
 U32 common_getCF(CPU* cpu) {
     return cpu->getCF();
 }
@@ -1265,4 +1275,12 @@ void common_log(CPU* cpu, DecodedOp* op) {
 
 DecodedBlock* common_getNextBlock(CPU* cpu) {
     return cpu->getNextBlock();
+}
+
+U32 common_readCrx(CPU* cpu, U32 which, U32 reg) {
+    return cpu->readCrx(which, reg);
+}
+
+U32 common_writeCrx(CPU* cpu, U32 which, U32 value) {
+    return cpu->writeCrx(which, value);
 }

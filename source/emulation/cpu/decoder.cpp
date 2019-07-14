@@ -402,6 +402,9 @@ const InstructionInfo instructionInfo[] = {
     {0, 0, 0, 0, 0, 0, 0}, // MovGdSxR16
     {0, 16, 0, 0, 0, 0, 0}, // MovGdSxE16
 
+    {0, 0, 0, 0, 0, 0, 1}, // MovRdCRx,
+    {0, 0, 0, 0, 0, 0, 1}, // MovCRxRd,
+
     {0, 0, 0, 0, 0, 0, 0}, // LeaR16E16
     {0, 0, 0, 0, 0, 0, 0}, // LeaR32E32
 
@@ -4209,6 +4212,9 @@ DecodeRMr decodeMovGdSx8(MovGdSxR8, MovGdSxE8);                        // MOVSX8
 DecodeRMr decodeMovGdXz16(MovGdXzR16, MovGdXzE16);                        // MOVXZ16 Gd,Ed
 DecodeRMr decodeMovGdSx16(MovGdSxR16, MovGdSxE16);                        // MOVSX16 Gd,Ed
 
+DecodeRM decodeMovRdCrx(MovRdCRx, Invalid);
+DecodeRM decodeMovCrxRd(MovCRxRd, Invalid);
+
 DecodeLea decodeLeaGw(LeaR16);               // LEA Gw
 DecodeLea decodeLeaGd(LeaR32);               // LEA Gd
 
@@ -4497,7 +4503,7 @@ const Decode* const decoder[] = {
     0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0,
     // 0x120
-    0, 0, 0, 0, 0, 0, 0, 0,
+    &decodeMovRdCrx, 0, &decodeMovCrxRd, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0,
     // 0x130
     0, &decodeRdtsc, 0, 0, 0, 0, 0, 0,
@@ -4593,7 +4599,7 @@ const Decode* const decoder[] = {
     0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0,
     // 0x320
-    0, 0, 0, 0, 0, 0, 0, 0,
+    &decodeMovRdCrx, 0, &decodeMovCrxRd, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0,
     // 0x330
     0, &decodeRdtsc, 0, 0, 0, 0, 0, 0,

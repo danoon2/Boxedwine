@@ -294,6 +294,8 @@ public:
     void reset();
     void verr(U32 selector);
     void verw(U32 selector);
+    U32 readCrx(U32 which, U32 reg);
+    U32 writeCrx(U32 which, U32 value);
 
     U32 getEipAddress();
 
@@ -339,4 +341,6 @@ void common_enter(CPU* cpu, U32 big, U32 bytes, U32 level);
 void common_rdtsc(CPU* cpu, U32 extra);
 void common_log(CPU* cpu, DecodedOp* op);
 DecodedBlock* common_getNextBlock(CPU* cpu);
+U32 common_readCrx(CPU* cpu, U32 which, U32 reg);
+U32 common_writeCrx(CPU* cpu, U32 which, U32 value);
 #endif
