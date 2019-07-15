@@ -1604,6 +1604,14 @@ void X64Asm::aas() {
     syncRegsToHost();
 }
 
+void X64Asm::aad(U8 value) {
+    syncRegsFromHost(); 
+    writeToRegFromValue(2, false, value, 4);
+    writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param    
+    callHost(::aad);
+    syncRegsToHost();  
+}
+
 /*
 AH = AL / value;
 AL = AL % value;

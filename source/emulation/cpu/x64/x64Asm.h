@@ -77,6 +77,7 @@ public:
     void aaa();
     void aas();
     void aam(U8 ib);
+    void aad(U8 ib);
     void salc();
     void incReg(U8 reg, bool isRegRex, U8 bytes);
     void decReg(U8 reg, bool isRegRex, U8 bytes);

@@ -473,7 +473,7 @@ static U32 aam(X64Asm* data) {
 
 // AAD Ib
 static U32 aad(X64Asm* data) {
-    kpanic("aad not implemented");
+    data->aad(data->fetch8());
     return 0;
 }
 

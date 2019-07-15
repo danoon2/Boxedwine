@@ -7536,12 +7536,10 @@ int main(int argc, char **argv) {
     run(testGrp20x2d2, "Grp2 2d2");
     run(testGrp20x0d3, "Grp2 0d3");
     run(testGrp20x2d3, "Grp2 2d3");
-#ifndef BOXEDWINE_X64
     run(testAam0x0d4, "AAM 0d4");
     run(testAam0x2d4, "AAM 2d4");
     run(testAad0x0d5, "AAD 0d5");
     run(testAad0x2d5, "AAD 2d5");
-#endif
     run(testSalc0x0d6, "Salc 0d6");
     run(testSalc0x2d6, "Salc 2d6");
 
