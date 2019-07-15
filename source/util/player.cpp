@@ -63,7 +63,7 @@ bool Player::start(std::string directory) {
     instance->readCommand();
     instance->version = instance->nextValue;
     if (instance->version!="1") {
-        klog("script is wrong version, was expecting 1 and instead got %s", instance->version);
+        klog("script is wrong version, was expecting 1 and instead got %s", instance->version.c_str());
         exit(0);
     }
     instance->readCommand();
