@@ -1008,6 +1008,17 @@ enum Instruction {
     PadddMmx, 
     PadddE64,
 
+    Fxsave, // P2+
+    Fxrstor, // P2+
+    Ldmxcsr, // P3+ SSE1
+    Stmxcsr, // P3+ SSE1
+    Xsave, // Core 2+
+    Lfence, // P4+ SSE2
+    Xrstor, // Core 2+
+    Mfence, // P4+ SSE2
+    Sfence, // P3+ SSE1
+    Clflush, // P4+ SSE2
+
     Callback,
     Done,
     Custom1,

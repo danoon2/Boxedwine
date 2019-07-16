@@ -1822,7 +1822,8 @@ static U32 lar(X64Asm* data) {
 
 // HLT
 static U32 hlt(X64Asm* data) {
-    data->writeOp();
+    // requires ring 0 access
+    data->signalIllegalInstruction(5); // 5=ILL_PRVOPC
     data->done = true;
     return 0;
 }

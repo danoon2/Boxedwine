@@ -978,6 +978,18 @@ const InstructionInfo instructionInfo[] = {
     {0, 64, 0, 0, 0, 0, 0}, // PaddwE64
     {0, 0, 0, 0, 0, 0, 0}, // PadddMmx 
     {0, 64, 0, 0, 0, 0}, // PadddE64
+
+    {0, 0, 512*8, 0, 0, 0}, // Fxsave
+    {0, 512*8, 0, 0, 0, 0}, // Fxrstor
+    {0, 0, 32, 0, 0, 0}, // Ldmxcsr
+    {0, 32, 0, 0, 0, 0}, // Stmxcsr
+    {0, 0, 512*8, 0, 0, 0}, // Xsave :TODO: just a guess for the size
+    {0, 0, 0, 0, 0, 0}, // Lfence
+    {0, 512*8, 0, 0, 0, 0}, // Xrstor
+    {0, 0, 0, 0, 0, 0}, // Mfence
+    {0, 0, 0, 0, 0, 0}, // Sfence
+    {0, 0, 0, 0, 0, 0}, // Clflush
+
     {DECODE_BRANCH_NO_CACHE, 0, 0, 0, 0, 0}, // Callback
     {DECODE_BRANCH_NO_CACHE, 0, 0, 0, 0, 0}, // Done
     {0, 0, 0, 0, 0, 0} // Custom1
@@ -2332,6 +2344,16 @@ const LogInstruction instructionLog[] = {
     {"Paddw", 0, logME},
     {"Paddd", 0, logMM},
     {"Paddd", 0, logME},
+    {"FXSAVE", 0, logName},
+    {"FXRSTOR", 0, logName},
+    {"LDMXCSR", 0, logName},
+    {"STMXCSR", 0, logName},
+    {"XSAVE", 0, logName},
+    {"Lfence", 0, logName},
+    {"XRSTOR", 0, logName},
+    {"MFENCE", 0, logName},
+    {"SFENCE", 0, logName},
+    {"CLFLUSH", 0, logName}
 };
 
 class DecodeData {
@@ -3780,6 +3802,24 @@ private:
     Instruction inst[8];
 };
 
+class Decode3AE : public DecodeFunc {
+public:
+    void decode(DecodeData* data, DecodedOp* op) const {
+        U8 rm = data->fetch8();
+
+        switch (G(rm)) {
+            case 0: func(data, op, rm, Invalid, Fxsave); break;
+            case 1: func(data, op, rm, Invalid, Fxrstor); break;
+            case 2: func(data, op, rm, Invalid, Ldmxcsr); break;
+            case 3: func(data, op, rm, Invalid, Stmxcsr); break;
+            case 4: func(data, op, rm, Invalid, Xsave); break;
+            case 5: func(data, op, rm, Lfence, Xrstor); break;
+            case 6: func(data, op, rm, Mfence, Invalid); break;
+            case 7: func(data, op, rm, Sfence, Clflush); break;
+        }
+    }
+};
+
 class DecodeRdtsc : public Decode {
 public:
     DecodeRdtsc(Instruction reg) {
@@ -4447,6 +4487,8 @@ DecodeRMr decodePaddb(PaddbMmx, PaddbE64);
 DecodeRMr decodePaddw(PaddwMmx, PaddwE64);
 DecodeRMr decodePaddd(PadddMmx, PadddE64);
 
+Decode3AE decode3EA;
+
 const Decode* const decoder[] = {
     // 0x000
     &decodeAddEbGb, &decodeAddEwGw, &decodeAddGbEb, &decodeAddGwEw, &decodeAddAlIb, &decodeAddAxIw, &decodePushEs16, &decodePopEs16,
@@ -4624,7 +4666,7 @@ const Decode* const decoder[] = {
     &decodeSetS, &decodeSetNS, &decodeSetP, &decodeSetNP, &decodeSetL, &decodeSetNL, &decodeSetLE, &decodeSetNLE,
     // 0x3a0
     &decodePushFs32, &decodePopFs32, &decodeCPUID, &decodeBtEdGd, &decodeDshlEdGd, &decodeDshlClEdGd, 0, 0,
-    &decodePushGs32, &decodePopGs32, 0, &decodeBtsEdGd, &decodeDshrEdGd, &decodeDshrClEdGd, 0, &decodeDimulGdEd,
+    &decodePushGs32, &decodePopGs32, 0, &decodeBtsEdGd, &decodeDshrEdGd, &decodeDshrClEdGd, &decode3EA, &decodeDimulGdEd,
     // 0x3b0
     0, &decodeCmpXchgEdGd, &decodeLss32, &decodeBtrEdGd, &decodeLfs32, &decodeLgs32, &decodeMovGdXz8, &decodeMovGdXz16,
     0, 0, &decodeGroup8_32, &decodeBtcEwGw, &decodeBsfGdEd, &decodeBsrGdEd, &decodeMovGdSx8, &decodeMovGdSx16,
@@ -4861,7 +4903,7 @@ void decodeBlock(pfnFetchByte fetchByte, U32 eip, U32 isBig, U32 maxInstructions
 }
 
 void DecodedOp::log(CPU* cpu) {
-    if (cpu->logFile && this->inst<=PadddE64) {
+    if (cpu->logFile && this->inst<=Clflush) {
         BOXEDWINE_CRITICAL_SECTION;
         U32 pos = ftell((FILE*)cpu->logFile); // :TODO: should be 64-bit
         fprintf((FILE*)cpu->logFile, "%04X %08X ", cpu->thread->id, cpu->eip.u32);
