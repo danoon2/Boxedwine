@@ -60,7 +60,10 @@ void CPU::reset() {
     for (int i=0;i<9;i++) {
         this->reg[i].u32 = 0;
     }
-
+    for (int i=0;i<8;i++) {
+        this->xmm[i].u64[0] = 0;
+        this->xmm[i].u64[1] = 0;
+    }
     this->lazyFlags = 0;
     this->big = 1;
     this->df = 1;
@@ -301,10 +304,16 @@ void CPU::cpuid() {
             ECX='n' | ('t' << 8) | ('e' << 16) | ('l'<< 24);
             break;
         case 1:	/* get processor type/family/model/stepping and feature flags */
-            EAX=0x633;		/* intel pentium 2 */
             EBX=0;			/* Not Supported */
             ECX=0;			/* No features */
             EDX=0x00000011;	/* FPU+TimeStamp/RDTSC */
+            if (KSystem::pentiumLevel==2) {
+                EAX=0x633;		/* intel pentium 2 */
+            } else if (KSystem::pentiumLevel==3) {
+                EAX=0x686;		/* Intel Pentium III 733 MHz */
+                EDX|= (1<<24);    // FXSAVE, FXRESTOR
+                EDX|= (1<<25);    // SSE
+            }            
             EDX|= (1<<5);     /* MSR */
             EDX|= (1<<15);    /* support CMOV instructions */
             EDX|= (1<<13);    /* PTE Global Flag */

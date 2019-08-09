@@ -175,6 +175,7 @@ void incrementEip(U32 inc);
 #include "../dynamic/dynamic_bit.h"
 #include "../dynamic/dynamic_other.h"
 #include "../dynamic/dynamic_mmx.h"
+#include "../dynamic/dynamic_sse.h"
 #include "../dynamic/dynamic_fpu.h"
 
 static U8* outBuffer;
@@ -2130,6 +2131,7 @@ static void initX32Ops() {
 #define INIT_CPU(e, f) x32Ops[e] = dynamic_##f;
 #include "../common/cpu_init.h"
 #include "../common/cpu_init_mmx.h"
+#include "../common/cpu_init_sse.h"
 #include "../common/cpu_init_fpu.h"
 #undef INIT_CPU    
     

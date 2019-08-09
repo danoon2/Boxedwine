@@ -212,7 +212,11 @@ int boxedmain(int argc, const char **argv) {
                 FsFileNode::nonExecFileFullPaths.insert(files[f]);
             }
             i++;
-        } 
+        } else if (!strcmp(argv[i], "-p2")) {
+            KSystem::pentiumLevel = 2;
+        } else if (!strcmp(argv[i], "-p3")) {
+            KSystem::pentiumLevel = 3;
+        }
 #ifdef BOXEDWINE_RECORDER
         else if (!strcmp(argv[i], "-record")) {
             if (!Fs::doesNativePathExist(argv[i+1])) {

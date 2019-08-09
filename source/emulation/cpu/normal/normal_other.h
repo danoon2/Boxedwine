@@ -620,3 +620,17 @@ void OPCALL normal_loadSegment32(CPU* cpu, DecodedOp* op) {
         NEXT_DONE();
     }
 }
+
+void OPCALL normal_fxsave(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
+    U32 eaa = eaa(cpu, op);
+    common_fxsave(cpu, eaa);
+    NEXT();
+}
+
+void OPCALL normal_fxrstor(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
+    U32 eaa = eaa(cpu, op);
+    common_fxrstor(cpu, eaa);
+    NEXT();
+}

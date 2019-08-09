@@ -5,6 +5,7 @@
 #include "lazyFlags.h"
 #include "fpu.h"
 #include "../decoder.h"
+#include "../../../../lib/simde/simde/x86/sse.h"
 
 typedef void (*Int99Callback)(CPU* cpu);
 extern Int99Callback* int99Callback;
@@ -214,6 +215,7 @@ public:
     U32 big;
     U8* reg8[9];
     MMX_reg reg_mmx[8];
+    simde__m128 xmm[8]; // :TODO: alignment?
 
     Reg  src;
     Reg  dst;

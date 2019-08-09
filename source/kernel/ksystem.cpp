@@ -32,6 +32,7 @@ unsigned int KSystem::nextThreadId=10;
 std::unordered_map<void*, SHM*> KSystem::shm;
 std::unordered_map<U32, KProcess*> KSystem::processes;
 std::unordered_map<std::string, BoxedPtr<MappedFileCache> > KSystem::fileCache;
+U32 KSystem::pentiumLevel = 3;
 
 BOXEDWINE_CONDITION KSystem::processesCond("KSystem::processesCond");
 BOXEDWINE_MUTEX KSystem::fileCacheMutex;

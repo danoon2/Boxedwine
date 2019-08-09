@@ -990,6 +990,144 @@ const InstructionInfo instructionInfo[] = {
     {0, 0, 0, 0, 0, 0}, // Sfence
     {0, 0, 0, 0, 0, 0}, // Clflush
 
+    // SSE1
+    {0, 0, 0, 0, 0, 0}, // AddpsXmm
+    {0, 128, 0, 0, 0, 0}, // AddpsE128
+    {0, 0, 0, 0, 0, 0}, // AddssXmm
+    {0, 32, 0, 0, 0, 0}, // AddssE32
+    {0, 0, 0, 0, 0, 0}, // SubpsXmm
+    {0, 128, 0, 0, 0, 0}, // SubpsE128
+    {0, 0, 0, 0, 0, 0}, // SubssXmm
+    {0, 32, 0, 0, 0, 0}, // SubssE32
+    {0, 0, 0, 0, 0, 0}, // MulpsXmm
+    {0, 128, 0, 0, 0, 0}, // MulpsE128
+    {0, 0, 0, 0, 0, 0}, // MulssXmm
+    {0, 32, 0, 0, 0, 0}, // MulssE32
+    {0, 0, 0, 0, 0, 0}, // DivpsXmm
+    {0, 128, 0, 0, 0, 0}, // DivpsE128
+    {0, 0, 0, 0, 0, 0}, // DivssXmm
+    {0, 32, 0, 0, 0, 0}, // DivssE32
+    {0, 0, 0, 0, 0, 0}, // RcppsXmm
+    {0, 128, 0, 0, 0, 0}, // RcppsE128
+    {0, 0, 0, 0, 0, 0}, // RcpssXmm
+    {0, 32, 0, 0, 0, 0}, // RcpssE32
+    {0, 0, 0, 0, 0, 0}, // SqrtpsXmm
+    {0, 128, 0, 0, 0, 0}, // SqrtpsE128
+    {0, 0, 0, 0, 0, 0}, // SqrtssXmm
+    {0, 32, 0, 0, 0, 0}, // SqrtssE32
+    {0, 0, 0, 0, 0, 0}, // RsqrtpsXmm
+    {0, 128, 0, 0, 0, 0}, // RsqrtpsE128
+    {0, 0, 0, 0, 0, 0}, // RsqrtssXmm
+    {0, 32, 0, 0, 0, 0}, // RsqrtssE32
+    {0, 0, 0, 0, 0, 0}, // MaxpsXmm
+    {0, 128, 0, 0, 0, 0}, // MaxpsE128
+    {0, 0, 0, 0, 0, 0}, // MaxssXmm
+    {0, 32, 0, 0, 0, 0}, // MaxssE32
+    {0, 0, 0, 0, 0, 0}, // MinpsXmm
+    {0, 128, 0, 0, 0, 0}, // MinpsE128
+    {0, 0, 0, 0, 0, 0}, // MinssXmm
+    {0, 32, 0, 0, 0, 0}, // MinssE32
+    {0, 0, 0, 0, 0, 0}, // PavgbMmxMmx
+    {0, 64, 0, 0, 0, 0}, // PavgbMmxE64
+    {0, 0, 0, 0, 0, 0}, // PavgbXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PavgbXmmE128
+    {0, 0, 0, 0, 0, 0}, // PavgwMmxMmx
+    {0, 64, 0, 0, 0, 0}, // PavgwMmxE64
+    {0, 0, 0, 0, 0, 0}, // PavgwXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PavgwXmmE128
+    {0, 0, 0, 0, 0, 0}, // PsadbwMmxMmx
+    {0, 64, 0, 0, 0, 0}, // PsadbwMmxE64
+    {0, 0, 0, 0, 0, 0}, // PsadbwXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PsadbwXmmE128
+    {0, 0, 0, 0, 0, 0}, // PextrwR32Mmx
+    {0, 0, 16, 0, 0, 0}, // PextrwE16Mmx
+    {0, 0, 0, 0, 0, 0}, // PextrwR32Xmm
+    {0, 0, 16, 0, 0, 0}, // PextrwE16Xmm
+    {0, 0, 0, 0, 0, 0}, // PinsrwMmxR32
+    {0, 16, 0, 0, 0, 0}, // PinsrwMmxE16
+    {0, 0, 0, 0, 0, 0}, // PinsrwXmmR32
+    {0, 16, 0, 0, 0, 0}, // PinsrwXmmE16
+    {0, 0, 0, 0, 0, 0}, // PmaxswMmxMmx
+    {0, 64, 0, 0, 0, 0}, // PmaxswMmxE64
+    {0, 0, 0, 0, 0, 0}, // PmaxswXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PmaxswXmmE128
+    {0, 0, 0, 0, 0, 0}, // PmaxubMmxMmx
+    {0, 64, 0, 0, 0, 0}, // PmaxubMmxE64
+    {0, 0, 0, 0, 0, 0}, // PmaxubXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PmaxubXmmE128
+    {0, 0, 0, 0, 0, 0}, // PminswMmxMmx
+    {0, 64, 0, 0, 0, 0}, // PminswMmxE64
+    {0, 0, 0, 0, 0, 0}, // PminswXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PminswXmmE128
+    {0, 0, 0, 0, 0, 0}, // PminubMmxMmx
+    {0, 64, 0, 0, 0, 0}, // PminubMmxE64
+    {0, 0, 0, 0, 0, 0}, // PminubXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PminubXmmE128
+    {0, 0, 0, 0, 0, 0}, // PmovmskbR32Mmx
+    {0, 0, 0, 0, 0, 0}, // PmovmskbR32Xmm
+    {0, 0, 0, 0, 0, 0}, // PmulhuwMmxMmx
+    {0, 64, 0, 0, 0, 0}, // PmulhuwMmxE64
+    {0, 0, 0, 0, 0, 0}, // PmulhuwXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PmulhuwXmmE128
+    {0, 0, 0, 0, 0, 0}, // PshufwMmxMmx
+    {0, 64, 0, 0, 0, 0}, // PshufwMmxE64
+    {0, 0, 0, 0, 0, 0}, // AndnpsXmmXmm
+    {0, 128, 0, 0, 0, 0}, // AndnpsXmmE128
+    {0, 0, 0, 0, 0, 0}, // AndpsXmmXmm
+    {0, 128, 0, 0, 0, 0}, // AndpsXmmE128
+    {0, 0, 0, 0, 0, 0}, // OrpsXmmXmm
+    {0, 128, 0, 0, 0, 0}, // OrpsXmmE128
+    {0, 0, 0, 0, 0, 0}, // XorpsXmmXmm
+    {0, 128, 0, 0, 0, 0}, // XorpsXmmE128
+    {0, 0, 0, 0, 0, 0}, // Cvtpi2psXmmMmx
+    {0, 64, 0, 0, 0, 0}, // Cvtpi2psXmmE64
+    {0, 0, 0, 0, 0, 0}, // Cvtps2piMmxXmm
+    {0, 64, 0, 0, 0, 0}, // Cvtps2piMmxE64
+    {0, 0, 0, 0, 0, 0}, // Cvtsi2ssXmmR32
+    {0, 32, 0, 0, 0, 0}, // Cvtsi2ssXmmE32
+    {0, 0, 0, 0, 0, 0}, // Cvtss2siR32Xmm
+    {0, 32, 0, 0, 0, 0}, // Cvtss2siR32E32
+    {0, 0, 0, 0, 0, 0}, // Cvttps2piMmxXmm
+    {0, 64, 0, 0, 0, 0}, // Cvttps2piMmxE64
+    {0, 0, 0, 0, 0, 0}, // Cvttss2siR32Xmm
+    {0, 32, 0, 0, 0, 0}, // Cvttss2siR32E32
+    {0, 0, 0, 0, 0, 0}, // MovapsXmmXmm
+    {0, 128, 0, 0, 0, 0}, // MovapsXmmE128
+    {0, 0, 128, 0, 0, 0}, // MovapsE128Xmm
+    {0, 0, 0, 0, 0, 0}, // MovhlpsXmmXmm
+    {0, 64, 0, 0, 0, 0}, // MovhpsXmmE64
+    {0, 0, 64, 0, 0, 0}, // MovhpsE64Xmm
+    {0, 64, 0, 0, 0, 0}, // MovlpsXmmE64
+    {0, 0, 64, 0, 0, 0}, // MovlpsE64Xmm
+    {0, 0, 0, 0, 0, 0}, // MovmskpsR32Xmm
+    {0, 0, 0, 0, 0, 0}, // MovssXmmXmm
+    {0, 32, 0, 0, 0, 0}, // MovssXmmE32
+    {0, 0, 32, 0, 0, 0}, // MovssE32Xmm
+    {0, 0, 0, 0, 0, 0}, // MovupsXmmXmm
+    {0, 128, 0, 0, 0, 0}, // MovupsXmmE128
+    {0, 0, 128, 0, 0, 0}, // MovupsE128Xmm
+    {0, 0, 0, 0, 0, 0}, // MaskmovqEDIMmxMmx
+    {0, 0, 128, 0, 0, 0}, // MovntpsE128Xmm
+    {0, 0, 64, 0, 0, 0}, // MovntqE64Mmx
+    {0, 0, 0, 0, 0, 0}, // ShufpsXmmXmm
+    {0, 128, 0, 0, 0, 0}, // ShufpsXmmE128
+    {0, 0, 0, 0, 0, 0}, // UnpckhpsXmmXmm
+    {0, 128, 0, 0, 0, 0}, // UnpckhpsXmmE128
+    {0, 0, 0, 0, 0, 0}, // UnpcklpsXmmXmm
+    {0, 128, 0, 0, 0, 0}, // UnpcklpsXmmE128
+    {0, 0, 0, 0, 0, 0}, // PrefetchT0
+    {0, 0, 0, 0, 0, 0}, // PrefetchT1
+    {0, 0, 0, 0, 0, 0}, // PrefetchT2
+    {0, 0, 0, 0, 0, 0}, // PrefetchNTA
+    {0, 0, 0, 0, 0, 0}, // CmppsXmmXmm
+    {0, 128, 0, 0, 0, 0}, // CmppsXmmE128
+    {0, 0, 0, 0, 0, 0}, // CmpssXmmXmm
+    {0, 32, 0, 0, 0, 0}, // CmpssXmmE32
+    {0, 0, 0, 0, 0, 0}, // ComissXmmXmm
+    {0, 32, 0, 0, 0, 0}, // ComissXmmE32
+    {0, 0, 0, 0, 0, 0}, // UcomissXmmXmm
+    {0, 32, 0, 0, 0, 0}, // UcomissXmmE32
+
     {DECODE_BRANCH_NO_CACHE, 0, 0, 0, 0, 0}, // Callback
     {DECODE_BRANCH_NO_CACHE, 0, 0, 0, 0, 0}, // Done
     {0, 0, 0, 0, 0, 0} // Custom1
@@ -1373,6 +1511,35 @@ static void logEM(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
     fprintf((FILE*)cpu->logFile, "%s", inst->name);
 }
 
+static void logXmmXmm(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
+    fprintf((FILE*)cpu->logFile, "%s", inst->name);
+}
+
+static void logXmmE(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
+    fprintf((FILE*)cpu->logFile, "%s", inst->name);
+}
+
+static void logRXmm(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
+    fprintf((FILE*)cpu->logFile, "%s", inst->name);
+}
+
+static void logEXmm(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
+    fprintf((FILE*)cpu->logFile, "%s", inst->name);
+}
+
+static void logXmmR(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
+    fprintf((FILE*)cpu->logFile, "%s", inst->name);
+}
+
+static void logXmmM(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
+    fprintf((FILE*)cpu->logFile, "%s", inst->name);
+}
+
+static void logMXmm(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
+    fprintf((FILE*)cpu->logFile, "%s", inst->name);
+}
+
+#ifdef _DEBUG
 const LogInstruction instructionLog[] = {
     {"Add", 8, logRE},
     {"Add", 8, logER},
@@ -2353,9 +2520,147 @@ const LogInstruction instructionLog[] = {
     {"XRSTOR", 0, logName},
     {"MFENCE", 0, logName},
     {"SFENCE", 0, logName},
-    {"CLFLUSH", 0, logName}
-};
+    {"CLFLUSH", 0, logName},
 
+    // SSE1
+    {"Addps", 0, logXmmXmm},
+    {"Addps", 128, logXmmE},
+    {"Addss", 0, logXmmXmm},
+    {"Addss", 32, logXmmE},
+    {"Subps", 0, logXmmXmm},
+    {"Subps", 128, logXmmE},
+    {"Subss", 0, logXmmXmm},
+    {"Subss", 32, logXmmE},
+    {"Mulps", 0, logXmmXmm},
+    {"Mulps", 128, logXmmE},
+    {"Mulss", 0, logXmmXmm},
+    {"Mulss", 32, logXmmE},
+    {"Divps", 0, logXmmXmm},
+    {"Divps", 128, logXmmE},
+    {"Divss", 0, logXmmXmm},
+    {"Divss", 32, logXmmE},
+    {"Rcpps", 0, logXmmXmm},
+    {"Rcpps", 128, logXmmE},
+    {"Rcpss", 0, logXmmXmm},
+    {"Rcpss", 32, logXmmE},
+    {"Sqrtps", 0, logXmmXmm},
+    {"Sqrtps", 128, logXmmE},
+    {"Sqrtss", 0, logXmmXmm},
+    {"Sqrtss", 32, logXmmE},
+    {"Rsqrtps", 0, logXmmXmm},
+    {"Rsqrtps", 128, logXmmE},
+    {"Rsqrtss", 0, logXmmXmm},
+    {"Rsqrtss", 32, logXmmE},
+    {"Maxps", 0, logXmmXmm},
+    {"Maxps", 128, logXmmE},
+    {"Maxss", 0, logXmmXmm},
+    {"Maxss", 32, logXmmE},
+    {"Minps", 0, logXmmXmm},
+    {"Minps", 128, logXmmE},
+    {"Minss", 0, logXmmXmm},
+    {"Minss", 32, logXmmE},
+    {"Pavgb", 0, logXmmXmm},
+    {"Pavgb", 64, logXmmE},
+    {"Pavgb", 0, logXmmXmm},
+    {"Pavgb", 128, logXmmE},
+    {"Pavgw", 0, logMM},
+    {"Pavgw", 64, logXmmE},
+    {"Pavgw", 0, logXmmXmm},
+    {"Pavgw", 128, logXmmE},
+    {"Psadbw", 0, logMM},
+    {"Psadbw", 64, logXmmE},
+    {"Psadbw", 0, logXmmXmm},
+    {"Psadbw", 128, logXmmE},
+    {"Pextrw", 0, logRM},
+    {"Pextrw", 16, logEM},
+    {"Pextrw", 0, logRXmm},
+    {"Pextrw", 16, logEXmm},
+    {"Pinsrw", 0, logMR},
+    {"Pinsrw", 16, logME},
+    {"Pinsrw", 0, logXmmR},
+    {"Pinsrw", 16, logXmmE},
+    {"Pmaxsw", 0, logMM},
+    {"Pmaxsw", 64, logXmmE},
+    {"Pmaxsw", 0, logXmmXmm},
+    {"Pmaxsw", 128, logXmmE},
+    {"Pmaxub", 0, logMM},
+    {"Pmaxub", 64, logXmmE},
+    {"Pmaxub", 0, logXmmXmm},
+    {"Pmaxub", 128, logXmmE},
+    {"Pminsw", 0, logMM},
+    {"Pminsw", 64, logXmmE},
+    {"Pminsw", 0, logXmmXmm},
+    {"Pminsw", 128, logXmmE},
+    {"Pminub", 0, logMM},
+    {"Pminub", 64, logXmmE},
+    {"Pminub", 0, logXmmXmm},
+    {"Pminub", 128, logXmmE},
+    {"Pmovmskb", 0, logRM},
+    {"Pmovmskb", 0, logRXmm},
+    {"Pmulhuw", 0, logMM},
+    {"Pmulhuw", 64, logXmmE},
+    {"Pmulhuw", 0, logXmmXmm},
+    {"Pmulhuw", 128, logXmmE},
+    {"Pshufw", 0, logMM},
+    {"Pshufw", 64, logXmmE},
+    {"Andnps", 0, logXmmXmm},
+    {"Andnps", 128, logXmmE},
+    {"Andps", 0, logXmmXmm},
+    {"Andps", 128, logXmmE},
+    {"Orps", 0, logXmmXmm},
+    {"Orps", 128, logXmmE},
+    {"Xorps", 0, logXmmXmm},
+    {"Xorps", 128, logXmmE},
+    {"Cvtpi2ps", 0, logXmmM},
+    {"Cvtpi2ps", 64, logXmmE},
+    {"Cvtps2pi", 0, logMXmm},
+    {"Cvtps2pi", 64, logXmmE},
+    {"Cvtsi2ss", 0, logXmmR},
+    {"Cvtsi2ss", 32, logXmmE},
+    {"Cvtss2si", 0, logRXmm},
+    {"Cvtss2si", 32, logRE},
+    {"Cvttps2pi", 0, logMXmm},
+    {"Cvttps2pi", 64, logXmmE},
+    {"Cvttss2si", 0, logRXmm},
+    {"Cvttss2si", 32, logRE},
+    {"Movaps", 0, logXmmXmm},
+    {"Movaps", 128, logXmmE},
+    {"Movaps", 128, logEXmm},
+    {"Movhlps", 0, logXmmXmm},
+    {"Movhps", 64, logXmmE},
+    {"Movhps", 64, logEXmm},
+    {"Movlps", 64, logXmmE},
+    {"Movlps", 64, logEXmm},
+    {"Movmskps", 32, logRXmm},
+    {"Movss", 0, logXmmXmm},
+    {"Movss", 32, logXmmE},
+    {"Movss", 32, logEXmm},
+    {"Movups", 0, logXmmXmm},
+    {"Movups", 128, logXmmE},
+    {"Movups", 128, logEXmm},
+    {"MaskmovqEDI", 0, logMM},
+    {"Movntps", 128, logEXmm},
+    {"Movntq", 64, logEM},
+    {"Shufps", 0, logXmmXmm},
+    {"Shufps", 128, logXmmE},
+    {"Unpckhps", 0, logXmmXmm},
+    {"Unpckhps", 64, logXmmE},
+    {"Unpcklps", 0, logXmmXmm},
+    {"Unpcklps", 64, logXmmE},
+    {"PrefetchT0", 0, logName},
+    {"PrefetchT1", 0, logName},
+    {"PrefetchT2", 0, logName},
+    {"PrefetchNTA", 0, logName},
+    {"Cmpps", 0, logXmmXmm},
+    {"Cmpps", 128, logXmmE},
+    {"Cmpss", 0, logXmmXmm},
+    {"Cmpss", 32, logXmmE},
+    {"Comiss", 0, logXmmXmm},
+    {"Comiss", 32, logXmmE},
+    {"Ucomiss", 0, logXmmXmm},
+    {"Ucomiss", 32, logXmmE}
+};
+#endif
 class DecodeData {
 public:    
     U8 ds;
@@ -3820,6 +4125,60 @@ public:
     }
 };
 
+class Decode318 : public DecodeFunc {
+public:
+    void decode(DecodeData* data, DecodedOp* op) const {
+        U8 rm = data->fetch8();
+
+        switch (G(rm)) {
+            case 0: func(data, op, rm, Invalid, PrefetchNTA); break;
+            case 1: func(data, op, rm, Invalid, PrefetchT0); break;
+            case 2: func(data, op, rm, Invalid, PrefetchT1); break;
+            case 3: func(data, op, rm, Invalid, PrefetchT2); break;
+            case 4: func(data, op, rm, Invalid, Invalid); break;
+            case 5: func(data, op, rm, Invalid, Invalid); break;
+            case 6: func(data, op, rm, Invalid, Invalid); break;
+            case 7: func(data, op, rm, Invalid, Invalid); break;
+        }
+    }
+};
+
+class DecodeSSE : public Decode {
+public:
+    DecodeSSE(Instruction reg1, Instruction mem1, Instruction reg2, Instruction mem2) {
+        this->reg1 = reg1;
+        this->mem1 = mem1;
+        this->reg2 = reg2;
+        this->mem2 = mem2;
+    }
+    DecodeSSE(Instruction reg1, Instruction mem1, Instruction reg2, Instruction mem2, U32 imm) : Decode(imm) {
+        this->reg1 = reg1;
+        this->mem1 = mem1;
+        this->reg2 = reg2;
+        this->mem2 = mem2;
+    }
+    void decode(DecodeData* data, DecodedOp* op) const {
+        U8 rm = data->fetch8();
+
+        if (rm>=0xC0) {    
+            op->inst = op->repZero?this->reg2:this->reg1;
+            op->reg = E(rm);
+            op->rm = G(rm);
+        } else {
+            op->inst = op->repZero?this->mem2:this->mem1;
+            op->reg = G(rm);
+            decodeEa(data, op, rm);
+        } 
+        op->repZero = false;
+    }
+
+private:
+    Instruction reg1;
+    Instruction mem1;
+    Instruction reg2;
+    Instruction mem2;
+};
+
 class DecodeRdtsc : public Decode {
 public:
     DecodeRdtsc(Instruction reg) {
@@ -4489,6 +4848,65 @@ DecodeRMr decodePaddd(PadddMmx, PadddE64);
 
 Decode3AE decode3EA;
 
+DecodeSSE sseAdd(AddpsXmm, AddpsE128, AddssXmm, AddssE32);
+DecodeSSE sseSub(SubpsXmm, SubpsE128, SubssXmm, SubssE32);
+DecodeSSE sseMul(MulpsXmm, MulpsE128, MulssXmm, MulssE32);
+DecodeSSE sseDiv(DivpsXmm, DivpsE128, DivssXmm, DivssE32);
+DecodeSSE sseRpc(RcppsXmm, RcppsE128, RcpssXmm, RcpssE32);
+DecodeSSE sseSqrt(SqrtpsXmm, SqrtpsE128, SqrtssXmm, SqrtssE32);
+DecodeSSE sseRsqrt(RsqrtpsXmm, RsqrtpsE128, RsqrtssXmm, RsqrtssE32);
+DecodeSSE sseMin(MinpsXmm, MinpsE128, MinssXmm, MinssE32);
+DecodeSSE sseMax(MaxpsXmm, MaxpsE128, MaxssXmm, MaxssE32);
+DecodeRM ssePavgbMmx(PavgbMmxMmx, PavgbMmxE64);
+DecodeRM ssePavgbXmm(PavgbXmmXmm, PavgbXmmE128);
+DecodeRM ssePavgwMmx(PavgwMmxMmx, PavgwMmxE64);
+DecodeRM ssePavgwXmm(PavgwXmmXmm, PavgwXmmE128);
+DecodeRM ssePsadbwMmx(PsadbwMmxMmx, PsadbwMmxE64);
+DecodeRM ssePsadbwXmm(PsadbwXmmXmm, PsadbwXmmE128);
+DecodeRM ssePextrwMmx(PextrwR32Mmx, PextrwE16Mmx, 8);
+DecodeRM ssePextrwXmm(PextrwR32Xmm, PextrwE16Xmm, 8);
+DecodeRM ssePinsrwMmx(PinsrwMmxR32, PinsrwMmxE16, 8);
+DecodeRM ssePinsrwXmm(PinsrwXmmR32, PinsrwXmmE16, 8);
+DecodeRM ssePmaxswMmx(PmaxswMmxMmx, PmaxswMmxE64);
+DecodeRM ssePmaxswXmm(PmaxswXmmXmm, PmaxswXmmE128);
+DecodeRM ssePmaxubMmx(PmaxubMmxMmx, PmaxubMmxE64);
+DecodeRM ssePmaxubXmm(PmaxubXmmXmm, PmaxubXmmE128);
+DecodeRM ssePminswMmx(PminswMmxMmx, PminswMmxE64);
+DecodeRM ssePminswXmm(PminswXmmXmm, PminswXmmE128);
+DecodeRM ssePminubMmx(PminubMmxMmx, PminubMmxE64);
+DecodeRM ssePminubXmm(PminubXmmXmm, PminubXmmE128);
+DecodeRM ssePmovmskbMmx(PmovmskbR32Mmx, Invalid);
+DecodeRM ssePmovmskbXmm(PmovmskbR32Xmm, Invalid);
+DecodeRM ssePmulhuwMmx(PmulhuwMmxMmx, PmulhuwMmxE64);
+DecodeRM ssePmulhuwXmm(PmulhuwXmmXmm, PmulhuwXmmE128);
+DecodeRM ssePshufwMmx(PshufwMmxMmx, PshufwMmxE64, 8);
+DecodeRM sseAndnpsXmm(AndnpsXmmXmm, AndnpsXmmE128);
+DecodeRM sseAndpsXmm(AndpsXmmXmm, AndpsXmmE128);
+DecodeRM sseOrpsXmm(OrpsXmmXmm, OrpsXmmE128);
+DecodeRM sseXorpsXmm(XorpsXmmXmm, XorpsXmmE128);
+DecodeSSE sseCvt2a(Cvtpi2psXmmMmx, Cvtpi2psXmmE64, Cvtsi2ssXmmR32, Cvtsi2ssXmmE32);
+DecodeSSE sseCvt2c(Cvttps2piMmxXmm, Cvttps2piMmxE64, Cvttss2siR32Xmm, Cvttss2siR32E32);
+DecodeSSE sseCvt2d(Cvtps2piMmxXmm, Cvtps2piMmxE64, Cvtss2siR32Xmm, Cvtss2siR32E32);
+DecodeRM sseMovapsXE(MovapsXmmXmm, MovapsXmmE128);
+DecodeRM sseMovapsEX(MovapsXmmXmm, MovapsE128Xmm);
+DecodeSSE sseMov0x10(MovupsXmmXmm, MovupsXmmE128, MovupsXmmXmm, MovssXmmE32);
+DecodeSSE sseMov0x11(MovupsXmmXmm, MovupsE128Xmm, MovupsXmmXmm, MovssE32Xmm);
+DecodeRM sseMov0x12(MovhlpsXmmXmm, MovlpsXmmE64);
+DecodeRM sseMov0x13(Invalid, MovlpsE64Xmm);
+DecodeRM sseMov0x16(Invalid, MovhpsXmmE64);
+DecodeRM sseMov0x17(Invalid, MovhpsE64Xmm);
+DecodeRM sseMovmsk(MovmskpsR32Xmm, Invalid);
+DecodeRM sseMaskmov(MaskmovqEDIMmxMmx, Invalid);
+DecodeRM sseMovnt(Invalid, MovntpsE128Xmm);
+DecodeRM sseMovntq(Invalid, MovntqE64Mmx);
+DecodeRM sseShufp(ShufpsXmmXmm, ShufpsXmmE128, 8);
+DecodeRM sseUnpckhp(UnpckhpsXmmXmm, UnpckhpsXmmE128);
+DecodeRM sseUnpcklp(UnpcklpsXmmXmm, UnpcklpsXmmE128);
+Decode318 seePrefetch;
+DecodeSSE sseCmp(CmppsXmmXmm, CmppsXmmE128, CmpssXmmXmm, CmpssXmmE32, 8);
+DecodeRM sseComis(ComissXmmXmm, ComissXmmE32);
+DecodeRM sseUcomis(UcomissXmmXmm, UcomissXmmE32);
+
 const Decode* const decoder[] = {
     // 0x000
     &decodeAddEbGb, &decodeAddEwGw, &decodeAddGbEb, &decodeAddGwEw, &decodeAddAlIb, &decodeAddAxIw, &decodePushEs16, &decodePopEs16,
@@ -4575,16 +4993,16 @@ const Decode* const decoder[] = {
     0, &decodeCmpXchgEwGw, &decodeLss, &decodeBtrEwGw, &decodeLfs, &decodeLgs, &decodeMovGwXz8, 0,
     0, 0, &decodeGroup8_16, &decodeBtcEwGw, &decodeBsfGwEw, &decodeBsrGwEw, &decodeMovGwSx8, 0,
     // 0x1c0
-    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, &ssePinsrwXmm, &ssePextrwXmm, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0,
     // 0x1d0
-    0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, &ssePmovmskbXmm,
+    0, 0, &ssePminubXmm, 0, 0, 0, &ssePmaxubXmm, 0,
     // 0x1e0
-    0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
+    &ssePavgbXmm, 0, 0, &ssePavgwXmm, &ssePmulhuwXmm, 0, 0, 0,
+    0, 0, &ssePminswXmm, 0, 0, 0, &ssePmaxswXmm, 0,
     // 0x1f0
-    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, &ssePsadbwXmm, 0,
     0, 0, 0, 0, 0, 0, 0, 0,
     // 0x200
     &decodeAddEbGb, &decodeAddEdGd, &decodeAddGbEb, &decodeAddGdEd, &decodeAddAlIb, &decodeAddEaxId, &decodePushEs32, &decodePopEs32,
@@ -4638,11 +5056,11 @@ const Decode* const decoder[] = {
     &decodeGroup6_32, &decodeGroup7_32, 0, &decodeLsl32, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0,
     // 0x310
-    0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
+    &sseMov0x10, &sseMov0x11, &sseMov0x12, &sseMov0x13, &sseUnpcklp, &sseUnpckhp, &sseMov0x16, &sseMov0x17,
+    &seePrefetch, 0, 0, 0, 0, 0, 0, 0,
     // 0x320
     &decodeMovRdCrx, 0, &decodeMovCrxRd, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
+    &sseMovapsXE, &sseMovapsEX, &sseCvt2a, &sseMovnt, &sseCvt2c, &sseCvt2d, &sseUcomis, &sseComis,
     // 0x330
     0, &decodeRdtsc, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0,
@@ -4650,13 +5068,13 @@ const Decode* const decoder[] = {
     &decodeCmovO_32, &decodeCmovNO_32, &decodeCmovB_32, &decodeCmovNB_32, &decodeCmovZ_32, &decodeCmovNZ_32, &decodeCmovBE_32, &decodeCmovNBE_32,
     &decodeCmovS_32, &decodeCmovNS_32, &decodeCmovP_32, &decodeCmovNP_32, &decodeCmovL_32, &decodeCmovNL_32, &decodeCmovLE_32, &decodeCmovNLE_32,
     // 0x350
-    0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
+    &sseMovmsk, &sseSqrt, &sseRsqrt, &sseRpc, &sseAndpsXmm, &sseAndnpsXmm, &sseOrpsXmm, &sseXorpsXmm,
+    &sseAdd, &sseMul, 0, 0, &sseSub, &sseMin, &sseDiv, &sseMax,
     // 0x360
     &decodePunpcklbw, &decodePunpcklwd, &decodePunpckldq, &decodePacksswb, &decodePcmpgtb, &decodePcmpgtw, &decodePcmpgtd, &decodePackuswb,
     &decodePunpckhbw, &decodePunpckhwd, &decodePunpckhdq, &decodePackssdw, 0, 0, &decodeMovPqEd, &decodeMovPqQq,
     // 0x370
-    0, &decode371MMX, &decode372MMX, &decode373MMX, &decodePcmpeqb, &decodePcmpeqw, &decodePcmpeqd, &decodeEmms,
+    &ssePshufwMmx, &decode371MMX, &decode372MMX, &decode373MMX, &decodePcmpeqb, &decodePcmpeqw, &decodePcmpeqd, &decodeEmms,
     0, 0, 0, 0, 0, 0, &decodeMovEdPq, &decodeMovQqPq,
     // 0x380
     &decodeJo32, &decodeJno32, &decodeJb32, &decodeJnb32, &decodeJz32, &decodeJnz32, &decodeJbe32, &decodeJnbe32,
@@ -4671,16 +5089,16 @@ const Decode* const decoder[] = {
     0, &decodeCmpXchgEdGd, &decodeLss32, &decodeBtrEdGd, &decodeLfs32, &decodeLgs32, &decodeMovGdXz8, &decodeMovGdXz16,
     0, 0, &decodeGroup8_32, &decodeBtcEwGw, &decodeBsfGdEd, &decodeBsrGdEd, &decodeMovGdSx8, &decodeMovGdSx16,
     // 0x3c0
-    0, &decodeXadd32, 0, 0, 0, 0, 0, &decodeCmpXchg8b,
+    0, &decodeXadd32, &sseCmp, 0, &ssePinsrwMmx, &ssePextrwMmx, &sseShufp, &decodeCmpXchg8b,
     &decodeBswapEAX, &decodeBswapECX, &decodeBswapEDX, &decodeBswapEBX, &decodeBswapESP, &decodeBswapEBP, &decodeBswapESI, &decodeBswapEDI,
     // 0x3d0
-    0, &decodePsrlw, &decodePsrld, &decodePsrlq, 0, &decodePmullw, 0, 0,
-    &decodePsubusb, &decodePsubusw, 0, &decodePand, &decodePaddusb, &decodePaddusw, 0, &decodePandn,
+    0, &decodePsrlw, &decodePsrld, &decodePsrlq, 0, &decodePmullw, 0, &ssePmovmskbMmx,
+    &decodePsubusb, &decodePsubusw, &ssePminubMmx, &decodePand, &decodePaddusb, &decodePaddusw, &ssePmaxubMmx, &decodePandn,
     // 0x3e0
-    0, &decodePsraw, &decodePsrad, 0, 0, &decodePmulhw, 0, 0,
-    &decodePsubsb, &decodePsubsw, 0, &decodePor, &decodePaddsb, &decodePaddsw, 0, &decodePxor,
+    &ssePavgbMmx, &decodePsraw, &decodePsrad, &ssePavgwMmx, &ssePmulhuwMmx, &decodePmulhw, 0, &sseMovntq,
+    &decodePsubsb, &decodePsubsw, &ssePminswMmx, &decodePor, &decodePaddsb, &decodePaddsw, &ssePmaxswMmx, &decodePxor,
     // 0x3f0
-    0, &decodePsllw, &decodePslld, &decodePsllq, 0, &decodePmaddwd, 0, 0,
+    0, &decodePsllw, &decodePslld, &decodePsllq, 0, &decodePmaddwd, &ssePsadbwMmx, &sseMaskmov,
     &decodePsubb, &decodePsubw, &decodePsubd, 0, &decodePaddb, &decodePaddw, &decodePaddd, 0,
 };
 
@@ -4903,7 +5321,8 @@ void decodeBlock(pfnFetchByte fetchByte, U32 eip, U32 isBig, U32 maxInstructions
 }
 
 void DecodedOp::log(CPU* cpu) {
-    if (cpu->logFile && this->inst<=Clflush) {
+#ifdef _DEBUG
+    if (cpu->logFile && this->inst<Callback) {
         BOXEDWINE_CRITICAL_SECTION;
         U32 pos = ftell((FILE*)cpu->logFile); // :TODO: should be 64-bit
         fprintf((FILE*)cpu->logFile, "%04X %08X ", cpu->thread->id, cpu->eip.u32);
@@ -4934,4 +5353,5 @@ void DecodedOp::log(CPU* cpu) {
         fwrite("\n", 1, 1, (FILE*)cpu->logFile);
         fflush((FILE*)cpu->logFile);
     }
+#endif
 }

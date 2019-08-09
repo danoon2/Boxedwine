@@ -328,6 +328,9 @@
     <ClCompile Include="..\..\..\..\source\emulation\cpu\srcgen.cpp">
       <Filter>source\emulation\cpu</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\common\common_sse.cpp">
+      <Filter>source\emulation\cpu\common</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -752,6 +755,18 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\emulation\cpu\x64\x64CodeChunk.h">
       <Filter>source\emulation\cpu\x64</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_sse.h">
+      <Filter>source\emulation\cpu\normal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\common\common_sse.h">
+      <Filter>source\emulation\cpu\common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\common\common_sse_def.h">
+      <Filter>source\emulation\cpu\common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_sse.h">
+      <Filter>source\emulation\cpu\dynamic</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

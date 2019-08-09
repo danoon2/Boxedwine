@@ -175,3 +175,11 @@ void common_cmpxchgg8b(CPU* cpu, U32 address){
         EAX = (U32)value2;
     }
 }
+
+void common_fxsave(CPU* cpu, U32 address) {
+    kpanic("fxsave not implemented");
+}
+
+void common_fxrstor(CPU* cpu, U32 address) {
+    kpanic("fxrstore not implemented");
+}

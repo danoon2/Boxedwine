@@ -54,6 +54,7 @@
 #define OPENGL_CALL_TYPE __stdcall
 #define PACKED( s ) __pragma( pack(push, 1) ) s __pragma( pack(pop) )
 #define socklen_t int
+#define ALIGN(t, x) __declspec(align(x)) t
 #else
 #include <limits.h>
 #if ( __WORDSIZE == 64 )
@@ -71,6 +72,7 @@
 #define INLINE inline
 #define OPENGL_CALL_TYPE
 #define PACKED( s ) s __attribute__((__packed__))
+#define ALIGN(t, x) t __attribute__((aligned(x)))
 #endif
 
 #ifndef S_ISDIR

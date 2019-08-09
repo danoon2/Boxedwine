@@ -29,3 +29,7 @@ This will load the file system from wine.zip and write the changes to c:\root
 -w path : Initial working directory, default is /home/username.  This path needs to reference a path in the emulated file system.
 
 -zip path : This will load the file system from the zip file.  Use -root option for the location where new files can be created.
+
+-p2 : sets the emulated cpu to be a Pentium 2 with MMX
+
+-p3 : sets the emulated cpu to be a Pentium 3 with MMX/SSE (default)

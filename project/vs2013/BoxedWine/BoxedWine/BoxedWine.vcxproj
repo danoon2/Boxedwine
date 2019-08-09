@@ -423,6 +423,8 @@
     <ClInclude Include="..\..\..\..\source\emulation\cpu\common\common_mmx_def.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\common\common_other.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\common\common_pushpop.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\common\common_sse.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\common\common_sse_def.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\common\common_xchg.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\common\cpu.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\common\cpu_init.h" />
@@ -444,6 +446,7 @@
     <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_pushpop.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_setcc.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_shift.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_sse.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_strings.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_xchg.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\instructions.h" />
@@ -461,6 +464,7 @@
     <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_setcc.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_shift.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_shift_op.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_sse.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_strings.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_strings_op.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_xchg.h" />
@@ -556,6 +560,7 @@
     <ClCompile Include="..\..\..\..\source\emulation\cpu\common\common_mmx.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\common\common_other.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\common\common_pushpop.cpp" />
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\common\common_sse.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\common\common_xchg.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\common\cpu.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\common\fpu.cpp" />

@@ -20,6 +20,10 @@ void syncFromException(x64CPU* cpu, struct _EXCEPTION_POINTERS *ep, bool include
     EDI = (U32)ep->ContextRecord->Rdi;
     cpu->flags = ep->ContextRecord->EFlags;
     cpu->lazyFlags = FLAGS_NONE;
+    for (int i=0;i<8;i++) {
+        cpu->xmm[i].u64[0] = ep->ContextRecord->FltSave.XmmRegisters[i].Low;
+        cpu->xmm[i].u64[1] = ep->ContextRecord->FltSave.XmmRegisters[i].High;
+    }
 
     if (includeFPU && !cpu->thread->process->emulateFPU) {
         cpu->fpu.SetCW(ep->ContextRecord->FltSave.ControlWord);
@@ -50,7 +54,10 @@ void syncToException(x64CPU* cpu, struct _EXCEPTION_POINTERS *ep, bool includeFP
     ep->ContextRecord->R15 = cpu->seg[DS].address;
     cpu->fillFlags();
     ep->ContextRecord->EFlags = cpu->flags;
-
+    for (int i=0;i<8;i++) {
+        ep->ContextRecord->FltSave.XmmRegisters[i].Low = cpu->xmm[i].u64[0];
+        ep->ContextRecord->FltSave.XmmRegisters[i].High = cpu->xmm[i].u64[1];
+    }
     if (includeFPU && !cpu->thread->process->emulateFPU) {
         ep->ContextRecord->FltSave.ControlWord = cpu->fpu.CW();
         ep->ContextRecord->FltSave.StatusWord = cpu->fpu.SW();

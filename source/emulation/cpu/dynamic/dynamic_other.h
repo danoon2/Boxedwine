@@ -572,3 +572,15 @@ void dynamic_loadSegment32(DynamicData* data, DecodedOp* op) {
     movToCpuFromReg(CPU_OFFSET_OF(reg[op->reg].u32), DYN_DEST, DYN_32bit, true);
     INCREMENT_EIP(op->len);
 }
+
+void dynamic_fxsave(DynamicData* data, DecodedOp* op) {
+    calculateEaa(op, DYN_ADDRESS);
+    callHostFunction(common_fxsave, false, 2, 0, DYN_PARAM_CPU, false, DYN_ADDRESS, DYN_PARAM_REG_32, true);
+    INCREMENT_EIP(op->len);
+}
+
+void dynamic_fxrstor(DynamicData* data, DecodedOp* op) {
+    calculateEaa(op, DYN_ADDRESS);
+    callHostFunction(common_fxrstor, false, 2, 0, DYN_PARAM_CPU, false, DYN_ADDRESS, DYN_PARAM_REG_32, true);
+    INCREMENT_EIP(op->len);
+}
