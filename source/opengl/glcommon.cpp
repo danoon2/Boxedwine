@@ -135,7 +135,12 @@ void glcommon_glGetString(CPU* cpu) {
         index = STRING_GL_SHADING_LANGUAGE_VERSION;
         GL_LOG("glGetString GLenum name=GL_SHADING_LANGUAGE_VERSION ret=%s", result);
     } else if (name == GL_EXTENSIONS) {
-        static char ext[8192]={0};
+        static char* ext;
+        if (!ext) {
+            U32 len = strlen(result)+1;
+            ext = new char[len];
+            memset(ext, 0, len);
+        }
         index = STRING_GL_EXTENSIONS;
         if (ext[0]==0) {
             for (U32 i=0;i<sizeof(extentions)/sizeof(char*);i++) {
@@ -146,7 +151,7 @@ void glcommon_glGetString(CPU* cpu) {
                 }
             }
         }
-        result = "GL_EXT_texture3D";
+        result = ext;
         GL_LOG("glGetString GLenum name=GL_EXTENSIONS ret=%s", result);
     }
 #ifdef BOXEDWINE_X64

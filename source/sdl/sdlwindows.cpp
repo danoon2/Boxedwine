@@ -561,6 +561,10 @@ static void displayChanged(KThread* thread) {
 #endif
     firstWindowCreated = 1;
     if (videoEnabled) {
+         for (auto& n : hwndToWnd) {
+            Wnd* wnd = n.second;
+            wnd->openGlContext = 0;
+        }
 #ifdef SDL2
         destroySDL2(thread);
         SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, sdlScaleQuality);

@@ -549,14 +549,20 @@ void Memory::onThreadChanged() {
 }
 
 U8* getPhysicalAddress(U32 address, U32 len) {
+    if (!address)
+        return NULL;
     return (U8*)getNativeAddress(KThread::currentThread()->process->memory, address);
 }
 
 U8* getPhysicalReadAddress(U32 address, U32 len) {
+    if (!address)
+        return NULL;
     return (U8*)getNativeAddress(KThread::currentThread()->process->memory, address);
 }
 
 U8* getPhysicalWriteAddress(U32 address, U32 len) {
+    if (!address)
+        return NULL;
     return (U8*)getNativeAddress(KThread::currentThread()->process->memory, address);
 }
 

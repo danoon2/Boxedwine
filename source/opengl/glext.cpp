@@ -4,7 +4,7 @@
 #include GLH
 #include "glcommon.h"
 
-static std::unordered_map<std::string, void*> glFunctionMap;
+extern std::unordered_map<std::string, void*> glFunctionMap;
 
 const char* glIsLoaded[GL_FUNC_COUNT];
 
