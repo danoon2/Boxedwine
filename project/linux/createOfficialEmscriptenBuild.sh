@@ -1,4 +1,5 @@
 #!/bin/sh
+set -e
 sh buildjsfs_sdl2.sh $1
 mkdir build
 rm build/*
