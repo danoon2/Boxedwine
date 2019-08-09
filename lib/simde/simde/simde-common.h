@@ -55,7 +55,7 @@
   simde_assert_int(((uintptr_t) (val)) % (alignment), ==, 0)
 
 #if HEDLEY_GCC_HAS_ATTRIBUTE(vector_size,4,6,0)
-#  define SIMDE__ENABLE_GCC_VEC_EXT
+//#  define SIMDE__ENABLE_GCC_VEC_EXT
 #endif
 
 #if !defined(SIMDE_ENABLE_OPENMP) && ((defined(_OPENMP) && (_OPENMP >= 201307L)) || (defined(_OPENMP_SIMD) && (_OPENMP_SIMD >= 201307L)))
