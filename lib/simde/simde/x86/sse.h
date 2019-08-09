@@ -37,7 +37,7 @@
 #  if defined(SIMDE_SSE_FORCE_NATIVE)
 #    define SIMDE_SSE_NATIVE
 #  elif defined(__SSE__) && !defined(SIMDE_SSE_NO_NATIVE) && !defined(SIMDE_NO_NATIVE)
-#    define SIMDE_SSE_NATIVE
+//#    define SIMDE_SSE_NATIVE
 #  elif defined(__ARM_NEON) && !defined(SIMDE_SSE_NO_NEON) && !defined(SIMDE_NO_NEON)
 #    define SIMDE_SSE_NEON
 #  endif
@@ -2047,10 +2047,10 @@ simde_mm_shuffle_pi16 (simde__m64 a, const int imm8) {
 	  SIMDE__SHUFFLE_VECTOR(16, 8,				\
 				(simde__tmp_a_).i16,		\
 				(simde__tmp_a_).i16,		\
-				(((imm8)     ) & 3),		\
-				(((imm8) >> 2) & 3),		\
-				(((imm8) >> 4) & 3),		\
-				(((imm8) >> 6) & 3)) }; })
+				(short int)(((imm8)     ) & 3),		\
+				(short int)(((imm8) >> 2) & 3),		\
+				(short int)(((imm8) >> 4) & 3),		\
+				(short int)(((imm8) >> 6) & 3)) }; })
 #endif
 
 #if defined(SIMDE_SSE_NATIVE) && !defined(__PGI)
