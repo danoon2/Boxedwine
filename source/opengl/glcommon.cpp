@@ -37,7 +37,7 @@
 #include "../emulation/hardmmu/hard_memory.h"
 #endif
 
-const char* glExt;
+extern const char* glExt;
 
 float fARG(CPU* cpu, U32 arg) {
     struct int2Float i;

@@ -47,7 +47,7 @@
 
 void gl_init();
 extern int bits_per_pixel;
-extern const char* glExt;
+const char* glExt;
 
 #include CURDIR_INCLUDE
 
