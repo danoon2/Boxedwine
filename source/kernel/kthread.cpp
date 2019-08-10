@@ -179,7 +179,19 @@ U32 KThread::signal(U32 signal, bool wait) {
         if (this==KThread::currentThread()) {
             this->cpu->reg[0].u32 = 0; 
             this->cpu->eip.u32+=2;
+        } 
+#ifdef BOXEDWINE_MULTI_THREADED                     
+        else {
+            // :TODO: how to interrupt the thread (the current approache assumes the thread will yield to the signal)
+            this->pendingSignals |= ((U64)1 << (signal-1));
+            if (wait) {
+                BOXEDWINE_CONDITION_LOCK(this->waitingForSignalToEndCond);            
+                BOXEDWINE_CONDITION_WAIT(this->waitingForSignalToEndCond);
+                BOXEDWINE_CONDITION_UNLOCK(this->waitingForSignalToEndCond);
+            }
+            return 0;
         }
+#endif
         this->runSignal(signal, -1, 0);
         if (wait && KThread::currentThread()!=this) {
             BOXEDWINE_CONDITION_LOCK(this->waitingForSignalToEndCond);
