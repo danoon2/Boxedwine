@@ -76,13 +76,15 @@ bool BoxedWineCondition::tryLock() {
 
 void BoxedWineCondition::signal() {
     if (this->parent) {
-        while(!this->parent->tryLock()) {
+        BoxedWineCondition* p = this->parent;
+        while(!p->tryLock()) {
             this->unlock();
             this->lock();
         }
-        this->parent->signal();
-        this->parent->unlock();
-        this->parent->children.clear();
+        if (p==this->parent) {
+            this->parent->signal();            
+        }
+        p->unlock();
     } else {
         SDL_CondSignal((SDL_cond*)this->c);
     }
@@ -90,13 +92,15 @@ void BoxedWineCondition::signal() {
 
 void BoxedWineCondition::signalAll() {
     if (this->parent) {
-        while(!this->parent->tryLock()) {
+        BoxedWineCondition* p = this->parent;
+        while(!p->tryLock()) {
             this->unlock();
             this->lock();
         }
-        this->parent->signalAll();
-        this->parent->unlock();
-        this->parent->children.clear();
+        if (p==this->parent) {
+            this->parent->signalAll();            
+        }
+        p->unlock();
     }
     SDL_CondBroadcast((SDL_cond*)this->c);
 }
@@ -106,10 +110,31 @@ void BoxedWineCondition::signalAllLock() {
     this->signalAll();
     this->unlock();
 }
-void BoxedWineCondition::wait() {
+
+void BoxedWineCondition::unlockAndRemoveChildren() {
+    for (auto &child : this->children) {
+        child->parent = NULL;
+        child->unlock();
+    }
+    this->children.clear();
+}
+
+void BoxedWineCondition::wait() {    
+    for (auto &child : this->children) {
+        child->unlock();
+    }
+
     KThread::currentThread()->waitingCond = this;
     SDL_CondWait((SDL_cond*)this->c, (SDL_mutex*)this->m);    
     KThread::currentThread()->waitingCond = NULL;
+
+    for (auto &child : this->children) {
+        child->lock();
+        child->parent = NULL;
+        child->unlock();
+    }
+    this->children.clear();
+
     if (KThread::currentThread()->exiting) {
         this->unlock();
         unscheduleCurrentThread();
@@ -117,9 +142,21 @@ void BoxedWineCondition::wait() {
 }
 
 void BoxedWineCondition::waitWithTimeout(U32 ms) {
+    for (auto &child : this->children) {
+        child->unlock();
+    }
+
     KThread::currentThread()->waitingCond = this;
     SDL_CondWaitTimeout((SDL_cond*)this->c, (SDL_mutex*)this->m, ms);
     KThread::currentThread()->waitingCond = NULL;
+
+    for (auto &child : this->children) {
+        child->lock();
+        child->parent = NULL;
+        child->unlock();
+    }
+    this->children.clear();
+
     if (KThread::currentThread()->exiting) {
         this->unlock();
         unscheduleCurrentThread();
@@ -133,6 +170,7 @@ void BoxedWineCondition::unlock() {
 
 void BoxedWineCondition::addChildCondition(BoxedWineCondition& cond) {
     // this (parent) should be be locked while we call this
+    cond.lock();
     cond.parent = this;
     this->children.push_back(&cond);
 }
@@ -191,6 +229,9 @@ void BoxedWineCondition::signalAll() {
         this->parent->signalAll();
     }
     this->signalThread(true);
+}
+
+void BoxedWineCondition::unlockAndRemoveChildren() {
 }
 
 U32 BoxedWineCondition::wait() {

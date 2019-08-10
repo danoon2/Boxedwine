@@ -38,6 +38,7 @@ public:
     void waitWithTimeout(U32 ms);
     void unlock();
     void addChildCondition(BoxedWineCondition& cond);
+    void unlockAndRemoveChildren();
     U32 waitCount();
 
     const std::string name;

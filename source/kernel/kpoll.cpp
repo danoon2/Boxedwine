@@ -64,16 +64,16 @@ S32 internal_poll(KPollData* data, U32 count, U32 timeout) {
         }
         if (result>0) {	
             thread->condStartWaitTime = 0;
-            thread->pollCond.signalAll(); // will release child locks we gathered above
+            thread->pollCond.unlockAndRemoveChildren();
             return result;
         }
         if (timeout==0) {
-            thread->pollCond.signalAll(); // will release child locks we gathered above
+            thread->pollCond.unlockAndRemoveChildren();
             return 0;
         }	
         if (interrupted) {
             thread->condStartWaitTime = 0;
-            thread->pollCond.signalAll(); // will release child locks we gathered above
+            thread->pollCond.unlockAndRemoveChildren();
             return -K_EINTR;
         }
         if (!thread->condStartWaitTime) {
@@ -82,7 +82,7 @@ S32 internal_poll(KPollData* data, U32 count, U32 timeout) {
             U32 diff = getMilliesSinceStart()-thread->condStartWaitTime;
             if (diff>timeout) {
                 thread->condStartWaitTime = 0;
-                thread->pollCond.signalAll(); // will release child locks we gathered above
+                thread->pollCond.unlockAndRemoveChildren();
                 return 0;
             }
             timeout-=diff;
