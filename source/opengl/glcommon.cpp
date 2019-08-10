@@ -37,6 +37,8 @@
 #include "../emulation/hardmmu/hard_memory.h"
 #endif
 
+const char* glExt;
+
 float fARG(CPU* cpu, U32 arg) {
     struct int2Float i;
     i.i = arg;
@@ -144,7 +146,7 @@ void glcommon_glGetString(CPU* cpu) {
         index = STRING_GL_EXTENSIONS;
         if (ext[0]==0) {
             for (U32 i=0;i<sizeof(extentions)/sizeof(char*);i++) {
-                if (strstr(result, extentions[i])) {
+                if (strstr(result, extentions[i]) && (!glExt || strstr(glExt, extentions[i]))) {
                     if (ext[0]!=0)
                         strcat(ext, " ");
                     strcat(ext, extentions[i]);

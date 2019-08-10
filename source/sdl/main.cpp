@@ -47,6 +47,7 @@
 
 void gl_init();
 extern int bits_per_pixel;
+extern const char* glExt;
 
 #include CURDIR_INCLUDE
 
@@ -216,6 +217,9 @@ int boxedmain(int argc, const char **argv) {
             KSystem::pentiumLevel = 2;
         } else if (!strcmp(argv[i], "-p3")) {
             KSystem::pentiumLevel = 3;
+        } else if (!strcmp(argv[i], "-glext")) {
+            glExt = argv[i+1];
+            i++;
         }
 #ifdef BOXEDWINE_RECORDER
         else if (!strcmp(argv[i], "-record")) {
