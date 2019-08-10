@@ -113,6 +113,7 @@ public:
     U32 waitCount();
 
     void addChildCondition(BoxedWineCondition& cond);
+    void unlockAndRemoveChildren();
 
     const std::string name;
 private:
