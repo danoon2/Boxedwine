@@ -1,4 +1,26 @@
 #include "boxedwine.h"
+void common_cmpxchgr8r8(CPU* cpu, U32 dstReg, U32 srcReg){
+    cpu->dst.u8 = AL;
+    cpu->src.u8 = *cpu->reg8[dstReg];
+    cpu->result.u8 = cpu->dst.u8 - cpu->src.u8;
+    cpu->lazyFlags = FLAGS_CMP8;
+    if (AL == cpu->src.u8) {
+        *cpu->reg8[dstReg] = *cpu->reg8[srcReg];
+    } else {
+        AL = cpu->src.u8;
+    }
+}
+void common_cmpxchge8r8(CPU* cpu, U32 address, U32 srcReg){
+    cpu->dst.u8 = AL;
+    cpu->src.u8 = readb(address);
+    cpu->result.u8 = cpu->dst.u8 - cpu->src.u8;
+    cpu->lazyFlags = FLAGS_CMP16;
+    if (AL == cpu->src.u8) {
+        writeb(address, *cpu->reg8[srcReg]);
+    } else {
+        AL = cpu->src.u8;
+    }
+}
 void common_cmpxchgr16r16(CPU* cpu, U32 dstReg, U32 srcReg){
     cpu->dst.u16 = AX;
     cpu->src.u16 = cpu->reg[dstReg].u16;

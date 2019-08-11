@@ -266,6 +266,8 @@ const InstructionInfo instructionInfo[] = {
     {0, 0, 0, CF|OF, 0, AF|ZF|SF|PF, 0}, // DimulR32R32
     {0, 32, 0, CF|OF, 0, AF|ZF|SF|PF, 0}, // DimulR32E32
 
+    {0, 0, 0, CF|OF|AF|ZF|SF|PF, 0, 0, 0}, // CmpXchgR8R8
+    {0, 8, 8, CF|OF|AF|ZF|SF|PF, 0, 0, 0}, // CmpXchgE8R8
     {0, 0, 0, CF|OF|AF|ZF|SF|PF, 0, 0, 0}, // CmpXchgR16R16
     {0, 16, 16, CF|OF|AF|ZF|SF|PF, 0, 0, 0}, // CmpXchgE16R16
     {0, 0, 0, CF|OF|AF|ZF|SF|PF, 0, 0, 0}, // CmpXchgR32R32
@@ -1802,6 +1804,8 @@ const LogInstruction instructionLog[] = {
     {"Mul", 32, logRR},
     {"Mul", 32, logRE},
 
+    {"CmpXchg", 8, logRR},
+    {"CmpXchg", 8, logER},
     {"CmpXchg", 16, logRR},
     {"CmpXchg", 16, logER},
     {"CmpXchg", 32, logRR},
@@ -4552,6 +4556,7 @@ DecodeRM decodeDshrClEdGd(DshrClR32R32, DshrClE32R32);             // DSHRCL Ed,
 
 DecodeRMr decodeDimulGwEw(DimulR16R16, DimulR16E16);              // DIMUL Gw,Ew
 DecodeRMr decodeDimulGdEd(DimulR32R32, DimulR32E32);              // DIMUL Gd,Ed
+DecodeRM decodeCmpXchgEbGb(CmpXchgR8R8, CmpXchgE8R8);        // CMPXCHG Eb,Gb
 DecodeRM decodeCmpXchgEwGw(CmpXchgR16R16, CmpXchgE16R16);        // CMPXCHG Ew,Gw
 DecodeRM decodeCmpXchgEdGd(CmpXchgR32R32, CmpXchgE32R32);        // CMPXCHG Ed,Gd
 
@@ -4990,7 +4995,7 @@ const Decode* const decoder[] = {
     &decodePushFs16, &decodePopFs16, &decodeCPUID, &decodeBtEwGw, &decodeDshlEwGw, &decodeDshlClEwGw, 0, 0,
     &decodePushGs16, &decodePopGs16, 0, &decodeBtsEwGw, &decodeDshrEwGw, &decodeDshrClEwGw, 0, &decodeDimulGwEw,
     // 0x1b0
-    0, &decodeCmpXchgEwGw, &decodeLss, &decodeBtrEwGw, &decodeLfs, &decodeLgs, &decodeMovGwXz8, 0,
+    &decodeCmpXchgEbGb, &decodeCmpXchgEwGw, &decodeLss, &decodeBtrEwGw, &decodeLfs, &decodeLgs, &decodeMovGwXz8, 0,
     0, 0, &decodeGroup8_16, &decodeBtcEwGw, &decodeBsfGwEw, &decodeBsrGwEw, &decodeMovGwSx8, 0,
     // 0x1c0
     0, 0, 0, 0, &ssePinsrwXmm, &ssePextrwXmm, 0, 0,
@@ -5086,7 +5091,7 @@ const Decode* const decoder[] = {
     &decodePushFs32, &decodePopFs32, &decodeCPUID, &decodeBtEdGd, &decodeDshlEdGd, &decodeDshlClEdGd, 0, 0,
     &decodePushGs32, &decodePopGs32, 0, &decodeBtsEdGd, &decodeDshrEdGd, &decodeDshrClEdGd, &decode3EA, &decodeDimulGdEd,
     // 0x3b0
-    0, &decodeCmpXchgEdGd, &decodeLss32, &decodeBtrEdGd, &decodeLfs32, &decodeLgs32, &decodeMovGdXz8, &decodeMovGdXz16,
+    &decodeCmpXchgEbGb, &decodeCmpXchgEdGd, &decodeLss32, &decodeBtrEdGd, &decodeLfs32, &decodeLgs32, &decodeMovGdXz8, &decodeMovGdXz16,
     0, 0, &decodeGroup8_32, &decodeBtcEwGw, &decodeBsfGdEd, &decodeBsrGdEd, &decodeMovGdSx8, &decodeMovGdSx16,
     // 0x3c0
     0, &decodeXadd32, &sseCmp, 0, &ssePinsrwMmx, &ssePextrwMmx, &sseShufp, &decodeCmpXchg8b,

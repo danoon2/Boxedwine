@@ -297,6 +297,8 @@ enum Instruction {
     DimulR32R32,
     DimulR32E32,
 
+    CmpXchgR8R8, 
+    CmpXchgE8R8,
     CmpXchgR16R16, 
     CmpXchgE16R16,
     CmpXchgR32R32, 

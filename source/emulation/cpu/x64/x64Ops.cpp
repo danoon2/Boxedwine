@@ -2430,7 +2430,7 @@ X64Decoder x64Decoder[1024] = {
     push16FS, pop16FS, x64cpuid, inst16RM, inst16RMimm8, inst16RM, invalidOp, invalidOp,
     push16GS, pop16GS, invalidOp, inst16RM, inst16RMimm8, inst16RM, invalidOp, inst16RM,
     // 1b0
-    invalidOp, inst16RM, lss16, inst16RM, lfs16, lgs16, inst16E8RM, invalidOp,
+    inst8RM, inst16RM, lss16, inst16RM, lfs16, lgs16, inst16E8RM, invalidOp,
     invalidOp, inst16RMimm8SafeG, inst16RMimm8SafeG, invalidOp, inst16RM, inst16RM, inst16E8RM, invalidOp,
     // 1c0
     invalidOp, invalidOp, invalidOp, invalidOp, &sseXmmErI8, &sseErXmmI8, invalidOp, invalidOp,
@@ -2528,7 +2528,7 @@ X64Decoder x64Decoder[1024] = {
     push32FS, pop32FS, x64cpuid, inst32RM, inst32RMimm8, inst32RM, invalidOp, invalidOp,
     push32GS, pop32GS, invalidOp, inst32RM, inst32RMimm8, inst32RM, sseOp3AE, inst32RM,
     // 3b0
-    invalidOp, inst32RM, lss32, inst32RM, lfs32, lgs32, inst32E8RM, inst32E16RM,
+    inst8RM, inst32RM, lss32, inst32RM, lfs32, lgs32, inst32E8RM, inst32E16RM,
     invalidOp, invalidOp, inst32RMimm8SafeG, inst32RM, inst32RM, inst32RM, inst32E8RM, inst32E16RM,
     // 3c0
     invalidOp, inst32RM, sseXmmExI8, invalidOp, &sseMmxErI8, &sseErMmxI8, sseXmmExI8, inst32RMSafeG,

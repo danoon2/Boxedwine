@@ -62,6 +62,16 @@ void OPCALL normal_xchge32r32(CPU* cpu, DecodedOp* op) {
     cpu->reg[op->reg].u32 = tmp;
     NEXT();
 }
+void OPCALL normal_cmpxchgr8r8(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
+    common_cmpxchgr8r8(cpu, op->reg, op->rm);
+    NEXT();
+}
+void OPCALL normal_cmpxchge8r8(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
+    common_cmpxchge8r8(cpu, eaa(cpu, op), op->reg);
+    NEXT();
+}
 void OPCALL normal_cmpxchgr16r16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     common_cmpxchgr16r16(cpu, op->reg, op->rm);

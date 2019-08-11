@@ -1139,13 +1139,14 @@ U32 CPU::getEipAddress() {
 }
 
 U32 CPU::readCrx(U32 which, U32 reg) {
-    this->prepareException(EXCEPTION_GP, 0);
-    return 0;
+    //this->prepareException(EXCEPTION_GP, 0);
+    this->reg[reg].u32 = 0;
+    return 1;
 }
 
 U32 CPU::writeCrx(U32 which, U32 value) {
-    this->prepareException(EXCEPTION_GP, 0);
-    return 0;
+    //this->prepareException(EXCEPTION_GP, 0);
+    return 1;
 }
 
 U32 common_getCF(CPU* cpu) {
