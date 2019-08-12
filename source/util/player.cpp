@@ -110,7 +110,7 @@ void Player::runSlice() {
     } else if (this->nextCommand=="DONE") {
         //exit(1);, let it exit gracefully
     }
-    if (Platform::getMicroCounter()>this->lastCommandTime+1000000*60*5) {
+    if (Platform::getMicroCounter()>this->lastCommandTime+1000000*60*10) {
         klog("script timed out %s", this->directory.c_str());
         sdlScreenShot("failed.bmp", NULL);
         exit(0);

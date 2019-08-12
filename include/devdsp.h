@@ -20,5 +20,5 @@
 #define __DEVDSP_H__
 
 FsOpenNode* openDevDsp(const BoxedPtr<FsNode>& node, U32 flags);
-
+void dspShutdown();
 #endif

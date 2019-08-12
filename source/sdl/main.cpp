@@ -362,7 +362,8 @@ int boxedmain(int argc, const char **argv) {
 #ifdef GENERATE_SOURCE
     if (gensrc)
         writeSource();
-#endif    
+#endif
+    dspShutdown();
     klog("Boxedwine shutdown");
     SDL_Quit();
     return BOXEDWINE_RECORDER_QUIT();

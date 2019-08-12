@@ -31,7 +31,7 @@ extern bool soundEnabled;
 ringbuffer<U8> audioBuffer(DSP_BUFFER_SIZE);
 U8 audioSilence;
 static bool closeWhenDone = false;
-static bool isAudioOpen = false;
+static bool audioWaitingToClose = false;
 
 class DevDspData {
 public:
@@ -96,7 +96,7 @@ public:
             if (soundEnabled) {
                 SDL_LockAudio();
             }
-            if (audioBuffer.getOccupied() || (this->data->cvtBufPos!=0 && this->data->cvtBufPos<this->data->cvt.len_cvt)) {                
+            if (audioBuffer.getOccupied() || (this->data->cvtBufPos!=0 && this->data->cvtBufPos<this->data->cvt.len_cvt)) {
                 closeWhenDone = true;
                 needClose = false;
             }
@@ -105,6 +105,7 @@ public:
             }
             if (needClose) {
                 if (soundEnabled) {
+                    SDL_PauseAudio(1);
                     SDL_CloseAudio();
                 }
                 delete this->data;                
@@ -142,10 +143,15 @@ void audioCallback(void *userdata, U8* stream, S32 len) {
     S32 originalAvailable = available;
     S32 originalLen = len;
 
+    if (audioWaitingToClose) {
+        memset(stream, audioSilence, len);
+        SDL_PauseAudio(1);
+        return;
+    }
     if (available==0 && closeWhenDone && (data->cvtBufPos==0 || data->cvtBufPos>=data->cvt.len_cvt)) {
         closeWhenDone = false;
+        audioWaitingToClose = true;
         delete data;
-        SDL_CloseAudio(); // might not return since it can kill audio thread   
         return;
     }
     if (data->pauseEnabled() && available > data->pauseAtLen) {
@@ -204,16 +210,29 @@ void audioCallback(void *userdata, U8* stream, S32 len) {
     BOXEDWINE_CONDITION_UNLOCK(data->bufferCond);
 }
 
+void dspShutdown() {
+    if (closeWhenDone || audioWaitingToClose) {
+        if (soundEnabled) {
+            SDL_PauseAudio(1);
+            SDL_CloseAudio();
+        }
+        closeWhenDone = false;
+        audioWaitingToClose = false;
+    }
+}
+
 void DevDsp::openAudio() {
     //want.samples = 4096;    
     this->data->want.callback = audioCallback;
 	this->data->want.userdata = this->data;
 
-    if (closeWhenDone) {
+    if (closeWhenDone || audioWaitingToClose) {
         if (soundEnabled) {
+            SDL_PauseAudio(1);
             SDL_CloseAudio();
         }
         closeWhenDone = false;
+        audioWaitingToClose = false;
     }
     if (!soundEnabled) {
         this->data->sameFormat = true;
