@@ -1,0 +1,6 @@
+framework module Minizip {
+  umbrella header "Minizip.h"
+
+  export *
+  module * { export * }
+}
