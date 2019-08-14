@@ -552,9 +552,10 @@ void processEvents(void) {
         }
         TRACE("read event: type=");
         if (input.type == 0) {
+            const char* type = "rel";
             if (input.mi.dwFlags & MOUSEEVENTF_WHEEL) {
                 hwnd = GetForegroundWindow();
-            } else {
+            } else if (input.mi.dwFlags & MOUSEEVENTF_ABSOLUTE) {
                 POINT p;
                 p.x = input.mi.dx;
                 p.y = input.mi.dy;
@@ -563,8 +564,13 @@ void processEvents(void) {
                     continue;
                 }
                 hwnd = GetAncestor(hwnd, GA_ROOT);                
+            } else {
+                hwnd = GetForegroundWindow();
             }
-            TRACE("mouse %s hwnd=%p dx=%d dy=%d dwFlags=%X time=%X\n", ((input.mi.dwFlags & MOUSEEVENTF_WHEEL)?"wheel":""), hwnd, input.mi.dx, input.mi.dy, input.mi.dwFlags, input.mi.time);
+            if (input.mi.dwFlags & MOUSEEVENTF_ABSOLUTE) {
+                type = "abs";
+            }
+            TRACE("mouse %s %s hwnd=%p dx=%d dy=%d dwFlags=%X time=%X\n", ((input.mi.dwFlags & MOUSEEVENTF_WHEEL)?"wheel":""), type, hwnd, input.mi.dx, input.mi.dy, input.mi.dwFlags, input.mi.time);
         } else {
             hwnd = GetForegroundWindow();
         }
@@ -618,6 +624,10 @@ void CDECL boxeddrv_SetCursor(HCURSOR cursor) {
 
     TRACE("cursor=%p\n", cursor);
 
+    if (cursor==NULL) {
+        CALL_NORETURN_5(BOXED_SET_CURSOR, cursor, 0, 0, 0, &found);
+        return;
+    }
     info.cbSize = sizeof(info);
     if (!GetIconInfoExW(cursor, &info)) {
         WARN("GetIconInfoExW failed\n");
@@ -635,7 +645,7 @@ void CDECL boxeddrv_SetCursor(HCURSOR cursor) {
         LPVOID bits;
         HDC hdc;
         HANDLE mono;
-        BITMAP bm;
+        //BITMAP bm;
 
         if (info.hbmColor) {
             GetObjectW(info.hbmMask, sizeof(bmMask), &bmMask);
@@ -673,7 +683,7 @@ void CDECL boxeddrv_SetCursor(HCURSOR cursor) {
             WARN("GetDIBits failed\n");
         } else {
             if (info.hbmColor) {
-                GetDIBits(hdc, info.hbmColor, 0, bmMask.bmHeight, bits+bmInfo->bmiHeader.biSizeImage, bmInfo, DIB_RGB_COLORS);                
+                GetDIBits(hdc, info.hbmColor, 0, bmMask.bmHeight, (LPVOID)((char*)bits+bmInfo->bmiHeader.biSizeImage), bmInfo, DIB_RGB_COLORS);                
                 bmMask.bmHeight=-bmMask.bmHeight;
             }
             CALL_NORETURN_9(BOXED_SET_CURSOR_BITS, cursor, info.szModName, info.szResName, (DWORD)info.wResID, bits, (DWORD)bmMask.bmWidth, (DWORD)bmMask.bmHeight, info.xHotspot, info.yHotspot);

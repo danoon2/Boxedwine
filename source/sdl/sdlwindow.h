@@ -22,7 +22,8 @@
 #include "platform.h"
 #include "wnd.h"
 
-int sdlMouseMouse(int x, int y);
+void sdlSetMousePos(int x, int y);
+int sdlMouseMouse(int x, int y, bool relative);
 int sdlMouseButton(U32 down, U32 button, int x, int y);
 int sdlMouseWheel(int amount, int x, int y);
 int sdlKey(U32 key, U32 down);

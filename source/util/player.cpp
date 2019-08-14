@@ -84,7 +84,7 @@ void Player::runSlice() {
             klog("script: %s MOVETO should have 2 values: %s", this->directory.c_str(), this->nextValue.c_str());
             exit(0);
         }
-        sdlMouseMouse(atoi(items[0].c_str()), atoi(items[1].c_str()));
+        sdlMouseMouse(atoi(items[0].c_str()), atoi(items[1].c_str()), false);
         instance->readCommand();
         return;
     } 

@@ -651,10 +651,16 @@ void boxeddrv_SetCursor(CPU* cpu) {
     char tmp[MAX_FILEPATH_LEN];
     char tmp2[MAX_FILEPATH_LEN];
 
-    if (sdlSetCursor(cpu->thread, getNativeStringW(wModuleName, tmp, sizeof(tmp)), getNativeStringW(wResName, tmp2, sizeof(tmp2)), resId))
-        writed(ARG5, 1);    
-    else
+    if (!hCursor && !wModuleName && !wResName && !resId) {
+        sdlSetCursor(cpu->thread, NULL, NULL, 0);
+        if (pFound) {
+            writed(ARG5, 1);
+        }
+    } else if (sdlSetCursor(cpu->thread, getNativeStringW(wModuleName, tmp, sizeof(tmp)), getNativeStringW(wResName, tmp2, sizeof(tmp2)), resId)) {
+        writed(ARG5, 1);
+    } else {
         writed(ARG5, 0);    
+    }
 }
 
 void boxeddrv_SetCursorBits(CPU* cpu) {
@@ -691,7 +697,7 @@ void boxeddrv_SetCursorBits(CPU* cpu) {
 
 // BOOL CDECL drv_SetCursorPos(INT x, INT y)
 void boxeddrv_SetCursorPos(CPU* cpu) {
-    notImplemented("boxeddrv_SetCursorPos not implemented");
+    sdlSetMousePos((int)ARG1, (int)ARG2); 
     EAX = 1;
 }
 

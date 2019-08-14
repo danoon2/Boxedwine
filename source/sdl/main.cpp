@@ -47,6 +47,7 @@
 
 void gl_init();
 extern int bits_per_pixel;
+extern int rel_mouse_sensitivity;
 const char* glExt;
 
 #include CURDIR_INCLUDE
@@ -219,6 +220,9 @@ int boxedmain(int argc, const char **argv) {
             KSystem::pentiumLevel = 3;
         } else if (!strcmp(argv[i], "-glext")) {
             glExt = argv[i+1];
+            i++;
+        } else if (!strcmp(argv[i], "-rel_mouse_sensitivity")) {
+            rel_mouse_sensitivity = atoi(argv[i+1]);
             i++;
         }
 #ifdef BOXEDWINE_RECORDER

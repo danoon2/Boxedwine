@@ -33,6 +33,8 @@ int default_horz_res = 800;
 int default_vert_res = 600;
 int default_bits_per_pixel = 32;
 int sdlScale = 100;
+int rel_mouse_sensitivity = 100;
+bool relativeMouse = false;
 const char* sdlScaleQuality = "0";
 extern bool videoEnabled;
 
@@ -1040,11 +1042,15 @@ void writeLittleEndian_2(U8* buffer, U16 value) {
 static int lastX;
 static int lastY;
 
-int sdlMouseMouse(int x, int y) {
-    Wnd* wnd;
+void sdlSetMousePos(int x, int y) {
+    SDL_WarpMouseInWindow(sdlWindow, x*sdlScale/100, y*sdlScale/100); 
+}
 
+int sdlMouseMouse(int x, int y, bool relative) {
+    Wnd* wnd;
     lastX = x;
     lastY = y;
+
     if (!hwndToWnd.size())
         return 0;
     wnd = getWndFromPoint(x, y);
@@ -1062,7 +1068,7 @@ int sdlMouseMouse(int x, int y) {
                 writeLittleEndian_4(buffer+4, (x*100+sdlScale/2)/sdlScale); // dx
                 writeLittleEndian_4(buffer+8, (y*100+sdlScale/2)/sdlScale); // dy
                 writeLittleEndian_4(buffer+12, 0); // mouseData
-                writeLittleEndian_4(buffer+16,  MOUSEEVENTF_MOVE|MOUSEEVENTF_ABSOLUTE); // dwFlags
+                writeLittleEndian_4(buffer+16,  (relative?MOUSEEVENTF_MOVE:MOUSEEVENTF_MOVE|MOUSEEVENTF_ABSOLUTE)); // dwFlags
                 writeLittleEndian_4(buffer+20, getMilliesSinceStart()); // time
                 writeLittleEndian_4(buffer+24, 0); // dwExtraInfo
 
@@ -1165,13 +1171,19 @@ const char* getCursorName(char* moduleName, char* resourceName, int resource) {
 }
 
 U32 sdlSetCursor(KThread* thread, char* moduleName, char* resourceName, int resource) {
-    const char* name = getCursorName(moduleName, resourceName, resource);
-    if (cursors.count(name)) {
-        SDL_Cursor* cursor = cursors[name];
-        if (!cursor)
-            return 0;
-        SDL_SetCursor(cursor);
+    if (!moduleName && !resourceName && !resource) {
+        SDL_ShowCursor(0);
         return 1;
+    } else {
+        const char* name = getCursorName(moduleName, resourceName, resource);
+        if (cursors.count(name) && !relativeMouse) {
+            SDL_Cursor* cursor = cursors[name];
+            if (!cursor)
+                return 0;
+            SDL_ShowCursor(1);
+            SDL_SetCursor(cursor);
+            return 1;
+        }        
     }
     return 0;
 }
@@ -2461,30 +2473,39 @@ bool handlSdlEvent(void* p) {
         return false;
     } else if (e->type == SDL_MOUSEMOTION) { 
         BOXEDWINE_RECORDER_HANDLE_MOUSE_MOVE(e);
-        if (!sdlMouseMouse(e->motion.x, e->motion.y))
-            onMouseMove(e->motion.x, e->motion.y);
+        if (relativeMouse) {
+            if (!sdlMouseMouse((e->motion.x-screenCx/2)*rel_mouse_sensitivity/100, (e->motion.y-screenCy/2)*rel_mouse_sensitivity/100, true)) {
+                onMouseMove((e->motion.x-screenCx/2)*rel_mouse_sensitivity/100, (e->motion.y-screenCy/2)*rel_mouse_sensitivity/100, true);                
+            }            
+            SDL_WarpMouseInWindow(sdlWindow, screenCx/2, screenCy/2);
+        } else {
+            if (!sdlMouseMouse(e->motion.x, e->motion.y, false)) {
+                onMouseMove(e->motion.x, e->motion.y, false);
+            }
+        }
+        
     } else if (e->type == SDL_MOUSEBUTTONDOWN) {
         BOXEDWINE_RECORDER_HANDLE_MOUSE_BUTTON_DOWN(e);
         if (e->button.button==SDL_BUTTON_LEFT) {
-            if (!sdlMouseButton(1, 0, e->motion.x, e->motion.y))
+            if (!sdlMouseButton(1, 0, (relativeMouse?0:e->motion.x), (relativeMouse?0:e->motion.y)))
                 onMouseButtonDown(0);
         } else if (e->button.button == SDL_BUTTON_MIDDLE) {
-            if (!sdlMouseButton(1, 2, e->motion.x, e->motion.y))
+            if (!sdlMouseButton(1, 2, (relativeMouse?0:e->motion.x), (relativeMouse?0:e->motion.y)))
                 onMouseButtonDown(2);
         } else if (e->button.button == SDL_BUTTON_RIGHT) {
-            if (!sdlMouseButton(1, 1, e->motion.x, e->motion.y))
+            if (!sdlMouseButton(1, 1, (relativeMouse?0:e->motion.x), (relativeMouse?0:e->motion.y)))
                 onMouseButtonDown(1);
         }
     } else if (e->type == SDL_MOUSEBUTTONUP) {
         BOXEDWINE_RECORDER_HANDLE_MOUSE_BUTTON_UP(e);
         if (e->button.button==SDL_BUTTON_LEFT) {
-            if (!sdlMouseButton(0, 0, e->motion.x, e->motion.y))
+            if (!sdlMouseButton(0, 0, (relativeMouse?0:e->motion.x), (relativeMouse?0:e->motion.y)))
                 onMouseButtonUp(0);
         } else if (e->button.button == SDL_BUTTON_MIDDLE) {
-            if (!sdlMouseButton(0, 2, e->motion.x, e->motion.y))
+            if (!sdlMouseButton(0, 2, (relativeMouse?0:e->motion.x), (relativeMouse?0:e->motion.y)))
                 onMouseButtonUp(2);
         } else if (e->button.button == SDL_BUTTON_RIGHT) {
-            if (!sdlMouseButton(0, 1, e->motion.x, e->motion.y))
+            if (!sdlMouseButton(0, 1, (relativeMouse?0:e->motion.x), (relativeMouse?0:e->motion.y)))
                 onMouseButtonUp(1);
         }
 #ifdef SDL2
@@ -2492,7 +2513,7 @@ bool handlSdlEvent(void* p) {
         // Handle up/down mouse wheel movements
         int x, y;
         SDL_GetMouseState(&x, &y);
-        if (!sdlMouseWheel(e->wheel.y*80, x, y)) {
+        if (!sdlMouseWheel(e->wheel.y*80, (relativeMouse?0:x), (relativeMouse?0:y))) {
             onMouseWheel(e->wheel.y);
         }
 #endif
@@ -2500,9 +2521,25 @@ bool handlSdlEvent(void* p) {
         if (!BOXEDWINE_RECORDER_HANDLE_KEY_DOWN(e)) {
             if (e->key.keysym.sym==SDLK_SCROLLOCK) {
                 KSystem::printStacks();
-            } else if (!sdlKey(e->key.keysym.sym, 1)) {
+            }
+            else if (!sdlKey(e->key.keysym.sym, 1)) {
                 onKeyDown(translate(e->key.keysym.sym));
             }
+/*
+            // I'm leaving this relative mouse code in for now since it might be useful later
+            // Currently Wine will automatically handle it
+            if (e->key.keysym.sym==SDLK_RETURN && (SDL_GetModState() & KMOD_RALT)) {                
+                if (relativeMouse) {
+                    SDL_SetWindowGrab(sdlWindow, SDL_FALSE);
+                    relativeMouse = false;
+                } else {
+                    SDL_SetCursor(NULL);
+                    SDL_SetWindowGrab(sdlWindow, SDL_FALSE);
+                    SDL_WarpMouseInWindow(sdlWindow, screenCx/2, screenCy/2);
+                    relativeMouse = true;
+                }                
+            }
+*/
         }
     } else if (e->type == SDL_KEYUP) {
         if (!BOXEDWINE_RECORDER_HANDLE_KEY_UP(e)) {

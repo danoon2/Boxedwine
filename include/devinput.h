@@ -23,7 +23,7 @@ FsOpenNode* openDevInputTouch(const BoxedPtr<FsNode>& node, U32 flags);
 FsOpenNode* openDevInputMouse(const BoxedPtr<FsNode>& node, U32 flags);
 FsOpenNode* openDevInputKeyboard(const BoxedPtr<FsNode>& node, U32 flags);
 
-void onMouseMove(U32 x, U32 y);
+void onMouseMove(U32 x, U32 y, bool relative);
 void onMouseButtonDown(U32 button);
 void onMouseButtonUp(U32 button);
 void onMouseWheel(S32 value);

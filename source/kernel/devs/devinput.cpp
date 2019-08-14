@@ -721,19 +721,27 @@ void onMouseWheel(S32 value) {
     postSendEvent(touchEvents, time);
 }
 
-void onMouseMove(U32 x, U32 y) {
+void onMouseMove(U32 x, U32 y, bool relative) {
     U32 send = 0;
     U64 time = Platform::getSystemTimeAsMicroSeconds();
 
     if (touchEvents) {
         if (x!=touchEvents->lastX) {
-            touchEvents->lastX = x;
-            queueEvent(touchEvents, K_EV_ABS, K_ABS_X, x, time);
+            if (relative) {
+                queueEvent(touchEvents, K_EV_REL, K_REL_X, x, time);
+            } else {
+                queueEvent(touchEvents, K_EV_ABS, K_ABS_X, x, time);
+            }
+            touchEvents->lastX = x;            
             send = 1;
         }
         if (y!=touchEvents->lastY) {
-            touchEvents->lastY = y;
-            queueEvent(touchEvents, K_EV_ABS, K_ABS_Y, y, time);
+            if (relative) {
+                queueEvent(touchEvents, K_EV_REL, K_REL_Y, y, time);
+            } else {
+                queueEvent(touchEvents, K_EV_ABS, K_ABS_Y, y, time);
+            }
+            touchEvents->lastY = y;            
             send = 1;
         }
         if (send) {
