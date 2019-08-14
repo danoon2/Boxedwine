@@ -1,8 +1,9 @@
 #include "boxedwine.h"
 
 #if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
-#include "glMarshal.h"
+#include GLH
 #include "glcommon.h"
+#include "glMarshal.h"
 
 #ifndef BOXEDWINE_64BIT_MMU
 U32 getDataSize(GLenum type) {

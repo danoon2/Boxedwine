@@ -335,7 +335,11 @@ int boxedmain(int argc, const char **argv) {
     } else {
         argv = &argv[i];
     }
+#ifdef SDL2
     U32 flags = SDL_INIT_EVENTS;
+#else
+    U32 flags = SDL_INIT_TIMER;
+#endif
     if (videoEnabled) {
         flags|=SDL_INIT_VIDEO;
     }

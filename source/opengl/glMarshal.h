@@ -1,8 +1,6 @@
 #ifndef __GL_MARSHAL_H__
 #define __GL_MARSHAL_H__
 
-#include GLH
-
 // The reason for multiple copies of the same marshal function, like marshalf, marshal2f, marshal3f, etc is
 // that each one will use a different temp buffer.  For a single OpenGL function, each marshalled pointer
 // will need a different temp buffer, so a function like

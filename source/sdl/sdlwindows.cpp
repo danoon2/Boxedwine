@@ -524,6 +524,7 @@ U32 sdlCreateOpenglWindow_main_thread(KThread* thread, Wnd* wnd, int major, int 
 // context needs to be on the current thread
 U32 sdlCreateOpenglWindow(KThread* thread, Wnd* wnd, int major, int minor, int profile, int flags) {
     U32 result = sdlCreateOpenglWindow_main_thread(thread, wnd, major, minor, profile, flags);
+#ifdef SDL2
     if (result) {
         thread->glContext = SDL_GL_CreateContext(sdlWindow);
     #if BOXEDWINE_VM
@@ -540,6 +541,7 @@ U32 sdlCreateOpenglWindow(KThread* thread, Wnd* wnd, int major, int minor, int p
         if (!wnd->openGlContext)
             wnd->openGlContext = thread->glContext;       
     }
+#endif
     return result;
 }
 
@@ -679,8 +681,8 @@ void wndBlt(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32 yOrg, U32 width, 
     {     
         SDL_Surface* s = NULL;
         if (wnd->surface) {
-            s = wnd->sdlSurface;
-            if (s && (s->w!=width || s->h!=height || s->format->BitsPerPixel!=bits_per_pixel)) {
+            s = (SDL_Surface*)wnd->sdlSurface;
+            if (s && (s->w!=width || s->h!=height || s->format->BitsPerPixel!=bpp)) {
                 SDL_FreeSurface(s);
                 wnd->sdlSurface = NULL;
                 s = NULL;
@@ -691,23 +693,23 @@ void wndBlt(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32 yOrg, U32 width, 
             U32 gMask = 0x0000FF00;
             U32 bMask = 0x000000FF;
 
-            if (bits_per_pixel==15) {
+            if (bpp==15) {
                 rMask = 0x7C00;
                 gMask = 0x03E0;
                 bMask = 0x001F;
-            } else if (bits_per_pixel == 16) {
+            } else if (bpp == 16) {
                 rMask = 0xF800;
                 gMask = 0x07E0;
                 bMask = 0x001F;
             }
-            s = SDL_CreateRGBSurface(0, width, height, bits_per_pixel, rMask, gMask, bMask, 0);
+            s = SDL_CreateRGBSurface(0, width, height, bpp, rMask, gMask, bMask, 0);
             wnd->sdlSurface = s;
         }
         if (SDL_MUSTLOCK(s)) {
             SDL_LockSurface(s);
         }
         for (y = 0; y < height; y++) {
-            memcopyToNative(thread, bits+(height-y-1)*pitch, (U8*)(s->pixels)+y*s->pitch, pitch);
+            memcopyToNative(bits+(height-y-1)*pitch, (S8*)(s->pixels)+y*s->pitch, pitch);
         }   
         if (SDL_MUSTLOCK(s)) {
             SDL_UnlockSurface(s);
@@ -811,16 +813,16 @@ void sdlDrawAllWindows(KThread* thread, U32 hWnd, int count) {
     if (surface) {
         SDL_FillRect(surface, NULL, SDL_MapRGB(surface->format, 58, 110, 165));
         for (int i=count-1;i>=0;i--) {
-            struct Wnd* wnd = getWnd(readd(thread, hWnd+i*4));
+            Wnd* wnd = getWnd(readd(hWnd+i*4));
             if (wnd && wnd->sdlSurface) {
                 SDL_Rect dstrect;
                 dstrect.x = wnd->windowRect.left;
                 dstrect.y = wnd->windowRect.top;
                 dstrect.w = ((SDL_Surface*)(wnd->sdlSurface))->w;
                 dstrect.h = ((SDL_Surface*)(wnd->sdlSurface))->h;
-                if (bits_per_pixel==8)
-                    SDL_SetPalette(wnd->sdlSurface, SDL_LOGPAL, sdlPalette, 0, 256);
-                SDL_BlitSurface(wnd->sdlSurface, NULL, surface, &dstrect);
+                //if (bpp==8)
+                //    SDL_SetPalette((SDL_Surface*)wnd->sdlSurface, SDL_LOGPAL, sdlPalette, 0, 256);
+                SDL_BlitSurface((SDL_Surface*)wnd->sdlSurface, NULL, surface, &dstrect);
             }        	
         }    
         SDL_UpdateRect(surface, 0, 0, 0, 0);
@@ -877,7 +879,7 @@ void sdlShowWnd(KThread* thread, Wnd* wnd, U32 bShow) {
     }
 #else
     if (!bShow && wnd && wnd->sdlSurface) {
-        SDL_FreeSurface(wnd->sdlSurface);
+        SDL_FreeSurface((SDL_Surface*)wnd->sdlSurface);
         wnd->sdlSurface = NULL;
     }
 #endif
@@ -1043,7 +1045,11 @@ static int lastX;
 static int lastY;
 
 void sdlSetMousePos(int x, int y) {
+#ifdef SDL2
     SDL_WarpMouseInWindow(sdlWindow, x*sdlScale/100, y*sdlScale/100); 
+#else
+    SDL_WarpMouse((U16)(x*sdlScale/100), (U16)(y*sdlScale/100));
+#endif
 }
 
 int sdlMouseMouse(int x, int y, bool relative) {
@@ -2128,7 +2134,7 @@ U32 sdlScanCodeToVirtualKeyEx(U32 code) {
     }
     return c;
 }
-
+#ifdef BOXEDWINE_RECORDER
 static SDL_Texture* screenCopyTexture;
 
 void sdlPushWindowSurface() {
@@ -2194,7 +2200,7 @@ void sdlDrawRectOnPushedSurfaceAndDisplay(U32 x, U32 y, U32 w, U32 h, U8 r, U8 g
 
     SDL_RenderPresent(sdlRenderer);
 }
-
+#endif
 bool sdlInternalScreenShot(std::string filepath, SDL_Rect* r, U32* crc) {       
 #ifdef BOXEDWINE_RECORDER
      if (!recorderBuffer) {
@@ -2476,8 +2482,12 @@ bool handlSdlEvent(void* p) {
         if (relativeMouse) {
             if (!sdlMouseMouse((e->motion.x-screenCx/2)*rel_mouse_sensitivity/100, (e->motion.y-screenCy/2)*rel_mouse_sensitivity/100, true)) {
                 onMouseMove((e->motion.x-screenCx/2)*rel_mouse_sensitivity/100, (e->motion.y-screenCy/2)*rel_mouse_sensitivity/100, true);                
-            }            
+            }      
+#ifdef SDL2
             SDL_WarpMouseInWindow(sdlWindow, screenCx/2, screenCy/2);
+#else
+            SDL_WarpMouse((U16)(screenCx/2), (U16)(screenCy/2));
+#endif
         } else {
             if (!sdlMouseMouse(e->motion.x, e->motion.y, false)) {
                 onMouseMove(e->motion.x, e->motion.y, false);

@@ -110,8 +110,10 @@ KThread::KThread(U32 id, KProcess* process) :
     waitingForSignalToEndCond("KThread::waitingForSignalToEndCond"),
     waitingForSignalToEndMaskToRestore(0),
     pendingSignals(0),
+#ifdef SDL2
     glContext(0),
     currentContext(0),
+#endif
     log(false),
     waitingCond(0),
     pollCond("KThread::pollCond"),

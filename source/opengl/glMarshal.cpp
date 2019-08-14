@@ -1,8 +1,9 @@
 #include "boxedwine.h"
 
 #if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
-#include "glMarshal.h"
+#include GLH
 #include "glcommon.h"
+#include "glMarshal.h"
 
 #define MARSHAL_TYPE(type, p, m, s) type* buffer##p; U32 buffer##p##_len; type* marshal##p(CPU* cpu, U32 address, U32 count) {U32 i; if (!address) return NULL; if (buffer##p && buffer##p##_len<count) { delete[] buffer##p; buffer##p=NULL;} if (!buffer##p) {buffer##p = new type[count]; buffer##p##_len = count;}for (i=0;i<count;i++) {buffer##p[i] = read##m(address);address+=s;} return buffer##p;}
 

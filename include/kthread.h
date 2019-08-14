@@ -93,8 +93,10 @@ public:
     BOXEDWINE_CONDITION waitingForSignalToEndCond;
     U64 waitingForSignalToEndMaskToRestore;    
     U64 pendingSignals;
+#ifdef SDL2
     void* glContext;
     void* currentContext;
+#endif
     bool log; // syscalls
     OpenGLVetexPointer glVertextPointer;
     OpenGLVetexPointer glNormalPointer;

@@ -284,7 +284,7 @@ void destroySDL2() {
     }
 }
 #else
-SDL_Surface* surface;
+static SDL_Surface* surface;
 #endif
 
 void writeCMap(U32 address, struct fb_cmap* cmap) {
@@ -398,7 +398,7 @@ void fbSetupScreen() {
     if (SDL_MUSTLOCK(surface)) {
         SDL_LockSurface(surface);
     }
-    screenPixels = surface->pixels;
+    screenPixels = (unsigned char*)surface->pixels;
 #endif
     
     fb_fix_screeninfo.smem_len = fb_fix_screeninfo.line_length*fb_var_screeninfo.yres_virtual;	
