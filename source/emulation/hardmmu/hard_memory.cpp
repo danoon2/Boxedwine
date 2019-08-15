@@ -27,7 +27,6 @@
 Memory::Memory() : allocated(0), callbackPos(0) {
     memset(flags, 0, sizeof(flags));
     memset(nativeFlags, 0, sizeof(nativeFlags));
-    memset(ids, 0, sizeof(ids));
 #ifndef BOXEDWINE_X64
     memset(codeCache, 0, sizeof(codeCache));
     memset(ids, 0, sizeof(ids));
@@ -63,11 +62,11 @@ void Memory::log_pf(KThread* thread, U32 address) {
     printf("Valid address ranges:\n");
     for (i=0;i<K_NUMBER_OF_PAGES;i++) {
         if (!start) {
-            if (thread->process->memory->ids[i]) {
+            if (thread->process->memory->isPageAllocated(i)) {
                 start = i;
             }
         } else {
-            if (!thread->process->memory->ids[i]) {
+            if (!thread->process->memory->isPageAllocated(i)) {
                 printf("    %.8X - %.8X\n", start*K_PAGE_SIZE, i*K_PAGE_SIZE);
                 start = 0;
             }
@@ -95,7 +94,7 @@ void Memory::clone(Memory* from) {
     int i=0;    
 
     for (i=0;i<0x100000;i++) {
-        if (from->ids[i]) {
+        if (from->isPageAllocated(i)) {
             if ((from->flags[i] & PAGE_SHARED) && (from->flags[i] & PAGE_WRITE)) {
                 static U32 shown = 0;
                 if (!shown) {
@@ -124,19 +123,8 @@ void writeMemory(U32 address, U8* data, int len) {
 }
 
 U32 Memory::mapNativeMemory(void* hostAddress, U32 size) {
-    U32 i;
-    U32 result = 0;    
-    U32 pageCount = (size>>K_PAGE_SHIFT)+2; // 1 for size alignment, 1 for hostAddress alignment
-    U64 hostStart = (U64)hostAddress & 0xFFFFFFFFFFFFF000l;
-    U64 offset;
-
-    findFirstAvailablePage(0x10000, pageCount, &result, false);
-    offset = hostStart - (result << K_PAGE_SHIFT);
-    // host = client + offset
-    for (i=0;i<pageCount;i++) {
-        this->ids[result+i] = offset;
-    }
-    return (result << K_PAGE_SHIFT) + ((U32)hostAddress & K_PAGE_MASK);
+    kpanic("x64 mapNativeMemory is depricated");
+    return 0;
 }
 
 void Memory::allocPages(U32 page, U32 pageCount, U8 permissions, FD fd, U64 offset, const BoxedPtr<MappedFile>& mappedFile) {
@@ -155,7 +143,7 @@ void Memory::allocPages(U32 page, U32 pageCount, U8 permissions, FD fd, U64 offs
 }
 
 void Memory::protectPage(U32 i, U32 permissions) {
-    if (!this->ids[i] && (permissions & PAGE_PERMISSION_MASK)) {
+    if (!this->isPageAllocated(i) && (permissions & PAGE_PERMISSION_MASK)) {
         this->allocPages(i, 1, permissions, 0, 0, 0);
     } else {
         this->flags[i] &=~ PAGE_PERMISSION_MASK;
@@ -167,12 +155,12 @@ bool Memory::findFirstAvailablePage(U32 startingPage, U32 pageCount, U32* result
     U32 i;
     
     for (i=startingPage;i<K_NUMBER_OF_PAGES;i++) {
-        if (((this->flags[i] & PAGE_MAPPED) == 0 && this->ids[i]==0) || (canBeReMapped && (this->flags[i] & PAGE_MAPPED))) {
+        if (((this->flags[i] & PAGE_MAPPED) == 0 && !this->isPageAllocated(i)) || (canBeReMapped && (this->flags[i] & PAGE_MAPPED))) {
             U32 j;
             bool success = true;
 
             for (j=1;j<pageCount;j++) {
-                if (((this->flags[i+j] & PAGE_MAPPED) || this->ids[i+j]!=0) && (!canBeReMapped || !(this->flags[i+j] & PAGE_MAPPED))) {
+                if (((this->flags[i+j] & PAGE_MAPPED) || this->isPageAllocated(i+j)) && (!canBeReMapped || !(this->flags[i+j] & PAGE_MAPPED))) {
                     success = false;
                     break;
                 }
@@ -188,15 +176,15 @@ bool Memory::findFirstAvailablePage(U32 startingPage, U32 pageCount, U32* result
 }
 
 bool Memory::isValidReadAddress(U32 address, U32 len) {
-    return this->ids[address >> K_PAGE_SHIFT] != 0 && (this->flags[address >> K_PAGE_SHIFT] & PAGE_READ);
+    return this->isPageAllocated(address >> K_PAGE_SHIFT) && (this->flags[address >> K_PAGE_SHIFT] & PAGE_READ);
 }
 
 bool Memory::isValidWriteAddress(U32 address, U32 len) {
-    return this->ids[address >> K_PAGE_SHIFT] != 0 && (this->flags[address >> K_PAGE_SHIFT] & PAGE_WRITE);
+    return this->isPageAllocated(address >> K_PAGE_SHIFT) && (this->flags[address >> K_PAGE_SHIFT] & PAGE_WRITE);
 }
 
-bool Memory::isPageAllocated(U32 address) {
-    return this->ids[address >> K_PAGE_SHIFT] != 0;
+bool Memory::isPageAllocated(U32 page) {
+    return (this->flags[page] & PAGE_ALLOCATED) != 0;
 }
 
 void memcopyFromNative(U32 address, const char* p, U32 len) {

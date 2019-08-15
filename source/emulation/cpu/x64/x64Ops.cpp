@@ -1799,7 +1799,9 @@ static U32 grp5d(X64Asm* data) {
     } else if (g==6) { // push Ed
         data->pushE32(rm);
     } else {
-        kpanic("invalid grp5d");
+        // kpanic("invalid grp5d");
+        // we will just hope this doesn't get used and that we just translated more than we needed, this is the case for "kknd 2 krossfire demo"
+        data->done = true;
     }    
     return 0;
 }
@@ -2491,7 +2493,7 @@ X64Decoder x64Decoder[1024] = {
     x64loopnz, x64loopz, x64loop, x64jcxz, inb, ind, outb, outd,
     callJd, jmpJd, jmpFar32, jmpJb, inb_dx, ind_dx, outb_dx, outd_dx,
     // 2f0
-    lock, invalidOp, repnz, repz, hlt, keepSame, grp3b, grp3d,
+    lock, keepSame, repnz, repz, hlt, keepSame, grp3b, grp3d,
     keepSame, keepSame, cli, sti, keepSame, keepSame, instGrp4, grp5d,
 
     // 300

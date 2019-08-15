@@ -29,8 +29,7 @@ void allocNativeMemory(Memory* memory, U32 page, U32 pageCount, U32 flags) {
         granPage+=gran;
     }
     for (i=0;i<pageCount;i++) {
-        memory->flags[page+i] = flags;
-        memory->ids[page+i] = memory->id;
+        memory->flags[page+i] = flags | PAGE_ALLOCATED;
     }
     memset(getNativeAddress(memory, page << K_PAGE_SHIFT), 0, pageCount << K_PAGE_SHIFT);
     //printf("allocated %X - %X\n", page << PAGE_SHIFT, (page+pageCount) << PAGE_SHIFT);
@@ -54,7 +53,6 @@ void freeNativeMemory(Memory* memory, U32 page, U32 pageCount) {
         }
         memory->clearCodePageFromCache(page+i);
         memory->flags[page+i] = 0;
-        memory->ids[page+i] = 0;
     }    
 
     granPage = page & ~(gran-1);
@@ -64,7 +62,7 @@ void freeNativeMemory(Memory* memory, U32 page, U32 pageCount) {
         BOOL inUse = FALSE;
 
         for (j=0;j<gran;j++) {
-            if (memory->ids[granPage+j]) {
+            if (memory->isPageAllocated(granPage+j)) {
                 inUse = TRUE;
                 break;
             }            
@@ -127,8 +125,7 @@ void releaseNativeMemory(Memory* memory) {
         kpanic("failed to release memory: %s", messageBuffer);
     }    
     memset(memory->flags, 0, sizeof(memory->flags));
-    memset(memory->nativeFlags, 0, sizeof(memory->nativeFlags));
-    memset(memory->ids, 0, sizeof(memory->ids));    
+    memset(memory->nativeFlags, 0, sizeof(memory->nativeFlags));  
     memory->allocated = 0;
 #ifdef BOXEDWINE_X64
     memory->executableMemoryReleased();    

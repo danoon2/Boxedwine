@@ -128,10 +128,9 @@ public:
 
 #ifdef BOXEDWINE_64BIT_MMU
     U8 flags[K_NUMBER_OF_PAGES];
-    U8 nativeFlags[K_NUMBER_OF_PAGES];
+    U8 nativeFlags[K_NUMBER_OF_PAGES]; // :TODO: maybe make this based of the number of native pages?
     U32 allocated;
     U64 id; 
-    U64 ids[K_NUMBER_OF_PAGES];
 #define MAX_DYNAMIC_CODE_PAGE_COUNT 0xFF
     U8 dynamicCodePageUpdateCount[K_NUMBER_OF_PAGES];
 

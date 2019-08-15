@@ -276,9 +276,6 @@ void x64CPU::translateInstruction(X64Asm* data, X64Asm* firstPass) {
     while (1) {  
         data->op = data->fetch8();            
         data->inst = data->baseOp + data->op;        
-        if (data->inst==0x359) {
-            int ii=0;
-        }
         if (!x64Decoder[data->inst](data)) {                
             break;
         }            

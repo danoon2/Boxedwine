@@ -26,11 +26,11 @@
 
 INLINE void* getNativeAddress(Memory* memory, U32 address) {
 #ifdef _DEBUG
-    if (memory->ids[address >> K_PAGE_SHIFT]==0) {
+    if (!memory->isPageAllocated(address >> K_PAGE_SHIFT)) {
         kpanic("bad memory access");
     }
 #endif
-    return (void*)(address + memory->ids[address >> K_PAGE_SHIFT]);
+    return (void*)(address + memory->id);
 }
 
 INLINE U32 getHostAddress(KThread* thread, void* address) {
