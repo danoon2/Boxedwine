@@ -43,6 +43,7 @@ Memory::Memory() : allocated(0), callbackPos(0) {
     this->addCallback(onExitSignal);
 #ifdef BOXEDWINE_DYNAMIC
     this->dynamicExecutableMemoryPos = 0;
+    this->dynamicExecutableMemoryLen = 0;
 #endif
 }
 

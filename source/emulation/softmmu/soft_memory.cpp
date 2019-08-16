@@ -120,6 +120,7 @@ Memory::Memory() : nativeAddressStart(0) {
 
 #ifdef BOXEDWINE_DYNAMIC
     this->dynamicExecutableMemoryPos = 0;
+    this->dynamicExecutableMemoryLen = 0;
 #endif
 }
 

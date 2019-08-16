@@ -115,7 +115,7 @@ INLINE void safe_strcat(char* dest, const char* src, int bufferSize) {
 
 #if defined BOXEDWINE_DYNAMIC
 void freeExecutable64kBlock(void* p);
-void* allocExecutable64kBlock();
+void* allocExecutable64kBlock(int count);
 #endif
 
 #ifdef BOXEDWINE_X64

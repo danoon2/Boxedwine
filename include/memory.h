@@ -124,6 +124,7 @@ public:
 #ifdef BOXEDWINE_DYNAMIC
     std::vector<void*> dynamicExecutableMemory;
     U32 dynamicExecutableMemoryPos;
+    U32 dynamicExecutableMemoryLen;
 #endif
 
 #ifdef BOXEDWINE_64BIT_MMU

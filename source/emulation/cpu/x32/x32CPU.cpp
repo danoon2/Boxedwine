@@ -2210,13 +2210,17 @@ void OPCALL firstX32Op(CPU* cpu, DecodedOp* op) {
         void* mem = NULL;
 
         if (memory->dynamicExecutableMemory.size()==0) {
-            mem = allocExecutable64kBlock();
+            int blocks = (outBufferPos+0xffff)/0x10000;
+            memory->dynamicExecutableMemoryLen = blocks*0x10000;
+            mem = allocExecutable64kBlock(blocks);
             memory->dynamicExecutableMemoryPos = 0;
             memory->dynamicExecutableMemory.push_back(mem);
         } else {
             mem = memory->dynamicExecutableMemory[memory->dynamicExecutableMemory.size()-1];
-            if (memory->dynamicExecutableMemoryPos+outBufferPos>=64*1024) {
-                mem = allocExecutable64kBlock();
+            if (memory->dynamicExecutableMemoryPos+outBufferPos>=memory->dynamicExecutableMemoryLen) {
+                int blocks = (outBufferPos+0xffff)/0x10000;
+                memory->dynamicExecutableMemoryLen = blocks*0x10000;
+                mem = allocExecutable64kBlock(blocks);
                 memory->dynamicExecutableMemoryPos = 0;
                 memory->dynamicExecutableMemory.push_back(mem);
             }
