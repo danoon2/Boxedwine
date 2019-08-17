@@ -1,5 +1,6 @@
 #include "boxedwine.h"
 
+#ifndef DISABLE_GL_EXTENSIONS
 #if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
 #include GLH
 #include "glcommon.h"
@@ -6043,4 +6044,5 @@ void glcommon_glWriteMaskEXT(CPU* cpu) {
     GL_LOG ("glWriteMaskEXT GLuint res=%d, GLuint in=%d, GLenum outX=%d, GLenum outY=%d, GLenum outZ=%d, GLenum outW=%d",ARG1,ARG2,ARG3,ARG4,ARG5,ARG6);
     }
 }
+#endif
 #endif

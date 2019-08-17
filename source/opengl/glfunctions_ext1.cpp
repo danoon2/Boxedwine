@@ -1,5 +1,6 @@
 #include "boxedwine.h"
 
+#ifndef DISABLE_GL_EXTENSIONS
 #if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
 #include GLH
 #include "glcommon.h"
@@ -7368,4 +7369,5 @@ void glcommon_glGetUniformdv(CPU* cpu) {
     GL_LOG ("glGetUniformdv GLuint program=%d, GLint location=%d, GLdouble* params=%.08x",ARG1,ARG2,ARG3);
     }
 }
+#endif
 #endif

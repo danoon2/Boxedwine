@@ -1,3 +1,4 @@
+#ifndef DISABLE_GL_EXTENSIONS
 GL_EXT_FUNCTION(AccumxOES, void, (GLenum op, GLfixed value))
 GL_EXT_FUNCTION(ActiveProgramEXT, void, (GLuint program))
 GL_EXT_FUNCTION(ActiveShaderProgram, void, (GLuint pipeline, GLuint program))
@@ -2553,3 +2554,4 @@ GL_EXT_FUNCTION(WindowPos4ivMESA, void, (const GLint* v))
 GL_EXT_FUNCTION(WindowPos4sMESA, void, (GLshort x, GLshort y, GLshort z, GLshort w))
 GL_EXT_FUNCTION(WindowPos4svMESA, void, (const GLshort* v))
 GL_EXT_FUNCTION(WriteMaskEXT, void, (GLuint res, GLuint in, GLenum outX, GLenum outY, GLenum outZ, GLenum outW))
+#endif

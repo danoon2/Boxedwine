@@ -98,9 +98,11 @@ GLintptr* marshal2ip(CPU* cpu, U32 address, U32 count) {
     return buffer2ip;
 }
 
+#ifndef DISABLE_GL_EXTENSIONS
 static const char* extentions[] = {
 #include "glfunctions_ext_def.h"
 };
+#endif
 
 // const GLubyte *glGetStringi(GLenum name, GLuint index);
 void glcommon_glGetStringi(CPU* cpu) { 
@@ -137,6 +139,9 @@ void glcommon_glGetString(CPU* cpu) {
         index = STRING_GL_SHADING_LANGUAGE_VERSION;
         GL_LOG("glGetString GLenum name=GL_SHADING_LANGUAGE_VERSION ret=%s", result);
     } else if (name == GL_EXTENSIONS) {
+#ifdef DISABLE_GL_EXTENSIONS
+        result = "GL_EXT_texture3D";
+#else
         static char* ext;
         if (!ext) {
             U32 len = strlen(result)+1;
@@ -154,6 +159,7 @@ void glcommon_glGetString(CPU* cpu) {
             }
         }
         result = ext;
+#endif
         GL_LOG("glGetString GLenum name=GL_EXTENSIONS ret=%s", result);
     }
 #ifdef BOXEDWINE_X64

@@ -1,5 +1,6 @@
 #include "boxedwine.h"
 
+#ifndef DISABLE_GL_EXTENSIONS
 #if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
 #include GLH
 #include "glcommon.h"
@@ -7219,4 +7220,5 @@ void glcommon_glSetFenceAPPLE(CPU* cpu) {
     GL_LOG ("glSetFenceAPPLE GLuint fence=%d",ARG1);
     }
 }
+#endif
 #endif

@@ -66,7 +66,8 @@ void updateVertexPointers(CPU* cpu, U32 count) {
         if (updateVertexPointer(cpu, &cpu->thread->glNormalPointer, count))
             GL_FUNC(glNormalPointer)(cpu->thread->glNormalPointer.type, cpu->thread->glNormalPointer.stride, cpu->thread->glNormalPointer.marshal);
     }
-    
+
+#ifndef DISABLE_GL_EXTENSIONS
     if (cpu->thread->glFogPointer.refreshEachCall) {
         if (updateVertexPointer(cpu, &cpu->thread->glFogPointer, count)) {
             if (ext_glFogCoordPointer)
@@ -79,11 +80,6 @@ void updateVertexPointers(CPU* cpu, U32 count) {
             if (ext_glFogCoordPointerEXT)
                 ext_glFogCoordPointerEXT(cpu->thread->glFogPointerEXT.type, cpu->thread->glFogPointerEXT.stride, cpu->thread->glFogPointerEXT.marshal);
         }
-    }
-
-    if (cpu->thread->glColorPointer.refreshEachCall) {
-        if (updateVertexPointer(cpu, &cpu->thread->glColorPointer, count))
-            GL_FUNC(glColorPointer)(cpu->thread->glColorPointer.size, cpu->thread->glColorPointer.type, cpu->thread->glColorPointer.stride, cpu->thread->glColorPointer.marshal);
     }
 
     if (cpu->thread->glSecondaryColorPointer.refreshEachCall) {
@@ -99,6 +95,18 @@ void updateVertexPointers(CPU* cpu, U32 count) {
                 ext_glSecondaryColorPointerEXT(cpu->thread->glSecondaryColorPointerEXT.size, cpu->thread->glSecondaryColorPointerEXT.type, cpu->thread->glSecondaryColorPointerEXT.stride, cpu->thread->glSecondaryColorPointerEXT.marshal);
         }
     }
+
+    if (cpu->thread->glEdgeFlagPointerEXT.refreshEachCall) {
+        if (updateVertexPointer(cpu, &cpu->thread->glEdgeFlagPointerEXT, count)) {
+            if (ext_glEdgeFlagPointerEXT)
+                ext_glEdgeFlagPointerEXT(cpu->thread->glEdgeFlagPointerEXT.stride, cpu->thread->glEdgeFlagPointerEXT.count, cpu->thread->glEdgeFlagPointerEXT.marshal);
+        }
+    }
+#endif
+    if (cpu->thread->glColorPointer.refreshEachCall) {
+        if (updateVertexPointer(cpu, &cpu->thread->glColorPointer, count))
+            GL_FUNC(glColorPointer)(cpu->thread->glColorPointer.size, cpu->thread->glColorPointer.type, cpu->thread->glColorPointer.stride, cpu->thread->glColorPointer.marshal);
+    }    
     
     if (cpu->thread->glIndexPointer.refreshEachCall) {
         if (updateVertexPointer(cpu, &cpu->thread->glIndexPointer, count))
@@ -113,13 +121,6 @@ void updateVertexPointers(CPU* cpu, U32 count) {
     if (cpu->thread->glEdgeFlagPointer.refreshEachCall) {
         if (updateVertexPointer(cpu, &cpu->thread->glEdgeFlagPointer, count))
             GL_FUNC(glEdgeFlagPointer)(cpu->thread->glEdgeFlagPointer.stride, cpu->thread->glEdgeFlagPointer.marshal);
-    }
-
-    if (cpu->thread->glEdgeFlagPointerEXT.refreshEachCall) {
-        if (updateVertexPointer(cpu, &cpu->thread->glEdgeFlagPointerEXT, count)) {
-            if (ext_glEdgeFlagPointerEXT)
-                ext_glEdgeFlagPointerEXT(cpu->thread->glEdgeFlagPointerEXT.stride, cpu->thread->glEdgeFlagPointerEXT.count, cpu->thread->glEdgeFlagPointerEXT.marshal);
-        }
     }
 }
 

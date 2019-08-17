@@ -761,6 +761,7 @@ GLint glcommon_glGetPixelMap_size(GLenum map) {
     return len;
 }
 
+#ifndef DISABLE_GL_EXTENSIONS
 #ifndef GL_ATOMIC_COUNTER_BUFFER_ACTIVE_ATOMIC_COUNTERS
 #define GL_ATOMIC_COUNTER_BUFFER_ACTIVE_ATOMIC_COUNTERS 0x92C5
 #endif
@@ -903,5 +904,6 @@ GLsizei marshalHistogramWidth(GLenum target) {
     return result;
 }
 
+#endif
 #endif
 #endif

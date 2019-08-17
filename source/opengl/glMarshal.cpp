@@ -716,6 +716,7 @@ void marshalBackhandle(CPU* cpu, U32 address, GLhandleARB* buffer, U32 count) {
     }
 }
 
+#ifndef DISABLE_GL_EXTENSIONS
 GLvoid* marshalGetConvolutionFilter(CPU* cpu, U32 target, U32 format, U32 type, U32 image) {
     GLint width = 0;
     GLint height = 0;
@@ -729,6 +730,7 @@ GLvoid* marshalGetConvolutionFilter(CPU* cpu, U32 target, U32 format, U32 type, 
     }
     return marshalType(cpu, type, components_in_format(format)*width*height, image);
 }
+#endif
 
 GLint marshalGet(GLenum param) {
     GLint result = 0;
