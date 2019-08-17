@@ -1942,6 +1942,9 @@ const LogInstruction instructionLog[] = {
     {"Movsx", 32, logRR16},
     {"Movsx", 32, logRE16},
 
+    {"MovRdCRx", 32, logName},
+    {"MovCRxRd", 32, logName},
+
     {"Lea", 16, logRE},
     {"Lea", 32, logRE},
 
