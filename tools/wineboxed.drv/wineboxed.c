@@ -1327,6 +1327,7 @@ UINT boxeddrv_RealizeDefaultPalette( PHYSDEV dev )
 static BOOL boxeddrv_CreateDC(PHYSDEV *pdev, LPCWSTR driver, LPCWSTR device, LPCWSTR output, const DEVMODEW* initData);
 static BOOL boxeddrv_CreateCompatibleDC(PHYSDEV orig, PHYSDEV *pdev);
 
+// Dec 18, 2012, wine-1.5.20 
 #if WINE_GDI_DRIVER_VERSION == 46
 static const struct gdi_dc_funcs boxeddrv_funcs =
 {
@@ -1461,6 +1462,7 @@ static const struct gdi_dc_funcs boxeddrv_funcs =
 };
 #endif
 
+// Sep 1, 2015, wine-1.7.51
 #if WINE_GDI_DRIVER_VERSION == 47
 static const struct gdi_dc_funcs boxeddrv_funcs =
 {
@@ -1595,6 +1597,7 @@ static const struct gdi_dc_funcs boxeddrv_funcs =
 };
 #endif
 
+// Feb 27, 2018 wine-3.3
 #if WINE_GDI_DRIVER_VERSION == 48
 static const struct gdi_dc_funcs boxeddrv_funcs =
 {
@@ -1729,6 +1732,15 @@ static const struct gdi_dc_funcs boxeddrv_funcs =
     GDI_PRIORITY_GRAPHICS_DRV               /* priority */
 };
 #endif
+
+// Apr 9, 2019, wine-4.6
+#if WINE_GDI_DRIVER_VERSION == 49
+#endif
+
+// Jul 6, 2019 wine-4.12.1
+#if WINE_GDI_DRIVER_VERSION == 50
+#endif
+
 /**********************************************************************
 *              CreateDC (BOXEDDRV.@)
 */
