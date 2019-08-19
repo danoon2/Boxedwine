@@ -16,7 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 #include "boxedwine.h"
-#include <Windows.h>
+#include <winsock2.h>
 #include "pixelformat.h"
 
 LONGLONG PCFreq;
@@ -75,6 +75,62 @@ void Platform::listNodes(const std::string& nativePath, std::vector<ListNodeResu
         } while(FindNextFile(hFind, &findData)); 
         FindClose(hFind); 
     }
+}
+
+int Platform::nativeSocketPair(S32 socks[2]) {
+    union {
+       struct sockaddr_in inaddr;
+       struct sockaddr addr;
+    } a;
+    SOCKET listener;
+    int e;
+    socklen_t addrlen = sizeof(a.inaddr);
+    DWORD flags = 0;
+    int reuse = 1;
+
+    if (socks == 0) {
+      WSASetLastError(WSAEINVAL);
+      return SOCKET_ERROR;
+    }
+
+    listener = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (listener == INVALID_SOCKET) 
+        return SOCKET_ERROR;
+
+    memset(&a, 0, sizeof(a));
+    a.inaddr.sin_family = AF_INET;
+    a.inaddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    a.inaddr.sin_port = 0; 
+
+    socks[0] = socks[1] = (U32)INVALID_SOCKET;
+    do {
+        if (setsockopt(listener, SOL_SOCKET, SO_REUSEADDR,  (char*) &reuse, (socklen_t) sizeof(reuse)) == -1)
+            break;
+        if  (bind(listener, &a.addr, sizeof(a.inaddr)) == SOCKET_ERROR)
+            break;
+        if  (getsockname(listener, &a.addr, &addrlen) == SOCKET_ERROR)
+            break;
+        if (listen(listener, 1) == SOCKET_ERROR)
+            break;
+        socks[0] = (U32)WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, flags);
+        if (socks[0] == (U32)INVALID_SOCKET)
+            break;
+        if (connect(socks[0], &a.addr, sizeof(a.inaddr)) == SOCKET_ERROR)
+            break;
+        socks[1] = (U32)accept(listener, NULL, NULL);
+        if (socks[1] == INVALID_SOCKET)
+            break;
+
+        closesocket(listener);
+        return 0;
+    } while (0);
+
+    e = WSAGetLastError();
+    closesocket(listener);
+    closesocket(socks[0]);
+    closesocket(socks[1]);
+    WSASetLastError(e);
+    return SOCKET_ERROR;
 }
 
 int getPixelFormats(PixelFormat* pfd, int maxPfs) {

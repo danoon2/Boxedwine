@@ -504,7 +504,7 @@ U32 DevDsp::ioctl(U32 request) {
 
 void DevDsp::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) {
     if (events & K_POLLOUT) {
-        BOXEDWINE_CONDITION_ADD_CHILD_CONDITION(parentCondition, this->data->bufferCond);
+        BOXEDWINE_CONDITION_ADD_CHILD_CONDITION(parentCondition, this->data->bufferCond, nullptr);
     }
 }
 

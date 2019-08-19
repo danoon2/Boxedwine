@@ -90,3 +90,8 @@ int getPixelFormats(PixelFormat* pfs, int maxPfs) {
     pfs[1].dwFlags|=K_PFD_GENERIC_FORMAT;
     return 2;
 }
+
+int Platform::nativeSocketPair(S32 socks[2]) {
+{
+    return socketpair(AF_LOCAL, SOCK_STREAM, 0, socks);
+}

@@ -113,15 +113,20 @@ void BoxedWineCondition::signalAllLock() {
 
 void BoxedWineCondition::unlockAndRemoveChildren() {
     for (auto &child : this->children) {
-        child->parent = NULL;
-        child->unlock();
+        child.cond->parent = NULL;
+        child.cond->unlock();
+    }
+    for (auto &child : this->children) {
+        if (child.doneWaitingCallback) {
+            child.doneWaitingCallback();
+        }
     }
     this->children.clear();
 }
 
 void BoxedWineCondition::wait() {    
     for (auto &child : this->children) {
-        child->unlock();
+        child.cond->unlock();
     }
 
     KThread::currentThread()->waitingCond = this;
@@ -129,9 +134,9 @@ void BoxedWineCondition::wait() {
     KThread::currentThread()->waitingCond = NULL;
 
     for (auto &child : this->children) {
-        child->lock();
-        child->parent = NULL;
-        child->unlock();
+        child.cond->lock();
+        child.cond->parent = NULL;
+        child.cond->unlock();
     }
     this->children.clear();
 
@@ -143,7 +148,7 @@ void BoxedWineCondition::wait() {
 
 void BoxedWineCondition::waitWithTimeout(U32 ms) {
     for (auto &child : this->children) {
-        child->unlock();
+        child.cond->unlock();
     }
 
     KThread::currentThread()->waitingCond = this;
@@ -151,9 +156,9 @@ void BoxedWineCondition::waitWithTimeout(U32 ms) {
     KThread::currentThread()->waitingCond = NULL;
 
     for (auto &child : this->children) {
-        child->lock();
-        child->parent = NULL;
-        child->unlock();
+        child.cond->lock();
+        child.cond->parent = NULL;
+        child.cond->unlock();
     }
     this->children.clear();
 
@@ -168,15 +173,15 @@ void BoxedWineCondition::unlock() {
     SDL_UnlockMutex((SDL_mutex*)this->m);
 }
 
-void BoxedWineCondition::addChildCondition(BoxedWineCondition& cond) {
+void BoxedWineCondition::addChildCondition(BoxedWineCondition& cond, const std::function<void(void)>& doneWaitingCallback) {
     // this (parent) should be be locked while we call this
     cond.lock();
     cond.parent = this;
-    this->children.push_back(&cond);
+    this->children.push_back(BoxedWineConditionChild(&cond, doneWaitingCallback));
 }
 
 U32 BoxedWineCondition::waitCount() {
-    return 0;  // :TODO: remove this function
+    return (this->parent?1:0);
 }
 
 #else 
@@ -212,7 +217,7 @@ void BoxedWineCondition::signalThread(bool all) {
         }
     }
     for (auto &child : this->children) {
-        child->parent = NULL;
+        child.cond->parent = NULL;
     }
     this->children.clear();
 }
@@ -232,6 +237,15 @@ void BoxedWineCondition::signalAll() {
 }
 
 void BoxedWineCondition::unlockAndRemoveChildren() {
+    for (auto &child : this->children) {
+        child.cond->parent = NULL;
+    }
+    for (auto &child : this->children) {
+        if (child.doneWaitingCallback) {
+            child.doneWaitingCallback();
+        }
+    }
+    this->children.clear();
 }
 
 U32 BoxedWineCondition::wait() {
@@ -256,9 +270,9 @@ U32 BoxedWineCondition::waitCount() {
     return this->waitingThreads.size();
 }
 
-void BoxedWineCondition::addChildCondition(BoxedWineCondition& cond) {
+void BoxedWineCondition::addChildCondition(BoxedWineCondition& cond, const std::function<void(void)>& doneWaitingCallback) {
     cond.parent = this;
-    this->children.push_back(&cond);
+    this->children.push_back(BoxedWineConditionChild(&cond, doneWaitingCallback));
 }
 
 #endif

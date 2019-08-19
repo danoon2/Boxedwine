@@ -1,6 +1,15 @@
 #ifndef __SYNCHRONIZATION_H__
 #define __SYNCHRONIZATION_H__
 
+class BoxedWineCondition;
+
+class BoxedWineConditionChild {
+public:
+    BoxedWineConditionChild(BoxedWineCondition* cond, const std::function<void(void)>& doneWaitingCallback) : cond(cond), doneWaitingCallback(doneWaitingCallback) {}
+    BoxedWineCondition* cond;
+    std::function<void(void)> doneWaitingCallback;
+};
+
 #ifdef BOXEDWINE_MULTI_THREADED
 class BoxedWineMutex {
 public:
@@ -37,7 +46,7 @@ public:
     void wait();
     void waitWithTimeout(U32 ms);
     void unlock();
-    void addChildCondition(BoxedWineCondition& cond);
+    void addChildCondition(BoxedWineCondition& cond, const std::function<void(void)>& doneWaitingCallback);
     void unlockAndRemoveChildren();
     U32 waitCount();
 
@@ -45,7 +54,7 @@ public:
 
 private:
     BoxedWineCondition* parent;
-    std::vector<BoxedWineCondition*> children;  
+    std::vector<BoxedWineConditionChild> children;  
 
     void* m;
     void* c;
@@ -77,7 +86,7 @@ private:
 #define BOXEDWINE_CONDITION_WAIT(cond) cond.wait()
 #define BOXEDWINE_CONDITION_WAIT_TIMEOUT(cond, t) cond.waitWithTimeout(t)
 #define BOXEDWINE_CONDITION_WAIT_TYPE(x, type) cond.wait()
-#define BOXEDWINE_CONDITION_ADD_CHILD_CONDITION(parent, cond) (parent).addChildCondition(cond)
+#define BOXEDWINE_CONDITION_ADD_CHILD_CONDITION(parent, cond, doneWaitingCallback) (parent).addChildCondition(cond, doneWaitingCallback)
 #define BOXEDWINE_CONDITION_SIGNAL_ALL_NEED_LOCK(cond) (cond).signalAllLock()
 
 #define BoxedWineConditionTimer BoxedWineCondition
@@ -112,7 +121,7 @@ public:
     U32 waitWithTimeout(U32 ms);
     U32 waitCount();
 
-    void addChildCondition(BoxedWineCondition& cond);
+    void addChildCondition(BoxedWineCondition& cond, const std::function<void(void)>& doneWaitingCallback);
     void unlockAndRemoveChildren();
 
     const std::string name;
@@ -120,7 +129,7 @@ private:
     KList<KThread*> waitingThreads;
 
     BoxedWineCondition* parent;
-    std::vector<BoxedWineCondition*> children;    
+    std::vector<BoxedWineConditionChild> children;
 
     friend BoxedWineConditionTimer;
     void signalThread(bool all);
@@ -134,7 +143,7 @@ typedef BoxedWineCondition BOXEDWINE_CONDITION;
 #define BOXEDWINE_CONDITION_SIGNAL_ALL_NEED_LOCK(cond) (cond).signalAll()
 #define BOXEDWINE_CONDITION_WAIT(cond) return (cond).wait()
 #define BOXEDWINE_CONDITION_WAIT_TIMEOUT(cond, ms) return (cond).waitWithTimeout(ms)
-#define BOXEDWINE_CONDITION_ADD_CHILD_CONDITION(parent, cond) (parent).addChildCondition(cond)
+#define BOXEDWINE_CONDITION_ADD_CHILD_CONDITION(parent, cond, doneWaitingCallback) (parent).addChildCondition(cond, doneWaitingCallback)
 
 #endif
 

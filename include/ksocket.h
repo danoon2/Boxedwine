@@ -44,6 +44,7 @@
 #define	K_SO_ERROR     4
 #define K_SO_SNDBUF    7
 #define K_SO_RCVBUF    8
+#define K_SO_OOBINLINE   10
 #define K_SO_PASSCRED  16
 #define K_SO_PEERCRED  17
 #define K_SO_ATTACH_FILTER  26

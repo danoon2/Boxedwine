@@ -92,6 +92,7 @@ public:
     static U64 getSystemTimeAsMicroSeconds();
     static U64 getMicroCounter();
     static void startMicroCounter();
+    static int nativeSocketPair(S32 socks[2]);
 };
 
 #include <string.h>

@@ -88,22 +88,22 @@ void KUnixSocketObject::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 
     bool addedLock = false;
 
     if (events & K_POLLIN) {
-        BOXEDWINE_CONDITION_ADD_CHILD_CONDITION(parentCondition, this->lockCond);
+        BOXEDWINE_CONDITION_ADD_CHILD_CONDITION(parentCondition, this->lockCond, nullptr);
         addedLock = true;
     }
     if (events & K_POLLOUT) {
         if (this->connection) {
-            BOXEDWINE_CONDITION_ADD_CHILD_CONDITION(parentCondition, this->connection->lockCond);
+            BOXEDWINE_CONDITION_ADD_CHILD_CONDITION(parentCondition, this->connection->lockCond, nullptr);
         } else {
             if (!addedLock) {
-                BOXEDWINE_CONDITION_ADD_CHILD_CONDITION(parentCondition, this->lockCond);
+                BOXEDWINE_CONDITION_ADD_CHILD_CONDITION(parentCondition, this->lockCond, nullptr);
                 addedLock = true;
             }
         }
     }
     if ((events & ~(K_POLLIN | K_POLLOUT)) || this->listening) {
         if (!addedLock) {
-            BOXEDWINE_CONDITION_ADD_CHILD_CONDITION(parentCondition, this->lockCond);
+            BOXEDWINE_CONDITION_ADD_CHILD_CONDITION(parentCondition, this->lockCond, nullptr);
         }
     }
 }
