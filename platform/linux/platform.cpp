@@ -20,6 +20,8 @@
 #include <sys/time.h>
 #include <dirent.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
 
 #include "pixelformat.h"
 
@@ -92,6 +94,5 @@ int getPixelFormats(PixelFormat* pfs, int maxPfs) {
 }
 
 int Platform::nativeSocketPair(S32 socks[2]) {
-{
     return socketpair(AF_LOCAL, SOCK_STREAM, 0, socks);
 }
