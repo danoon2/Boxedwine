@@ -38,6 +38,10 @@
 #include <setjmp.h>
 #endif
 
+#ifdef __APPLE__ & __MACH__
+#define lseek64 lseek
+#endif
+
 #ifdef BOXEDWINE_MSVC
 #define PLATFORM_STAT_STRUCT struct _stat32i64
 #define PLATFORM_STAT _stat32i64
