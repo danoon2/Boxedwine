@@ -79,9 +79,9 @@ bool FsFileNode::remove() {
 }
 
 U64 FsFileNode::lastModified() {
-    struct stat buf;
+    PLATFORM_STAT_STRUCT buf;
 
-    if (stat(this->nativePath.c_str(), &buf)==0) {
+    if (PLATFORM_STAT(this->nativePath.c_str(), &buf)==0) {
         return buf.st_mtime*1000l;
     }
 #ifdef BOXEDWINE_ZLIB
@@ -91,12 +91,12 @@ U64 FsFileNode::lastModified() {
     return 0;
 }
 
-U64 FsFileNode::length() {
-    struct stat buf;
-
+U64 FsFileNode::length() {    
     if (this->isDirectory())
         return 4096;
-    if (stat(this->nativePath.c_str(), &buf)==0) {
+
+    PLATFORM_STAT_STRUCT buf;
+    if (PLATFORM_STAT(this->nativePath.c_str(), &buf)==0) {
         return buf.st_size;
     }
 #ifdef BOXEDWINE_ZLIB

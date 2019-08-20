@@ -39,6 +39,8 @@
 #endif
 
 #ifdef BOXEDWINE_MSVC
+#define PLATFORM_STAT_STRUCT struct _stat32i64
+#define PLATFORM_STAT _stat32i64
 #define OPCALL __fastcall
 #define unlink _unlink
 #define ftruncate(h, l) _chsize(h, (long)l)
@@ -60,6 +62,8 @@
 #if ( __WORDSIZE == 64 )
 #define BOXEDWINE_64   1
 #endif
+#define PLATFORM_STAT_STRUCT struct stat
+#define PLATFORM_STAT stat
 #define OPCALL
 #define platform_getcwd getcwd
 #define UNISTD <unistd.h>

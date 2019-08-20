@@ -12,9 +12,9 @@ FsFileOpenNode::~FsFileOpenNode() {
 }
 
 S64 FsFileOpenNode::length() {
-    S32 currentPos = lseek(this->handle, 0, SEEK_CUR);
-    S32 size = lseek(this->handle, 0, SEEK_END);
-    lseek(this->handle, currentPos, SEEK_SET);
+    S64 currentPos = lseek64(this->handle, 0, SEEK_CUR);
+    S64 size = lseek64(this->handle, 0, SEEK_END);
+    lseek64(this->handle, currentPos, SEEK_SET);
     return size;
 }
 
@@ -23,11 +23,11 @@ bool FsFileOpenNode::setLength(S64 len) {
 }
 
 S64 FsFileOpenNode::getFilePointer() {
-    return lseek(this->handle, 0, SEEK_CUR);
+    return lseek64(this->handle, 0, SEEK_CUR);
 }
 
 S64 FsFileOpenNode::seek(S64 pos) {
-    return lseek(this->handle, (S32)pos, SEEK_SET);
+    return lseek64(this->handle, pos, SEEK_SET);
 }
 
 void FsFileOpenNode::close() {
