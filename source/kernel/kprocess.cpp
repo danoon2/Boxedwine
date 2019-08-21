@@ -220,7 +220,7 @@ void KProcess::setupCommandlineNode() {
     // :TODO: this will replace the previous one if it exists and leak memory 
     if (!this->procNode) {
         BoxedPtr<FsNode> proc = Fs::getNodeFromLocalPath("", "/proc", true);
-        this->procNode = Fs::addFileNode(std::string("/proc/")+std::to_string(this->id), "", true, proc);
+        this->procNode = Fs::addFileNode(std::string("/proc/")+std::to_string(this->id), "", "", true, proc);
     }
     this->commandLineNode = Fs::addVirtualFile(std::string("/proc/")+std::to_string(this->id)+std::string("/cmdline"), openCommandLine, K__S_IREAD, 0, this->procNode);
 }
@@ -442,8 +442,8 @@ KFileDescriptor* KProcess::openFileDescriptor(const std::string& currentDirector
         if (!parent) {
             errno = ENOENT;
             return NULL;
-        }
-        node = Fs::addFileNode(parent->path+"/"+fileName, "", false, parent);
+        }        
+        node = Fs::addFileNode(parent->path+"/"+fileName, "", Fs::getNativePathFromParentAndLocalFilename(parent, fileName), false, parent);
         Fs::makeLocalDirs(parent->path);
     }
     if (node->kobject) {
@@ -893,7 +893,7 @@ U32 KProcess::link(const std::string& from, const std::string& to) {
     if (!toParentNode)
         return -K_ENOENT;
 
-    toNode = Fs::addFileNode(to, "", false, toParentNode);
+    toNode = Fs::addFileNode(to, "", Fs::getNativePathFromParentAndLocalFilename(toParentNode, Fs::getFileNameFromPath(to)), false, toParentNode);
     FsOpenNode* toOpenNode = toNode->open(K_O_WRONLY|K_O_CREAT);
     if (!toOpenNode) {
         fromOpenNode->close();
@@ -1073,7 +1073,7 @@ U32 symlinkInDirectory(const std::string& currentDirectory, const std::string& t
     if (!parentNode) {
         return -K_ENOENT;
     }
-    node = Fs::addFileNode(fullPath, target, false, parentNode);
+    node = Fs::addFileNode(fullPath, target, Fs::getNativePathFromParentAndLocalFilename(parentNode, linkpath), false, parentNode);
 
     if (!node->canWrite()) {
         node->removeNodeFromParent();

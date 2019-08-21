@@ -46,7 +46,7 @@ bool FsZip::init(const std::string& zipPath) {
             }
             zipInfo[i].filename.append(tmp);
             zipInfo[i].offset = unzGetOffset64(zipfile);
-            Fs::remotePathToLocal(zipInfo[i].filename); // converts special characters like :
+            Fs::remoteNameToLocal(zipInfo[i].filename); // converts special characters like :
             if (stringHasEnding(zipInfo[i].filename, ".link")) {
                 U32 read;
 
@@ -81,7 +81,10 @@ bool FsZip::init(const std::string& zipPath) {
         for (i = 0; i < global_info.number_entry; ++i) {
             std::string parentPath = Fs::getParentPath(zipInfo[i].filename);
             BoxedPtr<FsNode> parent = Fs::getNodeFromLocalPath("", parentPath, true);
-            BoxedPtr<FsFileNode> node = (FsFileNode*)Fs::addFileNode(zipInfo[i].filename, zipInfo[i].link, zipInfo[i].isDirectory, parent).get();
+            std::string localFileName = zipInfo[i].filename;
+            Fs::remoteNameToLocal(localFileName);      
+            localFileName = Fs::getFileNameFromPath(localFileName);
+            BoxedPtr<FsFileNode> node = (FsFileNode*)Fs::addFileNode(zipInfo[i].filename, zipInfo[i].link, Fs::getNativePathFromParentAndLocalFilename(parent, localFileName), zipInfo[i].isDirectory, parent).get();
             node->zipNode = new FsZipNode(node, zipInfo[i]);
         }   
         delete[] zipInfo;

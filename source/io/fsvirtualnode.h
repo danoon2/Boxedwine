@@ -6,7 +6,7 @@
 
 class FsVirtualNode : public FsNode {
 public:
-    FsVirtualNode(U32 id, U32 rdev, const std::string& path, OpenVirtualNode openFunc, U32 mode, BoxedPtr<FsNode> parent) : FsNode(Virtual, id, rdev, path, "", false, parent), mode(mode), openFunc(openFunc) {}
+    FsVirtualNode(U32 id, U32 rdev, const std::string& path, OpenVirtualNode openFunc, U32 mode, BoxedPtr<FsNode> parent) : FsNode(Virtual, id, rdev, path, "", "", false, parent), mode(mode), openFunc(openFunc) {}
     virtual U32 rename(const std::string& path); //return 0 if success, else errno
     virtual bool remove();
     virtual U64 lastModified();

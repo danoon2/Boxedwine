@@ -332,7 +332,7 @@ S64 KUnixSocketObject::length() {
 
 class UnixSocketNode : public FsNode {
 public:
-    UnixSocketNode(U32 id, U32 rdev, const std::string& path, BoxedPtr<FsNode> parent) : FsNode(Socket, id, rdev, path, "", false, parent) {}
+    UnixSocketNode(U32 id, U32 rdev, const std::string& path, BoxedPtr<FsNode> parent) : FsNode(Socket, id, rdev, path, "", "", false, parent) {}
     U32 rename(const std::string& path) {return -K_EIO;}
     bool remove() {if (!this->parent) return false; this->removeNodeFromParent(); return true;}
     U64 lastModified() {return 0;}

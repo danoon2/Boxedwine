@@ -303,10 +303,10 @@ int boxedmain(int argc, const char **argv) {
     Fs::makeLocalDirs("/dev");
     Fs::makeLocalDirs("/proc");
     BoxedPtr<FsNode> rootNode = Fs::getNodeFromLocalPath("", "/", true);
-    BoxedPtr<FsNode> devNode = Fs::addFileNode("/dev", "", true, rootNode);
-    BoxedPtr<FsNode> inputNode = Fs::addFileNode("/dev/input", "", true, devNode);
-    BoxedPtr<FsNode> procNode = Fs::addFileNode("/proc", "", true, rootNode);
-    BoxedPtr<FsNode> procSelfNode = Fs::addFileNode("/proc/self", "", true, procNode);
+    BoxedPtr<FsNode> devNode = Fs::addFileNode("/dev", "", "", true, rootNode);
+    BoxedPtr<FsNode> inputNode = Fs::addFileNode("/dev/input", "", "", true, devNode);
+    BoxedPtr<FsNode> procNode = Fs::addFileNode("/proc", "", "", true, rootNode);
+    BoxedPtr<FsNode> procSelfNode = Fs::addFileNode("/proc/self", "", "", true, procNode);
 
     Fs::addVirtualFile("/dev/tty0", openDevTTY, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, mdev(4, 0), devNode);
     Fs::addVirtualFile("/dev/tty", openDevTTY, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, mdev(4, 0), devNode);

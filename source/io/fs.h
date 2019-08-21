@@ -42,23 +42,23 @@ class Fs {
 public:   
     static bool initFileSystem(const std::string& rootPath, const std::string& zipPath);
     static BoxedPtr<FsNode> getNodeFromLocalPath(const std::string& currentDirectory, const std::string& path, bool followLink, bool* isLink=NULL);    
-    static BoxedPtr<FsNode> addFileNode(const std::string& path, const std::string& link, bool isDirectory, const BoxedPtr<FsNode>& parent);
+    static BoxedPtr<FsNode> addFileNode(const std::string& path, const std::string& link, const std::string& nativePath, bool isDirectory, const BoxedPtr<FsNode>& parent);
     static BoxedPtr<FsNode> addVirtualFile(const std::string& path, OpenVirtualNode func, U32 mode, U32 rdev, const BoxedPtr<FsNode>& parent);
-    static void remotePathToLocal(std::string& path);
+    static void remoteNameToLocal(std::string& path);
+    static void localNameToRemote(std::string& path);
     static U32 makeLocalDirs(const std::string& path);
     static std::string getParentPath(const std::string& path);
     static std::string getNativeParentPath(const std::string& path);
     static std::string getFileNameFromPath(const std::string& path);
-    static std::string localPathToRemote(const std::string& path);
-    static U32 readFile(const std::string& path, U8* buffer, U32 bufferLen);
+    static U32 readNativeFile(const std::string& nativePath, U8* buffer, U32 bufferLen);
     static void splitPath(const std::string& path, std::vector<std::string>& parts);
     static bool doesNativePathExist(const std::string& path);
     static std::string getFullPath(const std::string& currentDirectory, const std::string& path);
+    static std::string getNativePathFromParentAndLocalFilename(const BoxedPtr<FsNode>& parent, const std::string fileName);
 
     static std::string nativePathSeperator;
-    static std::string rootFileSystem;
 
-    static BoxedPtr<FsNode> rootNode;
+    static BoxedPtr<FsFileNode> rootNode;
 
 private:
     friend class KUnixSocketObject;

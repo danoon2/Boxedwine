@@ -2,10 +2,11 @@
 
 #include "kstat.h"
 
-FsNode::FsNode(Type type, U32 id, U32 rdev, const std::string& path, const std::string& link, bool isDirectory, BoxedPtr<FsNode> parent) : 
+FsNode::FsNode(Type type, U32 id, U32 rdev, const std::string& path, const std::string& link, const std::string& nativePath, bool isDirectory, BoxedPtr<FsNode> parent) : 
     path(path),
     name(Fs::getFileNameFromPath(path)),
     link(link),
+    nativePath(nativePath),
     id(id), 
     rdev(rdev),
     hardLinkCount(1),
@@ -39,27 +40,29 @@ void FsNode::loadChildren() {
     // don't need to protect from threads since this is private
     if (!this->hasLoadedChildrenFromFileSystem) {
         this->hasLoadedChildrenFromFileSystem = true;
-        std::string nativePath = Fs::localPathToRemote(this->path);
-        std::vector<Platform::ListNodeResult> results;
-        Platform::listNodes(nativePath, results);
-        for (auto& n : results) {
-            std::string localPath = this->path;
-            if (!stringHasEnding(localPath, "/"))
-                localPath+="/";
-            localPath+=n.name;
-            Fs::remotePathToLocal(localPath);
-            if (!stringHasEnding(localPath, ".link")) {
-                Fs::addFileNode(localPath, "", n.isDirectory, this);
-            } else {
-                U8 tmp[MAX_FILEPATH_LEN];
-                U32 result = Fs::readFile(localPath, tmp, MAX_FILEPATH_LEN-1);
-                tmp[result]=0;
-                if (result==0) {
-                    kwarn("Could not read link file from filesystem: %s", localPath.c_str());
-                }
-                localPath = localPath.substr(0, localPath.length()-5);
-                Fs::addFileNode(localPath, (const char*)tmp, n.isDirectory, this);
-            }           
+        if (this->nativePath.length()) {
+            std::vector<Platform::ListNodeResult> results;
+            Platform::listNodes(nativePath, results);
+            for (auto& n : results) {
+                std::string localPath = this->path;
+                std::string remotePath = this->nativePath+Fs::nativePathSeperator+n.name;
+                if (!stringHasEnding(localPath, "/"))
+                    localPath+="/";
+                Fs::remoteNameToLocal(n.name);
+                localPath+=n.name;
+                if (!stringHasEnding(localPath, ".link")) {
+                    Fs::addFileNode(localPath, "", remotePath, n.isDirectory, this);
+                } else {
+                    U8 tmp[MAX_FILEPATH_LEN];
+                    U32 result = Fs::readNativeFile(remotePath, tmp, MAX_FILEPATH_LEN-1);
+                    tmp[result]=0;
+                    if (result==0) {
+                        kwarn("Could not read link file from filesystem: %s", localPath.c_str());
+                    }
+                    localPath = localPath.substr(0, localPath.length()-5);
+                    Fs::addFileNode(localPath, (const char*)tmp, remotePath, n.isDirectory, this);
+                }           
+            }
         }
     }
 }

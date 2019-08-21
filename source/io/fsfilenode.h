@@ -9,7 +9,7 @@ class FsZipNode;
 
 class FsFileNode : public FsNode {
 public:
-    FsFileNode(U32 id, U32 rdev, const std::string& path, const std::string& link, bool isDirectory, BoxedPtr<FsNode> parent);
+    FsFileNode(U32 id, U32 rdev, const std::string& path, const std::string& link, const std::string& nativeRootPath, bool isDirectory, bool isRootPath, BoxedPtr<FsNode> parent);
     virtual U32 rename(const std::string& path); //return 0 if success, else errno
     virtual bool remove();
     virtual U64 lastModified();
@@ -28,10 +28,11 @@ private:
     void ensurePathIsLocal();
 #ifdef BOXEDWINE_ZLIB
     friend class FsZip;
-    friend class FsZipNode;
+    friend class FsZipNode;    
     BoxedPtr<FsZipNode> zipNode;
-#endif
-    std::string nativePath;
+#endif    
+    friend class Fs;
+    bool isRootPath;
 };
 
 #endif

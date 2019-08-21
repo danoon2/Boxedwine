@@ -666,7 +666,6 @@ U32 KNativeSocketObject::getsockopt(KFileDescriptor* fd, U32 level, U32 name, U3
         } else if (name == K_SO_ERROR) {
             if (len != 4)
                 kpanic("KNativeSocketObject::getsockopt SO_ERROR expecting len of 4");
-            printf("\ngetsockopt %d\n", this->error);
             writed(value, this->error);
             //this->error = 0;
         } else if (name == K_SO_TYPE) { 

@@ -38,7 +38,7 @@
 #include <setjmp.h>
 #endif
 
-#ifdef __APPLE__ & __MACH__
+#ifdef __APPLE__
 #define lseek64 lseek
 #endif
 

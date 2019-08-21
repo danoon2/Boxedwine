@@ -18,7 +18,7 @@ public:
         Virtual,
         Socket
     };
-    FsNode(Type type, U32 id, U32 rdev, const std::string& path, const std::string& link, bool isDirectory, BoxedPtr<FsNode> parent);
+    FsNode(Type type, U32 id, U32 rdev, const std::string& path, const std::string& link, const std::string& nativePath, bool isDirectory, BoxedPtr<FsNode> parent);
 
     virtual U32 rename(const std::string& path)=0; //return 0 if success, else errno
     virtual bool remove()=0;
@@ -42,6 +42,7 @@ public:
     void removeNodeFromParent();
 
     std::string path; 
+    std::string nativePath;
     std::string name;
     const std::string link;
     const U32 id;

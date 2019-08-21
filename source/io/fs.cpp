@@ -15,20 +15,19 @@
 U32 Fs::nextNodeId=1;
 BOXEDWINE_MUTEX Fs::nextNodeIdMutex;
 
-BoxedPtr<FsNode> Fs::rootNode;
+BoxedPtr<FsFileNode> Fs::rootNode;
 std::string Fs::nativePathSeperator;
-std::string Fs::rootFileSystem;
 
 bool Fs::initFileSystem(const std::string& rootPath, const std::string& zipPath) {
-    Fs::rootFileSystem = rootPath;
-    
+    std::string path;
     if (stringHasEnding(rootPath, "/")) {
         Fs::nativePathSeperator = "/";
-        Fs::rootFileSystem = Fs::rootFileSystem.substr(0, Fs::rootFileSystem.length()-1);
+        path = rootPath.substr(0, rootPath.length()-1);
     } else if (stringHasEnding(rootPath, "\\")) {
         Fs::nativePathSeperator = "\\";
-        Fs::rootFileSystem = Fs::rootFileSystem.substr(0, Fs::rootFileSystem.length()-1);
+        path = rootPath.substr(0, rootPath.length()-1);
     } else {
+        path = rootPath;
         if (stringContains(rootPath, "\\"))
             Fs::nativePathSeperator = "\\";
         else
@@ -40,7 +39,7 @@ bool Fs::initFileSystem(const std::string& rootPath, const std::string& zipPath)
     }
 
     BoxedPtr<FsNode> parent(NULL);
-    rootNode = new FsFileNode(Fs::nextNodeId++, 0, "/", "", true, parent);
+    rootNode = new FsFileNode(Fs::nextNodeId++, 0, "/", "", path, true, true, parent);
 
     BoxedPtr<FsNode> dir = Fs::getNodeFromLocalPath("", "/tmp/del", false, NULL);
     if (dir) {
@@ -56,21 +55,14 @@ bool Fs::initFileSystem(const std::string& rootPath, const std::string& zipPath)
     return true;
 }
 
-void Fs::remotePathToLocal(std::string& path) {
-    if (stringStartsWith(path, Fs::rootFileSystem)) {
-        path.erase(0, Fs::rootFileSystem.length());
-    }
+void Fs::remoteNameToLocal(std::string& path) {
     stringReplaceAll(path, Fs::nativePathSeperator, "/");
     stringReplaceAll(path, "(_colon_)", ":");
 }
 
-std::string Fs::localPathToRemote(const std::string& path) {
-    if (path == "/")
-        return Fs::rootFileSystem;
-    std::string result = path;
-    stringReplaceAll(result, "/", Fs::nativePathSeperator);
-    stringReplaceAll(result, ":", "(_colon_)");
-    return Fs::rootFileSystem+result;
+void Fs::localNameToRemote(std::string& path) {
+    stringReplaceAll(path, "/", Fs::nativePathSeperator);
+    stringReplaceAll(path, ":", "(_colon_)");
 }
 
 BoxedPtr<FsNode> Fs::addVirtualFile(const std::string& path, OpenVirtualNode func, U32 mode, U32 rdev, const BoxedPtr<FsNode>& parent) {
@@ -178,9 +170,9 @@ BoxedPtr<FsNode> Fs::getNodeFromLocalPath(const std::string& currentDirectory, c
     return node;
 }
 
-BoxedPtr<FsNode> Fs::addFileNode(const std::string& path, const std::string& link, bool isDirectory, const BoxedPtr<FsNode>& parent) {
+BoxedPtr<FsNode> Fs::addFileNode(const std::string& path, const std::string& link, const std::string& nativePath, bool isDirectory, const BoxedPtr<FsNode>& parent) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(Fs::nextNodeIdMutex);
-    BoxedPtr<FsFileNode> result = new FsFileNode(Fs::nextNodeId++, 0, path, link, isDirectory, parent);
+    BoxedPtr<FsFileNode> result = new FsFileNode(Fs::nextNodeId++, 0, path, link, nativePath, isDirectory, false, parent);
     parent->addChild(result);
     return result;
 }
@@ -194,7 +186,11 @@ std::string Fs::getNativeParentPath(const std::string& path) {
 }
 
 std::string Fs::getFileNameFromPath(const std::string& path) {
-    return path.substr(path.rfind('/')+1);
+    size_t pos = path.rfind('/');
+    if (pos==std::string::npos) {
+        return path;
+    }
+    return path.substr(pos+1);
 }
 
 bool Fs::doesNativePathExist(const std::string& path) {
@@ -222,9 +218,8 @@ U32 Fs::makeLocalDirs(const std::string& path) {
     std::reverse(nodes.begin(), nodes.end());
     for (U32 i=0;i<nodes.size();i++) {
         BoxedPtr<FsNode> nodePart = nodes[i];
-        std::string nativePath = Fs::localPathToRemote(nodePart->path);
-        if (!Fs::doesNativePathExist(nativePath)) {
-            U32 result = MKDIR(nativePath.c_str());
+        if (!Fs::doesNativePathExist(nodePart->nativePath)) {
+            U32 result = MKDIR(nodePart->nativePath.c_str());
             if (result)
                 return result;
         }
@@ -237,11 +232,13 @@ U32 Fs::makeLocalDirs(const std::string& path) {
             if (!stringHasEnding(base, "/")) // will be / if root
                 base+=std::string("/");
             base+=missingParts[i];
-            std::string nativePath = Fs::localPathToRemote(base);
+            std::string nativePath = missingParts[i];
+            Fs::localNameToRemote(nativePath);
+            nativePath = node->nativePath + Fs::nativePathSeperator + nativePath;
             U32 result = MKDIR(nativePath.c_str());
             if (result)
                 return result;
-            BoxedPtr<FsNode> childNode = Fs::addFileNode(base, "", true, node);
+            BoxedPtr<FsNode> childNode = Fs::addFileNode(base, "", nativePath, true, node);
         }
     }
     return 0;
@@ -254,8 +251,7 @@ void Fs::splitPath(const std::string& path, std::vector<std::string>& parts) {
         stringSplit(parts,path,'/');
 }
 
-U32 Fs::readFile(const std::string& path, U8* buffer, U32 bufferLen) {
-    std::string nativePath = Fs::localPathToRemote(path);
+U32 Fs::readNativeFile(const std::string& nativePath, U8* buffer, U32 bufferLen) {
     int f = ::open(nativePath.c_str(), O_RDONLY);
     if (f>0) {
         U32 result = ::read(f, buffer, bufferLen);
@@ -263,4 +259,10 @@ U32 Fs::readFile(const std::string& path, U8* buffer, U32 bufferLen) {
         return result;
     }
     return 0;
+}
+
+std::string Fs::getNativePathFromParentAndLocalFilename(const BoxedPtr<FsNode>& parent, const std::string fileName) {
+    std::string nativeFileName = fileName;
+    Fs::localNameToRemote(nativeFileName);
+    return parent->nativePath + Fs::nativePathSeperator + nativeFileName;
 }

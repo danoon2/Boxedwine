@@ -18,11 +18,7 @@
 
 std::set<std::string> FsFileNode::nonExecFileFullPaths;
 
-FsFileNode::FsFileNode(U32 id, U32 rdev, const std::string& path, const std::string& link, bool isDirectory, BoxedPtr<FsNode> parent) : FsNode(File, id, rdev, path, link, isDirectory, parent) {
-    this->nativePath = Fs::localPathToRemote(path);
-    if (link.length()) {
-        this->nativePath+=".link";
-    }
+FsFileNode::FsFileNode(U32 id, U32 rdev, const std::string& path, const std::string& link, const std::string& nativePath, bool isDirectory, bool isRootPath, BoxedPtr<FsNode> parent) : FsNode(File, id, rdev, path, link, nativePath, isDirectory, parent), isRootPath(isRootPath) {
 }
 
 bool FsFileNode::remove() {
@@ -49,11 +45,14 @@ bool FsFileNode::remove() {
         });
         
         Fs::makeLocalDirs("/tmp/del");
+        BoxedPtr<FsNode> delDir = Fs::getNodeFromLocalPath("", "/tmp/del", true);
 
         std::string newNativePath;
 
         for (i=0;i<100000000;i++) {			
-            newNativePath = Fs::localPathToRemote("/tmp/del/del"+std::to_string(i)+".tmp");
+            std::string name = "del"+std::to_string(i)+".tmp";
+            Fs::localNameToRemote(name);
+            newNativePath = delDir->nativePath+Fs::nativePathSeperator+name;
             if (!Fs::doesNativePathExist(newNativePath))
                 break;
         }
@@ -247,7 +246,9 @@ U32 FsFileNode::rename(const std::string& path) {
         return -K_ENOENT;
     }
 
-    std::string nativePath = Fs::localPathToRemote(parent->path+"/"+Fs::getFileNameFromPath(path));
+    std::string fileName = Fs::getFileNameFromPath(path);
+    Fs::localNameToRemote(fileName);
+    std::string nativePath = parent->nativePath+Fs::nativePathSeperator+fileName;
 
     if (this->isLink())
         nativePath+=".link";
