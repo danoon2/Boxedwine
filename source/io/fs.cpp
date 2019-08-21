@@ -177,6 +177,14 @@ BoxedPtr<FsNode> Fs::addFileNode(const std::string& path, const std::string& lin
     return result;
 }
 
+BoxedPtr<FsNode> Fs::addRootDirectoryNode(const std::string& path, const std::string& nativePath, const BoxedPtr<FsNode>& parent) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(Fs::nextNodeIdMutex);
+    BoxedPtr<FsFileNode> result = new FsFileNode(Fs::nextNodeId++, 0, path, "", nativePath, true, false, parent);
+    parent->addChild(result);
+    result->isRootPath = true;
+    return result;
+}
+
 std::string Fs::getParentPath(const std::string& path) {
     return path.substr(0, path.rfind('/'));
 }

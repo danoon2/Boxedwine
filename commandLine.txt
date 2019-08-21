@@ -18,7 +18,15 @@ This will load the file system from wine.zip and write the changes to c:\root
 
 -gensrc : This is used for ahead of time (AOT) compiling and requires the source to be build with GENERATE_SOURCE.  With this enabled the user can run the program, then compile the output back into the program for a performance boost.  Currently I don't recommend using this, it should be considered experimental and the out put will not be compatible with future versions of BoxedWine.
 
--nosound : Disable /dev/dsp which will disable sound
+-mount : Will mount a host directory in the emulated file systems.  Example: -mount "c:\my games" "/home/username/my games"
+
+-mount_drive : Will mount a host directory in the emulate file system and set up the Wine links so that it shows up as a drive in Wine. Example: -mount_drive "c:\my games" d
+
+-nosound : Will mute sounds, but the emulated program will still think they are being played
+
+-p2 : sets the emulated cpu to be a Pentium 2 with MMX
+
+-p3 : sets the emulated cpu to be a Pentium 3 with MMX/SSE (default)
 
 -resolution WxH : Initial emulated screen size.  Default is 800x600.  This is usual for apps/games that aren't full screen and won't change the screen size themselves.
 
@@ -29,7 +37,3 @@ This will load the file system from wine.zip and write the changes to c:\root
 -w path : Initial working directory, default is /home/username.  This path needs to reference a path in the emulated file system.
 
 -zip path : This will load the file system from the zip file.  Use -root option for the location where new files can be created.
-
--p2 : sets the emulated cpu to be a Pentium 2 with MMX
-
--p3 : sets the emulated cpu to be a Pentium 3 with MMX/SSE (default)

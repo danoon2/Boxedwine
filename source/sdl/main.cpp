@@ -115,6 +115,15 @@ FsOpenNode* openKernelCommandLine(const BoxedPtr<FsNode>& node, U32 flags) {
     return new BufferAccess(node, flags, "");
 }
 
+class MountInfo {
+public:
+    MountInfo(const std::string& localPath, const std::string& nativePath, bool wine) : localPath(localPath), nativePath(nativePath), wine(wine){}
+
+    std::string localPath;
+    std::string nativePath;
+    bool wine;
+};
+
 int boxedmain(int argc, const char **argv) {
     int i;
     const char* root = ".";
@@ -129,6 +138,7 @@ int boxedmain(int argc, const char **argv) {
     char pwd[MAX_FILEPATH_LEN];	
     bool resolutionSet = false;
     bool euidSet = false;
+    std::vector<MountInfo> mountInfo;
 
     klog("Starting ...");
 
@@ -224,6 +234,22 @@ int boxedmain(int argc, const char **argv) {
         } else if (!strcmp(argv[i], "-rel_mouse_sensitivity")) {
             rel_mouse_sensitivity = atoi(argv[i+1]);
             i++;
+        } else if (!strcmp(argv[i], "-mount_drive")) {
+            if (strlen(argv[i+2])!=1) {
+                printf("-mount_drive expects 2 parameters: <host directory to mount> <drive letter to use for wine>");
+                printf("example: -mount_dirve \"c:\\my games\" d\n");
+            } else {
+                mountInfo.push_back(MountInfo(argv[i+2], argv[i+1], true));
+            }
+            i+=2;
+        } else if (!strcmp(argv[i], "-mount")) {
+            if (argv[i+2][0]!='/') {
+                printf("-mount expects 2 parameters: <host directory to mount> <full path on root file>\n");
+                printf("example: -mount \"c:\\my games\" \"/home/username/my games\"\n");
+            } else {
+                mountInfo.push_back(MountInfo(argv[i+2], argv[i+1], false));
+            }
+            i+=2;
         }
 #ifdef BOXEDWINE_RECORDER
         else if (!strcmp(argv[i], "-record")) {
@@ -302,6 +328,8 @@ int boxedmain(int argc, const char **argv) {
     // These are just added so that the parent node of the following virtual files exist
     Fs::makeLocalDirs("/dev");
     Fs::makeLocalDirs("/proc");
+    Fs::makeLocalDirs("/mnt");
+
     BoxedPtr<FsNode> rootNode = Fs::getNodeFromLocalPath("", "/", true);
     BoxedPtr<FsNode> devNode = Fs::addFileNode("/dev", "", "", true, rootNode);
     BoxedPtr<FsNode> inputNode = Fs::addFileNode("/dev/input", "", "", true, devNode);
@@ -324,6 +352,18 @@ int boxedmain(int argc, const char **argv) {
 	Fs::addVirtualFile("/dev/dsp", openDevDsp, K__S_IWRITE | K__S_IREAD | K__S_IFCHR, mdev(14, 3), devNode);
 	Fs::addVirtualFile("/dev/mixer", openDevMixer, K__S_IWRITE | K__S_IREAD | K__S_IFCHR, mdev(14, 0), devNode);
     Fs::addVirtualFile("/dev/sequencer", openDevSequencer, K__S_IWRITE | K__S_IREAD | K__S_IFCHR, mdev(14, 1), devNode);
+    
+    for(auto&& info: mountInfo) {
+        if (info.wine) {
+            BoxedPtr<FsNode> mntDir = Fs::getNodeFromLocalPath("", "/mnt", true);
+            BoxedPtr<FsNode> drive_d = Fs::addRootDirectoryNode("/mnt/drive_"+info.localPath, info.nativePath, mntDir);
+            BoxedPtr<FsNode> parent = Fs::getNodeFromLocalPath("", "/home/username/.wine/dosdevices", true);
+            Fs::addFileNode("/home/username/.wine/dosdevices/d:", "/mnt/drive_"+info.localPath, info.localPath+":", false, parent); 
+        } else {
+            BoxedPtr<FsNode> parent = Fs::getNodeFromLocalPath("", Fs::getParentPath(info.localPath), true);
+            Fs::addRootDirectoryNode(info.localPath, info.nativePath, parent);
+        }
+    }
 
     argc = argc-i;
     if (argc==0) {

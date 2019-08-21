@@ -44,6 +44,7 @@ public:
     static BoxedPtr<FsNode> getNodeFromLocalPath(const std::string& currentDirectory, const std::string& path, bool followLink, bool* isLink=NULL);    
     static BoxedPtr<FsNode> addFileNode(const std::string& path, const std::string& link, const std::string& nativePath, bool isDirectory, const BoxedPtr<FsNode>& parent);
     static BoxedPtr<FsNode> addVirtualFile(const std::string& path, OpenVirtualNode func, U32 mode, U32 rdev, const BoxedPtr<FsNode>& parent);
+    static BoxedPtr<FsNode> addRootDirectoryNode(const std::string& path, const std::string& nativePath, const BoxedPtr<FsNode>& parent);
     static void remoteNameToLocal(std::string& path);
     static void localNameToRemote(std::string& path);
     static U32 makeLocalDirs(const std::string& path);
@@ -54,7 +55,7 @@ public:
     static void splitPath(const std::string& path, std::vector<std::string>& parts);
     static bool doesNativePathExist(const std::string& path);
     static std::string getFullPath(const std::string& currentDirectory, const std::string& path);
-    static std::string getNativePathFromParentAndLocalFilename(const BoxedPtr<FsNode>& parent, const std::string fileName);
+    static std::string getNativePathFromParentAndLocalFilename(const BoxedPtr<FsNode>& parent, const std::string fileName);    
 
     static std::string nativePathSeperator;
 
