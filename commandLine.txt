@@ -1,5 +1,10 @@
 BoxedWine [options] Program
 
+If no zip file is specified, it will look for a standard zip file with the pattern *Wine*.zip.  If it finds one and you didn't specifiy -nozip, then it will automatically use that zip.  It will look for this zip in the current working directory and if not found, then try the same directory where the Boxedwine executable is.  If more than 1 file is found in the directory, it will pick one at random.
+
+If no root directory is specified, then it will default to root in your platforms data folder
+* on Windows, this could be "C:\Users\Username\AppData\Roaming\Boxedwine\root\"
+
 example:
 
 BoxedWine -root c:\root /bin/wine notepad
@@ -24,6 +29,7 @@ This will load the file system from wine.zip and write the changes to c:\root
 
 -nosound : Will mute sounds, but the emulated program will still think they are being played
 
+-nozip: if -zip command line is not supplied, Boxedwine might try to find a suitable zip file system.  If you don't want a default zip file system, you can specific the -nozip command line option.
 -p2 : sets the emulated cpu to be a Pentium 2 with MMX
 
 -p3 : sets the emulated cpu to be a Pentium 3 with MMX/SSE (default)

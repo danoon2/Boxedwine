@@ -101,7 +101,7 @@ std::string ElfLoader::getInterpreter(FsOpenNode* openNode, bool* isElf) {
     return "";
 }
 
-FsOpenNode* ElfLoader::inspectNode(KProcess* process, const std::string& currentDirectory, const BoxedPtr<FsNode>& node, std::string& loader, std::string& interpreter, std::vector<std::string>& interpreterArgs) {
+FsOpenNode* ElfLoader::inspectNode(const std::string& currentDirectory, const BoxedPtr<FsNode>& node, std::string& loader, std::string& interpreter, std::vector<std::string>& interpreterArgs) {
     bool isElf = 0;
     FsOpenNode* openNode = 0;
     BoxedPtr<FsNode> interpreterNode;

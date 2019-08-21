@@ -8,6 +8,7 @@
 
 #include <stdio.h>
 #include <fcntl.h>
+#include <sys/stat.h>
 
 #include UNISTD
 #include MKDIR_INCLUDE
@@ -201,9 +202,33 @@ std::string Fs::getFileNameFromPath(const std::string& path) {
     return path.substr(pos+1);
 }
 
+std::string Fs::getFileNameFromNativePath(const std::string& path) {
+    size_t pos = path.rfind(Fs::nativePathSeperator);
+    if (pos==std::string::npos) {
+        return path;
+    }
+    return path.substr(pos+1);
+}
+
 bool Fs::doesNativePathExist(const std::string& path) {
     if (::access(path.c_str(), 0)!=-1) {
         return true;
+    }
+    return false;
+}
+
+bool Fs::isNativePathDirectory(const std::string& path) {
+    PLATFORM_STAT_STRUCT buf;
+
+#ifdef BOXEDWINE_MSVC
+    if (path.length()<3) {
+        if (PLATFORM_STAT(std::string(path+"\\").c_str(), &buf)==0) {
+            return S_ISDIR(buf.st_mode);
+        }
+    }
+#endif
+    if (PLATFORM_STAT(path.c_str(), &buf)==0) {
+        return S_ISDIR(buf.st_mode);
     }
     return false;
 }

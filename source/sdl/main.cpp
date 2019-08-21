@@ -44,6 +44,7 @@
 #include "../io/fsfilenode.h"
 #include "recorder.h"
 #include "mainloop.h"
+#include "loader.h"
 
 void gl_init();
 extern int bits_per_pixel;
@@ -126,8 +127,8 @@ public:
 
 int boxedmain(int argc, const char **argv) {
     int i;
-    const char* root = ".";
-    const char* zip = "";
+    std::string root = "";
+    std::string zip = "";
     const char* ppenv[32];
     int envc=0;
     int userId = UID;
@@ -135,9 +136,11 @@ int boxedmain(int argc, const char **argv) {
     int effectiveUserId = UID;
     int effectiveGroupId = GID;
     const char* workingDir = "/home/username";
+    bool workingDirSet = false;
     char pwd[MAX_FILEPATH_LEN];	
     bool resolutionSet = false;
     bool euidSet = false;
+    bool nozip = false;
     std::vector<MountInfo> mountInfo;
 
     klog("Starting ...");
@@ -157,6 +160,8 @@ int boxedmain(int argc, const char **argv) {
             printf("BoxedWine wasn't compiled with zlib support");
 #endif
             i++;
+        } else if (!strcmp(argv[i], "-nozip") && i+1<argc) {
+            nozip = true;
         } else if (!strcmp(argv[i], "-m") && i+1<argc) {
             i++;
         } else if (!strcmp(argv[i], "-uid") && i+1<argc) {
@@ -177,6 +182,7 @@ int boxedmain(int argc, const char **argv) {
         } else if (!strcmp(argv[i], "-w") && i+1<argc) {
             workingDir = argv[i+1];
             i++;
+            workingDirSet = true;
         } else if (!strcmp(argv[i], "-gensrc")) {
             gensrc = 1;
 		} else if (!strcmp(argv[i], "-nosound")) {
@@ -275,28 +281,42 @@ int boxedmain(int argc, const char **argv) {
             break;
         }
     }    
-    if (!root) {
-        char* base = getcwd(curdir, sizeof(curdir));
-        int len;
-        char pathSeperator;
+    char* base = getcwd(curdir, sizeof(curdir));
+    char pathSeperator;
 
-        if (strchr(base, '\\')!=0) {
-            pathSeperator = '\\';
-        } else {
-            pathSeperator = '/';
-        }
-        len = (int)strlen(base);
-        if (base[len-1]!=pathSeperator) {
-            base[len] = pathSeperator;
-            base[len+1] = 0;
-        }
-        safe_strcat(base, "root", sizeof(curdir));
-        root=base;
+    if (strchr(base, '\\')!=0) {
+        pathSeperator = '\\';
+    } else {
+        pathSeperator = '/';
     }
+    std::string base2 = SDL_GetBasePath();
+    base2 = base2.substr(0, base2.length()-1); 
+    if (zip.length()==0 && !nozip) {
+        std::vector<Platform::ListNodeResult> results;
+        Platform::listNodes(base, results);
+        for (auto&& item : results) {
+            if (strstr(item.name.c_str(), "Wine") && strstr(item.name.c_str(), ".zip")) {
+                zip = std::string(base) + pathSeperator + item.name;
+            }
+        }
+        if (zip.length()==0) {
+            results.clear();
+            Platform::listNodes(base2, results);
+            for (auto&& item : results) {
+                if (strstr(item.name.c_str(), "Wine") && strstr(item.name.c_str(), ".zip")) {
+                    zip = std::string(base2) + pathSeperator + item.name;
+                }
+            }
+        }
+    }
+    if (!root.length()) {
+        root=SDL_GetPrefPath("Boxedwine", "root");
+    }    
+
     BOXEDWINE_RECORDER_INIT(root, zip, workingDir, &argv[i], argc-i);
-    klog("Using root directory: %s", root);
+    klog("Using root directory: %s", root.c_str());
     if (!Fs::initFileSystem(root, zip)) {
-        kwarn("root %s does not exist", root);
+        kwarn("root %s does not exist", root.c_str());
         return 0;
     }
     initSDL();
@@ -358,7 +378,7 @@ int boxedmain(int argc, const char **argv) {
             BoxedPtr<FsNode> mntDir = Fs::getNodeFromLocalPath("", "/mnt", true);
             BoxedPtr<FsNode> drive_d = Fs::addRootDirectoryNode("/mnt/drive_"+info.localPath, info.nativePath, mntDir);
             BoxedPtr<FsNode> parent = Fs::getNodeFromLocalPath("", "/home/username/.wine/dosdevices", true);
-            Fs::addFileNode("/home/username/.wine/dosdevices/d:", "/mnt/drive_"+info.localPath, info.localPath+":", false, parent); 
+            Fs::addFileNode("/home/username/.wine/dosdevices/"+info.localPath+":", "/mnt/drive_"+info.localPath, "", false, parent); 
         } else {
             BoxedPtr<FsNode> parent = Fs::getNodeFromLocalPath("", Fs::getParentPath(info.localPath), true);
             Fs::addRootDirectoryNode(info.localPath, info.nativePath, parent);
@@ -366,14 +386,73 @@ int boxedmain(int argc, const char **argv) {
     }
 
     argc = argc-i;
+    bool validLinuxCommand = false;
     if (argc==0) {
-        argv[0]="/usr/bin/wine";
-        argv[1]="/home/username/chomp/CHOMP.EXE";
+        argv[0]="/bin/wine";
+        argv[1]="explorer";
         argc=2;
-        //argv[0]="/init.sh";
-        //argc=1;
     } else {
         argv = &argv[i];
+        
+        BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath(workingDir, argv[0], true);        
+
+        if (node) {
+            std::string interpreter;
+            std::string loader;
+            std::vector<std::string> interpreterArgs;
+            std::vector<std::string> args;
+
+            FsOpenNode* openNode=ElfLoader::inspectNode(workingDir, node, loader, interpreter, interpreterArgs);
+            if (openNode) {
+                openNode->close();
+                validLinuxCommand = true;
+            }
+        }
+        if (!validLinuxCommand) {
+            if (Fs::doesNativePathExist(argv[0])) {
+                std::string dir = argv[0];
+                if (argv[0][dir.length()-1]=='/' || argv[0][dir.length()-1]=='\\') {
+                    dir = dir.substr(0, dir.length()-1);
+                }
+                bool isDir = Fs::isNativePathDirectory(dir);
+                BoxedPtr<FsNode> mntDir = Fs::getNodeFromLocalPath("", "/mnt", true);
+
+                if (!isDir) {
+                    dir = Fs::getNativeParentPath(dir);
+                }
+                
+                BoxedPtr<FsNode> drive_d = Fs::addRootDirectoryNode("/mnt/drive_t", dir, mntDir);
+                BoxedPtr<FsNode> parent = Fs::getNodeFromLocalPath("", "/home/username/.wine/dosdevices", true);
+                if (parent) {
+                    Fs::addFileNode("/home/username/.wine/dosdevices/t:", "/mnt/drive_t", "", false, parent);
+                }
+
+                if (!workingDirSet) {
+                    workingDir = "/mnt/drive_t";
+                }
+
+                if (isDir) {
+                    const char** a = new const char*[3];
+                    a[0] = "/bin/wine";
+                    a[1] = "explorer";
+                    a[2] = "t:\\";
+                    argc = 3;
+                    argv = a;
+                } else {
+                    const char** a = new const char*[argc+1];
+                    a[0] = "/bin/wine";
+                    std::string path = "t:\\"+Fs::getFileNameFromNativePath(argv[0]);
+                    char* c = new char[path.length()+1];
+                    strcpy(c, path.c_str());
+                    a[1] = c;
+                    for (int i=1;i<argc;i++) {
+                        a[i+1] = argv[i];
+                    }
+                    argc++;
+                    argv = a;
+                }
+            }
+        }
     }
 #ifdef SDL2
     U32 flags = SDL_INIT_EVENTS;
@@ -389,6 +468,14 @@ int boxedmain(int argc, const char **argv) {
     if (SDL_Init(flags) != 0) {
         klog("SDL_Init Error: %s", SDL_GetError());
         return 0;
+    }
+
+    if (!validLinuxCommand && (zip.length()==0 || !Fs::doesNativePathExist(zip)) && !Fs::getNodeFromLocalPath("", "/bin/wine", true) ){
+        if (videoEnabled) {
+            SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "File system not found", "Make sure you have a valid zip file in the same folder as Boxedwine or you specify one on the commandline.", NULL);
+        } else {
+            klog("File system not found: Make sure you have a valid zip file in the same folder as Boxedwine or you specify one on the commandline.");
+        }
     }
 
 #ifdef SDL2

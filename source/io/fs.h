@@ -51,9 +51,11 @@ public:
     static std::string getParentPath(const std::string& path);
     static std::string getNativeParentPath(const std::string& path);
     static std::string getFileNameFromPath(const std::string& path);
+    static std::string getFileNameFromNativePath(const std::string& path);
     static U32 readNativeFile(const std::string& nativePath, U8* buffer, U32 bufferLen);
     static void splitPath(const std::string& path, std::vector<std::string>& parts);
     static bool doesNativePathExist(const std::string& path);
+    static bool isNativePathDirectory(const std::string& path);
     static std::string getFullPath(const std::string& currentDirectory, const std::string& path);
     static std::string getNativePathFromParentAndLocalFilename(const BoxedPtr<FsNode>& parent, const std::string fileName);    
 

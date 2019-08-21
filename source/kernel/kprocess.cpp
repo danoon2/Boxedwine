@@ -514,7 +514,7 @@ KThread* KProcess::startProcess(const std::string& currentDirectory, U32 argc, c
     }
 
     this->initStdio();
-    openNode=ElfLoader::inspectNode(this, currentDirectory, node, loader, interpreter, interpreterArgs);
+    openNode=ElfLoader::inspectNode(currentDirectory, node, loader, interpreter, interpreterArgs);
     if (!openNode) {
         return 0;
     }
@@ -658,7 +658,7 @@ U32 KProcess::execve(const std::string& path, std::vector<std::string>& args, co
     if (!node) {
         return 0;
     }
-    openNode = ElfLoader::inspectNode(this, this->currentDirectory, node, loader, interpreter, interpreterArgs);
+    openNode = ElfLoader::inspectNode(this->currentDirectory, node, loader, interpreter, interpreterArgs);
     if (!openNode) {
         return 0;
     }
