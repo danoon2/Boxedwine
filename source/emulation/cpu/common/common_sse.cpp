@@ -864,3 +864,11 @@ void common_ucomissXmmE32(CPU* cpu, U32 reg, U32 address) {
         cpu->flags|=CF;
     }
 }
+
+void common_stmxcsr(CPU* cpu, U32 reg, U32 address) {
+    writed(address, 0);
+}
+
+void common_ldmxcsr(CPU* cpu, U32 reg, U32 address) {
+    writed(address, 0);
+}
