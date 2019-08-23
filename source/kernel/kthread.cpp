@@ -940,6 +940,26 @@ U32 KThread::signalstack(U32 ss, U32 oss) {
     return 0;
 }
 
+#ifdef SDL2
+void* KThread::getGlContextById(U32 id) {
+    if (this->glContext.count(id))
+        return this->glContext[id];
+    return NULL;
+}
+
+void KThread::removeGlContextById(U32 id) {
+    this->glContext.erase(id);
+}
+
+void KThread::addGlContext(U32 id, void* context) {
+    this->glContext[id] = context;
+}
+
+void KThread::removeAllGlContexts() {
+    this->glContext.clear();
+}
+#endif
+
 ChangeThread::ChangeThread(KThread* thread) {
     this->savedThread = KThread::currentThread();
     KThread::setCurrentThread(thread);

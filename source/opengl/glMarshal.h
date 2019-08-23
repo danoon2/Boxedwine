@@ -70,17 +70,17 @@ GLvoid* marshalPixels(CPU* cpu, U32 is3d, GLsizei width, GLsizei height, GLsizei
 #define marshalPixel(cpu, format, type, pixel) (GLvoid*)getPhysicalAddress(pixel, 0)
 
 #define updateVertexPointers(cpu, count)
-#define marshalVetextPointer(cpu, size, type, stride, ptr) marshalp(cpu, 0, ptr, 0)
-#define marshalNormalPointer(cpu, type, stride, ptr) marshalp(cpu, 0, ptr, 0)
-#define marshalColorPointer(cpu, size, type, stride, ptr) marshalp(cpu, 0, ptr, 0)
-#define marshalIndexPointer(cpu, type, stride, ptr) marshalp(cpu, 0, ptr, 0)
-#define marshalTexCoordPointer(cpu, size, type, stride, ptr) marshalp(cpu, 0, ptr, 0)
-#define marshalEdgeFlagPointer(cpu, stride, ptr) marshalp(cpu, 0, ptr, 0)
-#define marshalFogPointer(cpu, type, stride, ptr) marshalp(cpu, 0, ptr, 0)
-#define marshalSecondaryColorPointer(cpu, size, type, stride, ptr) marshalp(cpu, 0, ptr, 0)
-#define marshalSecondaryColorPointerEXT(cpu, size, type, stride, ptr) marshalp(cpu, 0, ptr, 0)
-#define marshalEdgeFlagPointerEXT(cpu, stride, count, ptr) (GLboolean*)marshalp(cpu, 0, ptr, 0)
-#define marshalFogPointerEXT(cpu, type, stride, ptr) marshalp(cpu, 0, ptr, 0)
+#define marshalVetextPointer(cpu, size, type, stride, ptr) marshalp_and_check_array_buffer(cpu, 0, ptr, 0)
+#define marshalNormalPointer(cpu, type, stride, ptr) marshalp_and_check_array_buffer(cpu, 0, ptr, 0)
+#define marshalColorPointer(cpu, size, type, stride, ptr) marshalp_and_check_array_buffer(cpu, 0, ptr, 0)
+#define marshalIndexPointer(cpu, type, stride, ptr) marshalp_and_check_array_buffer(cpu, 0, ptr, 0)
+#define marshalTexCoordPointer(cpu, size, type, stride, ptr) marshalp_and_check_array_buffer(cpu, 0, ptr, 0)
+#define marshalEdgeFlagPointer(cpu, stride, ptr) marshalp_and_check_array_buffer(cpu, 0, ptr, 0)
+#define marshalFogPointer(cpu, type, stride, ptr) marshalp_and_check_array_buffer(cpu, 0, ptr, 0)
+#define marshalSecondaryColorPointer(cpu, size, type, stride, ptr) marshalp_and_check_array_buffer(cpu, 0, ptr, 0)
+#define marshalSecondaryColorPointerEXT(cpu, size, type, stride, ptr) marshalp_and_check_array_buffer(cpu, 0, ptr, 0)
+#define marshalEdgeFlagPointerEXT(cpu, stride, count, ptr) (GLboolean*)marshalp_and_check_array_buffer(cpu, 0, ptr, 0)
+#define marshalFogPointerEXT(cpu, type, stride, ptr) marshalp_and_check_array_buffer(cpu, 0, ptr, 0)
 
 #define getDataSize(x) 1
 #define components_in_format(format) 0
@@ -218,8 +218,11 @@ void marshalBackhandle(CPU* cpu, U32 address, GLhandleARB* buffer, U32 count);
 GLsync marshalSync(CPU* cpu, U32 sync);
 U32 marshalBackSync(CPU* cpu, GLsync sync);
 
+GLvoid* marshalp_and_check_array_buffer(CPU* cpu, U32 instance, U32 buffer, U32 len);
 GLvoid* marshalp(CPU* cpu, U32 instance, U32 buffer, U32 len);
 U32 marshalBackp(CPU* cpu, GLvoid* buffer, U32 size);
+U32 marshalBufferRange(CPU* cpu, GLenum target, GLvoid* buffer, U32 size);
+void unmarshalBufferRange(CPU* cpu, GLenum target, U32 offset, U32 size);
 
 GLvoid** marshalpp(CPU* cpu, U32 buffer, U32 count, U32 sizes, S32 bytesPerCount, U32 autoCharWidth);
 

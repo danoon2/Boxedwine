@@ -38,6 +38,13 @@ GLvoid** marshalpp(CPU* cpu, U32 buffer, U32 count, U32 sizes, S32 bytesPerCount
     return bufferpp;
 }
 
+GLvoid* marshalp_and_check_array_buffer(CPU* cpu, U32 instance, U32 buffer, U32 len) {
+    if (ARRAY_BUFFER()) {        
+        return (GLvoid*)(uintptr_t)buffer;
+    }
+    return marshalp(cpu, instance, buffer, len);
+}
+
 GLvoid* marshalp(CPU* cpu, U32 instance, U32 buffer, U32 len) {
     if (buffer == 0)
         return NULL;
@@ -47,6 +54,29 @@ GLvoid* marshalp(CPU* cpu, U32 instance, U32 buffer, U32 len) {
 // this won't marshal the data, but rather map it into the address space, reserving "size" amount of address space
 U32 marshalBackp(CPU* cpu, GLvoid* buffer, U32 size) {
     return cpu->thread->memory->mapNativeMemory(buffer, size);
+}
+
+class BufferedTarget {
+public:
+    BufferedTarget() : bufferedAddress(0), originalBufferedAddress(NULL){}
+    BufferedTarget(U32 bufferedAddress, S8* originalBufferedAddress) : bufferedAddress(bufferedAddress), originalBufferedAddress(originalBufferedAddress) {}
+    U32 bufferedAddress;
+    S8* originalBufferedAddress;
+};
+
+// :TODO: what about multiple context support
+static std::unordered_map<U32, BufferedTarget> bufferedTargets;
+
+U32 marshalBufferRange(CPU* cpu, GLenum target, GLvoid* buffer, U32 size) {
+    U32 result = cpu->thread->process->mmap(0, size, K_PROT_WRITE|K_PROT_READ, K_MAP_PRIVATE|K_MAP_ANONYMOUS, -1, 0);
+    memcopyFromNative(result, (S8*)buffer, size);
+    bufferedTargets[target] = BufferedTarget(result, (S8*)buffer);
+    return result;
+}
+
+void unmarshalBufferRange(CPU* cpu, GLenum target, U32 offset, U32 size) {
+    BufferedTarget t = bufferedTargets[target];
+    memcopyToNative(t.bufferedAddress+offset, t.originalBufferedAddress+offset, size);
 }
 
 U32 marshalBackSync(CPU* cpu, GLsync sync) {
@@ -656,7 +686,7 @@ const GLchar* marshalsz(CPU* cpu, U32 address) {
     if (len>tmpLen) {
         if (tmpLen!=0)
             delete[] tmp;
-        tmp = new char[tmpLen];
+        tmp = new char[len];
         tmpLen = len;
     }
     return getNativeString(address, tmp, tmpLen);

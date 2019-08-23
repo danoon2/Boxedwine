@@ -1232,7 +1232,7 @@ void boxeddrv_wglCreateContext(CPU* cpu) {
     if (!wnd) {
         EAX = 0;
     } else {
-        EAX = sdlCreateOpenglWindow(cpu->thread, wnd, ARG2, ARG3, ARG4, ARG5);
+        EAX = sdlCreateContext(cpu->thread, wnd, ARG2, ARG3, ARG4, ARG5);
     }
 }
 

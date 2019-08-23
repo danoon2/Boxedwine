@@ -24,6 +24,10 @@
 #include "hard_memory.h"
 #include "../cpu/x64/x64CodeChunk.h"
 
+#ifdef BOXEDWINE_X64
+#include "../cpu/x64/x64Asm.h"
+#endif
+
 Memory::Memory() : allocated(0), callbackPos(0) {
     memset(flags, 0, sizeof(flags));
     memset(nativeFlags, 0, sizeof(nativeFlags));
@@ -267,7 +271,21 @@ void writeb(U32 address, U8 value) {
     if (thread->process->memory->log)
         fprintf(logFile, "writeb %X @%X\n", value, address);
 #endif
+#ifdef BOXEDWINE_X64
+    Memory* m = KThread::currentThread()->memory;
+    U8 flags = m->nativeFlags[address >> K_PAGE_SHIFT];
+
+    if (flags & NATIVE_FLAG_CODEPAGE_READONLY) {
+        X64AsmCodeMemoryWrite w((x64CPU*)KThread::currentThread()->cpu, address, 1);
+        *(U8*)getNativeAddress(m, address) = value;
+    } else if (flags & NATIVE_FLAG_COMMITTED) {
+        *(U8*)getNativeAddress(KThread::currentThread()->memory, address) = value;
+    } else {
+        kpanic("writeb about to crash");
+    }
+#else
     *(U8*)getNativeAddress(KThread::currentThread()->memory, address) = value;
+#endif
 }
 
 U16 readw(U32 address) {
@@ -286,7 +304,21 @@ void writew( U32 address, U16 value) {
     if (thread->process->memory->log)
         fprintf(logFile, "writew %X @%X\n", value, address);
 #endif
+#ifdef BOXEDWINE_X64
+    Memory* m = KThread::currentThread()->memory;
+    U8 flags = m->nativeFlags[address >> K_PAGE_SHIFT];
+
+    if (flags & NATIVE_FLAG_CODEPAGE_READONLY) {
+        X64AsmCodeMemoryWrite w((x64CPU*)KThread::currentThread()->cpu, address, 2);
+        *(U16*)getNativeAddress(m, address) = value;
+    } else if (flags & NATIVE_FLAG_COMMITTED) {
+        *(U16*)getNativeAddress(KThread::currentThread()->memory, address) = value;
+    } else {
+        kpanic("writew about to crash");
+    }
+#else
     *(U16*)getNativeAddress(KThread::currentThread()->memory, address) = value;
+#endif
 }
 
 U32 readd(U32 address) {
@@ -305,7 +337,21 @@ void writed(U32 address, U32 value) {
     if (thread->process->memory->log)
         fprintf(logFile, "writed %X @%X\n", value, address);
 #endif
+#ifdef BOXEDWINE_X64
+    Memory* m = KThread::currentThread()->memory;
+    U8 flags = m->nativeFlags[address >> K_PAGE_SHIFT];
+
+    if (flags & NATIVE_FLAG_CODEPAGE_READONLY) {
+        X64AsmCodeMemoryWrite w((x64CPU*)KThread::currentThread()->cpu, address, 4);
+        *(U32*)getNativeAddress(m, address) = value;
+    } else if (flags & NATIVE_FLAG_COMMITTED) {
+        *(U32*)getNativeAddress(KThread::currentThread()->memory, address) = value;
+    } else {
+        kpanic("writed about to crash");
+    }
+#else
     *(U32*)getNativeAddress(KThread::currentThread()->memory, address) = value;
+#endif
 }
 
 U64 readq(U32 address) {
@@ -313,7 +359,21 @@ U64 readq(U32 address) {
 }
 
 void writeq(U32 address, U64 value) {
+#ifdef BOXEDWINE_X64
+    Memory* m = KThread::currentThread()->memory;
+    U8 flags = m->nativeFlags[address >> K_PAGE_SHIFT];
+
+    if (flags & NATIVE_FLAG_CODEPAGE_READONLY) {
+        X64AsmCodeMemoryWrite w((x64CPU*)KThread::currentThread()->cpu, address, 8);
+        *(U64*)getNativeAddress(m, address) = value;
+    } else if (flags & NATIVE_FLAG_COMMITTED) {
+        *(U64*)getNativeAddress(KThread::currentThread()->memory, address) = value;
+    } else {
+        kpanic("writeq about to crash");
+    }
+#else
     *(U64*)getNativeAddress(KThread::currentThread()->memory, address) = value;
+#endif
 }
 
 void Memory::addCallback(OpCallback func) {

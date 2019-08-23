@@ -347,12 +347,10 @@ static Wnd* getFirstVisibleWnd() {
 #ifdef SDL2
 SDL_Window *sdlWindow;
 SDL_Renderer *sdlRenderer;
-SDL_GLContext *sdlCurrentContext;
+SDL_GLContext sdlCurrentContext;
 BOXEDWINE_MUTEX sdlMutex;
-#ifdef BOXEDWINE_VM
-SDL_GLContext *sdlInitContext;
-#endif
 int contextCount;
+bool sdlWindowIsGL;
 
 static void destroySDL2(KThread* thread) {
     for (auto& n : hwndToWnd) {
@@ -370,21 +368,13 @@ static void destroySDL2(KThread* thread) {
         SDL_DestroyRenderer(sdlRenderer);
         sdlRenderer = 0;
     }
-
-    if (thread->glContext) {
-        SDL_GL_DeleteContext(thread->glContext);
-        thread->glContext = 0;
-    }
-#ifdef BOXEDWINE_VM
-    if (sdlInitContext) {
-        SDL_GL_DeleteContext(sdlInitContext);
-        sdlInitContext = 0;
-    }
-#endif
+    // :TODO: what about other threads?
+    thread->removeAllGlContexts();
 #endif
     if (sdlWindow) {
         SDL_DestroyWindow(sdlWindow);
         sdlWindow = 0;
+        sdlWindowIsGL = false;
     }    
     contextCount = 0;
 }
@@ -396,12 +386,12 @@ SDL_Surface* surface;
 void loadExtensions();
 #endif
 
-void sdlDeleteContext(KThread* thread, U32 context) {    
+void sdlDeleteContext(KThread* thread, U32 contextId) {    
 #ifdef SDL2
-    KThread* contextThread = thread->process->getThreadById(context);
-    if (contextThread && contextThread->glContext) {
-        SDL_GL_DeleteContext(contextThread->glContext);
-        contextThread->glContext = NULL;
+    SDL_GLContext context = thread->getGlContextById(contextId);
+    if (context) {
+        SDL_GL_DeleteContext(context);
+        thread->removeGlContextById(contextId);
         contextCount--;
         if (contextCount==0) {
             DISPATCH_MAIN_THREAD_BLOCK_BEGIN
@@ -415,18 +405,19 @@ void sdlDeleteContext(KThread* thread, U32 context) {
 void sdlUpdateContextForThread(KThread* thread) {
 #ifdef SDL2
     if (thread->currentContext && thread->currentContext!=sdlCurrentContext) {
-        SDL_GL_MakeCurrent(sdlWindow, thread->glContext);
-        sdlCurrentContext = (SDL_GLContext*)thread->glContext;        
+        SDL_GL_MakeCurrent(sdlWindow, thread->currentContext);
+        sdlCurrentContext = thread->currentContext;        
     }
 #endif
 }
 
 U32 sdlMakeCurrent(KThread* thread, U32 arg) {
 #ifdef SDL2
-    if (arg == thread->id) {
-        if (SDL_GL_MakeCurrent(sdlWindow, thread->glContext)==0) {
-            thread->currentContext = thread->glContext;
-            sdlCurrentContext = (SDL_GLContext*)thread->glContext;
+    SDL_GLContext context = thread->getGlContextById(arg);
+    if (context) {
+        if (SDL_GL_MakeCurrent(sdlWindow, context)==0) {
+            thread->currentContext = context;
+            sdlCurrentContext = context;
 #if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
             loadExtensions();
 #endif
@@ -452,6 +443,7 @@ U32 sdlShareLists(KThread* thread, U32 srcContext, U32 destContext) {
 #ifdef SDL2
     KThread* srcThread = thread->process->getThreadById(srcContext);
     KThread* destThread = thread->process->getThreadById(destContext);
+    /*
     if (srcThread && destThread && srcThread->glContext && destThread->glContext) {
         if (destThread->currentContext) {
             kpanic("Wasn't expecting the OpenGL context that will share a list to already be current");
@@ -465,6 +457,7 @@ U32 sdlShareLists(KThread* thread, U32 srcContext, U32 destContext) {
         //SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 0); 
         return 1;
     }
+    */
 #endif
     return 0;
 }
@@ -472,14 +465,6 @@ U32 sdlShareLists(KThread* thread, U32 srcContext, U32 destContext) {
 U32 sdlCreateOpenglWindow_main_thread(KThread* thread, Wnd* wnd, int major, int minor, int profile, int flags) {
     DISPATCH_MAIN_THREAD_BLOCK_BEGIN_RETURN
 #ifdef SDL2
-    if (wnd->openGlContext) {
-        if (thread->glContext) {
-            kpanic("Not sure what to do, trying to create another OpenGL context on the same thread");
-        }
-        thread->glContext = SDL_GL_CreateContext(sdlWindow);
-        contextCount++;
-        return thread->id;
-    }
     destroySDL2(thread);
 
     firstWindowCreated = 1;
@@ -511,35 +496,42 @@ U32 sdlCreateOpenglWindow_main_thread(KThread* thread, Wnd* wnd, int major, int 
         displayChanged(thread);
         return 0;
     }
+    sdlWindowIsGL = true;
     return thread->id;
 #else
     surface = NULL;
     SDL_SetVideoMode(wnd->windowRect.right-wnd->windowRect.left, wnd->windowRect.bottom-wnd->windowRect.top, wnd->pixelFormat->cDepthBits, SDL_OPENGL);        
+    sdlWindowIsGL = true;
     return 0x200;
 #endif
     DISPATCH_MAIN_THREAD_BLOCK_END
 }
 
+static U32 nextGlId = 1;
+
 // window needs to be on the main thread
 // context needs to be on the current thread
-U32 sdlCreateOpenglWindow(KThread* thread, Wnd* wnd, int major, int minor, int profile, int flags) {
-    U32 result = sdlCreateOpenglWindow_main_thread(thread, wnd, major, minor, profile, flags);
+U32 sdlCreateContext(KThread* thread, Wnd* wnd, int major, int minor, int profile, int flags) {
+    U32 result = 1;
+    
+    if (!sdlWindowIsGL) {
+        result = sdlCreateOpenglWindow_main_thread(thread, wnd, major, minor, profile, flags);
+    }
 #ifdef SDL2
     if (result) {
-        thread->glContext = SDL_GL_CreateContext(sdlWindow);
-    #if BOXEDWINE_VM
-        sdlInitContext = SDL_GL_CreateContext(sdlWindow);
-    #endif
-        if (!thread->glContext) {
+        SDL_GLContext context = SDL_GL_CreateContext(sdlWindow);;
+        if (!context) {
             fprintf(stderr, "Couldn't create context: %s\n", SDL_GetError());
             DISPATCH_MAIN_THREAD_BLOCK_BEGIN_RETURN
             displayChanged(thread);
             return 0;
             DISPATCH_MAIN_THREAD_BLOCK_END
         }
+        result = nextGlId;
+        thread->addGlContext(nextGlId++, context);
         contextCount++;
         if (!wnd->openGlContext)
-            wnd->openGlContext = thread->glContext;       
+            wnd->openGlContext = context;       
     }
 #endif
     return result;
@@ -548,7 +540,7 @@ U32 sdlCreateOpenglWindow(KThread* thread, Wnd* wnd, int major, int minor, int p
 void sdlScreenResized(KThread* thread) {
     DISPATCH_MAIN_THREAD_BLOCK_BEGIN
 #ifdef SDL2
-    if (thread->glContext)
+    if (contextCount)
         SDL_SetWindowSize(sdlWindow, screenCx, screenCy);
     else
         displayChanged(thread);
@@ -583,6 +575,7 @@ static void displayChanged(KThread* thread) {
         printf("Switching to %dx%d@%d\n", screenCx, screenCy, bits_per_pixel);
         surface = SDL_SetVideoMode(screenCx, screenCy, 32, flags);
 #endif
+        sdlWindowIsGL = false;
     }
 }
 

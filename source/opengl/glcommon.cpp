@@ -133,7 +133,6 @@ void glcommon_glGetString(CPU* cpu) {
         GL_LOG("glGetString GLenum name=GL_RENDERER ret=%s", result);
     } else if (name == GL_VERSION) {
         index = STRING_GL_VERSION;
-        result = "1.2 BoxedWine";
         GL_LOG("glGetString GLenum name=STRING_GL_VERSION ret=%s", result);
     } else if (name == GL_SHADING_LANGUAGE_VERSION) {
         index = STRING_GL_SHADING_LANGUAGE_VERSION;

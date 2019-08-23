@@ -94,7 +94,13 @@ public:
     U64 waitingForSignalToEndMaskToRestore;    
     U64 pendingSignals;
 #ifdef SDL2
-    void* glContext;
+    void* getGlContextById(U32 id);
+    void removeGlContextById(U32 id);
+    void addGlContext(U32 id, void* context);
+    void removeAllGlContexts();
+private:
+    std::unordered_map<U32, void*> glContext;
+public:
     void* currentContext;
 #endif
     bool log; // syscalls

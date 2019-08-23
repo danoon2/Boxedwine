@@ -20,7 +20,7 @@ void allocNativeMemory(Memory* memory, U32 page, U32 pageCount, U32 flags) {
             if (!VirtualAlloc((void*)((granPage << K_PAGE_SHIFT) | memory->id), gran << K_PAGE_SHIFT, MEM_COMMIT, PAGE_READWRITE)) {
                 LPSTR messageBuffer = NULL;
                 size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
-                kpanic("failed to commit memory: %s", messageBuffer);
+                kpanic("allocNativeMemory: failed to commit memory: granPage=%x page=%x pageCount=%d: %s", granPage, page, pageCount, messageBuffer);
             }
             memory->allocated+=(gran << K_PAGE_SHIFT);
             for (j=0;j<gran;j++)
@@ -87,7 +87,7 @@ void allocExecutable64kBlock(Memory* memory, U32 page) {
     if (!VirtualAlloc((void*)((page << K_PAGE_SHIFT) | memory->executableMemoryId), 64*1024, MEM_COMMIT, PAGE_EXECUTE_READWRITE)) {
         LPSTR messageBuffer = NULL;
         size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
-        kpanic("failed to commit memory: %s", messageBuffer);
+        kpanic("allocExecutable64kBlock: failed to commit memory 0x%x: %s", (page << K_PAGE_SHIFT), messageBuffer);
     }
 }
 #endif

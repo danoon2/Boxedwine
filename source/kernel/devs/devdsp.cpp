@@ -253,8 +253,9 @@ void DevDsp::openAudio() {
         SDL_PauseAudio(0);
     }
 	this->data->pauseAtLen = 0xFFFFFFFF;
-	this->data->dspFragSize = this->data->got.size;
-
+    if (this->data->got.size) {
+	    this->data->dspFragSize = this->data->got.size;
+    }
 	printf("openAudio: freq=%d(got %d) format=%d(%x/got %x) channels=%d(got %d)\n", this->data->want.freq, this->data->got.freq, this->data->dspFmt, this->data->want.format, this->data->got.format, this->data->want.channels, this->data->got.channels);
 }
 

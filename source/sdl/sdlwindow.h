@@ -36,7 +36,7 @@ void sdlRealizeDefaultPalette();
 U32 sdlSetCursor(KThread* thread, char* moduleName, char* resourceName, int resource);
 void sdlCreateAndSetCursor(KThread* thread, char* moduleName, char* resourceName, int resource, U8* bits, U8* mask, int width, int height, int hotX, int hotY);
 U32 sdlMakeCurrent(KThread* thread, U32 context);
-U32 sdlCreateOpenglWindow(KThread* thread, Wnd* wnd, int major, int minor, int profile, int flags);
+U32 sdlCreateContext(KThread* thread, Wnd* wnd, int major, int minor, int profile, int flags);
 U32 sdlShareLists(KThread* thread, U32 srcContext, U32 destContext);
 void sdlDeleteContext(KThread* thread, U32 context);
 void sdlScreenResized(KThread* thread);
