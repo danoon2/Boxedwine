@@ -1390,7 +1390,7 @@ void boxeddrv_CreateDesktop(CPU* cpu) {
     //default_horz_res = ARG1;
     //default_vert_res = ARG2;
     //displayChanged();
-    EAX = 0;
+    EAX = 1;
 }
 
 Int99Callback* wine_callback;

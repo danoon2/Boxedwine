@@ -341,8 +341,8 @@ int boxedmain(int argc, const char **argv) {
     //ppenv[envc++] = "LD_BIND_NOW=1";
     ppenv[envc++] = "WINELOADERNOEXEC=1";
     //ppenv[envc++] = "WINEDLLOVERRIDES=mscoree,mshtml=";
-    ppenv[envc++] = "WINEDLLOVERRIDES=winemenubuilder.exe=d";
-    //ppenv[envc++] = "WINEDEBUG=+winsock";
+    //ppenv[envc++] = "WINEDLLOVERRIDES=winemenubuilder.exe=d";
+    //ppenv[envc++] = "WINEDEBUG=+d3d";
 
     // If these are in the zip file system they will be overwritten, which is fine
     // These are just added so that the parent node of the following virtual files exist
@@ -390,7 +390,8 @@ int boxedmain(int argc, const char **argv) {
     if (argc==0) {
         argv[0]="/bin/wine";
         argv[1]="explorer";
-        argc=2;
+        argv[2]="/desktop=shell";
+        argc=3;
     } else {
         argv = &argv[i];
         
