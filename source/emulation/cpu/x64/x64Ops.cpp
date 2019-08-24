@@ -1802,6 +1802,7 @@ static U32 grp5d(X64Asm* data) {
         // kpanic("invalid grp5d");
         // we will just hope this doesn't get used and that we just translated more than we needed, this is the case for "kknd 2 krossfire demo"
         data->done = true;
+        data->errorMsg("invalid grp5d");
     }    
     return 0;
 }

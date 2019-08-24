@@ -478,6 +478,8 @@ int getSize(GLenum pname) {
 #ifdef GL_MINOR_VERSION
       case GL_MINOR_VERSION:
 #endif
+      case 0x854d: // GL_MAX_GENERAL_COMBINERS_NV
+      case 0x9126: // GL_CONTEXT_PROFILE_MASK
       case 0x90bc: // GL_MIN_MAP_BUFFER_ALIGNMENT
       case 0x8a28: // GL_UNIFORM_BUFFER_BINDING
       case 0x8a29: // GL_UNIFORM_BUFFER_START
@@ -539,7 +541,7 @@ int getSize(GLenum pname) {
           return results;
       }      
       default:
-          klog("Unknow pname for get: %d", pname);
+          klog("Unknown pname for get: %d", pname);
           return 1;
    }
 }

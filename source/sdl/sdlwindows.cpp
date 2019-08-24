@@ -636,7 +636,10 @@ void wndBlt(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32 yOrg, U32 width, 
             wnd->sdlTextureHeight = height;
             wnd->sdlTextureWidth = width;
         }
-#ifndef BOXEDWINE_64BIT_MMU
+        if (!thread->memory->isValidReadAddress(bits, height*pitch)) {
+            return;
+        }
+#ifndef BOXEDWINE_64BIT_MMU        
         for (y = 0; y < height; y++) {
             memcopyToNative(bits+(height-y-1)*pitch, sdlBuffer+y*pitch, pitch);
         } 

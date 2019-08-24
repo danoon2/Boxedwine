@@ -181,11 +181,31 @@ bool Memory::findFirstAvailablePage(U32 startingPage, U32 pageCount, U32* result
 }
 
 bool Memory::isValidReadAddress(U32 address, U32 len) {
-    return this->isPageAllocated(address >> K_PAGE_SHIFT) && (this->flags[address >> K_PAGE_SHIFT] & PAGE_READ);
+    U32 startPage = address>>K_PAGE_SHIFT;
+    U32 endPage = (address+len-1)>>K_PAGE_SHIFT;
+    for (U32 i=startPage;i<=endPage;i++) {
+        if (!this->isPageAllocated(i)) {
+            return false;
+        }
+        if (!(this->flags[i] & PAGE_READ)) {
+            return false;
+        }
+    }
+    return true;
 }
 
 bool Memory::isValidWriteAddress(U32 address, U32 len) {
-    return this->isPageAllocated(address >> K_PAGE_SHIFT) && (this->flags[address >> K_PAGE_SHIFT] & PAGE_WRITE);
+    U32 startPage = address>>K_PAGE_SHIFT;
+    U32 endPage = (address+len-1)>>K_PAGE_SHIFT;
+    for (U32 i=startPage;i<=endPage;i++) {
+        if (!this->isPageAllocated(i)) {
+            return false;
+        }
+        if (!(this->flags[i] & PAGE_WRITE)) {
+            return false;
+        }
+    }
+    return true;
 }
 
 bool Memory::isPageAllocated(U32 page) {

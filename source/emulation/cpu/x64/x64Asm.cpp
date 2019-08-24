@@ -2429,7 +2429,7 @@ static U8 fetchByte(U32 *eip) {
 static void x64log(CPU* cpu) {
     if (!cpu->logFile)
         return;
-    static DecodedBlock* block;
+    THREAD_LOCAL static DecodedBlock* block;
     if (!block) {
         block = new DecodedBlock();
     }
@@ -2849,6 +2849,18 @@ void X64Asm::invalidOp(U32 op) {
     //syncRegsFromHost(); 
     writeToRegFromValue(1, false, op, 4);
     callHost(x64_invalidOp);
+    //syncRegsToHost();
+    //doJmp();
+}
+
+static void x64_errorMsg(const char* msg) {
+    kpanic("%s", msg);
+}
+
+void X64Asm::errorMsg(const char* msg) {
+    //syncRegsFromHost(); 
+    writeToRegFromValue(1, false, (U64)msg, 8);
+    callHost(x64_errorMsg);
     //syncRegsToHost();
     //doJmp();
 }

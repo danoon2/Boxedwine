@@ -870,5 +870,4 @@ void common_stmxcsr(CPU* cpu, U32 reg, U32 address) {
 }
 
 void common_ldmxcsr(CPU* cpu, U32 reg, U32 address) {
-    writed(address, 0);
 }

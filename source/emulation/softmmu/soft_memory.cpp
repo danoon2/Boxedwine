@@ -347,7 +347,7 @@ bool Memory::isValidReadAddress(U32 address, U32 len) {
     U32 startPage = address>>K_PAGE_SHIFT;
     U32 endPage = (address+len-1)>>K_PAGE_SHIFT;
     for (U32 i=startPage;i<=endPage;i++) {
-        if (!this->getPage(address >> K_PAGE_SHIFT)->canRead())
+        if (!this->getPage(i)->canRead())
             return false;
     }
     return true;
@@ -357,7 +357,7 @@ bool Memory::isValidWriteAddress(U32 address, U32 len) {
     U32 startPage = address>>K_PAGE_SHIFT;
     U32 endPage = (address+len-1)>>K_PAGE_SHIFT;
     for (U32 i=startPage;i<=endPage;i++) {
-        if (!this->getPage(address >> K_PAGE_SHIFT)->canWrite())
+        if (!this->getPage(i)->canWrite())
             return false;
     }
     return true;

@@ -139,6 +139,7 @@ public:
     void verw(U8 rm);
     void verr(U8 rm);
     void invalidOp(U32 op);
+    void errorMsg(const char* msg);
     void cpuid();
     void setNativeFlags(U32 flags, U32 mask);
     void write64Buffer(U8* buffer, U64 value);

@@ -345,7 +345,7 @@ DecodedOp* x64CPU::getOp(U32 eip, bool existing) {
         eip=this->seg[CS].address + (eip & 0xFFFF);
     }        
     if (!existing || (this->eipToHostInstruction[eip >> K_PAGE_SHIFT] && this->eipToHostInstruction[eip >> K_PAGE_SHIFT][eip & K_PAGE_MASK])) {
-        static DecodedBlock* block;
+        THREAD_LOCAL static DecodedBlock* block;
         if (!block) {
             block = new DecodedBlock();
         }
