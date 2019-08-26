@@ -143,7 +143,19 @@ void Memory::allocPages(U32 page, U32 pageCount, U8 permissions, FD fd, U64 offs
         }
     }
     if (mappedFile) {
+        bool addedWritePermission = false;
+        if (!(permissions & PAGE_WRITE)) {
+            for (U32 i=0;i<pageCount;i++) {
+                this->flags[i+page]|=PAGE_WRITE;
+            }
+            addedWritePermission = true;
+        }
         KThread::currentThread()->process->pread64(fd, page<<K_PAGE_SHIFT, pageCount << K_PAGE_SHIFT, offset);
+        if (addedWritePermission) {
+            for (U32 i=0;i<pageCount;i++) {
+                this->flags[i+page]&=~PAGE_WRITE;
+            }
+        }
     }    
 }
 

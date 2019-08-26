@@ -3020,7 +3020,7 @@ void X64AsmCodeMemoryWrite::invalidateCode(U32 addressStart, U32 addressLen) {
     for (U32 page = pageStart; page <= pageStop; page++ ) {
         if (cpu->thread->memory->nativeFlags[page] & NATIVE_FLAG_CODEPAGE_READONLY) {
             if (count>=CLEAR_BUFFER_SIZE) {
-                kpanic("clearCodeReadOnly doesn't support dynamic reallocation");
+                kpanic("invalidateCode CLEAR_BUFFER_SIZE is not large enough");
             }
             buffer[count] = page;
             count++;

@@ -37,7 +37,7 @@ typedef void (*PFN_FPU_REG)(CPU* cpu, U32 reg);
 typedef void (*PFN_FPU_ADDRESS)(CPU* cpu, U32 address);
 typedef void (*PFN_FPU)(CPU* cpu);
 
-#define CLEAR_BUFFER_SIZE 10
+#define CLEAR_BUFFER_SIZE 64
 
 class X64AsmCodeMemoryWrite {
 public:

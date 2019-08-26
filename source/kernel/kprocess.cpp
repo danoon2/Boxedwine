@@ -1073,7 +1073,7 @@ U32 symlinkInDirectory(const std::string& currentDirectory, const std::string& t
     if (!parentNode) {
         return -K_ENOENT;
     }
-    node = Fs::addFileNode(fullPath, target, Fs::getNativePathFromParentAndLocalFilename(parentNode, linkpath), false, parentNode);
+    node = Fs::addFileNode(fullPath, target, Fs::getNativePathFromParentAndLocalFilename(parentNode, Fs::getFileNameFromPath(linkpath)), false, parentNode);
 
     if (!node->canWrite()) {
         node->removeNodeFromParent();
@@ -1820,7 +1820,7 @@ U32 KProcess::pread64(FD fildes, U32 address, U32 len, U64 offset) {
     if (openNode->node->isDirectory()) {
         return -K_EISDIR;
     }
-    if (!this->memory->isValidReadAddress(address, len)) {
+    if (!this->memory->isValidWriteAddress(address, len)) {
         return -K_EFAULT;
     }
     pos = p->getPos();
@@ -1850,7 +1850,7 @@ U32 KProcess::pwrite64(FD fildes, U32 address, U32 len, U64 offset) {
     if (openNode->node->isDirectory()) {
         return -K_EISDIR;
     }
-    if (!this->memory->isValidWriteAddress(address, len)) {
+    if (!this->memory->isValidReadAddress(address, len)) {
         return -K_EFAULT;
     }
     pos = p->getPos();
