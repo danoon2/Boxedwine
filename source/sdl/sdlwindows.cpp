@@ -388,9 +388,9 @@ void loadExtensions();
 
 void sdlDeleteContext(KThread* thread, U32 contextId) {    
 #ifdef SDL2
-    SDL_GLContext context = thread->getGlContextById(contextId);
-    if (context) {
-        SDL_GL_DeleteContext(context);
+    KThread::KThreadGlContext* threadContext = thread->getGlContextById(contextId);
+    if (threadContext && threadContext->context) {
+        SDL_GL_DeleteContext(threadContext->context);
         thread->removeGlContextById(contextId);
         contextCount--;
         if (contextCount==0) {
@@ -413,11 +413,12 @@ void sdlUpdateContextForThread(KThread* thread) {
 
 U32 sdlMakeCurrent(KThread* thread, U32 arg) {
 #ifdef SDL2
-    SDL_GLContext context = thread->getGlContextById(arg);
-    if (context) {
-        if (SDL_GL_MakeCurrent(sdlWindow, context)==0) {
-            thread->currentContext = context;
-            sdlCurrentContext = context;
+    KThread::KThreadGlContext* threadContext = thread->getGlContextById(arg);
+    if (threadContext && threadContext->context) {
+        if (SDL_GL_MakeCurrent(sdlWindow, threadContext->context)==0) {
+            threadContext->hasBeenMakeCurrent = true;
+            thread->currentContext = threadContext->context;
+            sdlCurrentContext = threadContext->context;
 #if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
             loadExtensions();
 #endif
@@ -439,25 +440,49 @@ U32 sdlMakeCurrent(KThread* thread, U32 arg) {
 #endif
 }
 
+KThread::KThreadGlContext* getGlContextByIdInUnknownThread(KProcess* process, U32 id) {
+    KThread::KThreadGlContext* result = NULL;
+
+    process->iterateThreads([id, &result] (KThread* thread) {
+        result = thread->getGlContextById(id);
+        return result==NULL;
+    });
+    return result;
+}
+
 U32 sdlShareLists(KThread* thread, U32 srcContext, U32 destContext) {
 #ifdef SDL2
-    KThread* srcThread = thread->process->getThreadById(srcContext);
-    KThread* destThread = thread->process->getThreadById(destContext);
-    /*
-    if (srcThread && destThread && srcThread->glContext && destThread->glContext) {
-        if (destThread->currentContext) {
-            kpanic("Wasn't expecting the OpenGL context that will share a list to already be current");
+    KThread::KThreadGlContext* src = getGlContextByIdInUnknownThread(thread->process, srcContext);
+    KThread::KThreadGlContext* dst = getGlContextByIdInUnknownThread(thread->process, destContext);
+
+    if (src && dst) {
+        if (dst->hasBeenMakeCurrent) {
+            klog("could not share display lists, the destination context has been current already");
+            return 0;
         }
-        if (srcThread->currentContext != sdlCurrentContext) {
-            kpanic("Something went wrong with sdlShareLists");
+        else if (dst->sharing)
+        {
+            klog("could not share display lists because dest has already shared lists before\n");
+            return 0;
         }
-        //SDL_GL_DeleteContext(destThread->glContext);
-        //SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1); 
-        //destThread->glContext = SDL_GL_CreateContext(sdlWindow);
-        //SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 0); 
+        SDL_GL_DeleteContext(dst->context);
+        SDL_GLContext currentContext = (SDL_GLContext)thread->currentContext;
+        bool changedContext = false;
+
+        if (thread->currentContext!=src->context) {
+            changedContext = true;
+            SDL_GL_MakeCurrent(sdlWindow, (SDL_GLContext)src->context);
+        }
+        SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1); 
+        dst->context = SDL_GL_CreateContext(sdlWindow);
+        SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 0); 
+
+        if (changedContext) {
+            SDL_GL_MakeCurrent(sdlWindow, currentContext);
+        }
+        dst->sharing = true;
         return 1;
     }
-    */
 #endif
     return 0;
 }
@@ -486,7 +511,7 @@ U32 sdlCreateOpenglWindow_main_thread(KThread* thread, Wnd* wnd, int major, int 
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, wnd->pixelFormat->dwFlags & 1);
     SDL_GL_SetAttribute(SDL_GL_ACCELERATED_VISUAL, (wnd->pixelFormat->dwFlags & 0x40)?0:1);
 #ifdef SDL2
-    SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1); 
+    SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 0); 
 #endif
     firstWindowCreated = 1;
 #ifdef SDL2

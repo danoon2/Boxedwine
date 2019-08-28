@@ -2306,6 +2306,15 @@ U32 KProcess::shmdt(U32 shmaddr) {
     return -K_EINVAL;
 }
 
+void KProcess::iterateThreads(std::function<bool(KThread*)> callback) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(threadsMutex);
+    for (auto& t : this->threads) {
+        if (!callback(t.second)) {
+            return;
+        }
+    }
+}
+
 void KProcess::printStack() {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(threadsMutex);
     for (auto& t : this->threads) {

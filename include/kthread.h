@@ -94,12 +94,20 @@ public:
     U64 waitingForSignalToEndMaskToRestore;    
     U64 pendingSignals;
 #ifdef SDL2
-    void* getGlContextById(U32 id);
+    static class KThreadGlContext {
+    public:
+        KThreadGlContext():context(NULL), hasBeenMakeCurrent(false), sharing(false) {}
+        KThreadGlContext(void* context):context(context), hasBeenMakeCurrent(false), sharing(false) {}
+        void* context;
+        bool hasBeenMakeCurrent;
+        bool sharing;
+    };
+    KThreadGlContext* getGlContextById(U32 id);
     void removeGlContextById(U32 id);
     void addGlContext(U32 id, void* context);
     void removeAllGlContexts();
 private:
-    std::unordered_map<U32, void*> glContext;
+    std::unordered_map<U32, KThreadGlContext> glContext;
 public:
     void* currentContext;
 #endif

@@ -127,6 +127,7 @@ public:
     void signalALRM();
     void printStack();
     U32 signal(U32 signal);
+    void iterateThreads(std::function<bool(KThread*)> callback);
 
     // syscalls    
     U32 access(const std::string& path, U32 mode);
