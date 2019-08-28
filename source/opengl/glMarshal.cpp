@@ -59,18 +59,25 @@ U32 marshalBackp(CPU* cpu, GLvoid* buffer, U32 size) {
 class BufferedTarget {
 public:
     BufferedTarget() : bufferedAddress(0), originalBufferedAddress(NULL){}
-    BufferedTarget(U32 bufferedAddress, S8* originalBufferedAddress) : bufferedAddress(bufferedAddress), originalBufferedAddress(originalBufferedAddress) {}
+    BufferedTarget(U32 bufferedAddress, S8* originalBufferedAddress, U32 size) : bufferedAddress(bufferedAddress), originalBufferedAddress(originalBufferedAddress), size(size) {}
     U32 bufferedAddress;
     S8* originalBufferedAddress;
+    U32 size;
 };
 
 // :TODO: what about multiple context support
 static std::unordered_map<U32, BufferedTarget> bufferedTargets;
 
 U32 marshalBufferRange(CPU* cpu, GLenum target, GLvoid* buffer, U32 size) {
+    if (bufferedTargets[target].originalBufferedAddress == buffer && bufferedTargets[target].size>=size) {
+        memcopyFromNative(bufferedTargets[target].bufferedAddress, (S8*)buffer, size);
+        return bufferedTargets[target].bufferedAddress;
+    } else if (bufferedTargets[target].bufferedAddress) {
+        cpu->thread->process->unmap(bufferedTargets[target].bufferedAddress, bufferedTargets[target].size);
+    }
     U32 result = cpu->thread->process->mmap(0, size, K_PROT_WRITE|K_PROT_READ, K_MAP_PRIVATE|K_MAP_ANONYMOUS, -1, 0);
     memcopyFromNative(result, (S8*)buffer, size);
-    bufferedTargets[target] = BufferedTarget(result, (S8*)buffer);
+    bufferedTargets[target] = BufferedTarget(result, (S8*)buffer, size);
     return result;
 }
 
