@@ -388,7 +388,7 @@ void loadExtensions();
 
 void sdlDeleteContext(KThread* thread, U32 contextId) {    
 #ifdef SDL2
-    KThread::KThreadGlContext* threadContext = thread->getGlContextById(contextId);
+    KThreadGlContext* threadContext = thread->getGlContextById(contextId);
     if (threadContext && threadContext->context) {
         SDL_GL_DeleteContext(threadContext->context);
         thread->removeGlContextById(contextId);
@@ -413,7 +413,7 @@ void sdlUpdateContextForThread(KThread* thread) {
 
 U32 sdlMakeCurrent(KThread* thread, U32 arg) {
 #ifdef SDL2
-    KThread::KThreadGlContext* threadContext = thread->getGlContextById(arg);
+    KThreadGlContext* threadContext = thread->getGlContextById(arg);
     if (threadContext && threadContext->context) {
         if (SDL_GL_MakeCurrent(sdlWindow, threadContext->context)==0) {
             threadContext->hasBeenMakeCurrent = true;
@@ -440,8 +440,8 @@ U32 sdlMakeCurrent(KThread* thread, U32 arg) {
 #endif
 }
 
-KThread::KThreadGlContext* getGlContextByIdInUnknownThread(KProcess* process, U32 id) {
-    KThread::KThreadGlContext* result = NULL;
+KThreadGlContext* getGlContextByIdInUnknownThread(KProcess* process, U32 id) {
+    KThreadGlContext* result = NULL;
 
     process->iterateThreads([id, &result] (KThread* thread) {
         result = thread->getGlContextById(id);
@@ -452,8 +452,8 @@ KThread::KThreadGlContext* getGlContextByIdInUnknownThread(KProcess* process, U3
 
 U32 sdlShareLists(KThread* thread, U32 srcContext, U32 destContext) {
 #ifdef SDL2
-    KThread::KThreadGlContext* src = getGlContextByIdInUnknownThread(thread->process, srcContext);
-    KThread::KThreadGlContext* dst = getGlContextByIdInUnknownThread(thread->process, destContext);
+    KThreadGlContext* src = getGlContextByIdInUnknownThread(thread->process, srcContext);
+    KThreadGlContext* dst = getGlContextByIdInUnknownThread(thread->process, destContext);
 
     if (src && dst) {
         if (dst->hasBeenMakeCurrent) {

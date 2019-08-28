@@ -40,6 +40,15 @@ public:
 class KProcess;
 class Memory;
 
+class KThreadGlContext {
+public:
+    KThreadGlContext():context(NULL), hasBeenMakeCurrent(false), sharing(false) {}
+    KThreadGlContext(void* context):context(context), hasBeenMakeCurrent(false), sharing(false) {}
+    void* context;
+    bool hasBeenMakeCurrent;
+    bool sharing;
+};
+
 class KThread {
 public:
     KThread(U32 id, KProcess* process);
@@ -93,15 +102,7 @@ public:
     BOXEDWINE_CONDITION waitingForSignalToEndCond;
     U64 waitingForSignalToEndMaskToRestore;    
     U64 pendingSignals;
-#ifdef SDL2
-    static class KThreadGlContext {
-    public:
-        KThreadGlContext():context(NULL), hasBeenMakeCurrent(false), sharing(false) {}
-        KThreadGlContext(void* context):context(context), hasBeenMakeCurrent(false), sharing(false) {}
-        void* context;
-        bool hasBeenMakeCurrent;
-        bool sharing;
-    };
+#ifdef SDL2    
     KThreadGlContext* getGlContextById(U32 id);
     void removeGlContextById(U32 id);
     void addGlContext(U32 id, void* context);

@@ -941,7 +941,7 @@ U32 KThread::signalstack(U32 ss, U32 oss) {
 }
 
 #ifdef SDL2
-KThread::KThreadGlContext* KThread::getGlContextById(U32 id) {
+KThreadGlContext* KThread::getGlContextById(U32 id) {
     if (this->glContext.count(id))
         return &this->glContext[id];
     return NULL;
