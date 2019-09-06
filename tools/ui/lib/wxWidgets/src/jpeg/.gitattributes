@@ -1,0 +1,10 @@
+# Don't include the library build files that we don't use.
+aclocal.m4          export-ignore
+compile             export-ignore
+configure*          export-ignore
+config.*            export-ignore
+depcomp             export-ignore
+install-sh          export-ignore
+mak*                export-ignore
+Makefile.*          export-ignore
+missing             export-ignore

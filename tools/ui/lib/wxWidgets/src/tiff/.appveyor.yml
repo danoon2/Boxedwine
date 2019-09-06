@@ -1,0 +1,118 @@
+environment:
+  AV_PROJECTS: 'c:\projects'
+  AV_TIFF_DOWNLOAD: 'c:\projects\download'
+  AV_TIFF_SOURCE: 'c:\projects\libtiff'
+  AV_TIFF_BUILD: 'c:\projects\build'
+  AV_TIFF_INSTALL: 'c:\projects\install'
+
+  matrix:
+    - compiler: cygwin-cmake
+      configuration: Release
+      generator: Unix Makefiles
+      shared: ON
+    - compiler: cygwin-cmake
+      configuration: Debug
+      generator: Unix Makefiles
+      shared: OFF
+    - compiler: mingw64-cmake
+      configuration: Release
+      generator: Unix Makefiles
+      shared: ON
+    - compiler: mingw64-cmake
+      configuration: Debug
+      generator: Unix Makefiles
+      shared: OFF
+    - compiler: vc14-cmake
+      configuration: Release
+      generator: Visual Studio 14 2015 Win64
+      shared: ON
+    - compiler: vc14-cmake
+      configuration: Debug
+      generator: Visual Studio 14 2015 Win64
+      shared: OFF
+    - compiler: vc14-nmake
+      configuration: Release
+    - compiler: vc9-cmake
+      configuration: Debug
+      generator: Visual Studio 9 2008
+      shared: ON
+
+cache:
+  - 'c:\projects\download -> appveyor.yml'
+
+# Operating system (build VM template)
+os: 'Visual Studio 2015'
+
+# clone directory
+clone_folder: 'c:\projects\libtiff'
+clone_depth: 5
+
+platform: x64
+
+init:
+  - git config --global core.autocrlf input
+
+before_build:
+  - 'FOR /F "tokens=* USEBACKQ" %%F IN (`C:\cygwin64\bin\cygpath -u %AV_TIFF_SOURCE%`) DO SET AV_TIFF_CYG_SOURCE=%%F'
+  - 'FOR /F "tokens=* USEBACKQ" %%F IN (`C:\cygwin64\bin\cygpath -u %AV_TIFF_INSTALL%`) DO SET AV_TIFF_CYG_INSTALL=%%F'
+  - 'if %compiler%==cygwin-cmake C:\Cygwin64\setup-x86_64 -q -R C:\Cygwin64 -s http://cygwin.mirror.constant.com -l %AV_TIFF_DOWNLOAD%\cygwin -P cmake,libjpeg-devel,zlib-devel'
+  - 'if %compiler%==cygwin-cmake set "PATH=C:\Cygwin64\bin;%PATH%"'
+  - 'if %compiler%==mingw64-cmake set "PATH=C:\mingw-w64\x86_64-6.3.0-posix-seh-rt_v5-rev1\mingw64\bin;%PATH%"'
+  - set "AV_CMAKE_ARGS=-DBUILD_SHARED_LIBS:BOOL=%shared%"
+  - 'if %compiler%==mingw64-cmake set "PATH=C:\mingw-w64\x86_64-6.3.0-posix-seh-rt_v5-rev1\mingw64\bin;%PATH%"'
+  - 'if %compiler%==mingw64-cmake set "AV_CMAKE_ARGS=%AV_CMAKE_ARGS% -DCMAKE_MAKE_PROGRAM=C:\mingw-w64\x86_64-6.3.0-posix-seh-rt_v5-rev1\mingw64\bin\mingw32-make"'
+  - set "AV_TIFF_CMAKE_SOURCE=%AV_TIFF_SOURCE%"
+  - set "AV_TIFF_CMAKE_INSTALL=%AV_TIFF_INSTALL%"
+  - 'if %compiler%==cygwin-cmake set "AV_TIFF_CMAKE_SOURCE=%AV_TIFF_CYG_SOURCE%'
+  - 'if %compiler%==cygwin-cmake set "AV_TIFF_CMAKE_INSTALL=%AV_TIFF_CYG_INSTALL%'
+  - 'if %compiler%==vc14-nmake call "%VS140COMNTOOLS%..\..\VC\vcvarsall.bat" %platform%'
+  - mkdir %AV_TIFF_BUILD%
+  - cd %AV_TIFF_BUILD%
+  - if NOT %compiler%==vc14-nmake echo Running cmake -G "%generator%" -DCMAKE_INSTALL_PREFIX=%AV_TIFF_CMAKE_INSTALL% -DCMAKE_BUILD_TYPE=%configuration% %AV_TIFF_CMAKE_SOURCE%
+  - 'if %compiler%==cygwin-cmake bash -c "cmake -G \"%generator%\" -DCMAKE_INSTALL_PREFIX:PATH=%AV_TIFF_CMAKE_INSTALL% -DCMAKE_BUILD_TYPE=%configuration% %AV_CMAKE_ARGS% %AV_TIFF_CMAKE_SOURCE%"'
+  - 'if %compiler%==mingw64-cmake cmake -G "%generator%" -DCMAKE_INSTALL_PREFIX:PATH=%AV_TIFF_CMAKE_INSTALL% -DCMAKE_BUILD_TYPE=%configuration% %AV_CMAKE_ARGS% %AV_TIFF_CMAKE_SOURCE%'
+  - 'if %compiler%==vc14-cmake cmake -G "%generator%" -DCMAKE_INSTALL_PREFIX:PATH=%AV_TIFF_CMAKE_INSTALL% -DCMAKE_BUILD_TYPE=%configuration% %AV_CMAKE_ARGS% %AV_TIFF_CMAKE_SOURCE%'
+  - 'if %compiler%==vc9-cmake cmake -G "%generator%" -DCMAKE_INSTALL_PREFIX:PATH=%AV_TIFF_CMAKE_INSTALL% -DCMAKE_BUILD_TYPE=%configuration% %AV_CMAKE_ARGS% %AV_TIFF_CMAKE_SOURCE%'
+
+build_script:
+  - if NOT %compiler%==vc14-nmake cd %AV_TIFF_BUILD%
+  - if %compiler%==vc14-nmake cd %AV_TIFF_SOURCE%
+  - 'if %compiler%==cygwin-cmake bash -c "cmake --build . --config %configuration% --target install"'
+  - 'if %compiler%==mingw64-cmake cmake --build . --config %configuration% --target install'
+  - 'if %compiler%==vc14-cmake cmake --build . --config %configuration% --target install'
+  - 'if %compiler%==vc9-cmake cmake --build . --config %configuration% --target install'
+  - 'if %compiler%==vc14-nmake nmake /f Makefile.vc EXTRAFLAGS=/DHAVE_SNPRINTF=1'
+  - 'if %compiler%==vc14-nmake mkdir %AV_TIFF_INSTALL%'
+  - 'if %compiler%==vc14-nmake mkdir %AV_TIFF_INSTALL%\bin'
+  - 'if %compiler%==vc14-nmake mkdir %AV_TIFF_INSTALL%\lib'
+  - 'if %compiler%==vc14-nmake mkdir %AV_TIFF_INSTALL%\include'
+  - 'if %compiler%==vc14-nmake copy tools\*.exe %AV_TIFF_INSTALL%\bin'
+  - 'if %compiler%==vc14-nmake copy port\*.lib %AV_TIFF_INSTALL%\lib'
+  - 'if %compiler%==vc14-nmake copy libtiff\tiff.h %AV_TIFF_INSTALL%\include'
+  - 'if %compiler%==vc14-nmake copy libtiff\tiffio.h %AV_TIFF_INSTALL%\include'
+  - 'if %compiler%==vc14-nmake copy libtiff\tiffvers.h %AV_TIFF_INSTALL%\include'
+  - 'if %compiler%==vc14-nmake copy libtiff\tiffconf.h %AV_TIFF_INSTALL%\include'
+  - 'if %compiler%==vc14-nmake copy libtiff\tiffio.hxx %AV_TIFF_INSTALL%\include'
+
+# scripts to run after build
+after_build:
+  - cd %AV_TIFF_BUILD%
+  - '7z a %AV_TIFF_SOURCE%\libtiff-build.zip * -tzip'
+  - cd %AV_TIFF_INSTALL%
+  - '7z a %AV_TIFF_SOURCE%\libtiff.zip * -tzip'
+
+before_test:
+  - cd %AV_TIFF_BUILD%
+  - 'if %compiler%==cygwin-cmake bash -c "ctest -V -C %configuration%"'
+  - 'if %compiler%==mingw64-cmake ctest -V -C %configuration%'
+  - 'if %compiler%==vc14-cmake ctest -V -C %configuration%'
+  - 'if %compiler%==vc9-cmake ctest -V -C %configuration%'
+# vc14-nmake does not support unit tests
+
+# AppVeyor don't yet have a configurable retention policy, so this will
+# eventually use up all the storage allowance.
+#artifacts:
+#  - path: libtiff.zip
+#    name: libtiff.zip
+#  - path: libtiff-build.zip
+#    name: libtiff-build.zip

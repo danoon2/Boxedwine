@@ -1,0 +1,5 @@
+# Don't include anything not needed to build and use the library.
+contrib/        export-ignore
+projects/       export-ignore
+scripts/        export-ignore
+tests/          export-ignore

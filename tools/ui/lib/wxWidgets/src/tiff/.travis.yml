@@ -1,0 +1,29 @@
+language: c
+
+sudo: false
+dist: trusty
+
+cache:
+  directories:
+    - download
+
+addons:
+  apt_packages:
+    - libjpeg8-dev
+    - libjbig-dev
+    - liblzma-dev
+    - zlib1g-dev
+    - zip
+
+os:
+  - linux
+  - osx
+
+env:
+  matrix:
+    - BUILD=autoconf
+    - BUILD=cmake TOOL="Unix Makefiles" TYPE=Release
+    - BUILD=cmake TOOL="Ninja" TYPE=Debug
+
+script:
+  - sh ./build/travis-ci "$BUILD" "$TOOL" "$TYPE"
