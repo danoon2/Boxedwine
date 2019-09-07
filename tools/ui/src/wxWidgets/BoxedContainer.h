@@ -14,22 +14,28 @@ class BoxedContainer {
 public:
     BoxedContainer() : currentProcess(NULL) {}
 
+    static BoxedContainer* CreateContainer(const wxString& dirPath, const wxString& name, const wxString& fileSystem);
+
     bool Load(const wxString& dirPath);
+    void Reload();
     int GetAppAcount() {return this->apps.size();}
     BoxedApp* GetApp(int index) {if (index>=0 && index<(int)this->apps.size()) { return this->apps[index]; } else {return NULL;}}
     void AddApp(BoxedApp* app) {this->apps.push_back(app);}
     void DeleteApp(BoxedApp* app);
-    void Launch(const wxString& cmd, const wxString& path, bool showConsole);
-    void LaunchWine(const wxString& cmd, const wxString& path, bool showConsole);
+    void Launch(const wxString& cmd, const wxString& path, bool showConsole, bool async=true);
+    void LaunchWine(const wxString& cmd, const wxString& path, bool showConsole, bool async=true);
 
     const wxString& GetName() {return this->name;}
     const wxString& GetDir() {return this->dirPath;}
     const wxString& GetFileSystemName() {return this->fileSystem;}
     const std::vector<BoxedApp*>& GetApps() {return this->apps;}
+    void GetNewApps(std::vector<BoxedApp>& apps);
 
     void OnClose();
 private:
     void LoadApps();
+    void GetDesktopApps(std::vector<BoxedApp>& apps);
+    void GetExeApps(std::vector<BoxedApp>& apps);
 
     friend class GlobalSettings;
     std::vector<BoxedApp*> apps;

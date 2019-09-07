@@ -13,6 +13,8 @@ public:
     BoxedFrame(const wxString& title, const wxPoint& pos, const wxSize& size);
     void InstallApp(const wxString& filePath);
 
+    void ReloadAppList();
+    void ReloadContainerList(); 
 private:
     wxDECLARE_EVENT_TABLE();
 
@@ -24,11 +26,9 @@ private:
     void SetupContainerList();
     void LoadContainers();    
     void OnSize(wxSizeEvent& event);
-    void OnClose(wxCloseEvent& event);
-    void ReloadAppList();
+    void OnClose(wxCloseEvent& event);    
     void ResizeAppList();
-    void ResizeContainerList();
-    void ReloadContainerList();    
+    void ResizeContainerList();       
     void OnCommand(wxCommandEvent& evt);
 
     wxPanel* appPanel;

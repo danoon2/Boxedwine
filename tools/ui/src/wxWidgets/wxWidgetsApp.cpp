@@ -43,7 +43,7 @@ bool BoxedWineApp::OnInit()
 {
     SetVendorName("Boxedwine");
     SetAppName("Boxedwine");
-
+    wxLog::EnableLogging(false);
     wxConfigBase *pConfig = wxConfigBase::Get();
 
     BoxedFrame *frame = new BoxedFrame( "Boxedwine", wxDefaultPosition, wxSize(800, 600) );
@@ -138,7 +138,8 @@ void BoxedFrame::ResizeAppList() {
 }
 
 void BoxedFrame::SetupContainerList() {
-    this->containerListView = new BoxedContainerList(this, wxID_ANY, wxPoint(0,0), this->GetClientSize(), wxLC_REPORT);
+    this->containerListView = new BoxedContainerList(this, this, wxID_ANY, wxPoint(0,0), this->GetClientSize(), wxLC_REPORT|wxLC_NO_SORT_HEADER);
+    this->containerListView->SetFont(wxFontInfo(12));
     ReloadContainerList();
 }
 
@@ -193,21 +194,31 @@ void BoxedFrame::ReloadAppList() {
     std::sort(apps.begin(), apps.end(), compareBoxedApp);
 
     wxImageList* imageList = new wxImageList(32, 32);
+    int* imageIndex = new int[apps.size()];
+    int index = 0;
+    int imageCount=0;
     for (auto& app : apps) {
         wxIcon* icon = app->CreateIcon(32);
-        imageList->Add(*icon);
+        if (icon) {
+            imageList->Add(*icon);
+            imageIndex[index++] = imageCount;
+            imageCount++;
+        } else {
+            imageIndex[index++] = -1;
+        }
         delete icon;
     }
     this->appListView->ClearAll();
     this->appListView->AssignImageList(imageList, wxIMAGE_LIST_NORMAL);
 
     this->appListView->AppendColumn("Name");
-    int index = 0;
+    index = 0;
     for (auto& app : apps) {
-        long id = this->appListView->InsertItem(index, app->GetName(), index);
+        long id = this->appListView->InsertItem(index, app->GetName(), imageIndex[index]);
         this->appListView->SetItemPtrData(id, (wxUIntPtr)app);
         index++;
     }
+    delete[] imageIndex;
 }
 
 void BoxedFrame::SetupToolBar()

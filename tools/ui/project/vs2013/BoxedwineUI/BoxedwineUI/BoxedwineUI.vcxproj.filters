@@ -42,6 +42,12 @@
     <ClCompile Include="..\..\..\..\src\wxWidgets\wxInstallDlg.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\src\wxWidgets\PickAppDlg.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\src\wxWidgets\wxUtils.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\src\wxWidgets\wxWidgetsApp.h">
@@ -69,6 +75,12 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\src\wxWidgets\wxInstallDlg.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\src\wxWidgets\PickAppDlg.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\src\wxWidgets\wxUtils.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

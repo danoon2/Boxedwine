@@ -46,6 +46,8 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
+    <LibraryPath>..\..\..\..\lib\wxWidgets\lib\vc_lib;$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86);</LibraryPath>
+    <IncludePath>..\..\..\..\lib\wxWidgets\include;..\..\..\..\lib\wxWidgets\include\msvc;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -85,9 +87,11 @@
     <ClCompile Include="..\..\..\..\src\wxWidgets\BoxedContainer.cpp" />
     <ClCompile Include="..\..\..\..\src\wxWidgets\BoxedContainerList.cpp" />
     <ClCompile Include="..\..\..\..\src\wxWidgets\GlobalSettings.cpp" />
+    <ClCompile Include="..\..\..\..\src\wxWidgets\PickAppDlg.cpp" />
     <ClCompile Include="..\..\..\..\src\wxWidgets\wxHelp.cpp" />
     <ClCompile Include="..\..\..\..\src\wxWidgets\wxInstallDlg.cpp" />
     <ClCompile Include="..\..\..\..\src\wxWidgets\wxSettings.cpp" />
+    <ClCompile Include="..\..\..\..\src\wxWidgets\wxUtils.cpp" />
     <ClCompile Include="..\..\..\..\src\wxWidgets\wxWidgetsApp.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -96,9 +100,11 @@
     <ClInclude Include="..\..\..\..\src\wxWidgets\BoxedContainer.h" />
     <ClInclude Include="..\..\..\..\src\wxWidgets\BoxedContainerList.h" />
     <ClInclude Include="..\..\..\..\src\wxWidgets\GlobalSettings.h" />
+    <ClInclude Include="..\..\..\..\src\wxWidgets\PickAppDlg.h" />
     <ClInclude Include="..\..\..\..\src\wxWidgets\wxHelp.h" />
     <ClInclude Include="..\..\..\..\src\wxWidgets\wxInstallDlg.h" />
     <ClInclude Include="..\..\..\..\src\wxWidgets\wxSettings.h" />
+    <ClInclude Include="..\..\..\..\src\wxWidgets\wxUtils.h" />
     <ClInclude Include="..\..\..\..\src\wxWidgets\wxWidgetsApp.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -4,11 +4,14 @@
 #include "BoxedApp.h"
 #include "BoxedContainerList.h"
 #include "BoxedContainer.h"
+#include "PickAppDlg.h"
+#include "wxWidgetsApp.h"
 
 static const int ID_ITEM_SETTINGS = 300;
 static const int ID_ITEM_LAUNCH_REGEDIT = 301;
 static const int ID_ITEM_LAUNCH_EXPLORER = 302;
 static const int ID_ITEM_LAUNCH_WINECFG = 303;
+static const int ID_ITEM_ADD_APP = 304;
 
 void BoxedContainerList::OnItemRightClick(wxListEvent& event) 
 {
@@ -25,18 +28,26 @@ void BoxedContainerList::ShowContextMenu(BoxedContainer* container)
 {
     wxMenu menu;
 
+    menu.Append(ID_ITEM_ADD_APP, "&Create App Shortcut");
     menu.Append(ID_ITEM_SETTINGS, "&Settings");
     menu.AppendSeparator();
     wxMenu* programsMenu = new wxMenu();
     menu.AppendSubMenu(programsMenu, "&Programs");
-    programsMenu->Append(ID_ITEM_LAUNCH_WINECFG, "Wine Config");
-    programsMenu->Append(ID_ITEM_LAUNCH_EXPLORER, "Explorer");
-    programsMenu->Append(ID_ITEM_LAUNCH_REGEDIT, "Regedit");
+    programsMenu->Append(ID_ITEM_LAUNCH_WINECFG, "&Wine Config");
+    programsMenu->Append(ID_ITEM_LAUNCH_EXPLORER, "&Explorer");
+    programsMenu->Append(ID_ITEM_LAUNCH_REGEDIT, "&Regedit");
 
     int id = GetPopupMenuSelectionFromUser(menu);
 
     if (id == ID_ITEM_SETTINGS) {
 
+    } else if (id == ID_ITEM_ADD_APP) {
+        PickAppDialog *dlg = new PickAppDialog(this, container);
+        dlg->Show(true);
+        if (dlg->GetReturnCode()==wxID_OK) {
+            container->Reload();
+            this->mainFrame->ReloadAppList();
+        }
     } else if (id == ID_ITEM_LAUNCH_WINECFG) {
         container->LaunchWine("winecfg", "/home/username", true);
     } else if (id == ID_ITEM_LAUNCH_EXPLORER) {

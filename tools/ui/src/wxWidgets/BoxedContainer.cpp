@@ -7,6 +7,7 @@
 #include "BoxedContainer.h"
 #include <algorithm>
 #include "GlobalSettings.h"
+#include "wxUtils.h"
 
 bool BoxedContainer::Load(const wxString& dirPath) {
     this->dirPath = dirPath;
@@ -14,6 +15,7 @@ bool BoxedContainer::Load(const wxString& dirPath) {
     wxFileConfig *config = new wxFileConfig("", "", iniFilePath);
     this->name = config->Read("Name", "");
     this->fileSystem = config->Read("FileSystem", "");
+    delete config;
     bool result = this->name.Length()>0 && this->fileSystem.Length()>0;
     if (result) {
         this->LoadApps();
@@ -21,22 +23,42 @@ bool BoxedContainer::Load(const wxString& dirPath) {
     return result;
 }
 
+BoxedContainer* BoxedContainer::CreateContainer(const wxString& dirPath, const wxString& name, const wxString& fileSystem) {
+    wxString ini_filename = dirPath + wxFileName::GetPathSeparator() + "container.ini";
+    wxFileConfig *config = new wxFileConfig( "", "", ini_filename);
+    config->Write("Name", name);
+    config->Write("FileSystem", fileSystem);
+    config->Flush();
+    delete config;
+    BoxedContainer* container = new BoxedContainer();
+    container->name = name;
+    container->fileSystem = fileSystem;
+    container->dirPath = dirPath;
+    return container;
+}
+
+void BoxedContainer::Reload() {
+    this->LoadApps();
+}
+
 void BoxedContainer::LoadApps() {
     wxString filename;
     wxString appDirPath = GlobalSettings::GetAppFolder(this);
-    wxString rootDirPath = GlobalSettings::GetRootFolder(this);
     wxDir dir(appDirPath);
-    bool cont = dir.GetFirst(&filename, "*.ini", wxDIR_FILES);
-    while(cont)
-    {
-        wxString iniFilePath = appDirPath+wxFileName::GetPathSeparator()+filename;
-        BoxedApp* app = new BoxedApp();
-        if (app->Load(this, rootDirPath, iniFilePath)) {
-            this->apps.push_back(app);
-        } else {
-            delete app;
+    this->apps.clear();
+    if (dir.IsOpened()) {
+        bool cont = dir.GetFirst(&filename, "*.ini", wxDIR_FILES);
+        while(cont)
+        {
+            wxString iniFilePath = appDirPath+wxFileName::GetPathSeparator()+filename;
+            BoxedApp* app = new BoxedApp();
+            if (app->Load(this, iniFilePath)) {
+                this->apps.push_back(app);
+            } else {
+                delete app;
+            }
+            cont = dir.GetNext(&filename);
         }
-        cont = dir.GetNext(&filename);
     }
 }
 
@@ -47,7 +69,7 @@ void BoxedContainer::DeleteApp(BoxedApp* app) {
     }
 }
 
-void BoxedContainer::Launch(const wxString& cmd, const wxString& path, bool showConsole) {
+void BoxedContainer::Launch(const wxString& cmd, const wxString& path, bool showConsole, bool async) {
     if (this->currentProcess && this->currentProcess->isRunning) {
         wxString msg = "The container, "+this->name + ", is already running.  It is not safe to run two separate Boxedwine instances against the same directory.";
         wxMessageDialog *dlg = new wxMessageDialog(NULL, msg, "Error", wxOK | wxICON_ERROR);
@@ -58,31 +80,97 @@ void BoxedContainer::Launch(const wxString& cmd, const wxString& path, bool show
         delete this->currentProcess;
     }
 
-    wxString title = this->name + " Log";
-    //this->logWindow = new BoxedLogDlg(NULL, title);
-
     this->currentProcess = new BoxedContainerProcess();
-
+    if (async) {
+        this->currentProcess->isRunning = true;
+    }
     wxString zip = GlobalSettings::GetFileSystemZip(this->fileSystem);
     wxString root = GlobalSettings::GetRootFolder(this);
 
     wxString launchCmd = "\""+GlobalSettings::exeFileLocation+"\" -root \""+root+"\" -zip \""+zip+"\" -w \""+path+"\" "+cmd;
     // wxEXEC_HIDE_CONSOLE causes /usr/bin/wine winecfg to not show a window 
-    if (wxExecute(launchCmd, (showConsole?wxEXEC_HIDE_CONSOLE:wxEXEC_HIDE_CONSOLE)|wxEXEC_ASYNC, this->currentProcess)==0) {        
+    long result = wxExecute(launchCmd, (showConsole?0:wxEXEC_HIDE_CONSOLE)|(async?wxEXEC_ASYNC:wxEXEC_SYNC), this->currentProcess);
+    if ((async && result==0) || (!async && result==-1)) {        
+        this->currentProcess->isRunning = false;
         wxString msg = "Failed to launch container, "+this->name + ", with the command, "+launchCmd+".  Most likely it is because the Boxedwine executable could not be found";
         wxMessageDialog *dlg = new wxMessageDialog(NULL, msg, "Error", wxOK | wxICON_ERROR);
         dlg->ShowModal();
         return;
-    }
-    this->currentProcess->isRunning = true;
+    }    
 }
 
-void BoxedContainer::LaunchWine(const wxString& cmd, const wxString& path, bool showConsole) {
-    Launch("/bin/wine "+cmd, path, showConsole);
+void BoxedContainer::LaunchWine(const wxString& cmd, const wxString& path, bool showConsole, bool async) {
+    Launch("/bin/wine "+cmd+"", path, showConsole, async);
 }
 
 void BoxedContainer::OnClose() {
     if (this->currentProcess && this->currentProcess->isRunning) {
         this->currentProcess->CloseOutput();
+    }
+}
+
+void BoxedContainer::GetNewApps(std::vector<BoxedApp>& apps) {
+    GetDesktopApps(apps); 
+    GetExeApps(apps);
+}
+
+void BoxedContainer::GetExeApps(std::vector<BoxedApp>& apps) {
+    wxString root = GlobalSettings::GetRootFolder(this);
+    wxString path = root + wxFileName::GetPathSeparator() + "home" + wxFileName::GetPathSeparator() + "username" + wxFileName::GetPathSeparator() + ".wine" + wxFileName::GetPathSeparator() + "drive_c";
+    wxArrayString results;
+
+    wxDir::GetAllFiles(path, &results, "*.exe");
+    wxDir::GetAllFiles(path, &results, "*.EXE");
+    wxDir::GetAllFiles(path, &results, "*.Exe");
+
+    results = wxUtilRemoveDuplicates(results);
+    for (int i=0;i<results.Count();i++) {
+        BoxedApp app;
+        wxFileName fileName(results[i].SubString(root.Length(), results[i].Length()));
+
+        app.container = this;
+        app.name = fileName.GetFullName();
+        app.path = fileName.GetPath(0, wxPATH_UNIX);
+        app.cmd = app.name;
+        apps.push_back(app);
+    }
+}
+
+void BoxedContainer::GetDesktopApps(std::vector<BoxedApp>& apps) {
+    wxString path = this->dirPath + wxFileName::GetPathSeparator() + "root" + wxFileName::GetPathSeparator() + "home" + wxFileName::GetPathSeparator() + "username" + wxFileName::GetPathSeparator() + ".local" + wxFileName::GetPathSeparator() + "share" + wxFileName::GetPathSeparator() + "applications" + wxFileName::GetPathSeparator() + "wine";
+    wxArrayString results;
+
+    wxDir::GetAllFiles(path, &results, "*.desktop");
+    for (int i=0;i<results.Count();i++) {
+        wxFileConfig *config = new wxFileConfig("", "", results[i]);
+        BoxedApp app;
+        app.container = this;
+        app.name = config->Read("Desktop Entry/Name", "");
+        app.path = config->Read("Desktop Entry/Path", "");
+        app.link = config->Read("Desktop Entry/Exec", "");
+        if (app.link.Length()==0) {
+            continue;
+        } else {
+            int pos = app.link.Find("/Unix");
+            if (pos>0) {
+                app.link = app.link.SubString(pos+6, app.link.Length());
+                app.link.Replace("\\", "");
+            }
+        }
+        app.icon = config->Read("Desktop Entry/Icon", "");
+        if (app.icon.Length()) {
+            app.icon+=".png";
+        }
+        delete config;
+        bool found = false;
+        for (auto& a : this->apps) {
+            if (a->link==app.link) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            apps.push_back(app);
+        }
     }
 }

@@ -10,6 +10,7 @@ public:
 private:    
     void OnBrowseExeButtonClicked(wxCommandEvent& event);
     void OnComboBoxUpdate(wxCommandEvent& event);
+    void OnDone(wxCommandEvent& event);
 
     std::vector<BoxedContainer*>& containers;
     wxTextCtrl* setupFileLocationText;
@@ -17,6 +18,9 @@ private:
     wxComboBox* containerComboBox;
     wxComboBox* wineVersionComboBox;
     wxCheckBox* runWineConfigCheckBox;
+
+    wxDECLARE_EVENT_TABLE();
+    wxDECLARE_NO_COPY_CLASS(InstallDialog);
 };
 
 #endif
