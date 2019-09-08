@@ -99,7 +99,8 @@ int parse_resolution(const char *resolutionString, U32 *width, U32 *height)
     return true;
 }
 
-extern int sdlScale;
+extern int sdlScaleX;
+extern int sdlScaleY;
 extern const char* sdlScaleQuality;
 U32 gensrc;
 
@@ -163,6 +164,7 @@ int boxedmain(int argc, const char **argv) {
         } else if (!strcmp(argv[i], "-nozip") && i+1<argc) {
             nozip = true;
         } else if (!strcmp(argv[i], "-m") && i+1<argc) {
+            // no longer used
             i++;
         } else if (!strcmp(argv[i], "-uid") && i+1<argc) {
             userId = atoi(argv[i+1]);
@@ -195,7 +197,8 @@ int boxedmain(int argc, const char **argv) {
         } else if (!strcmp(argv[i], "-fullscreen")) {
 			sdlFullScreen = true;
         } else if (!strcmp(argv[i], "-scale")) {
-			sdlScale = atoi(argv[i+1]);
+			sdlScaleX = atoi(argv[i+1]);
+            sdlScaleY = sdlScaleX;
             if (!resolutionSet) {
                 screenCx = 640;
                 screenCy = 480;
@@ -243,7 +246,7 @@ int boxedmain(int argc, const char **argv) {
         } else if (!strcmp(argv[i], "-mount_drive")) {
             if (strlen(argv[i+2])!=1) {
                 printf("-mount_drive expects 2 parameters: <host directory to mount> <drive letter to use for wine>");
-                printf("example: -mount_dirve \"c:\\my games\" d\n");
+                printf("example: -mount_drive \"c:\\my games\" d\n");
             } else {
                 mountInfo.push_back(MountInfo(argv[i+2], argv[i+1], true));
             }

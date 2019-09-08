@@ -32,7 +32,8 @@ int bits_per_pixel = 32;
 int default_horz_res = 800;
 int default_vert_res = 600;
 int default_bits_per_pixel = 32;
-int sdlScale = 100;
+int sdlScaleX = 100;
+int sdlScaleY = 100;
 int rel_mouse_sensitivity = 100;
 bool relativeMouse = false;
 const char* sdlScaleQuality = "0";
@@ -515,7 +516,19 @@ U32 sdlCreateOpenglWindow_main_thread(KThread* thread, Wnd* wnd, int major, int 
 #endif
     firstWindowCreated = 1;
 #ifdef SDL2
-    sdlWindow = SDL_CreateWindow("OpenGL Window", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, wnd->windowRect.right-wnd->windowRect.left, wnd->windowRect.bottom-wnd->windowRect.top, SDL_WINDOW_OPENGL|SDL_WINDOW_SHOWN);
+
+    SDL_DisplayMode dm;
+    int flags = SDL_WINDOW_OPENGL|SDL_WINDOW_SHOWN;
+    int cx = wnd->windowRect.right-wnd->windowRect.left;
+    int cy = wnd->windowRect.bottom-wnd->windowRect.top;
+
+    if (SDL_GetDesktopDisplayMode(0, &dm) == 0) {
+        if (cx == dm.w && cy == dm.h) {
+            flags|=SDL_WINDOW_BORDERLESS;
+        }
+    }   
+
+    sdlWindow = SDL_CreateWindow("OpenGL Window", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, cx, cy, flags);
     if (!sdlWindow) {
         fprintf(stderr, "Couldn't create window: %s\n", SDL_GetError());
         displayChanged(thread);
@@ -590,7 +603,25 @@ static void displayChanged(KThread* thread) {
         destroySDL2(thread);
         SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, sdlScaleQuality);
 
-        sdlWindow = SDL_CreateWindow("BoxedWine", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, screenCx*sdlScale/100, screenCy*sdlScale/100, SDL_WINDOW_SHOWN|(sdlFullScreen?SDL_WINDOW_FULLSCREEN:0));
+        int cx = screenCx*sdlScaleX/100;
+        int cy = screenCy*sdlScaleY/100;
+        int flags = SDL_WINDOW_SHOWN;
+        if (sdlFullScreen) {
+            SDL_DisplayMode dm;
+
+            if (SDL_GetDesktopDisplayMode(0, &dm) != 0)
+            {
+                 SDL_Log("SDL_GetDesktopDisplayMode failed: %s", SDL_GetError());
+                 sdlFullScreen = false;
+            } else {
+                cx = dm.w;
+                cy = dm.h;
+                flags|=SDL_WINDOW_BORDERLESS;
+                sdlScaleX = dm.w * 100 / screenCx;
+                sdlScaleY = dm.h * 100 / screenCy;
+            }
+        }
+        sdlWindow = SDL_CreateWindow("BoxedWine", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, cx, cy, SDL_WINDOW_SHOWN);
         sdlRenderer = SDL_CreateRenderer(sdlWindow, -1, 0);	
 #else
         flags = SDL_HWSURFACE;
@@ -815,10 +846,10 @@ void sdlDrawAllWindows(KThread* thread, U32 hWnd, int count) {
             Wnd* wnd = getWnd(readd(hWnd+i*4));
             if (wnd && wnd->sdlTextureWidth && wnd->sdlTexture) {
                 SDL_Rect dstrect;
-                dstrect.x = wnd->windowRect.left*sdlScale/100;
-                dstrect.y = wnd->windowRect.top*sdlScale/100;
-                dstrect.w = wnd->sdlTextureWidth*sdlScale/100;
-                dstrect.h = wnd->sdlTextureHeight*sdlScale/100;
+                dstrect.x = wnd->windowRect.left*sdlScaleX/100;
+                dstrect.y = wnd->windowRect.top*sdlScaleY/100;
+                dstrect.w = wnd->sdlTextureWidth*sdlScaleX/100;
+                dstrect.h = wnd->sdlTextureHeight*sdlScaleY/100;
 
 #ifdef BOXEDWINE_64BIT_MMU
                 SDL_RenderCopyEx(sdlRenderer, (SDL_Texture*)wnd->sdlTexture, NULL, &dstrect, 0, NULL, SDL_FLIP_VERTICAL);
@@ -1066,10 +1097,14 @@ static int lastX;
 static int lastY;
 
 void sdlSetMousePos(int x, int y) {
+    if (!sdlWindowIsGL) {
+        x = x*sdlScaleX/100;
+        y = y*sdlScaleY/100;
+    }
 #ifdef SDL2
-    SDL_WarpMouseInWindow(sdlWindow, x*sdlScale/100, y*sdlScale/100); 
+    SDL_WarpMouseInWindow(sdlWindow, x, y); 
 #else
-    SDL_WarpMouse((U16)(x*sdlScale/100), (U16)(y*sdlScale/100));
+    SDL_WarpMouse((U16)x, (U16)y);
 #endif
 }
 
@@ -1091,9 +1126,13 @@ int sdlMouseMouse(int x, int y, bool relative) {
                 Memory* memory = process->memory;
                 U8 buffer[28];
 
+                if (!sdlWindowIsGL) {
+                    x = (x*100+sdlScaleX/2)/sdlScaleX;
+                    y = (y*100+sdlScaleY/2)/sdlScaleY;
+                }
                 writeLittleEndian_4(buffer, 0); // INPUT_MOUSE
-                writeLittleEndian_4(buffer+4, (x*100+sdlScale/2)/sdlScale); // dx
-                writeLittleEndian_4(buffer+8, (y*100+sdlScale/2)/sdlScale); // dy
+                writeLittleEndian_4(buffer+4, x); // dx
+                writeLittleEndian_4(buffer+8, y); // dy
                 writeLittleEndian_4(buffer+12, 0); // mouseData
                 writeLittleEndian_4(buffer+16,  (relative?MOUSEEVENTF_MOVE:MOUSEEVENTF_MOVE|MOUSEEVENTF_ABSOLUTE)); // dwFlags
                 writeLittleEndian_4(buffer+20, getMilliesSinceStart()); // time
@@ -1122,9 +1161,13 @@ int sdlMouseWheel(int amount, int x, int y) {
                 Memory* memory = process->memory;
                 U8 buffer[28];
 
+                if (!sdlWindowIsGL) {
+                    x = (x*100+sdlScaleX/2)/sdlScaleX;
+                    y = (y*100+sdlScaleY/2)/sdlScaleY;
+                }
                 writeLittleEndian_4(buffer, 0); // INPUT_MOUSE
-                writeLittleEndian_4(buffer+4, (x*100+sdlScale/2)/sdlScale); // dx
-                writeLittleEndian_4(buffer+8, (y*100+sdlScale/2)/sdlScale); // dy
+                writeLittleEndian_4(buffer+4, x); // dx
+                writeLittleEndian_4(buffer+8, y); // dy
                 writeLittleEndian_4(buffer+12, amount); // mouseData
                 writeLittleEndian_4(buffer+16, MOUSEEVENTF_WHEEL | MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_MOVE); // dwFlags
                 writeLittleEndian_4(buffer+20, getMilliesSinceStart()); // time
@@ -1167,9 +1210,13 @@ int sdlMouseButton(U32 down, U32 button, int x, int y) {
                         case 2: flags |= MOUSEEVENTF_MIDDLEUP; break;
                     }
                 }
+                if (!sdlWindowIsGL) {
+                    x = (x*100+sdlScaleX/2)/sdlScaleX;
+                    y = (y*100+sdlScaleY/2)/sdlScaleY;
+                }
                 writeLittleEndian_4(buffer, 0); // INPUT_MOUSE
-                writeLittleEndian_4(buffer+4, (x*100+sdlScale/2)/sdlScale); // dx
-                writeLittleEndian_4(buffer+8, (y*100+sdlScale/2)/sdlScale); // dy
+                writeLittleEndian_4(buffer+4, x); // dx
+                writeLittleEndian_4(buffer+8, y); // dy
                 writeLittleEndian_4(buffer+12, 0); // mouseData
                 writeLittleEndian_4(buffer+16, flags); // dwFlags
                 writeLittleEndian_4(buffer+20, getMilliesSinceStart()); // time

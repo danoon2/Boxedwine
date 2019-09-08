@@ -409,12 +409,95 @@ void boxeddrv_EnumDisplayMonitors(CPU* cpu) {
 #define ENUM_CURRENT_SETTINGS  ((U32) -1)
 #define ENUM_REGISTRY_SETTINGS ((U32) -2)
 
+struct DisplayModes {
+    int bpp;
+    int cx;
+    int cy;
+};
+
 // BOOL CDECL macdrv_EnumDisplaySettingsEx(LPCWSTR devname, DWORD mode, LPDEVMODEW devmode, DWORD flags)
 void boxeddrv_EnumDisplaySettingsEx(CPU* cpu) {
     U32 devmode = ARG3;
     static const U16 dev_name[32] = { 'B','o','x','e','d','W','i','n','e',' ','d','r','i','v','e','r',0 };
+    static DisplayModes* displayModes;
+    static int displayModesCount;
     int i;
 
+    if (!displayModesCount) {
+        int desktopCx = 0;
+        int desktopCy = 0;
+        SDL_DisplayMode mode;
+        if (!SDL_GetCurrentDisplayMode(0, &mode)) {
+            desktopCx = mode.w;
+            desktopCy = mode.h;
+        }
+        displayModes = new DisplayModes[18];
+        displayModes[displayModesCount].bpp = 32;
+        displayModes[displayModesCount].cx = 1024;
+        displayModes[displayModesCount++].cy = 768;
+        displayModes[displayModesCount].bpp = 32;
+        displayModes[displayModesCount].cx = 800;
+        displayModes[displayModesCount++].cy = 600;
+        displayModes[displayModesCount].bpp = 32;
+        displayModes[displayModesCount].cx = 640;
+        displayModes[displayModesCount++].cy = 480;
+
+        displayModes[displayModesCount].bpp = 16;
+        displayModes[displayModesCount].cx = 1024;
+        displayModes[displayModesCount++].cy = 768;
+        displayModes[displayModesCount].bpp = 16;
+        displayModes[displayModesCount].cx = 800;
+        displayModes[displayModesCount++].cy = 600;
+        displayModes[displayModesCount].bpp = 16;
+        displayModes[displayModesCount].cx = 640;
+        displayModes[displayModesCount++].cy = 480;
+
+        displayModes[displayModesCount].bpp = 8;
+        displayModes[displayModesCount].cx = 1024;
+        displayModes[displayModesCount++].cy = 768;
+        displayModes[displayModesCount].bpp = 8;
+        displayModes[displayModesCount].cx = 800;
+        displayModes[displayModesCount++].cy = 600;
+        displayModes[displayModesCount].bpp = 8;
+        displayModes[displayModesCount].cx = 640;
+        displayModes[displayModesCount++].cy = 480;
+
+        if (desktopCx && desktopCx>1280 && desktopCy>1024) {
+            displayModes[displayModesCount].bpp = 32;
+            displayModes[displayModesCount].cx = 1280;
+            displayModes[displayModesCount++].cy = 1024;
+            displayModes[displayModesCount].bpp = 16;
+            displayModes[displayModesCount].cx = 1280;
+            displayModes[displayModesCount++].cy = 1024;
+            displayModes[displayModesCount].bpp = 8;
+            displayModes[displayModesCount].cx = 1280;
+            displayModes[displayModesCount++].cy = 1024;
+        }
+
+        if (desktopCx && desktopCx>1600 && desktopCy>1200) {
+            displayModes[displayModesCount].bpp = 32;
+            displayModes[displayModesCount].cx = 1600;
+            displayModes[displayModesCount++].cy = 1200;
+            displayModes[displayModesCount].bpp = 16;
+            displayModes[displayModesCount].cx = 1600;
+            displayModes[displayModesCount++].cy = 1200;
+            displayModes[displayModesCount].bpp = 8;
+            displayModes[displayModesCount].cx = 1600;
+            displayModes[displayModesCount++].cy = 1200;
+        }
+
+        if (desktopCx) {
+            displayModes[displayModesCount].bpp = 32;
+            displayModes[displayModesCount].cx = desktopCx;
+            displayModes[displayModesCount++].cy = desktopCy;
+            displayModes[displayModesCount].bpp = 16;
+            displayModes[displayModesCount].cx = desktopCx;
+            displayModes[displayModesCount++].cy = desktopCy;
+            displayModes[displayModesCount].bpp = 8;
+            displayModes[displayModesCount].cx = desktopCx;
+            displayModes[displayModesCount++].cy = desktopCy;
+        }
+    }
     zeroMemory(devmode, 188);
 
     writew(devmode + 64, 0x401); // dmSpecVersion
@@ -430,67 +513,25 @@ void boxeddrv_EnumDisplaySettingsEx(CPU* cpu) {
     writed(devmode + 84, 0); // dmDisplayOrientation
     writed(devmode + 88, DMDFO_CENTER); // dmDisplayFixedOutput
     
-    switch (ARG2) {
-    case 0:
-        writed(devmode + 168, 32);
-        writed(devmode + 172, 1024);
-        writed(devmode + 176, 768);
-        break;
-    case 1:
-        writed(devmode + 168, 32);
-        writed(devmode + 172, 800);
-        writed(devmode + 176, 600);
-        break;
-    case 2:
-        writed(devmode + 168, 32);
-        writed(devmode + 172, 640);
-        writed(devmode + 176, 480);
-        break;
-    case 3:
-        writed(devmode + 168, 16);
-        writed(devmode + 172, 1024);
-        writed(devmode + 176, 768);
-        break;
-    case 4:
-        writed(devmode + 168, 16);
-        writed(devmode + 172, 800);
-        writed(devmode + 176, 600);
-        break;
-    case 5:
-        writed(devmode + 168, 16);
-        writed(devmode + 172, 640);
-        writed(devmode + 176, 480);
-        break;
-    case 6:
-        writed(devmode + 168, 8);
-        writed(devmode + 172, 1024);
-        writed(devmode + 176, 768);
-        break;
-    case 7:
-        writed(devmode + 168, 8);
-        writed(devmode + 172, 800);
-        writed(devmode + 176, 600);
-        break;
-    case 8:
-        writed(devmode + 168, 8);
-        writed(devmode + 172, 640);
-        writed(devmode + 176, 480);
-        break;
-    default:
-        if (ARG2 == ENUM_REGISTRY_SETTINGS) {
-            writed(devmode + 168, default_bits_per_pixel);
-            writed(devmode + 172, default_horz_res);
-            writed(devmode + 176, default_vert_res);
-        }
-        else if (ARG2 == ENUM_CURRENT_SETTINGS) {
-            writed(devmode + 168, bits_per_pixel);
-            writed(devmode + 172, screenCx);
-            writed(devmode + 176, screenCy);
-        } else {
-            EAX = 0;
-            return;
-        }
+    
+    if (ARG2 == ENUM_REGISTRY_SETTINGS) {
+        writed(devmode + 168, default_bits_per_pixel);
+        writed(devmode + 172, default_horz_res);
+        writed(devmode + 176, default_vert_res);
     }
+    else if (ARG2 == ENUM_CURRENT_SETTINGS) {
+        writed(devmode + 168, bits_per_pixel);
+        writed(devmode + 172, screenCx);
+        writed(devmode + 176, screenCy);
+    } else if (ARG2>=0 && ARG2<displayModesCount) {
+        writed(devmode + 168, displayModes[ARG2].bpp);
+        writed(devmode + 172, displayModes[ARG2].cx);
+        writed(devmode + 176, displayModes[ARG2].cy);
+    } else {
+        EAX = 0;
+        return;
+    }
+   
     writed(devmode + 180, 0); // dmDisplayFlags
     writed(devmode + 184, 60); // dmDisplayFrequency
     EAX = 1;
