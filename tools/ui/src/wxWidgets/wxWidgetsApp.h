@@ -15,6 +15,7 @@ public:
 
     void ReloadAppList();
     void ReloadContainerList(); 
+    void LoadContainers();    
 private:
     wxDECLARE_EVENT_TABLE();
 
@@ -23,8 +24,7 @@ private:
     void LoadConfig();
     void SaveConfig();
     void SetupAppList();
-    void SetupContainerList();
-    void LoadContainers();    
+    void SetupContainerList();    
     void OnSize(wxSizeEvent& event);
     void OnClose(wxCloseEvent& event);    
     void ResizeAppList();

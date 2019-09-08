@@ -49,11 +49,11 @@ void BoxedContainerList::ShowContextMenu(BoxedContainer* container)
             this->mainFrame->ReloadAppList();
         }
     } else if (id == ID_ITEM_LAUNCH_WINECFG) {
-        container->LaunchWine("winecfg", "/home/username", true);
+        container->LaunchWine("winecfg", "", "/home/username", true);
     } else if (id == ID_ITEM_LAUNCH_EXPLORER) {
-        container->LaunchWine("explorer", "/home/username", true);
+        container->LaunchWine("explorer", "", "/home/username", true);
     } else if (id == ID_ITEM_LAUNCH_REGEDIT) {
-        container->LaunchWine("regedit", "/home/username", true);
+        container->LaunchWine("regedit", "", "/home/username", true);
     }
 }
 

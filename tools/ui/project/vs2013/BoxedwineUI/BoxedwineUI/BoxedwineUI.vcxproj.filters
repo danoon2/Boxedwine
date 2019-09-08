@@ -48,6 +48,9 @@
     <ClCompile Include="..\..\..\..\src\wxWidgets\wxUtils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\src\wxWidgets\BoxedAppOptionsDlg.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\src\wxWidgets\wxWidgetsApp.h">
@@ -81,6 +84,9 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\src\wxWidgets\wxUtils.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\src\wxWidgets\BoxedAppOptionsDlg.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -8,6 +8,8 @@
 #include <wx/dir.h>
 #include <wx/config.h>
 #include <wx/dnd.h>
+#include <wx/display.h>
+
 #include "wxWidgetsApp.h"
 #include "wxSettings.h"
 #include "wxInstallDlg.h"
@@ -46,7 +48,10 @@ bool BoxedWineApp::OnInit()
     wxLog::EnableLogging(false);
     wxConfigBase *pConfig = wxConfigBase::Get();
 
-    BoxedFrame *frame = new BoxedFrame( "Boxedwine", wxDefaultPosition, wxSize(800, 600) );
+    int width = wxDisplay().GetGeometry().GetWidth();
+    int height = wxDisplay().GetGeometry().GetHeight();
+
+    BoxedFrame *frame = new BoxedFrame( "Boxedwine", wxDefaultPosition, wxSize(width/2, height/2));
     frame->Show( true );
     return true;
 }
@@ -75,6 +80,8 @@ bool BoxedInstallDrop::OnDropFiles(wxCoord, wxCoord, const wxArrayString& filena
 BoxedFrame::BoxedFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
         : wxFrame(NULL, wxID_ANY, title, pos, size)
 {
+    GlobalSettings::scaleFactor = this->FromDIP(10)/10;
+
     ::wxInitAllImageHandlers();    
     LoadConfig();
     GlobalSettings::InitWineVersions();
@@ -90,6 +97,7 @@ void BoxedFrame::LoadContainers() {
     wxString filename;
     wxDir dir(GlobalSettings::GetContainerFolder());
     bool cont = dir.GetFirst(&filename, wxEmptyString, wxDIR_DIRS);
+    this->containers.clear();
     while(cont)
     {
         wxString dirPath = GlobalSettings::GetContainerFolder()+wxFileName::GetPathSeparator()+filename;
@@ -109,6 +117,11 @@ void BoxedFrame::LoadConfig() {
     config->SetRecordDefaults();
     GlobalSettings::exeFileLocation = config->Read("Exe", "Boxedwine");
     GlobalSettings::dataFolderLocation = config->Read("DataFolder", wxStandardPaths::Get().GetUserDataDir());
+    int defaultIconSize = GlobalSettings::GetScaleFactor()>1.5?64:32;
+    GlobalSettings::iconSize = config->Read("AppIconSize", defaultIconSize);
+    if (GlobalSettings::iconSize!=16 || GlobalSettings::iconSize!=32 || GlobalSettings::iconSize!=64 || GlobalSettings::iconSize!=128) {
+        GlobalSettings::iconSize = defaultIconSize;
+    }
     config->Flush();
     delete config;
 }
@@ -118,6 +131,7 @@ void BoxedFrame::SaveConfig() {
     wxFileConfig *config = new wxFileConfig( "", "", ini_filename);
     config->Write("Exe", GlobalSettings::exeFileLocation);
     config->Write("DataFolder", GlobalSettings::dataFolderLocation);
+    config->Write("AppIconSize", GlobalSettings::iconSize);
     config->Flush();
     delete config;
 }
@@ -127,13 +141,14 @@ bool compareBoxedApp(BoxedApp* a, BoxedApp* b) {
 }
 
 void BoxedFrame::SetupAppList() {
-    this->appListView = new BoxedAppList(this, wxID_ANY, wxPoint(0,0), this->GetClientSize(), wxLC_ICON|wxLC_ALIGN_TOP);        
+    this->appListView = new BoxedAppList(this, this, wxID_ANY, wxPoint(0,0), this->GetClientSize(), wxLC_ICON|wxLC_ALIGN_TOP);        
     ReloadAppList();
 }
 
 void BoxedFrame::ResizeAppList() {
     if (this->appListView) {
         this->appListView->SetSize(this->GetClientSize());
+        this->appListView->Arrange();
     }
 }
 
@@ -146,6 +161,7 @@ void BoxedFrame::SetupContainerList() {
 void BoxedFrame::ResizeContainerList() {
     if (this->containerListView) {
         this->containerListView->SetSize(this->GetClientSize());
+        this->containerListView->Arrange();
     }
 }
 
@@ -179,6 +195,19 @@ void BoxedFrame::ReloadContainerList() {
         this->containerListView->SetItem(id, 2, GlobalSettings::GetWineNameFromFile(container->GetFileSystemName()));
         index++;
     }
+
+    for (int col=0;col<this->containerListView->GetColumnCount();col++) {
+        this->containerListView->SetColumnWidth(col, wxLIST_AUTOSIZE_USEHEADER );
+        int wh = this->containerListView->GetColumnWidth(col);
+        this->containerListView->SetColumnWidth(col, wxLIST_AUTOSIZE );
+        int wc = this->containerListView->GetColumnWidth(col);
+        if (wh > wc) {
+            this->containerListView->SetColumnWidth(col, wh*1.2);
+        } else {
+            this->containerListView->SetColumnWidth(col, wc*1.2);
+        }
+        
+    }
 }
 
 void BoxedFrame::ReloadAppList() {
@@ -193,12 +222,12 @@ void BoxedFrame::ReloadAppList() {
     }
     std::sort(apps.begin(), apps.end(), compareBoxedApp);
 
-    wxImageList* imageList = new wxImageList(32, 32);
+    wxImageList* imageList = new wxImageList(GlobalSettings::iconSize, GlobalSettings::iconSize);
     int* imageIndex = new int[apps.size()];
     int index = 0;
     int imageCount=0;
     for (auto& app : apps) {
-        wxIcon* icon = app->CreateIcon(32);
+        wxIcon* icon = app->CreateIcon(GlobalSettings::iconSize);
         if (icon) {
             imageList->Add(*icon);
             imageIndex[index++] = imageCount;
@@ -290,10 +319,8 @@ void BoxedFrame::OnToolLeftClick(wxCommandEvent& event)
 }
 
 void BoxedFrame::OnSize(wxSizeEvent& event) {
-    ResizeAppList();
-    ReloadAppList();
+    ResizeAppList();    
     ResizeContainerList();
-    ReloadContainerList();
     event.Skip();
 }
 
@@ -313,6 +340,7 @@ void BoxedFrame::InstallApp(const wxString& filePath) {
     InstallDialog *dlg = new InstallDialog(this, filePath, this->containers);
     dlg->Show(true);
     if (dlg->GetReturnCode()==wxID_OK) {
+        this->LoadContainers();
         this->ReloadAppList();
         this->ReloadContainerList();
     }

@@ -26,7 +26,7 @@ InstallDialog::InstallDialog(wxWindow* parent, const wxString& filePathToInstall
     vbox->Add(hbox, 0, wxALIGN_RIGHT | wxRIGHT | wxBOTTOM, 10);
 
     fSizer->Add(new wxStaticText(this, -1, "Setup file location:", wxDefaultPosition, wxDefaultSize), wxSizerFlags().Align(wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL).DoubleBorder());
-    this->setupFileLocationText = new wxTextCtrl(this, ID_SETUP_LOCATION, filePathToInstall, wxDefaultPosition, wxSize(300, -1));
+    this->setupFileLocationText = new wxTextCtrl(this, ID_SETUP_LOCATION, filePathToInstall, wxDefaultPosition, wxSize(300*GlobalSettings::GetScaleFactor(), -1));
     this->setupFileLocationText->SetHint("Optional: If blank, will create empty container");
     fSizer->Add(this->setupFileLocationText, wxSizerFlags().Expand().Align(wxALIGN_CENTER_VERTICAL));
     fSizer->Add(new wxButton(this, ID_SETUP_LOCATION_BROWSE, "Browse" ), wxSizerFlags().Align(wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL).DoubleBorder());
@@ -48,7 +48,7 @@ InstallDialog::InstallDialog(wxWindow* parent, const wxString& filePathToInstall
     
     wxFlexGridSizer* newContainerSizer = new wxFlexGridSizer(2);
     newContainerSizer->Add(new wxStaticText(this, -1, "Name:", wxDefaultPosition, wxDefaultSize), wxSizerFlags().Align(wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL).DoubleBorder());
-    this->containerNameText = new wxTextCtrl(this, -1, "", wxDefaultPosition, wxSize(250, -1));
+    this->containerNameText = new wxTextCtrl(this, -1, "", wxDefaultPosition, wxSize(250*GlobalSettings::GetScaleFactor(), -1));
     this->containerNameText->SetHint("Must be valid file system name");
     newContainerSizer->Add(this->containerNameText, wxSizerFlags().Expand().Align(wxALIGN_CENTER_VERTICAL));
     newContainerSizer->Add(new wxStaticText(this, -1, "Wine Version:", wxDefaultPosition, wxDefaultSize), wxSizerFlags().Align(wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL).DoubleBorder());
@@ -143,12 +143,12 @@ void InstallDialog::OnDone(wxCommandEvent& event) {
         }
         container = BoxedContainer::CreateContainer(containerFilePath, containerFileName, fileSystem);
         if (this->runWineConfigCheckBox->IsChecked()) {
-            container->LaunchWine("winecfg", "/home/username", false, false);
+            container->LaunchWine("winecfg", "", "/home/username", false, false);
         }
         this->containers.push_back(container);
     }     
     if (filePath.Length()) {
-        container->Launch(filePath, "/home/username", true, false);
+        container->Launch(filePath, "", "/home/username", true, false);
         PickAppDialog *dlg = new PickAppDialog(this, container);
         dlg->Show(true);
         if (dlg->GetReturnCode()==wxID_OK) {

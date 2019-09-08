@@ -69,7 +69,7 @@ void BoxedContainer::DeleteApp(BoxedApp* app) {
     }
 }
 
-void BoxedContainer::Launch(const wxString& cmd, const wxString& path, bool showConsole, bool async) {
+void BoxedContainer::Launch(const wxString& cmd, const wxString& args, const wxString& path, bool showConsole, bool async) {
     if (this->currentProcess && this->currentProcess->isRunning) {
         wxString msg = "The container, "+this->name + ", is already running.  It is not safe to run two separate Boxedwine instances against the same directory.";
         wxMessageDialog *dlg = new wxMessageDialog(NULL, msg, "Error", wxOK | wxICON_ERROR);
@@ -87,7 +87,12 @@ void BoxedContainer::Launch(const wxString& cmd, const wxString& path, bool show
     wxString zip = GlobalSettings::GetFileSystemZip(this->fileSystem);
     wxString root = GlobalSettings::GetRootFolder(this);
 
-    wxString launchCmd = "\""+GlobalSettings::exeFileLocation+"\" -root \""+root+"\" -zip \""+zip+"\" -w \""+path+"\" "+cmd;
+    wxString launchCmd = "\""+GlobalSettings::exeFileLocation+"\" -root \""+root+"\" -zip \""+zip+"\" -w \""+path+"\" "+args;
+    if (!launchCmd.EndsWith(" ")) {
+        launchCmd=launchCmd+" ";
+    }
+    launchCmd+=cmd;
+
     // wxEXEC_HIDE_CONSOLE causes /usr/bin/wine winecfg to not show a window 
     long result = wxExecute(launchCmd, (showConsole?0:wxEXEC_HIDE_CONSOLE)|(async?wxEXEC_ASYNC:wxEXEC_SYNC), this->currentProcess);
     if ((async && result==0) || (!async && result==-1)) {        
@@ -99,8 +104,8 @@ void BoxedContainer::Launch(const wxString& cmd, const wxString& path, bool show
     }    
 }
 
-void BoxedContainer::LaunchWine(const wxString& cmd, const wxString& path, bool showConsole, bool async) {
-    Launch("/bin/wine "+cmd+"", path, showConsole, async);
+void BoxedContainer::LaunchWine(const wxString& cmd, const wxString& args, const wxString& path, bool showConsole, bool async) {
+    Launch("/bin/wine "+cmd+"", args, path, showConsole, async);
 }
 
 void BoxedContainer::OnClose() {

@@ -13,6 +13,8 @@
 wxString GlobalSettings::exeFileLocation;
 wxString GlobalSettings::dataFolderLocation;
 std::vector<WineVersion> GlobalSettings::wineVersions;
+int GlobalSettings::iconSize;
+double GlobalSettings::scaleFactor;
 
 wxString GlobalSettings::GetWineNameFromFile(const wxString& fileName) {
     for (auto& ver : GlobalSettings::wineVersions) {
@@ -74,4 +76,8 @@ wxString GlobalSettings::GetRootFolder(BoxedContainer* container) {
 
 wxString GlobalSettings::GetAppFolder(BoxedContainer* container) {
     return container->dirPath + wxFileName::GetPathSeparator() + "apps";
+}
+
+double GlobalSettings::GetScaleFactor() {    
+    return scaleFactor;
 }

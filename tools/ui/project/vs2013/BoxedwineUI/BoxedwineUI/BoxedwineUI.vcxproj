@@ -19,13 +19,13 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v120_xp</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v120_xp</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -62,6 +62,9 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <Manifest>
+      <EnableDpiAwareness>true</EnableDpiAwareness>
+    </Manifest>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -80,10 +83,14 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
+    <Manifest>
+      <EnableDpiAwareness>true</EnableDpiAwareness>
+    </Manifest>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\..\src\wxWidgets\BoxedApp.cpp" />
     <ClCompile Include="..\..\..\..\src\wxWidgets\BoxedAppList.cpp" />
+    <ClCompile Include="..\..\..\..\src\wxWidgets\BoxedAppOptionsDlg.cpp" />
     <ClCompile Include="..\..\..\..\src\wxWidgets\BoxedContainer.cpp" />
     <ClCompile Include="..\..\..\..\src\wxWidgets\BoxedContainerList.cpp" />
     <ClCompile Include="..\..\..\..\src\wxWidgets\GlobalSettings.cpp" />
@@ -97,6 +104,7 @@
   <ItemGroup>
     <ClInclude Include="..\..\..\..\src\wxWidgets\BoxedApp.h" />
     <ClInclude Include="..\..\..\..\src\wxWidgets\BoxedAppList.h" />
+    <ClInclude Include="..\..\..\..\src\wxWidgets\BoxedAppOptionsDlg.h" />
     <ClInclude Include="..\..\..\..\src\wxWidgets\BoxedContainer.h" />
     <ClInclude Include="..\..\..\..\src\wxWidgets\BoxedContainerList.h" />
     <ClInclude Include="..\..\..\..\src\wxWidgets\GlobalSettings.h" />

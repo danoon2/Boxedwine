@@ -24,7 +24,12 @@ public:
     static wxString GetAppFolder(BoxedContainer* container);
     static wxString GetRootFolder(BoxedContainer* container);
 
+    static int iconSize;
+    static double scaleFactor;
+
+    static double GetScaleFactor();
     static std::vector<WineVersion> wineVersions;
+
 };
 
 #endif

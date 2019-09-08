@@ -2,6 +2,7 @@
 #include <wx/wx.h>
 #include <wx/listctrl.h>
 #include "PickAppDlg.h"
+#include "GlobalSettings.h"
 
 wxBEGIN_EVENT_TABLE(PickAppDialog, wxDialog)
     EVT_BUTTON(wxID_OK, PickAppDialog::OnDone)
@@ -13,16 +14,17 @@ PickAppDialog::PickAppDialog(wxWindow* parent, BoxedContainer* container) : wxDi
     wxBoxSizer *hbox = new wxBoxSizer(wxHORIZONTAL);
     wxBoxSizer *vbox = new wxBoxSizer(wxVERTICAL);
 
+    int size = GlobalSettings::GetScaleFactor()*400;
     vbox->Add(new wxStaticText(this, -1, "Please select a file to use for the app short cut.", wxDefaultPosition, wxDefaultSize), wxSizerFlags().Align(wxALIGN_LEFT).DoubleBorder());
-    this->listView = new wxListView(this, wxID_ANY, wxPoint(0,0), wxSize(400, 400), wxLC_REPORT|wxLC_NO_HEADER|wxBORDER_SUNKEN);
+    this->listView = new wxListView(this, wxID_ANY, wxPoint(0,0), wxSize(size, size), wxLC_REPORT|wxLC_NO_HEADER|wxBORDER_SUNKEN);
 
-    wxImageList* imageList = new wxImageList(32, 32);
+    wxImageList* imageList = new wxImageList(GlobalSettings::iconSize, GlobalSettings::iconSize);
     int* imageIndex = new int[apps.size()+1];
     imageIndex[0]=-1; // Browse image
     int index = 1;
     int imageCount=0;
     for (auto& app : apps) {
-        wxIcon* icon = app.CreateIcon(32);
+        wxIcon* icon = app.CreateIcon(GlobalSettings::iconSize);
         if (icon) {
             imageList->Add(*icon);
             imageIndex[index++] = imageCount;

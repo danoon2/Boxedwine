@@ -22,8 +22,8 @@ public:
     BoxedApp* GetApp(int index) {if (index>=0 && index<(int)this->apps.size()) { return this->apps[index]; } else {return NULL;}}
     void AddApp(BoxedApp* app) {this->apps.push_back(app);}
     void DeleteApp(BoxedApp* app);
-    void Launch(const wxString& cmd, const wxString& path, bool showConsole, bool async=true);
-    void LaunchWine(const wxString& cmd, const wxString& path, bool showConsole, bool async=true);
+    void Launch(const wxString& cmd, const wxString& args, const wxString& path, bool showConsole, bool async=true);
+    void LaunchWine(const wxString& cmd, const wxString& args, const wxString& path, bool showConsole, bool async=true);
 
     const wxString& GetName() {return this->name;}
     const wxString& GetDir() {return this->dirPath;}

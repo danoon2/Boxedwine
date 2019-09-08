@@ -1,5 +1,6 @@
 #include <wx/wx.h>
 #include "wxSettings.h"
+#include "GlobalSettings.h"
 
 const int ID_EXE_LOCATION = 300;
 const int ID_EXE_LOCATION_BROWSE = 301;
@@ -16,13 +17,13 @@ SettingsDialog::SettingsDialog(wxWindow* parent, const wxString& exeFileLocation
     vbox->Add(hbox, 0, wxALIGN_RIGHT | wxRIGHT | wxBOTTOM, 10);
 
     fSizer->Add(new wxStaticText(this, -1, "Boxedwine file location:", wxDefaultPosition, wxDefaultSize), wxSizerFlags().Align(wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL).DoubleBorder());
-    this->exeFileLocationText = new wxTextCtrl(this, ID_EXE_LOCATION, exeFileLocation, wxDefaultPosition, wxSize(300, -1));
+    this->exeFileLocationText = new wxTextCtrl(this, ID_EXE_LOCATION, exeFileLocation, wxDefaultPosition, wxSize(300*GlobalSettings::GetScaleFactor(), -1));
     fSizer->Add(this->exeFileLocationText, wxSizerFlags().Expand().Align(wxALIGN_CENTER_VERTICAL));
     fSizer->Add(new wxButton(this, ID_EXE_LOCATION_BROWSE, "Browse" ), wxSizerFlags().Align(wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL).DoubleBorder());
     Connect(ID_EXE_LOCATION_BROWSE, wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(SettingsDialog::OnBrowseExeButtonClicked));
 
     fSizer->Add(new wxStaticText(this, -1, "Save folder location:", wxDefaultPosition, wxDefaultSize), wxSizerFlags().Align(wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL).DoubleBorder());
-    this->dataFolderLocationText = new wxTextCtrl(this, ID_DATA_LOCATION, dataFolderLocation, wxDefaultPosition, wxSize(300, -1));
+    this->dataFolderLocationText = new wxTextCtrl(this, ID_DATA_LOCATION, dataFolderLocation, wxDefaultPosition, wxSize(300*GlobalSettings::GetScaleFactor(), -1));
     fSizer->Add(this->dataFolderLocationText, wxSizerFlags().Expand().Align(wxALIGN_CENTER_VERTICAL));
     fSizer->Add(new wxButton(this, ID_DATA_LOCATION_BROWSE, "Browse" ), wxSizerFlags().Align(wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL).DoubleBorder());
     Connect(ID_DATA_LOCATION_BROWSE, wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(SettingsDialog::OnBrowseDataButtonClicked));
