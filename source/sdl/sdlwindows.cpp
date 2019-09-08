@@ -518,17 +518,17 @@ U32 sdlCreateOpenglWindow_main_thread(KThread* thread, Wnd* wnd, int major, int 
 #ifdef SDL2
 
     SDL_DisplayMode dm;
-    int flags = SDL_WINDOW_OPENGL|SDL_WINDOW_SHOWN;
+    int sdlFlags = SDL_WINDOW_OPENGL|SDL_WINDOW_SHOWN;
     int cx = wnd->windowRect.right-wnd->windowRect.left;
     int cy = wnd->windowRect.bottom-wnd->windowRect.top;
 
     if (SDL_GetDesktopDisplayMode(0, &dm) == 0) {
         if (cx == dm.w && cy == dm.h) {
-            flags|=SDL_WINDOW_BORDERLESS;
+            sdlFlags|=SDL_WINDOW_BORDERLESS;
         }
     }   
 
-    sdlWindow = SDL_CreateWindow("OpenGL Window", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, cx, cy, flags);
+    sdlWindow = SDL_CreateWindow("OpenGL Window", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, cx, cy, sdlFlags);
     if (!sdlWindow) {
         fprintf(stderr, "Couldn't create window: %s\n", SDL_GetError());
         displayChanged(thread);

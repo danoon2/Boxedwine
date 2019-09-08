@@ -523,7 +523,7 @@ void boxeddrv_EnumDisplaySettingsEx(CPU* cpu) {
         writed(devmode + 168, bits_per_pixel);
         writed(devmode + 172, screenCx);
         writed(devmode + 176, screenCy);
-    } else if (ARG2>=0 && ARG2<displayModesCount) {
+    } else if (ARG2>=0 && ARG2<(U32)displayModesCount) {
         writed(devmode + 168, displayModes[ARG2].bpp);
         writed(devmode + 172, displayModes[ARG2].cx);
         writed(devmode + 176, displayModes[ARG2].cy);

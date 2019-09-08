@@ -4,9 +4,9 @@
 
 FsNode::FsNode(Type type, U32 id, U32 rdev, const std::string& path, const std::string& link, const std::string& nativePath, bool isDirectory, BoxedPtr<FsNode> parent) : 
     path(path),
-    name(Fs::getFileNameFromPath(path)),
-    link(link),
     nativePath(nativePath),
+    name(Fs::getFileNameFromPath(path)),    
+    link(link),    
     id(id), 
     rdev(rdev),
     hardLinkCount(1),
