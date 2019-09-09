@@ -77,7 +77,7 @@ void BoxedApp::Launch(bool showConsole) {
         args+="-fullscreen ";
     }
     if (this->glExt.Length()) {
-        args+="-glext "+this->glExt+" ";
+        args+="-glext \""+this->glExt+"\" ";
     }
     if (this->scale) {
         args+="-scale "+wxString::Format("%d", this->scale)+" ";

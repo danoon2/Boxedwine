@@ -8,9 +8,13 @@
 #include "wxInstallDlg.h"
 #include "GlobalSettings.h"
 #include "PickAppDlg.h"
+#include "wxUtils.h"
 
 static const int ID_SETUP_LOCATION = 300;
 static const int ID_SETUP_LOCATION_BROWSE = 301;
+static const int ID_INSTALLATION_TYPE_COMBOBOX = 302;
+static const int ID_CONTAINER_TYPE_COMBOBOX = 303;
+static const int ID_INSTALLATION_TYPE_LABEL = 304;
 
 wxBEGIN_EVENT_TABLE(InstallDialog, wxDialog)
     EVT_BUTTON(wxID_OK, InstallDialog::OnDone)
@@ -25,9 +29,29 @@ InstallDialog::InstallDialog(wxWindow* parent, const wxString& filePathToInstall
     vbox->AddSpacer(20);
     vbox->Add(hbox, 0, wxALIGN_RIGHT | wxRIGHT | wxBOTTOM, 10);
 
-    fSizer->Add(new wxStaticText(this, -1, "Setup file location:", wxDefaultPosition, wxDefaultSize), wxSizerFlags().Align(wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL).DoubleBorder());
+    wxArrayString installOptions;
+    installOptions.Add("Install using a setup program");
+    installOptions.Add("Install by copying directory");
+    installOptions.Add("Create blank container");
+    wxString defaultInstallType;
+    bool isDir;
+
+    if (filePathToInstall.Length() && wxDirExists(filePathToInstall)) {
+        defaultInstallType = installOptions[1];
+        isDir = true;
+    } else {
+        defaultInstallType = installOptions[0];
+        isDir = false;
+    }
+    this->installationTypeComboBox = new wxComboBox(this, ID_INSTALLATION_TYPE_COMBOBOX, defaultInstallType, wxDefaultPosition, wxDefaultSize, installOptions, wxCB_READONLY);
+    Connect(ID_INSTALLATION_TYPE_COMBOBOX, wxEVT_COMBOBOX, wxCommandEventHandler(InstallDialog::OnInstallTypeComboBoxUpdate));    
+    fSizer->Add(new wxStaticText(this, -1, "Install Type:", wxDefaultPosition, wxDefaultSize), wxSizerFlags().Align(wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL).DoubleBorder());
+    fSizer->Add(this->installationTypeComboBox, wxSizerFlags().Expand().Align(wxALIGN_CENTER_VERTICAL));
+    fSizer->AddStretchSpacer();
+
+    this->installInstructionText = new wxStaticText(this, ID_INSTALLATION_TYPE_LABEL, "Setup file location:", wxDefaultPosition, wxDefaultSize, wxST_NO_AUTORESIZE);
+    fSizer->Add(this->installInstructionText, wxSizerFlags().Align(wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL).Expand().DoubleBorder());
     this->setupFileLocationText = new wxTextCtrl(this, ID_SETUP_LOCATION, filePathToInstall, wxDefaultPosition, wxSize(300*GlobalSettings::GetScaleFactor(), -1));
-    this->setupFileLocationText->SetHint("Optional: If blank, will create empty container");
     fSizer->Add(this->setupFileLocationText, wxSizerFlags().Expand().Align(wxALIGN_CENTER_VERTICAL));
     fSizer->Add(new wxButton(this, ID_SETUP_LOCATION_BROWSE, "Browse" ), wxSizerFlags().Align(wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL).DoubleBorder());
     Connect(ID_SETUP_LOCATION_BROWSE, wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(InstallDialog::OnBrowseExeButtonClicked));
@@ -37,8 +61,8 @@ InstallDialog::InstallDialog(wxWindow* parent, const wxString& filePathToInstall
     for (auto& container : this->containers) {
         options.Add(container->GetName());
     }
-    this->containerComboBox = new wxComboBox(this, wxID_ANY, options[0], wxDefaultPosition, wxDefaultSize, options, wxCB_SORT|wxCB_READONLY);
-    Connect(wxID_ANY, wxEVT_COMBOBOX, wxCommandEventHandler(InstallDialog::OnComboBoxUpdate));
+    this->containerComboBox = new wxComboBox(this, ID_CONTAINER_TYPE_COMBOBOX, options[0], wxDefaultPosition, wxDefaultSize, options, wxCB_SORT|wxCB_READONLY);
+    Connect(ID_CONTAINER_TYPE_COMBOBOX, wxEVT_COMBOBOX, wxCommandEventHandler(InstallDialog::OnContainerComboBoxUpdate));
 
     fSizer->Add(new wxStaticText(this, -1, "Container:", wxDefaultPosition, wxDefaultSize), wxSizerFlags().Align(wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL).DoubleBorder());
     fSizer->Add(this->containerComboBox, wxSizerFlags().Expand().Align(wxALIGN_CENTER_VERTICAL));
@@ -70,6 +94,11 @@ InstallDialog::InstallDialog(wxWindow* parent, const wxString& filePathToInstall
    
     this->SetSizerAndFit(vbox);
 
+    if (isDir) {
+        this->OnInstallTypeComboBoxUpdate(wxCommandEvent());
+        this->setupFileLocationText->SetValue(filePathToInstall); // since it was cleared in the above function
+    }
+
     Centre();
     ShowModal();
 
@@ -85,7 +114,7 @@ void InstallDialog::OnBrowseExeButtonClicked(wxCommandEvent& event) {
     }
 }
 
-void InstallDialog::OnComboBoxUpdate(wxCommandEvent& event)
+void InstallDialog::OnContainerComboBoxUpdate(wxCommandEvent& event)
 {
     if (event.GetSelection()==0) {
         this->containerNameText->Enable(true);
@@ -98,15 +127,62 @@ void InstallDialog::OnComboBoxUpdate(wxCommandEvent& event)
     }
 }
 
+void InstallDialog::OnInstallTypeComboBoxUpdate(wxCommandEvent& event)
+{
+    this->setupFileLocationText->SetValue("");
+    if (this->installationTypeComboBox->GetSelection()==0) {
+        this->installInstructionText->SetLabel("Setup file location:");
+        this->setupFileLocationText->Enable(true);
+    } else if (this->installationTypeComboBox->GetSelection()==1) {
+        this->installInstructionText->SetLabel("Directory Location:");
+        this->setupFileLocationText->Enable(true);
+    } else {
+        this->installInstructionText->SetLabel("Setup file location:");
+        this->setupFileLocationText->Enable(false);
+    }
+    this->setupFileLocationText->Refresh();
+}
+
+InstallType InstallDialog::GetInstallType() {
+    if (this->installationTypeComboBox->GetSelection()==0) {
+        return INSTALL_TYPE_FILE;
+    } else if (this->installationTypeComboBox->GetSelection()==1) {
+        return INSTALL_TYPE_DIR;
+    }
+    return INSTALL_TYPE_BLANK;
+}
+
 void InstallDialog::OnDone(wxCommandEvent& event) {
     BoxedContainer* container = NULL;
 
-    wxString filePath = this->setupFileLocationText->GetValue();
-    if (filePath.Length()!=0 && !wxFileExists(filePath)) {
-        wxString msg = "The setup file was entered, but it does not exist";
-        wxMessageDialog *dlg = new wxMessageDialog(NULL, msg, "Error", wxOK | wxICON_ERROR);
-        dlg->ShowModal();
-        return;
+    if (GetInstallType()==INSTALL_TYPE_FILE) {
+        wxString filePath = this->setupFileLocationText->GetValue();
+        if (filePath.Length()==0) {
+            wxString msg = "Setup file location is empty and is required.";
+            wxMessageDialog *dlg = new wxMessageDialog(NULL, msg, "Error", wxOK | wxICON_ERROR);
+            dlg->ShowModal();
+            return;
+        }
+        if (!wxFileExists(filePath)) {
+            wxString msg = "The setup file was entered, but it does not exist";
+            wxMessageDialog *dlg = new wxMessageDialog(NULL, msg, "Error", wxOK | wxICON_ERROR);
+            dlg->ShowModal();
+            return;
+        }
+    } else if (GetInstallType()==INSTALL_TYPE_DIR) {
+        wxString dirPath = this->setupFileLocationText->GetValue();
+        if (dirPath.Length()==0) {
+            wxString msg = "Directory location is empty and is required.";
+            wxMessageDialog *dlg = new wxMessageDialog(NULL, msg, "Error", wxOK | wxICON_ERROR);
+            dlg->ShowModal();
+            return;
+        }
+        if (!wxDirExists(dirPath)) {
+            wxString msg = "The directory was entered, but it does not exist";
+            wxMessageDialog *dlg = new wxMessageDialog(NULL, msg, "Error", wxOK | wxICON_ERROR);
+            dlg->ShowModal();
+            return;
+        }
     }
 
     if (this->containerComboBox->GetSelection()!=0) {
@@ -147,11 +223,47 @@ void InstallDialog::OnDone(wxCommandEvent& event) {
         }
         this->containers.push_back(container);
     }     
-    if (filePath.Length()) {
+    if (GetInstallType()==INSTALL_TYPE_FILE) {
+        wxString filePath = this->setupFileLocationText->GetValue();
         container->Launch(filePath, "", "/home/username", true, false);
         PickAppDialog *dlg = new PickAppDialog(this, container);
         dlg->Show(true);
-        if (dlg->GetReturnCode()==wxID_OK) {
+        if (dlg->GetReturnCode()!=wxID_OK) {
+            return;
+        }
+    } else if (GetInstallType()==INSTALL_TYPE_DIR) {
+        wxString dirPath = this->setupFileLocationText->GetValue();
+        wxString root = GlobalSettings::GetRootFolder(container);
+        wxString home = root + wxFileName::GetPathSeparator() + "home";
+        wxString userDir = home + wxFileName::GetPathSeparator() + "username";
+        wxString wineDir = userDir + wxFileName::GetPathSeparator() + ".wine";
+        wxString cDir = wineDir + wxFileName::GetPathSeparator() + "drive_c";
+        wxString destPath = cDir + wxFileName::GetPathSeparator() + wxFileName(dirPath).GetName();
+        if (!wxDirExists(root)) {
+            wxMkdir(root);
+        }
+        if (!wxDirExists(home)) {
+            wxMkdir(home);
+        }
+        if (!wxDirExists(userDir)) {
+            wxMkdir(userDir);
+        }
+        if (!wxDirExists(wineDir)) {
+            wxMkdir(wineDir);
+        }
+        if (!wxDirExists(cDir)) {
+            wxMkdir(cDir);
+        }
+        if (!wxCopyDir(dirPath, destPath)) {
+            wxString msg = "Failed to copy direcotry: "+ dirPath + " to " + destPath;
+            wxMessageDialog *dlg = new wxMessageDialog(NULL, msg, "Error", wxOK | wxICON_ERROR);
+            dlg->ShowModal();
+            return;
+        }
+        PickAppDialog *dlg = new PickAppDialog(this, container);
+        dlg->Show(true);
+        if (dlg->GetReturnCode()!=wxID_OK) {
+            return;
         }
     }
     event.Skip();
