@@ -48,10 +48,7 @@ bool BoxedWineApp::OnInit()
     wxLog::EnableLogging(false);
     wxConfigBase *pConfig = wxConfigBase::Get();
 
-    int width = wxDisplay().GetGeometry().GetWidth();
-    int height = wxDisplay().GetGeometry().GetHeight();
-
-    BoxedFrame *frame = new BoxedFrame( "Boxedwine", wxDefaultPosition, wxSize(width/2, height/2));
+    BoxedFrame *frame = new BoxedFrame( "Boxedwine", wxDefaultPosition, wxSize(800, 600));
     frame->Show( true );
     return true;
 }
@@ -81,7 +78,7 @@ BoxedFrame::BoxedFrame(const wxString& title, const wxPoint& pos, const wxSize& 
         : wxFrame(NULL, wxID_ANY, title, pos, size)
 {
     GlobalSettings::scaleFactor = this->FromDIP(10)/10;
-
+    this->SetSize(wxSize(size.GetWidth()*GlobalSettings::GetScaleFactor(), size.GetHeight()*GlobalSettings::GetScaleFactor()));
     ::wxInitAllImageHandlers();    
     LoadConfig();
     GlobalSettings::InitWineVersions();
@@ -93,21 +90,34 @@ BoxedFrame::BoxedFrame(const wxString& title, const wxPoint& pos, const wxSize& 
     this->SetDropTarget(new BoxedInstallDrop(this));
 }
 
+BoxedFrame::~BoxedFrame() {
+    for (auto &container : this->containers) {
+        delete container;
+    }
+}
+
 void BoxedFrame::LoadContainers() {
     wxString filename;
     wxDir dir(GlobalSettings::GetContainerFolder());
-    bool cont = dir.GetFirst(&filename, wxEmptyString, wxDIR_DIRS);
+
+     for (auto &container : this->containers) {
+        delete container;
+    }
     this->containers.clear();
-    while(cont)
-    {
-        wxString dirPath = GlobalSettings::GetContainerFolder()+wxFileName::GetPathSeparator()+filename;
-        BoxedContainer* container = new BoxedContainer();
-        if (container->Load(dirPath)) {
-            this->containers.push_back(container);
-        } else {
-            delete container;
+    if (dir.IsOpened()) {
+        bool cont = dir.GetFirst(&filename, wxEmptyString, wxDIR_DIRS);
+       
+        while(cont)
+        {
+            wxString dirPath = GlobalSettings::GetContainerFolder()+wxFileName::GetPathSeparator()+filename;
+            BoxedContainer* container = new BoxedContainer();
+            if (container->Load(dirPath)) {
+                this->containers.push_back(container);
+            } else {
+                delete container;
+            }
+            cont = dir.GetNext(&filename);
         }
-        cont = dir.GetNext(&filename);
     }
 }
 
@@ -192,7 +202,7 @@ void BoxedFrame::ReloadContainerList() {
         this->containerListView->SetItemPtrData(id, (wxUIntPtr)container);
         wxULongLong size = wxDir::GetTotalSize(container->GetDir());
         this->containerListView->SetItem(id, 1, wxFileName::GetHumanReadableSize(size));
-        this->containerListView->SetItem(id, 2, GlobalSettings::GetWineNameFromFile(container->GetFileSystemName()));
+        this->containerListView->SetItem(id, 2, container->GetWineVersion());
         index++;
     }
 

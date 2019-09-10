@@ -27,9 +27,10 @@ void BoxedAppList::ShowContextMenu(BoxedApp* app)
 {
     wxMenu menu;
 
+    menu.Append(ID_ITEM_OPTIONS, "&Options");
+    menu.AppendSeparator();
     menu.Append(ID_ITEM_LAUNCH, "&Launch");
     menu.Append(ID_ITEM_LAUNCH_AND_SHOW_LOG, "Launch And &Show Console");
-    menu.Append(ID_ITEM_OPTIONS, "&Options");
     menu.AppendSeparator();
     menu.Append(ID_ITEM_REMOVE, "&Remove Shortcut");
 

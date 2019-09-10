@@ -80,7 +80,8 @@ InstallDialog::InstallDialog(wxWindow* parent, const wxString& filePathToInstall
     for (auto& wineVersion : GlobalSettings::wineVersions) {
         wineVersions.Add(wineVersion.name);
     }
-    this->wineVersionComboBox = new wxComboBox(this, wxID_ANY, (wineVersions.Count()?wineVersions[0]:""), wxDefaultPosition, wxDefaultSize, wineVersions, wxCB_SORT|wxCB_READONLY);
+    wineVersions.Sort(true);
+    this->wineVersionComboBox = new wxComboBox(this, wxID_ANY, (wineVersions.Count()?wineVersions[0]:""), wxDefaultPosition, wxDefaultSize, wineVersions, wxCB_READONLY);
     newContainerSizer->Add(this->wineVersionComboBox, wxSizerFlags().Expand().Align(wxALIGN_CENTER_VERTICAL));
     newContainerSizer->Add(new wxStaticText(this, -1, "Run Wine Config:", wxDefaultPosition, wxDefaultSize), wxSizerFlags().Align(wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL).DoubleBorder());
     this->runWineConfigCheckBox = new wxCheckBox(this, -1, "(can change Win version to Win95, etc)");
@@ -203,21 +204,13 @@ void InstallDialog::OnDone(wxCommandEvent& event) {
                 dlg->ShowModal();
                 return;
             }            
-        } else if (!wxMkdir(containerFilePath)) {
+        } else if (!wxFileName(containerFilePath+wxFileName::GetPathSeparator()).Mkdir(511, wxPATH_MKDIR_FULL)) {
             wxString msg = "Failed to create a direcotry for the new container: "+ wxSysErrorMsgStr(wxSysErrorCode());
             wxMessageDialog *dlg = new wxMessageDialog(NULL, msg, "Error", wxOK | wxICON_ERROR);
             dlg->ShowModal();
             return;
         }    
-        wxString wineName = this->wineVersionComboBox->GetValue();
-        wxString fileSystem;
-        for (auto& wineVersion : GlobalSettings::wineVersions) {
-            if (wineVersion.name == wineName) {
-                fileSystem = wineVersion.fileName;
-                break;
-            }
-        }
-        container = BoxedContainer::CreateContainer(containerFilePath, containerFileName, fileSystem);
+        container = BoxedContainer::CreateContainer(containerFilePath, containerFileName, this->wineVersionComboBox->GetValue());
         if (this->runWineConfigCheckBox->IsChecked()) {
             container->LaunchWine("winecfg", "", "/home/username", false, false);
         }
@@ -239,17 +232,20 @@ void InstallDialog::OnDone(wxCommandEvent& event) {
         wxString wineDir = userDir + wxFileName::GetPathSeparator() + ".wine";
         wxString cDir = wineDir + wxFileName::GetPathSeparator() + "drive_c";
         wxString destPath = cDir + wxFileName::GetPathSeparator() + wxFileName(dirPath).GetName();
-        if (!wxDirExists(root)) {
-            wxMkdir(root);
-        }
-        if (!wxDirExists(home)) {
-            wxMkdir(home);
-        }
-        if (!wxDirExists(userDir)) {
-            wxMkdir(userDir);
-        }
+
+        bool wineDirCreated = false;
         if (!wxDirExists(wineDir)) {
-            wxMkdir(wineDir);
+            wineDirCreated = true;
+        }
+        if (!wxDirExists(cDir)) {
+            wxFileName(cDir).Mkdir(511, wxPATH_MKDIR_FULL);
+        }
+        if (wineDirCreated) {
+            wxString zipFile = GlobalSettings::GetFileSystemZip(GlobalSettings::GetFileFromWineName(container->GetWineVersion()));
+            wxString timestampeFile = wineDir + wxFileName::GetPathSeparator() + ".update-timestamp" ;
+
+            // :TODO: not sure why if I don't do this, wine will detect a change and update the .wine directory
+            wxExtractZipFile(zipFile, root, timestampeFile);
         }
         if (!wxDirExists(cDir)) {
             wxMkdir(cDir);

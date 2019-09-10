@@ -11,6 +11,8 @@ class BoxedFrame: public wxFrame
 {
 public:
     BoxedFrame(const wxString& title, const wxPoint& pos, const wxSize& size);
+    ~BoxedFrame();
+
     void InstallApp(const wxString& filePath);
 
     void ReloadAppList();

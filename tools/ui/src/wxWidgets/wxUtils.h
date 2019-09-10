@@ -3,5 +3,6 @@
 
 wxArrayString wxUtilRemoveDuplicates(const wxArrayString& values);
 bool wxCopyDir(wxString sFrom, wxString sTo);
+bool wxExtractZipFile(const wxString& aZipFile, const wxString& aTargetDir, const wxString& fileToExtract="");
 
 #endif

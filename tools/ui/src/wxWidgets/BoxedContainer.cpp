@@ -14,27 +14,37 @@ bool BoxedContainer::Load(const wxString& dirPath) {
     wxString iniFilePath = this->dirPath + wxFileName::GetPathSeparator() + "container.ini";
     wxFileConfig *config = new wxFileConfig("", "", iniFilePath);
     this->name = config->Read("Name", "");
-    this->fileSystem = config->Read("FileSystem", "");
+    this->wineVersion = config->Read("WineVersion", "");
     delete config;
-    bool result = this->name.Length()>0 && this->fileSystem.Length()>0;
+    bool result = this->name.Length()>0 && this->wineVersion.Length()>0;
     if (result) {
         this->LoadApps();
     }
     return result;
 }
 
-BoxedContainer* BoxedContainer::CreateContainer(const wxString& dirPath, const wxString& name, const wxString& fileSystem) {
+BoxedContainer::~BoxedContainer() {
+    for (auto& app : this->apps) {
+        delete app;
+    }
+}
+
+BoxedContainer* BoxedContainer::CreateContainer(const wxString& dirPath, const wxString& name, const wxString& wineVersion) {
     wxString ini_filename = dirPath + wxFileName::GetPathSeparator() + "container.ini";
     wxFileConfig *config = new wxFileConfig( "", "", ini_filename);
     config->Write("Name", name);
-    config->Write("FileSystem", fileSystem);
+    config->Write("WineVersion", wineVersion);
     config->Flush();
     delete config;
     BoxedContainer* container = new BoxedContainer();
     container->name = name;
-    container->fileSystem = fileSystem;
+    container->wineVersion = wineVersion;
     container->dirPath = dirPath;
     return container;
+}
+
+void BoxedContainer::DeleteContainerFromFilesystem() {
+    wxFileName::Rmdir(this->dirPath, wxPATH_RMDIR_RECURSIVE);
 }
 
 void BoxedContainer::Reload() {
@@ -84,7 +94,7 @@ void BoxedContainer::Launch(const wxString& cmd, const wxString& args, const wxS
     if (async) {
         this->currentProcess->isRunning = true;
     }
-    wxString zip = GlobalSettings::GetFileSystemZip(this->fileSystem);
+    wxString zip = GlobalSettings::GetFileSystemZip(GlobalSettings::GetFileFromWineName(this->wineVersion));
     wxString root = GlobalSettings::GetRootFolder(this);
 
     wxString launchCmd = "\""+GlobalSettings::exeFileLocation+"\" -root \""+root+"\" -zip \""+zip+"\" -w \""+path+"\" "+args;
@@ -137,7 +147,17 @@ void BoxedContainer::GetExeApps(std::vector<BoxedApp>& apps) {
         app.name = fileName.GetFullName();
         app.path = fileName.GetPath(0, wxPATH_UNIX);
         app.cmd = app.name;
-        apps.push_back(app);
+
+        bool found = false;
+        for (auto& a : this->apps) {
+            if (a->cmd==app.cmd) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            apps.push_back(app);
+        }
     }
 }
 

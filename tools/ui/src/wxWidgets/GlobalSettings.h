@@ -13,7 +13,7 @@ public:
 class GlobalSettings {
 public:
     static void InitWineVersions();
-    static wxString GetWineNameFromFile(const wxString& fileName);
+    static wxString GetFileFromWineName(const wxString& name);
 
     static wxString exeFileLocation;
     static wxString dataFolderLocation;

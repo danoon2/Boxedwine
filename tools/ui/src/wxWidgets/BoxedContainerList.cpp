@@ -12,6 +12,7 @@ static const int ID_ITEM_LAUNCH_REGEDIT = 301;
 static const int ID_ITEM_LAUNCH_EXPLORER = 302;
 static const int ID_ITEM_LAUNCH_WINECFG = 303;
 static const int ID_ITEM_ADD_APP = 304;
+static const int ID_ITEM_REMOVE = 305;
 
 void BoxedContainerList::OnItemRightClick(wxListEvent& event) 
 {
@@ -32,10 +33,12 @@ void BoxedContainerList::ShowContextMenu(BoxedContainer* container)
     menu.Append(ID_ITEM_SETTINGS, "&Settings");
     menu.AppendSeparator();
     wxMenu* programsMenu = new wxMenu();
-    menu.AppendSubMenu(programsMenu, "&Programs");
-    programsMenu->Append(ID_ITEM_LAUNCH_WINECFG, "&Wine Config");
+    menu.AppendSubMenu(programsMenu, "Run &Program");
+    programsMenu->Append(ID_ITEM_LAUNCH_WINECFG, "&Wine Config (Set Win Ver, etc)");
     programsMenu->Append(ID_ITEM_LAUNCH_EXPLORER, "&Explorer");
     programsMenu->Append(ID_ITEM_LAUNCH_REGEDIT, "&Regedit");
+    menu.AppendSeparator();
+    menu.Append(ID_ITEM_REMOVE, "&Delete Container");
 
     int id = GetPopupMenuSelectionFromUser(menu);
 
@@ -54,6 +57,14 @@ void BoxedContainerList::ShowContextMenu(BoxedContainer* container)
         container->LaunchWine("explorer", "", "/home/username", true);
     } else if (id == ID_ITEM_LAUNCH_REGEDIT) {
         container->LaunchWine("regedit", "", "/home/username", true);
+    } else if (id == ID_ITEM_REMOVE) {
+        wxMessageDialog dialog(this, "Are you sure you want to delete this container?  This will be permanant and if you change your mind you will have to reinstall any apps that were in this container.", "Confirm Delete", wxCENTER | wxNO_DEFAULT | wxYES_NO | wxICON_QUESTION);
+        if (dialog.ShowModal()==wxID_YES) {
+            container->DeleteContainerFromFilesystem();
+            this->mainFrame->LoadContainers();
+            this->mainFrame->ReloadAppList();
+            this->mainFrame->ReloadContainerList();
+        }
     }
 }
 

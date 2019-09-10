@@ -16,13 +16,16 @@ std::vector<WineVersion> GlobalSettings::wineVersions;
 int GlobalSettings::iconSize;
 double GlobalSettings::scaleFactor;
 
-wxString GlobalSettings::GetWineNameFromFile(const wxString& fileName) {
+wxString GlobalSettings::GetFileFromWineName(const wxString& name) {
     for (auto& ver : GlobalSettings::wineVersions) {
-        if (ver.fileName.CmpNoCase(fileName)==0) {
-            return ver.name;
+        if (ver.name.CmpNoCase(name)==0) {
+            return ver.fileName;
         }
     }
-    return fileName;
+    if (GlobalSettings::wineVersions.size()) {
+        return GlobalSettings::wineVersions[0].fileName;
+    }
+    return "";
 }
 
 void GlobalSettings::InitWineVersions() {
