@@ -1,4 +1,4 @@
-#include <wx/wx.h>
+#include "wx/wx.h"
 #include "wxSettings.h"
 #include "GlobalSettings.h"
 

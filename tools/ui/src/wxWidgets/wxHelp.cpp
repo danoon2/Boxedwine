@@ -1,5 +1,5 @@
-#include <wx/wx.h>
-#include <wx/hyperlink.h>
+#include "wx/wx.h"
+#include "wx/hyperlink.h"
 
 #include "wxHelp.h"
 

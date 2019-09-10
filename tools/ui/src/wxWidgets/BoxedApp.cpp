@@ -1,7 +1,8 @@
-#include <wx/wxprec.h>
-#include <wx/wx.h>
-#include <wx/config.h>
-#include <wx/fileconf.h>
+#include "wx/wxprec.h"
+#include "wx/wx.h"
+#include "wx/config.h"
+#include "wx/fileconf.h"
+#include "wx/icon.h"
 #include "BoxedApp.h"
 #include "BoxedContainer.h"
 #include "GlobalSettings.h"
@@ -124,7 +125,7 @@ wxIcon* BoxedApp::CreateIcon(int size) {
         // :TODO: will this work on non windows platforms, what about 16-bit exe's
         wxString path = GlobalSettings::GetRootFolder(this->container)+wxFileName(this->path).GetFullPath()+wxFileName::GetPathSeparator()+this->cmd;
         wxIcon* result = new wxIcon(path, wxBITMAP_TYPE_ICO, size, size);
-        if (result->GetWidth()) {
+        if (result->IsOk() && result->GetWidth()) {
             return result;
         }
         delete result;

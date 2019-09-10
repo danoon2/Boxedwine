@@ -1,6 +1,7 @@
-#include <wx/wxprec.h>
-#include <wx/wx.h>
-#include <wx/listctrl.h>
+#include "wx/wxprec.h"
+#include "wx/wx.h"
+#include "wx/listctrl.h"
+#include "wx/imaglist.h"
 #include "PickAppDlg.h"
 #include "GlobalSettings.h"
 
@@ -43,7 +44,7 @@ PickAppDialog::PickAppDialog(wxWindow* parent, BoxedContainer* container) : wxDi
     this->listView->InsertItem(index, "Browse", -1);
 
     for (auto& app : apps) {
-        long id = this->listView->InsertItem(index, (app.IsLink()?app.GetName()+".lnk":app.GetName()), imageIndex[index]);
+        this->listView->InsertItem(index, (app.IsLink()?app.GetName()+".lnk":app.GetName()), imageIndex[index]);
         index++;
     }
     delete[] imageIndex;

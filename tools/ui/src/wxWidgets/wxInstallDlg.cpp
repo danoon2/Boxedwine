@@ -1,9 +1,9 @@
-#include <wx/wxprec.h>
-#include <wx/wx.h>
-#include <wx/combobox.h>
-#include <wx/filefn.h>
-#include <wx/filename.h>
-#include <wx/dir.h>
+#include "wx/wxprec.h"
+#include "wx/wx.h"
+#include "wx/combobox.h"
+#include "wx/filefn.h"
+#include "wx/filename.h"
+#include "wx/dir.h"
 
 #include "wxInstallDlg.h"
 #include "GlobalSettings.h"
@@ -96,7 +96,8 @@ InstallDialog::InstallDialog(wxWindow* parent, const wxString& filePathToInstall
     this->SetSizerAndFit(vbox);
 
     if (isDir) {
-        this->OnInstallTypeComboBoxUpdate(wxCommandEvent());
+        wxCommandEvent event;
+        this->OnInstallTypeComboBoxUpdate(event);
         this->setupFileLocationText->SetValue(filePathToInstall); // since it was cleared in the above function
     }
 
@@ -234,11 +235,11 @@ void InstallDialog::OnDone(wxCommandEvent& event) {
         wxString destPath = cDir + wxFileName::GetPathSeparator() + wxFileName(dirPath).GetName();
 
         bool wineDirCreated = false;
-        if (!wxDirExists(wineDir)) {
+        if (!wxDirExists(wineDir+ wxFileName::GetPathSeparator())) {
             wineDirCreated = true;
         }
-        if (!wxDirExists(cDir)) {
-            wxFileName(cDir).Mkdir(511, wxPATH_MKDIR_FULL);
+        if (!wxDirExists(cDir+ wxFileName::GetPathSeparator())) {
+            wxFileName(cDir+ wxFileName::GetPathSeparator()).Mkdir(511, wxPATH_MKDIR_FULL);
         }
         if (wineDirCreated) {
             wxString zipFile = GlobalSettings::GetFileSystemZip(GlobalSettings::GetFileFromWineName(container->GetWineVersion()));

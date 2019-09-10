@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Scheme
-   LastUpgradeVersion = "0460"
+   LastUpgradeVersion = "1020"
    version = "1.3">
    <BuildAction
       parallelizeBuildables = "YES"
@@ -14,10 +14,10 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "BAB02EC06578349A9171CCAC"
-               BuildableName = "libwx_osx_cocoa_static.a"
+               BlueprintIdentifier = "405B1ABF10EF253300676938"
+               BuildableName = "BoxedwineUI.app"
                BlueprintName = "static"
-               ReferencedContainer = "container:wxcocoa.xcodeproj">
+               ReferencedContainer = "container:BoxedwineUI.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -29,6 +29,15 @@
       shouldUseLaunchSchemeArgsEnv = "YES">
       <Testables>
       </Testables>
+      <MacroExpansion>
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "405B1ABF10EF253300676938"
+            BuildableName = "BoxedwineUI.app"
+            BlueprintName = "static"
+            ReferencedContainer = "container:BoxedwineUI.xcodeproj">
+         </BuildableReference>
+      </MacroExpansion>
       <AdditionalOptions>
       </AdditionalOptions>
    </TestAction>
@@ -42,15 +51,16 @@
       debugDocumentVersioning = "YES"
       debugServiceExtension = "internal"
       allowLocationSimulation = "YES">
-      <MacroExpansion>
+      <BuildableProductRunnable
+         runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "BAB02EC06578349A9171CCAC"
-            BuildableName = "libwx_osx_cocoa_static.a"
+            BlueprintIdentifier = "405B1ABF10EF253300676938"
+            BuildableName = "BoxedwineUI.app"
             BlueprintName = "static"
-            ReferencedContainer = "container:wxcocoa.xcodeproj">
+            ReferencedContainer = "container:BoxedwineUI.xcodeproj">
          </BuildableReference>
-      </MacroExpansion>
+      </BuildableProductRunnable>
       <AdditionalOptions>
       </AdditionalOptions>
    </LaunchAction>
@@ -60,6 +70,16 @@
       savedToolIdentifier = ""
       useCustomWorkingDirectory = "NO"
       debugDocumentVersioning = "YES">
+      <BuildableProductRunnable
+         runnableDebuggingMode = "0">
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "405B1ABF10EF253300676938"
+            BuildableName = "BoxedwineUI.app"
+            BlueprintName = "static"
+            ReferencedContainer = "container:BoxedwineUI.xcodeproj">
+         </BuildableReference>
+      </BuildableProductRunnable>
    </ProfileAction>
    <AnalyzeAction
       buildConfiguration = "Debug">

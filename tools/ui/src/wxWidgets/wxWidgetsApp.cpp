@@ -1,14 +1,15 @@
 
-#include <wx/wxprec.h>
-#include <wx/wx.h>
-#include <wx/stdpaths.h>
-#include <wx/filename.h>
-#include <wx/fileconf.h>
-#include <wx/listctrl.h>
-#include <wx/dir.h>
-#include <wx/config.h>
-#include <wx/dnd.h>
-#include <wx/display.h>
+#include "wx/wxprec.h"
+#include "wx/wx.h"
+#include "wx/stdpaths.h"
+#include "wx/filename.h"
+#include "wx/fileconf.h"
+#include "wx/listctrl.h"
+#include "wx/dir.h"
+#include "wx/config.h"
+#include "wx/dnd.h"
+#include "wx/display.h"
+#include "wx/imaglist.h"
 
 #include "wxWidgetsApp.h"
 #include "wxSettings.h"
@@ -46,7 +47,6 @@ bool BoxedWineApp::OnInit()
     SetVendorName("Boxedwine");
     SetAppName("Boxedwine");
     wxLog::EnableLogging(false);
-    wxConfigBase *pConfig = wxConfigBase::Get();
 
     BoxedFrame *frame = new BoxedFrame( "Boxedwine", wxDefaultPosition, wxSize(800, 600));
     frame->Show( true );
@@ -75,7 +75,7 @@ bool BoxedInstallDrop::OnDropFiles(wxCoord, wxCoord, const wxArrayString& filena
 }
 
 BoxedFrame::BoxedFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
-        : wxFrame(NULL, wxID_ANY, title, pos, size)
+: wxFrame(NULL, wxID_ANY, title, pos, size), appPanel(NULL), appListView(NULL), containerPanel(NULL), containerListView(NULL)
 {
     GlobalSettings::scaleFactor = this->FromDIP(10)/10;
     this->SetSize(wxSize(size.GetWidth()*GlobalSettings::GetScaleFactor(), size.GetHeight()*GlobalSettings::GetScaleFactor()));
@@ -122,6 +122,9 @@ void BoxedFrame::LoadContainers() {
 }
 
 void BoxedFrame::LoadConfig() {
+    if (!wxDirExists(wxStandardPaths::Get().GetUserDataDir() + wxFileName::GetPathSeparator())) {
+        wxMkdir(wxStandardPaths::Get().GetUserDataDir() + wxFileName::GetPathSeparator());
+    }
     wxString ini_filename = wxStandardPaths::Get().GetUserDataDir() + wxFileName::GetPathSeparator() + "boxedwine.ini";
     wxFileConfig *config = new wxFileConfig( "", "", ini_filename);
     config->SetRecordDefaults();
@@ -250,7 +253,6 @@ void BoxedFrame::ReloadAppList() {
     this->appListView->ClearAll();
     this->appListView->AssignImageList(imageList, wxIMAGE_LIST_NORMAL);
 
-    this->appListView->AppendColumn("Name");
     index = 0;
     for (auto& app : apps) {
         long id = this->appListView->InsertItem(index, app->GetName(), imageIndex[index]);
@@ -264,6 +266,7 @@ void BoxedFrame::SetupToolBar()
 {
     wxToolBarBase *toolBar = CreateToolBar(wxTB_NOICONS | wxTB_FLAT | wxTB_TEXT | wxTB_HORZ_LAYOUT | wxTB_TOP, ID_TOOLBAR);
 
+    toolBar->SetFont(wxFontInfo(20));
     toolBar->AddTool(ID_APPS, "   Apps   ", wxNullBitmap, "Shortcuts you created in a container", wxITEM_CHECK);
     toolBar->AddSeparator();
     toolBar->AddTool(ID_INSTALL, "   Install   ", wxNullBitmap, "Install a new application/game into a new or existing container", wxITEM_NORMAL);
@@ -273,7 +276,6 @@ void BoxedFrame::SetupToolBar()
     toolBar->AddTool(ID_SETTINGS, "   Settings   ", wxNullBitmap, "You can customize how Boxedwine is run", wxITEM_NORMAL);
     toolBar->AddSeparator();
     toolBar->AddTool(ID_HELP, "   Help   ", wxNullBitmap, "How to use the app", wxITEM_NORMAL);
-    toolBar->SetFont(wxFontInfo(20));
     toolBar->Realize();
     toolBar->ToggleTool(ID_APPS, true);
 }

@@ -1,9 +1,9 @@
-#include <wx/wxprec.h>
-#include <wx/wx.h>
-#include <wx/dir.h>
-#include <wx/filesys.h>
-#include <wx/zipstrm.h>
-#include <wx/wfstream.h>
+#include "wx/wxprec.h"
+#include "wx/wx.h"
+#include "wx/dir.h"
+#include "wx/filesys.h"
+#include "wx/zipstrm.h"
+#include "wx/wfstream.h"
 
 #include "wxUtils.h"
 

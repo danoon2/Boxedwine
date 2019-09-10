@@ -1,6 +1,6 @@
 #ifndef __BOXED_CONTAINER_H__
 #define __BOXED_CONTAINER_H__
-#include <wx/process.h>
+#include "wx/process.h"
 #include "BoxedApp.h"
 
 class BoxedContainerProcess : public wxProcess {

@@ -1,11 +1,11 @@
-#include <wx/wxprec.h>
-#include <wx/wx.h>
-#include <wx/filename.h>
-#include <wx/fs_zip.h>
-#include <wx/zipstrm.h>
-#include <wx/wfstream.h>
-#include <wx/dir.h>
-#include <wx/txtstrm.h>
+#include "wx/wxprec.h"
+#include "wx/wx.h"
+#include "wx/filename.h"
+#include "wx/fs_zip.h"
+#include "wx/zipstrm.h"
+#include "wx/wfstream.h"
+#include "wx/dir.h"
+#include "wx/txtstrm.h"
 
 #include "BoxedContainer.h"
 #include "GlobalSettings.h"
@@ -37,28 +37,30 @@ void GlobalSettings::InitWineVersions() {
 
     wxString filename;
     wxDir dir(GlobalSettings::GetFileSystemFolder());
-    bool cont = dir.GetFirst(&filename, wxEmptyString, wxDIR_FILES);
-    while(cont)
-    {
-        if (filename.Lower().EndsWith(".zip")) {
-            wxString zipPath = GlobalSettings::GetFileSystemFolder()+wxFileName::GetPathSeparator()+filename+"#zip:wineVersion.txt";
+    if (dir.IsOpened()) {
+        bool cont = dir.GetFirst(&filename, wxEmptyString, wxDIR_FILES);
+        while(cont)
+        {
+            if (filename.Lower().EndsWith(".zip")) {
+                wxString zipPath = GlobalSettings::GetFileSystemFolder()+wxFileName::GetPathSeparator()+filename+"#zip:wineVersion.txt";
 
-            wxFileSystem fs;
-            wxFSFile *zip = fs.OpenFile(zipPath);
-            if(zip!=NULL)
-            {
-                wxInputStream *in = zip->GetStream();                
-                if ( in != NULL )
+                wxFileSystem fs;
+                wxFSFile *zip = fs.OpenFile(zipPath);
+                if(zip!=NULL)
                 {
-                    wxTextInputStream text(*in);
-                    wxString wineName = text.ReadLine();
-                    GlobalSettings::wineVersions.push_back(WineVersion(wineName, filename));
+                    wxInputStream *in = zip->GetStream();
+                    if ( in != NULL )
+                    {
+                        wxTextInputStream text(*in);
+                        wxString wineName = text.ReadLine();
+                        GlobalSettings::wineVersions.push_back(WineVersion(wineName, filename));
+                    }
+                    delete zip;
                 }
-                delete zip;
             }
+            cont = dir.GetNext(&filename);
         }
-        cont = dir.GetNext(&filename);
-    }    
+    }
 }
 
 wxString GlobalSettings::GetContainerFolder() {

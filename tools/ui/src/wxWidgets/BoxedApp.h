@@ -5,6 +5,8 @@ class BoxedContainer;
 
 class BoxedApp {
 public:
+    BoxedApp() : bpp(0), fullScreen(false), scale(0), scaleQuality(0), container(NULL) {}
+    
     bool Load(BoxedContainer* container, const wxString& iniFilepath);
 
     const wxString& GetName() {return this->name;}
