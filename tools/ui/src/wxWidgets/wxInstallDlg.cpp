@@ -247,9 +247,6 @@ void InstallDialog::OnDone(wxCommandEvent& event) {
             // :TODO: not sure why if I don't do this, wine will detect a change and update the .wine directory
             wxExtractZipFile(zipFile, root, timestampeFile);
         }
-        if (!wxDirExists(cDir)) {
-            wxMkdir(cDir);
-        }
         if (!wxCopyDir(dirPath, destPath)) {
             wxString msg = "Failed to copy direcotry: "+ dirPath + " to " + destPath;
             wxMessageDialog *dlg = new wxMessageDialog(NULL, msg, "Error", wxOK | wxICON_ERROR);

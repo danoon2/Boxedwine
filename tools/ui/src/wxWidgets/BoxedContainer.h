@@ -18,6 +18,8 @@ public:
     static BoxedContainer* CreateContainer(const wxString& dirPath, const wxString& name, const wxString& wineVersion);
 
     bool Load(const wxString& dirPath);
+    bool SaveContainer();
+
     void Reload();
     int GetAppAcount() {return this->apps.size();}
     BoxedApp* GetApp(int index) {if (index>=0 && index<(int)this->apps.size()) { return this->apps[index]; } else {return NULL;}}
@@ -40,6 +42,7 @@ private:
     void GetExeApps(std::vector<BoxedApp>& apps);
 
     friend class GlobalSettings;
+    friend class BoxedContainerOptionsDialog;
     std::vector<BoxedApp*> apps;
     wxString name;
     wxString wineVersion;

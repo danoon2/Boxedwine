@@ -5,6 +5,8 @@
 #include "BoxedContainerList.h"
 #include "BoxedContainer.h"
 #include "PickAppDlg.h"
+#include "BoxedContainerOptionsDlg.h"
+
 #include "wxWidgetsApp.h"
 
 static const int ID_ITEM_SETTINGS = 300;
@@ -43,10 +45,12 @@ void BoxedContainerList::ShowContextMenu(BoxedContainer* container)
     int id = GetPopupMenuSelectionFromUser(menu);
 
     if (id == ID_ITEM_SETTINGS) {
-
+        BoxedContainerOptionsDialog *dlg = new BoxedContainerOptionsDialog(this, container);
+        if (dlg->GetReturnCode()==wxID_OK) {
+            this->mainFrame->ReloadContainerList();
+        }
     } else if (id == ID_ITEM_ADD_APP) {
         PickAppDialog *dlg = new PickAppDialog(this, container);
-        dlg->Show(true);
         if (dlg->GetReturnCode()==wxID_OK) {
             container->Reload();
             this->mainFrame->ReloadAppList();

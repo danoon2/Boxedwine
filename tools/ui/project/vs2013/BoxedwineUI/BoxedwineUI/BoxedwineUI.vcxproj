@@ -93,6 +93,7 @@
     <ClCompile Include="..\..\..\..\src\wxWidgets\BoxedAppOptionsDlg.cpp" />
     <ClCompile Include="..\..\..\..\src\wxWidgets\BoxedContainer.cpp" />
     <ClCompile Include="..\..\..\..\src\wxWidgets\BoxedContainerList.cpp" />
+    <ClCompile Include="..\..\..\..\src\wxWidgets\BoxedContainerOptionsDlg.cpp" />
     <ClCompile Include="..\..\..\..\src\wxWidgets\GlobalSettings.cpp" />
     <ClCompile Include="..\..\..\..\src\wxWidgets\PickAppDlg.cpp" />
     <ClCompile Include="..\..\..\..\src\wxWidgets\wxHelp.cpp" />
@@ -107,6 +108,7 @@
     <ClInclude Include="..\..\..\..\src\wxWidgets\BoxedAppOptionsDlg.h" />
     <ClInclude Include="..\..\..\..\src\wxWidgets\BoxedContainer.h" />
     <ClInclude Include="..\..\..\..\src\wxWidgets\BoxedContainerList.h" />
+    <ClInclude Include="..\..\..\..\src\wxWidgets\BoxedContainerOptionsDlg.h" />
     <ClInclude Include="..\..\..\..\src\wxWidgets\GlobalSettings.h" />
     <ClInclude Include="..\..\..\..\src\wxWidgets\PickAppDlg.h" />
     <ClInclude Include="..\..\..\..\src\wxWidgets\wxHelp.h" />

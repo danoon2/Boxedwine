@@ -43,6 +43,16 @@ BoxedContainer* BoxedContainer::CreateContainer(const wxString& dirPath, const w
     return container;
 }
 
+bool BoxedContainer::SaveContainer() {
+    wxString iniFilePath = dirPath + wxFileName::GetPathSeparator() + "container.ini";
+    wxFileConfig *config = new wxFileConfig("", "", iniFilePath);
+    config->Write("Name", this->name);
+    config->Write("WineVersion", this->wineVersion);
+    config->Flush();
+    delete config;
+    return true;
+}
+
 void BoxedContainer::DeleteContainerFromFilesystem() {
     wxFileName::Rmdir(this->dirPath, wxPATH_RMDIR_RECURSIVE);
 }
