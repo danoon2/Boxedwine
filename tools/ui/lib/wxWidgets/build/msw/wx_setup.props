@@ -49,7 +49,7 @@
     <wxLibTypeSuffix>lib</wxLibTypeSuffix>
   </PropertyGroup>
   <PropertyGroup Label="UserMacros">
-    <wxOutDirName>$(wxCompilerPrefix)$(wxArchSuffix)_$(wxLibTypeSuffix)$(wxCfg)</wxOutDirName>
+    <wxOutDirName>$(wxCompilerPrefix)$(wxArchSuffix)_$(wxLibTypeSuffix)$(wxSuffix)$(wxCfg)</wxOutDirName>
     <wxOutDir>..\..\lib\$(wxOutDirName)\</wxOutDir>
   </PropertyGroup>
   <PropertyGroup Label="UserMacros" Condition="'$(Configuration)'=='DLL Debug'">

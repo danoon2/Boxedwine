@@ -107,7 +107,7 @@ void BoxedContainer::Launch(const wxString& cmd, const wxString& args, const wxS
     wxString zip = GlobalSettings::GetFileSystemZip(GlobalSettings::GetFileFromWineName(this->wineVersion));
     wxString root = GlobalSettings::GetRootFolder(this);
 
-    wxString launchCmd = "\""+GlobalSettings::exeFileLocation+"\" -root \""+root+"\" -zip \""+zip+"\" -w \""+path+"\" "+args;
+    wxString launchCmd = "\""+GlobalSettings::exeFileLocation+"\" -showStartupWindow -root \""+root+"\" -zip \""+zip+"\" -w \""+path+"\" "+args;
     if (!launchCmd.EndsWith(" ")) {
         launchCmd=launchCmd+" ";
     }

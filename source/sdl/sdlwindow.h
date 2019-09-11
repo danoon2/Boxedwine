@@ -57,4 +57,5 @@ void sdlPushWindowSurface();
 void sdlPopWindowSurface();
 void sdlDrawRectOnPushedSurfaceAndDisplay(U32 x, U32 y, U32 w, U32 h, U8 r, U8 g, U8 b, U8 a);
 bool handlSdlEvent(void* e);
+void showSDLStartingWindow();
 #endif

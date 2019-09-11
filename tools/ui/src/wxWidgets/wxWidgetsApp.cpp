@@ -74,8 +74,7 @@ bool BoxedInstallDrop::OnDropFiles(wxCoord, wxCoord, const wxArrayString& filena
     return true;
 }
 
-BoxedFrame::BoxedFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
-: wxFrame(NULL, wxID_ANY, title, pos, size), appPanel(NULL), appListView(NULL), containerPanel(NULL), containerListView(NULL)
+BoxedFrame::BoxedFrame(const wxString& title, const wxPoint& pos, const wxSize& size) : wxFrame(NULL, wxID_ANY, title, pos, size), appPanel(NULL), appListView(NULL), containerPanel(NULL), containerListView(NULL)
 {
     GlobalSettings::scaleFactor = this->FromDIP(10)/10;
     this->SetSize(wxSize(size.GetWidth()*GlobalSettings::GetScaleFactor(), size.GetHeight()*GlobalSettings::GetScaleFactor()));

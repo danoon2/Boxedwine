@@ -56,11 +56,11 @@ void BoxedContainerList::ShowContextMenu(BoxedContainer* container)
             this->mainFrame->ReloadAppList();
         }
     } else if (id == ID_ITEM_LAUNCH_WINECFG) {
-        container->LaunchWine("winecfg", "", "/home/username", true);
+        container->LaunchWine("winecfg", "", "/home/username", false);
     } else if (id == ID_ITEM_LAUNCH_EXPLORER) {
-        container->LaunchWine("explorer", "", "/home/username", true);
+        container->LaunchWine("explorer", "", "/home/username", false);
     } else if (id == ID_ITEM_LAUNCH_REGEDIT) {
-        container->LaunchWine("regedit", "", "/home/username", true);
+        container->LaunchWine("regedit", "", "/home/username", false);
     } else if (id == ID_ITEM_REMOVE) {
         wxMessageDialog dialog(this, "Are you sure you want to delete this container?  This will be permanant and if you change your mind you will have to reinstall any apps that were in this container.", "Confirm Delete", wxCENTER | wxNO_DEFAULT | wxYES_NO | wxICON_QUESTION);
         if (dialog.ShowModal()==wxID_YES) {

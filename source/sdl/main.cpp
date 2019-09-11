@@ -143,6 +143,7 @@ int boxedmain(int argc, const char **argv) {
     bool euidSet = false;
     bool nozip = false;
     std::vector<MountInfo> mountInfo;
+    bool showStartingWindow = false;
 
     klog("Starting ...");
 
@@ -259,6 +260,8 @@ int boxedmain(int argc, const char **argv) {
                 mountInfo.push_back(MountInfo(argv[i+2], argv[i+1], false));
             }
             i+=2;
+        } else if (!strcmp(argv[i], "-showStartupWindow")) {
+            showStartingWindow = true;
         }
 #ifdef BOXEDWINE_RECORDER
         else if (!strcmp(argv[i], "-record")) {
@@ -473,7 +476,9 @@ int boxedmain(int argc, const char **argv) {
         klog("SDL_Init Error: %s", SDL_GetError());
         return 0;
     }
-
+    if (showStartingWindow) {
+        showSDLStartingWindow();
+    }
     if (!validLinuxCommand && (zip.length()==0 || !Fs::doesNativePathExist(zip)) && !Fs::getNodeFromLocalPath("", "/bin/wine", true) ){
         if (videoEnabled) {
             SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "File system not found", "Make sure you have a valid zip file in the same folder as Boxedwine or you specify one on the commandline.", NULL);

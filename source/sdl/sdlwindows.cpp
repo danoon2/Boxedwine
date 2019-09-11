@@ -588,6 +588,16 @@ void sdlScreenResized(KThread* thread) {
     DISPATCH_MAIN_THREAD_BLOCK_END
 }
 
+void showSDLStartingWindow() {
+    #ifdef SDL2
+        sdlWindow = SDL_CreateWindow("BoxedWine Is Starting Up", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 320, 240, SDL_WINDOW_SHOWN);
+        sdlRenderer = SDL_CreateRenderer(sdlWindow, -1, 0);	
+#else
+        SDL_WM_SetCaption("BoxedWine Is Starting Up", "BoxedWine Is Starting Up");
+        surface = SDL_SetVideoMode(320, 249, 32, flags);
+#endif
+}
+
 static void displayChanged(KThread* thread) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(sdlMutex);
 #ifndef SDL2

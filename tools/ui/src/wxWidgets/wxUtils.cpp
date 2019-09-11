@@ -9,7 +9,7 @@
 
 wxArrayString wxUtilRemoveDuplicates(const wxArrayString& values) {
     wxArrayString results; // new empty wxArrayString
-    for(int i=0; i<values.GetCount(); i++)
+    for(int i=0; i<(int)values.GetCount(); i++)
     {
         const wxString &s = values[i];
         if( results.Index(s) == wxNOT_FOUND )
