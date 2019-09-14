@@ -36,6 +36,7 @@
 		7105EE0423284E620021A04E /* wxUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7105EDE923284E620021A04E /* wxUtils.cpp */; };
 		7105EE0523284E620021A04E /* BoxedAppOptionsDlg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7105EDEC23284E620021A04E /* BoxedAppOptionsDlg.cpp */; };
 		7105EE0623284E620021A04E /* BoxedAppOptionsDlg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7105EDEC23284E620021A04E /* BoxedAppOptionsDlg.cpp */; };
+		71E8CD40232C528A0042DABB /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 71E8CD3E232C51F70042DABB /* Images.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -249,7 +250,7 @@
 		40735927137088070077DE1B /* Info_cocoa.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info_cocoa.plist; sourceTree = "<group>"; };
 		407A752213B0E1EB006BC2D5 /* wxcocoa.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = wxcocoa.xcconfig; path = ../../../lib/wxWidgets/build/osx/wxcocoa.xcconfig; sourceTree = SOURCE_ROOT; };
 		407A752313B0E1EB006BC2D5 /* wxdebug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = wxdebug.xcconfig; path = ../../../lib/wxWidgets/build/osx/wxdebug.xcconfig; sourceTree = SOURCE_ROOT; };
-		407A752413B0E1EB006BC2D5 /* wxrelease.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = wxrelease.xcconfig; path = ../../lib/wxWidgets/build/osx/wxrelease.xcconfig; sourceTree = SOURCE_ROOT; };
+		407A752413B0E1EB006BC2D5 /* wxrelease.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = wxrelease.xcconfig; path = ../../../lib/wxWidgets/build/osx/wxrelease.xcconfig; sourceTree = SOURCE_ROOT; };
 		7105EDD323284E610021A04E /* wxSettings.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = wxSettings.h; path = ../../../src/wxWidgets/wxSettings.h; sourceTree = "<group>"; };
 		7105EDD423284E610021A04E /* BoxedContainer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = BoxedContainer.h; path = ../../../src/wxWidgets/BoxedContainer.h; sourceTree = "<group>"; };
 		7105EDD523284E610021A04E /* BoxedContainerOptionsDlg.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = BoxedContainerOptionsDlg.cpp; path = ../../../src/wxWidgets/BoxedContainerOptionsDlg.cpp; sourceTree = "<group>"; };
@@ -276,6 +277,7 @@
 		7105EDEA23284E620021A04E /* wxWidgetsApp.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = wxWidgetsApp.h; path = ../../../src/wxWidgets/wxWidgetsApp.h; sourceTree = "<group>"; };
 		7105EDEB23284E620021A04E /* BoxedApp.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = BoxedApp.h; path = ../../../src/wxWidgets/BoxedApp.h; sourceTree = "<group>"; };
 		7105EDEC23284E620021A04E /* BoxedAppOptionsDlg.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = BoxedAppOptionsDlg.cpp; path = ../../../src/wxWidgets/BoxedAppOptionsDlg.cpp; sourceTree = "<group>"; };
+		71E8CD3E232C51F70042DABB /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
 		8D1107320486CEB800E47090 /* BoxedwineUI.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BoxedwineUI.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -311,6 +313,7 @@
 		29B97314FDCFA39411CA2CEA /* minimal_cocoa */ = {
 			isa = PBXGroup;
 			children = (
+				71E8CD3E232C51F70042DABB /* Images.xcassets */,
 				407A752213B0E1EB006BC2D5 /* wxcocoa.xcconfig */,
 				407A752313B0E1EB006BC2D5 /* wxdebug.xcconfig */,
 				407A752413B0E1EB006BC2D5 /* wxrelease.xcconfig */,
@@ -396,6 +399,7 @@
 			buildPhases = (
 				405B1AC210EF253300676938 /* Sources */,
 				405B1AC410EF253300676938 /* Frameworks */,
+				71E8CD3F232C52820042DABB /* Resources */,
 			);
 			buildRules = (
 			);
@@ -638,6 +642,17 @@
 		};
 /* End PBXReferenceProxy section */
 
+/* Begin PBXResourcesBuildPhase section */
+		71E8CD3F232C52820042DABB /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				71E8CD40232C528A0042DABB /* Images.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		405B1AC210EF253300676938 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -699,6 +714,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 407A752213B0E1EB006BC2D5 /* wxcocoa.xcconfig */;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				OTHER_LDFLAGS = "$(OTHER_LDFLAGS)";
 				PRODUCT_NAME = BoxedwineUI;
 				VALID_ARCHS = x86_64;
@@ -709,6 +725,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 407A752213B0E1EB006BC2D5 /* wxcocoa.xcconfig */;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				OTHER_LDFLAGS = "$(OTHER_LDFLAGS)";
 				PRODUCT_NAME = BoxedwineUI;
 				VALID_ARCHS = x86_64;
@@ -719,6 +736,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 407A752213B0E1EB006BC2D5 /* wxcocoa.xcconfig */;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				PRODUCT_BUNDLE_IDENTIFIER = org.boxedwine;
 				PRODUCT_NAME = BoxedwineUI;
 				USER_HEADER_SEARCH_PATHS = "$(WXROOT)/include $(WXROOT)/build/osx/setup/$(WXTOOLKIT)/include";
@@ -731,6 +749,7 @@
 			baseConfigurationReference = 407A752213B0E1EB006BC2D5 /* wxcocoa.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = YES;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				PRODUCT_BUNDLE_IDENTIFIER = org.boxedwine;
 				PRODUCT_NAME = BoxedwineUI;
 				USER_HEADER_SEARCH_PATHS = "$(WXROOT)/include $(WXROOT)/build/osx/setup/$(WXTOOLKIT)/include";
