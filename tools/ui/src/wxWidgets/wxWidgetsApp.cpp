@@ -78,6 +78,14 @@ BoxedFrame::BoxedFrame(const wxString& title, const wxPoint& pos, const wxSize& 
 {
     GlobalSettings::scaleFactor = this->FromDIP(10)/10;
     this->SetSize(wxSize(size.GetWidth()*GlobalSettings::GetScaleFactor(), size.GetHeight()*GlobalSettings::GetScaleFactor()));
+
+#ifdef _WINDOWS
+    HWND hWnd = this->GetHandle();
+    HINSTANCE hInstance = wxGetInstance();
+    HICON hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(101));
+    SetClassLongPtr(hWnd, GCLP_HICONSM, (LONG_PTR)hIcon);
+#endif
+
     ::wxInitAllImageHandlers();    
     LoadConfig();
     GlobalSettings::InitWineVersions();

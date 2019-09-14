@@ -8,6 +8,7 @@ HelpDialog::HelpDialog(wxWindow* parent) : wxDialog(parent, -1, "Help") {
     wxBoxSizer *vbox = new wxBoxSizer(wxVERTICAL);
 
     wxBoxSizer *hbox2 = new wxBoxSizer(wxHORIZONTAL);
+    vbox->Add(new wxStaticText(this, -1, "Version: 19R1 Beta 3", wxDefaultPosition, wxDefaultSize), wxSizerFlags().DoubleBorder());
     hbox2->Add(new wxStaticText(this, -1, "More information at ", wxDefaultPosition, wxDefaultSize), wxSizerFlags().DoubleBorder(wxLEFT|wxTOP));
     hbox2->Add(new wxHyperlinkCtrl(this, -1, "http://boxedwine.org", "http://boxedwine.org"), wxSizerFlags().DoubleBorder(wxTOP));
     vbox->Add(hbox2);

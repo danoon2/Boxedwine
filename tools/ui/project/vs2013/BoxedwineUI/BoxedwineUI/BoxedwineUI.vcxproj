@@ -157,6 +157,13 @@
     <ClInclude Include="..\..\..\..\src\wxWidgets\wxSettings.h" />
     <ClInclude Include="..\..\..\..\src\wxWidgets\wxUtils.h" />
     <ClInclude Include="..\..\..\..\src\wxWidgets\wxWidgetsApp.h" />
+    <ClInclude Include="resource.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="BoxedwineUI.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="app.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
