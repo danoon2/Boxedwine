@@ -47,6 +47,17 @@ public:
     void translateData(X64Asm* data, X64Asm* firstPass=NULL);
     X64CodeChunk* translateChunk(X64Asm* parent, U32 ip);
 
+    U64 handleChangedUnpatchedCode(U64 rip);
+    U64 handleCodePatch(U64 rip, U32 address, U64 rsi, U64 rdi, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo);
+    U64 handleMissingCode(U64 r8, U64 r9, U32 inst);
+
+    U64 handleIllegalInstruction(U64 rip);
+    U64 handleAccessException(U64 rip, U64 address, bool readAddress, U64 rsi, U64 rdi, U64 r8, U64 r9, U64* r10, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo); // returns new rip, if 0 then don't set rip, but continue execution
+    void startThread();
+    void unscheduleThread();
+    U64 startException(U64 address, bool readAddress, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo);
+    U64 handleDivByZero(std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo);
+
     virtual void setSeg(U32 index, U32 address, U32 value);
 private:      
     void* translateEipInternal(X64Asm* parent, U32 ip);            

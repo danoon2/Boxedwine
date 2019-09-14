@@ -1,4 +1,5 @@
 #include "boxedwine.h"
+#include <SDL.h>
 
 #ifdef BOXEDWINE_X64
 #include "x64Ops.h"
@@ -353,6 +354,312 @@ DecodedOp* x64CPU::getOp(U32 eip, bool existing) {
         return block->op;
     }
     return NULL;
+}
+
+U64 x64CPU::handleCodePatch(U64 rip, U32 address, U64 rsi, U64 rdi, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo) {
+#ifndef __TEST
+    // only one thread at a time can update the host code pages and related date like opToAddressPages
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->thread->memory->executableMemoryMutex);
+#endif
+    // get the emulated eip of the op that corresponds to the host address where the exception happened
+    X64CodeChunk* chunk = this->thread->memory->getCodeChunkContainingHostAddress((void*)rip);
+    this->eip.u32 = chunk->getEipThatContainsHostAddress((void*)rip, NULL, NULL)-this->seg[CS].address;
+
+    // get the emulated op that caused the write
+    DecodedOp* op = this->getOp(this->eip.u32, true);
+    if (op) {             
+        // change permission of the page so that we can write to it
+        U32 len = instructionInfo[op->inst].writeMemWidth/8;
+        X64AsmCodeMemoryWrite w(this);        
+        static DecodedBlock b;
+        DecodedBlock::currentBlock = &b;
+        b.next1 = &b;
+        b.next2 = &b;
+        // do the write
+        op->pfn = NormalCPU::getFunctionForOp(op);
+        op->next = DecodedOp::alloc();
+        op->next->inst = Done;
+        op->next->pfn = NormalCPU::getFunctionForOp(op->next);
+        doSyncFrom(op);
+
+        if (this->flags & DF) {
+            this->df = -1;
+        } else {
+            this->df = 1;
+        }
+        // for string instruction, we modify (add memory offset and segment) rdi and rsi so that the native string instruction can be used, this code will revert it back to the original values
+        // uses si
+        if (op->inst==Lodsb || op->inst==Lodsw || op->inst==Lodsd) {
+            THIS_ESI=(U32)(rsi - this->memOffset - this->seg[op->base].address);
+            // doesn't write            
+        }
+        // uses di (Examples: diablo 1 will trigger this in the middle of the Stosd when creating a new game)
+        else if (op->inst==Stosb || op->inst==Stosw || op->inst==Stosd ||
+            op->inst==Scasb || op->inst==Scasw || op->inst==Scasd) {
+            THIS_EDI=(U32)(rdi - this->memOffset - this->seg[ES].address);
+            if (instructionInfo[op->inst].writeMemWidth) {
+                w.invalidateStringWriteToDi(op->repNotZero || op->repZero, instructionInfo[op->inst].writeMemWidth/8);
+            }
+        }
+        // uses si and di
+        else if (op->inst==Movsb || op->inst==Movsw || op->inst==Movsd ||
+            op->inst==Cmpsb || op->inst==Cmpsw || op->inst==Cmpsd) {
+            THIS_ESI=(U32)(rsi - this->memOffset - this->seg[op->base].address);
+            THIS_EDI=(U32)(rdi - this->memOffset - this->seg[ES].address);
+            if (instructionInfo[op->inst].writeMemWidth) {
+                w.invalidateStringWriteToDi(op->repNotZero || op->repZero, instructionInfo[op->inst].writeMemWidth/8);
+            }
+        } else {
+            w.invalidateCode(address, len);
+        }  
+        FILE* f = (FILE*)this->logFile;
+        this->logFile = NULL;       
+        op->pfn(this, op);   
+        this->logFile = f;        
+        doSyncTo(op);
+
+        // eip was ajusted after running this instruction                        
+        U32 a = this->getEipAddress();
+        if (!this->eipToHostInstruction[a >> K_PAGE_SHIFT] || !this->eipToHostInstruction[a >> K_PAGE_SHIFT][a & K_PAGE_MASK]) {
+            this->translateEip(this->eip.u32);
+        }
+        U64 result = (U64)this->eipToHostInstruction[a >> K_PAGE_SHIFT][a & K_PAGE_MASK];
+        if (result==0) {
+            kpanic("x64::handleCodePatch failed to translate code");
+        }
+        op->dealloc(true);
+        return result;
+    } else {                        
+        kpanic("Threw an exception from a host location that doesn't map to an emulated instruction");
+    }
+    return 0;
+}
+
+U64 x64CPU::handleChangedUnpatchedCode(U64 rip) {
+#ifndef __TEST
+    // only one thread at a time can update the host code pages and related date like opToAddressPages
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->thread->memory->executableMemoryMutex);
+#endif
+                        
+    unsigned char* hostAddress = (unsigned char*)rip;
+    X64CodeChunk* chunk = this->thread->memory->getCodeChunkContainingHostAddress(hostAddress);
+    if (!chunk) {
+        /* some debug code
+        U32 toEip = *(((U32*)hostAddress)+2);
+        KThread* thread = KThread::currentThread();
+        Memory* memory = thread->memory;
+
+        for (U32 i=0;i<K_NUMBER_OF_PAGES;i++) {
+            X64CodeChunk* chunk = memory->hostCodeChunks[i];
+            while (chunk) {
+                if (chunk->hasLinkTo(hostAddress)) {
+                    int ii=0;
+                }
+                if (chunk->hasLinkToEip(toEip)) {
+                    int ii=0;
+                }
+                chunk = chunk->getNext();
+            }
+        }
+        */
+        kpanic("x64CPU::handleChangedUnpatchedCode: could not find chunk");
+    }
+    U32 startOfEip = chunk->getEipThatContainsHostAddress(hostAddress, NULL, NULL);
+    if (!chunk->isDynamicAware() || !chunk->retranslateSingleInstruction(this, hostAddress)) {        
+        chunk->deallocAndRetranslate();   
+    }
+    U64 result = (U64)this->thread->memory->getExistingHostAddress(startOfEip);
+    if (result==0) {
+        result = (U64)this->translateEip(startOfEip-this->seg[CS].address);
+    }
+    if (result==0) {
+        kpanic("x64CPU::handleChangedUnpatchedCode failed to translate code in exception");
+    }
+    return result;
+}
+
+U64 x64CPU::handleMissingCode(U64 r8, U64 r9, U32 inst) {
+    U32 page = (U32)r8;
+    U32 offset = (U32)r9;
+
+    this->translateEip(((page << K_PAGE_SHIFT) | offset) - this->seg[CS].address);  
+    if (inst==0xCA148B4F) {
+        return (U64)(this->eipToHostInstruction[page]);
+    } else {
+        return (U64)(this->eipToHostInstruction[page][offset]);
+    }
+}
+
+U64 x64CPU::handleIllegalInstruction(U64 rip) {    
+    if (*((U8*)rip)==0xce) {            
+        return this->handleChangedUnpatchedCode(rip);
+    } 
+    if (*((U8*)rip)==0xcd) { 
+        // free'd chunks are filled in with 0xcd, if this one is free'd, it is possible another thread replaced the chunk
+        // while this thread jumped to it and this thread waited in the critical section at the top of this function.
+        void* host = this->thread->memory->getExistingHostAddress(this->eip.u32+this->seg[CS].address);
+        if (host) {
+            return (U64)host;
+        } else {
+            kpanic("x64CPU::handleIllegalInstruction tried to run code in a free'd chunk");
+        }
+    }
+    return 0;
+}
+
+U32 dynamicCodeExceptionCount;
+
+U64 x64CPU::handleAccessException(U64 rip, U64 address, bool readAddress, U64 rsi, U64 rdi, U64 r8, U64 r9, U64* r10, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo) {
+    U32 inst = *((U32*)rip);
+
+    if (inst==0x0A8B4566 || inst==0xCA148B4F) { // if these constants change, update handleMissingCode too     
+        // rip is not adjusted so we don't need to check for stack alignment
+        *r10 = this->handleMissingCode(r8, r9, inst);
+        return 0;
+    } else if (inst==0xcdcdcdcd) {
+        // this thread was waiting on the critical section and the thread that was currently in this handler removed the code we were running
+        void* host = this->thread->memory->getExistingHostAddress(this->eip.u32+this->seg[CS].address);
+        if (host) {
+            return (U64)host;
+        } else {
+            kpanic("x64CPU::handleAccessException tried to run code in a free'd chunk");
+        }
+    } else {          
+        // check if the emulated memory caused the exception
+        if ((address & 0xFFFFFFFF00000000l) == this->thread->memory->id) {                
+            U32 emulatedAddress = (U32)address;
+            
+            // check if emulated memory that caused the exception is a page that has code
+            if (this->thread->memory->nativeFlags[emulatedAddress>>K_PAGE_SHIFT] & NATIVE_FLAG_CODEPAGE_READONLY) {                    
+                dynamicCodeExceptionCount++;                    
+                return this->handleCodePatch(rip, emulatedAddress, rsi, rdi, doSyncFrom, doSyncTo);                    
+            }
+        }   
+#ifdef _DEBUG
+        void* fromHost = this->thread->memory->getExistingHostAddress(this->fromEip);
+        X64CodeChunk* chunk = this->thread->memory->getCodeChunkContainingHostAddress((void*)rip);
+#endif
+        doSyncFrom(NULL);
+        this->thread->seg_mapper((U32)address, readAddress, !readAddress);
+        doSyncTo(NULL);
+        U64 result = (U64)this->translateEip(this->eip.u32); 
+        if (result==0) {
+            kpanic("x64CPU::handleAccessException failed to translate code");
+        }
+        return result;
+    }
+}
+
+U64 x64CPU::handleDivByZero(std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo) {
+    doSyncFrom(NULL);
+    this->prepareException(EXCEPTION_DIVIDE, 0);
+    doSyncTo(NULL);
+    U64 result = (U64)this->translateEip(this->eip.u32); 
+    if (result==0) {
+        kpanic("x64CPU::handleDivByZero failed to translate code");
+    }
+    return result;
+}
+
+void OPCALL unscheduleCallback(CPU* cpu, DecodedOp* op) {
+    jmp_buf* jmpBuf = ((x64CPU*)KThread::currentThread()->cpu)->jmpBuf;
+    longjmp(*jmpBuf,1);
+}
+
+
+U64 x64CPU::startException(U64 address, bool readAddress, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo) {
+    if (this->thread->exiting) {
+        X64Asm data(this);
+        data.callCallback(unscheduleCallback);        
+        return (U64)data.commit(true)->getHostAddress();                
+    }
+    if (this->inException) {
+        doSyncFrom(NULL);
+        this->thread->seg_mapper((U32)address, readAddress, !readAddress);
+        doSyncTo(NULL);
+        U64 result = (U64)this->translateEip(this->eip.u32); 
+        if (result==0) {
+            kpanic("x64CPU::startException failed to translate code in exception");
+        }
+        return result;
+    } 
+    return 0;
+}
+
+extern U32 platformThreadCount;
+
+void x64CPU::startThread() {
+    jmp_buf jmpBuf;
+    U32 threadId = thread->id;
+    U32 processId = thread->process->id;
+
+    KThread::setCurrentThread(thread);       
+
+    // :TODO: hopefully this will eventually go away.  For now this prevents a signal from being generated which isn't handled yet
+    SDL_Delay(50);   
+
+    if (!setjmp(jmpBuf)) {
+        this->jmpBuf = &jmpBuf;
+        this->run();
+    }
+    thread->exited = true;
+    while (thread->process) {
+        SDL_Delay(10);
+    }
+
+    // in case we exited because of an exit syscall, but the process is also in the middle of an exit_group
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(KProcess::exitGroupMutex);
+
+    BOXEDWINE_CONDITION_LOCK(this->endCond);
+    BOXEDWINE_CONDITION_SIGNAL(this->endCond);
+    BOXEDWINE_CONDITION_UNLOCK(this->endCond);
+
+    delete thread;
+    
+    platformThreadCount--;
+    if (platformThreadCount==0) {
+        SDL_Event sdlevent;
+        sdlevent.type = SDL_QUIT;        
+        SDL_PushEvent(&sdlevent);
+    }
+}
+
+void x64CPU::unscheduleThread() {
+    thread->exiting = true;
+    BoxedWineCondition* cond = thread->waitingCond;
+    if (cond) {
+        cond->signal();
+    }    
+    while (!thread->exited) {
+        SDL_Delay(10);
+    }
+    // another thread in this process could have called exit while we are in the middle of an exit_group
+    KProcess* process = thread->process;
+    if (process) {
+        process->removeThread(thread);
+        thread->process = NULL;
+    }
+}
+
+void addTimer(KTimer* timer) {
+    kpanic("addTimer not implemented yet");
+}
+
+void removeTimer(KTimer* timer) {
+    if (timer->active)
+        kpanic("removeTimer not implemented yet");
+}
+
+void unscheduleThread(KThread* thread) {
+    if (thread==KThread::currentThread())
+        return;
+
+    ((x64CPU*)thread->cpu)->unscheduleThread();
+}
+
+void unscheduleCurrentThread() {
+    jmp_buf* jmpBuf = ((x64CPU*)KThread::currentThread()->cpu)->jmpBuf;
+    longjmp(*jmpBuf,1);
 }
 
 #endif

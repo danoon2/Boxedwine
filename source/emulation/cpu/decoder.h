@@ -1203,6 +1203,8 @@ public:
     void dealloc(bool deallocNext);    
     void log(CPU* cpu);
     bool needsToSetFlags();
+    bool isFpuOp();
+
     static U32 getNeededFlags(DecodedBlock* block, DecodedOp* op, U32 flags, U32 depth=2);
 
     DecodedOp* next;

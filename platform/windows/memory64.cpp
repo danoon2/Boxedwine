@@ -43,7 +43,7 @@ void freeNativeMemory(Memory* memory, U32 page, U32 pageCount) {
     for (i=0;i<pageCount;i++) {
         DWORD oldProtect;
 
-        if ((memory->nativeFlags[page] & NATIVE_FLAG_CODEPAGE_READONLY)) {
+        if ((memory->nativeFlags[page+i] & NATIVE_FLAG_CODEPAGE_READONLY)) {
             if (!VirtualProtect(getNativeAddress(memory, (page+i) << K_PAGE_SHIFT), (1 << K_PAGE_SHIFT), PAGE_READWRITE, &oldProtect)) {
                 LPSTR messageBuffer = NULL;
                 size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);

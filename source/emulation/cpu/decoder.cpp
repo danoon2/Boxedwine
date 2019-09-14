@@ -5179,6 +5179,10 @@ void DecodedOp::dealloc(bool deallocNext) {
     freeOps = this;
 }
 
+bool DecodedOp::isFpuOp() {
+   return (this->originalOp>=0xd8 && this->originalOp<=0xdf) || (this->originalOp>=0x2d8 && this->originalOp<=0x2df);
+}
+
 bool DecodedOp::needsToSetFlags() {
     U32 needsToSet = instructionInfo[this->inst].flagsSets & ~MAYBE;
     return DecodedOp::getNeededFlags(DecodedBlock::currentBlock, this, needsToSet)!=0;

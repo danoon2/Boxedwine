@@ -683,7 +683,7 @@ void common_maskmovqEDIMmxMmx(CPU* cpu, U32 r1, U32 r2) {
 
     for (size_t i = 0 ; i < (sizeof(a.i8) / sizeof(a.i8[0])) ; i++) {
         if (mask.i8[i] < 0) {
-            writeb(adddress+i, a.i8[i]);
+            writeb(adddress+(U32)i, a.i8[i]);
         }
     }
 }
