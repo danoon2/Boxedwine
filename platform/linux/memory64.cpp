@@ -207,7 +207,6 @@ bool clearCodePageReadOnly(Memory* memory, U32 page) {
 
 static void handler(int sig, siginfo_t* info, void* context)
 {
-    printf("handler called\n");
     KThread* thread = KThread::currentThread();
     U32 address = getHostAddress(thread, (void*)info->si_addr);
     if (thread->process->memory->nativeFlags[address>>K_PAGE_SHIFT] & NATIVE_FLAG_CODEPAGE_READONLY) {
