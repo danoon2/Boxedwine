@@ -33,7 +33,6 @@ Memory::Memory() : allocated(0), callbackPos(0) {
     memset(nativeFlags, 0, sizeof(nativeFlags));
 #ifndef BOXEDWINE_X64
     memset(codeCache, 0, sizeof(codeCache));
-    memset(ids, 0, sizeof(ids));
 #else
     memset(this->codeChunksByHostPage, 0, sizeof(this->codeChunksByHostPage));
     memset(this->codeChunksByEmulationPage, 0, sizeof(this->codeChunksByEmulationPage));
@@ -331,17 +330,23 @@ U16 readw(U32 address) {
 #endif
 }
 
+bool clearCodePageReadOnly(Memory* memory, U32 page);
+
 void writew( U32 address, U16 value) {
 #ifdef LOG_OPS
     if (thread->process->memory->log)
         fprintf(logFile, "writew %X @%X\n", value, address);
 #endif
-#ifdef BOXEDWINE_X64
+#ifdef BOXEDWINE_64BIT_MMU1
     Memory* m = KThread::currentThread()->memory;
     U8 flags = m->nativeFlags[address >> K_PAGE_SHIFT];
 
     if (flags & NATIVE_FLAG_CODEPAGE_READONLY) {
+#ifdef BOXEDWINE_X64
         X64AsmCodeMemoryWrite w((x64CPU*)KThread::currentThread()->cpu, address, 2);
+#else
+        clearCodePageReadOnly(m, address >> K_PAGE_SHIFT);
+#endif
         *(U16*)getNativeAddress(m, address) = value;
     } else if (flags & NATIVE_FLAG_COMMITTED) {
         *(U16*)getNativeAddress(KThread::currentThread()->memory, address) = value;

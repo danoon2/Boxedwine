@@ -34,7 +34,7 @@ INLINE void* getNativeAddress(Memory* memory, U32 address) {
 }
 
 INLINE U32 getHostAddress(KThread* thread, void* address) {
-    return (U32)address;
+    return (U32)(size_t)address; // size_t because of xcode
 }
 
 void reserveNativeMemory(Memory* memory);
