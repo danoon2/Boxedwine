@@ -5180,7 +5180,7 @@ void DecodedOp::dealloc(bool deallocNext) {
 }
 
 bool DecodedOp::isFpuOp() {
-   return (this->originalOp>=0xd8 && this->originalOp<=0xdf) || (this->originalOp>=0x2d8 && this->originalOp<=0x2df);
+   return (this->inst>=FADD_ST0_STj && this->inst<=FISTP_QWORD_INTEGER);
 }
 
 bool DecodedOp::needsToSetFlags() {
