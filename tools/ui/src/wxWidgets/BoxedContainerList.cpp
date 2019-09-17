@@ -74,6 +74,11 @@ void BoxedContainerList::ShowContextMenu(BoxedContainer* container)
 
 void BoxedContainerList::OnActivated(wxListEvent& event) 
 {
+    BoxedContainer* container = (BoxedContainer*)this->GetItemData(event.GetIndex());
+    BoxedContainerOptionsDialog *dlg = new BoxedContainerOptionsDialog(this, container);
+    if (dlg->GetReturnCode()==wxID_OK) {
+        this->mainFrame->ReloadContainerList();
+    }
 }
 
 void BoxedContainerList::OnColClick(wxListEvent& event)
