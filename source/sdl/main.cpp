@@ -317,10 +317,26 @@ int boxedmain(int argc, const char **argv) {
     }
     if (!root.length()) {
         root=SDL_GetPrefPath("Boxedwine", "root");
+    } else if (!Fs::doesNativePathExist(root)) {
+        // Windows integration has a limit to the command line parameters, this helps shorten it by using a relative path
+        std::string result = SDL_GetPrefPath("Boxedwine", root.c_str());
+        if (Fs::doesNativePathExist(result.c_str())) {
+            root = result;
+        }
     }    
-
+    if (!Fs::doesNativePathExist(zip)) {
+        // Windows integration has a limit to the command line parameters, this helps shorten it by using a relative path
+        std::string result = SDL_GetPrefPath("Boxedwine", zip.c_str());
+        result = result.substr(0, result.length()-1);
+        if (Fs::doesNativePathExist(result.c_str())) {
+            zip = result;
+        }
+    }
     BOXEDWINE_RECORDER_INIT(root, zip, workingDir, &argv[i], argc-i);
     klog("Using root directory: %s", root.c_str());
+    if (zip.length()) {
+        klog("Using zip file system: %s", zip.c_str());
+    }
     if (!Fs::initFileSystem(root, zip)) {
         kwarn("root %s does not exist", root.c_str());
         return 0;

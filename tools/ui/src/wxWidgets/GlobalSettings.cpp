@@ -6,6 +6,7 @@
 #include "wx/wfstream.h"
 #include "wx/dir.h"
 #include "wx/txtstrm.h"
+#include "wx/stdpaths.h"
 
 #include "BoxedContainer.h"
 #include "GlobalSettings.h"
@@ -28,15 +29,9 @@ wxString GlobalSettings::GetFileFromWineName(const wxString& name) {
     return "";
 }
 
-void GlobalSettings::InitWineVersions() {
-    static bool initFS;
-    if (!initFS) {
-        wxFileSystem::AddHandler(new wxZipFSHandler);
-        initFS = true;
-    }
-
+void lookForFileSystems(const wxString& path) {
     wxString filename;
-    wxDir dir(GlobalSettings::GetFileSystemFolder());
+    wxDir dir(path);
     if (dir.IsOpened()) {
         bool cont = dir.GetFirst(&filename, wxEmptyString, wxDIR_FILES);
         while(cont)
@@ -61,6 +56,18 @@ void GlobalSettings::InitWineVersions() {
             cont = dir.GetNext(&filename);
         }
     }
+}
+
+void GlobalSettings::InitWineVersions() {
+    static bool initFS;
+    if (!initFS) {
+        wxFileSystem::AddHandler(new wxZipFSHandler);
+        initFS = true;
+    }
+
+    lookForFileSystems(GlobalSettings::GetFileSystemFolder());
+    lookForFileSystems(wxFileName(wxStandardPaths::Get().GetExecutablePath()).GetPath());
+    lookForFileSystems(wxFileName(wxStandardPaths::Get().GetExecutablePath()).GetPath() + wxFileName::GetPathSeparator() + ".." +  wxFileName::GetPathSeparator() + "FileSystems");
 }
 
 wxString GlobalSettings::GetContainerFolder() {

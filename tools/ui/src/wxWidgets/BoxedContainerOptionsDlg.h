@@ -10,7 +10,10 @@ public:
     BoxedContainerOptionsDialog(wxWindow* parent, BoxedContainer* container);
 
 private:
-    void OnDone(wxCommandEvent& event);    
+    void OnDone(wxCommandEvent& event);
+    void OnInstallRegistry(wxCommandEvent& event);
+    void OnDeleteRegistry(wxCommandEvent& event);
+    void CreateFileAndRunRegedit();
 
     BoxedContainer* container;
     wxComboBox* wineVersionCombobox;
