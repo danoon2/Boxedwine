@@ -156,6 +156,7 @@ wxString createRegistryEntry(BoxedContainer* container) {
     return text;
 }
 
+static const char* regKey = "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\NtVdm64\\0BOXEDWINE";
 wxString removeRegistryEntry() {
     wxString text = "Windows Registry Editor Version 5.00\r\n\r\n";
 
@@ -178,7 +179,7 @@ void runRegedit(const wxString& text) {
 }
 
 void updateWindowsIntegrationRegistry(BoxedContainer* container) {
-    wxRegKey registry("HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\NtVdm64\\0BOXEDWINE");
+    wxRegKey registry(regKey);
     if (!registry.Exists()) {
         if (!registry.Create()) {
             runRegedit(createRegistryEntry(container));
@@ -198,16 +199,42 @@ void updateWindowsIntegrationRegistry(BoxedContainer* container) {
 }
 
 void deleteWindowsIntegrationRegistry() {
-    wxRegKey registry("HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\NtVdm64\\0BOXEDWINE");
+    wxRegKey registry(regKey);
     if (registry.Exists()) {
         if (!registry.DeleteSelf()) {
             runRegedit(removeRegistryEntry());
         } else {
-            wxRegKey registry2("HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\NtVdm64\\0BOXEDWINE");
+            wxRegKey registry2(regKey);
             if (registry.Exists()) {
                 runRegedit(removeRegistryEntry());
             }
         }
     }
 }
+
+wxString getContainerNameAssociatedWithIntegration() {
+    wxRegKey registry(regKey);
+    if (registry.Exists()) {
+        long index=0;
+        wxString value;
+        if (registry.QueryValue("CommandLine", value)) {
+            if (value.StartsWith("-root \"Containers\\")) {
+                value = value.SubString(18, value.Length());
+                int pos = value.Find("\\");
+                if (pos>=0) {
+                    value = value.SubString(0, pos-1);
+                    return value;
+                }
+            }
+        }
+    }
+    return "";
+}
+
+#else
+wxString getContainerNameAssociatedWithIntegration() {
+    return "";
+}
+
 #endif
+

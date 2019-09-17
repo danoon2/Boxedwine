@@ -11,4 +11,6 @@ void updateWindowsIntegrationRegistry(BoxedContainer* container);
 void deleteWindowsIntegrationRegistry();
 #endif
 
+wxString getContainerNameAssociatedWithIntegration();
+
 #endif

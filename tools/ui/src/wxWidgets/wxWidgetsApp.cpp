@@ -20,6 +20,7 @@
 #include "BoxedAppList.h"
 #include "BoxedContainerList.h"
 #include "GlobalSettings.h"
+#include "wxUtils.h"
 
 const int ID_TOOLBAR = 500;
 
@@ -206,6 +207,11 @@ void BoxedFrame::ReloadContainerList() {
     this->containerListView->SetColumnWidth(1, 100);
     this->containerListView->AppendColumn("Wine Version");
     this->containerListView->SetColumnWidth(2, 125);
+    wxString containerWithIntegration = getContainerNameAssociatedWithIntegration();
+    if (containerWithIntegration.Length()) {
+        this->containerListView->AppendColumn("Integrated?");
+        this->containerListView->SetColumnWidth(2, 125);
+    }
     int index = 0;
     for (auto& container : containers) {
         long id = this->containerListView->InsertItem(index, container->GetName());
@@ -213,6 +219,13 @@ void BoxedFrame::ReloadContainerList() {
         wxULongLong size = wxDir::GetTotalSize(container->GetDir());
         this->containerListView->SetItem(id, 1, wxFileName::GetHumanReadableSize(size));
         this->containerListView->SetItem(id, 2, container->GetWineVersion());
+        if (containerWithIntegration.Length()) {
+            if (containerWithIntegration == container->GetName()) {
+                this->containerListView->SetItem(id, 3, "YES");
+            } else {
+                this->containerListView->SetItem(id, 3, "");
+            }
+        }
         index++;
     }
 
