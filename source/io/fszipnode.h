@@ -10,7 +10,7 @@ class FsFileNode;
 
 class FsZipNode : public FsNode {
 public:
-    FsZipNode(BoxedPtr<FsFileNode> fileNode, const fsZipInfo& zipInfo);
+    FsZipNode(BoxedPtr<FsFileNode> fileNode, const fsZipInfo& zipInfo, FsZip* fsZip);
     virtual U32 rename(const std::string& path); //return 0 if success, else errno
     virtual bool remove();
     virtual U64 lastModified();
@@ -25,6 +25,8 @@ public:
     virtual void close();
 
     bool moveToFileSystem();
+
+    FsZip* fsZip;
 private:
     fsZipInfo zipInfo;
     BoxedPtr<FsFileNode> fileNode;

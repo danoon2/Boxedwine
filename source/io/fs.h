@@ -40,7 +40,7 @@ class FsFileNode;
 
 class Fs {
 public:   
-    static bool initFileSystem(const std::string& rootPath, const std::string& zipPath);
+    static bool initFileSystem(const std::string& rootPath);
     static BoxedPtr<FsNode> getNodeFromLocalPath(const std::string& currentDirectory, const std::string& path, bool followLink, bool* isLink=NULL);    
     static BoxedPtr<FsNode> addFileNode(const std::string& path, const std::string& link, const std::string& nativePath, bool isDirectory, const BoxedPtr<FsNode>& parent);
     static BoxedPtr<FsNode> addVirtualFile(const std::string& path, OpenVirtualNode func, U32 mode, U32 rdev, const BoxedPtr<FsNode>& parent);

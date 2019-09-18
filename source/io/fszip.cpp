@@ -11,12 +11,29 @@ extern "C"
 #include "fszipnode.h"
 #include <time.h> 
 
+void FsZip::setupZipRead(U64 zipOffset, U64 zipFileOffset) {
 #ifdef BOXEDWINE_ZLIB
-unzFile FsZip::zipfile;
-#endif
+    char tmp[4096];
 
-bool FsZip::init(const std::string& zipPath) {
+    if (zipOffset != lastZipOffset || zipFileOffset < lastZipFileOffset) {
+        unzCloseCurrentFile(FsZip::zipfile);
+        unzSetOffset64(FsZip::zipfile, zipOffset);
+        lastZipFileOffset = 0;
+        unzOpenCurrentFile(FsZip::zipfile);
+        lastZipOffset = zipOffset;
+    }
+    if (zipFileOffset != lastZipFileOffset) {
+        U32 todo = (U32)(zipFileOffset - lastZipFileOffset);
+        while (todo) {
+            todo-=unzReadCurrentFile(FsZip::zipfile, tmp, todo>4096?4096:todo);
+        }
+    }  
+#endif
+}
+
+bool FsZip::init(const std::string& zipPath, const std::string& mount) {
 #ifdef BOXEDWINE_ZLIB
+    this->lastZipOffset = 0xFFFFFFFFFFFFFFFFl;
     if (zipPath.length()) {
         unz_global_info global_info;
         U32 i;
@@ -78,14 +95,17 @@ bool FsZip::init(const std::string& zipPath) {
 
             unzGoToNextFile(zipfile);
         }
+        if (mount.length()) {
+            Fs::makeLocalDirs(mount);
+        }
         for (i = 0; i < global_info.number_entry; ++i) {
-            std::string parentPath = Fs::getParentPath(zipInfo[i].filename);
+            std::string parentPath = mount + Fs::getParentPath(zipInfo[i].filename);            
             BoxedPtr<FsNode> parent = Fs::getNodeFromLocalPath("", parentPath, true);
             std::string localFileName = zipInfo[i].filename;
             Fs::remoteNameToLocal(localFileName);      
             localFileName = Fs::getFileNameFromPath(localFileName);
             BoxedPtr<FsFileNode> node = (FsFileNode*)Fs::addFileNode(zipInfo[i].filename, zipInfo[i].link, Fs::getNativePathFromParentAndLocalFilename(parent, localFileName), zipInfo[i].isDirectory, parent).get();
-            node->zipNode = new FsZipNode(node, zipInfo[i]);
+            node->zipNode = new FsZipNode(node, zipInfo[i], this);
         }   
         delete[] zipInfo;
     }

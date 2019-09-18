@@ -1,5 +1,7 @@
 #include "boxedwine.h"
 
+#include <locale>  
+
 bool stringHasEnding(std::string const &fullString, std::string const &ending) {
     if (fullString.length() >= ending.length()) {
         return (0 == fullString.compare (fullString.length() - ending.length(), ending.length(), ending));
@@ -47,4 +49,11 @@ std::string stringJoin(const std::vector<std::string>& v, const std::string& sep
         result += sep;
    }
    return result;
+}
+
+void stringToLower(std::string& s) {
+    std::locale loc;
+    for (auto& c : s) {
+        c = std::tolower(c, loc);
+    }
 }

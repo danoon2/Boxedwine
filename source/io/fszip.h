@@ -27,8 +27,13 @@ public:
 
 class FsZip {
 public:
-    static bool init(const std::string& zipPath);
-    static unzFile zipfile;
+    bool init(const std::string& zipPath, const std::string& mount);
+    unzFile zipfile;
+
+    U64 lastZipOffset = 0xFFFFFFFFFFFFFFFFl;
+    U64 lastZipFileOffset;
+
+    void setupZipRead(U64 zipOffset, U64 zipFileOffset);
 };
 #endif
 #endif

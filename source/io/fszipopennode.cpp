@@ -32,27 +32,6 @@ S64 FsZipOpenNode::seek(S64 pos) {
     return this->pos;
 }
 
-static U64 lastZipOffset = 0xFFFFFFFFFFFFFFFFl;
-static U64 lastZipFileOffset;
-
-static void setupZipRead(U64 zipOffset, U64 zipFileOffset) {
-    char tmp[4096];
-
-    if (zipOffset != lastZipOffset || zipFileOffset < lastZipFileOffset) {
-        unzCloseCurrentFile(FsZip::zipfile);
-        unzSetOffset64(FsZip::zipfile, zipOffset);
-        lastZipFileOffset = 0;
-        unzOpenCurrentFile(FsZip::zipfile);
-        lastZipOffset = zipOffset;
-    }
-    if (zipFileOffset != lastZipFileOffset) {
-        U32 todo = (U32)(zipFileOffset - lastZipFileOffset);
-        while (todo) {
-            todo-=unzReadCurrentFile(FsZip::zipfile, tmp, todo>4096?4096:todo);
-        }
-    }        
-}
-
 void FsZipOpenNode::close() {
 }
 
@@ -97,10 +76,10 @@ U32 FsZipOpenNode::readNative(U8* buffer, U32 len) {
     U32 result;
     BOXEDWINE_CRITICAL_SECTION;
 
-    setupZipRead(this->offset, this->pos);    
-    result = unzReadCurrentFile(FsZip::zipfile, buffer, len);
+    this->zipNode->fsZip->setupZipRead(this->offset, this->pos);    
+    result = unzReadCurrentFile(this->zipNode->fsZip->zipfile, buffer, len);
     this->pos+=result;
-    lastZipFileOffset = this->pos;
+    this->zipNode->fsZip->lastZipFileOffset = this->pos;
     return result;
 }
 

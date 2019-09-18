@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include MKDIR_INCLUDE
 
 #include <SDL.h>
@@ -45,6 +46,7 @@
 #include "recorder.h"
 #include "mainloop.h"
 #include "loader.h"
+#include "../io/fszip.h"
 
 void gl_init();
 extern int bits_per_pixel;
@@ -129,7 +131,6 @@ public:
 int boxedmain(int argc, const char **argv) {
     int i;
     std::string root = "";
-    std::string zip = "";
     const char* ppenv[32];
     int envc=0;
     int userId = UID;
@@ -143,6 +144,8 @@ int boxedmain(int argc, const char **argv) {
     bool euidSet = false;
     bool nozip = false;
     std::vector<MountInfo> mountInfo;
+    std::vector<std::string> zips;
+
     bool showStartingWindow = false;
 
     klog("Starting ...");
@@ -157,7 +160,7 @@ int boxedmain(int argc, const char **argv) {
             i++;
         } else if (!strcmp(argv[i], "-zip") && i+1<argc) {
 #ifdef BOXEDWINE_ZLIB
-            zip = argv[i+1];
+            zips.push_back(argv[i+1]);
 #else
             printf("BoxedWine wasn't compiled with zlib support");
 #endif
@@ -260,6 +263,14 @@ int boxedmain(int argc, const char **argv) {
                 mountInfo.push_back(MountInfo(argv[i+2], argv[i+1], false));
             }
             i+=2;
+        } else if (!strcmp(argv[i], "-mount_zip")) {
+            if (argv[i+2][0]!='/') {
+                printf("-mount_drive expects 2 parameters: <zip file to mount> <full path on root file>");
+                printf("example: -mount_zip \"c:\\my games\\mygame.zip\" d\n");
+            } else {
+                mountInfo.push_back(MountInfo(argv[i+2], argv[i+1], true));
+            }
+            i+=2;
         } else if (!strcmp(argv[i], "-showStartupWindow")) {
             showStartingWindow = true;
         }
@@ -297,20 +308,21 @@ int boxedmain(int argc, const char **argv) {
     }
     std::string base2 = SDL_GetBasePath();
     base2 = base2.substr(0, base2.length()-1); 
-    if (zip.length()==0 && !nozip) {
+    if (zips.size()==0 && !nozip) {
         std::vector<Platform::ListNodeResult> results;
         Platform::listNodes(base, results);
         for (auto&& item : results) {
             if (strstr(item.name.c_str(), "Wine") && strstr(item.name.c_str(), ".zip")) {
-                zip = std::string(base) + pathSeperator + item.name;
+                zips.push_back(std::string(base) + pathSeperator + item.name);
+                break;
             }
         }
-        if (zip.length()==0) {
+        if (zips.size()==0) {
             results.clear();
             Platform::listNodes(base2, results);
             for (auto&& item : results) {
                 if (strstr(item.name.c_str(), "Wine") && strstr(item.name.c_str(), ".zip")) {
-                    zip = std::string(base2) + pathSeperator + item.name;
+                    zips.push_back(std::string(base2) + pathSeperator + item.name);
                 }
             }
         }
@@ -318,15 +330,21 @@ int boxedmain(int argc, const char **argv) {
     if (!root.length()) {
         root=SDL_GetPrefPath("Boxedwine", "root");
     }   
-    BOXEDWINE_RECORDER_INIT(root, zip, workingDir, &argv[i], argc-i);
+    BOXEDWINE_RECORDER_INIT(root, zips, workingDir, &argv[i], argc-i);
     klog("Using root directory: %s", root.c_str());
-    if (zip.length()) {
+    for (auto& zip : zips) {
         klog("Using zip file system: %s", zip.c_str());
     }
-    if (!Fs::initFileSystem(root, zip)) {
+    if (!Fs::initFileSystem(root)) {
         kwarn("root %s does not exist", root.c_str());
         return 0;
     }
+#ifdef BOXEDWINE_ZLIB
+    for (auto& zip : zips) {
+        FsZip* fsZip = new FsZip();
+        fsZip->init(zip, "");
+    }
+#endif
     initSDL();
     initWine();
     gl_init();    
@@ -388,8 +406,18 @@ int boxedmain(int argc, const char **argv) {
             BoxedPtr<FsNode> parent = Fs::getNodeFromLocalPath("", "/home/username/.wine/dosdevices", true);
             Fs::addFileNode("/home/username/.wine/dosdevices/"+info.localPath+":", "/mnt/drive_"+info.localPath, "", false, parent); 
         } else {
-            BoxedPtr<FsNode> parent = Fs::getNodeFromLocalPath("", Fs::getParentPath(info.localPath), true);
-            Fs::addRootDirectoryNode(info.localPath, info.nativePath, parent);
+            std::string ext = info.nativePath.substr(info.nativePath.length()-4);
+            stringToLower(ext);
+            if (ext == ".zip") {
+                FsZip* z = new FsZip();
+                if (!stringHasEnding(info.localPath, "/")) {
+                    info.localPath+="/";
+                }
+                z->init(info.nativePath, info.localPath);
+            } else {
+                BoxedPtr<FsNode> parent = Fs::getNodeFromLocalPath("", Fs::getParentPath(info.localPath), true);
+                Fs::addRootDirectoryNode(info.localPath, info.nativePath, parent);
+            }
         }
     }
 
@@ -481,7 +509,7 @@ int boxedmain(int argc, const char **argv) {
     if (showStartingWindow) {
         showSDLStartingWindow();
     }
-    if (!validLinuxCommand && (zip.length()==0 || !Fs::doesNativePathExist(zip)) && !Fs::getNodeFromLocalPath("", "/bin/wine", true) ){
+    if (!validLinuxCommand && (zips.size()==0 || !Fs::doesNativePathExist(zips[0])) && !Fs::getNodeFromLocalPath("", "/bin/wine", true) ){
         if (videoEnabled) {
             SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "File system not found", "Make sure you have a valid zip file in the same folder as Boxedwine or you specify one on the commandline.", NULL);
         } else {

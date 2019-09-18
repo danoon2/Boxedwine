@@ -17,14 +17,16 @@ void Recorder::out(const char* s) {
     fwrite(s, strlen(s), 1, this->file);
 }
 
-void Recorder::initCommandLine(std::string root, std::string zip, std::string working, const char **argv, U32 argc) {
+void Recorder::initCommandLine(std::string root, const std::vector<std::string>& zips, std::string working, const char **argv, U32 argc) {
     out("ROOT=");
     out(root.c_str());
     out("\r\n");
 
-    out("ZIP=");
-    out(zip.c_str());
-    out("\r\n");
+    for (auto& zip : zips) {
+        out("ZIP=");
+        out(zip.c_str());
+        out("\r\n");
+    }
 
     out("CWD=");
     out(working.c_str());
@@ -244,12 +246,12 @@ void BOXEDWINE_RECORDER_RUN_SLICE() {
     }
 }
 
-void BOXEDWINE_RECORDER_INIT(std::string root, std::string zip, std::string working, const char **argv, U32 argc) {
+void BOXEDWINE_RECORDER_INIT(std::string root, const std::vector<std::string> zips, std::string working, const char **argv, U32 argc) {
     if (Recorder::instance) {
-        Recorder::instance->initCommandLine(root, zip, working, argv, argc);
+        Recorder::instance->initCommandLine(root, zips, working, argv, argc);
     } 
     if (Player::instance) {
-        Player::instance->initCommandLine(root, zip, working, argv, argc);
+        Player::instance->initCommandLine(root, zips, working, argv, argc);
     }
 }
 #endif

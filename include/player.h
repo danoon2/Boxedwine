@@ -7,7 +7,7 @@ public:
     static bool start(std::string directory);
     static Player* instance;
 
-    void initCommandLine(std::string root, std::string zip, std::string working, const char **argv, U32 argc);
+    void initCommandLine(std::string root, const std::vector<std::string>& zips, std::string working, const char **argv, U32 argc);
     void runSlice();
     void screenChanged();
 

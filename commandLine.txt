@@ -23,7 +23,7 @@ This will load the file system from wine.zip and write the changes to c:\root
 
 -gensrc : This is used for ahead of time (AOT) compiling and requires the source to be build with GENERATE_SOURCE.  With this enabled the user can run the program, then compile the output back into the program for a performance boost.  Currently I don't recommend using this, it should be considered experimental and the out put will not be compatible with future versions of BoxedWine.
 
--mount : Will mount a host directory in the emulated file systems.  Example: -mount "c:\my games" "/home/username/my games"
+-mount : Will mount a host directory or zip file, in the emulated file systems.  Example: -mount "c:\my games" "/home/username/my games" or -mount "c:\my games\mygame.zip" "/home/username/my games"
 
 -mount_drive : Will mount a host directory in the emulate file system and set up the Wine links so that it shows up as a drive in Wine. Example: -mount_drive "c:\my games" d
 
@@ -42,4 +42,4 @@ This will load the file system from wine.zip and write the changes to c:\root
 
 -w path : Initial working directory, default is /home/username.  This path needs to reference a path in the emulated file system.
 
--zip path : This will load the file system from the zip file.  Use -root option for the location where new files can be created.
+-zip path : This will load the file system from the zip file.  Use -root option for the location where new files can be created.  You can specify more than one -zip command line, like -zip 1.zip -zip 2.zip.  These will both be mounted in the root folder, "/".  If you want to mount a zip file somewhere else, use the -mount command.

@@ -19,7 +19,7 @@ BOXEDWINE_MUTEX Fs::nextNodeIdMutex;
 BoxedPtr<FsFileNode> Fs::rootNode;
 std::string Fs::nativePathSeperator;
 
-bool Fs::initFileSystem(const std::string& rootPath, const std::string& zipPath) {
+bool Fs::initFileSystem(const std::string& rootPath) {
     std::string path;
     if (stringHasEnding(rootPath, "/")) {
         Fs::nativePathSeperator = "/";
@@ -50,9 +50,6 @@ bool Fs::initFileSystem(const std::string& rootPath, const std::string& zipPath)
             children[i]->remove();
         }
     }
-#ifdef BOXEDWINE_ZLIB
-    return FsZip::init(zipPath);
-#endif
     return true;
 }
 
