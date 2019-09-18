@@ -242,7 +242,7 @@ void InstallDialog::OnDone(wxCommandEvent& event) {
             wxFileName(cDir+ wxFileName::GetPathSeparator()).Mkdir(511, wxPATH_MKDIR_FULL);
         }
         if (wineDirCreated) {
-            wxString zipFile = GlobalSettings::GetFileSystemZip(GlobalSettings::GetFileFromWineName(container->GetWineVersion()));
+            wxString zipFile = GlobalSettings::GetFileFromWineName(container->GetWineVersion());
             wxString timestampeFile = wineDir + wxFileName::GetPathSeparator() + ".update-timestamp" ;
 
             // :TODO: not sure why if I don't do this, wine will detect a change and update the .wine directory

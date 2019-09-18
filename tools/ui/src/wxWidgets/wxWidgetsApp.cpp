@@ -45,11 +45,34 @@ wxEND_EVENT_TABLE()
 wxIMPLEMENT_APP(BoxedWineApp);
 bool BoxedWineApp::OnInit()
 {
+    wxString launchContainer;
+    wxString launchCommand;
+
+    for (int i=0;i<this->argc;i++) {
+        if (this->argv[i]=="-container" && (i+1<this->argc)) {
+            launchContainer = this->argv[i+1];
+            i++;
+        } else {
+            launchCommand = argv[i];
+        }
+    }
+
     SetVendorName("Boxedwine");
     SetAppName("Boxedwine");
     wxLog::EnableLogging(false);
 
     BoxedFrame *frame = new BoxedFrame( "Boxedwine", wxDefaultPosition, wxSize(800, 600));
+    if (launchContainer.Length() && launchCommand.Length()) {        
+        for (auto& container : frame->containers) {
+            if (container->GetName()==launchContainer) {                
+                container->Launch(launchCommand, "", "/home/username", true, true);
+                return false;
+            }
+        }
+        wxString msg = "Did not find container: "+launchContainer+".  You should open settings for the container and update the OS integration";
+        wxMessageDialog *dlg = new wxMessageDialog(NULL, msg, "Error", wxOK | wxICON_ERROR);
+        dlg->ShowModal();
+    }
     frame->Show( true );
     return true;
 }
@@ -88,8 +111,7 @@ BoxedFrame::BoxedFrame(const wxString& title, const wxPoint& pos, const wxSize& 
 #endif
 
     ::wxInitAllImageHandlers();    
-    LoadConfig();
-    GlobalSettings::InitWineVersions();
+    LoadConfig();    
     SetupToolBar();
     LoadContainers();
     SetupAppList();
@@ -130,13 +152,20 @@ void BoxedFrame::LoadContainers() {
 }
 
 void BoxedFrame::LoadConfig() {
+    bool createDefault = false;
+
     if (!wxDirExists(wxStandardPaths::Get().GetUserDataDir() + wxFileName::GetPathSeparator())) {
         wxMkdir(wxStandardPaths::Get().GetUserDataDir() + wxFileName::GetPathSeparator());
+        createDefault = true;    
     }
     wxString ini_filename = wxStandardPaths::Get().GetUserDataDir() + wxFileName::GetPathSeparator() + "boxedwine.ini";
     wxFileConfig *config = new wxFileConfig( "", "", ini_filename);
     config->SetRecordDefaults();
-    GlobalSettings::exeFileLocation = config->Read("Exe", "Boxedwine");
+    wxString exe = wxFileName(wxStandardPaths::Get().GetExecutablePath()).GetPath() + wxFileName::GetPathSeparator() + "BoxedWine";
+#ifdef _WINDOWS
+    exe += ".exe";
+#endif
+    GlobalSettings::exeFileLocation = config->Read("Exe", exe);
     GlobalSettings::dataFolderLocation = config->Read("DataFolder", wxStandardPaths::Get().GetUserDataDir());
     int defaultIconSize = GlobalSettings::GetScaleFactor()>1.5?64:32;
     GlobalSettings::iconSize = config->Read("AppIconSize", defaultIconSize);
@@ -145,6 +174,29 @@ void BoxedFrame::LoadConfig() {
     }
     config->Flush();
     delete config;
+
+    GlobalSettings::InitWineVersions();
+
+    if (createDefault && GlobalSettings::wineVersions.size()) {
+        wxString containerFilePath = GlobalSettings::GetContainerFolder() + wxFileName::GetPathSeparator() + "Default";
+        wxFileName(containerFilePath+wxFileName::GetPathSeparator()).Mkdir(511, wxPATH_MKDIR_FULL);
+
+        BoxedContainer* container = BoxedContainer::CreateContainer(containerFilePath, "Default", GlobalSettings::wineVersions[0].name);
+        
+        BoxedApp app("WineMine", "/home/username/.wine/drive_c/windows/system32", "winemine.exe", container);
+        app.SaveApp();
+
+        // :TODO: unzip winemine.exe into that location so that icon works
+        wxString sep = wxFileName::GetPathSeparator();
+        wxString targetPath = containerFilePath + sep + "root";
+        wxString targetFile = targetPath + sep + "home" + sep + "username" + sep + ".wine" + sep + "drive_c" + sep + "windows" + sep + "system32" + sep + "winemine.exe";
+        wxString timestampeFile = targetPath + sep + "home" + sep + "username" + sep + ".wine" + sep + ".update-timestamp" ;
+
+        // :TODO: not sure why if I don't do this, wine will detect a change and update the .wine directory
+        wxExtractZipFile(GlobalSettings::wineVersions[0].filePath, targetPath, timestampeFile);
+
+        wxExtractZipFile(GlobalSettings::wineVersions[0].filePath, targetPath, targetFile);
+    }
 }
 
 void BoxedFrame::SaveConfig() {

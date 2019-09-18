@@ -6,6 +6,7 @@
 #include "wx/wfstream.h"
 #include "wx/config.h"
 #include "wx/filename.h"
+#include "wx/stdpaths.h"
 
 #include "wxUtils.h"
 #include "GlobalSettings.h"
@@ -138,21 +139,17 @@ void startRegedit(const wxString& filepath) {
 }
 
 wxString createRegistryEntry(BoxedContainer* container) {
-    wxString zip = "FileSystems\\"+GlobalSettings::GetFileFromWineName(container->GetWineVersion());
-    wxString root = "Containers\\"+container->GetName()+"\\root";
     wxString text = "Windows Registry Editor Version 5.00\r\n\r\n";
 
-    zip.Replace("\\", "\\\\");
-    root.Replace("\\", "\\\\");
 
     text+="[HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\NtVdm64\\0BOXEDWINE]\r\n";
-    text+="\"CommandLine\"=\"-root \\\""+root+"\\\" -zip \\\""+zip+"\\\" \\\"%m\\\"\"\r\n";
+    text+="\"CommandLine\"=\"-container \\\""+container->GetName()+"\\\" \\\"%m\\\"\"\r\n";
     text+="\"InternalName\"=\"*\"\r\n";
     text+="\"ProductName\"=\"*\"\r\n";
     text+="\"ProductVersion\"=\"*\"\r\n";
-    wxString app = GlobalSettings::exeFileLocation;
-    app.Replace("\\", "\\\\");
-    text+="\"MappedExeName\"=\""+app+"\"";
+    wxString exePath = wxStandardPaths::Get().GetExecutablePath();
+    exePath.Replace("\\", "\\\\");
+    text+="\"MappedExeName\"=\""+exePath+"\"";
     return text;
 }
 
@@ -186,14 +183,14 @@ void updateWindowsIntegrationRegistry(BoxedContainer* container) {
             return;
         }
     }
-    wxString zip = "FileSystems\\"+GlobalSettings::GetFileFromWineName(container->GetWineVersion());
-    wxString root = "Containers\\"+container->GetName()+"\\root";
 
-    if (!registry.SetValue("CommandLine", "-root \""+root+"\" -zip \""+ zip + "\" \"%m\"") ||
+    wxString exePath = wxStandardPaths::Get().GetExecutablePath();
+
+    if (!registry.SetValue("CommandLine", "-container \""+container->GetName()+" \"%m\"") ||
         !registry.SetValue("InternalName", "*") ||
         !registry.SetValue("ProductName", "*") ||
         !registry.SetValue("ProductVersion", "*") ||
-        !registry.SetValue("MappedExeName", GlobalSettings::exeFileLocation)) {
+        !registry.SetValue("MappedExeName", exePath)) {
         runRegedit(createRegistryEntry(container));
     }
 }
@@ -218,9 +215,9 @@ wxString getContainerNameAssociatedWithIntegration() {
         long index=0;
         wxString value;
         if (registry.QueryValue("CommandLine", value)) {
-            if (value.StartsWith("-root \"Containers\\")) {
-                value = value.SubString(18, value.Length());
-                int pos = value.Find("\\");
+            if (value.StartsWith("-container \"")) {
+                value = value.SubString(12, value.Length());
+                int pos = value.Find("\"");
                 if (pos>=0) {
                     value = value.SubString(0, pos-1);
                     return value;

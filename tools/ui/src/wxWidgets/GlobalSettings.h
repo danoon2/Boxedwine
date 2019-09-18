@@ -5,9 +5,9 @@ class BoxedContainer;
 
 class WineVersion {
 public:
-    WineVersion(const wxString& name, const wxString& fileName):name(name),fileName(fileName){}
+    WineVersion(const wxString& name, const wxString& filePath):name(name),filePath(filePath){}
     wxString name;
-    wxString fileName;
+    wxString filePath;
 };
 
 class GlobalSettings {
@@ -20,7 +20,6 @@ public:
 
     static wxString GetContainerFolder();
     static wxString GetFileSystemFolder();    
-    static wxString GetFileSystemZip(const wxString& zipName);
     static wxString GetAppFolder(BoxedContainer* container);
     static wxString GetRootFolder(BoxedContainer* container);
 

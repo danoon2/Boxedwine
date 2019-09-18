@@ -6,6 +6,7 @@ class BoxedContainer;
 class BoxedApp {
 public:
     BoxedApp() : bpp(0), fullScreen(false), scale(0), scaleQuality(0), container(NULL) {}
+    BoxedApp(const wxString& name, const wxString& path, const wxString& cmd, BoxedContainer* container) : name(name), path(path), cmd(cmd), bpp(0), fullScreen(false), scale(0), scaleQuality(0), container(container) {}
     
     bool Load(BoxedContainer* container, const wxString& iniFilepath);
 
@@ -22,7 +23,7 @@ public:
 private:
     friend class BoxedContainer;
     friend class BoxedAppOptionsDialog;
-
+    
     wxString name;
     wxString path;
     wxString icon;

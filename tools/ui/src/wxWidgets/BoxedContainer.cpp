@@ -104,16 +104,19 @@ void BoxedContainer::Launch(const wxString& cmd, const wxString& args, const wxS
     if (async) {
         this->currentProcess->isRunning = true;
     }
-    wxString zip = GlobalSettings::GetFileSystemZip(GlobalSettings::GetFileFromWineName(this->wineVersion));
+    wxString zip = GlobalSettings::GetFileFromWineName(this->wineVersion);
     wxString root = GlobalSettings::GetRootFolder(this);
 
+    if (!wxDirExists(root)) {
+        wxMkdir(root);
+    }
     wxString launchCmd = "\""+GlobalSettings::exeFileLocation+"\" -showStartupWindow -root \""+root+"\" -zip \""+zip+"\" -w \""+path+"\" "+args;
     if (!launchCmd.EndsWith(" ")) {
         launchCmd=launchCmd+" ";
     }
     launchCmd+=cmd;
 
-    // wxEXEC_HIDE_CONSOLE causes /usr/bin/wine winecfg to not show a window 
+    // wxEXEC_HIDE_CONSOLE causes /bin/wine winecfg to not show a window 
     long result = wxExecute(launchCmd, (showConsole?0:wxEXEC_HIDE_CONSOLE)|(async?wxEXEC_ASYNC:wxEXEC_SYNC), this->currentProcess);
     if ((async && result==0) || (!async && result==-1)) {        
         this->currentProcess->isRunning = false;

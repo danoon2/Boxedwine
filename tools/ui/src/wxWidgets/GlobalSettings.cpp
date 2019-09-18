@@ -20,11 +20,11 @@ double GlobalSettings::scaleFactor;
 wxString GlobalSettings::GetFileFromWineName(const wxString& name) {
     for (auto& ver : GlobalSettings::wineVersions) {
         if (ver.name.CmpNoCase(name)==0) {
-            return ver.fileName;
+            return ver.filePath;
         }
     }
     if (GlobalSettings::wineVersions.size()) {
-        return GlobalSettings::wineVersions[0].fileName;
+        return GlobalSettings::wineVersions[0].filePath;
     }
     return "";
 }
@@ -37,7 +37,7 @@ void lookForFileSystems(const wxString& path) {
         while(cont)
         {
             if (filename.Lower().EndsWith(".zip")) {
-                wxString zipPath = GlobalSettings::GetFileSystemFolder()+wxFileName::GetPathSeparator()+filename+"#zip:wineVersion.txt";
+                wxString zipPath = path+wxFileName::GetPathSeparator()+filename+"#zip:wineVersion.txt";
 
                 wxFileSystem fs;
                 wxFSFile *zip = fs.OpenFile(zipPath);
@@ -48,7 +48,16 @@ void lookForFileSystems(const wxString& path) {
                     {
                         wxTextInputStream text(*in);
                         wxString wineName = text.ReadLine();
-                        GlobalSettings::wineVersions.push_back(WineVersion(wineName, filename));
+                        bool found = false;
+                        for (auto& v : GlobalSettings::wineVersions) {
+                            if (v.name == wineName) {
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (!found) {
+                            GlobalSettings::wineVersions.push_back(WineVersion(wineName, path+wxFileName::GetPathSeparator()+filename));
+                        }
                     }
                     delete zip;
                 }
@@ -67,6 +76,7 @@ void GlobalSettings::InitWineVersions() {
 
     lookForFileSystems(GlobalSettings::GetFileSystemFolder());
     lookForFileSystems(wxFileName(wxStandardPaths::Get().GetExecutablePath()).GetPath());
+    lookForFileSystems(wxFileName(wxStandardPaths::Get().GetExecutablePath()).GetPath() + wxFileName::GetPathSeparator() + "FileSystems");
     lookForFileSystems(wxFileName(wxStandardPaths::Get().GetExecutablePath()).GetPath() + wxFileName::GetPathSeparator() + ".." +  wxFileName::GetPathSeparator() + "FileSystems");
 }
 
@@ -76,10 +86,6 @@ wxString GlobalSettings::GetContainerFolder() {
 
 wxString GlobalSettings::GetFileSystemFolder() {
     return GlobalSettings::dataFolderLocation + wxFileName::GetPathSeparator() + "FileSystems";
-}
-
-wxString GlobalSettings::GetFileSystemZip(const wxString& zipName) {
-    return GlobalSettings::dataFolderLocation + wxFileName::GetPathSeparator() + "FileSystems" + wxFileName::GetPathSeparator() + zipName;
 }
 
 wxString GlobalSettings::GetRootFolder(BoxedContainer* container) {

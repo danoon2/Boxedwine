@@ -21,6 +21,8 @@ public:
 private:
     wxDECLARE_EVENT_TABLE();
 
+    friend class BoxedWineApp;
+
     void SetupToolBar();
     void OnToolLeftClick(wxCommandEvent& event);
     void LoadConfig();
