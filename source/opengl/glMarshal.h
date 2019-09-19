@@ -250,4 +250,18 @@ GLboolean ELEMENT_ARRAY_BUFFER();
 GLboolean PIXEL_UNPACK_BUFFER();
 void OPENGL_CALL_TYPE debugMessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam);
 
+#ifdef BOXEDWINE_GLHANDLE_ARB_POINTER
+U32 marshalHandleToIndex(GLhandleARB h);
+GLhandleARB marshalIndexToHandle(U32 i);
+void marshalDeleteHandleIndex(U32 i);
+
+#define HANDLE_TO_INDEX(h) marshalHandleToIndex(h)
+#define INDEX_TO_HANDLE(i) marshalIndexToHandle(i)
+#define DELETE_HANDLE_INDEX(i) marshalDeleteHandleIndex(i)
+#else
+#define HANDLE_TO_INDEX(h) h
+#define INDEX_TO_HANDLE(i) i
+#define DELETE_HANDLE_INDEX(i)
+#endif
+
 #endif

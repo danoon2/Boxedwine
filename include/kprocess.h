@@ -234,10 +234,12 @@ public:
 
     bool hasSetStackMask;
     bool hasSetSeg[6];
-#ifdef BOXEDWINE_X64
+#ifdef BOXEDWINE_64BIT_MMU
     U32 nextNativeAddress;
     U32 glStrings[NUMBER_OF_STRINGS];
     U32 allocNative(U32 len);
+#endif
+#ifdef BOXEDWINE_X64
     bool emulateFPU;
 #endif
 private:

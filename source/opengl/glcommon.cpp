@@ -33,7 +33,7 @@
 
 #include "glMarshal.h"
 
-#ifdef BOXEDWINE_X64
+#ifdef BOXEDWINE_64BIT_MMU
 #include "../emulation/hardmmu/hard_memory.h"
 #endif
 
@@ -143,7 +143,7 @@ void glcommon_glGetString(CPU* cpu) {
 #else
         static char* ext;
         if (!ext) {
-            U32 len = strlen(result)+1;
+            U32 len = (U32)strlen(result)+1;
             ext = new char[len];
             memset(ext, 0, len);
         }
@@ -161,9 +161,9 @@ void glcommon_glGetString(CPU* cpu) {
 #endif
         GL_LOG("glGetString GLenum name=GL_EXTENSIONS ret=%s", result);
     }
-#ifdef BOXEDWINE_X64
+#ifdef BOXEDWINE_64BIT_MMU
     if (!cpu->thread->process->glStrings[index]) {
-        U32 len = strlen(result);
+        U32 len = (U32)strlen(result);
         U32 address = cpu->thread->process->allocNative(len+1);
         char* nativeResult = (char*)getNativeAddress(cpu->thread->process->memory, address);
         strcpy(nativeResult, result);
@@ -181,7 +181,6 @@ void glcommon_glGetTexImage(CPU* cpu) {
     GLint level = ARG2;
     GLsizei width;
     GLsizei height;
-    GLsizei depth = 1;
     GLenum format = ARG3;
     GLenum type = ARG4;
 
@@ -344,7 +343,7 @@ void glcommon_glGetPointerv(CPU* cpu) {
         GL_FUNC(glGetPointerv)(ARG1, &params);
         if ((U64)params>0xFFFFFFFFl)
             kwarn("problem with glGetPointerv");
-        writed(ARG2, (U32)params);
+        writed(ARG2, (U32)(size_t)params);
     }
 #else
     switch (ARG1) {

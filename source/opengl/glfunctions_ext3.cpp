@@ -90,7 +90,7 @@ void glcommon_glShaderSourceARB(CPU* cpu) {
     if (!ext_glShaderSourceARB)
         kpanic("ext_glShaderSourceARB is NULL");
     {
-    GL_FUNC(ext_glShaderSourceARB)(hARG1, ARG2, (const GLcharARB**)marshalpp(cpu, ARG3, ARG2, 0, -1, sizeof(GLcharARB)), marshali(cpu, ARG4, ARG1));
+    GL_FUNC(ext_glShaderSourceARB)(INDEX_TO_HANDLE(hARG1), ARG2, (const GLcharARB**)marshalpp(cpu, ARG3, ARG2, 0, -1, sizeof(GLcharARB)), marshali(cpu, ARG4, ARG1));
     GL_LOG ("glShaderSourceARB GLhandleARB shaderObj=%d, GLsizei count=%d, const GLcharARB** string=%.08x, const GLint* length=%.08x",ARG1,ARG2,ARG3,ARG4);
     }
 }
@@ -2658,7 +2658,7 @@ void glcommon_glUseProgramObjectARB(CPU* cpu) {
     if (!ext_glUseProgramObjectARB)
         kpanic("ext_glUseProgramObjectARB is NULL");
     {
-    GL_FUNC(ext_glUseProgramObjectARB)(hARG1);
+    GL_FUNC(ext_glUseProgramObjectARB)(INDEX_TO_HANDLE(hARG1));
     GL_LOG ("glUseProgramObjectARB GLhandleARB programObj=%d",ARG1);
     }
 }
@@ -2776,7 +2776,7 @@ void glcommon_glValidateProgramARB(CPU* cpu) {
     if (!ext_glValidateProgramARB)
         kpanic("ext_glValidateProgramARB is NULL");
     {
-    GL_FUNC(ext_glValidateProgramARB)(hARG1);
+    GL_FUNC(ext_glValidateProgramARB)(INDEX_TO_HANDLE(hARG1));
     GL_LOG ("glValidateProgramARB GLhandleARB programObj=%d",ARG1);
     }
 }

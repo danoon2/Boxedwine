@@ -738,21 +738,6 @@ void* marshalDrawArraysIndirectBindlessCommandNV(CPU* cpu, U32 address, U32 coun
     return NULL;
 }
 
-// :TODO: for mac this is a void*
-MARSHAL_TYPE(GLhandleARB, handle, d, 4)
-
-void marshalBackhandle(CPU* cpu, U32 address, GLhandleARB* buffer, U32 count) {
-    U32 i;
-
-    // :TODO:
-    if (sizeof(GLhandleARB)!=4)
-        kpanic("marshalBackhandle not supported on this platform");
-    for (i=0;i<count;i++) {
-        writed(address, buffer[i]);
-        address+=4;
-    }
-}
-
 #ifndef DISABLE_GL_EXTENSIONS
 GLvoid* marshalGetConvolutionFilter(CPU* cpu, U32 target, U32 format, U32 type, U32 image) {
     GLint width = 0;
@@ -790,4 +775,97 @@ GLboolean ELEMENT_ARRAY_BUFFER() {
 GLboolean PIXEL_UNPACK_BUFFER() {
     return marshalGet(GL_PIXEL_UNPACK_BUFFER_BINDING)!=0;
 }
+
+#ifdef BOXEDWINE_GLHANDLE_ARB_POINTER
+GLhandleARB* handleBuffer;
+U32 handleBufferSize;
+
+U32 marshalHandleToIndex(GLhandleARB h) {
+    if (!handleBufferSize) {
+        handleBuffer = new GLhandleARB[1024];
+        handleBufferSize = 1024;
+        memset(handleBuffer, 0, sizeof(GLhandleARB)*handleBufferSize);
+    }
+    for (U32 i=0;i<handleBufferSize;i++) {
+        if (handleBuffer[i]==h) {
+            return i;
+        }
+    }
+    for (U32 i=0;i<handleBufferSize;i++) {
+        if (handleBuffer[i]==NULL) {
+            handleBuffer[i] = h;
+            return i;
+        }
+    }
+    GLhandleARB* b = new GLhandleARB[handleBufferSize*2];
+    memset(handleBuffer, 0, sizeof(GLhandleARB)*handleBufferSize*2);
+    memcpy(b, handleBuffer, handleBufferSize);
+    U32 result = handleBufferSize;
+    handleBufferSize*=2;
+    delete[] handleBuffer;
+    handleBuffer = b;
+    return result;
+}
+
+GLhandleARB marshalIndexToHandle(U32 i) {
+    if (handleBuffer && i<handleBufferSize) {
+        return handleBuffer[i];
+    }
+    return NULL;
+}
+
+void marshalDeleteHandleIndex(U32 i) {
+    if (handleBuffer && i<handleBufferSize) {
+        handleBuffer[i] = NULL;
+    }
+}
+
+GLhandleARB* bufferhandle;
+U32 bufferhandle_len;
+
+GLhandleARB* marshalhandle(CPU* cpu, U32 address, U32 count) {
+    if (!address)
+        return NULL;
+    if (bufferhandle && bufferhandle_len<count) {
+        delete[] bufferhandle;
+        bufferhandle=NULL;
+    }
+    if (!bufferhandle) {
+        bufferhandle = new GLhandleARB[count];
+        bufferhandle_len = count;
+    }
+    /*
+     // not needed
+    for (i=0;i<count;i++) {
+        bufferhandle[i] = INDEX_TO_HANDLE(readd(address));
+        address+=4;
+    }
+     */
+    return bufferhandle;
+}
+
+void marshalBackhandle(CPU* cpu, U32 address, GLhandleARB* buffer, U32 count) {
+    U32 i;
+    
+    for (i=0;i<count;i++) {
+        writed(address, HANDLE_TO_INDEX(buffer[i]));
+        address+=4;
+    }
+}
+
+#else
+MARSHAL_TYPE(GLhandleARB, handle, d, 4)
+
+void marshalBackhandle(CPU* cpu, U32 address, GLhandleARB* buffer, U32 count) {
+    U32 i;
+    
+    // :TODO:
+    if (sizeof(GLhandleARB)!=4)
+        kpanic("marshalBackhandle not supported on this platform");
+    for (i=0;i<count;i++) {
+        writed(address, buffer[i]);
+        address+=4;
+    }
+}
+#endif
 #endif

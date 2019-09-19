@@ -18,7 +18,7 @@ void glcommon_glGetUniformfvARB(CPU* cpu) {
     if (!ext_glGetUniformfvARB)
         kpanic("ext_glGetUniformfvARB is NULL");
     {
-    GL_FUNC(ext_glGetUniformfvARB)(hARG1, ARG2, (GLfloat*)marshalp(cpu, 0, ARG3, 0));
+    GL_FUNC(ext_glGetUniformfvARB)(INDEX_TO_HANDLE(hARG1), ARG2, (GLfloat*)marshalp(cpu, 0, ARG3, 0));
     GL_LOG ("glGetUniformfvARB GLhandleARB programObj=%d, GLint location=%d, GLfloat* params=%.08x",ARG1,ARG2,ARG3);
     }
 }
@@ -50,7 +50,7 @@ void glcommon_glGetUniformivARB(CPU* cpu) {
     if (!ext_glGetUniformivARB)
         kpanic("ext_glGetUniformivARB is NULL");
     {
-    GL_FUNC(ext_glGetUniformivARB)(hARG1, ARG2, (GLint*)marshalp(cpu, 0, ARG3, 0));
+    GL_FUNC(ext_glGetUniformivARB)(INDEX_TO_HANDLE(hARG1), ARG2, (GLint*)marshalp(cpu, 0, ARG3, 0));
     GL_LOG ("glGetUniformivARB GLhandleARB programObj=%d, GLint location=%d, GLint* params=%.08x",ARG1,ARG2,ARG3);
     }
 }
@@ -1449,7 +1449,7 @@ void glcommon_glLinkProgramARB(CPU* cpu) {
     if (!ext_glLinkProgramARB)
         kpanic("ext_glLinkProgramARB is NULL");
     {
-    GL_FUNC(ext_glLinkProgramARB)(hARG1);
+    GL_FUNC(ext_glLinkProgramARB)(INDEX_TO_HANDLE(hARG1));
     GL_LOG ("glLinkProgramARB GLhandleARB programObj=%d",ARG1);
     }
 }

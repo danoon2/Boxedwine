@@ -156,7 +156,7 @@ void glcommon_glAttachObjectARB(CPU* cpu) {
     if (!ext_glAttachObjectARB)
         kpanic("ext_glAttachObjectARB is NULL");
     {
-    GL_FUNC(ext_glAttachObjectARB)(hARG1, hARG2);
+    GL_FUNC(ext_glAttachObjectARB)(INDEX_TO_HANDLE(hARG1), INDEX_TO_HANDLE(hARG2));
     GL_LOG ("glAttachObjectARB GLhandleARB containerObj=%d, GLhandleARB obj=%d",ARG1,ARG2);
     }
 }
@@ -300,7 +300,7 @@ void glcommon_glBindAttribLocationARB(CPU* cpu) {
     if (!ext_glBindAttribLocationARB)
         kpanic("ext_glBindAttribLocationARB is NULL");
     {
-    GL_FUNC(ext_glBindAttribLocationARB)(hARG1, ARG2, marshalsz(cpu, ARG3));
+    GL_FUNC(ext_glBindAttribLocationARB)(INDEX_TO_HANDLE(hARG1), ARG2, marshalsz(cpu, ARG3));
     GL_LOG ("glBindAttribLocationARB GLhandleARB programObj=%d, GLuint index=%d, const GLcharARB* name=%.08x",ARG1,ARG2,ARG3);
     }
 }
@@ -1764,7 +1764,7 @@ void glcommon_glCompileShaderARB(CPU* cpu) {
     if (!ext_glCompileShaderARB)
         kpanic("ext_glCompileShaderARB is NULL");
     {
-    GL_FUNC(ext_glCompileShaderARB)(hARG1);
+    GL_FUNC(ext_glCompileShaderARB)(INDEX_TO_HANDLE(hARG1));
     GL_LOG ("glCompileShaderARB GLhandleARB shaderObj=%d",ARG1);
     }
 }
@@ -2464,7 +2464,7 @@ void glcommon_glCreateProgramObjectARB(CPU* cpu) {
     if (!ext_glCreateProgramObjectARB)
         kpanic("ext_glCreateProgramObjectARB is NULL");
     {
-    EAX=GL_FUNC(ext_glCreateProgramObjectARB)();
+    EAX=HANDLE_TO_INDEX(GL_FUNC(ext_glCreateProgramObjectARB)());
     GL_LOG ("glCreateProgramObjectARB");
     }
 }
@@ -2516,7 +2516,7 @@ void glcommon_glCreateShaderObjectARB(CPU* cpu) {
     if (!ext_glCreateShaderObjectARB)
         kpanic("ext_glCreateShaderObjectARB is NULL");
     {
-    EAX=GL_FUNC(ext_glCreateShaderObjectARB)(ARG1);
+    EAX=HANDLE_TO_INDEX(GL_FUNC(ext_glCreateShaderObjectARB)(ARG1));
     GL_LOG ("glCreateShaderObjectARB GLenum shaderType=%d",ARG1);
     }
 }
@@ -2803,7 +2803,8 @@ void glcommon_glDeleteObjectARB(CPU* cpu) {
     if (!ext_glDeleteObjectARB)
         kpanic("ext_glDeleteObjectARB is NULL");
     {
-    GL_FUNC(ext_glDeleteObjectARB)(hARG1);
+    GL_FUNC(ext_glDeleteObjectARB)(INDEX_TO_HANDLE(hARG1));
+    DELETE_HANDLE_INDEX(hARG1);
     GL_LOG ("glDeleteObjectARB GLhandleARB obj=%d",ARG1);
     }
 }
@@ -3060,7 +3061,7 @@ void glcommon_glDetachObjectARB(CPU* cpu) {
     if (!ext_glDetachObjectARB)
         kpanic("ext_glDetachObjectARB is NULL");
     {
-    GL_FUNC(ext_glDetachObjectARB)(hARG1, hARG2);
+    GL_FUNC(ext_glDetachObjectARB)(INDEX_TO_HANDLE(hARG1), INDEX_TO_HANDLE(hARG2));
     GL_LOG ("glDetachObjectARB GLhandleARB containerObj=%d, GLhandleARB attachedObj=%d",ARG1,ARG2);
     }
 }
@@ -4705,7 +4706,7 @@ void glcommon_glGetActiveAttribARB(CPU* cpu) {
     if (!ext_glGetActiveAttribARB)
         kpanic("ext_glGetActiveAttribARB is NULL");
     {
-    GLsizei* p1=marshali(cpu, ARG4, 1);GLint* p2=marshal2i(cpu, ARG5, 1);GLenum* p3=marshale(cpu, ARG6, 1);GLcharARB* p4=marshalac(cpu, ARG7, ARG3);GL_FUNC(ext_glGetActiveAttribARB)(hARG1, ARG2, ARG3, p1, p2, p3, p4);
+    GLsizei* p1=marshali(cpu, ARG4, 1);GLint* p2=marshal2i(cpu, ARG5, 1);GLenum* p3=marshale(cpu, ARG6, 1);GLcharARB* p4=marshalac(cpu, ARG7, ARG3);GL_FUNC(ext_glGetActiveAttribARB)(INDEX_TO_HANDLE(hARG1), ARG2, ARG3, p1, p2, p3, p4);
     marshalBacki(cpu, ARG4, p1, 1);marshalBacki(cpu, ARG5, p2, 1);marshalBacke(cpu, ARG6, p3, 1);marshalBackac(cpu, ARG7, p4, ARG3);
     GL_LOG ("glGetActiveAttribARB GLhandleARB programObj=%d, GLuint index=%d, GLsizei maxLength=%d, GLsizei* length=%.08x, GLint* size=%.08x, GLenum* type=%.08x, GLcharARB* name=%.08x",ARG1,ARG2,ARG3,ARG4,ARG5,ARG6,ARG7);
     }
@@ -4750,7 +4751,7 @@ void glcommon_glGetActiveUniformARB(CPU* cpu) {
     if (!ext_glGetActiveUniformARB)
         kpanic("ext_glGetActiveUniformARB is NULL");
     {
-    GLsizei* p1=marshali(cpu, ARG4, 1);GLint* p2=marshal2i(cpu, ARG5, 1);GLenum* p3=marshale(cpu, ARG6, 1);GLcharARB* p4=marshalac(cpu, ARG7, ARG3);GL_FUNC(ext_glGetActiveUniformARB)(hARG1, ARG2, ARG3, p1, p2, p3, p4);
+    GLsizei* p1=marshali(cpu, ARG4, 1);GLint* p2=marshal2i(cpu, ARG5, 1);GLenum* p3=marshale(cpu, ARG6, 1);GLcharARB* p4=marshalac(cpu, ARG7, ARG3);GL_FUNC(ext_glGetActiveUniformARB)(INDEX_TO_HANDLE(hARG1), ARG2, ARG3, p1, p2, p3, p4);
     marshalBacki(cpu, ARG4, p1, 1);marshalBacki(cpu, ARG5, p2, 1);marshalBacke(cpu, ARG6, p3, 1);marshalBackac(cpu, ARG7, p4, ARG3);
     GL_LOG ("glGetActiveUniformARB GLhandleARB programObj=%d, GLuint index=%d, GLsizei maxLength=%d, GLsizei* length=%.08x, GLint* size=%.08x, GLenum* type=%.08x, GLcharARB* name=%.08x",ARG1,ARG2,ARG3,ARG4,ARG5,ARG6,ARG7);
     }
@@ -4822,7 +4823,7 @@ void glcommon_glGetAttachedObjectsARB(CPU* cpu) {
     if (!ext_glGetAttachedObjectsARB)
         kpanic("ext_glGetAttachedObjectsARB is NULL");
     {
-    GLsizei* p1=marshali(cpu, ARG3, 1);GLhandleARB* p2=marshalhandle(cpu, ARG4, ARG2);GL_FUNC(ext_glGetAttachedObjectsARB)(hARG1, ARG2, p1, p2);
+    GLsizei* p1=marshali(cpu, ARG3, 1);GLhandleARB* p2=marshalhandle(cpu, ARG4, ARG2);GL_FUNC(ext_glGetAttachedObjectsARB)(INDEX_TO_HANDLE(hARG1), ARG2, p1, p2);
     marshalBacki(cpu, ARG3, p1, 1);marshalBackhandle(cpu, ARG4, p2, ARG2);
     GL_LOG ("glGetAttachedObjectsARB GLhandleARB containerObj=%d, GLsizei maxCount=%d, GLsizei* count=%.08x, GLhandleARB* obj=%.08x",ARG1,ARG2,ARG3,ARG4);
     }
@@ -4848,7 +4849,7 @@ void glcommon_glGetAttribLocationARB(CPU* cpu) {
     if (!ext_glGetAttribLocationARB)
         kpanic("ext_glGetAttribLocationARB is NULL");
     {
-    EAX=GL_FUNC(ext_glGetAttribLocationARB)(hARG1, marshalsz(cpu, ARG2));
+    EAX=GL_FUNC(ext_glGetAttribLocationARB)(INDEX_TO_HANDLE(hARG1), marshalsz(cpu, ARG2));
     GL_LOG ("glGetAttribLocationARB GLhandleARB programObj=%d, const GLcharARB* name=%.08x",ARG1,ARG2);
     }
 }
@@ -5476,7 +5477,7 @@ void glcommon_glGetHandleARB(CPU* cpu) {
     if (!ext_glGetHandleARB)
         kpanic("ext_glGetHandleARB is NULL");
     {
-    EAX=GL_FUNC(ext_glGetHandleARB)(ARG1);
+    EAX=HANDLE_TO_INDEX(GL_FUNC(ext_glGetHandleARB)(ARG1));
     GL_LOG ("glGetHandleARB GLenum pname=%d",ARG1);
     }
 }
@@ -5583,7 +5584,7 @@ void glcommon_glGetInfoLogARB(CPU* cpu) {
     if (!ext_glGetInfoLogARB)
         kpanic("ext_glGetInfoLogARB is NULL");
     {
-    GLsizei* p1=marshali(cpu, ARG3, 1);GLcharARB* p2=marshalac(cpu, ARG4, ARG2);GL_FUNC(ext_glGetInfoLogARB)(hARG1, ARG2, p1, p2);
+    GLsizei* p1=marshali(cpu, ARG3, 1);GLcharARB* p2=marshalac(cpu, ARG4, ARG2);GL_FUNC(ext_glGetInfoLogARB)(INDEX_TO_HANDLE(hARG1), ARG2, p1, p2);
     marshalBacki(cpu, ARG3, p1, 1);marshalBackac(cpu, ARG4, p2, ARG2);
     GL_LOG ("glGetInfoLogARB GLhandleARB obj=%d, GLsizei maxLength=%d, GLsizei* length=%.08x, GLcharARB* infoLog=%.08x",ARG1,ARG2,ARG3,ARG4);
     }
@@ -6190,7 +6191,7 @@ void glcommon_glGetObjectParameterfvARB(CPU* cpu) {
     if (!ext_glGetObjectParameterfvARB)
         kpanic("ext_glGetObjectParameterfvARB is NULL");
     {
-    GLfloat* p1=marshalf(cpu, ARG3, 1);GL_FUNC(ext_glGetObjectParameterfvARB)(hARG1, ARG2, p1);
+    GLfloat* p1=marshalf(cpu, ARG3, 1);GL_FUNC(ext_glGetObjectParameterfvARB)(INDEX_TO_HANDLE(hARG1), ARG2, p1);
     marshalBackf(cpu, ARG3, p1, 1);
     GL_LOG ("glGetObjectParameterfvARB GLhandleARB obj=%d, GLenum pname=%d, GLfloat* params=%.08x",ARG1,ARG2,ARG3);
     }
@@ -6207,7 +6208,7 @@ void glcommon_glGetObjectParameterivARB(CPU* cpu) {
     if (!ext_glGetObjectParameterivARB)
         kpanic("ext_glGetObjectParameterivARB is NULL");
     {
-    GLint* p1=marshali(cpu, ARG3, 1);GL_FUNC(ext_glGetObjectParameterivARB)(hARG1, ARG2, p1);
+    GLint* p1=marshali(cpu, ARG3, 1);GL_FUNC(ext_glGetObjectParameterivARB)(INDEX_TO_HANDLE(hARG1), ARG2, p1);
     marshalBacki(cpu, ARG3, p1, 1);
     GL_LOG ("glGetObjectParameterivARB GLhandleARB obj=%d, GLenum pname=%d, GLint* params=%.08x",ARG1,ARG2,ARG3);
     }
@@ -6946,7 +6947,7 @@ void glcommon_glGetShaderSourceARB(CPU* cpu) {
     if (!ext_glGetShaderSourceARB)
         kpanic("ext_glGetShaderSourceARB is NULL");
     {
-    GL_FUNC(ext_glGetShaderSourceARB)(hARG1, ARG2, (GLsizei*)marshalp(cpu, 0, ARG3, 0), (GLcharARB*)marshalp(cpu, 0, ARG4, 0));
+    GL_FUNC(ext_glGetShaderSourceARB)(INDEX_TO_HANDLE(hARG1), ARG2, (GLsizei*)marshalp(cpu, 0, ARG3, 0), (GLcharARB*)marshalp(cpu, 0, ARG4, 0));
     GL_LOG ("glGetShaderSourceARB GLhandleARB obj=%d, GLsizei maxLength=%d, GLsizei* length=%.08x, GLcharARB* source=%.08x",ARG1,ARG2,ARG3,ARG4);
     }
 }
@@ -7344,7 +7345,7 @@ void glcommon_glGetUniformLocationARB(CPU* cpu) {
     if (!ext_glGetUniformLocationARB)
         kpanic("ext_glGetUniformLocationARB is NULL");
     {
-    EAX=GL_FUNC(ext_glGetUniformLocationARB)(hARG1, marshalsz(cpu, ARG2));
+    EAX=GL_FUNC(ext_glGetUniformLocationARB)(INDEX_TO_HANDLE(hARG1), marshalsz(cpu, ARG2));
     GL_LOG ("glGetUniformLocationARB GLhandleARB programObj=%d, const GLcharARB* name=%.08x",ARG1,ARG2);
     }
 }
