@@ -409,11 +409,15 @@ int boxedmain(int argc, const char **argv) {
             std::string ext = info.nativePath.substr(info.nativePath.length()-4);
             stringToLower(ext);
             if (ext == ".zip") {
+#ifdef BOXEDWINE_ZLIB
                 FsZip* z = new FsZip();
                 if (!stringHasEnding(info.localPath, "/")) {
                     info.localPath+="/";
                 }
                 z->init(info.nativePath, info.localPath);
+#else
+                klog("% not mounted because zlib was not compiled in", info.nativePath.c_str());
+#endif
             } else {
                 BoxedPtr<FsNode> parent = Fs::getNodeFromLocalPath("", Fs::getParentPath(info.localPath), true);
                 Fs::addRootDirectoryNode(info.localPath, info.nativePath, parent);

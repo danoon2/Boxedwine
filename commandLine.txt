@@ -23,6 +23,10 @@ This will load the file system from wine.zip and write the changes to c:\root
 
 -gensrc : This is used for ahead of time (AOT) compiling and requires the source to be build with GENERATE_SOURCE.  With this enabled the user can run the program, then compile the output back into the program for a performance boost.  Currently I don't recommend using this, it should be considered experimental and the out put will not be compatible with future versions of BoxedWine.
 
+-glext: If used, when Wine requests the list of OpenGL extension, it will be limited to this list.  This is only useful if the an old OpenGL game, like Unreal, can't handle the large list of extension a modern video card returns.  For Unreal I use:
+
+    -glext "GL_EXT_multi_draw_arrays GL_ARB_vertex_program GL_ARB_fragment_program GL_ARB_multitexture GL_EXT_secondary_color GL_EXT_texture_lod_bias GL_NV_texture_env_combine4 GL_ATI_texture_env_combine3 GL_EXT_texture_filter_anisotropic GL_ARB_texture_env_combine GL_EXT_texture_env_combine GL_EXT_texture_compression_s3tc GL_ARB_texture_compression GL_EXT_paletted_texture"
+
 -mount : Will mount a host directory or zip file, in the emulated file systems.  Example: -mount "c:\my games" "/home/username/my games" or -mount "c:\my games\mygame.zip" "/home/username/my games"
 
 -mount_drive : Will mount a host directory in the emulate file system and set up the Wine links so that it shows up as a drive in Wine. Example: -mount_drive "c:\my games" d
