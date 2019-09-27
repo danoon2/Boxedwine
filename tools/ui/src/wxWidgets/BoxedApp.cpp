@@ -24,9 +24,8 @@ bool BoxedApp::Load(BoxedContainer* container, const wxString& iniFilePath) {
     int defaultScaleQuality = 0;
     this->scaleQuality = config->Read("ScaleQuality",defaultScaleQuality);
 
-    bool result = this->name.Length()>0 && (this->cmd.Length()>0 || this->link.Length()>0);
     delete config;
-    return result;
+    return this->name.Length()>0 && (this->cmd.Length()>0 || this->link.Length()>0);
 }
 
 bool BoxedApp::SaveApp() {

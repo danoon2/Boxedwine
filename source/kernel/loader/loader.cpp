@@ -33,6 +33,10 @@
 #define PT_LOAD 1
 #define PT_INTERP 3 
 
+#ifdef __ARMEB__
+#  error "Big-Endian Arch is not supported"
+#endif
+
 bool isValidElf(struct k_Elf32_Ehdr* hdr) {
     if (hdr->e_ident[0] != 0x7F || hdr->e_ident[1] != 'E' || hdr->e_ident[2] != 'L' || hdr->e_ident[3] != 'F') {
         return false;

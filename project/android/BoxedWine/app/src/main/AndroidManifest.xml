@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="org.boxedwine"
+    android:installLocation="auto"
+    android:versionCode="1"
+    android:versionName="1.0">
+    <!-- OpenGL ES 2.0 -->
+    <uses-feature android:glEsVersion="0x00020000" /> <!-- Touchscreen support -->
+    <uses-feature
+        android:name="android.hardware.touchscreen"
+        android:required="true" /> <!-- Game controller support -->
+    <uses-feature
+        android:name="android.hardware.gamepad"
+        android:required="false" /> <!-- External mouse input events -->
+    <uses-feature
+        android:name="android.hardware.type.pc"
+        android:required="false" /> <!-- Allow writing to external storage -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" /> <!-- Allow access to the vibrator -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.INTERNET"/>
+
+    <application
+        android:allowBackup="true"
+        android:hardwareAccelerated="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:theme="@style/Theme.AppCompat.Light">
+        <activity
+            android:name=".BoxedWineUiActivity"
+            android:label="@string/title_activity_boxed_wine_ui">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <!--
+         Example of setting SDL hints from AndroidManifest.xml:
+        <meta-data android:name="SDL_ENV.SDL_ACCELEROMETER_AS_JOYSTICK" android:value="0"/>
+        -->
+        <activity
+            android:name=".BoxedWineActivity"
+            android:alwaysRetainTaskState="true"
+            android:configChanges="orientation|uiMode|screenLayout|screenSize|smallestScreenSize|keyboard|keyboardHidden|navigation"
+            android:label="@string/app_name"
+            android:launchMode="singleInstance">
+            <!-- Drop file event -->
+            <!--
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+            -->
+        </activity>
+    </application>
+
+</manifest>

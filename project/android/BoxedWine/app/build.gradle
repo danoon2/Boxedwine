@@ -1,0 +1,69 @@
+def buildAsLibrary = project.hasProperty('BUILD_AS_LIBRARY');
+def buildAsApplication = !buildAsLibrary
+if (buildAsApplication) {
+    apply plugin: 'com.android.application'
+} else {
+    apply plugin: 'com.android.library'
+}
+
+android {
+    compileSdkVersion 26
+    defaultConfig {
+        if (buildAsApplication) {
+            applicationId "org.boxedwine"
+        }
+        minSdkVersion 16
+        targetSdkVersion 26
+        versionCode 1
+        versionName "1.0"
+        externalNativeBuild {
+            ndkBuild {
+                arguments "APP_PLATFORM=android-16"
+                abiFilters 'armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'
+            }
+        }
+        vectorDrawables.useSupportLibrary = true
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+    if (!project.hasProperty('EXCLUDE_NATIVE_LIBS')) {
+        sourceSets.main {
+            jniLibs.srcDir 'libs'
+        }
+        externalNativeBuild {
+            ndkBuild {
+                path 'jni/Android.mk'
+            }
+        }
+
+    }
+    lintOptions {
+        abortOnError false
+    }
+
+    if (buildAsLibrary) {
+        libraryVariants.all { variant ->
+            variant.outputs.each { output ->
+                def outputFile = output.outputFile
+                if (outputFile != null && outputFile.name.endsWith(".aar")) {
+                    def fileName = "org.libsdl.app.aar";
+                    output.outputFile = new File(outputFile.parent, fileName);
+                }
+            }
+        }
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation 'com.android.support:appcompat-v7:26.1.0'
+    implementation 'com.android.support.constraint:constraint-layout:1.1.3'
+    implementation 'com.android.support:design:26.1.0'
+    implementation 'com.android.support:support-v4:26.1.0'
+    implementation 'com.android.support:support-vector-drawable:26.1.0'
+    implementation 'pub.devrel:easypermissions:0.2.0'
+}

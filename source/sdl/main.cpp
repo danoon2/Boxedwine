@@ -306,29 +306,35 @@ int boxedmain(int argc, const char **argv) {
     } else {
         pathSeperator = '/';
     }
-    std::string base2 = SDL_GetBasePath();
-    base2 = base2.substr(0, base2.length()-1); 
-    if (zips.size()==0 && !nozip) {
-        std::vector<Platform::ListNodeResult> results;
-        Platform::listNodes(base, results);
-        for (auto&& item : results) {
-            if (strstr(item.name.c_str(), "Wine") && strstr(item.name.c_str(), ".zip")) {
-                zips.push_back(std::string(base) + pathSeperator + item.name);
-                break;
-            }
-        }
-        if (zips.size()==0) {
-            results.clear();
-            Platform::listNodes(base2, results);
+    if (SDL_GetBasePath()) {
+        std::string base2 = SDL_GetBasePath();
+        base2 = base2.substr(0, base2.length()-1); 
+        if (zips.size()==0 && !nozip) {
+            std::vector<Platform::ListNodeResult> results;
+            Platform::listNodes(base, results);
             for (auto&& item : results) {
                 if (strstr(item.name.c_str(), "Wine") && strstr(item.name.c_str(), ".zip")) {
-                    zips.push_back(std::string(base2) + pathSeperator + item.name);
+                    zips.push_back(std::string(base) + pathSeperator + item.name);
+                    break;
+                }
+            }
+            if (zips.size()==0) {
+                results.clear();
+                Platform::listNodes(base2, results);
+                for (auto&& item : results) {
+                    if (strstr(item.name.c_str(), "Wine") && strstr(item.name.c_str(), ".zip")) {
+                        zips.push_back(std::string(base2) + pathSeperator + item.name);
+                    }
                 }
             }
         }
-    }
     if (!root.length()) {
+#ifdef __ANDROID__
+        root=SDL_AndroidGetExternalStoragePath();
+        root+="/root";
+#else
         root=SDL_GetPrefPath("Boxedwine", "root");
+#endif
     }   
     BOXEDWINE_RECORDER_INIT(root, zips, workingDir, &argv[i], argc-i);
     klog("Using root directory: %s", root.c_str());
@@ -347,7 +353,9 @@ int boxedmain(int argc, const char **argv) {
 #endif
     initSDL();
     initWine();
+#if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
     gl_init();    
+#endif
     strcpy(pwd, "PWD=");
     strcat(pwd, workingDir);
 
@@ -525,8 +533,13 @@ int boxedmain(int argc, const char **argv) {
     if (sdlFullScreen && !resolutionSet) {
         SDL_DisplayMode mode;
         if (!SDL_GetCurrentDisplayMode(0, &mode)) {
-            screenCx = mode.w;
-            screenCy = mode.h;
+#ifdef __ANDROID__
+            screenCx = mode.w/2;
+            screenCy = mode.h/2;
+#else
+            screenCx = mode.w/2;
+            screenCy = mode.h/2;
+#endif
         }
     }
 #endif

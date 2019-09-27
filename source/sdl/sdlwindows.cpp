@@ -40,7 +40,11 @@ const char* sdlScaleQuality = "0";
 extern bool videoEnabled;
 
 static int firstWindowCreated;
+#ifdef __ANDROID__
+U32 sdlFullScreen = true;
+#else
 U32 sdlFullScreen;
+#endif
 
 static std::unordered_map<std::string, SDL_Cursor*> cursors;
 static std::unordered_map<U32, Wnd*> hwndToWnd;
@@ -589,7 +593,7 @@ void sdlScreenResized(KThread* thread) {
 }
 
 void showSDLStartingWindow() {
-    #ifdef SDL2
+#ifdef SDL2    
         sdlWindow = SDL_CreateWindow("BoxedWine Is Starting Up", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 320, 240, SDL_WINDOW_SHOWN);
         sdlRenderer = SDL_CreateRenderer(sdlWindow, -1, 0);	
 #else
