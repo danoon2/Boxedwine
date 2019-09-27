@@ -394,6 +394,7 @@ U8* getPhysicalAddress(U32 address, U32 len) {
 void memcopyFromNative(U32 address, const void* pv, U32 len) {
 #ifdef UNALIGNED_MEMORY
     U32 i;
+    U8* p = (U8*)pv;
     for (i=0;i<len;i++) {
         writeb(address+i, p[i]);
     }
@@ -435,6 +436,7 @@ void memcopyFromNative(U32 address, const void* pv, U32 len) {
 
 void memcopyToNative(U32 address, void* pv, U32 len) {
 #ifdef UNALIGNED_MEMORY
+    U8* p = (U8*)pv;
     for (U32 i=0;i<len;i++) {
         p[i] = readb(address+i);
     }
