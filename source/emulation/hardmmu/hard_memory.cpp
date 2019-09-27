@@ -224,11 +224,11 @@ bool Memory::isPageAllocated(U32 page) {
     return (this->flags[page] & PAGE_ALLOCATED) != 0;
 }
 
-void memcopyFromNative(U32 address, const char* p, U32 len) {
+void memcopyFromNative(U32 address, const void* p, U32 len) {
     memcpy(getNativeAddress(KThread::currentThread()->process->memory, address), p, len);
 }
 
-void memcopyToNative(U32 address, char* p, U32 len) {
+void memcopyToNative(U32 address, void* p, U32 len) {
     memcpy(p, getNativeAddress(KThread::currentThread()->process->memory, address), len);
 }
 

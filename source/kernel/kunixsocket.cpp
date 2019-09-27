@@ -741,7 +741,7 @@ U32 KUnixSocketObject::recvmsg(KFileDescriptor* fd, U32 address, U32 flags) {
         if (len<dataLen) {
             kpanic("unhandled socket msg logic");
         }
-        memcopyFromNative(p, (S8*)msg->data.data() + pos, dataLen);
+        memcopyFromNative(p, msg->data.data() + pos, dataLen);
         pos+=dataLen;
         result+=dataLen;
     }  

@@ -67,8 +67,8 @@ U32 writeNativeString2(U32 address, const char* str, U32 len);
 void writeNativeStringW(U32 address, const char* str);
 U32 getNativeStringLen(U32 address);
 
-void memcopyFromNative(U32 address, const char* p, U32 len);
-void memcopyToNative(U32 address, char* p, U32 len);
+void memcopyFromNative(U32 address, const void* p, U32 len);
+void memcopyToNative(U32 address, void* p, U32 len);
 
 class KProcess;
 class Page;

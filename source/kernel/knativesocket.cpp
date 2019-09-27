@@ -580,7 +580,7 @@ U32 KNativeSocketObject::accept(KFileDescriptor* fd, U32 address, U32 len) {
 #endif
 
         if (address)
-            memcopyFromNative(address, (char*)&addr, addrlen);
+            memcopyFromNative(address, &addr, addrlen);
         if (len) {
             writed(len, addrlen);
         }
@@ -738,7 +738,7 @@ U32 KNativeSocketObject::recvmsg(KFileDescriptor* fd, U32 address, U32 flags) {
             if (r>=0) {
                 memcopyFromNative(p, tmp, r);
                 // :TODO: maybe copied fields to the expected location rather than assume the structures are the same
-                memcopyFromNative(readd(address), (const char*)&in, sizeof(in));
+                memcopyFromNative(readd(address), &in, sizeof(in));
                 writed(address + 4, inLen);
                 result+=r;
             }
@@ -767,10 +767,10 @@ U32 KNativeSocketObject::sendto(KFileDescriptor* fd, U32 message, U32 length, U3
     if (flags & (~1)) {
         kwarn("KNativeSocketObject::sendto unsupported flags: %d", flags);
     }
-    memcopyToNative(dest_addr, (char*)&dest, len);
+    memcopyToNative(dest_addr, &dest, len);
     S8* tmp = new S8[length];
     memcopyToNative(message, tmp, length);
-    result = ::sendto(this->nativeSocket, tmp, length, nativeFlags, &dest, len);
+    result = ::sendto(this->nativeSocket, (char*)tmp, length, nativeFlags, &dest, len);
     delete[] tmp;
     if ((S32)result>=0) {
         this->error = 0;
@@ -796,7 +796,7 @@ U32 KNativeSocketObject::recvfrom(KFileDescriptor* fd, U32 buffer, U32 length, U
     if (address_len) {
         inLen = readd( address_len);
         fromBuffer = new char[inLen];
-        memcopyToNative(address, (char*)fromBuffer, inLen);
+        memcopyToNative(address, fromBuffer, inLen);
     }
     char* tmp = new char[length];
     outLen = inLen;
@@ -804,14 +804,14 @@ U32 KNativeSocketObject::recvfrom(KFileDescriptor* fd, U32 buffer, U32 length, U
     U32 result = :: recvfrom(this->nativeSocket, tmp, length, nativeFlags, (struct sockaddr*)fromBuffer, &outLen);
     if ((S32)result>=0) {
         memcopyFromNative(buffer, tmp, result);
-        memcopyFromNative(address, (char*)fromBuffer, inLen);
+        memcopyFromNative(address, fromBuffer, inLen);
         writed(address_len, outLen);
         this->error = 0;
     } else {
         result = handleNativeSocketError(this, false);
         if (result == 0) { // WSAEMSGSIZE for example
             result = length;
-            memcopyFromNative(address, (char*)fromBuffer, inLen);
+            memcopyFromNative(address, fromBuffer, inLen);
             writed(address_len, outLen);
             this->error = 0;
         } 

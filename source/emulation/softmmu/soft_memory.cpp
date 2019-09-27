@@ -391,7 +391,7 @@ U8* getPhysicalAddress(U32 address, U32 len) {
     return NULL;
 }
 
-void memcopyFromNative(U32 address, const char* p, U32 len) {
+void memcopyFromNative(U32 address, const void* pv, U32 len) {
 #ifdef UNALIGNED_MEMORY
     U32 i;
     for (i=0;i<len;i++) {
@@ -399,6 +399,7 @@ void memcopyFromNative(U32 address, const char* p, U32 len) {
     }
 #else
     U32 i;
+    U8* p = (U8*)pv;
 
     if (len>4) {
         U32 todo = K_PAGE_SIZE-(address & (K_PAGE_SIZE-1));
@@ -432,12 +433,13 @@ void memcopyFromNative(U32 address, const char* p, U32 len) {
 #endif
 }
 
-void memcopyToNative(U32 address, char* p, U32 len) {
+void memcopyToNative(U32 address, void* pv, U32 len) {
 #ifdef UNALIGNED_MEMORY
     for (U32 i=0;i<len;i++) {
         p[i] = readb(address+i);
     }
 #else
+    U8* p = (U8*)pv;
     if (len>4) {
         U32 todo = K_PAGE_SIZE-(address & (K_PAGE_SIZE-1));
         if (todo>len)

@@ -70,13 +70,13 @@ static std::unordered_map<U32, BufferedTarget> bufferedTargets;
 
 U32 marshalBufferRange(CPU* cpu, GLenum target, GLvoid* buffer, U32 size) {
     if (bufferedTargets[target].originalBufferedAddress == buffer && bufferedTargets[target].size>=size) {
-        memcopyFromNative(bufferedTargets[target].bufferedAddress, (S8*)buffer, size);
+        memcopyFromNative(bufferedTargets[target].bufferedAddress, buffer, size);
         return bufferedTargets[target].bufferedAddress;
     } else if (bufferedTargets[target].bufferedAddress) {
         cpu->thread->process->unmap(bufferedTargets[target].bufferedAddress, bufferedTargets[target].size);
     }
     U32 result = cpu->thread->process->mmap(0, size, K_PROT_WRITE|K_PROT_READ, K_MAP_PRIVATE|K_MAP_ANONYMOUS, -1, 0);
-    memcopyFromNative(result, (S8*)buffer, size);
+    memcopyFromNative(result, buffer, size);
     bufferedTargets[target] = BufferedTarget(result, (S8*)buffer, size);
     return result;
 }
@@ -245,27 +245,27 @@ void marshalBacks(CPU* cpu, U32 address, GLshort* buffer, U32 count) {
 }
 
 void marshalBackb(CPU* cpu, U32 address, GLbyte* buffer, U32 count) {
-    memcopyFromNative(address, (char*)buffer, count);
+    memcopyFromNative(address, buffer, count);
 }
 
 void marshalBackc(CPU* cpu, U32 address, GLchar* buffer, U32 count) {
-    memcopyFromNative(address, (char*)buffer, count*sizeof(GLchar));
+    memcopyFromNative(address, buffer, count*sizeof(GLchar));
 }
 
 void marshalBacke(CPU* cpu, U32 address, GLenum* buffer, U32 count) {
-    memcopyFromNative(address, (char*)buffer, count*sizeof(GLenum));
+    memcopyFromNative(address, buffer, count*sizeof(GLenum));
 }
 
 void marshalBackac(CPU* cpu, U32 address, GLcharARB* buffer, U32 count) {
-    memcopyFromNative(address, (char*)buffer, count*sizeof(GLcharARB));
+    memcopyFromNative(address, buffer, count*sizeof(GLcharARB));
 }
 
 void marshalBackub(CPU* cpu, U32 address, GLubyte* buffer, U32 count) {
-    memcopyFromNative(address, (char*)buffer, count);
+    memcopyFromNative(address, buffer, count);
 }
 
 void marshalBackbool(CPU* cpu, U32 address, GLboolean* buffer, U32 count) {
-    memcopyFromNative(address, (char*)buffer, count);
+    memcopyFromNative(address, buffer, count);
 }
 
 GLvoid* marshalType(CPU* cpu, U32 type, U32 count, U32 address) {

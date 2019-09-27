@@ -731,8 +731,8 @@ void boxeddrv_SetCursorBits(CPU* cpu) {
         klog("boxeddrv_SetCursorBits too large of cursor\n");
         return;
     }
-    memcopyToNative(bits, (S8*)data, size);
-    memcopyToNative(bits+size, (S8*)mask, size);
+    memcopyToNative(bits, data, size);
+    memcopyToNative(bits+size, mask, size);
     sdlCreateAndSetCursor(cpu->thread, getNativeStringW(wModuleName, tmp, sizeof(tmp)), getNativeStringW(wResName, tmp2, sizeof(tmp2)), resId, data, mask, width, height, hotX, hotY);
 }
 

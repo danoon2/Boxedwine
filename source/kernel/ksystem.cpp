@@ -113,7 +113,9 @@ KThread* KSystem::getThreadById(U32 threadId) {
 
     for (auto& p : processes) {
         KProcess* process = p.second;
-        result = process->getThreadById(threadId);
+        if (process) {
+            result = process->getThreadById(threadId);
+        }
         if (result) {
             break;
         }

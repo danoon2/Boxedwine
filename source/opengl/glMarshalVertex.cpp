@@ -45,7 +45,7 @@ U32 updateVertexPointer(CPU* cpu, OpenGLVetexPointer* p, U32 count) {
             p->marshal = new unsigned char[datasize];
             p->marshal_size = datasize;
         }
-        memcopyToNative(p->ptr, (S8*)p->marshal, datasize);
+        memcopyToNative(p->ptr, p->marshal, datasize);
     } else {
         if (p->marshal_size) {
             free(p->marshal);

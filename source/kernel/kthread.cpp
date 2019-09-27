@@ -437,7 +437,7 @@ typedef struct compat_siginfo {
                 } _sigsys;
         } _sifields;
 } compat_siginfo_t;
-*/
+
 typedef struct fpregset
   {
     union
@@ -535,10 +535,10 @@ struct ucontext_ia32 {
         unsigned int      uc_link;         // 4
         stack_tt           uc_stack;        // 8
         mcontext_tt uc_mcontext;			   // 20
-        k__sigset_t   uc_sigmask;   /* mask last for extensibility */
+        k__sigset_t   uc_sigmask;   // mask last for extensibility 
 };
 
-
+*/
   
 #define INFO_SIZE 128
 #define CONTEXT_SIZE 128
@@ -600,7 +600,7 @@ void readFromContext(CPU* cpu, U32 context) {
 }
 
 U32 KThread::sigreturn() {
-    memcopyToNative(this->cpu->reg[4].u32, (char*)&this->cpu, sizeof(CPU));
+    memcopyToNative(this->cpu->reg[4].u32, &this->cpu, sizeof(CPU));
     //klog("signal return (threadId=%d)", thread->id);
     return -K_CONTINUE;
 }
