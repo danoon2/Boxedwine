@@ -328,6 +328,7 @@ int boxedmain(int argc, const char **argv) {
                 }
             }
         }
+    }
     if (!root.length()) {
 #ifdef __ANDROID__
         root=SDL_AndroidGetExternalStoragePath();
