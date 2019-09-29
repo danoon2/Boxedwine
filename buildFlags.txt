@@ -27,7 +27,7 @@ It introduces a writeable file store for the HOME_DIRECTORY directory.
 
 settings:
 By default uploading/downloading occurs inside the directory /root/home/username/files/.
-It is possible to modify this by appending a ?dir=somedir to the url, else change HOME_DIRECTORY in shell.html
+It is possible to modify this by appending a ?dir=somedir to the url, else change HOME_DIRECTORY in shellfs.html
 also possible to:
  - specify an alternate root zip file system.
  	i.e. root=win32.zip. If not set it is assumed the root fs is boxedwine.zip and built from a directory called root.
@@ -74,14 +74,12 @@ AUTO_RUN - indicates if start button is shown or page auto-runs. default true
 ALLOW_PARAM_OVERRIDE_FROM_URL - indicates if url can be appended with params as above for dir, app, m & p.
 ZLIB - boxedwine internally supports zip file systems, however recent builds of emscripten are not compatible. Therefore support for zipped file system is now provided by browserfs and ZLIB is no longer used in the emscripten build.
 
-
 notes on file system modes:
 DROPBOX - OAuth dance provided via dropbox.js library [https://github.com/dropbox/dropbox-js] and oauth_receiver.html.
 Because of this boxedwine must be served from a web server when using this option (make sure you copy and comment back in dropbox.min.js script).
 Also must set DROPBOX_APP_KEY and RECEIVE_URL (absolute path) inside the html.
 Remember to also set the receive_url in your dropbox app console.
 LOCAL_STORAGE - There are limits depending on browser and OS.
-MEMORY - likely to be slower then using the buildjs_*.sh version. More noticeable for larger file system images.
 
 other dials/tweaks for emscripten build files.
 see var Module inside the html file.
@@ -91,11 +89,3 @@ You can avoid using url params and hardcode the values straight into the html fi
 
 Drag and drop is supported. Set AUTO_RUN to false. Simply drag a directory into the page. A dialog will appear and list entries for all executable files found. This is very useful.
 Getting files into/out of the emulator is provided behind the SHOW_UPLOAD_DOWNLOAD flag in the html. Jszip is used to download a directory as an archive.
-
-buildjs_sdl2.sh/zee-worker.js/shell.html
-This was the original build script used to build an emscripten target.  
-A folder named root containing the linux filesystem must exist in the current directory.
-The contents of the root directory is gzipped up and merged into the emscripten build itself.
-Upload/Download functionality is available
-AUTO_RUN, dir, m, work and p parameters are supported
-Drag and drop is also supported
