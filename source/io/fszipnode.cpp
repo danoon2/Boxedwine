@@ -6,7 +6,7 @@
 #include <fcntl.h>
 #include "fszipopennode.h"
 
-FsZipNode::FsZipNode(BoxedPtr<FsFileNode> fileNode, const fsZipInfo& zipInfo, FsZip* fsZip) : FsNode(Zip, fileNode->id, fileNode->rdev, fileNode->path, fileNode->link, "", fileNode->isDirectory(), NULL), fileNode(fileNode), fsZip(fsZip) {
+FsZipNode::FsZipNode(BoxedPtr<FsFileNode> fileNode, const fsZipInfo& zipInfo, FsZip* fsZip) : FsNode(Zip, fileNode->id, fileNode->rdev, fileNode->path, fileNode->link, "", fileNode->isDirectory(), NULL), fsZip(fsZip), fileNode(fileNode) {
     this->zipInfo = zipInfo;
 }
 
