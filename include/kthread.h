@@ -144,7 +144,7 @@ private:
     void clearFutexes();
 
 #ifdef BOXEDWINE_X64
-    __declspec(thread) 
+    THREAD_LOCAL
 #endif
     static KThread* runningThread;    
 

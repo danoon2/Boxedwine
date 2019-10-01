@@ -184,7 +184,7 @@ void X64CodeChunk::deallocAndRetranslate() {
                 U32 fromInstructionIndex;        
                 X64CodeChunk* fromChunk = cpu->thread->memory->getCodeChunkContainingHostAddress(link->data->fromHostOffset);
                 void* srcHostInstruction = NULL;
-                U32 srcEip = fromChunk->getEipThatContainsHostAddress(link->data->fromHostOffset, &srcHostInstruction, &fromInstructionIndex);
+                fromChunk->getEipThatContainsHostAddress(link->data->fromHostOffset, &srcHostInstruction, &fromInstructionIndex);
                 U64 srcHost = (U64)srcHostInstruction;   
                 U64 endOfJump = (U64)link->data->fromHostOffset - srcHost + 4;
                 *((U32*)link->data->fromHostOffset) = (U32)(destHost-srcHost-endOfJump);
@@ -292,7 +292,7 @@ bool X64CodeChunk::retranslateSingleInstruction(x64CPU* cpu, void* address) {
     cpu->translateInstruction(&data, NULL);
     U32 eipLen = data.ip - data.startOfOpIp;
     U32 hostLen = data.bufferPos;
-    if (eipLen = this->emulatedInstructionLen[index] && hostLen == this->hostInstructionLen[index]) {
+    if (eipLen == this->emulatedInstructionLen[index] && hostLen == this->hostInstructionLen[index]) {
         memcpy(startofHostInstruction, data.buffer, hostLen);
         return true;
     }

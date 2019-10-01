@@ -145,7 +145,7 @@ static bool isAddressRangeInUse(void* p, U64 len) {
 }
 #endif
 
-static void* reservereNext4GBMemory() {
+static void* reserveNext4GBMemory() {
     void* p;
 
     while (true) {
@@ -163,7 +163,11 @@ static void* reservereNext4GBMemory() {
 }
 
 void reserveNativeMemory(Memory* memory) {
-    memory->id = (U64)reservereNext4GBMemory();
+    memory->id = (U64)reserveNext4GBMemory();
+#ifdef BOXEDWINE_X64
+    memory->executableMemoryId = (U64)reserveNext4GBMemory();
+    memory->nextExecutablePage = 0;
+#endif
 }
 
 void releaseNativeMemory(Memory* memory) {
@@ -241,6 +245,14 @@ void platformRunThreadSlice(KThread* thread) {
         initializedHandler = true;
     }
     runThreadSlice(thread);
+}
+#endif
+
+#ifdef BOXEDWINE_X64
+void allocExecutable64kBlock(Memory* memory, U32 page) {
+    if (mmap((void*)((page << K_PAGE_SHIFT) | memory->executableMemoryId), 64*1024, PROT_EXEC | PROT_WRITE | PROT_READ,MAP_ANONYMOUS|MAP_FIXED|MAP_PRIVATE, -1, 0)==MAP_FAILED) {
+        kpanic("allocExecutable64kBlock: failed to commit memory 0x%x: %s", (page << K_PAGE_SHIFT), strerror(errno));
+    }
 }
 #endif
 

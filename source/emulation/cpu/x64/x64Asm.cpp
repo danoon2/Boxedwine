@@ -4,7 +4,7 @@
 
 #include "x64Asm.h"
 #include "../common/common_other.h"
-#include "../source/emulation/hardmmu/hard_memory.h"
+#include "../../../../source/emulation/hardmmu/hard_memory.h"
 #include "../normal/normalCPU.h"
 #include "../normal/instructions.h"
 
@@ -1337,7 +1337,7 @@ void X64Asm::popSeg(U8 seg, U8 bytes) {
     // R8 for 3rd param
     popReg(0, true, bytes, false); // peek stack for seg param    
 
-    callHost(common_setSegment);
+    callHost((void*)common_setSegment);
     
     doIf(0, false, 0, [this]() {
         syncRegsToHost();
@@ -1367,7 +1367,7 @@ void X64Asm::setSeg(U8 seg, U8 rm) {
     
     writeToRegFromValue(2, false, seg, 4); // value param, must pass 4 so that upper part of reg is zero'd out    
 
-    callHost(common_setSegment);
+    callHost((void*)common_setSegment);
     
     doIf(0, false, 0, [this]() {
         syncRegsToHost();
@@ -1586,21 +1586,21 @@ void X64Asm::daa() {
 void X64Asm::das() {
     syncRegsFromHost(); 
     writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param    
-    callHost(::das);
+    callHost((void*)::das);
     syncRegsToHost();
 }
 
 void X64Asm::aaa() {
     syncRegsFromHost(); 
     writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param    
-    callHost(::aaa);
+    callHost((void*)::aaa);
     syncRegsToHost();
 }
 
 void X64Asm::aas() {
     syncRegsFromHost(); 
     writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param    
-    callHost(::aas);
+    callHost((void*)::aas);
     syncRegsToHost();
 }
 
@@ -1608,7 +1608,7 @@ void X64Asm::aad(U8 value) {
     syncRegsFromHost(); 
     writeToRegFromValue(2, false, value, 4);
     writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param    
-    callHost(::aad);
+    callHost((void*)::aad);
     syncRegsToHost();  
 }
 
@@ -2063,7 +2063,7 @@ void X64Asm::internal_addDynamicCheck(U32 address, U32 len, U32 needsFlags, bool
     } else {
         syncRegsFromHost();
         writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
-        callHost(x64_changed);
+        callHost((void*)x64_changed);
         syncRegsToHost();
 
         U32 tmp = this->bufferPos;
@@ -2245,7 +2245,7 @@ void X64Asm::jmp(bool big, U32 sel, U32 offset, U32 oldEip) {
     writeToRegFromValue(0, true, sel, 4); // sel param
     writeToRegFromValue(1, true, offset, 4); // offset param
     
-    callHost(x64_jmp);
+    callHost((void*)x64_jmp);
     syncRegsToHost();
     doJmp();
 }
@@ -2267,7 +2267,7 @@ void X64Asm::call(bool big, U32 sel, U32 offset, U32 oldEip) {
     writeToRegFromValue(0, true, sel, 4); // sel param
     writeToRegFromValue(1, true, offset, 4); // offset param
     
-    callHost(x64_call);
+    callHost((void*)x64_call);
     syncRegsToHost();
     doJmp();
 }
@@ -2388,7 +2388,7 @@ void X64Asm::retf(U32 big, U32 bytes) {
     writeToRegFromValue(2, false, big, 4); // big param
     writeToRegFromValue(0, true, bytes, 4); // bytes param
     
-    callHost(common_ret);
+    callHost((void*)common_ret);
     syncRegsToHost();
     doJmp();
 }
@@ -2403,7 +2403,7 @@ void X64Asm::iret(U32 big, U32 oldEip) {
     writeToRegFromValue(2, false, big, 4); // big param
     writeToRegFromValue(0, true, oldEip, 4); // sel param
     
-    callHost(common_iret);
+    callHost((void*)common_iret);
     syncRegsToHost();
     doJmp();
 }
@@ -2417,7 +2417,7 @@ void X64Asm::signalIllegalInstruction(int code) {
     writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
     writeToRegFromValue(2, false, code, 4); // code param
     
-    callHost(common_signalIllegalInstruction);
+    callHost((void*)common_signalIllegalInstruction);
     syncRegsToHost();
     doJmp();
 }
@@ -2444,7 +2444,7 @@ void X64Asm::logOp(U32 eip) {
     // calling convention RCX, RDX, R8, R9 for first 4 parameters
 
     writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param    
-    callHost(x64log);
+    callHost((void*)x64log);
 
     syncRegsToHost();
 }
@@ -2458,7 +2458,7 @@ void X64Asm::syscall(U32 opLen) {
     writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
     writeToRegFromValue(2, false, opLen, 4); // opLen param
     
-    callHost(ksyscall);
+    callHost((void*)ksyscall);
     syncRegsToHost();
     doJmp();
 }
@@ -2471,7 +2471,7 @@ void X64Asm::int98(U32 opLen) {
     // void common_int98(CPU* cpu)
     writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
 
-    callHost(common_int98);
+    callHost((void*)common_int98);
 
     minSyncRegsToHost();
     //doJmp();
@@ -2485,7 +2485,7 @@ void X64Asm::int99(U32 opLen) {
     // void common_int99(CPU* cpu)
     writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
 
-    callHost(common_int99);
+    callHost((void*)common_int99);
     minSyncRegsToHost();
     //doJmp();
 }
@@ -2586,7 +2586,7 @@ void X64Asm::loadSeg(U8 seg, U8 rm, bool b32) {
 
         writeToMemFromReg(1, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_ARG5, 4, false);
 
-        callHost(common_setSegment);
+        callHost((void*)common_setSegment);
     
         this->tmp1InUse = false;
         this->tmp2InUse = false;
@@ -2625,7 +2625,7 @@ void X64Asm::enter(bool big, U32 bytes, U32 level) {
         writeToRegFromValue(0, true, bytes, 4);
         writeToRegFromValue(1, true, level, 4);
 
-        callHost(common_enter);
+        callHost((void*)common_enter);
     
         syncRegsToHost();
     } else {
@@ -2702,9 +2702,9 @@ void X64Asm::callJmp(bool big, U8 rm, bool jmp) {
     releaseTmpReg(HOST_TMP3);
     
     if (jmp) {
-        callHost(x64_jmp);
+        callHost((void*)x64_jmp);
     } else {
-        callHost(x64_call);
+        callHost((void*)x64_call);
     }
     syncRegsToHost();
     doJmp();  
@@ -2754,7 +2754,7 @@ void X64Asm::lsl(bool big, U8 rm) {
 
     writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
             
-    callHost(common_lsl);
+    callHost((void*)common_lsl);
     if (big) {
         if (G(rm)!=0) {
             writeToRegFromReg(G(rm), false, 0, false, 4);
@@ -2791,7 +2791,7 @@ void X64Asm::lar(bool big, U8 rm) {
 
     writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
             
-    callHost(common_lar);
+    callHost((void*)common_lar);
     if (big) {
         if (G(rm)!=0) {
             writeToRegFromReg(G(rm), false, 0, false, 4);
@@ -2823,7 +2823,7 @@ void X64Asm::verw(U8 rm) {
     writeToRegFromE(2, false, rm, 2);
     writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
             
-    callHost(common_verw);
+    callHost((void*)common_verw);
     syncRegsToHost();
 }
 
@@ -2837,7 +2837,7 @@ void X64Asm::verr(U8 rm) {
     writeToRegFromE(2, false, rm, 2);
     writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
             
-    callHost(common_verr);
+    callHost((void*)common_verr);
     syncRegsToHost();
 }
 
@@ -2848,7 +2848,7 @@ static void x64_invalidOp(U32 op) {
 void X64Asm::invalidOp(U32 op) {
     //syncRegsFromHost(); 
     writeToRegFromValue(1, false, op, 4);
-    callHost(x64_invalidOp);
+    callHost((void*)x64_invalidOp);
     //syncRegsToHost();
     //doJmp();
 }
@@ -2860,7 +2860,7 @@ static void x64_errorMsg(const char* msg) {
 void X64Asm::errorMsg(const char* msg) {
     //syncRegsFromHost(); 
     writeToRegFromValue(1, false, (U64)msg, 8);
-    callHost(x64_errorMsg);
+    callHost((void*)x64_errorMsg);
     //syncRegsToHost();
     //doJmp();
 }
@@ -2873,7 +2873,7 @@ void X64Asm::cpuid() {
     // call void common_cpuid(CPU* cpu)
     writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
             
-    callHost(common_cpuid);
+    callHost((void*)common_cpuid);
     syncRegsToHost();
 }
 
@@ -3103,7 +3103,7 @@ void X64Asm::stos16(void* pfn, U32 size, bool repeat) {
     writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
     writeToRegFromValue(2, false, (U64)pfn, 8);
     writeToRegFromValue(0, true, size, 4);
-    callHost(x64_stringNoArgs);
+    callHost((void*)x64_stringNoArgs);
     syncRegsToHost();
 }
 
@@ -3115,7 +3115,7 @@ void X64Asm::scas16(void* pfn, U32 size, bool repeat, bool repeatZero) {
     writeToRegFromValue(2, false, (U64)pfn, 8);
     writeToRegFromValue(0, true, (U32)repeatZero?1:0, 4);
     writeToRegFromValue(1, true, size, 4);
-    callHost(x64_string1Arg);
+    callHost((void*)x64_string1Arg);
     syncRegsToHost();
 }
 
@@ -3127,7 +3127,7 @@ void X64Asm::movs16(void* pfn, U32 size, bool repeat, U32 base) {
     writeToRegFromValue(2, false, (U64)pfn, 8);
     writeToRegFromValue(0, true, base, 4);
     writeToRegFromValue(1, true, size, 4);
-    callHost(x64_string1Arg);
+    callHost((void*)x64_string1Arg);
     syncRegsToHost();
 }
 
@@ -3139,7 +3139,7 @@ void X64Asm::lods16(void* pfn, U32 size, bool repeat, U32 base) {
     writeToRegFromValue(2, false, (U64)pfn, 8);
     writeToRegFromValue(0, true, base, 4);
     writeToRegFromValue(1, true, size, 4);
-    callHost(x64_string1Arg);
+    callHost((void*)x64_string1Arg);
     syncRegsToHost();
 }
 
@@ -3151,7 +3151,7 @@ void X64Asm::cmps16(void* pfn, U32 size, bool repeat, bool repeatZero, U32 base)
     writeToRegFromValue(2, false, (U64)pfn, 8);
     writeToRegFromValue(0, true, (U32)repeatZero?1:0, 4);
     writeToRegFromValue(1, true, base|(size<<16), 4);
-    callHost(x64_string2Arg);
+    callHost((void*)x64_string2Arg);
     syncRegsToHost();
 }
 
@@ -3166,12 +3166,12 @@ void X64Asm::bound16(U8 rm) {
     getNativeAddressInRegFromE(HOST_TMP2, true, rm);
     writeToRegFromValue(2, false, G(rm), 4);
     writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
-    callHost(common_bound16);
+    callHost((void*)common_bound16);
     releaseTmpReg(HOST_TMP2);
     doIf(0, false, 0, [this]() {
         syncRegsToHost();
         doJmp();
-    }, [this, rm]() {
+    }, [this]() {
         syncRegsToHost();
     });
 }
@@ -3186,7 +3186,7 @@ void X64Asm::bound32(U8 rm) {
     getNativeAddressInRegFromE(HOST_TMP2, true, rm);
     writeToRegFromValue(2, false, G(rm), 4);
     writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
-    callHost(common_bound32);
+    callHost((void*)common_bound32);
     releaseTmpReg(HOST_TMP2);
     doIf(0, false, 0, [this]() {
         syncRegsToHost();
@@ -3201,7 +3201,7 @@ void X64Asm::movRdCrx(U32 which, U32 reg) {
     writeToRegFromValue(0, true, reg, 4);
     writeToRegFromValue(2, false, which, 4);
     writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
-    callHost(common_readCrx);
+    callHost((void*)common_readCrx);
     doIf(0, false, 0, [this]() {
         syncRegsToHost();
         doJmp();
@@ -3215,7 +3215,7 @@ void X64Asm::movCrxRd(U32 which, U32 reg) {
     writeToRegFromReg(0, true, reg, false, 4);
     writeToRegFromValue(2, false, which, 4);
     writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
-    callHost(common_readCrx);
+    callHost((void*)common_readCrx);
     releaseTmpReg(HOST_TMP2);
     doIf(0, false, 0, [this]() {
         syncRegsToHost();
@@ -3233,7 +3233,7 @@ void common_fpu_write_address(x64CPU* cpu, PFN_FPU_ADDRESS pfn, U32 address, U32
 void X64Asm::callFpuNoArg(PFN_FPU pfn) {
     syncRegsFromHost();
     writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
-    callHost(pfn);
+    callHost((void*)pfn);
     syncRegsToHost();
 }
 
@@ -3241,7 +3241,7 @@ void X64Asm::callFpuWithAddress(PFN_FPU_ADDRESS pfn, U8 rm) {
     syncRegsFromHost();
     getNativeAddressInRegFromE(2, false, rm);    
     writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
-    callHost(pfn);
+    callHost((void*)pfn);
     syncRegsToHost();
 }
 
@@ -3251,7 +3251,7 @@ void X64Asm::callFpuWithAddressWrite(PFN_FPU_ADDRESS pfn, U8 rm, U32 len) {
     writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
     writeToRegFromValue(2, false, (U64)pfn, 8);
     writeToRegFromValue(1, true, len, 4);
-    callHost(common_fpu_write_address);
+    callHost((void*)common_fpu_write_address);
     syncRegsToHost();
 }
 
@@ -3259,7 +3259,7 @@ void X64Asm::callFpuWithArg(PFN_FPU_REG pfn, U32 arg) {
     syncRegsFromHost();
     writeToRegFromValue(2, false, (U32)arg, 4);
     writeToRegFromReg(1, false, HOST_CPU, true, 8); // CPU* param
-    callHost(pfn);
+    callHost((void*)pfn);
     syncRegsToHost();
 }
 

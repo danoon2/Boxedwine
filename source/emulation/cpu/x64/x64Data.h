@@ -24,6 +24,17 @@
 #define HOST_SS           6
 #define HOST_DS           7
 
+class TodoJump {
+public:
+    TodoJump() : eip(0), bufferPos(0), offsetSize(0), sameChunk(true) {}
+    TodoJump(U32 eip, U32 bufferPos, U8 offsetSize, bool sameChunk, U32 opIndex) : eip(eip), bufferPos(bufferPos), offsetSize(offsetSize), sameChunk(sameChunk), opIndex(opIndex) {}
+    U32 eip;
+    U32 bufferPos;
+    U8 offsetSize;
+    bool sameChunk;
+    U32 opIndex;
+};
+
 class X64Data {
 public:
     X64Data(x64CPU* cpu);
@@ -82,17 +93,7 @@ public:
     U32 imm;
 
     x64CPU* cpu;
-
-    static class TodoJump {
-    public:
-        TodoJump() : eip(0), bufferPos(0), offsetSize(0), sameChunk(true) {}
-        TodoJump(U32 eip, U32 bufferPos, U8 offsetSize, bool sameChunk, U32 opIndex) : eip(eip), bufferPos(bufferPos), offsetSize(offsetSize), sameChunk(sameChunk), opIndex(opIndex) {}
-        U32 eip;
-        U32 bufferPos;
-        U8 offsetSize;
-        bool sameChunk;
-        U32 opIndex;
-    };
+    
     std::vector<TodoJump> todoJump;
     S32 stopAfterInstruction;
 

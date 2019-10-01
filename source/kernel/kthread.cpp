@@ -26,7 +26,7 @@
 #include <setjmp.h>
 
 #ifdef BOXEDWINE_X64
-__declspec(thread) 
+THREAD_LOCAL
 #endif
 KThread* KThread::runningThread;
 

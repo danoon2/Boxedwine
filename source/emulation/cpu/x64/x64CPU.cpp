@@ -523,6 +523,7 @@ U64 x64CPU::handleAccessException(U64 rip, U64 address, bool readAddress, U64 rs
             return (U64)host;
         } else {
             kpanic("x64CPU::handleAccessException tried to run code in a free'd chunk");
+            return 0;
         }
     } else {          
         // check if the emulated memory caused the exception
@@ -570,7 +571,7 @@ void OPCALL unscheduleCallback(CPU* cpu, DecodedOp* op) {
 U64 x64CPU::startException(U64 address, bool readAddress, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo) {
     if (this->thread->exiting) {
         X64Asm data(this);
-        data.callCallback(unscheduleCallback);        
+        data.callCallback((void*)unscheduleCallback);        
         return (U64)data.commit(true)->getHostAddress();                
     }
     if (this->inException) {

@@ -33,7 +33,7 @@ bool doMainLoop() {
         if (lastTitleUpdate+5000 < t) {
             char tmp[256];
             lastTitleUpdate = t;
-            sprintf(tmp, "BoxedWine 19R1.1", dynamicCodeExceptionCount, exceptionCount);
+            sprintf(tmp, "BoxedWine 19R1.1");
             fbSetCaption(tmp, "BoxedWine");
         }
         if (e.type == sdlCustomEvent) {

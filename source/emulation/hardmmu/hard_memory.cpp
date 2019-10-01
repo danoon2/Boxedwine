@@ -656,7 +656,7 @@ U8* getPhysicalWriteAddress(U32 address, U32 len) {
 #ifdef BOXEDWINE_X64
 // called when X64CodeChunk is being dealloc'd
 void Memory::removeCodeChunk(X64CodeChunk* chunk) {
-    U32 hostPage = ((U32)chunk->getHostAddress()) >> K_PAGE_SHIFT;
+    U32 hostPage = ((U32)(size_t)chunk->getHostAddress()) >> K_PAGE_SHIFT;
     U32 emulationPage = (chunk->getEip()) >> K_PAGE_SHIFT;
     X64CodeChunk* result = this->codeChunksByHostPage[hostPage];    
     if (this->codeChunksByHostPage[hostPage] == chunk) {
@@ -671,10 +671,10 @@ void Memory::removeCodeChunk(X64CodeChunk* chunk) {
 
 // called when X64CodeChunk is being alloc'd
 void Memory::addCodeChunk(X64CodeChunk* chunk) {
-    U32 hostPage = ((U32)chunk->getHostAddress()) >> K_PAGE_SHIFT;
+    U32 hostPage = ((U32)(size_t)chunk->getHostAddress()) >> K_PAGE_SHIFT;
     U32 emulationPage = (chunk->getEip()) >> K_PAGE_SHIFT;
 #ifdef _DEBUG
-    U32 lastPage = hostPage+(((U32)chunk->getHostAddress()+chunk->getHostAddressLen()) >> K_PAGE_SHIFT);
+    U32 lastPage = hostPage+(((U32)(size_t)chunk->getHostAddress()+chunk->getHostAddressLen()) >> K_PAGE_SHIFT);
     for (U32 i=hostPage;i<=lastPage;i++) {
         X64CodeChunk* result = this->codeChunksByHostPage[i];
         while (result) {
@@ -735,7 +735,7 @@ void Memory::makePageDynamic(U32 page) {
 // only called during code patching, if this become a performance problem maybe we could just it up
 // like with soft_code_page
 X64CodeChunk* Memory::getCodeChunkContainingHostAddress(void* hostAddress) {
-    U32 page = ((U32)hostAddress) >> K_PAGE_SHIFT;
+    U32 page = ((U32)(size_t)hostAddress) >> K_PAGE_SHIFT;
     X64CodeChunk* result = this->codeChunksByHostPage[page];
     while (result) {
         if (result->containsHostAddress(hostAddress)) {
