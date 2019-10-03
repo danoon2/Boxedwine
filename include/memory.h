@@ -157,6 +157,7 @@ public:
     void freeExcutableMemory(void* hostMemory, U32 size);
     void executableMemoryReleased();
     U64 executableMemoryId;
+    U64 previousExecutableMemoryId;
     U32 nextExecutablePage;
 
     void** eipToHostInstruction[K_NUMBER_OF_PAGES];

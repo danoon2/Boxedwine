@@ -137,8 +137,8 @@ void syncFromException(x64CPU* cpu, ucontext_t* context, bool includeFPU) {
                 cpu->fpu.setReg(i, 0.0);
             } else {
                 U32 index = (i-cpu->fpu.GetTop()) & 7;
-                U64 low;
-                S16 high;
+                U64 low=0;
+                S16 high=0;
                 
                 switch (index) {
                     case 0:
@@ -206,13 +206,18 @@ void syncToException(x64CPU* cpu, ucontext_t* context, bool includeFPU) {
     memcpy(&context->CONTEXT_XMM7, &cpu->xmm[7], 16);
     
     if (includeFPU && !cpu->thread->process->emulateFPU) {
+#ifdef __MACH__
+        *((U16*)&context->CONTEXT_FCW) = cpu->fpu.CW();
+        *((U16*)&context->CONTEXT_FSW) = cpu->fpu.SW();
+#else
         context->CONTEXT_FCW = cpu->fpu.CW();
         context->CONTEXT_FSW = cpu->fpu.SW();
+#endif
         context->CONTEXT_FTW = cpu->fpu.GetAbridgedTag();
         for (U32 i=0;i<8;i++) {
             U32 index = (i-cpu->fpu.GetTop()) & 7;
-            U64* low;
-            S16* high;
+            U64* low=NULL;
+            S16* high=NULL;
             
             switch (index) {
                 case 0:
@@ -277,7 +282,6 @@ static void handler(int sig, siginfo_t* info, void* vcontext)
 {
     BOXEDWINE_CRITICAL_SECTION;
     exceptionCount++;
-    
     KThread* currentThread = KThread::currentThread();
     if (!currentThread) {
         return;
@@ -319,11 +323,12 @@ static void handler(int sig, siginfo_t* info, void* vcontext)
             context->CONTEXT_RIP = rip;
             return;
         }
+        return;
     } else if (info->si_signo == SIGBUS && info->si_code == BUS_ADRALN) {
         // :TODO: figure out how AC got set, I've only seen this while op logging
         context->CONTEXT_FLAGS &= ~AC;
         return;
-    } else if ((info->si_signo == SIGBUS || info->si_signo == SIGSEGV) && (context->CONTEXT_RIP & 0xFFFFFFFF00000000l)==(U64)cpu->thread->memory->executableMemoryId) {
+    } else if ((info->si_signo == SIGBUS || info->si_signo == SIGSEGV) && ((context->CONTEXT_RIP & 0xFFFFFFFF00000000l)==(U64)cpu->thread->memory->executableMemoryId || (cpu->thread->memory->previousExecutableMemoryId && (context->CONTEXT_RIP & 0xFFFFFFFF00000000l)==(U64)cpu->thread->memory->previousExecutableMemoryId))) {
         U64 rip = cpu->handleAccessException(context->CONTEXT_RIP, address, readAccess, context->CONTEXT_RSI, context->CONTEXT_RDI, context->CONTEXT_R8, context->CONTEXT_R9, (U64*)&context->CONTEXT_R10, doSyncFrom, doSyncTo);
         if (rip) {
             context->CONTEXT_RIP = rip;
@@ -333,6 +338,7 @@ static void handler(int sig, siginfo_t* info, void* vcontext)
         context->CONTEXT_RIP = cpu->handleDivByZero(doSyncFrom, doSyncTo);
         return;
     }
+    kpanic("unhandled exception %d", info->si_signo);
 }
 
 U32 platformThreadCount = 0;

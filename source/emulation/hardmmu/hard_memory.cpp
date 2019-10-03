@@ -33,6 +33,8 @@ Memory::Memory() : allocated(0), callbackPos(0) {
     memset(nativeFlags, 0, sizeof(nativeFlags));
 #ifndef BOXEDWINE_X64
     memset(codeCache, 0, sizeof(codeCache));
+    this->executableMemoryId = 0;
+    this->previousExecutableMemoryId = 0;
     //memset(ids, 0, sizeof(ids));
 #else
     memset(this->codeChunksByHostPage, 0, sizeof(this->codeChunksByHostPage));

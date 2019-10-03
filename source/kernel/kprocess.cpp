@@ -684,6 +684,7 @@ U32 KProcess::execve(const std::string& path, std::vector<std::string>& args, co
     }
 
     // reset memory must come after we grab the args and env
+    this->memory->previousExecutableMemoryId = this->memory->executableMemoryId;
     this->memory->reset();
     KThread::currentThread()->reset();
     this->onExec();
