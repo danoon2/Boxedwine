@@ -281,9 +281,9 @@ void x64CPU::translateInstruction(X64Asm* data, X64Asm* firstPass) {
             break;
         }            
     }
-    if (data->tmp1InUse || data->tmp2InUse || data->tmp3InUse) {
-        kpanic("x64: instruction %X did not release tmp register", data->inst);
-    }
+    data->tmp1InUse = false;
+    data->tmp2InUse = false;
+    data->tmp3InUse = false;
 }
 
 void x64CPU::translateData(X64Asm* data, X64Asm* firstPass) {
@@ -571,6 +571,7 @@ void OPCALL unscheduleCallback(CPU* cpu, DecodedOp* op) {
 U64 x64CPU::startException(U64 address, bool readAddress, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo) {
     if (this->thread->exiting) {
         X64Asm data(this);
+        data.callCallback((void*)unscheduleCallback);
         data.callCallback((void*)unscheduleCallback);        
         return (U64)data.commit(true)->getHostAddress();                
     }

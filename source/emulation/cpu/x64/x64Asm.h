@@ -148,9 +148,14 @@ public:
     void pushNativeFlags();
     void popNativeFlags();
     void logOp(U32 eip);
+    U8 autoReleaseTmpAfterWriteOp;
     bool tmp1InUse;
     bool tmp2InUse;
     bool tmp3InUse;
+    bool param1InUse;
+    bool param2InUse;
+    bool param3InUse;
+    bool param4InUse;
     void stos16(void* pfn, U32 size, bool repeat);
     void scas16(void* pfn, U32 size, bool repeat, bool repeatZero);
     void movs16(void* pfn, U32 size, bool repeat, U32 base);
@@ -177,7 +182,11 @@ public:
 private:
     U8 getTmpReg();
     void releaseTmpReg(U8 reg);
-    bool isTmpReg(U8 reg);
+    bool isTmpReg(U8 tmpReg);
+    void lockParamReg(U8 paramReg, bool paramRex);
+    void unlockParamReg(U8 paramReg, bool paramRex);
+    U8 getParamSafeTmpReg();
+
     void internal_addDynamicCheck(U32 address, U32 len, U32 needsFlags, bool useCall, U8 tmpReg3);
 
     void push(S32 reg, bool isRegRex, U32 value, S32 bytes);

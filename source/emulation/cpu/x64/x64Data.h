@@ -15,13 +15,26 @@
 // R10 and R11 are caller saved for Linux
 //
 // calling convention RCX, RDX, R8, R9 for first 4 parameters on Windows, X64Asm::callHost is hard coded to use HOST_TMP3, this can not overlap with parameters
+// calling convention RDI, RSI, RDX, RCX, R8, R9 for first 6 parameters on other platforms
+
+// be careful of overlapping the use of these when setting up parameters for a call
 #define HOST_TMP2         0
 #define HOST_TMP          1
+
+// tmp3 is used by callHost and should not overlap with params above
+// getParamSafeTmpReg assumes this does not overlap with params
 #define HOST_TMP3         2
+
+// popseg assumes these won't overlap with params
 #define HOST_ESP          3
 #define HOST_MEM          4
+
+// R13 is good for this one, because R13 can not be used in sib memory encoding, it will translate to 0 instead of the reg, and HOST_CPU will never be used to encode memory
 #define HOST_CPU          5
+
+// popseg assumes this won't overlap with params
 #define HOST_SS           6
+
 #define HOST_DS           7
 
 class TodoJump {
@@ -93,7 +106,7 @@ public:
     U32 imm;
 
     x64CPU* cpu;
-    
+
     std::vector<TodoJump> todoJump;
     S32 stopAfterInstruction;
 
