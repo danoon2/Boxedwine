@@ -684,7 +684,9 @@ U32 KProcess::execve(const std::string& path, std::vector<std::string>& args, co
     }
 
     // reset memory must come after we grab the args and env
+#ifdef BOXEDWINE_X64
     this->memory->previousExecutableMemoryId = this->memory->executableMemoryId;
+#endif
     this->memory->reset();
     KThread::currentThread()->reset();
     this->onExec();
