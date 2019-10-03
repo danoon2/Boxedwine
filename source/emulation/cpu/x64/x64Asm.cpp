@@ -31,6 +31,7 @@
 #define CPU_OFFSET_ARG5 (U32)(offsetof(x64CPU, arg5))
 #define CPU_OFFSET_FPU_STATE (U32)(offsetof(x64CPU, fpuState))
 
+#ifdef BOXEDWINE_MSVC
 // RCX
 #define PARAM_1_REG 1
 #define PARAM_1_REX false
@@ -43,7 +44,20 @@
 // R9
 #define PARAM_4_REG 1
 #define PARAM_4_REX true
-
+#else 
+// RDI
+#define PARAM_1_REG 7
+#define PARAM_1_REX false
+// RSI
+#define PARAM_2_REG 6
+#define PARAM_2_REX false
+// RDX
+#define PARAM_3_REG 2
+#define PARAM_3_REX false
+// RCX
+#define PARAM_4_REG 1
+#define PARAM_4_REX false
+#endif
 
 X64Asm::X64Asm(x64CPU* cpu) : X64Data(cpu), parent(NULL), tmp1InUse(false), tmp2InUse(false), tmp3InUse(false), param1InUse(false), param2InUse(false), param3InUse(false), param4InUse(false)  {
 }
@@ -1231,11 +1245,31 @@ bool X64Asm::isTmpReg(U8 tmpReg) {
     return tmpReg == HOST_TMP || tmpReg == HOST_TMP2 || tmpReg == HOST_TMP3;
 }
 
+// calling convention, these regs can be modified 
+// Microsft: RAX, RCX, RDX, R8, R9, R10, R11 volitile
+// Other: RAX, RCX, RDX, RSP, RDI, RSI, R8, R9, R10, R11 are volitile
+
 void X64Asm::minSyncRegsFromHost() {
     writeToMemFromReg(0, false, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EAX, 4, false);
     writeToMemFromReg(1, false, HOST_CPU, true, -1, false, 0, CPU_OFFSET_ECX, 4, false);
     writeToMemFromReg(2, false, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EDX, 4, false);
     writeToMemFromReg(HOST_ESP, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_ESP, 4, false);
+
+#ifndef BOXEDWINE_MSVC
+    writeToMemFromReg(6, false, HOST_CPU, true, -1, false, 0, CPU_OFFSET_ESI, 4, false);
+    writeToMemFromReg(7, false, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EDI, 4, false);
+#endif
+}
+
+void X64Asm::minSyncRegsToHost() {
+    writeToRegFromMem(0, false, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EAX, 4, false); // RAX is volitile
+    writeToRegFromMem(1, false, HOST_CPU, true, -1, false, 0, CPU_OFFSET_ECX, 4, false); // RCX is volitile
+    writeToRegFromMem(2, false, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EDX, 4, false); // RDX is volitile
+    writeToRegFromMem(HOST_ESP, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_ESP, 4, false); // R11 is volitile    
+#ifndef BOXEDWINE_MSVC      
+    writeToRegFromMem(6, false, HOST_CPU, true, -1, false, 0, CPU_OFFSET_ESI, 4, false); // RSI is volitile
+    writeToRegFromMem(7, false, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EDI, 4, false); // RDI is volitile
+#endif
 }
 
 void X64Asm::syncRegsFromHost() {
@@ -1262,13 +1296,6 @@ void X64Asm::syncRegsFromHost() {
         write8(0x80 | HOST_CPU);
         write32(CPU_OFFSET_FPU_STATE);
     }
-}
-
-void X64Asm::minSyncRegsToHost() {
-    writeToRegFromMem(0, false, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EAX, 4, false); // EAX is volitile
-    writeToRegFromMem(1, false, HOST_CPU, true, -1, false, 0, CPU_OFFSET_ECX, 4, false); // ECX is volitile
-    writeToRegFromMem(2, false, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EDX, 4, false); // EDX is volitile
-    writeToRegFromMem(HOST_ESP, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_ESP, 4, false); // R11 is volitile
 }
 
 void X64Asm::syncRegsToHost(S8 excludeReg) {
@@ -1347,23 +1374,27 @@ void X64Asm::callHost(void* pfn) {
 
     writeToRegFromValue(tmp, true, (U64)pfn, 8);
 
+#ifdef BOXEDWINE_MSVC
     // part of the x64 windows ABI, shadow store
     // sub rsp, 32
     write8(REX_BASE | REX_64);
     write8(0x83);
     write8(0xEC);
     write8(0x20);    
+#endif
 
     // call tmp
     write8(REX_BASE | REX_MOD_RM);
     write8(0xFF);
     write8(0xd0 | tmp);
 
+#ifdef BOXEDWINE_MSVC
     // add rsp, 20
     write8(REX_BASE | REX_64);
     write8(0x83);
     write8(0xC4);
     write8(0x20);
+#endif
 
     releaseTmpReg(tmp);
     unlockParamReg(PARAM_1_REG, PARAM_1_REX);

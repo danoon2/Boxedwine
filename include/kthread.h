@@ -146,7 +146,7 @@ private:
 #ifdef BOXEDWINE_X64
     THREAD_LOCAL
 #endif
-    static KThread* runningThread;    
+    static KThread* runningThread;
 
     BOXEDWINE_CONDITION sleepCond;      
 

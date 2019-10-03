@@ -96,7 +96,7 @@ static bool isAddressRangeInUse(void* p, U64 len) {
     FILE* file=fopen("/proc/self/maps","r");
     if(!file){
         kpanic("reservereNext4GBMemory : cannot open /proc/self/maps, %s\n",strerror(errno));
-        return NULL;
+        return false;
     }
     
     char buf[1024];
@@ -207,7 +207,30 @@ bool clearCodePageReadOnly(Memory* memory, U32 page) {
 
 #ifndef BOXEDWINE_MULTI_THREADED
 #include <signal.h>
-#include <sys/ucontext.h>
+#include <ucontext.h>
+
+// from llvm
+#if defined(__aarch64__)
+// Android headers in the older NDK releases miss this definition.
+struct __sanitizer_esr_context {
+  struct _aarch64_ctx head;
+  uint64_t esr;
+};
+static bool Aarch64GetESR(ucontext_t *ucontext, U64 *esr) {
+  static const U32 kEsrMagic = 0x45535201;
+  U8 *aux = ucontext->uc_mcontext.__reserved;
+  while (true) {
+    _aarch64_ctx *ctx = (_aarch64_ctx *)aux;
+    if (ctx->size == 0) break;
+    if (ctx->magic == kEsrMagic) {
+      *esr = ((__sanitizer_esr_context *)ctx)->esr;
+      return true;
+    }
+    aux += ctx->size;
+  }
+  return false;
+}
+#endif
 
 static void handler(int sig, siginfo_t* info, void* context)
 {
@@ -219,9 +242,16 @@ static void handler(int sig, siginfo_t* info, void* context)
         // will continue
     } else {
 #ifdef __MACH__
-        bool readAccess = ((ucontext_t*)context)->uc_mcontext->__es.__err;
+        bool readAccess = (((ucontext_t*)context)->uc_mcontext->__es.__err & 1) == 0;
+#elif defined (__aarch64__)
+        bool readAccess = true; // :TODO: ???
+        static const U64 ESR_ELx_WNR = 1U << 6;
+        U64 esr;
+        if (Aarch64GetESR((ucontext_t*)context, &esr)) {
+            readAccess = (esr & ESR_ELx_WNR) == 0;
+        }
 #else
-        bool readAccess = ((ucontext_t*)context)->uc_mcontext.gregs[REG_ERR];
+        bool readAccess = (((ucontext_t*)context)->uc_mcontext.gregs[REG_ERR] & 1) == 0;
 #endif
         if (info->si_code==SEGV_MAPERR) {
             thread->seg_mapper(address, readAccess, !readAccess, true);
