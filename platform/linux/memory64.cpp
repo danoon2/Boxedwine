@@ -207,6 +207,8 @@ bool clearCodePageReadOnly(Memory* memory, U32 page) {
 
 #ifndef BOXEDWINE_MULTI_THREADED
 #include <signal.h>
+#define __USE_GNU
+#define _XOPEN_SOURCE
 #include <ucontext.h>
 
 // from llvm
