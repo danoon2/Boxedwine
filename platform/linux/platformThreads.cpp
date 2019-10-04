@@ -306,7 +306,7 @@ static void handler(int sig, siginfo_t* info, void* vcontext)
     
     bool readAccess = (((ucontext_t*)context)->CONTEXT_ERR & 1) == 0;
 
-    U32 address = getHostAddress(currentThread, (void*)info->si_addr);
+    U64 address = (U64)info->si_addr;
     U64 result = cpu->startException(address, readAccess, doSyncFrom, doSyncTo);
     if (result) {
         context->CONTEXT_RIP = result;
