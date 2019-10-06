@@ -48,6 +48,7 @@ void Player::readCommand() {
         sdlScreenShot("failed.bmp", NULL);
         exit(0);
     }
+    screenChanged();
 }
 
 bool Player::start(std::string directory) {
@@ -105,7 +106,7 @@ void Player::runSlice() {
     } else if (this->nextCommand=="WAIT") {
         if (Platform::getMicroCounter()>this->lastCommandTime+1000000l*atoi(this->nextValue.c_str())) {
             klog("script: done waiting %s", this->nextValue.c_str());
-            instance->readCommand();
+            instance->readCommand();            
         }
     } else if (this->nextCommand=="DONE") {
         //exit(1);, let it exit gracefully
