@@ -109,10 +109,18 @@ InstallDialog::InstallDialog(wxWindow* parent, const wxString& filePathToInstall
 
 
 void InstallDialog::OnBrowseExeButtonClicked(wxCommandEvent& event) {
-    wxFileDialog* openFileDialog = new wxFileDialog(this, "Setup executable", wxEmptyString, wxEmptyString, "", wxFD_OPEN|wxFD_FILE_MUST_EXIST);
+    if (this->installationTypeComboBox->GetSelection()==0) {
+        wxFileDialog* openFileDialog = new wxFileDialog(this, "Setup executable", wxEmptyString, wxEmptyString, "", wxFD_OPEN|wxFD_FILE_MUST_EXIST);
 
-    if (openFileDialog->ShowModal() == wxID_OK){
-        this->setupFileLocationText->SetLabelText(openFileDialog->GetPath());
+        if (openFileDialog->ShowModal() == wxID_OK){
+            this->setupFileLocationText->SetLabelText(openFileDialog->GetPath());
+        }
+    } else {
+        wxDirDialog* openFileDialog = new wxDirDialog(this, "Directory to copy");
+
+        if (openFileDialog->ShowModal() == wxID_OK){
+            this->setupFileLocationText->SetLabelText(openFileDialog->GetPath());
+        }
     }
 }
 
