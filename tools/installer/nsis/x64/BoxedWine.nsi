@@ -11,6 +11,8 @@
 
 SetCompressor bzip2
 
+!include x64.nsh
+
 ; MUI 1.67 compatible ------
 !include "MUI.nsh"
 
@@ -44,7 +46,7 @@ SetCompressor bzip2
 
 Name "${PRODUCT_NAME} ${PRODUCT_VERSION}"
 OutFile "BoxedWine19R1.exe"
-InstallDir "$PROGRAMFILES\BoxedWine"
+InstallDir "$PROGRAMFILES64\BoxedWine"
 InstallDirRegKey HKLM "${PRODUCT_DIR_REGKEY}" ""
 ShowInstDetails show
 ShowUnInstDetails show
@@ -86,6 +88,11 @@ SectionEnd
   !insertmacro MUI_DESCRIPTION_TEXT ${SEC01} ""
 !insertmacro MUI_FUNCTION_DESCRIPTION_END
 
+
+Function .onInit
+    ${DisableX64FSRedirection}
+    SetRegView 64  
+FunctionEnd
 
 Function un.onUninstSuccess
   HideWindow
