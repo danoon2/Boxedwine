@@ -227,7 +227,7 @@ void InstallDialog::OnDone(wxCommandEvent& event) {
     }     
     if (GetInstallType()==INSTALL_TYPE_FILE) {
         wxString filePath = this->setupFileLocationText->GetValue();
-        container->Launch(filePath, "", "/home/username", true, false);
+        container->Launch("\""+filePath+"\"", "", "/home/username", true, false);
         PickAppDialog *dlg = new PickAppDialog(this, container);
         dlg->Show(true);
         if (dlg->GetReturnCode()!=wxID_OK) {
