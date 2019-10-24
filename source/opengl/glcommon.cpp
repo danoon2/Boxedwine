@@ -149,11 +149,21 @@ void glcommon_glGetString(CPU* cpu) {
         }
         index = STRING_GL_EXTENSIONS;
         if (ext[0]==0) {
+            std::vector<std::string> hardwareExt;
+            std::vector<std::string> supportedExt;
+            stringSplit(hardwareExt, result, ' ');
             for (U32 i=0;i<sizeof(extentions)/sizeof(char*);i++) {
-                if (strstr(result, extentions[i]) && (!glExt || strstr(glExt, extentions[i]))) {
+                supportedExt.push_back(extentions[i]);
+            }
+            for (U32 i=0;i<hardwareExt.size();i++) {
+                if (std::find(supportedExt.begin(), supportedExt.end(), hardwareExt[i]) == supportedExt.end()) {
+                    continue;
+                }
+
+                if (!glExt || strstr(glExt, hardwareExt[i].c_str())) {
                     if (ext[0]!=0)
                         strcat(ext, " ");
-                    strcat(ext, extentions[i]);
+                    strcat(ext, hardwareExt[i].c_str());
                 }
             }
         }

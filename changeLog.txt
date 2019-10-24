@@ -1,0 +1,6 @@
+Next Release
+
+* fixed Browse button in BoxedWine UI to show Folder chooser instead of File chooser when installing by coping a directory
+* fixed issue in BoxedWine UI where the install option for a setup file didn't work if the path had a space in it.
+* 64-bit Windows installer will now default to the correct Programe Files to install to.
+* Added about 30 more supported extensions to OpenGL.
