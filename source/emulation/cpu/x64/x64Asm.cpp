@@ -2477,7 +2477,7 @@ void X64Asm::jmpReg(U8 reg, bool isRex) {
     // HOST_TMP2 will hold the page
     // HOST_TMP will hold the offset
     if (x64CPU::hasBMI2) {        
-        if (!this->cpu->thread->process->hasSetSeg[CS]) {
+        if (0 /*!this->cpu->thread->process->hasSetSeg[CS]*/) { // not sure why this check doesn't work
             if (reg==HOST_TMP2 && isRex) {
                 writeToRegFromValue(HOST_TMP3, true, K_PAGE_MASK, 4);
                 // PEXT HOST_TMP, HOST_TMP2, HOST_TMP3
@@ -2531,6 +2531,7 @@ void X64Asm::jmpReg(U8 reg, bool isRex) {
                 write8(0xc0 | (HOST_TMP2 << 3) | HOST_TMP2);
             }           
         } else {
+            writeToRegFromValue(HOST_TMP3, true, K_PAGE_MASK, 4);
             if (reg==HOST_TMP2 && isRex) {
                 getRegForSeg(CS, HOST_TMP);
                 addWithLea(HOST_TMP2, true, HOST_TMP2, true, HOST_TMP, true, 0, 0, 4);
@@ -2555,7 +2556,7 @@ void X64Asm::jmpReg(U8 reg, bool isRex) {
             write8(0xc0 | (HOST_TMP2 << 3) | HOST_TMP2);
         }        
     } else {
-        if (!this->cpu->thread->process->hasSetSeg[CS]) {
+        if (0 /*!this->cpu->thread->process->hasSetSeg[CS]*/) { // not sure why this check doesn't work
             if (reg==HOST_TMP2 && isRex) {
                 writeToRegFromReg(HOST_TMP, true, HOST_TMP2, true, 4);
             } else if (reg==HOST_TMP && isRex) {
