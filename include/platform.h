@@ -132,6 +132,7 @@ void* allocExecutable64kBlock(int count);
 #ifdef BOXEDWINE_X64
 class Memory;
 void allocExecutable64kBlock(Memory* memory, U32 page);
+bool platformHasBMI2();
 #endif
 
 #ifdef BOXEDWINE_MULTI_THREADED

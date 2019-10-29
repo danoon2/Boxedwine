@@ -218,7 +218,7 @@ private:
     void setSib(U8 sib, bool checkBase);
 
     void addWithLea(U8 reg1, bool isReg1Rex, U8 reg2, bool isReg2Rex, S32 reg3, bool isReg3Rex, U8 reg3Shift, S32 displacement, U32 bytes);
-    void zeroReg(U8 reg, bool isRexReg);
+    void zeroReg(U8 reg, bool isRexReg, bool keepFlags);
     void doMemoryInstruction(U8 op, U8 reg1, bool isReg1Rex, U8 reg2, bool isReg2Rex, S8 reg3, bool isReg3Rex, U8 reg3Shift, S32 displacement, U8 bytes);
     void writeHostPlusTmp(U8 rm, bool checkG, bool isG8bit, bool isE8bit, U8 tmpReg);
     U8 getRegForSeg(U8 base, U8 tmpReg);

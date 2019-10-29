@@ -96,3 +96,16 @@ int getPixelFormats(PixelFormat* pfs, int maxPfs) {
 int Platform::nativeSocketPair(S32 socks[2]) {
     return socketpair(AF_LOCAL, SOCK_STREAM, 0, socks);
 }
+
+#ifdef BOXEDWINE_X64
+#include <cpuid.h>
+bool platformHasBMI2() {
+    int regs[4];
+
+    __cpuid_count(7, 0, regs[0], regs[1], regs[2], regs[3]);
+    if (regs[1] & (1 << 8)) {
+        return true;
+    }
+    return false;
+}
+#endif

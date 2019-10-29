@@ -210,3 +210,15 @@ int getPixelFormats(PixelFormat* pfd, int maxPfs) {
     }
     return result;
 }
+
+#ifdef BOXEDWINE_X64
+bool platformHasBMI2() {
+    int regs[4];
+
+    __cpuidex(regs, 7, 0);
+    if (regs[1] & (1 << 8)) {
+        return true;
+    }
+    return false;
+}
+#endif

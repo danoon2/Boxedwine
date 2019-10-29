@@ -33,6 +33,8 @@ public:
     U32 arg5;
     ALIGN(U8 fpuState[512], 16);
 
+    static bool hasBMI2;
+
 #ifdef _DEBUG
     U32 fromEip;
 #endif

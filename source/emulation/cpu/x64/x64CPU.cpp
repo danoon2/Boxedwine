@@ -9,7 +9,15 @@
 #include "x64CodeChunk.h"
 #include "../normal/normalCPU.h"
 
+// hard to guage the benifit, seems like 1% to 3% with quake 2 and quake 3
+bool x64CPU::hasBMI2 = true;
+bool x64Intialized = false;
+
 x64CPU::x64CPU() : nativeHandle(0), jmpBuf(NULL), endCond("x64CPU::endcond"), inException(false), restarting(false) {
+    if (!x64Intialized) {
+        x64Intialized = true;
+        x64CPU::hasBMI2 = platformHasBMI2();
+    }
 }
 
 typedef void (*StartCPU)();
