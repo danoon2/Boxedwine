@@ -3133,17 +3133,20 @@ void X64Asm::verr(U8 rm) {
     syncRegsToHost();
 }
 
-static void x64_invalidOp(U32 op) {
-    kpanic("x64_invalidOp: 0x%X", op);
+static void x64_invalidOp(CPU* cpu, U32 op) {
+    klog("x64_invalidOp: 0x%X", op);
+    cpu->thread->signalIllegalInstruction(5);
 }
 
 void X64Asm::invalidOp(U32 op) {
-    //syncRegsFromHost(); 
+    syncRegsFromHost(); 
+    lockParamReg(PARAM_2_REG, PARAM_2_REX);
+    writeToRegFromValue(PARAM_2_REG, PARAM_2_REX, op, 4);
     lockParamReg(PARAM_1_REG, PARAM_1_REX);
-    writeToRegFromValue(PARAM_1_REG, PARAM_1_REX, op, 4);
+    writeToRegFromReg(PARAM_1_REG, PARAM_1_REX, HOST_CPU, true, 8); // CPU* param
     callHost((void*)x64_invalidOp);
-    //syncRegsToHost();
-    //doJmp();
+    syncRegsToHost();
+    doJmp();
 }
 
 static void x64_errorMsg(const char* msg) {

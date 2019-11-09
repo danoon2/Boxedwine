@@ -2317,7 +2317,7 @@ static U32 sseOp318(X64Asm* data) {
 }
 
 static U32 sseOp32a(X64Asm* data) {
-    if (data->repZeroPrefix) {
+    if (data->repZeroPrefix || data->repNotZeroPrefix) {
         // read reg or address
         data->translateRM(data->fetch8(), false, true, false, false, 0);
     } else {
@@ -2328,7 +2328,7 @@ static U32 sseOp32a(X64Asm* data) {
 }
 
 static U32 sseOp32c(X64Asm* data) {
-    if (data->repZeroPrefix) {
+    if (data->repZeroPrefix || data->repNotZeroPrefix) {
         // read xmm or address into reg
         data->translateRM(data->fetch8(), true, false, false, false, 0);
     } else {
@@ -2339,13 +2339,52 @@ static U32 sseOp32c(X64Asm* data) {
 }
 
 static U32 sseOp32d(X64Asm* data) {
-    if (data->repZeroPrefix) {
+    if (data->repZeroPrefix || data->repNotZeroPrefix) {
         // read xmm or address into reg
         data->translateRM(data->fetch8(), true, false, false, false, 0);
     } else {
         // read xmm or address into mmx
         data->translateRM(data->fetch8(), false, false, false, false, 0);
     }
+    return 0;
+}
+
+static U32 sseOp7e(X64Asm* data) {
+    if (data->repZeroPrefix || data->repNotZeroPrefix) {
+        data->translateRM(data->fetch8(), false, false, false, false, 0);
+    } else {
+        data->translateRM(data->fetch8(), false, true, false, false, 0);
+    }
+    return 0;
+}
+
+static U32 sse2(X64Asm* data) {
+    data->translateRM(data->fetch8() | 0xC0, false, false, false, false, 0);
+    return 0;
+}
+
+static U32 sse2E(X64Asm* data) {
+    data->translateRM(data->fetch8(), false, false, false, false, 0);
+    return 0;
+}
+
+static U32 sse2Ed(X64Asm* data) {
+    data->translateRM(data->fetch8(), false, true, false, false, 0);
+    return 0;
+}
+
+static U32 sse2Imm8(X64Asm* data) {
+    data->translateRM(data->fetch8(), false, false, false, false, 8);
+    return 0;
+}
+
+static U32 sse2RegE(X64Asm* data) {
+    data->translateRM(data->fetch8(), false, true, false, false, 0);
+    return 0;
+}
+
+static U32 op1f(X64Asm* data) {
+    data->translateRM(data->fetch8(), false, true, false, false, 0);
     return 0;
 }
 
@@ -2403,11 +2442,11 @@ X64Decoder x64Decoder[1024] = {
     grp6_16, invalidOp, lar, lsl, invalidOp, invalidOp, invalidOp, invalidOp,
     invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp,
     // 110
-    invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp,
-    invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp,
+    sse2E, sse2E, sse2E, sse2E, sse2E, sse2E, sse2E, sse2E,
+    invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, &op1f,
     // 120
     movRdCrx, invalidOp, movCrxRd, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp,
-    invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp,
+    sse2E, sse2E, sse2E, sse2E, sse2E, sse2E, sse2E, sse2E,
     // 130
     invalidOp, rdtsc, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp,
     invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp,
@@ -2415,14 +2454,14 @@ X64Decoder x64Decoder[1024] = {
     inst16RM, inst16RM, inst16RM, inst16RM, inst16RM, inst16RM, inst16RM, inst16RM,
     inst16RM, inst16RM, inst16RM, inst16RM, inst16RM, inst16RM, inst16RM, inst16RM,
     // 150
-    invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp,
-    invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp,
+    sse2RegE, sse2E, invalidOp, invalidOp, sse2E, sse2E, sse2E, sse2E,
+    sse2E, sse2E, sse2E, sse2E, sse2E, sse2E, sse2E, sse2E,
     // 160
-    invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp,
-    invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp,
+    sse2E, sse2E, sse2E, sse2E, sse2E, sse2E, sse2E, sse2E,
+    sse2E, sse2E, sse2E, sse2E, sse2E, sse2E, sse2Ed, sse2E,
     // 170
-    invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp,
-    invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp,
+    sseXmmExI8, sse2Imm8, sse2Imm8, sse2Imm8, sse2E, sse2E, sse2E, invalidOp,
+    invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, sseOp7e, sse2E,
     // 180
     jump16, jump16, jump16, jump16, jump16, jump16, jump16, jump16,
     jump16, jump16, jump16, jump16, jump16, jump16, jump16, jump16,
@@ -2436,17 +2475,17 @@ X64Decoder x64Decoder[1024] = {
     inst8RM, inst16RM, lss16, inst16RM, lfs16, lgs16, inst16E8RM, invalidOp,
     invalidOp, inst16RMimm8SafeG, inst16RMimm8SafeG, invalidOp, inst16RM, inst16RM, inst16E8RM, invalidOp,
     // 1c0
-    invalidOp, invalidOp, invalidOp, invalidOp, &sseXmmErI8, &sseErXmmI8, invalidOp, invalidOp,
+    invalidOp, invalidOp, sse2Imm8, invalidOp, sseXmmErI8, sseErXmmI8, sse2E, invalidOp,
     keepSame, keepSame, keepSame, keepSame, bswapSp, keepSame, keepSame, keepSame,
     // 1d0
-    invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, &sseErXmm,
-    invalidOp, invalidOp, &sseXmmEx, invalidOp, invalidOp, invalidOp, &sseXmmEx, invalidOp,
+    invalidOp, sse2E, sse2E, sse2E, sse2E, sse2E, sse2E, sseErXmm,
+    sse2E, sse2E, sseXmmEx, sse2E, sse2E, sse2E, sseXmmEx, sse2E,
     // 1e0
-    &sseXmmEx, invalidOp, invalidOp, &sseXmmEx, &sseXmmEx, invalidOp, invalidOp, invalidOp,
-    invalidOp, invalidOp, &sseXmmEx, invalidOp, invalidOp, invalidOp, &sseXmmEx, invalidOp,
+    sseXmmEx, sse2E, sse2E, sseXmmEx, sseXmmEx, sse2E, sse2E, sse2E,
+    sse2E, sse2E, sseXmmEx, sse2E, sse2E, sse2E, sseXmmEx, sse2E,
     // 1f0
-    invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, &sseXmmEx, invalidOp,
-    invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp,
+    invalidOp, sse2E, sse2E, sse2E, sse2E, sse2E, sseXmmEx, sse2E,
+    sse2E, sse2E, sse2E, sse2E, sse2E, sse2E, sse2E, invalidOp,
 
     // 200
     inst8RM, inst32RM, inst8RMGWritten, inst32RM, arithR8Ib, arithR32Id, push32ES, pop32ES,
@@ -2502,7 +2541,7 @@ X64Decoder x64Decoder[1024] = {
     invalidOp, invalidOp, invalidOp, keepSame, invalidOp, invalidOp, invalidOp, invalidOp,
     // 310
     sseXmmEx, sseExXmm, sseXmmEx, sseExXmm, sseXmmEx, sseXmmEx, sseXmmEx, sseExXmm,
-    sseOp318, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp,
+    sseOp318, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, &op1f,
     // 320
     movRdCrx, invalidOp, movCrxRd, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp,
     sseXmmEx, sseExXmm, sseOp32a, sseExXmm, sseOp32c, sseOp32d, sseXmmEx, sseXmmEx,
@@ -2520,7 +2559,7 @@ X64Decoder x64Decoder[1024] = {
     mmx, mmx, mmx, mmx, invalidOp, invalidOp, mmxRegE, mmx,
     // 370
     sseXmmExI8, mmxImm8, mmxImm8, mmxImm8, mmx, mmx, mmx, keepSame,
-    invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, mmxRegE, mmx,
+    invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, sseOp7e, mmx,
     // 380
     jump32, jump32, jump32, jump32, jump32, jump32, jump32, jump32,
     jump32, jump32, jump32, jump32, jump32, jump32, jump32, jump32,
@@ -2534,17 +2573,17 @@ X64Decoder x64Decoder[1024] = {
     inst8RM, inst32RM, lss32, inst32RM, lfs32, lgs32, inst32E8RM, inst32E16RM,
     invalidOp, invalidOp, inst32RMimm8SafeG, inst32RM, inst32RM, inst32RM, inst32E8RM, inst32E16RM,
     // 3c0
-    invalidOp, inst32RM, sseXmmExI8, invalidOp, &sseMmxErI8, &sseErMmxI8, sseXmmExI8, inst32RMSafeG,
+    invalidOp, inst32RM, sseXmmExI8, sse2RegE, sseMmxErI8, sseErMmxI8, sseXmmExI8, inst32RMSafeG,
     keepSame, keepSame, keepSame, keepSame, bswapEsp, keepSame, keepSame, keepSame,
     // 3d0
-    invalidOp, mmx, mmx, mmx, invalidOp, mmx, invalidOp, &sseErMmx,
-    mmx, mmx, &sseMmxEm, mmx, mmx, mmx, &sseMmxEm, mmx,
+    invalidOp, mmx, mmx, mmx, sse2E, mmx, sse2, sseErMmx,
+    mmx, mmx, sseMmxEm, mmx, mmx, mmx, sseMmxEm, mmx,
     // 3e0
-    &sseMmxEm, mmx, mmx, &sseMmxEm, &sseMmxEm, mmx, invalidOp, sseMmxEm,
-    mmx, mmx, &sseMmxEm, mmx, mmx, mmx, &sseMmxEm, mmx,
+    sseMmxEm, mmx, mmx, sseMmxEm, sseMmxEm, mmx, sse2E, sseMmxEm,
+    mmx, mmx, sseMmxEm, mmx, mmx, mmx, sseMmxEm, mmx,
     // 3f0
-    invalidOp, mmx, mmx, mmx, invalidOp, mmx, &sseMmxEm, &sseEmMmx,
-    mmx, mmx, mmx, invalidOp, mmx, mmx, mmx, invalidOp,
+    invalidOp, mmx, mmx, mmx, sse2E, mmx, sseMmxEm, sseEmMmx,
+    mmx, mmx, mmx, sse2E, mmx, mmx, mmx, invalidOp,
 };
 
 #endif

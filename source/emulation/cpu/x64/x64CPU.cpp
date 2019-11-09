@@ -282,9 +282,12 @@ void x64CPU::translateInstruction(X64Asm* data, X64Asm* firstPass) {
         data->addDynamicCheck(false);
     } else {
 #ifdef _DEBUG
-        data->addDynamicCheck(true);
+        //data->addDynamicCheck(true);
 #endif
-    }    
+    }   
+    if (data->ip==0x473FA2) {
+        int ii=0;
+    }
     while (1) {  
         data->op = data->fetch8();            
         data->inst = data->baseOp + data->op;        

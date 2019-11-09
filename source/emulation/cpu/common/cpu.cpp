@@ -313,7 +313,12 @@ void CPU::cpuid() {
                 EAX=0x686;		/* Intel Pentium III 733 MHz */
                 EDX|= (1<<24);    // FXSAVE, FXRESTOR
                 EDX|= (1<<25);    // SSE
-            }            
+            } else if (KSystem::pentiumLevel==4) {
+                EAX=0xF07;		/* Intel Pentium 4 1.4 GHz */
+                EDX|= (1<<24);    // FXSAVE, FXRESTOR
+                EDX|= (1<<25);    // SSE
+                EDX|= (1<<26);    // SSE2
+            }          
             EDX|= (1<<5);     /* MSR */
             EDX|= (1<<15);    /* support CMOV instructions */
             EDX|= (1<<13);    /* PTE Global Flag */
