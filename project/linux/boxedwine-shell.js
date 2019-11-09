@@ -752,7 +752,9 @@
             document.getElementById('sound-checkbox').style.display = 'none';
 
             var params = getEmulatorParams();
-            Module["arguments"] = params;
+            for(var i=0; i < params.length; i++) {
+                Module['arguments'].push(params[i]);
+            }
 
             document.getElementById('startbtn').textContent = "Running...";
             Module["removeRunDependency"]("setupBoxedWine");
@@ -943,11 +945,10 @@
             console.log("Emulator params:" + params);
             return params;
         }
-        var params = [];
       var Module = {
         logReadFiles : false, //enable if you want to prune with Reduce utility
         preRun: [initialSetup],
-        arguments: params,
+        arguments: [],
         postRun: [],
         print: (function() {
           var element = document.getElementById('output');
