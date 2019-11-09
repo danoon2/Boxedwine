@@ -9,12 +9,12 @@ public:
 
     void initCommandLine(std::string root, const std::vector<std::string>& zips, std::string working, const char **argv, U32 argc);
     void runSlice();
-    void screenChanged();
 
     FILE* file;
     std::string directory;
     std::string version;
     U64 lastCommandTime;
+    U64 lastScreenRead;
     std::string nextCommand;
 private:    
     std::string nextValue;

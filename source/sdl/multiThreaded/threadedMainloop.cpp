@@ -19,31 +19,35 @@ bool doMainLoop() {
     sdlMainThreadId = SDL_ThreadID();
 
     while (platformThreadCount) {
+        bool hasEvent;
+
 #ifdef BOXEDWINE_RECORDER
         if (Player::instance || Recorder::instance) {
-            SDL_WaitEventTimeout(&e, 10);
+            hasEvent = (SDL_WaitEventTimeout(&e, 10)==1);
             BOXEDWINE_RECORDER_RUN_SLICE();
         } else  {
-            SDL_WaitEventTimeout(&e, 5000);
+            hasEvent = (SDL_WaitEventTimeout(&e, 5000) == 1);
         }
 #else
-        SDL_WaitEventTimeout(&e, 5000);
+        hasEvent = (SDL_WaitEventTimeout(&e, 5000) == 1);
 #endif      
         U32 t = getMilliesSinceStart();
         if (lastTitleUpdate+5000 < t) {
             char tmp[256];
             lastTitleUpdate = t;
-            sprintf(tmp, "BoxedWine 19R1.1");
+            sprintf(tmp, "BoxedWine 20R1a1");
             fbSetCaption(tmp, "BoxedWine");
         }
-        if (e.type == sdlCustomEvent) {
-            SdlCallback* callback = (SdlCallback*)e.user.data1;
-            callback->result = (U32)callback->pfn();
-            BOXEDWINE_CONDITION_LOCK(callback->cond);
-            BOXEDWINE_CONDITION_SIGNAL(callback->cond);
-            BOXEDWINE_CONDITION_UNLOCK(callback->cond);
-        } else if (!handlSdlEvent(&e)) {
-            return true;
+        if (hasEvent) {
+            if (e.type == sdlCustomEvent) {
+                SdlCallback* callback = (SdlCallback*)e.user.data1;
+                callback->result = (U32)callback->pfn();
+                BOXEDWINE_CONDITION_LOCK(callback->cond);
+                BOXEDWINE_CONDITION_SIGNAL(callback->cond);
+                BOXEDWINE_CONDITION_UNLOCK(callback->cond);
+            } else if (!handlSdlEvent(&e)) {
+                return true;
+            }
         }
     };
     return true;

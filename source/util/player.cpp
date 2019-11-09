@@ -48,7 +48,6 @@ void Player::readCommand() {
         sdlScreenShot("failed.bmp", NULL);
         exit(0);
     }
-    screenChanged();
 }
 
 bool Player::start(std::string directory) {
@@ -57,6 +56,7 @@ bool Player::start(std::string directory) {
     instance->directory = directory;
     instance->file = fopen(script.c_str(), "rb");
     instance->lastCommandTime = 0;
+    instance->lastScreenRead = 0;
     if (!instance->file) {
         klog("script not found: %s", script.c_str());
         exit(0);
@@ -77,7 +77,10 @@ void Player::initCommandLine(std::string root, const std::vector<std::string>& z
     }
 }
 
-void Player::runSlice() {    
+void Player::runSlice() {  
+    // at least 10 ms between mouse moves
+    if (Platform::getMicroCounter()<this->lastCommandTime+10000)
+        return;
     if (this->nextCommand=="MOVETO") {
         std::vector<std::string> items;
         stringSplit(items, this->nextValue, ',');
@@ -89,7 +92,11 @@ void Player::runSlice() {
         instance->readCommand();
         return;
     } 
-    if (Platform::getMicroCounter()<this->lastCommandTime+1000000)
+    // 1000 ms between all other commands
+    if (Platform::getMicroCounter()<this->lastCommandTime+1000000 && this->nextCommand!="MOUSEUP" && this->nextCommand!="KEYUP" && this->nextCommand!="SCREENSHOT")
+        return;
+    // at least 100 ms between mouse or key down/up
+    if (Platform::getMicroCounter()<this->lastCommandTime+100000)
         return;
     if (this->nextCommand=="MOUSEDOWN" || this->nextCommand=="MOUSEUP") {
         std::vector<std::string> items;
@@ -100,9 +107,15 @@ void Player::runSlice() {
         }
         sdlMouseButton((this->nextCommand=="MOUSEDOWN")?1:0, atoi(items[0].c_str()), atoi(items[1].c_str()), atoi(items[2].c_str()));
         instance->readCommand();
+        if (this->nextCommand=="MOUSEUP") {
+            runSlice();
+        }
     } else if (this->nextCommand=="KEYDOWN" || this->nextCommand=="KEYUP") {
         sdlKey(atoi(this->nextValue.c_str()), (this->nextCommand=="KEYDOWN")?1:0);
         instance->readCommand();
+        if (this->nextCommand=="KEYUP") {
+            runSlice();
+        }
     } else if (this->nextCommand=="WAIT") {
         if (Platform::getMicroCounter()>this->lastCommandTime+1000000l*atoi(this->nextValue.c_str())) {
             klog("script: done waiting %s", this->nextValue.c_str());
@@ -110,16 +123,10 @@ void Player::runSlice() {
         }
     } else if (this->nextCommand=="DONE") {
         //exit(1);, let it exit gracefully
-    }
-    if (Platform::getMicroCounter()>this->lastCommandTime+1000000*60*10) {
-        klog("script timed out %s", this->directory.c_str());
-        sdlScreenShot("failed.bmp", NULL);
-        exit(0);
-    }
-}
-
-void Player::screenChanged() {
-    if (this->nextCommand=="SCREENSHOT") {
+    } else if (this->nextCommand=="SCREENSHOT") {
+        if (Platform::getMicroCounter()<this->lastScreenRead+1000000) {
+            return;
+        }
         std::vector<std::string> items;
         stringSplit(items, this->nextValue, ',');
         if (items.size()>4) {
@@ -134,6 +141,8 @@ void Player::screenChanged() {
             if (currentCRC==expectedCRC) {
                 klog("script: screen shot matched");
                 instance->readCommand();
+                this->lastCommandTime+=4000000; // sometimes the screen isn't ready for input even though you can see it
+                instance->lastScreenRead = Platform::getMicroCounter();
             }
         } else if (items.size()>0) {
             U32 expectedCRC = atoi(items[0].c_str());
@@ -142,8 +151,15 @@ void Player::screenChanged() {
             if (currentCRC==expectedCRC) {
                 klog("script: screen shot matched");
                 instance->readCommand();
+                this->lastCommandTime+=4000000; // sometimes the screen isn't ready for input even though you can see it
+                instance->lastScreenRead = Platform::getMicroCounter();
             }
         }
+    }
+    if (Platform::getMicroCounter()>this->lastCommandTime+1000000*60*10) {
+        klog("script timed out %s", this->directory.c_str());
+        sdlScreenShot("failed.bmp", NULL);
+        exit(0);
     }
 }
 

@@ -894,11 +894,6 @@ void sdlDrawAllWindows(KThread* thread, U32 hWnd, int count) {
         SDL_UpdateRect(surface, 0, 0, 0, 0);
     }
 #endif
-#ifdef BOXEDWINE_RECORDER
-    if (Player::instance) {
-        Player::instance->screenChanged();
-    }
-#endif
 }
 
 Wnd* wndCreate(KThread* thread, U32 processId, U32 hwnd, U32 windowRect, U32 clientRect) {
