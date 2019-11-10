@@ -505,8 +505,9 @@ void X64Asm::translateMemory(U32 rm, bool checkG, bool isG8bit, bool isE8bit) {
                             setRM(rm, checkG, false, isG8bit, isE8bit);
                             setSib(sib, true);
                         } else {
+                            U8 seg = base==4?this->ss:this->ds;
                             // convert [base + index << shift] to HOST_TMP=[base + index << shift];HOST_TMP=[HOST_TMP+SEG];[HOST_TMP+MEM]
-                            if (!this->cpu->thread->process->hasSetSeg[base==4?this->ss:this->ds]) {                                                                 
+                            if (!this->cpu->thread->process->hasSetSeg[seg]) {                                                                 
                                 if (index==4) { // no index
                                     // probably something like mov ebx,DWORD PTR [esp] 
                                     this->rex |= REX_BASE | REX_SIB_INDEX | REX_MOD_RM;    
@@ -523,7 +524,7 @@ void X64Asm::translateMemory(U32 rm, bool checkG, bool isG8bit, bool isE8bit) {
                             } else {
                                 U32 tmpReg = getTmpReg();
                                 // HOST_TMP=[base + SEG]
-                                addWithLea(tmpReg, true, base, false,  getRegForSeg(base==4?this->ss:this->ds, tmpReg), true, 0, 0, 4);
+                                addWithLea(tmpReg, true, base, false,  getRegForSeg(seg, tmpReg), true, 0, 0, 4);
 
                                 // HOST_TMP=[HOST_TMP+index<<shift];
                                 if (index!=4) {
@@ -548,6 +549,9 @@ void X64Asm::translateMemory(U32 rm, bool checkG, bool isG8bit, bool isE8bit) {
             case 0x05:
             case 0x06:
             case 0x07:
+            {
+                U8 seg = E(rm)==5?this->ss:this->ds;
+
                 if (this->ds == SEG_ZERO) {
                     setRM(rm, checkG, false, isG8bit, isE8bit);
                     if (rm<0x80) {
@@ -557,16 +561,21 @@ void X64Asm::translateMemory(U32 rm, bool checkG, bool isG8bit, bool isE8bit) {
                     }
                 } else {
                     // converts [reg + disp] to HOST_TMP = [reg + SEG + disp]; [HOST_TMP+HOST_MEM];
-
                     U32 tmpReg = getTmpReg();
-                    // HOST_TMP = [reg + SEG + disp]
-                    addWithLea(tmpReg, true, E(rm), false, getRegForSeg(E(rm)==5?this->ss:this->ds, tmpReg), true, 0, (rm<0x80?(S8)this->fetch8():this->fetch32()), 4);
 
+                    if (!this->cpu->thread->process->hasSetSeg[seg]) {
+                        // HOST_TMP = [reg + disp]
+                        addWithLea(tmpReg, true, E(rm), false, -1, false, 0, (rm<0x80?(S8)this->fetch8():this->fetch32()), 4);
+                    } else {                        
+                        // HOST_TMP = [reg + SEG + disp]
+                        addWithLea(tmpReg, true, E(rm), false, getRegForSeg(seg, tmpReg), true, 0, (rm<0x80?(S8)this->fetch8():this->fetch32()), 4);                        
+                    }
                     // [HOST_MEM + HOST_TMP]
                     writeHostPlusTmp((rm & ~(0xC7)) | 4, checkG, isG8bit, isE8bit, tmpReg);
                     autoReleaseTmpAfterWriteOp = tmpReg;
                 }
                 break;
+            }
             case 0x04: {                    
                     U8 sib = this->fetch8();                    
 
@@ -582,16 +591,27 @@ void X64Asm::translateMemory(U32 rm, bool checkG, bool isG8bit, bool isE8bit) {
                         // convert [base + index << shift + disp] to HOST_TMP=SEG+base+disp;HOST_TMP = HOST_TMP + index << shift;[HOST_TMP+MEM]
                         U8 base = (sib & 7);
                         U8 index = (sib >> 3) & 7;
+                        U8 seg = base==4 || base==5?this->ss:this->ds;
 
                         U32 tmpReg = getTmpReg();
-                        // HOST_TMP=SEG+base+disp
-                        addWithLea(tmpReg, true, base, false, getRegForSeg(base==4 || base==5?this->ss:this->ds, tmpReg), true, 0, (rm<0x80?(S8)this->fetch8():this->fetch32()), 4);
+                        U32 disp = (rm<0x80?(S8)this->fetch8():this->fetch32());
+                        if (!this->cpu->thread->process->hasSetSeg[seg]) {
+                            if (index==4) {
+                                // HOST_TMP = base + disp
+                                addWithLea(tmpReg, true, base, false, -1 , false, 0, disp, 4);
+                            } else {
+                                // HOST_TMP = base + index << shift + disp
+                                addWithLea(tmpReg, true, base, false, index , false, sib >> 6, disp, 4);
+                            }
+                        } else {
+                            // HOST_TMP=SEG+base+disp
+                            addWithLea(tmpReg, true, base, false, getRegForSeg(seg, tmpReg), true, 0, disp, 4);
 
-                        // HOST_TMP = HOST_TMP + index << shift
-                        if (index!=4) {
-                            addWithLea(tmpReg, true, tmpReg, true, index , false, sib >> 6, 0, 4);
+                            // HOST_TMP = HOST_TMP + index << shift
+                            if (index!=4) {
+                                addWithLea(tmpReg, true, tmpReg, true, index , false, sib >> 6, 0, 4);
+                            }
                         }
-
                         // [HOST_MEM + HOST_TMP]
                         writeHostPlusTmp((rm & ~(0xC7)) | 4, checkG, isG8bit, isE8bit, tmpReg);
                         autoReleaseTmpAfterWriteOp = tmpReg;
@@ -2477,7 +2497,7 @@ void X64Asm::jmpReg(U8 reg, bool isRex) {
     // HOST_TMP2 will hold the page
     // HOST_TMP will hold the offset
     if (x64CPU::hasBMI2) {        
-        if (0 /*!this->cpu->thread->process->hasSetSeg[CS]*/) { // not sure why this check doesn't work
+        if (!this->cpu->thread->process->hasSetSeg[CS]) { // not sure why this check doesn't work
             if (reg==HOST_TMP2 && isRex) {
                 writeToRegFromValue(HOST_TMP3, true, K_PAGE_MASK, 4);
                 // PEXT HOST_TMP, HOST_TMP2, HOST_TMP3
