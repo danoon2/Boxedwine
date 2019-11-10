@@ -404,13 +404,19 @@ U64 x64CPU::handleCodePatch(U64 rip, U32 address, U64 rsi, U64 rdi, std::functio
         // for string instruction, we modify (add memory offset and segment) rdi and rsi so that the native string instruction can be used, this code will revert it back to the original values
         // uses si
         if (op->inst==Lodsb || op->inst==Lodsw || op->inst==Lodsd) {
-            THIS_ESI=(U32)(rsi - this->memOffset - this->seg[op->base].address);
+            THIS_ESI=(U32)(rsi - this->memOffset);
+            if (this->thread->process->hasSetSeg[op->base]) {
+                THIS_ESI-=this->seg[op->base].address;
+            }
             // doesn't write            
         }
         // uses di (Examples: diablo 1 will trigger this in the middle of the Stosd when creating a new game)
         else if (op->inst==Stosb || op->inst==Stosw || op->inst==Stosd ||
             op->inst==Scasb || op->inst==Scasw || op->inst==Scasd) {
-            THIS_EDI=(U32)(rdi - this->memOffset - this->seg[ES].address);
+            THIS_EDI=(U32)(rdi - this->memOffset);
+            if (this->thread->process->hasSetSeg[ES]) {
+                THIS_EDI-=this->seg[ES].address;
+            }
             if (instructionInfo[op->inst].writeMemWidth) {
                 w.invalidateStringWriteToDi(op->repNotZero || op->repZero, instructionInfo[op->inst].writeMemWidth/8);
             }
@@ -418,8 +424,14 @@ U64 x64CPU::handleCodePatch(U64 rip, U32 address, U64 rsi, U64 rdi, std::functio
         // uses si and di
         else if (op->inst==Movsb || op->inst==Movsw || op->inst==Movsd ||
             op->inst==Cmpsb || op->inst==Cmpsw || op->inst==Cmpsd) {
-            THIS_ESI=(U32)(rsi - this->memOffset - this->seg[op->base].address);
-            THIS_EDI=(U32)(rdi - this->memOffset - this->seg[ES].address);
+            THIS_ESI=(U32)(rsi - this->memOffset);
+            THIS_EDI=(U32)(rdi - this->memOffset);
+            if (this->thread->process->hasSetSeg[ES]) {
+                THIS_EDI-=this->seg[ES].address;
+            }
+            if (this->thread->process->hasSetSeg[op->base]) {
+                THIS_ESI-=this->seg[op->base].address;
+            }
             if (instructionInfo[op->inst].writeMemWidth) {
                 w.invalidateStringWriteToDi(op->repNotZero || op->repZero, instructionInfo[op->inst].writeMemWidth/8);
             }

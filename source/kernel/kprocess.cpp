@@ -672,7 +672,7 @@ U32 KProcess::execve(const std::string& path, std::vector<std::string>& args, co
     }
     this->exe = node->path;
     this->name = Fs::getFileNameFromPath(this->exe);
-
+    
     i=0;
     this->commandLine = stringJoin(args, "\0");
             
@@ -690,6 +690,14 @@ U32 KProcess::execve(const std::string& path, std::vector<std::string>& args, co
     this->memory->reset();
     KThread::currentThread()->reset();
     this->onExec();
+
+    // not sure why x64 doesn't catch this in time
+    if (this->name == "winevdm.exe" || std::find(args.begin(), args.end(), "winevdm.exe") != args.end()) {
+        for (int i=0;i<6;i++) {
+            this->hasSetSeg[i] = true;
+            this->hasSetStackMask = true;
+        }
+    }
 
     if (!ElfLoader::loadProgram(this, openNode, &KThread::currentThread()->cpu->eip.u32)) {		
         // :TODO: maybe alloc a new memory object and keep the old one until we know we are loaded

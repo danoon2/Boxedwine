@@ -272,10 +272,14 @@ void X64Asm::writeHostPlusTmp(U8 rm, bool checkG, bool isG8bit, bool isE8bit, U8
 // displacement is optional, pass 0 to ignore it
 void X64Asm::writeToRegFromMem(U8 toReg, bool isToRegRex, U8 reg2, bool isReg2Rex, S8 reg3, bool isReg3Rex, U8 reg3Shift, S32 displacement, U8 bytes, bool translateToHost) {
     if (translateToHost) {
-        U32 tmpReg = getTmpReg();
-        addWithLea(tmpReg, true, reg2, isReg2Rex, reg3, isReg3Rex, reg3Shift, displacement, 4);
-        writeToRegFromMem(toReg, isToRegRex, tmpReg, true, HOST_MEM, true, 0, 0, bytes, false);
-        releaseTmpReg(tmpReg);
+        if (reg3>0) {
+            U32 tmpReg = getTmpReg();
+            addWithLea(tmpReg, true, reg2, isReg2Rex, reg3, isReg3Rex, reg3Shift, displacement, 4);
+            writeToRegFromMem(toReg, isToRegRex, tmpReg, true, HOST_MEM, true, 0, 0, bytes, false);
+            releaseTmpReg(tmpReg);
+        } else {
+            writeToRegFromMem(toReg, isToRegRex, reg2, isReg2Rex, HOST_MEM, true, 0, displacement, bytes, false);
+        }
     } else {
         doMemoryInstruction(bytes==1?0x8a:0x8b, toReg, isToRegRex, reg2, isReg2Rex, reg3, isReg3Rex, reg3Shift, displacement, bytes);
     }
@@ -799,34 +803,37 @@ void X64Asm::pushCpuOffset32(U32 offset) {
 // 45 23 59 30          and         r11d,dword ptr [r9+30h]  
 // 45 09 C3             or          r11d,r8d  
 // 9D                   popfq 
+
+// 32-bit push when no stack segment is set
+// 43 89 6C 1C FC       mov         dword ptr [r12+r11-4],ebp  
+// 45 8D 5B FC          lea         r11d,[r11-4] 
+
 void X64Asm::push(S32 reg, bool isRegRex, U32 value, S32 bytes) {
     U8 tmpReg = getTmpReg();
 
     if (reg==4 && !isRegRex) {
         reg = HOST_ESP;
         isRegRex = true;
-    }
+    }      
 
-    // tmpReg = HOST_ESP - bytes
-    addWithLea(tmpReg, true, HOST_ESP, true, -1, false, 0, -bytes, 4);
+	if (this->cpu->thread->process->hasSetSeg[SS]) {
+        // tmpReg = HOST_ESP - bytes
+        addWithLea(tmpReg, true, HOST_ESP, true, -1, false, 0, -bytes, 4);
 
-    // tmpReg &= cpu->stackMask
-    if (this->cpu->thread->process->hasSetSeg[SS]) {
-		U8 tmpReg1 = getTmpReg();
+        U8 tmpReg1 = getTmpReg();
         pushFlagsToReg(tmpReg1, true, true);
     	andWriteToRegFromCPU(tmpReg, true, CPU_OFFSET_STACK_MASK);
     	popFlagsFromReg(tmpReg1, true, true);
         releaseTmpReg(tmpReg1);
-	}
-    // [ss:tmpReg] = reg
-    if (reg>=0) {
-        writeToMemFromReg(reg, isRegRex, tmpReg, true, HOST_SS, true, 0, false, bytes, true);
-    } else {
-        writeToMemFromValue(value, tmpReg, true, HOST_SS, true, 0, false, bytes, true);
-    }
 
-	if (this->cpu->thread->process->hasSetSeg[SS]) {
-    	U8 tmpReg1 = getTmpReg();
+        // [ss:tmpReg] = reg
+        if (reg>=0) {
+            writeToMemFromReg(reg, isRegRex, tmpReg, true, HOST_SS, true, 0, 0, bytes, true);
+        } else {
+            writeToMemFromValue(value, tmpReg, true, HOST_SS, true, 0, 0, bytes, true);
+        }
+
+    	tmpReg1 = getTmpReg();
         pushFlagsToReg(tmpReg1, true, true);
 
     	// HOST_ESP = HOST_ESP & cpu->stackNotMask
@@ -838,7 +845,13 @@ void X64Asm::push(S32 reg, bool isRegRex, U32 value, S32 bytes) {
     	popFlagsFromReg(tmpReg1, true, true);
         releaseTmpReg(tmpReg1);
 	} else {
-    	writeToRegFromReg(HOST_ESP, true, tmpReg, true, 4);
+        // [ss:tmpReg] = reg
+        if (reg>=0) {
+            writeToMemFromReg(reg, isRegRex, HOST_ESP, true, -1, false, 0, -bytes, bytes, true);
+        } else {
+            writeToMemFromValue(value, HOST_ESP, true, -1, false, 0, -bytes, bytes, true);
+        }
+        addWithLea(HOST_ESP, true, HOST_ESP, true, -1, false, 0, -bytes, 4);
 	}
     releaseTmpReg(tmpReg);    
 }
@@ -875,16 +888,24 @@ void X64Asm::popfd() {
     popNativeFlags();
 }
 
-void X64Asm::writeToRegFromMemAddress(U8 seg, U8 reg, bool isRegRex, U32 disp, U8 bytes) {
-    U8 tmpReg = getTmpReg();
-    writeToRegFromMem(reg, isRegRex, getRegForSeg(seg, tmpReg), true, -1, false, 0, disp, bytes, true);
-    releaseTmpReg(tmpReg);
+void X64Asm::writeToRegFromMemAddress(U8 seg, U8 reg, bool isRegRex, U32 disp, U8 bytes) {    
+    if (this->cpu->thread->process->hasSetSeg[seg]) {
+        U8 tmpReg = getTmpReg();
+        writeToRegFromMem(reg, isRegRex, getRegForSeg(seg, tmpReg), true, -1, false, 0, disp, bytes, true);
+        releaseTmpReg(tmpReg);
+    } else {
+        writeToRegFromMem(reg, isRegRex, -1, false, -1, false, 0, disp, bytes, true);
+    } 
 }
 
 void X64Asm::writeToMemAddressFromReg(U8 seg, U8 reg, bool isRegRex, U32 disp, U8 bytes) {
-    U8 tmpReg = getTmpReg();
-    writeToMemFromReg(reg, isRegRex, getRegForSeg(seg, tmpReg), true, -1, false, 0, disp, bytes, true);
-    releaseTmpReg(tmpReg);
+    if (this->cpu->thread->process->hasSetSeg[seg]) {
+        U8 tmpReg = getTmpReg();
+        writeToMemFromReg(reg, isRegRex, getRegForSeg(seg, tmpReg), true, -1, false, 0, disp, bytes, true);
+        releaseTmpReg(tmpReg);
+    } else {
+        writeToMemFromReg(reg, isRegRex, -1, false, -1, false, 0, disp, bytes, true);
+    }
 }
 
 void X64Asm::pushReg16(U8 reg, bool isRegRex) {
@@ -1024,10 +1045,14 @@ void X64Asm::andWriteToRegFromCPU(U8 reg, bool isRegRex, U32 offset) {
 // displacement is optional, pass 0 to ignore it
 void X64Asm::writeToMemFromReg(U8 reg1, bool isReg1Rex, U8 reg2, bool isReg2Rex, S8 reg3, bool isReg3Rex, U8 reg3Shift, S32 displacement, U8 bytes, bool translateToHost) {
     if (translateToHost) {
-        U8 tmpReg = getTmpReg();
-        addWithLea(tmpReg, true, reg2, isReg2Rex, reg3, isReg3Rex, reg3Shift, displacement, 4);
-        writeToMemFromReg(reg1, isReg1Rex, tmpReg, true, HOST_MEM, true, 0, 0, bytes, false);
-        releaseTmpReg(tmpReg);
+        if (reg3>=0) {
+            U8 tmpReg = getTmpReg();
+            addWithLea(tmpReg, true, reg2, isReg2Rex, reg3, isReg3Rex, reg3Shift, displacement, 4);
+            writeToMemFromReg(reg1, isReg1Rex, tmpReg, true, HOST_MEM, true, 0, 0, bytes, false);
+            releaseTmpReg(tmpReg);
+        } else {
+            writeToMemFromReg(reg1, isReg1Rex, reg2, isReg2Rex, HOST_MEM, true, 0, displacement, bytes, false);
+        }
     } else {
         // reg 1 will be ignored
         doMemoryInstruction(bytes==1?0x88:0x89, reg1, isReg1Rex, reg2, isReg2Rex, reg3, isReg3Rex, reg3Shift, displacement, bytes);
@@ -1036,10 +1061,14 @@ void X64Asm::writeToMemFromReg(U8 reg1, bool isReg1Rex, U8 reg2, bool isReg2Rex,
 
 void X64Asm::writeToMemFromValue(U64 value, U8 reg2, bool isReg2Rex, S8 reg3, bool isReg3Rex, U8 reg3Shift, S32 displacement, U8 bytes, bool translateToHost) {
     if (translateToHost) {
-        U8 tmpReg = getTmpReg();
-        addWithLea(tmpReg, true, reg2, isReg2Rex, reg3, isReg3Rex, reg3Shift, displacement, 4);
-        writeToMemFromValue(value, tmpReg, true, HOST_MEM, true, 0, 0, bytes, false);
-        releaseTmpReg(tmpReg);
+        if (reg3>=0) {
+            U8 tmpReg = getTmpReg();
+            addWithLea(tmpReg, true, reg2, isReg2Rex, reg3, isReg3Rex, reg3Shift, displacement, 4);
+            writeToMemFromValue(value, tmpReg, true, HOST_MEM, true, 0, 0, bytes, false);
+            releaseTmpReg(tmpReg);
+        } else {
+            writeToMemFromValue(value, reg2, isReg2Rex, HOST_MEM, true, 0, displacement, bytes, false);
+        }
     } else {
         // reg 1 will be ignored
         doMemoryInstruction(bytes==1?0xc6:0xc7, 0, false, reg2, isReg2Rex, reg3, isReg3Rex, reg3Shift, displacement, bytes);
@@ -1119,6 +1148,10 @@ void X64Asm::adjustStack(U8 tmpReg, S32 bytes) {
 // reg = readd(cpu->thread, cpu->segAddress[SS] + (ESP & cpu->stackMask));
 // ESP = (ESP & cpu->stackNotMask) | ((ESP + 4 ) & cpu->stackMask);
 
+// pop esi if no stack segment set
+// 43 8B 34 1C          mov         esi,dword ptr [r12+r11]  
+// 45 8D 5B 04          lea         r11d,[r11+4] 
+
 void X64Asm::popReg(U8 reg, bool isRegRex, S8 bytes, bool commit) {
     U8 tmpReg;
     bool allocatedTmpReg = false;
@@ -1133,21 +1166,26 @@ void X64Asm::popReg(U8 reg, bool isRegRex, S8 bytes, bool commit) {
     } else {
         tmpReg = getTmpReg();
         allocatedTmpReg = true;
-    }
-
-    // tmpReg = HOST_ESP
-    writeToRegFromReg(tmpReg, true, HOST_ESP, true, 4);
+    }    
 
     // tmpReg &= cpu->stackMask
     if (this->cpu->thread->process->hasSetSeg[SS]) {
+        // tmpReg = HOST_ESP
+        writeToRegFromReg(tmpReg, true, HOST_ESP, true, 4);
+
         U8 tmpReg1 = getTmpReg();
         pushFlagsToReg(tmpReg1, true, true);
         andWriteToRegFromCPU(tmpReg, true, CPU_OFFSET_STACK_MASK);
         popFlagsFromReg(tmpReg1, true, true); // the following write can throw an exception, so make sure out stack is fine in case the rest of this instruction is skipped
         releaseTmpReg(tmpReg1);
+
+        // reg = [ss:tmpReg]    
+        writeToRegFromMem(reg, isRegRex, tmpReg, true, HOST_SS, true, 0, false, bytes, true);
+    } else {
+        // reg = [ss:tmpReg]    
+        writeToRegFromMem(reg, isRegRex, HOST_ESP, true, -1, false, 0, false, bytes, true);
     }
-    // reg = [ss:tmpReg]    
-    writeToRegFromMem(reg, isRegRex, tmpReg, true, HOST_SS, true, 0, false, bytes, true);
+    
     
     if (commit && (reg!=HOST_ESP || !isRegRex)) {
         if (!allocatedTmpReg) {
@@ -1933,29 +1971,43 @@ void X64Asm::popA16() {
 
 // PUSHAD
 void X64Asm::pushA32() {
-    writeToMemFromReg(0, false, HOST_ESP, true, HOST_SS, true, 0, -4, 4, true);
-    writeToMemFromReg(1, false, HOST_ESP, true, HOST_SS, true, 0, -8, 4, true);
-    writeToMemFromReg(2, false, HOST_ESP, true, HOST_SS, true, 0, -12, 4, true);
-    writeToMemFromReg(3, false, HOST_ESP, true, HOST_SS, true, 0, -16, 4, true);
-    writeToMemFromReg(HOST_ESP, true, HOST_ESP, true, HOST_SS, true, 0, -20, 4, true);
-    writeToMemFromReg(5, false, HOST_ESP, true, HOST_SS, true, 0, -24, 4, true);
-    writeToMemFromReg(6, false, HOST_ESP, true, HOST_SS, true, 0, -28, 4, true);
-    writeToMemFromReg(7, false, HOST_ESP, true, HOST_SS, true, 0, -32, 4, true);
+    S8 seg;
+
+    if (this->cpu->thread->process->hasSetSeg[SS]) {
+        seg = HOST_SS;
+    } else {
+        seg = -1;
+    }
+    writeToMemFromReg(0, false, HOST_ESP, true, seg, true, 0, -4, 4, true);
+    writeToMemFromReg(1, false, HOST_ESP, true, seg, true, 0, -8, 4, true);
+    writeToMemFromReg(2, false, HOST_ESP, true, seg, true, 0, -12, 4, true);
+    writeToMemFromReg(3, false, HOST_ESP, true, seg, true, 0, -16, 4, true);
+    writeToMemFromReg(HOST_ESP, true, HOST_ESP, true, seg, true, 0, -20, 4, true);
+    writeToMemFromReg(5, false, HOST_ESP, true, seg, true, 0, -24, 4, true);
+    writeToMemFromReg(6, false, HOST_ESP, true, seg, true, 0, -28, 4, true);
+    writeToMemFromReg(7, false, HOST_ESP, true, seg, true, 0, -32, 4, true);
 
     addWithLea(HOST_ESP, true, HOST_ESP, true, -1, false, 0, -32, 4);
 }
 
 // POPAD
 void X64Asm::popA32() {
-    writeToRegFromMem(7, false, HOST_ESP, true, HOST_SS, true, 0, 0, 4, true);
-    writeToRegFromMem(6, false, HOST_ESP, true, HOST_SS, true, 0, 4, 4, true);
-    writeToRegFromMem(5, false, HOST_ESP, true, HOST_SS, true, 0, 8, 4, true);
+    S8 seg;
+
+    if (this->cpu->thread->process->hasSetSeg[SS]) {
+        seg = HOST_SS;
+    } else {
+        seg = -1;
+    }
+    writeToRegFromMem(7, false, HOST_ESP, true, seg, true, 0, 0, 4, true);
+    writeToRegFromMem(6, false, HOST_ESP, true, seg, true, 0, 4, 4, true);
+    writeToRegFromMem(5, false, HOST_ESP, true, seg, true, 0, 8, 4, true);
     // SP isn't pop, but the stack will be adjusted
     // writeToRegFromMem(4, false, HOST_ESP, true, HOST_SS, true, 0, 12, 4, true);
-    writeToRegFromMem(3, false, HOST_ESP, true, HOST_SS, true, 0, 16, 4, true);
-    writeToRegFromMem(2, false, HOST_ESP, true, HOST_SS, true, 0, 20, 4, true);
-    writeToRegFromMem(1, false, HOST_ESP, true, HOST_SS, true, 0, 24, 4, true);
-    writeToRegFromMem(0, false, HOST_ESP, true, HOST_SS, true, 0, 28, 4, true);
+    writeToRegFromMem(3, false, HOST_ESP, true, seg, true, 0, 16, 4, true);
+    writeToRegFromMem(2, false, HOST_ESP, true, seg, true, 0, 20, 4, true);
+    writeToRegFromMem(1, false, HOST_ESP, true, seg, true, 0, 24, 4, true);
+    writeToRegFromMem(0, false, HOST_ESP, true, seg, true, 0, 28, 4, true);
 
     addWithLea(HOST_ESP, true, HOST_ESP, true, -1, false, 0, 32, 4);
 }
@@ -2497,7 +2549,7 @@ void X64Asm::jmpReg(U8 reg, bool isRex) {
     // HOST_TMP2 will hold the page
     // HOST_TMP will hold the offset
     if (x64CPU::hasBMI2) {        
-        if (!this->cpu->thread->process->hasSetSeg[CS]) { // not sure why this check doesn't work
+        if (!this->cpu->thread->process->hasSetSeg[CS]) {
             if (reg==HOST_TMP2 && isRex) {
                 writeToRegFromValue(HOST_TMP3, true, K_PAGE_MASK, 4);
                 // PEXT HOST_TMP, HOST_TMP2, HOST_TMP3
@@ -2576,7 +2628,7 @@ void X64Asm::jmpReg(U8 reg, bool isRex) {
             write8(0xc0 | (HOST_TMP2 << 3) | HOST_TMP2);
         }        
     } else {
-        if (0 /*!this->cpu->thread->process->hasSetSeg[CS]*/) { // not sure why this check doesn't work
+        if (!this->cpu->thread->process->hasSetSeg[CS]) {
             if (reg==HOST_TMP2 && isRex) {
                 writeToRegFromReg(HOST_TMP, true, HOST_TMP2, true, 4);
             } else if (reg==HOST_TMP && isRex) {
@@ -2801,11 +2853,13 @@ void X64Asm::bswapSp() {
 
 void X64Asm::string32(bool hasSi, bool hasDi) {    
     U8 tmpReg = getTmpReg();
+    bool hasSetES = this->cpu->thread->process->hasSetSeg[ES];
+    bool hasSetDS = this->cpu->thread->process->hasSetSeg[this->ds];
 
-    if (hasDi) {
+    if (hasDi && hasSetES) {
         addWithLea(7, false, 7, false, getRegForSeg(ES, tmpReg), true, 0, 0, 4);
     }
-    if (hasSi) {
+    if (hasSi && hasSetDS) {
         addWithLea(6, false, 6, false, getRegForSeg(this->ds, tmpReg), true, 0, 0, 4);
     }
     releaseTmpReg(tmpReg);
@@ -2827,10 +2881,10 @@ void X64Asm::string32(bool hasSi, bool hasDi) {
     if (hasDi) {
         addWithLea(7, false, 7, false, tmpReg, true, 0, 0, 8);
     }
-    if (hasSi) {
+    if (hasSi && hasSetDS) {
         addWithLea(6, false, 6, false, getRegForNegSeg(this->ds, tmpReg), true, 0, 0, 4);
     }
-    if (hasDi) {
+    if (hasDi && hasSetES) {
         addWithLea(7, false, 7, false, getRegForNegSeg(ES, tmpReg), true, 0, 0, 4);
     }    
         
