@@ -1130,6 +1130,243 @@ const InstructionInfo instructionInfo[] = {
     {0, 0, 0, 0, 0, 0}, // UcomissXmmXmm
     {0, 32, 0, 0, 0, 0}, // UcomissXmmE32
 
+    {0, 0, 0, 0, 0, 0}, // AddpdXmmXmm
+    {0, 128, 0, 0, 0, 0}, // AddpdXmmE128
+    {0, 0, 0, 0, 0, 0}, // AddsdXmmXmm
+    {0, 64, 0, 0, 0, 0}, // AddsdXmmE64
+    {0, 0, 0, 0, 0, 0}, // SubpdXmmXmm
+    {0, 128, 0, 0, 0, 0}, // SubpdXmmE128
+    {0, 0, 0, 0, 0, 0}, // SubsdXmmXmm
+    {0, 64, 0, 0, 0, 0}, // SubsdXmmE64
+    {0, 0, 0, 0, 0, 0}, // MulpdXmmXmm
+    {0, 128, 0, 0, 0, 0}, // MulpdXmmE128
+    {0, 0, 0, 0, 0, 0}, // MulsdXmmXmm
+    {0, 64, 0, 0, 0, 0}, // MulsdXmmE64
+    {0, 0, 0, 0, 0, 0}, // DivpdXmmXmm
+    {0, 128, 0, 0, 0, 0}, // DivpdXmmE128
+    {0, 0, 0, 0, 0, 0}, // DivsdXmmXmm
+    {0, 64, 0, 0, 0, 0}, // DivsdXmmE64
+    {0, 0, 0, 0, 0, 0}, // MaxpdXmmXmm
+    {0, 128, 0, 0, 0, 0}, // MaxpdXmmE128
+    {0, 0, 0, 0, 0, 0}, // MaxsdXmmXmm
+    {0, 64, 0, 0, 0, 0}, // MaxsdXmmE64
+    {0, 0, 0, 0, 0, 0}, // MinpdXmmXmm
+    {0, 128, 0, 0, 0, 0}, // MinpdXmmE128
+    {0, 0, 0, 0, 0, 0}, // MinsdXmmXmm
+    {0, 64, 0, 0, 0, 0}, // MinsdXmmE64
+    {0, 0, 0, 0, 0, 0}, // PaddbXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PaddbXmmE128
+    {0, 0, 0, 0, 0, 0}, // PaddwXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PaddwXmmE128
+    {0, 0, 0, 0, 0, 0}, // PadddXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PadddXmmE128
+    {0, 0, 0, 0, 0, 0}, // PaddqMmxMmx
+    {0, 64, 0, 0, 0, 0}, // PaddqMmxE64
+    {0, 0, 0, 0, 0, 0}, // PaddqXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PaddqXmmE128
+    {0, 0, 0, 0, 0, 0}, // PaddsbXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PaddsbXmmE128
+    {0, 0, 0, 0, 0, 0}, // PaddswXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PaddswXmmE128
+    {0, 0, 0, 0, 0, 0}, // PaddusbXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PaddusbXmmE128
+    {0, 0, 0, 0, 0, 0}, // PadduswXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PadduswXmmE128
+    {0, 0, 0, 0, 0, 0}, // PsubbXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PsubbXmmE128
+    {0, 0, 0, 0, 0, 0}, // PsubwXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PsubwXmmE128
+    {0, 0, 0, 0, 0, 0}, // PsubdXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PsubdXmmE128
+    {0, 0, 0, 0, 0, 0}, // PsubqMmxMmx
+    {0, 64, 0, 0, 0, 0}, // PsubqMmxE64
+    {0, 0, 0, 0, 0, 0}, // PsubqXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PsubqXmmE128
+    {0, 0, 0, 0, 0, 0}, // PsubsbXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PsubsbXmmE128
+    {0, 0, 0, 0, 0, 0}, // PsubswXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PsubswXmmE128
+    {0, 0, 0, 0, 0, 0}, // PsubusbXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PsubusbXmmE128
+    {0, 0, 0, 0, 0, 0}, // PsubuswXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PsubuswXmmE128
+    {0, 0, 0, 0, 0, 0}, // PmaddwdXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PmaddwdXmmE128
+    {0, 0, 0, 0, 0, 0}, // PmulhwXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PmulhwXmmE128
+    {0, 0, 0, 0, 0, 0}, // PmullwXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PmullwXmmE128
+    {0, 0, 0, 0, 0, 0}, // PmuludqMmxMmx
+    {0, 64, 0, 0, 0, 0}, // PmuludqMmxE64
+    {0, 0, 0, 0, 0, 0}, // PmuludqXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PmuludqXmmE128
+    {0, 0, 0, 0, 0, 0}, // SqrtpdXmmXmm
+    {0, 128, 0, 0, 0, 0}, // SqrtpdXmmE128
+    {0, 0, 0, 0, 0, 0}, // SqrtsdXmmXmm
+    {0, 64, 0, 0, 0, 0}, // SqrtsdXmmE64
+    {0, 0, 0, 0, 0, 0}, // AndnpdXmmXmm
+    {0, 128, 0, 0, 0, 0}, // AndnpdXmmE128
+    {0, 0, 0, 0, 0, 0}, // AndpdXmmXmm
+    {0, 128, 0, 0, 0, 0}, // AndpdXmmE128
+    {0, 0, 0, 0, 0, 0}, // PandXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PandXmmE128
+    {0, 0, 0, 0, 0, 0}, // PandnXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PandnXmmE128
+    {0, 0, 0, 0, 0, 0}, // PorXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PorXmmXmmE128
+    {0, 0, 0, 0, 0, 0}, // PslldqXmm
+    {0, 0, 0, 0, 0, 0}, // PsllqXmm
+    {0, 0, 0, 0, 0, 0}, // PsllqXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PsllqXmmE128
+    {0, 0, 0, 0, 0, 0}, // PslldXmm
+    {0, 0, 0, 0, 0, 0}, // PslldXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PslldXmmE128
+    {0, 0, 0, 0, 0, 0}, // PsllwXmm
+    {0, 0, 0, 0, 0, 0}, // PsllwXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PsllwXmmE128
+    {0, 0, 0, 0, 0, 0}, // PsradXmm
+    {0, 0, 0, 0, 0, 0}, // PsradXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PsradXmmE128
+    {0, 0, 0, 0, 0, 0}, // PsrawXmm
+    {0, 0, 0, 0, 0, 0}, // PsrawXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PsrawXmmE128
+    {0, 0, 0, 0, 0, 0}, // PsrldqXmm
+    {0, 0, 0, 0, 0, 0}, // PsrlqXmm
+    {0, 0, 0, 0, 0, 0}, // PsrlqXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PsrlqXmmE128
+    {0, 0, 0, 0, 0, 0}, // PsrldXmm
+    {0, 0, 0, 0, 0, 0}, // PsrldXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PsrldXmmE128
+    {0, 0, 0, 0, 0, 0}, // PsrlwXmm
+    {0, 0, 0, 0, 0, 0}, // PsrlwXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PsrlwXmmE128
+    {0, 0, 0, 0, 0, 0}, // PxorXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PxorXmmE128
+    {0, 0, 0, 0, 0, 0}, // OrpdXmmXmm
+    {0, 128, 0, 0, 0, 0}, // OrpdXmmE128
+    {0, 0, 0, 0, 0, 0}, // XorpdXmmXmm
+    {0, 128, 0, 0, 0, 0}, // XorpdXmmE128
+    {0, 0, 0, 0, 0, 0}, // CmppdXmmXmm
+    {0, 128, 0, 0, 0, 0}, // CmppdXmmE128
+    {0, 0, 0, 0, 0, 0}, // CmpsdXmmXmm
+    {0, 64, 0, 0, 0, 0}, // CmpsdXmmE64
+    {0, 0, 0, 0, 0, 0}, // ComisdXmmXmm
+    {0, 64, 0, 0, 0, 0}, // ComisdXmmE64
+    {0, 0, 0, 0, 0, 0}, // UcomisdXmmXmm
+    {0, 64, 0, 0, 0, 0}, // UcomisdXmmE64
+    {0, 0, 0, 0, 0, 0}, // PcmpgtbXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PcmpgtbXmmE128
+    {0, 0, 0, 0, 0, 0}, // PcmpgtwXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PcmpgtwXmmE128
+    {0, 0, 0, 0, 0, 0}, // PcmpgtdXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PcmpgtdXmmE128
+    {0, 0, 0, 0, 0, 0}, // PcmpeqbXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PcmpeqbXmmE128
+    {0, 0, 0, 0, 0, 0}, // PcmpeqwXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PcmpeqwXmmE128
+    {0, 0, 0, 0, 0, 0}, // PcmpeqdXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PcmpeqdXmmE128
+    {0, 0, 0, 0, 0, 0}, // Cvtdq2pdXmmXmm
+    {0, 128, 0, 0, 0, 0}, // Cvtdq2pdXmmE128
+    {0, 0, 0, 0, 0, 0}, // Cvtdq2psXmmXmm
+    {0, 128, 0, 0, 0, 0}, // Cvtdq2psXmmE128
+    {0, 0, 0, 0, 0, 0}, // Cvtpd2piMmxXmm
+    {0, 128, 0, 0, 0, 0}, // Cvtpd2piMmxE128
+    {0, 0, 0, 0, 0, 0}, // Cvtpd2dqXmmXmm
+    {0, 128, 0, 0, 0, 0}, // Cvtpd2dqXmmE128
+    {0, 0, 0, 0, 0, 0}, // Cvtpd2psXmmXmm
+    {0, 128, 0, 0, 0, 0}, // Cvtpd2psXmmE128
+    {0, 0, 0, 0, 0, 0}, // Cvtpi2pdXmmMmx
+    {0, 64, 0, 0, 0, 0}, // Cvtpi2pdXmmE64
+    {0, 0, 0, 0, 0, 0}, // Cvtps2dqXmmXmm
+    {0, 128, 0, 0, 0, 0}, // Cvtps2dqXmmE128
+    {0, 0, 0, 0, 0, 0}, // Cvtps2pdXmmXmm
+    {0, 128, 0, 0, 0, 0}, // Cvtps2pdXmmE128
+    {0, 0, 0, 0, 0, 0}, // Cvtsd2siR32Xmm
+    {0, 64, 0, 0, 0, 0}, // Cvtsd2siR32E64
+    {0, 0, 0, 0, 0, 0}, // Cvtsd2ssXmmXmm
+    {0, 64, 0, 0, 0, 0}, // Cvtsd2ssXmmE64
+    {0, 0, 0, 0, 0, 0}, // Cvtsi2sdXmmR32
+    {0, 32, 0, 0, 0, 0}, // Cvtsi2sdXmmE32
+    {0, 0, 0, 0, 0, 0}, // Cvtss2sdXmmXmm
+    {0, 32, 0, 0, 0, 0}, // Cvtss2sdXmmE32
+    {0, 0, 0, 0, 0, 0}, // Cvttpd2piMmxXmm
+    {0, 128, 0, 0, 0, 0}, // Cvttpd2piMmE128
+    {0, 0, 0, 0, 0, 0}, // Cvttpd2dqXmmXmm
+    {0, 128, 0, 0, 0, 0}, // Cvttpd2dqXmmE128
+    {0, 0, 0, 0, 0, 0}, // Cvttps2dqXmmXmm
+    {0, 128, 0, 0, 0, 0}, // Cvttps2dqXmmE128
+    {0, 0, 0, 0, 0, 0}, // Cvttsd2siR32Xmm
+    {0, 64, 0, 0, 0, 0}, // Cvttsd2siR32E64
+    {0, 0, 0, 0, 0, 0}, // MovqXmmXmm
+    {0, 0, 64, 0, 0, 0}, // MovqE64Xmm
+    {0, 64, 0, 0, 0, 0}, // MovqXmmE64
+    {0, 0, 0, 0, 0, 0}, // MovsdXmmXmm
+    {0, 64, 0, 0, 0, 0}, // MovsdXmmE64
+    {0, 0, 64, 0, 0, 0}, // MovsdE64Xmm
+    {0, 0, 0, 0, 0, 0}, // MovapdXmmXmm
+    {0, 128, 0, 0, 0, 0}, // MovapdXmmE128
+    {0, 0, 128, 0, 0, 0}, // MovapdE128Xmm
+    {0, 0, 0, 0, 0, 0}, // MovupdXmmXmm
+    {0, 128, 0, 0, 0, 0}, // MovupdXmmE128
+    {0, 0, 128, 0, 0, 0}, // MovupdE128Xmm
+    {0, 64, 0, 0, 0, 0}, // MovhpdXmmE64
+    {0, 0, 64, 0, 0, 0}, // MovhpdE64Xmm
+    {0, 64, 0, 0, 0, 0}, // MovlpdXmmE64
+    {0, 0, 64, 0, 0, 0}, // MovlpdE64Xmm
+    {0, 0, 0, 0, 0, 0}, // MovmskpdR32Xmm
+    {0, 0, 0, 0, 0, 0}, // MovdXmmR32
+    {0, 32, 0, 0, 0, 0}, // MovdXmmE32
+    {0, 0, 0, 0, 0, 0}, // MovdR32Xmm
+    {0, 0, 32, 0, 0, 0}, // MovdE32Xmm
+    {0, 0, 0, 0, 0, 0}, // MovdqaXmmXmm
+    {0, 128, 0, 0, 0, 0}, // MovdqaXmmE128
+    {0, 0, 128, 0, 0, 0}, // MovdqaE128Xmm
+    {0, 0, 0, 0, 0, 0}, // MovdquXmmXmm
+    {0, 128, 0, 0, 0, 0}, // MovdquXmmE128
+    {0, 0, 128, 0, 0, 0}, // MovdquE128Xmm    
+    {0, 0, 0, 0, 0, 0}, // Movdq2qMmxXmm
+    {0, 0, 0, 0, 0, 0}, // Movq2dqXmmMmx
+    {0, 0, 128, 0, 0, 0}, // MovntpdE128Xmm
+    {0, 0, 128, 0, 0, 0}, // MovntdqE128Xmm
+    {0, 0, 32, 0, 0, 0}, // MovntiE32R32
+    {0, 0, 128, 0, 0, 0}, // MaskmovdquE128XmmXmm
+    {0, 0, 0, 0, 0, 0}, // PshufdXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PshufdXmmE128
+    {0, 0, 0, 0, 0, 0}, // PshufhwXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PshufhwXmmE128
+    {0, 0, 0, 0, 0, 0}, // PshuflwXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PshuflwXmmE128
+    {0, 0, 0, 0, 0, 0}, // UnpckhpdXmmXmm
+    {0, 128, 0, 0, 0, 0}, // UnpckhpdXmmE128
+    {0, 0, 0, 0, 0, 0}, // UnpcklpdXmmXmm
+    {0, 128, 0, 0, 0, 0}, // UnpcklpdXmmE128
+    {0, 0, 0, 0, 0, 0}, // PunpckhbwXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PunpckhbwXmmE128
+    {0, 0, 0, 0, 0, 0}, // PunpckhwdXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PunpckhwdXmmE128
+    {0, 0, 0, 0, 0, 0}, // PunpckhdqXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PunpckhdqXmmE128
+    {0, 0, 0, 0, 0, 0}, // PunpckhqdqXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PunpckhqdqXmmE128
+    {0, 0, 0, 0, 0, 0}, // PunpcklbwXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PunpcklbwXmmE128
+    {0, 0, 0, 0, 0, 0}, // PunpcklwdXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PunpcklwdXmmE128
+    {0, 0, 0, 0, 0, 0}, // PunpckldqXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PunpckldqXmmE128
+    {0, 0, 0, 0, 0, 0}, // PunpcklqdqXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PunpcklqdqXmmE128
+    {0, 0, 0, 0, 0, 0}, // PackssdwXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PackssdwXmmE128
+    {0, 0, 0, 0, 0, 0}, // PacksswbXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PacksswbXmmE128
+    {0, 0, 0, 0, 0, 0}, // PackuswbXmmXmm
+    {0, 128, 0, 0, 0, 0}, // PackuswbXmmE128
+    {0, 0, 0, 0, 0, 0}, // ShufpdXmmXmm
+    {0, 128, 0, 0, 0, 0}, // ShufpdXmmE128
+    {0, 0, 0, 0, 0, 0}, // Pause
+
     {DECODE_BRANCH_NO_CACHE, 0, 0, 0, 0, 0}, // Callback
     {DECODE_BRANCH_NO_CACHE, 0, 0, 0, 0, 0}, // Done
     {0, 0, 0, 0, 0, 0} // Custom1
@@ -1514,6 +1751,10 @@ static void logEM(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
 }
 
 static void logXmmXmm(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
+    fprintf((FILE*)cpu->logFile, "%s", inst->name);
+}
+
+static void logXmmI(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
     fprintf((FILE*)cpu->logFile, "%s", inst->name);
 }
 
@@ -2665,7 +2906,244 @@ const LogInstruction instructionLog[] = {
     {"Comiss", 0, logXmmXmm},
     {"Comiss", 32, logXmmE},
     {"Ucomiss", 0, logXmmXmm},
-    {"Ucomiss", 32, logXmmE}
+    {"Ucomiss", 32, logXmmE},
+
+    {"Addpd", 0, logXmmXmm},
+    {"Addpd", 128, logXmmE},
+    {"Addsd", 0, logXmmXmm},
+    {"Addsd", 64, logXmmE},
+    {"Subpd", 0, logXmmXmm},
+    {"Subpd", 128, logXmmE},
+    {"Subsd", 0, logXmmXmm},
+    {"Subsd", 64, logXmmE},
+    {"Mulpd", 0, logXmmXmm},
+    {"Mulpd", 128, logXmmE},    
+    {"Mulsd", 0, logXmmXmm},
+    {"Mulsd", 64, logXmmE},
+    {"Divpd", 0, logXmmXmm},
+    {"Divpd", 128, logXmmE},
+    {"Divsd", 0, logXmmXmm},
+    {"Divsd", 64, logXmmE},
+    {"Maxpd", 0, logXmmXmm},
+    {"Maxpd", 128, logXmmE},
+    {"Maxsd", 0, logXmmXmm},
+    {"Maxsd", 64, logXmmE},
+    {"Minpd", 0, logXmmXmm},
+    {"Minpd", 128, logXmmE},
+    {"Minsd", 0, logXmmXmm},
+    {"Minsd", 64, logXmmE},
+    {"Paddb", 0, logXmmXmm},
+    {"Paddb", 128, logXmmE},
+    {"Paddw", 0, logXmmXmm},
+    {"Paddw", 128, logXmmE},
+    {"Paddd", 0, logXmmXmm},
+    {"Paddd", 128, logXmmE},
+    {"Paddq", 0, logMM},
+    {"Paddq", 64, logME},
+    {"Paddq", 0, logXmmXmm},
+    {"Paddq", 128, logXmmE},
+    {"Paddsb", 0, logXmmXmm},
+    {"Paddsb", 128, logXmmE},
+    {"Paddsw", 0, logXmmXmm},
+    {"Paddsw", 128, logXmmE},
+    {"Paddusb", 0, logXmmXmm},
+    {"Paddusb", 128, logXmmE},
+    {"Paddusw", 0, logXmmXmm},
+    {"Paddusw", 128, logXmmE},
+    {"Psubb", 0, logXmmXmm},
+    {"Psubb", 128, logXmmE},
+    {"Psubw", 0, logXmmXmm},
+    {"Psubw", 128, logXmmE},
+    {"Psubd", 0, logXmmXmm},
+    {"Psubd", 128, logXmmE},
+    {"Psubq", 0, logMM},
+    {"Psubq", 64, logME},
+    {"Psubq", 0, logXmmXmm},
+    {"Psubq", 128, logXmmE},
+    {"Psubsb", 0, logXmmXmm},
+    {"Psubsb", 128, logXmmE},
+    {"Psubsw", 0, logXmmXmm},
+    {"Psubsw", 128, logXmmE},
+    {"Psubusb", 0, logXmmXmm},
+    {"Psubusb", 128, logXmmE},
+    {"Psubusw", 0, logXmmXmm},
+    {"Psubusw", 128, logXmmE},
+    {"Pmaddwd", 0, logXmmXmm},
+    {"Pmaddwd", 128, logXmmE},
+    {"Pmulhw", 0, logXmmXmm},
+    {"Pmulhw", 128, logXmmE},
+    {"Pmullw", 0, logXmmXmm},
+    {"Pmullw", 128, logXmmE},
+    {"Pmuludq", 0, logMM},
+    {"Pmuludq", 64, logME},
+    {"Pmuludq", 0, logXmmXmm},
+    {"Pmuludq", 128, logXmmE},
+    {"Sqrtpd", 0, logXmmXmm},
+    {"Sqrtpd", 128, logXmmE},
+    {"Sqrtsd", 0, logXmmXmm},
+    {"Sqrtsd", 64, logXmmE},
+    {"Andnpd", 0, logXmmXmm},
+    {"Andnpd", 128, logXmmE},
+    {"Andpd", 0, logXmmXmm},
+    {"Andpd", 128, logXmmE},
+    {"Pand", 0, logXmmXmm},
+    {"Pand", 128, logXmmE},
+    {"Pandn", 0, logXmmXmm},
+    {"Pandn", 128, logXmmE},
+    {"Por", 0, logXmmXmm},
+    {"PorXmm", 128, logXmmE},
+    {"Pslldq", 0, logXmmI},
+    {"Psllq", 0, logXmmI},
+    {"Psllq", 0, logXmmXmm},
+    {"Psllq", 128, logXmmE},
+    {"Pslld", 0, logXmmI},
+    {"Pslld", 0, logXmmXmm},
+    {"Pslld", 128, logXmmE},
+    {"Psllw", 0, logXmmI},
+    {"Psllw", 0, logXmmXmm},
+    {"Psllw", 128, logXmmE},
+    {"Psrad", 0, logXmmI},
+    {"Psrad", 0, logXmmXmm},
+    {"Psrad", 128, logXmmE},
+    {"Psraw", 0, logXmmI},
+    {"Psraw", 0, logXmmXmm},
+    {"Psraw", 128, logXmmE},
+    {"Psrldq", 0, logXmmI},
+    {"Psrlq", 0, logXmmI},
+    {"Psrlq", 0, logXmmXmm},
+    {"Psrlq", 128, logXmmE},
+    {"Psrld", 0, logXmmI},
+    {"Psrld", 0, logXmmXmm},
+    {"Psrld", 128, logXmmE},
+    {"Psrlw", 0, logXmmI},
+    {"Psrlw", 0, logXmmXmm},
+    {"Psrlw", 128, logXmmE},
+    {"Pxor", 0, logXmmXmm},
+    {"Pxor", 128, logXmmE},
+    {"Orpd", 0, logXmmXmm},
+    {"Orpd", 128, logXmmE},
+    {"Xorpd", 0, logXmmXmm},
+    {"Xorpd", 128, logXmmE},
+    {"Cmppd", 0, logXmmXmm},
+    {"Cmppd", 128, logXmmE},
+    {"Cmpsd", 0, logXmmXmm},
+    {"Cmpsd", 64, logXmmE},
+    {"Comisd", 0, logXmmXmm},
+    {"Comisd", 64, logXmmE},
+    {"Ucomisd", 0, logXmmXmm},
+    {"Ucomisd", 64, logXmmE},
+    {"Pcmpgtb", 0, logXmmXmm},
+    {"Pcmpgtb", 128, logXmmE},
+    {"Pcmpgtw", 0, logXmmXmm},
+    {"Pcmpgtw", 128, logXmmE},
+    {"Pcmpgtd", 0, logXmmXmm},
+    {"Pcmpgtd", 128, logXmmE},
+    {"Pcmpeqb", 0, logXmmXmm},
+    {"Pcmpeqb", 128, logXmmE},
+    {"Pcmpeqw", 0, logXmmXmm},
+    {"Pcmpeqw", 128, logXmmE},
+    {"Pcmpeqd", 0, logXmmXmm},
+    {"Pcmpeqd", 128, logXmmE},
+    {"Cvtdq2pd", 0, logXmmXmm},
+    {"Cvtdq2pd", 128, logXmmE},
+    {"Cvtdq2ps", 0, logXmmXmm},
+    {"Cvtdq2ps", 128, logXmmE},
+    {"Cvtpd2pi", 0, logMXmm},
+    {"Cvtpd2pi", 128, logME},
+    {"Cvtpd2dq", 0, logXmmXmm},
+    {"Cvtpd2dq", 128, logXmmE},
+    {"Cvtpd2ps", 0, logXmmXmm},
+    {"Cvtpd2ps", 128, logXmmE},
+    {"Cvtpi2pd", 0, logXmmM},
+    {"Cvtpi2pd", 64, logXmmE},
+    {"Cvtps2dq", 0, logXmmXmm},
+    {"Cvtps2dq", 128, logXmmE},
+    {"Cvtps2pd", 0, logXmmXmm},
+    {"Cvtps2pd", 128, logXmmE},
+    {"Cvtsd2si", 0, logRXmm},
+    {"Cvtsd2si", 64, logRE},
+    {"Cvtsd2ss", 0, logXmmXmm},
+    {"Cvtsd2ss", 64, logXmmE},
+    {"Cvtsi2sd", 0, logXmmR},
+    {"Cvtsi2sd", 32, logXmmE},
+    {"Cvtss2sd", 0, logXmmXmm},
+    {"Cvtss2sd", 32, logXmmE},
+    {"Cvttpd2pi", 0, logMXmm},
+    {"Cvttpd2pi", 128, logME},
+    {"Cvttpd2dq", 0, logXmmXmm},
+    {"Cvttpd2dq", 128, logXmmE},
+    {"Cvttps2dq", 0, logXmmXmm},
+    {"Cvttps2dq", 128, logXmmE},
+    {"Cvttsd2si", 0, logRXmm},
+    {"Cvttsd2si", 64, logRE},
+    {"Movq", 0, logXmmXmm},
+    {"Movq", 64, logEXmm},
+    {"Movq", 64, logXmmE},   
+    {"Movsd", 0, logXmmXmm},
+    {"Movsd", 64, logXmmE},
+    {"Movsd", 64, logEXmm},
+    {"Movapd", 0, logXmmXmm},
+    {"Movapd", 128, logXmmE},
+    {"Movapd", 128, logEXmm},
+    {"Movupd", 0, logXmmXmm},
+    {"Movupd", 128, logXmmE},
+    {"Movupd", 128, logEXmm},
+    {"Movhpd", 64, logXmmE},
+    {"Movhpd", 64, logEXmm},
+    {"Movlpd", 64, logXmmE},
+    {"Movlpd", 64, logEXmm},
+    {"Movmskpd", 0, logRXmm},
+    {"Movd", 0, logXmmR},
+    {"Movd", 32, logXmmE},
+    {"Movd", 0, logRXmm},
+    {"Movd", 32, logEXmm},
+    {"Movdqa", 0, logXmmXmm},
+    {"Movdqa", 128, logXmmE},
+    {"Movdqa", 128, logEXmm},
+    {"Movdqu", 0, logXmmXmm},
+    {"Movdqu", 128, logXmmE},
+    {"Movdqu", 128, logEXmm},     
+    {"Movdq2q", 0, logMXmm},
+    {"Movq2dq", 0, logXmmM},
+    {"Movntpd", 128, logEXmm},
+    {"Movntdq", 128, logEXmm},
+    {"Movnti", 32, logER},
+    {"MaskmovdquE128", 0, logXmmXmm},
+    {"Pshufd", 0, logXmmXmm},
+    {"Pshufd", 128, logXmmE},
+    {"Pshufhw", 0, logXmmXmm},
+    {"Pshufhw", 128, logXmmE},
+    {"Pshuflw", 0, logXmmXmm},
+    {"Pshuflw", 128, logXmmE},
+    {"Unpckhpd", 0, logXmmXmm},
+    {"Unpckhpd", 128, logXmmE},
+    {"Unpcklpd", 0, logXmmXmm},
+    {"Unpcklpd", 128, logXmmE},
+    {"Punpckhbw", 0, logXmmXmm},
+    {"Punpckhbw", 128, logXmmE},
+    {"Punpckhwd", 0, logXmmXmm},
+    {"Punpckhwd", 128, logXmmE},
+    {"Punpckhdq", 0, logXmmXmm},
+    {"Punpckhdq", 128, logXmmE},
+    {"Punpckhqdq", 0, logXmmXmm},
+    {"Punpckhqdq", 128, logXmmE},
+    {"Punpcklbw", 0, logXmmXmm},
+    {"Punpcklbw", 128, logXmmE},
+    {"Punpcklwd", 0, logXmmXmm},
+    {"Punpcklwd", 128, logXmmE},
+    {"Punpckldq", 0, logXmmXmm},
+    {"Punpckldq", 128, logXmmE},
+    {"Punpcklqdq", 0, logXmmXmm},
+    {"Punpcklqdq", 128, logXmmE},
+    {"Packssdw", 0, logXmmXmm},
+    {"Packssdw", 128, logXmmE},
+    {"Packsswb", 0, logXmmXmm},
+    {"Packsswb", 128, logXmmE},
+    {"Packuswb", 0, logXmmXmm},
+    {"Packuswb", 128, logXmmE},
+    {"Shufpd", 0, logXmmXmm},
+    {"Shufpd", 128, logXmmE},
+    {"Pause", 0, logName}
 };
 #endif
 class DecodeData {
@@ -3121,6 +3599,40 @@ public:
 
 private:
     Instruction reg;
+};
+
+class DecodeZeroInst : public Decode {
+public:
+    DecodeZeroInst(Instruction reg, Instruction f2Reg, Instruction f3Reg) {
+        this->reg = reg;
+        this->f2Reg = f2Reg;
+        this->f3Reg = f3Reg;
+    }
+    DecodeZeroInst(Instruction reg, Instruction f2Reg, Instruction f3Reg, U32 immWidth) : Decode(immWidth) {
+        this->reg = reg;
+        this->f2Reg = f2Reg;
+        this->f3Reg = f3Reg;
+    }
+    DecodeZeroInst(Instruction reg, Instruction f2Reg, Instruction f3Reg, U32 immWidth, U32 signExtendWidth) : Decode(immWidth, signExtendWidth) {
+        this->reg = reg;
+        this->f2Reg = f2Reg;
+        this->f3Reg = f3Reg;
+    }
+    void decode(DecodeData* data, DecodedOp* op) const {
+        if (op->repNotZero) {
+            op->inst = f2Reg;
+        } else if (op->repZero) {
+            op->inst = f3Reg;
+        } else {
+            op->inst = reg;
+        }
+        fetchImm(data, op);
+    }
+
+private:
+    Instruction reg;
+    Instruction f2Reg;
+    Instruction f3Reg;
 };
 
 class DecodeIntIb : public Decode {
@@ -4186,6 +4698,181 @@ private:
     Instruction mem2;
 };
 
+class DecodeSSE2 : public Decode {
+public:
+    DecodeSSE2(Instruction reg, Instruction mem, Instruction f2Reg, Instruction f2Mem, Instruction f3Reg, Instruction f3Mem) {
+        this->reg = reg;
+        this->mem = mem;
+        this->f2Reg = f2Reg;
+        this->f2Mem = f2Mem;
+        this->f3Reg = f3Reg;
+        this->f3Mem = f3Mem;
+    }
+    DecodeSSE2(Instruction reg, Instruction mem, Instruction f2Reg, Instruction f2Mem, Instruction f3Reg, Instruction f3Mem, U32 imm) : Decode(imm) {
+        this->reg = reg;
+        this->mem = mem;
+        this->f2Reg = f2Reg;
+        this->f2Mem = f2Mem;
+        this->f3Reg = f3Reg;
+        this->f3Mem = f3Mem;
+    }
+    void decode(DecodeData* data, DecodedOp* op) const {
+        U8 rm = data->fetch8();
+
+        if (rm>=0xC0) {    
+            if (op->repZero) {
+                op->inst = this->f3Reg;
+            } else if (op->repNotZero) {
+                op->inst = this->f2Reg;
+            } else {
+                op->inst = this->reg;
+            }
+            
+            op->reg = G(rm);
+            op->rm = E(rm);
+        } else {
+            if (op->repZero) {
+                op->inst = this->f3Mem;
+            } else if (op->repNotZero) {
+                op->inst = this->f2Mem;
+            } else {
+                op->inst = this->mem;
+            }
+            op->reg = G(rm);
+            decodeEa(data, op, rm);
+        } 
+        op->repZero = false;
+    }
+
+private:
+    Instruction reg;
+    Instruction mem;
+    Instruction f2Reg;
+    Instruction f2Mem;
+    Instruction f3Reg;
+    Instruction f3Mem;
+};
+
+class DecodeSSE2r : public Decode {
+public:
+    DecodeSSE2r(Instruction reg, Instruction mem, Instruction f2Reg, Instruction f2Mem, Instruction f3Reg, Instruction f3Mem) {
+        this->reg = reg;
+        this->mem = mem;
+        this->f2Reg = f2Reg;
+        this->f2Mem = f2Mem;
+        this->f3Reg = f3Reg;
+        this->f3Mem = f3Mem;
+    }
+    DecodeSSE2r(Instruction reg, Instruction mem, Instruction f2Reg, Instruction f2Mem, Instruction f3Reg, Instruction f3Mem, U32 imm) : Decode(imm) {
+        this->reg = reg;
+        this->mem = mem;
+        this->f2Reg = f2Reg;
+        this->f2Mem = f2Mem;
+        this->f3Reg = f3Reg;
+        this->f3Mem = f3Mem;
+    }
+    void decode(DecodeData* data, DecodedOp* op) const {
+        U8 rm = data->fetch8();
+
+        if (rm>=0xC0) {    
+            if (op->repZero) {
+                op->inst = this->f3Reg;
+            } else if (op->repNotZero) {
+                op->inst = this->f2Reg;
+            } else {
+                op->inst = this->reg;
+            }
+            
+            op->reg = E(rm);
+            op->rm = G(rm);
+        } else {
+            if (op->repZero) {
+                op->inst = this->f3Mem;
+            } else if (op->repNotZero) {
+                op->inst = this->f2Mem;
+            } else {
+                op->inst = this->mem;
+            }
+            op->reg = G(rm);
+            decodeEa(data, op, rm);
+        } 
+        op->repZero = false;
+    }
+
+private:
+    Instruction reg;
+    Instruction mem;
+    Instruction f2Reg;
+    Instruction f2Mem;
+    Instruction f3Reg;
+    Instruction f3Mem;
+};
+
+class DecodeSSE2custom : public Decode {
+public:
+    DecodeSSE2custom(Instruction reg, Instruction mem, bool reversed1, Instruction f2Reg, Instruction f2Mem, bool reversed2, Instruction f3Reg, Instruction f3Mem, bool revered3) {
+        this->reg = reg;
+        this->mem = mem;
+        this->reversed1 = reversed1;
+        this->f2Reg = f2Reg;
+        this->f2Mem = f2Mem;
+        this->reversed2 = reversed2;
+        this->f3Reg = f3Reg;
+        this->f3Mem = f3Mem;
+        this->reversed3 = reversed3;
+    }
+    DecodeSSE2custom(Instruction reg, Instruction mem, bool reversed1, Instruction f2Reg, Instruction f2Mem, bool reversed2, Instruction f3Reg, Instruction f3Mem, bool revered3, U32 imm) : Decode(imm) {
+        this->reg = reg;
+        this->mem = mem;
+        this->reversed1 = reversed1;
+        this->f2Reg = f2Reg;
+        this->f2Mem = f2Mem;
+        this->reversed2 = reversed2;
+        this->f3Reg = f3Reg;
+        this->f3Mem = f3Mem;
+        this->reversed3 = reversed3;
+    }
+    void decode(DecodeData* data, DecodedOp* op) const {
+        U8 rm = data->fetch8();
+
+        if (rm>=0xC0) {    
+            if (op->repZero) {
+                op->inst = this->f3Reg;
+            } else if (op->repNotZero) {
+                op->inst = this->f2Reg;
+            } else {
+                op->inst = this->reg;
+            }
+            
+            op->reg = E(rm);
+            op->rm = G(rm);
+        } else {
+            if (op->repZero) {
+                op->inst = this->f3Mem;
+            } else if (op->repNotZero) {
+                op->inst = this->f2Mem;
+            } else {
+                op->inst = this->mem;
+            }
+            op->reg = G(rm);
+            decodeEa(data, op, rm);
+        } 
+        op->repZero = false;
+    }
+
+private:
+    Instruction reg;
+    Instruction mem;
+    bool reversed1;
+    Instruction f2Reg;
+    Instruction f2Mem;
+    bool reversed2;
+    Instruction f3Reg;
+    Instruction f3Mem;
+    bool reversed3;
+};
+
+
 class DecodeRdtsc : public Decode {
 public:
     DecodeRdtsc(Instruction reg) {
@@ -4625,7 +5312,7 @@ DecodeRM decodeMovCrxRd(MovCRxRd, Invalid);
 DecodeLea decodeLeaGw(LeaR16);               // LEA Gw
 DecodeLea decodeLeaGd(LeaR32);               // LEA Gd
 
-DecodeInst decodeNop(Nop);
+DecodeZeroInst decodeNop(Nop, None, Pause);
 DecodeReg2 decodeCbw(MovGwSxR8, 0, 0);                           // CBW
 DecodeReg2 decodeCwde(MovGdSxR16, 0, 0);                         // CWDE
 DecodeInst decodeCwd(Cwd);                                       // CWD
@@ -4814,7 +5501,7 @@ DecodeRMr decodePunpckhwd(PunpckhwdMmx, PunpckhwdE64);
 DecodeRMr decodePunpckhdq(PunpckhdqMmx, PunpckhdqE64);
 DecodeRMr decodePackssdw(PackssdwMmx, PackssdwE64);
 DecodeRMr decodeMovPqEd(MovPqR32, MovPqE32);
-DecodeRMr decodeMovPqQq(MovPqMmx, MovPqE64);
+DecodeSSE2 decodeMovPqQq(MovPqMmx, MovPqE64, Invalid, Invalid, MovdquXmmXmm, MovdquXmmE128);
 DecodeGroup decode371MMX(Invalid, Invalid, Psrlw, Invalid, Psraw, Invalid, Psllw, Invalid, 8);
 DecodeGroup decode372MMX(Invalid, Invalid, Psrld, Invalid, Psrad, Invalid, Pslld, Invalid, 8);
 DecodeGroup decode373MMX(Invalid, Invalid, Psrlq, Invalid, Invalid, Invalid, Psllq, Invalid, 8);
@@ -4822,8 +5509,7 @@ DecodeRMr decodePcmpeqb(PcmpeqbMmx, PcmpeqbE64);
 DecodeRMr decodePcmpeqw(PcmpeqwMmx, PcmpeqwE64);
 DecodeRMr decodePcmpeqd(PcmpeqdMmx, PcmpeqdE64);
 DecodeInst decodeEmms(Emms);
-DecodeRM decodeMovEdPq(MovR32Pq, MovE32Pq);
-DecodeRM decodeMovQqPq(MovPqMmx, MovE64Pq);
+DecodeSSE2r decodeMovQqPq(MovPqMmx, MovE64Pq, Invalid, Invalid, MovdquXmmXmm, MovdquE128Xmm);
 DecodeRMr decodePsrlw(PsrlwMmx, PsrlwE64);
 DecodeRMr decodePsrld(PsrldMmx, PsrldE64);
 DecodeRMr decodePsrlq(PsrlqMmx, PsrlqE64);
@@ -4856,64 +5542,168 @@ DecodeRMr decodePaddd(PadddMmx, PadddE64);
 
 Decode3AE decode3EA;
 
-DecodeSSE sseAdd(AddpsXmm, AddpsE128, AddssXmm, AddssE32);
-DecodeSSE sseSub(SubpsXmm, SubpsE128, SubssXmm, SubssE32);
-DecodeSSE sseMul(MulpsXmm, MulpsE128, MulssXmm, MulssE32);
-DecodeSSE sseDiv(DivpsXmm, DivpsE128, DivssXmm, DivssE32);
+DecodeSSE2 sseAdd(AddpsXmm, AddpsE128, AddsdXmmXmm, AddsdXmmE64, AddssXmm, AddssE32);
+DecodeSSE2 sseSub(SubpsXmm, SubpsE128, SubsdXmmXmm, SubsdXmmE64, SubssXmm, SubssE32);
+DecodeSSE2 sseMul(MulpsXmm, MulpsE128, MulsdXmmXmm, MulsdXmmE64, MulssXmm, MulssE32);
+DecodeSSE2 sseDiv(DivpsXmm, DivpsE128, DivsdXmmXmm, DivsdXmmE64, DivssXmm, DivssE32);
 DecodeSSE sseRpc(RcppsXmm, RcppsE128, RcpssXmm, RcpssE32);
-DecodeSSE sseSqrt(SqrtpsXmm, SqrtpsE128, SqrtssXmm, SqrtssE32);
+DecodeSSE2 sseSqrt(SqrtpsXmm, SqrtpsE128, SqrtsdXmmXmm, SqrtsdXmmE64, SqrtssXmm, SqrtssE32);
 DecodeSSE sseRsqrt(RsqrtpsXmm, RsqrtpsE128, RsqrtssXmm, RsqrtssE32);
-DecodeSSE sseMin(MinpsXmm, MinpsE128, MinssXmm, MinssE32);
-DecodeSSE sseMax(MaxpsXmm, MaxpsE128, MaxssXmm, MaxssE32);
-DecodeRM ssePavgbMmx(PavgbMmxMmx, PavgbMmxE64);
-DecodeRM ssePavgbXmm(PavgbXmmXmm, PavgbXmmE128);
-DecodeRM ssePavgwMmx(PavgwMmxMmx, PavgwMmxE64);
-DecodeRM ssePavgwXmm(PavgwXmmXmm, PavgwXmmE128);
-DecodeRM ssePsadbwMmx(PsadbwMmxMmx, PsadbwMmxE64);
-DecodeRM ssePsadbwXmm(PsadbwXmmXmm, PsadbwXmmE128);
+DecodeSSE2 sseMin(MinpsXmm, MinpsE128, MinsdXmmXmm, MinsdXmmE64, MinssXmm, MinssE32);
+DecodeSSE2 sseMax(MaxpsXmm, MaxpsE128, MaxsdXmmXmm, MaxsdXmmE64, MaxssXmm, MaxssE32);
+DecodeRMr ssePavgbMmx(PavgbMmxMmx, PavgbMmxE64);
+DecodeRMr ssePavgbXmm(PavgbXmmXmm, PavgbXmmE128);
+DecodeRMr ssePavgwMmx(PavgwMmxMmx, PavgwMmxE64);
+DecodeRMr ssePavgwXmm(PavgwXmmXmm, PavgwXmmE128);
+DecodeRMr ssePsadbwMmx(PsadbwMmxMmx, PsadbwMmxE64);
+DecodeRMr ssePsadbwXmm(PsadbwXmmXmm, PsadbwXmmE128);
 DecodeRM ssePextrwMmx(PextrwR32Mmx, PextrwE16Mmx, 8);
 DecodeRM ssePextrwXmm(PextrwR32Xmm, PextrwE16Xmm, 8);
-DecodeRM ssePinsrwMmx(PinsrwMmxR32, PinsrwMmxE16, 8);
-DecodeRM ssePinsrwXmm(PinsrwXmmR32, PinsrwXmmE16, 8);
-DecodeRM ssePmaxswMmx(PmaxswMmxMmx, PmaxswMmxE64);
-DecodeRM ssePmaxswXmm(PmaxswXmmXmm, PmaxswXmmE128);
-DecodeRM ssePmaxubMmx(PmaxubMmxMmx, PmaxubMmxE64);
-DecodeRM ssePmaxubXmm(PmaxubXmmXmm, PmaxubXmmE128);
-DecodeRM ssePminswMmx(PminswMmxMmx, PminswMmxE64);
-DecodeRM ssePminswXmm(PminswXmmXmm, PminswXmmE128);
-DecodeRM ssePminubMmx(PminubMmxMmx, PminubMmxE64);
-DecodeRM ssePminubXmm(PminubXmmXmm, PminubXmmE128);
-DecodeRM ssePmovmskbMmx(PmovmskbR32Mmx, Invalid);
-DecodeRM ssePmovmskbXmm(PmovmskbR32Xmm, Invalid);
-DecodeRM ssePmulhuwMmx(PmulhuwMmxMmx, PmulhuwMmxE64);
-DecodeRM ssePmulhuwXmm(PmulhuwXmmXmm, PmulhuwXmmE128);
-DecodeRM ssePshufwMmx(PshufwMmxMmx, PshufwMmxE64, 8);
-DecodeRM sseAndnpsXmm(AndnpsXmmXmm, AndnpsXmmE128);
-DecodeRM sseAndpsXmm(AndpsXmmXmm, AndpsXmmE128);
-DecodeRM sseOrpsXmm(OrpsXmmXmm, OrpsXmmE128);
-DecodeRM sseXorpsXmm(XorpsXmmXmm, XorpsXmmE128);
-DecodeSSE sseCvt2a(Cvtpi2psXmmMmx, Cvtpi2psXmmE64, Cvtsi2ssXmmR32, Cvtsi2ssXmmE32);
-DecodeSSE sseCvt2c(Cvttps2piMmxXmm, Cvttps2piMmxE64, Cvttss2siR32Xmm, Cvttss2siR32E32);
-DecodeSSE sseCvt2d(Cvtps2piMmxXmm, Cvtps2piMmxE64, Cvtss2siR32Xmm, Cvtss2siR32E32);
-DecodeRM sseMovapsXE(MovapsXmmXmm, MovapsXmmE128);
+DecodeRMr ssePinsrwMmx(PinsrwMmxR32, PinsrwMmxE16, 8);
+DecodeRMr ssePinsrwXmm(PinsrwXmmR32, PinsrwXmmE16, 8);
+DecodeRMr ssePmaxswMmx(PmaxswMmxMmx, PmaxswMmxE64);
+DecodeRMr ssePmaxswXmm(PmaxswXmmXmm, PmaxswXmmE128);
+DecodeRMr ssePmaxubMmx(PmaxubMmxMmx, PmaxubMmxE64);
+DecodeRMr ssePmaxubXmm(PmaxubXmmXmm, PmaxubXmmE128);
+DecodeRMr ssePminswMmx(PminswMmxMmx, PminswMmxE64);
+DecodeRMr ssePminswXmm(PminswXmmXmm, PminswXmmE128);
+DecodeRMr ssePminubMmx(PminubMmxMmx, PminubMmxE64);
+DecodeRMr ssePminubXmm(PminubXmmXmm, PminubXmmE128);
+DecodeRMr ssePmovmskbMmx(PmovmskbR32Mmx, Invalid);
+DecodeRMr ssePmovmskbXmm(PmovmskbR32Xmm, Invalid);
+DecodeRMr ssePmulhuwMmx(PmulhuwMmxMmx, PmulhuwMmxE64);
+DecodeRMr ssePmulhuwXmm(PmulhuwXmmXmm, PmulhuwXmmE128);
+DecodeSSE2 ssePshufwMmx(PshufwMmxMmx, PshufwMmxE64, PshuflwXmmXmm, PshuflwXmmE128, PshufhwXmmXmm, PshufhwXmmE128, 8);
+DecodeRMr sseAndnpsXmm(AndnpsXmmXmm, AndnpsXmmE128);
+DecodeRMr sseAndpsXmm(AndpsXmmXmm, AndpsXmmE128);
+DecodeRMr sseOrpsXmm(OrpsXmmXmm, OrpsXmmE128);
+DecodeRMr sseXorpsXmm(XorpsXmmXmm, XorpsXmmE128);
+DecodeSSE2 sseCvt2a(Cvtpi2psXmmMmx, Cvtpi2psXmmE64, Cvtsi2sdXmmR32, Cvtsi2sdXmmE32, Cvtsi2ssXmmR32, Cvtsi2ssXmmE32);
+DecodeSSE2 sseCvt2c(Cvttps2piMmxXmm, Cvttps2piMmxE64, Cvttsd2siR32Xmm, Cvttsd2siR32E64, Cvttss2siR32Xmm, Cvttss2siR32E32);
+DecodeSSE2 sseCvt2d(Cvtps2piMmxXmm, Cvtps2piMmxE64, Cvtsd2siR32Xmm, Cvtsd2siR32E64, Cvtss2siR32Xmm, Cvtss2siR32E32);
+DecodeRMr sseMovapsXE(MovapsXmmXmm, MovapsXmmE128);
 DecodeRM sseMovapsEX(MovapsXmmXmm, MovapsE128Xmm);
-DecodeSSE sseMov0x10(MovupsXmmXmm, MovupsXmmE128, MovupsXmmXmm, MovssXmmE32);
-DecodeSSE sseMov0x11(MovupsXmmXmm, MovupsE128Xmm, MovupsXmmXmm, MovssE32Xmm);
-DecodeRM sseMov0x12(MovhlpsXmmXmm, MovlpsXmmE64);
-DecodeRM sseMov0x13(Invalid, MovlpsE64Xmm);
-DecodeRM sseMov0x16(Invalid, MovhpsXmmE64);
-DecodeRM sseMov0x17(Invalid, MovhpsE64Xmm);
-DecodeRM sseMovmsk(MovmskpsR32Xmm, Invalid);
-DecodeRM sseMaskmov(MaskmovqEDIMmxMmx, Invalid);
+DecodeSSE2 sseMov0x310(MovupsXmmXmm, MovupsXmmE128, MovsdXmmXmm, MovsdXmmE64, MovupsXmmXmm, MovssXmmE32);
+DecodeSSE2r sseMov0x311(MovupsXmmXmm, MovupsE128Xmm, MovsdXmmXmm, MovsdE64Xmm, MovupsXmmXmm, MovssE32Xmm);
+DecodeRMr sseMov0x312(MovhlpsXmmXmm, MovlpsXmmE64);
+DecodeRMr sseMov0x112(Invalid, MovlpdXmmE64);
+DecodeRMr sseMov0x113(Invalid, MovlpdE64Xmm);
+DecodeRMr sseMov0x114(UnpcklpdXmmXmm, UnpcklpdXmmE128);
+DecodeRMr sseMov0x115(UnpckhpdXmmXmm, UnpckhpdXmmE128);
+DecodeRMr sseMov0x116(Invalid, MovhpdXmmE64);
+DecodeRM sseMov0x117(Invalid, MovhpdE64Xmm);
+DecodeRMr sseMov0x128(MovapdXmmXmm, MovapdXmmE128);
+DecodeRM sseMov0x129(MovapdXmmXmm, MovapdE128Xmm);
+DecodeRMr sseMov0x12a(Cvtpi2pdXmmMmx, Cvtpi2pdXmmE64);
+DecodeRMr sseMov0x12b(Invalid, MovntpdE128Xmm);
+DecodeRMr sseMov0x12c(Cvttpd2piMmxXmm, Cvttpd2piMmE128);
+DecodeRMr sseMov0x12d(Cvtpd2piMmxXmm, Cvtpd2piMmxE128);
+DecodeRMr sseMov0x12e(UcomisdXmmXmm, UcomisdXmmE64);
+DecodeRMr sseMov0x12f(ComisdXmmXmm, ComisdXmmE64);
+DecodeRMr sseMov0x150(MovmskpdR32Xmm, Invalid);
+DecodeRMr sseMov0x151(SqrtpdXmmXmm, SqrtpdXmmE128);
+DecodeRMr sseAnd0x154(AndpdXmmXmm, AndpdXmmE128);
+DecodeRMr sseAndNot0x155(AndnpdXmmXmm, AndnpdXmmE128);
+DecodeRMr sseOr0x156(OrpdXmmXmm, OrpdXmmE128);
+DecodeRMr sseXor0x157(XorpdXmmXmm, XorpdXmmE128);
+DecodeRMr sseAdd0x158(AddpdXmmXmm, AddpdXmmE128);
+DecodeRMr sseMul0x159(MulpdXmmXmm, MulpdXmmE128);
+DecodeRMr sse0x15a(Cvtpd2psXmmXmm, Cvtpd2psXmmE128);
+DecodeSSE2 sse0x35a(Cvtps2pdXmmXmm, Cvtps2pdXmmE128, Cvtsd2ssXmmXmm, Cvtsd2ssXmmE64, Cvtss2sdXmmXmm, Cvtss2sdXmmE32);
+DecodeRMr sse0x15b(Cvtps2dqXmmXmm, Cvtps2dqXmmE128);
+DecodeSSE2 sse0x35b(Cvtdq2psXmmXmm, Cvtdq2psXmmE128, Invalid, Invalid, Cvttps2dqXmmXmm, Cvttps2dqXmmE128);
+DecodeRMr sse0x15c(SubpdXmmXmm, SubpdXmmE128);
+DecodeRMr sse0x15d(MinpdXmmXmm, MinpdXmmE128);
+DecodeRMr sse0x15e(DivpdXmmXmm, DivpdXmmE128);
+DecodeRMr sse0x15f(MaxpdXmmXmm, MaxpdXmmE128);
+DecodeRMr sse0x160(PunpcklbwXmmXmm, PunpcklbwXmmE128);
+DecodeRMr sse0x161(PunpcklwdXmmXmm, PunpcklwdXmmE128);
+DecodeRMr sse0x162(PunpckldqXmmXmm, PunpckldqXmmE128);
+DecodeRMr sse0x163(PacksswbXmmXmm, PacksswbXmmE128);
+DecodeRMr sse0x164(PcmpgtbXmmXmm, PcmpgtbXmmE128);
+DecodeRMr sse0x165(PcmpgtwXmmXmm, PcmpgtwXmmE128);
+DecodeRMr sse0x166(PcmpgtdXmmXmm, PcmpgtdXmmE128);
+DecodeRMr sse0x167(PackuswbXmmXmm, PackuswbXmmE128);
+DecodeRMr sse0x168(PunpckhbwXmmXmm, PunpckhbwXmmE128);
+DecodeRMr sse0x169(PunpckhwdXmmXmm, PunpckhwdXmmE128);
+DecodeRMr sse0x16a(PunpckhdqXmmXmm, PunpckhdqXmmE128);
+DecodeRMr sse0x16b(PackssdwXmmXmm, PackssdwXmmE128);
+DecodeRMr sse0x16c(PunpcklqdqXmmXmm, PunpcklqdqXmmE128);
+DecodeRMr sse0x16d(PunpckhqdqXmmXmm, PunpckhqdqXmmE128);
+DecodeRMr sse0x16e(MovdXmmR32, MovdXmmE32);
+DecodeRMr sse0x16f(MovdqaXmmXmm, MovdqaXmmE128);
+DecodeRMr sse0x170(PshufdXmmXmm, PshufdXmmE128);
+DecodeGroup sse0x171(Invalid, Invalid, PsrlwXmm, Invalid, PsrawXmm, Invalid, PsllwXmm, Invalid, 8);
+DecodeGroup sse0x172(Invalid, Invalid, PsrldXmm, Invalid, PsradXmm, Invalid, PslldXmm, Invalid, 8);
+DecodeGroup sse0x173(Invalid, Invalid, PsrlqXmm, PsrldqXmm, Invalid, Invalid, PsllqXmm, PslldqXmm, 8);
+DecodeRMr sse0x174(PcmpeqbXmmXmm, PcmpeqbXmmE128);
+DecodeRMr sse0x175(PcmpeqwXmmXmm, PcmpeqwXmmE128);
+DecodeRMr sse0x176(PcmpeqdXmmXmm, PcmpeqdXmmE128);
+DecodeRM sse0x17e(MovdR32Xmm, MovdE32Xmm);
+DecodeSSE2custom sse0x37e(MovR32Pq, MovE32Pq, true, Invalid, Invalid, false, MovqXmmXmm, MovqXmmE64, false);
+DecodeRM sse0x17f(MovdqaXmmXmm, MovdqaE128Xmm);
+DecodeRMr sse0x1c2(CmppdXmmXmm, CmppdXmmE128, 8);
+DecodeRM sse0x3c3(Invalid, MovntiE32R32);
+DecodeRMr sse0x1c6(ShufpdXmmXmm, ShufpdXmmE128, 8);
+DecodeRMr sse0x1d1(PsrlwXmmXmm, PsrlwXmmE128);
+DecodeRMr sse0x1d2(PsrldXmmXmm, PsrldXmmE128);
+DecodeRMr sse0x1d3(PsrlqXmmXmm, PsrlqXmmE128);
+DecodeRMr sse0x1d4(PaddqXmmXmm, PaddqXmmE128);
+DecodeRMr sse0x3d4(PaddqMmxMmx, PaddqMmxE64);
+DecodeRMr sse0x1d5(PmullwXmmXmm, PmullwXmmE128);
+DecodeRM sse0x1d6(MovqXmmXmm, MovqE64Xmm);
+DecodeSSE2 sse0x3d6(Invalid, Invalid, Movdq2qMmxXmm, Invalid, Movq2dqXmmMmx, Invalid);
+DecodeRMr sse0x1d8(PsubusbXmmXmm, PsubusbXmmE128);
+DecodeRMr sse0x1d9(PsubuswXmmXmm, PsubuswXmmE128);
+DecodeRMr sse0x1db(PandXmmXmm, PandXmmE128);
+DecodeRMr sse0x1dc(PaddusbXmmXmm, PaddusbXmmE128);
+DecodeRMr sse0x1dd(PadduswXmmXmm, PadduswXmmE128);
+DecodeRMr sse0x1df(PandnXmmXmm, PandnXmmE128);
+DecodeRMr sse0x1e1(PsrawXmmXmm, PsrawXmmE128);
+DecodeRMr sse0x1e2(PsradXmmXmm, PsradXmmE128);
+DecodeRMr sse0x1e5(PmulhwXmmXmm, PmulhwXmmE128);
+DecodeRMr sse0x1e6(Cvttpd2dqXmmXmm, Cvttpd2dqXmmE128);
+DecodeSSE2 sse0x3e6(Invalid, Invalid, Cvtpd2dqXmmXmm, Cvtpd2dqXmmE128, Cvtdq2pdXmmXmm, Cvtdq2pdXmmE128);
+DecodeRM sse0x1e7(Invalid, MovntdqE128Xmm);
+DecodeRMr sse0x1e8(PsubsbXmmXmm, PsubsbXmmE128);
+DecodeRMr sse0x1e9(PsubswXmmXmm, PsubswXmmE128);
+DecodeRMr sse0x1eb(PorXmmXmm, PorXmmXmmE128);
+DecodeRMr sse0x1ec(PaddsbXmmXmm, PaddsbXmmE128);
+DecodeRMr sse0x1ed(PaddswXmmXmm, PaddswXmmE128);
+DecodeRMr sse0x1ef(PxorXmmXmm, PxorXmmE128);
+DecodeRMr sse0x1f1(PsllwXmmXmm, PsllwXmmE128);
+DecodeRMr sse0x1f2(PslldXmmXmm, PslldXmmE128);
+DecodeRMr sse0x1f3(PsllqXmmXmm, PsllqXmmE128);
+DecodeRMr sse0x1f4(PmuludqXmmXmm, PmuludqXmmE128);
+DecodeRMr sse0x3f4(PmuludqMmxMmx, PmuludqMmxE64);
+DecodeRMr sse0x1f5(PmaddwdXmmXmm, PmaddwdXmmE128);
+DecodeRMr sse0x1f7(MaskmovdquE128XmmXmm, Invalid);
+DecodeRMr sse0x1f8(PsubbXmmXmm, PsubbXmmE128);
+DecodeRMr sse0x1f9(PsubwXmmXmm, PsubwXmmE128);
+DecodeRMr sse0x1fa(PsubdXmmXmm, PsubdXmmE128);
+DecodeRMr sse0x1fb(PsubqXmmXmm, PsubqXmmE128);
+DecodeRMr sse0x3fb(PsubqMmxMmx, PsubqMmxE64);
+DecodeRMr sse0x1fc(PaddbXmmXmm, PaddbXmmE128);
+DecodeRMr sse0x1fd(PaddwXmmXmm, PaddwXmmE128);
+DecodeRMr sse0x1fe(PadddXmmXmm, PadddXmmE128);
+
+DecodeRM sseMov0x313(Invalid, MovlpsE64Xmm);
+DecodeRMr sseMov0x316(Invalid, MovhpsXmmE64);
+DecodeRMr sseMov0x317(Invalid, MovhpsE64Xmm);
+DecodeRMr sseMovmsk(MovmskpsR32Xmm, Invalid);
+DecodeRMr sseMaskmov(MaskmovqEDIMmxMmx, Invalid);
 DecodeRM sseMovnt(Invalid, MovntpsE128Xmm);
 DecodeRM sseMovntq(Invalid, MovntqE64Mmx);
-DecodeRM sseShufp(ShufpsXmmXmm, ShufpsXmmE128, 8);
-DecodeRM sseUnpckhp(UnpckhpsXmmXmm, UnpckhpsXmmE128);
-DecodeRM sseUnpcklp(UnpcklpsXmmXmm, UnpcklpsXmmE128);
+DecodeRMr sseShufp(ShufpsXmmXmm, ShufpsXmmE128, 8);
+DecodeRMr sseUnpckhp(UnpckhpsXmmXmm, UnpckhpsXmmE128);
+DecodeRMr sseUnpcklp(UnpcklpsXmmXmm, UnpcklpsXmmE128);
 Decode318 seePrefetch;
-DecodeSSE sseCmp(CmppsXmmXmm, CmppsXmmE128, CmpssXmmXmm, CmpssXmmE32, 8);
-DecodeRM sseComis(ComissXmmXmm, ComissXmmE32);
-DecodeRM sseUcomis(UcomissXmmXmm, UcomissXmmE32);
+DecodeSSE2 sseCmp(CmppsXmmXmm, CmppsXmmE128, CmpsdXmmXmm, CmpsdXmmE64, CmpssXmmXmm, CmpssXmmE32, 8);
+DecodeRMr sseComis(ComissXmmXmm, ComissXmmE32);
+DecodeRMr sseUcomis(UcomissXmmXmm, UcomissXmmE32);
+
+DecodeRMr sse2Movupd(MovupdXmmXmm, MovupdXmmE128);
+DecodeRM sse2Movupd_r(MovupdXmmXmm, MovupdE128Xmm);
 
 const Decode* const decoder[] = {
     // 0x000
@@ -4968,11 +5758,11 @@ const Decode* const decoder[] = {
     &decodeGroup6_16, 0, &decodeLar16, &decodeLsl16, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0,
     // 0x110
-    0, 0, 0, 0, 0, 0, 0, 0,
+    &sse2Movupd, &sse2Movupd_r, &sseMov0x112, &sseMov0x113, &sseMov0x114, &sseMov0x115, &sseMov0x116, &sseMov0x117,
     0, 0, 0, 0, 0, 0, 0, 0,
     // 0x120
     &decodeMovRdCrx, 0, &decodeMovCrxRd, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, &sseMov0x12a, &sseMov0x12b, &sseMov0x12c, &sseMov0x12d, &sseMov0x12e, &sseMov0x12f,
     // 0x130
     0, &decodeRdtsc, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0,
@@ -4980,14 +5770,14 @@ const Decode* const decoder[] = {
     &decodeCmovO_16, &decodeCmovNO_16, &decodeCmovB_16, &decodeCmovNB_16, &decodeCmovZ_16, &decodeCmovNZ_16, &decodeCmovBE_16, &decodeCmovNBE_16,
     &decodeCmovS_16, &decodeCmovNS_16, &decodeCmovP_16, &decodeCmovNP_16, &decodeCmovL_16, &decodeCmovNL_16, &decodeCmovLE_16, &decodeCmovNLE_16,
     // 0x150
-    0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
+    &sseMov0x150, &sseMov0x151, 0, 0, &sseAnd0x154, &sseAndNot0x155, &sseOr0x156, &sseXor0x157,
+    &sseAdd0x158, &sseMul0x159, &sse0x15a, &sse0x15b, &sse0x15c, &sse0x15d, &sse0x15e, &sse0x15f,
     // 0x160
-    0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
+    &sse0x160, &sse0x161, &sse0x162, &sse0x163, &sse0x164, &sse0x165, &sse0x166, &sse0x167,
+    &sse0x168, &sse0x169, &sse0x16a, &sse0x16b, &sse0x16c, &sse0x16d, &sse0x16e, &sse0x16f,
     // 0x170
-    0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
+    &sse0x170, &sse0x171, &sse0x172, &sse0x173, &sse0x174, &sse0x175, 0, 0,
+    0, 0, 0, 0, 0, 0, &sse0x17e, 0,
     // 0x180
     &decodeJo16, &decodeJno16, &decodeJb16, &decodeJnb16, &decodeJz16, &decodeJnz16, &decodeJbe16, &decodeJnbe16,
     &decodeJs16, &decodeJns16, &decodeJp16, &decodeJnp16, &decodeJl16, &decodeJnl16, &decodeJle16, &decodeJnle16,
@@ -5001,17 +5791,17 @@ const Decode* const decoder[] = {
     &decodeCmpXchgEbGb, &decodeCmpXchgEwGw, &decodeLss, &decodeBtrEwGw, &decodeLfs, &decodeLgs, &decodeMovGwXz8, 0,
     0, 0, &decodeGroup8_16, &decodeBtcEwGw, &decodeBsfGwEw, &decodeBsrGwEw, &decodeMovGwSx8, 0,
     // 0x1c0
-    0, 0, 0, 0, &ssePinsrwXmm, &ssePextrwXmm, 0, 0,
+    0, 0, &sse0x1c2, 0, &ssePinsrwXmm, &ssePextrwXmm, &sse0x1c6, 0,
     0, 0, 0, 0, 0, 0, 0, 0,
     // 0x1d0
-    0, 0, 0, 0, 0, 0, 0, &ssePmovmskbXmm,
-    0, 0, &ssePminubXmm, 0, 0, 0, &ssePmaxubXmm, 0,
+    0, &sse0x1d1, &sse0x1d2, &sse0x1d3, &sse0x1d4, &sse0x1d5, &sse0x1d6, &ssePmovmskbXmm,
+    &sse0x1d8, &sse0x1d9, &ssePminubXmm, &sse0x1db, &sse0x1dc, &sse0x1dd, &ssePmaxubXmm, &sse0x1df,
     // 0x1e0
-    &ssePavgbXmm, 0, 0, &ssePavgwXmm, &ssePmulhuwXmm, 0, 0, 0,
-    0, 0, &ssePminswXmm, 0, 0, 0, &ssePmaxswXmm, 0,
+    &ssePavgbXmm, &sse0x1e1, &sse0x1e2, &ssePavgwXmm, &ssePmulhuwXmm, &sse0x1e5, &sse0x1e6, &sse0x1e7,
+    &sse0x1e8, &sse0x1e9, &ssePminswXmm, &sse0x1eb, &sse0x1ec, &sse0x1ed, &ssePmaxswXmm, &sse0x1ef,
     // 0x1f0
-    0, 0, 0, 0, 0, 0, &ssePsadbwXmm, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
+    0, &sse0x1f1, &sse0x1f2, &sse0x1f3, &sse0x1f4, &sse0x1f5, &ssePsadbwXmm, &sse0x1f7,
+    &sse0x1f8, &sse0x1f9, &sse0x1fa, &sse0x1fb, &sse0x1fc, &sse0x1fd, &sse0x1fe, 0,
     // 0x200
     &decodeAddEbGb, &decodeAddEdGd, &decodeAddGbEb, &decodeAddGdEd, &decodeAddAlIb, &decodeAddEaxId, &decodePushEs32, &decodePopEs32,
     &decodeOrEbGb, &decodeOrEdGd, &decodeOrGbEb, &decodeOrGdEd, &decodeOrAlIb, &decodeOrEaxId, &decodePushCs32, &decode2Byte,
@@ -5064,7 +5854,7 @@ const Decode* const decoder[] = {
     &decodeGroup6_32, &decodeGroup7_32, 0, &decodeLsl32, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0,
     // 0x310
-    &sseMov0x10, &sseMov0x11, &sseMov0x12, &sseMov0x13, &sseUnpcklp, &sseUnpckhp, &sseMov0x16, &sseMov0x17,
+    &sseMov0x310, &sseMov0x311, &sseMov0x312, &sseMov0x313, &sseUnpcklp, &sseUnpckhp, &sseMov0x316, &sseMov0x317,
     &seePrefetch, 0, 0, 0, 0, 0, 0, 0,
     // 0x320
     &decodeMovRdCrx, 0, &decodeMovCrxRd, 0, 0, 0, 0, 0,
@@ -5077,13 +5867,13 @@ const Decode* const decoder[] = {
     &decodeCmovS_32, &decodeCmovNS_32, &decodeCmovP_32, &decodeCmovNP_32, &decodeCmovL_32, &decodeCmovNL_32, &decodeCmovLE_32, &decodeCmovNLE_32,
     // 0x350
     &sseMovmsk, &sseSqrt, &sseRsqrt, &sseRpc, &sseAndpsXmm, &sseAndnpsXmm, &sseOrpsXmm, &sseXorpsXmm,
-    &sseAdd, &sseMul, 0, 0, &sseSub, &sseMin, &sseDiv, &sseMax,
+    &sseAdd, &sseMul, &sse0x35a, &sse0x35b, &sseSub, &sseMin, &sseDiv, &sseMax,
     // 0x360
     &decodePunpcklbw, &decodePunpcklwd, &decodePunpckldq, &decodePacksswb, &decodePcmpgtb, &decodePcmpgtw, &decodePcmpgtd, &decodePackuswb,
     &decodePunpckhbw, &decodePunpckhwd, &decodePunpckhdq, &decodePackssdw, 0, 0, &decodeMovPqEd, &decodeMovPqQq,
     // 0x370
     &ssePshufwMmx, &decode371MMX, &decode372MMX, &decode373MMX, &decodePcmpeqb, &decodePcmpeqw, &decodePcmpeqd, &decodeEmms,
-    0, 0, 0, 0, 0, 0, &decodeMovEdPq, &decodeMovQqPq,
+    0, 0, 0, 0, 0, 0, &sse0x37e, &decodeMovQqPq,
     // 0x380
     &decodeJo32, &decodeJno32, &decodeJb32, &decodeJnb32, &decodeJz32, &decodeJnz32, &decodeJbe32, &decodeJnbe32,
     &decodeJs32, &decodeJns32, &decodeJp32, &decodeJnp32, &decodeJl32, &decodeJnl32, &decodeJle32, &decodeJnle32,
@@ -5097,17 +5887,17 @@ const Decode* const decoder[] = {
     &decodeCmpXchgEbGb, &decodeCmpXchgEdGd, &decodeLss32, &decodeBtrEdGd, &decodeLfs32, &decodeLgs32, &decodeMovGdXz8, &decodeMovGdXz16,
     0, 0, &decodeGroup8_32, &decodeBtcEwGw, &decodeBsfGdEd, &decodeBsrGdEd, &decodeMovGdSx8, &decodeMovGdSx16,
     // 0x3c0
-    0, &decodeXadd32, &sseCmp, 0, &ssePinsrwMmx, &ssePextrwMmx, &sseShufp, &decodeCmpXchg8b,
+    0, &decodeXadd32, &sseCmp, &sse0x3c3, &ssePinsrwMmx, &ssePextrwMmx, &sseShufp, &decodeCmpXchg8b,
     &decodeBswapEAX, &decodeBswapECX, &decodeBswapEDX, &decodeBswapEBX, &decodeBswapESP, &decodeBswapEBP, &decodeBswapESI, &decodeBswapEDI,
     // 0x3d0
-    0, &decodePsrlw, &decodePsrld, &decodePsrlq, 0, &decodePmullw, 0, &ssePmovmskbMmx,
+    0, &decodePsrlw, &decodePsrld, &decodePsrlq, &sse0x3d4, &decodePmullw, &sse0x3d6, &ssePmovmskbMmx,
     &decodePsubusb, &decodePsubusw, &ssePminubMmx, &decodePand, &decodePaddusb, &decodePaddusw, &ssePmaxubMmx, &decodePandn,
     // 0x3e0
-    &ssePavgbMmx, &decodePsraw, &decodePsrad, &ssePavgwMmx, &ssePmulhuwMmx, &decodePmulhw, 0, &sseMovntq,
+    &ssePavgbMmx, &decodePsraw, &decodePsrad, &ssePavgwMmx, &ssePmulhuwMmx, &decodePmulhw, &sse0x3e6, &sseMovntq,
     &decodePsubsb, &decodePsubsw, &ssePminswMmx, &decodePor, &decodePaddsb, &decodePaddsw, &ssePmaxswMmx, &decodePxor,
     // 0x3f0
-    0, &decodePsllw, &decodePslld, &decodePsllq, 0, &decodePmaddwd, &ssePsadbwMmx, &sseMaskmov,
-    &decodePsubb, &decodePsubw, &decodePsubd, 0, &decodePaddb, &decodePaddw, &decodePaddd, 0,
+    0, &decodePsllw, &decodePslld, &decodePsllq, &sse0x3f4, &decodePmaddwd, &ssePsadbwMmx, &sseMaskmov,
+    &decodePsubb, &decodePsubw, &decodePsubd, &sse0x3fb, &decodePaddb, &decodePaddw, &decodePaddd, 0,
 };
 
 U8 DecodeData::fetch8() {
