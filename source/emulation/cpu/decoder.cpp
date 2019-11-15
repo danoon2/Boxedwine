@@ -1097,6 +1097,7 @@ const InstructionInfo instructionInfo[] = {
     {0, 128, 0, 0, 0, 0}, // MovapsXmmE128
     {0, 0, 128, 0, 0, 0}, // MovapsE128Xmm
     {0, 0, 0, 0, 0, 0}, // MovhlpsXmmXmm
+    {0, 0, 0, 0, 0, 0}, // MovlhpsXmmXmm
     {0, 64, 0, 0, 0, 0}, // MovhpsXmmE64
     {0, 0, 64, 0, 0, 0}, // MovhpsE64Xmm
     {0, 64, 0, 0, 0, 0}, // MovlpsXmmE64
@@ -2875,6 +2876,7 @@ const LogInstruction instructionLog[] = {
     {"Movaps", 128, logXmmE},
     {"Movaps", 128, logEXmm},
     {"Movhlps", 0, logXmmXmm},
+    {"Movlhps", 0, logXmmXmm},
     {"Movhps", 64, logXmmE},
     {"Movhps", 64, logEXmm},
     {"Movlps", 64, logXmmE},
@@ -5583,8 +5585,8 @@ DecodeSSE2 sseCvt2c(Cvttps2piMmxXmm, Cvttps2piMmxE64, Cvttsd2siR32Xmm, Cvttsd2si
 DecodeSSE2 sseCvt2d(Cvtps2piMmxXmm, Cvtps2piMmxE64, Cvtsd2siR32Xmm, Cvtsd2siR32E64, Cvtss2siR32Xmm, Cvtss2siR32E32);
 DecodeRMr sseMovapsXE(MovapsXmmXmm, MovapsXmmE128);
 DecodeRM sseMovapsEX(MovapsXmmXmm, MovapsE128Xmm);
-DecodeSSE2 sseMov0x310(MovupsXmmXmm, MovupsXmmE128, MovsdXmmXmm, MovsdXmmE64, MovupsXmmXmm, MovssXmmE32);
-DecodeSSE2r sseMov0x311(MovupsXmmXmm, MovupsE128Xmm, MovsdXmmXmm, MovsdE64Xmm, MovupsXmmXmm, MovssE32Xmm);
+DecodeSSE2 sseMov0x310(MovupsXmmXmm, MovupsXmmE128, MovsdXmmXmm, MovsdXmmE64, MovssXmmXmm, MovssXmmE32);
+DecodeSSE2r sseMov0x311(MovupsXmmXmm, MovupsE128Xmm, MovsdXmmXmm, MovsdE64Xmm, MovssXmmXmm, MovssE32Xmm);
 DecodeRMr sseMov0x312(MovhlpsXmmXmm, MovlpsXmmE64);
 DecodeRMr sseMov0x112(Invalid, MovlpdXmmE64);
 DecodeRMr sseMov0x113(Invalid, MovlpdE64Xmm);
@@ -5688,7 +5690,7 @@ DecodeRMr sse0x1fd(PaddwXmmXmm, PaddwXmmE128);
 DecodeRMr sse0x1fe(PadddXmmXmm, PadddXmmE128);
 
 DecodeRM sseMov0x313(Invalid, MovlpsE64Xmm);
-DecodeRMr sseMov0x316(Invalid, MovhpsXmmE64);
+DecodeRMr sseMov0x316(MovlhpsXmmXmm, MovhpsXmmE64);
 DecodeRMr sseMov0x317(Invalid, MovhpsE64Xmm);
 DecodeRMr sseMovmsk(MovmskpsR32Xmm, Invalid);
 DecodeRMr sseMaskmov(MaskmovqEDIMmxMmx, Invalid);

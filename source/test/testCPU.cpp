@@ -158,6 +158,10 @@ void runTestCPU() {
     for (int i=0;i<8;i++) {
         c->reg_mmx[i].q = *((U64*)(c->fpuState+32+i*16));
     }
+    for (int i=0;i<8;i++) {
+        c->xmm[i].u64[0] = *((U64*)(c->fpuState+160+i*16));
+        c->xmm[i].u64[1] = *((U64*)(c->fpuState+160+i*16+8));
+    }
 #endif
 }
 
@@ -5685,6 +5689,17 @@ void testMmxEmms() {
 }                           \
 if (result!=tmp) {failed("failed");}}
 
+#define X86_TEST_SSE(d1, d2, result, inst)     \
+ { __m128 tmp = 0; __m128 data1=d1; __m128 data2=d2; \
+ __asm {    \
+    __asm movq xmm0, data1  \
+    __asm movq xmm1, data2  \
+    __asm inst xmm0, xmm1    \
+    __asm movq tmp, xmm0 \
+    __asm emms             \
+}                           \
+if (result!=tmp) {failed("failed");}}
+
 #define X86_TEST_MMX_IMM(d1, d2, result, inst)     \
  { U64 tmp = 0; U64 data1=d1; U64 data2=d2; \
  __asm {    \
@@ -7200,6 +7215,543 @@ void test16BitMemoryAccess() {
         initMem16(); BX = 0xFFFF; runLeaGw(7<<3|0x87, 0, true, 0xFFFF, 0xFFFE, DS);
 }
 
+#define SSE_MEM_VALUE128_DEFAULT1 0x1234567890abcdefl
+#define SSE_MEM_VALUE128_DEFAULT2 0x24680bdf13579acel
+#define SSE_MEM_VALUE_TMP_OFFSET 64
+
+#define SSE_MEM_VALUE128_LOW 0xaabbccddeeff2468l
+#define SSE_MEM_VALUE128_HIGH 0x1122334455667788l
+
+void initSseTest() {    
+    newInstruction(0);
+    writeq(cpu->seg[DS].address, SSE_MEM_VALUE128_DEFAULT1);
+    writeq(cpu->seg[DS].address+8, SSE_MEM_VALUE128_DEFAULT2);
+    for (int i=0;i<8;i++) {
+        // movq  xmm0, QWORD PTR ds:0x0
+        pushCode8(0x0f);
+        pushCode8(0x10);
+        pushCode8(0x04 | (i<<3));
+        pushCode8(0x25);
+        pushCode32(0);
+    }
+    cpu->big = 1;
+}
+
+void loadSSE(U8 reg, U32 index, U64 value1l, U64 value1h) {
+    writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+index*16, value1l);
+    writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+index*16+8, value1h);
+
+    pushCode8(0x0f);
+    pushCode8(0x10);
+    pushCode8(0x04 | (reg<<3));
+    pushCode8(0x25);
+    pushCode32(SSE_MEM_VALUE_TMP_OFFSET+index*16);
+}
+
+void testSse128(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U64 value2l, U64 value2h, U64 xmmResultl, U64 xmmResulth, U64 memResultl=0, U64 memResulth=0) {
+    if (!memResultl && !memResulth) {
+        memResultl = xmmResultl;
+        memResulth = xmmResulth;
+    }
+    for (U8 m=0;m<8;m++) {
+        if (xmmResultl!=0xFFFFFFFFFFFFFFFFl && xmmResulth!=0xFFFFFFFFFFFFFFFFl) {
+            for (U8 from=0;from<8;from++) {
+                if (m==from) {
+                    continue;
+                }
+                initSseTest();            
+                loadSSE(m, 0, value1l, value1h);
+                loadSSE(from, 1, value2l, value2h);
+                if (preOp1) {
+                    pushCode8(preOp1);
+                }
+                if (preOp2) {
+                    pushCode8(preOp2);
+                }
+                pushCode8(0x0f);
+                pushCode8(op);
+                pushCode8(0xC0 | (m << 3) | from);            
+                runTestCPU();
+                for (U8 m1=0;m1<8;m1++) {
+                    if (m1==m || m1==from) {
+                        if (cpu->xmm[m].u64[0]!=xmmResultl || cpu->xmm[m].u64[1]!=xmmResulth) {
+                            failed("sse failed");
+                        }
+                    } else {
+                        if (cpu->xmm[m1].u64[0]!=SSE_MEM_VALUE128_DEFAULT1 || cpu->xmm[m1].u64[1]!=SSE_MEM_VALUE128_DEFAULT2) {
+                            failed("sse failed");
+                        }
+                    }
+                }
+            }
+        }
+        if (memResultl!=0xFFFFFFFFFFFFFFFFl && memResulth!=0xFFFFFFFFFFFFFFFFl) {
+            initSseTest();         
+            loadSSE(m, 0, value1l, value1h);
+            writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+16, value2l);
+            writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+24, value2h);
+            if (preOp1) {
+                pushCode8(preOp1);
+            }
+            if (preOp2) {
+                pushCode8(preOp2);
+            }
+            pushCode8(0x0f);
+            pushCode8(op);
+            pushCode8(0x04 | (m<<3));
+            pushCode8(0x25);
+            pushCode32(SSE_MEM_VALUE_TMP_OFFSET+16);
+            runTestCPU();
+            for (U8 m1=0;m1<8;m1++) {
+                if (m1==m) {
+                    if (cpu->xmm[m].u64[0]!=memResultl || cpu->xmm[m].u64[1]!=memResulth) {
+                        failed("mmx failed");
+                    }
+                } else {
+                    if (cpu->xmm[m1].u64[0]!=SSE_MEM_VALUE128_DEFAULT1 || cpu->xmm[m1].u64[1]!=SSE_MEM_VALUE128_DEFAULT2) {
+                        failed("mmx failed");
+                    }
+                }
+            }
+        }
+    }    
+}
+
+void testSse128r(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U64 value2l, U64 value2h, U64 xmmResultl, U64 xmmResulth, U64 memResultl=0, U64 memResulth=0) {
+    if (!memResultl && !memResulth) {
+        memResultl = xmmResultl;
+        memResulth = xmmResulth;
+    }
+    for (U8 m=0;m<8;m++) {
+        if (xmmResultl!=0xFFFFFFFFFFFFFFFFl && xmmResulth!=0xFFFFFFFFFFFFFFFFl) {
+            for (U8 from=0;from<8;from++) {
+                if (m==from) {
+                    continue;
+                }
+                initSseTest();            
+                loadSSE(m, 0, value1l, value1h);
+                loadSSE(from, 1, value2l, value2h);
+                if (preOp1) {
+                    pushCode8(preOp1);
+                }
+                if (preOp2) {
+                    pushCode8(preOp2);
+                }
+                pushCode8(0x0f);
+                pushCode8(op);
+                pushCode8(0xC0 | m | (from << 3));            
+                runTestCPU();
+                for (U8 m1=0;m1<8;m1++) {
+                    if (m1==m || m1==from) {
+                        if (cpu->xmm[m].u64[0]!=xmmResultl || cpu->xmm[m].u64[1]!=xmmResulth) {
+                            failed("sse failed");
+                        }
+                    } else {
+                        if (cpu->xmm[m1].u64[0]!=SSE_MEM_VALUE128_DEFAULT1 || cpu->xmm[m1].u64[1]!=SSE_MEM_VALUE128_DEFAULT2) {
+                            failed("sse failed");
+                        }
+                    }
+                }
+            }
+        }
+        if (memResultl!=0xFFFFFFFFFFFFFFFFl && memResulth!=0xFFFFFFFFFFFFFFFFl) {
+            initSseTest();         
+            loadSSE(m, 0, value2l, value2h);
+            writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+16, value1l);
+            writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+24, value1h);
+            if (preOp1) {
+                pushCode8(preOp1);
+            }
+            if (preOp2) {
+                pushCode8(preOp2);
+            }
+            pushCode8(0x0f);
+            pushCode8(op);
+            pushCode8(0x04 | (m<<3));
+            pushCode8(0x25);
+            pushCode32(SSE_MEM_VALUE_TMP_OFFSET+16);
+            runTestCPU();
+
+            U64 result1 = readq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+16);
+            U64 result2 = readq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+24);
+            if (result1!=memResultl || result2!=memResulth) {
+                failed("sse failed");
+            }
+        }
+    }    
+}
+
+void testSseMmx64(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U64 value2, U64 xmmResultl, U64 xmmResulth) {
+    for (U8 m=0;m<8;m++) {
+        for (U8 from=0;from<8;from++) {
+            initSseTest();  
+            initMmxTest();
+            loadSSE(m, 0, value1l, value1h);
+            loadMMX(from, 2, value2);
+            if (preOp1) {
+                pushCode8(preOp1);
+            }
+            if (preOp2) {
+                pushCode8(preOp2);
+            }
+            pushCode8(0x0f);
+            pushCode8(op);
+            pushCode8(0xC0 | (m << 3) | from);            
+            runTestCPU();
+
+            if (cpu->xmm[m].u64[0]!=xmmResultl || cpu->xmm[m].u64[1]!=xmmResulth) {
+                failed("sse failed");
+            }
+        }
+
+        initSseTest();         
+        loadSSE(m, 0, value1l, value1h);
+        writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+16, value2);
+        if (preOp1) {
+            pushCode8(preOp1);
+        }
+        if (preOp2) {
+            pushCode8(preOp2);
+        }
+        pushCode8(0x0f);
+        pushCode8(op);
+        pushCode8(0x04 | (m<<3));
+        pushCode8(0x25);
+        pushCode32(SSE_MEM_VALUE_TMP_OFFSET+16);
+        runTestCPU();
+        if (cpu->xmm[m].u64[0]!=xmmResultl || cpu->xmm[m].u64[1]!=xmmResulth) {
+            failed("sse failed");
+        }
+    }    
+}
+
+void testSseReg32(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U32 value2, U64 xmmResultl, U64 xmmResulth) {
+    for (U8 m=0;m<8;m++) {
+        for (U8 from=0;from<8;from++) {
+            initSseTest();  
+            loadSSE(m, 0, value1l, value1h);
+            cpu->reg[from].u32 = value2;
+            if (preOp1) {
+                pushCode8(preOp1);
+            }
+            if (preOp2) {
+                pushCode8(preOp2);
+            }
+            pushCode8(0x0f);
+            pushCode8(op);
+            pushCode8(0xC0 | (m << 3) | from);            
+            runTestCPU();
+
+            if (cpu->xmm[m].u64[0]!=xmmResultl || cpu->xmm[m].u64[1]!=xmmResulth) {
+                failed("sse failed");
+            }
+        }
+
+        initSseTest();         
+        loadSSE(m, 0, value1l, value1h);
+        writed(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+16, value2);
+        if (preOp1) {
+            pushCode8(preOp1);
+        }
+        if (preOp2) {
+            pushCode8(preOp2);
+        }
+        pushCode8(0x0f);
+        pushCode8(op);
+        pushCode8(0x04 | (m<<3));
+        pushCode8(0x25);
+        pushCode32(SSE_MEM_VALUE_TMP_OFFSET+16);
+        runTestCPU();
+        if (cpu->xmm[m].u64[0]!=xmmResultl || cpu->xmm[m].u64[1]!=xmmResulth) {
+            failed("sse failed");
+        }
+    }    
+}
+
+
+#ifdef _MSC_VER // if Visual C/C++
+__inline __m64 _mm_set_pi64x (const __int64 i) {
+    union {
+        __int64 i;
+        __m64 v;
+    } u;
+
+    u.i = i;
+    return u.v;
+}
+#endif
+
+void testSseMovUps310() {  
+    testSse128(0, 0, 0x10, SSE_MEM_VALUE128_DEFAULT1, SSE_MEM_VALUE128_DEFAULT2, SSE_MEM_VALUE128_LOW, SSE_MEM_VALUE128_HIGH, SSE_MEM_VALUE128_LOW, SSE_MEM_VALUE128_HIGH);
+}
+
+void testSseMovSs310() {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    __m128i d1 = _mm_setr_epi64(_mm_set_pi64x(0x1234567890abcdefl), _mm_set_pi64x(0x24680bdf13579acel));
+    __m128i d2 = _mm_setr_epi64(_mm_set_pi64x(0xaabbccddeeff2468l), _mm_set_pi64x(0x1122334455667788l));
+    __m128i result;
+    __m128i expected = _mm_setr_epi64(_mm_set_pi64x(0x12345678eeff2468l), _mm_set_pi64x(0x24680bdf13579acel));
+
+    __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        movss xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("movq failed");
+    }
+
+    expected = _mm_setr_epi64(_mm_set_pi64x(0x00000000eeff2468l), _mm_set_pi64x(0x0000000000000000l));
+    __asm {
+        movups xmm1, d1
+        movss xmm1, d2
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("movss failed");
+    }
+#endif 
+    testSse128(0, 0xf3, 0x10, 0x1234567890abcdefl, 0x24680bdf13579acel, 0xaabbccddeeff2468l, 0x1122334455667788l, 0x12345678eeff2468l, 0x24680bdf13579acel, 0x000000eeff2468l, 0x0000000000000000l);
+}
+
+void testSseMovUps311() {  
+    testSse128r(0, 0, 0x11, SSE_MEM_VALUE128_DEFAULT1, SSE_MEM_VALUE128_DEFAULT2, SSE_MEM_VALUE128_LOW, SSE_MEM_VALUE128_HIGH, SSE_MEM_VALUE128_LOW, SSE_MEM_VALUE128_HIGH);
+}
+
+void testSseMovSs311() {
+    // 4 byte write when going to memory
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    __m128i d = _mm_setr_epi64(_mm_set_pi64x(0xaabbccddeeff2468l), _mm_set_pi64x(0x1122334455667788l));
+    __m128i result = _mm_setr_epi64(_mm_set_pi64x(0x1234567890abcdefl), _mm_set_pi64x(0x24680bdf13579acel));
+    __m128i expected = _mm_setr_epi64(_mm_set_pi64x(0x12345678eeff2468l), _mm_set_pi64x(0x24680bdf13579acel));
+
+    __asm {
+        movups xmm1, d
+        movss result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("movss failed");
+    }
+#endif 
+    testSse128r(0, 0xf3, 0x11, 0x1234567890abcdefl, 0x24680bdf13579acel, 0xaabbccddeeff2468l, 0x1122334455667788l, 0x12345678eeff2468l, 0x24680bdf13579acel, 0x12345678eeff2468l, 0x24680bdf13579acel);
+}
+
+void testSseMovHlps312() {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    __m128i d1 = _mm_setr_epi64(_mm_set_pi64x(0x1234567890abcdefl), _mm_set_pi64x(0x24680bdf13579acel));
+    __m128i d2 = _mm_setr_epi64(_mm_set_pi64x(0xaabbccddeeff2468l), _mm_set_pi64x(0x1122334455667788l));
+    __m128i result;
+    __m128i expected = _mm_setr_epi64(_mm_set_pi64x(0x24680bdf13579acel), _mm_set_pi64x(0x1122334455667788l));
+
+    __asm {
+        movups xmm1, d1
+        movups xmm0, d2
+        movhlps xmm0, xmm1
+        movups result, xmm0
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("movhlps failed");
+    }
+#endif 
+    testSse128(0, 0, 0x12, 0xaabbccddeeff2468l, 0x1122334455667788l, 0x1234567890abcdefl, 0x24680bdf13579acel, 0x24680bdf13579acel, 0x1122334455667788l, 0xFFFFFFFFFFFFFFFFl, 0xFFFFFFFFFFFFFFFFl);
+}
+
+void testSseMovLps312() {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    __m128i d1 = _mm_setr_epi64(_mm_set_pi64x(0x1234567890abcdefl), _mm_set_pi64x(0x24680bdf13579acel));
+    __m128i d2 = _mm_setr_epi64(_mm_set_pi64x(0xaabbccddeeff2468l), _mm_set_pi64x(0x1122334455667788l));
+    __m128i expected = _mm_setr_epi64(_mm_set_pi64x(0x1234567890abcdefl), _mm_set_pi64x(0x1122334455667788l));
+    __m128i result;
+
+    __asm {
+        movups xmm1, d2
+        movlps xmm1, d1
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("movlps failed");
+    }
+#endif 
+    testSse128(0, 0, 0x12, 0xaabbccddeeff2468l, 0x1122334455667788l, 0x1234567890abcdefl, 0x24680bdf13579acel, 0xFFFFFFFFFFFFFFFFl, 0xFFFFFFFFFFFFFFFFl, 0x1234567890abcdefl, 0x1122334455667788l);
+}
+
+void testSseMovLps313() {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    __m128i d1 = _mm_setr_epi64(_mm_set_pi64x(0x1234567890abcdefl), _mm_set_pi64x(0x24680bdf13579acel));
+    __m128i result = _mm_setr_epi64(_mm_set_pi64x(0xaabbccddeeff2468l), _mm_set_pi64x(0x1122334455667788l));
+    __m128i expected = _mm_setr_epi64(_mm_set_pi64x(0x1234567890abcdefl), _mm_set_pi64x(0x1122334455667788l));
+
+    __asm {
+        movups xmm1, d1
+        movlps result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("movlps failed");
+    }
+#endif 
+    testSse128r(0, 0, 0x13, 0xaabbccddeeff2468l, 0x1122334455667788l, 0x1234567890abcdefl, 0x24680bdf13579acel, 0xFFFFFFFFFFFFFFFFl, 0xFFFFFFFFFFFFFFFFl, 0x1234567890abcdefl, 0x1122334455667788l);
+}
+
+void testSseUnpcklps314() {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)    
+    __m128i d1 = _mm_setr_epi64(_mm_set_pi64x(0xaabbccddeeff2468l), _mm_set_pi64x(0x1122334455667788l));
+    __m128i d2 = _mm_setr_epi64(_mm_set_pi64x(0x1234567890abcdefl), _mm_set_pi64x(0x24680bdf13579acel));
+    __m128i expected = _mm_setr_epi64(_mm_set_pi64x(0x90abcdefeeff2468), _mm_set_pi64x(0x12345678aabbccdd));
+    __m128i result;
+
+    __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        unpcklps xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("movlps failed");
+    }
+#endif 
+    testSse128(0, 0, 0x14, 0xaabbccddeeff2468l, 0x1122334455667788l, 0x1234567890abcdefl, 0x24680bdf13579acel, 0x90abcdefeeff2468, 0x12345678aabbccdd);
+}
+
+void testSseUnpckhps315() {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)    
+    __m128i d1 = _mm_setr_epi64(_mm_set_pi64x(0xaabbccddeeff2468l), _mm_set_pi64x(0x1122334455667788l));
+    __m128i d2 = _mm_setr_epi64(_mm_set_pi64x(0x1234567890abcdefl), _mm_set_pi64x(0x24680bdf13579acel));
+    __m128i expected = _mm_setr_epi64(_mm_set_pi64x(0x13579ace55667788), _mm_set_pi64x(0x24680bdf11223344));
+    __m128i result;
+
+    __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        unpckhps xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("movlps failed");
+    }
+#endif 
+    testSse128(0, 0, 0x15, 0xaabbccddeeff2468l, 0x1122334455667788l, 0x1234567890abcdefl, 0x24680bdf13579acel, 0x13579ace55667788, 0x24680bdf11223344);
+}
+
+void testSseMovlhps316() {
+    #if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)    
+    __m128i d1 = _mm_setr_epi64(_mm_set_pi64x(0xaabbccddeeff2468l), _mm_set_pi64x(0x1122334455667788l));
+    __m128i d2 = _mm_setr_epi64(_mm_set_pi64x(0x1234567890abcdefl), _mm_set_pi64x(0x24680bdf13579acel));
+    __m128i expected = _mm_setr_epi64(_mm_set_pi64x(0xaabbccddeeff2468l), _mm_set_pi64x(0x1234567890abcdefl));
+    __m128i result;
+
+    __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        movlhps xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("movlps failed");
+    }
+#endif 
+    testSse128(0, 0, 0x16, 0xaabbccddeeff2468l, 0x1122334455667788l, 0x1234567890abcdefl, 0x24680bdf13579acel, 0xaabbccddeeff2468l, 0x1234567890abcdefl, 0xFFFFFFFFFFFFFFFFl, 0xFFFFFFFFFFFFFFFFl);
+}
+
+void testSseMovhps316() {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)    
+    __m128i d1 = _mm_setr_epi64(_mm_set_pi64x(0xaabbccddeeff2468l), _mm_set_pi64x(0x1122334455667788l));
+    __m128i d2 = _mm_setr_epi64(_mm_set_pi64x(0x1234567890abcdefl), _mm_set_pi64x(0x24680bdf13579acel));
+    __m128i expected = _mm_setr_epi64(_mm_set_pi64x(0xaabbccddeeff2468l), _mm_set_pi64x(0x1234567890abcdefl));
+    __m128i result;
+
+    __asm {
+        movups xmm1, d1
+        movhps xmm1, d2
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("movlps failed");
+    }
+#endif 
+    testSse128(0, 0, 0x16, 0xaabbccddeeff2468l, 0x1122334455667788l, 0x1234567890abcdefl, 0x24680bdf13579acel, 0xFFFFFFFFFFFFFFFFl, 0xFFFFFFFFFFFFFFFFl, 0xaabbccddeeff2468l, 0x1234567890abcdefl);
+}
+
+void testSseMovhps317() {
+    #if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)    
+    __m128i d1 = _mm_setr_epi64(_mm_set_pi64x(0xaabbccddeeff2468l), _mm_set_pi64x(0x1122334455667788l));
+    __m128i d2 = _mm_setr_epi64(_mm_set_pi64x(0x1234567890abcdefl), _mm_set_pi64x(0x24680bdf13579acel));
+    __m128i expected = _mm_setr_epi64(_mm_set_pi64x(0x24680bdf13579ace), _mm_set_pi64x(0x1122334455667788));
+
+    __asm {
+        movups xmm1, d2
+        movhps d1, xmm1
+        emms
+    }
+    if (memcmp(&d1, &expected, 16)) {
+        failed("movlps failed");
+    }
+#endif 
+    testSse128r(0, 0, 0x17, 0xaabbccddeeff2468l, 0x1122334455667788l, 0x1234567890abcdefl, 0x24680bdf13579acel, 0xFFFFFFFFFFFFFFFFl, 0xFFFFFFFFFFFFFFFFl, 0x24680bdf13579ace, 0x1122334455667788);
+}
+
+void testSseMovaps328() {
+    testSse128(0, 0, 0x28, SSE_MEM_VALUE128_DEFAULT1, SSE_MEM_VALUE128_DEFAULT2, SSE_MEM_VALUE128_LOW, SSE_MEM_VALUE128_HIGH, SSE_MEM_VALUE128_LOW, SSE_MEM_VALUE128_HIGH);
+}
+
+void testSseMovaps329() {
+    testSse128r(0, 0, 0x29, SSE_MEM_VALUE128_DEFAULT1, SSE_MEM_VALUE128_DEFAULT2, SSE_MEM_VALUE128_LOW, SSE_MEM_VALUE128_HIGH, SSE_MEM_VALUE128_LOW, SSE_MEM_VALUE128_HIGH);
+}
+
+void testSseCvtpi2ps32a() {
+    U64 d2 = ((U64)((U32)(-5000)) << 32) | 5000;
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)    
+    __m128i d1 = _mm_setr_epi64(_mm_set_pi64x(0xaabbccddeeff2468l), _mm_set_pi64x(0x1122334455667788l));    
+    __m128i expected = _mm_setr_epi64(_mm_set_pi64x(0xc59c4000459c4000), _mm_set_pi64x(0x1122334455667788));
+    __m128i result;
+
+    __asm {
+        movups xmm1, d1
+        cvtpi2ps xmm1, d2
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("movlps failed");
+    }
+#endif 
+    testSseMmx64(0, 0, 0x2a, 0xaabbccddeeff2468l, 0x1122334455667788l, d2, 0xc59c4000459c4000, 0x1122334455667788);
+}
+
+void testSseCvtsi2ss32a() {
+    U32 d2 = (U32)(-5000);
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)    
+    __m128i d1 = _mm_setr_epi64(_mm_set_pi64x(0xaabbccddeeff2468l), _mm_set_pi64x(0x1122334455667788l));    
+    __m128i expected = _mm_setr_epi64(_mm_set_pi64x(0xaabbccddc59c4000), _mm_set_pi64x(0x1122334455667788));
+    __m128i result;
+
+    __asm {
+        movups xmm1, d1
+        cvtsi2ss xmm1, d2
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("movlps failed");
+    }
+#endif 
+    testSseReg32(0, 0xF3, 0x2a, 0xaabbccddeeff2468l, 0x1122334455667788l, d2, 0xaabbccddc59c4000, 0x1122334455667788);
+}
+
+void testSseMovntps32b() {
+    testSse128r(0, 0, 0x2b, SSE_MEM_VALUE128_DEFAULT1, SSE_MEM_VALUE128_DEFAULT2, SSE_MEM_VALUE128_LOW, SSE_MEM_VALUE128_HIGH, 0xFFFFFFFFFFFFFFFFl, 0xFFFFFFFFFFFFFFFFl, SSE_MEM_VALUE128_LOW, SSE_MEM_VALUE128_HIGH);
+}
+
 int main(int argc, char **argv) {	
     printf("Please wait, these first 2 tests can take a while\n");
     run(test32BitMemoryAccess, "32-bit Memory Access");
@@ -7570,6 +8122,96 @@ int main(int argc, char **argv) {
     run(testGrp40x2fe, "Grp4 2fe");
     run(testGrp50x0ff, "Grp5 0ff");
     run(testGrp50x2ff, "Grp5 2ff");
+    
+    run(testSseMovUps310, "MOVUPS 310 (sse1)");
+    run(testSseMovSs310, "MOVSS F3 310 (sse1)");
+    run(testSseMovUps311, "MOVUPS 311 (sse1)");
+    run(testSseMovSs311, "MOVSS F3 311 (sse1)");
+
+    run(testSseMovHlps312, "MOVHLPS 312 (sse1)");
+    run(testSseMovLps312, "MOVHLPS 312 (sse1)");
+    run(testSseMovLps313, "MOVHLPS 313 (sse1)");
+    run(testSseUnpcklps314, "UNPCKLPS 314 (sse1)");
+    run(testSseUnpckhps315, "UNPCKHPS 315 (sse1)");
+    run(testSseMovlhps316, "MOVLHPS 316 (sse1)");
+    run(testSseMovhps316, "MOVHPS 316 (sse1)");
+    run(testSseMovhps317, "MOVHPS 317 (sse1)");
+    // PREFETCHNTA 318/0 (sse1)
+    // PREFETCHT0 318/1 (sse1)
+    // PREFETCHT1 318/2 (sse1)
+    // PREFETCHT2 318/3 (sse1)
+    // HINT_NOP 318/4 (sse1)
+    // HINT_NOP 318/5 (sse1)
+    // HINT_NOP 318/6 (sse1)
+    // HINT_NOP 318/7 (sse1)
+
+    run(testSseMovaps328, "MOVAPS 328 (sse1)");
+    run(testSseMovaps329, "MOVAPS 329 (sse1)");
+    run(testSseCvtpi2ps32a, "CVTPI2PS 32A (sse1)");
+    run(testSseCvtsi2ss32a, "CVTSI2SS F3 32A (sse1)");
+    run(testSseMovntps32b, "MOVNTPS 32B (sse1)");
+    // CVTTPS2PI 32C (sse1)
+    // CVTTSS2SI F3 32C (sse1)
+    // CVTPS2PI 32D (sse1)
+    // CVTSS2SI F3 32D (sse1)
+    // UCOMISS 32E (sse1)
+    // COMISS 32F (sse1)
+
+    // MOVMSKPS 350 (sse1)
+    // SQRTPS 351 (sse1)
+    // SQRTSS F3 351 (sse1)
+    // RSQRTPS 352 (sse1)
+    // RSQRTSS F3 352 (sse1)
+    // RCPPS 353 (sse1)
+    // RCPSS F3 353 (sse1)
+    // ANDPS 354 (sse1)
+    // ANDNPS 355 (sse1)
+    // ORPS 356 (sse1)
+    // XORPS 357 (sse1)
+    // ADDPS 358 (sse1)
+    // ADDSS F3 358 (sse1)
+    // MULPS 359 (sse1)
+    // MULSS F3 359 (sse1)
+    // SUBPS 35C (sse1)
+    // SUBSS F3 35C (sse1)
+    // MINPS 35D (sse1)
+    // MINSS F3 35D (sse1)
+    // DIVPS 35E (sse1)
+    // DIVSS F3 35E (sse1)
+    // MAXPS 35F (sse1)
+    // MAXSS F3 35F (sse1)
+
+    run(testMmxPunpcklbw, "PUNPCKLBW 360 (mmx)");
+    run(testMmxPunpcklwd, "PUNPCKLWD 361 (mmx)");
+    run(testMmxPunpckldq, "PUNPCKLDQ 362 (mmx)");
+    run(testMmxPacksswb, "PACKSSWB 363 (mmx)");
+    run(testMmxPcmpgtb, "PCMPGTB 364 (mmx)");
+    run(testMmxPcmpgtw, "PCMPGTW 365 (mmx)");
+    run(testMmxPcmpgtd, "PCMPGTD 366 (mmx)");
+    run(testMmxPackuswb, "PACKUSWB 367 (mmx)");
+    run(testMmxPunpckhbw, "PUNPCKHBW 368 (mmx)");
+    run(testMmxPunpckhwd, "PUNPCKHWD 369 (mmx)");
+    run(testMmxPunpckhdq, "PUNPCKHDQ 36a (mmx)");
+    run(testMmxPackssdw, "PACKSSDW 36b (mmx)");            
+    run(testMmxMovdToMmx, "MOVD 36e (mmx)");        
+    run(testMmxMovqToMmx, "MOVQ 36f (mmx)");
+    
+    // PSHUFW 370 (sse1)
+    run(testMmxPsrlwImm8, "PSRLW 371/2 (mmx)");
+    run(testMmxPsrawImm8, "PSRAW 371/4 (mmx)");
+    run(testMmxPsllwImm8, "PSLLW 371/6 (mmx)");
+    run(testMmxPsrldImm8, "PSRLD 372/2 (mmx)");
+    run(testMmxPsradImm8, "PSRAD 372/4 (mmx)");
+    run(testMmxPslldImm8, "PSLLD 372/6 (mmx)");
+    run(testMmxPsrlqImm8, "PSRLQ 373/2 (mmx)");
+    run(testMmxPsllqImm8, "PSLLQ 373/6 (mmx)");    
+    run(testMmxPcmpeqb, "PCMPEQB 374 (mmx)");
+    run(testMmxPcmpeqw, "PCMPEQW 375 (mmx)");
+    run(testMmxPcmpeqd, "PCMPEQD 376 (mmx)");
+    // :TODO: EMMS 377 (mmx)
+    run(testMmxMovdToE, "MOVD 37e (mmx)");
+    run(testMmxMovqToE, "MOVQ 37f (mmx)");
+
     run(testBt0x1a3, "BT 1a3");
     run(testBt0x3a3, "BT 3a3");
     run(testShld0x1a4, "SHLD 1a4");
@@ -7582,78 +8224,75 @@ int main(int argc, char **argv) {
     run(testShrd0x3ac, "SHRD 3ac");
     run(testShrd0x1ad, "SHRD 1ad");
     run(testShrd0x3ad, "SHRD 3ad");
+    // LDMXCSR 3AE/2 (sse1)
+    // STMXCSR 3AE/3 (sse1)
+    // SFENCE 3AE/7 (sse1)
+
     run(testCmpXchg0x3b1, "CMPXCHG 3b1");
-    run(testXadd0x3c1, "XADD 3c1");
 
-    run(testMmxMovdToMmx, "MOVD 36e");    
-    run(testMmxMovdToE, "MOVD 37e");
-    run(testMmxMovqToMmx, "MOVQ 36f");
-    run(testMmxMovqToE, "MOVQ 37f");
+    run(testXadd0x3c1, "XADD 3c1");    
+    // CMPPS 3C2 (sse1)
+    // CMPSS F3 3C2 (sse1)
+    // PINSRW 1C4 (sse1)
+    // PINSRW 1C4 (sse1)
+    // PINSRW 3C4 (sse1)
+    // PINSRW 3C4 (sse1)
+    // PEXTRW 1C5 (sse1)
+    // PEXTRW 3C5 (sse1)
+    // SHUFPS 3C6 (sse1)
 
-    run(testMmxPaddb, "PADDB 3fc");
-    run(testMmxPaddw, "PADDW 3fd");
-    run(testMmxPaddd, "PADDD 3fe");
+    run(testMmxPsrlw, "PSRLW 3D1 (mmx)");    
+    run(testMmxPsrld, "PSRLD 3D2 (mmx)");    
+    run(testMmxPsrlq, "PSRLQ 3D3 (mmx)");
+    run(testMmxPmullw, "PMULLW 3d5 (mmx)");
+    // PMOVMSKB 1D7 (sse1)
+    // PMOVMSKB 3D7 (sse1)
+    run(testMmxPsubusb, "PSUBUSB 3d8 (mmx)");
+    run(testMmxPsubusw, "PSUBUSB 3d9 (mmx)");
+    // PMINUB 1DA (sse1)
+    // PMINUB 3DA (sse1)
+    run(testMmxPand, "PAND 3db (mmx)");
+    run(testMmxPaddusb, "PADDUSB 3dc (mmx)");
+    run(testMmxPaddusw, "PADDUSB 3dd (mmx)");
+    // PMAXUB 1DE (sse1)
+    // PMAXUB 3DE (sse1)
+    run(testMmxPandn, "PANDN 3df (mmx)");
 
-    run(testMmxPaddsb, "PADDSB 3ec");
-    run(testMmxPaddsw, "PADDSW 3ed");
+    // PAVGB 1E0 (sse1)
+    // PAVGB 3E0 (sse1)
+    run(testMmxPsraw, "PSRAW 3E1 (mmx)");    
+    run(testMmxPsrad, "PSRAD 3E2 (mmx)");
+    // PAVGW 1E3 (sse1)
+    // PAVGW 3E3 (sse1)
+    // PMULHUW 1E4 (sse1)
+    // PMULHUW 3E4 (sse1)
+    run(testMmxPmulhw, "PMULHW 3e5 (mmx)");
+    // MOVNTQ 3E7 (sse1)
+    run(testMmxPsubsb, "PSUBSB 3e8 (mmx)");
+    run(testMmxPsubsw, "PSUBSW 3e9 (mmx)"); 
+    // PMINSW 1EA (sse1)
+    // PMINSW 3EA (sse1)
+    run(testMmxPor, "POR 3eb (mmx)");
+    run(testMmxPaddsb, "PADDSB 3ec (mmx)");
+    run(testMmxPaddsw, "PADDSW 3ed (mmx)");
+    // PMAXSW 1EE (sse1)
+    // PMAXSW 3EE (sse1)
+    run(testMmxPxor, "PXOR 3ef (mmx)");
 
-    run(testMmxPaddusb, "PADDUSB 3dc");
-    run(testMmxPaddusw, "PADDUSB 3dd");
-
-    run(testMmxPsubb, "PSUBB 3f8");
-    run(testMmxPsubw, "PSUBW 3f9");
-    run(testMmxPsubd, "PSUBD 3fa");
-
-    run(testMmxPsubsb, "PSUBSB 3e8");
-    run(testMmxPsubsw, "PSUBSW 3e9");
-
-    run(testMmxPsubusb, "PSUBUSB 3d8");
-    run(testMmxPsubusw, "PSUBUSB 3d9");
-    
-    run(testMmxPmullw, "PMULLW 3d5");
-    run(testMmxPmulhw, "PMULHW 3e5");
-    run(testMmxPmaddwd, "PMULLW 3f5");
-
-    run(testMmxPcmpeqb, "PCMPEQB 374");
-    run(testMmxPcmpeqw, "PCMPEQW 375");
-    run(testMmxPcmpeqd, "PCMPEQD 376");
-
-    run(testMmxPcmpgtb, "PCMPGTB 364");
-    run(testMmxPcmpgtw, "PCMPGTW 365");
-    run(testMmxPcmpgtd, "PCMPGTD 366");
-
-    run(testMmxPackssdw, "PACKSSDW 36b");
-    run(testMmxPacksswb, "PACKSSWB 363");
-    run(testMmxPackuswb, "PACKUSWB 367");
-    run(testMmxPunpckhbw, "PUNPCKHBW 368");
-    run(testMmxPunpckhdq, "PUNPCKHDQ 36a");
-    run(testMmxPunpckhwd, "PUNPCKHWD 369");
-    run(testMmxPunpcklbw, "PUNPCKLBW 360");
-    run(testMmxPunpckldq, "PUNPCKLDQ 362");
-    run(testMmxPunpcklwd, "PUNPCKLWD 361");
-
-    run(testMmxPxor, "PXOR 3ef");
-    run(testMmxPor, "POR 3eb");
-    run(testMmxPand, "PAND 3db");
-    run(testMmxPandn, "PANDN 3df");
-    run(testMmxPsllw, "PSLLW 3f1");
-    run(testMmxPsllwImm8, "PSLLW 371");
-    run(testMmxPslld, "PSLLD 3f2");
-    run(testMmxPslldImm8, "PSLLD 372");
-    run(testMmxPsllq, "PSLLQ 3f3");
-    run(testMmxPsllqImm8, "PSLLQ 373");
-
-    run(testMmxPsrlw, "PSRLW 3D1");
-    run(testMmxPsrlwImm8, "PSRLW 371");
-    run(testMmxPsrld, "PSRLD 3D2");
-    run(testMmxPsrldImm8, "PSRLD 372");
-    run(testMmxPsrlq, "PSRLQ 3D3");
-    run(testMmxPsrlqImm8, "PSRLQ 373");
-
-    run(testMmxPsraw, "PSRAW 3E1");
-    run(testMmxPsrawImm8, "PSRAW 371");
-    run(testMmxPsrad, "PSRAD 3E2");
-    run(testMmxPsradImm8, "PSRAD 372");
+    run(testMmxPsllw, "PSLLW 3f1 (mmx)");
+    run(testMmxPslld, "PSLLD 3f2 (mmx)");    
+    run(testMmxPsllq, "PSLLQ 3f3 (mmx)");
+    run(testMmxPmaddwd, "PMULLW 3f5 (mmx)");
+    // PSADBW 1F6 (sse1)
+    // PSADBW 3F6 (sse1)
+    /// MASKMOVQ 3F7 (sse1)
+    run(testMmxPsubb, "PSUBB 3f8 (mmx)");
+    run(testMmxPsubw, "PSUBW 3f9 (mmx)");
+    run(testMmxPsubd, "PSUBD 3fa (mmx)");                
+    run(testMmxPaddb, "PADDB 3fc (mmx)");
+    run(testMmxPaddw, "PADDW 3fd (mmx)");
+    run(testMmxPaddd, "PADDD 3fe (mmx)");                                  
+            
 
     printf("%d tests FAILED\n", totalFails);
     SDL_Delay(5000);

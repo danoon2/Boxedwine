@@ -625,7 +625,11 @@ void common_movapsE128Xmm(CPU* cpu, U32 reg, U32 address) {
 }
 
 void common_movhlpsXmmXmm(CPU* cpu, U32 r1, U32 r2) {
-    kpanic("invalid sse");
+    cpu->xmm[r1].u64[0] = cpu->xmm[r2].u64[1];
+}
+
+void common_movlhpsXmmXmm(CPU* cpu, U32 r1, U32 r2) {
+    cpu->xmm[r1].u64[1] = cpu->xmm[r2].u64[0];
 }
 
 void common_movhpsXmmE64(CPU* cpu, U32 reg, U32 address) {
@@ -654,6 +658,9 @@ void common_movssXmmXmm(CPU* cpu, U32 r1, U32 r2) {
 
 void common_movssXmmE32(CPU* cpu, U32 reg, U32 address) {
     cpu->xmm[reg].u32[0] = readd(address);
+    cpu->xmm[reg].u32[1] = 0;
+    cpu->xmm[reg].u32[2] = 0;
+    cpu->xmm[reg].u32[3] = 0;
 }
 
 void common_movssE32Xmm(CPU* cpu, U32 reg, U32 address) {
