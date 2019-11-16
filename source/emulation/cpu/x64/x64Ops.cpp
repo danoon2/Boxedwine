@@ -2254,8 +2254,8 @@ static U32 sseErMmxI8(X64Asm* data) {
     return 0;
 }
 
-static U32 sseErXmmI8(X64Asm* data) {
-    data->translateRM(data->fetch8(), false, true, false, false, 8); // check E because it could be a reg
+static U32 sseRegXmmI8(X64Asm* data) {
+    data->translateRM(data->fetch8(), true, false, false, false, 8); // G is Reg
     return 0;
 }
 
@@ -2269,8 +2269,8 @@ static U32 sseErMmx(X64Asm* data) {
     return 0;
 }
 
-static U32 sseErXmm(X64Asm* data) {
-    data->translateRM(data->fetch8(), false, true, false, false, 0); // check E because it could be a reg
+static U32 sseRegXmm(X64Asm* data) {
+    data->translateRM(data->fetch8(), true, false, false, false, 0); // G is Reg
     return 0;
 }
 
@@ -2475,10 +2475,10 @@ X64Decoder x64Decoder[1024] = {
     inst8RM, inst16RM, lss16, inst16RM, lfs16, lgs16, inst16E8RM, invalidOp,
     invalidOp, inst16RMimm8SafeG, inst16RMimm8SafeG, invalidOp, inst16RM, inst16RM, inst16E8RM, invalidOp,
     // 1c0
-    invalidOp, invalidOp, sse2Imm8, invalidOp, sseXmmErI8, sseErXmmI8, sse2E, invalidOp,
+    invalidOp, invalidOp, sse2Imm8, invalidOp, sseXmmErI8, sseRegXmmI8, sse2E, invalidOp,
     keepSame, keepSame, keepSame, keepSame, bswapSp, keepSame, keepSame, keepSame,
     // 1d0
-    invalidOp, sse2E, sse2E, sse2E, sse2E, sse2E, sse2E, sseErXmm,
+    invalidOp, sse2E, sse2E, sse2E, sse2E, sse2E, sse2E, sseRegXmm,
     sse2E, sse2E, sseXmmEx, sse2E, sse2E, sse2E, sseXmmEx, sse2E,
     // 1e0
     sseXmmEx, sse2E, sse2E, sseXmmEx, sseXmmEx, sse2E, sse2E, sse2E,
@@ -2552,7 +2552,7 @@ X64Decoder x64Decoder[1024] = {
     inst32RM, inst32RM, inst32RM, inst32RM, inst32RM, inst32RM, inst32RM, inst32RM,
     inst32RM, inst32RM, inst32RM, inst32RM, inst32RM, inst32RM, inst32RM, inst32RM,
     // 350
-    sseErXmm, sseXmmEx, sseXmmEx, sseXmmEx, sseXmmEx, sseXmmEx, sseXmmEx, sseXmmEx,
+    sseRegXmm, sseXmmEx, sseXmmEx, sseXmmEx, sseXmmEx, sseXmmEx, sseXmmEx, sseXmmEx,
     sseXmmEx, sseXmmEx, invalidOp, invalidOp, sseXmmEx, sseXmmEx, sseXmmEx, sseXmmEx,
     // 360
     mmx, mmx, mmx, mmx, mmx, mmx, mmx, mmx,

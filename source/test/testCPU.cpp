@@ -7910,9 +7910,9 @@ void testSseCvttps2pi32c() {
     f1.f = 12345678900.0f; // should result in indefinite integer, 80000000
     f2.f = -5000.6f; // should tuncate
 
-#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)    
-    __m128i d1 = _mm_setr_epi32(f1.i, f2.i, 1, 2);    
     U64 expected = 0xffffec7880000000;
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)    
+    __m128i d1 = _mm_setr_epi32(f1.i, f2.i, 1, 2);        
     U64 result;
 
     __asm {
@@ -7974,9 +7974,9 @@ void testSseCvtps2pi32d() {
     f1.f = 12345678900.0f; // should result in indefinite integer, 80000000
     f2.f = -5000.0f; // :TODO: test rounding
 
-#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)    
-    __m128i d1 = _mm_setr_epi32(f1.i, f2.i, 1, 2);    
     U64 expected = 0xffffec7880000000;
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)    
+    __m128i d1 = _mm_setr_epi32(f1.i, f2.i, 1, 2);        
     U64 result;
 
     __asm {
@@ -8225,8 +8225,8 @@ void testSseMovmskps350() {
     f3.f = 5000.0f;
     f4.f = 0.0f;
 
-#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)    
     __m128i d1 = _mm_setr_epi32(f1.i, f2.i, f3.i, f4.i);    
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)        
     U32 expected = 2;
     U32 result;
 
