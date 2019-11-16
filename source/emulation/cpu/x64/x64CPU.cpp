@@ -277,7 +277,7 @@ void x64CPU::translateInstruction(X64Asm* data, X64Asm* firstPass) {
 #ifndef __TEST
     data->writeToMemFromValue(data->ip, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EIP, 4, false);
 #endif
-#endif    
+#endif
     if (data->dynamic) {
         data->addDynamicCheck(false);
     } else {
@@ -285,9 +285,6 @@ void x64CPU::translateInstruction(X64Asm* data, X64Asm* firstPass) {
         //data->addDynamicCheck(true);
 #endif
     }   
-    if (data->ip==0x473FA2) {
-        int ii=0;
-    }
     while (1) {  
         data->op = data->fetch8();            
         data->inst = data->baseOp + data->op;        
@@ -537,9 +534,6 @@ U32 dynamicCodeExceptionCount;
 
 U64 x64CPU::handleAccessException(U64 rip, U64 address, bool readAddress, U64 rsi, U64 rdi, U64 r8, U64 r9, U64* r10, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo) {
     U32 inst = *((U32*)rip);
-    if (address==0x377032 || rip==0x3000738c1e) {
-        int ii=0;
-    }
     if (inst==0x0A8B4566 || inst==0xCA148B4F) { // if these constants change, update handleMissingCode too     
         // rip is not adjusted so we don't need to check for stack alignment
         *r10 = this->handleMissingCode(r8, r9, inst);

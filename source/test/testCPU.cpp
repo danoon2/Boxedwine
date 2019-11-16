@@ -30,9 +30,18 @@ static int cseip;
 #define G(rm) ((rm >> 3) & 7)
 #define E(rm) (rm & 7)
 
+struct Test_Float {
+    union {
+        float f;
+        U32   i;
+    };
+};
+
 U32 getMilliesSinceStart() {
     return 0;
 }
+
+#define FLAG_MASK (AF|CF|SF|PF|ZF|OF)
 
 #define STACK_ADDRESS 0xE0011000
 #define HEAP_ADDRESS 0xF0000000
@@ -7317,6 +7326,56 @@ void testSse128(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U64 value
     }    
 }
 
+void testSse128f(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U64 value2l, U64 value2h, U32 flagsResult) {
+    for (U8 m=0;m<8;m++) {
+        for (U8 from=0;from<8;from++) {
+            if (m==from) {
+                continue;
+            }
+            initSseTest();            
+            loadSSE(m, 0, value1l, value1h);
+            loadSSE(from, 1, value2l, value2h);
+            cpu->flags = 0;
+            if (preOp1) {
+                pushCode8(preOp1);
+            }
+            if (preOp2) {
+                pushCode8(preOp2);
+            }
+            pushCode8(0x0f);
+            pushCode8(op);
+            pushCode8(0xC0 | (m << 3) | from);            
+            runTestCPU();
+            U32 flags = cpu->flags & FLAG_MASK;
+            if (flags != flagsResult) {
+                failed("sse failed");
+            }
+        }
+
+        initSseTest();         
+        loadSSE(m, 0, value1l, value1h);
+        writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+16, value2l);
+        writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+24, value2h);
+        cpu->flags = 0;
+        if (preOp1) {
+            pushCode8(preOp1);
+        }
+        if (preOp2) {
+            pushCode8(preOp2);
+        }
+        pushCode8(0x0f);
+        pushCode8(op);
+        pushCode8(0x04 | (m<<3));
+        pushCode8(0x25);
+        pushCode32(SSE_MEM_VALUE_TMP_OFFSET+16);
+        runTestCPU();
+        U32 flags = cpu->flags & FLAG_MASK;
+        if (flags != flagsResult) {
+            failed("sse failed");
+        }
+    }  
+}
+
 void testSse128r(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U64 value2l, U64 value2h, U64 xmmResultl, U64 xmmResulth, U64 memResultl=0, U64 memResulth=0) {
     if (!memResultl && !memResulth) {
         memResultl = xmmResultl;
@@ -7425,6 +7484,50 @@ void testSseMmx64(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U64 val
     }    
 }
 
+void testSseMmx64r(U8 preOp1, U8 preOp2, U8 op, U64 value1, U64 value2l, U64 value2h, U64 mmxResult) {
+    for (U8 m=0;m<8;m++) {
+        for (U8 from=0;from<8;from++) {
+            initSseTest();  
+            initMmxTest();            
+            loadMMX(m, 2, value1);
+            loadSSE(from, 0, value2l, value2h);
+            if (preOp1) {
+                pushCode8(preOp1);
+            }
+            if (preOp2) {
+                pushCode8(preOp2);
+            }
+            pushCode8(0x0f);
+            pushCode8(op);
+            pushCode8(0xC0 | (m << 3) | from);            
+            runTestCPU();
+
+            if (cpu->reg_mmx[m].q!=mmxResult) {
+                failed("sse failed");
+            }
+        }
+
+        initSseTest();         
+        loadMMX(m, 0, value1);
+        writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+16, value2l);
+        if (preOp1) {
+            pushCode8(preOp1);
+        }
+        if (preOp2) {
+            pushCode8(preOp2);
+        }
+        pushCode8(0x0f);
+        pushCode8(op);
+        pushCode8(0x04 | (m<<3));
+        pushCode8(0x25);
+        pushCode32(SSE_MEM_VALUE_TMP_OFFSET+16);
+        runTestCPU();
+        if (cpu->reg_mmx[m].q!=mmxResult) {
+            failed("sse failed");
+        }
+    }    
+}
+
 void testSseReg32(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U32 value2, U64 xmmResultl, U64 xmmResulth) {
     for (U8 m=0;m<8;m++) {
         for (U8 from=0;from<8;from++) {
@@ -7468,6 +7571,54 @@ void testSseReg32(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U32 val
     }    
 }
 
+void testSseReg32r(U8 preOp1, U8 preOp2, U8 op, U32 value1, U64 value2l, U64 value2h, U32 result, U32 memResult=0) {
+    if (!memResult) {
+        memResult = result;
+    }
+    for (U8 m=0;m<8;m++) {
+        if (result!=0xFFFFFFFF) {
+            for (U8 from=0;from<8;from++) {
+                initSseTest();  
+                loadSSE(from, 0, value2l, value2h);
+                cpu->reg[m].u32 = value1;
+                if (preOp1) {
+                    pushCode8(preOp1);
+                }
+                if (preOp2) {
+                    pushCode8(preOp2);
+                }
+                pushCode8(0x0f);
+                pushCode8(op);
+                pushCode8(0xC0 | (m << 3) | from);            
+                runTestCPU();
+
+                if (cpu->reg[m].u32!=result) {
+                    failed("sse failed");
+                }
+            }
+        }
+        if (memResult!=0xFFFFFFFF) {
+            initSseTest();         
+            cpu->reg[m].u32 = value1;
+            writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+16, value2l);
+            if (preOp1) {
+                pushCode8(preOp1);
+            }
+            if (preOp2) {
+                pushCode8(preOp2);
+            }
+            pushCode8(0x0f);
+            pushCode8(op);
+            pushCode8(0x04 | (m<<3));
+            pushCode8(0x25);
+            pushCode32(SSE_MEM_VALUE_TMP_OFFSET+16);
+            runTestCPU();
+            if (cpu->reg[m].u32!=result) {
+                failed("sse failed");
+            }
+        }
+    }    
+}
 
 #ifdef _MSC_VER // if Visual C/C++
 __inline __m64 _mm_set_pi64x (const __int64 i) {
@@ -7676,7 +7827,7 @@ void testSseMovhps316() {
         emms
     }
     if (memcmp(&result, &expected, 16)) {
-        failed("movlps failed");
+        failed("Movhps failed");
     }
 #endif 
     testSse128(0, 0, 0x16, 0xaabbccddeeff2468l, 0x1122334455667788l, 0x1234567890abcdefl, 0x24680bdf13579acel, 0xFFFFFFFFFFFFFFFFl, 0xFFFFFFFFFFFFFFFFl, 0xaabbccddeeff2468l, 0x1234567890abcdefl);
@@ -7694,7 +7845,7 @@ void testSseMovhps317() {
         emms
     }
     if (memcmp(&d1, &expected, 16)) {
-        failed("movlps failed");
+        failed("Movhps failed");
     }
 #endif 
     testSse128r(0, 0, 0x17, 0xaabbccddeeff2468l, 0x1122334455667788l, 0x1234567890abcdefl, 0x24680bdf13579acel, 0xFFFFFFFFFFFFFFFFl, 0xFFFFFFFFFFFFFFFFl, 0x24680bdf13579ace, 0x1122334455667788);
@@ -7722,7 +7873,7 @@ void testSseCvtpi2ps32a() {
         emms
     }
     if (memcmp(&result, &expected, 16)) {
-        failed("movlps failed");
+        failed("Cvtpi2ps failed");
     }
 #endif 
     testSseMmx64(0, 0, 0x2a, 0xaabbccddeeff2468l, 0x1122334455667788l, d2, 0xc59c4000459c4000, 0x1122334455667788);
@@ -7742,7 +7893,7 @@ void testSseCvtsi2ss32a() {
         emms
     }
     if (memcmp(&result, &expected, 16)) {
-        failed("movlps failed");
+        failed("Cvtsi2ss failed");
     }
 #endif 
     testSseReg32(0, 0xF3, 0x2a, 0xaabbccddeeff2468l, 0x1122334455667788l, d2, 0xaabbccddc59c4000, 0x1122334455667788);
@@ -7750,6 +7901,346 @@ void testSseCvtsi2ss32a() {
 
 void testSseMovntps32b() {
     testSse128r(0, 0, 0x2b, SSE_MEM_VALUE128_DEFAULT1, SSE_MEM_VALUE128_DEFAULT2, SSE_MEM_VALUE128_LOW, SSE_MEM_VALUE128_HIGH, 0xFFFFFFFFFFFFFFFFl, 0xFFFFFFFFFFFFFFFFl, SSE_MEM_VALUE128_LOW, SSE_MEM_VALUE128_HIGH);
+}
+
+void testSseCvttps2pi32c() {
+    Test_Float f1;
+    Test_Float f2;
+
+    f1.f = 12345678900.0f; // should result in indefinite integer, 80000000
+    f2.f = -5000.6f; // should tuncate
+
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)    
+    __m128i d1 = _mm_setr_epi32(f1.i, f2.i, 1, 2);    
+    U64 expected = 0xffffec7880000000;
+    U64 result;
+
+    __asm {
+        movups xmm1, d1
+        cvttps2pi mm1, xmm1
+        movq result, mm1
+        emms
+    }
+    if (result!=expected) {
+        failed("Cvttps2pi failed");
+    }
+#endif 
+    testSseMmx64r(0, 0, 0x2c, 0, (((U64)f2.i) << 32) | (U64)f1.i, ((U64)2) << 32 | 1, expected);
+}
+
+void testSseCvttss2si32c() {
+    Test_Float f1;
+    Test_Float f2;
+
+    f1.f = 12345678900.0f; // should result in indefinite integer, 80000000
+    f2.f = -5000.6f; // should truncate
+
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)    
+    __m128i d1 = _mm_setr_epi32(f1.i, 1, 2, 3);    
+    U32 expected = 0x80000000;
+    U32 result;
+
+    __asm {
+        movups xmm1, d1
+        cvttss2si eax, xmm1
+        mov result, eax
+        emms
+    }
+    if (result!=expected) {
+        failed("Cvttss2si failed");
+    }
+
+    d1 = _mm_setr_epi32(f2.i, 1, 2, 3);    
+    expected = 0xffffec78;
+
+    __asm {
+        movups xmm1, d1
+        cvttss2si eax, xmm1
+        mov result, eax
+        emms
+    }
+    if (result!=expected) {
+        failed("Cvttss2si failed");
+    }
+#endif
+    testSseReg32r(0, 0xF3, 0x2c, 0,  (((U64)3) << 32) | f1.i, ((U64)2) << 32 | 1, 0x80000000);
+    testSseReg32r(0, 0xF3, 0x2c, 0,  (((U64)3) << 32) | f2.i, ((U64)2) << 32 | 1, 0xffffec78);
+}
+
+void testSseCvtps2pi32d() {
+    Test_Float f1;
+    Test_Float f2;
+
+    f1.f = 12345678900.0f; // should result in indefinite integer, 80000000
+    f2.f = -5000.0f; // :TODO: test rounding
+
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)    
+    __m128i d1 = _mm_setr_epi32(f1.i, f2.i, 1, 2);    
+    U64 expected = 0xffffec7880000000;
+    U64 result;
+
+    __asm {
+        movups xmm1, d1
+        cvtps2pi mm1, xmm1
+        movq result, mm1
+        emms
+    }
+    if (result!=expected) {
+        failed("Cvtps2pi failed");
+    }
+#endif 
+    testSseMmx64r(0, 0, 0x2d, 0, ((U64)f2.i << 32) | f1.i, ((U64)2) << 32 | 1, expected);
+}
+
+void testSseCvtss2si32d() {
+    Test_Float f1;
+    Test_Float f2;
+
+    f1.f = 12345678900.0f; // should result in indefinite integer, 80000000
+    f2.f = -5000.0f; // :TODO: test rounding
+
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)    
+    __m128i d1 = _mm_setr_epi32(f1.i, 1, 2, 3);    
+    U32 expected = 0x80000000;
+    U32 result;
+
+    __asm {
+        movups xmm1, d1
+        cvtss2si eax, xmm1
+        mov result, eax
+        emms
+    }
+    if (result!=expected) {
+        failed("Cvtss2si failed");
+    }
+
+    d1 = _mm_setr_epi32(f2.i, 1, 2, 3);    
+    expected = 0xffffec78;
+
+    __asm {
+        movups xmm1, d1
+        cvttss2si eax, xmm1
+        mov result, eax
+        emms
+    }
+    if (result!=expected) {
+        failed("Cvtss2si failed");
+    }
+#endif
+    testSseReg32r(0, 0xF3, 0x2d, 0,  (((U64)3) << 32) | f1.i, ((U64)2) << 32 | 1, 0x80000000);
+    testSseReg32r(0, 0xF3, 0x2d, 0,  (((U64)3) << 32) | f2.i, ((U64)2) << 32 | 1, 0xffffec78);
+}
+
+// :TODO: test exceptions?
+void testSseUcomiss32e() {
+    Test_Float f1;
+    Test_Float f2;
+
+    f1.f = 1;
+    f2.f = 2;
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)    
+    __m128i d1 = _mm_setr_epi32(f1.i, 1, 2, 3);    
+    __m128i d2 = _mm_setr_epi32(f2.i, 1, 2, 3);    
+    U32 result;
+    U32 expected = CF;
+
+    __asm {
+        movups xmm1, d1
+        movups xmm2, d2
+        ucomiss xmm1, xmm2
+        lahf
+        movzx eax, ah
+        mov result, eax
+        emms
+    }
+    result &= FLAG_MASK;
+    if (result!=expected) {
+        failed("Ucomiss failed");
+    }
+
+    f1.f = -1;
+    f2.f = -1;
+
+    d1 = _mm_setr_epi32(f1.i, 1, 2, 3);    
+    d2 = _mm_setr_epi32(f2.i, 1, 2, 3);    
+    expected = ZF;
+
+    __asm {
+        movups xmm1, d1
+        movups xmm2, d2
+        ucomiss xmm1, xmm2
+        lahf
+        movzx eax, ah
+        mov result, eax
+        emms
+    }
+    result &= FLAG_MASK;
+    if (result!=expected) {
+        failed("Ucomiss failed");
+    }
+
+    f1.f = 1;
+    f2.f = -1;
+
+    d1 = _mm_setr_epi32(f1.i, 1, 2, 3);    
+    d2 = _mm_setr_epi32(f2.i, 1, 2, 3);    
+    expected = 0;
+
+    __asm {
+        movups xmm1, d1
+        movups xmm2, d2
+        ucomiss xmm1, xmm2
+        lahf
+        movzx eax, ah
+        mov result, eax
+        emms
+    }
+    result &= FLAG_MASK;
+    if (result!=expected) {
+        failed("Ucomiss failed");
+    }
+
+    f1.i = 0x7fc00000;
+    f2.f = -1;
+
+    d1 = _mm_setr_epi32(f1.i, 1, 2, 3);    
+    d2 = _mm_setr_epi32(f2.i, 1, 2, 3);    
+    expected = ZF | PF | CF;
+
+    __asm {
+        movups xmm1, d1
+        movups xmm2, d2
+        ucomiss xmm1, xmm2
+        lahf
+        movzx eax, ah
+        mov result, eax
+        emms
+    }
+    result &= FLAG_MASK;
+    if (result!=expected) {
+        failed("Ucomiss failed");
+    }
+#endif
+    f1.f = 1;
+    f2.f = 2;
+    testSse128f(0, 0, 0x2e, f1.i, 0, f2.i, 0, CF);
+    f1.f = -1;
+    f2.f = -1;
+    testSse128f(0, 0, 0x2e, f1.i, 0, f2.i, 0, ZF);
+    f1.f = 1;
+    f2.f = -1;
+    testSse128f(0, 0, 0x2e, f1.i, 0, f2.i, 0, 0);
+    f1.i = 0x7fc00000;
+    f2.f = -1;
+    testSse128f(0, 0, 0x2e, f1.i, 0, f2.i, 0, ZF | PF | CF);
+}
+
+void testSseComiss32f() {
+    Test_Float f1;
+    Test_Float f2;
+
+    f1.f = 1;
+    f2.f = 2;
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)    
+    __m128i d1 = _mm_setr_epi32(f1.i, 1, 2, 3);    
+    __m128i d2 = _mm_setr_epi32(f2.i, 1, 2, 3);    
+    U32 result;
+    U32 expected = CF;
+
+    __asm {
+        movups xmm1, d1
+        movups xmm2, d2
+        comiss xmm1, xmm2
+        lahf
+        movzx eax, ah
+        mov result, eax
+        emms
+    }
+    result &= FLAG_MASK;
+    if (result!=expected) {
+        failed("Comiss failed");
+    }
+
+    f1.f = -1;
+    f2.f = -1;
+
+    d1 = _mm_setr_epi32(f1.i, 1, 2, 3);    
+    d2 = _mm_setr_epi32(f2.i, 1, 2, 3);    
+    expected = ZF;
+
+    __asm {
+        movups xmm1, d1
+        movups xmm2, d2
+        comiss xmm1, xmm2
+        lahf
+        movzx eax, ah
+        mov result, eax
+        emms
+    }
+    result &= FLAG_MASK;
+    if (result!=expected) {
+        failed("Comiss failed");
+    }
+
+    f1.f = 1;
+    f2.f = -1;
+
+    d1 = _mm_setr_epi32(f1.i, 1, 2, 3);    
+    d2 = _mm_setr_epi32(f2.i, 1, 2, 3);    
+    expected = 0;
+
+    __asm {
+        movups xmm1, d1
+        movups xmm2, d2
+        comiss xmm1, xmm2
+        lahf
+        movzx eax, ah
+        mov result, eax
+        emms
+    }
+    result &= FLAG_MASK;
+    if (result!=expected) {
+        failed("Comiss failed");
+    }
+#endif
+    f1.f = 1;
+    f2.f = 2;
+    testSse128f(0, 0, 0x2f, f1.i, 0, f2.i, 0, CF);
+    f1.f = -1;
+    f2.f = -1;
+    testSse128f(0, 0, 0x2f, f1.i, 0, f2.i, 0, ZF);
+    f1.f = 1;
+    f2.f = -1;
+    testSse128f(0, 0, 0x2f, f1.i, 0, f2.i, 0, 0);
+}
+
+void testSseMovmskps350() {
+    Test_Float f1;
+    Test_Float f2;
+    Test_Float f3;
+    Test_Float f4;
+
+    f1.f = 0x7fc00000; // QNan
+    f2.f = -5000.0f;
+    f3.f = 5000.0f;
+    f4.f = 0.0f;
+
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)    
+    __m128i d1 = _mm_setr_epi32(f1.i, f2.i, f3.i, f4.i);    
+    U32 expected = 2;
+    U32 result;
+
+    __asm {
+        movups xmm1, d1
+        movmskps eax, xmm1
+        mov result, eax
+        emms
+    }
+    if (result!=expected) {
+        failed("Movmskps failed");
+    }
+#endif
+    testSseReg32r(0, 0, 0x50, 0, d1.m128i_u64[0], d1.m128i_u64[1], 2, 0xFFFFFFFF);
 }
 
 int main(int argc, char **argv) {	
@@ -8150,14 +8641,14 @@ int main(int argc, char **argv) {
     run(testSseCvtpi2ps32a, "CVTPI2PS 32A (sse1)");
     run(testSseCvtsi2ss32a, "CVTSI2SS F3 32A (sse1)");
     run(testSseMovntps32b, "MOVNTPS 32B (sse1)");
-    // CVTTPS2PI 32C (sse1)
-    // CVTTSS2SI F3 32C (sse1)
-    // CVTPS2PI 32D (sse1)
-    // CVTSS2SI F3 32D (sse1)
-    // UCOMISS 32E (sse1)
-    // COMISS 32F (sse1)
+    run(testSseCvttps2pi32c, "CVTTPS2PI 32C (sse1)");
+    run(testSseCvttss2si32c, "CVTTSS2SI F3 32C (sse1)");
+    run(testSseCvtps2pi32d, "CVTPS2PI 32D (sse1)");
+    run(testSseCvtss2si32d, "CVTSS2SI F3 32D (sse1)");
+    run(testSseUcomiss32e, "UCOMISS 32E (sse1)");
+    run(testSseComiss32f, "COMISS 32F (sse1)");
 
-    // MOVMSKPS 350 (sse1)
+    run(testSseMovmskps350, "MOVMSKPS 350 (sse1)");
     // SQRTPS 351 (sse1)
     // SQRTSS F3 351 (sse1)
     // RSQRTPS 352 (sse1)

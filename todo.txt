@@ -19,9 +19,11 @@ Future: Not in any particular order
 11/29/2017 * Added
 
 5) Android port (normal core, then maybe ARM64)
+11/16/2019 * Started, runs Winmine with normal core
 11/29/2017 * Added
 
 6) SSE 2
+11/16/2019 * Started, works for x64 cpu core
 08/08/2019 * Added
 
 7) Get DirectDraw and Direct 3D to use OpenGL
@@ -29,6 +31,12 @@ Future: Not in any particular order
 
 8) Joystick support
 08/14/2019 * Added
+
+9) Add ISO and cdrom mount support
+11/16/2019 * Added
+
+10) 3dfx support
+11/16/2019 * Added
 
 Done
 

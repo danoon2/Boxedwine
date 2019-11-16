@@ -1,4 +1,5 @@
 #include "boxedwine.h"
+// BT/BTR/BTE/BTS affected OF flags prior to Pentium 2
 void common_btr16r16(CPU* cpu, U32 maskReg, U32 reg) {
     U16 mask=1 << (cpu->reg[maskReg].u16 & 15);
     cpu->fillFlagsNoCF();
