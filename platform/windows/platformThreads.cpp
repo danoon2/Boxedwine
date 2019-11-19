@@ -9,7 +9,8 @@
 
 #ifdef BOXEDWINE_MULTI_THREADED
 
-void syncFromException(x64CPU* cpu, struct _EXCEPTION_POINTERS *ep, bool includeFPU) {
+void syncFromException(struct _EXCEPTION_POINTERS *ep, bool includeFPU) {
+    x64CPU* cpu = (x64CPU*)KThread::currentThread()->cpu;
     EAX = (U32)ep->ContextRecord->Rax;
     ECX = (U32)ep->ContextRecord->Rcx;
     EDX = (U32)ep->ContextRecord->Rdx;
@@ -41,7 +42,8 @@ void syncFromException(x64CPU* cpu, struct _EXCEPTION_POINTERS *ep, bool include
     }
 }
 
-void syncToException(x64CPU* cpu, struct _EXCEPTION_POINTERS *ep, bool includeFPU) {
+void syncToException(struct _EXCEPTION_POINTERS *ep, bool includeFPU) {
+    x64CPU* cpu = (x64CPU*)KThread::currentThread()->cpu;
     ep->ContextRecord->Rax = EAX;
     ep->ContextRecord->Rcx = ECX;
     ep->ContextRecord->Rdx = EDX;
@@ -96,15 +98,20 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
 		cpu->restarting = false;
 		return EXCEPTION_CONTINUE_EXECUTION;
 	}
+    if (ep->ContextRecord->EFlags & AC) {
+        // :TODO: is there a way to clear in now
+        ep->ContextRecord->EFlags&=~AC;
+        return EXCEPTION_CONTINUE_EXECUTION;
+    }
     if (cpu!=(x64CPU*)ep->ContextRecord->R13) {
         return EXCEPTION_CONTINUE_SEARCH;
     }	
 
-    std::function<void(DecodedOp*)> doSyncFrom = [cpu, ep] (DecodedOp* op) {
-            syncFromException(cpu, ep, op?op->isFpuOp():true);
+    std::function<void(DecodedOp*)> doSyncFrom = [ep] (DecodedOp* op) {
+            syncFromException(ep, op?op->isFpuOp():true);
         };
-    std::function<void(DecodedOp*)> doSyncTo = [cpu, ep] (DecodedOp* op) {
-            syncToException(cpu, ep, op?op->isFpuOp():true);
+    std::function<void(DecodedOp*)> doSyncTo = [ep] (DecodedOp* op) {
+            syncToException(ep, op?op->isFpuOp():true);
         };
 
     U64 result = cpu->startException(ep->ExceptionRecord->ExceptionInformation[1], ep->ExceptionRecord->ExceptionInformation[0]==0, doSyncFrom, doSyncTo);
