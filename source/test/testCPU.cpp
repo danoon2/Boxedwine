@@ -8238,9 +8238,9 @@ void testSseMovmskps350() {
     f2.f = -5000.0f;
     f3.f = 5000.0f;
     f4.f = 0.0f;
-
-    __m128i d1 = _mm_setr_epi32(f1.i, f2.i, f3.i, f4.i);    
+    
 #if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)        
+    __m128i d1 = _mm_setr_epi32(f1.i, f2.i, f3.i, f4.i);
     U32 expected = 2;
     U32 result;
 
@@ -8254,7 +8254,7 @@ void testSseMovmskps350() {
         failed("Movmskps failed");
     }
 #endif
-    testSseReg32r(0, 0, 0x50, 0, d1.m128i_u64[0], d1.m128i_u64[1], 2, 0xFFFFFFFF);
+    testSseReg32r(0, 0, 0x50, 0, 0xc59c40004eff8000l, 0x00000000459c4000l, 2, 0xFFFFFFFF);
 }
 
 void testSseSqrtps351() {
