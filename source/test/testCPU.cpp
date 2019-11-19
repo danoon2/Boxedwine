@@ -37,6 +37,15 @@ struct Test_Float {
     };
 };
 
+__m128i floatTo128(float f1, float f2, float f3, float f4) {
+    Test_Float t1, t2, t3, t4;
+    t1.f = f1;
+    t2.f = f2;
+    t3.f = f3;
+    t4.f = f4;
+    return _mm_setr_epi32(t1.i, t2.i, t3.i, t4.i);
+}
+
 U32 getMilliesSinceStart() {
     return 0;
 }
@@ -7283,6 +7292,11 @@ void testSse128(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U64 value
                 runTestCPU();
                 for (U8 m1=0;m1<8;m1++) {
                     if (m1==m || m1==from) {
+                        Test_Float f1;
+                        Test_Float t1;
+
+                        t1.i = cpu->xmm[m].u32[0];
+                        f1.i = (U32)xmmResultl;
                         if (cpu->xmm[m].u64[0]!=xmmResultl || cpu->xmm[m].u64[1]!=xmmResulth) {
                             failed("sse failed");
                         }
@@ -8243,6 +8257,249 @@ void testSseMovmskps350() {
     testSseReg32r(0, 0, 0x50, 0, d1.m128i_u64[0], d1.m128i_u64[1], 2, 0xFFFFFFFF);
 }
 
+void testSseSqrtps351() {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)        
+    __m128i expected = floatTo128(0.0f, 2.0f, 16.0f, sqrtf(2.0));
+    __m128i result;
+    __m128i d1;
+    __m128i d2 = floatTo128(0.0f, 4.0f, 256.0f, 2.0);
+
+    __asm {
+        movups xmm1, d1
+        movups xmm2, d2
+        sqrtps xmm1, xmm2
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("Sqrtps failed");
+    }
+#endif
+    testSse128(0, 0, 0x51, 0, 0, 0x4080000000000000l, 0x4000000043800000, 0x4000000000000000l, 0x3fb504f341800000l);
+}
+
+void testSseSqrtss351() {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)        
+    __m128i expected = floatTo128(16.0f, 2.0f, 0.0f, 4.0f);
+    __m128i result;
+    __m128i d1 = floatTo128(256.0f, 2.0f, 0.0f, 4.0);
+
+    __asm {
+        movups xmm1, d1
+        sqrtss xmm1, xmm1
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("Sqrtss failed");
+    }
+#endif
+    testSse128(0, 0xf3, 0x51, 0x4000000043800000l, 0x4080000000000000l, 0x4000000043800000l, 0x4080000000000000l, 0x4000000041800000l, 0x4080000000000000l);
+}
+
+void testSseRsqrtps352() {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)        
+    __m128i expected = _mm_setr_epi64(_mm_set_pi64x(0x3efff0007f800000l), _mm_set_pi64x(0x3f34f8003d7ff000l));
+    __m128i result;
+    __m128i d1;
+    __m128i d2 = floatTo128(0.0f, 4.0f, 256.0f, 2.0);
+
+    __asm {
+        movups xmm1, d1
+        movups xmm2, d2
+        rsqrtps xmm1, xmm2
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("Rsqrtps failed");
+    }
+#endif
+    // :TODO: not exact match
+#ifdef BOXEDWINE_X64
+    testSse128(0, 0, 0x52, 0x4080000000000000, 0x4000000043800000, 0x4080000000000000l, 0x4000000043800000, 0x3efff0007f800000l, 0x3f34f8003d7ff000);
+#else
+    testSse128(0, 0, 0x52, 0x4080000000000000, 0x4000000043800000, 0x4080000000000000l, 0x4000000043800000, 0x3f0000007f800000, 0x3f3504f33d800000);
+#endif
+}
+
+void testSseRsqrtss352() {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)        
+    __m128i expected = _mm_setr_epi64(_mm_set_pi64x(0x411000003efff000), _mm_set_pi64x(0x4000000043800000));
+    __m128i result;
+    __m128i d1 = floatTo128(4.0f, 9.0f, 256.0f, 2.0);
+
+    __asm {
+        movups xmm1, d1
+        rsqrtss xmm1, xmm1
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("Rsqrtps failed");
+    }
+#endif
+    // :TODO: not exact match
+#ifdef BOXEDWINE_X64
+    testSse128(0, 0xf3, 0x52, 0x4110000040800000, 0x4000000043800000, 0x4110000040800000, 0x4000000043800000, 0x411000003efff000, 0x4000000043800000);
+#else
+    testSse128(0, 0xf3, 0x52, 0x4110000040800000, 0x4000000043800000, 0x4110000040800000, 0x4000000043800000, 0x411000003f000000, 0x4000000043800000);
+#endif
+}
+
+void testSseRcpps353() {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)        
+    __m128i expected = _mm_setr_epi64(_mm_set_pi64x(0x3de380003e7ff000), _mm_set_pi64x(0x412000003b7ff000));
+    __m128i result;
+    __m128i d1 = floatTo128(4.0f, 9.0f, 256.0f, 0.1f);
+
+    __asm {
+        movups xmm1, d1
+        rcpps xmm1, xmm1
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("Rcpps failed");
+    }
+#endif
+    // :TODO: not exact match
+#ifdef BOXEDWINE_X64
+    testSse128(0, 0, 0x53, 0x4110000040800000, 0x3dcccccd43800000, 0x4110000040800000, 0x3dcccccd43800000, 0x3de380003e7ff000, 0x412000003b7ff000);
+#else
+    testSse128(0, 0, 0x53, 0x4110000040800000, 0x3dcccccd43800000, 0x4110000040800000, 0x3dcccccd43800000, 0x3de38e393e800000, 0x412000003b800000);
+#endif
+}
+
+void testSseRcpss353() {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)        
+    __m128i expected = _mm_setr_epi64(_mm_set_pi64x(0x411000003e7ff000), _mm_set_pi64x(0x3dcccccd43800000));
+    __m128i result;
+    __m128i d1 = floatTo128(4.0f, 9.0f, 256.0f, 0.1f);
+
+    __asm {
+        movups xmm1, d1
+        rcpss xmm1, xmm1
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("Rcpps failed");
+    }
+#endif
+    // :TODO: not exact match
+#ifdef BOXEDWINE_X64
+    testSse128(0, 0xf3, 0x53, 0x4110000040800000, 0x3dcccccd43800000, 0x4110000040800000, 0x3dcccccd43800000, 0x411000003e7ff000, 0x3dcccccd43800000);
+#else
+    testSse128(0, 0xf3, 0x53, 0x4110000040800000, 0x3dcccccd43800000, 0x4110000040800000, 0x3dcccccd43800000, 0x411000003e800000, 0x3dcccccd43800000);
+#endif
+}
+
+void testSseAndps354() {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    __m128i d1 = _mm_setr_epi64(_mm_set_pi64x(0x1234567890abcdefl), _mm_set_pi64x(0x24680bdf13579acel));
+    __m128i d2 = _mm_setr_epi64(_mm_set_pi64x(0xaabbccddeeff2468l), _mm_set_pi64x(0x1122334455667788l));
+    __m128i result;
+    __m128i expected = _mm_setr_epi64(_mm_set_pi64x(0x0230445880ab0468), _mm_set_pi64x(0x0020034411461288));
+
+    __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        andps xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("Andps failed");
+    }
+#endif 
+    testSse128(0, 0, 0x54, 0x1234567890abcdefl, 0x24680bdf13579acel, 0xaabbccddeeff2468l, 0x1122334455667788l, 0x0230445880ab0468, 0x0020034411461288);
+}
+
+void testSseAndnps355() {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    __m128i d1 = _mm_setr_epi64(_mm_set_pi64x(0x1234567890abcdefl), _mm_set_pi64x(0x24680bdf13579acel));
+    __m128i d2 = _mm_setr_epi64(_mm_set_pi64x(0xaabbccddeeff2468l), _mm_set_pi64x(0x1122334455667788l));
+    __m128i result;
+    __m128i expected = _mm_setr_epi64(_mm_set_pi64x(0xa88b88856e542000), _mm_set_pi64x(0x1102300044206500));
+
+    __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        andnps xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("Andnps failed");
+    }
+#endif 
+    testSse128(0, 0, 0x55, 0x1234567890abcdefl, 0x24680bdf13579acel, 0xaabbccddeeff2468l, 0x1122334455667788l, 0xa88b88856e542000, 0x1102300044206500);
+}
+
+void testSseOrps356() {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    __m128i d1 = _mm_setr_epi64(_mm_set_pi64x(0x1234567890abcdefl), _mm_set_pi64x(0x24680bdf13579acel));
+    __m128i d2 = _mm_setr_epi64(_mm_set_pi64x(0xaabbccddeeff2468l), _mm_set_pi64x(0x1122334455667788l));
+    __m128i result;
+    __m128i expected = _mm_setr_epi64(_mm_set_pi64x(0xbabfdefdfeffedef), _mm_set_pi64x(0x356a3bdf5777ffce));
+
+    __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        orps xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("Orps failed");
+    }
+#endif 
+    testSse128(0, 0, 0x56, 0x1234567890abcdefl, 0x24680bdf13579acel, 0xaabbccddeeff2468l, 0x1122334455667788l, 0xbabfdefdfeffedef, 0x356a3bdf5777ffce);
+}
+
+void testSseXorps357() {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    __m128i d1 = _mm_setr_epi64(_mm_set_pi64x(0x1234567890abcdefl), _mm_set_pi64x(0x24680bdf13579acel));
+    __m128i d2 = _mm_setr_epi64(_mm_set_pi64x(0xaabbccddeeff2468l), _mm_set_pi64x(0x1122334455667788l));
+    __m128i result;
+    __m128i expected = _mm_setr_epi64(_mm_set_pi64x(0xb88f9aa57e54e987), _mm_set_pi64x(0x354a389b4631ed46));
+
+    __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        xorps xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("Xorps failed");
+    }
+#endif 
+    testSse128(0, 0, 0x57, 0x1234567890abcdefl, 0x24680bdf13579acel, 0xaabbccddeeff2468l, 0x1122334455667788l, 0xb88f9aa57e54e987, 0x354a389b4631ed46);
+}
+
+void testSseAddps358() {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    __m128i d1 = floatTo128(4.0f, 9.0f, -5.0, -0.1f);
+    __m128i d2 = floatTo128(-4.0f, 10.0f, -5.5, 1.0f);
+    __m128i result;
+    __m128i expected = floatTo128(0.0f, 19.0f, -10.5, 0.9f);
+
+    __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        addps xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("Addps failed");
+    }
+#endif 
+    testSse128(0, 0, 0x58, 0x4110000040800000, 0xbdcccccdc0a00000, 0x41200000c0800000, 0x3f800000c0b00000, 0x4198000000000000, 0x3f666666c1280000);
+}
+
 int main(int argc, char **argv) {	
     printf("Please wait, these first 2 tests can take a while\n");
     run(test32BitMemoryAccess, "32-bit Memory Access");
@@ -8649,17 +8906,17 @@ int main(int argc, char **argv) {
     run(testSseComiss32f, "COMISS 32F (sse1)");
 
     run(testSseMovmskps350, "MOVMSKPS 350 (sse1)");
-    // SQRTPS 351 (sse1)
-    // SQRTSS F3 351 (sse1)
-    // RSQRTPS 352 (sse1)
-    // RSQRTSS F3 352 (sse1)
-    // RCPPS 353 (sse1)
-    // RCPSS F3 353 (sse1)
-    // ANDPS 354 (sse1)
-    // ANDNPS 355 (sse1)
-    // ORPS 356 (sse1)
-    // XORPS 357 (sse1)
-    // ADDPS 358 (sse1)
+    run(testSseSqrtps351, "SQRTPS 351 (sse1)");
+    run(testSseSqrtss351, "SQRTSS F3 351 (sse1)");
+    run(testSseRsqrtps352, "RSQRTPS 352 (sse1)");
+    run(testSseRsqrtss352, "RSQRTSS F3 352 (sse1)");
+    run(testSseRcpps353, "RCPPS 353 (sse1)");
+    run(testSseRcpss353, "RCPSS F3 353 (sse1)");
+    run(testSseAndps354, "ANDPS 354 (sse1)");
+    run(testSseAndnps355, "ANDNPS 355 (sse1)");
+    run(testSseOrps356, "ORPS 356 (sse1)");
+    run(testSseXorps357, "XORPS 357 (sse1)");
+    run(testSseAddps358, "ADDPS 358 (sse1)");
     // ADDSS F3 358 (sse1)
     // MULPS 359 (sse1)
     // MULSS F3 359 (sse1)

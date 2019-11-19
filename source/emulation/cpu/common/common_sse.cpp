@@ -26,7 +26,8 @@ void common_addpsXmm(CPU* cpu, U32 r1, U32 r2) {
 
 void common_addpsE128(CPU* cpu, U32 reg, U32 address) {
     simde__m128 value;
-    value.u32[0] = readd(address);
+    value.u64[0] = readq(address);
+    value.u64[1] = readq(address+8);
     cpu->xmm[reg] = simde_mm_add_ps(cpu->xmm[reg], value);
 }
 
@@ -46,7 +47,8 @@ void common_subpsXmm(CPU* cpu, U32 r1, U32 r2) {
 
 void common_subpsE128(CPU* cpu, U32 reg, U32 address) {
     simde__m128 value;
-    value.u32[0] = readd(address);
+    value.u64[0] = readq(address);
+    value.u64[1] = readq(address+8);
     cpu->xmm[reg] = simde_mm_sub_ps(cpu->xmm[reg], value);
 }
 
@@ -66,7 +68,8 @@ void common_mulpsXmm(CPU* cpu, U32 r1, U32 r2) {
 
 void common_mulpsE128(CPU* cpu, U32 reg, U32 address) {
     simde__m128 value;
-    value.u32[0] = readd(address);
+    value.u64[0] = readq(address);
+    value.u64[1] = readq(address+8);
     cpu->xmm[reg] = simde_mm_mul_ps(cpu->xmm[reg], value);
 }
 
@@ -86,7 +89,8 @@ void common_divpsXmm(CPU* cpu, U32 r1, U32 r2) {
 
 void common_divpsE128(CPU* cpu, U32 reg, U32 address) {
     simde__m128 value;
-    value.u32[0] = readd(address);
+    value.u64[0] = readq(address);
+    value.u64[1] = readq(address+8);
     cpu->xmm[reg] = simde_mm_div_ps(cpu->xmm[reg], value);
 }
 
@@ -107,7 +111,7 @@ void common_rcppsXmm(CPU* cpu, U32 r1, U32 r2) {
 void common_rcppsE128(CPU* cpu, U32 reg, U32 address) {
     simde__m128 value;
     value.u64[0] = readq(address);
-    value.u64[1] = readq(address+8);  
+    value.u64[1] = readq(address+8);
     cpu->xmm[reg] = simde_mm_rcp_ps(value);
 }
 
@@ -116,7 +120,7 @@ void common_rcpssXmm(CPU* cpu, U32 r1, U32 r2) {
 }
 
 void common_rcpssE32(CPU* cpu, U32 reg, U32 address) {
-    simde__m128 value;
+    simde__m128 value = cpu->xmm[reg];
     value.u32[0] = readd(address);
     cpu->xmm[reg] = simde_mm_rcp_ss(value);
 }
@@ -137,7 +141,7 @@ void common_sqrtssXmm(CPU* cpu, U32 r1, U32 r2) {
 }
 
 void common_sqrtssE32(CPU* cpu, U32 reg, U32 address) {
-    simde__m128 value;
+    simde__m128 value = cpu->xmm[reg];
     value.u32[0] = readd(address);
     cpu->xmm[reg] = simde_mm_sqrt_ss(value);
 }
@@ -158,7 +162,7 @@ void common_rsqrtssXmm(CPU* cpu, U32 r1, U32 r2) {
 }
 
 void common_rsqrtssE32(CPU* cpu, U32 reg, U32 address) {
-    simde__m128 value;
+    simde__m128 value = cpu->xmm[reg];
     value.u32[0] = readd(address);
     cpu->xmm[reg] = simde_mm_rsqrt_ss(value);
 }

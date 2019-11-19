@@ -4683,8 +4683,8 @@ public:
 
         if (rm>=0xC0) {    
             op->inst = op->repZero?this->reg2:this->reg1;
-            op->reg = E(rm);
-            op->rm = G(rm);
+            op->reg = G(rm);
+            op->rm = E(rm);
         } else {
             op->inst = op->repZero?this->mem2:this->mem1;
             op->reg = G(rm);
