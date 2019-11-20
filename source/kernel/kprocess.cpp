@@ -101,6 +101,8 @@ KProcess::KProcess(U32 id) : id(id),
     for (int i=0;i<6;i++) {
         this->hasSetSeg[i] = false;
     }
+    this->hasSetSeg[GS] = true;
+    this->hasSetSeg[FS] = true;
     KSystem::addProcess(this->id, this);
 
 #ifdef BOXEDWINE_64BIT_MMU
@@ -162,6 +164,8 @@ void KProcess::onExec() {
     for (int i=0;i<6;i++) {
         this->hasSetSeg[i] = false;
     }
+    this->hasSetSeg[GS] = true;
+    this->hasSetSeg[FS] = true;
     this->hasSetStackMask = false;
 }
 
