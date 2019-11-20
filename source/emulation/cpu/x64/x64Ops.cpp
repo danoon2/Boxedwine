@@ -2473,7 +2473,7 @@ X64Decoder x64Decoder[1024] = {
     push16GS, pop16GS, invalidOp, inst16RM, inst16RMimm8, inst16RM, invalidOp, inst16RM,
     // 1b0
     inst8RM, inst16RM, lss16, inst16RM, lfs16, lgs16, inst16E8RM, invalidOp,
-    invalidOp, inst16RMimm8SafeG, inst16RMimm8SafeG, invalidOp, inst16RM, inst16RM, inst16E8RM, invalidOp,
+    invalidOp, invalidOp, inst16RMimm8SafeG, inst16RM, inst16RM, inst16RM, inst16E8RM, invalidOp,
     // 1c0
     invalidOp, invalidOp, sse2Imm8, invalidOp, sseXmmErI8, sseRegXmmI8, sse2E, invalidOp,
     keepSame, keepSame, keepSame, keepSame, bswapSp, keepSame, keepSame, keepSame,

@@ -4691,6 +4691,7 @@ public:
             decodeEa(data, op, rm);
         } 
         op->repZero = false;
+        fetchImm(data, op);
     }
 
 private:
@@ -4744,6 +4745,7 @@ public:
             decodeEa(data, op, rm);
         } 
         op->repZero = false;
+        fetchImm(data, op);
     }
 
 private:
@@ -4799,6 +4801,7 @@ public:
             decodeEa(data, op, rm);
         } 
         op->repZero = false;
+        fetchImm(data, op);
     }
 
 private:
@@ -4860,6 +4863,7 @@ public:
             decodeEa(data, op, rm);
         } 
         op->repZero = false;
+        fetchImm(data, op);
     }
 
 private:
