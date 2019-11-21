@@ -595,7 +595,7 @@ void X64Asm::translateMemory(U32 rm, bool checkG, bool isG8bit, bool isE8bit) {
                         // convert [base + index << shift + disp] to HOST_TMP=SEG+base+disp;HOST_TMP = HOST_TMP + index << shift;[HOST_TMP+MEM]
                         U8 base = (sib & 7);
                         U8 index = (sib >> 3) & 7;
-                        U8 seg = base==4 || base==5?this->ss:this->ds;
+                        U8 seg = (base==4 || base==5)?this->ss:this->ds;
 
                         U32 tmpReg = getTmpReg();
                         U32 disp = (rm<0x80?(S8)this->fetch8():this->fetch32());

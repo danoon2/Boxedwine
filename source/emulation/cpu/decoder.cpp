@@ -3624,7 +3624,7 @@ public:
         if (op->repNotZero) {
             op->inst = f2Reg;
         } else if (op->repZero) {
-            op->inst = f3Reg;
+            op->inst = Nop;// f3Reg;
         } else {
             op->inst = reg;
         }

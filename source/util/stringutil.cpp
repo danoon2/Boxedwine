@@ -40,6 +40,23 @@ bool stringContains(const std::string& str, const std::string& search) {
     return strstr(str.c_str(),search.c_str())!=0;
 }
 
+bool stringContainsIgnoreCase(const std::string& str, const std::string& search) {
+    std::locale loc;
+    auto it = std::search(str.begin(), str.end(), search.begin(),   search.end(), [loc](char ch1, char ch2) { 
+        return std::toupper(ch1, loc) == std::toupper(ch2, loc); 
+    });
+    return (it != str.end() );
+}
+
+bool vectorContainsIgnoreCase(const std::vector<std::string>& strs, const std::string& search) {
+    for (auto& s : strs) {
+        if (stringContainsIgnoreCase(s, search)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 std::string stringJoin(const std::vector<std::string>& v, const std::string& sep) {
     std::string result;
 

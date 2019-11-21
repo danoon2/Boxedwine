@@ -695,8 +695,8 @@ U32 KProcess::execve(const std::string& path, std::vector<std::string>& args, co
     KThread::currentThread()->reset();
     this->onExec();
 
-    // not sure why x64 doesn't catch this in time
-    if (this->name == "winevdm.exe" || std::find(args.begin(), args.end(), "winevdm.exe") != args.end()) {
+    // not sure why x64 doesn't catch setting the CS segment this in time
+    if (stringContainsIgnoreCase(this->name, "winevdm.exe") || vectorContainsIgnoreCase(args, "winevdm.exe")) {
         for (int i=0;i<6;i++) {
             this->hasSetSeg[i] = true;
             this->hasSetStackMask = true;
