@@ -5912,7 +5912,87 @@ void testMmx64(U8 op, U64 value1, U64 value2, U64 result) {
     }    
 }
 
-void testMmx64imm8(U8 op, U64 value1, U64 value2, U64 result, U8 imm8) {
+void testMmx64Eimm8(U8 preOp1, U8 op, U64 value1, U32 value2, U64 result, U8 imm8) {
+    for (U8 m=0;m<8;m++) {
+        for (U8 from=0;from<8;from++) {
+            initMmxTest();            
+            loadMMX(m, 0, value1);
+            for (int i=0;i<8;i++) {
+                cpu->reg[from].u32 = DEFAULT;
+            }
+            cpu->reg[from].u32 = value2;
+            if (preOp1) {
+                pushCode8(preOp1);
+            }
+            pushCode8(0x0f);
+            pushCode8(op);
+            pushCode8(0xC0 | (m << 3) | from);            
+            pushCode8(imm8);
+            runTestCPU();
+            for (U8 m1=0;m1<8;m1++) {
+                if (m1==m || m1==from) {
+                    if (cpu->reg_mmx[m].q!=result) {
+                        failed("mmx failed");
+                    }
+                } else {
+                    if (cpu->reg_mmx[m1].q!=MMX_MEM_VALUE64_DEFAULT) {
+                        failed("mmx failed");
+                    }
+                }
+            }
+        }
+        initMmxTest();         
+        loadMMX(m, 0, value1);
+        writed(cpu->seg[DS].address+MMX_MEM_VALUE_TMP_OFFSET+16, value2);
+        if (preOp1) {
+            pushCode8(preOp1);
+        }
+        pushCode8(0x0f);
+        pushCode8(op);
+        pushCode8(0x04 | (m<<3));
+        pushCode8(0x25);
+        pushCode32(MMX_MEM_VALUE_TMP_OFFSET+16);
+        pushCode8(imm8);
+        runTestCPU();
+        for (U8 m1=0;m1<8;m1++) {
+            if (m1==m) {
+                if (cpu->reg_mmx[m].q!=result) {
+                    failed("mmx failed");
+                }
+            } else {
+                if (cpu->reg_mmx[m1].q!=MMX_MEM_VALUE64_DEFAULT) {
+                    failed("mmx failed");
+                }
+            }
+        }
+    }    
+}
+
+void testRegMmx64imm8(U8 preOp1, U8 op, U32 value1, U64 value2, U32 result, U8 imm8) {
+    for (U8 m=0;m<8;m++) {
+        for (U8 from=0;from<8;from++) {
+            initMmxTest();            
+            loadMMX(from, 0, value2);
+            for (int i=0;i<8;i++) {
+                cpu->reg[from].u32 = DEFAULT;
+            }
+            cpu->reg[m].u32 = value1;
+            if (preOp1) {
+                pushCode8(preOp1);
+            }
+            pushCode8(0x0f);
+            pushCode8(op);
+            pushCode8(0xC0 | (m << 3) | from);            
+            pushCode8(imm8);
+            runTestCPU();
+            if (cpu->reg[m].u32!=result) {
+                failed("mmx failed");
+            }
+        }
+    }    
+}
+
+void testMmx64imm8(U8 preOp1, U8 op, U64 value1, U64 value2, U64 result, U8 imm8) {
     for (U8 m=0;m<8;m++) {
         for (U8 from=0;from<8;from++) {
             if (m==from) {
@@ -5921,6 +6001,9 @@ void testMmx64imm8(U8 op, U64 value1, U64 value2, U64 result, U8 imm8) {
             initMmxTest();            
             loadMMX(m, 0, value1);
             loadMMX(from, 1, value2);
+            if (preOp1) {
+                pushCode8(preOp1);
+            }
             pushCode8(0x0f);
             pushCode8(op);
             pushCode8(0xC0 | (m << 3) | from);            
@@ -5941,6 +6024,9 @@ void testMmx64imm8(U8 op, U64 value1, U64 value2, U64 result, U8 imm8) {
         initMmxTest();         
         loadMMX(m, 0, value1);
         writeq(cpu->seg[DS].address+MMX_MEM_VALUE_TMP_OFFSET+16, value2);
+        if (preOp1) {
+            pushCode8(preOp1);
+        }
         pushCode8(0x0f);
         pushCode8(op);
         pushCode8(0x04 | (m<<3));
@@ -7378,12 +7464,80 @@ void testSse128(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U64 value
             for (U8 m1=0;m1<8;m1++) {
                 if (m1==m) {
                     if (cpu->xmm[m].u64[0]!=memResultl || cpu->xmm[m].u64[1]!=memResulth) {
-                        failed("mmx failed");
+                        failed("sse failed");
                     }
                 } else {
                     if (cpu->xmm[m1].u64[0]!=SSE_MEM_VALUE128_DEFAULT1 || cpu->xmm[m1].u64[1]!=SSE_MEM_VALUE128_DEFAULT2) {
-                        failed("mmx failed");
+                        failed("sse failed");
                     }
+                }
+            }
+        }
+    }    
+}
+
+void testSse128imm(U8 preOp1, U8 preOp2, U8 op, U8 imm, U64 value1l, U64 value1h, U64 value2l, U64 value2h, U64 xmmResultl, U64 xmmResulth) {
+    for (U8 m=0;m<8;m++) {
+        for (U8 from=0;from<8;from++) {
+            if (m==from) {
+                continue;
+            }
+            initSseTest();            
+            loadSSE(m, 0, value1l, value1h);
+            loadSSE(from, 1, value2l, value2h);
+            if (preOp1) {
+                pushCode8(preOp1);
+            }
+            if (preOp2) {
+                pushCode8(preOp2);
+            }
+            pushCode8(0x0f);
+            pushCode8(op);
+            pushCode8(0xC0 | (m << 3) | from);            
+            pushCode8(imm);
+            runTestCPU();
+            for (U8 m1=0;m1<8;m1++) {
+                if (m1==m || m1==from) {
+                    Test_Float f1;
+                    Test_Float t1;
+
+                    t1.i = cpu->xmm[m].u32[0];
+                    f1.i = (U32)xmmResultl;
+                    if (cpu->xmm[m].u64[0]!=xmmResultl || cpu->xmm[m].u64[1]!=xmmResulth) {
+                        failed("sse failed");
+                    }
+                } else {
+                    if (cpu->xmm[m1].u64[0]!=SSE_MEM_VALUE128_DEFAULT1 || cpu->xmm[m1].u64[1]!=SSE_MEM_VALUE128_DEFAULT2) {
+                        failed("sse failed");
+                    }
+                }
+            }
+        }
+        initSseTest();         
+        loadSSE(m, 0, value1l, value1h);
+        writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+16, value2l);
+        writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+24, value2h);
+        if (preOp1) {
+            pushCode8(preOp1);
+        }
+        if (preOp2) {
+            pushCode8(preOp2);
+        }
+        pushCode8(0x0f);
+        pushCode8(op);
+        pushCode8(0x04 | (m<<3));
+        pushCode8(0x25);
+        pushCode32(SSE_MEM_VALUE_TMP_OFFSET+16);
+        pushCode8(imm);
+        runTestCPU();
+        for (U8 m1=0;m1<8;m1++) {
+            if (m1==m) {
+                if (cpu->xmm[m].u64[0]!=xmmResultl || cpu->xmm[m].u64[1]!=xmmResulth) {
+                    failed("sse failed");
+                }
+            } else {
+                if (cpu->xmm[m1].u64[0]!=SSE_MEM_VALUE128_DEFAULT1 || cpu->xmm[m1].u64[1]!=SSE_MEM_VALUE128_DEFAULT2) {
+                    failed("sse failed");
                 }
             }
         }
@@ -8801,7 +8955,312 @@ void testSsePshufw370() {
         failed("failed");
     }
 #endif
-    testMmx64imm8(0x70, d1, d2, expected, 0x1E);
+    testMmx64imm8(0, 0x70, d1, d2, expected, 0x1E);
+}
+
+void testCmpps0x3c2() {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)  
+    __m128i d1 = floatTo128(4.0f, 5.0f, -5.0, -0.1f);
+    __m128i d2 = floatTo128(-8.0f, 20.0f, -5.0, 2.0f);
+    __m128i result;
+    __m128i expected = _mm_setr_epi32(0, 0, -1, 0);
+
+     __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        cmpeqps xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("Cmpps failed");
+    }
+
+    expected = _mm_setr_epi32(0, -1, 0, -1);
+     __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        cmpltps xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("Cmpps failed");
+    }
+
+    expected = _mm_setr_epi32(0, -1, -1, -1);
+     __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        cmpleps xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("Cmpps failed");
+    }
+
+    expected = _mm_setr_epi32(-1, -1, 0, -1);
+     __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        cmpneqps xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("Cmpps failed");
+    }
+
+    expected = _mm_setr_epi32(-1, 0, -1, 0);
+     __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        cmpnltps xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("Cmpps failed");
+    }
+
+    expected = _mm_setr_epi32(-1, 0, 0, 0);
+     __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        cmpnleps xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("Cmpps failed");
+    }
+
+    expected = _mm_setr_epi32(0, -1, 0, 0);
+    d1.m128i_i32[1] = FLOAT_NAN_BITS;
+     __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        cmpunordps xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("Cmpps failed");
+    }
+
+    expected = _mm_setr_epi32(-1, 0, -1, -1);
+     __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        cmpordps xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("Cmpps failed");
+    }
+#endif
+    // cmpeqps
+    testSse128imm(0, 0, 0xc2, 0, 0x40a0000040800000, 0xbdcccccdc0a00000, 0x41a00000c1000000, 0x40000000c0a00000, 0x0000000000000000, 0x00000000ffffffff);
+    // cmpltps
+    testSse128imm(0, 0, 0xc2, 1, 0x40a0000040800000, 0xbdcccccdc0a00000, 0x41a00000c1000000, 0x40000000c0a00000, 0xffffffff00000000, 0xffffffff00000000);
+    // cmpleps
+    testSse128imm(0, 0, 0xc2, 2, 0x40a0000040800000, 0xbdcccccdc0a00000, 0x41a00000c1000000, 0x40000000c0a00000, 0xffffffff00000000, 0xffffffffffffffff);
+    // cmpunordps
+    testSse128imm(0, 0, 0xc2, 3, 0x7fd0000040800000, 0xbdcccccdc0a00000, 0x41a00000c1000000, 0x40000000c0a00000, 0xffffffff00000000, 0x0000000000000000);
+    // cmpneqps
+    testSse128imm(0, 0, 0xc2, 4, 0x40a0000040800000, 0xbdcccccdc0a00000, 0x41a00000c1000000, 0x40000000c0a00000, 0xffffffffffffffff, 0xffffffff00000000);
+    // cmpnltps
+    testSse128imm(0, 0, 0xc2, 5, 0x40a0000040800000, 0xbdcccccdc0a00000, 0x41a00000c1000000, 0x40000000c0a00000, 0x00000000ffffffff, 0x00000000ffffffff);
+    // cmpnleps
+    testSse128imm(0, 0, 0xc2, 6, 0x40a0000040800000, 0xbdcccccdc0a00000, 0x41a00000c1000000, 0x40000000c0a00000, 0x00000000ffffffff, 0x0000000000000000);
+    // cmpordps
+    testSse128imm(0, 0, 0xc2, 7, 0x7fd0000040800000, 0xbdcccccdc0a00000, 0x41a00000c1000000, 0x40000000c0a00000, 0x00000000ffffffff, 0xffffffffffffffff);
+}
+
+void testCmpss0x3c2() {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)  
+    __m128i d1 = floatTo128(4.0f, 5.0f, -5.0, -0.1f);
+    __m128i d2 = floatTo128(-8.0f, 20.0f, -5.0, 2.0f);
+    __m128i result;
+    __m128i expected = _mm_setr_epi64(_mm_set_pi64x(0x40a0000000000000), _mm_set_pi64x(0xbdcccccdc0a00000));
+
+     __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        cmpeqss xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("Cmpps failed");
+    }
+
+    expected = _mm_setr_epi64(_mm_set_pi64x(0x40a0000000000000), _mm_set_pi64x(0xbdcccccdc0a00000));
+     __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        cmpltss xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("Cmpps failed");
+    }
+
+    expected = _mm_setr_epi64(_mm_set_pi64x(0x40a0000000000000), _mm_set_pi64x(0xbdcccccdc0a00000));
+     __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        cmpless xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("Cmpps failed");
+    }
+
+    expected = _mm_setr_epi64(_mm_set_pi64x(0x40a00000ffffffff), _mm_set_pi64x(0xbdcccccdc0a00000));
+     __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        cmpneqss xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("Cmpps failed");
+    }
+
+    expected = _mm_setr_epi64(_mm_set_pi64x(0x40a00000ffffffff), _mm_set_pi64x(0xbdcccccdc0a00000));
+     __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        cmpnltss xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("Cmpps failed");
+    }
+
+    expected = _mm_setr_epi64(_mm_set_pi64x(0x40a00000ffffffff), _mm_set_pi64x(0xbdcccccdc0a00000));
+     __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        cmpnless xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("Cmpps failed");
+    }
+
+    expected = _mm_setr_epi64(_mm_set_pi64x(0x7fd0000000000000), _mm_set_pi64x(0xbdcccccdc0a00000));
+    d1.m128i_i32[1] = FLOAT_NAN_BITS;
+     __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        cmpunordss xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("Cmpps failed");
+    }
+
+    expected = _mm_setr_epi64(_mm_set_pi64x(0x7fd00000ffffffff), _mm_set_pi64x(0xbdcccccdc0a00000));
+     __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        cmpordss xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("Cmpps failed");
+    }
+#endif
+    // cmpeqss
+    testSse128imm(0, 0xf3, 0xc2, 0, 0x40a0000040800000, 0xbdcccccdc0a00000, 0x41a00000c1000000, 0x40000000c0a00000, 0x40a0000000000000, 0xbdcccccdc0a00000);
+    // cmpltss
+    testSse128imm(0, 0xf3, 0xc2, 1, 0x40a0000040800000, 0xbdcccccdc0a00000, 0x41a00000c1000000, 0x40000000c0a00000, 0x40a0000000000000, 0xbdcccccdc0a00000);
+    // cmpless
+    testSse128imm(0, 0xf3, 0xc2, 2, 0x40a0000040800000, 0xbdcccccdc0a00000, 0x41a00000c1000000, 0x40000000c0a00000, 0x40a0000000000000, 0xbdcccccdc0a00000);
+    // cmpunordss
+    testSse128imm(0, 0xf3, 0xc2, 3, 0x7fd0000040800000, 0xbdcccccdc0a00000, 0x41a00000c1000000, 0x40000000c0a00000, 0x7fd0000000000000, 0xbdcccccdc0a00000);
+    // cmpneqss
+    testSse128imm(0, 0xf3, 0xc2, 4, 0x40a0000040800000, 0xbdcccccdc0a00000, 0x41a00000c1000000, 0x40000000c0a00000, 0x40a00000ffffffff, 0xbdcccccdc0a00000);
+    // cmpnltss
+    testSse128imm(0, 0xf3, 0xc2, 5, 0x40a0000040800000, 0xbdcccccdc0a00000, 0x41a00000c1000000, 0x40000000c0a00000, 0x40a00000ffffffff, 0xbdcccccdc0a00000);
+    // cmpnless
+    testSse128imm(0, 0xf3, 0xc2, 6, 0x40a0000040800000, 0xbdcccccdc0a00000, 0x41a00000c1000000, 0x40000000c0a00000, 0x40a00000ffffffff, 0xbdcccccdc0a00000);
+    // cmpordss
+    testSse128imm(0, 0xf3, 0xc2, 7, 0x7fd0000040800000, 0xbdcccccdc0a00000, 0x41a00000c1000000, 0x40000000c0a00000, 0x7fd00000ffffffff, 0xbdcccccdc0a00000);
+}
+
+void testPinsrw3c4() {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)  
+    U64 result;
+    U64 d1 = 0x1111222233334444l;
+    U32 reg = 0x5555;
+    U64 expected = 0x1111555533334444l;
+
+     __asm {
+        __asm movq mm0, d1
+        __asm mov ecx, reg
+        __asm pinsrw mm0, ecx, 2
+        __asm movq result, mm0
+        __asm emms
+    }
+    if (result!=expected) {
+        failed("failed");
+    }
+#endif
+    testMmx64Eimm8(0, 0xc4, 0x1111222233334444l, 0x5555, 0x1111555533334444l, 2);
+}
+
+void testPextrw3c5() {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)  
+    U32 result;
+    U64 d1 = 0x1111222233334444l;
+    U32 reg = 0x12345678;
+    U32 expected = 0x2222;
+
+     __asm {
+        __asm movq mm0, d1
+        __asm mov ecx, reg
+        __asm pextrw ecx, mm0, 2
+        __asm mov result, ecx
+        __asm emms
+    }
+    if (result!=expected) {
+        failed("failed");
+    }
+#endif
+    testRegMmx64imm8(0, 0xc5, 0x12345678, 0x1111222233334444l, 0x2222, 2);
+}
+
+void testShufps3c6() {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    __m128i d1 = _mm_setr_epi32(0x11111111, 0x22222222, 0x33333333, 0x44444444);
+    __m128i d2 = _mm_setr_epi32(0x55555555, 0x66666666, 0x77777777, 0x88888888);
+    __m128i result;
+    __m128i expected = _mm_setr_epi32(0x33333333, 0x44444444, 0x66666666, 0x55555555);
+
+    __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        shufps xmm1, xmm0, 0x1E
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("Shufps failed");
+    }
+#endif 
+    testSse128imm(0, 0, 0xc6, 0x1E, 0x2222222211111111, 0x4444444433333333, 0x6666666655555555, 0x8888888877777777, 0x4444444433333333, 0x5555555566666666);
 }
 
 int main(int argc, char **argv) {	
@@ -9283,15 +9742,11 @@ int main(int argc, char **argv) {
     run(testCmpXchg0x3b1, "CMPXCHG 3b1");
 
     run(testXadd0x3c1, "XADD 3c1");    
-    // CMPPS 3C2 (sse1)
-    // CMPSS F3 3C2 (sse1)
-    // PINSRW 1C4 (sse1)
-    // PINSRW 1C4 (sse1)
-    // PINSRW 3C4 (sse1)
-    // PINSRW 3C4 (sse1)
-    // PEXTRW 1C5 (sse1)
-    // PEXTRW 3C5 (sse1)
-    // SHUFPS 3C6 (sse1)
+    run(testCmpps0x3c2, "CMPPS 3C2 (sse1)");
+    run(testCmpss0x3c2, "CMPSS F3 3C2 (sse1)");
+    run(testPinsrw3c4, "PINSRW 3C4 (sse1)");
+    run(testPextrw3c5, "PEXTRW 3C5 (sse1)");
+    run(testShufps3c6, "SHUFPS 3C6 (sse1)");
 
     run(testMmxPsrlw, "PSRLW 3D1 (mmx)");    
     run(testMmxPsrld, "PSRLD 3D2 (mmx)");    

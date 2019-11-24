@@ -2249,8 +2249,8 @@ static U32 sseXmmErI8(X64Asm* data) {
     return 0;
 }
 
-static U32 sseErMmxI8(X64Asm* data) {
-    data->translateRM(data->fetch8(), false, true, false, false, 8); // check E because it could be a reg
+static U32 sseRegMmxI8(X64Asm* data) {
+    data->translateRM(data->fetch8(), true, false, false, false, 8); // check E because it could be a reg
     return 0;
 }
 
@@ -2573,7 +2573,7 @@ X64Decoder x64Decoder[1024] = {
     inst8RM, inst32RM, lss32, inst32RM, lfs32, lgs32, inst32E8RM, inst32E16RM,
     invalidOp, invalidOp, inst32RMimm8SafeG, inst32RM, inst32RM, inst32RM, inst32E8RM, inst32E16RM,
     // 3c0
-    invalidOp, inst32RM, sseXmmExI8, sse2RegE, sseMmxErI8, sseErMmxI8, sseXmmExI8, inst32RMSafeG,
+    invalidOp, inst32RM, sseXmmExI8, sse2RegE, sseMmxErI8, sseRegMmxI8, sseXmmExI8, inst32RMSafeG,
     keepSame, keepSame, keepSame, keepSame, bswapEsp, keepSame, keepSame, keepSame,
     // 3d0
     invalidOp, mmx, mmx, mmx, sse2E, mmx, sse2, sseErMmx,

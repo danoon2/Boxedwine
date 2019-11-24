@@ -3624,7 +3624,7 @@ public:
         if (op->repNotZero) {
             op->inst = f2Reg;
         } else if (op->repZero) {
-            op->inst = Nop;// f3Reg;
+            op->inst = f3Reg;
         } else {
             op->inst = reg;
         }
@@ -5563,8 +5563,8 @@ DecodeRMr ssePavgwMmx(PavgwMmxMmx, PavgwMmxE64);
 DecodeRMr ssePavgwXmm(PavgwXmmXmm, PavgwXmmE128);
 DecodeRMr ssePsadbwMmx(PsadbwMmxMmx, PsadbwMmxE64);
 DecodeRMr ssePsadbwXmm(PsadbwXmmXmm, PsadbwXmmE128);
-DecodeRM ssePextrwMmx(PextrwR32Mmx, PextrwE16Mmx, 8);
-DecodeRM ssePextrwXmm(PextrwR32Xmm, PextrwE16Xmm, 8);
+DecodeRMr ssePextrwMmx(PextrwR32Mmx, PextrwE16Mmx, 8);
+DecodeRMr ssePextrwXmm(PextrwR32Xmm, PextrwE16Xmm, 8);
 DecodeRMr ssePinsrwMmx(PinsrwMmxR32, PinsrwMmxE16, 8);
 DecodeRMr ssePinsrwXmm(PinsrwXmmR32, PinsrwXmmE16, 8);
 DecodeRMr ssePmaxswMmx(PmaxswMmxMmx, PmaxswMmxE64);
