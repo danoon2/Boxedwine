@@ -2265,7 +2265,7 @@ static U32 sseXmmExI8(X64Asm* data) {
 }
 
 static U32 sseErMmx(X64Asm* data) {
-    data->translateRM(data->fetch8(), false, true, false, false, 0); // check E because it could be a reg
+    data->translateRM(data->fetch8(), true, false, false, false, 0); // check G because it could be a reg
     return 0;
 }
 

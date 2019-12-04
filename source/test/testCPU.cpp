@@ -5912,6 +5912,26 @@ void testMmx64(U8 op, U64 value1, U64 value2, U64 result) {
     }    
 }
 
+void testMmx64Reg(U8 op, U64 value1, U32 value2, U32 result) {
+    for (U8 m=0;m<8;m++) {
+        for (U8 from=0;from<8;from++) {
+            initMmxTest(); 
+            for (int i=0;i<8;i++) {
+                cpu->reg[i].u32 = DEFAULT;
+            }
+            loadMMX(from, 0, value1);
+            cpu->reg[m].u32 = value2;
+            pushCode8(0x0f);
+            pushCode8(op);
+            pushCode8(0xC0 | (m << 3) | from);            
+            runTestCPU();
+            if (cpu->reg[m].u32!=result) {
+                failed("mmx failed");
+            }
+        }
+    }    
+}
+
 void testMmx64Eimm8(U8 preOp1, U8 op, U64 value1, U32 value2, U64 result, U8 imm8) {
     for (U8 m=0;m<8;m++) {
         for (U8 from=0;from<8;from++) {
@@ -9263,6 +9283,49 @@ void testShufps3c6() {
     testSse128imm(0, 0, 0xc6, 0x1E, 0x2222222211111111, 0x4444444433333333, 0x6666666655555555, 0x8888888877777777, 0x4444444433333333, 0x5555555566666666);
 }
 
+void testPmovmskb3d7() {
+    U64 d1 = 0x1122804455667788l;
+    U32 reg = 0x12345678;
+    U32 expected = 0x21;
+
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    U32 result;    
+
+     __asm {
+        __asm movq mm0, d1
+        __asm mov ecx, reg
+        __asm pmovmskb ecx, mm0
+        __asm mov result, ecx
+        __asm emms
+    }
+    if (result!=expected) {
+        failed("failed");
+    }
+#endif
+    testMmx64Reg(0xd7, d1, reg, expected);
+}
+
+void testPmovmskb1d7() {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    __m128i d1 = _mm_setr_epi32(0x11803344, 0xF0559900, 0x77C01177, 0xA0801122);
+    U32 result;
+    U32 reg = 0xdeadbeef;
+    U32 expected = 0x0000c4a4;
+
+    __asm {
+        movups xmm1, d1
+        mov ecx, reg
+        pmovmskb ecx, xmm0
+        mov result, ecx
+        emms
+    }
+    if (result!=expected) {
+        failed("Pmovmskb failed");
+    }
+#endif
+    testSseReg32r(0, 0x66, 0xd7, 0xdeadbeef, 0xF055990011803344, 0xA080112277C01177, 0x0000c4a4, 0xffffffff);
+}
+
 int main(int argc, char **argv) {	
     printf("Please wait, these first 2 tests can take a while\n");
     run(test32BitMemoryAccess, "32-bit Memory Access");
@@ -9752,8 +9815,8 @@ int main(int argc, char **argv) {
     run(testMmxPsrld, "PSRLD 3D2 (mmx)");    
     run(testMmxPsrlq, "PSRLQ 3D3 (mmx)");
     run(testMmxPmullw, "PMULLW 3d5 (mmx)");
-    // PMOVMSKB 1D7 (sse1)
-    // PMOVMSKB 3D7 (sse1)
+    //run(testPmovmskb1d7, "PMOVMSKB 1D7 (sse2)"); // already implemented test
+    run(testPmovmskb3d7, "PMOVMSKB 3D7 (sse1)");
     run(testMmxPsubusb, "PSUBUSB 3d8 (mmx)");
     run(testMmxPsubusw, "PSUBUSB 3d9 (mmx)");
     // PMINUB 1DA (sse1)
