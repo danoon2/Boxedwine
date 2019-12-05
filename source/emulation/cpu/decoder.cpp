@@ -4815,7 +4815,7 @@ private:
 
 class DecodeSSE2custom : public Decode {
 public:
-    DecodeSSE2custom(Instruction reg, Instruction mem, bool reversed1, Instruction f2Reg, Instruction f2Mem, bool reversed2, Instruction f3Reg, Instruction f3Mem, bool revered3) {
+    DecodeSSE2custom(Instruction reg, Instruction mem, bool reversed1, Instruction f2Reg, Instruction f2Mem, bool reversed2, Instruction f3Reg, Instruction f3Mem, bool reversed3) {
         this->reg = reg;
         this->mem = mem;
         this->reversed1 = reversed1;
@@ -4826,7 +4826,7 @@ public:
         this->f3Mem = f3Mem;
         this->reversed3 = reversed3;
     }
-    DecodeSSE2custom(Instruction reg, Instruction mem, bool reversed1, Instruction f2Reg, Instruction f2Mem, bool reversed2, Instruction f3Reg, Instruction f3Mem, bool revered3, U32 imm) : Decode(imm) {
+    DecodeSSE2custom(Instruction reg, Instruction mem, bool reversed1, Instruction f2Reg, Instruction f2Mem, bool reversed2, Instruction f3Reg, Instruction f3Mem, bool reversed3, U32 imm) : Decode(imm) {
         this->reg = reg;
         this->mem = mem;
         this->reversed1 = reversed1;
