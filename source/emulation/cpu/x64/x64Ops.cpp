@@ -2289,8 +2289,8 @@ static U32 sseMmxEm(X64Asm* data) {
     return 0;
 }
 
-static U32 sseEmMmx(X64Asm* data) {
-    data->translateRM(data->fetch8(), false, false, false, false, 0);
+static U32 sseDsEdiMmx(X64Asm* data) {    
+    data->DsEdiMmx(data->fetch8());
     return 0;
 }
 
@@ -2582,7 +2582,7 @@ X64Decoder x64Decoder[1024] = {
     sseMmxEm, mmx, mmx, sseMmxEm, sseMmxEm, mmx, sse2E, sseMmxEm,
     mmx, mmx, sseMmxEm, mmx, mmx, mmx, sseMmxEm, mmx,
     // 3f0
-    invalidOp, mmx, mmx, mmx, sse2E, mmx, sseMmxEm, sseEmMmx,
+    invalidOp, mmx, mmx, mmx, sse2E, mmx, sseMmxEm, sseDsEdiMmx,
     mmx, mmx, mmx, sse2E, mmx, mmx, mmx, invalidOp,
 };
 

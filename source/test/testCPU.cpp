@@ -9326,6 +9326,234 @@ void testPmovmskb1d7() {
     testSseReg32r(0, 0x66, 0xd7, 0xdeadbeef, 0xF055990011803344, 0xA080112277C01177, 0x0000c4a4, 0xffffffff);
 }
 
+void testPminub3da() {
+    U64 d1 = 0x1122804455667788l;
+    U64 d2 = 0x2211704377ff3211l;
+    U64 expected = 0x1111704355663211l;    
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    U64 result;
+
+     __asm {
+        __asm movq mm0, d1
+        __asm movq mm1, d2
+        __asm pminub mm0, mm1
+        __asm movq result, mm0
+        __asm emms
+    }
+    if (result!=expected) {
+        failed("failed");
+    }
+#endif
+    testMmx64(0xda, d1, d2, expected);
+}
+
+void testPmaxub3de() {
+    U64 d1 = 0x1122804455667788l;
+    U64 d2 = 0x2211704377ff3211l;
+    U64 expected = 0x2222804477ff7788l;
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    U64 result;
+
+     __asm {
+        __asm movq mm0, d1
+        __asm movq mm1, d2
+        __asm pmaxub mm0, mm1
+        __asm movq result, mm0
+        __asm emms
+    }
+    if (result!=expected) {
+        failed("failed");
+    }
+#endif
+    testMmx64(0xde, d1, d2, expected);
+}
+
+// :TODO: rounding
+void testPavgb3e0() {
+    U64 d1 = 0x1122804455667788l;
+    U64 d2 = 0x2312704277fe3112l;
+    U64 expected = 0x1a1a784366b2544d;
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    U64 result;
+
+     __asm {
+        __asm movq mm0, d1
+        __asm movq mm1, d2
+        __asm pavgb mm0, mm1
+        __asm movq result, mm0
+        __asm emms
+    }
+    if (result!=expected) {
+        failed("failed");
+    }
+#endif
+    testMmx64(0xe0, d1, d2, expected);
+}
+
+// :TODO: rounding
+void testPavgw3e3() {
+    U64 d1 = 0x1122804455667788l;
+    U64 d2 = 0x2212704277fe3112l;
+    U64 expected = 0x199a784366b2544d;
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    U64 result;
+
+     __asm {
+        __asm movq mm0, d1
+        __asm movq mm1, d2
+        __asm pavgw mm0, mm1
+        __asm movq result, mm0
+        __asm emms
+    }
+    if (result!=expected) {
+        failed("failed");
+    }
+#endif
+    testMmx64(0xe3, d1, d2, expected);
+}
+
+void testPmulhuw3e4() {
+    U64 d1 = 0x1122804455660001l;
+    U64 d2 = 0x2212ffff77fe3112l;
+    U64 expected = 0x0247804328070000;
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    U64 result;
+
+     __asm {
+        __asm movq mm0, d1
+        __asm movq mm1, d2
+        __asm pmulhuw mm0, mm1
+        __asm movq result, mm0
+        __asm emms
+    }
+    if (result!=expected) {
+        failed("failed");
+    }
+#endif
+    testMmx64(0xe4, d1, d2, expected);
+}
+
+void testMovntq3e7() {   
+    for (U8 m=0;m<8;m++) {
+        initMmxTest();      
+        loadMMX(m, 1, MMX_MEM_VALUE64);
+        writeq(cpu->seg[DS].address+MMX_MEM_VALUE_TMP_OFFSET, 0x1111111111111111l);
+        pushCode8(0x0f);
+        pushCode8(0xE7);
+        pushCode8(0x04 | (m<<3));
+        pushCode8(0x25);
+        pushCode32(MMX_MEM_VALUE_TMP_OFFSET);
+        runTestCPU();
+        if (readq(cpu->seg[DS].address+MMX_MEM_VALUE_TMP_OFFSET)!=MMX_MEM_VALUE64) {
+            failed("movntq failed");
+        }
+    }    
+}
+
+void testPminsw3ea() {
+    U64 d1 = 0x11112345ffff8000;
+    U64 d2 = 0x11121234fffe7fff;
+    U64 expected = 0x11111234fffe8000;
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    U64 result;
+
+     __asm {
+        __asm movq mm0, d1
+        __asm movq mm1, d2
+        __asm pminsw mm0, mm1
+        __asm movq result, mm0
+        __asm emms
+    }
+    if (result!=expected) {
+        failed("failed");
+    }
+#endif
+    testMmx64(0xea, d1, d2, expected);
+}
+
+void testPmaxsw3ee() {
+    U64 d1 = 0x11112345ffff8000;
+    U64 d2 = 0x11121234fffe7fff;
+    U64 expected = 0x11122345ffff7fff;
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    U64 result;
+
+     __asm {
+        __asm movq mm0, d1
+        __asm movq mm1, d2
+        __asm pmaxsw mm0, mm1
+        __asm movq result, mm0
+        __asm emms
+    }
+    if (result!=expected) {
+        failed("failed");
+    }
+#endif
+    testMmx64(0xee, d1, d2, expected);
+}
+
+void testPsadbw3f6() {
+    U64 d1 = 0x12112345ffff8000;
+    U64 d2 = 0x11121234fffe7fff;
+    U64 expected = 0x0000000000000125;
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    U64 result;
+
+     __asm {
+        __asm movq mm0, d1
+        __asm movq mm1, d2
+        __asm psadbw mm0, mm1
+        __asm movq result, mm0
+        __asm emms
+    }
+    if (result!=expected) {
+        failed("failed");
+    }
+#endif
+    testMmx64(0xf6, d1, d2, expected);
+}
+
+void testMaskmovq3f7() {
+    U64 d1 = 0x1122334455667788;
+    U64 d2 = 0x807fff00808001f0;
+    U64 expected = 0x1199339955669988;
+    U64 result = 0x9999999999999999;
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)    
+    U64* pResult = &result;
+
+     __asm {
+        __asm movq mm0, d1
+        __asm movq mm1, d2
+        __asm mov edi, pResult
+        __asm maskmovq mm0, mm1
+        __asm emms
+    }
+    if (result!=expected) {
+        failed("failed");
+    }
+#endif
+    for (U8 m=0;m<8;m++) {
+        for (U8 from=0;from<8;from++) {
+            if (m==from) {
+                continue;
+            }            
+            initMmxTest();            
+            loadMMX(m, 0, d1);
+            loadMMX(from, 1, d2);
+            EDI = MMX_MEM_VALUE_TMP_OFFSET+64;
+            writeq(cpu->seg[DS].address+EDI, 0x9999999999999999);
+            pushCode8(0x0f);
+            pushCode8(0xf7);
+            pushCode8(0xC0 | (m << 3) | from);            
+            runTestCPU();
+            result = readq(cpu->seg[DS].address+EDI);
+            if (result!=expected) {
+                failed("maskmovq failed");
+            }
+        }
+    } 
+}
+
 int main(int argc, char **argv) {	
     printf("Please wait, these first 2 tests can take a while\n");
     run(test32BitMemoryAccess, "32-bit Memory Access");
@@ -9819,43 +10047,43 @@ int main(int argc, char **argv) {
     run(testPmovmskb3d7, "PMOVMSKB 3D7 (sse1)");
     run(testMmxPsubusb, "PSUBUSB 3d8 (mmx)");
     run(testMmxPsubusw, "PSUBUSB 3d9 (mmx)");
-    // PMINUB 1DA (sse1)
-    // PMINUB 3DA (sse1)
+    // PMINUB 1DA (sse2)
+    run(testPminub3da, "PMINUB 3DA (sse1)");
     run(testMmxPand, "PAND 3db (mmx)");
     run(testMmxPaddusb, "PADDUSB 3dc (mmx)");
     run(testMmxPaddusw, "PADDUSB 3dd (mmx)");
-    // PMAXUB 1DE (sse1)
-    // PMAXUB 3DE (sse1)
+    // PMAXUB 1DE (sse2)
+    run(testPmaxub3de, "PMAXUB 3DE (sse1)");
     run(testMmxPandn, "PANDN 3df (mmx)");
 
-    // PAVGB 1E0 (sse1)
-    // PAVGB 3E0 (sse1)
+    // PAVGB 1E0 (sse2)
+    run(testPavgb3e0, "PAVGB 3E0 (sse1)");
     run(testMmxPsraw, "PSRAW 3E1 (mmx)");    
     run(testMmxPsrad, "PSRAD 3E2 (mmx)");
-    // PAVGW 1E3 (sse1)
-    // PAVGW 3E3 (sse1)
-    // PMULHUW 1E4 (sse1)
-    // PMULHUW 3E4 (sse1)
+    // PAVGW 1E3 (sse2)
+    run(testPavgw3e3, "PAVGW 3E3 (sse1)");
+    // PMULHUW 1E4 (sse2)
+    run(testPmulhuw3e4, "PMULHUW 3E4 (sse1)");
     run(testMmxPmulhw, "PMULHW 3e5 (mmx)");
-    // MOVNTQ 3E7 (sse1)
+    run(testMovntq3e7, "MOVNTQ 3E7 (sse1)");
     run(testMmxPsubsb, "PSUBSB 3e8 (mmx)");
     run(testMmxPsubsw, "PSUBSW 3e9 (mmx)"); 
-    // PMINSW 1EA (sse1)
-    // PMINSW 3EA (sse1)
+    // PMINSW 1EA (sse2)
+    run(testPminsw3ea, "PMINSW 3EA (sse1)");
     run(testMmxPor, "POR 3eb (mmx)");
     run(testMmxPaddsb, "PADDSB 3ec (mmx)");
     run(testMmxPaddsw, "PADDSW 3ed (mmx)");
     // PMAXSW 1EE (sse1)
-    // PMAXSW 3EE (sse1)
+    run(testPmaxsw3ee, "PMAXSW 3EE (sse1)");
     run(testMmxPxor, "PXOR 3ef (mmx)");
 
     run(testMmxPsllw, "PSLLW 3f1 (mmx)");
     run(testMmxPslld, "PSLLD 3f2 (mmx)");    
     run(testMmxPsllq, "PSLLQ 3f3 (mmx)");
     run(testMmxPmaddwd, "PMULLW 3f5 (mmx)");
-    // PSADBW 1F6 (sse1)
-    // PSADBW 3F6 (sse1)
-    /// MASKMOVQ 3F7 (sse1)
+    // PSADBW 1F6 (sse2)
+    run(testPsadbw3f6, "PSADBW 3F6 (sse1)");
+    run(testMaskmovq3f7, "MASKMOVQ 3F7 (sse1)");
     run(testMmxPsubb, "PSUBB 3f8 (mmx)");
     run(testMmxPsubw, "PSUBW 3f9 (mmx)");
     run(testMmxPsubd, "PSUBD 3fa (mmx)");                

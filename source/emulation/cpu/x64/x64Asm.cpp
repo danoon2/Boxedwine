@@ -2851,6 +2851,18 @@ void X64Asm::bswapSp() {
     write8(0xC8+HOST_ESP);
 }
 
+void X64Asm::DsEdiMmx(U8 rm) {
+    U8 tmpReg = getTmpReg();
+    addWithLea(7, false, 7, false, getRegForSeg(this->ds, tmpReg), true, 0, 0, 4);
+    addWithLea(7, false, 7, false, HOST_MEM, true, 0, 0, 8);
+
+    this->translateRM(rm, false, false, false, false, 0);
+
+    writeToRegFromMem(tmpReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_NEG_MEM, 8, false);
+    addWithLea(7, false, 7, false, tmpReg, true, 0, 0, 8);    
+    addWithLea(7, false, 7, false, getRegForNegSeg(this->ds, tmpReg), true, 0, 0, 4);    
+}
+
 void X64Asm::string32(bool hasSi, bool hasDi) {    
     U8 tmpReg = getTmpReg();
     bool hasSetES = this->cpu->thread->process->hasSetSeg[ES];
@@ -2876,7 +2888,7 @@ void X64Asm::string32(bool hasSi, bool hasDi) {
     tmpReg = getTmpReg();
     writeToRegFromMem(tmpReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_NEG_MEM, 8, false);
     if (hasSi) {
-        addWithLea(6, false, 6, false, tmpReg, true, 0, 0, 8);    
+        addWithLea(6, false, 6, false, tmpReg, true, 0, 0, 8);
     }
     if (hasDi) {
         addWithLea(7, false, 7, false, tmpReg, true, 0, 0, 8);
