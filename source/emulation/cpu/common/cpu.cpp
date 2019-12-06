@@ -61,8 +61,8 @@ void CPU::reset() {
         this->reg[i].u32 = 0;
     }
     for (int i=0;i<8;i++) {
-        this->xmm[i].u64[0] = 0;
-        this->xmm[i].u64[1] = 0;
+        this->xmm[i].pi.u64[0] = 0;
+        this->xmm[i].pi.u64[1] = 0;
     }
     this->lazyFlags = 0;
     this->big = 1;

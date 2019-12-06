@@ -28,4 +28,8 @@
 #define SSE_RR_I8(name) void OPCALL normal_##name(CPU* cpu, DecodedOp* op) {START_OP(cpu, op); common_##name(cpu, op->reg, op->rm, (U8)op->imm);NEXT();}
 #undef SSE_RE_I8
 #define SSE_RE_I8(name) void OPCALL normal_##name(CPU* cpu, DecodedOp* op) {START_OP(cpu, op); common_##name(cpu, op->reg, eaa(cpu, op), (U8)op->imm);NEXT();}
+
+#undef SSE_RR_EDI
+#define SSE_RR_EDI(name) void OPCALL normal_##name(CPU* cpu, DecodedOp* op) {START_OP(cpu, op); common_##name(cpu, op->reg, op->rm, EDI+cpu->seg[op->base].address);NEXT();}
+
 #include "../common/common_sse_def.h"

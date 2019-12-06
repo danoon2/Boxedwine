@@ -22,8 +22,8 @@ void syncFromException(struct _EXCEPTION_POINTERS *ep, bool includeFPU) {
     cpu->flags = ep->ContextRecord->EFlags;
     cpu->lazyFlags = FLAGS_NONE;
     for (int i=0;i<8;i++) {
-        cpu->xmm[i].u64[0] = ep->ContextRecord->FltSave.XmmRegisters[i].Low;
-        cpu->xmm[i].u64[1] = ep->ContextRecord->FltSave.XmmRegisters[i].High;
+        cpu->xmm[i].pi.u64[0] = ep->ContextRecord->FltSave.XmmRegisters[i].Low;
+        cpu->xmm[i].pi.u64[1] = ep->ContextRecord->FltSave.XmmRegisters[i].High;
     }
 
     if (includeFPU && !cpu->thread->process->emulateFPU) {
@@ -57,8 +57,8 @@ void syncToException(struct _EXCEPTION_POINTERS *ep, bool includeFPU) {
     cpu->fillFlags();
     ep->ContextRecord->EFlags = cpu->flags;
     for (int i=0;i<8;i++) {
-        ep->ContextRecord->FltSave.XmmRegisters[i].Low = cpu->xmm[i].u64[0];
-        ep->ContextRecord->FltSave.XmmRegisters[i].High = cpu->xmm[i].u64[1];
+        ep->ContextRecord->FltSave.XmmRegisters[i].Low = cpu->xmm[i].pi.u64[0];
+        ep->ContextRecord->FltSave.XmmRegisters[i].High = cpu->xmm[i].pi.u64[1];
     }
     if (includeFPU && !cpu->thread->process->emulateFPU) {
         ep->ContextRecord->FltSave.ControlWord = cpu->fpu.CW();

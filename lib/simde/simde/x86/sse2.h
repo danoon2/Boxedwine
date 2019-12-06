@@ -3762,7 +3762,7 @@ simde_mm_lfence (void) {
 #if defined(SIMDE_SSE2_NATIVE)
   _mm_lfence();
 #else
-  simde_mm_sfence();
+  //simde_mm_sfence();
 #endif
 }
 
@@ -3772,7 +3772,7 @@ simde_mm_mfence (void) {
 #if defined(SIMDE_SSE2_NATIVE)
   _mm_mfence();
 #else
-  simde_mm_sfence();
+  //simde_mm_sfence();
 #endif
 }
 

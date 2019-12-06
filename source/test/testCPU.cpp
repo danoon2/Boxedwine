@@ -177,8 +177,8 @@ void runTestCPU() {
         c->reg_mmx[i].q = *((U64*)(c->fpuState+32+i*16));
     }
     for (int i=0;i<8;i++) {
-        c->xmm[i].u64[0] = *((U64*)(c->fpuState+160+i*16));
-        c->xmm[i].u64[1] = *((U64*)(c->fpuState+160+i*16+8));
+        c->xmm[i].pi.u64[0] = *((U64*)(c->fpuState+160+i*16));
+        c->xmm[i].pi.u64[1] = *((U64*)(c->fpuState+160+i*16+8));
     }
 #endif
 }
@@ -7451,13 +7451,13 @@ void testSse128(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U64 value
                         Test_Float f1;
                         Test_Float t1;
 
-                        t1.i = cpu->xmm[m].u32[0];
+                        t1.i = cpu->xmm[m].pi.u32[0];
                         f1.i = (U32)xmmResultl;
-                        if (cpu->xmm[m].u64[0]!=xmmResultl || cpu->xmm[m].u64[1]!=xmmResulth) {
+                        if (cpu->xmm[m].pi.u64[0]!=xmmResultl || cpu->xmm[m].pi.u64[1]!=xmmResulth) {
                             failed("sse failed");
                         }
                     } else {
-                        if (cpu->xmm[m1].u64[0]!=SSE_MEM_VALUE128_DEFAULT1 || cpu->xmm[m1].u64[1]!=SSE_MEM_VALUE128_DEFAULT2) {
+                        if (cpu->xmm[m1].pi.u64[0]!=SSE_MEM_VALUE128_DEFAULT1 || cpu->xmm[m1].pi.u64[1]!=SSE_MEM_VALUE128_DEFAULT2) {
                             failed("sse failed");
                         }
                     }
@@ -7483,11 +7483,11 @@ void testSse128(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U64 value
             runTestCPU();
             for (U8 m1=0;m1<8;m1++) {
                 if (m1==m) {
-                    if (cpu->xmm[m].u64[0]!=memResultl || cpu->xmm[m].u64[1]!=memResulth) {
+                    if (cpu->xmm[m].pi.u64[0]!=memResultl || cpu->xmm[m].pi.u64[1]!=memResulth) {
                         failed("sse failed");
                     }
                 } else {
-                    if (cpu->xmm[m1].u64[0]!=SSE_MEM_VALUE128_DEFAULT1 || cpu->xmm[m1].u64[1]!=SSE_MEM_VALUE128_DEFAULT2) {
+                    if (cpu->xmm[m1].pi.u64[0]!=SSE_MEM_VALUE128_DEFAULT1 || cpu->xmm[m1].pi.u64[1]!=SSE_MEM_VALUE128_DEFAULT2) {
                         failed("sse failed");
                     }
                 }
@@ -7521,13 +7521,13 @@ void testSse128imm(U8 preOp1, U8 preOp2, U8 op, U8 imm, U64 value1l, U64 value1h
                     Test_Float f1;
                     Test_Float t1;
 
-                    t1.i = cpu->xmm[m].u32[0];
+                    t1.i = cpu->xmm[m].pi.u32[0];
                     f1.i = (U32)xmmResultl;
-                    if (cpu->xmm[m].u64[0]!=xmmResultl || cpu->xmm[m].u64[1]!=xmmResulth) {
+                    if (cpu->xmm[m].pi.u64[0]!=xmmResultl || cpu->xmm[m].pi.u64[1]!=xmmResulth) {
                         failed("sse failed");
                     }
                 } else {
-                    if (cpu->xmm[m1].u64[0]!=SSE_MEM_VALUE128_DEFAULT1 || cpu->xmm[m1].u64[1]!=SSE_MEM_VALUE128_DEFAULT2) {
+                    if (cpu->xmm[m1].pi.u64[0]!=SSE_MEM_VALUE128_DEFAULT1 || cpu->xmm[m1].pi.u64[1]!=SSE_MEM_VALUE128_DEFAULT2) {
                         failed("sse failed");
                     }
                 }
@@ -7552,11 +7552,11 @@ void testSse128imm(U8 preOp1, U8 preOp2, U8 op, U8 imm, U64 value1l, U64 value1h
         runTestCPU();
         for (U8 m1=0;m1<8;m1++) {
             if (m1==m) {
-                if (cpu->xmm[m].u64[0]!=xmmResultl || cpu->xmm[m].u64[1]!=xmmResulth) {
+                if (cpu->xmm[m].pi.u64[0]!=xmmResultl || cpu->xmm[m].pi.u64[1]!=xmmResulth) {
                     failed("sse failed");
                 }
             } else {
-                if (cpu->xmm[m1].u64[0]!=SSE_MEM_VALUE128_DEFAULT1 || cpu->xmm[m1].u64[1]!=SSE_MEM_VALUE128_DEFAULT2) {
+                if (cpu->xmm[m1].pi.u64[0]!=SSE_MEM_VALUE128_DEFAULT1 || cpu->xmm[m1].pi.u64[1]!=SSE_MEM_VALUE128_DEFAULT2) {
                     failed("sse failed");
                 }
             }
@@ -7640,11 +7640,11 @@ void testSse128r(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U64 valu
                 runTestCPU();
                 for (U8 m1=0;m1<8;m1++) {
                     if (m1==m || m1==from) {
-                        if (cpu->xmm[m].u64[0]!=xmmResultl || cpu->xmm[m].u64[1]!=xmmResulth) {
+                        if (cpu->xmm[m].pi.u64[0]!=xmmResultl || cpu->xmm[m].pi.u64[1]!=xmmResulth) {
                             failed("sse failed");
                         }
                     } else {
-                        if (cpu->xmm[m1].u64[0]!=SSE_MEM_VALUE128_DEFAULT1 || cpu->xmm[m1].u64[1]!=SSE_MEM_VALUE128_DEFAULT2) {
+                        if (cpu->xmm[m1].pi.u64[0]!=SSE_MEM_VALUE128_DEFAULT1 || cpu->xmm[m1].pi.u64[1]!=SSE_MEM_VALUE128_DEFAULT2) {
                             failed("sse failed");
                         }
                     }
@@ -7696,7 +7696,7 @@ void testSseMmx64(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U64 val
             pushCode8(0xC0 | (m << 3) | from);            
             runTestCPU();
 
-            if (cpu->xmm[m].u64[0]!=xmmResultl || cpu->xmm[m].u64[1]!=xmmResulth) {
+            if (cpu->xmm[m].pi.u64[0]!=xmmResultl || cpu->xmm[m].pi.u64[1]!=xmmResulth) {
                 failed("sse failed");
             }
         }
@@ -7716,7 +7716,7 @@ void testSseMmx64(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U64 val
         pushCode8(0x25);
         pushCode32(SSE_MEM_VALUE_TMP_OFFSET+16);
         runTestCPU();
-        if (cpu->xmm[m].u64[0]!=xmmResultl || cpu->xmm[m].u64[1]!=xmmResulth) {
+        if (cpu->xmm[m].pi.u64[0]!=xmmResultl || cpu->xmm[m].pi.u64[1]!=xmmResulth) {
             failed("sse failed");
         }
     }    
@@ -7783,7 +7783,7 @@ void testSseReg32(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U32 val
             pushCode8(0xC0 | (m << 3) | from);            
             runTestCPU();
 
-            if (cpu->xmm[m].u64[0]!=xmmResultl || cpu->xmm[m].u64[1]!=xmmResulth) {
+            if (cpu->xmm[m].pi.u64[0]!=xmmResultl || cpu->xmm[m].pi.u64[1]!=xmmResulth) {
                 failed("sse failed");
             }
         }
@@ -7803,7 +7803,7 @@ void testSseReg32(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U32 val
         pushCode8(0x25);
         pushCode32(SSE_MEM_VALUE_TMP_OFFSET+16);
         runTestCPU();
-        if (cpu->xmm[m].u64[0]!=xmmResultl || cpu->xmm[m].u64[1]!=xmmResulth) {
+        if (cpu->xmm[m].pi.u64[0]!=xmmResultl || cpu->xmm[m].pi.u64[1]!=xmmResulth) {
             failed("sse failed");
         }
     }    

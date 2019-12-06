@@ -29,6 +29,7 @@
 #include "normal_bit.h"
 #include "normal_mmx.h"
 #include "normal_sse.h"
+#include "normal_sse2.h"
 #include "normal_fpu.h"
 #include "normal_other.h"
 #include "normal_jump.h"
@@ -59,6 +60,7 @@ static void initNormalOps() {
 #include "../common/cpu_init.h"
 #include "../common/cpu_init_mmx.h"
 #include "../common/cpu_init_sse.h"
+#include "../common/cpu_init_sse2.h"
 #include "../common/cpu_init_fpu.h"
 #undef INIT_CPU    
     

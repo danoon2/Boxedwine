@@ -160,7 +160,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>BOXEDWINE_DYNAMIC32;BOXEDWINE_DYNAMIC;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;LOG_SYSCALLS;BOXEDWINE_HAS_SETJMP;BOXEDWINE_ZLIB;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_MSVC;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_MIDI;BOXEDWINE_RECORDER;LOG_SYSCALLS;BOXEDWINE_HAS_SETJMP;BOXEDWINE_ZLIB;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_MSVC;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -169,8 +169,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <BufferSecurityCheck>true</BufferSecurityCheck>
       <EnablePREfast>true</EnablePREfast>
-      <UndefinePreprocessorDefinitions>
-      </UndefinePreprocessorDefinitions>
+      <UndefinePreprocessorDefinitions>BOXEDWINE_DYNAMIC32;BOXEDWINE_DYNAMIC;</UndefinePreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -187,13 +186,14 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>BOXEDWINE_DYNAMIC32;BOXEDWINE_DYNAMIC;BOXEDWINE_ZLIB;__TEST;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;_NO_DEBUG_HEAP=0;BOXEDWINE_MSVC;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_ZLIB;__TEST;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;_NO_DEBUG_HEAP=0;BOXEDWINE_MSVC;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <PrecompiledHeaderFile>boxedwine.h</PrecompiledHeaderFile>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <UndefinePreprocessorDefinitions>BOXEDWINE_DYNAMIC32;BOXEDWINE_DYNAMIC;</UndefinePreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -424,12 +424,16 @@
     <ClInclude Include="..\..\..\..\source\emulation\cpu\common\common_other.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\common\common_pushpop.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\common\common_sse.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\common\common_sse2.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\common\common_sse2_def.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\common\common_sse_def.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\common\common_xchg.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\common\cpu.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\common\cpu_init.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\common\cpu_init_fpu.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\common\cpu_init_mmx.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\common\cpu_init_sse.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\common\cpu_init_sse2.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\common\fpu.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\common\lazyFlags.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic.h" />
@@ -465,6 +469,7 @@
     <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_shift.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_shift_op.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_sse.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_sse2.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_strings.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_strings_op.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_xchg.h" />
@@ -561,6 +566,7 @@
     <ClCompile Include="..\..\..\..\source\emulation\cpu\common\common_other.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\common\common_pushpop.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\common\common_sse.cpp" />
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\common\common_sse2.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\common\common_xchg.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\common\cpu.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\common\fpu.cpp" />

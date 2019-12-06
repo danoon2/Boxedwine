@@ -331,6 +331,9 @@
     <ClCompile Include="..\..\..\..\source\emulation\cpu\common\common_sse.cpp">
       <Filter>source\emulation\cpu\common</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\common\common_sse2.cpp">
+      <Filter>source\emulation\cpu\common</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -767,6 +770,21 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_sse.h">
       <Filter>source\emulation\cpu\dynamic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\common\common_sse2.h">
+      <Filter>source\emulation\cpu\common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\common\common_sse2_def.h">
+      <Filter>source\emulation\cpu\common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\common\cpu_init_sse.h">
+      <Filter>source\emulation\cpu\common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\common\cpu_init_sse2.h">
+      <Filter>source\emulation\cpu\common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_sse2.h">
+      <Filter>source\emulation\cpu\normal</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

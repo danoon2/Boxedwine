@@ -6,6 +6,7 @@
 #include "fpu.h"
 #include "../decoder.h"
 #include "../../../../lib/simde/simde/x86/sse.h"
+#include "../../../../lib/simde/simde/x86/sse2.h"
 
 typedef void (*Int99Callback)(CPU* cpu);
 extern Int99Callback* int99Callback;
@@ -202,6 +203,12 @@ struct user_desc {
 class KThread;
 class Memory;
 
+union SSE {
+    simde__m128 ps;
+    simde__m128d pd;
+    simde__m128i pi;
+};
+
 class CPU {
 public:
     static CPU* allocCPU();
@@ -215,7 +222,7 @@ public:
     U32 big;
     U8* reg8[9];
     MMX_reg reg_mmx[8];
-    simde__m128 xmm[8]; // :TODO: alignment?
+    SSE xmm[8]; // :TODO: alignment?
 
     Reg  src;
     Reg  dst;

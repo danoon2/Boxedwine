@@ -5928,7 +5928,7 @@ void DecodedOp::init() {
     this->imm = 0;
     this->reg = 0;
     this->rm = 0;
-    this->base = 0;
+    this->base = DS;
     this->sibIndex = 0;
     this->sibScale = 0;
     this->len = 0;
