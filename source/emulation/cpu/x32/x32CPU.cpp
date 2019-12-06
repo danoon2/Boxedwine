@@ -176,6 +176,7 @@ void incrementEip(U32 inc);
 #include "../dynamic/dynamic_other.h"
 #include "../dynamic/dynamic_mmx.h"
 #include "../dynamic/dynamic_sse.h"
+#include "../dynamic/dynamic_sse2.h"
 #include "../dynamic/dynamic_fpu.h"
 
 static U8* outBuffer;
@@ -330,7 +331,7 @@ void calculateEaa(DecodedOp* op, DynReg reg) {
     }
 }
 
-void movToRegFromRegSignExtend(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidth, bool doneWithSrcReg) {
+void movToRegFromRegSignExtend(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidth, bool doneWithSrcReg) {    
     regUsed[dst] = true;
     if (dstWidth<=srcWidth) {
         movToRegFromReg(dst, dstWidth, src, srcWidth, doneWithSrcReg);
@@ -417,7 +418,7 @@ void movToRegFromReg(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidt
     }
 }
 
-void movToRegFromCpu(DynReg reg, U32 srcOffset, DynWidth width) {
+void movToRegFromCpu(DynReg reg, U32 srcOffset, DynWidth width) {    
     regUsed[reg] = true;
     // mov reg, [edi+srcOffset]    
     if (width == DYN_32bit) {

@@ -451,6 +451,7 @@
     <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_setcc.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_shift.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_sse.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_sse2.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_strings.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_xchg.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\instructions.h" />
