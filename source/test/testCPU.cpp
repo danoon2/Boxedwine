@@ -29,6 +29,7 @@
 #include "testCPU.h"
 #include "testMMX.h"
 #include "testSSE.h"
+#include "testSSE2.h"
 
 static int cseip;
 
@@ -6834,6 +6835,8 @@ int main(int argc, char **argv) {
     run(testPopEw0x08f, "Pop 08f");
     run(testPopEd0x28f, "Pop 28f");
 
+    // Pause 290 (SSE2)
+
     run(testXchgCxAx0x091,   "Xchg 091");
     run(testXchgEcxEax0x291, "Xchg 291");
     run(testXchgDxAx0x092,   "Xchg 092");
@@ -6957,18 +6960,27 @@ int main(int argc, char **argv) {
     run(testGrp50x0ff, "Grp5 0ff");
     run(testGrp50x2ff, "Grp5 2ff");
     
+    run(testSse2MovUps110, "MOVUPD 110 (sse2)");
     run(testSseMovUps310, "MOVUPS 310 (sse1)");
+    run(testSse2MovSd310, "MOVSD F2 310 (sse2)");
     run(testSseMovSs310, "MOVSS F3 310 (sse1)");
+    run(testSse2MovPd111, "MOVUPD 111 (sse2)");
     run(testSseMovUps311, "MOVUPS 311 (sse1)");
+    run(testSse2MovSd311, "MOVSD F2 311 (sse2)");
     run(testSseMovSs311, "MOVSS F3 311 (sse1)");
-
+    run(testSse2MovLpd112, "MOVLPD 112 (sse2)");
     run(testSseMovHlps312, "MOVHLPS 312 (sse1)");
-    run(testSseMovLps312, "MOVHLPS 312 (sse1)");
-    run(testSseMovLps313, "MOVHLPS 313 (sse1)");
+    run(testSseMovLps312, "MOVLPS 312 (sse1)");
+    run(testSse2MovLpd113, "MOVLPD 113 (sse2)");
+    run(testSseMovLps313, "MOVLPS 313 (sse1)");
+    run(testSse2Unpcklpd114, "UNPCKLPD 114 (sse2)");
     run(testSseUnpcklps314, "UNPCKLPS 314 (sse1)");
+    run(testSse2Unpckhpd115, "UNPCKHPD 115 (sse2)");
     run(testSseUnpckhps315, "UNPCKHPS 315 (sse1)");
+    run(testSse2Movhpd116, "MOVHPD 116 (sse2)");
     run(testSseMovlhps316, "MOVLHPS 316 (sse1)");
     run(testSseMovhps316, "MOVHPS 316 (sse1)");
+    // MOVHPD 117 (sse2)
     run(testSseMovhps317, "MOVHPS 317 (sse1)");
     // PREFETCHNTA 318/0 (sse1)
     // PREFETCHT0 318/1 (sse1)
@@ -6979,72 +6991,146 @@ int main(int argc, char **argv) {
     // HINT_NOP 318/6 (sse1)
     // HINT_NOP 318/7 (sse1)
 
+    // MOVAPD 128 (sse2)
     run(testSseMovaps328, "MOVAPS 328 (sse1)");
+    // MOVAPD 129 (sse2)
     run(testSseMovaps329, "MOVAPS 329 (sse1)");
+    // CVTPI2PD 12A (sse2)
     run(testSseCvtpi2ps32a, "CVTPI2PS 32A (sse1)");
+    // CVTSI2SD F2 32A (sse2)
     run(testSseCvtsi2ss32a, "CVTSI2SS F3 32A (sse1)");
+    // MOVNTPD 12B (sse2)
     run(testSseMovntps32b, "MOVNTPS 32B (sse1)");
+    // CVTTPD2PI 12C (sse2)
     run(testSseCvttps2pi32c, "CVTTPS2PI 32C (sse1)");
+    // CVTTSD2SI F2 32C (sse2)
     run(testSseCvttss2si32c, "CVTTSS2SI F3 32C (sse1)");
+    // CVTPD2PI 12D (sse2)
     run(testSseCvtps2pi32d, "CVTPS2PI 32D (sse1)");
+    // CVTSD2SI F2 32D (sse2)
     run(testSseCvtss2si32d, "CVTSS2SI F3 32D (sse1)");
+    // UCOMISD 12E (sse2)
     run(testSseUcomiss32e, "UCOMISS 32E (sse1)");
+    // COMISD 12F (sse2)
     run(testSseComiss32f, "COMISS 32F (sse1)");
 
+    // MOVMSKPD 150 (sse2)
     run(testSseMovmskps350, "MOVMSKPS 350 (sse1)");
+    // SQRTPD 151 (sse2)
     run(testSseSqrtps351, "SQRTPS 351 (sse1)");
+    // SQRTSD F2 351 (sse2)
     run(testSseSqrtss351, "SQRTSS F3 351 (sse1)");
     run(testSseRsqrtps352, "RSQRTPS 352 (sse1)");
     run(testSseRsqrtss352, "RSQRTSS F3 352 (sse1)");
     run(testSseRcpps353, "RCPPS 353 (sse1)");
     run(testSseRcpss353, "RCPSS F3 353 (sse1)");
+    // ANDPD 154 (sse2)
     run(testSseAndps354, "ANDPS 354 (sse1)");
+    // ANDNPD 155 (sse2)
     run(testSseAndnps355, "ANDNPS 355 (sse1)");
+    // ORPD 156 (sse2)
     run(testSseOrps356, "ORPS 356 (sse1)");
+    // XORPD 157 (sse2)
     run(testSseXorps357, "XORPS 357 (sse1)");
+    //ADDPD 158 (sse2)
     run(testSseAddps358, "ADDPS 358 (sse1)");
+    // ADDSD F2 358 (sse2)
     run(testSseAddss358, "ADDSS F3 358 (sse1)");
+    // MULPD 159 (sse2)
     run(testSseMulps359, "MULPS 359 (sse1)");
+    // MULSD F2 359 (sse2)
     run(testSseMulss359, "MULSS F3 359 (sse1)");
+    // CVTPD2PS 15A (sse2)
+    // CVTPS2PD 35A (sse2)
+    // CVTSD2SS F2 35A (sse2)
+    // CVTSS2SD F3 35A (sse2)
+    // CVTPS2DQ 15B (sse2)
+    // CVTDQ2PS 35B (sse2)
+    // CVTTPS2DQ F3 35B (sse2)
+    // SUBPD 15C (sse2)
     run(testSseSubps35c, "SUBPS 35C (sse1)");
+    // SUBSD F2 35C (sse2)
     run(testSseSubss35c, "SUBSS F3 35C (sse1)");
+    // MINPD 15D (sse2)
     run(testSseMinps35d, "MINPS 35D (sse1)");
+    // MINSD F2 35D (sse2)
     run(testSseMinss35d, "MINSS F3 35D (sse1)");
+    // DIVPD 15E (sse2)
     run(testSseDivps35e, "DIVPS 35E (sse1)");
+    // DIVSD F2 35E (sse2)
     run(testSseDivss35e, "DIVSS F3 35E (sse1)");
+    // MAXPD 15F (sse2)
     run(testSseMaxps35f, "MAXPS 35F (sse1)");
+    // MAXSD F2 35F (sse2)
     run(testSseMaxss35f, "MAXSS F3 35F (sse1)");
 
+    // PUNPCKLBW 160 (sse2)
     run(testMmxPunpcklbw, "PUNPCKLBW 360 (mmx)");
+    // PUNPCKLWD 161 (sse2)
     run(testMmxPunpcklwd, "PUNPCKLWD 361 (mmx)");
+    // PUNPCKLDQ 162 (sse2)
     run(testMmxPunpckldq, "PUNPCKLDQ 362 (mmx)");
+    // PACKSSWB 163 (sse2)
     run(testMmxPacksswb, "PACKSSWB 363 (mmx)");
+    // PCMPGTB 164 (sse2)
     run(testMmxPcmpgtb, "PCMPGTB 364 (mmx)");
+    // PCMPGTW 165 (sse2)
     run(testMmxPcmpgtw, "PCMPGTW 365 (mmx)");
+    // PCMPGTD 166 (sse2)
     run(testMmxPcmpgtd, "PCMPGTD 366 (mmx)");
+    // PACKUSWB 167 (sse2)
     run(testMmxPackuswb, "PACKUSWB 367 (mmx)");
+    // PUNPCKHBW 168 (sse2)
     run(testMmxPunpckhbw, "PUNPCKHBW 368 (mmx)");
+    // PUNPCKHWD 169 (sse2)
     run(testMmxPunpckhwd, "PUNPCKHWD 369 (mmx)");
+    // PUNPCKHDQ 16A (sse2)
     run(testMmxPunpckhdq, "PUNPCKHDQ 36a (mmx)");
+    // PACKSSDW 16B (sse2)
     run(testMmxPackssdw, "PACKSSDW 36b (mmx)");            
-    run(testMmxMovdToMmx, "MOVD 36e (mmx)");        
+    // PUNPCKLQDQ 16C (sse2)
+    run(testMmxMovdToMmx, "MOVD 36e (mmx)");
+    // PUNPCKHQDQ 16D (sse2)
+    // MOVD 16E (sse2)
+    // MOVDQA 16F (sse2)
     run(testMmxMovqToMmx, "MOVQ 36f (mmx)");
-    
+    // MOVDQU F3 36F (sse2)
+
+    // PSHUFD 170 (sse2)
     run(testSsePshufw370, "PSHUFW 370 (sse1)");
+    // PSHUFLW F2 370 (sse2)
+    // PSHUFHW F3 370 (sse2)
+    // PSRLW 171/2 (sse2)
     run(testMmxPsrlwImm8, "PSRLW 371/2 (mmx)");
+    // PSRAW 171/4 (sse2)
     run(testMmxPsrawImm8, "PSRAW 371/4 (mmx)");
+    // PSLLW 171/6 (sse2)
     run(testMmxPsllwImm8, "PSLLW 371/6 (mmx)");
+    // PSRLD 172/2 (sse2)
     run(testMmxPsrldImm8, "PSRLD 372/2 (mmx)");
+    // PSRAD 172/4 (sse2)
     run(testMmxPsradImm8, "PSRAD 372/4 (mmx)");
+    // PSLLD 172/6 (sse2)
     run(testMmxPslldImm8, "PSLLD 372/6 (mmx)");
+    // PSRLQ 173/2 (sse2)
     run(testMmxPsrlqImm8, "PSRLQ 373/2 (mmx)");
+    // PSRLDQ 173/3 (sse2)
+    // PSLLQ 173/6 (sse2)
     run(testMmxPsllqImm8, "PSLLQ 373/6 (mmx)");    
+    // PSLLDQ 173/7 (sse2)
+    // PCMPEQB 174 (sse2)
     run(testMmxPcmpeqb, "PCMPEQB 374 (mmx)");
+    // PCMPEQW 175 (sse2)
     run(testMmxPcmpeqw, "PCMPEQW 375 (mmx)");
+    // PCMPEQD 176 (sse2)
     run(testMmxPcmpeqd, "PCMPEQD 376 (mmx)");
     // :TODO: EMMS 377 (mmx)
+    // MOVD 17E (sse2)
     run(testMmxMovdToE, "MOVD 37e (mmx)");
+    // MOVQ F3 37E (sse2)
+    // MOVDQA 17F (sse2)
     run(testMmxMovqToE, "MOVQ 37f (mmx)");
+    // MOVDQU F3 37F (sse2)
 
     run(testBt0x1a3, "BT 1a3");
     run(testBt0x3a3, "BT 3a3");
@@ -7060,67 +7146,117 @@ int main(int argc, char **argv) {
     run(testShrd0x3ad, "SHRD 3ad");
     // LDMXCSR 3AE/2 (sse1)
     // STMXCSR 3AE/3 (sse1)
+    // LFENCE 3AE/5 (sse2)
+    // MFENCE 3AE/6 (sse2)
     // SFENCE 3AE/7 (sse1)
+    // CLFLUSH 3AE/7 (sse2)
 
     run(testCmpXchg0x3b1, "CMPXCHG 3b1");
 
     run(testXadd0x3c1, "XADD 3c1");    
+    // CMPPD 1C2 (sse2)
     run(testCmpps0x3c2, "CMPPS 3C2 (sse1)");
+    // CMPSD F2 3C2 (sse2)
     run(testCmpss0x3c2, "CMPSS F3 3C2 (sse1)");
+    // MOVNTI 3C3 (sse2)
     run(testPinsrw3c4, "PINSRW 3C4 (sse1)");
     run(testPextrw3c5, "PEXTRW 3C5 (sse1)");
+    // SHUFPD 1C6 (sse2)
     run(testShufps3c6, "SHUFPS 3C6 (sse1)");
 
+    // PSRLW 1D1 (sse2)
     run(testMmxPsrlw, "PSRLW 3D1 (mmx)");    
+    // PSRLD 1D2 (sse2)
     run(testMmxPsrld, "PSRLD 3D2 (mmx)");    
+    // PSRLQ 1D3 (sse2)
     run(testMmxPsrlq, "PSRLQ 3D3 (mmx)");
+    // PADDQ 1D4 (sse2)
+    // PADDQ 3D4 (sse2)
+    // PMULLW 1D5 (sse2)
     run(testMmxPmullw, "PMULLW 3d5 (mmx)");
+    // MOVQ 1D6 (sse2)
+    // MOVDQ2Q F2 3D6 (sse2)
+    // MOVQ2DQ F3 3D6 (sse2)
     //run(testPmovmskb1d7, "PMOVMSKB 1D7 (sse2)"); // already implemented test
     run(testPmovmskb3d7, "PMOVMSKB 3D7 (sse1)");
+    // PSUBUSB 1D8 (sse2)
     run(testMmxPsubusb, "PSUBUSB 3d8 (mmx)");
+    // PSUBUSW 1D9 (sse2)
     run(testMmxPsubusw, "PSUBUSB 3d9 (mmx)");
     // PMINUB 1DA (sse2)
     run(testPminub3da, "PMINUB 3DA (sse1)");
+    // PAND 1DB (sse2)
     run(testMmxPand, "PAND 3db (mmx)");
+    // PADDUSB 1DC (sse2)
     run(testMmxPaddusb, "PADDUSB 3dc (mmx)");
+    // PADDUSW 1DD (sse2)
     run(testMmxPaddusw, "PADDUSB 3dd (mmx)");
     // PMAXUB 1DE (sse2)
     run(testPmaxub3de, "PMAXUB 3DE (sse1)");
+    // PANDN 1DF (sse2)
     run(testMmxPandn, "PANDN 3df (mmx)");
 
     // PAVGB 1E0 (sse2)
     run(testPavgb3e0, "PAVGB 3E0 (sse1)");
+    // PSRAW 1E1 (sse2)
     run(testMmxPsraw, "PSRAW 3E1 (mmx)");    
+    // PSRAD 1E2 (sse2)
     run(testMmxPsrad, "PSRAD 3E2 (mmx)");
     // PAVGW 1E3 (sse2)
     run(testPavgw3e3, "PAVGW 3E3 (sse1)");
     // PMULHUW 1E4 (sse2)
     run(testPmulhuw3e4, "PMULHUW 3E4 (sse1)");
+    // PMULHW 1E5 (sse2)
     run(testMmxPmulhw, "PMULHW 3e5 (mmx)");
+    // CVTTPD2DQ 1E6 (sse2)
+    // CVTPD2DQ F2 3E6 (sse2)
+    // CVTDQ2PD F3 3E6 (sse2)
+    // MOVNTDQ 1E7 (sse2)
     run(testMovntq3e7, "MOVNTQ 3E7 (sse1)");
+    // PSUBSB 1E8 (sse2)
     run(testMmxPsubsb, "PSUBSB 3e8 (mmx)");
+    // PSUBSW 1E9 (sse2)
     run(testMmxPsubsw, "PSUBSW 3e9 (mmx)"); 
     // PMINSW 1EA (sse2)
     run(testPminsw3ea, "PMINSW 3EA (sse1)");
+    // POR 1EB (sse2)
     run(testMmxPor, "POR 3eb (mmx)");
+    // PADDSB 1EC (sse2)
     run(testMmxPaddsb, "PADDSB 3ec (mmx)");
+    // PADDSW 1ED (sse2)
     run(testMmxPaddsw, "PADDSW 3ed (mmx)");
-    // PMAXSW 1EE (sse1)
+    // PMAXSW 1EE (sse2)
     run(testPmaxsw3ee, "PMAXSW 3EE (sse1)");
+    // PXOR 1EF (sse2)
     run(testMmxPxor, "PXOR 3ef (mmx)");
 
+    // PSLLW 1F1 (sse2)
     run(testMmxPsllw, "PSLLW 3f1 (mmx)");
+    // PSLLD 1F2 (sse2)
     run(testMmxPslld, "PSLLD 3f2 (mmx)");    
+    // PSLLQ 1F3 (sse2)
     run(testMmxPsllq, "PSLLQ 3f3 (mmx)");
+    // PMULUDQ 1F4 (sse2)
+    // PMULUDQ 3F4 (sse2)
+    // PMADDWD 1F5 (sse2)
     run(testMmxPmaddwd, "PMULLW 3f5 (mmx)");
     // PSADBW 1F6 (sse2)
     run(testPsadbw3f6, "PSADBW 3F6 (sse1)");
+    // MASKMOVDQU 1F7 (sse2)
     run(testMaskmovq3f7, "MASKMOVQ 3F7 (sse1)");
+    // PSUBB 1F8 (sse2)
     run(testMmxPsubb, "PSUBB 3f8 (mmx)");
+    // PSUBW 1F9 (sse2)
     run(testMmxPsubw, "PSUBW 3f9 (mmx)");
+    // PSUBD 1FA (sse2)
     run(testMmxPsubd, "PSUBD 3fa (mmx)");                
+    // PSUBQ 1FB (sse2)
+    // PSUBQ 3FB (sse2)
+    // PADDB 1FC (sse2)
     run(testMmxPaddb, "PADDB 3fc (mmx)");
+    // PADDW 1FD (sse2)
     run(testMmxPaddw, "PADDW 3fd (mmx)");
+    // PADDD 1FE (sse2)
     run(testMmxPaddd, "PADDD 3fe (mmx)");                                  
             
 

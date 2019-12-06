@@ -1,4 +1,7 @@
 #include "boxedwine.h"
+
+#ifdef __TEST
+
 #include "testCPU.h"
 #include "testMMX.h"
 
@@ -785,3 +788,5 @@ void testMmxPsrad() {
     X86_TEST_MMX(0xf102f00772345678, 16, 0xfffff10200007234, psrad);
     testMmx64(0xe2, 0xf102f00772345678, 16, 0xfffff10200007234);
 }
+
+#endif

@@ -1,6 +1,28 @@
 #ifndef __TEST_SSE_H__
 #define __TEST_SSE_H__
 
+void testSse128(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U64 value2l, U64 value2h, U64 xmmResultl, U64 xmmResulth, U64 memResultl=0, U64 memResulth=0);
+void testSse128r(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U64 value2l, U64 value2h, U64 xmmResultl, U64 xmmResulth, U64 memResultl=0, U64 memResulth=0);
+
+#ifdef _MSC_VER // if Visual C/C++
+__inline __m64 _mm_set_pi64x (const __int64 i) {
+    union {
+        __int64 i;
+        __m64 v;
+    } u;
+
+    u.i = i;
+    return u.v;
+}
+#endif
+
+#define SSE_MEM_VALUE128_DEFAULT1 0x1234567890abcdefl
+#define SSE_MEM_VALUE128_DEFAULT2 0x24680bdf13579acel
+#define SSE_MEM_VALUE_TMP_OFFSET 64
+
+#define SSE_MEM_VALUE128_LOW 0xaabbccddeeff2468l
+#define SSE_MEM_VALUE128_HIGH 0x1122334455667788l
+
 void testSseMovUps310();
 void testSseMovSs310();
 void testSseMovUps311();

@@ -340,6 +340,9 @@
     <ClCompile Include="..\..\..\..\source\test\testSSE.cpp">
       <Filter>source\test</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\testSSE2.cpp">
+      <Filter>source\test</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -802,6 +805,9 @@
       <Filter>source\test</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\test\testSSE.h">
+      <Filter>source\test</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\test\testSSE2.h">
       <Filter>source\test</Filter>
     </ClInclude>
   </ItemGroup>

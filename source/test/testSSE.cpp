@@ -1,13 +1,10 @@
 #include "boxedwine.h"
+
+#ifdef __TEST
+
 #include "testCPU.h"
 #include "testMMX.h"
-
-#define SSE_MEM_VALUE128_DEFAULT1 0x1234567890abcdefl
-#define SSE_MEM_VALUE128_DEFAULT2 0x24680bdf13579acel
-#define SSE_MEM_VALUE_TMP_OFFSET 64
-
-#define SSE_MEM_VALUE128_LOW 0xaabbccddeeff2468l
-#define SSE_MEM_VALUE128_HIGH 0x1122334455667788l
+#include "testSSE.h"
 
 void initSseTest() {    
     newInstruction(0);
@@ -35,7 +32,7 @@ void loadSSE(U8 reg, U32 index, U64 value1l, U64 value1h) {
     pushCode32(SSE_MEM_VALUE_TMP_OFFSET+index*16);
 }
 
-void testSse128(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U64 value2l, U64 value2h, U64 xmmResultl, U64 xmmResulth, U64 memResultl=0, U64 memResulth=0) {
+void testSse128(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U64 value2l, U64 value2h, U64 xmmResultl, U64 xmmResulth, U64 memResultl, U64 memResulth) {
     if (!memResultl && !memResulth) {
         memResultl = xmmResultl;
         memResulth = xmmResulth;
@@ -227,7 +224,7 @@ void testSse128f(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U64 valu
     }  
 }
 
-void testSse128r(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U64 value2l, U64 value2h, U64 xmmResultl, U64 xmmResulth, U64 memResultl=0, U64 memResulth=0) {
+void testSse128r(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U64 value2l, U64 value2h, U64 xmmResultl, U64 xmmResulth, U64 memResultl, U64 memResulth) {
     if (!memResultl && !memResulth) {
         memResultl = xmmResultl;
         memResulth = xmmResulth;
@@ -471,18 +468,6 @@ void testSseReg32r(U8 preOp1, U8 preOp2, U8 op, U32 value1, U64 value2l, U64 val
     }    
 }
 
-#ifdef _MSC_VER // if Visual C/C++
-__inline __m64 _mm_set_pi64x (const __int64 i) {
-    union {
-        __int64 i;
-        __m64 v;
-    } u;
-
-    u.i = i;
-    return u.v;
-}
-#endif
-
 void testSseMovUps310() {  
     testSse128(0, 0, 0x10, SSE_MEM_VALUE128_DEFAULT1, SSE_MEM_VALUE128_DEFAULT2, SSE_MEM_VALUE128_LOW, SSE_MEM_VALUE128_HIGH, SSE_MEM_VALUE128_LOW, SSE_MEM_VALUE128_HIGH);
 }
@@ -644,7 +629,7 @@ void testSseUnpckhps315() {
 }
 
 void testSseMovlhps316() {
-    #if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)    
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)    
     __m128i d1 = _mm_setr_epi64(_mm_set_pi64x(0xaabbccddeeff2468l), _mm_set_pi64x(0x1122334455667788l));
     __m128i d2 = _mm_setr_epi64(_mm_set_pi64x(0x1234567890abcdefl), _mm_set_pi64x(0x24680bdf13579acel));
     __m128i expected = _mm_setr_epi64(_mm_set_pi64x(0xaabbccddeeff2468l), _mm_set_pi64x(0x1234567890abcdefl));
@@ -2166,3 +2151,5 @@ void testMaskmovq3f7() {
         }
     } 
 }
+
+#endif

@@ -2133,6 +2133,7 @@ static void initX32Ops() {
 #include "../common/cpu_init.h"
 #include "../common/cpu_init_mmx.h"
 #include "../common/cpu_init_sse.h"
+#include "../common/cpu_init_sse2.h"
 #include "../common/cpu_init_fpu.h"
 #undef INIT_CPU    
     
