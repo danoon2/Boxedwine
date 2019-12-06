@@ -25,7 +25,9 @@ struct Test_Float {
     };
 };
 
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)   
 __m128i floatTo128(float f1, float f2, float f3, float f4);
+#endif
 
 extern const U32 FLOAT_POSITIVE_INFINITY_BITS;
 extern const U32 FLOAT_NEGATIVE_INFINITY_BITS;

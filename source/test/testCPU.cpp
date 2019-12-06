@@ -36,6 +36,7 @@ static int cseip;
 #define G(rm) ((rm >> 3) & 7)
 #define E(rm) (rm & 7)
 
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)   
 __m128i floatTo128(float f1, float f2, float f3, float f4) {
     Test_Float t1, t2, t3, t4;
     t1.f = f1;
@@ -44,6 +45,7 @@ __m128i floatTo128(float f1, float f2, float f3, float f4) {
     t4.f = f4;
     return _mm_setr_epi32(t1.i, t2.i, t3.i, t4.i);
 }
+#endif
 
 U32 getMilliesSinceStart() {
     return 0;
