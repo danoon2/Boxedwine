@@ -2379,7 +2379,7 @@ static U32 sse2Imm8(X64Asm* data) {
 }
 
 static U32 sse2RegE(X64Asm* data) {
-    data->translateRM(data->fetch8(), false, true, false, false, 0);
+    data->translateRM(data->fetch8(), true, false, false, false, 0);
     return 0;
 }
 

@@ -6982,7 +6982,7 @@ int main(int argc, char **argv) {
     run(testSse2Movhpd116, "MOVHPD 116 (sse2)");
     run(testSseMovlhps316, "MOVLHPS 316 (sse1)");
     run(testSseMovhps316, "MOVHPS 316 (sse1)");
-    // MOVHPD 117 (sse2)
+    run(testSse2Movhpd117, "MOVHPD 117 (sse2)");
     run(testSseMovhps317, "MOVHPS 317 (sse1)");
     // PREFETCHNTA 318/0 (sse1)
     // PREFETCHT0 318/1 (sse1)
@@ -6993,46 +6993,46 @@ int main(int argc, char **argv) {
     // HINT_NOP 318/6 (sse1)
     // HINT_NOP 318/7 (sse1)
 
-    // MOVAPD 128 (sse2)
+    run(testSse2Movapd128, "MOVAPD 128 (sse2)");
     run(testSseMovaps328, "MOVAPS 328 (sse1)");
-    // MOVAPD 129 (sse2)
+    run(testSse2Movapd129, "MOVAPD 129 (sse2)");
     run(testSseMovaps329, "MOVAPS 329 (sse1)");
-    // CVTPI2PD 12A (sse2)
+    run(testSse2Cvtpi2pd12a, "CVTPI2PD 12A (sse2)");
     run(testSseCvtpi2ps32a, "CVTPI2PS 32A (sse1)");
-    // CVTSI2SD F2 32A (sse2)
+    run(testSse2Cvtsi2sd32a, "CVTSI2SD F2 32A (sse2)");
     run(testSseCvtsi2ss32a, "CVTSI2SS F3 32A (sse1)");
-    // MOVNTPD 12B (sse2)
+    run(testSse2Movntpd12b, "MOVNTPD 12B (sse2)");
     run(testSseMovntps32b, "MOVNTPS 32B (sse1)");
-    // CVTTPD2PI 12C (sse2)
+    run(testSseCvttpd2pi12c, "CVTTPD2PI 12C (sse2)");
     run(testSseCvttps2pi32c, "CVTTPS2PI 32C (sse1)");
-    // CVTTSD2SI F2 32C (sse2)
+    run(testSse2Cvttsd2si32c, "CVTTSD2SI F2 32C (sse2)");
     run(testSseCvttss2si32c, "CVTTSS2SI F3 32C (sse1)");
-    // CVTPD2PI 12D (sse2)
+    run(testSse2Cvtpd2pi12d, "CVTPD2PI 12D (sse2)");
     run(testSseCvtps2pi32d, "CVTPS2PI 32D (sse1)");
-    // CVTSD2SI F2 32D (sse2)
+    run(testSse2Cvtsd2si32d, "CVTSD2SI F2 32D (sse2)");
     run(testSseCvtss2si32d, "CVTSS2SI F3 32D (sse1)");
-    // UCOMISD 12E (sse2)
+    run(testSse2Ucomisd12e, "UCOMISD 12E (sse2)");
     run(testSseUcomiss32e, "UCOMISS 32E (sse1)");
-    // COMISD 12F (sse2)
+    run(testSse2Comisd12f, "COMISD 12F (sse2)");
     run(testSseComiss32f, "COMISS 32F (sse1)");
 
-    // MOVMSKPD 150 (sse2)
+    run(testSse2Movmskpd150, "MOVMSKPD 150 (sse2)");
     run(testSseMovmskps350, "MOVMSKPS 350 (sse1)");
-    // SQRTPD 151 (sse2)
+    run(testSse2Sqrtpd151, "SQRTPD 151 (sse2)");
     run(testSseSqrtps351, "SQRTPS 351 (sse1)");
-    // SQRTSD F2 351 (sse2)
+    run(testSse2Sqrtsd351, "SQRTSD F2 351 (sse2)");
     run(testSseSqrtss351, "SQRTSS F3 351 (sse1)");
     run(testSseRsqrtps352, "RSQRTPS 352 (sse1)");
     run(testSseRsqrtss352, "RSQRTSS F3 352 (sse1)");
     run(testSseRcpps353, "RCPPS 353 (sse1)");
     run(testSseRcpss353, "RCPSS F3 353 (sse1)");
-    // ANDPD 154 (sse2)
+    run(testSse2Andpd154, "ANDPD 154 (sse2)");
     run(testSseAndps354, "ANDPS 354 (sse1)");
-    // ANDNPD 155 (sse2)
+    run(testSse2Andnpd155, "ANDNPD 155 (sse2)");
     run(testSseAndnps355, "ANDNPS 355 (sse1)");
-    // ORPD 156 (sse2)
+    run(testSse2Orpd156, "ORPD 156 (sse2)");
     run(testSseOrps356, "ORPS 356 (sse1)");
-    // XORPD 157 (sse2)
+    run(testSse2Xorpd157, "XORPD 157 (sse2)");
     run(testSseXorps357, "XORPS 357 (sse1)");
     //ADDPD 158 (sse2)
     run(testSseAddps358, "ADDPS 358 (sse1)");

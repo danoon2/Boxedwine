@@ -5710,6 +5710,8 @@ DecodeRMr sseUcomis(UcomissXmmXmm, UcomissXmmE32);
 
 DecodeRMr sse2Movupd(MovupdXmmXmm, MovupdXmmE128);
 DecodeRM sse2Movupd_r(MovupdXmmXmm, MovupdE128Xmm);
+DecodeRMr sse2Movapd(MovapdXmmXmm, MovapdXmmE128);
+DecodeRM sse2Movapd_r(MovapdXmmXmm, MovapdE128Xmm);
 
 const Decode* const decoder[] = {
     // 0x000
@@ -5768,7 +5770,7 @@ const Decode* const decoder[] = {
     0, 0, 0, 0, 0, 0, 0, 0,
     // 0x120
     &decodeMovRdCrx, 0, &decodeMovCrxRd, 0, 0, 0, 0, 0,
-    0, 0, &sseMov0x12a, &sseMov0x12b, &sseMov0x12c, &sseMov0x12d, &sseMov0x12e, &sseMov0x12f,
+    &sse2Movapd, &sse2Movapd_r, &sseMov0x12a, &sseMov0x12b, &sseMov0x12c, &sseMov0x12d, &sseMov0x12e, &sseMov0x12f,
     // 0x130
     0, &decodeRdtsc, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0,

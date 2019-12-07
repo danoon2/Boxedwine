@@ -358,6 +358,7 @@ void testSseMmx64r(U8 preOp1, U8 preOp2, U8 op, U64 value1, U64 value2l, U64 val
         initSseTest();         
         loadMMX(m, 0, value1);
         writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+16, value2l);
+        writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+24, value2h);
         if (preOp1) {
             pushCode8(preOp1);
         }
@@ -419,7 +420,7 @@ void testSseReg32(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U32 val
     }    
 }
 
-void testSseReg32r(U8 preOp1, U8 preOp2, U8 op, U32 value1, U64 value2l, U64 value2h, U32 result, U32 memResult=0) {
+void testSseReg32r(U8 preOp1, U8 preOp2, U8 op, U32 value1, U64 value2l, U64 value2h, U32 result, U32 memResult) {
     if (!memResult) {
         memResult = result;
     }

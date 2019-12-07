@@ -25,6 +25,13 @@ struct Test_Float {
     };
 };
 
+struct TestDouble {
+    union {
+        double d;
+        U64   i;
+    };
+};
+
 #if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)   
 __m128i floatTo128(float f1, float f2, float f3, float f4);
 #endif
