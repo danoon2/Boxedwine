@@ -1224,6 +1224,7 @@ simde_mm_cvtpd_ps (simde__m128d a) {
   for (size_t i = 0 ; i < (sizeof(a.f64) / sizeof(a.f64[0])) ; i++) {
     r.f32[i] = (simde_float32) a.f64[i];
   }
+  r.u64[1] = 0; // :TODO: I modified this
   return r;
 #endif
 }

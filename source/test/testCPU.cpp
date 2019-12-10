@@ -7034,45 +7034,45 @@ int main(int argc, char **argv) {
     run(testSseOrps356, "ORPS 356 (sse1)");
     run(testSse2Xorpd157, "XORPD 157 (sse2)");
     run(testSseXorps357, "XORPS 357 (sse1)");
-    //ADDPD 158 (sse2)
+    run(testSse2Addpd158, "ADDPD 158 (sse2)");
     run(testSseAddps358, "ADDPS 358 (sse1)");
-    // ADDSD F2 358 (sse2)
+    run(testSse2Addsd358, "ADDSD F2 358 (sse2)");
     run(testSseAddss358, "ADDSS F3 358 (sse1)");
-    // MULPD 159 (sse2)
+    run(testSse2Mulpd159, "MULPD 159 (sse2)");
     run(testSseMulps359, "MULPS 359 (sse1)");
-    // MULSD F2 359 (sse2)
+    run(testSse2Mulsd359, "MULSD F2 359 (sse2)");
     run(testSseMulss359, "MULSS F3 359 (sse1)");
-    // CVTPD2PS 15A (sse2)
-    // CVTPS2PD 35A (sse2)
-    // CVTSD2SS F2 35A (sse2)
-    // CVTSS2SD F3 35A (sse2)
-    // CVTPS2DQ 15B (sse2)
-    // CVTDQ2PS 35B (sse2)
-    // CVTTPS2DQ F3 35B (sse2)
-    // SUBPD 15C (sse2)
+    run(testSse2Cvtpd2ps15a, "CVTPD2PS 15A (sse2)");
+    run(testSse2Cvtps2pd35a, "CVTPS2PD 35A (sse2)");
+    run(testSse2Cvtsd2ss35a, "CVTSD2SS F2 35A (sse2)");
+    run(testSse2Cvtss2sd35a, "CVTSS2SD F3 35A (sse2)");
+    run(testSse2Cvtps2dq15b, "CVTPS2DQ 15B (sse2)");
+    run(testSse2Cvtdq2ps35b, "CVTDQ2PS 35B (sse2)");
+    run(testSse2Cvttps2dq35b, "CVTTPS2DQ F3 35B (sse2)");
+    run(testSse2Subpd15c, "SUBPD 15C (sse2)");
     run(testSseSubps35c, "SUBPS 35C (sse1)");
-    // SUBSD F2 35C (sse2)
+    run(testSse2Subsd35c, "SUBSD F2 35C (sse2)");
     run(testSseSubss35c, "SUBSS F3 35C (sse1)");
-    // MINPD 15D (sse2)
+    run(testSse2Minpd15d, "MINPD 15D (sse2)");
     run(testSseMinps35d, "MINPS 35D (sse1)");
-    // MINSD F2 35D (sse2)
+    run(testSse2Minsd35d, "MINSD F2 35D (sse2)");
     run(testSseMinss35d, "MINSS F3 35D (sse1)");
-    // DIVPD 15E (sse2)
+    run(testSse2Divpd15e, "DIVPD 15E (sse2)");
     run(testSseDivps35e, "DIVPS 35E (sse1)");
-    // DIVSD F2 35E (sse2)
+    run(testSse2Divsd35e, "DIVSD F2 35E (sse2)");
     run(testSseDivss35e, "DIVSS F3 35E (sse1)");
-    // MAXPD 15F (sse2)
+    run(testSse2Maxpd15f, "MAXPD 15F (sse2)");
     run(testSseMaxps35f, "MAXPS 35F (sse1)");
-    // MAXSD F2 35F (sse2)
+    run(testSse2Maxsd35f, "MAXSD F2 35F (sse2)");
     run(testSseMaxss35f, "MAXSS F3 35F (sse1)");
 
-    // PUNPCKLBW 160 (sse2)
+    run(testSse2Punpcklbw160, "PUNPCKLBW 160 (sse2)");
     run(testMmxPunpcklbw, "PUNPCKLBW 360 (mmx)");
-    // PUNPCKLWD 161 (sse2)
+    run(testSee2xPunpcklwd161, "PUNPCKLWD 161 (sse2)");
     run(testMmxPunpcklwd, "PUNPCKLWD 361 (mmx)");
-    // PUNPCKLDQ 162 (sse2)
+    run(testSse2Punpckldq162, "PUNPCKLDQ 162 (sse2)");
     run(testMmxPunpckldq, "PUNPCKLDQ 362 (mmx)");
-    // PACKSSWB 163 (sse2)
+    run(testSee2Packsswb163, "PACKSSWB 163 (sse2)");
     run(testMmxPacksswb, "PACKSSWB 363 (mmx)");
     // PCMPGTB 164 (sse2)
     run(testMmxPcmpgtb, "PCMPGTB 364 (mmx)");

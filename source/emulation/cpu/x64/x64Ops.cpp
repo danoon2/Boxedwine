@@ -2553,7 +2553,7 @@ X64Decoder x64Decoder[1024] = {
     inst32RM, inst32RM, inst32RM, inst32RM, inst32RM, inst32RM, inst32RM, inst32RM,
     // 350
     sseRegXmm, sseXmmEx, sseXmmEx, sseXmmEx, sseXmmEx, sseXmmEx, sseXmmEx, sseXmmEx,
-    sseXmmEx, sseXmmEx, invalidOp, invalidOp, sseXmmEx, sseXmmEx, sseXmmEx, sseXmmEx,
+    sseXmmEx, sseXmmEx, sse2E, sse2E, sseXmmEx, sseXmmEx, sseXmmEx, sseXmmEx,
     // 360
     mmx, mmx, mmx, mmx, mmx, mmx, mmx, mmx,
     mmx, mmx, mmx, mmx, invalidOp, invalidOp, mmxRegE, mmx,
