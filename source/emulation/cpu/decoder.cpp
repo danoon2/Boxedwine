@@ -4841,16 +4841,25 @@ public:
         U8 rm = data->fetch8();
 
         if (rm>=0xC0) {    
+            bool reversed;
+
             if (op->repZero) {
                 op->inst = this->f3Reg;
+                reversed = this->reversed3;
             } else if (op->repNotZero) {
                 op->inst = this->f2Reg;
+                reversed = this->reversed2;
             } else {
                 op->inst = this->reg;
+                reversed = this->reversed1;
             }
-            
-            op->reg = E(rm);
-            op->rm = G(rm);
+            if (reversed) {
+                op->reg = G(rm);
+                op->rm = E(rm);
+            } else {
+                op->reg = E(rm);
+                op->rm = G(rm);
+            }
         } else {
             if (op->repZero) {
                 op->inst = this->f3Mem;
@@ -5646,7 +5655,7 @@ DecodeRMr sse0x174(PcmpeqbXmmXmm, PcmpeqbXmmE128);
 DecodeRMr sse0x175(PcmpeqwXmmXmm, PcmpeqwXmmE128);
 DecodeRMr sse0x176(PcmpeqdXmmXmm, PcmpeqdXmmE128);
 DecodeRM sse0x17e(MovdR32Xmm, MovdE32Xmm);
-DecodeSSE2custom sse0x37e(MovR32Pq, MovE32Pq, true, Invalid, Invalid, false, MovqXmmXmm, MovqXmmE64, false);
+DecodeSSE2custom sse0x37e(MovR32Pq, MovE32Pq, false, Invalid, Invalid, false, MovqXmmXmm, MovqXmmE64, true);
 DecodeRM sse0x17f(MovdqaXmmXmm, MovdqaE128Xmm);
 DecodeRMr sse0x1c2(CmppdXmmXmm, CmppdXmmE128, 8);
 DecodeRM sse0x3c3(Invalid, MovntiE32R32);
@@ -5785,7 +5794,7 @@ const Decode* const decoder[] = {
     &sse0x168, &sse0x169, &sse0x16a, &sse0x16b, &sse0x16c, &sse0x16d, &sse0x16e, &sse0x16f,
     // 0x170
     &sse0x170, &sse0x171, &sse0x172, &sse0x173, &sse0x174, &sse0x175, 0, 0,
-    0, 0, 0, 0, 0, 0, &sse0x17e, 0,
+    0, 0, 0, 0, 0, 0, &sse0x17e, &sse0x17f,
     // 0x180
     &decodeJo16, &decodeJno16, &decodeJb16, &decodeJnb16, &decodeJz16, &decodeJnz16, &decodeJbe16, &decodeJnbe16,
     &decodeJs16, &decodeJns16, &decodeJp16, &decodeJnp16, &decodeJl16, &decodeJnl16, &decodeJle16, &decodeJnle16,

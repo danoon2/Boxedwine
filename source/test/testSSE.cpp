@@ -288,6 +288,67 @@ void testSse128r(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U64 valu
     }    
 }
 
+void testSse128E64(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U64 value2l, U64 value2h, U64 xmmResultl, U64 xmmResulth, U64 memResultl, U64 memResulth) {
+    if (!memResultl && !memResulth) {
+        memResultl = xmmResultl;
+        memResulth = xmmResulth;
+    }
+    for (U8 m=0;m<8;m++) {
+        if (xmmResultl!=0xFFFFFFFFFFFFFFFFl && xmmResulth!=0xFFFFFFFFFFFFFFFFl) {
+            for (U8 from=0;from<8;from++) {
+                if (m==from) {
+                    continue;
+                }
+                initSseTest();            
+                loadSSE(m, 0, value1l, value1h);
+                loadSSE(from, 1, value2l, value2h);
+                if (preOp1) {
+                    pushCode8(preOp1);
+                }
+                if (preOp2) {
+                    pushCode8(preOp2);
+                }
+                pushCode8(0x0f);
+                pushCode8(op);
+                pushCode8(0xC0 | from | (m << 3));            
+                runTestCPU();
+                for (U8 m1=0;m1<8;m1++) {
+                    if (m1==m || m1==from) {
+                        if (cpu->xmm[m].pi.u64[0]!=xmmResultl || cpu->xmm[m].pi.u64[1]!=xmmResulth) {
+                            failed("sse failed");
+                        }
+                    } else {
+                        if (cpu->xmm[m1].pi.u64[0]!=SSE_MEM_VALUE128_DEFAULT1 || cpu->xmm[m1].pi.u64[1]!=SSE_MEM_VALUE128_DEFAULT2) {
+                            failed("sse failed");
+                        }
+                    }
+                }
+            }
+        }
+        if (memResultl!=0xFFFFFFFFFFFFFFFFl && memResulth!=0xFFFFFFFFFFFFFFFFl) {
+            initSseTest();         
+            loadSSE(m, 0, value2l, value2h);
+            writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+16, value2l);
+            if (preOp1) {
+                pushCode8(preOp1);
+            }
+            if (preOp2) {
+                pushCode8(preOp2);
+            }
+            pushCode8(0x0f);
+            pushCode8(op);
+            pushCode8(0x04 | (m<<3));
+            pushCode8(0x25);
+            pushCode32(SSE_MEM_VALUE_TMP_OFFSET+16);
+            runTestCPU();
+
+            if (cpu->xmm[m].pi.u64[0]!=memResultl || cpu->xmm[m].pi.u64[1]!=memResulth) {
+                failed("sse failed");
+            }
+        }
+    }    
+}
+
 void testSseMmx64(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U64 value2, U64 xmmResultl, U64 xmmResulth) {
     for (U8 m=0;m<8;m++) {
         for (U8 from=0;from<8;from++) {
@@ -463,6 +524,55 @@ void testSseReg32r(U8 preOp1, U8 preOp2, U8 op, U32 value1, U64 value2l, U64 val
             pushCode32(SSE_MEM_VALUE_TMP_OFFSET+16);
             runTestCPU();
             if (cpu->reg[m].u32!=result) {
+                failed("sse failed");
+            }
+        }
+    }    
+}
+
+void testSseE32r(U8 preOp1, U8 preOp2, U8 op, U32 value1, U64 value2l, U64 value2h, U32 result, U32 memResult) {
+    if (!memResult) {
+        memResult = result;
+    }
+    for (U8 from=0;from<8;from++) {
+        if (result!=0xFFFFFFFF) {
+            for (U8 m=0;m<8;m++) {
+                initSseTest();  
+                loadSSE(from, 0, value2l, value2h);
+                cpu->reg[m].u32 = value1;
+                if (preOp1) {
+                    pushCode8(preOp1);
+                }
+                if (preOp2) {
+                    pushCode8(preOp2);
+                }
+                pushCode8(0x0f);
+                pushCode8(op);
+                pushCode8(0xC0 | (from << 3) | m);            
+                runTestCPU();
+
+                if (cpu->reg[m].u32!=result) {
+                    failed("sse failed");
+                }
+            }
+        }
+        if (memResult!=0xFFFFFFFF) {
+            initSseTest();         
+            writed(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+16, value1);
+            loadSSE(from, 0, value2l, value2h);
+            if (preOp1) {
+                pushCode8(preOp1);
+            }
+            if (preOp2) {
+                pushCode8(preOp2);
+            }
+            pushCode8(0x0f);
+            pushCode8(op);
+            pushCode8(0x04 | (from<<3));
+            pushCode8(0x25);
+            pushCode32(SSE_MEM_VALUE_TMP_OFFSET+16);
+            runTestCPU();
+            if (readd(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+16)!=result) {
                 failed("sse failed");
             }
         }

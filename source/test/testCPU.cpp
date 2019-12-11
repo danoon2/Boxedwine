@@ -7074,29 +7074,29 @@ int main(int argc, char **argv) {
     run(testMmxPunpckldq, "PUNPCKLDQ 362 (mmx)");
     run(testSee2Packsswb163, "PACKSSWB 163 (sse2)");
     run(testMmxPacksswb, "PACKSSWB 363 (mmx)");
-    // PCMPGTB 164 (sse2)
+    run(testSee2Pcmpgtb164, "PCMPGTB 164 (sse2)");
     run(testMmxPcmpgtb, "PCMPGTB 364 (mmx)");
-    // PCMPGTW 165 (sse2)
+    run(testSee2Pcmpgtw165, "PCMPGTW 165 (sse2)");
     run(testMmxPcmpgtw, "PCMPGTW 365 (mmx)");
-    // PCMPGTD 166 (sse2)
+    run(testSee2Pcmpgtd166, "PCMPGTD 166 (sse2)");
     run(testMmxPcmpgtd, "PCMPGTD 366 (mmx)");
-    // PACKUSWB 167 (sse2)
+    run(testSee2Packuswb167, "PACKUSWB 167 (sse2)");
     run(testMmxPackuswb, "PACKUSWB 367 (mmx)");
-    // PUNPCKHBW 168 (sse2)
+    run(testSee2Punpckhbw168, "PUNPCKHBW 168 (sse2)");
     run(testMmxPunpckhbw, "PUNPCKHBW 368 (mmx)");
-    // PUNPCKHWD 169 (sse2)
+    run(testSee2Punpckhwd169, "PUNPCKHWD 169 (sse2)");
     run(testMmxPunpckhwd, "PUNPCKHWD 369 (mmx)");
-    // PUNPCKHDQ 16A (sse2)
+    run(testSee2Punpckhdq16a, "PUNPCKHDQ 16A (sse2)");
     run(testMmxPunpckhdq, "PUNPCKHDQ 36a (mmx)");
-    // PACKSSDW 16B (sse2)
+    run(testSee2Packssdw16b, "PACKSSDW 16B (sse2)");
     run(testMmxPackssdw, "PACKSSDW 36b (mmx)");            
-    // PUNPCKLQDQ 16C (sse2)
+    run(testSee2Punpcklqdq16c, "PUNPCKLQDQ 16C (sse2)");
     run(testMmxMovdToMmx, "MOVD 36e (mmx)");
-    // PUNPCKHQDQ 16D (sse2)
-    // MOVD 16E (sse2)
-    // MOVDQA 16F (sse2)
+    run(testSee2Punpckhqdq16d, "PUNPCKHQDQ 16D (sse2)");
+    run(testSee2Movd16e, "MOVD 16E (sse2)");
+    run(testSee2Movdqa16f, "MOVDQA 16F (sse2)");
     run(testMmxMovqToMmx, "MOVQ 36f (mmx)");
-    // MOVDQU F3 36F (sse2)
+    run(testSee2Movdqu36f, "MOVDQU F3 36F (sse2)");
 
     // PSHUFD 170 (sse2)
     run(testSsePshufw370, "PSHUFW 370 (sse1)");
@@ -7127,12 +7127,12 @@ int main(int argc, char **argv) {
     // PCMPEQD 176 (sse2)
     run(testMmxPcmpeqd, "PCMPEQD 376 (mmx)");
     // :TODO: EMMS 377 (mmx)
-    // MOVD 17E (sse2)
+    run(testSee2Movd17e, "MOVD 17E (sse2)");
     run(testMmxMovdToE, "MOVD 37e (mmx)");
-    // MOVQ F3 37E (sse2)
-    // MOVDQA 17F (sse2)
+    run(testSee2Movq37e, "MOVQ F3 37E (sse2)");
+    run(testSee2Movdqa17f, "MOVDQA 17F (sse2)");
     run(testMmxMovqToE, "MOVQ 37f (mmx)");
-    // MOVDQU F3 37F (sse2)
+    run(testSee2Movdqu37f, "MOVDQU F3 37F (sse2)");
 
     run(testBt0x1a3, "BT 1a3");
     run(testBt0x3a3, "BT 3a3");
