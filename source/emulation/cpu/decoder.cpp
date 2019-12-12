@@ -5647,7 +5647,7 @@ DecodeRMr sse0x16c(PunpcklqdqXmmXmm, PunpcklqdqXmmE128);
 DecodeRMr sse0x16d(PunpckhqdqXmmXmm, PunpckhqdqXmmE128);
 DecodeRMr sse0x16e(MovdXmmR32, MovdXmmE32);
 DecodeRMr sse0x16f(MovdqaXmmXmm, MovdqaXmmE128);
-DecodeRMr sse0x170(PshufdXmmXmm, PshufdXmmE128);
+DecodeRMr sse0x170(PshufdXmmXmm, PshufdXmmE128, 8);
 DecodeGroup sse0x171(Invalid, Invalid, PsrlwXmm, Invalid, PsrawXmm, Invalid, PsllwXmm, Invalid, 8);
 DecodeGroup sse0x172(Invalid, Invalid, PsrldXmm, Invalid, PsradXmm, Invalid, PslldXmm, Invalid, 8);
 DecodeGroup sse0x173(Invalid, Invalid, PsrlqXmm, PsrldqXmm, Invalid, Invalid, PsllqXmm, PslldqXmm, 8);
@@ -5793,7 +5793,7 @@ const Decode* const decoder[] = {
     &sse0x160, &sse0x161, &sse0x162, &sse0x163, &sse0x164, &sse0x165, &sse0x166, &sse0x167,
     &sse0x168, &sse0x169, &sse0x16a, &sse0x16b, &sse0x16c, &sse0x16d, &sse0x16e, &sse0x16f,
     // 0x170
-    &sse0x170, &sse0x171, &sse0x172, &sse0x173, &sse0x174, &sse0x175, 0, 0,
+    &sse0x170, &sse0x171, &sse0x172, &sse0x173, &sse0x174, &sse0x175, &sse0x176, 0,
     0, 0, 0, 0, 0, 0, &sse0x17e, &sse0x17f,
     // 0x180
     &decodeJo16, &decodeJno16, &decodeJb16, &decodeJnb16, &decodeJz16, &decodeJnz16, &decodeJbe16, &decodeJnbe16,

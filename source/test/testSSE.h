@@ -10,6 +10,8 @@ void testSseMmx64r(U8 preOp1, U8 preOp2, U8 op, U64 value1, U64 value2l, U64 val
 void testSseReg32r(U8 preOp1, U8 preOp2, U8 op, U32 value1, U64 value2l, U64 value2h, U32 result, U32 memResult=0);
 void testSse128f(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U64 value2l, U64 value2h, U32 flagsResult);
 void testSseE32r(U8 preOp1, U8 preOp2, U8 op, U32 value1, U64 value2l, U64 value2h, U32 result, U32 memResult=0);
+void testSse128imm(U8 preOp1, U8 preOp2, U8 op, U8 imm, U64 value1l, U64 value1h, U64 value2l, U64 value2h, U64 xmmResultl, U64 xmmResulth);
+void testSse128SubImm(U8 preOp1, U8 preOp2, U8 op, U8 g, U8 imm, U64 value1l, U64 value1h, U64 xmmResultl, U64 xmmResulth);
 
 #ifdef _MSC_VER // if Visual C/C++
 __inline __m64 _mm_set_pi64x (const __int64 i) {

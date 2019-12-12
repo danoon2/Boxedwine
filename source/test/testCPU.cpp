@@ -7098,33 +7098,33 @@ int main(int argc, char **argv) {
     run(testMmxMovqToMmx, "MOVQ 36f (mmx)");
     run(testSee2Movdqu36f, "MOVDQU F3 36F (sse2)");
 
-    // PSHUFD 170 (sse2)
+    run(testSee2Pshufd170, "PSHUFD 170 (sse2)");
     run(testSsePshufw370, "PSHUFW 370 (sse1)");
-    // PSHUFLW F2 370 (sse2)
-    // PSHUFHW F3 370 (sse2)
-    // PSRLW 171/2 (sse2)
+    run(testSee2Pshuflw370, "PSHUFLW F2 370 (sse2)");
+    run(testSee2Pshufhw370, "PSHUFHW F3 370 (sse2)");
+    run(testSee2Psrlw171, "PSRLW 171/2 (sse2)");
     run(testMmxPsrlwImm8, "PSRLW 371/2 (mmx)");
-    // PSRAW 171/4 (sse2)
+    run(testSee2Psraw171, "PSRAW 171/4 (sse2)");
     run(testMmxPsrawImm8, "PSRAW 371/4 (mmx)");
-    // PSLLW 171/6 (sse2)
+    run(testSee2Psllw171, "PSLLW 171/6 (sse2)");
     run(testMmxPsllwImm8, "PSLLW 371/6 (mmx)");
-    // PSRLD 172/2 (sse2)
+    run(testSee2Psrld172, "PSRLD 172/2 (sse2)");
     run(testMmxPsrldImm8, "PSRLD 372/2 (mmx)");
-    // PSRAD 172/4 (sse2)
+    run(testSee2Psrad172, "PSRAD 172/4 (sse2)");
     run(testMmxPsradImm8, "PSRAD 372/4 (mmx)");
-    // PSLLD 172/6 (sse2)
+    run(testSee2Pslld172, "PSLLD 172/6 (sse2)");
     run(testMmxPslldImm8, "PSLLD 372/6 (mmx)");
-    // PSRLQ 173/2 (sse2)
+    run(testSee2Psrlq173, "PSRLQ 173/2 (sse2)");
     run(testMmxPsrlqImm8, "PSRLQ 373/2 (mmx)");
-    // PSRLDQ 173/3 (sse2)
-    // PSLLQ 173/6 (sse2)
+    run(testSee2Psrldq173, "PSRLDQ 173/3 (sse2)");
+    run(testSee2Psllq173, "PSLLQ 173/6 (sse2)");
     run(testMmxPsllqImm8, "PSLLQ 373/6 (mmx)");    
-    // PSLLDQ 173/7 (sse2)
-    // PCMPEQB 174 (sse2)
+    run(testSee2Pslldq173, "PSLLDQ 173/7 (sse2)");
+    run(testSee2Pcmpeqb174, "PCMPEQB 174 (sse2)");
     run(testMmxPcmpeqb, "PCMPEQB 374 (mmx)");
-    // PCMPEQW 175 (sse2)
+    run(testSee2Pcmpeqw175, "PCMPEQW 175 (sse2)");
     run(testMmxPcmpeqw, "PCMPEQW 375 (mmx)");
-    // PCMPEQD 176 (sse2)
+    run(testSee2Pcmpeqd176, "PCMPEQD 176 (sse2)");
     run(testMmxPcmpeqd, "PCMPEQD 376 (mmx)");
     // :TODO: EMMS 377 (mmx)
     run(testSee2Movd17e, "MOVD 17E (sse2)");
@@ -7156,14 +7156,14 @@ int main(int argc, char **argv) {
     run(testCmpXchg0x3b1, "CMPXCHG 3b1");
 
     run(testXadd0x3c1, "XADD 3c1");    
-    // CMPPD 1C2 (sse2)
+    run(testSee2Cmppd1c2, "CMPPD 1C2 (sse2)");
     run(testCmpps0x3c2, "CMPPS 3C2 (sse1)");
-    // CMPSD F2 3C2 (sse2)
+    run(testSee2Cmpsd3c2, "CMPSD F2 3C2 (sse2)");
     run(testCmpss0x3c2, "CMPSS F3 3C2 (sse1)");
-    // MOVNTI 3C3 (sse2)
+    run(testSee2Movnti3c3, "MOVNTI 3C3 (sse2)");
     run(testPinsrw3c4, "PINSRW 3C4 (sse1)");
     run(testPextrw3c5, "PEXTRW 3C5 (sse1)");
-    // SHUFPD 1C6 (sse2)
+    run(testSee2Shufpd1c6, "SHUFPD 1C6 (sse2)");
     run(testShufps3c6, "SHUFPS 3C6 (sse1)");
 
     // PSRLW 1D1 (sse2)

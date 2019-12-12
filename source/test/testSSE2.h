@@ -65,9 +65,29 @@ void testSee2Punpckhqdq16d();
 void testSee2Movd16e();
 void testSee2Movdqa16f();
 void testSee2Movdqu36f();
-
+void testSee2Pshufd170();
+void testSee2Pshuflw370();
+void testSee2Pshufhw370();
+void testSee2Psrlw171();
+void testSee2Psraw171();
+void testSee2Psllw171();
+void testSee2Psrld172();
+void testSee2Psrad172();
+void testSee2Pslld172();
+void testSee2Psrlq173();
+void testSee2Psrldq173();
+void testSee2Psllq173();
+void testSee2Pslldq173();
+void testSee2Pcmpeqb174();
+void testSee2Pcmpeqw175();
+void testSee2Pcmpeqd176();
 void testSee2Movd17e();
 void testSee2Movq37e();
 void testSee2Movdqa17f();
 void testSee2Movdqu37f();
+void testSee2Cmppd1c2();
+void testSee2Cmpsd3c2();
+void testSee2Movnti3c3();
+void testSee2Shufpd1c6();
+
 #endif

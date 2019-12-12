@@ -1959,12 +1959,738 @@ void testSee2Movq37e() {
     testSse128E64(0, 0xf3, 0x7e, 0x1111111122222222, 0x3333333344444444, 0x5555555566666666, 0x7777777788888888, 0x5555555566666666, 0);
 }
 
+void testSee2Pshufd170() {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    __m128i d1;
+    d1.m128i_u64[0] = 0x1111111122222222;
+    d1.m128i_u64[1] = 0x3333333344444444;
+
+    __m128i d2;
+    d2.m128i_u64[0] = 0x5555555566666666;
+    d2.m128i_u64[1] = 0x7777777788888888;
+
+    __m128i result;
+    __m128i expected;
+    expected.m128i_u64[0] = 0x7777777788888888;
+    expected.m128i_u64[1] = 0x6666666655555555;
+
+    __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        pshufd xmm1, xmm0, 0x1E
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("pshufd failed");
+    }
+#endif 
+    testSse128imm(0, 0x66, 0x70, 0x1E, 0x1111111122222222, 0x3333333344444444, 0x5555555566666666, 0x7777777788888888, 0x7777777788888888, 0x6666666655555555);
+}
+
+void testSee2Pshuflw370() {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    __m128i d1;
+    d1.m128i_u64[0] = 0x1111222233334444;
+    d1.m128i_u64[1] = 0x1234567890abcdef;
+
+    __m128i d2;
+    d2.m128i_u64[0] = 0x5555666677778888;
+    d2.m128i_u64[1] = 0xfedcba0987654321;
+
+    __m128i result;
+    __m128i expected;
+    expected.m128i_u64[0] = 0x8888777755556666;
+    expected.m128i_u64[1] = 0xfedcba0987654321;
+
+    __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        pshuflw xmm1, xmm0, 0x1E
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("pshuflw failed");
+    }
+#endif 
+    testSse128imm(0, 0xf2, 0x70, 0x1E, 0x1111222233334444, 0x1234567890abcdef, 0x5555666677778888, 0xfedcba0987654321, 0x8888777755556666, 0xfedcba0987654321);
+}
+
+void testSee2Pshufhw370() {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    __m128i d1;
+    d1.m128i_u64[0] = 0x1111222233334444;
+    d1.m128i_u64[1] = 0x1234567890abcdef;
+
+    __m128i d2;
+    d2.m128i_u64[0] = 0x5555666677778888;
+    d2.m128i_u64[1] = 0xfedcba0987654321;
+
+    __m128i result;
+    __m128i expected;
+    expected.m128i_u64[0] = 0x5555666677778888;
+    expected.m128i_u64[1] = 0x43218765fedcba09;
+
+    __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        pshufhw xmm1, xmm0, 0x1E
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("pshufhw failed");
+    }
+#endif 
+    testSse128imm(0, 0xf3, 0x70, 0x1E, 0x1111222233334444, 0x1234567890abcdef, 0x5555666677778888, 0xfedcba0987654321, 0x5555666677778888, 0x43218765fedcba09);
+}
+
+void testSee2Psrlw171() {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    __m128i d1;
+    d1.m128i_u64[0] = 0x1111222233334444;
+    d1.m128i_u64[1] = 0x1234567890abcdef;
+
+    __m128i result;
+    __m128i expected;
+    expected.m128i_u64[0] = 0x0111022203330444;
+    expected.m128i_u64[1] = 0x01230567090a0cde;
+
+    __asm {
+        movups xmm1, d1
+        psrlw xmm1, 4
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("psrlw failed");
+    }
+#endif 
+    testSse128SubImm(0, 0x66, 0x71, 2, 4, 0x1111222233334444, 0x1234567890abcdef, 0x0111022203330444, 0x01230567090a0cde);
+}
+
+void testSee2Psraw171() {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    __m128i d1;
+    d1.m128i_u64[0] = 0x1111222233334444;
+    d1.m128i_u64[1] = 0x1234567890abcdef;
+
+    __m128i result;
+    __m128i expected;
+    expected.m128i_u64[0] = 0x0111022203330444;
+    expected.m128i_u64[1] = 0x01230567f90afcde;
+
+    __asm {
+        movups xmm1, d1
+        psraw xmm1, 4
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("psraw failed");
+    }
+#endif 
+    testSse128SubImm(0, 0x66, 0x71, 4, 4, 0x1111222233334444, 0x1234567890abcdef, 0x0111022203330444, 0x01230567f90afcde);
+}
+
+void testSee2Psllw171() {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    __m128i d1;
+    d1.m128i_u64[0] = 0x1111222233334444;
+    d1.m128i_u64[1] = 0x1234567890abcdef;
+
+    __m128i result;
+    __m128i expected;
+    expected.m128i_u64[0] = 0x1110222033304440;
+    expected.m128i_u64[1] = 0x234067800ab0def0;
+
+    __asm {
+        movups xmm1, d1
+        psllw xmm1, 4
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("psllw failed");
+    }
+#endif 
+    testSse128SubImm(0, 0x66, 0x71, 6, 4, 0x1111222233334444, 0x1234567890abcdef, 0x1110222033304440, 0x234067800ab0def0);
+}
+
+void testSee2Psrld172() {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    __m128i d1;
+    d1.m128i_u64[0] = 0x1111222233334444;
+    d1.m128i_u64[1] = 0x1234567890abcdef;
+
+    __m128i result;
+    __m128i expected;
+    expected.m128i_u64[0] = 0x0111122203333444;
+    expected.m128i_u64[1] = 0x01234567090abcde;
+
+    __asm {
+        movups xmm1, d1
+        psrld xmm1, 4
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("psrld failed");
+    }
+#endif 
+    testSse128SubImm(0, 0x66, 0x72, 2, 4, 0x1111222233334444, 0x1234567890abcdef, 0x0111122203333444, 0x01234567090abcde);
+}
+
+void testSee2Psrad172() {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    __m128i d1;
+    d1.m128i_u64[0] = 0x1111222233334444;
+    d1.m128i_u64[1] = 0x1234567890abcdef;
+
+    __m128i result;
+    __m128i expected;
+    expected.m128i_u64[0] = 0x0111122203333444;
+    expected.m128i_u64[1] = 0x01234567f90abcde;
+
+    __asm {
+        movups xmm1, d1
+        psrad xmm1, 4
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("psrad failed");
+    }
+#endif 
+    testSse128SubImm(0, 0x66, 0x72, 4, 4, 0x1111222233334444, 0x1234567890abcdef, 0x0111122203333444, 0x01234567f90abcde);
+}
+
+void testSee2Pslld172() {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    __m128i d1;
+    d1.m128i_u64[0] = 0x1111222233334444;
+    d1.m128i_u64[1] = 0x1234567890abcdef;
+
+    __m128i result;
+    __m128i expected;
+    expected.m128i_u64[0] = 0x1112222033344440;
+    expected.m128i_u64[1] = 0x234567800abcdef0;
+
+    __asm {
+        movups xmm1, d1
+        pslld xmm1, 4
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("pslld failed");
+    }
+#endif 
+    testSse128SubImm(0, 0x66, 0x72, 6, 4, 0x1111222233334444, 0x1234567890abcdef, 0x1112222033344440, 0x234567800abcdef0);
+}
+
+void testSee2Psrlq173() {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    __m128i d1;
+    d1.m128i_u64[0] = 0x1111222233334444;
+    d1.m128i_u64[1] = 0x8234567890abcdef;
+
+    __m128i result;
+    __m128i expected;
+    expected.m128i_u64[0] = 0x0111122223333444;
+    expected.m128i_u64[1] = 0x08234567890abcde;
+
+    __asm {
+        movups xmm1, d1
+        psrlq xmm1, 4
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("psrlq failed");
+    }
+#endif 
+    testSse128SubImm(0, 0x66, 0x73, 2, 4, 0x1111222233334444, 0x8234567890abcdef, 0x0111122223333444, 0x08234567890abcde);
+}
+
+void testSee2Psrldq173() {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    __m128i d1;
+    d1.m128i_u64[0] = 0x1111222233334444;
+    d1.m128i_u64[1] = 0x8234567890abcdef;
+
+    __m128i result;
+    __m128i expected;
+    expected.m128i_u64[0] = 0x90abcdef11112222;
+    expected.m128i_u64[1] = 0x0000000082345678;
+
+    __asm {
+        movups xmm1, d1
+        psrldq xmm1, 4
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("psrldq failed");
+    }
+#endif 
+    testSse128SubImm(0, 0x66, 0x73, 3, 4, 0x1111222233334444, 0x8234567890abcdef, 0x90abcdef11112222, 0x0000000082345678);
+}
+
+void testSee2Psllq173() {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    __m128i d1;
+    d1.m128i_u64[0] = 0x1111222233334444;
+    d1.m128i_u64[1] = 0x8234567890abcdef;
+
+    __m128i result;
+    __m128i expected;
+    expected.m128i_u64[0] = 0x1112222333344440;
+    expected.m128i_u64[1] = 0x234567890abcdef0;
+
+    __asm {
+        movups xmm1, d1
+        psllq xmm1, 4
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("psrldq failed");
+    }
+#endif 
+    testSse128SubImm(0, 0x66, 0x73, 6, 4, 0x1111222233334444, 0x8234567890abcdef, 0x1112222333344440, 0x234567890abcdef0);
+}
+
+void testSee2Pslldq173() {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    __m128i d1;
+    d1.m128i_u64[0] = 0x1111222233334444;
+    d1.m128i_u64[1] = 0x8234567890abcdef;
+
+    __m128i result;
+    __m128i expected;
+    expected.m128i_u64[0] = 0x3333444400000000;
+    expected.m128i_u64[1] = 0x90abcdef11112222;
+
+    __asm {
+        movups xmm1, d1
+        pslldq xmm1, 4
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("pslldq failed");
+    }
+#endif 
+    testSse128SubImm(0, 0x66, 0x73, 7, 4, 0x1111222233334444, 0x8234567890abcdef, 0x3333444400000000, 0x90abcdef11112222);
+}
+
 void testSee2Movdqa17f() {
     testSse128r(0, 0x66, 0x7f, 0x1111111122222222, 0x3333333344444444, 0x5555555566666666, 0x7777777788888888, 0x5555555566666666, 0x7777777788888888);
 }
 
 void testSee2Movdqu37f() {
     testSse128r(0, 0xf3, 0x7f, 0x1111111122222222, 0x3333333344444444, 0x5555555566666666, 0x7777777788888888, 0x5555555566666666, 0x7777777788888888);
+}
+
+void testSee2Pcmpeqb174() {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    __m128i d1;
+    d1.m128i_u64[0] = 0x1111111122222222;
+    d1.m128i_u64[1] = 0x3333333344444444;
+
+    __m128i d2;
+    d2.m128i_u64[0] = 0x1100001100222200;
+    d2.m128i_u64[1] = 0x0033000000444444;
+
+    __m128i result;
+    __m128i expected;
+    expected.m128i_u64[0] = 0xff0000ff00ffff00;
+    expected.m128i_u64[1] = 0x00ff000000ffffff;
+
+    __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        pcmpeqb xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("pcmpeqb failed");
+    }
+#endif 
+    testSse128(0, 0x66, 0x74, 0x1111111122222222, 0x3333333344444444, 0x1100001100222200, 0x0033000000444444, 0xff0000ff00ffff00, 0x00ff000000ffffff);
+}
+
+void testSee2Pcmpeqw175() {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    __m128i d1;
+    d1.m128i_u64[0] = 0x1111111122222222;
+    d1.m128i_u64[1] = 0x3333333344444444;
+
+    __m128i d2;
+    d2.m128i_u64[0] = 0x1111001100222222;
+    d2.m128i_u64[1] = 0x0033000000444444;
+
+    __m128i result;
+    __m128i expected;
+    expected.m128i_u64[0] = 0xffff00000000ffff;
+    expected.m128i_u64[1] = 0x000000000000ffff;
+
+    __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        pcmpeqw xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("pcmpeqw failed");
+    }
+#endif 
+    testSse128(0, 0x66, 0x75, 0x1111111122222222, 0x3333333344444444, 0x1111001100222222, 0x0033000000444444, 0xffff00000000ffff, 0x000000000000ffff);
+}
+
+void testSee2Pcmpeqd176() {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    __m128i d1;
+    d1.m128i_u64[0] = 0x1111111122222222;
+    d1.m128i_u64[1] = 0x3333333344444444;
+
+    __m128i d2;
+    d2.m128i_u64[0] = 0x1111111102222222;
+    d2.m128i_u64[1] = 0x3333033344444444;
+
+    __m128i result;
+    __m128i expected;
+    expected.m128i_u64[0] = 0xffffffff00000000;
+    expected.m128i_u64[1] = 0x00000000ffffffff;
+
+    __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        pcmpeqd xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("pcmpeqd failed");
+    }
+#endif 
+    testSse128(0, 0x66, 0x76, 0x1111111122222222, 0x3333333344444444, 0x1111111102222222, 0x3333033344444444, 0xffffffff00000000, 0x00000000ffffffff);
+}
+
+void testSee2Cmppd1c2() {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)  
+    __m128d d1;
+    d1.m128d_f64[0] = 4.0;
+    d1.m128d_f64[1] = 5.0;
+    __m128d d2;
+    d2.m128d_f64[0] = -8.0;
+    d2.m128d_f64[1] = 5.0;
+    __m128i result;
+    __m128i expected;
+    expected.m128i_u64[0] = 0;
+    expected.m128i_u64[1] = -1;
+
+     __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        cmpeqpd xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("cmpeqpd failed");
+    }
+
+    expected.m128i_u64[0] = 0;
+    expected.m128i_u64[1] = 0;
+     __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        cmpltpd xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("cmpltpd failed");
+    }
+
+    expected.m128i_u64[0] = 0;
+    expected.m128i_u64[1] = -1;
+     __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        cmplepd xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("cmplepd failed");
+    }
+
+    expected.m128i_u64[0] = -1;
+    expected.m128i_u64[1] = 0;
+     __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        cmpneqpd xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("cmpneqpd failed");
+    }
+
+    expected.m128i_u64[0] = -1;
+    expected.m128i_u64[1] = -1;
+     __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        cmpnltpd xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("cmpnltpd failed");
+    }
+
+    expected.m128i_u64[0] = -1;
+    expected.m128i_u64[1] = 0;
+     __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        cmpnlepd xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("cmpnlepd failed");
+    }
+
+    expected.m128i_u64[0] = -1;
+    expected.m128i_u64[1] = 0;
+    TestDouble d;
+    d.i = 0x7ff8000000000000;
+    d1.m128d_f64[0] = d.d;
+
+     __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        cmpunordpd xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("cmpunordpd failed");
+    }
+
+    expected.m128i_u64[0] = 0;
+    expected.m128i_u64[1] = -1;
+     __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        cmpordpd xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("cmpordpd failed");
+    }
+#endif
+    // cmpeqpd
+    testSse128imm(0, 0x66, 0xc2, 0, 0x4010000000000000, 0x4014000000000000, 0xc020000000000000, 0x4014000000000000, 0, 0xffffffffffffffff);
+    // cmpltpd
+    testSse128imm(0, 0x66, 0xc2, 1, 0x4010000000000000, 0x4014000000000000, 0xc020000000000000, 0x4014000000000000, 0, 0);
+    // cmplepd
+    testSse128imm(0, 0x66, 0xc2, 2, 0x4010000000000000, 0x4014000000000000, 0xc020000000000000, 0x4014000000000000, 0, 0xffffffffffffffff);
+    // cmpunordpd
+    testSse128imm(0, 0x66, 0xc2, 3, 0x7ff8000000000000, 0x4014000000000000, 0xc020000000000000, 0x4014000000000000, 0xffffffffffffffff, 0);
+    // cmpneqpd
+    testSse128imm(0, 0x66, 0xc2, 4, 0x4010000000000000, 0x4014000000000000, 0xc020000000000000, 0x4014000000000000, 0xffffffffffffffff, 0);
+    // cmpnltpd
+    testSse128imm(0, 0x66, 0xc2, 5, 0x4010000000000000, 0x4014000000000000, 0xc020000000000000, 0x4014000000000000, 0xffffffffffffffff, 0xffffffffffffffff);
+    // cmpnlepd
+    testSse128imm(0, 0x66, 0xc2, 6, 0x4010000000000000, 0x4014000000000000, 0xc020000000000000, 0x4014000000000000, 0xffffffffffffffff, 0);
+    // cmpordpd
+    testSse128imm(0, 0x66, 0xc2, 7, 0x7ff8000000000000, 0x4014000000000000, 0xc020000000000000, 0x4014000000000000, 0, 0xffffffffffffffff);
+}
+
+// :TODO: should test more cases
+void testSee2Cmpsd3c2() {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)  
+    __m128d d1;
+    d1.m128d_f64[0] = 4.0;
+    d1.m128d_f64[1] = 5.0;
+    __m128d d2;
+    d2.m128d_f64[0] = -8.0;
+    d2.m128d_f64[1] = 5.0;
+    __m128i result;
+    __m128i expected;
+    expected.m128i_u64[0] = 0;
+    expected.m128i_u64[1] = 0x4014000000000000; // 5.0
+
+     __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        cmpeqsd xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("cmpeqsd failed");
+    }
+
+    expected.m128i_u64[0] = 0;
+     __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        cmpltsd xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("cmpltsd failed");
+    }
+
+    expected.m128i_u64[0] = 0;
+     __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        cmplesd xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("cmplesd failed");
+    }
+
+    expected.m128i_u64[0] = -1;
+     __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        cmpneqsd xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("cmpneqsd failed");
+    }
+
+    expected.m128i_u64[0] = -1;
+     __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        cmpnltsd xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("cmpnltsd failed");
+    }
+
+    expected.m128i_u64[0] = -1;
+     __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        cmpnlesd xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("cmpnlesd failed");
+    }
+
+    expected.m128i_u64[0] = -1;
+    TestDouble d;
+    d.i = 0x7ff8000000000000;
+    d1.m128d_f64[0] = d.d;
+
+     __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        cmpunordsd xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("cmpunordsd failed");
+    }
+
+    expected.m128i_u64[0] = 0;
+     __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        cmpordsd xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("cmpordsd failed");
+    }
+#endif
+    // cmpeqsd
+    testSse128imm(0, 0xf2, 0xc2, 0, 0x4010000000000000, 0x4014000000000000, 0xc020000000000000, 0x4014000000000000, 0, 0x4014000000000000);
+    // cmpltsd
+    testSse128imm(0, 0xf2, 0xc2, 1, 0x4010000000000000, 0x4014000000000000, 0xc020000000000000, 0x4014000000000000, 0, 0x4014000000000000);
+    // cmplesd
+    testSse128imm(0, 0xf2, 0xc2, 2, 0x4010000000000000, 0x4014000000000000, 0xc020000000000000, 0x4014000000000000, 0, 0x4014000000000000);
+    // cmpunordsd
+    testSse128imm(0, 0xf2, 0xc2, 3, 0x7ff8000000000000, 0x4014000000000000, 0xc020000000000000, 0x4014000000000000, 0xffffffffffffffff, 0x4014000000000000);
+    // cmpneqsd
+    testSse128imm(0, 0xf2, 0xc2, 4, 0x4010000000000000, 0x4014000000000000, 0xc020000000000000, 0x4014000000000000, 0xffffffffffffffff, 0x4014000000000000);
+    // cmpnltsd
+    testSse128imm(0, 0xf2, 0xc2, 5, 0x4010000000000000, 0x4014000000000000, 0xc020000000000000, 0x4014000000000000, 0xffffffffffffffff, 0x4014000000000000);
+    // cmpnlesd
+    testSse128imm(0, 0xf2, 0xc2, 6, 0x4010000000000000, 0x4014000000000000, 0xc020000000000000, 0x4014000000000000, 0xffffffffffffffff, 0x4014000000000000);
+    // cmpordsd
+    testSse128imm(0, 0xf2, 0xc2, 7, 0x7ff8000000000000, 0x4014000000000000, 0xc020000000000000, 0x4014000000000000, 0, 0x4014000000000000);
+}
+
+void testSee2Movnti3c3() {   
+    for (U8 m=0;m<8;m++) {
+        newInstruction(0);
+        cpu->reg[m].u32 = 0x12348765;
+        writed(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET, 0xcdcdcdcd);        
+        pushCode8(0x0f);
+        pushCode8(0xc3);
+        pushCode8(0x04 | (m<<3));
+        pushCode8(0x25);
+        pushCode32(SSE_MEM_VALUE_TMP_OFFSET);
+        runTestCPU();
+        if (readd(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET)!=0x12348765) {
+            failed("movnti failed");
+        }
+    }    
+}
+
+void testSee2Shufpd1c6() {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    __m128i d1;
+    d1.m128i_u64[0] = 0x1111111122222222;
+    d1.m128i_u64[1] = 0x3333333344444444;
+    __m128i d2;
+    d2.m128i_u64[0] = 0x5555555566666666;
+    d2.m128i_u64[1] = 0x7777777788888888;
+    __m128i result;
+    __m128i expected;
+    expected.m128i_u64[0] = 0x1111111122222222;
+    expected.m128i_u64[1] = 0x7777777788888888;
+
+    __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        shufpd xmm1, xmm0, 0x1E
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("Shufpd failed");
+    }
+#endif 
+    testSse128imm(0, 0x66, 0xc6, 0x1E, 0x1111111122222222, 0x3333333344444444, 0x5555555566666666, 0x7777777788888888, 0x1111111122222222, 0x7777777788888888);
 }
 
 #endif

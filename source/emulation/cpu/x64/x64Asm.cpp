@@ -209,10 +209,6 @@ void X64Asm::doMemoryInstruction(U8 op, U8 reg1, bool isReg1Rex, U8 reg2, bool i
         this->write8(rm);
         this->write8((reg3Shift<<6) | (reg3 << 3) | reg2); // sib
     }
-
-    if (reg1==HOST_ESP && isReg1Rex && bytes == 2) {
-        // :TODO: should top 16-bits be cleared?
-    }
        
     if (displacementBytes==1)
         this->write8((U8)displacement);
@@ -1137,9 +1133,6 @@ void X64Asm::adjustStack(U8 tmpReg, S32 bytes) {
     }
 }
 
-// :TODO: is there a way to do this without changing flags so that I don't have to save them, 
-// plus it will mess up the stack if an exception is thrown
-//
 // could also store flags in a tmpReg if that stack becomes a problem
 //
 // If this function changes, apply it to enter16/enter32
@@ -2545,6 +2538,17 @@ void X64Asm::andReg(U8 reg, bool isRegRex, U32 mask) {
 
 // don't use x64_getTmpReg here, it is import that the exact reg is used for each instruction since
 // the exception handler will look for it
+
+// with BMI2
+//41 BA 0C 00 00 00    mov         r10d,0Ch  
+//C4 42 AB F7 C1       shrx        r8,r9,r10  
+//41 BA FF 0F 00 00    mov         r10d,0FFFh  
+//C4 42 B2 F5 CA       pext        r9,r9,r10  
+//4D 8B 95 98 04 00 00 mov         r10,qword ptr [r13+498h]  
+//4F 8B 14 C2          mov         r10,qword ptr [r10+r8*8]  
+//4F 8B 14 CA          mov         r10,qword ptr [r10+r9*8]  
+//66 45 8B 0A          mov         r9w,word ptr [r10]  
+//41 FF E2             jmp         r10  
 void X64Asm::jmpReg(U8 reg, bool isRex) {       
     // HOST_TMP2 will hold the page
     // HOST_TMP will hold the offset

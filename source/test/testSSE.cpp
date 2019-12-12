@@ -174,6 +174,28 @@ void testSse128imm(U8 preOp1, U8 preOp2, U8 op, U8 imm, U64 value1l, U64 value1h
     }    
 }
 
+void testSse128SubImm(U8 preOp1, U8 preOp2, U8 op, U8 g, U8 imm, U64 value1l, U64 value1h, U64 xmmResultl, U64 xmmResulth) {
+    for (U8 m=0;m<8;m++) {
+        initSseTest();            
+        loadSSE(m, 0, value1l, value1h);
+        if (preOp1) {
+            pushCode8(preOp1);
+        }
+        if (preOp2) {
+            pushCode8(preOp2);
+        }
+        pushCode8(0x0f);
+        pushCode8(op);
+        pushCode8(0xC0 | (g << 3) | m);            
+        pushCode8(imm);
+        runTestCPU();
+        if (cpu->xmm[m].pi.u64[0]!=xmmResultl || cpu->xmm[m].pi.u64[1]!=xmmResulth) {
+            failed("sse failed");
+        }
+
+    }    
+}
+
 void testSse128f(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U64 value2l, U64 value2h, U32 flagsResult) {
     for (U8 m=0;m<8;m++) {
         for (U8 from=0;from<8;from++) {
