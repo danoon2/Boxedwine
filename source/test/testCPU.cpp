@@ -29,7 +29,7 @@
 #include "testCPU.h"
 #include "testMMX.h"
 #include "testSSE.h"
-#include "testSse2.h"
+#include "testSSE2.h"
 
 static int cseip;
 
