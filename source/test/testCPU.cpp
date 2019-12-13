@@ -29,7 +29,7 @@
 #include "testCPU.h"
 #include "testMMX.h"
 #include "testSSE.h"
-#include "testSSE2.h"
+#include "testSse2.h"
 
 static int cseip;
 
@@ -7068,71 +7068,71 @@ int main(int argc, char **argv) {
 
     run(testSse2Punpcklbw160, "PUNPCKLBW 160 (sse2)");
     run(testMmxPunpcklbw, "PUNPCKLBW 360 (mmx)");
-    run(testSee2xPunpcklwd161, "PUNPCKLWD 161 (sse2)");
+    run(testSse2xPunpcklwd161, "PUNPCKLWD 161 (sse2)");
     run(testMmxPunpcklwd, "PUNPCKLWD 361 (mmx)");
     run(testSse2Punpckldq162, "PUNPCKLDQ 162 (sse2)");
     run(testMmxPunpckldq, "PUNPCKLDQ 362 (mmx)");
-    run(testSee2Packsswb163, "PACKSSWB 163 (sse2)");
+    run(testSse2Packsswb163, "PACKSSWB 163 (sse2)");
     run(testMmxPacksswb, "PACKSSWB 363 (mmx)");
-    run(testSee2Pcmpgtb164, "PCMPGTB 164 (sse2)");
+    run(testSse2Pcmpgtb164, "PCMPGTB 164 (sse2)");
     run(testMmxPcmpgtb, "PCMPGTB 364 (mmx)");
-    run(testSee2Pcmpgtw165, "PCMPGTW 165 (sse2)");
+    run(testSse2Pcmpgtw165, "PCMPGTW 165 (sse2)");
     run(testMmxPcmpgtw, "PCMPGTW 365 (mmx)");
-    run(testSee2Pcmpgtd166, "PCMPGTD 166 (sse2)");
+    run(testSse2Pcmpgtd166, "PCMPGTD 166 (sse2)");
     run(testMmxPcmpgtd, "PCMPGTD 366 (mmx)");
-    run(testSee2Packuswb167, "PACKUSWB 167 (sse2)");
+    run(testSse2Packuswb167, "PACKUSWB 167 (sse2)");
     run(testMmxPackuswb, "PACKUSWB 367 (mmx)");
-    run(testSee2Punpckhbw168, "PUNPCKHBW 168 (sse2)");
+    run(testSse2Punpckhbw168, "PUNPCKHBW 168 (sse2)");
     run(testMmxPunpckhbw, "PUNPCKHBW 368 (mmx)");
-    run(testSee2Punpckhwd169, "PUNPCKHWD 169 (sse2)");
+    run(testSse2Punpckhwd169, "PUNPCKHWD 169 (sse2)");
     run(testMmxPunpckhwd, "PUNPCKHWD 369 (mmx)");
-    run(testSee2Punpckhdq16a, "PUNPCKHDQ 16A (sse2)");
+    run(testSse2Punpckhdq16a, "PUNPCKHDQ 16A (sse2)");
     run(testMmxPunpckhdq, "PUNPCKHDQ 36a (mmx)");
-    run(testSee2Packssdw16b, "PACKSSDW 16B (sse2)");
+    run(testSse2Packssdw16b, "PACKSSDW 16B (sse2)");
     run(testMmxPackssdw, "PACKSSDW 36b (mmx)");            
-    run(testSee2Punpcklqdq16c, "PUNPCKLQDQ 16C (sse2)");
+    run(testSse2Punpcklqdq16c, "PUNPCKLQDQ 16C (sse2)");
     run(testMmxMovdToMmx, "MOVD 36e (mmx)");
-    run(testSee2Punpckhqdq16d, "PUNPCKHQDQ 16D (sse2)");
-    run(testSee2Movd16e, "MOVD 16E (sse2)");
-    run(testSee2Movdqa16f, "MOVDQA 16F (sse2)");
+    run(testSse2Punpckhqdq16d, "PUNPCKHQDQ 16D (sse2)");
+    run(testSse2Movd16e, "MOVD 16E (sse2)");
+    run(testSse2Movdqa16f, "MOVDQA 16F (sse2)");
     run(testMmxMovqToMmx, "MOVQ 36f (mmx)");
-    run(testSee2Movdqu36f, "MOVDQU F3 36F (sse2)");
+    run(testSse2Movdqu36f, "MOVDQU F3 36F (sse2)");
 
-    run(testSee2Pshufd170, "PSHUFD 170 (sse2)");
+    run(testSse2Pshufd170, "PSHUFD 170 (sse2)");
     run(testSsePshufw370, "PSHUFW 370 (sse1)");
-    run(testSee2Pshuflw370, "PSHUFLW F2 370 (sse2)");
-    run(testSee2Pshufhw370, "PSHUFHW F3 370 (sse2)");
-    run(testSee2Psrlw171, "PSRLW 171/2 (sse2)");
+    run(testSse2Pshuflw370, "PSHUFLW F2 370 (sse2)");
+    run(testSse2Pshufhw370, "PSHUFHW F3 370 (sse2)");
+    run(testSse2Psrlw171, "PSRLW 171/2 (sse2)");
     run(testMmxPsrlwImm8, "PSRLW 371/2 (mmx)");
-    run(testSee2Psraw171, "PSRAW 171/4 (sse2)");
+    run(testSse2Psraw171, "PSRAW 171/4 (sse2)");
     run(testMmxPsrawImm8, "PSRAW 371/4 (mmx)");
-    run(testSee2Psllw171, "PSLLW 171/6 (sse2)");
+    run(testSse2Psllw171, "PSLLW 171/6 (sse2)");
     run(testMmxPsllwImm8, "PSLLW 371/6 (mmx)");
-    run(testSee2Psrld172, "PSRLD 172/2 (sse2)");
+    run(testSse2Psrld172, "PSRLD 172/2 (sse2)");
     run(testMmxPsrldImm8, "PSRLD 372/2 (mmx)");
-    run(testSee2Psrad172, "PSRAD 172/4 (sse2)");
+    run(testSse2Psrad172, "PSRAD 172/4 (sse2)");
     run(testMmxPsradImm8, "PSRAD 372/4 (mmx)");
-    run(testSee2Pslld172, "PSLLD 172/6 (sse2)");
+    run(testSse2Pslld172, "PSLLD 172/6 (sse2)");
     run(testMmxPslldImm8, "PSLLD 372/6 (mmx)");
-    run(testSee2Psrlq173, "PSRLQ 173/2 (sse2)");
+    run(testSse2Psrlq173, "PSRLQ 173/2 (sse2)");
     run(testMmxPsrlqImm8, "PSRLQ 373/2 (mmx)");
-    run(testSee2Psrldq173, "PSRLDQ 173/3 (sse2)");
-    run(testSee2Psllq173, "PSLLQ 173/6 (sse2)");
+    run(testSse2Psrldq173, "PSRLDQ 173/3 (sse2)");
+    run(testSse2Psllq173, "PSLLQ 173/6 (sse2)");
     run(testMmxPsllqImm8, "PSLLQ 373/6 (mmx)");    
-    run(testSee2Pslldq173, "PSLLDQ 173/7 (sse2)");
-    run(testSee2Pcmpeqb174, "PCMPEQB 174 (sse2)");
+    run(testSse2Pslldq173, "PSLLDQ 173/7 (sse2)");
+    run(testSse2Pcmpeqb174, "PCMPEQB 174 (sse2)");
     run(testMmxPcmpeqb, "PCMPEQB 374 (mmx)");
-    run(testSee2Pcmpeqw175, "PCMPEQW 175 (sse2)");
+    run(testSse2Pcmpeqw175, "PCMPEQW 175 (sse2)");
     run(testMmxPcmpeqw, "PCMPEQW 375 (mmx)");
-    run(testSee2Pcmpeqd176, "PCMPEQD 176 (sse2)");
+    run(testSse2Pcmpeqd176, "PCMPEQD 176 (sse2)");
     run(testMmxPcmpeqd, "PCMPEQD 376 (mmx)");
     // :TODO: EMMS 377 (mmx)
-    run(testSee2Movd17e, "MOVD 17E (sse2)");
+    run(testSse2Movd17e, "MOVD 17E (sse2)");
     run(testMmxMovdToE, "MOVD 37e (mmx)");
-    run(testSee2Movq37e, "MOVQ F3 37E (sse2)");
-    run(testSee2Movdqa17f, "MOVDQA 17F (sse2)");
+    run(testSse2Movq37e, "MOVQ F3 37E (sse2)");
+    run(testSse2Movdqa17f, "MOVDQA 17F (sse2)");
     run(testMmxMovqToE, "MOVQ 37f (mmx)");
-    run(testSee2Movdqu37f, "MOVDQU F3 37F (sse2)");
+    run(testSse2Movdqu37f, "MOVDQU F3 37F (sse2)");
 
     run(testBt0x1a3, "BT 1a3");
     run(testBt0x3a3, "BT 3a3");
@@ -7156,109 +7156,109 @@ int main(int argc, char **argv) {
     run(testCmpXchg0x3b1, "CMPXCHG 3b1");
 
     run(testXadd0x3c1, "XADD 3c1");    
-    run(testSee2Cmppd1c2, "CMPPD 1C2 (sse2)");
+    run(testSse2Cmppd1c2, "CMPPD 1C2 (sse2)");
     run(testCmpps0x3c2, "CMPPS 3C2 (sse1)");
-    run(testSee2Cmpsd3c2, "CMPSD F2 3C2 (sse2)");
+    run(testSse2Cmpsd3c2, "CMPSD F2 3C2 (sse2)");
     run(testCmpss0x3c2, "CMPSS F3 3C2 (sse1)");
-    run(testSee2Movnti3c3, "MOVNTI 3C3 (sse2)");
+    run(testSse2Movnti3c3, "MOVNTI 3C3 (sse2)");
     run(testPinsrw3c4, "PINSRW 3C4 (sse1)");
     run(testPextrw3c5, "PEXTRW 3C5 (sse1)");
-    run(testSee2Shufpd1c6, "SHUFPD 1C6 (sse2)");
+    run(testSse2Shufpd1c6, "SHUFPD 1C6 (sse2)");
     run(testShufps3c6, "SHUFPS 3C6 (sse1)");
 
-    // PSRLW 1D1 (sse2)
+    run(testSse2Psrlw1d1, "PSRLW 1D1 (sse2)");
     run(testMmxPsrlw, "PSRLW 3D1 (mmx)");    
-    // PSRLD 1D2 (sse2)
+    run(testSse2Psrld1d2, "PSRLD 1D2 (sse2)");
     run(testMmxPsrld, "PSRLD 3D2 (mmx)");    
-    // PSRLQ 1D3 (sse2)
+    run(testSse2Psrlq1d3, "PSRLQ 1D3 (sse2)");
     run(testMmxPsrlq, "PSRLQ 3D3 (mmx)");
-    // PADDQ 1D4 (sse2)
-    // PADDQ 3D4 (sse2)
-    // PMULLW 1D5 (sse2)
+    run(testSse2Paddq1d4, "PADDQ 1D4 (sse2)");
+    run(testMmxPaddq3d4, "PADDQ 3D4 (mmx)");
+    run(testSse2Pmullw1d5, "PMULLW 1D5 (sse2)");
     run(testMmxPmullw, "PMULLW 3d5 (mmx)");
-    // MOVQ 1D6 (sse2)
-    // MOVDQ2Q F2 3D6 (sse2)
-    // MOVQ2DQ F3 3D6 (sse2)
-    //run(testPmovmskb1d7, "PMOVMSKB 1D7 (sse2)"); // already implemented test
+    run(testSse2Movq1d6, "MOVQ 1D6 (sse2)");
+    run(testSse2Movdq2q3d6, "MOVDQ2Q F2 3D6 (sse2)");
+    run(testSse2Movq2dq3d6, "MOVQ2DQ F3 3D6 (sse2)");
+    run(testSse2Pmovmskb1d7, "PMOVMSKB 1D7 (sse2)");
     run(testPmovmskb3d7, "PMOVMSKB 3D7 (sse1)");
-    // PSUBUSB 1D8 (sse2)
+    run(testSse2Psubusb1d8, "PSUBUSB 1D8 (sse2)");
     run(testMmxPsubusb, "PSUBUSB 3d8 (mmx)");
-    // PSUBUSW 1D9 (sse2)
+    run(testSse2Psubusw1d9, "PSUBUSW 1D9 (sse2)");
     run(testMmxPsubusw, "PSUBUSB 3d9 (mmx)");
-    // PMINUB 1DA (sse2)
+    run(testSse2Pminub1da, "PMINUB 1DA (sse2)");
     run(testPminub3da, "PMINUB 3DA (sse1)");
-    // PAND 1DB (sse2)
+    run(testSse2Pand1db, "PAND 1DB (sse2)");
     run(testMmxPand, "PAND 3db (mmx)");
-    // PADDUSB 1DC (sse2)
+    run(testSse2Paddusb1dc, "PADDUSB 1DC (sse2)");
     run(testMmxPaddusb, "PADDUSB 3dc (mmx)");
-    // PADDUSW 1DD (sse2)
+    run(testSse2Paddusw1dd, "PADDUSW 1DD (sse2)");
     run(testMmxPaddusw, "PADDUSB 3dd (mmx)");
-    // PMAXUB 1DE (sse2)
+    run(testSse2Pmaxub1de, "PMAXUB 1DE (sse2)");
     run(testPmaxub3de, "PMAXUB 3DE (sse1)");
-    // PANDN 1DF (sse2)
+    run(testSse2Pandn1df, "PANDN 1DF (sse2)");
     run(testMmxPandn, "PANDN 3df (mmx)");
 
-    // PAVGB 1E0 (sse2)
+    run(testSse2Pavgb1e0, "PAVGB 1E0 (sse2)");
     run(testPavgb3e0, "PAVGB 3E0 (sse1)");
-    // PSRAW 1E1 (sse2)
+    run(testSse2Psraw1e1, "PSRAW 1E1 (sse2)");
     run(testMmxPsraw, "PSRAW 3E1 (mmx)");    
-    // PSRAD 1E2 (sse2)
+    run(testSse2Psrad1e2, "PSRAD 1E2 (sse2)");
     run(testMmxPsrad, "PSRAD 3E2 (mmx)");
-    // PAVGW 1E3 (sse2)
+    run(testSse2Pavgw1e3, "PAVGW 1E3 (sse2)");
     run(testPavgw3e3, "PAVGW 3E3 (sse1)");
-    // PMULHUW 1E4 (sse2)
+    run(testSse2Pmulhuw1e4, "PMULHUW 1E4 (sse2)");
     run(testPmulhuw3e4, "PMULHUW 3E4 (sse1)");
-    // PMULHW 1E5 (sse2)
+    run(testSse2Pmulhw1e5, "PMULHW 1E5 (sse2)");
     run(testMmxPmulhw, "PMULHW 3e5 (mmx)");
-    // CVTTPD2DQ 1E6 (sse2)
-    // CVTPD2DQ F2 3E6 (sse2)
-    // CVTDQ2PD F3 3E6 (sse2)
-    // MOVNTDQ 1E7 (sse2)
+    run(testSse2Cvttpd2dq1e6, "CVTTPD2DQ 1E6 (sse2)");
+    run(testSse2Cvtpd2dq3e6, "CVTPD2DQ F2 3E6 (sse2)");
+    run(testSse2Cvtdq2pd3e6, "CVTDQ2PD F3 3E6 (sse2)");
+    run(testSse2Movntdq1e7, "MOVNTDQ 1E7 (sse2)");
     run(testMovntq3e7, "MOVNTQ 3E7 (sse1)");
-    // PSUBSB 1E8 (sse2)
+    run(testSse2Psubsb1e8, "PSUBSB 1E8 (sse2)");
     run(testMmxPsubsb, "PSUBSB 3e8 (mmx)");
-    // PSUBSW 1E9 (sse2)
+    run(testSse2Psubsw1e9, "PSUBSW 1E9 (sse2)");
     run(testMmxPsubsw, "PSUBSW 3e9 (mmx)"); 
-    // PMINSW 1EA (sse2)
+    run(testSse2Pminsw1ea, "PMINSW 1EA (sse2)");
     run(testPminsw3ea, "PMINSW 3EA (sse1)");
-    // POR 1EB (sse2)
+    run(testSse2Por1eb, "POR 1EB (sse2)");
     run(testMmxPor, "POR 3eb (mmx)");
-    // PADDSB 1EC (sse2)
+    run(testSse2Paddsb1ec, "PADDSB 1EC (sse2)");
     run(testMmxPaddsb, "PADDSB 3ec (mmx)");
-    // PADDSW 1ED (sse2)
+    run(testSse2Paddsw1ed, "PADDSW 1ED (sse2)");
     run(testMmxPaddsw, "PADDSW 3ed (mmx)");
-    // PMAXSW 1EE (sse2)
+    run(testSse2Pmaxsw1ee, "PMAXSW 1EE (sse2)");
     run(testPmaxsw3ee, "PMAXSW 3EE (sse1)");
-    // PXOR 1EF (sse2)
+    run(testSse2Pxor1ef, "PXOR 1EF (sse2)");
     run(testMmxPxor, "PXOR 3ef (mmx)");
 
-    // PSLLW 1F1 (sse2)
+    run(testSse2Psllw1f1, "PSLLW 1F1 (sse2)");
     run(testMmxPsllw, "PSLLW 3f1 (mmx)");
-    // PSLLD 1F2 (sse2)
+    run(testSse2Pslld1f2, "PSLLD 1F2 (sse2)");
     run(testMmxPslld, "PSLLD 3f2 (mmx)");    
-    // PSLLQ 1F3 (sse2)
+    run(testSse2Psllq1f3, "PSLLQ 1F3 (sse2)");
     run(testMmxPsllq, "PSLLQ 3f3 (mmx)");
-    // PMULUDQ 1F4 (sse2)
-    // PMULUDQ 3F4 (sse2)
-    // PMADDWD 1F5 (sse2)
+    run(testSse2Pmuludq1f4, "PMULUDQ 1F4 (sse2)");
+    run(testSse2Pmuludq3f4, "PMULUDQ 3F4 (sse2)");
+    run(testSse2Pmaddwd1f5, "PMADDWD 1F5 (sse2)");
     run(testMmxPmaddwd, "PMULLW 3f5 (mmx)");
-    // PSADBW 1F6 (sse2)
+    run(testSse2Psadbw1f6, "PSADBW 1F6 (sse2)");
     run(testPsadbw3f6, "PSADBW 3F6 (sse1)");
-    // MASKMOVDQU 1F7 (sse2)
+    run(testSse2Maskmovdqu1f7, "MASKMOVDQU 1F7 (sse2)");
     run(testMaskmovq3f7, "MASKMOVQ 3F7 (sse1)");
-    // PSUBB 1F8 (sse2)
+    run(testSse2Psubb1f8, "PSUBB 1F8 (sse2)");
     run(testMmxPsubb, "PSUBB 3f8 (mmx)");
-    // PSUBW 1F9 (sse2)
+    run(testSse2Psubw1f9, "PSUBW 1F9 (sse2)");
     run(testMmxPsubw, "PSUBW 3f9 (mmx)");
-    // PSUBD 1FA (sse2)
+    run(testSse2Psubd1fa, "PSUBD 1FA (sse2)");
     run(testMmxPsubd, "PSUBD 3fa (mmx)");                
-    // PSUBQ 1FB (sse2)
-    // PSUBQ 3FB (sse2)
-    // PADDB 1FC (sse2)
+    run(testSse2Psubq1fb, "PSUBQ 1FB (sse2)");
+    run(testSse2Psubq3fb, "PSUBQ 3FB (sse2)");
+    run(testSse2Paddb1fc, "PADDB 1FC (sse2)");
     run(testMmxPaddb, "PADDB 3fc (mmx)");
-    // PADDW 1FD (sse2)
+    run(testSse2Paddw1fd, "PADDW 1FD (sse2)");
     run(testMmxPaddw, "PADDW 3fd (mmx)");
-    // PADDD 1FE (sse2)
+    run(testSse2Paddd1fe, "PADDD 1FE (sse2)");
     run(testMmxPaddd, "PADDD 3fe (mmx)");                                  
             
 

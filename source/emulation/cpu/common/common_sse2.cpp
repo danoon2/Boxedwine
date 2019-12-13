@@ -374,11 +374,11 @@ void common_pmullwXmmE128(CPU* cpu, U32 reg, U32 address) {
 }
 
 void common_pmuludqMmxMmx(CPU* cpu, U32 r1, U32 r2) {
-    cpu->reg_mmx[r1].q = cpu->reg_mmx[r1].ud.d0 * cpu->reg_mmx[r2].ud.d0;
+    cpu->reg_mmx[r1].q = (U64)cpu->reg_mmx[r1].ud.d0 * (U64)cpu->reg_mmx[r2].ud.d0;
 }
 
 void common_pmuludqMmxE64(CPU* cpu, U32 reg, U32 address) {
-    cpu->reg_mmx[reg].q = cpu->reg_mmx[reg].ud.d0 * readd(address);
+    cpu->reg_mmx[reg].q = (U64)cpu->reg_mmx[reg].ud.d0 * (U64)readd(address);
 }
 
 void common_pmuludqXmmXmm(CPU* cpu, U32 r1, U32 r2) {
@@ -1093,7 +1093,7 @@ void common_movdq2qMmxXmm(CPU* cpu, U32 r1, U32 r2) {
 void common_movq2dqXmmMmx(CPU* cpu, U32 r1, U32 r2) {
     simde__m64 value;
     value.u64[0] = cpu->reg_mmx[r2].q;
-    cpu->xmm[r2].pi = simde_mm_movpi64_epi64(value);
+    cpu->xmm[r1].pi = simde_mm_movpi64_epi64(value);
 }
 
 void common_movntpdE128Xmm(CPU* cpu, U32 reg, U32 address) {
@@ -1102,8 +1102,8 @@ void common_movntpdE128Xmm(CPU* cpu, U32 reg, U32 address) {
 }
 
 void common_movntdqE128Xmm(CPU* cpu, U32 reg, U32 address) {
-    cpu->xmm[reg].pd.u64[0] = readq(address);
-    cpu->xmm[reg].pd.u64[1] = readq(address+8);
+    writeq(address, cpu->xmm[reg].pd.u64[0]);
+    writeq(address+8, cpu->xmm[reg].pd.u64[1]);
 }
 
 void common_movntiE32R32(CPU* cpu, U32 reg, U32 address) {
@@ -1112,7 +1112,7 @@ void common_movntiE32R32(CPU* cpu, U32 reg, U32 address) {
 
 void common_maskmovdquE128XmmXmm(CPU* cpu, U32 r1, U32 r2, U32 address) {
     int8_t result[16];
-
+    readMemory((U8*)result, address, 16);
     simde_mm_maskmoveu_si128(cpu->xmm[r1].pi, cpu->xmm[r2].pi, result);
     writeMemory(address, (U8*)result, 16);
 }

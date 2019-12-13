@@ -371,7 +371,65 @@ void testSse128E64(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U64 va
     }    
 }
 
-void testSseMmx64(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U64 value2, U64 xmmResultl, U64 xmmResulth) {
+void testSse128E64r(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U64 value2l, U64 value2h, U64 xmmResultl, U64 xmmResulth, U64 memResultl, U64 memResulth) {
+    if (!memResultl && !memResulth) {
+        memResultl = xmmResultl;
+        memResulth = xmmResulth;
+    }
+    for (U8 m=0;m<8;m++) {
+        if (xmmResultl!=0xFFFFFFFFFFFFFFFFl && xmmResulth!=0xFFFFFFFFFFFFFFFFl) {
+            for (U8 from=0;from<8;from++) {
+                if (m==from) {
+                    continue;
+                }
+                initSseTest();            
+                loadSSE(m, 0, value1l, value1h);
+                loadSSE(from, 1, value2l, value2h);
+                if (preOp1) {
+                    pushCode8(preOp1);
+                }
+                if (preOp2) {
+                    pushCode8(preOp2);
+                }
+                pushCode8(0x0f);
+                pushCode8(op);
+                pushCode8(0xC0 | m | (from << 3));            
+                runTestCPU();
+                if (cpu->xmm[m].pi.u64[0]!=xmmResultl || cpu->xmm[m].pi.u64[1]!=xmmResulth) {
+                    failed("sse failed");
+                }
+            }
+        }
+        if (memResultl!=0xFFFFFFFFFFFFFFFFl && memResulth!=0xFFFFFFFFFFFFFFFFl) {
+            initSseTest();         
+            loadSSE(m, 0, value2l, value2h);
+            writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+16, value1l);
+            writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+24, value1h);
+            if (preOp1) {
+                pushCode8(preOp1);
+            }
+            if (preOp2) {
+                pushCode8(preOp2);
+            }
+            pushCode8(0x0f);
+            pushCode8(op);
+            pushCode8(0x04 | (m<<3));
+            pushCode8(0x25);
+            pushCode32(SSE_MEM_VALUE_TMP_OFFSET+16);
+            runTestCPU();
+
+            if (readq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+16)!=memResultl || readq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+24)!=memResulth) {
+                failed("sse failed");
+            }
+        }
+    }    
+}
+
+void testSseMmx64(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U64 value2, U64 xmmResultl, U64 xmmResulth, U64 memResultl, U64 memResulth) {
+    if (!memResultl && !memResulth) {
+        memResultl = xmmResultl;
+        memResulth = xmmResulth;
+    }
     for (U8 m=0;m<8;m++) {
         for (U8 from=0;from<8;from++) {
             initSseTest();  
@@ -394,28 +452,33 @@ void testSseMmx64(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U64 val
             }
         }
 
-        initSseTest();         
-        loadSSE(m, 0, value1l, value1h);
-        writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+16, value2);
-        if (preOp1) {
-            pushCode8(preOp1);
-        }
-        if (preOp2) {
-            pushCode8(preOp2);
-        }
-        pushCode8(0x0f);
-        pushCode8(op);
-        pushCode8(0x04 | (m<<3));
-        pushCode8(0x25);
-        pushCode32(SSE_MEM_VALUE_TMP_OFFSET+16);
-        runTestCPU();
-        if (cpu->xmm[m].pi.u64[0]!=xmmResultl || cpu->xmm[m].pi.u64[1]!=xmmResulth) {
-            failed("sse failed");
+        if (memResultl!=0xFFFFFFFFFFFFFFFF || memResulth!=0xFFFFFFFFFFFFFFFF) {
+            initSseTest();         
+            loadSSE(m, 0, value1l, value1h);
+            writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+16, value2);
+            if (preOp1) {
+                pushCode8(preOp1);
+            }
+            if (preOp2) {
+                pushCode8(preOp2);
+            }
+            pushCode8(0x0f);
+            pushCode8(op);
+            pushCode8(0x04 | (m<<3));
+            pushCode8(0x25);
+            pushCode32(SSE_MEM_VALUE_TMP_OFFSET+16);
+            runTestCPU();
+            if (cpu->xmm[m].pi.u64[0]!=memResultl || cpu->xmm[m].pi.u64[1]!=memResulth) {
+                failed("sse failed");
+            }
         }
     }    
 }
 
-void testSseMmx64r(U8 preOp1, U8 preOp2, U8 op, U64 value1, U64 value2l, U64 value2h, U64 mmxResult) {
+void testSseMmx64r(U8 preOp1, U8 preOp2, U8 op, U64 value1, U64 value2l, U64 value2h, U64 mmxResult, U64 mmxMemResult) {
+    if (!mmxMemResult) {
+        mmxMemResult = mmxResult;
+    }
     for (U8 m=0;m<8;m++) {
         for (U8 from=0;from<8;from++) {
             initSseTest();  
@@ -437,25 +500,26 @@ void testSseMmx64r(U8 preOp1, U8 preOp2, U8 op, U64 value1, U64 value2l, U64 val
                 failed("sse failed");
             }
         }
-
-        initSseTest();         
-        loadMMX(m, 0, value1);
-        writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+16, value2l);
-        writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+24, value2h);
-        if (preOp1) {
-            pushCode8(preOp1);
-        }
-        if (preOp2) {
-            pushCode8(preOp2);
-        }
-        pushCode8(0x0f);
-        pushCode8(op);
-        pushCode8(0x04 | (m<<3));
-        pushCode8(0x25);
-        pushCode32(SSE_MEM_VALUE_TMP_OFFSET+16);
-        runTestCPU();
-        if (cpu->reg_mmx[m].q!=mmxResult) {
-            failed("sse failed");
+        if (mmxMemResult!=0xFFFFFFFFFFFFFFFF) {
+            initSseTest();         
+            loadMMX(m, 0, value1);
+            writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+16, value2l);
+            writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+24, value2h);
+            if (preOp1) {
+                pushCode8(preOp1);
+            }
+            if (preOp2) {
+                pushCode8(preOp2);
+            }
+            pushCode8(0x0f);
+            pushCode8(op);
+            pushCode8(0x04 | (m<<3));
+            pushCode8(0x25);
+            pushCode32(SSE_MEM_VALUE_TMP_OFFSET+16);
+            runTestCPU();
+            if (cpu->reg_mmx[m].q!=mmxMemResult) {
+                failed("sse failed");
+            }
         }
     }    
 }
@@ -2034,27 +2098,6 @@ void testPmovmskb3d7() {
     }
 #endif
     testMmx64Reg(0xd7, d1, reg, expected);
-}
-
-void testPmovmskb1d7() {
-#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
-    __m128i d1 = _mm_setr_epi32(0x11803344, 0xF0559900, 0x77C01177, 0xA0801122);
-    U32 result;
-    U32 reg = 0xdeadbeef;
-    U32 expected = 0x0000c4a4;
-
-    __asm {
-        movups xmm1, d1
-        mov ecx, reg
-        pmovmskb ecx, xmm0
-        mov result, ecx
-        emms
-    }
-    if (result!=expected) {
-        failed("Pmovmskb failed");
-    }
-#endif
-    testSseReg32r(0, 0x66, 0xd7, 0xdeadbeef, 0xF055990011803344, 0xA080112277C01177, 0x0000c4a4, 0xffffffff);
 }
 
 void testPminub3da() {

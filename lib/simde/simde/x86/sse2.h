@@ -1193,7 +1193,8 @@ simde_mm_cvtpd_epi32 (simde__m128d a) {
   SIMDE__VECTORIZE
   for (size_t i = 0 ; i < (sizeof(r.f64) / sizeof(r.f64[0])) ; i++) {
     r.i32[i] = (int32_t) a.f64[i];
-  }
+  } 
+  r.u64[1] = 0; // :TODO: I modified this
   return r;
 #endif
 }
@@ -1471,6 +1472,7 @@ simde_mm_cvttpd_epi32 (simde__m128d a) {
   for (size_t i = 0 ; i < (sizeof(a.f64) / sizeof(a.f64[0])) ; i++) {
     r.i32[i] = (int32_t) trunc(a.f64[i]);
   }
+  r.u64[1] = 0; // :TODO: I modified this
 #endif
 
   return r;

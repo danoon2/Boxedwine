@@ -2855,7 +2855,7 @@ void X64Asm::bswapSp() {
     write8(0xC8+HOST_ESP);
 }
 
-void X64Asm::DsEdiMmx(U8 rm) {
+void X64Asm::DsEdiMmxOrSSE(U8 rm) {
     U8 tmpReg = getTmpReg();
     addWithLea(7, false, 7, false, getRegForSeg(this->ds, tmpReg), true, 0, 0, 4);
     addWithLea(7, false, 7, false, HOST_MEM, true, 0, 0, 8);

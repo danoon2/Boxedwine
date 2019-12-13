@@ -2289,8 +2289,8 @@ static U32 sseMmxEm(X64Asm* data) {
     return 0;
 }
 
-static U32 sseDsEdiMmx(X64Asm* data) {    
-    data->DsEdiMmx(data->fetch8());
+static U32 sseDsEdiMmxOrSSE(X64Asm* data) {    
+    data->DsEdiMmxOrSSE(data->fetch8());
     return 0;
 }
 
@@ -2475,7 +2475,7 @@ X64Decoder x64Decoder[1024] = {
     inst8RM, inst16RM, lss16, inst16RM, lfs16, lgs16, inst16E8RM, invalidOp,
     invalidOp, invalidOp, inst16RMimm8SafeG, inst16RM, inst16RM, inst16RM, inst16E8RM, invalidOp,
     // 1c0
-    invalidOp, invalidOp, sse2Imm8, invalidOp, sseXmmErI8, sseRegXmmI8, sse2E, invalidOp,
+    invalidOp, invalidOp, sse2Imm8, invalidOp, sseXmmErI8, sseRegXmmI8, sse2Imm8, invalidOp,
     keepSame, keepSame, keepSame, keepSame, bswapSp, keepSame, keepSame, keepSame,
     // 1d0
     invalidOp, sse2E, sse2E, sse2E, sse2E, sse2E, sse2E, sseRegXmm,
@@ -2484,7 +2484,7 @@ X64Decoder x64Decoder[1024] = {
     sseXmmEx, sse2E, sse2E, sseXmmEx, sseXmmEx, sse2E, sse2E, sse2E,
     sse2E, sse2E, sseXmmEx, sse2E, sse2E, sse2E, sseXmmEx, sse2E,
     // 1f0
-    invalidOp, sse2E, sse2E, sse2E, sse2E, sse2E, sseXmmEx, sse2E,
+    invalidOp, sse2E, sse2E, sse2E, sse2E, sse2E, sseXmmEx, sseDsEdiMmxOrSSE,
     sse2E, sse2E, sse2E, sse2E, sse2E, sse2E, sse2E, invalidOp,
 
     // 200
@@ -2582,7 +2582,7 @@ X64Decoder x64Decoder[1024] = {
     sseMmxEm, mmx, mmx, sseMmxEm, sseMmxEm, mmx, sse2E, sseMmxEm,
     mmx, mmx, sseMmxEm, mmx, mmx, mmx, sseMmxEm, mmx,
     // 3f0
-    invalidOp, mmx, mmx, mmx, sse2E, mmx, sseMmxEm, sseDsEdiMmx,
+    invalidOp, mmx, mmx, mmx, sse2E, mmx, sseMmxEm, sseDsEdiMmxOrSSE,
     mmx, mmx, mmx, sse2E, mmx, mmx, mmx, invalidOp,
 };
 

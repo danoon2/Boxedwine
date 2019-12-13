@@ -74,5 +74,8 @@ void testMmxPsrawImm8();
 void testMmxPsraw();
 void testMmxPsradImm8();
 void testMmxPsrad();
+void testMmxPaddq3d4();
+void testSse2Pmuludq3f4();
+void testSse2Psubq3fb();
 
 #endif

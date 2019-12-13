@@ -176,7 +176,7 @@ public:
     void fpu6(U8 rm);
     void fpu7(U8 rm);
 
-    void DsEdiMmx(U8 rm);
+    void DsEdiMmxOrSSE(U8 rm);
 #ifdef __TEST
     void addReturnFromTest();
 #endif

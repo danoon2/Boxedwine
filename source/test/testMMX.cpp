@@ -789,4 +789,19 @@ void testMmxPsrad() {
     testMmx64(0xe2, 0xf102f00772345678, 16, 0xfffff10200007234);
 }
 
+void testMmxPaddq3d4() {
+    X86_TEST_MMX(0xf2345678f0abcdef, 0x5555555566666666, 0x4789abce57123455, paddq);
+    testMmx64(0xd4, 0xf2345678f0abcdef, 0x5555555566666666, 0x4789abce57123455);
+}
+
+void testSse2Pmuludq3f4() {
+    X86_TEST_MMX(0x0102f007F2345678, 0x5555555512345678, 0x113932851df4d840, pmuludq);
+    testMmx64(0xf4, 0x0102f007F2345678, 0x5555555512345678, 0x113932851df4d840);
+}
+
+void testSse2Psubq3fb() {
+    X86_TEST_MMX(0x33445566778899aal, 0x1188226699abcdefl, 0x21bc32ffdddccbbb, psubq);
+    testMmx64(0xfb, 0x33445566778899aal, 0x1188226699abcdefl, 0x21bc32ffdddccbbb);
+}
+
 #endif
