@@ -666,7 +666,7 @@ void x64CPU::unscheduleThread() {
 }
 
 void addTimer(KTimer* timer) {
-    kpanic("addTimer not implemented yet");
+    kwarn("addTimer not implemented yet");
 }
 
 void removeTimer(KTimer* timer) {

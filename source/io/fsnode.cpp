@@ -50,6 +50,9 @@ void FsNode::loadChildren() {
                     localPath+="/";
                 Fs::remoteNameToLocal(n.name);
                 localPath+=n.name;
+                if (stringHasEnding(localPath, ".mixed")) {
+                    localPath = localPath.substr(0, localPath.length()-6);
+                }
                 if (!stringHasEnding(localPath, ".link")) {
                     Fs::addFileNode(localPath, "", remotePath, n.isDirectory, this);
                 } else {
@@ -72,6 +75,17 @@ BoxedPtr<FsNode> FsNode::getChildByName(const std::string& name) {
     this->loadChildren();
     if (this->childrenByName.count(name))
         return this->childrenByName[name];
+    return NULL;
+}
+
+BoxedPtr<FsNode> FsNode::getChildByNameIgnoreCase(const std::string& name) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->childrenByNameMutex);
+    this->loadChildren();
+    for (auto& n : this->childrenByName) {
+        if (stringCaseInSensativeEquals(n.first, name)) {
+            return n.second;
+        }
+    }
     return NULL;
 }
 

@@ -52,6 +52,8 @@ public:
     BoxedPtr<KObject> kobject;
 
     BoxedPtr<FsNode> getChildByName(const std::string& name);
+    BoxedPtr<FsNode> getChildByNameIgnoreCase(const std::string& name);
+
     U32 getChildCount();
     void addChild(BoxedPtr<FsNode> node);
     void removeChildByName(const std::string& name);

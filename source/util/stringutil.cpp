@@ -74,3 +74,10 @@ void stringToLower(std::string& s) {
         c = std::tolower(c, loc);
     }
 }
+
+bool stringCaseInSensativeEquals(const std::string & str1, const std::string &str2) {
+    std::locale loc;
+	return ((str1.size() == str2.size()) && std::equal(str1.begin(), str1.end(), str2.begin(), [loc](const char & c1, const char & c2){
+							return (c1 == c2 || std::toupper(c1, loc) == std::toupper(c2, loc));
+								}));
+}

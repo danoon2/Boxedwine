@@ -249,27 +249,36 @@ U32 FsFileNode::rename(const std::string& path) {
     std::string fileName = Fs::getFileNameFromPath(path);
     Fs::localNameToRemote(fileName);
     std::string nativePath = parent->nativePath+Fs::nativePathSeperator+fileName;
+    std::string originalPath;
 
     if (this->isLink())
         nativePath+=".link";
 
     if (Fs::doesNativePathExist(nativePath)) {
         BoxedPtr<FsNode> existingNode = Fs::getNodeFromLocalPath("", path, false);
-        if (existingNode->isDirectory()!=this->isDirectory()) {
-            if (existingNode->isDirectory())
-                return -K_EISDIR;
-            return -K_ENOTDIR;
-        }
-        if (existingNode->isDirectory()) {
-            result = existingNode->removeDir();
-            if (result!=0)
-                return result;
+        if (!existingNode) {
+            // we must be on windows, nativePath and path are case insensitive the same, but are different case
+            //            
+            originalPath = path;
         } else {
-            existingNode->remove();
+            if (existingNode->isDirectory()!=this->isDirectory()) {
+                if (existingNode->isDirectory())
+                    return -K_EISDIR;
+                return -K_ENOTDIR;
+            }
+            if (existingNode->isDirectory()) {
+                result = existingNode->removeDir();
+                if (result!=0)
+                    return result;
+            } else {
+                existingNode->remove();
+            }
         }
     }
+    if (originalPath.length()) {     
+        nativePath = nativePath+".mixed";
+    }    
     result = ::rename(this->nativePath.c_str(), nativePath.c_str());
-
     if (result==0) {
         this->removeNodeFromParent();
         this->path = path;

@@ -10,5 +10,6 @@ bool stringContainsIgnoreCase(const std::string& str, const std::string& search)
 bool vectorContainsIgnoreCase(const std::vector<std::string>& strs, const std::string& search);
 std::string stringJoin(const std::vector<std::string>& v, const std::string& sep);
 void stringToLower(std::string& s);
+bool stringCaseInSensativeEquals(const std::string & str1, const std::string &str2);
 
 #endif

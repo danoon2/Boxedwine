@@ -791,7 +791,7 @@ U32 KProcess::mkdir(const std::string& path) {
     if (!node) {
         return -K_ENOENT;
     }
-    return Fs::makeLocalDirs(path);;
+    return Fs::makeLocalDirs(fullpath);
 }
 
 U32 KProcess::rename(const std::string& from, const std::string& to) {
@@ -1510,10 +1510,9 @@ U32 KProcess::clone(U32 flags, U32 child_stack, U32 ptid, U32 tls, U32 ctid) {
 
 U32 KProcess::exitgroup(U32 code) {
     KProcess* parent = KSystem::getProcess(this->parentId);        
-
     if (parent && parent->sigActions[K_SIGCHLD].handlerAndSigAction!=K_SIG_DFL) {
         if (parent->sigActions[K_SIGCHLD].handlerAndSigAction!=K_SIG_IGN) {
-            parent->signalCHLD(CLD_EXITED, this->id, this->userId, this->exitCode);
+            parent->signalCHLD(CLD_EXITED, this->id, this->userId, code);
         }
     }
 
