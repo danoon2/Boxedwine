@@ -116,6 +116,9 @@ void FsFileNode::ensurePathIsLocal() {
             Fs::makeLocalDirs(parentPath.c_str());
             this->zipNode->moveToFileSystem();
         }
+    } else if (this->parent->type==File) {
+        std::string parentPath = Fs::getParentPath(this->path);
+        Fs::makeLocalDirs(parentPath);
     }
 #endif
 }
@@ -123,7 +126,7 @@ void FsFileNode::ensurePathIsLocal() {
 FsOpenNode* FsFileNode::open(U32 flags) {
     U32 openFlags = O_BINARY;
     U32 f;
-    
+        
     if (this->isDirectory()) {
         return new FsDirOpenNode(Fs::getNodeFromLocalPath("", this->path, true), flags);
     }
