@@ -25,6 +25,7 @@
 
 #include <stdarg.h>
 #include <errno.h>
+#include <random>
 
 U64 sysCallTime;
 extern struct Block emptyBlock;
@@ -1340,6 +1341,29 @@ static U32 syscall_sendmmsg(CPU* cpu, U32 eipCount) {
     return result;
 }
 
+static U32 syscall_renameat(CPU* cpu, U32 eipCount) {
+    char tmp[MAX_FILEPATH_LEN];
+    char tmp2[MAX_FILEPATH_LEN];
+    SYS_LOG1(SYSCALL_FILE, cpu, "renameat olddirfd=%d oldpath=%X(%s) newdirfd=%d newpath=%X(%s)", ARG1, ARG2, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, ARG4, getNativeString(ARG4, tmp2, sizeof(tmp2)));
+    U32 result = cpu->thread->process->renameat(ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, getNativeString(ARG4, tmp2, sizeof(tmp2)));
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
+}
+
+std::mt19937 gen{std::random_device{}()};
+std::uniform_int_distribution<size_t> dist{0, 255};
+
+static U32 syscall_getrandom(CPU* cpu, U32 eipCount) {
+    SYS_LOG1(SYSCALL_FILE, cpu, "renameat buf=%X buflen=%d flags=%X", ARG1, ARG2, ARG3);
+    U32 buf = ARG1;
+    U32 count = ARG2;
+    for (U32 i=0;i<count;i++) {
+        writeb(buf+i, dist(gen));
+    }
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d\n", count);
+    return count;
+}
+
 static const SyscallFunc syscallFunc[] = {
     0,                  // 0
     syscall_exit,       // 1 __NR_exit
@@ -1684,12 +1708,19 @@ static const SyscallFunc syscallFunc[] = {
     syscall_prlimit64,  // 340 __NR_prlimit64
     0,                  // 341 __NR_name_to_handle_at
     0,                  // 342 __NR_open_by_handle_at
-    0,                  // 340
-    0,                  // 341
-    0,                  // 342
     0,                  // 343
     0,                  // 344
-    syscall_sendmmsg    // 345 __NR_sendmmsg 
+    syscall_sendmmsg,   // 345 __NR_sendmmsg 
+    0,                  // 346
+    0,                  // 347
+    0,                  // 348
+    0,                  // 349
+    0,                  // 350
+    0,                  // 351
+    0,                  // 352
+    syscall_renameat,    // 353 __NR_renameat2
+    0,                  // 354
+    syscall_getrandom   // 355 __NR_getrandom
 };
 
 #ifndef BOXEDWINE_MULTI_THREADED
@@ -1703,7 +1734,7 @@ void ksyscall(CPU* cpu, U32 eipCount) {
         unscheduleCurrentThread();
     }
 #endif
-    if (EAX>345) {
+    if (EAX>355) {
         result = -K_ENOSYS;
     } else if (!syscallFunc[EAX]) {
         result = -K_ENOSYS;

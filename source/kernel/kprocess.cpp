@@ -358,7 +358,11 @@ static void pushThreadStack(KThread* thread, CPU* cpu, int argc, U32* a, int env
     cpu->push32(4); // AT_PHENT
     cpu->push32(process->phdr);
     cpu->push32(3); // AT_PHDR
-    
+
+    // /libgdk-pixbuf2.0 package on buster needed this
+    cpu->push32(0);
+    cpu->push32(23); // AT_SECURE
+
     cpu->push32(0);	
     for (i=envc-1;i>=0;i--) {
         cpu->push32(e[i]);
@@ -446,8 +450,16 @@ KFileDescriptor* KProcess::openFileDescriptor(const std::string& currentDirector
         if (!parent) {
             errno = ENOENT;
             return NULL;
-        }        
-        node = Fs::addFileNode(parent->path+"/"+fileName, "", Fs::getNativePathFromParentAndLocalFilename(parent, fileName), false, parent);
+        }       
+        std::string nativePath = Fs::getNativePathFromParentAndLocalFilename(parent, fileName);
+        BoxedPtr<FsNode> mixedSibling = parent->getChildByNameIgnoreCase(fileName);
+        if (mixedSibling) {
+            nativePath = nativePath + ".mixed";
+            if (Fs::doesNativePathExist(nativePath)) {
+                kwarn("KProcess::openFileDescriptor mixed file already exists");
+            }
+        }
+        node = Fs::addFileNode(parent->path+"/"+fileName, "", nativePath, false, parent);
         Fs::makeLocalDirs(parent->path);
     }
     if (node->kobject) {
@@ -799,7 +811,22 @@ U32 KProcess::rename(const std::string& from, const std::string& to) {
     if (!node)
         return -K_ENOENT;
     std::string fullPath = Fs::getFullPath(this->currentDirectory, to);
+    return node->rename(fullPath);
+}
 
+U32 KProcess::renameat(FD olddirfd, const std::string& from, FD newdirfd, const std::string& to) {
+    std::string currentDirectory;
+    U32 result = this->getCurrentDirectoryFromDirFD(olddirfd, currentDirectory);
+    if (result)
+        return result;
+
+    BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath(currentDirectory, from, false);    
+    if (!node)
+        return -K_ENOENT;
+    result = this->getCurrentDirectoryFromDirFD(newdirfd, currentDirectory);
+    if (result)
+        return result;
+    std::string fullPath = Fs::getFullPath(currentDirectory, to);
     return node->rename(fullPath);
 }
 
@@ -1088,7 +1115,7 @@ U32 symlinkInDirectory(const std::string& currentDirectory, const std::string& t
     if (!parentNode) {
         return -K_ENOENT;
     }
-    node = Fs::addFileNode(fullPath, target, Fs::getNativePathFromParentAndLocalFilename(parentNode, Fs::getFileNameFromPath(linkpath)), false, parentNode);
+    node = Fs::addFileNode(fullPath, target, Fs::getNativePathFromParentAndLocalFilename(parentNode, Fs::getFileNameFromPath(linkpath))+".link", false, parentNode);
 
     if (!node->canWrite()) {
         node->removeNodeFromParent();
@@ -1433,7 +1460,6 @@ U32 KProcess::clone(U32 flags, U32 child_stack, U32 ptid, U32 tls, U32 ctid) {
         newProcess->memory = newMemory;
         KThread* newThread = newProcess->createThread();
 
-        U32 old = ::readd(ctid);
         newProcess->parentId = this->id;        
         newMemory->clone(this->memory);
         newProcess->clone(this);

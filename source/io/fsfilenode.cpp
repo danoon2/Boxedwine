@@ -126,7 +126,7 @@ void FsFileNode::ensurePathIsLocal() {
 FsOpenNode* FsFileNode::open(U32 flags) {
     U32 openFlags = O_BINARY;
     U32 f;
-        
+            
     if (this->isDirectory()) {
         return new FsDirOpenNode(Fs::getNodeFromLocalPath("", this->path, true), flags);
     }
@@ -235,12 +235,16 @@ U32 FsFileNode::rename(const std::string& path) {
     if (this->openNodes.size()) {
         int i=0;
         tmpPos = new S64[this->openNodes.size()];
+        for (U32 x=0;x<this->openNodes.size();x++) {
+            tmpPos[x]=-1;
+        }
         this->openNodes.for_each([&tmpPos,&i](KListNode<FsOpenNode*>* n) {
             FsOpenNode* openNode = n->data;
             if (openNode->isOpen()) {
-                tmpPos[i++] = openNode->getFilePointer();
+                tmpPos[i] = openNode->getFilePointer();
                 openNode->close();
             }
+            i++;
         });
     }
 
@@ -296,9 +300,12 @@ U32 FsFileNode::rename(const std::string& path) {
     }
     int i=0;
     this->openNodes.for_each([&tmpPos,&i](KListNode<FsOpenNode*>* n) {
-        FsOpenNode* openNode = n->data;
-        openNode->reopen();
-        openNode->seek(tmpPos[i++]);
+        if (tmpPos[i]!=-1) {
+            FsOpenNode* openNode = n->data;
+            openNode->reopen();
+            openNode->seek(tmpPos[i]);
+        }
+        i++;
     });
     return result;
 }

@@ -177,6 +177,7 @@ public:
     U32 readlink(const std::string& path, U32 buffer, U32 bufSize);
     U32 readlinkat(FD dirfd, const std::string& path, U32 buf, U32 bufsiz);
     U32 rename(const std::string& from, const std::string& to);
+    U32 renameat(FD olddirfd, const std::string& from, FD newdirfd, const std::string& to);
     U32 rmdir(const std::string& path);        
     U32 set_thread_area(U32 info);
     U32 setitimer(U32 which, U32 newValue, U32 oldValue);
