@@ -566,13 +566,20 @@ U32 KNativeSocketObject::listen(KFileDescriptor* fd, U32 backlog) {
     return handleNativeSocketError(this, false);
 }
 
-U32 KNativeSocketObject::accept(KFileDescriptor* fd, U32 address, U32 len) {
+U32 KNativeSocketObject::accept(KFileDescriptor* fd, U32 address, U32 len, U32 flags) {
     struct sockaddr addr;
     socklen_t addrlen = sizeof(struct sockaddr);
     S32 result = (S32)::accept(this->nativeSocket, &addr, &addrlen);
     if (result>=0) {
         BoxedPtr<KNativeSocketObject> s = new KNativeSocketObject(this->domain, this->type, this->protocol);
         KFileDescriptor* resultFD = KThread::currentThread()->process->allocFileDescriptor(s, K_O_RDWR, 0, -1, 0);
+
+        if (flags & FD_CLOEXEC) {
+            resultFD->descriptorFlags|=FD_CLOEXEC;
+        }
+        if (flags & K_O_NONBLOCK) {
+            resultFD->kobject->setBlocking(false);
+        }
 
         s->nativeSocket = result;
 #ifndef BOXEDWINE_MULTI_THREADED

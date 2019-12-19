@@ -29,6 +29,9 @@
 
 
 const char* socketAddressName(U32 address, U32 len, char* result, U32 cbResult) {
+    if (!address) {
+        return "";
+    }
     U16 family = readw(address);
     if (family == K_AF_UNIX) {
         return getNativeString(address + 2, result, cbResult);
@@ -107,7 +110,7 @@ U32 klisten(U32 socket, U32 backlog) {
     return s->listen(fd, backlog);
 }
 
-U32 kaccept(U32 socket, U32 address, U32 len) {
+U32 kaccept(U32 socket, U32 address, U32 len, U32 flags) {
     KThread* thread = KThread::currentThread();
     KFileDescriptor* fd = thread->process->getFileDescriptor(socket);
 
@@ -121,7 +124,7 @@ U32 kaccept(U32 socket, U32 address, U32 len) {
     if (!s->listening) {
         return -K_EINVAL;
     }
-    return s->accept(fd, address, len);
+    return s->accept(fd, address, len, flags);
 }
 
 U32 kgetsockname( U32 socket, U32 address, U32 plen) {

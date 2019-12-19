@@ -463,7 +463,7 @@ U32 KUnixSocketObject::listen(KFileDescriptor* fd, U32 backlog) {
     return 0;
 }
 
-U32 KUnixSocketObject::accept(KFileDescriptor* fd, U32 address, U32 len) {
+U32 KUnixSocketObject::accept(KFileDescriptor* fd, U32 address, U32 len, U32 flags) {
     BOXEDWINE_CONDITION_LOCK(this->lockCond);
     while (!this->pendingConnections.size()) {
         if (!this->blocking) {
@@ -482,6 +482,12 @@ U32 KUnixSocketObject::accept(KFileDescriptor* fd, U32 address, U32 len) {
     BoxedPtr<KUnixSocketObject> resultSocket = new KUnixSocketObject(this->pid, domain, type, protocol);
     KFileDescriptor* result = KThread::currentThread()->process->allocFileDescriptor(resultSocket, K_O_RDWR, 0, -1, 0);
 
+    if (flags & FD_CLOEXEC) {
+        result->descriptorFlags|=FD_CLOEXEC;
+    }
+    if (flags & K_O_NONBLOCK) {
+        result->kobject->setBlocking(false);
+    }
     connection = connectionNode->data; // weak reference
     connection->connection = resultSocket.get();
     //connection->connected = true; this will be handled when the connecting thread is unblocked    

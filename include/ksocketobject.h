@@ -13,7 +13,7 @@ public:
 
     KSocketObject(U32 objectType, U32 domain, U32 type, U32 protocol);
 
-    virtual U32 accept(KFileDescriptor* fd, U32 address, U32 len) = 0;
+    virtual U32 accept(KFileDescriptor* fd, U32 address, U32 len, U32 flags) = 0;
     virtual U32 bind(KFileDescriptor* fd, U32 address, U32 len) = 0;
     virtual U32 connect(KFileDescriptor* fd, U32 address, U32 len) = 0;
     virtual U32 getpeername(KFileDescriptor* fd, U32 address, U32 plen) = 0;

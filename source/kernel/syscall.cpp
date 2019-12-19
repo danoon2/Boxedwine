@@ -527,7 +527,7 @@ static U32 syscall_socketcall(CPU* cpu, U32 eipCount) {
             break;
         case 5: // SYS_ACCEPT
             SYS_LOG1(SYSCALL_SOCKET, cpu, "SYS_ACCEPT: socket=%d address=%X(%s) len=%d", SARG2, SARG3, socketAddressName(SARG3, SARG4, tmp, sizeof(tmp)), SARG4);
-            result = kaccept(SARG2, SARG3, SARG4);
+            result = kaccept(SARG2, SARG3, SARG4, 0);
             break;			
         case 6: // SYS_GETSOCKNAME
             SYS_LOG1(SYSCALL_SOCKET, cpu, "SYS_GETSOCKNAME: socket=%d address=%X len=%d", SARG2, SARG3, SARG4);
@@ -732,7 +732,7 @@ static U32 syscall_msync(CPU* cpu, U32 eipCount) {
 }
 
 static U32 syscall_writev(CPU* cpu, U32 eipCount) {
-    SYS_LOG1(SYSCALL_WRITE, cpu, "writev: filds=%d iov=0x%X iovcn=%d", ARG1, ARG2, ARG3);
+    SYS_LOG1(SYSCALL_WRITE, cpu, "writev: filds=%d iov=0x%X iovcn=%d", ARG1, ARG2, ARG3);    
     U32 result = cpu->thread->process->writev(ARG1, ARG2, ARG3);
     SYS_LOG(SYSCALL_WRITE, cpu, " result=%d(0x%X)\n", result, result);
     return result;
@@ -1358,10 +1358,120 @@ static U32 syscall_getrandom(CPU* cpu, U32 eipCount) {
     U32 buf = ARG1;
     U32 count = ARG2;
     for (U32 i=0;i<count;i++) {
-        writeb(buf+i, dist(gen));
+        writeb(buf+i, (U8)dist(gen));
     }
     SYS_LOG(SYSCALL_FILE, cpu, " result=%d\n", count);
     return count;
+}
+
+U32 syscall_socket(CPU* cpu, U32 eipCount) {
+    SYS_LOG1(SYSCALL_SOCKET, cpu, "socket domain=%d(%s) type=%d(%s) protocol=%d(%s)", ARG1, ARG1==K_AF_UNIX?"AF_UNIX":(ARG1==K_AF_INET)?"AF_INET":"", (ARG2 & 0xFF), (ARG2 & 0xFF)==K_SOCK_STREAM?"SOCK_STREAM":((ARG2 & 0xFF)==K_SOCK_DGRAM)?"AF_SOCK_DGRAM":"", ARG3, (ARG3 == 0)?"IPPROTO_IP":(ARG3==6)?"IPPROTO_TCP":(ARG3==17)?"IPPROTO_UDP":"");
+    U32 result = ksocket(ARG1, ARG2 & 0xFF, ARG3);
+    SYS_LOG(SYSCALL_SOCKET, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
+}
+
+U32 syscall_socketpair(CPU* cpu, U32 eipCount) {
+    SYS_LOG1(SYSCALL_SOCKET, cpu, "socketpair af=%d(%s) type=%d(%s) socks=%X", ARG1, ARG1==K_AF_UNIX?"AF_UNIX":(ARG1==K_AF_INET)?"AF_INET":"", ARG2, ARG2==K_SOCK_STREAM?"SOCK_STREAM":(ARG2==K_SOCK_DGRAM)?"AF_SOCK_DGRAM":"", ARG4);
+    U32 result = ksocketpair(ARG1, ARG2, ARG3, ARG4, 0);
+    SYS_LOG(SYSCALL_SOCKET, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
+}
+
+U32 syscall_bind(CPU* cpu, U32 eipCount) {
+    char tmp[MAX_FILEPATH_LEN];
+    SYS_LOG1(SYSCALL_SOCKET, cpu, "bind socket=%d address=%X(%s) len=%d", ARG1, ARG2, socketAddressName(ARG2, ARG3, tmp, sizeof(tmp)), ARG3);
+    U32 result = kbind(ARG1, ARG2, ARG3);
+    SYS_LOG(SYSCALL_SOCKET, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
+}
+
+U32 syscall_connect(CPU* cpu, U32 eipCount) {
+    char tmp[MAX_FILEPATH_LEN];
+    SYS_LOG1(SYSCALL_SOCKET, cpu, "connect socket=%d address=%X(%s) len=%d", ARG1, ARG2, socketAddressName(ARG2, ARG3, tmp, sizeof(tmp)), ARG3);
+    U32 result = kconnect(ARG1, ARG2, ARG3);
+    SYS_LOG(SYSCALL_SOCKET, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
+}
+
+U32 syscall_listen(CPU* cpu, U32 eipCount) {
+    SYS_LOG1(SYSCALL_SOCKET, cpu, "listen socket=%d backlog=%d", ARG1, ARG2);
+    U32 result = klisten(ARG1, ARG2);
+    SYS_LOG(SYSCALL_SOCKET, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
+}
+
+U32 syscall_accept4(CPU* cpu, U32 eipCount) {
+    char tmp[MAX_FILEPATH_LEN];
+    SYS_LOG1(SYSCALL_SOCKET, cpu, "accept4 socket=%d address=%X(%s) len=%d flags=%X", ARG1, ARG2, socketAddressName(ARG2, ARG3, tmp, sizeof(tmp)), ARG3, ARG4);
+    U32 result = kaccept(ARG1, ARG2, ARG3, ARG4);
+    SYS_LOG(SYSCALL_SOCKET, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
+}
+
+U32 syscall_getsockopt(CPU* cpu, U32 eipCount) {
+    SYS_LOG1(SYSCALL_SOCKET, cpu, "getsockopt socket=%d level=%d name=%d value=%d, len=%d", ARG1, ARG2, ARG3, ARG4, ARG5);
+    U32 result = kgetsockopt(ARG1, ARG2, ARG3, ARG4, ARG5);
+    SYS_LOG(SYSCALL_SOCKET, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
+}
+
+U32 syscall_setsockopt(CPU* cpu, U32 eipCount) {
+    SYS_LOG1(SYSCALL_SOCKET, cpu, "setsockopt socket=%d level=%d name=%d value=%d, len=%d", ARG1, ARG2, ARG3, ARG4, ARG5);
+    U32 result = ksetsockopt(ARG1, ARG2, ARG3, ARG4, ARG5);
+    SYS_LOG(SYSCALL_SOCKET, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
+}
+
+U32 syscall_getsockname(CPU* cpu, U32 eipCount) {
+    SYS_LOG1(SYSCALL_SOCKET, cpu, "getsockname socket=%d address=%X len=%d", ARG1, ARG2, ARG3);
+    U32 result = kgetsockname(ARG1, ARG2, ARG3);
+    SYS_LOG(SYSCALL_SOCKET, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
+}
+
+U32 syscall_getpeername(CPU* cpu, U32 eipCount) {
+    SYS_LOG1(SYSCALL_SOCKET, cpu, "getpeername socket=%d address=%X len=%d", ARG1, ARG2, ARG3);
+    U32 result = kgetpeername(ARG1, ARG2, ARG3);
+    SYS_LOG(SYSCALL_SOCKET, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
+}
+
+U32 syscall_sendto(CPU* cpu, U32 eipCount) {
+    char tmp[MAX_FILEPATH_LEN];
+    SYS_LOG1(SYSCALL_SOCKET, cpu, "sendto socket=%d buffer=%X len=%d flags=%X dest=%s", ARG1, ARG2, ARG3, ARG4, socketAddressName(ARG5, ARG6, tmp, sizeof(tmp)));
+    U32 result = ksendto(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6);
+    SYS_LOG(SYSCALL_SOCKET, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
+}
+
+U32 syscall_sendmsg(CPU* cpu, U32 eipCount) {
+    SYS_LOG1(SYSCALL_SOCKET, cpu, "sendmsg socket=%d message=%X flags=%X", ARG1, ARG2, ARG3);
+    U32 result = ksendmsg(ARG1, ARG2, ARG3);
+    SYS_LOG(SYSCALL_SOCKET, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
+}
+
+U32 syscall_recvfrom(CPU* cpu, U32 eipCount) {
+    char tmp[MAX_FILEPATH_LEN];
+    SYS_LOG1(SYSCALL_SOCKET, cpu, "recvfrom socket=%d buffer=%X len=%d flags=%X address=%s", ARG1, ARG2, ARG3, ARG4, socketAddressName(ARG5, ARG6, tmp, sizeof(tmp)));
+    U32 result = krecvfrom(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6);
+    SYS_LOG(SYSCALL_SOCKET, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
+}
+
+U32 syscall_recvmsg(CPU* cpu, U32 eipCount) {
+    SYS_LOG1(SYSCALL_SOCKET, cpu, "recvmsg socket=%d message=%X flags=%X", ARG1, ARG2, ARG3);
+    U32 result = krecvmsg(ARG1, ARG2, ARG3);
+    SYS_LOG(SYSCALL_SOCKET, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
+}
+
+U32 syscall_shutdown(CPU* cpu, U32 eipCount) {
+    SYS_LOG1(SYSCALL_SOCKET, cpu, "shutdown socket=%d how=%d", ARG1, ARG2);
+    U32 result = kshutdown(ARG1, ARG2);
+    SYS_LOG(SYSCALL_SOCKET, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static const SyscallFunc syscallFunc[] = {
@@ -1718,9 +1828,27 @@ static const SyscallFunc syscallFunc[] = {
     0,                  // 350
     0,                  // 351
     0,                  // 352
-    syscall_renameat,    // 353 __NR_renameat2
+    syscall_renameat,   // 353 __NR_renameat2
     0,                  // 354
-    syscall_getrandom   // 355 __NR_getrandom
+    syscall_getrandom,  // 355 __NR_getrandom
+    0,                  // 356 __NR_memfd_create
+    0,                  // 357 __NR_bpf
+    0,                  // 358 __NR_execveat
+    syscall_socket,     // 359 __NR_socket
+    syscall_socketpair, // 360 __NR_socketpair
+    syscall_bind,       // 361 __NR_bind
+    syscall_connect,    // 362 __NR_connect
+    syscall_listen,     // 363 __NR_listen
+    syscall_accept4,    // 364 __NR_accept4
+    syscall_getsockopt, // 365 __NR_getsockopt
+    syscall_setsockopt, // 366 __NR_setsockopt
+    syscall_getsockname,// 367 __NR_getsockname
+    syscall_getpeername,// 368 __NR_getpeername
+    syscall_sendto,     // 369 __NR_sendto
+    syscall_sendmsg,    // 370 __NR_sendmsg
+    syscall_recvfrom,   // 371 __NR_recvfrom
+    syscall_recvmsg,    // 372 __NR_recvmsg
+    syscall_shutdown    // 373 __NR_shutdown
 };
 
 #ifndef BOXEDWINE_MULTI_THREADED
@@ -1734,10 +1862,12 @@ void ksyscall(CPU* cpu, U32 eipCount) {
         unscheduleCurrentThread();
     }
 #endif
-    if (EAX>355) {
+    if (EAX>373) {
         result = -K_ENOSYS;
+        kwarn("no syscall for %d", EAX);
     } else if (!syscallFunc[EAX]) {
         result = -K_ENOSYS;
+        kwarn("no syscall for %d", EAX);
     } else {
 #ifndef BOXEDWINE_MULTI_THREADED
         U64 startTime = Platform::getMicroCounter();

@@ -29,7 +29,7 @@ public:
     virtual U32  map(U32 address, U32 len, S32 prot, S32 flags, U64 off);
     virtual bool canMap();
 
-    virtual U32 accept(KFileDescriptor* fd, U32 address, U32 len);
+    virtual U32 accept(KFileDescriptor* fd, U32 address, U32 len, U32 flags);
     virtual U32 bind(KFileDescriptor* fd, U32 address, U32 len);
     virtual U32 connect(KFileDescriptor* fd, U32 address, U32 len);
     virtual U32 getpeername(KFileDescriptor* fd, U32 address, U32 plen);

@@ -113,14 +113,14 @@ public class Main {
         return new String[0];
     }
 
-    public static void runTest(String path, Results results) throws IOException {
+    public static void runTest(String filesPath, String path, Results results) throws IOException {
         File rootPath = new File(path+File.separator+"root");
         if (rootPath.exists()) {
             deleteDir(rootPath);
         }
         rootPath.mkdir();
-        File filesPath = new File(path+File.separator+"root"+File.separator+"files");
-        copyFolder(new File(path+File.separator+"files").toPath(), filesPath.toPath());
+        File copiedFilesPath = new File(path+File.separator+"root"+File.separator+"files");
+        copyFolder(new File(filesPath).toPath(), copiedFilesPath.toPath());
 
         String[] installLines = getLines(path + File.separator+"Install.txt");
         String[] installLines2 = getLines(path + File.separator+"Install2.txt");
@@ -160,7 +160,7 @@ public class Main {
     public static void runTest(String name) {
         try {
             Results results = new Results();
-            runTest(scriptDir+name, results);
+            runTest(scriptDir+".."+File.separator+"files"+File.separator+name, scriptDir+name, results);
             if (results.exitCode==1) {
                 System.out.println("OK   "+name+" completed in "+results.timeToComplete+" seconds");
             } else {

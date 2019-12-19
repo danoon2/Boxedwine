@@ -56,7 +56,7 @@ U32 ksocket(U32 domain, U32 type, U32 protocol);
 U32 kbind(U32 socket, U32 address, U32 len);
 U32 kconnect(U32 socket, U32 address, U32 len);
 U32 klisten(U32 socket, U32 backog);
-U32 kaccept(U32 socket, U32 address, U32 len);
+U32 kaccept(U32 socket, U32 address, U32 len, U32 flags);
 U32 kgetsockname(U32 socket, U32 address, U32 len);
 U32 kgetpeername(U32 socket, U32 address, U32 len);
 U32 ksocketpair(U32 af, U32 type, U32 protocol, U32 socks, U32 flags);
