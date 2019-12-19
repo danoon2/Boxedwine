@@ -678,7 +678,7 @@ U32 KProcess::execve(const std::string& path, std::vector<std::string>& args, co
     if (!openNode) {
         return 0;
     }
-    args[0] = node->path;        
+    args[0] = path; // if path is a link, we should use the link not the actual path       
     if (interpreter.length()) {
         args.insert(args.begin(), interpreterArgs.begin(), interpreterArgs.end());
         args.insert(args.begin(), interpreter);
@@ -686,8 +686,8 @@ U32 KProcess::execve(const std::string& path, std::vector<std::string>& args, co
     if (loader.length()) {
         args.insert(args.begin(), loader);
     }
-    this->exe = node->path;
-    this->name = Fs::getFileNameFromPath(this->exe);
+    this->exe = path; // if path is a link, we should use the link not the actual path       
+    this->name = Fs::getFileNameFromPath(path);
     
     i=0;
     this->commandLine = stringJoin(args, "\0");
