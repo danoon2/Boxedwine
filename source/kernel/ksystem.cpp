@@ -45,7 +45,7 @@ U32 KSystem::getProcessCount() {
 U32 KSystem::uname(U32 address) {
     writeNativeString(address, "Linux");
     writeNativeString(address + 65, "Linux");
-    writeNativeString(address + 130, "4.4.0-21-generic");
+    writeNativeString(address + 130, "4.15.0-20-generic");
     writeNativeString(address + 260, "i686");
     return 0;
 }
