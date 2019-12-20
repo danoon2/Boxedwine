@@ -4216,7 +4216,7 @@ public:
         case 0x04: func(data, op, rm, BtR16, BtE16); break;
         case 0x05: func(data, op, rm, BtsR16, BtsE16); break;
         case 0x06: func(data, op, rm, BtrR16, BtrE16); break;
-        case 0x07: func(data, op, rm, BtcR16, BtsE16); break;
+        case 0x07: func(data, op, rm, BtcR16, BtcE16); break;
         default: op->inst = Invalid; op->reg = rm; op->imm = data->inst; break;
         }	
         op->imm = 1 << (data->fetch8() & 15);
@@ -4232,10 +4232,10 @@ public:
         case 0x04: func(data, op, rm, BtR32, BtE32); break;
         case 0x05: func(data, op, rm, BtsR32, BtsE32); break;
         case 0x06: func(data, op, rm, BtrR32, BtrE32); break;
-        case 0x07: func(data, op, rm, BtcR32, BtsE32); break;
+        case 0x07: func(data, op, rm, BtcR32, BtcE32); break;
         default: op->inst = Invalid; op->reg = rm; op->imm = data->inst; break;
         }	
-        op->imm = 1 << (data->fetch8() & 15);
+        op->imm = 1 << (data->fetch8() & 31);
     }
 };
 

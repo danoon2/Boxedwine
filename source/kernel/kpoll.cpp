@@ -38,8 +38,10 @@ S32 internal_poll(KPollData* data, U32 count, U32 timeout) {
         // gather locks before we check the data so that we don't miss one
         for (i=0;i<count;i++) {
             KFileDescriptor* fd = thread->process->getFileDescriptor(data->fd);
-            fd->kobject->waitForEvents(thread->pollCond, data->events);
-            data++;
+            if (fd) {
+                fd->kobject->waitForEvents(thread->pollCond, data->events);
+                data++;
+            }
         } 
 
         data = firstData;
