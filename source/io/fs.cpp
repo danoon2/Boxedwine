@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <errno.h>
 
 #include UNISTD
 #include MKDIR_INCLUDE
@@ -268,7 +269,7 @@ U32 Fs::makeLocalDirs(const std::string& path) {
             nativePath = node->nativePath + Fs::nativePathSeperator + nativePath;
             U32 result = MKDIR(nativePath.c_str());
             if (result) {
-                return -translateErr(errno);;
+                return -translateErr(errno);
             }
             BoxedPtr<FsNode> childNode = Fs::addFileNode(base, "", nativePath, true, node);
         }
