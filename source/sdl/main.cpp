@@ -386,7 +386,7 @@ int boxedmain(int argc, const char **argv) {
     Fs::makeLocalDirs("/mnt");
 
     BoxedPtr<FsNode> rootNode = Fs::getNodeFromLocalPath("", "/", true);
-    BoxedPtr<FsNode> devNode = Fs::addFileNode("/dev", "", "", true, rootNode);
+    BoxedPtr<FsNode> devNode = Fs::addFileNode("/dev", "", rootNode->nativePath+Fs::nativePathSeperator+"dev", true, rootNode);
     BoxedPtr<FsNode> inputNode = Fs::addFileNode("/dev/input", "", "", true, devNode);
     BoxedPtr<FsNode> procNode = Fs::addFileNode("/proc", "", "", true, rootNode);
     BoxedPtr<FsNode> procSelfNode = Fs::addFileNode("/proc/self", "", "", true, procNode);
