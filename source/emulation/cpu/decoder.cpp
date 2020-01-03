@@ -5327,6 +5327,7 @@ DecodeRM decodeMovCrxRd(MovCRxRd, Invalid);
 DecodeLea decodeLeaGw(LeaR16);               // LEA Gw
 DecodeLea decodeLeaGd(LeaR32);               // LEA Gd
 
+DecodeRM decodeHintNop(Nop, Nop);
 DecodeZeroInst decodeNop(Nop, None, Pause);
 DecodeReg2 decodeCbw(MovGwSxR8, 0, 0);                           // CBW
 DecodeReg2 decodeCwde(MovGdSxR16, 0, 0);                         // CWDE
@@ -5776,7 +5777,7 @@ const Decode* const decoder[] = {
     0, 0, 0, 0, 0, 0, 0, 0,
     // 0x110
     &sse2Movupd, &sse2Movupd_r, &sseMov0x112, &sseMov0x113, &sseMov0x114, &sseMov0x115, &sseMov0x116, &sseMov0x117,
-    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, &decodeHintNop,
     // 0x120
     &decodeMovRdCrx, 0, &decodeMovCrxRd, 0, 0, 0, 0, 0,
     &sse2Movapd, &sse2Movapd_r, &sseMov0x12a, &sseMov0x12b, &sseMov0x12c, &sseMov0x12d, &sseMov0x12e, &sseMov0x12f,
@@ -5872,7 +5873,7 @@ const Decode* const decoder[] = {
     0, 0, 0, 0, 0, 0, 0, 0,
     // 0x310
     &sseMov0x310, &sseMov0x311, &sseMov0x312, &sseMov0x313, &sseUnpcklp, &sseUnpckhp, &sseMov0x316, &sseMov0x317,
-    &seePrefetch, 0, 0, 0, 0, 0, 0, 0,
+    &seePrefetch, 0, 0, 0, 0, 0, 0, &decodeHintNop,
     // 0x320
     &decodeMovRdCrx, 0, &decodeMovCrxRd, 0, 0, 0, 0, 0,
     &sseMovapsXE, &sseMovapsEX, &sseCvt2a, &sseMovnt, &sseCvt2c, &sseCvt2d, &sseUcomis, &sseComis,
