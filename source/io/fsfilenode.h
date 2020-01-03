@@ -7,6 +7,8 @@
 class FsZipNode;
 #endif
 
+S32 translateErr(U32 e);
+
 class FsFileNode : public FsNode {
 public:
     FsFileNode(U32 id, U32 rdev, const std::string& path, const std::string& link, const std::string& nativeRootPath, bool isDirectory, bool isRootPath, BoxedPtr<FsNode> parent);

@@ -250,8 +250,9 @@ U32 Fs::makeLocalDirs(const std::string& path) {
         BoxedPtr<FsNode> nodePart = nodes[i];
         if (!Fs::doesNativePathExist(nodePart->nativePath)) {
             U32 result = MKDIR(nodePart->nativePath.c_str());
-            if (result)
-                return result;
+            if (result) {
+                return -translateErr(errno);
+            }
         }
     }
     if (notFound) {
@@ -266,8 +267,9 @@ U32 Fs::makeLocalDirs(const std::string& path) {
             Fs::localNameToRemote(nativePath);
             nativePath = node->nativePath + Fs::nativePathSeperator + nativePath;
             U32 result = MKDIR(nativePath.c_str());
-            if (result)
-                return result;
+            if (result) {
+                return -translateErr(errno);;
+            }
             BoxedPtr<FsNode> childNode = Fs::addFileNode(base, "", nativePath, true, node);
         }
     }
