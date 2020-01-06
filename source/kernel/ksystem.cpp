@@ -186,15 +186,17 @@ void KSystem::printStacks() {
 
 U32 KSystem::kill(S32 pid, U32 signal) {
     KProcess* process = 0;
-    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(processesCond);
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(processesCond);
 
-    if (pid>0) {        
-        process = KSystem::processes[pid];
-    } else {
-        kpanic("kill with pid = %d not implemented", pid);
+        if (pid>0) {        
+            process = KSystem::processes[pid];
+        } else {
+            kpanic("kill with pid = %d not implemented", pid);
+        }
+        if (!process)
+            return -K_ESRCH;
     }
-    if (!process)
-        return -K_ESRCH;
     if (signal!=0) {
         return process->signal(signal);
     }

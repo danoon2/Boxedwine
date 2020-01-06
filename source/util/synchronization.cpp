@@ -37,14 +37,12 @@ void BoxedWineMutex::unlock() {
 BoxedWineCondition::BoxedWineCondition(std::string name) : name(name) {
     this->m = SDL_CreateMutex();
     this->c = SDL_CreateCond();
-    this->parent = NULL;
     this->lockOwner = 0;
 }
 
 BoxedWineCondition::BoxedWineCondition() {
     this->m = SDL_CreateMutex();
     this->c = SDL_CreateCond();
-    this->parent = NULL;
     this->lockOwner = 0;
 }
 
@@ -74,33 +72,42 @@ bool BoxedWineCondition::tryLock() {
     return false;
 }
 
-void BoxedWineCondition::signal() {
-    if (this->parent) {
-        BoxedWineCondition* p = this->parent;
-        while(!p->tryLock()) {
-            this->unlock();
-            this->lock();
+void BoxedWineCondition::signal() {    
+    if (this->parents.size()>0) {
+        // signal will change this->parents so we can't iterate this->parents directly
+        BoxedWineCondition** pp = NULL;
+        VECTOR_TO_ARRAY_ON_STACK(this->parents, BoxedWineCondition*, pp);
+        for (int i=0;i<this->parents.size();i++) {
+            BoxedWineCondition* p  = pp[i];
+            while(!p->tryLock()) {
+                this->unlock();
+                this->lock();
+            }
+            if(VECTOR_CONTAINS(this->parents, p)) {
+                p->signal();            
+            }
+            p->unlock();
         }
-        if (p==this->parent) {
-            this->parent->signal();            
-        }
-        p->unlock();
     } else {
         SDL_CondSignal((SDL_cond*)this->c);
     }
 }
 
 void BoxedWineCondition::signalAll() {
-    if (this->parent) {
-        BoxedWineCondition* p = this->parent;
-        while(!p->tryLock()) {
-            this->unlock();
-            this->lock();
+    if (this->parents.size()>0) {
+        BoxedWineCondition** pp = NULL;
+        VECTOR_TO_ARRAY_ON_STACK(this->parents, BoxedWineCondition*, pp);
+        for (int i=0;i<this->parents.size();i++) {
+            BoxedWineCondition* p  = pp[i];
+            while(!p->tryLock()) {
+                this->unlock();
+                this->lock();
+            }
+            if(VECTOR_CONTAINS(this->parents, p)) {
+                p->signalAll();            
+            }
+            p->unlock();
         }
-        if (p==this->parent) {
-            this->parent->signalAll();            
-        }
-        p->unlock();
     }
     SDL_CondBroadcast((SDL_cond*)this->c);
 }
@@ -113,7 +120,7 @@ void BoxedWineCondition::signalAllLock() {
 
 void BoxedWineCondition::unlockAndRemoveChildren() {
     for (auto &child : this->children) {
-        child.cond->parent = NULL;
+        VECTOR_REMOVE(child.cond->parents, this);
         child.cond->unlock();
     }
     for (auto &child : this->children) {
@@ -135,7 +142,7 @@ void BoxedWineCondition::wait() {
 
     for (auto &child : this->children) {
         child.cond->lock();
-        child.cond->parent = NULL;
+        VECTOR_REMOVE(child.cond->parents, this);
         child.cond->unlock();
     }
     this->children.clear();
@@ -149,6 +156,9 @@ void BoxedWineCondition::wait() {
 void BoxedWineCondition::waitWithTimeout(U32 ms) {
     for (auto &child : this->children) {
         child.cond->unlock();
+        if (!VECTOR_CONTAINS(child.cond->parents, this)) {
+            kpanic("BoxedWineCondition::waitWithTimeout in bad state");
+        }
     }
 
     KThread::currentThread()->waitingCond = this;
@@ -157,7 +167,7 @@ void BoxedWineCondition::waitWithTimeout(U32 ms) {
 
     for (auto &child : this->children) {
         child.cond->lock();
-        child.cond->parent = NULL;
+        VECTOR_REMOVE(child.cond->parents, this);
         child.cond->unlock();
     }
     this->children.clear();
@@ -176,12 +186,15 @@ void BoxedWineCondition::unlock() {
 void BoxedWineCondition::addChildCondition(BoxedWineCondition& cond, const std::function<void(void)>& doneWaitingCallback) {
     // this (parent) should be be locked while we call this
     cond.lock();
-    cond.parent = this;
+    if (VECTOR_CONTAINS(cond.parents, this)) {
+        kpanic("BoxedWineCondition::addChildCondition cond already has this parent");
+    }
+    cond.parents.push_back(this);
     this->children.push_back(BoxedWineConditionChild(&cond, doneWaitingCallback));
 }
 
 U32 BoxedWineCondition::waitCount() {
-    return (this->parent?1:0);
+    return (U32)this->parents.size();
 }
 
 #else 
@@ -191,7 +204,7 @@ bool BoxedWineConditionTimer::run() {
     return false; // signal will remove timer
 }
 
-BoxedWineCondition::BoxedWineCondition(std::string name) : name(name), parent(NULL) {
+BoxedWineCondition::BoxedWineCondition(std::string name) : name(name) {
 }
 
 BoxedWineCondition::~BoxedWineCondition() {
@@ -217,28 +230,38 @@ void BoxedWineCondition::signalThread(bool all) {
         }
     }
     for (auto &child : this->children) {
-        child.cond->parent = NULL;
+        VECTOR_REMOVE(child.cond->parents, this);
     }
     this->children.clear();
 }
 
 void BoxedWineCondition::signal() {
-    if (this->parent) {
-        this->parent->signalAll();
+    if (this->parents.size()) {
+        // signal will change this->parents so we can't iterate this->parents directly
+        BoxedWineCondition** pp = NULL;
+        VECTOR_TO_ARRAY_ON_STACK(this->parents, BoxedWineCondition*, pp);
+        for (int i=0;i<this->parents.size();i++) {
+            pp[i]->signal();
+        }
     }
     this->signalThread(false);
 }
 
 void BoxedWineCondition::signalAll() {
-    if (this->parent) {
-        this->parent->signalAll();
+    if (this->parents.size()) {
+        // signalAll will change this->parents so we can't iterate this->parents directly
+        BoxedWineCondition** pp = NULL;
+        VECTOR_TO_ARRAY_ON_STACK(this->parents, BoxedWineCondition*, pp);
+        for (int i=0;i<this->parents.size();i++) {
+            pp[i]->signalAll();
+        }
     }
     this->signalThread(true);
 }
 
 void BoxedWineCondition::unlockAndRemoveChildren() {
     for (auto &child : this->children) {
-        child.cond->parent = NULL;
+        VECTOR_REMOVE(child.cond->parents, this);
     }
     for (auto &child : this->children) {
         if (child.doneWaitingCallback) {
@@ -271,7 +294,10 @@ U32 BoxedWineCondition::waitCount() {
 }
 
 void BoxedWineCondition::addChildCondition(BoxedWineCondition& cond, const std::function<void(void)>& doneWaitingCallback) {
-    cond.parent = this;
+    if (VECTOR_CONTAINS(cond.parents, this)) {
+        kpanic("BoxedWineCondition::addChildCondition cond already has this parent");
+    }
+    cond.parents.push_back(this);
     this->children.push_back(BoxedWineConditionChild(&cond, doneWaitingCallback));
 }
 

@@ -53,7 +53,7 @@ public:
     const std::string name;
 
 private:
-    BoxedWineCondition* parent;
+    std::vector<BoxedWineCondition*> parents;
     std::vector<BoxedWineConditionChild> children;  
 
     void* m;
@@ -128,7 +128,7 @@ public:
 private:
     KList<KThread*> waitingThreads;
 
-    BoxedWineCondition* parent;
+    std::vector<BoxedWineCondition*> parents;
     std::vector<BoxedWineConditionChild> children;
 
     friend BoxedWineConditionTimer;
