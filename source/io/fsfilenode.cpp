@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <errno.h>
+#include <SDL.h>
 
 #include UNISTD
 #include UTIME
@@ -261,42 +262,47 @@ U32 FsFileNode::rename(const std::string& path) {
     if (this->isLink())
         nativePath+=".link";
 
-    if (Fs::doesNativePathExist(nativePath)) {
-        BoxedPtr<FsNode> existingNode = Fs::getNodeFromLocalPath("", path, false);
-        if (!existingNode) {
-            // we must be on windows, nativePath and path are case insensitive the same, but are different case
-            //            
-            originalPath = path;
-        } else {
-            if (existingNode->isDirectory()!=this->isDirectory()) {
-                if (existingNode->isDirectory())
-                    return -K_EISDIR;
-                return -K_ENOTDIR;
-            }
-            if (existingNode->isDirectory()) {
-                result = existingNode->removeDir();
-                if (result!=0)
-                    return result;
+    for (U32 i=0;i<3;i++) {
+        if (Fs::doesNativePathExist(nativePath)) {
+            BoxedPtr<FsNode> existingNode = Fs::getNodeFromLocalPath("", path, false);
+            if (!existingNode) {
+                // we must be on windows, nativePath and path are case insensitive the same, but are different case
+                //            
+                originalPath = path;
             } else {
-                existingNode->remove();
+                if (existingNode->isDirectory()!=this->isDirectory()) {
+                    if (existingNode->isDirectory())
+                        return -K_EISDIR;
+                    return -K_ENOTDIR;
+                }
+                if (existingNode->isDirectory()) {
+                    result = existingNode->removeDir();
+                    if (result!=0)
+                        return result;
+                } else {
+                    existingNode->remove();
+                }
             }
         }
-    }
-    if (originalPath.length()) {     
-        nativePath = nativePath+".mixed";
-    }    
-    result = ::rename(this->nativePath.c_str(), nativePath.c_str());
-    if (result==0) {
-        this->removeNodeFromParent();
-        this->path = path;
-        this->nativePath = nativePath;
-        this->name = Fs::getFileNameFromPath(path);
-        std::string parentPath = Fs::getParentPath(path);
-        BoxedPtr<FsNode> parentNode = Fs::getNodeFromLocalPath("", parentPath, false);
-        parentNode->addChild(this);
-        this->parent = parentNode;
-    } else {
-        result = -translateErr(errno);
+        if (originalPath.length()) {     
+            nativePath = nativePath+".mixed";
+        }    
+        result = ::rename(this->nativePath.c_str(), nativePath.c_str());
+        if (result==0) {
+            this->removeNodeFromParent();
+            this->path = path;
+            this->nativePath = nativePath;
+            this->name = Fs::getFileNameFromPath(path);
+            std::string parentPath = Fs::getParentPath(path);
+            BoxedPtr<FsNode> parentNode = Fs::getNodeFromLocalPath("", parentPath, false);
+            parentNode->addChild(this);
+            this->parent = parentNode;
+        } else {
+            result = -translateErr(errno);
+            SDL_Delay(100); // not sure why on Windows doesNativePathExist fails sometimes, debian stretch /usr/bin/dpkg -i /var/local/xbitmaps_1.1.1-2_all.deb seems to cause this in a reproducible way
+            continue;
+        }
+        break;
     }
     int i=0;
     this->openNodes.for_each([&tmpPos,&i](KListNode<FsOpenNode*>* n) {
