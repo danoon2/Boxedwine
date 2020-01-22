@@ -675,8 +675,7 @@ void KThread::runSignal(U32 signal, U32 trapNo, U32 errorNo) {
         if (this->waitingCond) {
             if (!(action->flags & K_SA_RESTART))
                 interrupted = 1;
-            this->waitThreadNode.remove();
-            this->waitingCond = NULL;
+            this->waitingCond->signalAll(); // this will make sure it gets cleaned up properly
         }		
 #endif
         // move to front of the queue

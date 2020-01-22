@@ -88,8 +88,12 @@ S32 internal_poll(KPollData* data, U32 count, U32 timeout) {
                 return 0;
             }
             timeout-=diff;
-        }          
-        BOXEDWINE_CONDITION_WAIT_TIMEOUT(thread->pollCond, timeout);
+        }   
+        if (timeout>0xF0000000) {
+            BOXEDWINE_CONDITION_WAIT(thread->pollCond);
+        } else {
+            BOXEDWINE_CONDITION_WAIT_TIMEOUT(thread->pollCond, timeout);
+        }
     }
 }
 

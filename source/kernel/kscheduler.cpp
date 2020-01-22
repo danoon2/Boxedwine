@@ -44,6 +44,9 @@ void scheduleThread(KThread* thread) {
     if (thread->waitingCond) {
         kpanic("can't schedule a thread that is waiting");
     }
+    if (thread->condTimer.active) {
+        kpanic("can't schedule a thread that is waiting on a timer");
+    }
 #endif
     thread->cpu->yield = false;
     scheduledThreads.addToFront(&thread->scheduledThreadNode);
