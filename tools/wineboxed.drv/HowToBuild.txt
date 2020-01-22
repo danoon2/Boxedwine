@@ -4,7 +4,7 @@ To build
 2) remove files in dll/winex11.drv and replace them with the files in this directory
 3) configure / make wine
 
-If it fails to compile (this will happen on Wine 1.7.55) because of some GL definition, then uncommend
+If it fails to compile (this will happen on Wine 1.7.55) because of some GL definition, then uncomment
 //#include "wine/wglext.h"
 from wineboxed.c
 
