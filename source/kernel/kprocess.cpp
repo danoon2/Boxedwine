@@ -187,7 +187,11 @@ void KProcess::cleanupProcess() {
     this->privateShm.clear();
     this->mappedFiles.clear();
     if (this->memory) {
-        delete this->memory;
+        if (this->memory->getRefCount()>1) {
+            this->memory->decRefCount();
+        } else {
+            delete this->memory;
+        }
         this->memory = NULL;
     }
 }
@@ -542,8 +546,9 @@ KThread* KProcess::startProcess(const std::string& currentDirectory, U32 argc, c
         if (loader.length())
             args.push_back(loader);
         if (interpreter.length())
-            args.push_back(interpreter);
-        for (i=0;i<argc;i++) {
+            args.push_back(interpreter);        
+        args.push_back(std::string(Fs::getFullPath(currentDirectory, pargs[0])));
+        for (i=1;i<argc;i++) {
             args.push_back(pargs[i]);
         }
         for (i=0;i<envc;i++) {
@@ -666,7 +671,6 @@ U32 KProcess::execve(const std::string& path, std::vector<std::string>& args, co
     std::string interpreter;
     std::vector<std::string> interpreterArgs;
     std::string loader;
-    U32 i;
     std::string name;
     std::vector<std::string> cmdLine;
 
@@ -678,7 +682,7 @@ U32 KProcess::execve(const std::string& path, std::vector<std::string>& args, co
     if (!openNode) {
         return 0;
     }
-    args[0] = path; // if path is a link, we should use the link not the actual path       
+    args[0] = std::string(Fs::getFullPath(currentDirectory, path)); // if path is a link, we should use the link not the actual path       
     if (interpreter.length()) {
         args.insert(args.begin(), interpreterArgs.begin(), interpreterArgs.end());
         args.insert(args.begin(), interpreter);
@@ -689,11 +693,10 @@ U32 KProcess::execve(const std::string& path, std::vector<std::string>& args, co
     this->exe = path; // if path is a link, we should use the link not the actual path       
     this->name = Fs::getFileNameFromPath(path);
     
-    i=0;
     this->commandLine = stringJoin(args, "\0");
             
     this->path.clear();
-    for (i=0;i<envs.size();i++) {
+    for (U32 i=0;i<envs.size();i++) {
         if (strncmp(envs[i].c_str(), "PATH=", 5)==0) {
             stringSplit(this->path,envs[i].substr(5),':');
         }
@@ -702,8 +705,16 @@ U32 KProcess::execve(const std::string& path, std::vector<std::string>& args, co
     // reset memory must come after we grab the args and env
 #ifdef BOXEDWINE_X64
     this->memory->previousExecutableMemoryId = this->memory->executableMemoryId;
-#endif
-    this->memory->reset();
+#endif    
+    if (this->memory->getRefCount()==1) {
+        this->memory->reset();
+    } else {
+        this->memory->decRefCount();
+        this->memory = new Memory();
+        this->memory->onThreadChanged();
+        KThread::currentThread()->memory = this->memory;
+    }
+
     KThread::currentThread()->reset();
     this->onExec();
 
@@ -781,7 +792,7 @@ U32 KProcess::dup(U32 fildes) {
     if (!fd) {
         return -K_EBADF;
     }
-    return this->allocFileDescriptor(fd->kobject, fd->accessFlags, fd->descriptorFlags, -1, 0)->handle;
+    return this->allocFileDescriptor(fd->kobject, fd->accessFlags, 0, -1, 0)->handle; // do not copy file descriptor flags
 }
 
 U32 KProcess::rmdir(const std::string& path) {
@@ -1060,7 +1071,7 @@ U32 KProcess::dup2(FD fildes, FD fildes2) {
         }
         fd2->close();
     } 
-    this->allocFileDescriptor(fd->kobject, fd->accessFlags, fd->descriptorFlags, fildes2, 0);
+    this->allocFileDescriptor(fd->kobject, fd->accessFlags, 0, fildes2, 0); // do not copy file descriptor flags
     return fildes2;
 }
 
@@ -1446,27 +1457,42 @@ and is now available for re-use. */
 #define K_CLONE_NEWNET            0x40000000      /* New network namespace */
 #define K_CLONE_IO                0x80000000      /* Clone io context */
 
-U32 KProcess::clone(U32 flags, U32 child_stack, U32 ptid, U32 tls, U32 ctid) {
-    U32 vFork = 0;
-
-    if (flags & K_CLONE_VFORK) {
-        flags &=~K_CLONE_VFORK;
-        vFork = 1;
-    }
-
-    if ((flags & 0xFFFFFF00)==(K_CLONE_CHILD_SETTID|K_CLONE_CHILD_CLEARTID) || (flags & 0xFFFFFF00)==(K_CLONE_PARENT_SETTID)) {        
+U32 KProcess::clone(U32 flags, U32 child_stack, U32 ptid, U32 tls, U32 ctid) {    
+    U32 mask = flags & CSIGNAL;
+    flags &= ~CSIGNAL;
+    
+    if (!(flags & K_CLONE_THREAD)) { // new thread group (process)
+        bool vFork = false;
+        if (flags & K_CLONE_VFORK) {
+            flags &=~K_CLONE_VFORK;
+            vFork = true;
+        }
+        bool vm = false;
+        if (flags & K_CLONE_VM) {
+            flags &=~K_CLONE_VM;
+            vm = true;
+        }
+        if (flags & ~(K_CLONE_CHILD_SETTID|K_CLONE_CHILD_CLEARTID|K_CLONE_PARENT_SETTID)) {
+            kpanic("KProcess::clone - unhandled flag 0x%X", (U32)(flags & ~(K_CLONE_CHILD_SETTID|K_CLONE_CHILD_CLEARTID|K_CLONE_PARENT_SETTID)));
+        }
         KProcess* newProcess = new KProcess(KSystem::nextThreadId++);
-        Memory* newMemory = new Memory();		
-        newProcess->memory = newMemory;
+        if (vm) {
+            newProcess->memory = this->memory;
+            newProcess->memory->incRefCount();
+        } else {            
+            newProcess->memory = new Memory();
+            newProcess->memory->clone(this->memory);
+        }
         KThread* newThread = newProcess->createThread();
 
         newProcess->parentId = this->id;        
-        newMemory->clone(this->memory);
+        
         newProcess->clone(this);
         newThread->clone(KThread::currentThread());
         newThread->memory = newProcess->memory;
 
-        newProcess->initStdio();
+        // will only create them if they are missing
+        //newProcess->initStdio();
         
         if ((flags & K_CLONE_CHILD_SETTID)!=0) {
             if (ctid!=0) {
@@ -1484,16 +1510,27 @@ U32 KProcess::clone(U32 flags, U32 child_stack, U32 ptid, U32 tls, U32 ctid) {
                 writed(ptid, newThread->id);
             }
         }
-        if (child_stack!=0)
+        if (child_stack!=0) {
             newThread->cpu->reg[4].u32 = child_stack;
-        newThread->cpu->eip.u32 += 2;
+        }
+        if (vm) {
+            newThread->cpu->reg[4].u32+=8;
+            newThread->cpu->eip.u32 = newThread->cpu->peek32(0);
+        } else {
+            newThread->cpu->eip.u32 += 2; // step over clone call in the new thread
+        }
         newThread->cpu->reg[0].u32 = 0;
         //runThreadSlice(newThread); // if the new thread runs before the current thread, it will likely call exec which will prevent unnessary copy on write actions when running the current thread first        
         if (vFork) {
+#ifndef BOXEDWINE_MULTI_THREADED
+            // don't re-enter when we wake up
+            KThread::currentThread()->cpu->eip.u32+=2; // don't re-enter
+            KThread::currentThread()->cpu->reg[0].u32 = newProcess->id;
+#endif
             BOXEDWINE_CONDITION_LOCK(newProcess->exitOrExecCond);
             scheduleThread(newThread);
             BOXEDWINE_CONDITION_WAIT(newProcess->exitOrExecCond);
-            BOXEDWINE_CONDITION_UNLOCK(newProcess->exitOrExecCond);            
+            BOXEDWINE_CONDITION_UNLOCK(newProcess->exitOrExecCond);
         } else {
             //klog("starting %d/%d", newThread->process->id, newThread->id);            
             scheduleThread(newThread);
@@ -1516,15 +1553,6 @@ U32 KProcess::clone(U32 flags, U32 child_stack, U32 ptid, U32 tls, U32 ctid) {
         newThread->cpu->reg[4].u32+=8;
         newThread->cpu->eip.u32 = newThread->cpu->peek32(0);
         //klog("starting %d/%d", newThread->process->id, newThread->id);
-        scheduleThread(newThread);
-        return this->id;
-    } else if ((flags & 0xFFFFFF00) == K_CLONE_VM) {
-        KThread* newThread = this->createThread();
-
-        newThread->cpu->reg[4].u32 = child_stack;
-        newThread->cpu->reg[4].u32+=8;
-        newThread->cpu->eip.u32 = newThread->cpu->peek32(0);
-
         scheduleThread(newThread);
         return this->id;
     } else {

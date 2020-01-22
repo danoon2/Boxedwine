@@ -106,6 +106,14 @@ public:
 
     void onThreadChanged();
 
+    void incRefCount() { this->refCount++;}
+    void decRefCount() { this->refCount--;}
+    U32 getRefCount() { return this->refCount;}
+
+private:
+    U32 refCount;
+public: 
+
 #ifdef BOXEDWINE_DEFAULT_MMU
 private:
     Page* mmu[K_NUMBER_OF_PAGES];        

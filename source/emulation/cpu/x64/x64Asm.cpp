@@ -3625,7 +3625,7 @@ void X64Asm::bound32(U8 rm) {
     writeToRegFromReg(PARAM_1_REG, PARAM_1_REX, HOST_CPU, true, 8); // CPU* param
 
     callHost((void*)common_bound32);
-    releaseTmpReg(HOST_TMP2);
+
     doIf(0, false, 0, [this]() {
         syncRegsToHost();
         doJmp();

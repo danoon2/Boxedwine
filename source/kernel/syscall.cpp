@@ -1799,7 +1799,7 @@ static const SyscallFunc syscallFunc[] = {
     0,                  // 321
     0,                  // 322
     0,                  // 323
-    0,                  // 324
+    0,                  // 324 __NR_signalfd4
     0,                  // 325
     0,                  // 326
     0,                  // 327  __NR_signalfd4

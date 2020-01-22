@@ -122,6 +122,8 @@ Memory::Memory() : nativeAddressStart(0) {
     this->dynamicExecutableMemoryPos = 0;
     this->dynamicExecutableMemoryLen = 0;
 #endif
+
+    this->refCount = 1;
 }
 
 Memory::~Memory() {

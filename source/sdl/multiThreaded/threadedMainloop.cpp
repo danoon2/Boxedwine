@@ -23,15 +23,16 @@ bool doMainLoop() {
 
 #ifdef BOXEDWINE_RECORDER
         if (Player::instance || Recorder::instance) {
-            hasEvent = (SDL_WaitEventTimeout(&e, 10)==1);
+            hasEvent = (SDL_WaitEventTimeout(&e, 16)==1);
             BOXEDWINE_RECORDER_RUN_SLICE();
         } else  {
-            hasEvent = (SDL_WaitEventTimeout(&e, 5000) == 1);
+            hasEvent = (SDL_WaitEventTimeout(&e, 16) == 1);
         }
 #else
-        hasEvent = (SDL_WaitEventTimeout(&e, 5000) == 1);
+        hasEvent = (SDL_WaitEventTimeout(&e, 16) == 1);
 #endif      
         U32 t = getMilliesSinceStart();
+        flipFB();
         if (lastTitleUpdate+5000 < t) {
             char tmp[256];
             lastTitleUpdate = t;

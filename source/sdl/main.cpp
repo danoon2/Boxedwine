@@ -366,7 +366,7 @@ int boxedmain(int argc, const char **argv) {
     ppenv[envc++] = "USER=username";
     ppenv[envc++] = pwd;
     ppenv[envc++] = "DISPLAY=:0";
-    ppenv[envc++] = "LD_LIBRARY_PATH=/lib:/usr/lib:/usr/local/lib:/lib/i386-linux-gnu";    
+    ppenv[envc++] = "LD_LIBRARY_PATH=/lib:/usr/lib:/usr/local/lib:/lib/i386-linux-gnu:/usr/lib/i386-linux-gnu";    
     if (userId==0)
         ppenv[envc++] = "PATH=/bin:/usr/bin:/usr/local/bin:/sbin:/usr/sbin";
     else

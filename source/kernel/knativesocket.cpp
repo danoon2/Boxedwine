@@ -805,7 +805,11 @@ U32 KNativeSocketObject::recvfrom(KFileDescriptor* fd, U32 buffer, U32 length, U
         fromBuffer = new char[inLen];
         memcopyToNative(address, fromBuffer, inLen);
     }
-    char* tmp = new char[length];
+    char* tmp = NULL;
+    
+    if (buffer) {
+        tmp = new char[length];
+    }
     outLen = inLen;
     // :TODO: what about tmp size
     U32 result = :: recvfrom(this->nativeSocket, tmp, length, nativeFlags, (struct sockaddr*)fromBuffer, &outLen);
@@ -823,7 +827,9 @@ U32 KNativeSocketObject::recvfrom(KFileDescriptor* fd, U32 buffer, U32 length, U
             this->error = 0;
         } 
     }
-    delete[] tmp;
+    if (tmp) {
+        delete[] tmp;
+    }
     if (fromBuffer)
         delete[] fromBuffer;
     return result;
