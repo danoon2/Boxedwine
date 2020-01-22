@@ -1021,7 +1021,11 @@ U32 KProcess::write(FD fildes, U32 bufferAddress, U32 bufferLen) {
     return fd->kobject->write(bufferAddress, bufferLen);
 }
 
-U32 KProcess::brk(U32 address) {
+U32 KProcess::brk(U32 address) {    
+    // :TODO: why is this 1MB limit required, without it debian stretch "dpkg -i /var/local/python-crypto_2.6.1-7_i386.deb" will fail
+    if (address!=0 && address-this->loaderBaseAddress>0x00100000) {
+        return this->brkEnd;
+    }
     if (address > this->brkEnd) {
         U32 len = address-this->brkEnd;
         U32 alreadyAllocated = K_ROUND_UP_TO_PAGE(this->brkEnd) - this->brkEnd;
@@ -1030,13 +1034,25 @@ U32 KProcess::brk(U32 address) {
             this->brkEnd+=len;
         } else {
             U32 aligned = (this->brkEnd+4095) & 0xFFFFF000;
+            U32 startPage = aligned >> K_PAGE_SHIFT;
+            U32 stopPage = startPage+((len-alreadyAllocated+K_PAGE_SIZE-1)>>K_PAGE_SHIFT);
 
+            for (U32 i=startPage;i<=stopPage;i++) {
+                if (this->memory->isPageAllocated(i)) {
+                    return -K_ENOMEM;
+                }
+            }
             if (this->mmap(aligned, len - alreadyAllocated, K_PROT_READ | K_PROT_WRITE | K_PROT_EXEC, K_MAP_PRIVATE|K_MAP_ANONYMOUS|K_MAP_FIXED, -1, 0)==aligned) {
                 this->brkEnd+=len;
             }				
         }
+    } else if (address!=0 && address < this->brkEnd) {
+        U32 startAddress = (address+4095) & 0xFFFFF000;
+        U32 len = this->brkEnd - startAddress;
+        this->unmap(startAddress, len);
+        this->brkEnd = startAddress;
     }
-    return this->brkEnd;
+    return this->brkEnd; // intentional, should return the new end, even though the libc brk returns the old value
 }
 
 U32 KProcess::ioctl(FD fildes, U32 request) {
