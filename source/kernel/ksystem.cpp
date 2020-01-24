@@ -32,7 +32,12 @@ unsigned int KSystem::nextThreadId=10;
 std::unordered_map<void*, SHM*> KSystem::shm;
 std::unordered_map<U32, KProcess*> KSystem::processes;
 std::unordered_map<std::string, BoxedPtr<MappedFileCache> > KSystem::fileCache;
+#ifdef BOXEDWINE_X64
 U32 KSystem::pentiumLevel = 3;
+#else
+// need to fix fxrstore
+U32 KSystem::pentiumLevel = 2;
+#endif
 
 BOXEDWINE_CONDITION KSystem::processesCond("KSystem::processesCond");
 BOXEDWINE_MUTEX KSystem::fileCacheMutex;
@@ -87,7 +92,7 @@ U32 KSystem::ugetrlimit(U32 resource, U32 rlim) {
 }
 
 U32 KSystem::clock_gettime(U32 clock_id, U32 tp) {    
-    if (clock_id==0) { // CLOCK_REALTIME
+    if (clock_id==0 || clock_id==5) { // CLOCK_REALTIME / CLOCK_REALTIME_COARSE
         U64 m = Platform::getSystemTimeAsMicroSeconds();
         writed(tp, (U32)(m / 1000000l));
         writed(tp + 4, (U32)(m % 1000000l) * 1000);
