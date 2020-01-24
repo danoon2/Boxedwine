@@ -885,22 +885,54 @@ void X64Asm::popfd() {
 }
 
 void X64Asm::writeToRegFromMemAddress(U8 seg, U8 reg, bool isRegRex, U32 disp, U8 bytes) {    
-    if (this->cpu->thread->process->hasSetSeg[seg]) {
-        U8 tmpReg = getTmpReg();
-        writeToRegFromMem(reg, isRegRex, getRegForSeg(seg, tmpReg), true, -1, false, 0, disp, bytes, true);
-        releaseTmpReg(tmpReg);
+    if (disp<=0x7FFFFFFF) {
+        if (this->cpu->thread->process->hasSetSeg[seg]) {
+            U8 tmpReg = getTmpReg();
+            writeToRegFromMem(reg, isRegRex, getRegForSeg(seg, tmpReg), true, -1, false, 0, disp, bytes, true);
+            releaseTmpReg(tmpReg);
+        } else {
+            writeToRegFromMem(reg, isRegRex, -1, false, -1, false, 0, disp, bytes, true);
+        }
     } else {
-        writeToRegFromMem(reg, isRegRex, -1, false, -1, false, 0, disp, bytes, true);
-    } 
+        U8 tmpReg = getTmpReg();
+        // if disp > 0x7FFFFFFF then it will be interpreted as a negative offset, so instead copy it to a 32-bit reg        
+        writeToRegFromValue(tmpReg, true, disp, 4);
+        if (this->cpu->thread->process->hasSetSeg[seg]) {
+            U8 tmpReg2 = getTmpReg();
+            writeToRegFromMem(reg, isRegRex, getRegForSeg(seg, tmpReg2), true, tmpReg, true, 0, 0, bytes, true);
+            releaseTmpReg(tmpReg2);
+        } else {
+            // if disp > 0x7FFFFFFF then it will be interpreted as a negative offset, so instead copy it to a 32-bit reg
+            U8 tmpReg = getTmpReg();
+            writeToRegFromValue(tmpReg, true, disp, 4);
+            writeToRegFromMem(reg, isRegRex, tmpReg, true, -1, false, 0, 0, bytes, true);
+            releaseTmpReg(tmpReg);
+        } 
+        releaseTmpReg(tmpReg);
+    }
 }
 
 void X64Asm::writeToMemAddressFromReg(U8 seg, U8 reg, bool isRegRex, U32 disp, U8 bytes) {
-    if (this->cpu->thread->process->hasSetSeg[seg]) {
-        U8 tmpReg = getTmpReg();
-        writeToMemFromReg(reg, isRegRex, getRegForSeg(seg, tmpReg), true, -1, false, 0, disp, bytes, true);
-        releaseTmpReg(tmpReg);
+    if (disp<=0x7FFFFFFF) {
+        if (this->cpu->thread->process->hasSetSeg[seg]) {
+            U8 tmpReg = getTmpReg();
+            writeToMemFromReg(reg, isRegRex, getRegForSeg(seg, tmpReg), true, -1, false, 0, disp, bytes, true);
+            releaseTmpReg(tmpReg);
+        } else {
+            writeToMemFromReg(reg, isRegRex, -1, false, -1, false, 0, disp, bytes, true);
+        }
     } else {
-        writeToMemFromReg(reg, isRegRex, -1, false, -1, false, 0, disp, bytes, true);
+        U8 tmpReg = getTmpReg();
+        // if disp > 0x7FFFFFFF then it will be interpreted as a negative offset, so instead copy it to a 32-bit reg        
+        writeToRegFromValue(tmpReg, true, disp, 4);
+        if (this->cpu->thread->process->hasSetSeg[seg]) {
+            U8 tmpReg2 = getTmpReg();
+            writeToMemFromReg(reg, isRegRex, getRegForSeg(seg, tmpReg2), true, tmpReg, true, 0, 0, bytes, true);
+            releaseTmpReg(tmpReg2);
+        } else {        
+            writeToMemFromReg(reg, isRegRex, tmpReg, true, -1, false, 0, 0, bytes, true);        
+        }
+        releaseTmpReg(tmpReg);
     }
 }
 
