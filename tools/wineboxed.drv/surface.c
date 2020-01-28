@@ -258,7 +258,9 @@ static void boxeddrv_surface_flush(struct window_surface *window_surface)
         RECT r;
 
         GetWindowRect(surface->window, &r);
-        boxeddrv_FlushSurface(surface->window, surface->bits, r.left, r.top, surface->info.bmiHeader.biWidth, surface->info.bmiHeader.biHeight, (RECT*)surface->blit_data->Buffer, surface->blit_data->rdh.nCount);
+        if (surface->blit_data) { // this can be changed to null sometimes, example: homeworld demo installer with wine 5.0
+            boxeddrv_FlushSurface(surface->window, surface->bits, r.left, r.top, surface->info.bmiHeader.biWidth, surface->info.bmiHeader.biHeight, (RECT*)surface->blit_data->Buffer, surface->blit_data->rdh.nCount);
+        }
     }
 }
 
