@@ -75,7 +75,7 @@ private:
     bool graphics;
 };
 
-FsOpenNode* openDevTTY(const BoxedPtr<FsNode>& node, U32 flags) {
+FsOpenNode* openDevTTY(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
     return new DevTTY(node, flags);
 }
 

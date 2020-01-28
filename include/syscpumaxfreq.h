@@ -16,9 +16,12 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-#ifndef __DEVSEQUENCER_H__
-#define __DEVSEQUENCER_H__
+#ifndef __SYSCPUMAXFREQ_H__
+#define __SYSCPUMAXFREQ_H__
 
-FsOpenNode* openDevSequencer(const BoxedPtr<FsNode>& node, U32 flags, U32 data);
+class FsOpenNode;
+class FsNode;
+
+FsOpenNode* openSysCpuMaxFrequency(const BoxedPtr<FsNode>& node, U32 flags, U32 data);
 
 #endif

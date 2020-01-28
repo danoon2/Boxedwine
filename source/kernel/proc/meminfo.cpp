@@ -23,7 +23,7 @@
 #include <stdio.h>
 #include <string.h>
 
-FsOpenNode* openMemInfo(const BoxedPtr<FsNode>& node, U32 flags) {
+FsOpenNode* openMemInfo(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
     char meminfo[128];
     sprintf(meminfo, "MemTotal: %d kB\nMemFree: %d kB\n", 1024*1024, 768*1024);
     return new BufferAccess(node, flags, meminfo);

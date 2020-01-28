@@ -103,6 +103,10 @@ public:
     static U64 getMicroCounter();
     static void startMicroCounter();
     static int nativeSocketPair(S32 socks[2]);
+    static U32 getCpuFreqMHz();
+    static U32 getCpuCurScalingFreqMHz(U32 cpuIndex);
+    static U32 getCpuMaxScalingFreqMHz(U32 cpuIndex);
+    static U32 getCpuCount();
 };
 
 #include <string.h>

@@ -43,7 +43,7 @@ U32 DevURandom::readNative(U8* buffer, U32 len) {
     return len;
 }
 
-FsOpenNode* openDevURandom(const BoxedPtr<FsNode>& node, U32 flags) {
+FsOpenNode* openDevURandom(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
     return new DevURandom(node, flags);
 }
 

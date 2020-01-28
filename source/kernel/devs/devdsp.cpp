@@ -509,6 +509,6 @@ void DevDsp::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) {
     }
 }
 
-FsOpenNode* openDevDsp(const BoxedPtr<FsNode>& node, U32 flags) {
+FsOpenNode* openDevDsp(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
     return new DevDsp(node, flags);
 }

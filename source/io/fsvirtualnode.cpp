@@ -45,7 +45,7 @@ FsOpenNode* FsVirtualNode::open(U32 flags) {
         kwarn("What about appending a virtual file");
     }
     BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath("", this->path, true);
-    return this->openFunc(node, flags);
+    return this->openFunc(node, flags, this->openData);
 }
 
 U32 FsVirtualNode::getType(bool checkForLink) {

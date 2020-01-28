@@ -34,7 +34,7 @@
 
 #define FS_BLOCK_SIZE 8192
 
-typedef FsOpenNode* (*OpenVirtualNode)(const BoxedPtr<FsNode>& node, U32 flags);
+typedef FsOpenNode* (*OpenVirtualNode)(const BoxedPtr<FsNode>& node, U32 flags, U32 data);
 
 class FsFileNode;
 
@@ -43,7 +43,7 @@ public:
     static bool initFileSystem(const std::string& rootPath);
     static BoxedPtr<FsNode> getNodeFromLocalPath(const std::string& currentDirectory, const std::string& path, bool followLink, bool* isLink=NULL);    
     static BoxedPtr<FsNode> addFileNode(const std::string& path, const std::string& link, const std::string& nativePath, bool isDirectory, const BoxedPtr<FsNode>& parent);
-    static BoxedPtr<FsNode> addVirtualFile(const std::string& path, OpenVirtualNode func, U32 mode, U32 rdev, const BoxedPtr<FsNode>& parent);
+    static BoxedPtr<FsNode> addVirtualFile(const std::string& path, OpenVirtualNode func, U32 mode, U32 rdev, const BoxedPtr<FsNode>& parent, U32 data=0);
     static BoxedPtr<FsNode> addRootDirectoryNode(const std::string& path, const std::string& nativePath, const BoxedPtr<FsNode>& parent);
     static void remoteNameToLocal(std::string& path);
     static void localNameToRemote(std::string& path);

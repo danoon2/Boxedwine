@@ -42,6 +42,10 @@
 #include "devsequencer.h"
 #include "sdlwindow.h"
 #include "procselfexe.h"
+#include "syscpuonline.h"
+#include "syscpumaxfreq.h"
+#include "syscpuscalingcurfreq.h"
+#include "syscpuscalingmaxfreq.h"
 #include "../io/fsfilenode.h"
 #include "recorder.h"
 #include "mainloop.h"
@@ -115,7 +119,7 @@ void initSDL();
 
 #define mdev(x,y) ((x << 8) | y)
 
-FsOpenNode* openKernelCommandLine(const BoxedPtr<FsNode>& node, U32 flags) {
+FsOpenNode* openKernelCommandLine(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
     return new BufferAccess(node, flags, "");
 }
 
@@ -338,6 +342,14 @@ int boxedmain(int argc, const char **argv) {
 #endif
     }   
     BOXEDWINE_RECORDER_INIT(root, zips, workingDir, &argv[i], argc-i);
+#ifdef _DEBUG
+    U32 cpuCount = Platform::getCpuCount();
+    if (cpuCount==1) {
+        klog("%d MHz CPU detected", Platform::getCpuFreqMHz());
+    } else {
+        klog("%dx %d MHz CPUs detected", cpuCount, Platform::getCpuFreqMHz());
+    }
+#endif
     klog("Using root directory: %s", root.c_str());
     for (auto& zip : zips) {
         klog("Using zip file system: %s", zip.c_str());
@@ -390,6 +402,10 @@ int boxedmain(int argc, const char **argv) {
     BoxedPtr<FsNode> inputNode = Fs::addFileNode("/dev/input", "", "", true, devNode);
     BoxedPtr<FsNode> procNode = Fs::addFileNode("/proc", "", "", true, rootNode);
     BoxedPtr<FsNode> procSelfNode = Fs::addFileNode("/proc/self", "", "", true, procNode);
+    BoxedPtr<FsNode> sysNode = Fs::addFileNode("/sys", "", "", true, rootNode);
+    BoxedPtr<FsNode> devicesNode = Fs::addFileNode("/sys/devices", "", "", true, sysNode);
+    BoxedPtr<FsNode> devicesSystemNode = Fs::addFileNode("/sys/devices/system", "", "", true, devicesNode);
+    BoxedPtr<FsNode> cpuNode = Fs::addFileNode("/sys/devices/system/cpu", "", "", true, devicesSystemNode);    
 
     Fs::addVirtualFile("/dev/tty0", openDevTTY, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, mdev(4, 0), devNode);
     Fs::addVirtualFile("/dev/tty", openDevTTY, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, mdev(4, 0), devNode);
@@ -406,8 +422,17 @@ int boxedmain(int argc, const char **argv) {
     Fs::addVirtualFile("/dev/input/event4", openDevInputKeyboard, K__S_IWRITE|K__S_IREAD|K__S_IFCHR, mdev(0xd, 0x44), inputNode);
 	Fs::addVirtualFile("/dev/dsp", openDevDsp, K__S_IWRITE | K__S_IREAD | K__S_IFCHR, mdev(14, 3), devNode);
 	Fs::addVirtualFile("/dev/mixer", openDevMixer, K__S_IWRITE | K__S_IREAD | K__S_IFCHR, mdev(14, 0), devNode);
-    Fs::addVirtualFile("/dev/sequencer", openDevSequencer, K__S_IWRITE | K__S_IREAD | K__S_IFCHR, mdev(14, 1), devNode);
-    
+    Fs::addVirtualFile("/dev/sequencer", openDevSequencer, K__S_IWRITE | K__S_IREAD | K__S_IFCHR, mdev(14, 1), devNode);    
+    Fs::addVirtualFile("/sys/devices/system/cpu/online", openSysCpuOnline, K__S_IREAD, mdev(0, 0), cpuNode);
+
+    if (Platform::getCpuFreqMHz()) {        
+        for (U32 i=0;i<Platform::getCpuCount();i++) {
+            BoxedPtr<FsNode> cpuCoreNode = Fs::addFileNode("/sys/devices/system/cpu/cpu"+std::to_string(i), "", "", true, cpuNode);    
+            Fs::addVirtualFile("/sys/devices/system/cpu"+std::to_string(i)+"/scaling_cur_freq", openSysCpuScalingCurrentFrequency, K__S_IREAD, mdev(0, 0), cpuCoreNode, i);
+            Fs::addVirtualFile("/sys/devices/system/cpu"+std::to_string(i)+"/cpuinfo_max_freq", openSysCpuMaxFrequency, K__S_IREAD, mdev(0, 0), cpuCoreNode, i);
+            Fs::addVirtualFile("/sys/devices/system/cpu"+std::to_string(i)+"/scaling_max_freq", openSysCpuScalingMaxFrequency, K__S_IREAD, mdev(0, 0), cpuCoreNode, i);
+        }
+    }
     for(auto&& info: mountInfo) {
         if (info.wine) {
             BoxedPtr<FsNode> mntDir = Fs::getNodeFromLocalPath("", "/mnt", true);

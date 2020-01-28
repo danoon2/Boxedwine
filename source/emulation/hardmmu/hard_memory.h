@@ -27,6 +27,7 @@
 INLINE void* getNativeAddress(Memory* memory, U32 address) {
 #ifdef _DEBUG
     if (!memory->isPageAllocated(address >> K_PAGE_SHIFT)) {
+        memory->log_pf(KThread::currentThread(), KThread::currentThread()->cpu->eip.u32);
         kpanic("bad memory access");
     }
 #endif

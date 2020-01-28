@@ -113,21 +113,21 @@ public:
 
 static DevInputTouch* touchEvents;
 
-FsOpenNode* openDevInputTouch(const BoxedPtr<FsNode>& node, U32 flags) {
+FsOpenNode* openDevInputTouch(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
     touchEvents = new DevInputTouch(node, flags);
     return touchEvents;
 }
 
 static DevInputMouse* mouseEvents;
 
-FsOpenNode* openDevInputMouse(const BoxedPtr<FsNode>& node, U32 flags) {
+FsOpenNode* openDevInputMouse(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
     mouseEvents = new DevInputMouse(node, flags);
     return mouseEvents;
 }
 
 static DevInputKeyboard* keyboardEvents;
 
-FsOpenNode* openDevInputKeyboard(const BoxedPtr<FsNode>& node, U32 flags) {
+FsOpenNode* openDevInputKeyboard(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
     keyboardEvents = new DevInputKeyboard(node, flags);
     return keyboardEvents;
 }

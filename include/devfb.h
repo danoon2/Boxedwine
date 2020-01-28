@@ -21,7 +21,7 @@
 
 extern struct FsOpenNodeFunc fbAccess;
 
-FsOpenNode* openDevFB(const BoxedPtr<FsNode>& node, U32 flags);
+FsOpenNode* openDevFB(const BoxedPtr<FsNode>& node, U32 flags, U32 data);
 
 void flipFB();
 void fbSetCaption(const char* title, const char* icon);

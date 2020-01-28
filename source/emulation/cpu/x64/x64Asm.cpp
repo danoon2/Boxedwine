@@ -127,6 +127,9 @@ void X64Asm::doMemoryInstruction(U8 op, U8 reg1, bool isReg1Rex, U8 reg2, bool i
     U8 rm = 0;
     U8 displacementBytes = 0;
 
+    if (op!=0x8d && !oneByteDisplacement && displacement && bytes!=8 && (!isReg2Rex || reg2!=HOST_CPU)) {
+        kpanic("X64Asm::doMemoryInstruction 32-bit displacement does not work with 64-bit reg");
+    }
     if (displacement) {
         if (oneByteDisplacement)
             displacementBytes = 1;
@@ -459,18 +462,19 @@ void X64Asm::translateMemory(U32 rm, bool checkG, bool isG8bit, bool isE8bit) {
                     setSib(5 | (4 << 3), false); // 5 is for [disp32], 4 is for 0 value index
                     setDisplacement32(this->fetch32());
                 } else {
-                    if (!this->cpu->thread->process->hasSetSeg[this->ds]) {
+                    U32 disp = this->fetch32();
+                    if (!this->cpu->thread->process->hasSetSeg[this->ds] && disp<=0x7FFFFFFF) {
                         // converts [disp32] to [HOST_MEM+disp32]
                         this->rex |= REX_BASE | REX_MOD_RM;    
                         setRM((rm & ~(0xC7)) | 4 | 0x80, checkG, false, isG8bit, isE8bit);
                         setSib(HOST_MEM | 0x20, false); 
-                        this->setDisplacement32(this->fetch32());
+                        this->setDisplacement32(disp);
                     } else {
                         // converts [disp32] to HOST_TMP = [SEG + disp32]; [HOST_TMP+HOST_MEM]
 
                         U32 tmpReg = getTmpReg();
                         // HOST_TMP = SEG + disp32
-                        addWithLea(tmpReg, true, getRegForSeg(this->ds, tmpReg), true, -1, false, 0, this->fetch32(), 4);
+                        addWithLea(tmpReg, true, getRegForSeg(this->ds, tmpReg), true, -1, false, 0, disp, 4);
 
                         // [HOST_MEM + HOST_TMP]
                         writeHostPlusTmp((rm & ~(7)) | 4, checkG, isG8bit, isE8bit, tmpReg);
@@ -885,7 +889,7 @@ void X64Asm::popfd() {
 }
 
 void X64Asm::writeToRegFromMemAddress(U8 seg, U8 reg, bool isRegRex, U32 disp, U8 bytes) {    
-    if (disp<=0x7FFFFFFF) {
+    if (!disp) {
         if (this->cpu->thread->process->hasSetSeg[seg]) {
             U8 tmpReg = getTmpReg();
             writeToRegFromMem(reg, isRegRex, getRegForSeg(seg, tmpReg), true, -1, false, 0, disp, bytes, true);
@@ -913,7 +917,7 @@ void X64Asm::writeToRegFromMemAddress(U8 seg, U8 reg, bool isRegRex, U32 disp, U
 }
 
 void X64Asm::writeToMemAddressFromReg(U8 seg, U8 reg, bool isRegRex, U32 disp, U8 bytes) {
-    if (disp<=0x7FFFFFFF) {
+    if (!disp) {
         if (this->cpu->thread->process->hasSetSeg[seg]) {
             U8 tmpReg = getTmpReg();
             writeToMemFromReg(reg, isRegRex, getRegForSeg(seg, tmpReg), true, -1, false, 0, disp, bytes, true);

@@ -127,10 +127,21 @@ static U32 syscall_write(CPU* cpu, U32 eipCount) {
     return result;
 }
 
+BoxedPtr<FsNode> findNode(BoxedPtr<FsNode> parent, const std::string& name);
+
 static U32 syscall_open(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];
     SYS_LOG1(SYSCALL_FILE, cpu, "open: name=%s flags=%x", getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
     U32 result = cpu->thread->process->open(getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+#ifdef _DEBUG
+    if (result>1000) {
+        std::string filename = Fs::getFileNameFromPath(getNativeString(ARG1, tmp, sizeof(tmp)));
+        BoxedPtr<FsNode> found = findNode(Fs::getNodeFromLocalPath("", "/", false), filename);
+        if (!found) {
+            printf("open: name=%s flags=%x result=%X\n", getNativeString(ARG1, tmp, sizeof(tmp)), ARG2, result);
+        }
+    }
+#endif
     SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }
@@ -1218,10 +1229,34 @@ static U32 syscall_inotify_init(CPU* cpu, U32 eipCount) {
     return result;
 }
 
+BoxedPtr<FsNode> findNode(BoxedPtr<FsNode> parent, const std::string& name) {
+    if (parent->name==name) {
+        return parent;
+    }
+    std::vector<BoxedPtr<FsNode> > children;
+    parent->getAllChildren(children);
+    for (auto& n : children) {
+        BoxedPtr<FsNode> result = findNode(n, name);
+        if (result) {
+            return result;
+        }
+    }
+    return NULL;
+}
+
 static U32 syscall_openat(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];
     SYS_LOG1(SYSCALL_FILE, cpu, "openat: dirfd=%d name=%s flags=%x", ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3);
     U32 result = cpu->thread->process->openat(ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3);
+#ifdef _DEBUG
+    if (result>1000) {
+        std::string filename = Fs::getFileNameFromPath(getNativeString(ARG2, tmp, sizeof(tmp)));
+        BoxedPtr<FsNode> found = findNode(Fs::getNodeFromLocalPath("", "/", false), filename);
+        if (!found) {
+            printf("openat: dirfd=%d name=%s flags=%x result=%x\n", ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, result);
+        }
+    }
+#endif
     SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }

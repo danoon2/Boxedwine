@@ -97,6 +97,27 @@ int Platform::nativeSocketPair(S32 socks[2]) {
     return socketpair(AF_LOCAL, SOCK_STREAM, 0, socks);
 }
 
+U32 Platform::getCpuFreqMHz() {
+    return 0; // :TODO:
+}
+
+U32 Platform::getCpuCurScalingFreqMHz(U32 cpuIndex) {
+    return 0; // :TODO:
+}
+
+U32 Platform::getCpuMaxScalingFreqMHz(U32 cpuIndex) {
+    return 0; // :TODO:
+}
+
+
+U32 Platform::getCpuCount() {
+#ifdef BOXEDWINE_MULTI_THREADED
+    return (U32)SDL_GetCPUCount();
+#else
+    return 1;
+#endif
+}
+
 #ifdef BOXEDWINE_X64
 #include <cpuid.h>
 bool platformHasBMI2() {

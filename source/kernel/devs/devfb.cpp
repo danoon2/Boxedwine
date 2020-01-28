@@ -20,13 +20,16 @@
 
 #include <SDL.h>
 #include "../../io/fsvirtualopennode.h"
+#include "../../emulation//hardmmu/hard_memory.h"
 
 static U32 screenBPP=32;
 static U32 fullScreen=0;
 U32 updateAvailable;
 U32 paletteChanged;
 U8* screenPixels;
-
+#ifdef BOXEDWINE_64BIT_MMU
+U64 isFbActive;
+#endif
 struct fb_fix_screeninfo {
     char id[16];			/* identification string eg "TT Builtin" */
     U32 smem_start;			/* Start of frame buffer mem */
@@ -282,6 +285,9 @@ void destroySDL2() {
         SDL_DestroyWindow(sdlWindow);
         sdlWindow = 0;
     }
+#ifdef BOXEDWINE_64BIT_MMU
+    isFbActive = false;
+#endif
 }
 #else
 static SDL_Surface* surface;
@@ -498,6 +504,7 @@ public:
     virtual U32 ioctl(U32 request);
     virtual U32 readNative(U8* buffer, U32 len);
     virtual U32 writeNative(U8* buffer, U32 len);
+    virtual void close();
 
     S64 pos;
 };
@@ -524,6 +531,26 @@ DevFB::DevFB(const BoxedPtr<FsNode>& node, U32 flags) : FsVirtualOpenNode(node, 
         fb_fix_screeninfo.smem_len = 8*1024*1024;
         fb_fix_screeninfo.line_length = fb_var_screeninfo.width*32;
     }
+#ifdef BOXEDWINE_64BIT_MMU
+    if (!isFbActive) {
+        allocNativeMemory(KThread::currentThread()->memory, ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS >> K_PAGE_SHIFT, (16*1024*1024) >> K_PAGE_SHIFT, PAGE_READ | PAGE_WRITE);		
+        isFbActive = KThread::currentThread()->memory->id;
+        screenPixels = (U8*)KThread::currentThread()->memory->id;
+        screenPixels+=ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS;
+    } else if (isFbActive!=KThread::currentThread()->memory->id) {
+        kpanic("DevFB::DevFB only one process can open the framebuffer at a time");
+    }
+#endif
+}
+
+void DevFB::close() {
+#ifdef BOXEDWINE_64BIT_MMU
+    if (isFbActive) {
+        freeNativeMemory(KThread::currentThread()->memory, ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS >> K_PAGE_SHIFT, (16*1024*1024) >> K_PAGE_SHIFT);
+        isFbActive = 0;
+    }
+#endif
+    FsVirtualOpenNode::close();
 }
 
 S64 DevFB::length() {
@@ -596,6 +623,9 @@ U32 DevFB::ioctl(U32 request) {
 }
 
 U32 DevFB::map(U32 address, U32 len, S32 prot, S32 flags, U64 off) {
+    if ((flags & K_MAP_FIXED) && address!=fb_fix_screeninfo.smem_start) {
+        kpanic("Mapping /dev/fb at fixed address not supported");
+    }
 #ifdef BOXEDWINE_DEFAULT_MMU
     U32 pageStart = fb_fix_screeninfo.smem_start >> K_PAGE_SHIFT;
     U32 pageCount = (len+K_PAGE_SIZE-1)>>K_PAGE_SHIFT;
@@ -604,20 +634,13 @@ U32 DevFB::map(U32 address, U32 len, S32 prot, S32 flags, U64 off) {
 
     if (len<fb_fix_screeninfo.smem_len) {
         pageCount=fb_fix_screeninfo.smem_len >> K_PAGE_SHIFT;
-    }
-    if ((flags & K_MAP_FIXED) && address!=fb_fix_screeninfo.smem_start) {
-        kpanic("Mapping /dev/fb at fixed address not supported");
-    }
+    }    
     for (i=0;i<pageCount;i++) {
         if (memory->getPage(i+pageStart)->type!=Page::Type::Invalid_Page && memory->getPage(i+pageStart)->type!=Page::Type::Frame_Buffer) {
             kpanic("Something else got mapped into the framebuffer address");
         }
         memory->setPage(i+pageStart, new FBPage(flags));
     }
-#elif defined BOXEDWINE_64BIT_MMU
-    kpanic("frame buffer not implemented for BOXEDWINE_64BIT_MMU");
-#else
-    frame buffer mmu not handled
 #endif
     return fb_fix_screeninfo.smem_start;
 }
@@ -627,7 +650,11 @@ bool DevFB::canMap() {
 }
 
 void flipFB() {
+#ifdef BOXEDWINE_64BIT_MMU
+    if (isFbActive && !bOpenGL && sdlTexture) {
+#else
     if (updateAvailable && !bOpenGL) {
+#endif
 #ifndef SDL2
         if (fb_var_screeninfo.bits_per_pixel==8 && paletteChanged) {
             SDL_Color colors[256];
@@ -661,6 +688,11 @@ void flipFB() {
 }
 
 void flipFBNoCheck() {
+#ifdef BOXEDWINE_64BIT_MMU
+    if (!isFbActive) {
+        return;
+    }
+#endif
 #ifdef SDL2
     if (sdlTexture) {
         SDL_UpdateTexture(sdlTexture, NULL, screenPixels, fb_fix_screeninfo.line_length);
@@ -681,8 +713,8 @@ void flipFBNoCheck() {
 
 void fbSetCaption(const char* title, const char* icon) {
 #ifdef SDL2
-    if (sdlWindow)
-        SDL_SetWindowTitle(sdlWindow, title);
+    //if (sdlWindow)
+    //    SDL_SetWindowTitle(sdlWindow, title);
 #else
     SDL_WM_SetCaption(title, icon);
 #endif
@@ -696,6 +728,6 @@ void fbSwapOpenGL() {
 #endif
 }
 
-FsOpenNode* openDevFB(const BoxedPtr<FsNode>& node, U32 flags) {
+FsOpenNode* openDevFB(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
     return new DevFB(node, flags);
 }

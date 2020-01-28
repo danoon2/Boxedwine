@@ -220,7 +220,7 @@ U32 KProcess::getThreadCount() {
     return (U32)this->threads.size();
 }
 
-FsOpenNode* openCommandLine(const BoxedPtr<FsNode>& node, U32 flags) {
+FsOpenNode* openCommandLine(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
     return new BufferAccess(node, flags, KThread::currentThread()->process->commandLine);
 }
 

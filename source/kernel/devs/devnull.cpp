@@ -27,6 +27,6 @@ public:
     virtual U32 writeNative(U8* buffer, U32 len) {return len;}
 };
 
-FsOpenNode* openDevNull(const BoxedPtr<FsNode>& node, U32 flags) {
+FsOpenNode* openDevNull(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
     return new DevNull(node, flags);
 }

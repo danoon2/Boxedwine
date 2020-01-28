@@ -343,6 +343,18 @@
     <ClCompile Include="..\..\..\..\source\test\testSSE2.cpp">
       <Filter>source\test</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\sys\cpuonline.cpp">
+      <Filter>source\kernel\sys</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\sys\cpumaxfreq.cpp">
+      <Filter>source\kernel\sys</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\sys\cpuscalingcurfreq.cpp">
+      <Filter>source\kernel\sys</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\sys\cpuscalingmaxfreq.cpp">
+      <Filter>source\kernel\sys</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -810,6 +822,18 @@
     <ClInclude Include="..\..\..\..\source\test\testSSE2.h">
       <Filter>source\test</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\include\syscpuonline.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\syscpumaxfreq.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\syscpuscalingcurfreq.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\syscpuscalingmaxfreq.h">
+      <Filter>include</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
@@ -889,6 +913,9 @@
     </Filter>
     <Filter Include="source\emulation\cpu\x64">
       <UniqueIdentifier>{0cac0668-e773-41da-9b57-accb214a243c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\kernel\sys">
+      <UniqueIdentifier>{047354d6-39dd-46f8-b620-fa342c311476}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

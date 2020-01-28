@@ -160,7 +160,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>BOXEDWINE_MIDI;BOXEDWINE_RECORDER;LOG_SYSCALLS;BOXEDWINE_HAS_SETJMP;BOXEDWINE_ZLIB;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_MSVC;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_DYNAMIC32;BOXEDWINE_DYNAMIC;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;LOG_SYSCALLS;BOXEDWINE_HAS_SETJMP;BOXEDWINE_ZLIB;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_MSVC;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -169,7 +169,8 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <BufferSecurityCheck>true</BufferSecurityCheck>
       <EnablePREfast>true</EnablePREfast>
-      <UndefinePreprocessorDefinitions>BOXEDWINE_DYNAMIC32;BOXEDWINE_DYNAMIC;</UndefinePreprocessorDefinitions>
+      <UndefinePreprocessorDefinitions>
+      </UndefinePreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -411,6 +412,10 @@
     <ClInclude Include="..\..\..\..\include\player.h" />
     <ClInclude Include="..\..\..\..\include\recorder.h" />
     <ClInclude Include="..\..\..\..\include\reg.h" />
+    <ClInclude Include="..\..\..\..\include\syscpuscalingcurfreq.h" />
+    <ClInclude Include="..\..\..\..\include\syscpumaxfreq.h" />
+    <ClInclude Include="..\..\..\..\include\syscpuonline.h" />
+    <ClInclude Include="..\..\..\..\include\syscpuscalingmaxfreq.h" />
     <ClInclude Include="..\..\..\..\lib\zlib\contrib\minizip\crypt.h" />
     <ClInclude Include="..\..\..\..\lib\zlib\contrib\minizip\ioapi.h" />
     <ClInclude Include="..\..\..\..\lib\zlib\contrib\minizip\mztools.h" />
@@ -643,6 +648,10 @@
     <ClCompile Include="..\..\..\..\source\kernel\proc\meminfo.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\proc\self.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\syscall.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\sys\cpumaxfreq.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\sys\cpuonline.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\sys\cpuscalingcurfreq.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\sys\cpuscalingmaxfreq.cpp" />
     <ClCompile Include="..\..\..\..\source\opengl\glcommon.cpp" />
     <ClCompile Include="..\..\..\..\source\opengl\glext.cpp" />
     <ClCompile Include="..\..\..\..\source\opengl\glfunctions_ext1.cpp" />

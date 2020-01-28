@@ -29,7 +29,7 @@ public:
     virtual U32 writeNative(U8* buffer, U32 len);
 };
 
-FsOpenNode* openDevSequencer(const BoxedPtr<FsNode>& node, U32 flags) {
+FsOpenNode* openDevSequencer(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
     return new DevSequencer(node, flags);
 }
 /*

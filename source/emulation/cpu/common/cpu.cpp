@@ -231,7 +231,7 @@ U32 TTYBufferAccess::writeNative(U8* buffer, U32 len) {
     return len;
 }
 
-FsOpenNode* openTTY9(const BoxedPtr<FsNode>& node, U32 flags) {
+FsOpenNode* openTTY9(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
     return new TTYBufferAccess(node, flags, "");
 }
 

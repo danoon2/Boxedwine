@@ -133,6 +133,137 @@ int Platform::nativeSocketPair(S32 socks[2]) {
     return SOCKET_ERROR;
 }
 
+typedef struct _PROCESSOR_POWER_INFORMATION
+{
+    ULONG Number;
+    ULONG MaxMhz;
+    ULONG CurrentMhz;
+    ULONG MhzLimit;
+    ULONG MaxIdleState;
+    ULONG CurrentIdleState;
+} PROCESSOR_POWER_INFORMATION, *PPROCESSOR_POWER_INFORMATION;
+typedef LONG (WINAPI *CNPI)(POWER_INFORMATION_LEVEL,PVOID,ULONG,PVOID,ULONG);
+static CNPI Pwrinfo;
+static U32 cachedCpuMaxFreq;
+
+U32 Platform::getCpuFreqMHz() {
+    if (cachedCpuMaxFreq) {
+        return cachedCpuMaxFreq;
+    }
+    NTSTATUS ret;
+    ULONG size;
+    LPBYTE pBuffer = NULL;
+    unsigned int num_cpus;
+    SYSTEM_INFO system_info;
+    system_info.dwNumberOfProcessors = 0;
+
+    // Get the number of CPUs.
+    GetSystemInfo(&system_info);
+    if (system_info.dwNumberOfProcessors == 0) {
+        num_cpus = 1;
+    } else {
+        num_cpus = system_info.dwNumberOfProcessors;
+    }
+
+    // Allocate size.
+    size = num_cpus * sizeof(PROCESSOR_POWER_INFORMATION);
+    pBuffer = (BYTE*)LocalAlloc(LPTR, size);
+    if (!pBuffer) {
+        return NULL;
+    }
+
+    // Syscall.
+    CNPI Pwrinfo = (CNPI)GetProcAddress(LoadLibrary(TEXT("powrprof.dll")), "CallNtPowerInformation");
+    ret = Pwrinfo(ProcessorInformation, NULL, 0, pBuffer, size);
+    if (ret != 0) {
+        LocalFree(pBuffer);
+        return NULL;
+    }
+
+    PROCESSOR_POWER_INFORMATION* ppi = (PROCESSOR_POWER_INFORMATION *)pBuffer;
+    cachedCpuMaxFreq = ppi->MaxMhz;
+    LocalFree(pBuffer);
+    return cachedCpuMaxFreq;
+}
+
+U32 Platform::getCpuCurScalingFreqMHz(U32 cpuIndex) {
+    NTSTATUS ret;
+    ULONG size;
+    LPBYTE pBuffer = NULL;
+    unsigned int num_cpus = Platform::getCpuCount();    
+
+    if (cpuIndex>=num_cpus) {
+        return 0;
+    }
+    // Allocate size.
+    size = num_cpus * sizeof(PROCESSOR_POWER_INFORMATION);
+    pBuffer = (BYTE*)LocalAlloc(LPTR, size);
+    if (!pBuffer) {
+        return NULL;
+    }
+
+    // Syscall.
+    CNPI Pwrinfo = (CNPI)GetProcAddress(LoadLibrary(TEXT("powrprof.dll")), "CallNtPowerInformation");
+    ret = Pwrinfo(ProcessorInformation, NULL, 0, pBuffer, size);
+    if (ret != 0) {
+        LocalFree(pBuffer);
+        return NULL;
+    }
+
+    PROCESSOR_POWER_INFORMATION* ppi = (PROCESSOR_POWER_INFORMATION *)pBuffer;
+    U32 result = ppi[cpuIndex].CurrentMhz;
+    LocalFree(pBuffer);
+    return result;
+}
+
+U32 Platform::getCpuMaxScalingFreqMHz(U32 cpuIndex) {
+    NTSTATUS ret;
+    ULONG size;
+    LPBYTE pBuffer = NULL;
+    unsigned int num_cpus = Platform::getCpuCount();    
+
+    if (cpuIndex>=num_cpus) {
+        return 0;
+    }
+    // Allocate size.
+    size = num_cpus * sizeof(PROCESSOR_POWER_INFORMATION);
+    pBuffer = (BYTE*)LocalAlloc(LPTR, size);
+    if (!pBuffer) {
+        return NULL;
+    }
+
+    // Syscall.
+    CNPI Pwrinfo = (CNPI)GetProcAddress(LoadLibrary(TEXT("powrprof.dll")), "CallNtPowerInformation");
+    ret = Pwrinfo(ProcessorInformation, NULL, 0, pBuffer, size);
+    if (ret != 0) {
+        LocalFree(pBuffer);
+        return NULL;
+    }
+
+    PROCESSOR_POWER_INFORMATION* ppi = (PROCESSOR_POWER_INFORMATION *)pBuffer;
+    U32 result = ppi[cpuIndex].MhzLimit;
+    LocalFree(pBuffer);
+    return result;
+}
+
+
+U32 Platform::getCpuCount() {
+#ifdef BOXEDWINE_MULTI_THREADED
+    SYSTEM_INFO system_info;
+    system_info.dwNumberOfProcessors = 0;
+
+    // Get the number of CPUs.
+    GetSystemInfo(&system_info);
+    if (system_info.dwNumberOfProcessors == 0) {
+        return 1;
+    } else {
+        return system_info.dwNumberOfProcessors;
+    }
+#else
+    return 1;
+#endif
+}
+
 int getPixelFormats(PixelFormat* pfd, int maxPfs) {
     PIXELFORMATDESCRIPTOR p;
     HDC hdc = GetDC(GetDesktopWindow());

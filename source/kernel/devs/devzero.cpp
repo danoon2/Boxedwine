@@ -46,6 +46,6 @@ bool DevZero::canMap() {
     return true;
 }
 
-FsOpenNode* openDevZero(const BoxedPtr<FsNode>& node, U32 flags) {
+FsOpenNode* openDevZero(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
     return new DevZero(node, flags);
 }
