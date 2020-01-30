@@ -1417,3 +1417,12 @@ void common_pmulhuwXmmE128(CPU* cpu, U32 reg, U32 address) {
     value.u64[1] = readq(address+8);
     cpu->xmm[reg].pi = simde_mm_mulhi_epu16(cpu->xmm[reg].pi, value);
 }
+
+void common_lfence(CPU* cpu) {
+}
+
+void common_mfence(CPU* cpu) {
+}
+
+void common_clflush(CPU* cpu, U32 address) {
+}

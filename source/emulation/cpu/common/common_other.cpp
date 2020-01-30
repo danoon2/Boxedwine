@@ -183,3 +183,11 @@ void common_fxsave(CPU* cpu, U32 address) {
 void common_fxrstor(CPU* cpu, U32 address) {
     kpanic("fxrstore not implemented");
 }
+
+void common_xsave(CPU* cpu, U32 address) {
+    kpanic("xsave not implemented");
+}
+
+void common_xrstor(CPU* cpu, U32 address) {
+    kpanic("xrstore not implemented");
+}

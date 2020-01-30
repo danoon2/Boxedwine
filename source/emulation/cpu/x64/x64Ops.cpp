@@ -2221,16 +2221,22 @@ static U32 sseOp3AE(X64Asm* data) {
         break;
     case 5:         
         if (rm>=0xC0) { // LFENCE
+            data->has_rm = true;
+            data->rm = rm;
             data->writeOp(); // keep same
         } else { // XRSTOR
             data->translateRM(rm, false, true, false, false, 0);
         }
         break;
     case 6: // MFENCE
+        data->has_rm = true;
+        data->rm = rm;
         data->writeOp(); // keep same
         break;
     case 7:
         if (rm>=0xC0) { // SFENCE
+            data->has_rm = true;
+            data->rm = rm;
             data->writeOp(); // keep same
         } else { // CLFLUSH
             data->translateRM(rm, false, true, false, false, 0);

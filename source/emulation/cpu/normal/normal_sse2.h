@@ -20,6 +20,8 @@
 
 #undef SSE2_0
 #define SSE2_0(name) void OPCALL normal_##name(CPU* cpu, DecodedOp* op) {START_OP(cpu, op); common_##name(cpu);NEXT();}
+#undef SSE2_E
+#define SSE2_E(name) void OPCALL normal_##name(CPU* cpu, DecodedOp* op) {START_OP(cpu, op); common_##name(cpu, eaa(cpu, op));NEXT();}
 #undef SSE2_RR
 #define SSE2_RR(name) void OPCALL normal_##name(CPU* cpu, DecodedOp* op) {START_OP(cpu, op); common_##name(cpu, op->reg, op->rm);NEXT();}
 #undef SSE2_RE

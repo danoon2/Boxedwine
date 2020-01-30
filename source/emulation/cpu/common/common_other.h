@@ -27,3 +27,5 @@ void common_verw(CPU* cpu, U32 selector);
 void common_cmpxchgg8b(CPU* cpu, U32 address);
 void common_fxsave(CPU* cpu, U32 address);
 void common_fxrstor(CPU* cpu, U32 address);
+void common_xsave(CPU* cpu, U32 address);
+void common_xrstor(CPU* cpu, U32 address);

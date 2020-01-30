@@ -268,6 +268,7 @@ void* x64CPU::translateEip(U32 ip) {
     makePendingCodePagesReadOnly();
     return result;
 }
+extern U32 syscallMask;
 
 void x64CPU::translateInstruction(X64Asm* data, X64Asm* firstPass) {
     data->startOfOpIp = data->ip;        
@@ -563,6 +564,7 @@ U64 x64CPU::handleAccessException(U64 rip, U64 address, bool readAddress, U64 rs
         X64CodeChunk* chunk = this->thread->memory->getCodeChunkContainingHostAddress((void*)rip);
 #endif
         doSyncFrom(NULL);
+        // this can be exercised with Wine 5.0 and CC95 demo installer, it is triggered in strlen as it tries to grow the stack
         this->thread->seg_mapper((U32)address, readAddress, !readAddress);
         doSyncTo(NULL);
         U64 result = (U64)this->translateEip(this->eip.u32); 

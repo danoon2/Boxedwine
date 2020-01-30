@@ -3,6 +3,8 @@
 
 #undef SSE2_0
 #define SSE2_0(name) void common_##name(CPU* cpu);
+#undef SSE2_E
+#define SSE2_E(name) void common_##name(CPU* cpu, U32 address);
 #undef SSE2_RR
 #define SSE2_RR(name) void common_##name(CPU* cpu, U32 r1, U32 r2);
 #undef SSE2_RE

@@ -584,3 +584,15 @@ void dynamic_fxrstor(DynamicData* data, DecodedOp* op) {
     callHostFunction(common_fxrstor, false, 2, 0, DYN_PARAM_CPU, false, DYN_ADDRESS, DYN_PARAM_REG_32, true);
     INCREMENT_EIP(op->len);
 }
+
+void dynamic_xsave(DynamicData* data, DecodedOp* op) {
+    calculateEaa(op, DYN_ADDRESS);
+    callHostFunction(common_xsave, false, 2, 0, DYN_PARAM_CPU, false, DYN_ADDRESS, DYN_PARAM_REG_32, true);
+    INCREMENT_EIP(op->len);
+}
+
+void dynamic_xrstor(DynamicData* data, DecodedOp* op) {
+    calculateEaa(op, DYN_ADDRESS);
+    callHostFunction(common_xrstor, false, 2, 0, DYN_PARAM_CPU, false, DYN_ADDRESS, DYN_PARAM_REG_32, true);
+    INCREMENT_EIP(op->len);
+}

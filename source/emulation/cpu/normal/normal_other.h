@@ -634,3 +634,17 @@ void OPCALL normal_fxrstor(CPU* cpu, DecodedOp* op) {
     common_fxrstor(cpu, eaa);
     NEXT();
 }
+
+void OPCALL normal_xsave(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
+    U32 eaa = eaa(cpu, op);
+    common_xsave(cpu, eaa);
+    NEXT();
+}
+
+void OPCALL normal_xrstor(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
+    U32 eaa = eaa(cpu, op);
+    common_xrstor(cpu, eaa);
+    NEXT();
+}
