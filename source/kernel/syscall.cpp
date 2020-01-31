@@ -704,10 +704,15 @@ static U32 syscall_fchdir(CPU* cpu, U32 eipCount) {
 static U32 syscall_llseek(CPU* cpu, U32 eipCount) {
     SYS_LOG1(SYSCALL_FILE, cpu, "llseek: fildes=%d offset=%.8X%.8X pResult=%X whence=%d", ARG1, ARG2, ARG3, ARG4, ARG5);
     S64 r64 = cpu->thread->process->llseek(ARG1, ((U64)ARG2)<<32|ARG3, ARG5);
-    if (ARG4) {
+    if (ARG4 && r64>=0) {
         writeq(ARG4, r64);
     }
-    U32 result = (U32)r64;
+    U32 result;
+    if (r64<0) {
+        result = (U32)r64;
+    } else {
+        result = 0;
+    }
     SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }
