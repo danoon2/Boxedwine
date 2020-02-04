@@ -268,7 +268,6 @@ void* x64CPU::translateEip(U32 ip) {
     makePendingCodePagesReadOnly();
     return result;
 }
-extern U32 syscallMask;
 
 void x64CPU::translateInstruction(X64Asm* data, X64Asm* firstPass) {
     data->startOfOpIp = data->ip;        

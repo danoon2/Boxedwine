@@ -93,7 +93,7 @@ U32 KFile::readNative(U8* buffer, U32 len) {
 U32 KFile::stat(U32 address, bool is64) {
     FsOpenNode* openNode = this->openFile;
     BoxedPtr<FsNode> node = openNode->node;
-    U64 len = node->length();
+    U64 len = (U64)openNode->length();
 
     KSystem::writeStat(node->path, address, is64, 1, node->id, node->getMode(), node->rdev, len, FS_BLOCK_SIZE, (len+FS_BLOCK_SIZE-1)/FS_BLOCK_SIZE, node->lastModified(), node->getHardLinkCount());
     return 0;
