@@ -13,3 +13,4 @@ Known game fixes
 * GOG's Diablo + Hellfire - https://www.gog.com/game/diablo
   The installer works, the launcher works and Diablo works.  Hellfire does not work (same as Wine).
 * Half-Life Uplink Demo installer and game work with Wine 4 now.  Wine 1.7 has color issue with intro and game is a blank screen.
+* Final Reality Benchmark.  Works with Wine 1.7 and OpenGL (need to delete HKEY_CURRENT_USER\Software\Wine\Direct3D\DirectDrawRenderer key from registry)

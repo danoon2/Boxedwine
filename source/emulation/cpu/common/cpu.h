@@ -10,6 +10,7 @@
 
 typedef void (*Int99Callback)(CPU* cpu);
 extern Int99Callback* int99Callback;
+extern U32 lastGlCallTime;
 extern U32 int99CallbackSize;
 extern Int99Callback* wine_callback;
 extern U32 wine_callbackSize;

@@ -541,7 +541,7 @@ U32 sdlCreateOpenglWindow_main_thread(KThread* thread, Wnd* wnd, int major, int 
     int cx = wnd->windowRect.right-wnd->windowRect.left;
     int cy = wnd->windowRect.bottom-wnd->windowRect.top;
 
-    if (cx>=640 && cy>=480) {
+    if (cx>=240 && cy>=240) {
         sdlFlags|=SDL_WINDOW_SHOWN;
     } else {
         sdlFlags|=SDL_WINDOW_HIDDEN;
@@ -821,6 +821,10 @@ U32 recorderBufferSize;
 
 void sdlDrawAllWindows(KThread* thread, U32 hWnd, int count) {    
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(sdlMutex);
+    if (contextCount && lastGlCallTime+1000>getMilliesSinceStart()) {
+        // don't let window drawing and opengl drawing fight and clobber each other, if OpenGL was active in the last second, then don't draw the window
+        //return;
+    }
 #ifdef BOXEDWINE_RECORDER
     if (Recorder::instance || Player::instance) {
         int bpp = bits_per_pixel==8?32:bits_per_pixel;

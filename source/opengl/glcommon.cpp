@@ -421,6 +421,7 @@ Int99Callback gl_callback[GL_FUNC_COUNT];
 
 Int99Callback* int99Callback;
 U32 int99CallbackSize;
+U32 lastGlCallTime;
 
 void esgl_init();
 void sdlgl_init();
@@ -450,6 +451,7 @@ void gl_init() {
 #else
 Int99Callback* int99Callback;
 U32 int99CallbackSize;
+U32 lastGlCallTime;
 void gl_init() {
     int99CallbackSize=0;
 }
