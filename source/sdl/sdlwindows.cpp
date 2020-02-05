@@ -349,6 +349,8 @@ static Wnd* getFirstVisibleWnd() {
     return NULL;
 }
 
+static U32 nextGlId = 1;
+
 #ifdef SDL2
 SDL_Window *sdlWindow;
 SDL_Renderer *sdlRenderer;
@@ -367,7 +369,16 @@ static void destroySDL2(KThread* thread) {
             wnd->sdlTextureWidth = 0;
         }
     }
-
+    if (contextCount) {
+        contextCount++; // prevent it from calling displayChanged
+        for (U32 i=1;i<nextGlId;i++) {
+            sdlDeleteContext(thread, i);
+        }
+        contextCount--;
+    }    
+    if (contextCount) {
+        kwarn("Not all OpenGL contexts were cleaning destroyed");
+    }
 #ifdef SDL2
     if (sdlRenderer) {
         SDL_DestroyRenderer(sdlRenderer);
@@ -513,8 +524,12 @@ U32 sdlCreateOpenglWindow_main_thread(KThread* thread, Wnd* wnd, int major, int 
     SDL_GL_SetAttribute(SDL_GL_ACCUM_BLUE_SIZE, wnd->pixelFormat->cAccumBlueBits);
     SDL_GL_SetAttribute(SDL_GL_ACCUM_ALPHA_SIZE, wnd->pixelFormat->cAccumAlphaBits);
 
-    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, wnd->pixelFormat->dwFlags & 1);
-    SDL_GL_SetAttribute(SDL_GL_ACCELERATED_VISUAL, (wnd->pixelFormat->dwFlags & 0x40)?0:1);
+    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, (wnd->pixelFormat->dwFlags & K_PFD_DOUBLEBUFFER)?1:0);
+    SDL_GL_SetAttribute(SDL_GL_ACCELERATED_VISUAL, (wnd->pixelFormat->dwFlags & K_PFD_GENERIC_FORMAT)?0:1);
+
+    if (wnd->pixelFormat->dwFlags & K_PFD_SWAP_COPY) {
+        kwarn("Boxedwine: pixel format swap copy not supported");
+    }
 #ifdef SDL2
     SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 0); 
 #endif
@@ -522,17 +537,22 @@ U32 sdlCreateOpenglWindow_main_thread(KThread* thread, Wnd* wnd, int major, int 
 #ifdef SDL2
 
     SDL_DisplayMode dm;
-    int sdlFlags = SDL_WINDOW_OPENGL|SDL_WINDOW_SHOWN;
+    int sdlFlags = SDL_WINDOW_OPENGL;
     int cx = wnd->windowRect.right-wnd->windowRect.left;
     int cy = wnd->windowRect.bottom-wnd->windowRect.top;
 
+    if (cx>=640 && cy>=480) {
+        sdlFlags|=SDL_WINDOW_SHOWN;
+    } else {
+        sdlFlags|=SDL_WINDOW_HIDDEN;
+    }
     if (SDL_GetDesktopDisplayMode(0, &dm) == 0) {
         if (cx == dm.w && cy == dm.h) {
             sdlFlags|=SDL_WINDOW_BORDERLESS;
         }
     }   
 
-    sdlWindow = SDL_CreateWindow("OpenGL Window", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, cx, cy, sdlFlags);
+    sdlWindow = SDL_CreateWindow("OpenGL Window", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, cx, cy, sdlFlags);    
     if (!sdlWindow) {
         fprintf(stderr, "Couldn't create window: %s\n", SDL_GetError());
         displayChanged(thread);
@@ -548,8 +568,6 @@ U32 sdlCreateOpenglWindow_main_thread(KThread* thread, Wnd* wnd, int major, int 
 #endif
     DISPATCH_MAIN_THREAD_BLOCK_END
 }
-
-static U32 nextGlId = 1;
 
 // window needs to be on the main thread
 // context needs to be on the current thread
@@ -608,13 +626,13 @@ static void displayChanged(KThread* thread) {
     U32 flags;
 #endif
     firstWindowCreated = 1;
-    if (videoEnabled) {
-         for (auto& n : hwndToWnd) {
+    if (videoEnabled) {        
+#ifdef SDL2
+        destroySDL2(thread);
+        for (auto& n : hwndToWnd) {
             Wnd* wnd = n.second;
             wnd->openGlContext = 0;
         }
-#ifdef SDL2
-        destroySDL2(thread);
         SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, sdlScaleQuality);
 
         int cx = screenCx*sdlScaleX/100;
@@ -638,6 +656,10 @@ static void displayChanged(KThread* thread) {
         sdlWindow = SDL_CreateWindow("BoxedWine", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, cx, cy, SDL_WINDOW_SHOWN);
         sdlRenderer = SDL_CreateRenderer(sdlWindow, -1, 0);	
 #else
+        for (auto& n : hwndToWnd) {
+            Wnd* wnd = n.second;
+            wnd->openGlContext = 0;
+        }
         flags = SDL_HWSURFACE;
         if (surface && SDL_MUSTLOCK(surface)) {
             SDL_UnlockSurface(surface);
@@ -662,6 +684,16 @@ static S8 sdlBuffer[1024*1024*4];
 #endif
 
 void wndBlt(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32 yOrg, U32 width, U32 height, U32 rect) {
+    if (!firstWindowCreated) {
+        DISPATCH_MAIN_THREAD_BLOCK_BEGIN
+        displayChanged(thread);
+        DISPATCH_MAIN_THREAD_BLOCK_END
+    }
+
+    if (!sdlRenderer) {
+        // final reality will draw its main start window while an OpenGL context is still going
+        sdlRenderer = SDL_CreateRenderer(sdlWindow, -1, 0);	
+    }
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(sdlMutex);
     Wnd* wnd = getWnd(hwnd);
     wRECT r;
@@ -670,11 +702,7 @@ void wndBlt(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32 yOrg, U32 width, 
     int pitch = (width*((bpp+7)/8)+3) & ~3;
     static int i;
 
-    readRect(thread, rect, &r);
-
-    if (!firstWindowCreated) {
-        displayChanged(thread);
-    }
+    readRect(thread, rect, &r);    
 #ifndef SDL2
     if (!surface)
         return;
