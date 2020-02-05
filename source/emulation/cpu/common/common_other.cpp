@@ -177,11 +177,48 @@ void common_cmpxchgg8b(CPU* cpu, U32 address){
 }
 
 void common_fxsave(CPU* cpu, U32 address) {
-    kpanic("fxsave not implemented");
+    writew(address + 0, (U16)cpu->fpu.CW());
+    writew(address + 2, (U16)cpu->fpu.SW());
+    writeb(address + 4, cpu->fpu.GetAbridgedTag());
+    writeb(address + 5, 0);
+    writew(address + 6, 0); // fop
+    writed(address + 8, 0); // fip
+    writew(address + 12, 0); // f cs
+    writew(address + 14, 0); // reserved
+    writed(address + 16, 0); // f dp
+    writew(address + 20, 0); // f ds
+    writew(address + 22, 0); // reserved
+    writed(address + 24, 0x1F80); // mxcsr
+    writed(address + 28, 0xFFFF); // mxcsr mask
+
+    if (cpu->isMMXinUse()) {
+        for (int i=0;i<8;i++) {
+            writeq(address+32+i*16, cpu->reg_mmx[i].q);
+            writeq(address+40+i*16, 0);
+        }
+    } else {
+        for (int i=0;i<8;i++) {
+            cpu->fpu.ST80(cpu, address+32+i*16, i);
+        }
+    }
+    for (int i=0;i<8;i++) {
+        writeq(address+160+i*16, cpu->xmm[i].pi.u64[0]);
+        writeq(address+168+i*16, cpu->xmm[i].pi.u64[1]);
+    }
 }
 
 void common_fxrstor(CPU* cpu, U32 address) {
-    kpanic("fxrstore not implemented");
+    cpu->fpu.SetCW(readw(address));
+    cpu->fpu.SetCW(readw(address+2));
+    cpu->fpu.SetTagFromAbridged(readb(address+4));
+    for (int i=0;i<8;i++) {
+        cpu->reg_mmx[i].q = readq(address+32+i*16);
+        cpu->fpu.FLD_F80(readq(address+32+i*16), (S16)readw(address+40+i*16));
+    }
+    for (int i=0;i<8;i++) {
+        cpu->xmm[i].pi.u64[0] = readq(address+160+i*16);
+        cpu->xmm[i].pi.u64[1] = readq(address+168+i*16);
+    }
 }
 
 void common_xsave(CPU* cpu, U32 address) {

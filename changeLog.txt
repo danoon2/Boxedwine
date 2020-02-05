@@ -4,3 +4,12 @@ Next Release
 * fixed issue in BoxedWine UI where the install option for a setup file didn't work if the path had a space in it.
 * 64-bit Windows installer will now default to the correct Programe Files to install to.
 * Added about 30 more supported extensions to OpenGL.
+* Fixed fstat system call, it will now will report the correct size of the file
+* Added SSE2 support for both the x64 and normal cores
+* Fixed crash in custom winex11.drv and updated file systems to use it
+
+Known game fixes
+
+* GOG's Diablo + Hellfire - https://www.gog.com/game/diablo
+  The installer works, the launcher works and Diablo works.  Hellfire does not work (same as Wine).
+* Half-Life Uplink Demo installer and game work with Wine 4 now.  Wine 1.7 has color issue with intro and game is a blank screen.

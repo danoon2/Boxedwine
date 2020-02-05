@@ -53,6 +53,7 @@ U16 SaturateDwordSToWordU(S32 value)
 // EMMS
 void common_emms(CPU* cpu) {
     cpu->fpu.reset();
+    cpu->resetMMX();
 }
 
 /* Data Movement */

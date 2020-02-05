@@ -50,6 +50,23 @@ void CPU::setSeg(U32 index, U32 address, U32 value) {
     }
 }
 
+#define INVALID_MMX 0xCDCDCDCDCDCDCDCDl
+
+void CPU::resetMMX() {
+    for (int i=0;i<8;i++) {
+        this->reg_mmx[i].q = INVALID_MMX;
+    }
+}
+
+bool CPU::isMMXinUse() {
+    for (int i=0;i<8;i++) {     
+        if (this->reg_mmx[i].q != INVALID_MMX) {
+            return true;
+        }
+    }
+    return false;
+}
+
 void CPU::reset() {
     this->flags = 0;
     this->eip.u32 = 0;
@@ -60,6 +77,7 @@ void CPU::reset() {
     for (int i=0;i<9;i++) {
         this->reg[i].u32 = 0;
     }
+    this->resetMMX();
     for (int i=0;i<8;i++) {
         this->xmm[i].pi.u64[0] = 0;
         this->xmm[i].pi.u64[1] = 0;
