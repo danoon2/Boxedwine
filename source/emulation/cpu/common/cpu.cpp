@@ -649,7 +649,7 @@ void CPU::iret(U32 big, U32 oldeip) {
 
         if (big) {
             n_eip = this->peek32(0);
-            n_cs_sel = this->peek32(1);
+            n_cs_sel = this->peek32(1) & 0xffff;
             n_flags = this->peek32(2);
 
             if ((n_flags & VM) && (this->cpl==0)) {

@@ -374,6 +374,7 @@
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\boxedwine.h" />
     <ClInclude Include="..\..\..\..\include\bufferaccess.h" />
+    <ClInclude Include="..\..\..\..\include\cpuinfo.h" />
     <ClInclude Include="..\..\..\..\include\crc.h" />
     <ClInclude Include="..\..\..\..\include\devdsp.h" />
     <ClInclude Include="..\..\..\..\include\devfb.h" />
@@ -645,6 +646,7 @@
     <ClCompile Include="..\..\..\..\source\kernel\kunixsocket.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\loader\loader.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\proc\bufferaccess.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\proc\cpuinfo.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\proc\meminfo.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\proc\self.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\syscall.cpp" />

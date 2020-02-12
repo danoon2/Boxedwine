@@ -355,6 +355,9 @@
     <ClCompile Include="..\..\..\..\source\kernel\sys\cpuscalingmaxfreq.cpp">
       <Filter>source\kernel\sys</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\proc\cpuinfo.cpp">
+      <Filter>source\kernel\proc</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -832,6 +835,9 @@
       <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\include\syscpuscalingmaxfreq.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\cpuinfo.h">
       <Filter>include</Filter>
     </ClInclude>
   </ItemGroup>
