@@ -45,6 +45,7 @@ U32 KSystem::getProcessCount() {
 U32 KSystem::uname(U32 address) {
     writeNativeString(address, "Linux");
     writeNativeString(address + 65, "Linux");
+    //writeNativeString(address + 130, "4.19.0-6-686");
     writeNativeString(address + 130, "4.15.0-20-generic");
     writeNativeString(address + 260, "i686");
     return 0;
@@ -324,6 +325,9 @@ U32 KSystem::gettimeofday(U32 tv, U32 tz) {
 void KSystem::writeStat(const std::string& path, U32 buf, bool is64, U64 st_dev, U64 st_ino, U32 st_mode, U64 st_rdev, U64 st_size, U32 st_blksize, U64 st_blocks, U64 mtime, U32 linkCount) {
     if (!path.compare("/tmp/.X11-unix")) {
         st_mode= K__S_IFDIR |K__S_ISVTX | K__S_IRWXU | K__S_IRWXG | K__S_IRWXO;
+    }
+    if (!path.compare("/var/run/samba/msg.lock") || !path.compare("/run/samba/msg.lock")) {
+        st_mode = K__S_IFDIR | 0x1ED; // 755
     }
 
      if (is64) {
