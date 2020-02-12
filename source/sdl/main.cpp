@@ -42,6 +42,7 @@
 #include "devsequencer.h"
 #include "sdlwindow.h"
 #include "procselfexe.h"
+#include "cpuinfo.h"
 #include "syscpuonline.h"
 #include "syscpumaxfreq.h"
 #include "syscpuscalingcurfreq.h"
@@ -378,7 +379,7 @@ int boxedmain(int argc, const char **argv) {
     ppenv[envc++] = "USER=username";
     ppenv[envc++] = pwd;
     ppenv[envc++] = "DISPLAY=:0";
-    ppenv[envc++] = "LD_LIBRARY_PATH=/lib:/usr/lib:/usr/local/lib:/lib/i386-linux-gnu:/usr/lib/i386-linux-gnu";    
+    ppenv[envc++] = "LD_LIBRARY_PATH=/lib:/usr/lib:/usr/local/lib:/lib/i386-linux-gnu:/usr/lib/i386-linux-gnu:/opt/wine/lib";    
     if (userId==0)
         ppenv[envc++] = "PATH=/bin:/usr/bin:/usr/local/bin:/sbin:/usr/sbin";
     else
@@ -415,6 +416,7 @@ int boxedmain(int argc, const char **argv) {
     Fs::addVirtualFile("/dev/null", openDevNull, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, mdev(1, 3), devNode);
     Fs::addVirtualFile("/dev/zero", openDevZero, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, mdev(1, 5), devNode);
     Fs::addVirtualFile("/proc/meminfo", openMemInfo, K__S_IREAD, mdev(0, 0), procNode);
+    Fs::addVirtualFile("/proc/cpuinfo", openCpuInfo, K__S_IREAD, mdev(0, 0), procNode);
     Fs::addVirtualFile("/proc/self/exe", openProcSelfExe, K__S_IREAD, mdev(0, 0), procSelfNode);
     Fs::addVirtualFile("/proc/cmdline", openKernelCommandLine, K__S_IREAD, mdev(0, 0), procNode); // kernel command line
     Fs::addVirtualFile("/dev/fb0", openDevFB, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, mdev(0x1d, 0), devNode);
