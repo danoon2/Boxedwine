@@ -689,13 +689,7 @@ void wndBlt(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32 yOrg, U32 width, 
         displayChanged(thread);
         DISPATCH_MAIN_THREAD_BLOCK_END
     }
-
-    if (!sdlRenderer) {
-        // final reality will draw its main start window while an OpenGL context is still going
-        // half life uplink demo intro movie also needs this
-        // other games fails with this code here, like Diablo
-        sdlRenderer = SDL_CreateRenderer(sdlWindow, -1, 0);	
-    }
+    
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(sdlMutex);
     Wnd* wnd = getWnd(hwnd);
     wRECT r;
@@ -703,6 +697,14 @@ void wndBlt(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32 yOrg, U32 width, 
     int bpp = bits_per_pixel==8?32:bits_per_pixel;
     int pitch = (width*((bpp+7)/8)+3) & ~3;
     static int i;
+
+    if (!sdlRenderer) {
+        // final reality will draw its main start window while an OpenGL context is still going
+        // half life uplink demo intro movie also needs this
+        if (contextCount && !wnd->openGlContext) {
+            sdlRenderer = SDL_CreateRenderer(sdlWindow, -1, 0);	
+        }
+    }
 
     readRect(thread, rect, &r);    
 #ifndef SDL2
@@ -823,7 +825,7 @@ U32 recorderBufferSize;
 
 void sdlDrawAllWindows(KThread* thread, U32 hWnd, int count) {    
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(sdlMutex);
-    if (contextCount && lastGlCallTime+1000>getMilliesSinceStart()) {
+    if (!sdlRenderer || (contextCount && lastGlCallTime+1000>getMilliesSinceStart())) {
         // don't let window drawing and opengl drawing fight and clobber each other, if OpenGL was active in the last second, then don't draw the window
         return;
     }
