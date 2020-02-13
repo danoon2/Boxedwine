@@ -104,7 +104,7 @@ void CodePage::removeBlockAt(U32 address, U32 len) {
             KThread* thread = KThread::currentThread();
             U32 ip;
 
-            if (thread->cpu->big)
+            if (thread->cpu->isBig())
                 ip = thread->cpu->seg[CS].address + thread->cpu->eip.u32;
             else
                 ip = thread->cpu->seg[CS].address + thread->cpu->eip.u16;

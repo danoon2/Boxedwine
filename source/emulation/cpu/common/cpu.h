@@ -317,7 +317,9 @@ public:
 
     bool isBig() {return this->big!=0;}
     virtual void setIsBig(U32 value);
+#ifndef __TEST
 protected:    
+#endif
     U32 big;
 };
 
