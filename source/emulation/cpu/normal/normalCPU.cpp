@@ -101,7 +101,7 @@ NormalCPU::NormalCPU() {
 }
 
 U8 fetchByte(U32 *eip) {
-    if (*eip - KThread::currentThread()->cpu->seg[CS].address == 0xFFFF && !KThread::currentThread()->cpu->big) {
+    if (*eip - KThread::currentThread()->cpu->seg[CS].address == 0xFFFF && !KThread::currentThread()->cpu->isBig()) {
         kpanic("eip wrapped around.");
     }
     return readb((*eip)++);
@@ -202,7 +202,7 @@ void NormalBlock::dealloc(bool delayed) {
     this->referencedFrom = NULL;
 }
 
-DecodedBlock* NormalCPU::getBlockForInspectionButNotUsed(U32 address, U32 big) {
+DecodedBlock* NormalCPU::getBlockForInspectionButNotUsed(U32 address, bool big) {
     DecodedBlock* block = NormalBlock::alloc();
     decodeBlock(fetchByte, address, big, 0, K_PAGE_SIZE, 0, block);
     return block;
@@ -217,7 +217,7 @@ DecodedBlock* NormalCPU::getNextBlock() {
 
     if (!block) {
         block = NormalBlock::alloc();
-        decodeBlock(fetchByte, startIp, this->big, 0, K_PAGE_SIZE, 0, block);
+        decodeBlock(fetchByte, startIp, this->isBig(), 0, K_PAGE_SIZE, 0, block);
 
         DecodedOp* op = block->op;
         while (op) {

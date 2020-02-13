@@ -12,7 +12,7 @@ public:
 
     static OpCallback getFunctionForOp(DecodedOp* op);
 
-    static DecodedBlock* getBlockForInspectionButNotUsed(U32 address, U32 big);
+    static DecodedBlock* getBlockForInspectionButNotUsed(U32 address, bool big);
 
     OpCallback firstOp;
 };

@@ -569,7 +569,7 @@ void writeToContext(KThread* thread, U32 stack, U32 context, bool altStack, U32 
     writed(context+0x40, cpu->reg[0].u32); // EAX
     writed(context+0x44, trapNo); // REG_TRAPNO
     writed( context+0x48, errorNo); // REG_ERR
-    writed(context+0x4C, cpu->big?cpu->eip.u32:cpu->eip.u16);
+    writed(context+0x4C, cpu->isBig()?cpu->eip.u32:cpu->eip.u16);
     writed(context+0x50, cpu->seg[CS].value);
     writed(context+0x54, cpu->flags);
     writed(context+0x58, 0); // REG_UESP
@@ -735,7 +735,7 @@ void KThread::runSignal(U32 signal, U32 trapNo, U32 errorNo) {
         this->cpu->setSegment(SS, 0x17);
         this->cpu->setSegment(DS, 0x17);
         this->cpu->setSegment(ES, 0x17);
-        this->cpu->big = 1;
+        this->cpu->setIsBig(1);
     }    
     this->process->pendingSignals &= ~(1 << (signal - 1));
     this->pendingSignals &= ~(1 << (signal - 1));

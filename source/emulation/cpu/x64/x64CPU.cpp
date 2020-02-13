@@ -89,7 +89,7 @@ void* x64CPU::init() {
     data.writeToRegFromValue(7, false, EDI, 4);        
     
     data.calculatedEipLen = 1; // will force the long x64 chunk jump
-    data.doJmp();
+    data.doJmp(false);
     X64CodeChunk* chunk = data.commit(true);
     result = chunk->getHostAddress();
     link(&data, chunk);
@@ -140,7 +140,7 @@ X64CodeChunk* x64CPU::translateChunk(X64Asm* parent, U32 ip) {
 }
 
 void* x64CPU::translateEipInternal(X64Asm* parent, U32 ip) {
-    if (!this->big) {
+    if (!this->isBig()) {
         ip = ip & 0xFFFF;
     }
     U32 address = this->seg[CS].address+ip;
@@ -351,7 +351,7 @@ static U8 fetchByte(U32 *eip) {
 }
 
 DecodedOp* x64CPU::getOp(U32 eip, bool existing) {
-    if (this->big) {
+    if (this->isBig()) {
         eip+=this->seg[CS].address;
     } else {
         eip=this->seg[CS].address + (eip & 0xFFFF);
@@ -361,7 +361,7 @@ DecodedOp* x64CPU::getOp(U32 eip, bool existing) {
         if (!block) {
             block = new DecodedBlock();
         }
-        decodeBlock(fetchByte, eip, this->big, 4, 64, 1, block);
+        decodeBlock(fetchByte, eip, this->isBig(), 4, 64, 1, block);
         return block->op;
     }
     return NULL;

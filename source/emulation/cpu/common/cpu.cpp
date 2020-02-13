@@ -50,6 +50,10 @@ void CPU::setSeg(U32 index, U32 address, U32 value) {
     }
 }
 
+void CPU::setIsBig(U32 value) {
+    this->big = value;
+}
+
 #define INVALID_MMX 0xCDCDCDCDCDCDCDCDl
 
 void CPU::resetMMX() {
@@ -83,7 +87,7 @@ void CPU::reset() {
         this->xmm[i].pi.u64[1] = 0;
     }
     this->lazyFlags = 0;
-    this->big = 1;
+    this->setIsBig(1);
     this->df = 1;
     this->seg[CS].value = 0xF; // index 1, LDT, rpl=3
     this->seg[SS].value = 0x17; // index 2, LDT, rpl=3
@@ -113,7 +117,7 @@ void CPU::call(U32 big, U32 selector, U32 offset, U32 oldEip) {
             this->eip.u32 = offset & 0xffff;
         } 
         THIS_ESP = esp;
-        this->big = 0;
+        this->setIsBig(0);
         this->setSeg(CS, selector << 4, selector);
     } else {
         U32 rpl=selector & 3;
@@ -147,7 +151,7 @@ void CPU::call(U32 big, U32 selector, U32 offset, U32 oldEip) {
             this->eip.u32=offset & 0xffff;
         }
         THIS_ESP = esp; // don't set ESP until we are done with Memory Writes / CPU_Push so that we are reentrant
-        this->big = ldt->seg_32bit;
+        this->setIsBig(ldt->seg_32bit);
         this->setSeg(CS, ldt->base_addr, (selector & 0xfffc) | this->cpl);
     }
 }
@@ -160,7 +164,7 @@ void CPU::jmp(U32 big, U32 selector, U32 offset, U32 oldEip) {
             this->eip.u32 = offset;
         }
         this->setSeg(CS, selector << 4, selector);
-        this->big = 0;
+        this->setIsBig(0);
     } else {
         U32 rpl=selector & 3;
         U32 index = selector >> 3;
@@ -180,7 +184,7 @@ void CPU::jmp(U32 big, U32 selector, U32 offset, U32 oldEip) {
             return;
         }
 
-        this->big = ldt->seg_32bit;
+        this->setIsBig(ldt->seg_32bit);
         this->setSeg(CS, ldt->base_addr, (selector & 0xfffc) | this->cpl);
         if (!big) {
             this->eip.u32 = offset & 0xffff;
@@ -497,7 +501,7 @@ void CPU::ret(U32 big, U32 bytes) {
         THIS_ESP = (THIS_ESP & this->stackNotMask) | ((THIS_ESP + bytes ) & this->stackMask);
         this->setSegment(CS, new_cs);
         this->eip.u32 = new_ip;
-        this->big = 0;
+        this->setIsBig(0);
     } else {
         U32 offset,selector;
         U32 rpl; // requested privilege level
@@ -538,7 +542,7 @@ void CPU::ret(U32 big, U32 bytes) {
                 selector = pop16();
             }
             this->setSeg(CS, ldt->base_addr, selector);
-            this->big = ldt->seg_32bit;
+            this->setIsBig(ldt->seg_32bit);
             this->eip.u32 = offset;
             THIS_ESP = (THIS_ESP & this->stackNotMask) | ((THIS_ESP + bytes ) & this->stackMask);
         } else {
@@ -580,7 +584,7 @@ void CPU::ret(U32 big, U32 bytes) {
             this->cpl = rpl; // don't think paging tables need to be messed with, this isn't 100% cpu emulator since we are assuming a user space program
 
             this->setSeg(CS, ldt->base_addr, (selector & 0xfffc) | this->cpl);
-            this->big = ldt->seg_32bit;
+            this->setIsBig(ldt->seg_32bit);
             this->eip.u32 = offset;
 
             this->setSeg(SS, ssLdt->base_addr, n_ss);                
@@ -631,7 +635,7 @@ void CPU::iret(U32 big, U32 oldeip) {
                 /* IOPL can not be modified in v86 mode by IRET */
                 cpu->setFlags(new_flags, FMASK_NORMAL | NT);
             }
-            this->big = 0;
+            this->setIsBig(0);
             this->lazyFlags = FLAGS_NONE;
             return;
         }
@@ -675,7 +679,7 @@ void CPU::iret(U32 big, U32 oldeip) {
                 this->setSegment(FS, n_fs);
                 this->setSegment(GS, n_gs);
                 ESP = n_esp;
-                this->big = 0;
+                this->setIsBig(0);
                 this->setSegment(CS, n_cs_sel);
                 return;
             }
@@ -711,7 +715,7 @@ void CPU::iret(U32 big, U32 oldeip) {
             // commit point
             ESP = (ESP & this->stackNotMask) | ((ESP + (big?12:6)) & this->stackMask);
             this->setSeg(CS, ldt->base_addr, n_cs_sel);
-            this->big = ldt->seg_32bit;
+            this->setIsBig(ldt->seg_32bit);
             this->eip.u32 = n_eip;     
             mask = this->cpl !=0 ? (FMASK_NORMAL | NT) : FMASK_ALL;
             if (((this->flags & IOPL) >> 12) < this->cpl) mask &= ~IF;
@@ -750,7 +754,7 @@ void CPU::iret(U32 big, U32 oldeip) {
 
             // commit point
             this->setSeg(CS, ldt->base_addr, n_cs_sel);
-            this->big = ldt->seg_32bit;
+            this->setIsBig(ldt->seg_32bit);
             mask = this->cpl !=0 ? (FMASK_NORMAL | NT) : FMASK_ALL;
             if (((this->flags & IOPL) >> 12) < this->cpl) mask &= ~IF;
             this->setFlags(n_flags, mask);
@@ -1097,7 +1101,7 @@ void CPU::clone(CPU* from) {
         this->seg[i] = from->seg[i];
     this->flags = from->flags;
     this->eip = from->eip;
-    this->big = from->big;
+    this->setIsBig(from->isBig());
     //U8* reg8[9];
     for (int i=0;i<8;i++)
         this->reg_mmx[i] = from->reg_mmx[i];
@@ -1156,7 +1160,7 @@ void CPU::verw(U32 selector) {
 }
 
 U32 CPU::getEipAddress() {
-    if (this->big)
+    if (this->isBig())
         return this->eip.u32+this->seg[CS].address;
     return (this->eip.u32 & 0xFFFF) + this->seg[CS].address;
 }

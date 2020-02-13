@@ -6096,7 +6096,7 @@ void DecodedBlock::removeReferenceFrom(DecodedBlock* block) {
 
 DecodedBlock* DecodedBlock::currentBlock;
 
-void decodeBlock(pfnFetchByte fetchByte, U32 eip, U32 isBig, U32 maxInstructions, U32 maxLen, U32 stopIfThrowsException, DecodedBlock* block) {
+void decodeBlock(pfnFetchByte fetchByte, U32 eip, bool isBig, U32 maxInstructions, U32 maxLen, U32 stopIfThrowsException, DecodedBlock* block) {
     DecodeData d;    
     DecodedOp* op = DecodedOp::alloc();
 

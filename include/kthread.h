@@ -107,7 +107,7 @@ public:
     void removeGlContextById(U32 id);
     void addGlContext(U32 id, void* context);
     void removeAllGlContexts();
-private:
+
     std::unordered_map<U32, KThreadGlContext> glContext;
 public:
     void* currentContext;

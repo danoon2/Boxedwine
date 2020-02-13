@@ -161,7 +161,7 @@ public:
     void movs16(void* pfn, U32 size, bool repeat, U32 base);
     void lods16(void* pfn, U32 size, bool repeat, U32 base);
     void cmps16(void* pfn, U32 size, bool repeat, bool repeatZero, U32 base);
-    void doJmp();
+    void doJmp(bool mightNeedCS);
     void bound32(U8 rm);
     void bound16(U8 rm);
     void movRdCrx(U32 which, U32 reg);
@@ -232,7 +232,7 @@ private:
     void addTodoLinkJump(U32 eip, U32 size, bool sameChunk);       
     void doLoop(U32 eip);
     void doLoop16(U8 inst, U32 eip);
-    void jmpReg(U8 reg, bool isRex);
+    void jmpReg(U8 reg, bool isRex, bool mightNeedCS);
     void jmpNativeReg(U8 reg, bool isRegRex);
     void shiftRightReg(U8 reg, bool isRegRex, U8 shiftAmount);
     void andReg(U8 reg, bool isRegRex, U32 mask);

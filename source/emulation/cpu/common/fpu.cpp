@@ -823,7 +823,7 @@ U32 FPU::SW() {
 
 void FPU::FSTENV(CPU* cpu, U32 addr) {
     FPU_SET_TOP(this, this->top);
-    if (!cpu->big) {
+    if (!cpu->isBig()) {
         writew(addr + 0, this->cw);
         writew(addr + 2, this->sw);
         writew(addr + 4, GetTag());
@@ -838,7 +838,7 @@ void FPU::FLDENV(CPU* cpu, U32 addr) {
     U32 tag;
     U32 cw;
         
-    if (!cpu->big) {
+    if (!cpu->isBig()) {
         cw = readw(addr + 0);
         this->sw = readw(addr + 2);
         tag = readw(addr + 4);
@@ -853,7 +853,7 @@ void FPU::FLDENV(CPU* cpu, U32 addr) {
 }
 
 void FPU::FSAVE(CPU* cpu, U32 addr) {
-    int start = (cpu->big ? 28 : 14);
+    int start = (cpu->isBig() ? 28 : 14);
     int i;
 
     FSTENV(cpu, addr);
@@ -866,7 +866,7 @@ void FPU::FSAVE(CPU* cpu, U32 addr) {
 }
 
 void FPU::FRSTOR(CPU* cpu, U32 addr) {
-    int start = (cpu->big ? 28 : 14);
+    int start = (cpu->isBig() ? 28 : 14);
     int i;
 
     FLDENV(cpu, addr);

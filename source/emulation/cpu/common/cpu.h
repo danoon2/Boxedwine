@@ -219,8 +219,7 @@ public:
     Reg reg[9];
     Seg seg[7];
     U32 flags;
-    Reg eip;
-    U32 big;
+    Reg eip;    
     U8* reg8[9];
     MMX_reg reg_mmx[8];
     SSE xmm[8]; // :TODO: alignment?
@@ -315,6 +314,11 @@ public:
     virtual DecodedBlock* getNextBlock() = 0;
     virtual void restart() {}
     virtual void setSeg(U32 index, U32 address, U32 value);
+
+    bool isBig() {return this->big!=0;}
+    virtual void setIsBig(U32 value);
+protected:    
+    U32 big;
 };
 
 // until I can figure out how to call cpp function directly from asm

@@ -40,7 +40,7 @@ X64Data::~X64Data() {
 U8 X64Data::fetch8() {
     U32 address;
 
-    if (this->cpu->big) {
+    if (this->cpu->isBig()) {
         address = this->ip + this->cpu->seg[CS].address;
         this->ip++;
     } else {
@@ -126,7 +126,7 @@ void X64Data::resetForNewOp() {
     this->imm = 0;
     this->immSize = 0;
 
-    if (this->cpu->big) {
+    if (this->cpu->isBig()) {
         this->baseOp = 0x200;
         this->ea16 = false;
     } else {

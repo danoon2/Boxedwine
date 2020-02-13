@@ -685,7 +685,7 @@ void X64Asm::writeToEFromReg(U8 rm, U8 reg, bool isRegRex, U8 bytes) {
         this->rex = 0;
     }
     if (bytes==2) {
-        if (this->cpu->big) {
+        if (this->cpu->isBig()) {
             this->operandPrefix = true;
         }
         this->op = 0x89;
@@ -710,12 +710,12 @@ void X64Asm::writeToRegFromE(U8 reg, bool isRegRex, U8 rm, U8 bytes) {
         this->rex = 0;
     }
     if (bytes==2) {
-        if (this->cpu->big) {
+        if (this->cpu->isBig()) {
             this->operandPrefix = true;
         }
         this->op = 0x8b;
     } else if (bytes==4) {
-        if (!this->cpu->big) {
+        if (!this->cpu->isBig()) {
             this->operandPrefix = true;
         }
         this->op = 0x8b;
@@ -730,7 +730,7 @@ void X64Asm::writeToRegFromE(U8 reg, bool isRegRex, U8 rm, U8 bytes) {
 void X64Asm::getNativeAddressInRegFromE(U8 reg, bool isRegRex, U8 rm) {
     this->op = 0x8d;
     this->multiBytePrefix = false;
-    if (this->cpu->big) {
+    if (this->cpu->isBig()) {
         this->operandPrefix = false;    
     } else {
         this->operandPrefix = true;
@@ -1539,10 +1539,10 @@ void X64Asm::doIf(U8 reg, bool isRexReg, U32 equalsValue, std::function<void(voi
         this->buffer[pos2] = this->bufferPos - pos2 - 1; // else block jumps over if block
 }
 
-void X64Asm::doJmp() {
+void X64Asm::doJmp(bool mightNeedCS) {
     U8 tmpReg = getTmpReg();
     writeToRegFromMem(tmpReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EIP, 4, false);
-    jmpReg(tmpReg, true);
+    jmpReg(tmpReg, true, mightNeedCS);
     releaseTmpReg(tmpReg);
 }
 
@@ -1574,7 +1574,7 @@ void X64Asm::popSeg(U8 seg, U8 bytes) {
     
     doIf(0, false, 0, [this]() {
         syncRegsToHost();
-        doJmp();
+        doJmp(true);
     }, [this, bytes]() {
         syncRegsToHost();
         U8 tmpReg = getTmpReg();
@@ -1605,7 +1605,7 @@ void X64Asm::setSeg(U8 seg, U8 rm) {
     
     doIf(0, false, 0, [this]() {
         syncRegsToHost();
-        doJmp();
+        doJmp(true);
     }, [this]() {
         syncRegsToHost();
     });   
@@ -2071,7 +2071,7 @@ void X64Asm::addTodoLinkJump(U32 eip, U32 size, bool sameChunk) {
 }
 
 void X64Asm::jumpTo(U32 eip) {  
-    if (!this->cpu->big) {
+    if (!this->cpu->isBig()) {
         eip = eip & 0xffff;
     }
 #ifdef _DEBUG
@@ -2332,7 +2332,7 @@ void X64Asm::internal_addDynamicCheck(U32 address, U32 len, U32 needsFlags, bool
 }
 
 void X64Asm::addDynamicCheck(bool panic) {
-    DecodedBlock* block = NormalCPU::getBlockForInspectionButNotUsed(this->ip+this->cpu->seg[CS].address, this->cpu->big);
+    DecodedBlock* block = NormalCPU::getBlockForInspectionButNotUsed(this->ip+this->cpu->seg[CS].address, this->cpu->isBig());
     U32 len = block->op->len;
     U32 needsFlags = instructionInfo[block->op->inst].flagsUsed | DecodedOp::getNeededFlags(block, block->op, OF|SF|ZF|PF|AF|CF);
     U32 address = this->startOfOpIp + this->cpu->seg[CS].address;
@@ -2510,7 +2510,7 @@ void X64Asm::jmp(bool big, U32 sel, U32 offset, U32 oldEip) {
     
     callHost((void*)x64_jmp);
     syncRegsToHost();
-    doJmp();
+    doJmp(true);
 }
 
 void x64_call(x64CPU* cpu, U32 big, U32 selector, U32 offset) {
@@ -2538,7 +2538,7 @@ void X64Asm::call(bool big, U32 sel, U32 offset, U32 oldEip) {
     
     callHost((void*)x64_call);
     syncRegsToHost();
-    doJmp();
+    doJmp(true);
 }
 
 void X64Asm::shiftRightReg(U8 reg, bool isRegRex, U8 shiftAmount) {
@@ -2574,11 +2574,14 @@ void X64Asm::andReg(U8 reg, bool isRegRex, U32 mask) {
 //4F 8B 14 CA          mov         r10,qword ptr [r10+r9*8]  
 //66 45 8B 0A          mov         r9w,word ptr [r10]  
 //41 FF E2             jmp         r10  
-void X64Asm::jmpReg(U8 reg, bool isRex) {       
+void X64Asm::jmpReg(U8 reg, bool isRex, bool mightNeedCS) {       
     // HOST_TMP2 will hold the page
     // HOST_TMP will hold the offset
     if (x64CPU::hasBMI2) {        
-        if (!this->cpu->thread->process->hasSetSeg[CS]) {
+        if (!this->cpu->thread->process->hasSetSeg[CS] && !mightNeedCS) {
+            if (this->cpu->seg[CS].address) {
+                int ii=0;
+            }
             if (reg==HOST_TMP2 && isRex) {
                 writeToRegFromValue(HOST_TMP3, true, K_PAGE_MASK, 4);
                 // PEXT HOST_TMP, HOST_TMP2, HOST_TMP3
@@ -2657,14 +2660,14 @@ void X64Asm::jmpReg(U8 reg, bool isRex) {
             write8(0xc0 | (HOST_TMP2 << 3) | HOST_TMP2);
         }        
     } else {
-        if (!this->cpu->thread->process->hasSetSeg[CS]) {
+        if (!this->cpu->thread->process->hasSetSeg[CS] && !mightNeedCS) {
             if (reg==HOST_TMP2 && isRex) {
                 writeToRegFromReg(HOST_TMP, true, HOST_TMP2, true, 4);
             } else if (reg==HOST_TMP && isRex) {
                 writeToRegFromReg(HOST_TMP2, true, HOST_TMP, true, 4);
             } else {        
-                writeToRegFromReg(HOST_TMP, true, reg, isRex, false);
-                writeToRegFromReg(HOST_TMP2, true, reg, isRex, false);
+                writeToRegFromReg(HOST_TMP, true, reg, isRex, 4);
+                writeToRegFromReg(HOST_TMP2, true, reg, isRex, 4);
             }
         } else {
             if (reg==HOST_TMP2 && isRex) {
@@ -2726,7 +2729,7 @@ void X64Asm::retn16(U32 bytes) {
     if (bytes) {
         addWithLea(HOST_ESP, true, HOST_ESP, true, -1, false, 0, bytes, 2);
     }
-    jmpReg(tmpReg, true);
+    jmpReg(tmpReg, true, false);
     releaseTmpReg(tmpReg);
 }
 
@@ -2736,7 +2739,7 @@ void X64Asm::retn32(U32 bytes) {
     if (bytes) {
         addWithLea(HOST_ESP, true, HOST_ESP, true, -1, false, 0, bytes, 4);
     }
-    jmpReg(tmpReg, true);
+    jmpReg(tmpReg, true, false);
     releaseTmpReg(tmpReg);
 }
 
@@ -2755,7 +2758,7 @@ void X64Asm::retf(U32 big, U32 bytes) {
     
     callHost((void*)common_ret);
     syncRegsToHost();
-    doJmp();
+    doJmp(true);
 }
 
 void X64Asm::iret(U32 big, U32 oldEip) {
@@ -2773,7 +2776,7 @@ void X64Asm::iret(U32 big, U32 oldEip) {
     
     callHost((void*)common_iret);
     syncRegsToHost();
-    doJmp();
+    doJmp(true);
 }
 
 void X64Asm::signalIllegalInstruction(int code) {
@@ -2788,7 +2791,7 @@ void X64Asm::signalIllegalInstruction(int code) {
     
     callHost((void*)common_signalIllegalInstruction);
     syncRegsToHost();
-    doJmp();
+    doJmp(true);
 }
 
 static U8 fetchByte(U32 *eip) {
@@ -2802,7 +2805,7 @@ static void x64log(CPU* cpu) {
     if (!block) {
         block = new DecodedBlock();
     }
-    decodeBlock(fetchByte, cpu->eip.u32+cpu->seg[CS].address, cpu->big, 1, K_PAGE_SIZE, 0, block);
+    decodeBlock(fetchByte, cpu->eip.u32+cpu->seg[CS].address, cpu->isBig(), 1, K_PAGE_SIZE, 0, block);
     block->op->log(cpu);
     block->op->dealloc(false);
 }
@@ -2830,7 +2833,7 @@ void X64Asm::syscall(U32 opLen) {
     
     callHost((void*)ksyscall);
     syncRegsToHost();
-    doJmp();
+    doJmp(true);
 }
 
 void X64Asm::int98(U32 opLen) {
@@ -2969,7 +2972,7 @@ void X64Asm::loadSeg(U8 seg, U8 rm, bool b32) {
 
         doIf(0, false, 0, [this]() {
             syncRegsToHost();
-            doJmp();
+            doJmp(true);
         }, [this, rm, b32]() {
             syncRegsToHost();
             // put the value we stored on the native stack into the emulator reg
@@ -3048,7 +3051,7 @@ void X64Asm::callE(bool big, U8 rm) {
     }
     writeToRegFromE(tmpReg, true, rm, (big?4:2));
     push(-1, false, this->ip, (big?4:2)); 
-    jmpReg(tmpReg, true);
+    jmpReg(tmpReg, true, false);
     releaseTmpReg(tmpReg);
 }
 
@@ -3091,7 +3094,7 @@ void X64Asm::callJmp(bool big, U8 rm, bool jmp) {
         callHost((void*)x64_call);
     }
     syncRegsToHost();
-    doJmp();  
+    doJmp(true);  
 }
 
 void X64Asm::callFar(bool big, U8 rm) {    
@@ -3104,7 +3107,7 @@ void X64Asm::jmpE(bool big, U8 rm) {
         zeroReg(tmpReg, true, true);
     }
     writeToRegFromE(tmpReg, true, rm, (big?4:2));
-    jmpReg(tmpReg, true);
+    jmpReg(tmpReg, true, false);
     releaseTmpReg(tmpReg);
 }
 
@@ -3125,7 +3128,7 @@ void X64Asm::callCallback(void* pfn) {
 
     callHost((void*)pfn);
     syncRegsToHost();
-    doJmp();
+    doJmp(true);
 }
 
 void X64Asm::lsl(bool big, U8 rm) {
@@ -3261,7 +3264,7 @@ void X64Asm::invalidOp(U32 op) {
     writeToRegFromReg(PARAM_1_REG, PARAM_1_REX, HOST_CPU, true, 8); // CPU* param
     callHost((void*)x64_invalidOp);
     syncRegsToHost();
-    doJmp();
+    doJmp(true);
 }
 
 static void x64_errorMsg(const char* msg) {
@@ -3347,9 +3350,9 @@ void X64Asm::writeOp(bool isG8bit) {
 
     if (this->lockPrefix)
         write8(0xF0);
-    if (this->cpu->big && this->operandPrefix)
+    if (this->cpu->isBig() && this->operandPrefix)
         write8(0x66);
-    else if (!this->cpu->big && !this->operandPrefix)
+    else if (!this->cpu->isBig() && !this->operandPrefix)
         write8(0x66);
     if (this->repZeroPrefix)
         write8(0xF3);
@@ -3414,15 +3417,15 @@ void X64AsmCodeMemoryWrite::invalidateStringWriteToDi(bool repeat, U32 size) {
     U32 addressLen;
 
     if (repeat) {
-        addressLen = size * (cpu->big?ECX:CX);
+        addressLen = size * (cpu->isBig()?ECX:CX);
     } else {
         addressLen = size;
     }
 
     if (cpu->df==1) {
-        addressStart = (this->cpu->big?EDI:DI)+cpu->seg[ES].address;
+        addressStart = (this->cpu->isBig()?EDI:DI)+cpu->seg[ES].address;
     } else {
-        addressStart = (this->cpu->big?EDI:DI)+cpu->seg[ES].address + size - addressLen;
+        addressStart = (this->cpu->isBig()?EDI:DI)+cpu->seg[ES].address + size - addressLen;
     }
     invalidateCode(addressStart, addressLen);
 }
@@ -3630,7 +3633,7 @@ void X64Asm::bound16(U8 rm) {
 
     doIf(0, false, 0, [this]() {
         syncRegsToHost();
-        doJmp();
+        doJmp(true);
     }, [this]() {
         syncRegsToHost();
     });
@@ -3653,7 +3656,7 @@ void X64Asm::bound32(U8 rm) {
 
     doIf(0, false, 0, [this]() {
         syncRegsToHost();
-        doJmp();
+        doJmp(true);
     }, [this]() {
         syncRegsToHost();
     }); 
@@ -3674,7 +3677,7 @@ void X64Asm::movRdCrx(U32 which, U32 reg) {
     callHost((void*)common_readCrx);
     doIf(0, false, 0, [this]() {
         syncRegsToHost();
-        doJmp();
+        doJmp(true);
     }, [this]() {
         syncRegsToHost();
     }); 
@@ -3696,7 +3699,7 @@ void X64Asm::movCrxRd(U32 which, U32 reg) {
     releaseTmpReg(HOST_TMP2);
     doIf(0, false, 0, [this]() {
         syncRegsToHost();
-        doJmp();
+        doJmp(true);
     }, [this]() {
         syncRegsToHost();
     }); 
@@ -3855,7 +3858,7 @@ void X64Asm::fpu1(U8 rm) {
             case 3: callFpuWithAddressWrite(common_FST_SINGLE_REAL_Pop, rm, 4); break;
             case 4: callFpuWithAddress(common_FLDENV, rm); break;
             case 5: callFpuWithAddress(common_FLDCW, rm); break;
-            case 6: callFpuWithAddressWrite(common_FNSTENV, rm, (cpu->big?12:6)); break;
+            case 6: callFpuWithAddressWrite(common_FNSTENV, rm, (cpu->isBig()?12:6)); break;
             case 7: callFpuWithAddressWrite(common_FNSTCW, rm, 2); break;
         }
     }
@@ -3969,7 +3972,7 @@ void X64Asm::fpu5(U8 rm) {
             case 3: callFpuWithAddressWrite(common_FST_DOUBLE_REAL_Pop, rm, 8); break;
             case 4: callFpuWithAddress(common_FRSTOR, rm); break;
             case 5: invalidOp(this->inst); break;
-            case 6: callFpuWithAddressWrite(common_FNSAVE, rm, (cpu->big?28:14)+80); break;
+            case 6: callFpuWithAddressWrite(common_FNSAVE, rm, (cpu->isBig()?28:14)+80); break;
             case 7: callFpuWithAddressWrite(common_FNSTSW, rm, 2); break;
         }
     }
