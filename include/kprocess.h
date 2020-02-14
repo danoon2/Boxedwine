@@ -196,6 +196,7 @@ public:
     U32 utimesat(FD dirfd, const std::string& path, U32 times, U32 flags);
     U32 write(FD fildes, U32 bufferAddress, U32 bufferLen);
     U32 writev(FD handle, U32 iov, S32 iovcnt);
+    U32 memfd_create(const std::string& name, U32 flags);
 
     user_desc* getLDT(U32 index);
     BoxedPtr<SHM> allocSHM(U32 key, U32 afterIndex);

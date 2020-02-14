@@ -34,6 +34,8 @@
 #define K_F_SETLK64  13
 #define K_F_SETLKW64 14
 #define K_F_DUPFD_CLOEXEC 1030	
+#define K_F_ADD_SEALS        1033
+#define K_F_GET_SEALS        1034
 
 // type of lock
 #define K_F_RDLCK	   0

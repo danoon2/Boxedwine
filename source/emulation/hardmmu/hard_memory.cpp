@@ -154,6 +154,8 @@ void Memory::allocPages(U32 page, U32 pageCount, U8 permissions, FD fd, U64 offs
             }
             addedWritePermission = true;
         }
+        // :TODO: need to implement writing back to the file
+        // :TODO: need to sync shared pages acrosss processes for hard_memory.cpp
         KThread::currentThread()->process->pread64(fd, page<<K_PAGE_SHIFT, pageCount << K_PAGE_SHIFT, offset);
         if (addedWritePermission) {
             for (U32 i=0;i<pageCount;i++) {

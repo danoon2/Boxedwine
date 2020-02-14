@@ -24,6 +24,8 @@
 #include "bufferaccess.h"
 #include "ksignal.h"
 #include "kepoll.h"
+#include "../io/fsmemnode.h"
+#include "../io/fsmemopennode.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -1795,6 +1797,24 @@ U32 KProcess::writev(FD handle, U32 iov, S32 iovcnt) {
     return fd->kobject->writev(iov, iovcnt);    
 }
 
+U32 KProcess::memfd_create(const std::string& name, U32 flags) {
+    FsMemNode* node = new FsMemNode(1, 1, name);
+    FsMemOpenNode* openNode = new FsMemOpenNode(flags, node);
+
+    node->openNode = openNode;
+
+    KFile* kobject = new KFile(openNode);
+
+    U32 descriptorFlags = 0;
+    if (flags & 1) { // MFD_CLOEXEC
+        descriptorFlags = FD_CLOEXEC;
+    }
+    if (!(flags & 2)) { // MFD_ALLOW_SEALING	
+        openNode->addSeals(K_F_SEAL_SEAL);
+    }
+    return this->allocFileDescriptor(kobject, K_O_RDWR, descriptorFlags, -1, 0)->handle;
+}
+
 U32 KProcess::mlock(U32 addr, U32 len) {
     return 0;
 }
@@ -2093,6 +2113,26 @@ U32 KProcess::fcntrl(FD fildes, U32 cmd, U32 arg) {
                 kpanic("fcntl F_SETSIG not implemented");
             }
             return 0;
+        }
+        case K_F_ADD_SEALS: {
+            if (fd->kobject->type==KTYPE_FILE) {
+                BoxedPtr<KFile> f = (KFile*)fd->kobject.get();
+                if (f->openFile->node->type==FsNode::Memory) {
+                    FsMemOpenNode* openNode = (FsMemOpenNode*)f->openFile;
+                    return openNode->addSeals(arg);
+                }
+            }
+            return -K_EINVAL;
+        }
+        case K_F_GET_SEALS: {
+            if (fd->kobject->type==KTYPE_FILE) {
+                BoxedPtr<KFile> f = (KFile*)fd->kobject.get();
+                if (f->openFile->node->type==FsNode::Memory) {
+                    FsMemOpenNode* openNode = (FsMemOpenNode*)f->openFile;
+                    return openNode->getSeals();
+                }
+            }
+            return -K_EINVAL;
         }
         default:
             kwarn("fcntl: unknown command: %d", cmd);

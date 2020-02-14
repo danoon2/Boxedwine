@@ -83,7 +83,7 @@ U32 FsOpenNode::write(U32 address, U32 len) {
 
 void FsOpenNode::loadDirEntries() {
     BOXEDWINE_CRITICAL_SECTION;
-    if (this->dirEntries.size()==0) {
+    if (this->dirEntries.size()==0 && this->node) {
         this->dirEntries.push_back(this->node);
         if (this->node->getParent())
             this->dirEntries.push_back(this->node->getParent());
@@ -97,6 +97,9 @@ U32 FsOpenNode::getDirectoryEntryCount() {
 }
 
 BoxedPtr<FsNode> FsOpenNode::getDirectoryEntry(U32 index, std::string& name) {
+    if (!this->node) {
+        return NULL;
+    }
     this->loadDirEntries();
     if (index==0)
         name = ".";

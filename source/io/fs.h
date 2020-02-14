@@ -22,6 +22,12 @@
 
 #define FD_CLOEXEC 1
 
+#define K_F_SEAL_SEAL           0x01
+#define K_F_SEAL_SHRINK         0x02
+#define K_F_SEAL_GROW           0x04
+#define K_F_SEAL_WRIT           0x08
+#define K_F_SEAL_FUTURE_WRITE   0x10
+
 // type of lock
 #define K_F_RDLCK	   0
 #define K_F_WRLCK	   1

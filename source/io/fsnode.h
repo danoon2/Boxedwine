@@ -16,7 +16,8 @@ public:
         File,
         Zip,
         Virtual,
-        Socket
+        Socket,
+        Memory
     };
     FsNode(Type type, U32 id, U32 rdev, const std::string& path, const std::string& link, const std::string& nativePath, bool isDirectory, BoxedPtr<FsNode> parent);
 

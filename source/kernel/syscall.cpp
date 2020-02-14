@@ -1394,14 +1394,22 @@ std::mt19937 gen{std::random_device{}()};
 std::uniform_int_distribution<size_t> dist{0, 255};
 
 static U32 syscall_getrandom(CPU* cpu, U32 eipCount) {
-    SYS_LOG1(SYSCALL_FILE, cpu, "renameat buf=%X buflen=%d flags=%X", ARG1, ARG2, ARG3);
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "getrandom buf=%X buflen=%d flags=%X", ARG1, ARG2, ARG3);
     U32 buf = ARG1;
     U32 count = ARG2;
     for (U32 i=0;i<count;i++) {
         writeb(buf+i, (U8)dist(gen));
     }
-    SYS_LOG(SYSCALL_FILE, cpu, " result=%d\n", count);
+    SYS_LOG(SYSCALL_SYSTEM, cpu, " result=%d\n", count);
     return count;
+}
+
+static U32 syscall_memfd_create(CPU* cpu, U32 eipCount) {
+    char tmp[MAX_FILEPATH_LEN];
+    SYS_LOG1(SYSCALL_FILE, cpu, "name=%X(%s) flags=%X", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+    U32 result = cpu->thread->process->memfd_create(getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 U32 syscall_socket(CPU* cpu, U32 eipCount) {
@@ -1871,7 +1879,7 @@ static const SyscallFunc syscallFunc[] = {
     syscall_renameat,   // 353 __NR_renameat2
     0,                  // 354
     syscall_getrandom,  // 355 __NR_getrandom
-    0,                  // 356 __NR_memfd_create
+    syscall_memfd_create,// 356 __NR_memfd_create
     0,                  // 357 __NR_bpf
     0,                  // 358 __NR_execveat
     syscall_socket,     // 359 __NR_socket
