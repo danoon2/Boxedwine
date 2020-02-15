@@ -237,6 +237,7 @@ struct futex* getFutex(KThread* thread, U8* address) {
 }
 
 struct futex* allocFutex(KThread* thread, U8* address, U32 millies) {
+    BOXEDWINE_CRITICAL_SECTION;
     int i=0;
 
     for (i=0;i<MAX_FUTEXES;i++) {
@@ -268,9 +269,7 @@ void KThread::clearFutexes() {
     }
 }
 
-U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(KThread::futexesMutex);
-
+U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime) {    
     U8* ramAddress = getPhysicalReadAddress(addr, 4);
 
     if (ramAddress==0) {
@@ -278,16 +277,34 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime) {
     }
     if (op==FUTEX_WAIT || op==FUTEX_WAIT_PRIVATE) {
         struct futex* f=getFutex(this, ramAddress);
-        U32 millies;
+        U32 expireTime;
 
-restart:
-        while (f) {
+        if (pTime == 0) {
+            expireTime = 0xFFFFFFFF;
+        } else {
+            U32 seconds = readd(pTime);
+            U32 nano = readd(pTime + 4);
+            expireTime = seconds * 1000 + nano / 1000000 + getMilliesSinceStart();
+        }
+        bool checkValue = false;
+
+        if (!f) {
+            checkValue = true;
+            f = allocFutex(this, ramAddress, expireTime);
+        }
+        while (true) {
             BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(f->cond);
+            if (checkValue) {
+                checkValue = false;
+                if (readd(addr) != value) { // needs to be protected
+                    freeFutex(f);
+                    return -K_EWOULDBLOCK;
+                } 
+            }
             if (f->wake) {
                 freeFutex(f);
                 return 0;
-            }
-            BOXEDWINE_MUTEX_UNLOCK(KThread::futexesMutex);
+            }            
             if (f->expireTimeInMillies<0x7FFFFFFF) {
                 S32 diff = f->expireTimeInMillies - getMilliesSinceStart();
                 if (diff<=0) {
@@ -297,39 +314,16 @@ restart:
                 BOXEDWINE_CONDITION_WAIT_TIMEOUT(f->cond, (U32)diff);
             } else {
                 BOXEDWINE_CONDITION_WAIT(f->cond);
-            }
-            BOXEDWINE_MUTEX_LOCK(KThread::futexesMutex);
+            }            
         }
-        if (pTime == 0) {
-            millies = 0xFFFFFFFF;
-        } else {
-            U32 seconds = readd(pTime);
-            U32 nano = readd(pTime + 4);
-            millies = seconds * 1000 + nano / 1000000 + getMilliesSinceStart();
-        }
-        if (readd(addr) != value) {
-            return -K_EWOULDBLOCK;
-        }
-        f = allocFutex(this, ramAddress, millies);
-        BOXEDWINE_MUTEX_UNLOCK(KThread::futexesMutex);
-        BOXEDWINE_CONDITION_LOCK(f->cond);
-        if (millies<0x7FFFFFFF) {
-            BOXEDWINE_CONDITION_WAIT_TIMEOUT(f->cond, millies);
-        } else {
-            BOXEDWINE_CONDITION_WAIT(f->cond);
-        }
-        BOXEDWINE_CONDITION_UNLOCK(f->cond);
-        BOXEDWINE_MUTEX_LOCK(KThread::futexesMutex);
-        goto restart;
     } else if (op==FUTEX_WAKE_PRIVATE || op==FUTEX_WAKE) {
         int i;
         U32 count = 0;
         for (i=0;i<MAX_FUTEXES && count<value;i++) {
             if (system_futex[i].address==ramAddress && !system_futex[i].wake) {
+                BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(system_futex[i].cond);
                 system_futex[i].wake = true;
-                BOXEDWINE_CONDITION_LOCK(system_futex[i].cond);
                 BOXEDWINE_CONDITION_SIGNAL(system_futex[i].cond);
-                BOXEDWINE_CONDITION_UNLOCK(system_futex[i].cond);
                 count++;
             }
         }
