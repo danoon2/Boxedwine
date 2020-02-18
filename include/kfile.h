@@ -46,7 +46,13 @@ public:
     virtual U32  map(U32 address, U32 len, S32 prot, S32 flags, U64 off);
     virtual bool canMap();
 
+    U32 pwrite(U32 buffer, S64 offset, U32 len);
+    U32 pread(U32 buffer,S64 offset,  U32 len);
+
     FsOpenNode* openFile;
+
+private:
+    BOXEDWINE_MUTEX filePosMutex;
 };
 
 #endif

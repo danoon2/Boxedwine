@@ -103,6 +103,11 @@ void DevTTY::writeTermios(U32 address) {
 }
 
 U32 DevTTY::writeNative(U8* buffer, U32 len) {
+    std::string s((char*)buffer, len);
+    // winemenubuilder was removed because it is not necessary and this will speed up start time
+    if (stringContains(s, "winemenubuilder")) {
+        return len;
+    }
     return ::write(1, buffer, len);    
 }
 

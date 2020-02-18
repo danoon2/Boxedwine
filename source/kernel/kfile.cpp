@@ -75,18 +75,22 @@ void KFile::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) {
 }
 
 U32 KFile::write(U32 buffer, U32 len) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(filePosMutex);
     return this->openFile->write(buffer, len);
 }
 
 U32 KFile::writeNative(U8* buffer, U32 len) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(filePosMutex);
     return this->openFile->writeNative(buffer, len);
 }
 
 U32 KFile::read(U32 buffer, U32 len) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(filePosMutex);
     return this->openFile->read(buffer, len);
 }
 
 U32 KFile::readNative(U8* buffer, U32 len) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(filePosMutex);
     return this->openFile->readNative(buffer, len);
 }
 
@@ -108,10 +112,12 @@ bool KFile::canMap() {
 }
 
 S64 KFile::seek(S64 pos) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(filePosMutex);
     return this->openFile->seek(pos);
 }
 
 S64 KFile::getPos() {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(filePosMutex);
     return this->openFile->getFilePointer();
 }
 
@@ -124,5 +130,24 @@ bool KFile::supportsLocks() {
 }
 
 S64 KFile::length() {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(filePosMutex);
     return this->openFile->length();
+}
+
+U32 KFile::pread(U32 buffer, S64 offset, U32 len) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(filePosMutex);
+    S64 previousOffset = this->openFile->getFilePointer();
+    this->openFile->seek(offset);
+    U32 result = this->openFile->read(buffer, len);
+    this->openFile->seek(previousOffset);
+    return result;
+}
+
+U32 KFile::pwrite(U32 buffer, S64 offset, U32 len) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(filePosMutex);
+    S64 previousOffset = this->openFile->getFilePointer();
+    this->openFile->seek(offset);
+    U32 result = this->openFile->write(buffer, len);
+    this->openFile->seek(previousOffset);
+    return result;
 }

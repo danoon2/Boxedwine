@@ -842,9 +842,6 @@ void movToMem(DynReg addressReg, DynWidth width, U32 value, DynCallParamType par
     } else if (!regUsed[DYN_EBX] && !(isParamReg && value == DYN_EBX)) {
         reg1 = DYN_EBX;
     } else {
-#ifdef _DEBUG
-        klog("movToMem ran out of regs 1");
-#endif
         if (isParamReg && value == DYN_EAX) {
             reg1 = DYN_EDX;
         } else {
@@ -961,9 +958,6 @@ void movToMem(DynReg addressReg, DynWidth width, U32 value, DynCallParamType par
     } else if (!regUsed[DYN_EBX] && reg1!=DYN_EBX && !(isParamReg && value == DYN_EBX)) {
         reg2 = DYN_EBX;
     } else {
-#ifdef _DEBUG
-        klog("movToMem ran out of regs 2");
-#endif
         if ((isParamReg && value == DYN_ECX) || reg1 == DYN_ECX) {
             if (reg1==DYN_EAX) {
                 reg2 = DYN_EDX;

@@ -68,6 +68,7 @@ U32 FsMemOpenNode::readNative(U8* buffer, U32 len) {
     }
     if (todo>0) {
         memcpy(buffer, &this->buffer[this->pos], todo);
+        this->pos+=todo;
         return (U32)todo;
     }    
     return 0;

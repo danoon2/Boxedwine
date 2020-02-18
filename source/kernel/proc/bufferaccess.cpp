@@ -53,7 +53,8 @@ U32 BufferAccess::readNative(U8* buffer, U32 len) {
 }
 
 U32 BufferAccess::writeNative(U8* buffer, U32 len) {    
-    this->buffer+=(char*)buffer;
+    this->buffer+=std::string((char*)buffer, len);
+    this->pos+=len;
     return len;
 }
 

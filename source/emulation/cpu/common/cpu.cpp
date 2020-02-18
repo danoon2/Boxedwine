@@ -249,7 +249,7 @@ public:
 static std::string tty9Buffer;
 
 U32 TTYBufferAccess::writeNative(U8* buffer, U32 len) {
-    tty9Buffer+=(char*)buffer;
+    tty9Buffer+=std::string((char*)buffer, len);
     return len;
 }
 

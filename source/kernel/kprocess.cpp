@@ -1918,8 +1918,6 @@ U32 KProcess::pread64(FD fildes, U32 address, U32 len, U64 offset) {
     }
     BoxedPtr<KFile> p = (KFile*)fd->kobject.get();
     FsOpenNode* openNode = p->openFile;
-    S64 pos;
-    U32 result;
 
     if (openNode->node->isDirectory()) {
         return -K_EISDIR;
@@ -1927,11 +1925,7 @@ U32 KProcess::pread64(FD fildes, U32 address, U32 len, U64 offset) {
     if (!this->memory->isValidWriteAddress(address, len)) {
         return -K_EFAULT;
     }
-    pos = p->getPos();
-    p->seek(offset);
-    result = p->read(address, len);
-    p->seek(pos);
-    return result;
+    return p->pread(address, (S64)offset, len);
 }
 
 U32 KProcess::pwrite64(FD fildes, U32 address, U32 len, U64 offset) {
@@ -1948,8 +1942,6 @@ U32 KProcess::pwrite64(FD fildes, U32 address, U32 len, U64 offset) {
     }
     BoxedPtr<KFile> p = (KFile*)fd->kobject.get();
     FsOpenNode* openNode = p->openFile;
-    S64 pos;
-    U32 result;
 
     if (openNode->node->isDirectory()) {
         return -K_EISDIR;
@@ -1957,11 +1949,7 @@ U32 KProcess::pwrite64(FD fildes, U32 address, U32 len, U64 offset) {
     if (!this->memory->isValidReadAddress(address, len)) {
         return -K_EFAULT;
     }
-    pos = p->getPos();
-    p->seek(offset);
-    result = p->write(address, len);
-    p->seek(pos);
-    return result;
+    return p->pwrite(address, (S64)offset, len);
 }
 
 U32 KProcess::getcwd(U32 buffer, U32 size) {
