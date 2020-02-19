@@ -387,7 +387,7 @@ int boxedmain(int argc, const char **argv) {
     //ppenv[envc++] = "LD_SHOW_AUXV=1";
     //ppenv[envc++] = "LD_DEBUG=all";
     //ppenv[envc++] = "LD_BIND_NOW=1";
-    ppenv[envc++] = "WINELOADERNOEXEC=1";
+    //ppenv[envc++] = "WINELOADERNOEXEC=1"; // this will prevent "/bin/wine/ --version" from working
     //ppenv[envc++] = "WINEDLLOVERRIDES=mscoree,mshtml=";
     //ppenv[envc++] = "WINEDLLOVERRIDES=winemenubuilder.exe=d";
     //ppenv[envc++] = "WINEDEBUG=+d3d";
