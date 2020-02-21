@@ -1369,6 +1369,14 @@ static U32 syscall_utimensat(CPU* cpu, U32 eipCount) {
     return result;
 }
 
+
+static U32 syscall_signalfd4(CPU* cpu, U32 eipCount) {
+    SYS_LOG1(SYSCALL_SIGNAL, cpu, "signalfd4 fd=%d mask=%X(0x%0.8X%0.8X) size=%d flags=%X", ARG1, ARG2, (ARG3>=8?readd(ARG2+4):0), readd(ARG2), ARG3, ARG4);
+    U32 result = syscall_signalfd4(ARG1, ARG2, ARG3, ARG4);
+    SYS_LOG(SYSCALL_SIGNAL, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
+}
+
 static U32 syscall_epoll_create1(CPU* cpu, U32 eipCount) {
     SYS_LOG1(SYSCALL_PROCESS, cpu, "epoll_create1: falgs=%X", ARG1);
     U32 result = cpu->thread->process->epollcreate(0, ARG1);
@@ -1857,16 +1865,16 @@ static const SyscallFunc syscallFunc[] = {
     0,                  // 315
     0,                  // 316
     0,                  // 317
-    0,                  // 318__NR_getcpu
+    0,                  // 318 __NR_getcpu
     0,                  // 319
     syscall_utimensat,  // 320 __NR_utimensat
     0,                  // 321
     0,                  // 322
-    0,                  // 323
-    0,                  // 324 __NR_signalfd4
+    0,                  // 323 
+    0,                  // 324 
     0,                  // 325
     0,                  // 326
-    0,                  // 327  __NR_signalfd4
+    syscall_signalfd4,  // 327 __NR_signalfd4
     0,                  // 328
     syscall_epoll_create1, // 329 __NR_epoll_create1
     0,                  // 330

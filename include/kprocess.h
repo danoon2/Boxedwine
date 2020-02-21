@@ -117,7 +117,7 @@ public:
     KFileDescriptor* allocFileDescriptor(const BoxedPtr<KObject>& kobject, U32 accessFlags, U32 descriptorFlags, S32 handle, U32 afterHandle);
     KFileDescriptor* getFileDescriptor(FD handle);
     void clearFdHandle(FD handle);
-    KFileDescriptor* openFile(std::string const &currentDirectory, std::string const &localPath, U32 accessFlags);       
+    U32 openFile(std::string const &currentDirectory, std::string const &localPath, U32 accessFlags, KFileDescriptor** result);
     bool isStopped();
     bool isTerminated();
     KThread* startProcess(const std::string& currentDirectory, U32 argc, const char** args, U32 envc, const char** env, int userId, int groupId, int effectiveUserId, int effectiveGroupId);
@@ -127,6 +127,8 @@ public:
     void signalALRM();
     void printStack();
     U32 signal(U32 signal);
+    void signalFd(KThread* thread, U32 signal);
+
     void iterateThreads(std::function<bool(KThread*)> callback);
 
     // syscalls    
@@ -211,6 +213,7 @@ public:
     U32 effectiveUserId;
     U32 effectiveGroupId;
     U64 pendingSignals;
+    BOXEDWINE_MUTEX pendingSignalsMutex;
     U32 signaled;
     U32 exitCode;
     U32 umaskValue;
@@ -266,7 +269,7 @@ private:
     U32 usedTLS[TLS_ENTRIES];
     BOXEDWINE_MUTEX usedTlsMutex;
 
-    KFileDescriptor* openFileDescriptor(const std::string& currentDirectory, const std::string& localPath, U32 accessFlags, U32 descriptorFlags, S32 handle, U32 afterHandle);
+    U32 openFileDescriptor(const std::string& currentDirectory, std::string localPath, U32 accessFlags, U32 descriptorFlags, S32 handle, U32 afterHandle, KFileDescriptor** result);
     void cleanupProcess();
     void setupCommandlineNode();
     void initStdio();

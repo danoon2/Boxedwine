@@ -16,9 +16,12 @@
 #define K_O_APPEND     0x0400
 
 // can change after open
-#define K_O_NONBLOCK 0x0800
-#define K_O_ASYNC 0x2000
-#define K_O_CLOEXEC 0x80000
+#define K_O_NONBLOCK  0x000800
+#define K_O_ASYNC     0x002000
+#define K_O_LARGEFILE 0x008000
+#define K_O_DIRECTORY 0x010000
+#define K_O_CLOEXEC   0x080000	
+#define K_O_TMPFILE   0x400000
 
 #define FD_CLOEXEC 1
 

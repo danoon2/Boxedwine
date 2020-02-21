@@ -544,8 +544,11 @@ U64 x64CPU::handleAccessException(U64 rip, U64 address, bool readAddress, U64 rs
         if (host) {
             return (U64)host;
         } else {
-            kpanic("x64CPU::handleAccessException tried to run code in a free'd chunk");
-            return 0;
+            U64 result = (U64)this->translateEip(this->eip.u32); 
+            if (!result) {
+                kpanic("x64CPU::handleAccessException tried to run code in a free'd chunk");
+            }
+            return result;
         }
     } else {          
         // check if the emulated memory caused the exception

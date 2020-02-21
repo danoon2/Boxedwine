@@ -102,6 +102,7 @@ public:
     BOXEDWINE_CONDITION waitingForSignalToEndCond;
     U64 waitingForSignalToEndMaskToRestore;    
     U64 pendingSignals;
+    BOXEDWINE_MUTEX pendingSignalsMutex;
 #ifdef SDL2    
     KThreadGlContext* getGlContextById(U32 id);
     void removeGlContextById(U32 id);

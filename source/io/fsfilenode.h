@@ -11,6 +11,10 @@ S32 translateErr(U32 e);
 
 class FsFileNode : public FsNode {
 public:
+    static void getTmpPath(std::string& nativePath, std::string& localPath);
+    static std::string getNativeTmpPath();
+    static std::string getLocalTmpPath();
+
     FsFileNode(U32 id, U32 rdev, const std::string& path, const std::string& link, const std::string& nativeRootPath, bool isDirectory, bool isRootPath, BoxedPtr<FsNode> parent);
     virtual U32 rename(const std::string& path); //return 0 if success, else errno
     virtual bool remove();

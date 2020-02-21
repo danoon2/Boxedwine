@@ -198,6 +198,7 @@ void CPU::jmp(U32 big, U32 selector, U32 offset, U32 oldEip) {
 void CPU::prepareException(int code, int error) {
     KProcess* process = this->thread->process;
 
+     // blocking signals, signalfd can't handle these
     if (code==EXCEPTION_GP && (process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_IGN && process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_DFL)) {
         process->sigActions[K_SIGSEGV].sigInfo[0] = K_SIGSEGV;		
         process->sigActions[K_SIGSEGV].sigInfo[1] = error;
@@ -262,7 +263,7 @@ std::string getFunctionName(const std::string& name, U32 moduleEip) {
     KProcess* process = new KProcess(KSystem::nextThreadId++);
     const char* args[5];
     char tmp[16];
-    KFileDescriptor* fd;
+    KFileDescriptor* fd = NULL;
 
     if (!name.length())
         return "Unknown";
@@ -280,7 +281,7 @@ std::string getFunctionName(const std::string& name, U32 moduleEip) {
     BoxedPtr<FsNode> parent = Fs::getNodeFromLocalPath("", "/dev", true);
     BoxedPtr<FsNode> node = Fs::addVirtualFile("/dev/tty9", openTTY9, K__S_IWRITE, (4<<8) | 9, parent);
     process = thread->process;
-    fd = process->openFile("", "/dev/tty9", K_O_WRONLY); 
+    process->openFile("", "/dev/tty9", K_O_WRONLY, &fd); 
     if (fd) {
         thread->log = false;
         thread->process->dup2(fd->handle, 1); // replace stdout with tty9    

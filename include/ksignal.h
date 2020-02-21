@@ -92,7 +92,7 @@
 #define CLD_EXITED 1
 
 U32 syscall_signalstack(U32 ss, U32 oss);
-U32 syscall_signalfd4(S32 fildes, U32 mask, U32 flags);
+U32 syscall_signalfd4(S32 fildes, U32 mask, U32 maskSize, U32 flags);
 
 class KThread;
 class KFileLock;
@@ -122,8 +122,11 @@ public:
     virtual bool canMap();
 
     bool blocking;
-    U32 mask;
-    KList<KThread*> waitingThreads;
+    U64 mask;
+    U32 signalingPid;
+    U32 signalingUid;
+    BOXEDWINE_CONDITION lockCond;
+    KSigAction sigAction;
 };
 
 #endif

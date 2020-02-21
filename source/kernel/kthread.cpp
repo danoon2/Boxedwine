@@ -185,7 +185,10 @@ U32 KThread::signal(U32 signal, bool wait) {
 #ifdef BOXEDWINE_MULTI_THREADED                     
         else {
             // :TODO: how to interrupt the thread (the current approache assumes the thread will yield to the signal)
-            this->pendingSignals |= ((U64)1 << (signal-1));
+            {
+                BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->pendingSignalsMutex);
+                this->pendingSignals |= ((U64)1 << (signal-1));
+            }
             if (wait) {
                 BOXEDWINE_CONDITION_LOCK(this->waitingForSignalToEndCond);            
                 BOXEDWINE_CONDITION_WAIT(this->waitingForSignalToEndCond);
@@ -201,7 +204,9 @@ U32 KThread::signal(U32 signal, bool wait) {
             BOXEDWINE_CONDITION_UNLOCK(this->waitingForSignalToEndCond);
         }        
     } else {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->pendingSignalsMutex);
         this->pendingSignals |= ((U64)1 << (signal-1));
+        this->process->signalFd(this, signal);
     }
     return 0;
 }
@@ -340,21 +345,33 @@ void KThread::signalIllegalInstruction(int code) {
     this->process->sigActions[K_SIGILL].sigInfo[2] = code;
     this->process->sigActions[K_SIGILL].sigInfo[3] = this->process->id;
     this->process->sigActions[K_SIGILL].sigInfo[4] = this->process->userId;
-    this->runSignal(K_SIGILL, -1, 0);
+    this->runSignal(K_SIGILL, -1, 0); // blocking signal, signalfd can't handle this
 }
 
 bool KThread::runSignals() {
-    U64 todo = this->process->pendingSignals & ~(this->inSignal?this->inSigMask:this->sigMask);
-    todo |= this->pendingSignals & ~(this->inSignal?this->inSigMask:this->sigMask);
+    U64 todoProcess = this->process->pendingSignals & ~(this->inSignal?this->inSigMask:this->sigMask);
+    U64 todoThread = this->pendingSignals & ~(this->inSignal?this->inSigMask:this->sigMask);
 
-    if (todo!=0) {
+    if (todoProcess!=0 || todoThread!=0) {
         U32 i;
 
         for (i=0;i<32;i++) {
-            if ((todo & ((U64)1 << i))!=0) {
-                this->runSignal(i+1, -1, 0);
-                return true;
+            if ((todoProcess & ((U64)1 << i))!=0) {
+                BOXEDWINE_CRITICAL_SECTION(this->process->pendingSignalsMutex);
+                if ((this->process->pendingSignals & ((U64)1 << i))!=0) {
+                    this->process->pendingSignals &= ~(1 << i);
+                    this->runSignal(i+1, -1, 0);
+                    return true;
+                }
             }
+            if ((todoThread & ((U64)1 << i))!=0) {
+                BOXEDWINE_CRITICAL_SECTION(this->process->pendingSignalsMutex);
+                if ((this->process->pendingSignals & ((U64)1 << i))!=0) {
+                    this->pendingSignals &= ~(1 << i);
+                    this->runSignal(i+1, -1, 0);
+                    return true;
+                }
+            }            
         }
     }	
     return false;
@@ -730,9 +747,7 @@ void KThread::runSignal(U32 signal, U32 trapNo, U32 errorNo) {
         this->cpu->setSegment(DS, 0x17);
         this->cpu->setSegment(ES, 0x17);
         this->cpu->setIsBig(1);
-    }    
-    this->process->pendingSignals &= ~(1 << (signal - 1));
-    this->pendingSignals &= ~(1 << (signal - 1));
+    }        
 }
 
 // bit 0 - 0 = no page found, 1 = protection fault

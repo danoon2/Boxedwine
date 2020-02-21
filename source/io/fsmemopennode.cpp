@@ -15,7 +15,7 @@ S64 FsMemOpenNode::length() {
 
 bool FsMemOpenNode::setLength(S64 length) {
     this->lastModifiedTime = Platform::getSystemTimeAsMicroSeconds() / 1000l;
-    this->buffer.resize(length, 0);
+    this->buffer.resize((U32)length, 0);
     return true;
 }
 

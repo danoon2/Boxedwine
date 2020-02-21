@@ -22,6 +22,38 @@ std::set<std::string> FsFileNode::nonExecFileFullPaths;
 FsFileNode::FsFileNode(U32 id, U32 rdev, const std::string& path, const std::string& link, const std::string& nativePath, bool isDirectory, bool isRootPath, BoxedPtr<FsNode> parent) : FsNode(File, id, rdev, path, link, nativePath, isDirectory, parent), isRootPath(isRootPath) {
 }
 
+std::string FsFileNode::getNativeTmpPath() {
+    std::string localPath;
+    std::string nativePath;
+    getTmpPath(nativePath, localPath);
+    return nativePath;
+}
+
+std::string FsFileNode::getLocalTmpPath() {
+    std::string localPath;
+    std::string nativePath;
+    getTmpPath(nativePath, localPath);
+    return localPath;
+}
+
+static U32 nextTmpId;
+
+void FsFileNode::getTmpPath(std::string& nativePath, std::string& localPath) {
+    BOXEDWINE_CRITICAL_SECTION;
+    Fs::makeLocalDirs("/tmp/del");
+    BoxedPtr<FsNode> delDir = Fs::getNodeFromLocalPath("", "/tmp/del", true);
+
+    for (;nextTmpId<100000000;nextTmpId++) {
+        std::string name = "del"+std::to_string(nextTmpId)+".tmp";
+        Fs::localNameToRemote(name);
+        nativePath = delDir->nativePath+Fs::nativePathSeperator+name;
+        if (!Fs::doesNativePathExist(nativePath)) {
+            localPath = "/tmp/del/"+name;
+            break;
+        }
+    }
+}
+
 bool FsFileNode::remove() {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->openNodesMutex);
     bool result = false;
@@ -48,15 +80,7 @@ bool FsFileNode::remove() {
         Fs::makeLocalDirs("/tmp/del");
         BoxedPtr<FsNode> delDir = Fs::getNodeFromLocalPath("", "/tmp/del", true);
 
-        std::string newNativePath;
-
-        for (i=0;i<100000000;i++) {			
-            std::string name = "del"+std::to_string(i)+".tmp";
-            Fs::localNameToRemote(name);
-            newNativePath = delDir->nativePath+Fs::nativePathSeperator+name;
-            if (!Fs::doesNativePathExist(newNativePath))
-                break;
-        }
+        std::string newNativePath = FsFileNode::getNativeTmpPath();
 
         if (::rename(nativePath.c_str(), newNativePath.c_str())!=0) {
             klog("could not rename %s", nativePath.c_str());

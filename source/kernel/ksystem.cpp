@@ -192,8 +192,10 @@ U32 KSystem::kill(S32 pid, U32 signal) {
 
         if (pid>0) {        
             process = KSystem::processes[pid];
-        } else {
+        } else if (pid == 0 || pid == -1) {
             kpanic("kill with pid = %d not implemented", pid);
+        } else {
+            process = KSystem::processes[-pid];
         }
         if (!process)
             return -K_ESRCH;

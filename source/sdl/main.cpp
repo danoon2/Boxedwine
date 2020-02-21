@@ -403,8 +403,14 @@ int boxedmain(int argc, const char **argv) {
     BoxedPtr<FsNode> inputNode = Fs::addFileNode("/dev/input", "", "", true, devNode);
     BoxedPtr<FsNode> procNode = Fs::addFileNode("/proc", "", "", true, rootNode);
     BoxedPtr<FsNode> procSelfNode = Fs::addFileNode("/proc/self", "", "", true, procNode);
-    BoxedPtr<FsNode> sysNode = Fs::addFileNode("/sys", "", "", true, rootNode);
-    BoxedPtr<FsNode> devicesNode = Fs::addFileNode("/sys/devices", "", "", true, sysNode);
+    BoxedPtr<FsNode> sysNode = Fs::getNodeFromLocalPath("", "/sys", true); 
+    if (!sysNode) {
+        sysNode = Fs::addFileNode("/sys", "", "", true, rootNode);
+    }
+    BoxedPtr<FsNode> devicesNode = Fs::getNodeFromLocalPath("", "/sys/devices", true); 
+    if (!devicesNode) {
+        devicesNode = Fs::addFileNode("/sys/devices", "", "", true, sysNode);
+    }
     BoxedPtr<FsNode> devicesSystemNode = Fs::addFileNode("/sys/devices/system", "", "", true, devicesNode);
     BoxedPtr<FsNode> cpuNode = Fs::addFileNode("/sys/devices/system/cpu", "", "", true, devicesSystemNode);    
 

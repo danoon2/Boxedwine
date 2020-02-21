@@ -45,7 +45,7 @@ void KSigAction::readSigAction(U32 address, U32 sigsetSize) {
         klog("readSigAction: can't handle sigsetSize=%d", sigsetSize);
 }
 
-KSignal::KSignal() : KObject(KTYPE_SIGNAL), blocking(false), mask(0) {
+KSignal::KSignal() : KObject(KTYPE_SIGNAL), blocking(false), mask(0), signalingPid(0), signalingUid(0), lockCond("KSignal::lockCond") {
 }
 
 void KSignal::setBlocking(bool blocking) {
@@ -81,6 +81,9 @@ bool KSignal::isOpen() {
 
 void KSignal::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) {
     if (events & K_POLLIN) {
+        BOXEDWINE_CONDITION_ADD_CHILD_CONDITION(parentCondition, this->lockCond, nullptr);
+    }
+    if (events & K_POLLOUT) {
         kpanic("waiting on a signal not implemented yet");
     }
 }
@@ -102,8 +105,92 @@ U32 KSignal::writeNative(U8* buffer, U32 len) {
     return 0;
 }
 
+void writeSignal(U8* buffer, U32 signal, U32 signalingPid, U32 signalingUid, KSigAction* action) {
+    U32* b = (U32*)buffer;
+    b[0] = signal;
+    b[1] = 0; // ssi_errno;    /* Error number (unused) */
+    b[2] = action?action->sigInfo[2]:0; // ssi_code;     /* Signal code */
+    b[3] = signalingPid;    
+    b[4] = signalingUid;
+    b[5] = 0; // ssi_fd;       /* File descriptor (SIGIO) */
+    b[6] = 0; // ssi_tid;      /* Kernel timer ID (POSIX timers)
+    b[7] = 0; // ssi_band;     /* Band event (SIGIO) */
+    b[8] = 0; // ssi_overrun;  /* POSIX timer overrun count */
+    b[9] = 0; // ssi_trapno;   /* Trap number that caused signal */
+    b[10] = 0; // ssi_status;   /* Exit status or signal (SIGCHLD) */    
+    b[11] = 0; // ssi_int;      /* Integer sent by sigqueue(3) */
+    b[12] = 0; // ssi_ptr;      /* Pointer sent by sigqueue(3) */
+    b[13] = 0; 
+    b[14] = 0; // ssi_utime;    /* User CPU time consumed (SIGCHLD) */
+    b[15] = 0;
+    b[16] = 0; // ssi_stime;    /* System CPU time consumed (SIGCHLD) */
+    b[17] = 0;
+    b[18] = 0; // ssi_addr;     /* Address that generated signal (for hardware-generated signals) */
+    b[19] = 0;
+    b[20] = 0; // ssi_addr_lsb; /* Least significant bit of address (SIGBUS; since Linux 2.6.37)
+
+    if (action && action->sigInfo[0] == K_SIGCHLD) {
+        b[10] = action->sigInfo[5];
+    }
+    if (action && action->sigInfo[0] == K_SIGIO) {
+        b[5] = action->sigInfo[4];
+        b[7] = action->sigInfo[3];
+    }
+}
+
 U32 KSignal::readNative(U8* buffer, U32 len) {
-    kpanic("KSignal::readNative not implemented yet");
+    if (len<128) {
+        return -K_EINVAL; // :TODO: couldn't not find documentation on what is returned
+    }
+    KThread* thread = KThread::currentThread();
+    while (true) {
+        U32 result = 0;
+        {
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(thread->pendingSignalsMutex);        
+            if (thread->pendingSignals & this->mask) {
+                U64 todo = thread->pendingSignals & this->mask;
+                for (U32 i=0;i<32;i++) {
+                    if ((todo & ((U64)1 << i))!=0) {
+                        thread->pendingSignals &= ~(1 << i);                
+                        writeSignal(buffer, i, this->signalingPid, this->signalingUid, (this->sigAction.sigInfo[0]==i)?&this->sigAction:NULL);
+                        result+=128;
+                        len-=128;
+                        buffer+=128;
+                        if (len<128) {
+                            return result;
+                        }
+                    }
+                }
+            }
+        }
+        {
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(thread->process->pendingSignalsMutex);        
+            if (thread->process->pendingSignals & this->mask) {
+                U64 todo = thread->process->pendingSignals & this->mask;
+                for (U32 i=0;i<32;i++) {
+                    if ((todo & ((U64)1 << i))!=0) {
+                        thread->process->pendingSignals &= ~(1 << i);                
+                        writeSignal(buffer, i, this->signalingPid, this->signalingUid, (this->sigAction.sigInfo[0]==i)?&this->sigAction:NULL);
+                        result+=128;
+                        len-=128;
+                        buffer+=128;
+                        if (len<128) {
+                            return result;
+                        }
+                    }
+                }
+            }
+        }
+        if (result) {
+            return result;
+        }
+        if (!this->blocking) {
+            break;
+        }
+        BOXEDWINE_CONDITION_LOCK(this->lockCond);
+        BOXEDWINE_CONDITION_WAIT(this->lockCond);
+        BOXEDWINE_CONDITION_UNLOCK(this->lockCond);
+    }
     return 0;
 }
 
@@ -140,7 +227,7 @@ S64 KSignal::length() {
     return -1;
 }
 
-U32 syscall_signalfd4(S32 fildes, U32 mask, U32 flags) {
+U32 syscall_signalfd4(S32 fildes, U32 mask, U32 maskSize, U32 flags) {
     KFileDescriptor* fd;
     KThread* thread = KThread::currentThread();
 
@@ -161,7 +248,13 @@ U32 syscall_signalfd4(S32 fildes, U32 mask, U32 flags) {
         fd->accessFlags |= K_O_NONBLOCK;
     }
     BoxedPtr<KSignal> s = (KSignal*)fd->kobject.get();
-    s->mask = readd(mask);
+    if (maskSize==4) {
+        s->mask = readd(mask);
+    } else if (maskSize==8) {
+        s->mask = readq(mask);
+    } else {
+        kpanic("syscall_signalfd4 unknown mask size: %d", maskSize);
+    }
     s->blocking = (fd->accessFlags & K_O_NONBLOCK)!=0;
     return fd->handle;
 }

@@ -26,6 +26,7 @@
 #include "kepoll.h"
 #include "../io/fsmemnode.h"
 #include "../io/fsmemopennode.h"
+#include "../io/fsfilenode.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -62,7 +63,7 @@ KProcess::KProcess(U32 id) : id(id),
     pendingSignals(0),
     signaled(0),
     exitCode(0),
-    umaskValue(0),
+    umaskValue(0x1a4), // 0644
     terminated(false),
     memory(NULL),
     brkEnd(0), 
@@ -258,6 +259,7 @@ void KProcess::clone(KProcess* from) {
     this->exe = from->exe;
     this->name = from->name;
     this->setupCommandlineNode();
+    this->umaskValue = from->umaskValue;
 
     this->privateShm = from->privateShm;
 
@@ -437,16 +439,40 @@ KFileDescriptor* KProcess::allocFileDescriptor(const BoxedPtr<KObject>& kobject,
     return result;
 }
 
-KFileDescriptor* KProcess::openFileDescriptor(const std::string& currentDirectory, const std::string& localPath, U32 accessFlags, U32 descriptorFlags, S32 handle, U32 afterHandle) {
+U32 translateOpenError() {
+    switch (errno) {
+    case EACCES: return -K_EACCES;
+    case EEXIST: return -K_EEXIST;
+    case ENOENT: return -K_ENOENT;
+    case EISDIR: return -K_EISDIR;
+    }
+    return -K_EINVAL;
+}
+
+U32 KProcess::openFileDescriptor(const std::string& currentDirectory, std::string localPath, U32 accessFlags, U32 descriptorFlags, S32 handle, U32 afterHandle, KFileDescriptor** result) {
     BoxedPtr<FsNode> node;
     FsOpenNode* openNode;
-    KFileDescriptor* result;
     BoxedPtr<KObject> kobject;
 
     node = Fs::getNodeFromLocalPath(currentDirectory, localPath, true);
-    if (!node && (accessFlags & K_O_CREAT)==0) {
-        errno = ENOENT;
-        return NULL;
+    if (!node && (accessFlags & (K_O_CREAT|K_O_TMPFILE))==0) {
+        return -K_ENOENT;
+    }
+    if (accessFlags & K_O_TMPFILE) {
+        if ((accessFlags & K_O_ACCMODE)!=K_O_WRONLY && (accessFlags & K_O_ACCMODE)!=K_O_RDWR) {
+            return -K_EINVAL;
+        }
+        if (!node || !node->isDirectory()) {
+            return -K_ENOENT;
+        }
+        accessFlags&= ~K_O_TMPFILE;
+        accessFlags|=K_O_CREAT;
+        localPath = FsFileNode::getLocalTmpPath();
+        node = Fs::getNodeFromLocalPath(currentDirectory, localPath, true);
+    } else if (node && node->isDirectory()) {
+        if ((accessFlags & K_O_ACCMODE)!=K_O_RDONLY) {
+            return -K_EISDIR;
+        }
     }
     if (!node) {
         std::string fullPath = Fs::getFullPath(currentDirectory, localPath);
@@ -454,8 +480,7 @@ KFileDescriptor* KProcess::openFileDescriptor(const std::string& currentDirector
         std::string fileName = Fs::getFileNameFromPath(fullPath);
         BoxedPtr<FsNode> parent = Fs::getNodeFromLocalPath("", parentPath, true);
         if (!parent) {
-            errno = ENOENT;
-            return NULL;
+            return -K_ENOENT;
         }       
         std::string nativePath = Fs::getNativePathFromParentAndLocalFilename(parent, fileName);
         BoxedPtr<FsNode> mixedSibling = parent->getChildByNameIgnoreCase(fileName);
@@ -474,28 +499,31 @@ KFileDescriptor* KProcess::openFileDescriptor(const std::string& currentDirector
         openNode = node->open(accessFlags);
         if (!openNode) {
             node->removeNodeFromParent();
-            return NULL;
+            return translateOpenError();
         }
         openNode->openedPath = Fs::getFullPath(currentDirectory, localPath);
         kobject = new KFile(openNode);
     }
-    result = this->allocFileDescriptor(kobject, accessFlags, descriptorFlags, handle, afterHandle);
-    return result;
+    KFileDescriptor* f = this->allocFileDescriptor(kobject, accessFlags, descriptorFlags, handle, afterHandle);
+    if (result) {
+        *result = f;
+    }
+    return 0;
 }
 
-KFileDescriptor* KProcess::openFile(const std::string& currentDirectory, const std::string& localPath, U32 accessFlags) {
-    return this->openFileDescriptor( currentDirectory, localPath, accessFlags, (accessFlags & K_O_CLOEXEC)?FD_CLOEXEC:0, -1, 0);
+U32 KProcess::openFile(const std::string& currentDirectory, const std::string& localPath, U32 accessFlags, KFileDescriptor** result) {
+    return this->openFileDescriptor( currentDirectory, localPath, accessFlags, (accessFlags & K_O_CLOEXEC)?FD_CLOEXEC:0, -1, 0, result);
 }
 
 void KProcess::initStdio() {
     if (!this->getFileDescriptor(0)) {
-        this->openFileDescriptor("", "/dev/tty0", K_O_RDONLY, 0, 0, 0);
+        this->openFileDescriptor("", "/dev/tty0", K_O_RDONLY, 0, 0, 0, NULL);
     }
     if (!this->getFileDescriptor(1)) {
-        this->openFileDescriptor("", "/dev/tty0", K_O_WRONLY, 0, 1, 0);
+        this->openFileDescriptor("", "/dev/tty0", K_O_WRONLY, 0, 1, 0, NULL);
     }
     if (!this->getFileDescriptor(2)) {
-        this->openFileDescriptor("", "/dev/tty0", K_O_WRONLY, 0, 2, 0);
+        this->openFileDescriptor("", "/dev/tty0", K_O_WRONLY, 0, 2, 0, NULL);
     }
 }
 
@@ -749,13 +777,23 @@ U32 KProcess::execve(const std::string& path, std::vector<std::string>& args, co
 }
 
 void KProcess::signalProcess(U32 signal) {	
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(threadsMutex);
-    this->pendingSignals |= ((U64)1 << (signal-1));
+    U64 signalMask = ((U64)1 << (signal-1));
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->pendingSignalsMutex);
+        this->pendingSignals |= signalMask;
+    }
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(threadsMutex);    
     // give each thread a chance to run a signal, some or all of them might have the signal masked off.  
     // In that case when the user unmasks the signal with sigprocmask it will be caught then
     for (auto& t : this->threads) {
         KThread* thread = t.second;
         thread->runSignals();
+    }
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->pendingSignalsMutex);
+        if (this->pendingSignals & signalMask) {
+            this->signalFd(NULL, signal);
+        }
     }
 }
 
@@ -775,8 +813,8 @@ void KProcess::signalCHLD(U32 code, U32 childPid, U32 sendingUID, S32 exitCode) 
     this->sigActions[K_SIGCHLD].sigInfo[3] = childPid;
     this->sigActions[K_SIGCHLD].sigInfo[4] = sendingUID;
     this->sigActions[K_SIGCHLD].sigInfo[5] = exitCode;
+    // not sure why this causes crashes
     //signalProcess(K_SIGCHLD);
-    kwarn("Ate SIGCHLD");
 }
 
 void KProcess::signalALRM() {
@@ -981,21 +1019,14 @@ U32 KProcess::close(FD fildes) {
     return 0;
 }
 
-U32 translateOpenError() {
-    switch (errno) {
-    case EACCES: return -K_EACCES;
-    case EEXIST: return -K_EEXIST;
-    case ENOENT: return -K_ENOENT;
-    case EISDIR: return -K_EISDIR;
-    }
-    return -K_EINVAL;
-}
-
 U32 KProcess::open(const std::string& path, U32 flags) {
-    KFileDescriptor* fd = this->openFile(this->currentDirectory, path, flags);
-    if (fd)
-        return fd->handle;
-    return translateOpenError();
+    KFileDescriptor* fd = NULL;
+        
+    U32 result = this->openFile(this->currentDirectory, path, flags, &fd);
+    if (result || !fd) {
+        return result;
+    }
+    return fd->handle;
 }
 
 U32 KProcess::read(FD fildes, U32 bufferAddress, U32 bufferLen) {
@@ -2236,10 +2267,12 @@ U32 KProcess::openat(FD dirfd, const std::string& path, U32 flags) {
 
     if (result)
         return result;
-    KFileDescriptor* fd = this->openFile(dir, path, flags);
-    if (fd)
-        return fd->handle;
-    return translateOpenError();
+    KFileDescriptor* fd = NULL;
+    result = this->openFile(dir, path, flags, &fd);
+    if (result || !fd) {
+        return result;
+    }
+    return fd->handle;
 }
 
 U32 KProcess::mkdirat(U32 dirfd, const std::string& path, U32 mode) {
@@ -2454,8 +2487,27 @@ U32 KProcess::signal(U32 signal) {
         }
     }
     // didn't find a thread that could handle it
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->pendingSignalsMutex);
     this->pendingSignals |= ((U64)1 << (signal-1));
+    this->signalFd(NULL, signal);
     return 0;
+}
+
+void KProcess::signalFd(KThread* thread, U32 signal) {
+    for (auto& n : this->fds) {
+        KFileDescriptor* fd = n.second;
+        if (fd->kobject->type == KTYPE_SIGNAL) {
+            BoxedPtr<KSignal> p = (KSignal*)fd->kobject.get();
+            if ((p->mask & signal) && (!thread || thread->waitingCond == &p->lockCond)) {
+                BOXEDWINE_CONDITION_LOCK(p->lockCond);
+                p->sigAction = this->sigActions[signal];
+                p->signalingPid = this->id;
+                p->signalingUid = this->userId;
+                BOXEDWINE_CONDITION_SIGNAL(p->lockCond);
+                BOXEDWINE_CONDITION_UNLOCK(p->lockCond);
+            }
+        }
+    }
 }
 
 void KProcess::printMappedFiles() {
