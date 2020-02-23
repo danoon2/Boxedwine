@@ -357,7 +357,7 @@ bool KThread::runSignals() {
 
         for (i=0;i<32;i++) {
             if ((todoProcess & ((U64)1 << i))!=0) {
-                BOXEDWINE_CRITICAL_SECTION(this->process->pendingSignalsMutex);
+                BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->process->pendingSignalsMutex);
                 if ((this->process->pendingSignals & ((U64)1 << i))!=0) {
                     this->process->pendingSignals &= ~(1 << i);
                     this->runSignal(i+1, -1, 0);
@@ -365,7 +365,7 @@ bool KThread::runSignals() {
                 }
             }
             if ((todoThread & ((U64)1 << i))!=0) {
-                BOXEDWINE_CRITICAL_SECTION(this->process->pendingSignalsMutex);
+                BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->process->pendingSignalsMutex);
                 if ((this->process->pendingSignals & ((U64)1 << i))!=0) {
                     this->pendingSignals &= ~(1 << i);
                     this->runSignal(i+1, -1, 0);
