@@ -24,11 +24,6 @@
 
 #include <SDL.h>
 
-extern int default_horz_res;
-extern int default_vert_res;
-extern int bits_per_pixel;
-extern int default_bits_per_pixel;
-
 void notImplemented(const char* s) {
     kwarn(s);
 }
@@ -302,9 +297,9 @@ void boxeddrv_ChangeDisplaySettingsEx(CPU* cpu) {
         dmFields = readd(devmode + 72);
 
         if (dmFields & DM_BITSPERPEL) {
-            bits_per_pixel = readd(devmode + 168);
-            if (bits_per_pixel<8)
-                bits_per_pixel = 32; // let the dib driver handle it
+            screenBpp = readd(devmode + 168);
+            if (screenBpp<8)
+                screenBpp = 32; // let the dib driver handle it
         }
         if (dmFields & DM_PELSWIDTH) {
             screenCx = readd(devmode + 172);
@@ -317,14 +312,14 @@ void boxeddrv_ChangeDisplaySettingsEx(CPU* cpu) {
         screenCx = default_horz_res;
         screenCy = default_vert_res;
     }
-    if (!bits_per_pixel) {
-        bits_per_pixel = default_bits_per_pixel;
+    if (!screenBpp) {
+        screenBpp = default_bits_per_pixel;
     }
     sdlScreenResized(cpu->thread);
     writed(ARG6, DISP_CHANGE_SUCCESSFUL);	
     writed(ARG7, screenCx);	
     writed(ARG8, screenCy);	
-    writed(ARG9, bits_per_pixel);	
+    writed(ARG9, screenBpp);	
 }
 
 // BOOL CDECL drv_ClipCursor(LPCRECT clip)
@@ -520,7 +515,7 @@ void boxeddrv_EnumDisplaySettingsEx(CPU* cpu) {
         writed(devmode + 176, default_vert_res);
     }
     else if (ARG2 == ENUM_CURRENT_SETTINGS) {
-        writed(devmode + 168, bits_per_pixel);
+        writed(devmode + 168, screenBpp);
         writed(devmode + 172, screenCx);
         writed(devmode + 176, screenCy);
     } else if (ARG2>=0 && ARG2<(U32)displayModesCount) {
@@ -1060,7 +1055,7 @@ void boxeddrv_GetDeviceCaps(CPU* cpu) {
         ret = screenCy;
         break;
     case BITSPIXEL:
-        ret = bits_per_pixel;
+        ret = screenBpp;
         break;
     case PLANES:
         ret = 1;
@@ -1081,7 +1076,7 @@ void boxeddrv_GetDeviceCaps(CPU* cpu) {
         /* MSDN: Number of entries in the device's color table, if the device has
         * a color depth of no more than 8 bits per pixel.For devices with greater
         * color depths, -1 is returned. */
-        ret = (bits_per_pixel > 8) ? -1 : (1 << bits_per_pixel);
+        ret = (screenBpp > 8) ? -1 : (1 << screenBpp);
         break;
     case CURVECAPS:
         ret = (CC_CIRCLES | CC_PIE | CC_CHORD | CC_ELLIPSES | CC_WIDE |
@@ -1108,14 +1103,14 @@ void boxeddrv_GetDeviceCaps(CPU* cpu) {
         * BITSPIXEL: 8  -> COLORRES: 18
         * BITSPIXEL: 16 -> COLORRES: 16
         * BITSPIXEL: 24 -> COLORRES: 24
-        * (note that bits_per_pixel is never 24)
+        * (note that screenBpp is never 24)
         * BITSPIXEL: 32 -> COLORRES: 24 */
-        ret = (bits_per_pixel <= 8) ? 18 : (bits_per_pixel == 32) ? 24 : bits_per_pixel;
+        ret = (screenBpp <= 8) ? 18 : (screenBpp == 32) ? 24 : screenBpp;
         break;
     case RASTERCAPS:
         ret = (RC_BITBLT | RC_BANDING | RC_SCALING | RC_BITMAP64 | RC_DI_BITMAP |
             RC_DIBTODEV | RC_BIGFONT | RC_STRETCHBLT | RC_STRETCHDIB | RC_DEVBITS |
-            (bits_per_pixel <= 8 ? RC_PALETTE : 0));
+            (screenBpp <= 8 ? RC_PALETTE : 0));
         break;
     case SHADEBLENDCAPS:
         ret = (SB_GRAD_RECT | SB_GRAD_TRI | SB_CONST_ALPHA | SB_PIXEL_ALPHA);
@@ -1140,7 +1135,7 @@ void boxeddrv_GetDeviceCaps(CPU* cpu) {
         ret = 0;
         break;
     case SIZEPALETTE:
-        ret = bits_per_pixel <= 8 ? 1 << bits_per_pixel : 0;
+        ret = screenBpp <= 8 ? 1 << screenBpp : 0;
         break;
     case NUMRESERVED:
     case PHYSICALWIDTH:
@@ -1383,7 +1378,7 @@ void boxeddrv_GetSystemPalette(CPU* cpu) {
     U32 start = ARG1;
     int count = ARG2;
     U32 paletteEntries = ARG3;
-    U32 numberOfEntries = (bits_per_pixel > 8) ? 0 : (1 << bits_per_pixel);
+    U32 numberOfEntries = (screenBpp > 8) ? 0 : (1 << screenBpp);
 
     if (start + count >= numberOfEntries) count = numberOfEntries - start;
     if (!paletteEntries) {

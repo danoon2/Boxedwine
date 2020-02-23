@@ -71,7 +71,7 @@ bool Player::start(std::string directory) {
     return true;
 }
 
-void Player::initCommandLine(std::string root, const std::vector<std::string>& zips, std::string working, const char **argv, U32 argc) {
+void Player::initCommandLine(std::string root, const std::vector<std::string>& zips, std::string working, const std::vector<std::string>& args) {
     while (this->nextCommand=="ROOT" || this->nextCommand=="ZIP" || this->nextCommand=="CWD" || this->nextCommand=="ARGC" || stringStartsWith(this->nextCommand, "ARG")) {
         instance->readCommand();
     }

@@ -120,7 +120,7 @@ public:
     U32 openFile(std::string const &currentDirectory, std::string const &localPath, U32 accessFlags, KFileDescriptor** result);
     bool isStopped();
     bool isTerminated();
-    KThread* startProcess(const std::string& currentDirectory, U32 argc, const char** args, U32 envc, const char** env, int userId, int groupId, int effectiveUserId, int effectiveGroupId);
+    KThread* startProcess(const std::string& currentDirectory, const std::vector<std::string>& args, const std::vector<std::string>& envValues, int userId, int groupId, int effectiveUserId, int effectiveGroupId);
     void signalProcess(U32 signal);
     void signalIO(U32 code, S32 band, FD fd);
     void signalCHLD(U32 code, U32 childPid, U32 sendingUID, S32 exitCode);

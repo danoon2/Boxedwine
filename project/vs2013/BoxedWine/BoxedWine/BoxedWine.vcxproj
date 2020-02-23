@@ -160,7 +160,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>BOXEDWINE_DYNAMIC32;BOXEDWINE_DYNAMIC;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;LOG_SYSCALLS;BOXEDWINE_HAS_SETJMP;BOXEDWINE_ZLIB;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_MSVC;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_MIDI;BOXEDWINE_RECORDER;LOG_SYSCALLS;BOXEDWINE_HAS_SETJMP;BOXEDWINE_ZLIB;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_MSVC;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -169,8 +169,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <BufferSecurityCheck>true</BufferSecurityCheck>
       <EnablePREfast>true</EnablePREfast>
-      <UndefinePreprocessorDefinitions>
-      </UndefinePreprocessorDefinitions>
+      <UndefinePreprocessorDefinitions>BOXEDWINE_DYNAMIC32;BOXEDWINE_DYNAMIC;</UndefinePreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -523,6 +522,7 @@
     <ClInclude Include="..\..\..\..\source\sdl\multiThreaded\sdlcallback.h" />
     <ClInclude Include="..\..\..\..\source\sdl\sdlopengl.h" />
     <ClInclude Include="..\..\..\..\source\sdl\sdlwindow.h" />
+    <ClInclude Include="..\..\..\..\source\sdl\startupArgs.h" />
     <ClInclude Include="..\..\..\..\source\sdl\wnd.h" />
     <ClInclude Include="..\..\..\..\source\test\testCPU.h" />
     <ClInclude Include="..\..\..\..\source\test\testMMX.h" />
@@ -673,6 +673,7 @@
     <ClCompile Include="..\..\..\..\source\sdl\sdlopengl.cpp" />
     <ClCompile Include="..\..\..\..\source\sdl\sdlwindows.cpp" />
     <ClCompile Include="..\..\..\..\source\sdl\singleThreaded\mainloop.cpp" />
+    <ClCompile Include="..\..\..\..\source\sdl\startupArgs.cpp" />
     <ClCompile Include="..\..\..\..\source\sdl\winedrv.cpp" />
     <ClCompile Include="..\..\..\..\source\test\testCPU.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Use</PrecompiledHeader>

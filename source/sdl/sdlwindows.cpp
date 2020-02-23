@@ -28,16 +28,21 @@
 #include "multiThreaded/sdlcallback.h"
 #include "../emulation/hardmmu/hard_memory.h"
 
-int bits_per_pixel = 32;
-int default_horz_res = 800;
-int default_vert_res = 600;
-int default_bits_per_pixel = 32;
-int sdlScaleX = 100;
-int sdlScaleY = 100;
-int rel_mouse_sensitivity = 100;
-bool relativeMouse = false;
-const char* sdlScaleQuality = "0";
-extern bool videoEnabled;
+U32 default_horz_res = 800;
+U32 default_vert_res = 600;
+U32 default_bits_per_pixel = 32;
+U32 screenCx = 800;
+U32 screenCy = 600;
+U32 screenBpp = 32;
+
+bool sdlSoundEnabled;
+bool sdlVideoEnabled;
+
+static int sdlScaleX = 100;
+static int sdlScaleY = 100;
+static int rel_mouse_sensitivity = 100;
+static bool relativeMouse = false;
+static std::string sdlScaleQuality;
 
 static int firstWindowCreated;
 #ifdef __ANDROID__
@@ -310,9 +315,18 @@ SDL_Color sdlSystemPalette[256] = {
 
 static void displayChanged(KThread* thread);
 
-void initSDL() {
-    default_horz_res = screenCx;
-    default_vert_res = screenCy;
+void initSDL(U32 cx, U32 cy, U32 bpp, int scaleX, int scaleY, const std::string& scaleQuality, bool soundEnabled, bool videoEnabled) {
+    default_horz_res = cx;
+    default_vert_res = cy;
+    default_bits_per_pixel = bpp;
+    screenCx = cx;
+    screenCy = cy;
+    screenBpp = bpp;
+    sdlScaleX = scaleX;
+    sdlScaleY = scaleY;
+    sdlScaleQuality = scaleQuality;
+    sdlSoundEnabled = soundEnabled;
+    sdlVideoEnabled = videoEnabled;
 }
 
 bool isBoxedWineDriverActive() {
@@ -626,14 +640,14 @@ static void displayChanged(KThread* thread) {
     U32 flags;
 #endif
     firstWindowCreated = 1;
-    if (videoEnabled) {        
+    if (sdlVideoEnabled) {        
 #ifdef SDL2
         destroySDL2(thread);
         for (auto& n : hwndToWnd) {
             Wnd* wnd = n.second;
             wnd->openGlContext = 0;
         }
-        SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, sdlScaleQuality);
+        SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, sdlScaleQuality.c_str());
 
         int cx = screenCx*sdlScaleX/100;
         int cy = screenCy*sdlScaleY/100;
@@ -694,7 +708,7 @@ void wndBlt(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32 yOrg, U32 width, 
     Wnd* wnd = getWnd(hwnd);
     wRECT r;
     U32 y;    
-    int bpp = bits_per_pixel==8?32:bits_per_pixel;
+    int bpp = screenBpp==8?32:screenBpp;
     int pitch = (width*((bpp+7)/8)+3) & ~3;
     static int i;
 
@@ -731,7 +745,7 @@ void wndBlt(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32 yOrg, U32 width, 
             } else if (bpp == 15) {
                 format = SDL_PIXELFORMAT_RGB555;
             }
-            if (videoEnabled && sdlRenderer) {
+            if (sdlVideoEnabled && sdlRenderer) {
                 sdlTexture = SDL_CreateTexture(sdlRenderer, format, SDL_TEXTUREACCESS_STREAMING, width, height);
                 wnd->sdlTexture = sdlTexture;
             }
@@ -746,7 +760,7 @@ void wndBlt(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32 yOrg, U32 width, 
             memcopyToNative(bits+(height-y-1)*pitch, sdlBuffer+y*pitch, pitch);
         } 
 #endif
-        if (bits_per_pixel!=32) {
+        if (screenBpp!=32) {
             // SDL_ConvertPixels(width, height, )
         }
 #ifdef BOXEDWINE_RECORDER
@@ -767,7 +781,7 @@ void wndBlt(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32 yOrg, U32 width, 
             memcpy(wnd->bits, sdlBuffer, toCopy);
         }
 #endif        
-        if (videoEnabled && sdlRenderer) {
+        if (sdlVideoEnabled && sdlRenderer) {
 #ifdef BOXEDWINE_64BIT_MMU
             SDL_UpdateTexture(sdlTexture, NULL, getNativeAddress(KThread::currentThread()->process->memory, bits), pitch);
 #else
@@ -831,7 +845,7 @@ void sdlDrawAllWindows(KThread* thread, U32 hWnd, int count) {
     }
 #ifdef BOXEDWINE_RECORDER
     if (Recorder::instance || Player::instance) {
-        int bpp = bits_per_pixel==8?32:bits_per_pixel;
+        int bpp = screenBpp==8?32:screenBpp;
         S32 bytesPerPixel = (bpp+7)/8;
         S32 recorderPitch = (screenCx*((bpp+7)/8)+3) & ~3;
         if (recorderPitch*screenCy>recorderBufferSize) {
@@ -889,7 +903,7 @@ void sdlDrawAllWindows(KThread* thread, U32 hWnd, int count) {
     }
 #endif
 #ifdef SDL2
-    if (videoEnabled && sdlRenderer) {
+    if (sdlVideoEnabled && sdlRenderer) {
         SDL_SetRenderDrawColor(sdlRenderer, 58, 110, 165, 255 );
         SDL_RenderClear(sdlRenderer);    
         for (int i=count-1;i>=0;i--) {
@@ -995,7 +1009,7 @@ U32 sdlGetGammaRamp(KThread* thread, U32 ramp) {
     U16 g[256];
     U16 b[256];
 
-    if (videoEnabled) {
+    if (sdlVideoEnabled) {
 #ifdef SDL2
         if (SDL_GetWindowGammaRamp(sdlWindow, r, g, b)==0) {
 #else
@@ -1025,7 +1039,7 @@ void sdlGetPalette(KThread* thread, U32 start, U32 count, U32 entries) {
 }
 
 U32 sdlGetNearestColor(KThread* thread, U32 color) {
-    if (!videoEnabled) {
+    if (!sdlVideoEnabled) {
         return color;
     }
 #ifdef SDL2
@@ -2255,9 +2269,9 @@ void sdlPushWindowSurface() {
     SDL_Rect r;
     U32 depth;
 
-    if (bits_per_pixel==15)
+    if (screenBpp==15)
         depth = 15;
-    else if (bits_per_pixel==16)
+    else if (screenBpp==16)
         depth = 16;
     else
         depth = 32;
@@ -2327,7 +2341,7 @@ bool sdlInternalScreenShot(std::string filepath, SDL_Rect* r, U32* crc) {
     U32 rMask=0;
     U32 gMask=0;
     U32 bMask=0;
-    int bpp = bits_per_pixel==8?32:bits_per_pixel;
+    int bpp = screenBpp==8?32:screenBpp;
 
     if (bpp==32) {
         rMask = 0x00FF0000;

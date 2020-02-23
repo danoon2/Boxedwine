@@ -261,19 +261,20 @@ FsOpenNode* openTTY9(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
 std::string getFunctionName(const std::string& name, U32 moduleEip) {    
     KThread* thread;
     KProcess* process = new KProcess(KSystem::nextThreadId++);
-    const char* args[5];
+    std::vector<std::string> args;
+    std::vector<std::string> env;
     char tmp[16];
     KFileDescriptor* fd = NULL;
 
     if (!name.length())
         return "Unknown";
     sprintf(tmp, "%X", moduleEip);
-    args[0] = "/usr/bin/addr2line";
-    args[1] = "-e";
-    args[2] = name.c_str();
-    args[3] = "-f";
-    args[4] = tmp;
-    thread = process->startProcess("/usr/bin", 5, args, 0, NULL, 0, 0, 0, 0);
+    args.push_back("/usr/bin/addr2line");
+    args.push_back("-e");
+    args.push_back(name.c_str());
+    args.push_back("-f");
+    args.push_back(tmp);
+    thread = process->startProcess("/usr/bin", args, env, 0, 0, 0, 0);
     if (!thread)
         return "";
 

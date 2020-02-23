@@ -25,9 +25,6 @@
 
 #include <time.h>
 
-U32 screenCx = 800;
-U32 screenCy = 600;
-
 unsigned int KSystem::nextThreadId=10;
 std::unordered_map<void*, SHM*> KSystem::shm;
 std::unordered_map<U32, KProcess*> KSystem::processes;

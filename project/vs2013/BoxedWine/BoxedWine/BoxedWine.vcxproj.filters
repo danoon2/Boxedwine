@@ -364,6 +364,9 @@
     <ClCompile Include="..\..\..\..\source\io\fsmemnode.cpp">
       <Filter>source\io</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\sdl\startupArgs.cpp">
+      <Filter>source\sdl</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -851,6 +854,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\io\fsmemnode.h">
       <Filter>source\io</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\sdl\startupArgs.h">
+      <Filter>source\sdl</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -527,11 +527,11 @@ void KProcess::initStdio() {
     }
 }
 
-KThread* KProcess::startProcess(const std::string& currentDirectory, U32 argc, const char** pargs, U32 envc, const char** penv, int userId, int groupId, int effectiveUserId, int effectiveGroupId) {
-    BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath(currentDirectory, pargs[0], true);
+KThread* KProcess::startProcess(const std::string& currentDirectory, const std::vector<std::string>& argValues, const std::vector<std::string>& envValues, int userId, int groupId, int effectiveUserId, int effectiveGroupId) {
+    BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath(currentDirectory, argValues[0], true);
 
     if (!node) {
-        kwarn("Could not find %s", pargs[0]);
+        kwarn("Could not find %s", argValues[0].c_str());
         return 0;
     }
 
@@ -554,13 +554,13 @@ KThread* KProcess::startProcess(const std::string& currentDirectory, U32 argc, c
     this->groupId = groupId;	
     this->effectiveGroupId = effectiveGroupId;
     this->setupCommandlineNode();
-    this->exe = pargs[0];
+    this->exe = argValues[0];
     this->name = Fs::getFileNameFromPath(this->exe);
     
-    for (i=0;i<argc;i++) {
+    for (i=0;i<argValues.size();i++) {
         if (i>0)
             this->commandLine+=" ";
-        this->commandLine+=pargs[i];
+        this->commandLine+=argValues[i];
     }
 
     this->initStdio();
@@ -577,12 +577,12 @@ KThread* KProcess::startProcess(const std::string& currentDirectory, U32 argc, c
             args.push_back(loader);
         if (interpreter.length())
             args.push_back(interpreter);        
-        args.push_back(std::string(Fs::getFullPath(currentDirectory, pargs[0])));
-        for (i=1;i<argc;i++) {
-            args.push_back(pargs[i]);
+        args.push_back(std::string(Fs::getFullPath(currentDirectory, argValues[0])));
+        for (i=1;i<argValues.size();i++) {
+            args.push_back(argValues[i]);
         }
-        for (i=0;i<envc;i++) {
-            env.push_back(penv[i]);
+        for (i=0;i<envValues.size();i++) {
+            env.push_back(envValues[i]);
         }
         setupThreadStack(thread, thread->cpu, this->name, args, env);
 

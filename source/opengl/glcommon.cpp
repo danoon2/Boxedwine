@@ -37,7 +37,7 @@
 #include "../emulation/hardmmu/hard_memory.h"
 #endif
 
-extern const char* glExt;
+static std::string glExt;
 
 float fARG(CPU* cpu, U32 arg) {
     struct int2Float i;
@@ -160,7 +160,7 @@ void glcommon_glGetString(CPU* cpu) {
                     continue;
                 }
 
-                if (!glExt || strstr(glExt, hardwareExt[i].c_str())) {
+                if (!glExt.length() || strstr(glExt.c_str(), hardwareExt[i].c_str())) {
                     if (ext[0]!=0)
                         strcat(ext, " ");
                     strcat(ext, hardwareExt[i].c_str());
@@ -425,9 +425,10 @@ U32 lastGlCallTime;
 
 void esgl_init();
 void sdlgl_init();
-void gl_init() {    
+void gl_init(const std::string& allowExtensions) {    
     int99Callback=gl_callback;
     int99CallbackSize=GL_FUNC_COUNT;
+    glExt = allowExtensions;
 
 #undef GL_FUNCTION
 #define GL_FUNCTION(func, RET, PARAMS, ARGS, PRE, POST, LOG) gl_callback[func] = glcommon_gl##func;

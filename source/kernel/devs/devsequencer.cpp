@@ -19,8 +19,6 @@
 
 #include "../../io/fsvirtualopennode.h"
 
-extern bool soundEnabled;
-
 class DevSequencer : public FsVirtualOpenNode {
 public:
     DevSequencer(const BoxedPtr<FsNode>& node, U32 flags) : FsVirtualOpenNode(node, flags) {}
@@ -145,7 +143,7 @@ static struct {
 } midi;
 
 void MIDI_RawOutByte(U8 data) {
-    if (soundEnabled) {
+    if (sdlSoundEnabled) {
 	    /* Test for a realtime MIDI message */
 	    if (data>=0xf8) {
 		    midi.rt_buf[0]=data;

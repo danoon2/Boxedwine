@@ -23,6 +23,12 @@
 
 extern U32 screenCx;
 extern U32 screenCy;
+extern U32 screenBpp;
+extern U32 default_horz_res;
+extern U32 default_vert_res;
+extern U32 default_bits_per_pixel;
+extern bool sdlSoundEnabled;
+extern bool sdlVideoEnabled;
 
 #define UID 1
 #define GID 1000
