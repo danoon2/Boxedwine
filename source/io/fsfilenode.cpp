@@ -106,7 +106,7 @@ U64 FsFileNode::lastModified() {
     PLATFORM_STAT_STRUCT buf;
 
     if (PLATFORM_STAT(this->nativePath.c_str(), &buf)==0) {
-        return buf.st_mtime*1000l;
+        return ((U64)buf.st_mtime)*1000l;
     }
 #ifdef BOXEDWINE_ZLIB
     if (this->zipNode)
