@@ -63,7 +63,7 @@ bool FsMemOpenNode::isReadReady() {
 
 U32 FsMemOpenNode::readNative(U8* buffer, U32 len) {
     S32 todo = (S32)len;
-    if (todo > this->buffer.size() - this->pos) {
+    if (todo > (S32)this->buffer.size() - this->pos) {
         todo = (S32)(this->buffer.size()-this->pos);
     }
     if (todo>0) {
