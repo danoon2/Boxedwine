@@ -39,7 +39,7 @@ void BOXEDWINE_RECORDER_INIT(std::string root, const std::vector<std::string>& z
 #define BOXEDWINE_RECORDER_HANDLE_KEY_UP(x) false
 #define BOXEDWINE_RECORDER_QUIT() 0
 #define BOXEDWINE_RECORDER_RUN_SLICE();
-#define BOXEDWINE_RECORDER_INIT(root, zips, working, argv, argc)
+#define BOXEDWINE_RECORDER_INIT(root, zips, working, args)
 #endif
 
 #endif
