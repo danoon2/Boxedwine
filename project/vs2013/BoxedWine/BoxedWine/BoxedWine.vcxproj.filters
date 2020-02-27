@@ -385,9 +385,6 @@
     <ClCompile Include="..\..\..\..\lib\imgui\examples\imgui_impl_sdl.cpp">
       <Filter>source\ui\imgui</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\lib\glew\src\glew.c">
-      <Filter>source\ui\glew</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\source\ui\controls\menubar.cpp">
       <Filter>source\ui\controls</Filter>
     </ClCompile>
@@ -429,6 +426,9 @@
     </ClCompile>
     <ClCompile Include="..\..\..\..\lib\imgui\addon\imguitinyfiledialogs.cpp">
       <Filter>source\ui\imgui\addon</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\glew\src\glew.cpp">
+      <Filter>source\ui\glew</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
