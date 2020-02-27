@@ -77,7 +77,7 @@ void loadApps() {
             if (iconPath.length()) {
                 LoadTextureFromFile(iconPath.c_str(), &texture, &width, &height);
             }
-            appListViewItems.push_back(ListViewItem(app->getName(), (void*)(U64)texture, width, height, [&app](bool right) {
+            appListViewItems.push_back(ListViewItem(app->getName(), (void*)(U64)texture, width, height, [](bool right) {
             }));
         }
     }
