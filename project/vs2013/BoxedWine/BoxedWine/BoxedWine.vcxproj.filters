@@ -367,6 +367,69 @@
     <ClCompile Include="..\..\..\..\source\sdl\startupArgs.cpp">
       <Filter>source\sdl</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\imgui\imgui.cpp">
+      <Filter>source\ui\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\imgui\imgui_draw.cpp">
+      <Filter>source\ui\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\imgui\imgui_widgets.cpp">
+      <Filter>source\ui\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\mainui.cpp">
+      <Filter>source\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\imgui\examples\imgui_impl_opengl3.cpp">
+      <Filter>source\ui\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\imgui\examples\imgui_impl_sdl.cpp">
+      <Filter>source\ui\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\glew\src\glew.c">
+      <Filter>source\ui\glew</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\controls\menubar.cpp">
+      <Filter>source\ui\controls</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\data\boxedApp.cpp">
+      <Filter>source\ui\data</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\data\boxedContainer.cpp">
+      <Filter>source\ui\data</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\data\globalSettings.cpp">
+      <Filter>source\ui\data</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\data\configFile.cpp">
+      <Filter>source\ui\data</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\util\fileutils.cpp">
+      <Filter>source\util</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\data\boxedwineData.cpp">
+      <Filter>source\ui\data</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\controls\listView.cpp">
+      <Filter>source\ui\controls</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\controls\listViewItem.cpp">
+      <Filter>source\ui\controls</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\opengl\uihelper.cpp">
+      <Filter>source\ui\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\controls\appbar.cpp">
+      <Filter>source\ui\controls</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\controls\installDlg.cpp">
+      <Filter>source\ui\controls</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\utils\boxedTranslation.cpp">
+      <Filter>source\ui\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\imgui\addon\imguitinyfiledialogs.cpp">
+      <Filter>source\ui\imgui\addon</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -858,6 +921,81 @@
     <ClInclude Include="..\..\..\..\source\sdl\startupArgs.h">
       <Filter>source\sdl</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\imgui\imconfig.h">
+      <Filter>source\ui\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\imgui\imgui.h">
+      <Filter>source\ui\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\imgui\imgui_internal.h">
+      <Filter>source\ui\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\imgui\imstb_rectpack.h">
+      <Filter>source\ui\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\imgui\imstb_textedit.h">
+      <Filter>source\ui\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\imgui\imstb_truetype.h">
+      <Filter>source\ui\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\ui\mainui.h">
+      <Filter>source\ui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\imgui\examples\imgui_impl_opengl3.h">
+      <Filter>source\ui\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\imgui\examples\imgui_impl_sdl.h">
+      <Filter>source\ui\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\ui\utils\stb_image.h">
+      <Filter>source\ui\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\ui\utils\uihelper.h">
+      <Filter>source\ui\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\ui\controls\menubar.h">
+      <Filter>source\ui\controls</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\ui\data\boxedApp.h">
+      <Filter>source\ui\data</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\ui\data\boxedContainer.h">
+      <Filter>source\ui\data</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\ui\data\globalSettings.h">
+      <Filter>source\ui\data</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\ui\data\configFile.h">
+      <Filter>source\ui\data</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\util\fileutils.h">
+      <Filter>source\util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\ui\data\boxedwineData.h">
+      <Filter>source\ui\data</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\ui\controls\listView.h">
+      <Filter>source\ui\controls</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\ui\controls\listViewItem.h">
+      <Filter>source\ui\controls</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\ui\controls\appbar.h">
+      <Filter>source\ui\controls</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\ui\controls\installDlg.h">
+      <Filter>source\ui\controls</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\ui\utils\boxedTranslation.h">
+      <Filter>source\ui\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\ui\boxedwineui.h">
+      <Filter>source\ui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\imgui\addon\imguitinyfiledialogs.h">
+      <Filter>source\ui\imgui\addon</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
@@ -940,6 +1078,27 @@
     </Filter>
     <Filter Include="source\kernel\sys">
       <UniqueIdentifier>{047354d6-39dd-46f8-b620-fa342c311476}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\ui">
+      <UniqueIdentifier>{4162bf17-3dfe-4acd-8835-7e47f15f2ebf}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\ui\imgui">
+      <UniqueIdentifier>{16cf36ab-f397-4a59-a568-e3428a9d25ab}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\ui\glew">
+      <UniqueIdentifier>{1ccdd695-571e-42f4-b552-007c853f83a3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\ui\utils">
+      <UniqueIdentifier>{ed37f056-ec88-454a-8481-d09f72fc7efa}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\ui\controls">
+      <UniqueIdentifier>{fd15ae78-abe4-4317-ad93-d72cea3d40d9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\ui\data">
+      <UniqueIdentifier>{a5eee024-26de-4e7d-a93e-cbe426fe5107}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\ui\imgui\addon">
+      <UniqueIdentifier>{77cdf5a5-f6c2-46fb-a47f-bc0c5c435f34}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

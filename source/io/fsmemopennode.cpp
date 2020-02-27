@@ -67,7 +67,7 @@ U32 FsMemOpenNode::readNative(U8* buffer, U32 len) {
         todo = (S32)(this->buffer.size()-this->pos);
     }
     if (todo>0) {
-        memcpy(buffer, &this->buffer[this->pos], todo);
+        memcpy(buffer, &this->buffer[(U32)this->pos], todo);
         this->pos+=todo;
         return (U32)todo;
     }    
@@ -82,11 +82,11 @@ U32 FsMemOpenNode::writeNative(U8* buffer, U32 len) {
     this->lastModifiedTime = Platform::getSystemTimeAsMicroSeconds() / 1000l;
     if (this->pos < (S64)this->buffer.size()) {
         U32 todo = len;
-        if (this->buffer.size()-this->pos < len) {
+        if (this->buffer.size()-(U64)this->pos < len) {
             todo = (U32)(this->buffer.size()-this->pos);
         }
         len -= todo;
-        memcpy(&this->buffer[this->pos], buffer, todo);
+        memcpy(&this->buffer[(U32)this->pos], buffer, todo);
         this->pos+=todo;
         buffer+=todo;
     }

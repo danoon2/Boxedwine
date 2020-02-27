@@ -299,3 +299,77 @@ std::string Fs::getNativePathFromParentAndLocalFilename(const BoxedPtr<FsNode>& 
     Fs::localNameToRemote(nativeFileName);
     return parent->nativePath + Fs::nativePathSeperator + nativeFileName;
 }
+
+bool Fs::makeNativeDirs(const std::string& path) {
+    std::vector<std::string> parts;
+
+    std::string tmp;
+    if (stringStartsWith(path, Fs::nativePathSeperator)) {
+        stringSplit(parts,path.substr(1),Fs::nativePathSeperator[0]);
+        tmp = Fs::nativePathSeperator + parts[0];
+    } else {
+        stringSplit(parts,path,Fs::nativePathSeperator[0]);
+        tmp = parts[0];
+    }
+    parts.erase(parts.begin(), parts.begin()+1);
+
+    for (auto& part : parts) {
+        tmp = tmp + Fs::nativePathSeperator + part;
+        if (!Fs::doesNativePathExist(tmp)) {
+            U32 result = MKDIR(tmp.c_str());
+            if (result!=0) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+U32 Fs::deleteNativeFile(const std::string& path) {
+    return unlink(path.c_str());
+}
+
+U32 Fs::deleteNativeDirAndAllFilesInDir(const std::string& path, bool recursive) {
+    return iterateAllNativeFiles(path, false, true, [recursive](const std::string& fileName, bool isDir)->U32 {
+        if (isDir) {
+            if (recursive) {            
+                U32 r = deleteNativeDirAndAllFilesInDir(fileName, true);
+                if (r!=0) {
+                    return 0;
+                }
+            } else {
+                U32 r = (U32)::rmdir(fileName.c_str());
+                if (r!=0) {
+                    return r;
+                }
+            }
+        } else {
+            U32 r = deleteNativeFile(fileName);
+            if (r!=0) {
+                return r;
+            }
+        }
+        return 0;
+    });
+}
+
+U32 Fs::iterateAllNativeFiles(const std::string& path, bool recursive, bool includeDirs, std::function<U32(const std::string&, bool isDir)> f) {
+    std::vector<Platform::ListNodeResult> results;
+    Platform::listNodes(path, results);
+    for (auto& n : results) {
+        if (recursive && n.isDirectory) {
+            U32 result = iterateAllNativeFiles(path+Fs::nativePathSeperator+n.name, true, includeDirs, f);
+            if (result) {
+                return result;
+            }
+        }
+        if (!includeDirs && n.isDirectory) {
+            continue;
+        }
+        U32 result = f(path+Fs::nativePathSeperator+n.name, n.isDirectory);
+        if (result) {
+            return result;
+        }
+    }
+    return 0;
+}

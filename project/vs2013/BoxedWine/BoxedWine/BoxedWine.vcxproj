@@ -160,8 +160,8 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>BOXEDWINE_MIDI;BOXEDWINE_RECORDER;LOG_SYSCALLS;BOXEDWINE_HAS_SETJMP;BOXEDWINE_ZLIB;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_MSVC;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;LOG_SYSCALLS;BOXEDWINE_HAS_SETJMP;BOXEDWINE_ZLIB;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_MSVC;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\lib\glew\include;..\..\..\..\lib\imgui</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
@@ -186,8 +186,8 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>BOXEDWINE_DYNAMIC32;BOXEDWINE_DYNAMIC;BOXEDWINE_ZLIB;__TEST;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;_NO_DEBUG_HEAP=0;BOXEDWINE_MSVC;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_DYNAMIC32;BOXEDWINE_DYNAMIC;BOXEDWINE_ZLIB;__TEST;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;_NO_DEBUG_HEAP=0;BOXEDWINE_MSVC;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\lib\glew\include;..\..\..\..\lib\imgui</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
@@ -211,8 +211,8 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;BOXEDWINE_64;BOXEDWINE_ZLIB;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;BOXEDWINE_64BIT_MMU;_NO_DEBUG_HEAP=0;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;BOXEDWINE_64;BOXEDWINE_ZLIB;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;BOXEDWINE_64BIT_MMU;_NO_DEBUG_HEAP=0;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\lib\glew\include;..\..\..\..\lib\imgui</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <ExceptionHandling>Sync</ExceptionHandling>
@@ -238,8 +238,8 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;BOXEDWINE_64;SDL2;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;BOXEDWINE_ZLIB;BOXEDWINE_64BIT_MMU;__TEST;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;_NO_DEBUG_HEAP=0;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;BOXEDWINE_64;SDL2;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;BOXEDWINE_ZLIB;BOXEDWINE_64BIT_MMU;__TEST;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;_NO_DEBUG_HEAP=0;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\lib\glew\include;..\..\..\..\lib\imgui</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <ExceptionHandling>Sync</ExceptionHandling>
@@ -265,8 +265,8 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>BOXEDWINE_DYNAMIC32;BOXEDWINE_DYNAMIC;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;SDL2;INCLUDE_CYCLES;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_DYNAMIC32;BOXEDWINE_DYNAMIC;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;SDL2;INCLUDE_CYCLES;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\lib\glew\include;..\..\..\..\lib\imgui</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
       <UndefinePreprocessorDefinitions>
       </UndefinePreprocessorDefinitions>
@@ -294,8 +294,8 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>BOXEDWINE_MIDI;INCLUDE_CYCLES;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_MIDI;INCLUDE_CYCLES;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\lib\glew\include;..\..\..\..\lib\imgui</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
       <UndefinePreprocessorDefinitions>
       </UndefinePreprocessorDefinitions>
@@ -321,8 +321,8 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;BOXEDWINE_64;BOXEDWINE_ZLIB;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;BOXEDWINE_64BIT_MMU;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;BOXEDWINE_64;BOXEDWINE_ZLIB;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;BOXEDWINE_64BIT_MMU;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\lib\glew\include;..\..\..\..\lib\imgui</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
       <UndefinePreprocessorDefinitions>
       </UndefinePreprocessorDefinitions>
@@ -348,8 +348,8 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>BOXEDWINE_MIDI;BOXEDWINE_64;BOXEDWINE_ZLIB;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;BOXEDWINE_VM;BOXEDWINE_64BIT_MMU;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_MIDI;BOXEDWINE_64;BOXEDWINE_ZLIB;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;BOXEDWINE_VM;BOXEDWINE_64BIT_MMU;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\lib\glew\include;..\..\..\..\lib\imgui</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
       <UndefinePreprocessorDefinitions>
       </UndefinePreprocessorDefinitions>
@@ -416,6 +416,15 @@
     <ClInclude Include="..\..\..\..\include\syscpumaxfreq.h" />
     <ClInclude Include="..\..\..\..\include\syscpuonline.h" />
     <ClInclude Include="..\..\..\..\include\syscpuscalingmaxfreq.h" />
+    <ClInclude Include="..\..\..\..\lib\imgui\addon\imguitinyfiledialogs.h" />
+    <ClInclude Include="..\..\..\..\lib\imgui\examples\imgui_impl_opengl3.h" />
+    <ClInclude Include="..\..\..\..\lib\imgui\examples\imgui_impl_sdl.h" />
+    <ClInclude Include="..\..\..\..\lib\imgui\imconfig.h" />
+    <ClInclude Include="..\..\..\..\lib\imgui\imgui.h" />
+    <ClInclude Include="..\..\..\..\lib\imgui\imgui_internal.h" />
+    <ClInclude Include="..\..\..\..\lib\imgui\imstb_rectpack.h" />
+    <ClInclude Include="..\..\..\..\lib\imgui\imstb_textedit.h" />
+    <ClInclude Include="..\..\..\..\lib\imgui\imstb_truetype.h" />
     <ClInclude Include="..\..\..\..\lib\zlib\contrib\minizip\crypt.h" />
     <ClInclude Include="..\..\..\..\lib\zlib\contrib\minizip\ioapi.h" />
     <ClInclude Include="..\..\..\..\lib\zlib\contrib\minizip\mztools.h" />
@@ -528,7 +537,23 @@
     <ClInclude Include="..\..\..\..\source\test\testMMX.h" />
     <ClInclude Include="..\..\..\..\source\test\testSSE.h" />
     <ClInclude Include="..\..\..\..\source\test\testSSE2.h" />
+    <ClInclude Include="..\..\..\..\source\ui\boxedwineui.h" />
+    <ClInclude Include="..\..\..\..\source\ui\controls\appbar.h" />
+    <ClInclude Include="..\..\..\..\source\ui\controls\installDlg.h" />
+    <ClInclude Include="..\..\..\..\source\ui\controls\listView.h" />
+    <ClInclude Include="..\..\..\..\source\ui\controls\listViewItem.h" />
+    <ClInclude Include="..\..\..\..\source\ui\controls\menubar.h" />
+    <ClInclude Include="..\..\..\..\source\ui\data\boxedApp.h" />
+    <ClInclude Include="..\..\..\..\source\ui\data\boxedContainer.h" />
+    <ClInclude Include="..\..\..\..\source\ui\data\boxedwineData.h" />
+    <ClInclude Include="..\..\..\..\source\ui\data\configFile.h" />
+    <ClInclude Include="..\..\..\..\source\ui\data\globalSettings.h" />
+    <ClInclude Include="..\..\..\..\source\ui\mainui.h" />
+    <ClInclude Include="..\..\..\..\source\ui\utils\boxedTranslation.h" />
+    <ClInclude Include="..\..\..\..\source\ui\utils\stb_image.h" />
+    <ClInclude Include="..\..\..\..\source\ui\utils\uihelper.h" />
     <ClInclude Include="..\..\..\..\source\util\boxedptr.h" />
+    <ClInclude Include="..\..\..\..\source\util\fileutils.h" />
     <ClInclude Include="..\..\..\..\source\util\karray.h" />
     <ClInclude Include="..\..\..\..\source\util\klist.h" />
     <ClInclude Include="..\..\..\..\source\util\ringbuffer.h" />
@@ -536,6 +561,48 @@
     <ClInclude Include="..\..\..\..\source\util\synchronization.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\..\..\lib\glew\src\glew.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\imgui\addon\imguitinyfiledialogs.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\imgui\examples\imgui_impl_opengl3.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\imgui\examples\imgui_impl_sdl.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\imgui\imgui.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\imgui\imgui_draw.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\imgui\imgui_widgets.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="..\..\..\..\lib\zlib\contrib\minizip\ioapi.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">NotUsing</PrecompiledHeader>
@@ -681,7 +748,84 @@
     <ClCompile Include="..\..\..\..\source\test\testMMX.cpp" />
     <ClCompile Include="..\..\..\..\source\test\testSSE.cpp" />
     <ClCompile Include="..\..\..\..\source\test\testSSE2.cpp" />
+    <ClCompile Include="..\..\..\..\source\ui\controls\appbar.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|Win32'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|x64'">Use</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\controls\installDlg.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|Win32'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|x64'">Use</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\controls\listView.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|Win32'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|x64'">Use</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\controls\listViewItem.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|Win32'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|x64'">Use</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\controls\menubar.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|Win32'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|x64'">Use</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\data\boxedApp.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|x64'">Use</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\data\boxedContainer.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|x64'">Use</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\data\boxedwineData.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|x64'">Use</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\data\configFile.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|x64'">Use</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\data\globalSettings.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|x64'">Use</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\mainui.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|Win32'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|x64'">Use</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\opengl\uihelper.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|x64'">Use</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\utils\boxedTranslation.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|x64'">Use</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="..\..\..\..\source\util\crc.cpp" />
+    <ClCompile Include="..\..\..\..\source\util\fileutils.cpp" />
     <ClCompile Include="..\..\..\..\source\util\log.cpp" />
     <ClCompile Include="..\..\..\..\source\util\player.cpp" />
     <ClCompile Include="..\..\..\..\source\util\recorder.cpp" />

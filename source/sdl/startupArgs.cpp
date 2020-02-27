@@ -18,17 +18,25 @@
 #include "meminfo.h"
 #include "devmixer.h"
 #include "devsequencer.h"
-
+#include "mainloop.h"
+#include "sdlwindow.h"
 #include "../io/fsfilenode.h"
 #include "../io/fszip.h"
 #include "loader.h"
 #include "kstat.h"
+
+#ifndef BOXEDWINE_DISABLE_UI
+#include "../ui/data/globalSettings.h"
+#endif
 
 #include <SDL.h>
 #include MKDIR_INCLUDE
 #include CURDIR_INCLUDE
 
 #define mdev(x,y) ((x << 8) | y)
+
+void gl_init(const std::string& allowExtensions);
+void initWine();
 
 FsOpenNode* openKernelCommandLine(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
     return new BufferAccess(node, flags, "");
@@ -170,7 +178,7 @@ bool StartUpArgs::apply() {
             if (ext == ".zip") {
     #ifdef BOXEDWINE_ZLIB
                 FsZip* z = new FsZip();
-                if (!stringHasEnding(info.localPath, "/")) {
+                if (!stringHasEnding(info.localPath, "/", false)) {
                     info.localPath+="/";
                 }
                 z->init(info.nativePath, info.localPath);
@@ -184,6 +192,11 @@ bool StartUpArgs::apply() {
         }
     }
 
+    if (this->args.size()==0) {
+        args.push_back("/bin/wine");
+        args.push_back("explorer");
+        args.push_back("/desktop=shell");
+    }
     BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath(workingDir, this->args[0], true);        
 
     bool validLinuxCommand = false;
@@ -234,6 +247,44 @@ bool StartUpArgs::apply() {
             }
         }
     }
+
+#ifdef SDL2
+    if (this->sdlFullScreen && !this->resolutionSet) {
+        SDL_DisplayMode mode;
+        if (!SDL_GetCurrentDisplayMode(0, &mode)) {
+#ifdef __ANDROID__
+            this->screenCx = mode.w/2;
+            this->screenCy = mode.h/2;
+#else
+            this->screenCx = mode.w;
+            this->screenCy = mode.h;
+#endif
+        }
+    }
+#endif
+
+    initSDL(this->screenCx, this->screenCy, this->screenBpp, this->sdlScaleX, this->sdlScaleY, this->sdlScaleQuality, this->soundEnabled, this->videoEnabled);
+    initWine();
+#if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
+    gl_init(this->glExt);    
+#endif   
+
+    printf("Launching ");
+    for (U32 i=0;i<this->args.size();i++) {
+        printf("\"%s\" ", this->args[i].c_str());
+    }
+    printf("\n");
+    KProcess* process = new KProcess(KSystem::nextThreadId++);    
+    if (process->startProcess(this->workingDir, this->args, this->envValues, this->userId, this->groupId, this->effectiveUserId, this->effectiveGroupId)) {
+        if (!doMainLoop()) {
+            return 0; // doMainLoop should have handled any cleanup, like SDL_Quit if necessary
+        }
+    }
+#ifdef GENERATE_SOURCE
+    if (gensrc)
+        writeSource();
+#endif
+    dspShutdown();
     return true;
 }
 
@@ -241,11 +292,11 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
     int i = 1;
     for (;i<argc;i++) {
         if (!strcmp(argv[i], "-root") && i+1<argc) {
-            this->root = argv[i+1];
+            this->setRoot(argv[i+1]);
             i++;
         } else if (!strcmp(argv[i], "-zip") && i+1<argc) {
 #ifdef BOXEDWINE_ZLIB
-            this->zips.push_back(argv[i+1]);
+            this->addZip(argv[i+1]);
 #else
             printf("BoxedWine wasn't compiled with zlib support");
 #endif
@@ -271,7 +322,7 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
             this->effectiveGroupId = atoi(argv[i+1]);
             i++;
         } else if (!strcmp(argv[i], "-w") && i+1<argc) {
-            this->workingDir = argv[i+1];
+            this->setWorkingDir(argv[i+1]);
             i++;
             this->workingDirSet = true;
         } else if (!strcmp(argv[i], "-nosound")) {
@@ -282,31 +333,22 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
 			this->envValues.push_back(argv[i+1]);
             i++;
         } else if (!strcmp(argv[i], "-fullscreen")) {
-			this->sdlFullScreen = true;
+			this->setFullscreen();
         } else if (!strcmp(argv[i], "-scale")) {
-			this->sdlScaleX = atoi(argv[i+1]);
-            this->sdlScaleY = this->sdlScaleX;
+			this->setScale(atoi(argv[i+1]));
             if (!this->resolutionSet) {
                 this->screenCx = 640;
                 this->screenCy = 480;
             }
             i++;
         } else if (!strcmp(argv[i], "-scale_quality")) {
-			this->sdlScaleQuality = argv[i+1];
+			this->setScaleQuality(argv[i+1]);
             i++;
         } else if (!strcmp(argv[i], "-resolution")) {
-            U32 width;
-            U32 height;
-
-            int success = parse_resolution(argv[i+1], &width, &height);
-            if (success) {
-                this->screenCx = width;
-                this->screenCy = height;
-                this->resolutionSet = true;                
-            }
+            setResolution(argv[i+1]);
             i++;
         } else if (!strcmp(argv[i], "-bpp")) {
-            this->screenBpp = atoi(argv[i+1]);
+            setBpp(atoi(argv[i+1]));
             i++;
             if (this->screenBpp!=16 && this->screenBpp!=32 && this->screenBpp!=8) {
                 klog("-bpp must be 8, 16 or 32");
@@ -320,7 +362,7 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
         } else if (!strcmp(argv[i], "-p3")) {
             this->pentiumLevel = 3;
         } else if (!strcmp(argv[i], "-glext")) {
-            this->glExt = argv[i+1];
+            this->setAllowedGlExtension(argv[i+1]);
             i++;
         } else if (!strcmp(argv[i], "-rel_mouse_sensitivity")) {
             this->rel_mouse_sensitivity = atoi(argv[i+1]);
@@ -350,7 +392,7 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
             }
             i+=2;
         } else if (!strcmp(argv[i], "-showStartupWindow")) {
-            this->showStartingWindow = true;
+            // no longer used
         }
 #ifdef BOXEDWINE_RECORDER
         else if (!strcmp(argv[i], "-record")) {
@@ -417,18 +459,23 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
 #endif
     }  
 
-    bool validLinuxCommand = false;
     argc = argc-i;
-    if (argc==0) {
-        args.push_back("/bin/wine");
-        args.push_back("explorer");
-        args.push_back("/desktop=shell");
-    } else {
-        argv = &argv[i];
+    argv = &argv[i];
         
-        for (i=0;i<argc;i++) {
-            args.push_back(argv[i]);
-        }
+    for (i=0;i<argc;i++) {
+        args.push_back(argv[i]);
     }
     return true;
+}
+
+void StartUpArgs::setResolution(const std::string& resolution) {
+    U32 width;
+    U32 height;
+
+    int success = parse_resolution(resolution.c_str(), &width, &height);
+    if (success) {
+        this->screenCx = width;
+        this->screenCy = height;
+        this->resolutionSet = true;                
+    }
 }

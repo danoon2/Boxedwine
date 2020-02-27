@@ -26,12 +26,13 @@
 #include MKDIR_INCLUDE
 
 #include <SDL.h>
-#include "sdlwindow.h"
 
-#include "mainloop.h"
 #include "startupArgs.h"
-
-void gl_init(const std::string& allowExtensions);
+#ifndef BOXEDWINE_DISABLE_UI
+#include "../ui/mainui.h"
+#include "../ui/data/boxedwineData.h"
+#include "../ui/data/globalSettings.h"
+#endif
 
 #ifndef __TEST
 
@@ -45,8 +46,6 @@ U32 gensrc;
 void writeSource();
 #endif
 
-void initWine();
-
 int boxedmain(int argc, const char **argv) {
     StartUpArgs startupArgs;                  
 
@@ -56,10 +55,13 @@ int boxedmain(int argc, const char **argv) {
 #ifdef LOG_OPS
     logFile = fopen("log.txt", "w");
 #endif
+#ifndef BOXEDWINE_DISABLE_UI
+    BoxedwineData::init(argc, argv);
+#endif
     if (!startupArgs.parseStartupArgs(argc, argv)) {
         return 1;
-    }
-    
+    }        
+
 #ifdef _DEBUG
     U32 cpuCount = Platform::getCpuCount();
     if (cpuCount==1) {
@@ -69,11 +71,7 @@ int boxedmain(int argc, const char **argv) {
     }
 #endif
 
-    if (!startupArgs.apply()) {
-        return 1;
-    }   
-    
-#ifdef SDL2
+    #ifdef SDL2
     U32 flags = SDL_INIT_EVENTS;
 #else
     U32 flags = SDL_INIT_TIMER;
@@ -88,43 +86,19 @@ int boxedmain(int argc, const char **argv) {
         klog("SDL_Init Error: %s", SDL_GetError());
         return 0;
     }
-    if (startupArgs.showStartingWindow) {
-        showSDLStartingWindow();
-    }
 
-#ifdef SDL2
-    if (startupArgs.sdlFullScreen && !startupArgs.resolutionSet) {
-        SDL_DisplayMode mode;
-        if (!SDL_GetCurrentDisplayMode(0, &mode)) {
-#ifdef __ANDROID__
-            startupArgs.screenCx = mode.w/2;
-            startupArgs.screenCy = mode.h/2;
-#else
-            startupArgs.screenCx = mode.w;
-            startupArgs.screenCy = mode.h;
-#endif
+    if (!startupArgs.shouldStartUI()) {
+        if (!startupArgs.apply()) {
+            return 1;
         }
-    }
-#endif
-
-    initSDL(startupArgs.screenCx, startupArgs.screenCy, startupArgs.screenBpp, startupArgs.sdlScaleX, startupArgs.sdlScaleY, startupArgs.sdlScaleQuality, startupArgs.soundEnabled, startupArgs.videoEnabled);
-    initWine();
-#if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
-    gl_init(startupArgs.glExt);    
-#endif   
-
-    klog("Launching %s", argv[0]);
-    KProcess* process = new KProcess(KSystem::nextThreadId++);    
-    if (process->startProcess(startupArgs.workingDir, startupArgs.args, startupArgs.envValues, startupArgs.userId, startupArgs.groupId, startupArgs.effectiveUserId, startupArgs.effectiveGroupId)) {
-        if (!doMainLoop()) {
-            return 0; // doMainLoop should have handled any cleanup, like SDL_Quit if necessary
+    } else {
+#ifndef BOXEDWINE_DISABLE_UI
+        while (uiShow(GlobalSettings::getExePath()+Fs::nativePathSeperator)) {
+            BoxedwineData::startApp();
         }
-    }
-#ifdef GENERATE_SOURCE
-    if (gensrc)
-        writeSource();
 #endif
-    dspShutdown();
+    }              
+
     klog("Boxedwine shutdown");
     SDL_Quit();
     return BOXEDWINE_RECORDER_QUIT();

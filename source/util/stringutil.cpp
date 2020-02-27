@@ -1,9 +1,17 @@
 #include "boxedwine.h"
 
 #include <locale>  
+#include <cctype>
 
-bool stringHasEnding(std::string const &fullString, std::string const &ending) {
+bool stringHasEnding(std::string const &fullString, std::string const &ending, bool ignoreCase) {
     if (fullString.length() >= ending.length()) {
+        if (ignoreCase) {            
+            std::string s = fullString;
+            std::string e = ending;
+            stringToLower(s);
+            stringToLower(e);
+            return (0 == s.compare (s.length() - e.length(), e.length(), e));
+        }
         return (0 == fullString.compare (fullString.length() - ending.length(), ending.length(), ending));
     } else {
         return false;
@@ -14,11 +22,11 @@ bool stringStartsWith(std::string const &fullString, std::string const &start) {
     return fullString.size() >= start.size() && equal(start.begin(), start.end(), fullString.begin());
 }
 
-void stringSplit(std::vector<std::string>& results, const std::string& s, char seperator)
+void stringSplit(std::vector<std::string>& results, const std::string& s, char seperator, int maxParts)
 {
     std::string::size_type prev_pos = 0, pos = 0;
 
-    while((pos = s.find(seperator, pos)) != std::string::npos)
+    while((pos = s.find(seperator, pos)) != std::string::npos && (maxParts==-1 || ((int)results.size())<maxParts-1))
     {
         std::string substring( s.substr(prev_pos, pos-prev_pos) );
 
@@ -80,4 +88,23 @@ bool stringCaseInSensativeEquals(const std::string & str1, const std::string &st
 	return ((str1.size() == str2.size()) && std::equal(str1.begin(), str1.end(), str2.begin(), [loc](const char & c1, const char & c2){
 							return (c1 == c2 || std::toupper(c1, loc) == std::toupper(c2, loc));
 								}));
+}
+
+static inline void ltrim(std::string &s) {
+    s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](int ch) {
+        return !std::isspace(ch);
+    }));
+}
+
+// trim from end (in place)
+static inline void rtrim(std::string &s) {
+    s.erase(std::find_if(s.rbegin(), s.rend(), [](int ch) {
+        return !std::isspace(ch);
+    }).base(), s.end());
+}
+
+// trim from both ends (in place)
+void stringTrim(std::string &s) {
+    ltrim(s);
+    rtrim(s);
 }

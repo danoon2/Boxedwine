@@ -112,4 +112,39 @@ bool FsZip::init(const std::string& zipPath, const std::string& mount) {
 #endif
     return true;
 }
+
+bool FsZip::readFileFromZip(const std::string& zipFile, const std::string& file, std::string& result) {
+    unzFile z = unzOpen(zipFile.c_str());
+    unz_global_info global_info;
+    if (!z) {
+        return false;
+    }
+    if (unzGetGlobalInfo( z, &global_info ) != UNZ_OK) {
+        unzClose( z );
+        return false;
+    }
+    for (U32 i = 0; i < global_info.number_entry; ++i) {
+        unz_file_info file_info;
+        char tmp[MAX_FILEPATH_LEN];
+
+        if ( unzGetCurrentFileInfo(z, &file_info, tmp, MAX_FILEPATH_LEN, NULL, 0, NULL, 0 ) != UNZ_OK ) {
+            unzClose( z );
+            return false;
+        }
+        
+        if (file == tmp) {
+            U32 read;
+
+            unzOpenCurrentFile(z);
+            read = unzReadCurrentFile(z, tmp, MAX_FILEPATH_LEN);
+            tmp[read]=0;              
+            unzCloseCurrentFile(z);
+            result = tmp;
+            return true;
+        }
+        unzGoToNextFile(z);
+    }
+    return false;
+}
+
 #endif
