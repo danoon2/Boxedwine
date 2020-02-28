@@ -9,7 +9,6 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <sys/stat.h>
-#include <errno.h>
 
 #include UNISTD
 #include MKDIR_INCLUDE

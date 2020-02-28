@@ -32,7 +32,7 @@ void uiDraw() {
     } else {
         drawListView("Apps", appListViewItems, ImGui::GetWindowContentRegionMax());
     }
-    runInstallDlgIfVisible();
+    BaseDlg::runDialogs();
     ImGui::End();
 }
 
@@ -64,7 +64,7 @@ void createButton() {
         currentView = VIEW_APPS;
     }));
     appButtons.push_back(AppButton(getTranslation(MAIN_BUTTON_INSTALL), [](){
-        showInstallDlg();
+        new InstallDlg();
     }));    
     appButtons.push_back(AppButton(getTranslation(MAIN_BUTTON_CONTAINERS), [](){
         BoxedwineData::updateCachedContainerSizes();

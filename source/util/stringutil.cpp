@@ -108,3 +108,12 @@ void stringTrim(std::string &s) {
     ltrim(s);
     rtrim(s);
 }
+
+int stringIndexInVector(const std::string& value, const std::vector<std::string> values, int returnIfNotFound) {
+    auto it = std::find(values.begin(), values.end(), value);
+    if (it == values.end()) {
+        return returnIfNotFound;
+    } else {
+        return (int)std::distance(values.begin(), it);
+    }
+}

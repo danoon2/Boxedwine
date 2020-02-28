@@ -24,7 +24,6 @@
 #include "kepoll.h"
 
 #include <stdarg.h>
-#include <errno.h>
 #include <random>
 
 U64 sysCallTime;

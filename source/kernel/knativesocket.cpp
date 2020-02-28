@@ -17,7 +17,6 @@ static int winsock_intialized;
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
-#include <errno.h>
 #include <sys/ioctl.h>
 #include <fcntl.h>
 void closesocket(int socket) { close(socket); }

@@ -9,6 +9,8 @@
 #include <functional>
 #include <set>
 
+#include <errno.h>
+
 #include "../source/util/boxedptr.h"
 
 #include "platform.h"

@@ -26,6 +26,7 @@ public:
     void getNewApps(std::vector<BoxedApp>& apps);
     void updateCachedSize();
 
+    void setWineVersion(const std::string& wineVersion) {this->wineVersion = wineVersion;}
 private:
     void loadApps();
     void getNewDesktopLinkApps(std::vector<BoxedApp>& apps);

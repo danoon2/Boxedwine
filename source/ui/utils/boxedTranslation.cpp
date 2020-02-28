@@ -29,9 +29,7 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
     case INSTALLDLG_TYPE_DIR_HELP:
         return "The contents of this directory will be copied from your system into a container";
     case INSTALLDLG_TYPE_MOUNT_HELP:
-        return "This folder on your system will be used by Boxedwine without copying it to a container.";
-    case INSTALLDLG_WINE_VERSION_HELP:
-        return "You should just use the default Wine version, which is the most recent version, unless you know your application needs another version.";
+        return "This folder on your system will be used by Boxedwine without copying it to a container.";    
     case INSTALLDLG_RUN_WINE_CONFIG_HELP:
         return "Wine Config can be used to change the Windows version that is currently being emulated by Wine.  For example if your installer or application fails to run because it says it needs Windows 95, the you can use Wine Config to fix this.";
     case INSTALLDLG_INSTALL_TYPE_HELP:
@@ -41,9 +39,7 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
     case INSTALLDLG_CONTAINER_LABEL:
         return "Container:";
     case INSTALLDLG_CONTAINER_NAME_LABEL:
-        return "Name:";
-    case INSTALLDLG_CONTAINER_WINE_VERSION_LABEL:
-        return "Wine Version:";
+        return "Name:";    
     case INSTALLDLG_CONTAINER_RUN_WINE_CONFIG_LABEL:
         return "Run Wine Config:";
     case INSTALLDLG_SETUP_FILE_LOCATION_LABEL:
@@ -66,6 +62,14 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "Failed to create a direcotry for the new container:\n\nerror msg: {0}";
     case INSTALLDLG_ERROR_CONTAINER_ALREADY_EXISTS:
         return "You chose to create a new container, but a folder with the name you entered already exists:\n\n{0}";
+    case CONTAINER_OPTIONS_DLG_TITLE:
+        return "Container Options";
+    case CONTAINER_OPTIONS_DLG_WINE_VERSION_LABEL:
+        return "Wine Version:";
+    case COMMON_WINE_VERSION_LABEL:
+        return "Wine Version:";
+    case COMMON_WINE_VERSION_HELP:
+        return "You should just use the default Wine version, which is the most recent version, unless you know your application needs another version.";
     case GENERIC_BROWSE_BUTTON:
         return "Browse";
     case GENERIC_DLG_OK:

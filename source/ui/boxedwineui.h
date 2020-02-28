@@ -13,12 +13,15 @@
 #include "data/boxedApp.h"
 #include "data/boxedContainer.h"
 
+#include "controls/baseDlg.h"
 #include "controls/appbar.h"
 #include "controls/installDlg.h"
 #include "controls/listViewItem.h"
 #include "controls/listView.h"
 #include "controls/containersView.h"
+#include "controls/containerOptionsDlg.h"
 
 #define SAFE_IMGUI_TEXT(x) ImGui::Text("%s", x)
 #define SAFE_IMGUI_TEXT_DISABLED(x) ImGui::TextDisabled("%s", x)
+
 #endif
