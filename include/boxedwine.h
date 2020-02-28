@@ -8,6 +8,7 @@
 #include <queue>
 #include <functional>
 #include <set>
+#include <list>
 
 #include <errno.h>
 
