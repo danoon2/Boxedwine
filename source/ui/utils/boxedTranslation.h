@@ -1,10 +1,6 @@
 #ifndef __BOXED_TRANSLATION_H__
 #define __BOXED_TRANSLATION_H__
 
-#include <string>
-
-#define TS(x) translateString(x)
-
 enum {
 INSTALLDLG_CONTAINER_HELP=1,
 INSTALLDLG_CONTAINER_NAME_HELP,
@@ -43,6 +39,7 @@ MAIN_BUTTON_APPS,
 };
 
 const char* getTranslation(int msg, bool useDefaultIfMissing=true);
-const char* getTranslationWithFormat(int msg, bool useDefaultIfMissing, ...);
+std::string getTranslationWithFormat(int msg, bool useDefaultIfMissing, const std::vector<std::string>& replacements);
+std::string getTranslationWithFormat(int msg, bool useDefaultIfMissing, const std::string& string1);
 
 #endif

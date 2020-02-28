@@ -257,6 +257,8 @@ void runInstallDlgIfVisible() {
 
 void onInstallOk(bool buttonClicked) {
     static const char* errorMsg = NULL;
+    static std::string errorMsgString;
+
     if (buttonClicked) {
         if (installTypeComboboxData.currentSelectedIndex == INSTALL_TYPE_SETUP) {
             if (strlen(locationBuffer)==0) {
@@ -283,10 +285,12 @@ void onInstallOk(bool buttonClicked) {
                 std::string containerFilePath = GlobalSettings::getContainerFolder() + Fs::nativePathSeperator + containerName;
                 if (Fs::doesNativePathExist(containerFilePath)) {
                     if (!Fs::isNativeDirectoryEmpty(containerFilePath)) {
-                        errorMsg = getTranslationWithFormat(INSTALLDLG_ERROR_CONTAINER_ALREADY_EXISTS, true, containerFilePath.c_str());
+                        errorMsgString = getTranslationWithFormat(INSTALLDLG_ERROR_CONTAINER_ALREADY_EXISTS, true,  containerFilePath.c_str());
+                        errorMsg = errorMsgString.c_str();
                     }            
                 } else if (!Fs::makeNativeDirs(containerFilePath)) {
-                    errorMsg = getTranslationWithFormat(INSTALLDLG_ERROR_FAILED_TO_CREATE_CONTAINER_DIR, true, strerror(errno));
+                    errorMsgString = getTranslationWithFormat(INSTALLDLG_ERROR_FAILED_TO_CREATE_CONTAINER_DIR, true, strerror(errno));
+                    errorMsg = errorMsgString.c_str();
                 }   
             }
         }

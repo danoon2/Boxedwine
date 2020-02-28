@@ -5,14 +5,16 @@ const std::string& translateString(const std::string& s) {
     return s;
 }
 
-const char* getTranslationWithFormat(int msg, bool useDefaultIfMissing, ...) {
-    const char* tmpMsg = getTranslation(msg, useDefaultIfMissing);
-    static char result[1024];
+std::string getTranslationWithFormat(int msg, bool useDefaultIfMissing, const std::string& string1) {
+    return getTranslationWithFormat(msg, useDefaultIfMissing, std::vector<std::string>(1, string1));
+}
 
-    va_list argptr;
-    va_start(argptr, useDefaultIfMissing);
-    vsnprintf(result, sizeof(result), tmpMsg, argptr);
-    va_end(argptr);
+std::string getTranslationWithFormat(int msg, bool useDefaultIfMissing, const std::vector<std::string>& replacements) {
+    std::string result = getTranslation(msg, useDefaultIfMissing);
+    for (int i=0;i<(int)replacements.size();i++) {
+        std::string findText = "{"+std::to_string(i)+"}";
+        stringReplaceAll(result, findText, replacements[i]);
+    }
     return result;
 }
 
@@ -61,9 +63,9 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
     case INSTALLDLG_ERROR_CONTAINER_NAME_MISSING:
         return "You must enter a name for your new container.";
     case INSTALLDLG_ERROR_FAILED_TO_CREATE_CONTAINER_DIR:
-        return "Failed to create a direcotry for the new container:\n\nerror msg: %s";
+        return "Failed to create a direcotry for the new container:\n\nerror msg: {0}";
     case INSTALLDLG_ERROR_CONTAINER_ALREADY_EXISTS:
-        return "You chose to create a new container, but a folder with the name you entered already exists:\n\n%s";
+        return "You chose to create a new container, but a folder with the name you entered already exists:\n\n{0}";
     case GENERIC_BROWSE_BUTTON:
         return "Browse";
     case GENERIC_DLG_OK:

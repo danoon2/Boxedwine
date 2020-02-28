@@ -14,7 +14,7 @@ bool showMessageBox(bool open, const char* title, const char* msg) {
     }
     if (ImGui::BeginPopupModal(title, NULL, ImGuiWindowFlags_AlwaysAutoResize))
     {
-        ImGui::Text(msg);
+        SAFE_IMGUI_TEXT(msg);
         ImGui::Separator();
 
         if (ImGui::Button("OK", ImVec2(120, 0))) { 
