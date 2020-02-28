@@ -539,6 +539,7 @@
     <ClInclude Include="..\..\..\..\source\test\testSSE2.h" />
     <ClInclude Include="..\..\..\..\source\ui\boxedwineui.h" />
     <ClInclude Include="..\..\..\..\source\ui\controls\appbar.h" />
+    <ClInclude Include="..\..\..\..\source\ui\controls\containersView.h" />
     <ClInclude Include="..\..\..\..\source\ui\controls\installDlg.h" />
     <ClInclude Include="..\..\..\..\source\ui\controls\listView.h" />
     <ClInclude Include="..\..\..\..\source\ui\controls\listViewItem.h" />
@@ -772,6 +773,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\controls\containersView.cpp" />
     <ClCompile Include="..\..\..\..\source\ui\controls\installDlg.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|Win32'">Use</PrecompiledHeader>

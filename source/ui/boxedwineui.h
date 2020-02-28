@@ -17,6 +17,7 @@
 #include "controls/installDlg.h"
 #include "controls/listViewItem.h"
 #include "controls/listView.h"
+#include "controls/containersView.h"
 
 #define SAFE_IMGUI_TEXT(x) ImGui::Text("%s", x)
 #define SAFE_IMGUI_TEXT_DISABLED(x) ImGui::TextDisabled("%s", x)

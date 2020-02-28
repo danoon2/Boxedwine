@@ -7,14 +7,16 @@
 #include "examples/imgui_impl_sdl.h"
 #include "examples/imgui_impl_opengl3.h"
 
-
-bool readyToLaunch = false;
-
 static std::vector<ListViewItem> appListViewItems;
 static std::vector<AppButton> appButtons;
 static ImFont* appBarFont;
 static ImFont* defaultFont;
 static bool extendedAppBarFont;
+static int currentView;
+
+// should correspond to index in appButtons
+#define VIEW_APPS 0
+#define VIEW_CONTAINERS 2
 
 void uiDraw() {    
     ImGuiStyle& style = ImGui::GetStyle();
@@ -23,9 +25,13 @@ void uiDraw() {
     ImGui::SetNextWindowPos(ImVec2(0, 0));
     ImGui::SetNextWindowSize(ImVec2(io.DisplaySize.x, io.DisplaySize.x));
     ImGui::Begin("mainWindow", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar);
-    drawAppBar(appButtons, 0, appBarFont, extendedAppBarFont);
+    drawAppBar(appButtons, currentView, appBarFont, extendedAppBarFont);
     ImGui::Separator();
-    drawListView("Apps", appListViewItems, ImGui::GetWindowContentRegionMax());
+    if (currentView==VIEW_CONTAINERS) {
+        drawContainersView(ImGui::GetWindowContentRegionMax());
+    } else {
+        drawListView("Apps", appListViewItems, ImGui::GetWindowContentRegionMax());
+    }
     runInstallDlgIfVisible();
     ImGui::End();
 }
@@ -53,12 +59,16 @@ void loadFonts(const std::string& basePath) {
 }
 
 void createButton() {
+    appButtons.clear();
     appButtons.push_back(AppButton(getTranslation(MAIN_BUTTON_APPS), [](){
+        currentView = VIEW_APPS;
     }));
     appButtons.push_back(AppButton(getTranslation(MAIN_BUTTON_INSTALL), [](){
         showInstallDlg();
     }));    
     appButtons.push_back(AppButton(getTranslation(MAIN_BUTTON_CONTAINERS), [](){
+        BoxedwineData::updateCachedContainerSizes();
+        currentView = VIEW_CONTAINERS;
     }));
     appButtons.push_back(AppButton(getTranslation(MAIN_BUTTON_SETTINGS), [](){
     }));
@@ -166,8 +176,7 @@ bool uiShow(const std::string& basePath) {
 
     // Main loop
     bool done = false;
-    readyToLaunch = false;
-    while (!done && !readyToLaunch)
+    while (!done && !GlobalSettings::startUpArgs.readyToLaunch)
     {
         // Poll and handle events (inputs, window resize, etc.)
         // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
@@ -207,5 +216,5 @@ bool uiShow(const std::string& basePath) {
 
     SDL_GL_DeleteContext(gl_context);
     SDL_DestroyWindow(window);
-    return readyToLaunch;
+    return GlobalSettings::startUpArgs.readyToLaunch;
 }

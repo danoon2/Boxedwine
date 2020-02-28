@@ -147,3 +147,7 @@ void BoxedContainer::getNewDesktopLinkApps(std::vector<BoxedApp>& apps) {
         return 0;
     });
 }
+
+void BoxedContainer::updateCachedSize() {
+    this->cachedSize = getReadableSize(Fs::getNativeDirectorySize(this->getDir(), true));
+}

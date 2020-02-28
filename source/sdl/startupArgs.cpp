@@ -192,62 +192,64 @@ bool StartUpArgs::apply() {
         }
     }
 
-    if (this->args.size()==0) {
+    if (this->args.size()==0 && !this->runWineConfigFirst) {
         args.push_back("/bin/wine");
         args.push_back("explorer");
         args.push_back("/desktop=shell");
     }
-    BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath(workingDir, this->args[0], true);        
+    if (this->args.size()) {
+        BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath(workingDir, this->args[0], true);        
 
-    bool validLinuxCommand = false;
-    if (node) {
-        std::string interpreter;
-        std::string loader;
-        std::vector<std::string> interpreterArgs;
-        std::vector<std::string> args;
+        bool validLinuxCommand = false;
+        if (node) {
+            std::string interpreter;
+            std::string loader;
+            std::vector<std::string> interpreterArgs;
+            std::vector<std::string> args;
 
-        FsOpenNode* openNode=ElfLoader::inspectNode(workingDir, node, loader, interpreter, interpreterArgs);
-        if (openNode) {
-            openNode->close();
-            validLinuxCommand = true;
+            FsOpenNode* openNode=ElfLoader::inspectNode(workingDir, node, loader, interpreter, interpreterArgs);
+            if (openNode) {
+                openNode->close();
+                validLinuxCommand = true;
+            }
         }
-    }
-    if (!validLinuxCommand) {
-        if (Fs::doesNativePathExist(args[0])) {
-            std::string dir = args[0];
-            if (args[0][dir.length()-1]=='/' || args[0][dir.length()-1]=='\\') {
-                dir = dir.substr(0, dir.length()-1);
-            }
-            bool isDir = Fs::isNativePathDirectory(dir);
-            BoxedPtr<FsNode> mntDir = Fs::getNodeFromLocalPath("", "/mnt", true);
+        if (!validLinuxCommand) {
+            if (Fs::doesNativePathExist(args[0])) {
+                std::string dir = args[0];
+                if (args[0][dir.length()-1]=='/' || args[0][dir.length()-1]=='\\') {
+                    dir = dir.substr(0, dir.length()-1);
+                }
+                bool isDir = Fs::isNativePathDirectory(dir);
+                BoxedPtr<FsNode> mntDir = Fs::getNodeFromLocalPath("", "/mnt", true);
 
-            if (!isDir) {
-                dir = Fs::getNativeParentPath(dir);
-            }
+                if (!isDir) {
+                    dir = Fs::getNativeParentPath(dir);
+                }
                 
-            BoxedPtr<FsNode> drive_d = Fs::addRootDirectoryNode("/mnt/drive_t", dir, mntDir);
-            BoxedPtr<FsNode> parent = Fs::getNodeFromLocalPath("", "/home/username/.wine/dosdevices", true);
-            if (parent) {
-                Fs::addFileNode("/home/username/.wine/dosdevices/t:", "/mnt/drive_t", "", false, parent);
-            }
+                BoxedPtr<FsNode> drive_d = Fs::addRootDirectoryNode("/mnt/drive_t", dir, mntDir);
+                BoxedPtr<FsNode> parent = Fs::getNodeFromLocalPath("", "/home/username/.wine/dosdevices", true);
+                if (parent) {
+                    Fs::addFileNode("/home/username/.wine/dosdevices/t:", "/mnt/drive_t", "", false, parent);
+                }
 
-            if (!workingDirSet) {
-                workingDir = "/mnt/drive_t";
-            }
+                if (!workingDirSet) {
+                    workingDir = "/mnt/drive_t";
+                }
             
-            if (isDir) {
-                args.clear();
-                args.push_back("/bin/wine");
-                args.push_back("explorer");
-                args.push_back("t:\\");
-            } else {                
-                args.erase(args.begin());
-                args.insert(args.begin(), "t:\\"+Fs::getFileNameFromNativePath(args[0]));
-                args.insert(args.begin(), "/bin/wine");
+                if (isDir) {
+                    args.clear();
+                    args.push_back("/bin/wine");
+                    args.push_back("explorer");
+                    args.push_back("t:\\");
+                } else {                
+                    std::string fileName = Fs::getFileNameFromNativePath(args[0]);
+                    args.erase(args.begin());
+                    args.insert(args.begin(), "t:\\"+fileName);
+                    args.insert(args.begin(), "/bin/wine");
+                }
             }
         }
     }
-
 #ifdef SDL2
     if (this->sdlFullScreen && !this->resolutionSet) {
         SDL_DisplayMode mode;
@@ -269,15 +271,34 @@ bool StartUpArgs::apply() {
     gl_init(this->glExt);    
 #endif   
 
-    printf("Launching ");
-    for (U32 i=0;i<this->args.size();i++) {
-        printf("\"%s\" ", this->args[i].c_str());
+    if (this->runWineConfigFirst) {
+        std::vector<std::string> winecfgArgs;
+        winecfgArgs.push_back("/bin/wine");
+        winecfgArgs.push_back("winecfg");
+
+        printf("Launching ");
+        for (U32 i=0;i<winecfgArgs.size();i++) {
+            printf("\"%s\" ", winecfgArgs[i].c_str());
+        }
+        printf("\n");
+        KProcess* process = new KProcess(KSystem::nextThreadId++);    
+        if (process->startProcess("/home/username", winecfgArgs, this->envValues, this->userId, this->groupId, this->effectiveUserId, this->effectiveGroupId)) {
+            if (!doMainLoop()) {
+                return 0; // doMainLoop should have handled any cleanup, like SDL_Quit if necessary
+            }
+        }
     }
-    printf("\n");
-    KProcess* process = new KProcess(KSystem::nextThreadId++);    
-    if (process->startProcess(this->workingDir, this->args, this->envValues, this->userId, this->groupId, this->effectiveUserId, this->effectiveGroupId)) {
-        if (!doMainLoop()) {
-            return 0; // doMainLoop should have handled any cleanup, like SDL_Quit if necessary
+    if (this->args.size()) {
+        printf("Launching ");
+        for (U32 i=0;i<this->args.size();i++) {
+            printf("\"%s\" ", this->args[i].c_str());
+        }
+        printf("\n");
+        KProcess* process = new KProcess(KSystem::nextThreadId++);    
+        if (process->startProcess(this->workingDir, this->args, this->envValues, this->userId, this->groupId, this->effectiveUserId, this->effectiveGroupId)) {
+            if (!doMainLoop()) {
+                return 0; // doMainLoop should have handled any cleanup, like SDL_Quit if necessary
+            }
         }
     }
 #ifdef GENERATE_SOURCE

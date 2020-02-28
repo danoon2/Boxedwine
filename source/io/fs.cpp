@@ -215,6 +215,34 @@ bool Fs::doesNativePathExist(const std::string& path) {
     return false;
 }
 
+bool Fs::isNativeDirectoryEmpty(const std::string& path) {
+    bool result = true;
+    iterateAllNativeFiles(path, false, true, [&result](const std::string& fileName, bool isDir)->U32 {
+        result = false;
+        return 1; // don't need to continue;
+    });
+    return false;
+}
+
+U64 Fs::getNativeFileSize(const std::string& path) {
+    PLATFORM_STAT_STRUCT buf;
+    if (PLATFORM_STAT(path.c_str(), &buf)==0) {
+        return buf.st_size;
+    }
+    return 0;
+}
+
+U64 Fs::getNativeDirectorySize(const std::string& path, bool recursive) {
+    U64 result = 0;
+    iterateAllNativeFiles(path, recursive, true, [&result, path](const std::string& fileName, bool isDir)->U32 {
+        if (!isDir) {
+            result += Fs::getNativeFileSize(fileName);
+        }
+        return 0;
+    });
+    return result;
+}
+
 bool Fs::isNativePathDirectory(const std::string& path) {
     PLATFORM_STAT_STRUCT buf;
 

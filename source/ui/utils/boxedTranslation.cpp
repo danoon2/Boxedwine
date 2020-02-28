@@ -1,8 +1,19 @@
 #include "boxedwine.h"
 #include "boxedTranslation.h"
-
+#include <stdarg.h>
 const std::string& translateString(const std::string& s) {
     return s;
+}
+
+const char* getTranslationWithFormat(int msg, bool useDefaultIfMissing, ...) {
+    const char* tmpMsg = getTranslation(msg, useDefaultIfMissing);
+    static char result[1024];
+
+    va_list argptr;
+    va_start(argptr, useDefaultIfMissing);
+    vsnprintf(result, sizeof(result), tmpMsg, argptr);
+    va_end(argptr);
+    return result;
 }
 
 const char* getTranslation(int msg, bool useDefaultIfMissing) {
@@ -39,12 +50,28 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "Directory:";
     case INSTALLDLG_TITLE:
         return "Install Application";
+    case INSTALLDLG_ERROR_SETUP_FILE_MISSING:
+        return "Setup file location is empty and is required.";
+    case INSTALLDLG_ERROR_SETUP_FILE_NOT_FOUND:
+        return "The setup file was entered, but it does not exist.";
+    case INSTALLDLG_ERROR_DIR_MISSING:
+        return "Directory location is empty and is required.";
+    case INSTALLDLG_ERROR_DIR_NOT_FOUND:
+        return "The directory was entered, but it does not exist.";
+    case INSTALLDLG_ERROR_CONTAINER_NAME_MISSING:
+        return "You must enter a name for your new container.";
+    case INSTALLDLG_ERROR_FAILED_TO_CREATE_CONTAINER_DIR:
+        return "Failed to create a direcotry for the new container:\n\nerror msg: %s";
+    case INSTALLDLG_ERROR_CONTAINER_ALREADY_EXISTS:
+        return "You chose to create a new container, but a folder with the name you entered already exists:\n\n%s";
     case GENERIC_BROWSE_BUTTON:
         return "Browse";
     case GENERIC_DLG_OK:
         return "Ok";
     case GENERIC_DLG_CANCEL:
         return "Cancel";
+    case GENERIC_DLG_ERROR_TITLE:
+        return "Error";
     case MAIN_BUTTON_INSTALL:
         return "Install";
     case MAIN_BUTTON_CONTAINERS:

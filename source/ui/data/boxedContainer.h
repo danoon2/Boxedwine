@@ -21,7 +21,10 @@ public:
     const std::string& getName() {return this->name;}
     const std::string& getDir() {return this->dirPath;}
     const std::string& getWineVersion() {return this->wineVersion;}
+    const std::string& getSize() {return this->cachedSize;}
+
     void getNewApps(std::vector<BoxedApp>& apps);
+    void updateCachedSize();
 
 private:
     void loadApps();
@@ -31,6 +34,7 @@ private:
     std::vector<BoxedApp*> apps;
     std::string name;
     std::string wineVersion;
+    std::string cachedSize;
 
     friend class GlobalSettings;
     std::string dirPath;

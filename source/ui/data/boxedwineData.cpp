@@ -32,3 +32,9 @@ void BoxedwineData::loadContainers() {
 void BoxedwineData::loadUI() {
     loadContainers();
 }
+
+void BoxedwineData::updateCachedContainerSizes() {
+    for (auto& item : BoxedwineData::getContainers()) {
+        item->updateCachedSize();
+    } 
+}

@@ -44,30 +44,32 @@ void ComboboxData::dataChanged() {
         delete[] dataForCombobox;
     }
     for (auto& s : data) {
-        len+=(s.length()+1);
+        len+=((int)s.length()+1);
     }
     dataForCombobox = new char[len];
     len = 0;
     for (auto& s : data) {
         strcpy(dataForCombobox+len, s.c_str());
-        len+=s.length()+1;
+        len+=(int)s.length()+1;
     }
     dataForCombobox[len]=0;
 }
 
-void runInstallDlgIfVisible() {
-    static bool needToIntializeData = true;
-    static float extraVerticalSpacing = 5;
-    static float helpWidth = 28;
-    
-    static char locationBuffer[1024];
-    static int lastInstallType;
-    static char containerName[256];        
-    static bool runWineConfig;
-    static ComboboxData installTypeComboboxData;
-    static ComboboxData containerComboboxData;
-    static ComboboxData wineVersionComboboxData;
+void onInstallOk(bool show);
 
+static bool needToIntializeData = true;
+static float extraVerticalSpacing = 5;
+static float helpWidth = 28;
+    
+static char locationBuffer[1024];
+static int lastInstallType;
+static char containerName[256];        
+static bool runWineConfig;
+static ComboboxData installTypeComboboxData;
+static ComboboxData containerComboboxData;
+static ComboboxData wineVersionComboboxData;
+
+void runInstallDlgIfVisible() {    
     if (ImGui::BeginPopupModal(getTranslation(INSTALLDLG_TITLE), NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse/* | ImGuiWindowFlags_NoMove*/))
     {
         ImGui::SetWindowSize(ImVec2(INSTALLDLG_WIDTH, INSTALLDLG_HEIGHT));
@@ -242,9 +244,7 @@ void runInstallDlgIfVisible() {
         float buttonArea = ImGui::CalcTextSize(getTranslation(GENERIC_DLG_OK)).x+ImGui::CalcTextSize(getTranslation(GENERIC_DLG_CANCEL)).x;
         ImGui::SetCursorPos(ImVec2(INSTALLDLG_WIDTH-buttonArea-35,INSTALLDLG_HEIGHT-32));
 
-        if (ImGui::Button(getTranslation(GENERIC_DLG_OK))) {
-            ImGui::CloseCurrentPopup();
-        }
+        onInstallOk(ImGui::Button(getTranslation(GENERIC_DLG_OK)));
         ImGui::SameLine();
         if (ImGui::Button(getTranslation(GENERIC_DLG_CANCEL))) {
             ImGui::CloseCurrentPopup();
@@ -252,5 +252,72 @@ void runInstallDlgIfVisible() {
         ImGui::EndPopup();
     } else {
         needToIntializeData = true;
+    }
+}
+
+void onInstallOk(bool buttonClicked) {
+    static const char* errorMsg = NULL;
+    if (buttonClicked) {
+        if (installTypeComboboxData.currentSelectedIndex == INSTALL_TYPE_SETUP) {
+            if (strlen(locationBuffer)==0) {
+                errorMsg = getTranslation(INSTALLDLG_ERROR_SETUP_FILE_MISSING);
+            } else if (!Fs::doesNativePathExist(locationBuffer)) {
+                errorMsg = getTranslation(INSTALLDLG_ERROR_SETUP_FILE_NOT_FOUND);
+            }            
+        } else if (installTypeComboboxData.currentSelectedIndex == INSTALL_TYPE_DIR || installTypeComboboxData.currentSelectedIndex == INSTALL_TYPE_MOUNT) {
+            if (strlen(locationBuffer)==0) {
+                errorMsg = getTranslation(INSTALLDLG_ERROR_DIR_MISSING);
+            } else if (!Fs::doesNativePathExist(locationBuffer)) {
+                errorMsg = getTranslation(INSTALLDLG_ERROR_DIR_NOT_FOUND);
+            }            
+        }
+
+        BoxedContainer* container = NULL;
+
+        if (containerComboboxData.currentSelectedIndex!=0) {
+            container = BoxedwineData::getContainers()[containerComboboxData.currentSelectedIndex-1];
+        } else {            
+            if (containerName[0]==0) {
+                errorMsg = getTranslation(INSTALLDLG_ERROR_CONTAINER_NAME_MISSING);
+            } else {
+                std::string containerFilePath = GlobalSettings::getContainerFolder() + Fs::nativePathSeperator + containerName;
+                if (Fs::doesNativePathExist(containerFilePath)) {
+                    if (!Fs::isNativeDirectoryEmpty(containerFilePath)) {
+                        errorMsg = getTranslationWithFormat(INSTALLDLG_ERROR_CONTAINER_ALREADY_EXISTS, true, containerFilePath.c_str());
+                    }            
+                } else if (!Fs::makeNativeDirs(containerFilePath)) {
+                    errorMsg = getTranslationWithFormat(INSTALLDLG_ERROR_FAILED_TO_CREATE_CONTAINER_DIR, true, strerror(errno));
+                }   
+            }
+        }
+        if (!errorMsg) {            
+            GlobalSettings::startUpArgs = StartUpArgs(); // reset parameters
+            if (!container) {
+                std::string containerFilePath = GlobalSettings::getContainerFolder() + Fs::nativePathSeperator + containerName;
+                container = BoxedContainer::createContainer(containerFilePath, containerName, GlobalSettings::getWineVersions()[wineVersionComboboxData.currentSelectedIndex].name);
+            }
+            container->launch(); // fill out startUpArgs specific to a container
+            BoxedwineData::addContainer(container);
+            if (runWineConfig) {
+                GlobalSettings::startUpArgs.setRunWineConfigFirst(true);                        
+                GlobalSettings::startUpArgs.readyToLaunch = true;
+            }   
+
+            if (installTypeComboboxData.currentSelectedIndex == INSTALL_TYPE_SETUP) {
+                GlobalSettings::startUpArgs.setIsInstallingApp(true);
+                GlobalSettings::startUpArgs.addArg(locationBuffer);
+                GlobalSettings::startUpArgs.readyToLaunch = true;
+            }
+        }
+
+    }
+
+    if (errorMsg) {        
+        if (!showMessageBox(buttonClicked, getTranslation(GENERIC_DLG_ERROR_TITLE), errorMsg)) {
+            errorMsg = NULL;
+        }
+    }
+    if (buttonClicked && !errorMsg) {          
+        ImGui::CloseCurrentPopup();
     }
 }

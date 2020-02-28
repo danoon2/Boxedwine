@@ -95,6 +95,7 @@ int boxedmain(int argc, const char **argv) {
 #ifndef BOXEDWINE_DISABLE_UI
         while (uiShow(GlobalSettings::getExePath()+Fs::nativePathSeperator)) {
             BoxedwineData::startApp();
+            GlobalSettings::startUpArgs.readyToLaunch = false;
         }
 #endif
     }              

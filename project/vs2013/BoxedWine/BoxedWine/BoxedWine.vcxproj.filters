@@ -430,6 +430,9 @@
     <ClCompile Include="..\..\..\..\lib\glew\src\glew.cpp">
       <Filter>source\ui\glew</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\controls\containersView.cpp">
+      <Filter>source\ui\controls</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -995,6 +998,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\lib\imgui\addon\imguitinyfiledialogs.h">
       <Filter>source\ui\imgui\addon</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\ui\controls\containersView.h">
+      <Filter>source\ui\controls</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
