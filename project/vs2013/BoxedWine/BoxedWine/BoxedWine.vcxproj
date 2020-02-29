@@ -546,6 +546,7 @@
     <ClInclude Include="..\..\..\..\source\ui\controls\listView.h" />
     <ClInclude Include="..\..\..\..\source\ui\controls\listViewItem.h" />
     <ClInclude Include="..\..\..\..\source\ui\controls\menubar.h" />
+    <ClInclude Include="..\..\..\..\source\ui\controls\uiSettings.h" />
     <ClInclude Include="..\..\..\..\source\ui\data\boxedApp.h" />
     <ClInclude Include="..\..\..\..\source\ui\data\boxedContainer.h" />
     <ClInclude Include="..\..\..\..\source\ui\data\boxedwineData.h" />
@@ -818,6 +819,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\controls\uiSettings.cpp" />
     <ClCompile Include="..\..\..\..\source\ui\data\boxedApp.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|x64'">Use</PrecompiledHeader>

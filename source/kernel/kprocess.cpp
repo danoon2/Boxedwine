@@ -562,12 +562,12 @@ KThread* KProcess::startProcess(const std::string& currentDirectory, const std::
         this->commandLine+=argValues[i];
     }
 
+    KThread::setCurrentThread(thread);
     this->initStdio();
     openNode=ElfLoader::inspectNode(currentDirectory, node, loader, interpreter, interpreterArgs);
     if (!openNode) {
         return 0;
-    }
-    KThread::setCurrentThread(thread);
+    }    
     if (ElfLoader::loadProgram(this, openNode, &thread->cpu->eip.u32)) {
         // :TODO: why will it crash in strchr libc if I remove this
         //syscall_mmap64(thread, ADDRESS_PROCESS_LOADER << PAGE_SHIFT, 4096, K_PROT_READ | K_PROT_WRITE, K_MAP_ANONYMOUS|K_MAP_PRIVATE, -1, 0);

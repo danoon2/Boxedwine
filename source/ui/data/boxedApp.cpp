@@ -95,12 +95,17 @@ void BoxedApp::launch() {
 }
 
 std::string BoxedApp::getIcon() {
-    if (!this->icon.length()) {
-        // wrestool -x --output=. -t14 ~/.wine/drive_c/CATZ.FIR/CATZ.EXE
-        // icotool -x CATZ.EXE_14_1.ico
+    if (!this->icon.length() || (this->icon != "Empty" && !Fs::doesNativePathExist(this->icon))) {
+        this->icon = createIcon(this->container, this->path+"/"+this->cmd, UiSettings::ICON_SIZE);
+        if (this->icon.length()==0) {
+            this->icon = "";
+        }
+        this->saveApp();
+    }
+    if (this->icon == "Empty") {
         return "";
     }
-    return GlobalSettings::getAppFolder(this->container) + Fs::nativePathSeperator + this->icon;
+    return this->icon;
 }
 
 void BoxedApp::remove() {

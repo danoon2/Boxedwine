@@ -13,6 +13,7 @@
 #include "data/boxedApp.h"
 #include "data/boxedContainer.h"
 
+#include "controls/uiSettings.h"
 #include "controls/baseDlg.h"
 #include "controls/appbar.h"
 #include "controls/installDlg.h"

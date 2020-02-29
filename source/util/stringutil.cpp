@@ -18,8 +18,19 @@ bool stringHasEnding(std::string const &fullString, std::string const &ending, b
     }
 }
 
-bool stringStartsWith(std::string const &fullString, std::string const &start) {
-    return fullString.size() >= start.size() && equal(start.begin(), start.end(), fullString.begin());
+bool stringStartsWith(std::string const &fullString, std::string const &start, bool ignoreCase) {
+    if (fullString.length() >= start.length()) {
+        if (ignoreCase) {            
+            std::string f = fullString;
+            std::string s = start;
+            stringToLower(f);
+            stringToLower(s);
+            return (0 == f.compare (0, s.length(), s));
+        }
+        return equal(start.begin(), start.end(), fullString.begin());
+    } else {
+        return false;
+    }
 }
 
 void stringSplit(std::vector<std::string>& results, const std::string& s, char seperator, int maxParts)

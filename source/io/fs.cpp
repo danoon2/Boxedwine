@@ -400,3 +400,15 @@ U32 Fs::iterateAllNativeFiles(const std::string& path, bool recursive, bool incl
     }
     return 0;
 }
+
+std::vector<std::string> Fs::getFilesInNativeDirectoryWhereFileMatches(const std::string& dirPath, const std::string& startsWith, const std::string& endsWith, bool ignoreCase) {
+    std::vector<std::string> results;
+    Fs::iterateAllNativeFiles(dirPath, false, false, [&results, startsWith, endsWith, ignoreCase](const std::string& filePath, bool isDir) {
+        std::string name = Fs::getFileNameFromNativePath(filePath);
+        if ((startsWith.length()==0 || stringStartsWith(name, startsWith, ignoreCase)) && (endsWith.length()==0 || stringHasEnding(name, endsWith, ignoreCase))) {
+            results.push_back(filePath);
+        }
+        return 0;
+    });
+    return results;
+}

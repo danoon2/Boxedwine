@@ -27,6 +27,7 @@ public:
     void setScale(int scale) {this->sdlScaleX = scale; this->sdlScaleY = scale;}
     void setScaleQuality(const std::string& scaleQuality) {this->sdlScaleQuality = scaleQuality;}
     void addArg(const std::string& arg) {this->args.push_back(arg);}
+    void addArgs(const std::vector<std::string>& args) {this->args.insert(this->args.end(), args.begin(), args.end());}
     void addZip(const std::string& zip) {this->zips.push_back(zip);}
     void setRoot(const std::string& root) {this->root = root;}
     void setRunWineConfigFirst(bool value) {this->runWineConfigFirst = value;}

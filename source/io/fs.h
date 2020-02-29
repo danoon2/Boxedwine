@@ -74,6 +74,7 @@ public:
     static bool isNativePathDirectory(const std::string& path);
     static std::string getFullPath(const std::string& currentDirectory, const std::string& path);
     static std::string getNativePathFromParentAndLocalFilename(const BoxedPtr<FsNode>& parent, const std::string fileName);    
+    static std::vector<std::string> getFilesInNativeDirectoryWhereFileMatches(const std::string& dirPath, const std::string& startsWith, const std::string& endsWith, bool ignoreCase);
 
     static std::string nativePathSeperator;
 

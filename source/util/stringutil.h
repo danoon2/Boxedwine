@@ -2,7 +2,7 @@
 #define __STRINGUTIL_H__
 
 bool stringHasEnding(std::string const &fullString, std::string const &ending, bool ignoreCase=false);
-bool stringStartsWith(std::string const &fullString, std::string const &start);
+bool stringStartsWith(std::string const &fullString, std::string const &start, bool ignoreCase=false);
 void stringSplit(std::vector<std::string>& results, const std::string& s, char seperator, int maxParts=-1);
 void stringReplaceAll(std::string& subject, const std::string& search, const std::string& replace);
 bool stringContains(const std::string& str, const std::string& search);
