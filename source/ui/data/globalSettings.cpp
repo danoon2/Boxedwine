@@ -11,6 +11,8 @@ int GlobalSettings::iconSize;
 double GlobalSettings::scaleFactor;
 StartUpArgs GlobalSettings::startUpArgs;
 std::string GlobalSettings::exePath;
+std::string GlobalSettings::theme;
+std::string GlobalSettings::configFilePath;
 
 void GlobalSettings::init(int argc, const char **argv) {
     GlobalSettings::dataFolderLocation = SDL_GetPrefPath("", "Boxedwine");
@@ -22,14 +24,13 @@ void GlobalSettings::init(int argc, const char **argv) {
     if (!Fs::doesNativePathExist(GlobalSettings::dataFolderLocation)) {
         Fs::makeNativeDirs(GlobalSettings::dataFolderLocation);
     }
-    std::string configFilePath = GlobalSettings::dataFolderLocation + Fs::nativePathSeperator + "boxedwine.ini";
-    ConfigFile config(configFilePath);
+    GlobalSettings::configFilePath = GlobalSettings::dataFolderLocation + Fs::nativePathSeperator + "boxedwine.ini";
+    ConfigFile config(GlobalSettings::configFilePath);
     GlobalSettings::dataFolderLocation = config.readString("DataFolder", GlobalSettings::dataFolderLocation);
+    GlobalSettings::theme = config.readString("Theme", "Dark");
     if (!Fs::doesNativePathExist(configFilePath)) {
-        config.writeString("Version", "1");
-        config.writeString("DataFolder", GlobalSettings::dataFolderLocation);
-        config.saveChanges();
-    }
+        saveConfig();
+    }    
 
     GlobalSettings::initWineVersions();
     std::string defaultContainerPath = GlobalSettings::dataFolderLocation + Fs::nativePathSeperator + "Containers" + Fs::nativePathSeperator + "Default";
@@ -39,6 +40,14 @@ void GlobalSettings::init(int argc, const char **argv) {
         BoxedApp app("WineMine", "/home/username/.wine/drive_c/windows/system32", "winemine.exe", container);
         app.saveApp();
     }
+}
+
+void GlobalSettings::saveConfig() {
+    ConfigFile config(GlobalSettings::configFilePath);
+    config.writeString("Version", "1");
+    config.writeString("DataFolder", GlobalSettings::dataFolderLocation);
+    config.writeString("Theme", GlobalSettings::theme);
+    config.saveChanges();
 }
 
 std::string GlobalSettings::getFileFromWineName(const std::string& name) {
@@ -88,4 +97,17 @@ std::string GlobalSettings::getAppFolder(BoxedContainer* container) {
 
 double GlobalSettings::getScaleFactor() {    
     return scaleFactor;
+}
+
+void GlobalSettings::loadTheme() {
+    if (GlobalSettings::theme == "Classic") {        
+        ImGui::StyleColorsClassic();
+        ImGui::GetStyle().FrameBorderSize = 0.0f;
+    } else if (GlobalSettings::theme == "Light") {
+        ImGui::StyleColorsLight();
+        ImGui::GetStyle().FrameBorderSize = 1.0f;
+    } else {
+        ImGui::StyleColorsDark();        
+        ImGui::GetStyle().FrameBorderSize = 0.0f;
+    }
 }

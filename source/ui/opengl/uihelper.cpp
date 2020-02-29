@@ -116,19 +116,19 @@ std::string createIcon(BoxedContainer* container, const std::string& exeLocalPat
         }
         if (pngFiles.size()) {
             std::string sizeCriteria = std::to_string(preferedSize)+"x"+std::to_string(preferedSize)+"x"+std::to_string(32);
-            for (int i=0;i<pngFiles.size();i++) {
+            for (int i=0;i<(int)pngFiles.size();i++) {
                 if (stringContains(pngFiles[i], sizeCriteria)) {
                     return pngFiles[i];
                 }
             }
             sizeCriteria = std::to_string(preferedSize)+"x"+std::to_string(preferedSize)+"x"+std::to_string(8);
-            for (int i=0;i<pngFiles.size();i++) {
+            for (int i=0;i<(int)pngFiles.size();i++) {
                 if (stringContains(pngFiles[i], sizeCriteria)) {
                     return pngFiles[i];
                 }
             }
             sizeCriteria = std::to_string(preferedSize)+"x"+std::to_string(preferedSize)+"x"+std::to_string(4);
-            for (int i=0;i<pngFiles.size();i++) {
+            for (int i=0;i<(int)pngFiles.size();i++) {
                 if (stringContains(pngFiles[i], sizeCriteria)) {
                     return pngFiles[i];
                 }

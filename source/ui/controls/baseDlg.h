@@ -22,7 +22,7 @@ protected:
     virtual void run() = 0;
     virtual void onOk(bool buttonClicked);
 
-    void done();
+    virtual void done();
     void toolTip(const char* desc);
     void addOkAndCancelButtons();
 

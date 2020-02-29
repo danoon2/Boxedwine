@@ -62,6 +62,32 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "Failed to create a direcotry for the new container:\n\nerror msg: {0}";
     case INSTALLDLG_ERROR_CONTAINER_ALREADY_EXISTS:
         return "You chose to create a new container, but a folder with the name you entered already exists:\n\n{0}";
+    case INSTALLDLG_TYPE_SETUP:
+        return "Install using a setup program";
+    case INSTALLDLG_TYPE_MOUNT:
+        return "Install by mounting a directory";
+    case INSTALLDLG_TYPE_BLANK:
+        return "Create a blank container";
+    case INSTALLDLG_TYPE_DIRECTORY:
+        return "Install by copying a directory";
+    case SETTINGS_DLG_TITLE:
+        return "Settings";
+    case SETUPDLG_SAVE_FOLDER_LABEL:
+        return "Save Folder Location:";
+    case SETUPDLG_SAVE_FOLDER_HELP:
+        return "This is the location on your computer where the games and apps will be installed.  If you already installed some games or apps, if you change this you will no longer see them.";
+    case SETUPDLG_THEME_LABEL:
+        return "Color Theme:";
+    case SETUPDLG_THEME_HELP:
+        return "If you prefere Boxedwine to use different colors for the windows, you can try changing this.";
+    case SETUPDLG_THEME_DARK:
+        return "Dark";
+    case SETUPDLG_THEME_CLASSIC:
+        return "Classic";
+    case SETUPDLG_THEME_LIGHT:
+        return "Light";
+    case SETUPDLG_ERROR_DATA_DIR_NOT_FOUND:
+        return "The Save Folder Location does not exist.";
     case CONTAINER_OPTIONS_DLG_TITLE:
         return "Container Options";
     case CONTAINER_OPTIONS_DLG_WINE_VERSION_LABEL:
@@ -90,7 +116,7 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "Apps";
     case INSTALLDLG_OPEN_SETUP_FILE_TITLE:
         return "Open File";
-    case INSTALLDLG_OPEN_FOLDER_TITLE:
+    case GENERIC_OPEN_FOLDER_TITLE:
         return "Select Folder";
     default:
         if (useDefaultIfMissing) {

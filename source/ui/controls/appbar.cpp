@@ -13,7 +13,13 @@ void drawAppBar(const std::vector<AppButton>& buttons, int selected, ImFont* fon
             ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetColorU32(ImGuiCol_ButtonActive));
         }
         if (ImGui::Button(buttons[i].name.c_str())) {
+            if (font) {
+                ImGui::PopFont();
+            }
             buttons[i].onSelect();
+            if (font) {
+                ImGui::PushFont(font);
+            }
         }
         if (selected == i) {
             ImGui::PopStyleColor();

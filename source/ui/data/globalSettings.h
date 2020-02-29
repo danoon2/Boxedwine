@@ -27,16 +27,24 @@ public:
     static double getScaleFactor();
     static std::string getExePath() {return GlobalSettings::exePath;}
     static const std::vector<WineVersion>& getWineVersions() {return GlobalSettings::wineVersions;}
+    static std::string getDataFolder() {return GlobalSettings::dataFolderLocation;}
+    static void setDataFolder(const std::string& location) {GlobalSettings::dataFolderLocation = location;}
+    static void setTheme(const std::string& theme) {GlobalSettings::theme=theme;}
+    static std::string getTheme() {return GlobalSettings::theme;}
+    static void saveConfig();
+    static void loadTheme();
 
     static StartUpArgs startUpArgs;
 private:
-    static void lookForFileSystems(const std::string& path);
+    static void lookForFileSystems(const std::string& path);    
 
     static int iconSize;
     static double scaleFactor;
     static std::string dataFolderLocation;
     static std::vector<WineVersion> wineVersions;    
     static std::string exePath;
+    static std::string theme;
+    static std::string configFilePath;
 };
 
 #endif

@@ -42,7 +42,12 @@ InstallDlg::InstallDlg() : BaseDlg(INSTALLDLG_TITLE, 600, 300), errorMsg(NULL) {
     this->containerName[0]=0;
     this->locationBuffer[0]=0;
 
-    this->containerComboboxData.data.clear();
+    this->installTypeComboboxData.data.push_back(getTranslation(INSTALLDLG_TYPE_SETUP));
+    this->installTypeComboboxData.data.push_back(getTranslation(INSTALLDLG_TYPE_DIRECTORY));
+    this->installTypeComboboxData.data.push_back(getTranslation(INSTALLDLG_TYPE_MOUNT));
+    this->installTypeComboboxData.data.push_back(getTranslation(INSTALLDLG_TYPE_BLANK));
+    this->installTypeComboboxData.dataChanged();
+
     this->containerComboboxData.data.push_back("Create New Container (Recommended)");
     for (auto& container : BoxedwineData::getContainers()) {
         this->containerComboboxData.data.push_back(container->getName());
@@ -50,7 +55,6 @@ InstallDlg::InstallDlg() : BaseDlg(INSTALLDLG_TITLE, 600, 300), errorMsg(NULL) {
     this->containerComboboxData.dataChanged();
     this->containerComboboxData.currentSelectedIndex=0;
             
-    this->wineVersionComboboxData.data.clear();
     for (auto& ver : GlobalSettings::getWineVersions()) {
         this->wineVersionComboboxData.data.push_back(ver.name);
     }
@@ -82,7 +86,7 @@ void InstallDlg::run() {
     SAFE_IMGUI_TEXT(this->installLabelText);
     ImGui::SameLine(this->leftColumnWidth.x);
     ImGui::PushItemWidth(-1-(this->installTypeHelp?this->toolTipWidth:0));
-    ImGui::Combo("##InstallTypeCombo", &this->installTypeComboboxData.currentSelectedIndex, "Install using a setup program\0Install by copying a directory\0Install by mounting a directory\0Create a blank container\0\0");
+    ImGui::Combo("##InstallTypeCombo", &this->installTypeComboboxData.currentSelectedIndex, this->installTypeComboboxData.dataForCombobox);
     ImGui::PopItemWidth();        
     if (this->installTypeHelp) {
         ImGui::SameLine();
@@ -122,7 +126,7 @@ void InstallDlg::run() {
                     strcpy(this->locationBuffer, result);
                 }
             } else {
-                const char* result = tfd::selectFolderDialog(getTranslation(INSTALLDLG_OPEN_FOLDER_TITLE), this->locationBuffer);
+                const char* result = tfd::selectFolderDialog(getTranslation(GENERIC_OPEN_FOLDER_TITLE), this->locationBuffer);
                 if (result) {
                     strcpy(this->locationBuffer, result);
                 }

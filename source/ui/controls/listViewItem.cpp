@@ -30,7 +30,7 @@ void drawListViewItem(const ListViewItem& item) {
 
         ImGui::PushID(start);
         ImGui::SetCursorPosX(ImGui::GetCursorPosX()+(float)(width/2-fullTextSize.x/2));
-        int lineCount = fullTextSize.y/textSize.y;
+        int lineCount = (int)(fullTextSize.y/textSize.y+0.5);
         if (lineCount>UiSettings::MAX_NUMBER_OF_LINES_FOR_APP_LIST_VIEW_TEXT) {
             lineCount = UiSettings::MAX_NUMBER_OF_LINES_FOR_APP_LIST_VIEW_TEXT;
         }

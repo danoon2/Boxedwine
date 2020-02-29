@@ -71,6 +71,7 @@ void createButton() {
         currentView = VIEW_CONTAINERS;
     }));
     appButtons.push_back(AppButton(getTranslation(MAIN_BUTTON_SETTINGS), [](){
+        new SettingsDlg();
     }));
     appButtons.push_back(AppButton(getTranslation(MAIN_BUTTON_HELP), [](){
     }));
@@ -154,7 +155,7 @@ bool uiShow(const std::string& basePath) {
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
+    ImGui::CreateContext();    
     loadFonts(basePath);
     BoxedwineData::loadUI();
     loadApps(); // need to be after we create the context for images to work
@@ -163,10 +164,7 @@ bool uiShow(const std::string& basePath) {
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
-
-    // Setup Dear ImGui style
-    ImGui::StyleColorsDark();
-    //ImGui::StyleColorsClassic();
+    GlobalSettings::loadTheme();
 
     // Setup Platform/Renderer bindings
     ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
