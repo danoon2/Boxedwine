@@ -39,11 +39,14 @@ void ComboboxData::dataChanged() {
     dataForCombobox[len]=0;
 }
 
-BaseDlg::BaseDlg(int title, int width, int height) : width(width), height(height), toolTipWidth(28), extraVerticalSpacing(5), isDone(false) {
+BaseDlg::BaseDlg(int title, int width, int height, BaseDlg* parent) : width(width), height(height), toolTipWidth(28), extraVerticalSpacing(5), isDone(false), parent(parent), child(NULL) {
     this->title = getTranslation(title);
-
     ImGui::OpenPopup(this->title);
-    BaseDlg::activeDialogs.push_back(this);
+    if (parent) {
+        parent->child = this;
+    } else {
+        BaseDlg::activeDialogs.push_back(this);
+    }
 }
 
 void BaseDlg::runIfVisible() {
@@ -51,6 +54,9 @@ void BaseDlg::runIfVisible() {
     {
         ImGui::SetWindowSize(ImVec2((float)width, (float)height));        
         this->run();
+        if (this->child) {
+            this->child->runIfVisible();
+        }
         ImGui::EndPopup();
     }
 }
@@ -78,6 +84,15 @@ void BaseDlg::addOkAndCancelButtons() {
 
     this->onOk(ImGui::Button(getTranslation(GENERIC_DLG_OK)));
     ImGui::SameLine();
+    if (ImGui::Button(getTranslation(GENERIC_DLG_CANCEL))) {
+        this->done();
+    }
+}
+
+void BaseDlg::addCancelButton() {
+    float buttonArea = ImGui::CalcTextSize(getTranslation(GENERIC_DLG_CANCEL)).x;
+    ImGui::SetCursorPos(ImVec2((float)(this->width-buttonArea-18),(float)(this->height-32)));
+
     if (ImGui::Button(getTranslation(GENERIC_DLG_CANCEL))) {
         this->done();
     }

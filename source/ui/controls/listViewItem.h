@@ -6,11 +6,9 @@
 
 class ListViewItem {
 public:
-    ListViewItem(const std::string& text, void* icon, int iconWidth, int iconHeight, std::function<void(bool right)> onSelect) : text(text), icon(icon), iconWidth(iconWidth), iconHeight(iconHeight), onSelect(onSelect) {}
+    ListViewItem(const std::string& text, const BoxedAppIcon* icon, std::function<void(bool right)> onSelect) : text(text), icon(icon), onSelect(onSelect) {}
     std::string text;
-    void* icon;
-    int iconWidth;
-    int iconHeight;
+    const BoxedAppIcon* icon;
     std::function<void(bool right)> onSelect;
 };
 

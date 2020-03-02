@@ -3,6 +3,16 @@
 
 class BoxedContainer;
 
+class BoxedAppIcon {
+public:
+    BoxedAppIcon() : width(0), height(0), texture(NULL) {}
+    BoxedAppIcon(void* texture, int width, int height) : width(width), height(height), texture(texture) {}
+
+    int width;
+    int height;
+    void* texture;
+};
+
 class BoxedApp {
 public:
     BoxedApp() : bpp(0), fullScreen(false), scale(0), scaleQuality(0), container(NULL) {}
@@ -14,7 +24,8 @@ public:
     const std::string& getPath() {return this->path;}
 
     void launch();
-    std::string getIcon();
+    const BoxedAppIcon* getIconTexture(int iconSize=0);
+
     BoxedContainer* getContainer() {return this->container;}
     bool isLink() { return link.length()>0;}
     bool saveApp();
@@ -26,7 +37,8 @@ private:
     
     std::string name;
     std::string path;
-    std::string icon;
+    std::unordered_map<int, BoxedAppIcon*> iconsBySize;
+    std::string iconPath;
     std::string link;
     std::string cmd;
     std::vector<std::string> args;

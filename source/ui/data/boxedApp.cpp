@@ -9,7 +9,7 @@ bool BoxedApp::load(BoxedContainer* container, const std::string& iniFilePath) {
     this->name = config.readString("Name", "");
     this->link = config.readString("Link", "");
     this->cmd = config.readString("Cmd", "");
-    this->icon = config.readString("Icon", "");
+    this->iconPath = config.readString("Icon", "");
     this->path = config.readString("Path", "");
     this->resolution = config.readString("Resolution","");
     this->bpp = config.readInt("BPP",32);
@@ -42,7 +42,7 @@ bool BoxedApp::saveApp() {
     config.writeString("Name", this->name);
     config.writeString("Link", this->link);
     config.writeString("Cmd", this->cmd);
-    config.writeString("Icon", this->icon);
+    config.writeString("Icon", this->iconPath);
     config.writeString("Path", this->path);
     config.writeString("Resolution",this->resolution);
     config.writeInt("BPP",this->bpp);
@@ -94,18 +94,23 @@ void BoxedApp::launch() {
     this->container->launch();
 }
 
-std::string BoxedApp::getIcon() {
-    if (!this->icon.length() || (this->icon != "Empty" && !Fs::doesNativePathExist(this->icon))) {
-        this->icon = createIcon(this->container, this->path+"/"+this->cmd, UiSettings::ICON_SIZE);
-        if (this->icon.length()==0) {
-            this->icon = "";
+
+const BoxedAppIcon* BoxedApp::getIconTexture(int iconSize) {
+    if (iconSize==0) {
+        iconSize = UiSettings::ICON_SIZE;
+    }
+    if (!this->iconsBySize.count(iconSize)) {
+        int width = 0;
+        int height = 0;
+        const unsigned char* data = extractIconFromExe(this->container, this->path+"/"+this->cmd, iconSize, &width, &height);
+        if (data) {
+            this->iconsBySize[iconSize] =new BoxedAppIcon((void*)MakeRGBATexture(data, width, height), width, height);
         }
-        this->saveApp();
     }
-    if (this->icon == "Empty") {
-        return "";
+    if (this->iconsBySize.count(iconSize)) {
+        return this->iconsBySize[iconSize];
     }
-    return this->icon;
+    return NULL;
 }
 
 void BoxedApp::remove() {

@@ -63,6 +63,20 @@ void Fs::localNameToRemote(std::string& path) {
     stringReplaceAll(path, ":", "(_colon_)");
 }
 
+std::string Fs::localFromNative(const std::string& path) {
+    std::string result = path;
+    stringReplaceAll(result, Fs::nativePathSeperator, "/");
+    stringReplaceAll(result, "(_colon_)", ":");
+    return result;
+}
+
+std::string Fs::nativeFromLocal(const std::string& path) {
+    std::string result = path;
+    stringReplaceAll(result, "/", Fs::nativePathSeperator);
+    stringReplaceAll(result, ":", "(_colon_)");
+    return result;
+}
+
 BoxedPtr<FsNode> Fs::addVirtualFile(const std::string& path, OpenVirtualNode func, U32 mode, U32 rdev, const BoxedPtr<FsNode>& parent, U32 data) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(Fs::nextNodeIdMutex);
     BoxedPtr<FsNode> result = new FsVirtualNode(Fs::nextNodeId++, rdev, path, func, mode, parent, data);

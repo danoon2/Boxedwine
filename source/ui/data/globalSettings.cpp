@@ -111,3 +111,8 @@ void GlobalSettings::loadTheme() {
         ImGui::GetStyle().FrameBorderSize = 0.0f;
     }
 }
+
+void loadApps();
+void GlobalSettings::reloadApps() {
+    loadApps();
+}

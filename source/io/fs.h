@@ -56,6 +56,8 @@ public:
     static BoxedPtr<FsNode> addRootDirectoryNode(const std::string& path, const std::string& nativePath, const BoxedPtr<FsNode>& parent);
     static void remoteNameToLocal(std::string& path);
     static void localNameToRemote(std::string& path);
+    static std::string localFromNative(const std::string& path);
+    static std::string nativeFromLocal(const std::string& path);
     static U32 makeLocalDirs(const std::string& path);
     static bool makeNativeDirs(const std::string& path);
     static U32 deleteNativeFile(const std::string& path);

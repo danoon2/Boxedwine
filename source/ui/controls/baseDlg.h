@@ -15,7 +15,7 @@ public:
 
 class BaseDlg {
 public:
-    BaseDlg(int title, int width, int height);
+    BaseDlg(int title, int width, int height, BaseDlg* parent=NULL);
 
     static void runDialogs();    
 protected:
@@ -25,6 +25,7 @@ protected:
     virtual void done();
     void toolTip(const char* desc);
     void addOkAndCancelButtons();
+    void addCancelButton();
 
     int width;
     int height;
@@ -37,5 +38,7 @@ private:
 
     const char* title;
     bool isDone;
+    BaseDlg* parent;
+    BaseDlg* child;
 };
 #endif

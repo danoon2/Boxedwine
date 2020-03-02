@@ -92,9 +92,9 @@ void BoxedContainer::getNewExeApps(std::vector<BoxedApp>& apps) {
     std::string path = root + Fs::nativePathSeperator + "home" + Fs::nativePathSeperator + "username" + Fs::nativePathSeperator + ".wine" + Fs::nativePathSeperator + "drive_c";
 
     Fs::iterateAllNativeFiles(path, true, true, [this, &apps, root] (const std::string& filepath, bool isDir)->U32 {
-        if (stringHasEnding(filepath, ".exe", true)) {            
+        if (stringHasEnding(filepath, ".exe", true) && !stringContains(filepath, "drive_c"+Fs::nativePathSeperator+"windows")) {            
             std::string localPath = filepath.substr(root.length());
-            Fs::localNameToRemote(localPath);            
+            Fs::remoteNameToLocal(localPath);            
             std::string name = Fs::getFileNameFromPath(localPath);
 
             bool found = false;
@@ -108,7 +108,7 @@ void BoxedContainer::getNewExeApps(std::vector<BoxedApp>& apps) {
                 BoxedApp app;
                 app.container = this;
                 app.name = name;
-                app.path = localPath;
+                app.path = Fs::getParentPath(localPath);
                 app.cmd = app.name;
                 apps.push_back(app);
             }
@@ -124,7 +124,7 @@ void BoxedContainer::getNewDesktopLinkApps(std::vector<BoxedApp>& apps) {
     Fs::iterateAllNativeFiles(path, true, true, [this, &apps, root] (const std::string& filepath, bool isDir)->U32 {
         if (stringHasEnding(filepath, ".lnk", true)) {            
             std::string localPath = filepath.substr(root.length());
-            Fs::localNameToRemote(localPath);            
+            Fs::remoteNameToLocal(localPath);            
             std::string name = Fs::getFileNameFromPath(localPath);
 
             // :TODO: parse link to get name
@@ -139,7 +139,7 @@ void BoxedContainer::getNewDesktopLinkApps(std::vector<BoxedApp>& apps) {
                 BoxedApp app;
                 app.container = this;
                 app.name = name;
-                app.path = localPath;
+                app.path = Fs::getParentPath(localPath);
                 app.link = app.name;
                 apps.push_back(app);
             }

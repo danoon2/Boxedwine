@@ -412,9 +412,6 @@
     <ClCompile Include="..\..\..\..\source\ui\controls\listViewItem.cpp">
       <Filter>source\ui\controls</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\source\ui\opengl\uihelper.cpp">
-      <Filter>source\ui\utils</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\source\ui\controls\appbar.cpp">
       <Filter>source\ui\controls</Filter>
     </ClCompile>
@@ -441,6 +438,24 @@
     </ClCompile>
     <ClCompile Include="..\..\..\..\source\ui\controls\uiSettings.cpp">
       <Filter>source\ui\controls</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\controls\settingsDlg.cpp">
+      <Filter>source\ui\controls</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\controls\appChooserDlg.cpp">
+      <Filter>source\ui\controls</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\utils\boxedwineTask.cpp">
+      <Filter>source\ui\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\utils\readIcons.cpp">
+      <Filter>source\ui\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\opengl\platformhelper.cpp">
+      <Filter>source\ui\opengl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\utils\uihelper.cpp">
+      <Filter>source\ui\utils</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -1020,6 +1035,21 @@
     <ClInclude Include="..\..\..\..\source\ui\controls\uiSettings.h">
       <Filter>source\ui\controls</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\source\ui\controls\settingsDlg.h">
+      <Filter>source\ui\controls</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\ui\controls\appChooserDlg.h">
+      <Filter>source\ui\controls</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\ui\utils\boxedwineTask.h">
+      <Filter>source\ui\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\ui\utils\readIcons.h">
+      <Filter>source\ui\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\ui\platformhelper.h">
+      <Filter>source\ui</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
@@ -1123,6 +1153,9 @@
     </Filter>
     <Filter Include="source\ui\imgui\addon">
       <UniqueIdentifier>{77cdf5a5-f6c2-46fb-a47f-bc0c5c435f34}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\ui\opengl">
+      <UniqueIdentifier>{cf081343-7dba-422c-ad5f-2d156e33ec3c}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

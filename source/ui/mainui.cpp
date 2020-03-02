@@ -81,14 +81,7 @@ void loadApps() {
     appListViewItems.clear();
     for (auto& container : BoxedwineData::getContainers()) {
         for (auto& app : container->getApps()) {
-            GLuint texture = 0;
-            int width = 0;
-            int height = 0;
-            std::string iconPath = app->getIcon();
-            if (iconPath.length()) {
-                LoadTextureFromFile(iconPath.c_str(), &texture, &width, &height);
-            }
-            appListViewItems.push_back(ListViewItem(app->getName(), (void*)(U64)texture, width, height, [](bool right) {
+            appListViewItems.push_back(ListViewItem(app->getName(), app->getIconTexture(), [](bool right) {
             }));
         }
     }

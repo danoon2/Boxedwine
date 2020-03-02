@@ -79,7 +79,7 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
     case SETUPDLG_THEME_LABEL:
         return "Color Theme:";
     case SETUPDLG_THEME_HELP:
-        return "If you prefere Boxedwine to use different colors for the windows, you can try changing this.";
+        return "If you prefer Boxedwine to use different colors for the windows, you can try changing this.";
     case SETUPDLG_THEME_DARK:
         return "Dark";
     case SETUPDLG_THEME_CLASSIC:
@@ -88,10 +88,22 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "Light";
     case SETUPDLG_ERROR_DATA_DIR_NOT_FOUND:
         return "The Save Folder Location does not exist.";
+    case APPCHOOSER_DLG_TITLE:
+        return "Create Shortcut";
+    case APPCHOOSER_DLG_CHOOSE_APP_LABEL:
+        return "Please select a file to use for the shortcut.";
+    case APPCHOOSER_DLG_NO_APPS_LABEL:
+        return "Could not find any new apps.";
     case CONTAINER_OPTIONS_DLG_TITLE:
         return "Container Options";
     case CONTAINER_OPTIONS_DLG_WINE_VERSION_LABEL:
         return "Wine Version:";
+    case CONTAINER_OPTIONS_DLG_ADD_APP_LABEL:
+        return "Create New App Shortcut:";
+    case CONTAINER_OPTIONS_DLG_ADD_APP_HELP:
+        return "You can choose from a list of applications in this container to create a shortcut to.";
+    case CONTAINER_OPTIONS_DLG_ADD_APP_BUTTON_LABEL:
+        return "Choose App";
     case COMMON_WINE_VERSION_LABEL:
         return "Wine Version:";
     case COMMON_WINE_VERSION_HELP:

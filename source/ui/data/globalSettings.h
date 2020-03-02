@@ -33,6 +33,7 @@ public:
     static std::string getTheme() {return GlobalSettings::theme;}
     static void saveConfig();
     static void loadTheme();
+    static void reloadApps();
 
     static StartUpArgs startUpArgs;
 private:

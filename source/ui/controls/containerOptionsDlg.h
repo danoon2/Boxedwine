@@ -15,6 +15,9 @@ private:
     BoxedContainer* container;
     const char* wineVersionLabel;
     const char* wineVersionHelp;
+    const char* addAppLabel;
+    const char* addAppHelp;
+    const char* addAppButtonLabel;
     ImVec2 leftColumnWidth;
     ComboboxData wineVersionComboboxData;
 };
