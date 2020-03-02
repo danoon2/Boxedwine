@@ -33,8 +33,9 @@ void GlobalSettings::init(int argc, const char **argv) {
     }    
 
     GlobalSettings::initWineVersions();
-    std::string defaultContainerPath = GlobalSettings::dataFolderLocation + Fs::nativePathSeperator + "Containers" + Fs::nativePathSeperator + "Default";
-    if (!Fs::doesNativePathExist(defaultContainerPath) && GlobalSettings::wineVersions.size()>0) {
+    std::string containersPath = GlobalSettings::dataFolderLocation + Fs::nativePathSeperator + "Containers";    
+    if (!Fs::doesNativePathExist(containersPath) && GlobalSettings::wineVersions.size()>0) {
+        std::string defaultContainerPath = containersPath + Fs::nativePathSeperator + "Default";
         Fs::makeNativeDirs(defaultContainerPath);
         BoxedContainer* container = BoxedContainer::createContainer(defaultContainerPath, "Default", GlobalSettings::wineVersions[0].name);
         BoxedApp app("WineMine", "/home/username/.wine/drive_c/windows/system32", "winemine.exe", container);
