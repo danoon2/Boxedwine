@@ -104,7 +104,7 @@ const BoxedAppIcon* BoxedApp::getIconTexture(int iconSize) {
         int height = 0;
         const unsigned char* data = extractIconFromExe(this->container, this->path+"/"+this->cmd, iconSize, &width, &height);
         if (data) {
-            this->iconsBySize[iconSize] =new BoxedAppIcon((void*)MakeRGBATexture(data, width, height), width, height);
+            this->iconsBySize[iconSize] =new BoxedAppIcon((void*)(U64)MakeRGBATexture(data, width, height), width, height);
         }
     }
     if (this->iconsBySize.count(iconSize)) {

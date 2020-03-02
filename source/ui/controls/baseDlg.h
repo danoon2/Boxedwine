@@ -16,6 +16,7 @@ public:
 class BaseDlg {
 public:
     BaseDlg(int title, int width, int height, BaseDlg* parent=NULL);
+    virtual ~BaseDlg() {} // make the compiler happy
 
     static void runDialogs();    
 protected:

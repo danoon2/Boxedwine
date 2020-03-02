@@ -171,6 +171,40 @@ struct BitmapInfoHeader {
   uint32_t biClrImportant;
 });
 
+PACKED(
+struct ImageOs2Header {      // OS/2 .EXE header
+    uint16_t ne_magic;                    // Magic number
+    int8_t   ne_ver;                      // Version number
+    int8_t   ne_rev;                      // Revision number
+    uint16_t ne_enttab;                   // Offset of Entry Table
+    uint16_t ne_cbenttab;                 // Number of bytes in Entry Table
+    int32_t   ne_crc;                      // Checksum of whole file
+    uint16_t ne_flags;                    // Flag word
+    uint16_t ne_autodata;                 // Automatic data segment number
+    uint16_t ne_heap;                     // Initial heap allocation
+    uint16_t ne_stack;                    // Initial stack allocation
+    int32_t   ne_csip;                     // Initial CS:IP setting
+    int32_t   ne_sssp;                     // Initial SS:SP setting
+    uint16_t ne_cseg;                     // Count of file segments
+    uint16_t ne_cmod;                     // Entries in Module Reference Table
+    uint16_t ne_cbnrestab;                // Size of non-resident name table
+    uint16_t ne_segtab;                   // Offset of Segment Table
+    uint16_t ne_rsrctab;                  // Offset of Resource Table
+    uint16_t ne_restab;                   // Offset of resident name table
+    uint16_t ne_modtab;                   // Offset of Module Reference Table
+    uint16_t ne_imptab;                   // Offset of Imported Names Table
+    int32_t   ne_nrestab;                  // Offset of Non-resident Names Table
+    uint16_t ne_cmovent;                  // Count of movable entries
+    uint16_t ne_align;                    // Segment alignment shift count
+    uint16_t ne_cres;                     // Count of resource segments
+    uint8_t  ne_exetyp;                   // Target Operating system
+    uint8_t  ne_flagsothers;              // Other .EXE flags
+    uint16_t ne_pretthunks;               // offset to return thunks
+    uint16_t ne_psegrefbytes;             // offset to segment ref. bytes
+    uint16_t ne_swaparea;                 // Minimum code swap area size
+    uint16_t ne_expver;                   // Expected Windows version number
+  });
+
 #define IMAGE_SIZEOF_SHORT_NAME 8
 #define IMAGE_SCN_CNT_CODE          0x00000020
 #define IMAGE_SCN_CNT_INITIALIZED_DATA      0x00000040
@@ -246,13 +280,7 @@ void readResourceDirectory(FILE* f, uint32_t resourceVirtualAddress, uint32_t ba
     }
 }
 
-class IconPalette {
-public:
-    U32 palette[256];
-    U32 paletteSize;
-};
-
-void loadIconPalette(BitmapInfoHeader& bih, FILE* f, IconPalette& palette) {
+void readPalette(BitmapInfoHeader& bih, FILE* f, U32* palette) {
 	int depth = bih.biBitCount;
 	if (depth <= 8) {
 		int numColors = bih.biClrUsed;
@@ -262,24 +290,8 @@ void loadIconPalette(BitmapInfoHeader& bih, FILE* f, IconPalette& palette) {
 			if (numColors > 256)
 				numColors = 256;
 		}
-        fread(palette.palette, 1, numColors*4, f);
-        palette.paletteSize = numColors;
-	} else if (depth == 16) {
-        palette.palette[0] = 0x7C00;
-        palette.palette[1] = 0x03E0;
-        palette.palette[2] = 0x001F;
-        palette.paletteSize = 3;
-    } else if (depth == 24) {
-        palette.palette[0] = 0xFF;
-        palette.palette[1] = 0xFF00;
-        palette.palette[2] = 0xFF0000;
-        palette.paletteSize = 3;
-    } else {
-        palette.palette[0] = 0xFF00;
-        palette.palette[1] = 0xFF0000;
-        palette.palette[2] = 0xFF000000;
-        palette.paletteSize = 3;
-    }
+        fread(palette, 1, numColors*4, f);
+	}
 }
 
 unsigned char* loadData(BitmapInfoHeader& bih, FILE* f, int stride) {
@@ -293,7 +305,7 @@ unsigned char* loadData(BitmapInfoHeader& bih, FILE* f, int stride) {
 	return data;
 }
 
-static void flipScanLines(unsigned char* data, int stride, int height) {
+static void flipBitmap(unsigned char* data, int stride, int height) {
 	int i1 = 0;
 	int i2 = (height - 1) * stride;
 	for (int i = 0; i < height / 2; i++) {
@@ -321,17 +333,27 @@ static void swapRGB(U8* data, int height, int width) {
 unsigned char* loadData(BitmapInfoHeader& bih, FILE* f) {
 	int stride = (bih.biWidth * bih.biBitCount + 7) / 8;
 	stride = (stride + 3) / 4 * 4;
-	unsigned char* result = loadData(bih, f, stride);
+	unsigned char* result = NULL;
+
+    if (bih.biCompression != 0) { // BMP_NO_COMPRESSION
+        kwarn("Compressed icon was not handled");
+        return NULL;
+    } else {
+	    int dataSize = bih.biHeight * stride;
+	    result = new unsigned char[dataSize];
+        fread(result, 1, dataSize, f);
+    }
+
     if (result) {
-	    flipScanLines(result, stride, bih.biHeight);
+	    flipBitmap(result, stride, bih.biHeight);
     }
 	return result;
 }
 
 const unsigned char* parseIcon(FILE* f, IconInfo& info, int* width, int* height) {
-    IconPalette palette;
+    U32 palette[256];
     fseek(f, info.fileOffset+sizeof(BitmapInfoHeader), SEEK_SET);
-    loadIconPalette(info.bih, f, palette);
+    readPalette(info.bih, f, palette);
     info.bih.biHeight/=2;
     unsigned char* color = loadData(info.bih, f);
     int bpp = info.bih.biBitCount;
@@ -357,7 +379,7 @@ const unsigned char* parseIcon(FILE* f, IconInfo& info, int* width, int* height)
                 } else {
                     paletteIndex = paletteIndex & 0xF;
                 }
-                U32 c = palette.palette[paletteIndex];
+                U32 c = palette[paletteIndex];
                 result[index+2] = c & 0xFF;
                 result[index+1] = (c >> 8) & 0xFF;
                 result[index] = (c >> 16) & 0xFF;
@@ -377,7 +399,7 @@ const unsigned char* parseIcon(FILE* f, IconInfo& info, int* width, int* height)
             for (int x=0;x<info.bih.biWidth;x++) {
                 int index = y*info.bih.biWidth*4+x*4;
                 int byteIndex = y*info.bih.biWidth+x;
-                U32 c = palette.palette[color[byteIndex]];
+                U32 c = palette[color[byteIndex]];
                 result[index+2] = c & 0xFF;
                 result[index+1] = (c >> 8) & 0xFF;
                 result[index] = (c >> 16) & 0xFF;
@@ -393,12 +415,96 @@ const unsigned char* parseIcon(FILE* f, IconInfo& info, int* width, int* height)
     return NULL;
 }
 
+/*
+from http://bytepointer.com/resources/win16_ne_exe_format_win3.0.htm
+======================================================================
+                            RESOURCE TABLE
+======================================================================
+
+The resource table follows the segment table and contains entries for
+each resource in the executable file. The resource table consists of
+an alignment shift count, followed by a table of resource records. The
+resource records define the type ID for a set of resources. Each
+resource record contains a table of resource entries of the defined
+type. The resource entry defines the resource ID or name ID for the
+resource. It also defines the location and size of the resource. The
+following describes the contents of each of these structures:
+
+   Size Description
+   ---- -----------
+
+   DW   Alignment shift count for resource data.
+
+   A table of resource type information blocks follows. The following
+   is the format of each type information block:
+
+        DW  Type ID. This is an integer type if the high-order bit is
+            set (8000h); otherwise, it is an offset to the type string,
+            the offset is relative to the beginning of the resource
+            table. A zero type ID marks the end of the resource type
+            information blocks.
+
+        DW  Number of resources for this type.
+
+        DD  Reserved.
+
+        A table of resources for this type follows. The following is
+        the format of each resource (8 bytes each):
+
+            DW  File offset to the contents of the resource data,
+                relative to beginning of file. The offset is in terms
+                of the alignment shift count value specified at
+                beginning of the resource table.
+
+            DW  Length of the resource in the file (in bytes).
+
+            DW  Flag word.
+                0010h = MOVEABLE  Resource is not fixed.
+                0020h = PURE      Resource can be shared.
+                0040h = PRELOAD   Resource is preloaded.
+
+            DW  Resource ID. This is an integer type if the high-order
+                bit is set (8000h), otherwise it is the offset to the
+                resource string, the offset is relative to the
+                beginning of the resource table.
+
+            DD  Reserved.
+
+   Resource type and name strings are stored at the end of the
+   resource table. Note that these strings are NOT null terminated and
+   are case sensitive.
+
+   DB   Length of the type or name string that follows. A zero value
+        indicates the end of the resource type and name string, also
+        the end of the resource table.
+
+   DB   ASCII text of the type or name string.
+*/
+
+U16 getWord(FILE* f) {
+    U16 result;
+    fread(&result, 2, 1, f);
+    return result;
+}
+
+U8 getBye(FILE* f) {
+    U8 result;
+    fread(&result, 1, 1, f);
+    return result;
+}
+
+U32 getDoubleWord(FILE* f) {
+    U32 result;
+    fread(&result, 4, 1, f);
+    return result;
+}
+
 const unsigned char* extractIconFromExe(BoxedContainer* container, const std::string& exeLocalPath, int size, int* width, int* height) {
     std::string exeNativePath = GlobalSettings::getRootFolder(container)+Fs::nativeFromLocal(exeLocalPath);    
     
     FILE* f = fopen(exeNativePath.c_str(), "rb");
     if (!f) {
-        return false;
+        return NULL;
     }
     unsigned char* buffer = new unsigned char[32*1024];
     U32 read = (U32)fread(buffer, 1, 1024, f);
@@ -411,7 +517,60 @@ const unsigned char* extractIconFromExe(BoxedContainer* container, const std::st
         fclose(f);
         return NULL;
     }
+    std::vector<IconInfo> icons;
     if (buffer[nextHeader]=='N' && buffer[nextHeader+1]=='E') {
+        ImageOs2Header* header = (ImageOs2Header*)(buffer+nextHeader);
+        if (header->ne_rsrctab >= header->ne_restab) {
+            fclose(f);
+            return NULL;
+        }
+        fseek(f, nextHeader + header->ne_rsrctab, SEEK_SET);
+        U16 alignShiftCount = getWord(f);
+        U8* resBuffer = (buffer + nextHeader + header->ne_rsrctab+2);
+        fseek(f, nextHeader + header->ne_rsrctab+2, SEEK_SET);
+
+        while (true) {
+            U16 typeId = getWord(f);
+            U16 count = getWord(f);
+            getDoubleWord(f); // reserved
+            if (typeId == 0) {
+                break;
+            }
+            if (typeId==0x800e) {
+                for (int i=0;i<(int)count;i++) {
+                    U32 fileOffset = ((U32)getWord(f)) << alignShiftCount;
+                    U16 resourceLen = getWord(f) << alignShiftCount;
+                    U16 flags = getWord(f);
+                    U16 id = getWord(f);
+                    fseek(f, 4, SEEK_CUR); // internal use
+                    // RT_GROUP_ICON structure
+                    /*
+                    U32 pos = (U32)ftell(f);                    
+                    fseek(f, fileOffset, SEEK_SET);
+                    U16 idReserved = getWord(f);
+                    U16 idType = getWord(f);
+                    U16 idCount = getWord(f);
+                    fseek(f, pos, SEEK_SET);
+                    */
+                }
+            } else if (typeId==0x8003) {
+                for (int i=0;i<(int)count;i++) {
+                    IconInfo info;
+                    info.fileOffset = ((U32)getWord(f)) << alignShiftCount;
+                    U16 resourceLen = getWord(f) << alignShiftCount;
+                    U16 flags = getWord(f);
+                    U16 id = getWord(f);
+                    fseek(f, 4, SEEK_CUR); // internal use
+                    U32 pos = (U32)ftell(f);                    
+                    fseek(f, info.fileOffset, SEEK_SET);
+                    fread(&info.bih, 1, sizeof(BitmapInfoHeader), f);
+                    fseek(f, pos, SEEK_SET);
+                    icons.push_back(info);
+                }
+            } else {
+                fseek(f, 12*count, SEEK_CUR);
+            }
+        }
     }
     if (buffer[nextHeader]=='P' && buffer[nextHeader+1]=='E') {
         ImageFileHeader* header = PEFHDROFFSET(buffer);
@@ -434,32 +593,31 @@ const unsigned char* extractIconFromExe(BoxedContainer* container, const std::st
 
             if (resourceSize) {
                 fseek(f, rawOffset, SEEK_SET);
-                read = (U32)fread(buffer, 1, 32*1024, f);
-                std::vector<IconInfo> icons;
-                readResourceDirectory(f, resourceRVA, rawOffset, buffer, 0, 32*1024, (ImageResourceDirectory*)buffer, 0, false, icons);
-                if (icons.size()>0) {
-                    IconInfo bestIcon = icons[0];
-                    for (int i=1;i<(int)icons.size();i++) {
-                        if (bestIcon.bih.biCompression) {
-                            continue;
-                        }
-                        if (bestIcon.bih.biWidth!=size && icons[i].bih.biWidth==size) {
-                            bestIcon = icons[i];
-                        } else if (bestIcon.bih.biBitCount && icons[i].bih.biBitCount && bestIcon.bih.biBitCount<icons[i].bih.biBitCount && icons[i].bih.biBitCount<=32) {
-                            bestIcon = icons[i];
-                        }
-                    }
-                    const unsigned char* result = parseIcon(f, bestIcon, width, height);
-                    fclose(f);
-                    return result;
-                }                
+                read = (U32)fread(buffer, 1, 32*1024, f);                
+                readResourceDirectory(f, resourceRVA, rawOffset, buffer, 0, 32*1024, (ImageResourceDirectory*)buffer, 0, false, icons);                                
             }
         } else if (optionalHeader->Magic == 0x020b) {
-
+            kwarn("Icon 20b not implemented");
         } else {
             fclose(f);
             return NULL;
-        }        
+        }                
+    }
+    if (icons.size()>0) {
+        IconInfo bestIcon = icons[0];
+        for (int i=1;i<(int)icons.size();i++) {
+            if (bestIcon.bih.biCompression) {
+                continue;
+            }
+            if (bestIcon.bih.biWidth!=size && icons[i].bih.biWidth==size) {
+                bestIcon = icons[i];
+            } else if (bestIcon.bih.biBitCount && icons[i].bih.biBitCount && bestIcon.bih.biBitCount<icons[i].bih.biBitCount && icons[i].bih.biBitCount<=32) {
+                bestIcon = icons[i];
+            }
+        }
+        const unsigned char* result = parseIcon(f, bestIcon, width, height);
+        fclose(f);
+        return result;
     }
     fclose(f);
     return NULL;
