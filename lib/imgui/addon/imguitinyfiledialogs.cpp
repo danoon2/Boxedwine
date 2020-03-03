@@ -274,7 +274,7 @@ static void replaceSubStr ( char const * const aSource ,
 	char const * pOccurence ;
 	char const * p ;
 	char const * lNewSubStr = "" ;
-	int lOldSubLen = strlen ( aOldSubStr ) ;
+	int lOldSubLen = (int)strlen ( aOldSubStr ) ;
 	
 	if ( ! aSource )
 	{
@@ -373,7 +373,7 @@ static char const * ensureFilesExist( char * const aDestination ,
 	{
 		return NULL ;
 	}
-	lLen = strlen( aSourcePathsAndNames ) ;
+	lLen = (int)strlen( aSourcePathsAndNames ) ;
 	if ( ! lLen )
 	{
 		return NULL ;
@@ -382,7 +382,7 @@ static char const * ensureFilesExist( char * const aDestination ,
 	p = aSourcePathsAndNames ;
 	while ( (p2 = strchr(p, '|')) != NULL )
 	{
-		lLen = p2-p ;		
+		lLen = (int)(p2-p);
 		memmove(lDestination,p,lLen);
 		lDestination[lLen] = '\0';
 		if ( fileExists ( lDestination ) )
@@ -395,7 +395,7 @@ static char const * ensureFilesExist( char * const aDestination ,
 	}
 	if ( fileExists ( p ) )
 	{
-		lLen = strlen(p) ;		
+		lLen = (int)strlen(p) ;		
 		memmove(lDestination,p,lLen);
 		lDestination[lLen] = '\0';
 	}
