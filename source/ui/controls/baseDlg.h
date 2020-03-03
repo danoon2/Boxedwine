@@ -18,7 +18,8 @@ public:
     BaseDlg(int title, int width, int height, BaseDlg* parent=NULL);
     virtual ~BaseDlg() {} // make the compiler happy
 
-    static void runDialogs();    
+    static void runDialogs();
+    static void stopAllDialogs();
 protected:
     virtual void run() = 0;
     virtual void onOk(bool buttonClicked);

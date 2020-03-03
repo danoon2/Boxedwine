@@ -243,10 +243,15 @@ void InstallDlg::onOk(bool buttonClicked) {
             }   
 
             if (this->installTypeComboboxData.currentSelectedIndex == INSTALL_TYPE_SETUP) {
-                GlobalSettings::startUpArgs.setIsInstallingApp(true);
                 GlobalSettings::startUpArgs.addArg(locationBuffer);
                 GlobalSettings::startUpArgs.readyToLaunch = true;
+                GlobalSettings::startUpArgs.showAppPickerForContainer = container->getName();
             }
+
+            static std::string name = Fs::getFileNameFromNativePath(locationBuffer);
+            runOnMainUI([]() {                    
+                new WaitDlg(WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(WAITDLG_LAUNCH_APP_LABEL, true, name.c_str()));
+            });
         }
     }
 

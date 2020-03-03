@@ -12,7 +12,7 @@ public:
 
 class StartUpArgs {
 public:
-    StartUpArgs() : euidSet(false), nozip(false), pentiumLevel(4), rel_mouse_sensitivity(0), userId(UID), groupId(GID), effectiveUserId(UID), effectiveGroupId(GID), soundEnabled(true), videoEnabled(true), readyToLaunch(false), workingDirSet(false), resolutionSet(false), screenCx(800), screenCy(600), screenBpp(32), sdlFullScreen(false), sdlScaleX(100), sdlScaleY(100), sdlScaleQuality("0"), runWineConfigFirst(false), isInstallingApp(false) {
+    StartUpArgs() : euidSet(false), nozip(false), pentiumLevel(4), rel_mouse_sensitivity(0), userId(UID), groupId(GID), effectiveUserId(UID), effectiveGroupId(GID), soundEnabled(true), videoEnabled(true), readyToLaunch(false), workingDirSet(false), resolutionSet(false), screenCx(800), screenCy(600), screenBpp(32), sdlFullScreen(false), sdlScaleX(100), sdlScaleY(100), sdlScaleQuality("0"), runWineConfigFirst(false) {
         workingDir = "/home/username";
     }
     bool parseStartupArgs(int argc, const char **argv);
@@ -31,7 +31,6 @@ public:
     void addZip(const std::string& zip) {this->zips.push_back(zip);}
     void setRoot(const std::string& root) {this->root = root;}
     void setRunWineConfigFirst(bool value) {this->runWineConfigFirst = value;}
-    void setIsInstallingApp(bool value) {this->isInstallingApp = value;}
 
     std::vector<MountInfo> mountInfo;    
     std::vector<std::string> envValues;
@@ -52,6 +51,7 @@ public:
     bool soundEnabled;
     bool videoEnabled;
     bool readyToLaunch;
+    std::string showAppPickerForContainer;
 private:
     bool workingDirSet;
     bool resolutionSet;    
@@ -69,7 +69,6 @@ private:
     std::string root;
     std::vector<std::string> zips;
     bool runWineConfigFirst;
-    bool isInstallingApp;
 
     void buildVirtualFileSystem();
     int parse_resolution(const char *resolutionString, U32 *width, U32 *height);

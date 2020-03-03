@@ -21,6 +21,14 @@ void BaseDlg::runDialogs() {
     }
 }
 
+void BaseDlg::stopAllDialogs() {
+    while (BaseDlg::activeDialogs.size()) {
+        BaseDlg* dlg = BaseDlg::activeDialogs.back();
+        BaseDlg::activeDialogs.pop_back();
+        delete dlg;        
+    }
+}
+
 void ComboboxData::dataChanged() {
     int len = 1;
     

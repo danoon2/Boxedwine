@@ -92,6 +92,7 @@ void BoxedApp::launch() {
     GlobalSettings::startUpArgs.setWorkingDir(this->path);
 
     this->container->launch();
+    GlobalSettings::startUpArgs.readyToLaunch = true;
 }
 
 

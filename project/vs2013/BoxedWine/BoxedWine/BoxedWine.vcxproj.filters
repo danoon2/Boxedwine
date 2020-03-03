@@ -445,9 +445,6 @@
     <ClCompile Include="..\..\..\..\source\ui\controls\appChooserDlg.cpp">
       <Filter>source\ui\controls</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\source\ui\utils\boxedwineTask.cpp">
-      <Filter>source\ui\utils</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\source\ui\utils\readIcons.cpp">
       <Filter>source\ui\utils</Filter>
     </ClCompile>
@@ -456,6 +453,12 @@
     </ClCompile>
     <ClCompile Include="..\..\..\..\source\ui\utils\uihelper.cpp">
       <Filter>source\ui\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\controls\waitDlg.cpp">
+      <Filter>source\ui\controls</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\controls\spinnerControl.cpp">
+      <Filter>source\ui\controls</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -1041,14 +1044,17 @@
     <ClInclude Include="..\..\..\..\source\ui\controls\appChooserDlg.h">
       <Filter>source\ui\controls</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\source\ui\utils\boxedwineTask.h">
-      <Filter>source\ui\utils</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\source\ui\utils\readIcons.h">
       <Filter>source\ui\utils</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\ui\platformhelper.h">
       <Filter>source\ui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\ui\controls\waitDlg.h">
+      <Filter>source\ui\controls</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\ui\controls\spinnerControl.h">
+      <Filter>source\ui\controls</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

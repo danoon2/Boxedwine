@@ -36,6 +36,7 @@ public:
     void setupZipRead(U64 zipOffset, U64 zipFileOffset);
 
     static bool readFileFromZip(const std::string& zipFile, const std::string& file, std::string& result);
+    static bool extractFileFromZip(const std::string& zipFile, const std::string& file, const std::string& path);
 };
 #endif
 #endif

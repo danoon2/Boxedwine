@@ -4,6 +4,9 @@
 #include <SDL.h>
 #include "sdlcallback.h"
 #include "devfb.h"
+#if !defined(BOXEDWINE_DISABLE_UI) && !defined(__TEST)
+#include "../../ui/mainui.h"
+#endif
 
 U32 sdlCustomEvent;
 SDL_threadID sdlMainThreadId;
@@ -15,22 +18,34 @@ static U32 lastTitleUpdate = 0;
 bool doMainLoop() {
     SDL_Event e;
 
-    sdlCustomEvent = SDL_RegisterEvents(1);
+    if (!sdlCustomEvent) {
+        sdlCustomEvent = SDL_RegisterEvents(1);
+    }
     sdlMainThreadId = SDL_ThreadID();
 
     while (platformThreadCount) {
         bool hasEvent;
-
+        U32 timeout = 5000;
+#if !defined(BOXEDWINE_DISABLE_UI) && !defined(__TEST)
+        if (uiIsRunning()) {
+            timeout = 33;
+        }
+#endif
 #ifdef BOXEDWINE_RECORDER
         if (Player::instance || Recorder::instance) {
             hasEvent = (SDL_WaitEventTimeout(&e, 10)==1);
             BOXEDWINE_RECORDER_RUN_SLICE();
         } else  {
-            hasEvent = (SDL_WaitEventTimeout(&e, 5000) == 1);
+            hasEvent = (SDL_WaitEventTimeout(&e, timeout) == 1);
         }
 #else
-        hasEvent = (SDL_WaitEventTimeout(&e, 5000) == 1);
-#endif      
+        hasEvent = (SDL_WaitEventTimeout(&e, timeout) == 1);
+#endif    
+#if !defined(BOXEDWINE_DISABLE_UI) && !defined(__TEST)
+        if (uiIsRunning()) {
+            uiLoop();
+        }
+#endif
         U32 t = getMilliesSinceStart();
         //flipFB();
         if (lastTitleUpdate+5000 < t) {

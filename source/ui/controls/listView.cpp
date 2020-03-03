@@ -12,7 +12,9 @@ void drawListView(const std::string& listViewId, const std::vector<ListViewItem>
     ImGui::Columns((int)(ImGui::GetWindowHeight()/maxImageWidth), NULL, false);
     for (auto& item : items) {
         ImGui::Dummy(ImVec2(0.0f, 10));
+        ImGui::PushID(&item);
         drawListViewItem(item);
+        ImGui::PopID();
         ImGui::NextColumn();        
     }    
     ImGui::Columns(1);

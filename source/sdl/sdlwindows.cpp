@@ -28,6 +28,10 @@
 #include "multiThreaded/sdlcallback.h"
 #include "../emulation/hardmmu/hard_memory.h"
 
+#if !defined(BOXEDWINE_DISABLE_UI) && !defined(__TEST)
+#include "../ui/mainui.h"
+#endif
+
 U32 default_horz_res = 800;
 U32 default_vert_res = 600;
 U32 default_bits_per_pixel = 32;
@@ -374,6 +378,11 @@ int contextCount;
 bool sdlWindowIsGL;
 
 static void destroySDL2(KThread* thread) {
+#if !defined(BOXEDWINE_DISABLE_UI) && !defined(__TEST)
+    if (uiIsRunning()) {
+        uiShutdown();
+    }
+#endif
     for (auto& n : hwndToWnd) {
         Wnd* wnd = n.second;
         if (wnd->sdlTexture) {
@@ -399,7 +408,9 @@ static void destroySDL2(KThread* thread) {
         sdlRenderer = 0;
     }
     // :TODO: what about other threads?
-    thread->removeAllGlContexts();
+    if (thread) {
+        thread->removeAllGlContexts();
+    }
 #endif
     if (sdlWindow) {
         SDL_DestroyWindow(sdlWindow);
@@ -411,6 +422,12 @@ static void destroySDL2(KThread* thread) {
 #else
 SDL_Surface* surface;
 #endif
+
+void destroySDL() {
+#ifdef SDL2
+    destroySDL2(NULL);
+#endif
+}
 
 #if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
 void loadExtensions();

@@ -34,6 +34,14 @@ U32 KSystem::pentiumLevel = 4;
 BOXEDWINE_CONDITION KSystem::processesCond("KSystem::processesCond");
 BOXEDWINE_MUTEX KSystem::fileCacheMutex;
 
+void KSystem::init() {
+    KSystem::nextThreadId=10;
+    KSystem::shm.clear();
+    KSystem::processes.clear();
+    KSystem::fileCache.clear();
+    KSystem::pentiumLevel = 4;
+}
+
 U32 KSystem::getProcessCount() {
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(processesCond);
     return (U32)KSystem::processes.size();

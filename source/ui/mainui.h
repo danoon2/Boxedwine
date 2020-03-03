@@ -3,4 +3,10 @@
 
 bool uiShow(const std::string& basePath); // returns true if should launch app
 
+bool uiLoop();
+void uiShutdown();
+bool uiIsRunning();
+
+void runOnMainUI(std::function<void()> f, U64 delayInMillies=0);
+
 #endif

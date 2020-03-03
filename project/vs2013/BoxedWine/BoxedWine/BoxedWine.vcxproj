@@ -548,7 +548,9 @@
     <ClInclude Include="..\..\..\..\source\ui\controls\listViewItem.h" />
     <ClInclude Include="..\..\..\..\source\ui\controls\menubar.h" />
     <ClInclude Include="..\..\..\..\source\ui\controls\settingsDlg.h" />
+    <ClInclude Include="..\..\..\..\source\ui\controls\spinnerControl.h" />
     <ClInclude Include="..\..\..\..\source\ui\controls\uiSettings.h" />
+    <ClInclude Include="..\..\..\..\source\ui\controls\waitDlg.h" />
     <ClInclude Include="..\..\..\..\source\ui\data\boxedApp.h" />
     <ClInclude Include="..\..\..\..\source\ui\data\boxedContainer.h" />
     <ClInclude Include="..\..\..\..\source\ui\data\boxedwineData.h" />
@@ -557,7 +559,6 @@
     <ClInclude Include="..\..\..\..\source\ui\mainui.h" />
     <ClInclude Include="..\..\..\..\source\ui\platformhelper.h" />
     <ClInclude Include="..\..\..\..\source\ui\utils\boxedTranslation.h" />
-    <ClInclude Include="..\..\..\..\source\ui\utils\boxedwineTask.h" />
     <ClInclude Include="..\..\..\..\source\ui\utils\readIcons.h" />
     <ClInclude Include="..\..\..\..\source\ui\utils\stb_image.h" />
     <ClInclude Include="..\..\..\..\source\ui\utils\uihelper.h" />
@@ -841,7 +842,15 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\controls\spinnerControl.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\..\..\..\source\ui\controls\uiSettings.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\controls\waitDlg.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x64'">true</ExcludedFromBuild>
     </ClCompile>
@@ -892,10 +901,6 @@
     <ClCompile Include="..\..\..\..\source\ui\utils\boxedTranslation.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|x64'">Use</PrecompiledHeader>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\source\ui\utils\boxedwineTask.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x64'">true</ExcludedFromBuild>
     </ClCompile>

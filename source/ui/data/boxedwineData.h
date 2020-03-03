@@ -12,6 +12,7 @@ public:
     static const std::vector<BoxedContainer*> getContainers() {return BoxedwineData::containers;}
     static void addContainer(BoxedContainer* container) {BoxedwineData::containers.push_back(container);}
     static void updateCachedContainerSizes();
+    static BoxedContainer* getContainerByName(const std::string& name);
 
 private:
     static void loadContainers();

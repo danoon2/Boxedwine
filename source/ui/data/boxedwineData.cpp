@@ -38,3 +38,12 @@ void BoxedwineData::updateCachedContainerSizes() {
         item->updateCachedSize();
     } 
 }
+
+BoxedContainer* BoxedwineData::getContainerByName(const std::string& name) {
+    for (auto& container : BoxedwineData::containers) {
+        if (container->getName()==name) {
+            return container;
+        }
+    }
+    return NULL;
+}

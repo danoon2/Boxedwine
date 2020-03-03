@@ -269,6 +269,7 @@ bool StartUpArgs::apply() {
     initWine();
 #if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
     gl_init(this->glExt);    
+    KSystem::init();
 #endif   
 
     if (this->runWineConfigFirst) {
@@ -287,7 +288,8 @@ bool StartUpArgs::apply() {
                 return 0; // doMainLoop should have handled any cleanup, like SDL_Quit if necessary
             }
         }
-    }
+        KSystem::init();
+    }    
     if (this->args.size()) {
         printf("Launching ");
         for (U32 i=0;i<this->args.size();i++) {
@@ -305,6 +307,7 @@ bool StartUpArgs::apply() {
     if (gensrc)
         writeSource();
 #endif
+    destroySDL();
     dspShutdown();
     return true;
 }

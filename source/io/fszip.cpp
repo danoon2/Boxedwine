@@ -135,15 +135,71 @@ bool FsZip::readFileFromZip(const std::string& zipFile, const std::string& file,
         if (file == tmp) {
             U32 read;
 
-            unzOpenCurrentFile(z);
+            unzOpenCurrentFile(z);            
             read = unzReadCurrentFile(z, tmp, MAX_FILEPATH_LEN);
             tmp[read]=0;              
             unzCloseCurrentFile(z);
+            unzClose(z);
             result = tmp;
             return true;
         }
         unzGoToNextFile(z);
     }
+    unzClose(z);
+    return false;
+}
+
+bool FsZip::extractFileFromZip(const std::string& zipFile, const std::string& file, const std::string& path) {
+    unzFile z = unzOpen(zipFile.c_str());
+    unz_global_info global_info;
+    if (!z) {
+        return false;
+    }
+    if (unzGetGlobalInfo( z, &global_info ) != UNZ_OK) {
+        unzClose( z );
+        return false;
+    }
+    for (U32 i = 0; i < global_info.number_entry; ++i) {
+        unz_file_info file_info;
+        char tmp[MAX_FILEPATH_LEN];
+
+        if ( unzGetCurrentFileInfo(z, &file_info, tmp, MAX_FILEPATH_LEN, NULL, 0, NULL, 0 ) != UNZ_OK ) {
+            unzClose( z );
+            return false;
+        }
+        
+        if (file == tmp) {
+            unzOpenCurrentFile(z);            
+            if (!Fs::doesNativePathExist(path)) {
+                Fs::makeNativeDirs(path);
+            }
+            std::string outPath = path+Fs::nativePathSeperator+Fs::getFileNameFromPath(file);
+            FILE* f = fopen(outPath.c_str(), "wb");
+            if (f) {
+                U32 totalRead = 0;
+                U8 buffer[4096];
+
+                while (totalRead<file_info.uncompressed_size) {
+                    U32 read = unzReadCurrentFile(z, buffer, sizeof(buffer));
+                    if (!read) {
+                        break;
+                    }
+                    totalRead += read;
+                    fwrite(buffer, read, 1, f);
+                }
+                fclose(f);
+                unzCloseCurrentFile(z);
+                unzClose(z);
+                return totalRead==file_info.uncompressed_size;
+            } else {
+                unzCloseCurrentFile(z);
+                unzClose(z);
+                return false;
+            }
+        }
+        unzGoToNextFile(z);
+    }
+    unzClose(z);
     return false;
 }
 

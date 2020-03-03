@@ -130,6 +130,10 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "Open File";
     case GENERIC_OPEN_FOLDER_TITLE:
         return "Select Folder";
+    case WAITDLG_LAUNCH_APP_TITLE:
+        return "Please Wait";
+    case WAITDLG_LAUNCH_APP_LABEL:
+        return "Launching {0} ...";
     default:
         if (useDefaultIfMissing) {
             return "Unknown msg";

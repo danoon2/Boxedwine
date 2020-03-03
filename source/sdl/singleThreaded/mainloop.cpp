@@ -6,6 +6,10 @@
 #include "knativesocket.h"
 #include <SDL.h>
 
+#if !defined(BOXEDWINE_DISABLE_UI) && !defined(__TEST)
+#include "../../ui/mainui.h"
+#endif
+
 static U32 lastTitleUpdate = 0;
 
 bool doMainLoop() {
@@ -23,6 +27,11 @@ bool doMainLoop() {
                 break;
             }
         };
+#if !defined(BOXEDWINE_DISABLE_UI) && !defined(__TEST)
+        if (uiIsRunning()) {
+            uiLoop();
+        }
+#endif
         t = getMilliesSinceStart();
         if (lastTitleUpdate+5000 < t) {
             char tmp[256];
