@@ -246,6 +246,7 @@ void InstallDlg::onOk(bool buttonClicked) {
                 GlobalSettings::startUpArgs.addArg(locationBuffer);
                 GlobalSettings::startUpArgs.readyToLaunch = true;
                 GlobalSettings::startUpArgs.showAppPickerForContainer = container->getName();
+            } else if (this->installTypeComboboxData.currentSelectedIndex == INSTALL_TYPE_DIR) {
             }
 
             static std::string name = Fs::getFileNameFromNativePath(locationBuffer);

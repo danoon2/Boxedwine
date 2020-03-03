@@ -127,6 +127,7 @@ void StartUpArgs::buildVirtualFileSystem() {
 }
 
 bool StartUpArgs::apply() {
+    KSystem::init();
     KSystem::pentiumLevel = this->pentiumLevel;
     for (U32 f=0;f<nonExecFileFullPaths.size();f++) {
         FsFileNode::nonExecFileFullPaths.insert(nonExecFileFullPaths[f]);
@@ -268,8 +269,7 @@ bool StartUpArgs::apply() {
     initSDL(this->screenCx, this->screenCy, this->screenBpp, this->sdlScaleX, this->sdlScaleY, this->sdlScaleQuality, this->soundEnabled, this->videoEnabled);
     initWine();
 #if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
-    gl_init(this->glExt);    
-    KSystem::init();
+    gl_init(this->glExt);        
 #endif   
 
     if (this->runWineConfigFirst) {

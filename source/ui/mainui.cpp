@@ -149,7 +149,7 @@ bool uiLoop() {
         if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(window))
             done = true;
         if (event.type >= SDL_USEREVENT) {
-            SDL_PushEvent(&event);
+            SDL_PushEvent(&event); // if we are currently launching then there is another spot where sdl polling is happening in threadedMainloop.cpp, if we drop this custom msg then another thread will be blocked forever
             break;
         }
     }

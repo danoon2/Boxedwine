@@ -1,12 +1,11 @@
 Next Release
 
-* fixed Browse button in BoxedWine UI to show Folder chooser instead of File chooser when installing by coping a directory
-* fixed issue in BoxedWine UI where the install option for a setup file didn't work if the path had a space in it.
 * 64-bit Windows installer will now default to the correct Programe Files to install to.
 * Added about 30 more supported extensions to OpenGL.
 * Fixed fstat system call, it will now will report the correct size of the file
 * Added SSE2 support for both the x64 and normal cores
 * Fixed crash in custom winex11.drv and updated file systems to use it
+* Launching Boxedwine without any command line arguments will now launch a new UI is available for that platform.  Currently as long as the platform support OpenGL it should work with the UI.
 
 Known game fixes
 

@@ -392,13 +392,23 @@ static void destroySDL2(KThread* thread) {
             wnd->sdlTextureWidth = 0;
         }
     }
-    if (contextCount) {
-        contextCount++; // prevent it from calling displayChanged
-        for (U32 i=1;i<nextGlId;i++) {
-            sdlDeleteContext(thread, i);
+    if (!thread) {
+#ifdef SDL2
+        // :TODO: should probably store all context in this file instead of in the threads
+        if (sdlCurrentContext) {
+            SDL_GL_DeleteContext(sdlCurrentContext);
+            contextCount=0;
         }
-        contextCount--;
-    }    
+#endif
+    } else {
+        if (contextCount) {
+            contextCount++; // prevent it from calling displayChanged
+            for (U32 i=1;i<nextGlId;i++) {
+                sdlDeleteContext(thread, i);
+            }
+            contextCount--;
+        }    
+    }
     if (contextCount) {
         kwarn("Not all OpenGL contexts were cleaning destroyed");
     }
