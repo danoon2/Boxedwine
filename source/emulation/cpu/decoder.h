@@ -1496,6 +1496,7 @@ public:
 class DecodedBlock {
 public:   
     static DecodedBlock* currentBlock;
+    virtual ~DecodedBlock() {}
 
     DecodedOp* op;
     U32 opCount;
