@@ -22,6 +22,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <SDL.h>
 
 #include "pixelformat.h"
 

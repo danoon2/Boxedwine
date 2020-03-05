@@ -288,11 +288,7 @@ static void handler(int sig, siginfo_t* info, void* vcontext)
     }
     ucontext_t *context = (ucontext_t*)vcontext;
     x64CPU* cpu = (x64CPU*)currentThread->cpu;
-    if (cpu->restarting) {
-        context->CONTEXT_RIP = (U64)cpu->init();
-        cpu->restarting = false;
-        return;
-    }
+    
     if (cpu!=(x64CPU*)context->CONTEXT_R13) {
         return;
     }
@@ -328,7 +324,7 @@ static void handler(int sig, siginfo_t* info, void* vcontext)
         // :TODO: figure out how AC got set, I've only seen this while op logging
         context->CONTEXT_FLAGS &= ~AC;
         return;
-    } else if ((info->si_signo == SIGBUS || info->si_signo == SIGSEGV) && ((context->CONTEXT_RIP & 0xFFFFFFFF00000000l)==(U64)cpu->thread->memory->executableMemoryId || (cpu->thread->memory->previousExecutableMemoryId && (context->CONTEXT_RIP & 0xFFFFFFFF00000000l)==(U64)cpu->thread->memory->previousExecutableMemoryId))) {
+    } else if ((info->si_signo == SIGBUS || info->si_signo == SIGSEGV) && ((context->CONTEXT_RIP & 0xFFFFFFFF00000000l)==(U64)cpu->thread->memory->executableMemoryId)) {
         U64 rip = cpu->handleAccessException(context->CONTEXT_RIP, address, readAccess, context->CONTEXT_RSI, context->CONTEXT_RDI, context->CONTEXT_R8, context->CONTEXT_R9, (U64*)&context->CONTEXT_R10, doSyncFrom, doSyncTo);
         if (rip) {
             context->CONTEXT_RIP = rip;
