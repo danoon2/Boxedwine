@@ -7,6 +7,8 @@ class NormalCPU : public CPU {
 public:
     NormalCPU();
 
+    static void clearCache();
+
     virtual void run();
     virtual DecodedBlock* getNextBlock();
 

@@ -39,8 +39,6 @@
 
 #define MAX_ARG_COUNT 1024
 
-BOXEDWINE_MUTEX KProcess::exitGroupMutex;
-
 bool KProcessTimer::run() {
     bool result = false;
     if (this->resetMillies==0) {
@@ -75,7 +73,8 @@ KProcess::KProcess(U32 id) : id(id),
     entry(0),
     eventQueueFD(0),
     exitOrExecCond("KProcess::exitOrExecCond"),
-    hasSetStackMask(false) {
+    hasSetStackMask(false),
+    threadsCondition("KProcess::threadsCond") {
 
 #ifdef BOXEDWINE_X64
     emulateFPU=false;
@@ -112,7 +111,9 @@ KProcess::KProcess(U32 id) : id(id),
     for (int i=0;i<NUMBER_OF_STRINGS;i++) {
         this->glStrings[i] = 0;
     }
+	this->previousMemory = NULL;
 #endif
+	this->pendingDelete = false;
 }
 
 void KProcess::onExec() {
@@ -174,6 +175,9 @@ void KProcess::onExec() {
 KProcess::~KProcess() {
     KSystem::eraseProcess(this->id);
     this->cleanupProcess();
+	if (this->memory) {
+		this->memory->decRefCount();
+	}
 }
 
 void KProcess::cleanupProcess() {    
@@ -187,39 +191,65 @@ void KProcess::cleanupProcess() {
     }
     this->attachedShm.clear();
     this->privateShm.clear();
-    this->mappedFiles.clear();
-    if (this->memory) {
-        if (this->memory->getRefCount()>1) {
-            this->memory->decRefCount();
-        } else {
-            delete this->memory;
-        }
-        this->memory = NULL;
-    }
+    this->mappedFiles.clear();    
 }
 
 KThread* KProcess::createThread() {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(threadsMutex);
+	BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(threadsCondition);
     KThread* thread = new KThread(KSystem::nextThreadId++, this);
     this->threads[thread->id] = thread;
     return thread;
 }
 
 void KProcess::removeThread(KThread* thread) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(threadsMutex);
+	BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(threadsCondition);
+	BOXEDWINE_CONDITION_SIGNAL(threadsCondition);
     this->threads.erase(thread->id);
 }
 
 KThread* KProcess::getThreadById(U32 tid) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(threadsMutex);
+	BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(threadsCondition);
     if (this->threads.count(tid))
         return this->threads[tid];
     return NULL;
 }
 
 U32 KProcess::getThreadCount() {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(threadsMutex);
+	BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(threadsCondition);
     return (U32)this->threads.size();
+}
+
+void KProcess::deleteThreadAndProcessIfLastThread(KThread* thread) {
+    BOXEDWINE_CONDITION_LOCK(this->threadsCondition);
+	thread->cleanup();	
+	if (this->threads.size()==0) {
+		if (this->memory) {
+			this->memory->decRefCount();
+			this->memory = NULL;
+		}
+		delete thread;
+		if (this->pendingDelete) {
+            BOXEDWINE_CONDITION_UNLOCK(this->threadsCondition);
+			delete this;
+		} else {
+            BOXEDWINE_CONDITION_UNLOCK(this->threadsCondition);
+		}
+	}
+	else {
+		delete thread;
+        BOXEDWINE_CONDITION_UNLOCK(this->threadsCondition);
+	}	
+}
+
+void KProcess::deleteProcessIfNoThreadsElseMarkForDeletion() {
+    BOXEDWINE_CONDITION_LOCK(this->threadsCondition);
+	if (this->threads.size() == 0) {
+        BOXEDWINE_CONDITION_UNLOCK(this->threadsCondition);
+		delete this;
+	} else {
+		this->pendingDelete = true;
+        BOXEDWINE_CONDITION_UNLOCK(this->threadsCondition);
+	}
 }
 
 FsOpenNode* openCommandLine(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
@@ -607,13 +637,9 @@ U32 KProcess::exit(U32 code) {
         return this->exitgroup(code);    
 
     KThread::currentThread()->cpu->yield = true;
-    KThread::currentThread()->cleanup();
-    KThread::currentThread()->process = NULL; // signal to scheduler to delete this thread
+    KThread::currentThread()->cleanup(); // will unschedule the thread
+	terminateCurrentThread(KThread::currentThread());
 
-#ifdef BOXEDWINE_MULTI_THREADED
-    KThread::currentThread()->exiting = true;
-    unscheduleCurrentThread();
-#endif
     return 0;
 }
 
@@ -733,16 +759,21 @@ U32 KProcess::execve(const std::string& path, std::vector<std::string>& args, co
 
     // reset memory must come after we grab the args and env
 #ifdef BOXEDWINE_X64
-    this->memory->previousExecutableMemoryId = this->memory->executableMemoryId;
+	this->previousMemory = this->memory;
+	this->memory = new Memory();
+	this->memory->onThreadChanged();
+	KThread::currentThread()->memory = this->memory;
+#else
+	if (this->memory->getRefCount() == 1) {
+		this->memory->reset();
+	}
+	else {
+		this->memory->decRefCount();
+		this->memory = new Memory();
+		this->memory->onThreadChanged();
+		KThread::currentThread()->memory = this->memory;
+	}
 #endif    
-    if (this->memory->getRefCount()==1) {
-        this->memory->reset();
-    } else {
-        this->memory->decRefCount();
-        this->memory = new Memory();
-        this->memory->onThreadChanged();
-        KThread::currentThread()->memory = this->memory;
-    }
 
     KThread::currentThread()->reset();
     this->onExec();
@@ -781,7 +812,7 @@ void KProcess::signalProcess(U32 signal) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->pendingSignalsMutex);
         this->pendingSignals |= signalMask;
     }
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(threadsMutex);    
+	BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(threadsCondition);
     // give each thread a chance to run a signal, some or all of them might have the signal masked off.  
     // In that case when the user unmasks the signal with sigprocmask it will be caught then
     for (auto& t : this->threads) {
@@ -1130,7 +1161,7 @@ U32 KProcess::getrusuage(U32 who, U32 usage) {
     U32 kernelMicroSeconds = 0;
 
     if (who==0) { // RUSAGE_SELF
-        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(threadsMutex);
+        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(threadsCondition);
         for (auto& t : this->threads ) {
             KThread* thread = t.second;
             userSeconds += (U32)(thread->userTime / 1000000l);
@@ -1579,6 +1610,9 @@ U32 KProcess::clone(U32 flags, U32 child_stack, U32 ptid, U32 tls, U32 ctid) {
             scheduleThread(newThread);
             BOXEDWINE_CONDITION_WAIT(newProcess->exitOrExecCond);
             BOXEDWINE_CONDITION_UNLOCK(newProcess->exitOrExecCond);
+			if (KThread::currentThread()->terminating) {
+				return -K_EINTR;
+			}
         } else {
             //klog("starting %d/%d", newThread->process->id, newThread->id);            
             scheduleThread(newThread);
@@ -1619,26 +1653,24 @@ U32 KProcess::exitgroup(U32 code) {
     }
 
     {
-        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(KProcess::exitGroupMutex);
+        BOXEDWINE_CONDITION_LOCK(this->threadsCondition);
         std::unordered_map<U32, KThread*> tmp = this->threads;
+		std::vector<U32> threadIds;
         for (auto& n : tmp) {
             KThread* thread = n.second;
             if (thread!=KThread::currentThread()) {
-#ifdef BOXEDWINE_X64
-                // will be deleted when thread exits
-                unscheduleThread(thread);
-#else
-                delete thread;
-#endif
+				threadIds.push_back(thread->id);
             }
         }
+        BOXEDWINE_CONDITION_UNLOCK(this->threadsCondition);
+		for (auto& n : threadIds) {
+			terminateOtherThread(this, n);
+		}
     }
     KThread::currentThread()->cleanup(); // must happen before we clear memory
     this->threads.clear();
     this->cleanupProcess(); // release RAM, sockets, etc now.  No reason to wait to do that until waitpid is called
     this->exitCode = code;
-    KThread::currentThread()->cpu->yield = true;   
-    KThread::currentThread()->process = NULL;  // signal to scheduler to delete this thread
 
     BOXEDWINE_CONDITION_LOCK(KSystem::processesCond);
     this->terminated = true;
@@ -1657,9 +1689,7 @@ U32 KProcess::exitgroup(U32 code) {
     KSystem::wakeThreadsWaitingOnProcessStateChanged(); // after this the process could be deleted
     BOXEDWINE_CONDITION_UNLOCK(KSystem::processesCond);
      
-#ifdef BOXEDWINE_X64
-    unscheduleCurrentThread(); // won't return
-#endif
+	terminateCurrentThread(KThread::currentThread());
     return -K_CONTINUE;
 }
 
@@ -2451,7 +2481,7 @@ U32 KProcess::shmdt(U32 shmaddr) {
 }
 
 void KProcess::iterateThreads(std::function<bool(KThread*)> callback) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(threadsMutex);
+	BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(threadsCondition);
     for (auto& t : this->threads) {
         if (!callback(t.second)) {
             return;
@@ -2460,7 +2490,7 @@ void KProcess::iterateThreads(std::function<bool(KThread*)> callback) {
 }
 
 void KProcess::printStack() {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(threadsMutex);
+	BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(threadsCondition);
     for (auto& t : this->threads) {
         KThread* thread = t.second;
         CPU* cpu=thread->cpu;

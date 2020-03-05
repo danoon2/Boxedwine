@@ -5934,6 +5934,18 @@ U32 DecodeData::fetch32() {
 static DecodedOp* freeOps;
 BOXEDWINE_MUTEX freeOpsMutex;
 
+DecodedOp::DecodedOp() {
+    this->init();
+}
+
+void DecodedOp::clearCache() {
+    while (freeOps) {
+        DecodedOp* next = freeOps->next;
+        delete freeOps;
+        freeOps = next;
+    }
+}
+
 void DecodedOp::init() {
     this->next = 0;
     this->disp = 0;
@@ -5956,19 +5968,11 @@ DecodedOp* DecodedOp::alloc() {
     if (freeOps) {
         result = freeOps;
         freeOps = freeOps->next;
+        result->init();
+        return result;
     } else {
-        DecodedOp* ops = new DecodedOp[1024];
-
-        freeOps = &ops[1];
-        freeOps->next = 0;
-        for (int i=2;i<1024;i++) {
-            ops[i].next = freeOps;
-            freeOps = &ops[i];            
-        }
-        result = &ops[0];
-    }
-    result->init();
-    return result;
+        return new DecodedOp();
+    }    
 }
 
 void DecodedOp::dealloc(bool deallocNext) {

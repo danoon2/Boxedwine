@@ -16,16 +16,16 @@ void FsZip::setupZipRead(U64 zipOffset, U64 zipFileOffset) {
     char tmp[4096];
 
     if (zipOffset != lastZipOffset || zipFileOffset < lastZipFileOffset) {
-        unzCloseCurrentFile(FsZip::zipfile);
-        unzSetOffset64(FsZip::zipfile, zipOffset);
+        unzCloseCurrentFile(this->zipfile);
+        unzSetOffset64(this->zipfile, zipOffset);
         lastZipFileOffset = 0;
-        unzOpenCurrentFile(FsZip::zipfile);
+        unzOpenCurrentFile(this->zipfile);
         lastZipOffset = zipOffset;
     }
     if (zipFileOffset != lastZipFileOffset) {
         U32 todo = (U32)(zipFileOffset - lastZipFileOffset);
         while (todo) {
-            todo-=unzReadCurrentFile(FsZip::zipfile, tmp, todo>4096?4096:todo);
+            todo-=unzReadCurrentFile(this->zipfile, tmp, todo>4096?4096:todo);
         }
     }  
 #endif
@@ -39,14 +39,14 @@ bool FsZip::init(const std::string& zipPath, const std::string& mount) {
         U32 i;
         fsZipInfo* zipInfo;
 
-        zipfile = unzOpen(zipPath.c_str());
-        if (!zipfile) {
+        this->zipfile = unzOpen(zipPath.c_str());
+        if (!this->zipfile) {
             klog("Could not load zip file: %s", zipPath.c_str());
         }
 
-        if (unzGetGlobalInfo( zipfile, &global_info ) != UNZ_OK) {
+        if (unzGetGlobalInfo( this->zipfile, &global_info ) != UNZ_OK) {
             klog("Could not read file global info from zip file: %s", zipPath.c_str());
-            unzClose( zipfile );
+            unzClose( this->zipfile );
             return false;
         }
         zipInfo = new fsZipInfo[global_info.number_entry];
@@ -56,13 +56,13 @@ bool FsZip::init(const std::string& zipPath, const std::string& mount) {
             char tmp[MAX_FILEPATH_LEN];
 
             zipInfo[i].filename="/";
-            if ( unzGetCurrentFileInfo(zipfile, &file_info, tmp, MAX_FILEPATH_LEN, NULL, 0, NULL, 0 ) != UNZ_OK ) {
+            if ( unzGetCurrentFileInfo(this->zipfile, &file_info, tmp, MAX_FILEPATH_LEN, NULL, 0, NULL, 0 ) != UNZ_OK ) {
                 klog("Could not read file info from zip file: %s", zipPath.c_str());
                 unzClose( zipfile );
                 return false;
             }
             zipInfo[i].filename.append(tmp);
-            zipInfo[i].offset = unzGetOffset64(zipfile);
+            zipInfo[i].offset = unzGetOffset64(this->zipfile);
             Fs::remoteNameToLocal(zipInfo[i].filename); // converts special characters like :
             if (stringHasEnding(zipInfo[i].filename, ".link")) {
                 U32 read;
@@ -70,10 +70,10 @@ bool FsZip::init(const std::string& zipPath, const std::string& mount) {
                 zipInfo[i].filename.resize(zipInfo[i].filename.length()-5);
                 zipInfo[i].isLink = true;
                 unzOpenCurrentFile(zipfile);
-                read = unzReadCurrentFile(zipfile, tmp, MAX_FILEPATH_LEN);
+                read = unzReadCurrentFile(this->zipfile, tmp, MAX_FILEPATH_LEN);
                 tmp[read]=0;
                 zipInfo[i].link = tmp;                
-                unzCloseCurrentFile(zipfile);
+                unzCloseCurrentFile(this->zipfile);
             }                       
             
             if (stringHasEnding(zipInfo[i].filename, "/")) {
@@ -93,7 +93,7 @@ bool FsZip::init(const std::string& zipPath, const std::string& mount) {
 
             zipInfo[i].lastModified = ((U64)mktime(&tm))*1000l;
 
-            unzGoToNextFile(zipfile);
+            unzGoToNextFile(this->zipfile);
         }
         if (0) {
             Fs::makeLocalDirs(mount);
@@ -111,6 +111,12 @@ bool FsZip::init(const std::string& zipPath, const std::string& mount) {
     }
 #endif
     return true;
+}
+
+FsZip::~FsZip() {
+#ifdef BOXEDWINE_ZLIB
+    unzClose(this->zipfile);
+#endif
 }
 
 bool FsZip::readFileFromZip(const std::string& zipFile, const std::string& file, std::string& result) {

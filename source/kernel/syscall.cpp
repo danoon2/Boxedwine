@@ -1928,11 +1928,9 @@ extern S32 contextTime; // about the # instruction per 10 ms
 void ksyscall(CPU* cpu, U32 eipCount) {
     U32 result;
     
-#ifdef BOXEDWINE_MULTI_THREADED
-    if (cpu->thread->exiting) {
-        unscheduleCurrentThread();
+    if (cpu->thread->terminating) {
+		return;
     }
-#endif
     if (EAX>373) {
         result = -K_ENOSYS;
         kwarn("no syscall for %d", EAX);

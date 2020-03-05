@@ -22,6 +22,7 @@
 #include "kstat.h"
 #include "kscheduler.h"
 #include "../emulation/softmmu/soft_ram.h"
+#include "../emulation/cpu/normal/normalCPU.h"
 
 #include <time.h>
 
@@ -30,6 +31,7 @@ std::unordered_map<void*, SHM*> KSystem::shm;
 std::unordered_map<U32, KProcess*> KSystem::processes;
 std::unordered_map<std::string, BoxedPtr<MappedFileCache> > KSystem::fileCache;
 U32 KSystem::pentiumLevel = 4;
+bool KSystem::shutingDown;
 
 BOXEDWINE_CONDITION KSystem::processesCond("KSystem::processesCond");
 BOXEDWINE_MUTEX KSystem::fileCacheMutex;
@@ -40,6 +42,23 @@ void KSystem::init() {
     KSystem::processes.clear();
     KSystem::fileCache.clear();
     KSystem::pentiumLevel = 4;
+	KSystem::shutingDown = false;
+}
+
+void KSystem::destroy() {
+	KThread::setCurrentThread(NULL);
+	KSystem::shutingDown = true;	
+	std::unordered_map<U32, KProcess*> todelete = KSystem::processes;
+
+	for (auto& n : todelete) {
+		delete n.second;
+	}
+    KSystem::shm.clear();
+    KSystem::fileCache.clear();
+	KSystem::shutingDown = false;
+	Fs::shutDown();
+    DecodedOp::clearCache();
+    NormalCPU::clearCache();
 }
 
 U32 KSystem::getProcessCount() {
@@ -170,7 +189,7 @@ U32 KSystem::sysinfo(U32 address) {
     writed(address, 0); address+=4;
     writed(address, 0); address+=4;
     writed(address, 0); address+=4;
-    writew(address, (U32)KSystem::processes.size()); address+=2;
+    writew(address, (U16)KSystem::processes.size()); address+=2;
     writed(address, 0); address+=4;
     writed(address, 0); address+=4;
     writed(address, K_PAGE_SIZE);
@@ -257,6 +276,9 @@ U32 KSystem::waitpid(S32 pid, U32 statusAddress, U32 options) {
                 return 0;
             } else {                
                 BOXEDWINE_CONDITION_WAIT(processesCond);
+				if (KThread::currentThread()->terminating) {
+					return -K_EINTR;
+				}
             }
         }     
     }
@@ -271,8 +293,8 @@ U32 KSystem::waitpid(S32 pid, U32 statusAddress, U32 options) {
         }
         writed(statusAddress, s);
     }
-    result = process->id;    
-    delete process;
+    result = process->id;
+    process->deleteProcessIfNoThreadsElseMarkForDeletion();
     return result;
 }
 

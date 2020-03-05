@@ -41,7 +41,6 @@ Memory::Memory() : allocated(0), callbackPos(0) {
     memset(this->freeExecutableMemory, 0, sizeof(this->freeExecutableMemory));
     memset(this->dynamicCodePageUpdateCount, 0, sizeof(this->dynamicCodePageUpdateCount));
     this->executableMemoryId = 0;
-    this->previousExecutableMemoryId = 0;
 #endif    
     reserveNativeMemory(this);
 
@@ -693,7 +692,6 @@ void Memory::addCodeChunk(X64CodeChunk* chunk) {
 #endif
     X64CodeChunk* result = this->codeChunksByHostPage[hostPage];
     this->codeChunksByHostPage[hostPage] = chunk;
-
     if (result) {
         chunk->addNextHostChunk(result);
     }

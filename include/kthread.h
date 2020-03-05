@@ -91,10 +91,10 @@ public:
     Memory* memory;
     bool interrupted;
     U32 inSignal;    
-    bool exiting;
 #ifdef BOXEDWINE_MULTI_THREADED
-    bool exited;
+    bool exited;	
 #endif
+    bool terminating;
     U32 clear_child_tid;
     U64 userTime;
     U64 kernelTime;
@@ -127,7 +127,7 @@ public:
     OpenGLVetexPointer glEdgeFlagPointerEXT;
 
     inline static KThread* currentThread() {return runningThread;}
-    inline static void setCurrentThread(KThread* thread){runningThread = thread; thread->memory->onThreadChanged();}
+	inline static void setCurrentThread(KThread* thread) { runningThread = thread; if (thread) { thread->memory->onThreadChanged(); } }
 
     BOXEDWINE_CONDITION *waitingCond;
     BOXEDWINE_CONDITION pollCond;

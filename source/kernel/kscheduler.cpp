@@ -57,6 +57,19 @@ void unscheduleThread(KThread* thread) {
     thread->cpu->yield = true;
 }
 
+void terminateOtherThread(KProcess* process, U32 threadId) {
+    KThread* thread = process->getThreadById(threadId);
+    if (thread) {
+        unscheduleThread(thread);
+        delete thread;
+    }
+}
+
+void terminateCurrentThread(KThread* thread) {
+	thread->terminating = true;
+	unscheduleThread(thread);
+}
+
 S32 contextTime = 100000;
 S32 contextTimeRemaining = 100000;
 int count;
@@ -143,7 +156,7 @@ bool runSlice() {
             contextTimeRemaining = (U32)(contextTime * (10000-elapsedTime) / 10000);
         }
         // this is how we signal to delete the current thread, since we can't delete it in the syscall, maybe we should use smart_ptr for threads
-        if (!currentThread->process) {
+        if (currentThread->terminating) {
             delete currentThread;
         } else if (!currentThread->waitingCond) {
             // make sure we are behind any threads that were recently scheduled

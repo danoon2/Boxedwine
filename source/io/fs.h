@@ -81,7 +81,7 @@ public:
     static std::string nativePathSeperator;
 
     static BoxedPtr<FsFileNode> rootNode;
-
+	static void shutDown();
 private:
     friend class KUnixSocketObject;
 

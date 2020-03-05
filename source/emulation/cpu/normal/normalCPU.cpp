@@ -110,6 +110,10 @@ U8 fetchByte(U32 *eip) {
 class NormalBlock : public DecodedBlock {
 public:
     static NormalBlock* alloc();
+    static void clearCache();
+
+    NormalBlock();
+
     virtual void dealloc(bool delayed);  
 
     void run(CPU* cpu);
@@ -118,6 +122,10 @@ private:
     void init();
     NormalBlock* next;
 };
+
+NormalBlock::NormalBlock() {
+    this->init();
+}
 
 void NormalBlock::run(CPU* cpu) {
 #ifdef _DEBUG
@@ -143,36 +151,44 @@ void NormalBlock::init() {
     this->referencedFrom = NULL;
 }
 
+void NormalBlock::clearCache() {
+    while (freeBlocks) {
+        NormalBlock* next = freeBlocks->next;
+        delete freeBlocks;
+        freeBlocks = next;
+    }
+}
+
 NormalBlock* NormalBlock::alloc() {
     NormalBlock* result;
 
     if (freeBlocks) {
         result = freeBlocks;
         freeBlocks = freeBlocks->next;
+        result->init();
+        return result;
     } else {
-        NormalBlock* blocks = new NormalBlock[1024];
-
-        freeBlocks = &blocks[1];
-        freeBlocks->next = 0;
-        for (int i=2;i<1024;i++) {
-            blocks[i].next = freeBlocks;
-            freeBlocks = &blocks[i];            
-        }
-        result = &blocks[0];
-    }
-    result->init();
-    return result;
+        return new NormalBlock();
+    }    
 }
 
 void NormalBlock::dealloc(bool delayed) {
-    CPU* cpu = KThread::currentThread()->cpu;
-    if (cpu->delayedFreeBlock && cpu->delayedFreeBlock!=DecodedBlock::currentBlock) {
-        DecodedBlock* b = cpu->delayedFreeBlock;        
-        cpu->delayedFreeBlock = NULL;
-        b->dealloc(false);
-    }
-    if ((delayed && !cpu->delayedFreeBlock) || this==DecodedBlock::currentBlock) {
-        cpu->delayedFreeBlock = this;
+    KThread* thread = KThread::currentThread();
+    if (thread) {
+        CPU* cpu = KThread::currentThread()->cpu;
+        if (cpu->delayedFreeBlock && cpu->delayedFreeBlock != DecodedBlock::currentBlock) {
+            DecodedBlock* b = cpu->delayedFreeBlock;
+            cpu->delayedFreeBlock = NULL;
+            b->dealloc(false);
+        }
+        if ((delayed && !cpu->delayedFreeBlock) || this == DecodedBlock::currentBlock) {
+            cpu->delayedFreeBlock = this;
+        } else {
+            this->op->dealloc(true);
+            this->next = freeBlocks;
+            this->op = NULL;
+            freeBlocks = this;
+        }
     } else {
         this->op->dealloc(true);
         this->next = freeBlocks;
@@ -246,4 +262,8 @@ void NormalCPU::run() {
     }
     DecodedBlock::currentBlock = NULL;
 #endif
+}
+
+void NormalCPU::clearCache() {
+    NormalBlock::clearCache();
 }

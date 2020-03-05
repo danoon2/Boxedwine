@@ -13,7 +13,7 @@
 bool x64CPU::hasBMI2 = true;
 bool x64Intialized = false;
 
-x64CPU::x64CPU() : nativeHandle(0), jmpBuf(NULL), endCond("x64CPU::endcond"), inException(false), restarting(false) {
+x64CPU::x64CPU() : nativeHandle(0), endCond("x64CPU::endcond"), inException(false), exitToStartThreadLoop(0) {
     if (!x64Intialized) {
         x64Intialized = true;
         x64CPU::hasBMI2 = platformHasBMI2();
@@ -34,17 +34,36 @@ void x64CPU::run() {
         for (int i=0;i<6;i++) {
             this->negSegAddress[i] = (U32)(-((S32)(this->seg[i].address)));
         }
-		this->restarting = false;
+		this->exitToStartThreadLoop = 0;
         if (setjmp(this->runBlockJump)==0) {
             StartCPU start = (StartCPU)this->init();
             start();
 #ifdef __TEST
             return;
 #endif
-        }
+        }		
+		if (this->thread->terminating) {
+			break;
+		}
+		if (this->exitToStartThreadLoop) {
+			Memory* previousMemory = this->thread->process->previousMemory;
+			if (previousMemory && previousMemory->getRefCount() == 1) {
+				// :TODO: this seem like a bad dependency that memory will access KThread::currentThread()
+				Memory* currentMemory = this->thread->process->memory;
+				this->thread->process->memory = previousMemory;
+				this->thread->memory = previousMemory;
+				delete previousMemory;
+				this->thread->process->memory = currentMemory;
+				this->thread->memory = currentMemory;
+			}
+			else {
+				previousMemory->decRefCount();
+			}
+			this->thread->process->previousMemory = NULL;
+		}
         if (this->inException) {
             this->inException = false;
-        }
+        }		
     }
 }
 
@@ -54,8 +73,7 @@ void x64CPU::restart() {
 	for (int i = 0; i < 6; i++) {
 		this->negSegAddress[i] = (U32)(-((S32)(this->seg[i].address)));
 	}
-	this->restarting = true;
-    longjmp(this->runBlockJump, 1);
+	this->exitToStartThreadLoop = true;
 }
 
 DecodedBlock* x64CPU::getNextBlock() {
@@ -70,8 +88,10 @@ void* x64CPU::init() {
 
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->executableMemoryMutex);
 
-    data.pushNativeFlags();
-    data.writeToRegFromValue(HOST_CPU, true, (U64)this, 8);
+	// will push 15 regs, since it is odd, it will balance rip being pushed on the stack and give use a 16-byte alignment
+	data.saveNativeState(); // also sets HOST_CPU
+
+    //data.writeToRegFromValue(HOST_CPU, true, (U64)this, 8);
     data.writeToRegFromValue(HOST_MEM, true, cpu->memOffset, 8);
 
     data.writeToRegFromValue(HOST_SS, true, (U32)cpu->seg[SS].address, 4);
@@ -95,6 +115,13 @@ void* x64CPU::init() {
     link(&data, chunk);
     this->pendingCodePages.clear();
     this->eipToHostInstruction = this->thread->memory->eipToHostInstruction;
+
+	X64Asm returnData(this);
+	returnData.restoreNativeState();
+	returnData.write8(0xc3); // retn
+	X64CodeChunk* chunk2 = returnData.commit(true);
+	this->returnAddress = chunk2->getHostAddress();
+
     return result;
 }
 
@@ -588,18 +615,10 @@ U64 x64CPU::handleDivByZero(std::function<void(DecodedOp*)> doSyncFrom, std::fun
     return result;
 }
 
-void OPCALL unscheduleCallback(CPU* cpu, DecodedOp* op) {
-    jmp_buf* jmpBuf = ((x64CPU*)KThread::currentThread()->cpu)->jmpBuf;
-    longjmp(*jmpBuf,1);
-}
-
 
 U64 x64CPU::startException(U64 address, bool readAddress, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo) {
-    if (this->thread->exiting) {
-        X64Asm data(this);
-        data.callCallback((void*)unscheduleCallback);
-        data.callCallback((void*)unscheduleCallback);        
-        return (U64)data.commit(true)->getHostAddress();                
+    if (this->thread->terminating) {
+        return (U64)this->returnAddress;                
     }
     if (this->inException) {
         doSyncFrom(NULL);
@@ -630,20 +649,13 @@ void x64CPU::startThread() {
         this->jmpBuf = &jmpBuf;
         this->run();
     }
-    thread->exited = true;
-    while (thread->process) {
-        SDL_Delay(10);
-    }
-
-    // in case we exited because of an exit syscall, but the process is also in the middle of an exit_group
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(KProcess::exitGroupMutex);
 
     BOXEDWINE_CONDITION_LOCK(this->endCond);
     BOXEDWINE_CONDITION_SIGNAL(this->endCond);
-    BOXEDWINE_CONDITION_UNLOCK(this->endCond);
+    BOXEDWINE_CONDITION_UNLOCK(this->endCond);    
 
-    delete thread;
-    
+	thread->process->deleteThreadAndProcessIfLastThread(thread);
+
     platformThreadCount--;
     if (platformThreadCount==0) {
         SDL_Event sdlevent;
@@ -652,21 +664,14 @@ void x64CPU::startThread() {
     }
 }
 
-void x64CPU::unscheduleThread() {
-    thread->exiting = true;
+// called from another thread
+void x64CPU::wakeThreadIfWaiting() {
     BoxedWineCondition* cond = thread->waitingCond;
+
+	// wait up the thread if it is waiting
     if (cond) {
         cond->signal();
     }    
-    while (!thread->exited) {
-        SDL_Delay(10);
-    }
-    // another thread in this process could have called exit while we are in the middle of an exit_group
-    KProcess* process = thread->process;
-    if (process) {
-        process->removeThread(thread);
-        thread->process = NULL;
-    }
 }
 
 void addTimer(KTimer* timer) {
@@ -678,16 +683,31 @@ void removeTimer(KTimer* timer) {
         kpanic("removeTimer not implemented yet");
 }
 
-void unscheduleThread(KThread* thread) {
-    if (thread==KThread::currentThread())
-        return;
-
-    ((x64CPU*)thread->cpu)->unscheduleThread();
+void terminateOtherThread(KProcess* process, U32 threadId) {
+	process->threadsCondition.lock();
+	KThread* thread = process->getThreadById(threadId);
+	if (thread) {
+		thread->terminating = true;
+		((x64CPU*)thread->cpu)->exitToStartThreadLoop = true;
+		((x64CPU*)thread->cpu)->wakeThreadIfWaiting();
+	}
+	process->threadsCondition.unlock();
+	int counter;
+	while (true) {
+		BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(process->threadsCondition);		
+		if (!process->getThreadById(threadId)) {
+			break;
+		}
+		BOXEDWINE_CONDITION_WAIT_TIMEOUT(process->threadsCondition, 1000);
+	}
 }
 
-void unscheduleCurrentThread() {
-    jmp_buf* jmpBuf = ((x64CPU*)KThread::currentThread()->cpu)->jmpBuf;
-    longjmp(*jmpBuf,1);
+void terminateCurrentThread(KThread* thread) {
+	thread->terminating = true;
+	((x64CPU*)thread->cpu)->exitToStartThreadLoop = true;
+}
+
+void unscheduleThread(KThread* thread) {
 }
 
 #endif

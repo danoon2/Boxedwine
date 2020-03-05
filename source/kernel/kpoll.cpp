@@ -94,6 +94,9 @@ S32 internal_poll(KPollData* data, U32 count, U32 timeout) {
         } else {
             BOXEDWINE_CONDITION_WAIT_TIMEOUT(thread->pollCond, timeout);
         }
+		if (KThread::currentThread()->terminating) {
+			return -K_EINTR;
+		}
     }
 }
 

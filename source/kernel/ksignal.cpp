@@ -190,6 +190,9 @@ U32 KSignal::readNative(U8* buffer, U32 len) {
         BOXEDWINE_CONDITION_LOCK(this->lockCond);
         BOXEDWINE_CONDITION_WAIT(this->lockCond);
         BOXEDWINE_CONDITION_UNLOCK(this->lockCond);
+		if (KThread::currentThread()->terminating) {
+			return -K_EINTR;
+		}
     }
     return 0;
 }

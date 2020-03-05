@@ -2833,6 +2833,19 @@ void X64Asm::syscall(U32 opLen) {
     
     callHost((void*)ksyscall);
     syncRegsToHost();
+	
+	U8 tmpReg = getTmpReg();
+	writeToRegFromMem(tmpReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EXIT_TO_START_LOOP, 4, false);
+	doIf(tmpReg, true, 1, [this]() {
+		// jmp [HOST_CPU+returnAddress]
+		write8(0x41);
+		write8(0xff);
+		write8(0xa0 | HOST_CPU);
+		write32(CPU_OFFSET_RETURN_ADDRESS);
+		}, []() {
+		}
+	);
+	releaseTmpReg(tmpReg);
     doJmp(true);
 }
 
@@ -3761,6 +3774,44 @@ void X64Asm::callFpuWithArg(PFN_FPU_REG pfn, U32 arg) {
 
     callHost((void*)pfn);
     syncRegsToHost();
+}
+
+void X64Asm::saveNativeState() {
+	for (int i = 0; i < 8; i++) {
+		if (i != 4) { // don't save RSP
+			pushNativeReg(i, false);
+		}
+	}
+	for (int i = 0; i < 8; i++) {
+		pushNativeReg(i, true);
+	}
+
+	writeToRegFromValue(HOST_CPU, true, (U64)this->cpu, 8);
+
+	// fxsave cpu->fpuState
+	write8(0x41);
+	write8(0x0f);
+	write8(0xae);
+	write8(0x80 | HOST_CPU);
+	write32((U32)(offsetof(x64CPU, fpuState)));	
+}
+
+void X64Asm::restoreNativeState() {
+	// fxrstor
+	write8(0x41);
+	write8(0x0f);
+	write8(0xae);
+	write8(0x88 | HOST_CPU);
+	write32((U32)(offsetof(x64CPU, fpuState)));
+	
+	for (int i = 7; i >= 0; i--) {		
+		popNativeReg(i, true);
+	}
+	for (int i = 7; i >= 0; i--) {
+		if (i != 4) { // don't pop RSP
+			popNativeReg(i, false);
+		}
+	}
 }
 
 void X64Asm::fpu0(U8 rm) {

@@ -108,6 +108,8 @@ public:
     void removeThread(KThread* thread);
     KThread* getThreadById(U32 tid);
     U32 getThreadCount();
+	void deleteThreadAndProcessIfLastThread(KThread* thread);
+	void deleteProcessIfNoThreadsElseMarkForDeletion();
 
     void clone(KProcess* from);
     U32 getNextFileDescriptorHandle(int after);
@@ -218,7 +220,7 @@ public:
     U32 exitCode;
     U32 umaskValue;
     bool terminated;
-    Memory* memory;     
+    Memory* memory;
     std::string currentDirectory;
     U32 brkEnd;    
     KSigAction sigActions[MAX_SIG_ACTIONS];
@@ -235,11 +237,11 @@ public:
     U32 entry;
     U32 eventQueueFD;     
     BOXEDWINE_CONDITION exitOrExecCond;
-    static BOXEDWINE_MUTEX exitGroupMutex;
 
     bool hasSetStackMask;
     bool hasSetSeg[6];
 #ifdef BOXEDWINE_64BIT_MMU
+	Memory* previousMemory;
     U32 nextNativeAddress;
     U32 glStrings[NUMBER_OF_STRINGS];
     U32 allocNative(U32 len);
@@ -247,6 +249,7 @@ public:
 #ifdef BOXEDWINE_X64
     bool emulateFPU;
 #endif
+	bool pendingDelete;
 private:
     std::unordered_map<U32, KFileDescriptor*> fds;
     BOXEDWINE_MUTEX fdsMutex;
@@ -264,7 +267,9 @@ private:
     BOXEDWINE_MUTEX mappedFilesMutex;
 
     std::unordered_map<U32, KThread*> threads;
-    BOXEDWINE_MUTEX threadsMutex;
+public:
+    BOXEDWINE_CONDITION threadsCondition; // will signal when a thread is removed
+private:
 
     U32 usedTLS[TLS_ENTRIES];
     BOXEDWINE_MUTEX usedTlsMutex;

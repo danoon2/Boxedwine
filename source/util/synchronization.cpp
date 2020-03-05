@@ -146,11 +146,6 @@ void BoxedWineCondition::wait() {
         child.cond->unlock();
     }
     this->children.clear();
-
-    if (KThread::currentThread()->exiting) {
-        this->unlock();
-        unscheduleCurrentThread();
-    }
 }
 
 void BoxedWineCondition::waitWithTimeout(U32 ms) {
@@ -171,11 +166,6 @@ void BoxedWineCondition::waitWithTimeout(U32 ms) {
         child.cond->unlock();
     }
     this->children.clear();
-
-    if (KThread::currentThread()->exiting) {
-        this->unlock();
-        unscheduleCurrentThread();
-    }
 }
 
 void BoxedWineCondition::unlock() {

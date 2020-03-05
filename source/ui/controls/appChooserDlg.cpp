@@ -17,7 +17,7 @@ void AppChooserDlg::run() {
 
     ImGui::BeginChildFrame(1, ImVec2(-1, this->height-ImGui::GetCursorPosY()-42), ImGuiWindowFlags_AlwaysVerticalScrollbar);
     ImGui::Columns(3);
-    for (int i = 0; i < this->items.size(); i++) {
+    for (int i = 0; i < (int)this->items.size(); i++) {
         if (i<3) {
             ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing));
         }

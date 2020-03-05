@@ -17,7 +17,7 @@ public:
     void* translateEip(U32 ip);
 
     U64 nativeHandle;
-    jmp_buf* jmpBuf;
+	jmp_buf* jmpBuf;
     BOXEDWINE_CONDITION endCond;
 
     U32 negSegAddress[6];
@@ -25,13 +25,16 @@ public:
     U64 memOffset;
     U64 negMemOffset;
     bool inException;
-	bool restarting;
+	int exitToStartThreadLoop; // this will be checked after a syscall, if set to 1 then then x64CPU.returnAddress will be called
     void*** eipToHostInstruction;
     DecodedOp* getOp(U32 eip, bool existing);
     U32 stringRepeat;
     U32 stringWritesToDi;
     U32 arg5;
     ALIGN(U8 fpuState[512], 16);
+	ALIGN(U8 originalFpuState[512], 16);
+	U64 originalCpuRegs[16];
+	void* returnAddress;
 
     static bool hasBMI2;
 
@@ -56,7 +59,7 @@ public:
     U64 handleIllegalInstruction(U64 rip);
     U64 handleAccessException(U64 rip, U64 address, bool readAddress, U64 rsi, U64 rdi, U64 r8, U64 r9, U64* r10, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo); // returns new rip, if 0 then don't set rip, but continue execution
     void startThread();
-    void unscheduleThread();
+    void wakeThreadIfWaiting();
     U64 startException(U64 address, bool readAddress, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo);
     U64 handleDivByZero(std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo);
 

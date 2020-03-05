@@ -1440,6 +1440,10 @@ typedef void (OPCALL *OpCallback)(CPU* cpu, DecodedOp* op);
 class DecodedOp {
 public:    
     static DecodedOp* alloc();
+    static void clearCache();
+
+    DecodedOp();
+
     void dealloc(bool deallocNext);    
     void log(CPU* cpu);
     bool needsToSetFlags();

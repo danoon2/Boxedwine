@@ -32,6 +32,8 @@
 
 #define CPU_OFFSET_EIP (U32)(offsetof(x64CPU, eip.u32))
 #define CPU_OFFSET_EIP_FROM (U32)(offsetof(x64CPU, fromEip))
+#define CPU_OFFSET_EXIT_TO_START_LOOP (U32)(offsetof(x64CPU, exitToStartThreadLoop))
+#define CPU_OFFSET_RETURN_ADDRESS (U32)(offsetof(x64CPU, returnAddress))
 
 typedef void (*PFN_FPU_REG)(CPU* cpu, U32 reg);
 typedef void (*PFN_FPU_ADDRESS)(CPU* cpu, U32 address);
@@ -63,6 +65,8 @@ public:
     void translateRM(U8 rm, bool checkG, bool checkE, bool isG8bit, bool isE8bit, U8 immWidth);
     void writeOp(bool isG8bit=false);
     void addDynamicCheck(bool panic);
+	void saveNativeState();
+	void restoreNativeState();
 
     void setImmediate8(U8 value);
     void setImmediate16(U16 value);

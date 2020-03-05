@@ -274,6 +274,9 @@ U32 DevDsp::writeNative(U8* buffer, U32 len) {
         while (len>audioBuffer.getFree()) {
             SDL_UnlockAudio();
             BOXEDWINE_CONDITION_WAIT(data->bufferCond);
+			if (KThread::currentThread()->terminating) {
+				return -K_EINTR;
+			}
             SDL_LockAudio();
         }
         audioBuffer.write(buffer, len);

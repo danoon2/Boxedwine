@@ -127,7 +127,8 @@ void StartUpArgs::buildVirtualFileSystem() {
 }
 
 bool StartUpArgs::apply() {
-    KSystem::init();
+    KSystem::init();    
+
     KSystem::pentiumLevel = this->pentiumLevel;
     for (U32 f=0;f<nonExecFileFullPaths.size();f++) {
         FsFileNode::nonExecFileFullPaths.insert(nonExecFileFullPaths[f]);
@@ -146,9 +147,11 @@ bool StartUpArgs::apply() {
         klog("Resolution set to: %dx%d", this->screenCx, this->screenCy);
     }
 #ifdef BOXEDWINE_ZLIB
+    std::vector<FsZip*> openZips;
     for (auto& zip : zips) {
         FsZip* fsZip = new FsZip();
         fsZip->init(zip, "");
+        openZips.push_back(fsZip);
     }
 #endif
 
@@ -288,6 +291,7 @@ bool StartUpArgs::apply() {
                 return 0; // doMainLoop should have handled any cleanup, like SDL_Quit if necessary
             }
         }
+		KSystem::destroy();
         KSystem::init();
     }    
     if (this->args.size()) {
@@ -307,8 +311,15 @@ bool StartUpArgs::apply() {
     if (gensrc)
         writeSource();
 #endif
+	KSystem::destroy();
     destroySDL();
     dspShutdown();
+
+#ifdef BOXEDWINE_ZLIB
+    for (auto& z : openZips) {
+        delete z;
+    }
+#endif
     return true;
 }
 

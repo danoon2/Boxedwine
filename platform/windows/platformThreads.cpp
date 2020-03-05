@@ -93,11 +93,6 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
         return EXCEPTION_CONTINUE_SEARCH;
     }
     x64CPU* cpu = (x64CPU*)currentThread->cpu;
-	if (cpu->restarting) {
-		ep->ContextRecord->Rip = (U64)cpu->init();
-		cpu->restarting = false;
-		return EXCEPTION_CONTINUE_EXECUTION;
-	}
     if (ep->ContextRecord->EFlags & AC) {
         // :TODO: is there a way to clear in now
         ep->ContextRecord->EFlags&=~AC;

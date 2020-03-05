@@ -437,6 +437,14 @@ void destroySDL() {
 #ifdef SDL2
     destroySDL2(NULL);
 #endif
+    for (auto& n : cursors) {
+        SDL_FreeCursor(n.second);
+    }
+    cursors.clear();
+    for (auto& n : hwndToWnd) {
+        delete n.second;
+    }
+    hwndToWnd.clear();
 }
 
 #if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)

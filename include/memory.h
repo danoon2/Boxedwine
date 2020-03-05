@@ -107,7 +107,7 @@ public:
     void onThreadChanged();
 
     void incRefCount() { this->refCount++;}
-    void decRefCount() { this->refCount--;}
+	void decRefCount() { this->refCount--; if (this->refCount == 0) { delete this; } }
     U32 getRefCount() { return this->refCount;}
 
 private:
@@ -165,7 +165,6 @@ public:
     void freeExcutableMemory(void* hostMemory, U32 size);
     void executableMemoryReleased();
     U64 executableMemoryId;
-    U64 previousExecutableMemoryId;
     U32 nextExecutablePage;
 
     void** eipToHostInstruction[K_NUMBER_OF_PAGES];

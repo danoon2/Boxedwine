@@ -40,9 +40,9 @@ void KThread::cleanup() {
     BOXEDWINE_CONDITION_SIGNAL_ALL_NEED_LOCK(this->waitingForSignalToEndCond);
     if (this->clear_child_tid && this->process && this->process->memory->isValidWriteAddress(this->clear_child_tid, 4)) {
         writed(this->clear_child_tid, 0);
-        this->futex(this->clear_child_tid, 1, 1, 0);
-        this->clear_child_tid = 0;
+        this->futex(this->clear_child_tid, 1, 1, 0);        
     }
+	this->clear_child_tid = 0;
 #ifndef BOXEDWINE_MULTI_THREADED
     if (this->waitingCond) {
         BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(*this->waitingCond);
@@ -99,10 +99,10 @@ KThread::KThread(U32 id, KProcess* process) :
     memory(0),
     interrupted(false),
     inSignal(0),
-    exiting(false),
 #ifdef BOXEDWINE_MULTI_THREADED
-    exited(false),
+    exited(false),	
 #endif
+    terminating(false),
     clear_child_tid(0),
     userTime(0),
     kernelTime(0),
@@ -319,7 +319,10 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime) {
                 BOXEDWINE_CONDITION_WAIT_TIMEOUT(f->cond, (U32)diff);
             } else {
                 BOXEDWINE_CONDITION_WAIT(f->cond);
-            }            
+            }  
+			if (this->terminating) {
+				return -K_EINTR; // probably doesn't matter
+			}
         }
     } else if (op==FUTEX_WAKE_PRIVATE || op==FUTEX_WAKE) {
         int i;
@@ -859,6 +862,9 @@ U32 KThread::sleep(U32 ms) {
         BOXEDWINE_CONDITION_LOCK(this->sleepCond);
         BOXEDWINE_CONDITION_WAIT_TIMEOUT(this->sleepCond, ms);
         BOXEDWINE_CONDITION_UNLOCK(this->sleepCond);
+		if (this->terminating) {
+			return -K_EINTR;
+		}
     }
 }
 

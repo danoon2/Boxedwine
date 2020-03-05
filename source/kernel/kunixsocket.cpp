@@ -128,6 +128,9 @@ U32 KUnixSocketObject::internal_write(BOXEDWINE_CONDITION& cond, U32 buffer, U32
         BOXEDWINE_CONDITION_WAIT(cond);
         if (this->outClosed || !this->connection)
             return -K_EPIPE;
+		if (KThread::currentThread()->terminating) {
+			return -K_EINTR;
+		}
     }   
     
     //printf("internal_write: %0.8X size=%d capacity=%d writeLen=%d", (int)&this->connection->recvBuffer, (int)this->connection->recvBuffer.size(), (int)this->connection->recvBuffer.capacity(), len);
@@ -202,6 +205,9 @@ U32 KUnixSocketObject::writeNative(U8* buffer, U32 len) {
         BOXEDWINE_CONDITION_WAIT(this->connection->lockCond);
         if (this->outClosed || !this->connection)
             return -K_EPIPE;
+		if (KThread::currentThread()->terminating) {
+			return -K_EINTR;
+		}
     }   
     this->connection->recvBuffer.write((S8*)buffer, len);
     BOXEDWINE_CONDITION_SIGNAL_ALL(this->connection->lockCond);
@@ -246,6 +252,9 @@ U32 KUnixSocketObject::readNative(U8* buffer, U32 len) {
             return -K_EWOULDBLOCK;
         }
         BOXEDWINE_CONDITION_WAIT(this->lockCond);
+		if (KThread::currentThread()->terminating) {
+			return -K_EINTR;
+		}
     }
     //printf("readNative: %0.8X size=%d capacity=%d writeLen=%d", (int)&this->recvBuffer, (int)this->recvBuffer.size(), (int)this->recvBuffer.capacity(), len);
     if (len>this->recvBuffer.getOccupied())
@@ -271,6 +280,9 @@ U32 KUnixSocketObject::read(U32 buffer, U32 len) {
             return -K_EWOULDBLOCK;
         }
         BOXEDWINE_CONDITION_WAIT(this->lockCond);
+		if (KThread::currentThread()->terminating) {
+			return -K_EINTR;
+		}
     }
     // :TODO: remove extra copy
     while (len && this->recvBuffer.getOccupied()!=0) {
@@ -409,6 +421,9 @@ U32 KUnixSocketObject::connect(KFileDescriptor* fd, U32 address, U32 len) {
                     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->lockCond);
                     while (this->connecting) {
                         BOXEDWINE_CONDITION_WAIT(this->lockCond);
+						if (KThread::currentThread()->terminating) {
+							return -K_EINTR;
+						}
                     }
                     if (!this->connection) {
                         return -K_ECONNREFUSED;
@@ -435,6 +450,9 @@ U32 KUnixSocketObject::connect(KFileDescriptor* fd, U32 address, U32 len) {
                 BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->lockCond);
                 if (this->connecting) {
                     BOXEDWINE_CONDITION_WAIT(this->lockCond);
+					if (KThread::currentThread()->terminating) {
+						return -K_EINTR;
+					}
                 }
                 if (!this->connection) {
                     return -K_ECONNREFUSED;
@@ -471,6 +489,9 @@ U32 KUnixSocketObject::accept(KFileDescriptor* fd, U32 address, U32 len, U32 fla
             return -K_EWOULDBLOCK;
         }
         BOXEDWINE_CONDITION_WAIT(this->lockCond);
+		if (KThread::currentThread()->terminating) {
+			return -K_EINTR;
+		}
     }
     
     KListNode<KUnixSocketObject*>* connectionNode = this->pendingConnections.front();
@@ -721,6 +742,9 @@ U32 KUnixSocketObject::recvmsg(KFileDescriptor* fd, U32 address, U32 flags) {
         }
         // :TODO: what about a time out
         BOXEDWINE_CONDITION_WAIT(this->lockCond);
+		if (KThread::currentThread()->terminating) {
+			return -K_EINTR;
+		}
     }
 
     readMsgHdr(address, &hdr);

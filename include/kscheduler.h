@@ -21,9 +21,8 @@
 
 void scheduleThread(KThread* thread);
 void unscheduleThread(KThread* thread);
-#ifdef BOXEDWINE_X64
-void unscheduleCurrentThread(); // will not return
-#endif
+void terminateOtherThread(KProcess* process, U32 threadId);
+void terminateCurrentThread(KThread* thread);
 
 void addTimer(KTimer* timer);
 void removeTimer(KTimer* timer);

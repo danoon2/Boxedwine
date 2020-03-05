@@ -27,6 +27,7 @@ public:
 
 class FsZip {
 public:
+    ~FsZip();
     bool init(const std::string& zipPath, const std::string& mount);
     unzFile zipfile;
 

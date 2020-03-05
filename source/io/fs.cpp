@@ -19,6 +19,9 @@ BOXEDWINE_MUTEX Fs::nextNodeIdMutex;
 BoxedPtr<FsFileNode> Fs::rootNode;
 std::string Fs::nativePathSeperator;
 
+void Fs::shutDown() {
+	rootNode = NULL;
+}
 bool Fs::initFileSystem(const std::string& rootPath) {
     Fs::nextNodeId = 1;
     std::string path;
