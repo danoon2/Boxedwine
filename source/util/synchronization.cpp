@@ -77,7 +77,7 @@ void BoxedWineCondition::signal() {
         // signal will change this->parents so we can't iterate this->parents directly
         BoxedWineCondition** pp = NULL;
         VECTOR_TO_ARRAY_ON_STACK(this->parents, BoxedWineCondition*, pp);
-        for (int i=0;i<this->parents.size();i++) {
+        for (int i=0;i<(int)this->parents.size();i++) {
             BoxedWineCondition* p  = pp[i];
             while(!p->tryLock()) {
                 this->unlock();
@@ -97,7 +97,7 @@ void BoxedWineCondition::signalAll() {
     if (this->parents.size()>0) {
         BoxedWineCondition** pp = NULL;
         VECTOR_TO_ARRAY_ON_STACK(this->parents, BoxedWineCondition*, pp);
-        for (int i=0;i<this->parents.size();i++) {
+        for (int i=0;i<(int)this->parents.size();i++) {
             BoxedWineCondition* p  = pp[i];
             while(!p->tryLock()) {
                 this->unlock();
@@ -230,7 +230,7 @@ void BoxedWineCondition::signal() {
         // signal will change this->parents so we can't iterate this->parents directly
         BoxedWineCondition** pp = NULL;
         VECTOR_TO_ARRAY_ON_STACK(this->parents, BoxedWineCondition*, pp);
-        for (U32 i=0;i<this->parents.size();i++) {
+        for (U32 i=0;i<(U32)this->parents.size();i++) {
             pp[i]->signal();
         }
     }
@@ -242,7 +242,7 @@ void BoxedWineCondition::signalAll() {
         // signalAll will change this->parents so we can't iterate this->parents directly
         BoxedWineCondition** pp = NULL;
         VECTOR_TO_ARRAY_ON_STACK(this->parents, BoxedWineCondition*, pp);
-        for (U32 i=0;i<this->parents.size();i++) {
+        for (U32 i=0;i<(U32)this->parents.size();i++) {
             pp[i]->signalAll();
         }
     }

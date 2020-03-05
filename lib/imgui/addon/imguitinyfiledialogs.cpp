@@ -2171,7 +2171,7 @@ static int zenity3Present ( )
 static int tkinter2Present ( )
 {
     static int lTkinter2Present = -1 ;
-	char lPythonCommand[256];
+	char lPythonCommand[256+sizeof(gPython2Name)];
 	char lPythonParams[256] =
 "-c \"try:\n\timport Tkinter;\nexcept:\n\tprint(0);\"";
 	int i;

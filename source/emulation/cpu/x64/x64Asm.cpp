@@ -3331,7 +3331,7 @@ void X64Asm::setNativeFlags(U32 flags, U32 mask) {
 void X64Asm::writeOp(bool isG8bit) {
     U8 g8 = 0xFF;
     U8 g8Temp = 0;
-    U8 tmpReg;
+    U8 tmpReg=0;
     bool isTmpRegAllocated = false;
     
     if (this->rex && this->has_rm && isG8bit && G(this->rm)>=4) {        

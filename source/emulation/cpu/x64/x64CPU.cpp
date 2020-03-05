@@ -190,7 +190,7 @@ void x64CPU::addReturnFromTest() {
 #endif
 
 S32 x64CPU::preLinkCheck(X64Asm* data) {
-    for (S32 i=0;i<data->todoJump.size();i++) {
+    for (S32 i=0;i<(S32)data->todoJump.size();i++) {
         U32 eip = this->seg[CS].address+data->todoJump[i].eip;        
         U8 size = data->todoJump[i].offsetSize;
 
@@ -279,7 +279,7 @@ void x64CPU::markCodePageReadOnly(X64Asm* data) {
 }
 
 void x64CPU::makePendingCodePagesReadOnly() {
-    for (int i=0;i<this->pendingCodePages.size();i++) {
+    for (int i=0;i<(int)this->pendingCodePages.size();i++) {
         // the chunk could cross a page and be a mix of dynamic and non dynamic code
         if (this->thread->memory->dynamicCodePageUpdateCount[this->pendingCodePages[i]]!=MAX_DYNAMIC_CODE_PAGE_COUNT) {
             ::makeCodePageReadOnly(this->thread->memory, this->pendingCodePages[i]);
@@ -366,7 +366,7 @@ void x64CPU::translateData(X64Asm* data, X64Asm* firstPass) {
         if (data->done) {
             break;
         }
-        if (data->stopAfterInstruction!=-1 && data->ipAddressCount==data->stopAfterInstruction) {
+        if (data->stopAfterInstruction!=-1 && (int)data->ipAddressCount==data->stopAfterInstruction) {
             break;
         }
         data->resetForNewOp();

@@ -86,21 +86,26 @@
 #define CONTEXT_FCW uc_mcontext.fpregs->cwd
 #define CONTEXT_FSW uc_mcontext.fpregs->swd
 #define CONTEXT_FTW uc_mcontext.fpregs->ftw
-#define CONTEXT_FPU_REG_0_LOW(context) ((U64*)context->uc_mcontext.fpregs->_st[0].significand)
+union CAST_FPU {
+    unsigned short int r16[4];
+    U64 r64;
+};
+
+#define CONTEXT_FPU_REG_0_LOW(context) &((CAST_FPU*)&context->uc_mcontext.fpregs->_st[0].significand)->r64
 #define CONTEXT_FPU_REG_0_HIGH(context) ((S16*)&context->uc_mcontext.fpregs->_st[0].exponent)
-#define CONTEXT_FPU_REG_1_LOW(context) ((U64*)context->uc_mcontext.fpregs->_st[1].significand)
+#define CONTEXT_FPU_REG_1_LOW(context) &((CAST_FPU*)&context->uc_mcontext.fpregs->_st[1].significand)->r64
 #define CONTEXT_FPU_REG_1_HIGH(context) ((S16*)&context->uc_mcontext.fpregs->_st[1].exponent)
-#define CONTEXT_FPU_REG_2_LOW(context) ((U64*)context->uc_mcontext.fpregs->_st[2].significand)
+#define CONTEXT_FPU_REG_2_LOW(context) &((CAST_FPU*)&context->uc_mcontext.fpregs->_st[2].significand)->r64
 #define CONTEXT_FPU_REG_2_HIGH(context) ((S16*)&context->uc_mcontext.fpregs->_st[2].exponent)
-#define CONTEXT_FPU_REG_3_LOW(context) ((U64*)context->uc_mcontext.fpregs->_st[3].significand)
+#define CONTEXT_FPU_REG_3_LOW(context) &((CAST_FPU*)&context->uc_mcontext.fpregs->_st[3].significand)->r64
 #define CONTEXT_FPU_REG_3_HIGH(context) ((S16*)&context->uc_mcontext.fpregs->_st[3].exponent)
-#define CONTEXT_FPU_REG_4_LOW(context) ((U64*)context->uc_mcontext.fpregs->_st[4].significand)
+#define CONTEXT_FPU_REG_4_LOW(context) &((CAST_FPU*)&context->uc_mcontext.fpregs->_st[4].significand)->r64
 #define CONTEXT_FPU_REG_4_HIGH(context) ((S16*)&context->uc_mcontext.fpregs->_st[4].exponent)
-#define CONTEXT_FPU_REG_5_LOW(context) ((U64*)context->uc_mcontext.fpregs->_st[5].significand)
+#define CONTEXT_FPU_REG_5_LOW(context) &((CAST_FPU*)&context->uc_mcontext.fpregs->_st[5].significand)->r64
 #define CONTEXT_FPU_REG_5_HIGH(context) ((S16*)&context->uc_mcontext.fpregs->_st[5].exponent)
-#define CONTEXT_FPU_REG_6_LOW(context) ((U64*)context->uc_mcontext.fpregs->_st[6].significand)
+#define CONTEXT_FPU_REG_6_LOW(context) &((CAST_FPU*)&context->uc_mcontext.fpregs->_st[6].significand)->r64
 #define CONTEXT_FPU_REG_6_HIGH(context) ((S16*)&context->uc_mcontext.fpregs->_st[6].exponent)
-#define CONTEXT_FPU_REG_7_LOW(context) ((U64*)context->uc_mcontext.fpregs->_st[7].significand)
+#define CONTEXT_FPU_REG_7_LOW(context) &((CAST_FPU*)&context->uc_mcontext.fpregs->_st[7].significand)->r64
 #define CONTEXT_FPU_REG_7_HIGH(context) ((S16*)&context->uc_mcontext.fpregs->_st[7].exponent)
 #endif
 #include <ucontext.h>
@@ -342,7 +347,9 @@ U32 platformThreadCount = 0;
 void* platformThreadProc(void* param) {
     static bool initializedHandler = false;
     if (!initializedHandler) {
-        struct sigaction sa = { .sa_sigaction=handler, .sa_flags=SA_SIGINFO };
+        struct sigaction sa;
+        sa.sa_sigaction=handler;
+        sa.sa_flags=SA_SIGINFO;
         struct sigaction oldsa;
         sigaction(SIGBUS, &sa, &oldsa);
         sigaction(SIGSEGV, &sa, &oldsa);

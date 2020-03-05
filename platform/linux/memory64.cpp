@@ -38,7 +38,7 @@ void allocNativeMemory(Memory* memory, U32 page, U32 pageCount, U32 flags) {
         kpanic("allocNativeMemory mprotect failed: %s", strerror(errno));
     }
     memory->allocated += pageCount<< K_PAGE_SHIFT;
-    for (int i=0;i<pageCount;i++) {
+    for (int i=0;i<(int)pageCount;i++) {
         memory->flags[page+i] = flags |= PAGE_ALLOCATED;
         memory->nativeFlags[page+i] |= NATIVE_FLAG_COMMITTED;
     }
@@ -46,7 +46,7 @@ void allocNativeMemory(Memory* memory, U32 page, U32 pageCount, U32 flags) {
 }
 
 void freeNativeMemory(Memory* memory, U32 page, U32 pageCount) {
-    for (int i=0;i<pageCount;i++) {
+    for (int i=0;i<(int)pageCount;i++) {
         if (memory->nativeFlags[page+i] & NATIVE_FLAG_CODEPAGE_READONLY) {
             memory->nativeFlags[page+i] &= ~ NATIVE_FLAG_CODEPAGE_READONLY;
         }
