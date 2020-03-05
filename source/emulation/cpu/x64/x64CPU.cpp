@@ -561,7 +561,7 @@ U32 dynamicCodeExceptionCount;
 
 U64 x64CPU::handleAccessException(U64 rip, U64 address, bool readAddress, U64 rsi, U64 rdi, U64 r8, U64 r9, U64* r10, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo) {
     U32 inst = *((U32*)rip);
-    if (inst==0x0A8B4566 || inst==0xCA148B4F) { // if these constants change, update handleMissingCode too     
+    if ((inst==0x0A8B4566 || inst==0xCA148B4F) && (r8 || r9)) { // if these constants change, update handleMissingCode too     
         // rip is not adjusted so we don't need to check for stack alignment
         *r10 = this->handleMissingCode(r8, r9, inst);
         return 0;
@@ -594,7 +594,7 @@ U64 x64CPU::handleAccessException(U64 rip, U64 address, bool readAddress, U64 rs
 #endif
         doSyncFrom(NULL);
         // this can be exercised with Wine 5.0 and CC95 demo installer, it is triggered in strlen as it tries to grow the stack
-        this->thread->seg_mapper((U32)address, readAddress, !readAddress);
+        this->thread->seg_mapper((U32)address, readAddress, !readAddress, false);
         doSyncTo(NULL);
         U64 result = (U64)this->translateEip(this->eip.u32); 
         if (result==0) {
