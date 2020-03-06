@@ -74,14 +74,17 @@ void X64CodeChunk::makeLive() {
 
 void X64CodeChunk::detachFromHost() {
     U32 eip = this->emulatedAddress;
-    CPU* cpu = KThread::currentThread()->cpu;
-    for (U32 i=0;i<this->instructionCount;i++) {
-        if (cpu->thread->memory->eipToHostInstruction[eip >> K_PAGE_SHIFT]) { // might span multiple pages and the other pages are already deleted
-            cpu->thread->memory->eipToHostInstruction[eip >> K_PAGE_SHIFT][eip & K_PAGE_MASK] = NULL;
+    KThread* thread = KThread::currentThread();
+    if (thread) { // during a shutdown this could be NULL
+        CPU* cpu = thread->cpu;
+        for (U32 i = 0; i < this->instructionCount; i++) {
+            if (cpu->thread->memory->eipToHostInstruction[eip >> K_PAGE_SHIFT]) { // might span multiple pages and the other pages are already deleted
+                cpu->thread->memory->eipToHostInstruction[eip >> K_PAGE_SHIFT][eip & K_PAGE_MASK] = NULL;
+            }
+            eip += this->emulatedInstructionLen[i];
         }
-        eip+=this->emulatedInstructionLen[i];
+        cpu->thread->memory->removeCodeChunk(this);
     }
-    cpu->thread->memory->removeCodeChunk(this);
     this->linksTo.for_each([] (KListNode<X64CodeChunkLink*>* link) {
         link->data->dealloc();
     });

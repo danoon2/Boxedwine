@@ -33,7 +33,7 @@
 #define CPU_OFFSET_EIP (U32)(offsetof(x64CPU, eip.u32))
 #define CPU_OFFSET_EIP_FROM (U32)(offsetof(x64CPU, fromEip))
 #define CPU_OFFSET_EXIT_TO_START_LOOP (U32)(offsetof(x64CPU, exitToStartThreadLoop))
-#define CPU_OFFSET_RETURN_ADDRESS (U32)(offsetof(x64CPU, returnAddress))
+#define CPU_OFFSET_RETURN_ADDRESS (U32)(offsetof(x64CPU, returnToLoopAddress))
 
 typedef void (*PFN_FPU_REG)(CPU* cpu, U32 reg);
 typedef void (*PFN_FPU_ADDRESS)(CPU* cpu, U32 address);
@@ -67,6 +67,8 @@ public:
     void addDynamicCheck(bool panic);
 	void saveNativeState();
 	void restoreNativeState();
+    void translateEip();
+    void setupTranslateEip();
 
     void setImmediate8(U8 value);
     void setImmediate16(U16 value);

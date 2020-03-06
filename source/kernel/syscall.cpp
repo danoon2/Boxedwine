@@ -1929,6 +1929,7 @@ void ksyscall(CPU* cpu, U32 eipCount) {
     U32 result;
     
     if (cpu->thread->terminating) {
+        terminateCurrentThread(cpu->thread); // there is a race condition, just signal it again
 		return;
     }
     if (EAX>373) {

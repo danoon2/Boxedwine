@@ -30,6 +30,8 @@
 #define CPU_OFFSET_STRING_WRITES_DI (U32)(offsetof(x64CPU, stringWritesToDi))
 #define CPU_OFFSET_ARG5 (U32)(offsetof(x64CPU, arg5))
 #define CPU_OFFSET_FPU_STATE (U32)(offsetof(x64CPU, fpuState))
+#define CPU_OFFSET_RETURN_HOST_ADDRESS (U32)(offsetof(x64CPU, returnHostAddress))
+#define CPU_OFFSET_TRANSLATE_CHUNK_ADDRESS (U32)(offsetof(x64CPU, translateChunkAddress))
 
 #ifdef BOXEDWINE_MSVC
 // RCX
@@ -2837,7 +2839,7 @@ void X64Asm::syscall(U32 opLen) {
 	U8 tmpReg = getTmpReg();
 	writeToRegFromMem(tmpReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EXIT_TO_START_LOOP, 4, false);
 	doIf(tmpReg, true, 1, [this]() {
-		// jmp [HOST_CPU+returnAddress]
+		// jmp [HOST_CPU+returnToLoopAddress]
 		write8(0x41);
 		write8(0xff);
 		write8(0xa0 | HOST_CPU);
@@ -3812,6 +3814,24 @@ void X64Asm::restoreNativeState() {
 			popNativeReg(i, false);
 		}
 	}
+}
+
+static void x64_translateEip() {
+    x64CPU* cpu = ((x64CPU*)KThread::currentThread()->cpu);
+    cpu->returnHostAddress = cpu->translateNewCode();
+}
+
+void X64Asm::setupTranslateEip() {
+    syncRegsFromHost();
+    writeToRegFromMem(HOST_TMP, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_TRANSLATE_CHUNK_ADDRESS, 8, false);
+    jmpNativeReg(HOST_TMP, true);
+}
+
+void X64Asm::translateEip() {
+    callHost(x64_translateEip);
+    syncRegsToHost();
+    writeToRegFromMem(HOST_TMP, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_RETURN_HOST_ADDRESS, 8, false);
+    jmpNativeReg(HOST_TMP, true);
 }
 
 void X64Asm::fpu0(U8 rm) {

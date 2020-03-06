@@ -116,12 +116,22 @@ void* x64CPU::init() {
     this->pendingCodePages.clear();
     this->eipToHostInstruction = this->thread->memory->eipToHostInstruction;
 
-	X64Asm returnData(this);
-	returnData.restoreNativeState();
-	returnData.write8(0xc3); // retn
-	X64CodeChunk* chunk2 = returnData.commit(true);
-	this->returnAddress = chunk2->getHostAddress();
+    if (!this->thread->process->returnToLoopAddress) {
+        X64Asm returnData(this);
+        returnData.restoreNativeState();
+        returnData.write8(0xc3); // retn
+        X64CodeChunk* chunk2 = returnData.commit(true);
+        this->thread->process->returnToLoopAddress = chunk2->getHostAddress();
+    }
+    this->returnToLoopAddress = this->thread->process->returnToLoopAddress;
 
+    if (!this->thread->process->translateChunkAddress) {
+        X64Asm translateData(this);
+        translateData.translateEip();
+        X64CodeChunk* chunk3 = translateData.commit(true);
+        this->thread->process->translateChunkAddress = chunk3->getHostAddress();
+    }
+    this->translateChunkAddress = this->thread->process->translateChunkAddress;
     return result;
 }
 
@@ -247,11 +257,13 @@ void x64CPU::link(X64Asm* data, X64CodeChunk* fromChunk, U32 offsetIntoChunk) {
             U8* toHostAddress = (U8*)this->thread->memory->getExistingHostAddress(eip);
 
             if (!toHostAddress) {
-                U8 op = 0xce;
+                X64Asm returnData(this);
+                returnData.startOfOpIp = eip - this->seg[CS].address;
+                returnData.setupTranslateEip();
                 U32 hostIndex = 0;
-                X64CodeChunk* chunk = X64CodeChunk::allocChunk(1, &eip, &hostIndex, &op, 1, eip-this->seg[CS].address, 1, false);
+                X64CodeChunk* chunk = X64CodeChunk::allocChunk(1, &eip, &hostIndex, returnData.buffer, returnData.bufferPos, eip - this->seg[CS].address, 1, false);
                 chunk->makeLive();
-                toHostAddress = (U8*)chunk->getHostAddress();            
+                toHostAddress = (U8*)chunk->getHostAddress();
             }
             X64CodeChunk* toChunk = this->thread->memory->getCodeChunkContainingHostAddress(toHostAddress);
             if (!toChunk) {
@@ -528,6 +540,26 @@ U64 x64CPU::handleChangedUnpatchedCode(U64 rip) {
     return result;
 }
 
+U64 x64CPU::translateNewCode() {
+#ifndef __TEST
+    // only one thread at a time can update the host code pages and related date like opToAddressPages
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->thread->memory->executableMemoryMutex);
+#endif
+    X64CodeChunk* chunk = this->thread->memory->getCodeChunkContainingEip(this->eip.u32 + this->seg[CS].address);
+    if (chunk) {
+        chunk->deallocAndRetranslate();
+    }    
+
+    U64 result = (U64)this->thread->memory->getExistingHostAddress(this->eip.u32 + this->seg[CS].address);
+    if (result == 0) {
+        result = (U64)this->translateEip(this->eip.u32);
+    }
+    if (result == 0) {
+        kpanic("x64CPU::translateNewCode failed to translate code in exception");
+    }
+    return result;
+}
+
 U64 x64CPU::handleMissingCode(U64 r8, U64 r9, U32 inst) {
     U32 page = (U32)r8;
     U32 offset = (U32)r9;
@@ -618,7 +650,7 @@ U64 x64CPU::handleDivByZero(std::function<void(DecodedOp*)> doSyncFrom, std::fun
 
 U64 x64CPU::startException(U64 address, bool readAddress, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo) {
     if (this->thread->terminating) {
-        return (U64)this->returnAddress;                
+        return (U64)this->returnToLoopAddress;                
     }
     if (this->inException) {
         doSyncFrom(NULL);
@@ -692,7 +724,7 @@ void terminateOtherThread(KProcess* process, U32 threadId) {
 		((x64CPU*)thread->cpu)->wakeThreadIfWaiting();
 	}
 	process->threadsCondition.unlock();
-	int counter;
+
 	while (true) {
 		BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(process->threadsCondition);		
 		if (!process->getThreadById(threadId)) {

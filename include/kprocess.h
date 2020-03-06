@@ -110,6 +110,7 @@ public:
     U32 getThreadCount();
 	void deleteThreadAndProcessIfLastThread(KThread* thread);
 	void deleteProcessIfNoThreadsElseMarkForDeletion();
+    void killAllThreadsExceptCurrent();
 
     void clone(KProcess* from);
     U32 getNextFileDescriptorHandle(int after);
@@ -244,10 +245,12 @@ public:
 	Memory* previousMemory;
     U32 nextNativeAddress;
     U32 glStrings[NUMBER_OF_STRINGS];
-    U32 allocNative(U32 len);
+    U32 allocNative(U32 len);    
 #endif
 #ifdef BOXEDWINE_X64
     bool emulateFPU;
+    void* translateChunkAddress;
+    void* returnToLoopAddress;
 #endif
 	bool pendingDelete;
 private:

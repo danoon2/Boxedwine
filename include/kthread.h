@@ -140,7 +140,6 @@ public:
 #endif
 
     U32 condStartWaitTime;
-    bool srand_initialized;
 private:
     void clearFutexes();
 

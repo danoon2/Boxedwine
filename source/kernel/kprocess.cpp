@@ -78,6 +78,8 @@ KProcess::KProcess(U32 id) : id(id),
 
 #ifdef BOXEDWINE_X64
     emulateFPU=false;
+    returnToLoopAddress = NULL;
+    translateChunkAddress = NULL;
 #endif
     for (int i=0;i<LDT_ENTRIES;i++) {
         this->ldt[i].seg_not_present = 1;
@@ -170,10 +172,16 @@ void KProcess::onExec() {
     this->hasSetSeg[GS] = true;
     this->hasSetSeg[FS] = true;
     this->hasSetStackMask = false;
+
+#ifdef BOXEDWINE_X64
+    returnToLoopAddress = NULL;
+    translateChunkAddress = NULL;
+#endif
 }
 
 KProcess::~KProcess() {
     KSystem::eraseProcess(this->id);
+    killAllThreadsExceptCurrent();
     this->cleanupProcess();
 	if (this->memory) {
 		this->memory->decRefCount();
@@ -1644,6 +1652,22 @@ U32 KProcess::clone(U32 flags, U32 child_stack, U32 ptid, U32 tls, U32 ctid) {
     return -K_ENOSYS;
 }
 
+void KProcess::killAllThreadsExceptCurrent() {
+    BOXEDWINE_CONDITION_LOCK(this->threadsCondition);
+    std::unordered_map<U32, KThread*> tmp = this->threads;
+    std::vector<U32> threadIds;
+    for (auto& n : tmp) {
+        KThread* thread = n.second;
+        if (thread != KThread::currentThread()) {
+            threadIds.push_back(thread->id);
+        }
+    }
+    BOXEDWINE_CONDITION_UNLOCK(this->threadsCondition);
+    for (auto& n : threadIds) {
+        terminateOtherThread(this, n);
+    }
+}
+
 U32 KProcess::exitgroup(U32 code) {
     KProcess* parent = KSystem::getProcess(this->parentId);        
     if (parent && parent->sigActions[K_SIGCHLD].handlerAndSigAction!=K_SIG_DFL) {
@@ -1652,21 +1676,8 @@ U32 KProcess::exitgroup(U32 code) {
         }
     }
 
-    {
-        BOXEDWINE_CONDITION_LOCK(this->threadsCondition);
-        std::unordered_map<U32, KThread*> tmp = this->threads;
-		std::vector<U32> threadIds;
-        for (auto& n : tmp) {
-            KThread* thread = n.second;
-            if (thread!=KThread::currentThread()) {
-				threadIds.push_back(thread->id);
-            }
-        }
-        BOXEDWINE_CONDITION_UNLOCK(this->threadsCondition);
-		for (auto& n : threadIds) {
-			terminateOtherThread(this, n);
-		}
-    }
+    killAllThreadsExceptCurrent();
+
     KThread::currentThread()->cleanup(); // must happen before we clear memory
     this->threads.clear();
     this->cleanupProcess(); // release RAM, sockets, etc now.  No reason to wait to do that until waitpid is called
