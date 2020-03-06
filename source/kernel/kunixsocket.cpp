@@ -26,10 +26,13 @@ KUnixSocketObject::~KUnixSocketObject() {
     }
 
     if (this->connection) {
-        this->connection->connection = NULL;
-        this->connection->inClosed = true;
-        this->connection->outClosed = true;      
-        BOXEDWINE_CONDITION_SIGNAL_ALL_NEED_LOCK(this->connection->lockCond);
+        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->connection->lockCond);
+        if (this->connection) {
+            this->connection->connection = NULL;
+            this->connection->inClosed = true;
+            this->connection->outClosed = true;
+            BOXEDWINE_CONDITION_SIGNAL_ALL(this->connection->lockCond);
+        }
     }        
     
     // :TODO: what about race condition where someone is trying to connect while we are being destroyed
