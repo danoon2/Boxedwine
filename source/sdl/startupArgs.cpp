@@ -149,9 +149,12 @@ bool StartUpArgs::apply() {
 #ifdef BOXEDWINE_ZLIB
     std::vector<FsZip*> openZips;
     for (auto& zip : zips) {
+        U64 startTime = Platform::getMicroCounter();
         FsZip* fsZip = new FsZip();
         fsZip->init(zip, "");
         openZips.push_back(fsZip);
+        U64 endTime = Platform::getMicroCounter();
+        klog("Loaded %s in %d ms", zip.c_str(), (U32)(endTime - startTime) / 1000);
     }
 #endif
 
@@ -163,7 +166,15 @@ bool StartUpArgs::apply() {
     envValues.push_back("USER=username");
     envValues.push_back("PWD="+this->workingDir);
     envValues.push_back("DISPLAY=:0");
-    envValues.push_back("LD_LIBRARY_PATH=/lib:/usr/lib:/usr/local/lib:/lib/i386-linux-gnu:/usr/lib/i386-linux-gnu:/opt/wine/lib");
+                            
+    // if this strlen is more than 88 (1 more character than now), then diablo demo will crash before we get to the menu
+    // if I create more env values that are longer it doesn't crash, what is special about this one?
+    
+    //crashes, if I change LD_LIBRARY_PATH to LD_LIBRARY_PATT it works, so it's not the length of the env string, but rather specific to LD_LIBRARY_PATH
+    //envValues.push_back("LD_LIBRARY_PATH=/lib:/usr/lib:/usr/local/lib:/lib/i386-linux-gnu:/usr/lib/i386-linux-gnu:/opt/wine/lib");
+
+    //works
+    //envValues.push_back("LD_LIBRARY_PATH=/lib:/usr/lib:/usr/local/lib:/lib/i386-linux-gnu:/usr/lib/i386-linux-gnu");        
     if (userId==0) {
         envValues.push_back("PATH=/bin:/usr/bin:/usr/local/bin:/sbin:/usr/sbin");
     } else {
