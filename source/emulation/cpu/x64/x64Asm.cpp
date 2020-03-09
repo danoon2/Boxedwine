@@ -3828,7 +3828,7 @@ void X64Asm::setupTranslateEip() {
 }
 
 void X64Asm::translateEip() {
-    callHost(x64_translateEip);
+    callHost((void*)x64_translateEip);
     syncRegsToHost();
     writeToRegFromMem(HOST_TMP, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_RETURN_HOST_ADDRESS, 8, false);
     jmpNativeReg(HOST_TMP, true);
