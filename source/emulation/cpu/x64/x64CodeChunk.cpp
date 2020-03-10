@@ -72,26 +72,22 @@ void X64CodeChunk::makeLive() {
     cpu->thread->memory->addCodeChunk(this);    
 }
 
-void X64CodeChunk::detachFromHost() {
+void X64CodeChunk::detachFromHost(Memory* memory) {
     U32 eip = this->emulatedAddress;
-    KThread* thread = KThread::currentThread();
-    if (thread) { // during a shutdown this could be NULL
-        CPU* cpu = thread->cpu;
-        for (U32 i = 0; i < this->instructionCount; i++) {
-            if (cpu->thread->memory->eipToHostInstruction[eip >> K_PAGE_SHIFT]) { // might span multiple pages and the other pages are already deleted
-                cpu->thread->memory->eipToHostInstruction[eip >> K_PAGE_SHIFT][eip & K_PAGE_MASK] = NULL;
-            }
-            eip += this->emulatedInstructionLen[i];
+    for (U32 i = 0; i < this->instructionCount; i++) {
+        if (memory->eipToHostInstruction[eip >> K_PAGE_SHIFT]) { // might span multiple pages and the other pages are already deleted
+            memory->eipToHostInstruction[eip >> K_PAGE_SHIFT][eip & K_PAGE_MASK] = NULL;
         }
-        cpu->thread->memory->removeCodeChunk(this);
+        eip += this->emulatedInstructionLen[i];
     }
+    memory->removeCodeChunk(this);
     this->linksTo.for_each([] (KListNode<X64CodeChunkLink*>* link) {
         link->data->dealloc();
     });
 }
 
-void X64CodeChunk::dealloc() {        
-    this->detachFromHost();    
+void X64CodeChunk::dealloc(Memory* memory) {        
+    this->detachFromHost(memory);    
     this->internalDealloc();
 }
 
@@ -171,9 +167,9 @@ X64CodeChunkLink* X64CodeChunk::addLinkFrom(X64CodeChunk* from, U32 toEip, void*
 
 void X64CodeChunk::deallocAndRetranslate() {     
     // remove this chunk and its mappings from being used (since it is about to be replaced)
-    detachFromHost(); 
-
     x64CPU* cpu = (x64CPU*)KThread::currentThread()->cpu;
+    detachFromHost(cpu->thread->memory); 
+    
     X64CodeChunk* chunk = cpu->translateChunk(NULL, this->emulatedAddress-cpu->seg[CS].address);
     cpu->makePendingCodePagesReadOnly();
     this->linksFrom.for_each([chunk, cpu] (KListNode<X64CodeChunkLink*>* link) {        

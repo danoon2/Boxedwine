@@ -156,9 +156,13 @@ void BoxedWineCondition::waitWithTimeout(U32 ms) {
         }
     }
 
-    KThread::currentThread()->waitingCond = this;
+    if (!KSystem::shutingDown) {
+        KThread::currentThread()->waitingCond = this;
+    }
     SDL_CondWaitTimeout((SDL_cond*)this->c, (SDL_mutex*)this->m, ms);
-    KThread::currentThread()->waitingCond = NULL;
+    if (!KSystem::shutingDown) {
+        KThread::currentThread()->waitingCond = NULL;
+    }
 
     for (auto &child : this->children) {
         child.cond->lock();

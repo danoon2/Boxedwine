@@ -144,6 +144,9 @@ U32 KUnixSocketObject::internal_write(BOXEDWINE_CONDITION& cond, U32 buffer, U32
 
         if (todo>4096)
             todo = 4096;
+        if (!KThread::currentThread()->memory->isValidReadAddress(buffer, todo)) {
+            kwarn("KUnixSocketObject::internal_write about to crash reading buffer to buffer");
+        }
         memcopyToNative(buffer, tmp, todo);
         this->connection->recvBuffer.write(tmp, todo);
         buffer+=todo;
@@ -299,6 +302,9 @@ U32 KUnixSocketObject::read(U32 buffer, U32 len) {
 
         this->recvBuffer.read(tmp, todo);
         
+        if (!KThread::currentThread()->memory->isValidWriteAddress(buffer, todo)) {
+            kwarn("KUnixSocketObject::read about to crash writing to buffer");
+        }
         memcopyFromNative(buffer, tmp, todo);
 
         buffer += todo;

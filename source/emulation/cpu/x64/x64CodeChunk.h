@@ -27,7 +27,7 @@ class X64CodeChunk {
 public:
     static X64CodeChunk* allocChunk(U32 instructionCount, U32* eipInstructionAddress, U32* hostInstructionIndex, U8* hostInstructionBuffer, U32 hostInstructionBufferLen, U32 eip, U32 eipLen, bool dynamic);
 
-    void dealloc();    
+    void dealloc(Memory* memory);
     void deallocAndRetranslate();
     void invalidateStartingAt(U32 eipAddress);
     void makeLive();
@@ -59,7 +59,7 @@ public:
 
     bool retranslateSingleInstruction(x64CPU* cpu, void* address);
 private:
-    void detachFromHost();
+    void detachFromHost(Memory* memory);
     void internalDealloc();    
 
     U32 emulatedAddress;

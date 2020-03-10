@@ -592,7 +592,7 @@ void Memory::clearCodePageFromCache(U32 page) {
                 X64CodeChunk* chunk = this->getCodeChunkContainingHostAddress(hostAddress);
                 if (chunk) { 
                     i+=chunk->getHostAddressLen();
-                    chunk->dealloc();                
+                    chunk->dealloc(this);                
                 }
             }
         }

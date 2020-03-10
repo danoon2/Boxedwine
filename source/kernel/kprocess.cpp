@@ -237,6 +237,7 @@ void KProcess::deleteThreadAndProcessIfLastThread(KThread* thread) {
 		}
 		delete thread;
 		if (this->pendingDelete) {
+            klog("about to delete process id %d", this->id);
             BOXEDWINE_CONDITION_UNLOCK(this->threadsCondition);
 			delete this;
 		} else {
@@ -252,6 +253,7 @@ void KProcess::deleteThreadAndProcessIfLastThread(KThread* thread) {
 void KProcess::deleteProcessIfNoThreadsElseMarkForDeletion() {
     BOXEDWINE_CONDITION_LOCK(this->threadsCondition);
 	if (this->threads.size() == 0) {
+        klog("about to delete process id %d", this->id);
         BOXEDWINE_CONDITION_UNLOCK(this->threadsCondition);
 		delete this;
 	} else {
