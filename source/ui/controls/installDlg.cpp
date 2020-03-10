@@ -193,7 +193,9 @@ void InstallDlg::run() {
     this->addOkAndCancelButtons();
 }
 
-void InstallDlg::onOk(bool buttonClicked) {    
+void InstallDlg::onOk(bool buttonClicked) {
+    static std::string staticErrorMsg;
+
     if (buttonClicked) {
         if (this->installTypeComboboxData.currentSelectedIndex == INSTALL_TYPE_SETUP) {
             if (strlen(this->locationBuffer)==0) {
@@ -247,12 +249,44 @@ void InstallDlg::onOk(bool buttonClicked) {
                 GlobalSettings::startUpArgs.readyToLaunch = true;
                 GlobalSettings::startUpArgs.showAppPickerForContainer = container->getName();
             } else if (this->installTypeComboboxData.currentSelectedIndex == INSTALL_TYPE_DIR) {
+                while (this->locationBuffer[strlen(this->locationBuffer) - 1] == '/' || this->locationBuffer[strlen(this->locationBuffer) - 1] == '\\') {
+                    this->locationBuffer[strlen(this->locationBuffer) - 1] = 0;
+                }                
+                std::filesystem::path dest(GlobalSettings::getRootFolder(container));
+                dest = dest / "home" / "username" / ".wine" / "drive_c" / Fs::getFileNameFromNativePath(this->locationBuffer);
+
+                if (!std::filesystem::exists(dest)) {
+                    std::error_code ec;
+                    if (!std::filesystem::create_directories(dest, ec)) {
+                        staticErrorMsg = getTranslationWithFormat(INSTALLDLG_ERROR_FILESYSTEM_FAIL_TO_CREATE_DIRS, true, ec.message());
+                        this->errorMsg = staticErrorMsg.c_str();
+                    }
+                }
+                if (!this->errorMsg) {
+                    std::error_code ec;
+                    std::filesystem::copy(this->locationBuffer, dest, std::filesystem::copy_options::recursive, ec);
+                    if (ec) {
+                        staticErrorMsg = getTranslationWithFormat(INSTALLDLG_ERROR_FILESYSTEM_COPY_DIRECTORY, true, ec.message());
+                        this->errorMsg = staticErrorMsg.c_str();
+                    }
+                }
+                if (!this->errorMsg) {
+                    if (GlobalSettings::startUpArgs.readyToLaunch) {
+                        GlobalSettings::startUpArgs.showAppPickerForContainer = container->getName();
+                    } else {
+                        runOnMainUI([container]() {
+                            new AppChooserDlg(container);
+                        });
+                    }
+                }
             }
 
-            static std::string name = Fs::getFileNameFromNativePath(locationBuffer);
-            runOnMainUI([]() {                    
-                new WaitDlg(WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(WAITDLG_LAUNCH_APP_LABEL, true, name.c_str()));
-            });
+            if (!this->errorMsg && GlobalSettings::startUpArgs.readyToLaunch) {
+                static std::string name = Fs::getFileNameFromNativePath(locationBuffer);
+                runOnMainUI([]() {
+                    new WaitDlg(WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(WAITDLG_LAUNCH_APP_LABEL, true, name.c_str()));
+                });
+            }
         }
     }
 

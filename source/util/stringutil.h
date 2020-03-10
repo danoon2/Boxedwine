@@ -13,4 +13,6 @@ void stringToLower(std::string& s);
 bool stringCaseInSensativeEquals(const std::string & str1, const std::string &str2);
 void stringTrim(std::string &s);
 int stringIndexInVector(const std::string& value, const std::vector<std::string> values, int returnIfNotFound=-1);
+bool stringIsLessCaseInsensative(const std::string& str1, const std::string& str2);
+
 #endif

@@ -507,7 +507,7 @@ const unsigned char* extractIconFromExe(BoxedContainer* container, const std::st
         return NULL;
     }
     unsigned char* buffer = new unsigned char[32*1024];
-    U32 read = (U32)fread(buffer, 1, 1024, f);
+    U32 read = (U32)fread(buffer, 1, 32 * 1024, f);
     if (buffer[0]!='M' || buffer[1]!='Z') {
         fclose(f);
         return NULL;

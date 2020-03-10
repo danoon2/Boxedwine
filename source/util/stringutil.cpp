@@ -128,3 +128,11 @@ int stringIndexInVector(const std::string& value, const std::vector<std::string>
         return (int)std::distance(values.begin(), it);
     }
 }
+
+bool stringIsLessCaseInsensative(const std::string& a, const std::string& b) {
+    for (size_t c = 0; c < a.size() && c < b.size(); c++) {
+        if (std::tolower(a[c]) != std::tolower(b[c]))
+            return (std::tolower(a[c]) < std::tolower(b[c]));
+    }
+    return a.size() < b.size();
+}

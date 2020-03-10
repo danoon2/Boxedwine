@@ -110,6 +110,9 @@ void loadApps() {
             }));
         }
     }
+    std::sort(appListViewItems.begin(), appListViewItems.end(), [](ListViewItem& a, ListViewItem& b) {
+        return stringIsLessCaseInsensative(a.text, b.text);
+        });
 }
 
 static SDL_Window* window;

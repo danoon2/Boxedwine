@@ -70,6 +70,10 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "Create a blank container";
     case INSTALLDLG_TYPE_DIRECTORY:
         return "Install by copying a directory";
+    case INSTALLDLG_ERROR_FILESYSTEM_COPY_DIRECTORY:
+        return "The file system reported an error while trying to copy the directory:\n\n{0}";
+    case INSTALLDLG_ERROR_FILESYSTEM_FAIL_TO_CREATE_DIRS:
+        return "The file system reported an error while trying to create the directory:\n\n{0}";
     case SETTINGS_DLG_TITLE:
         return "Settings";
     case SETUPDLG_SAVE_FOLDER_LABEL:
