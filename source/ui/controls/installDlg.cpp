@@ -2,7 +2,25 @@
 #include "../boxedwineui.h"
 #include "../../../lib/imgui/addon/imguitinyfiledialogs.h"
 
+#define INSTALL_TYPE_SETUP 0
+#define INSTALL_TYPE_DIR 1
+#define INSTALL_TYPE_MOUNT 2
+#define INSTALL_TYPE_BLANK 3
+
+InstallDlg::InstallDlg(const std::string& initialFileOrDirPath) : InstallDlg() {
+    if (Fs::doesNativePathExist(initialFileOrDirPath) && Fs::isNativePathDirectory(initialFileOrDirPath)) {
+        this->installTypeComboboxData.currentSelectedIndex = INSTALL_TYPE_DIR;
+        this->lastInstallType = INSTALL_TYPE_DIR;
+    } else {
+        this->installTypeComboboxData.currentSelectedIndex = INSTALL_TYPE_SETUP;
+        this->lastInstallType = INSTALL_TYPE_SETUP;
+    }
+    strncpy(this->locationBuffer, initialFileOrDirPath.c_str(), sizeof(this->locationBuffer));
+    this->locationBuffer[sizeof(this->locationBuffer) - 1] = 0;
+}
+
 InstallDlg::InstallDlg() : BaseDlg(INSTALLDLG_TITLE, 600, 300), errorMsg(NULL) {
+    this->lastInstallType = INSTALL_TYPE_SETUP;
     this->installLabelText = getTranslation(INSTALLDLG_INSTALL_TYPE_LABEL);
     this->containerLabelText = getTranslation(INSTALLDLG_CONTAINER_LABEL);
     this->locationLabelText = getTranslation(INSTALLDLG_SETUP_FILE_LOCATION_LABEL);
@@ -63,11 +81,6 @@ InstallDlg::InstallDlg() : BaseDlg(INSTALLDLG_TITLE, 600, 300), errorMsg(NULL) {
 
     this->runWineConfig = false;
 }
-
-#define INSTALL_TYPE_SETUP 0
-#define INSTALL_TYPE_DIR 1
-#define INSTALL_TYPE_MOUNT 2
-#define INSTALL_TYPE_BLANK 3
 
 void InstallDlg::run() {
     if (installTypeComboboxData.currentSelectedIndex==INSTALL_TYPE_SETUP) {

@@ -147,14 +147,25 @@ bool uiLoop() {
     while (SDL_PollEvent(&event))
     {
         ImGui_ImplSDL2_ProcessEvent(&event);
-        if (event.type == SDL_QUIT)
+        if (event.type == SDL_QUIT) {
             done = true;
-        if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(window))
+        } else if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(window)) {
             done = true;
-        if (event.type >= SDL_USEREVENT) {
+        }  else if (event.type >= SDL_USEREVENT) {
             SDL_PushEvent(&event); // if we are currently launching then there is another spot where sdl polling is happening in threadedMainloop.cpp, if we drop this custom msg then another thread will be blocked forever
             break;
+        } else if (event.type == SDL_DROPFILE) {
+            char* droppedFileOrDir = event.drop.file;
+            static std::string staticFilePath;
+            
+            staticFilePath = droppedFileOrDir;
+            runOnMainUI([]() {
+                new InstallDlg(staticFilePath);
+                });
+            SDL_free(droppedFileOrDir);    // Free dropped_filedir memory
+            break;
         }
+
     }
 
     // Start the Dear ImGui frame

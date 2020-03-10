@@ -4,6 +4,7 @@
 class InstallDlg : public BaseDlg {
 public:
     InstallDlg();
+    InstallDlg(const std::string& initialFileOrDirPath);
 
 protected:
     virtual void run();
