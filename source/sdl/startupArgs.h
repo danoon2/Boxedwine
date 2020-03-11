@@ -5,6 +5,13 @@ class MountInfo {
 public:
     MountInfo(const std::string& localPath, const std::string& nativePath, bool wine) : localPath(localPath), nativePath(nativePath), wine(wine){}
 
+    std::string getFullLocalPath() {
+        if (this->wine) {
+            return "/mnt/drive_" + this->localPath;
+        }
+        return this->localPath;
+    }
+
     std::string localPath;
     std::string nativePath;
     bool wine;
@@ -52,6 +59,7 @@ public:
     bool videoEnabled;
     bool readyToLaunch;
     std::string showAppPickerForContainer;
+
 private:
     bool workingDirSet;
     bool resolutionSet;    

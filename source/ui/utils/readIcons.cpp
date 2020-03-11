@@ -499,10 +499,8 @@ U32 getDoubleWord(FILE* f) {
     return result;
 }
 
-const unsigned char* extractIconFromExe(BoxedContainer* container, const std::string& exeLocalPath, int size, int* width, int* height) {
-    std::string exeNativePath = GlobalSettings::getRootFolder(container)+Fs::nativeFromLocal(exeLocalPath);    
-    
-    FILE* f = fopen(exeNativePath.c_str(), "rb");
+const unsigned char* extractIconFromExe(const std::string& nativeExePath, int size, int* width, int* height) {    
+    FILE* f = fopen(nativeExePath.c_str(), "rb");
     if (!f) {
         return NULL;
     }

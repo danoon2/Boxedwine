@@ -79,6 +79,7 @@ void BoxedApp::launch() {
     if (this->scaleQuality) {
         GlobalSettings::startUpArgs.setScaleQuality(std::to_string(this->scaleQuality));
     }
+
     GlobalSettings::startUpArgs.addArg("/bin/wine");
     if (this->link.length()>0) {        
         GlobalSettings::startUpArgs.addArg("C:\\windows\\command\\start.exe");
@@ -95,7 +96,6 @@ void BoxedApp::launch() {
     GlobalSettings::startUpArgs.readyToLaunch = true;
 }
 
-
 const BoxedAppIcon* BoxedApp::getIconTexture(int iconSize) {
     if (iconSize==0) {
         iconSize = UiSettings::ICON_SIZE;
@@ -103,7 +103,7 @@ const BoxedAppIcon* BoxedApp::getIconTexture(int iconSize) {
     if (!this->iconsBySize.count(iconSize)) {
         int width = 0;
         int height = 0;
-        const unsigned char* data = extractIconFromExe(this->container, this->path+"/"+this->cmd, iconSize, &width, &height);
+        const unsigned char* data = extractIconFromExe(this->container->getNativePathForApp(*this), iconSize, &width, &height);
         if (data) {
             this->iconsBySize[iconSize] = new BoxedAppIcon((void*)(U64)MakeRGBATexture(data, width, height), width, height);
         }

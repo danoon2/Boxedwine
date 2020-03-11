@@ -8,6 +8,21 @@ bool BoxedContainer::load(const std::string& dirPath) {
     this->name = config.readString("Name", "");
     this->wineVersion = config.readString("WineVersion", "");
 
+    int i = 1;
+    while (true) {
+        std::string mount = config.readString("Mount" + std::to_string(i), "");
+        if (mount.length() == 0) {
+            break;
+        }
+        std::vector<std::string> parts;
+        stringSplit(parts, mount, '|');
+        if (parts.size() != 2) {
+            kwarn("Failed to parse container %s mount command %s", this->name.c_str(), mount.c_str());
+            break;
+        }
+        this->mounts.push_back(MountInfo(parts[0], parts[1], parts[0].length() == 1));
+        i++;
+    }
     bool result = this->name.length()>0 && this->wineVersion.length()>0;
     if (result) {
         this->loadApps();
@@ -35,6 +50,9 @@ bool BoxedContainer::saveContainer() {
     ConfigFile config(iniFilePath);
     config.writeString("Name", this->name);
     config.writeString("WineVersion", this->wineVersion);
+    for (int i = 0; i < this->mounts.size(); i++) {
+        config.writeString("Mount" + std::to_string(i + 1), this->mounts[i].localPath + "|" + this->mounts[i].nativePath);
+    }
     config.saveChanges();
     return true;
 }
@@ -80,20 +98,34 @@ void BoxedContainer::launch() {
         Fs::makeNativeDirs(root);
     }
     GlobalSettings::startUpArgs.setRoot(root);
+    GlobalSettings::startUpArgs.mountInfo = this->mounts;
 }
 
 void BoxedContainer::getNewApps(std::vector<BoxedApp>& apps) {
-    getNewDesktopLinkApps(apps); 
-    getNewExeApps(apps);
+    getNewDesktopLinkApps(apps);
+    for (auto& mount : this->mounts) {
+        getNewExeApps(apps, &mount);
+    }
+    getNewExeApps(apps, NULL);
 }
 
-void BoxedContainer::getNewExeApps(std::vector<BoxedApp>& apps) {
-    std::string root = GlobalSettings::getRootFolder(this);
-    std::string path = root + Fs::nativePathSeperator + "home" + Fs::nativePathSeperator + "username" + Fs::nativePathSeperator + ".wine" + Fs::nativePathSeperator + "drive_c";
+void BoxedContainer::getNewExeApps(std::vector<BoxedApp>& apps, MountInfo* mount) {
+    std::string root;
+    std::string path;
 
-    Fs::iterateAllNativeFiles(path, true, true, [this, &apps, root] (const std::string& filepath, bool isDir)->U32 {
+    if (mount) {
+        path = mount->nativePath;
+        root = mount->nativePath;
+    } else {        
+        root = GlobalSettings::getRootFolder(this);
+        path = root + Fs::nativePathSeperator + "home" + Fs::nativePathSeperator + "username" + Fs::nativePathSeperator + ".wine" + Fs::nativePathSeperator + "drive_c";
+    }
+    Fs::iterateAllNativeFiles(path, true, true, [this, &apps, root, mount] (const std::string& filepath, bool isDir)->U32 {
         if (stringHasEnding(filepath, ".exe", true) && !stringContains(filepath, "drive_c"+Fs::nativePathSeperator+"windows")) {            
             std::string localPath = filepath.substr(root.length());
+            if (mount) {
+                localPath = mount->getFullLocalPath() + localPath;
+            }
             Fs::remoteNameToLocal(localPath);            
             std::string name = Fs::getFileNameFromPath(localPath);
 
@@ -150,4 +182,25 @@ void BoxedContainer::getNewDesktopLinkApps(std::vector<BoxedApp>& apps) {
 
 void BoxedContainer::updateCachedSize() {
     this->cachedSize = getReadableSize(Fs::getNativeDirectorySize(this->getDir(), true));
+}
+
+std::string BoxedContainer::getNativePathForApp(const BoxedApp& app) {
+    for (auto& mount : mounts) {
+        std::string path = mount.getFullLocalPath();
+        if (stringStartsWith(app.path, path)) {
+            std::string result = app.path;
+            return mount.nativePath + Fs::nativeFromLocal(app.path.substr(path.length())+"/"+app.cmd);
+        }
+    }
+    return GlobalSettings::getRootFolder(this) + Fs::nativeFromLocal(app.path + "/" + app.cmd);
+}
+
+bool BoxedContainer::addNewMount(const MountInfo& mountInfo) {
+    for (auto& mount : this->mounts) {
+        if (mount.localPath == mountInfo.localPath) {
+            return false;
+        }
+    }
+    this->mounts.push_back(mountInfo);
+    return true;
 }

@@ -23,14 +23,18 @@ public:
     const std::string& getWineVersion() {return this->wineVersion;}
     const std::string& getSize() {return this->cachedSize;}
 
+    std::string getNativePathForApp(const BoxedApp& app);
+
     void getNewApps(std::vector<BoxedApp>& apps);
     void updateCachedSize();
 
     void setWineVersion(const std::string& wineVersion) {this->wineVersion = wineVersion;}
+    bool addNewMount(const MountInfo& mountInfo);
+
 private:
     void loadApps();
     void getNewDesktopLinkApps(std::vector<BoxedApp>& apps);
-    void getNewExeApps(std::vector<BoxedApp>& apps);
+    void getNewExeApps(std::vector<BoxedApp>& apps, MountInfo* mount);
 
     std::vector<BoxedApp*> apps;
     std::string name;
@@ -39,6 +43,7 @@ private:
 
     friend class GlobalSettings;
     std::string dirPath;
+    std::vector<MountInfo> mounts;
 };
 
 #endif

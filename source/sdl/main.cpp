@@ -96,6 +96,8 @@ int boxedmain(int argc, const char **argv) {
         while (uiShow(GlobalSettings::getExePath()+Fs::nativePathSeperator)) {
             BoxedwineData::startApp();
             GlobalSettings::startUpArgs.readyToLaunch = false;
+            SDL_PumpEvents();
+            SDL_FlushEvent(SDL_QUIT);
         }
 #endif
     }              

@@ -90,8 +90,10 @@ void InstallDlg::run() {
     }
         
     if (this->lastInstallType!=this->installTypeComboboxData.currentSelectedIndex) {
+        if (this->lastInstallType == INSTALL_TYPE_SETUP || this->installTypeComboboxData.currentSelectedIndex == INSTALL_TYPE_SETUP || this->installTypeComboboxData.currentSelectedIndex == INSTALL_TYPE_BLANK) {
+            this->locationBuffer[0] = 0;
+        }
         this->lastInstallType = this->installTypeComboboxData.currentSelectedIndex;
-        this->locationBuffer[0] = 0;
     }
         
     ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing/2));
@@ -217,9 +219,10 @@ void InstallDlg::onOk(bool buttonClicked) {
                 this->errorMsg = getTranslation(INSTALLDLG_ERROR_SETUP_FILE_NOT_FOUND);
             }            
         } else if (this->installTypeComboboxData.currentSelectedIndex == INSTALL_TYPE_DIR || this->installTypeComboboxData.currentSelectedIndex == INSTALL_TYPE_MOUNT) {
+            Fs::trimTrailingSlash(this->locationBuffer);
             if (strlen(this->locationBuffer)==0) {
                 this->errorMsg = getTranslation(INSTALLDLG_ERROR_DIR_MISSING);
-            } else if (!Fs::doesNativePathExist(this->locationBuffer)) {
+            } else if (!Fs::doesNativePathExist(this->locationBuffer) || !Fs::isNativePathDirectory(this->locationBuffer)) {
                 this->errorMsg = getTranslation(INSTALLDLG_ERROR_DIR_NOT_FOUND);
             }            
         }
@@ -262,9 +265,6 @@ void InstallDlg::onOk(bool buttonClicked) {
                 GlobalSettings::startUpArgs.readyToLaunch = true;
                 GlobalSettings::startUpArgs.showAppPickerForContainer = container->getName();
             } else if (this->installTypeComboboxData.currentSelectedIndex == INSTALL_TYPE_DIR) {
-                while (this->locationBuffer[strlen(this->locationBuffer) - 1] == '/' || this->locationBuffer[strlen(this->locationBuffer) - 1] == '\\') {
-                    this->locationBuffer[strlen(this->locationBuffer) - 1] = 0;
-                }                
                 std::filesystem::path dest(GlobalSettings::getRootFolder(container));
                 dest = dest / "home" / "username" / ".wine" / "drive_c" / Fs::getFileNameFromNativePath(this->locationBuffer);
 
@@ -292,6 +292,19 @@ void InstallDlg::onOk(bool buttonClicked) {
                         });
                     }
                 }
+            } else if (this->installTypeComboboxData.currentSelectedIndex == INSTALL_TYPE_MOUNT) {
+                if (!container->addNewMount(MountInfo("t", this->locationBuffer, true))) {
+                    this->errorMsg = getTranslation(INSTALLDLG_ERROR_FAILED_TO_MOUNT);
+                } else {
+                    container->saveContainer();
+                    if (GlobalSettings::startUpArgs.readyToLaunch) {
+                        GlobalSettings::startUpArgs.showAppPickerForContainer = container->getName();
+                    } else {
+                        runOnMainUI([container]() {
+                            new AppChooserDlg(container);
+                            });
+                    }
+                }            
             }
 
             if (!this->errorMsg && GlobalSettings::startUpArgs.readyToLaunch) {

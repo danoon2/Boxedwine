@@ -77,6 +77,7 @@ public:
     static std::string getFullPath(const std::string& currentDirectory, const std::string& path);
     static std::string getNativePathFromParentAndLocalFilename(const BoxedPtr<FsNode>& parent, const std::string fileName);    
     static std::vector<std::string> getFilesInNativeDirectoryWhereFileMatches(const std::string& dirPath, const std::string& startsWith, const std::string& endsWith, bool ignoreCase);
+    static void trimTrailingSlash(char* str);
 
     static std::string nativePathSeperator;
 

@@ -3,7 +3,7 @@
 #include <thread>
 
 AppChooserDlg::AppChooserDlg(BoxedContainer* container, BaseDlg* parent) : BaseDlg(APPCHOOSER_DLG_TITLE, 600, 400, parent) {
-    container->getNewApps(this->items);        
+    container->getNewApps(this->items);
 }
 
 void AppChooserDlg::run() {

@@ -430,3 +430,9 @@ std::vector<std::string> Fs::getFilesInNativeDirectoryWhereFileMatches(const std
     });
     return results;
 }
+
+void Fs::trimTrailingSlash(char* str) {
+    while (str[strlen(str) - 1] == '/' || str[strlen(str) - 1] == '\\') {
+        str[strlen(str) - 1] = 0;
+    }
+}

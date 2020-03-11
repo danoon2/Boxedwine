@@ -74,6 +74,8 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "The file system reported an error while trying to copy the directory:\n\n{0}";
     case INSTALLDLG_ERROR_FILESYSTEM_FAIL_TO_CREATE_DIRS:
         return "The file system reported an error while trying to create the directory:\n\n{0}";
+    case INSTALLDLG_ERROR_FAILED_TO_MOUNT:
+        return "Failed to mount directory at drive t:.  If this is not a new contrainer, perhaps you can try the same thing with a new container.";
     case SETTINGS_DLG_TITLE:
         return "Settings";
     case SETUPDLG_SAVE_FOLDER_LABEL:
