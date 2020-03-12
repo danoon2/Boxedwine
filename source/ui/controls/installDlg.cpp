@@ -209,8 +209,6 @@ void InstallDlg::run() {
 }
 
 void InstallDlg::onOk(bool buttonClicked) {
-    static std::string staticErrorMsg;
-
     if (buttonClicked) {
         if (this->installTypeComboboxData.currentSelectedIndex == INSTALL_TYPE_SETUP) {
             if (strlen(this->locationBuffer)==0) {
@@ -271,16 +269,16 @@ void InstallDlg::onOk(bool buttonClicked) {
                 if (!std::filesystem::exists(dest)) {
                     std::error_code ec;
                     if (!std::filesystem::create_directories(dest, ec)) {
-                        staticErrorMsg = getTranslationWithFormat(INSTALLDLG_ERROR_FILESYSTEM_FAIL_TO_CREATE_DIRS, true, ec.message());
-                        this->errorMsg = staticErrorMsg.c_str();
+                        this->errorMsgString = getTranslationWithFormat(INSTALLDLG_ERROR_FILESYSTEM_FAIL_TO_CREATE_DIRS, true, ec.message());
+                        this->errorMsg = this->errorMsgString.c_str();
                     }
                 }
                 if (!this->errorMsg) {
                     std::error_code ec;
                     std::filesystem::copy(this->locationBuffer, dest, std::filesystem::copy_options::recursive, ec);
                     if (ec) {
-                        staticErrorMsg = getTranslationWithFormat(INSTALLDLG_ERROR_FILESYSTEM_COPY_DIRECTORY, true, ec.message());
-                        this->errorMsg = staticErrorMsg.c_str();
+                        this->errorMsgString = getTranslationWithFormat(INSTALLDLG_ERROR_FILESYSTEM_COPY_DIRECTORY, true, ec.message());
+                        this->errorMsg = this->errorMsgString.c_str();
                     }
                 }
                 if (!this->errorMsg) {
@@ -289,6 +287,7 @@ void InstallDlg::onOk(bool buttonClicked) {
                     } else {
                         runOnMainUI([container]() {
                             new AppChooserDlg(container);
+                            return false;
                         });
                     }
                 }
@@ -302,6 +301,7 @@ void InstallDlg::onOk(bool buttonClicked) {
                     } else {
                         runOnMainUI([container]() {
                             new AppChooserDlg(container);
+                            return false;
                             });
                     }
                 }            
@@ -311,6 +311,7 @@ void InstallDlg::onOk(bool buttonClicked) {
                 static std::string name = Fs::getFileNameFromNativePath(locationBuffer);
                 runOnMainUI([]() {
                     new WaitDlg(WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(WAITDLG_LAUNCH_APP_LABEL, true, name.c_str()));
+                    return false;
                 });
             }
         }

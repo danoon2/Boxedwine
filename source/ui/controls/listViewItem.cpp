@@ -37,8 +37,8 @@ void drawListViewItem(const ListViewItem& item) {
         fullTextSize.y=ImGui::GetStyle().ItemSpacing.y*(lineCount-1)+lineCount*textSize.y;
         ImVec2 fullItemSize = fullTextSize;         
         fullItemSize.y+=UiSettings::ICON_SIZE+ImGui::GetStyle().ItemSpacing.y;
-        if (ImGui::Selectable("", false, 0, fullItemSize)) {
-            item.onSelect(false);
+        if (ImGui::Selectable("", false, ImGuiSelectableFlags_AllowRightClick, fullItemSize)) {
+            item.onSelect(ImGui::IsMouseReleased(ImGuiMouseButton_Right));
         }
         if (item.icon) {
             ImGui::SetCursorPos(startPos);
@@ -76,8 +76,8 @@ void drawListViewItem(const ListViewItem& item) {
         ImVec2 fullItemSize = textSize;
         fullItemSize.y+=UiSettings::ICON_SIZE+ImGui::GetStyle().ItemSpacing.y;
         ImGui::SetCursorPosX(ImGui::GetCursorPosX()+(width/2-textSize.x/2));
-        if (ImGui::Selectable("", false, 0, fullItemSize)) {
-            item.onSelect(false);
+        if (ImGui::Selectable("", false, ImGuiSelectableFlags_AllowRightClick, fullItemSize)) {
+            item.onSelect(ImGui::IsMouseReleased(ImGuiMouseButton_Right));
         }
         if (item.icon) {
             ImGui::SetCursorPos(startPos);

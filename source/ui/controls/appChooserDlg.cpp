@@ -27,6 +27,13 @@ void AppChooserDlg::run() {
             this->items[i].saveApp();
             this->items[i].getContainer()->reload();
             GlobalSettings::reloadApps();
+            BoxedApp* app = this->items[i].getContainer()->getAppByIniFile(this->items[i].getIniFilePath());
+            if (app) {
+                runOnMainUI([app]() {
+                    new AppOptionsDlg(app);
+                    return false;
+                    });
+            }
             this->done();
         }
         ImGui::PopID();
@@ -49,6 +56,6 @@ void AppChooserDlg::run() {
 
 void AppChooserDlg::onOk(bool buttonClicked) {
     if (buttonClicked) {
-        this->done();
+        this->done();        
     }
 }

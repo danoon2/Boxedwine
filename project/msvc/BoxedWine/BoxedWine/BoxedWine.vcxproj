@@ -549,6 +549,7 @@
     <ClInclude Include="..\..\..\..\source\ui\boxedwineui.h" />
     <ClInclude Include="..\..\..\..\source\ui\controls\appbar.h" />
     <ClInclude Include="..\..\..\..\source\ui\controls\appChooserDlg.h" />
+    <ClInclude Include="..\..\..\..\source\ui\controls\appOptionsDlg.h" />
     <ClInclude Include="..\..\..\..\source\ui\controls\baseDlg.h" />
     <ClInclude Include="..\..\..\..\source\ui\controls\containerOptionsDlg.h" />
     <ClInclude Include="..\..\..\..\source\ui\controls\containersView.h" />
@@ -795,6 +796,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\controls\appOptionDlg.cpp" />
     <ClCompile Include="..\..\..\..\source\ui\controls\baseDlg.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x64'">true</ExcludedFromBuild>

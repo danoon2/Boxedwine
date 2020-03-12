@@ -22,6 +22,7 @@ public:
 
     const std::string& getName() {return this->name;}
     const std::string& getPath() {return this->path;}
+    const std::string& getIniFilePath() {return this->iniFilePath;}
 
     void launch();
     const BoxedAppIcon* getIconTexture(int iconSize=0);
@@ -34,6 +35,7 @@ public:
 private:
     friend class BoxedContainer;
     friend class BoxedAppOptionsDialog;   
+    friend class AppOptionsDlg;
 
     std::string name;
     std::string path;

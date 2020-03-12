@@ -7,6 +7,6 @@ bool uiLoop();
 void uiShutdown();
 bool uiIsRunning();
 
-void runOnMainUI(std::function<void()> f, U64 delayInMillies=0);
+void runOnMainUI(std::function<bool()> f, U64 delayInMillies=0);
 
 #endif

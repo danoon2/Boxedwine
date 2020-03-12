@@ -26,7 +26,7 @@ private:
 
     char locationBuffer[1024];
     int lastInstallType;
-    char containerName[256];        
+    char containerName[256];
     bool runWineConfig;
     ComboboxData installTypeComboboxData;
     ComboboxData containerComboboxData;

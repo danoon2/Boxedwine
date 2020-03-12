@@ -17,6 +17,7 @@ public:
     void deleteApp(BoxedApp* app);
     void deleteContainerFromFilesystem();
     void launch();
+    BoxedApp* getAppByIniFile(const std::string& iniFile);
 
     const std::string& getName() {return this->name;}
     const std::string& getDir() {return this->dirPath;}

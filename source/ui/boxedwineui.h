@@ -29,6 +29,7 @@
 #include "controls/settingsDlg.h"
 #include "controls/appChooserDlg.h"
 #include "controls/waitDlg.h"
+#include "controls/appOptionsDlg.h"
 
 #include "mainui.h"
 

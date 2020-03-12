@@ -96,6 +96,8 @@ int boxedmain(int argc, const char **argv) {
         while (uiShow(GlobalSettings::getExePath()+Fs::nativePathSeperator)) {
             BoxedwineData::startApp();
             GlobalSettings::startUpArgs.readyToLaunch = false;
+
+            // make sure if the user closed the SDL windows for the game/app, that it doesn't carry over into the UI
             SDL_PumpEvents();
             SDL_FlushEvent(SDL_QUIT);
         }

@@ -20,15 +20,15 @@ static int currentView;
 
 class RunOnMain {
 public:
-    RunOnMain(std::function<void()> f, U64 timeToRun) : f(f), timeToRun(timeToRun) {}
+    RunOnMain(std::function<bool()> f, U64 timeToRun) : f(f), timeToRun(timeToRun) {}
 
-    std::function<void()> f;
+    std::function<bool()> f;
     U64 timeToRun;
 };
 
 std::list<RunOnMain> runOnMainFunctions;
 
-void runOnMainUI(std::function<void()> f, U64 delayInMillies) {
+void runOnMainUI(std::function<bool()> f, U64 delayInMillies) {
     runOnMainFunctions.push_back(RunOnMain(f, Platform::getMicroCounter() + delayInMillies*1000));
 }
 
@@ -46,11 +46,21 @@ void uiDraw() {
     } else {
         drawListView("Apps", appListViewItems, ImGui::GetWindowContentRegionMax());
     }
-    while (runOnMainFunctions.size()) {
-        if (runOnMainFunctions.front().timeToRun<=Platform::getMicroCounter()) {
-            runOnMainFunctions.front().f();
-            runOnMainFunctions.pop_front();
-        }        
+
+    std::list<RunOnMain>::iterator iter = runOnMainFunctions.begin();
+    std::list<RunOnMain>::iterator end = runOnMainFunctions.end();
+
+    while (iter != end) {
+        RunOnMain& item = *iter;
+        if (item.timeToRun <= Platform::getMicroCounter()) {
+            if (!item.f()) {
+                iter = runOnMainFunctions.erase(iter);
+            } else {
+                ++iter;
+            }
+        } else {
+            ++iter;
+        }
     }
     BaseDlg::runDialogs();
 
@@ -103,10 +113,32 @@ void loadApps() {
     for (auto& container : BoxedwineData::getContainers()) {
         for (auto& app : container->getApps()) {
             appListViewItems.push_back(ListViewItem(app->getName(), app->getIconTexture(), [app](bool right) {
-                runOnMainUI([app]() {                    
-                    new WaitDlg(WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(WAITDLG_LAUNCH_APP_LABEL, true, app->getName()));
-                    app->launch();
-                });
+                if (right) {
+                    runOnMainUI([]() {
+                        ImGui::OpenPopup("AppOptionsPopup");
+                        return false;
+                        });
+
+                    runOnMainUI([app]() {                            
+                        if (!ImGui::BeginPopup("AppOptionsPopup")) {
+                            return false;
+                        } else {
+                            if (ImGui::Selectable("Options")) {
+                                ImGui::EndPopup();
+                                new AppOptionsDlg(app);
+                                return true;
+                            }
+                            ImGui::EndPopup();
+                            return true;
+                        }
+                    });
+                } else {
+                    runOnMainUI([app]() {
+                        new WaitDlg(WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(WAITDLG_LAUNCH_APP_LABEL, true, app->getName()));
+                        app->launch();
+                        return false;
+                    });
+                }
             }));
         }
     }
@@ -161,6 +193,7 @@ bool uiLoop() {
             staticFilePath = droppedFileOrDir;
             runOnMainUI([]() {
                 new InstallDlg(staticFilePath);
+                return false;
                 });
             SDL_free(droppedFileOrDir);    // Free dropped_filedir memory
             break;
@@ -260,6 +293,7 @@ bool uiShow(const std::string& basePath) {
                 new AppChooserDlg(container);
             }
             GlobalSettings::startUpArgs.showAppPickerForContainer = "";
+            return false;
         });
 
     }

@@ -460,6 +460,9 @@
     <ClCompile Include="..\..\..\..\source\ui\controls\spinnerControl.cpp">
       <Filter>source\ui\controls</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\controls\appOptionDlg.cpp">
+      <Filter>source\ui\controls</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -1054,6 +1057,9 @@
       <Filter>source\ui\controls</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\ui\controls\spinnerControl.h">
+      <Filter>source\ui\controls</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\ui\controls\appOptionsDlg.h">
       <Filter>source\ui\controls</Filter>
     </ClInclude>
   </ItemGroup>

@@ -204,3 +204,12 @@ bool BoxedContainer::addNewMount(const MountInfo& mountInfo) {
     this->mounts.push_back(mountInfo);
     return true;
 }
+
+BoxedApp* BoxedContainer::getAppByIniFile(const std::string& iniFile) {
+    for (auto& app : this->apps) {
+        if (app->iniFilePath == iniFile) {
+            return app;
+        }
+    }
+    return NULL;
+}

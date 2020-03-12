@@ -140,6 +140,42 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "Please Wait";
     case WAITDLG_LAUNCH_APP_LABEL:
         return "Launching {0} ...";
+    case APP_OPTIONS_DLG_TITLE:
+        return "Application Options";
+    case APP_OPTIONS_DLG_NAME_LABEL:
+        return "Name:";
+    case APP_OPTIONS_DLG_NAME_HELP:
+        return "This is the name you will see in the Apps list view";
+    case APP_OPTIONS_DLG_RESOLUTION_LABEL:
+        return "Emulated Screen Resolution:";
+    case APP_OPTIONS_DLG_RESOLUTION_HELP:
+        return "This is the desktop/monitor resolution that will be used for the initial window and reported back to the application.  Normally the applicaton will set its own resolution if it goes full screen.  This would only need to be adjusted if you want more space for applications that do not go full screen.";
+    case APP_OPTIONS_DLG_BPP_LABEL:
+        return "Emulated Screen Bits per Pixel:";
+    case APP_OPTIONS_DLG_BPP_HELP:
+        return "Some applications might check the screen BPP before starting.  If those applications require a specific BPP, you can set it here.";        
+    case APP_OPTIONS_DLG_FULL_SCREEN_LABEL:
+        return "Fullscreen:";
+    case APP_OPTIONS_DLG_FULL_SCREEN_HELP:
+        return "Will launch the emualted desktop with the same resolution as your computer's desktop/monitor";
+    case APP_OPTIONS_DLG_SCALE_LABEL:
+        return "Emulated Screen Scaling:";
+    case APP_OPTIONS_DLG_SCALE_HELP:
+        return "This simple scaling option will blow up or shrink the emualted screen.  This is useful for applications that want to run in low resolution, like 640x480, and you want it to show larger on your monitor.";
+    case APP_OPTIONS_DLG_SCALE_QUALITY_LABEL:
+        return "Scale Quality:";
+    case APP_OPTIONS_DLG_SCALE_QUALITY_HELP:
+        return "The scale quality options that SDL supplies.  Probably no need to every change the default.";
+    case APP_OPTIONS_DLG_GL_EXT_LABEL:
+        return "Allowed OpenGL Extensions:";
+    case APP_OPTIONS_DLG_GL_EXT_HELP:
+        return "If empty then all extension will be allowed.\n\nSome applications, like Quake 2 and Unreal, can crash if the extension list is too large, like what is seeen with modern computers.  Hit the set button to fill in a small list of common extensions or enter your own if necessary";
+    case APP_OPTIONS_DLG_GL_EXT_SET_BUTTON_LABEL:
+        return "Set";
+    case APP_OPTIONS_DLG_DEFAULT_RESOLUTION_LABEL:
+        return "Default";
+    case APP_OPTIONS_DLG_NAME_REQUIRED:
+        return "The Name is required and cannot be empty.";
     default:
         if (useDefaultIfMissing) {
             return "Unknown msg";
