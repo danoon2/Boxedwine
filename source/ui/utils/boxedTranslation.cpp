@@ -59,7 +59,7 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
     case INSTALLDLG_ERROR_CONTAINER_NAME_MISSING:
         return "You must enter a name for your new container.";
     case INSTALLDLG_ERROR_FAILED_TO_CREATE_CONTAINER_DIR:
-        return "Failed to create a direcotry for the new container:\n\nerror msg: {0}";
+        return "Failed to create a directory for the new container:\n\nerror msg: {0}";
     case INSTALLDLG_ERROR_CONTAINER_ALREADY_EXISTS:
         return "You chose to create a new container, but a folder with the name you entered already exists:\n\n{0}";
     case INSTALLDLG_TYPE_SETUP:
@@ -75,7 +75,7 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
     case INSTALLDLG_ERROR_FILESYSTEM_FAIL_TO_CREATE_DIRS:
         return "The file system reported an error while trying to create the directory:\n\n{0}";
     case INSTALLDLG_ERROR_FAILED_TO_MOUNT:
-        return "Failed to mount directory at drive t:.  If this is not a new contrainer, perhaps you can try the same thing with a new container.";
+        return "Failed to mount directory at drive t:.  If this is not a new container, perhaps you can try the same thing with a new container.";
     case SETTINGS_DLG_TITLE:
         return "Settings";
     case SETUPDLG_SAVE_FOLDER_LABEL:
@@ -149,7 +149,7 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
     case APP_OPTIONS_DLG_RESOLUTION_LABEL:
         return "Emulated Screen Resolution:";
     case APP_OPTIONS_DLG_RESOLUTION_HELP:
-        return "This is the desktop/monitor resolution that will be used for the initial window and reported back to the application.  Normally the applicaton will set its own resolution if it goes full screen.  This would only need to be adjusted if you want more space for applications that do not go full screen.";
+        return "This is the desktop/monitor resolution that will be used for the initial window and reported back to the application.  Normally the application will set its own resolution if it goes full screen.  This would only need to be adjusted if you want more space for applications that do not go full screen.";
     case APP_OPTIONS_DLG_BPP_LABEL:
         return "Emulated Screen Bits per Pixel:";
     case APP_OPTIONS_DLG_BPP_HELP:
@@ -157,7 +157,7 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
     case APP_OPTIONS_DLG_FULL_SCREEN_LABEL:
         return "Fullscreen:";
     case APP_OPTIONS_DLG_FULL_SCREEN_HELP:
-        return "Will launch the emualted desktop with the same resolution as your computer's desktop/monitor";
+        return "Will launch the emulated desktop with the same resolution as your computer's desktop/monitor";
     case APP_OPTIONS_DLG_SCALE_LABEL:
         return "Emulated Screen Scaling:";
     case APP_OPTIONS_DLG_SCALE_HELP:
@@ -165,11 +165,11 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
     case APP_OPTIONS_DLG_SCALE_QUALITY_LABEL:
         return "Scale Quality:";
     case APP_OPTIONS_DLG_SCALE_QUALITY_HELP:
-        return "The scale quality options that SDL supplies.  Probably no need to every change the default.";
+        return "The scale quality options that SDL supplies.  Probably no need to ever change the default.";
     case APP_OPTIONS_DLG_GL_EXT_LABEL:
         return "Allowed OpenGL Extensions:";
     case APP_OPTIONS_DLG_GL_EXT_HELP:
-        return "If empty then all extension will be allowed.\n\nSome applications, like Quake 2 and Unreal, can crash if the extension list is too large, like what is seeen with modern computers.  Hit the set button to fill in a small list of common extensions or enter your own if necessary";
+        return "If empty then all extension will be allowed.\n\nSome applications, like Quake 2 and Unreal, can crash if the extension list is too large, like what is seen with modern computers.  Hit the set button to fill in a small list of common extensions or enter your own if necessary";
     case APP_OPTIONS_DLG_GL_EXT_SET_BUTTON_LABEL:
         return "Set";
     case APP_OPTIONS_DLG_DEFAULT_RESOLUTION_LABEL:
