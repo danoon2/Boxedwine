@@ -587,10 +587,10 @@ void Memory::clearCodePageFromCache(U32 page) {
         for (U32 i=0;i<K_PAGE_SIZE;i++) {
             void* hostAddress = table[i];
             if (hostAddress) {
-                X64CodeChunk* chunk = this->getCodeChunkContainingHostAddress(hostAddress);
+                std::shared_ptr<X64CodeChunk> chunk = this->getCodeChunkContainingHostAddress(hostAddress);
                 if (chunk) { 
                     i+=chunk->getHostAddressLen();
-                    chunk->dealloc(this);                
+                    chunk->release(this);                
                 }
             }
         }
@@ -658,29 +658,29 @@ U8* getPhysicalWriteAddress(U32 address, U32 len) {
 
 #ifdef BOXEDWINE_X64
 // called when X64CodeChunk is being dealloc'd
-void Memory::removeCodeChunk(X64CodeChunk* chunk) {
+void Memory::removeCodeChunk(std::shared_ptr<X64CodeChunk>& chunk) {
     U32 hostPage = ((U32)(size_t)chunk->getHostAddress()) >> K_PAGE_SHIFT;    
     if (this->codeChunksByHostPage.count(hostPage)) {
-        std::list<X64CodeChunk*>& chunks = this->codeChunksByHostPage[hostPage];
+        std::list<std::shared_ptr<X64CodeChunk>>& chunks = this->codeChunksByHostPage[hostPage];
         chunks.remove(chunk);
     }
 
     U32 emulationPage = (chunk->getEip()) >> K_PAGE_SHIFT;
     if (this->codeChunksByEmulationPage.count(emulationPage)) {
-        std::list<X64CodeChunk*>& chunks = this->codeChunksByEmulationPage[emulationPage];
+        std::list<std::shared_ptr<X64CodeChunk>>& chunks = this->codeChunksByEmulationPage[emulationPage];
         chunks.remove(chunk);
     }
 }
 
 // called when X64CodeChunk is being alloc'd
-void Memory::addCodeChunk(X64CodeChunk* chunk) {
+void Memory::addCodeChunk(std::shared_ptr<X64CodeChunk>& chunk) {
     U32 hostPage = ((U32)(size_t)chunk->getHostAddress()) >> K_PAGE_SHIFT;
     U32 emulationPage = (chunk->getEip()) >> K_PAGE_SHIFT;
 #ifdef _DEBUG
     U32 lastPage = hostPage+(((U32)(size_t)chunk->getHostAddress()+chunk->getHostAddressLen()) >> K_PAGE_SHIFT);
     for (U32 i=hostPage;i<=lastPage;i++) {
         if (this->codeChunksByHostPage.count(hostPage)) {
-            std::list<X64CodeChunk*>& chunks = this->codeChunksByHostPage[hostPage];
+            std::list<std::shared_ptr<X64CodeChunk>>& chunks = this->codeChunksByHostPage[hostPage];
             for (auto& otherChunk : chunks) {
                 if (otherChunk->containsHostAddress(chunk->getHostAddress())) {
                     kpanic("Memory::addCodeChunk chunks can not overlap");
@@ -689,16 +689,16 @@ void Memory::addCodeChunk(X64CodeChunk* chunk) {
         }
     }
 #endif
-    std::list<X64CodeChunk*>& hostChunks = this->codeChunksByHostPage[hostPage];
+    std::list<std::shared_ptr<X64CodeChunk>>& hostChunks = this->codeChunksByHostPage[hostPage];
     hostChunks.push_back(chunk);
 
-    std::list<X64CodeChunk*>& chunks = this->codeChunksByEmulationPage[emulationPage];
+    std::list<std::shared_ptr<X64CodeChunk>>& chunks = this->codeChunksByEmulationPage[emulationPage];
     chunks.push_back(chunk);
 }
 
 void Memory::makePageDynamic(U32 page) {
     if (this->codeChunksByEmulationPage.count(page)) {
-        std::list<X64CodeChunk*>& chunks = this->codeChunksByEmulationPage[page];
+        std::list<std::shared_ptr<X64CodeChunk>>& chunks = this->codeChunksByEmulationPage[page];
         for (auto& chunk : chunks) {
             if (!chunk->isDynamicAware()) {
                 chunk->invalidateStartingAt(chunk->getEip());
@@ -715,7 +715,7 @@ void Memory::makePageDynamic(U32 page) {
     // check on the chunks in that page
     while (page>0) {
         if (this->codeChunksByEmulationPage.count(page)) {
-            std::list<X64CodeChunk*>& chunks = this->codeChunksByEmulationPage[page];
+            std::list<std::shared_ptr<X64CodeChunk>>& chunks = this->codeChunksByEmulationPage[page];
             for (auto& chunk : chunks) {
                 if (chunk->containsEip(eip)) {
                     chunk->invalidateStartingAt(eip);
@@ -730,10 +730,10 @@ void Memory::makePageDynamic(U32 page) {
 
 // only called during code patching, if this become a performance problem maybe we could just it up
 // like with soft_code_page
-X64CodeChunk* Memory::getCodeChunkContainingHostAddress(void* hostAddress) {
+std::shared_ptr<X64CodeChunk> Memory::getCodeChunkContainingHostAddress(void* hostAddress) {
     U32 page = ((U32)(size_t)hostAddress) >> K_PAGE_SHIFT;
     if (this->codeChunksByHostPage.count(page)) {
-        std::list<X64CodeChunk*>& chunks = this->codeChunksByHostPage[page];
+        std::list<std::shared_ptr<X64CodeChunk>>& chunks = this->codeChunksByHostPage[page];
         for (auto& chunk : chunks) {
             if (chunk->containsHostAddress(hostAddress)) {
                 return chunk;
@@ -746,7 +746,7 @@ X64CodeChunk* Memory::getCodeChunkContainingHostAddress(void* hostAddress) {
     // check on the chunks in that page
     while (page>0) {
         if (this->codeChunksByHostPage.count(page)) {
-            std::list<X64CodeChunk*>& chunks = this->codeChunksByHostPage[page];
+            std::list<std::shared_ptr<X64CodeChunk>>& chunks = this->codeChunksByHostPage[page];
             for (auto& chunk : chunks) {
                 if (chunk->containsHostAddress(hostAddress)) {
                     return chunk;
@@ -759,11 +759,11 @@ X64CodeChunk* Memory::getCodeChunkContainingHostAddress(void* hostAddress) {
     return NULL;
 }
 
-X64CodeChunk* Memory::getCodeChunkContainingEip(U32 eip) {
+std::shared_ptr<X64CodeChunk> Memory::getCodeChunkContainingEip(U32 eip) {
     for (U32 i=0;i<K_MAX_X86_OP_LEN;i++) {
         void* hostAddress = getExistingHostAddress(eip-i);
         if (hostAddress) {
-            X64CodeChunk* result = this->getCodeChunkContainingHostAddress(hostAddress);
+            std::shared_ptr<X64CodeChunk> result = this->getCodeChunkContainingHostAddress(hostAddress);
             if (result->containsEip(eip)) {
                 return result;
             }
@@ -775,7 +775,7 @@ X64CodeChunk* Memory::getCodeChunkContainingEip(U32 eip) {
 
 void Memory::invalideHostCode(U32 eip, U32 len) {
     for (U32 i=eip;i<eip+len;i++) {
-        X64CodeChunk* chunk = getCodeChunkContainingEip(i);
+        std::shared_ptr<X64CodeChunk> chunk = getCodeChunkContainingEip(i);
         if (chunk && !chunk->isDynamicAware()) {
             chunk->invalidateStartingAt(i);
             i=chunk->getEip()+chunk->getEipLen()-1;
@@ -803,13 +803,20 @@ void* Memory::getExistingHostAddress(U32 eip) {
     return NULL;
 }
 
-void* Memory::allocateExcutableMemory(U32 requestedSize, U32* allocatedSize) {
-    U32 size = 2; 
+int powerOf2(U32 requestedSize, U32& size) {
+    size = 2;
     U32 powerOf2Size = 1;
     while (size < requestedSize) {
-        size <<= 1; 
+        size <<= 1;
         powerOf2Size++;
     }
+    return powerOf2Size;
+}
+
+void* Memory::allocateExcutableMemory(U32 requestedSize, U32* allocatedSize) {
+    U32 size = 0;
+    U32 powerOf2Size = powerOf2(requestedSize, size);
+
     if (powerOf2Size<EXECUTABLE_MIN_SIZE_POWER) {
         powerOf2Size = EXECUTABLE_MIN_SIZE_POWER;
         size = 1 << EXECUTABLE_MIN_SIZE_POWER;
@@ -841,8 +848,8 @@ void* Memory::allocateExcutableMemory(U32 requestedSize, U32* allocatedSize) {
     return result;
 }
 
-void Memory::freeExcutableMemory(void* hostMemory, U32 size) {
-    memset(hostMemory, 0xcd, size);
+void Memory::freeExcutableMemory(void* hostMemory, U32 actualSize) {
+    memset(hostMemory, 0xcd, actualSize);
     // :TODO: when this recycled, make sure we delay the recycling in case another thread is also waiting in seh_filter 
     // for its turn to jump to this chunk at the same time another thread retranslated it
     //

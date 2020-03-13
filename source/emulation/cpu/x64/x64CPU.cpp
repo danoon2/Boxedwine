@@ -110,7 +110,7 @@ void* x64CPU::init() {
     
     data.calculatedEipLen = 1; // will force the long x64 chunk jump
     data.doJmp(false);
-    X64CodeChunk* chunk = data.commit(true);
+    std::shared_ptr<X64CodeChunk> chunk = data.commit(true);
     result = chunk->getHostAddress();
     link(&data, chunk);
     this->pendingCodePages.clear();
@@ -120,7 +120,7 @@ void* x64CPU::init() {
         X64Asm returnData(this);
         returnData.restoreNativeState();
         returnData.write8(0xc3); // retn
-        X64CodeChunk* chunk2 = returnData.commit(true);
+        std::shared_ptr<X64CodeChunk> chunk2 = returnData.commit(true);
         this->thread->process->returnToLoopAddress = chunk2->getHostAddress();
     }
     this->returnToLoopAddress = this->thread->process->returnToLoopAddress;
@@ -128,14 +128,14 @@ void* x64CPU::init() {
     if (!this->thread->process->translateChunkAddress) {
         X64Asm translateData(this);
         translateData.translateEip();
-        X64CodeChunk* chunk3 = translateData.commit(true);
+        std::shared_ptr<X64CodeChunk> chunk3 = translateData.commit(true);
         this->thread->process->translateChunkAddress = chunk3->getHostAddress();
     }
     this->translateChunkAddress = this->thread->process->translateChunkAddress;
     return result;
 }
 
-X64CodeChunk* x64CPU::translateChunk(X64Asm* parent, U32 ip) {
+std::shared_ptr<X64CodeChunk> x64CPU::translateChunk(X64Asm* parent, U32 ip) {
     X64Asm data1(this);
     data1.ip = ip;
     data1.startOfDataIp = ip;       
@@ -151,7 +151,7 @@ X64CodeChunk* x64CPU::translateChunk(X64Asm* parent, U32 ip) {
     S32 failedJumpOpIndex = this->preLinkCheck(&data);
 
     if (failedJumpOpIndex==-1) {
-        X64CodeChunk* chunk = data.commit(false);
+        std::shared_ptr<X64CodeChunk> chunk = data.commit(false);
         link(&data, chunk);
         return chunk;
     } else {
@@ -170,7 +170,7 @@ X64CodeChunk* x64CPU::translateChunk(X64Asm* parent, U32 ip) {
         data3.stopAfterInstruction = failedJumpOpIndex;
         translateData(&data3, &data2);
 
-        X64CodeChunk* chunk = data3.commit(false);
+        std::shared_ptr<X64CodeChunk> chunk = data3.commit(false);
         link(&data3, chunk);
         return chunk;
     }    
@@ -184,7 +184,7 @@ void* x64CPU::translateEipInternal(X64Asm* parent, U32 ip) {
     void* result = this->thread->memory->getExistingHostAddress(address);
 
     if (!result) {
-        X64CodeChunk* chunk = this->translateChunk(parent, ip);
+        std::shared_ptr<X64CodeChunk> chunk = this->translateChunk(parent, ip);
         result = chunk->getHostAddress();
         chunk->makeLive();
     }
@@ -221,7 +221,7 @@ S32 x64CPU::preLinkCheck(X64Asm* data) {
     return -1;
 }
 
-void x64CPU::link(X64Asm* data, X64CodeChunk* fromChunk, U32 offsetIntoChunk) {
+void x64CPU::link(X64Asm* data, std::shared_ptr<X64CodeChunk>& fromChunk, U32 offsetIntoChunk) {
     U32 i;
     if (!fromChunk) {
         kpanic("x64CPU::link fromChunk missing");
@@ -243,11 +243,11 @@ void x64CPU::link(X64Asm* data, X64CodeChunk* fromChunk, U32 offsetIntoChunk) {
             if (!toHostAddress) {
                 U8 op = 0xce;
                 U32 hostIndex = 0;
-                X64CodeChunk* chunk = X64CodeChunk::allocChunk(1, &eip, &hostIndex, &op, 1, eip-this->seg[CS].address, 1, false);
+                std::shared_ptr<X64CodeChunk> chunk = std::make_shared<X64CodeChunk>(1, &eip, &hostIndex, &op, 1, eip-this->seg[CS].address, 1, false);
                 chunk->makeLive();
                 toHostAddress = (U8*)chunk->getHostAddress();            
             }
-            X64CodeChunk* toChunk = this->thread->memory->getCodeChunkContainingHostAddress(toHostAddress);
+            std::shared_ptr<X64CodeChunk> toChunk = this->thread->memory->getCodeChunkContainingHostAddress(toHostAddress);
             if (!toChunk) {
                 kpanic("x64CPU::link to chunk missing");
             }
@@ -261,11 +261,11 @@ void x64CPU::link(X64Asm* data, X64CodeChunk* fromChunk, U32 offsetIntoChunk) {
                 returnData.startOfOpIp = eip - this->seg[CS].address;
                 returnData.setupTranslateEip();
                 U32 hostIndex = 0;
-                X64CodeChunk* chunk = X64CodeChunk::allocChunk(1, &eip, &hostIndex, returnData.buffer, returnData.bufferPos, eip - this->seg[CS].address, 1, false);
+                std::shared_ptr<X64CodeChunk> chunk = std::make_shared<X64CodeChunk>(1, &eip, &hostIndex, returnData.buffer, returnData.bufferPos, eip - this->seg[CS].address, 1, false);
                 chunk->makeLive();
                 toHostAddress = (U8*)chunk->getHostAddress();
             }
-            X64CodeChunk* toChunk = this->thread->memory->getCodeChunkContainingHostAddress(toHostAddress);
+            std::shared_ptr<X64CodeChunk> toChunk = this->thread->memory->getCodeChunkContainingHostAddress(toHostAddress);
             if (!toChunk) {
                 kpanic("x64CPU::link to chunk missing");
             }
@@ -412,7 +412,7 @@ U64 x64CPU::handleCodePatch(U64 rip, U32 address, U64 rsi, U64 rdi, std::functio
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->thread->memory->executableMemoryMutex);
 #endif
     // get the emulated eip of the op that corresponds to the host address where the exception happened
-    X64CodeChunk* chunk = this->thread->memory->getCodeChunkContainingHostAddress((void*)rip);
+    std::shared_ptr<X64CodeChunk> chunk = this->thread->memory->getCodeChunkContainingHostAddress((void*)rip);
     this->eip.u32 = chunk->getEipThatContainsHostAddress((void*)rip, NULL, NULL)-this->seg[CS].address;
 
     // get the emulated op that caused the write
@@ -504,13 +504,13 @@ U64 x64CPU::handleChangedUnpatchedCode(U64 rip) {
 #endif
                         
     unsigned char* hostAddress = (unsigned char*)rip;
-    X64CodeChunk* chunk = this->thread->memory->getCodeChunkContainingHostAddress(hostAddress);
+    std::shared_ptr<X64CodeChunk> chunk = this->thread->memory->getCodeChunkContainingHostAddress(hostAddress);
     if (!chunk) {
         kpanic("x64CPU::handleChangedUnpatchedCode: could not find chunk");
     }
     U32 startOfEip = chunk->getEipThatContainsHostAddress(hostAddress, NULL, NULL);
     if (!chunk->isDynamicAware() || !chunk->retranslateSingleInstruction(this, hostAddress)) {        
-        chunk->deallocAndRetranslate();   
+        chunk->releaseAndRetranslate();   
     }
     U64 result = (U64)this->thread->memory->getExistingHostAddress(startOfEip);
     if (result==0) {
@@ -527,9 +527,9 @@ U64 x64CPU::translateNewCode() {
     // only one thread at a time can update the host code pages and related date like opToAddressPages
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->thread->memory->executableMemoryMutex);
 #endif
-    X64CodeChunk* chunk = this->thread->memory->getCodeChunkContainingEip(this->eip.u32 + this->seg[CS].address);
+    std::shared_ptr<X64CodeChunk> chunk = this->thread->memory->getCodeChunkContainingEip(this->eip.u32 + this->seg[CS].address);
     if (chunk) {
-        chunk->deallocAndRetranslate();
+        chunk->releaseAndRetranslate();
     }    
 
     U64 result = (U64)this->thread->memory->getExistingHostAddress(this->eip.u32 + this->seg[CS].address);
@@ -604,7 +604,7 @@ U64 x64CPU::handleAccessException(U64 rip, U64 address, bool readAddress, U64 rs
         }   
 #ifdef _DEBUG
         void* fromHost = this->thread->memory->getExistingHostAddress(this->fromEip);
-        X64CodeChunk* chunk = this->thread->memory->getCodeChunkContainingHostAddress((void*)rip);
+        std::shared_ptr<X64CodeChunk> chunk = this->thread->memory->getCodeChunkContainingHostAddress((void*)rip);
 #endif
         doSyncFrom(NULL);
         // this can be exercised with Wine 5.0 and CC95 demo installer, it is triggered in strlen as it tries to grow the stack

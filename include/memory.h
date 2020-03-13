@@ -150,16 +150,16 @@ private:
 #define EXECUTABLE_MAX_SIZE_POWER 22
 #define EXECUTABLE_SIZES 16
 
-    std::unordered_map<U32, std::list<X64CodeChunk*>> codeChunksByHostPage;
-    std::unordered_map<U32, std::list<X64CodeChunk*>> codeChunksByEmulationPage;
+    std::unordered_map<U32, std::list< std::shared_ptr<X64CodeChunk> >> codeChunksByHostPage;
+    std::unordered_map<U32, std::list< std::shared_ptr<X64CodeChunk> >> codeChunksByEmulationPage;
 
     void* freeExecutableMemory[EXECUTABLE_SIZES];
 public:
-    X64CodeChunk* getCodeChunkContainingHostAddress(void* hostAddress);
+    std::shared_ptr<X64CodeChunk> getCodeChunkContainingHostAddress(void* hostAddress);
     void invalideHostCode(U32 eip, U32 len);
-    X64CodeChunk* getCodeChunkContainingEip(U32 eip);
-    void addCodeChunk(X64CodeChunk* chunk);
-    void removeCodeChunk(X64CodeChunk* chunk);
+    std::shared_ptr<X64CodeChunk> getCodeChunkContainingEip(U32 eip);
+    void addCodeChunk(std::shared_ptr<X64CodeChunk>& chunk);
+    void removeCodeChunk(std::shared_ptr<X64CodeChunk>& chunk);
     void makePageDynamic(U32 page);
     void* getExistingHostAddress(U32 eip);
     void* allocateExcutableMemory(U32 size, U32* allocatedSize);

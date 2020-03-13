@@ -66,7 +66,7 @@ public:
     void write64(U64 data);
 
     void resetForNewOp();
-    X64CodeChunk* commit(bool makeLive);
+    std::shared_ptr<X64CodeChunk> commit(bool makeLive);
 
     U32 ip;
     U32 startOfDataIp;

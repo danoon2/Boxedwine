@@ -173,8 +173,8 @@ void X64Data::mapAddress(U32 ip, U32 bufferPos) {
     this->ipAddressBufferPos[this->ipAddressCount++] = bufferPos;        
 }
 
-X64CodeChunk* X64Data::commit(bool makeLive) {
-    X64CodeChunk* chunk = X64CodeChunk::allocChunk(this->ipAddressCount, this->ipAddress, this->ipAddressBufferPos, this->buffer, this->bufferPos, this->startOfDataIp, this->ip-this->startOfDataIp, this->dynamic);
+std::shared_ptr<X64CodeChunk> X64Data::commit(bool makeLive) {
+    std::shared_ptr<X64CodeChunk> chunk = std::make_shared<X64CodeChunk>(this->ipAddressCount, this->ipAddress, this->ipAddressBufferPos, this->buffer, this->bufferPos, this->startOfDataIp, this->ip-this->startOfDataIp, this->dynamic);
     if (makeLive) {
         chunk->makeLive();
     }

@@ -3,34 +3,32 @@
 #include "x64CodeChunk.h"
 #include "x64Asm.h"
 
-X64CodeChunk* X64CodeChunk::allocChunk(U32 instructionCount, U32* eipInstructionAddress, U32* hostInstructionIndex, U8* hostInstructionBuffer, U32 hostInstructionBufferLen, U32 eip, U32 eipLen, bool dynamic) {
-    X64CodeChunk* result = new X64CodeChunk();
+X64CodeChunk::X64CodeChunk(U32 instructionCount, U32* eipInstructionAddress, U32* hostInstructionIndex, U8* hostInstructionBuffer, U32 hostInstructionBufferLen, U32 eip, U32 eipLen, bool dynamic) {
     CPU* cpu = KThread::currentThread()->cpu;
-    result->instructionCount = instructionCount;
-    result->emulatedAddress = eip+cpu->seg[CS].address;
-    result->emulatedLen = eipLen;
-    result->hostAddress = cpu->thread->memory->allocateExcutableMemory(hostInstructionBufferLen+instructionCount*sizeof(U32)+instructionCount*sizeof(U8)+4, &result->hostAddressSize); // +4 for a guard
-    result->hostLen = hostInstructionBufferLen;
-    result->emulatedInstructionLen = (U8*)result->hostAddress+result->hostAddressSize-instructionCount*sizeof(U8)-instructionCount*sizeof(U32);
-    result->hostInstructionLen = (U32*)((U8*)result->hostAddress+result->hostAddressSize-instructionCount*sizeof(U32));// should be aligned to 4 byte boundry
-    result->dynamic = dynamic;
-    memset(result->hostAddress, 0xce, result->hostAddressSize);
+    this->instructionCount = instructionCount;
+    this->emulatedAddress = eip+cpu->seg[CS].address;
+    this->emulatedLen = eipLen;
+    this->hostAddress = cpu->thread->memory->allocateExcutableMemory(hostInstructionBufferLen+instructionCount*sizeof(U32)+instructionCount*sizeof(U8)+4, &this->hostAddressSize); // +4 for a guard
+    this->hostLen = hostInstructionBufferLen;
+    this->emulatedInstructionLen = (U8*)this->hostAddress+ this->hostAddressSize-instructionCount*sizeof(U8)-instructionCount*sizeof(U32);
+    this->hostInstructionLen = (U32*)((U8*)this->hostAddress+ this->hostAddressSize-instructionCount*sizeof(U32));// should be aligned to 4 byte boundry
+    this->dynamic = dynamic;
+    memset(this->hostAddress, 0xce, this->hostAddressSize);
     if (instructionCount) {
         for (U32 i=0;i<instructionCount;i++) {
             if (i==instructionCount-1) {
-                result->emulatedInstructionLen[i] = eipLen-(eipInstructionAddress[i]-result->emulatedAddress);
-                result->hostInstructionLen[i] = hostInstructionBufferLen-hostInstructionIndex[i];
+                this->emulatedInstructionLen[i] = eipLen-(eipInstructionAddress[i]- this->emulatedAddress);
+                this->hostInstructionLen[i] = hostInstructionBufferLen-hostInstructionIndex[i];
             } else {
-                result->emulatedInstructionLen[i] = eipInstructionAddress[i+1]-eipInstructionAddress[i];
-                result->hostInstructionLen[i] = hostInstructionIndex[i+1]-hostInstructionIndex[i];
+                this->emulatedInstructionLen[i] = eipInstructionAddress[i+1]-eipInstructionAddress[i];
+                this->hostInstructionLen[i] = hostInstructionIndex[i+1]-hostInstructionIndex[i];
             }
-            if (result->emulatedInstructionLen[i]>K_MAX_X86_OP_LEN) {
+            if (this->emulatedInstructionLen[i]>K_MAX_X86_OP_LEN) {
                 kpanic("X64CodeChunk::allocChunk emulatedInstructionLen sanity check failed");
             }           
         }        
     }
-    memcpy(result->hostAddress, hostInstructionBuffer, hostInstructionBufferLen);
-    return result;
+    memcpy(this->hostAddress, hostInstructionBuffer, hostInstructionBufferLen);
 }
 
 void X64CodeChunk::makeLive() {
@@ -55,7 +53,7 @@ void X64CodeChunk::makeLive() {
         eip+=this->emulatedInstructionLen[i];
         host+=this->hostInstructionLen[i];
     }        
-    cpu->thread->memory->addCodeChunk(this);    
+    cpu->thread->memory->addCodeChunk(shared_from_this());
 }
 
 void X64CodeChunk::detachFromHost(Memory* memory) {
@@ -66,10 +64,10 @@ void X64CodeChunk::detachFromHost(Memory* memory) {
         }
         eip += this->emulatedInstructionLen[i];
     }
-    memory->removeCodeChunk(this);
+    memory->removeCodeChunk(shared_from_this());
 }
 
-void X64CodeChunk::dealloc(Memory* memory) {        
+void X64CodeChunk::release(Memory* memory) {        
     this->detachFromHost(memory);    
     this->internalDealloc();
 }
@@ -83,7 +81,6 @@ void X64CodeChunk::internalDealloc() {
     *p = this->emulatedAddress;
 #endif
     KThread::currentThread()->memory->freeExcutableMemory(this->hostAddress, this->hostAddressSize);
-    delete this;
 }
 
 U32 X64CodeChunk::getEipThatContainsHostAddress(void* address, void** startOfHostInstruction, U32* index) {
@@ -132,8 +129,8 @@ U32 X64CodeChunk::getStartOfInstructionByEip(U32 eip, U8** host, U32* index) {
     return 0;
 }
 
-std::shared_ptr<X64CodeChunkLink> X64CodeChunk::addLinkFrom(X64CodeChunk* from, U32 toEip, void* toHostInstruction, void* fromHostOffset, bool direct) {
-    if (from==this) {
+std::shared_ptr<X64CodeChunkLink> X64CodeChunk::addLinkFrom(std::shared_ptr<X64CodeChunk>& from, U32 toEip, void* toHostInstruction, void* fromHostOffset, bool direct) {
+    if (from==shared_from_this()) {
         kpanic("X64CodeChunk::addLinkFrom can not link to itself");
     }
     std::shared_ptr<X64CodeChunkLink> link = std::make_shared<X64CodeChunkLink>(fromHostOffset, toEip, toHostInstruction, direct);
@@ -142,12 +139,12 @@ std::shared_ptr<X64CodeChunkLink> X64CodeChunk::addLinkFrom(X64CodeChunk* from, 
     return link;
 }
 
-void X64CodeChunk::deallocAndRetranslate() {     
+void X64CodeChunk::releaseAndRetranslate() {     
     // remove this chunk and its mappings from being used (since it is about to be replaced)
     x64CPU* cpu = (x64CPU*)KThread::currentThread()->cpu;
     detachFromHost(cpu->thread->memory); 
     
-    X64CodeChunk* chunk = cpu->translateChunk(NULL, this->emulatedAddress-cpu->seg[CS].address);
+    std::shared_ptr<X64CodeChunk> chunk = cpu->translateChunk(NULL, this->emulatedAddress-cpu->seg[CS].address);
     cpu->makePendingCodePagesReadOnly();
     for (auto& link : this->linksFrom) {
         U64 destHost = (U64)chunk->getHostFromEip(link->toEip);
@@ -156,7 +153,7 @@ void X64CodeChunk::deallocAndRetranslate() {
             chunk->linksFrom.push_back(link);
             if (link->direct) {
                 U32 fromInstructionIndex;        
-                X64CodeChunk* fromChunk = cpu->thread->memory->getCodeChunkContainingHostAddress(link->fromHostOffset);
+                std::shared_ptr<X64CodeChunk> fromChunk = cpu->thread->memory->getCodeChunkContainingHostAddress(link->fromHostOffset);
                 void* srcHostInstruction = NULL;
                 fromChunk->getEipThatContainsHostAddress(link->fromHostOffset, &srcHostInstruction, &fromInstructionIndex);
                 U64 srcHost = (U64)srcHostInstruction;   

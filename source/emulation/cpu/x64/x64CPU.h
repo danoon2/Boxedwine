@@ -48,11 +48,11 @@ public:
 #endif
 
     void translateInstruction(X64Asm* data, X64Asm* firstPass);    
-    void link(X64Asm* data, X64CodeChunk* fromChunk, U32 offsetIntoChunk=0);
+    void link(X64Asm* data, std::shared_ptr<X64CodeChunk>& fromChunk, U32 offsetIntoChunk=0);
     S32 preLinkCheck(X64Asm* data); // returns the index of the jump that failed
     void makePendingCodePagesReadOnly();
     void translateData(X64Asm* data, X64Asm* firstPass=NULL);
-    X64CodeChunk* translateChunk(X64Asm* parent, U32 ip);
+    std::shared_ptr<X64CodeChunk> translateChunk(X64Asm* parent, U32 ip);
 
     U64 translateNewCode();
     U64 handleChangedUnpatchedCode(U64 rip);

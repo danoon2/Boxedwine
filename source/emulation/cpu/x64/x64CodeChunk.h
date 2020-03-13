@@ -17,12 +17,12 @@ public:
     bool direct;
 };
 
-class X64CodeChunk {
+class X64CodeChunk : public std::enable_shared_from_this<X64CodeChunk> {
 public:
-    static X64CodeChunk* allocChunk(U32 instructionCount, U32* eipInstructionAddress, U32* hostInstructionIndex, U8* hostInstructionBuffer, U32 hostInstructionBufferLen, U32 eip, U32 eipLen, bool dynamic);
+    X64CodeChunk(U32 instructionCount, U32* eipInstructionAddress, U32* hostInstructionIndex, U8* hostInstructionBuffer, U32 hostInstructionBufferLen, U32 eip, U32 eipLen, bool dynamic);
 
-    void dealloc(Memory* memory);
-    void deallocAndRetranslate();
+    void release(Memory* memory);
+    void releaseAndRetranslate();
     void invalidateStartingAt(U32 eipAddress);
     void makeLive();
 
@@ -35,7 +35,7 @@ public:
     bool containsEip(U32 eip) {return eip>=this->emulatedAddress && eip<this->emulatedAddress+this->emulatedLen;}
     bool containsEip(U32 eip, U32 len);
 
-    std::shared_ptr<X64CodeChunkLink> addLinkFrom(X64CodeChunk* from, U32 toEip, void* toHostInstruction, void* fromHostOffset, bool direct);
+    std::shared_ptr<X64CodeChunkLink> addLinkFrom(std::shared_ptr<X64CodeChunk>& from, U32 toEip, void* toHostInstruction, void* fromHostOffset, bool direct);
 
     void* getHostFromEip(U32 eip) {U8* result=NULL; if (this->getStartOfInstructionByEip(eip, &result, NULL)==eip) {return result;} else {return 0;}}
     U32 getEip() {return emulatedAddress;}
