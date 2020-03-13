@@ -150,8 +150,9 @@ private:
 #define EXECUTABLE_MAX_SIZE_POWER 22
 #define EXECUTABLE_SIZES 16
 
-    X64CodeChunk* codeChunksByHostPage[K_NUMBER_OF_PAGES];
-    X64CodeChunk* codeChunksByEmulationPage[K_NUMBER_OF_PAGES];
+    std::unordered_map<U32, std::list<X64CodeChunk*>> codeChunksByHostPage;
+    std::unordered_map<U32, std::list<X64CodeChunk*>> codeChunksByEmulationPage;
+
     void* freeExecutableMemory[EXECUTABLE_SIZES];
 public:
     X64CodeChunk* getCodeChunkContainingHostAddress(void* hostAddress);

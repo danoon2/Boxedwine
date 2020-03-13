@@ -3,24 +3,18 @@
 
 #ifdef BOXEDWINE_X64
 class x64CPU;
+class X64CodeChunk;
 
 class X64CodeChunkLink {
 public:
-    static X64CodeChunkLink* alloc();
-
-    X64CodeChunkLink() : linkTo(this), linkFrom(this) {}
-    void dealloc();    
-
-    // will address to the middle of the instruction
+    X64CodeChunkLink(void* fromHostOffset, U32 toEip, void* toHostInstruction, bool direct) : fromHostOffset(fromHostOffset), toEip(toEip), toHostInstruction(toHostInstruction), direct(direct) {}
+    // will point to an address in the middle of the instruction
     void* fromHostOffset;
 
     // will point to the start of the instruction
     U32 toEip;
     void* toHostInstruction;
     bool direct;
-
-    KListNode<X64CodeChunkLink*> linkTo;
-    KListNode<X64CodeChunkLink*> linkFrom;
 };
 
 class X64CodeChunk {
@@ -40,16 +34,8 @@ public:
     bool containsHostAddress(void* hostAddress) {return hostAddress>=this->hostAddress && hostAddress<(U8*)this->hostAddress+this->hostLen;}
     bool containsEip(U32 eip) {return eip>=this->emulatedAddress && eip<this->emulatedAddress+this->emulatedLen;}
     bool containsEip(U32 eip, U32 len);
-    X64CodeChunk* getNextChunkInHostPage() {return this->nextHost;}
-    X64CodeChunk* getNextChunkInEmulationPage() {return this->nextEmulation;}
 
-    void addNextHostChunk(X64CodeChunk* n) {this->nextHost = n; if (n) n->prevHost=this;}
-    void addNextEmulationChunk(X64CodeChunk* n) {this->nextEmulation = n; if (n) n->prevEmulation=this;}
-    void removeFromList();
-
-    X64CodeChunkLink* addLinkFrom(X64CodeChunk* from, U32 toEip, void* toHostInstruction, void* fromHostOffset, bool direct);
-    bool hasLinkTo(void* hostAddress);
-    bool hasLinkToEip(U32 eip);
+    std::shared_ptr<X64CodeChunkLink> addLinkFrom(X64CodeChunk* from, U32 toEip, void* toHostInstruction, void* fromHostOffset, bool direct);
 
     void* getHostFromEip(U32 eip) {U8* result=NULL; if (this->getStartOfInstructionByEip(eip, &result, NULL)==eip) {return result;} else {return 0;}}
     U32 getEip() {return emulatedAddress;}
@@ -73,14 +59,8 @@ private:
 
     U32 instructionCount;
     
-    // double linked list for chunks in the page
-    X64CodeChunk* nextHost;
-    X64CodeChunk* prevHost;
-    X64CodeChunk* nextEmulation;
-    X64CodeChunk* prevEmulation;
-
-    KList<X64CodeChunkLink*> linksTo;
-    KList<X64CodeChunkLink*> linksFrom;
+    std::list<std::shared_ptr<X64CodeChunkLink>> linksTo;
+    std::list<std::shared_ptr<X64CodeChunkLink>> linksFrom;
 
     bool dynamic; // will include a check of the original vs current code bytes to make sure it is still valid at a per instruction level
 };

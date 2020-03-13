@@ -3,23 +3,9 @@
 #include "x64CodeChunk.h"
 #include "x64Asm.h"
 
-X64CodeChunkLink* X64CodeChunkLink::alloc() {
-    return new X64CodeChunkLink();
-}
-
-void X64CodeChunkLink::dealloc() {
-    this->linkFrom.remove();
-    this->linkTo.remove();
-    delete this;
-}
-
 X64CodeChunk* X64CodeChunk::allocChunk(U32 instructionCount, U32* eipInstructionAddress, U32* hostInstructionIndex, U8* hostInstructionBuffer, U32 hostInstructionBufferLen, U32 eip, U32 eipLen, bool dynamic) {
     X64CodeChunk* result = new X64CodeChunk();
     CPU* cpu = KThread::currentThread()->cpu;
-    result->nextHost = NULL;
-    result->prevHost = NULL;
-    result->nextEmulation = NULL;
-    result->prevEmulation = NULL;
     result->instructionCount = instructionCount;
     result->emulatedAddress = eip+cpu->seg[CS].address;
     result->emulatedLen = eipLen;
@@ -81,9 +67,6 @@ void X64CodeChunk::detachFromHost(Memory* memory) {
         eip += this->emulatedInstructionLen[i];
     }
     memory->removeCodeChunk(this);
-    this->linksTo.for_each([] (KListNode<X64CodeChunkLink*>* link) {
-        link->data->dealloc();
-    });
 }
 
 void X64CodeChunk::dealloc(Memory* memory) {        
@@ -149,19 +132,13 @@ U32 X64CodeChunk::getStartOfInstructionByEip(U32 eip, U8** host, U32* index) {
     return 0;
 }
 
-X64CodeChunkLink* X64CodeChunk::addLinkFrom(X64CodeChunk* from, U32 toEip, void* toHostInstruction, void* fromHostOffset, bool direct) {
+std::shared_ptr<X64CodeChunkLink> X64CodeChunk::addLinkFrom(X64CodeChunk* from, U32 toEip, void* toHostInstruction, void* fromHostOffset, bool direct) {
     if (from==this) {
         kpanic("X64CodeChunk::addLinkFrom can not link to itself");
     }
-    X64CodeChunkLink* link = X64CodeChunkLink::alloc();
-
-    link->toEip = toEip;
-    link->toHostInstruction = toHostInstruction;
-    link->fromHostOffset = fromHostOffset;
-    link->direct = direct;
-
-    from->linksTo.addToBack(&link->linkTo);
-    this->linksFrom.addToBack(&link->linkFrom);
+    std::shared_ptr<X64CodeChunkLink> link = std::make_shared<X64CodeChunkLink>(fromHostOffset, toEip, toHostInstruction, direct);
+    from->linksTo.push_back(link);
+    this->linksFrom.push_back(link);
     return link;
 }
 
@@ -172,61 +149,27 @@ void X64CodeChunk::deallocAndRetranslate() {
     
     X64CodeChunk* chunk = cpu->translateChunk(NULL, this->emulatedAddress-cpu->seg[CS].address);
     cpu->makePendingCodePagesReadOnly();
-    this->linksFrom.for_each([chunk, cpu] (KListNode<X64CodeChunkLink*>* link) {        
-        U64 destHost = (U64)chunk->getHostFromEip(link->data->toEip);
-
-        link->data->linkFrom.remove();
+    for (auto& link : this->linksFrom) {
+        U64 destHost = (U64)chunk->getHostFromEip(link->toEip);
 
         if (destHost) {
-            chunk->linksFrom.addToBack(&link->data->linkFrom);
-            if (link->data->direct) {
+            chunk->linksFrom.push_back(link);
+            if (link->direct) {
                 U32 fromInstructionIndex;        
-                X64CodeChunk* fromChunk = cpu->thread->memory->getCodeChunkContainingHostAddress(link->data->fromHostOffset);
+                X64CodeChunk* fromChunk = cpu->thread->memory->getCodeChunkContainingHostAddress(link->fromHostOffset);
                 void* srcHostInstruction = NULL;
-                fromChunk->getEipThatContainsHostAddress(link->data->fromHostOffset, &srcHostInstruction, &fromInstructionIndex);
+                fromChunk->getEipThatContainsHostAddress(link->fromHostOffset, &srcHostInstruction, &fromInstructionIndex);
                 U64 srcHost = (U64)srcHostInstruction;   
-                U64 endOfJump = (U64)link->data->fromHostOffset - srcHost + 4;
-                *((U32*)link->data->fromHostOffset) = (U32)(destHost-srcHost-endOfJump);
+                U64 endOfJump = (U64)link->fromHostOffset - srcHost + 4;
+                *((U32*)link->fromHostOffset) = (U32)(destHost-srcHost-endOfJump);
             } else {
-                ATOMIC_WRITE64((U64*)&link->data->toHostInstruction, destHost);
+                ATOMIC_WRITE64((U64*)&link->toHostInstruction, destHost);
             }
         }                                            
-    });
+    };
     chunk->makeLive();
 
     this->internalDealloc(); // don't call dealloc() because the new chunk occupies the memory cache and we don't want to mess with it
-}
-
-bool X64CodeChunk::hasLinkTo(void* hostAddress) {
-    bool found = false;
-
-    this->linksFrom.for_each([&found, hostAddress] (KListNode<X64CodeChunkLink*>* link) {
-        if (link->data->toHostInstruction==hostAddress) {
-            found = true;
-        }
-    });
-    this->linksTo.for_each([&found, hostAddress] (KListNode<X64CodeChunkLink*>* link) {
-        if (link->data->toHostInstruction==hostAddress) {
-            found = true;
-        }
-    });
-    return found;
-}
-
-bool X64CodeChunk::hasLinkToEip(U32 eip) {
-    bool found = false;
-
-    this->linksFrom.for_each([&found, eip] (KListNode<X64CodeChunkLink*>* link) {
-        if (link->data->toEip==eip) {
-            found = true;
-        }
-    });
-    this->linksTo.for_each([&found, eip] (KListNode<X64CodeChunkLink*>* link) {
-        if (link->data->toEip==eip) {
-            found = true;
-        }
-    });
-    return found;
 }
 
 void X64CodeChunk::invalidateStartingAt(U32 eipAddress) {    
@@ -248,21 +191,6 @@ void X64CodeChunk::invalidateStartingAt(U32 eipAddress) {
     U32 remainingLen = this->hostLen - (U32)(host - (U8*)this->hostAddress);    
     memset(host, 0xce, remainingLen); 
 }    
-
-void X64CodeChunk::removeFromList() {
-    if (this->prevHost) {
-        this->prevHost->nextHost = this->nextHost;
-    }
-    if (this->nextHost) {
-        this->nextHost->prevHost = this->prevHost;
-    }
-    if (this->prevEmulation) {
-        this->prevEmulation->nextEmulation = this->nextEmulation;
-    }
-    if (this->nextEmulation) {
-        this->nextEmulation->prevEmulation = this->prevEmulation;
-    }
-}
 
 bool X64CodeChunk::containsEip(U32 eip, U32 len) {
     // do we begin in this chunk?
@@ -297,4 +225,5 @@ bool X64CodeChunk::retranslateSingleInstruction(x64CPU* cpu, void* address) {
     }
     return false;
 }
+
 #endif

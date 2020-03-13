@@ -35,8 +35,6 @@ Memory::Memory() : allocated(0), callbackPos(0) {
     memset(codeCache, 0, sizeof(codeCache));    
     //memset(ids, 0, sizeof(ids));
 #else
-    memset(this->codeChunksByHostPage, 0, sizeof(this->codeChunksByHostPage));
-    memset(this->codeChunksByEmulationPage, 0, sizeof(this->codeChunksByEmulationPage));
     memset(this->eipToHostInstruction, 0, sizeof(this->eipToHostInstruction));
     memset(this->freeExecutableMemory, 0, sizeof(this->freeExecutableMemory));
     memset(this->dynamicCodePageUpdateCount, 0, sizeof(this->dynamicCodePageUpdateCount));
@@ -661,17 +659,17 @@ U8* getPhysicalWriteAddress(U32 address, U32 len) {
 #ifdef BOXEDWINE_X64
 // called when X64CodeChunk is being dealloc'd
 void Memory::removeCodeChunk(X64CodeChunk* chunk) {
-    U32 hostPage = ((U32)(size_t)chunk->getHostAddress()) >> K_PAGE_SHIFT;
+    U32 hostPage = ((U32)(size_t)chunk->getHostAddress()) >> K_PAGE_SHIFT;    
+    if (this->codeChunksByHostPage.count(hostPage)) {
+        std::list<X64CodeChunk*>& chunks = this->codeChunksByHostPage[hostPage];
+        chunks.remove(chunk);
+    }
+
     U32 emulationPage = (chunk->getEip()) >> K_PAGE_SHIFT;
-    X64CodeChunk* result = this->codeChunksByHostPage[hostPage];    
-    if (this->codeChunksByHostPage[hostPage] == chunk) {
-        this->codeChunksByHostPage[hostPage] = chunk->getNextChunkInHostPage();
+    if (this->codeChunksByEmulationPage.count(emulationPage)) {
+        std::list<X64CodeChunk*>& chunks = this->codeChunksByEmulationPage[emulationPage];
+        chunks.remove(chunk);
     }
-    result = this->codeChunksByEmulationPage[emulationPage];    
-    if (this->codeChunksByEmulationPage[emulationPage] == chunk) {
-        this->codeChunksByEmulationPage[emulationPage] = chunk->getNextChunkInEmulationPage();
-    }
-    chunk->removeFromList();
 }
 
 // called when X64CodeChunk is being alloc'd
@@ -681,36 +679,31 @@ void Memory::addCodeChunk(X64CodeChunk* chunk) {
 #ifdef _DEBUG
     U32 lastPage = hostPage+(((U32)(size_t)chunk->getHostAddress()+chunk->getHostAddressLen()) >> K_PAGE_SHIFT);
     for (U32 i=hostPage;i<=lastPage;i++) {
-        X64CodeChunk* result = this->codeChunksByHostPage[i];
-        while (result) {
-            if (result->containsHostAddress(chunk->getHostAddress())) {
-                kpanic("Memory::addCodeChunk chunks can not overlap");
+        if (this->codeChunksByHostPage.count(hostPage)) {
+            std::list<X64CodeChunk*>& chunks = this->codeChunksByHostPage[hostPage];
+            for (auto& otherChunk : chunks) {
+                if (otherChunk->containsHostAddress(chunk->getHostAddress())) {
+                    kpanic("Memory::addCodeChunk chunks can not overlap");
+                }
             }
-            result = result->getNextChunkInHostPage();
         }
     }
 #endif
-    X64CodeChunk* result = this->codeChunksByHostPage[hostPage];
-    this->codeChunksByHostPage[hostPage] = chunk;
-    if (result) {
-        chunk->addNextHostChunk(result);
-    }
+    std::list<X64CodeChunk*>& hostChunks = this->codeChunksByHostPage[hostPage];
+    hostChunks.push_back(chunk);
 
-    result = this->codeChunksByEmulationPage[emulationPage];
-    this->codeChunksByEmulationPage[emulationPage] = chunk;
-
-    if (result) {
-        chunk->addNextEmulationChunk(result);
-    }
+    std::list<X64CodeChunk*>& chunks = this->codeChunksByEmulationPage[emulationPage];
+    chunks.push_back(chunk);
 }
 
 void Memory::makePageDynamic(U32 page) {
-    X64CodeChunk* result = this->codeChunksByEmulationPage[page];
-    while (result) {
-        if (!result->isDynamicAware()) {
-            result->invalidateStartingAt(result->getEip());
+    if (this->codeChunksByEmulationPage.count(page)) {
+        std::list<X64CodeChunk*>& chunks = this->codeChunksByEmulationPage[page];
+        for (auto& chunk : chunks) {
+            if (!chunk->isDynamicAware()) {
+                chunk->invalidateStartingAt(chunk->getEip());
+            }
         }
-        result = result->getNextChunkInEmulationPage();
     }
     if (this->nativeFlags[page] & NATIVE_FLAG_CODEPAGE_READONLY) {
         ::clearCodePageReadOnly(this, page);
@@ -721,14 +714,13 @@ void Memory::makePageDynamic(U32 page) {
     // chunks do not overlap, so find the first previous page with a chunk then
     // check on the chunks in that page
     while (page>0) {
-        if (this->codeChunksByEmulationPage[page]) {
-            X64CodeChunk* result = this->codeChunksByEmulationPage[page];
-            while (result) {
-                if (result->containsEip(eip)) {
-                    result->invalidateStartingAt(eip);
+        if (this->codeChunksByEmulationPage.count(page)) {
+            std::list<X64CodeChunk*>& chunks = this->codeChunksByEmulationPage[page];
+            for (auto& chunk : chunks) {
+                if (chunk->containsEip(eip)) {
+                    chunk->invalidateStartingAt(eip);
                     return;
                 }
-                result = result->getNextChunkInHostPage();
             }
             break;
         }
@@ -740,25 +732,25 @@ void Memory::makePageDynamic(U32 page) {
 // like with soft_code_page
 X64CodeChunk* Memory::getCodeChunkContainingHostAddress(void* hostAddress) {
     U32 page = ((U32)(size_t)hostAddress) >> K_PAGE_SHIFT;
-    X64CodeChunk* result = this->codeChunksByHostPage[page];
-    while (result) {
-        if (result->containsHostAddress(hostAddress)) {
-            return result;
+    if (this->codeChunksByHostPage.count(page)) {
+        std::list<X64CodeChunk*>& chunks = this->codeChunksByHostPage[page];
+        for (auto& chunk : chunks) {
+            if (chunk->containsHostAddress(hostAddress)) {
+                return chunk;
+            }
         }
-        result = result->getNextChunkInHostPage();
     }
     page--;
     // look to see if a chunk that starts in a previous page contains this address
     // chunks do not overlap, so find the first previous page with a chunk then
     // check on the chunks in that page
     while (page>0) {
-        if (this->codeChunksByHostPage[page]) {
-            X64CodeChunk* result = this->codeChunksByHostPage[page];
-            while (result) {
-                if (result->containsHostAddress(hostAddress)) {
-                    return result;
+        if (this->codeChunksByHostPage.count(page)) {
+            std::list<X64CodeChunk*>& chunks = this->codeChunksByHostPage[page];
+            for (auto& chunk : chunks) {
+                if (chunk->containsHostAddress(hostAddress)) {
+                    return chunk;
                 }
-                result = result->getNextChunkInHostPage();
             }
             break;
         }
@@ -859,8 +851,8 @@ void Memory::freeExcutableMemory(void* hostMemory, U32 size) {
 
 void Memory::executableMemoryReleased() {
 #ifdef BOXEDWINE_X64
-    memset(this->codeChunksByHostPage, 0, sizeof(this->codeChunksByHostPage));
-    memset(this->codeChunksByEmulationPage, 0, sizeof(this->codeChunksByEmulationPage));
+    this->codeChunksByHostPage.clear();
+    this->codeChunksByEmulationPage.clear();
     memset(this->freeExecutableMemory, 0, sizeof(this->freeExecutableMemory));
 #endif   
 }

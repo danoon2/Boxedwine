@@ -251,7 +251,7 @@ void x64CPU::link(X64Asm* data, X64CodeChunk* fromChunk, U32 offsetIntoChunk) {
             if (!toChunk) {
                 kpanic("x64CPU::link to chunk missing");
             }
-            X64CodeChunkLink* link = toChunk->addLinkFrom(fromChunk, eip, toHostAddress, offset, true);
+            std::shared_ptr<X64CodeChunkLink> link = toChunk->addLinkFrom(fromChunk, eip, toHostAddress, offset, true);
             data->write32Buffer(offset, (U32)(toHostAddress - offset - 4));            
         } else if (size==8 && !data->todoJump[i].sameChunk) {
             U8* toHostAddress = (U8*)this->thread->memory->getExistingHostAddress(eip);
@@ -269,8 +269,8 @@ void x64CPU::link(X64Asm* data, X64CodeChunk* fromChunk, U32 offsetIntoChunk) {
             if (!toChunk) {
                 kpanic("x64CPU::link to chunk missing");
             }
-            X64CodeChunkLink* link = toChunk->addLinkFrom(fromChunk, eip, toHostAddress, offset, false);
-            data->write64Buffer(offset, (U64)&link->toHostInstruction);
+            std::shared_ptr<X64CodeChunkLink> link = toChunk->addLinkFrom(fromChunk, eip, toHostAddress, offset, false);
+            data->write64Buffer(offset, (U64)&(link->toHostInstruction));
         } else {
             kpanic("x64CPU::link unexpected patch size");
         }
@@ -506,24 +506,6 @@ U64 x64CPU::handleChangedUnpatchedCode(U64 rip) {
     unsigned char* hostAddress = (unsigned char*)rip;
     X64CodeChunk* chunk = this->thread->memory->getCodeChunkContainingHostAddress(hostAddress);
     if (!chunk) {
-        /* some debug code
-        U32 toEip = *(((U32*)hostAddress)+2);
-        KThread* thread = KThread::currentThread();
-        Memory* memory = thread->memory;
-
-        for (U32 i=0;i<K_NUMBER_OF_PAGES;i++) {
-            X64CodeChunk* chunk = memory->hostCodeChunks[i];
-            while (chunk) {
-                if (chunk->hasLinkTo(hostAddress)) {
-                    int ii=0;
-                }
-                if (chunk->hasLinkToEip(toEip)) {
-                    int ii=0;
-                }
-                chunk = chunk->getNext();
-            }
-        }
-        */
         kpanic("x64CPU::handleChangedUnpatchedCode: could not find chunk");
     }
     U32 startOfEip = chunk->getEipThatContainsHostAddress(hostAddress, NULL, NULL);
