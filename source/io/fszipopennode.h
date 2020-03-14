@@ -7,7 +7,7 @@ class FsZipNode;
 
 class FsZipOpenNode : public FsOpenNode {
 public:
-    FsZipOpenNode(BoxedPtr<FsZipNode> node, U32 flags, U64 offset);
+    FsZipOpenNode(BoxedPtr<FsNode> node, std::shared_ptr<FsZipNode>& zipNode, U32 flags, U64 offset);
     virtual S64  length();
     virtual bool setLength(S64 length);
     virtual S64  getFilePointer();
@@ -27,7 +27,7 @@ public:
     virtual bool isOpen();
 
 private:
-    BoxedPtr<FsZipNode> zipNode;
+    std::shared_ptr<FsZipNode> zipNode;
     S64 pos;
     U64 offset;
 };

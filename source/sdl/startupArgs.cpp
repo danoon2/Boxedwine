@@ -147,10 +147,10 @@ bool StartUpArgs::apply() {
         klog("Resolution set to: %dx%d", this->screenCx, this->screenCy);
     }
 #ifdef BOXEDWINE_ZLIB
-    std::vector<FsZip*> openZips;
+    std::vector<std::shared_ptr<FsZip>> openZips;
     for (auto& zip : zips) {
         U64 startTime = KSystem::getMicroCounter();
-        FsZip* fsZip = new FsZip();
+        std::shared_ptr<FsZip> fsZip = std::make_shared<FsZip>();
         fsZip->init(zip, "");
         openZips.push_back(fsZip);
         U64 endTime = KSystem::getMicroCounter();
@@ -327,9 +327,7 @@ bool StartUpArgs::apply() {
     dspShutdown();
 
 #ifdef BOXEDWINE_ZLIB
-    for (auto& z : openZips) {
-        delete z;
-    }
+    openZips.clear();
 #endif
     return true;
 }

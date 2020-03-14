@@ -105,7 +105,7 @@ bool FsZip::init(const std::string& zipPath, const std::string& mount) {
             Fs::remoteNameToLocal(localFileName);      
             localFileName = Fs::getFileNameFromPath(localFileName);
             BoxedPtr<FsFileNode> node = (FsFileNode*)Fs::addFileNode(zipInfo[i].filename, zipInfo[i].link, Fs::getNativePathFromParentAndLocalFilename(parent, localFileName), zipInfo[i].isDirectory, parent).get();
-            node->zipNode = new FsZipNode(node, zipInfo[i], this);
+            node->zipNode = std::make_shared<FsZipNode>(zipInfo[i], shared_from_this());
         }   
         delete[] zipInfo;
     }

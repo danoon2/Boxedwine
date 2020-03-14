@@ -35,7 +35,7 @@ private:
 #ifdef BOXEDWINE_ZLIB
     friend class FsZip;
     friend class FsZipNode;    
-    BoxedPtr<FsZipNode> zipNode;
+    std::shared_ptr<FsZipNode> zipNode;
 #endif    
     friend class Fs;
     bool isRootPath;

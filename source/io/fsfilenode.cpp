@@ -138,7 +138,7 @@ void FsFileNode::ensurePathIsLocal() {
         } else {
             std::string parentPath = Fs::getParentPath(this->path);
             Fs::makeLocalDirs(parentPath.c_str());
-            this->zipNode->moveToFileSystem();
+            this->zipNode->moveToFileSystem(this);
         }
     } else if (this->parent->type==File) {
         std::string parentPath = Fs::getParentPath(this->path);
@@ -183,7 +183,7 @@ FsOpenNode* FsFileNode::open(U32 flags) {
     if (!f || f==0xFFFFFFFF) {
 #ifdef BOXEDWINE_ZLIB
         if (this->zipNode && (flags & K_O_ACCMODE)==K_O_RDONLY)
-            return this->zipNode->open(flags);
+            return this->zipNode->open(this, flags);
 #endif
         return 0;
     }

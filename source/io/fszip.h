@@ -25,7 +25,7 @@ public:
     U64 offset;
 };
 
-class FsZip {
+class FsZip : public std::enable_shared_from_this<FsZip> {
 public:
     ~FsZip();
     bool init(const std::string& zipPath, const std::string& mount);

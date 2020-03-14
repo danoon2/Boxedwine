@@ -8,28 +8,17 @@
 
 class FsFileNode;
 
-class FsZipNode : public FsNode {
+class FsZipNode : public std::enable_shared_from_this<FsZipNode> {
 public:
-    FsZipNode(BoxedPtr<FsFileNode> fileNode, const fsZipInfo& zipInfo, FsZip* fsZip);
-    virtual U32 rename(const std::string& path); //return 0 if success, else errno
-    virtual bool remove();
-    virtual U64 lastModified();
-    virtual U64 length();
-    virtual FsOpenNode* open(U32 flags);
-    virtual bool canRead();
-    virtual bool canWrite();
-    virtual U32 getType(bool checkForLink);
-    virtual U32 getMode();
-    virtual U32 removeDir();
-    virtual U32 setTimes(U64 lastAccessTime, U32 lastAccessTimeNano, U64 lastModifiedTime, U32 lastModifiedTimeNano);
-    virtual void close();
+    FsZipNode(const fsZipInfo& zipInfo, std::shared_ptr<FsZip>& fsZip);
+    U64 lastModified();
+    U64 length();
+    FsOpenNode* open(BoxedPtr<FsNode> node, U32 flags);
+    bool moveToFileSystem(BoxedPtr<FsNode> node);
 
-    bool moveToFileSystem();
-
-    FsZip* fsZip;
+    std::shared_ptr<FsZip> fsZip;
 private:
     fsZipInfo zipInfo;
-    BoxedPtr<FsFileNode> fileNode;
 };
 #endif
 #endif
