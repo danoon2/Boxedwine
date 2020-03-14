@@ -153,7 +153,7 @@ private:
     std::unordered_map<U32, std::list< std::shared_ptr<X64CodeChunk> >> codeChunksByHostPage;
     std::unordered_map<U32, std::list< std::shared_ptr<X64CodeChunk> >> codeChunksByEmulationPage;
 
-    void* freeExecutableMemory[EXECUTABLE_SIZES];
+    std::list<void*> freeExecutableMemory[EXECUTABLE_SIZES];
 public:
     std::shared_ptr<X64CodeChunk> getCodeChunkContainingHostAddress(void* hostAddress);
     void invalideHostCode(U32 eip, U32 len);

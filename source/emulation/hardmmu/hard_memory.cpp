@@ -36,7 +36,6 @@ Memory::Memory() : allocated(0), callbackPos(0) {
     //memset(ids, 0, sizeof(ids));
 #else
     memset(this->eipToHostInstruction, 0, sizeof(this->eipToHostInstruction));
-    memset(this->freeExecutableMemory, 0, sizeof(this->freeExecutableMemory));
     memset(this->dynamicCodePageUpdateCount, 0, sizeof(this->dynamicCodePageUpdateCount));
     this->executableMemoryId = 0;
 #endif    
@@ -826,10 +825,10 @@ void* Memory::allocateExcutableMemory(U32 requestedSize, U32* allocatedSize) {
     if (allocatedSize) {
         *allocatedSize = size;
     }
-    if (this->freeExecutableMemory[powerOf2Size-EXECUTABLE_MIN_SIZE_POWER]) {
-        void* result = this->freeExecutableMemory[powerOf2Size-EXECUTABLE_MIN_SIZE_POWER];
-        void* next = *(void**)result;
-        this->freeExecutableMemory[powerOf2Size-EXECUTABLE_MIN_SIZE_POWER] = next;
+    U32 index = powerOf2Size - EXECUTABLE_MIN_SIZE_POWER;
+    if (!this->freeExecutableMemory[index].empty()) {
+        void* result = this->freeExecutableMemory[index].front();
+        this->freeExecutableMemory[index].pop_front();
         return result;
     }
     void* result = (void*)(this->executableMemoryId | (this->nextExecutablePage << K_PAGE_SHIFT));
@@ -841,15 +840,19 @@ void* Memory::allocateExcutableMemory(U32 requestedSize, U32* allocatedSize) {
     
     count = 65536 / size;
     for (U32 i=1;i<count;i++) {
-        void* nextFree = this->freeExecutableMemory[powerOf2Size-EXECUTABLE_MIN_SIZE_POWER];
-        this->freeExecutableMemory[powerOf2Size-EXECUTABLE_MIN_SIZE_POWER] = ((U8*)result)+size*i;
-        *((void**)this->freeExecutableMemory[powerOf2Size-EXECUTABLE_MIN_SIZE_POWER]) = nextFree;
+        this->freeExecutableMemory[index].push_back(((U8*)result) + size * i);
     }   
     return result;
 }
 
 void Memory::freeExcutableMemory(void* hostMemory, U32 actualSize) {
-    memset(hostMemory, 0xcd, actualSize);
+    memset(hostMemory, 0xcc, actualSize);
+    
+    U32 size = 0;
+    U32 powerOf2Size = powerOf2(actualSize, size);
+    U32 index = powerOf2Size - EXECUTABLE_MIN_SIZE_POWER;
+    //this->freeExecutableMemory[index].push_back(hostMemory);
+
     // :TODO: when this recycled, make sure we delay the recycling in case another thread is also waiting in seh_filter 
     // for its turn to jump to this chunk at the same time another thread retranslated it
     //
@@ -860,7 +863,9 @@ void Memory::executableMemoryReleased() {
 #ifdef BOXEDWINE_X64
     this->codeChunksByHostPage.clear();
     this->codeChunksByEmulationPage.clear();
-    memset(this->freeExecutableMemory, 0, sizeof(this->freeExecutableMemory));
+    for (U32 i = 0; i < EXECUTABLE_SIZES; i++) {
+        this->freeExecutableMemory[i].clear();
+    }
 #endif   
 }
 #endif

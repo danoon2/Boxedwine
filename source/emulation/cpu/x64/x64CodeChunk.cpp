@@ -73,13 +73,6 @@ void X64CodeChunk::release(Memory* memory) {
 }
 
 void X64CodeChunk::internalDealloc() {        
-#ifdef _DEBUG
-    // tag it so that we can see where it came from when debugging
-    U32* p = (U32*)this->hostAddress;
-    p++;
-    p++;
-    *p = this->emulatedAddress;
-#endif
     KThread::currentThread()->memory->freeExcutableMemory(this->hostAddress, this->hostAddressSize);
 }
 
