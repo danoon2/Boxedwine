@@ -47,10 +47,6 @@ __m128i floatTo128(float f1, float f2, float f3, float f4) {
 }
 #endif
 
-U32 getMilliesSinceStart() {
-    return 0;
-}
-
 static KThread* thread;
 static Memory* memory;
 CPU* cpu;

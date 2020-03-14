@@ -216,7 +216,7 @@ static U32 syscall_chdir(CPU* cpu, U32 eipCount) {
 }
 
 static U32 syscall_time(CPU* cpu, U32 eipCount) {
-    U32 result = (U32)(Platform::getSystemTimeAsMicroSeconds() / 1000000l);
+    U32 result = (U32)(KSystem::getSystemTimeAsMicroSeconds() / 1000000l);
     if (ARG1)
         writed(ARG1, result);
     SYS_LOG1(SYSCALL_SYSTEM, cpu, "time: tloc=%X result=%d(0x%X)\n", ARG1, result, result);
@@ -1940,11 +1940,11 @@ void ksyscall(CPU* cpu, U32 eipCount) {
         kwarn("no syscall for %d", EAX);
     } else {
 #ifndef BOXEDWINE_MULTI_THREADED
-        U64 startTime = Platform::getMicroCounter();
+        U64 startTime = KSystem::getMicroCounter();
 #endif
         result = syscallFunc[EAX](cpu, eipCount);
 #ifndef BOXEDWINE_MULTI_THREADED
-        U64 diff = Platform::getMicroCounter()-startTime;
+        U64 diff = KSystem::getMicroCounter()-startTime;
         sysCallTime+=diff;  
         cpu->blockInstructionCount+=(U32)(contextTime*diff/10000);
 #endif

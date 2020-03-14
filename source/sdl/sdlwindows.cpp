@@ -874,7 +874,7 @@ U32 recorderBufferSize;
 
 void sdlDrawAllWindows(KThread* thread, U32 hWnd, int count) {    
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(sdlMutex);
-    if (!sdlRenderer || (contextCount && lastGlCallTime+1000>getMilliesSinceStart())) {
+    if (!sdlRenderer || (contextCount && lastGlCallTime+1000> KSystem::getMilliesSinceStart())) {
         // don't let window drawing and opengl drawing fight and clobber each other, if OpenGL was active in the last second, then don't draw the window
         return;
     }
@@ -1229,7 +1229,7 @@ int sdlMouseMouse(int x, int y, bool relative) {
                 writeLittleEndian_4(buffer+8, y); // dy
                 writeLittleEndian_4(buffer+12, 0); // mouseData
                 writeLittleEndian_4(buffer+16,  (relative?MOUSEEVENTF_MOVE:MOUSEEVENTF_MOVE|MOUSEEVENTF_ABSOLUTE)); // dwFlags
-                writeLittleEndian_4(buffer+20, getMilliesSinceStart()); // time
+                writeLittleEndian_4(buffer+20, KSystem::getMilliesSinceStart()); // time
                 writeLittleEndian_4(buffer+24, 0); // dwExtraInfo
 
                 KUnixSocketObject::unixsocket_write_native_nowait(fd->kobject, buffer, 28);
@@ -1264,7 +1264,7 @@ int sdlMouseWheel(int amount, int x, int y) {
                 writeLittleEndian_4(buffer+8, y); // dy
                 writeLittleEndian_4(buffer+12, amount); // mouseData
                 writeLittleEndian_4(buffer+16, MOUSEEVENTF_WHEEL | MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_MOVE); // dwFlags
-                writeLittleEndian_4(buffer+20, getMilliesSinceStart()); // time
+                writeLittleEndian_4(buffer+20, KSystem::getMilliesSinceStart()); // time
                 writeLittleEndian_4(buffer+24, 0); // dwExtraInfo
 
                 KUnixSocketObject::unixsocket_write_native_nowait(fd->kobject, buffer, 28);
@@ -1313,7 +1313,7 @@ int sdlMouseButton(U32 down, U32 button, int x, int y) {
                 writeLittleEndian_4(buffer+8, y); // dy
                 writeLittleEndian_4(buffer+12, 0); // mouseData
                 writeLittleEndian_4(buffer+16, flags); // dwFlags
-                writeLittleEndian_4(buffer+20, getMilliesSinceStart()); // time
+                writeLittleEndian_4(buffer+20, KSystem::getMilliesSinceStart()); // time
                 writeLittleEndian_4(buffer+24, 0); // dwExtraInfo
 
                 KUnixSocketObject::unixsocket_write_native_nowait(fd->kobject, buffer, 28);
@@ -1930,7 +1930,7 @@ int sdlKey(U32 key, U32 down) {
                 writeLittleEndian_2(buffer+4, vKey); // wVk
                 writeLittleEndian_2(buffer+6, scan & 0xFF); // wScan
                 writeLittleEndian_4(buffer+8, flags); // dwFlags
-                writeLittleEndian_4(buffer+12, getMilliesSinceStart()); // time
+                writeLittleEndian_4(buffer+12, KSystem::getMilliesSinceStart()); // time
                 writeLittleEndian_4(buffer+16, 0); // dwExtraInfo
                 writeLittleEndian_4(buffer+20, 0); // pad
                 writeLittleEndian_4(buffer+24, 0); // pad

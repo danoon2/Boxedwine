@@ -149,11 +149,11 @@ bool StartUpArgs::apply() {
 #ifdef BOXEDWINE_ZLIB
     std::vector<FsZip*> openZips;
     for (auto& zip : zips) {
-        U64 startTime = Platform::getMicroCounter();
+        U64 startTime = KSystem::getMicroCounter();
         FsZip* fsZip = new FsZip();
         fsZip->init(zip, "");
         openZips.push_back(fsZip);
-        U64 endTime = Platform::getMicroCounter();
+        U64 endTime = KSystem::getMicroCounter();
         klog("Loaded %s in %d ms", zip.c_str(), (U32)(endTime - startTime) / 1000);
     }
 #endif

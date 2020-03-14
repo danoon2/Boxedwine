@@ -159,7 +159,7 @@ void BoxedWineCondition::waitWithTimeout(U32 ms) {
     if (!KSystem::shutingDown) {
         KThread::currentThread()->waitingCond = this;
     }
-    SDL_CondWaitTimeout((SDL_cond*)this->c, (SDL_mutex*)this->m, ms);
+    SDL_CondWaitTimeout((SDL_cond*)this->c, (SDL_mutex*)this->m, KSystem::emulatedMilliesToHost(ms));
     if (!KSystem::shutingDown) {
         KThread::currentThread()->waitingCond = NULL;
     }
@@ -274,7 +274,7 @@ U32 BoxedWineCondition::wait() {
 
 U32 BoxedWineCondition::waitWithTimeout(U32 ms) {
     KThread* thread = KThread::currentThread();
-    thread->condTimer.millies = ms+getMilliesSinceStart();
+    thread->condTimer.millies = ms + KSystem::getMilliesSinceStart();
     thread->condTimer.cond = this;
     addTimer(&thread->condTimer);
     this->waitingThreads.addToBack(&KThread::currentThread()->waitThreadNode);

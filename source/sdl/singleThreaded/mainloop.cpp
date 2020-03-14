@@ -32,7 +32,7 @@ bool doMainLoop() {
             uiLoop();
         }
 #endif
-        t = getMilliesSinceStart();
+        t = KSystem::getMilliesSinceStart();
         if (lastTitleUpdate+5000 < t) {
             char tmp[256];
             lastTitleUpdate = t;

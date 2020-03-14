@@ -36,10 +36,6 @@
 
 #ifndef __TEST
 
-U32 getMilliesSinceStart() {
-    return SDL_GetTicks();
-}
-
 U32 gensrc;
 
 #ifdef GENERATE_SOURCE
@@ -51,7 +47,7 @@ int boxedmain(int argc, const char **argv) {
 
     klog("Starting ...");
 
-    Platform::startMicroCounter();
+    KSystem::startMicroCounter();
 #ifdef LOG_OPS
     logFile = fopen("log.txt", "w");
 #endif

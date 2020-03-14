@@ -290,7 +290,7 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime) {
         } else {
             U32 seconds = readd(pTime);
             U32 nano = readd(pTime + 4);
-            expireTime = seconds * 1000 + nano / 1000000 + getMilliesSinceStart();
+            expireTime = seconds * 1000 + nano / 1000000 + KSystem::getMilliesSinceStart();
         }
         bool checkValue = false;
 
@@ -312,7 +312,7 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime) {
                 return 0;
             }            
             if (f->expireTimeInMillies<0x7FFFFFFF) {
-                S32 diff = f->expireTimeInMillies - getMilliesSinceStart();
+                S32 diff = f->expireTimeInMillies - KSystem::getMilliesSinceStart();
                 if (diff<=0) {
                     freeFutex(f);
                     return -K_ETIMEDOUT;
@@ -850,9 +850,9 @@ U32 KThread::modify_ldt(U32 func, U32 ptr, U32 count) {
 U32 KThread::sleep(U32 ms) {
     while (true) {
         if (!this->condStartWaitTime) {
-            this->condStartWaitTime = getMilliesSinceStart();
+            this->condStartWaitTime = KSystem::getMilliesSinceStart();
         } else {
-            U32 diff = getMilliesSinceStart()-this->condStartWaitTime;
+            U32 diff = KSystem::getMilliesSinceStart()-this->condStartWaitTime;
             if (diff>ms) {
                 this->condStartWaitTime = 0;
                 return 0;

@@ -79,9 +79,9 @@ S32 internal_poll(KPollData* data, U32 count, U32 timeout) {
             return -K_EINTR;
         }
         if (!thread->condStartWaitTime) {
-            thread->condStartWaitTime = getMilliesSinceStart();
+            thread->condStartWaitTime = KSystem::getMilliesSinceStart();
         } else {
-            U32 diff = getMilliesSinceStart()-thread->condStartWaitTime;
+            U32 diff = KSystem::getMilliesSinceStart()-thread->condStartWaitTime;
             if (diff>timeout) {
                 thread->condStartWaitTime = 0;
                 thread->pollCond.unlockAndRemoveChildren();

@@ -29,7 +29,7 @@ public:
 std::list<RunOnMain> runOnMainFunctions;
 
 void runOnMainUI(std::function<bool()> f, U64 delayInMillies) {
-    runOnMainFunctions.push_back(RunOnMain(f, Platform::getMicroCounter() + delayInMillies*1000));
+    runOnMainFunctions.push_back(RunOnMain(f, SDL_GetTicks() + delayInMillies));
 }
 
 void uiDraw() {    
@@ -52,7 +52,7 @@ void uiDraw() {
 
     while (iter != end) {
         RunOnMain& item = *iter;
-        if (item.timeToRun <= Platform::getMicroCounter()) {
+        if (item.timeToRun <= SDL_GetTicks()) {
             if (!item.f()) {
                 iter = runOnMainFunctions.erase(iter);
             } else {

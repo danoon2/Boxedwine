@@ -80,11 +80,13 @@ public:
 	static void destroy();
 
     // helpers
-    static void writeStat(const std::string& path, U32 buf, bool is64, U64 st_dev, U64 st_ino, U32 st_mode, U64 st_rdev, U64 st_size, U32 st_blksize, U64 st_blocks, U64 mtime, U32 linkCount);
+    static void writeStat(const std::string& path, U32 buf, bool is64, U64 st_dev, U64 st_ino, U32 st_mode, U64 st_rdev, U64 st_size, U32 st_blksize, U64 st_blocks, U64 mtime, U32 linkCount);    
+    static KProcess* getProcess(U32 id);    
+#ifdef BOXEDWINE_DEFAULT_MMU
     static void eraseFileCache(const std::string& name);
-    static KProcess* getProcess(U32 id);
     static BoxedPtr<MappedFileCache> getFileCache(const std::string& name);
     static void setFileCache(const std::string& name, const BoxedPtr<MappedFileCache>& fileCache);
+#endif
     static void eraseProcess(U32 id);
     static void addProcess(U32 id, KProcess* process);
     static KThread* getThreadById(U32 threadId);
@@ -113,14 +115,28 @@ public:
     static U32 waitpid(S32 pid, U32 statusAddress, U32 options);        
 
     static BOXEDWINE_CONDITION processesCond;
+    
+    static U32 getMilliesSinceStart();
+    static U64 getSystemTimeAsMicroSeconds();
+    static U64 getMicroCounter();
+    static void startMicroCounter();
+    static U32 emulatedMilliesToHost(U32 millies);
+
 private:
+    static bool adjustClock;
+    static U32 adjustClockFactor; // 100 is normal
+    static U32 startTimeSdlTicks;
+    static U64 startTimeMicroCounter;
+    static U64 startTimeSystemTime;
+
     static std::unordered_map<void*, SHM*> shm;
     static std::unordered_map<U32, KProcess*> processes;    
+#ifdef BOXEDWINE_DEFAULT_MMU
     static std::unordered_map<std::string, BoxedPtr<MappedFileCache> > fileCache;
     static BOXEDWINE_MUTEX fileCacheMutex;
+#endif
 };
 
-U32 getMilliesSinceStart();
 void runThreadSlice(KThread* thread);
 void ksyscall(CPU* cpu, U32 eipCount);
 

@@ -45,7 +45,7 @@ bool KProcessTimer::run() {
         result = true;
         this->millies = 0;
     } else {
-        this->millies = this->resetMillies + getMilliesSinceStart();
+        this->millies = this->resetMillies + KSystem::getMilliesSinceStart();
     }
     this->process->signalALRM();
     return result;
@@ -677,8 +677,9 @@ std::string KProcess::getModuleName(U32 eip) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mappedFilesMutex);
     for (auto& n : this->mappedFiles) {
         BoxedPtr<MappedFile> mappedFile = n.second;
-        if (eip>=mappedFile->address && eip<mappedFile->address+mappedFile->len)
-            return mappedFile->systemCacheEntry->name;
+        if (eip >= mappedFile->address && eip < mappedFile->address + mappedFile->len) {
+            return mappedFile->file->openFile->node->name;
+        }
     }
     return "Unknown";
 }
@@ -705,14 +706,14 @@ U32 KProcess::alarm(U32 seconds) {
     } else {
         this->timer.resetMillies = 0;
         if (this->timer.millies!=0) {
-            this->timer.millies = seconds*1000+getMilliesSinceStart();
+            this->timer.millies = seconds*1000 + KSystem::getMilliesSinceStart();
         } else {
-            this->timer.millies = seconds*1000+getMilliesSinceStart();
+            this->timer.millies = seconds*1000 + KSystem::getMilliesSinceStart();
             addTimer(&this->timer);
         }
     }
     if (prev) {
-        return (prev-getMilliesSinceStart())/1000;
+        return (prev - KSystem::getMilliesSinceStart())/1000;
     }
     return 0;
 }
@@ -1372,7 +1373,7 @@ U32 KProcess::mmap(U32 addr, U32 len, S32 prot, S32 flags, FD fildes, U64 off) {
             mappedFile->len = ((U64)pageCount) << K_PAGE_SHIFT;
             mappedFile->offset = off;     
             mappedFile->file = (KFile*)fd->kobject.get();
-
+#ifdef BOXEDWINE_DEFAULT_MMU
             BoxedPtr<MappedFileCache> cache = KSystem::getFileCache(mappedFile->file->openFile->node->path);
             if (!cache) {
                 cache = new MappedFileCache(mappedFile->file->openFile->node->path);
@@ -1383,6 +1384,7 @@ U32 KProcess::mmap(U32 addr, U32 len, S32 prot, S32 flags, FD fildes, U64 off) {
                 memset(cache->data, 0, size*sizeof(U8*));
             }
             mappedFile->systemCacheEntry = cache;
+#endif
             KThread::currentThread()->process->mappedFiles[mappedFile->address] = mappedFile;
             this->memory->allocPages(pageStart, pageCount, permissions, fildes, off, mappedFile);
         } else {
@@ -1491,7 +1493,7 @@ U32 KProcess::setitimer(U32 which, U32 newValue, U32 oldValue) {
         kpanic("setitimer which=%d not supported", which);
     }
     if (oldValue) {
-        U32 remaining = this->timer.millies - getMilliesSinceStart();
+        U32 remaining = this->timer.millies - KSystem::getMilliesSinceStart();
 
         writed(oldValue, this->timer.resetMillies / 1000);
         writed(oldValue, (this->timer.resetMillies % 1000) * 1000);
@@ -1510,9 +1512,9 @@ U32 KProcess::setitimer(U32 which, U32 newValue, U32 oldValue) {
         } else {
             this->timer.resetMillies = resetMillies;			
             if (this->timer.millies!=0) {
-                this->timer.millies = millies+getMilliesSinceStart();
+                this->timer.millies = millies + KSystem::getMilliesSinceStart();
             } else {
-                this->timer.millies = millies+getMilliesSinceStart();
+                this->timer.millies = millies + KSystem::getMilliesSinceStart();
                 addTimer(&this->timer);
             }
         }

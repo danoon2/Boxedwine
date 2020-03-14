@@ -42,7 +42,7 @@ void Player::readCommand() {
             break;
         }
     }
-    this->lastCommandTime = Platform::getMicroCounter();
+    this->lastCommandTime = KSystem::getMicroCounter();
     if (this->nextCommand.length()==0) {
         klog("script did not finish properly: failed");
         sdlScreenShot("failed.bmp", NULL);
@@ -79,7 +79,7 @@ void Player::initCommandLine(std::string root, const std::vector<std::string>& z
 
 void Player::runSlice() {  
     // at least 10 ms between mouse moves
-    if (Platform::getMicroCounter()<this->lastCommandTime+10000)
+    if (KSystem::getMicroCounter()<this->lastCommandTime+10000)
         return;
     if (this->nextCommand=="MOVETO") {
         std::vector<std::string> items;
@@ -93,10 +93,10 @@ void Player::runSlice() {
         return;
     } 
     // 1000 ms between all other commands
-    if (Platform::getMicroCounter()<this->lastCommandTime+1000000 && this->nextCommand!="MOUSEUP" && this->nextCommand!="KEYUP" && this->nextCommand!="SCREENSHOT")
+    if (KSystem::getMicroCounter()<this->lastCommandTime+1000000 && this->nextCommand!="MOUSEUP" && this->nextCommand!="KEYUP" && this->nextCommand!="SCREENSHOT")
         return;
     // at least 100 ms between mouse or key down/up
-    if (Platform::getMicroCounter()<this->lastCommandTime+100000)
+    if (KSystem::getMicroCounter()<this->lastCommandTime+100000)
         return;
     if (this->nextCommand=="MOUSEDOWN" || this->nextCommand=="MOUSEUP") {
         std::vector<std::string> items;
@@ -117,14 +117,14 @@ void Player::runSlice() {
             runSlice();
         }
     } else if (this->nextCommand=="WAIT") {
-        if (Platform::getMicroCounter()>this->lastCommandTime+1000000l*atoi(this->nextValue.c_str())) {
+        if (KSystem::getMicroCounter()>this->lastCommandTime+1000000l*atoi(this->nextValue.c_str())) {
             klog("script: done waiting %s", this->nextValue.c_str());
             instance->readCommand();            
         }
     } else if (this->nextCommand=="DONE") {
         //exit(1);, let it exit gracefully
     } else if (this->nextCommand=="SCREENSHOT") {
-        if (Platform::getMicroCounter()<this->lastScreenRead+1000000) {
+        if (KSystem::getMicroCounter()<this->lastScreenRead+1000000) {
             return;
         }
         std::vector<std::string> items;
@@ -142,7 +142,7 @@ void Player::runSlice() {
                 klog("script: screen shot matched");
                 instance->readCommand();
                 this->lastCommandTime+=4000000; // sometimes the screen isn't ready for input even though you can see it
-                instance->lastScreenRead = Platform::getMicroCounter();
+                instance->lastScreenRead = KSystem::getMicroCounter();
             }
         } else if (items.size()>0) {
             U32 expectedCRC = atoi(items[0].c_str());
@@ -152,11 +152,11 @@ void Player::runSlice() {
                 klog("script: screen shot matched");
                 instance->readCommand();
                 this->lastCommandTime+=4000000; // sometimes the screen isn't ready for input even though you can see it
-                instance->lastScreenRead = Platform::getMicroCounter();
+                instance->lastScreenRead = KSystem::getMicroCounter();
             }
         }
     }
-    if (Platform::getMicroCounter()>this->lastCommandTime+1000000*60*10) {
+    if (KSystem::getMicroCounter()>this->lastCommandTime+1000000*60*10) {
         klog("script timed out %s", this->directory.c_str());
         sdlScreenShot("failed.bmp", NULL);
         exit(0);

@@ -2,7 +2,7 @@
 #include "fsmemopennode.h"
 
 FsMemOpenNode::FsMemOpenNode(U32 flags, BoxedPtr<FsNode> node) : FsOpenNode(node, flags), seals(0), pos(0), isClosed(false) {
-    this->lastModifiedTime = Platform::getSystemTimeAsMicroSeconds() / 1000l;
+    this->lastModifiedTime = KSystem::getSystemTimeAsMicroSeconds() / 1000l;
 }
 
 FsMemOpenNode::~FsMemOpenNode() {
@@ -14,7 +14,7 @@ S64 FsMemOpenNode::length() {
 }
 
 bool FsMemOpenNode::setLength(S64 length) {
-    this->lastModifiedTime = Platform::getSystemTimeAsMicroSeconds() / 1000l;
+    this->lastModifiedTime = KSystem::getSystemTimeAsMicroSeconds() / 1000l;
     this->buffer.resize((U32)length, 0);
     return true;
 }
@@ -79,7 +79,7 @@ U32 FsMemOpenNode::writeNative(U8* buffer, U32 len) {
 
     if (len==0)
         return 0;
-    this->lastModifiedTime = Platform::getSystemTimeAsMicroSeconds() / 1000l;
+    this->lastModifiedTime = KSystem::getSystemTimeAsMicroSeconds() / 1000l;
     if (this->pos < (S64)this->buffer.size()) {
         U32 todo = len;
         if (this->buffer.size()-(U64)this->pos < len) {

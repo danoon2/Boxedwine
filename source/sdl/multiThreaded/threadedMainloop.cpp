@@ -46,7 +46,7 @@ bool doMainLoop() {
             uiLoop();
         }
 #endif
-        U32 t = getMilliesSinceStart();
+        U32 t = KSystem::getMilliesSinceStart();
         //flipFB();
         if (lastTitleUpdate+5000 < t) {
             char tmp[256];

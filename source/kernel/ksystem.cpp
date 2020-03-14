@@ -25,24 +25,38 @@
 #include "../emulation/cpu/normal/normalCPU.h"
 
 #include <time.h>
+#include <SDL.h>
 
 unsigned int KSystem::nextThreadId=10;
 std::unordered_map<void*, SHM*> KSystem::shm;
 std::unordered_map<U32, KProcess*> KSystem::processes;
+#ifdef BOXEDWINE_DEFAULT_MMU
 std::unordered_map<std::string, BoxedPtr<MappedFileCache> > KSystem::fileCache;
+BOXEDWINE_MUTEX KSystem::fileCacheMutex;
+#endif
 U32 KSystem::pentiumLevel = 4;
 bool KSystem::shutingDown;
+bool KSystem::adjustClock;
+U32 KSystem::adjustClockFactor=100;
+U32 KSystem::startTimeSdlTicks;
+U64 KSystem::startTimeMicroCounter;
+U64 KSystem::startTimeSystemTime;
 
 BOXEDWINE_CONDITION KSystem::processesCond("KSystem::processesCond");
-BOXEDWINE_MUTEX KSystem::fileCacheMutex;
 
 void KSystem::init() {
+    KSystem::adjustClock = false;
     KSystem::nextThreadId=10;
     KSystem::shm.clear();
     KSystem::processes.clear();
+#ifdef BOXEDWINE_DEFAULT_MMU
     KSystem::fileCache.clear();
+#endif
     KSystem::pentiumLevel = 4;
 	KSystem::shutingDown = false;
+    KSystem::startTimeSdlTicks = SDL_GetTicks();
+    KSystem::startTimeMicroCounter = Platform::getMicroCounter();
+    KSystem::startTimeSystemTime = Platform::getSystemTimeAsMicroSeconds();
 }
 
 void KSystem::destroy() {
@@ -54,7 +68,9 @@ void KSystem::destroy() {
 		delete n.second;
 	}
     KSystem::shm.clear();
+#ifdef BOXEDWINE_DEFAULT_MMU
     KSystem::fileCache.clear();
+#endif
 	KSystem::shutingDown = false;
 	Fs::shutDown();
     DecodedOp::clearCache();
@@ -113,11 +129,11 @@ U32 KSystem::ugetrlimit(U32 resource, U32 rlim) {
 
 U32 KSystem::clock_gettime(U32 clock_id, U32 tp) {    
     if (clock_id==0 || clock_id==5) { // CLOCK_REALTIME / CLOCK_REALTIME_COARSE
-        U64 m = Platform::getSystemTimeAsMicroSeconds();
+        U64 m = KSystem::getSystemTimeAsMicroSeconds();
         writed(tp, (U32)(m / 1000000l));
         writed(tp + 4, (U32)(m % 1000000l) * 1000);
     } else if (clock_id==1 || clock_id==2 || clock_id==4 || clock_id==6) { // CLOCK_MONOTONIC_RAW, CLOCK_PROCESS_CPUTIME_ID , CLOCK_MONOTONIC_COARSE
-        U64 diff = Platform::getMicroCounter();
+        U64 diff = KSystem::getMicroCounter();
         writed(tp, (U32)(diff / 1000000l));
         writed(tp + 4, (U32)(diff % 1000000l) * 1000);
     } else {
@@ -179,7 +195,7 @@ U32 KSystem::tgkill(U32 threadGroupId, U32 threadId, U32 signal) {
 U32 KSystem::sysinfo(U32 address) {
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(processesCond);
 
-    writed(address, getMilliesSinceStart()/1000); address+=4;
+    writed(address, KSystem::getMilliesSinceStart()/1000); address+=4;
     writed(address, 0); address+=4;
     writed(address, 0); address+=4;
     writed(address, 0); address+=4;
@@ -703,16 +719,17 @@ U32 KSystem::prlimit64(U32 pid, U32 resource, U32 newlimit, U32 oldlimit) {
     return 0;
 }
 
-void KSystem::eraseFileCache(const std::string& name) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(KSystem::fileCacheMutex);
-    KSystem::fileCache.erase(name);
-}
-
 KProcess* KSystem::getProcess(U32 id) {
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(processesCond);
     if (KSystem::processes.count(id))
         return KSystem::processes[id];
     return NULL;
+}
+
+#ifdef BOXEDWINE_DEFAULT_MMU
+void KSystem::eraseFileCache(const std::string& name) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(KSystem::fileCacheMutex);
+    KSystem::fileCache.erase(name);
 }
 
 BoxedPtr<MappedFileCache> KSystem::getFileCache(const std::string& name) {
@@ -726,7 +743,7 @@ void KSystem::setFileCache(const std::string& name, const BoxedPtr<MappedFileCac
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(KSystem::fileCacheMutex);
     KSystem::fileCache[name] = fileCache;
 }
-
+#endif
 void KSystem::eraseProcess(U32 id) {
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(processesCond);
     KSystem::processes.erase(id);
@@ -747,4 +764,45 @@ U32 KSystem::getRunningProcessCount() {
         }
     }
     return count;
+}
+
+U32 KSystem::getMilliesSinceStart() {
+    if (!KSystem::adjustClock) {
+        return SDL_GetTicks();
+    }
+    U32 currentTicks = SDL_GetTicks();
+    U32 diff = currentTicks - KSystem::startTimeSdlTicks;
+    U32 adjustedDiff = diff * KSystem::adjustClockFactor / 100;
+    return KSystem::startTimeSdlTicks + adjustedDiff;
+}
+
+U64 KSystem::getSystemTimeAsMicroSeconds() {
+    if (!KSystem::adjustClock) {
+        return Platform::getSystemTimeAsMicroSeconds();
+    }
+    U64 currentTime = Platform::getSystemTimeAsMicroSeconds();
+    U64 diff = currentTime - KSystem::startTimeSystemTime;
+    U64 adjustedDiff = diff * KSystem::adjustClockFactor / 100;
+    return KSystem::startTimeSystemTime + adjustedDiff;
+}
+
+U64 KSystem::getMicroCounter() {
+    if (!KSystem::adjustClock) {
+        return Platform::getMicroCounter();
+    }
+    U64 currentTicks = Platform::getMicroCounter();
+    U64 diff = currentTicks - KSystem::startTimeMicroCounter;
+    U64 adjustedDiff = diff * KSystem::adjustClockFactor / 100;
+    return KSystem::startTimeMicroCounter + adjustedDiff;
+}
+
+void KSystem::startMicroCounter() {
+    Platform::startMicroCounter();
+}
+
+U32 KSystem::emulatedMilliesToHost(U32 millies) {
+    if (!KSystem::adjustClock) {
+        return millies;
+    }
+    return millies * 100 / KSystem::adjustClockFactor;
 }

@@ -99,7 +99,7 @@ void runThreadSlice(KThread* thread) {
 }
 
 void runTimers() {
-    U32 millies = getMilliesSinceStart();
+    U32 millies = KSystem::getMilliesSinceStart();
     timers.for_each([millies] (KListNode<KTimer*>* node) {
         KTimer* timer = node->data;
 

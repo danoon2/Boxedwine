@@ -31,7 +31,9 @@ class Memory;
 
 class MappedFile : public BoxedPtrBase {
 public:
+#ifdef BOXEDWINE_DEFAULT_MMU
     BoxedPtr<MappedFileCache> systemCacheEntry;
+#endif
     BoxedPtr<KFile> file;
     U32 address;
     U64 len;
@@ -85,12 +87,12 @@ private:
 class AttachedSHM : public BoxedPtrBase {
 public:
     AttachedSHM(const BoxedPtr<SHM>& shm, U32 address, U32 pid) : shm(shm), address(address), pid(pid) {
-        this->shm->atime = Platform::getSystemTimeAsMicroSeconds();
+        this->shm->atime = KSystem::getSystemTimeAsMicroSeconds();
         this->shm->lpid = pid;
         this->shm->incAttach();
     }
     ~AttachedSHM() {
-        this->shm->dtime = Platform::getSystemTimeAsMicroSeconds();
+        this->shm->dtime = KSystem::getSystemTimeAsMicroSeconds();
         this->shm->lpid = pid;
         this->shm->decAttach();
     }

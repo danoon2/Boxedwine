@@ -674,7 +674,7 @@ void postSendEvent(DevInput* events, U64 time) {
 }
 
 void onMouseButtonUp(U32 button) {
-    U64 time = Platform::getSystemTimeAsMicroSeconds();
+    U64 time = KSystem::getSystemTimeAsMicroSeconds();
 
     if (button == 0)
         queueEvent(touchEvents, K_EV_KEY, K_BTN_LEFT, 0, time);
@@ -688,7 +688,7 @@ void onMouseButtonUp(U32 button) {
 }
 
 void onMouseButtonDown(U32 button) {
-    U64 time = Platform::getSystemTimeAsMicroSeconds();
+    U64 time = KSystem::getSystemTimeAsMicroSeconds();
 
     if (button == 0)
         queueEvent(touchEvents, K_EV_KEY, K_BTN_LEFT, 1, time);
@@ -702,7 +702,7 @@ void onMouseButtonDown(U32 button) {
 }
 
 void onMouseWheel(S32 value) {
-    U64 time = Platform::getSystemTimeAsMicroSeconds();
+    U64 time = KSystem::getSystemTimeAsMicroSeconds();
 
     // Up direction (y > 0)
     if (value > 0)  {
@@ -723,7 +723,7 @@ void onMouseWheel(S32 value) {
 
 void onMouseMove(U32 x, U32 y, bool relative) {
     U32 send = 0;
-    U64 time = Platform::getSystemTimeAsMicroSeconds();
+    U64 time = KSystem::getSystemTimeAsMicroSeconds();
 
     if (touchEvents) {
         if (x!=touchEvents->lastX) {
@@ -751,7 +751,7 @@ void onMouseMove(U32 x, U32 y, bool relative) {
 }
 
 void onKeyDown(U32 code) {
-    U64 time = Platform::getSystemTimeAsMicroSeconds();
+    U64 time = KSystem::getSystemTimeAsMicroSeconds();
 
     if (code == 0)
         return;
@@ -760,7 +760,7 @@ void onKeyDown(U32 code) {
 }
 
 void onKeyUp(U32 code) {
-    U64 time = Platform::getSystemTimeAsMicroSeconds();
+    U64 time = KSystem::getSystemTimeAsMicroSeconds();
 
     if (code == 0)
         return;

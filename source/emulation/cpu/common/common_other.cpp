@@ -28,7 +28,7 @@ void common_int98(CPU* cpu){
 void common_int99(CPU* cpu){
     U32 index = cpu->peek32(0);
     if (index<int99CallbackSize && int99Callback[index]) {
-        lastGlCallTime = getMilliesSinceStart();
+        lastGlCallTime = KSystem::getMilliesSinceStart();
         int99Callback[index](cpu);
     } else {
         kpanic("Uknown int 99 call: %d", index);
