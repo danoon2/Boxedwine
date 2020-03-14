@@ -129,7 +129,7 @@ bool runSlice() {
 
     contextTimeRemaining = contextTime;
     while (!scheduledThreads.isEmpty() && elapsedTime<9000) {
-        U64 threadStartTime = Platform::getMicroCounter();
+        U64 threadStartTime = KSystem::getMicroCounter();
         KListNode<KThread*>* node = scheduledThreads.front();
         KThread* currentThread = (KThread*)node->data;
         sdlUpdateContextForThread(currentThread);    
@@ -141,7 +141,7 @@ bool runSlice() {
         platformRunThreadSlice(currentThread);
         rdtsc = currentThread->cpu->instructionCount;
 
-        U64 threadEndTime = Platform::getMicroCounter();        
+        U64 threadEndTime = KSystem::getMicroCounter();
         U64 diff = threadEndTime - threadStartTime;
 
         elapsedTime+=diff;
