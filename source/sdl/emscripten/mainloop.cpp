@@ -20,7 +20,7 @@ void mainloop() {
                 SDL_Quit();
             }            
         };
-        t = getMilliesSinceStart();                
+        t = KSystem::getMilliesSinceStart();                
         if (lastTitleUpdate+1000 < t) {
             lastTitleUpdate = t;
             EM_ASM_INT({
