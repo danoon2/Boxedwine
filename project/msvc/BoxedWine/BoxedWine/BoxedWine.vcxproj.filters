@@ -747,9 +747,6 @@
     <ClInclude Include="..\..\..\..\source\util\klist.h">
       <Filter>source\util</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\source\util\ringbuffer.h">
-      <Filter>source\util</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\source\util\boxedptr.h">
       <Filter>source\util</Filter>
     </ClInclude>

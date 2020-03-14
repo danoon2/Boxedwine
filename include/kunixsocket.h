@@ -57,7 +57,7 @@ private:
 
     BOXEDWINE_CONDITION lockCond;
 
-    ringbuffer<S8> recvBuffer;    
+    std::deque<S8> recvBuffer;
     std::queue<BoxedPtr<KSocketMsg> > msgs;	
 
     KListNode<KUnixSocketObject*> pendingConnectionNode;

@@ -25,8 +25,8 @@
 #include <SDL.h>
 #include <string.h>
 
-#define DSP_BUFFER_SIZE 1024*256
-ringbuffer<U8> audioBuffer(DSP_BUFFER_SIZE);
+#define DSP_BUFFER_SIZE (1024*256)
+std::deque<U8> audioBuffer;
 U8 audioSilence;
 static bool closeWhenDone = false;
 static bool audioWaitingToClose = false;
@@ -94,7 +94,7 @@ public:
             if (sdlSoundEnabled) {
                 SDL_LockAudio();
             }
-            if (audioBuffer.getOccupied() || (this->data->cvtBufPos!=0 && this->data->cvtBufPos<this->data->cvt.len_cvt)) {
+            if (audioBuffer.size() || (this->data->cvtBufPos!=0 && this->data->cvtBufPos<this->data->cvt.len_cvt)) {
                 closeWhenDone = true;
                 needClose = false;
             }
@@ -136,7 +136,7 @@ public:
 
 
 void audioCallback(void *userdata, U8* stream, S32 len) {
-    S32 available = (S32)audioBuffer.getOccupied();
+    S32 available = (S32)audioBuffer.size();
     DevDspData* data = (DevDspData*)userdata;
     S32 originalAvailable = available;
     S32 originalLen = len;
@@ -177,7 +177,10 @@ void audioCallback(void *userdata, U8* stream, S32 len) {
                 data->cvtBuf = (Uint8 *)SDL_malloc(data->cvt.len * data->cvt.len_mult);
             }
             data->cvt.buf = data->cvtBuf;    
-            audioBuffer.read(data->cvt.buf, available);
+
+            std::copy(audioBuffer.begin(), audioBuffer.begin() + available, data->cvt.buf);
+            audioBuffer.erase(audioBuffer.begin(), audioBuffer.begin() + available);
+
             SDL_ConvertAudio(&data->cvt);
             S32 todo = data->cvt.len_cvt;
             if (todo>len)
@@ -191,7 +194,8 @@ void audioCallback(void *userdata, U8* stream, S32 len) {
         if (available>len)
             available = len;
         if (available) {
-            audioBuffer.read(stream, available);
+            std::copy(audioBuffer.begin(), audioBuffer.begin() + available, stream);
+            audioBuffer.erase(audioBuffer.begin(), audioBuffer.begin() + available);
             len-=available;
             stream+=available;
         }
@@ -271,15 +275,7 @@ U32 DevDsp::writeNative(U8* buffer, U32 len) {
             this->openAudio();
         SDL_LockAudio();
         BOXEDWINE_CONDITION_LOCK(data->bufferCond);
-        while (len>audioBuffer.getFree()) {
-            SDL_UnlockAudio();
-            BOXEDWINE_CONDITION_WAIT(data->bufferCond);
-			if (KThread::currentThread()->terminating) {
-				return -K_EINTR;
-			}
-            SDL_LockAudio();
-        }
-        audioBuffer.write(buffer, len);
+        audioBuffer.insert(audioBuffer.end(), buffer, buffer + len);
         BOXEDWINE_CONDITION_UNLOCK(data->bufferCond);
         SDL_UnlockAudio();	
     }
@@ -415,10 +411,10 @@ U32 DevDsp::ioctl(U32 request) {
 
     case 0x500C: // SNDCTL_DSP_GETOSPACE
     {
-        S32 osLen = ((S32)audioBuffer.getOccupied()-(S32)this->data->dspFragSize);
+        S32 osLen = ((S32)audioBuffer.size()-(S32)this->data->dspFragSize);
         if (osLen<0)
             osLen = 0;
-		writed(IOCTL_ARG1, ((DSP_BUFFER_SIZE - (U32)audioBuffer.getOccupied()) / this->data->dspFragSize)); // fragments
+		writed(IOCTL_ARG1, ((DSP_BUFFER_SIZE - (U32)audioBuffer.size()) / this->data->dspFragSize)); // fragments
 		writed(IOCTL_ARG1 + 4, DSP_BUFFER_SIZE / this->data->dspFragSize);
 		writed(IOCTL_ARG1 + 8, this->data->dspFragSize);
 		writed(IOCTL_ARG1 + 12, DSP_BUFFER_SIZE - osLen);
@@ -434,7 +430,7 @@ U32 DevDsp::ioctl(U32 request) {
             }
 			this->data->pauseAtLen = 0xFFFFFFFF;
         } else {            
-			this->data->pauseAtLen = (U32)audioBuffer.getOccupied();
+			this->data->pauseAtLen = (U32)audioBuffer.size();
 			if (this->data->pauseAtLen == 0) {
                 if (sdlSoundEnabled) {
                     SDL_PauseAudio(0);
@@ -453,14 +449,14 @@ U32 DevDsp::ioctl(U32 request) {
                 }
             }
         } else {
-			writed(IOCTL_ARG1 + 8, (U32)audioBuffer.getOccupied()); // Current DMA pointer value
+			writed(IOCTL_ARG1 + 8, (U32)audioBuffer.size()); // Current DMA pointer value
         }
         return 0;
     case 0x5016: // SNDCTL_DSP_SETDUPLEX
         return -K_EINVAL;
     case 0x5017: // SNDCTL_DSP_GETODELAY 
         if (write) {
-			writed(IOCTL_ARG1, (U32)audioBuffer.getOccupied());
+			writed(IOCTL_ARG1, (U32)audioBuffer.size());
             return 0;
         }
     case 0x580C: // SNDCTL_ENGINEINFO

@@ -576,7 +576,6 @@
     <ClInclude Include="..\..\..\..\source\util\fileutils.h" />
     <ClInclude Include="..\..\..\..\source\util\karray.h" />
     <ClInclude Include="..\..\..\..\source\util\klist.h" />
-    <ClInclude Include="..\..\..\..\source\util\ringbuffer.h" />
     <ClInclude Include="..\..\..\..\source\util\stringutil.h" />
     <ClInclude Include="..\..\..\..\source\util\synchronization.h" />
   </ItemGroup>

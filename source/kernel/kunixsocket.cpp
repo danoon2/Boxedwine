@@ -8,7 +8,6 @@ KUnixSocketObject::KUnixSocketObject(U32 pid, U32 domain, U32 type, U32 protocol
     connection(NULL),
     connecting(NULL), 
     lockCond("KUnixSocketObject::lockCond"),
-    recvBuffer(1024*1024),
     pendingConnectionNode(this)
 {
 }
@@ -80,7 +79,7 @@ bool KUnixSocketObject::isOpen() {
 
 bool KUnixSocketObject::isReadReady() {
     //BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->lockCond);
-    return this->inClosed || this->recvBuffer.getOccupied() || this->pendingConnections.size() || this->msgs.size();
+    return this->inClosed || this->recvBuffer.size() || this->pendingConnections.size() || this->msgs.size();
 }
 
 bool KUnixSocketObject::isWriteReady() {
@@ -122,19 +121,7 @@ U32 KUnixSocketObject::internal_write(BOXEDWINE_CONDITION& cond, U32 buffer, U32
         return len;
     }
     if (this->outClosed || !this->connection)
-        return -K_EPIPE;
-
-    while (this->connection->recvBuffer.getFree()<len) {
-        if (!this->blocking) {
-            return -K_EWOULDBLOCK;
-        }
-        BOXEDWINE_CONDITION_WAIT(cond);
-        if (this->outClosed || !this->connection)
-            return -K_EPIPE;
-		if (KThread::currentThread()->terminating) {
-			return -K_EINTR;
-		}
-    }   
+        return -K_EPIPE;  
     
     //printf("internal_write: %0.8X size=%d capacity=%d writeLen=%d", (int)&this->connection->recvBuffer, (int)this->connection->recvBuffer.size(), (int)this->connection->recvBuffer.capacity(), len);
 
@@ -148,7 +135,7 @@ U32 KUnixSocketObject::internal_write(BOXEDWINE_CONDITION& cond, U32 buffer, U32
             kwarn("KUnixSocketObject::internal_write about to crash reading buffer to buffer");
         }
         memcopyToNative(buffer, tmp, todo);
-        this->connection->recvBuffer.write(tmp, todo);
+        this->connection->recvBuffer.insert(this->connection->recvBuffer.end(), tmp, tmp + todo);
         buffer+=todo;
         len-=todo;
         count+=todo;
@@ -203,19 +190,8 @@ U32 KUnixSocketObject::writeNative(U8* buffer, U32 len) {
     if (this->outClosed || !this->connection)
         return -K_EPIPE;
 
-    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->connection->lockCond);
-    while (this->connection->recvBuffer.getFree()<len) {
-        if (!this->blocking) {
-            return -K_EWOULDBLOCK;
-        }
-        BOXEDWINE_CONDITION_WAIT(this->connection->lockCond);
-        if (this->outClosed || !this->connection)
-            return -K_EPIPE;
-		if (KThread::currentThread()->terminating) {
-			return -K_EINTR;
-		}
-    }   
-    this->connection->recvBuffer.write((S8*)buffer, len);
+    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->connection->lockCond); 
+    this->connection->recvBuffer.insert(this->connection->recvBuffer.end(), buffer, buffer + len);
     BOXEDWINE_CONDITION_SIGNAL_ALL(this->connection->lockCond);
     return len;
 }
@@ -232,11 +208,8 @@ U32 KUnixSocketObject::unixsocket_write_native_nowait(const BoxedPtr<KObject>& o
         return -K_EPIPE;
 
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(s->connection->lockCond);
-    if (s->connection->recvBuffer.getFree()<(U32)len) {
-        return -K_EWOULDBLOCK;
-    }
     //printf("SOCKET write len=%d bufferSize=%d pos=%d\n", len, s->connection->recvBufferLen, s->connection->recvBufferWritePos);
-    s->connection->recvBuffer.write((S8*)value, len);
+    s->connection->recvBuffer.insert(s->connection->recvBuffer.end(), value, value + len);
 
     if (s->connection) {
         BOXEDWINE_CONDITION_SIGNAL_ALL(s->connection->lockCond);
@@ -250,7 +223,7 @@ U32 KUnixSocketObject::readNative(U8* buffer, U32 len) {
     if (!this->inClosed && !this->connection)
         return -K_EPIPE;
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->lockCond);
-    while (this->recvBuffer.getOccupied()==0) {
+    while (this->recvBuffer.size()==0) {
         if (this->inClosed) {
             return 0;
         }
@@ -263,9 +236,11 @@ U32 KUnixSocketObject::readNative(U8* buffer, U32 len) {
 		}
     }
     //printf("readNative: %0.8X size=%d capacity=%d writeLen=%d", (int)&this->recvBuffer, (int)this->recvBuffer.size(), (int)this->recvBuffer.capacity(), len);
-    if (len>this->recvBuffer.getOccupied())
-        len = (U32)this->recvBuffer.getOccupied();
-    this->recvBuffer.read((S8*)buffer, len);
+    if (len > this->recvBuffer.size()) {
+        len = (U32)this->recvBuffer.size();
+    }
+    std::copy(this->recvBuffer.begin(), this->recvBuffer.begin() + len, buffer);
+    this->recvBuffer.erase(this->recvBuffer.begin(), this->recvBuffer.begin() + len);
     if (this->connection) {
         BOXEDWINE_CONDITION_SIGNAL_ALL(this->lockCond);
     }
@@ -278,7 +253,7 @@ U32 KUnixSocketObject::read(U32 buffer, U32 len) {
     if (!this->inClosed && !this->connection)
         return -K_EPIPE;
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->lockCond);
-    while (this->recvBuffer.getOccupied()==0) {
+    while (this->recvBuffer.size()==0) {
         if (this->inClosed) {
             return 0;
         }
@@ -291,17 +266,18 @@ U32 KUnixSocketObject::read(U32 buffer, U32 len) {
 		}
     }
     // :TODO: remove extra copy
-    while (len && this->recvBuffer.getOccupied()!=0) {
+    while (len && this->recvBuffer.size()!=0) {
         S8 tmp[4096];
         U32 todo = len;
 
         if (todo > 4096)
             todo = 4096;
-        if (todo > this->recvBuffer.getOccupied())
-            todo = (U32)this->recvBuffer.getOccupied();
+        if (todo > this->recvBuffer.size())
+            todo = (U32)this->recvBuffer.size();
 
-        this->recvBuffer.read(tmp, todo);
-        
+        std::copy(this->recvBuffer.begin(), this->recvBuffer.begin() + todo, tmp);
+        this->recvBuffer.erase(this->recvBuffer.begin(), this->recvBuffer.begin() + todo);
+
         if (!KThread::currentThread()->memory->isValidWriteAddress(buffer, todo)) {
             kwarn("KUnixSocketObject::read about to crash writing to buffer");
         }
@@ -730,7 +706,7 @@ U32 KUnixSocketObject::recvmsg(KFileDescriptor* fd, U32 address, U32 flags) {
         return -K_EIO;
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->lockCond);
     while (!this->msgs.size()) {
-        if (this->recvBuffer.getOccupied()) {
+        if (this->recvBuffer.size()) {
             readMsgHdr(address, &hdr);        
             for (U32 i = 0; i < hdr.msg_iovlen; i++) {
                 U32 p = readd(hdr.msg_iov + 8 * i);
