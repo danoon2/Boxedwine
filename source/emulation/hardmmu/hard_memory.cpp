@@ -35,8 +35,15 @@ Memory::Memory() : allocated(0), callbackPos(0) {
     memset(codeCache, 0, sizeof(codeCache));    
     //memset(ids, 0, sizeof(ids));
 #else
-    memset(this->eipToHostInstruction, 0, sizeof(this->eipToHostInstruction));
+    if (!KSystem::useLargeAddressSpace) {
+        this->eipToHostInstructionPages = new void** [K_NUMBER_OF_PAGES];
+        memset(this->eipToHostInstructionPages, 0, sizeof(this->eipToHostInstructionPages));
+    } else {
+        this->eipToHostInstructionPages = NULL;
+    }
+    this->eipToHostInstructionAddressSpaceMapping = NULL;
     memset(this->dynamicCodePageUpdateCount, 0, sizeof(this->dynamicCodePageUpdateCount));
+    memset(this->committedEipPages, 0, sizeof(this->committedEipPages));
     this->executableMemoryId = 0;
 #endif    
     reserveNativeMemory(this);
@@ -51,8 +58,11 @@ Memory::Memory() : allocated(0), callbackPos(0) {
     this->refCount = 1;
 }
 
-Memory::~Memory() {
+Memory::~Memory() {    
     releaseNativeMemory(this);
+    if (this->eipToHostInstructionPages) {
+        delete[] this->eipToHostInstructionPages;
+    }
 }
 
 void Memory::log_pf(KThread* thread, U32 address) {
@@ -581,20 +591,36 @@ static void OPCALL emptyOp(CPU* cpu, DecodedOp* op) {
 
 void Memory::clearCodePageFromCache(U32 page) {
 #ifdef BOXEDWINE_X64
-    void** table = this->eipToHostInstruction[page];
-    if (table) {
-        for (U32 i=0;i<K_PAGE_SIZE;i++) {
-            void* hostAddress = table[i];
-            if (hostAddress) {
-                std::shared_ptr<X64CodeChunk> chunk = this->getCodeChunkContainingHostAddress(hostAddress);
-                if (chunk) { 
-                    i+=chunk->getHostAddressLen();
-                    chunk->release(this);                
-                }
+    if (KSystem::useLargeAddressSpace) {
+        KThread* thread = KThread::currentThread();
+        KProcess* process = NULL;
+
+        if (thread) {
+            process = thread->process;
+        }
+        if (process && this->isEipPageCommitted(page)) {
+            U64 offset = (U64)(page << K_PAGE_SHIFT) * sizeof(void*);
+            U64* address64 = (U64*)((U8*)this->eipToHostInstructionAddressSpaceMapping + offset);
+            for (U32 j = 0; j < K_PAGE_SIZE; j++, address64++) {
+                *address64 = (U64)process->defaultEipToHostMappingAddress;
             }
         }
-        delete[] table;
-        this->eipToHostInstruction[page] = NULL;
+    } else {
+        void** table = this->eipToHostInstructionPages[page];
+        if (table) {
+            for (U32 i = 0; i < K_PAGE_SIZE; i++) {
+                void* hostAddress = table[i];
+                if (hostAddress) {
+                    std::shared_ptr<X64CodeChunk> chunk = this->getCodeChunkContainingHostAddress(hostAddress);
+                    if (chunk) {
+                        i += chunk->getHostAddressLen();
+                        chunk->release(this);
+                    }
+                }
+            }
+            delete[] table;
+            this->eipToHostInstructionPages[page] = NULL;
+        }
     }
     this->dynamicCodePageUpdateCount[page] = 0;
 #else
@@ -795,11 +821,34 @@ void Memory::invalideHostCode(U32 eip, U32 len) {
 
 // call during code translation, this needs to be fast
 void* Memory::getExistingHostAddress(U32 eip) {
+    if (KSystem::useLargeAddressSpace) {
+        if (!this->isEipPageCommitted(eip >> K_PAGE_SHIFT)) {
+            return NULL;
+        }
+        void* result = (void*)(*(U64*)(((U8*)this->eipToHostInstructionAddressSpaceMapping) + ((U64)eip * sizeof(void*))));
+        if (result == KThread::currentThread()->process->defaultEipToHostMappingAddress) {
+            return NULL;
+        }
+        return result;
+    } else {
+        U32 page = eip >> K_PAGE_SHIFT;
+        U32 offset = eip & K_PAGE_MASK;
+        if (this->eipToHostInstructionPages[page])
+            return this->eipToHostInstructionPages[page][offset];
+        return NULL;
+    }
+}
+
+bool Memory::isEipPageCommitted(U32 page) {
+    return this->committedEipPages[page];
+}
+
+void Memory::setEipForHostMapping(U32 eip, void* host) {
     U32 page = eip >> K_PAGE_SHIFT;
-    U32 offset = eip & K_PAGE_MASK;
-    if (this->eipToHostInstruction[page])
-        return this->eipToHostInstruction[page][offset];
-    return NULL;
+    if (!this->isEipPageCommitted(page)) {
+        commitHostAddressSpaceMapping(this, page, 1, (U64)KThread::currentThread()->process->defaultEipToHostMappingAddress);
+    }
+    *((U64*)(((U8*)this->eipToHostInstructionAddressSpaceMapping) + ((U64)eip) * sizeof(void*))) = (U64)host;
 }
 
 int powerOf2(U32 requestedSize, U32& size) {

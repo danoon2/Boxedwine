@@ -28,7 +28,8 @@
 
 #define CPU_OFFSET_MEM (U32)(offsetof(x64CPU, memOffset))
 #define CPU_OFFSET_NEG_MEM (U32)(offsetof(x64CPU, negMemOffset))
-#define CPU_OFFSET_OP_PAGES (U32)(offsetof(x64CPU, eipToHostInstruction))
+#define CPU_OFFSET_OP_PAGES (U32)(offsetof(x64CPU, eipToHostInstructionPages))
+#define CPU_OFFSET_EIP_HOST_MAPPING (U32)(offsetof(x64CPU, eipToHostInstructionAddressSpaceMapping))
 
 #define CPU_OFFSET_EIP (U32)(offsetof(x64CPU, eip.u32))
 #define CPU_OFFSET_EIP_FROM (U32)(offsetof(x64CPU, fromEip))
@@ -67,7 +68,7 @@ public:
     void addDynamicCheck(bool panic);
 	void saveNativeState();
 	void restoreNativeState();
-    void translateEip();
+    void translateEip(bool includeSetupFromR9=false);
     void setupTranslateEip();
 
     void setImmediate8(U8 value);
@@ -158,6 +159,7 @@ public:
     bool tmp1InUse;
     bool tmp2InUse;
     bool tmp3InUse;
+    bool tmp4InUse;
     bool param1InUse;
     bool param2InUse;
     bool param3InUse;
@@ -207,7 +209,7 @@ private:
     void writeToRegFromMem(U8 toReg, bool isToRegRex, U8 reg2, bool isReg2Rex, S8 reg3, bool isReg3Rex, U8 reg3Shift, S32 displacement, U8 bytes, bool translateToHost);    
     void writeToRegFromReg(U8 toReg, bool isToReg1Rex, U8 fromReg, bool isFromRegRex, U8 bytes);    
     void popReg(U8 reg, bool isRegRex, S8 bytes, bool commit);
-    void syncRegsFromHost();
+    void syncRegsFromHost(bool eipInR9=false);
     void syncRegsToHost(S8 excludeReg=-1);
     void minSyncRegsFromHost();
     void minSyncRegsToHost();

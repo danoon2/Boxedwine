@@ -44,6 +44,9 @@ void allocNativeMemory(Memory* memory, U32 page, U32 pageCount, U32 flags);
 void freeNativeMemory(Memory* memory, U32 page, U32 pageCount);
 void makeCodePageReadOnly(Memory* memory, U32 page);
 bool clearCodePageReadOnly(Memory* memory, U32 page);
+U32 getHostPageSize();
+U32 getHostAllocationSize();
+void commitHostAddressSpaceMapping(Memory* memory, U32 page, U32 pageCount, U64 defaultValue);
 
 #endif
 #endif

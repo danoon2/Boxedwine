@@ -52,7 +52,11 @@ void syncToException(struct _EXCEPTION_POINTERS *ep, bool includeFPU) {
     ep->ContextRecord->Rbp = EBP;
     ep->ContextRecord->Rsi = ESI;
     ep->ContextRecord->Rdi = EDI;
-    ep->ContextRecord->R14 = cpu->seg[SS].address;
+    if (KSystem::useLargeAddressSpace) {
+        ep->ContextRecord->R14 = (U64)cpu->eipToHostInstructionAddressSpaceMapping;
+    } else {
+        ep->ContextRecord->R14 = cpu->seg[SS].address;
+    }
     ep->ContextRecord->R15 = cpu->seg[DS].address;
     cpu->fillFlags();
     ep->ContextRecord->EFlags = cpu->flags;

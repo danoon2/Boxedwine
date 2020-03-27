@@ -713,8 +713,8 @@ void flipFBNoCheck() {
 
 void fbSetCaption(const char* title, const char* icon) {
 #ifdef SDL2
-    //if (sdlWindow)
-    //    SDL_SetWindowTitle(sdlWindow, title);
+    if (sdlWindow)
+        SDL_SetWindowTitle(sdlWindow, title);
 #else
     SDL_WM_SetCaption(title, icon);
 #endif

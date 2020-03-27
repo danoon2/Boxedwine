@@ -36,20 +36,23 @@ void X64CodeChunk::makeLive() {
     U32 eip = this->emulatedAddress;
     U8* host = (U8*)this->hostAddress;
 
-    for (U32 i=0;i<instructionCount;i++) {        
-        U32 page = eip >> K_PAGE_SHIFT;
-        U32 offset = eip & K_PAGE_MASK;
-
-        void** table = cpu->thread->memory->eipToHostInstruction[page];
-        if (!table) {
-            table = new void*[K_PAGE_SIZE];
-            memset(table, 0, sizeof(void*)*K_PAGE_SIZE);
-            cpu->thread->memory->eipToHostInstruction[page] = table;
+    for (U32 i=0;i<instructionCount;i++) {                
+        if (KSystem::useLargeAddressSpace) {
+            cpu->thread->memory->setEipForHostMapping(eip, host);
+        } else {
+            U32 page = eip >> K_PAGE_SHIFT;
+            U32 offset = eip & K_PAGE_MASK;
+            void** table = cpu->thread->memory->eipToHostInstructionPages[page];
+            if (!table) {
+                table = new void* [K_PAGE_SIZE];
+                memset(table, 0, sizeof(void*) * K_PAGE_SIZE);
+                cpu->thread->memory->eipToHostInstructionPages[page] = table;
+            }
+            if (table[offset]) {
+                kpanic("X64CodeChunk::allocChunk eip already mapped");
+            }
+            table[offset] = host;
         }
-        if (table[offset]) {
-            kpanic("X64CodeChunk::allocChunk eip already mapped");
-        }
-        table[offset] = host;
         eip+=this->emulatedInstructionLen[i];
         host+=this->hostInstructionLen[i];
     }        
@@ -58,9 +61,16 @@ void X64CodeChunk::makeLive() {
 
 void X64CodeChunk::detachFromHost(Memory* memory) {
     U32 eip = this->emulatedAddress;
+    KThread* thread = KThread::currentThread();
+    KProcess* process = (thread ? thread->process : NULL);
+
     for (U32 i = 0; i < this->instructionCount; i++) {
-        if (memory->eipToHostInstruction[eip >> K_PAGE_SHIFT]) { // might span multiple pages and the other pages are already deleted
-            memory->eipToHostInstruction[eip >> K_PAGE_SHIFT][eip & K_PAGE_MASK] = NULL;
+        if (KSystem::useLargeAddressSpace) {
+            memory->setEipForHostMapping(eip, process?process->defaultEipToHostMappingAddress:NULL);
+        } else {
+            if (memory->eipToHostInstructionPages[eip >> K_PAGE_SHIFT]) { // might span multiple pages and the other pages are already deleted
+                memory->eipToHostInstructionPages[eip >> K_PAGE_SHIFT][eip & K_PAGE_MASK] = NULL;
+            }
         }
         eip += this->emulatedInstructionLen[i];
     }

@@ -270,7 +270,7 @@ void X64Asm::writeHostPlusTmp(U8 rm, bool checkG, bool isG8bit, bool isE8bit, U8
 // displacement is optional, pass 0 to ignore it
 void X64Asm::writeToRegFromMem(U8 toReg, bool isToRegRex, U8 reg2, bool isReg2Rex, S8 reg3, bool isReg3Rex, U8 reg3Shift, S32 displacement, U8 bytes, bool translateToHost) {
     if (translateToHost) {
-        if (reg3>0) {
+        if (reg3>=0) {
             U32 tmpReg = getTmpReg();
             addWithLea(tmpReg, true, reg2, isReg2Rex, reg3, isReg3Rex, reg3Shift, displacement, 4);
             writeToRegFromMem(toReg, isToRegRex, tmpReg, true, HOST_MEM, true, 0, 0, bytes, false);
@@ -285,7 +285,14 @@ void X64Asm::writeToRegFromMem(U8 toReg, bool isToRegRex, U8 reg2, bool isReg2Re
 
 U8 X64Asm::getRegForSeg(U8 base, U8 tmpReg) {
     if (base == ES) {writeToRegFromMem(tmpReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_ES_ADDRESS, 4, false); return tmpReg;}
-    if (base == SS) {return HOST_SS;}
+    if (base == SS) {
+        if (KSystem::useLargeAddressSpace) {
+            writeToRegFromMem(tmpReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_SS_ADDRESS, 4, false); 
+            return tmpReg;
+        } else {
+            return HOST_SMALL_ADDRESS_SPACE_SS;
+        }
+    }
     if (base == GS) {writeToRegFromMem(tmpReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_GS_ADDRESS, 4, false); return tmpReg;}
     if (base == FS) {writeToRegFromMem(tmpReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_FS_ADDRESS, 4, false); return tmpReg;}
     if (base == DS) {return HOST_DS;}
@@ -825,16 +832,26 @@ void X64Asm::push(S32 reg, bool isRegRex, U32 value, S32 bytes) {
     	popFlagsFromReg(tmpReg1, true, true);
         releaseTmpReg(tmpReg1);
 
-        // [ss:tmpReg] = reg
-        if (reg>=0) {
-            writeToMemFromReg(reg, isRegRex, tmpReg, true, HOST_SS, true, 0, 0, bytes, true);
+        // [ss:tmpReg] = reg        
+        if (KSystem::useLargeAddressSpace) {
+            tmpReg1 = getTmpReg();
+            addWithLea(tmpReg, true, tmpReg, true, getRegForSeg(SS, tmpReg1), true, 0, 0, 4);
+            releaseTmpReg(tmpReg1);
+            if (reg >= 0) {
+                writeToMemFromReg(reg, isRegRex, tmpReg, true, -1, false, 0, 0, bytes, true);
+            } else {
+                writeToMemFromValue(value, tmpReg, true, -1, false, 0, 0, bytes, true);
+            }
+            addWithLea(tmpReg, true, HOST_ESP, true, -1, false, 0, -bytes, 4); // need to refetch, didn't have enough tmp variable to hold on to it
         } else {
-            writeToMemFromValue(value, tmpReg, true, HOST_SS, true, 0, 0, bytes, true);
-        }
-
-    	tmpReg1 = getTmpReg();
+            if (reg >= 0) {
+                writeToMemFromReg(reg, isRegRex, tmpReg, true, HOST_SMALL_ADDRESS_SPACE_SS, true, 0, 0, bytes, true);
+            } else {
+                writeToMemFromValue(value, tmpReg, true, HOST_SMALL_ADDRESS_SPACE_SS, true, 0, 0, bytes, true);
+            }
+        }        
+        tmpReg1 = getTmpReg();
         pushFlagsToReg(tmpReg1, true, true);
-
     	// HOST_ESP = HOST_ESP & cpu->stackNotMask
     	andWriteToRegFromCPU(HOST_ESP, true, CPU_OFFSET_STACK_NOT_MASK);
 
@@ -1196,11 +1213,11 @@ void X64Asm::popReg(U8 reg, bool isRegRex, S8 bytes, bool commit) {
         U8 tmpReg1 = getTmpReg();
         pushFlagsToReg(tmpReg1, true, true);
         andWriteToRegFromCPU(tmpReg, true, CPU_OFFSET_STACK_MASK);
-        popFlagsFromReg(tmpReg1, true, true); // the following write can throw an exception, so make sure out stack is fine in case the rest of this instruction is skipped
-        releaseTmpReg(tmpReg1);
+        popFlagsFromReg(tmpReg1, true, true); // the following write can throw an exception, so make sure out stack is fine in case the rest of this instruction is skipped        
 
         // reg = [ss:tmpReg]    
-        writeToRegFromMem(reg, isRegRex, tmpReg, true, HOST_SS, true, 0, false, bytes, true);
+        writeToRegFromMem(reg, isRegRex, tmpReg, true, getRegForSeg(SS, tmpReg1), true, 0, false, bytes, true);
+        releaseTmpReg(tmpReg1);
     } else {
         // reg = [ss:tmpReg]    
         writeToRegFromMem(reg, isRegRex, HOST_ESP, true, -1, false, 0, false, bytes, true);
@@ -1372,8 +1389,15 @@ void X64Asm::minSyncRegsToHost() {
 #endif
 }
 
-void X64Asm::syncRegsFromHost() {
-    writeToMemFromValue(this->startOfOpIp, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EIP, 4, false);
+void X64Asm::syncRegsFromHost(bool eipInR9) {    
+    if (eipInR9) {
+#ifdef _DEBUG
+        writeToMemFromReg(1, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EIP_FROM, 4, false);
+#endif
+        writeToMemFromReg(1, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EIP, 4, false);
+    } else {
+        writeToMemFromValue(this->startOfOpIp, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EIP, 4, false);
+    }
     writeToMemFromReg(0, false, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EAX, 4, false);
     writeToMemFromReg(1, false, HOST_CPU, true, -1, false, 0, CPU_OFFSET_ECX, 4, false);
     writeToMemFromReg(2, false, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EDX, 4, false);
@@ -1416,7 +1440,11 @@ void X64Asm::syncRegsToHost(S8 excludeReg) {
     if (excludeReg!=7)
         writeToRegFromMem(7, false, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EDI, 4, false);
 
-    writeToRegFromMem(HOST_SS, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_SS_ADDRESS, 4, false);
+    if (KSystem::useLargeAddressSpace) {
+        writeToRegFromMem(HOST_LARGE_ADDRESS_SPACE_MAPPING, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EIP_HOST_MAPPING, 8, false);
+    } else {
+        writeToRegFromMem(HOST_SMALL_ADDRESS_SPACE_SS, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_SS_ADDRESS, 4, false);
+    }
     writeToRegFromMem(HOST_DS, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_DS_ADDRESS, 4, false);
 
     U8 tmpReg = getTmpReg();
@@ -1962,39 +1990,46 @@ void X64Asm::decReg(U8 reg, bool isRegRex, U8 bytes) {
 }
 
 void X64Asm::pushA16() {
-    writeToMemFromReg(0, false, HOST_ESP, true, HOST_SS, true, 0, -2, 2, true);
-    writeToMemFromReg(1, false, HOST_ESP, true, HOST_SS, true, 0, -4, 2, true);
-    writeToMemFromReg(2, false, HOST_ESP, true, HOST_SS, true, 0, -6, 2, true);
-    writeToMemFromReg(3, false, HOST_ESP, true, HOST_SS, true, 0, -8, 2, true);
-    writeToMemFromReg(HOST_ESP, true, HOST_ESP, true, HOST_SS, true, 0, -10, 2, true);
-    writeToMemFromReg(5, false, HOST_ESP, true, HOST_SS, true, 0, -12, 2, true);
-    writeToMemFromReg(6, false, HOST_ESP, true, HOST_SS, true, 0, -14, 2, true);
-    writeToMemFromReg(7, false, HOST_ESP, true, HOST_SS, true, 0, -16, 2, true);
+    U8 tmpReg = getTmpReg();
+    U8 ssReg = getRegForSeg(SS, tmpReg);
+    writeToMemFromReg(0, false, HOST_ESP, true, ssReg, true, 0, -2, 2, true);
+    writeToMemFromReg(1, false, HOST_ESP, true, ssReg, true, 0, -4, 2, true);
+    writeToMemFromReg(2, false, HOST_ESP, true, ssReg, true, 0, -6, 2, true);
+    writeToMemFromReg(3, false, HOST_ESP, true, ssReg, true, 0, -8, 2, true);
+    writeToMemFromReg(HOST_ESP, true, HOST_ESP, true, ssReg, true, 0, -10, 2, true);
+    writeToMemFromReg(5, false, HOST_ESP, true, ssReg, true, 0, -12, 2, true);
+    writeToMemFromReg(6, false, HOST_ESP, true, ssReg, true, 0, -14, 2, true);
+    writeToMemFromReg(7, false, HOST_ESP, true, ssReg, true, 0, -16, 2, true);
 
     addWithLea(HOST_ESP, true, HOST_ESP, true, -1, false, 0, -16, 2);
+    releaseTmpReg(tmpReg);
 }
 
 // POPA
 void X64Asm::popA16() {
-    writeToRegFromMem(7, false, HOST_ESP, true, HOST_SS, true, 0, 0, 2, true);
-    writeToRegFromMem(6, false, HOST_ESP, true, HOST_SS, true, 0, 2, 2, true);
-    writeToRegFromMem(5, false, HOST_ESP, true, HOST_SS, true, 0, 4, 2, true);
+    U8 tmpReg = getTmpReg();
+    U8 ssReg = getRegForSeg(SS, tmpReg);
+    writeToRegFromMem(7, false, HOST_ESP, true, ssReg, true, 0, 0, 2, true);
+    writeToRegFromMem(6, false, HOST_ESP, true, ssReg, true, 0, 2, 2, true);
+    writeToRegFromMem(5, false, HOST_ESP, true, ssReg, true, 0, 4, 2, true);
     // SP isn't pop, but the stack will be adjusted
-    // writeToRegFromMem(4, false, HOST_ESP, true, HOST_SS, true, 0, 6, 2, true);
-    writeToRegFromMem(3, false, HOST_ESP, true, HOST_SS, true, 0, 8, 2, true);
-    writeToRegFromMem(2, false, HOST_ESP, true, HOST_SS, true, 0, 10, 2, true);
-    writeToRegFromMem(1, false, HOST_ESP, true, HOST_SS, true, 0, 12, 2, true);
-    writeToRegFromMem(0, false, HOST_ESP, true, HOST_SS, true, 0, 14, 2, true);
+    // writeToRegFromMem(4, false, HOST_ESP, true, ssReg, true, 0, 6, 2, true);
+    writeToRegFromMem(3, false, HOST_ESP, true, ssReg, true, 0, 8, 2, true);
+    writeToRegFromMem(2, false, HOST_ESP, true, ssReg, true, 0, 10, 2, true);
+    writeToRegFromMem(1, false, HOST_ESP, true, ssReg, true, 0, 12, 2, true);
+    writeToRegFromMem(0, false, HOST_ESP, true, ssReg, true, 0, 14, 2, true);
 
     addWithLea(HOST_ESP, true, HOST_ESP, true, -1, false, 0, 16, 2);
+    releaseTmpReg(tmpReg);
 }
 
 // PUSHAD
 void X64Asm::pushA32() {
     S8 seg;
+    U8 tmpReg = getTmpReg();
 
     if (this->cpu->thread->process->hasSetSeg[SS]) {
-        seg = HOST_SS;
+        seg = getRegForSeg(SS, tmpReg);
     } else {
         seg = -1;
     }
@@ -2008,14 +2043,17 @@ void X64Asm::pushA32() {
     writeToMemFromReg(7, false, HOST_ESP, true, seg, true, 0, -32, 4, true);
 
     addWithLea(HOST_ESP, true, HOST_ESP, true, -1, false, 0, -32, 4);
+
+    releaseTmpReg(tmpReg);
 }
 
 // POPAD
 void X64Asm::popA32() {
     S8 seg;
+    U8 tmpReg = getTmpReg();
 
     if (this->cpu->thread->process->hasSetSeg[SS]) {
-        seg = HOST_SS;
+        seg = getRegForSeg(SS, tmpReg);
     } else {
         seg = -1;
     }
@@ -2030,6 +2068,8 @@ void X64Asm::popA32() {
     writeToRegFromMem(0, false, HOST_ESP, true, seg, true, 0, 28, 4, true);
 
     addWithLea(HOST_ESP, true, HOST_ESP, true, -1, false, 0, 32, 4);
+
+    releaseTmpReg(tmpReg);
 }
 
 void X64Asm::jumpConditional(U8 condition, U32 eip) {    
@@ -2568,154 +2608,171 @@ void X64Asm::andReg(U8 reg, bool isRegRex, U32 mask) {
 
 // with BMI2
 //41 BA 0C 00 00 00    mov         r10d,0Ch  
-//C4 42 AB F7 C1       shrx        r8,r9,r10  
+//C4 42 AB F7 C1       shrx        r8,r9,r10                 // get page
 //41 BA FF 0F 00 00    mov         r10d,0FFFh  
-//C4 42 B2 F5 CA       pext        r9,r9,r10  
-//4D 8B 95 98 04 00 00 mov         r10,qword ptr [r13+498h]  
-//4F 8B 14 C2          mov         r10,qword ptr [r10+r8*8]  
-//4F 8B 14 CA          mov         r10,qword ptr [r10+r9*8]  
-//66 45 8B 0A          mov         r9w,word ptr [r10]  
+//C4 42 B2 F5 CA       pext        r9,r9,r10                 // get offset
+//4D 8B 95 98 04 00 00 mov         r10,qword ptr [r13+498h]  // mov eipToHostInstruction to a reg
+//4F 8B 14 C2          mov         r10,qword ptr [r10+r8*8]  // get the page from eipToHostInstruction
+//4F 8B 14 CA          mov         r10,qword ptr [r10+r9*8]  // get the host location from page[offset]
+//66 45 8B 0A          mov         r9w,word ptr [r10]        // just to make sure the host location is not 0
 //41 FF E2             jmp         r10  
+
+// 43 FF 24 CE          jmp         qword ptr[r14 + r9 * 8]
+
 void X64Asm::jmpReg(U8 reg, bool isRex, bool mightNeedCS) {       
-    // HOST_TMP2 will hold the page
-    // HOST_TMP will hold the offset
-    if (x64CPU::hasBMI2) {        
-        if (!this->cpu->thread->process->hasSetSeg[CS] && !mightNeedCS) {
-            if (this->cpu->seg[CS].address) {
-                int ii=0;
-            }
-            if (reg==HOST_TMP2 && isRex) {
-                writeToRegFromValue(HOST_TMP3, true, K_PAGE_MASK, 4);
-                // PEXT HOST_TMP, HOST_TMP2, HOST_TMP3
-                write8(0xc4);
-                write8(0x42);
-                write8(0xba);
-                write8(0xf5);
-                write8(0xca); 
-
-                writeToRegFromValue(HOST_TMP3, true, 12, 4);
-                // shrx HOST_TMP2,HOST_TMP2,12 
-                write8(0xc4);
-                write8(0x42);
-                write8(0xab); // :TODO: how does this encode r10 ?
-                write8(0xf7);
-                write8(0xc0 | (HOST_TMP2 << 3) | HOST_TMP2);
-            } else if (reg==HOST_TMP && isRex) {
-                writeToRegFromValue(HOST_TMP3, true, 12, 4);
-                // shrx HOST_TMP2,HOST_TMP,12 
-                write8(0xc4);
-                write8(0x42);
-                write8(0xab); // :TODO: how does this encode r10 ?
-                write8(0xf7);
-                write8(0xc0 | (HOST_TMP2 << 3) | HOST_TMP);
-
-                writeToRegFromValue(HOST_TMP3, true, K_PAGE_MASK, 4);
-                // PEXT HOST_TMP, HOST_TMP, HOST_TMP3
-                write8(0xc4);
-                write8(0x42);
-                write8(0xb2);
-                write8(0xf5);
-                write8(0xca); 
-            } else {        
-                // mov HOST_TMP2, reg
-                writeToRegFromReg(HOST_TMP2, true, reg, isRex, false);
-
-                writeToRegFromValue(HOST_TMP3, true, K_PAGE_MASK, 4);
-                // PEXT HOST_TMP, HOST_TMP2, HOST_TMP3
-                write8(0xc4);
-                write8(0x42);
-                write8(0xba);
-                write8(0xf5);
-                write8(0xca); 
-
-                writeToRegFromValue(HOST_TMP3, true, 12, 4);
-                // shrx HOST_TMP2,HOST_TMP2,12 
-                write8(0xc4);
-                write8(0x42);
-                write8(0xab); // :TODO: how does this encode r10 ?
-                write8(0xf7);
-                write8(0xc0 | (HOST_TMP2 << 3) | HOST_TMP2);
-            }           
-        } else {
-            writeToRegFromValue(HOST_TMP3, true, K_PAGE_MASK, 4);
-            if (reg==HOST_TMP2 && isRex) {
-                getRegForSeg(CS, HOST_TMP);
-                addWithLea(HOST_TMP2, true, HOST_TMP2, true, HOST_TMP, true, 0, 0, 4);
-            } else if (reg==HOST_TMP && isRex) {    
-                getRegForSeg(CS, HOST_TMP2);
-                addWithLea(HOST_TMP2, true, reg, isRex, HOST_TMP2, true, 0, 0, 4);
-            }
-
-            // PEXT HOST_TMP, HOST_TMP2, HOST_TMP3
-            write8(0xc4);
-            write8(0x42);
-            write8(0xba);
-            write8(0xf5);
-            write8(0xca); 
-
-            writeToRegFromValue(HOST_TMP3, true, 12, 4);
-            // shrx HOST_TMP2,HOST_TMP2,12 
-            write8(0xc4);
-            write8(0x42);
-            write8(0xab); // :TODO: how does this encode r10 ?
-            write8(0xf7);
-            write8(0xc0 | (HOST_TMP2 << 3) | HOST_TMP2);
-        }        
-    } else {
-        if (!this->cpu->thread->process->hasSetSeg[CS] && !mightNeedCS) {
-            if (reg==HOST_TMP2 && isRex) {
-                writeToRegFromReg(HOST_TMP, true, HOST_TMP2, true, 4);
-            } else if (reg==HOST_TMP && isRex) {
-                writeToRegFromReg(HOST_TMP2, true, HOST_TMP, true, 4);
-            } else {        
-                writeToRegFromReg(HOST_TMP, true, reg, isRex, 4);
-                writeToRegFromReg(HOST_TMP2, true, reg, isRex, 4);
-            }
-        } else {
-            if (reg==HOST_TMP2 && isRex) {
-                getRegForSeg(CS, HOST_TMP);
-                addWithLea(HOST_TMP2, true, HOST_TMP2, true, HOST_TMP, true, 0, 0, 4);
-            } else {    
-                getRegForSeg(CS, HOST_TMP2);
-                addWithLea(HOST_TMP2, true, reg, isRex, HOST_TMP2, true, 0, 0, 4);
-            }
-            writeToRegFromReg(HOST_TMP, true, HOST_TMP2, true, 4);
+    if (KSystem::useLargeAddressSpace) {
+        if (reg != 1 || !isRex) {
+            writeToRegFromReg(1, true, reg, isRex, 4);
         }
-        
-        // Breakdown setup will not work without preserving these flags
-        pushFlagsToReg(HOST_TMP3, true, true);
+        if (this->cpu->thread->process->hasSetSeg[CS] || mightNeedCS) {
+            addWithLea(1, true, 1, true, getRegForSeg(CS, 0), true, 0, 0, 4);
+        }
+        // must use r9, the exception handler expects it
+        write8(REX_BASE | REX_MOD_RM | REX_SIB_INDEX);
+        write8(0xff);
+        write8(0x24);
+        write8(0xc0 | HOST_LARGE_ADDRESS_SPACE_MAPPING | (1<<3));
+    } else {
+        // HOST_TMP2 will hold the page
+        // HOST_TMP will hold the offset
+        if (x64CPU::hasBMI2) {
+            if (!this->cpu->thread->process->hasSetSeg[CS] && !mightNeedCS) {
+                if (this->cpu->seg[CS].address) {
+                    int ii = 0;
+                }
+                if (reg == HOST_TMP2 && isRex) {
+                    writeToRegFromValue(HOST_TMP3, true, K_PAGE_MASK, 4);
+                    // PEXT HOST_TMP, HOST_TMP2, HOST_TMP3
+                    write8(0xc4);
+                    write8(0x42);
+                    write8(0xba);
+                    write8(0xf5);
+                    write8(0xca);
 
-        // shr HOST_TMP2, 12
-        shiftRightReg(HOST_TMP2, true, K_PAGE_SHIFT);    
+                    writeToRegFromValue(HOST_TMP3, true, 12, 4);
+                    // shrx HOST_TMP2,HOST_TMP2,12 
+                    write8(0xc4);
+                    write8(0x42);
+                    write8(0xab); // :TODO: how does this encode r10 ?
+                    write8(0xf7);
+                    write8(0xc0 | (HOST_TMP2 << 3) | HOST_TMP2);
+                } else if (reg == HOST_TMP && isRex) {
+                    writeToRegFromValue(HOST_TMP3, true, 12, 4);
+                    // shrx HOST_TMP2,HOST_TMP,12 
+                    write8(0xc4);
+                    write8(0x42);
+                    write8(0xab); // :TODO: how does this encode r10 ?
+                    write8(0xf7);
+                    write8(0xc0 | (HOST_TMP2 << 3) | HOST_TMP);
 
-        // and HOST_TMP, 0xFFF
-        andReg(HOST_TMP, true, K_PAGE_MASK);
+                    writeToRegFromValue(HOST_TMP3, true, K_PAGE_MASK, 4);
+                    // PEXT HOST_TMP, HOST_TMP, HOST_TMP3
+                    write8(0xc4);
+                    write8(0x42);
+                    write8(0xb2);
+                    write8(0xf5);
+                    write8(0xca);
+                } else {
+                    // mov HOST_TMP2, reg
+                    writeToRegFromReg(HOST_TMP2, true, reg, isRex, false);
 
-        popFlagsFromReg(HOST_TMP3, true, true); 
+                    writeToRegFromValue(HOST_TMP3, true, K_PAGE_MASK, 4);
+                    // PEXT HOST_TMP, HOST_TMP2, HOST_TMP3
+                    write8(0xc4);
+                    write8(0x42);
+                    write8(0xba);
+                    write8(0xf5);
+                    write8(0xca);
+
+                    writeToRegFromValue(HOST_TMP3, true, 12, 4);
+                    // shrx HOST_TMP2,HOST_TMP2,12 
+                    write8(0xc4);
+                    write8(0x42);
+                    write8(0xab); // :TODO: how does this encode r10 ?
+                    write8(0xf7);
+                    write8(0xc0 | (HOST_TMP2 << 3) | HOST_TMP2);
+                }
+            } else {
+                writeToRegFromValue(HOST_TMP3, true, K_PAGE_MASK, 4);
+                if (reg == HOST_TMP2 && isRex) {
+                    getRegForSeg(CS, HOST_TMP);
+                    addWithLea(HOST_TMP2, true, HOST_TMP2, true, HOST_TMP, true, 0, 0, 4);
+                } else if (reg == HOST_TMP && isRex) {
+                    getRegForSeg(CS, HOST_TMP2);
+                    addWithLea(HOST_TMP2, true, reg, isRex, HOST_TMP2, true, 0, 0, 4);
+                }
+
+                // PEXT HOST_TMP, HOST_TMP2, HOST_TMP3
+                write8(0xc4);
+                write8(0x42);
+                write8(0xba);
+                write8(0xf5);
+                write8(0xca);
+
+                writeToRegFromValue(HOST_TMP3, true, 12, 4);
+                // shrx HOST_TMP2,HOST_TMP2,12 
+                write8(0xc4);
+                write8(0x42);
+                write8(0xab); // :TODO: how does this encode r10 ?
+                write8(0xf7);
+                write8(0xc0 | (HOST_TMP2 << 3) | HOST_TMP2);
+            }
+        } else {
+            if (!this->cpu->thread->process->hasSetSeg[CS] && !mightNeedCS) {
+                if (reg == HOST_TMP2 && isRex) {
+                    writeToRegFromReg(HOST_TMP, true, HOST_TMP2, true, 4);
+                } else if (reg == HOST_TMP && isRex) {
+                    writeToRegFromReg(HOST_TMP2, true, HOST_TMP, true, 4);
+                } else {
+                    writeToRegFromReg(HOST_TMP, true, reg, isRex, 4);
+                    writeToRegFromReg(HOST_TMP2, true, reg, isRex, 4);
+                }
+            } else {
+                if (reg == HOST_TMP2 && isRex) {
+                    getRegForSeg(CS, HOST_TMP);
+                    addWithLea(HOST_TMP2, true, HOST_TMP2, true, HOST_TMP, true, 0, 0, 4);
+                } else {
+                    getRegForSeg(CS, HOST_TMP2);
+                    addWithLea(HOST_TMP2, true, reg, isRex, HOST_TMP2, true, 0, 0, 4);
+                }
+                writeToRegFromReg(HOST_TMP, true, HOST_TMP2, true, 4);
+            }
+
+            // Breakdown setup will not work without preserving these flags
+            pushFlagsToReg(HOST_TMP3, true, true);
+
+            // shr HOST_TMP2, 12
+            shiftRightReg(HOST_TMP2, true, K_PAGE_SHIFT);
+
+            // and HOST_TMP, 0xFFF
+            andReg(HOST_TMP, true, K_PAGE_MASK);
+
+            popFlagsFromReg(HOST_TMP3, true, true);
+        }
+
+        // rax=cpu->opToAddressPages
+        // mov rax, [HOST_CPU];
+        writeToRegFromMem(HOST_TMP3, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_OP_PAGES, 8, false);
+
+        // HOST_TMP3 = cpu->opToAddressPages[page]
+        // mov HOST_TMP3, [HOST_TMP3+HOST_TEMP2<<3] // 3 sizeof(void*)
+        writeToRegFromMem(HOST_TMP3, true, HOST_TMP3, true, HOST_TMP2, true, 3, 0, 8, false);
+
+        // will move address to HOST_TMP3 and test that it exists, if it doesn't then we
+        // will catch the exception.  We leave the address/index we need in HOST_TMP
+        // and HOST_TMP2
+
+        // HOST_TMP = cpu->opToAddressPages[page][offset]
+        // mov HOST_TMP3, [HOST_TMP3 + HOST_TMP << 3]
+        writeToRegFromMem(HOST_TMP3, true, HOST_TMP3, true, HOST_TMP, true, 3, 0, 8, false);
+
+        // This will test that the value we are about to jump to exists
+        // mov HOST_TMP, [HOST_TMP3]
+        writeToRegFromMem(HOST_TMP, true, HOST_TMP3, true, -1, false, 0, 0, 2, false);
+
+        // jmp HOST_TMP
+        jmpNativeReg(HOST_TMP3, true);
     }
-
-    // rax=cpu->opToAddressPages
-    // mov rax, [HOST_CPU];
-    writeToRegFromMem(HOST_TMP3, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_OP_PAGES, 8, false);
-    
-    // HOST_TMP3 = cpu->opToAddressPages[page]
-    // mov HOST_TMP3, [HOST_TMP3+HOST_TEMP2<<3] // 3 sizeof(void*)
-    writeToRegFromMem(HOST_TMP3, true, HOST_TMP3, true, HOST_TMP2, true, 3, 0, 8, false); 
-
-    // will move address to HOST_TMP3 and test that it exists, if it doesn't then we
-    // will catch the exception.  We leave the address/index we need in HOST_TMP
-    // and HOST_TMP2
-
-    // HOST_TMP = cpu->opToAddressPages[page][offset]
-    // mov HOST_TMP3, [HOST_TMP3 + HOST_TMP << 3]
-    writeToRegFromMem(HOST_TMP3, true, HOST_TMP3, true, HOST_TMP, true, 3, 0, 8, false); 
-
-    // This will test that the value we are about to jump to exists
-    // mov HOST_TMP, [HOST_TMP3]
-    writeToRegFromMem(HOST_TMP, true, HOST_TMP3, true, -1, false, 0, 0, 2, false);
-
-    // jmp HOST_TMP
-    jmpNativeReg(HOST_TMP3, true);
 }
 
 void X64Asm::jmpNativeReg(U8 reg, bool isRegRex) {
@@ -3821,14 +3878,28 @@ static void x64_translateEip() {
     cpu->returnHostAddress = cpu->translateNewCode();
 }
 
+static void x64_translateEip2() {
+    x64CPU* cpu = ((x64CPU*)KThread::currentThread()->cpu);
+    cpu->eip.u32 -= cpu->seg[CS].address;
+    if (!cpu->isBig()) {
+        cpu->eip.u32 = cpu->eip.u32 & 0xFFFF;
+    }
+    cpu->returnHostAddress = cpu->translateNewCode();
+}
+
 void X64Asm::setupTranslateEip() {
     syncRegsFromHost();
     writeToRegFromMem(HOST_TMP, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_TRANSLATE_CHUNK_ADDRESS, 8, false);
     jmpNativeReg(HOST_TMP, true);
 }
 
-void X64Asm::translateEip() {
-    callHost((void*)x64_translateEip);
+void X64Asm::translateEip(bool includeSetupFromR9) {
+    if (includeSetupFromR9) {
+        syncRegsFromHost(true);
+        callHost((void*)x64_translateEip2);
+    } else {
+        callHost((void*)x64_translateEip);
+    }
     syncRegsToHost();
     writeToRegFromMem(HOST_TMP, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_RETURN_HOST_ADDRESS, 8, false);
     jmpNativeReg(HOST_TMP, true);

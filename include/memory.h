@@ -168,7 +168,15 @@ public:
     U64 executableMemoryId;
     U32 nextExecutablePage;
 
-    void** eipToHostInstruction[K_NUMBER_OF_PAGES];
+private:
+    bool committedEipPages[K_NUMBER_OF_PAGES];
+
+public:
+    void*** eipToHostInstructionPages;
+    void* eipToHostInstructionAddressSpaceMapping;
+    bool isEipPageCommitted(U32 page);
+    void setEipPageCommitted(U32 page) {this->committedEipPages[page] = true;}
+    void setEipForHostMapping(U32 eip, void* host);
 #else
     void* codeCache[K_NUMBER_OF_PAGES]; // 4 MB 
     void removeBlock(DecodedBlock* block, U32 ip);    

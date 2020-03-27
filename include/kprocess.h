@@ -252,6 +252,7 @@ public:
 #ifdef BOXEDWINE_X64
     bool emulateFPU;
     void* translateChunkAddress;
+    void* defaultEipToHostMappingAddress;
     void* returnToLoopAddress;
 #endif
 	bool pendingDelete;

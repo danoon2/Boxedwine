@@ -75,7 +75,9 @@ public:
     static U32 nextThreadId;    
     static U32 pentiumLevel;
 	static bool shutingDown;
-
+#ifdef BOXEDWINE_X64
+    static bool useLargeAddressSpace;
+#endif
     static void init();
 	static void destroy();
 

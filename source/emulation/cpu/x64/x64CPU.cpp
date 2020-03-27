@@ -87,6 +87,7 @@ void* x64CPU::init() {
     x64CPU* cpu = this;
 
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->executableMemoryMutex);
+    this->eipToHostInstructionAddressSpaceMapping = this->thread->memory->eipToHostInstructionAddressSpaceMapping;
 
 	// will push 15 regs, since it is odd, it will balance rip being pushed on the stack and give use a 16-byte alignment
 	data.saveNativeState(); // also sets HOST_CPU
@@ -94,7 +95,11 @@ void* x64CPU::init() {
     //data.writeToRegFromValue(HOST_CPU, true, (U64)this, 8);
     data.writeToRegFromValue(HOST_MEM, true, cpu->memOffset, 8);
 
-    data.writeToRegFromValue(HOST_SS, true, (U32)cpu->seg[SS].address, 4);
+    if (KSystem::useLargeAddressSpace) {
+        data.writeToRegFromValue(HOST_LARGE_ADDRESS_SPACE_MAPPING, true, (U64)cpu->eipToHostInstructionAddressSpaceMapping, 8);
+    } else {
+        data.writeToRegFromValue(HOST_SMALL_ADDRESS_SPACE_SS, true, (U32)cpu->seg[SS].address, 4);
+    }
     data.writeToRegFromValue(HOST_DS, true, (U32)cpu->seg[DS].address, 4);
 
     data.setNativeFlags(this->flags, FMASK_TEST|DF);
@@ -113,8 +118,8 @@ void* x64CPU::init() {
     std::shared_ptr<X64CodeChunk> chunk = data.commit(true);
     result = chunk->getHostAddress();
     link(&data, chunk);
-    this->pendingCodePages.clear();
-    this->eipToHostInstruction = this->thread->memory->eipToHostInstruction;
+    this->pendingCodePages.clear();    
+    this->eipToHostInstructionPages = this->thread->memory->eipToHostInstructionPages;
 
     if (!this->thread->process->returnToLoopAddress) {
         X64Asm returnData(this);
@@ -132,6 +137,14 @@ void* x64CPU::init() {
         this->thread->process->translateChunkAddress = chunk3->getHostAddress();
     }
     this->translateChunkAddress = this->thread->process->translateChunkAddress;
+    if (!this->thread->process->defaultEipToHostMappingAddress) {
+        X64Asm translateData(this);
+        translateData.translateEip(true);
+        std::shared_ptr<X64CodeChunk> chunk3 = translateData.commit(true);
+        this->thread->process->defaultEipToHostMappingAddress = chunk3->getHostAddress();
+    }
+    this->defaultEipToHostMappingAddress = this->thread->process->defaultEipToHostMappingAddress;
+
     return result;
 }
 
@@ -309,7 +322,7 @@ void* x64CPU::translateEip(U32 ip) {
 }
 
 void x64CPU::translateInstruction(X64Asm* data, X64Asm* firstPass) {
-    data->startOfOpIp = data->ip;        
+    data->startOfOpIp = data->ip;  
 #ifdef _DEBUG
     //data->logOp(data->ip);
     // just makes debugging the asm output easier
@@ -395,7 +408,7 @@ DecodedOp* x64CPU::getOp(U32 eip, bool existing) {
     } else {
         eip=this->seg[CS].address + (eip & 0xFFFF);
     }        
-    if (!existing || (this->eipToHostInstruction[eip >> K_PAGE_SHIFT] && this->eipToHostInstruction[eip >> K_PAGE_SHIFT][eip & K_PAGE_MASK])) {
+    if (!existing || this->thread->memory->getExistingHostAddress(eip)) {
         THREAD_LOCAL static DecodedBlock* block;
         if (!block) {
             block = new DecodedBlock();
@@ -482,10 +495,10 @@ U64 x64CPU::handleCodePatch(U64 rip, U32 address, U64 rsi, U64 rdi, std::functio
 
         // eip was ajusted after running this instruction                        
         U32 a = this->getEipAddress();
-        if (!this->eipToHostInstruction[a >> K_PAGE_SHIFT] || !this->eipToHostInstruction[a >> K_PAGE_SHIFT][a & K_PAGE_MASK]) {
+        if (!this->thread->memory->getExistingHostAddress(a)) {
             this->translateEip(this->eip.u32);
         }
-        U64 result = (U64)this->eipToHostInstruction[a >> K_PAGE_SHIFT][a & K_PAGE_MASK];
+        U64 result = (U64)this->thread->memory->getExistingHostAddress(a);
         if (result==0) {
             kpanic("x64::handleCodePatch failed to translate code");
         }
@@ -548,9 +561,9 @@ U64 x64CPU::handleMissingCode(U64 r8, U64 r9, U32 inst) {
 
     this->translateEip(((page << K_PAGE_SHIFT) | offset) - this->seg[CS].address);  
     if (inst==0xCA148B4F) {
-        return (U64)(this->eipToHostInstruction[page]);
+        return (U64)(this->eipToHostInstructionPages[page]);
     } else {
-        return (U64)(this->eipToHostInstruction[page][offset]);
+        return (U64)(this->eipToHostInstructionPages[page][offset]);
     }
 }
 
@@ -575,7 +588,10 @@ U32 dynamicCodeExceptionCount;
 
 U64 x64CPU::handleAccessException(U64 rip, U64 address, bool readAddress, U64 rsi, U64 rdi, U64 r8, U64 r9, U64* r10, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo) {
     U32 inst = *((U32*)rip);
-    if ((inst==0x0A8B4566 || inst==0xCA148B4F) && (r8 || r9)) { // if these constants change, update handleMissingCode too     
+    if (inst == 0xCE24FF43) {
+        this->translateEip((U32)r9 - this->seg[CS].address);
+        return 0;
+    } else if ((inst==0x0A8B4566 || inst==0xCA148B4F) && (r8 || r9)) { // if these constants change, update handleMissingCode too     
         // rip is not adjusted so we don't need to check for stack alignment
         *r10 = this->handleMissingCode(r8, r9, inst);
         return 0;
@@ -666,7 +682,7 @@ void x64CPU::startThread() {
 
     BOXEDWINE_CONDITION_LOCK(this->endCond);
     BOXEDWINE_CONDITION_SIGNAL(this->endCond);
-    BOXEDWINE_CONDITION_UNLOCK(this->endCond);    
+    BOXEDWINE_CONDITION_UNLOCK(this->endCond);
 
 	thread->process->deleteThreadAndProcessIfLastThread(thread);
 

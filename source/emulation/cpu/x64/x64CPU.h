@@ -26,7 +26,8 @@ public:
     U64 negMemOffset;
     bool inException;
 	int exitToStartThreadLoop; // this will be checked after a syscall, if set to 1 then then x64CPU.returnToLoopAddress will be called
-    void*** eipToHostInstruction;
+    void* eipToHostInstructionAddressSpaceMapping;
+	void*** eipToHostInstructionPages;
     DecodedOp* getOp(U32 eip, bool existing);
     U32 stringRepeat;
     U32 stringWritesToDi;
@@ -37,7 +38,7 @@ public:
 	U64 originalCpuRegs[16];
 	void* returnToLoopAddress;
     void* translateChunkAddress;
-
+    void* defaultEipToHostMappingAddress;
     static bool hasBMI2;
 
 #ifdef _DEBUG

@@ -1,27 +1,92 @@
 #include "boxedwine.h"
 #include <windows.h>
 
+U32 nativeMemoryPagesAllocated;
+
 #ifdef BOXEDWINE_64BIT_MMU
-static U32 gran = 0x10;
+static U32 gran = 0; // number of K_PAGE_SIZE in an allocation, on Windows this is 16
 
 #include "../../source/emulation/hardmmu/hard_memory.h"
+
+U32 getHostPageSize() {
+    SYSTEM_INFO sSysInfo;
+
+    GetSystemInfo(&sSysInfo);
+    if (sSysInfo.dwPageSize != K_PAGE_SIZE) {
+        kpanic("Was expecting a host page size of 4k, instead host page size is %d bytes", sSysInfo.dwPageSize);
+    }
+    return sSysInfo.dwPageSize;
+}
+
+U32 getHostAllocationSize() {
+    SYSTEM_INFO sSysInfo;
+
+    GetSystemInfo(&sSysInfo);
+    if ((sSysInfo.dwAllocationGranularity & K_PAGE_SIZE) != 0) {
+        kpanic("Unexpected host allocation granularity size: %d", sSysInfo.dwAllocationGranularity);
+    }
+    return sSysInfo.dwAllocationGranularity;
+}
+
+// :TODO: what about some sort of garbage collection to MEM_DECOMMIT chunks that no longer contain code mappings
+void commitHostAddressSpaceMapping(Memory* memory, U32 page, U32 pageCount, U64 defaultValue) {
+    U64 granPage;
+    U64 granCount;
+
+    if (!gran) {
+        gran = getHostAllocationSize() / K_PAGE_SIZE;
+    }
+    if (page < 10) {
+        int ii = 0;
+    }
+    U64 hostPage = page * sizeof(void*);
+    U64 hostPageCount = pageCount * sizeof(void*);
+
+    granPage = hostPage & ~((U64)gran - 1);
+    granCount = ((gran - 1) + hostPageCount + (hostPage - granPage)) / gran;
+    for (U32 i = 0; i < granCount; i++) {
+        if (!memory->isEipPageCommitted((U32)(granPage / sizeof(void*)))) {
+            U8* address = (U8*)memory->eipToHostInstructionAddressSpaceMapping + (granPage << K_PAGE_SHIFT);
+            if (!VirtualAlloc(address, (gran << K_PAGE_SHIFT), MEM_COMMIT, PAGE_READWRITE)) {
+                LPSTR messageBuffer = NULL;
+                size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
+                kpanic("allocNativeMemory: failed to commit memory: granPage=%x page=%x pageCount=%d: %s", granPage, page, pageCount, messageBuffer);
+            }
+            U64* address64 = (U64*)address;
+            U32 count = (gran << K_PAGE_SHIFT) / sizeof(void*); // 8K
+            for (U32 j = 0; j < count; j++, address64++) {
+                *address64 = defaultValue;
+            }
+            U32 startPage = (U32)(granPage / sizeof(void*));
+            U32 pageCount = (U32)((granCount * gran) / sizeof(void*));
+            for (U32 j = 0; j < pageCount; j++) {
+                memory->setEipPageCommitted(startPage + j);
+            }
+        }
+        granPage += gran;
+    }
+}
 
 void allocNativeMemory(Memory* memory, U32 page, U32 pageCount, U32 flags) {
     U32 granPage;
     U32 granCount;
     U32 i;    
 
+    if (!gran) {
+        gran = getHostAllocationSize() / K_PAGE_SIZE;
+    }
     granPage = page & ~(gran-1);
     granCount = ((gran - 1) + pageCount + (page - granPage)) / gran;
     for (i=0; i < granCount; i++) {
         if (!(memory->nativeFlags[granPage] & NATIVE_FLAG_COMMITTED)) {
             U32 j;
 
-            if (!VirtualAlloc((void*)((granPage << K_PAGE_SHIFT) | memory->id), gran << K_PAGE_SHIFT, MEM_COMMIT, PAGE_READWRITE)) {
+            if (!VirtualAlloc((void*)(((U64)granPage << K_PAGE_SHIFT) | memory->id), (gran << K_PAGE_SHIFT), MEM_COMMIT, PAGE_READWRITE)) {
                 LPSTR messageBuffer = NULL;
                 size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
                 kpanic("allocNativeMemory: failed to commit memory: granPage=%x page=%x pageCount=%d: %s", granPage, page, pageCount, messageBuffer);
             }
+            nativeMemoryPagesAllocated += gran;
             memory->allocated+=(gran << K_PAGE_SHIFT);
             for (j=0;j<gran;j++)
                 memory->nativeFlags[granPage+j] |= NATIVE_FLAG_COMMITTED;
@@ -58,25 +123,28 @@ void freeNativeMemory(Memory* memory, U32 page, U32 pageCount) {
     granPage = page & ~(gran-1);
     granCount = ((gran - 1) + pageCount + (page - granPage)) / gran;
     for (i=0; i < granCount; i++) {
-        U32 j;
-        BOOL inUse = FALSE;
+        if (memory->nativeFlags[granPage] & NATIVE_FLAG_COMMITTED) {
+            U32 j;
+            BOOL inUse = FALSE;
 
-        for (j=0;j<gran;j++) {
-            if (memory->isPageAllocated(granPage+j)) {
-                inUse = TRUE;
-                break;
-            }            
-        }
-        if (!inUse) {
-            if (!VirtualFree((void*)((granPage << K_PAGE_SHIFT) | memory->id), gran, MEM_DECOMMIT)) {
-                LPSTR messageBuffer = NULL;
-                size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
-                kpanic("failed to release memory: %s", messageBuffer);
+            for (j = 0; j < gran; j++) {
+                if (memory->isPageAllocated(granPage + j)) {
+                    inUse = TRUE;
+                    break;
+                }
             }
-            for (j=0;j<gran;j++) {
-                memory->nativeFlags[granPage+j]=0;
+            if (!inUse) {
+                if (!VirtualFree((void*)((granPage << K_PAGE_SHIFT) | memory->id), gran, MEM_DECOMMIT)) {
+                    LPSTR messageBuffer = NULL;
+                    size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
+                    kpanic("failed to release memory: %s", messageBuffer);
+                }
+                nativeMemoryPagesAllocated -= gran;
+                for (j = 0; j < gran; j++) {
+                    memory->nativeFlags[granPage + j] = 0;
+                }
+                memory->allocated -= (gran << K_PAGE_SHIFT);
             }
-            memory->allocated-=(gran << K_PAGE_SHIFT);
         }
         granPage+=gran;
     }  
@@ -104,11 +172,26 @@ static void* reserveNext4GBMemory() {
     return p;
 }
 
+static void* reserveNext32GBMemory() {
+    void* p;
+    U64 i = 1;
+
+    p = (void*)(i << 32);
+    while (VirtualAlloc(p, 0x800000000l, MEM_RESERVE, PAGE_READWRITE) == 0) {
+        i++;
+        p = (void*)(i << 32);
+    }
+    return p;
+}
+
 void reserveNativeMemory(Memory* memory) {    
     memory->id = (U64)reserveNext4GBMemory();
 #ifdef BOXEDWINE_X64
     memory->executableMemoryId = (U64)reserveNext4GBMemory();
     memory->nextExecutablePage = 0;
+    if (KSystem::useLargeAddressSpace) {
+        memory->eipToHostInstructionAddressSpaceMapping = reserveNext32GBMemory();
+    }
 #endif
 }
 
@@ -135,6 +218,14 @@ void releaseNativeMemory(Memory* memory) {
         kpanic("failed to release executable memory: %s", messageBuffer);
     } 
     memory->executableMemoryId = 0;
+    if (KSystem::useLargeAddressSpace) {
+        if (!VirtualFree((void*)memory->eipToHostInstructionAddressSpaceMapping, 0, MEM_RELEASE)) {
+            LPSTR messageBuffer = NULL;
+            size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
+            kpanic("failed to release large executable memory: %s", messageBuffer);
+        }
+        memory->eipToHostInstructionAddressSpaceMapping = NULL;
+    }
 #endif
 }
 

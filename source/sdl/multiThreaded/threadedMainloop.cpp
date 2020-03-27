@@ -14,7 +14,7 @@ extern U32 platformThreadCount;
 extern U32 exceptionCount;
 extern U32 dynamicCodeExceptionCount;
 static U32 lastTitleUpdate = 0;
-
+extern U32 nativeMemoryPagesAllocated;
 bool doMainLoop() {
     SDL_Event e;
 
@@ -51,7 +51,7 @@ bool doMainLoop() {
         if (lastTitleUpdate+5000 < t) {
             char tmp[256];
             lastTitleUpdate = t;
-            sprintf(tmp, "BoxedWine 20R1a1");
+            sprintf(tmp, "BoxedWine 20R1a1 %dMB", (int)(nativeMemoryPagesAllocated>>8));
             fbSetCaption(tmp, "BoxedWine");
         }
         if (hasEvent) {

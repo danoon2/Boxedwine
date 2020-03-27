@@ -33,7 +33,8 @@
 #define HOST_CPU          5
 
 // popseg assumes this won't overlap with params
-#define HOST_SS           6
+#define HOST_LARGE_ADDRESS_SPACE_MAPPING           6
+#define HOST_SMALL_ADDRESS_SPACE_SS                6
 
 #define HOST_DS           7
 
