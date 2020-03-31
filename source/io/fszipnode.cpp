@@ -36,7 +36,8 @@ U64 FsZipNode::length() {
 }
 
 FsOpenNode* FsZipNode::open(BoxedPtr<FsNode> node, U32 flags) {
-    return new FsZipOpenNode(node, shared_from_this(), flags, this->zipInfo.offset);
+    std::shared_ptr<FsZipNode> zipNode = shared_from_this();
+    return new FsZipOpenNode(node, zipNode, flags, (U64)this->zipInfo.offset);
 }
 
 #endif

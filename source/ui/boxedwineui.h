@@ -4,8 +4,8 @@
 #include <thread>
 
 #undef ID
-#include "GL/glew.h"
-#include "imgui.h"
+#include <GL/glew.h>
+#include <imgui.h>
 #include "platformhelper.h"
 #include "utils/boxedTranslation.h"
 #include "utils/uihelper.h"

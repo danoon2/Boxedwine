@@ -60,9 +60,11 @@ Memory::Memory() : allocated(0), callbackPos(0) {
 
 Memory::~Memory() {    
     releaseNativeMemory(this);
+#ifdef BOXEDWINE_X64
     if (this->eipToHostInstructionPages) {
         delete[] this->eipToHostInstructionPages;
     }
+#endif
 }
 
 void Memory::log_pf(KThread* thread, U32 address) {
