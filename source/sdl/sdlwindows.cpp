@@ -434,6 +434,7 @@ SDL_Surface* surface;
 #endif
 
 void destroySDL() {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(sdlMutex);
 #ifdef SDL2
     destroySDL2(NULL);
 #endif
@@ -729,7 +730,7 @@ void sdlSwapBuffers(KThread* thread) {
 }
 
 #ifdef SDL2
-#ifndef BOXEDWINE_64BIT_MMU
+#if defined(BOXEDWINE_RECORDER) || ! defined(BOXEDWINE_64BIT_MMU)
 static S8 sdlBuffer[1024*1024*4];
 #endif
 #endif
@@ -751,7 +752,12 @@ void wndBlt(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32 yOrg, U32 width, 
         // final reality will draw its main start window while an OpenGL context is still going
         // half life uplink demo intro movie also needs this
         if (contextCount && !wnd->openGlContext) {
+            BOXEDWINE_MUTEX_UNLOCK(sdlMutex);
+            DISPATCH_MAIN_THREAD_BLOCK_BEGIN
             sdlRenderer = SDL_CreateRenderer(sdlWindow, -1, 0);	
+            DISPATCH_MAIN_THREAD_BLOCK_END
+            BOXEDWINE_MUTEX_LOCK(sdlMutex);
+            wnd = getWnd(hwnd); // just in case it changed when we gave up the lock
         }
     }
 
@@ -791,7 +797,7 @@ void wndBlt(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32 yOrg, U32 width, 
             return;
         }
 #ifndef BOXEDWINE_64BIT_MMU        
-        for (y = 0; y < height; y++) {
+        for (U32 y = 0; y < height; y++) {
             memcopyToNative(bits+(height-y-1)*pitch, sdlBuffer+y*pitch, pitch);
         } 
 #endif
@@ -809,7 +815,7 @@ void wndBlt(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32 yOrg, U32 width, 
                 wnd->bitsSize = toCopy;
             }
 #ifdef BOXEDWINE_64BIT_MMU
-            for (y = 0; y < height; y++) {
+            for (U32 y = 0; y < height; y++) {
                 memcopyToNative(bits+(height-y-1)*pitch, sdlBuffer+y*pitch, pitch);
             } 
 #endif

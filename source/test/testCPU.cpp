@@ -26,6 +26,10 @@
 #include "../emulation/hardmmu/hard_memory.h"
 #include "../emulation/cpu/x64/x64CPU.h"
 
+#ifdef BOXEDWINE_MSVC
+#include <nmmintrin.h>
+#endif
+
 #include "testCPU.h"
 #include "testMMX.h"
 #include "testSSE.h"

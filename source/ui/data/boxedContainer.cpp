@@ -50,7 +50,7 @@ bool BoxedContainer::saveContainer() {
     ConfigFile config(iniFilePath);
     config.writeString("Name", this->name);
     config.writeString("WineVersion", this->wineVersion);
-    for (int i = 0; i < this->mounts.size(); i++) {
+    for (int i = 0; i < (int)this->mounts.size(); i++) {
         config.writeString("Mount" + std::to_string(i + 1), this->mounts[i].localPath + "|" + this->mounts[i].nativePath);
     }
     config.saveChanges();

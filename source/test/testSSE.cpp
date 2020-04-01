@@ -2,6 +2,10 @@
 
 #ifdef __TEST
 
+#ifdef BOXEDWINE_MSVC
+#include <nmmintrin.h>
+#endif
+
 #include "testCPU.h"
 #include "testMMX.h"
 #include "testSSE.h"

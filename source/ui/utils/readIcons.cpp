@@ -537,6 +537,7 @@ const unsigned char* extractIconFromExe(const std::string& nativeExePath, int si
                     //U16 resourceLen = getWord(f) << alignShiftCount;
                     //U16 flags = getWord(f);
                     //U16 id = getWord(f);
+                    fseek(f, 8, SEEK_CUR);
                     fseek(f, 4, SEEK_CUR); // internal use
                     // RT_GROUP_ICON structure
                     /*
@@ -555,6 +556,7 @@ const unsigned char* extractIconFromExe(const std::string& nativeExePath, int si
                     //U16 resourceLen = getWord(f) << alignShiftCount;
                     //U16 flags = getWord(f);
                     //U16 id = getWord(f);
+                    fseek(f, 6, SEEK_CUR);
                     fseek(f, 4, SEEK_CUR); // internal use
                     U32 pos = (U32)ftell(f);                    
                     fseek(f, info.fileOffset, SEEK_SET);

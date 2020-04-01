@@ -262,7 +262,7 @@ bool clearCodePageReadOnly(Memory* memory, U32 page) {
     }
     return result;
 }
-
+#ifndef BOXEDWINE_MULTI_THREADED
 static int seh_filter(unsigned int code, struct _EXCEPTION_POINTERS* ep, KThread* thread)
 {
     if (code == EXCEPTION_ACCESS_VIOLATION) {
@@ -286,7 +286,7 @@ static int seh_filter(unsigned int code, struct _EXCEPTION_POINTERS* ep, KThread
     }   
     return EXCEPTION_CONTINUE_SEARCH;
 }
-#ifndef BOXEDWINE_MULTI_THREADED
+
 void platformRunThreadSlice(KThread* thread) {
     __try {
         runThreadSlice(thread);

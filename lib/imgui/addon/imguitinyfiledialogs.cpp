@@ -136,9 +136,6 @@ on windows it only make sense for console applications */
 
 static int gWarningDisplayed = 0 ;
 static char gTitle[]= "missing software! (so we switch to basic console input)";
-//static char gMessageWin[] = "tiny file dialogs on Windows needs:\n\t\
-a graphic display\nor\tdialog.exe (enhanced console mode)\
-\nor\ta console for basic input" ;
 
 static char gMessageUnix[] = "tiny file dialogs on UNIX needs:\n\tapplescript\
 \nor\tzenity (version 3 for the color chooser)\nor\tkdialog\
@@ -379,6 +376,10 @@ static char const * ensureFilesExist( char * const aDestination ,
 }
 
 #ifdef _WIN32
+static char gMessageWin[] = "tiny file dialogs on Windows needs:\n\t\
+a graphic display\nor\tdialog.exe (enhanced console mode)\
+\nor\ta console for basic input";
+
 static int replaceChr ( char * const aString ,
                         char const aOldChr ,
                         char const aNewChr )
