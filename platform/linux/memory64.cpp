@@ -67,12 +67,7 @@ static U64 nextMemoryId = 2;
 
 static bool isAddressRangeInUse(void* p, U64 len) {
     // get task for pid
-    vm_map_t target_task = 0;
-    if (task_for_pid(mach_task_self(), getpid(), &target_task))
-    {
-        kpanic("Can't execute task_for_pid! Do you have the right permissions/entitlements?");
-        return false;
-    }
+    vm_map_t target_task = mach_task_self();
     
     vm_address_t iter = (vm_address_t)p;
     vm_address_t addr = iter;
