@@ -70,8 +70,10 @@ void assertTrue(int b) {
 }
 
 void setup() {
-    if (!memory) {    
+    if (!memory) {
+#ifdef BOXEDWINE_X64
         KSystem::useLargeAddressSpace = false;
+#endif
         KProcess* process = new KProcess(KSystem::nextThreadId++);
         memory = new Memory();
         process->memory = memory;

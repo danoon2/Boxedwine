@@ -34,6 +34,146 @@
 		71222B062433F93E00CDBABD /* trees.c in Sources */ = {isa = PBXBuildFile; fileRef = 71222A212433F93D00CDBABD /* trees.c */; };
 		71222B112433F93E00CDBABD /* inffast.c in Sources */ = {isa = PBXBuildFile; fileRef = 71222A2E2433F93D00CDBABD /* inffast.c */; };
 		71222B122433F93E00CDBABD /* adler32.c in Sources */ = {isa = PBXBuildFile; fileRef = 71222A2F2433F93D00CDBABD /* adler32.c */; };
+		71222B1D2435140100CDBABD /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 71222B1C2435140100CDBABD /* AppDelegate.m */; };
+		71222B1F2435140300CDBABD /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 71222B1E2435140300CDBABD /* Assets.xcassets */; };
+		71222B222435140300CDBABD /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 71222B202435140300CDBABD /* MainMenu.xib */; };
+		71222B2A243515D800CDBABD /* inflate.c in Sources */ = {isa = PBXBuildFile; fileRef = 712229122433F93D00CDBABD /* inflate.c */; };
+		71222B2B243515DC00CDBABD /* deflate.c in Sources */ = {isa = PBXBuildFile; fileRef = 7122291F2433F93D00CDBABD /* deflate.c */; };
+		71222B2C243515F200CDBABD /* unzip.c in Sources */ = {isa = PBXBuildFile; fileRef = 712229A72433F93D00CDBABD /* unzip.c */; };
+		71222B2D243515F200CDBABD /* zip.c in Sources */ = {isa = PBXBuildFile; fileRef = 712229A82433F93D00CDBABD /* zip.c */; };
+		71222B2E243515F200CDBABD /* ioapi.c in Sources */ = {isa = PBXBuildFile; fileRef = 712229AB2433F93D00CDBABD /* ioapi.c */; };
+		71222B2F243515F200CDBABD /* mztools.c in Sources */ = {isa = PBXBuildFile; fileRef = 712229AC2433F93D00CDBABD /* mztools.c */; };
+		71222B30243515F200CDBABD /* crc32.c in Sources */ = {isa = PBXBuildFile; fileRef = 712229F92433F93D00CDBABD /* crc32.c */; };
+		71222B31243515F200CDBABD /* infback.c in Sources */ = {isa = PBXBuildFile; fileRef = 712229FB2433F93D00CDBABD /* infback.c */; };
+		71222B32243515F200CDBABD /* zutil.c in Sources */ = {isa = PBXBuildFile; fileRef = 712229FC2433F93D00CDBABD /* zutil.c */; };
+		71222B33243515F200CDBABD /* inftrees.c in Sources */ = {isa = PBXBuildFile; fileRef = 71222A172433F93D00CDBABD /* inftrees.c */; };
+		71222B34243515F200CDBABD /* uncompr.c in Sources */ = {isa = PBXBuildFile; fileRef = 71222A1F2433F93D00CDBABD /* uncompr.c */; };
+		71222B35243515F200CDBABD /* trees.c in Sources */ = {isa = PBXBuildFile; fileRef = 71222A212433F93D00CDBABD /* trees.c */; };
+		71222B36243515F200CDBABD /* inffast.c in Sources */ = {isa = PBXBuildFile; fileRef = 71222A2E2433F93D00CDBABD /* inffast.c */; };
+		71222B37243515F200CDBABD /* adler32.c in Sources */ = {isa = PBXBuildFile; fileRef = 71222A2F2433F93D00CDBABD /* adler32.c */; };
+		71222B38243515FC00CDBABD /* glew.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 712229052433F03F00CDBABD /* glew.cpp */; };
+		71222B392435160800CDBABD /* memory64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFCD12433BB9C003F17F1 /* memory64.cpp */; };
+		71222B3A2435160800CDBABD /* platformThreads.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFCD22433BB9C003F17F1 /* platformThreads.cpp */; };
+		71222B3B2435160800CDBABD /* platform.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFCD32433BB9C003F17F1 /* platform.cpp */; };
+		71222B3C2435163100CDBABD /* testSSE.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD452433BBBE003F17F1 /* testSSE.cpp */; };
+		71222B3D2435163100CDBABD /* testSSE2.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD482433BBBE003F17F1 /* testSSE2.cpp */; };
+		71222B3E2435163100CDBABD /* testCPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD492433BBBE003F17F1 /* testCPU.cpp */; };
+		71222B3F2435163100CDBABD /* testMMX.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD4C2433BBBE003F17F1 /* testMMX.cpp */; };
+		71222B402435163F00CDBABD /* crc.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD4F2433BBBE003F17F1 /* crc.cpp */; };
+		71222B412435163F00CDBABD /* log.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD502433BBBE003F17F1 /* log.cpp */; };
+		71222B422435163F00CDBABD /* player.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD512433BBBE003F17F1 /* player.cpp */; };
+		71222B432435163F00CDBABD /* synchronization.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD532433BBBE003F17F1 /* synchronization.cpp */; };
+		71222B442435163F00CDBABD /* fileutils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD552433BBBE003F17F1 /* fileutils.cpp */; };
+		71222B452435163F00CDBABD /* stringutil.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD582433BBBE003F17F1 /* stringutil.cpp */; };
+		71222B462435163F00CDBABD /* recorder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD5A2433BBBE003F17F1 /* recorder.cpp */; };
+		71222B5F2435169100CDBABD /* x64CodeChunk.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD742433BBBE003F17F1 /* x64CodeChunk.cpp */; };
+		71222B602435169100CDBABD /* x64CPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD752433BBBE003F17F1 /* x64CPU.cpp */; };
+		71222B612435169100CDBABD /* x64Asm.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD762433BBBE003F17F1 /* x64Asm.cpp */; };
+		71222B622435169100CDBABD /* x64Ops.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD792433BBBE003F17F1 /* x64Ops.cpp */; };
+		71222B632435169100CDBABD /* x64Data.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD7C2433BBBE003F17F1 /* x64Data.cpp */; };
+		71222B642435169100CDBABD /* srcgen.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD7F2433BBBE003F17F1 /* srcgen.cpp */; };
+		71222B652435169100CDBABD /* common_pushpop.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD852433BBBE003F17F1 /* common_pushpop.cpp */; };
+		71222B662435169100CDBABD /* lazyFlags.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD8B2433BBBE003F17F1 /* lazyFlags.cpp */; };
+		71222B672435169100CDBABD /* common_arith.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD8D2433BBBE003F17F1 /* common_arith.cpp */; };
+		71222B682435169100CDBABD /* common_mmx.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD8E2433BBBE003F17F1 /* common_mmx.cpp */; };
+		71222B692435169100CDBABD /* common_fpu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD912433BBBE003F17F1 /* common_fpu.cpp */; };
+		71222B6A2435169100CDBABD /* common_other.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD932433BBBE003F17F1 /* common_other.cpp */; };
+		71222B6B2435169100CDBABD /* common_sse2.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD972433BBBE003F17F1 /* common_sse2.cpp */; };
+		71222B6C2435169100CDBABD /* common_bit.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD982433BBBE003F17F1 /* common_bit.cpp */; };
+		71222B6D2435169100CDBABD /* common_sse.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD9A2433BBBE003F17F1 /* common_sse.cpp */; };
+		71222B6E2435169100CDBABD /* fpu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD9B2433BBBE003F17F1 /* fpu.cpp */; };
+		71222B6F2435169100CDBABD /* cpu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD9E2433BBBE003F17F1 /* cpu.cpp */; };
+		71222B702435169100CDBABD /* common_xchg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD9F2433BBBE003F17F1 /* common_xchg.cpp */; };
+		71222B712435169100CDBABD /* decoder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDAA2433BBBE003F17F1 /* decoder.cpp */; };
+		71222B722435169100CDBABD /* normal_shift.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDB32433BBBE003F17F1 /* normal_shift.cpp */; };
+		71222B732435169100CDBABD /* normalCPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDBB2433BBBE003F17F1 /* normalCPU.cpp */; };
+		71222B742435169100CDBABD /* instructions.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDBE2433BBBE003F17F1 /* instructions.cpp */; };
+		71222B752435169100CDBABD /* normal_strings.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDC02433BBBE003F17F1 /* normal_strings.cpp */; };
+		71222B762435169100CDBABD /* x32CPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDC72433BBBE003F17F1 /* x32CPU.cpp */; };
+		71222B772435169100CDBABD /* soft_memory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDCC2433BBBE003F17F1 /* soft_memory.cpp */; };
+		71222B782435169100CDBABD /* soft_ondemand_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDCE2433BBBE003F17F1 /* soft_ondemand_page.cpp */; };
+		71222B792435169100CDBABD /* soft_no_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDCF2433BBBE003F17F1 /* soft_no_page.cpp */; };
+		71222B7A2435169100CDBABD /* soft_code_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDD12433BBBE003F17F1 /* soft_code_page.cpp */; };
+		71222B7B2435169100CDBABD /* soft_wo_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDD22433BBBE003F17F1 /* soft_wo_page.cpp */; };
+		71222B7C2435169100CDBABD /* soft_file_map.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDD62433BBBE003F17F1 /* soft_file_map.cpp */; };
+		71222B7D2435169100CDBABD /* soft_ram.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDD82433BBBE003F17F1 /* soft_ram.cpp */; };
+		71222B7E2435169100CDBABD /* soft_copy_on_write_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDDA2433BBBE003F17F1 /* soft_copy_on_write_page.cpp */; };
+		71222B7F2435169100CDBABD /* soft_ro_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDDC2433BBBE003F17F1 /* soft_ro_page.cpp */; };
+		71222B802435169100CDBABD /* soft_native_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDDD2433BBBE003F17F1 /* soft_native_page.cpp */; };
+		71222B812435169100CDBABD /* soft_invalid_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDE12433BBBE003F17F1 /* soft_invalid_page.cpp */; };
+		71222B822435169100CDBABD /* soft_rw_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDE42433BBBE003F17F1 /* soft_rw_page.cpp */; };
+		71222B832435169100CDBABD /* hard_memory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDE72433BBBE003F17F1 /* hard_memory.cpp */; };
+		71222B842435169100CDBABD /* fszip.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDE92433BBBE003F17F1 /* fszip.cpp */; };
+		71222B852435169100CDBABD /* fsfileopennode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDEA2433BBBE003F17F1 /* fsfileopennode.cpp */; };
+		71222B862435169100CDBABD /* fszipnode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDEC2433BBBE003F17F1 /* fszipnode.cpp */; };
+		71222B872435169100CDBABD /* fsmemopennode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDF22433BBBE003F17F1 /* fsmemopennode.cpp */; };
+		71222B882435169100CDBABD /* fsdiropennode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDF52433BBBE003F17F1 /* fsdiropennode.cpp */; };
+		71222B892435169100CDBABD /* fs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDF72433BBBE003F17F1 /* fs.cpp */; };
+		71222B8A2435169100CDBABD /* fsfilenode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDF92433BBBE003F17F1 /* fsfilenode.cpp */; };
+		71222B8B2435169100CDBABD /* fsopennode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDFA2433BBBE003F17F1 /* fsopennode.cpp */; };
+		71222B8C2435169100CDBABD /* fsnode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDFB2433BBBE003F17F1 /* fsnode.cpp */; };
+		71222B8D2435169100CDBABD /* fsmemnode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDFC2433BBBE003F17F1 /* fsmemnode.cpp */; };
+		71222B8E2435169100CDBABD /* fszipopennode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDFE2433BBBE003F17F1 /* fszipopennode.cpp */; };
+		71222B8F2435169100CDBABD /* fsvirtualnode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDFF2433BBBE003F17F1 /* fsvirtualnode.cpp */; };
+		71222B902435169100CDBABD /* threadedMainloop.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE062433BBBE003F17F1 /* threadedMainloop.cpp */; };
+		71222B912435169100CDBABD /* sdlcallback.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE072433BBBE003F17F1 /* sdlcallback.cpp */; };
+		71222B922435169100CDBABD /* sdlwindows.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE092433BBBE003F17F1 /* sdlwindows.cpp */; };
+		71222B932435169100CDBABD /* winedrv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE0B2433BBBE003F17F1 /* winedrv.cpp */; };
+		71222B942435169100CDBABD /* startupArgs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE0F2433BBBE003F17F1 /* startupArgs.cpp */; };
+		71222B952435169100CDBABD /* mainloop.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE112433BBBE003F17F1 /* mainloop.cpp */; };
+		71222B962435169100CDBABD /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE132433BBBE003F17F1 /* main.cpp */; };
+		71222B972435169100CDBABD /* sdlopengl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE142433BBBE003F17F1 /* sdlopengl.cpp */; };
+		71222B982435169100CDBABD /* bufferaccess.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE172433BBBE003F17F1 /* bufferaccess.cpp */; };
+		71222B992435169100CDBABD /* cpuinfo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE182433BBBE003F17F1 /* cpuinfo.cpp */; };
+		71222B9A2435169100CDBABD /* meminfo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE192433BBBE003F17F1 /* meminfo.cpp */; };
+		71222B9B2435169100CDBABD /* self.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE1A2433BBBE003F17F1 /* self.cpp */; };
+		71222B9C2435169100CDBABD /* kfilelock.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE1B2433BBBE003F17F1 /* kfilelock.cpp */; };
+		71222B9D2435169100CDBABD /* ksignal.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE1C2433BBBE003F17F1 /* ksignal.cpp */; };
+		71222B9E2435169100CDBABD /* kunixsocket.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE1D2433BBBE003F17F1 /* kunixsocket.cpp */; };
+		71222B9F2435169100CDBABD /* ksystem.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE1E2433BBBE003F17F1 /* ksystem.cpp */; };
+		71222BA02435169100CDBABD /* kprocess.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE1F2433BBBE003F17F1 /* kprocess.cpp */; };
+		71222BA12435169100CDBABD /* ksocketobject.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE202433BBBE003F17F1 /* ksocketobject.cpp */; };
+		71222BA22435169100CDBABD /* devinput.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE222433BBBE003F17F1 /* devinput.cpp */; };
+		71222BA32435169100CDBABD /* devsequencer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE242433BBBE003F17F1 /* devsequencer.cpp */; };
+		71222BA42435169100CDBABD /* devmixer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE252433BBBE003F17F1 /* devmixer.cpp */; };
+		71222BA52435169100CDBABD /* devtty.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE262433BBBE003F17F1 /* devtty.cpp */; };
+		71222BA62435169100CDBABD /* devzero.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE272433BBBE003F17F1 /* devzero.cpp */; };
+		71222BA72435169100CDBABD /* devfb.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE282433BBBE003F17F1 /* devfb.cpp */; };
+		71222BA82435169100CDBABD /* devdsp.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE292433BBBE003F17F1 /* devdsp.cpp */; };
+		71222BA92435169100CDBABD /* devnull.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE2A2433BBBE003F17F1 /* devnull.cpp */; };
+		71222BAA2435169100CDBABD /* devurandom.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE2B2433BBBE003F17F1 /* devurandom.cpp */; };
+		71222BAB2435169100CDBABD /* kfile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE2C2433BBBE003F17F1 /* kfile.cpp */; };
+		71222BAC2435169100CDBABD /* syscall.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE2D2433BBBE003F17F1 /* syscall.cpp */; };
+		71222BAD2435169100CDBABD /* knativesocket.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE2E2433BBBE003F17F1 /* knativesocket.cpp */; };
+		71222BAE2435169100CDBABD /* kfiledescriptor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE2F2433BBBE003F17F1 /* kfiledescriptor.cpp */; };
+		71222BAF2435169100CDBABD /* kmemory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE302433BBBE003F17F1 /* kmemory.cpp */; };
+		71222BB02435169100CDBABD /* cpuonline.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE322433BBBE003F17F1 /* cpuonline.cpp */; };
+		71222BB12435169100CDBABD /* cpuscalingcurfreq.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE332433BBBE003F17F1 /* cpuscalingcurfreq.cpp */; };
+		71222BB22435169100CDBABD /* cpumaxfreq.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE342433BBBE003F17F1 /* cpumaxfreq.cpp */; };
+		71222BB32435169100CDBABD /* cpuscalingmaxfreq.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE352433BBBE003F17F1 /* cpuscalingmaxfreq.cpp */; };
+		71222BB42435169100CDBABD /* kthread.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE362433BBBE003F17F1 /* kthread.cpp */; };
+		71222BB52435169100CDBABD /* loader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE392433BBBE003F17F1 /* loader.cpp */; };
+		71222BB62435169100CDBABD /* ksocket.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE3A2433BBBE003F17F1 /* ksocket.cpp */; };
+		71222BB72435169100CDBABD /* ktimer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE3B2433BBBE003F17F1 /* ktimer.cpp */; };
+		71222BB82435169100CDBABD /* kobject.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE3C2433BBBE003F17F1 /* kobject.cpp */; };
+		71222BB92435169100CDBABD /* kpoll.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE3D2433BBBE003F17F1 /* kpoll.cpp */; };
+		71222BBA2435169100CDBABD /* kscheduler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE3E2433BBBE003F17F1 /* kscheduler.cpp */; };
+		71222BBB2435169100CDBABD /* kepoll.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE3F2433BBBE003F17F1 /* kepoll.cpp */; };
+		71222BBC2435169100CDBABD /* glfunctions_ext1.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE432433BBBE003F17F1 /* glfunctions_ext1.cpp */; };
+		71222BBD2435169100CDBABD /* glfunctions_ext3.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE442433BBBE003F17F1 /* glfunctions_ext3.cpp */; };
+		71222BBE2435169100CDBABD /* glfunctions_ext2.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE462433BBBE003F17F1 /* glfunctions_ext2.cpp */; };
+		71222BBF2435169100CDBABD /* glcommon.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE482433BBBE003F17F1 /* glcommon.cpp */; };
+		71222BC02435169100CDBABD /* glMarshalVertex.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE492433BBBE003F17F1 /* glMarshalVertex.cpp */; };
+		71222BC12435169100CDBABD /* glext.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE4A2433BBBE003F17F1 /* glext.cpp */; };
+		71222BC22435169100CDBABD /* sdlgl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE4C2433BBBE003F17F1 /* sdlgl.cpp */; };
+		71222BC32435169100CDBABD /* glMarshal.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE4D2433BBBE003F17F1 /* glMarshal.cpp */; };
+		71222BC42435169100CDBABD /* glMarshalSize.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE592433BBBE003F17F1 /* glMarshalSize.cpp */; };
+		71222BC5243516E400CDBABD /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 712227872433EE2700CDBABD /* OpenGL.framework */; };
+		71222BC6243516EA00CDBABD /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 712227852433EE1200CDBABD /* Carbon.framework */; };
+		71222BC7243516F300CDBABD /* ForceFeedback.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 712227832433EDE700CDBABD /* ForceFeedback.framework */; };
+		71222BC8243516FD00CDBABD /* AudioToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 712227812433EDCE00CDBABD /* AudioToolbox.framework */; };
+		71222BC92435170600CDBABD /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7122277D2433ED7C00CDBABD /* CoreAudio.framework */; };
+		71222BCA2435171400CDBABD /* libSDL2.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 7122277B2433ED5700CDBABD /* libSDL2.a */; };
 		71FBFCB22433B815003F17F1 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFCB12433B815003F17F1 /* AppDelegate.m */; };
 		71FBFCB42433B817003F17F1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 71FBFCB32433B817003F17F1 /* Assets.xcassets */; };
 		71FBFCD42433BB9C003F17F1 /* memory64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFCD12433BB9C003F17F1 /* memory64.cpp */; };
@@ -240,6 +380,13 @@
 		71222A2E2433F93D00CDBABD /* inffast.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = inffast.c; sourceTree = "<group>"; };
 		71222A2F2433F93D00CDBABD /* adler32.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = adler32.c; sourceTree = "<group>"; };
 		71222A302433F93D00CDBABD /* zconf.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = zconf.h; sourceTree = "<group>"; };
+		71222B192435140100CDBABD /* BoxedwineTest.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BoxedwineTest.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		71222B1B2435140100CDBABD /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
+		71222B1C2435140100CDBABD /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
+		71222B1E2435140300CDBABD /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		71222B212435140300CDBABD /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/MainMenu.xib; sourceTree = "<group>"; };
+		71222B232435140300CDBABD /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		71222B262435140300CDBABD /* BoxedwineTest.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = BoxedwineTest.entitlements; sourceTree = "<group>"; };
 		71FBFCAD2433B815003F17F1 /* Boxedwine.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Boxedwine.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		71FBFCB02433B815003F17F1 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
 		71FBFCB12433B815003F17F1 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
@@ -606,6 +753,19 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		71222B162435140100CDBABD /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				71222BCA2435171400CDBABD /* libSDL2.a in Frameworks */,
+				71222BC92435170600CDBABD /* CoreAudio.framework in Frameworks */,
+				71222BC8243516FD00CDBABD /* AudioToolbox.framework in Frameworks */,
+				71222BC7243516F300CDBABD /* ForceFeedback.framework in Frameworks */,
+				71222BC6243516EA00CDBABD /* Carbon.framework in Frameworks */,
+				71222BC5243516E400CDBABD /* OpenGL.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		71FBFCAA2433B815003F17F1 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -766,6 +926,19 @@
 			path = minizip;
 			sourceTree = "<group>";
 		};
+		71222B1A2435140100CDBABD /* BoxedwineTest */ = {
+			isa = PBXGroup;
+			children = (
+				71222B1B2435140100CDBABD /* AppDelegate.h */,
+				71222B1C2435140100CDBABD /* AppDelegate.m */,
+				71222B1E2435140300CDBABD /* Assets.xcassets */,
+				71222B202435140300CDBABD /* MainMenu.xib */,
+				71222B232435140300CDBABD /* Info.plist */,
+				71222B262435140300CDBABD /* BoxedwineTest.entitlements */,
+			);
+			path = BoxedwineTest;
+			sourceTree = "<group>";
+		};
 		71FBFCA42433B815003F17F1 = {
 			isa = PBXGroup;
 			children = (
@@ -776,6 +949,7 @@
 				71FBFCD72433BBAD003F17F1 /* include */,
 				71FBFCD02433BB9C003F17F1 /* linux */,
 				71FBFCAF2433B815003F17F1 /* Boxedwine */,
+				71222B1A2435140100CDBABD /* BoxedwineTest */,
 				71FBFCAE2433B815003F17F1 /* Products */,
 				712227752433E8C400CDBABD /* Frameworks */,
 			);
@@ -785,6 +959,7 @@
 			isa = PBXGroup;
 			children = (
 				71FBFCAD2433B815003F17F1 /* Boxedwine.app */,
+				71222B192435140100CDBABD /* BoxedwineTest.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -1417,6 +1592,23 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		71222B182435140100CDBABD /* BoxedwineTest */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 71222B292435140300CDBABD /* Build configuration list for PBXNativeTarget "BoxedwineTest" */;
+			buildPhases = (
+				71222B152435140100CDBABD /* Sources */,
+				71222B162435140100CDBABD /* Frameworks */,
+				71222B172435140100CDBABD /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = BoxedwineTest;
+			productName = BoxedwineTest;
+			productReference = 71222B192435140100CDBABD /* BoxedwineTest.app */;
+			productType = "com.apple.product-type.application";
+		};
 		71FBFCAC2433B815003F17F1 /* Boxedwine */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 71FBFCBE2433B817003F17F1 /* Build configuration list for PBXNativeTarget "Boxedwine" */;
@@ -1443,6 +1635,9 @@
 				LastUpgradeCheck = 1130;
 				ORGANIZATIONNAME = Boxedwine;
 				TargetAttributes = {
+					71222B182435140100CDBABD = {
+						CreatedOnToolsVersion = 11.3.1;
+					};
 					71FBFCAC2433B815003F17F1 = {
 						CreatedOnToolsVersion = 11.3.1;
 					};
@@ -1462,11 +1657,21 @@
 			projectRoot = "";
 			targets = (
 				71FBFCAC2433B815003F17F1 /* Boxedwine */,
+				71222B182435140100CDBABD /* BoxedwineTest */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		71222B172435140100CDBABD /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				71222B1F2435140300CDBABD /* Assets.xcassets in Resources */,
+				71222B222435140300CDBABD /* MainMenu.xib in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		71FBFCAB2433B815003F17F1 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -1478,6 +1683,145 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		71222B152435140100CDBABD /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				71222B452435163F00CDBABD /* stringutil.cpp in Sources */,
+				71222BA82435169100CDBABD /* devdsp.cpp in Sources */,
+				71222B402435163F00CDBABD /* crc.cpp in Sources */,
+				71222BB02435169100CDBABD /* cpuonline.cpp in Sources */,
+				71222B2E243515F200CDBABD /* ioapi.c in Sources */,
+				71222B632435169100CDBABD /* x64Data.cpp in Sources */,
+				71222B3F2435163100CDBABD /* testMMX.cpp in Sources */,
+				71222B602435169100CDBABD /* x64CPU.cpp in Sources */,
+				71222B672435169100CDBABD /* common_arith.cpp in Sources */,
+				71222B1D2435140100CDBABD /* AppDelegate.m in Sources */,
+				71222B922435169100CDBABD /* sdlwindows.cpp in Sources */,
+				71222B2B243515DC00CDBABD /* deflate.c in Sources */,
+				71222B2C243515F200CDBABD /* unzip.c in Sources */,
+				71222B32243515F200CDBABD /* zutil.c in Sources */,
+				71222BA92435169100CDBABD /* devnull.cpp in Sources */,
+				71222B6F2435169100CDBABD /* cpu.cpp in Sources */,
+				71222B2F243515F200CDBABD /* mztools.c in Sources */,
+				71222BC42435169100CDBABD /* glMarshalSize.cpp in Sources */,
+				71222B422435163F00CDBABD /* player.cpp in Sources */,
+				71222B792435169100CDBABD /* soft_no_page.cpp in Sources */,
+				71222B412435163F00CDBABD /* log.cpp in Sources */,
+				71222B712435169100CDBABD /* decoder.cpp in Sources */,
+				71222BAA2435169100CDBABD /* devurandom.cpp in Sources */,
+				71222BBB2435169100CDBABD /* kepoll.cpp in Sources */,
+				71222B392435160800CDBABD /* memory64.cpp in Sources */,
+				71222B732435169100CDBABD /* normalCPU.cpp in Sources */,
+				71222BC02435169100CDBABD /* glMarshalVertex.cpp in Sources */,
+				71222BAF2435169100CDBABD /* kmemory.cpp in Sources */,
+				71222B742435169100CDBABD /* instructions.cpp in Sources */,
+				71222BB62435169100CDBABD /* ksocket.cpp in Sources */,
+				71222B34243515F200CDBABD /* uncompr.c in Sources */,
+				71222B30243515F200CDBABD /* crc32.c in Sources */,
+				71222B6E2435169100CDBABD /* fpu.cpp in Sources */,
+				71222B3D2435163100CDBABD /* testSSE2.cpp in Sources */,
+				71222B852435169100CDBABD /* fsfileopennode.cpp in Sources */,
+				71222B8D2435169100CDBABD /* fsmemnode.cpp in Sources */,
+				71222B8F2435169100CDBABD /* fsvirtualnode.cpp in Sources */,
+				71222BBA2435169100CDBABD /* kscheduler.cpp in Sources */,
+				71222B38243515FC00CDBABD /* glew.cpp in Sources */,
+				71222B432435163F00CDBABD /* synchronization.cpp in Sources */,
+				71222B8A2435169100CDBABD /* fsfilenode.cpp in Sources */,
+				71222B622435169100CDBABD /* x64Ops.cpp in Sources */,
+				71222BB12435169100CDBABD /* cpuscalingcurfreq.cpp in Sources */,
+				71222BB42435169100CDBABD /* kthread.cpp in Sources */,
+				71222B7E2435169100CDBABD /* soft_copy_on_write_page.cpp in Sources */,
+				71222B822435169100CDBABD /* soft_rw_page.cpp in Sources */,
+				71222B892435169100CDBABD /* fs.cpp in Sources */,
+				71222BAC2435169100CDBABD /* syscall.cpp in Sources */,
+				71222B35243515F200CDBABD /* trees.c in Sources */,
+				71222B8C2435169100CDBABD /* fsnode.cpp in Sources */,
+				71222BA22435169100CDBABD /* devinput.cpp in Sources */,
+				71222BA12435169100CDBABD /* ksocketobject.cpp in Sources */,
+				71222BC22435169100CDBABD /* sdlgl.cpp in Sources */,
+				71222BBD2435169100CDBABD /* glfunctions_ext3.cpp in Sources */,
+				71222B3E2435163100CDBABD /* testCPU.cpp in Sources */,
+				71222B722435169100CDBABD /* normal_shift.cpp in Sources */,
+				71222BAD2435169100CDBABD /* knativesocket.cpp in Sources */,
+				71222B9F2435169100CDBABD /* ksystem.cpp in Sources */,
+				71222B8B2435169100CDBABD /* fsopennode.cpp in Sources */,
+				71222BA72435169100CDBABD /* devfb.cpp in Sources */,
+				71222B692435169100CDBABD /* common_fpu.cpp in Sources */,
+				71222B962435169100CDBABD /* main.cpp in Sources */,
+				71222B7C2435169100CDBABD /* soft_file_map.cpp in Sources */,
+				71222B6A2435169100CDBABD /* common_other.cpp in Sources */,
+				71222BAE2435169100CDBABD /* kfiledescriptor.cpp in Sources */,
+				71222BB52435169100CDBABD /* loader.cpp in Sources */,
+				71222B802435169100CDBABD /* soft_native_page.cpp in Sources */,
+				71222B7A2435169100CDBABD /* soft_code_page.cpp in Sources */,
+				71222BC12435169100CDBABD /* glext.cpp in Sources */,
+				71222B662435169100CDBABD /* lazyFlags.cpp in Sources */,
+				71222B9E2435169100CDBABD /* kunixsocket.cpp in Sources */,
+				71222BA62435169100CDBABD /* devzero.cpp in Sources */,
+				71222B462435163F00CDBABD /* recorder.cpp in Sources */,
+				71222B882435169100CDBABD /* fsdiropennode.cpp in Sources */,
+				71222B6D2435169100CDBABD /* common_sse.cpp in Sources */,
+				71222B6B2435169100CDBABD /* common_sse2.cpp in Sources */,
+				71222B2D243515F200CDBABD /* zip.c in Sources */,
+				71222B652435169100CDBABD /* common_pushpop.cpp in Sources */,
+				71222B442435163F00CDBABD /* fileutils.cpp in Sources */,
+				71222B7B2435169100CDBABD /* soft_wo_page.cpp in Sources */,
+				71222B942435169100CDBABD /* startupArgs.cpp in Sources */,
+				71222BBC2435169100CDBABD /* glfunctions_ext1.cpp in Sources */,
+				71222B952435169100CDBABD /* mainloop.cpp in Sources */,
+				71222B2A243515D800CDBABD /* inflate.c in Sources */,
+				71222B992435169100CDBABD /* cpuinfo.cpp in Sources */,
+				71222BAB2435169100CDBABD /* kfile.cpp in Sources */,
+				71222B6C2435169100CDBABD /* common_bit.cpp in Sources */,
+				71222BB72435169100CDBABD /* ktimer.cpp in Sources */,
+				71222B7F2435169100CDBABD /* soft_ro_page.cpp in Sources */,
+				71222B702435169100CDBABD /* common_xchg.cpp in Sources */,
+				71222B982435169100CDBABD /* bufferaccess.cpp in Sources */,
+				71222B36243515F200CDBABD /* inffast.c in Sources */,
+				71222B3B2435160800CDBABD /* platform.cpp in Sources */,
+				71222B762435169100CDBABD /* x32CPU.cpp in Sources */,
+				71222BBE2435169100CDBABD /* glfunctions_ext2.cpp in Sources */,
+				71222BA52435169100CDBABD /* devtty.cpp in Sources */,
+				71222B612435169100CDBABD /* x64Asm.cpp in Sources */,
+				71222B812435169100CDBABD /* soft_invalid_page.cpp in Sources */,
+				71222B772435169100CDBABD /* soft_memory.cpp in Sources */,
+				71222B9B2435169100CDBABD /* self.cpp in Sources */,
+				71222BB82435169100CDBABD /* kobject.cpp in Sources */,
+				71222B33243515F200CDBABD /* inftrees.c in Sources */,
+				71222B872435169100CDBABD /* fsmemopennode.cpp in Sources */,
+				71222B5F2435169100CDBABD /* x64CodeChunk.cpp in Sources */,
+				71222B902435169100CDBABD /* threadedMainloop.cpp in Sources */,
+				71222BC32435169100CDBABD /* glMarshal.cpp in Sources */,
+				71222B752435169100CDBABD /* normal_strings.cpp in Sources */,
+				71222B782435169100CDBABD /* soft_ondemand_page.cpp in Sources */,
+				71222B912435169100CDBABD /* sdlcallback.cpp in Sources */,
+				71222B31243515F200CDBABD /* infback.c in Sources */,
+				71222B8E2435169100CDBABD /* fszipopennode.cpp in Sources */,
+				71222B842435169100CDBABD /* fszip.cpp in Sources */,
+				71222B682435169100CDBABD /* common_mmx.cpp in Sources */,
+				71222B972435169100CDBABD /* sdlopengl.cpp in Sources */,
+				71222B9A2435169100CDBABD /* meminfo.cpp in Sources */,
+				71222B3A2435160800CDBABD /* platformThreads.cpp in Sources */,
+				71222B9C2435169100CDBABD /* kfilelock.cpp in Sources */,
+				71222BB32435169100CDBABD /* cpuscalingmaxfreq.cpp in Sources */,
+				71222B832435169100CDBABD /* hard_memory.cpp in Sources */,
+				71222BA32435169100CDBABD /* devsequencer.cpp in Sources */,
+				71222B37243515F200CDBABD /* adler32.c in Sources */,
+				71222BB22435169100CDBABD /* cpumaxfreq.cpp in Sources */,
+				71222BA02435169100CDBABD /* kprocess.cpp in Sources */,
+				71222B862435169100CDBABD /* fszipnode.cpp in Sources */,
+				71222B932435169100CDBABD /* winedrv.cpp in Sources */,
+				71222BA42435169100CDBABD /* devmixer.cpp in Sources */,
+				71222BBF2435169100CDBABD /* glcommon.cpp in Sources */,
+				71222B7D2435169100CDBABD /* soft_ram.cpp in Sources */,
+				71222B9D2435169100CDBABD /* ksignal.cpp in Sources */,
+				71222B642435169100CDBABD /* srcgen.cpp in Sources */,
+				71222BB92435169100CDBABD /* kpoll.cpp in Sources */,
+				71222B3C2435163100CDBABD /* testSSE.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		71FBFCA92433B815003F17F1 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -1653,14 +1997,95 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXVariantGroup section */
+		71222B202435140300CDBABD /* MainMenu.xib */ = {
+			isa = PBXVariantGroup;
+			children = (
+				71222B212435140300CDBABD /* Base */,
+			);
+			name = MainMenu.xib;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
 /* Begin XCBuildConfiguration section */
+		71222B272435140300CDBABD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
+				CODE_SIGN_ENTITLEMENTS = BoxedwineTest/BoxedwineTest.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					SIMDE_NO_NATIVE,
+					BOXEDWINE_HAS_SETJMP,
+					BOXEDWINE_64,
+					BOXEDWINE_ZLIB,
+					"SDL2=1",
+					BOXEDWINE_64BIT_MMU,
+					"GLH=<SDL_opengl.h>",
+					BOXEDWINE_OPENGL_SDL,
+					BOXEDWINE_GLHANDLE_ARB_POINTER,
+					__TEST,
+				);
+				INFOPLIST_FILE = BoxedwineTest/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = Boxedwine.BoxedwineTest;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SYSTEM_HEADER_SEARCH_PATHS = (
+					"/Users/jamesbryant/boxedwine-code/lib/glew/include",
+					"/Users/jamesbryant/boxedwine-code/lib/imgui",
+					"/Users/jamesbryant/boxedwine-code/lib/sdl2/include",
+				);
+			};
+			name = Debug;
+		};
+		71222B282435140300CDBABD /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
+				CODE_SIGN_ENTITLEMENTS = BoxedwineTest/BoxedwineTest.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					SIMDE_NO_NATIVE,
+					BOXEDWINE_HAS_SETJMP,
+					BOXEDWINE_64,
+					BOXEDWINE_ZLIB,
+					"SDL2=1",
+					BOXEDWINE_64BIT_MMU,
+					"GLH=<SDL_opengl.h>",
+					BOXEDWINE_OPENGL_SDL,
+					BOXEDWINE_GLHANDLE_ARB_POINTER,
+					__TEST,
+				);
+				INFOPLIST_FILE = BoxedwineTest/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = Boxedwine.BoxedwineTest;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SYSTEM_HEADER_SEARCH_PATHS = (
+					"/Users/jamesbryant/boxedwine-code/lib/glew/include",
+					"/Users/jamesbryant/boxedwine-code/lib/imgui",
+					"/Users/jamesbryant/boxedwine-code/lib/sdl2/include",
+				);
+			};
+			name = Release;
+		};
 		71FBFCBC2433B817003F17F1 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
@@ -1718,7 +2143,7 @@
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
@@ -1840,6 +2265,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		71222B292435140300CDBABD /* Build configuration list for PBXNativeTarget "BoxedwineTest" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				71222B272435140300CDBABD /* Debug */,
+				71222B282435140300CDBABD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		71FBFCA82433B815003F17F1 /* Build configuration list for PBXProject "Boxedwine" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
