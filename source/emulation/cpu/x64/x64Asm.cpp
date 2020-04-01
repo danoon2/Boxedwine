@@ -4209,9 +4209,7 @@ void X64Asm::addReturnFromTest() {
         write8(0x85);
         write32((U32)(offsetof(x64CPU, fpuState)));
     }
-
-    popNativeFlags();
-
+    restoreNativeState();
     write8(0xc3); // retn
 }
 #endif

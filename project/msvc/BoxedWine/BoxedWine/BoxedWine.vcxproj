@@ -164,7 +164,7 @@
       <PreprocessorDefinitions>GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;LOG_SYSCALLS;BOXEDWINE_HAS_SETJMP;BOXEDWINE_ZLIB;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_MSVC;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\lib\glew\include;..\..\..\..\lib\imgui</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
-      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <PrecompiledHeaderFile>boxedwine.h</PrecompiledHeaderFile>
       <PrecompiledHeader>Use</PrecompiledHeader>
@@ -217,7 +217,7 @@
       <PreprocessorDefinitions>GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;BOXEDWINE_64;BOXEDWINE_ZLIB;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;BOXEDWINE_64BIT_MMU;_NO_DEBUG_HEAP=0;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\lib\glew\include;..\..\..\..\lib\imgui</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
-      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <ExceptionHandling>Sync</ExceptionHandling>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <BufferSecurityCheck>false</BufferSecurityCheck>
@@ -242,13 +242,13 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;BOXEDWINE_64;SDL2;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;BOXEDWINE_ZLIB;BOXEDWINE_64BIT_MMU;__TEST;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;_NO_DEBUG_HEAP=0;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;BOXEDWINE_64;SDL2;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;BOXEDWINE_ZLIB;BOXEDWINE_64BIT_MMU;__TEST;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\lib\glew\include;..\..\..\..\lib\imgui</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <ExceptionHandling>Sync</ExceptionHandling>
-      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
-      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <BufferSecurityCheck>true</BufferSecurityCheck>
       <PrecompiledHeaderFile>boxedwine.h</PrecompiledHeaderFile>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -333,7 +333,7 @@
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
       <UndefinePreprocessorDefinitions>
       </UndefinePreprocessorDefinitions>
-      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <PrecompiledHeaderFile>boxedwine.h</PrecompiledHeaderFile>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <LanguageStandard>stdcpp17</LanguageStandard>

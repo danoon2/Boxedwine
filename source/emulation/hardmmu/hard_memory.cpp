@@ -37,7 +37,7 @@ Memory::Memory() : allocated(0), callbackPos(0) {
 #else
     if (!KSystem::useLargeAddressSpace) {
         this->eipToHostInstructionPages = new void** [K_NUMBER_OF_PAGES];
-        memset(this->eipToHostInstructionPages, 0, sizeof(this->eipToHostInstructionPages));
+        memset(this->eipToHostInstructionPages, 0, K_NUMBER_OF_PAGES*sizeof(void**));
     } else {
         this->eipToHostInstructionPages = NULL;
     }
@@ -686,29 +686,35 @@ U8* getPhysicalWriteAddress(U32 address, U32 len) {
 #ifdef BOXEDWINE_X64
 // called when X64CodeChunk is being dealloc'd
 void Memory::removeCodeChunk(std::shared_ptr<X64CodeChunk>& chunk) {
-    U32 hostPage = ((U32)(size_t)chunk->getHostAddress()) >> K_PAGE_SHIFT;    
+    U32 hostPage = (U32)(((size_t)chunk->getHostAddress()) >> K_PAGE_SHIFT);
     if (this->codeChunksByHostPage.count(hostPage)) {
-        std::list<std::shared_ptr<X64CodeChunk>>& chunks = this->codeChunksByHostPage[hostPage];
-        chunks.remove(chunk);
+        std::shared_ptr< std::list<std::shared_ptr<X64CodeChunk>> > chunks = this->codeChunksByHostPage[hostPage];
+        chunks->remove(chunk);
+        if (chunks->size() == 0) {
+            this->codeChunksByHostPage.erase(hostPage);
+        }
     }
 
     U32 emulationPage = (chunk->getEip()) >> K_PAGE_SHIFT;
     if (this->codeChunksByEmulationPage.count(emulationPage)) {
-        std::list<std::shared_ptr<X64CodeChunk>>& chunks = this->codeChunksByEmulationPage[emulationPage];
-        chunks.remove(chunk);
+        std::shared_ptr< std::list<std::shared_ptr<X64CodeChunk>> > chunks = this->codeChunksByEmulationPage[emulationPage];
+        chunks->remove(chunk);
+        if (chunks->size() == 0) {
+            this->codeChunksByEmulationPage.erase(emulationPage);
+        }
     }
 }
 
 // called when X64CodeChunk is being alloc'd
 void Memory::addCodeChunk(std::shared_ptr<X64CodeChunk>& chunk) {
-    U32 hostPage = ((U32)(size_t)chunk->getHostAddress()) >> K_PAGE_SHIFT;
+    U32 hostPage = (U32)(((size_t)chunk->getHostAddress()) >> K_PAGE_SHIFT);
     U32 emulationPage = (chunk->getEip()) >> K_PAGE_SHIFT;
 #ifdef _DEBUG
-    U32 lastPage = hostPage+(((U32)(size_t)chunk->getHostAddress()+chunk->getHostAddressLen()) >> K_PAGE_SHIFT);
+    U32 lastPage = (U32)(((size_t)((U8*)chunk->getHostAddress() + chunk->getHostAddressLen())) >> K_PAGE_SHIFT);
     for (U32 i=hostPage;i<=lastPage;i++) {
         if (this->codeChunksByHostPage.count(hostPage)) {
-            std::list<std::shared_ptr<X64CodeChunk>>& chunks = this->codeChunksByHostPage[hostPage];
-            for (auto& otherChunk : chunks) {
+            std::shared_ptr< std::list<std::shared_ptr<X64CodeChunk>> > chunks = this->codeChunksByHostPage[hostPage];
+            for (auto& otherChunk : *chunks) {
                 if (otherChunk->containsHostAddress(chunk->getHostAddress())) {
                     kpanic("Memory::addCodeChunk chunks can not overlap");
                 }
@@ -716,17 +722,25 @@ void Memory::addCodeChunk(std::shared_ptr<X64CodeChunk>& chunk) {
         }
     }
 #endif
-    std::list<std::shared_ptr<X64CodeChunk>>& hostChunks = this->codeChunksByHostPage[hostPage];
-    hostChunks.push_back(chunk);
+    std::shared_ptr< std::list<std::shared_ptr<X64CodeChunk>> > hostChunks = this->codeChunksByHostPage[hostPage];
+    if (!hostChunks) {
+        hostChunks = std::make_shared< std::list<std::shared_ptr<X64CodeChunk>> >();
+        this->codeChunksByHostPage[hostPage] = hostChunks;
+    }
+    hostChunks->push_back(chunk);
 
-    std::list<std::shared_ptr<X64CodeChunk>>& chunks = this->codeChunksByEmulationPage[emulationPage];
-    chunks.push_back(chunk);
+    std::shared_ptr< std::list<std::shared_ptr<X64CodeChunk>> > chunks = this->codeChunksByEmulationPage[emulationPage];
+    if (!chunks) {
+        chunks = std::make_shared< std::list<std::shared_ptr<X64CodeChunk>> >();
+        this->codeChunksByEmulationPage[emulationPage] = chunks;
+    }
+    chunks->push_back(chunk);
 }
 
 void Memory::makePageDynamic(U32 page) {
     if (this->codeChunksByEmulationPage.count(page)) {
-        std::list<std::shared_ptr<X64CodeChunk>>& chunks = this->codeChunksByEmulationPage[page];
-        for (auto& chunk : chunks) {
+        std::shared_ptr< std::list<std::shared_ptr<X64CodeChunk>> > chunks = this->codeChunksByEmulationPage[page];
+        for (auto& chunk : *chunks) {
             if (!chunk->isDynamicAware()) {
                 chunk->invalidateStartingAt(chunk->getEip());
             }
@@ -742,8 +756,8 @@ void Memory::makePageDynamic(U32 page) {
     // check on the chunks in that page
     while (page>0) {
         if (this->codeChunksByEmulationPage.count(page)) {
-            std::list<std::shared_ptr<X64CodeChunk>>& chunks = this->codeChunksByEmulationPage[page];
-            for (auto& chunk : chunks) {
+            std::shared_ptr< std::list<std::shared_ptr<X64CodeChunk>> > chunks = this->codeChunksByEmulationPage[page];
+            for (auto& chunk : *chunks) {
                 if (chunk->containsEip(eip)) {
                     chunk->invalidateStartingAt(eip);
                     return;
@@ -758,10 +772,10 @@ void Memory::makePageDynamic(U32 page) {
 // only called during code patching, if this become a performance problem maybe we could just it up
 // like with soft_code_page
 std::shared_ptr<X64CodeChunk> Memory::getCodeChunkContainingHostAddress(void* hostAddress) {
-    U32 page = ((U32)(size_t)hostAddress) >> K_PAGE_SHIFT;
+    U32 page = (U32)((size_t)hostAddress >> K_PAGE_SHIFT);
     if (this->codeChunksByHostPage.count(page)) {
-        std::list<std::shared_ptr<X64CodeChunk>>& chunks = this->codeChunksByHostPage[page];
-        for (auto& chunk : chunks) {
+        std::shared_ptr< std::list<std::shared_ptr<X64CodeChunk>> > chunks = this->codeChunksByHostPage[page];
+        for (auto& chunk : *chunks) {
             if (chunk->containsHostAddress(hostAddress)) {
                 return chunk;
             }
@@ -773,8 +787,8 @@ std::shared_ptr<X64CodeChunk> Memory::getCodeChunkContainingHostAddress(void* ho
     // check on the chunks in that page
     while (page>0) {
         if (this->codeChunksByHostPage.count(page)) {
-            std::list<std::shared_ptr<X64CodeChunk>>& chunks = this->codeChunksByHostPage[page];
-            for (auto& chunk : chunks) {
+            std::shared_ptr< std::list<std::shared_ptr<X64CodeChunk>> > chunks = this->codeChunksByHostPage[page];
+            for (auto& chunk : *chunks) {
                 if (chunk->containsHostAddress(hostAddress)) {
                     return chunk;
                 }

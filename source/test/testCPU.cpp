@@ -70,7 +70,8 @@ void assertTrue(int b) {
 }
 
 void setup() {
-    if (!memory) {      
+    if (!memory) {    
+        KSystem::useLargeAddressSpace = false;
         KProcess* process = new KProcess(KSystem::nextThreadId++);
         memory = new Memory();
         process->memory = memory;

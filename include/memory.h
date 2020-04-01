@@ -150,8 +150,8 @@ private:
 #define EXECUTABLE_MAX_SIZE_POWER 22
 #define EXECUTABLE_SIZES 16
 
-    std::unordered_map<U32, std::list< std::shared_ptr<X64CodeChunk> >> codeChunksByHostPage;
-    std::unordered_map<U32, std::list< std::shared_ptr<X64CodeChunk> >> codeChunksByEmulationPage;
+    std::unordered_map<U32, std::shared_ptr< std::list< std::shared_ptr<X64CodeChunk> > >> codeChunksByHostPage;
+    std::unordered_map<U32, std::shared_ptr< std::list< std::shared_ptr<X64CodeChunk> > >> codeChunksByEmulationPage;
 
     std::list<void*> freeExecutableMemory[EXECUTABLE_SIZES];
 public:
