@@ -237,7 +237,9 @@ void KProcess::deleteThreadAndProcessIfLastThread(KThread* thread) {
 			this->memory->decRefCount();
 			this->memory = NULL;
 		}
+#ifdef _DEBUG
         U32 pid = this->id;
+#endif
 		delete thread;
 		if (this->pendingDelete) {
             klog("about to delete process id %d", this->id);
@@ -586,7 +588,6 @@ KThread* KProcess::startProcess(const std::string& currentDirectory, const std::
     KThread* thread = this->createThread();
     U32 i;
     FsOpenNode* openNode = NULL;
-    bool result = false;
     std::string name;
 
     thread->setupStack();
@@ -1552,7 +1553,6 @@ and is now available for re-use. */
 #define K_CLONE_IO                0x80000000      /* Clone io context */
 
 U32 KProcess::clone(U32 flags, U32 child_stack, U32 ptid, U32 tls, U32 ctid) {    
-    U32 mask = flags & CSIGNAL;
     flags &= ~CSIGNAL;
     
     if (!(flags & K_CLONE_THREAD)) { // new thread group (process)
@@ -1625,9 +1625,11 @@ U32 KProcess::clone(U32 flags, U32 child_stack, U32 ptid, U32 tls, U32 ctid) {
             scheduleThread(newThread);
             BOXEDWINE_CONDITION_WAIT(newProcess->exitOrExecCond);
             BOXEDWINE_CONDITION_UNLOCK(newProcess->exitOrExecCond);
+#ifdef BOXEDWINE_MULTI_THREADED
 			if (KThread::currentThread()->terminating) {
 				return -K_EINTR;
 			}
+#endif
         } else {
             //klog("starting %d/%d", newThread->process->id, newThread->id);            
             scheduleThread(newThread);
@@ -1912,7 +1914,6 @@ U32 KProcess::mremap(U32 oldaddress, U32 oldsize, U32 newsize, U32 flags) {
     if (oldsize==0) {
         kpanic("mremap not implemented for oldsize==0");
     }
-    U32 pageStart = oldaddress>>K_PAGE_SHIFT;
     U32 oldPageCount = oldsize>>K_PAGE_SHIFT;
     U32 pageFlags = this->memory->getPageFlags(oldaddress >> K_PAGE_SHIFT);
 
@@ -2484,8 +2485,6 @@ void KProcess::attachSHM(U32 address, const BoxedPtr<SHM>& shm) {
 
 U32 KProcess::shmdt(U32 shmaddr) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(attachedShmMutex);
-    S32 shmid = -1;
-    U32 page = shmaddr >> K_PAGE_SHIFT;
 
     if (this->attachedShm.count(shmaddr)) {
         BoxedPtr<AttachedSHM> attached = this->attachedShm[shmaddr];

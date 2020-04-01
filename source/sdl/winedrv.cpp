@@ -613,7 +613,7 @@ void boxeddrv_IsClipboardFormatAvailable(CPU* cpu) {
 void boxeddrv_MapVirtualKeyEx(CPU* cpu) {
     U32 wCode = ARG1;
     U32 wMapType = ARG2;
-    U32 hkl = ARG3;
+    //U32 hkl = ARG3;
 
     if (wMapType == 2) { // MAPVK_VK_TO_CHAR
         EAX = sdlVirtualKeyToChar(wCode);
@@ -656,7 +656,7 @@ void boxeddrv_SetClipboardData(CPU* cpu) {
 #ifdef SDL2
     U32 format = ARG1;
     char* text = 0;
-    int len = ARG3;
+    //int len = ARG3;
     char tmp[MAX_FILEPATH_LEN];
 
     if (format == CF_TEXT) {
@@ -700,7 +700,7 @@ void boxeddrv_SetCursor(CPU* cpu) {
 }
 
 void boxeddrv_SetCursorBits(CPU* cpu) {
-    U32 hCursor = ARG1;
+    //U32 hCursor = ARG1;
     U32 wModuleName = ARG2;
     U32 wResName = ARG3;
     U32 resId = ARG4;
@@ -1371,7 +1371,7 @@ void boxeddrv_FlushSurface(CPU* cpu) {
 }
 
 void boxeddrv_CreateDC(CPU* cpu) {
-    U32 physdev = ARG1;    
+    //U32 physdev = ARG1;
 }
 
 void boxeddrv_GetSystemPalette(CPU* cpu) {
@@ -1407,7 +1407,7 @@ void boxeddrv_RealizePalette(CPU* cpu) {
 }
 
 void boxeddrv_RealizeDefaultPalette(CPU* cpu) {
-    int numberOfEntries = ARG1;
+    //int numberOfEntries = ARG1;
     U32 entries = ARG2;
 
     sdlRealizeDefaultPalette();

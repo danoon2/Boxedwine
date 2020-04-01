@@ -39,7 +39,7 @@ KThread::~KThread() {
 
 void KThread::cleanup() {
     BOXEDWINE_CONDITION_SIGNAL_ALL_NEED_LOCK(this->waitingForSignalToEndCond);
-    if (this->clear_child_tid && this->process && this->process->memory->isValidWriteAddress(this->clear_child_tid, 4)) {
+    if (!KSystem::shutingDown && this->clear_child_tid && this->process && this->process->memory->isValidWriteAddress(this->clear_child_tid, 4)) {
         writed(this->clear_child_tid, 0);
         this->futex(this->clear_child_tid, 1, 1, 0);        
     }
@@ -320,10 +320,12 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime) {
                 BOXEDWINE_CONDITION_WAIT_TIMEOUT(f->cond, (U32)diff);
             } else {
                 BOXEDWINE_CONDITION_WAIT(f->cond);
-            }  
+            }
+#ifdef BOXEDWINE_MULTI_THREADED
 			if (this->terminating) {
 				return -K_EINTR; // probably doesn't matter
 			}
+#endif
         }
     } else if (op==FUTEX_WAKE_PRIVATE || op==FUTEX_WAKE) {
         int i;
@@ -762,8 +764,6 @@ void KThread::runSignal(U32 signal, U32 trapNo, U32 errorNo) {
 
 void KThread::seg_mapper(U32 address, bool readFault, bool writeFault, bool throwException) {
     if (this->process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_IGN && this->process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_DFL) {
-        U32 eip = this->cpu->eip.u32;
-
         this->process->sigActions[K_SIGSEGV].sigInfo[0] = K_SIGSEGV;		
         this->process->sigActions[K_SIGSEGV].sigInfo[1] = 0;
         this->process->sigActions[K_SIGSEGV].sigInfo[2] = 1; // SEGV_MAPERR
@@ -783,7 +783,6 @@ void KThread::seg_mapper(U32 address, bool readFault, bool writeFault, bool thro
 
 void KThread::seg_access(U32 address, bool readFault, bool writeFault, bool throwException) {
     if (this->process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_IGN && this->process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_DFL) {
-        U32 eip = this->cpu->eip.u32;
 
         this->process->sigActions[K_SIGSEGV].sigInfo[0] = K_SIGSEGV;		
         this->process->sigActions[K_SIGSEGV].sigInfo[1] = 0;
@@ -863,9 +862,11 @@ U32 KThread::sleep(U32 ms) {
         BOXEDWINE_CONDITION_LOCK(this->sleepCond);
         BOXEDWINE_CONDITION_WAIT_TIMEOUT(this->sleepCond, ms);
         BOXEDWINE_CONDITION_UNLOCK(this->sleepCond);
+#ifdef BOXEDWINE_MULTI_THREADED
 		if (this->terminating) {
 			return -K_EINTR;
 		}
+#endif
     }
 }
 
@@ -922,9 +923,11 @@ U32 KThread::sigsuspend(U32 mask, U32 sigsetSize) {
     }
     BOXEDWINE_CONDITION_LOCK(this->waitingForSignalToEndCond);
     BOXEDWINE_CONDITION_WAIT(this->waitingForSignalToEndCond);
-    BOXEDWINE_CONDITION_UNLOCK(this->waitingForSignalToEndCond);	
+    BOXEDWINE_CONDITION_UNLOCK(this->waitingForSignalToEndCond);
+#ifdef BOXEDWINE_MULTI_THREADED
     this->waitingForSignalToEndMaskToRestore = 0;
     return -K_EINTR;
+#endif
 }
 
 U32 KThread::signalstack(U32 ss, U32 oss) {

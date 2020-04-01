@@ -1,5 +1,5 @@
 #ifndef __APP_OPTIONS_H__
-#define __App_OPTIONS_H__
+#define __APP_OPTIONS_H__
 
 class AppOptionsDlg : public BaseDlg {
 public:

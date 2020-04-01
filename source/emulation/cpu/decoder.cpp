@@ -1373,7 +1373,7 @@ const InstructionInfo instructionInfo[] = {
     {0, 0, 0, 0, 0, 0} // Custom1
 };
 
-
+#ifdef _DEBUG
 struct LogInstruction;
 
 typedef void (*LogFormat)(const LogInstruction* inst, DecodedOp* op, CPU* cpu);
@@ -1783,7 +1783,6 @@ static void logMXmm(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
     fprintf((FILE*)cpu->logFile, "%s", inst->name);
 }
 
-#ifdef _DEBUG
 const LogInstruction instructionLog[] = {
     {"Add", 8, logRE},
     {"Add", 8, logER},

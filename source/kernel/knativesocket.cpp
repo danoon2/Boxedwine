@@ -397,11 +397,7 @@ bool KNativeSocketObject::isReadReady() {
     memset((char *)&nowait,0,sizeof(nowait));
 
     ::select(this->nativeSocket+1,&sready,NULL,NULL,&nowait);
-    bool result = FD_ISSET(this->nativeSocket,&sready)!=0;
-    if (result) {
-        int ii=0;
-    }
-    return result;
+    return FD_ISSET(this->nativeSocket,&sready)!=0;
 }
 
 bool KNativeSocketObject::isWriteReady() {
@@ -413,11 +409,7 @@ bool KNativeSocketObject::isWriteReady() {
     memset((char *)&nowait,0,sizeof(nowait));
 
     ::select(this->nativeSocket+1,NULL,&sready,NULL,&nowait);
-    bool result = FD_ISSET(this->nativeSocket,&sready)!=0;
-    if (result) {
-        int ii=0;
-    }
-    return result;
+    return FD_ISSET(this->nativeSocket,&sready)!=0;
 }
 
 void KNativeSocketObject::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) {
@@ -435,7 +427,7 @@ void KNativeSocketObject::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U3
 }
 
 U32 KNativeSocketObject::writeNative(U8* buffer, U32 len) {
-    S32 result = ::send(this->nativeSocket, (const char*)buffer, len, this->flags);
+    S32 result = (S32)::send(this->nativeSocket, (const char*)buffer, len, this->flags);
     if (result>=0) {            
         this->error = 0;
         return result;
@@ -444,7 +436,7 @@ U32 KNativeSocketObject::writeNative(U8* buffer, U32 len) {
 }
 
 U32 KNativeSocketObject::readNative(U8* buffer, U32 len) {
-    S32 result = ::recv(this->nativeSocket, (char*)buffer, len, this->flags);
+    S32 result = (S32)::recv(this->nativeSocket, (char*)buffer, len, this->flags);
     if (result>=0) {  
         this->error = 0;
         return result;
@@ -740,7 +732,7 @@ U32 KNativeSocketObject::recvmsg(KFileDescriptor* fd, U32 address, U32 flags) {
 
             if (len>sizeof(tmp))
                 len = sizeof(tmp);
-            r = ::recvfrom(this->nativeSocket, tmp, len, 0, (struct sockaddr*)&in, &inLen);
+            r = (S32)::recvfrom(this->nativeSocket, tmp, len, 0, (struct sockaddr*)&in, &inLen);
             if (r>=0) {
                 memcopyFromNative(p, tmp, r);
                 // :TODO: maybe copied fields to the expected location rather than assume the structures are the same
@@ -776,7 +768,7 @@ U32 KNativeSocketObject::sendto(KFileDescriptor* fd, U32 message, U32 length, U3
     memcopyToNative(dest_addr, &dest, len);
     S8* tmp = new S8[length];
     memcopyToNative(message, tmp, length);
-    result = ::sendto(this->nativeSocket, (char*)tmp, length, nativeFlags, &dest, len);
+    result = (U32)::sendto(this->nativeSocket, (char*)tmp, length, nativeFlags, &dest, len);
     delete[] tmp;
     if ((S32)result>=0) {
         this->error = 0;
@@ -811,7 +803,7 @@ U32 KNativeSocketObject::recvfrom(KFileDescriptor* fd, U32 buffer, U32 length, U
     }
     outLen = inLen;
     // :TODO: what about tmp size
-    U32 result = :: recvfrom(this->nativeSocket, tmp, length, nativeFlags, (struct sockaddr*)fromBuffer, &outLen);
+    U32 result = (U32)::recvfrom(this->nativeSocket, tmp, length, nativeFlags, (struct sockaddr*)fromBuffer, &outLen);
     if ((S32)result>=0) {
         memcopyFromNative(buffer, tmp, result);
         memcopyFromNative(address, fromBuffer, inLen);

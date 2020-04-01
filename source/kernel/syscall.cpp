@@ -34,7 +34,6 @@ extern struct Block emptyBlock;
 #ifdef LOG_OPS
 void logsyscall(const char* fmt, ...) {
     va_list args;
-    static bool log = false;
     va_start(args, fmt);
     if (1) {
         char tmp[256];

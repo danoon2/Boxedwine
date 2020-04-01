@@ -268,8 +268,6 @@ U32 KSystem::waitpid(S32 pid, U32 statusAddress, U32 options) {
                 process = 0;			
             }
         } else {
-            U32 index=0;        
-
             if (pid==0)
                 pid = thread->process->groupId;
             for (auto& n : KSystem::processes) {
@@ -294,9 +292,11 @@ U32 KSystem::waitpid(S32 pid, U32 statusAddress, U32 options) {
                 return 0;
             } else {                
                 BOXEDWINE_CONDITION_WAIT(processesCond);
+#ifdef BOXEDWINE_MULTI_THREADED
 				if (KThread::currentThread()->terminating) {
 					return -K_EINTR;
 				}
+#endif
             }
         }     
     }
@@ -489,7 +489,6 @@ U32 KSystem::shmat(U32 shmid, U32 shmaddr, U32 shmflg, U32 rtnAddr) {
     KThread* thread = KThread::currentThread();
     U32 result = 0;
     U32 permissions;
-    S32 attachSlot = -1;
     BoxedPtr<SHM> shm;
 
     if (shmid & PRIVATE_SHMID)

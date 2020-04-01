@@ -36,7 +36,7 @@ U32 DevMixer::ioctl(U32 request) {
     U32 len = (request >> 16) & 0x3FFF;
     KThread* thread = KThread::currentThread();
     CPU* cpu = thread->cpu;
-    bool read = (request & 0x40000000) != 0;
+    //bool read = (request & 0x40000000) != 0;
     bool write = (request & 0x80000000) != 0;
     U32 i;
 

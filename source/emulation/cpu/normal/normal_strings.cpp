@@ -162,12 +162,12 @@ void cmpsb16r(CPU* cpu, U32 rep_zero, U32 base) {
     U32 dBase = cpu->seg[ES].address;
     U32 sBase = cpu->seg[base].address;
     S32 inc = cpu->df;
-    U8 v1;
-    U8 v2;
     U32 count = CX;
-    U32 i;
+
     if (count) {
-        for (i=0;i<count;i++) {
+        U8 v1=0;
+        U8 v2=0;
+        for (U32 i=0;i<count;i++) {
             v1 = readb(dBase+DI);
             v2 = readb(sBase+SI);
             DI+=inc;
@@ -200,12 +200,11 @@ void cmpsb32r(CPU* cpu, U32 rep_zero, U32 base) {
     U32 dBase = cpu->seg[ES].address;
     U32 sBase = cpu->seg[base].address;
     S32 inc = cpu->df;
-    U8 v1;
-    U8 v2;
     U32 count = ECX;
-    U32 i;
     if (count) {
-        for (i=0;i<count;i++) {
+        U8 v1=0;
+        U8 v2=0;
+        for (U32 i=0;i<count;i++) {
             v1 = readb(dBase+EDI);
             v2 = readb(sBase+ESI);
             EDI+=inc;
@@ -238,12 +237,11 @@ void cmpsw16r(CPU* cpu, U32 rep_zero, U32 base) {
     U32 dBase = cpu->seg[ES].address;
     U32 sBase = cpu->seg[base].address;
     S32 inc = cpu->df << 1;
-    U16 v1;
-    U16 v2;
     U32 count = CX;
-    U32 i;
     if (count) {
-        for (i=0;i<count;i++) {
+        U16 v1=0;
+        U16 v2=0;
+        for (U32 i=0;i<count;i++) {
             v1 = readw(dBase+DI);
             v2 = readw(sBase+SI);
             DI+=inc;
@@ -276,12 +274,11 @@ void cmpsw32r(CPU* cpu, U32 rep_zero, U32 base) {
     U32 dBase = cpu->seg[ES].address;
     U32 sBase = cpu->seg[base].address;
     S32 inc = cpu->df << 1;
-    U16 v1;
-    U16 v2;
     U32 count = ECX;
-    U32 i;
     if (count) {
-        for (i=0;i<count;i++) {
+        U16 v1=0;
+        U16 v2=0;
+        for (U32 i=0;i<count;i++) {
             v1 = readw(dBase+EDI);
             v2 = readw(sBase+ESI);
             EDI+=inc;
@@ -314,12 +311,11 @@ void cmpsd16r(CPU* cpu, U32 rep_zero, U32 base) {
     U32 dBase = cpu->seg[ES].address;
     U32 sBase = cpu->seg[base].address;
     S32 inc = cpu->df << 2;
-    U32 v1;
-    U32 v2;
     U32 count = CX;
-    U32 i;
     if (count) {
-        for (i=0;i<count;i++) {
+        U32 v1=0;
+        U32 v2=0;
+        for (U32 i=0;i<count;i++) {
             v1 = readd(dBase+DI);
             v2 = readd(sBase+SI);
             DI+=inc;
@@ -352,12 +348,11 @@ void cmpsd32r(CPU* cpu, U32 rep_zero, U32 base) {
     U32 dBase = cpu->seg[ES].address;
     U32 sBase = cpu->seg[base].address;
     S32 inc = cpu->df << 2;
-    U32 v1;
-    U32 v2;
     U32 count = ECX;
-    U32 i;
     if (count) {
-        for (i=0;i<count;i++) {
+        U32 v1=0;
+        U32 v2=0;
+        for (U32 i=0;i<count;i++) {
             v1 = readd(dBase+EDI);
             v2 = readd(sBase+ESI);
             EDI+=inc;
@@ -565,11 +560,10 @@ void scasb16(CPU* cpu, U32 rep_zero) {
 void scasb16r(CPU* cpu, U32 rep_zero) {
     U32 dBase = cpu->seg[ES].address;
     S32 inc = cpu->df;
-    U8 v1;
     U32 count = CX;
-    U32 i;
     if (count) {
-        for (i=0;i<count;i++) {
+        U8 v1 = 0;
+        for (U32 i=0;i<count;i++) {
             v1 = readb(dBase+DI);
             DI+=inc;
             CX--;
@@ -595,11 +589,10 @@ void scasb32(CPU* cpu, U32 rep_zero) {
 void scasb32r(CPU* cpu, U32 rep_zero) {
     U32 dBase = cpu->seg[ES].address;
     S32 inc = cpu->df;
-    U8 v1;
     U32 count = ECX;
-    U32 i;
     if (count) {
-        for (i=0;i<count;i++) {
+        U8 v1=0;
+        for (U32 i=0;i<count;i++) {
             v1 = readb(dBase+EDI);
             EDI+=inc;
             ECX--;
@@ -625,11 +618,10 @@ void scasw16(CPU* cpu, U32 rep_zero) {
 void scasw16r(CPU* cpu, U32 rep_zero) {
     U32 dBase = cpu->seg[ES].address;
     S32 inc = cpu->df << 1;
-    U16 v1;
     U32 count = CX;
-    U32 i;
     if (count) {
-        for (i=0;i<count;i++) {
+        U16 v1=0;
+        for (U32 i=0;i<count;i++) {
             v1 = readw(dBase+DI);
             DI+=inc;
             CX--;
@@ -655,11 +647,10 @@ void scasw32(CPU* cpu, U32 rep_zero) {
 void scasw32r(CPU* cpu, U32 rep_zero) {
     U32 dBase = cpu->seg[ES].address;
     S32 inc = cpu->df << 1;
-    U16 v1;
     U32 count = ECX;
-    U32 i;
     if (count) {
-        for (i=0;i<count;i++) {
+        U16 v1=0;
+        for (U32 i=0;i<count;i++) {
             v1 = readw(dBase+EDI);
             EDI+=inc;
             ECX--;
@@ -685,11 +676,10 @@ void scasd16(CPU* cpu, U32 rep_zero) {
 void scasd16r(CPU* cpu, U32 rep_zero) {
     U32 dBase = cpu->seg[ES].address;
     S32 inc = cpu->df << 2;
-    U32 v1;
     U32 count = CX;
-    U32 i;
     if (count) {
-        for (i=0;i<count;i++) {
+        U32 v1=0;
+        for (U32 i=0;i<count;i++) {
             v1 = readd(dBase+DI);
             DI+=inc;
             CX--;
@@ -715,11 +705,10 @@ void scasd32(CPU* cpu, U32 rep_zero) {
 void scasd32r(CPU* cpu, U32 rep_zero) {
     U32 dBase = cpu->seg[ES].address;
     S32 inc = cpu->df << 2;
-    U32 v1;
     U32 count = ECX;
-    U32 i;
     if (count) {
-        for (i=0;i<count;i++) {
+        U32 v1=0;
+        for (U32 i=0;i<count;i++) {
             v1 = readd(dBase+EDI);
             EDI+=inc;
             ECX--;

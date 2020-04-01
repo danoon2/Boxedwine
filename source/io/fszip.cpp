@@ -95,9 +95,6 @@ bool FsZip::init(const std::string& zipPath, const std::string& mount) {
 
             unzGoToNextFile(this->zipfile);
         }
-        if (0) {
-            Fs::makeLocalDirs(mount);
-        }
         for (i = 0; i < global_info.number_entry; ++i) {
             std::string parentPath = Fs::getParentPath(zipInfo[i].filename);            
             BoxedPtr<FsNode> parent = Fs::getNodeFromLocalPath("", parentPath, true);

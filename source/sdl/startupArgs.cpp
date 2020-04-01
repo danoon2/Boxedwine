@@ -52,7 +52,7 @@ int StartUpArgs::parse_resolution(const char *resolutionString, U32 *width, U32 
     char *end;
 
     // Parse the width
-    *width = strtoul(resolutionString, &end, 10);
+    *width = (U32)strtoul(resolutionString, &end, 10);
 
     // Width parsing failed, pointer not moved
     if (end == resolutionString) 
@@ -66,7 +66,7 @@ int StartUpArgs::parse_resolution(const char *resolutionString, U32 *width, U32 
     resolutionString = end + 1;
 
     // Attempt to parse the height
-    *height = strtoul(resolutionString, &end, 10);
+    *height = (U32)strtoul(resolutionString, &end, 10);
 
     // Height parsing failed, character not null (end of string)
     if (*end)

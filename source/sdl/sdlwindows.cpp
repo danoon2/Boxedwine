@@ -729,7 +729,9 @@ void sdlSwapBuffers(KThread* thread) {
 }
 
 #ifdef SDL2
+#ifndef BOXEDWINE_64BIT_MMU
 static S8 sdlBuffer[1024*1024*4];
+#endif
 #endif
 
 void wndBlt(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32 yOrg, U32 width, U32 height, U32 rect) {
@@ -742,10 +744,8 @@ void wndBlt(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32 yOrg, U32 width, 
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(sdlMutex);
     Wnd* wnd = getWnd(hwnd);
     wRECT r;
-    U32 y;    
     int bpp = screenBpp==8?32:screenBpp;
     int pitch = (width*((bpp+7)/8)+3) & ~3;
-    static int i;
 
     if (!sdlRenderer) {
         // final reality will draw its main start window while an OpenGL context is still going
@@ -1217,7 +1217,6 @@ int sdlMouseMouse(int x, int y, bool relative) {
         if (process) {
             KFileDescriptor* fd = process->getFileDescriptor(process->eventQueueFD);
             if (fd) {
-                Memory* memory = process->memory;
                 U8 buffer[28];
 
                 if (!sdlWindowIsGL) {
@@ -1252,7 +1251,6 @@ int sdlMouseWheel(int amount, int x, int y) {
         if (process) {
             KFileDescriptor* fd = process->getFileDescriptor(process->eventQueueFD);
             if (fd) {
-                Memory* memory = process->memory;
                 U8 buffer[28];
 
                 if (!sdlWindowIsGL) {
@@ -1287,7 +1285,6 @@ int sdlMouseButton(U32 down, U32 button, int x, int y) {
         if (process) {
             KFileDescriptor* fd = process->getFileDescriptor(process->eventQueueFD);
             if (fd) {
-                Memory* memory = process->memory;
                 U32 flags = MOUSEEVENTF_MOVE|MOUSEEVENTF_ABSOLUTE;
                 U8 buffer[28];
 
@@ -1358,7 +1355,7 @@ U32 sdlSetCursor(KThread* thread, char* moduleName, char* resourceName, int reso
 
 void sdlCreateAndSetCursor(KThread* thread, char* moduleName, char* resourceName, int resource, U8* and_bits, U8* xor_bits, int width, int height, int hotX, int hotY) {
     SDL_Cursor* cursor;
-    int byteCount = (width+31) / 31 * 4 * height;
+    //int byteCount = (width+31) / 31 * 4 * height;
     int dst,src,y, x;
     U8 data_bits[64*64/8];
     U8 mask_bits[64*64/8];
@@ -1515,7 +1512,6 @@ int sdlKey(U32 key, U32 down) {
             if (fd) {
                 U16 vKey = 0;
                 U16 scan = 0;
-                Memory* memory = process->memory;
                 U8 buffer[28];
 
                 U32 flags = 0;

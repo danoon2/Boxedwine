@@ -266,9 +266,6 @@ void readResourceDirectory(FILE* f, uint32_t resourceVirtualAddress, uint32_t ba
                     data = (ImageResourceDataEntry*)buffer;
                 }
                 if (data->Size>0 && data->Size<1024*1024) {
-                    int width=0;
-                    int height=0;
-                    int comp=4;
                     fseek(f, (data->OffsetToData-resourceVirtualAddress)+baseResourceFileOffset, SEEK_SET);
                     IconInfo info;
                     fread(&info.bih, 1, sizeof(BitmapInfoHeader), f);
@@ -524,7 +521,7 @@ const unsigned char* extractIconFromExe(const std::string& nativeExePath, int si
         }
         fseek(f, nextHeader + header->ne_rsrctab, SEEK_SET);
         U16 alignShiftCount = getWord(f);
-        U8* resBuffer = (buffer + nextHeader + header->ne_rsrctab+2);
+        //U8* resBuffer = (buffer + nextHeader + header->ne_rsrctab+2);
         fseek(f, nextHeader + header->ne_rsrctab+2, SEEK_SET);
 
         while (true) {
@@ -536,10 +533,10 @@ const unsigned char* extractIconFromExe(const std::string& nativeExePath, int si
             }
             if (typeId==0x800e) {
                 for (int i=0;i<(int)count;i++) {
-                    U32 fileOffset = ((U32)getWord(f)) << alignShiftCount;
-                    U16 resourceLen = getWord(f) << alignShiftCount;
-                    U16 flags = getWord(f);
-                    U16 id = getWord(f);
+                    //U32 fileOffset = ((U32)getWord(f)) << alignShiftCount;
+                    //U16 resourceLen = getWord(f) << alignShiftCount;
+                    //U16 flags = getWord(f);
+                    //U16 id = getWord(f);
                     fseek(f, 4, SEEK_CUR); // internal use
                     // RT_GROUP_ICON structure
                     /*
@@ -555,9 +552,9 @@ const unsigned char* extractIconFromExe(const std::string& nativeExePath, int si
                 for (int i=0;i<(int)count;i++) {
                     IconInfo info;
                     info.fileOffset = ((U32)getWord(f)) << alignShiftCount;
-                    U16 resourceLen = getWord(f) << alignShiftCount;
-                    U16 flags = getWord(f);
-                    U16 id = getWord(f);
+                    //U16 resourceLen = getWord(f) << alignShiftCount;
+                    //U16 flags = getWord(f);
+                    //U16 id = getWord(f);
                     fseek(f, 4, SEEK_CUR); // internal use
                     U32 pos = (U32)ftell(f);                    
                     fseek(f, info.fileOffset, SEEK_SET);

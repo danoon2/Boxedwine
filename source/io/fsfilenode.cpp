@@ -252,7 +252,7 @@ S32 translateErr(U32 e) {
 
 U32 FsFileNode::rename(const std::string& path) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->openNodesMutex);
-    U32 result;
+    U32 result=0;
     S64* tmpPos = NULL;
 
     this->ensurePathIsLocal();

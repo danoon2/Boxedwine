@@ -75,8 +75,6 @@ U32 FsMemOpenNode::readNative(U8* buffer, U32 len) {
 }
 
 U32 FsMemOpenNode::writeNative(U8* buffer, U32 len) {
-    U32 result = len;
-
     if (len==0)
         return 0;
     this->lastModifiedTime = KSystem::getSystemTimeAsMicroSeconds() / 1000l;

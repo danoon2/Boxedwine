@@ -61,7 +61,7 @@ void fbSetupScreen();
 void sdl_glXCreateContext(CPU* cpu) {
     U32 doubleBuffered = ARG6;
     U32 format = ARG5;
-    U32 share = ARG4;
+    //U32 share = ARG4;
     U32 accum = ARG3;
     U32 stencil = ARG2;
     U32 depth = ARG1;	
@@ -90,7 +90,7 @@ void sdl_glXDestroyContext(CPU* cpu) {
 
 // Bool glXMakeCurrent(Display *dpy, GLXDrawable drawable, GLXContext ctx) 
 void sdl_glXMakeCurrent(CPU* cpu) {
-    U32 isWindow = ARG5;
+    //U32 isWindow = ARG5;
     U32 depth = ARG4;
     U32 height = ARG3;
     U32 width = ARG2;

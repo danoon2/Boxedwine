@@ -215,7 +215,8 @@ public:
     static CPU* allocCPU();
 
     CPU();
-
+    virtual ~CPU() {}
+    
     Reg reg[9];
     Seg seg[7];
     U32 flags;

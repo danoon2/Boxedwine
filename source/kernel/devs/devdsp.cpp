@@ -138,8 +138,6 @@ public:
 void audioCallback(void *userdata, U8* stream, S32 len) {
     S32 available = (S32)audioBuffer.size();
     DevDspData* data = (DevDspData*)userdata;
-    S32 originalAvailable = available;
-    S32 originalLen = len;
 
     if (audioWaitingToClose) {
         memset(stream, audioSilence, len);

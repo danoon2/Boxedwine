@@ -732,7 +732,7 @@ typedef struct {
 */
 
 void* marshalDrawArraysIndirectBindlessCommandNV(CPU* cpu, U32 address, U32 count, U32 stride, U32 vertexCount) {
-    U32 size = 20 + 24*vertexCount;
+    //U32 size = 20 + 24*vertexCount;
 
     kpanic("DrawArraysIndirectBindlessCommandNV was not marshalled");
     return NULL;
@@ -742,7 +742,7 @@ void* marshalDrawArraysIndirectBindlessCommandNV(CPU* cpu, U32 address, U32 coun
 GLvoid* marshalGetConvolutionFilter(CPU* cpu, U32 target, U32 format, U32 type, U32 image) {
     GLint width = 0;
     GLint height = 0;
-    U32 len = 0;
+    //U32 len = 0;
 
     if (PIXEL_PACK_BUFFER())
         return (GLubyte*)(uintptr_t)image;

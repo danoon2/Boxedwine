@@ -120,7 +120,7 @@ void CPU::call(U32 big, U32 selector, U32 offset, U32 oldEip) {
         this->setIsBig(0);
         this->setSeg(CS, selector << 4, selector);
     } else {
-        U32 rpl=selector & 3;
+        //U32 rpl=selector & 3;
         U32 index = selector >> 3;
         struct user_desc* ldt;
         U32 esp;
@@ -166,7 +166,7 @@ void CPU::jmp(U32 big, U32 selector, U32 offset, U32 oldEip) {
         this->setSeg(CS, selector << 4, selector);
         this->setIsBig(0);
     } else {
-        U32 rpl=selector & 3;
+        //U32 rpl=selector & 3;
         U32 index = selector >> 3;
         struct user_desc* ldt;
 

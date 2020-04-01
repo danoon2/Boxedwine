@@ -172,8 +172,7 @@ U32 KEPoll::ctl(U32 op, FD fd, U32 address) {
 U32 KEPoll::wait(U32 events, U32 maxevents, U32 timeout) {    
     S32 result = 0;
     U32 i;
-    KThread* thread = KThread::currentThread();
-    static KPollData pollData[256];	
+    THREAD_LOCAL static KPollData pollData[256];	
     U32 pollCount=0;
 
     for( const auto& n : this->data ) {

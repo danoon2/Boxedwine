@@ -6,7 +6,6 @@ void drawAppBar(const std::vector<AppButton>& buttons, int selected, ImFont* fon
         ImGui::PushFont(font);
     }
     ImGui::BeginGroup();
-    AppButton* selectedButton = NULL;
 
     for (int i=0;i<(int)buttons.size();i++) {
         if (selected == i) {

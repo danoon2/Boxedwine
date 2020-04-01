@@ -332,7 +332,7 @@ void Fs::splitPath(const std::string& path, std::vector<std::string>& parts) {
 U32 Fs::readNativeFile(const std::string& nativePath, U8* buffer, U32 bufferLen) {
     int f = ::open(nativePath.c_str(), O_RDONLY);
     if (f>0) {
-        U32 result = ::read(f, buffer, bufferLen);
+        U32 result = (U32)::read(f, buffer, bufferLen);
         ::close(f);
         return result;
     }

@@ -92,9 +92,9 @@ bool FsFileOpenNode::canMap() {
 }
 
 U32 FsFileOpenNode::readNative(U8* buffer, U32 len) {
-    return ::read(this->handle, buffer, len);
+    return (U32)::read(this->handle, buffer, len);
 }
 
 U32 FsFileOpenNode::writeNative(U8* buffer, U32 len) {
-    return ::write(this->handle, buffer, len);
+    return (U32)::write(this->handle, buffer, len);
 }

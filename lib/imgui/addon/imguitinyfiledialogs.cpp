@@ -136,7 +136,7 @@ on windows it only make sense for console applications */
 
 static int gWarningDisplayed = 0 ;
 static char gTitle[]= "missing software! (so we switch to basic console input)";
-static char gMessageWin[] = "tiny file dialogs on Windows needs:\n\t\
+//static char gMessageWin[] = "tiny file dialogs on Windows needs:\n\t\
 a graphic display\nor\tdialog.exe (enhanced console mode)\
 \nor\ta console for basic input" ;
 
@@ -302,34 +302,6 @@ static void replaceSubStr ( char const * const aSource ,
 }
 
 
-static int replaceChr ( char * const aString ,
-						char const aOldChr ,
-						char const aNewChr )
-{
-	char * p ;
-	int lRes = 0 ;
-
-	if ( ! aString )
-	{
-		return 0 ;
-	}
-
-	if ( aOldChr == aNewChr )
-	{
-		return 0 ;
-	}
-
-	p = aString ;
-	while ( (p = strchr ( p , aOldChr )) )
-	{
-		* p = aNewChr ;
-		p ++ ;
-		lRes = 1 ;
-	}
-	return lRes ;
-}
-
-
 static int filenameValid( char const * const aFileNameWithoutPath )
 {
 	if ( ! aFileNameWithoutPath
@@ -407,7 +379,33 @@ static char const * ensureFilesExist( char * const aDestination ,
 }
 
 #ifdef _WIN32
+static int replaceChr ( char * const aString ,
+                        char const aOldChr ,
+                        char const aNewChr )
+{
+    char * p ;
+    int lRes = 0 ;
 
+    if ( ! aString )
+    {
+        return 0 ;
+    }
+
+    if ( aOldChr == aNewChr )
+    {
+        return 0 ;
+    }
+
+    p = aString ;
+    while ( (p = strchr ( p , aOldChr )) )
+    {
+        * p = aNewChr ;
+        p ++ ;
+        lRes = 1 ;
+    }
+    return lRes ;
+}
+    
 static int dirExists ( char const * const aDirPath )
 {
 	struct stat lInfo;
@@ -3171,7 +3169,7 @@ char const * saveFileDialog (
 	int lWasGraphicDialog = 0 ;
 	int lWasXterm = 0 ;
 	char const * p ;
-    DIR * lDir ;
+    //DIR * lDir ;
     FILE * lIn ;
 	lBuff[0]='\0';
 
@@ -3800,7 +3798,7 @@ char const * selectFolderDialog (
 {
 	static char lBuff [ MAX_PATH_OR_CMD ] ;
     char lDialogString [ MAX_PATH_OR_CMD ] ;
-    DIR * lDir ;
+    //DIR * lDir ;
 	FILE * lIn ;
 	char const * p ;
 	int lWasGraphicDialog = 0 ;

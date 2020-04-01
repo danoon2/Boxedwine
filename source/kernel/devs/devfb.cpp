@@ -23,7 +23,6 @@
 #include "../../emulation//hardmmu/hard_memory.h"
 
 static U32 screenBPP=32;
-static U32 fullScreen=0;
 U32 updateAvailable;
 U32 paletteChanged;
 U8* screenPixels;
