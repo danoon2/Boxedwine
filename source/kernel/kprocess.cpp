@@ -47,8 +47,18 @@ bool KProcessTimer::run() {
     } else {
         this->millies = this->resetMillies + KSystem::getMilliesSinceStart();
     }
-    this->process->signalALRM();
+    std::shared_ptr<KProcess> p = this->process.lock();
+    if (p) {
+        p->signalALRM();
+    }
     return result;
+}
+
+std::shared_ptr<KProcess> KProcess::create() {
+    std::shared_ptr<KProcess> process = std::make_shared<KProcess>(KSystem::getNextThreadId());
+    KSystem::addProcess(process->id, process);
+    process->timer.process = process; // can't use shared_from_this in constructor
+    return process;
 }
 
 KProcess::KProcess(U32 id) : id(id), 
@@ -64,7 +74,6 @@ KProcess::KProcess(U32 id) : id(id),
     terminated(false),
     memory(NULL),
     brkEnd(0), 
-    timer(this),
     waitingThread(NULL),
     loaderBaseAddress(0),
     phdr(0),
@@ -106,8 +115,7 @@ KProcess::KProcess(U32 id) : id(id),
         this->hasSetSeg[i] = false;
     }
     this->hasSetSeg[GS] = true;
-    this->hasSetSeg[FS] = true;
-    KSystem::addProcess(this->id, this);
+    this->hasSetSeg[FS] = true;    
 
 #ifdef BOXEDWINE_64BIT_MMU
     this->nextNativeAddress = ADDRESS_PROCESS_NATIVE;
@@ -116,7 +124,6 @@ KProcess::KProcess(U32 id) : id(id),
     }
 	this->previousMemory = NULL;
 #endif
-	this->pendingDelete = false;
 }
 
 void KProcess::onExec() {
@@ -206,7 +213,7 @@ void KProcess::cleanupProcess() {
 
 KThread* KProcess::createThread() {
 	BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(threadsCondition);
-    KThread* thread = new KThread(KSystem::nextThreadId++, this);
+    KThread* thread = new KThread(KSystem::getNextThreadId(), shared_from_this());
     this->threads[thread->id] = thread;
     return thread;
 }
@@ -229,42 +236,25 @@ U32 KProcess::getThreadCount() {
     return (U32)this->threads.size();
 }
 
-void KProcess::deleteThreadAndProcessIfLastThread(KThread* thread) {
-    BOXEDWINE_CONDITION_LOCK(this->threadsCondition);
-	thread->cleanup();	
-	if (this->threads.size()==0) {
-		if (this->memory) {
-			this->memory->decRefCount();
-			this->memory = NULL;
-		}
-#ifdef _DEBUG
-        U32 pid = this->id;
-#endif
-		delete thread;
-		if (this->pendingDelete) {
-            klog("about to delete process id %d", this->id);
-            BOXEDWINE_CONDITION_UNLOCK(this->threadsCondition);
-			delete this;
-		} else {
-            BOXEDWINE_CONDITION_UNLOCK(this->threadsCondition);
-		}
-	}
-	else {
-		delete thread;
-        BOXEDWINE_CONDITION_UNLOCK(this->threadsCondition);
-	}	
-}
-
-void KProcess::deleteProcessIfNoThreadsElseMarkForDeletion() {
-    BOXEDWINE_CONDITION_LOCK(this->threadsCondition);
-	if (this->threads.size() == 0) {
-        klog("about to delete process id %d", this->id);
-        BOXEDWINE_CONDITION_UNLOCK(this->threadsCondition);
-		delete this;
-	} else {
-		this->pendingDelete = true;
-        BOXEDWINE_CONDITION_UNLOCK(this->threadsCondition);
-	}
+void KProcess::deleteThread(KThread* thread) {
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(threadsCondition);
+        thread->cleanup();
+        if (this->threads.size() == 0) {
+            if (this->memory) {
+                this->memory->decRefCount();
+                this->memory = NULL;
+            }
+        }
+        delete thread;
+    }
+    // don't call into getProcess while holding threadsCondition
+    if (this->getThreadCount() == 0) {
+        std::shared_ptr<KProcess> parent = KSystem::getProcess(this->parentId);
+        if (!parent || parent->getThreadCount() == 0) {
+            KSystem::eraseProcess(this->id);
+        }
+    }
 }
 
 FsOpenNode* openCommandLine(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
@@ -280,7 +270,7 @@ void KProcess::setupCommandlineNode() {
     this->commandLineNode = Fs::addVirtualFile(std::string("/proc/")+std::to_string(this->id)+std::string("/cmdline"), openCommandLine, K__S_IREAD, 0, this->procNode);
 }
 
-void KProcess::clone(KProcess* from) {
+void KProcess::clone(const std::shared_ptr<KProcess>& from) {
     U32 i;
 
     this->parentId = from->id;;
@@ -360,7 +350,7 @@ static void writeStackString(KThread* thread, CPU * cpu, const char* s) {
 
 static void pushThreadStack(KThread* thread, CPU* cpu, int argc, U32* a, int envc, U32* e) {
     int i;
-    KProcess* process = cpu->thread->process;
+    std::shared_ptr<KProcess> process = cpu->thread->process;
     U32 randomAddress;
     U32 platform;
 
@@ -474,7 +464,7 @@ KFileDescriptor* KProcess::allocFileDescriptor(const BoxedPtr<KObject>& kobject,
     if (handle<0) {
         handle = this->getNextFileDescriptorHandle(afterHandle);
     }
-    result = new KFileDescriptor(this, kobject, accessFlags, descriptorFlags, handle);
+    result = new KFileDescriptor(shared_from_this(), kobject, accessFlags, descriptorFlags, handle);
 
     KFileDescriptor* old = this->getFileDescriptor(handle);
     if (old)
@@ -612,7 +602,7 @@ KThread* KProcess::startProcess(const std::string& currentDirectory, const std::
     if (!openNode) {
         return 0;
     }    
-    if (ElfLoader::loadProgram(this, openNode, &thread->cpu->eip.u32)) {
+    if (ElfLoader::loadProgram(shared_from_this(), openNode, &thread->cpu->eip.u32)) {
         // :TODO: why will it crash in strchr libc if I remove this
         //syscall_mmap64(thread, ADDRESS_PROCESS_LOADER << PAGE_SHIFT, 4096, K_PROT_READ | K_PROT_WRITE, K_MAP_ANONYMOUS|K_MAP_PRIVATE, -1, 0);
         
@@ -801,7 +791,7 @@ U32 KProcess::execve(const std::string& path, std::vector<std::string>& args, co
         }
     }
 
-    if (!ElfLoader::loadProgram(this, openNode, &KThread::currentThread()->cpu->eip.u32)) {		
+    if (!ElfLoader::loadProgram(shared_from_this(), openNode, &KThread::currentThread()->cpu->eip.u32)) {
         // :TODO: maybe alloc a new memory object and keep the old one until we know we are loaded
         kpanic("program failed to load, but memory was already reset");
     }	
@@ -1569,7 +1559,7 @@ U32 KProcess::clone(U32 flags, U32 child_stack, U32 ptid, U32 tls, U32 ctid) {
         if (flags & ~(K_CLONE_CHILD_SETTID|K_CLONE_CHILD_CLEARTID|K_CLONE_PARENT_SETTID)) {
             kpanic("KProcess::clone - unhandled flag 0x%X", (U32)(flags & ~(K_CLONE_CHILD_SETTID|K_CLONE_CHILD_CLEARTID|K_CLONE_PARENT_SETTID)));
         }
-        KProcess* newProcess = new KProcess(KSystem::nextThreadId++);
+        std::shared_ptr<KProcess> newProcess = KProcess::create();
         if (vm) {
             newProcess->memory = this->memory;
             newProcess->memory->incRefCount();
@@ -1581,7 +1571,7 @@ U32 KProcess::clone(U32 flags, U32 child_stack, U32 ptid, U32 tls, U32 ctid) {
 
         newProcess->parentId = this->id;        
         
-        newProcess->clone(this);
+        newProcess->clone(shared_from_this());
         newThread->clone(KThread::currentThread());
         newThread->memory = newProcess->memory;
 
@@ -1662,23 +1652,25 @@ U32 KProcess::clone(U32 flags, U32 child_stack, U32 ptid, U32 tls, U32 ctid) {
 }
 
 void KProcess::killAllThreadsExceptCurrent() {
-    BOXEDWINE_CONDITION_LOCK(this->threadsCondition);
-    std::unordered_map<U32, KThread*> tmp = this->threads;
     std::vector<U32> threadIds;
-    for (auto& n : tmp) {
-        KThread* thread = n.second;
-        if (thread != KThread::currentThread()) {
-            threadIds.push_back(thread->id);
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->threadsCondition);
+        std::unordered_map<U32, KThread*> tmp = this->threads;        
+        for (auto& n : tmp) {
+            KThread* thread = n.second;
+            if (thread != KThread::currentThread()) {
+                threadIds.push_back(thread->id);
+            }
         }
     }
-    BOXEDWINE_CONDITION_UNLOCK(this->threadsCondition);
+    // don't hold threadsCondition while calling terminateOtherThread
     for (auto& n : threadIds) {
-        terminateOtherThread(this, n);
+        terminateOtherThread(shared_from_this(), n);
     }
 }
 
 U32 KProcess::exitgroup(U32 code) {
-    KProcess* parent = KSystem::getProcess(this->parentId);        
+    std::shared_ptr<KProcess> parent = KSystem::getProcess(this->parentId);
     if (parent && parent->sigActions[K_SIGCHLD].handlerAndSigAction!=K_SIG_DFL) {
         if (parent->sigActions[K_SIGCHLD].handlerAndSigAction!=K_SIG_IGN) {
             parent->signalCHLD(CLD_EXITED, this->id, this->userId, code);

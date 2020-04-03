@@ -13,7 +13,7 @@
 bool x64CPU::hasBMI2 = true;
 bool x64Intialized = false;
 
-x64CPU::x64CPU() : nativeHandle(0), endCond("x64CPU::endcond"), inException(false), exitToStartThreadLoop(0) {
+x64CPU::x64CPU() : nativeHandle(0), inException(false), exitToStartThreadLoop(0) {
     if (!x64Intialized) {
         x64Intialized = true;
         x64CPU::hasBMI2 = platformHasBMI2();
@@ -679,12 +679,8 @@ void x64CPU::startThread() {
         this->jmpBuf = &jmpBuf;
         this->run();
     }
-
-    BOXEDWINE_CONDITION_LOCK(this->endCond);
-    BOXEDWINE_CONDITION_SIGNAL(this->endCond);
-    BOXEDWINE_CONDITION_UNLOCK(this->endCond);
-
-	thread->process->deleteThreadAndProcessIfLastThread(thread);
+    std::shared_ptr<KProcess> process = thread->process;
+	process->deleteThread(thread);
 
     platformThreadCount--;
     if (platformThreadCount==0) {
@@ -713,7 +709,7 @@ void removeTimer(KTimer* timer) {
         kpanic("removeTimer not implemented yet");
 }
 
-void terminateOtherThread(KProcess* process, U32 threadId) {
+void terminateOtherThread(const std::shared_ptr<KProcess>&  process, U32 threadId) {
 	process->threadsCondition.lock();
 	KThread* thread = process->getThreadById(threadId);
 	if (thread) {

@@ -78,10 +78,10 @@ public:
 
 class KProcessTimer : public KTimer { 
 public:
-    KProcessTimer(KProcess* process) : process(process){};
     bool run();
 private:
-    KProcess* process;
+    friend class KProcess;
+    std::weak_ptr<KProcess> process;
 };
 
 class AttachedSHM : public BoxedPtrBase {
@@ -101,8 +101,9 @@ public:
     const U32 pid;
 };
 
-class KProcess {
+class KProcess : public std::enable_shared_from_this<KProcess> {
 public:
+    static std::shared_ptr<KProcess> create();    
     KProcess(U32 id);
     ~KProcess();
 
@@ -110,11 +111,10 @@ public:
     void removeThread(KThread* thread);
     KThread* getThreadById(U32 tid);
     U32 getThreadCount();
-	void deleteThreadAndProcessIfLastThread(KThread* thread);
-	void deleteProcessIfNoThreadsElseMarkForDeletion();
+	void deleteThread(KThread* thread);
     void killAllThreadsExceptCurrent();
 
-    void clone(KProcess* from);
+    void clone(const std::shared_ptr<KProcess>& from);
     U32 getNextFileDescriptorHandle(int after);
 
     std::string getModuleName(U32 eip);
@@ -255,7 +255,6 @@ public:
     void* defaultEipToHostMappingAddress;
     void* returnToLoopAddress;
 #endif
-	bool pendingDelete;
 private:
     std::unordered_map<U32, KFileDescriptor*> fds;
     BOXEDWINE_MUTEX fdsMutex;

@@ -69,7 +69,7 @@ bool doMainLoop() {
     return true;
 }
 
-void waitForProcessToFinish(KProcess* process, KThread* thread) {
+void waitForProcessToFinish(const std::shared_ptr<KProcess>& process, KThread* thread) {
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(KSystem::processesCond);
     while (!process->isTerminated()) {
         BOXEDWINE_CONDITION_WAIT(KSystem::processesCond);

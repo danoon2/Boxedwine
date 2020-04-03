@@ -18,7 +18,6 @@ public:
 
     U64 nativeHandle;
 	jmp_buf* jmpBuf;
-    BOXEDWINE_CONDITION endCond;
 
     U32 negSegAddress[6];
 

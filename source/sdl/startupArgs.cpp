@@ -296,8 +296,13 @@ bool StartUpArgs::apply() {
             printf("\"%s\" ", winecfgArgs[i].c_str());
         }
         printf("\n");
-        KProcess* process = new KProcess(KSystem::nextThreadId++);    
-        if (process->startProcess("/home/username", winecfgArgs, this->envValues, this->userId, this->groupId, this->effectiveUserId, this->effectiveGroupId)) {
+
+        bool result = false;
+        {
+            std::shared_ptr<KProcess> process = KProcess::create(); // keep in this small scope so we don't hold onto it for the life of the program
+            result = process->startProcess("/home/username", winecfgArgs, this->envValues, this->userId, this->groupId, this->effectiveUserId, this->effectiveGroupId);
+        }
+        if (result) {
             if (!doMainLoop()) {
                 return 0; // doMainLoop should have handled any cleanup, like SDL_Quit if necessary
             }
@@ -311,8 +316,12 @@ bool StartUpArgs::apply() {
             printf("\"%s\" ", this->args[i].c_str());
         }
         printf("\n");
-        KProcess* process = new KProcess(KSystem::nextThreadId++);    
-        if (process->startProcess(this->workingDir, this->args, this->envValues, this->userId, this->groupId, this->effectiveUserId, this->effectiveGroupId)) {
+        bool result = false;
+        {
+            std::shared_ptr<KProcess> process = KProcess::create();// keep in this small scope so we don't hold onto it for the life of the program
+            result = process->startProcess(this->workingDir, this->args, this->envValues, this->userId, this->groupId, this->effectiveUserId, this->effectiveGroupId);
+        }
+        if (result) {
             if (!doMainLoop()) {
                 return 0; // doMainLoop should have handled any cleanup, like SDL_Quit if necessary
             }

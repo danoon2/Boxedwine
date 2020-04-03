@@ -23,7 +23,10 @@
 #include <string.h>
 
 KFileDescriptor::~KFileDescriptor() {
-    this->process->clearFdHandle(this->handle);
+    std::shared_ptr<KProcess> p = this->process.lock();
+    if (p) {
+        p->clearFdHandle(this->handle);
+    }
 }
 
 bool KFileDescriptor::canRead() {
@@ -35,7 +38,7 @@ bool KFileDescriptor::canWrite() {
 }
 
 
-KFileDescriptor::KFileDescriptor(KProcess* process, const BoxedPtr<KObject>& kobject, U32 accessFlags, U32 descriptorFlags, S32 handle) {    
+KFileDescriptor::KFileDescriptor(const std::shared_ptr<KProcess>& process, const BoxedPtr<KObject>& kobject, U32 accessFlags, U32 descriptorFlags, S32 handle) {    
     this->process = process;
     this->refCount = 1;
     this->handle = handle;

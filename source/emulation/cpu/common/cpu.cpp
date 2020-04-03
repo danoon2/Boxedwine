@@ -196,7 +196,7 @@ void CPU::jmp(U32 big, U32 selector, U32 offset, U32 oldEip) {
 
 
 void CPU::prepareException(int code, int error) {
-    KProcess* process = this->thread->process;
+    const std::shared_ptr<KProcess>& process = this->thread->process;
 
      // blocking signals, signalfd can't handle these
     if (code==EXCEPTION_GP && (process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_IGN && process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_DFL)) {
@@ -260,7 +260,7 @@ FsOpenNode* openTTY9(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
 
 std::string getFunctionName(const std::string& name, U32 moduleEip) {    
     KThread* thread;
-    KProcess* process = new KProcess(KSystem::nextThreadId++);
+    std::shared_ptr<KProcess> process = KProcess::create();
     std::vector<std::string> args;
     std::vector<std::string> env;
     char tmp[16];
@@ -290,7 +290,6 @@ std::string getFunctionName(const std::string& name, U32 moduleEip) {
     }
     ChangeThread c(thread);
     KSystem::eraseProcess(process->id);
-    delete process;
     const char* p = strstr(tty9Buffer.c_str(), "\r\n");
     if (p) {
         return tty9Buffer.substr(0, p - tty9Buffer.c_str());

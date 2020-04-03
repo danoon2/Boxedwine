@@ -21,7 +21,7 @@
 
 void scheduleThread(KThread* thread);
 void unscheduleThread(KThread* thread);
-void terminateOtherThread(KProcess* process, U32 threadId);
+void terminateOtherThread(const std::shared_ptr<KProcess>& process, U32 threadId);
 void terminateCurrentThread(KThread* thread);
 
 void addTimer(KTimer* timer);
@@ -30,7 +30,7 @@ void removeTimer(KTimer* timer);
 bool runSlice();
 void runThreadSlice(KThread* thread);
 void platformRunThreadSlice(KThread* thread);
-void waitForProcessToFinish(KProcess* process, KThread* thread);
+void waitForProcessToFinish(const std::shared_ptr<KProcess>& process, KThread* thread);
 #ifdef BOXEDWINE_DEFAULT_MMU
 #define platformRunThreadSlice runThreadSlice
 #endif

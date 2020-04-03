@@ -294,7 +294,7 @@ U32 DevInput::ioctl(U32 request) {
 }
 
 void DevInput::setAsync(bool isAsync) {
-    KProcess* process = KThread::currentThread()->process;
+    std::shared_ptr<KProcess> process = KThread::currentThread()->process;
     if (isAsync) {
         if (this->asyncProcessId && this->asyncProcessId!=process->id) {
             kpanic("touch_setAsync only supports one process: %d tried to attached but %d already has it", process->id, this->asyncProcessId);
@@ -663,7 +663,7 @@ void postSendEvent(DevInput* events, U64 time) {
         return;
     queueEvent(events, K_EV_SYN, K_SYN_REPORT, 0, time);
     if (events->asyncProcessId) {
-        KProcess* process = KSystem::getProcess(events->asyncProcessId);
+        std::shared_ptr<KProcess> process = KSystem::getProcess(events->asyncProcessId);
         if (process) {
             process->signalIO(K_POLL_IN, 0, events->asyncProcessFd);		
         }

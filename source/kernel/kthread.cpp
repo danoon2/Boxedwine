@@ -87,7 +87,7 @@ void KThread::setupStack() {
     this->cpu->reg[4].u32 = (this->stackPageStart + this->stackPageCount - 1) << K_PAGE_SHIFT; // one page away from the top    
 }
 
-KThread::KThread(U32 id, KProcess* process) : 
+KThread::KThread(U32 id, const std::shared_ptr<KProcess>& process) : 
     id(id),   
     sigMask(0),
     inSigMask(0),

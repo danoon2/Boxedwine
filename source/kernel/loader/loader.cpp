@@ -233,7 +233,7 @@ U32 getPELoadAddress(struct FsOpenNode* openNode, U32* section, U32* numberOfSec
     return buffer[offset + 0x34] | ((U32)buffer[offset + 0x35] << 8) | ((U32)buffer[offset + 0x36] << 16) | ((U32)buffer[offset + 0x37] << 24);
 }
 #endif
-bool ElfLoader::loadProgram(KProcess* process, FsOpenNode* openNode, U32* eip) {
+bool ElfLoader::loadProgram(const std::shared_ptr<KProcess>& process, FsOpenNode* openNode, U32* eip) {
     U8 buffer[sizeof(struct k_Elf32_Ehdr)];
     struct k_Elf32_Ehdr* hdr = (struct k_Elf32_Ehdr*)buffer;
     U32 len = openNode->readNative(buffer, sizeof(buffer));

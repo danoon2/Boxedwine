@@ -74,10 +74,10 @@ void setup() {
 #ifdef BOXEDWINE_X64
         KSystem::useLargeAddressSpace = false;
 #endif
-        KProcess* process = new KProcess(KSystem::nextThreadId++);
+        std::shared_ptr<KProcess> process = KProcess::create();
         memory = new Memory();
         process->memory = memory;
-        KThread* thread = new KThread(KSystem::nextThreadId++, process);
+        KThread* thread = new KThread(KSystem::getNextThreadId(), process);
         cpu = thread->cpu;
         thread->memory = memory;
         KThread::setCurrentThread(thread);

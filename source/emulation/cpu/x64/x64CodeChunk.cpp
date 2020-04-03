@@ -62,7 +62,11 @@ void X64CodeChunk::makeLive() {
 void X64CodeChunk::detachFromHost(Memory* memory) {
     U32 eip = this->emulatedAddress;
     KThread* thread = KThread::currentThread();
-    KProcess* process = (thread ? thread->process : NULL);
+    std::shared_ptr<KProcess> process;
+
+    if (thread) {
+        process = thread->process;
+    }
 
     for (U32 i = 0; i < this->instructionCount; i++) {
         if (KSystem::useLargeAddressSpace) {

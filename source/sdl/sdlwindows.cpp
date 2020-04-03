@@ -506,7 +506,7 @@ U32 sdlMakeCurrent(KThread* thread, U32 arg) {
 #endif
 }
 
-KThreadGlContext* getGlContextByIdInUnknownThread(KProcess* process, U32 id) {
+KThreadGlContext* getGlContextByIdInUnknownThread(const std::shared_ptr<KProcess>& process, U32 id) {
     KThreadGlContext* result = NULL;
 
     process->iterateThreads([id, &result] (KThread* thread) {
@@ -1219,7 +1219,7 @@ int sdlMouseMouse(int x, int y, bool relative) {
     if (!wnd)
         wnd = getFirstVisibleWnd();
     if (wnd) {
-        KProcess* process = KSystem::getProcess(wnd->processId);
+        std::shared_ptr<KProcess> process = KSystem::getProcess(wnd->processId);
         if (process) {
             KFileDescriptor* fd = process->getFileDescriptor(process->eventQueueFD);
             if (fd) {
@@ -1253,7 +1253,7 @@ int sdlMouseWheel(int amount, int x, int y) {
     if (!wnd)
         wnd = getFirstVisibleWnd();
     if (wnd) {
-        KProcess* process = KSystem::getProcess(wnd->processId);
+        std::shared_ptr<KProcess> process = KSystem::getProcess(wnd->processId);
         if (process) {
             KFileDescriptor* fd = process->getFileDescriptor(process->eventQueueFD);
             if (fd) {
@@ -1287,7 +1287,7 @@ int sdlMouseButton(U32 down, U32 button, int x, int y) {
     if (!wnd)
         wnd = getFirstVisibleWnd();
     if (wnd) {
-        KProcess* process = KSystem::getProcess(wnd->processId);
+        std::shared_ptr<KProcess> process = KSystem::getProcess(wnd->processId);
         if (process) {
             KFileDescriptor* fd = process->getFileDescriptor(process->eventQueueFD);
             if (fd) {
@@ -1512,7 +1512,7 @@ int sdlKey(U32 key, U32 down) {
         return 0;
     wnd = getFirstVisibleWnd();
     if (wnd) {
-        KProcess* process = KSystem::getProcess(wnd->processId);
+        std::shared_ptr<KProcess> process = KSystem::getProcess(wnd->processId);
         if (process) {
             KFileDescriptor* fd = process->getFileDescriptor(process->eventQueueFD);
             if (fd) {

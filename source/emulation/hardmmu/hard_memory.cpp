@@ -595,7 +595,7 @@ void Memory::clearCodePageFromCache(U32 page) {
 #ifdef BOXEDWINE_X64
     if (KSystem::useLargeAddressSpace) {
         KThread* thread = KThread::currentThread();
-        KProcess* process = NULL;
+        std::shared_ptr<KProcess> process;
 
         if (thread) {
             process = thread->process;
@@ -911,7 +911,7 @@ void* Memory::allocateExcutableMemory(U32 requestedSize, U32* allocatedSize) {
 }
 
 void Memory::freeExcutableMemory(void* hostMemory, U32 actualSize) {
-    memset(hostMemory, 0xcc, actualSize);
+    memset(hostMemory, 0xcd, actualSize);
     
     U32 size = 0;
     U32 powerOf2Size = powerOf2(actualSize, size);

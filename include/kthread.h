@@ -51,7 +51,7 @@ public:
 
 class KThread {
 public:
-    KThread(U32 id, KProcess* process);
+    KThread(U32 id, const std::shared_ptr<KProcess>& process);
     ~KThread();
 
     void reset();
@@ -87,7 +87,7 @@ public:
     CPU* cpu;
     U32 stackPageStart;
     U32 stackPageCount;
-    KProcess* process;   
+    std::shared_ptr<KProcess> process;
     Memory* memory;
     bool interrupted;
     U32 inSignal;    
