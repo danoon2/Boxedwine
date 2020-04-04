@@ -562,7 +562,7 @@ U32 KNativeSocketObject::accept(KFileDescriptor* fd, U32 address, U32 len, U32 f
     socklen_t addrlen = sizeof(struct sockaddr);
     S32 result = (S32)::accept(this->nativeSocket, &addr, &addrlen);
     if (result>=0) {
-        BoxedPtr<KNativeSocketObject> s = new KNativeSocketObject(this->domain, this->type, this->protocol);
+        std::shared_ptr<KNativeSocketObject> s = std::make_shared<KNativeSocketObject>(this->domain, this->type, this->protocol);
         KFileDescriptor* resultFD = KThread::currentThread()->process->allocFileDescriptor(s, K_O_RDWR, 0, -1, 0);
 
         if (flags & FD_CLOEXEC) {

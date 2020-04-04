@@ -11,7 +11,6 @@ FsNode::FsNode(Type type, U32 id, U32 rdev, const std::string& path, const std::
     rdev(rdev),
     hardLinkCount(1),
     type(type),  
-    kobject(0),  
     parent(parent),
     isDir(isDirectory),  
     hasLoadedChildrenFromFileSystem(false)

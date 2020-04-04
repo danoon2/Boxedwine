@@ -50,7 +50,7 @@ public:
     const U32 rdev;  
     U32 hardLinkCount;    
     const Type type;
-    BoxedPtr<KObject> kobject;
+    std::weak_ptr<KObject> kobject;
 
     BoxedPtr<FsNode> getChildByName(const std::string& name);
     BoxedPtr<FsNode> getChildByNameIgnoreCase(const std::string& name);

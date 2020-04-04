@@ -26,7 +26,7 @@ public:
     MappedFileCache(const std::string& name) : name(name) {}
     virtual ~MappedFileCache();
     const std::string name;
-    BoxedPtr<KFile> file;
+    std::shared_ptr<KFile> file;
     U8** data;
 };
 

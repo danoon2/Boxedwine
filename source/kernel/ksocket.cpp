@@ -47,12 +47,11 @@ const char* socketAddressName(U32 address, U32 len, char* result, U32 cbResult) 
 
 U32 ksocket(U32 domain, U32 type, U32 protocol) {
     if (domain==K_AF_UNIX || domain==K_AF_NETLINK) {
-        KUnixSocketObject* p = new KUnixSocketObject(KThread::currentThread()->process->id, domain, type, protocol);
-        BoxedPtr<KSocketObject> kSocket = p;
+        std::shared_ptr<KUnixSocketObject> kSocket = std::make_shared<KUnixSocketObject>(KThread::currentThread()->process->id, domain, type, protocol);
         KFileDescriptor* result = KThread::currentThread()->process->allocFileDescriptor(kSocket, K_O_RDWR, 0, -1, 0);
         return result->handle;
     } else if (domain == K_AF_INET) {   
-        BoxedPtr<KNativeSocketObject> s = new KNativeSocketObject(domain, type, protocol);
+        std::shared_ptr<KNativeSocketObject> s = std::make_shared<KNativeSocketObject>(domain, type, protocol);
         if (s->error) {
             return s->error;
         } else {
@@ -75,7 +74,7 @@ U32 kbind(U32 socket, U32 address, U32 len) {
     if (IS_NOT_SOCKET(fd)) {
         return -K_ENOTSOCK;
     }
-    BoxedPtr<KSocketObject> s = (KSocketObject*)fd->kobject.get();
+    std::shared_ptr<KSocketObject> s = std::dynamic_pointer_cast<KSocketObject>(fd->kobject);
     return s->bind(fd, address, len);
 }
 
@@ -89,7 +88,7 @@ U32 kconnect(U32 socket, U32 address, U32 len) {
     if (IS_NOT_SOCKET(fd)) {
         return -K_ENOTSOCK;
     }
-    BoxedPtr<KSocketObject> s = (KSocketObject*)fd->kobject.get();
+    std::shared_ptr<KSocketObject> s = std::dynamic_pointer_cast<KSocketObject>(fd->kobject);
     if (s->connected) {
         return -K_EISCONN;
     }		
@@ -106,7 +105,7 @@ U32 klisten(U32 socket, U32 backlog) {
     if (IS_NOT_SOCKET(fd)) {
         return -K_ENOTSOCK;
     }
-    BoxedPtr<KSocketObject> s = (KSocketObject*)fd->kobject.get();
+    std::shared_ptr<KSocketObject> s = std::dynamic_pointer_cast<KSocketObject>(fd->kobject);
     return s->listen(fd, backlog);
 }
 
@@ -120,7 +119,7 @@ U32 kaccept(U32 socket, U32 address, U32 len, U32 flags) {
     if (IS_NOT_SOCKET(fd)) {
         return -K_ENOTSOCK;
     }
-    BoxedPtr<KSocketObject> s = (KSocketObject*)fd->kobject.get();
+    std::shared_ptr<KSocketObject> s = std::dynamic_pointer_cast<KSocketObject>(fd->kobject);
     if (!s->listening) {
         return -K_EINVAL;
     }
@@ -137,7 +136,7 @@ U32 kgetsockname( U32 socket, U32 address, U32 plen) {
     if (IS_NOT_SOCKET(fd)) {
         return -K_ENOTSOCK;
     }
-    BoxedPtr<KSocketObject> s = (KSocketObject*)fd->kobject.get();
+    std::shared_ptr<KSocketObject> s = std::dynamic_pointer_cast<KSocketObject>(fd->kobject);
     return s->getsockname(fd, address, plen);
 }
 
@@ -151,7 +150,7 @@ U32 kgetpeername(U32 socket, U32 address, U32 plen) {
     if (IS_NOT_SOCKET(fd)) {
         return -K_ENOTSOCK;
     }
-    BoxedPtr<KSocketObject> s = (KSocketObject*)fd->kobject.get();
+    std::shared_ptr<KSocketObject> s = std::dynamic_pointer_cast<KSocketObject>(fd->kobject);
     return s->getpeername(fd, address, plen);
 }
 
@@ -160,8 +159,8 @@ U32 ksocketpair(U32 af, U32 type, U32 protocol, U32 socks, U32 flags) {
     FD fd2;
     KFileDescriptor* f1;
     KFileDescriptor* f2;
-    BoxedPtr<KUnixSocketObject> s1;
-    BoxedPtr<KUnixSocketObject> s2;
+    std::shared_ptr<KUnixSocketObject> s1;
+    std::shared_ptr<KUnixSocketObject> s2;
     KThread* thread = KThread::currentThread();
 
     if (af!=K_AF_UNIX) {
@@ -174,11 +173,11 @@ U32 ksocketpair(U32 af, U32 type, U32 protocol, U32 socks, U32 flags) {
     fd2 = ksocket(af, type, protocol);
     f1 = thread->process->getFileDescriptor(fd1);
     f2 = thread->process->getFileDescriptor(fd2);
-    s1 = (KUnixSocketObject*)f1->kobject.get();
-    s2 = (KUnixSocketObject*)f2->kobject.get();
+    s1 = std::dynamic_pointer_cast<KUnixSocketObject>(f1->kobject);
+    s2 = std::dynamic_pointer_cast<KUnixSocketObject>(f2->kobject);
     
-    s1->connection = s2.get();
-    s2->connection = s1.get();
+    s1->connection = s2;
+    s2->connection = s1;
     s1->connected = true;
     s2->connected = true;
     f1->accessFlags = K_O_RDWR;
@@ -210,7 +209,7 @@ U32 ksend(U32 socket, U32 buffer, U32 len, U32 flags) {
     if (IS_NOT_SOCKET(fd)) {
         return -K_ENOTSOCK;
     }
-    BoxedPtr<KSocketObject> s = (KSocketObject*)fd->kobject.get();
+    std::shared_ptr<KSocketObject> s = std::dynamic_pointer_cast<KSocketObject>(fd->kobject);
     s->flags = 0;
     if (flags == 0x4000) {
         //  MSG_NOSIGNAL
@@ -233,7 +232,7 @@ U32 krecv(U32 socket, U32 buffer, U32 len, U32 flags) {
     if (IS_NOT_SOCKET(fd)) {
         return -K_ENOTSOCK;
     }
-    BoxedPtr<KSocketObject> s = (KSocketObject*)fd->kobject.get();
+    std::shared_ptr<KSocketObject> s = std::dynamic_pointer_cast<KSocketObject>(fd->kobject);
     s->flags = 0;
     if (flags == 0x4000) {
         //  MSG_NOSIGNAL
@@ -259,7 +258,7 @@ U32 kshutdown(U32 socket, U32 how) {
     if (IS_NOT_SOCKET(fd)) {
         return -K_ENOTSOCK;
     }
-    BoxedPtr<KSocketObject> s = (KSocketObject*)fd->kobject.get();
+    std::shared_ptr<KSocketObject> s = std::dynamic_pointer_cast<KSocketObject>(fd->kobject);
     return s->shutdown(fd, how);
 }
 
@@ -273,7 +272,7 @@ U32 ksetsockopt(U32 socket, U32 level, U32 name, U32 value, U32 len) {
     if (IS_NOT_SOCKET(fd)) {
         return -K_ENOTSOCK;
     }
-    BoxedPtr<KSocketObject> s = (KSocketObject*)fd->kobject.get();
+    std::shared_ptr<KSocketObject> s = std::dynamic_pointer_cast<KSocketObject>(fd->kobject);
     return s->setsockopt(fd, level, name, value, len);
 }
 
@@ -287,7 +286,7 @@ U32 kgetsockopt( U32 socket, U32 level, U32 name, U32 value, U32 len_address) {
     if (IS_NOT_SOCKET(fd)) {
         return -K_ENOTSOCK;
     }
-    BoxedPtr<KSocketObject> s = (KSocketObject*)fd->kobject.get();
+    std::shared_ptr<KSocketObject> s = std::dynamic_pointer_cast<KSocketObject>(fd->kobject);
     return s->getsockopt(fd, level, name, value, len_address);    
 }
 
@@ -318,7 +317,7 @@ U32 ksendmsg(U32 socket, U32 address, U32 flags) {
     if (IS_NOT_SOCKET(fd)) {
         return -K_ENOTSOCK;
     }
-    BoxedPtr<KSocketObject> s = (KSocketObject*)fd->kobject.get();
+    std::shared_ptr<KSocketObject> s = std::dynamic_pointer_cast<KSocketObject>(fd->kobject);
     return s->sendmsg(fd, address, flags);    
 }
 
@@ -332,7 +331,7 @@ U32 krecvmsg(U32 socket, U32 address, U32 flags) {
     if (IS_NOT_SOCKET(fd)) {
         return -K_ENOTSOCK;
     }
-    BoxedPtr<KSocketObject> s = (KSocketObject*)fd->kobject.get();
+    std::shared_ptr<KSocketObject> s = std::dynamic_pointer_cast<KSocketObject>(fd->kobject);
     return s->recvmsg(fd, address, flags);
 }
 
@@ -347,7 +346,7 @@ U32 ksendto(U32 socket, U32 message, U32 length, U32 flags, U32 dest_addr, U32 d
     if (IS_NOT_SOCKET(fd)) {
         return -K_ENOTSOCK;
     }
-    BoxedPtr<KSocketObject> s = (KSocketObject*)fd->kobject.get();
+    std::shared_ptr<KSocketObject> s = std::dynamic_pointer_cast<KSocketObject>(fd->kobject);
     return s->sendto(fd, message, length, flags, dest_addr, dest_len);        
 }
 
@@ -362,7 +361,7 @@ U32 krecvfrom(U32 socket, U32 buffer, U32 length, U32 flags, U32 address, U32 ad
     if (IS_NOT_SOCKET(fd)) {
         return -K_ENOTSOCK;
     }
-    BoxedPtr<KSocketObject> s = (KSocketObject*)fd->kobject.get();
+    std::shared_ptr<KSocketObject> s = std::dynamic_pointer_cast<KSocketObject>(fd->kobject);
     return s->recvfrom(fd, buffer, length, flags, address, address_len);    
 }
 

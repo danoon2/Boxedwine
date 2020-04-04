@@ -4,7 +4,7 @@
 #include "ksocketmsg.h"
 #include "ksocketobject.h"
 
-class KUnixSocketObject : public KSocketObject {
+class KUnixSocketObject : public KSocketObject, public std::enable_shared_from_this<KUnixSocketObject> {
 public:
     KUnixSocketObject(U32 pid, U32 domain, U32 type, U32 protocol);
     virtual ~KUnixSocketObject();    
@@ -47,22 +47,20 @@ public:
     virtual U32 shutdown(KFileDescriptor* fd, U32 how);
 
     BoxedPtr<FsNode> node;    
-    KUnixSocketObject* connection;
+    std::weak_ptr<KUnixSocketObject> connection;
 
-    static U32 unixsocket_write_native_nowait(const BoxedPtr<KObject>& obj, U8* value, int len);
+    static U32 unixsocket_write_native_nowait(const std::shared_ptr<KObject>& obj, U8* value, int len);
 
 private:        
-    KList<KUnixSocketObject*> pendingConnections; // weak, if object is destroyed it should remove itself from this list
-    KUnixSocketObject* connecting;
+    std::list< std::weak_ptr<KUnixSocketObject> > pendingConnections; // weak, if object is destroyed it should remove itself from this list
+    std::weak_ptr<KUnixSocketObject> connecting;
 
     BOXEDWINE_CONDITION lockCond;
 
     std::deque<S8> recvBuffer;
-    std::queue<BoxedPtr<KSocketMsg> > msgs;	
+    std::queue<std::shared_ptr<KSocketMsg> > msgs;
 
-    KListNode<KUnixSocketObject*> pendingConnectionNode;
-
-    U32 internal_write(BOXEDWINE_CONDITION& cond, U32 buffer, U32 len);
+    U32 internal_write(const std::shared_ptr<KUnixSocketObject>& con, BOXEDWINE_CONDITION& cond, U32 buffer, U32 len);
 };
 
 #endif

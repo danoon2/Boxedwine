@@ -38,7 +38,7 @@ bool KFileDescriptor::canWrite() {
 }
 
 
-KFileDescriptor::KFileDescriptor(const std::shared_ptr<KProcess>& process, const BoxedPtr<KObject>& kobject, U32 accessFlags, U32 descriptorFlags, S32 handle) {    
+KFileDescriptor::KFileDescriptor(const std::shared_ptr<KProcess>& process, const std::shared_ptr<KObject>& kobject, U32 accessFlags, U32 descriptorFlags, S32 handle) {
     this->process = process;
     this->refCount = 1;
     this->handle = handle;

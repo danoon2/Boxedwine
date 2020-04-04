@@ -457,7 +457,7 @@ U32 KProcess::getNextFileDescriptorHandle(int after) {
     }
 }
 
-KFileDescriptor* KProcess::allocFileDescriptor(const BoxedPtr<KObject>& kobject, U32 accessFlags, U32 descriptorFlags, S32 handle, U32 afterHandle) {
+KFileDescriptor* KProcess::allocFileDescriptor(const std::shared_ptr<KObject>& kobject, U32 accessFlags, U32 descriptorFlags, S32 handle, U32 afterHandle) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(fdsMutex);
     KFileDescriptor* result;
 
@@ -486,7 +486,7 @@ U32 translateOpenError() {
 U32 KProcess::openFileDescriptor(const std::string& currentDirectory, std::string localPath, U32 accessFlags, U32 descriptorFlags, S32 handle, U32 afterHandle, KFileDescriptor** result) {
     BoxedPtr<FsNode> node;
     FsOpenNode* openNode;
-    BoxedPtr<KObject> kobject;
+    std::shared_ptr<KObject> kobject;
 
     node = Fs::getNodeFromLocalPath(currentDirectory, localPath, true);
     if (!node && (accessFlags & (K_O_CREAT|K_O_TMPFILE))==0) {
@@ -527,8 +527,9 @@ U32 KProcess::openFileDescriptor(const std::string& currentDirectory, std::strin
         node = Fs::addFileNode(parent->path+"/"+fileName, "", nativePath, false, parent);
         Fs::makeLocalDirs(parent->path);
     }
-    if (node->kobject) {
-        kobject = node->kobject;
+    std::shared_ptr<KObject> nodeObject = node->kobject.lock();
+    if (nodeObject) {
+        kobject = nodeObject;
     } else {
         openNode = node->open(accessFlags);
         if (!openNode) {
@@ -536,7 +537,7 @@ U32 KProcess::openFileDescriptor(const std::string& currentDirectory, std::strin
             return translateOpenError();
         }
         openNode->openedPath = Fs::getFullPath(currentDirectory, localPath);
-        kobject = new KFile(openNode);
+        kobject = std::make_shared<KFile>(openNode);
     }
     KFileDescriptor* f = this->allocFileDescriptor(kobject, accessFlags, descriptorFlags, handle, afterHandle);
     if (result) {
@@ -1256,7 +1257,7 @@ U32 KProcess::readlinkInDirectory(const std::string& currentDirectory, const std
         if (fd->kobject->type!=KTYPE_FILE) {
             return -K_EINVAL;
         }
-        BoxedPtr<KFile> p = (KFile*)fd->kobject.get();
+        std::shared_ptr<KFile> p = std::dynamic_pointer_cast<KFile>(fd->kobject);
         const std::string& fdpath =  p->openFile->node->path;
         U32 len = (U32)fdpath.length();
         if ((int)fdpath.length()>(int)bufSize)
@@ -1366,7 +1367,7 @@ U32 KProcess::mmap(U32 addr, U32 len, S32 prot, S32 flags, FD fildes, U64 off) {
             mappedFile->address = pageStart << K_PAGE_SHIFT;
             mappedFile->len = ((U64)pageCount) << K_PAGE_SHIFT;
             mappedFile->offset = off;     
-            mappedFile->file = (KFile*)fd->kobject.get();
+            mappedFile->file = std::dynamic_pointer_cast<KFile>(fd->kobject);
 #ifdef BOXEDWINE_DEFAULT_MMU
             BoxedPtr<MappedFileCache> cache = KSystem::getFileCache(mappedFile->file->openFile->node->path);
             if (!cache) {
@@ -1406,7 +1407,7 @@ U32 KProcess::ftruncate64(FD fildes, U64 length) {
     if (fd->kobject->type!=KTYPE_FILE) {
         return -K_EINVAL;
     }
-    BoxedPtr<KFile> p = (KFile*)fd->kobject.get();
+    std::shared_ptr<KFile> p = std::dynamic_pointer_cast<KFile>(fd->kobject);
     openNode = p->openFile;
     if (openNode->node->isDirectory()) {
         return -K_EISDIR;
@@ -1736,7 +1737,7 @@ U32 KProcess::fchdir(FD fildes) {
     if (fd->kobject->type!=KTYPE_FILE) {
         return -K_EINVAL;
     }
-    BoxedPtr<KFile> p = (KFile*)fd->kobject.get();
+    std::shared_ptr<KFile> p = std::dynamic_pointer_cast<KFile>(fd->kobject);
 
     if (!p->openFile->node->isDirectory()) {		
         return -K_ENOTDIR;
@@ -1818,7 +1819,7 @@ U32 KProcess::getdents(FD fildes, U32 dirp, U32 count, bool is64) {
     if (fd->kobject->type!=KTYPE_FILE) {
         return -K_ENOTDIR;
     }
-    BoxedPtr<KFile> p = (KFile*)fd->kobject.get();
+    std::shared_ptr<KFile> p = std::dynamic_pointer_cast<KFile>(fd->kobject);
     BoxedPtr<FsNode> node = p->openFile->node;
     FsOpenNode* openNode = p->openFile;
 
@@ -1875,7 +1876,7 @@ U32 KProcess::memfd_create(const std::string& name, U32 flags) {
 
     node->openNode = openNode;
 
-    KFile* kobject = new KFile(openNode);
+    std::shared_ptr<KObject> kobject = std::make_shared<KFile>(openNode);
 
     U32 descriptorFlags = 0;
     if (flags & 1) { // MFD_CLOEXEC
@@ -1987,7 +1988,7 @@ U32 KProcess::pread64(FD fildes, U32 address, U32 len, U64 offset) {
     if (fd->kobject->type!=KTYPE_FILE) {
         return -K_EINVAL;
     }
-    BoxedPtr<KFile> p = (KFile*)fd->kobject.get();
+    std::shared_ptr<KFile> p = std::dynamic_pointer_cast<KFile>(fd->kobject);
     FsOpenNode* openNode = p->openFile;
 
     if (openNode->node->isDirectory()) {
@@ -2011,7 +2012,7 @@ U32 KProcess::pwrite64(FD fildes, U32 address, U32 len, U64 offset) {
     if (fd->kobject->type!=KTYPE_FILE) {
         return -K_EINVAL;
     }
-    BoxedPtr<KFile> p = (KFile*)fd->kobject.get();
+    std::shared_ptr<KFile> p = std::dynamic_pointer_cast<KFile>(fd->kobject);
     FsOpenNode* openNode = p->openFile;
 
     if (openNode->node->isDirectory()) {
@@ -2175,7 +2176,7 @@ U32 KProcess::fcntrl(FD fildes, U32 cmd, U32 arg) {
         }
         case K_F_ADD_SEALS: {
             if (fd->kobject->type==KTYPE_FILE) {
-                BoxedPtr<KFile> f = (KFile*)fd->kobject.get();
+                std::shared_ptr<KFile> f = std::dynamic_pointer_cast<KFile>(fd->kobject);
                 if (f->openFile->node->type==FsNode::Memory) {
                     FsMemOpenNode* openNode = (FsMemOpenNode*)f->openFile;
                     return openNode->addSeals(arg);
@@ -2185,7 +2186,7 @@ U32 KProcess::fcntrl(FD fildes, U32 cmd, U32 arg) {
         }
         case K_F_GET_SEALS: {
             if (fd->kobject->type==KTYPE_FILE) {
-                BoxedPtr<KFile> f = (KFile*)fd->kobject.get();
+                std::shared_ptr<KFile> f = std::dynamic_pointer_cast<KFile>(fd->kobject);
                 if (f->openFile->node->type==FsNode::Memory) {
                     FsMemOpenNode* openNode = (FsMemOpenNode*)f->openFile;
                     return openNode->getSeals();
@@ -2231,7 +2232,7 @@ U32 KProcess::set_thread_area(U32 info) {
 }
 
 U32 KProcess::epollcreate(U32 size, U32 flags) {
-    BoxedPtr<KObject> o = new KEPoll();
+    std::shared_ptr<KObject> o = std::make_shared<KEPoll>();
     KFileDescriptor* result = this->allocFileDescriptor(o, K_O_RDWR, flags, -1, 0);
     return result->handle;
 }
@@ -2241,7 +2242,7 @@ U32 KProcess::epollctl(FD epfd, U32 op, FD fd, U32 address) {
     if (fd==epfd || epollFD->kobject->type != KTYPE_EPOLL) {
         return -K_EINVAL;
     }
-    BoxedPtr<KEPoll> p = (KEPoll*)epollFD->kobject.get();
+    std::shared_ptr<KEPoll> p = std::dynamic_pointer_cast<KEPoll>(epollFD->kobject);
     return p->ctl(op, fd, address);
 }
 
@@ -2253,7 +2254,7 @@ U32 KProcess::epollwait(FD epfd, U32 events, U32 maxevents, U32 timeout) {
     if (epollFD->kobject->type != KTYPE_EPOLL) {
         return -K_EINVAL;
     }
-    BoxedPtr<KEPoll> p = (KEPoll*)epollFD->kobject.get();
+    std::shared_ptr<KEPoll> p = std::dynamic_pointer_cast<KEPoll>(epollFD->kobject);
     return p->wait(events, maxevents, timeout);
 }
 
@@ -2291,7 +2292,7 @@ U32 KProcess::getCurrentDirectoryFromDirFD(FD dirfd, std::string& currentDirecto
         } else if (fd->kobject->type!=KTYPE_FILE){
             result = -K_ENOTDIR;
         } else {
-            BoxedPtr<KFile> f = (KFile*)fd->kobject.get();
+            std::shared_ptr<KFile> f = std::dynamic_pointer_cast<KFile>(fd->kobject);
             currentDirectory = f->openFile->node->path;
         }
     }
@@ -2535,7 +2536,7 @@ void KProcess::signalFd(KThread* thread, U32 signal) {
     for (auto& n : this->fds) {
         KFileDescriptor* fd = n.second;
         if (fd->kobject->type == KTYPE_SIGNAL) {
-            BoxedPtr<KSignal> p = (KSignal*)fd->kobject.get();
+            std::shared_ptr<KSignal> p = std::dynamic_pointer_cast<KSignal>(fd->kobject);
             if ((p->mask & signal) && (!thread || thread->waitingCond == &p->lockCond)) {
                 BOXEDWINE_CONDITION_LOCK(p->lockCond);
                 p->sigAction = this->sigActions[signal];

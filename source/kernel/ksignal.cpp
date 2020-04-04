@@ -243,7 +243,7 @@ U32 syscall_signalfd4(S32 fildes, U32 mask, U32 maskSize, U32 flags) {
         if (fd->kobject->type!=KTYPE_SIGNAL)
             return -K_EINVAL;
     } else {
-        BoxedPtr<KSignal> o = new KSignal();
+        std::shared_ptr<KSignal> o = std::make_shared<KSignal>();
         fd =  thread->process->allocFileDescriptor(o, K_O_RDONLY, 0, -1, 0);
     }    
     if (flags & K_O_CLOEXEC) {
@@ -252,7 +252,7 @@ U32 syscall_signalfd4(S32 fildes, U32 mask, U32 maskSize, U32 flags) {
     if (flags & K_O_NONBLOCK) {
         fd->accessFlags |= K_O_NONBLOCK;
     }
-    BoxedPtr<KSignal> s = (KSignal*)fd->kobject.get();
+    std::shared_ptr<KSignal> s = std::dynamic_pointer_cast<KSignal>(fd->kobject);
     if (maskSize==4) {
         s->mask = readd(mask);
     } else if (maskSize==8) {

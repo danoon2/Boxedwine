@@ -34,7 +34,7 @@ public:
 #ifdef BOXEDWINE_DEFAULT_MMU
     BoxedPtr<MappedFileCache> systemCacheEntry;
 #endif
-    BoxedPtr<KFile> file;
+    std::shared_ptr<KFile> file;
     U32 address;
     U64 len;
     U64 offset;
@@ -119,7 +119,7 @@ public:
 
     std::string getModuleName(U32 eip);
     U32 getModuleEip(U32 eip);    
-    KFileDescriptor* allocFileDescriptor(const BoxedPtr<KObject>& kobject, U32 accessFlags, U32 descriptorFlags, S32 handle, U32 afterHandle);
+    KFileDescriptor* allocFileDescriptor(const std::shared_ptr<KObject>& kobject, U32 accessFlags, U32 descriptorFlags, S32 handle, U32 afterHandle);
     KFileDescriptor* getFileDescriptor(FD handle);
     void clearFdHandle(FD handle);
     U32 openFile(std::string const &currentDirectory, std::string const &localPath, U32 accessFlags, KFileDescriptor** result);
