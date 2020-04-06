@@ -2621,8 +2621,6 @@ void X64Asm::andReg(U8 reg, bool isRegRex, U32 mask) {
 
 void X64Asm::jmpReg(U8 reg, bool isRex, bool mightNeedCS) {       
     if (KSystem::useLargeAddressSpace) {
-        translateEip(true);
-        /*
         if (reg != 1 || !isRex) {
             writeToRegFromReg(1, true, reg, isRex, 4);
         }
@@ -2634,7 +2632,6 @@ void X64Asm::jmpReg(U8 reg, bool isRex, bool mightNeedCS) {
         write8(0xff);
         write8(0x24);
         write8(0xc0 | HOST_LARGE_ADDRESS_SPACE_MAPPING | (1<<3));
-         */
     } else {
         // HOST_TMP2 will hold the page
         // HOST_TMP will hold the offset
