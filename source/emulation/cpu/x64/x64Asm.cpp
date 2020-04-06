@@ -31,7 +31,8 @@
 #define CPU_OFFSET_ARG5 (U32)(offsetof(x64CPU, arg5))
 #define CPU_OFFSET_FPU_STATE (U32)(offsetof(x64CPU, fpuState))
 #define CPU_OFFSET_RETURN_HOST_ADDRESS (U32)(offsetof(x64CPU, returnHostAddress))
-#define CPU_OFFSET_TRANSLATE_CHUNK_ADDRESS (U32)(offsetof(x64CPU, translateChunkAddress))
+#define CPU_OFFSET_RETRANSLATE_CHUNK_ADDRESS (U32)(offsetof(x64CPU, reTranslateChunkAddress))
+#define CPU_OFFSET_JMP_AND_TRANSLATE_IF_NECESSARY_TO_R9 (U32)(offsetof(x64CPU, jmpAndTranslateIfNecessaryToR9))
 
 #ifdef BOXEDWINE_MSVC
 // RCX
@@ -2627,6 +2628,10 @@ void X64Asm::jmpReg(U8 reg, bool isRex, bool mightNeedCS) {
         if (this->cpu->thread->process->hasSetSeg[CS] || mightNeedCS) {
             addWithLea(1, true, 1, true, getRegForSeg(CS, 0), true, 0, 0, 4);
         }
+#ifdef BOXEDWINE_X64_DEBUG_NO_EXCEPTIONS
+        writeToRegFromMem(0, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_JMP_AND_TRANSLATE_IF_NECESSARY_TO_R9, 8, false);
+        jmpNativeReg(0, true);
+#endif
         // must use r9, the exception handler expects it
         write8(REX_BASE | REX_MOD_RM | REX_SIB_INDEX);
         write8(0xff);
@@ -3873,32 +3878,59 @@ void X64Asm::restoreNativeState() {
 	}
 }
 
-static void x64_translateEip() {
+static void x64_retranslateChunk() {
     x64CPU* cpu = ((x64CPU*)KThread::currentThread()->cpu);
-    cpu->returnHostAddress = cpu->translateNewCode();
+    cpu->returnHostAddress = cpu->reTranslateChunk();
 }
 
-static void x64_translateEip2() {
+static void x64_retranslateChunkAdjustForCS() {
     x64CPU* cpu = ((x64CPU*)KThread::currentThread()->cpu);
     cpu->eip.u32 -= cpu->seg[CS].address;
     if (!cpu->isBig()) {
         cpu->eip.u32 = cpu->eip.u32 & 0xFFFF;
     }
-    cpu->returnHostAddress = cpu->translateNewCode();
+    cpu->returnHostAddress = cpu->reTranslateChunk();
 }
 
-void X64Asm::setupTranslateEip() {
+void X64Asm::callRetranslateChunk() {
     syncRegsFromHost();
-    writeToRegFromMem(HOST_TMP, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_TRANSLATE_CHUNK_ADDRESS, 8, false);
+    writeToRegFromMem(HOST_TMP, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_RETRANSLATE_CHUNK_ADDRESS, 8, false);
     jmpNativeReg(HOST_TMP, true);
 }
 
-void X64Asm::translateEip(bool includeSetupFromR9) {
+void X64Asm::createCodeForRetranslateChunk(bool includeSetupFromR9) {
     if (includeSetupFromR9) {
         syncRegsFromHost(true);
-        callHost((void*)x64_translateEip2);
+        callHost((void*)x64_retranslateChunkAdjustForCS);
+    } else {        
+        callHost((void*)x64_retranslateChunk);
+    }
+    syncRegsToHost();
+    writeToRegFromMem(HOST_TMP, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_RETURN_HOST_ADDRESS, 8, false);
+    jmpNativeReg(HOST_TMP, true);
+}
+
+static void x64_jmpAndTranslateIfNecessary() {
+    x64CPU* cpu = ((x64CPU*)KThread::currentThread()->cpu);
+    cpu->returnHostAddress = (U64)cpu->translateEip(cpu->eip.u32);
+}
+
+static void x64_jmpAndTranslateIfNecessaryAdjustForCS() {
+    x64CPU* cpu = ((x64CPU*)KThread::currentThread()->cpu);
+    cpu->eip.u32 -= cpu->seg[CS].address;
+    if (!cpu->isBig()) {
+        cpu->eip.u32 = cpu->eip.u32 & 0xFFFF;
+    }
+    cpu->returnHostAddress = (U64)cpu->translateEip(cpu->eip.u32);
+}
+
+void X64Asm::createCodeForJmpAndTranslateIfNecessary(bool includeSetupFromR9) {
+    if (includeSetupFromR9) {
+        syncRegsFromHost(true);
+        callHost((void*)x64_jmpAndTranslateIfNecessaryAdjustForCS);
     } else {
-        callHost((void*)x64_translateEip);
+        syncRegsFromHost(false);
+        callHost((void*)x64_jmpAndTranslateIfNecessary);
     }
     syncRegsToHost();
     writeToRegFromMem(HOST_TMP, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_RETURN_HOST_ADDRESS, 8, false);

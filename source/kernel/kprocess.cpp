@@ -88,8 +88,9 @@ KProcess::KProcess(U32 id) : id(id),
 #ifdef BOXEDWINE_X64
     emulateFPU=false;
     returnToLoopAddress = NULL;
-    translateChunkAddress = NULL;
-    defaultEipToHostMappingAddress = NULL;
+    reTranslateChunkAddress = NULL;
+    reTranslateChunkAddressFromR9 = NULL;
+    jmpAndTranslateIfNecessaryToR9 = NULL;
 #endif
     for (int i=0;i<LDT_ENTRIES;i++) {
         this->ldt[i].seg_not_present = 1;
@@ -183,8 +184,9 @@ void KProcess::onExec() {
 
 #ifdef BOXEDWINE_X64
     returnToLoopAddress = NULL;
-    translateChunkAddress = NULL;
-    defaultEipToHostMappingAddress = NULL;
+    reTranslateChunkAddress = NULL;
+    reTranslateChunkAddressFromR9 = NULL;
+    jmpAndTranslateIfNecessaryToR9 = NULL;
 #endif
 }
 

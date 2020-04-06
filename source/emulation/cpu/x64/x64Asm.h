@@ -68,8 +68,9 @@ public:
     void addDynamicCheck(bool panic);
 	void saveNativeState();
 	void restoreNativeState();
-    void translateEip(bool includeSetupFromR9=false);
-    void setupTranslateEip();
+    void createCodeForRetranslateChunk(bool includeSetupFromR9=false);
+    void createCodeForJmpAndTranslateIfNecessary(bool includeSetupFromR9 = false);
+    void callRetranslateChunk();
 
     void setImmediate8(U8 value);
     void setImmediate16(U16 value);

@@ -130,21 +130,27 @@ void* x64CPU::init() {
     }
     this->returnToLoopAddress = this->thread->process->returnToLoopAddress;
 
-    if (!this->thread->process->translateChunkAddress) {
+    if (!this->thread->process->reTranslateChunkAddress) {
         X64Asm translateData(this);
-        translateData.translateEip();
+        translateData.createCodeForRetranslateChunk();
         std::shared_ptr<X64CodeChunk> chunk3 = translateData.commit(true);
-        this->thread->process->translateChunkAddress = chunk3->getHostAddress();
+        this->thread->process->reTranslateChunkAddress = chunk3->getHostAddress();
     }
-    this->translateChunkAddress = this->thread->process->translateChunkAddress;
-    if (!this->thread->process->defaultEipToHostMappingAddress) {
+    this->reTranslateChunkAddress = this->thread->process->reTranslateChunkAddress;
+    if (!this->thread->process->reTranslateChunkAddressFromR9) {
         X64Asm translateData(this);
-        translateData.translateEip(true);
+        translateData.createCodeForRetranslateChunk(true);
         std::shared_ptr<X64CodeChunk> chunk3 = translateData.commit(true);
-        this->thread->process->defaultEipToHostMappingAddress = chunk3->getHostAddress();
+        this->thread->process->reTranslateChunkAddressFromR9 = chunk3->getHostAddress();
     }
-    this->defaultEipToHostMappingAddress = this->thread->process->defaultEipToHostMappingAddress;
-
+    this->reTranslateChunkAddressFromR9 = this->thread->process->reTranslateChunkAddressFromR9;
+    if (!this->thread->process->jmpAndTranslateIfNecessaryToR9) {
+        X64Asm translateData(this);
+        translateData.createCodeForJmpAndTranslateIfNecessary(true);
+        std::shared_ptr<X64CodeChunk> chunk3 = translateData.commit(true);
+        this->thread->process->jmpAndTranslateIfNecessaryToR9 = chunk3->getHostAddress();
+    }
+    this->jmpAndTranslateIfNecessaryToR9 = this->thread->process->jmpAndTranslateIfNecessaryToR9;
     return result;
 }
 
@@ -272,7 +278,7 @@ void x64CPU::link(X64Asm* data, std::shared_ptr<X64CodeChunk>& fromChunk, U32 of
             if (!toHostAddress) {
                 X64Asm returnData(this);
                 returnData.startOfOpIp = eip - this->seg[CS].address;
-                returnData.setupTranslateEip();
+                returnData.callRetranslateChunk();
                 U32 hostIndex = 0;
                 std::shared_ptr<X64CodeChunk> chunk = std::make_shared<X64CodeChunk>(1, &eip, &hostIndex, returnData.buffer, returnData.bufferPos, eip - this->seg[CS].address, 1, false);
                 chunk->makeLive();
@@ -535,7 +541,7 @@ U64 x64CPU::handleChangedUnpatchedCode(U64 rip) {
     return result;
 }
 
-U64 x64CPU::translateNewCode() {
+U64 x64CPU::reTranslateChunk() {
 #ifndef __TEST
     // only one thread at a time can update the host code pages and related date like opToAddressPages
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->thread->memory->executableMemoryMutex);
@@ -550,7 +556,7 @@ U64 x64CPU::translateNewCode() {
         result = (U64)this->translateEip(this->eip.u32);
     }
     if (result == 0) {
-        kpanic("x64CPU::translateNewCode failed to translate code in exception");
+        kpanic("x64CPU::reTranslateChunk failed to translate code in exception");
     }
     return result;
 }

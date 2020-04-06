@@ -36,8 +36,9 @@ public:
 	ALIGN(U8 originalFpuState[512], 16);
 	U64 originalCpuRegs[16];
 	void* returnToLoopAddress;
-    void* translateChunkAddress;
-    void* defaultEipToHostMappingAddress;
+    void* reTranslateChunkAddress;
+    void* reTranslateChunkAddressFromR9;
+    void* jmpAndTranslateIfNecessaryToR9;
     static bool hasBMI2;
 
 #ifdef _DEBUG
@@ -54,7 +55,7 @@ public:
     void translateData(X64Asm* data, X64Asm* firstPass=NULL);
     std::shared_ptr<X64CodeChunk> translateChunk(X64Asm* parent, U32 ip);
 
-    U64 translateNewCode();
+    U64 reTranslateChunk();
     U64 handleChangedUnpatchedCode(U64 rip);
     U64 handleCodePatch(U64 rip, U32 address, U64 rsi, U64 rdi, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo);
     U64 handleMissingCode(U64 r8, U64 r9, U32 inst);
