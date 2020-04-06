@@ -158,8 +158,8 @@ public:
     std::shared_ptr<X64CodeChunk> getCodeChunkContainingHostAddress(void* hostAddress);
     void invalideHostCode(U32 eip, U32 len);
     std::shared_ptr<X64CodeChunk> getCodeChunkContainingEip(U32 eip);
-    void addCodeChunk(std::shared_ptr<X64CodeChunk>& chunk);
-    void removeCodeChunk(std::shared_ptr<X64CodeChunk>& chunk);
+    void addCodeChunk(const std::shared_ptr<X64CodeChunk>& chunk);
+    void removeCodeChunk(const std::shared_ptr<X64CodeChunk>& chunk);
     void makePageDynamic(U32 page);
     void* getExistingHostAddress(U32 eip);
     void* allocateExcutableMemory(U32 size, U32* allocatedSize);

@@ -685,7 +685,7 @@ U8* getPhysicalWriteAddress(U32 address, U32 len) {
 
 #ifdef BOXEDWINE_X64
 // called when X64CodeChunk is being dealloc'd
-void Memory::removeCodeChunk(std::shared_ptr<X64CodeChunk>& chunk) {
+void Memory::removeCodeChunk(const std::shared_ptr<X64CodeChunk>& chunk) {
     U32 hostPage = (U32)(((size_t)chunk->getHostAddress()) >> K_PAGE_SHIFT);
     if (this->codeChunksByHostPage.count(hostPage)) {
         std::shared_ptr< std::list<std::shared_ptr<X64CodeChunk>> > chunks = this->codeChunksByHostPage[hostPage];
@@ -706,7 +706,7 @@ void Memory::removeCodeChunk(std::shared_ptr<X64CodeChunk>& chunk) {
 }
 
 // called when X64CodeChunk is being alloc'd
-void Memory::addCodeChunk(std::shared_ptr<X64CodeChunk>& chunk) {
+void Memory::addCodeChunk(const std::shared_ptr<X64CodeChunk>& chunk) {
     U32 hostPage = (U32)(((size_t)chunk->getHostAddress()) >> K_PAGE_SHIFT);
     U32 emulationPage = (chunk->getEip()) >> K_PAGE_SHIFT;
 #ifdef _DEBUG
@@ -864,7 +864,8 @@ void Memory::setEipForHostMapping(U32 eip, void* host) {
     if (!this->isEipPageCommitted(page)) {
         commitHostAddressSpaceMapping(this, page, 1, (U64)KThread::currentThread()->process->defaultEipToHostMappingAddress);
     }
-    *((U64*)(((U8*)this->eipToHostInstructionAddressSpaceMapping) + ((U64)eip) * sizeof(void*))) = (U64)host;
+    U64* address = (U64*)(((U8*)this->eipToHostInstructionAddressSpaceMapping) + ((U64)eip) * sizeof(void*));
+    *address = (U64)host;
 }
 
 int powerOf2(U32 requestedSize, U32& size) {

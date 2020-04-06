@@ -23,6 +23,8 @@
 
 #include "../../source/emulation/hardmmu/hard_memory.h"
 
+U32 nativeMemoryPagesAllocated;
+
 #ifdef BOXEDWINE_64BIT_MMU
 void allocNativeMemory(Memory* memory, U32 page, U32 pageCount, U32 flags) {
     U32 proto = 0;
@@ -43,6 +45,7 @@ void allocNativeMemory(Memory* memory, U32 page, U32 pageCount, U32 flags) {
         memory->nativeFlags[page+i] |= NATIVE_FLAG_COMMITTED;
     }
     memset(getNativeAddress(memory, page << K_PAGE_SHIFT), 0, pageCount << K_PAGE_SHIFT);
+    nativeMemoryPagesAllocated+=pageCount;
 }
 
 void freeNativeMemory(Memory* memory, U32 page, U32 pageCount) {
@@ -56,6 +59,7 @@ void freeNativeMemory(Memory* memory, U32 page, U32 pageCount) {
         }
         memory->flags[page+i] = 0;
     }
+    nativeMemoryPagesAllocated-=pageCount;
 }
 
 static U64 nextMemoryId = 2;
@@ -157,11 +161,31 @@ static void* reserveNext4GBMemory() {
     return p;
 }
 
+static void* reserveNext32GBMemory() {
+    void* p;
+
+    while (true) {
+        nextMemoryId++;
+        p = (void*)(nextMemoryId << 32);
+        
+        if (isAddressRangeInUse(p, 0x800000000l)) {
+            continue;
+        }
+        if (mmap(p, 0x800000000l, PROT_NONE, MAP_ANONYMOUS|MAP_FIXED|MAP_PRIVATE, -1, 0)==p) {
+            break;
+        }
+    }
+    return p;
+}
+
 void reserveNativeMemory(Memory* memory) {
     memory->id = (U64)reserveNext4GBMemory();
 #ifdef BOXEDWINE_X64
     memory->executableMemoryId = (U64)reserveNext4GBMemory();
     memory->nextExecutablePage = 0;
+    if (KSystem::useLargeAddressSpace) {
+        memory->eipToHostInstructionAddressSpaceMapping = reserveNext32GBMemory();
+    }
 #endif
 }
 
@@ -173,6 +197,10 @@ void releaseNativeMemory(Memory* memory) {
     memset(memory->nativeFlags, 0, sizeof(memory->nativeFlags));
     memory->allocated = 0;
     munmap((char*)memory->id, 0x100000000l);
+    if (memory->eipToHostInstructionAddressSpaceMapping) {
+        munmap((char*)memory->eipToHostInstructionAddressSpaceMapping, 0x800000000l);
+        memory->eipToHostInstructionAddressSpaceMapping = NULL;
+    }
 }
 
 void makeCodePageReadOnly(Memory* memory, U32 page) {
@@ -282,5 +310,21 @@ void allocExecutable64kBlock(Memory* memory, U32 page) {
     }
 }
 #endif
+
+void commitHostAddressSpaceMapping(Memory* memory, U32 page, U32 pageCount, U64 defaultValue) {
+    for (U32 i=0;i<pageCount;i++) {
+        if (!memory->isEipPageCommitted(page+i)) {
+            U8* address = (U8*)memory->eipToHostInstructionAddressSpaceMapping+((U64)(page+i))*K_PAGE_SIZE*sizeof(void*);
+            if (mprotect(address, sizeof(void*) << K_PAGE_SHIFT, PAGE_READ|PROT_WRITE)<0) {
+                kpanic("commitHostAddressSpaceMapping mprotect failed: %s", strerror(errno));
+            }
+            U64* address64 = (U64*)address;
+            for (U32 j=0;j<K_PAGE_SIZE;j++, address64++) {
+                *address64 = defaultValue;
+            }
+            memory->setEipPageCommitted(page+i);
+        }
+    }
+}
 
 #endif

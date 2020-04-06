@@ -315,7 +315,7 @@ static void handler(int sig, siginfo_t* info, void* vcontext)
     }
     
     InException inException(cpu);
-    if (info->si_signo == SIGILL) {
+    if (info->si_signo == SIGILL || info->si_signo == SIGTRAP) {
         if (context->CONTEXT_RSP & 0xf) {
             kpanic("seh_filter: bad stack alignment");
         }
@@ -355,6 +355,9 @@ void* platformThreadProc(void* param) {
         sigaction(SIGSEGV, &sa, &oldsa);
         sigaction(SIGILL, &sa, &oldsa);
         sigaction(SIGFPE, &sa, &oldsa);
+        for (int i=0x91;i<=0x96;i++)
+        sigaction(i, &sa, &oldsa);
+        sigaction(SIGTRAP, &sa, &oldsa);
         initializedHandler = true;
     }
     platformThreadCount++;
