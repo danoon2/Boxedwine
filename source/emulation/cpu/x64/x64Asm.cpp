@@ -2631,12 +2631,13 @@ void X64Asm::jmpReg(U8 reg, bool isRex, bool mightNeedCS) {
 #ifdef BOXEDWINE_X64_DEBUG_NO_EXCEPTIONS
         writeToRegFromMem(0, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_JMP_AND_TRANSLATE_IF_NECESSARY_TO_R9, 8, false);
         jmpNativeReg(0, true);
-#endif
+#else
         // must use r9, the exception handler expects it
         write8(REX_BASE | REX_MOD_RM | REX_SIB_INDEX);
         write8(0xff);
         write8(0x24);
         write8(0xc0 | HOST_LARGE_ADDRESS_SPACE_MAPPING | (1<<3));
+#endif
     } else {
         // HOST_TMP2 will hold the page
         // HOST_TMP will hold the offset
