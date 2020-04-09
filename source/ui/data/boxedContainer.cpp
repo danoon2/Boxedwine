@@ -90,6 +90,10 @@ void BoxedContainer::deleteApp(BoxedApp* app) {
     }
 }
 
+bool BoxedContainer::doesWineVersionExist() {
+    return Fs::doesNativePathExist(GlobalSettings::getFileFromWineName(this->wineVersion));
+}
+
 void BoxedContainer::launch() {
     GlobalSettings::startUpArgs.addZip(GlobalSettings::getFileFromWineName(this->wineVersion));
     std::string root = GlobalSettings::getRootFolder(this);

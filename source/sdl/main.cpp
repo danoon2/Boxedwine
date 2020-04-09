@@ -17,13 +17,6 @@
  */
 
 #include "boxedwine.h"
-#include "devdsp.h"
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#include MKDIR_INCLUDE
 
 #include <SDL.h>
 
@@ -89,7 +82,13 @@ int boxedmain(int argc, const char **argv) {
         }
     } else {
 #ifndef BOXEDWINE_DISABLE_UI
+
         while (uiShow(GlobalSettings::getExePath()+Fs::nativePathSeperator)) {
+            if (GlobalSettings::restartUI) {
+                GlobalSettings::restartUI = false;
+                GlobalSettings::startUp();
+                continue;
+            }
             BoxedwineData::startApp();
             GlobalSettings::startUpArgs.readyToLaunch = false;
 

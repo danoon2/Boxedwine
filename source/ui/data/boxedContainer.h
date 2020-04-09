@@ -17,6 +17,8 @@ public:
     void deleteApp(BoxedApp* app);
     void deleteContainerFromFilesystem();
     void launch();
+    bool doesWineVersionExist();
+
     BoxedApp* getAppByIniFile(const std::string& iniFile);
 
     const std::string& getName() {return this->name;}

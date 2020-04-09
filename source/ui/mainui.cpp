@@ -6,17 +6,12 @@
 
 #include "examples/imgui_impl_sdl.h"
 #include "examples/imgui_impl_opengl3.h"
+#include "imgui_internal.h"
 
 static std::vector<ListViewItem> appListViewItems;
 static std::vector<AppButton> appButtons;
-static ImFont* appBarFont;
-static ImFont* defaultFont;
-static bool extendedAppBarFont;
-static int currentView;
-
-// should correspond to index in appButtons
-#define VIEW_APPS 0
-#define VIEW_CONTAINERS 2
+static int currentViewDeprecated;
+static BaseView* currentView;
 
 class RunOnMain {
 public:
@@ -27,34 +22,25 @@ public:
 };
 
 std::list<RunOnMain> runOnMainFunctions;
+std::list<RunOnMain> runAfterFrameFunctions;
 
 void runOnMainUI(std::function<bool()> f, U64 delayInMillies) {
     runOnMainFunctions.push_back(RunOnMain(f, SDL_GetTicks() + delayInMillies));
 }
 
-void uiDraw() {    
-    ImGuiStyle& style = ImGui::GetStyle();
-    style.WindowRounding = 0;
-    ImGuiIO& io = ImGui::GetIO();
-    ImGui::SetNextWindowPos(ImVec2(0, 0));
-    ImGui::SetNextWindowSize(ImVec2(io.DisplaySize.x, io.DisplaySize.x));
-    ImGui::Begin("mainWindow", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar);
-    drawAppBar(appButtons, currentView, appBarFont, extendedAppBarFont);
-    ImGui::Separator();
-    if (currentView==VIEW_CONTAINERS) {
-        drawContainersView(ImGui::GetWindowContentRegionMax());
-    } else {
-        drawListView("Apps", appListViewItems, ImGui::GetWindowContentRegionMax());
-    }
+void runAfterFrame(std::function<bool()> f, U64 delayInMillies) {
+    runAfterFrameFunctions.push_back(RunOnMain(f, SDL_GetTicks() + delayInMillies));
+}
 
-    std::list<RunOnMain>::iterator iter = runOnMainFunctions.begin();
-    std::list<RunOnMain>::iterator end = runOnMainFunctions.end();
+void runFunctions(std::list<RunOnMain>& functions) {
+    std::list<RunOnMain>::iterator iter = functions.begin();
+    std::list<RunOnMain>::iterator end = functions.end();
 
     while (iter != end) {
         RunOnMain& item = *iter;
         if (item.timeToRun <= SDL_GetTicks()) {
             if (!item.f()) {
-                iter = runOnMainFunctions.erase(iter);
+                iter = functions.erase(iter);
             } else {
                 ++iter;
             }
@@ -62,29 +48,49 @@ void uiDraw() {
             ++iter;
         }
     }
+}
+
+void uiDraw() {    
+    ImGuiStyle& style = ImGui::GetStyle();
+    style.WindowRounding = 0;
+    ImGuiIO& io = ImGui::GetIO();
+    ImGui::SetNextWindowPos(ImVec2(0, 0));
+    ImGui::SetNextWindowSize(ImVec2(io.DisplaySize.x, io.DisplaySize.y));
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImGui::GetColorU32(ImGuiCol_MenuBarBg));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));    
+    ImGui::Begin("mainWindow", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar);
+    ImGui::PopStyleColor();
+    drawAppBar(appButtons, currentViewDeprecated, GlobalSettings::largeFontBold);
+    //ImGui::Separator();
+    ImVec2 size = ImGui::GetWindowContentRegionMax();
+    size.y -= ImGui::GetCursorPosY();
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetColorU32(ImGuiCol_WindowBg));
+    if (currentViewDeprecated ==VIEW_CONTAINERS) {
+        drawContainersView(size);
+    } else if (currentViewDeprecated == VIEW_OPTIONS) {        
+        currentView->run(size);
+    } else {        
+        drawListView("Apps", appListViewItems, size);
+    }
+    ImGui::PopStyleColor();
+    
+    runFunctions(runOnMainFunctions);
+
     BaseDlg::runDialogs();
 
     ImGui::End();
+    ImGui::PopStyleVar(1);    
 }
 
-void loadFonts(const std::string& basePath) {
-    std::string fontPath = basePath + "LiberationMono-Regular.ttf";
-    if (Fs::doesNativePathExist(fontPath)) {
-        ImGuiIO& io = ImGui::GetIO();
-        defaultFont = io.Fonts->AddFontFromFileTTF(fontPath.c_str(), 15.0f);
-        fontPath = basePath + "LiberationSans-Bold.ttf";
-        if (Fs::doesNativePathExist(fontPath)) {
-        appBarFont = io.Fonts->AddFontFromFileTTF(fontPath.c_str(), 24.0f);    
-            if (appBarFont) {
-                static const ImWchar icons_ranges[] = { 0xe000, 0xe0fe, 0 }; // Will not be copied by AddFont* so keep in scope.
-                ImFontConfig config;
-                config.MergeMode = true;
-                fontPath = basePath + "OpenFontIcons.ttf";
-                if (Fs::doesNativePathExist(fontPath)) {
-                    io.Fonts->AddFontFromFileTTF(fontPath.c_str(), 24.0f, &config, icons_ranges);
-                    extendedAppBarFont = io.Fonts->Build();
-                }
-            }
+void gotoView(int viewId, const char* tab) {
+    if (!currentView || currentView->saveChanges()) {
+        if (currentView) {
+            delete currentView;
+            currentView = NULL;
+        }
+        currentViewDeprecated = viewId;
+        if (viewId == VIEW_OPTIONS) {
+            currentView = new OptionsView(tab);
         }
     }
 }
@@ -92,19 +98,29 @@ void loadFonts(const std::string& basePath) {
 void createButton() {
     appButtons.clear();
     appButtons.push_back(AppButton(getTranslation(MAIN_BUTTON_APPS), [](){
-        currentView = VIEW_APPS;
+        gotoView(VIEW_APPS);
     }));
     appButtons.push_back(AppButton(getTranslation(MAIN_BUTTON_INSTALL), [](){
-        new InstallDlg();
+        if (!currentView || currentView->saveChanges()) {
+            if (currentView) {
+                delete currentView;
+                currentView = NULL;
+            }
+            new InstallDlg();
+        }
     }));    
     appButtons.push_back(AppButton(getTranslation(MAIN_BUTTON_CONTAINERS), [](){
-        BoxedwineData::updateCachedContainerSizes();
-        currentView = VIEW_CONTAINERS;
+        if (!currentView || currentView->saveChanges()) {
+            if (currentView) {
+                delete currentView;
+                currentView = NULL;
+            }
+            BoxedwineData::updateCachedContainerSizes();
+            currentViewDeprecated = VIEW_CONTAINERS;
+        }        
     }));
     appButtons.push_back(AppButton(getTranslation(MAIN_BUTTON_SETTINGS), [](){
-        new SettingsDlg();
-    }));
-    appButtons.push_back(AppButton(getTranslation(MAIN_BUTTON_HELP), [](){
+        gotoView(VIEW_OPTIONS);        
     }));
 }
 
@@ -134,8 +150,38 @@ void loadApps() {
                     });
                 } else {
                     runOnMainUI([app]() {
-                        new WaitDlg(WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(WAITDLG_LAUNCH_APP_LABEL, true, app->getName()));
-                        app->launch();
+                        if (app->getContainer()->doesWineVersionExist()) {
+                            new WaitDlg(WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(WAITDLG_LAUNCH_APP_LABEL, true, app->getName()));
+                            app->launch();
+                        } else {
+                            if (GlobalSettings::getWineVersions().size()) {                                
+                                std::string label = getTranslationWithFormat(ERROR_MISSING_WINE, true, app->getContainer()->getWineVersion(), GlobalSettings::getWineVersions()[0].name);
+                                new YesNoDlg(GENERIC_DLG_ERROR_TITLE, label.c_str(), [app](bool yes) {
+                                    if (yes) {
+                                        app->getContainer()->setWineVersion(GlobalSettings::getWineVersions()[0].name);
+                                        app->getContainer()->saveContainer();
+                                        new WaitDlg(WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(WAITDLG_LAUNCH_APP_LABEL, true, app->getName()));
+                                        app->launch();
+                                    } 
+                                    });
+                            } else if (GlobalSettings::getAvailableWineVersions().size() != 0) {
+                                new YesNoDlg(GENERIC_DLG_ERROR_TITLE, getTranslation(ERROR_NO_WINE), [app](bool yes) {
+                                    if (yes) {
+                                        GlobalSettings::downloadWine(GlobalSettings::getAvailableWineVersions().front(), [app](bool success) {
+                                            if (success) {
+                                                app->getContainer()->setWineVersion(GlobalSettings::getWineVersions()[0].name);
+                                                app->getContainer()->saveContainer();
+                                                new WaitDlg(WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(WAITDLG_LAUNCH_APP_LABEL, true, app->getName()));
+                                                app->launch();
+                                            }
+                                            });
+                                    } else {
+                                        gotoView(VIEW_OPTIONS, "Wine");
+                                    }
+                                    });
+                            } else {
+                            }
+                        }
                         return false;
                     });
                 }
@@ -216,6 +262,8 @@ bool uiLoop() {
     glClear(GL_COLOR_BUFFER_BIT);
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
     SDL_GL_SwapWindow(window);
+
+    runFunctions(runAfterFrameFunctions);
     return done;
 }
 
@@ -254,7 +302,17 @@ bool uiShow(const std::string& basePath) {
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
     SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
-    window = SDL_CreateWindow("Boxedwine UI", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1024, 768, window_flags);
+
+    U32 cx = 1024;
+    U32 cy = 768;
+    U32 scale = SCALE_DENOMINATOR;
+
+#ifdef BOXEDWINE_HIGHDPI
+    scale = getDisplayScale();
+    cx = cx * scale / SCALE_DENOMINATOR;
+    cy = cy * scale / SCALE_DENOMINATOR;
+#endif
+    window = SDL_CreateWindow("Boxedwine UI", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, cx, cy, window_flags);
     gl_context = SDL_GL_CreateContext(window);
     SDL_GL_MakeCurrent(window, gl_context);
     SDL_GL_SetSwapInterval(1); // Enable vsync
@@ -280,14 +338,18 @@ bool uiShow(const std::string& basePath) {
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
-    ImGui::CreateContext();    
-    loadFonts(basePath);
+    ImGuiContext* context = ImGui::CreateContext();
+#ifdef BOXEDWINE_HIGHDPI
+    GlobalSettings::setScale(scale);
+    context->Style.ScaleAllSizes(GlobalSettings::scaleFloatUI(1.0f));    
+#endif
+    GlobalSettings::loadFonts();
     BoxedwineData::loadUI();
-    currentView = VIEW_APPS;
+    currentViewDeprecated = VIEW_APPS;
     loadApps(); // need to be after we create the context for images to work
     createButton();
     if (GlobalSettings::startUpArgs.showAppPickerForContainer.length()) {
-        runOnMainUI([]() {                    
+        runOnMainUI([]() {
             BoxedContainer* container = BoxedwineData::getContainerByName(GlobalSettings::startUpArgs.showAppPickerForContainer);
             if (container) {
                 new AppChooserDlg(container);
@@ -306,14 +368,41 @@ bool uiShow(const std::string& basePath) {
     ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
     ImGui_ImplOpenGL3_Init(glsl_version);    
 
+    if (GlobalSettings::getWineVersions().size()==0) {
+        runOnMainUI([]() {
+            if (GlobalSettings::getAvailableWineVersions().size() == 0 && GlobalSettings::isFilesListDownloading()) {
+                new WaitDlg(WAITDLG_GET_FILE_LIST_TITLE, getTranslation(WAITDLG_GET_FILE_LIST_LABEL), []() {
+                    if (!GlobalSettings::isFilesListDownloading()) {
+                        runOnMainUI([]() {
+                            if (GlobalSettings::getAvailableWineVersions().size() == 0) {
+                                new OkDlg(GENERIC_DLG_ERROR_TITLE, getTranslation(ERROR_NO_FILE_LIST), []() {
+                                    });
+                            } else {
+                                askToDownloadDefaultWine();
+                            }
+                            return false;
+                            });
+                    }
+                    return GlobalSettings::isFilesListDownloading();
+                    });
+            } else {
+                askToDownloadDefaultWine();
+            }            
+            return false;
+            });
+    }
+
     // Main loop
     bool done = false;
-    while (!done && !GlobalSettings::startUpArgs.readyToLaunch)
+    while (!done && !GlobalSettings::startUpArgs.readyToLaunch && !GlobalSettings::restartUI)
     {
         done = uiLoop();
     }
-    if (done) {
+    if (done || GlobalSettings::restartUI) {
         uiShutdown();
+    }
+    if (GlobalSettings::restartUI) {
+        return true;
     }
     return GlobalSettings::startUpArgs.readyToLaunch;
 }

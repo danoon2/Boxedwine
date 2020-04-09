@@ -1,9 +1,11 @@
 #include "boxedwine.h"
 #include "../boxedwineui.h"
+#include <SDL.h>
 
-bool showMessageBox(bool open, const char* title, const char* msg) {    
+bool showMessageBox(const std::string& id, bool open, const char* title, const char* msg) {    
     bool result = true;
-    ImGui::PushID(msg);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(GlobalSettings::scaleFloatUI(8.0f), GlobalSettings::scaleFloatUI(8.0f)));
+    ImGui::PushID(id.c_str());
     if (open) {
         ImGui::OpenPopup(title);
     }
@@ -12,7 +14,7 @@ bool showMessageBox(bool open, const char* title, const char* msg) {
         SAFE_IMGUI_TEXT(msg);
         ImGui::Separator();
 
-        if (ImGui::Button("OK", ImVec2(120, 0))) { 
+        if (ImGui::Button(getTranslation(GENERIC_DLG_OK), ImVec2(120, 0))) {
             ImGui::CloseCurrentPopup(); 
             result = false;
         }
@@ -20,6 +22,37 @@ bool showMessageBox(bool open, const char* title, const char* msg) {
         ImGui::EndPopup();
     }
     ImGui::PopID();
+    ImGui::PopStyleVar();
+    return result;
+}
+
+bool showYesNoMessageBox(const std::string& id, bool open, const char* title, const char* msg, bool* yes) {
+    bool result = true;
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(GlobalSettings::scaleFloatUI(8.0f), GlobalSettings::scaleFloatUI(8.0f)));
+    ImGui::PushID(id.c_str());
+    if (open) {
+        ImGui::OpenPopup(title);
+    }
+    if (ImGui::BeginPopupModal(title, NULL, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        SAFE_IMGUI_TEXT(msg);
+        ImGui::Separator();
+
+        if (ImGui::Button(getTranslation(GENERIC_DLG_YES), ImVec2(GlobalSettings::scaleFloatUI(120.0f), 0))) {
+            ImGui::CloseCurrentPopup();
+            result = false;
+            *yes = true;
+        }
+        ImGui::SameLine();
+        if (ImGui::Button(getTranslation(GENERIC_DLG_NO), ImVec2(GlobalSettings::scaleFloatUI(120.0f), 0))) {
+            ImGui::CloseCurrentPopup();
+            result = false;
+        }
+        ImGui::SetItemDefaultFocus();
+        ImGui::EndPopup();
+    }
+    ImGui::PopID();
+    ImGui::PopStyleVar();
     return result;
 }
 
@@ -43,3 +76,29 @@ void alignNextTextRightInColumn(const char* text) {
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - ImGui::CalcTextSize(text).x  - ImGui::GetScrollX() - 2 * ImGui::GetStyle().ItemSpacing.x);
 }
 
+U32 getDisplayScale() {
+    const float defaultDPI =
+#ifdef __APPLE__
+        72.0f;
+#else
+        96.0f;
+#endif
+    float dpi = defaultDPI;
+
+    if (SDL_GetDisplayDPI(0, NULL, &dpi, NULL) != 0) {
+        return 1000;
+    }
+
+    return (U32)(dpi / defaultDPI * 1000.0f);
+}
+
+void askToDownloadDefaultWine() {
+    new YesNoDlg(GENERIC_DLG_ERROR_TITLE, getTranslation(ERROR_NO_WINE), [](bool yes) {
+        if (yes) {
+            GlobalSettings::downloadWine(GlobalSettings::getAvailableWineVersions().front(), [](bool success) {
+                });
+        } else {
+            gotoView(VIEW_OPTIONS, "Wine");
+        }
+        });
+}

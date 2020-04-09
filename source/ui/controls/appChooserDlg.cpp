@@ -2,7 +2,7 @@
 #include "../boxedwineui.h"
 #include <thread>
 
-AppChooserDlg::AppChooserDlg(BoxedContainer* container, BaseDlg* parent) : BaseDlg(APPCHOOSER_DLG_TITLE, 600, 400, parent) {
+AppChooserDlg::AppChooserDlg(BoxedContainer* container, BaseDlg* parent) : BaseDlg(APPCHOOSER_DLG_TITLE, 600, 400, NULL, parent) {
     container->getNewApps(this->items);
 }
 

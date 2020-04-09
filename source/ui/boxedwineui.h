@@ -17,6 +17,7 @@
 #include "data/boxedApp.h"
 #include "data/boxedContainer.h"
 
+#include "controls/baseView.h"
 #include "controls/spinnerControl.h"
 #include "controls/uiSettings.h"
 #include "controls/baseDlg.h"
@@ -26,14 +27,20 @@
 #include "controls/listView.h"
 #include "controls/containersView.h"
 #include "controls/containerOptionsDlg.h"
-#include "controls/settingsDlg.h"
+#include "controls/optionsView.h"
 #include "controls/appChooserDlg.h"
 #include "controls/waitDlg.h"
 #include "controls/appOptionsDlg.h"
+#include "controls/downloadDlg.h"
+#include "controls/yesNoDlg.h"
+#include "controls/okDlg.h"
 
 #include "mainui.h"
 
 #define SAFE_IMGUI_TEXT(x) ImGui::Text("%s", x)
 #define SAFE_IMGUI_TEXT_DISABLED(x) ImGui::TextDisabled("%s", x)
+
+#define EXTRA_VERTICAL_SPACING 5
+#define TOOL_TIP_WIDTH 28
 
 #endif

@@ -606,7 +606,9 @@ const unsigned char* extractIconFromExe(const std::string& nativeExePath, int si
             if (bestIcon.bih.biCompression) {
                 continue;
             }
-            if (bestIcon.bih.biWidth!=size && icons[i].bih.biWidth==size) {
+            int bestDiff = abs(bestIcon.bih.biWidth - size);
+            int diff = abs(icons[i].bih.biWidth - size);
+            if (diff<bestDiff) {
                 bestIcon = icons[i];
             } else if (bestIcon.bih.biBitCount && icons[i].bih.biBitCount && bestIcon.bih.biBitCount<icons[i].bih.biBitCount && icons[i].bih.biBitCount<=32) {
                 bestIcon = icons[i];

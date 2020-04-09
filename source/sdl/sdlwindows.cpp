@@ -702,7 +702,7 @@ static void displayChanged(KThread* thread) {
                 sdlScaleX = dm.w * 100 / screenCx;
                 sdlScaleY = dm.h * 100 / screenCy;
             }
-        }
+        }        
         sdlWindow = SDL_CreateWindow("BoxedWine", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, cx, cy, SDL_WINDOW_SHOWN);
         sdlRenderer = SDL_CreateRenderer(sdlWindow, -1, 0);	
 #else

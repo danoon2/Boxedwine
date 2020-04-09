@@ -3,22 +3,15 @@
 #include "listViewItem.h"
 
 void drawIcon(const ListViewItem& item) {
-    ImGui::SetCursorPosX(ImGui::GetCursorPosX()+(ImGui::GetColumnWidth()/2-(float)item.icon->width/2));
-    if (item.icon->width==UiSettings::ICON_SIZE)  {
-        ImGui::Image(item.icon->texture, ImVec2((float)item.icon->width, (float)item.icon->height));
-    } else {
-        int offset = UiSettings::ICON_SIZE/2-item.icon->width/2;
-        ImGui::SetCursorPosY(ImGui::GetCursorPosY()+(float)offset);
-        ImGui::Image(item.icon->texture, ImVec2((float)item.icon->width, (float)item.icon->height));
-        offset+=item.icon->height;
-        ImGui::SetCursorPosY(ImGui::GetCursorPosY()+(float)(UiSettings::ICON_SIZE-offset));
-    }
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX()+(ImGui::GetColumnWidth()/2-(float)UiSettings::ICON_SIZE /2));
+    ImGui::Image(item.icon->texture, ImVec2((float)UiSettings::ICON_SIZE, (float)UiSettings::ICON_SIZE));
 }
 
 void drawListViewItem(const ListViewItem& item) {
     float width = ImGui::GetColumnWidth();
     ImVec2 startPos = ImGui::GetCursorPos();
-    
+    const float iconVertGap = GlobalSettings::scaleFloatUI(5);
+
     ImVec2 textSize = ImGui::CalcTextSize(item.text.c_str());
     if (textSize.x>width) {
         ImVec2 fullTextSize = ImGui::CalcTextSize(item.text.c_str(), NULL, false, width);
@@ -36,16 +29,16 @@ void drawListViewItem(const ListViewItem& item) {
         }
         fullTextSize.y=ImGui::GetStyle().ItemSpacing.y*(lineCount-1)+lineCount*textSize.y;
         ImVec2 fullItemSize = fullTextSize;         
-        fullItemSize.y+=UiSettings::ICON_SIZE+ImGui::GetStyle().ItemSpacing.y;
+        fullItemSize.y += UiSettings::ICON_SIZE + iconVertGap * 3;
         if (ImGui::Selectable("", false, ImGuiSelectableFlags_AllowRightClick, fullItemSize)) {
             item.onSelect(ImGui::IsMouseReleased(ImGuiMouseButton_Right));
         }
         if (item.icon) {
-            ImGui::SetCursorPos(startPos);
+            ImGui::SetCursorPosX(startPos.x);
+            ImGui::SetCursorPosY(startPos.y+ iconVertGap);
             drawIcon(item);
-        } else {
-            ImGui::SetCursorPosY(startPos.y+(float)UiSettings::ICON_SIZE+ImGui::GetStyle().ItemSpacing.y);
-        }   
+        }
+        ImGui::SetCursorPosY(startPos.y + (float)UiSettings::ICON_SIZE + iconVertGap * 2);
         ImGui::PopID();
         int i=0;
         while (p<end && i<UiSettings::MAX_NUMBER_OF_LINES_FOR_APP_LIST_VIEW_TEXT) {
@@ -74,17 +67,18 @@ void drawListViewItem(const ListViewItem& item) {
         }
     } else {
         ImVec2 fullItemSize = textSize;
-        fullItemSize.y+=UiSettings::ICON_SIZE+ImGui::GetStyle().ItemSpacing.y;
-        ImGui::SetCursorPosX(ImGui::GetCursorPosX()+(width/2-textSize.x/2));
+        fullItemSize.x = width;
+        fullItemSize.y+=UiSettings::ICON_SIZE+ iconVertGap * 3;
+        //ImGui::SetCursorPosX(ImGui::GetCursorPosX()+(width/2-textSize.x/2));
         if (ImGui::Selectable("", false, ImGuiSelectableFlags_AllowRightClick, fullItemSize)) {
             item.onSelect(ImGui::IsMouseReleased(ImGuiMouseButton_Right));
-        }
+        }        
         if (item.icon) {
-            ImGui::SetCursorPos(startPos);
+            ImGui::SetCursorPosX(startPos.x);
+            ImGui::SetCursorPosY(startPos.y + iconVertGap);
             drawIcon(item);
-        } else {
-            ImGui::SetCursorPosY(startPos.y+(float)UiSettings::ICON_SIZE+ImGui::GetStyle().ItemSpacing.y);
-        }       
+        }
+        ImGui::SetCursorPosY(startPos.y + (float)UiSettings::ICON_SIZE + iconVertGap*2);
         ImGui::SetCursorPosX(ImGui::GetCursorPosX()+(width/2-textSize.x/2));
         SAFE_IMGUI_TEXT(item.text.c_str());
     }

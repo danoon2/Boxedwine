@@ -25,6 +25,9 @@ bool readLinesFromFile(const std::string& filepath, std::vector<std::string>& li
         while (getline(fp, line)) {
             lines.push_back(line);
         }
+        if (line.length()) {
+            lines.push_back(line);
+        }
         fclose(fp);
         return true;
     }

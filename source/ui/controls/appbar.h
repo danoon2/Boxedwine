@@ -9,6 +9,6 @@ public:
     std::function<void()> onSelect;
 };
 
-void drawAppBar(const std::vector<AppButton>& buttons, int selected, ImFont* font, bool extendedFont);
+void drawAppBar(const std::vector<AppButton>& buttons, int selected, ImFont* font);
 
 #endif

@@ -47,7 +47,11 @@ void ComboboxData::dataChanged() {
     dataForCombobox[len]=0;
 }
 
-BaseDlg::BaseDlg(int title, int width, int height, BaseDlg* parent) : width(width), height(height), toolTipWidth(28), extraVerticalSpacing(5), isDone(false), parent(parent), child(NULL) {
+BaseDlg::BaseDlg(int title, int width, int height, ImFont* font, BaseDlg* parent) : isDone(false), parent(parent), child(NULL), font(font) {
+    this->width = GlobalSettings::scaleIntUI(width);
+    this->height = GlobalSettings::scaleIntUI(height);
+    this->toolTipWidth = (float)GlobalSettings::scaleIntUI(28);
+    this->extraVerticalSpacing = (float)GlobalSettings::scaleIntUI(5);
     this->title = getTranslation(title);
     ImGui::OpenPopup(this->title);
     if (parent) {
@@ -55,9 +59,15 @@ BaseDlg::BaseDlg(int title, int width, int height, BaseDlg* parent) : width(widt
     } else {
         BaseDlg::activeDialogs.push_back(this);
     }
+    if (!this->font) {
+        this->font = GlobalSettings::defaultFont;
+    }
 }
 
 void BaseDlg::runIfVisible() {
+    if (this->font) {
+        ImGui::PushFont(this->font);
+    }
     if (ImGui::BeginPopupModal(this->title, NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse/* | ImGuiWindowFlags_NoMove*/))
     {
         ImGui::SetWindowSize(ImVec2((float)width, (float)height));        
@@ -66,6 +76,9 @@ void BaseDlg::runIfVisible() {
             this->child->runIfVisible();
         }
         ImGui::EndPopup();
+    }
+    if (this->font) {
+        ImGui::PopFont();
     }
 }
 

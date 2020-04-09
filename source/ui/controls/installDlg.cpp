@@ -318,7 +318,7 @@ void InstallDlg::onOk(bool buttonClicked) {
     }
 
     if (this->errorMsg) {        
-        if (!showMessageBox(buttonClicked, getTranslation(GENERIC_DLG_ERROR_TITLE), this->errorMsg)) {
+        if (!showMessageBox("InstallDlgErrorMsg", buttonClicked, getTranslation(GENERIC_DLG_ERROR_TITLE), this->errorMsg)) {
             this->errorMsg = NULL;
         }
     }

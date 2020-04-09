@@ -9,6 +9,13 @@ std::string getTranslationWithFormat(int msg, bool useDefaultIfMissing, const st
     return getTranslationWithFormat(msg, useDefaultIfMissing, std::vector<std::string>(1, string1));
 }
 
+std::string getTranslationWithFormat(int msg, bool useDefaultIfMissing, const std::string& string1, const std::string& string2) {
+    std::vector<std::string> values;
+    values.push_back(string1);
+    values.push_back(string2);
+    return getTranslationWithFormat(msg, useDefaultIfMissing, values);
+}
+
 std::string getTranslationWithFormat(int msg, bool useDefaultIfMissing, const std::vector<std::string>& replacements) {
     std::string result = getTranslation(msg, useDefaultIfMissing);
     for (int i=0;i<(int)replacements.size();i++) {
@@ -77,23 +84,45 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
     case INSTALLDLG_ERROR_FAILED_TO_MOUNT:
         return "Failed to mount directory at drive t:.  If this is not a new container, perhaps you can try the same thing with a new container.";
     case SETTINGS_DLG_TITLE:
-        return "Settings";
-    case SETUPDLG_SAVE_FOLDER_LABEL:
+        return "Options";
+    case OPTIONSVIEW_SAVE_FOLDER_LABEL:
         return "Save Folder Location:";
-    case SETUPDLG_SAVE_FOLDER_HELP:
+    case OPTIONSVIEW_SAVE_FOLDER_HELP:
         return "This is the location on your computer where the games and apps will be installed.  If you already installed some games or apps, if you change this you will no longer see them.";
-    case SETUPDLG_THEME_LABEL:
+    case OPTIONSVIEW_THEME_LABEL:
         return "Color Theme:";
-    case SETUPDLG_THEME_HELP:
+    case OPTIONSVIEW_THEME_HELP:
         return "If you prefer Boxedwine to use different colors for the windows, you can try changing this.";
-    case SETUPDLG_THEME_DARK:
+    case OPTIONSVIEW_THEME_DARK:
         return "Dark";
-    case SETUPDLG_THEME_CLASSIC:
+    case OPTIONSVIEW_THEME_CLASSIC:
         return "Classic";
-    case SETUPDLG_THEME_LIGHT:
+    case OPTIONSVIEW_THEME_LIGHT:
         return "Light";
-    case SETUPDLG_ERROR_DATA_DIR_NOT_FOUND:
+    case OPTIONSVIEW_ERROR_DATA_DIR_NOT_FOUND:
         return "The Save Folder Location does not exist.";
+    case OPTIONSVIEW_TITLE_GENERAL:
+        return "General";
+    case OPTIONSVIEW_TITLE_DISPLAY:
+        return "Display";
+    case OPTIONSVIEW_TITLE_WINE_VERSISONS:
+        return "Wine Versions";
+    case OPTIONSVIEW_WINE_VERSION_UPTODATE:
+        return "Up to date, size: ";
+    case OPTIONSVIEW_WINE_VERSION_UPDATE_AVAILABLE:
+        return "Update available, download size: ";
+    case OPTIONSVIEW_WINE_VERSION_NOT_INSTALLED:
+        return "Not installed, download size: ";
+    case OPTIONSVIEW_WINE_VERSION_DELETE:
+        return "Delete";
+    case OPTIONSVIEW_WINE_VERSION_INSTALL:
+        return "Install";
+    case OPTIONSVIEW_WINE_VERSION_UPDATE:
+        return "Update";
+    case OPTIONSVIEW_WINE_VERSION_DELETE_CONFIRM_TITLE:
+        return "Confirm";
+    case OPTIONSVIEW_WINE_VERSION_DELETE_CONFIRM_LABEL:
+        return "Are you sure you want to delete {0}?";
     case APPCHOOSER_DLG_TITLE:
         return "Create Shortcut";
     case APPCHOOSER_DLG_CHOOSE_APP_LABEL:
@@ -118,6 +147,10 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "Browse";
     case GENERIC_DLG_OK:
         return "Ok";
+    case GENERIC_DLG_YES:
+        return "Yes";
+    case GENERIC_DLG_NO:
+        return "No";
     case GENERIC_DLG_CANCEL:
         return "Cancel";
     case GENERIC_DLG_ERROR_TITLE:
@@ -127,9 +160,7 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
     case MAIN_BUTTON_CONTAINERS:
         return "Containers";
     case MAIN_BUTTON_SETTINGS:
-        return "Settings";
-    case MAIN_BUTTON_HELP:
-        return "Help";
+        return "Options";
     case MAIN_BUTTON_APPS:
         return "Apps";
     case INSTALLDLG_OPEN_SETUP_FILE_TITLE:
@@ -140,6 +171,14 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "Please Wait";
     case WAITDLG_LAUNCH_APP_LABEL:
         return "Launching {0} ...";
+    case WAITDLG_GET_FILE_LIST_TITLE:
+        return "Please Wait";
+    case WAITDLG_GET_FILE_LIST_LABEL:
+        return "Fetching list of Wine versions";
+    case DOWNLOADDLG_TITLE:
+        return "Please Wait";
+    case DOWNLOADDLG_LABEL:
+        return "Downloading {0} ...";
     case APP_OPTIONS_DLG_TITLE:
         return "Application Options";
     case APP_OPTIONS_DLG_NAME_LABEL:
@@ -176,6 +215,12 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "Default";
     case APP_OPTIONS_DLG_NAME_REQUIRED:
         return "The Name is required and cannot be empty.";
+    case ERROR_NO_WINE:
+        return "There are no versions of Wine installed.  Would you like to install the default version of Wine now?";
+    case ERROR_MISSING_WINE:
+        return "{0} is missing.  Would you like to use {1} instead?";
+    case ERROR_NO_FILE_LIST:
+        return "Was unable to download the list of Wine versions.  Boxedwine will not work without a Wine file system.  Make sure your internet is working and you can try again by re-launching Boxedwine.  You can also manually download a Wine file system from https://sourceforge.net/projects/boxedwine/files/FileSystems/ and place it in the same directory as the Boxedwine application";
     default:
         if (useDefaultIfMissing) {
             return "Unknown msg";

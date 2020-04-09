@@ -136,6 +136,9 @@ BoxedPtr<FsNode> Fs::getNodeFromLocalPath(const std::string& currentDirectory, c
     std::vector<std::string> parts;
     Fs::splitPath(fullpath, parts);
     BoxedPtr<FsNode> node = Fs::rootNode;
+    if (!node) {
+        return NULL;
+    }
     std::vector<BoxedPtr<FsNode> > nodes;
 
     nodes.push_back(node);

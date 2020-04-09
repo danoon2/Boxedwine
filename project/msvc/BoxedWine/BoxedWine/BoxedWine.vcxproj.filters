@@ -439,9 +439,6 @@
     <ClCompile Include="..\..\..\..\source\ui\controls\uiSettings.cpp">
       <Filter>source\ui\controls</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\source\ui\controls\settingsDlg.cpp">
-      <Filter>source\ui\controls</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\source\ui\controls\appChooserDlg.cpp">
       <Filter>source\ui\controls</Filter>
     </ClCompile>
@@ -461,6 +458,1092 @@
       <Filter>source\ui\controls</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\..\source\ui\controls\appOptionDlg.cpp">
+      <Filter>source\ui\controls</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\AbstractHTTPRequestHandler.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\DatagramSocket.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\DatagramSocketImpl.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\DialogSocket.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\DNS.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\EscapeHTMLStream.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\FilePartSource.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\FTPClientSession.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\FTPStreamFactory.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\HostEntry.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\HTMLForm.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\HTTPAuthenticationParams.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\HTTPBasicCredentials.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\HTTPBufferAllocator.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\HTTPChunkedStream.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\HTTPClientSession.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\HTTPCookie.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\HTTPCredentials.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\HTTPDigestCredentials.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\HTTPFixedLengthStream.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\HTTPHeaderStream.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\HTTPIOStream.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\HTTPMessage.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\HTTPNTLMCredentials.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\HTTPRequest.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\HTTPRequestHandler.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\HTTPRequestHandlerFactory.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\HTTPResponse.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\HTTPServer.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\HTTPServerConnection.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\HTTPServerConnectionFactory.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\HTTPServerParams.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\HTTPServerRequest.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\HTTPServerRequestImpl.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\HTTPServerResponse.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\HTTPServerResponseImpl.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\HTTPServerSession.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\HTTPSession.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\HTTPSessionFactory.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\HTTPSessionInstantiator.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\HTTPStream.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\HTTPStreamFactory.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\ICMPClient.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\ICMPEventArgs.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\ICMPPacket.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\ICMPPacketImpl.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\ICMPSocket.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\ICMPSocketImpl.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\ICMPv4PacketImpl.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\IPAddress.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\IPAddressImpl.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\MailMessage.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\MailRecipient.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\MailStream.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\MediaType.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\MessageHeader.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\MulticastSocket.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\MultipartReader.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\MultipartWriter.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\NameValueCollection.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\Net.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\NetException.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\NetworkInterface.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\NTLMCredentials.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\NTPClient.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\NTPEventArgs.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\NTPPacket.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\NullPartHandler.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\OAuth10Credentials.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\OAuth20Credentials.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\PartHandler.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\PartSource.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\PartStore.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\PollSet.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\POP3ClientSession.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\QuotedPrintableDecoder.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\QuotedPrintableEncoder.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\RawSocket.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\RawSocketImpl.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\RemoteSyslogChannel.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\RemoteSyslogListener.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\ServerSocket.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\ServerSocketImpl.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\SMTPChannel.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\SMTPClientSession.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\Socket.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\SocketAddress.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\SocketAddressImpl.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\SocketImpl.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\SocketNotification.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\SocketNotifier.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\SocketReactor.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\SocketStream.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\SSPINTLMCredentials.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\StreamSocket.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\StreamSocketImpl.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\StringPartSource.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\TCPServer.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\TCPServerConnection.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\TCPServerConnectionFactory.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\TCPServerDispatcher.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\TCPServerParams.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\UDPClient.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\UDPServerParams.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\WebSocket.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Net\src\WebSocketImpl.cpp">
+      <Filter>poco\Net\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\AbstractObserver.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\ActiveDispatcher.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\adler32.c">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\ArchiveStrategy.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\Ascii.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\ASCIIEncoding.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\AsyncChannel.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\AtomicCounter.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\AtomicFlag.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\Base32Decoder.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\Base32Encoder.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\Base64Decoder.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\Base64Encoder.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\bignum.cc">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\bignum-dtoa.cc">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\BinaryReader.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\BinaryWriter.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\Bugcheck.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\ByteOrder.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\cached-powers.cc">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\Channel.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\Checksum.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\Clock.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\compress.c">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\Condition.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\Configurable.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\ConsoleChannel.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\CountingStream.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\crc32.c">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\DataURIStream.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\DataURIStreamFactory.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\DateTime.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\DateTimeFormat.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\DateTimeFormatter.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\DateTimeParser.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\Debugger.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\deflate.c">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\DeflatingStream.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\DigestEngine.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\DigestStream.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\DirectoryIterator.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\DirectoryIteratorStrategy.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\DirectoryWatcher.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\diy-fp.cc">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\double-conversion.cc">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\Environment.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\Error.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\ErrorHandler.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\Event.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\EventArgs.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\EventChannel.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\Exception.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\fast-dtoa.cc">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\FIFOBufferStream.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\File.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\FileChannel.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\FileStream.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\FileStreamFactory.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\fixed-dtoa.cc">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\Format.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\Formatter.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\FormattingChannel.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\FPEnvironment.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\Glob.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\Hash.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\HashStatistic.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\HexBinaryDecoder.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\HexBinaryEncoder.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\infback.c">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\inffast.c">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\inflate.c">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\InflatingStream.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\inftrees.c">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\JSONString.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\Latin1Encoding.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\Latin2Encoding.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\Latin9Encoding.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\LineEndingConverter.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\LocalDateTime.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\LogFile.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\Logger.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\LoggingFactory.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\LoggingRegistry.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\LogStream.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\Manifest.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\MD4Engine.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\MD5Engine.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\MemoryPool.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\MemoryStream.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\Message.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\Mutex.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\NamedEvent.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\NamedMutex.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\NestedDiagnosticContext.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\Notification.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\NotificationCenter.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\NotificationQueue.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\NullChannel.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\NullStream.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\NumberFormatter.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\NumberParser.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\NumericString.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\Path.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\PatternFormatter.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\pcre_byte_order.c">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\pcre_chartables.c">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\pcre_compile.c">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\pcre_config.c">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\pcre_dfa_exec.c">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\pcre_exec.c">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\pcre_fullinfo.c">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\pcre_get.c">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\pcre_globals.c">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\pcre_jit_compile.c">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\pcre_maketables.c">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\pcre_newline.c">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\pcre_ord2utf8.c">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\pcre_refcount.c">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\pcre_string_utils.c">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\pcre_study.c">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\pcre_tables.c">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\pcre_ucd.c">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\pcre_valid_utf8.c">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\pcre_version.c">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\pcre_xclass.c">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\Pipe.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\PipeImpl.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\PipeStream.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\PriorityNotificationQueue.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\Process.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\PurgeStrategy.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\Random.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\RandomStream.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\RefCountedObject.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\RegularExpression.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\RotateStrategy.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\Runnable.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\RWLock.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\Semaphore.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\SHA1Engine.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\SHA2Engine.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\SharedLibrary.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\SharedMemory.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\SignalHandler.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\SimpleFileChannel.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\SortedDirectoryIterator.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\SplitterChannel.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\Stopwatch.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\StreamChannel.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\StreamConverter.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\StreamCopier.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\StreamTokenizer.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\String.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\StringTokenizer.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\strtod.cc">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\SynchronizedObject.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\Task.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\TaskManager.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\TaskNotification.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\TeeStream.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\TemporaryFile.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\TextBufferIterator.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\TextConverter.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\TextEncoding.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\TextIterator.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\Thread.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\ThreadLocal.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\ThreadPool.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\ThreadTarget.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\TimedNotificationQueue.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\Timer.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\Timespan.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\Timestamp.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\Timezone.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\Token.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\trees.c">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\Unicode.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\UnicodeConverter.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\URI.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\URIStreamFactory.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\URIStreamOpener.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\UTF8Encoding.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\UTF8String.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\UTF16Encoding.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\UTF32Encoding.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\UUID.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\UUIDGenerator.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\Var.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\VarHolder.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\VarIterator.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\Void.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\Windows1250Encoding.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\Windows1251Encoding.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\Windows1252Encoding.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\WindowsConsoleChannel.cpp">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Foundation\src\zutil.c">
+      <Filter>poco\Foundation\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\util\networkutils.cpp">
+      <Filter>source\util</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\NetSSL_Win\src\AcceptCertificateHandler.cpp">
+      <Filter>poco\NetSSL\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\NetSSL_Win\src\CertificateHandlerFactory.cpp">
+      <Filter>poco\NetSSL\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\NetSSL_Win\src\CertificateHandlerFactoryMgr.cpp">
+      <Filter>poco\NetSSL\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\NetSSL_Win\src\ConsoleCertificateHandler.cpp">
+      <Filter>poco\NetSSL\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\NetSSL_Win\src\Context.cpp">
+      <Filter>poco\NetSSL\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\NetSSL_Win\src\HTTPSClientSession.cpp">
+      <Filter>poco\NetSSL\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\NetSSL_Win\src\HTTPSSessionInstantiator.cpp">
+      <Filter>poco\NetSSL\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\NetSSL_Win\src\HTTPSStreamFactory.cpp">
+      <Filter>poco\NetSSL\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\NetSSL_Win\src\InvalidCertificateHandler.cpp">
+      <Filter>poco\NetSSL\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\NetSSL_Win\src\KeyConsoleHandler.cpp">
+      <Filter>poco\NetSSL\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\NetSSL_Win\src\KeyFileHandler.cpp">
+      <Filter>poco\NetSSL\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\NetSSL_Win\src\PrivateKeyFactory.cpp">
+      <Filter>poco\NetSSL\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\NetSSL_Win\src\PrivateKeyFactoryMgr.cpp">
+      <Filter>poco\NetSSL\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\NetSSL_Win\src\PrivateKeyPassphraseHandler.cpp">
+      <Filter>poco\NetSSL\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\NetSSL_Win\src\RejectCertificateHandler.cpp">
+      <Filter>poco\NetSSL\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\NetSSL_Win\src\SecureServerSocket.cpp">
+      <Filter>poco\NetSSL\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\NetSSL_Win\src\SecureServerSocketImpl.cpp">
+      <Filter>poco\NetSSL\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\NetSSL_Win\src\SecureSMTPClientSession.cpp">
+      <Filter>poco\NetSSL\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\NetSSL_Win\src\SecureSocketImpl.cpp">
+      <Filter>poco\NetSSL\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\NetSSL_Win\src\SecureStreamSocket.cpp">
+      <Filter>poco\NetSSL\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\NetSSL_Win\src\SecureStreamSocketImpl.cpp">
+      <Filter>poco\NetSSL\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\NetSSL_Win\src\Session.cpp">
+      <Filter>poco\NetSSL\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\NetSSL_Win\src\SSLException.cpp">
+      <Filter>poco\NetSSL\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\NetSSL_Win\src\SSLManager.cpp">
+      <Filter>poco\NetSSL\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\NetSSL_Win\src\Utility.cpp">
+      <Filter>poco\NetSSL\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\NetSSL_Win\src\VerificationErrorArgs.cpp">
+      <Filter>poco\NetSSL\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\NetSSL_Win\src\X509Certificate.cpp">
+      <Filter>poco\NetSSL\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Util\src\AbstractConfiguration.cpp">
+      <Filter>poco\Util\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Util\src\ConfigurationMapper.cpp">
+      <Filter>poco\Util\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Util\src\ConfigurationView.cpp">
+      <Filter>poco\Util\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Util\src\FilesystemConfiguration.cpp">
+      <Filter>poco\Util\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Util\src\HelpFormatter.cpp">
+      <Filter>poco\Util\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Util\src\IniFileConfiguration.cpp">
+      <Filter>poco\Util\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Util\src\IntValidator.cpp">
+      <Filter>poco\Util\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Util\src\LayeredConfiguration.cpp">
+      <Filter>poco\Util\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Util\src\LoggingConfigurator.cpp">
+      <Filter>poco\Util\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Util\src\LoggingSubsystem.cpp">
+      <Filter>poco\Util\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Util\src\MapConfiguration.cpp">
+      <Filter>poco\Util\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Util\src\Option.cpp">
+      <Filter>poco\Util\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Util\src\OptionCallback.cpp">
+      <Filter>poco\Util\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Util\src\OptionException.cpp">
+      <Filter>poco\Util\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Util\src\OptionProcessor.cpp">
+      <Filter>poco\Util\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Util\src\OptionSet.cpp">
+      <Filter>poco\Util\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Util\src\PropertyFileConfiguration.cpp">
+      <Filter>poco\Util\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Util\src\RegExpValidator.cpp">
+      <Filter>poco\Util\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Util\src\Subsystem.cpp">
+      <Filter>poco\Util\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Util\src\SystemConfiguration.cpp">
+      <Filter>poco\Util\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Util\src\Validator.cpp">
+      <Filter>poco\Util\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Util\src\WinRegistryConfiguration.cpp">
+      <Filter>poco\Util\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Util\src\WinRegistryKey.cpp">
+      <Filter>poco\Util\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Util\src\WinService.cpp">
+      <Filter>poco\Util\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Util\src\Application.cpp">
+      <Filter>poco\Util\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\poco\Util\src\ServerApplication.cpp">
+      <Filter>poco\Util\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\util\threadutils.cpp">
+      <Filter>source\util</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\controls\optionsView.cpp">
+      <Filter>source\ui\controls</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\controls\baseView.cpp">
+      <Filter>source\ui\controls</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\controls\downloadDlg.cpp">
+      <Filter>source\ui\controls</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\controls\yesNoDlg.cpp">
+      <Filter>source\ui\controls</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\controls\okDlg.cpp">
       <Filter>source\ui\controls</Filter>
     </ClCompile>
   </ItemGroup>
@@ -1038,9 +2121,6 @@
     <ClInclude Include="..\..\..\..\source\ui\controls\uiSettings.h">
       <Filter>source\ui\controls</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\source\ui\controls\settingsDlg.h">
-      <Filter>source\ui\controls</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\source\ui\controls\appChooserDlg.h">
       <Filter>source\ui\controls</Filter>
     </ClInclude>
@@ -1057,6 +2137,1548 @@
       <Filter>source\ui\controls</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\ui\controls\appOptionsDlg.h">
+      <Filter>source\ui\controls</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\AbstractHTTPRequestHandler.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\DatagramSocket.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\DatagramSocketImpl.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\DialogSocket.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\DNS.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\EscapeHTMLStream.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\FilePartSource.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\FTPClientSession.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\FTPStreamFactory.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\HostEntry.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\HTMLForm.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\HTTPAuthenticationParams.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\HTTPBasicCredentials.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\HTTPBasicStreamBuf.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\HTTPBufferAllocator.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\HTTPChunkedStream.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\HTTPClientSession.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\HTTPCookie.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\HTTPCredentials.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\HTTPDigestCredentials.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\HTTPFixedLengthStream.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\HTTPHeaderStream.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\HTTPIOStream.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\HTTPMessage.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\HTTPNTLMCredentials.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\HTTPRequest.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\HTTPRequestHandler.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\HTTPRequestHandlerFactory.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\HTTPResponse.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\HTTPServer.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\HTTPServerConnection.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\HTTPServerConnectionFactory.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\HTTPServerParams.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\HTTPServerRequest.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\HTTPServerRequestImpl.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\HTTPServerResponse.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\HTTPServerResponseImpl.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\HTTPServerSession.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\HTTPSession.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\HTTPSessionFactory.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\HTTPSessionInstantiator.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\HTTPStream.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\HTTPStreamFactory.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\ICMPClient.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\ICMPEventArgs.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\ICMPPacket.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\ICMPPacketImpl.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\ICMPSocket.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\ICMPSocketImpl.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\ICMPv4PacketImpl.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\IPAddress.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\IPAddressImpl.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\MailMessage.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\MailRecipient.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\MailStream.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\MediaType.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\MessageHeader.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\MulticastSocket.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\MultipartReader.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\MultipartWriter.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\MultiSocketPoller.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\NameValueCollection.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\Net.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\NetException.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\NetworkInterface.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\NTLMCredentials.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\NTPClient.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\NTPEventArgs.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\NTPPacket.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\NullPartHandler.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\OAuth10Credentials.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\OAuth20Credentials.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\ParallelSocketAcceptor.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\ParallelSocketReactor.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\PartHandler.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\PartSource.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\PartStore.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\PollSet.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\POP3ClientSession.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\QuotedPrintableDecoder.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\QuotedPrintableEncoder.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\RawSocket.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\RawSocketImpl.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\RemoteSyslogChannel.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\RemoteSyslogListener.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\ServerSocket.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\ServerSocketImpl.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\SingleSocketPoller.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\SMTPChannel.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\SMTPClientSession.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\Socket.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\SocketAcceptor.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\SocketAddress.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\SocketAddressImpl.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\SocketConnector.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\SocketDefs.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\SocketImpl.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\SocketNotification.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\SocketNotifier.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\SocketReactor.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\SocketStream.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\SSPINTLMCredentials.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\StreamSocket.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\StreamSocketImpl.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\StringPartSource.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\TCPServer.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\TCPServerConnection.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\TCPServerConnectionFactory.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\TCPServerDispatcher.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\TCPServerParams.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\UDPClient.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\UDPHandler.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\UDPServer.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\UDPServerParams.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\UDPSocketReader.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\WebSocket.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\WebSocketImpl.h">
+      <Filter>poco\Net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\AbstractCache.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\AbstractDelegate.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\AbstractEvent.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\AbstractObserver.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\AbstractPriorityDelegate.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\AbstractStrategy.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\AccessExpirationDecorator.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\AccessExpireCache.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\AccessExpireLRUCache.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\AccessExpireStrategy.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\ActiveDispatcher.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\ActiveMethod.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\ActiveResult.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\ActiveRunnable.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\ActiveStarter.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Activity.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Alignment.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Any.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\ArchiveStrategy.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Array.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Ascii.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\ASCIIEncoding.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\AsyncChannel.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\AtomicCounter.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\AtomicFlag.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\AutoPtr.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\AutoReleasePool.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Base32Decoder.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Base32Encoder.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Base64Decoder.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Base64Encoder.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\BasicEvent.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\BinaryReader.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\BinaryWriter.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Buffer.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\BufferAllocator.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\BufferedBidirectionalStreamBuf.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\BufferedStreamBuf.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Bugcheck.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\ByteOrder.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Channel.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Checksum.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\ClassLibrary.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\ClassLoader.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Clock.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Condition.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Config.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Configurable.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\ConsoleChannel.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\CountingStream.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\DataURIStream.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\DataURIStreamFactory.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\DateTime.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\DateTimeFormat.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\DateTimeFormatter.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\DateTimeParser.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Debugger.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\DefaultStrategy.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\DeflatingStream.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Delegate.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\DigestEngine.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\DigestStream.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\DirectoryIterator.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\DirectoryIterator_UNIX.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\DirectoryIterator_WIN32U.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\DirectoryIteratorStrategy.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\DirectoryWatcher.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\DynamicAny.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\DynamicAnyHolder.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\DynamicFactory.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\DynamicStruct.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Environment.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Environment_UNIX.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Environment_VX.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Environment_WIN32U.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Environment_WINCE.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Error.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\ErrorHandler.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Event.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Event_POSIX.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Event_VX.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Event_WIN32.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\EventArgs.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\EventChannel.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\EventLogChannel.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Exception.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\ExpirationDecorator.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Expire.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\ExpireCache.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\ExpireLRUCache.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\ExpireStrategy.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\FIFOBuffer.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\FIFOBufferStream.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\FIFOEvent.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\FIFOStrategy.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\File.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\File_UNIX.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\File_VX.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\File_WIN32U.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\File_WINCE.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\FileChannel.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\FileStream.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\FileStream_POSIX.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\FileStream_WIN32.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\FileStreamFactory.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Format.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Formatter.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\FormattingChannel.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Foundation.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\FPEnvironment.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\FPEnvironment_C99.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\FPEnvironment_DEC.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\FPEnvironment_DUMMY.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\FPEnvironment_QNX.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\FPEnvironment_SUN.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\FPEnvironment_WIN32.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\FunctionDelegate.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\FunctionPriorityDelegate.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Glob.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Hash.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\HashFunction.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\HashMap.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\HashSet.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\HashStatistic.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\HashTable.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\HexBinaryDecoder.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\HexBinaryEncoder.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\HMACEngine.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\InflatingStream.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Instantiator.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\JSONString.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\KeyValueArgs.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Latin1Encoding.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Latin2Encoding.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Latin9Encoding.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\LinearHashTable.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\LineEndingConverter.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\ListMap.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\LocalDateTime.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\LogFile.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\LogFile_STD.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\LogFile_WIN32U.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Logger.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\LoggingFactory.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\LoggingRegistry.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\LogStream.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\LRUCache.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\LRUStrategy.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Manifest.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\MD4Engine.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\MD5Engine.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\MemoryPool.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\MemoryStream.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Message.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\MetaObject.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\MetaProgramming.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Mutex.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Mutex_POSIX.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Mutex_VX.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Mutex_WIN32.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Mutex_WINCE.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\NamedEvent.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\NamedEvent_Android.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\NamedEvent_UNIX.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\NamedEvent_WIN32U.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\NamedMutex.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\NamedMutex_Android.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\NamedMutex_UNIX.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\NamedMutex_WIN32U.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\NamedTuple.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\NestedDiagnosticContext.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\NObserver.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Notification.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\NotificationCenter.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\NotificationQueue.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\NotificationStrategy.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Nullable.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\NullChannel.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\NullStream.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\NumberFormatter.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\NumberParser.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\NumericString.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\ObjectPool.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Observer.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Optional.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\ordered_hash.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\ordered_map.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\ordered_set.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\OrderedMap.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\OrderedSet.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Path.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Path_UNIX.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Path_WIN32U.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Path_WINCE.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\PatternFormatter.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\PBKDF2Engine.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Pipe.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\PipeImpl.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\PipeImpl_DUMMY.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\PipeImpl_POSIX.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\PipeImpl_WIN32.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\PipeStream.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Platform.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Platform_POSIX.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Platform_VX.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Platform_WIN32.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Poco.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\PriorityDelegate.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\PriorityEvent.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\PriorityExpire.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\PriorityNotificationQueue.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\PriorityStrategy.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Process.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Process_UNIX.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Process_VX.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Process_WIN32U.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Process_WINCE.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\PurgeStrategy.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Random.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\RandomStream.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\RecursiveDirectoryIterator.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\RecursiveDirectoryIteratorImpl.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\RefCountedObject.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\RegularExpression.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\RotateStrategy.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Runnable.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\RunnableAdapter.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\RWLock.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\RWLock_Android.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\RWLock_POSIX.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\RWLock_VX.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\RWLock_WIN32.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\RWLock_WINCE.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\ScopedLock.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\ScopedUnlock.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Semaphore.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Semaphore_POSIX.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Semaphore_VX.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Semaphore_WIN32.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\SHA1Engine.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\SHA2Engine.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\SharedLibrary.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\SharedLibrary_HPUX.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\SharedLibrary_UNIX.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\SharedLibrary_VX.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\SharedLibrary_WIN32U.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\SharedMemory.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\SharedMemory_DUMMY.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\SharedMemory_POSIX.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\SharedMemory_WIN32.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\SharedPtr.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\SignalHandler.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\SimpleFileChannel.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\SimpleHashTable.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\SingletonHolder.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\SortedDirectoryIterator.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\SplitterChannel.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Stopwatch.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\StrategyCollection.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\StreamChannel.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\StreamConverter.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\StreamCopier.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\StreamTokenizer.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\StreamUtil.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\String.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\StringTokenizer.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\SynchronizedObject.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\SyslogChannel.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Task.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\TaskManager.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\TaskNotification.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\TeeStream.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\TemporaryFile.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\TextBufferIterator.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\TextConverter.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\TextEncoding.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\TextIterator.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Thread.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Thread_POSIX.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Thread_VX.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Thread_WIN32.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Thread_WINCE.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\ThreadLocal.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\ThreadPool.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\ThreadTarget.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\TimedNotificationQueue.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Timer.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Timespan.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Timestamp.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Timezone.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Token.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Tuple.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\TypeList.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Types.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\UnbufferedStreamBuf.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Unicode.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\UnicodeConverter.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\UniqueAccessExpireCache.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\UniqueAccessExpireLRUCache.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\UniqueAccessExpireStrategy.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\UniqueExpireCache.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\UniqueExpireLRUCache.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\UniqueExpireStrategy.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\UnWindows.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\URI.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\URIStreamFactory.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\URIStreamOpener.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\UTF8Encoding.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\UTF8String.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\UTF16Encoding.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\UTF32Encoding.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\UTFString.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\UUID.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\UUIDGenerator.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\ValidArgs.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Version.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Void.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Windows1250Encoding.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Windows1251Encoding.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Windows1252Encoding.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\WindowsConsoleChannel.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\zconf.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\zlib.h">
+      <Filter>poco\Foundation\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Dynamic\Pair.h">
+      <Filter>poco\Foundation\include\Dynamic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Dynamic\Struct.h">
+      <Filter>poco\Foundation\include\Dynamic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Dynamic\Var.h">
+      <Filter>poco\Foundation\include\Dynamic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Dynamic\VarHolder.h">
+      <Filter>poco\Foundation\include\Dynamic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Foundation\include\Poco\Dynamic\VarIterator.h">
+      <Filter>poco\Foundation\include\Dynamic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\util\networkutils.h">
+      <Filter>source\util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\NetSSL_Win\include\Poco\Net\AcceptCertificateHandler.h">
+      <Filter>poco\NetSSL\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\NetSSL_Win\include\Poco\Net\AutoSecBufferDesc.h">
+      <Filter>poco\NetSSL\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\NetSSL_Win\include\Poco\Net\CertificateHandlerFactory.h">
+      <Filter>poco\NetSSL\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\NetSSL_Win\include\Poco\Net\CertificateHandlerFactoryMgr.h">
+      <Filter>poco\NetSSL\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\NetSSL_Win\include\Poco\Net\ConsoleCertificateHandler.h">
+      <Filter>poco\NetSSL\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\NetSSL_Win\include\Poco\Net\Context.h">
+      <Filter>poco\NetSSL\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\NetSSL_Win\include\Poco\Net\HTTPSClientSession.h">
+      <Filter>poco\NetSSL\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\NetSSL_Win\include\Poco\Net\HTTPSSessionInstantiator.h">
+      <Filter>poco\NetSSL\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\NetSSL_Win\include\Poco\Net\HTTPSStreamFactory.h">
+      <Filter>poco\NetSSL\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\NetSSL_Win\include\Poco\Net\InvalidCertificateHandler.h">
+      <Filter>poco\NetSSL\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\NetSSL_Win\include\Poco\Net\KeyConsoleHandler.h">
+      <Filter>poco\NetSSL\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\NetSSL_Win\include\Poco\Net\KeyFileHandler.h">
+      <Filter>poco\NetSSL\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\NetSSL_Win\include\Poco\Net\NetSSL.h">
+      <Filter>poco\NetSSL\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\NetSSL_Win\include\Poco\Net\PrivateKeyFactory.h">
+      <Filter>poco\NetSSL\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\NetSSL_Win\include\Poco\Net\PrivateKeyFactoryMgr.h">
+      <Filter>poco\NetSSL\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\NetSSL_Win\include\Poco\Net\PrivateKeyPassphraseHandler.h">
+      <Filter>poco\NetSSL\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\NetSSL_Win\include\Poco\Net\RejectCertificateHandler.h">
+      <Filter>poco\NetSSL\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\NetSSL_Win\include\Poco\Net\SecureServerSocket.h">
+      <Filter>poco\NetSSL\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\NetSSL_Win\include\Poco\Net\SecureServerSocketImpl.h">
+      <Filter>poco\NetSSL\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\NetSSL_Win\include\Poco\Net\SecureSMTPClientSession.h">
+      <Filter>poco\NetSSL\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\NetSSL_Win\include\Poco\Net\SecureSocketImpl.h">
+      <Filter>poco\NetSSL\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\NetSSL_Win\include\Poco\Net\SecureStreamSocket.h">
+      <Filter>poco\NetSSL\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\NetSSL_Win\include\Poco\Net\SecureStreamSocketImpl.h">
+      <Filter>poco\NetSSL\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\NetSSL_Win\include\Poco\Net\Session.h">
+      <Filter>poco\NetSSL\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\NetSSL_Win\include\Poco\Net\SSLException.h">
+      <Filter>poco\NetSSL\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\NetSSL_Win\include\Poco\Net\SSLManager.h">
+      <Filter>poco\NetSSL\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\NetSSL_Win\include\Poco\Net\Utility.h">
+      <Filter>poco\NetSSL\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\NetSSL_Win\include\Poco\Net\VerificationErrorArgs.h">
+      <Filter>poco\NetSSL\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\NetSSL_Win\include\Poco\Net\X509Certificate.h">
+      <Filter>poco\NetSSL\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Util\include\Poco\Util\AbstractConfiguration.h">
+      <Filter>poco\Util\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Util\include\Poco\Util\Application.h">
+      <Filter>poco\Util\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Util\include\Poco\Util\ConfigurationMapper.h">
+      <Filter>poco\Util\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Util\include\Poco\Util\ConfigurationView.h">
+      <Filter>poco\Util\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Util\include\Poco\Util\FilesystemConfiguration.h">
+      <Filter>poco\Util\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Util\include\Poco\Util\HelpFormatter.h">
+      <Filter>poco\Util\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Util\include\Poco\Util\IniFileConfiguration.h">
+      <Filter>poco\Util\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Util\include\Poco\Util\IntValidator.h">
+      <Filter>poco\Util\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Util\include\Poco\Util\JSONConfiguration.h">
+      <Filter>poco\Util\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Util\include\Poco\Util\LayeredConfiguration.h">
+      <Filter>poco\Util\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Util\include\Poco\Util\LoggingConfigurator.h">
+      <Filter>poco\Util\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Util\include\Poco\Util\LoggingSubsystem.h">
+      <Filter>poco\Util\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Util\include\Poco\Util\MapConfiguration.h">
+      <Filter>poco\Util\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Util\include\Poco\Util\Option.h">
+      <Filter>poco\Util\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Util\include\Poco\Util\OptionCallback.h">
+      <Filter>poco\Util\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Util\include\Poco\Util\OptionException.h">
+      <Filter>poco\Util\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Util\include\Poco\Util\OptionProcessor.h">
+      <Filter>poco\Util\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Util\include\Poco\Util\OptionSet.h">
+      <Filter>poco\Util\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Util\include\Poco\Util\PropertyFileConfiguration.h">
+      <Filter>poco\Util\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Util\include\Poco\Util\RegExpValidator.h">
+      <Filter>poco\Util\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Util\include\Poco\Util\ServerApplication.h">
+      <Filter>poco\Util\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Util\include\Poco\Util\Subsystem.h">
+      <Filter>poco\Util\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Util\include\Poco\Util\SystemConfiguration.h">
+      <Filter>poco\Util\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Util\include\Poco\Util\Timer.h">
+      <Filter>poco\Util\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Util\include\Poco\Util\TimerTask.h">
+      <Filter>poco\Util\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Util\include\Poco\Util\TimerTaskAdapter.h">
+      <Filter>poco\Util\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Util\include\Poco\Util\Units.h">
+      <Filter>poco\Util\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Util\include\Poco\Util\Util.h">
+      <Filter>poco\Util\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Util\include\Poco\Util\Validator.h">
+      <Filter>poco\Util\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Util\include\Poco\Util\WinRegistryConfiguration.h">
+      <Filter>poco\Util\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Util\include\Poco\Util\WinRegistryKey.h">
+      <Filter>poco\Util\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Util\include\Poco\Util\WinService.h">
+      <Filter>poco\Util\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\poco\Util\include\Poco\Util\XMLConfiguration.h">
+      <Filter>poco\Util\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\util\threadutils.h">
+      <Filter>source\util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\ui\controls\optionsView.h">
+      <Filter>source\ui\controls</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\ui\controls\baseView.h">
+      <Filter>source\ui\controls</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\ui\controls\downloadDlg.h">
+      <Filter>source\ui\controls</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\ui\controls\yesNoDlg.h">
+      <Filter>source\ui\controls</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\ui\controls\okDlg.h">
       <Filter>source\ui\controls</Filter>
     </ClInclude>
   </ItemGroup>
@@ -1166,8 +3788,53 @@
     <Filter Include="source\ui\opengl">
       <UniqueIdentifier>{cf081343-7dba-422c-ad5f-2d156e33ec3c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="poco">
+      <UniqueIdentifier>{fd568048-201f-4256-923d-01284ffe9c5f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="poco\Foundation">
+      <UniqueIdentifier>{c8cf1d11-cb48-4977-a036-0c013b8296eb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="poco\Net">
+      <UniqueIdentifier>{8656579c-4e67-44c8-afd0-51ac7127b32f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="poco\Net\src">
+      <UniqueIdentifier>{b964314c-d0cf-42c2-9254-c1a2cc6072a7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="poco\Net\include">
+      <UniqueIdentifier>{4f836353-271a-43bf-a1bf-9fcea436239c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="poco\Foundation\src">
+      <UniqueIdentifier>{404545fc-057f-42e1-b070-4021a4518e12}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="poco\Foundation\include">
+      <UniqueIdentifier>{347c4058-51e1-4c23-817b-b5c56f00e6e2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="poco\Foundation\include\Dynamic">
+      <UniqueIdentifier>{d8098b58-5ac4-4fc6-a57b-9f7cb95137e7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="poco\NetSSL">
+      <UniqueIdentifier>{ba204fc0-bb6a-45c9-af30-705830ebbcef}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="poco\NetSSL\src">
+      <UniqueIdentifier>{58523ef9-f21d-41e9-b4b1-2a438ac68f10}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="poco\NetSSL\include">
+      <UniqueIdentifier>{3a2849f7-6576-4049-a5ef-cd38b0324936}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="poco\Util">
+      <UniqueIdentifier>{e8faabb7-e993-412d-a987-a00f9afd3495}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="poco\Util\src">
+      <UniqueIdentifier>{8e9bb6a4-3e2e-4d92-a7f6-a2a49fcfd17a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="poco\Util\include">
+      <UniqueIdentifier>{b82300be-ab3a-433e-8d01-54fe65441a78}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <None Include="ClassDiagram.cd" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="..\Boxedwine.rc" />
   </ItemGroup>
 </Project>
