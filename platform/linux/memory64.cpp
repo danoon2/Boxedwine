@@ -197,10 +197,12 @@ void releaseNativeMemory(Memory* memory) {
     memset(memory->nativeFlags, 0, sizeof(memory->nativeFlags));
     memory->allocated = 0;
     munmap((char*)memory->id, 0x100000000l);
+#ifdef BOXEDWINE_X64
     if (memory->eipToHostInstructionAddressSpaceMapping) {
         munmap((char*)memory->eipToHostInstructionAddressSpaceMapping, 0x800000000l);
         memory->eipToHostInstructionAddressSpaceMapping = NULL;
     }
+#endif
 }
 
 void makeCodePageReadOnly(Memory* memory, U32 page) {
@@ -309,7 +311,6 @@ void allocExecutable64kBlock(Memory* memory, U32 page) {
         kpanic("allocExecutable64kBlock: failed to commit memory 0x%x: %s", (page << K_PAGE_SHIFT), strerror(errno));
     }
 }
-#endif
 
 void commitHostAddressSpaceMapping(Memory* memory, U32 page, U32 pageCount, U64 defaultValue) {
     for (U32 i=0;i<pageCount;i++) {
@@ -326,5 +327,6 @@ void commitHostAddressSpaceMapping(Memory* memory, U32 page, U32 pageCount, U64 
         }
     }
 }
+#endif
 
 #endif

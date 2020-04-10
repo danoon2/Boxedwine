@@ -304,6 +304,8 @@
 		71222C7824351CBA00CDBABD /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7122277D2433ED7C00CDBABD /* CoreAudio.framework */; };
 		71222C7924351CBA00CDBABD /* libSDL2.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 7122277B2433ED5700CDBABD /* libSDL2.a */; };
 		71222C7B24351CBA00CDBABD /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 71FBFCB32433B817003F17F1 /* Assets.xcassets */; };
+		713282172440FE47002DB535 /* libcrypto.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 715F34972440E6F50038F5A4 /* libcrypto.a */; };
+		713282182440FE47002DB535 /* libssl.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 715F34982440E6F50038F5A4 /* libssl.a */; };
 		715F34822440D7D10038F5A4 /* yesNoDlg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F34782440D7D00038F5A4 /* yesNoDlg.cpp */; };
 		715F34832440D7D10038F5A4 /* yesNoDlg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F34782440D7D00038F5A4 /* yesNoDlg.cpp */; };
 		715F34842440D7D20038F5A4 /* downloadDlg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F347B2440D7D10038F5A4 /* downloadDlg.cpp */; };
@@ -684,8 +686,6 @@
 		715F7C122440E9E00038F5A4 /* CipherImpl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F7BE72440E9DF0038F5A4 /* CipherImpl.cpp */; };
 		715F7C132440E9E00038F5A4 /* CipherFactory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F7BE82440E9DF0038F5A4 /* CipherFactory.cpp */; };
 		715F7C142440E9E00038F5A4 /* CipherFactory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F7BE82440E9DF0038F5A4 /* CipherFactory.cpp */; };
-		715F7C172440EA840038F5A4 /* libz.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 715F7C152440EA840038F5A4 /* libz.a */; };
-		715F7C182440EA840038F5A4 /* libminizip.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 715F7C162440EA840038F5A4 /* libminizip.a */; };
 		715F80E22440EB260038F5A4 /* zip.c in Sources */ = {isa = PBXBuildFile; fileRef = 715F80DC2440EB250038F5A4 /* zip.c */; };
 		715F80E32440EB260038F5A4 /* zip.c in Sources */ = {isa = PBXBuildFile; fileRef = 715F80DC2440EB250038F5A4 /* zip.c */; };
 		715F80E42440EB260038F5A4 /* ioapi.c in Sources */ = {isa = PBXBuildFile; fileRef = 715F80DD2440EB250038F5A4 /* ioapi.c */; };
@@ -2093,8 +2093,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				715F7C172440EA840038F5A4 /* libz.a in Frameworks */,
-				715F7C182440EA840038F5A4 /* libminizip.a in Frameworks */,
+				713282172440FE47002DB535 /* libcrypto.a in Frameworks */,
+				713282182440FE47002DB535 /* libssl.a in Frameworks */,
 				712227882433EE2700CDBABD /* OpenGL.framework in Frameworks */,
 				712227862433EE1200CDBABD /* Carbon.framework in Frameworks */,
 				712227842433EDE700CDBABD /* ForceFeedback.framework in Frameworks */,
@@ -2110,6 +2110,7 @@
 		712227752433E8C400CDBABD /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				713282162440FBC5002DB535 /* lib */,
 				715F7C162440EA840038F5A4 /* libminizip.a */,
 				715F7C152440EA840038F5A4 /* libz.a */,
 				715F34972440E6F50038F5A4 /* libcrypto.a */,
@@ -2211,6 +2212,14 @@
 				71222B262435140300CDBABD /* BoxedwineTest.entitlements */,
 			);
 			path = BoxedwineTest;
+			sourceTree = "<group>";
+		};
+		713282162440FBC5002DB535 /* lib */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = lib;
+			path = "Pods/OpenSSL-Universal/macos/lib";
 			sourceTree = "<group>";
 		};
 		715F349D2440E7220038F5A4 /* Util */ = {
@@ -5057,6 +5066,7 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"${SRCROOT}/Pods/OpenSSL-Universal/macos/lib\"",
+					"$(PROJECT_DIR)/Pods/OpenSSL-Universal/macos/lib",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.15;
 				OTHER_CPLUSPLUSFLAGS = "$(OTHER_CFLAGS)";
@@ -5107,6 +5117,7 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"${SRCROOT}/Pods/OpenSSL-Universal/macos/lib\"",
+					"$(PROJECT_DIR)/Pods/OpenSSL-Universal/macos/lib",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.15;
 				OTHER_CPLUSPLUSFLAGS = "$(OTHER_CFLAGS)";
