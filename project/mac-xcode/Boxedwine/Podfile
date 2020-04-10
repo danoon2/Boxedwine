@@ -1,0 +1,9 @@
+workspace 'Boxedwine'
+
+target 'BoxedwineX64' do
+    pod 'OpenSSL-Universal'
+end
+
+target 'Boxedwine' do
+    pod 'OpenSSL-Universal'
+end

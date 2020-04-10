@@ -385,9 +385,11 @@ bool uiShow(const std::string& basePath) {
                     }
                     return GlobalSettings::isFilesListDownloading();
                     });
-            } else {
+            } else if (GlobalSettings::getAvailableWineVersions().size()) {
                 askToDownloadDefaultWine();
-            }            
+            } else {
+                // :TODO:
+            }
             return false;
             });
     }
