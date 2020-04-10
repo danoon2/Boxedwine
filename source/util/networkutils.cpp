@@ -10,6 +10,10 @@
 #include "Poco/Net/SSLManager.h"
 #include "Poco/Net/Context.h"
 
+#ifdef U64
+#undef U64
+#endif
+
 #include "boxedwine.h"
 #include <iostream>
 #include <fstream>

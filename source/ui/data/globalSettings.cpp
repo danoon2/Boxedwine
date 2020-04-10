@@ -5,6 +5,8 @@
 #include "../../util/networkutils.h"
 #include "../../util/threadutils.h"
 
+#include <sys/stat.h>
+
 #include <SDL.h>
 
 std::string GlobalSettings::dataFolderLocation;
@@ -20,7 +22,7 @@ ImFont* GlobalSettings::largeFont;
 ImFont* GlobalSettings::mediumFont;
 ImFont* GlobalSettings::defaultFont;
 ImFont* GlobalSettings::sectionTitleFont;
-U32 GlobalSettings::scale;
+U32 GlobalSettings::scale=1000;
 bool GlobalSettings::filesListDownloading;
 bool GlobalSettings::restartUI;
 

@@ -11,6 +11,7 @@ public:
 class BaseView {
 public:
 	BaseView(const std::string& viewName);
+        virtual ~BaseView() {}
 
 	virtual bool saveChanges()=0;
 	void run(const ImVec2& size);

@@ -7,7 +7,7 @@ class BoxedContainer;
 
 class WineVersion {
 public:
-    WineVersion(const std::string& name, const std::string& fsVersion, const std::string& filePath, U32 size=0, const std::string& changes=""):name(name),fsVersion(fsVersion),filePath(filePath), size(size), changes(changes)  {}
+    WineVersion(const std::string& name, const std::string& fsVersion, const std::string& filePath, U32 size=0, const std::string& changes=""):name(name), filePath(filePath), fsVersion(fsVersion), size(size), changes(changes)  {}
     std::string name;
     std::string filePath;
     std::string fsVersion;

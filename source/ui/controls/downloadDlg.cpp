@@ -4,7 +4,7 @@
 #include "../../util/threadutils.h"
 #include "../../io/fs.h"
 
-DownloadDlg::DownloadDlg(int title, const std::string& label, const std::string& url, const std::string& filePath, std::function<void(bool)> onCompleted, U64 expectedFileSize) : BaseDlg(title, 400, 150), label(label), url(url), filePath(filePath), percentDone(0), onCompleted(onCompleted), expectedFileSize(expectedFileSize) {
+DownloadDlg::DownloadDlg(int title, const std::string& label, const std::string& url, const std::string& filePath, std::function<void(bool)> onCompleted, U64 expectedFileSize) : BaseDlg(title, 400, 150), label(label), url(url), filePath(filePath), percentDone(0), expectedFileSize(expectedFileSize), onCompleted(onCompleted) {
     std::string tmpFilePath = filePath + ".part";
     if (Fs::doesNativePathExist(tmpFilePath)) {
         if (Fs::deleteNativeFile(tmpFilePath) != 0) {

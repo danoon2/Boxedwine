@@ -57,7 +57,7 @@ void BaseView::run(const ImVec2& size) {
     ImGui::PushFont(GlobalSettings::mediumFont);
 
     ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing));
-    for (int i=0;i<this->tabs.size();i++) {
+    for (int i=0;i<(int)this->tabs.size();i++) {
         addTab(this->tabs[i].name, i);
     }
     ImGui::PopFont();
