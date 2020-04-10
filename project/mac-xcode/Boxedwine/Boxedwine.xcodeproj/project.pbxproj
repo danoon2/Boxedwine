@@ -1088,6 +1088,8 @@
 		715F84222440ED200038F5A4 /* BinaryReader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F82102440ED1D0038F5A4 /* BinaryReader.cpp */; };
 		715F84252440ED200038F5A4 /* pcre_chartables.c in Sources */ = {isa = PBXBuildFile; fileRef = 715F82122440ED1D0038F5A4 /* pcre_chartables.c */; };
 		715F84262440ED200038F5A4 /* pcre_chartables.c in Sources */ = {isa = PBXBuildFile; fileRef = 715F82122440ED1D0038F5A4 /* pcre_chartables.c */; };
+		715F8428244115580038F5A4 /* Media.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 715F8427244115580038F5A4 /* Media.xcassets */; };
+		715F8429244115580038F5A4 /* Media.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 715F8427244115580038F5A4 /* Media.xcassets */; };
 		71FBFCB22433B815003F17F1 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFCB12433B815003F17F1 /* AppDelegate.m */; };
 		71FBFCB42433B817003F17F1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 71FBFCB32433B817003F17F1 /* Assets.xcassets */; };
 		71FBFCD42433BB9C003F17F1 /* memory64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFCD12433BB9C003F17F1 /* memory64.cpp */; };
@@ -1697,6 +1699,7 @@
 		715F820F2440ED1D0038F5A4 /* pcre_valid_utf8.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = pcre_valid_utf8.c; sourceTree = "<group>"; };
 		715F82102440ED1D0038F5A4 /* BinaryReader.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = BinaryReader.cpp; sourceTree = "<group>"; };
 		715F82122440ED1D0038F5A4 /* pcre_chartables.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = pcre_chartables.c; sourceTree = "<group>"; };
+		715F8427244115580038F5A4 /* Media.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Media.xcassets; sourceTree = "<group>"; };
 		71FBFCAD2433B815003F17F1 /* Boxedwine.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Boxedwine.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		71FBFCB02433B815003F17F1 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
 		71FBFCB12433B815003F17F1 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
@@ -2731,6 +2734,7 @@
 		71FBFCA42433B815003F17F1 = {
 			isa = PBXGroup;
 			children = (
+				715F8427244115580038F5A4 /* Media.xcassets */,
 				715F7C1A2440EAC10038F5A4 /* zlib */,
 				715FEC372440D6910038F5A4 /* poco */,
 				712228F92433F03F00CDBABD /* glew */,
@@ -3500,6 +3504,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				71222C7B24351CBA00CDBABD /* Assets.xcassets in Resources */,
+				715F8429244115580038F5A4 /* Media.xcassets in Resources */,
 				715F83B62440ED1F0038F5A4 /* pocomsg.mc in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -3509,6 +3514,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				71FBFCB42433B817003F17F1 /* Assets.xcassets in Resources */,
+				715F8428244115580038F5A4 /* Media.xcassets in Resources */,
 				715F83B52440ED1F0038F5A4 /* pocomsg.mc in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4761,7 +4767,6 @@
 					SIMDE_NO_NATIVE,
 					BOXEDWINE_HAS_SETJMP,
 					BOXEDWINE_64,
-					BOXEDWINE_ZLIB,
 					"SDL2=1",
 					BOXEDWINE_64BIT_MMU,
 					"GLH=<SDL_opengl.h>",
@@ -4796,7 +4801,6 @@
 					SIMDE_NO_NATIVE,
 					BOXEDWINE_HAS_SETJMP,
 					BOXEDWINE_64,
-					BOXEDWINE_ZLIB,
 					"SDL2=1",
 					BOXEDWINE_64BIT_MMU,
 					"GLH=<SDL_opengl.h>",

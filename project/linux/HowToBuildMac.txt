@@ -1,9 +1,0 @@
-Use brew to install SDL 2 and minizip dependencies
-
-1) Install home brew, for example this command line might work 
-
-/usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
-
-2) brew install sdl2
-3) brew install minizip
-4) sh buildMac.sh
