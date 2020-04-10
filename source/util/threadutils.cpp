@@ -1,5 +1,5 @@
 #include "boxedwine.h"
-#ifndef __EMSCRIPTEN__
+#if !defined (__EMSCRIPTEN__) && !defined (__TEST)
 #include "Poco/Runnable.h"
 #include "Poco/Thread.h"
 
@@ -20,5 +20,5 @@ private:
 void runInBackgroundThread(std::function<void(void)> f) {
     Poco::Thread* t = new Poco::Thread();
     t->start(new BackgroundThread(f, t));
-
+}
 #endif

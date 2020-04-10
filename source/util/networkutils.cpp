@@ -1,4 +1,4 @@
-#ifndef __EMSCRIPTEN__
+#if !defined (__EMSCRIPTEN__) && !defined (__TEST)
 #include "Poco/URIStreamOpener.h"
 #include "Poco/StreamCopier.h"
 #include "Poco/Path.h"
