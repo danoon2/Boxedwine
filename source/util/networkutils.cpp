@@ -1,3 +1,4 @@
+#ifndef __EMSCRIPTEN__
 #include "Poco/URIStreamOpener.h"
 #include "Poco/StreamCopier.h"
 #include "Poco/Path.h"
@@ -119,3 +120,4 @@ bool downloadFile(const std::string& url, const std::string& filePath, std::func
 
     return false;
 }
+#endif
