@@ -9,6 +9,9 @@
 
 #include <SDL.h>
 
+#define SLOW_FRAME_DELAY 1000
+#define FAST_FRAME_DELAY 10
+
 std::string GlobalSettings::dataFolderLocation;
 std::vector<WineVersion> GlobalSettings::wineVersions;
 std::vector<WineVersion> GlobalSettings::availableWineVersions;
@@ -25,6 +28,9 @@ ImFont* GlobalSettings::sectionTitleFont;
 U32 GlobalSettings::scale=1000;
 bool GlobalSettings::filesListDownloading;
 bool GlobalSettings::restartUI;
+U32 GlobalSettings::frameDelayMillies = SLOW_FRAME_DELAY;
+U32 GlobalSettings::fastFrameRateCount = 0;
+U64 GlobalSettings::lastFrameDelayChange = 0;
 
 void GlobalSettings::init(int argc, const char **argv) {
     GlobalSettings::dataFolderLocation = SDL_GetPrefPath("", "Boxedwine");
@@ -264,4 +270,30 @@ void GlobalSettings::downloadWine(const WineVersion& version, std::function<void
             }, ((U64)(version.size))*1024*1024);
         return false;
         });
+}
+
+void GlobalSettings::useFastFrameRate(bool useFast) {
+    if (useFast) {
+        if (GlobalSettings::fastFrameRateCount == 0) {
+            GlobalSettings::frameDelayMillies = FAST_FRAME_DELAY;
+        }
+        GlobalSettings::fastFrameRateCount++;
+    } else {
+        GlobalSettings::fastFrameRateCount--;
+        if (GlobalSettings::fastFrameRateCount == 0) {
+            GlobalSettings::frameDelayMillies = SLOW_FRAME_DELAY;
+        }
+    }
+    GlobalSettings::lastFrameDelayChange = KSystem::getSystemTimeAsMicroSeconds();
+}
+
+void GlobalSettings::updateLastFrameDelayChange() {
+    GlobalSettings::lastFrameDelayChange = KSystem::getSystemTimeAsMicroSeconds();
+}
+
+U32 GlobalSettings::getFrameDelayMillies() { 
+    if (lastFrameDelayChange + 1000000l < KSystem::getSystemTimeAsMicroSeconds()) {
+        return GlobalSettings::frameDelayMillies;
+    }
+    return FAST_FRAME_DELAY;
 }

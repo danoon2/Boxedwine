@@ -4,6 +4,7 @@
 class DownloadDlg : public BaseDlg {
 public:
     DownloadDlg(int title, const std::string& label, const std::string& url, const std::string& filePath, std::function<void(bool)> onCompleted, U64 expectedFileSize);
+    virtual ~DownloadDlg();
 
 protected:
     virtual void run();

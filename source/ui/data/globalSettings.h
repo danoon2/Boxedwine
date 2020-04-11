@@ -46,6 +46,9 @@ public:
     static void downloadWine(const WineVersion& version, std::function<void(bool)> onCompleted);
     static bool isFilesListDownloading();
     static void startUp();
+    static U32 getFrameDelayMillies();
+    static void useFastFrameRate(bool useFast);
+    static void updateLastFrameDelayChange();
 
     static StartUpArgs startUpArgs;
 
@@ -54,7 +57,7 @@ public:
     static ImFont* mediumFont;
     static ImFont* defaultFont;
     static ImFont* sectionTitleFont;
-    static bool restartUI;
+    static bool restartUI;    
 private:    
     static void initWineVersions();
     static void lookForFileSystems(const std::string& path);    
@@ -73,6 +76,9 @@ private:
     friend class OptionsView;
     static std::vector<WineVersion> availableWineVersions;
     static bool filesListDownloading;
+    static U32 frameDelayMillies; // decrease if we are animating, else this can be pretty large
+    static U32 fastFrameRateCount;
+    static U64 lastFrameDelayChange;
 };
 
 #endif

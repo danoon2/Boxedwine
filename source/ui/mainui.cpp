@@ -222,8 +222,9 @@ bool uiLoop() {
     // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
     SDL_Event event;
     bool done = false;
-    while (SDL_PollEvent(&event))
+    while (SDL_WaitEventTimeout(&event, GlobalSettings::getFrameDelayMillies()))
     {
+        GlobalSettings::updateLastFrameDelayChange();
         ImGui_ImplSDL2_ProcessEvent(&event);
         if (event.type == SDL_QUIT) {
             done = true;
@@ -244,7 +245,6 @@ bool uiLoop() {
             SDL_free(droppedFileOrDir);    // Free dropped_filedir memory
             break;
         }
-
     }
 
     // Start the Dear ImGui frame
@@ -315,7 +315,6 @@ bool uiShow(const std::string& basePath) {
     window = SDL_CreateWindow("Boxedwine UI", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, cx, cy, window_flags);
     gl_context = SDL_GL_CreateContext(window);
     SDL_GL_MakeCurrent(window, gl_context);
-    SDL_GL_SetSwapInterval(1); // Enable vsync
 
     // Initialize OpenGL loader
 #if defined(IMGUI_IMPL_OPENGL_LOADER_GL3W)

@@ -29,6 +29,11 @@ DownloadDlg::DownloadDlg(int title, const std::string& label, const std::string&
             this->downloadFailed(errorMsg);
         }
         });    
+    GlobalSettings::useFastFrameRate(true);
+}
+
+DownloadDlg::~DownloadDlg() {
+    GlobalSettings::useFastFrameRate(false);
 }
 
 void DownloadDlg::downloadCompleted() {

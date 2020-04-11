@@ -16,7 +16,7 @@ public:
 class BaseDlg {
 public:
     BaseDlg(int title, int width, int height, ImFont* font=NULL, BaseDlg* parent=NULL);
-    virtual ~BaseDlg() {} // make the compiler happy
+    virtual ~BaseDlg() {}
 
     static void runDialogs();
     static void stopAllDialogs();

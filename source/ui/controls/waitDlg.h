@@ -5,6 +5,7 @@ class WaitDlg : public BaseDlg {
 public:
     WaitDlg(int title, const std::string& label);
     WaitDlg(int title, const std::string& label, std::function<bool()> checkIfShouldContinue);
+    virtual ~WaitDlg();
 
 protected:
     virtual void run();
