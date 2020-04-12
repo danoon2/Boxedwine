@@ -9,7 +9,8 @@ project/msvc/BoxedWine/BoxedWine/Release/
 project/msvc/BoxedWine/zlib/x64/
 project/msvc/BoxedWine/zlib/Debug/
 project/msvc/BoxedWine/zlib/Release/
-lib/sdl2/VisualC/SDL/Wine32/
+lib/sdl2/VisualC/SDL/Win32/
 lib/sdl2/VisualC/SDL/x64/
-lib/sdl2/VisualC/SDLmain/Wine32/
+lib/sdl2/VisualC/SDLmain/Win32/
 lib/sdl2/VisualC/SDLmain/x64/
+project/msvc/BoxedWine/BoxedWine/imgui.ini
