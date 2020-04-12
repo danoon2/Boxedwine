@@ -14,3 +14,6 @@ lib/sdl2/VisualC/SDL/x64/
 lib/sdl2/VisualC/SDLmain/Win32/
 lib/sdl2/VisualC/SDLmain/x64/
 project/msvc/BoxedWine/BoxedWine/imgui.ini
+project/linux/bin/
+project/linux/linux_build/
+project/mac-xcode/bin/
