@@ -10,7 +10,7 @@
 #include <SDL.h>
 
 #define SLOW_FRAME_DELAY 1000
-#define FAST_FRAME_DELAY 10
+#define FAST_FRAME_DELAY 1
 
 std::string GlobalSettings::dataFolderLocation;
 std::vector<WineVersion> GlobalSettings::wineVersions;

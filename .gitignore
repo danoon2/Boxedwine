@@ -1,0 +1,15 @@
+project/msvc/BoxedWine/.vs/
+project/msvc/BoxedWine/BoxedWine/BoxedWine.vcxproj.user
+project/msvc/BoxedWine/x64/
+project/msvc/BoxedWine/Debug/
+project/msvc/BoxedWine/Release/
+project/msvc/BoxedWine/BoxedWine/x64/
+project/msvc/BoxedWine/BoxedWine/Debug/
+project/msvc/BoxedWine/BoxedWine/Release/
+project/msvc/BoxedWine/zlib/x64/
+project/msvc/BoxedWine/zlib/Debug/
+project/msvc/BoxedWine/zlib/Release/
+lib/sdl2/VisualC/SDL/Wine32/
+lib/sdl2/VisualC/SDL/x64/
+lib/sdl2/VisualC/SDLmain/Wine32/
+lib/sdl2/VisualC/SDLmain/x64/
