@@ -1086,7 +1086,7 @@
     <ClInclude Include="..\..\..\..\source\ui\controls\containerOptionsDlg.h" />
     <ClInclude Include="..\..\..\..\source\ui\controls\containersView.h" />
     <ClInclude Include="..\..\..\..\source\ui\controls\downloadDlg.h" />
-    <ClInclude Include="..\..\..\..\source\ui\controls\installDlg.h" />
+    <ClInclude Include="..\..\..\..\source\ui\controls\installView.h" />
     <ClInclude Include="..\..\..\..\source\ui\controls\listView.h" />
     <ClInclude Include="..\..\..\..\source\ui\controls\listViewItem.h" />
     <ClInclude Include="..\..\..\..\source\ui\controls\menubar.h" />
@@ -3672,16 +3672,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\..\..\..\source\ui\controls\downloadDlg.cpp" />
-    <ClCompile Include="..\..\..\..\source\ui\controls\installDlg.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Use</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|Win32'">Use</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">Use</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">Use</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|x64'">Use</PrecompiledHeader>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x64'">true</ExcludedFromBuild>
-    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\controls\installView.cpp" />
     <ClCompile Include="..\..\..\..\source\ui\controls\listView.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|Win32'">Use</PrecompiledHeader>

@@ -22,7 +22,6 @@
 #include "controls/uiSettings.h"
 #include "controls/baseDlg.h"
 #include "controls/appbar.h"
-#include "controls/installDlg.h"
 #include "controls/listViewItem.h"
 #include "controls/listView.h"
 #include "controls/containersView.h"
@@ -34,6 +33,7 @@
 #include "controls/downloadDlg.h"
 #include "controls/yesNoDlg.h"
 #include "controls/okDlg.h"
+#include "controls/installView.h"
 
 #include "mainui.h"
 

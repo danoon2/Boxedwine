@@ -25,12 +25,14 @@ protected:
 	void runErrorMsg(bool open);
 
 	const char* errorMsg;
+	std::string errorMsgString;
 	int tabIndex;
 private:
 	void addTab(const std::string& name, int index);
 		
 	std::string viewName;
 	std::vector<BaseViewTab> tabs;
+	bool errorMsgOpen;
 };
 
 #endif

@@ -13,7 +13,7 @@ ContainerOptionsDlg::ContainerOptionsDlg(BoxedContainer* container) : BaseDlg(CO
     if (width.x>this->leftColumnWidth.x) {
         this->leftColumnWidth = width;
     }
-    this->leftColumnWidth.x+=COLUMN_PADDING;
+    this->leftColumnWidth.x+= ImGui::GetStyle().ItemSpacing.x;
 
     this->wineVersionComboboxData.data.clear();
     for (auto& ver : GlobalSettings::getWineVersions()) {

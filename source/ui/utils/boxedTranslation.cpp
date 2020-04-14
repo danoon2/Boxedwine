@@ -27,62 +27,68 @@ std::string getTranslationWithFormat(int msg, bool useDefaultIfMissing, const st
 
 const char* getTranslation(int msg, bool useDefaultIfMissing) {
     switch (msg) {
-    case INSTALLDLG_CONTAINER_HELP:
+    case INSTALLVIEW_INSTALL_TITLE:
+        return "Install";
+    case INSTALLVIEW_DEMO_TITLE:
+        return "Demos";
+    case INSTALLVIEW_CONTAINER_HELP:
         return "A Container is a directory on then file system where this application will installed into.  In general, is is best that each application have its own container, that way if you need to change anything in the container, like what version of Windows to emulate, then it will only affect this one application";
-    case INSTALLDLG_CONTAINER_NAME_HELP:
+    case INSTALLVIEW_CONTAINER_NAME_HELP:
         return "This must be a unique container name, two containers can not have the same name.";
-    case INSTALLDLG_TYPE_SETUP_HELP:
+    case INSTALLVIEW_TYPE_SETUP_HELP:
         return "This setup program will be run from here and it will be installed into a container";
-    case INSTALLDLG_TYPE_DIR_HELP:
+    case INSTALLVIEW_TYPE_DIR_HELP:
         return "The contents of this directory will be copied from your system into a container";
-    case INSTALLDLG_TYPE_MOUNT_HELP:
+    case INSTALLVIEW_TYPE_MOUNT_HELP:
         return "This folder on your system will be used by Boxedwine without copying it to a container.";    
-    case INSTALLDLG_RUN_WINE_CONFIG_HELP:
+    case INSTALLVIEW_RUN_WINE_CONFIG_HELP:
         return "Wine Config can be used to change the Windows version that is currently being emulated by Wine.  For example if your installer or application fails to run because it says it needs Windows 95, the you can use Wine Config to fix this.";
-    case INSTALLDLG_INSTALL_TYPE_HELP:
+    case INSTALLVIEW_INSTALL_TYPE_HELP:
         return NULL;
-    case INSTALLDLG_INSTALL_TYPE_LABEL:
+    case INSTALLVIEW_INSTALL_TYPE_LABEL:
         return "Install Type:";
-    case INSTALLDLG_CONTAINER_LABEL:
+    case INSTALLVIEW_CONTAINER_LABEL:
         return "Container:";
-    case INSTALLDLG_CONTAINER_NAME_LABEL:
+    case INSTALLVIEW_CONTAINER_NAME_LABEL:
         return "Name:";    
-    case INSTALLDLG_CONTAINER_RUN_WINE_CONFIG_LABEL:
+    case INSTALLVIEW_CONTAINER_RUN_WINE_CONFIG_LABEL:
         return "Run Wine Config:";
-    case INSTALLDLG_SETUP_FILE_LOCATION_LABEL:
+    case INSTALLVIEW_SETUP_FILE_LOCATION_LABEL:
         return "Setup File Location:";
-    case INSTALLDLG_DIRECTORY_LABEL:
+    case INSTALLVIEW_DIRECTORY_LABEL:
         return "Directory:";
-    case INSTALLDLG_TITLE:
+    case INSTALLVIEW_TITLE:
         return "Install Application";
-    case INSTALLDLG_ERROR_SETUP_FILE_MISSING:
+    case INSTALLVIEW_ERROR_SETUP_FILE_MISSING:
         return "Setup file location is empty and is required.";
-    case INSTALLDLG_ERROR_SETUP_FILE_NOT_FOUND:
+    case INSTALLVIEW_ERROR_SETUP_FILE_NOT_FOUND:
         return "The setup file was entered, but it does not exist.";
-    case INSTALLDLG_ERROR_DIR_MISSING:
+    case INSTALLVIEW_ERROR_DIR_MISSING:
         return "Directory location is empty and is required.";
-    case INSTALLDLG_ERROR_DIR_NOT_FOUND:
+    case INSTALLVIEW_ERROR_DIR_NOT_FOUND:
         return "The directory was entered, but it does not exist.";
-    case INSTALLDLG_ERROR_CONTAINER_NAME_MISSING:
+    case INSTALLVIEW_ERROR_CONTAINER_NAME_MISSING:
         return "You must enter a name for your new container.";
-    case INSTALLDLG_ERROR_FAILED_TO_CREATE_CONTAINER_DIR:
+    case INSTALLVIEW_ERROR_FAILED_TO_CREATE_CONTAINER_DIR:
         return "Failed to create a directory for the new container:\n\nerror msg: {0}";
-    case INSTALLDLG_ERROR_CONTAINER_ALREADY_EXISTS:
+    case INSTALLVIEW_ERROR_CONTAINER_ALREADY_EXISTS:
         return "You chose to create a new container, but a folder with the name you entered already exists:\n\n{0}";
-    case INSTALLDLG_TYPE_SETUP:
+    case INSTALLVIEW_TYPE_SETUP:
         return "Install using a setup program";
-    case INSTALLDLG_TYPE_MOUNT:
+    case INSTALLVIEW_TYPE_MOUNT:
         return "Install by mounting a directory";
-    case INSTALLDLG_TYPE_BLANK:
+    case INSTALLVIEW_TYPE_BLANK:
         return "Create a blank container";
-    case INSTALLDLG_TYPE_DIRECTORY:
+    case INSTALLVIEW_TYPE_DIRECTORY:
         return "Install by copying a directory";
-    case INSTALLDLG_ERROR_FILESYSTEM_COPY_DIRECTORY:
+    case INSTALLVIEW_ERROR_FILESYSTEM_COPY_DIRECTORY:
         return "The file system reported an error while trying to copy the directory:\n\n{0}";
-    case INSTALLDLG_ERROR_FILESYSTEM_FAIL_TO_CREATE_DIRS:
+    case INSTALLVIEW_ERROR_FILESYSTEM_FAIL_TO_CREATE_DIRS:
         return "The file system reported an error while trying to create the directory:\n\n{0}";
-    case INSTALLDLG_ERROR_FAILED_TO_MOUNT:
+    case INSTALLVIEW_ERROR_FAILED_TO_MOUNT:
         return "Failed to mount directory at drive t:.  If this is not a new container, perhaps you can try the same thing with a new container.";
+    case INSTALLVIEW_INSTALL_BUTTON_LABEL:
+        return "Install";
     case SETTINGS_DLG_TITLE:
         return "Options";
     case OPTIONSVIEW_SAVE_FOLDER_LABEL:
@@ -163,7 +169,7 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "Options";
     case MAIN_BUTTON_APPS:
         return "Apps";
-    case INSTALLDLG_OPEN_SETUP_FILE_TITLE:
+    case INSTALLVIEW_OPEN_SETUP_FILE_TITLE:
         return "Open File";
     case GENERIC_OPEN_FOLDER_TITLE:
         return "Select Folder";

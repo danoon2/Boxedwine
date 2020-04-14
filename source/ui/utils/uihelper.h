@@ -12,8 +12,15 @@ U32 getDisplayScale(); // returns 1/1000th of the scale, so a result of 1000 wou
 void askToDownloadDefaultWine();
 
 #define VIEW_APPS 0
+#define VIEW_INSTALL 1
 #define VIEW_CONTAINERS 2
 #define VIEW_OPTIONS 3
-void gotoView(int viewId, const char* tab = NULL);
+void gotoView(int viewId, const char* tab = NULL, const std::string& param1="");
+
+class UIDisableStyle {
+public:
+	UIDisableStyle();
+	~UIDisableStyle();
+};
 
 #endif

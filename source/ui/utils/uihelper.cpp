@@ -102,3 +102,18 @@ void askToDownloadDefaultWine() {
         }
         });
 }
+
+#include "../../../lib/imgui/imgui_internal.h"
+namespace ImGui {
+    void PushItemFlag(ImGuiItemFlags option, bool enabled);
+    void PopItemFlag();
+}
+
+UIDisableStyle::UIDisableStyle() {
+    ImGui::PushItemFlag(1 << 2, true);
+    ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+}
+UIDisableStyle::~UIDisableStyle() {
+    ImGui::PopItemFlag();
+    ImGui::PopStyleVar();
+}
