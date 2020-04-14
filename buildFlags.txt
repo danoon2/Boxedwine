@@ -1,5 +1,5 @@
 SDL2             This will cause SDL2 to be used instead of SDL1.  You will need to link to the correct libraries.
-UNALIGNED_MEMORY This is necessary if the host isn't little endian, necessary for emscripten
+UNALIGNED_MEMORY This is necessary if the host isn't little endian, necessary for asm.js (but not WASM)
 BOXEDWINE_64BIT_MMU    This will reserve 4GB of memory for each emulated process so that emulated memory can be mapped to host memory with a single offset.  Currently only Win64 build supports this.
 BOXEDWINE_VM     Requires: BOXEDWINE_64BIT_MMU. Translates x86 machine code to x64 on the fly.  Only supported on the Win64 build.
 BOXEDWINE_ZLIB   Will allow the file system to be in a zip file (-zip command line argument).  This requires that you link against zlib.
