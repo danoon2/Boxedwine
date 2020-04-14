@@ -1,8 +1,6 @@
 #ifndef __BASE_DLG_H__
 #define __BASE_DLG_H__
 
-#define COLUMN_PADDING 10
-
 class ComboboxData {
 public:
     ComboboxData() : dataForCombobox(0), currentSelectedIndex(0) {}

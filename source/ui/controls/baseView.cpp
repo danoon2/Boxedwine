@@ -1,12 +1,13 @@
 #include "boxedwine.h"
 #include "../boxedwineui.h"
 
-BaseView::BaseView(const std::string& viewName) : errorMsg(NULL), tabIndex(0), viewName(viewName) {
-    this->toolTipWidth = (float)ImGui::CalcTextSize("(?)").x + GlobalSettings::scaleIntUI(18);
+BaseView::BaseView(const std::string& viewName) : errorMsg(NULL), tabIndex(0), viewName(viewName), errorMsgOpen(false) {
+    this->toolTipWidth = (float)ImGui::CalcTextSize("(?)").x + ImGui::GetStyle().ItemSpacing.x;
     this->extraVerticalSpacing = (float)GlobalSettings::scaleIntUI(5);
 }
 
 void BaseView::toolTip(const char* desc) {
+    ImGui::AlignTextToFramePadding();
     SAFE_IMGUI_TEXT_DISABLED("(?)");
     if (ImGui::IsItemHovered())
     {
@@ -72,12 +73,16 @@ void BaseView::run(const ImVec2& size) {
     ImGui::EndChild();
     ImGui::PopStyleColor();
     if (this->errorMsg) {
-        runErrorMsg(false);
+        runErrorMsg(!errorMsgOpen);
     }
 }
 
 void BaseView::runErrorMsg(bool open) {
+    if (open) {
+        this->errorMsgOpen = true;
+    }
     if (!showMessageBox(this->viewName + "ErrorMsg", open, getTranslation(GENERIC_DLG_ERROR_TITLE), this->errorMsg)) {
+        this->errorMsgOpen = false;
         this->errorMsg = NULL;
     }
 }

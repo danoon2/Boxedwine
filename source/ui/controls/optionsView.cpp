@@ -21,14 +21,14 @@ OptionsView::OptionsView(const char* startingTab) : BaseView("OptionsView"), las
     this->themeHelp = getTranslation(OPTIONSVIEW_THEME_HELP, false);
     this->browseButtonText = getTranslation(GENERIC_BROWSE_BUTTON);
     
-    this->leftColumnWidthGeneral = ImGui::CalcTextSize(this->saveFolderLabel);
-    this->leftColumnWidthGeneral.x += COLUMN_PADDING;
+    this->leftColumnWidthGeneral = ImGui::CalcTextSize(this->saveFolderLabel).x;
+    this->leftColumnWidthGeneral += ImGui::GetStyle().ItemSpacing.x;
 
-    this->leftColumnWidthDisplay = ImGui::CalcTextSize(this->themeLabel);
-    this->leftColumnWidthDisplay.x+=COLUMN_PADDING;
+    this->leftColumnWidthDisplay = ImGui::CalcTextSize(this->themeLabel).x;
+    this->leftColumnWidthDisplay += ImGui::GetStyle().ItemSpacing.x;
 
-    this->rightColumnWidth = ImGui::CalcTextSize(this->browseButtonText);
-    this->rightColumnWidth.x+=8+COLUMN_PADDING; // more space for button;
+    this->rightColumnWidth = ImGui::CalcTextSize(this->browseButtonText).x + ImGui::GetStyle().FramePadding.x * 2 + ImGui::GetStyle().ItemSpacing.x;
+    
     strcpy(this->saveFolderLocationBuffer, GlobalSettings::getDataFolder().c_str());
 
     this->themeComboboxData.data.push_back(getTranslation(OPTIONSVIEW_THEME_DARK));
@@ -148,7 +148,7 @@ void OptionsView::runDisplayOptions() {
     ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing / 2));
     ImGui::AlignTextToFramePadding();
     SAFE_IMGUI_TEXT(this->themeLabel);
-    ImGui::SameLine(this->leftColumnWidthDisplay.x);
+    ImGui::SameLine(this->leftColumnWidthDisplay);
     ImGui::PushItemWidth(-1 - (this->themeHelp ? this->toolTipWidth : 0));
     ImGui::Combo("##ThemeCombo", &this->themeComboboxData.currentSelectedIndex, this->themeComboboxData.dataForCombobox);
     ImGui::PopItemWidth();
@@ -167,8 +167,8 @@ void OptionsView::runGeneralOptions() {
     ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing));
     ImGui::AlignTextToFramePadding();
     SAFE_IMGUI_TEXT(this->saveFolderLabel);
-    ImGui::SameLine(this->leftColumnWidthGeneral.x);
-    ImGui::PushItemWidth(-this->rightColumnWidth.x - (saveFolderHelp ? this->toolTipWidth : 0));
+    ImGui::SameLine(this->leftColumnWidthGeneral);
+    ImGui::PushItemWidth(-this->rightColumnWidth - (saveFolderHelp ? this->toolTipWidth : 0));
     ImGui::InputText("##LocationID", this->saveFolderLocationBuffer, sizeof(this->saveFolderLocationBuffer));
     ImGui::PopItemWidth();
     ImGui::SameLine();

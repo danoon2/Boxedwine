@@ -153,7 +153,6 @@
 		71222BD124351CBA00CDBABD /* kfilelock.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE1B2433BBBE003F17F1 /* kfilelock.cpp */; };
 		71222BD224351CBA00CDBABD /* waitDlg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD1A2433BBBE003F17F1 /* waitDlg.cpp */; };
 		71222BD324351CBA00CDBABD /* kpoll.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE3D2433BBBE003F17F1 /* kpoll.cpp */; };
-		71222BD424351CBA00CDBABD /* installDlg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD2C2433BBBE003F17F1 /* installDlg.cpp */; };
 		71222BD524351CBA00CDBABD /* mainui.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD352433BBBE003F17F1 /* mainui.cpp */; };
 		71222BD624351CBA00CDBABD /* common_other.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD932433BBBE003F17F1 /* common_other.cpp */; };
 		71222BD724351CBA00CDBABD /* devfb.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE282433BBBE003F17F1 /* devfb.cpp */; };
@@ -1090,6 +1089,8 @@
 		715F84262440ED200038F5A4 /* pcre_chartables.c in Sources */ = {isa = PBXBuildFile; fileRef = 715F82122440ED1D0038F5A4 /* pcre_chartables.c */; };
 		715F8428244115580038F5A4 /* Media.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 715F8427244115580038F5A4 /* Media.xcassets */; };
 		715F8429244115580038F5A4 /* Media.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 715F8427244115580038F5A4 /* Media.xcassets */; };
+		715F842C24464C080038F5A4 /* installView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F842A24464C080038F5A4 /* installView.cpp */; };
+		715F842D24464C080038F5A4 /* installView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F842A24464C080038F5A4 /* installView.cpp */; };
 		71FBFCB22433B815003F17F1 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFCB12433B815003F17F1 /* AppDelegate.m */; };
 		71FBFCB42433B817003F17F1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 71FBFCB32433B817003F17F1 /* Assets.xcassets */; };
 		71FBFCD42433BB9C003F17F1 /* memory64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFCD12433BB9C003F17F1 /* memory64.cpp */; };
@@ -1106,7 +1107,6 @@
 		71FBFE632433BBBE003F17F1 /* baseDlg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD242433BBBE003F17F1 /* baseDlg.cpp */; };
 		71FBFE642433BBBE003F17F1 /* menubar.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD252433BBBE003F17F1 /* menubar.cpp */; };
 		71FBFE652433BBBE003F17F1 /* containerOptionsDlg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD262433BBBE003F17F1 /* containerOptionsDlg.cpp */; };
-		71FBFE662433BBBE003F17F1 /* installDlg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD2C2433BBBE003F17F1 /* installDlg.cpp */; };
 		71FBFE672433BBBE003F17F1 /* uiSettings.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD2E2433BBBE003F17F1 /* uiSettings.cpp */; };
 		71FBFE682433BBBE003F17F1 /* appbar.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD2F2433BBBE003F17F1 /* appbar.cpp */; };
 		71FBFE692433BBBE003F17F1 /* appChooserDlg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD312433BBBE003F17F1 /* appChooserDlg.cpp */; };
@@ -1700,6 +1700,8 @@
 		715F82102440ED1D0038F5A4 /* BinaryReader.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = BinaryReader.cpp; sourceTree = "<group>"; };
 		715F82122440ED1D0038F5A4 /* pcre_chartables.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = pcre_chartables.c; sourceTree = "<group>"; };
 		715F8427244115580038F5A4 /* Media.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Media.xcassets; sourceTree = "<group>"; };
+		715F842A24464C080038F5A4 /* installView.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = installView.cpp; sourceTree = "<group>"; };
+		715F842B24464C080038F5A4 /* installView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = installView.h; sourceTree = "<group>"; };
 		71FBFCAD2433B815003F17F1 /* Boxedwine.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Boxedwine.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		71FBFCB02433B815003F17F1 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
 		71FBFCB12433B815003F17F1 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
@@ -1787,11 +1789,9 @@
 		71FBFD292433BBBE003F17F1 /* baseDlg.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = baseDlg.h; sourceTree = "<group>"; };
 		71FBFD2A2433BBBE003F17F1 /* containerOptionsDlg.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = containerOptionsDlg.h; sourceTree = "<group>"; };
 		71FBFD2B2433BBBE003F17F1 /* listView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = listView.h; sourceTree = "<group>"; };
-		71FBFD2C2433BBBE003F17F1 /* installDlg.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = installDlg.cpp; sourceTree = "<group>"; };
 		71FBFD2D2433BBBE003F17F1 /* appbar.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = appbar.h; sourceTree = "<group>"; };
 		71FBFD2E2433BBBE003F17F1 /* uiSettings.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = uiSettings.cpp; sourceTree = "<group>"; };
 		71FBFD2F2433BBBE003F17F1 /* appbar.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = appbar.cpp; sourceTree = "<group>"; };
-		71FBFD302433BBBE003F17F1 /* installDlg.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = installDlg.h; sourceTree = "<group>"; };
 		71FBFD312433BBBE003F17F1 /* appChooserDlg.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = appChooserDlg.cpp; sourceTree = "<group>"; };
 		71FBFD322433BBBE003F17F1 /* appChooserDlg.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = appChooserDlg.h; sourceTree = "<group>"; };
 		71FBFD332433BBBE003F17F1 /* appOptionsDlg.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = appOptionsDlg.h; sourceTree = "<group>"; };
@@ -2862,14 +2862,14 @@
 		71FBFD0D2433BBBE003F17F1 /* ui */ = {
 			isa = PBXGroup;
 			children = (
-				71FBFD0E2433BBBE003F17F1 /* mainui.h */,
-				71FBFD0F2433BBBE003F17F1 /* boxedwineui.h */,
-				71FBFD102433BBBE003F17F1 /* utils */,
-				71FBFD182433BBBE003F17F1 /* controls */,
 				71FBFD352433BBBE003F17F1 /* mainui.cpp */,
-				71FBFD362433BBBE003F17F1 /* data */,
+				71FBFD0F2433BBBE003F17F1 /* boxedwineui.h */,
+				71FBFD0E2433BBBE003F17F1 /* mainui.h */,
 				71FBFD412433BBBE003F17F1 /* platformhelper.h */,
+				71FBFD182433BBBE003F17F1 /* controls */,
+				71FBFD362433BBBE003F17F1 /* data */,
 				71FBFD422433BBBE003F17F1 /* opengl */,
+				71FBFD102433BBBE003F17F1 /* utils */,
 			);
 			path = ui;
 			sourceTree = "<group>";
@@ -2891,42 +2891,42 @@
 		71FBFD182433BBBE003F17F1 /* controls */ = {
 			isa = PBXGroup;
 			children = (
+				715F842A24464C080038F5A4 /* installView.cpp */,
+				715F842B24464C080038F5A4 /* installView.h */,
+				71FBFD2F2433BBBE003F17F1 /* appbar.cpp */,
+				71FBFD2D2433BBBE003F17F1 /* appbar.h */,
+				71FBFD312433BBBE003F17F1 /* appChooserDlg.cpp */,
+				71FBFD322433BBBE003F17F1 /* appChooserDlg.h */,
+				71FBFD1E2433BBBE003F17F1 /* appOptionDlg.cpp */,
+				71FBFD332433BBBE003F17F1 /* appOptionsDlg.h */,
+				71FBFD242433BBBE003F17F1 /* baseDlg.cpp */,
+				71FBFD292433BBBE003F17F1 /* baseDlg.h */,
 				715F347F2440D7D10038F5A4 /* baseView.cpp */,
 				715F34792440D7D10038F5A4 /* baseView.h */,
+				71FBFD262433BBBE003F17F1 /* containerOptionsDlg.cpp */,
+				71FBFD2A2433BBBE003F17F1 /* containerOptionsDlg.h */,
+				71FBFD342433BBBE003F17F1 /* containersView.cpp */,
+				71FBFD1B2433BBBE003F17F1 /* containersView.h */,
 				715F347B2440D7D10038F5A4 /* downloadDlg.cpp */,
 				715F347D2440D7D10038F5A4 /* downloadDlg.h */,
+				71FBFD1D2433BBBE003F17F1 /* listView.cpp */,
+				71FBFD2B2433BBBE003F17F1 /* listView.h */,
+				71FBFD1C2433BBBE003F17F1 /* listViewItem.cpp */,
+				71FBFD272433BBBE003F17F1 /* listViewItem.h */,
+				71FBFD252433BBBE003F17F1 /* menubar.cpp */,
+				71FBFD202433BBBE003F17F1 /* menubar.h */,
 				715F34812440D7D10038F5A4 /* okDlg.cpp */,
 				715F347A2440D7D10038F5A4 /* okDlg.h */,
 				715F347C2440D7D10038F5A4 /* optionsView.cpp */,
 				715F34802440D7D10038F5A4 /* optionsView.h */,
+				71FBFD212433BBBE003F17F1 /* spinnerControl.cpp */,
+				71FBFD192433BBBE003F17F1 /* spinnerControl.h */,
+				71FBFD2E2433BBBE003F17F1 /* uiSettings.cpp */,
+				71FBFD1F2433BBBE003F17F1 /* uiSettings.h */,
+				71FBFD1A2433BBBE003F17F1 /* waitDlg.cpp */,
+				71FBFD222433BBBE003F17F1 /* waitDlg.h */,
 				715F34782440D7D00038F5A4 /* yesNoDlg.cpp */,
 				715F347E2440D7D10038F5A4 /* yesNoDlg.h */,
-				71FBFD192433BBBE003F17F1 /* spinnerControl.h */,
-				71FBFD1A2433BBBE003F17F1 /* waitDlg.cpp */,
-				71FBFD1B2433BBBE003F17F1 /* containersView.h */,
-				71FBFD1C2433BBBE003F17F1 /* listViewItem.cpp */,
-				71FBFD1D2433BBBE003F17F1 /* listView.cpp */,
-				71FBFD1E2433BBBE003F17F1 /* appOptionDlg.cpp */,
-				71FBFD1F2433BBBE003F17F1 /* uiSettings.h */,
-				71FBFD202433BBBE003F17F1 /* menubar.h */,
-				71FBFD212433BBBE003F17F1 /* spinnerControl.cpp */,
-				71FBFD222433BBBE003F17F1 /* waitDlg.h */,
-				71FBFD242433BBBE003F17F1 /* baseDlg.cpp */,
-				71FBFD252433BBBE003F17F1 /* menubar.cpp */,
-				71FBFD262433BBBE003F17F1 /* containerOptionsDlg.cpp */,
-				71FBFD272433BBBE003F17F1 /* listViewItem.h */,
-				71FBFD292433BBBE003F17F1 /* baseDlg.h */,
-				71FBFD2A2433BBBE003F17F1 /* containerOptionsDlg.h */,
-				71FBFD2B2433BBBE003F17F1 /* listView.h */,
-				71FBFD2C2433BBBE003F17F1 /* installDlg.cpp */,
-				71FBFD2D2433BBBE003F17F1 /* appbar.h */,
-				71FBFD2E2433BBBE003F17F1 /* uiSettings.cpp */,
-				71FBFD2F2433BBBE003F17F1 /* appbar.cpp */,
-				71FBFD302433BBBE003F17F1 /* installDlg.h */,
-				71FBFD312433BBBE003F17F1 /* appChooserDlg.cpp */,
-				71FBFD322433BBBE003F17F1 /* appChooserDlg.h */,
-				71FBFD332433BBBE003F17F1 /* appOptionsDlg.h */,
-				71FBFD342433BBBE003F17F1 /* containersView.cpp */,
 			);
 			path = controls;
 			sourceTree = "<group>";
@@ -3680,7 +3680,6 @@
 				715F636F2440E9100038F5A4 /* RawSocketImpl.cpp in Sources */,
 				71222BD324351CBA00CDBABD /* kpoll.cpp in Sources */,
 				715F840E2440ED200038F5A4 /* URIStreamOpener.cpp in Sources */,
-				71222BD424351CBA00CDBABD /* installDlg.cpp in Sources */,
 				715F64552440E9740038F5A4 /* FTPSClientSession.cpp in Sources */,
 				715F34F62440E7490038F5A4 /* LayeredConfiguration.cpp in Sources */,
 				715F82FE2440ED1E0038F5A4 /* DirectoryIteratorStrategy.cpp in Sources */,
@@ -3990,6 +3989,7 @@
 				71222C3B24351CBA00CDBABD /* soft_no_page.cpp in Sources */,
 				715F832A2440ED1F0038F5A4 /* Var.cpp in Sources */,
 				715F34E22440E7480038F5A4 /* Application.cpp in Sources */,
+				715F842D24464C080038F5A4 /* installView.cpp in Sources */,
 				715F64812440E9750038F5A4 /* SecureSMTPClientSession.cpp in Sources */,
 				715F34C42440E7480038F5A4 /* IntValidator.cpp in Sources */,
 				71222C3C24351CBA00CDBABD /* fszipnode.cpp in Sources */,
@@ -4227,7 +4227,6 @@
 				715F636E2440E9100038F5A4 /* RawSocketImpl.cpp in Sources */,
 				71FBFED82433BBBE003F17F1 /* kpoll.cpp in Sources */,
 				715F840D2440ED200038F5A4 /* URIStreamOpener.cpp in Sources */,
-				71FBFE662433BBBE003F17F1 /* installDlg.cpp in Sources */,
 				715F64542440E9740038F5A4 /* FTPSClientSession.cpp in Sources */,
 				715F34F52440E7490038F5A4 /* LayeredConfiguration.cpp in Sources */,
 				715F82FD2440ED1E0038F5A4 /* DirectoryIteratorStrategy.cpp in Sources */,
@@ -4537,6 +4536,7 @@
 				71FBFE972433BBBE003F17F1 /* soft_no_page.cpp in Sources */,
 				715F83292440ED1F0038F5A4 /* Var.cpp in Sources */,
 				715F34E12440E7480038F5A4 /* Application.cpp in Sources */,
+				715F842C24464C080038F5A4 /* installView.cpp in Sources */,
 				715F64802440E9750038F5A4 /* SecureSMTPClientSession.cpp in Sources */,
 				715F34C32440E7480038F5A4 /* IntValidator.cpp in Sources */,
 				71FBFEA42433BBBE003F17F1 /* fszipnode.cpp in Sources */,

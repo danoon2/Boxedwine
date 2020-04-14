@@ -44,7 +44,7 @@ AppOptionsDlg::AppOptionsDlg(BoxedApp* app) : BaseDlg(APP_OPTIONS_DLG_TITLE, 600
     if (width.x > this->leftColumnWidth.x) {
         this->leftColumnWidth = width;
     }
-    this->leftColumnWidth.x += COLUMN_PADDING;
+    this->leftColumnWidth.x += ImGui::GetStyle().ItemSpacing.x;
 
     this->resolutionComboboxData.data.push_back(getTranslation(APP_OPTIONS_DLG_DEFAULT_RESOLUTION_LABEL));
     this->resolutionComboboxData.data.push_back("640x480");

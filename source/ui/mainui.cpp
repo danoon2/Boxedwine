@@ -67,7 +67,7 @@ void uiDraw() {
     ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetColorU32(ImGuiCol_WindowBg));
     if (currentViewDeprecated ==VIEW_CONTAINERS) {
         drawContainersView(size);
-    } else if (currentViewDeprecated == VIEW_OPTIONS) {        
+    } else if (currentViewDeprecated == VIEW_OPTIONS || currentViewDeprecated == VIEW_INSTALL) {
         currentView->run(size);
     } else {        
         drawListView("Apps", appListViewItems, size);
@@ -82,7 +82,7 @@ void uiDraw() {
     ImGui::PopStyleVar(1);    
 }
 
-void gotoView(int viewId, const char* tab) {
+void gotoView(int viewId, const char* tab, const std::string& param1) {
     if (!currentView || currentView->saveChanges()) {
         if (currentView) {
             delete currentView;
@@ -91,6 +91,8 @@ void gotoView(int viewId, const char* tab) {
         currentViewDeprecated = viewId;
         if (viewId == VIEW_OPTIONS) {
             currentView = new OptionsView(tab);
+        } else if (viewId == VIEW_INSTALL) {
+            currentView = new InstallView(param1, tab);
         }
     }
 }
@@ -101,13 +103,7 @@ void createButton() {
         gotoView(VIEW_APPS);
     }));
     appButtons.push_back(AppButton(getTranslation(MAIN_BUTTON_INSTALL), [](){
-        if (!currentView || currentView->saveChanges()) {
-            if (currentView) {
-                delete currentView;
-                currentView = NULL;
-            }
-            new InstallDlg();
-        }
+        gotoView(VIEW_INSTALL);
     }));    
     appButtons.push_back(AppButton(getTranslation(MAIN_BUTTON_CONTAINERS), [](){
         if (!currentView || currentView->saveChanges()) {
@@ -239,7 +235,7 @@ bool uiLoop() {
             
             staticFilePath = droppedFileOrDir;
             runOnMainUI([]() {
-                new InstallDlg(staticFilePath);
+                gotoView(VIEW_INSTALL, "Install", staticFilePath);
                 return false;
                 });
             SDL_free(droppedFileOrDir);    // Free dropped_filedir memory

@@ -34,10 +34,10 @@ private:
 	const char* wineTitle;
 	ComboboxData themeComboboxData;
 	char saveFolderLocationBuffer[1024];
-	ImVec2 leftColumnWidthGeneral;
-	ImVec2 leftColumnWidthDisplay;
-	ImVec2 leftColumnWidthWine;
-	ImVec2 rightColumnWidth;	
+	float leftColumnWidthGeneral;
+	float leftColumnWidthDisplay;
+	float leftColumnWidthWine;
+	float rightColumnWidth;	
 	int lastThemeSelectionIndex;
 	float wineButtonTotalColumnWidth;
 	float wineButtonFirstColumnWidth;
