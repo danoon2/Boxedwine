@@ -342,6 +342,10 @@ int getPixelFormats(PixelFormat* pfd, int maxPfs) {
     return result;
 }
 
+void Platform::openFileLocation(const std::string& location) {
+    ShellExecute(NULL, "open", location.c_str(), NULL, NULL, SW_SHOWNORMAL);
+}
+
 #ifdef BOXEDWINE_X64
 bool platformHasBMI2() {
     int regs[4];

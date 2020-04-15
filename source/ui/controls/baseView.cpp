@@ -32,7 +32,10 @@ void BaseView::addTab(const std::string& name, int index) {
     std::string nameId = "##" + name;
     ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetColorU32(ImGuiCol_WindowBg) | 0xFF000000);
     if (ImGui::Selectable(nameId.c_str(), tabIndex == index, ImGuiSelectableFlags_AllowRightClick, s)) {
-        tabIndex = index;
+        if (this->saveChanges()) {
+            tabIndex = index;
+            tabChanged = true;
+        }
     }
     ImGui::PopStyleColor();
     pos.y += this->extraVerticalSpacing;
@@ -67,7 +70,8 @@ void BaseView::run(const ImVec2& size) {
     ImGui::SameLine();
     ImGui::BeginChild(112, rightSize, false, 0);
     
-    this->tabs[this->tabIndex].drawTab();
+    this->tabs[this->tabIndex].drawTab(tabChanged, this->tabs[this->tabIndex]);
+    this->tabChanged = false;
 
     ImGui::EndChild();
     ImGui::EndChild();
@@ -81,12 +85,14 @@ void BaseView::runErrorMsg(bool open) {
     if (open) {
         this->errorMsgOpen = true;
     }
+    ImGui::PushFont(GlobalSettings::mediumFont);
     if (!showMessageBox(this->viewName + "ErrorMsg", open, getTranslation(GENERIC_DLG_ERROR_TITLE), this->errorMsg)) {
         this->errorMsgOpen = false;
         this->errorMsg = NULL;
     }
+    ImGui::PopFont();
 }
 
-void BaseView::addTab(const std::string& name, std::function<void()> drawTab) {
+void BaseView::addTab(const std::string& name, std::function<void(bool buttonPressed, BaseViewTab& tab)> drawTab) {
     this->tabs.push_back(BaseViewTab(name, drawTab));
 }

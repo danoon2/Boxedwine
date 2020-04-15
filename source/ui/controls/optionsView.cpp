@@ -43,10 +43,10 @@ OptionsView::OptionsView(const char* startingTab) : BaseView("OptionsView"), las
         this->themeComboboxData.currentSelectedIndex = 0;
     }
 
-    addTab(this->generalTitle, [this]() {
+    addTab(this->generalTitle, [this](bool buttonPressed, BaseViewTab& tab) {
         this->runGeneralOptions();
         });
-    addTab(this->displayTitle, [this]() {
+    addTab(this->displayTitle, [this](bool buttonPressed, BaseViewTab& tab) {
         if (this->lastThemeSelectionIndex != this->themeComboboxData.currentSelectedIndex) {
             if (this->themeComboboxData.currentSelectedIndex == 0) {
                 ImGui::StyleColorsDark();
@@ -62,7 +62,7 @@ OptionsView::OptionsView(const char* startingTab) : BaseView("OptionsView"), las
         }
         this->runDisplayOptions();
         });
-    addTab(this->wineTitle, [this]() {
+    addTab(this->wineTitle, [this](bool buttonPressed, BaseViewTab& tab) {
         this->runWineOptions();
         });    
 
@@ -227,7 +227,7 @@ void OptionsView::runWineOptions() {
             }
             bool yes = false;
             std::string label = getTranslationWithFormat(OPTIONSVIEW_WINE_VERSION_DELETE_CONFIRM_LABEL, true, wine.first);
-            if (!showYesNoMessageBox("confirm"+wine.first, buttonPressed, getTranslation(OPTIONSVIEW_WINE_VERSION_DELETE_CONFIRM_TITLE), label.c_str(), &yes)) {
+            if (!showYesNoMessageBox("confirm"+wine.first, buttonPressed, getTranslation(GENERIC_DLG_CONFIRM_TITLE), label.c_str(), &yes)) {
                 if (yes) {
                     Fs::deleteNativeFile(wine.second.currentVersion->filePath);
                     // run later, we don't want to change versions while we are iterating them

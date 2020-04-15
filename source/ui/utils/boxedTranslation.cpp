@@ -124,9 +124,7 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
     case OPTIONSVIEW_WINE_VERSION_INSTALL:
         return "Install";
     case OPTIONSVIEW_WINE_VERSION_UPDATE:
-        return "Update";
-    case OPTIONSVIEW_WINE_VERSION_DELETE_CONFIRM_TITLE:
-        return "Confirm";
+        return "Update";    
     case OPTIONSVIEW_WINE_VERSION_DELETE_CONFIRM_LABEL:
         return "Are you sure you want to delete {0}?";
     case APPCHOOSER_DLG_TITLE:
@@ -135,6 +133,30 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "Please select a file to use for the shortcut.";
     case APPCHOOSER_DLG_NO_APPS_LABEL:
         return "Could not find any new apps.";
+    case CONTAINER_VIEW_CONTAINER_NAME_LABEL:
+        return "Container Name:";
+    case CONTAINER_VIEW_ERROR_BLANK_NAME:
+        return "Container Name can not be empty";
+    case CONTAINER_VIEW_ERROR_MISSING_MOUNT_LOCATION:
+        return "You specified a mount drive letter, but the mount folder location is empty.";
+    case CONTAINER_VIEW_ERROR_MISSING_MOUNT_DRIVE:
+        return "You specified a mount folder location, but the mount drive letter is empty.";
+    case CONTAINER_VIEW_CONTAINER_LOCATION_LABEL:
+        return "Storage Location:";
+    case CONTAINER_VIEW_CONTAINER_LOCATION_SIZE_LABEL:
+        return "Storage Size:";
+    case CONTAINER_VIEW_DELETE_BUTTON_LABEL:
+        return "Delete Container and its Apps";
+    case CONTAINER_VIEW_DELETE_CONFIRMATION:
+        return "Are you sure you want to delete the container {0}?";
+    case CONTAINER_VIEW_DELETE_CONFIRMATION_WITH_APPS:
+        return "Are you sure you want to delete the container {0} and the following associated apps: {1}?";
+    case CONTAINER_VIEW_DELETE_BUTTON_HELP:
+        return "Deleting a container will delete its data folder.  All apps associated with the container will also be deleted.  This can not be undone.";
+    case CONTAINER_VIEW_MOUNT_DIR_LABEL:
+        return "Mount Folder:";
+    case CONTAINER_VIEW_MOUNT_DIR_HELP:
+        return "Instead of copying data to the container folder, you can just mount a folder on your computer and use it in Wine as a drive";
     case CONTAINER_OPTIONS_DLG_TITLE:
         return "Container Options";
     case CONTAINER_OPTIONS_DLG_WINE_VERSION_LABEL:
@@ -151,6 +173,8 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "You should just use the default Wine version, which is the most recent version, unless you know your application needs another version.";
     case GENERIC_BROWSE_BUTTON:
         return "Browse";
+    case GENERIC_OPEN_BUTTON:
+        return "Open";
     case GENERIC_DLG_OK:
         return "Ok";
     case GENERIC_DLG_YES:
@@ -161,6 +185,8 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "Cancel";
     case GENERIC_DLG_ERROR_TITLE:
         return "Error";
+    case GENERIC_DLG_CONFIRM_TITLE:
+        return "Confirm";
     case MAIN_BUTTON_INSTALL:
         return "Install";
     case MAIN_BUTTON_CONTAINERS:

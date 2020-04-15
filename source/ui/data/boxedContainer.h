@@ -26,6 +26,8 @@ public:
     const std::string& getWineVersion() {return this->wineVersion;}
     const std::string& getSize() {return this->cachedSize;}
 
+    void setName(const std::string& name);
+
     std::string getNativePathForApp(const BoxedApp& app);
 
     void getNewApps(std::vector<BoxedApp>& apps);
@@ -33,7 +35,8 @@ public:
 
     void setWineVersion(const std::string& wineVersion) {this->wineVersion = wineVersion;}
     bool addNewMount(const MountInfo& mountInfo);
-
+    void clearMounts() {this->mounts.clear();}
+    const std::vector<MountInfo>& getMounts() {return this->mounts;}
 private:
     void loadApps();
     void getNewDesktopLinkApps(std::vector<BoxedApp>& apps);

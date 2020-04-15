@@ -65,9 +65,7 @@ void uiDraw() {
     ImVec2 size = ImGui::GetWindowContentRegionMax();
     size.y -= ImGui::GetCursorPosY();
     ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetColorU32(ImGuiCol_WindowBg));
-    if (currentViewDeprecated ==VIEW_CONTAINERS) {
-        drawContainersView(size);
-    } else if (currentViewDeprecated == VIEW_OPTIONS || currentViewDeprecated == VIEW_INSTALL) {
+    if (currentViewDeprecated == VIEW_OPTIONS || currentViewDeprecated == VIEW_INSTALL || currentViewDeprecated == VIEW_CONTAINERS) {
         currentView->run(size);
     } else {        
         drawListView("Apps", appListViewItems, size);
@@ -93,6 +91,8 @@ void gotoView(int viewId, const char* tab, const std::string& param1) {
             currentView = new OptionsView(tab);
         } else if (viewId == VIEW_INSTALL) {
             currentView = new InstallView(param1, tab);
+        } else if (viewId == VIEW_CONTAINERS) {
+            currentView = new ContainersView(tab);
         }
     }
 }
@@ -106,14 +106,7 @@ void createButton() {
         gotoView(VIEW_INSTALL);
     }));    
     appButtons.push_back(AppButton(getTranslation(MAIN_BUTTON_CONTAINERS), [](){
-        if (!currentView || currentView->saveChanges()) {
-            if (currentView) {
-                delete currentView;
-                currentView = NULL;
-            }
-            BoxedwineData::updateCachedContainerSizes();
-            currentViewDeprecated = VIEW_CONTAINERS;
-        }        
+        gotoView(VIEW_CONTAINERS);
     }));
     appButtons.push_back(AppButton(getTranslation(MAIN_BUTTON_SETTINGS), [](){
         gotoView(VIEW_OPTIONS);        

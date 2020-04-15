@@ -11,6 +11,11 @@ void BoxedwineData::startApp() {
     GlobalSettings::startUpArgs.apply();
 }
 
+void BoxedwineData::reloadContainers() {
+    loadContainers();
+    GlobalSettings::reloadApps();
+}
+
 void BoxedwineData::loadContainers() {
      for (auto &container : BoxedwineData::containers) {
         delete container;
@@ -31,12 +36,6 @@ void BoxedwineData::loadContainers() {
 
 void BoxedwineData::loadUI() {
     loadContainers();
-}
-
-void BoxedwineData::updateCachedContainerSizes() {
-    for (auto& item : BoxedwineData::getContainers()) {
-        item->updateCachedSize();
-    } 
 }
 
 BoxedContainer* BoxedwineData::getContainerByName(const std::string& name) {

@@ -212,7 +212,7 @@ void GlobalSettings::updateFileList(const std::string& fileLocation) {
     runInBackgroundThread([fileLocation]() {
         std::string errorMsg;
         GlobalSettings::filesListDownloading = true;
-        downloadFile("http://www.boxedwine.org/files.ini", fileLocation, [](U32 percentDone) {
+        downloadFile("http://www.boxedwine.org/files.ini", fileLocation, [](U64 bytesCompleted) {
             }, NULL, errorMsg);
         GlobalSettings::loadFileList();
         GlobalSettings::filesListDownloading = false;

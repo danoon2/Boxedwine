@@ -217,3 +217,7 @@ BoxedApp* BoxedContainer::getAppByIniFile(const std::string& iniFile) {
     }
     return NULL;
 }
+
+void BoxedContainer::setName(const std::string& name) {
+    this->name = name;
+}

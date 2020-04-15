@@ -89,10 +89,10 @@ InstallView::InstallView(const std::string& initialFileOrDirPath, const char* st
     this->installTitle = getTranslation(INSTALLVIEW_INSTALL_TITLE);
     this->demoTitle = getTranslation(INSTALLVIEW_DEMO_TITLE);
 
-    addTab(this->installTitle, [this]() {
+    addTab(this->installTitle, [this](bool buttonPressed, BaseViewTab& tab) {
         this->runInstallView();
         });
-    addTab(this->demoTitle, [this]() {
+    addTab(this->demoTitle, [this](bool buttonPressed, BaseViewTab& tab) {
         this->runDemoView();
         });
 }
@@ -234,7 +234,9 @@ void InstallView::runInstallView() {
             this->toolTip(wineConfigHelp);
         }
     }
-    ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing*3));
+    ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing * 4));
+    ImGui::Separator();
+    ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing));
     ImGui::PushFont(GlobalSettings::largeFont);
     if (ImGui::Button(getTranslation(INSTALLVIEW_INSTALL_BUTTON_LABEL))) {
         onInstall();
