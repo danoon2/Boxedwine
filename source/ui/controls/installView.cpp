@@ -295,6 +295,8 @@ void InstallView::onInstall() {
     }
     if (!this->errorMsg) {
         GlobalSettings::startUpArgs = StartUpArgs(); // reset parameters
+        GlobalSettings::startUpArgs.setScale(GlobalSettings::getDefaultScale());
+        GlobalSettings::startUpArgs.setResolution(GlobalSettings::getDefaultResolution());
         bool containerCreated = false;
         if (!container) {
             std::string containerFilePath = GlobalSettings::getContainerFolder() + Fs::nativePathSeperator + this->containerName;

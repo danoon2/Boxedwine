@@ -58,7 +58,7 @@ bool BoxedContainer::saveContainer() {
 }
 
 void BoxedContainer::deleteContainerFromFilesystem() {
-    Fs::deleteNativeDirAndAllFilesInDir(this->dirPath, true);
+    Fs::deleteNativeDirAndAllFilesInDir(this->dirPath);
 }
 
 void BoxedContainer::reload() {

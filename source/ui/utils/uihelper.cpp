@@ -109,11 +109,15 @@ namespace ImGui {
     void PopItemFlag();
 }
 
-UIDisableStyle::UIDisableStyle() {
-    ImGui::PushItemFlag(1 << 2, true);
-    ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+UIDisableStyle::UIDisableStyle(bool disable) : disabled(disable) {
+    if (disable) {
+        ImGui::PushItemFlag(1 << 2, true);
+        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+    }
 }
 UIDisableStyle::~UIDisableStyle() {
-    ImGui::PopItemFlag();
-    ImGui::PopStyleVar();
+    if (disabled) {
+        ImGui::PopItemFlag();
+        ImGui::PopStyleVar();
+    }
 }

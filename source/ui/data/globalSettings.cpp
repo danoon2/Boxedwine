@@ -31,6 +31,11 @@ bool GlobalSettings::restartUI;
 U32 GlobalSettings::frameDelayMillies = SLOW_FRAME_DELAY;
 U32 GlobalSettings::fastFrameRateCount = 0;
 U64 GlobalSettings::lastFrameDelayChange = 0;
+std::vector<std::string> GlobalSettings::availableResolutions;
+std::string GlobalSettings::defaultResolution;
+int GlobalSettings::defaultScale;
+int GlobalSettings::screenCx;
+int GlobalSettings::screenCy;
 
 void GlobalSettings::init(int argc, const char **argv) {
     GlobalSettings::dataFolderLocation = SDL_GetPrefPath("", "Boxedwine");
@@ -48,10 +53,32 @@ void GlobalSettings::init(int argc, const char **argv) {
     stringReplaceAll(GlobalSettings::dataFolderLocation, "//", "/");
     stringReplaceAll(GlobalSettings::dataFolderLocation, "\\\\", "\\");
     GlobalSettings::theme = config.readString("Theme", "Dark");
+    GlobalSettings::defaultResolution = config.readString("DefaultResolution", "1024x768");
+    GlobalSettings::defaultScale = config.readInt("DefaultScale", 100);
+
     if (!Fs::doesNativePathExist(configFilePath)) {
         saveConfig();
     }    
     GlobalSettings::startUp();
+
+    SDL_DisplayMode dm;    
+    availableResolutions.push_back("640x480");
+    availableResolutions.push_back("800x600");
+    availableResolutions.push_back("1024x768");
+    if (SDL_GetDesktopDisplayMode(0, &dm) == 0) {
+        GlobalSettings::screenCx = dm.w;
+        GlobalSettings::screenCy = dm.h;
+        if (dm.w>=3072) {
+            std::string res = std::to_string(dm.w / 3) + "x" + std::to_string(dm.h / 3);
+            availableResolutions.push_back(res.c_str());
+        }
+        if (dm.w>=2048) {
+            std::string res = std::to_string(dm.w/2) + "x" + std::to_string(dm.h/2);
+            availableResolutions.push_back(res.c_str());
+        }
+        std::string res = std::to_string(dm.w) + "x" + std::to_string(dm.h);
+        availableResolutions.push_back(res.c_str());
+    }
 }
 
 void GlobalSettings::startUp() {
@@ -78,6 +105,8 @@ void GlobalSettings::saveConfig() {
     config.writeString("Version", "1");
     config.writeString("DataFolder", GlobalSettings::dataFolderLocation);
     config.writeString("Theme", GlobalSettings::theme);
+    config.writeString("DefaultResolution", GlobalSettings::defaultResolution);
+    config.writeInt("DefaultScale", GlobalSettings::defaultScale);
     config.saveChanges();
 }
 

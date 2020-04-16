@@ -49,6 +49,11 @@ public:
     static U32 getFrameDelayMillies();
     static void useFastFrameRate(bool useFast);
     static void updateLastFrameDelayChange();
+    static const std::vector<std::string>& getAvailableResolutions() { return GlobalSettings::availableResolutions;}
+    static const int getDefaultScale() { return GlobalSettings::defaultScale; }
+    static const std::string& getDefaultResolution() { return GlobalSettings::defaultResolution; }
+    static int getScreenCx() { return GlobalSettings::screenCx; }
+    static int getScreenCy() { return GlobalSettings::screenCy; }
 
     static StartUpArgs startUpArgs;
 
@@ -79,6 +84,11 @@ private:
     static U32 frameDelayMillies; // decrease if we are animating, else this can be pretty large
     static U32 fastFrameRateCount;
     static U64 lastFrameDelayChange;
+    static std::vector<std::string> availableResolutions;
+    static std::string defaultResolution;
+    static int defaultScale;
+    static int screenCx;
+    static int screenCy;
 };
 
 #endif

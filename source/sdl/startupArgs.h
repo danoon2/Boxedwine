@@ -20,7 +20,7 @@ public:
 class StartUpArgs {
 public:
     StartUpArgs() : euidSet(false), nozip(false), pentiumLevel(4), rel_mouse_sensitivity(0), userId(UID), groupId(GID), effectiveUserId(UID), effectiveGroupId(GID), soundEnabled(true), videoEnabled(true), readyToLaunch(false), workingDirSet(false), resolutionSet(false), screenCx(800), screenCy(600), screenBpp(32), sdlFullScreen(false), sdlScaleX(100), sdlScaleY(100), sdlScaleQuality("0"), runWineConfigFirst(false) {
-        workingDir = "/home/username";
+        workingDir = "/home/username";        
     }
     bool parseStartupArgs(int argc, const char **argv);
     bool apply();

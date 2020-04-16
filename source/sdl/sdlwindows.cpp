@@ -319,7 +319,7 @@ SDL_Color sdlSystemPalette[256] = {
 
 static void displayChanged(KThread* thread);
 
-void initSDL(U32 cx, U32 cy, U32 bpp, int scaleX, int scaleY, const std::string& scaleQuality, bool soundEnabled, bool videoEnabled) {
+void initSDL(U32 cx, U32 cy, U32 bpp, int scaleX, int scaleY, const std::string& scaleQuality, bool soundEnabled, bool videoEnabled, bool fullScreen) {
     default_horz_res = cx;
     default_vert_res = cy;
     default_bits_per_pixel = bpp;
@@ -331,6 +331,7 @@ void initSDL(U32 cx, U32 cy, U32 bpp, int scaleX, int scaleY, const std::string&
     sdlScaleQuality = scaleQuality;
     sdlSoundEnabled = soundEnabled;
     sdlVideoEnabled = videoEnabled;
+    sdlFullScreen = fullScreen;
 }
 
 bool isBoxedWineDriverActive() {
@@ -688,21 +689,32 @@ static void displayChanged(KThread* thread) {
         int cx = screenCx*sdlScaleX/100;
         int cy = screenCy*sdlScaleY/100;
         int flags = SDL_WINDOW_SHOWN;
-        if (sdlFullScreen) {
-            SDL_DisplayMode dm;
 
-            if (SDL_GetDesktopDisplayMode(0, &dm) != 0)
-            {
-                 SDL_Log("SDL_GetDesktopDisplayMode failed: %s", SDL_GetError());
-                 sdlFullScreen = false;
-            } else {
+        SDL_DisplayMode dm;
+
+        if (SDL_GetDesktopDisplayMode(0, &dm) != 0)
+        {
+            SDL_Log("SDL_GetDesktopDisplayMode failed: %s", SDL_GetError());
+            sdlFullScreen = false;
+        } else {
+            if (sdlFullScreen) {
                 cx = dm.w;
                 cy = dm.h;
-                flags|=SDL_WINDOW_BORDERLESS;
+                flags |= SDL_WINDOW_BORDERLESS;
                 sdlScaleX = dm.w * 100 / screenCx;
                 sdlScaleY = dm.h * 100 / screenCy;
+            } else if (screenCx == dm.w && screenCy == dm.h) {
+                flags |= SDL_WINDOW_BORDERLESS;
+            }   
+            if (cx > dm.w || cy > dm.h) {
+                cx = dm.w;
+                cy = dm.h;
+                sdlScaleX = dm.w * 100 / screenCx;
+                sdlScaleY = dm.h * 100 / screenCy;
+                flags |= SDL_WINDOW_BORDERLESS;
             }
-        }        
+        }
+        
         sdlWindow = SDL_CreateWindow("BoxedWine", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, cx, cy, SDL_WINDOW_SHOWN);
         sdlRenderer = SDL_CreateRenderer(sdlWindow, -1, 0);	
 #else

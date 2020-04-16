@@ -61,7 +61,7 @@ public:
     static U32 makeLocalDirs(const std::string& path);
     static bool makeNativeDirs(const std::string& path);
     static U32 deleteNativeFile(const std::string& path);
-    static U32 deleteNativeDirAndAllFilesInDir(const std::string& path, bool recursive);
+    static U32 deleteNativeDirAndAllFilesInDir(const std::string& path);
     static U32 iterateAllNativeFiles(const std::string& path, bool recursive, bool includeDirs, std::function<U32(const std::string& filePath,bool isDir)> f);
     static std::string getParentPath(const std::string& path);
     static std::string getNativeParentPath(const std::string& path);

@@ -24,8 +24,31 @@ ContainersView::ContainersView(const char* startingTab) : BaseView("ContainersVi
     this->containerMountFolderHelp = getTranslation(CONTAINER_VIEW_MOUNT_DIR_HELP);
     this->browseButtonText = getTranslation(GENERIC_BROWSE_BUTTON);
 
-    this->leftColumnWidth = ImGui::CalcTextSize(this->wineVersionLabel);
-    ImVec2 width = ImGui::CalcTextSize(this->addAppLabel);
+    this->shortcutListLabel = getTranslation(CONTAINER_VIEW_SHORTCUT_LIST_LABEL);
+    this->nameLabel = getTranslation(CONTAINER_VIEW_NAME_LABEL);
+    this->nameHelp = getTranslation(CONTAINER_VIEW_NAME_HELP);
+    this->resolutionLabel = getTranslation(CONTAINER_VIEW_RESOLUTION_LABEL);
+    this->resolutionHelp = getTranslation(CONTAINER_VIEW_RESOLUTION_HELP);
+    this->bppLabel = getTranslation(CONTAINER_VIEW_BPP_LABEL);
+    this->bppHelp = getTranslation(CONTAINER_VIEW_BPP_HELP);
+    this->fullscreenLabel = getTranslation(CONTAINER_VIEW_FULL_SCREEN_LABEL);
+    this->fullscreenHelp = getTranslation(CONTAINER_VIEW_FULL_SCREEN_HELP);
+    this->scaleLabel = getTranslation(CONTAINER_VIEW_SCALE_LABEL);
+    this->scaleHelp = getTranslation(CONTAINER_VIEW_SCALE_HELP);
+    this->scaleQualityLabel = getTranslation(CONTAINER_VIEW_SCALE_QUALITY_LABEL);
+    this->scaleQualityHelp = getTranslation(CONTAINER_VIEW_SCALE_QUALITY_HELP);
+    this->glExtenstionsLabel = getTranslation(CONTAINER_VIEW_GL_EXT_LABEL);
+    this->glExtenstionsSetButtonLabel = getTranslation(CONTAINER_VIEW_GL_EXT_SET_BUTTON_LABEL);
+    this->glExtensionsHelp = getTranslation(CONTAINER_VIEW_GL_EXT_HELP);    
+    this->pathLabel = getTranslation(CONTAINER_VIEW_SHORTCUT_PATH_LABEL);
+    this->pathHelp = getTranslation(CONTAINER_VIEW_SHORTCUT_PATH_HELP);
+
+    this->leftColumnWidth = ImGui::CalcTextSize(this->shortcutListLabel);
+    ImVec2 width = ImGui::CalcTextSize(this->wineVersionLabel);
+    if (width.x > this->leftColumnWidth.x) {
+        this->leftColumnWidth = width;
+    }
+    width = ImGui::CalcTextSize(this->addAppLabel);
     if (width.x > this->leftColumnWidth.x) {
         this->leftColumnWidth = width;
     }
@@ -47,6 +70,59 @@ ContainersView::ContainersView(const char* startingTab) : BaseView("ContainersVi
     }
     this->leftColumnWidth.x += ImGui::GetStyle().ItemSpacing.x;
 
+    this->innerColumnWidth = ImGui::CalcTextSize(this->nameLabel);
+    width = ImGui::CalcTextSize(this->resolutionLabel);
+    if (width.x > this->innerColumnWidth.x) {
+        this->innerColumnWidth = width;
+    }
+    width = ImGui::CalcTextSize(this->bppLabel);
+    if (width.x > this->innerColumnWidth.x) {
+        this->innerColumnWidth = width;
+    }
+    width = ImGui::CalcTextSize(this->fullscreenLabel);
+    if (width.x > this->innerColumnWidth.x) {
+        this->innerColumnWidth = width;
+    }
+    width = ImGui::CalcTextSize(this->scaleLabel);
+    if (width.x > this->innerColumnWidth.x) {
+        this->innerColumnWidth = width;
+    }
+    width = ImGui::CalcTextSize(this->scaleQualityLabel);
+    if (width.x > this->innerColumnWidth.x) {
+        this->innerColumnWidth = width;
+    }
+    width = ImGui::CalcTextSize(this->glExtenstionsLabel);
+    if (width.x > this->innerColumnWidth.x) {
+        this->innerColumnWidth = width;
+    }
+    width = ImGui::CalcTextSize(this->pathLabel);
+    if (width.x > this->innerColumnWidth.x) {
+        this->innerColumnWidth = width;
+    }
+    this->innerColumnWidth.x += ImGui::GetStyle().ItemSpacing.x + this->leftColumnWidth.x;
+
+    this->resolutionComboboxData.data.push_back(getTranslation(GENERIC_DEFAULT));
+    for (auto& res : GlobalSettings::getAvailableResolutions()) {
+        this->resolutionComboboxData.data.push_back(res);
+    }
+    this->resolutionComboboxData.dataChanged();
+
+    this->bppComboboxData.data.push_back("32-bit (default)");
+    this->bppComboboxData.data.push_back("16-bit");
+    this->bppComboboxData.data.push_back("8-bit (256 colors)");
+    this->bppComboboxData.dataChanged();
+
+    this->scaleComboboxData.data.push_back(getTranslation(GENERIC_DEFAULT));
+    this->scaleComboboxData.data.push_back("1/2x");
+    this->scaleComboboxData.data.push_back("1x");
+    this->scaleComboboxData.data.push_back("2x");
+    this->scaleComboboxData.data.push_back("3x");
+    this->scaleComboboxData.dataChanged();
+
+    this->scaleQualityComboboxData.data.push_back("Nearest Pixel Sampling (default)");
+    this->scaleQualityComboboxData.data.push_back("Linear Filtering");
+    this->scaleQualityComboboxData.dataChanged();
+
     this->containerLocationOpenLabelButtonWidth = ImGui::CalcTextSize(this->containerLocationOpenLabel).x + ImGui::GetStyle().FramePadding.x * 2 + ImGui::GetStyle().ItemSpacing.x;
     this->browseButtonWidth = ImGui::CalcTextSize(this->browseButtonText).x + ImGui::GetStyle().FramePadding.x * 2 + ImGui::GetStyle().ItemSpacing.x;
 
@@ -63,19 +139,18 @@ ContainersView::ContainersView(const char* startingTab) : BaseView("ContainersVi
         this->mountDriveComboboxData.data.push_back(std::string(1, (char)('A' + i))+":");
     }
     this->mountDriveComboboxData.dataChanged();
-    this->mountLocation[0] = 0;
+    this->mountLocation[0] = 0;        
 }
 
 bool ContainersView::saveChanges() {
-    if (this->currentContainer) {
-        if (strlen(this->containerName) == 0) {
-            this->errorMsg = getTranslation(CONTAINER_VIEW_ERROR_BLANK_NAME);
-        }
-    }
-    if (this->mountDriveComboboxData.currentSelectedIndex != 0 && strlen(this->mountLocation)==0) {
+    if (this->currentContainer && strlen(this->containerName) == 0) {
+        this->errorMsg = getTranslation(CONTAINER_VIEW_ERROR_BLANK_NAME);
+    } else if (this->mountDriveComboboxData.currentSelectedIndex != 0 && strlen(this->mountLocation)==0) {
         this->errorMsg = getTranslation(CONTAINER_VIEW_ERROR_MISSING_MOUNT_LOCATION);
     } else if (this->mountDriveComboboxData.currentSelectedIndex == 0 && strlen(this->mountLocation) != 0) {
         this->errorMsg = getTranslation(CONTAINER_VIEW_ERROR_MISSING_MOUNT_DRIVE);
+    } else if (this->currentApp && !this->appName[0]) {
+        this->errorMsg = getTranslation(CONTAINER_VIEW_NAME_REQUIRED);
     }
     if (!this->errorMsg) {
         if (this->currentContainer && this->currentContainerChanged) {
@@ -89,8 +164,104 @@ bool ContainersView::saveChanges() {
             this->currentContainer->saveContainer();
             this->currentContainerChanged = false;            
         }
+        if (this->currentApp && this->currentAppChanged) {
+            std::string ext = this->glExt;
+            stringReplaceAll(ext, "\n", " ");
+            stringReplaceAll(ext, "  ", " ");
+            stringReplaceAll(ext, "  ", " ");
+            this->currentApp->glExt = ext;
+            this->currentApp->name = this->appName;
+            if (this->resolutionComboboxData.currentSelectedIndex == 0) {
+                this->currentApp->resolution = "";
+            } else {
+                this->currentApp->resolution = this->resolutionComboboxData.data[this->resolutionComboboxData.currentSelectedIndex];
+            }
+            if (this->bppComboboxData.currentSelectedIndex == 0) {
+                this->currentApp->bpp = 32;
+            } else if (this->bppComboboxData.currentSelectedIndex == 1) {
+                this->currentApp->bpp = 16;
+            } else if (this->bppComboboxData.currentSelectedIndex == 2) {
+                this->currentApp->bpp = 8;
+            }
+            if (this->scaleComboboxData.currentSelectedIndex == 0) {
+                this->currentApp->scale = 0;
+            } else if (this->scaleComboboxData.currentSelectedIndex == 1) {
+                this->currentApp->scale = 50;
+            } else if (this->scaleComboboxData.currentSelectedIndex == 2) {
+                this->currentApp->scale = 100;
+            } else if (this->scaleComboboxData.currentSelectedIndex == 3) {
+                this->currentApp->scale = 200;
+            } else if (this->scaleComboboxData.currentSelectedIndex == 4) {
+                this->currentApp->scale = 300;
+            }
+            this->currentApp->scaleQuality = this->scaleQualityComboboxData.currentSelectedIndex;
+            this->currentApp->fullScreen = this->fullScreen;
+            this->currentApp->saveApp();
+            this->currentAppChanged = false;
+            GlobalSettings::reloadApps();
+        }
     }
     return this->errorMsg == NULL;
+}
+
+void ContainersView::setCurrentApp(BoxedApp* app) {
+    this->currentApp = app;
+
+    strncpy(this->appName, app->name.c_str(), sizeof(this->appName));
+    this->appName[sizeof(this->appName) - 1] = 0;
+
+    strncpy(this->glExt, app->glExt.c_str(), sizeof(this->glExt));
+    this->glExt[sizeof(this->glExt) - 1] = 0;
+
+    if (app->link.length()) {
+        strncpy(this->path, app->link.c_str(), sizeof(this->path));
+        this->path[sizeof(this->path) - 1] = 0;
+    } else {
+        strncpy(this->path, app->path.c_str(), sizeof(this->path));
+        strncat(this->path, "/", sizeof(this->path));
+        strncat(this->path, app->cmd.c_str(), sizeof(this->path));
+        this->path[sizeof(this->path) - 1] = 0;
+    }
+
+    this->resolutionComboboxData.currentSelectedIndex = stringIndexInVector(app->resolution, this->resolutionComboboxData.data, 0);
+
+    if (app->bpp == 16) {
+        this->bppComboboxData.currentSelectedIndex = 1;
+    } else if (app->bpp == 8) {
+        this->bppComboboxData.currentSelectedIndex = 2;
+    } else {
+        this->bppComboboxData.currentSelectedIndex = 0;
+    }
+
+    if (app->fullScreen) {
+        this->scaleComboboxData.currentSelectedIndex = 0;
+    } else if (app->scale == 50) {
+        this->scaleComboboxData.currentSelectedIndex = 1;
+    } else if (app->scale == 100) {
+        this->scaleComboboxData.currentSelectedIndex = 2;
+    } else if (app->scale == 200) {
+        this->scaleComboboxData.currentSelectedIndex = 3;
+    } else if (app->scale == 300) {
+        this->scaleComboboxData.currentSelectedIndex = 4;
+    } else {
+        this->scaleComboboxData.currentSelectedIndex = 0;
+    }
+
+    if (app->scaleQuality == 1) {
+        this->scaleQualityComboboxData.currentSelectedIndex = 1;
+    } else {
+        this->scaleQualityComboboxData.currentSelectedIndex = 0;
+    }
+
+    this->fullScreen = app->fullScreen;
+}
+
+void ContainersView::rebuildShortcutsCombobox() {
+    this->shortcutsComboboxData.data.clear();
+    for (auto& app : this->currentContainer->getApps()) {
+        this->shortcutsComboboxData.data.push_back(app->getName());
+    }
+    this->shortcutsComboboxData.dataChanged();
 }
 
 void ContainersView::runContainerView(BoxedContainer* container, bool buttonPressed, BaseViewTab& tab) {
@@ -116,6 +287,12 @@ void ContainersView::runContainerView(BoxedContainer* container, bool buttonPres
             this->mountDriveComboboxData.currentSelectedIndex = (int)(mount.localPath.at(0) - 'a' - 2);
             strncpy(this->mountLocation, mount.nativePath.c_str(), sizeof(this->mountLocation));
             this->mountLocation[sizeof(this->mountLocation) - 1] = 0;
+        }
+        if (this->currentContainer->getApps().size()) {
+            setCurrentApp(this->currentContainer->getApps()[0]);
+            rebuildShortcutsCombobox();
+        } else {
+            this->currentApp = NULL;
         }
     }
 
@@ -213,14 +390,169 @@ void ContainersView::runContainerView(BoxedContainer* container, bool buttonPres
     SAFE_IMGUI_TEXT(this->addAppLabel);
     ImGui::SameLine(this->leftColumnWidth.x);
     if (ImGui::Button(this->addAppButtonLabel)) {
-        new AppChooserDlg(container);
+        runOnMainUI([container] {
+            new AppChooserDlg(container);
+            return false;
+            });
     }
     if (this->addAppHelp) {
         ImGui::SameLine();
         this->toolTip(this->addAppHelp);
     }
-    ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing*4));
+    ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing));
     ImGui::Separator();
+
+    if (this->currentApp) {
+        ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing));
+        ImGui::AlignTextToFramePadding();
+        SAFE_IMGUI_TEXT(this->shortcutListLabel);
+        ImGui::SameLine(this->leftColumnWidth.x);
+        ImGui::PushItemWidth(-1 - (this->resolutionHelp ? this->toolTipWidth : 0));
+        if (ImGui::Combo("##ShortcutsCombo", &this->shortcutsComboboxData.currentSelectedIndex, this->shortcutsComboboxData.dataForCombobox)) {
+            this->setCurrentApp(this->currentContainer->getApps()[this->shortcutsComboboxData.currentSelectedIndex]);
+        }
+        ImGui::PopItemWidth();        
+
+        ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing));        
+        SAFE_IMGUI_TEXT("");
+        ImGui::SameLine(this->leftColumnWidth.x);
+        ImGui::AlignTextToFramePadding();
+        SAFE_IMGUI_TEXT(this->nameLabel);
+        ImGui::SameLine(this->innerColumnWidth.x);
+        ImGui::PushItemWidth((this->nameHelp ? -this->toolTipWidth : 0));
+        if (ImGui::InputText("##appNameID", this->appName, sizeof(this->appName))) {
+            this->currentAppChanged = true;
+            this->currentApp->name = this->appName;
+            rebuildShortcutsCombobox();
+        }
+        ImGui::PopItemWidth();
+        if (this->nameHelp) {
+            ImGui::SameLine();
+            this->toolTip(this->nameHelp);
+        }
+
+        ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing));
+        SAFE_IMGUI_TEXT("");
+        ImGui::SameLine(this->leftColumnWidth.x);
+        ImGui::AlignTextToFramePadding();
+        SAFE_IMGUI_TEXT(this->pathLabel);
+        ImGui::SameLine(this->innerColumnWidth.x);
+        ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetColorU32(ImGuiCol_TextDisabled));
+        ImGui::PushItemWidth(-1 - (this->pathHelp ? this->toolTipWidth : 0));
+        ImGui::InputText("##Path", this->path, sizeof(this->path), ImGuiInputTextFlags_ReadOnly);
+        ImGui::PopItemWidth();
+        ImGui::PopStyleColor();
+        if (this->pathHelp) {
+            ImGui::SameLine();
+            toolTip(this->pathHelp);
+        }
+
+        ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing / 2));        
+        SAFE_IMGUI_TEXT("");
+        ImGui::SameLine(this->leftColumnWidth.x);
+        ImGui::AlignTextToFramePadding();
+        SAFE_IMGUI_TEXT(this->resolutionLabel);
+        ImGui::SameLine(this->innerColumnWidth.x);
+        ImGui::PushItemWidth(-1 - (this->resolutionHelp ? this->toolTipWidth : 0));
+        if (ImGui::Combo("##AppResolutionCombo", &this->resolutionComboboxData.currentSelectedIndex, this->resolutionComboboxData.dataForCombobox)) {
+            this->currentAppChanged = true;
+        }
+        ImGui::PopItemWidth();
+        if (this->resolutionHelp) {
+            ImGui::SameLine();
+            toolTip(this->resolutionHelp);
+        }
+
+        ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing / 2));        
+        SAFE_IMGUI_TEXT("");
+        ImGui::SameLine(this->leftColumnWidth.x);
+        ImGui::AlignTextToFramePadding();
+        SAFE_IMGUI_TEXT(this->bppLabel);
+        ImGui::SameLine(this->innerColumnWidth.x);
+        ImGui::PushItemWidth(-1 - (this->bppHelp ? this->toolTipWidth : 0));
+        if (ImGui::Combo("##AppBppCombo", &this->bppComboboxData.currentSelectedIndex, this->bppComboboxData.dataForCombobox)) {
+            this->currentAppChanged = true;
+        }
+        ImGui::PopItemWidth();
+        if (this->bppHelp) {
+            ImGui::SameLine();
+            toolTip(this->bppHelp);
+        }
+
+        ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing));
+        SAFE_IMGUI_TEXT("");
+        ImGui::SameLine(leftColumnWidth.x);
+        ImGui::AlignTextToFramePadding();
+        SAFE_IMGUI_TEXT(this->fullscreenLabel);
+        ImGui::SameLine(this->innerColumnWidth.x);
+        if (ImGui::Checkbox("##FullscreenCheckbox", &this->fullScreen)) {
+            this->currentAppChanged = true;
+            this->scaleComboboxData.currentSelectedIndex = 0;
+        }
+        if (this->fullscreenHelp) {
+            ImGui::SameLine();
+            this->toolTip(fullscreenHelp);
+        }
+
+        ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing / 2));        
+        SAFE_IMGUI_TEXT("");
+        ImGui::SameLine(this->leftColumnWidth.x);
+        ImGui::AlignTextToFramePadding();
+        SAFE_IMGUI_TEXT(this->scaleLabel);
+        ImGui::SameLine(this->innerColumnWidth.x);
+        ImGui::PushItemWidth(-1 - (this->scaleHelp ? this->toolTipWidth : 0));
+        {
+            UIDisableStyle disabled(this->fullScreen);
+            if (ImGui::Combo("##AppScaleCombo", &this->scaleComboboxData.currentSelectedIndex, this->scaleComboboxData.dataForCombobox)) {
+                this->currentAppChanged = true;
+            }
+        }
+        ImGui::PopItemWidth();
+        if (this->scaleHelp) {
+            ImGui::SameLine();
+            toolTip(this->scaleHelp);
+        }
+
+        ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing / 2));        
+        SAFE_IMGUI_TEXT("");
+        ImGui::SameLine(this->leftColumnWidth.x);
+        ImGui::AlignTextToFramePadding();
+        SAFE_IMGUI_TEXT(this->scaleQualityLabel);
+        ImGui::SameLine(this->innerColumnWidth.x);
+        ImGui::PushItemWidth(-1 - (this->scaleQualityHelp ? this->toolTipWidth : 0));        
+        if (ImGui::Combo("##AppScaleQualityCombo", &this->scaleQualityComboboxData.currentSelectedIndex, this->scaleQualityComboboxData.dataForCombobox)) {
+            this->currentAppChanged = true;
+        }
+        ImGui::PopItemWidth();
+        if (this->scaleQualityHelp) {
+            ImGui::SameLine();
+            toolTip(this->scaleQualityHelp);
+        }
+
+        ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing));
+        ImGui::BeginGroup();        
+        SAFE_IMGUI_TEXT("");
+        ImGui::SameLine(this->leftColumnWidth.x);
+        ImGui::AlignTextToFramePadding();
+        SAFE_IMGUI_TEXT(this->glExtenstionsLabel);
+        SAFE_IMGUI_TEXT("");
+        ImGui::SameLine(this->leftColumnWidth.x);
+        if (ImGui::Button(this->glExtenstionsSetButtonLabel)) {
+            strcpy(this->glExt, "GL_EXT_multi_draw_arrays GL_ARB_vertex_program\nGL_ARB_fragment_program GL_ARB_multitexture\nGL_EXT_secondary_color GL_EXT_texture_lod_bias\nGL_NV_texture_env_combine4 GL_ATI_texture_env_combine3\nGL_EXT_texture_filter_anisotropic GL_ARB_texture_env_combine\nGL_EXT_texture_env_combine GL_EXT_texture_compression_s3tc\nGL_ARB_texture_compression GL_EXT_paletted_texture");
+            this->currentAppChanged = true;
+        }
+        ImGui::EndGroup();
+        ImGui::SameLine(this->innerColumnWidth.x);
+        if (ImGui::InputTextMultiline("##appGlExtID", this->glExt, sizeof(this->glExt), ImVec2((this->glExtensionsHelp ? -this->toolTipWidth : 0), ImGui::GetTextLineHeight() * 4))) {
+            this->currentAppChanged = true;
+        }
+        ImGui::SameLine();
+        if (this->glExtensionsHelp) {
+            ImGui::SameLine();
+            this->toolTip(this->glExtensionsHelp);
+        }
+        ImGui::Separator();
+    }
     ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing));
     if (ImGui::Button(this->containerDeleteButtonLabel)) {
         std::string label;

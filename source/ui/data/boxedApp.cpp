@@ -63,6 +63,8 @@ void BoxedApp::launch() {
 
     if (this->resolution.length()) {
         GlobalSettings::startUpArgs.setResolution(this->resolution);
+    } else {
+        GlobalSettings::startUpArgs.setResolution(GlobalSettings::getDefaultResolution());
     }
     if (this->bpp) {
         GlobalSettings::startUpArgs.setBpp(this->bpp);
@@ -75,6 +77,8 @@ void BoxedApp::launch() {
     }
     if (this->scale) {
         GlobalSettings::startUpArgs.setScale(this->scale);
+    } else {
+        GlobalSettings::startUpArgs.setScale(GlobalSettings::getDefaultScale());
     }
     if (this->scaleQuality) {
         GlobalSettings::startUpArgs.setScaleQuality(std::to_string(this->scaleQuality));

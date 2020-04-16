@@ -32,7 +32,13 @@ private:
 	const char* generalTitle;
 	const char* displayTitle;
 	const char* wineTitle;
+	const char* defaultResolutionLabel;
+	const char* defaultResolutionHelp;
+	const char* defaultScaleLabel;
+	const char* defaultScaleHelp;
 	ComboboxData themeComboboxData;
+	ComboboxData resolutionComboboxData;
+	ComboboxData scaleComboboxData;
 	char saveFolderLocationBuffer[1024];
 	float leftColumnWidthGeneral;
 	float leftColumnWidthDisplay;

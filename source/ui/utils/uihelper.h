@@ -19,8 +19,11 @@ void gotoView(int viewId, const char* tab = NULL, const std::string& param1="");
 
 class UIDisableStyle {
 public:
-	UIDisableStyle();
+	UIDisableStyle(bool disabled=true);
 	~UIDisableStyle();
+
+private:
+	bool disabled;
 };
 
 #endif

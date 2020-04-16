@@ -1,22 +1,22 @@
 #include "boxedwine.h"
 #include "../boxedwineui.h"
 
-AppOptionsDlg::AppOptionsDlg(BoxedApp* app) : BaseDlg(APP_OPTIONS_DLG_TITLE, 600, 300), app(app), errorMsg(NULL) {
-    this->nameLabel = getTranslation(APP_OPTIONS_DLG_NAME_LABEL);
-    this->nameHelp = getTranslation(APP_OPTIONS_DLG_NAME_HELP);
-    this->resolutionLabel = getTranslation(APP_OPTIONS_DLG_RESOLUTION_LABEL);
-    this->resolutionHelp = getTranslation(APP_OPTIONS_DLG_RESOLUTION_HELP);
-    this->bppLabel = getTranslation(APP_OPTIONS_DLG_BPP_LABEL);
-    this->bppHelp = getTranslation(APP_OPTIONS_DLG_BPP_HELP);
-    this->fullscreenLabel = getTranslation(APP_OPTIONS_DLG_FULL_SCREEN_LABEL);
-    this->fullscreenHelp = getTranslation(APP_OPTIONS_DLG_FULL_SCREEN_HELP);
-    this->scaleLabel = getTranslation(APP_OPTIONS_DLG_SCALE_LABEL);
-    this->scaleHelp = getTranslation(APP_OPTIONS_DLG_SCALE_HELP);
-    this->scaleQualityLabel = getTranslation(APP_OPTIONS_DLG_SCALE_QUALITY_LABEL);
-    this->scaleQualityHelp = getTranslation(APP_OPTIONS_DLG_SCALE_QUALITY_HELP);
-    this->glExtenstionsLabel = getTranslation(APP_OPTIONS_DLG_GL_EXT_LABEL);
-    this->glExtenstionsSetButtonLabel = getTranslation(APP_OPTIONS_DLG_GL_EXT_SET_BUTTON_LABEL);
-    this->glExtensionsHelp = getTranslation(APP_OPTIONS_DLG_GL_EXT_HELP);
+AppOptionsDlg::AppOptionsDlg(BoxedApp* app) : BaseDlg(CONTAINER_VIEW_TITLE, 600, 300), app(app), errorMsg(NULL) {
+    this->nameLabel = getTranslation(CONTAINER_VIEW_NAME_LABEL);
+    this->nameHelp = getTranslation(CONTAINER_VIEW_NAME_HELP);
+    this->resolutionLabel = getTranslation(CONTAINER_VIEW_RESOLUTION_LABEL);
+    this->resolutionHelp = getTranslation(CONTAINER_VIEW_RESOLUTION_HELP);
+    this->bppLabel = getTranslation(CONTAINER_VIEW_BPP_LABEL);
+    this->bppHelp = getTranslation(CONTAINER_VIEW_BPP_HELP);
+    this->fullscreenLabel = getTranslation(CONTAINER_VIEW_FULL_SCREEN_LABEL);
+    this->fullscreenHelp = getTranslation(CONTAINER_VIEW_FULL_SCREEN_HELP);
+    this->scaleLabel = getTranslation(CONTAINER_VIEW_SCALE_LABEL);
+    this->scaleHelp = getTranslation(CONTAINER_VIEW_SCALE_HELP);
+    this->scaleQualityLabel = getTranslation(CONTAINER_VIEW_SCALE_QUALITY_LABEL);
+    this->scaleQualityHelp = getTranslation(CONTAINER_VIEW_SCALE_QUALITY_HELP);
+    this->glExtenstionsLabel = getTranslation(CONTAINER_VIEW_GL_EXT_LABEL);
+    this->glExtenstionsSetButtonLabel = getTranslation(CONTAINER_VIEW_GL_EXT_SET_BUTTON_LABEL);
+    this->glExtensionsHelp = getTranslation(CONTAINER_VIEW_GL_EXT_HELP);
 
 
     this->leftColumnWidth = ImGui::CalcTextSize(this->nameLabel);
@@ -46,7 +46,7 @@ AppOptionsDlg::AppOptionsDlg(BoxedApp* app) : BaseDlg(APP_OPTIONS_DLG_TITLE, 600
     }
     this->leftColumnWidth.x += ImGui::GetStyle().ItemSpacing.x;
 
-    this->resolutionComboboxData.data.push_back(getTranslation(APP_OPTIONS_DLG_DEFAULT_RESOLUTION_LABEL));
+    this->resolutionComboboxData.data.push_back(getTranslation(CONTAINER_VIEW_DEFAULT_RESOLUTION_LABEL));
     this->resolutionComboboxData.data.push_back("640x480");
     this->resolutionComboboxData.data.push_back("800x600");
     this->resolutionComboboxData.data.push_back("1024x768");
@@ -179,7 +179,7 @@ void AppOptionsDlg::run() {
 void AppOptionsDlg::onOk(bool buttonClicked) {
     if (buttonClicked) {
         if (!this->appName[0]) {
-            this->errorMsg = getTranslation(APP_OPTIONS_DLG_NAME_REQUIRED);
+            this->errorMsg = getTranslation(CONTAINER_VIEW_NAME_REQUIRED);
         }
     }
     if (this->errorMsg) {

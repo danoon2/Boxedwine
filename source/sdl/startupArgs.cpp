@@ -280,7 +280,7 @@ bool StartUpArgs::apply() {
     }
 #endif
 
-    initSDL(this->screenCx, this->screenCy, this->screenBpp, this->sdlScaleX, this->sdlScaleY, this->sdlScaleQuality, this->soundEnabled, this->videoEnabled);
+    initSDL(this->screenCx, this->screenCy, this->screenBpp, this->sdlScaleX, this->sdlScaleY, this->sdlScaleQuality, this->soundEnabled, this->videoEnabled, this->sdlFullScreen);
     initWine();
 #if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
     gl_init(this->glExt);        

@@ -377,28 +377,8 @@ U32 Fs::deleteNativeFile(const std::string& path) {
     return unlink(path.c_str());
 }
 
-U32 Fs::deleteNativeDirAndAllFilesInDir(const std::string& path, bool recursive) {
-    return iterateAllNativeFiles(path, false, true, [recursive](const std::string& fileName, bool isDir)->U32 {
-        if (isDir) {
-            if (recursive) {            
-                U32 r = deleteNativeDirAndAllFilesInDir(fileName, true);
-                if (r!=0) {
-                    return 0;
-                }
-            } else {
-                U32 r = (U32)::rmdir(fileName.c_str());
-                if (r!=0) {
-                    return r;
-                }
-            }
-        } else {
-            U32 r = deleteNativeFile(fileName);
-            if (r!=0) {
-                return r;
-            }
-        }
-        return 0;
-    });
+U32 Fs::deleteNativeDirAndAllFilesInDir(const std::string& path) {
+    return (U32)std::filesystem::remove_all(path);
 }
 
 U32 Fs::iterateAllNativeFiles(const std::string& path, bool recursive, bool includeDirs, std::function<U32(const std::string&, bool isDir)> f) {

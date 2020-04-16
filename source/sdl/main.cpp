@@ -44,9 +44,6 @@ int boxedmain(int argc, const char **argv) {
 #ifdef LOG_OPS
     logFile = fopen("log.txt", "w");
 #endif
-#ifndef BOXEDWINE_DISABLE_UI
-    BoxedwineData::init(argc, argv);
-#endif
     if (!startupArgs.parseStartupArgs(argc, argv)) {
         return 1;
     }        
@@ -75,7 +72,9 @@ int boxedmain(int argc, const char **argv) {
         klog("SDL_Init Error: %s", SDL_GetError());
         return 0;
     }
-
+#ifndef BOXEDWINE_DISABLE_UI
+    BoxedwineData::init(argc, argv);
+#endif
     if (!startupArgs.shouldStartUI()) {
         if (!startupArgs.apply()) {
             return 1;
