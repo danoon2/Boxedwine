@@ -363,24 +363,26 @@ const unsigned char* parseIcon(FILE* f, IconInfo& info, int* width, int* height)
         *height = info.bih.biHeight;
         return color;
     } else if (bpp==4) {
+        int maskStride = (info.bih.biWidth + 31) / 32 * 4;
         *width = info.bih.biWidth;
         *height = info.bih.biHeight;
         unsigned char* result = new unsigned char[info.bih.biWidth * info.bih.biHeight * 4];
         for (int y=0;y<info.bih.biHeight;y++) {
             for (int x=0;x<info.bih.biWidth;x++) {
+                int maskIndex = y * maskStride + x / 8;
                 int index = y*info.bih.biWidth*4+x*4;
                 U32 byteIndex = y*info.bih.biWidth+x;
                 U8 paletteIndex = color[byteIndex/2];
                 if (byteIndex & 1) {
-                    paletteIndex = (paletteIndex >> 4) & 0xF;
-                } else {
                     paletteIndex = paletteIndex & 0xF;
+                } else {
+                    paletteIndex = (paletteIndex >> 4) & 0xF;                    
                 }
                 U32 c = palette[paletteIndex];
                 result[index+2] = c & 0xFF;
                 result[index+1] = (c >> 8) & 0xFF;
                 result[index] = (c >> 16) & 0xFF;
-                if (maskData[byteIndex/8] & (1 << (7-(byteIndex % 8)))) {
+                if (maskData[maskIndex] & (1 << (7-(x % 8)))) {
                     result[index+3] = 0;
                 } else {
                     result[index+3] = 0xFF;
@@ -389,18 +391,20 @@ const unsigned char* parseIcon(FILE* f, IconInfo& info, int* width, int* height)
         }
         return result;
     } else if (bpp==8) {
+        int maskStride = (info.bih.biWidth + 31) / 32 * 4;
         *width = info.bih.biWidth;
         *height = info.bih.biHeight;
         unsigned char* result = new unsigned char[info.bih.biWidth * info.bih.biHeight * 4];
         for (int y=0;y<info.bih.biHeight;y++) {
             for (int x=0;x<info.bih.biWidth;x++) {
-                int index = y*info.bih.biWidth*4+x*4;
-                int byteIndex = y*info.bih.biWidth+x;
+                int maskIndex = y * maskStride + x / 8;
+                int index = y*info.bih.biWidth*4+x*4; // index into 32-bit result
+                int byteIndex = y*info.bih.biWidth+x; // index into icon
                 U32 c = palette[color[byteIndex]];
                 result[index+2] = c & 0xFF;
                 result[index+1] = (c >> 8) & 0xFF;
                 result[index] = (c >> 16) & 0xFF;
-                if (maskData[byteIndex/8] & (1 << (7-(byteIndex % 8)))) {
+                if (maskData[maskIndex] & (1 << (7-(x % 8)))) {
                     result[index+3] = 0;
                 } else {
                     result[index+3] = 0xFF;
