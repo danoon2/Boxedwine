@@ -340,7 +340,7 @@ bool uiShow(const std::string& basePath) {
         runOnMainUI([]() {
             BoxedContainer* container = BoxedwineData::getContainerByName(GlobalSettings::startUpArgs.showAppPickerForContainer);
             if (container) {
-                new AppChooserDlg(container);
+                new AppChooserDlg(container, nullptr);
             }
             GlobalSettings::startUpArgs.showAppPickerForContainer = "";
             return false;

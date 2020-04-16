@@ -337,7 +337,7 @@ void InstallView::onInstall() {
                     GlobalSettings::startUpArgs.showAppPickerForContainer = container->getName();
                 } else {
                     runOnMainUI([container]() {
-                        new AppChooserDlg(container);
+                        new AppChooserDlg(container, nullptr);
                         return false;
                         });
                 }
@@ -351,7 +351,7 @@ void InstallView::onInstall() {
                     GlobalSettings::startUpArgs.showAppPickerForContainer = container->getName();
                 } else {
                     runOnMainUI([container]() {
-                        new AppChooserDlg(container);
+                        new AppChooserDlg(container, nullptr);
                         return false;
                         });
                 }
@@ -366,7 +366,8 @@ void InstallView::onInstall() {
             }
         }
         if (!this->errorMsg && GlobalSettings::startUpArgs.readyToLaunch) {
-            static std::string name = Fs::getFileNameFromNativePath(locationBuffer);
+            static std::string name;
+            name = Fs::getFileNameFromNativePath(locationBuffer);
             runOnMainUI([]() {
                 new WaitDlg(WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(WAITDLG_LAUNCH_APP_LABEL, true, name.c_str()));
                 return false;

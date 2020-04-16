@@ -191,7 +191,6 @@ void KProcess::onExec() {
 }
 
 KProcess::~KProcess() {
-    KSystem::eraseProcess(this->id);
     killAllThreadsExceptCurrent();
     this->cleanupProcess();
 	if (this->memory) {
@@ -251,7 +250,7 @@ void KProcess::deleteThread(KThread* thread) {
         delete thread;
     }
     // don't call into getProcess while holding threadsCondition
-    if (this->getThreadCount() == 0) {
+    if (!this->terminated && this->getThreadCount() == 0) {
         std::shared_ptr<KProcess> parent = KSystem::getProcess(this->parentId);
         if (!parent || parent->getThreadCount() == 0) {
             KSystem::eraseProcess(this->id);

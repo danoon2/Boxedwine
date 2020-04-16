@@ -85,7 +85,7 @@ void BoxedContainer::loadApps() {
 
 void BoxedContainer::deleteApp(BoxedApp* app) {
     std::vector<BoxedApp*>::iterator position = std::find(this->apps.begin(), this->apps.end(), app);
-    if (position != this->apps.end()) {
+    if (position != this->apps.end()) {        
         this->apps.erase(position);
     }
 }

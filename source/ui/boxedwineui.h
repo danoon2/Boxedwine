@@ -25,7 +25,6 @@
 #include "controls/listViewItem.h"
 #include "controls/listView.h"
 #include "controls/containersView.h"
-#include "controls/containerOptionsDlg.h"
 #include "controls/optionsView.h"
 #include "controls/appChooserDlg.h"
 #include "controls/waitDlg.h"

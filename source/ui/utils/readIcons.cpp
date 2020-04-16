@@ -412,6 +412,29 @@ const unsigned char* parseIcon(FILE* f, IconInfo& info, int* width, int* height)
             }
         }
         return result;
+    } else if (bpp == 24) {
+        int stride = (info.bih.biWidth*3 + 3) / 4 * 4;
+        int maskStride = (info.bih.biWidth + 31) / 32 * 4;
+        *width = info.bih.biWidth;
+        *height = info.bih.biHeight;
+        unsigned char* result = new unsigned char[info.bih.biWidth * info.bih.biHeight * 4];
+        for (int y = 0; y < info.bih.biHeight; y++) {
+            for (int x = 0; x < info.bih.biWidth; x++) {
+                int maskIndex = y * maskStride + x / 8;
+                int index = y * info.bih.biWidth * 4 + x * 4; // index into 32-bit result
+                int colorIndex = y * stride + x*3; // index into icon
+                U32 c = *(U32*)(&color[colorIndex]);
+                result[index + 2] = c & 0xFF;
+                result[index + 1] = (c >> 8) & 0xFF;
+                result[index] = (c >> 16) & 0xFF;
+                if (maskData[maskIndex] & (1 << (7 - (x % 8)))) {
+                    result[index + 3] = 0;
+                } else {
+                    result[index + 3] = 0xFF;
+                }
+            }
+        }
+        return result;
     }
     return NULL;
 }

@@ -263,6 +263,12 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "Path";
     case CONTAINER_VIEW_SHORTCUT_PATH_HELP:
         return "This is the path in the container that will be launched when starting this app.";
+    case CONTAINER_VIEW_DELETE_SHORTCUT:
+        return "Delete Shortcut";
+    case CONTAINER_VIEW_SHORTCUT_LIST_HELP:
+        return "Shortcuts are links to apps inside a container.  They will appear in the app list and clicking them in the app list will launch the app with the settings you set here.";
+    case CONTAINER_VIEW_DELETE_SHORTCUT_CONFIRMATION:
+        return "Are you sure you want to the {0} shortcut?";
     case ERROR_NO_WINE:
         return "There are no versions of Wine installed.  Would you like to install the default version of Wine now?";
     case ERROR_MISSING_WINE:

@@ -21,6 +21,10 @@
 #include <stdarg.h>
 #include <SDL.h>
 
+#ifdef BOXEDWINE_MSVC
+#include <Windows.h>
+#endif
+
 FILE* logFile;
 
 void kpanic(const char* msg, ...) {
@@ -37,6 +41,12 @@ void kpanic(const char* msg, ...) {
         fflush(logFile);
         fclose(logFile);
     }
+#ifdef BOXEDWINE_MSVC
+    char buff[1024];
+    vsnprintf(buff, sizeof(buff), msg, argptr);
+    OutputDebugStringA(buff);
+    OutputDebugStringA("\n");
+#endif
     SDL_Delay(5000);
     exit(1);
 }
@@ -56,6 +66,12 @@ void kwarn(const char* msg, ...) {
     if (logFile) {
         fprintf(logFile, "\n");
     }
+#ifdef BOXEDWINE_MSVC
+    char buff[1024];
+    vsnprintf(buff, sizeof(buff), msg, argptr);
+    OutputDebugStringA(buff);
+    OutputDebugStringA("\n");
+#endif
 #endif
 }
 
@@ -63,7 +79,7 @@ void klog(const char* msg, ...) {
     va_list argptr;
     va_start(argptr, msg);
     BOXEDWINE_CRITICAL_SECTION;
-
+    
     vfprintf(stdout, msg, argptr);
     if (logFile) {
         vfprintf(logFile, msg, argptr);
@@ -73,4 +89,10 @@ void klog(const char* msg, ...) {
     if (logFile) {
         fprintf(logFile, "\n");
     }
+#ifdef BOXEDWINE_MSVC
+    char buff[1024];
+    vsnprintf(buff, sizeof(buff), msg, argptr);
+    OutputDebugStringA(buff);
+    OutputDebugStringA("\n");
+#endif
 }

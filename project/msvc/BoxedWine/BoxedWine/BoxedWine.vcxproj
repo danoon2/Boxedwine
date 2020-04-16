@@ -1083,7 +1083,6 @@
     <ClInclude Include="..\..\..\..\source\ui\controls\appOptionsDlg.h" />
     <ClInclude Include="..\..\..\..\source\ui\controls\baseDlg.h" />
     <ClInclude Include="..\..\..\..\source\ui\controls\baseView.h" />
-    <ClInclude Include="..\..\..\..\source\ui\controls\containerOptionsDlg.h" />
     <ClInclude Include="..\..\..\..\source\ui\controls\containersView.h" />
     <ClInclude Include="..\..\..\..\source\ui\controls\downloadDlg.h" />
     <ClInclude Include="..\..\..\..\source\ui\controls\installView.h" />
@@ -1115,6 +1114,7 @@
     <ClInclude Include="..\..\..\..\source\util\stringutil.h" />
     <ClInclude Include="..\..\..\..\source\util\synchronization.h" />
     <ClInclude Include="..\..\..\..\source\util\threadutils.h" />
+    <ClInclude Include="..\..\..\..\source\util\vectorutils.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\..\lib\glew\src\glew.cpp">
@@ -3663,10 +3663,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\..\..\..\source\ui\controls\baseView.cpp" />
-    <ClCompile Include="..\..\..\..\source\ui\controls\containerOptionsDlg.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x64'">true</ExcludedFromBuild>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\source\ui\controls\containersView.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x64'">true</ExcludedFromBuild>

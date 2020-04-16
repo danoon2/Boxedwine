@@ -10,6 +10,7 @@ public:
 private:
 	void runContainerView(BoxedContainer* container, bool buttonPressed, BaseViewTab& tab);
     void setCurrentApp(BoxedApp* app);
+    void setCurrentContainer(BoxedContainer* container);
     void rebuildShortcutsCombobox();
 
     const char* containerNameLabel;
@@ -20,9 +21,10 @@ private:
     const char* containerDeleteButtonHelp;
     const char* containerMountFolderLabel;
     const char* containerMountFolderHelp;
-    const char* browseButtonText;
+    const char* browseButtonText;    
     float containerLocationOpenLabelButtonWidth;
     float browseButtonWidth;
+    float deleteShortcutButtonWidth;
 
     char containerName[256];
     char containerLocation[1024];
@@ -33,12 +35,14 @@ private:
     const char* addAppHelp;
     const char* addAppButtonLabel;
     ImVec2 leftColumnWidth;
-    ImVec2 innerColumnWidth;
+    ImVec2 innerColumnWidth;    
     ComboboxData wineVersionComboboxData;
     ComboboxData mountDriveComboboxData;
 
     ComboboxData shortcutsComboboxData;
     const char* shortcutListLabel;
+    const char* deleteShortcutLabel;
+    const char* shortcutHelp;
     const char* nameLabel;
     const char* nameHelp;
     const char* resolutionLabel;

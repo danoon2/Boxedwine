@@ -427,9 +427,6 @@
     <ClCompile Include="..\..\..\..\source\ui\controls\containersView.cpp">
       <Filter>source\ui\controls</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\source\ui\controls\containerOptionsDlg.cpp">
-      <Filter>source\ui\controls</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\source\ui\controls\baseDlg.cpp">
       <Filter>source\ui\controls</Filter>
     </ClCompile>
@@ -2109,9 +2106,6 @@
     <ClInclude Include="..\..\..\..\source\ui\controls\containersView.h">
       <Filter>source\ui\controls</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\source\ui\controls\containerOptionsDlg.h">
-      <Filter>source\ui\controls</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\source\ui\controls\baseDlg.h">
       <Filter>source\ui\controls</Filter>
     </ClInclude>
@@ -3680,6 +3674,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\ui\controls\installView.h">
       <Filter>source\ui\controls</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\util\vectorutils.h">
+      <Filter>source\util</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -25,6 +25,8 @@ ContainersView::ContainersView(const char* startingTab) : BaseView("ContainersVi
     this->browseButtonText = getTranslation(GENERIC_BROWSE_BUTTON);
 
     this->shortcutListLabel = getTranslation(CONTAINER_VIEW_SHORTCUT_LIST_LABEL);
+    this->deleteShortcutLabel = getTranslation(CONTAINER_VIEW_DELETE_SHORTCUT);
+    this->shortcutHelp = getTranslation(CONTAINER_VIEW_SHORTCUT_LIST_HELP);
     this->nameLabel = getTranslation(CONTAINER_VIEW_NAME_LABEL);
     this->nameHelp = getTranslation(CONTAINER_VIEW_NAME_HELP);
     this->resolutionLabel = getTranslation(CONTAINER_VIEW_RESOLUTION_LABEL);
@@ -139,7 +141,9 @@ ContainersView::ContainersView(const char* startingTab) : BaseView("ContainersVi
         this->mountDriveComboboxData.data.push_back(std::string(1, (char)('A' + i))+":");
     }
     this->mountDriveComboboxData.dataChanged();
-    this->mountLocation[0] = 0;        
+    this->mountLocation[0] = 0;     
+
+    this->deleteShortcutButtonWidth = ImGui::CalcTextSize(this->deleteShortcutLabel).x + +ImGui::GetStyle().FramePadding.x * 2 + ImGui::GetStyle().ItemSpacing.x;
 }
 
 bool ContainersView::saveChanges() {
@@ -264,38 +268,44 @@ void ContainersView::rebuildShortcutsCombobox() {
     this->shortcutsComboboxData.dataChanged();
 }
 
-void ContainersView::runContainerView(BoxedContainer* container, bool buttonPressed, BaseViewTab& tab) {
+void ContainersView::setCurrentContainer(BoxedContainer* container) {
     this->currentContainer = container;
+    this->wineVersionComboboxData.currentSelectedIndex = stringIndexInVector(container->getWineVersion(), this->wineVersionComboboxData.data, 0);
+    strncpy(this->containerName, container->getName().c_str(), sizeof(this->containerName));
+    this->containerName[sizeof(this->containerName) - 1] = 0;
 
-    if (buttonPressed) {
-        this->wineVersionComboboxData.currentSelectedIndex = stringIndexInVector(container->getWineVersion(), this->wineVersionComboboxData.data, 0);
-        strncpy(this->containerName, container->getName().c_str(), sizeof(this->containerName));
-        this->containerName[sizeof(this->containerName) - 1] = 0;
+    strncpy(this->containerLocation, container->getDir().c_str(), sizeof(this->containerLocation));
+    this->containerLocation[sizeof(this->containerLocation) - 1] = 0;
 
-        strncpy(this->containerLocation, container->getDir().c_str(), sizeof(this->containerLocation));
-        this->containerLocation[sizeof(this->containerLocation) - 1] = 0;
+    container->updateCachedSize();
 
-        container->updateCachedSize();
-
-        if (!container->getMounts().size() || !container->getMounts()[0].wine || container->getMounts()[0].localPath.length()!=1) {
-            this->mountDriveComboboxData.currentSelectedIndex = 0;
-            this->mountLocation[0] = 0;
-        } else {
-            const MountInfo& mount = container->getMounts()[0];
-            std::string lowerCase = mount.localPath;
-            stringToLower(lowerCase);
-            this->mountDriveComboboxData.currentSelectedIndex = (int)(mount.localPath.at(0) - 'a' - 2);
-            strncpy(this->mountLocation, mount.nativePath.c_str(), sizeof(this->mountLocation));
-            this->mountLocation[sizeof(this->mountLocation) - 1] = 0;
-        }
-        if (this->currentContainer->getApps().size()) {
-            setCurrentApp(this->currentContainer->getApps()[0]);
-            rebuildShortcutsCombobox();
-        } else {
-            this->currentApp = NULL;
-        }
+    if (!container->getMounts().size() || !container->getMounts()[0].wine || container->getMounts()[0].localPath.length() != 1) {
+        this->mountDriveComboboxData.currentSelectedIndex = 0;
+        this->mountLocation[0] = 0;
+    } else {
+        const MountInfo& mount = container->getMounts()[0];
+        std::string lowerCase = mount.localPath;
+        stringToLower(lowerCase);
+        this->mountDriveComboboxData.currentSelectedIndex = (int)(mount.localPath.at(0) - 'a' - 2);
+        strncpy(this->mountLocation, mount.nativePath.c_str(), sizeof(this->mountLocation));
+        this->mountLocation[sizeof(this->mountLocation) - 1] = 0;
     }
+    if (this->currentContainer->getApps().size()) {
+        setCurrentApp(this->currentContainer->getApps()[0]);
+        rebuildShortcutsCombobox();
+    } else {
+        this->currentApp = NULL;
+    }
+}
 
+void ContainersView::runContainerView(BoxedContainer* container, bool buttonPressed, BaseViewTab& tab) {    
+    if (buttonPressed) {
+        setCurrentContainer(container);
+    }
+    if (!this->currentApp && this->currentContainer && this->currentContainer->getApps().size() > 0) {
+        setCurrentApp(this->currentContainer->getApps()[0]); // can happen if the user has not apps in the container then adds the first one
+        rebuildShortcutsCombobox();
+    }
     ImGui::PushFont(GlobalSettings::largeFont);
     ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing));
     SAFE_IMGUI_TEXT(container->getName().c_str());
@@ -390,8 +400,15 @@ void ContainersView::runContainerView(BoxedContainer* container, bool buttonPres
     SAFE_IMGUI_TEXT(this->addAppLabel);
     ImGui::SameLine(this->leftColumnWidth.x);
     if (ImGui::Button(this->addAppButtonLabel)) {
-        runOnMainUI([container] {
-            new AppChooserDlg(container);
+        runOnMainUI([container, this] {
+            new AppChooserDlg(container, [this, container](BoxedApp* app) {
+                this->setCurrentApp(app);
+                rebuildShortcutsCombobox();
+                this->shortcutsComboboxData.currentSelectedIndex = vectorIndexOf(container->getApps(), app);
+                if (this->shortcutsComboboxData.currentSelectedIndex < 0) {
+                    this->shortcutsComboboxData.currentSelectedIndex = 0;
+                }
+                });
             return false;
             });
     }
@@ -403,17 +420,50 @@ void ContainersView::runContainerView(BoxedContainer* container, bool buttonPres
     ImGui::Separator();
 
     if (this->currentApp) {
-        ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing));
+        ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing));        
+
         ImGui::AlignTextToFramePadding();
         SAFE_IMGUI_TEXT(this->shortcutListLabel);
         ImGui::SameLine(this->leftColumnWidth.x);
-        ImGui::PushItemWidth(-1 - (this->resolutionHelp ? this->toolTipWidth : 0));
+        ImGui::PushItemWidth(-1 - (this->shortcutHelp ? this->toolTipWidth : 0) - this->deleteShortcutButtonWidth);
         if (ImGui::Combo("##ShortcutsCombo", &this->shortcutsComboboxData.currentSelectedIndex, this->shortcutsComboboxData.dataForCombobox)) {
             this->setCurrentApp(this->currentContainer->getApps()[this->shortcutsComboboxData.currentSelectedIndex]);
         }
         ImGui::PopItemWidth();        
+        ImGui::SameLine();
+        if (ImGui::Button(this->deleteShortcutLabel)) {
+            std::string label = getTranslationWithFormat(CONTAINER_VIEW_DELETE_SHORTCUT_CONFIRMATION, true, this->currentApp->getName());
+            runOnMainUI([label, container, this]() {
+                new YesNoDlg(GENERIC_DLG_CONFIRM_TITLE, label, [container, this](bool yes) {
+                    if (yes) {
+                        runOnMainUI([this, container]() {
+                            this->currentAppChanged = false;
+                            this->currentApp->remove();                            
+                            if (this->currentContainer->getApps().size()) {
+                                this->setCurrentApp(this->currentContainer->getApps()[0]);
+                            } else {
+                                this->currentApp = NULL;
+                            }
+                            rebuildShortcutsCombobox();
+                            GlobalSettings::reloadApps();
+                            return false;
+                            });
+                    }
+                    });
+                return false;
+                });
+        }
+        if (this->shortcutHelp) {
+            ImGui::SameLine();
+            this->toolTip(this->shortcutHelp);
+        }
 
         ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing));        
+        if (this->currentApp->getIconTexture()) {
+            ImVec2 pos = ImGui::GetCursorPos();
+            ImGui::Image(this->currentApp->getIconTexture()->texture, ImVec2((float)UiSettings::ICON_SIZE, (float)UiSettings::ICON_SIZE));
+            ImGui::SetCursorPos(pos);
+        }
         SAFE_IMGUI_TEXT("");
         ImGui::SameLine(this->leftColumnWidth.x);
         ImGui::AlignTextToFramePadding();
@@ -572,11 +622,15 @@ void ContainersView::runContainerView(BoxedContainer* container, bool buttonPres
         runOnMainUI([label, container, this]() {
             new YesNoDlg(GENERIC_DLG_CONFIRM_TITLE, label, [container, this](bool yes) {
                 if (yes) {
-                    this->currentContainer = NULL;
-                    this->currentContainerChanged = false;
-                    container->deleteContainerFromFilesystem();
-                    BoxedwineData::reloadContainers();
-                    gotoView(VIEW_CONTAINERS);
+                    runOnMainUI([this, container]() {
+                        this->currentContainer = NULL;
+                        this->currentApp = NULL;
+                        this->currentContainerChanged = false;
+                        container->deleteContainerFromFilesystem();
+                        BoxedwineData::reloadContainers();
+                        gotoView(VIEW_CONTAINERS);
+                        return false;
+                        });
                 }
                 });
             return false;
