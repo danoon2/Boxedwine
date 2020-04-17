@@ -16,7 +16,9 @@
 #include "data/configFile.h"
 #include "data/boxedApp.h"
 #include "data/boxedContainer.h"
+#include "data/boxedReg.h"
 
+#include "controls/ImGuiLayout.h"
 #include "controls/baseView.h"
 #include "controls/spinnerControl.h"
 #include "controls/uiSettings.h"

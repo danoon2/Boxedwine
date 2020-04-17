@@ -63,6 +63,7 @@ public:
     static ImFont* defaultFont;
     static ImFont* sectionTitleFont;
     static bool restartUI;    
+    static float extraVerticalSpacing;
 private:    
     static void initWineVersions();
     static void lookForFileSystems(const std::string& path);    

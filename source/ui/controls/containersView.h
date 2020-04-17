@@ -3,10 +3,10 @@
 
 class ContainersView : public BaseView {
 public:
-	ContainersView(const char* startingTab);
+	ContainersView(std::string tab);
 
 	virtual bool saveChanges();
-
+    
 private:
 	void runContainerView(BoxedContainer* container, bool buttonPressed, BaseViewTab& tab);
     void setCurrentApp(BoxedApp* app);
@@ -22,6 +22,14 @@ private:
     const char* containerMountFolderLabel;
     const char* containerMountFolderHelp;
     const char* browseButtonText;    
+    const char* gdiRendererLabel;
+    const char* gdiRendererHelp;
+    const char* programsLabel;
+    const char* wineConfigLabel;
+    const char* regeditLabel;
+    const char* windowsVersionLabel;
+    const char* windowsVersionHelp;
+
     float containerLocationOpenLabelButtonWidth;
     float browseButtonWidth;
     float deleteShortcutButtonWidth;
@@ -38,6 +46,7 @@ private:
     ImVec2 innerColumnWidth;    
     ComboboxData wineVersionComboboxData;
     ComboboxData mountDriveComboboxData;
+    ComboboxData windowsVersionComboboxData;
 
     ComboboxData shortcutsComboboxData;
     const char* shortcutListLabel;
@@ -70,6 +79,7 @@ private:
     char glExt[2048];
     char path[1024];
     bool fullScreen;
+    bool gdiRenderer;
 
     BoxedContainer* currentContainer;
     bool currentContainerChanged;

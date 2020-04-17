@@ -36,6 +36,7 @@ std::string GlobalSettings::defaultResolution;
 int GlobalSettings::defaultScale;
 int GlobalSettings::screenCx;
 int GlobalSettings::screenCy;
+float GlobalSettings::extraVerticalSpacing;
 
 void GlobalSettings::init(int argc, const char **argv) {
     GlobalSettings::dataFolderLocation = SDL_GetPrefPath("", "Boxedwine");
@@ -79,6 +80,7 @@ void GlobalSettings::init(int argc, const char **argv) {
         std::string res = std::to_string(dm.w) + "x" + std::to_string(dm.h);
         availableResolutions.push_back(res.c_str());
     }
+    GlobalSettings::extraVerticalSpacing = (float)GlobalSettings::scaleIntUI(5);
 }
 
 void GlobalSettings::startUp() {
@@ -177,6 +179,7 @@ float GlobalSettings::scaleFloatUI(float value) {
 void GlobalSettings::setScale(U32 scale) {
     GlobalSettings::scale = scale;
     UiSettings::ICON_SIZE = GlobalSettings::scaleIntUI(48);
+    GlobalSettings::extraVerticalSpacing = (float)GlobalSettings::scaleIntUI(5);
 }
 
 void GlobalSettings::loadTheme() {

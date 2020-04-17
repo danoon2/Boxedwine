@@ -94,6 +94,20 @@ bool BoxedContainer::doesWineVersionExist() {
     return Fs::doesNativePathExist(GlobalSettings::getFileFromWineName(this->wineVersion));
 }
 
+void BoxedContainer::launch(const std::vector<std::string>& args, const std::string& labelForWaitDlg) {
+    GlobalSettings::startUpArgs = StartUpArgs();
+    GlobalSettings::startUpArgs.setScale(GlobalSettings::getDefaultScale());
+    GlobalSettings::startUpArgs.setResolution(GlobalSettings::getDefaultResolution());
+    this->launch();
+    GlobalSettings::startUpArgs.addArgs(args);
+    GlobalSettings::startUpArgs.readyToLaunch = true;
+
+    runOnMainUI([labelForWaitDlg]() {
+        new WaitDlg(WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(WAITDLG_LAUNCH_APP_LABEL, true, labelForWaitDlg.c_str()));
+        return false;
+        });
+}
+
 void BoxedContainer::launch() {
     GlobalSettings::startUpArgs.addZip(GlobalSettings::getFileFromWineName(this->wineVersion));
     std::string root = GlobalSettings::getRootFolder(this);
@@ -220,4 +234,150 @@ BoxedApp* BoxedContainer::getAppByIniFile(const std::string& iniFile) {
 
 void BoxedContainer::setName(const std::string& name) {
     this->name = name;
+}
+
+bool BoxedContainer::isGDI() {
+    BoxedReg reg(this, false);
+    std::string value;
+
+    return (reg.readKey("Software\\Wine\\Direct3D", "DirectDrawRenderer", value) && value == "gdi");
+}
+
+void BoxedContainer::setGDI(bool gdi) {
+    BoxedReg reg(this, false);
+    reg.writeKey("Software\\Wine\\Direct3D", "DirectDrawRenderer", (gdi ? "gdi" : "opengl"));
+    reg.save();
+}
+
+static const char szKey9x[] = "Software\\Microsoft\\Windows\\CurrentVersion";
+static const char szKeyNT[] = "Software\\Microsoft\\Windows NT\\CurrentVersion";
+static const char szKeyProdNT[] = "System\\CurrentControlSet\\Control\\ProductOptions";
+static const char szKeyWindNT[] = "System\\CurrentControlSet\\Control\\Windows";
+static const char szKeyEnvNT[] = "System\\CurrentControlSet\\Control\\Session Manager\\Environment";
+
+std::string BoxedContainer::getWindowsVersion2() {
+    BoxedReg reg(this, false);
+    std::string value;
+    if (reg.readKey("Software\\Wine", "Version", value)) {
+        return value;
+    }
+    return "";
+}
+
+std::string BoxedContainer::getWindowsVersion() {    
+    std::string userVer = getWindowsVersion2();
+    if (userVer.length()) {
+        for (auto& winVer : BoxedwineData::getWinVersions()) {
+            if (winVer.szVersion == userVer) {
+                return winVer.szDescription;
+            }
+        }
+    }
+    BoxedReg reg(this, true);    
+    int platform = VER_PLATFORM_WIN32s, major, minor = 0, build = 0;
+
+    std::string ver;    
+    std::string type;
+    std::string build_str;
+    std::string best;
+
+    reg.readKey(szKeyNT, "CurrentVersion", ver);    
+
+    if (ver.length()) {
+        reg.readKey(szKeyNT, "CurrentBuildNumber", build_str);
+        platform = VER_PLATFORM_WIN32_NT;
+        build = std::stoi(build_str);
+        reg.readKey(szKeyProdNT, "ProductType", type);
+    } else {
+        reg.readKey(szKey9x, "VersionNumber", ver);
+        if (ver.length()) {
+            platform = VER_PLATFORM_WIN32_WINDOWS;
+        }
+    }
+    if (ver.length()) {
+        if (!stringContains(ver, ".")) {
+            major = std::stoi(ver);
+        } else {
+            std::vector<std::string> parts;
+            stringSplit(parts, ver, '.');
+            if (parts.size() >= 2) {
+                major = std::stoi(parts[0]);
+                minor = std::stoi(parts[1]);
+            } else {
+                return "";
+            }
+            if (parts.size() >= 3) {
+                build = std::stoi(parts[2]);
+            }
+        }
+    }
+    for (auto& winVer : BoxedwineData::getWinVersions()) {
+        if (winVer.dwPlatformId != platform) continue;
+        if (winVer.dwMajorVersion != major) continue;
+        if (type.length() && winVer.szProductType != type) continue;
+        best = winVer.szDescription;
+        if ((winVer.dwMinorVersion == minor) && (winVer.dwBuildNumber == build)) {
+            return winVer.szDescription;
+        }
+    }
+    return best;
+}
+
+void BoxedContainer::setWindowsVersion(const BoxedWinVersion& version) {
+    BoxedReg userReg(this, false);
+    BoxedReg systemReg(this, true);
+    
+    std::string build = std::to_string(version.dwBuildNumber);
+    if (version.dwPlatformId == VER_PLATFORM_WIN32_NT) {
+        std::string ver = std::to_string(version.dwMajorVersion) + "." + std::to_string(version.dwMinorVersion);
+        std::string product = "Microsoft " + version.szDescription;
+
+        systemReg.writeKey(szKeyNT, "CurrentVersion", ver.c_str());
+        systemReg.writeKey(szKeyNT, "CSDVersion", version.szCSDVersion.c_str());
+        systemReg.writeKey(szKeyNT, "CurrentBuild", build.c_str());
+        systemReg.writeKey(szKeyNT, "CurrentBuildNumber", build.c_str());
+        systemReg.writeKey(szKeyNT, "ProductName", product.c_str());
+        systemReg.writeKey(szKeyProdNT, "ProductType", version.szProductType.c_str());
+        systemReg.writeKeyDword(szKeyWindNT, "CSDVersion", (U32)((version.wServicePackMajor << 8) | version.wServicePackMajor));
+        systemReg.writeKey(szKeyEnvNT, "OS", "Windows_NT");
+
+        systemReg.writeKey(szKey9x, "VersionNumber", NULL);
+        systemReg.writeKey(szKey9x, "SubVersionNumber", NULL);
+        systemReg.writeKey(szKey9x, "ProductName", NULL);
+        userReg.writeKey("Software\\Wine", "Version", NULL);
+    } else if (version.dwPlatformId == VER_PLATFORM_WIN32_WINDOWS) {
+        std::string ver = std::to_string(version.dwMajorVersion) + "." + std::to_string(version.dwMinorVersion) + "." + std::to_string(version.dwBuildNumber);
+        std::string product = "Microsoft " + version.szDescription;
+
+        systemReg.writeKey(szKeyNT, "CurrentVersion", NULL);
+        systemReg.writeKey(szKeyNT, "CSDVersion", NULL);
+        systemReg.writeKey(szKeyNT, "CurrentBuild", NULL);
+        systemReg.writeKey(szKeyNT, "CurrentBuildNumber", NULL);
+        systemReg.writeKey(szKeyNT, "ProductName", NULL);
+        systemReg.writeKey(szKeyProdNT, "ProductType", NULL);
+        systemReg.writeKey(szKeyWindNT, "CSDVersion", NULL);
+        systemReg.writeKey(szKeyEnvNT, "OS", NULL);
+
+        systemReg.writeKey(szKey9x, "VersionNumber", ver.c_str());
+        systemReg.writeKey(szKey9x, "SubVersionNumber", version.szCSDVersion.c_str());
+        systemReg.writeKey(szKey9x, "ProductName", product.c_str());
+        userReg.writeKey("Software\\Wine", "Version", NULL);
+    } else {
+        systemReg.writeKey(szKeyNT, "CurrentVersion", NULL);
+        systemReg.writeKey(szKeyNT, "CSDVersion", NULL);
+        systemReg.writeKey(szKeyNT, "CurrentBuild", NULL);
+        systemReg.writeKey(szKeyNT, "CurrentBuildNumber", NULL);
+        systemReg.writeKey(szKeyNT, "ProductName", NULL);
+        systemReg.writeKey(szKeyProdNT, "ProductType", NULL);
+        systemReg.writeKey(szKeyWindNT, "CSDVersion", NULL);
+        systemReg.writeKey(szKeyEnvNT, "OS", NULL);
+
+        systemReg.writeKey(szKey9x, "VersionNumber", NULL);
+        systemReg.writeKey(szKey9x, "SubVersionNumber", NULL);
+        systemReg.writeKey(szKey9x, "ProductName", NULL);
+
+        userReg.writeKey("Software\\Wine", "Version", version.szVersion.c_str());
+    }
+    userReg.save();
+    systemReg.save();
 }

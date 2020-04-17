@@ -80,7 +80,7 @@ void uiDraw() {
     ImGui::PopStyleVar(1);    
 }
 
-void gotoView(int viewId, const char* tab, const std::string& param1) {
+void gotoView(int viewId, std::string tab, std::string param1) {
     if (!currentView || currentView->saveChanges()) {
         if (currentView) {
             delete currentView;
@@ -334,8 +334,21 @@ bool uiShow(const std::string& basePath) {
     GlobalSettings::loadFonts();
     BoxedwineData::loadUI();
     currentViewDeprecated = VIEW_APPS;
+    if (currentView) {
+        delete currentView;
+        currentView = NULL;
+    }
     loadApps(); // need to be after we create the context for images to work
     createButton();
+    if (GlobalSettings::startUpArgs.runOnRestartUI) {
+        runOnMainUI([]() {
+            if (GlobalSettings::startUpArgs.runOnRestartUI) {
+                GlobalSettings::startUpArgs.runOnRestartUI();
+                GlobalSettings::startUpArgs.runOnRestartUI = nullptr;
+            }
+            return false;
+            });        
+    }
     if (GlobalSettings::startUpArgs.showAppPickerForContainer.length()) {
         runOnMainUI([]() {
             BoxedContainer* container = BoxedwineData::getContainerByName(GlobalSettings::startUpArgs.showAppPickerForContainer);

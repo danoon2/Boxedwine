@@ -2,11 +2,14 @@
 #include "../boxedwineui.h"
 #include "../../../lib/imgui/addon/imguitinyfiledialogs.h"
 
-ContainersView::ContainersView(const char* startingTab) : BaseView("ContainersView"), currentContainer(NULL), currentContainerChanged(false), currentContainerMountChanged(false) {
+ContainersView::ContainersView(std::string tab) : BaseView("ContainersView"), currentContainer(NULL), currentContainerChanged(false), currentContainerMountChanged(false) {
     for (auto& item : BoxedwineData::getContainers()) {
-        addTab(item->getName(), [this, item](bool buttonPressed, BaseViewTab& tab) {
+        addTab(item->getName(), NULL, [this, item](bool buttonPressed, BaseViewTab& tab) {
             this->runContainerView(item, buttonPressed, tab);
             });
+        if (item->getDir() == tab) {
+            this->tabIndex = this->getTabCount() - 1;
+        }
     }
 
     this->wineVersionLabel = getTranslation(COMMON_WINE_VERSION_LABEL);
@@ -23,6 +26,13 @@ ContainersView::ContainersView(const char* startingTab) : BaseView("ContainersVi
     this->containerMountFolderLabel = getTranslation(CONTAINER_VIEW_MOUNT_DIR_LABEL);
     this->containerMountFolderHelp = getTranslation(CONTAINER_VIEW_MOUNT_DIR_HELP);
     this->browseButtonText = getTranslation(GENERIC_BROWSE_BUTTON);
+    this->gdiRendererLabel = getTranslation(CONTAINER_VIEW_GDI_RENDERER_LABEL);
+    this->gdiRendererHelp = getTranslation(CONTAINER_VIEW_GDI_RENDERER_HELP);
+    this->programsLabel = getTranslation(CONTAINER_VIEW_PROGRAMS_LABEL);
+    this->wineConfigLabel = getTranslation(CONTAINER_VIEW_WINECFG_BUTTON_LABEL);
+    this->regeditLabel = getTranslation(CONTAINER_VIEW_REGEDIT_BUTTON_LABEL);
+    this->windowsVersionLabel = getTranslation(CONTAINER_VIEW_WINDOWS_VERION_LABEL);
+    this->windowsVersionHelp = getTranslation(CONTAINER_VIEW_WINDOWS_VERION_HELP);
 
     this->shortcutListLabel = getTranslation(CONTAINER_VIEW_SHORTCUT_LIST_LABEL);
     this->deleteShortcutLabel = getTranslation(CONTAINER_VIEW_DELETE_SHORTCUT);
@@ -67,6 +77,14 @@ ContainersView::ContainersView(const char* startingTab) : BaseView("ContainersVi
         this->leftColumnWidth = width;
     }
     width = ImGui::CalcTextSize(this->containerMountFolderLabel);
+    if (width.x > this->leftColumnWidth.x) {
+        this->leftColumnWidth = width;
+    }
+    width = ImGui::CalcTextSize(this->gdiRendererLabel);
+    if (width.x > this->leftColumnWidth.x) {
+        this->leftColumnWidth = width;
+    }
+    width = ImGui::CalcTextSize(this->programsLabel);
     if (width.x > this->leftColumnWidth.x) {
         this->leftColumnWidth = width;
     }
@@ -134,6 +152,12 @@ ContainersView::ContainersView(const char* startingTab) : BaseView("ContainersVi
     }
     this->wineVersionComboboxData.dataChanged();    
     this->containerName[0] = 0;
+
+    this->windowsVersionComboboxData.data.clear();
+    for (auto& win : BoxedwineData::getWinVersions()) {
+        this->windowsVersionComboboxData.data.push_back(win.szDescription);
+    }
+    this->windowsVersionComboboxData.dataChanged();
 
     this->mountDriveComboboxData.data.clear();
     this->mountDriveComboboxData.data.push_back(" ");
@@ -270,6 +294,8 @@ void ContainersView::rebuildShortcutsCombobox() {
 
 void ContainersView::setCurrentContainer(BoxedContainer* container) {
     this->currentContainer = container;
+    this->currentContainerChanged = false;
+    this->currentContainerMountChanged = false;
     this->wineVersionComboboxData.currentSelectedIndex = stringIndexInVector(container->getWineVersion(), this->wineVersionComboboxData.data, 0);
     strncpy(this->containerName, container->getName().c_str(), sizeof(this->containerName));
     this->containerName[sizeof(this->containerName) - 1] = 0;
@@ -290,11 +316,17 @@ void ContainersView::setCurrentContainer(BoxedContainer* container) {
         strncpy(this->mountLocation, mount.nativePath.c_str(), sizeof(this->mountLocation));
         this->mountLocation[sizeof(this->mountLocation) - 1] = 0;
     }
+    this->shortcutsComboboxData.currentSelectedIndex = 0;
     if (this->currentContainer->getApps().size()) {
         setCurrentApp(this->currentContainer->getApps()[0]);
-        rebuildShortcutsCombobox();
+        rebuildShortcutsCombobox();        
     } else {
         this->currentApp = NULL;
+    }
+    this->gdiRenderer = this->currentContainer->isGDI();
+    this->windowsVersionComboboxData.currentSelectedIndex = vectorIndexOf(this->windowsVersionComboboxData.data, this->currentContainer->getWindowsVersion());
+    if (this->windowsVersionComboboxData.currentSelectedIndex < 0) {
+        this->windowsVersionComboboxData.currentSelectedIndex = BoxedwineData::getDefaultWindowsVersionIndex();
     }
 }
 
@@ -327,7 +359,7 @@ void ContainersView::runContainerView(BoxedContainer* container, bool buttonPres
     ImGui::AlignTextToFramePadding();
     SAFE_IMGUI_TEXT(this->wineVersionLabel);
     ImGui::SameLine(this->leftColumnWidth.x);
-    ImGui::PushItemWidth(GlobalSettings::scaleFloatUI(100.0f));
+    ImGui::PushItemWidth(GlobalSettings::scaleFloatUI(150.0f));
     //ImGui::PushItemWidth(-1-(this->wineVersionHelp?this->toolTipWidth:0));
     if (ImGui::Combo("##WineCombo", &this->wineVersionComboboxData.currentSelectedIndex, this->wineVersionComboboxData.dataForCombobox)) {
         this->currentContainerChanged = true;
@@ -336,6 +368,33 @@ void ContainersView::runContainerView(BoxedContainer* container, bool buttonPres
     if (this->wineVersionHelp) {
         ImGui::SameLine();
         this->toolTip(wineVersionHelp);
+    }
+    ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing));
+
+    ImGui::AlignTextToFramePadding();
+    SAFE_IMGUI_TEXT(this->windowsVersionLabel);
+    ImGui::SameLine(this->leftColumnWidth.x);
+    ImGui::PushItemWidth(GlobalSettings::scaleFloatUI(150.0f));
+    //ImGui::PushItemWidth(-1-(this->wineVersionHelp?this->toolTipWidth:0));
+    if (ImGui::Combo("##WinVersionCombo", &this->windowsVersionComboboxData.currentSelectedIndex, this->windowsVersionComboboxData.dataForCombobox)) {
+        this->currentContainer->setWindowsVersion(BoxedwineData::getWinVersions()[this->windowsVersionComboboxData.currentSelectedIndex]);
+    }
+    ImGui::PopItemWidth();
+    if (this->windowsVersionHelp) {
+        ImGui::SameLine();
+        this->toolTip(windowsVersionHelp);
+    }
+    ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing));
+
+    ImGui::AlignTextToFramePadding();
+    SAFE_IMGUI_TEXT(this->gdiRendererLabel);
+    ImGui::SameLine(this->leftColumnWidth.x);
+    if (ImGui::Checkbox("##GDICheckbox", &this->gdiRenderer)) {
+        this->currentContainer->setGDI(this->gdiRenderer);
+    }
+    if (this->gdiRendererHelp) {
+        ImGui::SameLine();
+        this->toolTip(this->gdiRendererHelp);
     }
     ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing));
 
@@ -394,7 +453,36 @@ void ContainersView::runContainerView(BoxedContainer* container, bool buttonPres
     SAFE_IMGUI_TEXT(this->containerLocationSizeLabel);
     ImGui::SameLine(this->leftColumnWidth.x);
     SAFE_IMGUI_TEXT(container->getSize().c_str());
+    ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing));
+
+    ImGui::AlignTextToFramePadding();
+    SAFE_IMGUI_TEXT(this->programsLabel);
+    ImGui::SameLine(this->leftColumnWidth.x);
+    if (ImGui::Button(this->wineConfigLabel)) {
+        std::vector<std::string> args;
+        args.push_back("/bin/wine");
+        args.push_back("winecfg");
+        this->currentContainer->launch(args, this->wineConfigLabel);
+        std::string containerPath = container->getDir();
+        GlobalSettings::startUpArgs.runOnRestartUI = [containerPath]() {
+            gotoView(VIEW_CONTAINERS, containerPath);
+        };
+    }
+    ImGui::SameLine();
+    if (ImGui::Button(this->regeditLabel)) {
+        std::vector<std::string> args;
+        args.push_back("/bin/wine");
+        args.push_back("regedit");
+        this->currentContainer->launch(args, this->regeditLabel);
+        std::string containerPath = container->getDir();
+        GlobalSettings::startUpArgs.runOnRestartUI = [containerPath]() {
+            gotoView(VIEW_CONTAINERS, containerPath);
+        };
+    }
+
     ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing));    
+    ImGui::Separator();
+    ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing));
 
     ImGui::AlignTextToFramePadding();
     SAFE_IMGUI_TEXT(this->addAppLabel);
@@ -416,8 +504,6 @@ void ContainersView::runContainerView(BoxedContainer* container, bool buttonPres
         ImGui::SameLine();
         this->toolTip(this->addAppHelp);
     }
-    ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing));
-    ImGui::Separator();
 
     if (this->currentApp) {
         ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing));        

@@ -16,7 +16,8 @@ public:
     void addApp(BoxedApp* app) {this->apps.push_back(app);}
     void deleteApp(BoxedApp* app);
     void deleteContainerFromFilesystem();
-    void launch();
+    void launch(); // will set StartUpArgs to use this container
+    void launch(const std::vector<std::string>& args, const std::string& labelForWaitDlg); // will create new StartUpArgs and set it to use this container and the args
     bool doesWineVersionExist();
 
     BoxedApp* getAppByIniFile(const std::string& iniFile);
@@ -37,10 +38,16 @@ public:
     bool addNewMount(const MountInfo& mountInfo);
     void clearMounts() {this->mounts.clear();}
     const std::vector<MountInfo>& getMounts() {return this->mounts;}
+
+    bool isGDI();
+    void setGDI(bool gdi);
+    std::string getWindowsVersion();
+    void setWindowsVersion(const BoxedWinVersion& version);
 private:
     void loadApps();
     void getNewDesktopLinkApps(std::vector<BoxedApp>& apps);
     void getNewExeApps(std::vector<BoxedApp>& apps, MountInfo* mount);
+    std::string getWindowsVersion2();
 
     std::vector<BoxedApp*> apps;
     std::string name;

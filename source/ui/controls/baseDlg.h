@@ -1,16 +1,6 @@
 #ifndef __BASE_DLG_H__
 #define __BASE_DLG_H__
 
-class ComboboxData {
-public:
-    ComboboxData() : dataForCombobox(0), currentSelectedIndex(0) {}
-    char* dataForCombobox;
-    std::vector<std::string> data;
-    int currentSelectedIndex;
-
-    void dataChanged();
-};
-
 class BaseDlg {
 public:
     BaseDlg(int title, int width, int height, ImFont* font=NULL, BaseDlg* parent=NULL);

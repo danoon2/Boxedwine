@@ -71,6 +71,9 @@ void BaseView::run(const ImVec2& size) {
     ImGui::BeginChild(112, rightSize, false, 0);
     
     this->tabs[this->tabIndex].drawTab(tabChanged, this->tabs[this->tabIndex]);
+    if (this->tabs[this->tabIndex].model) {
+        this->tabs[this->tabIndex].model->draw();
+    }    
     this->tabChanged = false;
 
     ImGui::EndChild();
@@ -93,6 +96,9 @@ void BaseView::runErrorMsg(bool open) {
     ImGui::PopFont();
 }
 
-void BaseView::addTab(const std::string& name, std::function<void(bool buttonPressed, BaseViewTab& tab)> drawTab) {
-    this->tabs.push_back(BaseViewTab(name, drawTab));
+void BaseView::addTab(const std::string& name, const std::shared_ptr<ImGuiLayout>& model, std::function<void(bool buttonPressed, BaseViewTab& tab)> drawTab) {
+    if (model) {
+        model->doLayout();
+    }
+    this->tabs.push_back(BaseViewTab(name, model, drawTab));
 }

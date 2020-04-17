@@ -89,6 +89,8 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "Failed to mount directory at drive t:.  If this is not a new container, perhaps you can try the same thing with a new container.";
     case INSTALLVIEW_INSTALL_BUTTON_LABEL:
         return "Install";
+    case INSTALLVIEW_NEW_CONTAINER:
+        return "Create New Container (Recommended)";
     case SETTINGS_DLG_TITLE:
         return "Options";
     case OPTIONSVIEW_SAVE_FOLDER_LABEL:
@@ -269,6 +271,20 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "Shortcuts are links to apps inside a container.  They will appear in the app list and clicking them in the app list will launch the app with the settings you set here.";
     case CONTAINER_VIEW_DELETE_SHORTCUT_CONFIRMATION:
         return "Are you sure you want to the {0} shortcut?";
+    case CONTAINER_VIEW_GDI_RENDERER_LABEL:
+        return "DD GDI Renderer:";
+    case CONTAINER_VIEW_PROGRAMS_LABEL:
+        return "Run in Container:";
+    case CONTAINER_VIEW_REGEDIT_BUTTON_LABEL:
+        return "Regedit";
+    case CONTAINER_VIEW_WINECFG_BUTTON_LABEL:
+        return "WineCfg";
+    case CONTAINER_VIEW_GDI_RENDERER_HELP:
+        return "DirectDraw will use OpenGL by default.  But a few games, like Diable and Startcraft, may have graphical issues.  Sometimes changing the renderer to GDI can help.";
+    case CONTAINER_VIEW_WINDOWS_VERION_LABEL:
+        return "Windows Version:";
+    case CONTAINER_VIEW_WINDOWS_VERION_HELP:
+        return "This is the Windows version that will be reported to the running app.  You probably never need to change this unless the app asks for a specific version of Windows.";
     case ERROR_NO_WINE:
         return "There are no versions of Wine installed.  Would you like to install the default version of Wine now?";
     case ERROR_MISSING_WINE:

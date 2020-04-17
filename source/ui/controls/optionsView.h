@@ -13,7 +13,7 @@ public:
 
 class OptionsView : public BaseView {
 public:
-	OptionsView(const char* startingTab);
+	OptionsView(std::string tab);
 
 	virtual bool saveChanges();
 

@@ -414,8 +414,8 @@ std::vector<std::string> Fs::getFilesInNativeDirectoryWhereFileMatches(const std
     return results;
 }
 
-void Fs::trimTrailingSlash(char* str) {
-    while (str[strlen(str) - 1] == '/' || str[strlen(str) - 1] == '\\') {
-        str[strlen(str) - 1] = 0;
-    }
+void Fs::trimTrailingSlash(std::string& s) {
+    s.erase(std::find_if(s.rbegin(), s.rend(), [](int ch) {
+        return ch!='/' && ch!='\\';
+        }).base(), s.end());
 }

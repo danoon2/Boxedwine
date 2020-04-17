@@ -33,8 +33,7 @@ void kpanic(const char* msg, ...) {
     vfprintf(stderr, msg, argptr);
     if (logFile) {
         vfprintf(logFile, msg, argptr);
-    }
-    va_end(argptr);
+    }    
     fprintf(stderr, "\n");
     if (logFile) {
         fprintf(logFile, "\n");
@@ -47,6 +46,7 @@ void kpanic(const char* msg, ...) {
     OutputDebugStringA(buff);
     OutputDebugStringA("\n");
 #endif
+    va_end(argptr);
     SDL_Delay(5000);
     exit(1);
 }
@@ -60,8 +60,7 @@ void kwarn(const char* msg, ...) {
     vfprintf(stderr, msg, argptr);
     if (logFile) {
         vfprintf(logFile, msg, argptr);
-    }
-    va_end(argptr);
+    }    
     fprintf(stderr, "\n");
     if (logFile) {
         fprintf(logFile, "\n");
@@ -72,6 +71,7 @@ void kwarn(const char* msg, ...) {
     OutputDebugStringA(buff);
     OutputDebugStringA("\n");
 #endif
+    va_end(argptr);
 #endif
 }
 
@@ -84,8 +84,7 @@ void klog(const char* msg, ...) {
     if (logFile) {
         vfprintf(logFile, msg, argptr);
     }
-    va_end(argptr);
-    fprintf(stdout, "\n");
+     fprintf(stdout, "\n");
     if (logFile) {
         fprintf(logFile, "\n");
     }
@@ -95,4 +94,5 @@ void klog(const char* msg, ...) {
     OutputDebugStringA(buff);
     OutputDebugStringA("\n");
 #endif
+    va_end(argptr);
 }

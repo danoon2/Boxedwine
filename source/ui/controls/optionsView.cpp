@@ -2,11 +2,11 @@
 #include "../boxedwineui.h"
 #include "../../../lib/imgui/addon/imguitinyfiledialogs.h"
 
-OptionsView::OptionsView(const char* startingTab) : BaseView("OptionsView"), lastThemeSelectionIndex(-1) {
-    if (startingTab) {
-        if (!strcmp(startingTab, "Wine")) {
+OptionsView::OptionsView(std::string tab) : BaseView("OptionsView"), lastThemeSelectionIndex(-1) {
+    if (tab.length()) {
+        if (tab == "Wine") {
             this->tabIndex = 2;
-        } if (!strcmp(startingTab, "Display")) {
+        } if (tab == "Display") {
             this->tabIndex = 1;
         }
 
@@ -79,10 +79,10 @@ OptionsView::OptionsView(const char* startingTab) : BaseView("OptionsView"), las
         this->scaleComboboxData.currentSelectedIndex = 1;
     }
 
-    addTab(this->generalTitle, [this](bool buttonPressed, BaseViewTab& tab) {
+    addTab(this->generalTitle, NULL, [this](bool buttonPressed, BaseViewTab& tab) {
         this->runGeneralOptions();
         });
-    addTab(this->displayTitle, [this](bool buttonPressed, BaseViewTab& tab) {
+    addTab(this->displayTitle, NULL, [this](bool buttonPressed, BaseViewTab& tab) {
         if (this->lastThemeSelectionIndex != this->themeComboboxData.currentSelectedIndex) {
             if (this->themeComboboxData.currentSelectedIndex == 0) {
                 ImGui::StyleColorsDark();
@@ -98,7 +98,7 @@ OptionsView::OptionsView(const char* startingTab) : BaseView("OptionsView"), las
         }
         this->runDisplayOptions();
         });
-    addTab(this->wineTitle, [this](bool buttonPressed, BaseViewTab& tab) {
+    addTab(this->wineTitle, NULL, [this](bool buttonPressed, BaseViewTab& tab) {
         this->runWineOptions();
         });    
 

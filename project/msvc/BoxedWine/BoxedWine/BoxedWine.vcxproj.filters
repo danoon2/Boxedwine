@@ -1543,6 +1543,12 @@
     <ClCompile Include="..\..\..\..\source\ui\controls\installView.cpp">
       <Filter>source\ui\controls</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\data\boxedReg.cpp">
+      <Filter>source\ui\data</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\controls\ImGuiLayout.cpp">
+      <Filter>source\ui\controls</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -3677,6 +3683,12 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\util\vectorutils.h">
       <Filter>source\util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\ui\data\boxedReg.h">
+      <Filter>source\ui\data</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\ui\controls\ImGuiLayout.h">
+      <Filter>source\ui\controls</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

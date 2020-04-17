@@ -3,9 +3,10 @@
 
 class BaseViewTab {
 public:
-	BaseViewTab(const std::string& name, std::function<void(bool buttonPressed, BaseViewTab& tab)> drawTab) : name(name), drawTab(drawTab) {}
+	BaseViewTab(const std::string& name, const std::shared_ptr<ImGuiLayout>& model, std::function<void(bool buttonPressed, BaseViewTab& tab)> drawTab) : name(name), drawTab(drawTab), model(model) {}
 	std::string name;
 	std::function<void(bool buttonPressed, BaseViewTab& tab)> drawTab;
+	std::shared_ptr<ImGuiLayout> model;
 };
 
 class BaseView {
@@ -21,8 +22,9 @@ protected:
 	float extraVerticalSpacing;
 
 	void toolTip(const char* desc);
-	void addTab(const std::string& name, std::function<void(bool buttonPressed, BaseViewTab& tab)> drawTab);
+	void addTab(const std::string& name, const std::shared_ptr<ImGuiLayout>& model, std::function<void(bool buttonPressed, BaseViewTab& tab)> drawTab);
 	void runErrorMsg(bool open);
+	int getTabCount() {return (int)tabs.size();}
 
 	const char* errorMsg;
 	std::string errorMsgString;
