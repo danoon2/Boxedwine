@@ -35,8 +35,6 @@ void AppChooserDlg::run() {
                     // don't hold on to this, it will be deleted before this runs
                     if (onSelected) {
                         onSelected(app);
-                    } else {
-                        new AppOptionsDlg(app);
                     }
                     return false;
                     });

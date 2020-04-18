@@ -2,7 +2,7 @@
 #include "../boxedwineui.h"
 #include "../../../lib/imgui/addon/imguitinyfiledialogs.h"
 
-OptionsView::OptionsView(std::string tab) : BaseView("OptionsView"), lastThemeSelectionIndex(-1) {
+OptionsView::OptionsView(std::string tab) : BaseView("OptionsView") {
     if (tab.length()) {
         if (tab == "Wine") {
             this->tabIndex = 2;
@@ -11,98 +11,75 @@ OptionsView::OptionsView(std::string tab) : BaseView("OptionsView"), lastThemeSe
         }
 
     }
-    this->generalTitle = getTranslation(OPTIONSVIEW_TITLE_GENERAL);
-    this->displayTitle = getTranslation(OPTIONSVIEW_TITLE_DISPLAY);
     this->wineTitle = getTranslation(OPTIONSVIEW_TITLE_WINE_VERSISONS);
-    this->defaultResolutionLabel = getTranslation(OPTIONSVIEW_DEFAULT_RESOLUTION_LABEL);
-    this->defaultResolutionHelp = getTranslation(OPTIONSVIEW_DEFAULT_RESOLUTION_HELP);
-    this->defaultScaleLabel = getTranslation(OPTIONSVIEW_DEFAULT_SCALE_LABEL);
-    this->defaultScaleHelp = getTranslation(OPTIONSVIEW_DEFAULT_SCALE_HELP);
 
-    this->saveFolderLabel = getTranslation(OPTIONSVIEW_SAVE_FOLDER_LABEL);
-    this->saveFolderHelp = getTranslation(OPTIONSVIEW_SAVE_FOLDER_HELP, false);
-    this->themeLabel = getTranslation(OPTIONSVIEW_THEME_LABEL);
-    this->themeHelp = getTranslation(OPTIONSVIEW_THEME_HELP, false);
-    this->browseButtonText = getTranslation(GENERIC_BROWSE_BUTTON);
+    createGeneralTab();
+    createThemeTab();
     
-    this->leftColumnWidthGeneral = ImGui::CalcTextSize(this->saveFolderLabel).x;
-    float width = ImGui::CalcTextSize(this->defaultResolutionLabel).x;
-    if (width > leftColumnWidthGeneral) {
-        this->leftColumnWidthGeneral = width;
-    }
-    width = ImGui::CalcTextSize(this->defaultScaleLabel).x;
-    if (width > leftColumnWidthGeneral) {
-        this->leftColumnWidthGeneral = width;
-    }
-
-    this->leftColumnWidthGeneral += ImGui::GetStyle().ItemSpacing.x;
-
-    this->leftColumnWidthDisplay = ImGui::CalcTextSize(this->themeLabel).x;
-    this->leftColumnWidthDisplay += ImGui::GetStyle().ItemSpacing.x;
-
-    this->rightColumnWidth = ImGui::CalcTextSize(this->browseButtonText).x + ImGui::GetStyle().FramePadding.x * 2 + ImGui::GetStyle().ItemSpacing.x;
-    
-    strcpy(this->saveFolderLocationBuffer, GlobalSettings::getDataFolder().c_str());
-
-    this->themeComboboxData.data.push_back(getTranslation(OPTIONSVIEW_THEME_DARK));
-    this->themeComboboxData.data.push_back(getTranslation(OPTIONSVIEW_THEME_LIGHT));
-    this->themeComboboxData.data.push_back(getTranslation(OPTIONSVIEW_THEME_CLASSIC));
-    this->themeComboboxData.dataChanged();
-    if (GlobalSettings::getTheme()=="Light") {
-        this->themeComboboxData.currentSelectedIndex = 1;
-    } else if (GlobalSettings::getTheme()=="Classic") {
-        this->themeComboboxData.currentSelectedIndex = 2;
-    } else {
-        this->themeComboboxData.currentSelectedIndex = 0;
-    }
-    for (auto& res : GlobalSettings::getAvailableResolutions()) {
-        this->resolutionComboboxData.data.push_back(res);
-    }
-    this->resolutionComboboxData.dataChanged();
-    this->scaleComboboxData.data.push_back("1/2x");
-    this->scaleComboboxData.data.push_back("1x");
-    this->scaleComboboxData.data.push_back("2x");
-    this->scaleComboboxData.data.push_back("3x");
-    this->scaleComboboxData.dataChanged();
-
-    this->resolutionComboboxData.currentSelectedIndex = stringIndexInVector(GlobalSettings::getDefaultResolution(), this->resolutionComboboxData.data, 0);
-
-    if (GlobalSettings::getDefaultScale() == 50) {
-        this->scaleComboboxData.currentSelectedIndex = 0;
-    } else if (GlobalSettings::getDefaultScale() == 100) {
-        this->scaleComboboxData.currentSelectedIndex = 1;
-    } else if (GlobalSettings::getDefaultScale() == 200) {
-        this->scaleComboboxData.currentSelectedIndex = 2;
-    } else if (GlobalSettings::getDefaultScale() == 300) {
-        this->scaleComboboxData.currentSelectedIndex = 3;
-    } else {
-        this->scaleComboboxData.currentSelectedIndex = 1;
-    }
-
-    addTab(this->generalTitle, NULL, [this](bool buttonPressed, BaseViewTab& tab) {
-        this->runGeneralOptions();
-        });
-    addTab(this->displayTitle, NULL, [this](bool buttonPressed, BaseViewTab& tab) {
-        if (this->lastThemeSelectionIndex != this->themeComboboxData.currentSelectedIndex) {
-            if (this->themeComboboxData.currentSelectedIndex == 0) {
-                ImGui::StyleColorsDark();
-                ImGui::GetStyle().FrameBorderSize = 0.0f;
-            } else if (this->themeComboboxData.currentSelectedIndex == 1) {
-                ImGui::StyleColorsLight();
-                ImGui::GetStyle().FrameBorderSize = 1.0f;
-            } else {
-                ImGui::StyleColorsClassic();
-                ImGui::GetStyle().FrameBorderSize = 0.0f;
-            }
-            this->lastThemeSelectionIndex = this->themeComboboxData.currentSelectedIndex;
-        }
-        this->runDisplayOptions();
-        });
     addTab(this->wineTitle, NULL, [this](bool buttonPressed, BaseViewTab& tab) {
         this->runWineOptions();
         });    
 
     loadWineVersions();
+}
+
+void OptionsView::createThemeTab() {
+    std::shared_ptr<ImGuiLayout> model = std::make_shared<ImGuiLayout>();
+    std::shared_ptr<LayoutSection> section = model->addSection(OPTIONSVIEW_TITLE_DISPLAY);
+    
+    std::vector<ComboboxItem> themes;
+    themes.push_back(ComboboxItem(getTranslation(OPTIONSVIEW_THEME_DARK), "Dark"));
+    themes.push_back(ComboboxItem(getTranslation(OPTIONSVIEW_THEME_LIGHT), "Light"));
+    themes.push_back(ComboboxItem(getTranslation(OPTIONSVIEW_THEME_CLASSIC), "Classic"));
+
+    themeControl = section->addComboboxRow(OPTIONSVIEW_DEFAULT_RESOLUTION_LABEL, OPTIONSVIEW_DEFAULT_RESOLUTION_HELP, themes);
+    themeControl->setWidth(GlobalSettings::scaleIntUI(150));
+
+    themeControl->setSelectionStringValue(GlobalSettings::getTheme());
+    themeControl->onChange = [this]() {
+        GlobalSettings::setTheme(this->themeControl->getSelectionStringValue());
+        GlobalSettings::saveConfig();
+    };
+
+    addTab(getTranslation(OPTIONSVIEW_TITLE_DISPLAY), model, [this](bool buttonPressed, BaseViewTab& tab) {
+        });
+}
+
+void OptionsView::createGeneralTab() {
+    std::shared_ptr<ImGuiLayout> model = std::make_shared<ImGuiLayout>();
+    std::shared_ptr<LayoutSection> section = model->addSection(OPTIONSVIEW_TITLE_GENERAL);
+
+    saveLocationControl = section->addTextInputRow(OPTIONSVIEW_SAVE_FOLDER_LABEL, OPTIONSVIEW_SAVE_FOLDER_HELP, GlobalSettings::getDataFolder());
+    saveLocationControl->setBrowseDirButton();
+    // :TODO: track when we loose focus and save
+
+    std::vector<ComboboxItem> resolutions;
+    for (auto& res : GlobalSettings::getAvailableResolutions()) {
+        resolutions.push_back(ComboboxItem(res));
+    }
+    resolutionControl = section->addComboboxRow(OPTIONSVIEW_DEFAULT_RESOLUTION_LABEL, OPTIONSVIEW_DEFAULT_RESOLUTION_HELP, resolutions);
+    resolutionControl->setWidth(GlobalSettings::scaleIntUI(150));
+    resolutionControl->setSelectionByLabel(GlobalSettings::getDefaultResolution());
+    resolutionControl->onChange = [this]() {
+        GlobalSettings::defaultResolution = GlobalSettings::availableResolutions[this->resolutionControl->getSelection()];
+        GlobalSettings::saveConfig();
+    };
+
+    std::vector<ComboboxItem> scales;
+    scales.push_back(ComboboxItem("1/2x", 50));
+    scales.push_back(ComboboxItem("1x", 100));
+    scales.push_back(ComboboxItem("2x", 200));
+    scales.push_back(ComboboxItem("3x", 300));
+    scaleControl = section->addComboboxRow(OPTIONSVIEW_DEFAULT_SCALE_LABEL, OPTIONSVIEW_DEFAULT_SCALE_HELP, scales, GlobalSettings::getDefaultScale()/100);
+    scaleControl->setWidth(GlobalSettings::scaleIntUI(150));
+    scaleControl->onChange = [this]() {
+        GlobalSettings::defaultScale = this->scaleControl->getSelectionIntValue();
+        GlobalSettings::saveConfig();
+    };
+
+    addTab(getTranslation(OPTIONSVIEW_TITLE_GENERAL), model, [this](bool buttonPressed, BaseViewTab& tab) {
+
+        });
 }
 
 void OptionsView::loadWineVersions() {
@@ -173,75 +150,6 @@ void OptionsView::loadWineVersions() {
         this->wineButtonTotalColumnWidth = rightColumn + ImGui::GetStyle().ItemSpacing.x;
     }
     ImGui::PopFont();
-}
-
-void OptionsView::runDisplayOptions() {
-    ImGui::PushFont(GlobalSettings::largeFont);
-    ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing));
-    SAFE_IMGUI_TEXT(this->displayTitle);
-    ImGui::PopFont();
-
-    ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing / 2));
-    ImGui::AlignTextToFramePadding();
-    SAFE_IMGUI_TEXT(this->themeLabel);
-    ImGui::SameLine(this->leftColumnWidthDisplay);
-    ImGui::PushItemWidth(-1 - (this->themeHelp ? this->toolTipWidth : 0));
-    ImGui::Combo("##ThemeCombo", &this->themeComboboxData.currentSelectedIndex, this->themeComboboxData.dataForCombobox);
-    ImGui::PopItemWidth();
-    if (this->themeHelp) {
-        ImGui::SameLine();
-        toolTip(this->themeHelp);
-    }
-}
-
-void OptionsView::runGeneralOptions() {    
-    ImGui::PushFont(GlobalSettings::largeFont);
-    ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing));
-    SAFE_IMGUI_TEXT(this->generalTitle);
-    ImGui::PopFont();
-
-    ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing));
-    ImGui::AlignTextToFramePadding();
-    SAFE_IMGUI_TEXT(this->saveFolderLabel);
-    ImGui::SameLine(this->leftColumnWidthGeneral);
-    ImGui::PushItemWidth(-this->rightColumnWidth - (saveFolderHelp ? this->toolTipWidth : 0));
-    ImGui::InputText("##LocationID", this->saveFolderLocationBuffer, sizeof(this->saveFolderLocationBuffer));
-    ImGui::PopItemWidth();
-    ImGui::SameLine();
-    if (ImGui::Button(this->browseButtonText)) {
-        const char* result = tfd::selectFolderDialog(getTranslation(GENERIC_OPEN_FOLDER_TITLE), this->saveFolderLocationBuffer);
-        if (result) {
-            strcpy(this->saveFolderLocationBuffer, result);
-        }
-    }
-    if (this->saveFolderHelp) {
-        ImGui::SameLine();
-        this->toolTip(this->saveFolderHelp);
-    }
-
-    ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing / 2));
-    ImGui::AlignTextToFramePadding();
-    SAFE_IMGUI_TEXT(this->defaultResolutionLabel);
-    ImGui::SameLine(this->leftColumnWidthGeneral);
-    ImGui::PushItemWidth(-1 - (this->defaultResolutionHelp ? this->toolTipWidth : 0));
-    ImGui::Combo("##ResolutionCombo", &this->resolutionComboboxData.currentSelectedIndex, this->resolutionComboboxData.dataForCombobox);
-    ImGui::PopItemWidth();
-    if (this->defaultResolutionHelp) {
-        ImGui::SameLine();
-        toolTip(this->defaultResolutionHelp);
-    }
-
-    ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing / 2));
-    ImGui::AlignTextToFramePadding();
-    SAFE_IMGUI_TEXT(this->defaultScaleLabel);
-    ImGui::SameLine(this->leftColumnWidthGeneral);
-    ImGui::PushItemWidth(-1 - (this->defaultScaleHelp ? this->toolTipWidth : 0));
-    ImGui::Combo("##ScaleCombo", &this->scaleComboboxData.currentSelectedIndex, this->scaleComboboxData.dataForCombobox);
-    ImGui::PopItemWidth();
-    if (this->defaultScaleHelp) {
-        ImGui::SameLine();
-        toolTip(this->defaultScaleHelp);
-    }
 }
 
 void OptionsView::runWineOptions() {
@@ -351,30 +259,11 @@ void OptionsView::download(WineVersion* version) {
 
 bool OptionsView::saveChanges() {
     this->errorMsg = NULL;
-    if (!Fs::doesNativePathExist(this->saveFolderLocationBuffer)) {
+    if (!Fs::doesNativePathExist(this->saveLocationControl->getText())) {
         this->errorMsg = getTranslation(OPTIONSVIEW_ERROR_DATA_DIR_NOT_FOUND);
     }
     if (!this->errorMsg) {
-        GlobalSettings::setDataFolder(this->saveFolderLocationBuffer);
-        std::string theme;
-        if (this->themeComboboxData.currentSelectedIndex==1) {
-            theme = "Light";
-        } else if (this->themeComboboxData.currentSelectedIndex==2) {
-            theme = "Classic";
-        } else {
-            theme = "Dark";
-        }
-        GlobalSettings::setTheme(theme);
-        if (this->scaleComboboxData.currentSelectedIndex == 0) {
-            GlobalSettings::defaultScale = 50;
-        } else if (this->scaleComboboxData.currentSelectedIndex == 2) {
-            GlobalSettings::defaultScale = 200;
-        } else if (this->scaleComboboxData.currentSelectedIndex == 3) {
-            GlobalSettings::defaultScale = 300;
-        } else {
-            GlobalSettings::defaultScale = 100;
-        }
-        GlobalSettings::defaultResolution = GlobalSettings::availableResolutions[this->resolutionComboboxData.currentSelectedIndex];
+        GlobalSettings::setDataFolder(this->saveLocationControl->getText());
         GlobalSettings::saveConfig();
     }
 

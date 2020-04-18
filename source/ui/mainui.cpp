@@ -130,7 +130,7 @@ void loadApps() {
                         } else {
                             if (ImGui::Selectable("Options")) {
                                 ImGui::EndPopup();
-                                new AppOptionsDlg(app);
+                                //new AppOptionsDlg(app);
                                 return true;
                             }
                             ImGui::EndPopup();

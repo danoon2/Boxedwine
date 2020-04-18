@@ -34,7 +34,7 @@ public:
     static const std::vector<WineVersion>& getAvailableWineVersions() { return GlobalSettings::availableWineVersions; }
     static std::string getDataFolder() {return GlobalSettings::dataFolderLocation;}
     static void setDataFolder(const std::string& location) {GlobalSettings::dataFolderLocation = location;}
-    static void setTheme(const std::string& theme) {GlobalSettings::theme=theme;}
+    static void setTheme(const std::string& theme);
     static std::string getTheme() {return GlobalSettings::theme;}
     static void saveConfig();
     static void loadTheme();

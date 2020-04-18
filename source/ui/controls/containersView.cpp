@@ -121,26 +121,26 @@ ContainersView::ContainersView(std::string tab) : BaseView("ContainersView"), cu
     }
     this->innerColumnWidth.x += ImGui::GetStyle().ItemSpacing.x + this->leftColumnWidth.x;
 
-    this->resolutionComboboxData.data.push_back(getTranslation(GENERIC_DEFAULT));
+    this->resolutionComboboxData.data.push_back(ComboboxItem(getTranslation(GENERIC_DEFAULT)));
     for (auto& res : GlobalSettings::getAvailableResolutions()) {
-        this->resolutionComboboxData.data.push_back(res);
+        this->resolutionComboboxData.data.push_back(ComboboxItem(res));
     }
     this->resolutionComboboxData.dataChanged();
 
-    this->bppComboboxData.data.push_back("32-bit (default)");
-    this->bppComboboxData.data.push_back("16-bit");
-    this->bppComboboxData.data.push_back("8-bit (256 colors)");
+    this->bppComboboxData.data.push_back(ComboboxItem("32-bit (default)", 32));
+    this->bppComboboxData.data.push_back(ComboboxItem("16-bit", 16));
+    this->bppComboboxData.data.push_back(ComboboxItem("8-bit (256 colors)", 8));
     this->bppComboboxData.dataChanged();
 
-    this->scaleComboboxData.data.push_back(getTranslation(GENERIC_DEFAULT));
-    this->scaleComboboxData.data.push_back("1/2x");
-    this->scaleComboboxData.data.push_back("1x");
-    this->scaleComboboxData.data.push_back("2x");
-    this->scaleComboboxData.data.push_back("3x");
+    this->scaleComboboxData.data.push_back(ComboboxItem(getTranslation(GENERIC_DEFAULT), 0));
+    this->scaleComboboxData.data.push_back(ComboboxItem("1/2x", 50));
+    this->scaleComboboxData.data.push_back(ComboboxItem("1x", 100));
+    this->scaleComboboxData.data.push_back(ComboboxItem("2x", 200));
+    this->scaleComboboxData.data.push_back(ComboboxItem("3x", 300));
     this->scaleComboboxData.dataChanged();
 
-    this->scaleQualityComboboxData.data.push_back("Nearest Pixel Sampling (default)");
-    this->scaleQualityComboboxData.data.push_back("Linear Filtering");
+    this->scaleQualityComboboxData.data.push_back(ComboboxItem("Nearest Pixel Sampling (default)"));
+    this->scaleQualityComboboxData.data.push_back(ComboboxItem("Linear Filtering"));
     this->scaleQualityComboboxData.dataChanged();
 
     this->containerLocationOpenLabelButtonWidth = ImGui::CalcTextSize(this->containerLocationOpenLabel).x + ImGui::GetStyle().FramePadding.x * 2 + ImGui::GetStyle().ItemSpacing.x;
@@ -160,9 +160,9 @@ ContainersView::ContainersView(std::string tab) : BaseView("ContainersView"), cu
     this->windowsVersionComboboxData.dataChanged();
 
     this->mountDriveComboboxData.data.clear();
-    this->mountDriveComboboxData.data.push_back(" ");
+    this->mountDriveComboboxData.data.push_back(ComboboxItem(" "));
     for (int i = 3; i < 26; i++) {
-        this->mountDriveComboboxData.data.push_back(std::string(1, (char)('A' + i))+":");
+        this->mountDriveComboboxData.data.push_back(ComboboxItem(std::string(1, (char)('A' + i))+":", std::to_string('A'+i)));
     }
     this->mountDriveComboboxData.dataChanged();
     this->mountLocation[0] = 0;     
@@ -202,7 +202,7 @@ bool ContainersView::saveChanges() {
             if (this->resolutionComboboxData.currentSelectedIndex == 0) {
                 this->currentApp->resolution = "";
             } else {
-                this->currentApp->resolution = this->resolutionComboboxData.data[this->resolutionComboboxData.currentSelectedIndex];
+                this->currentApp->resolution = this->resolutionComboboxData.data[this->resolutionComboboxData.currentSelectedIndex].label;
             }
             if (this->bppComboboxData.currentSelectedIndex == 0) {
                 this->currentApp->bpp = 32;
@@ -251,7 +251,7 @@ void ContainersView::setCurrentApp(BoxedApp* app) {
         this->path[sizeof(this->path) - 1] = 0;
     }
 
-    this->resolutionComboboxData.currentSelectedIndex = stringIndexInVector(app->resolution, this->resolutionComboboxData.data, 0);
+    //this->resolutionComboboxData.currentSelectedIndex = stringIndexInVector(app->resolution, this->resolutionComboboxData.data, 0);
 
     if (app->bpp == 16) {
         this->bppComboboxData.currentSelectedIndex = 1;
@@ -296,7 +296,7 @@ void ContainersView::setCurrentContainer(BoxedContainer* container) {
     this->currentContainer = container;
     this->currentContainerChanged = false;
     this->currentContainerMountChanged = false;
-    this->wineVersionComboboxData.currentSelectedIndex = stringIndexInVector(container->getWineVersion(), this->wineVersionComboboxData.data, 0);
+    //this->wineVersionComboboxData.currentSelectedIndex = stringIndexInVector(container->getWineVersion(), this->wineVersionComboboxData.data, 0);
     strncpy(this->containerName, container->getName().c_str(), sizeof(this->containerName));
     this->containerName[sizeof(this->containerName) - 1] = 0;
 
@@ -324,7 +324,7 @@ void ContainersView::setCurrentContainer(BoxedContainer* container) {
         this->currentApp = NULL;
     }
     this->gdiRenderer = this->currentContainer->isGDI();
-    this->windowsVersionComboboxData.currentSelectedIndex = vectorIndexOf(this->windowsVersionComboboxData.data, this->currentContainer->getWindowsVersion());
+    //this->windowsVersionComboboxData.currentSelectedIndex = vectorIndexOf(this->windowsVersionComboboxData.data, this->currentContainer->getWindowsVersion());
     if (this->windowsVersionComboboxData.currentSelectedIndex < 0) {
         this->windowsVersionComboboxData.currentSelectedIndex = BoxedwineData::getDefaultWindowsVersionIndex();
     }

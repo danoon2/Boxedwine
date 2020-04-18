@@ -11,11 +11,21 @@ enum class LayoutControlType {
 	Seperator
 };
 
+class ComboboxItem {
+public:
+	ComboboxItem(const std::string& label, const std::string& value) : label(label), strValue(value), intValue(0) {};
+	ComboboxItem(const std::string& label, int value) : label(label), intValue(value) {};
+	ComboboxItem(const std::string& label) : label(label), strValue(label), intValue(0) {};
+	std::string label;
+	std::string strValue;
+	int intValue;
+};
+
 class ComboboxData {
 public:
 	ComboboxData() : dataForCombobox(0), currentSelectedIndex(0) {}
 	char* dataForCombobox;
-	std::vector<std::string> data;
+	std::vector<ComboboxItem> data;
 	int currentSelectedIndex;
 
 	void dataChanged();
@@ -63,7 +73,7 @@ public:
 	void setText(const std::string& text) { strncpy(this->text, text.c_str(), sizeof(this->text)); }
 	std::string getText() {return this->text;}
 
-	void setBrowseFileButton(char const* const* const browseFileTypes) {this->browseButtonType = BROWSE_BUTTON_FILE; this->browseFileTypes = browseFileTypes;}
+	void setBrowseFileButton(const std::vector<std::string>& browseFileTypes) {this->browseButtonType = BROWSE_BUTTON_FILE; this->browseFileTypes = browseFileTypes;}
 	void setBrowseDirButton() {this->browseButtonType = BROWSE_BUTTON_DIR;}
 	void removeBrowseButton() {this->browseButtonType = BROWSE_BUTTON_NONE;}
 
@@ -73,7 +83,7 @@ private:
 	bool hasDirBrowseButton;
 	float browseButtonWidth;
 	const char* browseButtonLabel;
-	char const* const* browseFileTypes;
+	std::vector<std::string> browseFileTypes;
 	char text[1024];
 };
 
@@ -84,7 +94,12 @@ public:
 	void setSelection(int selection) { this->options.currentSelectedIndex = selection; if (this->onChange) {onChange();} }
 	int getSelection() {return this->options.currentSelectedIndex;}
 
-	void setOptions(const std::vector<std::string>& options);
+	bool setSelectionByLabel(const std::string& label);
+	bool setSelectionStringValue(const std::string& value);
+	int getSelectionIntValue() {return this->options.data[this->options.currentSelectedIndex].intValue;}
+	std::string getSelectionStringValue() { return this->options.data[this->options.currentSelectedIndex].strValue; }
+
+	void setOptions(const std::vector<ComboboxItem>& options);
 
 	virtual void draw(int width);
 private:
@@ -118,7 +133,7 @@ public:
 	void drawToolTip(const std::string& help);
 
 	std::shared_ptr<LayoutTextInputControl> addTextInput(const std::string& initialValue = "", bool readOnly = false);
-	std::shared_ptr<LayoutComboboxControl> addComboBox(const std::vector<std::string>& options, int selected=0);
+	std::shared_ptr<LayoutComboboxControl> addComboBox(const std::vector<ComboboxItem>& options, int selected=0);
 	std::shared_ptr<LayoutSeparatorControl> addSeparator();
 	std::shared_ptr<LayoutButtonControl> addButton(const std::string& label);
 
@@ -144,7 +159,7 @@ public:
 
 	// convenience functions
 	std::shared_ptr<LayoutTextInputControl> addTextInputRow(int labelId, int helpId, const std::string& initialValue="", bool readOnly=false);
-	std::shared_ptr<LayoutComboboxControl> addComboboxRow(int labelId, int helpId, const std::vector<std::string>& options, int selected = 0);
+	std::shared_ptr<LayoutComboboxControl> addComboboxRow(int labelId, int helpId, const std::vector<ComboboxItem>& options, int selected = 0);
 	std::shared_ptr<LayoutSeparatorControl> addSeparator();
 	std::shared_ptr<LayoutButtonControl> addButton(int labelId, int helpId, const std::string& buttonLabel);
 

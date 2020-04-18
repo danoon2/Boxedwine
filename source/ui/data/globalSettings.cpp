@@ -329,3 +329,8 @@ U32 GlobalSettings::getFrameDelayMillies() {
     }
     return FAST_FRAME_DELAY;
 }
+
+void GlobalSettings::setTheme(const std::string& theme) { 
+    GlobalSettings::theme = theme; 
+    loadTheme();
+}

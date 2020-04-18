@@ -48,14 +48,14 @@ public:
 	ImFont* font;
 };
 
-void LayoutRow::draw(float toolTipWidth, float labelOffset, float valueOffset) {
+void LayoutRow::draw(float toolTipWidth, float labelOffset, float valueOffset) {	
 	ImGui::Dummy(ImVec2(0.0f, GlobalSettings::extraVerticalSpacing));
-	ImGui::AlignTextToFramePadding();
-	if (labelOffset > 1.0f) {
-		SAFE_IMGUI_TEXT("");
-		ImGui::SameLine(labelOffset);
-	}
 	if (this->label.length()) {
+		ImGui::AlignTextToFramePadding();
+		if (labelOffset > 1.0f) {
+			SAFE_IMGUI_TEXT("");
+			ImGui::SameLine(labelOffset);
+		}	
 		SAFE_IMGUI_TEXT(this->label.c_str());
 		ImGui::SameLine(valueOffset);
 	}
@@ -132,9 +132,15 @@ void LayoutTextInputControl::draw(int width) {
 	}
 	
 	if (browseButton) {
+		ImGui::SameLine();
 		if (ImGui::Button(this->browseButtonLabel)) {
 			if (this->browseButtonType == BROWSE_BUTTON_FILE) {
-				const char* result = tfd::openFileDialog(getTranslation(INSTALLVIEW_OPEN_SETUP_FILE_TITLE), this->text, 1, this->browseFileTypes, NULL, 0);
+				char** types = (char**)alloca(sizeof(char*) * this->browseFileTypes.size());
+				for (int i=0;i<(int)this->browseFileTypes.size();i++) {
+					types[i] = (char*)alloca(this->browseFileTypes[i].length() + 1);
+					strcpy(types[i], this->browseFileTypes[i].c_str());
+				}
+				const char* result = tfd::openFileDialog(getTranslation(INSTALLVIEW_OPEN_SETUP_FILE_TITLE), this->text, 1, types, NULL, 0);
 				if (result) {
 					strcpy(this->text, result);
 					if (this->onChange) {
@@ -218,7 +224,7 @@ std::shared_ptr<LayoutTextInputControl> LayoutSection::addTextInputRow(int label
 	return row->addTextInput(initialValue, readOnly);
 }
 
-std::shared_ptr<LayoutComboboxControl> LayoutSection::addComboboxRow(int labelId, int helpId, const std::vector<std::string>& options, int selected) {
+std::shared_ptr<LayoutComboboxControl> LayoutSection::addComboboxRow(int labelId, int helpId, const std::vector<ComboboxItem>& options, int selected) {
 	std::shared_ptr<LayoutRow> row = this->addRow(labelId, helpId);
 	return row->addComboBox(options, selected);
 }
@@ -249,7 +255,7 @@ void LayoutRow::setHelp(int helpId) {
 	this->help = getTranslation(helpId, false);
 }
 
-std::shared_ptr<LayoutComboboxControl> LayoutRow::addComboBox(const std::vector<std::string>& options, int selected) {
+std::shared_ptr<LayoutComboboxControl> LayoutRow::addComboBox(const std::vector<ComboboxItem>& options, int selected) {
 	std::shared_ptr<LayoutComboboxControl> control = std::make_shared<LayoutComboboxControl>(shared_from_this());
 	control->setOptions(options);
 	if (selected) {
@@ -274,9 +280,29 @@ std::shared_ptr<LayoutButtonControl> LayoutRow::addButton(const std::string& lab
 	return control;
 }
 
-void LayoutComboboxControl::setOptions(const std::vector<std::string>& options) {
+void LayoutComboboxControl::setOptions(const std::vector<ComboboxItem>& options) {
 	this->options.data = options;
 	this->options.dataChanged();
+}
+
+bool LayoutComboboxControl::setSelectionByLabel(const std::string& label) {
+	for (int i = 0; i < this->options.data.size(); i++) {
+		if (this->options.data[i].label == label) {
+			this->setSelection(i);
+			return true;
+		}
+	}
+	return false;
+}
+
+bool LayoutComboboxControl::setSelectionStringValue(const std::string& value) {
+	for (int i = 0; i < this->options.data.size(); i++) {
+		if (this->options.data[i].strValue == value) {
+			this->setSelection(i);
+			return true;
+		}
+	}
+	return false;
 }
 
 LayoutControl::LayoutControl(std::shared_ptr<LayoutRow> row, LayoutControlType type) : row(row), width(0), type(type), readOnly(false), font(NULL) {

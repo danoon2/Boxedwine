@@ -30,24 +30,28 @@ void InstallView::createInstallTab(const std::string& initialFileOrDirPath) {
     std::shared_ptr<LayoutSection> section = model->addSection(INSTALLVIEW_INSTALL_TITLE);
 
     // Initialize Install Type Control
-    std::vector<std::string> installTypes;
-    installTypes.push_back(getTranslation(INSTALLVIEW_TYPE_SETUP));
-    installTypes.push_back(getTranslation(INSTALLVIEW_TYPE_DIRECTORY));
-    installTypes.push_back(getTranslation(INSTALLVIEW_TYPE_MOUNT));
-    installTypes.push_back(getTranslation(INSTALLVIEW_TYPE_BLANK));
+    std::vector<ComboboxItem> installTypes;
+    installTypes.push_back(ComboboxItem(getTranslation(INSTALLVIEW_TYPE_SETUP)));
+    installTypes.push_back(ComboboxItem(getTranslation(INSTALLVIEW_TYPE_DIRECTORY)));
+    installTypes.push_back(ComboboxItem(getTranslation(INSTALLVIEW_TYPE_MOUNT)));
+    installTypes.push_back(ComboboxItem(getTranslation(INSTALLVIEW_TYPE_BLANK)));
     installTypeControl = section->addComboboxRow(INSTALLVIEW_INSTALL_TYPE_LABEL, INSTALLVIEW_INSTALL_TYPE_HELP, installTypes, 0);
     installTypeControl->onChange = [this]() {
         int type = installTypeControl->getSelection();
         locationControl->setRowHidden(type == INSTALL_TYPE_BLANK);
         containerControl->setReadOnly(type == INSTALL_TYPE_BLANK);
-        if (INSTALL_TYPE_BLANK == INSTALL_TYPE_SETUP) {
-            const char* types[] = { "*.exe" };
+        if (type == INSTALL_TYPE_SETUP) {
+            std::vector<std::string> types;
+            types.push_back("*.exe");
+#ifndef BOXEDWINE_MSVC
+            types.push_back("*.EXE");
+#endif
             locationControl->setBrowseFileButton(types);
             locationControl->setHelpId(INSTALLVIEW_TYPE_SETUP_HELP);
-        } else if (INSTALL_TYPE_BLANK == INSTALL_TYPE_DIR) {
+        } else if (type == INSTALL_TYPE_DIR) {
             locationControl->setBrowseDirButton();
             locationControl->setHelpId(INSTALLVIEW_TYPE_DIR_HELP);
-        } else if (INSTALL_TYPE_BLANK == INSTALL_TYPE_MOUNT) {
+        } else if (type == INSTALL_TYPE_MOUNT) {
             locationControl->setBrowseDirButton();
             locationControl->setHelpId(INSTALLVIEW_TYPE_MOUNT_HELP);
         } else {
@@ -56,13 +60,13 @@ void InstallView::createInstallTab(const std::string& initialFileOrDirPath) {
     };
 
     // Initialize File/Dir Location Control
-    locationControl = section->addTextInputRow(INSTALLVIEW_SETUP_FILE_LOCATION_LABEL, INSTALLVIEW_TYPE_SETUP_HELP);        
+    locationControl = section->addTextInputRow(INSTALLVIEW_SETUP_FILE_LOCATION_LABEL, INSTALLVIEW_TYPE_SETUP_HELP);
 
     // Initialize Container Control
-    std::vector<std::string> containers;
-    containers.push_back(getTranslation(INSTALLVIEW_NEW_CONTAINER));
+    std::vector<ComboboxItem> containers;
+    containers.push_back(ComboboxItem(getTranslation(INSTALLVIEW_NEW_CONTAINER)));
     for (auto& container : BoxedwineData::getContainers()) {
-        containers.push_back(container->getName());
+        containers.push_back(ComboboxItem(container->getName()));
     }
     containerControl = section->addComboboxRow(INSTALLVIEW_CONTAINER_LABEL, INSTALLVIEW_CONTAINER_HELP, containers, 0);    
 
@@ -77,18 +81,20 @@ void InstallView::createInstallTab(const std::string& initialFileOrDirPath) {
     containerNameControl = containerSection->addTextInputRow(INSTALLVIEW_CONTAINER_NAME_LABEL, INSTALLVIEW_CONTAINER_NAME_HELP);
 
     // Initialize Wine Version Control
-    std::vector<std::string> wineVersions;
+    std::vector<ComboboxItem> wineVersions;
     for (auto& ver : GlobalSettings::getWineVersions()) {
-        wineVersions.push_back(ver.name);
+        wineVersions.push_back(ComboboxItem(ver.name));
     }
     wineVersionControl = containerSection->addComboboxRow(COMMON_WINE_VERSION_LABEL, COMMON_WINE_VERSION_HELP, wineVersions, 0);
+    wineVersionControl->setWidth(GlobalSettings::scaleIntUI(150));
 
     // Initialize Windows Version Control
-    std::vector<std::string> windowsVersion;
+    std::vector<ComboboxItem> windowsVersion;
     for (auto& win : BoxedwineData::getWinVersions()) {
-        windowsVersion.push_back(win.szDescription);
+        windowsVersion.push_back(ComboboxItem(win.szDescription));
     }
     windowsVersionControl = containerSection->addComboboxRow(CONTAINER_VIEW_WINDOWS_VERION_LABEL, CONTAINER_VIEW_WINDOWS_VERION_HELP, windowsVersion, BoxedwineData::getDefaultWindowsVersionIndex());    
+    windowsVersionControl->setWidth(GlobalSettings::scaleIntUI(150));
 
     section = model->addSection();
     section->addSeparator();
