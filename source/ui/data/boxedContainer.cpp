@@ -274,7 +274,7 @@ std::string BoxedContainer::getWindowsVersion() {
         }
     }
     BoxedReg reg(this, true);    
-    int platform = VER_PLATFORM_WIN32s, major, minor = 0, build = 0;
+    int platform = VER_PLATFORM_WIN32s, major = 0, minor = 0, build = 0;
 
     std::string ver;    
     std::string type;
@@ -312,11 +312,11 @@ std::string BoxedContainer::getWindowsVersion() {
         }
     }
     for (auto& winVer : BoxedwineData::getWinVersions()) {
-        if (winVer.dwPlatformId != platform) continue;
-        if (winVer.dwMajorVersion != major) continue;
+        if ((int)winVer.dwPlatformId != platform) continue;
+        if ((int)winVer.dwMajorVersion != major) continue;
         if (type.length() && winVer.szProductType != type) continue;
         best = winVer.szDescription;
-        if ((winVer.dwMinorVersion == minor) && (winVer.dwBuildNumber == build)) {
+        if (((int)winVer.dwMinorVersion == minor) && ((int)winVer.dwBuildNumber == build)) {
             return winVer.szDescription;
         }
     }
