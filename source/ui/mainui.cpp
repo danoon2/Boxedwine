@@ -217,6 +217,10 @@ bool uiLoop() {
         ImGui_ImplSDL2_ProcessEvent(&event);
         if (event.type == SDL_QUIT) {
             done = true;
+            if (currentView) {
+                // :TODO: should we stop the quit action if this save fails?
+                currentView->saveChanges();
+            }
         } else if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(window)) {
             done = true;
         }  else if (event.type >= SDL_USEREVENT) {

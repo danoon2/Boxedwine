@@ -2,7 +2,7 @@
 #include "../boxedwineui.h"
 #include "../../../lib/imgui/addon/imguitinyfiledialogs.h"
 
-ContainersView::ContainersView(std::string tab) : BaseView("ContainersView"), currentContainer(NULL), currentContainerChanged(false), currentContainerMountChanged(false) {
+ContainersView::ContainersView(std::string tab) : BaseView("ContainersView"), currentContainer(NULL), currentContainerChanged(false), currentContainerMountChanged(false), currentApp(NULL), currentAppChanged(false) {
     std::shared_ptr<ImGuiLayout> model = std::make_shared<ImGuiLayout>();        
     section = model->addSection();
 
@@ -15,34 +15,39 @@ ContainersView::ContainersView(std::string tab) : BaseView("ContainersView"), cu
     };
 
     containerWineVersionControl = createWineVersionCombobox(section);
-    containerWineVersionControl->onChange = [this]() {
-        this->currentContainer->setWineVersion(this->containerWindowsVersionControl->getSelectionStringValue());
-        this->currentContainer->saveContainer();
+    containerWineVersionControl->onChange = [this]() {        
+        this->currentContainerChanged = true;
     };
 
     containerWindowsVersionControl = createWindowsVersionCombobox(section);
-    containerWindowsVersionControl->onChange = [this]() {
-        this->currentContainer->setWindowsVersion(BoxedwineData::getWinVersions()[this->containerWindowsVersionControl->getSelection()]);
-        this->currentContainer->saveContainer();
+    containerWindowsVersionControl->onChange = [this]() {        
+        this->currentContainerChanged = true;
     };
 
 
     containerGdiControl = section->addCheckbox(CONTAINER_VIEW_GDI_RENDERER_LABEL, CONTAINER_VIEW_GDI_RENDERER_HELP, false);
-    containerGdiControl->onChange = [this]() {
-        this->currentContainer->setGDI(containerGdiControl->isChecked());
-        this->currentContainer->saveContainer();
+    containerGdiControl->onChange = [this]() {        
+        this->currentContainerChanged = true;
     };
 
     std::vector<ComboboxItem> mountDrives;
     mountDrives.push_back(ComboboxItem(" "));
     for (int i = 3; i < 26; i++) {
-        mountDrives.push_back(ComboboxItem(std::string(1, (char)('A' + i)) + ":", std::to_string('a' + i)));
+        mountDrives.push_back(ComboboxItem(std::string(1, (char)('A' + i)) + ":", std::string(1, (char)('a' + i))));
     }
     std::shared_ptr<LayoutRow> row = section->addRow(CONTAINER_VIEW_MOUNT_DIR_LABEL, CONTAINER_VIEW_MOUNT_DIR_HELP);
     containerMountDriveControl = row->addComboBox(mountDrives);
-    containerMountDriveControl->setWidth(GlobalSettings::scaleFloatUIAndFont(50));
+    containerMountDriveControl->setWidth((int)GlobalSettings::scaleFloatUIAndFont(50));
+    containerMountDriveControl->onChange = [this]() {
+        this->currentContainerChanged = true;
+        this->currentContainerMountChanged = true;
+    };
     containerMountPathControl = row->addTextInput();
     containerMountPathControl->setBrowseDirButton();
+    containerMountPathControl->onChange = [this]() {
+        this->currentContainerChanged = true;
+        this->currentContainerMountChanged = true;
+    };
 
     row = section->addRow(CONTAINER_VIEW_CONTAINER_LOCATION_LABEL, 0);
     containerLocationControl = row->addTextInput("", true);
@@ -54,25 +59,29 @@ ContainersView::ContainersView(std::string tab) : BaseView("ContainersView"), cu
     row = section->addRow(CONTAINER_VIEW_PROGRAMS_LABEL, 0);
     containerWineCfgButtonControl = row->addButton(getTranslation(CONTAINER_VIEW_WINECFG_BUTTON_LABEL));
     containerWineCfgButtonControl->onChange = [this]() {
-        std::vector<std::string> args;
-        args.push_back("/bin/wine");
-        args.push_back("winecfg");
-        this->currentContainer->launch(args, "Winecfg");
-        std::string containerPath = this->currentContainer->getDir();
-        GlobalSettings::startUpArgs.runOnRestartUI = [containerPath]() {
-            gotoView(VIEW_CONTAINERS, containerPath);
-        };
+        if (this->saveChanges()) {
+            std::vector<std::string> args;
+            args.push_back("/bin/wine");
+            args.push_back("winecfg");
+            this->currentContainer->launch(args, "Winecfg");
+            std::string containerPath = this->currentContainer->getDir();
+            GlobalSettings::startUpArgs.runOnRestartUI = [containerPath]() {
+                gotoView(VIEW_CONTAINERS, containerPath);
+            };
+        }
     };
     containerRegeditButtonControl = row->addButton(getTranslation(CONTAINER_VIEW_REGEDIT_BUTTON_LABEL));
     containerRegeditButtonControl->onChange = [this]() {
-        std::vector<std::string> args;
-        args.push_back("/bin/wine");
-        args.push_back("regedit");
-        this->currentContainer->launch(args, "Regedit");
-        std::string containerPath = this->currentContainer->getDir();
-        GlobalSettings::startUpArgs.runOnRestartUI = [containerPath]() {
-            gotoView(VIEW_CONTAINERS, containerPath);
-        };
+        if (this->saveChanges()) {
+            std::vector<std::string> args;
+            args.push_back("/bin/wine");
+            args.push_back("regedit");
+            this->currentContainer->launch(args, "Regedit");
+            std::string containerPath = this->currentContainer->getDir();
+            GlobalSettings::startUpArgs.runOnRestartUI = [containerPath]() {
+                gotoView(VIEW_CONTAINERS, containerPath);
+            };
+        }
     };
 
     section->addSeparator();
@@ -119,7 +128,7 @@ ContainersView::ContainersView(std::string tab) : BaseView("ContainersView"), cu
     row = appSection->addRow(0, 0);
     row->setTopMargin(0.0f);
     row->addCustomControl([this]() {
-        if (this->currentApp->getIconTexture()) {
+        if (this->currentApp && this->currentApp->getIconTexture()) {
             ImVec2 pos = ImGui::GetCursorPos();
             ImGui::SetCursorPosX(0);
             ImGui::SetCursorPosY(ImGui::GetCursorPosY() + GlobalSettings::extraVerticalSpacing);
@@ -131,10 +140,19 @@ ContainersView::ContainersView(std::string tab) : BaseView("ContainersView"), cu
     appNameControl = appSection->addTextInputRow(CONTAINER_VIEW_NAME_LABEL, CONTAINER_VIEW_NAME_HELP);
     appNameControl->onChange = [this]() {
         this->currentApp->name = appNameControl->getText();
+        this->currentAppChanged = true;
         rebuildShortcutsCombobox();
     };
 
     appPathControl = appSection->addTextInputRow(CONTAINER_VIEW_SHORTCUT_PATH_LABEL, CONTAINER_VIEW_SHORTCUT_PATH_HELP, "", true);
+    appArgumentsControl = appSection->addTextInputRow(CONTAINER_VIEW_SHORTCUT_ARGUMENTS_LABEL, CONTAINER_VIEW_SHORTCUT_ARGUMENTS_HELP);
+    appArgumentsControl->setNumberOfLines(1);
+    appArgumentsControl->onChange = [this]() {
+        this->currentAppChanged = true;
+        std::vector<std::string> args;
+        stringSplit(args, appArgumentsControl->getText(), '\n');
+        appArgumentsControl->setNumberOfLines((int)args.size() + 1);
+    };
 
     std::vector<ComboboxItem> resolutions;
     resolutions.push_back(ComboboxItem(getTranslation(GENERIC_DEFAULT), ""));
@@ -158,6 +176,10 @@ ContainersView::ContainersView(std::string tab) : BaseView("ContainersView"), cu
     appFullScreenControl = appSection->addCheckbox(CONTAINER_VIEW_FULL_SCREEN_LABEL, CONTAINER_VIEW_FULL_SCREEN_HELP, false);
     appFullScreenControl->onChange = [this]() {
         this->currentAppChanged = true;
+        if (appFullScreenControl->isChecked()) {
+            appScaleControl->setSelection(0);
+        }
+        appScaleControl->setReadOnly(appFullScreenControl->isChecked());
     };
 
     std::vector<ComboboxItem> scales;
@@ -182,9 +204,13 @@ ContainersView::ContainersView(std::string tab) : BaseView("ContainersView"), cu
     row = appSection->addRow(CONTAINER_VIEW_GL_EXT_LABEL, CONTAINER_VIEW_GL_EXT_HELP);
     appGlExControl = row->addTextInput();
     appGlExControl->setNumberOfLines(3);
+    appGlExControl->onChange = [this]() {
+        this->currentAppChanged = true;
+    };
     std::shared_ptr<LayoutButtonControl> setButtonControl = row->addButton(getTranslation(CONTAINER_VIEW_GL_EXT_SET_BUTTON_LABEL));
     setButtonControl->onChange = [this]() {
         appGlExControl->setText("GL_EXT_multi_draw_arrays GL_ARB_vertex_program\nGL_ARB_fragment_program GL_ARB_multitexture\nGL_EXT_secondary_color GL_EXT_texture_lod_bias\nGL_NV_texture_env_combine4 GL_ATI_texture_env_combine3\nGL_EXT_texture_filter_anisotropic GL_ARB_texture_env_combine\nGL_EXT_texture_env_combine GL_EXT_texture_compression_s3tc\nGL_ARB_texture_compression GL_EXT_paletted_texture");
+        this->currentAppChanged = true;
     };
 
     for (auto& item : BoxedwineData::getContainers()) {
@@ -253,6 +279,9 @@ bool ContainersView::saveChanges() {
                     this->currentContainer->addNewMount(MountInfo(this->containerMountDriveControl->getSelectionStringValue(), containerMountPathControl->getText(), true));
                 }
             }
+            this->currentContainer->setWineVersion(this->containerWineVersionControl->getSelectionStringValue());
+            this->currentContainer->setWindowsVersion(BoxedwineData::getWinVersions()[this->containerWindowsVersionControl->getSelection()]);
+            this->currentContainer->setGDI(containerGdiControl->isChecked());
             this->currentContainer->saveContainer();
             this->currentContainerChanged = false;            
         }
@@ -263,6 +292,9 @@ bool ContainersView::saveChanges() {
             stringReplaceAll(ext, "  ", " ");
             this->currentApp->glExt = ext;
             this->currentApp->name = appNameControl->getText();
+            this->currentApp->args.clear();
+            stringSplit(this->currentApp->args, appArgumentsControl->getText(), '\n');
+            
             this->currentApp->resolution = appResolutionControl->getSelectionStringValue();
             this->currentApp->bpp = appBppControl->getSelectionIntValue();
             this->currentApp->scale = appScaleControl->getSelectionIntValue();
@@ -287,17 +319,26 @@ void ContainersView::setCurrentApp(BoxedApp* app) {
     } else {
         appPathControl->setText(app->path+"/"+app->cmd);
     }
-
-    //this->resolutionComboboxData.currentSelectedIndex = stringIndexInVector(app->resolution, this->resolutionComboboxData.data, 0);
+    std::string args;
+    for (auto& arg : app->args) {
+        if (args.length()) {
+            args += "\n";
+        }
+        args += arg;
+    }
+    appArgumentsControl->setText(args);
+    appArgumentsControl->setNumberOfLines((int)app->args.size() + 1);
+    appResolutionControl->setSelectionByLabel(app->resolution);
     appBppControl->setSelectionIntValue(app->bpp);
 
 
     if (app->fullScreen) {
         appScaleControl->setSelection(0);
-    } else if (app->scale == 50) {
+    } else {
         appScaleControl->setSelectionIntValue(app->scale);
     }
-    appScaleQualityControl->setSelectionIntValue(app->scaleQuality);
+    appScaleControl->setReadOnly(app->fullScreen);
+    appScaleQualityControl->setSelection(app->scaleQuality);
     appFullScreenControl->setCheck(app->fullScreen);
 }
 

@@ -17,8 +17,19 @@ bool BoxedApp::load(BoxedContainer* container, const std::string& iniFilePath) {
     this->glExt = config.readString("AllowedGlExt","");
     this->scale = config.readInt("Scale",100);
     int defaultScaleQuality = 0;
-    this->scaleQuality = config.readInt("ScaleQuality",defaultScaleQuality);
-
+    this->scaleQuality = config.readInt("ScaleQuality",defaultScaleQuality);    
+    int i = 1;
+    this->args.clear();
+    while (true) {
+        std::string key = "Arg";
+        key += i;
+        std::string arg = config.readString(key, "");
+        if (arg.length() == 0) {
+            break;
+        }
+        this->args.push_back(arg);
+        i++;
+    }
     return this->name.length()>0 && (this->cmd.length()>0 || this->link.length()>0);
 }
 
@@ -50,7 +61,11 @@ bool BoxedApp::saveApp() {
     config.writeString("AllowedGlExt",this->glExt);
     config.writeInt("Scale",this->scale);
     config.writeInt("ScaleQuality",this->scaleQuality);
-
+    for (int i = 0; i < (int)this->args.size(); i++) {
+        std::string key = "Arg";
+        key += (i + 1);
+        config.writeString(key, this->args[i]);
+    }
     config.saveChanges();
     return true;
 }

@@ -76,7 +76,7 @@ void LayoutRow::draw(float toolTipWidth, float labelOffset, float valueOffset) {
 			kpanic("Auto layout only supports 1 variable length control in a row");
 		}
 		auto end = controls.end() - 1;
-		int variableWidth = -1 - (this->help.length() ? (int)toolTipWidth : 0) - totalFixedWidth - (ImGui::GetStyle().ItemSpacing.x*(controls.size()-1));
+		int variableWidth = -1 - (this->help.length() ? (int)toolTipWidth : 0) - totalFixedWidth - ((int)ImGui::GetStyle().ItemSpacing.x*((int)controls.size()-1));
 
 		int width = -1;
 		for (auto iter = controls.begin(); iter != end; ++iter) {
@@ -85,7 +85,7 @@ void LayoutRow::draw(float toolTipWidth, float labelOffset, float valueOffset) {
 				width = variableWidth;
 			} else {
 				// if the fixed width control came before the variable width, then we don't want the variable width control to take it into account
-				variableWidth += (*iter)->getRecommendedWidth() + ImGui::GetStyle().ItemSpacing.x;
+				variableWidth += (*iter)->getRecommendedWidth() + (int)ImGui::GetStyle().ItemSpacing.x;
 				width = -1;
 			}
 			(*iter)->draw(width);
@@ -161,8 +161,11 @@ void LayoutTextInputControl::draw(int width) {
 	}
 	ImGui::PushItemWidth((float)width);
 	ImGui::PushID(this);
-	if (this->numberOfLines > 1) {
-		ImGui::InputTextMultiline("##Text", this->text, sizeof(this->text), ImVec2(0, ImGui::GetTextLineHeight() * numberOfLines + ImGui::GetStyle().FramePadding.y*2));
+	if (this->numberOfLines > 1) {		
+		// same id as InputText so that it maintains focus
+		if (ImGui::InputTextMultiline("##Text", this->text, sizeof(this->text), ImVec2(0, ImGui::GetTextLineHeight() * numberOfLines + ImGui::GetStyle().FramePadding.y * 2)) && this->onChange) {
+			this->onChange();
+		}				
 	} else {
 		if (ImGui::InputText("##Text", this->text, sizeof(this->text), (this->isReadOnly() ? ImGuiInputTextFlags_ReadOnly : 0)) && this->onChange) {
 			this->onChange();

@@ -33,7 +33,7 @@ void OptionsView::createThemeTab() {
     themes.push_back(ComboboxItem(getTranslation(OPTIONSVIEW_THEME_CLASSIC), "Classic"));
 
     themeControl = section->addComboboxRow(OPTIONSVIEW_DEFAULT_RESOLUTION_LABEL, OPTIONSVIEW_DEFAULT_RESOLUTION_HELP, themes);
-    themeControl->setWidth(GlobalSettings::scaleFloatUIAndFont(150));
+    themeControl->setWidth((int)GlobalSettings::scaleFloatUIAndFont(150));
 
     themeControl->setSelectionStringValue(GlobalSettings::getTheme());
     themeControl->onChange = [this]() {
@@ -49,8 +49,8 @@ void OptionsView::createThemeTab() {
     fontScales.push_back(ComboboxItem("150%", 150));
     fontScales.push_back(ComboboxItem("200%", 200));
     std::shared_ptr<LayoutComboboxControl> fontScale = section->addComboboxRow(OPTIONSVIEW_DEFAULT_FONT_SCALE_LABEL, OPTIONSVIEW_DEFAULT_FONT_SCALE_HELP, fontScales);
-    fontScale->setWidth(GlobalSettings::scaleFloatUIAndFont(150));
-    fontScale->setSelectionIntValue(GlobalSettings::fontScale * 100);
+    fontScale->setWidth((int)GlobalSettings::scaleFloatUIAndFont(150));
+    fontScale->setSelectionIntValue((int)(GlobalSettings::fontScale * 100+.5f));
     fontScale->onChange = [fontScale]() {
         runAfterFrame([fontScale]() {
             GlobalSettings::setFontScale(fontScale->getSelectionIntValue() / 100.0f);
@@ -80,7 +80,7 @@ void OptionsView::createGeneralTab() {
         resolutions.push_back(ComboboxItem(res));
     }
     resolutionControl = section->addComboboxRow(OPTIONSVIEW_DEFAULT_RESOLUTION_LABEL, OPTIONSVIEW_DEFAULT_RESOLUTION_HELP, resolutions);
-    resolutionControl->setWidth(GlobalSettings::scaleFloatUIAndFont(150));
+    resolutionControl->setWidth((int)GlobalSettings::scaleFloatUIAndFont(150));
     resolutionControl->setSelectionByLabel(GlobalSettings::getDefaultResolution());
     resolutionControl->onChange = [this]() {
         GlobalSettings::defaultResolution = GlobalSettings::availableResolutions[this->resolutionControl->getSelection()];
@@ -93,7 +93,7 @@ void OptionsView::createGeneralTab() {
     scales.push_back(ComboboxItem("2x", 200));
     scales.push_back(ComboboxItem("3x", 300));
     scaleControl = section->addComboboxRow(OPTIONSVIEW_DEFAULT_SCALE_LABEL, OPTIONSVIEW_DEFAULT_SCALE_HELP, scales, GlobalSettings::getDefaultScale()/100);
-    scaleControl->setWidth(GlobalSettings::scaleFloatUIAndFont(150));
+    scaleControl->setWidth((int)GlobalSettings::scaleFloatUIAndFont(150));
     scaleControl->onChange = [this]() {
         GlobalSettings::defaultScale = this->scaleControl->getSelectionIntValue();
         GlobalSettings::saveConfig();

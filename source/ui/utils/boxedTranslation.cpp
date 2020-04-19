@@ -250,7 +250,7 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
     case CONTAINER_VIEW_SCALE_LABEL:
         return "Scaling:";
     case CONTAINER_VIEW_SCALE_HELP:
-        return "This simple scaling option will blow up or shrink the emualted screen.  This is useful for applications that want to run in low resolution, like 640x480, and you want it to show larger on your monitor.";
+        return "This simple scaling option will blow up or shrink the emualted screen.  This is useful for applications that want to run in low resolution, like 640x480, and you want it to show larger on your monitor.\n\nScaling is disabled if full screen is selected because full screen will scale the emulated resolution to fill the screen.";
     case CONTAINER_VIEW_SCALE_QUALITY_LABEL:
         return "Scale Quality:";
     case CONTAINER_VIEW_SCALE_QUALITY_HELP:
@@ -269,6 +269,10 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "Path:";
     case CONTAINER_VIEW_SHORTCUT_PATH_HELP:
         return "This is the path in the container that will be launched when starting this app.";
+    case CONTAINER_VIEW_SHORTCUT_ARGUMENTS_LABEL:
+        return "Arguments:";
+    case CONTAINER_VIEW_SHORTCUT_ARGUMENTS_HELP:
+        return "These arguments will be passed to the app.  Place each argument on its own line.";
     case CONTAINER_VIEW_DELETE_SHORTCUT:
         return "Delete Shortcut";
     case CONTAINER_VIEW_SHORTCUT_LIST_HELP:
