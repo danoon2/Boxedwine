@@ -65,9 +65,7 @@ void uiDraw() {
     ImVec2 size = ImGui::GetWindowContentRegionMax();
     size.y -= ImGui::GetCursorPosY();
     ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetColorU32(ImGuiCol_WindowBg));
-    if (currentViewDeprecated ==VIEW_CONTAINERS) {
-        drawContainersView(size);
-    } else if (currentViewDeprecated == VIEW_OPTIONS || currentViewDeprecated == VIEW_INSTALL) {
+    if (currentViewDeprecated == VIEW_OPTIONS || currentViewDeprecated == VIEW_INSTALL || currentViewDeprecated == VIEW_CONTAINERS) {
         currentView->run(size);
     } else {        
         drawListView("Apps", appListViewItems, size);
@@ -82,7 +80,7 @@ void uiDraw() {
     ImGui::PopStyleVar(1);    
 }
 
-void gotoView(int viewId, const char* tab, const std::string& param1) {
+void gotoView(int viewId, std::string tab, std::string param1) {
     if (!currentView || currentView->saveChanges()) {
         if (currentView) {
             delete currentView;
@@ -93,6 +91,8 @@ void gotoView(int viewId, const char* tab, const std::string& param1) {
             currentView = new OptionsView(tab);
         } else if (viewId == VIEW_INSTALL) {
             currentView = new InstallView(param1, tab);
+        } else if (viewId == VIEW_CONTAINERS) {
+            currentView = new ContainersView(tab);
         }
     }
 }
@@ -106,14 +106,7 @@ void createButton() {
         gotoView(VIEW_INSTALL);
     }));    
     appButtons.push_back(AppButton(getTranslation(MAIN_BUTTON_CONTAINERS), [](){
-        if (!currentView || currentView->saveChanges()) {
-            if (currentView) {
-                delete currentView;
-                currentView = NULL;
-            }
-            BoxedwineData::updateCachedContainerSizes();
-            currentViewDeprecated = VIEW_CONTAINERS;
-        }        
+        gotoView(VIEW_CONTAINERS);
     }));
     appButtons.push_back(AppButton(getTranslation(MAIN_BUTTON_SETTINGS), [](){
         gotoView(VIEW_OPTIONS);        
@@ -137,7 +130,7 @@ void loadApps() {
                         } else {
                             if (ImGui::Selectable("Options")) {
                                 ImGui::EndPopup();
-                                new AppOptionsDlg(app);
+                                //new AppOptionsDlg(app);
                                 return true;
                             }
                             ImGui::EndPopup();
@@ -224,6 +217,10 @@ bool uiLoop() {
         ImGui_ImplSDL2_ProcessEvent(&event);
         if (event.type == SDL_QUIT) {
             done = true;
+            if (currentView) {
+                // :TODO: should we stop the quit action if this save fails?
+                currentView->saveChanges();
+            }
         } else if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(window)) {
             done = true;
         }  else if (event.type >= SDL_USEREVENT) {
@@ -341,13 +338,26 @@ bool uiShow(const std::string& basePath) {
     GlobalSettings::loadFonts();
     BoxedwineData::loadUI();
     currentViewDeprecated = VIEW_APPS;
+    if (currentView) {
+        delete currentView;
+        currentView = NULL;
+    }
     loadApps(); // need to be after we create the context for images to work
     createButton();
+    if (GlobalSettings::startUpArgs.runOnRestartUI) {
+        runOnMainUI([]() {
+            if (GlobalSettings::startUpArgs.runOnRestartUI) {
+                GlobalSettings::startUpArgs.runOnRestartUI();
+                GlobalSettings::startUpArgs.runOnRestartUI = nullptr;
+            }
+            return false;
+            });        
+    }
     if (GlobalSettings::startUpArgs.showAppPickerForContainer.length()) {
         runOnMainUI([]() {
             BoxedContainer* container = BoxedwineData::getContainerByName(GlobalSettings::startUpArgs.showAppPickerForContainer);
             if (container) {
-                new AppChooserDlg(container);
+                new AppChooserDlg(container, nullptr);
             }
             GlobalSettings::startUpArgs.showAppPickerForContainer = "";
             return false;

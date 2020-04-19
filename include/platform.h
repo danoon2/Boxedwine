@@ -104,6 +104,8 @@ public:
     static U32 getCpuCurScalingFreqMHz(U32 cpuIndex);
     static U32 getCpuMaxScalingFreqMHz(U32 cpuIndex);
     static U32 getCpuCount();
+    static void openFileLocation(const std::string& location);
+    static bool supportsOpenFileLocation() {return true;}
 
 private:
     friend class KSystem;

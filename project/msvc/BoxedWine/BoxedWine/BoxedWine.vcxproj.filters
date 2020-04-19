@@ -427,9 +427,6 @@
     <ClCompile Include="..\..\..\..\source\ui\controls\containersView.cpp">
       <Filter>source\ui\controls</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\source\ui\controls\containerOptionsDlg.cpp">
-      <Filter>source\ui\controls</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\source\ui\controls\baseDlg.cpp">
       <Filter>source\ui\controls</Filter>
     </ClCompile>
@@ -452,9 +449,6 @@
       <Filter>source\ui\controls</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\..\source\ui\controls\spinnerControl.cpp">
-      <Filter>source\ui\controls</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\source\ui\controls\appOptionDlg.cpp">
       <Filter>source\ui\controls</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\..\lib\poco\Net\src\AbstractHTTPRequestHandler.cpp">
@@ -1546,6 +1540,12 @@
     <ClCompile Include="..\..\..\..\source\ui\controls\installView.cpp">
       <Filter>source\ui\controls</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\data\boxedReg.cpp">
+      <Filter>source\ui\data</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\controls\ImGuiLayout.cpp">
+      <Filter>source\ui\controls</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -2109,9 +2109,6 @@
     <ClInclude Include="..\..\..\..\source\ui\controls\containersView.h">
       <Filter>source\ui\controls</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\source\ui\controls\containerOptionsDlg.h">
-      <Filter>source\ui\controls</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\source\ui\controls\baseDlg.h">
       <Filter>source\ui\controls</Filter>
     </ClInclude>
@@ -2131,9 +2128,6 @@
       <Filter>source\ui\controls</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\ui\controls\spinnerControl.h">
-      <Filter>source\ui\controls</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\source\ui\controls\appOptionsDlg.h">
       <Filter>source\ui\controls</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\lib\poco\Net\include\Poco\Net\AbstractHTTPRequestHandler.h">
@@ -3679,6 +3673,15 @@
       <Filter>source\ui\controls</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\ui\controls\installView.h">
+      <Filter>source\ui\controls</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\util\vectorutils.h">
+      <Filter>source\util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\ui\data\boxedReg.h">
+      <Filter>source\ui\data</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\ui\controls\ImGuiLayout.h">
       <Filter>source\ui\controls</Filter>
     </ClInclude>
   </ItemGroup>

@@ -3,38 +3,23 @@
 
 class InstallView : public BaseView {
 public:
-	InstallView(const std::string& initialFileOrDirPath, const char* startingTab=NULL);
+	InstallView(const std::string& initialFileOrDirPath, std::string tab="");
 
 	virtual bool saveChanges();
 
 private:
-    void runInstallView();
-    void runDemoView();
-    void onInstall();
+    void createInstallTab(const std::string& initialFileOrDirPath);
+    void createDemoTab();
 
-    const char* installTitle;
-    const char* demoTitle;
+    void onInstall();   
 
-    const char* installLabelText;
-    const char* containerLabelText;
-    const char* locationLabelText;
-    const char* browseButtonText;
-    const char* installTypeHelp;
-    const char* containerHelp;
-    const char* containerNameHelp;
-    const char* wineVersionHelp;
-    const char* wineConfigHelp;
-
-    ImVec2 leftColumnWidth;
-    ImVec2 rightColumnWidth;
-
-    char locationBuffer[1024];
-    int lastInstallType;
-    char containerName[256];
-    bool runWineConfig;
-    ComboboxData installTypeComboboxData;
-    ComboboxData containerComboboxData;
-    ComboboxData wineVersionComboboxData;
+    std::shared_ptr<LayoutComboboxControl> installTypeControl;
+    std::shared_ptr<LayoutTextInputControl> locationControl;
+    std::shared_ptr<LayoutComboboxControl> containerControl;
+    std::shared_ptr<LayoutSection> containerSection;
+    std::shared_ptr<LayoutTextInputControl> containerNameControl;
+    std::shared_ptr<LayoutComboboxControl> wineVersionControl;
+    std::shared_ptr<LayoutComboboxControl> windowsVersionControl;
 };
 
 #endif

@@ -34,7 +34,7 @@ public:
     static const std::vector<WineVersion>& getAvailableWineVersions() { return GlobalSettings::availableWineVersions; }
     static std::string getDataFolder() {return GlobalSettings::dataFolderLocation;}
     static void setDataFolder(const std::string& location) {GlobalSettings::dataFolderLocation = location;}
-    static void setTheme(const std::string& theme) {GlobalSettings::theme=theme;}
+    static void setTheme(const std::string& theme);
     static std::string getTheme() {return GlobalSettings::theme;}
     static void saveConfig();
     static void loadTheme();
@@ -43,12 +43,19 @@ public:
     static void setScale(U32 scale);
     static U32 scaleIntUI(U32 value);
     static float scaleFloatUI(float value);
+    static float scaleFloatUIAndFont(float value);
     static void downloadWine(const WineVersion& version, std::function<void(bool)> onCompleted);
     static bool isFilesListDownloading();
     static void startUp();
     static U32 getFrameDelayMillies();
     static void useFastFrameRate(bool useFast);
     static void updateLastFrameDelayChange();
+    static const std::vector<std::string>& getAvailableResolutions() { return GlobalSettings::availableResolutions;}
+    static const int getDefaultScale() { return GlobalSettings::defaultScale; }
+    static const std::string& getDefaultResolution() { return GlobalSettings::defaultResolution; }
+    static int getScreenCx() { return GlobalSettings::screenCx; }
+    static int getScreenCy() { return GlobalSettings::screenCy; }
+    static void setFontScale(float scale);
 
     static StartUpArgs startUpArgs;
 
@@ -58,6 +65,7 @@ public:
     static ImFont* defaultFont;
     static ImFont* sectionTitleFont;
     static bool restartUI;    
+    static float extraVerticalSpacing;
 private:    
     static void initWineVersions();
     static void lookForFileSystems(const std::string& path);    
@@ -79,6 +87,12 @@ private:
     static U32 frameDelayMillies; // decrease if we are animating, else this can be pretty large
     static U32 fastFrameRateCount;
     static U64 lastFrameDelayChange;
+    static std::vector<std::string> availableResolutions;
+    static std::string defaultResolution;
+    static int defaultScale;
+    static int screenCx;
+    static int screenCy;
+    static float fontScale;
 };
 
 #endif

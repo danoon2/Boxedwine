@@ -89,6 +89,8 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "Failed to mount directory at drive t:.  If this is not a new container, perhaps you can try the same thing with a new container.";
     case INSTALLVIEW_INSTALL_BUTTON_LABEL:
         return "Install";
+    case INSTALLVIEW_NEW_CONTAINER:
+        return "Create New Container (Recommended)";
     case SETTINGS_DLG_TITLE:
         return "Options";
     case OPTIONSVIEW_SAVE_FOLDER_LABEL:
@@ -124,23 +126,59 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
     case OPTIONSVIEW_WINE_VERSION_INSTALL:
         return "Install";
     case OPTIONSVIEW_WINE_VERSION_UPDATE:
-        return "Update";
-    case OPTIONSVIEW_WINE_VERSION_DELETE_CONFIRM_TITLE:
-        return "Confirm";
+        return "Update";    
     case OPTIONSVIEW_WINE_VERSION_DELETE_CONFIRM_LABEL:
         return "Are you sure you want to delete {0}?";
+    case OPTIONSVIEW_DEFAULT_RESOLUTION_LABEL:
+        return "Default App Resolution:";
+    case OPTIONSVIEW_DEFAULT_RESOLUTION_HELP:
+        return "This is the default resolution that Boxedwine will use to create the main window.  This can be overriden in the Containers view under the shortcut specific options on a per app basis.";
+    case OPTIONSVIEW_DEFAULT_SCALE_LABEL:
+        return "Default App Scale:";
+    case OPTIONSVIEW_DEFAULT_SCALE_HELP:
+        return "This is the default scale that Boxedwine will use to create the main window.  This can be overriden in the Containers view under the shortcut specific options on a per app basis.\n\nThis simple scaling option will blow up or shrink the emualted screen.  This is useful for applications that want to run in low resolution, like 640x480, and you want it to show larger on your monitor.";
+    case OPTIONSVIEW_DEFAULT_FONT_SCALE_LABEL:
+        return "Font Scale";
+    case OPTIONSVIEW_DEFAULT_FONT_SCALE_HELP:
+        return "This will change the size of the, which will make the UI look smaller or bigger.";
     case APPCHOOSER_DLG_TITLE:
         return "Create Shortcut";
     case APPCHOOSER_DLG_CHOOSE_APP_LABEL:
         return "Please select a file to use for the shortcut.";
     case APPCHOOSER_DLG_NO_APPS_LABEL:
         return "Could not find any new apps.";
+    case CONTAINER_VIEW_CONTAINER_NAME_LABEL:
+        return "Container Name:";
+    case CONTAINER_VIEW_ERROR_BLANK_NAME:
+        return "Container Name can not be empty";
+    case CONTAINER_VIEW_ERROR_MISSING_MOUNT_LOCATION:
+        return "You specified a mount drive letter, but the mount folder location is empty.";
+    case CONTAINER_VIEW_ERROR_MISSING_MOUNT_DRIVE:
+        return "You specified a mount folder location, but the mount drive letter is empty.";
+    case CONTAINER_VIEW_CONTAINER_LOCATION_LABEL:
+        return "Storage Location:";
+    case CONTAINER_VIEW_CONTAINER_LOCATION_SIZE_LABEL:
+        return "Storage Size:";
+    case CONTAINER_VIEW_DELETE_BUTTON_LABEL:
+        return "Delete Container and its Apps";
+    case CONTAINER_VIEW_DELETE_CONFIRMATION:
+        return "Are you sure you want to delete the container {0}?";
+    case CONTAINER_VIEW_DELETE_CONFIRMATION_WITH_APPS:
+        return "Are you sure you want to delete the container {0} and the following associated apps: {1}?";
+    case CONTAINER_VIEW_DELETE_BUTTON_HELP:
+        return "Deleting a container will delete its data folder.  All apps associated with the container will also be deleted.  This can not be undone.";
+    case CONTAINER_VIEW_MOUNT_DIR_LABEL:
+        return "Mount Folder:";
+    case CONTAINER_VIEW_MOUNT_DIR_HELP:
+        return "Instead of copying data to the container folder, you can just mount a folder on your computer and use it in Wine as a drive";
+    case CONTAINER_VIEW_SHORTCUT_LIST_LABEL:
+        return "Shortcuts:";
     case CONTAINER_OPTIONS_DLG_TITLE:
         return "Container Options";
     case CONTAINER_OPTIONS_DLG_WINE_VERSION_LABEL:
         return "Wine Version:";
     case CONTAINER_OPTIONS_DLG_ADD_APP_LABEL:
-        return "Create New App Shortcut:";
+        return "New Shortcut:";
     case CONTAINER_OPTIONS_DLG_ADD_APP_HELP:
         return "You can choose from a list of applications in this container to create a shortcut to.";
     case CONTAINER_OPTIONS_DLG_ADD_APP_BUTTON_LABEL:
@@ -151,6 +189,8 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "You should just use the default Wine version, which is the most recent version, unless you know your application needs another version.";
     case GENERIC_BROWSE_BUTTON:
         return "Browse";
+    case GENERIC_OPEN_BUTTON:
+        return "Open";
     case GENERIC_DLG_OK:
         return "Ok";
     case GENERIC_DLG_YES:
@@ -161,6 +201,10 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "Cancel";
     case GENERIC_DLG_ERROR_TITLE:
         return "Error";
+    case GENERIC_DLG_CONFIRM_TITLE:
+        return "Confirm";
+    case GENERIC_DEFAULT:
+        return "Default";
     case MAIN_BUTTON_INSTALL:
         return "Install";
     case MAIN_BUTTON_CONTAINERS:
@@ -185,42 +229,70 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "Please Wait";
     case DOWNLOADDLG_LABEL:
         return "Downloading {0} ...";
-    case APP_OPTIONS_DLG_TITLE:
+    case CONTAINER_VIEW_TITLE:
         return "Application Options";
-    case APP_OPTIONS_DLG_NAME_LABEL:
+    case CONTAINER_VIEW_NAME_LABEL:
         return "Name:";
-    case APP_OPTIONS_DLG_NAME_HELP:
+    case CONTAINER_VIEW_NAME_HELP:
         return "This is the name you will see in the Apps list view";
-    case APP_OPTIONS_DLG_RESOLUTION_LABEL:
-        return "Emulated Screen Resolution:";
-    case APP_OPTIONS_DLG_RESOLUTION_HELP:
+    case CONTAINER_VIEW_RESOLUTION_LABEL:
+        return "Resolution:";
+    case CONTAINER_VIEW_RESOLUTION_HELP:
         return "This is the desktop/monitor resolution that will be used for the initial window and reported back to the application.  Normally the application will set its own resolution if it goes full screen.  This would only need to be adjusted if you want more space for applications that do not go full screen.";
-    case APP_OPTIONS_DLG_BPP_LABEL:
-        return "Emulated Screen Bits per Pixel:";
-    case APP_OPTIONS_DLG_BPP_HELP:
+    case CONTAINER_VIEW_BPP_LABEL:
+        return "Bits per Pixel:";
+    case CONTAINER_VIEW_BPP_HELP:
         return "Some applications might check the screen BPP before starting.  If those applications require a specific BPP, you can set it here.";        
-    case APP_OPTIONS_DLG_FULL_SCREEN_LABEL:
+    case CONTAINER_VIEW_FULL_SCREEN_LABEL:
         return "Fullscreen:";
-    case APP_OPTIONS_DLG_FULL_SCREEN_HELP:
-        return "Will launch the emulated desktop with the same resolution as your computer's desktop/monitor";
-    case APP_OPTIONS_DLG_SCALE_LABEL:
-        return "Emulated Screen Scaling:";
-    case APP_OPTIONS_DLG_SCALE_HELP:
-        return "This simple scaling option will blow up or shrink the emualted screen.  This is useful for applications that want to run in low resolution, like 640x480, and you want it to show larger on your monitor.";
-    case APP_OPTIONS_DLG_SCALE_QUALITY_LABEL:
+    case CONTAINER_VIEW_FULL_SCREEN_HELP:
+        return "Will launch the emulated desktop with the resolution selected and scale it to fit the screen.";
+    case CONTAINER_VIEW_SCALE_LABEL:
+        return "Scaling:";
+    case CONTAINER_VIEW_SCALE_HELP:
+        return "This simple scaling option will blow up or shrink the emualted screen.  This is useful for applications that want to run in low resolution, like 640x480, and you want it to show larger on your monitor.\n\nScaling is disabled if full screen is selected because full screen will scale the emulated resolution to fill the screen.";
+    case CONTAINER_VIEW_SCALE_QUALITY_LABEL:
         return "Scale Quality:";
-    case APP_OPTIONS_DLG_SCALE_QUALITY_HELP:
+    case CONTAINER_VIEW_SCALE_QUALITY_HELP:
         return "The scale quality options that SDL supplies.  Probably no need to ever change the default.";
-    case APP_OPTIONS_DLG_GL_EXT_LABEL:
-        return "Allowed OpenGL Extensions:";
-    case APP_OPTIONS_DLG_GL_EXT_HELP:
+    case CONTAINER_VIEW_GL_EXT_LABEL:
+        return "OpenGL Extensions:";
+    case CONTAINER_VIEW_GL_EXT_HELP:
         return "If empty then all extension will be allowed.\n\nSome applications, like Quake 2 and Unreal, can crash if the extension list is too large, like what is seen with modern computers.  Hit the set button to fill in a small list of common extensions or enter your own if necessary";
-    case APP_OPTIONS_DLG_GL_EXT_SET_BUTTON_LABEL:
+    case CONTAINER_VIEW_GL_EXT_SET_BUTTON_LABEL:
         return "Set";
-    case APP_OPTIONS_DLG_DEFAULT_RESOLUTION_LABEL:
+    case CONTAINER_VIEW_DEFAULT_RESOLUTION_LABEL:
         return "Default";
-    case APP_OPTIONS_DLG_NAME_REQUIRED:
-        return "The Name is required and cannot be empty.";
+    case CONTAINER_VIEW_NAME_REQUIRED:
+        return "The shorcut name is required and cannot be empty.";
+    case CONTAINER_VIEW_SHORTCUT_PATH_LABEL:
+        return "Path:";
+    case CONTAINER_VIEW_SHORTCUT_PATH_HELP:
+        return "This is the path in the container that will be launched when starting this app.";
+    case CONTAINER_VIEW_SHORTCUT_ARGUMENTS_LABEL:
+        return "Arguments:";
+    case CONTAINER_VIEW_SHORTCUT_ARGUMENTS_HELP:
+        return "These arguments will be passed to the app.  Place each argument on its own line.";
+    case CONTAINER_VIEW_DELETE_SHORTCUT:
+        return "Delete Shortcut";
+    case CONTAINER_VIEW_SHORTCUT_LIST_HELP:
+        return "Shortcuts are links to apps inside a container.  They will appear in the app list and clicking them in the app list will launch the app with the settings you set here.";
+    case CONTAINER_VIEW_DELETE_SHORTCUT_CONFIRMATION:
+        return "Are you sure you want to the {0} shortcut?";
+    case CONTAINER_VIEW_GDI_RENDERER_LABEL:
+        return "DD GDI Renderer:";
+    case CONTAINER_VIEW_PROGRAMS_LABEL:
+        return "Run in Container:";
+    case CONTAINER_VIEW_REGEDIT_BUTTON_LABEL:
+        return "Regedit";
+    case CONTAINER_VIEW_WINECFG_BUTTON_LABEL:
+        return "WineCfg";
+    case CONTAINER_VIEW_GDI_RENDERER_HELP:
+        return "DirectDraw will use OpenGL by default.  But a few games, like Diable and Startcraft, may have graphical issues.  Sometimes changing the renderer to GDI can help.";
+    case CONTAINER_VIEW_WINDOWS_VERION_LABEL:
+        return "Windows Version:";
+    case CONTAINER_VIEW_WINDOWS_VERION_HELP:
+        return "This is the Windows version that will be reported to the running app.  You probably never need to change this unless the app asks for a specific version of Windows.";
     case ERROR_NO_WINE:
         return "There are no versions of Wine installed.  Would you like to install the default version of Wine now?";
     case ERROR_MISSING_WINE:

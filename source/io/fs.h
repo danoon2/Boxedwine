@@ -61,7 +61,7 @@ public:
     static U32 makeLocalDirs(const std::string& path);
     static bool makeNativeDirs(const std::string& path);
     static U32 deleteNativeFile(const std::string& path);
-    static U32 deleteNativeDirAndAllFilesInDir(const std::string& path, bool recursive);
+    static U32 deleteNativeDirAndAllFilesInDir(const std::string& path);
     static U32 iterateAllNativeFiles(const std::string& path, bool recursive, bool includeDirs, std::function<U32(const std::string& filePath,bool isDir)> f);
     static std::string getParentPath(const std::string& path);
     static std::string getNativeParentPath(const std::string& path);
@@ -77,7 +77,7 @@ public:
     static std::string getFullPath(const std::string& currentDirectory, const std::string& path);
     static std::string getNativePathFromParentAndLocalFilename(const BoxedPtr<FsNode>& parent, const std::string fileName);    
     static std::vector<std::string> getFilesInNativeDirectoryWhereFileMatches(const std::string& dirPath, const std::string& startsWith, const std::string& endsWith, bool ignoreCase);
-    static void trimTrailingSlash(char* str);
+    static void trimTrailingSlash(std::string& s);
 
     static std::string nativePathSeperator;
 

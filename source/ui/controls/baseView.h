@@ -3,9 +3,10 @@
 
 class BaseViewTab {
 public:
-	BaseViewTab(const std::string& name, std::function<void()> drawTab) : name(name), drawTab(drawTab) {}
+	BaseViewTab(const std::string& name, const std::shared_ptr<ImGuiLayout>& model, std::function<void(bool buttonPressed, BaseViewTab& tab)> drawTab) : name(name), drawTab(drawTab), model(model) {}
 	std::string name;
-	std::function<void()> drawTab;
+	std::function<void(bool buttonPressed, BaseViewTab& tab)> drawTab;
+	std::shared_ptr<ImGuiLayout> model;
 };
 
 class BaseView {
@@ -21,8 +22,13 @@ protected:
 	float extraVerticalSpacing;
 
 	void toolTip(const char* desc);
-	void addTab(const std::string& name, std::function<void()> drawTab);
+	void addTab(const std::string& name, const std::shared_ptr<ImGuiLayout>& model, std::function<void(bool buttonPressed, BaseViewTab& tab)> drawTab);
 	void runErrorMsg(bool open);
+	int getTabCount() {return (int)tabs.size();}
+	void setTabName(int index, const std::string& name) { tabs[index].name = name; }
+
+	std::shared_ptr<LayoutComboboxControl> createWindowsVersionCombobox(const std::shared_ptr<LayoutSection>& section);
+	std::shared_ptr<LayoutComboboxControl> createWineVersionCombobox(const std::shared_ptr<LayoutSection>& section);
 
 	const char* errorMsg;
 	std::string errorMsgString;
@@ -33,6 +39,7 @@ private:
 	std::string viewName;
 	std::vector<BaseViewTab> tabs;
 	bool errorMsgOpen;
+	bool tabChanged;
 };
 
 #endif

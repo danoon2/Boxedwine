@@ -2,7 +2,7 @@
 #include "../boxedwineui.h"
 #include <thread>
 
-AppChooserDlg::AppChooserDlg(BoxedContainer* container, BaseDlg* parent) : BaseDlg(APPCHOOSER_DLG_TITLE, 600, 400, NULL, parent) {
+AppChooserDlg::AppChooserDlg(BoxedContainer* container, std::function<void(BoxedApp*)> onSelected, BaseDlg* parent) : BaseDlg(APPCHOOSER_DLG_TITLE, 600, 400, NULL, parent), onSelected(onSelected) {
     container->getNewApps(this->items);
 }
 
@@ -28,9 +28,14 @@ void AppChooserDlg::run() {
             this->items[i].getContainer()->reload();
             GlobalSettings::reloadApps();
             BoxedApp* app = this->items[i].getContainer()->getAppByIniFile(this->items[i].getIniFilePath());
-            if (app) {
-                runOnMainUI([app]() {
-                    new AppOptionsDlg(app);
+            if (app) {    
+                std::function<void(BoxedApp*)> onSelected = this->onSelected;
+
+                runOnMainUI([app, onSelected]() {
+                    // don't hold on to this, it will be deleted before this runs
+                    if (onSelected) {
+                        onSelected(app);
+                    }
                     return false;
                     });
             }
@@ -56,6 +61,6 @@ void AppChooserDlg::run() {
 
 void AppChooserDlg::onOk(bool buttonClicked) {
     if (buttonClicked) {
-        this->done();        
+        this->done();            
     }
 }

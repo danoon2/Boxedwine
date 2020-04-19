@@ -13,35 +13,32 @@ public:
 
 class OptionsView : public BaseView {
 public:
-	OptionsView(const char* startingTab);
+	OptionsView(std::string tab);
 
 	virtual bool saveChanges();
 
 private:
-	void runDisplayOptions();
-	void runGeneralOptions();
+	void createGeneralTab();
+	void createThemeTab();
+
 	void runWineOptions();	
 	void download(WineVersion* version);
 	void loadWineVersions();
 
-	const char* saveFolderLabel;
-	const char* saveFolderHelp;
-	const char* browseButtonText;
-	const char* themeLabel;
-	const char* themeHelp;
-	const char* generalTitle;
-	const char* displayTitle;
 	const char* wineTitle;
-	ComboboxData themeComboboxData;
-	char saveFolderLocationBuffer[1024];
-	float leftColumnWidthGeneral;
-	float leftColumnWidthDisplay;
 	float leftColumnWidthWine;
 	float rightColumnWidth;	
-	int lastThemeSelectionIndex;
 	float wineButtonTotalColumnWidth;
 	float wineButtonFirstColumnWidth;
 	std::map<std::string, OptionsViewWineVersion, std::greater<std::string>> wineVersions;
+
+	// General
+	std::shared_ptr<LayoutTextInputControl> saveLocationControl;
+	std::shared_ptr<LayoutComboboxControl> resolutionControl;
+	std::shared_ptr<LayoutComboboxControl> scaleControl;
+
+	// Display
+	std::shared_ptr<LayoutComboboxControl> themeControl;
 };
 
 #endif

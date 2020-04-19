@@ -15,12 +15,15 @@ void askToDownloadDefaultWine();
 #define VIEW_INSTALL 1
 #define VIEW_CONTAINERS 2
 #define VIEW_OPTIONS 3
-void gotoView(int viewId, const char* tab = NULL, const std::string& param1="");
+void gotoView(int viewId, std::string tab="", std::string param1="");
 
 class UIDisableStyle {
 public:
-	UIDisableStyle();
+	UIDisableStyle(bool disabled=true);
 	~UIDisableStyle();
+
+private:
+	bool disabled;
 };
 
 #endif

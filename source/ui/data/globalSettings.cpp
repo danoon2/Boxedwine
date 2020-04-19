@@ -31,6 +31,13 @@ bool GlobalSettings::restartUI;
 U32 GlobalSettings::frameDelayMillies = SLOW_FRAME_DELAY;
 U32 GlobalSettings::fastFrameRateCount = 0;
 U64 GlobalSettings::lastFrameDelayChange = 0;
+std::vector<std::string> GlobalSettings::availableResolutions;
+std::string GlobalSettings::defaultResolution;
+int GlobalSettings::defaultScale;
+int GlobalSettings::screenCx;
+int GlobalSettings::screenCy;
+float GlobalSettings::extraVerticalSpacing;
+float GlobalSettings::fontScale;
 
 void GlobalSettings::init(int argc, const char **argv) {
     GlobalSettings::dataFolderLocation = SDL_GetPrefPath("", "Boxedwine");
@@ -48,10 +55,34 @@ void GlobalSettings::init(int argc, const char **argv) {
     stringReplaceAll(GlobalSettings::dataFolderLocation, "//", "/");
     stringReplaceAll(GlobalSettings::dataFolderLocation, "\\\\", "\\");
     GlobalSettings::theme = config.readString("Theme", "Dark");
+    GlobalSettings::defaultResolution = config.readString("DefaultResolution", "1024x768");
+    GlobalSettings::defaultScale = config.readInt("DefaultScale", 100);
+    GlobalSettings::fontScale = (float)config.readInt("FontScale", 100) / 100.0f;
+
     if (!Fs::doesNativePathExist(configFilePath)) {
         saveConfig();
     }    
     GlobalSettings::startUp();
+
+    SDL_DisplayMode dm;    
+    availableResolutions.push_back("640x480");
+    availableResolutions.push_back("800x600");
+    availableResolutions.push_back("1024x768");
+    if (SDL_GetDesktopDisplayMode(0, &dm) == 0) {
+        GlobalSettings::screenCx = dm.w;
+        GlobalSettings::screenCy = dm.h;
+        if (dm.w>=3072) {
+            std::string res = std::to_string(dm.w / 3) + "x" + std::to_string(dm.h / 3);
+            availableResolutions.push_back(res.c_str());
+        }
+        if (dm.w>=2048) {
+            std::string res = std::to_string(dm.w/2) + "x" + std::to_string(dm.h/2);
+            availableResolutions.push_back(res.c_str());
+        }
+        std::string res = std::to_string(dm.w) + "x" + std::to_string(dm.h);
+        availableResolutions.push_back(res.c_str());
+    }
+    GlobalSettings::extraVerticalSpacing = (float)GlobalSettings::scaleIntUI(5);
 }
 
 void GlobalSettings::startUp() {
@@ -78,6 +109,9 @@ void GlobalSettings::saveConfig() {
     config.writeString("Version", "1");
     config.writeString("DataFolder", GlobalSettings::dataFolderLocation);
     config.writeString("Theme", GlobalSettings::theme);
+    config.writeString("DefaultResolution", GlobalSettings::defaultResolution);
+    config.writeInt("DefaultScale", GlobalSettings::defaultScale);
+    config.writeInt("FontScale", (int)(GlobalSettings::fontScale*100));
     config.saveChanges();
 }
 
@@ -145,9 +179,14 @@ float GlobalSettings::scaleFloatUI(float value) {
     return value * scale / SCALE_DENOMINATOR;
 }
 
+float GlobalSettings::scaleFloatUIAndFont(float value) {
+    return value * scale / SCALE_DENOMINATOR * fontScale;
+}
+
 void GlobalSettings::setScale(U32 scale) {
     GlobalSettings::scale = scale;
     UiSettings::ICON_SIZE = GlobalSettings::scaleIntUI(48);
+    GlobalSettings::extraVerticalSpacing = (float)GlobalSettings::scaleIntUI(5);
 }
 
 void GlobalSettings::loadTheme() {
@@ -212,7 +251,7 @@ void GlobalSettings::updateFileList(const std::string& fileLocation) {
     runInBackgroundThread([fileLocation]() {
         std::string errorMsg;
         GlobalSettings::filesListDownloading = true;
-        downloadFile("http://www.boxedwine.org/files.ini", fileLocation, [](U32 percentDone) {
+        downloadFile("http://www.boxedwine.org/files.ini", fileLocation, [](U64 bytesCompleted) {
             }, NULL, errorMsg);
         GlobalSettings::loadFileList();
         GlobalSettings::filesListDownloading = false;
@@ -237,13 +276,13 @@ void GlobalSettings::loadFonts() {
     ImGuiIO& io = ImGui::GetIO();
     // first font added will be default
     if (Fs::doesNativePathExist(sansFontsPath) && !Fs::isNativePathDirectory(sansFontsPath)) {
-        defaultFont = io.Fonts->AddFontFromFileTTF(sansFontsPath.c_str(), scaleFloatUI(15.0f));
-        mediumFont = io.Fonts->AddFontFromFileTTF(sansFontsPath.c_str(), scaleFloatUI(20.0f));
-        largeFont = io.Fonts->AddFontFromFileTTF(sansFontsPath.c_str(), scaleFloatUI(25.0f));
+        defaultFont = io.Fonts->AddFontFromFileTTF(sansFontsPath.c_str(), floor(scaleFloatUI(15.0f * GlobalSettings::fontScale)));
+        mediumFont = io.Fonts->AddFontFromFileTTF(sansFontsPath.c_str(), floor(scaleFloatUI(20.0f * GlobalSettings::fontScale)));
+        largeFont = io.Fonts->AddFontFromFileTTF(sansFontsPath.c_str(), floor(scaleFloatUI(25.0f * GlobalSettings::fontScale)));
     }
 
     if (Fs::doesNativePathExist(sansBoldFontsPath) && !Fs::isNativePathDirectory(sansBoldFontsPath)) {
-        largeFontBold = io.Fonts->AddFontFromFileTTF(sansBoldFontsPath.c_str(), scaleFloatUI(24.0f));
+        largeFontBold = io.Fonts->AddFontFromFileTTF(sansBoldFontsPath.c_str(), scaleFloatUI(24.0f * GlobalSettings::fontScale));
     }    
 }
 
@@ -296,4 +335,13 @@ U32 GlobalSettings::getFrameDelayMillies() {
         return GlobalSettings::frameDelayMillies;
     }
     return FAST_FRAME_DELAY;
+}
+
+void GlobalSettings::setTheme(const std::string& theme) { 
+    GlobalSettings::theme = theme; 
+    loadTheme();
+}
+
+void GlobalSettings::setFontScale(float scale) {
+    GlobalSettings::fontScale = scale;
 }

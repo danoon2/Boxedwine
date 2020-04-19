@@ -21,7 +21,7 @@
 
 #include "platform.h"
 #include "wnd.h"
-void initSDL(U32 cx, U32 cy, U32 bpp, int scaleX, int scaleY, const std::string& scaleQuality, bool soundEnabled, bool videoEnabled);
+void initSDL(U32 cx, U32 cy, U32 bpp, int scaleX, int scaleY, const std::string& scaleQuality, bool soundEnabled, bool videoEnabled, bool fullScreen);
 void destroySDL();
 void sdlSetMousePos(int x, int y);
 int sdlMouseMouse(int x, int y, bool relative);

@@ -23,6 +23,8 @@
 #include "../source/util/synchronization.h"
 #include "../source/util/karray.h"
 #include "../source/util/stringutil.h"
+#include "../source/util/vectorutils.h"
+#include "../source/util/fileutils.h"
 
 #include "../source/emulation/cpu/common/cpu.h"
 #include "kpoll.h"

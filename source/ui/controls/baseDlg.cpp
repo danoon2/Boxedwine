@@ -36,13 +36,13 @@ void ComboboxData::dataChanged() {
         delete[] dataForCombobox;
     }
     for (auto& s : data) {
-        len+=((int)s.length()+1);
+        len+=((int)s.label.length()+1);
     }
     dataForCombobox = new char[len];
     len = 0;
     for (auto& s : data) {
-        strcpy(dataForCombobox+len, s.c_str());
-        len+=(int)s.length()+1;
+        strcpy(dataForCombobox+len, s.label.c_str());
+        len+=(int)s.label.length()+1;
     }
     dataForCombobox[len]=0;
 }

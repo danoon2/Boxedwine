@@ -207,7 +207,7 @@ bool StartUpArgs::apply() {
         }
     }
 
-    if (this->args.size()==0 && !this->runWineConfigFirst) {
+    if (this->args.size()==0) {
         args.push_back("/bin/wine");
         args.push_back("explorer");
         args.push_back("/desktop=shell");
@@ -280,36 +280,12 @@ bool StartUpArgs::apply() {
     }
 #endif
 
-    initSDL(this->screenCx, this->screenCy, this->screenBpp, this->sdlScaleX, this->sdlScaleY, this->sdlScaleQuality, this->soundEnabled, this->videoEnabled);
+    initSDL(this->screenCx, this->screenCy, this->screenBpp, this->sdlScaleX, this->sdlScaleY, this->sdlScaleQuality, this->soundEnabled, this->videoEnabled, this->sdlFullScreen);
     initWine();
 #if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
     gl_init(this->glExt);        
 #endif   
 
-    if (this->runWineConfigFirst) {
-        std::vector<std::string> winecfgArgs;
-        winecfgArgs.push_back("/bin/wine");
-        winecfgArgs.push_back("winecfg");
-
-        printf("Launching ");
-        for (U32 i=0;i<winecfgArgs.size();i++) {
-            printf("\"%s\" ", winecfgArgs[i].c_str());
-        }
-        printf("\n");
-
-        bool result = false;
-        {
-            std::shared_ptr<KProcess> process = KProcess::create(); // keep in this small scope so we don't hold onto it for the life of the program
-            result = process->startProcess("/home/username", winecfgArgs, this->envValues, this->userId, this->groupId, this->effectiveUserId, this->effectiveGroupId);
-        }
-        if (result) {
-            if (!doMainLoop()) {
-                return 0; // doMainLoop should have handled any cleanup, like SDL_Quit if necessary
-            }
-        }
-		KSystem::destroy();
-        KSystem::init();
-    }    
     if (this->args.size()) {
         printf("Launching ");
         for (U32 i=0;i<this->args.size();i++) {

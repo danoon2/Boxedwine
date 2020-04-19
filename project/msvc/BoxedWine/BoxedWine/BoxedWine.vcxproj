@@ -1080,12 +1080,11 @@
     <ClInclude Include="..\..\..\..\source\ui\boxedwineui.h" />
     <ClInclude Include="..\..\..\..\source\ui\controls\appbar.h" />
     <ClInclude Include="..\..\..\..\source\ui\controls\appChooserDlg.h" />
-    <ClInclude Include="..\..\..\..\source\ui\controls\appOptionsDlg.h" />
     <ClInclude Include="..\..\..\..\source\ui\controls\baseDlg.h" />
     <ClInclude Include="..\..\..\..\source\ui\controls\baseView.h" />
-    <ClInclude Include="..\..\..\..\source\ui\controls\containerOptionsDlg.h" />
     <ClInclude Include="..\..\..\..\source\ui\controls\containersView.h" />
     <ClInclude Include="..\..\..\..\source\ui\controls\downloadDlg.h" />
+    <ClInclude Include="..\..\..\..\source\ui\controls\ImGuiLayout.h" />
     <ClInclude Include="..\..\..\..\source\ui\controls\installView.h" />
     <ClInclude Include="..\..\..\..\source\ui\controls\listView.h" />
     <ClInclude Include="..\..\..\..\source\ui\controls\listViewItem.h" />
@@ -1098,6 +1097,7 @@
     <ClInclude Include="..\..\..\..\source\ui\controls\yesNoDlg.h" />
     <ClInclude Include="..\..\..\..\source\ui\data\boxedApp.h" />
     <ClInclude Include="..\..\..\..\source\ui\data\boxedContainer.h" />
+    <ClInclude Include="..\..\..\..\source\ui\data\boxedReg.h" />
     <ClInclude Include="..\..\..\..\source\ui\data\boxedwineData.h" />
     <ClInclude Include="..\..\..\..\source\ui\data\configFile.h" />
     <ClInclude Include="..\..\..\..\source\ui\data\globalSettings.h" />
@@ -1115,6 +1115,7 @@
     <ClInclude Include="..\..\..\..\source\util\stringutil.h" />
     <ClInclude Include="..\..\..\..\source\util\synchronization.h" />
     <ClInclude Include="..\..\..\..\source\util\threadutils.h" />
+    <ClInclude Include="..\..\..\..\source\util\vectorutils.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\..\lib\glew\src\glew.cpp">
@@ -3654,24 +3655,17 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\source\ui\controls\appOptionDlg.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x64'">true</ExcludedFromBuild>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\source\ui\controls\baseDlg.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\..\..\..\source\ui\controls\baseView.cpp" />
-    <ClCompile Include="..\..\..\..\source\ui\controls\containerOptionsDlg.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x64'">true</ExcludedFromBuild>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\source\ui\controls\containersView.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\..\..\..\source\ui\controls\downloadDlg.cpp" />
+    <ClCompile Include="..\..\..\..\source\ui\controls\ImGuiLayout.cpp" />
     <ClCompile Include="..\..\..\..\source\ui\controls\installView.cpp" />
     <ClCompile Include="..\..\..\..\source\ui\controls\listView.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Use</PrecompiledHeader>
@@ -3730,6 +3724,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\data\boxedReg.cpp" />
     <ClCompile Include="..\..\..\..\source\ui\data\boxedwineData.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|x64'">Use</PrecompiledHeader>
