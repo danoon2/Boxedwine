@@ -116,6 +116,18 @@ ContainersView::ContainersView(std::string tab) : BaseView("ContainersView"), cu
             return false;
             });
     };
+    row = appSection->addRow(0, 0);
+    row->setTopMargin(0.0f);
+    row->addCustomControl([this]() {
+        if (this->currentApp->getIconTexture()) {
+            ImVec2 pos = ImGui::GetCursorPos();
+            ImGui::SetCursorPosX(0);
+            ImGui::SetCursorPosY(ImGui::GetCursorPosY() + GlobalSettings::extraVerticalSpacing);
+            ImGui::Image(this->currentApp->getIconTexture()->texture, ImVec2((float)UiSettings::ICON_SIZE, (float)UiSettings::ICON_SIZE));
+            ImGui::SetCursorPos(pos);
+        }
+        });
+
     appNameControl = appSection->addTextInputRow(CONTAINER_VIEW_NAME_LABEL, CONTAINER_VIEW_NAME_HELP);
     appNameControl->onChange = [this]() {
         this->currentApp->name = appNameControl->getText();

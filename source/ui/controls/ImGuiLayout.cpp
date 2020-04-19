@@ -49,7 +49,9 @@ public:
 };
 
 void LayoutRow::draw(float toolTipWidth, float labelOffset, float valueOffset) {	
-	ImGui::Dummy(ImVec2(0.0f, GlobalSettings::extraVerticalSpacing));
+	if (this->topMargin > 0.5f) {
+		ImGui::Dummy(ImVec2(0.0f, this->topMargin));
+	}
 	if (this->label.length()) {
 		ImGui::AlignTextToFramePadding();
 		if (labelOffset > 1.0f) {
@@ -320,6 +322,12 @@ std::shared_ptr<LayoutComboboxControl> LayoutRow::addComboBox() {
 std::shared_ptr< LayoutCheckboxControl> LayoutRow::addCheckbox(bool checked) {
 	std::shared_ptr<LayoutCheckboxControl> control = std::make_shared<LayoutCheckboxControl>(shared_from_this());
 	control->setCheck(checked);
+	this->controls.push_back(control);
+	return control;
+}
+
+std::shared_ptr<LayoutCustomControl> LayoutRow::addCustomControl(std::function<void()> onDraw) {
+	std::shared_ptr<LayoutCustomControl> control = std::make_shared<LayoutCustomControl>(shared_from_this(), onDraw);
 	this->controls.push_back(control);
 	return control;
 }

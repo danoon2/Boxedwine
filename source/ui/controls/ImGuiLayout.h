@@ -3,12 +3,12 @@
 
 enum class LayoutControlType {
 	TextInput,
-	TextInputMultiLine,
 	Combobox,
 	Checkbox,
 	Label,
 	Button,
-	Seperator
+	Seperator,
+	Custom
 };
 
 class ComboboxItem {
@@ -85,7 +85,6 @@ public:
 private:
 	int numberOfLines;
 	int browseButtonType;
-	bool hasDirBrowseButton;
 	float browseButtonWidth;
 	const char* browseButtonLabel;
 	std::vector<std::string> browseFileTypes;
@@ -114,7 +113,7 @@ private:
 
 class LayoutCheckboxControl : public LayoutControl {
 public:
-	LayoutCheckboxControl(std::shared_ptr<LayoutRow> row) : LayoutControl(row, LayoutControlType::Checkbox) {}
+	LayoutCheckboxControl(std::shared_ptr<LayoutRow> row) : LayoutControl(row, LayoutControlType::Checkbox), checked(false) {}
 
 	void setCheck(bool b) { this->checked = b; }
 	bool isChecked() { return this->checked; }
@@ -144,9 +143,21 @@ private:
 	std::string label;
 };
 
+class LayoutCustomControl : public LayoutControl {
+public:
+	LayoutCustomControl(std::shared_ptr<LayoutRow> row, std::function<void()> onDraw) : LayoutControl(row, LayoutControlType::Seperator), onDraw(onDraw) {}
+
+	virtual void draw(int width) {
+		onDraw();
+	}
+	virtual int getRecommendedWidth() {return 0;}
+private:
+	std::function<void()> onDraw;
+};
+
 class LayoutRow : public std::enable_shared_from_this<LayoutRow> {
 public:
-	LayoutRow() : hidden(false) {}
+	LayoutRow() : hidden(false), topMargin(GlobalSettings::extraVerticalSpacing) {}
 
 	void draw(float toolTipWidth, float labelOffset, float valueOffset);
 	void drawToolTip(const std::string& help);
@@ -157,17 +168,20 @@ public:
 	std::shared_ptr<LayoutSeparatorControl> addSeparator();
 	std::shared_ptr<LayoutButtonControl> addButton(const std::string& label);
 	std::shared_ptr< LayoutCheckboxControl> addCheckbox(bool checked);
+	std::shared_ptr<LayoutCustomControl> addCustomControl(std::function<void()> onDraw);
 
 	void setHidden(bool hidden) { this->hidden = hidden; }
 	bool isHidden() { return this->hidden; }
 
 	void setHelp(int helpId);
+	void setTopMargin(float margin) {this->topMargin = margin;}
 private:
 	friend class LayoutSection;
 	std::string label;
 	std::string help;
 	std::vector<std::shared_ptr<LayoutControl>> controls;
 	bool hidden;
+	float topMargin;
 };
 
 class LayoutSection {
