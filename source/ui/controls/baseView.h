@@ -25,6 +25,10 @@ protected:
 	void addTab(const std::string& name, const std::shared_ptr<ImGuiLayout>& model, std::function<void(bool buttonPressed, BaseViewTab& tab)> drawTab);
 	void runErrorMsg(bool open);
 	int getTabCount() {return (int)tabs.size();}
+	void setTabName(int index, const std::string& name) { tabs[index].name = name; }
+
+	std::shared_ptr<LayoutComboboxControl> createWindowsVersionCombobox(const std::shared_ptr<LayoutSection>& section);
+	std::shared_ptr<LayoutComboboxControl> createWineVersionCombobox(const std::shared_ptr<LayoutSection>& section);
 
 	const char* errorMsg;
 	std::string errorMsgString;

@@ -51,6 +51,7 @@ public:
 	void setHelpId(int helpId);
 
 	virtual void draw(int width) = 0;	
+	virtual int getRecommendedWidth() {return width;}
 
 	std::function<void()> onChange;
 private:
@@ -68,7 +69,7 @@ private:
 
 class LayoutTextInputControl : public LayoutControl {
 public:
-	LayoutTextInputControl(std::shared_ptr<LayoutRow> row) : LayoutControl(row, LayoutControlType::TextInput), browseButtonType(BROWSE_BUTTON_NONE), browseButtonWidth(0.0f), browseButtonLabel(NULL) {this->text[0]=0;}
+	LayoutTextInputControl(std::shared_ptr<LayoutRow> row) : LayoutControl(row, LayoutControlType::TextInput), numberOfLines(1), browseButtonType(BROWSE_BUTTON_NONE), browseButtonWidth(0.0f), browseButtonLabel(NULL) {this->text[0]=0;}
 
 	void setText(const std::string& text) { strncpy(this->text, text.c_str(), sizeof(this->text)); }
 	std::string getText() {return this->text;}
@@ -77,8 +78,12 @@ public:
 	void setBrowseDirButton() {this->browseButtonType = BROWSE_BUTTON_DIR;}
 	void removeBrowseButton() {this->browseButtonType = BROWSE_BUTTON_NONE;}
 
+	void setNumberOfLines(int numberOfLines) {this->numberOfLines = numberOfLines;}
+	int getNumberOfLines() {return this->numberOfLines;}
+
 	virtual void draw(int width);
 private:
+	int numberOfLines;
 	int browseButtonType;
 	bool hasDirBrowseButton;
 	float browseButtonWidth;
@@ -91,11 +96,12 @@ class LayoutComboboxControl : public LayoutControl {
 public:
 	LayoutComboboxControl(std::shared_ptr<LayoutRow> row) : LayoutControl(row, LayoutControlType::Combobox) {}
 
-	void setSelection(int selection) { this->options.currentSelectedIndex = selection; if (this->onChange) {onChange();} }
+	void setSelection(int selection) { this->options.currentSelectedIndex = selection;}
 	int getSelection() {return this->options.currentSelectedIndex;}
 
 	bool setSelectionByLabel(const std::string& label);
 	bool setSelectionStringValue(const std::string& value);
+	bool setSelectionIntValue(int value);
 	int getSelectionIntValue() {return this->options.data[this->options.currentSelectedIndex].intValue;}
 	std::string getSelectionStringValue() { return this->options.data[this->options.currentSelectedIndex].strValue; }
 
@@ -104,6 +110,18 @@ public:
 	virtual void draw(int width);
 private:
 	ComboboxData options;
+};
+
+class LayoutCheckboxControl : public LayoutControl {
+public:
+	LayoutCheckboxControl(std::shared_ptr<LayoutRow> row) : LayoutControl(row, LayoutControlType::Checkbox) {}
+
+	void setCheck(bool b) { this->checked = b; }
+	bool isChecked() { return this->checked; }
+
+	virtual void draw(int width);
+private:
+	bool checked;
 };
 
 class LayoutSeparatorControl : public LayoutControl {
@@ -121,6 +139,7 @@ public:
 	const std::string& getLabel() { return this->label; }
 
 	virtual void draw(int width);
+	virtual int getRecommendedWidth();
 private:
 	std::string label;
 };
@@ -134,8 +153,10 @@ public:
 
 	std::shared_ptr<LayoutTextInputControl> addTextInput(const std::string& initialValue = "", bool readOnly = false);
 	std::shared_ptr<LayoutComboboxControl> addComboBox(const std::vector<ComboboxItem>& options, int selected=0);
+	std::shared_ptr<LayoutComboboxControl> addComboBox();
 	std::shared_ptr<LayoutSeparatorControl> addSeparator();
 	std::shared_ptr<LayoutButtonControl> addButton(const std::string& label);
+	std::shared_ptr< LayoutCheckboxControl> addCheckbox(bool checked);
 
 	void setHidden(bool hidden) { this->hidden = hidden; }
 	bool isHidden() { return this->hidden; }
@@ -162,6 +183,7 @@ public:
 	std::shared_ptr<LayoutComboboxControl> addComboboxRow(int labelId, int helpId, const std::vector<ComboboxItem>& options, int selected = 0);
 	std::shared_ptr<LayoutSeparatorControl> addSeparator();
 	std::shared_ptr<LayoutButtonControl> addButton(int labelId, int helpId, const std::string& buttonLabel);
+	std::shared_ptr< LayoutCheckboxControl> addCheckbox(int labelId, int helpId, bool value);
 
 	void setTitle(const std::string& title) {this->title = title;}
 	const std::string& getTitle() {return this->title;}

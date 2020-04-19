@@ -60,13 +60,42 @@ void LayoutRow::draw(float toolTipWidth, float labelOffset, float valueOffset) {
 		ImGui::SameLine(valueOffset);
 	}
 	if (controls.size()) {
+		int variableWidthControls = 0;
+		int totalFixedWidth = 0;
+		for (auto& control : controls) {
+			int w = control->getRecommendedWidth();
+			if (w == -1) {
+				variableWidthControls++;
+			} else {
+				totalFixedWidth += w;
+			}
+		}
+		if (variableWidthControls > 1) {
+			kpanic("Auto layout only supports 1 variable length control in a row");
+		}
 		auto end = controls.end() - 1;
+		int variableWidth = -1 - (this->help.length() ? (int)toolTipWidth : 0) - totalFixedWidth - (ImGui::GetStyle().ItemSpacing.x*(controls.size()-1));
+
+		int width = -1;
 		for (auto iter = controls.begin(); iter != end; ++iter) {
-			FontHelper f((*iter)->getFont());
-			(*iter)->draw(-1);
+			FontHelper f((*iter)->getFont());			
+			if ((*iter)->getRecommendedWidth() == -1) {
+				width = variableWidth;
+			} else {
+				// if the fixed width control came before the variable width, then we don't want the variable width control to take it into account
+				variableWidth += (*iter)->getRecommendedWidth() + ImGui::GetStyle().ItemSpacing.x;
+				width = -1;
+			}
+			(*iter)->draw(width);
+			ImGui::SameLine();
 		}
 		FontHelper f(controls.back()->getFont());
-		controls.back()->draw(-1 - (this->help.length() ? (int)toolTipWidth :0));
+		if (controls.back()->getRecommendedWidth() == -1) {
+			width = variableWidth;
+		} else {
+			width = -1;
+		}
+		controls.back()->draw(width);
 	}
 	if (this->help.length()) {
 		ImGui::SameLine();
@@ -92,7 +121,7 @@ void LayoutRow::drawToolTip(const std::string& help) {
 
 void LayoutComboboxControl::draw(int width) {
 	UIDisableStyle disabled(this->isReadOnly());
-	if (this->getWidth()) {
+	if (this->getWidth()>0) {
 		ImGui::PushItemWidth((float)this->getWidth());
 	} else {
 		ImGui::PushItemWidth((float)width);
@@ -105,6 +134,14 @@ void LayoutComboboxControl::draw(int width) {
 	ImGui::PopItemWidth();
 }
 
+void LayoutCheckboxControl::draw(int width) {
+	ImGui::PushID(this);
+	if (ImGui::Checkbox("##Checkbox", &this->checked) && this->onChange) {
+		this->onChange();
+	}
+	ImGui::PopID();
+}
+
 void LayoutTextInputControl::draw(int width) {
 	bool browseButton = this->browseButtonType != BROWSE_BUTTON_NONE;
 
@@ -115,15 +152,19 @@ void LayoutTextInputControl::draw(int width) {
 	if (this->isReadOnly()) {
 		ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetColorU32(ImGuiCol_TextDisabled));
 	}
-	if (this->getWidth()) {
+	if (this->getWidth()>0) {
 		width = this->getWidth();
 	} else if (browseButton) {
 		width -= (int)this->browseButtonWidth;
 	}
 	ImGui::PushItemWidth((float)width);
 	ImGui::PushID(this);
-	if (ImGui::InputText("##Text", this->text, sizeof(this->text), (this->isReadOnly()?ImGuiInputTextFlags_ReadOnly:0)) && this->onChange) {
-		this->onChange();
+	if (this->numberOfLines > 1) {
+		ImGui::InputTextMultiline("##Text", this->text, sizeof(this->text), ImVec2(0, ImGui::GetTextLineHeight() * numberOfLines + ImGui::GetStyle().FramePadding.y*2));
+	} else {
+		if (ImGui::InputText("##Text", this->text, sizeof(this->text), (this->isReadOnly() ? ImGuiInputTextFlags_ReadOnly : 0)) && this->onChange) {
+			this->onChange();
+		}
 	}
 	ImGui::PopID();
 	ImGui::PopItemWidth();
@@ -229,6 +270,11 @@ std::shared_ptr<LayoutComboboxControl> LayoutSection::addComboboxRow(int labelId
 	return row->addComboBox(options, selected);
 }
 
+std::shared_ptr< LayoutCheckboxControl> LayoutSection::addCheckbox(int labelId, int helpId, bool value) {
+	std::shared_ptr<LayoutRow> row = this->addRow(labelId, helpId);
+	return row->addCheckbox(value);
+}
+
 std::shared_ptr<LayoutSeparatorControl> LayoutSection::addSeparator() {
 	std::shared_ptr<LayoutRow> row = this->addRow(0, 0);
 	return row->addSeparator();
@@ -261,6 +307,19 @@ std::shared_ptr<LayoutComboboxControl> LayoutRow::addComboBox(const std::vector<
 	if (selected) {
 		control->setSelection(selected);
 	}
+	this->controls.push_back(control);
+	return control;
+}
+
+std::shared_ptr<LayoutComboboxControl> LayoutRow::addComboBox() {
+	std::shared_ptr<LayoutComboboxControl> control = std::make_shared<LayoutComboboxControl>(shared_from_this());
+	this->controls.push_back(control);
+	return control;
+}
+
+std::shared_ptr< LayoutCheckboxControl> LayoutRow::addCheckbox(bool checked) {
+	std::shared_ptr<LayoutCheckboxControl> control = std::make_shared<LayoutCheckboxControl>(shared_from_this());
+	control->setCheck(checked);
 	this->controls.push_back(control);
 	return control;
 }
@@ -305,7 +364,17 @@ bool LayoutComboboxControl::setSelectionStringValue(const std::string& value) {
 	return false;
 }
 
-LayoutControl::LayoutControl(std::shared_ptr<LayoutRow> row, LayoutControlType type) : row(row), width(0), type(type), readOnly(false), font(NULL) {
+bool LayoutComboboxControl::setSelectionIntValue(int value) {
+	for (int i = 0; i < this->options.data.size(); i++) {
+		if (this->options.data[i].intValue == value) {
+			this->setSelection(i);
+			return true;
+		}
+	}
+	return false;
+}
+
+LayoutControl::LayoutControl(std::shared_ptr<LayoutRow> row, LayoutControlType type) : row(row), width(-1), type(type), readOnly(false), font(NULL) {
 }
 
 void LayoutControl::setRowHidden(bool hidden) {
@@ -319,4 +388,10 @@ void LayoutControl::setHelpId(int helpId) {
 	if (r) {
 		r->setHelp(helpId);
 	}
+}
+
+int LayoutButtonControl::getRecommendedWidth() {
+	float w = ImGui::CalcTextSize(this->label.c_str()).x;
+	w += ImGui::GetStyle().FramePadding.x * 2;
+	return (int)(w + 0.5f);
 }

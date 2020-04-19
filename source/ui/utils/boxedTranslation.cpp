@@ -262,7 +262,7 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
     case CONTAINER_VIEW_NAME_REQUIRED:
         return "The shorcut name is required and cannot be empty.";
     case CONTAINER_VIEW_SHORTCUT_PATH_LABEL:
-        return "Path";
+        return "Path:";
     case CONTAINER_VIEW_SHORTCUT_PATH_HELP:
         return "This is the path in the container that will be launched when starting this app.";
     case CONTAINER_VIEW_DELETE_SHORTCUT:

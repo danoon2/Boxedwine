@@ -81,20 +81,10 @@ void InstallView::createInstallTab(const std::string& initialFileOrDirPath) {
     containerNameControl = containerSection->addTextInputRow(INSTALLVIEW_CONTAINER_NAME_LABEL, INSTALLVIEW_CONTAINER_NAME_HELP);
 
     // Initialize Wine Version Control
-    std::vector<ComboboxItem> wineVersions;
-    for (auto& ver : GlobalSettings::getWineVersions()) {
-        wineVersions.push_back(ComboboxItem(ver.name));
-    }
-    wineVersionControl = containerSection->addComboboxRow(COMMON_WINE_VERSION_LABEL, COMMON_WINE_VERSION_HELP, wineVersions, 0);
-    wineVersionControl->setWidth(GlobalSettings::scaleIntUI(150));
+    wineVersionControl = createWineVersionCombobox(containerSection);
 
     // Initialize Windows Version Control
-    std::vector<ComboboxItem> windowsVersion;
-    for (auto& win : BoxedwineData::getWinVersions()) {
-        windowsVersion.push_back(ComboboxItem(win.szDescription));
-    }
-    windowsVersionControl = containerSection->addComboboxRow(CONTAINER_VIEW_WINDOWS_VERION_LABEL, CONTAINER_VIEW_WINDOWS_VERION_HELP, windowsVersion, BoxedwineData::getDefaultWindowsVersionIndex());    
-    windowsVersionControl->setWidth(GlobalSettings::scaleIntUI(150));
+    windowsVersionControl = createWindowsVersionCombobox(containerSection);
 
     section = model->addSection();
     section->addSeparator();
@@ -110,6 +100,7 @@ void InstallView::createInstallTab(const std::string& initialFileOrDirPath) {
         } else {
             installTypeControl->setSelection(INSTALL_TYPE_SETUP);
         }
+        installTypeControl->onChange();
         locationControl->setText(initialFileOrDirPath);
     }
     installTypeControl->onChange();

@@ -1,7 +1,7 @@
 #include "boxedwine.h"
 #include "../boxedwineui.h"
 
-BaseView::BaseView(const std::string& viewName) : errorMsg(NULL), tabIndex(0), viewName(viewName), errorMsgOpen(false) {
+BaseView::BaseView(const std::string& viewName) : errorMsg(NULL), tabIndex(0), viewName(viewName), errorMsgOpen(false), tabChanged(true) {
     this->toolTipWidth = (float)ImGui::CalcTextSize("(?)").x + ImGui::GetStyle().ItemSpacing.x;
     this->extraVerticalSpacing = (float)GlobalSettings::scaleIntUI(5);
 }
@@ -101,4 +101,25 @@ void BaseView::addTab(const std::string& name, const std::shared_ptr<ImGuiLayout
         model->doLayout();
     }
     this->tabs.push_back(BaseViewTab(name, model, drawTab));
+}
+
+
+std::shared_ptr<LayoutComboboxControl> BaseView::createWindowsVersionCombobox(const std::shared_ptr<LayoutSection>& section) {
+    std::vector<ComboboxItem> windowsVersion;
+    for (auto& win : BoxedwineData::getWinVersions()) {
+        windowsVersion.push_back(ComboboxItem(win.szDescription));
+    }
+    std::shared_ptr<LayoutComboboxControl> result = section->addComboboxRow(CONTAINER_VIEW_WINDOWS_VERION_LABEL, CONTAINER_VIEW_WINDOWS_VERION_HELP, windowsVersion, BoxedwineData::getDefaultWindowsVersionIndex());
+    result->setWidth(GlobalSettings::scaleIntUI(150));
+    return result;
+}
+
+std::shared_ptr<LayoutComboboxControl> BaseView::createWineVersionCombobox(const std::shared_ptr<LayoutSection>& section) {
+    std::vector<ComboboxItem> wineVersions;
+    for (auto& ver : GlobalSettings::getWineVersions()) {
+        wineVersions.push_back(ComboboxItem(ver.name));
+    }
+    std::shared_ptr<LayoutComboboxControl> result = section->addComboboxRow(COMMON_WINE_VERSION_LABEL, COMMON_WINE_VERSION_HELP, wineVersions, 0);
+    result->setWidth(GlobalSettings::scaleIntUI(150));
+    return result;
 }

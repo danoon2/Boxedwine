@@ -8,78 +8,9 @@ public:
 	virtual bool saveChanges();
     
 private:
-	void runContainerView(BoxedContainer* container, bool buttonPressed, BaseViewTab& tab);
     void setCurrentApp(BoxedApp* app);
     void setCurrentContainer(BoxedContainer* container);
     void rebuildShortcutsCombobox();
-
-    const char* containerNameLabel;
-    const char* containerLocationLabel;
-    const char* containerLocationSizeLabel;
-    const char* containerLocationOpenLabel;
-    const char* containerDeleteButtonLabel;
-    const char* containerDeleteButtonHelp;
-    const char* containerMountFolderLabel;
-    const char* containerMountFolderHelp;
-    const char* browseButtonText;    
-    const char* gdiRendererLabel;
-    const char* gdiRendererHelp;
-    const char* programsLabel;
-    const char* wineConfigLabel;
-    const char* regeditLabel;
-    const char* windowsVersionLabel;
-    const char* windowsVersionHelp;
-
-    float containerLocationOpenLabelButtonWidth;
-    float browseButtonWidth;
-    float deleteShortcutButtonWidth;
-
-    char containerName[256];
-    char containerLocation[1024];
-    char mountLocation[1024];
-    const char* wineVersionLabel;
-    const char* wineVersionHelp;
-    const char* addAppLabel;
-    const char* addAppHelp;
-    const char* addAppButtonLabel;
-    ImVec2 leftColumnWidth;
-    ImVec2 innerColumnWidth;    
-    ComboboxData wineVersionComboboxData;
-    ComboboxData mountDriveComboboxData;
-    ComboboxData windowsVersionComboboxData;
-
-    ComboboxData shortcutsComboboxData;
-    const char* shortcutListLabel;
-    const char* deleteShortcutLabel;
-    const char* shortcutHelp;
-    const char* nameLabel;
-    const char* nameHelp;
-    const char* resolutionLabel;
-    const char* resolutionHelp;
-    const char* bppLabel;
-    const char* bppHelp;
-    const char* fullscreenLabel;
-    const char* fullscreenHelp;
-    const char* scaleLabel;
-    const char* scaleHelp;
-    const char* scaleQualityLabel;
-    const char* scaleQualityHelp;
-    const char* glExtenstionsLabel;
-    const char* glExtenstionsSetButtonLabel;
-    const char* glExtensionsHelp;
-    const char* pathLabel;
-    const char* pathHelp;
-
-    ComboboxData resolutionComboboxData;
-    ComboboxData bppComboboxData;
-    ComboboxData scaleComboboxData;
-    ComboboxData scaleQualityComboboxData;
-
-    char appName[256];
-    char glExt[2048];
-    char path[1024];
-    bool fullScreen;
-    bool gdiRenderer;
 
     BoxedContainer* currentContainer;
     bool currentContainerChanged;
@@ -87,6 +18,31 @@ private:
 
     BoxedApp* currentApp;
     bool currentAppChanged;
+
+
+    std::shared_ptr<LayoutSection> section;
+    std::shared_ptr<LayoutTextInputControl> containerNameControl;
+    std::shared_ptr<LayoutComboboxControl> containerWineVersionControl;
+    std::shared_ptr<LayoutComboboxControl> containerWindowsVersionControl;
+    std::shared_ptr<LayoutCheckboxControl> containerGdiControl;
+    std::shared_ptr<LayoutComboboxControl> containerMountDriveControl;
+    std::shared_ptr<LayoutTextInputControl> containerMountPathControl;
+    std::shared_ptr<LayoutTextInputControl> containerLocationControl;
+    std::shared_ptr<LayoutButtonControl> containerWineCfgButtonControl;
+    std::shared_ptr<LayoutButtonControl> containerRegeditButtonControl;
+
+    std::shared_ptr<LayoutButtonControl> containerNewShortcutButtonControl;
+
+    std::shared_ptr<LayoutSection> appSection;
+    std::shared_ptr<LayoutComboboxControl> appPickerControl;
+    std::shared_ptr<LayoutTextInputControl> appNameControl;
+    std::shared_ptr<LayoutTextInputControl> appPathControl;
+    std::shared_ptr<LayoutComboboxControl> appResolutionControl;
+    std::shared_ptr<LayoutComboboxControl> appBppControl;
+    std::shared_ptr<LayoutCheckboxControl> appFullScreenControl;
+    std::shared_ptr<LayoutComboboxControl> appScaleControl;
+    std::shared_ptr<LayoutComboboxControl> appScaleQualityControl;
+    std::shared_ptr<LayoutTextInputControl> appGlExControl;
 };
 
 #endif
