@@ -43,6 +43,7 @@ public:
     static void setScale(U32 scale);
     static U32 scaleIntUI(U32 value);
     static float scaleFloatUI(float value);
+    static float scaleFloatUIAndFont(float value);
     static void downloadWine(const WineVersion& version, std::function<void(bool)> onCompleted);
     static bool isFilesListDownloading();
     static void startUp();
@@ -54,6 +55,7 @@ public:
     static const std::string& getDefaultResolution() { return GlobalSettings::defaultResolution; }
     static int getScreenCx() { return GlobalSettings::screenCx; }
     static int getScreenCy() { return GlobalSettings::screenCy; }
+    static void setFontScale(float scale);
 
     static StartUpArgs startUpArgs;
 
@@ -90,6 +92,7 @@ private:
     static int defaultScale;
     static int screenCx;
     static int screenCy;
+    static float fontScale;
 };
 
 #endif

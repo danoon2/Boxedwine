@@ -16,12 +16,12 @@ void YesNoDlg::run() {
     ImGui::SetCursorPosY(this->height - ImGui::GetFrameHeightWithSpacing() - ImGui::GetStyle().ItemSpacing.y);
     ImGui::Separator();    
     ImGui::SetCursorPosX(ImGui::GetStyle().ItemSpacing.y);
-    if (ImGui::Button(getTranslation(GENERIC_DLG_YES), ImVec2(GlobalSettings::scaleFloatUI(120.0f), 0))) {
+    if (ImGui::Button(getTranslation(GENERIC_DLG_YES), ImVec2(GlobalSettings::scaleFloatUIAndFont(120.0f), 0))) {
         this->onCompleted(true);
         this->done();
     }
     ImGui::SameLine();
-    if (ImGui::Button(getTranslation(GENERIC_DLG_NO), ImVec2(GlobalSettings::scaleFloatUI(120.0f), 0))) {
+    if (ImGui::Button(getTranslation(GENERIC_DLG_NO), ImVec2(GlobalSettings::scaleFloatUIAndFont(120.0f), 0))) {
         this->onCompleted(false);
         this->done();
     }

@@ -37,6 +37,7 @@ int GlobalSettings::defaultScale;
 int GlobalSettings::screenCx;
 int GlobalSettings::screenCy;
 float GlobalSettings::extraVerticalSpacing;
+float GlobalSettings::fontScale;
 
 void GlobalSettings::init(int argc, const char **argv) {
     GlobalSettings::dataFolderLocation = SDL_GetPrefPath("", "Boxedwine");
@@ -56,6 +57,7 @@ void GlobalSettings::init(int argc, const char **argv) {
     GlobalSettings::theme = config.readString("Theme", "Dark");
     GlobalSettings::defaultResolution = config.readString("DefaultResolution", "1024x768");
     GlobalSettings::defaultScale = config.readInt("DefaultScale", 100);
+    GlobalSettings::fontScale = (float)config.readInt("FontScale", 100) / 100.0f;
 
     if (!Fs::doesNativePathExist(configFilePath)) {
         saveConfig();
@@ -109,6 +111,7 @@ void GlobalSettings::saveConfig() {
     config.writeString("Theme", GlobalSettings::theme);
     config.writeString("DefaultResolution", GlobalSettings::defaultResolution);
     config.writeInt("DefaultScale", GlobalSettings::defaultScale);
+    config.writeInt("FontScale", (int)(GlobalSettings::fontScale*100));
     config.saveChanges();
 }
 
@@ -174,6 +177,10 @@ U32 GlobalSettings::scaleIntUI(U32 value) {
 
 float GlobalSettings::scaleFloatUI(float value) {
     return value * scale / SCALE_DENOMINATOR;
+}
+
+float GlobalSettings::scaleFloatUIAndFont(float value) {
+    return value * scale / SCALE_DENOMINATOR * fontScale;
 }
 
 void GlobalSettings::setScale(U32 scale) {
@@ -269,13 +276,13 @@ void GlobalSettings::loadFonts() {
     ImGuiIO& io = ImGui::GetIO();
     // first font added will be default
     if (Fs::doesNativePathExist(sansFontsPath) && !Fs::isNativePathDirectory(sansFontsPath)) {
-        defaultFont = io.Fonts->AddFontFromFileTTF(sansFontsPath.c_str(), scaleFloatUI(15.0f));
-        mediumFont = io.Fonts->AddFontFromFileTTF(sansFontsPath.c_str(), scaleFloatUI(20.0f));
-        largeFont = io.Fonts->AddFontFromFileTTF(sansFontsPath.c_str(), scaleFloatUI(25.0f));
+        defaultFont = io.Fonts->AddFontFromFileTTF(sansFontsPath.c_str(), floor(scaleFloatUI(15.0f * GlobalSettings::fontScale)));
+        mediumFont = io.Fonts->AddFontFromFileTTF(sansFontsPath.c_str(), floor(scaleFloatUI(20.0f * GlobalSettings::fontScale)));
+        largeFont = io.Fonts->AddFontFromFileTTF(sansFontsPath.c_str(), floor(scaleFloatUI(25.0f * GlobalSettings::fontScale)));
     }
 
     if (Fs::doesNativePathExist(sansBoldFontsPath) && !Fs::isNativePathDirectory(sansBoldFontsPath)) {
-        largeFontBold = io.Fonts->AddFontFromFileTTF(sansBoldFontsPath.c_str(), scaleFloatUI(24.0f));
+        largeFontBold = io.Fonts->AddFontFromFileTTF(sansBoldFontsPath.c_str(), scaleFloatUI(24.0f * GlobalSettings::fontScale));
     }    
 }
 
@@ -333,4 +340,8 @@ U32 GlobalSettings::getFrameDelayMillies() {
 void GlobalSettings::setTheme(const std::string& theme) { 
     GlobalSettings::theme = theme; 
     loadTheme();
+}
+
+void GlobalSettings::setFontScale(float scale) {
+    GlobalSettings::fontScale = scale;
 }

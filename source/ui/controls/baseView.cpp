@@ -110,7 +110,7 @@ std::shared_ptr<LayoutComboboxControl> BaseView::createWindowsVersionCombobox(co
         windowsVersion.push_back(ComboboxItem(win.szDescription));
     }
     std::shared_ptr<LayoutComboboxControl> result = section->addComboboxRow(CONTAINER_VIEW_WINDOWS_VERION_LABEL, CONTAINER_VIEW_WINDOWS_VERION_HELP, windowsVersion, BoxedwineData::getDefaultWindowsVersionIndex());
-    result->setWidth(GlobalSettings::scaleIntUI(150));
+    result->setWidth(GlobalSettings::scaleFloatUIAndFont(150));
     return result;
 }
 
@@ -120,6 +120,6 @@ std::shared_ptr<LayoutComboboxControl> BaseView::createWineVersionCombobox(const
         wineVersions.push_back(ComboboxItem(ver.name));
     }
     std::shared_ptr<LayoutComboboxControl> result = section->addComboboxRow(COMMON_WINE_VERSION_LABEL, COMMON_WINE_VERSION_HELP, wineVersions, 0);
-    result->setWidth(GlobalSettings::scaleIntUI(150));
+    result->setWidth(GlobalSettings::scaleFloatUIAndFont(150));
     return result;
 }

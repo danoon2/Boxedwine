@@ -40,7 +40,7 @@ ContainersView::ContainersView(std::string tab) : BaseView("ContainersView"), cu
     }
     std::shared_ptr<LayoutRow> row = section->addRow(CONTAINER_VIEW_MOUNT_DIR_LABEL, CONTAINER_VIEW_MOUNT_DIR_HELP);
     containerMountDriveControl = row->addComboBox(mountDrives);
-    containerMountDriveControl->setWidth(GlobalSettings::scaleIntUI(50));
+    containerMountDriveControl->setWidth(GlobalSettings::scaleFloatUIAndFont(50));
     containerMountPathControl = row->addTextInput();
     containerMountPathControl->setBrowseDirButton();
 

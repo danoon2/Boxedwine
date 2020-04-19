@@ -38,13 +38,13 @@ bool showYesNoMessageBox(const std::string& id, bool open, const char* title, co
         SAFE_IMGUI_TEXT(msg);
         ImGui::Separator();
 
-        if (ImGui::Button(getTranslation(GENERIC_DLG_YES), ImVec2(GlobalSettings::scaleFloatUI(120.0f), 0))) {
+        if (ImGui::Button(getTranslation(GENERIC_DLG_YES), ImVec2(GlobalSettings::scaleFloatUIAndFont(120.0f), 0))) {
             ImGui::CloseCurrentPopup();
             result = false;
             *yes = true;
         }
         ImGui::SameLine();
-        if (ImGui::Button(getTranslation(GENERIC_DLG_NO), ImVec2(GlobalSettings::scaleFloatUI(120.0f), 0))) {
+        if (ImGui::Button(getTranslation(GENERIC_DLG_NO), ImVec2(GlobalSettings::scaleFloatUIAndFont(120.0f), 0))) {
             ImGui::CloseCurrentPopup();
             result = false;
         }

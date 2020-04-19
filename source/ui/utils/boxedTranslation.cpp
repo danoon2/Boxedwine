@@ -137,6 +137,10 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "Default App Scale:";
     case OPTIONSVIEW_DEFAULT_SCALE_HELP:
         return "This is the default scale that Boxedwine will use to create the main window.  This can be overriden in the Containers view under the shortcut specific options on a per app basis.\n\nThis simple scaling option will blow up or shrink the emualted screen.  This is useful for applications that want to run in low resolution, like 640x480, and you want it to show larger on your monitor.";
+    case OPTIONSVIEW_DEFAULT_FONT_SCALE_LABEL:
+        return "Font Scale";
+    case OPTIONSVIEW_DEFAULT_FONT_SCALE_HELP:
+        return "This will change the size of the, which will make the UI look smaller or bigger.";
     case APPCHOOSER_DLG_TITLE:
         return "Create Shortcut";
     case APPCHOOSER_DLG_CHOOSE_APP_LABEL:
