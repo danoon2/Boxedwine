@@ -703,7 +703,7 @@ static void displayChanged(KThread* thread) {
                 flags |= SDL_WINDOW_BORDERLESS;
                 sdlScaleX = dm.w * 100 / screenCx;
                 sdlScaleY = dm.h * 100 / screenCy;
-            } else if (screenCx == dm.w && screenCy == dm.h) {
+            } else if (screenCx == (U32)dm.w && screenCy == (U32)dm.h) {
                 flags |= SDL_WINDOW_BORDERLESS;
             }   
             if (cx > dm.w || cy > dm.h) {

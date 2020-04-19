@@ -356,7 +356,7 @@ void LayoutComboboxControl::setOptions(const std::vector<ComboboxItem>& options)
 }
 
 bool LayoutComboboxControl::setSelectionByLabel(const std::string& label) {
-	for (int i = 0; i < this->options.data.size(); i++) {
+	for (int i = 0; i < (int)this->options.data.size(); i++) {
 		if (this->options.data[i].label == label) {
 			this->setSelection(i);
 			return true;
@@ -366,7 +366,7 @@ bool LayoutComboboxControl::setSelectionByLabel(const std::string& label) {
 }
 
 bool LayoutComboboxControl::setSelectionStringValue(const std::string& value) {
-	for (int i = 0; i < this->options.data.size(); i++) {
+	for (int i = 0; i < (int)this->options.data.size(); i++) {
 		if (this->options.data[i].strValue == value) {
 			this->setSelection(i);
 			return true;
@@ -376,7 +376,7 @@ bool LayoutComboboxControl::setSelectionStringValue(const std::string& value) {
 }
 
 bool LayoutComboboxControl::setSelectionIntValue(int value) {
-	for (int i = 0; i < this->options.data.size(); i++) {
+	for (int i = 0; i < (int)this->options.data.size(); i++) {
 		if (this->options.data[i].intValue == value) {
 			this->setSelection(i);
 			return true;
