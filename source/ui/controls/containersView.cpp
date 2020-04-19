@@ -185,6 +185,42 @@ ContainersView::ContainersView(std::string tab) : BaseView("ContainersView"), cu
             this->tabIndex = this->getTabCount() - 1;
         }
     }
+
+    std::shared_ptr<LayoutSection> bottomSection = model->addSection();
+    bottomSection->addSeparator();
+    std::shared_ptr<LayoutButtonControl> deleteContainerButton = bottomSection->addButton(0, CONTAINER_VIEW_DELETE_BUTTON_HELP, getTranslation(CONTAINER_VIEW_DELETE_BUTTON_LABEL));
+    deleteContainerButton->onChange = [this]() {
+        std::string label;
+        if (!currentContainer->getApps().size()) {
+            label = getTranslationWithFormat(CONTAINER_VIEW_DELETE_CONFIRMATION, true, currentContainer->getName());
+        } else {
+            label = "";
+
+            for (auto& app : currentContainer->getApps()) {
+                if (label.length() != 0) {
+                    label += ", ";
+                }
+                label += app->getName();
+            }
+            label = getTranslationWithFormat(CONTAINER_VIEW_DELETE_CONFIRMATION_WITH_APPS, true, currentContainer->getName(), label);
+        }
+        runOnMainUI([label, this]() {
+            new YesNoDlg(GENERIC_DLG_CONFIRM_TITLE, label, [this](bool yes) {
+                if (yes) {
+                    runOnMainUI([this]() {
+                        currentContainer->deleteContainerFromFilesystem();
+                        this->currentContainer = NULL;
+                        this->currentApp = NULL;
+                        this->currentContainerChanged = false;
+                        BoxedwineData::reloadContainers();
+                        gotoView(VIEW_CONTAINERS);
+                        return false;
+                        });
+                }
+                });
+            return false;
+            });
+    };
 }
 
 bool ContainersView::saveChanges() {
