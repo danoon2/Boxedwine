@@ -7,6 +7,12 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		71205456244D01B300C3CB1B /* ImGuiLayout.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71205454244D01B300C3CB1B /* ImGuiLayout.cpp */; };
+		71205457244D01B300C3CB1B /* ImGuiLayout.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71205454244D01B300C3CB1B /* ImGuiLayout.cpp */; };
+		7120545A244D01DA00C3CB1B /* boxedReg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71205458244D01D900C3CB1B /* boxedReg.cpp */; };
+		7120545B244D01DA00C3CB1B /* boxedReg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71205458244D01D900C3CB1B /* boxedReg.cpp */; };
+		7120545E244D074000C3CB1B /* MacPlatform.m in Sources */ = {isa = PBXBuildFile; fileRef = 7120545D244D074000C3CB1B /* MacPlatform.m */; };
+		7120545F244D074000C3CB1B /* MacPlatform.m in Sources */ = {isa = PBXBuildFile; fileRef = 7120545D244D074000C3CB1B /* MacPlatform.m */; };
 		7122277C2433ED5700CDBABD /* libSDL2.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 7122277B2433ED5700CDBABD /* libSDL2.a */; };
 		7122277E2433ED7C00CDBABD /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7122277D2433ED7C00CDBABD /* CoreAudio.framework */; };
 		712227822433EDCE00CDBABD /* AudioToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 712227812433EDCE00CDBABD /* AudioToolbox.framework */; };
@@ -157,7 +163,6 @@
 		71222BD624351CBA00CDBABD /* common_other.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD932433BBBE003F17F1 /* common_other.cpp */; };
 		71222BD724351CBA00CDBABD /* devfb.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE282433BBBE003F17F1 /* devfb.cpp */; };
 		71222BD824351CBA00CDBABD /* esdisplaylist.c in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE522433BBBE003F17F1 /* esdisplaylist.c */; };
-		71222BD924351CBA00CDBABD /* containerOptionsDlg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD262433BBBE003F17F1 /* containerOptionsDlg.cpp */; };
 		71222BDA24351CBA00CDBABD /* decoder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDAA2433BBBE003F17F1 /* decoder.cpp */; };
 		71222BDB24351CBA00CDBABD /* testCPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD492433BBBE003F17F1 /* testCPU.cpp */; };
 		71222BDC24351CBA00CDBABD /* ksocket.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE3A2433BBBE003F17F1 /* ksocket.cpp */; };
@@ -187,7 +192,6 @@
 		71222BF624351CBA00CDBABD /* kscheduler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE3E2433BBBE003F17F1 /* kscheduler.cpp */; };
 		71222BF724351CBA00CDBABD /* common_sse2.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD972433BBBE003F17F1 /* common_sse2.cpp */; };
 		71222BF924351CBA00CDBABD /* x64CodeChunk.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD742433BBBE003F17F1 /* x64CodeChunk.cpp */; };
-		71222BFB24351CBA00CDBABD /* appOptionDlg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD1E2433BBBE003F17F1 /* appOptionDlg.cpp */; };
 		71222BFC24351CBA00CDBABD /* kobject.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE3C2433BBBE003F17F1 /* kobject.cpp */; };
 		71222BFD24351CBA00CDBABD /* kfile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE2C2433BBBE003F17F1 /* kfile.cpp */; };
 		71222BFF24351CBA00CDBABD /* imgui_widgets.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 712227A42433EE5300CDBABD /* imgui_widgets.cpp */; };
@@ -1102,11 +1106,9 @@
 		71FBFE5D2433BBBE003F17F1 /* waitDlg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD1A2433BBBE003F17F1 /* waitDlg.cpp */; };
 		71FBFE5E2433BBBE003F17F1 /* listViewItem.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD1C2433BBBE003F17F1 /* listViewItem.cpp */; };
 		71FBFE5F2433BBBE003F17F1 /* listView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD1D2433BBBE003F17F1 /* listView.cpp */; };
-		71FBFE602433BBBE003F17F1 /* appOptionDlg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD1E2433BBBE003F17F1 /* appOptionDlg.cpp */; };
 		71FBFE612433BBBE003F17F1 /* spinnerControl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD212433BBBE003F17F1 /* spinnerControl.cpp */; };
 		71FBFE632433BBBE003F17F1 /* baseDlg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD242433BBBE003F17F1 /* baseDlg.cpp */; };
 		71FBFE642433BBBE003F17F1 /* menubar.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD252433BBBE003F17F1 /* menubar.cpp */; };
-		71FBFE652433BBBE003F17F1 /* containerOptionsDlg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD262433BBBE003F17F1 /* containerOptionsDlg.cpp */; };
 		71FBFE672433BBBE003F17F1 /* uiSettings.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD2E2433BBBE003F17F1 /* uiSettings.cpp */; };
 		71FBFE682433BBBE003F17F1 /* appbar.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD2F2433BBBE003F17F1 /* appbar.cpp */; };
 		71FBFE692433BBBE003F17F1 /* appChooserDlg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD312433BBBE003F17F1 /* appChooserDlg.cpp */; };
@@ -1238,6 +1240,12 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		71205454244D01B300C3CB1B /* ImGuiLayout.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ImGuiLayout.cpp; sourceTree = "<group>"; };
+		71205455244D01B300C3CB1B /* ImGuiLayout.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ImGuiLayout.h; sourceTree = "<group>"; };
+		71205458244D01D900C3CB1B /* boxedReg.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = boxedReg.cpp; sourceTree = "<group>"; };
+		71205459244D01D900C3CB1B /* boxedReg.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = boxedReg.h; sourceTree = "<group>"; };
+		7120545C244D074000C3CB1B /* MacPlatform.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MacPlatform.h; sourceTree = "<group>"; };
+		7120545D244D074000C3CB1B /* MacPlatform.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MacPlatform.m; sourceTree = "<group>"; };
 		712227762433E8C400CDBABD /* SDL2.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SDL2.framework; path = ../../../lib/mac/sdlMac2.0.6/SDL2.framework; sourceTree = "<group>"; };
 		712227782433E8E100CDBABD /* Minizip.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Minizip.framework; path = ../../../lib/mac/minizipMac/Minizip.framework; sourceTree = "<group>"; };
 		7122277B2433ED5700CDBABD /* libSDL2.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; path = libSDL2.a; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -1777,24 +1785,20 @@
 		71FBFD1B2433BBBE003F17F1 /* containersView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = containersView.h; sourceTree = "<group>"; };
 		71FBFD1C2433BBBE003F17F1 /* listViewItem.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = listViewItem.cpp; sourceTree = "<group>"; };
 		71FBFD1D2433BBBE003F17F1 /* listView.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = listView.cpp; sourceTree = "<group>"; };
-		71FBFD1E2433BBBE003F17F1 /* appOptionDlg.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = appOptionDlg.cpp; sourceTree = "<group>"; };
 		71FBFD1F2433BBBE003F17F1 /* uiSettings.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = uiSettings.h; sourceTree = "<group>"; };
 		71FBFD202433BBBE003F17F1 /* menubar.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = menubar.h; sourceTree = "<group>"; };
 		71FBFD212433BBBE003F17F1 /* spinnerControl.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = spinnerControl.cpp; sourceTree = "<group>"; };
 		71FBFD222433BBBE003F17F1 /* waitDlg.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = waitDlg.h; sourceTree = "<group>"; };
 		71FBFD242433BBBE003F17F1 /* baseDlg.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = baseDlg.cpp; sourceTree = "<group>"; };
 		71FBFD252433BBBE003F17F1 /* menubar.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = menubar.cpp; sourceTree = "<group>"; };
-		71FBFD262433BBBE003F17F1 /* containerOptionsDlg.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = containerOptionsDlg.cpp; sourceTree = "<group>"; };
 		71FBFD272433BBBE003F17F1 /* listViewItem.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = listViewItem.h; sourceTree = "<group>"; };
 		71FBFD292433BBBE003F17F1 /* baseDlg.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = baseDlg.h; sourceTree = "<group>"; };
-		71FBFD2A2433BBBE003F17F1 /* containerOptionsDlg.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = containerOptionsDlg.h; sourceTree = "<group>"; };
 		71FBFD2B2433BBBE003F17F1 /* listView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = listView.h; sourceTree = "<group>"; };
 		71FBFD2D2433BBBE003F17F1 /* appbar.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = appbar.h; sourceTree = "<group>"; };
 		71FBFD2E2433BBBE003F17F1 /* uiSettings.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = uiSettings.cpp; sourceTree = "<group>"; };
 		71FBFD2F2433BBBE003F17F1 /* appbar.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = appbar.cpp; sourceTree = "<group>"; };
 		71FBFD312433BBBE003F17F1 /* appChooserDlg.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = appChooserDlg.cpp; sourceTree = "<group>"; };
 		71FBFD322433BBBE003F17F1 /* appChooserDlg.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = appChooserDlg.h; sourceTree = "<group>"; };
-		71FBFD332433BBBE003F17F1 /* appOptionsDlg.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = appOptionsDlg.h; sourceTree = "<group>"; };
 		71FBFD342433BBBE003F17F1 /* containersView.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = containersView.cpp; sourceTree = "<group>"; };
 		71FBFD352433BBBE003F17F1 /* mainui.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = mainui.cpp; sourceTree = "<group>"; };
 		71FBFD372433BBBE003F17F1 /* globalSettings.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = globalSettings.cpp; sourceTree = "<group>"; };
@@ -2768,6 +2772,8 @@
 				71FBFCB32433B817003F17F1 /* Assets.xcassets */,
 				71FBFCB82433B817003F17F1 /* Info.plist */,
 				71FBFCBB2433B817003F17F1 /* Boxedwine.entitlements */,
+				7120545C244D074000C3CB1B /* MacPlatform.h */,
+				7120545D244D074000C3CB1B /* MacPlatform.m */,
 			);
 			path = Boxedwine;
 			sourceTree = "<group>";
@@ -2891,20 +2897,18 @@
 		71FBFD182433BBBE003F17F1 /* controls */ = {
 			isa = PBXGroup;
 			children = (
+				71205454244D01B300C3CB1B /* ImGuiLayout.cpp */,
+				71205455244D01B300C3CB1B /* ImGuiLayout.h */,
 				715F842A24464C080038F5A4 /* installView.cpp */,
 				715F842B24464C080038F5A4 /* installView.h */,
 				71FBFD2F2433BBBE003F17F1 /* appbar.cpp */,
 				71FBFD2D2433BBBE003F17F1 /* appbar.h */,
 				71FBFD312433BBBE003F17F1 /* appChooserDlg.cpp */,
 				71FBFD322433BBBE003F17F1 /* appChooserDlg.h */,
-				71FBFD1E2433BBBE003F17F1 /* appOptionDlg.cpp */,
-				71FBFD332433BBBE003F17F1 /* appOptionsDlg.h */,
 				71FBFD242433BBBE003F17F1 /* baseDlg.cpp */,
 				71FBFD292433BBBE003F17F1 /* baseDlg.h */,
 				715F347F2440D7D10038F5A4 /* baseView.cpp */,
 				715F34792440D7D10038F5A4 /* baseView.h */,
-				71FBFD262433BBBE003F17F1 /* containerOptionsDlg.cpp */,
-				71FBFD2A2433BBBE003F17F1 /* containerOptionsDlg.h */,
 				71FBFD342433BBBE003F17F1 /* containersView.cpp */,
 				71FBFD1B2433BBBE003F17F1 /* containersView.h */,
 				715F347B2440D7D10038F5A4 /* downloadDlg.cpp */,
@@ -2934,6 +2938,8 @@
 		71FBFD362433BBBE003F17F1 /* data */ = {
 			isa = PBXGroup;
 			children = (
+				71205458244D01D900C3CB1B /* boxedReg.cpp */,
+				71205459244D01D900C3CB1B /* boxedReg.h */,
 				71FBFD372433BBBE003F17F1 /* globalSettings.cpp */,
 				71FBFD382433BBBE003F17F1 /* boxedContainer.h */,
 				71FBFD392433BBBE003F17F1 /* boxedwineData.cpp */,
@@ -3691,7 +3697,6 @@
 				71222BD724351CBA00CDBABD /* devfb.cpp in Sources */,
 				71222BD824351CBA00CDBABD /* esdisplaylist.c in Sources */,
 				715F64652440E9740038F5A4 /* SecureServerSocketImpl.cpp in Sources */,
-				71222BD924351CBA00CDBABD /* containerOptionsDlg.cpp in Sources */,
 				715F63F32440E9110038F5A4 /* MediaType.cpp in Sources */,
 				715F83442440ED1F0038F5A4 /* pcre_string_utils.c in Sources */,
 				715F64692440E9740038F5A4 /* KeyFileHandler.cpp in Sources */,
@@ -3804,7 +3809,6 @@
 				71222BF724351CBA00CDBABD /* common_sse2.cpp in Sources */,
 				715F83022440ED1E0038F5A4 /* PipeStream.cpp in Sources */,
 				71222BF924351CBA00CDBABD /* x64CodeChunk.cpp in Sources */,
-				71222BFB24351CBA00CDBABD /* appOptionDlg.cpp in Sources */,
 				715F82802440ED1E0038F5A4 /* Message.cpp in Sources */,
 				715F83422440ED1F0038F5A4 /* TextEncoding.cpp in Sources */,
 				715F63632440E9100038F5A4 /* SocketNotification.cpp in Sources */,
@@ -3823,6 +3827,7 @@
 				715F34852440D7D20038F5A4 /* downloadDlg.cpp in Sources */,
 				71222BFF24351CBA00CDBABD /* imgui_widgets.cpp in Sources */,
 				715F34CA2440E7480038F5A4 /* LoggingSubsystem.cpp in Sources */,
+				71205457244D01B300C3CB1B /* ImGuiLayout.cpp in Sources */,
 				715F63B72440E9110038F5A4 /* HTTPClientSession.cpp in Sources */,
 				715F83902440ED1F0038F5A4 /* Glob.cpp in Sources */,
 				715F834E2440ED1F0038F5A4 /* SortedDirectoryIterator.cpp in Sources */,
@@ -3869,6 +3874,7 @@
 				715F82462440ED1D0038F5A4 /* VarIterator.cpp in Sources */,
 				715F83082440ED1E0038F5A4 /* Void.cpp in Sources */,
 				715F82422440ED1D0038F5A4 /* Thread.cpp in Sources */,
+				7120545F244D074000C3CB1B /* MacPlatform.m in Sources */,
 				715F635F2440E9100038F5A4 /* OAuth10Credentials.cpp in Sources */,
 				715F83DA2440ED200038F5A4 /* LoggingRegistry.cpp in Sources */,
 				715F64532440E9740038F5A4 /* X509Certificate.cpp in Sources */,
@@ -3893,6 +3899,7 @@
 				715F34D82440E7480038F5A4 /* MapConfiguration.cpp in Sources */,
 				71222C1924351CBA00CDBABD /* syscall.cpp in Sources */,
 				715F83E22440ED200038F5A4 /* ArchiveStrategy.cpp in Sources */,
+				7120545B244D01DA00C3CB1B /* boxedReg.cpp in Sources */,
 				71222C1A24351CBA00CDBABD /* startupArgs.cpp in Sources */,
 				715F82982440ED1E0038F5A4 /* RotateStrategy.cpp in Sources */,
 				715F83942440ED1F0038F5A4 /* pcre_maketables.c in Sources */,
@@ -4238,7 +4245,6 @@
 				71FBFEC62433BBBE003F17F1 /* devfb.cpp in Sources */,
 				71FBFEE42433BBBE003F17F1 /* esdisplaylist.c in Sources */,
 				715F64642440E9740038F5A4 /* SecureServerSocketImpl.cpp in Sources */,
-				71FBFE652433BBBE003F17F1 /* containerOptionsDlg.cpp in Sources */,
 				715F63F22440E9110038F5A4 /* MediaType.cpp in Sources */,
 				715F83432440ED1F0038F5A4 /* pcre_string_utils.c in Sources */,
 				715F64682440E9740038F5A4 /* KeyFileHandler.cpp in Sources */,
@@ -4351,7 +4357,6 @@
 				71FBFE892433BBBE003F17F1 /* common_sse2.cpp in Sources */,
 				715F83012440ED1E0038F5A4 /* PipeStream.cpp in Sources */,
 				71FBFE7D2433BBBE003F17F1 /* x64CodeChunk.cpp in Sources */,
-				71FBFE602433BBBE003F17F1 /* appOptionDlg.cpp in Sources */,
 				715F827F2440ED1E0038F5A4 /* Message.cpp in Sources */,
 				715F83412440ED1F0038F5A4 /* TextEncoding.cpp in Sources */,
 				715F63622440E9100038F5A4 /* SocketNotification.cpp in Sources */,
@@ -4370,6 +4375,7 @@
 				715F34842440D7D20038F5A4 /* downloadDlg.cpp in Sources */,
 				7122287E2433EE5300CDBABD /* imgui_widgets.cpp in Sources */,
 				715F34C92440E7480038F5A4 /* LoggingSubsystem.cpp in Sources */,
+				71205456244D01B300C3CB1B /* ImGuiLayout.cpp in Sources */,
 				715F63B62440E9110038F5A4 /* HTTPClientSession.cpp in Sources */,
 				715F838F2440ED1F0038F5A4 /* Glob.cpp in Sources */,
 				715F834D2440ED1F0038F5A4 /* SortedDirectoryIterator.cpp in Sources */,
@@ -4416,6 +4422,7 @@
 				715F82452440ED1D0038F5A4 /* VarIterator.cpp in Sources */,
 				715F83072440ED1E0038F5A4 /* Void.cpp in Sources */,
 				715F82412440ED1D0038F5A4 /* Thread.cpp in Sources */,
+				7120545E244D074000C3CB1B /* MacPlatform.m in Sources */,
 				715F635E2440E9100038F5A4 /* OAuth10Credentials.cpp in Sources */,
 				715F83D92440ED200038F5A4 /* LoggingRegistry.cpp in Sources */,
 				715F64522440E9740038F5A4 /* X509Certificate.cpp in Sources */,
@@ -4440,6 +4447,7 @@
 				715F34D72440E7480038F5A4 /* MapConfiguration.cpp in Sources */,
 				71FBFECB2433BBBE003F17F1 /* syscall.cpp in Sources */,
 				715F83E12440ED200038F5A4 /* ArchiveStrategy.cpp in Sources */,
+				7120545A244D01DA00C3CB1B /* boxedReg.cpp in Sources */,
 				71FBFEB32433BBBE003F17F1 /* startupArgs.cpp in Sources */,
 				715F82972440ED1E0038F5A4 /* RotateStrategy.cpp in Sources */,
 				715F83932440ED1F0038F5A4 /* pcre_maketables.c in Sources */,

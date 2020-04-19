@@ -119,6 +119,17 @@ U32 Platform::getCpuCount() {
 #endif
 }
 
+#ifdef __MACH__
+extern "C" {
+void MacPlatformOpenFileLocation(const char* str);
+}
+
+void Platform::openFileLocation(const std::string& location) {
+    MacPlatformOpenFileLocation(location.c_str());
+}
+#else
+#endif
+
 #ifdef BOXEDWINE_X64
 #include <cpuid.h>
 bool platformHasBMI2() {
