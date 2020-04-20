@@ -107,7 +107,11 @@ void LayoutRow::draw(float toolTipWidth, float labelOffset, float valueOffset) {
 
 void LayoutRow::drawToolTip(const std::string& help) {
 	ImGui::AlignTextToFramePadding();
-	SAFE_IMGUI_TEXT_DISABLED("(?)");
+	if (GlobalSettings::hasIconsFont()) {
+		SAFE_IMGUI_TEXT_DISABLED(QUESTION_ICON);
+	} else {
+		SAFE_IMGUI_TEXT_DISABLED("(?)");
+	}
 	if (ImGui::IsItemHovered())
 	{
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(GlobalSettings::scaleFloatUI(8.0f), GlobalSettings::scaleFloatUI(8.0f)));

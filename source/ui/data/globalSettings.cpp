@@ -38,6 +38,7 @@ int GlobalSettings::screenCx;
 int GlobalSettings::screenCy;
 float GlobalSettings::extraVerticalSpacing;
 float GlobalSettings::fontScale;
+bool GlobalSettings::iconFontsLoaded;
 
 void GlobalSettings::init(int argc, const char **argv) {
     GlobalSettings::dataFolderLocation = SDL_GetPrefPath("", "Boxedwine");
@@ -272,17 +273,53 @@ void GlobalSettings::loadFonts() {
     if (!Fs::doesNativePathExist(sansFontsPath) && wineVersions.size() > 0) {
         FsZip::extractFileFromZip(wineVersions[0].filePath, "usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf", fontsPath);
     }
+    std::string awesomeFontPath = fontsPath + Fs::nativePathSeperator + "fontawesome-webfont.ttf";
+    if (!Fs::doesNativePathExist(awesomeFontPath) && wineVersions.size() > 0) {
+        FsZip::extractFileFromZip(wineVersions[0].filePath, "usr/share/fonts/truetype/fontawesome-webfont.ttf", fontsPath);
+    }
 
     ImGuiIO& io = ImGui::GetIO();
     // first font added will be default
     if (Fs::doesNativePathExist(sansFontsPath) && !Fs::isNativePathDirectory(sansFontsPath)) {
         defaultFont = io.Fonts->AddFontFromFileTTF(sansFontsPath.c_str(), floor(scaleFloatUI(15.0f * GlobalSettings::fontScale)));
+        if (Fs::doesNativePathExist(awesomeFontPath)) {
+            static const ImWchar icons_ranges[] = { 0xf000, 0xf2b4, 0 }; // will not be copied by AddFont* so keep in scope.
+            ImFontConfig config;
+            config.MergeMode = true;
+            if (io.Fonts->AddFontFromFileTTF(awesomeFontPath.c_str(), floor(scaleFloatUI(15.0f * GlobalSettings::fontScale)), &config, icons_ranges)) {
+                GlobalSettings::iconFontsLoaded = true;
+            }
+        }
         mediumFont = io.Fonts->AddFontFromFileTTF(sansFontsPath.c_str(), floor(scaleFloatUI(20.0f * GlobalSettings::fontScale)));
+        if (Fs::doesNativePathExist(awesomeFontPath)) {
+            static const ImWchar icons_ranges[] = { 0xf000, 0xf2b4, 0 }; // will not be copied by AddFont* so keep in scope.
+            ImFontConfig config;
+            config.MergeMode = true;
+            if (io.Fonts->AddFontFromFileTTF(awesomeFontPath.c_str(), floor(scaleFloatUI(20.0f * GlobalSettings::fontScale)), &config, icons_ranges)) {
+                GlobalSettings::iconFontsLoaded = true;
+            }
+        }
         largeFont = io.Fonts->AddFontFromFileTTF(sansFontsPath.c_str(), floor(scaleFloatUI(25.0f * GlobalSettings::fontScale)));
+        if (Fs::doesNativePathExist(awesomeFontPath)) {
+            static const ImWchar icons_ranges[] = { 0xf000, 0xf2b4, 0 }; // will not be copied by AddFont* so keep in scope.
+            ImFontConfig config;
+            config.MergeMode = true;
+            if (io.Fonts->AddFontFromFileTTF(awesomeFontPath.c_str(), floor(scaleFloatUI(25.0f * GlobalSettings::fontScale)), &config, icons_ranges)) {
+                GlobalSettings::iconFontsLoaded = true;
+            }
+        }
     }
 
     if (Fs::doesNativePathExist(sansBoldFontsPath) && !Fs::isNativePathDirectory(sansBoldFontsPath)) {
         largeFontBold = io.Fonts->AddFontFromFileTTF(sansBoldFontsPath.c_str(), scaleFloatUI(24.0f * GlobalSettings::fontScale));
+        if (Fs::doesNativePathExist(awesomeFontPath)) {
+            static const ImWchar icons_ranges[] = { 0xf000, 0xf2b4, 0 }; // will not be copied by AddFont* so keep in scope.
+            ImFontConfig config;
+            config.MergeMode = true;
+            if (io.Fonts->AddFontFromFileTTF(awesomeFontPath.c_str(), floor(scaleFloatUI(25.0f * GlobalSettings::fontScale)), &config, icons_ranges)) {
+                GlobalSettings::iconFontsLoaded = true;
+            }
+        }
     }    
 }
 

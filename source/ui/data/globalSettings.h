@@ -5,6 +5,35 @@
 
 class BoxedContainer;
 
+//used http://www.ltg.ed.ac.uk/~richard/utf-8.cgi?input=F015&mode=hex to convert 16-bit unicode value to utf-8
+
+// home icon - F016
+#define APP_LIST_ICON "\xEF\x80\x95"
+
+// save icon - F0C7
+#define INSTALL_ICON "\xEF\x83\x87" 
+// download icon - F01A
+#define INSTALL_DEMO_ICON "\xEF\x80\x9A"
+
+// archive icon - F187
+#define CONTAINER_ICON "\xEF\x86\x87"
+
+// cog icon - F013
+#define OPTIONS_ICON "\xEF\x80\x93"
+// wrench icon - F0AD
+#define OPTIONS_GENERAL "\xEF\x82\xAD"
+// desktop icon - F108
+#define OPTION_DISPLAY_ICON "\xEF\x84\x88"
+// linux icon - F17C
+#define OPTION_WINE_ICON "\xEF\x85\xBC"
+
+// remove_circle icon - F05C
+#define DELETE_ICON "\xEF\x81\x9C"
+// trash icon - F014
+#define TRASH_ICON "\xEF\x80\x94"
+// question icon - F059
+#define QUESTION_ICON "\xEF\x81\x99"
+
 class WineVersion {
 public:
     WineVersion(const std::string& name, const std::string& fsVersion, const std::string& filePath, U32 size=0, const std::string& changes=""):name(name), filePath(filePath), fsVersion(fsVersion), size(size), changes(changes)  {}
@@ -56,6 +85,7 @@ public:
     static int getScreenCx() { return GlobalSettings::screenCx; }
     static int getScreenCy() { return GlobalSettings::screenCy; }
     static void setFontScale(float scale);
+    static bool hasIconsFont() {return GlobalSettings::iconFontsLoaded;}
 
     static StartUpArgs startUpArgs;
 
@@ -93,6 +123,7 @@ private:
     static int screenCx;
     static int screenCy;
     static float fontScale;
+    static bool iconFontsLoaded;
 };
 
 #endif

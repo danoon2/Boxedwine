@@ -6,25 +6,9 @@ BaseView::BaseView(const std::string& viewName) : errorMsg(NULL), tabIndex(0), v
     this->extraVerticalSpacing = (float)GlobalSettings::scaleIntUI(5);
 }
 
-void BaseView::toolTip(const char* desc) {
-    ImGui::AlignTextToFramePadding();
-    SAFE_IMGUI_TEXT_DISABLED("(?)");
-    if (ImGui::IsItemHovered())
-    {
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(GlobalSettings::scaleFloatUI(8.0f), GlobalSettings::scaleFloatUI(8.0f)));
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, GlobalSettings::scaleFloatUI(7.0f));
-        ImGui::BeginTooltip();
-        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-        ImGui::TextUnformatted(desc);
-        ImGui::PopTextWrapPos();
-        ImGui::EndTooltip();
-        ImGui::PopStyleVar(2);
-    }
-}
-
-void BaseView::addTab(const std::string& name, int index) {
+void BaseView::addTab(const std::string& name, int index, const std::function<void()>& drawTabIcon) {
     ImGui::Dummy(ImVec2(this->extraVerticalSpacing, 0.0f));
-    ImGui::SameLine();
+    ImGui::SameLine();    
     ImVec2 pos = ImGui::GetCursorPos();
     ImVec2 s = ImGui::CalcTextSize(name.c_str(), NULL, true);
     s.x = 0;
@@ -40,6 +24,9 @@ void BaseView::addTab(const std::string& name, int index) {
     ImGui::PopStyleColor();
     pos.y += this->extraVerticalSpacing;
     ImGui::SetCursorPos(pos);
+    if (drawTabIcon) {
+        drawTabIcon();
+    }
     SAFE_IMGUI_TEXT(name.c_str());
     pos = ImGui::GetCursorPos();
     pos.y += this->extraVerticalSpacing;
@@ -62,7 +49,7 @@ void BaseView::run(const ImVec2& size) {
 
     ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing));
     for (int i=0;i<(int)this->tabs.size();i++) {
-        addTab(this->tabs[i].name, i);
+        addTab(this->tabs[i].name, i, this->tabs[i].drawTabIcon);
     }
     ImGui::PopFont();
     ImGui::EndChild();
@@ -96,11 +83,11 @@ void BaseView::runErrorMsg(bool open) {
     ImGui::PopFont();
 }
 
-void BaseView::addTab(const std::string& name, const std::shared_ptr<ImGuiLayout>& model, std::function<void(bool buttonPressed, BaseViewTab& tab)> drawTab) {
+void BaseView::addTab(const std::string& name, const std::shared_ptr<ImGuiLayout>& model, std::function<void(bool buttonPressed, BaseViewTab& tab)> drawTab, std::function<void()> drawTabIcon) {
     if (model) {
         model->doLayout();
     }
-    this->tabs.push_back(BaseViewTab(name, model, drawTab));
+    this->tabs.push_back(BaseViewTab(name, model, drawTab, drawTabIcon));
 }
 
 

@@ -20,7 +20,13 @@ void InstallView::createDemoTab() {
     std::shared_ptr<ImGuiLayout> model = std::make_shared<ImGuiLayout>();
     std::shared_ptr<LayoutSection> section = model->addSection(INSTALLVIEW_DEMO_TITLE);
 
-    addTab(getTranslation(INSTALLVIEW_DEMO_TITLE), model, [this](bool buttonPressed, BaseViewTab& tab) {
+    std::string name;
+    if (GlobalSettings::hasIconsFont()) {
+        name += INSTALL_DEMO_ICON;
+        name += " ";
+    }
+    name += getTranslation(INSTALLVIEW_DEMO_TITLE);
+    addTab(name, model, [this](bool buttonPressed, BaseViewTab& tab) {
         
         });
 }
@@ -105,7 +111,13 @@ void InstallView::createInstallTab(const std::string& initialFileOrDirPath) {
     }
     installTypeControl->onChange();
 
-    addTab(getTranslation(INSTALLVIEW_INSTALL_TITLE), model, [this](bool buttonPressed, BaseViewTab& tab) {
+    std::string name;
+    if (GlobalSettings::hasIconsFont()) {
+        name += INSTALL_ICON;
+        name += " ";
+    }
+    name += getTranslation(INSTALLVIEW_INSTALL_TITLE);
+    addTab(name, model, [this](bool buttonPressed, BaseViewTab& tab) {
         
         });
 }

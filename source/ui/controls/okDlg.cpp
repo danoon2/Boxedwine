@@ -17,7 +17,9 @@ void OkDlg::run() {
     ImGui::Separator();
     ImGui::SetCursorPosX(ImGui::GetStyle().ItemSpacing.y);
     if (ImGui::Button(getTranslation(GENERIC_DLG_OK), ImVec2(GlobalSettings::scaleFloatUIAndFont(120.0f), 0))) {
-        this->onDone();
+        if (this->onDone) {
+            this->onDone();
+        }
         this->done();
     }
 }

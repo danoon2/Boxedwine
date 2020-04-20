@@ -3,10 +3,11 @@
 
 class BaseViewTab {
 public:
-	BaseViewTab(const std::string& name, const std::shared_ptr<ImGuiLayout>& model, std::function<void(bool buttonPressed, BaseViewTab& tab)> drawTab) : name(name), drawTab(drawTab), model(model) {}
+	BaseViewTab(const std::string& name, const std::shared_ptr<ImGuiLayout>& model, std::function<void(bool buttonPressed, BaseViewTab& tab)> drawTab, std::function<void()> drawTabIcon) : name(name), drawTab(drawTab), model(model), drawTabIcon(drawTabIcon) {}
 	std::string name;
 	std::function<void(bool buttonPressed, BaseViewTab& tab)> drawTab;
 	std::shared_ptr<ImGuiLayout> model;
+	std::function<void()> drawTabIcon;
 };
 
 class BaseView {
@@ -21,8 +22,7 @@ protected:
 	float toolTipWidth;
 	float extraVerticalSpacing;
 
-	void toolTip(const char* desc);
-	void addTab(const std::string& name, const std::shared_ptr<ImGuiLayout>& model, std::function<void(bool buttonPressed, BaseViewTab& tab)> drawTab);
+	void addTab(const std::string& name, const std::shared_ptr<ImGuiLayout>& model, std::function<void(bool buttonPressed, BaseViewTab& tab)> drawTab, std::function<void()> drawTabIcon=nullptr);
 	void runErrorMsg(bool open);
 	int getTabCount() {return (int)tabs.size();}
 	void setTabName(int index, const std::string& name) { tabs[index].name = name; }
@@ -34,7 +34,7 @@ protected:
 	std::string errorMsgString;
 	int tabIndex;
 private:
-	void addTab(const std::string& name, int index);
+	void addTab(const std::string& name, int index, const std::function<void()>& drawTabIcon);
 		
 	std::string viewName;
 	std::vector<BaseViewTab> tabs;

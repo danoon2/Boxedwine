@@ -16,7 +16,13 @@ OptionsView::OptionsView(std::string tab) : BaseView("OptionsView") {
     createGeneralTab();
     createThemeTab();
     
-    addTab(this->wineTitle, NULL, [this](bool buttonPressed, BaseViewTab& tab) {
+    std::string name;
+    if (GlobalSettings::hasIconsFont()) {
+        name += OPTION_WINE_ICON;
+        name += " ";
+    }
+    name += this->wineTitle;
+    addTab(name, NULL, [this](bool buttonPressed, BaseViewTab& tab) {
         this->runWineOptions();
         });    
 
@@ -63,7 +69,13 @@ void OptionsView::createThemeTab() {
         });
     };
 
-    addTab(getTranslation(OPTIONSVIEW_TITLE_DISPLAY), model, [this](bool buttonPressed, BaseViewTab& tab) {
+    std::string name;
+    if (GlobalSettings::hasIconsFont()) {
+        name += OPTION_DISPLAY_ICON;
+        name += " ";
+    }
+    name += getTranslation(OPTIONSVIEW_TITLE_DISPLAY);
+    addTab(name, model, [this](bool buttonPressed, BaseViewTab& tab) {
         });
 }
 
@@ -99,7 +111,13 @@ void OptionsView::createGeneralTab() {
         GlobalSettings::saveConfig();
     };
 
-    addTab(getTranslation(OPTIONSVIEW_TITLE_GENERAL), model, [this](bool buttonPressed, BaseViewTab& tab) {
+    std::string name;
+    if (GlobalSettings::hasIconsFont()) {
+        name += OPTIONS_GENERAL;
+        name += " ";
+    }
+    name += getTranslation(OPTIONSVIEW_TITLE_GENERAL);
+    addTab(name, model, [this](bool buttonPressed, BaseViewTab& tab) {
 
         });
 }
@@ -184,7 +202,7 @@ void OptionsView::runWineOptions() {
     size.y -= ImGui::GetCursorPosY() + GlobalSettings::scaleFloatUI(8.0f);
 
     ImGui::PushFont(GlobalSettings::mediumFont);
-    ImGui::BeginChildFrame(401, size);
+    //ImGui::BeginChildFrame(401, size);
     ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing));
     for (auto& wine : this->wineVersions) {
         ImGui::Dummy(ImVec2(this->extraVerticalSpacing, 0.0f));        
@@ -265,7 +283,7 @@ void OptionsView::runWineOptions() {
         ImGui::SetCursorPos(pos);
     }
     ImGui::PopFont();
-    ImGui::EndChildFrame();
+    //ImGui::EndChildFrame();
 }
 
 void OptionsView::download(WineVersion* version) {

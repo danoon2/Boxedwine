@@ -99,16 +99,45 @@ void gotoView(int viewId, std::string tab, std::string param1) {
 
 void createButton() {
     appButtons.clear();
-    appButtons.push_back(AppButton(getTranslation(MAIN_BUTTON_APPS), [](){
+    std::string name;
+    
+    if (GlobalSettings::hasIconsFont()) {
+        name += " ";
+        name += APP_LIST_ICON;
+        name += " ";
+    }
+    name += getTranslation(MAIN_BUTTON_APPS);
+    appButtons.push_back(AppButton(name, [](){
         gotoView(VIEW_APPS);
     }));
-    appButtons.push_back(AppButton(getTranslation(MAIN_BUTTON_INSTALL), [](){
+    name = "";
+    if (GlobalSettings::hasIconsFont()) {
+        name += " ";
+        name += INSTALL_ICON;
+        name += " ";
+    }
+    name += getTranslation(MAIN_BUTTON_INSTALL);
+    appButtons.push_back(AppButton(name, [](){
         gotoView(VIEW_INSTALL);
-    }));    
-    appButtons.push_back(AppButton(getTranslation(MAIN_BUTTON_CONTAINERS), [](){
+    }));  
+    name = "";
+    if (GlobalSettings::hasIconsFont()) {
+        name += " ";
+        name += CONTAINER_ICON;
+        name += " ";
+    }
+    name += getTranslation(MAIN_BUTTON_CONTAINERS);
+    appButtons.push_back(AppButton(name, [](){
         gotoView(VIEW_CONTAINERS);
     }));
-    appButtons.push_back(AppButton(getTranslation(MAIN_BUTTON_SETTINGS), [](){
+    name = "";
+    if (GlobalSettings::hasIconsFont()) {
+        name += " ";
+        name += OPTIONS_ICON;
+        name += " ";
+    }
+    name += getTranslation(MAIN_BUTTON_SETTINGS);
+    appButtons.push_back(AppButton(name, [](){
         gotoView(VIEW_OPTIONS);        
     }));
 }

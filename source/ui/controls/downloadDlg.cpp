@@ -62,10 +62,14 @@ void DownloadDlg::downloadFailed(const std::string& errorMsg) {
 }
 
 void DownloadDlg::showErrorMsg(bool open) {
-    if (!showMessageBox("DownloadErrorMsg", true, getTranslation(GENERIC_DLG_ERROR_TITLE), this->errorMsg.c_str())) {
-        this->onCompleted(false);
-        this->done();
-    }
+    std::string error = this->errorMsg;
+
+    runOnMainUI([error]() {
+        new OkDlg(GENERIC_DLG_ERROR_TITLE, error, nullptr);
+        return false;
+        });
+    this->onCompleted(false);
+    this->done();
 }
 
 void DownloadDlg::run() {

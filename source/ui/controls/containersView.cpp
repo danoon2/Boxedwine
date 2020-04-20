@@ -105,7 +105,16 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
 
     row = section->addRow(CONTAINER_VIEW_SHORTCUT_LIST_LABEL, CONTAINER_VIEW_SHORTCUT_LIST_HELP);
     appPickerControl = row->addComboBox();
-    std::shared_ptr<LayoutButtonControl> deleteButton = row->addButton(getTranslation(CONTAINER_VIEW_DELETE_SHORTCUT));
+
+    std::string label;
+    /*
+    if (GlobalSettings::hasIconsFont()) {
+        label += DELETE_ICON;
+        label += " ";
+    }
+    */
+    label += getTranslation(CONTAINER_VIEW_DELETE_SHORTCUT);
+    std::shared_ptr<LayoutButtonControl> deleteButton = row->addButton(label);
     deleteButton->onChange = [this]() {
         std::string label = getTranslationWithFormat(CONTAINER_VIEW_DELETE_SHORTCUT_CONFIRMATION, true, this->currentApp->getName());
         runOnMainUI([label, this]() {
@@ -211,12 +220,12 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
     appGlExControl->onChange = [this]() {
         this->currentAppChanged = true;
     };
+    
     std::shared_ptr<LayoutButtonControl> setButtonControl = row->addButton(getTranslation(CONTAINER_VIEW_GL_EXT_SET_BUTTON_LABEL));
     setButtonControl->onChange = [this]() {
         appGlExControl->setText("GL_EXT_multi_draw_arrays GL_ARB_vertex_program\nGL_ARB_fragment_program GL_ARB_multitexture\nGL_EXT_secondary_color GL_EXT_texture_lod_bias\nGL_NV_texture_env_combine4 GL_ATI_texture_env_combine3\nGL_EXT_texture_filter_anisotropic GL_ARB_texture_env_combine\nGL_EXT_texture_env_combine GL_EXT_texture_compression_s3tc\nGL_ARB_texture_compression GL_EXT_paletted_texture");
         this->currentAppChanged = true;
-    };
-
+    };    
     for (auto& item : BoxedwineData::getContainers()) {
         addTab(item->getName(), model, [this, item](bool buttonPressed, BaseViewTab& tab) {
             if (buttonPressed) {
@@ -231,6 +240,17 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
                     gotoApp = "";
                 }
             }
+            }, [item]() {
+                if (item->getApps().size()) {
+                    const BoxedAppIcon* icon = item->getApps()[0]->getIconTexture((int)ImGui::GetTextLineHeight());
+                    if (icon) {
+                        ImGui::Image(icon->texture, ImVec2(ImGui::GetTextLineHeight(), ImGui::GetTextLineHeight()));
+                        ImGui::SameLine();
+                        return;
+                    }
+                }
+                ImGui::Dummy(ImVec2(ImGui::GetTextLineHeight(), 0.0f));
+                ImGui::SameLine();                
             });
         if (item->getDir() == tab) {
             this->tabIndex = this->getTabCount() - 1;
@@ -240,7 +260,13 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
 
     std::shared_ptr<LayoutSection> bottomSection = model->addSection();
     bottomSection->addSeparator();
-    std::shared_ptr<LayoutButtonControl> deleteContainerButton = bottomSection->addButton(0, CONTAINER_VIEW_DELETE_BUTTON_HELP, getTranslation(CONTAINER_VIEW_DELETE_BUTTON_LABEL));
+    label = "";
+    if (GlobalSettings::hasIconsFont()) {
+        label += TRASH_ICON;
+        label += " ";
+    }
+    label += getTranslation(CONTAINER_VIEW_DELETE_BUTTON_LABEL);
+    std::shared_ptr<LayoutButtonControl> deleteContainerButton = bottomSection->addButton(0, CONTAINER_VIEW_DELETE_BUTTON_HELP, label);
     deleteContainerButton->onChange = [this]() {
         std::string label;
         if (!currentContainer->getApps().size()) {
