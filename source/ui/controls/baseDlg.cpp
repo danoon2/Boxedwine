@@ -110,9 +110,21 @@ void BaseDlg::addOkAndCancelButtons() {
     }
 }
 
+float BaseDlg::getReservedHeightForButtons() {
+    return ImGui::GetStyle().ItemSpacing.y * 4 + ImGui::GetStyle().FramePadding.y * 2 + ImGui::GetTextLineHeight();
+}
+
+float BaseDlg::getButtonRowY() {
+    return this->height - (ImGui::GetStyle().ItemSpacing.y * 2 + ImGui::GetStyle().FramePadding.y * 2 + ImGui::GetTextLineHeight());
+}
+
+float BaseDlg::getOuterFramePadding() {
+    return ImGui::GetStyle().ItemSpacing.x;
+}
+
 void BaseDlg::addCancelButton() {
-    float buttonArea = ImGui::CalcTextSize(getTranslation(GENERIC_DLG_CANCEL)).x;
-    ImGui::SetCursorPos(ImVec2((float)(this->width-buttonArea-18),(float)(this->height-32)));
+    float buttonArea = ImGui::CalcTextSize(getTranslation(GENERIC_DLG_CANCEL)).x+ImGui::GetStyle().FramePadding.x*2;
+    ImGui::SetCursorPos(ImVec2((float)(this->width - buttonArea - getOuterFramePadding()), getButtonRowY()));
 
     if (ImGui::Button(getTranslation(GENERIC_DLG_CANCEL))) {
         this->done();

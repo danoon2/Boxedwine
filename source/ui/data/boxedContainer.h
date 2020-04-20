@@ -31,7 +31,7 @@ public:
 
     std::string getNativePathForApp(const BoxedApp& app);
 
-    void getNewApps(std::vector<BoxedApp>& apps);
+    void getNewApps(std::vector<BoxedApp>& apps, MountInfo* mount=NULL, const std::string& nativeDirectory="");
     void updateCachedSize();
 
     void setWineVersion(const std::string& wineVersion) {this->wineVersion = wineVersion;}
@@ -43,10 +43,11 @@ public:
     void setGDI(bool gdi);
     std::string getWindowsVersion();
     void setWindowsVersion(const BoxedWinVersion& version);
+
 private:
     void loadApps();
     void getNewDesktopLinkApps(std::vector<BoxedApp>& apps);
-    void getNewExeApps(std::vector<BoxedApp>& apps, MountInfo* mount);
+    void getNewExeApps(std::vector<BoxedApp>& apps, MountInfo* mount, std::string nativeDirectory);
     std::string getWindowsVersion2();
 
     std::vector<BoxedApp*> apps;

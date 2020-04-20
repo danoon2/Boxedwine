@@ -3,7 +3,7 @@
 
 class AppChooserDlg : BaseDlg {
 public:
-    AppChooserDlg(BoxedContainer* container, std::function<void(BoxedApp*)> onSelected, BaseDlg* parent=NULL);
+    AppChooserDlg(std::vector<BoxedApp>& items, std::function<void(BoxedApp*)> onSelected, BaseDlg* parent=NULL);
 
 protected:
     virtual void run();

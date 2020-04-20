@@ -119,21 +119,26 @@ void BoxedContainer::launch() {
     GlobalSettings::startUpArgs.mountInfo = this->mounts;
 }
 
-void BoxedContainer::getNewApps(std::vector<BoxedApp>& apps) {
-    getNewDesktopLinkApps(apps);
-    for (auto& mount : this->mounts) {
-        getNewExeApps(apps, &mount);
+void BoxedContainer::getNewApps(std::vector<BoxedApp>& apps, MountInfo* mount, const std::string& nativeDirectory) {
+    //getNewDesktopLinkApps(apps);
+    if (!mount && nativeDirectory.length()==0) {
+        for (auto& m : this->mounts) {
+            getNewExeApps(apps, &m, NULL);
+        }
     }
-    getNewExeApps(apps, NULL);
+    getNewExeApps(apps, mount, nativeDirectory);
 }
 
-void BoxedContainer::getNewExeApps(std::vector<BoxedApp>& apps, MountInfo* mount) {
+void BoxedContainer::getNewExeApps(std::vector<BoxedApp>& apps, MountInfo* mount, std::string nativeDirectory) {
     std::string root;
     std::string path;
 
     if (mount) {
         path = mount->nativePath;
         root = mount->nativePath;
+    } else if (nativeDirectory.length()) {
+        path = nativeDirectory;
+        root = GlobalSettings::getRootFolder(this);
     } else {        
         root = GlobalSettings::getRootFolder(this);
         path = root + Fs::nativePathSeperator + "home" + Fs::nativePathSeperator + "username" + Fs::nativePathSeperator + ".wine" + Fs::nativePathSeperator + "drive_c";

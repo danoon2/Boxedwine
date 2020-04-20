@@ -30,12 +30,13 @@ public:
     static void loadUI();
 
     static const std::vector<BoxedContainer*> getContainers() {return BoxedwineData::containers;}
-    static void addContainer(BoxedContainer* container) {BoxedwineData::containers.push_back(container);}
-    static BoxedContainer* getContainerByName(const std::string& name);
+    static void addContainer(BoxedContainer* container);
+    static BoxedContainer* getContainerByDir(const std::string& dir);
     static void reloadContainers();
     static const std::vector<BoxedWinVersion>& getWinVersions() { return BoxedwineData::winVersions; }
     static int getDefaultWindowsVersionIndex() {return 4;} // windows 7
 private:
+    static void sortContainers();
     static void loadContainers();
     static std::vector<BoxedContainer*> containers;
     static std::vector<BoxedWinVersion> winVersions;

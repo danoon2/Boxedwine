@@ -63,6 +63,8 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "Setup file location is empty and is required.";
     case INSTALLVIEW_ERROR_SETUP_FILE_NOT_FOUND:
         return "The setup file was entered, but it does not exist.";
+    case INSTALLVIEW_ERROR_SETUP_FILE_NOT_FILE:
+        return "The setup file path is a directory, this should be the location of a setup file.";
     case INSTALLVIEW_ERROR_DIR_MISSING:
         return "Directory location is empty and is required.";
     case INSTALLVIEW_ERROR_DIR_NOT_FOUND:

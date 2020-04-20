@@ -127,6 +127,8 @@ void InstallView::onInstall() {
             this->errorMsg = getTranslation(INSTALLVIEW_ERROR_SETUP_FILE_MISSING);
         } else if (!Fs::doesNativePathExist(location)) {
             this->errorMsg = getTranslation(INSTALLVIEW_ERROR_SETUP_FILE_NOT_FOUND);
+        } else if (Fs::isNativePathDirectory(location)) {
+            this->errorMsg = getTranslation(INSTALLVIEW_ERROR_SETUP_FILE_NOT_FOUND);
         }
     } else if (installType == INSTALL_TYPE_DIR || installType == INSTALL_TYPE_MOUNT) {
         Fs::trimTrailingSlash(location);
@@ -175,7 +177,7 @@ void InstallView::onInstall() {
         if (installType == INSTALL_TYPE_SETUP) {
             GlobalSettings::startUpArgs.addArg(location);
             GlobalSettings::startUpArgs.readyToLaunch = true;
-            GlobalSettings::startUpArgs.showAppPickerForContainer = container->getName();
+            GlobalSettings::startUpArgs.showAppPickerForContainerDir = container->getDir();
         } else if (installType == INSTALL_TYPE_DIR) {
             std::filesystem::path dest(GlobalSettings::getRootFolder(container));
             dest = dest / "home" / "username" / ".wine" / "drive_c" / Fs::getFileNameFromNativePath(location);
@@ -197,10 +199,14 @@ void InstallView::onInstall() {
             }
             if (!this->errorMsg) {
                 if (GlobalSettings::startUpArgs.readyToLaunch) {
-                    GlobalSettings::startUpArgs.showAppPickerForContainer = container->getName();
+                    GlobalSettings::startUpArgs.showAppPickerForContainerDir = container->getDir();
                 } else {
-                    runOnMainUI([container]() {
-                        new AppChooserDlg(container, nullptr);
+                    runOnMainUI([container, dest]() {
+                        std::vector<BoxedApp> items;
+                        container->getNewApps(items, NULL, dest.string());
+                        new AppChooserDlg(items, [container](BoxedApp* app) {
+                            gotoView(VIEW_CONTAINERS, container->getDir(), app->getIniFilePath());
+                            });
                         return false;
                         });
                 }
@@ -211,10 +217,15 @@ void InstallView::onInstall() {
             } else {
                 container->saveContainer();
                 if (GlobalSettings::startUpArgs.readyToLaunch) {
-                    GlobalSettings::startUpArgs.showAppPickerForContainer = container->getName();
+                    GlobalSettings::startUpArgs.showAppPickerForContainerDir = container->getDir();
                 } else {
-                    runOnMainUI([container]() {
-                        new AppChooserDlg(container, nullptr);
+                    runOnMainUI([container, location]() {
+                        MountInfo mount("t", location, true);
+                        std::vector<BoxedApp> items;
+                        container->getNewApps(items, &mount);
+                        new AppChooserDlg(items, [container](BoxedApp* app) {
+                            gotoView(VIEW_CONTAINERS, container->getDir(), app->getIniFilePath());
+                            });
                         return false;
                         });
                 }

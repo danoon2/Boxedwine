@@ -2,7 +2,7 @@
 #include "../boxedwineui.h"
 #include "../../../lib/imgui/addon/imguitinyfiledialogs.h"
 
-ContainersView::ContainersView(std::string tab) : BaseView("ContainersView"), currentContainer(NULL), currentContainerChanged(false), currentContainerMountChanged(false), currentApp(NULL), currentAppChanged(false) {
+ContainersView::ContainersView(std::string tab, std::string app) : BaseView("ContainersView"), currentContainer(NULL), currentContainerChanged(false), currentContainerMountChanged(false), currentApp(NULL), currentAppChanged(false) {
     std::shared_ptr<ImGuiLayout> model = std::make_shared<ImGuiLayout>();        
     section = model->addSection();
 
@@ -88,9 +88,12 @@ ContainersView::ContainersView(std::string tab) : BaseView("ContainersView"), cu
     std::shared_ptr<LayoutButtonControl> selectAppButton = section->addButton(CONTAINER_OPTIONS_DLG_ADD_APP_LABEL, CONTAINER_OPTIONS_DLG_ADD_APP_HELP, getTranslation(CONTAINER_OPTIONS_DLG_ADD_APP_BUTTON_LABEL));
     selectAppButton->onChange = [this]() {
         runOnMainUI([this] {
-            new AppChooserDlg(this->currentContainer, [this](BoxedApp* app) {
+            std::vector<BoxedApp> items;
+            this->currentContainer->getNewApps(items);
+            new AppChooserDlg(items, [this](BoxedApp* app) {
                 this->setCurrentApp(app);
                 rebuildShortcutsCombobox();
+                showAppSection(true);
                 this->appPickerControl->setSelectionStringValue(app->getIniFilePath());
                 });
             return false;
@@ -116,6 +119,7 @@ ContainersView::ContainersView(std::string tab) : BaseView("ContainersView"), cu
                         } else {
                             this->currentApp = NULL;
                         }
+                        showAppSection(this->currentContainer->getApps().size() != 0);
                         rebuildShortcutsCombobox();
                         GlobalSettings::reloadApps();
                         return false;
@@ -217,10 +221,20 @@ ContainersView::ContainersView(std::string tab) : BaseView("ContainersView"), cu
         addTab(item->getName(), model, [this, item](bool buttonPressed, BaseViewTab& tab) {
             if (buttonPressed) {
                 this->setCurrentContainer(item);
+                if (gotoApp.length()) {                    
+                    for (auto& app : item->getApps()) {
+                        if (app->getIniFilePath() == gotoApp) {
+                            setCurrentApp(app);
+                            break;
+                        }
+                    }
+                    gotoApp = "";
+                }
             }
             });
         if (item->getDir() == tab) {
             this->tabIndex = this->getTabCount() - 1;
+            gotoApp = app;
         }
     }
 
@@ -378,6 +392,12 @@ void ContainersView::setCurrentContainer(BoxedContainer* container) {
         rebuildShortcutsCombobox();        
     } else {
         this->currentApp = NULL;
-    }
+    }    
+    showAppSection(this->currentContainer->getApps().size() != 0);
     containerGdiControl->setCheck(container->isGDI());    
+}
+
+void ContainersView::showAppSection(bool show) {
+    appSection->setHidden(!show);
+    appPickerControl->setRowHidden(!show);
 }

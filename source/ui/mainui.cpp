@@ -92,7 +92,7 @@ void gotoView(int viewId, std::string tab, std::string param1) {
         } else if (viewId == VIEW_INSTALL) {
             currentView = new InstallView(param1, tab);
         } else if (viewId == VIEW_CONTAINERS) {
-            currentView = new ContainersView(tab);
+            currentView = new ContainersView(tab, param1);
         }
     }
 }
@@ -125,17 +125,34 @@ void loadApps() {
                         });
 
                     runOnMainUI([app]() {                            
-                        if (!ImGui::BeginPopup("AppOptionsPopup")) {
-                            return false;
-                        } else {
-                            if (ImGui::Selectable("Options")) {
-                                ImGui::EndPopup();
-                                //new AppOptionsDlg(app);
-                                return true;
+                        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(GlobalSettings::scaleFloatUI(8.0f), GlobalSettings::scaleFloatUI(8.0f)));
+                        ImGui::PushStyleColor(ImGuiCol_PopupBg, ImGui::GetColorU32(ImGuiCol_TabUnfocusedActive) | 0xFF000000);
+                        bool result = false;
+                        if (ImGui::BeginPopup("AppOptionsPopup")) {
+                            if (ImGui::Selectable(getTranslation(MAIN_BUTTON_SETTINGS))) {
+                                gotoView(VIEW_CONTAINERS, app->getContainer()->getDir(), app->getIniFilePath());
+                            }     
+                            if (ImGui::Selectable(getTranslation(CONTAINER_VIEW_DELETE_SHORTCUT))) {
+                                std::string label = getTranslationWithFormat(CONTAINER_VIEW_DELETE_SHORTCUT_CONFIRMATION, true, app->getName());
+                                runOnMainUI([label, app]() {
+                                    new YesNoDlg(GENERIC_DLG_CONFIRM_TITLE, label, [app](bool yes) {
+                                        if (yes) {
+                                            runOnMainUI([app]() {
+                                                app->remove();
+                                                GlobalSettings::reloadApps();
+                                                return false;
+                                                });
+                                        }
+                                        });
+                                    return false;
+                                    });
                             }
                             ImGui::EndPopup();
-                            return true;
+                            result = true;
                         }
+                        ImGui::PopStyleColor();
+                        ImGui::PopStyleVar();
+                        return result;
                     });
                 } else {
                     runOnMainUI([app]() {
@@ -353,13 +370,17 @@ bool uiShow(const std::string& basePath) {
             return false;
             });        
     }
-    if (GlobalSettings::startUpArgs.showAppPickerForContainer.length()) {
+    if (GlobalSettings::startUpArgs.showAppPickerForContainerDir.length()) {
         runOnMainUI([]() {
-            BoxedContainer* container = BoxedwineData::getContainerByName(GlobalSettings::startUpArgs.showAppPickerForContainer);
+            BoxedContainer* container = BoxedwineData::getContainerByDir(GlobalSettings::startUpArgs.showAppPickerForContainerDir);
             if (container) {
-                new AppChooserDlg(container, nullptr);
+                std::vector<BoxedApp> items;
+                container->getNewApps(items);
+                new AppChooserDlg(items, [container](BoxedApp* app) {
+                    gotoView(VIEW_CONTAINERS, container->getDir(), app->getIniFilePath());
+                    });
             }
-            GlobalSettings::startUpArgs.showAppPickerForContainer = "";
+            GlobalSettings::startUpArgs.showAppPickerForContainerDir = "";
             return false;
         });
 

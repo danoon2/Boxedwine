@@ -16,6 +16,8 @@ protected:
     void toolTip(const char* desc);
     void addOkAndCancelButtons();
     void addCancelButton();
+    float getReservedHeightForButtons();
+    float getOuterFramePadding();
 
     int width;
     int height;
@@ -24,6 +26,7 @@ protected:
 private:
     static std::list<BaseDlg*> activeDialogs;
 
+    float getButtonRowY();
     void runIfVisible();
 
     const char* title;

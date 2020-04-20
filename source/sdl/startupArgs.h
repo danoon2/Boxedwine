@@ -57,7 +57,7 @@ public:
     bool soundEnabled;
     bool videoEnabled;
     bool readyToLaunch;
-    std::string showAppPickerForContainer;
+    std::string showAppPickerForContainerDir;
     std::function<void()> runOnRestartUI;
 
 private:

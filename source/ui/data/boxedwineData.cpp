@@ -55,17 +55,29 @@ void BoxedwineData::loadContainers() {
         }
         return 0;
     });
+    BoxedwineData::sortContainers();
 }
 
 void BoxedwineData::loadUI() {
     loadContainers();
 }
 
-BoxedContainer* BoxedwineData::getContainerByName(const std::string& name) {
+BoxedContainer* BoxedwineData::getContainerByDir(const std::string& dir) {
     for (auto& container : BoxedwineData::containers) {
-        if (container->getName()==name) {
+        if (container->getDir()==dir) {
             return container;
         }
     }
     return NULL;
+}
+
+void BoxedwineData::addContainer(BoxedContainer* container) { 
+    BoxedwineData::containers.push_back(container); 
+    BoxedwineData::sortContainers();
+}
+
+void BoxedwineData::sortContainers() {
+    std::sort(BoxedwineData::containers.begin(), BoxedwineData::containers.end(), [](BoxedContainer* a, BoxedContainer* b) { 
+        return a->getName() < b->getName(); 
+        });
 }
