@@ -22,7 +22,10 @@ public:
 
     const std::string& getName() {return this->name;}
     const std::string& getPath() {return this->path;}
+    const std::string& getCmd() { return this->cmd;}
     const std::string& getIniFilePath() {return this->iniFilePath;}
+
+    void setName(const std::string& name) {this->name = name;}
 
     void launch();
     const BoxedAppIcon* getIconTexture(int iconSize=0);

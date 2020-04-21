@@ -105,6 +105,9 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
 
     row = section->addRow(CONTAINER_VIEW_SHORTCUT_LIST_LABEL, CONTAINER_VIEW_SHORTCUT_LIST_HELP);
     appPickerControl = row->addComboBox();
+    appPickerControl->onChange = [this]() {
+        this->setCurrentApp(this->currentContainer->getApps()[this->appPickerControl->getSelection()]);        
+    };
 
     std::string label;
     /*
@@ -227,7 +230,7 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
         this->currentAppChanged = true;
     };    
     for (auto& item : BoxedwineData::getContainers()) {
-        addTab(item->getName(), model, [this, item](bool buttonPressed, BaseViewTab& tab) {
+        addTab(item->getDir(), item->getName(), model, [this, item](bool buttonPressed, BaseViewTab& tab) {
             if (buttonPressed) {
                 this->setCurrentContainer(item);
                 if (gotoApp.length()) {                    

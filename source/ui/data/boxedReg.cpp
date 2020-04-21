@@ -105,7 +105,7 @@ void BoxedReg::writeKey(const char* path, const char* key, const char* value, bo
     }
     if (value) {
         std::string line = "\"";
-        line = key;
+        line += key;
         line += "\"=";
         if (useQuotesAroundValue) {
             line += "\"";

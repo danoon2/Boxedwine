@@ -15,6 +15,7 @@
 std::string GlobalSettings::dataFolderLocation;
 std::vector<WineVersion> GlobalSettings::wineVersions;
 std::vector<WineVersion> GlobalSettings::availableWineVersions;
+std::vector<DemoFile> GlobalSettings::demos;
 int GlobalSettings::iconSize;
 StartUpArgs GlobalSettings::startUpArgs;
 std::string GlobalSettings::exePath;
@@ -164,6 +165,10 @@ std::string GlobalSettings::getFileSystemFolder() {
     return GlobalSettings::dataFolderLocation + Fs::nativePathSeperator + "FileSystems";
 }
 
+std::string GlobalSettings::getDemoFolder() {
+    return GlobalSettings::dataFolderLocation + Fs::nativePathSeperator + "DemoCache";
+}
+
 std::string GlobalSettings::getRootFolder(BoxedContainer* container) {
     return container->dirPath + Fs::nativePathSeperator + "root";
 }
@@ -224,6 +229,26 @@ void GlobalSettings::loadFileList() {
             break;
         }
     }
+    GlobalSettings::demos.clear();
+    for (U32 i = 1; i < 1000; i++) {
+        std::string name = config.readString("DemoName" + std::to_string(i), "");
+        std::string icon = config.readString("DemoIcon" + std::to_string(i), "");
+        std::string file = config.readString("DemoFile" + std::to_string(i), "");
+        std::string exe = config.readString("DemoExe" + std::to_string(i), "");
+        std::string exeOptions = config.readString("DemoExeOptions" + std::to_string(i), "");
+        U32 fileSize = config.readInt("DemoFileSize" + std::to_string(i), 0);        
+        if (name.length() && file.length()) {
+            GlobalSettings::demos.push_back(DemoFile(name, icon, file, fileSize, exe, exeOptions));
+        } else {
+            break;
+        }
+    }
+    runOnMainUI([]() { // might not have an OpenGL context while starting up
+        for (auto& demo : GlobalSettings::getDemos()) {
+            demo.buildIconTexture();
+        }
+        return false;
+        });
 }
 
 bool GlobalSettings::checkFileListForUpdate() {
@@ -252,10 +277,33 @@ void GlobalSettings::updateFileList(const std::string& fileLocation) {
     runInBackgroundThread([fileLocation]() {
         std::string errorMsg;
         GlobalSettings::filesListDownloading = true;
-        downloadFile("http://www.boxedwine.org/files.ini", fileLocation, [](U64 bytesCompleted) {
+        ::downloadFile("http://www.boxedwine.org/files.ini", fileLocation, [](U64 bytesCompleted) {
             }, NULL, errorMsg);
         GlobalSettings::loadFileList();
         GlobalSettings::filesListDownloading = false;
+        runInBackgroundThread([]() {
+            std::string errorMsg;
+
+            for (auto& demo : GlobalSettings::getDemos()) {
+                if (demo.iconPath.length()) {
+                    size_t pos = demo.iconPath.rfind("/");
+                    if (pos == std::string::npos) {
+                        return; // :TODO: error msg?
+                    }
+                    if (!Fs::doesNativePathExist(GlobalSettings::getDemoFolder())) {
+                        Fs::makeNativeDirs(GlobalSettings::getDemoFolder());
+                    }
+                    if (!Fs::doesNativePathExist(demo.localIconPath)) {
+                        ::downloadFile(demo.iconPath, demo.localIconPath, [](U64 bytesCompleted) {
+                            }, NULL, errorMsg);
+                        runOnMainUI([&demo]() {
+                            demo.buildIconTexture();
+                            return false;
+                            });
+                    }
+                }
+            }
+            });
     }       
     );
 }
@@ -323,6 +371,26 @@ void GlobalSettings::loadFonts() {
     }    
 }
 
+void GlobalSettings::downloadFile(const std::string& url, const std::string& filePath, const std::string& name, U32 sizeMB, std::function<void(bool)> onCompleted) {
+    runOnMainUI([url, filePath, name, sizeMB, onCompleted]() {
+        std::string parentPath = Fs::getNativeParentPath(filePath);
+        if (!Fs::doesNativePathExist(parentPath)) {
+            Fs::makeNativeDirs(parentPath);
+        }
+        new DownloadDlg(DOWNLOADDLG_TITLE, getTranslationWithFormat(DOWNLOADDLG_LABEL, true, name), url, filePath, [onCompleted](bool success) {
+            runOnMainUI([success, onCompleted]() {
+                GlobalSettings::reloadWineVersions();
+                if (!GlobalSettings::defaultFont) {
+                    GlobalSettings::restartUI = true;
+                }
+                onCompleted(success);
+                return false;
+                });
+            }, ((U64)sizeMB) * 1024 * 1024);
+        return false;
+        });
+}
+
 void GlobalSettings::downloadWine(const WineVersion& version, std::function<void(bool)> onCompleted) {
     runOnMainUI([&version, onCompleted]() {
         size_t pos = version.filePath.rfind("/");
@@ -381,4 +449,102 @@ void GlobalSettings::setTheme(const std::string& theme) {
 
 void GlobalSettings::setFontScale(float scale) {
     GlobalSettings::fontScale = scale;
+}
+
+std::string GlobalSettings::createUniqueContainerPath(const std::string& name) {
+    std::srand((U32)std::time(nullptr));
+    while (true) {
+        int r = std::rand();
+        char tmp[10];
+        SDL_itoa(r, tmp, 16);
+        std::string result = GlobalSettings::getContainerFolder() + Fs::nativePathSeperator + name + "-"+tmp;
+        if (!Fs::doesNativePathExist(result)) {
+            return result;
+        }
+    }
+}
+
+DemoFile::DemoFile(const std::string& name, const std::string& iconPath, const std::string& filePath, U32 size, const std::string& exe, const std::string& exeOptions) : name(name), filePath(filePath), iconPath(iconPath), size(size), exe(exe), exeOptions(exeOptions), installed(false), iconTexture(NULL) {
+    if (iconPath.length()) {
+        size_t pos = iconPath.rfind("/");
+        if (pos != std::string::npos) {
+            localIconPath = GlobalSettings::getDemoFolder() + Fs::nativePathSeperator + iconPath.substr(pos + 1);                        
+        }
+    }
+    if (filePath.length()) {
+        size_t pos = filePath.rfind("/");
+        if (pos != std::string::npos) {
+            localFilePath = GlobalSettings::getDemoFolder() + Fs::nativePathSeperator + filePath.substr(pos + 1);
+        }
+    }
+}
+
+void DemoFile::buildIconTexture() {
+    if (Fs::doesNativePathExist(localIconPath)) {
+        int w = 0, h = 0;
+        this->iconTexture = LoadTextureFromFile(localIconPath.c_str(), &w, &h);
+    }
+}
+
+std::string DemoFile::getContainerNamePrefix() {
+    std::string containerName = this->name;
+    stringReplaceAll(containerName, " ", "_");
+    return containerName;
+}
+
+void DemoFile::install() {
+
+    GlobalSettings::startUpArgs = StartUpArgs(); // reset parameters
+    GlobalSettings::startUpArgs.setScale(GlobalSettings::getDefaultScale());
+    GlobalSettings::startUpArgs.setResolution(GlobalSettings::getDefaultResolution());    
+    std::string containerFilePath = GlobalSettings::createUniqueContainerPath(this->getContainerNamePrefix());
+    BoxedContainer* container = BoxedContainer::createContainer(containerFilePath, this->name, GlobalSettings::getWineVersions()[0].name);
+    BoxedwineData::addContainer(container);
+    container->launch();
+    GlobalSettings::startUpArgs.addArg(localFilePath);
+    GlobalSettings::startUpArgs.readyToLaunch = true;
+    container->saveContainer();
+
+    runOnMainUI([this]() {
+        new WaitDlg(WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(WAITDLG_LAUNCH_APP_LABEL, true, name.c_str()));
+        return false;
+        });
+
+    std::string containerDir = container->getDir();
+    std::string cmd = this->exe;
+    std::string exeOptions = this->exeOptions;
+    std::string appName = this->name;
+    GlobalSettings::startUpArgs.runOnRestartUI = [appName, cmd, exeOptions, containerDir]() {
+        runOnMainUI([appName, cmd, exeOptions, containerDir]() {
+            BoxedContainer* container = BoxedwineData::getContainerByDir(containerDir);
+            if (container) {
+                std::vector<BoxedApp> items;
+                container->getNewApps(items);
+                for (auto& app : items) {
+                    if (app.getCmd() == cmd) {
+                        if (exeOptions.length()) {
+                            std::vector<std::string> parts;
+                            stringSplit(parts, exeOptions, ',');
+                            for (auto& s : parts) {
+                                stringTrim(s);
+                                if (s == "GDI") {
+                                    container->setGDI(true);
+                                }
+                            }
+                            container->saveContainer();
+                        }
+                        app.setName(appName);
+                        app.saveApp();
+                        app.getContainer()->reload();
+                        GlobalSettings::reloadApps();
+                        return false;;
+                    }
+                }
+                new AppChooserDlg(items, [container](BoxedApp* app) {
+                    gotoView(VIEW_CONTAINERS, container->getDir(), app->getIniFilePath());
+                    });
+            }
+            return false;
+            });
+    };
 }

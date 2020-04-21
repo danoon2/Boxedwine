@@ -34,6 +34,7 @@
 #include "controls/yesNoDlg.h"
 #include "controls/okDlg.h"
 #include "controls/installView.h"
+#include "platformhelper.h"
 
 #include "mainui.h"
 

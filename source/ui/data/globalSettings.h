@@ -42,7 +42,28 @@ public:
     std::string fsVersion;
     U32 size;
     std::string changes;
-    bool operator<(const WineVersion &rhs) const { return name < rhs.name; }
+    bool operator<(const WineVersion& rhs) const { return name < rhs.name; }
+};
+
+class DemoFile {
+public:
+    DemoFile(const std::string& name, const std::string& iconPath, const std::string& filePath, U32 size, const std::string& exe, const std::string& exeOptions);
+    std::string name;
+    std::string filePath;
+    std::string iconPath;
+    std::string localIconPath;
+    std::string localFilePath;
+    U32 size;
+    std::string exe;
+    std::string exeOptions;
+    bool installed;
+    void* iconTexture;
+
+    void buildIconTexture();
+    void install();
+    std::string getContainerNamePrefix();
+
+    bool operator<(const DemoFile& rhs) const { return name < rhs.name; }
 };
 
 struct ImFont;
@@ -57,7 +78,7 @@ public:
     static std::string getFileSystemFolder();    
     static std::string getAppFolder(BoxedContainer* container);
     static std::string getRootFolder(BoxedContainer* container);    
-    static double getScaleFactor();
+    static std::string getDemoFolder();
     static std::string getExePath() {return GlobalSettings::exePath;}
     static const std::vector<WineVersion>& getWineVersions() {return GlobalSettings::wineVersions;}
     static const std::vector<WineVersion>& getAvailableWineVersions() { return GlobalSettings::availableWineVersions; }
@@ -86,6 +107,9 @@ public:
     static int getScreenCy() { return GlobalSettings::screenCy; }
     static void setFontScale(float scale);
     static bool hasIconsFont() {return GlobalSettings::iconFontsLoaded;}
+    static std::vector<DemoFile>& getDemos() {return GlobalSettings::demos;}
+    static void downloadFile(const std::string& url, const std::string& filePath, const std::string& name, U32 sizeMB, std::function<void(bool)> onCompleted);
+    static std::string createUniqueContainerPath(const std::string& name);
 
     static StartUpArgs startUpArgs;
 
@@ -113,6 +137,7 @@ private:
 
     friend class OptionsView;
     static std::vector<WineVersion> availableWineVersions;
+    static std::vector<DemoFile> GlobalSettings::demos;
     static bool filesListDownloading;
     static U32 frameDelayMillies; // decrease if we are animating, else this can be pretty large
     static U32 fastFrameRateCount;

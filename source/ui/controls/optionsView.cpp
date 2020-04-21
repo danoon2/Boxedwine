@@ -22,7 +22,7 @@ OptionsView::OptionsView(std::string tab) : BaseView("OptionsView") {
         name += " ";
     }
     name += this->wineTitle;
-    addTab(name, NULL, [this](bool buttonPressed, BaseViewTab& tab) {
+    addTab(name, name, NULL, [this](bool buttonPressed, BaseViewTab& tab) {
         this->runWineOptions();
         });    
 
@@ -75,7 +75,7 @@ void OptionsView::createThemeTab() {
         name += " ";
     }
     name += getTranslation(OPTIONSVIEW_TITLE_DISPLAY);
-    addTab(name, model, [this](bool buttonPressed, BaseViewTab& tab) {
+    addTab(name, name, model, [this](bool buttonPressed, BaseViewTab& tab) {
         });
 }
 
@@ -117,7 +117,7 @@ void OptionsView::createGeneralTab() {
         name += " ";
     }
     name += getTranslation(OPTIONSVIEW_TITLE_GENERAL);
-    addTab(name, model, [this](bool buttonPressed, BaseViewTab& tab) {
+    addTab(name, name, model, [this](bool buttonPressed, BaseViewTab& tab) {
 
         });
 }

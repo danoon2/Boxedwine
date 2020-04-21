@@ -8,7 +8,9 @@
 
 InstallView::InstallView(const std::string& initialFileOrDirPath, std::string tab) : BaseView("InstallView") {
     createInstallTab(initialFileOrDirPath);
-    createDemoTab();
+    if (GlobalSettings::getDemos().size()) {
+        createDemoTab();
+    }
     if (tab.length()) {
         if (tab == "Demo") {
             this->tabIndex = 1;
@@ -18,7 +20,7 @@ InstallView::InstallView(const std::string& initialFileOrDirPath, std::string ta
 
 void InstallView::createDemoTab() {
     std::shared_ptr<ImGuiLayout> model = std::make_shared<ImGuiLayout>();
-    std::shared_ptr<LayoutSection> section = model->addSection(INSTALLVIEW_DEMO_TITLE);
+    std::shared_ptr<LayoutSection> section = model->addSection(0);
 
     std::string name;
     if (GlobalSettings::hasIconsFont()) {
@@ -26,9 +28,81 @@ void InstallView::createDemoTab() {
         name += " ";
     }
     name += getTranslation(INSTALLVIEW_DEMO_TITLE);
-    addTab(name, model, [this](bool buttonPressed, BaseViewTab& tab) {
-        
+
+    addTab(name, name, model, [this](bool buttonPressed, BaseViewTab& tab) {
+        runDemos();
         });
+}
+
+void InstallView::runDemos() {
+    ImGui::PushFont(GlobalSettings::largeFont);
+    ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing));
+    SAFE_IMGUI_TEXT(getTranslation(INSTALLVIEW_DEMO_TITLE));
+    ImGui::PopFont();
+
+    ImVec2 size = ImGui::GetWindowContentRegionMax();
+    size.y -= ImGui::GetCursorPosY() + GlobalSettings::scaleFloatUI(8.0f);
+
+    ImGui::PushFont(GlobalSettings::mediumFont);
+    //ImGui::BeginChildFrame(401, size);
+    ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing));
+    for (auto& demo : GlobalSettings::getDemos()) {
+        ImGui::Dummy(ImVec2(this->extraVerticalSpacing, 0.0f));
+        ImGui::SameLine();
+        ImVec2 pos = ImGui::GetCursorPos();
+        pos.y += this->extraVerticalSpacing;
+        ImGui::SetCursorPos(pos);
+        if (demo.installed) {
+            std::string buttonLabel = "Installed";
+            UIDisableStyle d;
+            ImGui::PushID(&demo);
+            if (ImGui::Button(buttonLabel.c_str())) {
+                //download(wine.second.availableVersion);
+            }
+            ImGui::PopID();
+            ImGui::SameLine();
+        } else {
+            std::string buttonLabel = "Install";
+            ImGui::PushID(&demo);            
+            if (ImGui::Button(buttonLabel.c_str())) {
+                if (Fs::doesNativePathExist(demo.localFilePath)) {
+                    demo.install();
+                } else {
+                    GlobalSettings::downloadFile(demo.filePath, demo.localFilePath, demo.name, demo.size, [&demo](bool sucess) {
+                        demo.install();
+                        });
+                }
+            }
+            ImGui::PopID();
+            ImGui::SameLine();
+        }
+        //ImGui::SameLine(pos.x + this->wineButtonTotalColumnWidth);
+        std::string name = demo.name;
+        std::string name2;
+        if (!Fs::doesNativePathExist(demo.localFilePath)) {
+            name2 += "(";
+            name2 += getTranslation(INSTALLVIEW_DEMO_DOWNLOAD_SIZE);
+            name2 += std::to_string(demo.size);
+            name2 += " MB)";
+        }
+        if (demo.iconTexture) {
+            ImGui::Image(demo.iconTexture, ImVec2(ImGui::GetTextLineHeight(), ImGui::GetTextLineHeight()));
+            ImGui::SameLine();
+        }
+        SAFE_IMGUI_TEXT(name.c_str());
+        ImGui::SameLine();
+        ImGui::PushFont(GlobalSettings::defaultFont);
+        pos = ImGui::GetCursorPos();
+        pos.y += GlobalSettings::mediumFont->FontSize / 2 - GlobalSettings::defaultFont->FontSize / 2;
+        ImGui::SetCursorPos(pos);
+        SAFE_IMGUI_TEXT(name2.c_str());
+        ImGui::PopFont();
+        pos = ImGui::GetCursorPos();
+        pos.y += this->extraVerticalSpacing;
+        ImGui::SetCursorPos(pos);
+    }
+    ImGui::PopFont();
+    //ImGui::EndChildFrame();
 }
 
 void InstallView::createInstallTab(const std::string& initialFileOrDirPath) {
@@ -117,7 +191,7 @@ void InstallView::createInstallTab(const std::string& initialFileOrDirPath) {
         name += " ";
     }
     name += getTranslation(INSTALLVIEW_INSTALL_TITLE);
-    addTab(name, model, [this](bool buttonPressed, BaseViewTab& tab) {
+    addTab(name, name, model, [this](bool buttonPressed, BaseViewTab& tab) {
         
         });
 }

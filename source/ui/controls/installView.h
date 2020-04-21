@@ -10,6 +10,7 @@ public:
 private:
     void createInstallTab(const std::string& initialFileOrDirPath);
     void createDemoTab();
+    void runDemos();
 
     void onInstall();   
 

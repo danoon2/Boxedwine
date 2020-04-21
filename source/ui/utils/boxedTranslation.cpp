@@ -93,6 +93,8 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "Install";
     case INSTALLVIEW_NEW_CONTAINER:
         return "Create New Container (Recommended)";
+    case INSTALLVIEW_DEMO_DOWNLOAD_SIZE:
+        return "Download size: ";
     case SETTINGS_DLG_TITLE:
         return "Options";
     case OPTIONSVIEW_SAVE_FOLDER_LABEL:
