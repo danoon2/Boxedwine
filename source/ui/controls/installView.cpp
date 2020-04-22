@@ -30,11 +30,11 @@ void InstallView::createDemoTab() {
     name += getTranslation(INSTALLVIEW_DEMO_TITLE);
 
     addTab(name, name, model, [this](bool buttonPressed, BaseViewTab& tab) {
-        runDemos();
+        runApps(GlobalSettings::getDemos());
         });
 }
 
-void InstallView::runDemos() {
+void InstallView::runApps(std::vector<AppFile>& apps) {
     ImGui::PushFont(GlobalSettings::largeFont);
     ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing));
     SAFE_IMGUI_TEXT(getTranslation(INSTALLVIEW_DEMO_TITLE));
@@ -46,60 +46,57 @@ void InstallView::runDemos() {
     ImGui::PushFont(GlobalSettings::mediumFont);
     //ImGui::BeginChildFrame(401, size);
     ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing));
-    for (auto& demo : GlobalSettings::getDemos()) {
+    for (auto& app : apps) {
         ImGui::Dummy(ImVec2(this->extraVerticalSpacing, 0.0f));
         ImGui::SameLine();
         ImVec2 pos = ImGui::GetCursorPos();
         pos.y += this->extraVerticalSpacing;
         ImGui::SetCursorPos(pos);
-        if (demo.installed) {
-            std::string buttonLabel = "Installed";
-            UIDisableStyle d;
-            ImGui::PushID(&demo);
-            if (ImGui::Button(buttonLabel.c_str())) {
-                //download(wine.second.availableVersion);
+        
+        std::string buttonLabel = "Install";
+        ImGui::PushID(&app);            
+        if (ImGui::Button(buttonLabel.c_str())) {
+            if (Fs::doesNativePathExist(app.localFilePath)) {
+                app.install();
+            } else {
+                GlobalSettings::downloadFile(app.filePath, app.localFilePath, app.name, app.size, [&app](bool sucess) {
+                    app.install();
+                    });
             }
-            ImGui::PopID();
-            ImGui::SameLine();
-        } else {
-            std::string buttonLabel = "Install";
-            ImGui::PushID(&demo);            
-            if (ImGui::Button(buttonLabel.c_str())) {
-                if (Fs::doesNativePathExist(demo.localFilePath)) {
-                    demo.install();
-                } else {
-                    GlobalSettings::downloadFile(demo.filePath, demo.localFilePath, demo.name, demo.size, [&demo](bool sucess) {
-                        demo.install();
-                        });
-                }
-            }
-            ImGui::PopID();
-            ImGui::SameLine();
         }
+        ImGui::PopID();
+        ImGui::SameLine();
+        
         //ImGui::SameLine(pos.x + this->wineButtonTotalColumnWidth);
-        std::string name = demo.name;
+        std::string name = app.name;
         std::string name2;
-        if (!Fs::doesNativePathExist(demo.localFilePath)) {
+        if (!Fs::doesNativePathExist(app.localFilePath)) {
             name2 += "(";
             name2 += getTranslation(INSTALLVIEW_DEMO_DOWNLOAD_SIZE);
-            name2 += std::to_string(demo.size);
+            name2 += std::to_string(app.size);
             name2 += " MB)";
         }
-        if (demo.iconTexture) {
-            ImGui::Image(demo.iconTexture, ImVec2(ImGui::GetTextLineHeight(), ImGui::GetTextLineHeight()));
+        if (app.iconTexture) {
+            float pad = ImGui::GetStyle().FramePadding.y;
+            ImGui::Image(app.iconTexture, ImVec2(ImGui::GetTextLineHeight()+pad*2, ImGui::GetTextLineHeight()+pad*2));
             ImGui::SameLine();
         }
         SAFE_IMGUI_TEXT(name.c_str());
         ImGui::SameLine();
         ImGui::PushFont(GlobalSettings::defaultFont);
         pos = ImGui::GetCursorPos();
+        float y = pos.y;
         pos.y += GlobalSettings::mediumFont->FontSize / 2 - GlobalSettings::defaultFont->FontSize / 2;
         ImGui::SetCursorPos(pos);
         SAFE_IMGUI_TEXT(name2.c_str());
-        ImGui::PopFont();
-        pos = ImGui::GetCursorPos();
-        pos.y += this->extraVerticalSpacing;
-        ImGui::SetCursorPos(pos);
+        ImGui::PopFont();        
+        if (app.help.length()) {
+            pos = ImGui::GetCursorPos();
+            pos.y = y;
+            ImGui::SetCursorPos(pos);
+            ImGui::SameLine();
+            this->drawToolTip(app.help);
+        }
     }
     ImGui::PopFont();
     //ImGui::EndChildFrame();
@@ -230,21 +227,8 @@ void InstallView::onInstall() {
     if (!this->errorMsg) {
         if (containerIndex != 0) {
             container = BoxedwineData::getContainers()[containerIndex - 1];
-        } else {
-            if (containerName.length() == 0) {
-                this->errorMsg = getTranslation(INSTALLVIEW_ERROR_CONTAINER_NAME_MISSING);
-            } else {
-                std::string containerFilePath = GlobalSettings::getContainerFolder() + Fs::nativePathSeperator + containerName;
-                if (Fs::doesNativePathExist(containerFilePath)) {
-                    if (!Fs::isNativeDirectoryEmpty(containerFilePath)) {
-                        this->errorMsgString = getTranslationWithFormat(INSTALLVIEW_ERROR_CONTAINER_ALREADY_EXISTS, true, containerFilePath.c_str());
-                        this->errorMsg = this->errorMsgString.c_str();
-                    }
-                } else if (!Fs::makeNativeDirs(containerFilePath)) {
-                    this->errorMsgString = getTranslationWithFormat(INSTALLVIEW_ERROR_FAILED_TO_CREATE_CONTAINER_DIR, true, strerror(errno));
-                    this->errorMsg = this->errorMsgString.c_str();
-                }
-            }
+        } else if (containerName.length() == 0) {
+            this->errorMsg = getTranslation(INSTALLVIEW_ERROR_CONTAINER_NAME_MISSING);
         }
     }
     if (!this->errorMsg) {
@@ -253,7 +237,12 @@ void InstallView::onInstall() {
         GlobalSettings::startUpArgs.setResolution(GlobalSettings::getDefaultResolution());
         bool containerCreated = false;
         if (!container) {
-            std::string containerFilePath = GlobalSettings::getContainerFolder() + Fs::nativePathSeperator + containerName;
+            std::string containerFilePath = GlobalSettings::createUniqueContainerPath(containerName);
+            if (!Fs::makeNativeDirs(containerFilePath)) {
+                this->errorMsgString = getTranslationWithFormat(INSTALLVIEW_ERROR_FAILED_TO_CREATE_CONTAINER_DIR, true, strerror(errno));
+                this->errorMsg = this->errorMsgString.c_str();
+                return;
+            }
             container = BoxedContainer::createContainer(containerFilePath, containerName, GlobalSettings::getWineVersions()[wineVersionIndex].name);
             container->setWindowsVersion(BoxedwineData::getWinVersions()[windowsVersionIndex]);
             containerCreated = true;

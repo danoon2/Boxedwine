@@ -112,3 +112,23 @@ std::shared_ptr<LayoutComboboxControl> BaseView::createWineVersionCombobox(const
     result->setWidth((int)GlobalSettings::scaleFloatUIAndFont(150));
     return result;
 }
+
+void BaseView::drawToolTip(const std::string& help) {
+    ImGui::AlignTextToFramePadding();
+    if (GlobalSettings::hasIconsFont()) {
+        SAFE_IMGUI_TEXT_DISABLED(QUESTION_ICON);
+    } else {
+        SAFE_IMGUI_TEXT_DISABLED("(?)");
+    }
+    if (ImGui::IsItemHovered())
+    {
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(GlobalSettings::scaleFloatUI(8.0f), GlobalSettings::scaleFloatUI(8.0f)));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, GlobalSettings::scaleFloatUI(7.0f));
+        ImGui::BeginTooltip();
+        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+        ImGui::TextUnformatted(help.c_str());
+        ImGui::PopTextWrapPos();
+        ImGui::EndTooltip();
+        ImGui::PopStyleVar(2);
+    }
+}

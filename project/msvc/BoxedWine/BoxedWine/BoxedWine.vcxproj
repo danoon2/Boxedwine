@@ -965,6 +965,8 @@
     <ClInclude Include="..\..\..\..\lib\poco\Util\include\Poco\Util\WinRegistryKey.h" />
     <ClInclude Include="..\..\..\..\lib\poco\Util\include\Poco\Util\WinService.h" />
     <ClInclude Include="..\..\..\..\lib\poco\Util\include\Poco\Util\XMLConfiguration.h" />
+    <ClInclude Include="..\..\..\..\lib\pugixml\src\pugiconfig.hpp" />
+    <ClInclude Include="..\..\..\..\lib\pugixml\src\pugixml.hpp" />
     <ClInclude Include="..\..\..\..\lib\zlib\contrib\minizip\crypt.h" />
     <ClInclude Include="..\..\..\..\lib\zlib\contrib\minizip\ioapi.h" />
     <ClInclude Include="..\..\..\..\lib\zlib\contrib\minizip\mztools.h" />
@@ -1095,6 +1097,7 @@
     <ClInclude Include="..\..\..\..\source\ui\controls\uiSettings.h" />
     <ClInclude Include="..\..\..\..\source\ui\controls\waitDlg.h" />
     <ClInclude Include="..\..\..\..\source\ui\controls\yesNoDlg.h" />
+    <ClInclude Include="..\..\..\..\source\ui\data\appFile.h" />
     <ClInclude Include="..\..\..\..\source\ui\data\boxedApp.h" />
     <ClInclude Include="..\..\..\..\source\ui\data\boxedContainer.h" />
     <ClInclude Include="..\..\..\..\source\ui\data\boxedReg.h" />
@@ -3496,6 +3499,12 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\pugixml\src\pugixml.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="..\..\..\..\lib\zlib\contrib\minizip\ioapi.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">NotUsing</PrecompiledHeader>
@@ -3712,6 +3721,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\..\..\..\source\ui\controls\yesNoDlg.cpp" />
+    <ClCompile Include="..\..\..\..\source\ui\data\appFile.cpp" />
     <ClCompile Include="..\..\..\..\source\ui\data\boxedApp.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|x64'">Use</PrecompiledHeader>

@@ -1546,6 +1546,12 @@
     <ClCompile Include="..\..\..\..\source\ui\controls\ImGuiLayout.cpp">
       <Filter>source\ui\controls</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\pugixml\src\pugixml.cpp">
+      <Filter>pugixml</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\data\appFile.cpp">
+      <Filter>source\ui\data</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -3684,6 +3690,15 @@
     <ClInclude Include="..\..\..\..\source\ui\controls\ImGuiLayout.h">
       <Filter>source\ui\controls</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\pugixml\src\pugiconfig.hpp">
+      <Filter>pugixml</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\pugixml\src\pugixml.hpp">
+      <Filter>pugixml</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\ui\data\appFile.h">
+      <Filter>source\ui\data</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
@@ -3832,6 +3847,9 @@
     </Filter>
     <Filter Include="poco\Util\include">
       <UniqueIdentifier>{b82300be-ab3a-433e-8d01-54fe65441a78}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="pugixml">
+      <UniqueIdentifier>{03dff67b-616e-460f-b0fb-be0f2de70aa8}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

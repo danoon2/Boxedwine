@@ -10,7 +10,7 @@ public:
 private:
     void createInstallTab(const std::string& initialFileOrDirPath);
     void createDemoTab();
-    void runDemos();
+    void runApps(std::vector<AppFile>& apps);
 
     void onInstall();   
 
