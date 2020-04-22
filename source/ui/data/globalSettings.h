@@ -37,12 +37,11 @@ class BoxedContainer;
 
 class WineVersion {
 public:
-    WineVersion(const std::string& name, const std::string& fsVersion, const std::string& filePath, U32 size=0, const std::string& changes=""):name(name), filePath(filePath), fsVersion(fsVersion), size(size), changes(changes)  {}
+    WineVersion(const std::string& name, const std::string& fsVersion, const std::string& filePath, U32 size=0):name(name), filePath(filePath), fsVersion(fsVersion), size(size)  {}
     std::string name;
     std::string filePath;
     std::string fsVersion;
     U32 size;
-    std::string changes;
     bool operator<(const WineVersion& rhs) const { return name < rhs.name; }
 };
 
@@ -118,8 +117,8 @@ private:
 
     friend class OptionsView;
     static std::vector<WineVersion> availableWineVersions;
-    static std::vector<AppFile> GlobalSettings::demos;
-    static std::vector<AppFile> GlobalSettings::components;
+    static std::vector<AppFile> demos;
+    static std::vector<AppFile> components;
     static bool filesListDownloading;
     static U32 frameDelayMillies; // decrease if we are animating, else this can be pretty large
     static U32 fastFrameRateCount;

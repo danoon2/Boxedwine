@@ -248,7 +248,7 @@ void GlobalSettings::loadFileList() {
         int fileSize = wine.child("FileSizeMB").text().as_int();
 
         if (name.length() && ver.length() && file.length()) {
-            GlobalSettings::availableWineVersions.push_back(WineVersion(name, ver, file, fileSize, ""));
+            GlobalSettings::availableWineVersions.push_back(WineVersion(name, ver, file, fileSize));
         } else {
             break;
         }
@@ -305,31 +305,34 @@ void GlobalSettings::updateFileList(const std::string& fileLocation) {
         GlobalSettings::filesListDownloading = true;
         ::downloadFile("http://www.boxedwine.org/files.xml", fileLocation, [](U64 bytesCompleted) {
             }, NULL, errorMsg);
-        GlobalSettings::loadFileList();
-        GlobalSettings::filesListDownloading = false;
-        runInBackgroundThread([]() {
-            std::string errorMsg;
+        runOnMainUI([]() {
+            GlobalSettings::loadFileList();
+            GlobalSettings::filesListDownloading = false;
+            runInBackgroundThread([]() {
+                std::string errorMsg;
 
-            for (auto& demo : GlobalSettings::getDemos()) {
-                if (demo.iconPath.length()) {
-                    size_t pos = demo.iconPath.rfind("/");
-                    if (pos == std::string::npos) {
-                        return; // :TODO: error msg?
-                    }
-                    if (!Fs::doesNativePathExist(GlobalSettings::getDemoFolder())) {
-                        Fs::makeNativeDirs(GlobalSettings::getDemoFolder());
-                    }
-                    if (!Fs::doesNativePathExist(demo.localIconPath)) {
-                        ::downloadFile(demo.iconPath, demo.localIconPath, [](U64 bytesCompleted) {
-                            }, NULL, errorMsg);
-                        runOnMainUI([&demo]() {
-                            demo.buildIconTexture();
-                            return false;
-                            });
+                for (auto& demo : GlobalSettings::getDemos()) {
+                    if (demo.iconPath.length()) {
+                        size_t pos = demo.iconPath.rfind("/");
+                        if (pos == std::string::npos) {
+                            return; // :TODO: error msg?
+                        }
+                        if (!Fs::doesNativePathExist(GlobalSettings::getDemoFolder())) {
+                            Fs::makeNativeDirs(GlobalSettings::getDemoFolder());
+                        }
+                        if (!Fs::doesNativePathExist(demo.localIconPath)) {
+                            ::downloadFile(demo.iconPath, demo.localIconPath, [](U64 bytesCompleted) {
+                                }, NULL, errorMsg);
+                            runOnMainUI([&demo]() {
+                                demo.buildIconTexture();
+                                return false;
+                                });
+                        }
                     }
                 }
-            }
             });
+            return false;
+        });
     }       
     );
 }

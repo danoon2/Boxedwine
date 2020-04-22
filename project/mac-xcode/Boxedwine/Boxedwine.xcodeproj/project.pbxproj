@@ -13,6 +13,10 @@
 		7120545B244D01DA00C3CB1B /* boxedReg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71205458244D01D900C3CB1B /* boxedReg.cpp */; };
 		7120545E244D074000C3CB1B /* MacPlatform.m in Sources */ = {isa = PBXBuildFile; fileRef = 7120545D244D074000C3CB1B /* MacPlatform.m */; };
 		7120545F244D074000C3CB1B /* MacPlatform.m in Sources */ = {isa = PBXBuildFile; fileRef = 7120545D244D074000C3CB1B /* MacPlatform.m */; };
+		71205462244FDA2400C3CB1B /* appFile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71205460244FDA2400C3CB1B /* appFile.cpp */; };
+		71205463244FDA2400C3CB1B /* appFile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71205460244FDA2400C3CB1B /* appFile.cpp */; };
+		71205468244FDA6600C3CB1B /* pugixml.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71205465244FDA6600C3CB1B /* pugixml.cpp */; };
+		71205469244FDA6600C3CB1B /* pugixml.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71205465244FDA6600C3CB1B /* pugixml.cpp */; };
 		7122277C2433ED5700CDBABD /* libSDL2.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 7122277B2433ED5700CDBABD /* libSDL2.a */; };
 		7122277E2433ED7C00CDBABD /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7122277D2433ED7C00CDBABD /* CoreAudio.framework */; };
 		712227822433EDCE00CDBABD /* AudioToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 712227812433EDCE00CDBABD /* AudioToolbox.framework */; };
@@ -1246,6 +1250,11 @@
 		71205459244D01D900C3CB1B /* boxedReg.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = boxedReg.h; sourceTree = "<group>"; };
 		7120545C244D074000C3CB1B /* MacPlatform.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MacPlatform.h; sourceTree = "<group>"; };
 		7120545D244D074000C3CB1B /* MacPlatform.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MacPlatform.m; sourceTree = "<group>"; };
+		71205460244FDA2400C3CB1B /* appFile.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = appFile.cpp; sourceTree = "<group>"; };
+		71205461244FDA2400C3CB1B /* appFile.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = appFile.h; sourceTree = "<group>"; };
+		71205465244FDA6600C3CB1B /* pugixml.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = pugixml.cpp; path = ../../../../lib/pugixml/src/pugixml.cpp; sourceTree = "<group>"; };
+		71205466244FDA6600C3CB1B /* pugixml.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = pugixml.hpp; path = ../../../../lib/pugixml/src/pugixml.hpp; sourceTree = "<group>"; };
+		71205467244FDA6600C3CB1B /* pugiconfig.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = pugiconfig.hpp; path = ../../../../lib/pugixml/src/pugiconfig.hpp; sourceTree = "<group>"; };
 		712227762433E8C400CDBABD /* SDL2.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SDL2.framework; path = ../../../lib/mac/sdlMac2.0.6/SDL2.framework; sourceTree = "<group>"; };
 		712227782433E8E100CDBABD /* Minizip.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Minizip.framework; path = ../../../lib/mac/minizipMac/Minizip.framework; sourceTree = "<group>"; };
 		7122277B2433ED5700CDBABD /* libSDL2.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; path = libSDL2.a; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -2114,6 +2123,16 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		71205464244FDA4200C3CB1B /* pugixml */ = {
+			isa = PBXGroup;
+			children = (
+				71205467244FDA6600C3CB1B /* pugiconfig.hpp */,
+				71205465244FDA6600C3CB1B /* pugixml.cpp */,
+				71205466244FDA6600C3CB1B /* pugixml.hpp */,
+			);
+			path = pugixml;
+			sourceTree = "<group>";
+		};
 		712227752433E8C400CDBABD /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
@@ -2738,6 +2757,7 @@
 		71FBFCA42433B815003F17F1 = {
 			isa = PBXGroup;
 			children = (
+				71205464244FDA4200C3CB1B /* pugixml */,
 				715F8427244115580038F5A4 /* Media.xcassets */,
 				715F7C1A2440EAC10038F5A4 /* zlib */,
 				715FEC372440D6910038F5A4 /* poco */,
@@ -2938,6 +2958,8 @@
 		71FBFD362433BBBE003F17F1 /* data */ = {
 			isa = PBXGroup;
 			children = (
+				71205460244FDA2400C3CB1B /* appFile.cpp */,
+				71205461244FDA2400C3CB1B /* appFile.h */,
 				71205458244D01D900C3CB1B /* boxedReg.cpp */,
 				71205459244D01D900C3CB1B /* boxedReg.h */,
 				71FBFD372433BBBE003F17F1 /* globalSettings.cpp */,
@@ -4040,6 +4062,7 @@
 				715F7C042440E9E00038F5A4 /* ECDSADigestEngine.cpp in Sources */,
 				715F82542440ED1D0038F5A4 /* UnicodeConverter.cpp in Sources */,
 				715F64732440E9740038F5A4 /* Session.cpp in Sources */,
+				71205463244FDA2400C3CB1B /* appFile.cpp in Sources */,
 				71222C4624351CBA00CDBABD /* common_fpu.cpp in Sources */,
 				715F63B32440E9110038F5A4 /* MultipartWriter.cpp in Sources */,
 				715F82EA2440ED1E0038F5A4 /* AbstractObserver.cpp in Sources */,
@@ -4154,6 +4177,7 @@
 				71222C6624351CBA00CDBABD /* lazyFlags.cpp in Sources */,
 				71222C6724351CBA00CDBABD /* normal_shift.cpp in Sources */,
 				71222C6924351CBA00CDBABD /* platformhelper.cpp in Sources */,
+				71205469244FDA6600C3CB1B /* pugixml.cpp in Sources */,
 				715F80EB2440EB260038F5A4 /* unzip.c in Sources */,
 				715F7BEA2440E9E00038F5A4 /* X509Certificate.cpp in Sources */,
 				715F825C2440ED1E0038F5A4 /* Process.cpp in Sources */,
@@ -4588,6 +4612,7 @@
 				715F7C032440E9E00038F5A4 /* ECDSADigestEngine.cpp in Sources */,
 				715F82532440ED1D0038F5A4 /* UnicodeConverter.cpp in Sources */,
 				715F64722440E9740038F5A4 /* Session.cpp in Sources */,
+				71205462244FDA2400C3CB1B /* appFile.cpp in Sources */,
 				71FBFE872433BBBE003F17F1 /* common_fpu.cpp in Sources */,
 				715F63B22440E9100038F5A4 /* MultipartWriter.cpp in Sources */,
 				715F82E92440ED1E0038F5A4 /* AbstractObserver.cpp in Sources */,
@@ -4702,6 +4727,7 @@
 				71FBFE842433BBBE003F17F1 /* lazyFlags.cpp in Sources */,
 				71FBFE902433BBBE003F17F1 /* normal_shift.cpp in Sources */,
 				71FBFE712433BBBE003F17F1 /* platformhelper.cpp in Sources */,
+				71205468244FDA6600C3CB1B /* pugixml.cpp in Sources */,
 				715F80EA2440EB260038F5A4 /* unzip.c in Sources */,
 				715F7BE92440E9E00038F5A4 /* X509Certificate.cpp in Sources */,
 				715F825B2440ED1D0038F5A4 /* Process.cpp in Sources */,
