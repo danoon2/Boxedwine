@@ -649,7 +649,7 @@ U32 sdlCreateContext(KThread* thread, Wnd* wnd, int major, int minor, int profil
     }
 #ifdef SDL2
     if (result) {
-        SDL_GLContext context = SDL_GL_CreateContext(sdlWindow);;
+        SDL_GLContext context = SDL_GL_CreateContext(sdlWindow);
         if (!context) {
             fprintf(stderr, "Couldn't create context: %s\n", SDL_GetError());
             DISPATCH_MAIN_THREAD_BLOCK_BEGIN_RETURN
@@ -667,6 +667,9 @@ U32 sdlCreateContext(KThread* thread, Wnd* wnd, int major, int minor, int profil
     return result;
 }
 
+#if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
+#include GLH
+#endif
 void sdlScreenResized(KThread* thread) {
     DISPATCH_MAIN_THREAD_BLOCK_BEGIN
 #ifdef SDL2
@@ -678,6 +681,9 @@ void sdlScreenResized(KThread* thread) {
                 cy = cy * sdlScaleX / 100;
             }
             SDL_SetWindowSize(sdlWindow, cx, cy);
+#if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
+            glViewport(0, 0, cx, cy);
+#endif
         } else {
             displayChanged(thread);
         }
@@ -1276,10 +1282,6 @@ int sdlMouseMouse(int x, int y, bool relative) {
             if (fd) {
                 U8 buffer[28];
 
-                if (!sdlWindowIsGL) {
-                    x = (x*100+sdlScaleX/2)/sdlScaleX;
-                    y = (y*100+sdlScaleY/2)/sdlScaleY;
-                }
                 writeLittleEndian_4(buffer, 0); // INPUT_MOUSE
                 writeLittleEndian_4(buffer+4, x); // dx
                 writeLittleEndian_4(buffer+8, y); // dy
@@ -1317,10 +1319,6 @@ int sdlMouseWheel(int amount, int x, int y) {
             if (fd) {
                 U8 buffer[28];
 
-                if (!sdlWindowIsGL) {
-                    x = (x*100+sdlScaleX/2)/sdlScaleX;
-                    y = (y*100+sdlScaleY/2)/sdlScaleY;
-                }
                 writeLittleEndian_4(buffer, 0); // INPUT_MOUSE
                 writeLittleEndian_4(buffer+4, x); // dx
                 writeLittleEndian_4(buffer+8, y); // dy
@@ -1371,10 +1369,6 @@ int sdlMouseButton(U32 down, U32 button, int x, int y) {
                         case 1: flags |= MOUSEEVENTF_RIGHTUP; break;
                         case 2: flags |= MOUSEEVENTF_MIDDLEUP; break;
                     }
-                }
-                if (!sdlWindowIsGL) {
-                    x = (x*100+sdlScaleX/2)/sdlScaleX;
-                    y = (y*100+sdlScaleY/2)/sdlScaleY;
                 }
                 writeLittleEndian_4(buffer, 0); // INPUT_MOUSE
                 writeLittleEndian_4(buffer+4, x); // dx

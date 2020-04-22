@@ -63,7 +63,25 @@ void KSystem::init() {
 
 void KSystem::destroy() {
 	KThread::setCurrentThread(NULL);
-	KSystem::shutingDown = true;	
+	KSystem::shutingDown = true;
+    while (true) {
+        std::shared_ptr<KProcess> p;
+        {
+            BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(processesCond);
+            if (KSystem::processes.size()) {
+                for (auto& process : KSystem::processes) {
+                    if (process.second->getThreadCount()) {
+                        p = process.second;
+                        break;
+                    }
+                }
+            }
+        }
+        if (!p) {
+            break;
+        }
+        p->killAllThreadsExceptCurrent();
+    }
 	KSystem::processes.clear();
     KSystem::shm.clear();
 #ifdef BOXEDWINE_DEFAULT_MMU
