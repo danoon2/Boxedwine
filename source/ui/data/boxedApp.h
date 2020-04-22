@@ -15,7 +15,7 @@ public:
 
 class BoxedApp {
 public:
-    BoxedApp() : bpp(32), fullScreen(false), scale(100), scaleQuality(0), container(NULL) {}
+    BoxedApp() : bpp(32), fullScreen(false), scale(0), scaleQuality(0), container(NULL) {}
     BoxedApp(const std::string& name, const std::string& path, const std::string& cmd, BoxedContainer* container) : name(name), path(path), cmd(cmd), bpp(0), fullScreen(false), scale(0), scaleQuality(0), container(container) {}
     
     bool load(BoxedContainer* container, const std::string& iniFilepath);

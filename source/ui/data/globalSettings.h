@@ -2,6 +2,7 @@
 #define __GLOBAL_SETTINGS_H__
 
 #include "../../sdl/startupArgs.h"
+#include "appFile.h"
 
 class BoxedContainer;
 
@@ -36,34 +37,12 @@ class BoxedContainer;
 
 class WineVersion {
 public:
-    WineVersion(const std::string& name, const std::string& fsVersion, const std::string& filePath, U32 size=0, const std::string& changes=""):name(name), filePath(filePath), fsVersion(fsVersion), size(size), changes(changes)  {}
+    WineVersion(const std::string& name, const std::string& fsVersion, const std::string& filePath, U32 size=0):name(name), filePath(filePath), fsVersion(fsVersion), size(size)  {}
     std::string name;
     std::string filePath;
     std::string fsVersion;
     U32 size;
-    std::string changes;
     bool operator<(const WineVersion& rhs) const { return name < rhs.name; }
-};
-
-class DemoFile {
-public:
-    DemoFile(const std::string& name, const std::string& iconPath, const std::string& filePath, U32 size, const std::string& exe, const std::string& exeOptions);
-    std::string name;
-    std::string filePath;
-    std::string iconPath;
-    std::string localIconPath;
-    std::string localFilePath;
-    U32 size;
-    std::string exe;
-    std::string exeOptions;
-    bool installed;
-    void* iconTexture;
-
-    void buildIconTexture();
-    void install();
-    std::string getContainerNamePrefix();
-
-    bool operator<(const DemoFile& rhs) const { return name < rhs.name; }
 };
 
 struct ImFont;
@@ -107,7 +86,8 @@ public:
     static int getScreenCy() { return GlobalSettings::screenCy; }
     static void setFontScale(float scale);
     static bool hasIconsFont() {return GlobalSettings::iconFontsLoaded;}
-    static std::vector<DemoFile>& getDemos() {return GlobalSettings::demos;}
+    static std::vector<AppFile>& getDemos() {return GlobalSettings::demos;}
+    static std::vector<AppFile>& getComponents() { return GlobalSettings::components; }
     static void downloadFile(const std::string& url, const std::string& filePath, const std::string& name, U32 sizeMB, std::function<void(bool)> onCompleted);
     static std::string createUniqueContainerPath(const std::string& name);
 
@@ -137,7 +117,8 @@ private:
 
     friend class OptionsView;
     static std::vector<WineVersion> availableWineVersions;
-    static std::vector<DemoFile> GlobalSettings::demos;
+    static std::vector<AppFile> demos;
+    static std::vector<AppFile> components;
     static bool filesListDownloading;
     static U32 frameDelayMillies; // decrease if we are animating, else this can be pretty large
     static U32 fastFrameRateCount;

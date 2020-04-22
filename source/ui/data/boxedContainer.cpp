@@ -109,6 +109,8 @@ void BoxedContainer::launch(const std::vector<std::string>& args, const std::str
 }
 
 void BoxedContainer::launch() {
+    GlobalSettings::startUpArgs.setScale(GlobalSettings::getDefaultScale());
+    GlobalSettings::startUpArgs.setResolution(GlobalSettings::getDefaultResolution());
     GlobalSettings::startUpArgs.addZip(GlobalSettings::getFileFromWineName(this->wineVersion));
     std::string root = GlobalSettings::getRootFolder(this);
 

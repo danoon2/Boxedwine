@@ -73,8 +73,6 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "You must enter a name for your new container.";
     case INSTALLVIEW_ERROR_FAILED_TO_CREATE_CONTAINER_DIR:
         return "Failed to create a directory for the new container:\n\nerror msg: {0}";
-    case INSTALLVIEW_ERROR_CONTAINER_ALREADY_EXISTS:
-        return "You chose to create a new container, but a folder with the name you entered already exists:\n\n{0}";
     case INSTALLVIEW_TYPE_SETUP:
         return "Install using a setup program";
     case INSTALLVIEW_TYPE_MOUNT:

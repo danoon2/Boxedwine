@@ -38,8 +38,7 @@ void writeSource();
 int boxedmain(int argc, const char **argv) {
     StartUpArgs startupArgs;                  
 
-    klog("Starting ...");
-
+    klog("Starting ...");    
     KSystem::startMicroCounter();
 #ifdef LOG_OPS
     logFile = fopen("log.txt", "w");
@@ -81,6 +80,7 @@ int boxedmain(int argc, const char **argv) {
         }
     } else {
 #ifndef BOXEDWINE_DISABLE_UI
+        GlobalSettings::startUp(); 
 
         while (uiShow(GlobalSettings::getExePath()+Fs::nativePathSeperator)) {
             if (GlobalSettings::restartUI) {
@@ -94,6 +94,7 @@ int boxedmain(int argc, const char **argv) {
             // make sure if the user closed the SDL windows for the game/app, that it doesn't carry over into the UI
             SDL_PumpEvents();
             SDL_FlushEvent(SDL_QUIT);
+            GlobalSettings::startUp(); // we we come back in after launching a game, we will need to create icons, like the demo icons
         }
 #endif
     }              

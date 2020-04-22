@@ -27,6 +27,7 @@ protected:
 	void runErrorMsg(bool open);
 	int getTabCount() {return (int)tabs.size();}
 	void setTabName(int index, const std::string& name) { tabs[index].name = name; }
+	void drawToolTip(const std::string& help);
 
 	std::shared_ptr<LayoutComboboxControl> createWindowsVersionCombobox(const std::shared_ptr<LayoutSection>& section);
 	std::shared_ptr<LayoutComboboxControl> createWineVersionCombobox(const std::shared_ptr<LayoutSection>& section);

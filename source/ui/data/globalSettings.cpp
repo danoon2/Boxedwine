@@ -4,6 +4,7 @@
 #include "../../io/fszip.h"
 #include "../../util/networkutils.h"
 #include "../../util/threadutils.h"
+#include "../../../lib/pugixml/src/pugixml.hpp"
 
 #include <sys/stat.h>
 
@@ -15,7 +16,8 @@
 std::string GlobalSettings::dataFolderLocation;
 std::vector<WineVersion> GlobalSettings::wineVersions;
 std::vector<WineVersion> GlobalSettings::availableWineVersions;
-std::vector<DemoFile> GlobalSettings::demos;
+std::vector<AppFile> GlobalSettings::demos;
+std::vector<AppFile> GlobalSettings::components;
 int GlobalSettings::iconSize;
 StartUpArgs GlobalSettings::startUpArgs;
 std::string GlobalSettings::exePath;
@@ -58,7 +60,22 @@ void GlobalSettings::init(int argc, const char **argv) {
     stringReplaceAll(GlobalSettings::dataFolderLocation, "\\\\", "\\");
     GlobalSettings::theme = config.readString("Theme", "Dark");
     GlobalSettings::defaultResolution = config.readString("DefaultResolution", "1024x768");
-    GlobalSettings::defaultScale = config.readInt("DefaultScale", 100);
+
+#ifdef BOXEDWINE_HIGHDPI
+    U32 defaultScale = getDisplayScale();
+    if (defaultScale <= 600) {
+        defaultScale = 50;
+    } else if (defaultScale <= 1500) {
+        defaultScale = 100;
+    } else if (defaultScale <= 2500) {
+        defaultScale = 200;
+    } else {
+        defaultScale = 300;
+    }
+#else
+    U32 defaultScale = 100;
+#endif
+    GlobalSettings::defaultScale = config.readInt("DefaultScale", defaultScale);
     GlobalSettings::fontScale = (float)config.readInt("FontScale", 100) / 100.0f;
 
     if (!Fs::doesNativePathExist(configFilePath)) {
@@ -214,31 +231,40 @@ void GlobalSettings::reloadApps() {
 }
 
 void GlobalSettings::loadFileList() {
-    std::string filesConfigPath = GlobalSettings::dataFolderLocation + Fs::nativePathSeperator + "files.ini";
-    ConfigFile config(filesConfigPath);
+    BOXEDWINE_CRITICAL_SECTION;
+
+    std::string filesConfigPath = GlobalSettings::dataFolderLocation + Fs::nativePathSeperator + "files.xml";
+    pugi::xml_document doc;
+    pugi::xml_parse_result result = doc.load_file(filesConfigPath.c_str());
+    if (!result) {
+        return;
+    }
+    pugi::xml_node node = doc.child("XML");
     GlobalSettings::availableWineVersions.clear();
-    for (U32 i = 1; i < 1000; i++) {
-        std::string name = config.readString("WineFsName" + std::to_string(i), "");
-        std::string ver = config.readString("WineFsVer" + std::to_string(i), "");
-        std::string file = config.readString("WineFsFile" + std::to_string(i), "");
-        U32 fileSize = config.readInt("WineFsFileSize" + std::to_string(i), 0);
-        std::string changes = config.readString("WineFsChangeMsg" + std::to_string(i), "");
+    for (pugi::xml_node wine : node.children("Wine")) {
+        std::string name = wine.child("Name").text().as_string();
+        std::string ver = wine.child("FileVersion").text().as_string();
+        std::string file = wine.child("FileURL").text().as_string();
+        int fileSize = wine.child("FileSizeMB").text().as_int();
+
         if (name.length() && ver.length() && file.length()) {
-            GlobalSettings::availableWineVersions.push_back(WineVersion(name, ver, file, fileSize, changes));
+            GlobalSettings::availableWineVersions.push_back(WineVersion(name, ver, file, fileSize));
         } else {
             break;
         }
     }
     GlobalSettings::demos.clear();
-    for (U32 i = 1; i < 1000; i++) {
-        std::string name = config.readString("DemoName" + std::to_string(i), "");
-        std::string icon = config.readString("DemoIcon" + std::to_string(i), "");
-        std::string file = config.readString("DemoFile" + std::to_string(i), "");
-        std::string exe = config.readString("DemoExe" + std::to_string(i), "");
-        std::string exeOptions = config.readString("DemoExeOptions" + std::to_string(i), "");
-        U32 fileSize = config.readInt("DemoFileSize" + std::to_string(i), 0);        
+    for (pugi::xml_node demo : node.children("Demo")) {
+        std::string name = demo.child("Name").text().as_string();
+        std::string installType = demo.child("InstallType").text().as_string();
+        std::string icon = demo.child("IconURL").text().as_string();
+        int fileSize = demo.child("FileSizeMB").text().as_int();
+        std::string file = demo.child("FileURL").text().as_string();
+        std::string exe = demo.child("ShortcutExe").text().as_string();
+        std::string help = demo.child("Help").text().as_string();
+        std::string options = demo.child("ShortcutExe").text().as_string();
         if (name.length() && file.length()) {
-            GlobalSettings::demos.push_back(DemoFile(name, icon, file, fileSize, exe, exeOptions));
+            GlobalSettings::demos.push_back(AppFile(name, installType, icon, file, fileSize, exe, options, help));
         } else {
             break;
         }
@@ -252,7 +278,7 @@ void GlobalSettings::loadFileList() {
 }
 
 bool GlobalSettings::checkFileListForUpdate() {
-    std::string filesConfigPath = GlobalSettings::dataFolderLocation + Fs::nativePathSeperator + "files.ini";
+    std::string filesConfigPath = GlobalSettings::dataFolderLocation + Fs::nativePathSeperator + "files.xml";
 
     PLATFORM_STAT_STRUCT buf;
     if (PLATFORM_STAT(filesConfigPath.c_str(), &buf) == 0) {
@@ -277,33 +303,36 @@ void GlobalSettings::updateFileList(const std::string& fileLocation) {
     runInBackgroundThread([fileLocation]() {
         std::string errorMsg;
         GlobalSettings::filesListDownloading = true;
-        ::downloadFile("http://www.boxedwine.org/files.ini", fileLocation, [](U64 bytesCompleted) {
+        ::downloadFile("http://www.boxedwine.org/files.xml", fileLocation, [](U64 bytesCompleted) {
             }, NULL, errorMsg);
-        GlobalSettings::loadFileList();
-        GlobalSettings::filesListDownloading = false;
-        runInBackgroundThread([]() {
-            std::string errorMsg;
+        runOnMainUI([]() {
+            GlobalSettings::loadFileList();
+            GlobalSettings::filesListDownloading = false;
+            runInBackgroundThread([]() {
+                std::string errorMsg;
 
-            for (auto& demo : GlobalSettings::getDemos()) {
-                if (demo.iconPath.length()) {
-                    size_t pos = demo.iconPath.rfind("/");
-                    if (pos == std::string::npos) {
-                        return; // :TODO: error msg?
-                    }
-                    if (!Fs::doesNativePathExist(GlobalSettings::getDemoFolder())) {
-                        Fs::makeNativeDirs(GlobalSettings::getDemoFolder());
-                    }
-                    if (!Fs::doesNativePathExist(demo.localIconPath)) {
-                        ::downloadFile(demo.iconPath, demo.localIconPath, [](U64 bytesCompleted) {
-                            }, NULL, errorMsg);
-                        runOnMainUI([&demo]() {
-                            demo.buildIconTexture();
-                            return false;
-                            });
+                for (auto& demo : GlobalSettings::getDemos()) {
+                    if (demo.iconPath.length()) {
+                        size_t pos = demo.iconPath.rfind("/");
+                        if (pos == std::string::npos) {
+                            return; // :TODO: error msg?
+                        }
+                        if (!Fs::doesNativePathExist(GlobalSettings::getDemoFolder())) {
+                            Fs::makeNativeDirs(GlobalSettings::getDemoFolder());
+                        }
+                        if (!Fs::doesNativePathExist(demo.localIconPath)) {
+                            ::downloadFile(demo.iconPath, demo.localIconPath, [](U64 bytesCompleted) {
+                                }, NULL, errorMsg);
+                            runOnMainUI([&demo]() {
+                                demo.buildIconTexture();
+                                return false;
+                                });
+                        }
                     }
                 }
-            }
             });
+            return false;
+        });
     }       
     );
 }
@@ -452,99 +481,18 @@ void GlobalSettings::setFontScale(float scale) {
 }
 
 std::string GlobalSettings::createUniqueContainerPath(const std::string& name) {
+    std::string containerName = name;
+    stringReplaceAll(containerName, " ", "_");
+    stringReplaceAll(containerName, ":", "");
+
     std::srand((U32)std::time(nullptr));
     while (true) {
         int r = std::rand();
         char tmp[10];
         SDL_itoa(r, tmp, 16);
-        std::string result = GlobalSettings::getContainerFolder() + Fs::nativePathSeperator + name + "-"+tmp;
+        std::string result = GlobalSettings::getContainerFolder() + Fs::nativePathSeperator + containerName + "-"+tmp;
         if (!Fs::doesNativePathExist(result)) {
             return result;
         }
     }
-}
-
-DemoFile::DemoFile(const std::string& name, const std::string& iconPath, const std::string& filePath, U32 size, const std::string& exe, const std::string& exeOptions) : name(name), filePath(filePath), iconPath(iconPath), size(size), exe(exe), exeOptions(exeOptions), installed(false), iconTexture(NULL) {
-    if (iconPath.length()) {
-        size_t pos = iconPath.rfind("/");
-        if (pos != std::string::npos) {
-            localIconPath = GlobalSettings::getDemoFolder() + Fs::nativePathSeperator + iconPath.substr(pos + 1);                        
-        }
-    }
-    if (filePath.length()) {
-        size_t pos = filePath.rfind("/");
-        if (pos != std::string::npos) {
-            localFilePath = GlobalSettings::getDemoFolder() + Fs::nativePathSeperator + filePath.substr(pos + 1);
-        }
-    }
-}
-
-void DemoFile::buildIconTexture() {
-    if (Fs::doesNativePathExist(localIconPath)) {
-        int w = 0, h = 0;
-        this->iconTexture = LoadTextureFromFile(localIconPath.c_str(), &w, &h);
-    }
-}
-
-std::string DemoFile::getContainerNamePrefix() {
-    std::string containerName = this->name;
-    stringReplaceAll(containerName, " ", "_");
-    return containerName;
-}
-
-void DemoFile::install() {
-
-    GlobalSettings::startUpArgs = StartUpArgs(); // reset parameters
-    GlobalSettings::startUpArgs.setScale(GlobalSettings::getDefaultScale());
-    GlobalSettings::startUpArgs.setResolution(GlobalSettings::getDefaultResolution());    
-    std::string containerFilePath = GlobalSettings::createUniqueContainerPath(this->getContainerNamePrefix());
-    BoxedContainer* container = BoxedContainer::createContainer(containerFilePath, this->name, GlobalSettings::getWineVersions()[0].name);
-    BoxedwineData::addContainer(container);
-    container->launch();
-    GlobalSettings::startUpArgs.addArg(localFilePath);
-    GlobalSettings::startUpArgs.readyToLaunch = true;
-    container->saveContainer();
-
-    runOnMainUI([this]() {
-        new WaitDlg(WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(WAITDLG_LAUNCH_APP_LABEL, true, name.c_str()));
-        return false;
-        });
-
-    std::string containerDir = container->getDir();
-    std::string cmd = this->exe;
-    std::string exeOptions = this->exeOptions;
-    std::string appName = this->name;
-    GlobalSettings::startUpArgs.runOnRestartUI = [appName, cmd, exeOptions, containerDir]() {
-        runOnMainUI([appName, cmd, exeOptions, containerDir]() {
-            BoxedContainer* container = BoxedwineData::getContainerByDir(containerDir);
-            if (container) {
-                std::vector<BoxedApp> items;
-                container->getNewApps(items);
-                for (auto& app : items) {
-                    if (app.getCmd() == cmd) {
-                        if (exeOptions.length()) {
-                            std::vector<std::string> parts;
-                            stringSplit(parts, exeOptions, ',');
-                            for (auto& s : parts) {
-                                stringTrim(s);
-                                if (s == "GDI") {
-                                    container->setGDI(true);
-                                }
-                            }
-                            container->saveContainer();
-                        }
-                        app.setName(appName);
-                        app.saveApp();
-                        app.getContainer()->reload();
-                        GlobalSettings::reloadApps();
-                        return false;;
-                    }
-                }
-                new AppChooserDlg(items, [container](BoxedApp* app) {
-                    gotoView(VIEW_CONTAINERS, container->getDir(), app->getIniFilePath());
-                    });
-            }
-            return false;
-            });
-    };
 }

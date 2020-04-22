@@ -119,6 +119,21 @@ void glcommon_glGetStringi(CPU* cpu) {
     }
 }
 
+extern int sdlScaleX;
+extern int sdlScaleY;
+
+void glcommon_glViewport(CPU* cpu) {
+    GLint x = ARG1;
+    GLint y = ARG2;
+    GLsizei width = ARG3;
+    GLsizei height = ARG4;
+    if (width >= 320 && height >= 240 && sdlScaleX!=100) {
+        width = width * sdlScaleX / 100;
+        height = height * sdlScaleY / 100;
+    }
+    glViewport(x, y, width, height);
+}
+
 // GLAPI const GLubyte* APIENTRY glGetString( GLenum name ) {
 void glcommon_glGetString(CPU* cpu) {
     U32 name = ARG1;

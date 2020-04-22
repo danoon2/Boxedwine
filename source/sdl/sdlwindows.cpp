@@ -42,8 +42,8 @@ U32 screenBpp = 32;
 bool sdlSoundEnabled;
 bool sdlVideoEnabled;
 
-static int sdlScaleX = 100;
-static int sdlScaleY = 100;
+int sdlScaleX = 100;
+int sdlScaleY = 100;
 static int rel_mouse_sensitivity = 100;
 static bool relativeMouse = false;
 static std::string sdlScaleQuality;
@@ -57,6 +57,8 @@ U32 sdlFullScreen;
 
 static std::unordered_map<std::string, SDL_Cursor*> cursors;
 static std::unordered_map<U32, Wnd*> hwndToWnd;
+static BOXEDWINE_MUTEX hwndToWndMutex;
+
 SDL_Color sdlPalette[256];
 SDL_Color sdlSystemPalette[256] = {
     {0x00,0x00,0x00},
@@ -335,16 +337,19 @@ void initSDL(U32 cx, U32 cy, U32 bpp, int scaleX, int scaleY, const std::string&
 }
 
 bool isBoxedWineDriverActive() {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(hwndToWndMutex);
     return hwndToWnd.size()!=0;
 }
 
 Wnd* getWnd(U32 hwnd) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(hwndToWndMutex);
     if (hwndToWnd.count(hwnd))
         return hwndToWnd[hwnd];
     return NULL;
 }
 
 static Wnd* getWndFromPoint(int x, int y) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(hwndToWndMutex);
     for (auto& n : hwndToWnd) {
         Wnd* wnd = n.second;
         if (x>=wnd->windowRect.left && x<=wnd->windowRect.right && y>=wnd->windowRect.top && y<=wnd->windowRect.bottom && wnd->surface) {
@@ -355,6 +360,7 @@ static Wnd* getWndFromPoint(int x, int y) {
 }
 
 static Wnd* getFirstVisibleWnd() {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(hwndToWndMutex);
     for (auto& n : hwndToWnd) {
         Wnd* wnd = n.second;
 #ifdef SDL2
@@ -384,13 +390,16 @@ static void destroySDL2(KThread* thread) {
         uiShutdown();
     }
 #endif
-    for (auto& n : hwndToWnd) {
-        Wnd* wnd = n.second;
-        if (wnd->sdlTexture) {
-            SDL_DestroyTexture((SDL_Texture*)wnd->sdlTexture);
-            wnd->sdlTexture = NULL;
-            wnd->sdlTextureHeight = 0;
-            wnd->sdlTextureWidth = 0;
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(hwndToWndMutex);
+        for (auto& n : hwndToWnd) {
+            Wnd* wnd = n.second;
+            if (wnd->sdlTexture) {
+                SDL_DestroyTexture((SDL_Texture*)wnd->sdlTexture);
+                wnd->sdlTexture = NULL;
+                wnd->sdlTextureHeight = 0;
+                wnd->sdlTextureWidth = 0;
+            }
         }
     }
     if (!thread) {
@@ -435,14 +444,17 @@ SDL_Surface* surface;
 #endif
 
 void destroySDL() {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(sdlMutex);
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(sdlMutex);
 #ifdef SDL2
-    destroySDL2(NULL);
+        destroySDL2(NULL);
 #endif
-    for (auto& n : cursors) {
-        SDL_FreeCursor(n.second);
+        for (auto& n : cursors) {
+            SDL_FreeCursor(n.second);
+        }
+        cursors.clear();
     }
-    cursors.clear();
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(hwndToWndMutex);
     for (auto& n : hwndToWnd) {
         delete n.second;
     }
@@ -602,8 +614,15 @@ U32 sdlCreateOpenglWindow_main_thread(KThread* thread, Wnd* wnd, int major, int 
             sdlFlags|=SDL_WINDOW_BORDERLESS;
         }
     }   
+    // until I figure out how to scale GL window
+    //sdlScaleX = 100;
+    //sdlScaleY = 100;
+    //int scaledCx = cx;
+    //int scaledCy = cy;
+    int scaledCx = cx * sdlScaleX / 100;
+    int scaledCy = cy * sdlScaleY / 100;
+    sdlWindow = SDL_CreateWindow("OpenGL Window", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, scaledCx, scaledCy, sdlFlags);    
 
-    sdlWindow = SDL_CreateWindow("OpenGL Window", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, cx, cy, sdlFlags);    
     if (!sdlWindow) {
         fprintf(stderr, "Couldn't create window: %s\n", SDL_GetError());
         displayChanged(thread);
@@ -651,10 +670,17 @@ U32 sdlCreateContext(KThread* thread, Wnd* wnd, int major, int minor, int profil
 void sdlScreenResized(KThread* thread) {
     DISPATCH_MAIN_THREAD_BLOCK_BEGIN
 #ifdef SDL2
-    if (contextCount)
-        SDL_SetWindowSize(sdlWindow, screenCx, screenCy);
-    else
-        displayChanged(thread);
+        if (contextCount) {
+            int cx = screenCx;
+            int cy = screenCy;
+            if (sdlScaleX != 100) {
+                cx = cx * sdlScaleX / 100;
+                cy = cy * sdlScaleX / 100;
+            }
+            SDL_SetWindowSize(sdlWindow, cx, cy);
+        } else {
+            displayChanged(thread);
+        }
 #else
     displayChanged(thread);
 #endif
@@ -680,9 +706,12 @@ static void displayChanged(KThread* thread) {
     if (sdlVideoEnabled) {        
 #ifdef SDL2
         destroySDL2(thread);
-        for (auto& n : hwndToWnd) {
-            Wnd* wnd = n.second;
-            wnd->openGlContext = 0;
+        {
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(hwndToWndMutex);
+            for (auto& n : hwndToWnd) {
+                Wnd* wnd = n.second;
+                wnd->openGlContext = 0;
+            }
         }
         SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, sdlScaleQuality.c_str());
 
@@ -1005,11 +1034,13 @@ Wnd* wndCreate(KThread* thread, U32 processId, U32 hwnd, U32 windowRect, U32 cli
     readRect(thread, clientRect, &wnd->clientRect);
     wnd->processId = processId;
     wnd->hwnd = hwnd;
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(hwndToWndMutex);
     hwndToWnd[hwnd] = wnd;
     return wnd;
 }
 
 void wndDestroy(U32 hwnd) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(hwndToWndMutex);
     hwndToWnd.erase(hwnd);
 }
 
@@ -1209,10 +1240,11 @@ static int lastX;
 static int lastY;
 
 void sdlSetMousePos(int x, int y) {
-    if (!sdlWindowIsGL) {
-        x = x*sdlScaleX/100;
-        y = y*sdlScaleY/100;
+    if (sdlScaleX != 100) {
+        x = x * sdlScaleX / 100;
+        y = y * sdlScaleY / 100;
     }
+
 #ifdef SDL2
     SDL_WarpMouseInWindow(sdlWindow, x, y); 
 #else
@@ -1221,7 +1253,14 @@ void sdlSetMousePos(int x, int y) {
 }
 
 int sdlMouseMouse(int x, int y, bool relative) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(hwndToWndMutex);
     Wnd* wnd;
+
+    if (sdlScaleX != 100) {
+        x = x * 100 / sdlScaleX;
+        y = y * 100 / sdlScaleY;
+    }
+
     lastX = x;
     lastY = y;
 
@@ -1257,10 +1296,17 @@ int sdlMouseMouse(int x, int y, bool relative) {
 }
 
 int sdlMouseWheel(int amount, int x, int y) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(hwndToWndMutex);
     Wnd* wnd;
 
     if (!hwndToWnd.size())
         return 0;
+
+    if (sdlScaleX != 100) {
+        x = x * 100 / sdlScaleX;
+        y = y * 100 / sdlScaleY;
+    }
+
     wnd = getWndFromPoint(x, y);
     if (!wnd)
         wnd = getFirstVisibleWnd();
@@ -1291,10 +1337,17 @@ int sdlMouseWheel(int amount, int x, int y) {
 }
 
 int sdlMouseButton(U32 down, U32 button, int x, int y) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(hwndToWndMutex);
     Wnd* wnd;
-
+    
     if (!hwndToWnd.size())
         return 0;
+
+    if (sdlScaleX != 100) {
+        x = x * 100 / sdlScaleX;
+        y = y * 100 / sdlScaleY;
+    }
+
     wnd = getWndFromPoint(x, y);
     if (!wnd)
         wnd = getFirstVisibleWnd();
@@ -1518,6 +1571,7 @@ void sdlCreateAndSetCursor(KThread* thread, char* moduleName, char* resourceName
 #endif
 
 int sdlKey(U32 key, U32 down) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(hwndToWndMutex);
     Wnd* wnd;
     
     if (!hwndToWnd.size())
@@ -2125,7 +2179,12 @@ unsigned int sdlGetMouseState(KThread* thread,int* x, int* y) {
         return 0;
     }
 #endif
-    return SDL_GetMouseState(x, y);
+    unsigned int result = SDL_GetMouseState(x, y);
+    if (sdlScaleX != 100) {
+        *x = *x * 100 / sdlScaleX;
+        *y = *y * 100 / sdlScaleX;
+    }
+    return result;
 }
 
 U8 vkToChar[] = {
