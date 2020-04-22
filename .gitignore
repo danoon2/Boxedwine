@@ -17,4 +17,4 @@ project/msvc/BoxedWine/BoxedWine/imgui.ini
 project/linux/bin/
 project/linux/linux_build/
 project/mac-xcode/bin/
-../imgui.ini
+**/imgui.ini
