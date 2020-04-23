@@ -127,10 +127,6 @@ void glcommon_glViewport(CPU* cpu) {
     GLint y = ARG2;
     GLsizei width = ARG3;
     GLsizei height = ARG4;
-    if (width >= 320 && height >= 240 && sdlScaleX!=100) {
-        width = width * sdlScaleX / 100;
-        height = height * sdlScaleY / 100;
-    }
     glViewport(x, y, width, height);
 }
 

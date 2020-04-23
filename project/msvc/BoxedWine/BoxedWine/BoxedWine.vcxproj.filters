@@ -379,9 +379,6 @@
     <ClCompile Include="..\..\..\..\source\ui\mainui.cpp">
       <Filter>source\ui</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\lib\imgui\examples\imgui_impl_opengl3.cpp">
-      <Filter>source\ui\imgui</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\lib\imgui\examples\imgui_impl_sdl.cpp">
       <Filter>source\ui\imgui</Filter>
     </ClCompile>
@@ -1552,6 +1549,9 @@
     <ClCompile Include="..\..\..\..\source\ui\data\appFile.cpp">
       <Filter>source\ui\data</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\imgui\examples\imgui_impl_dx9.cpp">
+      <Filter>source\ui\imgui</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -2060,9 +2060,6 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\ui\mainui.h">
       <Filter>source\ui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\lib\imgui\examples\imgui_impl_opengl3.h">
-      <Filter>source\ui\imgui</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\lib\imgui\examples\imgui_impl_sdl.h">
       <Filter>source\ui\imgui</Filter>
@@ -3698,6 +3695,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\ui\data\appFile.h">
       <Filter>source\ui\data</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\imgui\examples\imgui_impl_dx9.h">
+      <Filter>source\ui\imgui</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -27,6 +27,10 @@
 #include "../ui/data/globalSettings.h"
 #endif
 
+#ifdef BOXEDWINE_MSVC
+#include <Windows.h>
+#endif
+
 #ifndef __TEST
 
 U32 gensrc;
@@ -37,6 +41,12 @@ void writeSource();
 
 int boxedmain(int argc, const char **argv) {
     StartUpArgs startupArgs;                  
+
+#ifdef BOXEDWINE_MSVC
+    //SetProcessDPIAware();
+    //SetProcessDpiAwarenessContext(
+    //SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+#endif
 
     klog("Starting ...");    
     KSystem::startMicroCounter();
@@ -88,7 +98,9 @@ int boxedmain(int argc, const char **argv) {
                 GlobalSettings::startUp();
                 continue;
             }
+            SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_UNAWARE);
             BoxedwineData::startApp();
+            SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_SYSTEM_AWARE);
             GlobalSettings::startUpArgs.readyToLaunch = false;
 
             // make sure if the user closed the SDL windows for the game/app, that it doesn't carry over into the UI

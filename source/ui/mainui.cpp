@@ -5,7 +5,53 @@
 #include <stdio.h>
 
 #include "examples/imgui_impl_sdl.h"
+#ifdef BOXEDWINE_IMGUI_DX9
+#include "examples/imgui_impl_dx9.h"
+#include <SDL_syswm.h>
+#include <d3d9.h>
+static LPDIRECT3D9              g_pD3D = NULL;
+LPDIRECT3DDEVICE9        g_pd3dDevice = NULL;
+static D3DPRESENT_PARAMETERS    g_d3dpp = {};
+
+bool CreateDeviceD3D(HWND hWnd)
+{
+    if ((g_pD3D = Direct3DCreate9(D3D_SDK_VERSION)) == NULL)
+        return false;
+
+    // Create the D3DDevice
+    ZeroMemory(&g_d3dpp, sizeof(g_d3dpp));
+    g_d3dpp.Windowed = TRUE;
+    g_d3dpp.hDeviceWindow = hWnd;
+    g_d3dpp.SwapEffect = D3DSWAPEFFECT_DISCARD;
+    g_d3dpp.BackBufferFormat = D3DFMT_UNKNOWN;
+    g_d3dpp.EnableAutoDepthStencil = TRUE;
+    g_d3dpp.AutoDepthStencilFormat = D3DFMT_D16;
+    g_d3dpp.PresentationInterval = D3DPRESENT_INTERVAL_ONE;           // Present with vsync
+    //g_d3dpp.PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE;   // Present without vsync, maximum unthrottled framerate
+    if (g_pD3D->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, hWnd, D3DCREATE_HARDWARE_VERTEXPROCESSING, &g_d3dpp, &g_pd3dDevice) < 0)
+        return false;
+
+    return true;
+}
+
+void CleanupDeviceD3D()
+{
+    if (g_pd3dDevice) { g_pd3dDevice->Release(); g_pd3dDevice = NULL; }
+    if (g_pD3D) { g_pD3D->Release(); g_pD3D = NULL; }
+}
+
+void ResetDevice()
+{
+    ImGui_ImplDX9_InvalidateDeviceObjects();
+    HRESULT hr = g_pd3dDevice->Reset(&g_d3dpp);
+    if (hr == D3DERR_INVALIDCALL)
+        IM_ASSERT(0);
+    ImGui_ImplDX9_CreateDeviceObjects();
+}
+
+#else
 #include "examples/imgui_impl_opengl3.h"
+#endif
 #include "imgui_internal.h"
 
 static std::vector<ListViewItem> appListViewItems;
@@ -229,18 +275,25 @@ void loadApps() {
 }
 
 static SDL_Window* window;
+#ifdef BOXEDWINE_IMGUI_DX9
+#else
 static SDL_GLContext gl_context;
+#endif
 static ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
 void uiShutdown() {
     BaseDlg::stopAllDialogs();
 
     // Cleanup
+#ifdef BOXEDWINE_IMGUI_DX9
+    ImGui_ImplDX9_Shutdown();
+#else
     ImGui_ImplOpenGL3_Shutdown();
+    SDL_GL_DeleteContext(gl_context);
+#endif
     ImGui_ImplSDL2_Shutdown();
     ImGui::DestroyContext();
-
-    SDL_GL_DeleteContext(gl_context);
+    
     SDL_DestroyWindow(window);
     window = NULL;    
 }
@@ -287,13 +340,36 @@ bool uiLoop() {
     }
 
     // Start the Dear ImGui frame
+#ifdef BOXEDWINE_IMGUI_DX9
+    ImGui_ImplDX9_NewFrame();
+#else
     ImGui_ImplOpenGL3_NewFrame();
+#endif
     ImGui_ImplSDL2_NewFrame(window);
     ImGui::NewFrame();
 
     uiDraw();
 
-    // Rendering
+    // Rendering    
+#ifdef BOXEDWINE_IMGUI_DX9
+    g_pd3dDevice->SetRenderState(D3DRS_ZENABLE, FALSE);
+    g_pd3dDevice->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
+    g_pd3dDevice->SetRenderState(D3DRS_SCISSORTESTENABLE, FALSE);
+    D3DCOLOR clear_col_dx = D3DCOLOR_RGBA((int)(clear_color.x * 255.0f), (int)(clear_color.y * 255.0f), (int)(clear_color.z * 255.0f), (int)(clear_color.w * 255.0f));
+    g_pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, clear_col_dx, 1.0f, 0);
+    ImGui::Render();
+    if (g_pd3dDevice->BeginScene() >= 0)
+    {        
+        ImGui_ImplDX9_RenderDrawData(ImGui::GetDrawData());
+        g_pd3dDevice->EndScene();
+    }
+    HRESULT result = g_pd3dDevice->Present(NULL, NULL, NULL, NULL);
+
+    // Handle loss of D3D9 device
+    if (result == D3DERR_DEVICELOST && g_pd3dDevice->TestCooperativeLevel() == D3DERR_DEVICENOTRESET) {
+        ResetDevice();
+    }
+#else
     ImGui::Render();
     ImGuiIO& io = ImGui::GetIO();
     glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
@@ -301,6 +377,7 @@ bool uiLoop() {
     glClear(GL_COLOR_BUFFER_BIT);
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
     SDL_GL_SwapWindow(window);
+#endif    
 
     runFunctions(runAfterFrameFunctions);
     return done;
@@ -319,6 +396,9 @@ bool uiShow(const std::string& basePath) {
     }
     */
 
+#ifdef BOXEDWINE_IMGUI_DX9
+    SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+#else
     // Decide GL+GLSL versions
 #if __APPLE__
     // GL 3.2 Core + GLSL 150
@@ -341,6 +421,7 @@ bool uiShow(const std::string& basePath) {
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
     SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+#endif
 
     U32 cx = 1024;
     U32 cy = 768;
@@ -352,6 +433,17 @@ bool uiShow(const std::string& basePath) {
     cy = cy * scale / SCALE_DENOMINATOR;
 #endif
     window = SDL_CreateWindow("Boxedwine UI", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, cx, cy, window_flags);
+
+#ifdef BOXEDWINE_IMGUI_DX9
+    SDL_SysWMinfo wmInfo;
+    SDL_VERSION(&wmInfo.version);
+    SDL_GetWindowWMInfo(window, &wmInfo);
+    HWND hwnd = (HWND)wmInfo.info.win.window;
+    if (!CreateDeviceD3D(hwnd)) {
+        CleanupDeviceD3D();
+        return false;
+    }
+#else
     gl_context = SDL_GL_CreateContext(window);
     SDL_GL_MakeCurrent(window, gl_context);
 
@@ -371,9 +463,9 @@ bool uiShow(const std::string& basePath) {
     if (err)
     {
         fprintf(stderr, "Failed to initialize OpenGL loader!\n");
-        return 1;
+        return false;
     }
-
+#endif
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGuiContext* context = ImGui::CreateContext();
@@ -419,10 +511,14 @@ bool uiShow(const std::string& basePath) {
     //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
     GlobalSettings::loadTheme();
 
-    // Setup Platform/Renderer bindings
+    // Setup Platform/Renderer bindings    
+#ifdef BOXEDWINE_IMGUI_DX9
+    ImGui_ImplSDL2_InitForD3D(window);
+    ImGui_ImplDX9_Init(g_pd3dDevice);
+#else
     ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
     ImGui_ImplOpenGL3_Init(glsl_version);    
-
+#endif
     if (GlobalSettings::getWineVersions().size()==0) {
         runOnMainUI([]() {
             if (GlobalSettings::getAvailableWineVersions().size() == 0 && GlobalSettings::isFilesListDownloading()) {
