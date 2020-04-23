@@ -1,0 +1,9 @@
+EMSCRIPTEN specific ZLIB
+the emscripten port version is 1.2.8 (2013)
+the zlib used by boxedwine is 1.2.11 (2017)
+
+Instructions to build ./precompiled/libz.a
+1. change to directory boxedwine/lib/zlib
+2. cmd: ./configure --static
+3. change references in Makefile from gcc to emcc
+4: cmd: make

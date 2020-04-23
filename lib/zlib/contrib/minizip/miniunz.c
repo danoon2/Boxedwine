@@ -52,6 +52,8 @@
 #else
 # include <unistd.h>
 # include <utime.h>
+# include <sys/stat.h>
+# include <sys/types.h>
 #endif
 
 

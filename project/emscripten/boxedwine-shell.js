@@ -1,33 +1,20 @@
         let ALLOW_PARAM_OVERRIDE_FROM_URL = true;
-        let SUPPRESS_WINEBOOT = true; //prevent wine from re-creating .wine directory
         let ROOT = "/root";
-        let DLL_DIRECTORY = ROOT + "/lib/wine";
-        let STORAGE_DROPBOX = "DROPBOX";
         let STORAGE_LOCAL_STORAGE = "LOCAL_STORAGE";
         let STORAGE_MEMORY = "MEMORY";
 
-        let ONDEMAND_DEFAULT = "notset";
-        let ONDEMAND_ROOT = "root";
-        let ONDEMAND_APP = "app";
-        let ONDEMAND_ROOT_AND_APP = "root-app";
-
-        let DROPBOX_APP_KEY = 'put key in here';
-        let RECEIVE_URL = "http://put url in here/oauth_receiver.html";
-
-        let DEFAULT_AUTO_RUN = true;
+        let DEFAULT_AUTO_RUN = false;
         let DEFAULT_SOUND_ENABLED = true;
-        let DEFAULT_ZLIB_ENABLED = false;
-        let DEFAULT_RETRIEVE_REMOTE_DLL_FILES = false;
-        let DEFAULT_HOME_DIRECTORY = ROOT + "/home/username/files/";
+        let DEFAULT_HOME_DIRECTORY = ROOT + "/base/";
+        let DEFAULT_APP_DIRECTORY = ROOT + "/files/";
         let DEFAULT_BPP = 32;
         let DEFAULT_ROOT_ZIP_FILE = "boxedwine.zip";
         //params
         let Config = {};
         Config.urlParams = "";
-        Config.storageMode = STORAGE_MEMORY;
+        Config.storageMode = STORAGE_LOCAL_STORAGE;
         Config.isRunningInline = false;
-        Config.showUploadDownload = false;
-
+        Config.showUploadDownload = true;
         var isRunning = false;
         var uniqueDirs = {};
         var timer = null;
@@ -58,19 +45,29 @@
         pathExistsAction: function() { return 0; },
         pathNotExistsAction: function() { return 1; }
     };
+   var flag_w = { isReadable: function() { return false; },
+        isWriteable: function() { return true; },
+        isTruncating: function() { return false; },
+        isAppendable: function() { return false; },
+        isSynchronous: function() { return false; },
+        isExclusive: function() { return false; },
+        pathExistsAction: function() { return 0; },
+        pathNotExistsAction: function() { return 3; }
+    };
+                
         function setConfiguration() {
-            Config.dirPrefix = getFileDirectory();
+            Config.appDirPrefix = DEFAULT_APP_DIRECTORY;
             Config.isAutoRunSet = getAutoRun();
-            Config.extraZipFiles = getZipFileList("overlay"); //MANUAL:"dlls.zip;fonts.zip";
+            Config.extraZipFiles = getZipFileList("extra"); //MANUAL:"dlls.zip;fonts.zip";
             Config.appZipFile = getAppZipFile("app"); //MANUAL:"chomp.zip";
             Config.rootZipFile = getRootZipFile("root"); //MANUAL:"base.zip";
             Config.Program = getExecutable(); //MANUAL:"CHOMP.EXE";
             Config.WorkingDir = getWorkingDirectory(); //MANUAL:"";
-            Config.retrieveDlls = getRetrieveDlls();
             Config.isSoundEnabled = getSound();
-            Config.isZlibEnabled = getZlibParameter();
             Config.bpp = getBitsPerPixel();
-            Config.useRangeRequests = getUseRangeRequests();
+			Config.glext = getGLExtensions();
+			Config.cpu = getCPU();
+            Config.ondemandRootFilesystem = getOnDemandFileSystem("ondemand-root");
         }
         function allowParameterOverride() {
             if(Config.urlParams.length >0) {
@@ -78,9 +75,26 @@
             }
             return ALLOW_PARAM_OVERRIDE_FROM_URL;
         }
+        function getCPU(){
+
+            var cpu = getParameter("cpu");
+            if(!allowParameterOverride()){
+                cpu = "";
+            }else if(cpu == "p2") {
+                cpu = "p2";
+            }else if(cpu == "p3") {
+                cpu = "p3";
+            }else{
+                cpu = "";
+            }
+            if(cpu.length > 0) {
+            	console.log("setting CPU to: "+cpu);
+            }
+            return cpu;
+        }
         function getBitsPerPixel(){
 
-            var bpp =  getParameter("bpp");
+            var bpp = getParameter("bpp");
             if(!allowParameterOverride()){
                 bpp = DEFAULT_BPP;
             }else if(bpp == "8") {
@@ -94,6 +108,28 @@
             }
             console.log("setting BPP to: "+bpp);
             return bpp;
+        }
+        function getGLExtensions(){
+
+            var glext = getParameter("glext");
+            if(!allowParameterOverride()){
+                glext = "";
+            }else{
+            	if(glext.length > 6) {
+                	if( (glext.startsWith("%22") && glext.endsWith("%22") )
+                		|| (glext.startsWith('%27') && glext.endsWith('%27'))){
+                    	glext = glext.substring(3, glext.length - 3);
+	                	glext = glext.split('%20').join(' ');
+	                	glext = '"' + glext +  '"';
+                	}else{
+	                	console.log("glext paramater must be in quoted string");
+                	}
+                }
+            }
+            if(glext.length > 0) {
+            	console.log("setting glext to: "+glext);
+            }
+            return glext;
         }
         function getAutoRun(){
 
@@ -114,38 +150,21 @@
             console.log("setting auto run to: "+auto);
             return auto;
         }
-        function getUseRangeRequests(){
-            var ondemand =  getParameter("ondemand");
+        function getOnDemandFileSystem(param){
+            var ondemand =  getParameter(param);
             
-            if(!allowParameterOverride()){
-                ondemand = ONDEMAND_DEFAULT;
-            }else if(ondemand == ONDEMAND_ROOT) {
-            }else if(ondemand == ONDEMAND_APP) {
-            }else if(ondemand == ONDEMAND_ROOT_AND_APP){
+            var ondemand =  getParameter(param);
+            if(!allowParameterOverride() || ondemand===""){
+                ondemand = "";
+                console.log("not setting " + param);
             }else{
-                ondemand = ONDEMAND_DEFAULT;
+                if(!ondemand.endsWith(".zip")){
+                    ondemand = ondemand + ".zip";
+                }
+                console.log("setting " + param + " zip file to: "+ondemand);
             }
-            
-            if(ondemand != ONDEMAND_DEFAULT && Config.isZlibEnabled){
-                console.log("parameter mismatch. Can't use ondemand requests if ZLib option enabled. Turning off ondemand");
-                ondemand = ONDEMAND_DEFAULT;
-            }
-            console.log("setting ondemand to: "+ondemand);
             return ondemand;
-        }
-        function getRetrieveDlls(){
-            var retrieveEnabled =  getParameter("remote");
-            if(!allowParameterOverride()){
-                retrieveEnabled = DEFAULT_RETRIEVE_REMOTE_DLL_FILES;
-            }else if(retrieveEnabled == "true") {
-                retrieveEnabled = true;
-            }else if(retrieveEnabled == "false"){
-                retrieveEnabled = false;
-            }else{
-                retrieveEnabled = DEFAULT_RETRIEVE_REMOTE_DLL_FILES;
-            }
-            console.log("setting retrieve remote Dlls to: "+retrieveEnabled);
-            return retrieveEnabled;
+            
         }
         function getSound(){
             var soundEnabled =  getParameter("sound");
@@ -161,37 +180,6 @@
             console.log("setting sound to: "+soundEnabled);
             return soundEnabled;
         }
-        function getZlibParameter(){
-            var zlibEnabled =  getParameter("zlib");
-            if(!allowParameterOverride()){
-                zlibEnabled = DEFAULT_ZLIB_ENABLED;
-            }else if(zlibEnabled == "true") {
-                zlibEnabled = true;
-            }else if(zlibEnabled == "false"){
-                zlibEnabled = false;
-            }else{
-                zlibEnabled = DEFAULT_ZLIB_ENABLED;
-            }
-            console.log("setting use of internal boxedwine zip filesystem to: "+zlibEnabled);
-            return zlibEnabled;
-        }
-        function getFileDirectory(){
-
-            var dir =  getParameter("dir");
-            if(!allowParameterOverride() || dir===""){
-                dir = DEFAULT_HOME_DIRECTORY;
-            }else{
-                if(!dir.endsWith("/")){
-                    dir = dir + "/";
-                }
-                if(!dir.startsWith(ROOT)) {
-                    console.log("file directory must start at /root");
-                    dir = DEFAULT_HOME_DIRECTORY;
-                }
-            }
-            console.log("setting file directory to: "+dir);
-            return dir;
-        }
         function getWorkingDirectory(){
 
             var dir =  getParameter("work");
@@ -199,11 +187,14 @@
                 dir = "";
             }else{
                 if(dir.startsWith('c:/')){
-                    dir = "/home/username/.wine/c_drive/" + dir.substring(3);
+                    dir = "/home/username/.wine/dosdevices/c:/" + dir.substring(3);
+	                console.log("setting working directory to: "+dir);
+                }else if(dir.startsWith('d:/')){
+                    dir = "/home/username/.wine/dosdevices/d:/" + dir.substring(3);
+    	            console.log("setting working directory to: "+dir);
                 }else{
-                    dir = Config.dirPrefix.substring(ROOT.length) + dir;
+	                console.log("unable to set work directory");
                 }
-                console.log("setting working directory to: "+dir);
             }
             return dir;
         }
@@ -254,31 +245,6 @@
             }
             return zipFiles;
         }
-        function auth_callback(error) {
-            if (error) {
-                alert('Authentication error: ' + error);
-                return;
-            }
-            if (client.isAuthenticated()) {
-                if(alreadyBuiltFileSystem){
-                    return;
-                }
-                alreadyBuiltFileSystem = true;
-                document.getElementById('startbtn').disabled = true;
-                document.getElementById('startbtn').textContent = "Syncing...";
-                console.log("authenticated!");
-                buildFileSystem(new BrowserFS.FileSystem.InMemory(), true);
-            } else {
-                alert('unable to authenticate');
-            }
-        }
-        function dropboxLogin()
-        {
-            client = new Dropbox.Client({key: DROPBOX_APP_KEY});
-            client.authDriver(new Dropbox.AuthDriver.Popup({receiverUrl: RECEIVE_URL}));
-            client.authenticate(auth_callback);
-            document.getElementById('startbtn').textContent = "Start";
-        }
         function initFileSystem()
         {
             console.log("Use Storage mode: "+Config.storageMode);
@@ -290,11 +256,9 @@
                     writableStorage = new BrowserFS.FileSystem.InMemory();
                     console.log("Switching to In Memory store as LocalStorage is not available");
                 }
-                buildFileSystem(writableStorage, false);
-            }else if(Config.storageMode === STORAGE_DROPBOX){
-                client.authenticate({interactive:false}, auth_callback);
+                buildFileSystem(writableStorage);
             }else{
-                buildFileSystem(new BrowserFS.FileSystem.InMemory(), false);
+                buildFileSystem(new BrowserFS.FileSystem.InMemory());
             }
         }
         //function from browserfs
@@ -334,7 +298,8 @@
           }
           return data;
         }
-        function getFileSize(p  )
+        //function from browserfs
+        function getFileSize(p)
         {
             return new Promise(function(resolve, reject) {
                   const req = new XMLHttpRequest();
@@ -389,18 +354,13 @@
             pos = ( pos + ENDOFF - ENDSIZ);
             return (((buffer[pos++]) | (buffer[pos++]) << 8) | ((buffer[pos++]) | (buffer[pos++]) << 8) << 16);
         }
-        function buildFileSystem(writableStorage, isDropBox)
+        function buildFileSystem(writableStorage)
         {
             spinnerElement.style.display = '';
             spinnerElement.hidden = false;
             var Buffer = BrowserFS.BFSRequire('buffer').Buffer;
             buildExtraFileSystems(Buffer, function(extraFSs) {
-                buildAppFileSystems(function(homeAdapter) {
-                    if(Config.useRangeRequests == ONDEMAND_ROOT || Config.useRangeRequests == ONDEMAND_ROOT_AND_APP) {
-                        buildRemoteZipFile(Config.rootZipFile, function callback(zipfs) {
-                            buildBrowserFileSystem(writableStorage, isDropBox, homeAdapter, extraFSs, zipfs);
-                        });
-                    } else {
+                buildAppFileSystems(function(appAdapter) {
                         var rootListingObject = {};
                         rootListingObject[Config.rootZipFile] =  null;
                         BrowserFS.FileSystem.XmlHttpRequest.Create({"index":rootListingObject, "baseUrl":""}, function(e2, xmlHttpFs){
@@ -408,27 +368,37 @@
                                 console.log(e2);
                             }
                             var rootMfs = new BrowserFS.FileSystem.MountableFileSystem();
-                            rootMfs.mount('/temp', xmlHttpFs);
-                            rootMfs.readFile('/temp/' + Config.rootZipFile, null, flag_r, function callback(e, contents){
+	                        rootMfs.mkdirSync('/tempMFS');
+                            rootMfs.mount('/tempMFS', xmlHttpFs);
+                            rootMfs.readFile('/tempMFS/' + Config.rootZipFile, null, flag_r, function callback(e, contents){
                                 if(e){
                                     console.log(e);
                                 }
-                                if(Config.isZlibEnabled) {
-                                    FS.createDataFile("/", Config.rootZipFile, contents, true, true);
-                                    contents = null;
-                                    buildBrowserFileSystem(writableStorage, isDropBox, homeAdapter, extraFSs);
-                                }else{
-                                    BrowserFS.FileSystem.ZipFS.Create({"zipData":new Buffer(contents)}, function(e3, zipfs){
-                                        if(e3){
-                                            console.log(e3);
-                                        }
-                                        buildBrowserFileSystem(writableStorage, isDropBox, homeAdapter, extraFSs, zipfs);
-                                    });
+                                FS.createDataFile("/", Config.rootZipFile, contents, true, true);
+                                contents = null;
+                                
+                                if(Config.ondemandRootFilesystem.length > 0) {
+                        			buildRemoteZipFile(Config.ondemandRootFilesystem, function callback(zipfs) {
+                        			
+                        			
+                        			    BrowserFS.FileSystem.OverlayFS.Create({"readable":zipfs,"writable":new BrowserFS.FileSystem.InMemory()}, function(ex, appOverlay){
+            								if(ex){
+                    							console.log(ex);
+            								}
+            								let rootAdapter = new BrowserFS.FileSystem.FolderAdapter("/", appOverlay);
+	                            			buildBrowserFileSystem(writableStorage, appAdapter, extraFSs, rootAdapter);
+                        				});
+                        			
+                        			});
+                    			} else {
+                    				let rootAdapter = new BrowserFS.FileSystem.FolderAdapter("/", new BrowserFS.FileSystem.InMemory());
+                                	buildBrowserFileSystem(writableStorage, appAdapter, extraFSs, rootAdapter);
+                                	rootMfs = null;
                                 }
-                                rootMfs = null;
                             });
                         });
-                    }
+                        
+                        
                 });
             });
         }
@@ -454,13 +424,6 @@
         {
             var Buffer = BrowserFS.BFSRequire('buffer').Buffer;
             if(Config.appZipFile.length > 0){
-
-                if(Config.useRangeRequests == ONDEMAND_APP || Config.useRangeRequests == ONDEMAND_ROOT_AND_APP) {
-                    buildRemoteZipFile(Config.appZipFile, function callback(additionalZipfs) {
-                        let homeAdapter = new BrowserFS.FileSystem.FolderAdapter("/", additionalZipfs);
-                        adapterCallback(homeAdapter);
-                    });
-                } else {
                     var listingObject = {};
                     listingObject[Config.appZipFile] =  null;
                     var mfs = new BrowserFS.FileSystem.MountableFileSystem();
@@ -468,8 +431,9 @@
                         if(e2){
                             console.log(e2);
                         }
-                        mfs.mount('/temp', xmlHttpFs);
-                        mfs.readFile('/temp/' + Config.appZipFile, null, flag_r, function callback(e, contents){
+                        mfs.mkdirSync('/tempMFS');
+                        mfs.mount('/tempMFS', xmlHttpFs);
+                        mfs.readFile('/tempMFS/' + Config.appZipFile, null, flag_r, function callback(e, contents){
                             if(e){
                                 console.log(e);
                             }
@@ -477,16 +441,20 @@
                                 if(e3){
                                     console.log(e3);
                                 }
-                                let homeAdapter = new BrowserFS.FileSystem.FolderAdapter("/", additionalZipfs);
-                                adapterCallback(homeAdapter);
+                                BrowserFS.FileSystem.OverlayFS.Create({"readable":additionalZipfs,"writable":new BrowserFS.FileSystem.InMemory()}, function(ex, appOverlay){
+            						if(ex){
+                    					console.log(ex);
+            						}
+                                	let adapter = new BrowserFS.FileSystem.FolderAdapter("/", additionalZipfs);
+                                	adapterCallback(adapter);
+                                });
                                 mfs = null;
                             });
                         });
                     });
-                }
             }else{
-                let homeAdapter = new BrowserFS.FileSystem.FolderAdapter("/", new BrowserFS.FileSystem.InMemory());
-                adapterCallback(homeAdapter);
+                let adapter = new BrowserFS.FileSystem.FolderAdapter("/", new BrowserFS.FileSystem.InMemory());
+                adapterCallback(adapter);
             }
         }
         function buildExtraFileSystems(Buffer, fsCallback)
@@ -501,8 +469,9 @@
                         if(e2){
                             console.log(e2);
                         }
-                        mfs.mount('/temp', xmlHttpFs);
-                        mfs.readFile('/temp/' + Config.extraZipFiles[i], null, flag_r, function(e, contents){
+                        mfs.mkdirSync('/tempMFS');
+                        mfs.mount('/tempMFS', xmlHttpFs);
+                        mfs.readFile('/tempMFS/' + Config.extraZipFiles[i], null, flag_r, function(e, contents){
                             if(e){
                                 console.log(e);
                             }
@@ -524,94 +493,42 @@
             }
         }
 
-        function buildDllFileSystem(fsDllCallback)
+        function buildBrowserFileSystem(writableStorage, appAdapter, extraFSs, rootAdapter)
         {
-            if(!Config.retrieveDlls) {
-                return fsDllCallback(null);
+        
+            for(let i = 0; i < extraFSs.length; i++) {
+                recursiveCopy(rootAdapter, extraFSs[i], Config.extraZipFiles[i], '/');
             }
-            BrowserFS.FileSystem.XmlHttpRequest.Create({"index":"dlls.json"}, function(e2, xmlHttpFs){
-                if(e2){
-                    console.log(e2);
-                }
-                var adapter = new BrowserFS.FileSystem.FolderAdapter("/dlls", xmlHttpFs);
-                adapter.initialize(function dllcallback(de){
-                    if(de){
-                        console.log(de);
-                    }
-                    BrowserFS.FileSystem.OverlayFS.Create({"readable":adapter,"writable":new BrowserFS.FileSystem.InMemory()}, function(oe, overlay){
-                        if(oe){
-                            console.log(oe);
-                        }
-                        fsDllCallback(overlay);
-                    });
-                });
-            });
-        }
-        function buildBrowserFileSystem(writableStorage, isDropBox, homeAdapter, extraFSs, zipfs)
-        {
+            
             FS.createFolder(FS.root, 'root', true, true);
-            var mainfs = null;
-            if(Config.isZlibEnabled) {
-                mainfs = new BrowserFS.FileSystem.InMemory();
-                createFolders(mainfs, Config.dirPrefix.substring(ROOT.length).split("/"));
-                createFolders(mainfs, DLL_DIRECTORY.substring(ROOT.length).split("/"));
-            }else{
-                mainfs = zipfs;
-            }
-            //i do not understand why i need the overlay when Config.isZlibEnabled = true
-            BrowserFS.FileSystem.OverlayFS.Create({"readable":mainfs,"writable":new BrowserFS.FileSystem.InMemory()}, function(e3, rootOverlay){
-                if(e3){
-                    console.log(e3);
-                }
-                if(!Config.isZlibEnabled && SUPPRESS_WINEBOOT) {
-                   deleteFile(rootOverlay, "/lib/wine/wineboot.exe.so");
-                }
+            FS.createFolder("/root", 'base', true, true);
+            FS.createFolder("/root", 'files', true, true);
 
-                buildDllFileSystem(function(dllFS) {
-                    homeAdapter.initialize(function callback(e){
-                        if(e){
-                            console.log(e);
-                        }
-                        BrowserFS.FileSystem.OverlayFS.Create({"readable":homeAdapter,"writable":writableStorage}, function(e2, homeOverlay){
-                            if(e2){
-                                console.log(e2);
-                            }
-                            if(isDropBox) {
-                                var mirrorFS = new BrowserFS.FileSystem.AsyncMirror(homeOverlay, new BrowserFS.FileSystem.Dropbox(client));
-                                mirrorFS.initialize(function callback(e4){
-                                    if(e4){
-                                        console.log(e4);
-                                    }
-                                    postBuildFileSystem(rootOverlay, mirrorFS, extraFSs, dllFS);
-                                });
-                            }else{
-                                postBuildFileSystem(rootOverlay, homeOverlay, extraFSs, dllFS);
-                            }
-                        });
-                    });
-                });
+	        appAdapter.initialize(function callback(appex){
+    	        if(appex){
+                	console.log(appex);
+            	}
+	            rootAdapter.initialize(function callback(e){
+    	        	if(e){
+        	         	console.log(e);
+            	   	}
+                    postBuildFileSystem(rootAdapter, appAdapter, extraFSs);
+            	});
             });
         }
-        function postBuildFileSystem(rootFS, homeFS, extraFSs, dllFS)
+        function postBuildFileSystem(homeFS, appFS, extraFSs)
         {
-            var dirPrefixWithoutEndSlash = Config.dirPrefix.substring(0, Config.dirPrefix.length - 1);
+            
             var mfs = new BrowserFS.FileSystem.MountableFileSystem();
-            if(Config.isZlibEnabled) {
-                mfs.mount('/root', rootFS);
-            }else{
-                mfs.mount('/', rootFS);
-            }
-            mfs.mount(dirPrefixWithoutEndSlash, homeFS);
-            if(dllFS != null) {
-                mfs.mount(DLL_DIRECTORY, dllFS);
-            }
+            mfs.mount('/root/base', homeFS);
+            mfs.mount( Config.appDirPrefix.substring(0, Config.appDirPrefix.length - 1), appFS);
             var BFS = new BrowserFS.EmscriptenFS();
 
             BrowserFS.initialize(mfs);
+            
             FS.mount(BFS, {root: '/root'}, '/root');
-            for(let i = 0; i < extraFSs.length; i++) {
-                recursiveCopy(extraFSs[i], Config.extraZipFiles[i], '/');
-            }
+                
+
             extraFSs = null;
 
             if(Config.showUploadDownload){
@@ -619,30 +536,18 @@
                 document.getElementById('downloadbtn').style.display = "";
             }
             spinnerElement.style.display = 'none';
-            if(Config.storageMode === STORAGE_DROPBOX){
-                startEmulator();
+            toggleConsole();
+            if(Config.isAutoRunSet){
+                start();
             }else{
-                toggleConsole();
-                if(Config.isAutoRunSet){
-                    start();
-                }else{
-                    var startBtn = document.getElementById('startbtn');
-                    startBtn.disabled = false;
-                    startBtn.style.display = "";
-                    var soundToggle = document.getElementById('soundToggle');
-                    if(Config.isSoundEnabled){
-                        soundToggle.checked = true;
-                    }
-                    document.getElementById('sound-checkbox').style.display = "";
+                var startBtn = document.getElementById('startbtn');
+                startBtn.disabled = false;
+                startBtn.style.display = "";
+                var soundToggle = document.getElementById('soundToggle');
+                if(Config.isSoundEnabled){
+                    soundToggle.checked = true;
                 }
-            }
-        }
-        function deleteFile(fs, pathAndFilename)
-        {
-            try {
-                fs.unlinkSync("/root" + pathAndFilename);
-            }catch(ef) {
-                console.log("Unable to delete:" + "/root" + pathAndFilename + " error:" + ef.message);
+                document.getElementById('sound-checkbox').style.display = "";
             }
         }
         function createFolders(mainfs, folders)
@@ -651,30 +556,32 @@
             for(var k = 0; k < folders.length; k++){
                 if(folders[k].length > 0) {
                     directory = directory + "/" + folders[k];
-                    mainfs.mkdirSync(directory);
+                    if(!mainfs.existsSync(directory)) {
+                    	mainfs.mkdirSync(directory);
+                    }
                 }
             }
         }
-        function recursiveCopy(fs, zipFilename, filename) {
+        function recursiveCopy(homeFS, fs, zipFilename, filename) {
 
             var prefix = "/" + zipFilename.substring(0, zipFilename.length - 4);
             var path = BrowserFS.BFSRequire('path');
-            copyDirectory(fs, filename, prefix);
-            function copyDirectory(fs, filename, prefix) {
-                createFolderIfNecessary(filename, prefix);
+            copyDirectory(homeFS, fs, filename, prefix);
+            function copyDirectory(homeFS, fs, filename, prefix) {
+                createFolderIfNecessary(homeFS, filename, prefix);
                 fs.readdirSync(filename).forEach(function(item) {
                     var file = path.resolve(filename, item);
                     if(!(file.startsWith("/__MACOSX") || file.endsWith(".DS_Store"))) {
                         if (fs.statSync(file).isDirectory()) {
-                            copyDirectory(fs, file, prefix);
+                            copyDirectory(homeFS, fs, file, prefix);
                         } else {
-                            createFileIfNecessary(fs, file, prefix);
+                            createFileIfNecessary(homeFS, fs, file, prefix);
                         }
                     }
                 });
             }
         }
-        function createFileIfNecessary(fs, fullPath, prefix)
+        function createFileIfNecessary(homeFS, fs, fullPath, prefix)
         {
             var file = fullPath;
             if(fullPath.startsWith(prefix)) {
@@ -684,25 +591,18 @@
             if(parent.length > 0){
                 var filename = extractLastPartOfPath(fullPath);
                 try {
-                    var contents = fs.readFileSync(file, null, flag_r);
-                    FS.createDataFile("root" + parent, filename, contents, true, true);
-                }catch(ef) {
-                    if(ef.message === "File exists" || ef.message === "FS error"){
-                        try {
-                            FS.unlink("root" + parent + "/" + filename);
-                            var contents = fs.readFileSync(file, null, flag_r);
-                            FS.createDataFile("root" + parent, filename, contents, true, true);
-                        }catch(ef) {
-                            console.log("file replace error:" + ef.message + " for: " + parent + "/" + filename);
-                        }
-                    }else {
-                        console.log("file creation error:" + ef.message + " for: " + parent + "/" + filename);
+                	let completeFilename = parent +"/" + filename;
+                	if(!homeFS.existsSync(completeFilename)) {
+                    	var contents = fs.readFileSync(file, null, flag_r);
+                    	homeFS.writeFileSync(completeFilename, contents, null, flag_w, 0x1a4);
                     }
+                }catch(ef) {
+                    console.log("file creation error:" + ef.message + " for: " + parent + "/" + filename);
                 }
             }
         }
-        //todo use stat!
-        function createFolderIfNecessary(fullPath, prefix)
+
+        function createFolderIfNecessary(homeFS, fullPath, prefix)
         {
 
             if(fullPath.startsWith(prefix)) {
@@ -712,17 +612,10 @@
             var dir = extractLastPartOfPath(fullPath);
             if(parent.length > 0){
                 try{
-                    FS.lookupPath("/root" + parent + "/" + dir, { follow: true });
+                    let completeDir = parent + "/" + dir;                    	
+	                createFolders(homeFS, completeDir.split('/'));
                 }catch(ef){
-                    if(ef.message == "No such file or directory"  || ef.message === "FS error") {
-                        try{
-                            FS.createFolder("/root/" + parent, dir, true, true);
-                        }catch(cef) {
-                            console.log("Directory creation error:" + cef.message + " for: " + parent + "/" + dir);
-                        }
-                    }else if(ef.message != "File exists"){
-                        console.log("Directory creation error:" + ef.message+" for: " + parent + "/" +  dir);
-                    }
+                    console.log("Directory creation error:" + ef.message+" for: " + parent + "/" +  dir);
                 }
             }
         }
@@ -734,15 +627,7 @@
                 document.getElementById('inline-runbtn').style.display = 'none';
                 document.getElementById('inline').style.display = "";
             }
-            if(Config.storageMode === STORAGE_DROPBOX){
-                if(client == null || !client.isAuthenticated()){
-                    dropboxLogin();
-                }else{
-                    initFileSystem();
-                }
-            }else{
-                startEmulator();
-            }
+            startEmulator();
         }
         function startEmulator()
         {
@@ -774,13 +659,7 @@
             //loadScreen();
 
             Module["addRunDependency"]("setupBoxedWine");
-            if(Config.storageMode === STORAGE_DROPBOX){
-                startBtn.textContent = "Login";
-                startBtn.disabled = false;
-                startBtn.style.display = "";
-            }else{
-                initFileSystem();
-            }
+            initFileSystem();
         }
         function getExecutable()
         {
@@ -867,7 +746,7 @@
             var file = extractLastPartOfPath(filename);
             var path = extractFirstPartOfPath(filename);
 
-            Config.WorkingDir = Config.dirPrefix.substring(ROOT.length) + path.substring(1);
+            Config.WorkingDir = "/home/username/.wine/dosdevices/d:/" + path.substring(1);
             Config.Program = file;
 
             startEmulator();
@@ -886,7 +765,6 @@
         }, false);
         dropzone.addEventListener("drop", function(event){
             event.preventDefault();
-            //if only i know something about async
             let items = event.dataTransfer.items;
             let exeFiles = [];
             let allFiles = [];
@@ -909,29 +787,37 @@
             return false;
         }
         function getEmulatorParams() {
-            var params = ["-root", "/root"];
-            if(Config.isZlibEnabled) {
-                params.push("-zip");
-                params.push(Config.rootZipFile);
-            }
+            var params = ["-root", "/root/base"];
+            params.push("-zip");
+            params.push(Config.rootZipFile);
+            
+            params.push("-mount_drive");
+            params.push(Config.appDirPrefix);
+            params.push("d");
             if(!Config.isSoundEnabled){
                 params.push("-nosound");
             }
             if(Config.bpp != DEFAULT_BPP){
                 params.push("-bpp");
                 params.push("" + Config.bpp);
+            }            
+            if(Config.cpu.length > 0){
+                params.push("-" + Config.cpu);
+            }
+            if(Config.glext.length > 0){
+                params.push("-glext");
+                params.push(Config.glext);
             }
             if(Config.WorkingDir.length > 0){
                 params.push("-w");
                 params.push(Config.WorkingDir);
             }else if(Config.appZipFile.length > 0 && Config.Program.length > 0 && Config.Program.substring(0 ,1) != "/"){
                 var subDirectory = Config.appZipFile.substring(0, Config.appZipFile.lastIndexOf("."));
-                var programDir = Config.dirPrefix.substring(ROOT.length);
                 params.push("-w");
-                if(isInSubDirectory(Config.dirPrefix, subDirectory)){
-                    params.push(programDir + subDirectory);
+                if(isInSubDirectory(Config.appDirPrefix, subDirectory)){
+                    params.push("/home/username/.wine/dosdevices/d:/" + subDirectory);
                 }else{
-                    params.push(programDir);
+                    params.push("/home/username/.wine/dosdevices/d:");
                 }
             }
             if(Config.Program.length > 0){
@@ -946,7 +832,7 @@
             return params;
         }
       var Module = {
-        logReadFiles : false, //enable if you want to prune with Reduce utility
+        logReadFiles : true, //enable if you want to prune with Reduce utility
         preRun: [initialSetup],
         arguments: [],
         postRun: [],
@@ -1038,10 +924,9 @@
         {
             let filename = null;
             if(fullPath){
-                filename = fullPath;
+                filename = fullPath.startsWith("/") ? fullPath.substring(1) : fullPath;
             }else{
                 filename = file.webkitRelativePath.length == 0 ? file.name : file.webkitRelativePath;
-                filename = "/" + filename;
             }
             var filereader = new FileReader();
             filereader.file_name = file.name;
@@ -1064,10 +949,10 @@
             var fileExt = extractFilenameExtension(name);
             if(fileExt.toLowerCase() === 'zip'){
                 var filenameNoExt = extractFilenameWithoutExtension(name);
-                if(!createFolder(Config.dirPrefix, filenameNoExt)){//If dir exists and user says no to replace existing dir, then stop here
+                if(!createFolder(Config.appDirPrefix, filenameNoExt)){//If dir exists and user says no to replace existing dir, then stop here
                     return;
                 }
-                var zipDirPrefix = Config.dirPrefix + filenameNoExt;
+                var zipDirPrefix = Config.appDirPrefix + filenameNoExt;
                 var zip = new JSZip(data);
                 for(var entry in zip.files)
                 {
@@ -1092,7 +977,7 @@
             }else{
                 var done = false;
                 var startIndex = 0;
-                var base = Config.dirPrefix;
+                var base = Config.appDirPrefix;
                 var filename = extractLastPartOfPath(name);
                 while(!done){
                     var dirIndex = name.indexOf("/", startIndex);
@@ -1157,6 +1042,9 @@ function createFolder(parent, dir)
 }
 function createFile(dir, name, buf)
 {
+	if(dir.includes("__MACOSX")) {
+		return
+	}
     try{
         FS.createDataFile(dir, name, buf, true, true);
         //console.log("File created :" + dir + "/" + name);
@@ -1329,7 +1217,7 @@ function buildTree()
     root.innerHTML = "";
     index = 0;
 
-    var currentDir = Config.dirPrefix;
+    var currentDir = Config.appDirPrefix;
 	readFiles(currentDir, files);
 
 	//now build tree
