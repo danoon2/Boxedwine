@@ -287,6 +287,7 @@ void uiShutdown() {
     // Cleanup
 #ifdef BOXEDWINE_IMGUI_DX9
     ImGui_ImplDX9_Shutdown();
+    CleanupDeviceD3D();
 #else
     ImGui_ImplOpenGL3_Shutdown();
     SDL_GL_DeleteContext(gl_context);
@@ -383,7 +384,7 @@ bool uiLoop() {
     return done;
 }
 
-bool uiShow(const std::string& basePath) {        
+bool uiShow(const std::string& basePath, bool shutdownForHighDPI) {
     // Setup SDL
     // (Some versions of SDL before <2.0.10 appears to have performance/stalling issues on a minority of Windows systems,
     // depending on whether SDL_INIT_GAMECONTROLLER is enabled or disabled.. updating to latest version of SDL is recommended!)
@@ -398,7 +399,7 @@ bool uiShow(const std::string& basePath) {
 
 #ifdef BOXEDWINE_IMGUI_DX9
     SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
-#else
+#else    
     // Decide GL+GLSL versions
 #if __APPLE__
     // GL 3.2 Core + GLSL 150
@@ -422,6 +423,10 @@ bool uiShow(const std::string& basePath) {
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
     SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
 #endif
+
+    if (shutdownForHighDPI) {
+        window_flags = (SDL_WindowFlags)(window_flags | SDL_WINDOW_HIDDEN);
+    }
 
     U32 cx = 1024;
     U32 cy = 768;
@@ -550,11 +555,14 @@ bool uiShow(const std::string& basePath) {
     while (!done && !GlobalSettings::startUpArgs.readyToLaunch && !GlobalSettings::restartUI)
     {
         done = uiLoop();
+        if (shutdownForHighDPI) {
+            break;
+        }
     }
-    if (done || GlobalSettings::restartUI) {
+    if (done || GlobalSettings::restartUI || shutdownForHighDPI) {
         uiShutdown();
     }
-    if (GlobalSettings::restartUI) {
+    if (GlobalSettings::restartUI || shutdownForHighDPI) {
         return true;
     }
     return GlobalSettings::startUpArgs.readyToLaunch;

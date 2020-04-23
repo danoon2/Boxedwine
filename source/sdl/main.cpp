@@ -43,8 +43,10 @@ int boxedmain(int argc, const char **argv) {
     StartUpArgs startupArgs;                  
 
 #ifdef BOXEDWINE_MSVC
+    // There seems to be a problem when starting the app as DPIAware then downgrading to unaware
+    // There seems to also be a problem when switching from unaware to aware with OpenGL
+    // Right now the hack is to use ImGui with DirectX 9, start unware, create the window, then destroy it, then re-create it DPI aware.
     //SetProcessDPIAware();
-    //SetProcessDpiAwarenessContext(
     //SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 #endif
 
@@ -92,15 +94,28 @@ int boxedmain(int argc, const char **argv) {
 #ifndef BOXEDWINE_DISABLE_UI
         GlobalSettings::startUp(); 
 
-        while (uiShow(GlobalSettings::getExePath()+Fs::nativePathSeperator)) {
+#ifdef BOXEDWINE_MSVC
+        bool shutdownForHighDPI = true;
+#else
+        bool shutdownForHighDPI = false;
+#endif
+        while (uiShow(GlobalSettings::getExePath()+Fs::nativePathSeperator, shutdownForHighDPI)) {
             if (GlobalSettings::restartUI) {
                 GlobalSettings::restartUI = false;
                 GlobalSettings::startUp();
                 continue;
             }
+#ifdef BOXEDWINE_MSVC
+            if (shutdownForHighDPI) {
+                SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_SYSTEM_AWARE);
+                shutdownForHighDPI = false;
+            }
             SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_UNAWARE);
+#endif
             BoxedwineData::startApp();
+#ifdef BOXEDWINE_MSVC
             SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_SYSTEM_AWARE);
+#endif
             GlobalSettings::startUpArgs.readyToLaunch = false;
 
             // make sure if the user closed the SDL windows for the game/app, that it doesn't carry over into the UI
