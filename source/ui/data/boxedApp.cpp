@@ -115,6 +115,18 @@ void BoxedApp::launch() {
     GlobalSettings::startUpArgs.readyToLaunch = true;
 }
 
+BoxedAppIcon::BoxedAppIcon(const unsigned char* data, int width, int height) : width(width), height(height), data(data) {
+    this->texture = std::make_shared<BoxedTexture>([this]() {
+        return MakeRGBATexture(this->data, this->width, this->height);
+        });
+}
+
+BoxedAppIcon::~BoxedAppIcon() {
+    if (data) {
+        delete[] data;
+    }
+}
+
 const BoxedAppIcon* BoxedApp::getIconTexture(int iconSize) {
     if (iconSize==0) {
         iconSize = UiSettings::ICON_SIZE;
@@ -124,7 +136,7 @@ const BoxedAppIcon* BoxedApp::getIconTexture(int iconSize) {
         int height = 0;
         const unsigned char* data = extractIconFromExe(this->container->getNativePathForApp(*this), iconSize, &width, &height);
         if (data) {
-            this->iconsBySize[iconSize] = new BoxedAppIcon(MakeRGBATexture(data, width, height), width, height);
+            this->iconsBySize[iconSize] = new BoxedAppIcon(data, width, height);
         }
     }
     if (this->iconsBySize.count(iconSize)) {

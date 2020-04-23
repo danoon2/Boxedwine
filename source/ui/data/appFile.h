@@ -1,6 +1,8 @@
 #ifndef __APP_FILE_H__
 #define __APP_FILE_H__
 
+class BoxedTexture;
+
 class AppFile {
 public:
     AppFile(const std::string& name, const std::string& installType, const std::string& iconPath, const std::string& filePath, U32 size, const std::string& exe, const std::string& exeOptions, const std::string& help);
@@ -14,7 +16,8 @@ public:
     std::string exe;
     std::string exeOptions;
     std::string help;
-    void* iconTexture;
+
+    std::shared_ptr<BoxedTexture> iconTexture;
 
     void buildIconTexture();
     void install();

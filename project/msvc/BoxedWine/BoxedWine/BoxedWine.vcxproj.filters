@@ -1552,6 +1552,9 @@
     <ClCompile Include="..\..\..\..\lib\imgui\examples\imgui_impl_dx9.cpp">
       <Filter>source\ui\imgui</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\data\boxedTexture.cpp">
+      <Filter>source\ui\data</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -3698,6 +3701,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\lib\imgui\examples\imgui_impl_dx9.h">
       <Filter>source\ui\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\ui\data\boxedTexture.h">
+      <Filter>source\ui\data</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

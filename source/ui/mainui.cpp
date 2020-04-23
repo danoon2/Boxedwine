@@ -42,6 +42,7 @@ void CleanupDeviceD3D()
 
 void ResetDevice()
 {
+    BoxedTexture::resetAll();
     ImGui_ImplDX9_InvalidateDeviceObjects();
     HRESULT hr = g_pd3dDevice->Reset(&g_d3dpp);
     if (hr == D3DERR_INVALIDCALL)
@@ -292,6 +293,7 @@ void uiShutdown() {
     ImGui_ImplOpenGL3_Shutdown();
     SDL_GL_DeleteContext(gl_context);
 #endif
+    BoxedTexture::resetAll();
     ImGui_ImplSDL2_Shutdown();
     ImGui::DestroyContext();
     

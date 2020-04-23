@@ -4,7 +4,7 @@
 
 void drawIcon(const ListViewItem& item) {
     ImGui::SetCursorPosX(ImGui::GetCursorPosX()+(ImGui::GetColumnWidth()/2-(float)UiSettings::ICON_SIZE /2));
-    ImGui::Image(item.icon->texture, ImVec2((float)UiSettings::ICON_SIZE, (float)UiSettings::ICON_SIZE));
+    ImGui::Image(item.icon->texture->getTexture(), ImVec2((float)UiSettings::ICON_SIZE, (float)UiSettings::ICON_SIZE));
 }
 
 void drawListViewItem(const ListViewItem& item) {

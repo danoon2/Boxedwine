@@ -47,7 +47,7 @@ void AppChooserDlg::run() {
         ImGui::SetCursorPos(pos);
         const BoxedAppIcon* icon = this->items[i].getIconTexture(16);
         if (icon) {
-            ImGui::Image(icon->texture, ImVec2(GlobalSettings::scaleFloatUI(16.0f), GlobalSettings::scaleFloatUI(16.0f)));
+            ImGui::Image(icon->texture->getTexture(), ImVec2(GlobalSettings::scaleFloatUI(16.0f), GlobalSettings::scaleFloatUI(16.0f)));
             ImGui::SameLine();            
         } else {
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() + GlobalSettings::scaleFloatUI(16.0f) + ImGui::GetStyle().ItemSpacing.x);

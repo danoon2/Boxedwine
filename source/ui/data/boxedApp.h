@@ -5,12 +5,16 @@ class BoxedContainer;
 
 class BoxedAppIcon {
 public:
-    BoxedAppIcon() : width(0), height(0), texture(NULL) {}
-    BoxedAppIcon(void* texture, int width, int height) : width(width), height(height), texture(texture) {}
+    BoxedAppIcon(const unsigned char* data, int width, int height);
+    ~BoxedAppIcon();
 
+    std::shared_ptr<BoxedTexture> texture;
+    int getWidth() const {return width;}
+    int getHeight() const {return height;}
+private:
     int width;
     int height;
-    void* texture;
+    const unsigned char* data;
 };
 
 class BoxedApp {

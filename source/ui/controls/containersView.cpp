@@ -148,7 +148,7 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
             ImVec2 pos = ImGui::GetCursorPos();
             ImGui::SetCursorPosX(0);
             ImGui::SetCursorPosY(ImGui::GetCursorPosY() + GlobalSettings::extraVerticalSpacing);
-            ImGui::Image(this->currentApp->getIconTexture()->texture, ImVec2((float)UiSettings::ICON_SIZE, (float)UiSettings::ICON_SIZE));
+            ImGui::Image(this->currentApp->getIconTexture()->texture->getTexture(), ImVec2((float)UiSettings::ICON_SIZE, (float)UiSettings::ICON_SIZE));
             ImGui::SetCursorPos(pos);
         }
         });
@@ -247,7 +247,7 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
                 if (item->getApps().size()) {
                     const BoxedAppIcon* icon = item->getApps()[0]->getIconTexture((int)ImGui::GetTextLineHeight());
                     if (icon) {
-                        ImGui::Image(icon->texture, ImVec2(ImGui::GetTextLineHeight(), ImGui::GetTextLineHeight()));
+                        ImGui::Image(icon->texture->getTexture(), ImVec2(ImGui::GetTextLineHeight(), ImGui::GetTextLineHeight()));
                         ImGui::SameLine();
                         return;
                     }

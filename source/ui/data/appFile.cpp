@@ -19,7 +19,13 @@ AppFile::AppFile(const std::string& name, const std::string& installType, const 
 void AppFile::buildIconTexture() {
     if (Fs::doesNativePathExist(localIconPath)) {
         int w = 0, h = 0;
-        this->iconTexture = LoadTextureFromFile(localIconPath.c_str(), &w, &h);
+        unsigned char* data = LoadImageFromFile(localIconPath.c_str(), &w, &h);
+        if (data) {
+            this->iconTexture = std::make_shared<BoxedTexture>([data, w, h]() {
+                return MakeRGBATexture(data, w, h);
+                });
+        }
+            
     }
 }
 

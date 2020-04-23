@@ -7,19 +7,33 @@
 #include <d3d9.h>
 extern LPDIRECT3DDEVICE9 g_pd3dDevice;
 
+void UnloadTexture(void* texture) {
+    if (texture) {
+        ((IDirect3DTexture9*)texture)->Release();
+    }
+}
+
+
 void* MakeRGBATexture(const unsigned char* data, int width, int height) {
     IDirect3DTexture9* texture = NULL;
     D3DLOCKED_RECT r;
-    return NULL;
+
     if (g_pd3dDevice->CreateTexture(width, height, 1, D3DUSAGE_DYNAMIC, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &texture, NULL) != D3D_OK)
         return false;
     if (texture->LockRect(0, &r, NULL, D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE) != D3D_OK)
         return false;
     for (int y = 0; y < height; y++)
     {
-        BYTE* pData = ((BYTE*)r.pBits + r.Pitch);
-        memcpy(pData, data+y*width*4, width * 4);
+        BYTE* dest = ((BYTE*)r.pBits + r.Pitch*y);
+        BYTE* src = ((BYTE*)data + width * 4 * y);
+        for (int x = 0; x < width*4; x+=4) {
+            dest[x+3] = src[x+3];
+            dest[x+2] = src[x];
+            dest[x+1] = src[x+1];
+            dest[x] = src[x+2];
+        }
     }
+    texture->UnlockRect(0);
     return (void*)texture;
 }
 
@@ -43,7 +57,7 @@ void* MakeRGBATexture(const unsigned char* data, int width, int height) {
 
 #endif
 
-void* LoadTextureFromFile(const char* filename, int* out_width, int* out_height)
+unsigned char* LoadImageFromFile(const char* filename, int* out_width, int* out_height)
 {
     // Load from file
     int image_width = 0;
@@ -51,12 +65,9 @@ void* LoadTextureFromFile(const char* filename, int* out_width, int* out_height)
     unsigned char* image_data = stbi_load(filename, &image_width, &image_height, NULL, 4);
     if (image_data == NULL)
         return NULL;
-    void* result = MakeRGBATexture(image_data, image_width, image_width);
-    
-    stbi_image_free(image_data);
 
     *out_width = image_width;
     *out_height = image_height;
 
-    return result;
+    return image_data;
 }

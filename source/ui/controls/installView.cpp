@@ -78,7 +78,7 @@ void InstallView::runApps(std::vector<AppFile>& apps) {
         }
         if (app.iconTexture) {
             float pad = ImGui::GetStyle().FramePadding.y;
-            ImGui::Image(app.iconTexture, ImVec2(ImGui::GetTextLineHeight()+pad*2, ImGui::GetTextLineHeight()+pad*2));
+            ImGui::Image(app.iconTexture->getTexture(), ImVec2(ImGui::GetTextLineHeight()+pad*2, ImGui::GetTextLineHeight()+pad*2));
             ImGui::SameLine();
         }
         SAFE_IMGUI_TEXT(name.c_str());
