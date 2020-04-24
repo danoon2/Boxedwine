@@ -4457,12 +4457,13 @@ const U32 FLOAT_NAN_BITS = 0x7fd00000;
     return (U8)result;
 }
 
-int getStackPos() {
-    newInstruction(0xdf, 0);
+void writeFPUStatusToAX() {
+    pushCode8(0xdf);
     pushCode8(rm(false, 4, 0));
-    runTestCPU();
-    return (AX & 0x3800) >> 11;
+}
 
+int getFPUStackPosFromAX() {
+    return (AX & 0x3800) >> 11;
 }
 
 struct FPU_Float {
@@ -4472,77 +4473,81 @@ struct FPU_Float {
     };
 };
 
-float getTopFloat() {
-    struct FPU_Float result;
-    newInstruction(0xd9, 0);	
+void writeTopFloat(int index) {
+    pushCode8(0xd9);	
     pushCode8(rm(true, 2, cpu->big?5:6));
     if (cpu->big)
-        pushCode32(4);
+        pushCode32(4*index);
     else
-        pushCode16(4);
-    runTestCPU();
-    result.i = readd(HEAP_ADDRESS+4);
-    return result.f;
+        pushCode16(4*index);
 }
 
-void writeF(float f) {
+void writeF(float f, int index) {
     struct FPU_Float value;
     value.f = f;    
-    writed(HEAP_ADDRESS, 0xCDCDCDCD);
-    writed(HEAP_ADDRESS+4, value.i);
-    writed(HEAP_ADDRESS+8, 0xCDCDCDCD);
+    writed(HEAP_ADDRESS+4*index, value.i);
 }
 
-void fldf32(float f) {
+void fldf32(float f, int index) {
     int rm = 0;    
     if (cpu->big)
         rm += 5;
     else
         rm += 6;
-    newInstructionWithRM(0xd9, rm, 0);
+    pushCode8(0xd9);
+    pushCode8(rm);
     if (cpu->big)
-        pushCode32(4);
+        pushCode32(4*index);
     else
-        pushCode16(4);
-    writeF(f);
-    runTestCPU();
+        pushCode16(4*index);
+    writeF(f, index);
 }
 
 void fpu_init() {
-    newInstruction(0xdb, 0);
+    pushCode8(0xdb);
     pushCode8(rm(false, 4, 3));
-    runTestCPU();
 }
 
 void doF32Instruction(int op1, int group1, int op2, int group2, float x, float y, float r) {
-    float result; 
+    newInstruction(0);
 
     fpu_init();
 
-    fldf32(x);
-    writeF(y);
+    fldf32(x, 1);
+    writeF(y, 2);
 
-    newInstruction(op1, 0);
+    if (op1 > 0xFF)
+        pushCode8(0x0F);
+    pushCode8(op1 & 0xFF);
+
     pushCode8(rm(true, group1, cpu->big?5:6));
     if (cpu->big)
-        pushCode32(4);
+        pushCode32(4*2);
     else
-        pushCode16(4);
+        pushCode16(4*2);
+    writeTopFloat(3);
+    writeFPUStatusToAX();
     runTestCPU();
-    result = getTopFloat();
-    assertTrue((isnan(result) && isnan(r)) || result == r);
-    assertTrue(getStackPos()==7); // nothing was popped
+    struct FPU_Float result;
+    result.i = readd(HEAP_ADDRESS + 4*3);
 
+    assertTrue((isnan(result.f) && isnan(r)) || result.f == r);
+    assertTrue(getFPUStackPosFromAX() ==7); // nothing was popped
+
+    newInstruction(0);
     fpu_init();
-
-    fldf32(y);
-    fldf32(x);
-    newInstruction(op2, 0);
+    fldf32(y, 1);
+    fldf32(x, 2);
+    if (op2 > 0xFF)
+        pushCode8(0x0F);
+    pushCode8(op2 & 0xFF);
     pushCode8(rm(false, group2, 1));
+    writeTopFloat(3);
+    writeFPUStatusToAX();
     runTestCPU();
-    result = getTopFloat();
-    assertTrue((isnan(result) && isnan(r)) || result == r);
-    assertTrue(getStackPos()==6); // nothing was popped
+    result.i = readd(HEAP_ADDRESS + 4*3);
+    assertTrue((isnan(result.f) && isnan(r)) || result.f == r);
+    assertTrue(getFPUStackPosFromAX() == 6); // nothing was popped
 }
 
 void F32Add(float x, float y, float r) {
@@ -4780,37 +4785,43 @@ int EQUAL = 0x4000;
 int MASK = 0x100 | 0x200 | 0x400 | 0x4000;
 
 void assertTest(int r) {
-    newInstruction(0xdf, 0);
-    pushCode8(rm(false, 4, 0));
-    runTestCPU();
     assertTrue((AX & MASK) == r);
 }
 
 void F32ComBase(int op, int group, float x, float y, int r, int popCount) {
+    newInstruction(0);
     fpu_init();
 
-    fldf32(x);
-    writeF(y);
+    fldf32(x, 1);
+    writeF(y, 2);
 
-    newInstruction(op, 0);
+    if (op > 0xFF)
+        pushCode8(0x0F);
+    pushCode8(op & 0xFF);
+
     pushCode8(rm(true, group, cpu->big?5:6));
     if (cpu->big)
-        pushCode32(4);
+        pushCode32(4*2);
     else
-        pushCode16(4);
+        pushCode16(4*2);
+    writeFPUStatusToAX();
     runTestCPU();
     assertTest(r);
-    assertTrue(getStackPos()==((7+popCount)&7));
+    assertTrue(getFPUStackPosFromAX()==((7+popCount)&7));
 
+    newInstruction(0);
     fpu_init();
 
-    fldf32(y);
-    fldf32(x);
-    newInstruction(op, 0);
+    fldf32(y, 1);
+    fldf32(x, 2);
+    if (op > 0xFF)
+        pushCode8(0x0F);
+    pushCode8(op & 0xFF);
     pushCode8(rm(false, group, 1));
+    writeFPUStatusToAX();
     runTestCPU();
     assertTest(r);
-    assertTrue(getStackPos()==((6+popCount)&7));
+    assertTrue(getFPUStackPosFromAX()==((6+popCount)&7));
 }
 void F32Com(float x, float y, int r) {
     F32ComBase(0xd8, 2, x, y, r, 0);
@@ -4901,21 +4912,23 @@ void testFPUD8() {
 
 void FSTFloat(int op, int group, float f, int pop) {
     struct FPU_Float result;
+    newInstruction(0);
     fpu_init();
 
-    fldf32(f);
-    writed(HEAP_ADDRESS+4, 0xCDCDCDCD);
+    fldf32(f, 1);
+    writed(HEAP_ADDRESS+4*2, 0xCDCDCDCD);
 
-    newInstruction(op, 0);
+    pushCode8(op);
     pushCode8(rm(true, group, cpu->big?5:6));
     if (cpu->big)
-        pushCode32(4);
+        pushCode32(4*2);
     else
-        pushCode16(4);
+        pushCode16(4*2);
+    writeFPUStatusToAX();
     runTestCPU();
-    result.i = readd(HEAP_ADDRESS+4);
+    result.i = readd(HEAP_ADDRESS+4*2);
     assertTrue(result.f==f || (isnan(result.f) && isnan(f)));
-    assertTrue(getStackPos()==(pop?0:7));
+    assertTrue(getFPUStackPosFromAX()==(pop?0:7));
 }
 
 void doFSTFloat(int op, int group, int pop) {
@@ -4940,30 +4953,42 @@ void testFSTPFloat() {
 }
 
 void doFLDSti() {
-    fldf32(4.0f);
-    fldf32(3.0f);
-    fldf32(2.0f);
-    fldf32(1.0f);
+    struct FPU_Float result;
 
-    newInstruction(0xd9, 0);
+    newInstruction(0);
+    fpu_init();
+
+    fldf32(4.0f, 1);
+    fldf32(3.0f, 2);
+    fldf32(2.0f, 3);
+    fldf32(1.0f, 4);
+
+    pushCode8(0xd9);
     pushCode8(rm(false, 0, 0));
-    runTestCPU();
-    assertTrue(getTopFloat()==1.0f);
+    writeTopFloat(5);
 
-    newInstruction(0xd9, 0);
+    pushCode8(0xd9);
     pushCode8(rm(false, 0, 2));
-    runTestCPU();
-    assertTrue(getTopFloat()==2.0f);
+    writeTopFloat(6);
 
-    newInstruction(0xd9, 0);
+    pushCode8(0xd9);
     pushCode8(rm(false, 0, 4));
-    runTestCPU();
-    assertTrue(getTopFloat()==3.0f);
+    writeTopFloat(7);
 
-    newInstruction(0xd9, 0);
+    pushCode8(0xd9);
     pushCode8(rm(false, 0, 6));
+    writeTopFloat(8);
+    
     runTestCPU();
-    assertTrue(getTopFloat()==4.0f);
+
+    result.i = readd(HEAP_ADDRESS + 4 * 5);
+    assertTrue(result.f == 1.0f);
+    result.i = readd(HEAP_ADDRESS + 4 * 6);
+    assertTrue(result.f == 2.0f);
+    result.i = readd(HEAP_ADDRESS + 4 * 7);
+    assertTrue(result.f == 3.0f);
+    result.i = readd(HEAP_ADDRESS + 4 * 8);
+    assertTrue(result.f == 4.0f);
 }
 
 void testFLDSTi() {
@@ -4971,15 +4996,21 @@ void testFLDSTi() {
 }
 
 void doFXCHSTi() {
-    fldf32(4.0f);
-    fldf32(3.0f);
-    fldf32(2.0f);
-    fldf32(1.0f);
+    newInstruction(0);
+    fpu_init();
 
-    newInstruction(0xd9, 0);
+    fldf32(4.0f, 1);
+    fldf32(3.0f, 2);
+    fldf32(2.0f, 3);
+    fldf32(1.0f, 4);
+
+    pushCode8(0xd9);
     pushCode8(rm(false, 1, 3));
+    writeTopFloat(5);
     runTestCPU();
-    assertTrue(getTopFloat()==4.0f);
+    struct FPU_Float result;
+    result.i = readd(HEAP_ADDRESS + 4 * 5);
+    assertTrue(result.f==4.0f);
 }
 
 void testFXCHSTi() {
@@ -4987,20 +5018,26 @@ void testFXCHSTi() {
 }
 
 void doFSTPSTi() {
-    fldf32(4.0f);
-    fldf32(3.0f);
-    fldf32(2.0f);
-    fldf32(1.0f);
+    newInstruction(0);
+    fpu_init();
 
-    newInstruction(0xd9, 0);
-    pushCode8(rm(false, 3, 2));
-    runTestCPU();
-    assertTrue(getTopFloat()==2.0f);
+    fldf32(4.0f, 1);
+    fldf32(3.0f, 2);
+    fldf32(2.0f, 3);
+    fldf32(1.0f, 4);
 
-    newInstruction(0xd9, 0);
+    pushCode8(0xd9);
     pushCode8(rm(false, 3, 2));
+    writeTopFloat(5);
+    pushCode8(0xd9);
+    pushCode8(rm(false, 3, 2));
+    writeTopFloat(6);
     runTestCPU();
-    assertTrue(getTopFloat()==1.0f);
+    struct FPU_Float result;
+    result.i = readd(HEAP_ADDRESS + 4 * 5);
+    assertTrue(result.f == 2.0f);
+    result.i = readd(HEAP_ADDRESS + 4 * 6);
+    assertTrue(result.f == 1.0f);
 }
 
 void testFSTPSTi() {
@@ -5008,35 +5045,58 @@ void testFSTPSTi() {
 }
 
 void doFCHS() {
-    fldf32(432.1f);
-    newInstruction(0xd9, 0);
-    pushCode8(rm(false, 4, 0));
-    runTestCPU();
-    assertTrue(getTopFloat()==-432.1f);
+    struct FPU_Float result;
+    result.i = readd(HEAP_ADDRESS + 4 * 2);
 
-    fldf32(-0.001234f);
-    newInstruction(0xd9, 0);
+    newInstruction(0);
+    fpu_init();
+    fldf32(432.1f, 1);
+    pushCode8(0xd9);
     pushCode8(rm(false, 4, 0));
+    writeTopFloat(2);
     runTestCPU();
-    assertTrue(getTopFloat()==0.001234f);
+    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    assertTrue(result.f == -432.1f);
 
-    fldf32(TEST_NAN);
-    newInstruction(0xd9, 0);
+    newInstruction(0);
+    fpu_init();
+    fldf32(-0.001234f, 1);
+    pushCode8(0xd9);
     pushCode8(rm(false, 4, 0));
+    writeTopFloat(2);
     runTestCPU();
-    assertTrue(isnan(getTopFloat()));
+    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    assertTrue(result.f == 0.001234f);
 
-    fldf32(POSITIVE_INFINITY);
-    newInstruction(0xd9, 0);
+    newInstruction(0);
+    fpu_init();
+    fldf32(TEST_NAN, 1);
+    pushCode8(0xd9);
     pushCode8(rm(false, 4, 0));
+    writeTopFloat(2);
     runTestCPU();
-    assertTrue(getTopFloat()==NEGATIVE_INFINITY);
+    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    assertTrue(isnan(result.f));
 
-    fldf32(NEGATIVE_INFINITY);
-    newInstruction(0xd9, 0);
+    newInstruction(0);
+    fpu_init();
+    fldf32(POSITIVE_INFINITY, 1);
+    pushCode8(0xd9);
     pushCode8(rm(false, 4, 0));
+    writeTopFloat(2);
     runTestCPU();
-    assertTrue(getTopFloat()==POSITIVE_INFINITY);
+    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    assertTrue(result.f == NEGATIVE_INFINITY);
+
+    newInstruction(0);
+    fpu_init();
+    fldf32(NEGATIVE_INFINITY, 1);
+    pushCode8(0xd9);
+    pushCode8(rm(false, 4, 0));
+    writeTopFloat(2);
+    runTestCPU();
+    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    assertTrue(result.f == POSITIVE_INFINITY);
 }
 
 void testFCHS() {
@@ -5044,35 +5104,57 @@ void testFCHS() {
 }
 
 void doFABS() {
-    fldf32(432.1f);
-    newInstruction(0xd9, 0);
-    pushCode8(rm(false, 4, 1));
-    runTestCPU();
-    assertTrue(getTopFloat()==432.1f);
+    struct FPU_Float result;
 
-    fldf32(-0.001234f);
-    newInstruction(0xd9, 0);
+    newInstruction(0);
+    fpu_init();
+    fldf32(432.1f, 1);
+    pushCode8(0xd9);
     pushCode8(rm(false, 4, 1));
+    writeTopFloat(2);
     runTestCPU();
-    assertTrue(getTopFloat()==0.001234f);
+    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    assertTrue(result.f==432.1f);
 
-    fldf32(TEST_NAN);
-    newInstruction(0xd9, 0);
+    newInstruction(0);
+    fpu_init();
+    fldf32(-0.001234f, 1);
+    pushCode8(0xd9);
     pushCode8(rm(false, 4, 1));
+    writeTopFloat(2);
     runTestCPU();
-    assertTrue(isnan(getTopFloat()));
+    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    assertTrue(result.f==0.001234f);
 
-    fldf32(POSITIVE_INFINITY);
-    newInstruction(0xd9, 0);
+    newInstruction(0);
+    fpu_init();
+    fldf32(TEST_NAN, 1);
+    pushCode8(0xd9);
     pushCode8(rm(false, 4, 1));
+    writeTopFloat(2);
     runTestCPU();
-    assertTrue(getTopFloat()==POSITIVE_INFINITY);
+    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    assertTrue(isnan(result.f));
 
-    fldf32(NEGATIVE_INFINITY);
-    newInstruction(0xd9, 0);
+    newInstruction(0);
+    fpu_init();
+    fldf32(POSITIVE_INFINITY, 1);
+    pushCode8(0xd9);
     pushCode8(rm(false, 4, 1));
+    writeTopFloat(2);
     runTestCPU();
-    assertTrue(getTopFloat()==POSITIVE_INFINITY);
+    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    assertTrue(result.f==POSITIVE_INFINITY);
+
+    newInstruction(0);
+    fpu_init();
+    fldf32(NEGATIVE_INFINITY, 1);
+    pushCode8(0xd9);
+    pushCode8(rm(false, 4, 1));
+    writeTopFloat(2);
+    runTestCPU();
+    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    assertTrue(result.f==POSITIVE_INFINITY);
 }
 
 void testFABS() {
@@ -5080,39 +5162,57 @@ void testFABS() {
 }
 
 void doFTST() {
-    fldf32(432.1f);
-    newInstruction(0xd9, 0);
+    newInstruction(0);
+    fpu_init();
+    fldf32(432.1f, 1);
+    pushCode8(0xd9);
     pushCode8(rm(false, 4, 4));
+    writeFPUStatusToAX();
     runTestCPU();
     assertTest(GREATER);
 
-    fldf32(-0.00001f);
-    newInstruction(0xd9, 0);
+    newInstruction(0);
+    fpu_init();
+    fldf32(-0.00001f, 1);
+    pushCode8(0xd9);
     pushCode8(rm(false, 4, 4));
+    writeFPUStatusToAX();
     runTestCPU();
     assertTest(LESS);
 
-    fldf32(0.0f);
-    newInstruction(0xd9, 0);
+    newInstruction(0);
+    fpu_init();
+    fldf32(0.0f, 1);
+    pushCode8(0xd9);
     pushCode8(rm(false, 4, 4));
+    writeFPUStatusToAX();
     runTestCPU();
     assertTest(EQUAL);
 
-    fldf32(POSITIVE_INFINITY);
-    newInstruction(0xd9, 0);
+    newInstruction(0);
+    fpu_init();
+    fldf32(POSITIVE_INFINITY, 1);
+    pushCode8(0xd9);
     pushCode8(rm(false, 4, 4));
+    writeFPUStatusToAX();
     runTestCPU();
     assertTest(GREATER);
 
-    fldf32(NEGATIVE_INFINITY);
-    newInstruction(0xd9, 0);
+    newInstruction(0);
+    fpu_init();
+    fldf32(NEGATIVE_INFINITY, 1);
+    pushCode8(0xd9);
     pushCode8(rm(false, 4, 4));
+    writeFPUStatusToAX();
     runTestCPU();
     assertTest(LESS);
 
-    fldf32(TEST_NAN);
-    newInstruction(0xd9, 0);
+    newInstruction(0);
+    fpu_init();
+    fldf32(TEST_NAN, 1);
+    pushCode8(0xd9);
     pushCode8(rm(false, 4, 4));
+    writeFPUStatusToAX();
     runTestCPU();
     assertTest(UNORDERED);
 }
@@ -5122,39 +5222,57 @@ void testFTST() {
 }
 
 void doFXAM() {
-    fldf32(0.0f);
-    newInstruction(0xd9, 0);
+    newInstruction(0);
+    fpu_init();
+    fldf32(0.0f, 1);
+    pushCode8(0xd9);
     pushCode8(rm(false, 4, 5));
+    writeFPUStatusToAX();
     runTestCPU();
     assertTest(0x4000);
 
-    fldf32(TEST_NAN);
-    newInstruction(0xd9, 0);
+    newInstruction(0);
+    fpu_init();
+    fldf32(TEST_NAN, 1);
+    pushCode8(0xd9);
     pushCode8(rm(false, 4, 5));
+    writeFPUStatusToAX();
     runTestCPU();
     assertTest(0x100);
 
-    fldf32(POSITIVE_INFINITY);
-    newInstruction(0xd9, 0);
+    newInstruction(0);
+    fpu_init();
+    fldf32(POSITIVE_INFINITY, 1);
+    pushCode8(0xd9);
     pushCode8(rm(false, 4, 5));
+    writeFPUStatusToAX();
     runTestCPU();
     assertTest(0x100 | 0x400);
 
-    fldf32(NEGATIVE_INFINITY);
-    newInstruction(0xd9, 0);
+    newInstruction(0);
+    fpu_init();
+    fldf32(NEGATIVE_INFINITY, 1);
+    pushCode8(0xd9);
     pushCode8(rm(false, 4, 5));
+    writeFPUStatusToAX();
     runTestCPU();
     assertTest(0x100 | 0x200 | 0x400);
 
-    fldf32(1.0f);
-    newInstruction(0xd9, 0);
+    newInstruction(0);
+    fpu_init();
+    fldf32(1.0f, 1);
+    pushCode8(0xd9);
     pushCode8(rm(false, 4, 5));
+    writeFPUStatusToAX();
     runTestCPU();
     assertTest(0x400);
 
-    fldf32(-2.0f);
-    newInstruction(0xd9, 0);
+    newInstruction(0);
+    fpu_init();
+    fldf32(-2.0f, 1);
+    pushCode8(0xd9);
     pushCode8(rm(false, 4, 5));
+    writeFPUStatusToAX();
     runTestCPU();
     assertTest(0x200 | 0x400);
 }
@@ -5164,10 +5282,16 @@ void testFXAM() {
 }
 
 void doFLD1() {
-    newInstruction(0xd9, 0);
+    struct FPU_Float result;
+
+    newInstruction(0);
+    fpu_init();
+    pushCode8(0xd9);
     pushCode8(rm(false, 5, 0));
+    writeTopFloat(2);
     runTestCPU();
-    assertTrue(getTopFloat() == 1.0f);
+    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    assertTrue(result.f == 1.0f);
 }
 
 void testFLD1() {
@@ -5175,10 +5299,16 @@ void testFLD1() {
 }
 
 void doFLDL2T() {
-    newInstruction(0xd9, 0);
+    struct FPU_Float result;
+
+    newInstruction(0);
+    fpu_init();
+    pushCode8(0xd9);
     pushCode8(rm(false, 5, 1));
+    writeTopFloat(2);
     runTestCPU();
-    assertTrue(getTopFloat() == 3.321928f);
+    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    assertTrue(result.f == 3.321928f);
 }
 
 void testFLDL2T() {
@@ -5186,10 +5316,16 @@ void testFLDL2T() {
 }
 
 void doFLDL2E() {
-    newInstruction(0xd9, 0);
+    struct FPU_Float result;
+
+    newInstruction(0);
+    fpu_init();
+    pushCode8(0xd9);
     pushCode8(rm(false, 5, 2));
+    writeTopFloat(2);
     runTestCPU();
-    assertTrue(getTopFloat() == 1.442695f);
+    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    assertTrue(result.f == 1.442695f);
 }
 
 void testFLDL2E() {
@@ -5197,10 +5333,16 @@ void testFLDL2E() {
 }
 
 void doFLDPI() {
-    newInstruction(0xd9, 0);
+    struct FPU_Float result;
+
+    newInstruction(0);
+    fpu_init();
+    pushCode8(0xd9);
     pushCode8(rm(false, 5, 3));
+    writeTopFloat(2);
     runTestCPU();
-    assertTrue(getTopFloat() == 3.1415927f);
+    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    assertTrue(result.f == 3.1415927f);
 }
 
 void testFLDPI() {
@@ -5208,10 +5350,16 @@ void testFLDPI() {
 }
 
 void doFLDLG2() {
-    newInstruction(0xd9, 0);
+    struct FPU_Float result;
+
+    newInstruction(0);
+    fpu_init();
+    pushCode8(0xd9);
     pushCode8(rm(false, 5, 4));
+    writeTopFloat(2);
     runTestCPU();
-    assertTrue(getTopFloat() == .30103f);
+    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    assertTrue(result.f == .30103f);
 }
 
 void testFLDLG2() {
@@ -5219,10 +5367,16 @@ void testFLDLG2() {
 }
 
 void doFLDLN2() {
-    newInstruction(0xd9, 0);
+    struct FPU_Float result;
+
+    newInstruction(0);
+    fpu_init();
+    pushCode8(0xd9);
     pushCode8(rm(false, 5, 5));
+    writeTopFloat(2);
     runTestCPU();
-    assertTrue(getTopFloat() == 0.6931472f);
+    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    assertTrue(result.f == 0.6931472f);
 }
 
 void testFLDLN2() {
@@ -5230,10 +5384,16 @@ void testFLDLN2() {
 }
 
 void doFLDZ() {
-    newInstruction(0xd9, 0);
+    struct FPU_Float result;
+
+    newInstruction(0);
+    fpu_init();
+    pushCode8(0xd9);
     pushCode8(rm(false, 5, 6));
+    writeTopFloat(2);
     runTestCPU();
-    assertTrue(getTopFloat() == 0.0f);
+    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    assertTrue(result.f == 0.0f);
 }
 
 void testFLDZ() {
@@ -5241,46 +5401,77 @@ void testFLDZ() {
 }
 
 void doF2XM1() {
-    fldf32(0.0f);
-    newInstruction(0xd9, 0);
-    pushCode8(rm(false, 6, 0));
-    assertTrue(getTopFloat() == 0.0f);
+    struct FPU_Float result;
 
-    fldf32(TEST_NAN);
-    newInstruction(0xd9, 0);
+    newInstruction(0);
+    fpu_init();
+    fldf32(0.0f, 1);
+    pushCode8(0xd9);
     pushCode8(rm(false, 6, 0));
+    writeTopFloat(2);
     runTestCPU();
-    assertTrue(isnan(getTopFloat()));
+    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    assertTrue(result.f == 0.0f);
 
-    fldf32(POSITIVE_INFINITY);
-    newInstruction(0xd9, 0);
+    newInstruction(0);
+    fpu_init();
+    fldf32(TEST_NAN, 1);
+    pushCode8(0xd9);
     pushCode8(rm(false, 6, 0));
+    writeTopFloat(2);
     runTestCPU();
-    assertTrue(getTopFloat() == POSITIVE_INFINITY);
+    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    assertTrue(isnan(result.f));
 
-    fldf32(NEGATIVE_INFINITY);
-    newInstruction(0xd9, 0);
+    newInstruction(0);
+    fpu_init();
+    fldf32(POSITIVE_INFINITY, 1);
+    pushCode8(0xd9);
     pushCode8(rm(false, 6, 0));
+    writeTopFloat(2);
     runTestCPU();
-    assertTrue(getTopFloat() == -1.0f);
+    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    assertTrue(result.f == POSITIVE_INFINITY);
 
-    fldf32(-1.0f);
-    newInstruction(0xd9, 0);
+    newInstruction(0);
+    fpu_init();
+    fldf32(NEGATIVE_INFINITY, 1);
+    pushCode8(0xd9);
     pushCode8(rm(false, 6, 0));
+    writeTopFloat(2);
     runTestCPU();
-    assertTrue(getTopFloat() == -0.5f);
+    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    assertTrue(result.f == -1.0f);
 
-    fldf32(1.0f);
-    newInstruction(0xd9, 0);
+    newInstruction(0);
+    fpu_init();
+    fldf32(-1.0f, 1);
+    pushCode8(0xd9);
     pushCode8(rm(false, 6, 0));
+    writeTopFloat(2);
     runTestCPU();
-    assertTrue(getTopFloat() == 1.0f);
+    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    assertTrue(result.f == -0.5f);
 
-    fldf32(-0.5f);
-    newInstruction(0xd9, 0);
+    newInstruction(0);
+    fpu_init();
+    fldf32(1.0f, 1);
+    pushCode8(0xd9);
     pushCode8(rm(false, 6, 0));
+    writeTopFloat(2);
     runTestCPU();
-    assertTrue(getTopFloat() == -0.29289323f);
+    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    assertTrue(result.f == 1.0f);
+
+    newInstruction(0);
+    fpu_init();
+    fldf32(-0.5f, 1);
+    pushCode8(0xd9);
+    pushCode8(rm(false, 6, 0));
+    writeTopFloat(2);
+    runTestCPU();
+    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    assertTrue(result.f == -0.29289323f);
 }
 
 void testF2XM1() {
@@ -5288,76 +5479,105 @@ void testF2XM1() {
 }
 
 void doFYL2X() {
-    fldf32(1.0f);
-    fldf32(0.0f);
-    newInstruction(0xd9, 0);
-    pushCode8(rm(false, 6, 1));
-    runTestCPU();
-    assertTrue(getTopFloat() == NEGATIVE_INFINITY);
-
+    struct FPU_Float result;
+    newInstruction(0);
     fpu_init();
-    fldf32(2.0f);
-    fldf32(1.0f);
-    newInstruction(0xd9, 0);
+    fldf32(1.0f, 1);
+    fldf32(0.0f, 2);
+    pushCode8(0xd9);
     pushCode8(rm(false, 6, 1));
+    writeTopFloat(3);
     runTestCPU();
-    assertTrue(getTopFloat() == 0.0f);
+    result.i = readd(HEAP_ADDRESS + 4 * 3);
+    assertTrue(result.f == NEGATIVE_INFINITY);
 
+    newInstruction(0);
     fpu_init();
-    fldf32(8.0f);
-    fldf32(2.5f);
-    newInstruction(0xd9, 0);
+    fldf32(2.0f, 1);
+    fldf32(1.0f, 2);
+    pushCode8(0xd9);
     pushCode8(rm(false, 6, 1));
+    writeTopFloat(3);
     runTestCPU();
-    assertTrue(getTopFloat() == 10.575425f);
+    result.i = readd(HEAP_ADDRESS + 4 * 3);
+    assertTrue(result.f == 0.0f);
 
+    newInstruction(0);
     fpu_init();
-    fldf32(8.0f);
-    fldf32(2.0f);
-    newInstruction(0xd9, 0);
+    fldf32(8.0f, 1);
+    fldf32(2.5f, 2);
+    pushCode8(0xd9);
     pushCode8(rm(false, 6, 1));
+    writeTopFloat(3);
     runTestCPU();
-    assertTrue(getTopFloat() == 8.0f);
+    result.i = readd(HEAP_ADDRESS + 4 * 3);
+    assertTrue(result.f == 10.575425f);
 
+    newInstruction(0);
     fpu_init();
-    fldf32(8.0f);
-    fldf32(-2.0f);
-    newInstruction(0xd9, 0);
+    fldf32(8.0f, 1);
+    fldf32(2.0f, 2);
+    pushCode8(0xd9);
     pushCode8(rm(false, 6, 1));
+    writeTopFloat(3);
     runTestCPU();
-    assertTrue(isnan(getTopFloat()));
+    result.i = readd(HEAP_ADDRESS + 4 * 3);
+    assertTrue(result.f == 8.0f);
 
+    newInstruction(0);
     fpu_init();
-    fldf32(10.0f);
-    fldf32(8.0f);
-    newInstruction(0xd9, 0);
+    fldf32(8.0f, 1);
+    fldf32(-2.0f, 2);
+    pushCode8(0xd9);
     pushCode8(rm(false, 6, 1));
+    writeTopFloat(3);
     runTestCPU();
-    assertTrue(getTopFloat() == 30.0f);
+    result.i = readd(HEAP_ADDRESS + 4 * 3);
+    assertTrue(isnan(result.f));
 
+    newInstruction(0);
     fpu_init();
-    fldf32(10.0f);
-    fldf32(TEST_NAN);
-    newInstruction(0xd9, 0);
+    fldf32(10.0f, 1);
+    fldf32(8.0f, 2);
+    pushCode8(0xd9);
     pushCode8(rm(false, 6, 1));
+    writeTopFloat(3);
     runTestCPU();
-    assertTrue(isnan(getTopFloat()));
+    result.i = readd(HEAP_ADDRESS + 4 * 3);
+    assertTrue(result.f == 30.0f);
 
+    newInstruction(0);
     fpu_init();
-    fldf32(10.0f);
-    fldf32(POSITIVE_INFINITY);
-    newInstruction(0xd9, 0);
+    fldf32(10.0f, 1);
+    fldf32(TEST_NAN, 2);
+    pushCode8(0xd9);
     pushCode8(rm(false, 6, 1));
+    writeTopFloat(3);
     runTestCPU();
-    assertTrue(getTopFloat() == POSITIVE_INFINITY);
+    result.i = readd(HEAP_ADDRESS + 4 * 3);
+    assertTrue(isnan(result.f));
 
+    newInstruction(0);
     fpu_init();
-    fldf32(10.0f);
-    fldf32(NEGATIVE_INFINITY);
-    newInstruction(0xd9, 0);
+    fldf32(10.0f, 1);
+    fldf32(POSITIVE_INFINITY, 2);
+    pushCode8(0xd9);
     pushCode8(rm(false, 6, 1));
+    writeTopFloat(3);
     runTestCPU();
-    assertTrue(isnan(getTopFloat()));
+    result.i = readd(HEAP_ADDRESS + 4 * 3);
+    assertTrue(result.f == POSITIVE_INFINITY);
+
+    newInstruction(0);
+    fpu_init();
+    fldf32(10.0f, 1);
+    fldf32(NEGATIVE_INFINITY, 2);
+    pushCode8(0xd9);
+    pushCode8(rm(false, 6, 1));
+    writeTopFloat(3);
+    runTestCPU();
+    result.i = readd(HEAP_ADDRESS + 4 * 3);
+    assertTrue(isnan(result.f));
 }
 
 void testFYL2X() {
@@ -5365,33 +5585,47 @@ void testFYL2X() {
 }
 
 void doFSQRT() {
-    fpu_init();
-    fldf32(0.0f);
-    newInstruction(0xd9, 0);
-    pushCode8(rm(false, 7, 2));
-    runTestCPU();
-    assertTrue(getTopFloat() == 0.0f);
+    struct FPU_Float result;
 
+    newInstruction(0);
     fpu_init();
-    fldf32(1.0f);
-    newInstruction(0xd9, 0);
+    fldf32(0.0f, 1);
+    pushCode8(0xd9);
     pushCode8(rm(false, 7, 2));
+    writeTopFloat(2);
     runTestCPU();
-    assertTrue(getTopFloat() == 1.0f);
+    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    assertTrue(result.f == 0.0f);
 
+    newInstruction(0);
     fpu_init();
-    fldf32(2.0f);
-    newInstruction(0xd9, 0);
+    fldf32(1.0f, 1);
+    pushCode8(0xd9);
     pushCode8(rm(false, 7, 2));
+    writeTopFloat(2);
     runTestCPU();
-    assertTrue(getTopFloat() == 1.4142135f);
+    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    assertTrue(result.f == 1.0f);
 
+    newInstruction(0);
     fpu_init();
-    fldf32(4.0f);
-    newInstruction(0xd9, 0);
+    fldf32(2.0f, 1);
+    pushCode8(0xd9);
     pushCode8(rm(false, 7, 2));
+    writeTopFloat(2);
     runTestCPU();
-    assertTrue(getTopFloat() == 2.0f);
+    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    assertTrue(result.f == 1.4142135f);
+
+    newInstruction(0);
+    fpu_init();
+    fldf32(4.0f, 1);
+    pushCode8(0xd9);
+    pushCode8(rm(false, 7, 2));
+    writeTopFloat(2);
+    runTestCPU();
+    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    assertTrue(result.f == 2.0f);
 }
 
 void testFSQRT() {
@@ -6943,10 +7177,9 @@ int main(int argc, char **argv) {
     run(testFPU0x0d8, "FPU 0d8");
     run(testFPU0x2d8, "FPU 2d8");
 
-#ifndef BOXEDWINE_X64
     run(testFPU0x0d9, "FPU 0d9");
     run(testFPU0x2d9, "FPU 2d9");    
-#endif
+
     run(testCmc0x0f5, "Cmc 0f5");
     run(testCmc0x2f5, "Cmc 2f5");
     

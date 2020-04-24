@@ -124,6 +124,7 @@ void* x64CPU::init() {
     if (!this->thread->process->returnToLoopAddress) {
         X64Asm returnData(this);
         returnData.restoreNativeState();
+        returnData.write8(0xfc); // cld
         returnData.write8(0xc3); // retn
         std::shared_ptr<X64CodeChunk> chunk2 = returnData.commit(true);
         this->thread->process->returnToLoopAddress = chunk2->getHostAddress();
