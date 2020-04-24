@@ -8,8 +8,8 @@ void drawListView(const std::string& listViewId, const std::vector<ListViewItem>
     ImGui::SetCursorPosY(ImGui::GetCursorPosY() + GlobalSettings::scaleFloatUI(5.0f));
     int maxImageWidth = GlobalSettings::scaleIntUI(125);
     for (auto& item : items) {
-        if (item.icon && item.icon->width > maxImageWidth) {
-            maxImageWidth = item.icon->width;
+        if (item.icon && item.icon->getWidth() > maxImageWidth) {
+            maxImageWidth = item.icon->getWidth();
         }
     }
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));

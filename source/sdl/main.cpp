@@ -27,6 +27,10 @@
 #include "../ui/data/globalSettings.h"
 #endif
 
+#ifdef BOXEDWINE_MSVC
+#include <Windows.h>
+#endif
+
 #ifndef __TEST
 
 U32 gensrc;
@@ -37,6 +41,14 @@ void writeSource();
 
 int boxedmain(int argc, const char **argv) {
     StartUpArgs startupArgs;                  
+
+#ifdef BOXEDWINE_MSVC
+    // There seems to be a problem when starting the app as DPIAware then downgrading to unaware
+    // There seems to also be a problem when switching from unaware to aware with OpenGL
+    // Right now the hack is to use ImGui with DirectX 9, start unware, create the window, then destroy it, then re-create it DPI aware.
+    //SetProcessDPIAware();
+    //SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+#endif
 
     klog("Starting ...");    
     KSystem::startMicroCounter();
@@ -82,13 +94,44 @@ int boxedmain(int argc, const char **argv) {
 #ifndef BOXEDWINE_DISABLE_UI
         GlobalSettings::startUp(); 
 
-        while (uiShow(GlobalSettings::getExePath()+Fs::nativePathSeperator)) {
+#ifdef BOXEDWINE_MSVC
+        bool shutdownForHighDPI = false;
+        if (StartUpArgs::uiType == UI_TYPE_UNSET) {
+#ifdef BOXEDWINE_IMGUI_DX9
+            StartUpArgs::uiType = UI_TYPE_DX9;
+            shutdownForHighDPI = true;
+#else
+            StartUpArgs::uiType = UI_TYPE_OPENGL;
+#endif
+        }
+#else
+        bool shutdownForHighDPI = false;
+        if (StartUpArgs::uiType == UI_TYPE_UNSET) {
+            StartUpArgs::uiType = UI_TYPE_OPENGL;
+        }
+#endif
+        while (uiShow(GlobalSettings::getExePath()+Fs::nativePathSeperator, shutdownForHighDPI)) {
             if (GlobalSettings::restartUI) {
                 GlobalSettings::restartUI = false;
                 GlobalSettings::startUp();
                 continue;
             }
+#ifdef BOXEDWINE_MSVC
+            if (StartUpArgs::uiType == UI_TYPE_DX9) {
+                if (shutdownForHighDPI) {
+                    SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_SYSTEM_AWARE);
+                    shutdownForHighDPI = false;
+                    continue;
+                }
+                SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_UNAWARE);
+            }            
+#endif
             BoxedwineData::startApp();
+#ifdef BOXEDWINE_MSVC
+            if (StartUpArgs::uiType == UI_TYPE_DX9) {
+                SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_SYSTEM_AWARE);
+            }
+#endif
             GlobalSettings::startUpArgs.readyToLaunch = false;
 
             // make sure if the user closed the SDL windows for the game/app, that it doesn't carry over into the UI

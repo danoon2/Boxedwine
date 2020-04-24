@@ -11,6 +11,7 @@
 #include "utils/uihelper.h"
 #include "utils/readIcons.h"
 
+#include "data/boxedTexture.h"
 #include "data/boxedwineData.h"
 #include "data/globalSettings.h"
 #include "data/configFile.h"

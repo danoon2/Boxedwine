@@ -615,13 +615,9 @@ U32 sdlCreateOpenglWindow_main_thread(KThread* thread, Wnd* wnd, int major, int 
         }
     }   
     // until I figure out how to scale GL window
-    //sdlScaleX = 100;
-    //sdlScaleY = 100;
-    //int scaledCx = cx;
-    //int scaledCy = cy;
-    int scaledCx = cx * sdlScaleX / 100;
-    int scaledCy = cy * sdlScaleY / 100;
-    sdlWindow = SDL_CreateWindow("OpenGL Window", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, scaledCx, scaledCy, sdlFlags);    
+    sdlScaleX = 100;
+    sdlScaleY = 100;
+    sdlWindow = SDL_CreateWindow("OpenGL Window", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, cx, cy, sdlFlags);
 
     if (!sdlWindow) {
         fprintf(stderr, "Couldn't create window: %s\n", SDL_GetError());
@@ -667,9 +663,6 @@ U32 sdlCreateContext(KThread* thread, Wnd* wnd, int major, int minor, int profil
     return result;
 }
 
-#if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
-#include GLH
-#endif
 void sdlScreenResized(KThread* thread) {
     DISPATCH_MAIN_THREAD_BLOCK_BEGIN
 #ifdef SDL2
@@ -681,9 +674,6 @@ void sdlScreenResized(KThread* thread) {
                 cy = cy * sdlScaleX / 100;
             }
             SDL_SetWindowSize(sdlWindow, cx, cy);
-#if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
-            glViewport(0, 0, cx, cy);
-#endif
         } else {
             displayChanged(thread);
         }

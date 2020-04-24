@@ -9,6 +9,9 @@ FsOpenNode::~FsOpenNode() {
 }
 
 U32 FsOpenNode::read(U32 address, U32 len) {
+    if (!len) {
+        return 0;
+    }
     if (K_PAGE_SIZE-(address & (K_PAGE_SIZE-1)) >= len) {
         U8* ram = getPhysicalWriteAddress(address, len);
         U32 result;

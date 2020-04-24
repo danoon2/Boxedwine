@@ -60,22 +60,7 @@ void GlobalSettings::init(int argc, const char **argv) {
     stringReplaceAll(GlobalSettings::dataFolderLocation, "\\\\", "\\");
     GlobalSettings::theme = config.readString("Theme", "Dark");
     GlobalSettings::defaultResolution = config.readString("DefaultResolution", "1024x768");
-
-#ifdef BOXEDWINE_HIGHDPI
-    U32 defaultScale = getDisplayScale();
-    if (defaultScale <= 600) {
-        defaultScale = 50;
-    } else if (defaultScale <= 1500) {
-        defaultScale = 100;
-    } else if (defaultScale <= 2500) {
-        defaultScale = 200;
-    } else {
-        defaultScale = 300;
-    }
-#else
-    U32 defaultScale = 100;
-#endif
-    GlobalSettings::defaultScale = config.readInt("DefaultScale", defaultScale);
+    GlobalSettings::defaultScale = config.readInt("DefaultScale", 100);
     GlobalSettings::fontScale = (float)config.readInt("FontScale", 100) / 100.0f;
 
     if (!Fs::doesNativePathExist(configFilePath)) {
