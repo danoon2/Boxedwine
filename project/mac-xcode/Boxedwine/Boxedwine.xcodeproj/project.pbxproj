@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		711F834924527273008E6A0C /* boxedTexture.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 711F834824527273008E6A0C /* boxedTexture.cpp */; };
 		711F834A24527273008E6A0C /* boxedTexture.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 711F834824527273008E6A0C /* boxedTexture.cpp */; };
+		711F834B24534A06008E6A0C /* MacPlatform.m in Sources */ = {isa = PBXBuildFile; fileRef = 7120545D244D074000C3CB1B /* MacPlatform.m */; };
 		71205456244D01B300C3CB1B /* ImGuiLayout.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71205454244D01B300C3CB1B /* ImGuiLayout.cpp */; };
 		71205457244D01B300C3CB1B /* ImGuiLayout.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71205454244D01B300C3CB1B /* ImGuiLayout.cpp */; };
 		7120545A244D01DA00C3CB1B /* boxedReg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71205458244D01D900C3CB1B /* boxedReg.cpp */; };
@@ -3560,6 +3561,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				711F834B24534A06008E6A0C /* MacPlatform.m in Sources */,
 				71222B452435163F00CDBABD /* stringutil.cpp in Sources */,
 				71222BA82435169100CDBABD /* devdsp.cpp in Sources */,
 				71222B402435163F00CDBABD /* crc.cpp in Sources */,
