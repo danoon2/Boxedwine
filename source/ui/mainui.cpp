@@ -50,7 +50,9 @@ void ResetDevice()
     ImGui_ImplDX9_CreateDeviceObjects();
 }
 
-#else
+#endif
+
+#ifdef BOXEDWINE_OPENGL_SDL
 #include "examples/imgui_impl_opengl3.h"
 #endif
 #include "imgui_internal.h"
@@ -276,8 +278,8 @@ void loadApps() {
 }
 
 static SDL_Window* window;
-#ifdef BOXEDWINE_IMGUI_DX9
-#else
+
+#ifdef BOXEDWINE_OPENGL_SDL
 static SDL_GLContext gl_context;
 #endif
 static ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
@@ -287,11 +289,16 @@ void uiShutdown() {
 
     // Cleanup
 #ifdef BOXEDWINE_IMGUI_DX9
-    ImGui_ImplDX9_Shutdown();
-    CleanupDeviceD3D();
-#else
-    ImGui_ImplOpenGL3_Shutdown();
-    SDL_GL_DeleteContext(gl_context);
+    if (StartUpArgs::uiType == UI_TYPE_DX9) {
+        ImGui_ImplDX9_Shutdown();
+        CleanupDeviceD3D();
+    }
+#endif
+#ifdef BOXEDWINE_OPENGL_SDL
+    if (StartUpArgs::uiType == UI_TYPE_OPENGL) {
+        ImGui_ImplOpenGL3_Shutdown();
+        SDL_GL_DeleteContext(gl_context);
+    }
 #endif
     BoxedTexture::resetAll();
     ImGui_ImplSDL2_Shutdown();
@@ -344,9 +351,14 @@ bool uiLoop() {
 
     // Start the Dear ImGui frame
 #ifdef BOXEDWINE_IMGUI_DX9
-    ImGui_ImplDX9_NewFrame();
-#else
-    ImGui_ImplOpenGL3_NewFrame();
+    if (StartUpArgs::uiType == UI_TYPE_DX9) {
+        ImGui_ImplDX9_NewFrame();
+    }
+#endif
+#ifdef BOXEDWINE_OPENGL_SDL
+    if (StartUpArgs::uiType == UI_TYPE_OPENGL) {
+        ImGui_ImplOpenGL3_NewFrame();
+    }
 #endif
     ImGui_ImplSDL2_NewFrame(window);
     ImGui::NewFrame();
@@ -355,31 +367,36 @@ bool uiLoop() {
 
     // Rendering    
 #ifdef BOXEDWINE_IMGUI_DX9
-    g_pd3dDevice->SetRenderState(D3DRS_ZENABLE, FALSE);
-    g_pd3dDevice->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
-    g_pd3dDevice->SetRenderState(D3DRS_SCISSORTESTENABLE, FALSE);
-    D3DCOLOR clear_col_dx = D3DCOLOR_RGBA((int)(clear_color.x * 255.0f), (int)(clear_color.y * 255.0f), (int)(clear_color.z * 255.0f), (int)(clear_color.w * 255.0f));
-    g_pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, clear_col_dx, 1.0f, 0);
-    ImGui::Render();
-    if (g_pd3dDevice->BeginScene() >= 0)
-    {        
-        ImGui_ImplDX9_RenderDrawData(ImGui::GetDrawData());
-        g_pd3dDevice->EndScene();
-    }
-    HRESULT result = g_pd3dDevice->Present(NULL, NULL, NULL, NULL);
+    if (StartUpArgs::uiType == UI_TYPE_DX9) {
+        g_pd3dDevice->SetRenderState(D3DRS_ZENABLE, FALSE);
+        g_pd3dDevice->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
+        g_pd3dDevice->SetRenderState(D3DRS_SCISSORTESTENABLE, FALSE);
+        D3DCOLOR clear_col_dx = D3DCOLOR_RGBA((int)(clear_color.x * 255.0f), (int)(clear_color.y * 255.0f), (int)(clear_color.z * 255.0f), (int)(clear_color.w * 255.0f));
+        g_pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, clear_col_dx, 1.0f, 0);
+        ImGui::Render();
+        if (g_pd3dDevice->BeginScene() >= 0)
+        {
+            ImGui_ImplDX9_RenderDrawData(ImGui::GetDrawData());
+            g_pd3dDevice->EndScene();
+        }
+        HRESULT result = g_pd3dDevice->Present(NULL, NULL, NULL, NULL);
 
-    // Handle loss of D3D9 device
-    if (result == D3DERR_DEVICELOST && g_pd3dDevice->TestCooperativeLevel() == D3DERR_DEVICENOTRESET) {
-        ResetDevice();
+        // Handle loss of D3D9 device
+        if (result == D3DERR_DEVICELOST && g_pd3dDevice->TestCooperativeLevel() == D3DERR_DEVICENOTRESET) {
+            ResetDevice();
+        }
     }
-#else
-    ImGui::Render();
-    ImGuiIO& io = ImGui::GetIO();
-    glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
-    glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
-    glClear(GL_COLOR_BUFFER_BIT);
-    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-    SDL_GL_SwapWindow(window);
+#endif
+#ifdef BOXEDWINE_OPENGL_SDL
+    if (StartUpArgs::uiType == UI_TYPE_OPENGL) {
+        ImGui::Render();
+        ImGuiIO& io = ImGui::GetIO();
+        glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
+        glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
+        glClear(GL_COLOR_BUFFER_BIT);
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        SDL_GL_SwapWindow(window);
+    }
 #endif    
 
     runFunctions(runAfterFrameFunctions);
@@ -399,31 +416,34 @@ bool uiShow(const std::string& basePath, bool shutdownForHighDPI) {
     }
     */
 
-#ifdef BOXEDWINE_IMGUI_DX9
     SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
-#else    
-    // Decide GL+GLSL versions
+
+#ifdef BOXEDWINE_OPENGL_SDL
+    const char* glsl_version = NULL;
+    if (StartUpArgs::uiType == UI_TYPE_OPENGL) {
+        // Decide GL+GLSL versions
 #if __APPLE__
     // GL 3.2 Core + GLSL 150
-    const char* glsl_version = "#version 150";
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG); // Always required on Mac
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
+        glsl_version = "#version 150";
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG); // Always required on Mac
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
 #else
     // GL 3.0 + GLSL 130
-    const char* glsl_version = "#version 130";
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+        glsl_version = "#version 130";
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
 #endif
 
-    // Create window with graphics context
-    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
-    SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
-    SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+        // Create window with graphics context
+        SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+        SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+        SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+        window_flags = (SDL_WindowFlags)(window_flags | SDL_WINDOW_OPENGL);
+    }
 #endif
 
     if (shutdownForHighDPI) {
@@ -442,35 +462,40 @@ bool uiShow(const std::string& basePath, bool shutdownForHighDPI) {
     window = SDL_CreateWindow("Boxedwine UI", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, cx, cy, window_flags);
 
 #ifdef BOXEDWINE_IMGUI_DX9
-    SDL_SysWMinfo wmInfo;
-    SDL_VERSION(&wmInfo.version);
-    SDL_GetWindowWMInfo(window, &wmInfo);
-    HWND hwnd = (HWND)wmInfo.info.win.window;
-    if (!CreateDeviceD3D(hwnd)) {
-        CleanupDeviceD3D();
-        return false;
+    if (StartUpArgs::uiType == UI_TYPE_DX9) {
+        SDL_SysWMinfo wmInfo;
+        SDL_VERSION(&wmInfo.version);
+        SDL_GetWindowWMInfo(window, &wmInfo);
+        HWND hwnd = (HWND)wmInfo.info.win.window;
+        if (!CreateDeviceD3D(hwnd)) {
+            CleanupDeviceD3D();
+            return false;
+        }
     }
-#else
-    gl_context = SDL_GL_CreateContext(window);
-    SDL_GL_MakeCurrent(window, gl_context);
-
-    // Initialize OpenGL loader
-#if defined(IMGUI_IMPL_OPENGL_LOADER_GL3W)
-    bool err = gl3wInit() != 0;
-#elif defined(IMGUI_IMPL_OPENGL_LOADER_GLEW)
-    bool err = glewInit() != GLEW_OK;
-#elif defined(IMGUI_IMPL_OPENGL_LOADER_GLAD)
-    bool err = gladLoadGL() == 0;
-#elif defined(IMGUI_IMPL_OPENGL_LOADER_GLBINDING)
-    bool err = false;
-    glbinding::initialize([](const char* name) { return (glbinding::ProcAddress)SDL_GL_GetProcAddress(name); });
-#else
-    bool err = false; // If you use IMGUI_IMPL_OPENGL_LOADER_CUSTOM, your loader is likely to requires some form of initialization.
 #endif
-    if (err)
-    {
-        fprintf(stderr, "Failed to initialize OpenGL loader!\n");
-        return false;
+#ifdef BOXEDWINE_OPENGL_SDL
+    if (StartUpArgs::uiType == UI_TYPE_OPENGL) {
+        gl_context = SDL_GL_CreateContext(window);
+        SDL_GL_MakeCurrent(window, gl_context);
+
+        // Initialize OpenGL loader
+#if defined(IMGUI_IMPL_OPENGL_LOADER_GL3W)
+        bool err = gl3wInit() != 0;
+#elif defined(IMGUI_IMPL_OPENGL_LOADER_GLEW)
+        bool err = glewInit() != GLEW_OK;
+#elif defined(IMGUI_IMPL_OPENGL_LOADER_GLAD)
+        bool err = gladLoadGL() == 0;
+#elif defined(IMGUI_IMPL_OPENGL_LOADER_GLBINDING)
+        bool err = false;
+        glbinding::initialize([](const char* name) { return (glbinding::ProcAddress)SDL_GL_GetProcAddress(name); });
+#else
+        bool err = false; // If you use IMGUI_IMPL_OPENGL_LOADER_CUSTOM, your loader is likely to requires some form of initialization.
+#endif
+        if (err)
+        {
+            fprintf(stderr, "Failed to initialize OpenGL loader!\n");
+            return false;
+        }
     }
 #endif
     // Setup Dear ImGui context
@@ -520,11 +545,16 @@ bool uiShow(const std::string& basePath, bool shutdownForHighDPI) {
 
     // Setup Platform/Renderer bindings    
 #ifdef BOXEDWINE_IMGUI_DX9
-    ImGui_ImplSDL2_InitForD3D(window);
-    ImGui_ImplDX9_Init(g_pd3dDevice);
-#else
-    ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
-    ImGui_ImplOpenGL3_Init(glsl_version);    
+    if (StartUpArgs::uiType == UI_TYPE_DX9) {
+        ImGui_ImplSDL2_InitForD3D(window);
+        ImGui_ImplDX9_Init(g_pd3dDevice);
+    }
+#endif
+#ifdef BOXEDWINE_OPENGL_SDL
+    if (StartUpArgs::uiType == UI_TYPE_OPENGL) {
+        ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
+        ImGui_ImplOpenGL3_Init(glsl_version);
+    }
 #endif
     if (GlobalSettings::getWineVersions().size()==0) {
         runOnMainUI([]() {

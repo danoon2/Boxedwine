@@ -1,6 +1,10 @@
 #ifndef __STARTUP_ARGS_H__
 #define __STARTUP_ARGS_H__
 
+#define UI_TYPE_UNSET 0
+#define UI_TYPE_OPENGL 1
+#define UI_TYPE_DX9 2
+
 class MountInfo {
 public:
     MountInfo(const std::string& localPath, const std::string& nativePath, bool wine) : localPath(localPath), nativePath(nativePath), wine(wine){}
@@ -56,6 +60,7 @@ public:
 
     bool soundEnabled;
     bool videoEnabled;
+    static U32 uiType;
     bool readyToLaunch;
     std::string showAppPickerForContainerDir;
     std::function<void()> runOnRestartUI;

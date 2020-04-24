@@ -38,6 +38,8 @@
 void gl_init(const std::string& allowExtensions);
 void initWine();
 
+U32 StartUpArgs::uiType;
+
 FsOpenNode* openKernelCommandLine(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
     return new BufferAccess(node, flags, "");
 }
@@ -422,6 +424,11 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
             i+=2;
         } else if (!strcmp(argv[i], "-showStartupWindow")) {
             // no longer used
+        } else if (!strcmp(argv[i], "-ui")) {
+            i++;
+            if (!strcmp(argv[i], "opengl")) {
+                this->uiType = UI_TYPE_OPENGL;
+            }
         }
 #ifdef BOXEDWINE_RECORDER
         else if (!strcmp(argv[i], "-record")) {

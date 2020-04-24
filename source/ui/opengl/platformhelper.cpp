@@ -7,14 +7,14 @@
 #include <d3d9.h>
 extern LPDIRECT3DDEVICE9 g_pd3dDevice;
 
-void UnloadTexture(void* texture) {
+void dx9UnloadTexture(void* texture) {
     if (texture) {
         ((IDirect3DTexture9*)texture)->Release();
     }
 }
 
 
-void* MakeRGBATexture(const unsigned char* data, int width, int height) {
+void* dx9MakeRGBATexture(const unsigned char* data, int width, int height) {
     IDirect3DTexture9* texture = NULL;
     D3DLOCKED_RECT r;
 
@@ -37,11 +37,19 @@ void* MakeRGBATexture(const unsigned char* data, int width, int height) {
     return (void*)texture;
 }
 
-#else 
+#endif
 
-void* MakeRGBATexture(const unsigned char* data, int width, int height) {
+#ifdef BOXEDWINE_OPENGL_SDL
+void glUnloadTexture(void* texture) {
+    if (texture) {
+        GLuint t = (GLuint)(U64)texture;
+        glDeleteTextures(1, &t);
+    }
+}
+
+void* glMakeRGBATexture(const unsigned char* data, int width, int height) {
     // Create a OpenGL texture identifier
-    GLuint image_texture=0;
+    GLuint image_texture = 0;
     glGenTextures(1, &image_texture);
     glBindTexture(GL_TEXTURE_2D, image_texture);
 
@@ -56,6 +64,34 @@ void* MakeRGBATexture(const unsigned char* data, int width, int height) {
 }
 
 #endif
+
+void UnloadTexture(void* texture) {
+#ifdef BOXEDWINE_IMGUI_DX9
+    if (StartUpArgs::uiType == UI_TYPE_DX9) {
+        glUnloadTexture(texture);
+    }
+#endif
+#ifdef BOXEDWINE_OPENGL_SDL
+    if (StartUpArgs::uiType == UI_TYPE_OPENGL) {
+        glUnloadTexture(texture);
+    }
+#endif
+}
+
+
+void* MakeRGBATexture(const unsigned char* data, int width, int height) {
+#ifdef BOXEDWINE_IMGUI_DX9
+    if (StartUpArgs::uiType == UI_TYPE_DX9) {
+        return dx9MakeRGBATexture(data, width, height);
+    }
+#endif
+#ifdef BOXEDWINE_OPENGL_SDL
+    if (StartUpArgs::uiType == UI_TYPE_OPENGL) {
+        return glMakeRGBATexture(data, width, height);
+    }
+#endif
+    return NULL;
+}
 
 unsigned char* LoadImageFromFile(const char* filename, int* out_width, int* out_height)
 {

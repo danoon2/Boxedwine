@@ -95,9 +95,20 @@ int boxedmain(int argc, const char **argv) {
         GlobalSettings::startUp(); 
 
 #ifdef BOXEDWINE_MSVC
-        bool shutdownForHighDPI = true;
+        bool shutdownForHighDPI = false;
+        if (StartUpArgs::uiType == UI_TYPE_UNSET) {
+#ifdef BOXEDWINE_IMGUI_DX9
+            StartUpArgs::uiType = UI_TYPE_DX9;
+            shutdownForHighDPI = true;
+#else
+            StartUpArgs::uiType = UI_TYPE_OPENGL;
+#endif
+        }
 #else
         bool shutdownForHighDPI = false;
+        if (StartUpArgs::uiType == UI_TYPE_UNSET) {
+            StartUpArgs::uiType = UI_TYPE_OPENGL;
+        }
 #endif
         while (uiShow(GlobalSettings::getExePath()+Fs::nativePathSeperator, shutdownForHighDPI)) {
             if (GlobalSettings::restartUI) {
@@ -106,15 +117,20 @@ int boxedmain(int argc, const char **argv) {
                 continue;
             }
 #ifdef BOXEDWINE_MSVC
-            if (shutdownForHighDPI) {
-                SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_SYSTEM_AWARE);
-                shutdownForHighDPI = false;
-            }
-            SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_UNAWARE);
+            if (StartUpArgs::uiType == UI_TYPE_DX9) {
+                if (shutdownForHighDPI) {
+                    SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_SYSTEM_AWARE);
+                    shutdownForHighDPI = false;
+                    continue;
+                }
+                SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_UNAWARE);
+            }            
 #endif
             BoxedwineData::startApp();
 #ifdef BOXEDWINE_MSVC
-            SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_SYSTEM_AWARE);
+            if (StartUpArgs::uiType == UI_TYPE_DX9) {
+                SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_SYSTEM_AWARE);
+            }
 #endif
             GlobalSettings::startUpArgs.readyToLaunch = false;
 
