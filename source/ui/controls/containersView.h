@@ -42,6 +42,7 @@ private:
     std::shared_ptr<LayoutComboboxControl> appResolutionControl;
     std::shared_ptr<LayoutComboboxControl> appBppControl;
     std::shared_ptr<LayoutCheckboxControl> appFullScreenControl;
+    std::shared_ptr<LayoutCheckboxControl> appDpiAwareControl;
     std::shared_ptr<LayoutComboboxControl> appScaleControl;
     std::shared_ptr<LayoutComboboxControl> appScaleQualityControl;
     std::shared_ptr<LayoutTextInputControl> appGlExControl;

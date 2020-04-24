@@ -123,7 +123,9 @@ int boxedmain(int argc, const char **argv) {
                     shutdownForHighDPI = false;
                     continue;
                 }
-                SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_UNAWARE);
+                if (!GlobalSettings::startUpArgs.dpiAware) {
+                    SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_UNAWARE);
+                }
             }            
 #endif
             BoxedwineData::startApp();

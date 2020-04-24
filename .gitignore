@@ -18,3 +18,4 @@ project/linux/bin/
 project/linux/linux_build/
 project/mac-xcode/bin/
 **/imgui.ini
+**/*.vcxproj.user

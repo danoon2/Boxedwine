@@ -90,6 +90,7 @@ public:
     static std::vector<AppFile>& getComponents() { return GlobalSettings::components; }
     static void downloadFile(const std::string& url, const std::string& filePath, const std::string& name, U32 sizeMB, std::function<void(bool)> onCompleted);
     static std::string createUniqueContainerPath(const std::string& name);
+    static bool isDpiAware() {return GlobalSettings::scale != 100;}
 
     static StartUpArgs startUpArgs;
 

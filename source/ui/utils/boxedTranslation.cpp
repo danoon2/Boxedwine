@@ -249,6 +249,10 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "Fullscreen:";
     case CONTAINER_VIEW_FULL_SCREEN_HELP:
         return "Will launch the emulated desktop with the resolution selected and scale it to fit the screen.";
+    case CONTAINER_VIEW_DPI_AWARE_LABEL:
+        return "DPI Aware:";
+    case CONTAINER_VIEW_DPI_AWARE_HELP:
+        return "DPI (dots per inch) Aware means the app will be responsible for itself when it comes to scaling to large resolutions.  If this is checked and the app can not handle it, then the app might appear to run in a window that is too small.\n\nAs of April 2020, NVidia does not handle this correctly.";
     case CONTAINER_VIEW_SCALE_LABEL:
         return "Scaling:";
     case CONTAINER_VIEW_SCALE_HELP:

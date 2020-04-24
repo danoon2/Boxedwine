@@ -198,6 +198,12 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
         appScaleControl->setReadOnly(appFullScreenControl->isChecked());
     };
 
+    if (GlobalSettings::isDpiAware()) {
+        appDpiAwareControl = appSection->addCheckbox(CONTAINER_VIEW_DPI_AWARE_LABEL, CONTAINER_VIEW_DPI_AWARE_HELP, false);
+        appDpiAwareControl->onChange = [this]() {
+            this->currentAppChanged = true;
+        };
+    }
     std::vector<ComboboxItem> scales;
     scales.push_back(ComboboxItem(getTranslation(GENERIC_DEFAULT), 0));
     scales.push_back(ComboboxItem("1/2x", 50));
@@ -343,6 +349,9 @@ bool ContainersView::saveChanges() {
             this->currentApp->scale = appScaleControl->getSelectionIntValue();
             this->currentApp->scaleQuality = this->appScaleQualityControl->getSelection();
             this->currentApp->fullScreen = this->appFullScreenControl->isChecked();
+            if (GlobalSettings::isDpiAware()) {
+                this->currentApp->dpiAware = this->appDpiAwareControl->isChecked();
+            }
             this->currentApp->saveApp();
             this->currentAppChanged = false;
             GlobalSettings::reloadApps();
@@ -383,6 +392,7 @@ void ContainersView::setCurrentApp(BoxedApp* app) {
     appScaleControl->setReadOnly(app->fullScreen);
     appScaleQualityControl->setSelection(app->scaleQuality);
     appFullScreenControl->setCheck(app->fullScreen);
+    appDpiAwareControl->setCheck(app->dpiAware);
 }
 
 void ContainersView::rebuildShortcutsCombobox() {
