@@ -13786,6 +13786,7 @@ return /******/ (function(modules) { // webpackBootstrap
              const fileBuffer = this.syncCall(this.zipFilename, start2, this.compressedSize());
              let fileData = new FileData(header, this, fileBuffer);
             */
+             console.log("requesting filename=" + this.fileName());
              let offset = this.headerRelativeOffset();
              let extra = this.extraFieldLength();
              let additional = extra == 0 ? extra : extra + 4;

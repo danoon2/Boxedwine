@@ -12,7 +12,7 @@
         //params
         let Config = {};
         Config.urlParams = "";
-        Config.storageMode = STORAGE_LOCAL_STORAGE;
+        Config.storageMode = STORAGE_MEMORY;
         Config.isRunningInline = false;
         Config.showUploadDownload = true;
         var isRunning = false;
