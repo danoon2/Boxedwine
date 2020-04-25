@@ -7,6 +7,15 @@ void drawIcon(const ListViewItem& item) {
     ImGui::Image(item.icon->texture->getTexture(), ImVec2((float)UiSettings::ICON_SIZE, (float)UiSettings::ICON_SIZE));
 }
 
+const char* getTextThatFits(const char* p, float width) {
+    const char* result = p + 1;
+    while (ImGui::CalcTextSize(p, result, false, 9999.0f).x<width) {
+        result++;
+    }
+    result--;
+    return result;
+}
+
 void drawListViewItem(const ListViewItem& item) {
     float width = ImGui::GetColumnWidth();
     ImVec2 startPos = ImGui::GetCursorPos();
@@ -41,7 +50,7 @@ void drawListViewItem(const ListViewItem& item) {
         ImGui::SetCursorPosY(startPos.y + (float)UiSettings::ICON_SIZE + iconVertGap * 2);
         ImGui::PopID();
         int i=0;
-        while (p<end && i<UiSettings::MAX_NUMBER_OF_LINES_FOR_APP_LIST_VIEW_TEXT) {
+        while (p<end && i<UiSettings::MAX_NUMBER_OF_LINES_FOR_APP_LIST_VIEW_TEXT-1) {
             i++;
             std::string line = std::string(text, p);
             stringTrim(line);
@@ -50,14 +59,17 @@ void drawListViewItem(const ListViewItem& item) {
             SAFE_IMGUI_TEXT(line.c_str());
             text = p;
             p = font->CalcWordWrapPositionA(font->Scale, text, text+item.text.length(), width);
+            if (p == text) { // didn't find a break;
+                p = getTextThatFits(p, width);
+            }
         }
         if (text<end) {
             std::string line;
-            if (p==end) {
+            if (p == end) {
                 line = std::string(text);
             } else {
-                // :TODO: test
-                line = std::string(text, p-3);
+                float w = width - ImGui::CalcTextSize("...").x;
+                line = std::string(text, getTextThatFits(text, w));
                 line+="...";
             }
             stringTrim(line);
