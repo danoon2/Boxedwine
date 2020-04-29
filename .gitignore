@@ -9,6 +9,9 @@ project/msvc/BoxedWine/BoxedWine/Release/
 project/msvc/BoxedWine/zlib/x64/
 project/msvc/BoxedWine/zlib/Debug/
 project/msvc/BoxedWine/zlib/Release/
+project/msvc/BoxedWine/BoxedWine/Test/
+project/msvc/BoxedWine/zlib/Test/
+project/msvc/BoxedWine/Test/
 lib/sdl2/VisualC/SDL/Win32/
 lib/sdl2/VisualC/SDL/x64/
 lib/sdl2/VisualC/SDLmain/Win32/
@@ -19,3 +22,6 @@ project/linux/linux_build/
 project/mac-xcode/bin/
 **/imgui.ini
 **/*.vcxproj.user
+project/linux/msvc-remote/Boxedwine/.vs/
+project/linux/msvc-remote/Boxedwine/Boxedwine/bin/
+project/linux/msvc-remote/Boxedwine/Boxedwine/obj/
