@@ -194,11 +194,15 @@ bool StartUpArgs::apply() {
             stringToLower(ext);
             if (ext == ".zip") {
     #ifdef BOXEDWINE_ZLIB
-                FsZip* z = new FsZip();
+                U64 startTime = KSystem::getMicroCounter();
+                std::shared_ptr<FsZip> fsZip = std::make_shared<FsZip>();
                 if (!stringHasEnding(info.localPath, "/", false)) {
                     info.localPath+="/";
                 }
-                z->init(info.nativePath, info.localPath);
+                fsZip->init(info.nativePath, info.localPath);
+                openZips.push_back(fsZip);
+                U64 endTime = KSystem::getMicroCounter();
+                klog("Mounted %s in %d ms", info.nativePath.c_str(), (U32)(endTime - startTime) / 1000);
     #else
                 klog("% not mounted because zlib was not compiled in", info.nativePath.c_str());
     #endif
@@ -408,18 +412,15 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
             i+=2;
         } else if (!strcmp(argv[i], "-mount")) {
             if (argv[i+2][0]!='/') {
-                printf("-mount expects 2 parameters: <host directory to mount> <full path on root file>\n");
+                printf("-mount expects 2 parameters: <host directory to mount or zip file> <full path on root file>\n");
                 printf("example: -mount \"c:\\my games\" \"/home/username/my games\"\n");
+                printf("example: -mount_zip \"c:\\my games\\mygame.zip\" /mnt/game\n");
             } else {
+                if (Fs::doesNativePathExist(argv[i + 2])) {
+                    klog("mount directory/file does not exist: %s", argv[i + 2]);
+                    return false;
+                }
                 this->mountInfo.push_back(MountInfo(argv[i+2], argv[i+1], false));
-            }
-            i+=2;
-        } else if (!strcmp(argv[i], "-mount_zip")) {
-            if (argv[i+2][0]!='/') {
-                printf("-mount_drive expects 2 parameters: <zip file to mount> <full path on root file>");
-                printf("example: -mount_zip \"c:\\my games\\mygame.zip\" d\n");
-            } else {
-                this->mountInfo.push_back(MountInfo(argv[i+2], argv[i+1], true));
             }
             i+=2;
         } else if (!strcmp(argv[i], "-showStartupWindow")) {

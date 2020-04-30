@@ -152,7 +152,11 @@ FsOpenNode* FsFileNode::open(U32 flags) {
     U32 f;
             
     if (this->isDirectory()) {
-        return new FsDirOpenNode(Fs::getNodeFromLocalPath("", this->path, true), flags);
+        BoxedPtr<FsNode> n = Fs::getNodeFromLocalPath("", this->path, true);
+        if (!n) {
+            return NULL;
+        }
+        return new FsDirOpenNode(n, flags);
     }
     if ((flags & K_O_ACCMODE)==K_O_RDONLY) {
         openFlags|=O_RDONLY;

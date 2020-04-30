@@ -33,6 +33,12 @@ void FsZip::setupZipRead(U64 zipOffset, U64 zipFileOffset) {
 
 bool FsZip::init(const std::string& zipPath, const std::string& mount) {
 #ifdef BOXEDWINE_ZLIB
+    std::string strippedMount;
+
+    if (mount.length()) {
+        Fs::makeLocalDirs(mount);
+        strippedMount = mount.substr(0, mount.length() - 1);
+    }
     this->lastZipOffset = 0xFFFFFFFFFFFFFFFFl;
     if (zipPath.length()) {
         unz_global_info global_info;
@@ -96,12 +102,14 @@ bool FsZip::init(const std::string& zipPath, const std::string& mount) {
             unzGoToNextFile(this->zipfile);
         }
         for (i = 0; i < global_info.number_entry; ++i) {
-            std::string parentPath = Fs::getParentPath(zipInfo[i].filename);            
-            BoxedPtr<FsNode> parent = Fs::getNodeFromLocalPath("", parentPath, true);
-            std::string localFileName = zipInfo[i].filename;
-            Fs::remoteNameToLocal(localFileName);      
-            localFileName = Fs::getFileNameFromPath(localFileName);
-            BoxedPtr<FsFileNode> node = (FsFileNode*)Fs::addFileNode(zipInfo[i].filename, zipInfo[i].link, Fs::getNativePathFromParentAndLocalFilename(parent, localFileName), zipInfo[i].isDirectory, parent).get();
+            std::string localZipPart = zipInfo[i].filename;
+            Fs::remoteNameToLocal(localZipPart);
+            std::string localPath = strippedMount + localZipPart;
+            std::string parentPath = Fs::getParentPath(localPath);
+            BoxedPtr<FsNode> parent = Fs::getNodeFromLocalPath("", parentPath, true);            
+            std::string localFileName = Fs::getFileNameFromPath(localPath);
+            std::string nativePath = Fs::getNativePathFromParentAndLocalFilename(parent, localFileName);
+            BoxedPtr<FsFileNode> node = (FsFileNode*)Fs::addFileNode(localPath, zipInfo[i].link, nativePath, zipInfo[i].isDirectory, parent).get();
             std::shared_ptr<FsZip> thisShared = shared_from_this();
             node->zipNode = std::make_shared<FsZipNode>(zipInfo[i], thisShared);
         }   
