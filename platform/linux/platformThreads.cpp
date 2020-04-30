@@ -382,7 +382,6 @@ void* platformThreadProc(void* param) {
         sigaction(SIGTRAP, &sa, &oldsa);
         initializedHandler = true;
     }
-    platformThreadCount++;
     KThread* thread = (KThread*)param;
     x64CPU* cpu = (x64CPU*)thread->cpu;
     cpu->startThread();
@@ -392,7 +391,7 @@ void* platformThreadProc(void* param) {
 void scheduleThread(KThread* thread) {
     x64CPU* cpu = (x64CPU*)thread->cpu;
     pthread_t threadId;
-    
+    platformThreadCount++; // need to increment before returning, otherwise if this is 0 the code will assume Wine exited
     pthread_create(&threadId, NULL, platformThreadProc, thread);
     cpu->nativeHandle = (U64)(size_t)threadId;
 }
