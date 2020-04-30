@@ -6,5 +6,7 @@
     <PreLaunchCommand>export DISPLAY=:0</PreLaunchCommand>
     <AdditionalDebuggerCommands>handle SIGILL nostop noprint;handle SIGSEGV nostop noprint</AdditionalDebuggerCommands>
     <RemoteDebuggerWorkingDirectory>projects/Boxedwine/project/linux/msvc-remote/Boxedwine/Boxedwine/bin/x64/Debug</RemoteDebuggerWorkingDirectory>
+    <RemoteDebuggerCommandArguments>
+    </RemoteDebuggerCommandArguments>
   </PropertyGroup>
 </Project>

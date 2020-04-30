@@ -1892,7 +1892,7 @@
   </ItemGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">
     <ClCompile>
-      <PreprocessorDefinitions>POCO_UTIL_NO_JSONCONFIGURATION;POCO_UTIL_NO_XMLCONFIGURATION;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_POSIX;POCO_UTIL_NO_JSONCONFIGURATION;POCO_UTIL_NO_XMLCONFIGURATION;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;</PreprocessorDefinitions>
       <CppLanguageStandard>c++17</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
@@ -1904,7 +1904,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">
     <ClCompile>
-      <PreprocessorDefinitions>POCO_UTIL_NO_JSONCONFIGURATION;POCO_UTIL_NO_XMLCONFIGURATION;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_POSIX;POCO_UTIL_NO_JSONCONFIGURATION;POCO_UTIL_NO_XMLCONFIGURATION;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <CppLanguageStandard>c++17</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
@@ -1916,7 +1916,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
     <ClCompile>
-      <PreprocessorDefinitions>POCO_UTIL_NO_JSONCONFIGURATION;POCO_UTIL_NO_XMLCONFIGURATION;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_POSIX;POCO_UTIL_NO_JSONCONFIGURATION;POCO_UTIL_NO_XMLCONFIGURATION;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;</PreprocessorDefinitions>
       <CppLanguageStandard>c++17</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
@@ -1928,7 +1928,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
     <ClCompile>
-      <PreprocessorDefinitions>POCO_UTIL_NO_JSONCONFIGURATION;POCO_UTIL_NO_XMLCONFIGURATION;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_POSIX;POCO_UTIL_NO_JSONCONFIGURATION;POCO_UTIL_NO_XMLCONFIGURATION;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <CppLanguageStandard>c++17</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
@@ -1940,7 +1940,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <PreprocessorDefinitions>_DEBUG;BOXEDWINE_64;BOXEDWINE_64BIT_MMU;BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;POCO_UTIL_NO_JSONCONFIGURATION;POCO_UTIL_NO_XMLCONFIGURATION;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_POSIX;_DEBUG;BOXEDWINE_64;BOXEDWINE_64BIT_MMU;BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;POCO_UTIL_NO_JSONCONFIGURATION;POCO_UTIL_NO_XMLCONFIGURATION;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;</PreprocessorDefinitions>
       <CppLanguageStandard>c++17</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
@@ -1952,7 +1952,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <PreprocessorDefinitions>BOXEDWINE_64;BOXEDWINE_64BIT_MMU;BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;POCO_UTIL_NO_JSONCONFIGURATION;POCO_UTIL_NO_XMLCONFIGURATION;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_POSIX;BOXEDWINE_64;BOXEDWINE_64BIT_MMU;BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;POCO_UTIL_NO_JSONCONFIGURATION;POCO_UTIL_NO_XMLCONFIGURATION;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <CppLanguageStandard>c++17</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
@@ -1964,7 +1964,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x86'">
     <ClCompile>
-      <PreprocessorDefinitions>POCO_UTIL_NO_JSONCONFIGURATION;POCO_UTIL_NO_XMLCONFIGURATION;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_POSIX;POCO_UTIL_NO_JSONCONFIGURATION;POCO_UTIL_NO_XMLCONFIGURATION;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;</PreprocessorDefinitions>
       <CppLanguageStandard>c++17</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
@@ -1976,7 +1976,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x86'">
     <ClCompile>
-      <PreprocessorDefinitions>POCO_UTIL_NO_JSONCONFIGURATION;POCO_UTIL_NO_XMLCONFIGURATION;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_POSIX;POCO_UTIL_NO_JSONCONFIGURATION;POCO_UTIL_NO_XMLCONFIGURATION;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <CppLanguageStandard>c++17</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>

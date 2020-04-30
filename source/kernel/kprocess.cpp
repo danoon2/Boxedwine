@@ -91,6 +91,9 @@ KProcess::KProcess(U32 id) : id(id),
     reTranslateChunkAddress = NULL;
     reTranslateChunkAddressFromR9 = NULL;
     jmpAndTranslateIfNecessaryToR9 = NULL;
+#ifdef BOXEDWINE_POSIX
+    runSignalAddress = NULL;
+#endif
 #endif
     for (int i=0;i<LDT_ENTRIES;i++) {
         this->ldt[i].seg_not_present = 1;
@@ -187,6 +190,9 @@ void KProcess::onExec() {
     reTranslateChunkAddress = NULL;
     reTranslateChunkAddressFromR9 = NULL;
     jmpAndTranslateIfNecessaryToR9 = NULL;
+#ifdef BOXEDWINE_POSIX
+    runSignalAddress = NULL;
+#endif
 #endif
 }
 

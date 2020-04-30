@@ -71,6 +71,9 @@ public:
     void createCodeForRetranslateChunk(bool includeSetupFromR9=false);
     void createCodeForJmpAndTranslateIfNecessary(bool includeSetupFromR9 = false);
     void callRetranslateChunk();
+#ifdef BOXEDWINE_POSIX
+    void createCodeForRunSignal();
+#endif
 
     void setImmediate8(U8 value);
     void setImmediate16(U16 value);

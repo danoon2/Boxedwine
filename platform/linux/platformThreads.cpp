@@ -283,63 +283,85 @@ U32 exceptionCount;
 #include <signal.h>
 #include <pthread.h>
 
-static void handler(int sig, siginfo_t* info, void* vcontext)
-{
-    BOXEDWINE_CRITICAL_SECTION;
+static void handler(int sig, siginfo_t* info, void* vcontext) {
     exceptionCount++;
     KThread* currentThread = KThread::currentThread();
     if (!currentThread) {
         return;
     }
-    ucontext_t *context = (ucontext_t*)vcontext;
+    ucontext_t* context = (ucontext_t*)vcontext;
     x64CPU* cpu = (x64CPU*)currentThread->cpu;
-    
-    if (cpu!=(x64CPU*)context->CONTEXT_R13) {
-        return;
-    }
-    
-    std::function<void(DecodedOp*)> doSyncFrom = [cpu, context] (DecodedOp* op) {
-        syncFromException(cpu, context, op?op->isFpuOp():true);
-    };
-    std::function<void(DecodedOp*)> doSyncTo = [cpu, context] (DecodedOp* op) {
-        syncToException(cpu, context, op?op->isFpuOp():true);
-    };
-    
-    bool readAccess = (((ucontext_t*)context)->CONTEXT_ERR & 1) == 0;
 
-    U64 address = (U64)info->si_addr;
-    U64 result = cpu->startException(address, readAccess, doSyncFrom, doSyncTo);
+    if (cpu != (x64CPU*)context->CONTEXT_R13) {
+        return;
+    }    
+    syncFromException(cpu, context, true);
+
+    cpu->exceptionReadAddress = (((ucontext_t*)context)->CONTEXT_ERR & 1) == 0;
+    cpu->exceptionAddress = (U64)info->si_addr;
+    cpu->exceptionSigNo = info->si_signo;
+    cpu->exceptionSigCode = info->si_code;
+    cpu->exceptionRip = context->CONTEXT_RIP;
+    cpu->exceptionRSP = context->CONTEXT_RSP;
+    cpu->exceptionRSI = context->CONTEXT_RSI;
+    cpu->exceptionRDI = context->CONTEXT_RDI;
+    cpu->exceptionR8 = context->CONTEXT_R8;
+    cpu->exceptionR9 = context->CONTEXT_R9;
+    cpu->exceptionR10 = context->CONTEXT_R10;
+    if ((cpu->exceptionRip & 0xFFFFFFFF00000000l) == (U64)cpu->thread->memory->executableMemoryId) {
+        unsigned char* hostAddress = (unsigned char*)context->CONTEXT_RIP;
+        std::shared_ptr<X64CodeChunk> chunk = cpu->thread->memory->getCodeChunkContainingHostAddress(hostAddress);
+        if (chunk && chunk->getEipLen()) { // during start up eip is already set
+            cpu->eip.u32 = chunk->getEipThatContainsHostAddress(hostAddress, NULL, NULL) - cpu->seg[CS].address;
+        }
+    }
+    context->CONTEXT_RIP = (U64)cpu->thread->process->runSignalAddress;
+    if (cpu->exceptionR9 == 1) {
+        int ii = 0;
+    }
+}
+
+void signalHandler() {
+    BOXEDWINE_CRITICAL_SECTION;
+    KThread* currentThread = KThread::currentThread();
+    x64CPU* cpu = (x64CPU*)currentThread->cpu;    
+
+    U64 result = cpu->startException(cpu->exceptionAddress, cpu->exceptionReadAddress, NULL, NULL);
     if (result) {
-        context->CONTEXT_RIP = result;
+        cpu->returnHostAddress = result;
         return;
     }
-    
-    InException inException(cpu);
-    if (info->si_signo == SIGILL || info->si_signo == SIGTRAP) {
-        if (context->CONTEXT_RSP & 0xf) {
+    InException e(cpu);
+    if (cpu->exceptionSigNo == SIGILL || cpu->exceptionSigNo == SIGTRAP) {
+        if (cpu->exceptionRSP & 0xf) {
             kpanic("seh_filter: bad stack alignment");
         }
-        U64 rip = cpu->handleIllegalInstruction(context->CONTEXT_RIP);
+        U64 rip = cpu->handleIllegalInstruction(cpu->exceptionRip);
         if (rip) {
-            context->CONTEXT_RIP = rip;
+            cpu->returnHostAddress = rip;
             return;
         }
+        cpu->returnHostAddress = cpu->exceptionRip;
         return;
-    } else if (info->si_signo == SIGBUS && info->si_code == BUS_ADRALN) {
+    } else if (cpu->exceptionSigNo == SIGBUS && cpu->exceptionSigCode == BUS_ADRALN) {
         // :TODO: figure out how AC got set, I've only seen this while op logging
-        context->CONTEXT_FLAGS &= ~AC;
+        cpu->flags &= ~AC;
+        cpu->returnHostAddress = cpu->exceptionRip;
         return;
-    } else if ((info->si_signo == SIGBUS || info->si_signo == SIGSEGV) && ((context->CONTEXT_RIP & 0xFFFFFFFF00000000l)==(U64)cpu->thread->memory->executableMemoryId)) {
-        U64 rip = cpu->handleAccessException(context->CONTEXT_RIP, address, readAccess, context->CONTEXT_RSI, context->CONTEXT_RDI, context->CONTEXT_R8, context->CONTEXT_R9, (U64*)&context->CONTEXT_R10, doSyncFrom, doSyncTo);
+    } else if ((cpu->exceptionSigNo == SIGBUS || cpu->exceptionSigNo == SIGSEGV) && ((cpu->exceptionRip & 0xFFFFFFFF00000000l)==(U64)cpu->thread->memory->executableMemoryId)) {
+        U64 rip = cpu->handleAccessException(cpu->exceptionRip, cpu->exceptionAddress, cpu->exceptionReadAddress, cpu->exceptionRSI, cpu->exceptionRDI, cpu->exceptionR8, cpu->exceptionR9, &cpu->exceptionR10, NULL, NULL);
         if (rip) {
-            context->CONTEXT_RIP = rip;
+            cpu->returnHostAddress = rip;
+            return;
         }
+        // :TODO: can jumping cause us to miss something?
+        cpu->returnHostAddress = cpu->exceptionRip;
         return;
-    } else if (info->si_signo == SIGFPE && (info->si_code == FPE_INTDIV || info->si_code == FPE_FLTDIV)) {
-        context->CONTEXT_RIP = cpu->handleDivByZero(doSyncFrom, doSyncTo);
+    } else if (cpu->exceptionSigNo == SIGFPE && (cpu->exceptionSigCode == FPE_INTDIV || cpu->exceptionSigCode == FPE_FLTDIV)) {
+        cpu->returnHostAddress = cpu->handleDivByZero(NULL, NULL);
         return;
     }
-    kpanic("unhandled exception %d", info->si_signo);
+    kpanic("unhandled exception %d", cpu->exceptionSigNo);
 }
 
 U32 platformThreadCount = 0;
@@ -368,7 +390,6 @@ void* platformThreadProc(void* param) {
 }
 
 void scheduleThread(KThread* thread) {
-    platformThreadCount++;
     x64CPU* cpu = (x64CPU*)thread->cpu;
     pthread_t threadId;
     

@@ -518,6 +518,17 @@ U32 KNativeSocketObject::connect(KFileDescriptor* fd, U32 address, U32 len) {
         setNativeBlocking(this->nativeSocket, true);
     }
 #endif
+    U16 family = readw(address);
+    if (family == K_AF_INET) {
+        if (readb(address + 4) == 127 && readb(address + 5) == 0 && readb(address + 6) == 0 && readb(address + 7) == 1) {
+            U16 port = readb(address + 3) | (((U32)readb(address + 2)) << 8);
+            if (port == 631) {
+                // wine seems to try and connect to a print server, if we are running on Linux it hangs while trying to read.  That is probably a bug, for now just prevent the connection.
+                return -K_ECONNREFUSED;
+            }
+        }
+    }
+
     if (::connect(this->nativeSocket, (struct sockaddr*)buffer, len)==0) {
         int error;
         socklen_t optLen = 4;

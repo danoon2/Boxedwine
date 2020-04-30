@@ -255,6 +255,9 @@ public:
     void* reTranslateChunkAddressFromR9; // will be called when the program tries to jump to memory that hasn't been translated yet or needs to be retranslated
     void* returnToLoopAddress; // will be called after a syscall if x64CPU.exitToStartThreadLoop is set to true.  This return will cause the program to return to x64CPU::run()
     void* jmpAndTranslateIfNecessaryToR9;
+#ifdef BOXEDWINE_POSIX
+    void* runSignalAddress;
+#endif
 #endif
 private:
     std::unordered_map<U32, KFileDescriptor*> fds;

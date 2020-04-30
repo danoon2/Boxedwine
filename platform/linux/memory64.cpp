@@ -134,7 +134,7 @@ static bool isAddressRangeInUse(void* p, U64 len) {
             fclose(file);
             return true;
         }
-        if (startAddress<(U64)p && endAddress>(U64)p+len) {
+        if (startAddress<(U64)p + len && endAddress>(U64)p) {
             fclose(file);
             return true;
         }
