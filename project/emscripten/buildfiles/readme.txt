@@ -1,0 +1,1 @@
+This is a build for javascript using Emscripten.  It also contains a simple web page as an example to launching games.

@@ -17,7 +17,7 @@ https://www.visualstudio.com/en-us/news/releasenotes/vs2013-community-vs
 Javascript
 
 
-buildjsfs_sdl2.sh/shellfs.html
+buildjs.sh/boxedwine-shell.js/shellfs.html
 This build script integrates the browserfs library [https://github.com/jvilk/BrowserFS].
 It introduces a writeable file store for the HOME_DIRECTORY directory. 
 3 options for setting variable storageMode:
@@ -26,53 +26,36 @@ It introduces a writeable file store for the HOME_DIRECTORY directory.
 - STORAGE_MEMORY (default)
 
 settings:
-By default uploading/downloading occurs inside the directory /root/home/username/files/.
-It is possible to modify this by appending a ?dir=somedir to the url, else change HOME_DIRECTORY in shellfs.html
-also possible to:
  - specify an alternate root zip file system.
- 	i.e. root=win32.zip. If not set it is assumed the root fs is boxedwine.zip and built from a directory called root.
- - specify a zip file to appear uncompressed underneath the HOME_DIRECTORY.
+ 	i.e. root=win32.zip. If not set it is assumed the root fs is boxedwine.zip.
+ - specify a zip file to appear uncompressed mounted on d:
  	i.e. app=chomp.zip would appear as /root/home/username/chomp/. Use: zip -r9qdgds 10m chomp.zip ./chomp/*
  - change the program to execute via ?p=/home/username/chomp/CHOMP.EXE. surround in quotes if path includes spaces.
  - set the working directory via ?work=chomp. This simplifies p as it can then be relative to the working directory.
  - set an overlay via ?overlay=more.zip;files.zip. Where each zip file contains additional files to add to the root file system. Existing files are overridden.
- - use c:/ as shorthand for /home/username/.wine/c_drive/
+ - use c:/ as shorthand for /home/username/.wine/dosdevices/c:/ (also works for d:/)
 Some simplifications are possible:
 boxedwine.html?p=notepad - run notepad in the root fs
 boxedwine.html?root=win32&app=chomp&work=chomp&p=CHOMP.EXE - no need to add .zip for root and app zip file name
-boxedwine.html?app=chomp&p=CHOMP.EXE - if p does not start with a ‘/‘ and app is set, then the working directory is set to dir + app, i.e. /home/username/files/chomp
+boxedwine.html?app=chomp&p=CHOMP.EXE - if p does not start with a ‘/‘ and app is set, then the working directory is set to dir + app, i.e. d:/chomp
 
-Remote serving of DLL files (&remote=true)
-As the DLL files utilised will depend on what is executed, it makes sense to only provide the minimal number of DLL files and augment with files from the network.
-To use:
-create a directory with minimal required DLLs (same directory structure as main zip file). Reference this via &overlay=dll-min.zip
-create a directory /dlls with the additional DLLs from root/lib/wine
-call the build script with extra parameter 'remote' ie buildjsfs_sdl2.sh remote
-This will additionally build dlls.json that should be copied along with the dlls directory to your webserver.
-* adding the remote param also ensures that the original dlls in lib/wine are not zipped into the main zip file.
-
-Alternative serving of zip file systems
+Remote serving of files
 The default browserfs ZipFs takes as an argument the zipped contents of the file system and lazily unzips files upon request.
 Using the &ondemand parameter changes the behaviour to only request the individual zip file entries on demand.
-This can affect the loading of &root and/or &app filesystems
+This can affect the loading of &root filesystem
 ie
-&ondemand=root&overlay=ondemand-Wine1.7.55-v7 
-- files in common-Wine1.7.55-v7 are downloaded on startup, any files not found are loaded on demand from root.zip
-&ondemand=app&overlay=game-common&app=game&p=GAME.EXE
-- files in game-common.zip are downloaded on startup, any files not found are loaded on demand from game.zip
-&ondemand=root-app&overlay=common-Wine1.7.55-v7;game-common.zip&app=game&p=GAME.EXE
-- combination of above
+&ondemand=root&root=fullWine1.7.55-v8&overlay=wine1.7.55-v8-min
+- files in wine1.7.55-v8-min are downloaded on startup, any files not found are loaded on demand from fullWine1.7.55-v8.zip
 
 This approach has the advantage that the downloaded zipped filesystems are smaller, but it has the disadvantage that
 the network requests for on demand files are synchronous (may block ui thread and also potentially crash the emulator when retrieving large files) and the web server must support range requests.
-Provided in /project/linux/buildFiles is common-Wine1.7.55-v7.zip which contains the minimum files necessary to load a basic wine application
+Provided in /project/linux/buildFiles is wine1.7.55-v8-min.zip which contains the minimum files necessary to load a basic wine application
 To generate your own minimal set of files follow the instructions in /tools/common/Main.java
 
 
 Other configuration options:
 AUTO_RUN - indicates if start button is shown or page auto-runs. default true
 ALLOW_PARAM_OVERRIDE_FROM_URL - indicates if url can be appended with params as above for dir, app, m & p.
-ZLIB - boxedwine internally supports zip file systems, however recent builds of emscripten are not compatible. Therefore support for zipped file system is now provided by browserfs and ZLIB is no longer used in the emscripten build.
 
 notes on file system modes:
 DROPBOX - OAuth dance provided via dropbox.js library [https://github.com/dropbox/dropbox-js] and oauth_receiver.html.
@@ -81,11 +64,11 @@ Also must set DROPBOX_APP_KEY and RECEIVE_URL (absolute path) inside the html.
 Remember to also set the receive_url in your dropbox app console.
 LOCAL_STORAGE - There are limits depending on browser and OS.
 
-other dials/tweaks for emscripten build files.
-see var Module inside the html file.
-
-misc notes:
-You can avoid using url params and hardcode the values straight into the html file.  Search for MANUAL: in html file. 
+other dials/tweaks inside boxedwine-shell.js
+see var Module and configure as appropriate
+You can avoid using url params and hardcode the values.  Search for MANUAL:
 
 Drag and drop is supported. Set AUTO_RUN to false. Simply drag a directory into the page. A dialog will appear and list entries for all executable files found. This is very useful.
-Getting files into/out of the emulator is provided behind the SHOW_UPLOAD_DOWNLOAD flag in the html. Jszip is used to download a directory as an archive.
+Getting files into/out of the emulator is provided behind the SHOW_UPLOAD_DOWNLOAD flag. Jszip is used to download a directory as an archive.
+By default uploading/downloading occurs inside the directory mapped to d:
+

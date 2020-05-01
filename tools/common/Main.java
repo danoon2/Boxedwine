@@ -10,22 +10,23 @@ To be used in conjunction with &ondemand parameter
 
 Input:
 1. The output from the browser console when running boxedwine emscripten port with the Module parameter logReadFiles : true (see boxedwine-shell.js)
-2. Directory path to a *COPY* of the filesystem (either root or application) that was used to generate the above
+2. Directory path to a *COPY* of the filesystem used to generate the above
 
 Output:
 The above referenced boxedwine filesystem will be stripped of all files not referenced in the logfile
 
 The output can then be zipped up and referenced using &overlay=common.zip
 Note: 
-1. the overlay parameter expects that the zip file structure does not begin with /root in the case of a root overlay
-2. If you are using this to produce a minimal set of files for use with &app then make sure the overlay directory begins with /home/username/files
+1. the overlay parameter expects that the zip file structure does not begin with /root in the case of a root overlay.
+a) cd root
+b) zip -r common.zip .
  */
 public class Main {
 
     private static final String FILE_TOKEN = " read file: ";
     public Main() throws Exception {
 
-        String logFile = "/Users/blah/Desktop/base/baseFiles-notepad.txt";
+        String logFile = "/Users/blah/Desktop/base/wine-1.7-basic_and_daytona.txt";//notepad_and_daytona.txt";
         String baseDirectory = "/Users/blah/Desktop/base"; //do not include /root at the end.
         List<String> commonFiles = extractCommon(logFile);
         makeCommonFS(commonFiles, baseDirectory);
@@ -77,8 +78,8 @@ public class Main {
                 String fileAndPath = extractFile(line);
                 //System.out.println("fileAndPath=" + fileAndPath);
                 if (fileAndPath.startsWith("/root")
-                        && !fileAndPath.startsWith("/root/tmp/")
-                        && !fileAndPath.contains("notepad")) {
+                        && !fileAndPath.startsWith("/root/tmp/")){
+                       // && !fileAndPath.contains("notepad")) {
                     filesAndPaths.add(fileAndPath);
                 }
             }
@@ -126,13 +127,16 @@ public class Main {
         }
         if(!found) {
             file.delete();
+            //System.out.println("deleting:" + path);
             return true;
         }
         return false;
     }
 
     private String extractFile(String line) {
-        return line.substring(line.indexOf(FILE_TOKEN) + FILE_TOKEN.length()).trim();
+        String entry = line.substring(line.indexOf(FILE_TOKEN) + FILE_TOKEN.length()).trim();
+        String removeBase = entry.replace("/root/base","/root");
+        return removeBase;
     }
     public static void main(String[] args) throws Exception {
         new Main();
