@@ -30,6 +30,15 @@ void BoxedwineData::init(int argc, const char **argv) {
     BoxedwineData::winVersions.push_back(BoxedWinVersion("win20", "Windows 2.0", 2, 0, 0, VER_PLATFORM_WIN32s, "Win32s 1.3", 0, 0, ""));    
 }
 
+BoxedWinVersion* BoxedwineData::getWinVersionFromName(const std::string& name) {
+    for (auto& win : BoxedwineData::winVersions) {
+        if (win.szVersion == name) {
+            return &win;
+        }
+    }
+    return NULL;
+}
+
 void BoxedwineData::startApp() {
     GlobalSettings::startUpArgs.apply();
 }

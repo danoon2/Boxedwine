@@ -378,7 +378,8 @@ U32 Fs::deleteNativeFile(const std::string& path) {
 }
 
 U32 Fs::deleteNativeDirAndAllFilesInDir(const std::string& path) {
-    return (U32)std::filesystem::remove_all(path);
+    std::error_code e; // will prevent it from throwing an error
+    return (U32)std::filesystem::remove_all(path, e);
 }
 
 U32 Fs::iterateAllNativeFiles(const std::string& path, bool recursive, bool includeDirs, std::function<U32(const std::string&, bool isDir)> f) {

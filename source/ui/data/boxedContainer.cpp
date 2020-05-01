@@ -41,6 +41,9 @@ BoxedContainer* BoxedContainer::createContainer(const std::string& dirPath, cons
     container->name = name;
     container->wineVersion = wineVersion;
     container->dirPath = dirPath;
+    if (!Fs::doesNativePathExist(dirPath)) {
+        Fs::makeNativeDirs(dirPath);
+    }
     container->saveContainer();
     return container;
 }

@@ -35,6 +35,7 @@ public:
     static void reloadContainers();
     static const std::vector<BoxedWinVersion>& getWinVersions() { return BoxedwineData::winVersions; }
     static int getDefaultWindowsVersionIndex() {return 4;} // windows 7
+    static BoxedWinVersion* getWinVersionFromName(const std::string& name);
 private:
     static void sortContainers();
     static void loadContainers();

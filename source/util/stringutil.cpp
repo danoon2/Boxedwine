@@ -35,16 +35,18 @@ bool stringStartsWith(std::string const &fullString, std::string const &start, b
 
 void stringSplit(std::vector<std::string>& results, const std::string& s, char seperator, int maxParts)
 {
-    std::string::size_type prev_pos = 0, pos = 0;
+    if (s.length()) {
+        std::string::size_type prev_pos = 0, pos = 0;
 
-    while((pos = s.find(seperator, pos)) != std::string::npos && (maxParts==-1 || ((int)results.size())<maxParts-1))
-    {
-        std::string substring( s.substr(prev_pos, pos-prev_pos) );
+        while ((pos = s.find(seperator, pos)) != std::string::npos && (maxParts == -1 || ((int)results.size()) < maxParts - 1))
+        {
+            std::string substring(s.substr(prev_pos, pos - prev_pos));
 
-        results.push_back(substring);
-        prev_pos = ++pos;
+            results.push_back(substring);
+            prev_pos = ++pos;
+        }
+        results.push_back(s.substr(prev_pos, pos - prev_pos));
     }
-    results.push_back(s.substr(prev_pos, pos-prev_pos));
 }
 
 void stringReplaceAll(std::string& subject, const std::string& search, const std::string& replace) {

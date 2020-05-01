@@ -247,9 +247,28 @@ void GlobalSettings::loadFileList() {
         std::string file = demo.child("FileURL").text().as_string();
         std::string exe = demo.child("ShortcutExe").text().as_string();
         std::string help = demo.child("Help").text().as_string();
-        std::string options = demo.child("ShortcutExe").text().as_string();
+        std::string options = demo.child("Options").text().as_string();
+        std::string installOptions = demo.child("InstallOptions").text().as_string();
         if (name.length() && file.length()) {
-            GlobalSettings::demos.push_back(AppFile(name, installType, icon, file, fileSize, exe, options, help));
+            GlobalSettings::demos.push_back(AppFile(name, installType, icon, file, fileSize, exe, options, help, "", installOptions));
+        } else {
+            break;
+        }
+    }
+    GlobalSettings::components.clear();
+    for (pugi::xml_node component : node.children("Component")) {
+        std::string name = component.child("Name").text().as_string();
+        std::string optionsName = component.child("OptionsName").text().as_string();
+        std::string installType = component.child("InstallType").text().as_string();
+        std::string icon = component.child("IconURL").text().as_string();
+        int fileSize = component.child("FileSizeMB").text().as_int();
+        std::string file = component.child("FileURL").text().as_string();
+        std::string exe = component.child("ShortcutExe").text().as_string();
+        std::string help = component.child("Help").text().as_string();
+        std::string options = component.child("Options").text().as_string();
+        std::string installOptions = component.child("InstallOptions").text().as_string();
+        if (name.length() && file.length()) {
+            GlobalSettings::components.push_back(AppFile(name, installType, icon, file, fileSize, exe, options, help, optionsName, installOptions));
         } else {
             break;
         }
@@ -258,8 +277,20 @@ void GlobalSettings::loadFileList() {
         for (auto& demo : GlobalSettings::getDemos()) {
             demo.buildIconTexture();
         }
+        for (auto& component : GlobalSettings::getComponents()) {
+            component.buildIconTexture();
+        }
         return false;
         });
+}
+
+AppFile* GlobalSettings::getComponentByOptionName(const std::string& name) {
+    for (auto& app : GlobalSettings::components) {
+        if (app.optionsName == name) {
+            return &app;
+        }
+    }
+    return NULL;
 }
 
 bool GlobalSettings::checkFileListForUpdate() {

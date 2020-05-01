@@ -289,6 +289,8 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "DD GDI Renderer:";
     case CONTAINER_VIEW_PROGRAMS_LABEL:
         return "Run in Container:";
+    case CONTAINER_VIEW_COMPONENTS_LABEL:
+        return "Components:";
     case CONTAINER_VIEW_REGEDIT_BUTTON_LABEL:
         return "Regedit";
     case CONTAINER_VIEW_WINECFG_BUTTON_LABEL:

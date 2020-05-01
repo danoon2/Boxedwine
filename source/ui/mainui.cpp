@@ -517,8 +517,9 @@ bool uiShow(const std::string& basePath, bool shutdownForHighDPI) {
     if (GlobalSettings::startUpArgs.runOnRestartUI) {
         runOnMainUI([]() {
             if (GlobalSettings::startUpArgs.runOnRestartUI) {
-                GlobalSettings::startUpArgs.runOnRestartUI();
+                std::function<void()> f = GlobalSettings::startUpArgs.runOnRestartUI;
                 GlobalSettings::startUpArgs.runOnRestartUI = nullptr;
+                f();                
             }
             return false;
             });        

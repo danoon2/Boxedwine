@@ -16,6 +16,8 @@ class BoxedContainer;
 // download icon - F01A
 #define INSTALL_DEMO_ICON "\xEF\x80\x9A"
 
+#define INSTALL_COMPONENTS_ICON "\xEF\x80\x9A"
+
 // archive icon - F187
 #define CONTAINER_ICON "\xEF\x86\x87"
 
@@ -88,6 +90,7 @@ public:
     static bool hasIconsFont() {return GlobalSettings::iconFontsLoaded;}
     static std::vector<AppFile>& getDemos() {return GlobalSettings::demos;}
     static std::vector<AppFile>& getComponents() { return GlobalSettings::components; }
+    static AppFile* getComponentByOptionName(const std::string& name);
     static void downloadFile(const std::string& url, const std::string& filePath, const std::string& name, U32 sizeMB, std::function<void(bool)> onCompleted);
     static std::string createUniqueContainerPath(const std::string& name);
     static bool isDpiAware() {return GlobalSettings::scale != 100;}

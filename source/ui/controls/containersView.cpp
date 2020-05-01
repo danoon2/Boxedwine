@@ -84,6 +84,30 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
         }
     };
 
+    if (GlobalSettings::getComponents().size()) {
+        row = section->addRow(CONTAINER_VIEW_COMPONENTS_LABEL, 0);
+
+        std::vector<ComboboxItem> components;
+        for (auto& component : GlobalSettings::getComponents()) {
+            components.push_back(ComboboxItem(component.name));
+        }
+        componentsControl = row->addComboBox(components, 0);
+
+        containerRegeditButtonControl = row->addButton(getTranslation(INSTALLVIEW_INSTALL_BUTTON_LABEL));
+        containerRegeditButtonControl->onChange = [this]() {
+            if (this->saveChanges()) {
+                AppFile& app = GlobalSettings::getComponents()[componentsControl->getSelection()];
+                if (Fs::doesNativePathExist(app.localFilePath)) {
+                    app.install(false, this->currentContainer);
+                } else {
+                    GlobalSettings::downloadFile(app.filePath, app.localFilePath, app.name, app.size, [&app, this](bool sucess) {
+                        app.install(false, this->currentContainer);
+                        });
+                }
+            }
+        };
+    }
+
     section->addSeparator();
     std::shared_ptr<LayoutButtonControl> selectAppButton = section->addButton(CONTAINER_OPTIONS_DLG_ADD_APP_LABEL, CONTAINER_OPTIONS_DLG_ADD_APP_HELP, getTranslation(CONTAINER_OPTIONS_DLG_ADD_APP_BUTTON_LABEL));
     selectAppButton->onChange = [this]() {
