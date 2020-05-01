@@ -152,6 +152,14 @@ void* x64CPU::init() {
         this->thread->process->jmpAndTranslateIfNecessaryToR9 = chunk3->getHostAddress();
     }
     this->jmpAndTranslateIfNecessaryToR9 = this->thread->process->jmpAndTranslateIfNecessaryToR9;
+#ifdef BOXEDWINE_POSIX
+    if (!this->thread->process->runSignalAddress) {
+        X64Asm translateData(this);
+        translateData.createCodeForRunSignal();
+        std::shared_ptr<X64CodeChunk> chunk3 = translateData.commit(true);
+        this->thread->process->runSignalAddress = chunk3->getHostAddress();
+    }
+#endif
     return result;
 }
 
@@ -450,7 +458,9 @@ U64 x64CPU::handleCodePatch(U64 rip, U32 address, U64 rsi, U64 rdi, std::functio
         op->next = DecodedOp::alloc();
         op->next->inst = Done;
         op->next->pfn = NormalCPU::getFunctionForOp(op->next);
-        doSyncFrom(op);
+        if (doSyncFrom) {
+            doSyncFrom(op);
+        }
 
         if (this->flags & DF) {
             this->df = -1;
@@ -498,7 +508,9 @@ U64 x64CPU::handleCodePatch(U64 rip, U32 address, U64 rsi, U64 rdi, std::functio
         this->logFile = NULL;       
         op->pfn(this, op);   
         this->logFile = f;        
-        doSyncTo(op);
+        if (doSyncTo) {
+            doSyncTo(op);
+        }
 
         // eip was ajusted after running this instruction                        
         U32 a = this->getEipAddress();
@@ -566,7 +578,8 @@ U64 x64CPU::handleMissingCode(U64 r8, U64 r9, U32 inst) {
     U32 page = (U32)r8;
     U32 offset = (U32)r9;
 
-    this->translateEip(((page << K_PAGE_SHIFT) | offset) - this->seg[CS].address);  
+    this->eip.u32 = ((page << K_PAGE_SHIFT) | offset) - this->seg[CS].address;
+    this->translateEip(this->eip.u32);  
     if (inst==0xCA148B4F) {
         return (U64)(this->eipToHostInstructionPages[page]);
     } else {
@@ -595,7 +608,7 @@ U32 dynamicCodeExceptionCount;
 
 U64 x64CPU::handleAccessException(U64 rip, U64 address, bool readAddress, U64 rsi, U64 rdi, U64 r8, U64 r9, U64* r10, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo) {
     U32 inst = *((U32*)rip);
-    if (inst == 0xCE24FF43) {
+    if (inst == 0xCE24FF43) { // useLargeAddressSpace = true
         this->translateEip((U32)r9 - this->seg[CS].address);
         return 0;
     } else if ((inst==0x0A8B4566 || inst==0xCA148B4F) && (r8 || r9)) { // if these constants change, update handleMissingCode too     
@@ -629,10 +642,14 @@ U64 x64CPU::handleAccessException(U64 rip, U64 address, bool readAddress, U64 rs
         void* fromHost = this->thread->memory->getExistingHostAddress(this->fromEip);
         std::shared_ptr<X64CodeChunk> chunk = this->thread->memory->getCodeChunkContainingHostAddress((void*)rip);
 #endif
-        doSyncFrom(NULL);
+        if (doSyncFrom) {
+            doSyncFrom(NULL);
+        }
         // this can be exercised with Wine 5.0 and CC95 demo installer, it is triggered in strlen as it tries to grow the stack
         this->thread->seg_mapper((U32)address, readAddress, !readAddress, false);
-        doSyncTo(NULL);
+        if (doSyncTo) {
+            doSyncTo(NULL);
+        }
         U64 result = (U64)this->translateEip(this->eip.u32); 
         if (result==0) {
             kpanic("x64CPU::handleAccessException failed to translate code");
@@ -642,9 +659,13 @@ U64 x64CPU::handleAccessException(U64 rip, U64 address, bool readAddress, U64 rs
 }
 
 U64 x64CPU::handleDivByZero(std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo) {
-    doSyncFrom(NULL);
+    if (doSyncFrom) {
+        doSyncFrom(NULL);
+    }
     this->prepareException(EXCEPTION_DIVIDE, 0);
-    doSyncTo(NULL);
+    if (doSyncTo) {
+        doSyncTo(NULL);
+    }
     U64 result = (U64)this->translateEip(this->eip.u32); 
     if (result==0) {
         kpanic("x64CPU::handleDivByZero failed to translate code");
@@ -658,9 +679,13 @@ U64 x64CPU::startException(U64 address, bool readAddress, std::function<void(Dec
         return (U64)this->returnToLoopAddress;                
     }
     if (this->inException) {
-        doSyncFrom(NULL);
+        if (doSyncFrom) {
+            doSyncFrom(NULL);
+        }
         this->thread->seg_mapper((U32)address, readAddress, !readAddress);
-        doSyncTo(NULL);
+        if (doSyncTo) {
+            doSyncTo(NULL);
+        }
         U64 result = (U64)this->translateEip(this->eip.u32); 
         if (result==0) {
             kpanic("x64CPU::startException failed to translate code in exception");

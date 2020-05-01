@@ -24,6 +24,17 @@ public:
     U64 memOffset;
     U64 negMemOffset;
     bool inException;
+    U64 exceptionAddress;
+    bool exceptionReadAddress;
+    int exceptionSigNo;
+    int exceptionSigCode;
+    U64 exceptionRip;
+    U64 exceptionRSP;
+    U64 exceptionRSI;
+    U64 exceptionRDI;
+    U64 exceptionR8;
+    U64 exceptionR9;
+    U64 exceptionR10;
 	int exitToStartThreadLoop; // this will be checked after a syscall, if set to 1 then then x64CPU.returnToLoopAddress will be called
     void* eipToHostInstructionAddressSpaceMapping;
 	void*** eipToHostInstructionPages;

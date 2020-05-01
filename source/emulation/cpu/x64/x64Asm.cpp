@@ -1448,6 +1448,8 @@ void X64Asm::syncRegsToHost(S8 excludeReg) {
     }
     writeToRegFromMem(HOST_DS, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_DS_ADDRESS, 4, false);
 
+    // R12-R15 are non volitile on windows and linux
+
     U8 tmpReg = getTmpReg();
     writeToRegFromMem(tmpReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_FLAGS, 4, false);
     pushNativeReg(tmpReg, true);
@@ -3937,6 +3939,26 @@ void X64Asm::createCodeForJmpAndTranslateIfNecessary(bool includeSetupFromR9) {
     writeToRegFromMem(HOST_TMP, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_RETURN_HOST_ADDRESS, 8, false);
     jmpNativeReg(HOST_TMP, true);
 }
+
+#ifdef BOXEDWINE_POSIX
+void signalHandler();
+
+void X64Asm::createCodeForRunSignal() {
+    callHost((void*)signalHandler);
+    syncRegsToHost();
+    
+    // :TODO: full rsi and rdi too?
+
+    writeToRegFromMem(0, true, HOST_CPU, true, -1, false, 0, (U32)(offsetof(x64CPU, exceptionR8)), 8, false);
+    writeToRegFromMem(1, true, HOST_CPU, true, -1, false, 0, (U32)(offsetof(x64CPU, exceptionR9)), 8, false);
+    writeToRegFromMem(2, true, HOST_CPU, true, -1, false, 0, (U32)(offsetof(x64CPU, exceptionR10)), 8, false);
+
+    write8(REX_BASE | REX_MOD_RM);
+    write8(0xff);
+    write8(0xa0 | HOST_CPU);
+    write32(CPU_OFFSET_RETURN_HOST_ADDRESS);
+}
+#endif
 
 void X64Asm::fpu0(U8 rm) {
     if (rm >= 0xc0) {
