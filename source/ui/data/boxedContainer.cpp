@@ -122,6 +122,7 @@ void BoxedContainer::launch() {
     }
     GlobalSettings::startUpArgs.setRoot(root);
     GlobalSettings::startUpArgs.mountInfo = this->mounts;
+    GlobalSettings::startUpArgs.logPath = getLogPath();
 }
 
 void BoxedContainer::getNewApps(std::vector<BoxedApp>& apps, MountInfo* mount, const std::string& nativeDirectory) {
@@ -390,4 +391,8 @@ void BoxedContainer::setWindowsVersion(const BoxedWinVersion& version) {
     }
     userReg.save();
     systemReg.save();
+}
+
+std::string BoxedContainer::getLogPath() {
+    return this->dirPath + Fs::nativePathSeperator + "lastLog.txt";    
 }

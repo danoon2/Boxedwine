@@ -61,6 +61,7 @@ public:
     static std::string getRootFolder(BoxedContainer* container);    
     static std::string getDemoFolder();
     static std::string getExePath() {return GlobalSettings::exePath;}
+    static std::string getExeFilePath() { return GlobalSettings::exeFilePath; }
     static const std::vector<WineVersion>& getWineVersions() {return GlobalSettings::wineVersions;}
     static const std::vector<WineVersion>& getAvailableWineVersions() { return GlobalSettings::availableWineVersions; }
     static std::string getDataFolder() {return GlobalSettings::dataFolderLocation;}
@@ -116,6 +117,7 @@ private:
     static std::string dataFolderLocation;
     static std::vector<WineVersion> wineVersions;
     static std::string exePath;
+    static std::string exeFilePath;
     static std::string theme;
     static std::string configFilePath;
 

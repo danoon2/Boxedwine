@@ -41,6 +41,7 @@ public:
     void addArgs(const std::vector<std::string>& args) {this->args.insert(this->args.end(), args.begin(), args.end());}
     void addZip(const std::string& zip) {this->zips.push_back(zip);}
     void setRoot(const std::string& root) {this->root = root;}
+    std::vector<std::string> buildArgs();
 
     std::vector<MountInfo> mountInfo;    
     std::vector<std::string> envValues;
@@ -65,7 +66,7 @@ public:
     bool readyToLaunch;
     std::string showAppPickerForContainerDir;
     std::function<void()> runOnRestartUI;
-
+    std::string logPath;
 private:
     bool workingDirSet;
     bool resolutionSet;    

@@ -128,6 +128,63 @@ void StartUpArgs::buildVirtualFileSystem() {
     }
 }
 
+std::vector<std::string> StartUpArgs::buildArgs() {
+    std::vector<std::string> args;
+
+    if (root.length()) {
+        args.push_back("-root");
+        args.push_back(root);
+    }
+    for (auto& z : zips) {
+        args.push_back("-zip");
+        args.push_back(z);
+    }
+    if (nozip) {
+        args.push_back("-nozip");
+    }
+    if (workingDir.length()) {
+        args.push_back("-w");
+        args.push_back(workingDir);
+    }
+    if (sdlFullScreen) {
+        args.push_back("-fullscreen");
+    }
+    if (sdlScaleX != 100) {
+        args.push_back("-scale");
+        args.push_back(std::to_string(sdlScaleX));
+    }
+    if (sdlScaleQuality.length() && sdlScaleQuality != "0") {
+        args.push_back("-scale_quality");
+        args.push_back(sdlScaleQuality);
+    }
+    args.push_back("-resolution");
+    args.push_back(std::to_string(screenCx) + "x" + std::to_string(screenCy));
+    if (screenBpp != 32) {
+        args.push_back("-bpp");
+        args.push_back(std::to_string(screenBpp));
+    }
+    if (glExt.length()) {
+        args.push_back("-glext");
+        args.push_back(glExt);
+    }
+    if (dpiAware) {
+        args.push_back("-dpiAware");
+    }
+    for (auto& m : mountInfo) {
+        if (m.wine) {
+            args.push_back("-mount_drive");            
+        } else {
+            args.push_back("-mount");
+        }
+        args.push_back(m.nativePath);
+        args.push_back(m.localPath);
+    }
+    for (auto& a : this->args) {
+        args.push_back(a);
+    }
+    return args;
+}
+
 bool StartUpArgs::apply() {
     KSystem::init();    
 

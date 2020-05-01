@@ -21,6 +21,7 @@ std::vector<AppFile> GlobalSettings::components;
 int GlobalSettings::iconSize;
 StartUpArgs GlobalSettings::startUpArgs;
 std::string GlobalSettings::exePath;
+std::string GlobalSettings::exeFilePath;
 std::string GlobalSettings::theme;
 std::string GlobalSettings::configFilePath;
 ImFont* GlobalSettings::largeFontBold;
@@ -50,6 +51,7 @@ void GlobalSettings::init(int argc, const char **argv) {
     }
     GlobalSettings::dataFolderLocation = GlobalSettings::dataFolderLocation.substr(0, GlobalSettings::dataFolderLocation.length()-1);
     GlobalSettings::exePath = Fs::getNativeParentPath(argv[0]);
+    GlobalSettings::exeFilePath = argv[0];
     if (!Fs::doesNativePathExist(GlobalSettings::dataFolderLocation)) {
         Fs::makeNativeDirs(GlobalSettings::dataFolderLocation);
     }

@@ -456,7 +456,8 @@ bool uiShow(const std::string& basePath) {
     cy = cy * scale / SCALE_DENOMINATOR;
 #endif
     window = SDL_CreateWindow("Boxedwine UI", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, cx, cy, window_flags);
-
+    // when launching boxedwine as another process, if that process creates and destroys more than 1 window (changing emulated resolution), on Windows at least, when that process exits the above create window sometimes won't be on top
+    SDL_RaiseWindow(window);
 #ifdef BOXEDWINE_IMGUI_DX9
     if (StartUpArgs::uiType == UI_TYPE_DX9) {
         SDL_SysWMinfo wmInfo;

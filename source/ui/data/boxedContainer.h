@@ -43,6 +43,7 @@ public:
     void setGDI(bool gdi);
     std::string getWindowsVersion();
     void setWindowsVersion(const BoxedWinVersion& version);    
+    std::string getLogPath();
 
 private:
     void loadApps();

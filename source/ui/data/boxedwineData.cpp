@@ -1,5 +1,11 @@
 #include "boxedwine.h"
 #include "../boxedwineui.h"
+#include "Poco/Process.h"
+#include "Poco/PipeStream.h"
+#include "Poco/Exception.h"
+#include "../../util/threadutils.h"
+
+#include <SDL.h>
 
 std::vector<BoxedContainer*> BoxedwineData::containers;
 std::vector<BoxedWinVersion> BoxedwineData::winVersions;
@@ -40,7 +46,70 @@ BoxedWinVersion* BoxedwineData::getWinVersionFromName(const std::string& name) {
 }
 
 void BoxedwineData::startApp() {
+#ifdef BOXEDWINE_UI_LAUNCH_IN_PROCESS
     GlobalSettings::startUpArgs.apply();
+#else
+    Poco::Process::Args args;
+    std::vector<std::string> a = GlobalSettings::startUpArgs.buildArgs();
+    std::string log;
+
+    for (auto& arg : a) {
+        args.push_back(arg);
+    }
+    try {
+        Poco::Pipe outPipe;
+        Poco::ProcessHandle handle = Poco::Process::launch(GlobalSettings::getExeFilePath(), args, 0, &outPipe, 0);
+        bool threadRunning = true;
+        bool windowCreated = false;
+
+        runInBackgroundThread([&outPipe, &handle, &threadRunning, &windowCreated, &log]() {
+            char tmp[2];
+            try {                
+                tmp[1] = 0;
+                while (outPipe.readBytes(tmp, 1)) {
+                    log += tmp;
+                    if (stringContains(log, "Creating Window")) {
+                        windowCreated = true;
+                    }
+                }
+            } catch (Poco::Exception& e) {
+                runOnMainUI([e]() {
+                    new OkDlg(GENERIC_DLG_ERROR_TITLE, e.displayText(), nullptr);
+                    return false;
+                    });
+                printf("%s", e.displayText().c_str());
+            }
+            handle.wait();
+            threadRunning = false;
+            });
+        while (threadRunning) {
+            if (windowCreated) {
+                if (uiIsRunning()) {
+                    uiShutdown();
+                }
+            } else {
+                uiLoop();
+            }
+            SDL_Delay(16);
+        }
+    } catch (Poco::Exception& e) {
+        runOnMainUI([e]() {
+            new OkDlg(GENERIC_DLG_ERROR_TITLE, e.displayText(), nullptr);
+            return false;
+            });
+        printf("%s", e.displayText().c_str());
+    }    
+    if (uiIsRunning()) {
+        uiShutdown();
+    }
+    if (GlobalSettings::startUpArgs.logPath.length()) {
+        stringReplaceAll(log, "\r\n", "\n");
+        FILE* f = fopen(GlobalSettings::startUpArgs.logPath.c_str(), "w");
+        fwrite(log.c_str(), 1, log.length(), f);
+        fflush(f);
+        fclose(f);
+    }
+#endif
 }
 
 void BoxedwineData::reloadContainers() {

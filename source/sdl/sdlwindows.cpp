@@ -617,6 +617,8 @@ U32 sdlCreateOpenglWindow_main_thread(KThread* thread, Wnd* wnd, int major, int 
     // until I figure out how to scale GL window
     sdlScaleX = 100;
     sdlScaleY = 100;
+    klog("Creating Window for OpenGL: %dx%d", cx, cy);
+    fflush(stdout);
     sdlWindow = SDL_CreateWindow("OpenGL Window", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, cx, cy, sdlFlags);
 
     if (!sdlWindow) {
@@ -740,6 +742,8 @@ static void displayChanged(KThread* thread) {
             }
         }
         
+        klog("Creating Window: %dx%d", cx, cy);
+        fflush(stdout);
         sdlWindow = SDL_CreateWindow("BoxedWine", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, cx, cy, SDL_WINDOW_SHOWN);
         sdlRenderer = SDL_CreateRenderer(sdlWindow, -1, 0);	
 #else
