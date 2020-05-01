@@ -403,7 +403,7 @@ bool uiLoop() {
     return done;
 }
 
-bool uiShow(const std::string& basePath, bool shutdownForHighDPI) {
+bool uiShow(const std::string& basePath) {
     // Setup SDL
     // (Some versions of SDL before <2.0.10 appears to have performance/stalling issues on a minority of Windows systems,
     // depending on whether SDL_INIT_GAMECONTROLLER is enabled or disabled.. updating to latest version of SDL is recommended!)
@@ -445,10 +445,6 @@ bool uiShow(const std::string& basePath, bool shutdownForHighDPI) {
         window_flags = (SDL_WindowFlags)(window_flags | SDL_WINDOW_OPENGL);
     }
 #endif
-
-    if (shutdownForHighDPI) {
-        window_flags = (SDL_WindowFlags)(window_flags | SDL_WINDOW_HIDDEN);
-    }
 
     U32 cx = 1024;
     U32 cy = 768;
@@ -588,14 +584,11 @@ bool uiShow(const std::string& basePath, bool shutdownForHighDPI) {
     while (!done && !GlobalSettings::startUpArgs.readyToLaunch && !GlobalSettings::restartUI)
     {
         done = uiLoop();
-        if (shutdownForHighDPI) {
-            break;
-        }
     }
-    if (done || GlobalSettings::restartUI || shutdownForHighDPI) {
+    if (done || GlobalSettings::restartUI) {
         uiShutdown();
     }
-    if (GlobalSettings::restartUI || shutdownForHighDPI) {
+    if (GlobalSettings::restartUI) {
         return true;
     }
     return GlobalSettings::startUpArgs.readyToLaunch;

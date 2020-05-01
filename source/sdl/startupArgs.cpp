@@ -430,6 +430,8 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
             if (!strcmp(argv[i], "opengl")) {
                 this->uiType = UI_TYPE_OPENGL;
             }
+        } else if (!strcmp(argv[i], "-dpiAware")) {
+            dpiAware = true;
         }
 #ifdef BOXEDWINE_RECORDER
         else if (!strcmp(argv[i], "-record")) {
