@@ -81,11 +81,24 @@
             document.getElementById('run-inline').style.display = 'none';
             document.getElementById('loading').style.display = '';
             Config.isRunningInline = true;
-            Config.showUploadDownload = true;
+            //Config.showUploadDownload = true;
+            //Config.locateRootBaseUrl = "/boxedwine/fs/";
+            //Config.locateAppBaseUrl = "/boxedwine/apps/";
+            //Config.locateOverlayBaseUrl = "/boxedwine/apps/";
             Config.urlParams = "p=notepad";
+            //Config.urlParams = addDefaultOnDemand("p=notepad");
             var script = document.createElement('script');
             script.src = "boxedwine.js";
             document.body.appendChild(script);
+        }
+        function addDefaultOnDemand(params) {
+        	if(! params.includes("root=") &&  ! params.includes("ondemand=")) {
+        		if(params.length >0) {
+        			params = params + "&";
+        		}
+        		params = params + "ondemand=root&root=fullWine1.7.55-v8&inline-default-ondemand-root-overlay=wine1.7.55-v8-min";
+        	}
+        	return params;
         }
         </script>
 {{{ SCRIPT }}}

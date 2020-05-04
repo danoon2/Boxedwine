@@ -18,6 +18,9 @@
         let DEFAULT_ROOT_ZIP_FILE = "boxedwine.zip";
         //params
         let Config = {};
+        Config.locateRootBaseUrl = "";
+        Config.locateAppBaseUrl = "";
+        Config.locateOverlayBaseUrl = "";
         Config.urlParams = "";
         Config.storageMode = STORAGE_MEMORY;
         Config.isRunningInline = false;
@@ -56,9 +59,9 @@
         function setConfiguration() {
             Config.appDirPrefix = DEFAULT_APP_DIRECTORY;
             Config.isAutoRunSet = getAutoRun();
+            Config.rootZipFile = getRootZipFile("root"); //MANUAL:"base.zip";
             Config.extraZipFiles = getZipFileList("overlay"); //MANUAL:"dlls.zip;fonts.zip";
             Config.appZipFile = getAppZipFile("app"); //MANUAL:"chomp.zip";
-            Config.rootZipFile = getRootZipFile("root"); //MANUAL:"base.zip";
             Config.Program = getExecutable(); //MANUAL:"CHOMP.EXE";
             Config.WorkingDir = getWorkingDirectory(); //MANUAL:"";
             Config.isSoundEnabled = getSound();
@@ -219,6 +222,15 @@
         }
         function getZipFileList(param){
             var zipFiles = [];
+            if(Config.isRunningInline) {
+            	let ondemandMinOverlay =  getParameter("inline-default-ondemand-root-overlay");
+                if(ondemandMinOverlay.length > 0) {
+                    if(!ondemandMinOverlay.endsWith(".zip")){
+                        ondemandMinOverlay = ondemandMinOverlay + ".zip";
+                    }
+                    zipFiles.push(ondemandMinOverlay);
+                }
+            }
             var filenames =  getParameter(param);
             if(!allowParameterOverride() || filename===""){
                 console.log("not setting " + param + " zip file(s)");
@@ -232,8 +244,10 @@
                         }
                         zipFiles.push(filename);
                     }
-                    console.log("setting " + param + " zip file(s) to: "+zipFiles);
                 }
+            }
+            if(zipFiles.length > 0) {
+            	console.log("setting " + param + " zip file(s) to: "+zipFiles);
             }
             return zipFiles;
         }
@@ -284,7 +298,7 @@
         function syncGet(url, offset, length)
         {
           let req = new XMLHttpRequest();
-          req.open('GET', url, false);
+          req.open('GET', Config.locateRootBaseUrl + url, false);
           let data = null;
           let err = null;
           // Classic hack to download binary data as a string.
@@ -321,7 +335,7 @@
         {
             return new Promise(function(resolve, reject) {
                   const req = new XMLHttpRequest();
-                  req.open('HEAD', p);
+                  req.open('HEAD', Config.locateRootBaseUrl + p);
                   req.onreadystatechange = function(e) {
                     if (req.readyState === 4) {
                       if (req.status === 200) {
@@ -386,7 +400,7 @@
                     } else {
                         var rootListingObject = {};
                         rootListingObject[Config.rootZipFile] =  null;
-                        BrowserFS.FileSystem.XmlHttpRequest.Create({"index":rootListingObject, "baseUrl":""}, function(e2, xmlHttpFs){
+                        BrowserFS.FileSystem.XmlHttpRequest.Create({"index":rootListingObject, "baseUrl": Config.locateRootBaseUrl}, function(e2, xmlHttpFs){
                             if(e2){
                                 console.log(e2);
                             }
@@ -419,7 +433,7 @@
                 let centralOffset = getCentralOffset(new Uint8Array(lastPartOfFile));
                 let remainingLength = fileSizeAsInt - centralOffset;
                 let contents = syncGet(zipFilename, centralOffset, remainingLength);
-                BrowserFS.FileSystem.ZipFS.Create({"name": zipFilename , "zipData":new Buffer(contents)}, function(e3, zipfs){
+                BrowserFS.FileSystem.ZipFS.Create({"name": Config.locateRootBaseUrl + zipFilename , "zipData":new Buffer(contents)}, function(e3, zipfs){
                     if(e3){
                         console.log(e3);
                     }
@@ -434,7 +448,7 @@
                     var listingObject = {};
                     listingObject[Config.appZipFile] =  null;
                     var mfs = new BrowserFS.FileSystem.MountableFileSystem();
-                    BrowserFS.FileSystem.XmlHttpRequest.Create({"index":listingObject, "baseUrl":""}, function(e2, xmlHttpFs){
+                    BrowserFS.FileSystem.XmlHttpRequest.Create({"index":listingObject, "baseUrl": Config.locateAppBaseUrl}, function(e2, xmlHttpFs){
                         if(e2){
                             console.log(e2);
                         }
@@ -466,7 +480,7 @@
                     var listingObject = {};
                     listingObject[Config.extraZipFiles[i]] =  null;
                     var mfs = new BrowserFS.FileSystem.MountableFileSystem();
-                    BrowserFS.FileSystem.XmlHttpRequest.Create({"index":listingObject, "baseUrl":""}, function(e2, xmlHttpFs){
+                    BrowserFS.FileSystem.XmlHttpRequest.Create({"index":listingObject, "baseUrl": Config.locateOverlayBaseUrl}, function(e2, xmlHttpFs){
                         if(e2){
                             console.log(e2);
                         }
