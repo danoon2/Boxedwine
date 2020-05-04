@@ -32,6 +32,7 @@
 #include "controls/appChooserDlg.h"
 #include "controls/waitDlg.h"
 #include "controls/downloadDlg.h"
+#include "controls/unzipDlg.h"
 #include "controls/yesNoDlg.h"
 #include "controls/okDlg.h"
 #include "controls/installView.h"

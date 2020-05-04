@@ -44,6 +44,7 @@ private:
     friend class BoxedAppOptionsDialog;   
     friend class AppOptionsDlg;
     friend class ContainersView;
+    friend class AppFile;
 
     std::string name;
     std::string path;

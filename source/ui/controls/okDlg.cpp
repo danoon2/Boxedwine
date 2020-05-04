@@ -1,7 +1,7 @@
 #include "boxedwine.h"
 #include "../boxedwineui.h"
 
-OkDlg::OkDlg(int title, const std::string& label, std::function<void()> onDone) : BaseDlg(title, 400, 150, GlobalSettings::mediumFont), label(label), onDone(onDone) {
+OkDlg::OkDlg(int title, const std::string& label, std::function<void()> onDone, int width, int height) : BaseDlg(title, width, height, GlobalSettings::mediumFont), label(label), onDone(onDone) {
 }
 
 void OkDlg::run() {

@@ -1654,6 +1654,9 @@
     <ClCompile Include="..\..\..\..\..\lib\poco\Crypto\src\X509Certificate.cpp">
       <Filter>lib\poco\Crypto\src</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\ui\controls\unzipDlg.cpp">
+      <Filter>source\ui\control</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
@@ -4549,6 +4552,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\lib\poco\Foundation\src\zutil.h">
       <Filter>lib\poco\Foundation\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\ui\controls\unzipDlg.h">
+      <Filter>source\ui\control</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

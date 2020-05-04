@@ -73,6 +73,8 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "You must enter a name for your new container.";
     case INSTALLVIEW_ERROR_FAILED_TO_CREATE_CONTAINER_DIR:
         return "Failed to create a directory for the new container:\n\nerror msg: {0}";
+    case INSTALLVIEW_ERROR_FAILED_TO_CREATE_TEMP_DIR:
+        return "Failed to create temp directory:\n\n{0}\n\nerror msg: {1}";
     case INSTALLVIEW_TYPE_SETUP:
         return "Install using a setup program";
     case INSTALLVIEW_TYPE_MOUNT:
@@ -189,6 +191,8 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "Wine Version:";
     case COMMON_WINE_VERSION_HELP:
         return "You should just use the default Wine version, which is the most recent version, unless you know your application needs another version.";
+    case UNZIP_DLG_TITLE:
+        return "Unzipping ...";
     case GENERIC_BROWSE_BUTTON:
         return "Browse";
     case GENERIC_OPEN_BUTTON:

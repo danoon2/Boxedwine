@@ -967,6 +967,7 @@
     <ClCompile Include="..\..\..\..\..\source\ui\controls\optionsView.cpp" />
     <ClCompile Include="..\..\..\..\..\source\ui\controls\spinnerControl.cpp" />
     <ClCompile Include="..\..\..\..\..\source\ui\controls\uiSettings.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\ui\controls\unzipDlg.cpp" />
     <ClCompile Include="..\..\..\..\..\source\ui\controls\waitDlg.cpp" />
     <ClCompile Include="..\..\..\..\..\source\ui\controls\yesNoDlg.cpp" />
     <ClCompile Include="..\..\..\..\..\source\ui\data\appFile.cpp" />
@@ -1855,6 +1856,7 @@
     <ClInclude Include="..\..\..\..\..\source\ui\controls\optionsView.h" />
     <ClInclude Include="..\..\..\..\..\source\ui\controls\spinnerControl.h" />
     <ClInclude Include="..\..\..\..\..\source\ui\controls\uiSettings.h" />
+    <ClInclude Include="..\..\..\..\..\source\ui\controls\unzipDlg.h" />
     <ClInclude Include="..\..\..\..\..\source\ui\controls\waitDlg.h" />
     <ClInclude Include="..\..\..\..\..\source\ui\controls\yesNoDlg.h" />
     <ClInclude Include="..\..\..\..\..\source\ui\data\appFile.h" />

@@ -1558,6 +1558,9 @@
     <ClCompile Include="..\..\..\..\lib\imgui\examples\imgui_impl_opengl3.cpp">
       <Filter>source\ui\imgui</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\controls\unzipDlg.cpp">
+      <Filter>source\ui\controls</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -3710,6 +3713,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\lib\imgui\examples\imgui_impl_opengl3.h">
       <Filter>source\ui\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\ui\controls\unzipDlg.h">
+      <Filter>source\ui\controls</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
