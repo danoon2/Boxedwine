@@ -1104,6 +1104,7 @@
     <ClInclude Include="..\..\..\..\source\ui\controls\optionsView.h" />
     <ClInclude Include="..\..\..\..\source\ui\controls\spinnerControl.h" />
     <ClInclude Include="..\..\..\..\source\ui\controls\uiSettings.h" />
+    <ClInclude Include="..\..\..\..\source\ui\controls\unzipDlg.h" />
     <ClInclude Include="..\..\..\..\source\ui\controls\waitDlg.h" />
     <ClInclude Include="..\..\..\..\source\ui\controls\yesNoDlg.h" />
     <ClInclude Include="..\..\..\..\source\ui\data\appFile.h" />
@@ -3752,6 +3753,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\controls\unzipDlg.cpp" />
     <ClCompile Include="..\..\..\..\source\ui\controls\waitDlg.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x64'">true</ExcludedFromBuild>

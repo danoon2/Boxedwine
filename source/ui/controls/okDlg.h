@@ -3,7 +3,7 @@
 
 class OkDlg : public BaseDlg {
 public:
-    OkDlg(int title, const std::string& label, std::function<void()> onDone);
+    OkDlg(int title, const std::string& label, std::function<void()> onDone, int width=400, int height=150);
 
 protected:
     virtual void run();

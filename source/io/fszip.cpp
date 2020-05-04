@@ -215,4 +215,74 @@ bool FsZip::extractFileFromZip(const std::string& zipFile, const std::string& fi
     return false;
 }
 
+std::string FsZip::unzip(const std::string& zipFile, const std::string& path, std::function<void(U32, std::string fileName)> percentDone) {
+    unzFile z = unzOpen(zipFile.c_str());
+    unz_global_info global_info;
+    if (!z) {
+        return "Could not open zip file: " + zipFile;
+    }
+    U64 fileSize = Fs::getNativeFileSize(zipFile);
+    U64 compressedFileSizeProcessed = 0;
+
+    if (unzGetGlobalInfo(z, &global_info) != UNZ_OK) {
+        unzClose(z);
+        return "Could not read file global info from zip file: "+ zipFile;
+    }
+    if (!Fs::doesNativePathExist(path)) {
+        if (!Fs::makeNativeDirs(path)) {
+            return "Could not create directory: " + path + "\n\n" + strerror(errno);
+        }
+    }
+    for (U32 i = 0; i < global_info.number_entry; ++i) {
+        unz_file_info file_info;
+        char tmp[MAX_FILEPATH_LEN];
+
+        if (unzGetCurrentFileInfo(z, &file_info, tmp, MAX_FILEPATH_LEN, NULL, 0, NULL, 0) != UNZ_OK) {
+            unzClose(z);
+            return "Could not read file info from zip file: "+zipFile;
+        }
+        std::string fileName = tmp;
+        if (stringHasEnding(fileName, "/")) {
+            std::string dirPath = path + Fs::nativePathSeperator + fileName;
+            if (!Fs::doesNativePathExist(dirPath)) {
+                if (!Fs::makeNativeDirs(dirPath)) {
+                    unzClose(z);
+                    return "Could not create directory: " + dirPath + "\n\n" + strerror(errno);
+                }
+            }
+            unzGoToNextFile(z);
+            continue;
+        }
+        if (Fs::nativePathSeperator != "/") {
+            stringReplaceAll(fileName, "/", Fs::nativePathSeperator);
+        }
+        unzOpenCurrentFile(z);        
+        percentDone(compressedFileSizeProcessed * 100 / fileSize, fileName);
+        std::string outPath = path + Fs::nativePathSeperator + fileName;
+        FILE* f = fopen(outPath.c_str(), "wb");
+        if (f) {
+            U32 totalRead = 0;
+            U8 buffer[4096];
+
+            while (totalRead < file_info.uncompressed_size) {
+                U32 read = unzReadCurrentFile(z, buffer, sizeof(buffer));
+                if (!read) {
+                    break;
+                }
+                totalRead += read;
+                fwrite(buffer, read, 1, f);
+            }
+            fclose(f);
+            unzCloseCurrentFile(z);
+            compressedFileSizeProcessed += file_info.compressed_size;            
+        } else {
+            unzCloseCurrentFile(z);
+            unzClose(z);
+            return "Could not create file: " + outPath + "\n\n" + strerror(errno);
+        }
+        unzGoToNextFile(z);
+    }
+    unzClose(z);
+    return "";
+}
 #endif

@@ -248,11 +248,12 @@ void GlobalSettings::loadFileList() {
         int fileSize = demo.child("FileSizeMB").text().as_int();
         std::string file = demo.child("FileURL").text().as_string();
         std::string exe = demo.child("ShortcutExe").text().as_string();
+        std::string installExe = demo.child("InstallExe").text().as_string();
         std::string help = demo.child("Help").text().as_string();
         std::string options = demo.child("Options").text().as_string();
         std::string installOptions = demo.child("InstallOptions").text().as_string();
         if (name.length() && file.length()) {
-            GlobalSettings::demos.push_back(AppFile(name, installType, icon, file, fileSize, exe, options, help, "", installOptions));
+            GlobalSettings::demos.push_back(AppFile(name, installType, icon, file, fileSize, exe, options, help, "", installOptions, installExe));
         } else {
             break;
         }
@@ -270,7 +271,7 @@ void GlobalSettings::loadFileList() {
         std::string options = component.child("Options").text().as_string();
         std::string installOptions = component.child("InstallOptions").text().as_string();
         if (name.length() && file.length()) {
-            GlobalSettings::components.push_back(AppFile(name, installType, icon, file, fileSize, exe, options, help, optionsName, installOptions));
+            GlobalSettings::components.push_back(AppFile(name, installType, icon, file, fileSize, exe, options, help, optionsName, installOptions, ""));
         } else {
             break;
         }

@@ -5,7 +5,8 @@ Next Release
 * Fixed fstat system call, it will now will report the correct size of the file
 * Added SSE2 support for both the x64 and normal cores
 * Fixed crash in custom winex11.drv and updated file systems to use it
-* Launching Boxedwine without any command line arguments will now launch a new UI is available for that platform.  Currently as long as the platform support OpenGL it should work with the UI.
+* Launching Boxedwine without any command line arguments will now launch a new UI.  As long as the platform support OpenGL it should work with the UI.
+* Windows UI is DPI aware
 
 Known game fixes
 
