@@ -316,6 +316,8 @@
 		71222C7B24351CBA00CDBABD /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 71FBFCB32433B817003F17F1 /* Assets.xcassets */; };
 		713282172440FE47002DB535 /* libcrypto.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 715F34972440E6F50038F5A4 /* libcrypto.a */; };
 		713282182440FE47002DB535 /* libssl.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 715F34982440E6F50038F5A4 /* libssl.a */; };
+		715EABBA2460C839001B4730 /* unzipDlg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715EABB92460C839001B4730 /* unzipDlg.cpp */; };
+		715EABBB2460C839001B4730 /* unzipDlg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715EABB92460C839001B4730 /* unzipDlg.cpp */; };
 		715F34822440D7D10038F5A4 /* yesNoDlg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F34782440D7D00038F5A4 /* yesNoDlg.cpp */; };
 		715F34832440D7D10038F5A4 /* yesNoDlg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F34782440D7D00038F5A4 /* yesNoDlg.cpp */; };
 		715F34842440D7D20038F5A4 /* downloadDlg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F347B2440D7D10038F5A4 /* downloadDlg.cpp */; };
@@ -1295,6 +1297,8 @@
 		71222B262435140300CDBABD /* BoxedwineTest.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = BoxedwineTest.entitlements; sourceTree = "<group>"; };
 		71222C7F24351CBA00CDBABD /* BoxedwineX64.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BoxedwineX64.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		71222C8024351CBB00CDBABD /* BoxedwineX64-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "BoxedwineX64-Info.plist"; path = "/Users/jamesbryant/boxedwine-code/project/mac-xcode/Boxedwine/BoxedwineX64-Info.plist"; sourceTree = "<absolute>"; };
+		715EABB82460C839001B4730 /* unzipDlg.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = unzipDlg.h; sourceTree = "<group>"; };
+		715EABB92460C839001B4730 /* unzipDlg.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = unzipDlg.cpp; sourceTree = "<group>"; };
 		715F34782440D7D00038F5A4 /* yesNoDlg.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = yesNoDlg.cpp; sourceTree = "<group>"; };
 		715F34792440D7D10038F5A4 /* baseView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = baseView.h; sourceTree = "<group>"; };
 		715F347A2440D7D10038F5A4 /* okDlg.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = okDlg.h; sourceTree = "<group>"; };
@@ -2922,6 +2926,8 @@
 		71FBFD182433BBBE003F17F1 /* controls */ = {
 			isa = PBXGroup;
 			children = (
+				715EABB92460C839001B4730 /* unzipDlg.cpp */,
+				715EABB82460C839001B4730 /* unzipDlg.h */,
 				71205454244D01B300C3CB1B /* ImGuiLayout.cpp */,
 				71205455244D01B300C3CB1B /* ImGuiLayout.h */,
 				715F842A24464C080038F5A4 /* installView.cpp */,
@@ -4013,6 +4019,7 @@
 				71222C3624351CBA00CDBABD /* normal_strings.cpp in Sources */,
 				71222C3824351CBA00CDBABD /* ksignal.cpp in Sources */,
 				71222C3924351CBA00CDBABD /* common_bit.cpp in Sources */,
+				715EABBB2460C839001B4730 /* unzipDlg.cpp in Sources */,
 				715F639F2440E9100038F5A4 /* MailRecipient.cpp in Sources */,
 				715F64752440E9740038F5A4 /* PrivateKeyFactory.cpp in Sources */,
 				715F647D2440E9740038F5A4 /* CertificateHandlerFactoryMgr.cpp in Sources */,
@@ -4564,6 +4571,7 @@
 				71FBFE932433BBBE003F17F1 /* normal_strings.cpp in Sources */,
 				71FBFEBC2433BBBE003F17F1 /* ksignal.cpp in Sources */,
 				71FBFE8A2433BBBE003F17F1 /* common_bit.cpp in Sources */,
+				715EABBA2460C839001B4730 /* unzipDlg.cpp in Sources */,
 				715F639E2440E9100038F5A4 /* MailRecipient.cpp in Sources */,
 				715F64742440E9740038F5A4 /* PrivateKeyFactory.cpp in Sources */,
 				715F647C2440E9740038F5A4 /* CertificateHandlerFactoryMgr.cpp in Sources */,
@@ -4892,6 +4900,7 @@
 					POCO_UTIL_NO_JSONCONFIGURATION,
 					BOXEDWINE_X64_DEBUG_NO_EXCEPTIONS,
 					BOXEDWINE_POSIX,
+					BOXEDWINE_UI_LAUNCH_IN_PROCESS,
 				);
 				HEADER_SEARCH_PATHS = "";
 				INFOPLIST_FILE = "BoxedwineX64-Info.plist";
@@ -4946,6 +4955,7 @@
 					POCO_UTIL_NO_XMLCONFIGURATION,
 					POCO_UTIL_NO_JSONCONFIGURATION,
 					BOXEDWINE_POSIX,
+					BOXEDWINE_UI_LAUNCH_IN_PROCESS,
 				);
 				HEADER_SEARCH_PATHS = "";
 				INFOPLIST_FILE = "BoxedwineX64-Info.plist";
@@ -5106,6 +5116,7 @@
 					POCO_OS_FAMILY_UNIX,
 					POCO_UTIL_NO_XMLCONFIGURATION,
 					POCO_UTIL_NO_JSONCONFIGURATION,
+					BOXEDWINE_UI_LAUNCH_IN_PROCESS,
 				);
 				HEADER_SEARCH_PATHS = "";
 				INFOPLIST_FILE = Boxedwine/Info.plist;
@@ -5157,6 +5168,7 @@
 					POCO_OS_FAMILY_UNIX,
 					POCO_UTIL_NO_XMLCONFIGURATION,
 					POCO_UTIL_NO_JSONCONFIGURATION,
+					BOXEDWINE_UI_LAUNCH_IN_PROCESS,
 				);
 				HEADER_SEARCH_PATHS = "";
 				INFOPLIST_FILE = Boxedwine/Info.plist;
