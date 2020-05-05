@@ -25,7 +25,7 @@
 #define KTYPE_EPOLL 3
 #define KTYPE_SIGNAL 4
 
-class KObject : public BoxedPtrBase {
+class KObject : public std::enable_shared_from_this<KObject> {
 protected:
     KObject(U32 type);
 public:

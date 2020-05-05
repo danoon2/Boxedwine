@@ -4,7 +4,7 @@
 #include "ksocketmsg.h"
 #include "ksocketobject.h"
 
-class KUnixSocketObject : public KSocketObject, public std::enable_shared_from_this<KUnixSocketObject> {
+class KUnixSocketObject : public KSocketObject {
 public:
     KUnixSocketObject(U32 pid, U32 domain, U32 type, U32 protocol);
     virtual ~KUnixSocketObject();    

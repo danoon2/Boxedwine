@@ -441,7 +441,8 @@ U32 KUnixSocketObject::connect(KFileDescriptor* fd, U32 address, U32 len) {
 
                 this->connecting = destination;
                 BOXEDWINE_CONDITION_LOCK(destination->lockCond);
-                destination->pendingConnections.push_back(shared_from_this());
+                std::shared_ptr< KUnixSocketObject> t = std::dynamic_pointer_cast<KUnixSocketObject>(shared_from_this());
+                destination->pendingConnections.push_back(t);
                 BOXEDWINE_CONDITION_SIGNAL_ALL(destination->lockCond);
                 BOXEDWINE_CONDITION_UNLOCK(destination->lockCond);
 

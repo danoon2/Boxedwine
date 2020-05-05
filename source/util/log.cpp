@@ -92,7 +92,6 @@ void klog(const char* msg, ...) {
     char buff[1024];
     vsnprintf(buff, sizeof(buff), msg, argptr);
     OutputDebugStringA(buff);
-    OutputDebugStringA("\n");
 #endif
     va_end(argptr);
 }

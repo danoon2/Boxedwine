@@ -48,8 +48,6 @@ public:
 
     BOXEDWINE_CONDITION readingCond;
     BOXEDWINE_CONDITION writingCond;
-
-    KListNode<KNativeSocketObject*> waitingNode;
 };
 
 bool checkWaitingNativeSockets(int timeout);

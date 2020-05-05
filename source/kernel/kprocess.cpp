@@ -149,11 +149,15 @@ void KProcess::onExec() {
         removeTimer(&this->timer);
     }
 
+    std::vector<KThread*> toDelete;
     for (auto& n : this->threads) {
         KThread* thread = n.second;
         if (thread!=KThread::currentThread()) {
-            delete thread;
+            toDelete.push_back(thread);
         }
+    }
+    for (auto& thread : toDelete) {
+        terminateOtherThread(shared_from_this(), thread->id);
     }
     this->threads.clear();
     this->threads[KThread::currentThread()->id] = KThread::currentThread();
@@ -693,7 +697,7 @@ U32 KProcess::getModuleEip(U32 eip) {
     for (auto& n : this->mappedFiles) {
         BoxedPtr<MappedFile> mappedFile = n.second;
         if (eip>=mappedFile->address && eip<mappedFile->address+mappedFile->len)
-            return eip-mappedFile->address;
+            return eip-mappedFile->address+mappedFile->offset;
     }
     return 0;
 }
@@ -2560,7 +2564,7 @@ void KProcess::printMappedFiles() {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mappedFilesMutex);
     for (auto& n : this->mappedFiles) {
         const BoxedPtr<MappedFile>& mappedFile = n.second;
-        printf("    %.8X - %.8X %s\n", mappedFile->address, mappedFile->address+(int)mappedFile->len, mappedFile->file->openFile->node->path.c_str());
+        klog("    %.8X - %.8X %s\n", mappedFile->address, mappedFile->address+(int)mappedFile->len, mappedFile->file->openFile->node->path.c_str());
     }
 }
 
