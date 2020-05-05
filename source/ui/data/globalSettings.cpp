@@ -43,6 +43,7 @@ int GlobalSettings::screenCy;
 float GlobalSettings::extraVerticalSpacing;
 float GlobalSettings::fontScale;
 bool GlobalSettings::iconFontsLoaded;
+std::string GlobalSettings::filesUrl;
 
 void GlobalSettings::init(int argc, const char **argv) {
     GlobalSettings::dataFolderLocation = SDL_GetPrefPath("", "Boxedwine");
@@ -64,7 +65,7 @@ void GlobalSettings::init(int argc, const char **argv) {
     GlobalSettings::defaultResolution = config.readString("DefaultResolution", "1024x768");
     GlobalSettings::defaultScale = config.readInt("DefaultScale", 100);
     GlobalSettings::fontScale = (float)config.readInt("FontScale", 100) / 100.0f;
-
+    GlobalSettings::filesUrl = config.readString("FilesURL", "http://www.boxedwine.org/files.xml");
     if (!Fs::doesNativePathExist(configFilePath)) {
         saveConfig();
     }    
@@ -118,6 +119,7 @@ void GlobalSettings::saveConfig() {
     config.writeString("DefaultResolution", GlobalSettings::defaultResolution);
     config.writeInt("DefaultScale", GlobalSettings::defaultScale);
     config.writeInt("FontScale", (int)(GlobalSettings::fontScale*100));
+    config.writeString("FilesURL", GlobalSettings::filesUrl);
     config.saveChanges();
 }
 
@@ -322,7 +324,7 @@ void GlobalSettings::updateFileList(const std::string& fileLocation) {
     runInBackgroundThread([fileLocation]() {
         std::string errorMsg;
         GlobalSettings::filesListDownloading = true;
-        ::downloadFile("http://www.boxedwine.org/files.xml", fileLocation, [](U64 bytesCompleted) {
+        ::downloadFile(GlobalSettings::filesUrl, fileLocation, [](U64 bytesCompleted) {
             }, NULL, errorMsg);
         runOnMainUI([]() {
             GlobalSettings::loadFileList();

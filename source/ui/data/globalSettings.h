@@ -136,6 +136,7 @@ private:
     static int screenCy;
     static float fontScale;
     static bool iconFontsLoaded;
+    static std::string filesUrl;
 };
 
 #endif
