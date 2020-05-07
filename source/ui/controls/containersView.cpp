@@ -232,9 +232,14 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
 #ifdef BOXEDWINE_MULTI_THREADED
     std::vector<ComboboxItem> affinity;
     affinity.push_back(ComboboxItem(getTranslation(GENERIC_COMBOBOX_ALL), 0));
+#ifdef __MACH__
+    // Platform::setCpuAffinityForThread
+    affinity.push_back(ComboboxItem("1", 1));
+#else
     for (U32 i = 1; i < Platform::getCpuCount(); i++) {
         affinity.push_back(ComboboxItem(std::to_string(i), i));
     }
+#endif
     appCpuAffinityControl = appSection->addComboboxRow(CONTAINER_VIEW_CPU_AFFINITY_LABEL, CONTAINER_VIEW_CPU_AFFINITY_HELP, affinity);
     appCpuAffinityControl->onChange = [this]() {
         this->currentAppChanged = true;

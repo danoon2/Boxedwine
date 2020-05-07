@@ -310,7 +310,7 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
     case CONTAINER_VIEW_CPU_AFFINITY_LABEL:
         return "CPU Affinity:";
     case CONTAINER_VIEW_CPU_AFFINITY_HELP:
-        return "This is the number of host CPUs the app can use.  This should almost always be set to All.  But sometimes there will be an older game, around the late 90s, that requires this to be set to 1 or 2";
+        return "This is the number of host CPUs the app can use.  This should almost always be set to All.  But sometimes there will be an older game, around the late 90s, that requires this to be set to 1";
     case ERROR_NO_WINE:
         return "There are no versions of Wine installed.  Would you like to install the default version of Wine now?";
     case ERROR_MISSING_WINE:

@@ -139,6 +139,28 @@ void Platform::openFileLocation(const std::string& location) {
 #endif
 
 #ifdef BOXEDWINE_MULTI_THREADED
+#ifdef __MACH__
+#include <mach/mach.h>
+
+void Platform::setCpuAffinityForThread(KThread* thread, U32 count) {
+    if (KSystem::cpuAffinityCountForApp) {
+        U32 cores = Platform::getCpuCount();
+        if (cores <= 1) {
+            return;
+        }
+        if (count > 1) {
+            count = 1;
+        }
+        
+        thread_port_t port = pthread_mach_thread_np((pthread_t)((x64CPU*)thread->cpu)->nativeHandle);
+        struct thread_affinity_policy policy;
+
+        // Threads with the same affinity tag will be scheduled to share an L2 cache "if possible". 
+        policy.affinity_tag = 1;
+        thread_policy_set(port, THREAD_AFFINITY_POLICY, (thread_policy_t) &policy, THREAD_AFFINITY_POLICY_COUNT);
+    }
+}
+#else
 void Platform::setCpuAffinityForThread(KThread* thread, U32 count) {
     if (KSystem::cpuAffinityCountForApp) {
         U32 cores = Platform::getCpuCount();
@@ -161,6 +183,7 @@ void Platform::setCpuAffinityForThread(KThread* thread, U32 count) {
         sched_setaffinity((pid_t)((x64CPU*)thread->cpu)->nativeHandle, sizeof(cpu_set_t), &mask);
     }
 }
+#endif
 #endif
 
 #ifdef BOXEDWINE_X64
