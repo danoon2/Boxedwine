@@ -23,7 +23,9 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <SDL.h>
-
+#ifdef BOXEDWINE_MULTI_THREADED
+#include "../../source/emulation/cpu/x64/x64CPU.h"
+#endif
 #include "pixelformat.h"
 
 unsigned long long int Platform::getSystemTimeAsMicroSeconds() {
@@ -133,6 +135,31 @@ void Platform::openFileLocation(const std::string& location) {
     cmd+=location;
     cmd+="\"";
     system(cmd.c_str());
+}
+#endif
+
+#ifdef BOXEDWINE_MULTI_THREADED
+void Platform::setCpuAffinityForThread(KThread* thread, U32 count) {
+    if (KSystem::cpuAffinityCountForApp) {
+        U32 cores = Platform::getCpuCount();
+        if (cores <= 1) {
+            return;
+        }
+        if (count > CPU_SETSIZE) {
+            count = CPU_SETSIZE;
+        }
+        if (count > cores) {
+            count = cores;
+        }
+        cpu_set_t mask;
+        CPU_ZERO(&mask);
+        for (U32 i = 0; i < count; i++) {
+            CPU_SET(i, &mask);
+        }
+        klog("Process %s (PID=%d) set thread %d cpu affinity to %X", thread->process->name.c_str(), thread->process->id, thread->id, count);
+
+        sched_setaffinity((pid_t)((x64CPU*)thread->cpu)->nativeHandle, sizeof(cpu_set_t), &mask);
+    }
 }
 #endif
 

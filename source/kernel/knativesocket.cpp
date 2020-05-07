@@ -51,7 +51,7 @@ void updateWaitingList() {
         bool errorSet = false;
 #ifndef BOXEDWINE_MSVC
         if (s->nativeSocket>=FD_SETSIZE) {
-            kpanic("updateWaitingList %s socket is too large to select on", node->data->nativeSocket);
+            kpanic("updateWaitingList %s socket is too large to select on", s->nativeSocket);
         }
 #endif
         if (s->readingCond.waitCount()) {
