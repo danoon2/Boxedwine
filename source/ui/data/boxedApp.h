@@ -20,7 +20,7 @@ private:
 class BoxedApp {
 public:
     BoxedApp() : bpp(32), fullScreen(false), dpiAware(false), scale(0), scaleQuality(0), container(NULL) {}
-    BoxedApp(const std::string& name, const std::string& path, const std::string& cmd, BoxedContainer* container) : name(name), path(path), cmd(cmd), bpp(0), fullScreen(false), dpiAware(false), scale(0), scaleQuality(0), container(container) {}
+    BoxedApp(const std::string& name, const std::string& path, const std::string& cmd, BoxedContainer* container) : name(name), path(path), cmd(cmd), bpp(0), fullScreen(false), dpiAware(false), scale(0), scaleQuality(0), cpuAffinity(0), container(container) {}
     
     bool load(BoxedContainer* container, const std::string& iniFilepath);
 
@@ -62,6 +62,7 @@ private:
     std::string glExt;
     int scale;
     int scaleQuality;
+    int cpuAffinity;
 
     BoxedContainer* container;
     std::string iniFilePath;

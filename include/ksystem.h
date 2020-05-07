@@ -77,6 +77,9 @@ public:
 #ifdef BOXEDWINE_X64
     static bool useLargeAddressSpace;
 #endif
+#ifdef BOXEDWINE_MULTI_THREADED
+    static U32 cpuAffinityCountForApp;
+#endif
     static void init();
 	static void destroy();
     static U32 getNextThreadId();

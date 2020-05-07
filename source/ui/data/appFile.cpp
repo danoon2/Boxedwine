@@ -48,11 +48,14 @@ void AppFile::runOptions(BoxedContainer* container, BoxedApp* app, const std::ve
         if (ver) {
             container->setWindowsVersion(*ver);
             hasContainerOption = true;
-        } else if (vectorContainsIgnoreCase(options, "GDI")) {
+        } else if (option=="GDI") {
             container->setGDI(true);
             hasContainerOption = true;
-        } else if (vectorContainsIgnoreCase(options, "16bpp")) {
+        } else if (option=="16bpp") {
             app->bpp = 16;
+        } else if (stringStartsWith(option, "cpuAffinity=")) {
+            std::string s = option.substr(12);
+            app->cpuAffinity = atoi(s.c_str());
         } else {
             AppFile* app = GlobalSettings::getComponentByOptionName(option);
             if (app) {

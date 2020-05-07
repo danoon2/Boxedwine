@@ -228,6 +228,18 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
             this->currentAppChanged = true;
         };
     }
+
+#ifdef BOXEDWINE_MULTI_THREADED
+    std::vector<ComboboxItem> affinity;
+    affinity.push_back(ComboboxItem(getTranslation(GENERIC_COMBOBOX_ALL), 0));
+    for (U32 i = 1; i < Platform::getCpuCount(); i++) {
+        affinity.push_back(ComboboxItem(std::to_string(i), i));
+    }
+    appCpuAffinityControl = appSection->addComboboxRow(CONTAINER_VIEW_CPU_AFFINITY_LABEL, CONTAINER_VIEW_CPU_AFFINITY_HELP, affinity);
+    appCpuAffinityControl->onChange = [this]() {
+        this->currentAppChanged = true;
+    };
+#endif
     std::vector<ComboboxItem> scales;
     scales.push_back(ComboboxItem(getTranslation(GENERIC_DEFAULT), 0));
     scales.push_back(ComboboxItem("1/2x", 50));
@@ -376,6 +388,9 @@ bool ContainersView::saveChanges() {
             if (GlobalSettings::isDpiAware()) {
                 this->currentApp->dpiAware = this->appDpiAwareControl->isChecked();
             }
+#ifdef BOXEDWINE_MULTI_THREADED
+            this->currentApp->cpuAffinity = this->appCpuAffinityControl->getSelectionIntValue();
+#endif
             this->currentApp->saveApp();
             this->currentAppChanged = false;
             GlobalSettings::reloadApps();
@@ -417,6 +432,9 @@ void ContainersView::setCurrentApp(BoxedApp* app) {
     appScaleQualityControl->setSelection(app->scaleQuality);
     appFullScreenControl->setCheck(app->fullScreen);
     appDpiAwareControl->setCheck(app->dpiAware);
+#ifdef BOXEDWINE_MULTI_THREADED
+    appCpuAffinityControl->setSelectionIntValue(app->cpuAffinity);
+#endif
 }
 
 void ContainersView::rebuildShortcutsCombobox() {

@@ -170,6 +170,10 @@ std::vector<std::string> StartUpArgs::buildArgs() {
     if (dpiAware) {
         args.push_back("-dpiAware");
     }
+    if (cpuAffinity) {
+        args.push_back("-cpuAffinity");
+        args.push_back(std::to_string(cpuAffinity));
+    }
     for (auto& m : mountInfo) {
         if (m.wine) {
             args.push_back("-mount_drive");            
@@ -187,7 +191,12 @@ std::vector<std::string> StartUpArgs::buildArgs() {
 
 bool StartUpArgs::apply() {
     KSystem::init();    
-
+#ifdef BOXEDWINE_MULTI_THREADED
+    KSystem::cpuAffinityCountForApp = this->cpuAffinity;
+    if (KSystem::cpuAffinityCountForApp) {
+        klog("CPU Affinity set to %d", KSystem::cpuAffinityCountForApp);
+    }
+#endif
     KSystem::pentiumLevel = this->pentiumLevel;
     for (U32 f=0;f<nonExecFileFullPaths.size();f++) {
         FsFileNode::nonExecFileFullPaths.insert(nonExecFileFullPaths[f]);
@@ -489,6 +498,13 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
             }
         } else if (!strcmp(argv[i], "-dpiAware")) {
             dpiAware = true;
+        } else if (!strcmp(argv[i], "-cpuAffinity")) {
+#ifdef BOXEDWINE_MULTI_THREADED
+            this->cpuAffinity = atoi(argv[i+1]);
+#else
+            klog("ignoring -cpuAffinity");
+#endif
+            i++;
         }
 #ifdef BOXEDWINE_RECORDER
         else if (!strcmp(argv[i], "-record")) {

@@ -83,7 +83,8 @@ KProcess::KProcess(U32 id) : id(id),
     eventQueueFD(0),
     exitOrExecCond("KProcess::exitOrExecCond"),
     hasSetStackMask(false),
-    threadsCondition("KProcess::threadsCond") {
+    threadsCondition("KProcess::threadsCond"),
+    systemProcess(false) {
 
 #ifdef BOXEDWINE_X64
     emulateFPU=false;
@@ -326,6 +327,7 @@ void KProcess::clone(const std::shared_ptr<KProcess>& from) {
         this->hasSetSeg[i] = from->hasSetSeg[i];
     }
     this->hasSetStackMask = from->hasSetStackMask;
+    this->systemProcess = from->systemProcess;
 }
 
 static void writeStackString(KThread* thread, CPU * cpu, const char* s) {
@@ -697,7 +699,7 @@ U32 KProcess::getModuleEip(U32 eip) {
     for (auto& n : this->mappedFiles) {
         BoxedPtr<MappedFile> mappedFile = n.second;
         if (eip>=mappedFile->address && eip<mappedFile->address+mappedFile->len)
-            return eip-mappedFile->address+mappedFile->offset;
+            return (U32)(eip-mappedFile->address+mappedFile->offset);
     }
     return 0;
 }
@@ -746,6 +748,26 @@ U32 KProcess::execve(const std::string& path, std::vector<std::string>& args, co
     std::string name;
     std::vector<std::string> cmdLine;
 
+    this->systemProcess = false;
+    if (stringHasEnding(args[args.size() - 1], "wineserver", true)) {
+        this->systemProcess = true;
+    } else {
+        for (auto& s : args) {
+            if (stringHasEnding(s, "wineboot.exe", true)) {
+                this->systemProcess = true;
+            } else if (stringHasEnding(s, "winemenubuilder.exe", true)) {
+                this->systemProcess = true;
+            } else if (stringHasEnding(s, "services.exe", true)) {
+                this->systemProcess = true;
+            } else if (stringHasEnding(s, "plugplay.exe", true)) {
+                this->systemProcess = true;
+            } else if (stringHasEnding(s, "winedevice.exe", true)) {
+                this->systemProcess = true;
+            } else if (stringHasEnding(s, "explorer.exe", true)) {
+                this->systemProcess = true;
+            }
+        }
+    }
     node = this->findInPath(path);
     if (!node) {
         return 0;
@@ -754,6 +776,11 @@ U32 KProcess::execve(const std::string& path, std::vector<std::string>& args, co
     if (!openNode) {
         return 0;
     }
+#ifdef BOXEDWINE_MULTI_THREADED
+    if (KSystem::cpuAffinityCountForApp) {
+        Platform::setCpuAffinityForThread(KThread::currentThread(), this->isSystemProcess()?0:KSystem::cpuAffinityCountForApp);
+    }
+#endif
     args[0] = std::string(Fs::getFullPath(currentDirectory, path)); // if path is a link, we should use the link not the actual path       
     if (interpreter.length()) {
         args.insert(args.begin(), interpreterArgs.begin(), interpreterArgs.end());

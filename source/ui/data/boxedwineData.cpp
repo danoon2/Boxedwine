@@ -53,6 +53,11 @@ void BoxedwineData::startApp() {
     std::vector<std::string> a = GlobalSettings::startUpArgs.buildArgs();
     std::string log;
 
+    log = "Starting process: " + GlobalSettings::getExeFilePath() + " ";
+    for (auto& arg : a) {
+        log += "\"" + arg + "\" ";
+    }
+    log += "\n";
     for (auto& arg : a) {
         args.push_back(arg);
     }

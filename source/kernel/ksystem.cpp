@@ -44,6 +44,10 @@ U64 KSystem::startTimeSystemTime;
 #ifdef BOXEDWINE_X64
 bool KSystem::useLargeAddressSpace = true;
 #endif
+#ifdef BOXEDWINE_MULTI_THREADED
+U32 KSystem::cpuAffinityCountForApp = 1;
+#endif
+
 BOXEDWINE_CONDITION KSystem::processesCond("KSystem::processesCond");
 
 void KSystem::init() {
