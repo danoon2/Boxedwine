@@ -129,7 +129,7 @@ void BoxedContainer::getNewApps(std::vector<BoxedApp>& apps, MountInfo* mount, c
     //getNewDesktopLinkApps(apps);
     if (!mount && nativeDirectory.length()==0) {
         for (auto& m : this->mounts) {
-            getNewExeApps(apps, &m, NULL);
+            getNewExeApps(apps, &m, "");
         }
     }
     getNewExeApps(apps, mount, nativeDirectory);

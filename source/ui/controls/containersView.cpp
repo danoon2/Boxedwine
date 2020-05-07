@@ -111,17 +111,19 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
     section->addSeparator();
     std::shared_ptr<LayoutButtonControl> selectAppButton = section->addButton(CONTAINER_OPTIONS_DLG_ADD_APP_LABEL, CONTAINER_OPTIONS_DLG_ADD_APP_HELP, getTranslation(CONTAINER_OPTIONS_DLG_ADD_APP_BUTTON_LABEL));
     selectAppButton->onChange = [this]() {
-        runOnMainUI([this] {
-            std::vector<BoxedApp> items;
-            this->currentContainer->getNewApps(items);
-            new AppChooserDlg(items, [this](BoxedApp* app) {
-                this->setCurrentApp(app);
-                rebuildShortcutsCombobox();
-                showAppSection(true);
-                this->appPickerControl->setSelectionStringValue(app->getIniFilePath());
+        if (saveChanges()) { // need to capture any changes to mount
+            runOnMainUI([this] {
+                std::vector<BoxedApp> items;
+                this->currentContainer->getNewApps(items);
+                new AppChooserDlg(items, [this](BoxedApp* app) {
+                    this->setCurrentApp(app);
+                    rebuildShortcutsCombobox();
+                    showAppSection(true);
+                    this->appPickerControl->setSelectionStringValue(app->getIniFilePath());
+                    });
+                return false;
                 });
-            return false;
-            });
+        }
     };
 
     appSection = model->addSection();

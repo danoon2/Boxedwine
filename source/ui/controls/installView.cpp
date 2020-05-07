@@ -305,6 +305,11 @@ void InstallView::onInstall() {
                         });
                 }
             }
+        } else if (!this->errorMsg) {
+            runOnMainUI([container]() {
+                gotoView(VIEW_CONTAINERS, container->getDir());
+                return false;
+                });
         }
         if (containerCreated) {
             if (this->errorMsg) {
@@ -314,6 +319,7 @@ void InstallView::onInstall() {
                 BoxedwineData::addContainer(container);
             }
         }
+
         if (!this->errorMsg && GlobalSettings::startUpArgs.readyToLaunch) {
             static std::string name;
             name = Fs::getFileNameFromNativePath(location);
