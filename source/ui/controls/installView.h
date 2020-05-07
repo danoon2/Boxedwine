@@ -11,6 +11,7 @@ private:
     void createInstallTab(const std::string& initialFileOrDirPath);
     void createDemoTab();
     void runApps(std::vector<AppFile>& apps);
+    void setContainerName();
 
     void onInstall();   
 

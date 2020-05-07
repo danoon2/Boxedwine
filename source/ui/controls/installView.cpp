@@ -138,6 +138,11 @@ void InstallView::createInstallTab(const std::string& initialFileOrDirPath) {
 
     // Initialize File/Dir Location Control
     locationControl = section->addTextInputRow(INSTALLVIEW_SETUP_FILE_LOCATION_LABEL, INSTALLVIEW_TYPE_SETUP_HELP);
+    locationControl->onBrowseFinished = [this]() {
+        if (containerNameControl->getText().length()==0) {
+            setContainerName();
+        }
+    };
 
     // Initialize Container Control
     std::vector<ComboboxItem> containers;
@@ -179,6 +184,7 @@ void InstallView::createInstallTab(const std::string& initialFileOrDirPath) {
         }
         installTypeControl->onChange();
         locationControl->setText(initialFileOrDirPath);
+        setContainerName();
     }
     installTypeControl->onChange();
 
@@ -195,6 +201,35 @@ void InstallView::createInstallTab(const std::string& initialFileOrDirPath) {
 
 bool InstallView::saveChanges() {
     return true;
+}
+
+void InstallView::setContainerName() {
+    int installType = installTypeControl->getSelection();
+    std::string location = locationControl->getText();
+    std::string dirName;
+    std::string name;
+
+    if (installType == INSTALL_TYPE_SETUP) {
+        std::string fileName = Fs::getFileNameFromNativePath(location);
+        if (stringContainsIgnoreCase(fileName, "setup")) {
+            dirName = Fs::getNativeParentPath(location);
+        } else {
+            std::vector<std::string> parts;
+            stringSplit(parts, fileName, '.');
+            if (parts.size()) {
+                name = parts[0];
+            }
+        }
+    } else {
+        dirName = location;
+    }
+    if (dirName.length()) {
+        if (stringHasEnding(dirName, "/") || stringHasEnding(dirName, "\\")) {
+            dirName = dirName.substr(0, dirName.length() - 1);
+        }
+        name = Fs::getFileNameFromNativePath(dirName);        
+    }
+    containerNameControl->setText(name);
 }
 
 void InstallView::onInstall() {

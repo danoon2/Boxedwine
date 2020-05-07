@@ -196,6 +196,9 @@ void LayoutTextInputControl::draw(int width) {
 					if (this->onChange) {
 						this->onChange();
 					}
+					if (this->onBrowseFinished) {
+						this->onBrowseFinished();
+					}
 				}
 			} else {
 				const char* result = tfd::selectFolderDialog(getTranslation(GENERIC_OPEN_FOLDER_TITLE), this->text);
@@ -203,6 +206,9 @@ void LayoutTextInputControl::draw(int width) {
 					strcpy(this->text, result);
 					if (this->onChange) {
 						this->onChange();
+					}
+					if (this->onBrowseFinished) {
+						this->onBrowseFinished();
 					}
 				}
 			}
