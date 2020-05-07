@@ -133,6 +133,7 @@ public:
     void printStack();
     U32 signal(U32 signal);
     void signalFd(KThread* thread, U32 signal);
+    bool isSystemProcess() {return this->systemProcess;}
 
     void iterateThreads(std::function<bool(KThread*)> callback);
 
@@ -294,6 +295,7 @@ private:
 
     BoxedPtr<FsNode> commandLineNode;
     BoxedPtr<FsNode> procNode;
+    bool systemProcess;
 };
 
 #endif

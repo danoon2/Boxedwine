@@ -51,7 +51,7 @@ void updateWaitingList() {
         bool errorSet = false;
 #ifndef BOXEDWINE_MSVC
         if (s->nativeSocket>=FD_SETSIZE) {
-            kpanic("updateWaitingList %s socket is too large to select on", node->data->nativeSocket);
+            kpanic("updateWaitingList %s socket is too large to select on", s->nativeSocket);
         }
 #endif
         if (s->readingCond.waitCount()) {
@@ -241,7 +241,7 @@ S32 translateNativeSocketError(int error) {
     return result;
 }
 
-S32 handleNativeSocketError(KNativeSocketObject* s, bool write) {
+S32 handleNativeSocketError(const std::shared_ptr<KNativeSocketObject>& s, bool write) {
 #ifdef WIN32
     S32 result = translateNativeSocketError(WSAGetLastError());
 #else
@@ -339,8 +339,10 @@ U32 KNativeSocketObject::ioctl(U32 request) {
         int value=0;
         U32 result = ::ioctl(this->nativeSocket, FIONREAD, &value);        
 #endif
-        if (result!=0)
-            return handleNativeSocketError(this, true);
+        if (result != 0) {
+            std::shared_ptr< KNativeSocketObject> t = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
+            return handleNativeSocketError(t, true);
+        }
         return value;
     }
     return -K_ENOTTY;
@@ -441,7 +443,8 @@ U32 KNativeSocketObject::writeNative(U8* buffer, U32 len) {
         this->error = 0;
         return result;
     }
-    return handleNativeSocketError(this, true);
+    std::shared_ptr< KNativeSocketObject> t = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
+    return handleNativeSocketError(t, true);
 }
 
 U32 KNativeSocketObject::readNative(U8* buffer, U32 len) {
@@ -450,7 +453,8 @@ U32 KNativeSocketObject::readNative(U8* buffer, U32 len) {
         this->error = 0;
         return result;
     }
-    return handleNativeSocketError(this, false);
+    std::shared_ptr< KNativeSocketObject> t = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
+    return handleNativeSocketError(t, false);
 }
 
 U32 KNativeSocketObject::stat(U32 address, bool is64) {
@@ -481,7 +485,8 @@ U32 KNativeSocketObject::bind(KFileDescriptor* fd, U32 address, U32 len) {
             this->error = 0;
             return 0;
         }
-        return handleNativeSocketError(this, false);
+        std::shared_ptr< KNativeSocketObject> t = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
+        return handleNativeSocketError(t, false);
     }
     return -K_EAFNOSUPPORT;
 }
@@ -496,7 +501,7 @@ U32 KNativeSocketObject::connect(KFileDescriptor* fd, U32 address, U32 len) {
             this->error = 0;
             this->connecting = 0;
             this->connected = true;
-            removeWaitingSocket(this);
+            removeWaitingSocket(this->nativeSocket);
             return 0;
         } else {
             int error=0;
@@ -511,7 +516,8 @@ U32 KNativeSocketObject::connect(KFileDescriptor* fd, U32 address, U32 len) {
                 }
             }
         }
-        addWaitingNativeSocket(this); 
+        std::shared_ptr< KNativeSocketObject> t = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
+        addWaitingNativeSocket(t); 
         BOXEDWINE_CONDITION_LOCK(this->writingCond);
         BOXEDWINE_CONDITION_WAIT(this->writingCond);
         BOXEDWINE_CONDITION_UNLOCK(this->writingCond);
@@ -554,7 +560,8 @@ U32 KNativeSocketObject::connect(KFileDescriptor* fd, U32 address, U32 len) {
         this->connecting = false;
         return -K_ECONNREFUSED;
     }   
-    result = handleNativeSocketError(this, true);
+    std::shared_ptr< KNativeSocketObject> t = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
+    result = handleNativeSocketError(t, true);
 #ifdef BOXEDWINE_MULTI_THREADED
         if (setBlocking) {
             setNativeBlocking(this->nativeSocket, false);
@@ -574,7 +581,8 @@ U32 KNativeSocketObject::listen(KFileDescriptor* fd, U32 backlog) {
         return result;
     }
     this->listening = false;
-    return handleNativeSocketError(this, false);
+    std::shared_ptr< KNativeSocketObject> t = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
+    return handleNativeSocketError(t, false);
 }
 
 U32 KNativeSocketObject::accept(KFileDescriptor* fd, U32 address, U32 len, U32 flags) {
@@ -604,16 +612,18 @@ U32 KNativeSocketObject::accept(KFileDescriptor* fd, U32 address, U32 len, U32 f
         }
         return resultFD->handle;
     }
-    return handleNativeSocketError(this, false);
+    std::shared_ptr< KNativeSocketObject> t = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
+    return handleNativeSocketError(t, false);
 }
 
 U32 KNativeSocketObject::getsockname(KFileDescriptor* fd, U32 address, U32 plen) {    
     socklen_t len = (socklen_t)readd( plen);
     char* buf = new char[len];
     U32 result = ::getsockname(this->nativeSocket, (struct sockaddr*)buf, &len);
-    if (result)
-        result = handleNativeSocketError(this, false);
-    else {
+    if (result) {
+        std::shared_ptr< KNativeSocketObject> t = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
+        result = handleNativeSocketError(t, false);
+    } else {
         memcopyFromNative(address, buf, len);
         writed(plen, len);
         this->error = 0;
@@ -632,7 +642,8 @@ U32 KNativeSocketObject::getpeername(KFileDescriptor* fd, U32 address, U32 plen)
         writed(plen, len);
         this->error = 0;
     } else {
-        result = handleNativeSocketError(this, false);
+        std::shared_ptr< KNativeSocketObject> t = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
+        result = handleNativeSocketError(t, false);
     }
     delete[] buf;
     return result;
@@ -760,10 +771,12 @@ U32 KNativeSocketObject::recvmsg(KFileDescriptor* fd, U32 address, U32 flags) {
                 writed(address + 4, inLen);
                 result+=r;
             }
-            else if (result)
+            else if (result) {
                 break;
-            else
-                result = handleNativeSocketError(this, false);
+            } else {
+                std::shared_ptr< KNativeSocketObject> t = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
+                result = handleNativeSocketError(t, false);
+            }
         } else {
             result += this->read(p, len);
         }
@@ -794,7 +807,8 @@ U32 KNativeSocketObject::sendto(KFileDescriptor* fd, U32 message, U32 length, U3
         this->error = 0;
         return result;
     }
-    return handleNativeSocketError(this, true);
+    std::shared_ptr< KNativeSocketObject> t = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
+    return handleNativeSocketError(t, true);
 }
 
 U32 KNativeSocketObject::recvfrom(KFileDescriptor* fd, U32 buffer, U32 length, U32 flags, U32 address, U32 address_len) {
@@ -830,7 +844,8 @@ U32 KNativeSocketObject::recvfrom(KFileDescriptor* fd, U32 buffer, U32 length, U
         writed(address_len, outLen);
         this->error = 0;
     } else {
-        result = handleNativeSocketError(this, false);
+        std::shared_ptr< KNativeSocketObject> t = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
+        result = handleNativeSocketError(t, false);
         if (result == 0) { // WSAEMSGSIZE for example
             result = length;
             memcopyFromNative(address, fromBuffer, inLen);

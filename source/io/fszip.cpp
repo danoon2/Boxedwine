@@ -257,7 +257,7 @@ std::string FsZip::unzip(const std::string& zipFile, const std::string& path, st
             stringReplaceAll(fileName, "/", Fs::nativePathSeperator);
         }
         unzOpenCurrentFile(z);        
-        percentDone(compressedFileSizeProcessed * 100 / fileSize, fileName);
+        percentDone((U32)(compressedFileSizeProcessed * 100 / fileSize), fileName);
         std::string outPath = path + Fs::nativePathSeperator + fileName;
         FILE* f = fopen(outPath.c_str(), "wb");
         if (f) {

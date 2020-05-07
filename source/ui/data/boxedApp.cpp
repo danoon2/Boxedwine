@@ -17,8 +17,8 @@ bool BoxedApp::load(BoxedContainer* container, const std::string& iniFilePath) {
     this->dpiAware = config.readBool("DpiAware", false);
     this->glExt = config.readString("AllowedGlExt","");
     this->scale = config.readInt("Scale",100);
-    int defaultScaleQuality = 0;
-    this->scaleQuality = config.readInt("ScaleQuality",defaultScaleQuality);    
+    this->scaleQuality = config.readInt("ScaleQuality",0);    
+    this->cpuAffinity = config.readInt("CpuAffinity", 0);
     int i = 1;
     this->args.clear();
     while (true) {
@@ -63,6 +63,8 @@ bool BoxedApp::saveApp() {
     config.writeString("AllowedGlExt",this->glExt);
     config.writeInt("Scale",this->scale);
     config.writeInt("ScaleQuality",this->scaleQuality);
+    config.writeInt("CpuAffinity",this->cpuAffinity);
+
     for (int i = 0; i < (int)this->args.size(); i++) {
         std::string key = "Arg";
         key += (i + 1);
@@ -91,6 +93,9 @@ void BoxedApp::launch() {
     }
     if (GlobalSettings::isDpiAware() && this->dpiAware) {
         GlobalSettings::startUpArgs.dpiAware = true;
+    }
+    if (this->cpuAffinity) {
+        GlobalSettings::startUpArgs.setCpuAffinity(this->cpuAffinity);
     }
     if (this->glExt.length()) {
         GlobalSettings::startUpArgs.setAllowedGlExtension(this->glExt);

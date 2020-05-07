@@ -18,6 +18,7 @@
 #include "boxedwine.h"
 #include <winsock2.h>
 #include "pixelformat.h"
+#include "../source/emulation/cpu/x64/x64cpu.h"
 
 LONGLONG PCFreq;
 LONGLONG CounterStart;
@@ -345,6 +346,30 @@ int getPixelFormats(PixelFormat* pfd, int maxPfs) {
 void Platform::openFileLocation(const std::string& location) {
     ShellExecute(NULL, "open", location.c_str(), NULL, NULL, SW_SHOWNORMAL);
 }
+
+#ifdef BOXEDWINE_MULTI_THREADED
+void Platform::setCpuAffinityForThread(KThread* thread, U32 count) {
+    if (KSystem::cpuAffinityCountForApp) {
+        U32 cores = Platform::getCpuCount();
+        if (cores <= 1) {
+            return;
+        }
+        if (cores > 63) {
+            cores = 63;
+        }
+        U64 mask;
+        if (count == 0) {
+            mask = (1 << cores) - 1;
+        } else if (count == 1) {
+            mask = 1 << 1; // rumor has it that core 0 isn't the best one to use
+        } else {
+            mask = (1 << count) - 1;
+        }
+        klog("Process %s (PID=%d) set thread %d cpu affinity to %X", thread->process->name.c_str(), thread->process->id, thread->id, mask);
+        SetThreadAffinityMask((HANDLE)((x64CPU*)thread->cpu)->nativeHandle, mask);
+    }
+}
+#endif
 
 #ifdef BOXEDWINE_X64
 bool platformHasBMI2() {

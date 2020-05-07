@@ -211,6 +211,8 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "Confirm";
     case GENERIC_DEFAULT:
         return "Default";
+    case GENERIC_COMBOBOX_ALL:
+        return "All";
     case MAIN_BUTTON_INSTALL:
         return "Install";
     case MAIN_BUTTON_CONTAINERS:
@@ -256,7 +258,7 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
     case CONTAINER_VIEW_DPI_AWARE_LABEL:
         return "DPI Aware:";
     case CONTAINER_VIEW_DPI_AWARE_HELP:
-        return "DPI (dots per inch) Aware means the app will be responsible for itself when it comes to scaling to large resolutions.  If this is checked and the app can not handle it, then the app might appear to run in a window that is too small.\n\nAs of April 2020, NVidia does not handle this correctly.";
+        return "DPI (dots per inch) Aware means the app will be responsible for itself when it comes to scaling to large resolutions.  If this is checked and the app can not handle it, then the app might appear to run in a window that is too small.";
     case CONTAINER_VIEW_SCALE_LABEL:
         return "Scaling:";
     case CONTAINER_VIEW_SCALE_HELP:
@@ -305,6 +307,10 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "Windows Version:";
     case CONTAINER_VIEW_WINDOWS_VERION_HELP:
         return "This is the Windows version that will be reported to the running app.  You probably never need to change this unless the app asks for a specific version of Windows.";
+    case CONTAINER_VIEW_CPU_AFFINITY_LABEL:
+        return "CPU Affinity:";
+    case CONTAINER_VIEW_CPU_AFFINITY_HELP:
+        return "This is the number of host CPUs the app can use.  This should almost always be set to All.  But sometimes there will be an older game, around the late 90s, that requires this to be set to 1";
     case ERROR_NO_WINE:
         return "There are no versions of Wine installed.  Would you like to install the default version of Wine now?";
     case ERROR_MISSING_WINE:

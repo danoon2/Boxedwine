@@ -23,7 +23,9 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <SDL.h>
-
+#ifdef BOXEDWINE_MULTI_THREADED
+#include "../../source/emulation/cpu/x64/x64CPU.h"
+#endif
 #include "pixelformat.h"
 
 unsigned long long int Platform::getSystemTimeAsMicroSeconds() {
@@ -134,6 +136,54 @@ void Platform::openFileLocation(const std::string& location) {
     cmd+="\"";
     system(cmd.c_str());
 }
+#endif
+
+#ifdef BOXEDWINE_MULTI_THREADED
+#ifdef __MACH__
+#include <mach/mach.h>
+
+void Platform::setCpuAffinityForThread(KThread* thread, U32 count) {
+    if (KSystem::cpuAffinityCountForApp) {
+        U32 cores = Platform::getCpuCount();
+        if (cores <= 1) {
+            return;
+        }
+        if (count > 1) {
+            count = 1;
+        }
+        
+        thread_port_t port = pthread_mach_thread_np((pthread_t)((x64CPU*)thread->cpu)->nativeHandle);
+        struct thread_affinity_policy policy;
+
+        // Threads with the same affinity tag will be scheduled to share an L2 cache "if possible". 
+        policy.affinity_tag = 1;
+        thread_policy_set(port, THREAD_AFFINITY_POLICY, (thread_policy_t) &policy, THREAD_AFFINITY_POLICY_COUNT);
+    }
+}
+#else
+void Platform::setCpuAffinityForThread(KThread* thread, U32 count) {
+    if (KSystem::cpuAffinityCountForApp) {
+        U32 cores = Platform::getCpuCount();
+        if (cores <= 1) {
+            return;
+        }
+        if (count > CPU_SETSIZE) {
+            count = CPU_SETSIZE;
+        }
+        if (count > cores) {
+            count = cores;
+        }
+        cpu_set_t mask;
+        CPU_ZERO(&mask);
+        for (U32 i = 0; i < count; i++) {
+            CPU_SET(i, &mask);
+        }
+        klog("Process %s (PID=%d) set thread %d cpu affinity to %X", thread->process->name.c_str(), thread->process->id, thread->id, count);
+
+        sched_setaffinity((pid_t)((x64CPU*)thread->cpu)->nativeHandle, sizeof(cpu_set_t), &mask);
+    }
+}
+#endif
 #endif
 
 #ifdef BOXEDWINE_X64

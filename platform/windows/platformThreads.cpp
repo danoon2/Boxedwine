@@ -165,7 +165,16 @@ DWORD WINAPI platformThreadProc(LPVOID lpThreadParameter) {
 void scheduleThread(KThread* thread) {
     platformThreadCount++;
     x64CPU* cpu = (x64CPU*)thread->cpu;
-    cpu->nativeHandle = (U64)CreateThread(NULL, 0, platformThreadProc, thread, 0, 0);        
+    cpu->nativeHandle = (U64)CreateThread(NULL, 0, platformThreadProc, thread, CREATE_SUSPENDED, 0);
+#ifdef BOXEDWINE_MULTI_THREADED
+    if (!thread->process->isSystemProcess() && KSystem::cpuAffinityCountForApp) {
+        Platform::setCpuAffinityForThread(KThread::currentThread(), KSystem::cpuAffinityCountForApp);
+    }
+#endif
+    std::string s = std::to_string(thread->id) + " " + thread->process->name;
+    std::wstring w(s.begin(), s.end());
+    SetThreadDescription((HANDLE)cpu->nativeHandle, w.c_str());
+    ResumeThread((HANDLE)cpu->nativeHandle);
 }
 
 #ifdef BOXEDWINE_MULTI_THREADED

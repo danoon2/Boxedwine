@@ -90,6 +90,8 @@
 #endif
 
 class FsNode;
+class KThread;
+
 class Platform {
 public:
     class ListNodeResult {
@@ -106,7 +108,10 @@ public:
     static U32 getCpuCount();
     static void openFileLocation(const std::string& location);
     static bool supportsOpenFileLocation() {return true;}
-
+    
+#ifdef BOXEDWINE_MULTI_THREADED
+    static void setCpuAffinityForThread(KThread* thread, U32 count);
+#endif
 private:
     friend class KSystem;
 

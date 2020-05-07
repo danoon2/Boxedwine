@@ -23,7 +23,7 @@ public:
 
 class StartUpArgs {
 public:
-    StartUpArgs() : euidSet(false), nozip(false), pentiumLevel(4), rel_mouse_sensitivity(0), userId(UID), groupId(GID), effectiveUserId(UID), effectiveGroupId(GID), soundEnabled(true), videoEnabled(true), dpiAware(false), readyToLaunch(false), workingDirSet(false), resolutionSet(false), screenCx(800), screenCy(600), screenBpp(32), sdlFullScreen(false), sdlScaleX(100), sdlScaleY(100), sdlScaleQuality("0") {
+    StartUpArgs() : euidSet(false), nozip(false), pentiumLevel(4), rel_mouse_sensitivity(0), userId(UID), groupId(GID), effectiveUserId(UID), effectiveGroupId(GID), soundEnabled(true), videoEnabled(true), dpiAware(false), readyToLaunch(false), workingDirSet(false), resolutionSet(false), screenCx(800), screenCy(600), screenBpp(32), sdlFullScreen(false), sdlScaleX(100), sdlScaleY(100), sdlScaleQuality("0"), cpuAffinity(0) {
         workingDir = "/home/username";        
     }
     bool parseStartupArgs(int argc, const char **argv);
@@ -41,6 +41,8 @@ public:
     void addArgs(const std::vector<std::string>& args) {this->args.insert(this->args.end(), args.begin(), args.end());}
     void addZip(const std::string& zip) {this->zips.push_back(zip);}
     void setRoot(const std::string& root) {this->root = root;}
+    void setCpuAffinity(int affinity) {this->cpuAffinity = affinity;}
+
     std::vector<std::string> buildArgs();
 
     std::vector<MountInfo> mountInfo;    
@@ -83,6 +85,7 @@ private:
     std::vector<std::string> args;
     std::string root;
     std::vector<std::string> zips;
+    int cpuAffinity;
 
     void buildVirtualFileSystem();
     int parse_resolution(const char *resolutionString, U32 *width, U32 *height);

@@ -50,7 +50,7 @@ int boxedmain(int argc, const char **argv) {
     if (!startupArgs.parseStartupArgs(argc, argv)) {
         return 1;
     }   
-
+    
 #ifdef BOXEDWINE_MSVC
 #ifdef BOXEDWINE_DISABLE_UI    
     if (startupArgs.dpiAware) {
