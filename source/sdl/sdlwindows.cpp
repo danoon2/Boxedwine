@@ -32,6 +32,8 @@
 #include "../ui/mainui.h"
 #endif
 
+#define HIDE_UI_WINDOW_DELAY 1000
+
 U32 default_horz_res = 800;
 U32 default_vert_res = 600;
 U32 default_bits_per_pixel = 32;
@@ -383,13 +385,14 @@ SDL_GLContext sdlCurrentContext;
 BOXEDWINE_MUTEX sdlMutex;
 int contextCount;
 bool sdlWindowIsGL;
+static bool windowIsHidden;
+static U32 timeToHideUI;
+static std::string delayedCreateWindowMsg; // the ui will watch for this message
 
 static void destroySDL2(KThread* thread) {
-#if !defined(BOXEDWINE_DISABLE_UI) && !defined(__TEST)
-    if (uiIsRunning()) {
-        uiShutdown();
-    }
-#endif
+    timeToHideUI = 0;
+    windowIsHidden = false;
+    delayedCreateWindowMsg = "";
     {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(hwndToWndMutex);
         for (auto& n : hwndToWnd) {
@@ -459,6 +462,27 @@ void destroySDL() {
         delete n.second;
     }
     hwndToWnd.clear();
+}
+
+void preDrawWindow() {
+#if !defined(BOXEDWINE_DISABLE_UI) && !defined(__TEST)
+    if (timeToHideUI && timeToHideUI < KSystem::getMilliesSinceStart()) {
+        if (uiIsRunning()) {
+            uiShutdown();
+        }
+        timeToHideUI = 0;
+        if (delayedCreateWindowMsg.length()) {
+            klog(delayedCreateWindowMsg.c_str());
+            delayedCreateWindowMsg = "";
+        }
+    }
+#endif
+    if (windowIsHidden) {
+        SDL_ShowWindow(sdlWindow);
+        SDL_RaiseWindow(sdlWindow);
+        windowIsHidden = false;
+        timeToHideUI = KSystem::getMilliesSinceStart() + HIDE_UI_WINDOW_DELAY;
+    }
 }
 
 #if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
@@ -600,15 +624,10 @@ U32 sdlCreateOpenglWindow_main_thread(KThread* thread, Wnd* wnd, int major, int 
 #ifdef SDL2
 
     SDL_DisplayMode dm;
-    int sdlFlags = SDL_WINDOW_OPENGL;
+    int sdlFlags = SDL_WINDOW_OPENGL|SDL_WINDOW_HIDDEN;
     int cx = wnd->windowRect.right-wnd->windowRect.left;
     int cy = wnd->windowRect.bottom-wnd->windowRect.top;
 
-    if (cx>=240 && cy>=240) {
-        sdlFlags|=SDL_WINDOW_SHOWN;
-    } else {
-        sdlFlags|=SDL_WINDOW_HIDDEN;
-    }
     if (SDL_GetDesktopDisplayMode(0, &dm) == 0) {
         if (cx == dm.w && cy == dm.h) {
             sdlFlags|=SDL_WINDOW_BORDERLESS;
@@ -617,9 +636,10 @@ U32 sdlCreateOpenglWindow_main_thread(KThread* thread, Wnd* wnd, int major, int 
     // until I figure out how to scale GL window
     sdlScaleX = 100;
     sdlScaleY = 100;
-    klog("Creating Window for OpenGL: %dx%d", cx, cy);
+    delayedCreateWindowMsg = "Creating Window for OpenGL: "+std::to_string(cx) + "x" + std::to_string(cy);
     fflush(stdout);
     sdlWindow = SDL_CreateWindow("OpenGL Window", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, cx, cy, sdlFlags);
+    windowIsHidden = true;    
 
     if (!sdlWindow) {
         fprintf(stderr, "Couldn't create window: %s\n", SDL_GetError());
@@ -635,6 +655,12 @@ U32 sdlCreateOpenglWindow_main_thread(KThread* thread, Wnd* wnd, int major, int 
     return 0x200;
 #endif
     DISPATCH_MAIN_THREAD_BLOCK_END
+}
+#include "../../tools/opengl/gldef.h"
+void sdlPreOpenGLCall(U32 index) {
+    if (index == XSwapBuffer) {
+        preDrawWindow();
+    }
 }
 
 // window needs to be on the main thread
@@ -715,7 +741,7 @@ static void displayChanged(KThread* thread) {
 
         int cx = screenCx*sdlScaleX/100;
         int cy = screenCy*sdlScaleY/100;
-        int flags = SDL_WINDOW_SHOWN;
+        int flags = SDL_WINDOW_HIDDEN;
 
         SDL_DisplayMode dm;
 
@@ -742,10 +768,11 @@ static void displayChanged(KThread* thread) {
             }
         }
         
-        klog("Creating Window: %dx%d", cx, cy);
+        delayedCreateWindowMsg = "Creating Window: " + std::to_string(cx) + "x" + std::to_string(cy);
         fflush(stdout);
-        sdlWindow = SDL_CreateWindow("BoxedWine", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, cx, cy, SDL_WINDOW_SHOWN);
+        sdlWindow = SDL_CreateWindow("BoxedWine", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, cx, cy, flags);
         sdlRenderer = SDL_CreateRenderer(sdlWindow, -1, 0);	
+        windowIsHidden = true;
 #else
         for (auto& n : hwndToWnd) {
             Wnd* wnd = n.second;
@@ -801,7 +828,7 @@ void wndBlt(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32 yOrg, U32 width, 
             wnd = getWnd(hwnd); // just in case it changed when we gave up the lock
         }
     }
-
+    preDrawWindow();
     readRect(thread, rect, &r);    
 #ifndef SDL2
     if (!surface)
