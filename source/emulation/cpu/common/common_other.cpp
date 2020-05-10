@@ -27,12 +27,7 @@ void common_int98(CPU* cpu){
 }
 void common_int99(CPU* cpu){
     U32 index = cpu->peek32(0);
-    if (index<int99CallbackSize && int99Callback[index]) {
-        lastGlCallTime = KSystem::getMilliesSinceStart();
-        int99Callback[index](cpu);
-    } else {
-        kpanic("Uknown int 99 call: %d", index);
-    }
+    callOpenGL(cpu, index);    
 }
 void common_intIb(CPU* cpu){
     cpu->thread->signalIllegalInstruction(5);// 5=ILL_PRVOPC  // :TODO: just a guess

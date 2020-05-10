@@ -84,10 +84,12 @@ void klog(const char* msg, ...) {
     if (logFile) {
         vfprintf(logFile, msg, argptr);
     }
-     fprintf(stdout, "\n");
+    fprintf(stdout, "\n");
     if (logFile) {
         fprintf(logFile, "\n");
+        fflush(logFile);
     }
+    fflush(stdout);
 #ifdef BOXEDWINE_MSVC
     char buff[1024];
     vsnprintf(buff, sizeof(buff), msg, argptr);

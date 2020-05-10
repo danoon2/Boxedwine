@@ -20,6 +20,8 @@
 #if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
 #include GLH
 
+#include "../sdl/sdlwindow.h"
+
 #include "glcommon.h"
 
 #undef GL_FUNCTION
@@ -428,7 +430,7 @@ void glcommon_glSamplePass(CPU* cpu) {
 
 #include "glfunctions.h"
 
-Int99Callback gl_callback[GL_FUNC_COUNT];
+static Int99Callback gl_callback[GL_FUNC_COUNT];
 
 Int99Callback* int99Callback;
 U32 int99CallbackSize;
@@ -468,3 +470,13 @@ void gl_init() {
     int99CallbackSize=0;
 }
 #endif
+
+void callOpenGL(CPU* cpu, U32 index) {
+    sdlPreOpenGLCall(index);
+    if (index < int99CallbackSize && int99Callback[index]) {
+        lastGlCallTime = KSystem::getMilliesSinceStart();
+        int99Callback[index](cpu);
+    } else {
+        kpanic("Uknown int 99 call: %d", index);
+    }
+}
