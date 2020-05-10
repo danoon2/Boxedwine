@@ -472,11 +472,14 @@ void gl_init() {
 #endif
 
 void callOpenGL(CPU* cpu, U32 index) {
+#if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
     sdlPreOpenGLCall(index);
     if (index < int99CallbackSize && int99Callback[index]) {
         lastGlCallTime = KSystem::getMilliesSinceStart();
         int99Callback[index](cpu);
-    } else {
+    } else 
+#endif
+{
         kpanic("Uknown int 99 call: %d", index);
     }
 }
