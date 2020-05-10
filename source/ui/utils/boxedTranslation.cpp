@@ -34,7 +34,7 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
     case INSTALLVIEW_CONTAINER_HELP:
         return "A Container is a directory on then file system where this application will installed into.  In general, is is best that each application have its own container, that way if you need to change anything in the container, like what version of Windows to emulate, then it will only affect this one application";
     case INSTALLVIEW_CONTAINER_NAME_HELP:
-        return "This must be a unique container name, two containers can not have the same name.";
+        return "This is the name of the container that you will see in the UI.";
     case INSTALLVIEW_TYPE_SETUP_HELP:
         return "This setup program will be run from here and it will be installed into a container";
     case INSTALLVIEW_TYPE_DIR_HELP:
