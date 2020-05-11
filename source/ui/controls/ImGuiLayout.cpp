@@ -117,7 +117,11 @@ void LayoutRow::drawToolTip(const std::string& help) {
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(GlobalSettings::scaleFloatUI(8.0f), GlobalSettings::scaleFloatUI(8.0f)));
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, GlobalSettings::scaleFloatUI(7.0f));
 		ImGui::BeginTooltip();
-		ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+		float width = ImGui::GetFontSize() * 35.0f;
+		if (width > ImGui::GetIO().DisplaySize.x - GlobalSettings::scaleFloatUI(10.0f)) {
+			width = ImGui::GetIO().DisplaySize.x - GlobalSettings::scaleFloatUI(10.0f);
+		}
+		ImGui::PushTextWrapPos(width);
 		ImGui::TextUnformatted(help.c_str());
 		ImGui::PopTextWrapPos();
 		ImGui::EndTooltip();
