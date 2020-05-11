@@ -69,7 +69,7 @@ private:
 
 class LayoutTextInputControl : public LayoutControl {
 public:
-	LayoutTextInputControl(std::shared_ptr<LayoutRow> row) : LayoutControl(row, LayoutControlType::TextInput), onBrowseFinished(onBrowseFinished), numberOfLines(1), browseButtonType(BROWSE_BUTTON_NONE), browseButtonWidth(0.0f), browseButtonLabel(NULL) {this->text[0]=0;}
+	LayoutTextInputControl(std::shared_ptr<LayoutRow> row) : LayoutControl(row, LayoutControlType::TextInput), onBrowseFinished(nullptr), numberOfLines(1), browseButtonType(BROWSE_BUTTON_NONE), browseButtonWidth(0.0f), browseButtonLabel(NULL) {this->text[0]=0;}
 	void setText(const std::string& text) { strncpy(this->text, text.c_str(), sizeof(this->text)); }
 	std::string getText() {return this->text;}
 
