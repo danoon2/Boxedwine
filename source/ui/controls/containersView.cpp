@@ -303,6 +303,27 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
                 }
                 ImGui::Dummy(ImVec2(ImGui::GetTextLineHeight(), 0.0f));
                 ImGui::SameLine();                
+            }, [this, item]() {
+                runOnMainUI([]() {
+                    ImGui::OpenPopup("ContainerOptionsPopup");
+                    return false;
+                    });
+
+                runOnMainUI([this, item]() {
+                    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(GlobalSettings::scaleFloatUI(8.0f), GlobalSettings::scaleFloatUI(8.0f)));
+                    ImGui::PushStyleColor(ImGuiCol_PopupBg, ImGui::GetColorU32(ImGuiCol_ScrollbarGrab) | 0xFF000000);
+                    bool result = false;
+                    if (ImGui::BeginPopup("ContainerOptionsPopup")) {
+                        if (ImGui::Selectable(getTranslation(CONTAINER_VIEW_DELETE_BUTTON_LABEL))) {
+                            this->deleteContainer(item);
+                        }
+                        ImGui::EndPopup();
+                        result = true;
+                    }
+                    ImGui::PopStyleColor();
+                    ImGui::PopStyleVar();
+                    return result;
+                    });
             });
         if (item->getDir() == tab) {
             this->tabIndex = this->getTabCount() - 1;
@@ -320,37 +341,43 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
     label += getTranslation(CONTAINER_VIEW_DELETE_BUTTON_LABEL);
     std::shared_ptr<LayoutButtonControl> deleteContainerButton = bottomSection->addButton(0, CONTAINER_VIEW_DELETE_BUTTON_HELP, label);
     deleteContainerButton->onChange = [this]() {
-        std::string label;
-        if (!currentContainer->getApps().size()) {
-            label = getTranslationWithFormat(CONTAINER_VIEW_DELETE_CONFIRMATION, true, currentContainer->getName());
-        } else {
-            label = "";
-
-            for (auto& app : currentContainer->getApps()) {
-                if (label.length() != 0) {
-                    label += ", ";
-                }
-                label += app->getName();
-            }
-            label = getTranslationWithFormat(CONTAINER_VIEW_DELETE_CONFIRMATION_WITH_APPS, true, currentContainer->getName(), label);
-        }
-        runOnMainUI([label, this]() {
-            new YesNoDlg(GENERIC_DLG_CONFIRM_TITLE, label, [this](bool yes) {
-                if (yes) {
-                    runOnMainUI([this]() {
-                        currentContainer->deleteContainerFromFilesystem();
-                        this->currentContainer = NULL;
-                        this->currentApp = NULL;
-                        this->currentContainerChanged = false;
-                        BoxedwineData::reloadContainers();
-                        gotoView(VIEW_CONTAINERS);
-                        return false;
-                        });
-                }
-                });
-            return false;
-            });
+        this->deleteContainer(this->currentContainer);
     };
+}
+
+void ContainersView::deleteContainer(BoxedContainer* container) {
+    std::string label;
+    if (!container->getApps().size()) {
+        label = getTranslationWithFormat(CONTAINER_VIEW_DELETE_CONFIRMATION, true, container->getName());
+    } else {
+        label = "";
+
+        for (auto& app : container->getApps()) {
+            if (label.length() != 0) {
+                label += ", ";
+            }
+            label += app->getName();
+        }
+        label = getTranslationWithFormat(CONTAINER_VIEW_DELETE_CONFIRMATION_WITH_APPS, true, container->getName(), label);
+    }
+    runOnMainUI([label, this, container]() {
+        new YesNoDlg(GENERIC_DLG_CONFIRM_TITLE, label, [this, container](bool yes) {
+            if (yes) {
+                runOnMainUI([this, container]() {
+                    container->deleteContainerFromFilesystem();
+                    std::string containerDir;
+
+                    if (currentContainer != container) {
+                        containerDir = currentContainer->getDir();
+                    }
+                    BoxedwineData::reloadContainers();
+                    gotoView(VIEW_CONTAINERS, containerDir);
+                    return false;
+                    });
+            }
+            });
+        return false;
+        });
 }
 
 bool ContainersView::saveChanges() {

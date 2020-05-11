@@ -12,6 +12,7 @@ private:
     void setCurrentContainer(BoxedContainer* container);
     void rebuildShortcutsCombobox();
     void showAppSection(bool show);
+    void deleteContainer(BoxedContainer* container);
 
     BoxedContainer* currentContainer;
     bool currentContainerChanged;

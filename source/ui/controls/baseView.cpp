@@ -6,30 +6,36 @@ BaseView::BaseView(const std::string& viewName) : errorMsg(NULL), tabIndex(0), v
     this->extraVerticalSpacing = (float)GlobalSettings::scaleIntUI(5);
 }
 
-void BaseView::addTab(const std::string& id, const std::string& name, int index, const std::function<void()>& drawTabIcon) {
+void BaseView::addTab(const BaseViewTab& tab, int index) {
     ImGui::Dummy(ImVec2(this->extraVerticalSpacing, 0.0f));
     ImGui::SameLine();    
     ImVec2 pos = ImGui::GetCursorPos();
-    ImVec2 s = ImGui::CalcTextSize(name.c_str(), NULL, true);
+    ImVec2 s = ImGui::CalcTextSize(tab.name.c_str(), NULL, true);
     s.x = 0;
     s.y += this->extraVerticalSpacing * 2;
-    std::string nameId = "##" + name;
+    std::string nameId = "##" + tab. name;
     ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetColorU32(ImGuiCol_WindowBg) | 0xFF000000);
-    ImGui::PushID(id.c_str());
+    ImGui::PushID(tab.id.c_str());
     if (ImGui::Selectable(nameId.c_str(), tabIndex == index, ImGuiSelectableFlags_AllowRightClick, s)) {
-        if (this->saveChanges()) {
-            tabIndex = index;
-            tabChanged = true;
+        if (ImGui::IsMouseReleased(ImGuiMouseButton_Right)) {
+            if (tab.onRightClick && this->saveChanges()) {
+                tab.onRightClick();
+            }
+        } else {
+            if (this->saveChanges()) {
+                tabIndex = index;
+                tabChanged = true;
+            }
         }
     }
     ImGui::PopID();
     ImGui::PopStyleColor();
     pos.y += this->extraVerticalSpacing;
     ImGui::SetCursorPos(pos);
-    if (drawTabIcon) {
-        drawTabIcon();
+    if (tab.drawTabIcon) {
+        tab.drawTabIcon();
     }
-    SAFE_IMGUI_TEXT(name.c_str());
+    SAFE_IMGUI_TEXT(tab.name.c_str());
     pos = ImGui::GetCursorPos();
     pos.y += this->extraVerticalSpacing;
     ImGui::SetCursorPos(pos);
@@ -51,7 +57,7 @@ void BaseView::run(const ImVec2& size) {
 
     ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing));
     for (int i=0;i<(int)this->tabs.size();i++) {
-        addTab(this->tabs[i].id, this->tabs[i].name, i, this->tabs[i].drawTabIcon);
+        addTab(this->tabs[i], i);
     }
     ImGui::PopFont();
     ImGui::EndChild();
@@ -85,11 +91,11 @@ void BaseView::runErrorMsg(bool open) {
     ImGui::PopFont();
 }
 
-void BaseView::addTab(const std::string& id, const std::string& name, const std::shared_ptr<ImGuiLayout>& model, std::function<void(bool buttonPressed, BaseViewTab& tab)> drawTab, std::function<void()> drawTabIcon) {
+void BaseView::addTab(const std::string& id, const std::string& name, const std::shared_ptr<ImGuiLayout>& model, std::function<void(bool buttonPressed, BaseViewTab& tab)> drawTab, std::function<void()> drawTabIcon, std::function<void()> onRightClick) {
     if (model) {
         model->doLayout();
     }
-    this->tabs.push_back(BaseViewTab(id, name, model, drawTab, drawTabIcon));
+    this->tabs.push_back(BaseViewTab(id, name, model, drawTab, drawTabIcon, onRightClick));
 }
 
 

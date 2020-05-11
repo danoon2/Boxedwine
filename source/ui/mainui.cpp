@@ -204,7 +204,7 @@ void loadApps() {
 
                     runOnMainUI([app]() {                            
                         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(GlobalSettings::scaleFloatUI(8.0f), GlobalSettings::scaleFloatUI(8.0f)));
-                        ImGui::PushStyleColor(ImGuiCol_PopupBg, ImGui::GetColorU32(ImGuiCol_TabUnfocusedActive) | 0xFF000000);
+                        ImGui::PushStyleColor(ImGuiCol_PopupBg, ImGui::GetColorU32(ImGuiCol_ScrollbarGrab) | 0xFF000000);
                         bool result = false;
                         if (ImGui::BeginPopup("AppOptionsPopup")) {
                             if (ImGui::Selectable(getTranslation(MAIN_BUTTON_SETTINGS))) {
