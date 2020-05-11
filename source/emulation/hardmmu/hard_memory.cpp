@@ -186,6 +186,9 @@ bool Memory::findFirstAvailablePage(U32 startingPage, U32 pageCount, U32* result
     U32 i;
     
     for (i=startingPage;i<K_NUMBER_OF_PAGES;i++) {
+        if (i + pageCount >= K_NUMBER_OF_PAGES) {
+            return false;
+        }
         if (((this->flags[i] & PAGE_MAPPED) == 0 && !this->isPageAllocated(i)) || (canBeReMapped && (this->flags[i] & PAGE_MAPPED))) {
             U32 j;
             bool success = true;

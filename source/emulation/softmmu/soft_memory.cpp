@@ -324,6 +324,9 @@ bool Memory::findFirstAvailablePage(U32 startingPage, U32 pageCount, U32* result
     U32 i;
     
     for (i=startingPage;i<K_NUMBER_OF_PAGES;i++) {
+        if (i + pageCount >= K_NUMBER_OF_PAGES) {
+            return false;
+        }
         if (this->getPage(i)->type==Page::Type::Invalid_Page || (canBeReMapped && (this->getPage(i)->flags & PAGE_MAPPED))) {
             U32 j;
             bool success = true;
