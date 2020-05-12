@@ -717,6 +717,7 @@ void x64CPU::startThread() {
     platformThreadCount--;
     if (platformThreadCount==0) {
         SDL_Event sdlevent;
+        KSystem::shutingDown = true;
         sdlevent.type = SDL_QUIT;        
         SDL_PushEvent(&sdlevent);
     }

@@ -27,6 +27,7 @@
 #include "kunixsocket.h"
 #include "multiThreaded/sdlcallback.h"
 #include "../emulation/hardmmu/hard_memory.h"
+#include "../util/threadutils.h"
 
 #if !defined(BOXEDWINE_DISABLE_UI) && !defined(__TEST)
 #include "../ui/mainui.h"
@@ -381,6 +382,8 @@ static U32 nextGlId = 1;
 #ifdef SDL2
 SDL_Window *sdlWindow;
 SDL_Renderer *sdlRenderer;
+bool sdlWindow2Done;
+bool sdlWindowShuttingDownIsOpen;
 SDL_GLContext sdlCurrentContext;
 BOXEDWINE_MUTEX sdlMutex;
 int contextCount;
@@ -434,12 +437,16 @@ static void destroySDL2(KThread* thread) {
     if (thread) {
         thread->removeAllGlContexts();
     }
+    sdlWindow2Done = true;
+    while (sdlWindowShuttingDownIsOpen) {
+        SDL_Delay(1);
+    }
 #endif
     if (sdlWindow) {
         SDL_DestroyWindow(sdlWindow);
         sdlWindow = 0;
         sdlWindowIsGL = false;
-    }    
+    }   
     contextCount = 0;
 }
 #else
@@ -2726,6 +2733,41 @@ bool handlSdlEvent(void* p) {
     }
 #endif
     if (e->type == SDL_QUIT) {
+        std::shared_ptr<KProcess> p = KSystem::getProcess(10);
+        if (p && !KSystem::shutingDown) {
+            // :TODO: make a count down time in the UI so it doesn't look locked up?
+
+            // Give the system 10 seconds to try and shutdown cleanly, this is so wineserver can flush registry changes
+            KSystem::killTime = KSystem::getMilliesSinceStart()+10000;
+            p->killAllThreads();
+            KSystem::eraseProcess(p->id);
+#ifndef __EMSCRIPTEN__
+            sdlWindow2Done = false;
+            sdlWindowShuttingDownIsOpen = true;
+            runInBackgroundThread([]() {
+                SDL_Window* w = SDL_CreateWindow("Shutting Down ...", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 320, 120, SDL_WINDOW_SHOWN | SDL_WINDOW_ALWAYS_ON_TOP);
+                SDL_Renderer* r = SDL_CreateRenderer(w, -1, 0);
+                SDL_SetRenderDrawColor(r, 0, 0, 0, 255);
+                SDL_RenderClear(r);
+                SDL_RenderPresent(r);
+                SDL_SetRenderDrawColor(r, 255, 255, 0, 255);
+                for (U32 i = 1; i <= 100 && (!sdlWindow2Done || i<10); i++) {
+                    SDL_Rect rect;
+                    rect.x = 10;
+                    rect.y = 90;
+                    rect.w = (320 - 20) * i / 100;
+                    rect.h = 20;
+                    SDL_RenderFillRect(r, &rect);
+                    SDL_RenderPresent(r);
+                    SDL_Delay(100);
+                }
+                SDL_DestroyRenderer(r);
+                SDL_DestroyWindow(w);
+                sdlWindowShuttingDownIsOpen = false;
+                });
+#endif
+            return true;
+        }
         return false;
     } else if (e->type == SDL_MOUSEMOTION) { 
         BOXEDWINE_RECORDER_HANDLE_MOUSE_MOVE(e);

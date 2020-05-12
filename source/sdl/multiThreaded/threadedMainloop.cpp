@@ -26,6 +26,17 @@ bool doMainLoop() {
     while (platformThreadCount) {
         bool hasEvent;
         U32 timeout = 5000;
+        U32 t = KSystem::getMilliesSinceStart();
+
+        if (KSystem::killTime) {
+            if (KSystem::killTime <= t) {
+                return true;
+            }
+            if (t - KSystem::killTime < timeout) {
+                timeout = t - KSystem::killTime;
+            }
+        }
+
 #if !defined(BOXEDWINE_DISABLE_UI) && !defined(__TEST)
         if (uiIsRunning()) {
             timeout = 33;
@@ -45,8 +56,7 @@ bool doMainLoop() {
         if (uiIsRunning()) {
             uiLoop();
         }
-#endif
-        U32 t = KSystem::getMilliesSinceStart();
+#endif                
         //flipFB();
         if (lastTitleUpdate+5000 < t) {
             char tmp[256];

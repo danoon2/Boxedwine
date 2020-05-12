@@ -36,6 +36,7 @@ BOXEDWINE_MUTEX KSystem::fileCacheMutex;
 #endif
 U32 KSystem::pentiumLevel = 4;
 bool KSystem::shutingDown;
+U32 KSystem::killTime;
 bool KSystem::adjustClock;
 U32 KSystem::adjustClockFactor=100;
 U32 KSystem::startTimeSdlTicks;

@@ -1708,6 +1708,22 @@ void KProcess::killAllThreadsExceptCurrent() {
     }
 }
 
+void KProcess::killAllThreads() {
+    std::vector<U32> threadIds;
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->threadsCondition);
+        std::unordered_map<U32, KThread*> tmp = this->threads;
+        for (auto& n : tmp) {
+            KThread* thread = n.second;
+            threadIds.push_back(thread->id);
+        }
+    }
+    // don't hold threadsCondition while calling terminateOtherThread
+    for (auto& n : threadIds) {
+        terminateOtherThread(shared_from_this(), n);
+    }
+}
+
 U32 KProcess::exitgroup(U32 code) {
     std::shared_ptr<KProcess> parent = KSystem::getProcess(this->parentId);
     if (parent && parent->sigActions[K_SIGCHLD].handlerAndSigAction!=K_SIG_DFL) {

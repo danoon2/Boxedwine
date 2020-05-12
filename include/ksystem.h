@@ -74,6 +74,7 @@ class KSystem {
 public:    
     static U32 pentiumLevel;
 	static bool shutingDown;
+    static U32 killTime;
 #ifdef BOXEDWINE_X64
     static bool useLargeAddressSpace;
 #endif

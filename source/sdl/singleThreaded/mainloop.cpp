@@ -33,6 +33,10 @@ bool doMainLoop() {
         }
 #endif
         t = KSystem::getMilliesSinceStart();
+
+        if (KSystem::killTime && KSystem::killTime <= t) {
+            return true;
+        }
         if (lastTitleUpdate+5000 < t) {
             char tmp[256];
             lastTitleUpdate = t;

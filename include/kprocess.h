@@ -113,6 +113,7 @@ public:
     U32 getThreadCount();
 	void deleteThread(KThread* thread);
     void killAllThreadsExceptCurrent();
+    void killAllThreads();
 
     void clone(const std::shared_ptr<KProcess>& from);
     U32 getNextFileDescriptorHandle(int after);

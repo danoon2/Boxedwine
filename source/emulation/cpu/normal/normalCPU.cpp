@@ -175,13 +175,13 @@ NormalBlock* NormalBlock::alloc() {
 void NormalBlock::dealloc(bool delayed) {
     KThread* thread = KThread::currentThread();
     if (thread) {
-        CPU* cpu = KThread::currentThread()->cpu;
-        if (cpu->delayedFreeBlock && cpu->delayedFreeBlock != DecodedBlock::currentBlock) {
+        CPU* cpu = thread->cpu;
+        if (cpu && cpu->delayedFreeBlock && cpu->delayedFreeBlock != DecodedBlock::currentBlock) {
             DecodedBlock* b = cpu->delayedFreeBlock;
             cpu->delayedFreeBlock = NULL;
             b->dealloc(false);
         }
-        if ((delayed && !cpu->delayedFreeBlock) || this == DecodedBlock::currentBlock) {
+        if (cpu && ((delayed && !cpu->delayedFreeBlock) || this == DecodedBlock::currentBlock)) {
             cpu->delayedFreeBlock = this;
         } else {
             this->op->dealloc(true);
