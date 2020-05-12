@@ -285,6 +285,10 @@ static SDL_GLContext gl_context;
 static ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
 void uiShutdown() {
+    int x=0, y=0;
+    SDL_GetWindowPosition(window, &x, &y);
+    GlobalSettings::saveScreenSize(x, y, (int)ImGui::GetIO().DisplaySize.x, (int)ImGui::GetIO().DisplaySize.y);
+    GlobalSettings::saveConfig();
     BaseDlg::stopAllDialogs();
 
     // Cleanup
@@ -446,16 +450,33 @@ bool uiShow(const std::string& basePath) {
     }
 #endif
 
-    U32 cx = 1024;
-    U32 cy = 768;
+    int cx = GlobalSettings::getPreviousScreenWidth();
+    int cy = GlobalSettings::getPreviousScreenHeight();
     U32 scale = SCALE_DENOMINATOR;
+
+    SDL_DisplayMode dm;
+    dm.w = 0;
+    dm.h = 0;
+    SDL_GetDesktopDisplayMode(0, &dm);
+
+    int x = GlobalSettings::getPreviousScreenX();
+    int y = GlobalSettings::getPreviousScreenY();
 
 #ifdef BOXEDWINE_HIGHDPI
     scale = getDisplayScale();
-    cx = cx * scale / SCALE_DENOMINATOR;
-    cy = cy * scale / SCALE_DENOMINATOR;
 #endif
-    window = SDL_CreateWindow("Boxedwine UI", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, cx, cy, window_flags);
+    if (cx < 320 || cy < 320 || (dm.w && cx > dm.w) || (dm.h && cy > dm.h)) {
+        cx = 1024 * scale / SCALE_DENOMINATOR;
+        cy = 768 * scale / SCALE_DENOMINATOR;
+        x = SDL_WINDOWPOS_CENTERED;
+        y = SDL_WINDOWPOS_CENTERED;
+    }
+    if (y<20 || (x != SDL_WINDOWPOS_CENTERED && ((dm.w && x + cx > dm.w) || (dm.w && y + cy > dm.w)))) {
+        x = SDL_WINDOWPOS_CENTERED;
+        y = SDL_WINDOWPOS_CENTERED;
+    }
+
+    window = SDL_CreateWindow("Boxedwine UI", x, y, cx, cy, window_flags);
     // when launching boxedwine as another process, if that process creates and destroys more than 1 window (changing emulated resolution), on Windows at least, when that process exits the above create window sometimes won't be on top
     SDL_RaiseWindow(window);
 #ifdef BOXEDWINE_IMGUI_DX9

@@ -44,6 +44,10 @@ float GlobalSettings::extraVerticalSpacing;
 float GlobalSettings::fontScale;
 bool GlobalSettings::iconFontsLoaded;
 std::string GlobalSettings::filesUrl;
+int GlobalSettings::lastScreenCx;
+int GlobalSettings::lastScreenCy;
+int GlobalSettings::lastScreenX;
+int GlobalSettings::lastScreenY;
 
 void GlobalSettings::init(int argc, const char **argv) {
     GlobalSettings::dataFolderLocation = SDL_GetPrefPath("", "Boxedwine");
@@ -66,6 +70,11 @@ void GlobalSettings::init(int argc, const char **argv) {
     GlobalSettings::defaultScale = config.readInt("DefaultScale", 100);
     GlobalSettings::fontScale = (float)config.readInt("FontScale", 100) / 100.0f;
     GlobalSettings::filesUrl = config.readString("FilesURL", "http://www.boxedwine.org/files.xml");
+    GlobalSettings::lastScreenCx = config.readInt("WindowWidth", 0);
+    GlobalSettings::lastScreenCy = config.readInt("WindowHeight", 0);
+    GlobalSettings::lastScreenX = config.readInt("WindowX", 0);
+    GlobalSettings::lastScreenY = config.readInt("WindowY", 0);
+
     if (!Fs::doesNativePathExist(configFilePath)) {
         saveConfig();
     }    
@@ -111,6 +120,14 @@ void GlobalSettings::startUp() {
     GlobalSettings::checkFileListForUpdate();
 }
 
+void GlobalSettings::saveScreenSize(int x, int y, int cx, int cy) {
+    GlobalSettings::lastScreenCx = cx;
+    GlobalSettings::lastScreenCy = cy;
+    GlobalSettings::lastScreenX = x;
+    GlobalSettings::lastScreenY = y;
+    GlobalSettings::saveConfig();
+}
+
 void GlobalSettings::saveConfig() {
     ConfigFile config(GlobalSettings::configFilePath);
     config.writeString("Version", "1");
@@ -120,6 +137,10 @@ void GlobalSettings::saveConfig() {
     config.writeInt("DefaultScale", GlobalSettings::defaultScale);
     config.writeInt("FontScale", (int)(GlobalSettings::fontScale*100));
     config.writeString("FilesURL", GlobalSettings::filesUrl);
+    config.writeInt("WindowWidth", GlobalSettings::lastScreenCx);
+    config.writeInt("WindowHeight", GlobalSettings::lastScreenCy);
+    config.writeInt("WindowX", GlobalSettings::lastScreenX);
+    config.writeInt("WindowY", GlobalSettings::lastScreenY);
     config.saveChanges();
 }
 

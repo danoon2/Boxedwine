@@ -69,6 +69,7 @@ public:
     static void setTheme(const std::string& theme);
     static std::string getTheme() {return GlobalSettings::theme;}
     static void saveConfig();
+    static void saveScreenSize(int x, int y, int cx, int cy);
     static void loadTheme();
     static void reloadApps();
     static void loadFonts();
@@ -95,6 +96,10 @@ public:
     static void downloadFile(const std::string& url, const std::string& filePath, const std::string& name, U32 sizeMB, std::function<void(bool)> onCompleted);
     static std::string createUniqueContainerPath(const std::string& name);
     static bool isDpiAware() {return GlobalSettings::scale != 100;}
+    static int getPreviousScreenWidth() {return GlobalSettings::lastScreenCx;}
+    static int getPreviousScreenHeight() { return GlobalSettings::lastScreenCy;}
+    static int getPreviousScreenX() { return GlobalSettings::lastScreenX; }
+    static int getPreviousScreenY() { return GlobalSettings::lastScreenY; }
 
     static StartUpArgs startUpArgs;
 
@@ -137,6 +142,10 @@ private:
     static float fontScale;
     static bool iconFontsLoaded;
     static std::string filesUrl;
+    static int lastScreenCx;
+    static int lastScreenCy;
+    static int lastScreenX;
+    static int lastScreenY;
 };
 
 #endif
