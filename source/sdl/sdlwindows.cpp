@@ -665,7 +665,7 @@ U32 sdlCreateOpenglWindow_main_thread(KThread* thread, Wnd* wnd, int major, int 
 }
 #include "../../tools/opengl/gldef.h"
 void sdlPreOpenGLCall(U32 index) {
-    if (index == XSwapBuffer) {
+    if (index == XSwapBuffer || index == Finish || index == Flush) {
         preDrawWindow();
     }
 }
