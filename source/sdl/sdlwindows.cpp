@@ -382,8 +382,8 @@ static U32 nextGlId = 1;
 #ifdef SDL2
 SDL_Window *sdlWindow;
 SDL_Renderer *sdlRenderer;
-bool sdlWindow2Done;
-bool sdlWindowShuttingDownIsOpen;
+SDL_Window* sdlShutdownWindow;
+SDL_Renderer* sdlShutdownRenderer;
 SDL_GLContext sdlCurrentContext;
 BOXEDWINE_MUTEX sdlMutex;
 int contextCount;
@@ -393,6 +393,11 @@ static U32 timeToHideUI;
 static std::string delayedCreateWindowMsg; // the ui will watch for this message
 
 static void destroySDL2(KThread* thread) {
+#if !defined(BOXEDWINE_DISABLE_UI) && !defined(__TEST) && !defined(BOXEDWINE_MSVC)
+    if (uiIsRunning()) {
+        uiShutdown();
+    }
+#endif
     timeToHideUI = 0;
     windowIsHidden = false;
     delayedCreateWindowMsg = "";
@@ -437,9 +442,13 @@ static void destroySDL2(KThread* thread) {
     if (thread) {
         thread->removeAllGlContexts();
     }
-    sdlWindow2Done = true;
-    while (sdlWindowShuttingDownIsOpen) {
-        SDL_Delay(1);
+    if (sdlShutdownRenderer) {
+        SDL_DestroyRenderer(sdlShutdownRenderer);
+        sdlShutdownRenderer = NULL;
+    }
+    if (sdlShutdownWindow) {
+        SDL_DestroyWindow(sdlShutdownWindow);
+        sdlShutdownWindow = NULL;
     }
 #endif
     if (sdlWindow) {
@@ -472,6 +481,7 @@ void destroySDL() {
 }
 
 void preDrawWindow() {
+    DISPATCH_MAIN_THREAD_BLOCK_BEGIN
 #if !defined(BOXEDWINE_DISABLE_UI) && !defined(__TEST)
     if (timeToHideUI && timeToHideUI < KSystem::getMilliesSinceStart()) {
         if (uiIsRunning()) {
@@ -490,6 +500,7 @@ void preDrawWindow() {
         windowIsHidden = false;
         timeToHideUI = KSystem::getMilliesSinceStart() + HIDE_UI_WINDOW_DELAY;
     }
+    DISPATCH_MAIN_THREAD_BLOCK_END
 }
 
 #if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
@@ -680,7 +691,12 @@ U32 sdlCreateContext(KThread* thread, Wnd* wnd, int major, int minor, int profil
     }
 #ifdef SDL2
     if (result) {
-        SDL_GLContext context = SDL_GL_CreateContext(sdlWindow);
+        SDL_GLContext context;
+        // Mac requires this on the main thread
+        sdlDispatch([&context]() -> U32 {
+            context = SDL_GL_CreateContext(sdlWindow);
+            return 0;
+        });
         if (!context) {
             fprintf(stderr, "Couldn't create context: %s\n", SDL_GetError());
             DISPATCH_MAIN_THREAD_BLOCK_BEGIN_RETURN
@@ -1020,25 +1036,33 @@ void sdlDrawAllWindows(KThread* thread, U32 hWnd, int count) {
 #endif
 #ifdef SDL2
     if (sdlVideoEnabled && sdlRenderer) {
-        SDL_SetRenderDrawColor(sdlRenderer, 58, 110, 165, 255 );
-        SDL_RenderClear(sdlRenderer);    
-        for (int i=count-1;i>=0;i--) {
-            Wnd* wnd = getWnd(readd(hWnd+i*4));
-            if (wnd && wnd->sdlTextureWidth && wnd->sdlTexture) {
-                SDL_Rect dstrect;
-                dstrect.x = wnd->windowRect.left*sdlScaleX/100;
-                dstrect.y = wnd->windowRect.top*sdlScaleY/100;
-                dstrect.w = wnd->sdlTextureWidth*sdlScaleX/100;
-                dstrect.h = wnd->sdlTextureHeight*sdlScaleY/100;
+        U32 threadId = KThread::currentThread()->id;
+        DISPATCH_MAIN_THREAD_BLOCK_BEGIN
+        KThread* thread = KSystem::getThreadById(threadId);
+        if (thread) {
+            ChangeThread t(thread);
+            SDL_SetRenderDrawColor(sdlRenderer, 58, 110, 165, 255 );
+            SDL_RenderClear(sdlRenderer);
+            for (int i=count-1;i>=0;i--) {
+                        Wnd* wnd = getWnd(readd(hWnd+i*4));
+                        if (wnd && wnd->sdlTextureWidth && wnd->sdlTexture) {
+                            SDL_Rect dstrect;
+                            dstrect.x = wnd->windowRect.left*sdlScaleX/100;
+                            dstrect.y = wnd->windowRect.top*sdlScaleY/100;
+                            dstrect.w = wnd->sdlTextureWidth*sdlScaleX/100;
+                            dstrect.h = wnd->sdlTextureHeight*sdlScaleY/100;
 
-#ifdef BOXEDWINE_64BIT_MMU
-                SDL_RenderCopyEx(sdlRenderer, (SDL_Texture*)wnd->sdlTexture, NULL, &dstrect, 0, NULL, SDL_FLIP_VERTICAL);
-#else
-               SDL_RenderCopy(sdlRenderer, (SDL_Texture*)wnd->sdlTexture, NULL, &dstrect);	            
-#endif
-            }
-        }   
-        SDL_RenderPresent(sdlRenderer);
+            #ifdef BOXEDWINE_64BIT_MMU
+                            SDL_RenderCopyEx(sdlRenderer, (SDL_Texture*)wnd->sdlTexture, NULL, &dstrect, 0, NULL, SDL_FLIP_VERTICAL);
+            #else
+                           SDL_RenderCopy(sdlRenderer, (SDL_Texture*)wnd->sdlTexture, NULL, &dstrect);
+            #endif
+                        }
+                    }
+                    SDL_RenderPresent(sdlRenderer);
+        }
+        
+        DISPATCH_MAIN_THREAD_BLOCK_END
     }
     sdlUpdated=1;
 #else
@@ -1430,7 +1454,9 @@ const char* getCursorName(char* moduleName, char* resourceName, int resource) {
 
 U32 sdlSetCursor(KThread* thread, char* moduleName, char* resourceName, int resource) {
     if (!moduleName && !resourceName && !resource) {
+        DISPATCH_MAIN_THREAD_BLOCK_BEGIN
         SDL_ShowCursor(0);
+        DISPATCH_MAIN_THREAD_BLOCK_END
         return 1;
     } else {
         const char* name = getCursorName(moduleName, resourceName, resource);
@@ -1438,8 +1464,10 @@ U32 sdlSetCursor(KThread* thread, char* moduleName, char* resourceName, int reso
             SDL_Cursor* cursor = cursors[name];
             if (!cursor)
                 return 0;
+            DISPATCH_MAIN_THREAD_BLOCK_BEGIN
             SDL_ShowCursor(1);
             SDL_SetCursor(cursor);
+            DISPATCH_MAIN_THREAD_BLOCK_END
             return 1;
         }        
     }
@@ -1447,7 +1475,6 @@ U32 sdlSetCursor(KThread* thread, char* moduleName, char* resourceName, int reso
 }
 
 void sdlCreateAndSetCursor(KThread* thread, char* moduleName, char* resourceName, int resource, U8* and_bits, U8* xor_bits, int width, int height, int hotX, int hotY) {
-    SDL_Cursor* cursor;
     //int byteCount = (width+31) / 31 * 4 * height;
     int dst,src,y, x;
     U8 data_bits[64*64/8];
@@ -1498,12 +1525,14 @@ void sdlCreateAndSetCursor(KThread* thread, char* moduleName, char* resourceName
         }
     }
 
-    cursor = SDL_CreateCursor(data_bits, mask_bits, width, height, hotX, hotY);
+    DISPATCH_MAIN_THREAD_BLOCK_BEGIN
+    SDL_Cursor* cursor = SDL_CreateCursor(data_bits, mask_bits, width, height, hotX, hotY);
     if (cursor) {
         const char* name = getCursorName(moduleName, resourceName, resource);
         cursors[name] = cursor;
         SDL_SetCursor(cursor);
     }
+    DISPATCH_MAIN_THREAD_BLOCK_END
 }
 
 #define KEYEVENTF_EXTENDEDKEY        0x0001
@@ -2722,6 +2751,21 @@ U32 translate(U32 key) {
     }
 }
 
+bool isShutdownWindowIsOpen() {
+    return sdlShutdownWindow!=NULL;
+}
+    
+void updateShutdownWindow() {
+    int i = 100 - (KSystem::killTime-KSystem::getMilliesSinceStart())/100 + 1;
+    SDL_Rect rect;
+    rect.x = 10;
+    rect.y = 90;
+    rect.w = (320 - 20) * i / 100;
+    rect.h = 20;
+    SDL_RenderFillRect(sdlShutdownRenderer, &rect);
+    SDL_RenderPresent(sdlShutdownRenderer);
+}
+    
 bool handlSdlEvent(void* p) {
     SDL_Event* e=(SDL_Event*)p;
 #ifdef BOXEDWINE_RECORDER
@@ -2735,38 +2779,22 @@ bool handlSdlEvent(void* p) {
     if (e->type == SDL_QUIT) {
         std::shared_ptr<KProcess> p = KSystem::getProcess(10);
         if (p && !KSystem::shutingDown) {
-            // :TODO: make a count down time in the UI so it doesn't look locked up?
-
-            // Give the system 10 seconds to try and shutdown cleanly, this is so wineserver can flush registry changes
+            // Give the system 10 seconds to try and shutdown cleanly, this is so wineserver can flush registry changes            
+#ifndef __EMSCRIPTEN__
+            sdlShutdownWindow = SDL_CreateWindow("Shutting Down ...", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 320, 120, SDL_WINDOW_SHOWN | SDL_WINDOW_ALWAYS_ON_TOP);
+            sdlShutdownRenderer  = SDL_CreateRenderer(sdlShutdownWindow, -1, 0);
+            SDL_SetRenderDrawColor(sdlShutdownRenderer, 0, 0, 0, 255);
+            SDL_RenderClear(sdlShutdownRenderer);
+            SDL_RenderPresent(sdlShutdownRenderer);
+            SDL_SetRenderDrawColor(sdlShutdownRenderer, 255, 255, 0, 255);
             KSystem::killTime = KSystem::getMilliesSinceStart()+10000;
-            p->killAllThreads();
-            KSystem::eraseProcess(p->id);
-#if !defined(__EMSCRIPTEN__) && !defined(__TEST)
-            sdlWindow2Done = false;
-            sdlWindowShuttingDownIsOpen = true;
-            runInBackgroundThread([]() {
-                SDL_Window* w = SDL_CreateWindow("Shutting Down ...", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 320, 120, SDL_WINDOW_SHOWN | SDL_WINDOW_ALWAYS_ON_TOP);
-                SDL_Renderer* r = SDL_CreateRenderer(w, -1, 0);
-                SDL_SetRenderDrawColor(r, 0, 0, 0, 255);
-                SDL_RenderClear(r);
-                SDL_RenderPresent(r);
-                SDL_SetRenderDrawColor(r, 255, 255, 0, 255);
-                for (U32 i = 1; i <= 100 && (!sdlWindow2Done || i<10); i++) {
-                    SDL_Rect rect;
-                    rect.x = 10;
-                    rect.y = 90;
-                    rect.w = (320 - 20) * i / 100;
-                    rect.h = 20;
-                    SDL_RenderFillRect(r, &rect);
-                    SDL_RenderPresent(r);
-                    SDL_Delay(100);
-                }
-                SDL_DestroyRenderer(r);
-                SDL_DestroyWindow(w);
-                sdlWindowShuttingDownIsOpen = false;
-                });
-#endif
+            updateShutdownWindow();
+            runInBackgroundThread([p]() {
+                p->killAllThreads();
+                KSystem::eraseProcess(p->id);
+            });
             return true;
+#endif
         }
         return false;
     } else if (e->type == SDL_MOUSEMOTION) { 

@@ -60,4 +60,6 @@ void sdlDrawRectOnPushedSurfaceAndDisplay(U32 x, U32 y, U32 w, U32 h, U8 r, U8 g
 bool handlSdlEvent(void* e);
 void showSDLStartingWindow();
 void sdlPreOpenGLCall(U32 index);
+bool isShutdownWindowIsOpen();
+void updateShutdownWindow();
 #endif

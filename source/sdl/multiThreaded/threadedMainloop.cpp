@@ -36,7 +36,10 @@ bool doMainLoop() {
                 timeout = t - KSystem::killTime;
             }
         }
-
+        if (isShutdownWindowIsOpen()) {
+            timeout = 100;
+            updateShutdownWindow();
+        }
 #if !defined(BOXEDWINE_DISABLE_UI) && !defined(__TEST)
         if (uiIsRunning()) {
             timeout = 33;
