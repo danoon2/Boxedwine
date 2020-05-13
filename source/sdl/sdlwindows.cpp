@@ -2741,7 +2741,7 @@ bool handlSdlEvent(void* p) {
             KSystem::killTime = KSystem::getMilliesSinceStart()+10000;
             p->killAllThreads();
             KSystem::eraseProcess(p->id);
-#ifndef __EMSCRIPTEN__
+#if !defined(__EMSCRIPTEN__) && !defined(__TEST)
             sdlWindow2Done = false;
             sdlWindowShuttingDownIsOpen = true;
             runInBackgroundThread([]() {
