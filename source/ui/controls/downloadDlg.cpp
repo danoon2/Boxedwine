@@ -3,36 +3,54 @@
 #include "../../util/networkutils.h"
 #include "../../util/threadutils.h"
 #include "../../io/fs.h"
+#include <SDL.h>
 
-DownloadDlg::DownloadDlg(int title, const std::string& label, const std::string& url, const std::string& filePath, std::function<void(bool)> onCompleted, U64 expectedFileSize) : BaseDlg(title, 400, 150), label(label), url(url), filePath(filePath), percentDone(0), expectedFileSize(expectedFileSize), onCompleted(onCompleted) {
-    std::string tmpFilePath = filePath + ".part";
-    if (Fs::doesNativePathExist(tmpFilePath)) {
-        if (Fs::deleteNativeFile(tmpFilePath) != 0) {
-            std::string errorMsg = "Failed to delete tmp file: " + tmpFilePath + " (";
+#ifdef WIN32
+#undef BOOL
+#include <winsock.h>
+#else
+#include <unistd.h>
+void closesocket(int socket) { close(socket); }
+#endif
+
+DownloadDlg::DownloadDlg(int title, const std::string& label, const std::string& url, const std::string& filePath, std::function<void(bool)> onCompleted, U64 expectedFileSize) : BaseDlg(title, 400, 175), label(label), url(url), filePath(filePath), percentDone(0), expectedFileSize(expectedFileSize), onCompleted(onCompleted), cancelled(false), socketfd(0), downloadDone(false) {
+    this->tmpFilePath = filePath + ".part";
+    if (Fs::doesNativePathExist(this->tmpFilePath)) {
+        if (Fs::deleteNativeFile(this->tmpFilePath) != 0) {
+            std::string errorMsg = "Failed to delete tmp file: " + this->tmpFilePath + " (";
             errorMsg += strerror(errno);
             errorMsg += ")";
             downloadFailed(errorMsg);
             return;
         }
     }
-    runInBackgroundThread([this, url, tmpFilePath]() {
+    runInBackgroundThread([this, url]() {
         std::string errorMsg;        
-        bool result = downloadFile(url, tmpFilePath, [this](U64 bytesCompleted) {
+        bool result = downloadFile(url, this->tmpFilePath, [this](U64 bytesCompleted) {
             if (this->expectedFileSize) {
                 this->percentDone = (U32)(100 * bytesCompleted / this->expectedFileSize);
             }
             
-            }, NULL, errorMsg);
+            }, NULL, errorMsg, &this->cancelled, &this->socketfd);
         if (result) {
             this->downloadCompleted();
         } else {
             this->downloadFailed(errorMsg);
         }
+        this->socketfd = 0;
+        this->downloadDone = true;
         });    
     GlobalSettings::useFastFrameRate(true);
 }
 
 DownloadDlg::~DownloadDlg() {
+    this->cancelled = true;
+    if (this->socketfd) {
+        closesocket(this->socketfd);
+    }
+    while (!downloadDone) {
+        SDL_Delay(1);
+    }
     GlobalSettings::useFastFrameRate(false);
 }
 
@@ -44,9 +62,8 @@ void DownloadDlg::downloadCompleted() {
             errorMsg += ")";
         }
     }
-    std::string tmpFilePath = filePath + ".part";
-    if (rename(tmpFilePath.c_str(), filePath.c_str()) != 0) {
-        std::string errorMsg = "Failed to rename tmp file: " + tmpFilePath + " (";
+    if (rename(this->tmpFilePath.c_str(), filePath.c_str()) != 0) {
+        std::string errorMsg = "Failed to rename tmp file: " + this->tmpFilePath + " (";
         errorMsg += strerror(errno);
         errorMsg += ")";
         downloadFailed(errorMsg);
@@ -57,8 +74,13 @@ void DownloadDlg::downloadCompleted() {
 }
 
 void DownloadDlg::downloadFailed(const std::string& errorMsg) {
-    this->errorMsg = errorMsg;
-    showErrorMsg(true);
+    if (this->cancelled) {
+        Fs::deleteNativeFile(this->tmpFilePath);
+        this->done();
+    } else {
+        this->errorMsg = errorMsg;
+        showErrorMsg(true);
+    }
 }
 
 void DownloadDlg::showErrorMsg(bool open) {
@@ -86,6 +108,17 @@ void DownloadDlg::run() {
         ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImGui::GetColorU32(ImGuiCol_ButtonActive));
         ImGui::ProgressBar(this->percentDone / 100.0f, ImVec2(this->width - this->extraVerticalSpacing*4, 0));
         ImGui::PopStyleColor();
+    }
+    float buttonWidth = ImGui::CalcTextSize(getTranslation(GENERIC_DLG_CANCEL)).x + ImGui::GetStyle().FramePadding.x * 2;
+    ImGui::SetCursorPosX(this->width/2-buttonWidth/2);
+    ImGui::SetCursorPosY(this->height - ImGui::GetFrameHeightWithSpacing() - ImGui::GetStyle().ItemSpacing.y);
+    if (ImGui::Button(getTranslation(GENERIC_DLG_CANCEL))) {
+        // :TODO: what if the socket is stuck, this will only work if the socket is just too slow
+        this->cancelled = true;
+        if (this->socketfd) {
+            closesocket(this->socketfd);
+        }
+        this->label = getTranslation(DOWNLOADDLG_CANCELLING_LABEL);
     }
     if (this->errorMsg.length()) {
         showErrorMsg(false);

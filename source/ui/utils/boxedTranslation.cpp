@@ -237,6 +237,8 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "Please Wait";
     case DOWNLOADDLG_LABEL:
         return "Downloading {0} ...";
+    case DOWNLOADDLG_CANCELLING_LABEL:
+        return "Trying to cancel download ...";
     case CONTAINER_VIEW_TITLE:
         return "Application Options";
     case CONTAINER_VIEW_NAME_LABEL:

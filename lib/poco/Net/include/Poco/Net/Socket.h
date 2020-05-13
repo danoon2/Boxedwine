@@ -334,7 +334,7 @@ public:
 		/// of buffers used for writing (ie. reading from socket
 		/// into buffers).
 
-protected:
+//protected:
 	Socket(SocketImpl* pImpl);
 		/// Creates the Socket and attaches the given SocketImpl.
 		/// The socket takes ownership of the SocketImpl.

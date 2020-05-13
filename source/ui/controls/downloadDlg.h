@@ -21,6 +21,10 @@ private:
     U32 percentDone;
     U64 expectedFileSize;
     std::function<void(bool)> onCompleted;
+    bool cancelled;
+    U64 socketfd;
+    bool downloadDone;
+    std::string tmpFilePath;
 };
 
 #endif

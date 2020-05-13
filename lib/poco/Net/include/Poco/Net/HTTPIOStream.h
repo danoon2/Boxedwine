@@ -77,7 +77,7 @@ public:
 		
 	~HTTPResponseStream();
 	
-private:
+//private:
 	HTTPClientSession* _pSession;
 };
 
