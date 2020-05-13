@@ -10,7 +10,7 @@
 #include <winsock.h>
 #else
 #include <unistd.h>
-void closesocket(int socket) { close(socket); }
+static void closesocket(int socket) { close(socket); }
 #endif
 
 DownloadDlg::DownloadDlg(int title, const std::string& label, const std::string& url, const std::string& filePath, std::function<void(bool)> onCompleted, U64 expectedFileSize) : BaseDlg(title, 400, 175), label(label), url(url), filePath(filePath), percentDone(0), expectedFileSize(expectedFileSize), onCompleted(onCompleted), cancelled(false), socketfd(0), downloadDone(false) {
