@@ -10,6 +10,8 @@
 #include "Poco/Net/AcceptCertificateHandler.h"
 #include "Poco/Net/SSLManager.h"
 #include "Poco/Net/Context.h"
+#include "Poco/Net/HTTPIOStream.h"
+#include "Poco/Net/HTTPClientSession.h"
 
 #ifdef U64
 #undef U64
@@ -34,7 +36,7 @@ using Poco::Net::Context;
 
 static bool sslInitialized;
 
-bool downloadFile(const std::string& url, const std::string& filePath, std::function<void(U64 bytesCompleted)> f, NetworkProxy* proxy, std::string& errorMsg) {
+bool downloadFile(const std::string& url, const std::string& filePath, std::function<void(U64 bytesCompleted)> f, NetworkProxy* proxy, std::string& errorMsg, bool* cancel, U64* socketfd) {
     try
     {
         std::string complete_page_url = "";
@@ -84,18 +86,22 @@ bool downloadFile(const std::string& url, const std::string& filePath, std::func
         }
 
         // :TODO: why can't I get the length from pStr?
-        if (pStr) {
+        if (pStr && (!cancel || !(*cancel))) {
 
             file_stream.open(filePath, std::ios::out | std::ios::trunc | std::ios::binary);
             //StreamCopier::copyStream(*pStr.get(), file_stream);
 
+            if (socketfd) {
+                Poco::Net::HTTPResponseStream* s = (Poco::Net::HTTPResponseStream*)pStr.get();
+                *socketfd = (U64)s->_pSession->socket().sockfd();
+            }
             std::istream& is = *pStr.get();
 
             Poco::Buffer<char> buffer(8192);
             std::streamsize len = 0;
             is.read(buffer.begin(), 8192);
             std::streamsize n = is.gcount();
-            while (n > 0)
+            while (n > 0 && (!cancel || !(*cancel)))
             {
                 len += n;
                 file_stream.write(buffer.begin(), n);
@@ -109,8 +115,8 @@ bool downloadFile(const std::string& url, const std::string& filePath, std::func
                 }
             }
 
-            file_stream.close();
-            return true;
+            file_stream.close();            
+            return (!cancel || !(*cancel));
         }
         return false;
     } catch (Exception& exc) {
