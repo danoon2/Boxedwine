@@ -114,7 +114,12 @@ int boxedmain(int argc, const char **argv) {
         while (uiShow(GlobalSettings::getExePath()+Fs::nativePathSeperator)) {
             if (GlobalSettings::restartUI) {
                 GlobalSettings::restartUI = false;
-                GlobalSettings::startUp();
+                if (GlobalSettings::reinit) {
+                    GlobalSettings::reinit = false;
+                    GlobalSettings::init(argc, argv);
+                } else {
+                    GlobalSettings::startUp();
+                }
                 continue;
             }
             BoxedwineData::startApp();

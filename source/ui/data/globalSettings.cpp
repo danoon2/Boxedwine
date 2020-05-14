@@ -32,6 +32,7 @@ ImFont* GlobalSettings::sectionTitleFont;
 U32 GlobalSettings::scale=1000;
 bool GlobalSettings::filesListDownloading;
 bool GlobalSettings::restartUI;
+bool GlobalSettings::reinit;
 U32 GlobalSettings::frameDelayMillies = SLOW_FRAME_DELAY;
 U32 GlobalSettings::fastFrameRateCount = 0;
 U64 GlobalSettings::lastFrameDelayChange = 0;
@@ -50,6 +51,17 @@ int GlobalSettings::lastScreenX;
 int GlobalSettings::lastScreenY;
 
 void GlobalSettings::init(int argc, const char **argv) {
+    GlobalSettings::largeFontBold = NULL;
+    GlobalSettings::largeFont = NULL;
+    GlobalSettings::mediumFont = NULL;
+    GlobalSettings::defaultFont = NULL;
+    GlobalSettings::sectionTitleFont = NULL;
+    GlobalSettings::iconFontsLoaded = false;
+    GlobalSettings::availableWineVersions.clear();
+    GlobalSettings::demos.clear();
+    GlobalSettings::wineVersions.clear();
+    GlobalSettings::components.clear();
+
     GlobalSettings::dataFolderLocation = SDL_GetPrefPath("", "Boxedwine");
     if (Fs::nativePathSeperator.length()==0) {
         Fs::nativePathSeperator = GlobalSettings::dataFolderLocation[GlobalSettings::dataFolderLocation.length()-1];
@@ -111,7 +123,7 @@ void GlobalSettings::startUp() {
         std::string s = Fs::nativePathSeperator;
         std::string nativePath = GlobalSettings::getRootFolder(container) + s + "home" + s + "username" + s + ".wine" + s + "drive_c" + s + "windows" + s + "system32";
         Fs::makeNativeDirs(nativePath);
-        BoxedApp app("WineMine", "/home/username/.wine/drive_c/windows/system32", "winemine.exe", container);
+        BoxedApp app("WineMine", "/opt/wine/lib/wine/fakedlls", "winemine.exe", container);
         app.saveApp();
     }
     GlobalSettings::loadFileList();

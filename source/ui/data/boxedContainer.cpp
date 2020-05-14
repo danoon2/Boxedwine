@@ -173,7 +173,7 @@ void BoxedContainer::getWineApps(std::vector<BoxedApp>& apps) {
                     BoxedApp app;
                     app.container = this;
                     app.name = name;
-                    app.path = Fs::getParentPath(fileName);
+                    app.path = "/"+Fs::getParentPath(fileName);
                     app.cmd = app.name;
                     apps.push_back(app);
                 }

@@ -152,13 +152,15 @@ const BoxedAppIcon* BoxedApp::getIconTexture(int iconSize) {
             data = extractIconFromExe(this->container->getNativePathForApp(*this), iconSize, &width, &height);
         } else {
             std::string nativeDir = this->container->getDir() + Fs::nativePathSeperator + "tmp";
-            FsZip::extractFileFromZip(GlobalSettings::getFileFromWineName(container->getWineVersion()), this->path + "/" + this->cmd, nativeDir);
+            FsZip::extractFileFromZip(GlobalSettings::getFileFromWineName(container->getWineVersion()), this->path.substr(1) + "/" + this->cmd, nativeDir);
             std::string nativePath = nativeDir + Fs::nativePathSeperator + this->cmd;
             data = extractIconFromExe(nativePath, iconSize, &width, &height);
             Fs::deleteNativeFile(nativePath);
         }
         if (data) {
             this->iconsBySize[iconSize] = new BoxedAppIcon(data, width, height);
+        } else {
+            this->iconsBySize[iconSize] = NULL;
         }
     }
     if (this->iconsBySize.count(iconSize)) {

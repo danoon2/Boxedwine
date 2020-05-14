@@ -100,6 +100,7 @@ public:
     static int getPreviousScreenHeight() { return GlobalSettings::lastScreenCy;}
     static int getPreviousScreenX() { return GlobalSettings::lastScreenX; }
     static int getPreviousScreenY() { return GlobalSettings::lastScreenY; }
+    static void clearData();
 
     static StartUpArgs startUpArgs;
 
@@ -108,7 +109,8 @@ public:
     static ImFont* mediumFont;
     static ImFont* defaultFont;
     static ImFont* sectionTitleFont;
-    static bool restartUI;    
+    static bool restartUI;
+    static bool reinit;
     static float extraVerticalSpacing;
 private:    
     static void initWineVersions();

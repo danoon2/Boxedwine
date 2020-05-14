@@ -111,6 +111,31 @@ void OptionsView::createGeneralTab() {
         GlobalSettings::saveConfig();
     };
 
+    std::shared_ptr<LayoutSection> bottomSection = model->addSection();
+    bottomSection->addSeparator();
+    std::string deleteLabel = "";
+    if (GlobalSettings::hasIconsFont()) {
+        deleteLabel += TRASH_ICON;
+        deleteLabel += " ";
+    }
+    deleteLabel += getTranslation(OPTIONS_VIEW_DELETE_ALL_BUTTON_LABEL);
+    std::shared_ptr<LayoutButtonControl> deleteAllContainersButton = bottomSection->addButton(0, OPTIONS_VIEW_DELETE_ALL_BUTTON_HELP, deleteLabel);
+    deleteAllContainersButton->onChange = [this]() {
+        runOnMainUI([this]() {
+            new YesNoDlg(GENERIC_DLG_CONFIRM_TITLE, getTranslation(OPTIONS_VIEW_DELETE_ALL_CONFIRM), [this](bool yes) {
+                if (yes) {
+                    runOnMainUI([this]() {
+                        Fs::deleteNativeDirAndAllFilesInDir(GlobalSettings::getDataFolder());
+                        GlobalSettings::restartUI = true;
+                        GlobalSettings::reinit = true;                      
+                        return false;
+                        });
+                }
+                });
+            return false;
+            });
+    };
+
     std::string name;
     if (GlobalSettings::hasIconsFont()) {
         name += OPTIONS_GENERAL;
@@ -274,7 +299,9 @@ void OptionsView::runWineOptions() {
         ImGui::SameLine();
         ImGui::PushFont(GlobalSettings::defaultFont);
         pos = ImGui::GetCursorPos();
-        pos.y += GlobalSettings::mediumFont->FontSize / 2 - GlobalSettings::defaultFont->FontSize / 2;
+        if (GlobalSettings::mediumFont) {
+            pos.y += GlobalSettings::mediumFont->FontSize / 2 - GlobalSettings::defaultFont->FontSize / 2;
+        }
         ImGui::SetCursorPos(pos);
         SAFE_IMGUI_TEXT(name2.c_str());
         ImGui::PopFont();

@@ -145,6 +145,12 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "Font Scale";
     case OPTIONSVIEW_DEFAULT_FONT_SCALE_HELP:
         return "This will change the size of the, which will make the UI look smaller or bigger.";
+    case OPTIONS_VIEW_DELETE_ALL_BUTTON_LABEL:
+        return "Delete all data";
+    case OPTIONS_VIEW_DELETE_ALL_BUTTON_HELP:
+        return "This will delete all data, including the containers folder, and cannot be undone.  You will loose all saved data inside the containers, including apps, and Boxedwine settings.";
+    case OPTIONS_VIEW_DELETE_ALL_CONFIRM:
+        return "Are you sure you want to permentantly delete all containers, apps, settings and any saved data you had in the containers?";
     case APPCHOOSER_DLG_TITLE:
         return "Create Shortcut";
     case APPCHOOSER_DLG_CHOOSE_APP_LABEL:
@@ -323,6 +329,8 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "Run Wine App";
     case ERROR_NO_WINE:
         return "There are no versions of Wine installed.  Would you like to install the default version of Wine now?";
+    case ERROR_NO_WINE_HIGH_DPI:
+        return "There are no versions of Wine installed.  Would you like to install the default version of Wine now?  Installing a version of Wine will also fix the small fonts your seeing.";
     case ERROR_MISSING_WINE:
         return "{0} is missing.  Would you like to use {1} instead?";
     case ERROR_NO_FILE_LIST:

@@ -93,7 +93,14 @@ U32 getDisplayScale() {
 }
 
 void askToDownloadDefaultWine() {
-    new YesNoDlg(GENERIC_DLG_ERROR_TITLE, getTranslation(ERROR_NO_WINE), [](bool yes) {
+    int labelId = ERROR_NO_WINE;
+#ifdef BOXEDWINE_HIGHDPI
+    U32 scale = getDisplayScale();
+    if (scale >= 1500) {
+        labelId = ERROR_NO_WINE_HIGH_DPI;
+    }
+#endif
+    new YesNoDlg(GENERIC_DLG_ERROR_TITLE, getTranslation(labelId), [](bool yes) {
         if (yes) {
             GlobalSettings::downloadWine(GlobalSettings::getAvailableWineVersions().front(), [](bool success) {
                 });
