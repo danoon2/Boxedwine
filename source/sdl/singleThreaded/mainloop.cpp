@@ -27,6 +27,9 @@ bool doMainLoop() {
                 break;
             }
         };
+        if (isShutdownWindowIsOpen()) {
+            updateShutdownWindow();
+        }
 #if !defined(BOXEDWINE_DISABLE_UI) && !defined(__TEST)
         if (uiIsRunning()) {
             uiLoop();

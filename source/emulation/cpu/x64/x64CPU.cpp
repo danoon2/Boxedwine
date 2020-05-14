@@ -729,7 +729,9 @@ void x64CPU::wakeThreadIfWaiting() {
 
 	// wait up the thread if it is waiting
     if (cond) {
+        cond->lock();
         cond->signal();
+        cond->unlock();
     }    
 }
 

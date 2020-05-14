@@ -135,11 +135,14 @@ void BoxedWineCondition::wait() {
     for (auto &child : this->children) {
         child.cond->unlock();
     }
-
-    KThread::currentThread()->waitingCond = this;
-    SDL_CondWait((SDL_cond*)this->c, (SDL_mutex*)this->m);    
-    KThread::currentThread()->waitingCond = NULL;
-
+    KThread* thread = KThread::currentThread();
+    if (thread) {
+        thread->waitingCond = this;
+    }
+    SDL_CondWait((SDL_cond*)this->c, (SDL_mutex*)this->m);
+    if (thread) {
+        thread->waitingCond = NULL;
+    }
     for (auto &child : this->children) {
         child.cond->lock();
         VECTOR_REMOVE(child.cond->parents, this);
@@ -155,13 +158,13 @@ void BoxedWineCondition::waitWithTimeout(U32 ms) {
             kpanic("BoxedWineCondition::waitWithTimeout in bad state");
         }
     }
-
-    if (!KSystem::shutingDown) {
-        KThread::currentThread()->waitingCond = this;
+    KThread* thread = KThread::currentThread();
+    if (!KSystem::shutingDown && thread) {
+        thread->waitingCond = this;
     }
     SDL_CondWaitTimeout((SDL_cond*)this->c, (SDL_mutex*)this->m, KSystem::emulatedMilliesToHost(ms));
-    if (!KSystem::shutingDown) {
-        KThread::currentThread()->waitingCond = NULL;
+    if (!KSystem::shutingDown && thread) {
+        thread->waitingCond = NULL;
     }
 
     for (auto &child : this->children) {

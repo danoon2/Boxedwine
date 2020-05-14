@@ -64,6 +64,7 @@ void KSystem::init() {
     KSystem::startTimeSdlTicks = SDL_GetTicks();
     KSystem::startTimeMicroCounter = Platform::getMicroCounter();
     KSystem::startTimeSystemTime = Platform::getSystemTimeAsMicroSeconds();
+    KSystem::killTime = 0;
 }
 
 void KSystem::destroy() {
