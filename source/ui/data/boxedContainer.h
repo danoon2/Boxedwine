@@ -32,6 +32,7 @@ public:
     std::string getNativePathForApp(const BoxedApp& app);
 
     void getNewApps(std::vector<BoxedApp>& apps, MountInfo* mount=NULL, const std::string& nativeDirectory="");
+    void getWineApps(std::vector<BoxedApp>& apps);
     void updateCachedSize();
 
     void setWineVersion(const std::string& wineVersion) {this->wineVersion = wineVersion;}

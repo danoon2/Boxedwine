@@ -1,5 +1,6 @@
 #include "boxedwine.h"
 #include "../boxedwineui.h"
+#include "../../io/fszip.h"
 
 bool BoxedContainer::load(const std::string& dirPath) {
     this->dirPath = dirPath;
@@ -135,6 +136,53 @@ void BoxedContainer::getNewApps(std::vector<BoxedApp>& apps, MountInfo* mount, c
     getNewExeApps(apps, mount, nativeDirectory);
 }
 
+bool compareApps(BoxedApp& a1, BoxedApp& a2)
+{
+    return (a1.getName() < a2.getName());
+}
+
+void BoxedContainer::getWineApps(std::vector<BoxedApp>& apps) {
+    std::set<std::string> wineApps;
+    wineApps.insert("taskmgr.exe");
+    wineApps.insert("winecfg.exe");
+    wineApps.insert("clock.exe");
+    //wineApps.insert("winefile.exe");
+    wineApps.insert("winemine.exe");
+    //wineApps.insert("cmd.exe");
+    wineApps.insert("explorer.exe");
+    wineApps.insert("iexplore.exe");
+    //wineApps.insert("hh.exe");
+    wineApps.insert("notepad.exe");
+    wineApps.insert("regedit.exe");
+    wineApps.insert("wordpad.exe");
+    //wineApps.insert("wmplayer.exe");
+    FsZip::iterateFiles(GlobalSettings::getFileFromWineName(this->wineVersion), [this, &apps, &wineApps](const std::string& fileName) {
+        if (fileName[fileName.length() - 1] != '/') {
+            std::string name = Fs::getFileNameFromPath(fileName);
+            std::string lname = name;
+            stringToLower(lname);
+            if (wineApps.count(lname)) {
+                bool found = false;
+                for (auto& a : apps) {
+                    if (a.cmd == name) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    BoxedApp app;
+                    app.container = this;
+                    app.name = name;
+                    app.path = Fs::getParentPath(fileName);
+                    app.cmd = app.name;
+                    apps.push_back(app);
+                }
+            }
+        }
+        });
+    std::sort(apps.begin(), apps.end(), compareApps);
+}
+
 void BoxedContainer::getNewExeApps(std::vector<BoxedApp>& apps, MountInfo* mount, std::string nativeDirectory) {
     std::string root;
     std::string path;
@@ -150,7 +198,7 @@ void BoxedContainer::getNewExeApps(std::vector<BoxedApp>& apps, MountInfo* mount
         path = root + Fs::nativePathSeperator + "home" + Fs::nativePathSeperator + "username" + Fs::nativePathSeperator + ".wine" + Fs::nativePathSeperator + "drive_c";
     }
     Fs::iterateAllNativeFiles(path, true, true, [this, &apps, root, mount] (const std::string& filepath, bool isDir)->U32 {
-        if (stringHasEnding(filepath, ".exe", true) && !stringContains(filepath, "drive_c"+Fs::nativePathSeperator+"windows")) {            
+        if (stringHasEnding(filepath, ".exe", true) && !stringContains(filepath, "drive_c"+Fs::nativePathSeperator+"windows")) {                        
             std::string localPath = filepath.substr(root.length());
             if (mount) {
                 localPath = mount->getFullLocalPath() + localPath;

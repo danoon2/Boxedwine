@@ -30,8 +30,6 @@ private:
     std::shared_ptr<LayoutComboboxControl> containerMountDriveControl;
     std::shared_ptr<LayoutTextInputControl> containerMountPathControl;
     std::shared_ptr<LayoutTextInputControl> containerLocationControl;
-    std::shared_ptr<LayoutButtonControl> containerWineCfgButtonControl;
-    std::shared_ptr<LayoutButtonControl> containerRegeditButtonControl;
     std::shared_ptr<LayoutComboboxControl> componentsControl;
 
     std::shared_ptr<LayoutButtonControl> containerNewShortcutButtonControl;

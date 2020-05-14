@@ -56,31 +56,30 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
         Platform::openFileLocation(currentContainer->getDir());
     };
 
-    row = section->addRow(CONTAINER_VIEW_PROGRAMS_LABEL, 0);
-    containerWineCfgButtonControl = row->addButton(getTranslation(CONTAINER_VIEW_WINECFG_BUTTON_LABEL));
-    containerWineCfgButtonControl->onChange = [this]() {
-        if (this->saveChanges()) {
-            std::vector<std::string> args;
-            args.push_back("/bin/wine");
-            args.push_back("winecfg");
-            this->currentContainer->launch(args, "Winecfg");
-            std::string containerPath = this->currentContainer->getDir();
-            GlobalSettings::startUpArgs.runOnRestartUI = [containerPath]() {
-                gotoView(VIEW_CONTAINERS, containerPath);
-            };
-        }
-    };
-    containerRegeditButtonControl = row->addButton(getTranslation(CONTAINER_VIEW_REGEDIT_BUTTON_LABEL));
-    containerRegeditButtonControl->onChange = [this]() {
-        if (this->saveChanges()) {
-            std::vector<std::string> args;
-            args.push_back("/bin/wine");
-            args.push_back("regedit");
-            this->currentContainer->launch(args, "Regedit");
-            std::string containerPath = this->currentContainer->getDir();
-            GlobalSettings::startUpArgs.runOnRestartUI = [containerPath]() {
-                gotoView(VIEW_CONTAINERS, containerPath);
-            };
+    std::shared_ptr<LayoutButtonControl> selectWineAppButton = section->addButton(CONTAINER_VIEW_PROGRAMS_LABEL, 0, getTranslation(CONTAINER_VIEW_RUNE_WINE_APP_BUTTON_LABEL));
+    selectWineAppButton->onChange = [this]() {
+        if (saveChanges()) { // need to capture any changes to mount
+            runOnMainUI([this] {
+                std::vector<BoxedApp> wineApps;
+                this->currentContainer->getWineApps(wineApps);
+                AppChooserDlg* dlg = new AppChooserDlg(wineApps, [this](BoxedApp* app) {
+                    std::vector<std::string> args;
+                    args.push_back("/bin/wine");
+                    args.push_back(app->getCmd());
+                    this->currentContainer->launch(args, app->getCmd());
+                    GlobalSettings::startUpArgs.setWorkingDir(app->getPath());
+                    std::string containerPath = this->currentContainer->getDir();
+                    GlobalSettings::startUpArgs.runOnRestartUI = [containerPath]() {
+                        gotoView(VIEW_CONTAINERS, containerPath);
+                    };
+                    this->setCurrentApp(app);
+                    rebuildShortcutsCombobox();
+                    showAppSection(true);
+                    this->appPickerControl->setSelectionStringValue(app->getIniFilePath());
+                    }, NULL, CONTAINER_VIEW_SELECT_WINE_APP_DLG_TITLE);
+                dlg->setLabelId(CONTAINER_VIEW_SELECT_WINE_APP_LABEL);
+                return false;
+                });
         }
     };
 
@@ -93,8 +92,8 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
         }
         componentsControl = row->addComboBox(components, 0);
 
-        containerRegeditButtonControl = row->addButton(getTranslation(INSTALLVIEW_INSTALL_BUTTON_LABEL));
-        containerRegeditButtonControl->onChange = [this]() {
+        std::shared_ptr<LayoutButtonControl> installButton = row->addButton(getTranslation(INSTALLVIEW_INSTALL_BUTTON_LABEL));
+        installButton->onChange = [this]() {
             if (this->saveChanges()) {
                 AppFile& app = GlobalSettings::getComponents()[componentsControl->getSelection()];
                 if (Fs::doesNativePathExist(app.localFilePath)) {
@@ -114,8 +113,10 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
         if (saveChanges()) { // need to capture any changes to mount
             runOnMainUI([this] {
                 std::vector<BoxedApp> items;
+                std::vector<BoxedApp> wineApps;
                 this->currentContainer->getNewApps(items);
-                new AppChooserDlg(items, [this](BoxedApp* app) {
+                this->currentContainer->getWineApps(wineApps);
+                new AppChooserDlg(items, wineApps, [this](BoxedApp* app) {
                     this->setCurrentApp(app);
                     rebuildShortcutsCombobox();
                     showAppSection(true);

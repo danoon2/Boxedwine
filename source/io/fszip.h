@@ -39,6 +39,7 @@ public:
     static bool readFileFromZip(const std::string& zipFile, const std::string& file, std::string& result);
     static bool extractFileFromZip(const std::string& zipFile, const std::string& file, const std::string& path);
     static std::string unzip(const std::string& zipFile, const std::string& path, std::function<void(U32, std::string)> percentDone);
+    static bool iterateFiles(const std::string& zipFile, std::function<void(const std::string&)> it);
 };
 #endif
 #endif

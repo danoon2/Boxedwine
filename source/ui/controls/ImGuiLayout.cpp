@@ -225,9 +225,11 @@ void LayoutSeparatorControl::draw(int width) {
 }
 
 void LayoutButtonControl::draw(int width) {
+	ImGui::PushID(this);
 	if (ImGui::Button(this->label.c_str()) && this->onChange) {
 		this->onChange();
 	}
+	ImGui::PopID();
 }
 
 std::shared_ptr<LayoutSection> ImGuiLayout::addSection(int titleId) {

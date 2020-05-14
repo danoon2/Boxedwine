@@ -151,6 +151,8 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "Please select a file to use for the shortcut.";
     case APPCHOOSER_DLG_NO_APPS_LABEL:
         return "Could not find any new apps.";
+    case APPCHOOSER_DLG_WINE_APPS_LABEL:
+        return "Wine Apps:";
     case CONTAINER_VIEW_CONTAINER_NAME_LABEL:
         return "Container Name:";
     case CONTAINER_VIEW_ERROR_BLANK_NAME:
@@ -313,6 +315,12 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "CPU Affinity:";
     case CONTAINER_VIEW_CPU_AFFINITY_HELP:
         return "This is the number of host CPUs the app can use.  This should almost always be set to All.  But sometimes there will be an older game, around the late 90s, that requires this to be set to 1";
+    case CONTAINER_VIEW_SELECT_WINE_APP_LABEL:
+        return "Select which Wine app you would like to run in this container.";
+    case CONTAINER_VIEW_SELECT_WINE_APP_DLG_TITLE:
+        return "Run Wine App";
+    case CONTAINER_VIEW_RUNE_WINE_APP_BUTTON_LABEL:
+        return "Run Wine App";
     case ERROR_NO_WINE:
         return "There are no versions of Wine installed.  Would you like to install the default version of Wine now?";
     case ERROR_MISSING_WINE:

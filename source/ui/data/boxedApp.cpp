@@ -1,5 +1,6 @@
 #include "boxedwine.h"
 #include "../boxedwineui.h"
+#include "../../io/fszip.h"
 
 bool BoxedApp::load(BoxedContainer* container, const std::string& iniFilePath) {
     this->container = container;
@@ -144,7 +145,18 @@ const BoxedAppIcon* BoxedApp::getIconTexture(int iconSize) {
     if (!this->iconsBySize.count(iconSize)) {
         int width = 0;
         int height = 0;
-        const unsigned char* data = extractIconFromExe(this->container->getNativePathForApp(*this), iconSize, &width, &height);
+        const unsigned char* data = NULL;
+        std::string nativeExePath = this->container->getNativePathForApp(*this);
+
+        if (Fs::doesNativePathExist(nativeExePath)) {
+            data = extractIconFromExe(this->container->getNativePathForApp(*this), iconSize, &width, &height);
+        } else {
+            std::string nativeDir = this->container->getDir() + Fs::nativePathSeperator + "tmp";
+            FsZip::extractFileFromZip(GlobalSettings::getFileFromWineName(container->getWineVersion()), this->path + "/" + this->cmd, nativeDir);
+            std::string nativePath = nativeDir + Fs::nativePathSeperator + this->cmd;
+            data = extractIconFromExe(nativePath, iconSize, &width, &height);
+            Fs::deleteNativeFile(nativePath);
+        }
         if (data) {
             this->iconsBySize[iconSize] = new BoxedAppIcon(data, width, height);
         }

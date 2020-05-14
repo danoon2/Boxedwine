@@ -215,6 +215,33 @@ bool FsZip::extractFileFromZip(const std::string& zipFile, const std::string& fi
     return false;
 }
 
+bool FsZip::iterateFiles(const std::string& zipFile, std::function<void(const std::string&)> it) {
+    unzFile z = unzOpen(zipFile.c_str());
+    unz_global_info global_info;
+    if (!z) {
+        return false;
+    }
+
+    if (unzGetGlobalInfo(z, &global_info) != UNZ_OK) {
+        unzClose(z);
+        return false;
+    }
+
+    for (U32 i = 0; i < global_info.number_entry; ++i) {
+        unz_file_info file_info;
+        char tmp[MAX_FILEPATH_LEN];
+
+        if (unzGetCurrentFileInfo(z, &file_info, tmp, MAX_FILEPATH_LEN, NULL, 0, NULL, 0) != UNZ_OK) {
+            unzClose(z);
+            return false;
+        }
+        it(tmp);
+        unzGoToNextFile(z);
+    }
+    unzClose(z);
+    return true;
+}
+
 std::string FsZip::unzip(const std::string& zipFile, const std::string& path, std::function<void(U32, std::string fileName)> percentDone) {
     unzFile z = unzOpen(zipFile.c_str());
     unz_global_info global_info;

@@ -111,8 +111,6 @@ void GlobalSettings::startUp() {
         std::string s = Fs::nativePathSeperator;
         std::string nativePath = GlobalSettings::getRootFolder(container) + s + "home" + s + "username" + s + ".wine" + s + "drive_c" + s + "windows" + s + "system32";
         Fs::makeNativeDirs(nativePath);
-        // so that icon detection works
-        FsZip::extractFileFromZip(wineVersions[0].filePath, "home/username/.wine/drive_c/windows/system32/winemine.exe", nativePath);
         BoxedApp app("WineMine", "/home/username/.wine/drive_c/windows/system32", "winemine.exe", container);
         app.saveApp();
     }
