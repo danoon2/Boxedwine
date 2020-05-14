@@ -2792,10 +2792,15 @@ bool handlSdlEvent(void* p) {
             SDL_SetRenderDrawColor(sdlShutdownRenderer, 255, 255, 0, 255);
             KSystem::killTime = KSystem::getMilliesSinceStart()+10000;
             updateShutdownWindow();
+#ifdef BOXEDWINE_MULTITHREADED
             runInBackgroundThread([p]() {
                 p->killAllThreads();
                 KSystem::eraseProcess(p->id);
             });
+#else
+            p->killAllThreads();
+            KSystem::eraseProcess(p->id);
+#endif
             return true;
 #endif
         }
