@@ -692,11 +692,14 @@ U32 sdlCreateContext(KThread* thread, Wnd* wnd, int major, int minor, int profil
 #ifdef SDL2
     if (result) {
         SDL_GLContext context;
-        // Mac requires this on the main thread
-        sdlDispatch([&context]() -> U32 {
-            context = SDL_GL_CreateContext(sdlWindow);
-            return 0;
-        });
+        // Mac requires this on the main thread, but Windows make current will fail if its not on the same thread as create context
+#ifdef BOXEDWINE_MSVC
+        context = SDL_GL_CreateContext(sdlWindow);
+#else
+        DISPATCH_MAIN_THREAD_BLOCK_BEGIN_WITH_ARG(&context)
+        context = SDL_GL_CreateContext(sdlWindow);
+        DISPATCH_MAIN_THREAD_BLOCK_END
+#endif
         if (!context) {
             fprintf(stderr, "Couldn't create context: %s\n", SDL_GetError());
             DISPATCH_MAIN_THREAD_BLOCK_BEGIN_RETURN
