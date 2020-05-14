@@ -75,6 +75,7 @@ public:
     static U32 pentiumLevel;
 	static bool shutingDown;
     static U32 killTime;
+    static std::string title;
 #ifdef BOXEDWINE_X64
     static bool useLargeAddressSpace;
 #endif
@@ -134,7 +135,7 @@ private:
     static U32 adjustClockFactor; // 100 is normal
     static U32 startTimeSdlTicks;
     static U64 startTimeMicroCounter;
-    static U64 startTimeSystemTime;
+    static U64 startTimeSystemTime;    
 
     static std::unordered_map<void*, SHM*> shm;
     static std::unordered_map<U32, std::shared_ptr<KProcess> > processes;

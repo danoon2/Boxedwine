@@ -44,6 +44,8 @@ This will load the file system from wine.zip and write the changes to c:\root
 
 -root path : Path to the file system the emulated linux environment will used
 
+-title name : Will add name to the Boxedwine window
+
 -uid X : Only useful if you want the emulated enviroment to report that it is root.  Useful if an app requires root privledges.  In that case set the uid to 0.
 
 -w path : Initial working directory, default is /home/username.  This path needs to reference a path in the emulated file system.

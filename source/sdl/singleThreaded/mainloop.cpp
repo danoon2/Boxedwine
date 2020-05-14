@@ -43,6 +43,11 @@ bool doMainLoop() {
         if (lastTitleUpdate+5000 < t) {
             char tmp[256];
             lastTitleUpdate = t;
+            if (KSystem::title.length()) {
+                snprintf(tmp, sizeof(tmp), "%s - BoxedWine 20.1.1 %u MIPS", KSystem::title.c_str(), getMIPS());
+            } else {
+                snprintf(tmp, sizeof(tmp), "BoxedWine 20.1.1 %u MIPS", getMIPS());
+            }
             sprintf(tmp, "BoxedWine 20R1a1 %u MIPS", getMIPS());
             fbSetCaption(tmp, "BoxedWine");
             checkWaitingNativeSockets(0); // just so it doesn't starve if the system is busy

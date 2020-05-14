@@ -67,6 +67,7 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
                     args.push_back("/bin/wine");
                     args.push_back(app->getCmd());
                     this->currentContainer->launch(args, app->getCmd());
+                    GlobalSettings::startUpArgs.title = app->getName();
                     GlobalSettings::startUpArgs.setWorkingDir(app->getPath());
                     std::string containerPath = this->currentContainer->getDir();
                     GlobalSettings::startUpArgs.runOnRestartUI = [containerPath]() {

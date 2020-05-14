@@ -109,6 +109,7 @@ void BoxedApp::launch() {
     if (this->scaleQuality) {
         GlobalSettings::startUpArgs.setScaleQuality(std::to_string(this->scaleQuality));
     }
+    GlobalSettings::startUpArgs.title = this->name;
 
     GlobalSettings::startUpArgs.addArg("/bin/wine");
     if (this->link.length()>0) {        

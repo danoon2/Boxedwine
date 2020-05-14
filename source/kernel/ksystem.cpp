@@ -42,6 +42,7 @@ U32 KSystem::adjustClockFactor=100;
 U32 KSystem::startTimeSdlTicks;
 U64 KSystem::startTimeMicroCounter;
 U64 KSystem::startTimeSystemTime;
+std::string KSystem::title;
 #ifdef BOXEDWINE_X64
 bool KSystem::useLargeAddressSpace = true;
 #endif

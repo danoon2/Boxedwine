@@ -34,7 +34,9 @@ BOXEDWINE_MUTEX KThread::futexesMutex;
 
 KThread::~KThread() {    
     this->cleanup();
-    delete this->cpu;
+    CPU* cpu = this->cpu;
+    this->cpu = NULL;
+    delete cpu;
 }
 
 void KThread::cleanup() {

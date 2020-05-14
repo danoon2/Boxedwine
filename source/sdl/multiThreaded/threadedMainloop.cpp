@@ -64,7 +64,11 @@ bool doMainLoop() {
         if (lastTitleUpdate+5000 < t) {
             char tmp[256];
             lastTitleUpdate = t;
-            sprintf(tmp, "BoxedWine 20R1a1 %dMB", (int)(nativeMemoryPagesAllocated>>8));
+            if (KSystem::title.length()) {
+                snprintf(tmp, sizeof(tmp), "%s - BoxedWine 20.1.1", KSystem::title.c_str());
+            } else {
+                snprintf(tmp, sizeof(tmp), "BoxedWine 20.1.1 %dMB", (int)(nativeMemoryPagesAllocated >> 8));
+            }
             fbSetCaption(tmp, "BoxedWine");
         }
         if (hasEvent) {

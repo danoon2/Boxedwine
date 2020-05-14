@@ -69,6 +69,7 @@ public:
     std::string showAppPickerForContainerDir;
     std::function<void()> runOnRestartUI;
     std::string logPath;
+    std::string title;
 private:
     bool workingDirSet;
     bool resolutionSet;    

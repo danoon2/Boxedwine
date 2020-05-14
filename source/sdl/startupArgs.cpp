@@ -139,6 +139,10 @@ std::vector<std::string> StartUpArgs::buildArgs() {
         args.push_back("-zip");
         args.push_back(z);
     }
+    if (title.length()) {
+        args.push_back("-title");
+        args.push_back(title);
+    }
     if (nozip) {
         args.push_back("-nozip");
     }
@@ -225,6 +229,7 @@ bool StartUpArgs::apply() {
         klog("Loaded %s in %d ms", zip.c_str(), (U32)(endTime - startTime) / 1000);
     }
 #endif
+    KSystem::title = title;
 
     buildVirtualFileSystem();
 
@@ -402,7 +407,10 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
             printf("BoxedWine wasn't compiled with zlib support");
 #endif
             i++;
-        } else if (!strcmp(argv[i], "-nozip") && i+1<argc) {
+        } else if (!strcmp(argv[i], "-title") && i + 1 < argc) {
+            this->title = argv[i + 1];
+            i++;
+        } else if (!strcmp(argv[i], "-nozip") && i + 1 < argc) {
             this->nozip = true;
         } else if (!strcmp(argv[i], "-m") && i+1<argc) {
             // no longer used
