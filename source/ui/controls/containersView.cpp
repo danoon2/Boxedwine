@@ -62,22 +62,18 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
             runOnMainUI([this] {
                 std::vector<BoxedApp> wineApps;
                 this->currentContainer->getWineApps(wineApps);
-                AppChooserDlg* dlg = new AppChooserDlg(wineApps, [this](BoxedApp* app) {
+                AppChooserDlg* dlg = new AppChooserDlg(wineApps, [this](BoxedApp app) {
                     std::vector<std::string> args;
                     args.push_back("/bin/wine");
-                    args.push_back(app->getCmd());
-                    this->currentContainer->launch(args, app->getCmd());
-                    GlobalSettings::startUpArgs.title = app->getName();
-                    GlobalSettings::startUpArgs.setWorkingDir(app->getPath());
+                    args.push_back(app.getCmd());
+                    this->currentContainer->launch(args, app.getCmd());
+                    GlobalSettings::startUpArgs.title = app.getName();
+                    GlobalSettings::startUpArgs.setWorkingDir(app.getPath());
                     std::string containerPath = this->currentContainer->getDir();
                     GlobalSettings::startUpArgs.runOnRestartUI = [containerPath]() {
                         gotoView(VIEW_CONTAINERS, containerPath);
                     };
-                    this->setCurrentApp(app);
-                    rebuildShortcutsCombobox();
-                    showAppSection(true);
-                    this->appPickerControl->setSelectionStringValue(app->getIniFilePath());
-                    }, NULL, CONTAINER_VIEW_SELECT_WINE_APP_DLG_TITLE);
+                    }, false, NULL, CONTAINER_VIEW_SELECT_WINE_APP_DLG_TITLE);
                 dlg->setLabelId(CONTAINER_VIEW_SELECT_WINE_APP_LABEL);
                 return false;
                 });
@@ -117,11 +113,12 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
                 std::vector<BoxedApp> wineApps;
                 this->currentContainer->getNewApps(items);
                 this->currentContainer->getWineApps(wineApps);
-                new AppChooserDlg(items, wineApps, [this](BoxedApp* app) {
-                    this->setCurrentApp(app);
+                new AppChooserDlg(items, wineApps, [this](BoxedApp app) {
+                    std::string iniPath = app.getIniFilePath();
+                    this->setCurrentApp(app.getContainer()->getAppByIniFile(iniPath));
                     rebuildShortcutsCombobox();
                     showAppSection(true);
-                    this->appPickerControl->setSelectionStringValue(app->getIniFilePath());
+                    this->appPickerControl->setSelectionStringValue(iniPath);
                     });
                 return false;
                 });

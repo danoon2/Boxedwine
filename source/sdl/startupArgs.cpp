@@ -208,6 +208,22 @@ bool StartUpArgs::apply() {
     BOXEDWINE_RECORDER_INIT(this->root, this->zips, this->workingDir, this->args);
 
     klog("Using root directory: %s", root.c_str());
+
+    std::vector<std::string> depends;
+    for (auto& zip : zips) {
+        std::string depend;
+        FsZip::readFileFromZip(zip, "depends.txt", depend);
+        if (depend.length() && !vectorContainsIgnoreCase(depends, depend) && !vectorContainsIgnoreCase(zips, depend)) {
+            if (!Fs::doesNativePathExist(depend)) {
+                std::string parentPath = Fs::getNativeParentPath(zip);
+                depend = parentPath + Fs::nativePathSeperator + depend;
+            }
+            depends.push_back(depend);
+        }
+    }
+    if (depends.size()) {
+        zips.insert(zips.end(), depends.begin(), depends.end());
+    }
     for (auto& zip : zips) {
         klog("Using zip file system: %s", zip.c_str());
     }

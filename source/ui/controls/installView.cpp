@@ -314,8 +314,8 @@ void InstallView::onInstall() {
                     runOnMainUI([container, dest]() {
                         std::vector<BoxedApp> items;
                         container->getNewApps(items, NULL, dest.string());
-                        new AppChooserDlg(items, [container](BoxedApp* app) {
-                            gotoView(VIEW_CONTAINERS, container->getDir(), app->getIniFilePath());
+                        new AppChooserDlg(items, [container](BoxedApp app) {
+                            gotoView(VIEW_CONTAINERS, container->getDir(), app.getIniFilePath());
                             });
                         return false;
                         });
@@ -333,8 +333,8 @@ void InstallView::onInstall() {
                         MountInfo mount("t", location, true);
                         std::vector<BoxedApp> items;
                         container->getNewApps(items, &mount);
-                        new AppChooserDlg(items, [container](BoxedApp* app) {
-                            gotoView(VIEW_CONTAINERS, container->getDir(), app->getIniFilePath());
+                        new AppChooserDlg(items, [container](BoxedApp app) {
+                            gotoView(VIEW_CONTAINERS, container->getDir(), app.getIniFilePath());
                             });
                         return false;
                         });

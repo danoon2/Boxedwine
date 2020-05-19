@@ -2,10 +2,10 @@
 #include "../boxedwineui.h"
 #include <thread>
 
-AppChooserDlg::AppChooserDlg(std::vector<BoxedApp>& items, std::vector<BoxedApp>& wineApps, std::function<void(BoxedApp*)> onSelected, BaseDlg* parent) : BaseDlg(APPCHOOSER_DLG_TITLE, 600, 400, NULL, parent), items(items), wineApps(wineApps), onSelected(onSelected), labelId(APPCHOOSER_DLG_CHOOSE_APP_LABEL) {
+AppChooserDlg::AppChooserDlg(std::vector<BoxedApp>& items, std::vector<BoxedApp>& wineApps, std::function<void(BoxedApp)> onSelected, bool saveApp, BaseDlg* parent) : BaseDlg(APPCHOOSER_DLG_TITLE, 600, 400, NULL, parent), items(items), wineApps(wineApps), onSelected(onSelected), labelId(APPCHOOSER_DLG_CHOOSE_APP_LABEL), saveApp(saveApp) {
 }
 
-AppChooserDlg::AppChooserDlg(std::vector<BoxedApp>& items, std::function<void(BoxedApp*)> onSelected, BaseDlg* parent, int titleId) : BaseDlg(titleId, 600, 400, NULL, parent), items(items), onSelected(onSelected), labelId(APPCHOOSER_DLG_CHOOSE_APP_LABEL) {
+AppChooserDlg::AppChooserDlg(std::vector<BoxedApp>& items, std::function<void(BoxedApp)> onSelected, bool saveApp, BaseDlg* parent, int titleId) : BaseDlg(titleId, 600, 400, NULL, parent), items(items), onSelected(onSelected), labelId(APPCHOOSER_DLG_CHOOSE_APP_LABEL), saveApp(saveApp) {
 }
 
 void AppChooserDlg::drawItems(std::vector<BoxedApp>& apps, int startingIndex) {
@@ -14,21 +14,21 @@ void AppChooserDlg::drawItems(std::vector<BoxedApp>& apps, int startingIndex) {
         ImVec2 pos = ImGui::GetCursorPos();
         ImGui::PushID(i+startingIndex);
         if (ImGui::Selectable("", false, 0, ImVec2(ImGui::GetColumnWidth(), ImGui::GetTextLineHeight() + ImGui::GetStyle().ItemSpacing.y))) {
-            apps[i].saveApp();
-            apps[i].getContainer()->reload();
-            GlobalSettings::reloadApps();
-            BoxedApp* app = apps[i].getContainer()->getAppByIniFile(apps[i].getIniFilePath());
-            if (app) {
-                std::function<void(BoxedApp*)> onSelected = this->onSelected;
-
-                runOnMainUI([app, onSelected]() {
-                    // don't hold on to this, it will be deleted before this runs
-                    if (onSelected) {
-                        onSelected(app);
-                    }
-                    return false;
-                    });
+            if (this->saveApp) {
+                apps[i].saveApp();
+                apps[i].getContainer()->reload();
+                GlobalSettings::reloadApps();
             }
+            std::function<void(BoxedApp)> onSelected = this->onSelected;
+            BoxedApp app = apps[i];
+
+            runOnMainUI([app, onSelected]() {
+                // don't hold on to this, it will be deleted before this runs
+                if (onSelected) {
+                    onSelected(app);
+                }
+                return false;
+                });
             this->done();
         }
         ImGui::PopID();

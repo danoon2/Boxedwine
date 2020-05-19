@@ -81,7 +81,6 @@ bool FsZip::init(const std::string& zipPath, const std::string& mount) {
                 zipInfo[i].link = tmp;                
                 unzCloseCurrentFile(this->zipfile);
             }                       
-            
             if (stringHasEnding(zipInfo[i].filename, "/")) {
                 zipInfo[i].filename.resize(zipInfo[i].filename.length()-1);
                 zipInfo[i].isDirectory = true;

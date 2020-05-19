@@ -156,6 +156,13 @@ void OptionsView::loadWineVersions() {
         OptionsViewWineVersion v;
         v.availableVersion = &wine;
         v.name = wine.name;
+
+        U64 size = wine.size;
+        WineVersion* dep = wine.getMissingDependency();
+        if (dep) {
+            size += dep->size;
+        }
+        v.size = std::to_string(size);
         this->wineVersions[v.name] = v;
     }
 
@@ -170,6 +177,13 @@ void OptionsView::loadWineVersions() {
             OptionsViewWineVersion v;
             v.availableVersion = &wine;
             v.name = wine.name;
+            
+            U64 size = wine.size;
+            WineVersion* dep = wine.getMissingDependency();
+            if (dep) {
+                size += dep->size;
+            }
+            v.size = std::to_string(size);
             this->wineVersions[v.name] = v;
         }
     }
@@ -277,22 +291,23 @@ void OptionsView::runWineOptions() {
         std::string name = wine.first;
         std::string name2;
         OptionsViewWineVersion& version = wine.second;
+
         if (version.currentVersion) {
             if (version.availableVersion && version.availableVersion->fsVersion==version.currentVersion->fsVersion) {
                 name2 += "   ";
                 name2 += getTranslation(OPTIONSVIEW_WINE_VERSION_UPTODATE);
-                name2 += std::to_string(version.availableVersion->size);
+                name2 += version.size;
                 name2 += " MB";
             } else {
                 name2 += "   ";
                 name2 += getTranslation(OPTIONSVIEW_WINE_VERSION_UPDATE_AVAILABLE);
-                name2 += std::to_string(version.currentVersion->size);
+                name2 += version.size;
                 name2 += " MB";
             }
         } else if (version.availableVersion) {
             name2 += "   ";
             name2 += getTranslation(OPTIONSVIEW_WINE_VERSION_NOT_INSTALLED);
-            name2 += std::to_string(version.availableVersion->size);
+            name2 += version.size;
             name2 += " MB";
         }
         SAFE_IMGUI_TEXT(name.c_str());
