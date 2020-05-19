@@ -66,6 +66,8 @@ do_build()
     then
       echo "@MAKE_DLL_RULES@" >> dlls/winex11.drv/Makefile.in
     fi
+#for some reason I don't understand the config process will fail when looking for dependencies because the header does not exist, even though I wrapped it in a #ifdef
+    touch include/wine/wglext.h
     ./configure CFLAGS="-O2 -march=pentium4 $WGLEXT" --without-cups --without-pulse --without-alsa --without-dbus --without-sane --without-hal --prefix=/opt/wine --disable-tests $EXTRA_ARGS
     make -j4
     #todo find another way to achieve what I want without using sudo
