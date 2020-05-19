@@ -21,11 +21,6 @@ do_build()
 {
   VERSION=$1
   shift
-  if [[ $1 == "oldFont" ]]
-  then
-    OLDFONT="1";
-    shift
-  fi
   if [[ $1 == "wglext" ]]
   then
     WGLEXT="-DBOXED_NEED_WGLEXT"
@@ -63,10 +58,6 @@ do_build()
     done
     rm -rf dlls/winex11.drv/*
     cp -r ../../wineboxed.drv/*.* dlls/winex11.drv/
-    #if [[ $OLDFONT -eq "1" ]]
-    #then
-      #EXTRA_ARGS="FREETYPE_LIBS=libfreetype.so.6.12.3"
-    #fi
     ./configure CFLAGS="-O2 -march=pentium4 $WGLEXT" --without-pulse --without-alsa --without-dbus --without-sane --without-hal --prefix=/opt/wine --disable-tests $EXTRA_ARGS
     make -j4
     #todo find another way to achieve what I want without using sudo
@@ -102,11 +93,16 @@ do_build()
   fi
 }
 
-do_build 5.0 patch wine5-lz.patch
-do_build 4.0
-do_build 3.1
-#needs an older version of fontconfig, maybe this will have to run on a Deb 8 VM
-#do_build 2.0 oldFont wglext
-#do_build 1.9 oldFont wglext
-#do_build 1.8 oldFont wglext
-#do_build 1.7 oldFont wglext
+VERSION=$(sed 's/\..*//' /etc/debian_version)
+echo "Debian Version = $VERSION"
+if [ $VERSION -gt 9 ]
+then
+    do_build 5.0 patch wine5-lz.patch
+    do_build 4.0
+    do_build 3.1
+else
+    do_build 2.0 wglext
+    do_build 1.9 wglext
+    do_build 1.8 wglext
+    do_build 1.7 wglext
+fi
