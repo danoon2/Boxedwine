@@ -1,0 +1,87 @@
+From 10065d2acd0a9e1e852a8151c95569b99d1b3294 Mon Sep 17 00:00:00 2001
+From: Ken Thomases <ken@codeweavers.com>
+Date: Mon, 27 Jun 2016 15:34:07 -0500
+Subject: [PATCH] winspool.drv: Include <cups/ppd.h> to fix building against
+ the macOS 10.12 SDK.
+
+The cupsGetPPD() function was moved there from <cups/cups.h> because it's
+deprecated.
+
+Signed-off-by: Ken Thomases <ken@codeweavers.com>
+Signed-off-by: Huw Davies <huw@codeweavers.com>
+Signed-off-by: Alexandre Julliard <julliard@winehq.org>
+---
+ configure                | 12 ++++++++++++
+ configure.ac             |  3 ++-
+ dlls/winspool.drv/info.c |  3 +++
+ include/config.h.in      |  3 +++
+ 4 files changed, 20 insertions(+), 1 deletion(-)
+
+diff --git a/configure b/configure
+index 0e1694c3b9..6379e31504 100755
+--- a/configure
++++ b/configure
+@@ -13054,6 +13054,18 @@ _ACEOF
+ 
+        CUPS_CFLAGS="$ac_cups_cflags"
+ fi
++             for ac_header in cups/ppd.h
++do :
++  ac_fn_c_check_header_mongrel "$LINENO" "cups/ppd.h" "ac_cv_header_cups_ppd_h" "$ac_includes_default"
++if test "x$ac_cv_header_cups_ppd_h" = xyes; then :
++  cat >>confdefs.h <<_ACEOF
++#define HAVE_CUPS_PPD_H 1
++_ACEOF
++
++fi
++
++done
++
+ fi
+ 
+ done
+diff --git a/configure.ac b/configure.ac
+index 7f234b2c14..e7c1dd1931 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -1543,7 +1543,8 @@ then
+     AC_CHECK_HEADERS(cups/cups.h,
+             [WINE_CHECK_SONAME(cups,cupsGetDefault,
+                        [CUPS_CFLAGS="$ac_cups_cflags"],,
+-                       [$ac_cups_libs])])
++                       [$ac_cups_libs])
++             AC_CHECK_HEADERS(cups/ppd.h)])
+     CPPFLAGS="$ac_save_CPPFLAGS"
+ fi
+ WINE_NOTICE_WITH(cups,[test "x$ac_cv_lib_soname_cups" = "x"],
+diff --git a/dlls/winspool.drv/info.c b/dlls/winspool.drv/info.c
+index 95f397cfa1..4dea5310e3 100644
+--- a/dlls/winspool.drv/info.c
++++ b/dlls/winspool.drv/info.c
+@@ -44,6 +44,9 @@
+ #ifdef HAVE_CUPS_CUPS_H
+ # include <cups/cups.h>
+ #endif
++#ifdef HAVE_CUPS_PPD_H
++# include <cups/ppd.h>
++#endif
+ 
+ #ifdef HAVE_APPLICATIONSERVICES_APPLICATIONSERVICES_H
+ #define GetCurrentProcess GetCurrentProcess_Mac
+diff --git a/include/config.h.in b/include/config.h.in
+index 8cffef9231..6fd84bf430 100644
+--- a/include/config.h.in
++++ b/include/config.h.in
+@@ -89,6 +89,9 @@
+ /* Define to 1 if you have the <cups/cups.h> header file. */
+ #undef HAVE_CUPS_CUPS_H
+ 
++/* Define to 1 if you have the <cups/ppd.h> header file. */
++#undef HAVE_CUPS_PPD_H
++
+ /* Define to 1 if you have the <curses.h> header file. */
+ #undef HAVE_CURSES_H
+ 
+-- 
+2.20.1
+

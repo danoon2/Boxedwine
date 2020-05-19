@@ -1,0 +1,134 @@
+From 3f98185fb8f88c181877e909ab1b6422fb9bca1e Mon Sep 17 00:00:00 2001
+From: Alexandre Julliard <julliard@winehq.org>
+Date: Thu, 1 Aug 2013 12:00:04 +0200
+Subject: [PATCH] msi: Use bison directives instead of defines to specify extra
+ lexer parameters.
+
+---
+ dlls/msi/cond.y  | 10 ++++------
+ dlls/msi/query.h | 13 +++++++++++++
+ dlls/msi/sql.y   | 23 ++++-------------------
+ 3 files changed, 21 insertions(+), 25 deletions(-)
+
+diff --git a/dlls/msi/cond.y b/dlls/msi/cond.y
+index 97bb002aef..fa5582566e 100644
+--- a/dlls/msi/cond.y
++++ b/dlls/msi/cond.y
+@@ -42,11 +42,6 @@
+ #include "wine/unicode.h"
+ #include "wine/list.h"
+ 
+-#define YYLEX_PARAM info
+-#define YYPARSE_PARAM info
+-
+-static int cond_error(const char *str);
+-
+ WINE_DEFAULT_DEBUG_CHANNEL(msi);
+ 
+ typedef struct tag_yyinput
+@@ -66,6 +61,7 @@ struct cond_str {
+ static LPWSTR COND_GetString( COND_input *info, const struct cond_str *str );
+ static LPWSTR COND_GetLiteral( COND_input *info, const struct cond_str *str );
+ static int cond_lex( void *COND_lval, COND_input *info);
++static int cond_error( COND_input *info, const char *str);
+ 
+ static void *cond_alloc( COND_input *cond, unsigned int sz );
+ static void *cond_track_mem( COND_input *cond, void *ptr, unsigned int sz );
+@@ -110,6 +106,8 @@ static BOOL num_from_prop( LPCWSTR p, INT *val )
+ 
+ %}
+ 
++%lex-param { COND_input *info }
++%parse-param { COND_input *info }
+ %pure-parser
+ 
+ %union
+@@ -798,7 +796,7 @@ static void cond_free( void *ptr )
+     }
+ }
+ 
+-static int cond_error(const char *str)
++static int cond_error( COND_input *info, const char *str )
+ {
+     TRACE("%s\n", str );
+     return 0;
+diff --git a/dlls/msi/query.h b/dlls/msi/query.h
+index ca34b4c5d3..063fbb9749 100644
+--- a/dlls/msi/query.h
++++ b/dlls/msi/query.h
+@@ -96,6 +96,19 @@ struct expr
+     } u;
+ };
+ 
++typedef struct
++{
++    MSIDATABASE *db;
++    LPCWSTR command;
++    DWORD n, len;
++    UINT r;
++    MSIVIEW **view;  /* View structure for the resulting query.  This value
++                      * tracks the view currently being created so we can free
++                      * this view on syntax error.
++                      */
++    struct list *mem;
++} SQL_input;
++
+ UINT MSI_ParseSQL( MSIDATABASE *db, LPCWSTR command, MSIVIEW **phview,
+                    struct list *mem ) DECLSPEC_HIDDEN;
+ 
+diff --git a/dlls/msi/sql.y b/dlls/msi/sql.y
+index ead7743171..fa547412c0 100644
+--- a/dlls/msi/sql.y
++++ b/dlls/msi/sql.y
+@@ -34,29 +34,12 @@
+ #include "wine/debug.h"
+ #include "wine/unicode.h"
+ 
+-#define YYLEX_PARAM info
+-#define YYPARSE_PARAM info
+-
+-static int sql_error(const char *str);
+-
+ WINE_DEFAULT_DEBUG_CHANNEL(msi);
+ 
+-typedef struct tag_SQL_input
+-{
+-    MSIDATABASE *db;
+-    LPCWSTR command;
+-    DWORD n, len;
+-    UINT r;
+-    MSIVIEW **view;  /* View structure for the resulting query.  This value
+-                      * tracks the view currently being created so we can free
+-                      * this view on syntax error.
+-                      */
+-    struct list *mem;
+-} SQL_input;
+-
+ static UINT SQL_getstring( void *info, const struct sql_str *strdata, LPWSTR *str );
+ static INT SQL_getint( void *info );
+ static int sql_lex( void *SQL_lval, SQL_input *info );
++static int sql_error( SQL_input *info, const char *str);
+ 
+ static LPWSTR parser_add_table( void *info, LPCWSTR list, LPCWSTR table );
+ static void *parser_alloc( void *info, unsigned int sz );
+@@ -77,6 +60,8 @@ static struct expr * EXPR_wildcard( void *info );
+ 
+ %}
+ 
++%lex-param { SQL_input *info }
++%parse-param { SQL_input *info }
+ %pure-parser
+ 
+ %union
+@@ -866,7 +851,7 @@ INT SQL_getint( void *info )
+     return r;
+ }
+ 
+-static int sql_error( const char *str )
++static int sql_error( SQL_input *info, const char *str )
+ {
+     return 0;
+ }
+-- 
+2.20.1
+

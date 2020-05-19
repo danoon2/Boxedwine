@@ -1,0 +1,49 @@
+From ffbe1ca986bd299e1fc894440849914378adbf5c Mon Sep 17 00:00:00 2001
+From: Alexandre Julliard <julliard@winehq.org>
+Date: Thu, 1 Aug 2013 11:59:12 +0200
+Subject: [PATCH] jscript: Use bison directives instead of defines to specify
+ extra lexer parameters.
+
+---
+ dlls/jscript/parser.y | 11 +++++------
+ 1 file changed, 5 insertions(+), 6 deletions(-)
+
+diff --git a/dlls/jscript/parser.y b/dlls/jscript/parser.y
+index f5a2e72c08..327366a7f8 100644
+--- a/dlls/jscript/parser.y
++++ b/dlls/jscript/parser.y
+@@ -25,10 +25,7 @@
+ 
+ WINE_DEFAULT_DEBUG_CHANNEL(jscript);
+ 
+-#define YYLEX_PARAM ctx
+-#define YYPARSE_PARAM ctx
+-
+-static int parser_error(const char*);
++static int parser_error(parser_ctx_t*,const char*);
+ static void set_error(parser_ctx_t*,UINT);
+ static BOOL explicit_error(parser_ctx_t*,void*,WCHAR);
+ static BOOL allow_auto_semicolon(parser_ctx_t*);
+@@ -139,7 +136,9 @@ static source_elements_t *source_elements_add_statement(source_elements_t*,state
+ 
+ %}
+ 
+-%pure_parser
++%lex-param { parser_ctx_t *ctx }
++%parse-param { parser_ctx_t *ctx }
++%pure-parser
+ %start Program
+ 
+ %union {
+@@ -1386,7 +1385,7 @@ static expression_t *new_call_expression(parser_ctx_t *ctx, expression_t *expres
+     return &ret->expr;
+ }
+ 
+-static int parser_error(const char *str)
++static int parser_error(parser_ctx_t *ctx, const char *str)
+ {
+     return 0;
+ }
+-- 
+2.20.1
+

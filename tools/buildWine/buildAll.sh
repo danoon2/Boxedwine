@@ -51,6 +51,10 @@ do_build()
         fi
         REVERTS+="git revert -n $1"
         shift
+      elif [[ $1 == "depends" ]]
+      then
+        shift
+        ADD_DEPENDS=1
       else
         echo "unknown do_build option: $1"
         exit
@@ -58,7 +62,11 @@ do_build()
     done
     rm -rf dlls/winex11.drv/*
     cp -r ../../wineboxed.drv/*.* dlls/winex11.drv/
-    ./configure CFLAGS="-O2 -march=pentium4 $WGLEXT" --without-pulse --without-alsa --without-dbus --without-sane --without-hal --prefix=/opt/wine --disable-tests $EXTRA_ARGS
+    if [[ $ADD_DEPENDS == 1 ]]
+    then
+      echo "@MAKE_DLL_RULES@" >> dlls/winex11.drv/Makefile.in
+    fi
+    ./configure CFLAGS="-O2 -march=pentium4 $WGLEXT" --without-cups --without-pulse --without-alsa --without-dbus --without-sane --without-hal --prefix=/opt/wine --disable-tests $EXTRA_ARGS
     make -j4
     #todo find another way to achieve what I want without using sudo
     sudo rm -rf /opt/wine
@@ -102,7 +110,25 @@ then
     do_build 3.1
 else
     do_build 2.0 wglext
-    do_build 1.9 wglext
-    do_build 1.8 wglext
-    do_build 1.7 wglext
+
+#patch wine18-19-gnutls.patch
+#1.7.47 <= wine < 1.9.13"
+
+#patch wine17-19-cups.patch
+#1.7.12 <= wine < 1.9.14
+#1.3.28"<= wine < 1.7.12 needs patch 2ac0c877f591be14815902b527f314a915eee147 but I couldn't find it so I disabled cups in the configuration
+
+#patches yylex 1-3
+#1.3.28 <= wine < 1.7.0
+#patch yylex 4 - jscript
+#1.1.10 <= wine < 1.7.0
+#patch yylex 5 - vbscript
+#1.3.28 <= wine < 1.7.0
+#patch yylex 6
+#1.5.7 <= wine < 1.7.0
+
+    do_build 1.9.0 wglext patch wine18-19-gnutls.patch patch wine17-19-cups.patch
+    do_build 1.8 wglext patch wine18-19-gnutls.patch patch wine17-19-cups.patch
+    do_build 1.7.0 wglext depends
+    do_build 1.6 wglext depends patch yylex.1.patch patch yylex.2.patch patch yylex.3.patch patch yylex.4.patch patch yylex.5.patch patch yylex.6.patch
 fi

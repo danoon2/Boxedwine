@@ -1,7 +1,7 @@
 MODULE    = winex11.drv
 IMPORTS   = uuid user32 gdi32 advapi32
 DELAYIMPORTS = ole32 shell32 imm32
-EXTRALIBS = $(PTHREAD_LIBS) -ldl
+EXTRALIBS = $(PTHREAD_LIBS) -ldl -lpthread
 
 C_SRCS = wineboxed.c surface.c
 

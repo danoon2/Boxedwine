@@ -39,7 +39,9 @@
 #include "wine/library.h"
 #include "wine/wgl.h"
 #include "wine/wgl_driver.h"
-//#include "wine/wglext.h"
+#ifdef BOXED_NEED_WGLEXT
+#include "wine/wglext.h"
+#endif
 #include "wine/unicode.h"
 #include "wine/server.h"
 
