@@ -208,7 +208,7 @@ bool StartUpArgs::apply() {
     BOXEDWINE_RECORDER_INIT(this->root, this->zips, this->workingDir, this->args);
 
     klog("Using root directory: %s", root.c_str());
-
+#ifdef BOXEDWINE_ZLIB
     std::vector<std::string> depends;
     for (auto& zip : zips) {
         std::string depend;
@@ -224,6 +224,7 @@ bool StartUpArgs::apply() {
     if (depends.size()) {
         zips.insert(zips.end(), depends.begin(), depends.end());
     }
+#endif
     for (auto& zip : zips) {
         klog("Using zip file system: %s", zip.c_str());
     }
