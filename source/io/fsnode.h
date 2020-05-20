@@ -45,7 +45,7 @@ public:
     std::string path; 
     std::string nativePath;
     std::string name;
-    const std::string link;
+    std::string link;
     const U32 id;
     const U32 rdev;  
     U32 hardLinkCount;    

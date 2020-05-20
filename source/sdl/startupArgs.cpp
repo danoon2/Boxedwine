@@ -245,6 +245,22 @@ bool StartUpArgs::apply() {
         klog("Loaded %s in %d ms", zip.c_str(), (U32)(endTime - startTime) / 1000);
     }
 #endif
+    BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath("", "/wineVersion.txt", false);
+    if (node) {
+        FsOpenNode* openNode = node->open(K_O_RDONLY);
+        if (openNode) {
+            U8 tmp[64];
+            if (openNode->readNative(tmp, 64) > 5) {
+                if (tmp[5] == '2' || tmp[5] == '1') {
+                    BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath("", "/usr/lib/i386-linux-gnu/libfreetype.so.6", false);
+                    if (node) {
+                        node->link = "libfreetype.so.6.12.3";
+                    }
+                }
+            }
+            openNode->close();
+        }
+    }
     KSystem::title = title;
 
     buildVirtualFileSystem();
