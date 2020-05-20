@@ -164,9 +164,12 @@ void InstallView::createInstallTab(const std::string& initialFileOrDirPath) {
 
     // Initialize Wine Version Control
     wineVersionControl = createWineVersionCombobox(containerSection);
-
+    wineVersionControl->onChange = [this]() {
+        setWindowsVersionDefault();        
+    };
     // Initialize Windows Version Control
     windowsVersionControl = createWindowsVersionCombobox(containerSection);
+    setWindowsVersionDefault();
 
     section = model->addSection();
     section->addSeparator();
@@ -197,6 +200,24 @@ void InstallView::createInstallTab(const std::string& initialFileOrDirPath) {
     addTab(name, name, model, [this](bool buttonPressed, BaseViewTab& tab) {
         
         });
+}
+
+void InstallView::setWindowsVersionDefault() {
+    std::string ver = wineVersionControl->getSelectionStringValue();
+    if (stringStartsWith(ver, "Wine ")) {
+        ver = ver.substr(5);
+        std::vector<std::string> parts;
+        stringSplit(parts, ver, '.');
+        if (parts.size() > 1) {
+            std::string major = parts[0];
+            std::string minor = parts[1];
+            if (major < "2" || (major == "2" && minor < "2")) {
+                windowsVersionControl->setSelectionStringValue("Windows XP");
+            } else {
+                windowsVersionControl->setSelectionStringValue("Windows 7");
+            }
+        }
+    }
 }
 
 bool InstallView::saveChanges() {
@@ -314,8 +335,8 @@ void InstallView::onInstall() {
                     runOnMainUI([container, dest]() {
                         std::vector<BoxedApp> items;
                         container->getNewApps(items, NULL, dest.string());
-                        new AppChooserDlg(items, [container](BoxedApp* app) {
-                            gotoView(VIEW_CONTAINERS, container->getDir(), app->getIniFilePath());
+                        new AppChooserDlg(items, [container](BoxedApp app) {
+                            gotoView(VIEW_CONTAINERS, container->getDir(), app.getIniFilePath());
                             });
                         return false;
                         });
@@ -333,8 +354,8 @@ void InstallView::onInstall() {
                         MountInfo mount("t", location, true);
                         std::vector<BoxedApp> items;
                         container->getNewApps(items, &mount);
-                        new AppChooserDlg(items, [container](BoxedApp* app) {
-                            gotoView(VIEW_CONTAINERS, container->getDir(), app->getIniFilePath());
+                        new AppChooserDlg(items, [container](BoxedApp app) {
+                            gotoView(VIEW_CONTAINERS, container->getDir(), app.getIniFilePath());
                             });
                         return false;
                         });

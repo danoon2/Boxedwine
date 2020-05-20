@@ -13,25 +13,59 @@
 static void closesocket(int socket) { close(socket); }
 #endif
 
-DownloadDlg::DownloadDlg(int title, const std::string& label, const std::string& url, const std::string& filePath, std::function<void(bool)> onCompleted, U64 expectedFileSize) : BaseDlg(title, 400, 175), label(label), url(url), filePath(filePath), percentDone(0), expectedFileSize(expectedFileSize), onCompleted(onCompleted), cancelled(false), socketfd(0), downloadDone(false) {
-    this->tmpFilePath = filePath + ".part";
-    if (Fs::doesNativePathExist(this->tmpFilePath)) {
-        if (Fs::deleteNativeFile(this->tmpFilePath) != 0) {
-            std::string errorMsg = "Failed to delete tmp file: " + this->tmpFilePath + " (";
-            errorMsg += strerror(errno);
-            errorMsg += ")";
-            downloadFailed(errorMsg);
-            return;
+DownloadDlg::DownloadDlg(int title, const std::vector<DownloadItem>& items, std::function<void(bool)> onCompleted) : BaseDlg(title, 400, 175), items(items), currentItem(0), percentDone(0), onCompleted(onCompleted), cancelled(false), socketfd(0), downloadDone(false), hasSize(false) {    
+    runInBackgroundThread([this]() {
+        std::string errorMsg; 
+        U64 totalSize = 0;
+        U64 completedSize = 0;
+        for (auto& item : this->items) {
+            totalSize += item.size;
         }
-    }
-    runInBackgroundThread([this, url]() {
-        std::string errorMsg;        
-        bool result = downloadFile(url, this->tmpFilePath, [this](U64 bytesCompleted) {
-            if (this->expectedFileSize) {
-                this->percentDone = (U32)(100 * bytesCompleted / this->expectedFileSize);
+        if (totalSize) {
+            this->hasSize = true;
+        }
+        bool result = false;
+        for (auto& item : this->items) {
+            std::string tmpFilePath = item.filePath + ".part";
+            this->currentLabel = item.label;
+
+            if (Fs::doesNativePathExist(tmpFilePath)) {
+                if (Fs::deleteNativeFile(tmpFilePath) != 0) {
+                    errorMsg = "Failed to delete tmp file: " + tmpFilePath + " (";
+                    errorMsg += strerror(errno);
+                    errorMsg += ")";
+                    result = false;
+                    break;
+                }
             }
-            
-            }, NULL, errorMsg, &this->cancelled, &this->socketfd);
+
+            result = downloadFile(item.url, tmpFilePath, [this, totalSize, completedSize](U64 bytesCompleted) {
+                if (totalSize) {
+                    this->percentDone = (U32)(100 * (completedSize + bytesCompleted) / totalSize);
+                }
+                }, NULL, errorMsg, &this->cancelled, &this->socketfd);
+            if (!result) {
+                break;
+            }
+            completedSize += item.size;
+
+            if (Fs::doesNativePathExist(item.filePath)) {
+                if (Fs::deleteNativeFile(item.filePath) != 0) {
+                    errorMsg = "Failed to delete old file: " + item.filePath + " (";
+                    errorMsg += strerror(errno);
+                    errorMsg += ")";
+                    result = false;
+                    break;
+                }
+            }
+            if (rename(tmpFilePath.c_str(), item.filePath.c_str()) != 0) {
+                std::string errorMsg = "Failed to rename tmp file: " + tmpFilePath + " (";
+                errorMsg += strerror(errno);
+                errorMsg += ")";
+                result = false;
+                break;
+            }
+        }
         if (result) {
             this->downloadCompleted();
         } else {
@@ -55,27 +89,12 @@ DownloadDlg::~DownloadDlg() {
 }
 
 void DownloadDlg::downloadCompleted() {
-    if (Fs::doesNativePathExist(filePath)) {
-        if (Fs::deleteNativeFile(filePath) != 0) {
-            std::string errorMsg = "Failed to delete old file: " + filePath + " (";
-            errorMsg += strerror(errno);
-            errorMsg += ")";
-        }
-    }
-    if (rename(this->tmpFilePath.c_str(), filePath.c_str()) != 0) {
-        std::string errorMsg = "Failed to rename tmp file: " + this->tmpFilePath + " (";
-        errorMsg += strerror(errno);
-        errorMsg += ")";
-        downloadFailed(errorMsg);
-    } else {
-        this->onCompleted(true);
-        this->done();
-    }
+    this->onCompleted(true);
+    this->done();
 }
 
 void DownloadDlg::downloadFailed(const std::string& errorMsg) {
     if (this->cancelled) {
-        Fs::deleteNativeFile(this->tmpFilePath);
         this->done();
     } else {
         this->errorMsg = errorMsg;
@@ -99,9 +118,9 @@ void DownloadDlg::run() {
     ImGui::SetCursorPosX(this->width / 2 - ImGui::GetSpinnerWidth() / 2);
     ImGui::Spinner("1");
     ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing));
-    ImGui::SetCursorPosX(this->width / 2 - ImGui::CalcTextSize(this->label.c_str()).x / 2);
-    SAFE_IMGUI_TEXT(this->label.c_str());
-    if (this->expectedFileSize) {
+    ImGui::SetCursorPosX(this->width / 2 - ImGui::CalcTextSize(this->currentLabel.c_str()).x / 2);
+    SAFE_IMGUI_TEXT(this->currentLabel.c_str());
+    if (this->hasSize) {
         ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing));
         ImGui::Dummy(ImVec2(0.0f, 0.0f));
         ImGui::SameLine(this->extraVerticalSpacing*2);
@@ -118,7 +137,7 @@ void DownloadDlg::run() {
         if (this->socketfd) {
             closesocket(this->socketfd);
         }
-        this->label = getTranslation(DOWNLOADDLG_CANCELLING_LABEL);
+        this->currentLabel = getTranslation(DOWNLOADDLG_CANCELLING_LABEL);
     }
     if (this->errorMsg.length()) {
         showErrorMsg(false);

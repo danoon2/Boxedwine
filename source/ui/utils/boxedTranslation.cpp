@@ -330,7 +330,7 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
     case ERROR_NO_WINE:
         return "There are no versions of Wine installed.  Would you like to install the default version of Wine now?";
     case ERROR_NO_WINE_HIGH_DPI:
-        return "There are no versions of Wine installed.  Would you like to install the default version of Wine now?  Installing a version of Wine will also fix the small fonts your seeing.";
+        return "There are no versions of Wine installed.  Would you like to install the default version of Wine now?  Installing a version of Wine will also fix the small fonts you are seeing.";
     case ERROR_MISSING_WINE:
         return "{0} is missing.  Would you like to use {1} instead?";
     case ERROR_NO_FILE_LIST:

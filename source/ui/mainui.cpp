@@ -548,8 +548,8 @@ bool uiShow(const std::string& basePath) {
             if (container) {
                 std::vector<BoxedApp> items;
                 container->getNewApps(items);
-                new AppChooserDlg(items, [container](BoxedApp* app) {
-                    gotoView(VIEW_CONTAINERS, container->getDir(), app->getIniFilePath());
+                new AppChooserDlg(items, [container](BoxedApp app) {
+                    gotoView(VIEW_CONTAINERS, container->getDir(), app.getIniFilePath());
                     });
             }
             GlobalSettings::startUpArgs.showAppPickerForContainerDir = "";

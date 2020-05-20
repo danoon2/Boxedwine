@@ -225,8 +225,8 @@ void AppFile::install(bool chooseShortCut, BoxedContainer* container, std::list<
                     }
                     runOptions(container, NULL, exeOptions, r, d);
                     if (chooseShortCut) {
-                        new AppChooserDlg(items, [container](BoxedApp* app) {
-                            gotoView(VIEW_CONTAINERS, container->getDir(), app->getIniFilePath());
+                        new AppChooserDlg(items, [container](BoxedApp app) {
+                            gotoView(VIEW_CONTAINERS, container->getDir(), app.getIniFilePath());
                             });
                     }
                 }

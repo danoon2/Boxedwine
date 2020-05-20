@@ -96,7 +96,7 @@ void askToDownloadDefaultWine() {
     int labelId = ERROR_NO_WINE;
 #ifdef BOXEDWINE_HIGHDPI
     U32 scale = getDisplayScale();
-    if (scale >= 1500) {
+    if (scale >= 1500 && !GlobalSettings::defaultFont) {
         labelId = ERROR_NO_WINE_HIGH_DPI;
     }
 #endif

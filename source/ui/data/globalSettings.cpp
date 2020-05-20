@@ -16,6 +16,7 @@
 std::string GlobalSettings::dataFolderLocation;
 std::vector<WineVersion> GlobalSettings::wineVersions;
 std::vector<WineVersion> GlobalSettings::availableWineVersions;
+std::vector<WineVersion> GlobalSettings::availableWineDependencies;
 std::vector<AppFile> GlobalSettings::demos;
 std::vector<AppFile> GlobalSettings::components;
 int GlobalSettings::iconSize;
@@ -169,8 +170,10 @@ void GlobalSettings::lookForFileSystems(const std::string& path) {
             std::string wineVersion;
             if (FsZip::readFileFromZip(filepath, "wineVersion.txt", wineVersion) && wineVersion.length() && !GlobalSettings::getFileFromWineName(wineVersion).length()) {
                 std::string fsVersion;
+                std::string depend;
                 FsZip::readFileFromZip(filepath, "version.txt", fsVersion);
-                GlobalSettings::wineVersions.push_back(WineVersion(wineVersion, fsVersion, filepath));
+                FsZip::readFileFromZip(filepath, "depends.txt", depend);
+                GlobalSettings::wineVersions.push_back(WineVersion(wineVersion, fsVersion, filepath, depend));
             }
         }
         return 0;
@@ -265,10 +268,25 @@ void GlobalSettings::loadFileList() {
         std::string name = wine.child("Name").text().as_string();
         std::string ver = wine.child("FileVersion").text().as_string();
         std::string file = wine.child("FileURL").text().as_string();
+        std::string depend = wine.child("Depend").text().as_string();
         int fileSize = wine.child("FileSizeMB").text().as_int();
 
         if (name.length() && ver.length() && file.length()) {
-            GlobalSettings::availableWineVersions.push_back(WineVersion(name, ver, file, fileSize));
+            GlobalSettings::availableWineVersions.push_back(WineVersion(name, ver, file, depend, fileSize));
+        } else {
+            break;
+        }
+    }
+    GlobalSettings::availableWineDependencies.clear();
+    for (pugi::xml_node wine : node.children("Dependency")) {
+        std::string name = wine.child("Name").text().as_string();
+        std::string ver = wine.child("FileVersion").text().as_string();
+        std::string file = wine.child("FileURL").text().as_string();
+        std::string depend = wine.child("Depend").text().as_string();
+        int fileSize = wine.child("FileSizeMB").text().as_int();
+
+        if (name.length() && ver.length() && file.length()) {
+            GlobalSettings::availableWineDependencies.push_back(WineVersion(name, ver, file, depend, fileSize));
         } else {
             break;
         }
@@ -394,17 +412,29 @@ void GlobalSettings::loadFonts() {
     if (!Fs::doesNativePathExist(fontsPath)) {
         Fs::makeNativeDirs(fontsPath);
     }
+    std::string zipFilePath;
+
+    if (wineVersions.size()) {
+        zipFilePath = wineVersions[0].getDependFilePath();
+
+        if (!zipFilePath.length() || !Fs::doesNativePathExist(zipFilePath)) {
+            zipFilePath = wineVersions[0].filePath;
+        }
+        if (!Fs::doesNativePathExist(zipFilePath)) {
+            zipFilePath = "";
+        }
+    }
     std::string sansBoldFontsPath = fontsPath + Fs::nativePathSeperator + "LiberationSans-Bold.ttf";
-    if (!Fs::doesNativePathExist(sansBoldFontsPath) && wineVersions.size() > 0) {
-        FsZip::extractFileFromZip(wineVersions[0].filePath, "usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf", fontsPath);
+    if (!Fs::doesNativePathExist(sansBoldFontsPath) && zipFilePath.length()) {
+        FsZip::extractFileFromZip(zipFilePath, "usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf", fontsPath);
     }
     std::string sansFontsPath = fontsPath + Fs::nativePathSeperator + "LiberationSans-Regular.ttf";
-    if (!Fs::doesNativePathExist(sansFontsPath) && wineVersions.size() > 0) {
-        FsZip::extractFileFromZip(wineVersions[0].filePath, "usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf", fontsPath);
+    if (!Fs::doesNativePathExist(sansFontsPath) && zipFilePath.length()) {
+        FsZip::extractFileFromZip(zipFilePath, "usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf", fontsPath);
     }
     std::string awesomeFontPath = fontsPath + Fs::nativePathSeperator + "fontawesome-webfont.ttf";
-    if (!Fs::doesNativePathExist(awesomeFontPath) && wineVersions.size() > 0) {
-        FsZip::extractFileFromZip(wineVersions[0].filePath, "usr/share/fonts/truetype/fontawesome-webfont.ttf", fontsPath);
+    if (!Fs::doesNativePathExist(awesomeFontPath) && zipFilePath.length()) {
+        FsZip::extractFileFromZip(zipFilePath, "usr/share/fonts/truetype/fontawesome-webfont.ttf", fontsPath);
     }
 
     ImGuiIO& io = ImGui::GetIO();
@@ -458,7 +488,9 @@ void GlobalSettings::downloadFile(const std::string& url, const std::string& fil
         if (!Fs::doesNativePathExist(parentPath)) {
             Fs::makeNativeDirs(parentPath);
         }
-        new DownloadDlg(DOWNLOADDLG_TITLE, getTranslationWithFormat(DOWNLOADDLG_LABEL, true, name), url, filePath, [onCompleted](bool success) {
+        std::vector<DownloadItem> items;
+        items.push_back(DownloadItem(getTranslationWithFormat(DOWNLOADDLG_LABEL, true, name), url, filePath, ((U64)sizeMB) * 1024 * 1024));
+        new DownloadDlg(DOWNLOADDLG_TITLE, items, [onCompleted](bool success) {
             runOnMainUI([success, onCompleted]() {
                 GlobalSettings::reloadWineVersions();
                 if (!GlobalSettings::defaultFont) {
@@ -467,23 +499,24 @@ void GlobalSettings::downloadFile(const std::string& url, const std::string& fil
                 onCompleted(success);
                 return false;
                 });
-            }, ((U64)sizeMB) * 1024 * 1024);
+            });
         return false;
         });
 }
 
 void GlobalSettings::downloadWine(const WineVersion& version, std::function<void(bool)> onCompleted) {
     runOnMainUI([&version, onCompleted]() {
-        size_t pos = version.filePath.rfind("/");
-        if (pos == std::string::npos) {
-            return false; // :TODO: error msg?
-        }
-        std::string fileName = version.filePath.substr(pos + 1);
-        std::string filePath = GlobalSettings::getFileSystemFolder() + Fs::nativePathSeperator + fileName;
+        std::string filePath = version.getLocalFilePath();
         if (!Fs::doesNativePathExist(GlobalSettings::getFileSystemFolder())) {
             Fs::makeNativeDirs(GlobalSettings::getFileSystemFolder());
         }
-        new DownloadDlg(DOWNLOADDLG_TITLE, getTranslationWithFormat(DOWNLOADDLG_LABEL, true, version.name), version.filePath, filePath, [onCompleted](bool success) {
+        std::vector<DownloadItem> items;
+        items.push_back(DownloadItem(getTranslationWithFormat(DOWNLOADDLG_LABEL, true, version.name), version.filePath, filePath, ((U64)(version.size)) * 1024 * 1024));
+        WineVersion* depend = version.getMissingDependency();
+        if (depend) {
+            items.push_back(DownloadItem(getTranslationWithFormat(DOWNLOADDLG_LABEL, true, depend->name), depend->filePath, depend->getLocalFilePath(), ((U64)(depend->size)) * 1024 * 1024));
+        }
+        new DownloadDlg(DOWNLOADDLG_TITLE, items, [onCompleted](bool success) {
             runOnMainUI([success, onCompleted]() {
                 GlobalSettings::reloadWineVersions();
                 if (!GlobalSettings::defaultFont) {
@@ -492,7 +525,7 @@ void GlobalSettings::downloadWine(const WineVersion& version, std::function<void
                 onCompleted(success);
                 return false;
                 });
-            }, ((U64)(version.size))*1024*1024);
+            });
         return false;
         });
 }
@@ -547,4 +580,36 @@ std::string GlobalSettings::createUniqueContainerPath(const std::string& name) {
             return result;
         }
     }
+}
+
+std::string WineVersion::getDependFilePath() const {
+    if (this->depend.length()) {
+        return GlobalSettings::getFileSystemFolder() + Fs::nativePathSeperator + depend;
+    }
+    return "";
+}
+
+WineVersion* WineVersion::getMissingDependency() const {
+    if (this->depend.length()) {
+        if (!Fs::doesNativePathExist(this->depend)) {
+            std::string dependPath = GlobalSettings::getFileSystemFolder() + Fs::nativePathSeperator + depend;
+            if (!Fs::doesNativePathExist(dependPath)) {
+                for (auto& w : GlobalSettings::availableWineDependencies) {
+                    if (w.name == this->depend) {
+                        return &w;
+                    }
+                }
+            }
+        }
+    }
+    return NULL;
+}
+
+std::string WineVersion::getLocalFilePath() const {
+    size_t pos = this->filePath.rfind("/");
+    if (pos == std::string::npos) {
+        return ""; // :TODO: error msg?
+    }
+    std::string fileName = this->filePath.substr(pos + 1);
+    return GlobalSettings::getFileSystemFolder() + Fs::nativePathSeperator + fileName;
 }

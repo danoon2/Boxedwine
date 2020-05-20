@@ -9,6 +9,7 @@ public:
 	WineVersion* currentVersion;
 	WineVersion* availableVersion;
 	std::string name;
+	std::string size;
 };
 
 class OptionsView : public BaseView {

@@ -12,6 +12,7 @@ private:
     void createDemoTab();
     void runApps(std::vector<AppFile>& apps);
     void setContainerName();
+    void setWindowsVersionDefault();
 
     void onInstall();   
 

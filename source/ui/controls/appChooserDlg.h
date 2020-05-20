@@ -3,8 +3,8 @@
 
 class AppChooserDlg : public BaseDlg {
 public:
-    AppChooserDlg(std::vector<BoxedApp>& items, std::vector<BoxedApp>& wineApps, std::function<void(BoxedApp*)> onSelected, BaseDlg* parent=NULL);
-    AppChooserDlg(std::vector<BoxedApp>& items, std::function<void(BoxedApp*)> onSelected, BaseDlg* parent = NULL, int titleId= APPCHOOSER_DLG_TITLE);
+    AppChooserDlg(std::vector<BoxedApp>& items, std::vector<BoxedApp>& wineApps, std::function<void(BoxedApp)> onSelected, bool saveApp = true, BaseDlg* parent=NULL);
+    AppChooserDlg(std::vector<BoxedApp>& items, std::function<void(BoxedApp)> onSelected, bool saveApp = true, BaseDlg* parent = NULL, int titleId = APPCHOOSER_DLG_TITLE);
 
     void setLabelId(int id) {this->labelId = id;}
 protected:
@@ -16,8 +16,9 @@ private:
 
     std::vector<BoxedApp> items;
     std::vector<BoxedApp> wineApps;
-    std::function<void(BoxedApp*)> onSelected;
+    std::function<void(BoxedApp app)> onSelected;
     int labelId;
+    bool saveApp;
 };
 
 #endif
