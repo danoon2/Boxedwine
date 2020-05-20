@@ -412,17 +412,29 @@ void GlobalSettings::loadFonts() {
     if (!Fs::doesNativePathExist(fontsPath)) {
         Fs::makeNativeDirs(fontsPath);
     }
+    std::string zipFilePath;
+
+    if (wineVersions.size()) {
+        zipFilePath = wineVersions[0].getDependFilePath();
+
+        if (!zipFilePath.length() || !Fs::doesNativePathExist(zipFilePath)) {
+            zipFilePath = wineVersions[0].filePath;
+        }
+        if (!Fs::doesNativePathExist(zipFilePath)) {
+            zipFilePath = "";
+        }
+    }
     std::string sansBoldFontsPath = fontsPath + Fs::nativePathSeperator + "LiberationSans-Bold.ttf";
-    if (!Fs::doesNativePathExist(sansBoldFontsPath) && wineVersions.size() > 0) {
-        FsZip::extractFileFromZip(wineVersions[0].filePath, "usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf", fontsPath);
+    if (!Fs::doesNativePathExist(sansBoldFontsPath) && zipFilePath.length()) {
+        FsZip::extractFileFromZip(zipFilePath, "usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf", fontsPath);
     }
     std::string sansFontsPath = fontsPath + Fs::nativePathSeperator + "LiberationSans-Regular.ttf";
-    if (!Fs::doesNativePathExist(sansFontsPath) && wineVersions.size() > 0) {
-        FsZip::extractFileFromZip(wineVersions[0].filePath, "usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf", fontsPath);
+    if (!Fs::doesNativePathExist(sansFontsPath) && zipFilePath.length()) {
+        FsZip::extractFileFromZip(zipFilePath, "usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf", fontsPath);
     }
     std::string awesomeFontPath = fontsPath + Fs::nativePathSeperator + "fontawesome-webfont.ttf";
-    if (!Fs::doesNativePathExist(awesomeFontPath) && wineVersions.size() > 0) {
-        FsZip::extractFileFromZip(wineVersions[0].filePath, "usr/share/fonts/truetype/fontawesome-webfont.ttf", fontsPath);
+    if (!Fs::doesNativePathExist(awesomeFontPath) && zipFilePath.length()) {
+        FsZip::extractFileFromZip(zipFilePath, "usr/share/fonts/truetype/fontawesome-webfont.ttf", fontsPath);
     }
 
     ImGuiIO& io = ImGui::GetIO();
@@ -568,6 +580,13 @@ std::string GlobalSettings::createUniqueContainerPath(const std::string& name) {
             return result;
         }
     }
+}
+
+std::string WineVersion::getDependFilePath() const {
+    if (this->depend.length()) {
+        return GlobalSettings::getFileSystemFolder() + Fs::nativePathSeperator + depend;
+    }
+    return "";
 }
 
 WineVersion* WineVersion::getMissingDependency() const {
