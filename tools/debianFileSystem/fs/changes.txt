@@ -1,0 +1,3 @@
+v3 5/20/2020 * Recreated for smaller size.  Added libfreetype.so.6.12.3 for Wine Versions <= 2
+v2 4/20/2020 * Added symbol font for UI
+v1 2/21/2020 * Initial creation
