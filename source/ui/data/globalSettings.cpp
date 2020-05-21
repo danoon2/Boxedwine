@@ -151,7 +151,8 @@ void GlobalSettings::saveConfig() {
     config.writeString("DefaultResolution", GlobalSettings::defaultResolution);
     config.writeInt("DefaultScale", GlobalSettings::defaultScale);
     config.writeInt("FontScale", (int)(GlobalSettings::fontScale*100));
-    config.writeString("FilesURL", GlobalSettings::filesUrl);
+    // don't save this so that it can be updated each release, but if someone wants to override it by entering a value they can
+    //config.writeString("FilesURL", GlobalSettings::filesUrl);
     config.writeInt("WindowWidth", GlobalSettings::lastScreenCx);
     config.writeInt("WindowHeight", GlobalSettings::lastScreenCy);
     config.writeInt("WindowX", GlobalSettings::lastScreenX);
