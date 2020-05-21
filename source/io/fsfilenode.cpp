@@ -167,7 +167,7 @@ FsOpenNode* FsFileNode::open(U32 flags) {
             openFlags|=O_RDWR;            
         }
         std::string parentPath = Fs::getNativeParentPath(this->nativePath);
-        if (!Fs::doesNativePathExist(parentPath)) {
+        if (this->zipNode || !Fs::doesNativePathExist(parentPath)) {
             ensurePathIsLocal();
         }
     }
