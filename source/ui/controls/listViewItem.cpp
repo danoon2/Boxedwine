@@ -17,7 +17,7 @@ const char* getTextThatFits(const char* p, float width) {
 }
 
 void drawListViewItem(const ListViewItem& item) {
-    float width = ImGui::GetColumnWidth();
+    float width = ImGui::GetColumnWidth()-GlobalSettings::scaleFloatUI(4.0f);
     ImVec2 startPos = ImGui::GetCursorPos();
     const float iconVertGap = GlobalSettings::scaleFloatUI(5);
 
@@ -31,13 +31,14 @@ void drawListViewItem(const ListViewItem& item) {
         const char* p = font->CalcWordWrapPositionA(font->Scale, text, text+item.text.length(), width);
 
         ImGui::PushID(start);
-        ImGui::SetCursorPosX(ImGui::GetCursorPosX()+(float)(width/2-fullTextSize.x/2));
+        //ImGui::SetCursorPosX(ImGui::GetCursorPosX()+(float)(width/2-fullTextSize.x/2));
         int lineCount = (int)(fullTextSize.y/textSize.y+0.5);
         if (lineCount>UiSettings::MAX_NUMBER_OF_LINES_FOR_APP_LIST_VIEW_TEXT) {
             lineCount = UiSettings::MAX_NUMBER_OF_LINES_FOR_APP_LIST_VIEW_TEXT;
         }
         fullTextSize.y=ImGui::GetStyle().ItemSpacing.y*(lineCount-1)+lineCount*textSize.y;
         ImVec2 fullItemSize = fullTextSize;         
+        fullItemSize.x = width;
         fullItemSize.y += UiSettings::ICON_SIZE + iconVertGap * 3;
         if (ImGui::Selectable("", false, ImGuiSelectableFlags_AllowRightClick, fullItemSize)) {
             item.onSelect(ImGui::IsMouseReleased(ImGuiMouseButton_Right));
