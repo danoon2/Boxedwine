@@ -167,9 +167,14 @@ FsOpenNode* FsFileNode::open(U32 flags) {
             openFlags|=O_RDWR;            
         }
         std::string parentPath = Fs::getNativeParentPath(this->nativePath);
-        if (this->zipNode || !Fs::doesNativePathExist(parentPath)) {
+        if (!Fs::doesNativePathExist(parentPath)) {
             ensurePathIsLocal();
         }
+#ifdef BOXEDWINE_ZLIB
+        else if (this->zipNode) {
+            ensurePathIsLocal();
+        }
+#endif
     }
     if (flags & K_O_CREAT) {
         openFlags|=O_CREAT;
