@@ -59,6 +59,9 @@ void drawListViewItem(const ListViewItem& item) {
             ImGui::SetCursorPosX(ImGui::GetCursorPosX()+(width/2-textSize.x/2));
             SAFE_IMGUI_TEXT(line.c_str());
             text = p;
+            while(text[0]==' ') {
+                text++;
+            }
             p = font->CalcWordWrapPositionA(font->Scale, text, text+item.text.length(), width);
             if (p == text) { // didn't find a break;
                 p = getTextThatFits(p, width);
