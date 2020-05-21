@@ -46,7 +46,7 @@ BoxedWinVersion* BoxedwineData::getWinVersionFromName(const std::string& name) {
 }
 
 void BoxedwineData::startApp() {
-#ifndef BOXEDWINE_UI_LAUNCH_IN_PROCESS
+#ifdef BOXEDWINE_UI_LAUNCH_IN_PROCESS
     GlobalSettings::startUpArgs.apply();
     if (uiIsRunning()) {
         uiShutdown();
