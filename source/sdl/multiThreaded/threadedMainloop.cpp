@@ -30,6 +30,8 @@ bool doMainLoop() {
 
         if (KSystem::killTime) {
             if (KSystem::killTime <= t) {
+                SDL_Quit();
+                exit(9);
                 return true;
             }
             if (t - KSystem::killTime < timeout) {
