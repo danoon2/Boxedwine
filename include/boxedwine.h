@@ -1,6 +1,8 @@
 #ifndef __BOXEDWINE_H__
 #define __BOXEDWINE_H__
 
+#define BOXEDWINE_VERSION_STR "201"
+
 #include <string>
 #include <vector>
 #include <unordered_map>

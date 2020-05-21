@@ -82,7 +82,11 @@ void GlobalSettings::init(int argc, const char **argv) {
     GlobalSettings::defaultResolution = config.readString("DefaultResolution", "1024x768");
     GlobalSettings::defaultScale = config.readInt("DefaultScale", 100);
     GlobalSettings::fontScale = (float)config.readInt("FontScale", 100) / 100.0f;
-    GlobalSettings::filesUrl = config.readString("FilesURL", "http://www.boxedwine.org/files.xml");
+#ifdef _DEBUG
+    GlobalSettings::filesUrl = config.readString("FilesURL", "http://www.boxedwine.org/v/Debug/files.xml");
+#else
+    GlobalSettings::filesUrl = config.readString("FilesURL", "http://www.boxedwine.org/v/" BOXEDWINE_VERSION_STR "/files.xml");
+#endif
     GlobalSettings::lastScreenCx = config.readInt("WindowWidth", 0);
     GlobalSettings::lastScreenCy = config.readInt("WindowHeight", 0);
     GlobalSettings::lastScreenX = config.readInt("WindowX", 0);
