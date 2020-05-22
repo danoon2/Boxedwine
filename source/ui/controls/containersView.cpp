@@ -30,6 +30,16 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
         this->currentContainerChanged = true;
     };
 
+    std::vector<ComboboxItem> mouseOptions;
+    mouseOptions.push_back(ComboboxItem("Enable", "enable"));
+    mouseOptions.push_back(ComboboxItem("Disable", "disable"));
+    mouseOptions.push_back(ComboboxItem("Force", "force"));
+    containerMouseWarpControl = section->addComboboxRow(CONTAINER_VIEW_MOUSE_WARP_LABEL, CONTAINER_VIEW_MOUSE_WARP_HELP, mouseOptions);    
+    containerMouseWarpControl->onChange = [this]() {
+        this->currentContainerChanged = true;
+    };
+    containerMouseWarpControl->setWidth((int)GlobalSettings::scaleFloatUIAndFont(150));
+
     std::vector<ComboboxItem> mountDrives;
     mountDrives.push_back(ComboboxItem(" "));
     for (int i = 3; i < 26; i++) {
@@ -400,6 +410,7 @@ bool ContainersView::saveChanges() {
             this->currentContainer->setWineVersion(this->containerWineVersionControl->getSelectionStringValue());
             this->currentContainer->setWindowsVersion(BoxedwineData::getWinVersions()[this->containerWindowsVersionControl->getSelection()]);
             this->currentContainer->setGDI(containerGdiControl->isChecked());
+            this->currentContainer->setMouseWarpOverride(containerMouseWarpControl->getSelectionStringValue());
             this->currentContainer->saveContainer();
             this->currentContainerChanged = false;            
         }
@@ -508,7 +519,8 @@ void ContainersView::setCurrentContainer(BoxedContainer* container) {
         this->currentApp = NULL;
     }    
     showAppSection(this->currentContainer->getApps().size() != 0);
-    containerGdiControl->setCheck(container->isGDI());    
+    containerGdiControl->setCheck(container->isGDI()); 
+    containerMouseWarpControl->setSelectionStringValue(container->getMouseWarpOverride());
 }
 
 void ContainersView::showAppSection(bool show) {

@@ -308,6 +308,20 @@ void BoxedContainer::setGDI(bool gdi) {
     reg.save();
 }
 
+std::string BoxedContainer::getMouseWarpOverride() {
+    BoxedReg reg(this, false);
+    std::string value = "enable";
+
+    reg.readKey("Software\\Wine\\DirectInput", "MouseWarpOverride", value);
+    return value;
+}
+
+void BoxedContainer::setMouseWarpOverride(const std::string& value) {
+    BoxedReg reg(this, false);
+    reg.writeKey("Software\\Wine\\DirectInput", "MouseWarpOverride", value.c_str());
+    reg.save();
+}
+
 static const char szKey9x[] = "Software\\Microsoft\\Windows\\CurrentVersion";
 static const char szKeyNT[] = "Software\\Microsoft\\Windows NT\\CurrentVersion";
 static const char szKeyProdNT[] = "System\\CurrentControlSet\\Control\\ProductOptions";

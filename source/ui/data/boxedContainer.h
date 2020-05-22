@@ -42,6 +42,8 @@ public:
 
     bool isGDI();
     void setGDI(bool gdi);
+    std::string getMouseWarpOverride();
+    void setMouseWarpOverride(const std::string& value);
     std::string getWindowsVersion();
     void setWindowsVersion(const BoxedWinVersion& version);    
     std::string getLogPath();

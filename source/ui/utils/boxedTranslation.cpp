@@ -313,6 +313,10 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "WineCfg";
     case CONTAINER_VIEW_GDI_RENDERER_HELP:
         return "DirectDraw will use OpenGL by default.  But a few games, like Diable and Startcraft, may have graphical issues.  Sometimes changing the renderer to GDI can help.";
+    case CONTAINER_VIEW_MOUSE_WARP_LABEL:
+        return "Mouse Warp Override:";
+    case CONTAINER_VIEW_MOUSE_WARP_HELP:
+        return "Enable:  (default) warp pointer when mouse exclusively acquired\nDisable : never warp the mouse pointer\nForce : always warp the pointer";
     case CONTAINER_VIEW_WINDOWS_VERION_LABEL:
         return "Windows Version:";
     case CONTAINER_VIEW_WINDOWS_VERION_HELP:
