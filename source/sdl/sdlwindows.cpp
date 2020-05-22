@@ -495,10 +495,15 @@ void preDrawWindow() {
     }
 #endif
     if (windowIsHidden) {
-        SDL_ShowWindow(sdlWindow);
-        SDL_RaiseWindow(sdlWindow);
-        windowIsHidden = false;
-        timeToHideUI = KSystem::getMilliesSinceStart() + HIDE_UI_WINDOW_DELAY;
+        int w = 0;
+        int h = 0;
+        SDL_GetWindowSize(sdlWindow, &w, &h);
+        if (w >= 320 && h >= 240) {
+            SDL_ShowWindow(sdlWindow);
+            SDL_RaiseWindow(sdlWindow);
+            windowIsHidden = false;
+            timeToHideUI = KSystem::getMilliesSinceStart() + HIDE_UI_WINDOW_DELAY;
+        }
     }
     DISPATCH_MAIN_THREAD_BLOCK_END
 }
