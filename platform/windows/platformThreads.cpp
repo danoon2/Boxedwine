@@ -171,9 +171,11 @@ void scheduleThread(KThread* thread) {
         Platform::setCpuAffinityForThread(KThread::currentThread(), KSystem::cpuAffinityCountForApp);
     }
 #endif
+#ifdef _DEBUG
     std::string s = std::to_string(thread->id) + " " + thread->process->name;
     std::wstring w(s.begin(), s.end());
     SetThreadDescription((HANDLE)cpu->nativeHandle, w.c_str());
+#endif
     ResumeThread((HANDLE)cpu->nativeHandle);
 }
 
