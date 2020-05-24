@@ -2,6 +2,15 @@ pipeline {
     agent any
 
     stages {
+        stage('Test') {
+            steps {
+                sh '''#!/bin/bash
+                    cd project/linux
+                    sh buildtest.sh || exit
+                    ./bin/boxedwineTest || exit 
+                '''
+            }
+        }
         stage('Build') {
             steps {
                sh '''#!/bin/bash
@@ -19,20 +28,11 @@ pipeline {
                     sh build64.sh || exit
                 '''           
             }
-        }
-        stage('Test') {
-            steps {
-                sh '''#!/bin/bash
-                    cd project/linux
-                    sh buildtest.sh || exit
-                    ./bin/boxedwineTest || exit 
-                '''
-            }
-        }
+        }        
     }
 
     post {
-        changed {
+        always {
             script {
                 if ("${env.BRANCH_NAME}" == 'master') {
                     emailext subject: '$DEFAULT_SUBJECT',
