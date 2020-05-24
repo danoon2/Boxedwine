@@ -7,7 +7,7 @@ pipeline {
                 sh '''#!/bin/bash
                     cd project/linux
                     sh buildtest.sh || exit
-                    ./bin/boxedwineTest || exit 
+                    ./bin/boxedwineTest
                 '''
             }
         }
@@ -16,7 +16,7 @@ pipeline {
                sh '''#!/bin/bash
 
                     cd project/linux
-                    sh build.sh || exit
+                    sh build.sh
                 '''           
             }
         }
@@ -25,14 +25,14 @@ pipeline {
                sh '''#!/bin/bash
 
                     cd project/linux
-                    sh build64.sh || exit
+                    sh build64.sh
                 '''           
             }
         }        
     }
 
     post {
-        always {
+        changed {
             script {
                 if ("${env.BRANCH_NAME}" == 'master') {
                     emailext subject: '$DEFAULT_SUBJECT',
