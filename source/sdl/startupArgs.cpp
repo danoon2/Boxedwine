@@ -444,25 +444,7 @@ bool StartUpArgs::apply() {
     KSystem::soundEnabled = this->soundEnabled;
     KNativeWindow::init(this->screenCx, this->screenCy, this->screenBpp, this->sdlScaleX, this->sdlScaleY, this->sdlScaleQuality, this->sdlFullScreen, this->vsync);
     initWine();
-    /*
-<<<<<<< HEAD
-    initWineAudio();
-    KNativeAudio::init();
-#ifdef BOXEDWINE_OPENGL
-    gl_init(this->glExt);        
-=======
 
-
-#if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
-    gl_init(this->glExt);
-#ifdef __EMSCRIPTEN__
-    initialize_gl4es();
-#endif
-<<<<<<< HEAD
-    gl_init(this->glExt);
->>>>>>> 7507e033 (non-working at this stage)
-#endif   
-*/
     initWineAudio();
     KNativeAudio::init();
     initialize_gl4es();
