@@ -4,7 +4,7 @@ pipeline {
     stages {
         stage('Test') {
             steps {
-                bat "\"${${env.MSBUILD}}\" "project/msvc/BoxedWine/BoxedWine.sln" /p:Configuration=Test;Platform=win32        
+                bat "\"${env.MSBUILD}\" "project/msvc/BoxedWine/BoxedWine.sln" /p:Configuration=Test;Platform=win32        
                 bat "project/msvc/BoxedWine/Test/BoxedWine.exe"
             }
         }
