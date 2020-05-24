@@ -11,6 +11,15 @@ pipeline {
                 '''           
             }
         }
+        stage('Build x64 Core') {
+            steps {
+               sh '''#!/bin/bash
+
+                    cd project/linux
+                    sh build64.sh || exit
+                '''           
+            }
+        }
         stage('Test') {
             steps {
                 sh '''#!/bin/bash
