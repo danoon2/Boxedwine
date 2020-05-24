@@ -13,4 +13,30 @@ pipeline {
             }
         }
     }
+
+    post {
+        changed {
+            script {
+                if ("${env.BRANCH_NAME}" == 'master') {
+                    emailext subject: '$DEFAULT_SUBJECT',
+                        body: '$DEFAULT_CONTENT',
+                        recipientProviders: [
+                            [$class: 'CulpritsRecipientProvider'],
+                            [$class: 'DevelopersRecipientProvider'],
+                            [$class: 'RequesterRecipientProvider']
+                        ], 
+                        replyTo: '$DEFAULT_REPLYTO',
+                        to: '$DEFAULT_RECIPIENTS'
+                } else {
+                    emailext subject: '$DEFAULT_SUBJECT',
+                        body: '$DEFAULT_CONTENT',
+                        recipientProviders: [
+                            [$class: 'DevelopersRecipientProvider'],
+                            [$class: 'RequesterRecipientProvider']
+                        ], 
+                        replyTo: '$DEFAULT_REPLYTO'
+                }
+            }
+        }
+    }
 }
