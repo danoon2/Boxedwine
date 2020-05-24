@@ -33,6 +33,10 @@
 #include "../ui/mainui.h"
 #endif
 
+#ifdef __EMSCRIPTEN__
+#include <GL/Regal.h>
+#endif
+
 #define HIDE_UI_WINDOW_DELAY 1000
 
 U32 default_horz_res = 800;
@@ -662,7 +666,10 @@ U32 sdlCreateOpenglWindow_main_thread(KThread* thread, Wnd* wnd, int major, int 
     delayedCreateWindowMsg = "Creating Window for OpenGL: "+std::to_string(cx) + "x" + std::to_string(cy);
     fflush(stdout);
     sdlWindow = SDL_CreateWindow("OpenGL Window", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, cx, cy, sdlFlags);
-    windowIsHidden = true;    
+    #ifdef __EMSCRIPTEN__
+        RegalMakeCurrent((RegalSystemContext)1);
+    #endif
+    windowIsHidden = true;
 
     if (!sdlWindow) {
         fprintf(stderr, "Couldn't create window: %s\n", SDL_GetError());
