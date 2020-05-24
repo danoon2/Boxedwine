@@ -1,0 +1,54 @@
+pipeline {
+    agent { label 'windows' }
+
+    stages {
+        stage('Test') {
+            steps {
+                bat "\"${tool 'MSBuild'}\" ${WORKSPACE}\project\msvc\BoxedWine\BoxedWine.sln /p:Configuration=Test;Platform=win32        
+                bat ${WORKSPACE}\project\msvc\BoxedWine\Test\BoxedWine.exe
+            }
+        }
+        stage('Test x64 Core') {
+            steps {
+                bat "\"${tool 'MSBuild'}\" ${WORKSPACE}\project\msvc\BoxedWine\BoxedWine.sln /p:Configuration=Test;Platform=x64       
+                bat ${WORKSPACE}\project\msvc\BoxedWine\Test\BoxedWine.exe
+            }
+        }
+        stage('Build') {
+            steps {
+                bat "\"${tool 'MSBuild'}\" ${WORKSPACE}\project\msvc\BoxedWine\BoxedWine.sln /p:Configuration=Release;Platform=win32        
+            }
+        }
+        stage('Build x64 Core') {
+            steps {
+                bat "\"${tool 'MSBuild'}\" ${WORKSPACE}\project\msvc\BoxedWine\BoxedWine.sln /p:Configuration=Test;Platform=x64       
+            }
+        }        
+    }
+
+    post {
+        changed {
+            script {
+                if ("${env.BRANCH_NAME}" == 'master') {
+                    emailext subject: '$DEFAULT_SUBJECT',
+                        body: '$DEFAULT_CONTENT',
+                        recipientProviders: [
+                            [$class: 'CulpritsRecipientProvider'],
+                            [$class: 'DevelopersRecipientProvider'],
+                            [$class: 'RequesterRecipientProvider']
+                        ], 
+                        replyTo: '$DEFAULT_REPLYTO',
+                        to: '$DEFAULT_RECIPIENTS'
+                } else {
+                    emailext subject: '$DEFAULT_SUBJECT',
+                        body: '$DEFAULT_CONTENT',
+                        recipientProviders: [
+                            [$class: 'DevelopersRecipientProvider'],
+                            [$class: 'RequesterRecipientProvider']
+                        ], 
+                        replyTo: '$DEFAULT_REPLYTO'
+                }
+            }
+        }
+    }
+}
