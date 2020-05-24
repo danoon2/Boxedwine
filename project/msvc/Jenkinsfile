@@ -4,24 +4,24 @@ pipeline {
     stages {
         stage('Test') {
             steps {
-                bat "\"${tool 'MSBuild'}\" "project\msvc\BoxedWine\BoxedWine.sln" /p:Configuration=Test;Platform=win32        
+                bat "\"${${env.MSBUILD}}\" "project\msvc\BoxedWine\BoxedWine.sln" /p:Configuration=Test;Platform=win32        
                 bat "project\msvc\BoxedWine\Test\BoxedWine.exe"
             }
         }
         stage('Test x64 Core') {
             steps {
-                bat "\"${tool 'MSBuild'}\" "project\msvc\BoxedWine\BoxedWine.sln" /p:Configuration=Test;Platform=x64       
+                bat "\"${env.MSBUILD}\" "project\msvc\BoxedWine\BoxedWine.sln" /p:Configuration=Test;Platform=x64       
                 bat "project\msvc\BoxedWine\Test\BoxedWine.exe"
             }
         }
         stage('Build') {
             steps {
-                bat "\"${tool 'MSBuild'}\" "project\msvc\BoxedWine\BoxedWine.sln" /p:Configuration=Release;Platform=win32        
+                bat "\"${env.MSBUILD}\" "project\msvc\BoxedWine\BoxedWine.sln" /p:Configuration=Release;Platform=win32        
             }
         }
         stage('Build x64 Core') {
             steps {
-                bat "\"${tool 'MSBuild'}\" "project\msvc\BoxedWine\BoxedWine.sln" /p:Configuration=Test;Platform=x64       
+                bat "\"${env.MSBUILD}\" "project\msvc\BoxedWine\BoxedWine.sln" /p:Configuration=Test;Platform=x64       
             }
         }        
     }
