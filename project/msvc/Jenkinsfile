@@ -5,13 +5,13 @@ pipeline {
         stage('Test') {
             steps {
                 bat "\"${env.MSBUILD}\" \"project/msvc/BoxedWine/BoxedWine.sln\" /p:Configuration=Test;Platform=win32"
-                bat "project/msvc/BoxedWine/Test/BoxedWine.exe"
+                bat "project\\msvc\\BoxedWine\\Test\\BoxedWine.exe"
             }
         }
         stage('Test x64 Core') {
             steps {
                 bat "\"${env.MSBUILD}\" \"project/msvc/BoxedWine/BoxedWine.sln\" /p:Configuration=Test;Platform=x64"
-                bat "project/msvc/BoxedWine/Test/BoxedWine.exe"
+                bat "project\\msvc\\BoxedWine\\Test\\BoxedWine.exe"
             }
         }
         stage('Build') {
