@@ -182,7 +182,7 @@ void addWaitingNativeSocket(const std::shared_ptr<KNativeSocketObject>& s) {
 
 void removeWaitingSocket(S32 nativeSocket) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(waitingNodeMutex);
-    for (int i = 0; i < waitingNativeSockets.size(); i++) {
+    for (int i = 0; i < (int)waitingNativeSockets.size(); i++) {
         if (waitingNativeSockets[i]->nativeSocket == nativeSocket) {
             waitingNativeSockets.erase(waitingNativeSockets.begin() + i);
             break;
