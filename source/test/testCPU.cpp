@@ -6599,7 +6599,7 @@ void initMem16() {
 void test16BitMemoryAccess() {
     // Mod 00
         // [DS:BX + SI]
-        initMem16(); BX = 0;      SI = 0;      runLeaGw(0, 0, 0, 0, 0, DS);
+        initM em16(); BX = 0;      SI = 0;      runLeaGw(0, 0, 0, 0, 0, DS);
         initMem16(); BX = 1;      SI = 0;      runLeaGw(1<<3, 0, 0, 0, 1, DS);
         initMem16(); BX = 0;      SI = 1;      runLeaGw(2<<3, 0, 0, 0, 1, DS);
         initMem16(); BX = 0xFFFF; SI = 0;      runLeaGw(3<<3, 0, 0, 0, 0xFFFF, DS);
