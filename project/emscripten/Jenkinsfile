@@ -4,7 +4,8 @@ pipeline {
     stages {
         stage('Build') {
             steps {
-                source /home/ubuntu/emsdk/emsdk_env.sh
+                source ~/emsdk/emsdk_env.sh
+                cd project/emscripten
                 sh buildjs.sh
             }
         }
