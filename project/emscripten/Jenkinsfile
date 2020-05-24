@@ -1,0 +1,12 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Build') {
+            steps {
+                source /home/ubuntu/emsdk/emsdk_env.sh
+                sh buildjs.sh
+            }
+        }
+    }
+}
