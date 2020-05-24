@@ -36,6 +36,10 @@
 
 #define mdev(x,y) ((x << 8) | y)
 
+#ifdef __EMSCRIPTEN__
+extern "C" void initialize_gl4es();
+#endif
+
 void gl_init(const std::string& allowExtensions);
 void initWine();
 void initWineAudio();
@@ -440,12 +444,28 @@ bool StartUpArgs::apply() {
     KSystem::soundEnabled = this->soundEnabled;
     KNativeWindow::init(this->screenCx, this->screenCy, this->screenBpp, this->sdlScaleX, this->sdlScaleY, this->sdlScaleQuality, this->sdlFullScreen, this->vsync);
     initWine();
+    /*
+<<<<<<< HEAD
     initWineAudio();
     KNativeAudio::init();
 #ifdef BOXEDWINE_OPENGL
     gl_init(this->glExt);        
-#endif   
+=======
 
+
+#if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
+#ifdef __EMSCRIPTEN__
+    initialize_gl4es();
+#endif
+    gl_init(this->glExt);
+>>>>>>> 7507e033 (non-working at this stage)
+#endif   
+*/
+    initWineAudio();
+    KNativeAudio::init();
+    initialize_gl4es();
+    gl_init(this->glExt);  
+    
     if (this->args.size()) {
         klog_nonewline("Launching ");
         for (U32 i=0;i<this->args.size();i++) {
