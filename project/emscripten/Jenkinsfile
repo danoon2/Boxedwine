@@ -4,9 +4,12 @@ pipeline {
     stages {
         stage('Build') {
             steps {
-                source ~/emsdk/emsdk_env.sh
-                cd project/emscripten
-                sh buildjs.sh
+               sh '''#!/bin/bash
+
+                    source ~/emsdk/emsdk_env.sh
+                    cd project/emscripten
+                    sh buildjs.sh
+                '''           
             }
         }
     }
