@@ -244,14 +244,14 @@ U32 BOXEDWINE_RECORDER_QUIT() {
     if (Player::instance) {
         if (Player::instance->nextCommand=="DONE") {
             klog("script: success");
-            return 1;
+            return 0;
         } else {
             klog("script: failed");
             klog("  nextCommand is: %s", Player::instance->nextCommand.c_str());
             sdlScreenShot("failed.bmp", NULL);
         }
     }
-    return 0;
+    return 1;
 }
 
 void BOXEDWINE_RECORDER_RUN_SLICE() {
