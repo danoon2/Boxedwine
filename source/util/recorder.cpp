@@ -2,6 +2,11 @@
 #include "../sdl/sdlwindow.h"
 #include <SDL.h>
 
+#ifdef BOXEDWINE_MULTI_THREADED
+#include "../sdl/multiThreaded/sdlcallback.h"
+extern U32 sdlCustomEvent;
+#endif
+
 #ifdef BOXEDWINE_RECORDER
 Recorder* Recorder::instance;
 
@@ -125,7 +130,16 @@ void Recorder::takeScreenShot() {
                     r.h = e.motion.y-r.y;
                 sdlDrawRectOnPushedSurfaceAndDisplay(r.x, r.y, r.w, r.h, 0x80, 0x80, 0x80, 0x80);
             }
+        } 
+#ifdef BOXEDWINE_MULTI_THREADED
+        else if (e.type == sdlCustomEvent) {
+            SdlCallback* callback = (SdlCallback*)e.user.data1;
+            callback->result = (U32)callback->pfn();
+            BOXEDWINE_CONDITION_LOCK(callback->cond);
+            BOXEDWINE_CONDITION_SIGNAL(callback->cond);
+            BOXEDWINE_CONDITION_UNLOCK(callback->cond);
         }
+#endif
     }       
 }
 

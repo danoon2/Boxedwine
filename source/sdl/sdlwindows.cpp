@@ -979,7 +979,7 @@ U32 recorderBufferSize;
 
 void sdlDrawAllWindows(KThread* thread, U32 hWnd, int count) {    
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(sdlMutex);
-    if (!sdlRenderer || (contextCount && lastGlCallTime+1000> KSystem::getMilliesSinceStart())) {
+    if (sdlVideoEnabled && (!sdlRenderer || (contextCount && lastGlCallTime+1000> KSystem::getMilliesSinceStart()))) {
         // don't let window drawing and opengl drawing fight and clobber each other, if OpenGL was active in the last second, then don't draw the window
         return;
     }
