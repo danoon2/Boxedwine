@@ -159,7 +159,7 @@ void Player::runSlice() {
     if (KSystem::getMicroCounter()>this->lastCommandTime+1000000*60*10) {
         klog("script timed out %s", this->directory.c_str());
         sdlScreenShot("failed.bmp", NULL);
-        exit(0);
+        exit(2);
     }
 }
 
