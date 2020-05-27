@@ -62,6 +62,8 @@
             Config.rootZipFile = getRootZipFile("root"); //MANUAL:"base.zip";
             Config.extraZipFiles = getZipFileList("overlay"); //MANUAL:"dlls.zip;fonts.zip";
             Config.appZipFile = getAppZipFile("app"); //MANUAL:"chomp.zip";
+            Config.appPayload = getPayload("app-payload"); 
+            Config.extraPayload = getPayload("overlay-payload"); 
             Config.Program = getExecutable(); //MANUAL:"CHOMP.EXE";
             Config.WorkingDir = getWorkingDirectory(); //MANUAL:"";
             Config.isSoundEnabled = getSound();
@@ -148,6 +150,13 @@
             }
             console.log("setting auto run to: "+auto);
             return auto;
+        }
+        function getPayload(param) {
+            var payload =  getParameter(param);
+            if(!allowParameterOverride()){
+                payload = "";
+            }
+            return payload;
         }
         function getUseRangeRequests(){
             var ondemand =  getParameter("ondemand");
@@ -441,10 +450,29 @@
                 });
             });
         }
+        function getBase64Data(base64Data)
+        {
+            let bytes = atob(base64Data);
+        	let contentLength = bytes.length;
+    		var contents = new Uint8Array(contentLength);
+			for (var i = 0; i < contentLength; i++) {
+        		contents[i] = bytes.charCodeAt(i);
+    		}
+    		return contents;
+        }
         function buildAppFileSystems(adapterCallback)
         {
             var Buffer = BrowserFS.BFSRequire('buffer').Buffer;
-            if(Config.appZipFile.length > 0){
+            if(Config.appPayload.length > 0){
+            	let contents = getBase64Data(Config.appPayload);
+                BrowserFS.FileSystem.ZipFS.Create({"zipData":new Buffer(contents)}, function(e4, additionalZipfs){
+                    if(e4){
+                        console.log(e4);
+                    }
+                    let homeAdapter = new BrowserFS.FileSystem.FolderAdapter("/", additionalZipfs);
+                    adapterCallback(homeAdapter);
+                });
+            }else if(Config.appZipFile.length > 0){
                     var listingObject = {};
                     listingObject[Config.appZipFile] =  null;
                     var mfs = new BrowserFS.FileSystem.MountableFileSystem();
@@ -475,7 +503,16 @@
         function buildExtraFileSystems(Buffer, fsCallback)
         {
             var extraFSs = [];
-            if(Config.extraZipFiles.length > 0){
+            if(Config.extraPayload.length > 0){
+            	let contents = getBase64Data(Config.extraPayload);
+                BrowserFS.FileSystem.ZipFS.Create({"zipData":new Buffer(contents)}, function(e2, zipfs){
+                	if(e2){
+                    	console.log(e2);
+                	}
+                	extraFSs.push(zipfs);
+                	fsCallback(extraFSs);
+                });
+            }else if(Config.extraZipFiles.length > 0){
                 for(let i = 0; i < Config.extraZipFiles.length; i++) {
                     var listingObject = {};
                     listingObject[Config.extraZipFiles[i]] =  null;
@@ -603,7 +640,7 @@
         }
         function recursiveCopy(fs, zipFilename, filename) {
 
-            var prefix = "/" + zipFilename.substring(0, zipFilename.length - 4);
+            var prefix = zipFilename == null ? "" : "/" + zipFilename.substring(0, zipFilename.length - 4);
             var path = BrowserFS.BFSRequire('path');
             copyDirectory(fs, filename, prefix);
             function copyDirectory(fs, filename, prefix) {
@@ -876,6 +913,9 @@
             if(Config.WorkingDir.length > 0){
                 params.push("-w");
                 params.push(Config.WorkingDir);
+            }else if(Config.appPayload.length > 0 && Config.Program.length > 0 && Config.Program.substring(0 ,1) != "/"){
+                params.push("-w");
+                params.push("/home/username/.wine/dosdevices/d:");
             }else if(Config.appZipFile.length > 0 && Config.Program.length > 0 && Config.Program.substring(0 ,1) != "/"){
                 var subDirectory = Config.appZipFile.substring(0, Config.appZipFile.lastIndexOf("."));
                 params.push("-w");
