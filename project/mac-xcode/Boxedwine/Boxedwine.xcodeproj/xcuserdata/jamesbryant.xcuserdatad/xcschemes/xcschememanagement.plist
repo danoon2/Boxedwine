@@ -12,12 +12,22 @@
 		<key>BoxedwineAutomation.xcscheme_^#shared#^_</key>
 		<dict>
 			<key>orderHint</key>
-			<integer>14</integer>
+			<integer>13</integer>
+		</dict>
+		<key>BoxedwineAutomationX64.xcscheme_^#shared#^_</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>18</integer>
 		</dict>
 		<key>BoxedwineTest.xcscheme_^#shared#^_</key>
 		<dict>
 			<key>orderHint</key>
-			<integer>13</integer>
+			<integer>16</integer>
+		</dict>
+		<key>BoxedwineX64 copy.xcscheme_^#shared#^_</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>17</integer>
 		</dict>
 		<key>BoxedwineX64.xcscheme_^#shared#^_</key>
 		<dict>
@@ -28,6 +38,11 @@
 	<key>SuppressBuildableAutocreation</key>
 	<dict>
 		<key>71034CD724820DE600FED5C5</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>71034F0D2482B71000FED5C5</key>
 		<dict>
 			<key>primary</key>
 			<true/>

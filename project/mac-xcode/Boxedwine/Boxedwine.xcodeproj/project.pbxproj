@@ -563,6 +563,562 @@
 		71034F0424820DE600FED5C5 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 71FBFCB32433B817003F17F1 /* Assets.xcassets */; };
 		71034F0524820DE600FED5C5 /* Media.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 715F8427244115580038F5A4 /* Media.xcassets */; };
 		71034F0624820DE600FED5C5 /* pocomsg.mc in Resources */ = {isa = PBXBuildFile; fileRef = 715F81D42440ED1D0038F5A4 /* pocomsg.mc */; };
+		71034F0F2482B71000FED5C5 /* x32CPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDC72433BBBE003F17F1 /* x32CPU.cpp */; };
+		71034F102482B71000FED5C5 /* ksocketobject.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE202433BBBE003F17F1 /* ksocketobject.cpp */; };
+		71034F112482B71000FED5C5 /* Format.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81222440ED1C0038F5A4 /* Format.cpp */; };
+		71034F122482B71000FED5C5 /* PurgeStrategy.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F811A2440ED1C0038F5A4 /* PurgeStrategy.cpp */; };
+		71034F132482B71000FED5C5 /* SplitterChannel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81752440ED1C0038F5A4 /* SplitterChannel.cpp */; };
+		71034F142482B71000FED5C5 /* PartStore.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63122440E9100038F5A4 /* PartStore.cpp */; };
+		71034F152482B71000FED5C5 /* Bugcheck.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F80FA2440ED1C0038F5A4 /* Bugcheck.cpp */; };
+		71034F162482B71000FED5C5 /* SecureSocketImpl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F64372440E9740038F5A4 /* SecureSocketImpl.cpp */; };
+		71034F172482B71000FED5C5 /* SMTPClientSession.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63592440E9100038F5A4 /* SMTPClientSession.cpp */; };
+		71034F182482B71000FED5C5 /* UTF8String.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F82082440ED1D0038F5A4 /* UTF8String.cpp */; };
+		71034F192482B71000FED5C5 /* DataURIStreamFactory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F818E2440ED1D0038F5A4 /* DataURIStreamFactory.cpp */; };
+		71034F1A2482B71000FED5C5 /* AsyncChannel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81B62440ED1D0038F5A4 /* AsyncChannel.cpp */; };
+		71034F1B2482B71000FED5C5 /* glfunctions_ext1.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE432433BBBE003F17F1 /* glfunctions_ext1.cpp */; };
+		71034F1C2482B71000FED5C5 /* BinaryReader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F82102440ED1D0038F5A4 /* BinaryReader.cpp */; };
+		71034F1D2482B71000FED5C5 /* TemporaryFile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81F42440ED1D0038F5A4 /* TemporaryFile.cpp */; };
+		71034F1E2482B71000FED5C5 /* okDlg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F34812440D7D10038F5A4 /* okDlg.cpp */; };
+		71034F1F2482B71000FED5C5 /* Event.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81D52440ED1D0038F5A4 /* Event.cpp */; };
+		71034F202482B71000FED5C5 /* KeyPairImpl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F7BD92440E9DF0038F5A4 /* KeyPairImpl.cpp */; };
+		71034F212482B71000FED5C5 /* glshim.c in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE572433BBBE003F17F1 /* glshim.c */; };
+		71034F222482B71000FED5C5 /* pcre_config.c in Sources */ = {isa = PBXBuildFile; fileRef = 715F81CE2440ED1D0038F5A4 /* pcre_config.c */; };
+		71034F232482B71000FED5C5 /* HTTPRequest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63572440E9100038F5A4 /* HTTPRequest.cpp */; };
+		71034F242482B71000FED5C5 /* kfilelock.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE1B2433BBBE003F17F1 /* kfilelock.cpp */; };
+		71034F252482B71000FED5C5 /* Latin9Encoding.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81FB2440ED1D0038F5A4 /* Latin9Encoding.cpp */; };
+		71034F262482B71000FED5C5 /* Unicode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F82042440ED1D0038F5A4 /* Unicode.cpp */; };
+		71034F272482B71000FED5C5 /* waitDlg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD1A2433BBBE003F17F1 /* waitDlg.cpp */; };
+		71034F282482B71000FED5C5 /* ICMPEventArgs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63162440E9100038F5A4 /* ICMPEventArgs.cpp */; };
+		71034F292482B71000FED5C5 /* RawSocketImpl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F62FC2440E9100038F5A4 /* RawSocketImpl.cpp */; };
+		71034F2A2482B71000FED5C5 /* kpoll.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE3D2433BBBE003F17F1 /* kpoll.cpp */; };
+		71034F2B2482B71000FED5C5 /* URIStreamOpener.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F82052440ED1D0038F5A4 /* URIStreamOpener.cpp */; };
+		71034F2C2482B71000FED5C5 /* FTPSClientSession.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F64362440E9740038F5A4 /* FTPSClientSession.cpp */; };
+		71034F2D2482B71000FED5C5 /* LayeredConfiguration.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F34BB2440E7480038F5A4 /* LayeredConfiguration.cpp */; };
+		71034F2E2482B71000FED5C5 /* DirectoryIteratorStrategy.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81712440ED1C0038F5A4 /* DirectoryIteratorStrategy.cpp */; };
+		71034F2F2482B71000FED5C5 /* FTPSStreamFactory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F643F2440E9740038F5A4 /* FTPSStreamFactory.cpp */; };
+		71034F302482B71000FED5C5 /* mainui.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD352433BBBE003F17F1 /* mainui.cpp */; };
+		71034F312482B71000FED5C5 /* Option.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F34B42440E7470038F5A4 /* Option.cpp */; };
+		71034F322482B71000FED5C5 /* common_other.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD932433BBBE003F17F1 /* common_other.cpp */; };
+		71034F332482B71000FED5C5 /* networkutils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F348D2440D7FC0038F5A4 /* networkutils.cpp */; };
+		71034F342482B71000FED5C5 /* devfb.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE282433BBBE003F17F1 /* devfb.cpp */; };
+		71034F352482B71000FED5C5 /* esdisplaylist.c in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE522433BBBE003F17F1 /* esdisplaylist.c */; };
+		71034F362482B71000FED5C5 /* SecureServerSocketImpl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F643E2440E9740038F5A4 /* SecureServerSocketImpl.cpp */; };
+		71034F372482B71000FED5C5 /* MediaType.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F633E2440E9100038F5A4 /* MediaType.cpp */; };
+		71034F382482B71000FED5C5 /* pcre_string_utils.c in Sources */ = {isa = PBXBuildFile; fileRef = 715F81962440ED1D0038F5A4 /* pcre_string_utils.c */; };
+		71034F392482B71000FED5C5 /* KeyFileHandler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F64402440E9740038F5A4 /* KeyFileHandler.cpp */; };
+		71034F3A2482B71000FED5C5 /* NullStream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81D12440ED1D0038F5A4 /* NullStream.cpp */; };
+		71034F3B2482B71000FED5C5 /* TCPServerDispatcher.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63212440E9100038F5A4 /* TCPServerDispatcher.cpp */; };
+		71034F3C2482B71000FED5C5 /* MailMessage.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63252440E9100038F5A4 /* MailMessage.cpp */; };
+		71034F3D2482B71000FED5C5 /* DatagramSocket.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F62FA2440E9100038F5A4 /* DatagramSocket.cpp */; };
+		71034F3E2482B71000FED5C5 /* PropertyFileConfiguration.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F34A62440E7460038F5A4 /* PropertyFileConfiguration.cpp */; };
+		71034F3F2482B71000FED5C5 /* decoder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDAA2433BBBE003F17F1 /* decoder.cpp */; };
+		71034F402482B71000FED5C5 /* NTLMCredentials.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63582440E9100038F5A4 /* NTLMCredentials.cpp */; };
+		71034F412482B71000FED5C5 /* HTTPCredentials.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F632D2440E9100038F5A4 /* HTTPCredentials.cpp */; };
+		71034F422482B71000FED5C5 /* testCPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD492433BBBE003F17F1 /* testCPU.cpp */; };
+		71034F432482B71000FED5C5 /* HTTPMessage.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63262440E9100038F5A4 /* HTTPMessage.cpp */; };
+		71034F442482B71000FED5C5 /* Cipher.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F7BE22440E9DF0038F5A4 /* Cipher.cpp */; };
+		71034F452482B71000FED5C5 /* LoggingFactory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81872440ED1D0038F5A4 /* LoggingFactory.cpp */; };
+		71034F462482B71000FED5C5 /* FilesystemConfiguration.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F34B92440E7480038F5A4 /* FilesystemConfiguration.cpp */; };
+		71034F472482B71000FED5C5 /* HTMLForm.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F634B2440E9100038F5A4 /* HTMLForm.cpp */; };
+		71034F482482B71000FED5C5 /* Checksum.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81302440ED1C0038F5A4 /* Checksum.cpp */; };
+		71034F492482B71000FED5C5 /* TeeStream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F811B2440ED1C0038F5A4 /* TeeStream.cpp */; };
+		71034F4A2482B71000FED5C5 /* VarHolder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81C92440ED1D0038F5A4 /* VarHolder.cpp */; };
+		71034F4B2482B71000FED5C5 /* ksocket.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE3A2433BBBE003F17F1 /* ksocket.cpp */; };
+		71034F4C2482B71000FED5C5 /* pcre_byte_order.c in Sources */ = {isa = PBXBuildFile; fileRef = 715F813B2440ED1C0038F5A4 /* pcre_byte_order.c */; };
+		71034F4D2482B71000FED5C5 /* TimerTask.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F34BA2440E7480038F5A4 /* TimerTask.cpp */; };
+		71034F4E2482B71000FED5C5 /* cpuinfo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE182433BBBE003F17F1 /* cpuinfo.cpp */; };
+		71034F4F2482B71000FED5C5 /* UDPClient.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F633D2440E9100038F5A4 /* UDPClient.cpp */; };
+		71034F502482B71000FED5C5 /* SHA2Engine.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F80F52440ED1C0038F5A4 /* SHA2Engine.cpp */; };
+		71034F512482B71000FED5C5 /* pcre_xclass.c in Sources */ = {isa = PBXBuildFile; fileRef = 715F81042440ED1C0038F5A4 /* pcre_xclass.c */; };
+		71034F522482B71000FED5C5 /* CryptoException.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F7BE52440E9DF0038F5A4 /* CryptoException.cpp */; };
+		71034F532482B71000FED5C5 /* sdlopengl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE142433BBBE003F17F1 /* sdlopengl.cpp */; };
+		71034F542482B71000FED5C5 /* UDPServerParams.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F631B2440E9100038F5A4 /* UDPServerParams.cpp */; };
+		71034F552482B71000FED5C5 /* SimpleFileChannel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81A82440ED1D0038F5A4 /* SimpleFileChannel.cpp */; };
+		71034F562482B71000FED5C5 /* pcre_valid_utf8.c in Sources */ = {isa = PBXBuildFile; fileRef = 715F820F2440ED1D0038F5A4 /* pcre_valid_utf8.c */; };
+		71034F572482B71000FED5C5 /* OptionCallback.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F349F2440E7460038F5A4 /* OptionCallback.cpp */; };
+		71034F582482B71000FED5C5 /* FormattingChannel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81AF2440ED1D0038F5A4 /* FormattingChannel.cpp */; };
+		71034F592482B71000FED5C5 /* RSAKeyImpl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F7BDE2440E9DF0038F5A4 /* RSAKeyImpl.cpp */; };
+		71034F5A2482B71000FED5C5 /* ServerSocketImpl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63382440E9100038F5A4 /* ServerSocketImpl.cpp */; };
+		71034F5B2482B71000FED5C5 /* File.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F818F2440ED1D0038F5A4 /* File.cpp */; };
+		71034F5C2482B71000FED5C5 /* CountingStream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81012440ED1C0038F5A4 /* CountingStream.cpp */; };
+		71034F5D2482B71000FED5C5 /* fszip.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDE92433BBBE003F17F1 /* fszip.cpp */; };
+		71034F5E2482B71000FED5C5 /* HelpFormatter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F34B62440E7470038F5A4 /* HelpFormatter.cpp */; };
+		71034F5F2482B71000FED5C5 /* Error.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F813A2440ED1C0038F5A4 /* Error.cpp */; };
+		71034F602482B71000FED5C5 /* devzero.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE272433BBBE003F17F1 /* devzero.cpp */; };
+		71034F612482B71000FED5C5 /* common_xchg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD9F2433BBBE003F17F1 /* common_xchg.cpp */; };
+		71034F622482B71000FED5C5 /* x64CPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD752433BBBE003F17F1 /* x64CPU.cpp */; };
+		71034F632482B71000FED5C5 /* pcre_study.c in Sources */ = {isa = PBXBuildFile; fileRef = 715F81BD2440ED1D0038F5A4 /* pcre_study.c */; };
+		71034F642482B71000FED5C5 /* devinput.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE222433BBBE003F17F1 /* devinput.cpp */; };
+		71034F652482B71000FED5C5 /* fsmemopennode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDF22433BBBE003F17F1 /* fsmemopennode.cpp */; };
+		71034F662482B71000FED5C5 /* HTTPServerParams.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F633C2440E9100038F5A4 /* HTTPServerParams.cpp */; };
+		71034F672482B71000FED5C5 /* DialogSocket.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63522440E9100038F5A4 /* DialogSocket.cpp */; };
+		71034F682482B71000FED5C5 /* NumberParser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81B02440ED1D0038F5A4 /* NumberParser.cpp */; };
+		71034F692482B71000FED5C5 /* fsfileopennode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDEA2433BBBE003F17F1 /* fsfileopennode.cpp */; };
+		71034F6A2482B71000FED5C5 /* SHA1Engine.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81CF2440ED1D0038F5A4 /* SHA1Engine.cpp */; };
+		71034F6B2482B71000FED5C5 /* kepoll.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE3F2433BBBE003F17F1 /* kepoll.cpp */; };
+		71034F6C2482B71000FED5C5 /* DateTime.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81D72440ED1D0038F5A4 /* DateTime.cpp */; };
+		71034F6D2482B71000FED5C5 /* Notification.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81332440ED1C0038F5A4 /* Notification.cpp */; };
+		71034F6E2482B71000FED5C5 /* soft_file_map.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDD62433BBBE003F17F1 /* soft_file_map.cpp */; };
+		71034F6F2482B71000FED5C5 /* imgui_draw.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 712228662433EE5300CDBABD /* imgui_draw.cpp */; };
+		71034F702482B71000FED5C5 /* MemoryStream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F815E2440ED1C0038F5A4 /* MemoryStream.cpp */; };
+		71034F712482B71000FED5C5 /* stringutil.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD582433BBBE003F17F1 /* stringutil.cpp */; };
+		71034F722482B71000FED5C5 /* SSPINTLMCredentials.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63392440E9100038F5A4 /* SSPINTLMCredentials.cpp */; };
+		71034F732482B71000FED5C5 /* HTTPBufferAllocator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63512440E9100038F5A4 /* HTTPBufferAllocator.cpp */; };
+		71034F742482B71000FED5C5 /* pcre_exec.c in Sources */ = {isa = PBXBuildFile; fileRef = 715F81612440ED1C0038F5A4 /* pcre_exec.c */; };
+		71034F752482B71000FED5C5 /* deflate.c in Sources */ = {isa = PBXBuildFile; fileRef = 715F81352440ED1C0038F5A4 /* deflate.c */; };
+		71034F762482B71000FED5C5 /* NTPClient.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63432440E9100038F5A4 /* NTPClient.cpp */; };
+		71034F772482B71000FED5C5 /* common_arith.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD8D2433BBBE003F17F1 /* common_arith.cpp */; };
+		71034F782482B71000FED5C5 /* cpuscalingmaxfreq.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE352433BBBE003F17F1 /* cpuscalingmaxfreq.cpp */; };
+		71034F792482B71000FED5C5 /* StringTokenizer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F817D2440ED1C0038F5A4 /* StringTokenizer.cpp */; };
+		71034F7A2482B71000FED5C5 /* TCPServerConnectionFactory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F62F72440E9100038F5A4 /* TCPServerConnectionFactory.cpp */; };
+		71034F7B2482B71000FED5C5 /* cpumaxfreq.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE342433BBBE003F17F1 /* cpumaxfreq.cpp */; };
+		71034F7C2482B71000FED5C5 /* ThreadLocal.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F816E2440ED1C0038F5A4 /* ThreadLocal.cpp */; };
+		71034F7D2482B71000FED5C5 /* DeflatingStream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F80FC2440ED1C0038F5A4 /* DeflatingStream.cpp */; };
+		71034F7E2482B71000FED5C5 /* pcre_jit_compile.c in Sources */ = {isa = PBXBuildFile; fileRef = 715F81402440ED1C0038F5A4 /* pcre_jit_compile.c */; };
+		71034F7F2482B71000FED5C5 /* IPAddressImpl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63062440E9100038F5A4 /* IPAddressImpl.cpp */; };
+		71034F802482B71000FED5C5 /* CryptoTransform.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F7BDB2440E9DF0038F5A4 /* CryptoTransform.cpp */; };
+		71034F812482B71000FED5C5 /* Windows1250Encoding.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81E02440ED1D0038F5A4 /* Windows1250Encoding.cpp */; };
+		71034F822482B71000FED5C5 /* RejectCertificateHandler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F64422440E9740038F5A4 /* RejectCertificateHandler.cpp */; };
+		71034F832482B71000FED5C5 /* imgui_impl_sdl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7122285E2433EE5300CDBABD /* imgui_impl_sdl.cpp */; };
+		71034F842482B71000FED5C5 /* RWLock.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F818C2440ED1D0038F5A4 /* RWLock.cpp */; };
+		71034F852482B71000FED5C5 /* URI.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81692440ED1C0038F5A4 /* URI.cpp */; };
+		71034F862482B71000FED5C5 /* pcre_refcount.c in Sources */ = {isa = PBXBuildFile; fileRef = 715F81C22440ED1D0038F5A4 /* pcre_refcount.c */; };
+		71034F872482B71000FED5C5 /* HostEntry.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63302440E9100038F5A4 /* HostEntry.cpp */; };
+		71034F882482B71000FED5C5 /* cpuscalingcurfreq.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE332433BBBE003F17F1 /* cpuscalingcurfreq.cpp */; };
+		71034F892482B71000FED5C5 /* SharedMemory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81FE2440ED1D0038F5A4 /* SharedMemory.cpp */; };
+		71034F8A2482B71000FED5C5 /* StringPartSource.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63152440E9100038F5A4 /* StringPartSource.cpp */; };
+		71034F8B2482B71000FED5C5 /* WebSocketImpl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F632C2440E9100038F5A4 /* WebSocketImpl.cpp */; };
+		71034F8C2482B71000FED5C5 /* HTTPStreamFactory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F634A2440E9100038F5A4 /* HTTPStreamFactory.cpp */; };
+		71034F8D2482B71000FED5C5 /* fsmemnode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDFC2433BBBE003F17F1 /* fsmemnode.cpp */; };
+		71034F8E2482B71000FED5C5 /* HTTPIOStream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63502440E9100038F5A4 /* HTTPIOStream.cpp */; };
+		71034F8F2482B71000FED5C5 /* MessageHeader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63412440E9100038F5A4 /* MessageHeader.cpp */; };
+		71034F902482B71000FED5C5 /* DirectoryIterator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81092440ED1C0038F5A4 /* DirectoryIterator.cpp */; };
+		71034F912482B71000FED5C5 /* strtod.cc in Sources */ = {isa = PBXBuildFile; fileRef = 715F81702440ED1C0038F5A4 /* strtod.cc */; };
+		71034F922482B71000FED5C5 /* TaskNotification.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F817E2440ED1C0038F5A4 /* TaskNotification.cpp */; };
+		71034F932482B71000FED5C5 /* devurandom.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE2B2433BBBE003F17F1 /* devurandom.cpp */; };
+		71034F942482B71000FED5C5 /* DateTimeFormat.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81CC2440ED1D0038F5A4 /* DateTimeFormat.cpp */; };
+		71034F952482B71000FED5C5 /* Timestamp.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81C42440ED1D0038F5A4 /* Timestamp.cpp */; };
+		71034F962482B71000FED5C5 /* DigestEngine.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F7BD72440E9DF0038F5A4 /* DigestEngine.cpp */; };
+		71034F972482B71000FED5C5 /* TextBufferIterator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81DE2440ED1D0038F5A4 /* TextBufferIterator.cpp */; };
+		71034F982482B71000FED5C5 /* ASCIIEncoding.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81262440ED1C0038F5A4 /* ASCIIEncoding.cpp */; };
+		71034F992482B71000FED5C5 /* RawSocket.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F631C2440E9100038F5A4 /* RawSocket.cpp */; };
+		71034F9A2482B71000FED5C5 /* x64Ops.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD792433BBBE003F17F1 /* x64Ops.cpp */; };
+		71034F9B2482B71000FED5C5 /* HTTPStream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63032440E9100038F5A4 /* HTTPStream.cpp */; };
+		71034F9C2482B71000FED5C5 /* StreamSocket.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63052440E9100038F5A4 /* StreamSocket.cpp */; };
+		71034F9D2482B71000FED5C5 /* RemoteSyslogChannel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F635A2440E9100038F5A4 /* RemoteSyslogChannel.cpp */; };
+		71034F9E2482B71000FED5C5 /* boxedContainer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD3A2433BBBE003F17F1 /* boxedContainer.cpp */; };
+		71034F9F2482B71000FED5C5 /* HTTPServerResponseImpl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63482440E9100038F5A4 /* HTTPServerResponseImpl.cpp */; };
+		71034FA02482B71000FED5C5 /* TextIterator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F80FB2440ED1C0038F5A4 /* TextIterator.cpp */; };
+		71034FA12482B71000FED5C5 /* listViewItem.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD1C2433BBBE003F17F1 /* listViewItem.cpp */; };
+		71034FA22482B71000FED5C5 /* kscheduler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE3E2433BBBE003F17F1 /* kscheduler.cpp */; };
+		71034FA32482B71000FED5C5 /* bignum-dtoa.cc in Sources */ = {isa = PBXBuildFile; fileRef = 715F820B2440ED1D0038F5A4 /* bignum-dtoa.cc */; };
+		71034FA42482B71000FED5C5 /* common_sse2.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD972433BBBE003F17F1 /* common_sse2.cpp */; };
+		71034FA52482B71000FED5C5 /* PipeStream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81732440ED1C0038F5A4 /* PipeStream.cpp */; };
+		71034FA62482B71000FED5C5 /* x64CodeChunk.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD742433BBBE003F17F1 /* x64CodeChunk.cpp */; };
+		71034FA72482B71000FED5C5 /* Message.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F812B2440ED1C0038F5A4 /* Message.cpp */; };
+		71034FA82482B71000FED5C5 /* TextEncoding.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81952440ED1D0038F5A4 /* TextEncoding.cpp */; };
+		71034FA92482B71000FED5C5 /* SocketNotification.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F62F62440E9100038F5A4 /* SocketNotification.cpp */; };
+		71034FAA2482B71000FED5C5 /* HTTPSessionInstantiator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F633A2440E9100038F5A4 /* HTTPSessionInstantiator.cpp */; };
+		71034FAB2482B71000FED5C5 /* kobject.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE3C2433BBBE003F17F1 /* kobject.cpp */; };
+		71034FAC2482B71000FED5C5 /* HTTPHeaderStream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F634E2440E9100038F5A4 /* HTTPHeaderStream.cpp */; };
+		71034FAD2482B71000FED5C5 /* Exception.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81342440ED1C0038F5A4 /* Exception.cpp */; };
+		71034FAE2482B71000FED5C5 /* SocketAddress.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63362440E9100038F5A4 /* SocketAddress.cpp */; };
+		71034FAF2482B71000FED5C5 /* infback.c in Sources */ = {isa = PBXBuildFile; fileRef = 715F818A2440ED1D0038F5A4 /* infback.c */; };
+		71034FB02482B71000FED5C5 /* zip.c in Sources */ = {isa = PBXBuildFile; fileRef = 715F80DC2440EB250038F5A4 /* zip.c */; };
+		71034FB12482B71000FED5C5 /* SocketImpl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63102440E9100038F5A4 /* SocketImpl.cpp */; };
+		71034FB22482B71000FED5C5 /* PartHandler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63332440E9100038F5A4 /* PartHandler.cpp */; };
+		71034FB32482B71000FED5C5 /* kfile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE2C2433BBBE003F17F1 /* kfile.cpp */; };
+		71034FB42482B71000FED5C5 /* AtomicFlag.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81852440ED1D0038F5A4 /* AtomicFlag.cpp */; };
+		71034FB52482B71000FED5C5 /* fixed-dtoa.cc in Sources */ = {isa = PBXBuildFile; fileRef = 715F813D2440ED1C0038F5A4 /* fixed-dtoa.cc */; };
+		71034FB62482B71000FED5C5 /* downloadDlg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F347B2440D7D10038F5A4 /* downloadDlg.cpp */; };
+		71034FB72482B71000FED5C5 /* imgui_widgets.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 712227A42433EE5300CDBABD /* imgui_widgets.cpp */; };
+		71034FB82482B71000FED5C5 /* LoggingSubsystem.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F34A52440E7460038F5A4 /* LoggingSubsystem.cpp */; };
+		71034FB92482B71000FED5C5 /* ImGuiLayout.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71205454244D01B300C3CB1B /* ImGuiLayout.cpp */; };
+		71034FBA2482B71000FED5C5 /* HTTPClientSession.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63202440E9100038F5A4 /* HTTPClientSession.cpp */; };
+		71034FBB2482B71000FED5C5 /* Glob.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81C12440ED1D0038F5A4 /* Glob.cpp */; };
+		71034FBC2482B71000FED5C5 /* SortedDirectoryIterator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F819C2440ED1D0038F5A4 /* SortedDirectoryIterator.cpp */; };
+		71034FBD2482B71000FED5C5 /* HTTPServerConnection.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63442440E9100038F5A4 /* HTTPServerConnection.cpp */; };
+		71034FBE2482B71000FED5C5 /* fast-dtoa.cc in Sources */ = {isa = PBXBuildFile; fileRef = 715F81912440ED1D0038F5A4 /* fast-dtoa.cc */; };
+		71034FBF2482B71000FED5C5 /* glfunctions_ext2.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE462433BBBE003F17F1 /* glfunctions_ext2.cpp */; };
+		71034FC02482B71000FED5C5 /* glcommon.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE482433BBBE003F17F1 /* glcommon.cpp */; };
+		71034FC12482B71000FED5C5 /* SharedLibrary.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81A92440ED1D0038F5A4 /* SharedLibrary.cpp */; };
+		71034FC22482B71000FED5C5 /* Base32Decoder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81532440ED1C0038F5A4 /* Base32Decoder.cpp */; };
+		71034FC32482B71000FED5C5 /* RandomStream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F816C2440ED1C0038F5A4 /* RandomStream.cpp */; };
+		71034FC42482B71000FED5C5 /* StreamCopier.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81372440ED1C0038F5A4 /* StreamCopier.cpp */; };
+		71034FC52482B71000FED5C5 /* kmemory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE302433BBBE003F17F1 /* kmemory.cpp */; };
+		71034FC62482B71000FED5C5 /* IniFileConfiguration.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F34B22440E7470038F5A4 /* IniFileConfiguration.cpp */; };
+		71034FC72482B71000FED5C5 /* MemoryPool.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81E82440ED1D0038F5A4 /* MemoryPool.cpp */; };
+		71034FC82482B71000FED5C5 /* AcceptCertificateHandler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F644F2440E9740038F5A4 /* AcceptCertificateHandler.cpp */; };
+		71034FC92482B71000FED5C5 /* SynchronizedObject.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F817F2440ED1C0038F5A4 /* SynchronizedObject.cpp */; };
+		71034FCA2482B71000FED5C5 /* Debugger.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81B72440ED1D0038F5A4 /* Debugger.cpp */; };
+		71034FCB2482B71000FED5C5 /* OpenSSLInitializer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F7BD42440E9DF0038F5A4 /* OpenSSLInitializer.cpp */; };
+		71034FCC2482B71000FED5C5 /* devnull.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE2A2433BBBE003F17F1 /* devnull.cpp */; };
+		71034FCD2482B71000FED5C5 /* testSSE2.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD482433BBBE003F17F1 /* testSSE2.cpp */; };
+		71034FCE2482B71000FED5C5 /* platformThreads.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFCD22433BB9C003F17F1 /* platformThreads.cpp */; };
+		71034FCF2482B71000FED5C5 /* devmixer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE252433BBBE003F17F1 /* devmixer.cpp */; };
+		71034FD02482B71000FED5C5 /* sdlgl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE4C2433BBBE003F17F1 /* sdlgl.cpp */; };
+		71034FD12482B71000FED5C5 /* ICMPSocket.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F62FF2440E9100038F5A4 /* ICMPSocket.cpp */; };
+		71034FD22482B71000FED5C5 /* ktimer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE3B2433BBBE003F17F1 /* ktimer.cpp */; };
+		71034FD32482B71000FED5C5 /* HTTPServerSession.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63182440E9100038F5A4 /* HTTPServerSession.cpp */; };
+		71034FD42482B71000FED5C5 /* SocketReactor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F635B2440E9100038F5A4 /* SocketReactor.cpp */; };
+		71034FD52482B71000FED5C5 /* Path.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81B42440ED1D0038F5A4 /* Path.cpp */; };
+		71034FD62482B71000FED5C5 /* diy-fp.cc in Sources */ = {isa = PBXBuildFile; fileRef = 715F81F12440ED1D0038F5A4 /* diy-fp.cc */; };
+		71034FD72482B71000FED5C5 /* Timezone.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F816D2440ED1C0038F5A4 /* Timezone.cpp */; };
+		71034FD82482B71000FED5C5 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE132433BBBE003F17F1 /* main.cpp */; };
+		71034FD92482B71000FED5C5 /* Base64Decoder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81B82440ED1D0038F5A4 /* Base64Decoder.cpp */; };
+		71034FDA2482B71000FED5C5 /* self.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE1A2433BBBE003F17F1 /* self.cpp */; };
+		71034FDB2482B71000FED5C5 /* Base32Encoder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F80F82440ED1C0038F5A4 /* Base32Encoder.cpp */; };
+		71034FDC2482B71000FED5C5 /* threadutils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F348C2440D7FB0038F5A4 /* threadutils.cpp */; };
+		71034FDD2482B71000FED5C5 /* ICMPv4PacketImpl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F634C2440E9100038F5A4 /* ICMPv4PacketImpl.cpp */; };
+		71034FDE2482B71000FED5C5 /* testSSE.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD452433BBBE003F17F1 /* testSSE.cpp */; };
+		71034FDF2482B71000FED5C5 /* EVPPKey.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F7BE42440E9DF0038F5A4 /* EVPPKey.cpp */; };
+		71034FE02482B71000FED5C5 /* PrivateKeyFactoryMgr.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F64482440E9740038F5A4 /* PrivateKeyFactoryMgr.cpp */; };
+		71034FE12482B71000FED5C5 /* NameValueCollection.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63492440E9100038F5A4 /* NameValueCollection.cpp */; };
+		71034FE22482B71000FED5C5 /* soft_ro_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDDC2433BBBE003F17F1 /* soft_ro_page.cpp */; };
+		71034FE32482B71000FED5C5 /* pcre_compile.c in Sources */ = {isa = PBXBuildFile; fileRef = 715F80F42440ED1C0038F5A4 /* pcre_compile.c */; };
+		71034FE42482B71000FED5C5 /* FPEnvironment.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81F02440ED1D0038F5A4 /* FPEnvironment.cpp */; };
+		71034FE52482B71000FED5C5 /* VarIterator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F810D2440ED1C0038F5A4 /* VarIterator.cpp */; };
+		71034FE62482B71000FED5C5 /* Void.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81772440ED1C0038F5A4 /* Void.cpp */; };
+		71034FE72482B71000FED5C5 /* Thread.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F810A2440ED1C0038F5A4 /* Thread.cpp */; };
+		71034FE82482B71000FED5C5 /* MacPlatform.m in Sources */ = {isa = PBXBuildFile; fileRef = 7120545D244D074000C3CB1B /* MacPlatform.m */; };
+		71034FE92482B71000FED5C5 /* OAuth10Credentials.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F62F42440E9100038F5A4 /* OAuth10Credentials.cpp */; };
+		71034FEA2482B71000FED5C5 /* LoggingRegistry.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81E62440ED1D0038F5A4 /* LoggingRegistry.cpp */; };
+		71034FEB2482B71000FED5C5 /* X509Certificate.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F64352440E9740038F5A4 /* X509Certificate.cpp */; };
+		71034FEC2482B71000FED5C5 /* CryptoStream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F7BE62440E9DF0038F5A4 /* CryptoStream.cpp */; };
+		71034FED2482B71000FED5C5 /* Latin1Encoding.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F813F2440ED1C0038F5A4 /* Latin1Encoding.cpp */; };
+		71034FEE2482B71000FED5C5 /* glMarshal.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE4D2433BBBE003F17F1 /* glMarshal.cpp */; };
+		71034FEF2482B71000FED5C5 /* cpuonline.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE322433BBBE003F17F1 /* cpuonline.cpp */; };
+		71034FF02482B71000FED5C5 /* x64Asm.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD762433BBBE003F17F1 /* x64Asm.cpp */; };
+		71034FF12482B71000FED5C5 /* boxedwineData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD392433BBBE003F17F1 /* boxedwineData.cpp */; };
+		71034FF22482B71000FED5C5 /* boxedTranslation.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD122433BBBE003F17F1 /* boxedTranslation.cpp */; };
+		71034FF32482B71000FED5C5 /* OAuth20Credentials.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63342440E9100038F5A4 /* OAuth20Credentials.cpp */; };
+		71034FF42482B71000FED5C5 /* ksystem.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE1E2433BBBE003F17F1 /* ksystem.cpp */; };
+		71034FF52482B71000FED5C5 /* CipherKeyImpl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F7BE32440E9DF0038F5A4 /* CipherKeyImpl.cpp */; };
+		71034FF62482B71000FED5C5 /* pcre_ucd.c in Sources */ = {isa = PBXBuildFile; fileRef = 715F812A2440ED1C0038F5A4 /* pcre_ucd.c */; };
+		71034FF72482B71000FED5C5 /* soft_native_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDDD2433BBBE003F17F1 /* soft_native_page.cpp */; };
+		71034FF82482B71000FED5C5 /* Environment.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F811D2440ED1C0038F5A4 /* Environment.cpp */; };
+		71034FF92482B71000FED5C5 /* synchronization.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD532433BBBE003F17F1 /* synchronization.cpp */; };
+		71034FFA2482B71000FED5C5 /* KeyConsoleHandler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F64392440E9740038F5A4 /* KeyConsoleHandler.cpp */; };
+		71034FFB2482B71000FED5C5 /* menubar.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD252433BBBE003F17F1 /* menubar.cpp */; };
+		71034FFC2482B71000FED5C5 /* common_pushpop.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD852433BBBE003F17F1 /* common_pushpop.cpp */; };
+		71034FFD2482B71000FED5C5 /* HTTPFixedLengthStream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F630F2440E9100038F5A4 /* HTTPFixedLengthStream.cpp */; };
+		71034FFE2482B71000FED5C5 /* MapConfiguration.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F34AC2440E7470038F5A4 /* MapConfiguration.cpp */; };
+		71034FFF2482B71000FED5C5 /* syscall.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE2D2433BBBE003F17F1 /* syscall.cpp */; };
+		710350002482B71000FED5C5 /* ArchiveStrategy.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81EA2440ED1D0038F5A4 /* ArchiveStrategy.cpp */; };
+		710350012482B71000FED5C5 /* boxedReg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71205458244D01D900C3CB1B /* boxedReg.cpp */; };
+		710350022482B71000FED5C5 /* startupArgs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE0F2433BBBE003F17F1 /* startupArgs.cpp */; };
+		710350032482B71000FED5C5 /* RotateStrategy.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81382440ED1C0038F5A4 /* RotateStrategy.cpp */; };
+		710350042482B71000FED5C5 /* pcre_maketables.c in Sources */ = {isa = PBXBuildFile; fileRef = 715F81C32440ED1D0038F5A4 /* pcre_maketables.c */; };
+		710350052482B71000FED5C5 /* bignum.cc in Sources */ = {isa = PBXBuildFile; fileRef = 715F81032440ED1C0038F5A4 /* bignum.cc */; };
+		710350062482B71000FED5C5 /* Socket.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F630B2440E9100038F5A4 /* Socket.cpp */; };
+		710350072482B71000FED5C5 /* NetworkInterface.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63452440E9100038F5A4 /* NetworkInterface.cpp */; };
+		710350082482B71000FED5C5 /* fsdiropennode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDF52433BBBE003F17F1 /* fsdiropennode.cpp */; };
+		710350092482B71000FED5C5 /* SSLException.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F643B2440E9740038F5A4 /* SSLException.cpp */; };
+		7103500A2482B71000FED5C5 /* RegExpValidator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F34BC2440E7480038F5A4 /* RegExpValidator.cpp */; };
+		7103500B2482B71000FED5C5 /* QuotedPrintableDecoder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63282440E9100038F5A4 /* QuotedPrintableDecoder.cpp */; };
+		7103500C2482B71000FED5C5 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFCB12433B815003F17F1 /* AppDelegate.m */; };
+		7103500D2482B71000FED5C5 /* NullPartHandler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F633F2440E9100038F5A4 /* NullPartHandler.cpp */; };
+		7103500E2482B71000FED5C5 /* UTF32Encoding.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81E52440ED1D0038F5A4 /* UTF32Encoding.cpp */; };
+		7103500F2482B71000FED5C5 /* glMarshalSize.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE592433BBBE003F17F1 /* glMarshalSize.cpp */; };
+		710350102482B71000FED5C5 /* optionsView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F347C2440D7D10038F5A4 /* optionsView.cpp */; };
+		710350112482B71000FED5C5 /* knativesocket.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE2E2433BBBE003F17F1 /* knativesocket.cpp */; };
+		710350122482B71000FED5C5 /* soft_code_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDD12433BBBE003F17F1 /* soft_code_page.cpp */; };
+		710350132482B71000FED5C5 /* boxedTexture.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 711F834824527273008E6A0C /* boxedTexture.cpp */; };
+		710350142482B71000FED5C5 /* HTTPDigestCredentials.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F634F2440E9100038F5A4 /* HTTPDigestCredentials.cpp */; };
+		710350152482B71000FED5C5 /* containersView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD342433BBBE003F17F1 /* containersView.cpp */; };
+		710350162482B71000FED5C5 /* ConfigurationMapper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F34A72440E7460038F5A4 /* ConfigurationMapper.cpp */; };
+		710350172482B71000FED5C5 /* HTTPServer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F631A2440E9100038F5A4 /* HTTPServer.cpp */; };
+		710350182482B71000FED5C5 /* ICMPPacketImpl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63242440E9100038F5A4 /* ICMPPacketImpl.cpp */; };
+		710350192482B71000FED5C5 /* SecureStreamSocket.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F64382440E9740038F5A4 /* SecureStreamSocket.cpp */; };
+		7103501A2482B71000FED5C5 /* cpu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD9E2433BBBE003F17F1 /* cpu.cpp */; };
+		7103501B2482B71000FED5C5 /* imgui_impl_opengl3.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 712228262433EE5300CDBABD /* imgui_impl_opengl3.cpp */; };
+		7103501C2482B71000FED5C5 /* NamedMutex.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81FD2440ED1D0038F5A4 /* NamedMutex.cpp */; };
+		7103501D2482B71000FED5C5 /* ioapi.c in Sources */ = {isa = PBXBuildFile; fileRef = 715F80DD2440EB250038F5A4 /* ioapi.c */; };
+		7103501E2482B71000FED5C5 /* HTTPServerResponse.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F632F2440E9100038F5A4 /* HTTPServerResponse.cpp */; };
+		7103501F2482B71000FED5C5 /* kthread.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE362433BBBE003F17F1 /* kthread.cpp */; };
+		710350202482B71000FED5C5 /* SocketNotifier.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63012440E9100038F5A4 /* SocketNotifier.cpp */; };
+		710350212482B71000FED5C5 /* kunixsocket.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE1D2433BBBE003F17F1 /* kunixsocket.cpp */; };
+		710350222482B71000FED5C5 /* hard_memory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDE72433BBBE003F17F1 /* hard_memory.cpp */; };
+		710350232482B71000FED5C5 /* common_mmx.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD8E2433BBBE003F17F1 /* common_mmx.cpp */; };
+		710350242482B71000FED5C5 /* KeyPair.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F7BD62440E9DF0038F5A4 /* KeyPair.cpp */; };
+		710350252482B71000FED5C5 /* PollSet.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F62FE2440E9100038F5A4 /* PollSet.cpp */; };
+		710350262482B71000FED5C5 /* recorder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD5A2433BBBE003F17F1 /* recorder.cpp */; };
+		710350272482B71000FED5C5 /* memory64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFCD12433BB9C003F17F1 /* memory64.cpp */; };
+		710350282482B71000FED5C5 /* Subsystem.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F34B82440E7480038F5A4 /* Subsystem.cpp */; };
+		710350292482B71000FED5C5 /* testMMX.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD4C2433BBBE003F17F1 /* testMMX.cpp */; };
+		7103502A2482B71000FED5C5 /* HTTPSClientSession.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F644B2440E9740038F5A4 /* HTTPSClientSession.cpp */; };
+		7103502B2482B71000FED5C5 /* HTTPNTLMCredentials.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63082440E9100038F5A4 /* HTTPNTLMCredentials.cpp */; };
+		7103502C2482B71000FED5C5 /* OptionSet.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F34A12440E7460038F5A4 /* OptionSet.cpp */; };
+		7103502D2482B71000FED5C5 /* NullChannel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F819E2440ED1D0038F5A4 /* NullChannel.cpp */; };
+		7103502E2482B71000FED5C5 /* JSONString.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81F72440ED1D0038F5A4 /* JSONString.cpp */; };
+		7103502F2482B71000FED5C5 /* mztools.c in Sources */ = {isa = PBXBuildFile; fileRef = 715F80E12440EB260038F5A4 /* mztools.c */; };
+		710350302482B71000FED5C5 /* Validator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F34A82440E7460038F5A4 /* Validator.cpp */; };
+		710350312482B71000FED5C5 /* threadedMainloop.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE062433BBBE003F17F1 /* threadedMainloop.cpp */; };
+		710350322482B71000FED5C5 /* Token.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F82072440ED1D0038F5A4 /* Token.cpp */; };
+		710350332482B71000FED5C5 /* SocketAddressImpl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63092440E9100038F5A4 /* SocketAddressImpl.cpp */; };
+		710350342482B71000FED5C5 /* bufferaccess.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE172433BBBE003F17F1 /* bufferaccess.cpp */; };
+		710350352482B71000FED5C5 /* uiSettings.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD2E2433BBBE003F17F1 /* uiSettings.cpp */; };
+		710350362482B71000FED5C5 /* SystemConfiguration.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F34B02440E7470038F5A4 /* SystemConfiguration.cpp */; };
+		710350372482B71000FED5C5 /* DigestStream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81562440ED1C0038F5A4 /* DigestStream.cpp */; };
+		710350382482B71000FED5C5 /* RefCountedObject.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81B32440ED1D0038F5A4 /* RefCountedObject.cpp */; };
+		710350392482B71000FED5C5 /* HexBinaryDecoder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81A02440ED1D0038F5A4 /* HexBinaryDecoder.cpp */; };
+		7103503A2482B71000FED5C5 /* pcre_version.c in Sources */ = {isa = PBXBuildFile; fileRef = 715F81B52440ED1D0038F5A4 /* pcre_version.c */; };
+		7103503B2482B71000FED5C5 /* HTTPBasicCredentials.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63532440E9100038F5A4 /* HTTPBasicCredentials.cpp */; };
+		7103503C2482B71000FED5C5 /* devtty.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE262433BBBE003F17F1 /* devtty.cpp */; };
+		7103503D2482B71000FED5C5 /* SSLManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F643A2440E9740038F5A4 /* SSLManager.cpp */; };
+		7103503E2482B71000FED5C5 /* DirectoryWatcher.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81EF2440ED1D0038F5A4 /* DirectoryWatcher.cpp */; };
+		7103503F2482B71000FED5C5 /* StreamChannel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81DF2440ED1D0038F5A4 /* StreamChannel.cpp */; };
+		710350402482B71000FED5C5 /* HTTPResponse.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63222440E9100038F5A4 /* HTTPResponse.cpp */; };
+		710350412482B71000FED5C5 /* fszipopennode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDFE2433BBBE003F17F1 /* fszipopennode.cpp */; };
+		710350422482B71000FED5C5 /* StreamTokenizer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81292440ED1C0038F5A4 /* StreamTokenizer.cpp */; };
+		710350432482B71000FED5C5 /* FTPStreamFactory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63072440E9100038F5A4 /* FTPStreamFactory.cpp */; };
+		710350442482B71000FED5C5 /* Ascii.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F816A2440ED1C0038F5A4 /* Ascii.cpp */; };
+		710350452482B71000FED5C5 /* HTTPServerConnectionFactory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63192440E9100038F5A4 /* HTTPServerConnectionFactory.cpp */; };
+		710350462482B71000FED5C5 /* NTPPacket.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F632A2440E9100038F5A4 /* NTPPacket.cpp */; };
+		710350472482B71000FED5C5 /* fsopennode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDFA2433BBBE003F17F1 /* fsopennode.cpp */; };
+		710350482482B71000FED5C5 /* zutil.c in Sources */ = {isa = PBXBuildFile; fileRef = 715F81922440ED1D0038F5A4 /* zutil.c */; };
+		710350492482B71000FED5C5 /* sdlwindows.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE092433BBBE003F17F1 /* sdlwindows.cpp */; };
+		7103504A2482B71000FED5C5 /* x64Data.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD7C2433BBBE003F17F1 /* x64Data.cpp */; };
+		7103504B2482B71000FED5C5 /* yesNoDlg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F34782440D7D00038F5A4 /* yesNoDlg.cpp */; };
+		7103504C2482B71000FED5C5 /* TimedNotificationQueue.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81892440ED1D0038F5A4 /* TimedNotificationQueue.cpp */; };
+		7103504D2482B71000FED5C5 /* HTTPCookie.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F62F92440E9100038F5A4 /* HTTPCookie.cpp */; };
+		7103504E2482B71000FED5C5 /* fsfilenode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDF92433BBBE003F17F1 /* fsfilenode.cpp */; };
+		7103504F2482B71000FED5C5 /* player.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD512433BBBE003F17F1 /* player.cpp */; };
+		710350502482B71000FED5C5 /* TaskManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81212440ED1C0038F5A4 /* TaskManager.cpp */; };
+		710350512482B71000FED5C5 /* DNS.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63562440E9100038F5A4 /* DNS.cpp */; };
+		710350522482B71000FED5C5 /* normal_strings.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDC02433BBBE003F17F1 /* normal_strings.cpp */; };
+		710350532482B71000FED5C5 /* ksignal.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE1C2433BBBE003F17F1 /* ksignal.cpp */; };
+		710350542482B71000FED5C5 /* common_bit.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD982433BBBE003F17F1 /* common_bit.cpp */; };
+		710350552482B71000FED5C5 /* unzipDlg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715EABB92460C839001B4730 /* unzipDlg.cpp */; };
+		710350562482B71000FED5C5 /* MailRecipient.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63142440E9100038F5A4 /* MailRecipient.cpp */; };
+		710350572482B71000FED5C5 /* PrivateKeyFactory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F64462440E9740038F5A4 /* PrivateKeyFactory.cpp */; };
+		710350582482B71000FED5C5 /* CertificateHandlerFactoryMgr.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F644A2440E9740038F5A4 /* CertificateHandlerFactoryMgr.cpp */; };
+		710350592482B71000FED5C5 /* UUIDGenerator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81182440ED1C0038F5A4 /* UUIDGenerator.cpp */; };
+		7103505A2482B71000FED5C5 /* adler32.c in Sources */ = {isa = PBXBuildFile; fileRef = 715F82032440ED1D0038F5A4 /* adler32.c */; };
+		7103505B2482B71000FED5C5 /* NTPEventArgs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63312440E9100038F5A4 /* NTPEventArgs.cpp */; };
+		7103505C2482B71000FED5C5 /* AtomicCounter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81512440ED1C0038F5A4 /* AtomicCounter.cpp */; };
+		7103505D2482B71000FED5C5 /* UTF16Encoding.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81B12440ED1D0038F5A4 /* UTF16Encoding.cpp */; };
+		7103505E2482B71000FED5C5 /* MultipartReader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F62FD2440E9100038F5A4 /* MultipartReader.cpp */; };
+		7103505F2482B71000FED5C5 /* meminfo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE192433BBBE003F17F1 /* meminfo.cpp */; };
+		710350602482B71000FED5C5 /* pcre_globals.c in Sources */ = {isa = PBXBuildFile; fileRef = 715F81F52440ED1D0038F5A4 /* pcre_globals.c */; };
+		710350612482B71000FED5C5 /* soft_no_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDCF2433BBBE003F17F1 /* soft_no_page.cpp */; };
+		710350622482B71000FED5C5 /* Var.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81882440ED1D0038F5A4 /* Var.cpp */; };
+		710350632482B71000FED5C5 /* Application.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F34B12440E7470038F5A4 /* Application.cpp */; };
+		710350642482B71000FED5C5 /* installView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F842A24464C080038F5A4 /* installView.cpp */; };
+		710350652482B71000FED5C5 /* SecureSMTPClientSession.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F644C2440E9740038F5A4 /* SecureSMTPClientSession.cpp */; };
+		710350662482B71000FED5C5 /* IntValidator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F34A22440E7460038F5A4 /* IntValidator.cpp */; };
+		710350672482B71000FED5C5 /* fszipnode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDEC2433BBBE003F17F1 /* fszipnode.cpp */; };
+		710350682482B71000FED5C5 /* imgui.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 712227AC2433EE5300CDBABD /* imgui.cpp */; };
+		710350692482B71000FED5C5 /* DateTimeFormatter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81522440ED1C0038F5A4 /* DateTimeFormatter.cpp */; };
+		7103506A2482B71000FED5C5 /* Hash.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81D62440ED1D0038F5A4 /* Hash.cpp */; };
+		7103506B2482B71000FED5C5 /* HTTPSStreamFactory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F64472440E9740038F5A4 /* HTTPSStreamFactory.cpp */; };
+		7103506C2482B71000FED5C5 /* ByteOrder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81CA2440ED1D0038F5A4 /* ByteOrder.cpp */; };
+		7103506D2482B71000FED5C5 /* Utility.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F644E2440E9740038F5A4 /* Utility.cpp */; };
+		7103506E2482B71000FED5C5 /* Channel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F813E2440ED1C0038F5A4 /* Channel.cpp */; };
+		7103506F2482B71000FED5C5 /* pcre_ord2utf8.c in Sources */ = {isa = PBXBuildFile; fileRef = 715F820D2440ED1D0038F5A4 /* pcre_ord2utf8.c */; };
+		710350702482B71000FED5C5 /* soft_rw_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDE42433BBBE003F17F1 /* soft_rw_page.cpp */; };
+		710350712482B71000FED5C5 /* DatagramSocketImpl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63002440E9100038F5A4 /* DatagramSocketImpl.cpp */; };
+		710350722482B71000FED5C5 /* PipeImpl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81072440ED1C0038F5A4 /* PipeImpl.cpp */; };
+		710350732482B71000FED5C5 /* baseView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F347F2440D7D10038F5A4 /* baseView.cpp */; };
+		710350742482B71000FED5C5 /* Pipe.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81082440ED1C0038F5A4 /* Pipe.cpp */; };
+		710350752482B71000FED5C5 /* FileStream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F818D2440ED1D0038F5A4 /* FileStream.cpp */; };
+		710350762482B71000FED5C5 /* Timespan.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81942440ED1D0038F5A4 /* Timespan.cpp */; };
+		710350772482B71000FED5C5 /* WebSocket.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F634D2440E9100038F5A4 /* WebSocket.cpp */; };
+		710350782482B71000FED5C5 /* BinaryWriter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81A12440ED1D0038F5A4 /* BinaryWriter.cpp */; };
+		710350792482B71000FED5C5 /* LineEndingConverter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81622440ED1C0038F5A4 /* LineEndingConverter.cpp */; };
+		7103507A2482B71000FED5C5 /* ECKeyImpl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F7BDC2440E9DF0038F5A4 /* ECKeyImpl.cpp */; };
+		7103507B2482B71000FED5C5 /* soft_memory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDCC2433BBBE003F17F1 /* soft_memory.cpp */; };
+		7103507C2482B71000FED5C5 /* mainloop.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE112433BBBE003F17F1 /* mainloop.cpp */; };
+		7103507D2482B71000FED5C5 /* ECKey.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F7BD82440E9DF0038F5A4 /* ECKey.cpp */; };
+		7103507E2482B71000FED5C5 /* AbstractConfiguration.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F34B32440E7470038F5A4 /* AbstractConfiguration.cpp */; };
+		7103507F2482B71000FED5C5 /* PrivateKeyPassphraseHandler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F64412440E9740038F5A4 /* PrivateKeyPassphraseHandler.cpp */; };
+		710350802482B71000FED5C5 /* instructions.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDBE2433BBBE003F17F1 /* instructions.cpp */; };
+		710350812482B71000FED5C5 /* UTF8Encoding.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81542440ED1C0038F5A4 /* UTF8Encoding.cpp */; };
+		710350822482B71000FED5C5 /* RSADigestEngine.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F7BD52440E9DF0038F5A4 /* RSADigestEngine.cpp */; };
+		710350832482B71000FED5C5 /* fpu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD9B2433BBBE003F17F1 /* fpu.cpp */; };
+		710350842482B71000FED5C5 /* String.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81642440ED1C0038F5A4 /* String.cpp */; };
+		710350852482B71000FED5C5 /* MD5Engine.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F82092440ED1D0038F5A4 /* MD5Engine.cpp */; };
+		710350862482B71000FED5C5 /* platform.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFCD32433BB9C003F17F1 /* platform.cpp */; };
+		710350872482B71000FED5C5 /* NotificationQueue.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81442440ED1C0038F5A4 /* NotificationQueue.cpp */; };
+		710350882482B71000FED5C5 /* CipherKey.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F7BDD2440E9DF0038F5A4 /* CipherKey.cpp */; };
+		710350892482B71000FED5C5 /* Context.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F643C2440E9740038F5A4 /* Context.cpp */; };
+		7103508A2482B71000FED5C5 /* URIStreamFactory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81592440ED1C0038F5A4 /* URIStreamFactory.cpp */; };
+		7103508B2482B71000FED5C5 /* InflatingStream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81E12440ED1D0038F5A4 /* InflatingStream.cpp */; };
+		7103508C2482B71000FED5C5 /* appbar.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD2F2433BBBE003F17F1 /* appbar.cpp */; };
+		7103508D2482B71000FED5C5 /* ECDSADigestEngine.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F7BE02440E9DF0038F5A4 /* ECDSADigestEngine.cpp */; };
+		7103508E2482B71000FED5C5 /* UnicodeConverter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81152440ED1C0038F5A4 /* UnicodeConverter.cpp */; };
+		7103508F2482B71000FED5C5 /* Session.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F64452440E9740038F5A4 /* Session.cpp */; };
+		710350902482B71000FED5C5 /* appFile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71205460244FDA2400C3CB1B /* appFile.cpp */; };
+		710350912482B71000FED5C5 /* common_fpu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD912433BBBE003F17F1 /* common_fpu.cpp */; };
+		710350922482B71000FED5C5 /* MultipartWriter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F631E2440E9100038F5A4 /* MultipartWriter.cpp */; };
+		710350932482B71000FED5C5 /* AbstractObserver.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81662440ED1C0038F5A4 /* AbstractObserver.cpp */; };
+		710350942482B71000FED5C5 /* cached-powers.cc in Sources */ = {isa = PBXBuildFile; fileRef = 715F81C72440ED1D0038F5A4 /* cached-powers.cc */; };
+		710350952482B71000FED5C5 /* NestedDiagnosticContext.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F80F32440ED1C0038F5A4 /* NestedDiagnosticContext.cpp */; };
+		710350962482B71000FED5C5 /* HTTPChunkedStream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F632B2440E9100038F5A4 /* HTTPChunkedStream.cpp */; };
+		710350972482B71000FED5C5 /* ServerApplication.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F34B72440E7480038F5A4 /* ServerApplication.cpp */; };
+		710350982482B71000FED5C5 /* SyslogChannel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F815F2440ED1C0038F5A4 /* SyslogChannel.cpp */; };
+		710350992482B71000FED5C5 /* LogStream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81362440ED1C0038F5A4 /* LogStream.cpp */; };
+		7103509A2482B71000FED5C5 /* DateTimeParser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F80F12440ED1C0038F5A4 /* DateTimeParser.cpp */; };
+		7103509B2482B71000FED5C5 /* QuotedPrintableEncoder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63422440E9100038F5A4 /* QuotedPrintableEncoder.cpp */; };
+		7103509C2482B71000FED5C5 /* pcre_tables.c in Sources */ = {isa = PBXBuildFile; fileRef = 715F81722440ED1C0038F5A4 /* pcre_tables.c */; };
+		7103509D2482B71000FED5C5 /* pcre_get.c in Sources */ = {isa = PBXBuildFile; fileRef = 715F815D2440ED1C0038F5A4 /* pcre_get.c */; };
+		7103509E2482B71000FED5C5 /* TCPServer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63352440E9100038F5A4 /* TCPServer.cpp */; };
+		7103509F2482B71000FED5C5 /* crc32.c in Sources */ = {isa = PBXBuildFile; fileRef = 715F81792440ED1C0038F5A4 /* crc32.c */; };
+		710350A02482B71000FED5C5 /* OptionProcessor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F34AB2440E7470038F5A4 /* OptionProcessor.cpp */; };
+		710350A12482B71000FED5C5 /* glext.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE4A2433BBBE003F17F1 /* glext.cpp */; };
+		710350A22482B71000FED5C5 /* trees.c in Sources */ = {isa = PBXBuildFile; fileRef = 715F81CD2440ED1D0038F5A4 /* trees.c */; };
+		710350A32482B71000FED5C5 /* EventChannel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81572440ED1C0038F5A4 /* EventChannel.cpp */; };
+		710350A42482B71000FED5C5 /* spinnerControl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD212433BBBE003F17F1 /* spinnerControl.cpp */; };
+		710350A52482B71000FED5C5 /* pcre_dfa_exec.c in Sources */ = {isa = PBXBuildFile; fileRef = 715F81F22440ED1D0038F5A4 /* pcre_dfa_exec.c */; };
+		710350A62482B71000FED5C5 /* Net.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F631D2440E9100038F5A4 /* Net.cpp */; };
+		710350A72482B71000FED5C5 /* pcre_newline.c in Sources */ = {isa = PBXBuildFile; fileRef = 715F81C02440ED1D0038F5A4 /* pcre_newline.c */; };
+		710350A82482B71000FED5C5 /* AbstractHTTPRequestHandler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F62F52440E9100038F5A4 /* AbstractHTTPRequestHandler.cpp */; };
+		710350A92482B71000FED5C5 /* HashStatistic.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81652440ED1C0038F5A4 /* HashStatistic.cpp */; };
+		710350AA2482B71000FED5C5 /* NotificationCenter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81D82440ED1D0038F5A4 /* NotificationCenter.cpp */; };
+		710350AB2482B71000FED5C5 /* log.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD502433BBBE003F17F1 /* log.cpp */; };
+		710350AC2482B71000FED5C5 /* Timer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F814B2440ED1C0038F5A4 /* Timer.cpp */; };
+		710350AD2482B71000FED5C5 /* ErrorHandler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F810C2440ED1C0038F5A4 /* ErrorHandler.cpp */; };
+		710350AE2482B71000FED5C5 /* Latin2Encoding.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F812D2440ED1C0038F5A4 /* Latin2Encoding.cpp */; };
+		710350AF2482B71000FED5C5 /* ICMPSocketImpl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63402440E9100038F5A4 /* ICMPSocketImpl.cpp */; };
+		710350B02482B71000FED5C5 /* TCPServerParams.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63322440E9100038F5A4 /* TCPServerParams.cpp */; };
+		710350B12482B71000FED5C5 /* common_sse.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD9A2433BBBE003F17F1 /* common_sse.cpp */; };
+		710350B22482B71000FED5C5 /* EventArgs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F820C2440ED1D0038F5A4 /* EventArgs.cpp */; };
+		710350B32482B71000FED5C5 /* ServerSocket.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63542440E9100038F5A4 /* ServerSocket.cpp */; };
+		710350B42482B71000FED5C5 /* RSAKey.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F7BDF2440E9DF0038F5A4 /* RSAKey.cpp */; };
+		710350B52482B71000FED5C5 /* inffast.c in Sources */ = {isa = PBXBuildFile; fileRef = 715F82012440ED1D0038F5A4 /* inffast.c */; };
+		710350B62482B71000FED5C5 /* ConsoleChannel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81452440ED1C0038F5A4 /* ConsoleChannel.cpp */; };
+		710350B72482B71000FED5C5 /* soft_copy_on_write_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDDA2433BBBE003F17F1 /* soft_copy_on_write_page.cpp */; };
+		710350B82482B71000FED5C5 /* glew.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 712229052433F03F00CDBABD /* glew.cpp */; };
+		710350B92482B71000FED5C5 /* VerificationErrorArgs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F64432440E9740038F5A4 /* VerificationErrorArgs.cpp */; };
+		710350BA2482B71000FED5C5 /* fs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDF72433BBBE003F17F1 /* fs.cpp */; };
+		710350BB2482B71000FED5C5 /* OptionException.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F34A02440E7460038F5A4 /* OptionException.cpp */; };
+		710350BC2482B71000FED5C5 /* POP3ClientSession.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F630A2440E9100038F5A4 /* POP3ClientSession.cpp */; };
+		710350BD2482B71000FED5C5 /* sdlcallback.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE072433BBBE003F17F1 /* sdlcallback.cpp */; };
+		710350BE2482B71000FED5C5 /* SocketStream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63022440E9100038F5A4 /* SocketStream.cpp */; };
+		710350BF2482B71000FED5C5 /* RSACipherImpl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F7BDA2440E9DF0038F5A4 /* RSACipherImpl.cpp */; };
+		710350C02482B71000FED5C5 /* soft_ondemand_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDCE2433BBBE003F17F1 /* soft_ondemand_page.cpp */; };
+		710350C12482B71000FED5C5 /* SecureServerSocket.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F644D2440E9740038F5A4 /* SecureServerSocket.cpp */; };
+		710350C22482B71000FED5C5 /* HTTPSessionFactory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63292440E9100038F5A4 /* HTTPSessionFactory.cpp */; };
+		710350C32482B71000FED5C5 /* CipherFactory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F7BE82440E9DF0038F5A4 /* CipherFactory.cpp */; };
+		710350C42482B71000FED5C5 /* appChooserDlg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD312433BBBE003F17F1 /* appChooserDlg.cpp */; };
+		710350C52482B71000FED5C5 /* double-conversion.cc in Sources */ = {isa = PBXBuildFile; fileRef = 715F81DB2440ED1D0038F5A4 /* double-conversion.cc */; };
+		710350C62482B71000FED5C5 /* PKCS12Container.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F7BE12440E9DF0038F5A4 /* PKCS12Container.cpp */; };
+		710350C72482B71000FED5C5 /* kfiledescriptor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE2F2433BBBE003F17F1 /* kfiledescriptor.cpp */; };
+		710350C82482B71000FED5C5 /* FilePartSource.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F631F2440E9100038F5A4 /* FilePartSource.cpp */; };
+		710350C92482B71000FED5C5 /* Runnable.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F80F92440ED1C0038F5A4 /* Runnable.cpp */; };
+		710350CA2482B71000FED5C5 /* Formatter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81B92440ED1D0038F5A4 /* Formatter.cpp */; };
+		710350CB2482B71000FED5C5 /* soft_wo_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDD22433BBBE003F17F1 /* soft_wo_page.cpp */; };
+		710350CC2482B71000FED5C5 /* esopengl.c in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE552433BBBE003F17F1 /* esopengl.c */; };
+		710350CD2482B71000FED5C5 /* configFile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD402433BBBE003F17F1 /* configFile.cpp */; };
+		710350CE2482B71000FED5C5 /* FTPClientSession.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63172440E9100038F5A4 /* FTPClientSession.cpp */; };
+		710350CF2482B71000FED5C5 /* readIcons.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD142433BBBE003F17F1 /* readIcons.cpp */; };
+		710350D02482B71000FED5C5 /* PartSource.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63232440E9100038F5A4 /* PartSource.cpp */; };
+		710350D12482B71000FED5C5 /* uihelper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD132433BBBE003F17F1 /* uihelper.cpp */; };
+		710350D22482B71000FED5C5 /* FileStreamFactory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81102440ED1C0038F5A4 /* FileStreamFactory.cpp */; };
+		710350D32482B71000FED5C5 /* pcre_fullinfo.c in Sources */ = {isa = PBXBuildFile; fileRef = 715F81DD2440ED1D0038F5A4 /* pcre_fullinfo.c */; };
+		710350D42482B71000FED5C5 /* imguitinyfiledialogs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 712228622433EE5300CDBABD /* imguitinyfiledialogs.cpp */; };
+		710350D52482B71000FED5C5 /* Clock.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F815B2440ED1C0038F5A4 /* Clock.cpp */; };
+		710350D62482B71000FED5C5 /* winedrv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE0B2433BBBE003F17F1 /* winedrv.cpp */; };
+		710350D72482B71000FED5C5 /* CertificateHandlerFactory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F64442440E9740038F5A4 /* CertificateHandlerFactory.cpp */; };
+		710350D82482B71000FED5C5 /* LogFile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81782440ED1C0038F5A4 /* LogFile.cpp */; };
+		710350D92482B71000FED5C5 /* devdsp.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE292433BBBE003F17F1 /* devdsp.cpp */; };
+		710350DA2482B71000FED5C5 /* globalSettings.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD372433BBBE003F17F1 /* globalSettings.cpp */; };
+		710350DB2482B71000FED5C5 /* NetException.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F633B2440E9100038F5A4 /* NetException.cpp */; };
+		710350DC2482B71000FED5C5 /* UUID.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81812440ED1C0038F5A4 /* UUID.cpp */; };
+		710350DD2482B71000FED5C5 /* Semaphore.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81DA2440ED1D0038F5A4 /* Semaphore.cpp */; };
+		710350DE2482B71000FED5C5 /* mesagl.c in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE422433BBBE003F17F1 /* mesagl.c */; };
+		710350DF2482B71000FED5C5 /* Logger.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81D32440ED1D0038F5A4 /* Logger.cpp */; };
+		710350E02482B71000FED5C5 /* Configurable.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F817B2440ED1C0038F5A4 /* Configurable.cpp */; };
+		710350E12482B71000FED5C5 /* PriorityNotificationQueue.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81432440ED1C0038F5A4 /* PriorityNotificationQueue.cpp */; };
+		710350E22482B71000FED5C5 /* NumericString.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81422440ED1C0038F5A4 /* NumericString.cpp */; };
+		710350E32482B71000FED5C5 /* baseDlg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD242433BBBE003F17F1 /* baseDlg.cpp */; };
+		710350E42482B71000FED5C5 /* Windows1252Encoding.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81122440ED1C0038F5A4 /* Windows1252Encoding.cpp */; };
+		710350E52482B71000FED5C5 /* fsnode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDFB2433BBBE003F17F1 /* fsnode.cpp */; };
+		710350E62482B71000FED5C5 /* HTTPSession.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63042440E9100038F5A4 /* HTTPSession.cpp */; };
+		710350E72482B71000FED5C5 /* fileutils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD552433BBBE003F17F1 /* fileutils.cpp */; };
+		710350E82482B71000FED5C5 /* ThreadPool.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81C82440ED1D0038F5A4 /* ThreadPool.cpp */; };
+		710350E92482B71000FED5C5 /* StreamSocketImpl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63112440E9100038F5A4 /* StreamSocketImpl.cpp */; };
+		710350EA2482B71000FED5C5 /* Base64Encoder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81F32440ED1D0038F5A4 /* Base64Encoder.cpp */; };
+		710350EB2482B71000FED5C5 /* loader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE392433BBBE003F17F1 /* loader.cpp */; };
+		710350EC2482B71000FED5C5 /* MailStream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63552440E9100038F5A4 /* MailStream.cpp */; };
+		710350ED2482B71000FED5C5 /* EscapeHTMLStream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63272440E9100038F5A4 /* EscapeHTMLStream.cpp */; };
+		710350EE2482B71000FED5C5 /* ICMPPacket.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F62F82440E9100038F5A4 /* ICMPPacket.cpp */; };
+		710350EF2482B71000FED5C5 /* Manifest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81AA2440ED1D0038F5A4 /* Manifest.cpp */; };
+		710350F02482B71000FED5C5 /* glMarshalVertex.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE492433BBBE003F17F1 /* glMarshalVertex.cpp */; };
+		710350F12482B71000FED5C5 /* LoggingConfigurator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F34B52440E7470038F5A4 /* LoggingConfigurator.cpp */; };
+		710350F22482B71000FED5C5 /* SMTPChannel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63372440E9100038F5A4 /* SMTPChannel.cpp */; };
+		710350F32482B71000FED5C5 /* Task.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F819D2440ED1D0038F5A4 /* Task.cpp */; };
+		710350F42482B71000FED5C5 /* Windows1251Encoding.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81602440ED1C0038F5A4 /* Windows1251Encoding.cpp */; };
+		710350F52482B71000FED5C5 /* NumberFormatter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81282440ED1C0038F5A4 /* NumberFormatter.cpp */; };
+		710350F62482B71000FED5C5 /* inflate.c in Sources */ = {isa = PBXBuildFile; fileRef = 715F81172440ED1C0038F5A4 /* inflate.c */; };
+		710350F72482B71000FED5C5 /* pcre_chartables.c in Sources */ = {isa = PBXBuildFile; fileRef = 715F82122440ED1D0038F5A4 /* pcre_chartables.c */; };
+		710350F82482B71000FED5C5 /* boxedApp.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD3D2433BBBE003F17F1 /* boxedApp.cpp */; };
+		710350F92482B71000FED5C5 /* compress.c in Sources */ = {isa = PBXBuildFile; fileRef = 715F812C2440ED1C0038F5A4 /* compress.c */; };
+		710350FA2482B71000FED5C5 /* TextConverter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81252440ED1C0038F5A4 /* TextConverter.cpp */; };
+		710350FB2482B71000FED5C5 /* ActiveDispatcher.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81162440ED1C0038F5A4 /* ActiveDispatcher.cpp */; };
+		710350FC2482B71000FED5C5 /* DataURIStream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F814A2440ED1C0038F5A4 /* DataURIStream.cpp */; };
+		710350FD2482B71000FED5C5 /* Stopwatch.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F82002440ED1D0038F5A4 /* Stopwatch.cpp */; };
+		710350FE2482B71000FED5C5 /* ICMPClient.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F630D2440E9100038F5A4 /* ICMPClient.cpp */; };
+		710350FF2482B71000FED5C5 /* soft_invalid_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDE12433BBBE003F17F1 /* soft_invalid_page.cpp */; };
+		710351002482B71000FED5C5 /* lazyFlags.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD8B2433BBBE003F17F1 /* lazyFlags.cpp */; };
+		710351012482B71000FED5C5 /* normal_shift.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDB32433BBBE003F17F1 /* normal_shift.cpp */; };
+		710351022482B71000FED5C5 /* platformhelper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD432433BBBE003F17F1 /* platformhelper.cpp */; };
+		710351032482B71000FED5C5 /* pugixml.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71205465244FDA6600C3CB1B /* pugixml.cpp */; };
+		710351042482B71000FED5C5 /* unzip.c in Sources */ = {isa = PBXBuildFile; fileRef = 715F80E02440EB260038F5A4 /* unzip.c */; };
+		710351052482B71000FED5C5 /* X509Certificate.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F7BD32440E9DF0038F5A4 /* X509Certificate.cpp */; };
+		710351062482B71000FED5C5 /* Process.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81192440ED1C0038F5A4 /* Process.cpp */; };
+		710351072482B71000FED5C5 /* HexBinaryEncoder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F820E2440ED1D0038F5A4 /* HexBinaryEncoder.cpp */; };
+		710351082482B71000FED5C5 /* Random.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81412440ED1C0038F5A4 /* Random.cpp */; };
+		710351092482B71000FED5C5 /* InvalidCertificateHandler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F64512440E9740038F5A4 /* InvalidCertificateHandler.cpp */; };
+		7103510A2482B71000FED5C5 /* HTTPServerRequest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F632E2440E9100038F5A4 /* HTTPServerRequest.cpp */; };
+		7103510B2482B71000FED5C5 /* crc.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD4F2433BBBE003F17F1 /* crc.cpp */; };
+		7103510C2482B71000FED5C5 /* devsequencer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE242433BBBE003F17F1 /* devsequencer.cpp */; };
+		7103510D2482B71000FED5C5 /* inftrees.c in Sources */ = {isa = PBXBuildFile; fileRef = 715F81BC2440ED1D0038F5A4 /* inftrees.c */; };
+		7103510E2482B71000FED5C5 /* kprocess.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE1F2433BBBE003F17F1 /* kprocess.cpp */; };
+		7103510F2482B71000FED5C5 /* FIFOBufferStream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F818B2440ED1D0038F5A4 /* FIFOBufferStream.cpp */; };
+		710351102482B71000FED5C5 /* SecureStreamSocketImpl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F64492440E9740038F5A4 /* SecureStreamSocketImpl.cpp */; };
+		710351112482B71000FED5C5 /* TCPServerConnection.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63462440E9100038F5A4 /* TCPServerConnection.cpp */; };
+		710351122482B71000FED5C5 /* PatternFormatter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81472440ED1C0038F5A4 /* PatternFormatter.cpp */; };
+		710351132482B71000FED5C5 /* RemoteSyslogListener.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63132440E9100038F5A4 /* RemoteSyslogListener.cpp */; };
+		710351142482B71000FED5C5 /* NamedEvent.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81272440ED1C0038F5A4 /* NamedEvent.cpp */; };
+		710351152482B71000FED5C5 /* ConsoleCertificateHandler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F643D2440E9740038F5A4 /* ConsoleCertificateHandler.cpp */; };
+		710351162482B71000FED5C5 /* RegularExpression.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81E32440ED1D0038F5A4 /* RegularExpression.cpp */; };
+		710351172482B71000FED5C5 /* FileChannel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81552440ED1C0038F5A4 /* FileChannel.cpp */; };
+		710351182482B71000FED5C5 /* ThreadTarget.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81202440ED1C0038F5A4 /* ThreadTarget.cpp */; };
+		710351192482B71000FED5C5 /* MD4Engine.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81BF2440ED1D0038F5A4 /* MD4Engine.cpp */; };
+		7103511A2482B71000FED5C5 /* Mutex.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81062440ED1C0038F5A4 /* Mutex.cpp */; };
+		7103511B2482B71000FED5C5 /* HTTPServerRequestImpl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63472440E9100038F5A4 /* HTTPServerRequestImpl.cpp */; };
+		7103511C2482B71000FED5C5 /* HTTPAuthenticationParams.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F630C2440E9100038F5A4 /* HTTPAuthenticationParams.cpp */; };
+		7103511D2482B71000FED5C5 /* MulticastSocket.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F62FB2440E9100038F5A4 /* MulticastSocket.cpp */; };
+		7103511E2482B71000FED5C5 /* normalCPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDBB2433BBBE003F17F1 /* normalCPU.cpp */; };
+		7103511F2482B71000FED5C5 /* StreamConverter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F80FF2440ED1C0038F5A4 /* StreamConverter.cpp */; };
+		710351202482B71000FED5C5 /* Condition.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F80F22440ED1C0038F5A4 /* Condition.cpp */; };
+		710351212482B71000FED5C5 /* DigestEngine.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F812E2440ED1C0038F5A4 /* DigestEngine.cpp */; };
+		710351222482B71000FED5C5 /* HTTPSSessionInstantiator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F64502440E9740038F5A4 /* HTTPSSessionInstantiator.cpp */; };
+		710351232482B71000FED5C5 /* glfunctions_ext3.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE442433BBBE003F17F1 /* glfunctions_ext3.cpp */; };
+		710351242482B71000FED5C5 /* IPAddress.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F630E2440E9100038F5A4 /* IPAddress.cpp */; };
+		710351252482B71000FED5C5 /* listView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD1D2433BBBE003F17F1 /* listView.cpp */; };
+		710351262482B71000FED5C5 /* LocalDateTime.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81E92440ED1D0038F5A4 /* LocalDateTime.cpp */; };
+		710351272482B71000FED5C5 /* HTTPRequestHandler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F635D2440E9100038F5A4 /* HTTPRequestHandler.cpp */; };
+		710351282482B71000FED5C5 /* soft_ram.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDD82433BBBE003F17F1 /* soft_ram.cpp */; };
+		710351292482B71000FED5C5 /* srcgen.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD7F2433BBBE003F17F1 /* srcgen.cpp */; };
+		7103512A2482B71000FED5C5 /* fsvirtualnode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDFF2433BBBE003F17F1 /* fsvirtualnode.cpp */; };
+		7103512B2482B71000FED5C5 /* Timer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F34A92440E7470038F5A4 /* Timer.cpp */; };
+		7103512C2482B71000FED5C5 /* ConfigurationView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F34AD2440E7470038F5A4 /* ConfigurationView.cpp */; };
+		7103512D2482B71000FED5C5 /* CipherImpl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F7BE72440E9DF0038F5A4 /* CipherImpl.cpp */; };
+		7103512E2482B71000FED5C5 /* SignalHandler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81502440ED1C0038F5A4 /* SignalHandler.cpp */; };
+		7103512F2482B71000FED5C5 /* HTTPRequestHandlerFactory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F635C2440E9100038F5A4 /* HTTPRequestHandlerFactory.cpp */; };
+		710351312482B71000FED5C5 /* libcrypto.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 715F34972440E6F50038F5A4 /* libcrypto.a */; };
+		710351322482B71000FED5C5 /* libssl.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 715F34982440E6F50038F5A4 /* libssl.a */; };
+		710351332482B71000FED5C5 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 712227872433EE2700CDBABD /* OpenGL.framework */; };
+		710351342482B71000FED5C5 /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 712227852433EE1200CDBABD /* Carbon.framework */; };
+		710351352482B71000FED5C5 /* ForceFeedback.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 712227832433EDE700CDBABD /* ForceFeedback.framework */; };
+		710351362482B71000FED5C5 /* AudioToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 712227812433EDCE00CDBABD /* AudioToolbox.framework */; };
+		710351372482B71000FED5C5 /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7122277D2433ED7C00CDBABD /* CoreAudio.framework */; };
+		710351382482B71000FED5C5 /* libSDL2.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 7122277B2433ED5700CDBABD /* libSDL2.a */; };
+		7103513A2482B71000FED5C5 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 71FBFCB32433B817003F17F1 /* Assets.xcassets */; };
+		7103513B2482B71000FED5C5 /* Media.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 715F8427244115580038F5A4 /* Media.xcassets */; };
+		7103513C2482B71000FED5C5 /* pocomsg.mc in Resources */ = {isa = PBXBuildFile; fileRef = 715F81D42440ED1D0038F5A4 /* pocomsg.mc */; };
 		711F834924527273008E6A0C /* boxedTexture.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 711F834824527273008E6A0C /* boxedTexture.cpp */; };
 		711F834A24527273008E6A0C /* boxedTexture.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 711F834824527273008E6A0C /* boxedTexture.cpp */; };
 		711F834B24534A06008E6A0C /* MacPlatform.m in Sources */ = {isa = PBXBuildFile; fileRef = 7120545D244D074000C3CB1B /* MacPlatform.m */; };
@@ -1808,6 +2364,8 @@
 		71034F0A24820DE600FED5C5 /* BoxedwineAutomation.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BoxedwineAutomation.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		71034F0B24820DE700FED5C5 /* BoxedwineAutomation-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "BoxedwineAutomation-Info.plist"; path = "/Users/jamesbryant/boxedwine-source/project/mac-xcode/Boxedwine/BoxedwineAutomation-Info.plist"; sourceTree = "<absolute>"; };
 		71034F0C24820EC600FED5C5 /* Boxedwine-Automation.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Boxedwine-Automation.entitlements"; sourceTree = "<group>"; };
+		710351402482B71000FED5C5 /* BoxedwineAutomationX64.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BoxedwineAutomationX64.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		710351412482B71000FED5C5 /* BoxedwineAutomationX64-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "BoxedwineAutomationX64-Info.plist"; path = "/Users/jamesbryant/boxedwine-source/project/mac-xcode/Boxedwine/BoxedwineAutomationX64-Info.plist"; sourceTree = "<absolute>"; };
 		711F834724527273008E6A0C /* boxedTexture.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = boxedTexture.h; sourceTree = "<group>"; };
 		711F834824527273008E6A0C /* boxedTexture.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = boxedTexture.cpp; sourceTree = "<group>"; };
 		71205454244D01B300C3CB1B /* ImGuiLayout.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ImGuiLayout.cpp; sourceTree = "<group>"; };
@@ -2660,6 +3218,21 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		710351302482B71000FED5C5 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				710351312482B71000FED5C5 /* libcrypto.a in Frameworks */,
+				710351322482B71000FED5C5 /* libssl.a in Frameworks */,
+				710351332482B71000FED5C5 /* OpenGL.framework in Frameworks */,
+				710351342482B71000FED5C5 /* Carbon.framework in Frameworks */,
+				710351352482B71000FED5C5 /* ForceFeedback.framework in Frameworks */,
+				710351362482B71000FED5C5 /* AudioToolbox.framework in Frameworks */,
+				710351372482B71000FED5C5 /* CoreAudio.framework in Frameworks */,
+				710351382482B71000FED5C5 /* libSDL2.a in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		71222B162435140100CDBABD /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -3355,6 +3928,7 @@
 				712227752433E8C400CDBABD /* Frameworks */,
 				71222C8024351CBB00CDBABD /* BoxedwineX64-Info.plist */,
 				71034F0B24820DE700FED5C5 /* BoxedwineAutomation-Info.plist */,
+				710351412482B71000FED5C5 /* BoxedwineAutomationX64-Info.plist */,
 			);
 			sourceTree = "<group>";
 		};
@@ -3365,6 +3939,7 @@
 				71222B192435140100CDBABD /* BoxedwineTest.app */,
 				71222C7F24351CBA00CDBABD /* BoxedwineX64.app */,
 				71034F0A24820DE600FED5C5 /* BoxedwineAutomation.app */,
+				710351402482B71000FED5C5 /* BoxedwineAutomationX64.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -4035,6 +4610,23 @@
 			productReference = 71034F0A24820DE600FED5C5 /* BoxedwineAutomation.app */;
 			productType = "com.apple.product-type.application";
 		};
+		71034F0D2482B71000FED5C5 /* BoxedwineAutomationX64 */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7103513D2482B71000FED5C5 /* Build configuration list for PBXNativeTarget "BoxedwineAutomationX64" */;
+			buildPhases = (
+				71034F0E2482B71000FED5C5 /* Sources */,
+				710351302482B71000FED5C5 /* Frameworks */,
+				710351392482B71000FED5C5 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = BoxedwineAutomationX64;
+			productName = Boxedwine;
+			productReference = 710351402482B71000FED5C5 /* BoxedwineAutomationX64.app */;
+			productType = "com.apple.product-type.application";
+		};
 		71222B182435140100CDBABD /* BoxedwineTest */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 71222B292435140300CDBABD /* Build configuration list for PBXNativeTarget "BoxedwineTest" */;
@@ -4121,6 +4713,7 @@
 				71222B182435140100CDBABD /* BoxedwineTest */,
 				71222BCB24351CBA00CDBABD /* BoxedwineX64 */,
 				71034CD724820DE600FED5C5 /* BoxedwineAutomation */,
+				71034F0D2482B71000FED5C5 /* BoxedwineAutomationX64 */,
 			);
 		};
 /* End PBXProject section */
@@ -4133,6 +4726,16 @@
 				71034F0424820DE600FED5C5 /* Assets.xcassets in Resources */,
 				71034F0524820DE600FED5C5 /* Media.xcassets in Resources */,
 				71034F0624820DE600FED5C5 /* pocomsg.mc in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		710351392482B71000FED5C5 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7103513A2482B71000FED5C5 /* Assets.xcassets in Resources */,
+				7103513B2482B71000FED5C5 /* Media.xcassets in Resources */,
+				7103513C2482B71000FED5C5 /* pocomsg.mc in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -4717,6 +5320,558 @@
 				71034EF724820DE600FED5C5 /* CipherImpl.cpp in Sources */,
 				71034EF824820DE600FED5C5 /* SignalHandler.cpp in Sources */,
 				71034EF924820DE600FED5C5 /* HTTPRequestHandlerFactory.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		71034F0E2482B71000FED5C5 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				71034F0F2482B71000FED5C5 /* x32CPU.cpp in Sources */,
+				71034F102482B71000FED5C5 /* ksocketobject.cpp in Sources */,
+				71034F112482B71000FED5C5 /* Format.cpp in Sources */,
+				71034F122482B71000FED5C5 /* PurgeStrategy.cpp in Sources */,
+				71034F132482B71000FED5C5 /* SplitterChannel.cpp in Sources */,
+				71034F142482B71000FED5C5 /* PartStore.cpp in Sources */,
+				71034F152482B71000FED5C5 /* Bugcheck.cpp in Sources */,
+				71034F162482B71000FED5C5 /* SecureSocketImpl.cpp in Sources */,
+				71034F172482B71000FED5C5 /* SMTPClientSession.cpp in Sources */,
+				71034F182482B71000FED5C5 /* UTF8String.cpp in Sources */,
+				71034F192482B71000FED5C5 /* DataURIStreamFactory.cpp in Sources */,
+				71034F1A2482B71000FED5C5 /* AsyncChannel.cpp in Sources */,
+				71034F1B2482B71000FED5C5 /* glfunctions_ext1.cpp in Sources */,
+				71034F1C2482B71000FED5C5 /* BinaryReader.cpp in Sources */,
+				71034F1D2482B71000FED5C5 /* TemporaryFile.cpp in Sources */,
+				71034F1E2482B71000FED5C5 /* okDlg.cpp in Sources */,
+				71034F1F2482B71000FED5C5 /* Event.cpp in Sources */,
+				71034F202482B71000FED5C5 /* KeyPairImpl.cpp in Sources */,
+				71034F212482B71000FED5C5 /* glshim.c in Sources */,
+				71034F222482B71000FED5C5 /* pcre_config.c in Sources */,
+				71034F232482B71000FED5C5 /* HTTPRequest.cpp in Sources */,
+				71034F242482B71000FED5C5 /* kfilelock.cpp in Sources */,
+				71034F252482B71000FED5C5 /* Latin9Encoding.cpp in Sources */,
+				71034F262482B71000FED5C5 /* Unicode.cpp in Sources */,
+				71034F272482B71000FED5C5 /* waitDlg.cpp in Sources */,
+				71034F282482B71000FED5C5 /* ICMPEventArgs.cpp in Sources */,
+				71034F292482B71000FED5C5 /* RawSocketImpl.cpp in Sources */,
+				71034F2A2482B71000FED5C5 /* kpoll.cpp in Sources */,
+				71034F2B2482B71000FED5C5 /* URIStreamOpener.cpp in Sources */,
+				71034F2C2482B71000FED5C5 /* FTPSClientSession.cpp in Sources */,
+				71034F2D2482B71000FED5C5 /* LayeredConfiguration.cpp in Sources */,
+				71034F2E2482B71000FED5C5 /* DirectoryIteratorStrategy.cpp in Sources */,
+				71034F2F2482B71000FED5C5 /* FTPSStreamFactory.cpp in Sources */,
+				71034F302482B71000FED5C5 /* mainui.cpp in Sources */,
+				71034F312482B71000FED5C5 /* Option.cpp in Sources */,
+				71034F322482B71000FED5C5 /* common_other.cpp in Sources */,
+				71034F332482B71000FED5C5 /* networkutils.cpp in Sources */,
+				71034F342482B71000FED5C5 /* devfb.cpp in Sources */,
+				71034F352482B71000FED5C5 /* esdisplaylist.c in Sources */,
+				71034F362482B71000FED5C5 /* SecureServerSocketImpl.cpp in Sources */,
+				71034F372482B71000FED5C5 /* MediaType.cpp in Sources */,
+				71034F382482B71000FED5C5 /* pcre_string_utils.c in Sources */,
+				71034F392482B71000FED5C5 /* KeyFileHandler.cpp in Sources */,
+				71034F3A2482B71000FED5C5 /* NullStream.cpp in Sources */,
+				71034F3B2482B71000FED5C5 /* TCPServerDispatcher.cpp in Sources */,
+				71034F3C2482B71000FED5C5 /* MailMessage.cpp in Sources */,
+				71034F3D2482B71000FED5C5 /* DatagramSocket.cpp in Sources */,
+				71034F3E2482B71000FED5C5 /* PropertyFileConfiguration.cpp in Sources */,
+				71034F3F2482B71000FED5C5 /* decoder.cpp in Sources */,
+				71034F402482B71000FED5C5 /* NTLMCredentials.cpp in Sources */,
+				71034F412482B71000FED5C5 /* HTTPCredentials.cpp in Sources */,
+				71034F422482B71000FED5C5 /* testCPU.cpp in Sources */,
+				71034F432482B71000FED5C5 /* HTTPMessage.cpp in Sources */,
+				71034F442482B71000FED5C5 /* Cipher.cpp in Sources */,
+				71034F452482B71000FED5C5 /* LoggingFactory.cpp in Sources */,
+				71034F462482B71000FED5C5 /* FilesystemConfiguration.cpp in Sources */,
+				71034F472482B71000FED5C5 /* HTMLForm.cpp in Sources */,
+				71034F482482B71000FED5C5 /* Checksum.cpp in Sources */,
+				71034F492482B71000FED5C5 /* TeeStream.cpp in Sources */,
+				71034F4A2482B71000FED5C5 /* VarHolder.cpp in Sources */,
+				71034F4B2482B71000FED5C5 /* ksocket.cpp in Sources */,
+				71034F4C2482B71000FED5C5 /* pcre_byte_order.c in Sources */,
+				71034F4D2482B71000FED5C5 /* TimerTask.cpp in Sources */,
+				71034F4E2482B71000FED5C5 /* cpuinfo.cpp in Sources */,
+				71034F4F2482B71000FED5C5 /* UDPClient.cpp in Sources */,
+				71034F502482B71000FED5C5 /* SHA2Engine.cpp in Sources */,
+				71034F512482B71000FED5C5 /* pcre_xclass.c in Sources */,
+				71034F522482B71000FED5C5 /* CryptoException.cpp in Sources */,
+				71034F532482B71000FED5C5 /* sdlopengl.cpp in Sources */,
+				71034F542482B71000FED5C5 /* UDPServerParams.cpp in Sources */,
+				71034F552482B71000FED5C5 /* SimpleFileChannel.cpp in Sources */,
+				71034F562482B71000FED5C5 /* pcre_valid_utf8.c in Sources */,
+				71034F572482B71000FED5C5 /* OptionCallback.cpp in Sources */,
+				71034F582482B71000FED5C5 /* FormattingChannel.cpp in Sources */,
+				71034F592482B71000FED5C5 /* RSAKeyImpl.cpp in Sources */,
+				71034F5A2482B71000FED5C5 /* ServerSocketImpl.cpp in Sources */,
+				71034F5B2482B71000FED5C5 /* File.cpp in Sources */,
+				71034F5C2482B71000FED5C5 /* CountingStream.cpp in Sources */,
+				71034F5D2482B71000FED5C5 /* fszip.cpp in Sources */,
+				71034F5E2482B71000FED5C5 /* HelpFormatter.cpp in Sources */,
+				71034F5F2482B71000FED5C5 /* Error.cpp in Sources */,
+				71034F602482B71000FED5C5 /* devzero.cpp in Sources */,
+				71034F612482B71000FED5C5 /* common_xchg.cpp in Sources */,
+				71034F622482B71000FED5C5 /* x64CPU.cpp in Sources */,
+				71034F632482B71000FED5C5 /* pcre_study.c in Sources */,
+				71034F642482B71000FED5C5 /* devinput.cpp in Sources */,
+				71034F652482B71000FED5C5 /* fsmemopennode.cpp in Sources */,
+				71034F662482B71000FED5C5 /* HTTPServerParams.cpp in Sources */,
+				71034F672482B71000FED5C5 /* DialogSocket.cpp in Sources */,
+				71034F682482B71000FED5C5 /* NumberParser.cpp in Sources */,
+				71034F692482B71000FED5C5 /* fsfileopennode.cpp in Sources */,
+				71034F6A2482B71000FED5C5 /* SHA1Engine.cpp in Sources */,
+				71034F6B2482B71000FED5C5 /* kepoll.cpp in Sources */,
+				71034F6C2482B71000FED5C5 /* DateTime.cpp in Sources */,
+				71034F6D2482B71000FED5C5 /* Notification.cpp in Sources */,
+				71034F6E2482B71000FED5C5 /* soft_file_map.cpp in Sources */,
+				71034F6F2482B71000FED5C5 /* imgui_draw.cpp in Sources */,
+				71034F702482B71000FED5C5 /* MemoryStream.cpp in Sources */,
+				71034F712482B71000FED5C5 /* stringutil.cpp in Sources */,
+				71034F722482B71000FED5C5 /* SSPINTLMCredentials.cpp in Sources */,
+				71034F732482B71000FED5C5 /* HTTPBufferAllocator.cpp in Sources */,
+				71034F742482B71000FED5C5 /* pcre_exec.c in Sources */,
+				71034F752482B71000FED5C5 /* deflate.c in Sources */,
+				71034F762482B71000FED5C5 /* NTPClient.cpp in Sources */,
+				71034F772482B71000FED5C5 /* common_arith.cpp in Sources */,
+				71034F782482B71000FED5C5 /* cpuscalingmaxfreq.cpp in Sources */,
+				71034F792482B71000FED5C5 /* StringTokenizer.cpp in Sources */,
+				71034F7A2482B71000FED5C5 /* TCPServerConnectionFactory.cpp in Sources */,
+				71034F7B2482B71000FED5C5 /* cpumaxfreq.cpp in Sources */,
+				71034F7C2482B71000FED5C5 /* ThreadLocal.cpp in Sources */,
+				71034F7D2482B71000FED5C5 /* DeflatingStream.cpp in Sources */,
+				71034F7E2482B71000FED5C5 /* pcre_jit_compile.c in Sources */,
+				71034F7F2482B71000FED5C5 /* IPAddressImpl.cpp in Sources */,
+				71034F802482B71000FED5C5 /* CryptoTransform.cpp in Sources */,
+				71034F812482B71000FED5C5 /* Windows1250Encoding.cpp in Sources */,
+				71034F822482B71000FED5C5 /* RejectCertificateHandler.cpp in Sources */,
+				71034F832482B71000FED5C5 /* imgui_impl_sdl.cpp in Sources */,
+				71034F842482B71000FED5C5 /* RWLock.cpp in Sources */,
+				71034F852482B71000FED5C5 /* URI.cpp in Sources */,
+				71034F862482B71000FED5C5 /* pcre_refcount.c in Sources */,
+				71034F872482B71000FED5C5 /* HostEntry.cpp in Sources */,
+				71034F882482B71000FED5C5 /* cpuscalingcurfreq.cpp in Sources */,
+				71034F892482B71000FED5C5 /* SharedMemory.cpp in Sources */,
+				71034F8A2482B71000FED5C5 /* StringPartSource.cpp in Sources */,
+				71034F8B2482B71000FED5C5 /* WebSocketImpl.cpp in Sources */,
+				71034F8C2482B71000FED5C5 /* HTTPStreamFactory.cpp in Sources */,
+				71034F8D2482B71000FED5C5 /* fsmemnode.cpp in Sources */,
+				71034F8E2482B71000FED5C5 /* HTTPIOStream.cpp in Sources */,
+				71034F8F2482B71000FED5C5 /* MessageHeader.cpp in Sources */,
+				71034F902482B71000FED5C5 /* DirectoryIterator.cpp in Sources */,
+				71034F912482B71000FED5C5 /* strtod.cc in Sources */,
+				71034F922482B71000FED5C5 /* TaskNotification.cpp in Sources */,
+				71034F932482B71000FED5C5 /* devurandom.cpp in Sources */,
+				71034F942482B71000FED5C5 /* DateTimeFormat.cpp in Sources */,
+				71034F952482B71000FED5C5 /* Timestamp.cpp in Sources */,
+				71034F962482B71000FED5C5 /* DigestEngine.cpp in Sources */,
+				71034F972482B71000FED5C5 /* TextBufferIterator.cpp in Sources */,
+				71034F982482B71000FED5C5 /* ASCIIEncoding.cpp in Sources */,
+				71034F992482B71000FED5C5 /* RawSocket.cpp in Sources */,
+				71034F9A2482B71000FED5C5 /* x64Ops.cpp in Sources */,
+				71034F9B2482B71000FED5C5 /* HTTPStream.cpp in Sources */,
+				71034F9C2482B71000FED5C5 /* StreamSocket.cpp in Sources */,
+				71034F9D2482B71000FED5C5 /* RemoteSyslogChannel.cpp in Sources */,
+				71034F9E2482B71000FED5C5 /* boxedContainer.cpp in Sources */,
+				71034F9F2482B71000FED5C5 /* HTTPServerResponseImpl.cpp in Sources */,
+				71034FA02482B71000FED5C5 /* TextIterator.cpp in Sources */,
+				71034FA12482B71000FED5C5 /* listViewItem.cpp in Sources */,
+				71034FA22482B71000FED5C5 /* kscheduler.cpp in Sources */,
+				71034FA32482B71000FED5C5 /* bignum-dtoa.cc in Sources */,
+				71034FA42482B71000FED5C5 /* common_sse2.cpp in Sources */,
+				71034FA52482B71000FED5C5 /* PipeStream.cpp in Sources */,
+				71034FA62482B71000FED5C5 /* x64CodeChunk.cpp in Sources */,
+				71034FA72482B71000FED5C5 /* Message.cpp in Sources */,
+				71034FA82482B71000FED5C5 /* TextEncoding.cpp in Sources */,
+				71034FA92482B71000FED5C5 /* SocketNotification.cpp in Sources */,
+				71034FAA2482B71000FED5C5 /* HTTPSessionInstantiator.cpp in Sources */,
+				71034FAB2482B71000FED5C5 /* kobject.cpp in Sources */,
+				71034FAC2482B71000FED5C5 /* HTTPHeaderStream.cpp in Sources */,
+				71034FAD2482B71000FED5C5 /* Exception.cpp in Sources */,
+				71034FAE2482B71000FED5C5 /* SocketAddress.cpp in Sources */,
+				71034FAF2482B71000FED5C5 /* infback.c in Sources */,
+				71034FB02482B71000FED5C5 /* zip.c in Sources */,
+				71034FB12482B71000FED5C5 /* SocketImpl.cpp in Sources */,
+				71034FB22482B71000FED5C5 /* PartHandler.cpp in Sources */,
+				71034FB32482B71000FED5C5 /* kfile.cpp in Sources */,
+				71034FB42482B71000FED5C5 /* AtomicFlag.cpp in Sources */,
+				71034FB52482B71000FED5C5 /* fixed-dtoa.cc in Sources */,
+				71034FB62482B71000FED5C5 /* downloadDlg.cpp in Sources */,
+				71034FB72482B71000FED5C5 /* imgui_widgets.cpp in Sources */,
+				71034FB82482B71000FED5C5 /* LoggingSubsystem.cpp in Sources */,
+				71034FB92482B71000FED5C5 /* ImGuiLayout.cpp in Sources */,
+				71034FBA2482B71000FED5C5 /* HTTPClientSession.cpp in Sources */,
+				71034FBB2482B71000FED5C5 /* Glob.cpp in Sources */,
+				71034FBC2482B71000FED5C5 /* SortedDirectoryIterator.cpp in Sources */,
+				71034FBD2482B71000FED5C5 /* HTTPServerConnection.cpp in Sources */,
+				71034FBE2482B71000FED5C5 /* fast-dtoa.cc in Sources */,
+				71034FBF2482B71000FED5C5 /* glfunctions_ext2.cpp in Sources */,
+				71034FC02482B71000FED5C5 /* glcommon.cpp in Sources */,
+				71034FC12482B71000FED5C5 /* SharedLibrary.cpp in Sources */,
+				71034FC22482B71000FED5C5 /* Base32Decoder.cpp in Sources */,
+				71034FC32482B71000FED5C5 /* RandomStream.cpp in Sources */,
+				71034FC42482B71000FED5C5 /* StreamCopier.cpp in Sources */,
+				71034FC52482B71000FED5C5 /* kmemory.cpp in Sources */,
+				71034FC62482B71000FED5C5 /* IniFileConfiguration.cpp in Sources */,
+				71034FC72482B71000FED5C5 /* MemoryPool.cpp in Sources */,
+				71034FC82482B71000FED5C5 /* AcceptCertificateHandler.cpp in Sources */,
+				71034FC92482B71000FED5C5 /* SynchronizedObject.cpp in Sources */,
+				71034FCA2482B71000FED5C5 /* Debugger.cpp in Sources */,
+				71034FCB2482B71000FED5C5 /* OpenSSLInitializer.cpp in Sources */,
+				71034FCC2482B71000FED5C5 /* devnull.cpp in Sources */,
+				71034FCD2482B71000FED5C5 /* testSSE2.cpp in Sources */,
+				71034FCE2482B71000FED5C5 /* platformThreads.cpp in Sources */,
+				71034FCF2482B71000FED5C5 /* devmixer.cpp in Sources */,
+				71034FD02482B71000FED5C5 /* sdlgl.cpp in Sources */,
+				71034FD12482B71000FED5C5 /* ICMPSocket.cpp in Sources */,
+				71034FD22482B71000FED5C5 /* ktimer.cpp in Sources */,
+				71034FD32482B71000FED5C5 /* HTTPServerSession.cpp in Sources */,
+				71034FD42482B71000FED5C5 /* SocketReactor.cpp in Sources */,
+				71034FD52482B71000FED5C5 /* Path.cpp in Sources */,
+				71034FD62482B71000FED5C5 /* diy-fp.cc in Sources */,
+				71034FD72482B71000FED5C5 /* Timezone.cpp in Sources */,
+				71034FD82482B71000FED5C5 /* main.cpp in Sources */,
+				71034FD92482B71000FED5C5 /* Base64Decoder.cpp in Sources */,
+				71034FDA2482B71000FED5C5 /* self.cpp in Sources */,
+				71034FDB2482B71000FED5C5 /* Base32Encoder.cpp in Sources */,
+				71034FDC2482B71000FED5C5 /* threadutils.cpp in Sources */,
+				71034FDD2482B71000FED5C5 /* ICMPv4PacketImpl.cpp in Sources */,
+				71034FDE2482B71000FED5C5 /* testSSE.cpp in Sources */,
+				71034FDF2482B71000FED5C5 /* EVPPKey.cpp in Sources */,
+				71034FE02482B71000FED5C5 /* PrivateKeyFactoryMgr.cpp in Sources */,
+				71034FE12482B71000FED5C5 /* NameValueCollection.cpp in Sources */,
+				71034FE22482B71000FED5C5 /* soft_ro_page.cpp in Sources */,
+				71034FE32482B71000FED5C5 /* pcre_compile.c in Sources */,
+				71034FE42482B71000FED5C5 /* FPEnvironment.cpp in Sources */,
+				71034FE52482B71000FED5C5 /* VarIterator.cpp in Sources */,
+				71034FE62482B71000FED5C5 /* Void.cpp in Sources */,
+				71034FE72482B71000FED5C5 /* Thread.cpp in Sources */,
+				71034FE82482B71000FED5C5 /* MacPlatform.m in Sources */,
+				71034FE92482B71000FED5C5 /* OAuth10Credentials.cpp in Sources */,
+				71034FEA2482B71000FED5C5 /* LoggingRegistry.cpp in Sources */,
+				71034FEB2482B71000FED5C5 /* X509Certificate.cpp in Sources */,
+				71034FEC2482B71000FED5C5 /* CryptoStream.cpp in Sources */,
+				71034FED2482B71000FED5C5 /* Latin1Encoding.cpp in Sources */,
+				71034FEE2482B71000FED5C5 /* glMarshal.cpp in Sources */,
+				71034FEF2482B71000FED5C5 /* cpuonline.cpp in Sources */,
+				71034FF02482B71000FED5C5 /* x64Asm.cpp in Sources */,
+				71034FF12482B71000FED5C5 /* boxedwineData.cpp in Sources */,
+				71034FF22482B71000FED5C5 /* boxedTranslation.cpp in Sources */,
+				71034FF32482B71000FED5C5 /* OAuth20Credentials.cpp in Sources */,
+				71034FF42482B71000FED5C5 /* ksystem.cpp in Sources */,
+				71034FF52482B71000FED5C5 /* CipherKeyImpl.cpp in Sources */,
+				71034FF62482B71000FED5C5 /* pcre_ucd.c in Sources */,
+				71034FF72482B71000FED5C5 /* soft_native_page.cpp in Sources */,
+				71034FF82482B71000FED5C5 /* Environment.cpp in Sources */,
+				71034FF92482B71000FED5C5 /* synchronization.cpp in Sources */,
+				71034FFA2482B71000FED5C5 /* KeyConsoleHandler.cpp in Sources */,
+				71034FFB2482B71000FED5C5 /* menubar.cpp in Sources */,
+				71034FFC2482B71000FED5C5 /* common_pushpop.cpp in Sources */,
+				71034FFD2482B71000FED5C5 /* HTTPFixedLengthStream.cpp in Sources */,
+				71034FFE2482B71000FED5C5 /* MapConfiguration.cpp in Sources */,
+				71034FFF2482B71000FED5C5 /* syscall.cpp in Sources */,
+				710350002482B71000FED5C5 /* ArchiveStrategy.cpp in Sources */,
+				710350012482B71000FED5C5 /* boxedReg.cpp in Sources */,
+				710350022482B71000FED5C5 /* startupArgs.cpp in Sources */,
+				710350032482B71000FED5C5 /* RotateStrategy.cpp in Sources */,
+				710350042482B71000FED5C5 /* pcre_maketables.c in Sources */,
+				710350052482B71000FED5C5 /* bignum.cc in Sources */,
+				710350062482B71000FED5C5 /* Socket.cpp in Sources */,
+				710350072482B71000FED5C5 /* NetworkInterface.cpp in Sources */,
+				710350082482B71000FED5C5 /* fsdiropennode.cpp in Sources */,
+				710350092482B71000FED5C5 /* SSLException.cpp in Sources */,
+				7103500A2482B71000FED5C5 /* RegExpValidator.cpp in Sources */,
+				7103500B2482B71000FED5C5 /* QuotedPrintableDecoder.cpp in Sources */,
+				7103500C2482B71000FED5C5 /* AppDelegate.m in Sources */,
+				7103500D2482B71000FED5C5 /* NullPartHandler.cpp in Sources */,
+				7103500E2482B71000FED5C5 /* UTF32Encoding.cpp in Sources */,
+				7103500F2482B71000FED5C5 /* glMarshalSize.cpp in Sources */,
+				710350102482B71000FED5C5 /* optionsView.cpp in Sources */,
+				710350112482B71000FED5C5 /* knativesocket.cpp in Sources */,
+				710350122482B71000FED5C5 /* soft_code_page.cpp in Sources */,
+				710350132482B71000FED5C5 /* boxedTexture.cpp in Sources */,
+				710350142482B71000FED5C5 /* HTTPDigestCredentials.cpp in Sources */,
+				710350152482B71000FED5C5 /* containersView.cpp in Sources */,
+				710350162482B71000FED5C5 /* ConfigurationMapper.cpp in Sources */,
+				710350172482B71000FED5C5 /* HTTPServer.cpp in Sources */,
+				710350182482B71000FED5C5 /* ICMPPacketImpl.cpp in Sources */,
+				710350192482B71000FED5C5 /* SecureStreamSocket.cpp in Sources */,
+				7103501A2482B71000FED5C5 /* cpu.cpp in Sources */,
+				7103501B2482B71000FED5C5 /* imgui_impl_opengl3.cpp in Sources */,
+				7103501C2482B71000FED5C5 /* NamedMutex.cpp in Sources */,
+				7103501D2482B71000FED5C5 /* ioapi.c in Sources */,
+				7103501E2482B71000FED5C5 /* HTTPServerResponse.cpp in Sources */,
+				7103501F2482B71000FED5C5 /* kthread.cpp in Sources */,
+				710350202482B71000FED5C5 /* SocketNotifier.cpp in Sources */,
+				710350212482B71000FED5C5 /* kunixsocket.cpp in Sources */,
+				710350222482B71000FED5C5 /* hard_memory.cpp in Sources */,
+				710350232482B71000FED5C5 /* common_mmx.cpp in Sources */,
+				710350242482B71000FED5C5 /* KeyPair.cpp in Sources */,
+				710350252482B71000FED5C5 /* PollSet.cpp in Sources */,
+				710350262482B71000FED5C5 /* recorder.cpp in Sources */,
+				710350272482B71000FED5C5 /* memory64.cpp in Sources */,
+				710350282482B71000FED5C5 /* Subsystem.cpp in Sources */,
+				710350292482B71000FED5C5 /* testMMX.cpp in Sources */,
+				7103502A2482B71000FED5C5 /* HTTPSClientSession.cpp in Sources */,
+				7103502B2482B71000FED5C5 /* HTTPNTLMCredentials.cpp in Sources */,
+				7103502C2482B71000FED5C5 /* OptionSet.cpp in Sources */,
+				7103502D2482B71000FED5C5 /* NullChannel.cpp in Sources */,
+				7103502E2482B71000FED5C5 /* JSONString.cpp in Sources */,
+				7103502F2482B71000FED5C5 /* mztools.c in Sources */,
+				710350302482B71000FED5C5 /* Validator.cpp in Sources */,
+				710350312482B71000FED5C5 /* threadedMainloop.cpp in Sources */,
+				710350322482B71000FED5C5 /* Token.cpp in Sources */,
+				710350332482B71000FED5C5 /* SocketAddressImpl.cpp in Sources */,
+				710350342482B71000FED5C5 /* bufferaccess.cpp in Sources */,
+				710350352482B71000FED5C5 /* uiSettings.cpp in Sources */,
+				710350362482B71000FED5C5 /* SystemConfiguration.cpp in Sources */,
+				710350372482B71000FED5C5 /* DigestStream.cpp in Sources */,
+				710350382482B71000FED5C5 /* RefCountedObject.cpp in Sources */,
+				710350392482B71000FED5C5 /* HexBinaryDecoder.cpp in Sources */,
+				7103503A2482B71000FED5C5 /* pcre_version.c in Sources */,
+				7103503B2482B71000FED5C5 /* HTTPBasicCredentials.cpp in Sources */,
+				7103503C2482B71000FED5C5 /* devtty.cpp in Sources */,
+				7103503D2482B71000FED5C5 /* SSLManager.cpp in Sources */,
+				7103503E2482B71000FED5C5 /* DirectoryWatcher.cpp in Sources */,
+				7103503F2482B71000FED5C5 /* StreamChannel.cpp in Sources */,
+				710350402482B71000FED5C5 /* HTTPResponse.cpp in Sources */,
+				710350412482B71000FED5C5 /* fszipopennode.cpp in Sources */,
+				710350422482B71000FED5C5 /* StreamTokenizer.cpp in Sources */,
+				710350432482B71000FED5C5 /* FTPStreamFactory.cpp in Sources */,
+				710350442482B71000FED5C5 /* Ascii.cpp in Sources */,
+				710350452482B71000FED5C5 /* HTTPServerConnectionFactory.cpp in Sources */,
+				710350462482B71000FED5C5 /* NTPPacket.cpp in Sources */,
+				710350472482B71000FED5C5 /* fsopennode.cpp in Sources */,
+				710350482482B71000FED5C5 /* zutil.c in Sources */,
+				710350492482B71000FED5C5 /* sdlwindows.cpp in Sources */,
+				7103504A2482B71000FED5C5 /* x64Data.cpp in Sources */,
+				7103504B2482B71000FED5C5 /* yesNoDlg.cpp in Sources */,
+				7103504C2482B71000FED5C5 /* TimedNotificationQueue.cpp in Sources */,
+				7103504D2482B71000FED5C5 /* HTTPCookie.cpp in Sources */,
+				7103504E2482B71000FED5C5 /* fsfilenode.cpp in Sources */,
+				7103504F2482B71000FED5C5 /* player.cpp in Sources */,
+				710350502482B71000FED5C5 /* TaskManager.cpp in Sources */,
+				710350512482B71000FED5C5 /* DNS.cpp in Sources */,
+				710350522482B71000FED5C5 /* normal_strings.cpp in Sources */,
+				710350532482B71000FED5C5 /* ksignal.cpp in Sources */,
+				710350542482B71000FED5C5 /* common_bit.cpp in Sources */,
+				710350552482B71000FED5C5 /* unzipDlg.cpp in Sources */,
+				710350562482B71000FED5C5 /* MailRecipient.cpp in Sources */,
+				710350572482B71000FED5C5 /* PrivateKeyFactory.cpp in Sources */,
+				710350582482B71000FED5C5 /* CertificateHandlerFactoryMgr.cpp in Sources */,
+				710350592482B71000FED5C5 /* UUIDGenerator.cpp in Sources */,
+				7103505A2482B71000FED5C5 /* adler32.c in Sources */,
+				7103505B2482B71000FED5C5 /* NTPEventArgs.cpp in Sources */,
+				7103505C2482B71000FED5C5 /* AtomicCounter.cpp in Sources */,
+				7103505D2482B71000FED5C5 /* UTF16Encoding.cpp in Sources */,
+				7103505E2482B71000FED5C5 /* MultipartReader.cpp in Sources */,
+				7103505F2482B71000FED5C5 /* meminfo.cpp in Sources */,
+				710350602482B71000FED5C5 /* pcre_globals.c in Sources */,
+				710350612482B71000FED5C5 /* soft_no_page.cpp in Sources */,
+				710350622482B71000FED5C5 /* Var.cpp in Sources */,
+				710350632482B71000FED5C5 /* Application.cpp in Sources */,
+				710350642482B71000FED5C5 /* installView.cpp in Sources */,
+				710350652482B71000FED5C5 /* SecureSMTPClientSession.cpp in Sources */,
+				710350662482B71000FED5C5 /* IntValidator.cpp in Sources */,
+				710350672482B71000FED5C5 /* fszipnode.cpp in Sources */,
+				710350682482B71000FED5C5 /* imgui.cpp in Sources */,
+				710350692482B71000FED5C5 /* DateTimeFormatter.cpp in Sources */,
+				7103506A2482B71000FED5C5 /* Hash.cpp in Sources */,
+				7103506B2482B71000FED5C5 /* HTTPSStreamFactory.cpp in Sources */,
+				7103506C2482B71000FED5C5 /* ByteOrder.cpp in Sources */,
+				7103506D2482B71000FED5C5 /* Utility.cpp in Sources */,
+				7103506E2482B71000FED5C5 /* Channel.cpp in Sources */,
+				7103506F2482B71000FED5C5 /* pcre_ord2utf8.c in Sources */,
+				710350702482B71000FED5C5 /* soft_rw_page.cpp in Sources */,
+				710350712482B71000FED5C5 /* DatagramSocketImpl.cpp in Sources */,
+				710350722482B71000FED5C5 /* PipeImpl.cpp in Sources */,
+				710350732482B71000FED5C5 /* baseView.cpp in Sources */,
+				710350742482B71000FED5C5 /* Pipe.cpp in Sources */,
+				710350752482B71000FED5C5 /* FileStream.cpp in Sources */,
+				710350762482B71000FED5C5 /* Timespan.cpp in Sources */,
+				710350772482B71000FED5C5 /* WebSocket.cpp in Sources */,
+				710350782482B71000FED5C5 /* BinaryWriter.cpp in Sources */,
+				710350792482B71000FED5C5 /* LineEndingConverter.cpp in Sources */,
+				7103507A2482B71000FED5C5 /* ECKeyImpl.cpp in Sources */,
+				7103507B2482B71000FED5C5 /* soft_memory.cpp in Sources */,
+				7103507C2482B71000FED5C5 /* mainloop.cpp in Sources */,
+				7103507D2482B71000FED5C5 /* ECKey.cpp in Sources */,
+				7103507E2482B71000FED5C5 /* AbstractConfiguration.cpp in Sources */,
+				7103507F2482B71000FED5C5 /* PrivateKeyPassphraseHandler.cpp in Sources */,
+				710350802482B71000FED5C5 /* instructions.cpp in Sources */,
+				710350812482B71000FED5C5 /* UTF8Encoding.cpp in Sources */,
+				710350822482B71000FED5C5 /* RSADigestEngine.cpp in Sources */,
+				710350832482B71000FED5C5 /* fpu.cpp in Sources */,
+				710350842482B71000FED5C5 /* String.cpp in Sources */,
+				710350852482B71000FED5C5 /* MD5Engine.cpp in Sources */,
+				710350862482B71000FED5C5 /* platform.cpp in Sources */,
+				710350872482B71000FED5C5 /* NotificationQueue.cpp in Sources */,
+				710350882482B71000FED5C5 /* CipherKey.cpp in Sources */,
+				710350892482B71000FED5C5 /* Context.cpp in Sources */,
+				7103508A2482B71000FED5C5 /* URIStreamFactory.cpp in Sources */,
+				7103508B2482B71000FED5C5 /* InflatingStream.cpp in Sources */,
+				7103508C2482B71000FED5C5 /* appbar.cpp in Sources */,
+				7103508D2482B71000FED5C5 /* ECDSADigestEngine.cpp in Sources */,
+				7103508E2482B71000FED5C5 /* UnicodeConverter.cpp in Sources */,
+				7103508F2482B71000FED5C5 /* Session.cpp in Sources */,
+				710350902482B71000FED5C5 /* appFile.cpp in Sources */,
+				710350912482B71000FED5C5 /* common_fpu.cpp in Sources */,
+				710350922482B71000FED5C5 /* MultipartWriter.cpp in Sources */,
+				710350932482B71000FED5C5 /* AbstractObserver.cpp in Sources */,
+				710350942482B71000FED5C5 /* cached-powers.cc in Sources */,
+				710350952482B71000FED5C5 /* NestedDiagnosticContext.cpp in Sources */,
+				710350962482B71000FED5C5 /* HTTPChunkedStream.cpp in Sources */,
+				710350972482B71000FED5C5 /* ServerApplication.cpp in Sources */,
+				710350982482B71000FED5C5 /* SyslogChannel.cpp in Sources */,
+				710350992482B71000FED5C5 /* LogStream.cpp in Sources */,
+				7103509A2482B71000FED5C5 /* DateTimeParser.cpp in Sources */,
+				7103509B2482B71000FED5C5 /* QuotedPrintableEncoder.cpp in Sources */,
+				7103509C2482B71000FED5C5 /* pcre_tables.c in Sources */,
+				7103509D2482B71000FED5C5 /* pcre_get.c in Sources */,
+				7103509E2482B71000FED5C5 /* TCPServer.cpp in Sources */,
+				7103509F2482B71000FED5C5 /* crc32.c in Sources */,
+				710350A02482B71000FED5C5 /* OptionProcessor.cpp in Sources */,
+				710350A12482B71000FED5C5 /* glext.cpp in Sources */,
+				710350A22482B71000FED5C5 /* trees.c in Sources */,
+				710350A32482B71000FED5C5 /* EventChannel.cpp in Sources */,
+				710350A42482B71000FED5C5 /* spinnerControl.cpp in Sources */,
+				710350A52482B71000FED5C5 /* pcre_dfa_exec.c in Sources */,
+				710350A62482B71000FED5C5 /* Net.cpp in Sources */,
+				710350A72482B71000FED5C5 /* pcre_newline.c in Sources */,
+				710350A82482B71000FED5C5 /* AbstractHTTPRequestHandler.cpp in Sources */,
+				710350A92482B71000FED5C5 /* HashStatistic.cpp in Sources */,
+				710350AA2482B71000FED5C5 /* NotificationCenter.cpp in Sources */,
+				710350AB2482B71000FED5C5 /* log.cpp in Sources */,
+				710350AC2482B71000FED5C5 /* Timer.cpp in Sources */,
+				710350AD2482B71000FED5C5 /* ErrorHandler.cpp in Sources */,
+				710350AE2482B71000FED5C5 /* Latin2Encoding.cpp in Sources */,
+				710350AF2482B71000FED5C5 /* ICMPSocketImpl.cpp in Sources */,
+				710350B02482B71000FED5C5 /* TCPServerParams.cpp in Sources */,
+				710350B12482B71000FED5C5 /* common_sse.cpp in Sources */,
+				710350B22482B71000FED5C5 /* EventArgs.cpp in Sources */,
+				710350B32482B71000FED5C5 /* ServerSocket.cpp in Sources */,
+				710350B42482B71000FED5C5 /* RSAKey.cpp in Sources */,
+				710350B52482B71000FED5C5 /* inffast.c in Sources */,
+				710350B62482B71000FED5C5 /* ConsoleChannel.cpp in Sources */,
+				710350B72482B71000FED5C5 /* soft_copy_on_write_page.cpp in Sources */,
+				710350B82482B71000FED5C5 /* glew.cpp in Sources */,
+				710350B92482B71000FED5C5 /* VerificationErrorArgs.cpp in Sources */,
+				710350BA2482B71000FED5C5 /* fs.cpp in Sources */,
+				710350BB2482B71000FED5C5 /* OptionException.cpp in Sources */,
+				710350BC2482B71000FED5C5 /* POP3ClientSession.cpp in Sources */,
+				710350BD2482B71000FED5C5 /* sdlcallback.cpp in Sources */,
+				710350BE2482B71000FED5C5 /* SocketStream.cpp in Sources */,
+				710350BF2482B71000FED5C5 /* RSACipherImpl.cpp in Sources */,
+				710350C02482B71000FED5C5 /* soft_ondemand_page.cpp in Sources */,
+				710350C12482B71000FED5C5 /* SecureServerSocket.cpp in Sources */,
+				710350C22482B71000FED5C5 /* HTTPSessionFactory.cpp in Sources */,
+				710350C32482B71000FED5C5 /* CipherFactory.cpp in Sources */,
+				710350C42482B71000FED5C5 /* appChooserDlg.cpp in Sources */,
+				710350C52482B71000FED5C5 /* double-conversion.cc in Sources */,
+				710350C62482B71000FED5C5 /* PKCS12Container.cpp in Sources */,
+				710350C72482B71000FED5C5 /* kfiledescriptor.cpp in Sources */,
+				710350C82482B71000FED5C5 /* FilePartSource.cpp in Sources */,
+				710350C92482B71000FED5C5 /* Runnable.cpp in Sources */,
+				710350CA2482B71000FED5C5 /* Formatter.cpp in Sources */,
+				710350CB2482B71000FED5C5 /* soft_wo_page.cpp in Sources */,
+				710350CC2482B71000FED5C5 /* esopengl.c in Sources */,
+				710350CD2482B71000FED5C5 /* configFile.cpp in Sources */,
+				710350CE2482B71000FED5C5 /* FTPClientSession.cpp in Sources */,
+				710350CF2482B71000FED5C5 /* readIcons.cpp in Sources */,
+				710350D02482B71000FED5C5 /* PartSource.cpp in Sources */,
+				710350D12482B71000FED5C5 /* uihelper.cpp in Sources */,
+				710350D22482B71000FED5C5 /* FileStreamFactory.cpp in Sources */,
+				710350D32482B71000FED5C5 /* pcre_fullinfo.c in Sources */,
+				710350D42482B71000FED5C5 /* imguitinyfiledialogs.cpp in Sources */,
+				710350D52482B71000FED5C5 /* Clock.cpp in Sources */,
+				710350D62482B71000FED5C5 /* winedrv.cpp in Sources */,
+				710350D72482B71000FED5C5 /* CertificateHandlerFactory.cpp in Sources */,
+				710350D82482B71000FED5C5 /* LogFile.cpp in Sources */,
+				710350D92482B71000FED5C5 /* devdsp.cpp in Sources */,
+				710350DA2482B71000FED5C5 /* globalSettings.cpp in Sources */,
+				710350DB2482B71000FED5C5 /* NetException.cpp in Sources */,
+				710350DC2482B71000FED5C5 /* UUID.cpp in Sources */,
+				710350DD2482B71000FED5C5 /* Semaphore.cpp in Sources */,
+				710350DE2482B71000FED5C5 /* mesagl.c in Sources */,
+				710350DF2482B71000FED5C5 /* Logger.cpp in Sources */,
+				710350E02482B71000FED5C5 /* Configurable.cpp in Sources */,
+				710350E12482B71000FED5C5 /* PriorityNotificationQueue.cpp in Sources */,
+				710350E22482B71000FED5C5 /* NumericString.cpp in Sources */,
+				710350E32482B71000FED5C5 /* baseDlg.cpp in Sources */,
+				710350E42482B71000FED5C5 /* Windows1252Encoding.cpp in Sources */,
+				710350E52482B71000FED5C5 /* fsnode.cpp in Sources */,
+				710350E62482B71000FED5C5 /* HTTPSession.cpp in Sources */,
+				710350E72482B71000FED5C5 /* fileutils.cpp in Sources */,
+				710350E82482B71000FED5C5 /* ThreadPool.cpp in Sources */,
+				710350E92482B71000FED5C5 /* StreamSocketImpl.cpp in Sources */,
+				710350EA2482B71000FED5C5 /* Base64Encoder.cpp in Sources */,
+				710350EB2482B71000FED5C5 /* loader.cpp in Sources */,
+				710350EC2482B71000FED5C5 /* MailStream.cpp in Sources */,
+				710350ED2482B71000FED5C5 /* EscapeHTMLStream.cpp in Sources */,
+				710350EE2482B71000FED5C5 /* ICMPPacket.cpp in Sources */,
+				710350EF2482B71000FED5C5 /* Manifest.cpp in Sources */,
+				710350F02482B71000FED5C5 /* glMarshalVertex.cpp in Sources */,
+				710350F12482B71000FED5C5 /* LoggingConfigurator.cpp in Sources */,
+				710350F22482B71000FED5C5 /* SMTPChannel.cpp in Sources */,
+				710350F32482B71000FED5C5 /* Task.cpp in Sources */,
+				710350F42482B71000FED5C5 /* Windows1251Encoding.cpp in Sources */,
+				710350F52482B71000FED5C5 /* NumberFormatter.cpp in Sources */,
+				710350F62482B71000FED5C5 /* inflate.c in Sources */,
+				710350F72482B71000FED5C5 /* pcre_chartables.c in Sources */,
+				710350F82482B71000FED5C5 /* boxedApp.cpp in Sources */,
+				710350F92482B71000FED5C5 /* compress.c in Sources */,
+				710350FA2482B71000FED5C5 /* TextConverter.cpp in Sources */,
+				710350FB2482B71000FED5C5 /* ActiveDispatcher.cpp in Sources */,
+				710350FC2482B71000FED5C5 /* DataURIStream.cpp in Sources */,
+				710350FD2482B71000FED5C5 /* Stopwatch.cpp in Sources */,
+				710350FE2482B71000FED5C5 /* ICMPClient.cpp in Sources */,
+				710350FF2482B71000FED5C5 /* soft_invalid_page.cpp in Sources */,
+				710351002482B71000FED5C5 /* lazyFlags.cpp in Sources */,
+				710351012482B71000FED5C5 /* normal_shift.cpp in Sources */,
+				710351022482B71000FED5C5 /* platformhelper.cpp in Sources */,
+				710351032482B71000FED5C5 /* pugixml.cpp in Sources */,
+				710351042482B71000FED5C5 /* unzip.c in Sources */,
+				710351052482B71000FED5C5 /* X509Certificate.cpp in Sources */,
+				710351062482B71000FED5C5 /* Process.cpp in Sources */,
+				710351072482B71000FED5C5 /* HexBinaryEncoder.cpp in Sources */,
+				710351082482B71000FED5C5 /* Random.cpp in Sources */,
+				710351092482B71000FED5C5 /* InvalidCertificateHandler.cpp in Sources */,
+				7103510A2482B71000FED5C5 /* HTTPServerRequest.cpp in Sources */,
+				7103510B2482B71000FED5C5 /* crc.cpp in Sources */,
+				7103510C2482B71000FED5C5 /* devsequencer.cpp in Sources */,
+				7103510D2482B71000FED5C5 /* inftrees.c in Sources */,
+				7103510E2482B71000FED5C5 /* kprocess.cpp in Sources */,
+				7103510F2482B71000FED5C5 /* FIFOBufferStream.cpp in Sources */,
+				710351102482B71000FED5C5 /* SecureStreamSocketImpl.cpp in Sources */,
+				710351112482B71000FED5C5 /* TCPServerConnection.cpp in Sources */,
+				710351122482B71000FED5C5 /* PatternFormatter.cpp in Sources */,
+				710351132482B71000FED5C5 /* RemoteSyslogListener.cpp in Sources */,
+				710351142482B71000FED5C5 /* NamedEvent.cpp in Sources */,
+				710351152482B71000FED5C5 /* ConsoleCertificateHandler.cpp in Sources */,
+				710351162482B71000FED5C5 /* RegularExpression.cpp in Sources */,
+				710351172482B71000FED5C5 /* FileChannel.cpp in Sources */,
+				710351182482B71000FED5C5 /* ThreadTarget.cpp in Sources */,
+				710351192482B71000FED5C5 /* MD4Engine.cpp in Sources */,
+				7103511A2482B71000FED5C5 /* Mutex.cpp in Sources */,
+				7103511B2482B71000FED5C5 /* HTTPServerRequestImpl.cpp in Sources */,
+				7103511C2482B71000FED5C5 /* HTTPAuthenticationParams.cpp in Sources */,
+				7103511D2482B71000FED5C5 /* MulticastSocket.cpp in Sources */,
+				7103511E2482B71000FED5C5 /* normalCPU.cpp in Sources */,
+				7103511F2482B71000FED5C5 /* StreamConverter.cpp in Sources */,
+				710351202482B71000FED5C5 /* Condition.cpp in Sources */,
+				710351212482B71000FED5C5 /* DigestEngine.cpp in Sources */,
+				710351222482B71000FED5C5 /* HTTPSSessionInstantiator.cpp in Sources */,
+				710351232482B71000FED5C5 /* glfunctions_ext3.cpp in Sources */,
+				710351242482B71000FED5C5 /* IPAddress.cpp in Sources */,
+				710351252482B71000FED5C5 /* listView.cpp in Sources */,
+				710351262482B71000FED5C5 /* LocalDateTime.cpp in Sources */,
+				710351272482B71000FED5C5 /* HTTPRequestHandler.cpp in Sources */,
+				710351282482B71000FED5C5 /* soft_ram.cpp in Sources */,
+				710351292482B71000FED5C5 /* srcgen.cpp in Sources */,
+				7103512A2482B71000FED5C5 /* fsvirtualnode.cpp in Sources */,
+				7103512B2482B71000FED5C5 /* Timer.cpp in Sources */,
+				7103512C2482B71000FED5C5 /* ConfigurationView.cpp in Sources */,
+				7103512D2482B71000FED5C5 /* CipherImpl.cpp in Sources */,
+				7103512E2482B71000FED5C5 /* SignalHandler.cpp in Sources */,
+				7103512F2482B71000FED5C5 /* HTTPRequestHandlerFactory.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -6070,6 +7225,119 @@
 			};
 			name = Release;
 		};
+		7103513E2482B71000FED5C5 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
+				CODE_SIGN_ENTITLEMENTS = "Boxedwine/Boxedwine-Automation.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					SIMDE_NO_NATIVE,
+					BOXEDWINE_HAS_SETJMP,
+					BOXEDWINE_64,
+					BOXEDWINE_ZLIB,
+					"SDL2=1",
+					BOXEDWINE_64BIT_MMU,
+					"GLH=<SDL_opengl.h>",
+					BOXEDWINE_OPENGL_SDL,
+					BOXEDWINE_GLHANDLE_ARB_POINTER,
+					BOXEDWINE_MULTI_THREADED,
+					BOXEDWINE_X64,
+					POCO_OS_FAMILY_UNIX,
+					POCO_UTIL_NO_XMLCONFIGURATION,
+					POCO_UTIL_NO_JSONCONFIGURATION,
+					BOXEDWINE_X64_DEBUG_NO_EXCEPTIONS,
+					BOXEDWINE_POSIX,
+					BOXEDWINE_UI_LAUNCH_IN_PROCESS,
+					BOXEDWINE_RECORDER,
+				);
+				HEADER_SEARCH_PATHS = "";
+				INFOPLIST_FILE = "BoxedwineAutomationX64-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"\"${SRCROOT}/Pods/OpenSSL-Universal/macos/lib\"",
+					"$(PROJECT_DIR)/Pods/OpenSSL-Universal/macos/lib",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 10.15;
+				OTHER_CPLUSPLUSFLAGS = "$(OTHER_CFLAGS)";
+				PRODUCT_BUNDLE_IDENTIFIER = org.boxedwine;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SYSTEM_HEADER_SEARCH_PATHS = (
+					"$(SRCROOT)/../../../lib/glew/include",
+					"$(SRCROOT)/../../../lib/imgui",
+					"$(SRCROOT)/../../../lib/sdl2/include",
+					"$(SRCROOT)/../../../lib/poco/Net/include",
+					"$(SRCROOT)/../../../lib/poco/Util/include",
+					"$(SRCROOT)/../../../lib/poco/Foundation/include",
+					"$(SRCROOT)/../../../lib/poco/NetSSL_OpenSSL/include",
+					"$(SRCROOT)/../../../lib/poco/Crypto/include",
+					"${SRCROOT}/Pods/Headers/Public/OpenSSL-Universal",
+				);
+			};
+			name = Debug;
+		};
+		7103513F2482B71000FED5C5 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
+				CODE_SIGN_ENTITLEMENTS = "Boxedwine/Boxedwine-Automation.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					SIMDE_NO_NATIVE,
+					BOXEDWINE_HAS_SETJMP,
+					BOXEDWINE_64,
+					BOXEDWINE_ZLIB,
+					"SDL2=1",
+					BOXEDWINE_64BIT_MMU,
+					"GLH=<SDL_opengl.h>",
+					BOXEDWINE_OPENGL_SDL,
+					BOXEDWINE_GLHANDLE_ARB_POINTER,
+					BOXEDWINE_MULTI_THREADED,
+					BOXEDWINE_X64,
+					POCO_OS_FAMILY_UNIX,
+					POCO_UTIL_NO_XMLCONFIGURATION,
+					POCO_UTIL_NO_JSONCONFIGURATION,
+					BOXEDWINE_POSIX,
+					BOXEDWINE_UI_LAUNCH_IN_PROCESS,
+					BOXEDWINE_RECORDER,
+				);
+				HEADER_SEARCH_PATHS = "";
+				INFOPLIST_FILE = "BoxedwineAutomationX64-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"\"${SRCROOT}/Pods/OpenSSL-Universal/macos/lib\"",
+					"$(PROJECT_DIR)/Pods/OpenSSL-Universal/macos/lib",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 10.15;
+				OTHER_CPLUSPLUSFLAGS = "$(OTHER_CFLAGS)";
+				PRODUCT_BUNDLE_IDENTIFIER = org.boxedwine;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SYSTEM_HEADER_SEARCH_PATHS = (
+					"$(SRCROOT)/../../../lib/glew/include",
+					"$(SRCROOT)/../../../lib/imgui",
+					"$(SRCROOT)/../../../lib/sdl2/include",
+					"$(SRCROOT)/../../../lib/poco/Net/include",
+					"$(SRCROOT)/../../../lib/poco/Util/include",
+					"$(SRCROOT)/../../../lib/poco/Foundation/include",
+					"$(SRCROOT)/../../../lib/poco/NetSSL_OpenSSL/include",
+					"$(SRCROOT)/../../../lib/poco/Crypto/include",
+					"${SRCROOT}/Pods/Headers/Public/OpenSSL-Universal",
+				);
+			};
+			name = Release;
+		};
 		71222B272435140300CDBABD /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -6474,6 +7742,15 @@
 			buildConfigurations = (
 				71034F0824820DE600FED5C5 /* Debug */,
 				71034F0924820DE600FED5C5 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		7103513D2482B71000FED5C5 /* Build configuration list for PBXNativeTarget "BoxedwineAutomationX64" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7103513E2482B71000FED5C5 /* Debug */,
+				7103513F2482B71000FED5C5 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
