@@ -2,6 +2,16 @@ pipeline {
     agent { label 'linux' }
 
     stages {
+        stage('Test') {
+            steps {
+                sh '''#!/bin/bash
+                    source ~/emsdk/emsdk_env.sh
+                    cd project/emscripten
+                    sh buildtestjs.sh
+                    emrun boxedwineTest.html
+                '''
+            }
+        }
         stage('Build') {
             steps {
                sh '''#!/bin/bash
