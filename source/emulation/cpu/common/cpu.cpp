@@ -194,6 +194,23 @@ void CPU::jmp(U32 big, U32 selector, U32 offset, U32 oldEip) {
     }
 }
 
+void CPU::prepareFpuException(int code, int error) {
+    const std::shared_ptr<KProcess>& process = this->thread->process;
+
+    // blocking signals, signalfd can't handle these
+    if (process->sigActions[K_SIGSEGV].handlerAndSigAction != K_SIG_IGN && process->sigActions[K_SIGSEGV].handlerAndSigAction != K_SIG_DFL) {
+        process->sigActions[K_SIGSEGV].sigInfo[0] = K_SIGFPE;
+        process->sigActions[K_SIGSEGV].sigInfo[1] = error; // always 0?
+        process->sigActions[K_SIGSEGV].sigInfo[2] = code;
+        process->sigActions[K_SIGSEGV].sigInfo[3] = 0; // address
+        process->sigActions[K_SIGSEGV].sigInfo[4] = 16; // trap #, TRAP_x86_ARITHTRAP
+        this->thread->runSignal(K_SIGSEGV, 13, error);
+    } else {
+        CPU* cpu = this;
+        this->walkStack(this->eip.u32, EBP, 2);
+        kpanic("unhandled exception: code=%d error=%d", code, error);
+    }
+}
 
 void CPU::prepareException(int code, int error) {
     const std::shared_ptr<KProcess>& process = this->thread->process;
@@ -209,14 +226,14 @@ void CPU::prepareException(int code, int error) {
     } else if (code==EXCEPTION_DIVIDE && error == 0 && (process->sigActions[K_SIGFPE].handlerAndSigAction!=K_SIG_IGN && process->sigActions[K_SIGFPE].handlerAndSigAction!=K_SIG_DFL)) {
         process->sigActions[K_SIGFPE].sigInfo[0] = K_SIGFPE;		
         process->sigActions[K_SIGFPE].sigInfo[1] = error;
-        process->sigActions[K_SIGFPE].sigInfo[2] = 0;
+        process->sigActions[K_SIGFPE].sigInfo[2] = K_FPE_INTDIV;
         process->sigActions[K_SIGFPE].sigInfo[3] = this->eip.u32; // address
         process->sigActions[K_SIGFPE].sigInfo[4] = 0; // trap #, TRAP_x86_DIVIDE
         this->thread->runSignal(K_SIGFPE, 0, error);
     } else if (code==EXCEPTION_DIVIDE && error == 1 && (process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_IGN && process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_DFL)) {
-        process->sigActions[K_SIGSEGV].sigInfo[0] = K_SIGSEGV;		
+        process->sigActions[K_SIGSEGV].sigInfo[0] = K_SIGFPE;
         process->sigActions[K_SIGSEGV].sigInfo[1] = 0;
-        process->sigActions[K_SIGSEGV].sigInfo[2] = 0;
+        process->sigActions[K_SIGSEGV].sigInfo[2] = K_FPE_INTOVF;
         process->sigActions[K_SIGSEGV].sigInfo[3] = this->eip.u32; // address
         process->sigActions[K_SIGSEGV].sigInfo[4] = 4; // trap #, TRAP_x86_OFLOW
         this->thread->runSignal(K_SIGSEGV, 4, error);

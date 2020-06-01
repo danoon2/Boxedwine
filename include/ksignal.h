@@ -62,6 +62,18 @@
 #define K_SIGSYS          31
 #define K_SIGUNUSED       31
 
+// On 32-bit Debian 10
+// / include / i386 - linux - gnu / bits / siginfo - consts.h:  FPE_INTDIV = 1,		/* Integer divide by zero.  */
+// / include / asm - generic / siginfo.h : #define FPE_INTDIV	1	/* integer divide by zero */
+
+#define K_FPE_INTDIV	1	/* integer divide by zero */
+#define K_FPE_INTOVF	2	/* integer overflow */
+#define K_FPE_FLTDIV	3	/* floating point divide by zero */
+#define K_FPE_FLTOVF	4	/* floating point overflow */
+#define K_FPE_FLTUND	5	/* floating point underflow */
+#define K_FPE_FLTRES	6	/* floating point inexact result */
+#define K_FPE_FLTINV	7	/* floating point invalid operation */
+
 #define K_SS_ONSTACK 1
 #define K_SS_DISABLE 4
 

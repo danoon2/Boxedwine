@@ -658,11 +658,11 @@ U64 x64CPU::handleAccessException(U64 rip, U64 address, bool readAddress, U64 rs
     }
 }
 
-U64 x64CPU::handleDivByZero(std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo) {
+U64 x64CPU::handleFpuException(int code, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo) {
     if (doSyncFrom) {
         doSyncFrom(NULL);
     }
-    this->prepareException(EXCEPTION_DIVIDE, 0);
+    this->prepareFpuException(code);
     if (doSyncTo) {
         doSyncTo(NULL);
     }
