@@ -107,9 +107,12 @@ VERSION=$(sed 's/\..*//' /etc/debian_version)
 echo "Debian Version = $VERSION"
 if [ $VERSION -gt 9 ]
 then
-    do_build 5.0 patch wine5-lz.patch
-    do_build 4.0
-    do_build 3.1
+# f2e5b8070776268912e1886d4516d7ddec6969fc
+# kernel32: Use the Get/SetComputerName functions from kernelbase. 
+# reverted because on slower systems it will fail to create a window, not sure why
+    do_build 5.0 patch wine5-lz.patch revert f2e5b8070776268912e1886d4516d7ddec6969fc
+#    do_build 4.0
+#    do_build 3.1
 else
     do_build 2.0 wglext
 
