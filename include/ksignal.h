@@ -101,7 +101,7 @@
 #define K_POLL_PRI        5   /* high priority input available */
 #define K_POLL_HUP        6   /* device disconnected */
 
-#define CLD_EXITED 1
+#define K_CLD_EXITED 1
 
 U32 syscall_signalstack(U32 ss, U32 oss);
 U32 syscall_signalfd4(S32 fildes, U32 mask, U32 maskSize, U32 flags);
