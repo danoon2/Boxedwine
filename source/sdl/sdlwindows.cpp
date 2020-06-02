@@ -390,6 +390,7 @@ int contextCount;
 bool sdlWindowIsGL;
 static bool windowIsHidden;
 static U32 timeToHideUI;
+static U32 timeWindowWasCreated;
 static std::string delayedCreateWindowMsg; // the ui will watch for this message
 
 static void destroySDL2(KThread* thread) {
@@ -399,6 +400,7 @@ static void destroySDL2(KThread* thread) {
     }
 #endif
     timeToHideUI = 0;
+    timeWindowWasCreated = 0;
     windowIsHidden = false;
     delayedCreateWindowMsg = "";
     {
@@ -663,6 +665,7 @@ U32 sdlCreateOpenglWindow_main_thread(KThread* thread, Wnd* wnd, int major, int 
     fflush(stdout);
     sdlWindow = SDL_CreateWindow("OpenGL Window", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, cx, cy, sdlFlags);
     windowIsHidden = true;    
+    timeWindowWasCreated = KSystem::getMilliesSinceStart();
 
     if (!sdlWindow) {
         fprintf(stderr, "Couldn't create window: %s\n", SDL_GetError());
@@ -681,7 +684,8 @@ U32 sdlCreateOpenglWindow_main_thread(KThread* thread, Wnd* wnd, int major, int 
 }
 #include "../../tools/opengl/gldef.h"
 void sdlPreOpenGLCall(U32 index) {
-    if (index == XSwapBuffer || index == Finish || index == Flush) {
+    // The Breakdown requires this extra time check, I'm not sure what call it uses to actually draw on the screen
+    if (index == XSwapBuffer || index == Finish || index == Flush || (windowIsHidden && timeWindowWasCreated + 1000 < KSystem::getMilliesSinceStart())) {
         preDrawWindow();
     }
 }
@@ -804,6 +808,7 @@ static void displayChanged(KThread* thread) {
         sdlWindow = SDL_CreateWindow("BoxedWine", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, cx, cy, flags);
         sdlRenderer = SDL_CreateRenderer(sdlWindow, -1, 0);	
         windowIsHidden = true;
+        timeWindowWasCreated = KSystem::getMilliesSinceStart();
 #else
         for (auto& n : hwndToWnd) {
             Wnd* wnd = n.second;

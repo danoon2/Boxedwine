@@ -1728,7 +1728,7 @@ U32 KProcess::exitgroup(U32 code) {
     std::shared_ptr<KProcess> parent = KSystem::getProcess(this->parentId);
     if (parent && parent->sigActions[K_SIGCHLD].handlerAndSigAction!=K_SIG_DFL) {
         if (parent->sigActions[K_SIGCHLD].handlerAndSigAction!=K_SIG_IGN) {
-            parent->signalCHLD(CLD_EXITED, this->id, this->userId, code);
+            parent->signalCHLD(K_CLD_EXITED, this->id, this->userId, code);
         }
     }
 

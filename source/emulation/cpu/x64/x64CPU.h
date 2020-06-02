@@ -76,7 +76,7 @@ public:
     void startThread();
     void wakeThreadIfWaiting();
     U64 startException(U64 address, bool readAddress, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo);
-    U64 handleDivByZero(std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo);
+    U64 handleFpuException(int code, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo);
 
     virtual void setSeg(U32 index, U32 address, U32 value);
 private:      

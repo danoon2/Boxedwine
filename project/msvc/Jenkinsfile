@@ -11,7 +11,7 @@ pipeline {
         stage('Test x64 Core') {
             steps {
                 bat "\"${env.MSBUILD}\" \"project/msvc/BoxedWine/BoxedWine.sln\" /p:Configuration=Test;Platform=x64"
-                bat "project\\msvc\\BoxedWine\\Test\\BoxedWine.exe"
+                bat "project\\msvc\\BoxedWine\\x64\\Test\\BoxedWine.exe"
             }
         }
         stage('Build') {

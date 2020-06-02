@@ -8,6 +8,7 @@
 #include "../../hardmmu/hard_memory.h"
 #include "x64CodeChunk.h"
 #include "../normal/normalCPU.h"
+#include "ksignal.h"
 
 // hard to guage the benifit, seems like 1% to 3% with quake 2 and quake 3
 bool x64CPU::hasBMI2 = true;
@@ -658,17 +659,23 @@ U64 x64CPU::handleAccessException(U64 rip, U64 address, bool readAddress, U64 rs
     }
 }
 
-U64 x64CPU::handleDivByZero(std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo) {
+U64 x64CPU::handleFpuException(int code, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo) {
     if (doSyncFrom) {
         doSyncFrom(NULL);
     }
-    this->prepareException(EXCEPTION_DIVIDE, 0);
+    if (code == K_FPE_INTDIV) {
+        this->prepareException(EXCEPTION_DIVIDE, 0);
+    } else if (code == K_FPE_INTOVF) {
+        this->prepareException(EXCEPTION_DIVIDE, 1);
+    } else {
+        this->prepareFpuException(code);
+    }
     if (doSyncTo) {
         doSyncTo(NULL);
     }
     U64 result = (U64)this->translateEip(this->eip.u32); 
     if (result==0) {
-        kpanic("x64CPU::handleDivByZero failed to translate code");
+        kpanic("x64CPU::handleFpuException failed to translate code");
     }
     return result;
 }
