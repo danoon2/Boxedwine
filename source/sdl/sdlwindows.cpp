@@ -500,7 +500,7 @@ void preDrawWindow() {
         int w = 0;
         int h = 0;
         SDL_GetWindowSize(sdlWindow, &w, &h);
-        if (w >= 320 && h >= 240) {
+        if ((w >= 320 && h >= 240) || (timeWindowWasCreated + 2000 < KSystem::getMilliesSinceStart())) {
             SDL_ShowWindow(sdlWindow);
             SDL_RaiseWindow(sdlWindow);
             windowIsHidden = false;
