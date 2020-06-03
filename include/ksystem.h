@@ -82,6 +82,8 @@ public:
 #ifdef BOXEDWINE_MULTI_THREADED
     static U32 cpuAffinityCountForApp;
 #endif
+    static U32 pollRate;
+
     static void init();
 	static void destroy();
     static U32 getNextThreadId();

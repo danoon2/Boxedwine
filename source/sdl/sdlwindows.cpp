@@ -2779,6 +2779,8 @@ void updateShutdownWindow() {
     SDL_RenderPresent(sdlShutdownRenderer);
 }
     
+static U64 lastEvent;
+
 bool handlSdlEvent(void* p) {
     SDL_Event* e=(SDL_Event*)p;
 #ifdef BOXEDWINE_RECORDER
@@ -2788,7 +2790,7 @@ bool handlSdlEvent(void* p) {
         }
         return true;
     }
-#endif
+#endif    
     if (e->type == SDL_QUIT) {
         std::shared_ptr<KProcess> p = KSystem::getProcess(10);
         if (p && !KSystem::shutingDown) {
@@ -2815,7 +2817,13 @@ bool handlSdlEvent(void* p) {
 #endif
         }
         return false;
-    } else if (e->type == SDL_MOUSEMOTION) { 
+    } else if (e->type == SDL_MOUSEMOTION) {         
+        if (KSystem::pollRate) {
+            if (lastEvent + (1000000 / KSystem::pollRate) > KSystem::getMicroCounter()) {
+                return true;
+            }
+            lastEvent = KSystem::getMicroCounter();
+        }
         BOXEDWINE_RECORDER_HANDLE_MOUSE_MOVE(e);
         if (relativeMouse) {
             if (!sdlMouseMouse((e->motion.x-screenCx/2)*rel_mouse_sensitivity/100, (e->motion.y-screenCy/2)*rel_mouse_sensitivity/100, true)) {
@@ -2833,6 +2841,14 @@ bool handlSdlEvent(void* p) {
         }
         
     } else if (e->type == SDL_MOUSEBUTTONDOWN) {
+#ifdef BOXEDWINE_MULTI_THREADED
+        if (KSystem::pollRate) {
+            while (lastEvent + (1000000 / KSystem::pollRate) > KSystem::getMicroCounter()) {
+                SDL_Delay(1);
+            }
+            lastEvent = KSystem::getMicroCounter();
+        }
+#endif
         BOXEDWINE_RECORDER_HANDLE_MOUSE_BUTTON_DOWN(e);
         if (e->button.button==SDL_BUTTON_LEFT) {
             if (!sdlMouseButton(1, 0, (relativeMouse?0:e->motion.x), (relativeMouse?0:e->motion.y)))
@@ -2845,6 +2861,14 @@ bool handlSdlEvent(void* p) {
                 onMouseButtonDown(1);
         }
     } else if (e->type == SDL_MOUSEBUTTONUP) {
+#ifdef BOXEDWINE_MULTI_THREADED
+        if (KSystem::pollRate) {
+            while (lastEvent + (1000000 / KSystem::pollRate) > KSystem::getMicroCounter()) {
+                SDL_Delay(1);
+            }
+            lastEvent = KSystem::getMicroCounter();
+        }
+#endif
         BOXEDWINE_RECORDER_HANDLE_MOUSE_BUTTON_UP(e);
         if (e->button.button==SDL_BUTTON_LEFT) {
             if (!sdlMouseButton(0, 0, (relativeMouse?0:e->motion.x), (relativeMouse?0:e->motion.y)))
@@ -2858,6 +2882,14 @@ bool handlSdlEvent(void* p) {
         }
 #ifdef SDL2
     } else if (e->type == SDL_MOUSEWHEEL) {
+#ifdef BOXEDWINE_MULTI_THREADED
+        if (KSystem::pollRate) {
+            while (lastEvent + (1000000 / KSystem::pollRate) > KSystem::getMicroCounter()) {
+                SDL_Delay(1);
+            }
+            lastEvent = KSystem::getMicroCounter();
+        }
+#endif
         // Handle up/down mouse wheel movements
         int x, y;
         SDL_GetMouseState(&x, &y);
@@ -2866,6 +2898,14 @@ bool handlSdlEvent(void* p) {
         }
 #endif
     } else if (e->type == SDL_KEYDOWN) {
+#ifdef BOXEDWINE_MULTI_THREADED
+        if (KSystem::pollRate) {
+            while (lastEvent + (1000000 / KSystem::pollRate) > KSystem::getMicroCounter()) {
+                SDL_Delay(1);
+            }
+            lastEvent = KSystem::getMicroCounter();
+        }
+#endif        
         if (!BOXEDWINE_RECORDER_HANDLE_KEY_DOWN(e)) {
             if (e->key.keysym.sym==SDLK_SCROLLOCK) {
                 KSystem::printStacks();
@@ -2890,6 +2930,14 @@ bool handlSdlEvent(void* p) {
 */
         }
     } else if (e->type == SDL_KEYUP) {
+#ifdef BOXEDWINE_MULTI_THREADED
+        if (KSystem::pollRate) {
+            while (lastEvent + (1000000 / KSystem::pollRate) > KSystem::getMicroCounter()) {
+                SDL_Delay(1);
+            }
+            lastEvent = KSystem::getMicroCounter();
+        }
+#endif
         if (!BOXEDWINE_RECORDER_HANDLE_KEY_UP(e)) {
             if (!sdlKey(e->key.keysym.sym, 0)) {
                 onKeyUp(translate(e->key.keysym.sym));

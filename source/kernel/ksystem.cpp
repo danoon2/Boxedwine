@@ -49,6 +49,7 @@ bool KSystem::useLargeAddressSpace = true;
 #ifdef BOXEDWINE_MULTI_THREADED
 U32 KSystem::cpuAffinityCountForApp = 1;
 #endif
+U32 KSystem::pollRate = DEFAULT_POLL_RATE;
 
 BOXEDWINE_CONDITION KSystem::processesCond("KSystem::processesCond");
 

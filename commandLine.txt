@@ -40,6 +40,8 @@ This will load the file system from wine.zip and write the changes to c:\root
 
 -p3 : sets the emulated cpu to be a Pentium 3 with MMX/SSE (default)
 
+-pollRate XX: XX is a number starting at 0.  This determines how fast mouse and keyboard events will be given to Wine.  The default is 40.  Setting it to 0 will make cause Boxedwine to give the events as fast as possible to Wine.
+
 -resolution WxH : Initial emulated screen size.  Default is 800x600.  This is usual for apps/games that aren't full screen and won't change the screen size themselves.
 
 -root path : Path to the file system the emulated linux environment will used

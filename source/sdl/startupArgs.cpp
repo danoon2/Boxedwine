@@ -178,6 +178,10 @@ std::vector<std::string> StartUpArgs::buildArgs() {
         args.push_back("-cpuAffinity");
         args.push_back(std::to_string(cpuAffinity));
     }
+    if (pollRate >= 0) {
+        args.push_back("-pollRate");
+        args.push_back(std::to_string(this->pollRate));
+    }
     for (auto& m : mountInfo) {
         if (m.wine) {
             args.push_back("-mount_drive");            
@@ -202,6 +206,8 @@ bool StartUpArgs::apply() {
     }
 #endif
     KSystem::pentiumLevel = this->pentiumLevel;
+    KSystem::pollRate = this->pollRate;
+
     for (U32 f=0;f<nonExecFileFullPaths.size();f++) {
         FsFileNode::nonExecFileFullPaths.insert(nonExecFileFullPaths[f]);
     }
@@ -540,6 +546,9 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
             }
         } else if (!strcmp(argv[i], "-dpiAware")) {
             dpiAware = true;
+        } else if (!strcmp(argv[i], "-pollRate")) {
+            this->pollRate = atoi(argv[i + 1]);
+            i++;
         } else if (!strcmp(argv[i], "-cpuAffinity")) {
 #ifdef BOXEDWINE_MULTI_THREADED
             this->cpuAffinity = atoi(argv[i+1]);
