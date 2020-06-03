@@ -6843,7 +6843,7 @@ void glcommon_glScissorArrayv(CPU* cpu) {
     if (!ext_glScissorArrayv)
         kpanic("ext_glScissorArrayv is NULL");
     {
-    GL_FUNC(ext_glScissorArrayv)(ARG1, ARG2, (GLint*)marshalp(cpu, 0, ARG3, 0));
+    GL_FUNC(ext_glScissorArrayv)(ARG1, ARG2, (GLint*)marshali(cpu, ARG3, ARG2*4));
     GL_LOG ("glScissorArrayv GLuint first=%d, GLsizei count=%d, const GLint* v=%.08x",ARG1,ARG2,ARG3);
     }
 }
@@ -6859,7 +6859,7 @@ void glcommon_glScissorIndexedv(CPU* cpu) {
     if (!ext_glScissorIndexedv)
         kpanic("ext_glScissorIndexedv is NULL");
     {
-    GL_FUNC(ext_glScissorIndexedv)(ARG1, (GLint*)marshalp(cpu, 0, ARG2, 0));
+    GL_FUNC(ext_glScissorIndexedv)(ARG1, (GLint*)marshali(cpu, ARG2, 4));
     GL_LOG ("glScissorIndexedv GLuint index=%d, const GLint* v=%.08x",ARG1,ARG2);
     }
 }

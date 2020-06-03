@@ -60,6 +60,10 @@
 #define marshalBacki64(cpu, address, buffer, count) {}
 
 #define marshalsz(cpu, address) (GLchar*)getPhysicalAddress(address, 0)
+#define marshalhf(cpu, address, count) (GLhalfNV*)getPhysicalAddress(address, 0)
+
+const GLchar** marshalszArray(CPU* cpu, U32 count, U32 address, U32 addressLengths);
+const GLcharARB** marshalszArrayARB(CPU* cpu, U32 count, U32 address, U32 addressLengths);
 
 #define marshalType(cpu, type, count, address) (GLvoid*)getPhysicalAddress(address, 0)
 #define marshalBackType(cpu, type, count, buffer, address) {}
@@ -158,7 +162,11 @@ void marshalBacki64(CPU* cpu, U32 address, GLint64* buffer, U32 count);
 GLuint64* marshalui64(CPU* cpu, U32 address, U32 count);
 void marshalBackui64(CPU* cpu, U32 address, GLuint64* buffer, U32 count);
 
+GLhalfNV* marshalhf(CPU* cpu, U32 address, U32 count);
+
 const GLchar* marshalsz(CPU* cpu, U32 address);
+const GLchar** marshalszArray(CPU* cpu, U32 count, U32 address, U32 addressLengths);
+const GLcharARB** marshalszArrayARB(CPU* cpu, U32 count, U32 address, U32 addressLengths);
 
 // type can be GL_UNSIGNED_BYTE, GL_BYTE, GL_2_BYTES, GL_UNSIGNED_SHORT, GL_SHORT, GL_3_BYTES, 
 // GL_4_BYTES, GL_FLOAT, GL_UNSIGNED_INT, GL_INT
