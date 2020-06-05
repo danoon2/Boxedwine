@@ -113,10 +113,8 @@ KThread::KThread(U32 id, const std::shared_ptr<KProcess>& process) :
     waitingForSignalToEndCond("KThread::waitingForSignalToEndCond"),
     waitingForSignalToEndMaskToRestore(0),
     pendingSignals(0),
-#ifdef SDL2
     glContext(0),
     currentContext(0),
-#endif
     log(false),
     waitingCond(0),
     pollCond("KThread::pollCond"),
@@ -960,7 +958,6 @@ U32 KThread::signalstack(U32 ss, U32 oss) {
     return 0;
 }
 
-#ifdef SDL2
 KThreadGlContext* KThread::getGlContextById(U32 id) {
     if (this->glContext.count(id))
         return &this->glContext[id];
@@ -978,7 +975,6 @@ void KThread::addGlContext(U32 id, void* context) {
 void KThread::removeAllGlContexts() {
     this->glContext.clear();
 }
-#endif
 
 ChangeThread::ChangeThread(KThread* thread) {
     this->savedThread = KThread::currentThread();

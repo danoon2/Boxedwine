@@ -382,7 +382,6 @@ bool StartUpArgs::apply() {
             }
         }
     }
-#ifdef SDL2
     if (this->sdlFullScreen && !this->resolutionSet) {
         U32 width = 0;
         U32 height = 0;
@@ -396,7 +395,6 @@ bool StartUpArgs::apply() {
 #endif
         }
     }
-#endif
 
     initSDL(this->screenCx, this->screenCy, this->screenBpp, this->sdlScaleX, this->sdlScaleY, this->sdlScaleQuality, this->soundEnabled, this->videoEnabled, this->sdlFullScreen);
     initWine();

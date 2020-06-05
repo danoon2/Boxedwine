@@ -366,11 +366,7 @@ static Wnd* getFirstVisibleWnd() {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(hwndToWndMutex);
     for (auto& n : hwndToWnd) {
         Wnd* wnd = n.second;
-#ifdef SDL2
         if (wnd->sdlTextureWidth || wnd->openGlContext) {
-#else
-        if (wnd->sdlSurface) {
-#endif
             return wnd;
         }
     }
@@ -379,7 +375,6 @@ static Wnd* getFirstVisibleWnd() {
 
 static U32 nextGlId = 1;
 
-#ifdef SDL2
 SDL_Window *sdlWindow;
 SDL_Renderer *sdlRenderer;
 SDL_Window* sdlShutdownWindow;
@@ -416,13 +411,11 @@ static void destroySDL2(KThread* thread) {
         }
     }
     if (!thread) {
-#ifdef SDL2
         // :TODO: should probably store all context in this file instead of in the threads
         if (sdlCurrentContext) {
             SDL_GL_DeleteContext(sdlCurrentContext);
             contextCount=0;
         }
-#endif
     } else {
         if (contextCount) {
             contextCount++; // prevent it from calling displayChanged
@@ -435,7 +428,6 @@ static void destroySDL2(KThread* thread) {
     if (contextCount) {
         kwarn("Not all OpenGL contexts were cleaning destroyed");
     }
-#ifdef SDL2
     if (sdlRenderer) {
         SDL_DestroyRenderer(sdlRenderer);
         sdlRenderer = 0;
@@ -452,7 +444,6 @@ static void destroySDL2(KThread* thread) {
         SDL_DestroyWindow(sdlShutdownWindow);
         sdlShutdownWindow = NULL;
     }
-#endif
     if (sdlWindow) {
         SDL_DestroyWindow(sdlWindow);
         sdlWindow = 0;
@@ -460,16 +451,11 @@ static void destroySDL2(KThread* thread) {
     }   
     contextCount = 0;
 }
-#else
-SDL_Surface* surface;
-#endif
 
 void destroySDL() {
     {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(sdlMutex);
-#ifdef SDL2
         destroySDL2(NULL);
-#endif
         for (auto& n : cursors) {
             SDL_FreeCursor(n.second);
         }
@@ -515,7 +501,6 @@ void loadExtensions();
 #endif
 
 void sdlDeleteContext(KThread* thread, U32 contextId) {    
-#ifdef SDL2
     KThreadGlContext* threadContext = thread->getGlContextById(contextId);
     if (threadContext && threadContext->context) {
         SDL_GL_DeleteContext(threadContext->context);
@@ -527,20 +512,16 @@ void sdlDeleteContext(KThread* thread, U32 contextId) {
             DISPATCH_MAIN_THREAD_BLOCK_END
         }
     }
-#endif
 }
 
 void sdlUpdateContextForThread(KThread* thread) {
-#ifdef SDL2
     if (thread->currentContext && thread->currentContext!=sdlCurrentContext) {
         SDL_GL_MakeCurrent(sdlWindow, thread->currentContext);
         sdlCurrentContext = thread->currentContext;        
     }
-#endif
 }
 
 U32 sdlMakeCurrent(KThread* thread, U32 arg) {
-#ifdef SDL2
     KThreadGlContext* threadContext = thread->getGlContextById(arg);
     if (threadContext && threadContext->context) {
         if (SDL_GL_MakeCurrent(sdlWindow, threadContext->context)==0) {
@@ -563,9 +544,6 @@ U32 sdlMakeCurrent(KThread* thread, U32 arg) {
         kpanic("Tried to make an OpenGL context current for a different thread?");
     }
     return 0;
-#else
-    return 1;
-#endif
 }
 
 KThreadGlContext* getGlContextByIdInUnknownThread(const std::shared_ptr<KProcess>& process, U32 id) {
@@ -579,7 +557,6 @@ KThreadGlContext* getGlContextByIdInUnknownThread(const std::shared_ptr<KProcess
 }
 
 U32 sdlShareLists(KThread* thread, U32 srcContext, U32 destContext) {
-#ifdef SDL2
     KThreadGlContext* src = getGlContextByIdInUnknownThread(thread->process, srcContext);
     KThreadGlContext* dst = getGlContextByIdInUnknownThread(thread->process, destContext);
 
@@ -611,18 +588,16 @@ U32 sdlShareLists(KThread* thread, U32 srcContext, U32 destContext) {
         dst->sharing = true;
         return 1;
     }
-#endif
     return 0;
 }
 
 U32 sdlCreateOpenglWindow_main_thread(KThread* thread, Wnd* wnd, int major, int minor, int profile, int flags) {
     DISPATCH_MAIN_THREAD_BLOCK_BEGIN_RETURN
-#ifdef SDL2
     destroySDL2(thread);
 
     firstWindowCreated = 1;
     SDL_GL_ResetAttributes();
-#endif
+
     SDL_GL_SetAttribute(SDL_GL_RED_SIZE, wnd->pixelFormat->cRedBits);
     SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, wnd->pixelFormat->cGreenBits);
     SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, wnd->pixelFormat->cBlueBits);
@@ -642,11 +617,8 @@ U32 sdlCreateOpenglWindow_main_thread(KThread* thread, Wnd* wnd, int major, int 
     if (wnd->pixelFormat->dwFlags & K_PFD_SWAP_COPY) {
         kwarn("Boxedwine: pixel format swap copy not supported");
     }
-#ifdef SDL2
     SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 0); 
-#endif
     firstWindowCreated = 1;
-#ifdef SDL2
 
     SDL_DisplayMode dm;
     int sdlFlags = SDL_WINDOW_OPENGL|SDL_WINDOW_HIDDEN;
@@ -674,12 +646,6 @@ U32 sdlCreateOpenglWindow_main_thread(KThread* thread, Wnd* wnd, int major, int 
     }
     sdlWindowIsGL = true;
     return thread->id;
-#else
-    surface = NULL;
-    SDL_SetVideoMode(wnd->windowRect.right-wnd->windowRect.left, wnd->windowRect.bottom-wnd->windowRect.top, wnd->pixelFormat->cDepthBits, SDL_OPENGL);        
-    sdlWindowIsGL = true;
-    return 0x200;
-#endif
     DISPATCH_MAIN_THREAD_BLOCK_END
 }
 #include "../../tools/opengl/gldef.h"
@@ -698,7 +664,6 @@ U32 sdlCreateContext(KThread* thread, Wnd* wnd, int major, int minor, int profil
     if (!sdlWindowIsGL) {
         result = sdlCreateOpenglWindow_main_thread(thread, wnd, major, minor, profile, flags);
     }
-#ifdef SDL2
     if (result) {
         SDL_GLContext context;
         // Mac requires this on the main thread, but Windows make current will fail if its not on the same thread as create context
@@ -722,13 +687,11 @@ U32 sdlCreateContext(KThread* thread, Wnd* wnd, int major, int minor, int profil
         if (!wnd->openGlContext)
             wnd->openGlContext = context;       
     }
-#endif
     return result;
 }
 
 void sdlScreenResized(KThread* thread) {
     DISPATCH_MAIN_THREAD_BLOCK_BEGIN
-#ifdef SDL2
         if (contextCount) {
             int cx = screenCx;
             int cy = screenCy;
@@ -740,30 +703,18 @@ void sdlScreenResized(KThread* thread) {
         } else {
             displayChanged(thread);
         }
-#else
-    displayChanged(thread);
-#endif
     DISPATCH_MAIN_THREAD_BLOCK_END
 }
 
 void showSDLStartingWindow() {
-#ifdef SDL2    
-        sdlWindow = SDL_CreateWindow("BoxedWine Is Starting Up", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 320, 240, SDL_WINDOW_SHOWN);
-        sdlRenderer = SDL_CreateRenderer(sdlWindow, -1, 0);	
-#else
-        SDL_WM_SetCaption("BoxedWine Is Starting Up", "BoxedWine Is Starting Up");
-        surface = SDL_SetVideoMode(320, 249, 32, flags);
-#endif
+    sdlWindow = SDL_CreateWindow("BoxedWine Is Starting Up", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 320, 240, SDL_WINDOW_SHOWN);
+    sdlRenderer = SDL_CreateRenderer(sdlWindow, -1, 0);	
 }
 
 static void displayChanged(KThread* thread) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(sdlMutex);
-#ifndef SDL2
-    U32 flags;
-#endif
     firstWindowCreated = 1;
     if (sdlVideoEnabled) {        
-#ifdef SDL2
         destroySDL2(thread);
         {
             BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(hwndToWndMutex);
@@ -809,34 +760,16 @@ static void displayChanged(KThread* thread) {
         sdlRenderer = SDL_CreateRenderer(sdlWindow, -1, 0);	
         windowIsHidden = true;
         timeWindowWasCreated = KSystem::getMilliesSinceStart();
-#else
-        for (auto& n : hwndToWnd) {
-            Wnd* wnd = n.second;
-            wnd->openGlContext = 0;
-        }
-        flags = SDL_HWSURFACE;
-        if (surface && SDL_MUSTLOCK(surface)) {
-            SDL_UnlockSurface(surface);
-        }
-        printf("Switching to %dx%d@%d\n", screenCx, screenCy, bits_per_pixel);
-        surface = SDL_SetVideoMode(screenCx, screenCy, 32, flags);
-#endif
         sdlWindowIsGL = false;
     }
 }
 
 void sdlSwapBuffers(KThread* thread) {
-#ifdef SDL2
     SDL_GL_SwapWindow(sdlWindow);
-#else
-    SDL_GL_SwapBuffers();
-#endif
 }
 
-#ifdef SDL2
 #if defined(BOXEDWINE_RECORDER) || ! defined(BOXEDWINE_64BIT_MMU)
 static S8 sdlBuffer[1024*1024*4];
-#endif
 #endif
 
 void wndBlt(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32 yOrg, U32 width, U32 height, U32 rect) {
@@ -866,12 +799,7 @@ void wndBlt(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32 yOrg, U32 width, 
     }
     preDrawWindow();
     readRect(thread, rect, &r);    
-#ifndef SDL2
-    if (!surface)
-        return;
-#endif
     if (wnd)
-#ifdef SDL2
     {
         SDL_Texture *sdlTexture = NULL;
         
@@ -934,45 +862,6 @@ void wndBlt(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32 yOrg, U32 width, 
 #endif
         }
     }
-#else		
-    {     
-        SDL_Surface* s = NULL;
-        if (wnd->surface) {
-            s = (SDL_Surface*)wnd->sdlSurface;
-            if (s && (s->w!=width || s->h!=height || s->format->BitsPerPixel!=bpp)) {
-                SDL_FreeSurface(s);
-                wnd->sdlSurface = NULL;
-                s = NULL;
-            }
-        }
-        if (!s) {
-            U32 rMask = 0x00FF0000;
-            U32 gMask = 0x0000FF00;
-            U32 bMask = 0x000000FF;
-
-            if (bpp==15) {
-                rMask = 0x7C00;
-                gMask = 0x03E0;
-                bMask = 0x001F;
-            } else if (bpp == 16) {
-                rMask = 0xF800;
-                gMask = 0x07E0;
-                bMask = 0x001F;
-            }
-            s = SDL_CreateRGBSurface(0, width, height, bpp, rMask, gMask, bMask, 0);
-            wnd->sdlSurface = s;
-        }
-        if (SDL_MUSTLOCK(s)) {
-            SDL_LockSurface(s);
-        }
-        for (y = 0; y < height; y++) {
-            memcopyToNative(bits+(height-y-1)*pitch, (S8*)(s->pixels)+y*s->pitch, pitch);
-        }   
-        if (SDL_MUSTLOCK(s)) {
-            SDL_UnlockSurface(s);
-        }      
-    }	
-#endif
 }
 
 U32 sdlUpdated;
@@ -1047,7 +936,6 @@ void sdlDrawAllWindows(KThread* thread, U32 hWnd, int count) {
         }
     }
 #endif
-#ifdef SDL2
     if (sdlVideoEnabled && sdlRenderer) {
         U32 threadId = KThread::currentThread()->id;
         DISPATCH_MAIN_THREAD_BLOCK_BEGIN
@@ -1078,25 +966,6 @@ void sdlDrawAllWindows(KThread* thread, U32 hWnd, int count) {
         DISPATCH_MAIN_THREAD_BLOCK_END
     }
     sdlUpdated=1;
-#else
-    if (surface) {
-        SDL_FillRect(surface, NULL, SDL_MapRGB(surface->format, 58, 110, 165));
-        for (int i=count-1;i>=0;i--) {
-            Wnd* wnd = getWnd(readd(hWnd+i*4));
-            if (wnd && wnd->sdlSurface) {
-                SDL_Rect dstrect;
-                dstrect.x = wnd->windowRect.left;
-                dstrect.y = wnd->windowRect.top;
-                dstrect.w = ((SDL_Surface*)(wnd->sdlSurface))->w;
-                dstrect.h = ((SDL_Surface*)(wnd->sdlSurface))->h;
-                //if (bpp==8)
-                //    SDL_SetPalette((SDL_Surface*)wnd->sdlSurface, SDL_LOGPAL, sdlPalette, 0, 256);
-                SDL_BlitSurface((SDL_Surface*)wnd->sdlSurface, NULL, surface, &dstrect);
-            }        	
-        }    
-        SDL_UpdateRect(surface, 0, 0, 0, 0);
-    }
-#endif
 }
 
 Wnd* wndCreate(KThread* thread, U32 processId, U32 hwnd, U32 windowRect, U32 clientRect) {
@@ -1134,7 +1003,6 @@ void readRect(KThread* thread, U32 address, wRECT* rect) {
 }
 
 void sdlShowWnd(KThread* thread, Wnd* wnd, U32 bShow) {
-#ifdef SDL2
     if (!bShow && wnd) {
         if (wnd->sdlTexture) {
             SDL_DestroyTexture((SDL_Texture*)wnd->sdlTexture);
@@ -1143,12 +1011,6 @@ void sdlShowWnd(KThread* thread, Wnd* wnd, U32 bShow) {
         wnd->sdlTextureHeight = 0;
         wnd->sdlTextureWidth = 0;
     }
-#else
-    if (!bShow && wnd && wnd->sdlSurface) {
-        SDL_FreeSurface((SDL_Surface*)wnd->sdlSurface);
-        wnd->sdlSurface = NULL;
-    }
-#endif
 }
 
 void setWndText(Wnd* wnd, const char* text) {
@@ -1165,11 +1027,7 @@ U32 sdlGetGammaRamp(KThread* thread, U32 ramp) {
     U16 b[256];
 
     if (sdlVideoEnabled) {
-#ifdef SDL2
         if (SDL_GetWindowGammaRamp(sdlWindow, r, g, b)==0) {
-#else
-        if (SDL_GetGammaRamp(r, g, b)==0) {
-#endif
             int i;
             for (i=0;i<256;i++) {
                 writew(ramp+i*2, r[i]);
@@ -1197,17 +1055,12 @@ U32 sdlGetNearestColor(KThread* thread, U32 color) {
     if (!sdlVideoEnabled) {
         return color;
     }
-#ifdef SDL2
+
     SDL_Surface* surface = SDL_GetWindowSurface(sdlWindow);
     if (surface) {
         return SDL_MapRGB(SDL_GetWindowSurface(sdlWindow)->format, color & 0xFF, (color >> 8) & 0xFF, (color >> 16) & 0xFF);
     }
     return color;
-#else
-    if (surface)
-        return SDL_MapRGB(surface->format, color & 0xFF, (color >> 8) & 0xFF, (color >> 16) & 0xFF);
-    return color;
-#endif
 }
 
 U32 sdlRealizePalette(KThread* thread, U32 start, U32 numberOfEntries, U32 entries) {
@@ -1220,11 +1073,7 @@ U32 sdlRealizePalette(KThread* thread, U32 start, U32 numberOfEntries, U32 entri
         sdlPalette[i+start].r = readb(entries+4*i);
         sdlPalette[i+start].g = readb(entries+4*i+1);
         sdlPalette[i+start].b = readb(entries+4*i+2);
-#ifdef SDL2
         sdlPalette[i+start].a = 0;
-#else
-        sdlPalette[i+start].unused = 0;
-#endif
     }    
     return result;
 }
@@ -1316,11 +1165,7 @@ void sdlSetMousePos(int x, int y) {
         y = y * sdlScaleY / 100;
     }
 
-#ifdef SDL2
     SDL_WarpMouseInWindow(sdlWindow, x, y); 
-#else
-    SDL_WarpMouse((U16)x, (U16)y);
-#endif
 }
 
 int sdlMouseMouse(int x, int y, bool relative) {
@@ -1619,7 +1464,6 @@ void sdlCreateAndSetCursor(KThread* thread, char* moduleName, char* resourceName
 #define VK_OEM_6               0xDD
 #define VK_OEM_7               0xDE
 
-#ifdef SDL2
 #define SDLK_NUMLOCK SDL_SCANCODE_NUMLOCKCLEAR
 #define SDLK_SCROLLOCK SDLK_SCROLLLOCK
 #define SDLK_KP0 SDLK_KP_0
@@ -1632,7 +1476,6 @@ void sdlCreateAndSetCursor(KThread* thread, char* moduleName, char* resourceName
 #define SDLK_KP7 SDLK_KP_7
 #define SDLK_KP8 SDLK_KP_8
 #define SDLK_KP9 SDLK_KP_9
-#endif
 
 int sdlKey(U32 key, U32 down) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(hwndToWndMutex);
@@ -2584,10 +2427,9 @@ bool sdlScreenShot(std::string filepath, U32* crc) {
 
 }
 
-#ifdef SDL2
 #define SDLK_NUMLOCK SDL_SCANCODE_NUMLOCKCLEAR
 #define SDLK_SCROLLOCK SDLK_SCROLLLOCK
-#endif
+
 U32 translate(U32 key) {
     switch (key) {
         case SDLK_ESCAPE:
@@ -2829,11 +2671,7 @@ bool handlSdlEvent(void* p) {
             if (!sdlMouseMouse((e->motion.x-screenCx/2)*rel_mouse_sensitivity/100, (e->motion.y-screenCy/2)*rel_mouse_sensitivity/100, true)) {
                 onMouseMove((e->motion.x-screenCx/2)*rel_mouse_sensitivity/100, (e->motion.y-screenCy/2)*rel_mouse_sensitivity/100, true);                
             }      
-#ifdef SDL2
             SDL_WarpMouseInWindow(sdlWindow, screenCx/2, screenCy/2);
-#else
-            SDL_WarpMouse((U16)(screenCx/2), (U16)(screenCy/2));
-#endif
         } else {
             if (!sdlMouseMouse(e->motion.x, e->motion.y, false)) {
                 onMouseMove(e->motion.x, e->motion.y, false);
@@ -2880,7 +2718,6 @@ bool handlSdlEvent(void* p) {
             if (!sdlMouseButton(0, 1, (relativeMouse?0:e->motion.x), (relativeMouse?0:e->motion.y)))
                 onMouseButtonUp(1);
         }
-#ifdef SDL2
     } else if (e->type == SDL_MOUSEWHEEL) {
 #ifdef BOXEDWINE_MULTI_THREADED
         if (KSystem::pollRate) {
@@ -2896,7 +2733,6 @@ bool handlSdlEvent(void* p) {
         if (!sdlMouseWheel(e->wheel.y*80, (relativeMouse?0:x), (relativeMouse?0:y))) {
             onMouseWheel(e->wheel.y);
         }
-#endif
     } else if (e->type == SDL_KEYDOWN) {
 #ifdef BOXEDWINE_MULTI_THREADED
         if (KSystem::pollRate) {
@@ -2944,11 +2780,9 @@ bool handlSdlEvent(void* p) {
             }
         }
     }
-#ifdef SDL2
     else if (e->type == SDL_WINDOWEVENT) {
         if (!isBoxedWineDriverActive())
             flipFBNoCheck();
     }
-#endif
     return true;
 }

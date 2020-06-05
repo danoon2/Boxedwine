@@ -37,11 +37,7 @@ public:
 #ifdef BOXEDWINE_RECORDER
         , bits(0), bitsSize(0)
 #endif
-#ifdef SDL2
         , sdlTexture(NULL), sdlTextureHeight(0), sdlTextureWidth(0)
-#else
-        , sdlSurface(NULL)
-#endif
     {}
 
     U32 surface;
@@ -58,13 +54,9 @@ public:
     U8* bits;
     U32 bitsSize;
 #endif
-#ifdef SDL2
     void* sdlTexture;
     int sdlTextureHeight;
     int sdlTextureWidth;
-#else
-    void* sdlSurface;
-#endif
 };
 
 void writeRect(KThread* thread, U32 address, wRECT* rect);

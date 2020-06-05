@@ -526,7 +526,6 @@ void boxeddrv_EnumDisplaySettingsEx(CPU* cpu) {
 
 // int CDECL drv_GetClipboardData(UINT desired_format, char* buffer, int bufferLen)
 void boxeddrv_GetClipboardData(CPU* cpu) {
-#ifdef SDL2
     U32 format = ARG1;
 
     if ((format == CF_TEXT || format == CF_UNICODETEXT) && KNativeSystem::clipboardHasText()) {
@@ -542,9 +541,6 @@ void boxeddrv_GetClipboardData(CPU* cpu) {
             EAX = 2*(len+1);
         }        
     } else {
-#else
-    {
-#endif
         EAX = 0;
     }
 }

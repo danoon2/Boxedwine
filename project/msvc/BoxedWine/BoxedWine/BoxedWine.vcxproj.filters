@@ -1570,6 +1570,9 @@
     <ClCompile Include="..\..\..\..\platform\sdl\knativesynchronization.cpp">
       <Filter>platform\sdl</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\platform\sdl\knativeaudio.cpp">
+      <Filter>platform\sdl</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -3733,6 +3736,9 @@
       <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\include\knativesynchronization.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\knativeaudio.h">
       <Filter>include</Filter>
     </ClInclude>
   </ItemGroup>

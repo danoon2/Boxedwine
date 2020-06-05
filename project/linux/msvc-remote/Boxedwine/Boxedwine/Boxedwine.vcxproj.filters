@@ -1666,6 +1666,9 @@
     <ClCompile Include="..\..\..\..\..\platform\sdl\knativethread.cpp">
       <Filter>sdlPlatform</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\..\platform\sdl\knativeaudio.cpp">
+      <Filter>sdlPlatform</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
@@ -4575,6 +4578,9 @@
       <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\include\knativethread.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\include\knativeaudio.h">
       <Filter>include</Filter>
     </ClInclude>
   </ItemGroup>

@@ -262,7 +262,6 @@ struct fb_cmap fb_cmap;
 bool fbinit;
 bool bOpenGL;
 
-#ifdef SDL2
 extern SDL_Window *sdlWindow;
 static SDL_GLContext sdlContext;
 static SDL_Renderer *sdlRenderer;
@@ -288,9 +287,6 @@ void destroySDL2() {
     isFbActive = false;
 #endif
 }
-#else
-static SDL_Surface* surface;
-#endif
 
 void writeCMap(U32 address, struct fb_cmap* cmap) {
     U32 i = readd(address);
@@ -308,7 +304,6 @@ void writeCMap(U32 address, struct fb_cmap* cmap) {
 }
 
 void fbSetupScreenForOpenGL(int width, int height, int depth) {
-#ifdef SDL2
     destroySDL2();
     sdlWindow = SDL_CreateWindow("", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
     if (!sdlWindow) {
@@ -318,68 +313,29 @@ void fbSetupScreenForOpenGL(int width, int height, int depth) {
     if (!sdlWindow) {
         kpanic("SDL_GL_CreateContext failed: %s", SDL_GetError());
     }
-#else
-    surface=SDL_SetVideoMode(width,height,depth, SDL_HWSURFACE|SDL_OPENGL);
-#endif
     bOpenGL = 1;
 }
 
 void fbSetupScreenForMesa(int width, int height, int depth) {
-#ifdef SDL2
     destroySDL2();
     sdlWindow = SDL_CreateWindow("", 0, 0, width, height, SDL_WINDOW_SHOWN);
     sdlRenderer = SDL_CreateRenderer(sdlWindow, -1, 0);
     sdlTexture = SDL_CreateTexture(sdlRenderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, width, height);
-#else
-    surface=SDL_SetVideoMode(width,height,depth, SDL_SWSURFACE);
-    if (SDL_MUSTLOCK(surface)) {
-        SDL_LockSurface(surface);
-    }
-#endif
     bOpenGL = 1;	
 }
 
 void fbSetupScreen() {
-#ifndef SDL2
-    U32 flags;
-#endif
-
     bOpenGL = 0;
-#ifdef SDL2
     destroySDL2();
     sdlWindow = SDL_CreateWindow("", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, fb_var_screeninfo.xres, fb_var_screeninfo.yres, SDL_WINDOW_SHOWN);
     sdlRenderer = SDL_CreateRenderer(sdlWindow, -1, 0);
     sdlTexture = SDL_CreateTexture(sdlRenderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, fb_var_screeninfo.xres, fb_var_screeninfo.yres);
-#else
-    flags = SDL_HWSURFACE;
-    if (surface && SDL_MUSTLOCK(surface)) {
-        SDL_UnlockSurface(surface);
-    }
-    printf("Switching to %dx%d@%d pitch=%d\n", fb_var_screeninfo.xres,fb_var_screeninfo.yres,fb_var_screeninfo.bits_per_pixel, fb_fix_screeninfo.line_length);
-    if (fb_var_screeninfo.bits_per_pixel==8) {
-        flags |=SDL_HWPALETTE;
-    }
-    surface=SDL_SetVideoMode(fb_var_screeninfo.xres_virtual,fb_var_screeninfo.yres_virtual,fb_var_screeninfo.bits_per_pixel, flags);
-
-    if (fb_var_screeninfo.bits_per_pixel==8) {
-        SDL_Color colors[256];
-        int i;
-
-        for(i=0;i<256;i++){
-          colors[i].r=(U8)fb_cmap.red[i];
-          colors[i].g=(U8)fb_cmap.green[i];
-          colors[i].b=(U8)fb_cmap.blue[i];
-        }
-        SDL_SetPalette(surface, SDL_PHYSPAL, colors, 0, 256);
-    }
-#endif
 
     SDL_ShowCursor(0);
     fb_fix_screeninfo.visual = 2; // FB_VISUAL_TRUECOLOR
     fb_fix_screeninfo.type = 0; // FB_TYPE_PACKED_PIXELS
     //fb_fix_screeninfo.smem_start = ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS;		
 
-#ifdef SDL2
     fb_var_screeninfo.red.offset = 16;
     fb_var_screeninfo.green.offset = 8;
     fb_var_screeninfo.blue.offset = 0;
@@ -389,22 +345,6 @@ void fbSetupScreen() {
     fb_fix_screeninfo.line_length = 4 * fb_var_screeninfo.xres;
     screenPixels = new U8[fb_fix_screeninfo.line_length*fb_var_screeninfo.yres];
     updateAvailable = 1;
-#else
-    fb_var_screeninfo.red.offset = GET_SHIFT(surface->format->Rmask);
-    fb_var_screeninfo.green.offset = GET_SHIFT(surface->format->Gmask);
-    fb_var_screeninfo.blue.offset = GET_SHIFT(surface->format->Bmask);
-    fb_var_screeninfo.red.length = COUNT_BITS(surface->format->Rmask);			
-    fb_var_screeninfo.green.length = COUNT_BITS(surface->format->Gmask);		
-    fb_var_screeninfo.blue.length = COUNT_BITS(surface->format->Bmask);
-
-    printf("Rmask=%X(%d << %d) Gmask=%X(%d << %d) Bmask=%X(%d << %d)\n", surface->format->Rmask, fb_var_screeninfo.red.length, fb_var_screeninfo.red.offset, surface->format->Gmask, fb_var_screeninfo.green.length, fb_var_screeninfo.green.offset, surface->format->Bmask, fb_var_screeninfo.blue.length, fb_var_screeninfo.blue.offset);
-    
-    fb_fix_screeninfo.line_length = surface->pitch;
-    if (SDL_MUSTLOCK(surface)) {
-        SDL_LockSurface(surface);
-    }
-    screenPixels = (unsigned char*)surface->pixels;
-#endif
     
     fb_fix_screeninfo.smem_len = fb_fix_screeninfo.line_length*fb_var_screeninfo.yres_virtual;	
 }
@@ -654,34 +594,12 @@ void flipFB() {
 #else
     if (updateAvailable && !bOpenGL) {
 #endif
-#ifndef SDL2
-        if (fb_var_screeninfo.bits_per_pixel==8 && paletteChanged) {
-            SDL_Color colors[256];
-            int i;
 
-            for(i=0;i<256;i++){
-              colors[i].r=(U8)fb_cmap.red[i];
-              colors[i].g=(U8)fb_cmap.green[i];
-              colors[i].b=(U8)fb_cmap.blue[i];
-            }
-            paletteChanged = 0;
-            SDL_SetPalette(surface, SDL_LOGPAL|SDL_PHYSPAL, colors, 0, 256);
-        }
-#endif
-#ifdef SDL2
         SDL_UpdateTexture(sdlTexture, NULL, screenPixels, fb_fix_screeninfo.line_length);
         SDL_RenderClear(sdlRenderer);
         SDL_RenderCopy(sdlRenderer, sdlTexture, NULL, NULL);
         SDL_RenderPresent(sdlRenderer);
-#else
-        if (SDL_MUSTLOCK(surface)) {
-            SDL_UnlockSurface(surface);
-            SDL_UpdateRect(surface, 0, 0, 0, 0);
-            SDL_LockSurface(surface);
-        } else {
-            SDL_UpdateRect(surface, 0, 0, 0, 0);
-        }		
-#endif
+
         updateAvailable=0;
     }
 }
@@ -692,39 +610,21 @@ void flipFBNoCheck() {
         return;
     }
 #endif
-#ifdef SDL2
     if (sdlTexture) {
         SDL_UpdateTexture(sdlTexture, NULL, screenPixels, fb_fix_screeninfo.line_length);
         SDL_RenderClear(sdlRenderer);
         SDL_RenderCopy(sdlRenderer, sdlTexture, NULL, NULL);
         SDL_RenderPresent(sdlRenderer);
     }
-#else
-    if (SDL_MUSTLOCK(surface)) {
-        SDL_UnlockSurface(surface);
-        SDL_UpdateRect(surface, 0, 0, 0, 0);
-        SDL_LockSurface(surface);
-    } else {
-        SDL_UpdateRect(surface, 0, 0, 0, 0);
-    }	
-#endif
 }
 
 void fbSetCaption(const char* title, const char* icon) {
-#ifdef SDL2
     if (sdlWindow)
         SDL_SetWindowTitle(sdlWindow, title);
-#else
-    SDL_WM_SetCaption(title, icon);
-#endif
 }
 
 void fbSwapOpenGL() {
-#ifdef SDL2
     SDL_GL_SwapWindow(sdlWindow);
-#else
-    SDL_GL_SwapBuffers();
-#endif
 }
 
 FsOpenNode* openDevFB(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {

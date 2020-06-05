@@ -846,6 +846,7 @@
     <ClCompile Include="..\..\..\..\..\platform\linux\memory64.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\linux\platform.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\linux\platformThreads.cpp" />
+    <ClCompile Include="..\..\..\..\..\platform\sdl\knativeaudio.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\sdl\knativesynchronization.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\sdl\knativesystem.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\sdl\knativethread.cpp" />
@@ -1018,6 +1019,7 @@
     <ClInclude Include="..\..\..\..\..\include\kfile.h" />
     <ClInclude Include="..\..\..\..\..\include\kfiledescriptor.h" />
     <ClInclude Include="..\..\..\..\..\include\kfilelock.h" />
+    <ClInclude Include="..\..\..\..\..\include\knativeaudio.h" />
     <ClInclude Include="..\..\..\..\..\include\knativesocket.h" />
     <ClInclude Include="..\..\..\..\..\include\knativesynchronization.h" />
     <ClInclude Include="..\..\..\..\..\include\knativesystem.h" />
