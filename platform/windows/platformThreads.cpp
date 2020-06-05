@@ -1,6 +1,5 @@
 #include "boxedwine.h"
 #include <windows.h>
-#include <SDL.h>
 #include "../source/emulation/cpu/x64/x64cpu.h"
 #include "../source/emulation/cpu/x64/x64CodeChunk.h"
 #include "../source/emulation/hardmmu/hard_memory.h"

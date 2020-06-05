@@ -1561,6 +1561,15 @@
     <ClCompile Include="..\..\..\..\source\ui\controls\unzipDlg.cpp">
       <Filter>source\ui\controls</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\platform\sdl\knativethread.cpp">
+      <Filter>platform\sdl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\platform\sdl\knativesystem.cpp">
+      <Filter>platform\sdl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\platform\sdl\knativesynchronization.cpp">
+      <Filter>platform\sdl</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -3717,6 +3726,15 @@
     <ClInclude Include="..\..\..\..\source\ui\controls\unzipDlg.h">
       <Filter>source\ui\controls</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\include\knativethread.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\knativesystem.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\knativesynchronization.h">
+      <Filter>include</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
@@ -3868,6 +3886,9 @@
     </Filter>
     <Filter Include="pugixml">
       <UniqueIdentifier>{03dff67b-616e-460f-b0fb-be0f2de70aa8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="platform\sdl">
+      <UniqueIdentifier>{c6380c00-27de-4538-9794-9ba6c16ec66d}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

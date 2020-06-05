@@ -1,5 +1,4 @@
 #include "boxedwine.h"
-#include <SDL.h>
 
 #ifdef BOXEDWINE_X64
 #include "x64Ops.h"
@@ -9,6 +8,8 @@
 #include "x64CodeChunk.h"
 #include "../normal/normalCPU.h"
 #include "ksignal.h"
+#include "knativethread.h"
+#include "knativesystem.h"
 
 // hard to guage the benifit, seems like 1% to 3% with quake 2 and quake 3
 bool x64CPU::hasBMI2 = true;
@@ -712,7 +713,7 @@ void x64CPU::startThread() {
     KThread::setCurrentThread(thread);       
 
     // :TODO: hopefully this will eventually go away.  For now this prevents a signal from being generated which isn't handled yet
-    SDL_Delay(50);   
+    KNativeThread::sleep(50);   
 
     if (!setjmp(jmpBuf)) {
         this->jmpBuf = &jmpBuf;
@@ -723,10 +724,8 @@ void x64CPU::startThread() {
 
     platformThreadCount--;
     if (platformThreadCount==0) {
-        SDL_Event sdlevent;
         KSystem::shutingDown = true;
-        sdlevent.type = SDL_QUIT;        
-        SDL_PushEvent(&sdlevent);
+        KNativeSystem::postQuit();
     }
 }
 

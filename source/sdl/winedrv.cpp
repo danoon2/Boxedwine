@@ -21,8 +21,7 @@
 #include "wnd.h"
 #include "sdlopengl.h"
 #include "sdlwindow.h"
-
-#include <SDL.h>
+#include "knativesystem.h"
 
 void notImplemented(const char* s) {
     kwarn(s);
@@ -330,12 +329,11 @@ void boxeddrv_ClipCursor(CPU* cpu) {
 
 // INT CDECL drv_CountClipboardFormats(void)
 void boxeddrv_CountClipboardFormats(CPU* cpu) {
-#ifdef SDL2
-    if (SDL_HasClipboardText())
+    if (KNativeSystem::clipboardHasText()) {
         EAX = 2; // CF_UNICODETEXT & CF_TEXT
-    else
-#endif
+    } else {
         EAX = 0;
+    }
 }
 
 // BOOL CDECL drv_CreateDesktopWindow(HWND hwnd)
@@ -364,9 +362,7 @@ void boxeddrv_DestroyWindow(CPU* cpu) {
 
 // void CDECL drv_EmptyClipboard(void)
 void boxeddrv_EmptyClipboard(CPU* cpu) {
-#ifdef SDL2
-    SDL_SetClipboardText(NULL);
-#endif
+    KNativeSystem::clipboardSetText("");
 }
 
 //void CDECL drv_EndClipboardUpdate(void)
@@ -376,18 +372,17 @@ void boxeddrv_EndClipboardUpdate(CPU* cpu) {
 
 // UINT CDECL drv_EnumClipboardFormats(UINT prev_format)
 void boxeddrv_EnumClipboardFormats(CPU* cpu) {
-#ifdef SDL2
     U32 prevFormat = ARG1;
-    if (SDL_HasClipboardText()) {
+    if (KNativeSystem::clipboardHasText()) {
         if (prevFormat == 0)
             EAX = CF_TEXT;
         else if (prevFormat == CF_TEXT)
             EAX = CF_UNICODETEXT;
         else
             EAX = 0;
-    } else
-#endif
+    } else {
         EAX = 0;
+    }
 }
 
 // BOOL CDECL drv_EnumDisplayMonitors(HDC hdc, LPRECT rect, MONITORENUMPROC proc, LPARAM lparam)
@@ -419,13 +414,10 @@ void boxeddrv_EnumDisplaySettingsEx(CPU* cpu) {
     int i;
 
     if (!displayModesCount) {
-        int desktopCx = 0;
-        int desktopCy = 0;
-        SDL_DisplayMode mode;
-        if (!SDL_GetCurrentDisplayMode(0, &mode)) {
-            desktopCx = mode.w;
-            desktopCy = mode.h;
-        }
+        U32 desktopCx = 0;
+        U32 desktopCy = 0;
+        
+        KNativeSystem::getScreenDimensions(&desktopCx, &desktopCy);
         displayModes = new DisplayModes[18];
         displayModes[displayModesCount].bpp = 32;
         displayModes[displayModesCount].cx = 1024;
@@ -537,18 +529,16 @@ void boxeddrv_GetClipboardData(CPU* cpu) {
 #ifdef SDL2
     U32 format = ARG1;
 
-    if ((format == CF_TEXT || format == CF_UNICODETEXT) && SDL_HasClipboardText()) {
-        char* text = SDL_GetClipboardText();
-        int len = 0;
-        if (text)
-            len = (int)strlen(text);
+    if ((format == CF_TEXT || format == CF_UNICODETEXT) && KNativeSystem::clipboardHasText()) {
+        std::string text = KNativeSystem::clipboardGetText();
+        int len = (int)text.length();
         if (format == CF_TEXT) {
             if (len+1>(int)ARG3)
                 len = ARG3 - 1;
-            memcopyFromNative(ARG2, text, len+1);
+            memcopyFromNative(ARG2, text.c_str(), len+1);
             EAX = len+1;
         } else {
-            writeNativeStringW(ARG2, text);
+            writeNativeStringW(ARG2, text.c_str());
             EAX = 2*(len+1);
         }        
     } else {
@@ -600,13 +590,12 @@ void boxeddrv_GetMonitorInfo(CPU* cpu) {
 
 // BOOL CDECL drv_IsClipboardFormatAvailable(UINT desired_format)
 void boxeddrv_IsClipboardFormatAvailable(CPU* cpu) {
-#ifdef SDL2
     U32 format = ARG1;
-    if ((format == CF_TEXT || format == CF_UNICODETEXT) && SDL_HasClipboardText())
+    if ((format == CF_TEXT || format == CF_UNICODETEXT) && KNativeSystem::clipboardHasText()) {
         EAX = 1;
-    else
-#endif
+    } else {
         EAX = 0;
+    }
 }
 
 // UINT CDECL drv_MapVirtualKeyEx(UINT wCode, UINT wMapType, HKL hkl)
@@ -653,7 +642,6 @@ void boxeddrv_SetCapture(CPU* cpu) {
 
 // BOOL CDECL drv_SetClipboardData(UINT format_id, char* data, int len, BOOL owner)
 void boxeddrv_SetClipboardData(CPU* cpu) {
-#ifdef SDL2
     U32 format = ARG1;
     char* text = 0;
     //int len = ARG3;
@@ -665,14 +653,11 @@ void boxeddrv_SetClipboardData(CPU* cpu) {
         text = getNativeStringW(ARG2, tmp, sizeof(tmp));
     }
     if (text) {
-        if (SDL_SetClipboardText(text)==0)
+        if (KNativeSystem::clipboardSetText(text))
             EAX = 1;
         else
             EAX = 0;
     } else {
-#else
-    {
-#endif
         EAX = 0;
     }
 }

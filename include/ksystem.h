@@ -135,7 +135,7 @@ private:
     static U32 nextThreadId;
     static bool adjustClock;
     static U32 adjustClockFactor; // 100 is normal
-    static U32 startTimeSdlTicks;
+    static U32 startTimeTicks;
     static U64 startTimeMicroCounter;
     static U64 startTimeSystemTime;    
 

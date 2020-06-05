@@ -1657,6 +1657,15 @@
     <ClCompile Include="..\..\..\..\..\source\ui\controls\unzipDlg.cpp">
       <Filter>source\ui\control</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\..\platform\sdl\knativesynchronization.cpp">
+      <Filter>sdlPlatform</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\platform\sdl\knativesystem.cpp">
+      <Filter>sdlPlatform</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\platform\sdl\knativethread.cpp">
+      <Filter>sdlPlatform</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
@@ -1880,6 +1889,9 @@
     </Filter>
     <Filter Include="lib\poco\Crypto\src">
       <UniqueIdentifier>{9cbe2375-e79d-4ab8-8aa1-fc76217d01a5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="sdlPlatform">
+      <UniqueIdentifier>{73d9ec26-2584-469b-96b3-1b326c20f300}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -4555,6 +4567,15 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\ui\controls\unzipDlg.h">
       <Filter>source\ui\control</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\include\knativesynchronization.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\include\knativesystem.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\include\knativethread.h">
+      <Filter>include</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

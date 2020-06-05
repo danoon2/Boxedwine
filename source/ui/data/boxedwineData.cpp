@@ -4,8 +4,7 @@
 #include "Poco/PipeStream.h"
 #include "Poco/Exception.h"
 #include "../../util/threadutils.h"
-
-#include <SDL.h>
+#include "knativethread.h"
 
 std::vector<BoxedContainer*> BoxedwineData::containers;
 std::vector<BoxedWinVersion> BoxedwineData::winVersions;
@@ -98,7 +97,7 @@ void BoxedwineData::startApp() {
             } else {
                 uiLoop();
             }
-            SDL_Delay(16);
+            KNativeThread::sleep(16);
         }
     } catch (Poco::Exception& e) {
         runOnMainUI([e]() {

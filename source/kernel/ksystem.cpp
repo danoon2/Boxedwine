@@ -23,9 +23,9 @@
 #include "kscheduler.h"
 #include "../emulation/softmmu/soft_ram.h"
 #include "../emulation/cpu/normal/normalCPU.h"
+#include "knativesystem.h"
 
 #include <time.h>
-#include <SDL.h>
 
 unsigned int KSystem::nextThreadId=10;
 std::unordered_map<void*, SHM*> KSystem::shm;
@@ -39,7 +39,7 @@ bool KSystem::shutingDown;
 U32 KSystem::killTime;
 bool KSystem::adjustClock;
 U32 KSystem::adjustClockFactor=100;
-U32 KSystem::startTimeSdlTicks;
+U32 KSystem::startTimeTicks;
 U64 KSystem::startTimeMicroCounter;
 U64 KSystem::startTimeSystemTime;
 std::string KSystem::title;
@@ -63,7 +63,7 @@ void KSystem::init() {
 #endif
     KSystem::pentiumLevel = 4;
 	KSystem::shutingDown = false;
-    KSystem::startTimeSdlTicks = SDL_GetTicks();
+    KSystem::startTimeTicks = KNativeSystem::getTicks();
     KSystem::startTimeMicroCounter = Platform::getMicroCounter();
     KSystem::startTimeSystemTime = Platform::getSystemTimeAsMicroSeconds();
     KSystem::killTime = 0;
@@ -792,12 +792,12 @@ U32 KSystem::getRunningProcessCount() {
 
 U32 KSystem::getMilliesSinceStart() {
     if (!KSystem::adjustClock) {
-        return SDL_GetTicks();
+        return KNativeSystem::getTicks();
     }
-    U32 currentTicks = SDL_GetTicks();
-    U32 diff = currentTicks - KSystem::startTimeSdlTicks;
+    U32 currentTicks = KNativeSystem::getTicks();
+    U32 diff = currentTicks - KSystem::startTimeTicks;
     U32 adjustedDiff = diff * KSystem::adjustClockFactor / 100;
-    return KSystem::startTimeSdlTicks + adjustedDiff;
+    return KSystem::startTimeTicks + adjustedDiff;
 }
 
 U64 KSystem::getSystemTimeAsMicroSeconds() {

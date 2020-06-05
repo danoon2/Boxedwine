@@ -1,6 +1,6 @@
 #include "boxedwine.h"
 #include "../boxedwineui.h"
-#include <SDL.h>
+#include "knativesystem.h"
 
 bool showMessageBox(const std::string& id, bool open, const char* title, const char* msg) {    
     bool result = true;
@@ -76,26 +76,10 @@ void alignNextTextRightInColumn(const char* text) {
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - ImGui::CalcTextSize(text).x  - ImGui::GetScrollX() - 2 * ImGui::GetStyle().ItemSpacing.x);
 }
 
-U32 getDisplayScale() {
-    const float defaultDPI =
-#ifdef __APPLE__
-        72.0f;
-#else
-        96.0f;
-#endif
-    float dpi = defaultDPI;
-
-    if (SDL_GetDisplayDPI(0, NULL, &dpi, NULL) != 0) {
-        return 1000;
-    }
-
-    return (U32)(dpi / defaultDPI * 1000.0f);
-}
-
 void askToDownloadDefaultWine() {
     int labelId = ERROR_NO_WINE;
 #ifdef BOXEDWINE_HIGHDPI
-    U32 scale = getDisplayScale();
+    U32 scale = KNativeSystem::getDpiScale();
     if (scale >= 1500 && !GlobalSettings::defaultFont) {
         labelId = ERROR_NO_WINE_HIGH_DPI;
     }

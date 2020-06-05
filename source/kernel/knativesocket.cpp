@@ -3,7 +3,6 @@
 #include "knativesocket.h"
 #include "ksocket.h"
 #include "kstat.h"
-#include <SDL.h>
 
 #ifdef WIN32
 #undef BOOL
@@ -29,7 +28,8 @@ fd_set waitingErrorset;
 int maxSocketId;
 
 #ifdef BOXEDWINE_MULTI_THREADED
-static SDL_Thread *checkWaitingNativeSocketsThread;
+#include "knativethread.h"
+static KNativeThread* checkWaitingNativeSocketsThread;
 static BOXEDWINE_MUTEX checkWaitingNativeSocketsThreadMutex;
 static BOXEDWINE_MUTEX waitingNodeMutex;
 static bool checkWaitingNativeSocketsThreadDone;
@@ -148,17 +148,16 @@ void startNativeSocketsThread() {
         Platform::nativeSocketPair(nativeSocketPipe);
         setNativeBlocking(nativeSocketPipe[0], false);
         setNativeBlocking(nativeSocketPipe[1], false);
-        checkWaitingNativeSocketsThread = SDL_CreateThread(checkWaitingNativeSockets_thread, "NativeSockeThread", (void *)NULL);
+        checkWaitingNativeSocketsThread = KNativeThread::createAndStartThread(checkWaitingNativeSockets_thread, "NativeSockeThread", (void *)NULL);
     }    
 }
 
 void stopNativeSocketsThread() {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(checkWaitingNativeSocketsThreadMutex);
-    int threadReturnValue = 0;
     checkWaitingNativeSocketsThreadDone = true;
     char buf = 0;
     ::send(nativeSocketPipe[1], &buf, 1, 0);
-    SDL_WaitThread(checkWaitingNativeSocketsThread, &threadReturnValue);
+    checkWaitingNativeSocketsThread->wait();
     checkWaitingNativeSocketsThreadDone = false;
     checkWaitingNativeSocketsThread = NULL;
 }
