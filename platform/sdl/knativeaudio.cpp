@@ -179,7 +179,7 @@ void KNativeAudioSdl::openAudio(U32 format, U32 freq, U32 channels) {
 	this->want.freq = freq;
 	this->want.channels = channels;
 
-	if (!sdlSoundEnabled) {
+	if (!KSystem::soundEnabled) {
 		this->sameFormat = true;
 	} else {
 		// If the previous audio is still playing, it will get cut off.  If I find a game that needs this, then perhaps I should think of a mixer.
@@ -198,7 +198,7 @@ void KNativeAudioSdl::openAudio(U32 format, U32 freq, U32 channels) {
 	}
 	this->open = true;
 	voices.push_back(shared_from_this());
-	if (sdlSoundEnabled) {
+	if (KSystem::soundEnabled) {
 		SDL_PauseAudio(0);
 	}
 	if (this->got.size) {
@@ -216,18 +216,18 @@ void KNativeAudioSdl::closeAudioFromAudioThread() {
 void KNativeAudioSdl::closeAudio() {
 	if (this->open) {
 		bool needClose = true;
-		if (sdlSoundEnabled) {
+		if (KSystem::soundEnabled) {
 			SDL_LockAudio();
 		}
 		if (audioBuffer.size() || (this->cvtBufPos != 0 && this->cvtBufPos < this->cvt.len_cvt)) {
 			closeWhenDone = true;
 			needClose = false;
 		}
-		if (sdlSoundEnabled) {
+		if (KSystem::soundEnabled) {
 			SDL_UnlockAudio();
 		}
 		if (needClose) {
-			if (sdlSoundEnabled) {
+			if (KSystem::soundEnabled) {
 				closeSdlAudio();
 			}
 			this->onClose();

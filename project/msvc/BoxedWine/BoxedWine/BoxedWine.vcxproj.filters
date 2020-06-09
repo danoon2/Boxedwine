@@ -178,12 +178,6 @@
     <ClCompile Include="..\..\..\..\source\opengl\sdl\sdlgl.cpp">
       <Filter>opengl\sdl</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\source\sdl\sdlopengl.cpp">
-      <Filter>source\sdl</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\source\sdl\sdlwindows.cpp">
-      <Filter>source\sdl</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\source\sdl\winedrv.cpp">
       <Filter>source\sdl</Filter>
     </ClCompile>
@@ -297,9 +291,6 @@
     </ClCompile>
     <ClCompile Include="..\..\..\..\source\sdl\singleThreaded\mainloop.cpp">
       <Filter>source\sdl\singleThreaded</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\source\sdl\multiThreaded\sdlcallback.cpp">
-      <Filter>source\sdl\multiThreaded</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\..\source\sdl\multiThreaded\threadedMainloop.cpp">
       <Filter>source\sdl\multiThreaded</Filter>
@@ -1573,6 +1564,12 @@
     <ClCompile Include="..\..\..\..\platform\sdl\knativeaudio.cpp">
       <Filter>platform\sdl</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\platform\sdl\knativewindow.cpp">
+      <Filter>platform\sdl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\platform\sdl\sdlcallback.cpp">
+      <Filter>platform\sdl</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -1666,12 +1663,6 @@
       <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\sdl\wnd.h">
-      <Filter>source\sdl</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\source\sdl\sdlwindow.h">
-      <Filter>source\sdl</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\source\sdl\sdlopengl.h">
       <Filter>source\sdl</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\include\ktimer.h">
@@ -1976,9 +1967,6 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\sdl\mainloop.h">
       <Filter>source\sdl</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\source\sdl\multiThreaded\sdlcallback.h">
-      <Filter>source\sdl\multiThreaded</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\emulation\cpu\x64\x64CPU.h">
       <Filter>source\emulation\cpu\x64</Filter>
@@ -3739,6 +3727,9 @@
       <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\include\knativeaudio.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\knativewindow.h">
       <Filter>include</Filter>
     </ClInclude>
   </ItemGroup>

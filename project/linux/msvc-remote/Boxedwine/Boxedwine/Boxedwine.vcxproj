@@ -850,6 +850,8 @@
     <ClCompile Include="..\..\..\..\..\platform\sdl\knativesynchronization.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\sdl\knativesystem.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\sdl\knativethread.cpp" />
+    <ClCompile Include="..\..\..\..\..\platform\sdl\knativewindow.cpp" />
+    <ClCompile Include="..\..\..\..\..\platform\sdl\sdlcallback.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\common\common_arith.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\common\common_bit.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\common\common_fpu.cpp" />
@@ -945,10 +947,7 @@
     <ClCompile Include="..\..\..\..\..\source\opengl\glMarshalVertex.cpp" />
     <ClCompile Include="..\..\..\..\..\source\opengl\sdl\sdlgl.cpp" />
     <ClCompile Include="..\..\..\..\..\source\sdl\main.cpp" />
-    <ClCompile Include="..\..\..\..\..\source\sdl\multiThreaded\sdlcallback.cpp" />
     <ClCompile Include="..\..\..\..\..\source\sdl\multiThreaded\threadedMainloop.cpp" />
-    <ClCompile Include="..\..\..\..\..\source\sdl\sdlopengl.cpp" />
-    <ClCompile Include="..\..\..\..\..\source\sdl\sdlwindows.cpp" />
     <ClCompile Include="..\..\..\..\..\source\sdl\singleThreaded\mainloop.cpp" />
     <ClCompile Include="..\..\..\..\..\source\sdl\startupArgs.cpp" />
     <ClCompile Include="..\..\..\..\..\source\sdl\winedrv.cpp" />
@@ -1024,6 +1023,7 @@
     <ClInclude Include="..\..\..\..\..\include\knativesynchronization.h" />
     <ClInclude Include="..\..\..\..\..\include\knativesystem.h" />
     <ClInclude Include="..\..\..\..\..\include\knativethread.h" />
+    <ClInclude Include="..\..\..\..\..\include\knativewindow.h" />
     <ClInclude Include="..\..\..\..\..\include\kobject.h" />
     <ClInclude Include="..\..\..\..\..\include\kpoll.h" />
     <ClInclude Include="..\..\..\..\..\include\kprocess.h" />
@@ -1723,6 +1723,7 @@
     <ClInclude Include="..\..\..\..\..\lib\simde\simde\x86\ssse3.h" />
     <ClInclude Include="..\..\..\..\..\lib\zlib\contrib\minizip\ioapi.h" />
     <ClInclude Include="..\..\..\..\..\lib\zlib\contrib\minizip\unzip.h" />
+    <ClInclude Include="..\..\..\..\..\platform\sdl\sdlcallback.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\common\common_arith.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\common\common_bit.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\common\common_fpu.h" />
@@ -1839,11 +1840,7 @@
     <ClInclude Include="..\..\..\..\..\source\opengl\glfunctions_ext_def.h" />
     <ClInclude Include="..\..\..\..\..\source\opengl\glMarshal.h" />
     <ClInclude Include="..\..\..\..\..\source\sdl\mainloop.h" />
-    <ClInclude Include="..\..\..\..\..\source\sdl\multiThreaded\sdlcallback.h" />
-    <ClInclude Include="..\..\..\..\..\source\sdl\sdlopengl.h" />
-    <ClInclude Include="..\..\..\..\..\source\sdl\sdlwindow.h" />
     <ClInclude Include="..\..\..\..\..\source\sdl\startupArgs.h" />
-    <ClInclude Include="..\..\..\..\..\source\sdl\wnd.h" />
     <ClInclude Include="..\..\..\..\..\source\test\testCPU.h" />
     <ClInclude Include="..\..\..\..\..\source\test\testMMX.h" />
     <ClInclude Include="..\..\..\..\..\source\test\testSSE.h" />

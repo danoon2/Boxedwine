@@ -23,6 +23,7 @@
 
 #include <stdio.h>
 #include <SDL.h>
+#include "knativewindow.h"
 
 int extLoaded = 0;
 
@@ -104,10 +105,9 @@ void sdl_glXMakeCurrent(CPU* cpu) {
 }
 
 // void glXSwapBuffers(Display *dpy, GLXDrawable drawable)
-extern SDL_Window *sdlWindow;
 
 void sdl_glXSwapBuffers(CPU* cpu) {
-    SDL_GL_SwapWindow(sdlWindow);
+    KNativeWindow::getNativeWindow()->glSwapBuffers(cpu->thread);
 }
 
 void sdlgl_init() {	

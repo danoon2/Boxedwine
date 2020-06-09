@@ -19,12 +19,12 @@
 #include "devmixer.h"
 #include "devsequencer.h"
 #include "mainloop.h"
-#include "sdlwindow.h"
 #include "../io/fsfilenode.h"
 #include "../io/fszip.h"
 #include "loader.h"
 #include "kstat.h"
 #include "knativesystem.h"
+#include "knativewindow.h"
 
 #ifndef BOXEDWINE_DISABLE_UI
 #include "../ui/data/globalSettings.h"
@@ -396,7 +396,7 @@ bool StartUpArgs::apply() {
         }
     }
 
-    initSDL(this->screenCx, this->screenCy, this->screenBpp, this->sdlScaleX, this->sdlScaleY, this->sdlScaleQuality, this->soundEnabled, this->videoEnabled, this->sdlFullScreen);
+    KNativeWindow::init(this->screenCx, this->screenCy, this->screenBpp, this->sdlScaleX, this->sdlScaleY, this->sdlScaleQuality, this->sdlFullScreen);
     initWine();
 #if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
     gl_init(this->glExt);        
@@ -424,7 +424,7 @@ bool StartUpArgs::apply() {
         writeSource();
 #endif
 	KSystem::destroy();
-    destroySDL();
+    KNativeWindow::shutdown();
     dspShutdown();
 
 #ifdef BOXEDWINE_ZLIB

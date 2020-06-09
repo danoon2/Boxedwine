@@ -1,5 +1,5 @@
 #include "boxedwine.h"
-#include "../sdl/sdlwindow.h"
+#include "knativewindow.h"
 
 #ifdef BOXEDWINE_RECORDER
 Player* Player::instance;
@@ -45,7 +45,7 @@ void Player::readCommand() {
     this->lastCommandTime = KSystem::getMicroCounter();
     if (this->nextCommand.length()==0) {
         klog("script did not finish properly: failed");
-        sdlScreenShot("failed.bmp", NULL);
+        KNativeWindow::getNativeWindow()->screenShot("failed.bmp", NULL);
         exit(99);
     }
 }
@@ -88,7 +88,7 @@ void Player::runSlice() {
             klog("script: %s MOVETO should have 2 values: %s", this->directory.c_str(), this->nextValue.c_str());
             exit(99);
         }
-        sdlMouseMouse(atoi(items[0].c_str()), atoi(items[1].c_str()), false);
+        KNativeWindow::getNativeWindow()->mouseMove(atoi(items[0].c_str()), atoi(items[1].c_str()), false);
         instance->readCommand();
         return;
     } 
@@ -105,13 +105,13 @@ void Player::runSlice() {
             klog("script: %s %s should have 3 values: %s", this->directory.c_str(), this->nextCommand.c_str(), this->nextValue.c_str());
             exit(99);
         }
-        sdlMouseButton((this->nextCommand=="MOUSEDOWN")?1:0, atoi(items[0].c_str()), atoi(items[1].c_str()), atoi(items[2].c_str()));
+        KNativeWindow::getNativeWindow()->mouseButton((this->nextCommand=="MOUSEDOWN")?1:0, atoi(items[0].c_str()), atoi(items[1].c_str()), atoi(items[2].c_str()));
         instance->readCommand();
         if (this->nextCommand=="MOUSEUP") {
             runSlice();
         }
     } else if (this->nextCommand=="KEYDOWN" || this->nextCommand=="KEYUP") {
-        sdlKey(atoi(this->nextValue.c_str()), (this->nextCommand=="KEYDOWN")?1:0);
+        KNativeWindow::getNativeWindow()->key(atoi(this->nextValue.c_str()), (this->nextCommand=="KEYDOWN")?1:0);
         instance->readCommand();
         if (this->nextCommand=="KEYUP") {
             runSlice();
@@ -137,7 +137,7 @@ void Player::runSlice() {
             U32 expectedCRC = atoi(items[4].c_str());
             U32 currentCRC = 0;
 
-            sdlPartialScreenShot("", x, y, w, h, &currentCRC);
+            KNativeWindow::getNativeWindow()->partialScreenShot("", x, y, w, h, &currentCRC);
             if (currentCRC==expectedCRC) {
                 klog("script: screen shot matched");
                 instance->readCommand();
@@ -147,7 +147,7 @@ void Player::runSlice() {
         } else if (items.size()>0) {
             U32 expectedCRC = atoi(items[0].c_str());
             U32 currentCRC = 0;
-            sdlScreenShot("", &currentCRC);
+            KNativeWindow::getNativeWindow()->screenShot("", &currentCRC);
             if (currentCRC==expectedCRC) {
                 klog("script: screen shot matched");
                 instance->readCommand();
@@ -158,7 +158,7 @@ void Player::runSlice() {
     }
     if (KSystem::getMicroCounter()>this->lastCommandTime+1000000*60*10) {
         klog("script timed out %s", this->directory.c_str());
-        sdlScreenShot("failed.bmp", NULL);
+        KNativeWindow::getNativeWindow()->screenShot("failed.bmp", NULL);
         exit(2);
     }
 }

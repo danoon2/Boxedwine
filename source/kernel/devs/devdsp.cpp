@@ -61,7 +61,7 @@ U32 DevDsp::readNative(U8* buffer, U32 len){
 }
 
 U32 DevDsp::writeNative(U8* buffer, U32 len) {    
-    if (sdlSoundEnabled) {
+    if (KSystem::soundEnabled) {
         if (!this->audio->isOpen()) {
             this->audio->openAudio(this->format, this->freq, this->channels);
         }

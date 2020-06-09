@@ -19,9 +19,7 @@
 
 #if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
 #include GLH
-
-#include "../sdl/sdlwindow.h"
-
+#include "knativewindow.h"
 #include "glcommon.h"
 
 #undef GL_FUNCTION
@@ -473,7 +471,7 @@ void gl_init() {
 
 void callOpenGL(CPU* cpu, U32 index) {
 #if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
-    sdlPreOpenGLCall(index);
+    KNativeWindow::getNativeWindow()->preOpenGLCall(index);
     if (index < int99CallbackSize && int99Callback[index]) {
         lastGlCallTime = KSystem::getMilliesSinceStart();
         int99Callback[index](cpu);

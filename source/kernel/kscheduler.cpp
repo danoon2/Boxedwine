@@ -20,6 +20,7 @@
 #ifndef BOXEDWINE_MULTI_THREADED
 #include "devfb.h"
 #include "kscheduler.h"
+#include "knativewindow.h"
 
 #include <stdio.h>
 
@@ -115,8 +116,6 @@ extern U64 sysCallTime;
 U64 elapsedTimeMIPS;
 U64 elapsedInstructionsMIPS;
 
-void sdlUpdateContextForThread(KThread* thread);
-
 bool runSlice() {    
     runTimers();
 
@@ -132,7 +131,7 @@ bool runSlice() {
         U64 threadStartTime = KSystem::getMicroCounter();
         KListNode<KThread*>* node = scheduledThreads.front();
         KThread* currentThread = (KThread*)node->data;
-        sdlUpdateContextForThread(currentThread);    
+        KNativeWindow::getNativeWindow()->glUpdateContextForThread(currentThread);
         sysCallTime = 0;    
 
         ChangeThread c(currentThread);
