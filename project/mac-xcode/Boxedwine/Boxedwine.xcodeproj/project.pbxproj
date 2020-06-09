@@ -75,7 +75,6 @@
 		71034D1A24820DE600FED5C5 /* SHA2Engine.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F80F52440ED1C0038F5A4 /* SHA2Engine.cpp */; };
 		71034D1B24820DE600FED5C5 /* pcre_xclass.c in Sources */ = {isa = PBXBuildFile; fileRef = 715F81042440ED1C0038F5A4 /* pcre_xclass.c */; };
 		71034D1C24820DE600FED5C5 /* CryptoException.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F7BE52440E9DF0038F5A4 /* CryptoException.cpp */; };
-		71034D1D24820DE600FED5C5 /* sdlopengl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE142433BBBE003F17F1 /* sdlopengl.cpp */; };
 		71034D1E24820DE600FED5C5 /* UDPServerParams.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F631B2440E9100038F5A4 /* UDPServerParams.cpp */; };
 		71034D1F24820DE600FED5C5 /* SimpleFileChannel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81A82440ED1D0038F5A4 /* SimpleFileChannel.cpp */; };
 		71034D2024820DE600FED5C5 /* pcre_valid_utf8.c in Sources */ = {isa = PBXBuildFile; fileRef = 715F820F2440ED1D0038F5A4 /* pcre_valid_utf8.c */; };
@@ -321,7 +320,6 @@
 		71034E1024820DE600FED5C5 /* NTPPacket.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F632A2440E9100038F5A4 /* NTPPacket.cpp */; };
 		71034E1124820DE600FED5C5 /* fsopennode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDFA2433BBBE003F17F1 /* fsopennode.cpp */; };
 		71034E1224820DE600FED5C5 /* zutil.c in Sources */ = {isa = PBXBuildFile; fileRef = 715F81922440ED1D0038F5A4 /* zutil.c */; };
-		71034E1324820DE600FED5C5 /* sdlwindows.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE092433BBBE003F17F1 /* sdlwindows.cpp */; };
 		71034E1424820DE600FED5C5 /* x64Data.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD7C2433BBBE003F17F1 /* x64Data.cpp */; };
 		71034E1524820DE600FED5C5 /* yesNoDlg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F34782440D7D00038F5A4 /* yesNoDlg.cpp */; };
 		71034E1624820DE600FED5C5 /* TimedNotificationQueue.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81892440ED1D0038F5A4 /* TimedNotificationQueue.cpp */; };
@@ -437,7 +435,6 @@
 		71034E8424820DE600FED5C5 /* fs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDF72433BBBE003F17F1 /* fs.cpp */; };
 		71034E8524820DE600FED5C5 /* OptionException.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F34A02440E7460038F5A4 /* OptionException.cpp */; };
 		71034E8624820DE600FED5C5 /* POP3ClientSession.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F630A2440E9100038F5A4 /* POP3ClientSession.cpp */; };
-		71034E8724820DE600FED5C5 /* sdlcallback.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE072433BBBE003F17F1 /* sdlcallback.cpp */; };
 		71034E8824820DE600FED5C5 /* SocketStream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63022440E9100038F5A4 /* SocketStream.cpp */; };
 		71034E8924820DE600FED5C5 /* RSACipherImpl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F7BDA2440E9DF0038F5A4 /* RSACipherImpl.cpp */; };
 		71034E8A24820DE600FED5C5 /* soft_ondemand_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDCE2433BBBE003F17F1 /* soft_ondemand_page.cpp */; };
@@ -631,7 +628,6 @@
 		71034F502482B71000FED5C5 /* SHA2Engine.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F80F52440ED1C0038F5A4 /* SHA2Engine.cpp */; };
 		71034F512482B71000FED5C5 /* pcre_xclass.c in Sources */ = {isa = PBXBuildFile; fileRef = 715F81042440ED1C0038F5A4 /* pcre_xclass.c */; };
 		71034F522482B71000FED5C5 /* CryptoException.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F7BE52440E9DF0038F5A4 /* CryptoException.cpp */; };
-		71034F532482B71000FED5C5 /* sdlopengl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE142433BBBE003F17F1 /* sdlopengl.cpp */; };
 		71034F542482B71000FED5C5 /* UDPServerParams.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F631B2440E9100038F5A4 /* UDPServerParams.cpp */; };
 		71034F552482B71000FED5C5 /* SimpleFileChannel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81A82440ED1D0038F5A4 /* SimpleFileChannel.cpp */; };
 		71034F562482B71000FED5C5 /* pcre_valid_utf8.c in Sources */ = {isa = PBXBuildFile; fileRef = 715F820F2440ED1D0038F5A4 /* pcre_valid_utf8.c */; };
@@ -877,7 +873,6 @@
 		710350462482B71000FED5C5 /* NTPPacket.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F632A2440E9100038F5A4 /* NTPPacket.cpp */; };
 		710350472482B71000FED5C5 /* fsopennode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDFA2433BBBE003F17F1 /* fsopennode.cpp */; };
 		710350482482B71000FED5C5 /* zutil.c in Sources */ = {isa = PBXBuildFile; fileRef = 715F81922440ED1D0038F5A4 /* zutil.c */; };
-		710350492482B71000FED5C5 /* sdlwindows.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE092433BBBE003F17F1 /* sdlwindows.cpp */; };
 		7103504A2482B71000FED5C5 /* x64Data.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD7C2433BBBE003F17F1 /* x64Data.cpp */; };
 		7103504B2482B71000FED5C5 /* yesNoDlg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F34782440D7D00038F5A4 /* yesNoDlg.cpp */; };
 		7103504C2482B71000FED5C5 /* TimedNotificationQueue.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81892440ED1D0038F5A4 /* TimedNotificationQueue.cpp */; };
@@ -993,7 +988,6 @@
 		710350BA2482B71000FED5C5 /* fs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDF72433BBBE003F17F1 /* fs.cpp */; };
 		710350BB2482B71000FED5C5 /* OptionException.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F34A02440E7460038F5A4 /* OptionException.cpp */; };
 		710350BC2482B71000FED5C5 /* POP3ClientSession.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F630A2440E9100038F5A4 /* POP3ClientSession.cpp */; };
-		710350BD2482B71000FED5C5 /* sdlcallback.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE072433BBBE003F17F1 /* sdlcallback.cpp */; };
 		710350BE2482B71000FED5C5 /* SocketStream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63022440E9100038F5A4 /* SocketStream.cpp */; };
 		710350BF2482B71000FED5C5 /* RSACipherImpl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F7BDA2440E9DF0038F5A4 /* RSACipherImpl.cpp */; };
 		710350C02482B71000FED5C5 /* soft_ondemand_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDCE2433BBBE003F17F1 /* soft_ondemand_page.cpp */; };
@@ -1213,13 +1207,10 @@
 		71222B8E2435169100CDBABD /* fszipopennode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDFE2433BBBE003F17F1 /* fszipopennode.cpp */; };
 		71222B8F2435169100CDBABD /* fsvirtualnode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDFF2433BBBE003F17F1 /* fsvirtualnode.cpp */; };
 		71222B902435169100CDBABD /* threadedMainloop.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE062433BBBE003F17F1 /* threadedMainloop.cpp */; };
-		71222B912435169100CDBABD /* sdlcallback.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE072433BBBE003F17F1 /* sdlcallback.cpp */; };
-		71222B922435169100CDBABD /* sdlwindows.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE092433BBBE003F17F1 /* sdlwindows.cpp */; };
 		71222B932435169100CDBABD /* winedrv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE0B2433BBBE003F17F1 /* winedrv.cpp */; };
 		71222B942435169100CDBABD /* startupArgs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE0F2433BBBE003F17F1 /* startupArgs.cpp */; };
 		71222B952435169100CDBABD /* mainloop.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE112433BBBE003F17F1 /* mainloop.cpp */; };
 		71222B962435169100CDBABD /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE132433BBBE003F17F1 /* main.cpp */; };
-		71222B972435169100CDBABD /* sdlopengl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE142433BBBE003F17F1 /* sdlopengl.cpp */; };
 		71222B982435169100CDBABD /* bufferaccess.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE172433BBBE003F17F1 /* bufferaccess.cpp */; };
 		71222B992435169100CDBABD /* cpuinfo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE182433BBBE003F17F1 /* cpuinfo.cpp */; };
 		71222B9A2435169100CDBABD /* meminfo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE192433BBBE003F17F1 /* meminfo.cpp */; };
@@ -1286,7 +1277,6 @@
 		71222BDB24351CBA00CDBABD /* testCPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD492433BBBE003F17F1 /* testCPU.cpp */; };
 		71222BDC24351CBA00CDBABD /* ksocket.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE3A2433BBBE003F17F1 /* ksocket.cpp */; };
 		71222BDD24351CBA00CDBABD /* cpuinfo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE182433BBBE003F17F1 /* cpuinfo.cpp */; };
-		71222BDE24351CBA00CDBABD /* sdlopengl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE142433BBBE003F17F1 /* sdlopengl.cpp */; };
 		71222BDF24351CBA00CDBABD /* fszip.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDE92433BBBE003F17F1 /* fszip.cpp */; };
 		71222BE024351CBA00CDBABD /* devzero.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE272433BBBE003F17F1 /* devzero.cpp */; };
 		71222BE124351CBA00CDBABD /* common_xchg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD9F2433BBBE003F17F1 /* common_xchg.cpp */; };
@@ -1360,7 +1350,6 @@
 		71222C2E24351CBA00CDBABD /* devtty.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE262433BBBE003F17F1 /* devtty.cpp */; };
 		71222C2F24351CBA00CDBABD /* fszipopennode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDFE2433BBBE003F17F1 /* fszipopennode.cpp */; };
 		71222C3024351CBA00CDBABD /* fsopennode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDFA2433BBBE003F17F1 /* fsopennode.cpp */; };
-		71222C3124351CBA00CDBABD /* sdlwindows.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE092433BBBE003F17F1 /* sdlwindows.cpp */; };
 		71222C3224351CBA00CDBABD /* x64Data.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD7C2433BBBE003F17F1 /* x64Data.cpp */; };
 		71222C3324351CBA00CDBABD /* fsfilenode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDF92433BBBE003F17F1 /* fsfilenode.cpp */; };
 		71222C3424351CBA00CDBABD /* player.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD512433BBBE003F17F1 /* player.cpp */; };
@@ -1386,7 +1375,6 @@
 		71222C4B24351CBA00CDBABD /* soft_copy_on_write_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDDA2433BBBE003F17F1 /* soft_copy_on_write_page.cpp */; };
 		71222C4C24351CBA00CDBABD /* glew.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 712229052433F03F00CDBABD /* glew.cpp */; };
 		71222C4E24351CBA00CDBABD /* fs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDF72433BBBE003F17F1 /* fs.cpp */; };
-		71222C4F24351CBA00CDBABD /* sdlcallback.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE072433BBBE003F17F1 /* sdlcallback.cpp */; };
 		71222C5024351CBA00CDBABD /* soft_ondemand_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDCE2433BBBE003F17F1 /* soft_ondemand_page.cpp */; };
 		71222C5124351CBA00CDBABD /* appChooserDlg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD312433BBBE003F17F1 /* appChooserDlg.cpp */; };
 		71222C5224351CBA00CDBABD /* kfiledescriptor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE2F2433BBBE003F17F1 /* kfiledescriptor.cpp */; };
@@ -2216,6 +2204,36 @@
 		715F8429244115580038F5A4 /* Media.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 715F8427244115580038F5A4 /* Media.xcassets */; };
 		715F842C24464C080038F5A4 /* installView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F842A24464C080038F5A4 /* installView.cpp */; };
 		715F842D24464C080038F5A4 /* installView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F842A24464C080038F5A4 /* installView.cpp */; };
+		71DF8DFD248F299600EE1E08 /* knativeaudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71DF8DF6248F299500EE1E08 /* knativeaudio.cpp */; };
+		71DF8DFE248F299600EE1E08 /* knativeaudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71DF8DF6248F299500EE1E08 /* knativeaudio.cpp */; };
+		71DF8DFF248F299600EE1E08 /* knativeaudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71DF8DF6248F299500EE1E08 /* knativeaudio.cpp */; };
+		71DF8E00248F299600EE1E08 /* knativeaudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71DF8DF6248F299500EE1E08 /* knativeaudio.cpp */; };
+		71DF8E01248F299600EE1E08 /* knativeaudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71DF8DF6248F299500EE1E08 /* knativeaudio.cpp */; };
+		71DF8E02248F299600EE1E08 /* sdlcallback.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71DF8DF7248F299500EE1E08 /* sdlcallback.cpp */; };
+		71DF8E03248F299600EE1E08 /* sdlcallback.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71DF8DF7248F299500EE1E08 /* sdlcallback.cpp */; };
+		71DF8E04248F299600EE1E08 /* sdlcallback.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71DF8DF7248F299500EE1E08 /* sdlcallback.cpp */; };
+		71DF8E05248F299600EE1E08 /* sdlcallback.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71DF8DF7248F299500EE1E08 /* sdlcallback.cpp */; };
+		71DF8E06248F299600EE1E08 /* sdlcallback.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71DF8DF7248F299500EE1E08 /* sdlcallback.cpp */; };
+		71DF8E07248F299600EE1E08 /* knativesynchronization.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71DF8DF9248F299500EE1E08 /* knativesynchronization.cpp */; };
+		71DF8E08248F299600EE1E08 /* knativesynchronization.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71DF8DF9248F299500EE1E08 /* knativesynchronization.cpp */; };
+		71DF8E09248F299600EE1E08 /* knativesynchronization.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71DF8DF9248F299500EE1E08 /* knativesynchronization.cpp */; };
+		71DF8E0A248F299600EE1E08 /* knativesynchronization.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71DF8DF9248F299500EE1E08 /* knativesynchronization.cpp */; };
+		71DF8E0B248F299600EE1E08 /* knativesynchronization.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71DF8DF9248F299500EE1E08 /* knativesynchronization.cpp */; };
+		71DF8E0C248F299600EE1E08 /* knativethread.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71DF8DFA248F299500EE1E08 /* knativethread.cpp */; };
+		71DF8E0D248F299600EE1E08 /* knativethread.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71DF8DFA248F299500EE1E08 /* knativethread.cpp */; };
+		71DF8E0E248F299600EE1E08 /* knativethread.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71DF8DFA248F299500EE1E08 /* knativethread.cpp */; };
+		71DF8E0F248F299600EE1E08 /* knativethread.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71DF8DFA248F299500EE1E08 /* knativethread.cpp */; };
+		71DF8E10248F299600EE1E08 /* knativethread.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71DF8DFA248F299500EE1E08 /* knativethread.cpp */; };
+		71DF8E11248F299600EE1E08 /* knativewindow.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71DF8DFB248F299500EE1E08 /* knativewindow.cpp */; };
+		71DF8E12248F299600EE1E08 /* knativewindow.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71DF8DFB248F299500EE1E08 /* knativewindow.cpp */; };
+		71DF8E13248F299600EE1E08 /* knativewindow.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71DF8DFB248F299500EE1E08 /* knativewindow.cpp */; };
+		71DF8E14248F299600EE1E08 /* knativewindow.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71DF8DFB248F299500EE1E08 /* knativewindow.cpp */; };
+		71DF8E15248F299600EE1E08 /* knativewindow.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71DF8DFB248F299500EE1E08 /* knativewindow.cpp */; };
+		71DF8E16248F299600EE1E08 /* knativesystem.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71DF8DFC248F299600EE1E08 /* knativesystem.cpp */; };
+		71DF8E17248F299600EE1E08 /* knativesystem.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71DF8DFC248F299600EE1E08 /* knativesystem.cpp */; };
+		71DF8E18248F299600EE1E08 /* knativesystem.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71DF8DFC248F299600EE1E08 /* knativesystem.cpp */; };
+		71DF8E19248F299600EE1E08 /* knativesystem.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71DF8DFC248F299600EE1E08 /* knativesystem.cpp */; };
+		71DF8E1A248F299600EE1E08 /* knativesystem.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71DF8DFC248F299600EE1E08 /* knativesystem.cpp */; };
 		71FBFCB22433B815003F17F1 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFCB12433B815003F17F1 /* AppDelegate.m */; };
 		71FBFCB42433B817003F17F1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 71FBFCB32433B817003F17F1 /* Assets.xcassets */; };
 		71FBFCD42433BB9C003F17F1 /* memory64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFCD12433BB9C003F17F1 /* memory64.cpp */; };
@@ -2302,13 +2320,10 @@
 		71FBFEAC2433BBBE003F17F1 /* fszipopennode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDFE2433BBBE003F17F1 /* fszipopennode.cpp */; };
 		71FBFEAD2433BBBE003F17F1 /* fsvirtualnode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDFF2433BBBE003F17F1 /* fsvirtualnode.cpp */; };
 		71FBFEAE2433BBBE003F17F1 /* threadedMainloop.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE062433BBBE003F17F1 /* threadedMainloop.cpp */; };
-		71FBFEAF2433BBBE003F17F1 /* sdlcallback.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE072433BBBE003F17F1 /* sdlcallback.cpp */; };
-		71FBFEB02433BBBE003F17F1 /* sdlwindows.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE092433BBBE003F17F1 /* sdlwindows.cpp */; };
 		71FBFEB12433BBBE003F17F1 /* winedrv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE0B2433BBBE003F17F1 /* winedrv.cpp */; };
 		71FBFEB32433BBBE003F17F1 /* startupArgs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE0F2433BBBE003F17F1 /* startupArgs.cpp */; };
 		71FBFEB42433BBBE003F17F1 /* mainloop.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE112433BBBE003F17F1 /* mainloop.cpp */; };
 		71FBFEB52433BBBE003F17F1 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE132433BBBE003F17F1 /* main.cpp */; };
-		71FBFEB62433BBBE003F17F1 /* sdlopengl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE142433BBBE003F17F1 /* sdlopengl.cpp */; };
 		71FBFEB72433BBBE003F17F1 /* bufferaccess.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE172433BBBE003F17F1 /* bufferaccess.cpp */; };
 		71FBFEB82433BBBE003F17F1 /* cpuinfo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE182433BBBE003F17F1 /* cpuinfo.cpp */; };
 		71FBFEB92433BBBE003F17F1 /* meminfo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE192433BBBE003F17F1 /* meminfo.cpp */; };
@@ -2845,6 +2860,18 @@
 		715F8427244115580038F5A4 /* Media.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Media.xcassets; sourceTree = "<group>"; };
 		715F842A24464C080038F5A4 /* installView.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = installView.cpp; sourceTree = "<group>"; };
 		715F842B24464C080038F5A4 /* installView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = installView.h; sourceTree = "<group>"; };
+		71DF8DF6248F299500EE1E08 /* knativeaudio.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = knativeaudio.cpp; path = ../../../../platform/sdl/knativeaudio.cpp; sourceTree = "<group>"; };
+		71DF8DF7248F299500EE1E08 /* sdlcallback.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = sdlcallback.cpp; path = ../../../../platform/sdl/sdlcallback.cpp; sourceTree = "<group>"; };
+		71DF8DF8248F299500EE1E08 /* sdlcallback.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = sdlcallback.h; path = ../../../../platform/sdl/sdlcallback.h; sourceTree = "<group>"; };
+		71DF8DF9248F299500EE1E08 /* knativesynchronization.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = knativesynchronization.cpp; path = ../../../../platform/sdl/knativesynchronization.cpp; sourceTree = "<group>"; };
+		71DF8DFA248F299500EE1E08 /* knativethread.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = knativethread.cpp; path = ../../../../platform/sdl/knativethread.cpp; sourceTree = "<group>"; };
+		71DF8DFB248F299500EE1E08 /* knativewindow.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = knativewindow.cpp; path = ../../../../platform/sdl/knativewindow.cpp; sourceTree = "<group>"; };
+		71DF8DFC248F299600EE1E08 /* knativesystem.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = knativesystem.cpp; path = ../../../../platform/sdl/knativesystem.cpp; sourceTree = "<group>"; };
+		71DF8E1B248F29C300EE1E08 /* knativeaudio.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = knativeaudio.h; sourceTree = "<group>"; };
+		71DF8E1C248F29C300EE1E08 /* knativesystem.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = knativesystem.h; sourceTree = "<group>"; };
+		71DF8E1D248F29C300EE1E08 /* knativethread.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = knativethread.h; sourceTree = "<group>"; };
+		71DF8E1E248F29C300EE1E08 /* knativesynchronization.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = knativesynchronization.h; sourceTree = "<group>"; };
+		71DF8E1F248F29C300EE1E08 /* knativewindow.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = knativewindow.h; sourceTree = "<group>"; };
 		71FBFCAD2433B815003F17F1 /* Boxedwine.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Boxedwine.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		71FBFCB02433B815003F17F1 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
 		71FBFCB12433B815003F17F1 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
@@ -3126,20 +3153,13 @@
 		71FBFDFF2433BBBE003F17F1 /* fsvirtualnode.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = fsvirtualnode.cpp; sourceTree = "<group>"; };
 		71FBFE002433BBBE003F17F1 /* fszip.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = fszip.h; sourceTree = "<group>"; };
 		71FBFE012433BBBE003F17F1 /* fs.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = fs.h; sourceTree = "<group>"; };
-		71FBFE032433BBBE003F17F1 /* wnd.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = wnd.h; sourceTree = "<group>"; };
-		71FBFE052433BBBE003F17F1 /* sdlcallback.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = sdlcallback.h; sourceTree = "<group>"; };
 		71FBFE062433BBBE003F17F1 /* threadedMainloop.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = threadedMainloop.cpp; sourceTree = "<group>"; };
-		71FBFE072433BBBE003F17F1 /* sdlcallback.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = sdlcallback.cpp; sourceTree = "<group>"; };
 		71FBFE082433BBBE003F17F1 /* mainloop.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = mainloop.h; sourceTree = "<group>"; };
-		71FBFE092433BBBE003F17F1 /* sdlwindows.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = sdlwindows.cpp; sourceTree = "<group>"; };
 		71FBFE0A2433BBBE003F17F1 /* startupArgs.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = startupArgs.h; sourceTree = "<group>"; };
 		71FBFE0B2433BBBE003F17F1 /* winedrv.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = winedrv.cpp; sourceTree = "<group>"; };
-		71FBFE0E2433BBBE003F17F1 /* sdlwindow.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = sdlwindow.h; sourceTree = "<group>"; };
 		71FBFE0F2433BBBE003F17F1 /* startupArgs.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = startupArgs.cpp; sourceTree = "<group>"; };
 		71FBFE112433BBBE003F17F1 /* mainloop.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = mainloop.cpp; sourceTree = "<group>"; };
-		71FBFE122433BBBE003F17F1 /* sdlopengl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = sdlopengl.h; sourceTree = "<group>"; };
 		71FBFE132433BBBE003F17F1 /* main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
-		71FBFE142433BBBE003F17F1 /* sdlopengl.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = sdlopengl.cpp; sourceTree = "<group>"; };
 		71FBFE172433BBBE003F17F1 /* bufferaccess.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = bufferaccess.cpp; sourceTree = "<group>"; };
 		71FBFE182433BBBE003F17F1 /* cpuinfo.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = cpuinfo.cpp; sourceTree = "<group>"; };
 		71FBFE192433BBBE003F17F1 /* meminfo.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = meminfo.cpp; sourceTree = "<group>"; };
@@ -3910,9 +3930,24 @@
 			name = poco;
 			sourceTree = "<group>";
 		};
+		71DF8DF5248F297200EE1E08 /* sdl */ = {
+			isa = PBXGroup;
+			children = (
+				71DF8DF6248F299500EE1E08 /* knativeaudio.cpp */,
+				71DF8DF9248F299500EE1E08 /* knativesynchronization.cpp */,
+				71DF8DFC248F299600EE1E08 /* knativesystem.cpp */,
+				71DF8DFA248F299500EE1E08 /* knativethread.cpp */,
+				71DF8DFB248F299500EE1E08 /* knativewindow.cpp */,
+				71DF8DF7248F299500EE1E08 /* sdlcallback.cpp */,
+				71DF8DF8248F299500EE1E08 /* sdlcallback.h */,
+			);
+			path = sdl;
+			sourceTree = "<group>";
+		};
 		71FBFCA42433B815003F17F1 = {
 			isa = PBXGroup;
 			children = (
+				71DF8DF5248F297200EE1E08 /* sdl */,
 				71205464244FDA4200C3CB1B /* pugixml */,
 				715F8427244115580038F5A4 /* Media.xcassets */,
 				715F7C1A2440EAC10038F5A4 /* zlib */,
@@ -3973,6 +4008,11 @@
 		71FBFCD72433BBAD003F17F1 /* include */ = {
 			isa = PBXGroup;
 			children = (
+				71DF8E1B248F29C300EE1E08 /* knativeaudio.h */,
+				71DF8E1E248F29C300EE1E08 /* knativesynchronization.h */,
+				71DF8E1C248F29C300EE1E08 /* knativesystem.h */,
+				71DF8E1D248F29C300EE1E08 /* knativethread.h */,
+				71DF8E1F248F29C300EE1E08 /* knativewindow.h */,
 				71FBFCD82433BBAD003F17F1 /* devinput.h */,
 				71FBFCD92433BBAD003F17F1 /* syscpuscalingcurfreq.h */,
 				71FBFCDA2433BBAD003F17F1 /* boxedwine.h */,
@@ -4426,18 +4466,13 @@
 		71FBFE022433BBBE003F17F1 /* sdl */ = {
 			isa = PBXGroup;
 			children = (
-				71FBFE032433BBBE003F17F1 /* wnd.h */,
 				71FBFE042433BBBE003F17F1 /* multiThreaded */,
 				71FBFE082433BBBE003F17F1 /* mainloop.h */,
-				71FBFE092433BBBE003F17F1 /* sdlwindows.cpp */,
 				71FBFE0A2433BBBE003F17F1 /* startupArgs.h */,
 				71FBFE0B2433BBBE003F17F1 /* winedrv.cpp */,
-				71FBFE0E2433BBBE003F17F1 /* sdlwindow.h */,
 				71FBFE0F2433BBBE003F17F1 /* startupArgs.cpp */,
 				71FBFE102433BBBE003F17F1 /* singleThreaded */,
-				71FBFE122433BBBE003F17F1 /* sdlopengl.h */,
 				71FBFE132433BBBE003F17F1 /* main.cpp */,
-				71FBFE142433BBBE003F17F1 /* sdlopengl.cpp */,
 			);
 			path = sdl;
 			sourceTree = "<group>";
@@ -4445,9 +4480,7 @@
 		71FBFE042433BBBE003F17F1 /* multiThreaded */ = {
 			isa = PBXGroup;
 			children = (
-				71FBFE052433BBBE003F17F1 /* sdlcallback.h */,
 				71FBFE062433BBBE003F17F1 /* threadedMainloop.cpp */,
-				71FBFE072433BBBE003F17F1 /* sdlcallback.cpp */,
 			);
 			path = multiThreaded;
 			sourceTree = "<group>";
@@ -4820,6 +4853,7 @@
 				71034D0324820DE600FED5C5 /* KeyFileHandler.cpp in Sources */,
 				71034D0424820DE600FED5C5 /* NullStream.cpp in Sources */,
 				71034D0524820DE600FED5C5 /* TCPServerDispatcher.cpp in Sources */,
+				71DF8E05248F299600EE1E08 /* sdlcallback.cpp in Sources */,
 				71034D0624820DE600FED5C5 /* MailMessage.cpp in Sources */,
 				71034D0724820DE600FED5C5 /* DatagramSocket.cpp in Sources */,
 				71034D0824820DE600FED5C5 /* PropertyFileConfiguration.cpp in Sources */,
@@ -4843,7 +4877,6 @@
 				71034D1A24820DE600FED5C5 /* SHA2Engine.cpp in Sources */,
 				71034D1B24820DE600FED5C5 /* pcre_xclass.c in Sources */,
 				71034D1C24820DE600FED5C5 /* CryptoException.cpp in Sources */,
-				71034D1D24820DE600FED5C5 /* sdlopengl.cpp in Sources */,
 				71034D1E24820DE600FED5C5 /* UDPServerParams.cpp in Sources */,
 				71034D1F24820DE600FED5C5 /* SimpleFileChannel.cpp in Sources */,
 				71034D2024820DE600FED5C5 /* pcre_valid_utf8.c in Sources */,
@@ -4880,6 +4913,7 @@
 				71034D3F24820DE600FED5C5 /* deflate.c in Sources */,
 				71034D4024820DE600FED5C5 /* NTPClient.cpp in Sources */,
 				71034D4124820DE600FED5C5 /* common_arith.cpp in Sources */,
+				71DF8E0A248F299600EE1E08 /* knativesynchronization.cpp in Sources */,
 				71034D4224820DE600FED5C5 /* cpuscalingmaxfreq.cpp in Sources */,
 				71034D4324820DE600FED5C5 /* StringTokenizer.cpp in Sources */,
 				71034D4424820DE600FED5C5 /* TCPServerConnectionFactory.cpp in Sources */,
@@ -4973,6 +5007,7 @@
 				71034D9C24820DE600FED5C5 /* ktimer.cpp in Sources */,
 				71034D9D24820DE600FED5C5 /* HTTPServerSession.cpp in Sources */,
 				71034D9E24820DE600FED5C5 /* SocketReactor.cpp in Sources */,
+				71DF8E00248F299600EE1E08 /* knativeaudio.cpp in Sources */,
 				71034D9F24820DE600FED5C5 /* Path.cpp in Sources */,
 				71034DA024820DE600FED5C5 /* diy-fp.cc in Sources */,
 				71034DA124820DE600FED5C5 /* Timezone.cpp in Sources */,
@@ -5024,6 +5059,7 @@
 				71034DCF24820DE600FED5C5 /* bignum.cc in Sources */,
 				71034DD024820DE600FED5C5 /* Socket.cpp in Sources */,
 				71034DD124820DE600FED5C5 /* NetworkInterface.cpp in Sources */,
+				71DF8E0F248F299600EE1E08 /* knativethread.cpp in Sources */,
 				71034DD224820DE600FED5C5 /* fsdiropennode.cpp in Sources */,
 				71034DD324820DE600FED5C5 /* SSLException.cpp in Sources */,
 				71034DD424820DE600FED5C5 /* RegExpValidator.cpp in Sources */,
@@ -5089,7 +5125,6 @@
 				71034E1024820DE600FED5C5 /* NTPPacket.cpp in Sources */,
 				71034E1124820DE600FED5C5 /* fsopennode.cpp in Sources */,
 				71034E1224820DE600FED5C5 /* zutil.c in Sources */,
-				71034E1324820DE600FED5C5 /* sdlwindows.cpp in Sources */,
 				71034E1424820DE600FED5C5 /* x64Data.cpp in Sources */,
 				71034E1524820DE600FED5C5 /* yesNoDlg.cpp in Sources */,
 				71034E1624820DE600FED5C5 /* TimedNotificationQueue.cpp in Sources */,
@@ -5145,6 +5180,7 @@
 				71034E4824820DE600FED5C5 /* AbstractConfiguration.cpp in Sources */,
 				71034E4924820DE600FED5C5 /* PrivateKeyPassphraseHandler.cpp in Sources */,
 				71034E4A24820DE600FED5C5 /* instructions.cpp in Sources */,
+				71DF8E14248F299600EE1E08 /* knativewindow.cpp in Sources */,
 				71034E4B24820DE600FED5C5 /* UTF8Encoding.cpp in Sources */,
 				71034E4C24820DE600FED5C5 /* RSADigestEngine.cpp in Sources */,
 				71034E4D24820DE600FED5C5 /* fpu.cpp in Sources */,
@@ -5154,6 +5190,7 @@
 				71034E5124820DE600FED5C5 /* NotificationQueue.cpp in Sources */,
 				71034E5224820DE600FED5C5 /* CipherKey.cpp in Sources */,
 				71034E5324820DE600FED5C5 /* Context.cpp in Sources */,
+				71DF8E19248F299600EE1E08 /* knativesystem.cpp in Sources */,
 				71034E5424820DE600FED5C5 /* URIStreamFactory.cpp in Sources */,
 				71034E5524820DE600FED5C5 /* InflatingStream.cpp in Sources */,
 				71034E5624820DE600FED5C5 /* appbar.cpp in Sources */,
@@ -5205,7 +5242,6 @@
 				71034E8424820DE600FED5C5 /* fs.cpp in Sources */,
 				71034E8524820DE600FED5C5 /* OptionException.cpp in Sources */,
 				71034E8624820DE600FED5C5 /* POP3ClientSession.cpp in Sources */,
-				71034E8724820DE600FED5C5 /* sdlcallback.cpp in Sources */,
 				71034E8824820DE600FED5C5 /* SocketStream.cpp in Sources */,
 				71034E8924820DE600FED5C5 /* RSACipherImpl.cpp in Sources */,
 				71034E8A24820DE600FED5C5 /* soft_ondemand_page.cpp in Sources */,
@@ -5372,6 +5408,7 @@
 				71034F392482B71000FED5C5 /* KeyFileHandler.cpp in Sources */,
 				71034F3A2482B71000FED5C5 /* NullStream.cpp in Sources */,
 				71034F3B2482B71000FED5C5 /* TCPServerDispatcher.cpp in Sources */,
+				71DF8E06248F299600EE1E08 /* sdlcallback.cpp in Sources */,
 				71034F3C2482B71000FED5C5 /* MailMessage.cpp in Sources */,
 				71034F3D2482B71000FED5C5 /* DatagramSocket.cpp in Sources */,
 				71034F3E2482B71000FED5C5 /* PropertyFileConfiguration.cpp in Sources */,
@@ -5395,7 +5432,6 @@
 				71034F502482B71000FED5C5 /* SHA2Engine.cpp in Sources */,
 				71034F512482B71000FED5C5 /* pcre_xclass.c in Sources */,
 				71034F522482B71000FED5C5 /* CryptoException.cpp in Sources */,
-				71034F532482B71000FED5C5 /* sdlopengl.cpp in Sources */,
 				71034F542482B71000FED5C5 /* UDPServerParams.cpp in Sources */,
 				71034F552482B71000FED5C5 /* SimpleFileChannel.cpp in Sources */,
 				71034F562482B71000FED5C5 /* pcre_valid_utf8.c in Sources */,
@@ -5432,6 +5468,7 @@
 				71034F752482B71000FED5C5 /* deflate.c in Sources */,
 				71034F762482B71000FED5C5 /* NTPClient.cpp in Sources */,
 				71034F772482B71000FED5C5 /* common_arith.cpp in Sources */,
+				71DF8E0B248F299600EE1E08 /* knativesynchronization.cpp in Sources */,
 				71034F782482B71000FED5C5 /* cpuscalingmaxfreq.cpp in Sources */,
 				71034F792482B71000FED5C5 /* StringTokenizer.cpp in Sources */,
 				71034F7A2482B71000FED5C5 /* TCPServerConnectionFactory.cpp in Sources */,
@@ -5525,6 +5562,7 @@
 				71034FD22482B71000FED5C5 /* ktimer.cpp in Sources */,
 				71034FD32482B71000FED5C5 /* HTTPServerSession.cpp in Sources */,
 				71034FD42482B71000FED5C5 /* SocketReactor.cpp in Sources */,
+				71DF8E01248F299600EE1E08 /* knativeaudio.cpp in Sources */,
 				71034FD52482B71000FED5C5 /* Path.cpp in Sources */,
 				71034FD62482B71000FED5C5 /* diy-fp.cc in Sources */,
 				71034FD72482B71000FED5C5 /* Timezone.cpp in Sources */,
@@ -5576,6 +5614,7 @@
 				710350052482B71000FED5C5 /* bignum.cc in Sources */,
 				710350062482B71000FED5C5 /* Socket.cpp in Sources */,
 				710350072482B71000FED5C5 /* NetworkInterface.cpp in Sources */,
+				71DF8E10248F299600EE1E08 /* knativethread.cpp in Sources */,
 				710350082482B71000FED5C5 /* fsdiropennode.cpp in Sources */,
 				710350092482B71000FED5C5 /* SSLException.cpp in Sources */,
 				7103500A2482B71000FED5C5 /* RegExpValidator.cpp in Sources */,
@@ -5641,7 +5680,6 @@
 				710350462482B71000FED5C5 /* NTPPacket.cpp in Sources */,
 				710350472482B71000FED5C5 /* fsopennode.cpp in Sources */,
 				710350482482B71000FED5C5 /* zutil.c in Sources */,
-				710350492482B71000FED5C5 /* sdlwindows.cpp in Sources */,
 				7103504A2482B71000FED5C5 /* x64Data.cpp in Sources */,
 				7103504B2482B71000FED5C5 /* yesNoDlg.cpp in Sources */,
 				7103504C2482B71000FED5C5 /* TimedNotificationQueue.cpp in Sources */,
@@ -5697,6 +5735,7 @@
 				7103507E2482B71000FED5C5 /* AbstractConfiguration.cpp in Sources */,
 				7103507F2482B71000FED5C5 /* PrivateKeyPassphraseHandler.cpp in Sources */,
 				710350802482B71000FED5C5 /* instructions.cpp in Sources */,
+				71DF8E15248F299600EE1E08 /* knativewindow.cpp in Sources */,
 				710350812482B71000FED5C5 /* UTF8Encoding.cpp in Sources */,
 				710350822482B71000FED5C5 /* RSADigestEngine.cpp in Sources */,
 				710350832482B71000FED5C5 /* fpu.cpp in Sources */,
@@ -5706,6 +5745,7 @@
 				710350872482B71000FED5C5 /* NotificationQueue.cpp in Sources */,
 				710350882482B71000FED5C5 /* CipherKey.cpp in Sources */,
 				710350892482B71000FED5C5 /* Context.cpp in Sources */,
+				71DF8E1A248F299600EE1E08 /* knativesystem.cpp in Sources */,
 				7103508A2482B71000FED5C5 /* URIStreamFactory.cpp in Sources */,
 				7103508B2482B71000FED5C5 /* InflatingStream.cpp in Sources */,
 				7103508C2482B71000FED5C5 /* appbar.cpp in Sources */,
@@ -5757,7 +5797,6 @@
 				710350BA2482B71000FED5C5 /* fs.cpp in Sources */,
 				710350BB2482B71000FED5C5 /* OptionException.cpp in Sources */,
 				710350BC2482B71000FED5C5 /* POP3ClientSession.cpp in Sources */,
-				710350BD2482B71000FED5C5 /* sdlcallback.cpp in Sources */,
 				710350BE2482B71000FED5C5 /* SocketStream.cpp in Sources */,
 				710350BF2482B71000FED5C5 /* RSACipherImpl.cpp in Sources */,
 				710350C02482B71000FED5C5 /* soft_ondemand_page.cpp in Sources */,
@@ -5886,10 +5925,10 @@
 				71222BB02435169100CDBABD /* cpuonline.cpp in Sources */,
 				71222B632435169100CDBABD /* x64Data.cpp in Sources */,
 				71222B3F2435163100CDBABD /* testMMX.cpp in Sources */,
+				71DF8E17248F299600EE1E08 /* knativesystem.cpp in Sources */,
 				71222B602435169100CDBABD /* x64CPU.cpp in Sources */,
 				71222B672435169100CDBABD /* common_arith.cpp in Sources */,
 				71222B1D2435140100CDBABD /* AppDelegate.m in Sources */,
-				71222B922435169100CDBABD /* sdlwindows.cpp in Sources */,
 				71222BA92435169100CDBABD /* devnull.cpp in Sources */,
 				71222B6F2435169100CDBABD /* cpu.cpp in Sources */,
 				71222BC42435169100CDBABD /* glMarshalSize.cpp in Sources */,
@@ -5919,6 +5958,7 @@
 				71222BB42435169100CDBABD /* kthread.cpp in Sources */,
 				71222B7E2435169100CDBABD /* soft_copy_on_write_page.cpp in Sources */,
 				71222B822435169100CDBABD /* soft_rw_page.cpp in Sources */,
+				71DF8E08248F299600EE1E08 /* knativesynchronization.cpp in Sources */,
 				71222B892435169100CDBABD /* fs.cpp in Sources */,
 				71222BAC2435169100CDBABD /* syscall.cpp in Sources */,
 				71222B8C2435169100CDBABD /* fsnode.cpp in Sources */,
@@ -5937,6 +5977,7 @@
 				71222B7C2435169100CDBABD /* soft_file_map.cpp in Sources */,
 				71222B6A2435169100CDBABD /* common_other.cpp in Sources */,
 				71222BAE2435169100CDBABD /* kfiledescriptor.cpp in Sources */,
+				71DF8E0D248F299600EE1E08 /* knativethread.cpp in Sources */,
 				71222BB52435169100CDBABD /* loader.cpp in Sources */,
 				71222B802435169100CDBABD /* soft_native_page.cpp in Sources */,
 				71222B7A2435169100CDBABD /* soft_code_page.cpp in Sources */,
@@ -5974,16 +6015,16 @@
 				71222B5F2435169100CDBABD /* x64CodeChunk.cpp in Sources */,
 				71222B902435169100CDBABD /* threadedMainloop.cpp in Sources */,
 				71222BC32435169100CDBABD /* glMarshal.cpp in Sources */,
+				71DF8E12248F299600EE1E08 /* knativewindow.cpp in Sources */,
 				71222B752435169100CDBABD /* normal_strings.cpp in Sources */,
 				71222B782435169100CDBABD /* soft_ondemand_page.cpp in Sources */,
-				71222B912435169100CDBABD /* sdlcallback.cpp in Sources */,
 				71222B8E2435169100CDBABD /* fszipopennode.cpp in Sources */,
 				71222B842435169100CDBABD /* fszip.cpp in Sources */,
 				71222B682435169100CDBABD /* common_mmx.cpp in Sources */,
-				71222B972435169100CDBABD /* sdlopengl.cpp in Sources */,
 				71222B9A2435169100CDBABD /* meminfo.cpp in Sources */,
 				71222B3A2435160800CDBABD /* platformThreads.cpp in Sources */,
 				71222B9C2435169100CDBABD /* kfilelock.cpp in Sources */,
+				71DF8DFE248F299600EE1E08 /* knativeaudio.cpp in Sources */,
 				71222BB32435169100CDBABD /* cpuscalingmaxfreq.cpp in Sources */,
 				71222B832435169100CDBABD /* hard_memory.cpp in Sources */,
 				71222BA32435169100CDBABD /* devsequencer.cpp in Sources */,
@@ -5998,6 +6039,7 @@
 				71222B642435169100CDBABD /* srcgen.cpp in Sources */,
 				71222BB92435169100CDBABD /* kpoll.cpp in Sources */,
 				71222B3C2435163100CDBABD /* testSSE.cpp in Sources */,
+				71DF8E03248F299600EE1E08 /* sdlcallback.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -6050,6 +6092,7 @@
 				715F64692440E9740038F5A4 /* KeyFileHandler.cpp in Sources */,
 				715F83B02440ED1F0038F5A4 /* NullStream.cpp in Sources */,
 				715F63B92440E9110038F5A4 /* TCPServerDispatcher.cpp in Sources */,
+				71DF8E04248F299600EE1E08 /* sdlcallback.cpp in Sources */,
 				715F63C12440E9110038F5A4 /* MailMessage.cpp in Sources */,
 				715F636B2440E9100038F5A4 /* DatagramSocket.cpp in Sources */,
 				715F34CC2440E7480038F5A4 /* PropertyFileConfiguration.cpp in Sources */,
@@ -6073,7 +6116,6 @@
 				715F821E2440ED1D0038F5A4 /* SHA2Engine.cpp in Sources */,
 				715F82362440ED1D0038F5A4 /* pcre_xclass.c in Sources */,
 				715F7C0E2440E9E00038F5A4 /* CryptoException.cpp in Sources */,
-				71222BDE24351CBA00CDBABD /* sdlopengl.cpp in Sources */,
 				715F63AD2440E9100038F5A4 /* UDPServerParams.cpp in Sources */,
 				715F83622440ED1F0038F5A4 /* SimpleFileChannel.cpp in Sources */,
 				715F84202440ED200038F5A4 /* pcre_valid_utf8.c in Sources */,
@@ -6110,6 +6152,7 @@
 				715F82922440ED1E0038F5A4 /* deflate.c in Sources */,
 				715F63FD2440E9110038F5A4 /* NTPClient.cpp in Sources */,
 				71222BEA24351CBA00CDBABD /* common_arith.cpp in Sources */,
+				71DF8E09248F299600EE1E08 /* knativesynchronization.cpp in Sources */,
 				71222BEB24351CBA00CDBABD /* cpuscalingmaxfreq.cpp in Sources */,
 				715F83142440ED1E0038F5A4 /* StringTokenizer.cpp in Sources */,
 				715F63652440E9100038F5A4 /* TCPServerConnectionFactory.cpp in Sources */,
@@ -6203,6 +6246,7 @@
 				71222C0824351CBA00CDBABD /* ktimer.cpp in Sources */,
 				715F63A72440E9100038F5A4 /* HTTPServerSession.cpp in Sources */,
 				715F642D2440E9110038F5A4 /* SocketReactor.cpp in Sources */,
+				71DF8DFF248F299600EE1E08 /* knativeaudio.cpp in Sources */,
 				715F83782440ED1F0038F5A4 /* Path.cpp in Sources */,
 				715F83EE2440ED200038F5A4 /* diy-fp.cc in Sources */,
 				715F82F62440ED1E0038F5A4 /* Timezone.cpp in Sources */,
@@ -6254,6 +6298,7 @@
 				715F82342440ED1D0038F5A4 /* bignum.cc in Sources */,
 				715F638D2440E9100038F5A4 /* Socket.cpp in Sources */,
 				715F64012440E9110038F5A4 /* NetworkInterface.cpp in Sources */,
+				71DF8E0E248F299600EE1E08 /* knativethread.cpp in Sources */,
 				71222C1B24351CBA00CDBABD /* fsdiropennode.cpp in Sources */,
 				715F645F2440E9740038F5A4 /* SSLException.cpp in Sources */,
 				715F34F82440E7490038F5A4 /* RegExpValidator.cpp in Sources */,
@@ -6319,7 +6364,6 @@
 				715F63CB2440E9110038F5A4 /* NTPPacket.cpp in Sources */,
 				71222C3024351CBA00CDBABD /* fsopennode.cpp in Sources */,
 				715F833C2440ED1F0038F5A4 /* zutil.c in Sources */,
-				71222C3124351CBA00CDBABD /* sdlwindows.cpp in Sources */,
 				71222C3224351CBA00CDBABD /* x64Data.cpp in Sources */,
 				715F34832440D7D10038F5A4 /* yesNoDlg.cpp in Sources */,
 				715F832C2440ED1F0038F5A4 /* TimedNotificationQueue.cpp in Sources */,
@@ -6375,6 +6419,7 @@
 				715F34E62440E7480038F5A4 /* AbstractConfiguration.cpp in Sources */,
 				715F646B2440E9740038F5A4 /* PrivateKeyPassphraseHandler.cpp in Sources */,
 				71222C4224351CBA00CDBABD /* instructions.cpp in Sources */,
+				71DF8E13248F299600EE1E08 /* knativewindow.cpp in Sources */,
 				715F82C82440ED1E0038F5A4 /* UTF8Encoding.cpp in Sources */,
 				715F7BEE2440E9E00038F5A4 /* RSADigestEngine.cpp in Sources */,
 				71222C4324351CBA00CDBABD /* fpu.cpp in Sources */,
@@ -6384,6 +6429,7 @@
 				715F82AE2440ED1E0038F5A4 /* NotificationQueue.cpp in Sources */,
 				715F7BFE2440E9E00038F5A4 /* CipherKey.cpp in Sources */,
 				715F64612440E9740038F5A4 /* Context.cpp in Sources */,
+				71DF8E18248F299600EE1E08 /* knativesystem.cpp in Sources */,
 				715F82D02440ED1E0038F5A4 /* URIStreamFactory.cpp in Sources */,
 				715F83D02440ED200038F5A4 /* InflatingStream.cpp in Sources */,
 				71222C4524351CBA00CDBABD /* appbar.cpp in Sources */,
@@ -6435,7 +6481,6 @@
 				71222C4E24351CBA00CDBABD /* fs.cpp in Sources */,
 				715F34C02440E7480038F5A4 /* OptionException.cpp in Sources */,
 				715F638B2440E9100038F5A4 /* POP3ClientSession.cpp in Sources */,
-				71222C4F24351CBA00CDBABD /* sdlcallback.cpp in Sources */,
 				715F637B2440E9100038F5A4 /* SocketStream.cpp in Sources */,
 				715F7BF82440E9E00038F5A4 /* RSACipherImpl.cpp in Sources */,
 				71222C5024351CBA00CDBABD /* soft_ondemand_page.cpp in Sources */,
@@ -6602,6 +6647,7 @@
 				715F64682440E9740038F5A4 /* KeyFileHandler.cpp in Sources */,
 				715F83AF2440ED1F0038F5A4 /* NullStream.cpp in Sources */,
 				715F63B82440E9110038F5A4 /* TCPServerDispatcher.cpp in Sources */,
+				71DF8E02248F299600EE1E08 /* sdlcallback.cpp in Sources */,
 				715F63C02440E9110038F5A4 /* MailMessage.cpp in Sources */,
 				715F636A2440E9100038F5A4 /* DatagramSocket.cpp in Sources */,
 				715F34CB2440E7480038F5A4 /* PropertyFileConfiguration.cpp in Sources */,
@@ -6625,7 +6671,6 @@
 				715F821D2440ED1D0038F5A4 /* SHA2Engine.cpp in Sources */,
 				715F82352440ED1D0038F5A4 /* pcre_xclass.c in Sources */,
 				715F7C0D2440E9E00038F5A4 /* CryptoException.cpp in Sources */,
-				71FBFEB62433BBBE003F17F1 /* sdlopengl.cpp in Sources */,
 				715F63AC2440E9100038F5A4 /* UDPServerParams.cpp in Sources */,
 				715F83612440ED1F0038F5A4 /* SimpleFileChannel.cpp in Sources */,
 				715F841F2440ED200038F5A4 /* pcre_valid_utf8.c in Sources */,
@@ -6662,6 +6707,7 @@
 				715F82912440ED1E0038F5A4 /* deflate.c in Sources */,
 				715F63FC2440E9110038F5A4 /* NTPClient.cpp in Sources */,
 				71FBFE852433BBBE003F17F1 /* common_arith.cpp in Sources */,
+				71DF8E07248F299600EE1E08 /* knativesynchronization.cpp in Sources */,
 				71FBFED22433BBBE003F17F1 /* cpuscalingmaxfreq.cpp in Sources */,
 				715F83132440ED1E0038F5A4 /* StringTokenizer.cpp in Sources */,
 				715F63642440E9100038F5A4 /* TCPServerConnectionFactory.cpp in Sources */,
@@ -6755,6 +6801,7 @@
 				71FBFED62433BBBE003F17F1 /* ktimer.cpp in Sources */,
 				715F63A62440E9100038F5A4 /* HTTPServerSession.cpp in Sources */,
 				715F642C2440E9110038F5A4 /* SocketReactor.cpp in Sources */,
+				71DF8DFD248F299600EE1E08 /* knativeaudio.cpp in Sources */,
 				715F83772440ED1F0038F5A4 /* Path.cpp in Sources */,
 				715F83ED2440ED200038F5A4 /* diy-fp.cc in Sources */,
 				715F82F52440ED1E0038F5A4 /* Timezone.cpp in Sources */,
@@ -6806,6 +6853,7 @@
 				715F82332440ED1D0038F5A4 /* bignum.cc in Sources */,
 				715F638C2440E9100038F5A4 /* Socket.cpp in Sources */,
 				715F64002440E9110038F5A4 /* NetworkInterface.cpp in Sources */,
+				71DF8E0C248F299600EE1E08 /* knativethread.cpp in Sources */,
 				71FBFEA62433BBBE003F17F1 /* fsdiropennode.cpp in Sources */,
 				715F645E2440E9740038F5A4 /* SSLException.cpp in Sources */,
 				715F34F72440E7490038F5A4 /* RegExpValidator.cpp in Sources */,
@@ -6871,7 +6919,6 @@
 				715F63CA2440E9110038F5A4 /* NTPPacket.cpp in Sources */,
 				71FBFEA92433BBBE003F17F1 /* fsopennode.cpp in Sources */,
 				715F833B2440ED1F0038F5A4 /* zutil.c in Sources */,
-				71FBFEB02433BBBE003F17F1 /* sdlwindows.cpp in Sources */,
 				71FBFE812433BBBE003F17F1 /* x64Data.cpp in Sources */,
 				715F34822440D7D10038F5A4 /* yesNoDlg.cpp in Sources */,
 				715F832B2440ED1F0038F5A4 /* TimedNotificationQueue.cpp in Sources */,
@@ -6927,6 +6974,7 @@
 				715F34E52440E7480038F5A4 /* AbstractConfiguration.cpp in Sources */,
 				715F646A2440E9740038F5A4 /* PrivateKeyPassphraseHandler.cpp in Sources */,
 				71FBFE922433BBBE003F17F1 /* instructions.cpp in Sources */,
+				71DF8E11248F299600EE1E08 /* knativewindow.cpp in Sources */,
 				715F82C72440ED1E0038F5A4 /* UTF8Encoding.cpp in Sources */,
 				715F7BED2440E9E00038F5A4 /* RSADigestEngine.cpp in Sources */,
 				71FBFE8C2433BBBE003F17F1 /* fpu.cpp in Sources */,
@@ -6936,6 +6984,7 @@
 				715F82AD2440ED1E0038F5A4 /* NotificationQueue.cpp in Sources */,
 				715F7BFD2440E9E00038F5A4 /* CipherKey.cpp in Sources */,
 				715F64602440E9740038F5A4 /* Context.cpp in Sources */,
+				71DF8E16248F299600EE1E08 /* knativesystem.cpp in Sources */,
 				715F82CF2440ED1E0038F5A4 /* URIStreamFactory.cpp in Sources */,
 				715F83CF2440ED200038F5A4 /* InflatingStream.cpp in Sources */,
 				71FBFE682433BBBE003F17F1 /* appbar.cpp in Sources */,
@@ -6987,7 +7036,6 @@
 				71FBFEA72433BBBE003F17F1 /* fs.cpp in Sources */,
 				715F34BF2440E7480038F5A4 /* OptionException.cpp in Sources */,
 				715F638A2440E9100038F5A4 /* POP3ClientSession.cpp in Sources */,
-				71FBFEAF2433BBBE003F17F1 /* sdlcallback.cpp in Sources */,
 				715F637A2440E9100038F5A4 /* SocketStream.cpp in Sources */,
 				715F7BF72440E9E00038F5A4 /* RSACipherImpl.cpp in Sources */,
 				71FBFE962433BBBE003F17F1 /* soft_ondemand_page.cpp in Sources */,

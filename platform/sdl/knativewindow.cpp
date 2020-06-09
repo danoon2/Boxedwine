@@ -27,11 +27,11 @@
 #include "kunixsocket.h"
 #include "sdlcallback.h"
 #include "pixelformat.h"
-#include "../source/emulation/hardmmu/hard_memory.h"
-#include "../source/util/threadutils.h"
+#include "../../source/emulation/hardmmu/hard_memory.h"
+#include "../../source/util/threadutils.h"
 
 #if !defined(BOXEDWINE_DISABLE_UI) && !defined(__TEST)
-#include "../source/ui/mainui.h"
+#include "../../source/ui/mainui.h"
 #endif
 
 class WndSdl : public Wnd {

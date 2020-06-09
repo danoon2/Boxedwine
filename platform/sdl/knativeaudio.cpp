@@ -1,7 +1,7 @@
 #include "boxedwine.h"
 #include "knativeaudio.h"
 #include <SDL.h>
-#include "../source/kernel/devs/oss.h"
+#include "../../source/kernel/devs/oss.h"
 
 // Perhaps in the future, this class and devdsp.cpp will go away and instead I will replace the oss interface Wine uses in wineoss.drv with a custom one, like what I did with winex11.drv
 #define DSP_BUFFER_SIZE (1024*256)
