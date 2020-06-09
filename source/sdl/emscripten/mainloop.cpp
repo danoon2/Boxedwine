@@ -10,7 +10,6 @@ void mainloop() {
     U32 t;
     U32 count=0;
     while (1) {
-        SDL_Event e;
         bool ran = runSlice();
         
         if (!KNativeWindow::getNativeWindow()->processEvents()) {
