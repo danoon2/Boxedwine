@@ -82,6 +82,7 @@ public:
 U32 KNativeWindow::defaultScreenWidth = 800;
 U32 KNativeWindow::defaultScreenHeight = 600;
 U32 KNativeWindow::defaultScreenBpp = 32;
+bool KNativeWindow::windowUpdated = false;
 U32 sdlCustomEvent;
 
 class KNativeWindowSdl : public KNativeWindow, public std::enable_shared_from_this<KNativeWindowSdl> {
@@ -754,8 +755,6 @@ void KNativeWindowSdl::bltWnd(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32
     }
 }
 
-U32 sdlUpdated;
-
 #ifdef BOXEDWINE_RECORDER
 U8* recorderBuffer;
 U32 recorderBufferSize;
@@ -855,7 +854,7 @@ void KNativeWindowSdl::drawAllWindows(KThread* thread, U32 hWnd, int count) {
         
         DISPATCH_MAIN_THREAD_BLOCK_END
     }
-    sdlUpdated=1;
+    KNativeWindow::windowUpdated = true;
 }
 
 std::shared_ptr<Wnd> KNativeWindowSdl::createWnd(KThread* thread, U32 processId, U32 hwnd, U32 windowRect, U32 clientRect) {
@@ -2233,7 +2232,7 @@ bool KNativeWindowSdl::handlSdlEvent(SDL_Event* e) {
     }
     else if (e->type == SDL_WINDOWEVENT) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(hwndToWndMutex);
-        if (!hwndToWnd.size() != 0)
+        if (!hwndToWnd.size())
             flipFBNoCheck();
     }
     return true;

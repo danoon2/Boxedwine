@@ -37,7 +37,7 @@ public:
 		this->closeWhenDone = false;
 	}
 
-	~KNativeAudioSdl() {
+	virtual ~KNativeAudioSdl() {
 		if (this->cvtBuf) {
 			SDL_free(this->cvtBuf);
 		}

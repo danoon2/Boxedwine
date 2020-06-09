@@ -6,6 +6,7 @@ public:
 	static std::shared_ptr<KNativeAudio> createNativeAudio();
 	static void shutdown();
 
+	virtual ~KNativeAudio() {}
 	virtual void openAudio(U32 format, U32 freq, U32 channels)=0;
 	virtual bool isOpen()=0;
 	virtual void closeAudio() = 0;

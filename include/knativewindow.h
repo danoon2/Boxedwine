@@ -21,6 +21,7 @@ public:
 class Wnd {
 public:
     Wnd() : surface(0) {}
+    virtual ~Wnd() {}
     virtual void setText(char* text) = 0;
     virtual void show(bool bShow) = 0;    
     virtual void destroy() = 0;
@@ -42,6 +43,7 @@ public:
 	static U32 defaultScreenWidth;
 	static U32 defaultScreenHeight;
 	static U32 defaultScreenBpp;
+    static bool windowUpdated;
 
     virtual ~KNativeWindow() {}
 	virtual void screenChanged(KThread* thread, U32 width, U32 height, U32 bpp) = 0;
