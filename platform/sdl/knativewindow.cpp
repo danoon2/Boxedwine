@@ -2092,7 +2092,7 @@ bool KNativeWindowSdl::handlSdlEvent(SDL_Event* e) {
             SDL_SetRenderDrawColor(shutdownRenderer, 255, 255, 0, 255);
             KSystem::killTime = KSystem::getMilliesSinceStart()+10000;
             updateShutdownWindow();
-#ifdef BOXEDWINE_MULTI_THREADED
+#if defined (BOXEDWINE_MULTI_THREADED) && !defined (__TEST)
             runInBackgroundThread([p]() {
                 p->killAllThreads();
                 KSystem::eraseProcess(p->id);
