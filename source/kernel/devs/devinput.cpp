@@ -20,6 +20,7 @@
 #include "devinput.h"
 #include "ksignal.h"
 #include "kscheduler.h"
+#include "knativewindow.h"
 
 #include <string.h>
 
@@ -373,7 +374,7 @@ U32 DevInputTouch::ioctl(U32 request) {
             U32 address = IOCTL_ARG1;
             if (len<24)
                 kpanic("Bad length for EVIOCGABS (ABS_X)");
-            writeAbs(address, this->lastX, 0, screenCx);
+            writeAbs(address, this->lastX, 0, KNativeWindow::getNativeWindow()->screenWidth());
             return 0;
         }
         case 0x4541: { // EVIOCGABS (ABS_Y)
@@ -381,7 +382,7 @@ U32 DevInputTouch::ioctl(U32 request) {
             int address = IOCTL_ARG1;
             if (len<24)
                 kpanic("Bad length for EVIOCGABS (ABS_X)");
-            writeAbs(address, this->lastY, 0, screenCy);
+            writeAbs(address, this->lastY, 0, KNativeWindow::getNativeWindow()->screenHeight());
             return 0;
         }
         default:

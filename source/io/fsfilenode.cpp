@@ -4,7 +4,6 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <time.h>
-#include <SDL.h>
 
 #include UNISTD
 #include UTIME
@@ -15,6 +14,7 @@
 #include "fsfileopennode.h"
 #include "kstat.h"
 #include "fszipnode.h"
+#include "knativethread.h"
 
 std::set<std::string> FsFileNode::nonExecFileFullPaths;
 
@@ -331,7 +331,7 @@ U32 FsFileNode::rename(const std::string& path) {
             this->parent = parentNode;
         } else {
             result = -translateErr(errno);
-            SDL_Delay(100); // not sure why on Windows doesNativePathExist fails sometimes, debian stretch /usr/bin/dpkg -i /var/local/xbitmaps_1.1.1-2_all.deb seems to cause this in a reproducible way
+            KNativeThread::sleep(100); // not sure why on Windows doesNativePathExist fails sometimes, debian stretch /usr/bin/dpkg -i /var/local/xbitmaps_1.1.1-2_all.deb seems to cause this in a reproducible way
             continue;
         }
         break;

@@ -19,17 +19,17 @@
 #include "devmixer.h"
 #include "devsequencer.h"
 #include "mainloop.h"
-#include "sdlwindow.h"
 #include "../io/fsfilenode.h"
 #include "../io/fszip.h"
 #include "loader.h"
 #include "kstat.h"
+#include "knativesystem.h"
+#include "knativewindow.h"
 
 #ifndef BOXEDWINE_DISABLE_UI
 #include "../ui/data/globalSettings.h"
 #endif
 
-#include <SDL.h>
 #include MKDIR_INCLUDE
 #include CURDIR_INCLUDE
 
@@ -110,7 +110,9 @@ void StartUpArgs::buildVirtualFileSystem() {
     Fs::addVirtualFile("/proc/cpuinfo", openCpuInfo, K__S_IREAD, mdev(0, 0), procNode);
     Fs::addVirtualFile("/proc/self/exe", openProcSelfExe, K__S_IREAD, mdev(0, 0), procSelfNode);
     Fs::addVirtualFile("/proc/cmdline", openKernelCommandLine, K__S_IREAD, mdev(0, 0), procNode); // kernel command line
+#ifdef BOXEDWINE_EXPERIMENTAL_FRAME_BUFFER
     Fs::addVirtualFile("/dev/fb0", openDevFB, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, mdev(0x1d, 0), devNode);
+#endif
     Fs::addVirtualFile("/dev/input/event3", openDevInputTouch, K__S_IWRITE|K__S_IREAD|K__S_IFCHR, mdev(0xd, 0x43), inputNode);
     Fs::addVirtualFile("/dev/input/event4", openDevInputKeyboard, K__S_IWRITE|K__S_IREAD|K__S_IFCHR, mdev(0xd, 0x44), inputNode);
 	Fs::addVirtualFile("/dev/dsp", openDevDsp, K__S_IWRITE | K__S_IREAD | K__S_IFCHR, mdev(14, 3), devNode);
@@ -382,22 +384,22 @@ bool StartUpArgs::apply() {
             }
         }
     }
-#ifdef SDL2
     if (this->sdlFullScreen && !this->resolutionSet) {
-        SDL_DisplayMode mode;
-        if (!SDL_GetCurrentDisplayMode(0, &mode)) {
+        U32 width = 0;
+        U32 height = 0;
+        if (KNativeSystem::getScreenDimensions(&width, &height)) {
 #ifdef __ANDROID__
-            this->screenCx = mode.w/2;
-            this->screenCy = mode.h/2;
+            this->screenCx = width / 2;
+            this->screenCy = height / 2;
 #else
-            this->screenCx = mode.w;
-            this->screenCy = mode.h;
+            this->screenCx = width;
+            this->screenCy = height;
 #endif
         }
     }
-#endif
-
-    initSDL(this->screenCx, this->screenCy, this->screenBpp, this->sdlScaleX, this->sdlScaleY, this->sdlScaleQuality, this->soundEnabled, this->videoEnabled, this->sdlFullScreen);
+    KSystem::videoEnabled = this->videoEnabled;
+    KSystem::soundEnabled = this->soundEnabled;
+    KNativeWindow::init(this->screenCx, this->screenCy, this->screenBpp, this->sdlScaleX, this->sdlScaleY, this->sdlScaleQuality, this->sdlFullScreen);
     initWine();
 #if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
     gl_init(this->glExt);        
@@ -425,7 +427,7 @@ bool StartUpArgs::apply() {
         writeSource();
 #endif
 	KSystem::destroy();
-    destroySDL();
+    KNativeWindow::shutdown();
     dspShutdown();
 
 #ifdef BOXEDWINE_ZLIB
@@ -590,8 +592,8 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
     } else {
         pathSeperator = '/';
     }
-    if (SDL_GetBasePath()) {
-        std::string base2 = SDL_GetBasePath();
+    if (KNativeSystem::getAppDirectory().length()) {
+        std::string base2 = KNativeSystem::getAppDirectory();
         base2 = base2.substr(0, base2.length()-1); 
         if (zips.size()==0 && !nozip) {
             std::vector<Platform::ListNodeResult> results;
@@ -618,7 +620,7 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
         this->root=SDL_AndroidGetExternalStoragePath();
         this->root+="/root";
 #else
-        this->root=SDL_GetPrefPath("Boxedwine", "root");
+        this->root=KNativeSystem::getLocalDirectory()+"root";
 #endif
     }  
 

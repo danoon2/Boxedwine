@@ -1,6 +1,8 @@
 #ifndef __SYNCHRONIZATION_H__
 #define __SYNCHRONIZATION_H__
 
+#include "knativesynchronization.h"
+
 class BoxedWineCondition;
 
 class BoxedWineConditionChild {
@@ -13,14 +15,11 @@ public:
 #ifdef BOXEDWINE_MULTI_THREADED
 class BoxedWineMutex {
 public:
-    BoxedWineMutex();
-    ~BoxedWineMutex();
-
     void lock();
     void unlock();
 
 private:
-    void* m;
+    KNativeMutex m;
 };
 
 class BoxedWineCriticalSection {
@@ -36,7 +35,6 @@ class BoxedWineCondition {
 public:
     BoxedWineCondition(std::string name);
     BoxedWineCondition();
-    ~BoxedWineCondition();
 
     bool tryLock();
     void lock();
@@ -56,8 +54,8 @@ private:
     std::vector<BoxedWineCondition*> parents;
     std::vector<BoxedWineConditionChild> children;  
 
-    void* m;
-    void* c;
+    KNativeMutex m;
+    KNativeCondition c;
     U32 lockOwner;
 };
 

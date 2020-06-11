@@ -18,14 +18,13 @@
 
 #include "boxedwine.h"
 
-#include <SDL.h>
-
 #include "startupArgs.h"
 #ifndef BOXEDWINE_DISABLE_UI
 #include "../ui/mainui.h"
 #include "../ui/data/boxedwineData.h"
 #include "../ui/data/globalSettings.h"
 #endif
+#include "knativesystem.h"
 
 #ifdef BOXEDWINE_MSVC
 #include <Windows.h>
@@ -72,20 +71,8 @@ int boxedmain(int argc, const char **argv) {
     }
 #endif
 
-    #ifdef SDL2
-    U32 flags = SDL_INIT_EVENTS;
-#else
-    U32 flags = SDL_INIT_TIMER;
-#endif
-    if (startupArgs.videoEnabled) {
-        flags|=SDL_INIT_VIDEO;
-    }
-    if (startupArgs.soundEnabled) {
-        flags|=SDL_INIT_AUDIO;
-    }
-    if (SDL_Init(flags) != 0) {
-        klog("SDL_Init Error: %s", SDL_GetError());
-        return 0;
+    if (!KNativeSystem::init(startupArgs.videoEnabled, startupArgs.soundEnabled)) {
+        return 1;
     }
 #ifndef BOXEDWINE_DISABLE_UI
     BoxedwineData::init(argc, argv);
@@ -125,21 +112,15 @@ int boxedmain(int argc, const char **argv) {
             BoxedwineData::startApp();
             GlobalSettings::startUpArgs.readyToLaunch = false;
 
-            // make sure if the user closed the SDL windows for the game/app, that it doesn't carry over into the UI
-            SDL_PumpEvents();
-            SDL_FlushEvent(SDL_QUIT);
+            KNativeSystem::preReturnToUI();
             GlobalSettings::startUp(); // we we come back in after launching a game, we will need to create icons, like the demo icons
         }
 #endif
     }              
 
     klog("Boxedwine shutdown");
-    SDL_Quit();
+    KNativeSystem::cleanup();
     return BOXEDWINE_RECORDER_QUIT();
-}
-
-int main(int argc, char **argv) {
-    return boxedmain(argc, (const char **)argv);
 }
 
 #endif

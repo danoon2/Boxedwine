@@ -23,10 +23,14 @@
 #include "kscheduler.h"
 #include "../emulation/softmmu/soft_ram.h"
 #include "../emulation/cpu/normal/normalCPU.h"
+#include "knativesystem.h"
+#include "pixelformat.h"
 
 #include <time.h>
-#include <SDL.h>
 
+bool KSystem::modesInitialized = false;
+bool KSystem::videoEnabled = true;
+bool KSystem::soundEnabled = true;
 unsigned int KSystem::nextThreadId=10;
 std::unordered_map<void*, SHM*> KSystem::shm;
 std::unordered_map<U32, std::shared_ptr<KProcess> > KSystem::processes;
@@ -39,7 +43,7 @@ bool KSystem::shutingDown;
 U32 KSystem::killTime;
 bool KSystem::adjustClock;
 U32 KSystem::adjustClockFactor=100;
-U32 KSystem::startTimeSdlTicks;
+U32 KSystem::startTimeTicks;
 U64 KSystem::startTimeMicroCounter;
 U64 KSystem::startTimeSystemTime;
 std::string KSystem::title;
@@ -63,7 +67,7 @@ void KSystem::init() {
 #endif
     KSystem::pentiumLevel = 4;
 	KSystem::shutingDown = false;
-    KSystem::startTimeSdlTicks = SDL_GetTicks();
+    KSystem::startTimeTicks = KNativeSystem::getTicks();
     KSystem::startTimeMicroCounter = Platform::getMicroCounter();
     KSystem::startTimeSystemTime = Platform::getSystemTimeAsMicroSeconds();
     KSystem::killTime = 0;
@@ -792,12 +796,12 @@ U32 KSystem::getRunningProcessCount() {
 
 U32 KSystem::getMilliesSinceStart() {
     if (!KSystem::adjustClock) {
-        return SDL_GetTicks();
+        return KNativeSystem::getTicks();
     }
-    U32 currentTicks = SDL_GetTicks();
-    U32 diff = currentTicks - KSystem::startTimeSdlTicks;
+    U32 currentTicks = KNativeSystem::getTicks();
+    U32 diff = currentTicks - KSystem::startTimeTicks;
     U32 adjustedDiff = diff * KSystem::adjustClockFactor / 100;
-    return KSystem::startTimeSdlTicks + adjustedDiff;
+    return KSystem::startTimeTicks + adjustedDiff;
 }
 
 U64 KSystem::getSystemTimeAsMicroSeconds() {
@@ -835,3 +839,91 @@ U32 KSystem::getNextThreadId() {
     BOXEDWINE_CRITICAL_SECTION;
     return KSystem::nextThreadId++;
 }
+
+PixelFormat pfs[512];
+U32 numberOfPfs;
+
+void KSystem::initDisplayModes() {
+    if (!modesInitialized) {
+        modesInitialized = 1;
+        numberOfPfs = getPixelFormats(pfs, sizeof(pfs) / sizeof(PixelFormat));
+    }
+}
+
+PixelFormat* KSystem::getPixelFormat(U32 index) {
+    if (index < numberOfPfs) {
+        return &pfs[index];
+    }
+    return NULL;
+}
+
+U32 KSystem::describePixelFormat(KThread* thread, U32 hdc, U32 fmt, U32 size, U32 descr)
+{
+    initDisplayModes();
+
+    if (!descr) return numberOfPfs;
+    if (size < 40) return 0;
+    if (fmt > numberOfPfs) {
+        return 0;
+    }
+
+    writew(descr, pfs[fmt].nSize); descr += 2;
+    writew(descr, pfs[fmt].nVersion); descr += 2;
+    writed(descr, pfs[fmt].dwFlags); descr += 4;
+    writeb(descr, pfs[fmt].iPixelType); descr++;
+    writeb(descr, pfs[fmt].cColorBits); descr++;
+    writeb(descr, pfs[fmt].cRedBits); descr++;
+    writeb(descr, pfs[fmt].cRedShift); descr++;
+    writeb(descr, pfs[fmt].cGreenBits); descr++;
+    writeb(descr, pfs[fmt].cGreenShift); descr++;
+    writeb(descr, pfs[fmt].cBlueBits); descr++;
+    writeb(descr, pfs[fmt].cBlueShift); descr++;
+    writeb(descr, pfs[fmt].cAlphaBits); descr++;
+    writeb(descr, pfs[fmt].cAlphaShift); descr++;
+    writeb(descr, pfs[fmt].cAccumBits); descr++;
+    writeb(descr, pfs[fmt].cAccumRedBits); descr++;
+    writeb(descr, pfs[fmt].cAccumGreenBits); descr++;
+    writeb(descr, pfs[fmt].cAccumBlueBits); descr++;
+    writeb(descr, pfs[fmt].cAccumAlphaBits); descr++;
+    writeb(descr, pfs[fmt].cDepthBits); descr++;
+    writeb(descr, pfs[fmt].cStencilBits); descr++;
+    writeb(descr, pfs[fmt].cAuxBuffers); descr++;
+    writeb(descr, pfs[fmt].iLayerType); descr++;
+    writeb(descr, pfs[fmt].bReserved); descr++;
+    writed(descr, pfs[fmt].dwLayerMask); descr += 4;
+    writed(descr, pfs[fmt].dwVisibleMask); descr += 4;
+    writed(descr, pfs[fmt].dwDamageMask);
+
+    return numberOfPfs;
+}
+
+/*
+void writePixelFormat(KThread* thread, PixelFormat* pf, U32 descr) {
+    pf->nSize = readw(descr); descr += 2;
+    pf->nVersion = readw(descr); descr += 2;
+    pf->dwFlags = readd(descr); descr += 4;
+    pf->iPixelType = readb(descr); descr++;
+    pf->cColorBits = readb(descr); descr++;
+    pf->cRedBits = readb(descr); descr++;
+    pf->cRedShift = readb(descr); descr++;
+    pf->cGreenBits = readb(descr); descr++;
+    pf->cGreenShift = readb(descr); descr++;
+    pf->cBlueBits = readb(descr); descr++;
+    pf->cBlueShift = readb(descr); descr++;
+    pf->cAlphaBits = readb(descr); descr++;
+    pf->cAlphaShift = readb(descr); descr++;
+    pf->cAccumBits = readb(descr); descr++;
+    pf->cAccumRedBits = readb(descr); descr++;
+    pf->cAccumGreenBits = readb(descr); descr++;
+    pf->cAccumBlueBits = readb(descr); descr++;
+    pf->cAccumAlphaBits = readb(descr); descr++;
+    pf->cDepthBits = readb(descr); descr++;
+    pf->cStencilBits = readb(descr); descr++;
+    pf->cAuxBuffers = readb(descr); descr++;
+    pf->iLayerType = readb(descr); descr++;
+    pf->bReserved = readb(descr); descr++;
+    pf->dwLayerMask = readd(descr); descr += 4;
+    pf->dwVisibleMask = readd(descr); descr += 4;
+    pf->dwDamageMask = readd(descr);
+}
+*/

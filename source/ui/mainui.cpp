@@ -4,6 +4,8 @@
 #include <SDL.h>
 #include <stdio.h>
 
+#include "knativesystem.h"
+
 #include "examples/imgui_impl_sdl.h"
 #ifdef BOXEDWINE_IMGUI_DX9
 #include "examples/imgui_impl_dx9.h"
@@ -463,7 +465,7 @@ bool uiShow(const std::string& basePath) {
     int y = GlobalSettings::getPreviousScreenY();
 
 #ifdef BOXEDWINE_HIGHDPI
-    scale = getDisplayScale();
+    scale = KNativeSystem::getDpiScale();
 #endif
     if (cx < 320 || cy < 320 || (dm.w && cx > dm.w) || (dm.h && cy > dm.h)) {
         cx = 1024 * scale / SCALE_DENOMINATOR;

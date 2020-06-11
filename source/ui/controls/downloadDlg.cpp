@@ -3,7 +3,7 @@
 #include "../../util/networkutils.h"
 #include "../../util/threadutils.h"
 #include "../../io/fs.h"
-#include <SDL.h>
+#include "knativethread.h"
 
 #ifdef WIN32
 #undef BOOL
@@ -83,7 +83,7 @@ DownloadDlg::~DownloadDlg() {
         closesocket(this->socketfd);
     }
     while (!downloadDone) {
-        SDL_Delay(1);
+        KNativeThread::sleep(1);
     }
     GlobalSettings::useFastFrameRate(false);
 }

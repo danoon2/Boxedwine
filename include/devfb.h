@@ -19,6 +19,8 @@
 #ifndef __DEVFB_H__
 #define __DEVFB_H__
 
+#ifdef BOXEDWINE_EXPERIMENTAL_FRAME_BUFFER
+
 extern struct FsOpenNodeFunc fbAccess;
 
 FsOpenNode* openDevFB(const BoxedPtr<FsNode>& node, U32 flags, U32 data);
@@ -29,5 +31,6 @@ void fbSwapOpenGL();
 void flipFBNoCheck();
 
 Page* allocFBPage(U32 flags);
+#endif
 
 #endif

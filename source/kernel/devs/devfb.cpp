@@ -16,11 +16,14 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
+// This code was written before the winedrv code existed.  Now this is considered dead code, but is kept for experimentation
 #include "boxedwine.h"
 
+#ifdef BOXEDWINE_EXPERIMENTAL_FRAME_BUFFER
 #include <SDL.h>
 #include "../../io/fsvirtualopennode.h"
 #include "../../emulation//hardmmu/hard_memory.h"
+#include "knativewindow.h"
 
 static U32 screenBPP=32;
 U32 updateAvailable;
@@ -30,30 +33,30 @@ U8* screenPixels;
 U64 isFbActive;
 #endif
 struct fb_fix_screeninfo {
-    char id[16];			/* identification string eg "TT Builtin" */
-    U32 smem_start;			/* Start of frame buffer mem */
-                            /* (physical address) */
-    U32 smem_len;           /* Length of frame buffer mem */
-    U32 type;               /* see FB_TYPE_*                */
-    U32 type_aux;           /* Interleave for interleaved Planes */
-    U32 visual;             /* see FB_VISUAL_*              */
-    U16 xpanstep;           /* zero if no hardware panning  */
-    U16 ypanstep;           /* zero if no hardware panning  */
-    U16 ywrapstep;          /* zero if no hardware ywrap    */
-    U32 line_length;        /* length of a line in bytes    */
-    U32 mmio_start;         /* Start of Memory Mapped I/O   */
-                            /* (physical address) */
-    U32 mmio_len;           /* Length of Memory Mapped I/O  */
-    U32 accel;              /* Indicate to driver which     */
-                            /*  specific chip/card we have  */
-    U16 capabilities;       /* see FB_CAP_*                 */
-    U16 reserved[2];        /* Reserved for future compatibility */
+    char id[16];			// identification string eg "TT Builtin"
+    U32 smem_start;			// Start of frame buffer mem
+                            // (physical address)
+    U32 smem_len;           // Length of frame buffer mem
+    U32 type;               // see FB_TYPE_*
+    U32 type_aux;           // Interleave for interleaved Planes
+    U32 visual;             // see FB_VISUAL_*
+    U16 xpanstep;           // zero if no hardware panning
+    U16 ypanstep;           // zero if no hardware panning
+    U16 ywrapstep;          // zero if no hardware ywrap
+    U32 line_length;        // length of a line in bytes
+    U32 mmio_start;         // Start of Memory Mapped I/O
+                            // (physical address)
+    U32 mmio_len;           // Length of Memory Mapped I/O
+    U32 accel;              // Indicate to driver which
+                            //  specific chip/card we have
+    U16 capabilities;       // see FB_CAP_*
+    U16 reserved[2];        // Reserved for future compatibility
 };
 
 struct fb_cmap {
-        U32 start;                    /* First entry  */
-        U32 len;                      /* Number of entries */
-        U16 red[256];                     /* Red values   */
+        U32 start;                    // First entry
+        U32 len;                      // Number of entries
+        U16 red[256];                 // Red values
         U16 green[256];
         U16 blue[256];
 };
@@ -90,50 +93,50 @@ void writeFixInfo(U32 address, struct fb_fix_screeninfo* info) {
 }
 
 struct fb_bitfield {
-    U32 offset;                   /* beginning of bitfield        */
-    U32 length;                   /* length of bitfield           */
-    U32 msb_right;                /* != 0 : Most significant bit is */ 
-                                  /* right */ 
+    U32 offset;                   // beginning of bitfield
+    U32 length;                   // length of bitfield
+    U32 msb_right;                // != 0 : Most significant bit is
+                                  // right
 };
 
 struct fb_var_screeninfo {
-    U32 xres;                     /* visible resolution           */
+    U32 xres;                     // visible resolution
     U32 yres;
-    U32 xres_virtual;             /* virtual resolution           */
+    U32 xres_virtual;             // virtual resolution
     U32 yres_virtual;
-    U32 xoffset;                  /* offset from virtual to visible */
-    U32 yoffset;                  /* resolution                   */
+    U32 xoffset;                  // offset from virtual to visible
+    U32 yoffset;                  // resolution
 
-    U32 bits_per_pixel;		      /* guess what                   */
-    U32 grayscale;                /* 0 = color, 1 = grayscale,    */
-                                  /* >1 = FOURCC                  */
-    struct fb_bitfield red;       /* bitfield in fb mem if true color, */
-    struct fb_bitfield green;     /* else only length is significant */
+    U32 bits_per_pixel;		      // guess what
+    U32 grayscale;                // 0 = color, 1 = grayscale,
+                                  // >1 = FOURCC
+    struct fb_bitfield red;       // bitfield in fb mem if true color,
+    struct fb_bitfield green;     // else only length is significant
     struct fb_bitfield blue;
     struct fb_bitfield transp;
 
-    U32 nonstd;                   /* != 0 Non standard pixel format */
+    U32 nonstd;                   // != 0 Non standard pixel format
 
-    U32 activate;                 /* see FB_ACTIVATE_*            */
+    U32 activate;                 // see FB_ACTIVATE_*
 
-    U32 height;                   /* height of picture in mm    */
-    U32 width;                    /* width of picture in mm     */
+    U32 height;                   // height of picture in mm
+    U32 width;                    // width of picture in mm
 
-    U32 accel_flags;              /* (OBSOLETE) see fb_info.flags */
+    U32 accel_flags;              // (OBSOLETE) see fb_info.flags
 
-    /* Timing: All values in pixclocks, except pixclock (of course) */
-    U32 pixclock;                 /* pixel clock in ps (pico seconds) */
-    U32 left_margin;              /* time from sync to picture    */
-    U32 right_margin;             /* time from picture to sync    */
-    U32 upper_margin;             /* time from sync to picture    */
+    // Timing: All values in pixclocks, except pixclock (of course)
+    U32 pixclock;                 // pixel clock in ps (pico seconds)
+    U32 left_margin;              // time from sync to picture
+    U32 right_margin;             // time from picture to sync
+    U32 upper_margin;             // time from sync to picture
     U32 lower_margin;
-    U32 hsync_len;                /* length of horizontal sync    */
-    U32 vsync_len;                /* length of vertical sync      */
-    U32 sync;                     /* see FB_SYNC_*                */
-    U32 vmode;                    /* see FB_VMODE_*               */
-    U32 rotate;                   /* angle we rotate counter clockwise */
-    U32 colorspace;               /* colorspace for FOURCC-based modes */
-    U32 reserved[4];			  /* Reserved for future compatibility */
+    U32 hsync_len;                // length of horizontal sync
+    U32 vsync_len;                // length of vertical sync
+    U32 sync;                     // see FB_SYNC_*
+    U32 vmode;                    // see FB_VMODE_*
+    U32 rotate;                   // angle we rotate counter clockwise
+    U32 colorspace;               // colorspace for FOURCC-based modes
+    U32 reserved[4];			  // Reserved for future compatibility
 };
 
 void writeVarInfo(U32 address, struct fb_var_screeninfo* info) {
@@ -251,9 +254,6 @@ void readVarInfo(int address, struct fb_var_screeninfo* info) {
     info->vmode = readd(address); address+=4;
     info->rotate = readd(address); address+=4;
     info->colorspace = readd(address); address+=4;	
-
-    screenCx = info->xres;
-    screenCy = info->yres;
 }
 
 struct fb_var_screeninfo fb_var_screeninfo;
@@ -262,8 +262,7 @@ struct fb_cmap fb_cmap;
 bool fbinit;
 bool bOpenGL;
 
-#ifdef SDL2
-extern SDL_Window *sdlWindow;
+static SDL_Window *sdlWindow;
 static SDL_GLContext sdlContext;
 static SDL_Renderer *sdlRenderer;
 static SDL_Texture* sdlTexture;
@@ -288,9 +287,6 @@ void destroySDL2() {
     isFbActive = false;
 #endif
 }
-#else
-static SDL_Surface* surface;
-#endif
 
 void writeCMap(U32 address, struct fb_cmap* cmap) {
     U32 i = readd(address);
@@ -308,7 +304,6 @@ void writeCMap(U32 address, struct fb_cmap* cmap) {
 }
 
 void fbSetupScreenForOpenGL(int width, int height, int depth) {
-#ifdef SDL2
     destroySDL2();
     sdlWindow = SDL_CreateWindow("", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
     if (!sdlWindow) {
@@ -318,68 +313,29 @@ void fbSetupScreenForOpenGL(int width, int height, int depth) {
     if (!sdlWindow) {
         kpanic("SDL_GL_CreateContext failed: %s", SDL_GetError());
     }
-#else
-    surface=SDL_SetVideoMode(width,height,depth, SDL_HWSURFACE|SDL_OPENGL);
-#endif
     bOpenGL = 1;
 }
 
 void fbSetupScreenForMesa(int width, int height, int depth) {
-#ifdef SDL2
     destroySDL2();
     sdlWindow = SDL_CreateWindow("", 0, 0, width, height, SDL_WINDOW_SHOWN);
     sdlRenderer = SDL_CreateRenderer(sdlWindow, -1, 0);
     sdlTexture = SDL_CreateTexture(sdlRenderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, width, height);
-#else
-    surface=SDL_SetVideoMode(width,height,depth, SDL_SWSURFACE);
-    if (SDL_MUSTLOCK(surface)) {
-        SDL_LockSurface(surface);
-    }
-#endif
     bOpenGL = 1;	
 }
 
 void fbSetupScreen() {
-#ifndef SDL2
-    U32 flags;
-#endif
-
     bOpenGL = 0;
-#ifdef SDL2
     destroySDL2();
     sdlWindow = SDL_CreateWindow("", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, fb_var_screeninfo.xres, fb_var_screeninfo.yres, SDL_WINDOW_SHOWN);
     sdlRenderer = SDL_CreateRenderer(sdlWindow, -1, 0);
     sdlTexture = SDL_CreateTexture(sdlRenderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, fb_var_screeninfo.xres, fb_var_screeninfo.yres);
-#else
-    flags = SDL_HWSURFACE;
-    if (surface && SDL_MUSTLOCK(surface)) {
-        SDL_UnlockSurface(surface);
-    }
-    printf("Switching to %dx%d@%d pitch=%d\n", fb_var_screeninfo.xres,fb_var_screeninfo.yres,fb_var_screeninfo.bits_per_pixel, fb_fix_screeninfo.line_length);
-    if (fb_var_screeninfo.bits_per_pixel==8) {
-        flags |=SDL_HWPALETTE;
-    }
-    surface=SDL_SetVideoMode(fb_var_screeninfo.xres_virtual,fb_var_screeninfo.yres_virtual,fb_var_screeninfo.bits_per_pixel, flags);
-
-    if (fb_var_screeninfo.bits_per_pixel==8) {
-        SDL_Color colors[256];
-        int i;
-
-        for(i=0;i<256;i++){
-          colors[i].r=(U8)fb_cmap.red[i];
-          colors[i].g=(U8)fb_cmap.green[i];
-          colors[i].b=(U8)fb_cmap.blue[i];
-        }
-        SDL_SetPalette(surface, SDL_PHYSPAL, colors, 0, 256);
-    }
-#endif
 
     SDL_ShowCursor(0);
     fb_fix_screeninfo.visual = 2; // FB_VISUAL_TRUECOLOR
     fb_fix_screeninfo.type = 0; // FB_TYPE_PACKED_PIXELS
     //fb_fix_screeninfo.smem_start = ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS;		
 
-#ifdef SDL2
     fb_var_screeninfo.red.offset = 16;
     fb_var_screeninfo.green.offset = 8;
     fb_var_screeninfo.blue.offset = 0;
@@ -389,22 +345,6 @@ void fbSetupScreen() {
     fb_fix_screeninfo.line_length = 4 * fb_var_screeninfo.xres;
     screenPixels = new U8[fb_fix_screeninfo.line_length*fb_var_screeninfo.yres];
     updateAvailable = 1;
-#else
-    fb_var_screeninfo.red.offset = GET_SHIFT(surface->format->Rmask);
-    fb_var_screeninfo.green.offset = GET_SHIFT(surface->format->Gmask);
-    fb_var_screeninfo.blue.offset = GET_SHIFT(surface->format->Bmask);
-    fb_var_screeninfo.red.length = COUNT_BITS(surface->format->Rmask);			
-    fb_var_screeninfo.green.length = COUNT_BITS(surface->format->Gmask);		
-    fb_var_screeninfo.blue.length = COUNT_BITS(surface->format->Bmask);
-
-    printf("Rmask=%X(%d << %d) Gmask=%X(%d << %d) Bmask=%X(%d << %d)\n", surface->format->Rmask, fb_var_screeninfo.red.length, fb_var_screeninfo.red.offset, surface->format->Gmask, fb_var_screeninfo.green.length, fb_var_screeninfo.green.offset, surface->format->Bmask, fb_var_screeninfo.blue.length, fb_var_screeninfo.blue.offset);
-    
-    fb_fix_screeninfo.line_length = surface->pitch;
-    if (SDL_MUSTLOCK(surface)) {
-        SDL_LockSurface(surface);
-    }
-    screenPixels = (unsigned char*)surface->pixels;
-#endif
     
     fb_fix_screeninfo.smem_len = fb_fix_screeninfo.line_length*fb_var_screeninfo.yres_virtual;	
 }
@@ -513,12 +453,12 @@ DevFB::DevFB(const BoxedPtr<FsNode>& node, U32 flags) : FsVirtualOpenNode(node, 
         fb_fix_screeninfo.visual = 2; // FB_VISUAL_TRUECOLOR
         fb_fix_screeninfo.type = 0; // FB_TYPE_PACKED_PIXELS
         fb_fix_screeninfo.smem_start = ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS;		
-        fb_var_screeninfo.xres = screenCx;
-        fb_var_screeninfo.yres = screenCy;
-        fb_var_screeninfo.xres_virtual = screenCx;
-        fb_var_screeninfo.yres_virtual = screenCy;
+        fb_var_screeninfo.xres =  KNativeWindow::getNativeWindow()->screenWidth();
+        fb_var_screeninfo.yres = KNativeWindow::getNativeWindow()->screenHeight();
+        fb_var_screeninfo.xres_virtual = KNativeWindow::getNativeWindow()->screenWidth();
+        fb_var_screeninfo.yres_virtual = KNativeWindow::getNativeWindow()->screenHeight();
 
-        fb_var_screeninfo.bits_per_pixel = screenBPP;
+        fb_var_screeninfo.bits_per_pixel = KNativeWindow::getNativeWindow()->screenBpp();
         fb_var_screeninfo.red.length = 8;			
         fb_var_screeninfo.green.length = 8;		
         fb_var_screeninfo.blue.length = 8;
@@ -654,34 +594,12 @@ void flipFB() {
 #else
     if (updateAvailable && !bOpenGL) {
 #endif
-#ifndef SDL2
-        if (fb_var_screeninfo.bits_per_pixel==8 && paletteChanged) {
-            SDL_Color colors[256];
-            int i;
 
-            for(i=0;i<256;i++){
-              colors[i].r=(U8)fb_cmap.red[i];
-              colors[i].g=(U8)fb_cmap.green[i];
-              colors[i].b=(U8)fb_cmap.blue[i];
-            }
-            paletteChanged = 0;
-            SDL_SetPalette(surface, SDL_LOGPAL|SDL_PHYSPAL, colors, 0, 256);
-        }
-#endif
-#ifdef SDL2
         SDL_UpdateTexture(sdlTexture, NULL, screenPixels, fb_fix_screeninfo.line_length);
         SDL_RenderClear(sdlRenderer);
         SDL_RenderCopy(sdlRenderer, sdlTexture, NULL, NULL);
         SDL_RenderPresent(sdlRenderer);
-#else
-        if (SDL_MUSTLOCK(surface)) {
-            SDL_UnlockSurface(surface);
-            SDL_UpdateRect(surface, 0, 0, 0, 0);
-            SDL_LockSurface(surface);
-        } else {
-            SDL_UpdateRect(surface, 0, 0, 0, 0);
-        }		
-#endif
+
         updateAvailable=0;
     }
 }
@@ -692,41 +610,25 @@ void flipFBNoCheck() {
         return;
     }
 #endif
-#ifdef SDL2
     if (sdlTexture) {
         SDL_UpdateTexture(sdlTexture, NULL, screenPixels, fb_fix_screeninfo.line_length);
         SDL_RenderClear(sdlRenderer);
         SDL_RenderCopy(sdlRenderer, sdlTexture, NULL, NULL);
         SDL_RenderPresent(sdlRenderer);
     }
-#else
-    if (SDL_MUSTLOCK(surface)) {
-        SDL_UnlockSurface(surface);
-        SDL_UpdateRect(surface, 0, 0, 0, 0);
-        SDL_LockSurface(surface);
-    } else {
-        SDL_UpdateRect(surface, 0, 0, 0, 0);
-    }	
-#endif
 }
 
 void fbSetCaption(const char* title, const char* icon) {
-#ifdef SDL2
     if (sdlWindow)
         SDL_SetWindowTitle(sdlWindow, title);
-#else
-    SDL_WM_SetCaption(title, icon);
-#endif
 }
 
 void fbSwapOpenGL() {
-#ifdef SDL2
     SDL_GL_SwapWindow(sdlWindow);
-#else
-    SDL_GL_SwapBuffers();
-#endif
 }
 
 FsOpenNode* openDevFB(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
     return new DevFB(node, flags);
 }
+
+#endif

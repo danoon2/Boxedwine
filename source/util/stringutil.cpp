@@ -2,6 +2,8 @@
 
 #include <locale>  
 #include <cctype>
+#include <string>
+#include <sstream>
 
 bool stringHasEnding(std::string const &fullString, std::string const &ending, bool ignoreCase) {
     if (fullString.length() >= ending.length()) {
@@ -137,4 +139,12 @@ bool stringIsLessCaseInsensative(const std::string& a, const std::string& b) {
             return (std::tolower(a[c]) < std::tolower(b[c]));
     }
     return a.size() < b.size();
+}
+
+std::string toHexString(int i) {
+    std::string result;
+    std::stringstream ss;
+    ss << std::hex << i;
+    ss >> result;
+    return result;
 }

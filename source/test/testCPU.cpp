@@ -20,11 +20,11 @@
 #ifdef __TEST
 #include <stdlib.h>
 #include <stdio.h>
-#include <SDL.h>
 
 #include "../emulation/softmmu/soft_memory.h"
 #include "../emulation/hardmmu/hard_memory.h"
 #include "../emulation/cpu/x64/x64CPU.h"
+#include "knativethread.h"
 
 #ifdef BOXEDWINE_MSVC
 #include <nmmintrin.h>
@@ -7503,7 +7503,7 @@ int main(int argc, char **argv) {
             
 
     printf("%d tests FAILED\n", totalFails);
-    SDL_Delay(5000);
+    KNativeThread::sleep(5000);
     if (totalFails)
         return 1;
     return 0;

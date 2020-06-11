@@ -1,11 +1,5 @@
 #include "boxedwine.h"
-#include "../sdl/sdlwindow.h"
-#include <SDL.h>
-
-#ifdef BOXEDWINE_MULTI_THREADED
-#include "../sdl/multiThreaded/sdlcallback.h"
-extern U32 sdlCustomEvent;
-#endif
+#include "knativewindow.h"
 
 #ifdef BOXEDWINE_RECORDER
 Recorder* Recorder::instance;
@@ -59,7 +53,7 @@ void Recorder::fullScrennShot() {
     fileName.append("screenshot");
     fileName.append(std::to_string(this->screenShotCount));
     fileName.append(".bmp");    
-    sdlScreenShot(fileName, &crc);
+    KNativeWindow::getNativeWindow()->screenShot(fileName, &crc);
     out("SCREENSHOT=");
     out(std::to_string(crc).c_str());
     out(",");
@@ -75,8 +69,8 @@ void Recorder::partialScreenShot(U32 x, U32 y, U32 w, U32 h) {
     fileName.append(Fs::nativePathSeperator);
     fileName.append("screenshot");
     fileName.append(std::to_string(this->screenShotCount));
-    fileName.append(".bmp");    
-    sdlPartialScreenShot(fileName, x, y, w, h, &crc);
+    fileName.append(".bmp");  
+    KNativeWindow::getNativeWindow()->partialScreenShot(fileName, x, y, w, h, &crc);
     out("SCREENSHOT=");
     out(std::to_string(x).c_str());
     out(",");
@@ -93,54 +87,46 @@ void Recorder::partialScreenShot(U32 x, U32 y, U32 w, U32 h) {
 }
 
 void Recorder::takeScreenShot() {
-    SDL_Event e;
-    SDL_Rect r;
     bool tracking = false;
-    r.x = 0;
-    r.y = 0;
-    r.w = 0;
-    r.h = 0;
-    sdlPushWindowSurface();
-    while (SDL_WaitEvent(&e)) {
-        if (e.type == SDL_KEYUP) {
-            if (e.key.keysym.sym == SDLK_F11) {
-                if (r.w==0 || r.h==0) {
+    int x = 0;
+    int y = 0;
+    int w = 0;
+    int h = 0;
+    KNativeWindow::getNativeWindow()->pushWindowSurface();
+    KNativeWindow::getNativeWindow()->processCustomEvents([this, &x, &y, &w, &h](bool isKeyDown, int key, bool isF11) {
+            if (isF11) {
+                if (w == 0 || h == 0) {
                     fullScrennShot();
                 } else {
-                    sdlPopWindowSurface();
-                    partialScreenShot(r.x, r.y, r.w, r.h);
+                    KNativeWindow::getNativeWindow()->popWindowSurface();
+                    partialScreenShot(x, y, w, h);
                 }
-                return;
+                return false;
             }
-        } else if (e.type == SDL_MOUSEBUTTONDOWN) {
-            tracking = true;
-            r.x = e.motion.x;
-            r.y = e.motion.y;
-        } else if (e.type == SDL_MOUSEBUTTONUP) {
-            tracking = false;
-            if (e.motion.x>r.x)
-                r.w = e.motion.x-r.x;
-            if (e.motion.y>r.y)
-                r.h = e.motion.y-r.y;            
-        } else if (e.type == SDL_MOUSEMOTION) { 
+            return true;
+        }, [&tracking, &x, &y, &w, &h](bool isButtonDown, int button, int mousex, int mousey) {
+            if (isButtonDown) {
+                tracking = true;
+                x = mousex;
+                y = mousey;
+            } else {
+                tracking = false;
+                if (mousex > x)
+                    w = mousex - x;
+                if (mousey > y)
+                    h = mousey - y;
+            }
+            return true;
+        }, [&tracking, &x, &y, &w, &h](int mousex, int mousey) {
             if (tracking) {
-                if (e.motion.x>r.x)
-                    r.w = e.motion.x-r.x;
-                if (e.motion.y>r.y)
-                    r.h = e.motion.y-r.y;
-                sdlDrawRectOnPushedSurfaceAndDisplay(r.x, r.y, r.w, r.h, 0x80, 0x80, 0x80, 0x80);
+                if (mousex > x)
+                    w = mousex - x;
+                if (mousey > y)
+                    h = mousey - y;
+                KNativeWindow::getNativeWindow()->drawRectOnPushedSurfaceAndDisplay(x, y, w, h, 0x80, 0x80, 0x80, 0x80);
             }
-        } 
-#ifdef BOXEDWINE_MULTI_THREADED
-        else if (e.type == sdlCustomEvent) {
-            SdlCallback* callback = (SdlCallback*)e.user.data1;
-            callback->result = (U32)callback->pfn();
-            BOXEDWINE_CONDITION_LOCK(callback->cond);
-            BOXEDWINE_CONDITION_SIGNAL(callback->cond);
-            BOXEDWINE_CONDITION_UNLOCK(callback->cond);
-        }
-#endif
-    }       
+            return true;
+        });     
 }
 
 void Recorder::onMouseMove(U32 x, U32 y) {
@@ -180,59 +166,42 @@ void Recorder::close() {
     fclose(this->file);
 }
 
-void BOXEDWINE_RECORDER_HANDLE_MOUSE_MOVE(void* p) {
-    SDL_Event* e = (SDL_Event*)p;
+void BOXEDWINE_RECORDER_HANDLE_MOUSE_MOVE(int x, int y) {
     if (Recorder::instance) {
-        Recorder::instance->onMouseMove(e->motion.x, e->motion.y);
+        Recorder::instance->onMouseMove(x, y);
     }
 }
 
-void BOXEDWINE_RECORDER_HANDLE_MOUSE_BUTTON_DOWN(void* p) {
-    SDL_Event* e = (SDL_Event*)p;
+void BOXEDWINE_RECORDER_HANDLE_MOUSE_BUTTON_DOWN(int button, int x, int y) {
     if (Recorder::instance) {
-        if (e->button.button==SDL_BUTTON_LEFT) {
-            Recorder::instance->onMouseButton(1, 0, e->motion.x, e->motion.y);
-        } else if (e->button.button == SDL_BUTTON_MIDDLE) {
-            Recorder::instance->onMouseButton(1, 2, e->motion.x, e->motion.y);
-        } else if (e->button.button == SDL_BUTTON_RIGHT) {
-            Recorder::instance->onMouseButton(1, 1, e->motion.x, e->motion.y);
-        }
+        Recorder::instance->onMouseButton(1, button, x, y);
     }
 }
 
-void BOXEDWINE_RECORDER_HANDLE_MOUSE_BUTTON_UP(void* p) {
-    SDL_Event* e = (SDL_Event*)p;
+void BOXEDWINE_RECORDER_HANDLE_MOUSE_BUTTON_UP(int button, int x, int y) {
     if (Recorder::instance) {
-        if (e->button.button==SDL_BUTTON_LEFT) {
-            Recorder::instance->onMouseButton(0, 0, e->motion.x, e->motion.y);
-        } else if (e->button.button == SDL_BUTTON_MIDDLE) {
-            Recorder::instance->onMouseButton(0, 2, e->motion.x, e->motion.y);
-        } else if (e->button.button == SDL_BUTTON_RIGHT) {
-            Recorder::instance->onMouseButton(0, 1, e->motion.x, e->motion.y);
-        }
+        Recorder::instance->onMouseButton(0, button, x, y);
     }
 }
 
-bool BOXEDWINE_RECORDER_HANDLE_KEY_DOWN(void* p) {
-    SDL_Event* e = (SDL_Event*)p;
+bool BOXEDWINE_RECORDER_HANDLE_KEY_DOWN(int key, bool isF11) {
     if (Recorder::instance) {
-        if (e->key.keysym.sym == SDLK_F11) {
+        if (isF11) {
             Recorder::instance->takeScreenShot();
             return true;
         } else {
-            Recorder::instance->onKey(e->key.keysym.sym, 1);
+            Recorder::instance->onKey(key, 1);
         }
     }
     return false;
 }
 
-bool BOXEDWINE_RECORDER_HANDLE_KEY_UP(void* p) {
-    SDL_Event* e = (SDL_Event*)p;
+bool BOXEDWINE_RECORDER_HANDLE_KEY_UP(int key, bool isF11) {
     if (Recorder::instance) {
-        if (e->key.keysym.sym == SDLK_F11) {
+        if (isF11) {
             return true;
         }    
-        Recorder::instance->onKey(e->key.keysym.sym, 0);
+        Recorder::instance->onKey(key, 0);
     }
     return false;
 }
@@ -248,7 +217,7 @@ U32 BOXEDWINE_RECORDER_QUIT() {
         } else {
             klog("script: failed");
             klog("  nextCommand is: %s", Player::instance->nextCommand.c_str());
-            sdlScreenShot("failed.bmp", NULL);
+            KNativeWindow::getNativeWindow()->screenShot("failed.bmp", NULL);
         }
     }
     return 1;

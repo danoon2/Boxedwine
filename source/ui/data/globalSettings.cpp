@@ -5,10 +5,9 @@
 #include "../../util/networkutils.h"
 #include "../../util/threadutils.h"
 #include "../../../lib/pugixml/src/pugixml.hpp"
+#include "knativesystem.h"
 
 #include <sys/stat.h>
-
-#include <SDL.h>
 
 #define SLOW_FRAME_DELAY 1000
 #define FAST_FRAME_DELAY 1
@@ -63,7 +62,7 @@ void GlobalSettings::init(int argc, const char **argv) {
     GlobalSettings::wineVersions.clear();
     GlobalSettings::components.clear();
 
-    GlobalSettings::dataFolderLocation = SDL_GetPrefPath("", "Boxedwine");
+    GlobalSettings::dataFolderLocation = KNativeSystem::getLocalDirectory();
     if (Fs::nativePathSeperator.length()==0) {
         Fs::nativePathSeperator = GlobalSettings::dataFolderLocation[GlobalSettings::dataFolderLocation.length()-1];
     }
@@ -97,22 +96,23 @@ void GlobalSettings::init(int argc, const char **argv) {
     }    
     GlobalSettings::startUp();
 
-    SDL_DisplayMode dm;    
+    U32 width = 0;
+    U32 height = 0;
     availableResolutions.push_back("640x480");
     availableResolutions.push_back("800x600");
     availableResolutions.push_back("1024x768");
-    if (SDL_GetDesktopDisplayMode(0, &dm) == 0) {
-        GlobalSettings::screenCx = dm.w;
-        GlobalSettings::screenCy = dm.h;
-        if (dm.w>=3072) {
-            std::string res = std::to_string(dm.w / 3) + "x" + std::to_string(dm.h / 3);
+    if (KNativeSystem::getScreenDimensions(&width, &height)) {
+        GlobalSettings::screenCx = width;
+        GlobalSettings::screenCy = height;
+        if (width>=3072) {
+            std::string res = std::to_string(width / 3) + "x" + std::to_string(height / 3);
             availableResolutions.push_back(res.c_str());
         }
-        if (dm.w>=2048) {
-            std::string res = std::to_string(dm.w/2) + "x" + std::to_string(dm.h/2);
+        if (width >=2048) {
+            std::string res = std::to_string(width /2) + "x" + std::to_string(height /2);
             availableResolutions.push_back(res.c_str());
         }
-        std::string res = std::to_string(dm.w) + "x" + std::to_string(dm.h);
+        std::string res = std::to_string(width) + "x" + std::to_string(height);
         availableResolutions.push_back(res.c_str());
     }
     GlobalSettings::extraVerticalSpacing = (float)GlobalSettings::scaleIntUI(5);
@@ -577,9 +577,7 @@ std::string GlobalSettings::createUniqueContainerPath(const std::string& name) {
 
     std::srand((U32)std::time(nullptr));
     while (true) {
-        int r = std::rand();
-        char tmp[10];
-        SDL_itoa(r, tmp, 16);
+        std::string tmp = toHexString(std::rand());
         std::string result = GlobalSettings::getContainerFolder() + Fs::nativePathSeperator + containerName + "-"+tmp;
         if (!Fs::doesNativePathExist(result)) {
             return result;
