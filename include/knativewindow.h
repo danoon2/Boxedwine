@@ -60,6 +60,7 @@ public:
     virtual std::shared_ptr<Wnd> createWnd(KThread* thread, U32 processId, U32 hwnd, U32 windowRect, U32 clientRect) = 0;
     virtual void bltWnd(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32 yOrg, U32 width, U32 height, U32 rect) = 0;
     virtual void drawAllWindows(KThread* thread, U32 hWnd, int count) = 0;
+    virtual void setTitle(const std::string& title) = 0;
 
     virtual U32 getGammaRamp(U32 ramp) = 0;
 

@@ -122,8 +122,9 @@ bool runSlice() {
     if (scheduledThreads.isEmpty())
         return false;
     
-
+#ifdef BOXEDWINE_EXPERIMENTAL_FRAME_BUFFER
     flipFB();	
+#endif
     U64 elapsedTime = 0;
 
     contextTimeRemaining = contextTime;

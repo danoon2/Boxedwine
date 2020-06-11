@@ -160,6 +160,7 @@ public:
     virtual std::shared_ptr<Wnd> createWnd(KThread* thread, U32 processId, U32 hwnd, U32 windowRect, U32 clientRect);
     virtual void bltWnd(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32 yOrg, U32 width, U32 height, U32 rect);
     virtual void drawAllWindows(KThread* thread, U32 hWnd, int count);
+    virtual void setTitle(const std::string& title);
 
     virtual U32 getGammaRamp(U32 ramp);
 
@@ -338,7 +339,7 @@ void KNativeWindowSdl::destroyScreen(KThread* thread) {
         }    
     }
     if (contextCount) {
-        kwarn("Not all OpenGL contexts were cleaning destroyed");
+        kwarn("Not all OpenGL contexts were cleanly destroyed");
     }
     if (renderer) {
         SDL_DestroyRenderer(renderer);
@@ -364,12 +365,13 @@ void KNativeWindowSdl::destroyScreen(KThread* thread) {
     contextCount = 0;
 }
 
-void KNativeWindowSdl::preDrawWindow() {
-    DISPATCH_MAIN_THREAD_BLOCK_BEGIN
+void KNativeWindowSdl::preDrawWindow() {    
 #if !defined(BOXEDWINE_DISABLE_UI) && !defined(__TEST)
     if (timeToHideUI && timeToHideUI < KSystem::getMilliesSinceStart()) {
         if (uiIsRunning()) {
+            DISPATCH_MAIN_THREAD_BLOCK_BEGIN
             uiShutdown();
+            DISPATCH_MAIN_THREAD_BLOCK_END
         }
         timeToHideUI = 0;
         if (delayedCreateWindowMsg.length()) {
@@ -383,13 +385,14 @@ void KNativeWindowSdl::preDrawWindow() {
         int h = 0;
         SDL_GetWindowSize(window, &w, &h);
         if ((w >= 320 && h >= 240) || (timeWindowWasCreated + 2000 < KSystem::getMilliesSinceStart())) {
+            DISPATCH_MAIN_THREAD_BLOCK_BEGIN
             SDL_ShowWindow(window);
             SDL_RaiseWindow(window);
+            DISPATCH_MAIN_THREAD_BLOCK_END
             windowIsHidden = false;
             timeToHideUI = KSystem::getMilliesSinceStart() + HIDE_UI_WINDOW_DELAY;
         }
-    }
-    DISPATCH_MAIN_THREAD_BLOCK_END
+    }    
 }
 
 #if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
@@ -755,6 +758,11 @@ void KNativeWindowSdl::bltWnd(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32
     }
 }
 
+void KNativeWindowSdl::setTitle(const std::string& title) {
+    if (window)
+        SDL_SetWindowTitle(window, title.c_str());
+}
+
 #ifdef BOXEDWINE_RECORDER
 U8* recorderBuffer;
 U32 recorderBufferSize;
@@ -837,10 +845,10 @@ void KNativeWindowSdl::drawAllWindows(KThread* thread, U32 hWnd, int count) {
                         std::shared_ptr<WndSdl> wnd = getWndSdl(readd(hWnd+i*4));
                         if (wnd && wnd->sdlTextureWidth && wnd->sdlTexture) {
                             SDL_Rect dstrect;
-                            dstrect.x = wnd->windowRect.left*scaleX/100;
-                            dstrect.y = wnd->windowRect.top*scaleY/100;
-                            dstrect.w = wnd->sdlTextureWidth*scaleX/100;
-                            dstrect.h = wnd->sdlTextureHeight*scaleY/100;
+                            dstrect.x = wnd->windowRect.left*(int)scaleX/100;
+                            dstrect.y = wnd->windowRect.top*(int)scaleY/100;
+                            dstrect.w = wnd->sdlTextureWidth*(int)scaleX/100;
+                            dstrect.h = wnd->sdlTextureHeight*(int)scaleY/100;
 
             #ifdef BOXEDWINE_64BIT_MMU
                             SDL_RenderCopyEx(renderer, wnd->sdlTexture, NULL, &dstrect, 0, NULL, SDL_FLIP_VERTICAL);
@@ -2230,11 +2238,13 @@ bool KNativeWindowSdl::handlSdlEvent(SDL_Event* e) {
             }
         }
     }
+#ifdef BOXEDWINE_EXPERIMENTAL_FRAME_BUFFER
     else if (e->type == SDL_WINDOWEVENT) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(hwndToWndMutex);
         if (!hwndToWnd.size())
             flipFBNoCheck();
     }
+#endif
     return true;
 }
 

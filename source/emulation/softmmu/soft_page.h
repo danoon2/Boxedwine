@@ -46,7 +46,9 @@ public:
         File_Page,
         Code_Page,
         Copy_On_Write_Page,
+#ifdef BOXEDWINE_EXPERIMENTAL_FRAME_BUFFER
         Frame_Buffer,
+#endif
         Native_Page
     };
     Page(Type type, U32 flags) : flags(flags), type(type) {}

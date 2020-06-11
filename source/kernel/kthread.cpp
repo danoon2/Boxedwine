@@ -585,7 +585,7 @@ void writeToContext(KThread* thread, U32 stack, U32 context, bool altStack, U32 
     writed(context+0x3C, cpu->reg[1].u32); // ECX
     writed(context+0x40, cpu->reg[0].u32); // EAX
     writed(context+0x44, trapNo); // REG_TRAPNO
-    writed( context+0x48, errorNo); // REG_ERR
+    writed(context+0x48, errorNo); // REG_ERR
     writed(context+0x4C, cpu->isBig()?cpu->eip.u32:cpu->eip.u16);
     writed(context+0x50, cpu->seg[CS].value);
     writed(context+0x54, cpu->flags);

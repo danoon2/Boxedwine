@@ -57,7 +57,7 @@ bool doMainLoop() {
             } else {
                 snprintf(tmp, sizeof(tmp), "BoxedWine 20.1.1 %dMB", (int)(nativeMemoryPagesAllocated >> 8));
             }
-            fbSetCaption(tmp, "BoxedWine");
+            KNativeWindow::getNativeWindow()->setTitle(tmp);
         }
         if (!KNativeWindow::getNativeWindow()->processEvents()) {
             return true;

@@ -55,8 +55,10 @@ void sdl_glFlush(CPU* cpu) {
     glFlush();	
 }
 
+#ifdef BOXEDWINE_EXPERIMENTAL_FRAME_BUFFER
 void fbSetupScreenForOpenGL(int width, int height, int depth);
 void fbSetupScreen();
+#endif
 
 // GLXContext glXCreateContext(Display *dpy, XVisualInfo *vis, GLXContext share_list, Bool direct)
 void sdl_glXCreateContext(CPU* cpu) {
@@ -96,12 +98,14 @@ void sdl_glXMakeCurrent(CPU* cpu) {
     U32 height = ARG3;
     U32 width = ARG2;
 
+#ifdef BOXEDWINE_EXPERIMENTAL_FRAME_BUFFER
     if (width) {
         loadExtensions();
         fbSetupScreenForOpenGL(width, height, depth);
     } else {
         fbSetupScreen();
     }
+#endif
 }
 
 // void glXSwapBuffers(Display *dpy, GLXDrawable drawable)

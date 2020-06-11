@@ -42,8 +42,7 @@ bool doMainLoop() {
             } else {
                 snprintf(tmp, sizeof(tmp), "BoxedWine 20.1.1 %u MIPS", getMIPS());
             }
-            sprintf(tmp, "BoxedWine 20R1a1 %u MIPS", getMIPS());
-            fbSetCaption(tmp, "BoxedWine");
+            KNativeWindow::getNativeWindow()->setTitle(tmp);
             checkWaitingNativeSockets(0); // just so it doesn't starve if the system is busy
         }
         if (!ran) {

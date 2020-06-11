@@ -16,7 +16,10 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
+// This code was written before the winedrv code existed.  Now this is considered dead code, but is kept for experimentation
 #include "boxedwine.h"
+
+#ifdef BOXEDWINE_EXPERIMENTAL_FRAME_BUFFER
 #include <SDL.h>
 #include "../../io/fsvirtualopennode.h"
 #include "../../emulation//hardmmu/hard_memory.h"
@@ -627,3 +630,5 @@ void fbSwapOpenGL() {
 FsOpenNode* openDevFB(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
     return new DevFB(node, flags);
 }
+
+#endif
