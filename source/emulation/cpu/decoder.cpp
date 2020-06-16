@@ -642,7 +642,7 @@ const InstructionInfo instructionInfo[] = {
     {0, 0, 0, 0, 0, 0, 0}, // FNCLEX
     {0, 0, 0, 0, 0, 0, 0}, // FNINIT
     {0, 0, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // FUCOMI_ST0_STj
-    {0, 0, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // FCOMI_ST0_STj_Pop
+    {0, 0, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // FCOMI_ST0_STj
     {0, 32, 0, 0, 0, 0, 0}, // FILD_DWORD_INTEGER
     {0, 0, 32, 0, 0, 0, 0}, // FISTTP32
     {0, 0, 32, 0, 0, 0, 0}, // FIST_DWORD_INTEGER
@@ -696,6 +696,7 @@ const InstructionInfo instructionInfo[] = {
     {0, 0, 0, 0, 0, 0, 0}, // FFREEP_STi
     {0, 0, 0, 0, 0, 0, 0}, // FNSTSW_AX
     {0, 0, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // FUCOMI_ST0_STj_Pop
+    {0, 0, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // FCOMI_ST0_STj_Pop
     {0, 16, 0, 0, 0, 0, 0}, // FILD_WORD_INTEGER
     {0, 0, 16, 0, 0, 0, 0}, // FISTTP16
     {0, 0, 16, 0, 0, 0, 0}, // FIST_WORD_INTEGER
@@ -2421,7 +2422,7 @@ const LogInstruction instructionLog[] = {
     {"FNCLEX", 0, logName},
     {"FNINIT", 0, logName},
     {"FUCOMI_ST0_STj", 0, logName},
-    {"FCOMI_ST0_STj_Pop", 0, logName},
+    {"FCOMI_ST0_STj", 0, logName},
     {"FILD_DWORD_INTEGER", 0, logName},
     {"FISTTP32", 0, logName},
     {"FIST_DWORD_INTEGER", 0, logName},
@@ -2475,6 +2476,7 @@ const LogInstruction instructionLog[] = {
     {"FFREEP_STi", 0, logName},
     {"FNSTSW_AX", 0, logName},
     {"FUCOMI_ST0_STj_Pop", 0, logName},
+    {"FCOMI_ST0_STj_Pop", 0, logName},
     {"FILD_WORD_INTEGER", 0, logName},
     {"FISTTP16", 0, logName},
     {"FIST_WORD_INTEGER", 0, logName},
@@ -4428,7 +4430,7 @@ public:
                     break;
                 }
                 case 5: op->inst = FUCOMI_ST0_STj; break;
-                case 6: op->inst = FCOMI_ST0_STj_Pop; break;
+                case 6: op->inst = FCOMI_ST0_STj; break;
                 default:op->inst = Invalid; op->reg = rm; op->imm = data->inst; break;
             }
         } else {
