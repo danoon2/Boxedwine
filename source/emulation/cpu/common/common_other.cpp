@@ -205,7 +205,7 @@ void common_fxsave(CPU* cpu, U32 address) {
 
 void common_fxrstor(CPU* cpu, U32 address) {
     cpu->fpu.SetCW(readw(address));
-    cpu->fpu.SetCW(readw(address+2));
+    cpu->fpu.SetSW(readw(address+2));
     cpu->fpu.SetTagFromAbridged(readb(address+4));
     for (int i=0;i<8;i++) {
         cpu->reg_mmx[i].q = readq(address+32+i*16);
