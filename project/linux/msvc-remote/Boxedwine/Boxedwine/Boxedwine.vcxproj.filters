@@ -1666,6 +1666,9 @@
     <ClCompile Include="..\..\..\..\..\platform\sdl\sdlcallback.cpp">
       <Filter>sdlPlatform</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\..\lib\imgui\examples\imgui_impl_opengl2.cpp">
+      <Filter>lib\imgui\examples</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
@@ -4573,6 +4576,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\include\knativewindow.h">
       <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\lib\imgui\examples\imgui_impl_opengl2.h">
+      <Filter>lib\imgui\examples</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

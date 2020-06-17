@@ -55,7 +55,11 @@ void ResetDevice()
 #endif
 
 #ifdef BOXEDWINE_OPENGL_SDL
+#ifdef BOXEDWINE_OPENGL_IMGUI_V2
+#include "examples/imgui_impl_opengl2.h"
+#else
 #include "examples/imgui_impl_opengl3.h"
+#endif
 #endif
 #include "imgui_internal.h"
 
@@ -302,7 +306,11 @@ void uiShutdown() {
 #endif
 #ifdef BOXEDWINE_OPENGL_SDL
     if (StartUpArgs::uiType == UI_TYPE_OPENGL) {
+#ifdef BOXEDWINE_OPENGL_IMGUI_V2
+        ImGui_ImplOpenGL2_Shutdown();
+#else
         ImGui_ImplOpenGL3_Shutdown();
+#endif
         SDL_GL_DeleteContext(gl_context);
     }
 #endif
@@ -363,7 +371,11 @@ bool uiLoop() {
 #endif
 #ifdef BOXEDWINE_OPENGL_SDL
     if (StartUpArgs::uiType == UI_TYPE_OPENGL) {
+#ifdef BOXEDWINE_OPENGL_IMGUI_V2
+        ImGui_ImplOpenGL2_NewFrame();
+#else
         ImGui_ImplOpenGL3_NewFrame();
+#endif
     }
 #endif
     ImGui_ImplSDL2_NewFrame(window);
@@ -400,7 +412,11 @@ bool uiLoop() {
         glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
         glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
         glClear(GL_COLOR_BUFFER_BIT);
+#ifdef BOXEDWINE_OPENGL_IMGUI_V2
+        ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
+#else
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+#endif
         SDL_GL_SwapWindow(window);
     }
 #endif    
@@ -435,9 +451,15 @@ bool uiShow(const std::string& basePath) {
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
+#elif defined (BOXEDWINE_OPENGL_IMGUI_V2)
+        glsl_version = "#version 100";
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
 #else
     // GL 3.0 + GLSL 130
-        glsl_version = "#version 130";
+        glsl_version = "#version 150";
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
@@ -496,6 +518,10 @@ bool uiShow(const std::string& basePath) {
 #ifdef BOXEDWINE_OPENGL_SDL
     if (StartUpArgs::uiType == UI_TYPE_OPENGL) {
         gl_context = SDL_GL_CreateContext(window);
+        if (!gl_context) {
+            fprintf(stderr, "SDL_GL_CreateContext failed.\n");
+            return false;
+        }
         SDL_GL_MakeCurrent(window, gl_context);
 
         // Initialize OpenGL loader
@@ -574,7 +600,11 @@ bool uiShow(const std::string& basePath) {
 #ifdef BOXEDWINE_OPENGL_SDL
     if (StartUpArgs::uiType == UI_TYPE_OPENGL) {
         ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
+#ifdef BOXEDWINE_OPENGL_IMGUI_V2
+        ImGui_ImplOpenGL2_Init();
+#else
         ImGui_ImplOpenGL3_Init(glsl_version);
+#endif
     }
 #endif
     if (GlobalSettings::getWineVersions().size()==0) {

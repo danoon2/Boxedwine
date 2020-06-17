@@ -101,6 +101,7 @@
   <ItemGroup>
     <ClCompile Include="..\..\..\..\..\lib\glew\src\glew.cpp" />
     <ClCompile Include="..\..\..\..\..\lib\imgui\addon\imguitinyfiledialogs.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\imgui\examples\imgui_impl_opengl2.cpp" />
     <ClCompile Include="..\..\..\..\..\lib\imgui\examples\imgui_impl_opengl3.cpp" />
     <ClCompile Include="..\..\..\..\..\lib\imgui\examples\imgui_impl_sdl.cpp" />
     <ClCompile Include="..\..\..\..\..\lib\imgui\imgui.cpp" />
@@ -1057,6 +1058,7 @@
     <ClInclude Include="..\..\..\..\..\lib\glew\include\GL\glew.h" />
     <ClInclude Include="..\..\..\..\..\lib\glew\include\GL\glxew.h" />
     <ClInclude Include="..\..\..\..\..\lib\imgui\addon\imguitinyfiledialogs.h" />
+    <ClInclude Include="..\..\..\..\..\lib\imgui\examples\imgui_impl_opengl2.h" />
     <ClInclude Include="..\..\..\..\..\lib\imgui\examples\imgui_impl_opengl3.h" />
     <ClInclude Include="..\..\..\..\..\lib\imgui\examples\imgui_impl_sdl.h" />
     <ClInclude Include="..\..\..\..\..\lib\imgui\imconfig.h" />
@@ -1899,7 +1901,7 @@
   </ItemGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">
     <ClCompile>
-      <PreprocessorDefinitions>BOXEDWINE_POSIX;POCO_UTIL_NO_JSONCONFIGURATION;POCO_UTIL_NO_XMLCONFIGURATION;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_OPENGL_IMGUI_V2;BOXEDWINE_POSIX;POCO_UTIL_NO_JSONCONFIGURATION;POCO_UTIL_NO_XMLCONFIGURATION;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;</PreprocessorDefinitions>
       <CppLanguageStandard>c++17</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
@@ -1923,7 +1925,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
     <ClCompile>
-      <PreprocessorDefinitions>BOXEDWINE_POSIX;POCO_UTIL_NO_JSONCONFIGURATION;POCO_UTIL_NO_XMLCONFIGURATION;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_OPENGL_IMGUI_V2;BOXEDWINE_POSIX;POCO_UTIL_NO_JSONCONFIGURATION;POCO_UTIL_NO_XMLCONFIGURATION;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;</PreprocessorDefinitions>
       <CppLanguageStandard>c++17</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
