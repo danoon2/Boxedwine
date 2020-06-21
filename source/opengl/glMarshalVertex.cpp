@@ -80,22 +80,22 @@ void updateVertexPointers(CPU* cpu, U32 count) {
 
     if (cpu->thread->gglSecondaryColorPointer.refreshEachCall) {
         if (updateVertexPointer(cpu, &cpu->thread->gglSecondaryColorPointer, count)) {
-            if (ext_glSecondaryColorPointer)
-                ext_glSecondaryColorPointer(cpu->thread->gglSecondaryColorPointer.size, cpu->thread->gglSecondaryColorPointer.type, cpu->thread->gglSecondaryColorPointer.stride, cpu->thread->gglSecondaryColorPointer.marshal);
+            if (ext_gglSecondaryColorPointer)
+                ext_gglSecondaryColorPointer(cpu->thread->gglSecondaryColorPointer.size, cpu->thread->gglSecondaryColorPointer.type, cpu->thread->gglSecondaryColorPointer.stride, cpu->thread->gglSecondaryColorPointer.marshal);
         }
     }
 
     if (cpu->thread->gglSecondaryColorPointerEXT.refreshEachCall) {
         if (updateVertexPointer(cpu, &cpu->thread->gglSecondaryColorPointerEXT, count)) {
-            if (ext_glSecondaryColorPointerEXT)
-                ext_glSecondaryColorPointerEXT(cpu->thread->gglSecondaryColorPointerEXT.size, cpu->thread->gglSecondaryColorPointerEXT.type, cpu->thread->gglSecondaryColorPointerEXT.stride, cpu->thread->gglSecondaryColorPointerEXT.marshal);
+            if (ext_gglSecondaryColorPointerEXT)
+                ext_gglSecondaryColorPointerEXT(cpu->thread->gglSecondaryColorPointerEXT.size, cpu->thread->gglSecondaryColorPointerEXT.type, cpu->thread->gglSecondaryColorPointerEXT.stride, cpu->thread->gglSecondaryColorPointerEXT.marshal);
         }
     }
 
     if (cpu->thread->gglEdgeFlagPointerEXT.refreshEachCall) {
         if (updateVertexPointer(cpu, &cpu->thread->gglEdgeFlagPointerEXT, count)) {
-            if (ext_glEdgeFlagPointerEXT)
-                ext_glEdgeFlagPointerEXT(cpu->thread->gglEdgeFlagPointerEXT.stride, cpu->thread->gglEdgeFlagPointerEXT.count, cpu->thread->gglEdgeFlagPointerEXT.marshal);
+            if (ext_gglEdgeFlagPointerEXT)
+                ext_gglEdgeFlagPointerEXT(cpu->thread->gglEdgeFlagPointerEXT.stride, cpu->thread->gglEdgeFlagPointerEXT.count, cpu->thread->gglEdgeFlagPointerEXT.marshal);
         }
     }
 #endif
