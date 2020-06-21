@@ -62,9 +62,9 @@ void updateVertexPointers(CPU* cpu, U32 count) {
             GL_FUNC(glVertexPointer)(cpu->thread->glVertextPointer.size, cpu->thread->glVertextPointer.type, cpu->thread->glVertextPointer.stride, cpu->thread->glVertextPointer.marshal);
     }
     
-    if (cpu->thread->glNormalPointer.refreshEachCall) {
-        if (updateVertexPointer(cpu, &cpu->thread->glNormalPointer, count))
-            GL_FUNC(glNormalPointer)(cpu->thread->glNormalPointer.type, cpu->thread->glNormalPointer.stride, cpu->thread->glNormalPointer.marshal);
+    if (cpu->thread->gglNormalPointer.refreshEachCall) {
+        if (updateVertexPointer(cpu, &cpu->thread->gglNormalPointer, count))
+            GL_FUNC(glNormalPointer)(cpu->thread->gglNormalPointer.type, cpu->thread->gglNormalPointer.stride, cpu->thread->gglNormalPointer.marshal);
     }
 
 #ifndef DISABLE_GL_EXTENSIONS
@@ -82,45 +82,45 @@ void updateVertexPointers(CPU* cpu, U32 count) {
         }
     }
 
-    if (cpu->thread->glSecondaryColorPointer.refreshEachCall) {
-        if (updateVertexPointer(cpu, &cpu->thread->glSecondaryColorPointer, count)) {
-            if (ext_glSecondaryColorPointer)
-                ext_glSecondaryColorPointer(cpu->thread->glSecondaryColorPointer.size, cpu->thread->glSecondaryColorPointer.type, cpu->thread->glSecondaryColorPointer.stride, cpu->thread->glSecondaryColorPointer.marshal);
+    if (cpu->thread->gglSecondaryColorPointer.refreshEachCall) {
+        if (updateVertexPointer(cpu, &cpu->thread->gglSecondaryColorPointer, count)) {
+            if (ext_gglSecondaryColorPointer)
+                ext_gglSecondaryColorPointer(cpu->thread->gglSecondaryColorPointer.size, cpu->thread->gglSecondaryColorPointer.type, cpu->thread->gglSecondaryColorPointer.stride, cpu->thread->gglSecondaryColorPointer.marshal);
         }
     }
 
-    if (cpu->thread->glSecondaryColorPointerEXT.refreshEachCall) {
-        if (updateVertexPointer(cpu, &cpu->thread->glSecondaryColorPointerEXT, count)) {
-            if (ext_glSecondaryColorPointerEXT)
-                ext_glSecondaryColorPointerEXT(cpu->thread->glSecondaryColorPointerEXT.size, cpu->thread->glSecondaryColorPointerEXT.type, cpu->thread->glSecondaryColorPointerEXT.stride, cpu->thread->glSecondaryColorPointerEXT.marshal);
+    if (cpu->thread->gglSecondaryColorPointerEXT.refreshEachCall) {
+        if (updateVertexPointer(cpu, &cpu->thread->gglSecondaryColorPointerEXT, count)) {
+            if (ext_gglSecondaryColorPointerEXT)
+                ext_gglSecondaryColorPointerEXT(cpu->thread->gglSecondaryColorPointerEXT.size, cpu->thread->gglSecondaryColorPointerEXT.type, cpu->thread->gglSecondaryColorPointerEXT.stride, cpu->thread->gglSecondaryColorPointerEXT.marshal);
         }
     }
 
-    if (cpu->thread->glEdgeFlagPointerEXT.refreshEachCall) {
-        if (updateVertexPointer(cpu, &cpu->thread->glEdgeFlagPointerEXT, count)) {
-            if (ext_glEdgeFlagPointerEXT)
-                ext_glEdgeFlagPointerEXT(cpu->thread->glEdgeFlagPointerEXT.stride, cpu->thread->glEdgeFlagPointerEXT.count, cpu->thread->glEdgeFlagPointerEXT.marshal);
+    if (cpu->thread->gglEdgeFlagPointerEXT.refreshEachCall) {
+        if (updateVertexPointer(cpu, &cpu->thread->gglEdgeFlagPointerEXT, count)) {
+            if (ext_gglEdgeFlagPointerEXT)
+                ext_gglEdgeFlagPointerEXT(cpu->thread->gglEdgeFlagPointerEXT.stride, cpu->thread->gglEdgeFlagPointerEXT.count, cpu->thread->gglEdgeFlagPointerEXT.marshal);
         }
     }
 #endif
-    if (cpu->thread->glColorPointer.refreshEachCall) {
-        if (updateVertexPointer(cpu, &cpu->thread->glColorPointer, count))
-            GL_FUNC(glColorPointer)(cpu->thread->glColorPointer.size, cpu->thread->glColorPointer.type, cpu->thread->glColorPointer.stride, cpu->thread->glColorPointer.marshal);
+    if (cpu->thread->gglColorPointer.refreshEachCall) {
+        if (updateVertexPointer(cpu, &cpu->thread->gglColorPointer, count))
+            GL_FUNC(glColorPointer)(cpu->thread->gglColorPointer.size, cpu->thread->gglColorPointer.type, cpu->thread->gglColorPointer.stride, cpu->thread->gglColorPointer.marshal);
     }    
     
-    if (cpu->thread->glIndexPointer.refreshEachCall) {
-        if (updateVertexPointer(cpu, &cpu->thread->glIndexPointer, count))
-            GL_FUNC(glIndexPointer)(cpu->thread->glIndexPointer.type, cpu->thread->glIndexPointer.stride, cpu->thread->glIndexPointer.marshal);
+    if (cpu->thread->gglIndexPointer.refreshEachCall) {
+        if (updateVertexPointer(cpu, &cpu->thread->gglIndexPointer, count))
+            GL_FUNC(glIndexPointer)(cpu->thread->gglIndexPointer.type, cpu->thread->gglIndexPointer.stride, cpu->thread->gglIndexPointer.marshal);
     }
     
-    if (cpu->thread->glTexCoordPointer.refreshEachCall) {
-        if (updateVertexPointer(cpu, &cpu->thread->glTexCoordPointer, count))
-            GL_FUNC(glTexCoordPointer)(cpu->thread->glTexCoordPointer.size, cpu->thread->glTexCoordPointer.type, cpu->thread->glTexCoordPointer.stride, cpu->thread->glTexCoordPointer.marshal);
+    if (cpu->thread->gglTexCoordPointer.refreshEachCall) {
+        if (updateVertexPointer(cpu, &cpu->thread->gglTexCoordPointer, count))
+            GL_FUNC(glTexCoordPointer)(cpu->thread->gglTexCoordPointer.size, cpu->thread->gglTexCoordPointer.type, cpu->thread->gglTexCoordPointer.stride, cpu->thread->gglTexCoordPointer.marshal);
     }
     
-    if (cpu->thread->glEdgeFlagPointer.refreshEachCall) {
-        if (updateVertexPointer(cpu, &cpu->thread->glEdgeFlagPointer, count))
-            GL_FUNC(glEdgeFlagPointer)(cpu->thread->glEdgeFlagPointer.stride, cpu->thread->glEdgeFlagPointer.marshal);
+    if (cpu->thread->gglEdgeFlagPointer.refreshEachCall) {
+        if (updateVertexPointer(cpu, &cpu->thread->gglEdgeFlagPointer, count))
+            GL_FUNC(glEdgeFlagPointer)(cpu->thread->gglEdgeFlagPointer.stride, cpu->thread->gglEdgeFlagPointer.marshal);
     }
 }
 
@@ -141,16 +141,16 @@ GLvoid* marshalVetextPointer(CPU* cpu, GLint size, GLenum type, GLsizei stride, 
 
 GLvoid* marshalNormalPointer(CPU* cpu, GLenum type, GLsizei stride, U32 ptr) {
     if (ARRAY_BUFFER()) {        
-        cpu->thread->glNormalPointer.refreshEachCall = 0;
+        cpu->thread->gglNormalPointer.refreshEachCall = 0;
         return (GLvoid*)(uintptr_t)ptr;
     } else {
-        cpu->thread->glNormalPointer.size = 1;
-        cpu->thread->glNormalPointer.type = type;
-        cpu->thread->glNormalPointer.stride = stride;
-        cpu->thread->glNormalPointer.ptr = ptr;
-        cpu->thread->glNormalPointer.refreshEachCall = 1;
-        updateVertexPointer(cpu, &cpu->thread->glNormalPointer, 0);
-        return cpu->thread->glNormalPointer.marshal;
+        cpu->thread->gglNormalPointer.size = 1;
+        cpu->thread->gglNormalPointer.type = type;
+        cpu->thread->gglNormalPointer.stride = stride;
+        cpu->thread->gglNormalPointer.ptr = ptr;
+        cpu->thread->gglNormalPointer.refreshEachCall = 1;
+        updateVertexPointer(cpu, &cpu->thread->gglNormalPointer, 0);
+        return cpu->thread->gglNormalPointer.marshal;
     }
 }
 
@@ -186,107 +186,107 @@ GLvoid* marshalFogPointerEXT(CPU* cpu, GLenum type, GLsizei stride, U32 ptr) {
 
 GLvoid* marshalColorPointer(CPU* cpu, GLint size, GLenum type, GLsizei stride, U32 ptr) {
     if (ARRAY_BUFFER()) {        
-        cpu->thread->glColorPointer.refreshEachCall = 0;
+        cpu->thread->gglColorPointer.refreshEachCall = 0;
         return (GLvoid*)(uintptr_t)ptr;
     } else {
-        cpu->thread->glColorPointer.size = size;
-        cpu->thread->glColorPointer.type = type;
-        cpu->thread->glColorPointer.stride = stride;
-        cpu->thread->glColorPointer.ptr = ptr;
-        cpu->thread->glColorPointer.refreshEachCall = 1;
-        updateVertexPointer(cpu, &cpu->thread->glColorPointer, 0);
-        return cpu->thread->glColorPointer.marshal;
+        cpu->thread->gglColorPointer.size = size;
+        cpu->thread->gglColorPointer.type = type;
+        cpu->thread->gglColorPointer.stride = stride;
+        cpu->thread->gglColorPointer.ptr = ptr;
+        cpu->thread->gglColorPointer.refreshEachCall = 1;
+        updateVertexPointer(cpu, &cpu->thread->gglColorPointer, 0);
+        return cpu->thread->gglColorPointer.marshal;
     }
 }
 
 GLvoid* marshalSecondaryColorPointer(CPU* cpu, GLint size, GLenum type, GLsizei stride, U32 ptr) {
     if (ARRAY_BUFFER()) {        
-        cpu->thread->glSecondaryColorPointer.refreshEachCall = 0;
+        cpu->thread->gglSecondaryColorPointer.refreshEachCall = 0;
         return (GLvoid*)(uintptr_t)ptr;
     } else {        
-        cpu->thread->glSecondaryColorPointer.size = size;
-        cpu->thread->glSecondaryColorPointer.type = type;
-        cpu->thread->glSecondaryColorPointer.stride = stride;
-        cpu->thread->glSecondaryColorPointer.ptr = ptr;
-        cpu->thread->glSecondaryColorPointer.refreshEachCall = 1;
-        updateVertexPointer(cpu, &cpu->thread->glSecondaryColorPointer, 0);
-        return cpu->thread->glSecondaryColorPointer.marshal;
+        cpu->thread->gglSecondaryColorPointer.size = size;
+        cpu->thread->gglSecondaryColorPointer.type = type;
+        cpu->thread->gglSecondaryColorPointer.stride = stride;
+        cpu->thread->gglSecondaryColorPointer.ptr = ptr;
+        cpu->thread->gglSecondaryColorPointer.refreshEachCall = 1;
+        updateVertexPointer(cpu, &cpu->thread->gglSecondaryColorPointer, 0);
+        return cpu->thread->gglSecondaryColorPointer.marshal;
     }
 }
 
 GLvoid* marshalSecondaryColorPointerEXT(CPU* cpu, GLint size, GLenum type, GLsizei stride, U32 ptr) {
     if (ARRAY_BUFFER()) {        
-        cpu->thread->glSecondaryColorPointerEXT.refreshEachCall = 0;
+        cpu->thread->gglSecondaryColorPointerEXT.refreshEachCall = 0;
         return (GLvoid*)(uintptr_t)ptr;
     } else {        
-        cpu->thread->glSecondaryColorPointerEXT.size = size;
-        cpu->thread->glSecondaryColorPointerEXT.type = type;
-        cpu->thread->glSecondaryColorPointerEXT.stride = stride;
-        cpu->thread->glSecondaryColorPointerEXT.ptr = ptr;
-        cpu->thread->glSecondaryColorPointerEXT.refreshEachCall = 0;
-        updateVertexPointer(cpu, &cpu->thread->glSecondaryColorPointerEXT, 0);
-        return cpu->thread->glSecondaryColorPointerEXT.marshal;
+        cpu->thread->gglSecondaryColorPointerEXT.size = size;
+        cpu->thread->gglSecondaryColorPointerEXT.type = type;
+        cpu->thread->gglSecondaryColorPointerEXT.stride = stride;
+        cpu->thread->gglSecondaryColorPointerEXT.ptr = ptr;
+        cpu->thread->gglSecondaryColorPointerEXT.refreshEachCall = 0;
+        updateVertexPointer(cpu, &cpu->thread->gglSecondaryColorPointerEXT, 0);
+        return cpu->thread->gglSecondaryColorPointerEXT.marshal;
     }
 }
 
 GLvoid* marshalIndexPointer(CPU* cpu,  GLenum type, GLsizei stride, U32 ptr) {
     if (ARRAY_BUFFER()) {        
-        cpu->thread->glIndexPointer.refreshEachCall = 0;
+        cpu->thread->gglIndexPointer.refreshEachCall = 0;
         return (GLvoid*)(uintptr_t)ptr;
     } else {
-        cpu->thread->glIndexPointer.size = 1;
-        cpu->thread->glIndexPointer.type = type;
-        cpu->thread->glIndexPointer.stride = stride;
-        cpu->thread->glIndexPointer.ptr = ptr;
-        cpu->thread->glIndexPointer.refreshEachCall = 1;
-        updateVertexPointer(cpu, &cpu->thread->glIndexPointer, 0);
-        return cpu->thread->glIndexPointer.marshal;
+        cpu->thread->gglIndexPointer.size = 1;
+        cpu->thread->gglIndexPointer.type = type;
+        cpu->thread->gglIndexPointer.stride = stride;
+        cpu->thread->gglIndexPointer.ptr = ptr;
+        cpu->thread->gglIndexPointer.refreshEachCall = 1;
+        updateVertexPointer(cpu, &cpu->thread->gglIndexPointer, 0);
+        return cpu->thread->gglIndexPointer.marshal;
     }
 }
 
 GLvoid* marshalTexCoordPointer(CPU* cpu, GLint size, GLenum type, GLsizei stride, U32 ptr) {
     if (ARRAY_BUFFER()) {        
-        cpu->thread->glTexCoordPointer.refreshEachCall = 0;
+        cpu->thread->gglTexCoordPointer.refreshEachCall = 0;
         return (GLvoid*)(uintptr_t)ptr;
     } else {
-        cpu->thread->glTexCoordPointer.size = size;
-        cpu->thread->glTexCoordPointer.type = type;
-        cpu->thread->glTexCoordPointer.stride = stride;
-        cpu->thread->glTexCoordPointer.ptr = ptr;
-        cpu->thread->glTexCoordPointer.refreshEachCall = 1;
-        updateVertexPointer(cpu, &cpu->thread->glTexCoordPointer, 0);
-        return cpu->thread->glTexCoordPointer.marshal;
+        cpu->thread->gglTexCoordPointer.size = size;
+        cpu->thread->gglTexCoordPointer.type = type;
+        cpu->thread->gglTexCoordPointer.stride = stride;
+        cpu->thread->gglTexCoordPointer.ptr = ptr;
+        cpu->thread->gglTexCoordPointer.refreshEachCall = 1;
+        updateVertexPointer(cpu, &cpu->thread->gglTexCoordPointer, 0);
+        return cpu->thread->gglTexCoordPointer.marshal;
     }
 }
 
 GLvoid* marshalEdgeFlagPointer(CPU* cpu, GLsizei stride, U32 ptr) {
     if (ARRAY_BUFFER()) {        
-        cpu->thread->glEdgeFlagPointer.refreshEachCall = 0;
+        cpu->thread->gglEdgeFlagPointer.refreshEachCall = 0;
         return (GLvoid*)(uintptr_t)ptr;
     } else {
-        cpu->thread->glEdgeFlagPointer.size = 1;
-        cpu->thread->glEdgeFlagPointer.type = GL_BYTE;
-        cpu->thread->glEdgeFlagPointer.stride = stride;
-        cpu->thread->glEdgeFlagPointer.ptr = ptr;
-        cpu->thread->glEdgeFlagPointer.refreshEachCall = 1;
-        updateVertexPointer(cpu, &cpu->thread->glEdgeFlagPointer, 0);
-        return cpu->thread->glEdgeFlagPointer.marshal;
+        cpu->thread->gglEdgeFlagPointer.size = 1;
+        cpu->thread->gglEdgeFlagPointer.type = GL_BYTE;
+        cpu->thread->gglEdgeFlagPointer.stride = stride;
+        cpu->thread->gglEdgeFlagPointer.ptr = ptr;
+        cpu->thread->gglEdgeFlagPointer.refreshEachCall = 1;
+        updateVertexPointer(cpu, &cpu->thread->gglEdgeFlagPointer, 0);
+        return cpu->thread->gglEdgeFlagPointer.marshal;
     }
 }
 
 const GLboolean* marshalEdgeFlagPointerEXT(CPU* cpu, GLsizei stride, GLsizei count, U32 ptr) {
     if (ARRAY_BUFFER()) {        
-        cpu->thread->glEdgeFlagPointerEXT.refreshEachCall = 0;
+        cpu->thread->gglEdgeFlagPointerEXT.refreshEachCall = 0;
         return (const GLboolean*)(uintptr_t)ptr;
     } else {
-        cpu->thread->glEdgeFlagPointerEXT.size = 1;
-        cpu->thread->glEdgeFlagPointerEXT.type = GL_BYTE;
-        cpu->thread->glEdgeFlagPointerEXT.stride = stride;
-        cpu->thread->glEdgeFlagPointerEXT.ptr = ptr;
-        cpu->thread->glEdgeFlagPointerEXT.refreshEachCall = 0;
-        cpu->thread->glEdgeFlagPointerEXT.count = count;
-        updateVertexPointer(cpu, &cpu->thread->glEdgeFlagPointerEXT, 0);
-        return cpu->thread->glEdgeFlagPointerEXT.marshal;
+        cpu->thread->gglEdgeFlagPointerEXT.size = 1;
+        cpu->thread->gglEdgeFlagPointerEXT.type = GL_BYTE;
+        cpu->thread->gglEdgeFlagPointerEXT.stride = stride;
+        cpu->thread->gglEdgeFlagPointerEXT.ptr = ptr;
+        cpu->thread->gglEdgeFlagPointerEXT.refreshEachCall = 0;
+        cpu->thread->gglEdgeFlagPointerEXT.count = count;
+        updateVertexPointer(cpu, &cpu->thread->gglEdgeFlagPointerEXT, 0);
+        return cpu->thread->gglEdgeFlagPointerEXT.marshal;
     }
 }
 

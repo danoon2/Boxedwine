@@ -115,16 +115,16 @@ public:
 #endif
     bool log; // syscalls
     OpenGLVetexPointer glVertextPointer;
-    OpenGLVetexPointer glNormalPointer;
+    OpenGLVetexPointer gglNormalPointer;
     OpenGLVetexPointer glFogPointer;
     OpenGLVetexPointer glFogPointerEXT;
-    OpenGLVetexPointer glColorPointer;
-    OpenGLVetexPointer glSecondaryColorPointer;
-    OpenGLVetexPointer glSecondaryColorPointerEXT;
-    OpenGLVetexPointer glIndexPointer;
-    OpenGLVetexPointer glTexCoordPointer;
-    OpenGLVetexPointer glEdgeFlagPointer;
-    OpenGLVetexPointer glEdgeFlagPointerEXT;
+    OpenGLVetexPointer gglColorPointer;
+    OpenGLVetexPointer gglSecondaryColorPointer;
+    OpenGLVetexPointer gglSecondaryColorPointerEXT;
+    OpenGLVetexPointer gglIndexPointer;
+    OpenGLVetexPointer gglTexCoordPointer;
+    OpenGLVetexPointer gglEdgeFlagPointer;
+    OpenGLVetexPointer gglEdgeFlagPointerEXT;
 
     inline static KThread* currentThread() {return runningThread;}
 	inline static void setCurrentThread(KThread* thread) { runningThread = thread; if (thread) { thread->memory->onThreadChanged(); } }
