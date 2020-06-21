@@ -457,11 +457,11 @@ void glcommon_glGetPointerv(CPU* cpu) {
     }
 #else
     switch (ARG1) {
-    case GL_COLOR_ARRAY_POINTER: writed(readd(ARG2), cpu->thread->glColorPointer.ptr); break;
-    case GL_EDGE_FLAG_ARRAY_POINTER: writed(readd(ARG2), cpu->thread->glEdgeFlagPointer.ptr); break;
-    case GL_INDEX_ARRAY_POINTER: writed(readd(ARG2), cpu->thread->glIndexPointer.ptr); break;
-    case GL_NORMAL_ARRAY_POINTER: writed(readd(ARG2), cpu->thread->glNormalPointer.ptr); break;
-    case GL_TEXTURE_COORD_ARRAY_POINTER: writed(readd(ARG2), cpu->thread->glTexCoordPointer.ptr); break;
+    case GL_COLOR_ARRAY_POINTER: writed(readd(ARG2), cpu->thread->gglColorPointer.ptr); break;
+    case GL_EDGE_FLAG_ARRAY_POINTER: writed(readd(ARG2), cpu->thread->gglEdgeFlagPointer.ptr); break;
+    case GL_INDEX_ARRAY_POINTER: writed(readd(ARG2), cpu->thread->gglIndexPointer.ptr); break;
+    case GL_NORMAL_ARRAY_POINTER: writed(readd(ARG2), cpu->thread->gglNormalPointer.ptr); break;
+    case GL_TEXTURE_COORD_ARRAY_POINTER: writed(readd(ARG2), cpu->thread->gglTexCoordPointer.ptr); break;
     case GL_VERTEX_ARRAY_POINTER: writed(readd(ARG2), cpu->thread->glVertextPointer.ptr); break;
     default: writed(readd(ARG2), 0);
     }
