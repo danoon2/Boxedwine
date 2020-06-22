@@ -4,6 +4,7 @@
 #include "normalCPU.h"
 #include "../../softmmu/soft_code_page.h"
 #include "../x32/x32CPU.h"
+#include "../armv7/armv7CPU.h"
 
 #ifdef _DEBUG
 #define START_OP(cpu, op) op->log(cpu)
@@ -93,8 +94,8 @@ OpCallback NormalCPU::getFunctionForOp(DecodedOp* op) {
 
 NormalCPU::NormalCPU() {   
     initNormalOps();
-#ifdef BOXEDWINE_DYNAMIC32
-    this->firstOp = firstX32Op;
+#ifdef BOXEDWINE_DYNAMIC
+    this->firstOp = firstDynamicOp;
 #else
     this->firstOp = NULL;
 #endif
@@ -133,6 +134,18 @@ void NormalBlock::run(CPU* cpu) {
         kpanic("NormalBlock::run is about to crash");
     }
 #endif  
+    static U32 x;
+    static U32 y;
+    if (cpu) {
+        x=0x12;
+        y=0x1234;
+    } else {
+        x++;
+        y++;
+    }
+    x = (x << 16) | (y & 0xFFFF);
+    x = (x << 16) | (x >> 16);
+    printf("%d\n", x);
     this->op->pfn(cpu, this->op);
     this->runCount++;
     cpu->blockInstructionCount+=this->opCount;

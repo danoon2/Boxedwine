@@ -42,35 +42,35 @@ void dynamic_xchge32r32(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(op->len);
 }
 void dynamic_cmpxchgr8r8(DynamicData* data, DecodedOp* op) {
-    callHostFunction(common_cmpxchgr8r8, false, 3, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false, op->rm, DYN_PARAM_CONST_32, false);
+    callHostFunction((void*)common_cmpxchgr8r8, false, 3, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false, op->rm, DYN_PARAM_CONST_32, false);
     data->currentLazyFlags=FLAGS_CMP8;
     INCREMENT_EIP(op->len);
 }
 void dynamic_cmpxchge8r8(DynamicData* data, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
-    callHostFunction(common_cmpxchge8r8, false, 3, 0, DYN_PARAM_CPU, false, DYN_ADDRESS, DYN_PARAM_REG_32, true, op->reg, DYN_PARAM_CONST_32, false);
+    callHostFunction((void*)common_cmpxchge8r8, false, 3, 0, DYN_PARAM_CPU, false, DYN_ADDRESS, DYN_PARAM_REG_32, true, op->reg, DYN_PARAM_CONST_32, false);
     data->currentLazyFlags=FLAGS_CMP8;
     INCREMENT_EIP(op->len);
 }
 void dynamic_cmpxchgr16r16(DynamicData* data, DecodedOp* op) {
-    callHostFunction(common_cmpxchgr16r16, false, 3, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false, op->rm, DYN_PARAM_CONST_32, false);
+    callHostFunction((void*)common_cmpxchgr16r16, false, 3, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false, op->rm, DYN_PARAM_CONST_32, false);
     data->currentLazyFlags=FLAGS_CMP16;
     INCREMENT_EIP(op->len);
 }
 void dynamic_cmpxchge16r16(DynamicData* data, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
-    callHostFunction(common_cmpxchge16r16, false, 3, 0, DYN_PARAM_CPU, false, DYN_ADDRESS, DYN_PARAM_REG_32, true, op->reg, DYN_PARAM_CONST_32, false);
+    callHostFunction((void*)common_cmpxchge16r16, false, 3, 0, DYN_PARAM_CPU, false, DYN_ADDRESS, DYN_PARAM_REG_32, true, op->reg, DYN_PARAM_CONST_32, false);
     data->currentLazyFlags=FLAGS_CMP16;
     INCREMENT_EIP(op->len);
 }
 void dynamic_cmpxchgr32r32(DynamicData* data, DecodedOp* op) {
-    callHostFunction(common_cmpxchgr32r32, false, 3, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false, op->rm, DYN_PARAM_CONST_32, false);
+    callHostFunction((void*)common_cmpxchgr32r32, false, 3, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false, op->rm, DYN_PARAM_CONST_32, false);
     data->currentLazyFlags=FLAGS_CMP32;
     INCREMENT_EIP(op->len);
 }
 void dynamic_cmpxchge32r32(DynamicData* data, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
-    callHostFunction(common_cmpxchge32r32, false, 3, 0, DYN_PARAM_CPU, false, DYN_ADDRESS, DYN_PARAM_REG_32, true, op->reg, DYN_PARAM_CONST_32, false);
+    callHostFunction((void*)common_cmpxchge32r32, false, 3, 0, DYN_PARAM_CPU, false, DYN_ADDRESS, DYN_PARAM_REG_32, true, op->reg, DYN_PARAM_CONST_32, false);
     data->currentLazyFlags=FLAGS_CMP32;
     INCREMENT_EIP(op->len);
 }

@@ -2153,7 +2153,7 @@ static void initX32Ops() {
     x32Ops[Callback] = x32_callback;
 }
 
-void OPCALL firstX32Op(CPU* cpu, DecodedOp* op) {
+void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
 #ifdef __TEST
     if (DecodedBlock::currentBlock->runCount == 0) {
 #else
@@ -2182,7 +2182,7 @@ void OPCALL firstX32Op(CPU* cpu, DecodedOp* op) {
 #endif
             x32Ops[o->inst](&data, o); 
             if (ifJump.size()) {
-                kpanic("x32CPU::firstX32Op if statement was not closed in instruction: %d", op->inst);
+                kpanic("x32CPU::firstDynamicOp if statement was not closed in instruction: %d", op->inst);
             }
             if (data.skipToOp) {
                 o = data.skipToOp;
