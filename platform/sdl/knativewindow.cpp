@@ -555,7 +555,6 @@ U32 sdlCreateOpenglWindow_main_thread(KThread* thread, std::shared_ptr<WndSdl> w
         sdlFlags |= SDL_WINDOW_HIDDEN;
     }
 #endif
-
     int cx = wnd->windowRect.right-wnd->windowRect.left;
     int cy = wnd->windowRect.bottom-wnd->windowRect.top;
 
