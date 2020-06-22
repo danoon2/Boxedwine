@@ -331,6 +331,10 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "Run Wine App";
     case CONTAINER_VIEW_RUNE_WINE_APP_BUTTON_LABEL:
         return "Run Wine App";
+    case CONTAINER_VIEW_POLL_RATE_LABEL:
+        return "Poll Rate:";
+    case CONTAINER_VIEW_POLL_RATE_HELP:
+        return "Poll Rate is how often a mouse or keyboard event will be given to Wine.  If the event happens before allowed, the event will be paused or in the case of a mouse move event, dropped.  Some games will experience lockups/hangs when moving the mouse quickly with a high DPI mouse.  Lowering this number can help with that.  A value of 0 means there will be no delay.  A value of less than 0 will make Boxedwine use a default value of " DEFAULT_POLL_RATE_str " events per second.";
     case ERROR_NO_WINE:
         return "There are no versions of Wine installed.  Would you like to install the default version of Wine now?";
     case ERROR_NO_WINE_HIGH_DPI:

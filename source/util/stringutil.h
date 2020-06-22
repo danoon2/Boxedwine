@@ -14,5 +14,6 @@ bool stringCaseInSensativeEquals(const std::string & str1, const std::string &st
 void stringTrim(std::string &s);
 int stringIndexInVector(const std::string& value, const std::vector<std::string> values, int returnIfNotFound=-1);
 bool stringIsLessCaseInsensative(const std::string& str1, const std::string& str2);
+std::string toHexString(int i);
 
 #endif

@@ -1,0 +1,59 @@
+pipeline {
+    agent { label 'linux' }
+
+    stages {
+        stage('Test') {
+            steps {
+                sh '''#!/bin/bash
+                    cd project/linux
+                    sh buildtest.sh || exit
+                    ./bin/boxedwineTest
+                '''
+            }
+        }
+        stage('Build') {
+            steps {
+               sh '''#!/bin/bash
+
+                    cd project/linux
+                    sh build.sh
+                '''           
+            }
+        }
+        stage('Build x64 Core') {
+            steps {
+               sh '''#!/bin/bash
+
+                    cd project/linux
+                    sh build64.sh
+                '''           
+            }
+        }        
+    }
+
+    post {
+        changed {
+            script {
+                if ("${env.BRANCH_NAME}" == 'master') {
+                    emailext subject: '$DEFAULT_SUBJECT',
+                        body: '$DEFAULT_CONTENT',
+                        recipientProviders: [
+                            [$class: 'CulpritsRecipientProvider'],
+                            [$class: 'DevelopersRecipientProvider'],
+                            [$class: 'RequesterRecipientProvider']
+                        ], 
+                        replyTo: '$DEFAULT_REPLYTO',
+                        to: '$DEFAULT_RECIPIENTS'
+                } else {
+                    emailext subject: '$DEFAULT_SUBJECT',
+                        body: '$DEFAULT_CONTENT',
+                        recipientProviders: [
+                            [$class: 'DevelopersRecipientProvider'],
+                            [$class: 'RequesterRecipientProvider']
+                        ], 
+                        replyTo: '$DEFAULT_REPLYTO'
+                }
+            }
+        }
+    }
+}

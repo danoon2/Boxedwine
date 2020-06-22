@@ -19,7 +19,7 @@
 
 #include <stdio.h>
 #include <stdarg.h>
-#include <SDL.h>
+#include "knativethread.h"
 
 #ifdef BOXEDWINE_MSVC
 #include <Windows.h>
@@ -47,7 +47,7 @@ void kpanic(const char* msg, ...) {
     OutputDebugStringA("\n");
 #endif
     va_end(argptr);
-    SDL_Delay(5000);
+    KNativeThread::sleep(5000);
     exit(1);
 }
 
@@ -94,6 +94,7 @@ void klog(const char* msg, ...) {
     char buff[1024];
     vsnprintf(buff, sizeof(buff), msg, argptr);
     OutputDebugStringA(buff);
+    OutputDebugStringA("\n");
 #endif
     va_end(argptr);
 }

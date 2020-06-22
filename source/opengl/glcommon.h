@@ -174,37 +174,6 @@ double dARG(CPU* cpu, int address);
 #define GL_FUNCTION_CUSTOM(func, RET, PARAMS)
 #define GL_EXT_FUNCTION(func, RET, PARAMS) typedef RET (OPENGL_CALL_TYPE *gl##func##_func)PARAMS; extern gl##func##_func ext_gl##func;
 
-#ifndef SDL2
-#ifdef __APPLE__
-typedef long GLintptr;
-typedef long GLsizeiptr;
-#else
-typedef ptrdiff_t GLintptr;
-typedef ptrdiff_t GLsizeiptr;
-#endif
-typedef uint64_t GLuint64EXT;
-typedef struct __GLsync *GLsync;
-typedef unsigned int	GLenum;
-typedef uint64_t GLuint64;
-typedef int64_t GLint64;
-typedef int64_t GLint64EXT;
-typedef GLintptr GLvdpauSurfaceNV;
-typedef GLint GLfixed;
-#define GL_ATOMIC_COUNTER_BUFFER_ACTIVE_ATOMIC_COUNTER_INDICES 0x92C6
-#define GL_COMPATIBLE_SUBROUTINES         0x8E4B
-#define GL_UNIFORM_BLOCK_ACTIVE_UNIFORM_INDICES 0x8A43
-#define GL_PIXEL_PACK_BUFFER_BINDING      0x88ED
-#define GL_PIXEL_UNPACK_BUFFER_BINDING    0x88EF
-#define GL_TRANSLATE_X_NV                 0x908E
-#define GL_TRANSLATE_Y_NV                 0x908F
-#define GL_TRANSLATE_2D_NV                0x9090
-#define GL_TRANSLATE_3D_NV                0x9091
-#define GL_AFFINE_2D_NV                   0x9092
-#define GL_AFFINE_3D_NV                   0x9094
-#define GL_TRANSPOSE_AFFINE_2D_NV         0x9096
-#define GL_TRANSPOSE_AFFINE_3D_NV         0x9098
-#endif
-
 #include "glfunctions.h"
 
 #endif

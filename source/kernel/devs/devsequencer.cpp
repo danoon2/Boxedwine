@@ -143,7 +143,7 @@ static struct {
 } midi;
 
 void MIDI_RawOutByte(U8 data) {
-    if (sdlSoundEnabled) {
+    if (KSystem::soundEnabled) {
 	    /* Test for a realtime MIDI message */
 	    if (data>=0xf8) {
 		    midi.rt_buf[0]=data;

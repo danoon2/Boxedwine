@@ -20,11 +20,11 @@
 #ifdef __TEST
 #include <stdlib.h>
 #include <stdio.h>
-#include <SDL.h>
 
 #include "../emulation/softmmu/soft_memory.h"
 #include "../emulation/hardmmu/hard_memory.h"
 #include "../emulation/cpu/x64/x64CPU.h"
+#include "knativethread.h"
 
 #ifdef BOXEDWINE_MSVC
 #include <nmmintrin.h>
@@ -7239,6 +7239,7 @@ int main(int argc, char **argv) {
     run(testSseCvtsi2ss32a, "CVTSI2SS F3 32A (sse1)");
     run(testSse2Movntpd12b, "MOVNTPD 12B (sse2)");
     run(testSseMovntps32b, "MOVNTPS 32B (sse1)");
+#ifndef __EMSCRIPTEN__
     run(testSseCvttpd2pi12c, "CVTTPD2PI 12C (sse2)");
     run(testSseCvttps2pi32c, "CVTTPS2PI 32C (sse1)");
     run(testSse2Cvttsd2si32c, "CVTTSD2SI F2 32C (sse2)");
@@ -7247,6 +7248,7 @@ int main(int argc, char **argv) {
     run(testSseCvtps2pi32d, "CVTPS2PI 32D (sse1)");
     run(testSse2Cvtsd2si32d, "CVTSD2SI F2 32D (sse2)");
     run(testSseCvtss2si32d, "CVTSS2SI F3 32D (sse1)");
+#endif
     run(testSse2Ucomisd12e, "UCOMISD 12E (sse2)");
     run(testSseUcomiss32e, "UCOMISS 32E (sse1)");
     run(testSse2Comisd12f, "COMISD 12F (sse2)");
@@ -7446,9 +7448,11 @@ int main(int argc, char **argv) {
     run(testPmulhuw3e4, "PMULHUW 3E4 (sse1)");
     run(testSse2Pmulhw1e5, "PMULHW 1E5 (sse2)");
     run(testMmxPmulhw, "PMULHW 3e5 (mmx)");
+#ifndef __EMSCRIPTEN__
     run(testSse2Cvttpd2dq1e6, "CVTTPD2DQ 1E6 (sse2)");
     run(testSse2Cvtpd2dq3e6, "CVTPD2DQ F2 3E6 (sse2)");
     run(testSse2Cvtdq2pd3e6, "CVTDQ2PD F3 3E6 (sse2)");
+#endif
     run(testSse2Movntdq1e7, "MOVNTDQ 1E7 (sse2)");
     run(testMovntq3e7, "MOVNTQ 3E7 (sse1)");
     run(testSse2Psubsb1e8, "PSUBSB 1E8 (sse2)");
@@ -7499,7 +7503,7 @@ int main(int argc, char **argv) {
             
 
     printf("%d tests FAILED\n", totalFails);
-    SDL_Delay(5000);
+    KNativeThread::sleep(5000);
     if (totalFails)
         return 1;
     return 0;

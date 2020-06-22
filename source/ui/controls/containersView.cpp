@@ -239,7 +239,11 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
             this->currentAppChanged = true;
         };
     }
-
+    appPollRateControl = appSection->addTextInputRow(CONTAINER_VIEW_POLL_RATE_LABEL, CONTAINER_VIEW_POLL_RATE_HELP);
+    appPollRateControl->onChange = [this]() {
+        this->currentApp->pollRate = atoi(appPollRateControl->getText().c_str());
+        this->currentAppChanged = true;
+    };    
 #ifdef BOXEDWINE_MULTI_THREADED
     std::vector<ComboboxItem> affinity;
     affinity.push_back(ComboboxItem(getTranslation(GENERIC_COMBOBOX_ALL), 0));
@@ -476,6 +480,7 @@ void ContainersView::setCurrentApp(BoxedApp* app) {
     appScaleQualityControl->setSelection(app->scaleQuality);
     appFullScreenControl->setCheck(app->fullScreen);
     appDpiAwareControl->setCheck(app->dpiAware);
+    appPollRateControl->setText(std::to_string(app->pollRate));
 #ifdef BOXEDWINE_MULTI_THREADED
     appCpuAffinityControl->setSelectionIntValue(app->cpuAffinity);
 #endif

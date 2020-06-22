@@ -20,15 +20,7 @@
 #define __KSYSTEM_H__
 
 #include "platform.h"
-
-extern U32 screenCx;
-extern U32 screenCy;
-extern U32 screenBpp;
-extern U32 default_horz_res;
-extern U32 default_vert_res;
-extern U32 default_bits_per_pixel;
-extern bool sdlSoundEnabled;
-extern bool sdlVideoEnabled;
+#include "pixelformat.h"
 
 #define UID 1
 #define GID 1000
@@ -72,6 +64,8 @@ public:
 
 class KSystem {
 public:    
+    static bool videoEnabled;
+    static bool soundEnabled;
     static U32 pentiumLevel;
 	static bool shutingDown;
     static U32 killTime;
@@ -82,6 +76,8 @@ public:
 #ifdef BOXEDWINE_MULTI_THREADED
     static U32 cpuAffinityCountForApp;
 #endif
+    static U32 pollRate;
+
     static void init();
 	static void destroy();
     static U32 getNextThreadId();
@@ -128,14 +124,18 @@ public:
     static U64 getMicroCounter();
     static void startMicroCounter();
     static U32 emulatedMilliesToHost(U32 millies);
-
+    static U32 describePixelFormat(KThread* thread, U32 hdc, U32 fmt, U32 size, U32 descr);
+    static PixelFormat* getPixelFormat(U32 index);
 private:
+    static void initDisplayModes();
+
     static U32 nextThreadId;
     static bool adjustClock;
     static U32 adjustClockFactor; // 100 is normal
-    static U32 startTimeSdlTicks;
+    static U32 startTimeTicks;
     static U64 startTimeMicroCounter;
     static U64 startTimeSystemTime;    
+    static bool modesInitialized;
 
     static std::unordered_map<void*, SHM*> shm;
     static std::unordered_map<U32, std::shared_ptr<KProcess> > processes;

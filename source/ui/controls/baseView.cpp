@@ -65,7 +65,7 @@ void BaseView::run(const ImVec2& size) {
     ImGui::SameLine();
     ImGui::BeginChild(112, rightSize, false, 0);
     
-    if (this->tabIndex < this->tabs.size()) {
+    if (this->tabIndex < (int)this->tabs.size()) {
         this->tabs[this->tabIndex].drawTab(tabChanged, this->tabs[this->tabIndex]);
         if (this->tabs[this->tabIndex].model) {
             this->tabs[this->tabIndex].model->draw();

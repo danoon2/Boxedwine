@@ -94,6 +94,42 @@ GLsync marshalSync(CPU* cpu, U32 sync) {
     return 0;
 }
 
+GLchar** bufferszArray;
+U32 bufferszArray_len;
+
+const GLchar** marshalszArray(CPU* cpu, U32 count, U32 address, U32 addressLengths) {
+    if (bufferszArray_len < count) {
+        if (bufferszArray) {
+            delete[] bufferszArray;
+        }
+        bufferszArray = new GLchar * [count];
+        bufferszArray_len = count;
+    }
+    for (U32 i = 0; i < count; i++) {
+        U32 strAddress = readd(address + i * 4);
+        bufferszArray[i] = (GLchar*)getPhysicalAddress(strAddress, 0);
+    }
+    return (const GLchar**)bufferszArray;
+}
+
+GLcharARB** bufferszArrayARB;
+U32 bufferszArrayARB_len;
+
+const GLcharARB** marshalszArrayARB(CPU* cpu, U32 count, U32 address, U32 addressLengths) {
+    if (bufferszArrayARB_len < count) {
+        if (bufferszArrayARB) {
+            delete[] bufferszArrayARB;
+        }
+        bufferszArrayARB = new GLcharARB * [count];
+        bufferszArrayARB_len = count;
+    }
+    for (U32 i = 0; i < count; i++) {
+        U32 strAddress = readd(address + i * 4);
+        bufferszArray[i] = (GLcharARB*)getPhysicalAddress(strAddress, 0);
+    }
+    return (const GLcharARB**)bufferszArrayARB;
+}
+
 #else 
 #define MARSHAL_TYPE_CUSTOM(type, p, m, s, conv, get, set) type* buffer##p; U32 buffer##p##_len; type* marshal##p(CPU* cpu, U32 address, U32 count) {U32 i; if (!address) return NULL; if (buffer##p && buffer##p##_len<count) { delete[] buffer##p; buffer##p=NULL;} if (!buffer##p) {buffer##p = new type[count]; buffer##p##_len = count;}for (i=0;i<count;i++) {struct conv d; get = read##m(address);address+=s;buffer##p[i] = set;} return buffer##p;}
 
@@ -164,6 +200,8 @@ MARSHAL_TYPE(GLuint64, ui64, q, 8)
 MARSHAL_TYPE(GLint64, i64, q, 8)
 
 MARSHAL_TYPE(GLsizei, si, d, 4)
+
+MARSHAL_TYPE(GLhalfNV, hf, w, 2)
 
 MARSHAL_TYPE_CUSTOM(GLfloat, f, d, 4, int2Float, d.i, d.f)
 MARSHAL_TYPE_CUSTOM(GLfloat, 2f, d, 4, int2Float, d.i, d.f)
@@ -699,6 +737,79 @@ const GLchar* marshalsz(CPU* cpu, U32 address) {
     return getNativeString(address, tmp, tmpLen);
 }
 
+GLchar** bufferszArray;
+U32 bufferszArray_len;
+
+const GLchar** marshalszArray(CPU* cpu, U32 count, U32 address, U32 addressLengths) {
+    if (bufferszArray) {
+        for (U32 i = 0; i < bufferszArray_len; i++) {
+            if (bufferszArray[i]) {
+                delete[] bufferszArray[i];
+                bufferszArray[i] = NULL;
+            }
+        }
+    }
+    if (bufferszArray_len < count) {
+        if (bufferszArray) {
+            delete[] bufferszArray;
+        }
+        bufferszArray = new GLchar * [count];
+        bufferszArray_len = count;
+    }
+    for (U32 i = 0; i < count; i++) {
+        U32 len;
+        U32 strAddress = readd(address + i * 4);
+        if (addressLengths) {
+            len = readd(addressLengths + i * 4);
+        } else {
+            if (sizeof(GLchar) != 1) {
+                kpanic("marshalszArray sizeof(GLchar)!=1");
+            }
+            len = getNativeStringLen(strAddress);
+        }
+        bufferszArray[i] = new GLchar[len + 1];
+        memcopyToNative(strAddress, bufferszArray[i], len*sizeof(GLchar));
+        bufferszArray[i][len] = 0;
+    }
+    return (const GLchar **)bufferszArray;
+}
+
+GLcharARB** bufferszArrayARB;
+U32 bufferszArrayARB_len;
+
+const GLcharARB** marshalszArrayARB(CPU* cpu, U32 count, U32 address, U32 addressLengths) {
+    if (bufferszArray) {
+        for (U32 i = 0; i < bufferszArray_len; i++) {
+            if (bufferszArrayARB[i]) {
+                delete[] bufferszArrayARB[i];
+                bufferszArrayARB[i] = NULL;
+            }
+        }
+    }
+    if (bufferszArrayARB_len < count) {
+        if (bufferszArrayARB) {
+            delete[] bufferszArrayARB;
+        }
+        bufferszArrayARB = new GLcharARB * [count];
+        bufferszArrayARB_len = count;
+    }
+    for (U32 i = 0; i < count; i++) {
+        U32 len;
+        U32 strAddress = readd(address + i * 4);
+        if (addressLengths) {
+            len = readd(addressLengths + i * 4);
+        } else {
+            if (sizeof(GLcharARB) != 1) {
+                kpanic("marshalszArrayARB sizeof(GLcharARB)!=1");
+            }
+            len = getNativeStringLen(strAddress);
+        }
+        bufferszArrayARB[i] = new GLcharARB[len + 1];
+        memcopyToNative(strAddress, bufferszArrayARB[i], len*sizeof(GLcharARB));
+        bufferszArrayARB[i][len] = 0;
+    }
+    return (const GLcharARB**)bufferszArrayARB;
+}
 #endif
 
 void* marshalunhandled(const char* func, const char* param, CPU* cpu, U32 address) {

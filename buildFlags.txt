@@ -30,7 +30,7 @@ settings:
  	i.e. root=win32.zip. If not set it is assumed the root fs is boxedwine.zip.
  - specify a zip file to appear uncompressed mounted on d:
  	i.e. app=chomp.zip would appear as /home/username/.wine/dosdevices/d:/chomp/. Use: zip -r9qdgds 10m chomp.zip ./chomp/*
- - change the program to execute via ?p=/home/username/chomp/CHOMP.EXE. surround in quotes if path includes spaces.
+ - change the program to execute via ?p=/home/username/chomp/CHOMP.EXE. surround in quotes if path includes spaces. Can call a .BAT file.
  - set the working directory via ?work=chomp. This simplifies p as it can then be relative to the working directory.
  - set an overlay via ?overlay=more.zip;files.zip. Where each zip file contains additional files to add to the root file system. Existing files are overridden.
  - use c:/ as shorthand for /home/username/.wine/dosdevices/c:/ (also works for d:/)
@@ -51,6 +51,14 @@ This approach has the advantage that the downloaded zipped filesystems are small
 the network requests for on demand files are synchronous (may block ui thread and also potentially crash the emulator when retrieving large files) and the web server must support range requests.
 Provided in /project/linux/buildFiles is wine1.7.55-v8-min.zip which contains the minimum files necessary to load a basic wine application
 To generate your own minimal set of files follow the instructions in /tools/common/Main.java
+
+Dynamically sending files
+The *-payload parameters can be used to pass in a base64 encoded zip file. 
+They mirror the existing &app and &overlay parameters but allow the client to supply the app/program/files.
+Beware that browsers and web server likely have request size limits.
+example:
+&app-payload=[base64 string] 
+&overlay-payload=[base64 string]&p=c:/demo/run.bat
 
 
 Other configuration options:

@@ -15,6 +15,10 @@ Global
 		Release|ARM64 = Release|ARM64
 		Release|x64 = Release|x64
 		Release|x86 = Release|x86
+		Test|ARM = Test|ARM
+		Test|ARM64 = Test|ARM64
+		Test|x64 = Test|x64
+		Test|x86 = Test|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{0F37B3A3-F63A-4DF5-9D6D-E644F09D1722}.Debug|ARM.ActiveCfg = Debug|ARM
@@ -41,6 +45,18 @@ Global
 		{0F37B3A3-F63A-4DF5-9D6D-E644F09D1722}.Release|x86.ActiveCfg = Release|x86
 		{0F37B3A3-F63A-4DF5-9D6D-E644F09D1722}.Release|x86.Build.0 = Release|x86
 		{0F37B3A3-F63A-4DF5-9D6D-E644F09D1722}.Release|x86.Deploy.0 = Release|x86
+		{0F37B3A3-F63A-4DF5-9D6D-E644F09D1722}.Test|ARM.ActiveCfg = Test|ARM
+		{0F37B3A3-F63A-4DF5-9D6D-E644F09D1722}.Test|ARM.Build.0 = Test|ARM
+		{0F37B3A3-F63A-4DF5-9D6D-E644F09D1722}.Test|ARM.Deploy.0 = Test|ARM
+		{0F37B3A3-F63A-4DF5-9D6D-E644F09D1722}.Test|ARM64.ActiveCfg = Test|ARM64
+		{0F37B3A3-F63A-4DF5-9D6D-E644F09D1722}.Test|ARM64.Build.0 = Test|ARM64
+		{0F37B3A3-F63A-4DF5-9D6D-E644F09D1722}.Test|ARM64.Deploy.0 = Test|ARM64
+		{0F37B3A3-F63A-4DF5-9D6D-E644F09D1722}.Test|x64.ActiveCfg = Test|x64
+		{0F37B3A3-F63A-4DF5-9D6D-E644F09D1722}.Test|x64.Build.0 = Test|x64
+		{0F37B3A3-F63A-4DF5-9D6D-E644F09D1722}.Test|x64.Deploy.0 = Test|x64
+		{0F37B3A3-F63A-4DF5-9D6D-E644F09D1722}.Test|x86.ActiveCfg = Test|x86
+		{0F37B3A3-F63A-4DF5-9D6D-E644F09D1722}.Test|x86.Build.0 = Test|x86
+		{0F37B3A3-F63A-4DF5-9D6D-E644F09D1722}.Test|x86.Deploy.0 = Test|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -5,6 +5,7 @@
 #include "../../source/emulation/hardmmu/hard_memory.h"
 #include "../../source/emulation/cpu/normal/normalCPU.h"
 #include "../../source/emulation/cpu/x64/x64Asm.h"
+#include "ksignal.h"
 #include <string.h>
 
 #ifdef __MACH__
@@ -321,6 +322,19 @@ static void handler(int sig, siginfo_t* info, void* vcontext) {
     }
 }
 
+int getFPUCode(int code) {
+    switch (code) {
+    case FPE_INTDIV: return K_FPE_INTDIV;
+    case FPE_INTOVF: return K_FPE_INTOVF;
+    case FPE_FLTDIV: return K_FPE_FLTDIV;
+    case FPE_FLTOVF: return K_FPE_FLTOVF;
+    case FPE_FLTUND: return K_FPE_FLTUND;
+    case FPE_FLTRES: return K_FPE_FLTRES;
+    case FPE_FLTINV: return K_FPE_FLTINV;
+    default: klog("getFPUCode unhandled code %d", code); return 0;
+    }
+}
+
 void signalHandler() {
     BOXEDWINE_CRITICAL_SECTION;
     KThread* currentThread = KThread::currentThread();
@@ -357,8 +371,9 @@ void signalHandler() {
         // :TODO: can jumping cause us to miss something?
         cpu->returnHostAddress = cpu->exceptionRip;
         return;
-    } else if (cpu->exceptionSigNo == SIGFPE && (cpu->exceptionSigCode == FPE_INTDIV || cpu->exceptionSigCode == FPE_FLTDIV)) {
-        cpu->returnHostAddress = cpu->handleDivByZero(NULL, NULL);
+    } else if (cpu->exceptionSigNo == SIGFPE) {
+        int code = getFPUCode(cpu->exceptionSigCode);
+        cpu->returnHostAddress = cpu->handleFpuException(code, NULL, NULL);
         return;
     }
     kpanic("unhandled exception %d", cpu->exceptionSigNo);

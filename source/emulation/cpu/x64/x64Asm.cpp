@@ -4108,7 +4108,7 @@ void X64Asm::fpu3(U8 rm) {
                 break;
             }
             case 5: callFpuWithArg(common_FUCOMI_ST0_STj, E(rm)); break;
-            case 6: callFpuWithArg(common_FCOMI_ST0_STj_Pop, E(rm)); break;
+            case 6: callFpuWithArg(common_FCOMI_ST0_STj, E(rm)); break;
             default: invalidOp(this->inst); break;
         }
     } else {

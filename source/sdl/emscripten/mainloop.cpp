@@ -1,25 +1,21 @@
 #include <emscripten/emscripten.h>
 #include "boxedwine.h"
-#include <SDL.h>
-#include "../sdlwindow.h"
-
-extern U32 sdlUpdated;
+#include "knativewindow.h"
+#include "knativesystem.h"
 
 static U32 lastTitleUpdate = 0;
 
 void mainloop() {
-    U32 startTime = SDL_GetTicks();
+    U32 startTime = KNativeSystem::getTicks();
     U32 t;
     U32 count=0;
     while (1) {
-        SDL_Event e;
         bool ran = runSlice();
         
-        while (SDL_PollEvent(&e)) {
-            if (!handlSdlEvent(&e)) {
-                SDL_Quit();
-            }            
-        };
+        if (!KNativeWindow::getNativeWindow()->processEvents()) {
+            KNativeSystem::cleanup();
+            return;
+        }
         t = KSystem::getMilliesSinceStart();                
         if (lastTitleUpdate+1000 < t) {
             lastTitleUpdate = t;
@@ -30,9 +26,9 @@ void mainloop() {
         if (!ran) {
             break;
         }
-        if ((SDL_GetTicks()-startTime)>250 || sdlUpdated) {
-           sdlUpdated=0;
-           break;
+        if ((KNativeSystem::getTicks()-startTime)>250 || KNativeWindow::windowUpdated) {
+            KNativeWindow::windowUpdated = false;
+            break;
         }
     };
 }

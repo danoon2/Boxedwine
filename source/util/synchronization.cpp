@@ -1,6 +1,5 @@
 #include "boxedwine.h"
 #ifdef BOXEDWINE_MULTI_THREADED
-#include <SDL.h>
 
 BoxedWineCriticalSection::BoxedWineCriticalSection(BoxedWineMutex* mutex) {
     this->mutex = mutex;
@@ -18,41 +17,24 @@ BoxedWineCriticalSectionCond::~BoxedWineCriticalSectionCond() {
     this->cond->unlock();
 }
 
-BoxedWineMutex::BoxedWineMutex() {
-    this->m = SDL_CreateMutex();
-}
-
-BoxedWineMutex::~BoxedWineMutex() {
-    SDL_DestroyMutex((SDL_mutex*)this->m);
-}
-
 void BoxedWineMutex::lock() {
-    SDL_LockMutex((SDL_mutex*)this->m);    
+    this->m.lock();
 }
 
 void BoxedWineMutex::unlock() {
-    SDL_UnlockMutex((SDL_mutex*)this->m);
+    this->m.unlock();
 }
 
 BoxedWineCondition::BoxedWineCondition(std::string name) : name(name) {
-    this->m = SDL_CreateMutex();
-    this->c = SDL_CreateCond();
     this->lockOwner = 0;
 }
 
 BoxedWineCondition::BoxedWineCondition() {
-    this->m = SDL_CreateMutex();
-    this->c = SDL_CreateCond();
     this->lockOwner = 0;
 }
 
-BoxedWineCondition::~BoxedWineCondition() {
-    SDL_DestroyMutex((SDL_mutex*)this->m);
-    SDL_DestroyCond((SDL_cond*)this->c);
-}
-
 void BoxedWineCondition::lock() {
-    SDL_LockMutex((SDL_mutex*)this->m);
+    this->m.lock();
     if (KThread::currentThread()) {
         this->lockOwner = KThread::currentThread()->id;
     } else {
@@ -61,7 +43,7 @@ void BoxedWineCondition::lock() {
 }
  
 bool BoxedWineCondition::tryLock() {
-    if (SDL_TryLockMutex((SDL_mutex*)this->m)==0) {
+    if (this->m.tryLock()) {
         if (KThread::currentThread()) {
             this->lockOwner = KThread::currentThread()->id;
         } else {
@@ -89,7 +71,7 @@ void BoxedWineCondition::signal() {
             p->unlock();
         }
     } else {
-        SDL_CondSignal((SDL_cond*)this->c);
+        this->c.signal();
     }
 }
 
@@ -109,7 +91,7 @@ void BoxedWineCondition::signalAll() {
             p->unlock();
         }
     }
-    SDL_CondBroadcast((SDL_cond*)this->c);
+    this->c.signalAll();
 }
 
 void BoxedWineCondition::signalAllLock() {
@@ -139,7 +121,7 @@ void BoxedWineCondition::wait() {
     if (thread) {
         thread->waitingCond = this;
     }
-    SDL_CondWait((SDL_cond*)this->c, (SDL_mutex*)this->m);
+    this->c.wait(this->m);
     if (thread) {
         thread->waitingCond = NULL;
     }
@@ -162,7 +144,7 @@ void BoxedWineCondition::waitWithTimeout(U32 ms) {
     if (!KSystem::shutingDown && thread) {
         thread->waitingCond = this;
     }
-    SDL_CondWaitTimeout((SDL_cond*)this->c, (SDL_mutex*)this->m, KSystem::emulatedMilliesToHost(ms));
+    this->c.waitWithTimeout(this->m, KSystem::emulatedMilliesToHost(ms));
     if (!KSystem::shutingDown && thread) {
         thread->waitingCond = NULL;
     }
@@ -177,7 +159,7 @@ void BoxedWineCondition::waitWithTimeout(U32 ms) {
 
 void BoxedWineCondition::unlock() {
     this->lockOwner = 0;
-    SDL_UnlockMutex((SDL_mutex*)this->m);
+    this->m.unlock();
 }
 
 void BoxedWineCondition::addChildCondition(BoxedWineCondition& cond, const std::function<void(void)>& doneWaitingCallback) {

@@ -20,6 +20,14 @@
 #define __FPU_H__
 
 class CPU;
+//#define LOG_FPU
+
+#ifdef LOG_FPU
+#include <inttypes.h>
+extern FILE* fpuLogFile;
+
+void flog(const char* msg, ...);
+#endif
 
 struct FPU_Reg {
     union {
@@ -129,7 +137,9 @@ public:
     U8 GetAbridgedTag();
     void setReg(U32 index, double value);
     inline U32 GetTop() {return this->top;}
+#ifndef LOG_FPU
 private:    
+#endif
     int GetTag();
     void LOG_STACK();
 

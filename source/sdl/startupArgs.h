@@ -23,7 +23,7 @@ public:
 
 class StartUpArgs {
 public:
-    StartUpArgs() : euidSet(false), nozip(false), pentiumLevel(4), rel_mouse_sensitivity(0), userId(UID), groupId(GID), effectiveUserId(UID), effectiveGroupId(GID), soundEnabled(true), videoEnabled(true), dpiAware(false), readyToLaunch(false), workingDirSet(false), resolutionSet(false), screenCx(800), screenCy(600), screenBpp(32), sdlFullScreen(false), sdlScaleX(100), sdlScaleY(100), sdlScaleQuality("0"), cpuAffinity(0) {
+    StartUpArgs() : euidSet(false), nozip(false), pentiumLevel(4), rel_mouse_sensitivity(0), pollRate(DEFAULT_POLL_RATE), userId(UID), groupId(GID), effectiveUserId(UID), effectiveGroupId(GID), soundEnabled(true), videoEnabled(true), dpiAware(false), readyToLaunch(false), workingDirSet(false), resolutionSet(false), screenCx(800), screenCy(600), screenBpp(32), sdlFullScreen(false), sdlScaleX(100), sdlScaleY(100), sdlScaleQuality("0"), cpuAffinity(0) {
         workingDir = "/home/username";        
     }
     bool parseStartupArgs(int argc, const char **argv);
@@ -55,6 +55,7 @@ public:
     U32 pentiumLevel;
 
     U32 rel_mouse_sensitivity;        
+    int pollRate;
 
     int userId;
     int groupId;

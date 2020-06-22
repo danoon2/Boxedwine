@@ -319,9 +319,6 @@
     <ClCompile Include="..\..\..\..\..\source\opengl\glMarshalVertex.cpp">
       <Filter>source\opengl</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\..\source\sdl\multiThreaded\sdlcallback.cpp">
-      <Filter>source\sdl\multiThreaded</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\..\source\sdl\multiThreaded\threadedMainloop.cpp">
       <Filter>source\sdl\multiThreaded</Filter>
     </ClCompile>
@@ -329,12 +326,6 @@
       <Filter>source\sdl\singleThreaded</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\..\..\source\sdl\main.cpp">
-      <Filter>source\sdl</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\..\source\sdl\sdlopengl.cpp">
-      <Filter>source\sdl</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\..\source\sdl\sdlwindows.cpp">
       <Filter>source\sdl</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\..\..\source\sdl\startupArgs.cpp">
@@ -1657,6 +1648,27 @@
     <ClCompile Include="..\..\..\..\..\source\ui\controls\unzipDlg.cpp">
       <Filter>source\ui\control</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\..\platform\sdl\knativesynchronization.cpp">
+      <Filter>sdlPlatform</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\platform\sdl\knativesystem.cpp">
+      <Filter>sdlPlatform</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\platform\sdl\knativethread.cpp">
+      <Filter>sdlPlatform</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\platform\sdl\knativeaudio.cpp">
+      <Filter>sdlPlatform</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\platform\sdl\knativewindow.cpp">
+      <Filter>sdlPlatform</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\platform\sdl\sdlcallback.cpp">
+      <Filter>sdlPlatform</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\lib\imgui\examples\imgui_impl_opengl2.cpp">
+      <Filter>lib\imgui\examples</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
@@ -1880,6 +1892,9 @@
     </Filter>
     <Filter Include="lib\poco\Crypto\src">
       <UniqueIdentifier>{9cbe2375-e79d-4ab8-8aa1-fc76217d01a5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="sdlPlatform">
+      <UniqueIdentifier>{73d9ec26-2584-469b-96b3-1b326c20f300}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -2411,22 +2426,10 @@
     <ClInclude Include="..\..\..\..\..\source\opengl\glMarshal.h">
       <Filter>source\opengl</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\sdl\multiThreaded\sdlcallback.h">
-      <Filter>source\sdl\multiThreaded</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\sdl\mainloop.h">
       <Filter>source\sdl</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\sdl\sdlopengl.h">
-      <Filter>source\sdl</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\sdl\sdlwindow.h">
-      <Filter>source\sdl</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\sdl\startupArgs.h">
-      <Filter>source\sdl</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\sdl\wnd.h">
       <Filter>source\sdl</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\test\testCPU.h">
@@ -4555,6 +4558,27 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\ui\controls\unzipDlg.h">
       <Filter>source\ui\control</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\include\knativesynchronization.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\include\knativesystem.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\include\knativethread.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\include\knativeaudio.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\platform\sdl\sdlcallback.h">
+      <Filter>sdlPlatform</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\include\knativewindow.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\lib\imgui\examples\imgui_impl_opengl2.h">
+      <Filter>lib\imgui\examples</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

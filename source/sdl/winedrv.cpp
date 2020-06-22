@@ -18,11 +18,8 @@
 
 #include "boxedwine.h"
 
-#include "wnd.h"
-#include "sdlopengl.h"
-#include "sdlwindow.h"
-
-#include <SDL.h>
+#include "knativewindow.h"
+#include "knativesystem.h"
 
 void notImplemented(const char* s) {
     kwarn(s);
@@ -282,11 +279,13 @@ void boxeddrv_Beep(CPU* cpu) {
 // LONG CDECL drv_ChangeDisplaySettingsEx(LPCWSTR devname, LPDEVMODEW devmode, HWND hwnd, DWORD flags, LPVOID lpvoid)
 void boxeddrv_ChangeDisplaySettingsEx(CPU* cpu) {
     U32 devmode = ARG2;
-
     if (devmode)
     {
         U32 dmFields;
         U32 dmSize = readw( devmode + 68);
+        U32 width = KNativeWindow::defaultScreenWidth;
+        U32 height = KNativeWindow::defaultScreenHeight;
+        U32 bpp = KNativeWindow::defaultScreenBpp;
 
         /* this is the minimal dmSize that XP accepts */
         if (dmSize < 44) {
@@ -297,29 +296,22 @@ void boxeddrv_ChangeDisplaySettingsEx(CPU* cpu) {
         dmFields = readd(devmode + 72);
 
         if (dmFields & DM_BITSPERPEL) {
-            screenBpp = readd(devmode + 168);
-            if (screenBpp<8)
-                screenBpp = 32; // let the dib driver handle it
+            bpp = readd(devmode + 168);
+            if (bpp < 8)
+                bpp = 32; // let the dib driver handle it
         }
         if (dmFields & DM_PELSWIDTH) {
-            screenCx = readd(devmode + 172);
+            width = readd(devmode + 172);
         }
         if (dmFields & DM_PELSHEIGHT) {
-            screenCy = readd(devmode + 176);
+            height = readd(devmode + 176);
         }
-    }	
-    if (!screenCx || !screenCy) {
-        screenCx = default_horz_res;
-        screenCy = default_vert_res;
-    }
-    if (!screenBpp) {
-        screenBpp = default_bits_per_pixel;
-    }
-    sdlScreenResized(cpu->thread);
+        KNativeWindow::getNativeWindow()->screenChanged(cpu->thread, width, height, bpp);
+    }	    
     writed(ARG6, DISP_CHANGE_SUCCESSFUL);	
-    writed(ARG7, screenCx);	
-    writed(ARG8, screenCy);	
-    writed(ARG9, screenBpp);	
+    writed(ARG7, KNativeWindow::getNativeWindow()->screenWidth());
+    writed(ARG8, KNativeWindow::getNativeWindow()->screenHeight());
+    writed(ARG9, KNativeWindow::getNativeWindow()->screenBpp());
 }
 
 // BOOL CDECL drv_ClipCursor(LPCRECT clip)
@@ -330,12 +322,11 @@ void boxeddrv_ClipCursor(CPU* cpu) {
 
 // INT CDECL drv_CountClipboardFormats(void)
 void boxeddrv_CountClipboardFormats(CPU* cpu) {
-#ifdef SDL2
-    if (SDL_HasClipboardText())
+    if (KNativeSystem::clipboardHasText()) {
         EAX = 2; // CF_UNICODETEXT & CF_TEXT
-    else
-#endif
+    } else {
         EAX = 0;
+    }
 }
 
 // BOOL CDECL drv_CreateDesktopWindow(HWND hwnd)
@@ -356,17 +347,15 @@ void boxeddrv_DestroyCursorIcon(CPU* cpu) {
 
 // void CDECL drv_DestroyWindow(HWND hwnd)
 void boxeddrv_DestroyWindow(CPU* cpu) {
-    Wnd* wnd = getWnd(ARG1);
+    std::shared_ptr<Wnd> wnd = KNativeWindow::getNativeWindow()->getWnd(ARG1);
     if (wnd) {
-        wndDestroy(ARG1);
+        wnd->destroy();
     }
 }
 
 // void CDECL drv_EmptyClipboard(void)
 void boxeddrv_EmptyClipboard(CPU* cpu) {
-#ifdef SDL2
-    SDL_SetClipboardText(NULL);
-#endif
+    KNativeSystem::clipboardSetText("");
 }
 
 //void CDECL drv_EndClipboardUpdate(void)
@@ -376,18 +365,17 @@ void boxeddrv_EndClipboardUpdate(CPU* cpu) {
 
 // UINT CDECL drv_EnumClipboardFormats(UINT prev_format)
 void boxeddrv_EnumClipboardFormats(CPU* cpu) {
-#ifdef SDL2
     U32 prevFormat = ARG1;
-    if (SDL_HasClipboardText()) {
+    if (KNativeSystem::clipboardHasText()) {
         if (prevFormat == 0)
             EAX = CF_TEXT;
         else if (prevFormat == CF_TEXT)
             EAX = CF_UNICODETEXT;
         else
             EAX = 0;
-    } else
-#endif
+    } else {
         EAX = 0;
+    }
 }
 
 // BOOL CDECL drv_EnumDisplayMonitors(HDC hdc, LPRECT rect, MONITORENUMPROC proc, LPARAM lparam)
@@ -419,13 +407,10 @@ void boxeddrv_EnumDisplaySettingsEx(CPU* cpu) {
     int i;
 
     if (!displayModesCount) {
-        int desktopCx = 0;
-        int desktopCy = 0;
-        SDL_DisplayMode mode;
-        if (!SDL_GetCurrentDisplayMode(0, &mode)) {
-            desktopCx = mode.w;
-            desktopCy = mode.h;
-        }
+        U32 desktopCx = 0;
+        U32 desktopCy = 0;
+        
+        KNativeSystem::getScreenDimensions(&desktopCx, &desktopCy);
         displayModes = new DisplayModes[18];
         displayModes[displayModesCount].bpp = 32;
         displayModes[displayModesCount].cx = 1024;
@@ -510,14 +495,14 @@ void boxeddrv_EnumDisplaySettingsEx(CPU* cpu) {
     
     
     if (ARG2 == ENUM_REGISTRY_SETTINGS) {
-        writed(devmode + 168, default_bits_per_pixel);
-        writed(devmode + 172, default_horz_res);
-        writed(devmode + 176, default_vert_res);
+        writed(devmode + 168, KNativeWindow::defaultScreenBpp);
+        writed(devmode + 172, KNativeWindow::defaultScreenWidth);
+        writed(devmode + 176, KNativeWindow::defaultScreenHeight);
     }
     else if (ARG2 == ENUM_CURRENT_SETTINGS) {
-        writed(devmode + 168, screenBpp);
-        writed(devmode + 172, screenCx);
-        writed(devmode + 176, screenCy);
+        writed(devmode + 168, KNativeWindow::getNativeWindow()->screenBpp());
+        writed(devmode + 172, KNativeWindow::getNativeWindow()->screenWidth());
+        writed(devmode + 176, KNativeWindow::getNativeWindow()->screenHeight());
     } else if (ARG2>=0 && ARG2<(U32)displayModesCount) {
         writed(devmode + 168, displayModes[ARG2].bpp);
         writed(devmode + 172, displayModes[ARG2].cx);
@@ -534,27 +519,21 @@ void boxeddrv_EnumDisplaySettingsEx(CPU* cpu) {
 
 // int CDECL drv_GetClipboardData(UINT desired_format, char* buffer, int bufferLen)
 void boxeddrv_GetClipboardData(CPU* cpu) {
-#ifdef SDL2
     U32 format = ARG1;
 
-    if ((format == CF_TEXT || format == CF_UNICODETEXT) && SDL_HasClipboardText()) {
-        char* text = SDL_GetClipboardText();
-        int len = 0;
-        if (text)
-            len = (int)strlen(text);
+    if ((format == CF_TEXT || format == CF_UNICODETEXT) && KNativeSystem::clipboardHasText()) {
+        std::string text = KNativeSystem::clipboardGetText();
+        int len = (int)text.length();
         if (format == CF_TEXT) {
             if (len+1>(int)ARG3)
                 len = ARG3 - 1;
-            memcopyFromNative(ARG2, text, len+1);
+            memcopyFromNative(ARG2, text.c_str(), len+1);
             EAX = len+1;
         } else {
-            writeNativeStringW(ARG2, text);
+            writeNativeStringW(ARG2, text.c_str());
             EAX = 2*(len+1);
         }        
     } else {
-#else
-    {
-#endif
         EAX = 0;
     }
 }
@@ -562,14 +541,16 @@ void boxeddrv_GetClipboardData(CPU* cpu) {
 // BOOL CDECL drv_GetCursorPos(LPPOINT pos)
 void boxeddrv_GetCursorPos(CPU* cpu) {
     U32 pos = ARG1;
-    int x = 0;
-    int y = 00;
+    U32 x = 0;
+    U32 y = 0;
 
-    sdlGetMouseState(cpu->thread, &x, &y);
-
-    writed(pos, x);
-    writed(pos+4, y);
-    EAX = 1;
+    if (KNativeWindow::getNativeWindow()->getMousePos(&x, &y)) {
+        writed(pos, x);
+        writed(pos + 4, y);
+        EAX = 1;
+    } else {
+        EAX = 0;
+    }
 }
 
 // HKL CDECL drv_GetKeyboardLayout(DWORD thread_id)
@@ -600,13 +581,195 @@ void boxeddrv_GetMonitorInfo(CPU* cpu) {
 
 // BOOL CDECL drv_IsClipboardFormatAvailable(UINT desired_format)
 void boxeddrv_IsClipboardFormatAvailable(CPU* cpu) {
-#ifdef SDL2
     U32 format = ARG1;
-    if ((format == CF_TEXT || format == CF_UNICODETEXT) && SDL_HasClipboardText())
+    if ((format == CF_TEXT || format == CF_UNICODETEXT) && KNativeSystem::clipboardHasText()) {
         EAX = 1;
-    else
-#endif
+    } else {
         EAX = 0;
+    }
+}
+
+static U8 vkToChar[] = {
+    0x0, 0x0, 0x0, 0x3, 0x0, 0x0, 0x0, 0x0,
+    0x8, 0x9, 0x0, 0x0, 0x0, 0xD, 0x0, 0x0,
+    0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+    0x0, 0x0, 0x0, 0x1B, 0x0, 0x0, 0x0, 0x0,
+    0x20, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+    0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+    0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
+    0x38, 0x39, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+    0x0, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47,
+    0x48, 0x49, 0x4A, 0x4B, 0x4C, 0x4D, 0x4E, 0x4F,
+    0x50, 0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x57,
+    0x58, 0x59, 0x5A, 0x0, 0x0, 0x0, 0x0, 0x0,
+    0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
+    0x38, 0x39, 0x2A, 0x2B, 0x0, 0x2D, 0x2E, 0x2F,
+    0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+    0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+    0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+    0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+    0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+    0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+    0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+    0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+    0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+    0x0, 0x0, 0x3B, 0x3D, 0x2C, 0x2D, 0x2E, 0x2F,
+    0x60, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+    0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+    0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+    0x0, 0x0, 0x0, 0x5B, 0x5C, 0x5D, 0x27, 0x0,
+    0x0, 0x0, 0x5C, 0x0, 0x0, 0x0, 0x0, 0x0,
+    0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+    0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+    0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0
+};
+
+static U32 virtualKeyToChar(U32 virtKey) {
+    U32 c = 0;
+    if (virtKey < sizeof(vkToChar)) {
+        c = vkToChar[virtKey];
+    }
+    return c;
+}
+
+static U8 vkToScanCode[] = {
+    0x0, 0x0, 0x0, 0x46, 0x0, 0x0, 0x0, 0x0,
+    0xE, 0xF, 0x0, 0x0, 0x4C, 0x1C, 0x0, 0x0,
+    0x2A, 0x1D, 0x38, 0x0, 0x3A, 0x0, 0x0, 0x0,
+    0x0, 0x0, 0x0, 0x1, 0x0, 0x0, 0x0, 0x0,
+    0x39, 0x49, 0x51, 0x4F, 0x47, 0x4B, 0x48, 0x4D,
+    0x50, 0x0, 0x0, 0x0, 0x54, 0x52, 0x53, 0x63,
+    0xB, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8,
+    0x9, 0xA, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+    0x0, 0x1E, 0x30, 0x2E, 0x20, 0x12, 0x21, 0x22,
+    0x23, 0x17, 0x24, 0x25, 0x26, 0x32, 0x31, 0x18,
+    0x19, 0x10, 0x13, 0x1F, 0x14, 0x16, 0x2F, 0x11,
+    0x2D, 0x15, 0x2C, 0x5B, 0x5C, 0x5D, 0x0, 0x5F,
+    0x52, 0x4F, 0x50, 0x51, 0x4B, 0x4C, 0x4D, 0x47,
+    0x48, 0x49, 0x37, 0x4E, 0x0, 0x4A, 0x53, 0x35,
+    0x3B, 0x3C, 0x3D, 0x3E, 0x3F, 0x40, 0x41, 0x42,
+    0x43, 0x44, 0x57, 0x58, 0x64, 0x65, 0x66, 0x67,
+    0x68, 0x69, 0x6A, 0x6B, 0x6C, 0x6D, 0x6E, 0x76,
+    0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+    0x45, 0x46, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+    0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+    0x2A, 0x36, 0x1D, 0x1D, 0x38, 0x38, 0x6A, 0x69,
+    0x67, 0x68, 0x65, 0x66, 0x32, 0x20, 0x2E, 0x30,
+    0x19, 0x10, 0x24, 0x22, 0x6C, 0x6D, 0x6B, 0x21,
+    0x0, 0x0, 0x27, 0xD, 0x33, 0xC, 0x34, 0x35,
+    0x29, 0x73, 0x7E, 0x0, 0x0, 0x0, 0x0, 0x0,
+    0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+    0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+    0x0, 0x0, 0x0, 0x1A, 0x2B, 0x1B, 0x28, 0x0,
+    0x0, 0x0, 0x56, 0x0, 0x0, 0x0, 0x0, 0x0,
+    0x0, 0x71, 0x5C, 0x7B, 0x0, 0x6F, 0x5A, 0x0,
+    0x0, 0x5B, 0x0, 0x5F, 0x0, 0x5E, 0x0, 0x0,
+    0x0, 0x5D, 0x0, 0x62, 0x0, 0x0, 0x0, 0x0
+};
+
+static U32 virtualKeyToScanCode(U32 virtKey) {
+    U32 c = 0;
+    if (virtKey < sizeof(vkToScanCode)) {
+        c = vkToScanCode[virtKey];
+    }
+    return c;
+}
+
+static U16 vkToScanCodeEx[] = {
+    0x0, 0x0, 0x0, 0xE046, 0x0, 0x0, 0x0, 0x0,
+    0xE, 0xF, 0x0, 0x0, 0x4C, 0x1C, 0x0, 0x0,
+    0x2A, 0x1D, 0x38, 0xE11D, 0x3A, 0x0, 0x0, 0x0,
+    0x0, 0x0, 0x0, 0x1, 0x0, 0x0, 0x0, 0x0,
+    0x39, 0x49, 0x51, 0x4F, 0x47, 0x4B, 0x48, 0x4D,
+    0x50, 0x0, 0x0, 0x0, 0x54, 0x52, 0x53, 0x63,
+    0xB, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8,
+    0x9, 0xA, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+    0x0, 0x1E, 0x30, 0x2E, 0x20, 0x12, 0x21, 0x22,
+    0x23, 0x17, 0x24, 0x25, 0x26, 0x32, 0x31, 0x18,
+    0x19, 0x10, 0x13, 0x1F, 0x14, 0x16, 0x2F, 0x11,
+    0x2D, 0x15, 0x2C, 0xE05B, 0xE05C, 0xE05D, 0x0, 0xE05F,
+    0x52, 0x4F, 0x50, 0x51, 0x4B, 0x4C, 0x4D, 0x47,
+    0x48, 0x49, 0x37, 0x4E, 0x0, 0x4A, 0x53, 0xE035,
+    0x3B, 0x3C, 0x3D, 0x3E, 0x3F, 0x40, 0x41, 0x42,
+    0x43, 0x44, 0x57, 0x58, 0x64, 0x65, 0x66, 0x67,
+    0x68, 0x69, 0x6A, 0x6B, 0x6C, 0x6D, 0x6E, 0x76,
+    0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+    0x45, 0x46, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+    0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+    0x2A, 0x36, 0x1D, 0xE01D, 0x38, 0xE038, 0xE06A, 0xE069,
+    0xE067, 0xE068, 0xE065, 0xE066, 0xE032, 0xE020, 0xE02E, 0xE030,
+    0xE019, 0xE010, 0xE024, 0xE022, 0xE06C, 0xE06D, 0xE06B, 0xE021,
+    0x0, 0x0, 0x27, 0xD, 0x33, 0xC, 0x34, 0x35,
+    0x29, 0x73, 0x7E, 0x0, 0x0, 0x0, 0x0, 0x0,
+    0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+    0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+    0x0, 0x0, 0x0, 0x1A, 0x2B, 0x1B, 0x28, 0x0,
+    0x0, 0x0, 0x56, 0x0, 0x0, 0x0, 0x0, 0x0,
+    0x0, 0x71, 0x5C, 0x7B, 0x0, 0x6F, 0x5A, 0x0,
+    0x0, 0x5B, 0x0, 0x5F, 0x0, 0x5E, 0x0, 0x0,
+    0x0, 0x5D, 0x0, 0x62, 0x0, 0x0, 0x0, 0x0
+};
+
+static U32 virtualKeyToScanCodeEx(U32 virtKey) {
+    U32 c = 0;
+    if (virtKey < sizeof(vkToScanCodeEx) / sizeof(vkToScanCodeEx[0])) {
+        c = vkToScanCodeEx[virtKey];
+    }
+    return c;
+}
+
+static U8 scanCodeToVK[] = {
+    0x0, 0x1B, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36,
+    0x37, 0x38, 0x39, 0x30, 0xBD, 0xBB, 0x8, 0x9,
+    0x51, 0x57, 0x45, 0x52, 0x54, 0x59, 0x55, 0x49,
+    0x4F, 0x50, 0xDB, 0xDD, 0xD, 0x11, 0x41, 0x53,
+    0x44, 0x46, 0x47, 0x48, 0x4A, 0x4B, 0x4C, 0xBA,
+    0xDE, 0xC0, 0x10, 0xDC, 0x5A, 0x58, 0x43, 0x56,
+    0x42, 0x4E, 0x4D, 0xBC, 0xBE, 0xBF, 0x10, 0x6A,
+    0x12, 0x20, 0x14, 0x70, 0x71, 0x72, 0x73, 0x74,
+    0x75, 0x76, 0x77, 0x78, 0x79, 0x90, 0x91, 0x24,
+    0x26, 0x21, 0x6D, 0x25, 0xC, 0x27, 0x6B, 0x23,
+    0x28, 0x22, 0x2D, 0x2E, 0x2C, 0x0, 0xE2, 0x7A,
+    0x7B, 0xC, 0xEE, 0xF1, 0xEA, 0xF9, 0xF5, 0xF3,
+    0x0, 0x0, 0xFB, 0x2F, 0x7C, 0x7D, 0x7E, 0x7F,
+    0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0xED,
+    0x0, 0xE9, 0x0, 0xC1, 0x0, 0x0, 0x87, 0x0,
+    0x0, 0x0, 0x0, 0xEB, 0x9, 0x0, 0xC2, 0x0,
+};
+
+static U32 scanCodeToVirtualKey(U32 code) {
+    U32 c = 0;
+    if (code < sizeof(scanCodeToVK)) {
+        c = scanCodeToVK[code];
+    }
+    return c;
+}
+
+static U8 scanCodeToVkEx[] = {
+    0x0, 0x1B, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36,
+    0x37, 0x38, 0x39, 0x30, 0xBD, 0xBB, 0x8, 0x9,
+    0x51, 0x57, 0x45, 0x52, 0x54, 0x59, 0x55, 0x49,
+    0x4F, 0x50, 0xDB, 0xDD, 0xD, 0x11, 0x41, 0x53,
+    0x44, 0x46, 0x47, 0x48, 0x4A, 0x4B, 0x4C, 0xBA,
+    0xDE, 0xC0, 0x10, 0xDC, 0x5A, 0x58, 0x43, 0x56,
+    0x42, 0x4E, 0x4D, 0xBC, 0xBE, 0xBF, 0x10, 0x6A,
+    0x12, 0x20, 0x14, 0x70, 0x71, 0x72, 0x73, 0x74,
+    0x75, 0x76, 0x77, 0x78, 0x79, 0x90, 0x91, 0x24,
+    0x26, 0x21, 0x6D, 0x25, 0xC, 0x27, 0x6B, 0x23,
+    0x28, 0x22, 0x2D, 0x2E, 0x2C, 0x0, 0xE2, 0x7A,
+    0x7B, 0xC, 0xEE, 0xF1, 0xEA, 0xF9, 0xF5, 0xF3,
+    0x0, 0x0, 0xFB, 0x2F, 0x7C, 0x7D, 0x7E, 0x7F,
+    0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0xED,
+    0x0, 0xE9, 0x0, 0xC1, 0x0, 0x0, 0x87, 0x0,
+    0x0, 0x0, 0x0, 0xEB, 0x9, 0x0, 0xC2, 0x0,
+};
+
+static U32 scanCodeToVirtualKeyEx(U32 code) {
+    U32 c = 0;
+    if (code < sizeof(scanCodeToVkEx)) {
+        c = scanCodeToVkEx[code];
+    }
+    return c;
 }
 
 // UINT CDECL drv_MapVirtualKeyEx(UINT wCode, UINT wMapType, HKL hkl)
@@ -616,23 +779,23 @@ void boxeddrv_MapVirtualKeyEx(CPU* cpu) {
     //U32 hkl = ARG3;
 
     if (wMapType == 2) { // MAPVK_VK_TO_CHAR
-        EAX = sdlVirtualKeyToChar(wCode);
+        EAX = virtualKeyToChar(wCode);
         return;
     }
     if (wMapType == 4) { // MAPVK_VK_TO_VSC_EX
-        EAX = sdlVirtualKeyToScanCodeEx(wCode);
+        EAX = virtualKeyToScanCodeEx(wCode);
         return;
     }
     if (wMapType == 0) { // MAPVK_VK_TO_VSC
-        EAX = sdlVirtualKeyToScanCode(wCode);
+        EAX = virtualKeyToScanCode(wCode);
         return;
     }
     if (wMapType == 1) { // MAPVK_VSC_TO_VK
-        EAX = sdlScanCodeToVirtualKey(wCode);
+        EAX = scanCodeToVirtualKey(wCode);
         return;
     }
     if (wMapType == 3) { // MAPVK_VSC_TO_VK_EX
-        EAX = sdlScanCodeToVirtualKey(wCode);
+        EAX = scanCodeToVirtualKey(wCode);
         return;
     }
     klog("boxeddrv_MapVirtualKeyEx not implemented");
@@ -642,7 +805,7 @@ void boxeddrv_MapVirtualKeyEx(CPU* cpu) {
 // DWORD CDECL drv_MsgWaitForMultipleObjectsEx(DWORD count, const HANDLE *handles, DWORD timeout, DWORD mask, DWORD flags)
 void boxeddrv_MsgWaitForMultipleObjectsEx(CPU* cpu) {
     // notImplemented("boxeddrv_MsgWaitForMultipleObjectsEx not implemented");
-    updateScreen();
+    // :TODO: ?
     EAX = 0;
 }
 
@@ -653,7 +816,6 @@ void boxeddrv_SetCapture(CPU* cpu) {
 
 // BOOL CDECL drv_SetClipboardData(UINT format_id, char* data, int len, BOOL owner)
 void boxeddrv_SetClipboardData(CPU* cpu) {
-#ifdef SDL2
     U32 format = ARG1;
     char* text = 0;
     //int len = ARG3;
@@ -665,14 +827,11 @@ void boxeddrv_SetClipboardData(CPU* cpu) {
         text = getNativeStringW(ARG2, tmp, sizeof(tmp));
     }
     if (text) {
-        if (SDL_SetClipboardText(text)==0)
+        if (KNativeSystem::clipboardSetText(text))
             EAX = 1;
         else
             EAX = 0;
     } else {
-#else
-    {
-#endif
         EAX = 0;
     }
 }
@@ -688,11 +847,11 @@ void boxeddrv_SetCursor(CPU* cpu) {
     char tmp2[MAX_FILEPATH_LEN];
 
     if (!hCursor && !wModuleName && !wResName && !resId) {
-        sdlSetCursor(cpu->thread, NULL, NULL, 0);
+        KNativeWindow::getNativeWindow()->setCursor(NULL, NULL, 0);
         if (pFound) {
             writed(ARG5, 1);
         }
-    } else if (sdlSetCursor(cpu->thread, getNativeStringW(wModuleName, tmp, sizeof(tmp)), getNativeStringW(wResName, tmp2, sizeof(tmp2)), resId)) {
+    } else if (KNativeWindow::getNativeWindow()->setCursor(getNativeStringW(wModuleName, tmp, sizeof(tmp)), getNativeStringW(wResName, tmp2, sizeof(tmp2)), resId)) {
         writed(ARG5, 1);
     } else {
         writed(ARG5, 0);    
@@ -728,21 +887,20 @@ void boxeddrv_SetCursorBits(CPU* cpu) {
     }
     memcopyToNative(bits, data, size);
     memcopyToNative(bits+size, mask, size);
-    sdlCreateAndSetCursor(cpu->thread, getNativeStringW(wModuleName, tmp, sizeof(tmp)), getNativeStringW(wResName, tmp2, sizeof(tmp2)), resId, data, mask, width, height, hotX, hotY);
+    KNativeWindow::getNativeWindow()->createAndSetCursor(getNativeStringW(wModuleName, tmp, sizeof(tmp)), getNativeStringW(wResName, tmp2, sizeof(tmp2)), resId, data, mask, width, height, hotX, hotY);
 }
 
 // BOOL CDECL drv_SetCursorPos(INT x, INT y)
 void boxeddrv_SetCursorPos(CPU* cpu) {
-    sdlSetMousePos((int)ARG1, (int)ARG2); 
+    KNativeWindow::getNativeWindow()->setMousePos(ARG1, ARG2);
     EAX = 1;
 }
 
 // void CDECL drv_SetFocus(HWND hwnd, BOOL* canSetFocus)
 void boxeddrv_SetFocus(CPU* cpu) {
-    Wnd* wnd = getWnd(ARG1);
-    if (wnd && wnd->activated==0) {
+    std::shared_ptr<Wnd> wnd = KNativeWindow::getNativeWindow()->getWnd(ARG1);
+    if (wnd && wnd->setFocus()) {
         writed(ARG2, 1);
-        wnd->activated = 1;
     }
 }
 
@@ -768,10 +926,10 @@ void boxeddrv_SetWindowStyle(CPU* cpu) {
 
 // void CDECL drv_SetWindowText(HWND hwnd, LPCWSTR text)
 void boxeddrv_SetWindowText(CPU* cpu) {
-    Wnd* wnd = getWnd(ARG1);
+    std::shared_ptr<Wnd> wnd = KNativeWindow::getNativeWindow()->getWnd(ARG1);
     if (wnd) {
         char tmp[1024];
-        setWndText(wnd,  getNativeStringW(ARG2, tmp, sizeof(tmp)));
+        wnd->setText(getNativeStringW(ARG2, tmp, sizeof(tmp)));
     }
 }
 
@@ -805,9 +963,170 @@ void boxeddrv_SystemParametersInfo(CPU* cpu) {
     EAX = 0;
 }
 
+static U32 toUnicodeEx(KThread* thread, U32 virtKey, U32 scanCode, U32 lpKeyState, U32 bufW, U32 bufW_size, U32 flags, U32 hkl) {
+    U32 ret = 0;
+    U8 c = 0;
+    U32 shift = readb(lpKeyState + BOXED_VK_SHIFT) & 0x80;
+    U32 ctrl = readb(lpKeyState + BOXED_VK_CONTROL) & 0x80;
+
+    if (!virtKey)
+        goto done;
+
+    /* UCKeyTranslate, below, terminates a dead-key sequence if passed a
+       modifier key press.  We want it to effectively ignore modifier key
+       presses.  I think that one isn't supposed to call it at all for modifier
+       events (e.g. NSFlagsChanged or kEventRawKeyModifiersChanged), since they
+       are different event types than key up/down events. */
+    switch (virtKey)
+    {
+    case BOXED_VK_SHIFT:
+    case BOXED_VK_CONTROL:
+    case BOXED_VK_MENU:
+    case BOXED_VK_CAPITAL:
+    case BOXED_VK_LSHIFT:
+    case BOXED_VK_RSHIFT:
+    case BOXED_VK_LCONTROL:
+    case BOXED_VK_RCONTROL:
+    case BOXED_VK_LMENU:
+    case BOXED_VK_RMENU:
+        goto done;
+    }
+
+    /* There are a number of key combinations for which Windows does not
+       produce characters, but Mac keyboard layouts may.  Eat them.  Do this
+       here to avoid the expense of UCKeyTranslate() but also because these
+       keys shouldn't terminate dead key sequences. */
+    if ((BOXED_VK_PRIOR <= virtKey && virtKey <= BOXED_VK_HELP) || (BOXED_VK_F1 <= virtKey && virtKey <= BOXED_VK_F24))
+        goto done;
+
+    /* Shift + <non-digit keypad keys>. */
+    if (shift && BOXED_VK_MULTIPLY <= virtKey && virtKey <= BOXED_VK_DIVIDE)
+        goto done;
+
+    if (ctrl)
+    {
+        /* Control-Tab, with or without other modifiers. */
+        if (virtKey == BOXED_VK_TAB)
+            goto done;
+
+        /* Control-Shift-<key>, Control-Alt-<key>, and Control-Alt-Shift-<key>
+           for these keys. */
+        if (shift || (readb(lpKeyState + BOXED_VK_MENU)))
+        {
+            switch (virtKey)
+            {
+            case BOXED_VK_CANCEL:
+            case BOXED_VK_BACK:
+            case BOXED_VK_ESCAPE:
+            case BOXED_VK_SPACE:
+            case BOXED_VK_RETURN:
+                goto done;
+            }
+        }
+    }
+
+    if (shift) {
+        if (virtKey >= 'A' && virtKey <= 'Z') {
+            c = virtKey;
+        } else {
+            switch (virtKey) {
+            case '1': c = '!'; break;
+            case '2': c = '@'; break;
+            case '3': c = '#'; break;
+            case '4': c = '$'; break;
+            case '5': c = '%'; break;
+            case '6': c = '^'; break;
+            case '7': c = '&'; break;
+            case '8': c = '*'; break;
+            case '9': c = '('; break;
+            case '0': c = ')'; break;
+            case BOXED_VK_OEM_MINUS: c = '_'; break;
+            case BOXED_VK_OEM_PLUS: c = '+'; break;
+            case BOXED_VK_TAB: c = '\t'; break;
+            case BOXED_VK_OEM_4: c = '{'; break;
+            case BOXED_VK_OEM_6: c = '}'; break;
+            case BOXED_VK_OEM_1: c = ':'; break;
+            case BOXED_VK_OEM_7: c = '\"'; break;
+            case BOXED_VK_OEM_3: c = '~'; break;
+            case BOXED_VK_OEM_5: c = '|'; break;
+            case BOXED_VK_OEM_COMMA: c = '<'; break;
+            case BOXED_VK_OEM_PERIOD: c = '>'; break;
+            case BOXED_VK_OEM_2: c = '?'; break;
+            case BOXED_VK_SPACE: c = ' '; break;
+            case BOXED_VK_RETURN: c = 13; break;
+            case BOXED_VK_BACK: c = 8; break;
+            case BOXED_VK_ADD: c = '+'; break;
+            default:
+                kwarn("Unhandled key: %d", virtKey);
+                break;
+            }
+        }
+    } else {
+        if (virtKey >= '0' && virtKey <= '9') {
+            c = virtKey;
+        } else if (virtKey >= 'A' && virtKey <= 'Z') {
+            c = virtKey - 'A' + 'a';
+        } else {
+            switch (virtKey) {
+            case BOXED_VK_OEM_MINUS: c = '-'; break;
+            case BOXED_VK_OEM_PLUS: c = '='; break;
+            case BOXED_VK_TAB: c = '\t'; break;
+            case BOXED_VK_OEM_4: c = '['; break;
+            case BOXED_VK_OEM_6: c = ']'; break;
+            case BOXED_VK_OEM_1: c = ';'; break;
+            case BOXED_VK_OEM_7: c = '\''; break;
+            case BOXED_VK_OEM_3: c = '`'; break;
+            case BOXED_VK_OEM_5: c = '\\'; break;
+            case BOXED_VK_OEM_COMMA: c = ','; break;
+            case BOXED_VK_OEM_PERIOD: c = '.'; break;
+            case BOXED_VK_OEM_2: c = '/'; break;
+            case BOXED_VK_SPACE: c = ' '; break;
+            case BOXED_VK_RETURN: c = 13; break;
+            case BOXED_VK_BACK: c = 8; break;
+            case BOXED_VK_ADD: c = '+'; break;
+            default:
+                kwarn("Unhandled key: %d", virtKey);
+                break;
+            }
+        }
+    }
+    if (c && ctrl) {
+        if (c == '@') {
+            writew(bufW, 0);
+            ret = 1;
+        } else if (c >= 'a' && c <= 'z') {
+            c = c - 'a' + 1;
+        } else if (c >= 'A' && c <= 'Z') {
+            c = c - 'A' + 1;
+        } else if (c == '[') {
+            c = 27;
+        } else if (c == '\\') {
+            c = 28;
+        } else if (c == ']') {
+            c = 29;
+        } else if (c == '^') {
+            c = 30;
+        } else if (c == '_') {
+            c = 31;
+        }
+    }
+
+    if (c) {
+        writew(bufW, c);
+        ret = 1;
+    }
+done:
+    /* Null-terminate the buffer, if there's room.  MSDN clearly states that the
+       caller must not assume this is done, but some programs (e.g. Audiosurf) do. */
+    if (1 <= ret && ret < bufW_size)
+        writew(bufW + ret * 2, 0);
+
+    return ret;
+}
+
 // INT CDECL drv_ToUnicodeEx(UINT virtKey, UINT scanCode, const BYTE *lpKeyState, LPWSTR bufW, int bufW_size, UINT flags, HKL hkl)
 void boxeddrv_ToUnicodeEx(CPU* cpu) {
-    EAX = sdlToUnicodeEx(cpu->thread, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7);
+    EAX = toUnicodeEx(cpu->thread, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7);
 }
 
 // BOOL CDECL drv_UpdateLayeredWindow(HWND hwnd, const UPDATELAYEREDWINDOWINFO *info, const RECT *window_rect)
@@ -828,34 +1147,43 @@ void boxeddrv_WindowMessage(CPU* cpu) {
     EAX = 0;
 }
 
+static void writeRect(U32 address, wRECT* rect) {
+    if (address) {
+        writed(address, rect->left);
+        writed(address + 4, rect->top);
+        writed(address + 8, rect->right);
+        writed(address + 12, rect->bottom);
+    }
+}
+
 // void CDECL drv_WindowPosChanged(HWND hwnd, HWND insert_after, UINT swp_flags, const RECT *window_rect, const RECT *client_rect, const RECT *visible_rect, const RECT *valid_rects, DWORD style)
 void boxeddrv_WindowPosChanged(CPU* cpu) {
-    Wnd* wnd = getWnd(ARG1);
+    std::shared_ptr<Wnd> wnd = KNativeWindow::getNativeWindow()->getWnd(ARG1);
     U32 style = ARG8;
     U32 swp_flags = ARG3;
 
     if (!wnd)
         return;
-    writeRect(cpu->thread, ARG4, &wnd->windowRect);
-    writeRect(cpu->thread, ARG5, &wnd->clientRect);
+    writeRect(ARG4, &wnd->windowRect);
+    writeRect(ARG5, &wnd->clientRect);
     //wnd->surface = 0;
     if ((swp_flags & SWP_HIDEWINDOW) && !(style & WS_VISIBLE)) {
-        sdlShowWnd(cpu->thread, wnd, 0);
+        wnd->show(false);
     } else if (style & WS_VISIBLE) {
-        sdlShowWnd(cpu->thread, wnd, 1);
+        wnd->show(true);
     }
 }
 
 // void boxeddrv_SetSurface(HWND wnd, struct window_surface *surface) {
 void boxeddrv_SetSurface(CPU* cpu) {
-    Wnd* wnd = getWnd(ARG1);
+    std::shared_ptr<Wnd> wnd = KNativeWindow::getNativeWindow()->getWnd(ARG1);
     if (wnd)
         wnd->surface = ARG2;
 }
 
 // struct window_surface* boxeddrv_GetSurface(HWND wnd)
 void boxeddrv_GetSurface(CPU* cpu) {
-    Wnd* wnd = getWnd(ARG1);
+    std::shared_ptr<Wnd> wnd = KNativeWindow::getNativeWindow()->getWnd(ARG1);
     if (wnd)
         EAX = wnd->surface;
     else
@@ -864,19 +1192,19 @@ void boxeddrv_GetSurface(CPU* cpu) {
 
 // void CDECL drv_WindowPosChanging(HWND hwnd, HWND insert_after, UINT swp_flags, const RECT *window_rect, const RECT *client_rect, RECT *visible_rect, struct window_surface **surface)
 void boxeddrv_WindowPosChanging(CPU* cpu) {
-    Wnd* wnd = getWnd(ARG1);
+    std::shared_ptr<Wnd> wnd = KNativeWindow::getNativeWindow()->getWnd(ARG1);
     wRECT rect;
 
     if (!wnd) {
-        wnd = wndCreate(cpu->thread, cpu->thread->process->id, ARG1, ARG4, ARG5);
+        wnd = KNativeWindow::getNativeWindow()->createWnd(cpu->thread, cpu->thread->process->id, ARG1, ARG4, ARG5);
     } else {
-        readRect(cpu->thread, ARG4, &wnd->windowRect);
-        readRect(cpu->thread, ARG5, &wnd->clientRect);
+        wnd->windowRect.readRect(ARG4);
+        wnd->clientRect.readRect(ARG5);
     }
 
     // *visible_rect = *window_rect;
-    readRect(cpu->thread, ARG4, &rect);
-    writeRect(cpu->thread, ARG6, &rect);
+    rect.readRect(ARG4);
+    writeRect(ARG6, &rect);
 
     // *surface = wnd->surface;
     writed(ARG7, wnd->surface);
@@ -884,7 +1212,7 @@ void boxeddrv_WindowPosChanging(CPU* cpu) {
 
 // BOOL drv_GetDeviceGammaRamp(PHYSDEV dev, LPVOID ramp)
 void boxeddrv_GetDeviceGammaRamp(CPU* cpu) {
-    EAX = sdlGetGammaRamp(cpu->thread, ARG2);
+    EAX = KNativeWindow::getNativeWindow()->getGammaRamp(ARG2);
 }
 
 // BOOL drv_SetDeviceGammaRamp(PHYSDEV dev, LPVOID ramp)
@@ -1043,19 +1371,19 @@ void boxeddrv_GetDeviceCaps(CPU* cpu) {
         ret = 240; // 17 inch monitor?
         break;
     case HORZRES:
-        ret = screenCx;
+        ret = KNativeWindow::getNativeWindow()->screenWidth();
         break;
     case VERTRES:
-        ret = screenCy;
+        ret = KNativeWindow::getNativeWindow()->screenHeight();
         break;
     case DESKTOPHORZRES:
-        ret = screenCx;
+        ret = KNativeWindow::getNativeWindow()->screenWidth();
         break;
     case DESKTOPVERTRES:
-        ret = screenCy;
+        ret = KNativeWindow::getNativeWindow()->screenHeight();
         break;
     case BITSPIXEL:
-        ret = screenBpp;
+        ret = KNativeWindow::getNativeWindow()->screenBpp();
         break;
     case PLANES:
         ret = 1;
@@ -1076,7 +1404,7 @@ void boxeddrv_GetDeviceCaps(CPU* cpu) {
         /* MSDN: Number of entries in the device's color table, if the device has
         * a color depth of no more than 8 bits per pixel.For devices with greater
         * color depths, -1 is returned. */
-        ret = (screenBpp > 8) ? -1 : (1 << screenBpp);
+        ret = (KNativeWindow::getNativeWindow()->screenBpp() > 8) ? -1 : (1 << KNativeWindow::getNativeWindow()->screenBpp());
         break;
     case CURVECAPS:
         ret = (CC_CIRCLES | CC_PIE | CC_CHORD | CC_ELLIPSES | CC_WIDE |
@@ -1105,12 +1433,12 @@ void boxeddrv_GetDeviceCaps(CPU* cpu) {
         * BITSPIXEL: 24 -> COLORRES: 24
         * (note that screenBpp is never 24)
         * BITSPIXEL: 32 -> COLORRES: 24 */
-        ret = (screenBpp <= 8) ? 18 : (screenBpp == 32) ? 24 : screenBpp;
+        ret = (KNativeWindow::getNativeWindow()->screenBpp() <= 8) ? 18 : (KNativeWindow::getNativeWindow()->screenBpp() == 32) ? 24 : KNativeWindow::getNativeWindow()->screenBpp();
         break;
     case RASTERCAPS:
         ret = (RC_BITBLT | RC_BANDING | RC_SCALING | RC_BITMAP64 | RC_DI_BITMAP |
             RC_DIBTODEV | RC_BIGFONT | RC_STRETCHBLT | RC_STRETCHDIB | RC_DEVBITS |
-            (screenBpp <= 8 ? RC_PALETTE : 0));
+            (KNativeWindow::getNativeWindow()->screenBpp() <= 8 ? RC_PALETTE : 0));
         break;
     case SHADEBLENDCAPS:
         ret = (SB_GRAD_RECT | SB_GRAD_TRI | SB_CONST_ALPHA | SB_PIXEL_ALPHA);
@@ -1135,7 +1463,7 @@ void boxeddrv_GetDeviceCaps(CPU* cpu) {
         ret = 0;
         break;
     case SIZEPALETTE:
-        ret = screenBpp <= 8 ? 1 << screenBpp : 0;
+        ret = KNativeWindow::getNativeWindow()->screenBpp() <= 8 ? 1 << KNativeWindow::getNativeWindow()->screenBpp() : 0;
         break;
     case NUMRESERVED:
     case PHYSICALWIDTH:
@@ -1264,27 +1592,27 @@ void boxeddrv_wglCopyContext(CPU* cpu) {
 
 // HWND hwnd, int major, int minor, int profile, int flags
 void boxeddrv_wglCreateContext(CPU* cpu) {
-    Wnd* wnd = getWnd(ARG1);
+    std::shared_ptr<Wnd> wnd = KNativeWindow::getNativeWindow()->getWnd(ARG1);
     if (!wnd) {
         EAX = 0;
     } else {
-        EAX = sdlCreateContext(cpu->thread, wnd, ARG2, ARG3, ARG4, ARG5);
+        EAX = KNativeWindow::getNativeWindow()->glCreateContext(cpu->thread, wnd, ARG2, ARG3, ARG4, ARG5);
     }
 }
 
 void boxeddrv_wglDeleteContext(CPU* cpu) {
-    sdlDeleteContext(cpu->thread, ARG1);
+    KNativeWindow::getNativeWindow()->glDeleteContext(cpu->thread, ARG1);
 }
 
 // HDC hdc, int fmt, UINT size, PIXELFORMATDESCRIPTOR *descr
 void boxeddrv_wglDescribePixelFormat(CPU* cpu) {
-    EAX = sdl_wglDescribePixelFormat(cpu->thread, ARG1, ARG2, ARG3, ARG4);
+    EAX = KSystem::describePixelFormat(cpu->thread, ARG1, ARG2, ARG3, ARG4);
 }
 
 void boxeddrv_wglGetPixelFormat(CPU* cpu) {
-    Wnd* wnd = getWnd(ARG1);
+    std::shared_ptr<Wnd> wnd = KNativeWindow::getNativeWindow()->getWnd(ARG1);
     if (wnd)
-        EAX = wnd->pixelFormatIndex;
+        EAX = wnd->glGetPixelFormat();
     else
         EAX = 0;
 }
@@ -1308,27 +1636,21 @@ void boxeddrv_wglGetProcAddress(CPU* cpu) {
 
 // HwND hwnd, void* context
 void boxeddrv_wglMakeCurrent(CPU* cpu) {
-    EAX = sdlMakeCurrent(cpu->thread, ARG2);
+    EAX = KNativeWindow::getNativeWindow()->glMakeCurrent(cpu->thread, ARG2);
 }
-
-extern U32 numberOfPfs;
-extern PixelFormat pfs[512];
 
 // HWND hwnd, int fmt, const PIXELFORMATDESCRIPTOR *descr
 void boxeddrv_wglSetPixelFormat(CPU* cpu) {
-    Wnd* wnd = getWnd(ARG1);
-    if (wnd && ARG2 < numberOfPfs) {
-        int index = ARG2;
-        wnd->pixelFormat = &(pfs[index]);
-        wnd->pixelFormatIndex = index;
-        EAX = 1;
+    std::shared_ptr<Wnd> wnd = KNativeWindow::getNativeWindow()->getWnd(ARG1);
+    if (wnd) {
+        EAX = wnd->glSetPixelFormat(ARG2);
     } else {
         EAX = 0;
     }
 }
 
 void boxeddrv_HasWnd(CPU* cpu) {
-    if (getWnd(ARG1)) {
+    if (KNativeWindow::getNativeWindow()->getWnd(ARG1)) {
         EAX = 1;
     } else {
         EAX = 0;
@@ -1340,11 +1662,11 @@ void boxeddrv_GetVersion(CPU* cpu) {
 }
 
 void boxeddrv_wglShareLists(CPU* cpu) {
-    EAX = sdlShareLists(cpu->thread, ARG1, ARG2);
+    EAX = KNativeWindow::getNativeWindow()->glShareLists(cpu->thread, ARG1, ARG2);
 }
 
 void boxeddrv_wglSwapBuffers(CPU* cpu) {
-    sdlSwapBuffers(cpu->thread);
+    KNativeWindow::getNativeWindow()->glSwapBuffers(cpu->thread);
     EAX = 1;
 }
 
@@ -1365,9 +1687,9 @@ void boxeddrv_FlushSurface(CPU* cpu) {
     U32 i;
 
     for (i=0;i<ARG9;i++) {
-        wndBlt(cpu->thread, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG8+16*i);
+        KNativeWindow::getNativeWindow()->bltWnd(cpu->thread, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG8+16*i);
     }
-    sdlDrawAllWindows(cpu->thread, ARG7+4, readd(ARG7));
+    KNativeWindow::getNativeWindow()->drawAllWindows(cpu->thread, ARG7+4, readd(ARG7));
 }
 
 void boxeddrv_CreateDC(CPU* cpu) {
@@ -1375,44 +1697,22 @@ void boxeddrv_CreateDC(CPU* cpu) {
 }
 
 void boxeddrv_GetSystemPalette(CPU* cpu) {
-    U32 start = ARG1;
-    int count = ARG2;
-    U32 paletteEntries = ARG3;
-    U32 numberOfEntries = (screenBpp > 8) ? 0 : (1 << screenBpp);
-
-    if (start + count >= numberOfEntries) count = numberOfEntries - start;
-    if (!paletteEntries) {
-        EAX = numberOfEntries;
-        return;
-    }
-    if (start>=numberOfEntries) {
-        EAX = 0;
-        return;
-    }
-    sdlGetPalette(cpu->thread, start, count, paletteEntries);
-    EAX = count;
+    klog("GetSystemPalette not implemented");
+    EAX = 0;
 }
 
 void boxeddrv_GetNearestColor(CPU* cpu) {
-    EAX = sdlGetNearestColor(cpu->thread, ARG1);
+    //klog("GetNearestColor not implemented");
+    EAX = ARG1;
 }
 
 void boxeddrv_RealizePalette(CPU* cpu) {
-    int numberOfEntries = ARG1;
-    U32 entries = ARG2;
-    U32 start = 0;
-    if (numberOfEntries<=240)
-        start=16;
-    EAX = sdlRealizePalette(cpu->thread, start, numberOfEntries, entries);
+    //klog("RealizePalette not implemented");
+    EAX = 0;
 }
 
 void boxeddrv_RealizeDefaultPalette(CPU* cpu) {
-    //int numberOfEntries = ARG1;
-    U32 entries = ARG2;
-
-    sdlRealizeDefaultPalette();
-    sdlRealizePalette(cpu->thread, 0, 10, entries);
-    sdlRealizePalette(cpu->thread, 246, 10, entries+40);
+    //klog("RealizeDefaultPalette not implemented");
     EAX = 0;
 }
 

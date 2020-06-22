@@ -1,11 +1,11 @@
 #include "boxedwine.h"
 #include <windows.h>
-#include <SDL.h>
 #include "../source/emulation/cpu/x64/x64cpu.h"
 #include "../source/emulation/cpu/x64/x64CodeChunk.h"
 #include "../source/emulation/hardmmu/hard_memory.h"
 #include "../source/emulation/cpu/normal/normalCPU.h"
 #include "../source/emulation/cpu/x64/x64Asm.h"
+#include "ksignal.h"
 
 #ifdef BOXEDWINE_MULTI_THREADED
 
@@ -89,6 +89,15 @@ public:
 
 U32 exceptionCount;
 
+int getFpuException(int control, int status) {
+    if ((status & 0x02) && (control & 0x02)) return EXCEPTION_FLT_DENORMAL_OPERAND;  /* DE flag */
+    if ((status & 0x04) && (control & 0x04)) return K_FPE_FLTDIV;    /* ZE flag */
+    if ((status & 0x08) && (control & 0x08)) return K_FPE_FLTOVF;          /* OE flag */
+    if ((status & 0x10) && (control & 0x10)) return K_FPE_FLTUND;         /* UE flag */
+    if ((status & 0x20) && (control & 0x20)) return K_FPE_FLTRES;    /* PE flag */
+    return K_FPE_FLTINV;
+}
+
 LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
     BOXEDWINE_CRITICAL_SECTION;
     exceptionCount++;
@@ -138,7 +147,9 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
     } else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_FLT_STACK_CHECK) {
         kpanic("EXCEPTION_FLT_STACK_CHECK");
     } else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_FLT_DIVIDE_BY_ZERO) {
-        ep->ContextRecord->Rip = cpu->handleDivByZero(doSyncFrom, doSyncTo);
+        int code = getFpuException(ep->ContextRecord->FltSave.ControlWord, ep->ContextRecord->FltSave.StatusWord);
+
+        ep->ContextRecord->Rip = cpu->handleFpuException(code, doSyncFrom, doSyncTo);
         return EXCEPTION_CONTINUE_EXECUTION;
     } else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_DATATYPE_MISALIGNMENT) {
 		// :TODO: figure out how AC got set, I've only seen this while op logging

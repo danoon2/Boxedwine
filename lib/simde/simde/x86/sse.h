@@ -978,7 +978,11 @@ simde_mm_cvtps_pi32 (simde__m128 a) {
 #else
   SIMDE__VECTORIZE
   for (size_t i = 0 ; i < (sizeof(r.i32) / sizeof(r.i32[0])) ; i++) {
-    r.i32[i] = (int32_t) a.f32[i];
+      if (a.f32[i] >= 2147483648.0f) { // :TODO: I modified this
+          r.i32[i] = 0x80000000;
+      } else {
+          r.i32[i] = (int32_t)a.f32[i];
+      }
   }
 #endif
 
@@ -1094,7 +1098,11 @@ simde_mm_cvtss_si32 (simde__m128 a) {
 #if defined(SIMDE_SSE_NATIVE)
   return _mm_cvtss_si32(a.n);
 #else
-  return (int32_t) a.f32[0];
+    if (a.f32[0] >= 2147483648.0f) { // :TODO: I modified this
+        return 0x80000000;
+    } else {
+        return (int32_t)a.f32[0];
+    }
 #endif
 }
 
@@ -1122,7 +1130,11 @@ simde_mm_cvtt_ps2pi (simde__m128 a) {
 #else
   SIMDE__VECTORIZE
   for (size_t i = 0 ; i < (sizeof(r.f32) / sizeof(r.f32[0])) ; i++) {
-    r.i32[i] = (int32_t) truncf(a.f32[i]);
+      if (a.f32[i] >= 2147483648.0f) { // :TODO: I modified this
+          r.i32[i] = 0x80000000;
+      } else {
+          r.i32[i] = (int32_t)a.f32[i];
+      }
   }
 #endif
 
@@ -1159,7 +1171,10 @@ simde_mm_cvttss_si32 (simde__m128 a) {
 #if defined(SIMDE_SSE_NATIVE)
   return _mm_cvttss_si32(a.n);
 #else
-  return (int32_t) truncf(a.f32[0]);
+    if (a.f32[0] >= 2147483648.0f) { // :TODO: I modified this
+        return 0x80000000;
+    }
+    return (int32_t)a.f32[0];
 #endif
 }
 

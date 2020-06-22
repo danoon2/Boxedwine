@@ -292,6 +292,7 @@ public:
 
     U32 setSegment(U32 seg, U32 value);
     void prepareException(int code, int error);
+    void prepareFpuException(int code, int error=0);
     void call(U32 big, U32 selector, U32 offset, U32 oldEip);
     void jmp(U32 big, U32 selector, U32 offset, U32 oldEip);
     void ret(U32 big, U32 bytes);

@@ -103,7 +103,6 @@ public:
     U64 waitingForSignalToEndMaskToRestore;    
     U64 pendingSignals;
     BOXEDWINE_MUTEX pendingSignalsMutex;
-#ifdef SDL2    
     KThreadGlContext* getGlContextById(U32 id);
     void removeGlContextById(U32 id);
     void addGlContext(U32 id, void* context);
@@ -112,7 +111,6 @@ public:
     std::unordered_map<U32, KThreadGlContext> glContext;
 public:
     void* currentContext;
-#endif
     bool log; // syscalls
     OpenGLVetexPointer glVertextPointer;
     OpenGLVetexPointer gglNormalPointer;

@@ -20,6 +20,7 @@ bool BoxedApp::load(BoxedContainer* container, const std::string& iniFilePath) {
     this->scale = config.readInt("Scale",100);
     this->scaleQuality = config.readInt("ScaleQuality",0);    
     this->cpuAffinity = config.readInt("CpuAffinity", 0);
+    this->pollRate = config.readInt("PollRate", -1);
     int i = 1;
     this->args.clear();
     while (true) {
@@ -65,6 +66,7 @@ bool BoxedApp::saveApp() {
     config.writeInt("Scale",this->scale);
     config.writeInt("ScaleQuality",this->scaleQuality);
     config.writeInt("CpuAffinity",this->cpuAffinity);
+    config.writeInt("PollRate", this->pollRate);
 
     for (int i = 0; i < (int)this->args.size(); i++) {
         std::string key = "Arg";
@@ -108,6 +110,9 @@ void BoxedApp::launch() {
     }
     if (this->scaleQuality) {
         GlobalSettings::startUpArgs.setScaleQuality(std::to_string(this->scaleQuality));
+    }
+    if (this->pollRate >= 0) {
+        GlobalSettings::startUpArgs.pollRate = this->pollRate;
     }
     GlobalSettings::startUpArgs.title = this->name;
 
