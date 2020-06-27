@@ -186,7 +186,6 @@ typedef GLint GLfixed;
 #define GL_TRANSPOSE_AFFINE_3D_NV         0x9098
 
 #define GL_ATOMIC_COUNTER_BUFFER_ACTIVE_ATOMIC_COUNTER_INDICES 0x92C6
-
 /*
  * Constants
  */
