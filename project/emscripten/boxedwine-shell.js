@@ -111,21 +111,19 @@
             console.log("setting BPP to: "+bpp);
             return bpp;
         }
-        function getGLExtensions(){ //GL not yet available from JS
+        function getGLExtensions(){
             var glext = getParameter("glext");
             if(!allowParameterOverride()){
                 glext = "";
             }else{
-            	if(glext.length > 6) {
-                	if( (glext.startsWith("%22") && glext.endsWith("%22") )
-                		|| (glext.startsWith('%27') && glext.endsWith('%27'))){
-                    	glext = glext.substring(3, glext.length - 3);
-	                	glext = glext.split('%20').join(' ');
-	                	glext = '"' + glext +  '"';
-                	}else{
-	                	console.log("glext paramater must be in quoted string");
-                	}
-                }
+                if( (glext.startsWith("%22") && glext.endsWith("%22") )
+            		|| (glext.startsWith('%27') && glext.endsWith('%27'))){
+                	glext = glext.substring(3, glext.length - 3);
+	            	glext = glext.split('%20').join(' ');
+	            	glext = '"' + glext +  '"';
+            	}else{
+	            	console.log("glext paramater must be in quoted string");
+            	}
             }
             if(glext.length > 0) {
             	console.log("setting glext to: "+glext);

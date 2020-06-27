@@ -173,9 +173,19 @@ typedef float		GLfloat;	/* single precision float */
 typedef float		GLclampf;	/* single precision float in [0,1] */
 typedef double		GLdouble;	/* double precision float */
 typedef double		GLclampd;	/* double precision float in [0,1] */
+typedef GLint GLfixed;
 
+#define GL_TRANSLATE_X_NV                 0x908E
+#define GL_TRANSLATE_Y_NV                 0x908F
+#define GL_TRANSLATE_2D_NV                0x9090
+#define GL_TRANSLATE_3D_NV                0x9091
 
+#define GL_AFFINE_2D_NV                   0x9092
+#define GL_AFFINE_3D_NV                   0x9094
+#define GL_TRANSPOSE_AFFINE_2D_NV         0x9096
+#define GL_TRANSPOSE_AFFINE_3D_NV         0x9098
 
+#define GL_ATOMIC_COUNTER_BUFFER_ACTIVE_ATOMIC_COUNTER_INDICES 0x92C6
 /*
  * Constants
  */
