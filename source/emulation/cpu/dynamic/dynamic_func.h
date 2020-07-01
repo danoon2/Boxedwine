@@ -330,8 +330,8 @@ void dynamic_arith(DynamicData* data, DecodedOp* op, DynArg src, DynArg dst, Dyn
 }
 
 void genCF(const LazyFlags* flags, DynReg reg) {
-    if (reg!=DYN_EAX) {
-        kpanic("genCF expects reg to be DYN_EAX");
+    if (reg==DYN_SRC || reg == DYN_DEST) {
+        kpanic("genCF expects reg not to be DYN_SRC or DYN_DEST");
     }
     if (flags == FLAGS_NONE) {
         movToRegFromCpu(reg, CPU_OFFSET_OF(flags), DYN_32bit);
@@ -625,8 +625,8 @@ void genCF(const LazyFlags* flags, DynReg reg) {
 }
 
 void genOF(const LazyFlags* flags, DynReg reg) {
-    if (reg!=DYN_EAX) {
-        kpanic("genCF expects reg to be DYN_EAX");
+    if (reg == DYN_SRC || reg == DYN_DEST) {
+        kpanic("genOF expects reg not to be DYN_SRC or DYN_DEST");
     }
     if (flags == FLAGS_NONE) {
         movToRegFromCpu(reg, CPU_OFFSET_OF(flags), DYN_32bit);
@@ -1073,7 +1073,7 @@ void dynamic_fillFlags(DynamicData* data) {
 
 void dynamic_getCF(DynamicData* data) {
     if (data->currentLazyFlags) {
-        genCF(data->currentLazyFlags, DYN_EAX);
+        genCF(data->currentLazyFlags, DYN_CALL_RESULT);
     } else {
         callHostFunction((void*)common_getCF, true, 1, 0, DYN_PARAM_CPU, false);
     }

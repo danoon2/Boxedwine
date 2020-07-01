@@ -1122,35 +1122,35 @@ void callHostFunction(void* address, bool hasReturn, U32 argCount, U32 arg1, Dyn
 
     if (argCount>=5) {
         if (isParamTypeReg(arg5Type) && doneWithArg5) {
-            if (arg5>4)
+            if (arg5>=4)
                 kpanic("x32CPU::callHostFunction bad param 5: arg=%d argType=%d", arg5, arg5Type);
             regDone[arg5] = true;
         }
     }
     if (argCount>=4) {
         if (isParamTypeReg(arg4Type) && doneWithArg4) {
-            if (arg4>4)
+            if (arg4>=4)
                 kpanic("x32CPU::callHostFunction bad param 4: arg=%d argType=%d", arg4, arg4Type);
             regDone[arg4] = true;
         }
     }
     if (argCount>=3) {
         if (isParamTypeReg(arg3Type) && doneWithArg3) {
-            if (arg3>4)
+            if (arg3>=4)
                 kpanic("x32CPU::callHostFunction bad param 3: arg=%d argType=%d", arg3, arg3Type);
             regDone[arg3] = true;
         }
     }
     if (argCount>=2) {
         if (isParamTypeReg(arg2Type) && doneWithArg2) {
-            if (arg2>4)
+            if (arg2>=4)
                 kpanic("x32CPU::callHostFunction bad param 5: arg=%d argType=%d", arg2, arg2Type);
             regDone[arg2] = true;
         }
     }
     if (argCount>=1) {
         if (isParamTypeReg(arg1Type) && doneWithArg1) {
-            if (arg1>4)
+            if (arg1>=4)
                 kpanic("x32CPU::callHostFunction bad param 5: arg=%d argType=%d", arg1, arg1Type);
             regDone[arg1] = true;
         }

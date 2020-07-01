@@ -43,4 +43,7 @@
     <RemoteDebuggerCommand>projects/Boxedwine/project/linux/msvc-remote/Boxedwine/Boxedwine/bin/ARM/Test/Boxedwine.out</RemoteDebuggerCommand>
     <RemoteDebuggerWorkingDirectory>projects/Boxedwine/project/linux/msvc-remote/Boxedwine/Boxedwine/bin/ARM/Test</RemoteDebuggerWorkingDirectory>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">
+    <RemoteTarget>-902386300;192.168.1.41 (username=, port=22, authentication=Password)</RemoteTarget>
+  </PropertyGroup>
 </Project>

@@ -134,18 +134,6 @@ void NormalBlock::run(CPU* cpu) {
         kpanic("NormalBlock::run is about to crash");
     }
 #endif  
-    static U32 x;
-    static U32 y;
-    if (cpu) {
-        x=0x12;
-        y=0x1234;
-    } else {
-        x++;
-        y++;
-    }
-    x = (x << 16) | (y & 0xFFFF);
-    x = (x << 16) | (x >> 16);
-    printf("%d\n", x);
     this->op->pfn(cpu, this->op);
     this->runCount++;
     cpu->blockInstructionCount+=this->opCount;

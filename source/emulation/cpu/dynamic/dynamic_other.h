@@ -133,12 +133,12 @@ void dynamic_lahf(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_salc(DynamicData* data, DecodedOp* op) {
     if (data->currentLazyFlags) {
-        genCF(data->currentLazyFlags, DYN_EAX);
+        genCF(data->currentLazyFlags, DYN_CALL_RESULT);
     } else {
         callHostFunction((void*)common_getCF, true, 1, 0, DYN_PARAM_CPU, false);
     }
-    instReg('-', DYN_EAX, DYN_32bit);
-    movToCpuFromReg(CPU_OFFSET_OF(reg[0].u8), DYN_EAX, DYN_8bit, true);
+    instReg('-', DYN_CALL_RESULT, DYN_32bit);
+    movToCpuFromReg(CPU_OFFSET_OF(reg[0].u8), DYN_CALL_RESULT, DYN_8bit, true);
     INCREMENT_EIP(op->len);
 }
 void dynamic_retn16Iw(DynamicData* data, DecodedOp* op) {

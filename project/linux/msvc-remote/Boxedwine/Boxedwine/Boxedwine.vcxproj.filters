@@ -4592,6 +4592,9 @@
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv7\armv7CPU.h">
       <Filter>source\emulation\cpu\armv7</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\dynamic\dynamic_generic_base.h">
+      <Filter>source\emulation\cpu\dynamic</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\..\..\..\lib\sdl2\include\SDL_config.h.cmake">
