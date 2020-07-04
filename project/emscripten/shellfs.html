@@ -11,10 +11,12 @@
   <body>
   <!-- if running inline add style="display: none" to id="loading" and id="inline" and remove same from id="run-inline" -->
   <div id="loading">
-      <figure style="overflow:visible;" id="spinner"><div class="spinner"></div><center style="margin-top:0.5em"></center></figure>
+      <figure id="spinner" style="overflow: visible;">
+         <div class="spinner" style="margin-top: .5em; margin-left: auto; margin-right: auto;"></div>
+	  </figure>
       <div class="emscripten" id="status">Downloading...</div>
       <div class="emscripten">
-          <progress value="0" max="100" id="progress" hidden=1></progress>
+          <progress value="0" max="100" id="progress"></progress>
       </div>
   </div>
     <div id="run-inline" style="display: none">
@@ -31,7 +33,7 @@
             <a style="display: none" id="modalLinkExe" href="#openModalExe">Open</a>
 
           <span id="sound-checkbox" style="display: none">
-              <input type="checkbox" id="soundToggle" onclick="toggleSound();">Enable Sound</input>
+              <input type="checkbox" id="soundToggle" onclick="toggleSound();" />Enable Sound
           </span>
           <input type="checkbox" id="pointerLock" checked>Lock/hide mouse pointer
           <input type="checkbox" id="showConsole" onclick="toggleConsole();" checked>Show console
@@ -72,10 +74,10 @@
         </div>
         <hr>
     </div>
-        <!-- script type="text/javascript" src="dropbox.min.js"></script -->
-        <script type="text/javascript" src="browserfs.boxedwine.js"></script>
-        <script type="text/javascript" src="jszip.min.js"></script>
-        <script type="text/javascript" src="boxedwine-shell.js"></script>
+        <!-- script src="dropbox.min.js"></script -->
+        <script src="browserfs.boxedwine.js"></script>
+        <script src="jszip.min.js"></script>
+        <script src="boxedwine-shell.js"></script>
         <script>
         function startInline() {
             document.getElementById('run-inline').style.display = 'none';

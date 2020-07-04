@@ -28,10 +28,18 @@ public:
 		this->want.format = AUDIO_U8;
 		this->want.channels = 1;
 		this->want.freq = 11025;
+#ifdef __EMSCRIPTEN__
+		this->want.samples = 8192; //Must be pow of 2
+#else
 		this->want.samples = 5512;
+#endif
 		this->got.channels = 1;
 		this->got.freq = 11025;
+#ifdef __EMSCRIPTEN__
+		this->got.samples = 8192; //Must be pow of 2
+#else
 		this->got.samples = 5512;
+#endif
 		this->sameFormat = false;
 		this->open = false;
 		this->closeWhenDone = false;
