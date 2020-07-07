@@ -15,6 +15,24 @@
 #define OFFSET_REG8(x) (x>=4?offsetof(CPU, reg[x-4].h8):offsetof(CPU, reg[x].u8))
 #define CPU_OFFSET_OF(x) offsetof(CPU, x)
 
+// per instruction, not per block.  
+static bool regUsed[8];
+static bool regWasUsed[8];
+
+void setRegUsed(U8 reg) {
+    regUsed[reg] = true;
+    regWasUsed[reg] = true;
+}
+
+void clearRegUsed(U8 reg) {
+    regUsed[reg] = false;
+}
+
+void resetRegsUsed() {
+    memset(regUsed, 0, sizeof(regUsed));
+    memset(regWasUsed, 0, sizeof(regWasUsed));
+}
+
 // DynReg is a required type, but the values inside are local to this file
 enum DynReg {
     DYN_R0 = 0,
@@ -212,6 +230,9 @@ static std::vector<U32> ifJump;
 #define REG_PC 15
 #define REG_LR 14
 #define REG_SP 13
+
+// save regs R4-R7 and LR
+#define BLOCK_REGS_SAVED 0x41F0
 
 void ensureBufferSize(U32 grow) {
     if (!outBuffer) {
@@ -864,12 +885,12 @@ void codeCreated(U8* start, U8* end) {
 }
 
 void startBlock() {
-    pushRegs(0x41F0); // save regs R4-R7 and LR
+    pushRegs(BLOCK_REGS_SAVED); 
     movToRegFromReg(REG_CPU, DYN_32bit, DYN_R0, DYN_32bit, false);
 }
 
 void endBlock() {
-    popRegs(0x41F0);
+    popRegs(BLOCK_REGS_SAVED);
     rtn();
 }
 
@@ -878,6 +899,44 @@ void callHostFunction(void* address, bool hasReturn, U32 argCount, U32 arg1, Dyn
 #include "../dynamic/dynamic_generic_base.h"
 
 void callHostFunction(void* address, bool hasReturn, U32 argCount, U32 arg1, DynCallParamType arg1Type, bool doneWithArg1, U32 arg2, DynCallParamType arg2Type, bool doneWithArg2, U32 arg3, DynCallParamType arg3Type, bool doneWithArg3, U32 arg4, DynCallParamType arg4Type, bool doneWithArg4, U32 arg5, DynCallParamType arg5Type, bool doneWithArg5) {
+    bool regDone[8] = { false, false, false, false, false, false, false, false };
+
+    if (argCount >= 5) {
+        if (isParamTypeReg(arg5Type) && doneWithArg5) {
+            if (arg5 >= 8)
+                kpanic("armv7::callHostFunction bad param 5: arg=%d argType=%d", arg5, arg5Type);
+            regDone[arg5] = true;
+        }
+    }
+    if (argCount >= 4) {
+        if (isParamTypeReg(arg4Type) && doneWithArg4) {
+            if (arg4 >= 8)
+                kpanic("armv7::callHostFunction bad param 4: arg=%d argType=%d", arg4, arg4Type);
+            regDone[arg4] = true;
+        }
+    }
+    if (argCount >= 3) {
+        if (isParamTypeReg(arg3Type) && doneWithArg3) {
+            if (arg3 >= 8)
+                kpanic("armv7::callHostFunction bad param 3: arg=%d argType=%d", arg3, arg3Type);
+            regDone[arg3] = true;
+        }
+    }
+    if (argCount >= 2) {
+        if (isParamTypeReg(arg2Type) && doneWithArg2) {
+            if (arg2 >= 8)
+                kpanic("armv7::callHostFunction bad param 5: arg=%d argType=%d", arg2, arg2Type);
+            regDone[arg2] = true;
+        }
+    }
+    if (argCount >= 1) {
+        if (isParamTypeReg(arg1Type) && doneWithArg1) {
+            if (arg1 >= 8)
+                kpanic("armv7::callHostFunction bad param 5: arg=%d argType=%d", arg1, arg1Type);
+            regDone[arg1] = true;
+        }
+    }
+
     if (argCount >= 5) {
         pushValue(arg5, arg5Type);
     }
@@ -893,13 +952,23 @@ void callHostFunction(void* address, bool hasReturn, U32 argCount, U32 arg1, Dyn
     if (argCount >= 1) {
         setValue(arg1, arg1Type, 0);
     }
-
+    if (regUsed[DYN_CALL_RESULT] && !hasReturn && !regDone[DYN_CALL_RESULT]) {
+        int ii = 0;
+    }    
     // reg can't be R0-R3 because that is used for params 
     // dyn_src, dyn_dest, dyn_address need to be preserved
     loadConst32(DYN_R8, (U32)address);
     callFunctionReg32(DYN_R8);
     if (argCount >= 5) {
         addValue32(REG_SP, 4);
+    }
+    for (int i = 0; i < 8; i++) {
+        if (regDone[i]) {
+            clearRegUsed(i);
+        }
+    }
+    if (hasReturn) {
+        regUsed[DYN_CALL_RESULT] = true;
     }
 }
 

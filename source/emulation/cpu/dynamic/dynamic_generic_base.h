@@ -64,25 +64,8 @@ void initDyn() {
     isRegSetFFD = false;
 }
 
-U8 getRegFFF() {
-    if (!isRegSetFFF) {
-        loadConst32(REG_TMP_FFF_FFD, 0xFFF);
-        isRegSetFFF = true;
-        isRegSetFFD = false;
-    }
-    return REG_TMP_FFF_FFD;
-}
-
-U8 getRegFFD() {
-    if (!isRegSetFFD) {
-        loadConst32(REG_TMP_FFF_FFD, 0xFFD);
-        isRegSetFFD = true;
-        isRegSetFFF = false;
-    }
-    return REG_TMP_FFF_FFD;
-}
-
 void calculateEaa(DecodedOp* op, DynReg reg) {
+    setRegUsed(reg);
     if (op->ea16) {
         // cpu->seg[op->base].address + (U16)(cpu->reg[op->rm].u16 + (S16)cpu->reg[op->sibIndex].u16 + op->disp)
 
@@ -163,6 +146,7 @@ void calculateEaa(DecodedOp* op, DynReg reg) {
 }
 
 void movToRegFromRegSignExtend(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidth, bool doneWithSrcReg) {
+    setRegUsed(dst);
     if (dstWidth <= srcWidth) {
         movToRegFromReg(dst, dstWidth, src, srcWidth, doneWithSrcReg);
     } else {
@@ -172,9 +156,13 @@ void movToRegFromRegSignExtend(DynReg dst, DynWidth dstWidth, DynReg src, DynWid
             mov32sx8(dst, src);
         }
     }
+    if (doneWithSrcReg) {
+        clearRegUsed(src);
+    }
 }
 
 void movToRegFromReg(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidth, bool doneWithSrcReg) {
+    setRegUsed(dst);
     if (dstWidth <= srcWidth) {
         if (dst == src) // downsizing doesn't need anything
             return;
@@ -186,9 +174,13 @@ void movToRegFromReg(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidt
             mov32zx8(dst, src);
         }
     }
+    if (doneWithSrcReg) {
+        clearRegUsed(src);
+    }
 }
 
 void movToRegFromCpu(DynReg reg, U32 srcOffset, DynWidth width) {
+    setRegUsed(reg);
     // mov reg, [edi+srcOffset]    
     if (width == DYN_32bit) {
         loadFromCpuOffset32(reg, srcOffset);
@@ -211,6 +203,9 @@ void movToCpuFromReg(U32 dstOffset, DynReg reg, DynWidth width, bool doneWithReg
         saveRegToCpuOffset8(reg, dstOffset);
     } else {
         kpanic("unknown dstWidth in dyn::movToCpuFromReg %d", width);
+    }
+    if (doneWithReg) {
+        clearRegUsed(reg);
     }
 }
 
@@ -236,10 +231,11 @@ void movToCpu(U32 dstOffset, DynWidth dstWidth, U32 imm) {
 }
 
 void movToReg(DynReg reg, DynWidth width, U32 imm) {
+    setRegUsed(reg);
     loadConst32(reg, imm);
 }
 
-void movFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg) {
+void movFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg) {    
     // :TODO: inline
     if (width == DYN_16bit) {
         callHostFunction((void*)readw, true, 1, addressReg, DYN_PARAM_REG_32, doneWithAddressReg);
@@ -247,6 +243,9 @@ void movFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg) {
         callHostFunction((void*)readd, true, 1, addressReg, DYN_PARAM_REG_32, doneWithAddressReg);
     } else {
         callHostFunction((void*)readb, true, 1, addressReg, DYN_PARAM_REG_32, doneWithAddressReg);
+    }
+    if (doneWithAddressReg) {
+        clearRegUsed(addressReg);
     }
 }
 
@@ -363,11 +362,11 @@ bool isParamTypeReg(DynCallParamType paramType) {
 void movToMem(DynReg addressReg, DynWidth width, U32 value, DynCallParamType paramType, bool doneWithValueReg) {
     // :TODO: inline?
     if (width == DYN_16bit) {
-        callHostFunction((void*)writew, true, 2, addressReg, DYN_PARAM_REG_32, false, value, paramType, doneWithValueReg);
+        callHostFunction((void*)writew, false, 2, addressReg, DYN_PARAM_REG_32, false, value, paramType, doneWithValueReg);
     } else if (width == DYN_32bit) {
-        callHostFunction((void*)writed, true, 2, addressReg, DYN_PARAM_REG_32, false, value, paramType, doneWithValueReg);
+        callHostFunction((void*)writed, false, 2, addressReg, DYN_PARAM_REG_32, false, value, paramType, doneWithValueReg);
     } else {
-        callHostFunction((void*)writeb, true, 2, addressReg, DYN_PARAM_REG_32, false, value, paramType, doneWithValueReg);
+        callHostFunction((void*)writeb, false, 2, addressReg, DYN_PARAM_REG_32, false, value, paramType, doneWithValueReg);
     }
 }
 
@@ -385,6 +384,9 @@ void movToMemFromReg(DynReg addressReg, DynReg reg, DynWidth width, bool doneWit
         kpanic("unknown width %d in dyn::movToMemFromReg", width);
 
     movToMem(addressReg, width, reg, paramType, doneWithReg);
+    if (doneWithAddressReg) {
+        clearRegUsed(addressReg);
+    }    
 }
 
 void movToMemFromImm(DynReg addressReg, DynWidth width, U32 imm, bool doneWithAddressReg) {
@@ -400,6 +402,9 @@ void movToMemFromImm(DynReg addressReg, DynWidth width, U32 imm, bool doneWithAd
         kpanic("unknown width %d in dyn::movToMemFromImm", width);
 
     movToMem(addressReg, width, imm, paramType, false);
+    if (doneWithAddressReg) {
+        clearRegUsed(addressReg);
+    }
 }
 
 // when called with 16-bit or 8-bit width, the upper bits do not need to be preserved or zero'd out, but watch out for signed operations
@@ -471,9 +476,17 @@ void instRegImm(U32 inst, DynReg reg, DynWidth regWidth, U32 imm) {
 void instRegReg(char inst, DynReg dst, DynReg src, DynWidth regWidth, bool doneWithRmReg) {
     switch (inst) {
     case '<':
+        if (!doneWithRmReg) {
+            kpanic("dyn:instRegReg was expecting < instruction to allow src reg modification");
+        }
+        andValue32(src, 0x1f);
         shiftLeft32WithReg(dst, src);
         break;
     case '>':
+        if (!doneWithRmReg) {
+            kpanic("dyn:instRegReg was expecting > instruction to allow src reg modification");
+        }
+        andValue32(src, 0x1f);
         shiftRight32WithReg(dst, src);
         break;
     case ')':
@@ -482,7 +495,7 @@ void instRegReg(char inst, DynReg dst, DynReg src, DynWidth regWidth, bool doneW
         } else if (regWidth == DYN_8bit) {
             mov32sx8(dst, dst);
         }
-        shiftRightSigned32(dst, src);
+        shiftRightSigned32WithReg(dst, src);
         break;
     case '+':
         addRegs32(dst, src);
@@ -502,6 +515,9 @@ void instRegReg(char inst, DynReg dst, DynReg src, DynWidth regWidth, bool doneW
     default:
         kpanic("unhandled op in dyn::instRegIMM %c", inst);
         break;
+    }
+    if (doneWithRmReg) {
+        clearRegUsed(src);
     }
 }
 
@@ -572,6 +588,9 @@ void startIf(DynReg reg, DynCondition condition, bool doneWithReg) {
     } else {
         kpanic("dyn::startIf unknown condition %d", condition);
     }
+    if (doneWithReg) {
+        clearRegUsed(reg);
+    }
 }
 
 void startElse() {
@@ -598,6 +617,13 @@ void evaluateToReg(DynReg reg, DynWidth dstWidth, DynReg left, bool isRightConst
         cmpRegs32(left, right);
     }
     evaluateCondition(reg, condition);
+    if (doneWithLeftReg) {
+        clearRegUsed(left);
+    }
+    if (doneWithRightReg) {
+        clearRegUsed(right);
+    }
+    setRegUsed(reg);
 }
 
 void setCC(DynamicData* data, DynConditional condition) {
@@ -629,9 +655,9 @@ void setCC(DynamicData* data, DynConditional condition) {
     cmpRegValue32(DYN_CALL_RESULT, 0);
 
     if (notCondition) {
-        evaluateCondition(DYN_CALL_RESULT, DYN_NOT_EQUALS);
-    } else {
         evaluateCondition(DYN_CALL_RESULT, DYN_EQUALS);
+    } else {
+        evaluateCondition(DYN_CALL_RESULT, DYN_NOT_EQUALS);
     }
 }
 
@@ -653,7 +679,7 @@ void blockDone() {
     // cpu->nextBlock = cpu->getNextBlock();
     callHostFunction((void*)common_getNextBlock, true, 1, 0, DYN_PARAM_CPU, false);
     movToCpuFromReg(offsetof(CPU, nextBlock), DYN_CALL_RESULT, DYN_32bit, true);
-    popRegs(0x20F0);
+    popRegs(BLOCK_REGS_SAVED);
     rtn();
 }
 
@@ -679,6 +705,7 @@ void blockNext1() {
     endIf();
 
     saveRegToCpuOffset32(DYN_CALL_RESULT, offsetof(CPU, nextBlock));
+    clearRegUsed(DYN_CALL_RESULT);
 }
 
 static DecodedBlock* updateNext2(CPU* cpu) {
@@ -702,6 +729,7 @@ void blockNext2() {
     endIf();
 
     saveRegToCpuOffset32(DYN_CALL_RESULT, offsetof(CPU, nextBlock));
+    clearRegUsed(DYN_CALL_RESULT);
 }
 
 void dyn_sidt(DynamicData* data, DecodedOp* op) {
@@ -781,12 +809,20 @@ void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
         startBlock();
 
         while (o) {
+            resetRegsUsed();            
 #ifndef __TEST
 #ifdef _DEBUG
             callHostFunction((void*)common_log, false, 2, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)o, DYN_PARAM_CONST_PTR, false);
 #endif
 #endif
             dynOps[o->inst](&data, o);
+#ifdef _DEBUG
+            for (int i = 0; i < sizeof(regUsed) / sizeof(regUsed[0]); i++) {
+                if (regUsed[i]) {
+                    kpanic("dyn: reg %d was not released", i);
+                }
+            }
+#endif
             if (ifJump.size()) {
                 kpanic("dyn::firstDynamicOp if statement was not closed in instruction: %d", op->inst);
             }

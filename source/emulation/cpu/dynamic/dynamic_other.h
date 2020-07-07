@@ -382,19 +382,20 @@ void dynamic_callR32(DynamicData* data, DecodedOp* op) {
 void dynamic_callE16(DynamicData* data, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
     movFromMem(DYN_16bit, DYN_ADDRESS, true);
+    movToRegFromReg(DYN_DEST, DYN_32bit, DYN_CALL_RESULT, DYN_16bit, true); // DYN_CALL_RESULT could get clobbered before used
     movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(eip.u32), DYN_32bit);
     instRegImm('+', DYN_SRC, DYN_32bit, op->len);
     callHostFunction((void*)common_push16, false, 2, 0, DYN_PARAM_CPU, false, DYN_SRC, DYN_PARAM_REG_16, true);
-    movToRegFromReg(DYN_CALL_RESULT, DYN_32bit, DYN_CALL_RESULT, DYN_16bit, false);
-    movToCpuFromReg(CPU_OFFSET_OF(eip.u32), DYN_CALL_RESULT, DYN_32bit, true); blockDone();
+    movToCpuFromReg(CPU_OFFSET_OF(eip.u32), DYN_DEST, DYN_32bit, true); blockDone();
 }
 void dynamic_callE32(DynamicData* data, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
     movFromMem(DYN_32bit, DYN_ADDRESS, true);
+    movToRegFromReg(DYN_DEST, DYN_32bit, DYN_CALL_RESULT, DYN_32bit, true); // DYN_CALL_RESULT could get clobbered before used
     movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(eip.u32), DYN_32bit);
     instRegImm('+', DYN_SRC, DYN_32bit, op->len);
     dynamic_pushReg32(data, DYN_SRC, true);
-    movToCpuFromReg(CPU_OFFSET_OF(eip.u32), DYN_CALL_RESULT, DYN_32bit, true); blockDone();
+    movToCpuFromReg(CPU_OFFSET_OF(eip.u32), DYN_DEST, DYN_32bit, true); blockDone();
 }
 void dynamic_jmpR16(DynamicData* data, DecodedOp* op) {
     movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[op->reg].u16), DYN_16bit);
