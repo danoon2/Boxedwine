@@ -576,7 +576,9 @@ void dynamic_divE8(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(op->len);
 }
 void dynamic_idivR8(DynamicData* data, DecodedOp* op) {
-    callHostFunction((void*)idiv8, true, 2, 0, DYN_PARAM_CPU, false, OFFSET_REG8(op->reg), DYN_PARAM_CPU_ADDRESS_8, false);
+    movToRegFromCpu(DYN_SRC, OFFSET_REG8(op->reg), DYN_8bit);
+    movToRegFromRegSignExtend(DYN_SRC, DYN_32bit, DYN_SRC, DYN_8bit, false); // ARM with -O2 needs this
+    callHostFunction((void*)idiv8, true, 2, 0, DYN_PARAM_CPU, false, DYN_SRC, DYN_PARAM_REG_32, true);
     startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
     blockDone();
     endIf();
@@ -584,7 +586,8 @@ void dynamic_idivR8(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_idivE8(DynamicData* data, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS); movFromMem(DYN_8bit, DYN_ADDRESS, true);
-    callHostFunction((void*)idiv8, true, 2, 0, DYN_PARAM_CPU, false, DYN_CALL_RESULT, DYN_PARAM_REG_8, true);
+    movToRegFromRegSignExtend(DYN_CALL_RESULT, DYN_32bit, DYN_CALL_RESULT, DYN_8bit, false); // ARM with -O2 needs this
+    callHostFunction((void*)idiv8, true, 2, 0, DYN_PARAM_CPU, false, DYN_CALL_RESULT, DYN_PARAM_REG_32, true);
     startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
     blockDone();
     endIf();
