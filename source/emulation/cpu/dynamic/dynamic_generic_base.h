@@ -374,14 +374,16 @@ void movToMemFromReg(DynReg addressReg, DynReg reg, DynWidth width, bool doneWit
     // push reg
     DynCallParamType paramType;
 
-    if (width == DYN_8bit)
+    if (width == DYN_8bit) {
         paramType = DYN_PARAM_REG_8;
-    else if (width == DYN_16bit)
+    } else if (width == DYN_16bit) {
         paramType = DYN_PARAM_REG_16;
-    else if (width == DYN_32bit)
+    } else if (width == DYN_32bit) {
         paramType = DYN_PARAM_REG_32;
-    else
+    } else {
         kpanic("unknown width %d in dyn::movToMemFromReg", width);
+        paramType = DYN_PARAM_REG_32; // makes warning go away
+    }
 
     movToMem(addressReg, width, reg, paramType, doneWithReg);
     if (doneWithAddressReg) {
@@ -392,15 +394,16 @@ void movToMemFromReg(DynReg addressReg, DynReg reg, DynWidth width, bool doneWit
 void movToMemFromImm(DynReg addressReg, DynWidth width, U32 imm, bool doneWithAddressReg) {
     DynCallParamType paramType;
 
-    if (width == DYN_8bit)
+    if (width == DYN_8bit) {
         paramType = DYN_PARAM_CONST_8;
-    else if (width == DYN_16bit)
+    } else if (width == DYN_16bit) {
         paramType = DYN_PARAM_CONST_16;
-    else if (width == DYN_32bit)
+    } else if (width == DYN_32bit) {
         paramType = DYN_PARAM_CONST_32;
-    else
+    } else {
         kpanic("unknown width %d in dyn::movToMemFromImm", width);
-
+        paramType = DYN_PARAM_CONST_32;
+    }
     movToMem(addressReg, width, imm, paramType, false);
     if (doneWithAddressReg) {
         clearRegUsed(addressReg);
@@ -877,7 +880,7 @@ void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
         if (b) {
             printf("\n");
             for (U32 i = 0; i < outBufferPos; i++) {
-                printf("%0.2X ", outBuffer[i]);
+                printf("%.2X ", outBuffer[i]);
             }
             printf("\n");
         }

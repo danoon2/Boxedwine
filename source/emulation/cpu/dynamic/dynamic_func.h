@@ -939,6 +939,7 @@ void setConditionInReg(DynamicData* data, DynConditional condition, DynReg reg) 
         case NS: flag = SF; notFlag = true; break;
         case P: flag = PF; break;
         case NP: flag = PF; notFlag = true; break;
+        default: break; // make warnings happy
         }
         if (flag) {
             movToRegFromCpu(reg, CPU_OFFSET_OF(flags), DYN_32bit);
