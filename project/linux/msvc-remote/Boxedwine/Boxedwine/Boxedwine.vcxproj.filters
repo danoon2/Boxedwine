@@ -1669,6 +1669,12 @@
     <ClCompile Include="..\..\..\..\..\lib\imgui\examples\imgui_impl_opengl2.cpp">
       <Filter>lib\imgui\examples</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv7\armv7CPU.cpp">
+      <Filter>source\emulation\cpu\armv7</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\platform\linux\dynamic.cpp">
+      <Filter>platform</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
@@ -1895,6 +1901,9 @@
     </Filter>
     <Filter Include="sdlPlatform">
       <UniqueIdentifier>{73d9ec26-2584-469b-96b3-1b326c20f300}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\emulation\cpu\armv7">
+      <UniqueIdentifier>{6944181a-58b0-4f32-a45a-c1402f7892d9}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -4579,6 +4588,12 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\lib\imgui\examples\imgui_impl_opengl2.h">
       <Filter>lib\imgui\examples</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv7\armv7CPU.h">
+      <Filter>source\emulation\cpu\armv7</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\dynamic\dynamic_generic_base.h">
+      <Filter>source\emulation\cpu\dynamic</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -68,33 +68,34 @@ U32 cpuOffsetSrc(DynWidth width) {
     }
 }
 void dynamic_getCF(DynamicData* data);
+
 void dynamic_arith(DynamicData* data, DecodedOp* op, DynArg src, DynArg dst, DynWidth width, char inst, bool cf, bool store, const LazyFlags* flags) {
-    bool isJump = op->next->inst==JumpZ || op->next->inst==JumpNZ;
-    bool isSet = op->next->inst==SetZ_E8 || op->next->inst==SetZ_R8 || op->next->inst==SetNZ_E8 || op->next->inst==SetNZ_R8;
+    bool isJump = op->next->inst == JumpZ || op->next->inst == JumpNZ;
+    bool isSet = op->next->inst == SetZ_E8 || op->next->inst == SetZ_R8 || op->next->inst == SetNZ_E8 || op->next->inst == SetNZ_R8;
     bool needResultReg = isJump || isSet;
     DynReg jmpReg = DYN_NOT_SET;
     bool needsToSetFlags = op->needsToSetFlags();
 
     if (cf) {
         dynamic_getCF(data);
-    }   
+    }
     if (!needsToSetFlags && !store) {
         // I've seen a test followed by a cmp when running Quake 2.  Very weird
         INCREMENT_EIP(op->len);
         return;
     }
-    if (!needsToSetFlags || (needResultReg && DecodedOp::getNeededFlags(data->block, op->next, instructionInfo[op->inst].flagsSets)==0)) {
-        if (src == DYN_Reg) {            
-            if (dst==DYN_Reg) {
+    if (!needsToSetFlags || (needResultReg && DecodedOp::getNeededFlags(data->block, op->next, instructionInfo[op->inst].flagsSets) == 0)) {
+        if (src == DYN_Reg) {
+            if (dst == DYN_Reg) {
                 movToRegFromCpu(DYN_SRC, cpuOffset(op->rm, width), width);
                 if (cf) {
-                    if (width!=DYN_32bit) {
+                    if (width != DYN_32bit) {
                         movToRegFromReg(DYN_CALL_RESULT, width, DYN_CALL_RESULT, DYN_32bit, false);
                     }
                     instRegReg('+', DYN_SRC, DYN_CALL_RESULT, width, true);
                 }
                 if (needResultReg) {
-                    if (op->reg==op->rm && (flags == FLAGS_TEST8 || flags == FLAGS_TEST16 || flags == FLAGS_TEST32)) {
+                    if (op->reg == op->rm && (flags == FLAGS_TEST8 || flags == FLAGS_TEST16 || flags == FLAGS_TEST32)) {
                         jmpReg = DYN_SRC;
                     } else {
                         movToRegFromCpu(DYN_DEST, cpuOffset(op->reg, width), width);
@@ -107,33 +108,33 @@ void dynamic_arith(DynamicData* data, DecodedOp* op, DynArg src, DynArg dst, Dyn
                 } else {
                     instCPUReg(inst, cpuOffset(op->reg, width), DYN_SRC, width, true);
                 }
-            } else if (dst==DYN_Mem) {
+            } else if (dst == DYN_Mem) {
                 calculateEaa(op, DYN_ADDRESS);
                 movToRegFromCpu(DYN_SRC, cpuOffset(op->reg, width), width);
                 if (cf) {
-                    if (width!=DYN_32bit) {
+                    if (width != DYN_32bit) {
                         movToRegFromReg(DYN_CALL_RESULT, width, DYN_CALL_RESULT, DYN_32bit, false);
                     }
                     instRegReg('+', DYN_SRC, DYN_CALL_RESULT, width, true);
                 }
                 if (needResultReg) {
-                    movFromMem(width, DYN_ADDRESS, false);
-                    instRegReg(inst, DYN_CALL_RESULT, DYN_SRC, width, true);
+                    movFromMem(width, DYN_ADDRESS, !store);
+                    instRegReg(inst, DYN_SRC, DYN_CALL_RESULT, width, true);
                     if (store) {
-                        movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, width, true, false);
+                        movToMemFromReg(DYN_ADDRESS, DYN_SRC, width, true, false);
                     }
-                    jmpReg = DYN_CALL_RESULT;
+                    jmpReg = DYN_SRC;
                 } else {
                     instMemReg(inst, DYN_ADDRESS, DYN_SRC, width, true, true);
                 }
             }
-        } else if (src == DYN_Mem) {            
-            if (dst==DYN_Reg) {
+        } else if (src == DYN_Mem) {
+            if (dst == DYN_Reg) {
                 calculateEaa(op, DYN_ADDRESS);
                 if (cf) {
                     movToRegFromReg(DYN_DEST, width, DYN_CALL_RESULT, DYN_32bit, false);
                     movFromMem(width, DYN_ADDRESS, true);
-                    instRegReg('+', DYN_CALL_RESULT, DYN_DEST, width, true);                                        
+                    instRegReg('+', DYN_CALL_RESULT, DYN_DEST, width, true);
                 } else {
                     movFromMem(width, DYN_ADDRESS, true);
                 }
@@ -149,9 +150,9 @@ void dynamic_arith(DynamicData* data, DecodedOp* op, DynArg src, DynArg dst, Dyn
                 }
             }
         } else if (src == DYN_Const) {
-            if (dst==DYN_Reg) {
+            if (dst == DYN_Reg) {
                 if (cf) {
-                    if (width!=DYN_32bit) {
+                    if (width != DYN_32bit) {
                         movToRegFromReg(DYN_CALL_RESULT, width, DYN_CALL_RESULT, DYN_32bit, false);
                     }
                     instRegImm('+', DYN_CALL_RESULT, width, op->imm);
@@ -177,46 +178,49 @@ void dynamic_arith(DynamicData* data, DecodedOp* op, DynArg src, DynArg dst, Dyn
                         instCPUImm(inst, cpuOffset(op->reg, width), width, op->imm);
                     }
                 }
-            } else if (dst==DYN_Mem) {
-                calculateEaa(op, DYN_ADDRESS);      
+            } else if (dst == DYN_Mem) {
+                calculateEaa(op, DYN_ADDRESS);
                 if (cf) {
                     movToRegFromReg(DYN_SRC, width, DYN_CALL_RESULT, DYN_32bit, true);
                     instRegImm('+', DYN_SRC, width, op->imm);
                     if (needResultReg) {
-                        movFromMem(width, DYN_ADDRESS, false);
-                        instRegReg(inst, DYN_CALL_RESULT, DYN_SRC, width, true);
+                        movFromMem(width, DYN_ADDRESS, !store);
+                        instRegReg(inst, DYN_SRC, DYN_CALL_RESULT, width, true);
                         if (store) {
-                            movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, width, true, false);
+                            movToMemFromReg(DYN_ADDRESS, DYN_SRC, width, true, false);
                         }
-                        jmpReg = DYN_CALL_RESULT;
+                        jmpReg = DYN_SRC;
                     } else {
                         instMemReg(inst, DYN_ADDRESS, DYN_SRC, width, true, true);
                     }
                 } else {
                     if (needResultReg) {
-                        movFromMem(width, DYN_ADDRESS, false);
+                        movFromMem(width, DYN_ADDRESS, !store);
                         instRegImm(inst, DYN_CALL_RESULT, width, op->imm);
                         if (store) {
-                            movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, width, true, false);
+                            movToRegFromReg(DYN_SRC, width, DYN_CALL_RESULT, width, true); // movToMemFromReg might invalidate R0
+                            movToMemFromReg(DYN_ADDRESS, DYN_SRC, width, true, false);
+                            jmpReg = DYN_SRC;
+                        } else {
+                            jmpReg = DYN_CALL_RESULT;
                         }
-                        jmpReg = DYN_CALL_RESULT;
                     } else {
                         instMemImm(inst, DYN_ADDRESS, width, op->imm, true);
                     }
                 }
             }
-        }       
+        }
     } else {
         if (cf) {
             movToCpuFromReg(CPU_OFFSET_OF(oldCF), DYN_CALL_RESULT, DYN_32bit, false);
         }
-        if (src == DYN_Reg) {            
-            if (dst==DYN_Reg) {
+        if (src == DYN_Reg) {
+            if (dst == DYN_Reg) {
                 movToCpuFromCpu(cpuOffsetSrc(width), cpuOffset(op->rm, width), width, DYN_SRC, false);
                 movToCpuFromCpu(cpuOffsetDst(width), cpuOffset(op->reg, width), width, DYN_DEST, false);
-                
+
                 if (cf) {
-                    if (width!=DYN_32bit) {
+                    if (width != DYN_32bit) {
                         movToRegFromReg(DYN_CALL_RESULT, width, DYN_CALL_RESULT, DYN_32bit, false);
                     }
                     instRegReg('+', DYN_SRC, DYN_CALL_RESULT, width, true);
@@ -224,27 +228,29 @@ void dynamic_arith(DynamicData* data, DecodedOp* op, DynArg src, DynArg dst, Dyn
                 instRegReg(inst, DYN_DEST, DYN_SRC, width, true);
                 movToCpuFromReg(cpuOffsetResult(width), DYN_DEST, width, !store);
                 if (store) {
-                    movToCpuFromReg(cpuOffset(op->reg, width), DYN_DEST, width, true);                
+                    movToCpuFromReg(cpuOffset(op->reg, width), DYN_DEST, width, true);
                 }
-            } else if (dst==DYN_Mem) {
-                movToCpuFromCpu(cpuOffsetSrc(width), cpuOffset(op->reg, width), width, DYN_SRC, false);                                
+            } else if (dst == DYN_Mem) {
+                movToCpuFromCpu(cpuOffsetSrc(width), cpuOffset(op->reg, width), width, DYN_SRC, false);
                 if (cf) {
-                    if (width!=DYN_32bit) {
-                        movToRegFromReg(DYN_CALL_RESULT, width, DYN_CALL_RESULT, DYN_32bit, true);                                        
+                    if (width != DYN_32bit) {
+                        movToRegFromReg(DYN_CALL_RESULT, width, DYN_CALL_RESULT, DYN_32bit, true);
                     }
                     instRegReg('+', DYN_SRC, DYN_CALL_RESULT, width, true);
                 }
                 calculateEaa(op, DYN_ADDRESS);
                 movToCpuFromMem(cpuOffsetDst(width), width, DYN_ADDRESS, !store, false);
-                instRegReg(inst, DYN_CALL_RESULT, DYN_SRC, width, true);                
+                instRegReg(inst, DYN_CALL_RESULT, DYN_SRC, width, true);
                 movToCpuFromReg(cpuOffsetResult(width), DYN_CALL_RESULT, width, !store);
                 if (store) {
                     movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, width, true, true);
                 }
             }
-        } else if (src == DYN_Mem) {            
-            if (dst==DYN_Reg) {
-                movToRegFromReg(DYN_SRC, width, DYN_CALL_RESULT, DYN_32bit, true);
+        } else if (src == DYN_Mem) {
+            if (dst == DYN_Reg) {
+                if (cf) {
+                    movToRegFromReg(DYN_SRC, width, DYN_CALL_RESULT, DYN_32bit, true);
+                }
                 calculateEaa(op, DYN_ADDRESS);
                 movToCpuFromMem(cpuOffsetSrc(width), width, DYN_ADDRESS, true, false);
                 movToCpuFromCpu(cpuOffsetDst(width), cpuOffset(op->reg, width), width, DYN_DEST, false);
@@ -258,31 +264,31 @@ void dynamic_arith(DynamicData* data, DecodedOp* op, DynArg src, DynArg dst, Dyn
                 }
             }
         } else if (src == DYN_Const) {
-            if (dst==DYN_Reg) {
+            if (dst == DYN_Reg) {
                 movToCpu(cpuOffsetSrc(width), width, op->imm);
                 movToCpuFromCpu(cpuOffsetDst(width), cpuOffset(op->reg, width), width, DYN_DEST, false);
                 instRegImm(inst, DYN_DEST, width, op->imm);
-                if (cf) {               
-                    if (width!=DYN_32bit) {
+                if (cf) {
+                    if (width != DYN_32bit) {
                         movToRegFromReg(DYN_CALL_RESULT, width, DYN_CALL_RESULT, DYN_32bit, false);
                     }
-                    instRegReg(inst, DYN_DEST, DYN_CALL_RESULT, width, true);                    
+                    instRegReg(inst, DYN_DEST, DYN_CALL_RESULT, width, true);
                 }
                 movToCpuFromReg(cpuOffsetResult(width), DYN_DEST, width, !store);
                 if (store) {
                     movToCpuFromReg(cpuOffset(op->reg, width), DYN_DEST, width, true);
                 }
-            } else if (dst==DYN_Mem) {
-                calculateEaa(op, DYN_ADDRESS);      
+            } else if (dst == DYN_Mem) {
+                calculateEaa(op, DYN_ADDRESS);
                 movToCpu(cpuOffsetSrc(width), width, op->imm);
                 if (cf) {
-                    movToRegFromReg(DYN_SRC, width, DYN_CALL_RESULT, DYN_32bit, true);                    
+                    movToRegFromReg(DYN_SRC, width, DYN_CALL_RESULT, DYN_32bit, true);
                     movToCpuFromMem(cpuOffsetDst(width), width, DYN_ADDRESS, !store, false);
                     instRegImm('+', DYN_SRC, width, op->imm);
                     instRegReg(inst, DYN_CALL_RESULT, DYN_SRC, width, true);
-                } else {                    
+                } else {
                     movToCpuFromMem(cpuOffsetDst(width), width, DYN_ADDRESS, !store, false);
-                    instRegImm(inst, DYN_CALL_RESULT, width, op->imm);                    
+                    instRegImm(inst, DYN_CALL_RESULT, width, op->imm);
                 }
                 movToCpuFromReg(cpuOffsetResult(width), DYN_CALL_RESULT, width, !store);
                 if (store) {
@@ -294,22 +300,22 @@ void dynamic_arith(DynamicData* data, DecodedOp* op, DynArg src, DynArg dst, Dyn
         data->currentLazyFlags = flags;
     }
 
-    if (!needResultReg || jmpReg==DYN_NOT_SET) {
+    if (!needResultReg || jmpReg == DYN_NOT_SET) {
         INCREMENT_EIP(op->len);
     } else {
-        if (jmpReg==DYN_NOT_SET) {
+        if (jmpReg == DYN_NOT_SET) {
             kpanic("dynamic_arith did not properly set jmpReg");
         }
-        if (width!=DYN_32bit) {
+        if (width != DYN_32bit) {
             movToRegFromReg(jmpReg, DYN_32bit, jmpReg, width, false);
         }
         if (isJump) {
-            dynamic_jump(data, jmpReg, op->next->inst, op->len+op->next->len+op->next->imm, op->len+op->next->len);
+            dynamic_jump(data, jmpReg, op->next->inst, op->len + op->next->len + op->next->imm, op->len + op->next->len);
         } else if (isSet) {
             INCREMENT_EIP(op->len);
             op = op->next;
-            if (op->inst==SetZ_E8 || op->inst==SetNZ_E8) {                
-                startIf(jmpReg, (op->inst==SetZ_E8?DYN_EQUALS_ZERO:DYN_NOT_EQUALS_ZERO), true);
+            if (op->inst == SetZ_E8 || op->inst == SetNZ_E8) {
+                startIf(jmpReg, (op->inst == SetZ_E8 ? DYN_EQUALS_ZERO : DYN_NOT_EQUALS_ZERO), true);
                 movToReg(DYN_SRC, DYN_8bit, 1);
                 startElse();
                 movToReg(DYN_SRC, DYN_8bit, 0);
@@ -317,11 +323,11 @@ void dynamic_arith(DynamicData* data, DecodedOp* op, DynArg src, DynArg dst, Dyn
                 calculateEaa(op, DYN_ADDRESS);
                 movToMemFromReg(DYN_ADDRESS, DYN_SRC, DYN_8bit, true, true);
             } else {
-                startIf(jmpReg, (op->inst==SetZ_R8?DYN_EQUALS_ZERO:DYN_NOT_EQUALS_ZERO), true);
+                startIf(jmpReg, (op->inst == SetZ_R8 ? DYN_EQUALS_ZERO : DYN_NOT_EQUALS_ZERO), true);
                 movToCpu(OFFSET_REG8(op->reg), DYN_8bit, 1);
                 startElse();
                 movToCpu(OFFSET_REG8(op->reg), DYN_8bit, 0);
-                endIf();                
+                endIf();
             }
             INCREMENT_EIP(op->len);
             data->skipToOp = op->next;
@@ -330,8 +336,8 @@ void dynamic_arith(DynamicData* data, DecodedOp* op, DynArg src, DynArg dst, Dyn
 }
 
 void genCF(const LazyFlags* flags, DynReg reg) {
-    if (reg!=DYN_EAX) {
-        kpanic("genCF expects reg to be DYN_EAX");
+    if (reg==DYN_SRC || reg == DYN_DEST) {
+        kpanic("genCF expects reg not to be DYN_SRC or DYN_DEST");
     }
     if (flags == FLAGS_NONE) {
         movToRegFromCpu(reg, CPU_OFFSET_OF(flags), DYN_32bit);
@@ -625,8 +631,8 @@ void genCF(const LazyFlags* flags, DynReg reg) {
 }
 
 void genOF(const LazyFlags* flags, DynReg reg) {
-    if (reg!=DYN_EAX) {
-        kpanic("genCF expects reg to be DYN_EAX");
+    if (reg == DYN_SRC || reg == DYN_DEST) {
+        kpanic("genOF expects reg not to be DYN_SRC or DYN_DEST");
     }
     if (flags == FLAGS_NONE) {
         movToRegFromCpu(reg, CPU_OFFSET_OF(flags), DYN_32bit);
@@ -920,23 +926,23 @@ void genS(const LazyFlags* flags, DynReg reg) {
 void setConditionInReg(DynamicData* data, DynConditional condition, DynReg reg) {
     if (data->currentLazyFlags==FLAGS_NONE) {
         U32 flag = 0;
-        bool not = false;
+        bool notFlag = false;
 
         switch (condition) {
         case O: flag = OF; break;
-        case NO: flag = OF; not = true; break;
+        case NO: flag = OF; notFlag = true; break;
         case B: flag = CF; break;
-        case NB: flag = CF; not = true; break;
+        case NB: flag = CF; notFlag = true; break;
         case Z: flag = ZF; break;
-        case NZ: flag = ZF; not = true; break;
+        case NZ: flag = ZF; notFlag = true; break;
         case S: flag = SF; break;
-        case NS: flag = SF; not = true; break;
+        case NS: flag = SF; notFlag = true; break;
         case P: flag = PF; break;
-        case NP: flag = PF; not = true; break;
+        case NP: flag = PF; notFlag = true; break;
         }
         if (flag) {
             movToRegFromCpu(reg, CPU_OFFSET_OF(flags), DYN_32bit);
-            if (not)
+            if (notFlag)
                 instReg('~', reg, DYN_32bit);
             instRegImm('&', reg, DYN_32bit, flag);
             return;
@@ -1022,22 +1028,22 @@ void setConditionInReg(DynamicData* data, DynConditional condition, DynReg reg) 
         return;
     }
     switch (condition) {
-    case O: callHostFunction(common_condition_o, true, 1, 0, DYN_PARAM_CPU, false); break;
-    case NO: callHostFunction(common_condition_no, true, 1, 0, DYN_PARAM_CPU, false); break;
-    case B: callHostFunction(common_condition_b, true, 1, 0, DYN_PARAM_CPU, false); break;
-    case NB: callHostFunction(common_condition_nb, true, 1, 0, DYN_PARAM_CPU, false); break;
-    case Z: callHostFunction(common_condition_z, true, 1, 0, DYN_PARAM_CPU, false); break;
-    case NZ: callHostFunction(common_condition_nz, true, 1, 0, DYN_PARAM_CPU, false); break;
-    case BE: callHostFunction(common_condition_be, true, 1, 0, DYN_PARAM_CPU, false); break;
-    case NBE: callHostFunction(common_condition_nbe, true, 1, 0, DYN_PARAM_CPU, false); break;
-    case S: callHostFunction(common_condition_s, true, 1, 0, DYN_PARAM_CPU, false); break;
-    case NS: callHostFunction(common_condition_ns, true, 1, 0, DYN_PARAM_CPU, false); break;
-    case P: callHostFunction(common_condition_p, true, 1, 0, DYN_PARAM_CPU, false); break;
-    case NP: callHostFunction(common_condition_np, true, 1, 0, DYN_PARAM_CPU, false); break;
-    case L: callHostFunction(common_condition_l, true, 1, 0, DYN_PARAM_CPU, false); break;
-    case NL: callHostFunction(common_condition_nl, true, 1, 0, DYN_PARAM_CPU, false); break;
-    case LE: callHostFunction(common_condition_le, true, 1, 0, DYN_PARAM_CPU, false); break;
-    case NLE: callHostFunction(common_condition_nle, true, 1, 0, DYN_PARAM_CPU, false); break;
+    case O: callHostFunction((void*)common_condition_o, true, 1, 0, DYN_PARAM_CPU, false); break;
+    case NO: callHostFunction((void*)common_condition_no, true, 1, 0, DYN_PARAM_CPU, false); break;
+    case B: callHostFunction((void*)common_condition_b, true, 1, 0, DYN_PARAM_CPU, false); break;
+    case NB: callHostFunction((void*)common_condition_nb, true, 1, 0, DYN_PARAM_CPU, false); break;
+    case Z: callHostFunction((void*)common_condition_z, true, 1, 0, DYN_PARAM_CPU, false); break;
+    case NZ: callHostFunction((void*)common_condition_nz, true, 1, 0, DYN_PARAM_CPU, false); break;
+    case BE: callHostFunction((void*)common_condition_be, true, 1, 0, DYN_PARAM_CPU, false); break;
+    case NBE: callHostFunction((void*)common_condition_nbe, true, 1, 0, DYN_PARAM_CPU, false); break;
+    case S: callHostFunction((void*)common_condition_s, true, 1, 0, DYN_PARAM_CPU, false); break;
+    case NS: callHostFunction((void*)common_condition_ns, true, 1, 0, DYN_PARAM_CPU, false); break;
+    case P: callHostFunction((void*)common_condition_p, true, 1, 0, DYN_PARAM_CPU, false); break;
+    case NP: callHostFunction((void*)common_condition_np, true, 1, 0, DYN_PARAM_CPU, false); break;
+    case L: callHostFunction((void*)common_condition_l, true, 1, 0, DYN_PARAM_CPU, false); break;
+    case NL: callHostFunction((void*)common_condition_nl, true, 1, 0, DYN_PARAM_CPU, false); break;
+    case LE: callHostFunction((void*)common_condition_le, true, 1, 0, DYN_PARAM_CPU, false); break;
+    case NLE: callHostFunction((void*)common_condition_nle, true, 1, 0, DYN_PARAM_CPU, false); break;
     default:
         kpanic("setConditionInReg: unknown condition %d", condition);
     }
@@ -1050,7 +1056,7 @@ void dynamic_pushReg32(DynamicData* data, DynReg reg, bool doneWithReg) {
         movToMemFromReg(DYN_ADDRESS, reg, DYN_32bit, false, doneWithReg);
         movToCpuFromReg(CPU_OFFSET_OF(reg[4].u32), DYN_ADDRESS, DYN_32bit, true);
     } else {
-        callHostFunction(common_push32, false, 2, 0, DYN_PARAM_CPU, false, DYN_SRC, DYN_PARAM_REG_32, doneWithReg);
+        callHostFunction((void*)common_push32, false, 2, 0, DYN_PARAM_CPU, false, DYN_SRC, DYN_PARAM_REG_32, doneWithReg);
     }
 }
 
@@ -1060,21 +1066,21 @@ void dynamic_pop32(DynamicData* data) {
         movFromMem(DYN_32bit, DYN_ADDRESS, true);
         instCPUImm('+', CPU_OFFSET_OF(reg[4].u32), DYN_32bit, 4);
     } else {
-        callHostFunction(common_pop32, true, 1, 0, DYN_PARAM_CPU, false);
+        callHostFunction((void*)common_pop32, true, 1, 0, DYN_PARAM_CPU, false);
     }    
 }
 
 void dynamic_fillFlags(DynamicData* data) {
     if (data->currentLazyFlags!=FLAGS_NONE) {
-        callHostFunction(common_fillFlags, false, 1, 0, DYN_PARAM_CPU, false);
+        callHostFunction((void*)common_fillFlags, false, 1, 0, DYN_PARAM_CPU, false);
     }
     data->currentLazyFlags=FLAGS_NONE;
 }
 
 void dynamic_getCF(DynamicData* data) {
     if (data->currentLazyFlags) {
-        genCF(data->currentLazyFlags, DYN_EAX);
+        genCF(data->currentLazyFlags, DYN_CALL_RESULT);
     } else {
-        callHostFunction(common_getCF, true, 1, 0, DYN_PARAM_CPU, false);
+        callHostFunction((void*)common_getCF, true, 1, 0, DYN_PARAM_CPU, false);
     }
 }

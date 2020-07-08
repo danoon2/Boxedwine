@@ -4,6 +4,7 @@
 #include "normalCPU.h"
 #include "../../softmmu/soft_code_page.h"
 #include "../x32/x32CPU.h"
+#include "../armv7/armv7CPU.h"
 
 #ifdef _DEBUG
 #define START_OP(cpu, op) op->log(cpu)
@@ -93,8 +94,8 @@ OpCallback NormalCPU::getFunctionForOp(DecodedOp* op) {
 
 NormalCPU::NormalCPU() {   
     initNormalOps();
-#ifdef BOXEDWINE_DYNAMIC32
-    this->firstOp = firstX32Op;
+#ifdef BOXEDWINE_DYNAMIC
+    this->firstOp = firstDynamicOp;
 #else
     this->firstOp = NULL;
 #endif

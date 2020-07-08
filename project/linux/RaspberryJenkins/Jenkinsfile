@@ -6,7 +6,7 @@ pipeline {
             steps {
                 sh '''#!/bin/bash
                     cd project/linux
-                    sh buildtest.sh || exit
+                    sh buildRaspberryTest.sh || exit
                     ./bin/boxedwineTest
                 '''
             }
