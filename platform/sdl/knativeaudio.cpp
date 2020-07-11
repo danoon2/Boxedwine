@@ -28,10 +28,10 @@ public:
 		this->want.format = AUDIO_U8;
 		this->want.channels = 1;
 		this->want.freq = 11025;
-		this->want.samples = 5512;
+		this->want.samples = 8192;
 		this->got.channels = 1;
 		this->got.freq = 11025;
-		this->got.samples = 5512;
+		this->got.samples = 8192;
 		this->sameFormat = false;
 		this->open = false;
 		this->closeWhenDone = false;

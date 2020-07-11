@@ -2607,30 +2607,6 @@ void glcommon_glCurrentPaletteMatrixARB(CPU* cpu) {
     GL_LOG ("glCurrentPaletteMatrixARB GLint index=%d",ARG1);
     }
 }
-void glcommon_glDebugMessageCallback(CPU* cpu) {
-    if (!ext_glDebugMessageCallback)
-        kpanic("ext_glDebugMessageCallback is NULL");
-    {
-    GL_FUNC(ext_glDebugMessageCallback)(debugMessageCallback, nullptr);
-    GL_LOG ("glDebugMessageCallback void * callback=%.08x, const void* userParam=%.08x",ARG1,ARG2);
-    }
-}
-void glcommon_glDebugMessageCallbackAMD(CPU* cpu) {
-    if (!ext_glDebugMessageCallbackAMD)
-        kpanic("ext_glDebugMessageCallbackAMD is NULL");
-    {
-    GL_FUNC(ext_glDebugMessageCallbackAMD)(debugMessageCallback, nullptr);
-    GL_LOG ("glDebugMessageCallbackAMD void * callback=%.08x, void* userParam=%.08x",ARG1,ARG2);
-    }
-}
-void glcommon_glDebugMessageCallbackARB(CPU* cpu) {
-    if (!ext_glDebugMessageCallbackARB)
-        kpanic("ext_glDebugMessageCallbackARB is NULL");
-    {
-    GL_FUNC(ext_glDebugMessageCallbackARB)(debugMessageCallback, nullptr);
-    GL_LOG ("glDebugMessageCallbackARB void * callback=%.08x, const void* userParam=%.08x",ARG1,ARG2);
-    }
-}
 void glcommon_glDebugMessageControl(CPU* cpu) {
     if (!ext_glDebugMessageControl)
         kpanic("ext_glDebugMessageControl is NULL");
