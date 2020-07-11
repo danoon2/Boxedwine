@@ -404,10 +404,6 @@ void glcommon_glReadPixels(CPU* cpu) {
         marshalBackPixels(cpu, 0, width, height, 1, format, type, ARG7, pixels);
 }
 
-void OPENGL_CALL_TYPE debugMessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam) {
-    klog("%s", message);
-}
-
 void glcommon_glSamplePass(CPU* cpu) {
     if (!ext_glSamplePass)
         kpanic("ext_glSamplePass is NULL");

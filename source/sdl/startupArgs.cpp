@@ -419,11 +419,11 @@ bool StartUpArgs::apply() {
 
 
 #if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
+    gl_init(this->glExt);
 #ifdef __EMSCRIPTEN__
     initialize_gl4es();
 #endif
-    gl_init(this->glExt);
-#endif   
+#endif
 
     if (this->args.size()) {
         printf("Launching ");
