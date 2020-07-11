@@ -449,7 +449,6 @@ bool StartUpArgs::apply() {
     KNativeAudio::init();
     initialize_gl4es();
     gl_init(this->glExt);  
-    
 
     if (this->args.size()) {
         klog_nonewline("Launching ");
