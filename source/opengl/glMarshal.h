@@ -257,7 +257,6 @@ GLboolean PIXEL_PACK_BUFFER();
 GLboolean ARRAY_BUFFER();
 GLboolean ELEMENT_ARRAY_BUFFER();
 GLboolean PIXEL_UNPACK_BUFFER();
-void OPENGL_CALL_TYPE debugMessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam);
 
 #ifdef BOXEDWINE_GLHANDLE_ARB_POINTER
 U32 marshalHandleToIndex(GLhandleARB h);

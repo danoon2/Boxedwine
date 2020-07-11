@@ -454,9 +454,11 @@ bool StartUpArgs::apply() {
 
 
 #if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
+    gl_init(this->glExt);
 #ifdef __EMSCRIPTEN__
     initialize_gl4es();
 #endif
+<<<<<<< HEAD
     gl_init(this->glExt);
 >>>>>>> 7507e033 (non-working at this stage)
 #endif   
@@ -466,6 +468,7 @@ bool StartUpArgs::apply() {
     initialize_gl4es();
     gl_init(this->glExt);  
     
+
     if (this->args.size()) {
         klog_nonewline("Launching ");
         for (U32 i=0;i<this->args.size();i++) {
