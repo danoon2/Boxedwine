@@ -41,8 +41,6 @@ void mov32zx16(U8 dst, U8 src);
 void mov32zx8(U8 dst, U8 src);
 void mov32sx16(U8 dst, U8 src);
 void mov32sx8(U8 dst, U8 src);
-void pushRegs(U16 bitMask);
-void popRegs(U16 bitMask);
 void cmpRegs32(U8 r1, U8 r2);
 void cmpRegValue32(U8 reg, U32 value);
 U32 jumpIfEqual();
@@ -54,6 +52,11 @@ void callHostFunction(void* address, bool hasReturn, U32 argCount, U32 arg1, Dyn
 void startBlock();
 void endBlock();
 void codeCreate(U8* start, U8* end);
+
+#ifdef DYN_NEEDS_PUSH_POP_REG_FOR_FUNCTION_PARAMS
+void pushRegs(U16 bitMask);
+void popRegs(U16 bitMask);
+#endif
 */
 
 bool isRegSetFFF;
@@ -76,14 +79,18 @@ void calculateEaa(DecodedOp* op, DynReg reg) {
         }
         // add ax, [DYN_CPU_REG+cpu->reg[op->rm].u16]
         if (op->rm != 8) {
-            loadFromCpuOffset16(REG_LOAD_TMP, offsetof(CPU, reg[op->rm].u16));
-            addRegs32(reg, REG_LOAD_TMP);
+            DynReg tmp = getUnsavedTmpReg();
+            loadFromCpuOffset16(tmp, offsetof(CPU, reg[op->rm].u16));
+            addRegs32(reg, tmp);
+            clearRegUsed(tmp);
         }
 
         // add ax, [cpu->reg[op->sibIndex].u16]
         if (op->sibIndex != 8) {
-            loadFromCpuOffset16(REG_LOAD_TMP, offsetof(CPU, reg[op->sibIndex].u16));
-            addRegs32(reg, REG_LOAD_TMP);
+            DynReg tmp = getUnsavedTmpReg();
+            loadFromCpuOffset16(tmp, offsetof(CPU, reg[op->sibIndex].u16));
+            addRegs32(reg, tmp);
+            clearRegUsed(tmp);
         }
 
         // don't allow the above adds to roll over past 16-bits
@@ -92,8 +99,10 @@ void calculateEaa(DecodedOp* op, DynReg reg) {
         // seg[6] is always 0
         if (op->base < 6) {
             // add eax, [cpu->seg[op->base].address]
-            loadFromCpuOffset32(REG_LOAD_TMP, offsetof(CPU, seg[op->base].address));
-            addRegs32(reg, REG_LOAD_TMP);
+            DynReg tmp = getUnsavedTmpReg();
+            loadFromCpuOffset32(tmp, offsetof(CPU, seg[op->base].address));
+            addRegs32(reg, tmp);
+            clearRegUsed(tmp);
         }
     } else {
         // cpu->seg[op->base].address + cpu->reg[op->rm].u32 + (cpu->reg[op->sibIndex].u32 << + op->sibScale) + op->disp
@@ -109,8 +118,10 @@ void calculateEaa(DecodedOp* op, DynReg reg) {
             // seg[6] is always 0
             if (op->base < 6 && KThread::currentThread()->process->hasSetSeg[op->base]) {
                 // add eax, [cpu->seg[op->base].address]
-                loadFromCpuOffset32(REG_LOAD_TMP, offsetof(CPU, seg[op->base].address));
-                addRegs32(reg, REG_LOAD_TMP);
+                DynReg tmp = getUnsavedTmpReg();
+                loadFromCpuOffset32(tmp, offsetof(CPU, seg[op->base].address));
+                addRegs32(reg, tmp);
+                clearRegUsed(tmp);
             }
         } else {
             // seg[6] is always 0
@@ -125,8 +136,10 @@ void calculateEaa(DecodedOp* op, DynReg reg) {
                 initiallized = true;
                 loadFromCpuOffset32(reg, offsetof(CPU, reg[op->rm].u32));
             } else {
-                loadFromCpuOffset32(REG_LOAD_TMP, offsetof(CPU, reg[op->rm].u32));
-                addRegs32(reg, REG_LOAD_TMP);
+                DynReg tmp = getUnsavedTmpReg();
+                loadFromCpuOffset32(tmp, offsetof(CPU, reg[op->rm].u32));
+                addRegs32(reg, tmp);
+                clearRegUsed(tmp);
             }
         }
 
@@ -209,6 +222,14 @@ void movToCpuFromReg(U32 dstOffset, DynReg reg, DynWidth width, bool doneWithReg
     }
 }
 
+void movToCpuFromRegPtr(U32 dstOffset, DynReg reg, bool doneWithReg) {
+    // mov [edi+dstOffset], reg
+    saveRegToCpuOffsetPtr(reg, dstOffset);
+    if (doneWithReg) {
+        clearRegUsed(reg);
+    }
+}
+
 void movToCpuFromCpu(U32 dstOffset, U32 srcOffset, DynWidth width, DynReg tmpReg, bool doneWithTmpReg) {
     // mov tmpReg, [cpu+srcOffset]
     movToRegFromCpu(tmpReg, srcOffset, width);
@@ -220,7 +241,7 @@ void movToCpuFromCpu(U32 dstOffset, U32 srcOffset, DynWidth width, DynReg tmpReg
 void movToCpu(U32 dstOffset, DynWidth dstWidth, U32 imm) {
     // mov [cpu+dstOffset], imm
     if (dstWidth == DYN_32bit) {
-        saveValueToCpuOffset32(imm, dstOffset);
+        saveValueToCpuOffset32((U32)imm, dstOffset);
     } else if (dstWidth == DYN_16bit) {
         saveValueToCpuOffset16((U16)imm, dstOffset);
     } else if (dstWidth == DYN_8bit) {
@@ -230,12 +251,32 @@ void movToCpu(U32 dstOffset, DynWidth dstWidth, U32 imm) {
     }
 }
 
+void movToCpuPtr(U32 dstOffset, DYN_PTR_SIZE imm) {
+    // mov [cpu+dstOffset], imm
+    saveValueToCpuOffsetPtr(imm, dstOffset);
+}
+
 void movToReg(DynReg reg, DynWidth width, U32 imm) {
     setRegUsed(reg);
     loadConst32(reg, imm);
 }
 
+void movToRegPtr(DynReg reg, U64 imm) {
+    setRegUsed(reg);
+    loadConstPtr(reg, imm);
+}
+
 void movFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg) {    
+#ifdef BOXEDWINE_64BIT_MMU
+    if (width == DYN_8bit) {
+        readMem8(DYN_CALL_RESULT, addressReg, KThread::currentThread()->memory->id);
+    } else if (width == DYN_16bit) {
+        readMem16(DYN_CALL_RESULT, addressReg, KThread::currentThread()->memory->id);
+    } else {
+        readMem32(DYN_CALL_RESULT, addressReg, KThread::currentThread()->memory->id);
+    }
+    setRegUsed(DYN_CALL_RESULT);
+#else
     // :TODO: inline
     if (width == DYN_16bit) {
         callHostFunction((void*)readw, true, 1, addressReg, DYN_PARAM_REG_32, doneWithAddressReg);
@@ -244,6 +285,7 @@ void movFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg) {
     } else {
         callHostFunction((void*)readb, true, 1, addressReg, DYN_PARAM_REG_32, doneWithAddressReg);
     }
+#endif
     if (doneWithAddressReg) {
         clearRegUsed(addressReg);
     }
@@ -255,6 +297,7 @@ void movToCpuFromMem(U32 dstOffset, DynWidth dstWidth, DynReg addressReg, bool d
     movToCpuFromReg(dstOffset, DYN_CALL_RESULT, dstWidth, doneWithCallResult);
 }
 
+#ifdef DYN_NEEDS_PUSH_POP_REG_FOR_FUNCTION_PARAMS
 void pushValue(U32 arg, DynCallParamType argType) {
     switch (argType) {
     case DYN_PARAM_REG_8:
@@ -268,41 +311,77 @@ void pushValue(U32 arg, DynCallParamType argType) {
     case DYN_PARAM_CONST_8:
     case DYN_PARAM_CONST_16:
     case DYN_PARAM_CONST_32:
+    {
+        DynReg tmp = getUnsavedTmpReg();
+        loadConst32(tmp, arg);
+        pushRegs(1 << tmp);
+        clearRegUsed(tmp);
+        break;
+    }
     case DYN_PARAM_CONST_PTR:
-        loadConst32(REG_LOAD_TMP, arg);
-        pushRegs(1 << REG_LOAD_TMP);
+    {
+        DynReg tmp = getUnsavedTmpReg();
+        loadConstPtr(tmp, arg);
+        pushRegs(1 << tmp);
+        clearRegUsed(tmp);
         break;
+    }
     case DYN_PARAM_ABSOLUTE_ADDRESS_8:
-        readMem8(REG_LOAD_TMP, arg, 0);
-        pushRegs(1 << REG_LOAD_TMP);
+    {
+        DynReg tmp = getUnsavedTmpReg();
+        readMem8(tmp, arg, 0);
+        pushRegs(1 << tmp);
+        clearRegUsed(tmp);
         break;
+    }
     case DYN_PARAM_ABSOLUTE_ADDRESS_16:
-        readMem16(REG_LOAD_TMP, arg, 0);
-        pushRegs(1 << REG_LOAD_TMP);
+    {
+        DynReg tmp = getUnsavedTmpReg();
+        readMem16(tmp, arg, 0);
+        pushRegs(1 << tmp);
+        clearRegUsed(tmp);
         break;
+    }
     case DYN_PARAM_ABSOLUTE_ADDRESS_32:
-        readMem32(REG_LOAD_TMP, arg, 0);
-        pushRegs(1 << REG_LOAD_TMP);
+    {
+        DynReg tmp = getUnsavedTmpReg();
+        readMem32(tmp, arg, 0);
+        pushRegs(1 << tmp);
+        clearRegUsed(tmp);
         break;
+    }
     case DYN_PARAM_CPU_ADDRESS_8:
-        readMem8(REG_LOAD_TMP, REG_CPU, arg);
-        pushRegs(1 << REG_LOAD_TMP);
+    {
+        DynReg tmp = getUnsavedTmpReg();
+        readMem8(tmp, REG_CPU, arg);
+        pushRegs(1 << tmp);
+        clearRegUsed(tmp);
         break;
+    }
     case DYN_PARAM_CPU_ADDRESS_16:
-        readMem16(REG_LOAD_TMP, REG_CPU, arg);
-        pushRegs(1 << REG_LOAD_TMP);
+    {
+        DynReg tmp = getUnsavedTmpReg();
+        readMem16(tmp, REG_CPU, arg);
+        pushRegs(1 << tmp);
+        clearRegUsed(tmp);
         break;
+    }
     case DYN_PARAM_CPU_ADDRESS_32:
-        readMem32(REG_LOAD_TMP, REG_CPU, arg);
-        pushRegs(1 << REG_LOAD_TMP);
+    {
+        DynReg tmp = getUnsavedTmpReg();
+        readMem32(tmp, REG_CPU, arg);
+        pushRegs(1 << tmp);
+        clearRegUsed(tmp);
         break;
+    }
     default:
         kpanic("dynCPU: unknown argType: %d", argType);
         break;
     }
 }
+#endif
 
-void setValue(U32 arg, DynCallParamType argType, U8 reg) {
+void setValue(DYN_PTR_SIZE arg, DynCallParamType argType, U8 reg) {
     switch (argType) {
     case DYN_PARAM_REG_8:
     case DYN_PARAM_REG_16:
@@ -312,13 +391,15 @@ void setValue(U32 arg, DynCallParamType argType, U8 reg) {
         }
         break;
     case DYN_PARAM_CPU:
-        mov32(reg, REG_CPU);
+        movPtr(reg, REG_CPU);
         break;
     case DYN_PARAM_CONST_8:
     case DYN_PARAM_CONST_16:
     case DYN_PARAM_CONST_32:
-    case DYN_PARAM_CONST_PTR:
         loadConst32(reg, arg);
+        break;
+    case DYN_PARAM_CONST_PTR:
+        loadConstPtr(reg, arg);
         break;
     case DYN_PARAM_ABSOLUTE_ADDRESS_8:
         readMem8(reg, arg, 0);
@@ -360,6 +441,31 @@ bool isParamTypeReg(DynCallParamType paramType) {
 //      Memory::currentMMU[index]->writed(address, value);		
 //  }
 void movToMem(DynReg addressReg, DynWidth width, U32 value, DynCallParamType paramType, bool doneWithValueReg) {
+#ifdef BOXEDWINE_64BIT_MMU    
+    U8 regToWrite;
+    bool releaseRegToWrite = false;
+
+    if (isParamTypeReg(paramType)) {
+        regToWrite = value;
+        if (doneWithValueReg) {
+            releaseRegToWrite = true;
+        }
+    } else {
+        regToWrite = getUnsavedTmpReg();
+        setValue(value, paramType, regToWrite);
+        releaseRegToWrite = true;
+    }
+    if (width == DYN_8bit) {
+        writeMem8(regToWrite, addressReg, KThread::currentThread()->memory->id);
+    } else if (width == DYN_16bit) {
+        writeMem16(regToWrite, addressReg, KThread::currentThread()->memory->id);
+    } else {
+        writeMem32(regToWrite, addressReg, KThread::currentThread()->memory->id);
+    }
+    if (releaseRegToWrite) {
+        clearRegUsed(regToWrite);
+    }
+#else
     // :TODO: inline?
     if (width == DYN_16bit) {
         callHostFunction((void*)writew, false, 2, addressReg, DYN_PARAM_REG_32, false, value, paramType, doneWithValueReg);
@@ -368,6 +474,7 @@ void movToMem(DynReg addressReg, DynWidth width, U32 value, DynCallParamType par
     } else {
         callHostFunction((void*)writeb, false, 2, addressReg, DYN_PARAM_REG_32, false, value, paramType, doneWithValueReg);
     }
+#endif
 }
 
 void movToMemFromReg(DynReg addressReg, DynReg reg, DynWidth width, bool doneWithAddressReg, bool doneWithReg) {
@@ -479,27 +586,34 @@ void instRegImm(U32 inst, DynReg reg, DynWidth regWidth, U32 imm) {
 void instRegReg(char inst, DynReg dst, DynReg src, DynWidth regWidth, bool doneWithRmReg) {
     switch (inst) {
     case '<':
-        if (!doneWithRmReg) {
-            kpanic("dyn:instRegReg was expecting < instruction to allow src reg modification");
-        }
-        andValue32(src, 0x1f);
-        shiftLeft32WithReg(dst, src);
+    {
+        int tmpReg = getUnsavedTmpReg();
+        andValue32(tmpReg, src, 0x1f);
+        shiftLeft32WithReg(dst, tmpReg);
+        clearRegUsed(tmpReg);
         break;
+    }
     case '>':
-        if (!doneWithRmReg) {
-            kpanic("dyn:instRegReg was expecting > instruction to allow src reg modification");
-        }
-        andValue32(src, 0x1f);
-        shiftRight32WithReg(dst, src);
+    {
+        int tmpReg = getUnsavedTmpReg();
+        andValue32(tmpReg, src, 0x1f);
+        shiftRight32WithReg(dst, tmpReg);
+        clearRegUsed(tmpReg);
         break;
+    }
     case ')':
+    {
         if (regWidth == DYN_16bit) {
             mov32sx16(dst, dst);
         } else if (regWidth == DYN_8bit) {
             mov32sx8(dst, dst);
         }
-        shiftRightSigned32WithReg(dst, src);
+        int tmpReg = getUnsavedTmpReg();
+        andValue32(tmpReg, src, 0x1f);
+        shiftRightSigned32WithReg(dst, tmpReg);
+        clearRegUsed(tmpReg);
         break;
+    }
     case '+':
         addRegs32(dst, src);
         break;
@@ -525,15 +639,17 @@ void instRegReg(char inst, DynReg dst, DynReg src, DynWidth regWidth, bool doneW
 }
 
 void instCPUReg(char inst, U32 dstOffset, DynReg rm, DynWidth regWidth, bool doneWithRmReg) {
-    movToRegFromCpu(REG_TMP_1, dstOffset, regWidth);
-    instRegReg(inst, REG_TMP_1, rm, regWidth, doneWithRmReg);
-    movToCpuFromReg(dstOffset, REG_TMP_1, regWidth, true);
+    DynReg tmp = getUnsavedTmpReg();
+    movToRegFromCpu(tmp, dstOffset, regWidth);
+    instRegReg(inst, tmp, rm, regWidth, doneWithRmReg);
+    movToCpuFromReg(dstOffset, tmp, regWidth, true);
 }
 
 void instCPUImm(char inst, U32 dstOffset, DynWidth regWidth, U32 imm) {
-    movToRegFromCpu(REG_TMP_1, dstOffset, regWidth);
-    instRegImm(inst, REG_TMP_1, regWidth, imm);
-    movToCpuFromReg(dstOffset, REG_TMP_1, regWidth, true);
+    DynReg tmp = getUnsavedTmpReg();
+    movToRegFromCpu(tmp, dstOffset, regWidth);
+    instRegImm(inst, tmp, regWidth, imm);
+    movToCpuFromReg(dstOffset, tmp, regWidth, true);
 }
 
 void instMemImm(char inst, DynReg addressReg, DynWidth regWidth, U32 imm, bool doneWithAddressReg) {
@@ -576,9 +692,10 @@ void instMem(char inst, DynReg addressReg, DynWidth regWidth, bool doneWithAddre
 }
 
 void instCPU(char inst, U32 dstOffset, DynWidth regWidth) {
-    movToRegFromCpu(REG_TMP_1, dstOffset, regWidth);
-    instReg(inst, REG_TMP_1, regWidth);
-    movToCpuFromReg(dstOffset, REG_TMP_1, regWidth, true);
+    DynReg tmp = getUnsavedTmpReg();
+    movToRegFromCpu(tmp, dstOffset, regWidth);
+    instReg(inst, tmp, regWidth);
+    movToCpuFromReg(dstOffset, tmp, regWidth, true);
 }
 
 void startIf(DynReg reg, DynCondition condition, bool doneWithReg) {
@@ -681,9 +798,8 @@ void incrementEip(U32 inc) {
 void blockDone() {
     // cpu->nextBlock = cpu->getNextBlock();
     callHostFunction((void*)common_getNextBlock, true, 1, 0, DYN_PARAM_CPU, false);
-    movToCpuFromReg(offsetof(CPU, nextBlock), DYN_CALL_RESULT, DYN_32bit, true);
-    popRegs(BLOCK_REGS_SAVED);
-    rtn();
+    movToCpuFromRegPtr(offsetof(CPU, nextBlock), DYN_CALL_RESULT, true);
+    endBlock();
 }
 
 static DecodedBlock* updateNext1(CPU* cpu) {
@@ -700,14 +816,14 @@ void blockNext1() {
     // } 
     // cpu->nextBlock = DecodedBlock::currentBlock->next1
 
-    movToReg(DYN_CALL_RESULT, DYN_32bit, (U32)DecodedBlock::currentBlock);
-    readMem32(DYN_CALL_RESULT, DYN_CALL_RESULT, offsetof(DecodedBlock, next1));
+    movToRegPtr(DYN_CALL_RESULT, (DYN_PTR_SIZE)DecodedBlock::currentBlock);
+    readMemPtr(DYN_CALL_RESULT, DYN_CALL_RESULT, offsetof(DecodedBlock, next1));
 
     startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, false);
     callHostFunction((void*)updateNext1, true, 1, 0, DYN_PARAM_CPU);
     endIf();
 
-    saveRegToCpuOffset32(DYN_CALL_RESULT, offsetof(CPU, nextBlock));
+    saveRegToCpuOffsetPtr(DYN_CALL_RESULT, offsetof(CPU, nextBlock));
     clearRegUsed(DYN_CALL_RESULT);
 }
 
@@ -724,14 +840,14 @@ void blockNext2() {
     // } 
     // cpu->nextBlock = DecodedBlock::currentBlock->next2
 
-    movToReg(DYN_CALL_RESULT, DYN_32bit, (U32)DecodedBlock::currentBlock);
-    readMem32(DYN_CALL_RESULT, DYN_CALL_RESULT, offsetof(DecodedBlock, next2));
+    movToRegPtr(DYN_CALL_RESULT, (DYN_PTR_SIZE)DecodedBlock::currentBlock);
+    readMemPtr(DYN_CALL_RESULT, DYN_CALL_RESULT, offsetof(DecodedBlock, next2));
 
     startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, false);
     callHostFunction((void*)updateNext2, true, 1, 0, DYN_PARAM_CPU);
     endIf();
 
-    saveRegToCpuOffset32(DYN_CALL_RESULT, offsetof(CPU, nextBlock));
+    saveRegToCpuOffsetPtr(DYN_CALL_RESULT, offsetof(CPU, nextBlock));
     clearRegUsed(DYN_CALL_RESULT);
 }
 
@@ -808,14 +924,13 @@ void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
         initDynOps();
         DecodedOp* o = op->next;
         outBufferPos = 0;
-        patch.clear();        
         startBlock();
 
         while (o) {
-            resetRegsUsed();            
+            resetRegsUsed();
 #ifndef __TEST
 #ifdef _DEBUG
-            callHostFunction((void*)common_log, false, 2, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)o, DYN_PARAM_CONST_PTR, false);
+            //callHostFunction((void*)common_log, false, 2, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)o, DYN_PARAM_CONST_PTR, false);
 #endif
 #endif
             dynOps[o->inst](&data, o);
@@ -835,8 +950,8 @@ void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
             } else if (data.done) {
 #ifndef __TEST
 #ifdef _DEBUG
-                if (o->next)
-                    callHostFunction((void*)common_log, false, 2, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)o->next, DYN_PARAM_CONST_PTR, false);
+                //f (o->next)
+                //    callHostFunction((void*)common_log, false, 2, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)o->next, DYN_PARAM_CONST_PTR, false);
 #endif
 #endif
                 break;
@@ -871,11 +986,6 @@ void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
 
         memory->dynamicExecutableMemoryPos += outBufferPos;
 
-        for (U32 i = 0; i < patch.size(); i++) {
-            U32 pos = patch[i];
-            U32* value = (U32*)(&begin[pos]);
-            *value = *value - (U32)(begin + pos + 4);
-        }
         bool b = false;
         if (b) {
             printf("\n");
@@ -894,5 +1004,4 @@ void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
         op->next->pfn(cpu, op->next);
     }
 }
-
 #endif

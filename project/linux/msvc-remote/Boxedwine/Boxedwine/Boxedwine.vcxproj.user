@@ -18,14 +18,20 @@
     <RemoteDebuggerCommandArguments />
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
-    <RemoteTarget>-902386300;192.168.1.41 (username=, port=22, authentication=Password)</RemoteTarget>
-    <RemoteDebuggingTarget>-902386300;192.168.1.41 (username=, port=22, authentication=Password)</RemoteDebuggingTarget>
+    <RemoteDebuggingTarget>-1277036696;192.168.1.34 (username=, port=22, authentication=Password)</RemoteDebuggingTarget>
     <DebuggerFlavor>LinuxDebugger</DebuggerFlavor>
+    <PreLaunchCommand>export DISPLAY=:0</PreLaunchCommand>
+    <RemoteDebuggerCommand>projects/Boxedwine/project/linux/msvc-remote/Boxedwine/Boxedwine/bin/ARM64/Debug/Boxedwine.out</RemoteDebuggerCommand>
+    <RemoteDebuggerCommandArguments>-zip /home/pi/.local/share/Boxedwine/FileSystems/Wine-5.0.zip -root /home/pi/.local/share/Boxedwine/Containers/Default/root /bin/wine notepad.exe</RemoteDebuggerCommandArguments>
+    <RemoteDebuggerWorkingDirectory>projects/Boxedwine/project/linux/msvc-remote/Boxedwine/Boxedwine/bin/ARM64/Debug</RemoteDebuggerWorkingDirectory>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Test|ARM64'">
-    <RemoteTarget>-902386300;192.168.1.41 (username=, port=22, authentication=Password)</RemoteTarget>
-    <RemoteDebuggingTarget>-902386300;192.168.1.41 (username=, port=22, authentication=Password)</RemoteDebuggingTarget>
+    <RemoteDebuggingTarget>-1277036696;192.168.1.34 (username=, port=22, authentication=Password)</RemoteDebuggingTarget>
     <DebuggerFlavor>LinuxDebugger</DebuggerFlavor>
+    <PreLaunchCommand>export DISPLAY=:1</PreLaunchCommand>
+    <RemoteDebuggerCommand>projects/Boxedwine/project/linux/msvc-remote/Boxedwine/Boxedwine/bin/ARM64/Test/Boxedwine.out</RemoteDebuggerCommand>
+    <RemoteDebuggerWorkingDirectory>projects/Boxedwine/project/linux/msvc-remote/Boxedwine/Boxedwine/bin/ARM64/Test</RemoteDebuggerWorkingDirectory>
+    <RemoteTarget>-1277036696;192.168.1.34 (username=, port=22, authentication=Password)</RemoteTarget>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">
     <RemoteTarget>-902386300;192.168.1.41 (username=, port=22, authentication=Password)</RemoteTarget>
@@ -46,5 +52,8 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">
     <RemoteTarget>-902386300;192.168.1.41 (username=, port=22, authentication=Password)</RemoteTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
+    <RemoteTarget>-1277036696;192.168.1.34 (username=, port=22, authentication=Password)</RemoteTarget>
   </PropertyGroup>
 </Project>

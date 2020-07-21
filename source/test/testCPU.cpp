@@ -151,6 +151,16 @@ void newInstructionWithRM(int instruction, int rm, int flags) {
     pushCode8(rm);
 }
 
+void useFlags() {
+    pushCode8(0x83); // add eax, 2
+    pushCode8(0xc0);
+    pushCode8(0x02);
+
+    pushCode8(0x83); // sub eax, 2
+    pushCode8(0xe8);
+    pushCode8(0x02);
+}
+
 void runTestCPU() {    
 #ifdef BOXEDWINE_X64    
     pushCode8(0xcd);
@@ -223,39 +233,41 @@ void pushConstant(struct Data* data) {
     }
 }
 
-void assertResult(struct Data* data, CPU* cpu, int instruction, U32 resultvar1, U32 resultvar2, int r1, int r2, U32 address, int bits) {
+void assertResult(struct Data* data, CPU* cpu, int instruction, U32 resultvar1, U32 resultvar2, int r1, int r2, U32 address, int bits, bool ignoreFlags=false) {
     if (data->useResultvar2 && data->resultvar2!=resultvar2) {
         failed("instruction: %d var2: %d != %d", instruction, resultvar2, data->resultvar2);
     }
     if (!data->dontUseResultAndCheckSFZF && data->result != resultvar1) {
         failed("instruction: %d var1: %d != %d", instruction, resultvar1, data->result);
     }
-    if (data->hasCF && cpu->getCF() != (U32)data->fCF) {
-        cpu->getCF();
-        failed("instruction: %d CF", instruction);
-    }
-    if (data->hasOF && (cpu->getOF()!=0) != data->fOF) {
-        cpu->getOF();
-        failed("instruction: %d OF", instruction);
-    }
-    if (data->hasAF && (cpu->getAF()!=0) != data->fAF) {
-        cpu->getAF();
-        failed("instruction: %d AF", instruction);
-    }
-    if (data->hasSF && (cpu->getSF()!=0) != data->fSF) {
-        cpu->getSF();
-        failed("instruction: %d SF", instruction);
-    }
-    if (data->hasZF && (cpu->getZF()!=0) != data->fZF) {
-        cpu->getZF();
-        failed("instruction: %d ZF", instruction);
-    }
-    if (data->dontUseResultAndCheckSFZF) {
-        if ((cpu->getSF()!=0) != data->fSF) {
+    if (!ignoreFlags) {
+        if (data->hasCF && cpu->getCF() != (U32)data->fCF) {
+            cpu->getCF();
+            failed("instruction: %d CF", instruction);
+        }
+        if (data->hasOF && (cpu->getOF() != 0) != data->fOF) {
+            cpu->getOF();
+            failed("instruction: %d OF", instruction);
+        }
+        if (data->hasAF && (cpu->getAF() != 0) != data->fAF) {
+            cpu->getAF();
+            failed("instruction: %d AF", instruction);
+        }
+        if (data->hasSF && (cpu->getSF() != 0) != data->fSF) {
+            cpu->getSF();
             failed("instruction: %d SF", instruction);
         }
-        if ((cpu->getZF()!=0) != data->fZF) {
+        if (data->hasZF && (cpu->getZF() != 0) != data->fZF) {
+            cpu->getZF();
             failed("instruction: %d ZF", instruction);
+        }
+        if (data->dontUseResultAndCheckSFZF) {
+            if ((cpu->getSF() != 0) != data->fSF) {
+                failed("instruction: %d SF", instruction);
+            }
+            if ((cpu->getZF() != 0) != data->fZF) {
+                failed("instruction: %d ZF", instruction);
+            }
         }
     }
     if (bits==8 || bits==16) {
@@ -464,45 +476,54 @@ void EdEaxEdx(int instruction, int which, struct Data* data, int useEdx) {
 }
 
 void EbCl(int instruction, int which, struct Data* data) {
-    while (data->valid) {
-        int rm;
-        U32 result;
-        int eb;
+    struct Data* start = data;
+    for (int i = 0; i < 2; i++) {
+        while (data->valid) {
+            int rm;
+            U32 result;
+            int eb;
 
-        for (eb = 0; eb < 8; eb++) {			
-            U8* reg;
+            for (eb = 0; eb < 8; eb++) {
+                U8* reg;
 
-            if (eb==1)
-                continue;
-            rm = eb | (which << 3) | 0xC0;
+                if (eb == 1)
+                    continue;
+                rm = eb | (which << 3) | 0xC0;
+                newInstructionWithRM(instruction, rm, data->flags);
+                reg = cpu->reg8[E(rm)];
+                cpu->reg[E8(rm)].u32 = DEFAULT;
+                ECX = DEFAULT;
+                *reg = data->var1;
+                CL = data->var2;
+                if (i == 1) {
+                    useFlags();  // for dynamic core, this will result in a different code path because the flags won't be needed
+                }
+                runTestCPU();
+                assertResult(data, cpu, instruction, *reg, 0, E8(rm), -1, 0, 8, i==1);
+            }
+
+            rm = (which << 3);
+            if (cpu->big)
+                rm += 5;
+            else
+                rm += 6;
             newInstructionWithRM(instruction, rm, data->flags);
-            reg = cpu->reg8[E(rm)];
-            cpu->reg[E8(rm)].u32 = DEFAULT;
             ECX = DEFAULT;
-            *reg=data->var1;
             CL = data->var2;
+            if (cpu->big)
+                pushCode32(200);
+            else
+                pushCode16(200);
+            writed(cpu->seg[DS].address + 200, DEFAULT);
+            writeb(cpu->seg[DS].address + 200, data->var1);
+            if (i == 1) {
+                useFlags();  // for dynamic core, this will result in a different code path because the flags won't be needed
+            }
             runTestCPU();
-            assertResult(data, cpu, instruction, *reg, 0, E8(rm), -1, 0, 8);
+            result = readb(cpu->seg[DS].address + 200);
+            assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + 200, 8, i==1);
+            data++;
         }
-
-        rm = (which << 3);
-        if (cpu->big)
-            rm += 5;
-        else
-            rm += 6;
-        newInstructionWithRM(instruction, rm, data->flags);
-        ECX = DEFAULT;
-        CL = data->var2;
-        if (cpu->big)
-            pushCode32(200);
-        else
-            pushCode16(200);
-        writed(cpu->seg[DS].address + 200, DEFAULT);
-        writeb(cpu->seg[DS].address + 200, data->var1);
-        runTestCPU();
-        result = readb(cpu->seg[DS].address + 200);
-        assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + 200, 8);
-        data++;
     }
 }
 
@@ -703,45 +724,55 @@ void Ew(int instruction, int which, struct Data* data) {
 }
 
 void EwCl(int instruction, int which, struct Data* data) {
-    while (data->valid) {
-        int ew;
-        int rm;
-        U32 result;
+    struct Data* start = data;
+    for (int i = 0; i < 2; i++) {
+        while (data->valid) {
+            int ew;
+            int rm;
+            U32 result;
 
-        for (ew = 0; ew < 8; ew++) {
-            Reg* reg;
+            for (ew = 0; ew < 8; ew++) {
+                Reg* reg;
 
-            if (ew==1)
-                continue;
-            rm = ew | (which << 3) | 0xC0;
+                if (ew == 1)
+                    continue;
+                rm = ew | (which << 3) | 0xC0;
+                newInstructionWithRM(instruction, rm, data->flags);
+                reg = &cpu->reg[E(rm)];
+                reg->u32 = DEFAULT;
+                ECX = DEFAULT;
+                reg->u16 = data->var1;
+                CL = data->var2;
+                if (i == 1) {
+                    useFlags();  // for dynamic core, this will result in a different code path because the flags won't be needed
+                }
+                runTestCPU();
+                assertResult(data, cpu, instruction, reg->u16, 0, E(rm), -1, 0, 16, i==1);
+            }
+
+            rm = (which << 3);
+            if (cpu->big)
+                rm += 5;
+            else
+                rm += 6;
             newInstructionWithRM(instruction, rm, data->flags);
-            reg = &cpu->reg[E(rm)];
-            reg->u32 = DEFAULT;
             ECX = DEFAULT;
-            reg->u16=data->var1;
             CL = data->var2;
+            if (cpu->big)
+                pushCode32(200);
+            else
+                pushCode16(200);
+            writed(cpu->seg[DS].address + 200, DEFAULT);
+            writew(cpu->seg[DS].address + 200, data->var1);
+            if (i == 1) {
+                useFlags();  // for dynamic core, this will result in a different code path because the flags won't be needed
+            }
             runTestCPU();
-            assertResult(data, cpu, instruction, reg->u16, 0, E(rm), -1, 0, 16);
+            result = readw(cpu->seg[DS].address + 200);
+            assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + 200, 16, i==1);
+            data++;
         }
-
-        rm = (which << 3);
-        if (cpu->big)
-            rm += 5;
-        else
-            rm += 6;
-        newInstructionWithRM(instruction, rm, data->flags);
-        ECX = DEFAULT;
-        CL = data->var2;
-        if (cpu->big)
-            pushCode32(200);
-        else
-            pushCode16(200);
-        writed(cpu->seg[DS].address + 200, DEFAULT);
-        writew(cpu->seg[DS].address + 200, data->var1);
-        runTestCPU();
-        result = readw(cpu->seg[DS].address + 200);
-        assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + 200, 16);
-        data++;
+        data = start;
     }
 }
 
@@ -1311,43 +1342,53 @@ void Ed(int instruction, int which, struct Data* data) {
 }
 
 void EdCl(int instruction, int which, struct Data* data) {
-    while (data->valid) {
-        int ed;
-        int rm;
-        U32 result;
+    struct Data* start = data;
+    for (int i = 0; i < 2; i++) {
+        while (data->valid) {
+            int ed;
+            int rm;
+            U32 result;
 
-        for (ed = 0; ed < 8; ed++) {
-            Reg* reg;
+            for (ed = 0; ed < 8; ed++) {
+                Reg* reg;
 
-            if (ed==1)
-                continue;
-            rm = ed | (which << 3) | 0xC0;
+                if (ed == 1)
+                    continue;
+                rm = ed | (which << 3) | 0xC0;
+                newInstructionWithRM(instruction, rm, data->flags);
+                reg = &cpu->reg[ed];
+                ECX = DEFAULT;
+                reg->u32 = data->var1;
+                CL = data->var2;
+                if (i == 1) {
+                    useFlags(); // for dynamic core, this will result in a different code path because the flags won't be needed
+                }
+                runTestCPU();
+                assertResult(data, cpu, instruction, reg->u32, 0, ed, -1, 0, 32, i==1);
+            }
+
+            rm = (which << 3);
+            if (cpu->big)
+                rm += 5;
+            else
+                rm += 6;
             newInstructionWithRM(instruction, rm, data->flags);
-            reg = &cpu->reg[ed];
             ECX = DEFAULT;
-            reg->u32 = data->var1;
-            CL=data->var2;
+            CL = data->var2;
+            if (cpu->big)
+                pushCode32(200);
+            else
+                pushCode16(200);
+            writed(cpu->seg[DS].address + 200, data->var1);
+            if (i == 1) {
+                useFlags();  // for dynamic core, this will result in a different code path because the flags won't be needed
+            }
             runTestCPU();
-            assertResult(data, cpu, instruction, reg->u32, 0, ed, -1, 0, 32);
+            result = readd(cpu->seg[DS].address + 200);
+            assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + 200, 32, i == 1);
+            data++;
         }
-
-        rm = (which << 3);
-        if (cpu->big)
-            rm += 5;
-        else
-            rm += 6;
-        newInstructionWithRM(instruction, rm, data->flags);
-        ECX = DEFAULT;
-        CL = data->var2;
-        if (cpu->big)
-            pushCode32(200);
-        else
-            pushCode16(200);
-        writed(cpu->seg[DS].address + 200, data->var1);
-        runTestCPU();
-        result = readd(cpu->seg[DS].address + 200);
-        assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + 200, 32);
-        data++;
+        data = start;
     }
 }
 

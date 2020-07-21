@@ -6,6 +6,8 @@
 #include "../dynamic/dynamic.h"
 #include "knativethread.h"
 
+#define DYN_NEEDS_PUSH_POP_REG_FOR_FUNCTION_PARAMS
+
 /********************************************************/
 /* Following is required to be defined for dynamic code */
 /********************************************************/
@@ -15,9 +17,11 @@
 #define OFFSET_REG8(x) (x>=4?offsetof(CPU, reg[x-4].h8):offsetof(CPU, reg[x].u8))
 #define CPU_OFFSET_OF(x) offsetof(CPU, x)
 
+#define NUMBER_OF_REGS 8
+
 // per instruction, not per block.  
-static bool regUsed[8];
-static bool regWasUsed[8];
+static bool regUsed[NUMBER_OF_REGS];
+static bool regWasUsed[NUMBER_OF_REGS];
 
 void setRegUsed(U8 reg) {
     regUsed[reg] = true;
@@ -132,6 +136,7 @@ void movToReg(DynReg reg, DynWidth width, U32 imm);
 // to CPU
 void movToCpuFromReg(U32 dstOffset, DynReg reg, DynWidth width, bool doneWithReg);
 void movToCpu(U32 dstOffset, DynWidth dstWidth, U32 imm);
+void movToCpuPtr(U32 dstOffset, DYN_PTR_SIZE imm);
 
 // from CPU
 void movToRegFromCpu(DynReg reg, U32 srcOffset, DynWidth width);
@@ -207,7 +212,6 @@ static U8* outBuffer;
 static U32 outBufferSize;
 static U32 outBufferPos;
 
-static std::vector<U32> patch;
 static std::vector<U32> ifJump;
 
 // r14 is the link register. (The BL instruction, used in a subroutine call, stores the return address in this register.)
@@ -223,16 +227,27 @@ static std::vector<U32> ifJump;
 // the program counter, to return. 
 
 #define REG_CPU DYN_R7
-// these won't be preserved across function calls
-#define REG_LOAD_TMP DYN_R1
-#define REG_TMP_FFF_FFD DYN_R2
-#define REG_TMP_1 DYN_R3
+
 #define REG_PC 15
 #define REG_LR 14
 #define REG_SP 13
 
 // save regs R4-R7 and LR
 #define BLOCK_REGS_SAVED 0x41F0
+
+#define MIN_UNSAVED_REG 1
+#define MAX_UNSAVED_REG 3
+
+DynReg getUnsavedTmpReg() {
+    for (int i = MIN_UNSAVED_REG; i <= MAX_UNSAVED_REG; i++) {
+        if (!regUsed[i]) {
+            setRegUsed(i);
+            return (DynReg)i;
+        }
+    }
+    kpanic("Could not find unused tmp reg");
+    return (DynReg)0;
+}
 
 void ensureBufferSize(U32 grow) {
     if (!outBuffer) {
@@ -400,6 +415,10 @@ void loadConst32(U8 reg, U32 value) {
     }
 }
 
+void loadConstPtr(U8 reg, DYN_PTR_SIZE value) {
+    loadConst32(reg, value);
+}
+
 void readMem8(U8 dst, U8 src, U32 offset) {
     if (offset > 0xFFF) {
         kpanic("readMem8: offset is larger than 0xFFF: %x", offset);
@@ -431,6 +450,10 @@ void readMem32(U8 dst, U8 src, U32 offset) {
     outb(((offset >> 8) & 0xF) | (dst << 4));
     outb(0x90 | src);
     outb(0xe5);
+}
+
+void readMemPtr(U8 dst, U8 base, U64 offset) {
+    readMem32(dst, base, offset);
 }
 
 void loadFromCpuOffset8(U8 reg, U32 offset) {
@@ -479,19 +502,33 @@ void saveRegToCpuOffset32(U8 reg, U32 offset) {
     outb(0xe5);
 }
 
+void saveRegToCpuOffsetPtr(U8 reg, U32 offset) {
+    saveRegToCpuOffset32(reg, offset);
+}
+
 void saveValueToCpuOffset8(U8 value, U32 offset) {
-    loadConst32(REG_LOAD_TMP, value);
-    saveRegToCpuOffset8(REG_LOAD_TMP, offset);
+    U8 tmpReg = getUnsavedTmpReg();
+    loadConst32(tmpReg, value);
+    saveRegToCpuOffset8(tmpReg, offset);
+    clearRegUsed(tmpReg);
 }
 
 void saveValueToCpuOffset16(U16 value, U32 offset) {
-    loadConst32(REG_LOAD_TMP, value);
-    saveRegToCpuOffset16(REG_LOAD_TMP, offset);
+    U8 tmpReg = getUnsavedTmpReg();
+    loadConst32(tmpReg, value);
+    saveRegToCpuOffset16(tmpReg, offset);
+    clearRegUsed(tmpReg);
 }
 
 void saveValueToCpuOffset32(U32 value, U32 offset) {
-    loadConst32(REG_LOAD_TMP, value);
-    saveRegToCpuOffset32(REG_LOAD_TMP, offset);
+    U8 tmpReg = getUnsavedTmpReg();
+    loadConst32(tmpReg, value);
+    saveRegToCpuOffset32(tmpReg, offset);
+    clearRegUsed(tmpReg);
+}
+
+void saveValueToCpuOffsetPtr(DYN_PTR_SIZE value, U32 offset) {
+    saveValueToCpuOffset32(value, offset);
 }
 
 void addRegs32(U8 reg, U8 reg2) {
@@ -508,8 +545,10 @@ void addValue32(U8 reg, U32 value) {
         outb(0x80 | reg);
         outb(0xe2);
     } else {
-        loadConst32(REG_LOAD_TMP, value);
-        addRegs32(reg, REG_LOAD_TMP);
+        U8 tmpReg = getUnsavedTmpReg();
+        loadConst32(tmpReg, value);
+        addRegs32(reg, tmpReg);
+        clearRegUsed(tmpReg);
     }
 }
 
@@ -527,8 +566,10 @@ void subValue32(U8 reg, U32 value) {
         outb(0x40 | reg);
         outb(0xe2);
     } else {
-        loadConst32(REG_LOAD_TMP, value);
-        subRegs32(reg, REG_LOAD_TMP);
+        U8 tmpReg = getUnsavedTmpReg();
+        loadConst32(tmpReg, value);
+        subRegs32(reg, tmpReg);
+        clearRegUsed(tmpReg);
     }
 }
 
@@ -546,8 +587,10 @@ void orValue32(U8 reg, U32 value) {
         outb(0x80 | reg);
         outb(0xe3);
     } else {
-        loadConst32(REG_LOAD_TMP, value);
-        orRegs32(reg, REG_LOAD_TMP);
+        U8 tmpReg = getUnsavedTmpReg();
+        loadConst32(tmpReg, value);
+        orRegs32(reg, tmpReg);
+        clearRegUsed(tmpReg);
     }
 }
 
@@ -565,28 +608,40 @@ void xorValue32(U8 reg, U32 value) {
         outb(0x20 | reg);
         outb(0xe2);
     } else {
-        loadConst32(REG_LOAD_TMP, value);
-        xorRegs32(reg, REG_LOAD_TMP);
+        U8 tmpReg = getUnsavedTmpReg();
+        loadConst32(tmpReg, value);
+        xorRegs32(reg, tmpReg);
+        clearRegUsed(tmpReg);
     }
 }
 
-void andRegs32(U8 reg, U8 reg2) {
-    outb(reg2);
-    outb(reg << 4);
-    outb(reg);
+void andRegs32(U8 dst, U8 src1, U8 src2) {
+    outb(src1);
+    outb(dst << 4);
+    outb(src2);
     outb(0xe0);
 }
 
-void andValue32(U8 reg, U32 value) {
+void andRegs32(U8 reg, U8 reg2) {
+    andRegs32(reg, reg, reg2);
+}
+
+void andValue32(U8 reg, U8 src, U32 value) {
     if (value <= 255) {
         outb(value);
         outb(reg << 4);
-        outb(reg);
+        outb(src);
         outb(0xe2);
     } else {
-        loadConst32(REG_LOAD_TMP, value);
-        andRegs32(reg, REG_LOAD_TMP);
+        U8 tmpReg = getUnsavedTmpReg();
+        loadConst32(tmpReg, value);
+        andRegs32(reg, src, tmpReg);
+        clearRegUsed(tmpReg);
     }
+}
+
+void andValue32(U8 reg, U32 value) {
+    andValue32(reg, reg, value);
 }
 
 void negReg32(U8 reg) {
@@ -645,7 +700,7 @@ void shiftRight32WithReg(U8 reg, U8 amount) {
 }
 
 void shiftRightSigned32(U8 reg, U8 amount) {
-    // LSR reg, src, amount
+    // ASR reg, src, amount
     outb(reg | ((amount & 1) ? 0x80 : 0) | 0x40);
     outb((reg << 4) | ((amount >> 1) & 0xf));
     outb(0xa0);
@@ -653,7 +708,7 @@ void shiftRightSigned32(U8 reg, U8 amount) {
 }
 
 void shiftRightSigned32WithReg(U8 reg, U8 amount) {
-    // LSR reg, src, amount
+    // ASR reg, src, amount
     outb(reg | 0x50);
     outb((reg << 4) | amount);
     outb(0xa0);
@@ -665,6 +720,10 @@ void mov32(U8 dst, U8 src) {
     outb(dst << 4);
     outb(0xa0);
     outb(0xe1);
+}
+
+void movPtr(U8 dst, U8 src) {
+    mov32(dst, src);
 }
 
 void mov32zx16(U8 dst, U8 src) {
@@ -729,8 +788,10 @@ void cmpRegValue32(U8 reg, U32 value) {
         outb(0x50 | reg);
         outb(0xe3);
     } else {
-        loadConst32(REG_LOAD_TMP, value);
-        cmpRegs32(reg, REG_LOAD_TMP);
+        U8 tmpReg = getUnsavedTmpReg();
+        loadConst32(tmpReg, value);
+        cmpRegs32(reg, tmpReg);
+        clearRegUsed(tmpReg);
     }
 }
 
@@ -899,39 +960,39 @@ void callHostFunction(void* address, bool hasReturn, U32 argCount, U32 arg1, Dyn
 #include "../dynamic/dynamic_generic_base.h"
 
 void callHostFunction(void* address, bool hasReturn, U32 argCount, U32 arg1, DynCallParamType arg1Type, bool doneWithArg1, U32 arg2, DynCallParamType arg2Type, bool doneWithArg2, U32 arg3, DynCallParamType arg3Type, bool doneWithArg3, U32 arg4, DynCallParamType arg4Type, bool doneWithArg4, U32 arg5, DynCallParamType arg5Type, bool doneWithArg5) {
-    bool regDone[8] = { false, false, false, false, false, false, false, false };
+    bool regDone[NUMBER_OF_REGS] = { false, false, false, false, false, false, false, false };
 
     if (argCount >= 5) {
         if (isParamTypeReg(arg5Type) && doneWithArg5) {
-            if (arg5 >= 8)
+            if (arg5 >= NUMBER_OF_REGS)
                 kpanic("armv7::callHostFunction bad param 5: arg=%d argType=%d", arg5, arg5Type);
             regDone[arg5] = true;
         }
     }
     if (argCount >= 4) {
         if (isParamTypeReg(arg4Type) && doneWithArg4) {
-            if (arg4 >= 8)
+            if (arg4 >= NUMBER_OF_REGS)
                 kpanic("armv7::callHostFunction bad param 4: arg=%d argType=%d", arg4, arg4Type);
             regDone[arg4] = true;
         }
     }
     if (argCount >= 3) {
         if (isParamTypeReg(arg3Type) && doneWithArg3) {
-            if (arg3 >= 8)
+            if (arg3 >= NUMBER_OF_REGS)
                 kpanic("armv7::callHostFunction bad param 3: arg=%d argType=%d", arg3, arg3Type);
             regDone[arg3] = true;
         }
     }
     if (argCount >= 2) {
         if (isParamTypeReg(arg2Type) && doneWithArg2) {
-            if (arg2 >= 8)
+            if (arg2 >= NUMBER_OF_REGS)
                 kpanic("armv7::callHostFunction bad param 5: arg=%d argType=%d", arg2, arg2Type);
             regDone[arg2] = true;
         }
     }
     if (argCount >= 1) {
         if (isParamTypeReg(arg1Type) && doneWithArg1) {
-            if (arg1 >= 8)
+            if (arg1 >= NUMBER_OF_REGS)
                 kpanic("armv7::callHostFunction bad param 5: arg=%d argType=%d", arg1, arg1Type);
             regDone[arg1] = true;
         }
@@ -962,7 +1023,7 @@ void callHostFunction(void* address, bool hasReturn, U32 argCount, U32 arg1, Dyn
     if (argCount >= 5) {
         addValue32(REG_SP, 4);
     }
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < NUMBER_OF_REGS; i++) {
         if (regDone[i]) {
             clearRegUsed(i);
         }
