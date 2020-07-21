@@ -292,8 +292,10 @@ static void handler(int sig, siginfo_t* info, void* context)
 void platformRunThreadSlice(KThread* thread) {
     static bool initializedHandler = false;
     if (!initializedHandler) {
-        struct sigaction sa = { .sa_sigaction=handler, .sa_flags=SA_SIGINFO };
+        struct sigaction sa;
         struct sigaction oldsa;
+        sa.sa_sigaction = handler;
+        sa.sa_flags = SA_SIGINFO;
 #ifdef __MACH__
         sigaction(SIGBUS, &sa, &oldsa);
 #else

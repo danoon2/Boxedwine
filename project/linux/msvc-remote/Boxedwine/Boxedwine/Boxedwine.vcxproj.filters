@@ -1675,6 +1675,12 @@
     <ClCompile Include="..\..\..\..\..\platform\linux\dynamic.cpp">
       <Filter>platform</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8\armv8CPU.cpp">
+      <Filter>source\emulation\cpu\armv8</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8\llvm_helper.cpp">
+      <Filter>source\emulation\cpu\armv8</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
@@ -1904,6 +1910,9 @@
     </Filter>
     <Filter Include="source\emulation\cpu\armv7">
       <UniqueIdentifier>{6944181a-58b0-4f32-a45a-c1402f7892d9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\emulation\cpu\armv8">
+      <UniqueIdentifier>{a52fdd3d-8b52-48cf-a36a-268ccb39be69}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -4594,6 +4603,12 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\dynamic\dynamic_generic_base.h">
       <Filter>source\emulation\cpu\dynamic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8\armv8CPU.h">
+      <Filter>source\emulation\cpu\armv8</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8\llvm_helper.h">
+      <Filter>source\emulation\cpu\armv8</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
