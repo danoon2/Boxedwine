@@ -11,6 +11,16 @@
 /* Following is required to be defined for dynamic code */
 /********************************************************/
 
+// R0 is used for returns from function calls
+// R1 - R4 are parameters for function calls
+// R5 - R11 is tmp
+// R12 is src
+// R13 is dst
+// R14 is address
+// R15 is used to hold CPU
+
+// when calling a function, R1 (cpu) and R30 (LR) will be pushed onto the stack to save them
+// if R1-R15 is in use then they will be saved before a function call
 #define INCREMENT_EIP(x) incrementEip(x)
 
 #define OFFSET_REG8(x) (x>=4?offsetof(CPU, reg[x-4].h8):offsetof(CPU, reg[x].u8))
@@ -31,8 +41,7 @@ void clearRegUsed(U8 reg) {
 }
 
 void resetRegsUsed() {
-    memset(regUsed, 0, sizeof(regUsed));
-    memset(regWasUsed, 0, sizeof(regWasUsed));
+    memset(regUsed, 0, sizeof(regUsed));    
 }
 
 // DynReg is a required type, but the values inside are local to this file
@@ -83,9 +92,9 @@ enum DynConditionEvaluate {
 #define DYN_CALL_RESULT DYN_R0
 
 // 19-29 are preserved
-#define DYN_SRC DYN_R20
-#define DYN_DEST DYN_R21
-#define DYN_ADDRESS DYN_R22
+#define DYN_SRC DYN_R12
+#define DYN_DEST DYN_R13
+#define DYN_ADDRESS DYN_R14
 #define DYN_ANY DYN_DEST
 
 #define DYN_PTR_SIZE U64
@@ -237,11 +246,11 @@ static std::vector<U32> ifJump;
 //x8 : used to hold indirect return value address
 //x0 to x7 : used to hold argument values passed to a subroutine, and also hold results returned from a subroutine
 
-#define REG_CPU DYN_R19
+#define REG_CPU DYN_R15
 #define REG_LR 30
 
-#define MIN_UNSAVED_REG 1
-#define MAX_UNSAVED_REG 7
+#define MIN_UNSAVED_REG 5
+#define MAX_UNSAVED_REG 11
 
 DynReg getUnsavedTmpReg() {
     for (int i = MIN_UNSAVED_REG; i <= MAX_UNSAVED_REG; i++) {
@@ -1037,6 +1046,7 @@ void startBlock() {
     //pushPair(DYN_R23, REG_LR);
     movPtr(REG_CPU, DYN_R0);
     calledFunction = false;
+    memset(regWasUsed, 0, sizeof(regWasUsed));
 }
 
 void endBlock() {
@@ -1047,7 +1057,7 @@ void endBlock() {
 }
 
 void getRegsThatNeedToBeSaved(bool* regsThatNeedToBeSaved) {
-    for (int i = 19; i <= 22; i++) {
+    for (int i = 1; i <= 15; i++) {
         if (regUsed[i]) {
             regsThatNeedToBeSaved[i] = true;
         }
@@ -1075,18 +1085,24 @@ void pushRegsThatNeedToBeSaved(bool* regsThatNeedToBeSaved) {
 
 void popRegsThatNeedToBeSaved(bool* regsThatNeedToBeSaved) {
     U8 firstReg = 0xFF;
+    U32 todo[16];
+    U32 count = 0;
+
     for (int i = 0; i < NUMBER_OF_REGS; i++) {
         if (regsThatNeedToBeSaved[i]) {
             if (firstReg == 0xFF) {
                 firstReg = i;
             } else {
-                popPair(firstReg, i);
+                todo[count++] = firstReg | (i << 16);
                 firstReg = 0xFF;
             }
         }
     }
     if (firstReg != 0xFF) {
-        popPair(firstReg - 1, firstReg); // assumes firstReg is 30/LR
+        todo[count++] = (firstReg-1) | (firstReg << 16); // assumes firstReg is 30/LR        
+    }
+    for (int i = count - 1; i >= 0; i--) {
+        popPair(todo[i] & 0xFFFF, todo[i] >> 16);
     }
 }
 
@@ -1095,6 +1111,7 @@ void popRegsThatNeedToBeSaved(bool* regsThatNeedToBeSaved) {
 void callHostFunction(void* address, bool hasReturn, U32 argCount, DYN_PTR_SIZE arg1, DynCallParamType arg1Type, bool doneWithArg1, DYN_PTR_SIZE arg2, DynCallParamType arg2Type, bool doneWithArg2, DYN_PTR_SIZE arg3, DynCallParamType arg3Type, bool doneWithArg3, DYN_PTR_SIZE arg4, DynCallParamType arg4Type, bool doneWithArg4, DYN_PTR_SIZE arg5, DynCallParamType arg5Type, bool doneWithArg5) {
     bool regDone[NUMBER_OF_REGS] = { 0 };
     calledFunction = true;
+    
     if (argCount >= 5) {
         if (isParamTypeReg(arg5Type) && doneWithArg5) {
             if (arg5 >= NUMBER_OF_REGS)
@@ -1131,6 +1148,16 @@ void callHostFunction(void* address, bool hasReturn, U32 argCount, DYN_PTR_SIZE 
         }
     }
 
+    bool regsThatNeedToBeSaved[NUMBER_OF_REGS];
+    memset(regsThatNeedToBeSaved, 0, sizeof(regsThatNeedToBeSaved));
+    getRegsThatNeedToBeSaved(regsThatNeedToBeSaved);
+    for (int i = 0; i < NUMBER_OF_REGS; i++) {
+        if (regDone[i]) {
+            regsThatNeedToBeSaved[i]=false;
+        }
+    }
+    pushRegsThatNeedToBeSaved(regsThatNeedToBeSaved);
+
     if (argCount >= 5) {
         setValue(arg5, arg4Type, 4);
     }
@@ -1139,13 +1166,13 @@ void callHostFunction(void* address, bool hasReturn, U32 argCount, DYN_PTR_SIZE 
     }
     if (argCount >= 3) {
         setValue(arg3, arg3Type, 2);
-    }
+    }    
     if (argCount >= 2) {
         setValue(arg2, arg2Type, 1);
     }
     if (argCount >= 1) {
         setValue(arg1, arg1Type, 0);
-    }
+    }        
     for (int i = MIN_UNSAVED_REG; i <= MAX_UNSAVED_REG; i++) {
         if (regUsed[i] && !regDone[i]) {
             kpanic("Unsaved reg in use while calling function");
@@ -1154,21 +1181,17 @@ void callHostFunction(void* address, bool hasReturn, U32 argCount, DYN_PTR_SIZE 
     if (regUsed[DYN_CALL_RESULT] && !hasReturn && !regDone[DYN_CALL_RESULT]) {
         kpanic("Unsaved reg 0 in use while calling function");
     }    
-    // reg can't be R0-R5 because that is used for params 
-    // dyn_src, dyn_dest, dyn_address need to be preserved    
-    loadConstPtr(DYN_R6, (DYN_PTR_SIZE)address);
+    U8 tmp = getUnsavedTmpReg();
+    loadConstPtr(tmp, (DYN_PTR_SIZE)address);
 
     for (int i = 0; i < NUMBER_OF_REGS; i++) {
         if (regDone[i]) {
             clearRegUsed(i);
         }
-    }
-    bool regsThatNeedToBeSaved[NUMBER_OF_REGS];
-    memset(regsThatNeedToBeSaved, 0, sizeof(regsThatNeedToBeSaved));
-    getRegsThatNeedToBeSaved(regsThatNeedToBeSaved);
-    pushRegsThatNeedToBeSaved(regsThatNeedToBeSaved);
+    }    
 
-    callFunctionReg32(DYN_R6);
+    callFunctionReg32(tmp);
+    clearRegUsed(tmp);
 
     popRegsThatNeedToBeSaved(regsThatNeedToBeSaved);    
 

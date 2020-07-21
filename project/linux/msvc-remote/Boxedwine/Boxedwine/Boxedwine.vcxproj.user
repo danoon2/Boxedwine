@@ -55,5 +55,10 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
     <RemoteTarget>-1277036696;192.168.1.34 (username=, port=22, authentication=Password)</RemoteTarget>
+    <PreLaunchCommand>export DISPLAY=:0</PreLaunchCommand>
+    <DebuggerFlavor>LinuxDebugger</DebuggerFlavor>
+    <RemoteDebuggerCommand>projects/Boxedwine/project/linux/msvc-remote/Boxedwine/Boxedwine/bin/ARM64/Release/Boxedwine.out</RemoteDebuggerCommand>
+    <RemoteDebuggerCommandArguments>-zip /home/pi/.local/share/Boxedwine/FileSystems/Wine-5.0.zip -root /home/pi/.local/share/Boxedwine/Containers/Default/root /bin/wine notepad.exe</RemoteDebuggerCommandArguments>
+    <RemoteDebuggerWorkingDirectory>projects/Boxedwine/project/linux/msvc-remote/Boxedwine/Boxedwine/bin/ARM64/Release</RemoteDebuggerWorkingDirectory>
   </PropertyGroup>
 </Project>
