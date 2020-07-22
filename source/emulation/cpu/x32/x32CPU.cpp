@@ -108,6 +108,7 @@ void movToReg(DynReg reg, DynWidth width, U32 imm);
 // to CPU
 void movToCpuFromReg(U32 dstOffset, DynReg reg, DynWidth width, bool doneWithReg);
 void movToCpu(U32 dstOffset, DynWidth dstWidth, U32 imm);
+void movToCpuPtr(U32 dstOffset, DYN_PTR_SIZE imm) {movToCpu(dstOffset, DYN_32bit, imm);}
 
 // from CPU
 void movToRegFromCpu(DynReg reg, U32 srcOffset, DynWidth width);
