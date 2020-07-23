@@ -730,10 +730,31 @@ void endIf() {
 }
 
 void evaluateToReg(DynReg reg, DynWidth dstWidth, DynReg left, bool isRightConst, DynReg right, U32 rightConst, DynWidth regWidth, DynConditionEvaluate condition, bool doneWithLeftReg, bool doneWithRightReg) {
-    // cmp left, right
+    bool signedCompare = (condition == DYN_LESS_THAN_SIGNED) || (condition == DYN_LESS_THAN_EQUAL_SIGNED);
+    if (signedCompare) {
+        if (regWidth == DYN_16bit) {
+            mov32sx16(left, left);
+        } else if (regWidth == DYN_8bit) {
+            mov32sx8(left, left);
+        }
+    }
     if (isRightConst) {
+        if (signedCompare) {
+            if (regWidth == DYN_16bit) {
+                rightConst = (U32)(S32)(((S16)rightConst));
+            } else if (regWidth == DYN_8bit) {
+                rightConst = (U32)(S32)(((S8)rightConst));
+            }
+        }
         cmpRegValue32(left, rightConst);
     } else {
+        if (signedCompare) {
+            if (regWidth == DYN_16bit) {
+                mov32sx16(left, left);
+            } else if (regWidth == DYN_8bit) {
+                mov32sx8(left, left);
+            }
+        }
         cmpRegs32(left, right);
     }
     evaluateCondition(reg, condition);
