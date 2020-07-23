@@ -21,7 +21,7 @@
 
 // when calling a function, R1 (cpu) and R30 (LR) will be pushed onto the stack to save them
 // if R1-R15 is in use then they will be saved before a function call
-#define INCREMENT_EIP(x) incrementEip(x)
+#define INCREMENT_EIP(data, op) incrementEip(data, op)
 
 #define OFFSET_REG8(x) (x>=4?offsetof(CPU, reg[x-4].h8):offsetof(CPU, reg[x].u8))
 #define CPU_OFFSET_OF(x) offsetof(CPU, x)
@@ -30,10 +30,13 @@
 #define NUMBER_OF_REGS 32
 static bool regUsed[NUMBER_OF_REGS];
 static bool regWasUsed[NUMBER_OF_REGS];
+static bool regContainsValue[NUMBER_OF_REGS];
+static U64 regValue[NUMBER_OF_REGS];
 
 void setRegUsed(U8 reg) {
     regUsed[reg] = true;
     regWasUsed[reg] = true;
+    regContainsValue[reg] = false;
 }
 
 void clearRegUsed(U8 reg) {
@@ -208,7 +211,8 @@ void blockNext2();
 /********************************************************/
 
 // referenced in macro above
-void incrementEip(U32 inc);
+void incrementEip(DynamicData* data, DecodedOp* op);
+void incrementEip(DynamicData* data, U32 len);
 
 #include "../normal/instructions.h"
 #include "../common/common_arith.h"
@@ -253,6 +257,12 @@ static std::vector<U32> ifJump;
 #define MAX_UNSAVED_REG 11
 
 DynReg getUnsavedTmpReg() {
+    for (int i = MIN_UNSAVED_REG; i <= MAX_UNSAVED_REG; i++) {
+        if (!regUsed[i] && !regContainsValue[i]) {
+            setRegUsed(i);
+            return (DynReg)i;
+        }
+    }
     for (int i = MIN_UNSAVED_REG; i <= MAX_UNSAVED_REG; i++) {
         if (!regUsed[i]) {
             setRegUsed(i);
@@ -376,10 +386,76 @@ void loadConstPtr(U8 reg, U64 value) {
             movk(reg, (U16)(value >> 48), 48);
         }
     }
+    if (ifJump.size() == 0) {
+        // don't cache value that are conditionally set
+        regContainsValue[reg] = true;
+        regValue[reg] = value;
+    } else {
+        regContainsValue[reg] = false;
+    }
 }
 
 void loadConst32(U8 reg, U32 value) {
     loadConstPtr(reg, value);
+}
+
+U8 getRegWithConstPtr(U64 value) {
+    // if there is a register that already contains the value, then just use it without reloading the value
+    for (int i = 0; i < NUMBER_OF_REGS; i++) {
+        if (regContainsValue[i] && regValue[i] == value && !regUsed[i]) {
+            regUsed[i] = true;
+            return i;
+        }
+    }
+    U8 tmp = 0xFF;
+    static U8 lastConst;
+
+    // This is meant to be a cheap least recently used register
+    //
+    // If the dynamic recompiler ever most to a 2 pass solution, then this could be greatly optimized
+    //
+    // Save the bottom 3 tmp regs for SRC, DST and ADDRESS so that there is less thrashing
+    for (int i = MIN_UNSAVED_REG+3; i <= MAX_UNSAVED_REG; i++) {
+        if (!regUsed[i] && !regContainsValue[i]) {
+            tmp = i;
+            regUsed[i] = true;
+            regWasUsed[i] = true;
+            break;
+        }
+    }
+    if (tmp == 0xFF) {
+        if (lastConst) {
+            for (int i = lastConst+1; i <= MAX_UNSAVED_REG; i++) {
+                if (!regUsed[i]) {
+                    tmp = i;
+                    regUsed[i] = true;
+                    regWasUsed[i] = true;
+                    break;
+                }
+            }
+        }
+        if (tmp == 0xFF) {
+            for (int i = MIN_UNSAVED_REG + 3; i <= MAX_UNSAVED_REG; i++) {
+                if (!regUsed[i]) {
+                    tmp = i;
+                    regUsed[i] = true;
+                    regWasUsed[i] = true;
+                    break;
+                }
+            }
+        }
+    }
+    if (tmp == 0xFF) {
+        tmp = getUnsavedTmpReg();
+    } else {
+        lastConst = tmp;
+    }
+    loadConstPtr(tmp, value);
+    return tmp;
+}
+
+U8 getRegWithConst(U32 value) {
+    return getRegWithConstPtr(value);
 }
 
 void readMem8(U8 dst, U8 base, U64 offset) {    
@@ -404,8 +480,7 @@ void readMem8(U8 dst, U8 base, U64 offset) {
 
 void readMem16(U8 dst, U8 base, U64 offset) {    
     if (offset > 0xFF) {
-        U8 tmp = getUnsavedTmpReg();
-        loadConstPtr(tmp, offset);
+        U8 tmp = getRegWithConstPtr(offset);
 
         // LDRH
         outb(dst | (U8)(base << 5));
@@ -424,8 +499,7 @@ void readMem16(U8 dst, U8 base, U64 offset) {
 
 void readMem32(U8 dst, U8 base, U64 offset) {    
     if (offset > 0xFF) {
-        U8 tmp = getUnsavedTmpReg();
-        loadConstPtr(tmp, offset);
+        U8 tmp = getRegWithConstPtr(offset);
 
         // LDR
         outb(dst | (U8)(base << 5));
@@ -444,8 +518,7 @@ void readMem32(U8 dst, U8 base, U64 offset) {
 
 void readMem64(U8 dst, U8 base, U64 offset) {    
     if (offset > 0xFF) {
-        U8 tmp = getUnsavedTmpReg();
-        loadConstPtr(tmp, offset);
+        U8 tmp = getRegWithConstPtr(offset);
 
         // LDR
         outb(dst | (U8)(base << 5));
@@ -468,8 +541,7 @@ void readMemPtr(U8 dst, U8 base, U64 offset) {
 
 void writeMem8(U8 dst, U8 base, U64 offset) { 
     if (offset > 0xFF) {
-        U8 tmp = getUnsavedTmpReg();
-        loadConstPtr(tmp, offset);
+        U8 tmp = getRegWithConstPtr(offset);
 
         // STRB
         outb(dst | (U8)(base << 5));
@@ -488,8 +560,7 @@ void writeMem8(U8 dst, U8 base, U64 offset) {
 
 void writeMem16(U8 dst, U8 base, U64 offset) {    
     if (offset > 0xFF) {
-        U8 tmp = getUnsavedTmpReg();
-        loadConstPtr(tmp, offset);
+        U8 tmp = getRegWithConstPtr(offset);
 
         // STRH
         outb(dst | (U8)(base << 5));
@@ -508,8 +579,7 @@ void writeMem16(U8 dst, U8 base, U64 offset) {
 
 void writeMem32(U8 dst, U8 base, U64 offset) {    
     if (offset > 0xFF) {
-        U8 tmp = getUnsavedTmpReg();
-        loadConstPtr(tmp, offset);
+        U8 tmp = getRegWithConstPtr(offset);
 
         // STR
         outb(dst | (U8)(base << 5));
@@ -528,8 +598,7 @@ void writeMem32(U8 dst, U8 base, U64 offset) {
 
 void writeMem64(U8 dst, U8 base, U64 offset) {    
     if (offset > 0xFF) {
-        U8 tmp = getUnsavedTmpReg();
-        loadConstPtr(tmp, offset);
+        U8 tmp = getRegWithConstPtr(offset);
 
         // STR
         outb(dst | (U8)(base << 5));
@@ -579,29 +648,25 @@ void saveRegToCpuOffsetPtr(U8 reg, U32 offset) {
 }
 
 void saveValueToCpuOffset8(U8 value, U32 offset) {
-    U8 reg = getUnsavedTmpReg();
-    loadConst32(reg, value);
+    U8 reg = getRegWithConst(value);
     saveRegToCpuOffset8(reg, offset);
     clearRegUsed(reg);
 }
 
 void saveValueToCpuOffset16(U16 value, U32 offset) {
-    U8 reg = getUnsavedTmpReg();
-    loadConst32(reg, value);
+    U8 reg = getRegWithConst(value);
     saveRegToCpuOffset16(reg, offset);
     clearRegUsed(reg);
 }
 
 void saveValueToCpuOffset32(U32 value, U32 offset) {
-    U8 reg = getUnsavedTmpReg();
-    loadConst32(reg, value);
+    U8 reg = getRegWithConst(value);
     saveRegToCpuOffset32(reg, offset);
     clearRegUsed(reg);
 }
 
 void saveValueToCpuOffset64(U64 value, U32 offset) {
-    U8 reg = getUnsavedTmpReg();
-    loadConstPtr(reg, value);
+    U8 reg = getRegWithConstPtr(value);
     saveRegToCpuOffset64(reg, offset);
     clearRegUsed(reg);
 }
@@ -638,8 +703,7 @@ void addValue32(U8 reg, U32 value) {
         outb(value >> 6);
         outb(0x11); // 11 is 32-bit version (91 is 64-bit version)
     } else {
-        U8 tmp = getUnsavedTmpReg();
-        loadConst32(tmp, value);
+        U8 tmp = getRegWithConst(value);
         addRegs32(reg, tmp);
         clearRegUsed(tmp);
     }
@@ -659,8 +723,7 @@ void subValue32(U8 reg, U32 value) {
         outb(value >> 6);
         outb(0x51); // 51 is 32-bit version (d1 is 64-bit)
     } else {
-        U8 tmp = getUnsavedTmpReg();
-        loadConst32(tmp, value);
+        U8 tmp = getRegWithConst(value);
         subRegs32(reg, tmp);
         clearRegUsed(tmp);
     }
@@ -684,8 +747,7 @@ void orValue32(U8 reg, U32 value) {
         outb((U8)(immr));
         outb(0x32); // 32 is 32-bit version (b2 is 64-bit)
     } else {
-        U8 tmp = getUnsavedTmpReg();
-        loadConst32(tmp, value);
+        U8 tmp = getRegWithConst(value);
         orRegs32(reg, tmp);
         clearRegUsed(tmp);
     }
@@ -709,8 +771,7 @@ void xorValue32(U8 reg, U32 value) {
         outb((U8)(immr));
         outb(0x52); // 52 is 32-bit version (d2 is 64-bit)
     } else {
-        U8 tmp = getUnsavedTmpReg();
-        loadConst32(tmp, value);
+        U8 tmp = getRegWithConst(value);
         xorRegs32(reg, tmp);
         clearRegUsed(tmp);
     }
@@ -738,8 +799,7 @@ void andValue32(U8 dst, U8 src, U32 value) {
         outb((U8)(immr));
         outb(0x12); // 12 is 32-bit version (92 is 64-bit)
     } else {
-        U8 tmp = getUnsavedTmpReg();
-        loadConst32(tmp, value);
+        U8 tmp = getRegWithConst(value);
         andRegs32(dst, src, tmp);
         clearRegUsed(tmp);
     }
@@ -889,8 +949,7 @@ void cmpRegValue32(U8 reg, U32 value) {
         outb(value >> 6);
         outb(0x71); // 51 is 32-bit version (f1 is 64-bit)
     } else {
-        U8 tmp = getUnsavedTmpReg();
-        loadConst32(tmp, value);
+        U8 tmp = getRegWithConst(value);
         subRegs32(reg, tmp);
         clearRegUsed(tmp);
     }
@@ -1047,6 +1106,7 @@ void startBlock() {
     movPtr(REG_CPU, DYN_R0);
     calledFunction = false;
     memset(regWasUsed, 0, sizeof(regWasUsed));
+    memset(regContainsValue, 0, sizeof(regContainsValue));
 }
 
 void endBlock() {
@@ -1181,8 +1241,7 @@ void callHostFunction(void* address, bool hasReturn, U32 argCount, DYN_PTR_SIZE 
     if (regUsed[DYN_CALL_RESULT] && !hasReturn && !regDone[DYN_CALL_RESULT]) {
         kpanic("Unsaved reg 0 in use while calling function");
     }    
-    U8 tmp = getUnsavedTmpReg();
-    loadConstPtr(tmp, (DYN_PTR_SIZE)address);
+    U8 tmp = getRegWithConstPtr((DYN_PTR_SIZE)address);
 
     for (int i = 0; i < NUMBER_OF_REGS; i++) {
         if (regDone[i]) {
@@ -1194,7 +1253,7 @@ void callHostFunction(void* address, bool hasReturn, U32 argCount, DYN_PTR_SIZE 
     clearRegUsed(tmp);
 
     popRegsThatNeedToBeSaved(regsThatNeedToBeSaved);    
-
+    memset(regContainsValue, 0, sizeof(regContainsValue));
     if (hasReturn) {
         regUsed[DYN_CALL_RESULT] = true;
     }

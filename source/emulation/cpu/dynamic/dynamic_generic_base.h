@@ -812,8 +812,24 @@ void setMem(DynamicData* data, DynReg addressReg, DynWidth regWidth, DynConditio
     movToMemFromReg(addressReg, DYN_CALL_RESULT, regWidth, doneWithAddressReg, true);
 }
 
-void incrementEip(U32 inc) {
+void incrementEip(DynamicData* data, U32 inc) {
+    if (data->skipEipUpdateLen) {
+        kpanic("incrementEip had an unexpected update");
+    }
     instCPUImm('+', offsetof(CPU, eip.u32), DYN_32bit, inc);
+}
+
+void incrementEip(DynamicData* data, DecodedOp* op) {
+    if (op->next) {
+        const InstructionInfo& info = instructionInfo[op->next->inst];
+        if (!info.branch && !info.readMemWidth && !info.writeMemWidth && !info.throwsException) {
+            data->skipEipUpdateLen += op->len;
+            return;
+        }
+    }
+    U32 len = op->len + data->skipEipUpdateLen;
+    data->skipEipUpdateLen = 0;
+    instCPUImm('+', offsetof(CPU, eip.u32), DYN_32bit, len);
 }
 
 void blockDone() {

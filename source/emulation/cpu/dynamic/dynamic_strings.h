@@ -13,7 +13,7 @@ void dynamic_movsb_op(DynamicData* data, DecodedOp* op) {
             callHostFunction((void*)movsb32, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         }
     }
-    INCREMENT_EIP(op->len);
+    INCREMENT_EIP(data, op);
 }
 void dynamic_movsw_op(DynamicData* data, DecodedOp* op) {
     if (op->ea16) {
@@ -29,7 +29,7 @@ void dynamic_movsw_op(DynamicData* data, DecodedOp* op) {
             callHostFunction((void*)movsw32, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         }
     }
-    INCREMENT_EIP(op->len);
+    INCREMENT_EIP(data, op);
 }
 void dynamic_movsd_op(DynamicData* data, DecodedOp* op) {
     if (op->ea16) {
@@ -45,7 +45,7 @@ void dynamic_movsd_op(DynamicData* data, DecodedOp* op) {
             callHostFunction((void*)movsd32, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         }
     }
-    INCREMENT_EIP(op->len);
+    INCREMENT_EIP(data, op);
 }
 void dynamic_cmpsb_op(DynamicData* data, DecodedOp* op) {
     if (op->ea16) {
@@ -65,7 +65,7 @@ void dynamic_cmpsb_op(DynamicData* data, DecodedOp* op) {
             data->currentLazyFlags=FLAGS_SUB8;
         }
     }
-    INCREMENT_EIP(op->len);
+    INCREMENT_EIP(data, op);
 }
 void dynamic_cmpsw_op(DynamicData* data, DecodedOp* op) {
     if (op->ea16) {
@@ -85,7 +85,7 @@ void dynamic_cmpsw_op(DynamicData* data, DecodedOp* op) {
             data->currentLazyFlags=FLAGS_SUB16;
         }
     }
-    INCREMENT_EIP(op->len);
+    INCREMENT_EIP(data, op);
 }
 void dynamic_cmpsd_op(DynamicData* data, DecodedOp* op) {
     if (op->ea16) {
@@ -105,7 +105,7 @@ void dynamic_cmpsd_op(DynamicData* data, DecodedOp* op) {
             data->currentLazyFlags=FLAGS_SUB32;
         }
     }
-    INCREMENT_EIP(op->len);
+    INCREMENT_EIP(data, op);
 }
 void dynamic_stosb_op(DynamicData* data, DecodedOp* op) {
     if (op->ea16) {
@@ -121,7 +121,7 @@ void dynamic_stosb_op(DynamicData* data, DecodedOp* op) {
             callHostFunction((void*)stosb32, false, 1, 0, DYN_PARAM_CPU, false);
         }
     }
-    INCREMENT_EIP(op->len);
+    INCREMENT_EIP(data, op);
 }
 void dynamic_stosw_op(DynamicData* data, DecodedOp* op) {
     if (op->ea16) {
@@ -137,7 +137,7 @@ void dynamic_stosw_op(DynamicData* data, DecodedOp* op) {
             callHostFunction((void*)stosw32, false, 1, 0, DYN_PARAM_CPU, false);
         }
     }
-    INCREMENT_EIP(op->len);
+    INCREMENT_EIP(data, op);
 }
 void dynamic_stosd_op(DynamicData* data, DecodedOp* op) {
     if (op->ea16) {
@@ -153,7 +153,7 @@ void dynamic_stosd_op(DynamicData* data, DecodedOp* op) {
             callHostFunction((void*)stosd32, false, 1, 0, DYN_PARAM_CPU, false);
         }
     }
-    INCREMENT_EIP(op->len);
+    INCREMENT_EIP(data, op);
 }
 void dynamic_lodsb_op(DynamicData* data, DecodedOp* op) {
     if (op->ea16) {
@@ -169,7 +169,7 @@ void dynamic_lodsb_op(DynamicData* data, DecodedOp* op) {
             callHostFunction((void*)lodsb32, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         }
     }
-    INCREMENT_EIP(op->len);
+    INCREMENT_EIP(data, op);
 }
 void dynamic_lodsw_op(DynamicData* data, DecodedOp* op) {
     if (op->ea16) {
@@ -185,7 +185,7 @@ void dynamic_lodsw_op(DynamicData* data, DecodedOp* op) {
             callHostFunction((void*)lodsw32, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         }
     }
-    INCREMENT_EIP(op->len);
+    INCREMENT_EIP(data, op);
 }
 void dynamic_lodsd_op(DynamicData* data, DecodedOp* op) {
     if (op->ea16) {
@@ -201,7 +201,7 @@ void dynamic_lodsd_op(DynamicData* data, DecodedOp* op) {
             callHostFunction((void*)lodsd32, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         }
     }
-    INCREMENT_EIP(op->len);
+    INCREMENT_EIP(data, op);
 }
 void dynamic_scasb_op(DynamicData* data, DecodedOp* op) {
     if (op->ea16) {
@@ -221,7 +221,7 @@ void dynamic_scasb_op(DynamicData* data, DecodedOp* op) {
             data->currentLazyFlags=FLAGS_SUB8;
         }
     }
-    INCREMENT_EIP(op->len);
+    INCREMENT_EIP(data, op);
 }
 void dynamic_scasw_op(DynamicData* data, DecodedOp* op) {
     if (op->ea16) {
@@ -241,7 +241,7 @@ void dynamic_scasw_op(DynamicData* data, DecodedOp* op) {
             data->currentLazyFlags=FLAGS_SUB16;
         }
     }
-    INCREMENT_EIP(op->len);
+    INCREMENT_EIP(data, op);
 }
 void dynamic_scasd_op(DynamicData* data, DecodedOp* op) {
     if (op->ea16) {
@@ -261,5 +261,5 @@ void dynamic_scasd_op(DynamicData* data, DecodedOp* op) {
             data->currentLazyFlags=FLAGS_SUB32;
         }
     }
-    INCREMENT_EIP(op->len);
+    INCREMENT_EIP(data, op);
 }

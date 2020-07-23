@@ -5,10 +5,11 @@
 
 class DynamicData {
 public:
-    DynamicData() : cpu(NULL), skipToOp(NULL), block(NULL), done(false), currentLazyFlags(NULL) {}
+    DynamicData() : cpu(NULL), skipToOp(NULL), block(NULL), skipEipUpdateLen(0), done(false), currentLazyFlags(NULL) {}
     CPU* cpu;
     DecodedOp* skipToOp;
     DecodedBlock* block;
+    U32 skipEipUpdateLen;
     bool done;
     const LazyFlags* currentLazyFlags;
 };

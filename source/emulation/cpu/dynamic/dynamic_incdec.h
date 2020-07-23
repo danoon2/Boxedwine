@@ -11,7 +11,7 @@ void dynamic_inc8_reg(DynamicData* data, DecodedOp* op) {
         movToCpuPtr(CPU_OFFSET_OF(lazyFlags), (DYN_PTR_SIZE)FLAGS_INC8);
         data->currentLazyFlags=FLAGS_INC8;
     }
-    INCREMENT_EIP(op->len);
+    INCREMENT_EIP(data, op);
 }
 void dynamic_inc8_mem32(DynamicData* data, DecodedOp* op) {    
     if (!op->needsToSetFlags()) {
@@ -28,7 +28,7 @@ void dynamic_inc8_mem32(DynamicData* data, DecodedOp* op) {
         movToCpuPtr(CPU_OFFSET_OF(lazyFlags), (DYN_PTR_SIZE)FLAGS_INC8);
         data->currentLazyFlags=FLAGS_INC8;
     }
-    INCREMENT_EIP(op->len);
+    INCREMENT_EIP(data, op);
 }
 void dynamic_inc16_reg(DynamicData* data, DecodedOp* op) {
     if (!op->needsToSetFlags()) {
@@ -43,7 +43,7 @@ void dynamic_inc16_reg(DynamicData* data, DecodedOp* op) {
         movToCpuPtr(CPU_OFFSET_OF(lazyFlags), (DYN_PTR_SIZE)FLAGS_INC16);
         data->currentLazyFlags=FLAGS_INC16;
     }
-    INCREMENT_EIP(op->len);
+    INCREMENT_EIP(data, op);
 }
 void dynamic_inc16_mem32(DynamicData* data, DecodedOp* op) {    
     if (!op->needsToSetFlags()) {
@@ -60,7 +60,7 @@ void dynamic_inc16_mem32(DynamicData* data, DecodedOp* op) {
         movToCpuPtr(CPU_OFFSET_OF(lazyFlags), (DYN_PTR_SIZE)FLAGS_INC16);
         data->currentLazyFlags=FLAGS_INC16;
     }
-    INCREMENT_EIP(op->len);
+    INCREMENT_EIP(data, op);
 }
 void dynamic_inc32_reg(DynamicData* data, DecodedOp* op) {
     if (!op->needsToSetFlags()) {
@@ -75,7 +75,7 @@ void dynamic_inc32_reg(DynamicData* data, DecodedOp* op) {
         movToCpuPtr(CPU_OFFSET_OF(lazyFlags), (DYN_PTR_SIZE)FLAGS_INC32);
         data->currentLazyFlags=FLAGS_INC32;
     }
-    INCREMENT_EIP(op->len);
+    INCREMENT_EIP(data, op);
 }
 void dynamic_inc32_mem32(DynamicData* data, DecodedOp* op) {    
     if (!op->needsToSetFlags()) {
@@ -92,7 +92,7 @@ void dynamic_inc32_mem32(DynamicData* data, DecodedOp* op) {
         movToCpuPtr(CPU_OFFSET_OF(lazyFlags), (DYN_PTR_SIZE)FLAGS_INC32);
         data->currentLazyFlags=FLAGS_INC32;
     }
-    INCREMENT_EIP(op->len);
+    INCREMENT_EIP(data, op);
 }
 void dynamic_dec8_reg(DynamicData* data, DecodedOp* op) {
     if (!op->needsToSetFlags()) {
@@ -107,7 +107,7 @@ void dynamic_dec8_reg(DynamicData* data, DecodedOp* op) {
         movToCpuPtr(CPU_OFFSET_OF(lazyFlags), (DYN_PTR_SIZE)FLAGS_DEC8);
         data->currentLazyFlags=FLAGS_DEC8;
     }
-    INCREMENT_EIP(op->len);
+    INCREMENT_EIP(data, op);
 }
 void dynamic_dec8_mem32(DynamicData* data, DecodedOp* op) {    
     if (!op->needsToSetFlags()) {
@@ -124,7 +124,7 @@ void dynamic_dec8_mem32(DynamicData* data, DecodedOp* op) {
         movToCpuPtr(CPU_OFFSET_OF(lazyFlags), (DYN_PTR_SIZE)FLAGS_DEC8);
         data->currentLazyFlags=FLAGS_DEC8;
     }
-    INCREMENT_EIP(op->len);
+    INCREMENT_EIP(data, op);
 }
 void dynamic_dec16_reg(DynamicData* data, DecodedOp* op) {
     if (!op->needsToSetFlags()) {
@@ -139,7 +139,7 @@ void dynamic_dec16_reg(DynamicData* data, DecodedOp* op) {
         movToCpuPtr(CPU_OFFSET_OF(lazyFlags), (DYN_PTR_SIZE)FLAGS_DEC16);
         data->currentLazyFlags=FLAGS_DEC16;
     }
-    INCREMENT_EIP(op->len);
+    INCREMENT_EIP(data, op);
 }
 void dynamic_dec16_mem32(DynamicData* data, DecodedOp* op) {    
     if (!op->needsToSetFlags()) {
@@ -156,7 +156,7 @@ void dynamic_dec16_mem32(DynamicData* data, DecodedOp* op) {
         movToCpuPtr(CPU_OFFSET_OF(lazyFlags), (DYN_PTR_SIZE)FLAGS_DEC16);
         data->currentLazyFlags=FLAGS_DEC16;
     }
-    INCREMENT_EIP(op->len);
+    INCREMENT_EIP(data, op);
 }
 void dynamic_dec32_reg(DynamicData* data, DecodedOp* op) {
     if (!op->needsToSetFlags()) {
@@ -171,7 +171,7 @@ void dynamic_dec32_reg(DynamicData* data, DecodedOp* op) {
         movToCpuPtr(CPU_OFFSET_OF(lazyFlags), (DYN_PTR_SIZE)FLAGS_DEC32);
         data->currentLazyFlags=FLAGS_DEC32;
     }
-    INCREMENT_EIP(op->len);
+    INCREMENT_EIP(data, op);
 }
 void dynamic_dec32_mem32(DynamicData* data, DecodedOp* op) {    
     if (!op->needsToSetFlags()) {
@@ -188,5 +188,5 @@ void dynamic_dec32_mem32(DynamicData* data, DecodedOp* op) {
         movToCpuPtr(CPU_OFFSET_OF(lazyFlags), (DYN_PTR_SIZE)FLAGS_DEC32);
         data->currentLazyFlags=FLAGS_DEC32;
     }
-    INCREMENT_EIP(op->len);
+    INCREMENT_EIP(data, op);
 }

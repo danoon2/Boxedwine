@@ -12,7 +12,7 @@
 /* Following is required to be defined for dynamic code */
 /********************************************************/
 
-#define INCREMENT_EIP(x) incrementEip(x)
+#define INCREMENT_EIP(data, op) incrementEip(data, op)
 
 #define OFFSET_REG8(x) (x>=4?offsetof(CPU, reg[x-4].h8):offsetof(CPU, reg[x].u8))
 #define CPU_OFFSET_OF(x) offsetof(CPU, x)
@@ -185,7 +185,8 @@ void blockNext2();
 /********************************************************/
 
 // referenced in macro above
-void incrementEip(U32 inc);
+void incrementEip(DynamicData* data, DecodedOp* op);
+void incrementEip(DynamicData* data, U32 len);
 
 #include "../normal/instructions.h"
 #include "../common/common_arith.h"
