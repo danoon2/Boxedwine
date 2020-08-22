@@ -748,7 +748,7 @@ void KNativeWindowSdl::displayChanged(KThread* thread) {
 }
 
 void KNativeWindowSdl::glSwapBuffers(KThread* thread) {
-    SDL_GL_SwapWindow(window);
+    //not required? SDL_GL_SwapWindow(window);
 }
 
 #if defined(BOXEDWINE_RECORDER) || ! defined(BOXEDWINE_64BIT_MMU)
