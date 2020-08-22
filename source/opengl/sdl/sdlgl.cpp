@@ -24,6 +24,9 @@
 #include <stdio.h>
 #include <SDL.h>
 #include "knativewindow.h"
+#ifdef __EMSCRIPTEN__
+#include "GL/Regal.h"
+#endif
 
 int extLoaded = 0;
 
@@ -68,7 +71,7 @@ void sdl_glXCreateContext(CPU* cpu) {
     U32 accum = ARG3;
     U32 stencil = ARG2;
     U32 depth = ARG1;	
-
+/*
     SDL_GL_SetAttribute( SDL_GL_RED_SIZE, 8 );
     SDL_GL_SetAttribute( SDL_GL_GREEN_SIZE, 8 );
     SDL_GL_SetAttribute( SDL_GL_BLUE_SIZE, 8 );
@@ -83,6 +86,13 @@ void sdl_glXCreateContext(CPU* cpu) {
 
     //SDL_GL_SetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, 2 ); 
     //SDL_GL_SetAttribute( SDL_GL_CONTEXT_MINOR_VERSION, 1 );
+    */
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+    SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+    RegalMakeCurrent((RegalSystemContext)1);
+    
     EAX = 0x1000;	
 }
 

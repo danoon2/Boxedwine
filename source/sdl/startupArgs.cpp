@@ -35,10 +35,6 @@
 
 #define mdev(x,y) ((x << 8) | y)
 
-#ifdef __EMSCRIPTEN__
-extern "C" void initialize_gl4es();
-#endif
-
 void gl_init(const std::string& allowExtensions);
 void initWine();
 
@@ -409,9 +405,6 @@ bool StartUpArgs::apply() {
 
 #if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
     gl_init(this->glExt);
-#ifdef __EMSCRIPTEN__
-    initialize_gl4es();
-#endif
 #endif
 
     if (this->args.size()) {
