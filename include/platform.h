@@ -163,6 +163,6 @@ void PlaySysex(U8 * sysex,U32 len);
 #define VECTOR_REMOVE(v, o) v.erase(std::remove(v.begin(), v.end(), o), v.end())
 #define VECTOR_TO_ARRAY_ON_STACK(v, t, r) r = (t*)alloca(v.size()*sizeof(t)); std::copy(v.begin(), v.end(), r)
 
-#define DEFAULT_POLL_RATE 40
-#define DEFAULT_POLL_RATE_str "40"
+#define DEFAULT_POLL_RATE 0
+#define DEFAULT_POLL_RATE_str "0"
 #endif

@@ -549,14 +549,14 @@ void initEvents(void)
     CloseHandle(handle);
 }
 
-void processEvents(void) {
+BOOL processEvents(void) {
     HWND hwnd;
     INPUT input;
     int r;
-
+	BOOL result = FALSE;
     while (1) {
         if ((r=read(eventQueueFD, &input, sizeof(INPUT)))==-1) {
-            return;
+            return result;
         }
         TRACE("read event: type=");
         if (input.type == 0) {
@@ -585,6 +585,7 @@ void processEvents(void) {
     
         TRACE("hwnd=%p GetFocus()=%p GetForegroundWindow()=%p\n", hwnd, GetFocus(), GetForegroundWindow());
         __wine_send_input(hwnd, &input);
+		result = TRUE;
     }
 }
 
@@ -594,11 +595,12 @@ DWORD CDECL boxeddrv_MsgWaitForMultipleObjectsEx(DWORD count, const HANDLE *hand
     TRACE("count=%d handles=%p timeout=0x%08x mask=0x%08x flags=0x%08x\n", count, handles, timeout, mask, flags);
     initEvents();
     CALL_5(BOXED_MSG_WAIT_FOR_MULTIPLE_OBJECTS_EX, count, handles, timeout, mask, flags);
-    processEvents();
+	if (processEvents()) {
+		return count - 1;
+	}
     if (!count && !timeout) 
         return WAIT_TIMEOUT;    
     result = WaitForMultipleObjectsEx(count, handles, flags & MWMO_WAITALL, timeout, flags & MWMO_ALERTABLE);	
-    processEvents();
     return result;
 }
 
