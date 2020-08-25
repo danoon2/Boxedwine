@@ -39,13 +39,14 @@ class BoxedContainer;
 
 class WineVersion {
 public:
-    WineVersion(const std::string& name, const std::string& fsVersion, const std::string& filePath, const std::string& depend, U32 size=0):name(name), filePath(filePath), fsVersion(fsVersion), depend(depend), size(size)  {}
+    WineVersion(const std::string& name, const std::string& fsVersion, const std::string& filePath, const std::string& filePathBackup, const std::string& depend, U32 size=0):name(name), filePath(filePath), filePathBackup(filePathBackup), fsVersion(fsVersion), depend(depend), size(size)  {}
     WineVersion* getMissingDependency() const;
     std::string getLocalFilePath() const;
     std::string getDependFilePath() const;
 
     std::string name;
     std::string filePath;
+    std::string filePathBackup;
     std::string fsVersion;
     std::string depend;
     U32 size;

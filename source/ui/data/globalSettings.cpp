@@ -178,7 +178,7 @@ void GlobalSettings::lookForFileSystems(const std::string& path) {
                 std::string depend;
                 FsZip::readFileFromZip(filepath, "version.txt", fsVersion);
                 FsZip::readFileFromZip(filepath, "depends.txt", depend);
-                GlobalSettings::wineVersions.push_back(WineVersion(wineVersion, fsVersion, filepath, depend));
+                GlobalSettings::wineVersions.push_back(WineVersion(wineVersion, fsVersion, filepath, "", depend));
             }
         }
         return 0;
@@ -273,11 +273,12 @@ void GlobalSettings::loadFileList() {
         std::string name = wine.child("Name").text().as_string();
         std::string ver = wine.child("FileVersion").text().as_string();
         std::string file = wine.child("FileURL").text().as_string();
+        std::string file2 = wine.child("FileURL2").text().as_string();
         std::string depend = wine.child("Depend").text().as_string();
         int fileSize = wine.child("FileSizeMB").text().as_int();
 
         if (name.length() && ver.length() && file.length()) {
-            GlobalSettings::availableWineVersions.push_back(WineVersion(name, ver, file, depend, fileSize));
+            GlobalSettings::availableWineVersions.push_back(WineVersion(name, ver, file, file2, depend, fileSize));
         } else {
             break;
         }
@@ -291,7 +292,7 @@ void GlobalSettings::loadFileList() {
         int fileSize = wine.child("FileSizeMB").text().as_int();
 
         if (name.length() && ver.length() && file.length()) {
-            GlobalSettings::availableWineDependencies.push_back(WineVersion(name, ver, file, depend, fileSize));
+            GlobalSettings::availableWineDependencies.push_back(WineVersion(name, ver, file, "", depend, fileSize));
         } else {
             break;
         }
@@ -494,7 +495,7 @@ void GlobalSettings::downloadFile(const std::string& url, const std::string& fil
             Fs::makeNativeDirs(parentPath);
         }
         std::vector<DownloadItem> items;
-        items.push_back(DownloadItem(getTranslationWithFormat(DOWNLOADDLG_LABEL, true, name), url, filePath, ((U64)sizeMB) * 1024 * 1024));
+        items.push_back(DownloadItem(getTranslationWithFormat(DOWNLOADDLG_LABEL, true, name), url, "", filePath, ((U64)sizeMB) * 1024 * 1024));
         new DownloadDlg(DOWNLOADDLG_TITLE, items, [onCompleted](bool success) {
             runOnMainUI([success, onCompleted]() {
                 GlobalSettings::reloadWineVersions();
@@ -516,10 +517,10 @@ void GlobalSettings::downloadWine(const WineVersion& version, std::function<void
             Fs::makeNativeDirs(GlobalSettings::getFileSystemFolder());
         }
         std::vector<DownloadItem> items;
-        items.push_back(DownloadItem(getTranslationWithFormat(DOWNLOADDLG_LABEL, true, version.name), version.filePath, filePath, ((U64)(version.size)) * 1024 * 1024));
+        items.push_back(DownloadItem(getTranslationWithFormat(DOWNLOADDLG_LABEL, true, version.name), version.filePath, version.filePathBackup, filePath, ((U64)(version.size)) * 1024 * 1024));
         WineVersion* depend = version.getMissingDependency();
         if (depend) {
-            items.push_back(DownloadItem(getTranslationWithFormat(DOWNLOADDLG_LABEL, true, depend->name), depend->filePath, depend->getLocalFilePath(), ((U64)(depend->size)) * 1024 * 1024));
+            items.push_back(DownloadItem(getTranslationWithFormat(DOWNLOADDLG_LABEL, true, depend->name), depend->filePath, depend->filePathBackup, depend->getLocalFilePath(), ((U64)(depend->size)) * 1024 * 1024));
         }
         new DownloadDlg(DOWNLOADDLG_TITLE, items, [onCompleted](bool success) {
             runOnMainUI([success, onCompleted]() {

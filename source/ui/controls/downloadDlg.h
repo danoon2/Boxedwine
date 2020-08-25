@@ -3,9 +3,10 @@
 
 class DownloadItem {
 public:
-    DownloadItem(const std::string& label, const std::string& url, const std::string filePath, U64 size) : label(label), url(url), filePath(filePath), size(size) {}
+    DownloadItem(const std::string& label, const std::string& url, const std::string& urlBackup, const std::string filePath, U64 size) : label(label), url(url), urlBackup(urlBackup), filePath(filePath), size(size) {}
     std::string label;
     std::string url;
+    std::string urlBackup;
     std::string filePath;
     U64 size;
 };
