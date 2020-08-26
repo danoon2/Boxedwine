@@ -343,6 +343,10 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "{0} is missing.  Would you like to use {1} instead?";
     case ERROR_NO_FILE_LIST:
         return "Was unable to download the list of Wine versions.  Boxedwine will not work without a Wine file system.  Make sure your internet is working and you can try again by re-launching Boxedwine.  You can also manually download a Wine file system from https://sourceforge.net/projects/boxedwine/files/FileSystems/ and place it in the same directory as the Boxedwine application";
+    case WINE_UPGRADE_AVAILABLE_TITLE:
+        return "Upgrade Wine?";
+    case WINE_UPGRADE_AVAILABLE_LABEL:
+        return "Would you like to upgrade Wine?  Upgrades are available for: {0}";
     default:
         if (useDefaultIfMissing) {
             return "Unknown msg";

@@ -16,6 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 #include "boxedwine.h"
+#include <sys/stat.h>
 
 unsigned int crc32b(unsigned char *message, int len) {
     unsigned int h = 0, g;
@@ -29,4 +30,23 @@ unsigned int crc32b(unsigned char *message, int len) {
         h &= ~g;
     }
     return h;
+}
+
+unsigned int crc32File(const std::string& filePath) {
+    PLATFORM_STAT_STRUCT buf;
+    if (PLATFORM_STAT(filePath.c_str(), &buf) == 0 && buf.st_size) {
+        FILE* fp = fopen(filePath.c_str(), "rb");
+        if (fp) {
+            unsigned char* buffer = new unsigned char[buf.st_size];
+            if (fread(buffer, 1, buf.st_size, fp) == buf.st_size) {
+                unsigned int result = crc32b(buffer, (int)buf.st_size);
+                delete[] buffer;
+                fclose(fp);
+                return result;
+            }
+            fclose(fp);
+            delete[] buffer;
+        }
+    }    
+    return 0;
 }

@@ -20,5 +20,6 @@
 #define __CRC_H__
 
 unsigned int crc32b(unsigned char *message, int len);
+unsigned int crc32File(const std::string& filePath);
 
 #endif

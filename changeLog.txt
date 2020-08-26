@@ -7,6 +7,7 @@ Next Release
 * Fixed crash in custom winex11.drv and updated file systems to use it
 * Launching Boxedwine without any command line arguments will now launch a new UI.  As long as the platform support OpenGL it should work with the UI.
 * Windows UI is DPI aware
+* Fixed an issue where fast keyboard or mouse input can cause major lag in some games like Sacrafice, Powerslide and Quake 3.
 
 Known game fixes
 

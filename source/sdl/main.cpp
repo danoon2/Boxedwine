@@ -83,7 +83,6 @@ int boxedmain(int argc, const char **argv) {
         }
     } else {
 #ifndef BOXEDWINE_DISABLE_UI
-        GlobalSettings::startUp(); 
 
 #ifdef BOXEDWINE_MSVC
         if (StartUpArgs::uiType == UI_TYPE_UNSET) {

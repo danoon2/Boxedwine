@@ -2088,6 +2088,7 @@ bool KNativeWindowSdl::handlSdlEvent(SDL_Event* e) {
     }
 #endif    
     if (e->type == SDL_QUIT) {
+        KThread::setCurrentThread(NULL);
         std::shared_ptr<KProcess> p = KSystem::getProcess(10);
         if (p && !KSystem::shutingDown) {
             // Give the system 10 seconds to try and shutdown cleanly, this is so wineserver can flush registry changes            

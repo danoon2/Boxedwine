@@ -6,6 +6,7 @@
 #include "../../util/threadutils.h"
 #include "../../../lib/pugixml/src/pugixml.hpp"
 #include "knativesystem.h"
+#include "crc.h"
 
 #include <sys/stat.h>
 
@@ -375,16 +376,36 @@ bool GlobalSettings::isFilesListDownloading() {
     return GlobalSettings::filesListDownloading;
 }
 
+static std::vector<WineVersion> upgradeAvailable;
+
+void doUpgrade() {
+    if (upgradeAvailable.size()) {
+        GlobalSettings::downloadWine(upgradeAvailable.back(), [](bool onSuccess) {
+            if (onSuccess) {
+                upgradeAvailable.pop_back();
+                doUpgrade();
+            }
+            });        
+    } else {
+        runOnMainUI([]()->bool {
+            GlobalSettings::reloadWineVersions();
+            return false;
+            });
+    }
+}
+
 void GlobalSettings::updateFileList(const std::string& fileLocation) {
     runInBackgroundThread([fileLocation]() {
+        unsigned int oldcrc = crc32File(fileLocation);
         std::string errorMsg;
         GlobalSettings::filesListDownloading = true;
         ::downloadFile(GlobalSettings::filesUrl, fileLocation, [](U64 bytesCompleted) {
             }, NULL, errorMsg);
-        runOnMainUI([]() {
+        unsigned int newcrc = crc32File(fileLocation);
+        runOnMainUI([oldcrc, newcrc]() {
             GlobalSettings::loadFileList();
             GlobalSettings::filesListDownloading = false;
-            runInBackgroundThread([]() {
+            runInBackgroundThread([oldcrc, newcrc]() {
                 std::string errorMsg;
 
                 for (auto& demo : GlobalSettings::getDemos()) {
@@ -404,6 +425,30 @@ void GlobalSettings::updateFileList(const std::string& fileLocation) {
                                 return false;
                                 });
                         }
+                    }
+                }
+                if (newcrc != oldcrc) {
+                    upgradeAvailable.clear();
+                    std::string wineLabel;
+                    for (auto& ver : GlobalSettings::wineVersions) {
+                        for (auto& avail : GlobalSettings::availableWineVersions) {
+                            if (ver.name == avail.name && ver.fsVersion != avail.fsVersion) {
+                                upgradeAvailable.push_back(avail);
+                                if (wineLabel.length()) {
+                                    wineLabel += ", ";
+                                }
+                                wineLabel += ver.name;
+                            }
+                        }
+                    }
+                    if (upgradeAvailable.size()) {
+                        new YesNoDlg(WINE_UPGRADE_AVAILABLE_TITLE, getTranslationWithFormat(WINE_UPGRADE_AVAILABLE_LABEL, false, wineLabel), [](bool yes) {
+                            if (yes) {
+                                runInBackgroundThread([]() {
+                                    doUpgrade();
+                                    });
+                            }
+                            });
                     }
                 }
             });
@@ -528,7 +573,9 @@ void GlobalSettings::downloadWine(const WineVersion& version, std::function<void
                 if (!GlobalSettings::defaultFont) {
                     GlobalSettings::restartUI = true;
                 }
-                onCompleted(success);
+                if (onCompleted) {
+                    onCompleted(success);
+                }
                 return false;
                 });
             });
