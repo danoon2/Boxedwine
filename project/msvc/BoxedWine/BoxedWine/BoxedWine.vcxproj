@@ -1097,6 +1097,7 @@
     <ClInclude Include="..\..\..\..\source\ui\controls\baseView.h" />
     <ClInclude Include="..\..\..\..\source\ui\controls\containersView.h" />
     <ClInclude Include="..\..\..\..\source\ui\controls\downloadDlg.h" />
+    <ClInclude Include="..\..\..\..\source\ui\controls\helpView.h" />
     <ClInclude Include="..\..\..\..\source\ui\controls\ImGuiLayout.h" />
     <ClInclude Include="..\..\..\..\source\ui\controls\installView.h" />
     <ClInclude Include="..\..\..\..\source\ui\controls\listView.h" />
@@ -1120,6 +1121,7 @@
     <ClInclude Include="..\..\..\..\source\ui\mainui.h" />
     <ClInclude Include="..\..\..\..\source\ui\platformhelper.h" />
     <ClInclude Include="..\..\..\..\source\ui\utils\boxedTranslation.h" />
+    <ClInclude Include="..\..\..\..\source\ui\utils\imgui_markdown.h" />
     <ClInclude Include="..\..\..\..\source\ui\utils\readIcons.h" />
     <ClInclude Include="..\..\..\..\source\ui\utils\stb_image.h" />
     <ClInclude Include="..\..\..\..\source\ui\utils\uihelper.h" />
@@ -3704,6 +3706,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\controls\helpView.cpp" />
     <ClCompile Include="..\..\..\..\source\ui\controls\ImGuiLayout.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x64'">true</ExcludedFromBuild>
