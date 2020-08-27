@@ -8,6 +8,7 @@ enum class LayoutControlType {
 	Label,
 	Button,
 	Seperator,
+	Text,
 	Custom
 };
 
@@ -91,6 +92,17 @@ private:
 	char text[1024];	
 };
 
+class LayoutTextControl : public LayoutControl {
+public:
+	LayoutTextControl(std::shared_ptr<LayoutRow> row) : LayoutControl(row, LayoutControlType::Text) {}
+	void setText(const std::string& text) { this->text = text; }
+	std::string getText() { return this->text; }
+
+	virtual void draw(int width);
+private:
+	std::string text;
+};
+
 class LayoutComboboxControl : public LayoutControl {
 public:
 	LayoutComboboxControl(std::shared_ptr<LayoutRow> row) : LayoutControl(row, LayoutControlType::Combobox) {}
@@ -169,6 +181,7 @@ public:
 	std::shared_ptr<LayoutButtonControl> addButton(const std::string& label);
 	std::shared_ptr< LayoutCheckboxControl> addCheckbox(bool checked);
 	std::shared_ptr<LayoutCustomControl> addCustomControl(std::function<void()> onDraw);
+	std::shared_ptr<LayoutTextControl> addText(const std::string& text);
 
 	void setHidden(bool hidden) { this->hidden = hidden; }
 	bool isHidden() { return this->hidden; }
@@ -198,6 +211,7 @@ public:
 	std::shared_ptr<LayoutSeparatorControl> addSeparator();
 	std::shared_ptr<LayoutButtonControl> addButton(int labelId, int helpId, const std::string& buttonLabel);
 	std::shared_ptr< LayoutCheckboxControl> addCheckbox(int labelId, int helpId, bool value);
+	std::shared_ptr<LayoutTextControl>addText(int labelId, int helpId, const std::string& text);
 
 	void setTitle(const std::string& title) {this->title = title;}
 	const std::string& getTitle() {return this->title;}

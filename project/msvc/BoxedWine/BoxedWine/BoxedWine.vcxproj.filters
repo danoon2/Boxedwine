@@ -1570,6 +1570,9 @@
     <ClCompile Include="..\..\..\..\platform\sdl\sdlcallback.cpp">
       <Filter>platform\sdl</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\controls\helpView.cpp">
+      <Filter>source\ui\controls</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -3731,6 +3734,12 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\include\knativewindow.h">
       <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\ui\utils\imgui_markdown.h">
+      <Filter>source\ui\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\ui\controls\helpView.h">
+      <Filter>source\ui\controls</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -120,7 +120,7 @@ void uiDraw() {
     ImVec2 size = ImGui::GetWindowContentRegionMax();
     size.y -= ImGui::GetCursorPosY();
     ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetColorU32(ImGuiCol_WindowBg));
-    if (currentViewDeprecated == VIEW_OPTIONS || currentViewDeprecated == VIEW_INSTALL || currentViewDeprecated == VIEW_CONTAINERS) {
+    if (currentViewDeprecated == VIEW_OPTIONS || currentViewDeprecated == VIEW_INSTALL || currentViewDeprecated == VIEW_CONTAINERS || currentViewDeprecated == VIEW_HELP) {
         currentView->run(size);
     } else {        
         drawListView("Apps", appListViewItems, size);
@@ -148,6 +148,8 @@ void gotoView(int viewId, std::string tab, std::string param1) {
             currentView = new InstallView(param1, tab);
         } else if (viewId == VIEW_CONTAINERS) {
             currentView = new ContainersView(tab, param1);
+        } else if (viewId == VIEW_HELP) {
+            currentView = new HelpView(tab);
         }
     }
 }
@@ -195,6 +197,16 @@ void createButton() {
     appButtons.push_back(AppButton(name, [](){
         gotoView(VIEW_OPTIONS);        
     }));
+    name = "";
+    if (GlobalSettings::hasIconsFont()) {
+        name += " ";
+        name += QUESTION_ICON;
+        name += " ";
+    }
+    name += getTranslation(MAIN_BUTTON_HELP);
+    appButtons.push_back(AppButton(name, []() {
+        gotoView(VIEW_HELP);
+        }));
 }
 
 void loadApps() {    

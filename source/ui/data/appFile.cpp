@@ -52,17 +52,31 @@ void AppFile::runOptions(BoxedContainer* container, BoxedApp* app, const std::ve
             container->setGDI(true);
             hasContainerOption = true;
         } else if (option=="16bpp") {
-            app->bpp = 16;
-        } else if (stringStartsWith(option, "cpuAffinity=")) {
-            std::string s = option.substr(12);
-            app->cpuAffinity = atoi(s.c_str());
-        } else {
-            AppFile* app = GlobalSettings::getComponentByOptionName(option);
             if (app) {
-                if (!Fs::doesNativePathExist(app->localFilePath)) {
-                    downloads.push_back(app);
+                app->bpp = 16;
+            }
+        } else if (stringStartsWith(option, "cpuAffinity=")) {
+            if (app) {
+                std::string s = option.substr(12);
+                app->cpuAffinity = atoi(s.c_str());
+            }
+        } else if (stringStartsWith(option, "wine=")) {
+            WineVersion* wineVer = GlobalSettings::getAvailableWineFromName(option.substr(5));
+            if (wineVer) {
+                container->setWineVersion(wineVer->name);
+                hasContainerOption = true;
+            }
+        } else if (stringStartsWith(option, "resolution=")) {
+            if (app) {
+                app->resolution = option.substr(11);
+            }
+        } else {
+            AppFile* component = GlobalSettings::getComponentByOptionName(option);
+            if (component) {
+                if (!Fs::doesNativePathExist(component->localFilePath)) {
+                    downloads.push_back(component);
                 }
-                app->install(false, container, runner, downloads);
+                component->install(false, container, runner, downloads);
             }
         }
     }

@@ -37,6 +37,9 @@ class BoxedContainer;
 // question icon - F059
 #define QUESTION_ICON "\xEF\x81\x99"
 
+// comment icon - F075
+#define ABOUT_ICON "\xEF\x81\xB5"
+
 class WineVersion {
 public:
     WineVersion(const std::string& name, const std::string& fsVersion, const std::string& filePath, const std::string& filePathBackup, const std::string& depend, U32 size=0):name(name), filePath(filePath), filePathBackup(filePathBackup), fsVersion(fsVersion), depend(depend), size(size)  {}
@@ -61,6 +64,7 @@ public:
     
     static void reloadWineVersions();
     static std::string getFileFromWineName(const std::string& name);    
+    static WineVersion* getAvailableWineFromName(const std::string& name);
     static std::string getContainerFolder();
     static std::string getFileSystemFolder();    
     static std::string getAppFolder(BoxedContainer* container);

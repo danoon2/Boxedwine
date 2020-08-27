@@ -170,6 +170,15 @@ std::string GlobalSettings::getFileFromWineName(const std::string& name) {
     return "";
 }
 
+WineVersion* GlobalSettings::getAvailableWineFromName(const std::string& name) {
+    for (auto& ver : GlobalSettings::wineVersions) {
+        if (stringCaseInSensativeEquals(ver.name, name)) {
+            return &ver;
+        }
+    }
+    return NULL;
+}
+
 void GlobalSettings::lookForFileSystems(const std::string& path) {
     Fs::iterateAllNativeFiles(path, true, false, [] (const std::string& filepath, bool isDir)->U32 {
         if (stringHasEnding(filepath, ".zip", true)) {

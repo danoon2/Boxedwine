@@ -29,6 +29,7 @@
 #include "controls/listView.h"
 #include "controls/containersView.h"
 #include "controls/optionsView.h"
+#include "controls/helpView.h"
 #include "controls/appChooserDlg.h"
 #include "controls/waitDlg.h"
 #include "controls/downloadDlg.h"

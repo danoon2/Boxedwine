@@ -1,6 +1,7 @@
 #include "boxedwine.h"
 #include "../boxedwineui.h"
 #include "../../../lib/imgui/addon/imguitinyfiledialogs.h"
+#include "../utils/imgui_markdown.h"
 
 void ImGuiLayout::draw() {
 	if (toolTipWidth < 1.0f) {
@@ -296,6 +297,11 @@ std::shared_ptr< LayoutCheckboxControl> LayoutSection::addCheckbox(int labelId, 
 	return row->addCheckbox(value);
 }
 
+std::shared_ptr<LayoutTextControl> LayoutSection::addText(int labelId, int helpId, const std::string& text) {
+	std::shared_ptr<LayoutRow> row = this->addRow(labelId, helpId);
+	return row->addText(text);
+}
+
 std::shared_ptr<LayoutSeparatorControl> LayoutSection::addSeparator() {
 	std::shared_ptr<LayoutRow> row = this->addRow(0, 0);
 	return row->addSeparator();
@@ -347,6 +353,13 @@ std::shared_ptr< LayoutCheckboxControl> LayoutRow::addCheckbox(bool checked) {
 
 std::shared_ptr<LayoutCustomControl> LayoutRow::addCustomControl(std::function<void()> onDraw) {
 	std::shared_ptr<LayoutCustomControl> control = std::make_shared<LayoutCustomControl>(shared_from_this(), onDraw);
+	this->controls.push_back(control);
+	return control;
+}
+
+std::shared_ptr<LayoutTextControl> LayoutRow::addText(const std::string& text) {
+	std::shared_ptr<LayoutTextControl> control = std::make_shared<LayoutTextControl>(shared_from_this());
+	control->setText(text);
 	this->controls.push_back(control);
 	return control;
 }
@@ -421,4 +434,33 @@ int LayoutButtonControl::getRecommendedWidth() {
 	float w = ImGui::CalcTextSize(this->label.c_str()).x;
 	w += ImGui::GetStyle().FramePadding.x * 2;
 	return (int)(w + 0.5f);
+}
+
+void LinkCallback(ImGui::MarkdownLinkCallbackData data_)
+{
+	std::string url(data_.link, data_.linkLength);
+	if (!data_.isImage)
+	{
+		Platform::openFileLocation(url);
+	}
+}
+
+void Markdown(const std::string& markdown_)
+{
+	// You can make your own Markdown function with your prefered string container and markdown config.
+	// > C++14 can use ImGui::MarkdownConfig mdConfig{ LinkCallback, NULL, ImageCallback, ICON_FA_LINK, { { H1, true }, { H2, true }, { H3, false } }, NULL };
+	ImGui::MarkdownConfig mdConfig;
+	mdConfig.linkCallback = LinkCallback;
+	mdConfig.tooltipCallback = NULL;
+	//mdConfig.imageCallback = ImageCallback;
+	//mdConfig.linkIcon = ICON_FA_LINK;
+	mdConfig.headingFormats[0] = { GlobalSettings::largeFont, true };
+	mdConfig.headingFormats[1] = { GlobalSettings::mediumFont, true };
+	mdConfig.headingFormats[2] = { GlobalSettings::defaultFont, false };
+	mdConfig.userData = NULL;
+	ImGui::Markdown(markdown_.c_str(), markdown_.length(), mdConfig);
+}
+
+void LayoutTextControl::draw(int width) {
+	Markdown(text);
 }

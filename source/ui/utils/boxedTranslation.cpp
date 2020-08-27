@@ -151,6 +151,18 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "This will delete all data, including the containers folder, and cannot be undone.  You will loose all saved data inside the containers, including apps, and Boxedwine settings.";
     case OPTIONS_VIEW_DELETE_ALL_CONFIRM:
         return "Are you sure you want to permentantly delete all containers, apps, settings and any saved data you had in the containers?";
+    case HELPVIEW_TITLE_ABOUT:
+        return "About";
+    case HELPVIEW_TITLE_HELP_INSTALL:
+        return "Installing Apps";
+    case HELPVIEW_TITLE_HELP_TROUBLESHOOTING:
+        return "Troubleshooting";
+    case HELPVIEW_ABOUT_LABEL:
+        return "## What is Boxedwine?\n[Boxedwine](http://boxedwine.org) is a multi-platform app for running 16-bit and 32-bit Windows programs.  It does this by emulating the CPU and running [Wine](https://www.winehq.org/).  Wine is the program that emulates all of the Windows API calls.  The goal of Boxedwine is to be able to run everything that Wine can.  If you want to know if your app or game will run in Boxedwine or get hints how to run it, you should start by looking at the [Wine Application Database (AppDB)](https://appdb.winehq.org/)\n## Supported Platforms:\n* Windows 32-bit (Vista or later)\n* Windows 64-bit (Vista or later)\n* Mac OSX\n* Linux (32-bit and 64-bit)\n* Web Browsers using WASM\n* Raspberry Pi (32-bit and 64-bit)\n## Current Version: 20.1.1\n* Added SSE2 support\n* Windows build is DPI aware\n* Fixed keyboard\\input lag spikes that affected several games\n* Fixed Games\n  * GOG Diablo (Hellfire doesn't work)\n  * Half-Life Uplink Demo\n  * Mechwarrior 3\n  * GOG TombRaider 3 (must use -setup in command line)\n  * Sacrafice\n  * Powerslide";
+    case HELPVIEW_HELP_INSTALL_LABEL:
+        return "Apps/Games are installed into containers.  A container is a folder that contains all of the files necessary for Boxedwine and Wine to run and a place for them to store changes.  It acts as a virtual file system.  Each app can be installed into its own container.  To install an app or game, just drag the installer, for example, setup.exe, onto Boxedwine.  You can also drag a folder onto Boxedwine and it will be copied into a container.";
+    case HELPVIEW_HELP_TROUBLESHOOTING_LABEL:
+        return "The first place to look for help is the [Wine Application Database (AppDB)](https://appdb.winehq.org/).  If your app or game works on Wine, then there is a good chance it will work on Boxedwine.\n\n## Performance\nSince Boxedwine emulates the CPU, you may have performance issues.  The 64-bit Windows build uses a binary translator for the CPU emulation and is pretty fast, perhaps as much as 25% of the host computer.  The other platforms will be significantly slower.  You will probably not have much luck with demanding games after 1999.\n## Things to try if your app/game doesnt' work\n* If your app/game was made before the year 2000, try setting the Windows version for the container to be Windows 98.";
     case APPCHOOSER_DLG_TITLE:
         return "Create Shortcut";
     case APPCHOOSER_DLG_CHOOSE_APP_LABEL:
@@ -227,6 +239,8 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "Containers";
     case MAIN_BUTTON_SETTINGS:
         return "Options";
+    case MAIN_BUTTON_HELP:
+        return "Help";
     case MAIN_BUTTON_APPS:
         return "Apps";
     case INSTALLVIEW_OPEN_SETUP_FILE_TITLE:
