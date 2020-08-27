@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1A4F8E1D24F740CD0046703D /* helpView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A4F8E1C24F740CC0046703D /* helpView.cpp */; };
+		1A4F8E1E24F740CD0046703D /* helpView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A4F8E1C24F740CC0046703D /* helpView.cpp */; };
+		1A4F8E1F24F740CD0046703D /* helpView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A4F8E1C24F740CC0046703D /* helpView.cpp */; };
+		1A4F8E2024F740CD0046703D /* helpView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A4F8E1C24F740CC0046703D /* helpView.cpp */; };
 		71034CD924820DE600FED5C5 /* x32CPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDC72433BBBE003F17F1 /* x32CPU.cpp */; };
 		71034CDA24820DE600FED5C5 /* ksocketobject.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE202433BBBE003F17F1 /* ksocketobject.cpp */; };
 		71034CDB24820DE600FED5C5 /* Format.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81222440ED1C0038F5A4 /* Format.cpp */; };
@@ -2376,6 +2380,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		1A4F8E1B24F740CC0046703D /* helpView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = helpView.h; sourceTree = "<group>"; };
+		1A4F8E1C24F740CC0046703D /* helpView.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = helpView.cpp; sourceTree = "<group>"; };
 		71034F0A24820DE600FED5C5 /* BoxedwineAutomation.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BoxedwineAutomation.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		71034F0B24820DE700FED5C5 /* BoxedwineAutomation-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "BoxedwineAutomation-Info.plist"; path = "/Users/jamesbryant/boxedwine-source/project/mac-xcode/Boxedwine/BoxedwineAutomation-Info.plist"; sourceTree = "<absolute>"; };
 		71034F0C24820EC600FED5C5 /* Boxedwine-Automation.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Boxedwine-Automation.entitlements"; sourceTree = "<group>"; };
@@ -4118,6 +4124,8 @@
 		71FBFD182433BBBE003F17F1 /* controls */ = {
 			isa = PBXGroup;
 			children = (
+				1A4F8E1C24F740CC0046703D /* helpView.cpp */,
+				1A4F8E1B24F740CC0046703D /* helpView.h */,
 				715EABB92460C839001B4730 /* unzipDlg.cpp */,
 				715EABB82460C839001B4730 /* unzipDlg.h */,
 				71205454244D01B300C3CB1B /* ImGuiLayout.cpp */,
@@ -5350,6 +5358,7 @@
 				71034EF124820DE600FED5C5 /* HTTPRequestHandler.cpp in Sources */,
 				71034EF224820DE600FED5C5 /* soft_ram.cpp in Sources */,
 				71034EF324820DE600FED5C5 /* srcgen.cpp in Sources */,
+				1A4F8E1F24F740CD0046703D /* helpView.cpp in Sources */,
 				71034EF424820DE600FED5C5 /* fsvirtualnode.cpp in Sources */,
 				71034EF524820DE600FED5C5 /* Timer.cpp in Sources */,
 				71034EF624820DE600FED5C5 /* ConfigurationView.cpp in Sources */,
@@ -5905,6 +5914,7 @@
 				710351272482B71000FED5C5 /* HTTPRequestHandler.cpp in Sources */,
 				710351282482B71000FED5C5 /* soft_ram.cpp in Sources */,
 				710351292482B71000FED5C5 /* srcgen.cpp in Sources */,
+				1A4F8E2024F740CD0046703D /* helpView.cpp in Sources */,
 				7103512A2482B71000FED5C5 /* fsvirtualnode.cpp in Sources */,
 				7103512B2482B71000FED5C5 /* Timer.cpp in Sources */,
 				7103512C2482B71000FED5C5 /* ConfigurationView.cpp in Sources */,
@@ -6589,6 +6599,7 @@
 				715F64312440E9110038F5A4 /* HTTPRequestHandler.cpp in Sources */,
 				71222C7024351CBA00CDBABD /* soft_ram.cpp in Sources */,
 				71222C7124351CBA00CDBABD /* srcgen.cpp in Sources */,
+				1A4F8E1E24F740CD0046703D /* helpView.cpp in Sources */,
 				71222C7224351CBA00CDBABD /* fsvirtualnode.cpp in Sources */,
 				715F34D22440E7480038F5A4 /* Timer.cpp in Sources */,
 				715F34DA2440E7480038F5A4 /* ConfigurationView.cpp in Sources */,
@@ -7144,6 +7155,7 @@
 				715F64302440E9110038F5A4 /* HTTPRequestHandler.cpp in Sources */,
 				71FBFE9B2433BBBE003F17F1 /* soft_ram.cpp in Sources */,
 				71FBFE822433BBBE003F17F1 /* srcgen.cpp in Sources */,
+				1A4F8E1D24F740CD0046703D /* helpView.cpp in Sources */,
 				71FBFEAD2433BBBE003F17F1 /* fsvirtualnode.cpp in Sources */,
 				715F34D12440E7480038F5A4 /* Timer.cpp in Sources */,
 				715F34D92440E7480038F5A4 /* ConfigurationView.cpp in Sources */,

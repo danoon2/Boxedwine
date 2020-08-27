@@ -11,5 +11,9 @@
 
 void MacPlatformOpenFileLocation(const char* str) {
    NSString* path = [NSString stringWithUTF8String:str];
-   [[NSWorkspace sharedWorkspace] selectFile:path inFileViewerRootedAtPath:@""];
+    if ([path hasPrefix:@"http"]) {
+        [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString:path]];
+    } else {
+        [[NSWorkspace sharedWorkspace] selectFile:path inFileViewerRootedAtPath:@""];
+    }
 }
