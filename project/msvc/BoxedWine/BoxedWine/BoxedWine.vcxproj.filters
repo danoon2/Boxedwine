@@ -1570,6 +1570,12 @@
     <ClCompile Include="..\..\..\..\platform\sdl\sdlcallback.cpp">
       <Filter>platform\sdl</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeChunk.cpp">
+      <Filter>source\emulation\cpu\binaryTranslation</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeMemoryWrite.cpp">
+      <Filter>source\emulation\cpu\binaryTranslation</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -3732,6 +3738,15 @@
     <ClInclude Include="..\..\..\..\include\knativewindow.h">
       <Filter>include</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeChunk.h">
+      <Filter>source\emulation\cpu\binaryTranslation</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCpu.h">
+      <Filter>source\emulation\cpu\binaryTranslation</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeMemoryWrite.h">
+      <Filter>source\emulation\cpu\binaryTranslation</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
@@ -3886,6 +3901,9 @@
     </Filter>
     <Filter Include="platform\sdl">
       <UniqueIdentifier>{c6380c00-27de-4538-9794-9ba6c16ec66d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\emulation\cpu\binaryTranslation">
+      <UniqueIdentifier>{4188d4ce-c410-4a44-b2cf-590b0ec6ecbc}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

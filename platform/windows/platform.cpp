@@ -18,7 +18,7 @@
 #include "boxedwine.h"
 #include <winsock2.h>
 #include "pixelformat.h"
-#include "../source/emulation/cpu/x64/x64cpu.h"
+#include "../source/emulation/cpu/binaryTranslation/btCpu.h"
 
 LONGLONG PCFreq;
 LONGLONG CounterStart;
@@ -366,7 +366,7 @@ void Platform::setCpuAffinityForThread(KThread* thread, U32 count) {
             mask = (1 << count) - 1;
         }
         klog("Process %s (PID=%d) set thread %d cpu affinity to %X", thread->process->name.c_str(), thread->process->id, thread->id, mask);
-        SetThreadAffinityMask((HANDLE)((x64CPU*)thread->cpu)->nativeHandle, mask);
+        SetThreadAffinityMask((HANDLE)((BtCPU*)thread->cpu)->nativeHandle, mask);
     }
 }
 #endif

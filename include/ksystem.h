@@ -70,7 +70,7 @@ public:
 	static bool shutingDown;
     static U32 killTime;
     static std::string title;
-#ifdef BOXEDWINE_X64
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
     static bool useLargeAddressSpace;
 #endif
 #ifdef BOXEDWINE_MULTI_THREADED

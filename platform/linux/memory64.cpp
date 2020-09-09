@@ -180,7 +180,7 @@ static void* reserveNext32GBMemory() {
 
 void reserveNativeMemory(Memory* memory) {
     memory->id = (U64)reserveNext4GBMemory();
-#ifdef BOXEDWINE_X64
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
     memory->executableMemoryId = (U64)reserveNext4GBMemory();
     memory->nextExecutablePage = 0;
     if (KSystem::useLargeAddressSpace) {
@@ -197,7 +197,7 @@ void releaseNativeMemory(Memory* memory) {
     memset(memory->nativeFlags, 0, sizeof(memory->nativeFlags));
     memory->allocated = 0;
     munmap((char*)memory->id, 0x100000000l);
-#ifdef BOXEDWINE_X64
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
     if (memory->eipToHostInstructionAddressSpaceMapping) {
         munmap((char*)memory->eipToHostInstructionAddressSpaceMapping, 0x800000000l);
         memory->eipToHostInstructionAddressSpaceMapping = NULL;
@@ -307,7 +307,7 @@ void platformRunThreadSlice(KThread* thread) {
 }
 #endif
 
-#ifdef BOXEDWINE_X64
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
 void allocExecutable64kBlock(Memory* memory, U32 page) {
     if (mmap((void*)((page << K_PAGE_SHIFT) | memory->executableMemoryId), 64*1024, PROT_EXEC | PROT_WRITE | PROT_READ,MAP_ANONYMOUS|MAP_FIXED|MAP_PRIVATE, -1, 0)==MAP_FAILED) {
         kpanic("allocExecutable64kBlock: failed to commit memory 0x%x: %s", (page << K_PAGE_SHIFT), strerror(errno));

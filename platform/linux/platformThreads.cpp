@@ -1,10 +1,8 @@
 #include "boxedwine.h"
 #include <SDL.h>
-#include "../../source/emulation/cpu/x64/x64CPU.h"
-#include "../../source/emulation/cpu/x64/x64CodeChunk.h"
 #include "../../source/emulation/hardmmu/hard_memory.h"
 #include "../../source/emulation/cpu/normal/normalCPU.h"
-#include "../../source/emulation/cpu/x64/x64Asm.h"
+#include "../../source/emulation/cpu/binaryTranslation/btCpu.h"
 #include "ksignal.h"
 #include <string.h>
 
@@ -58,6 +56,7 @@
 #define CONTEXT_FPU_REG_7_LOW(context) ((U64*)&context->uc_mcontext->__fs.__fpu_stmm7)
 #define CONTEXT_FPU_REG_7_HIGH(context) ((S16*)&context->uc_mcontext->__fs.__fpu_stmm7.__mmst_reg[8])
 #else
+#ifdef BOXEDWINE_X64
 #define CONTEXT_RAX uc_mcontext.gregs[REG_RAX]
 #define CONTEXT_RCX uc_mcontext.gregs[REG_RCX]
 #define CONTEXT_RDX uc_mcontext.gregs[REG_RDX]
@@ -108,12 +107,14 @@ union CAST_FPU {
 #define CONTEXT_FPU_REG_6_HIGH(context) ((S16*)&context->uc_mcontext.fpregs->_st[6].exponent)
 #define CONTEXT_FPU_REG_7_LOW(context) &((CAST_FPU*)&context->uc_mcontext.fpregs->_st[7].significand)->r64
 #define CONTEXT_FPU_REG_7_HIGH(context) ((S16*)&context->uc_mcontext.fpregs->_st[7].exponent)
+
 #endif
 #include <ucontext.h>
 
 #ifdef BOXEDWINE_MULTI_THREADED
 
-void syncFromException(x64CPU* cpu, ucontext_t* context, bool includeFPU) {
+void syncFromException(BtCPU* cpu, ucontext_t* context, bool includeFPU) {
+#ifdef BOXEDWINE_X64
     EAX = (U32)context->CONTEXT_RAX;
     ECX = (U32)context->CONTEXT_RCX;
     EDX = (U32)context->CONTEXT_RDX;
@@ -185,9 +186,11 @@ void syncFromException(x64CPU* cpu, ucontext_t* context, bool includeFPU) {
             }
         }
     }
+#endif
 }
 
-void syncToException(x64CPU* cpu, ucontext_t* context, bool includeFPU) {
+void syncToException(BtCPU* cpu, ucontext_t* context, bool includeFPU) {
+#ifdef BOXEDWINE_X64
     context->CONTEXT_RAX = EAX;
     context->CONTEXT_RCX = ECX;
     context->CONTEXT_RDX = EDX;
@@ -270,13 +273,14 @@ void syncToException(x64CPU* cpu, ucontext_t* context, bool includeFPU) {
             }
         }
     }
+#endif
 }
 
 class InException {
 public:
-    InException(x64CPU* cpu) : cpu(cpu) {this->cpu->inException = true;}
+    InException(BtCPU* cpu) : cpu(cpu) {this->cpu->inException = true;}
     ~InException() {this->cpu->inException = false;}
-    x64CPU* cpu;
+    BtCPU* cpu;
 };
 
 U32 exceptionCount;
@@ -291,9 +295,9 @@ static void handler(int sig, siginfo_t* info, void* vcontext) {
         return;
     }
     ucontext_t* context = (ucontext_t*)vcontext;
-    x64CPU* cpu = (x64CPU*)currentThread->cpu;
-
-    if (cpu != (x64CPU*)context->CONTEXT_R13) {
+    BtCPU* cpu = (BtCPU*)currentThread->cpu;
+#ifdef BOXEDWINE_X64
+    if (cpu != (BtCPU*)context->CONTEXT_R13) {
         return;
     }    
     syncFromException(cpu, context, true);
@@ -320,6 +324,7 @@ static void handler(int sig, siginfo_t* info, void* vcontext) {
     if (cpu->exceptionR9 == 1) {
         int ii = 0;
     }
+#endif
 }
 
 int getFPUCode(int code) {
@@ -338,7 +343,7 @@ int getFPUCode(int code) {
 void signalHandler() {
     BOXEDWINE_CRITICAL_SECTION;
     KThread* currentThread = KThread::currentThread();
-    x64CPU* cpu = (x64CPU*)currentThread->cpu;    
+    BtCPU* cpu = (BtCPU*)currentThread->cpu;
 
     U64 result = cpu->startException(cpu->exceptionAddress, cpu->exceptionReadAddress, NULL, NULL);
     if (result) {
@@ -347,29 +352,48 @@ void signalHandler() {
     }
     InException e(cpu);
     if (cpu->exceptionSigNo == SIGILL || cpu->exceptionSigNo == SIGTRAP) {
-        if (cpu->exceptionRSP & 0xf) {
-            kpanic("seh_filter: bad stack alignment");
-        }
-        U64 rip = cpu->handleIllegalInstruction(cpu->exceptionRip);
+        //if (cpu->exceptionRSP & 0xf) {
+        //    kpanic("seh_filter: bad stack alignment");
+        //}
+        U64 rip = cpu->handleIllegalInstruction(cpu->exceptionIp);
         if (rip) {
             cpu->returnHostAddress = rip;
             return;
         }
-        cpu->returnHostAddress = cpu->exceptionRip;
+        cpu->returnHostAddress = cpu->exceptionIp;
         return;
     } else if (cpu->exceptionSigNo == SIGBUS && cpu->exceptionSigCode == BUS_ADRALN) {
         // :TODO: figure out how AC got set, I've only seen this while op logging
         cpu->flags &= ~AC;
-        cpu->returnHostAddress = cpu->exceptionRip;
+        cpu->returnHostAddress = cpu->exceptionIp;
         return;
-    } else if ((cpu->exceptionSigNo == SIGBUS || cpu->exceptionSigNo == SIGSEGV) && ((cpu->exceptionRip & 0xFFFFFFFF00000000l)==(U64)cpu->thread->memory->executableMemoryId)) {
-        U64 rip = cpu->handleAccessException(cpu->exceptionRip, cpu->exceptionAddress, cpu->exceptionReadAddress, cpu->exceptionRSI, cpu->exceptionRDI, cpu->exceptionR8, cpu->exceptionR9, &cpu->exceptionR10, NULL, NULL);
+    } else if ((cpu->exceptionSigNo == SIGBUS || cpu->exceptionSigNo == SIGSEGV) && ((cpu->exceptionIp & 0xFFFFFFFF00000000l)==(U64)cpu->thread->memory->executableMemoryId)) {
+        std::function<U64(U32 reg)> getReg = [cpu](U32 reg) {
+            if (reg == 8)
+                return cpu->exceptionR8;
+            if (reg == 9)
+                return cpu->exceptionR9;
+            if (reg == 6)
+                return cpu->exceptionRSI;
+            if (reg == 7)
+                return cpu->exceptionRDI;
+            kpanic("Unhandled reg: getReg: %d", reg);
+            return (U64)0;
+        };
+        std::function<void(U32 reg, U64 value)> setReg = [cpu](U32 reg, U64 value) {
+            if (reg == 10) {
+                cpu->exceptionR10 = value;
+            } else {
+                kpanic("Unhandled reg: setReg: %d", reg);
+            }
+        };
+        U64 rip = cpu->handleAccessException(cpu->exceptionIp, cpu->exceptionAddress, cpu->exceptionReadAddress, getReg, setReg, NULL, NULL);
         if (rip) {
             cpu->returnHostAddress = rip;
             return;
         }
         // :TODO: can jumping cause us to miss something?
-        cpu->returnHostAddress = cpu->exceptionRip;
+        cpu->returnHostAddress = cpu->exceptionIp;
         return;
     } else if (cpu->exceptionSigNo == SIGFPE) {
         int code = getFPUCode(cpu->exceptionSigCode);
@@ -398,13 +422,13 @@ void* platformThreadProc(void* param) {
         initializedHandler = true;
     }
     KThread* thread = (KThread*)param;
-    x64CPU* cpu = (x64CPU*)thread->cpu;
+    BtCPU* cpu = (BtCPU*)thread->cpu;
     cpu->startThread();
     return 0;
 }
 
 void scheduleThread(KThread* thread) {
-    x64CPU* cpu = (x64CPU*)thread->cpu;
+    BtCPU* cpu = (BtCPU*)thread->cpu;
     pthread_t threadId;
     platformThreadCount++; // need to increment before returning, otherwise if this is 0 the code will assume Wine exited
     pthread_create(&threadId, NULL, platformThreadProc, thread);

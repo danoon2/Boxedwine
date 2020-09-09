@@ -23,7 +23,7 @@
 
 #include "../emulation/softmmu/soft_memory.h"
 #include "../emulation/hardmmu/hard_memory.h"
-#include "../emulation/cpu/x64/x64CPU.h"
+#include "../emulation/cpu/binaryTranslation/btCpu.h"
 #include "knativethread.h"
 
 #ifdef BOXEDWINE_MSVC
@@ -71,8 +71,8 @@ void assertTrue(int b) {
 
 void setup() {
     if (!memory) {
-#ifdef BOXEDWINE_X64
-        KSystem::useLargeAddressSpace = false;
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+        //KSystem::useLargeAddressSpace = false;
 #endif
         std::shared_ptr<KProcess> process = KProcess::create();
         memory = new Memory();
@@ -162,10 +162,10 @@ void useFlags() {
 }
 
 void runTestCPU() {    
-#ifdef BOXEDWINE_X64    
+#ifdef BOXEDWINE_BINARY_TRANSLATOR    
     pushCode8(0xcd);
     pushCode8(0x97); // will cause TEST specific return code to be inserted
-    ((x64CPU*)cpu)->translateEip(cpu->eip.u32);
+    ((BtCPU*)cpu)->translateEip(cpu->eip.u32);
 #else
     pushCode8(0x70); // jump causes the decoder to stop building the block
     pushCode8(0);
@@ -177,15 +177,9 @@ void runTestCPU() {
 #ifdef BOXEDWINE_64BIT_MMU
     KThread::currentThread()->memory->clearCodePageFromCache(CODE_ADDRESS>>K_PAGE_SHIFT);    
 #endif
-#ifdef BOXEDWINE_X64
-    x64CPU* c = (x64CPU*)cpu;
-    for (int i=0;i<8;i++) {
-        c->reg_mmx[i].q = *((U64*)(c->fpuState+32+i*16));
-    }
-    for (int i=0;i<8;i++) {
-        c->xmm[i].pi.u64[0] = *((U64*)(c->fpuState+160+i*16));
-        c->xmm[i].pi.u64[1] = *((U64*)(c->fpuState+160+i*16+8));
-    }
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+    BtCPU* c = (BtCPU*)cpu;
+    c->postTestRun();
 #endif
 }
 
@@ -2041,6 +2035,119 @@ void flags(int instruction, struct Data* data, Reg* reg) {
     }
 }
 
+void MovSwEw() {
+    struct user_desc* ldt = cpu->thread->process->getLDT(0x20);
+    ldt->entry_number = 0x20;
+    ldt->base_addr = HEAP_ADDRESS;
+    ldt->seg_32bit = 1;
+    ldt->seg_not_present = 0;
+
+    for (int ew = 0; ew < 8; ew++) {
+        for (int sw = 0; sw < 6; sw++) {
+            Reg* e;
+
+            if (sw == CS) { // not allowed with this instruction
+                continue;
+            }
+            setup(); // reset segs
+            int rm = ew | (sw << 3) | 0xC0;
+            newInstructionWithRM(0x8e, rm, 0);
+            e = &cpu->reg[ew];
+            e->u32 = 0xDDDD0107;
+            cpu->seg[sw].value = 0;
+            cpu->seg[sw].address = 0;
+
+            writed(HEAP_ADDRESS, 0xAAAA1112);
+
+            // read seg:[0] into AX to verify that segment can be used    
+            switch (sw) {
+            case ES: pushCode8(0x26); break;
+            case SS: pushCode8(0x36); break;
+            case DS: pushCode8(0x3e); break;
+            case FS: pushCode8(0x64); break;
+            case GS: pushCode8(0x65); break;
+            }
+            pushCode8(0xa1);
+            if (cpu->big) {
+                pushCode32(0);
+            } else {
+                pushCode16(0);
+            }
+
+            runTestCPU();
+
+            if (cpu->seg[sw].value != 0x107) {
+                failed("seg value was not set");
+            }
+            if (cpu->seg[sw].address != HEAP_ADDRESS) {
+                failed("seg address was not set");
+            }
+            if (cpu->reg[0].word[0] != 0x1112) {
+                failed("seg address read wrong value");
+            }
+        }
+    }
+
+    for (int sw = 0; sw < 6; sw++) {
+        if (sw == CS) { // not allowed with this instruction
+            continue;
+        }
+        setup(); // reset segs
+        int rm = (sw << 3);
+        if (cpu->big)
+            rm += 5;
+        else
+            rm += 6;
+
+        if (sw == DS) {
+            cpu->seg[ES].value = cpu->seg[DS].value;
+            cpu->seg[ES].address = cpu->seg[DS].address;
+            newInstruction(0);            
+            pushCode8(0x26);
+            pushCode8(0x8e);
+            pushCode8(rm);
+        } else {
+            newInstructionWithRM(0x8e, rm, 0);
+        }
+        if (cpu->big)
+            pushCode32(200);
+        else
+            pushCode16(200);
+                
+        cpu->seg[sw].value = 0;
+        cpu->seg[sw].address = 0;
+
+        writed(HEAP_ADDRESS, 0xAAAA1112);
+        writed(HEAP_ADDRESS+200, 0xAAAA0107);
+
+        // read seg:[0] into AX to verify that segment can be used    
+        switch (sw) {
+        case ES: pushCode8(0x26); break;
+        case SS: pushCode8(0x36); break;
+        case DS: pushCode8(0x3e); break;
+        case FS: pushCode8(0x64); break;
+        case GS: pushCode8(0x65); break;
+        }
+        pushCode8(0xa1);
+        if (cpu->big) {
+            pushCode32(0);
+        } else {
+            pushCode16(0);
+        }
+
+        runTestCPU();
+        if (cpu->seg[sw].value != 0x107) {
+            failed("seg value was not set");
+        }
+        if (cpu->seg[sw].address != HEAP_ADDRESS) {
+            failed("seg address was not set");
+        }
+        if (cpu->reg[0].word[0] != 0x1112) {
+            failed("seg address read wrong value");
+        }
+    }
+}
+
 void PopEw() {
     int i;
     Reg* reg;
@@ -3718,6 +3825,7 @@ void testOr0x20c() {cpu->big = true;AlIb(0x0c, orb);}
 void testOr0x00d() {cpu->big = false;AxIw(0x0d, orw);}
 void testOr0x20d() {cpu->big = true;EaxId(0x0d, ord);}
 
+// :TODO: add test for adc for doing add then adc to make sure CF carries over correctly for dynamic cores
 void testAdc0x010() {cpu->big = false;EbGb(0x10, adcb);}
 void testAdc0x210() {cpu->big = true;EbGb(0x10, addb);X86_TEST(adc, adcb, al, cl)}
 void testAdc0x011() {cpu->big = false;EwGw(0x11, adcw);X86_TEST(adc, adcw, ax, cx)}
@@ -3808,6 +3916,7 @@ void testCmp0x23d() {cpu->big = true;EaxId(0x3d, cmpd);}
 void testAas0x03f() {cpu->big = false;EwReg(0x3f, 0, aas);}
 void testAas0x23f() {cpu->big = true;EwReg(0x3f, 0, aas);}
 
+// :TODO: test when flags come from the previous instruction
 void testIncAx0x040() {cpu->big = false;EwReg(0x40, 0, incw);X86_TEST1(inc, incw, ax)}
 void testIncEax0x240() {cpu->big = true;EdReg(0x40, 0, incd);X86_TEST1(inc, incd, eax)}
 void testIncCx0x041() {cpu->big = false;EwReg(0x41, 1, incw);}
@@ -3986,8 +4095,8 @@ void testMovEwSw0x28c() {cpu->big = true;EdSw(0x8c, movw);}
 void testLeaGw0x08d() {cpu->big = false;LeaGw();}
 void testLeaGd0x28d() {cpu->big = true;LeaGd();}
 
-// :TODO: 0x08e
-// :TODO: 0x28e
+void testMovSwEw0x08e() {cpu->big = false;MovSwEw();}
+void testMovSwEw0x28f() {cpu->big = true;MovSwEw();}
 
 void testPopEw0x08f() {cpu->big = false;PopEw();}
 void testPopEd0x28f() {cpu->big = true;PopEd();}
@@ -5976,7 +6085,7 @@ void testPushSeg16(int inst, U8 seg) {
 void testPopSeg16(int inst, U8 seg) {
     struct user_desc* ldt = cpu->thread->process->getLDT(0x20);
     ldt->entry_number=0x20;
-    ldt->base_addr = 0;
+    ldt->base_addr = HEAP_ADDRESS;
     ldt->seg_32bit = 1;
     ldt->seg_not_present = 0;
 
@@ -5985,13 +6094,40 @@ void testPopSeg16(int inst, U8 seg) {
     U32 prevStack = cpu->reg[4].u32;
     writed(cpu->seg[SS].address+cpu->reg[4].u16, 0x107);
     cpu->seg[seg].value = 0;
+    if (seg != SS) {
+        cpu->seg[seg].address = 0;
+    }
     cpu->big = 0;    
+
+    bool checkReadValueIntoAX = false;
+    // read seg:[0] into AX to verify that segment can be used    
+    if (seg != SS && seg != DS) {
+        writed(HEAP_ADDRESS, 0x1112);
+        switch (seg) {
+        case ES: pushCode8(0x26); break;
+        case CS: pushCode8(0x2e); break;
+        case SS: pushCode8(0x36); break;
+        case DS: pushCode8(0xa1); break;
+        case FS: pushCode8(0x64); break;
+        case GS: pushCode8(0x64); break;
+        }
+        pushCode8(0xa1);
+        pushCode8(0);
+        pushCode8(0);
+        checkReadValueIntoAX = true;
+    }
     runTestCPU();
     if (cpu->reg[4].u16!=prevStack+2) {
         failed("stack wasn't incremented by 2");
     }
     if (cpu->seg[seg].value!=0x107) {
         failed("seg value was not set");
+    }
+    if (cpu->seg[seg].address != HEAP_ADDRESS) {
+        failed("seg address was not set");
+    }
+    if (checkReadValueIntoAX && cpu->reg[0].word[0] != 0x1112) {
+        failed("seg address read wrong value");
     }
 }
 
@@ -6013,7 +6149,7 @@ void testPushSeg32(int inst, U8 seg) {
 void testPopSeg32(int inst, U8 seg) {
     struct user_desc* ldt = cpu->thread->process->getLDT(0x20);
     ldt->entry_number=0x20;
-    ldt->base_addr = 0;
+    ldt->base_addr = HEAP_ADDRESS;
     ldt->seg_32bit = 1;
     ldt->seg_not_present = 0;
 
@@ -6022,13 +6158,37 @@ void testPopSeg32(int inst, U8 seg) {
     U32 prevStack = cpu->reg[4].u32;
     writed(cpu->seg[SS].address+cpu->reg[4].u32, 0x107);
     cpu->seg[seg].value = 0;
+    if (seg != SS) {
+        cpu->seg[seg].address = 0;
+    }
     cpu->big = 1;    
+
+    bool checkReadValueIntoEAX = false;
+    // read seg:[0] into EAX to verify that segment can be used    
+    if (seg != SS && seg != DS) {
+        writed(HEAP_ADDRESS, 0x11122233);
+        switch (seg) {
+        case ES: pushCode8(0x26); break;
+        case CS: pushCode8(0x2e); break;
+        case SS: pushCode8(0x36); break;
+        case DS: pushCode8(0xa1); break;
+        case FS: pushCode8(0x64); break;
+        case GS: pushCode8(0x64); break;
+        }
+        pushCode8(0xa1);
+        pushCode32(0);
+        checkReadValueIntoEAX = true;
+    }
+
     runTestCPU();
     if (cpu->reg[4].u32!=prevStack+4) {
         failed("stack wasn't incremented by 4");
     }
     if (cpu->seg[seg].value!=0x107) {
         failed("seg value was not set");
+    }
+    if (checkReadValueIntoEAX && cpu->reg[0].u32 != 0x11122233) {
+        failed("seg address read wrong value");
     }
 }
 
@@ -7109,8 +7269,8 @@ int main(int argc, char **argv) {
     run(testLeaGw0x08d, "Lea 08d");
     run(testLeaGd0x28d, "Lea 28d");
 
-    // :TODO: 0x08e
-    // :TODO: 0x28e
+    run(testMovSwEw0x08e, "Mov 08e");
+    run(testMovSwEw0x28f, "Mov 28e");
 
     run(testPopEw0x08f, "Pop 08f");
     run(testPopEd0x28f, "Pop 28f");

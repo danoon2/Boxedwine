@@ -412,7 +412,7 @@ U8 getRegWithConstPtr(U64 value) {
 
     // This is meant to be a cheap least recently used register
     //
-    // If the dynamic recompiler ever most to a 2 pass solution, then this could be greatly optimized
+    // If the dynamic recompiler ever gets to a 2 pass solution, then this could be greatly optimized
     //
     // Save the bottom 3 tmp regs for SRC, DST and ADDRESS so that there is less thrashing
     for (int i = MIN_UNSAVED_REG+3; i <= MAX_UNSAVED_REG; i++) {

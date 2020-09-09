@@ -1681,6 +1681,12 @@
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8\llvm_helper.cpp">
       <Filter>source\emulation\cpu\armv8</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeChunk.cpp">
+      <Filter>source\emulation\cpu\binaryTranslation</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeMemoryWrite.cpp">
+      <Filter>source\emulation\cpu\binaryTranslation</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
@@ -1913,6 +1919,9 @@
     </Filter>
     <Filter Include="source\emulation\cpu\armv8">
       <UniqueIdentifier>{a52fdd3d-8b52-48cf-a36a-268ccb39be69}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\emulation\cpu\binaryTranslation">
+      <UniqueIdentifier>{b32fd766-2acb-4145-a3d1-4cf997c48774}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -4609,6 +4618,15 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8\llvm_helper.h">
       <Filter>source\emulation\cpu\armv8</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btCpu.h">
+      <Filter>source\emulation\cpu\binaryTranslation</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeChunk.h">
+      <Filter>source\emulation\cpu\binaryTranslation</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeMemoryWrite.h">
+      <Filter>source\emulation\cpu\binaryTranslation</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

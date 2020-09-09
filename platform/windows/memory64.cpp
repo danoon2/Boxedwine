@@ -150,7 +150,7 @@ void freeNativeMemory(Memory* memory, U32 page, U32 pageCount) {
     }  
 }
 
-#ifdef BOXEDWINE_X64
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
 void allocExecutable64kBlock(Memory* memory, U32 page) {
     if (!VirtualAlloc((void*)((page << K_PAGE_SHIFT) | memory->executableMemoryId), 64*1024, MEM_COMMIT, PAGE_EXECUTE_READWRITE)) {
         LPSTR messageBuffer = NULL;
@@ -186,7 +186,7 @@ static void* reserveNext32GBMemory() {
 
 void reserveNativeMemory(Memory* memory) {    
     memory->id = (U64)reserveNext4GBMemory();
-#ifdef BOXEDWINE_X64
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
     memory->executableMemoryId = (U64)reserveNext4GBMemory();
     memory->nextExecutablePage = 0;
     if (KSystem::useLargeAddressSpace) {
@@ -210,7 +210,7 @@ void releaseNativeMemory(Memory* memory) {
     memset(memory->flags, 0, sizeof(memory->flags));
     memset(memory->nativeFlags, 0, sizeof(memory->nativeFlags));  
     memory->allocated = 0;
-#ifdef BOXEDWINE_X64
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
     memory->executableMemoryReleased();    
     if (!VirtualFree((void*)memory->executableMemoryId, 0, MEM_RELEASE)) {
         LPSTR messageBuffer = NULL;

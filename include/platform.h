@@ -144,9 +144,11 @@ void freeExecutable64kBlock(void* p);
 void* allocExecutable64kBlock(int count);
 #endif
 
-#ifdef BOXEDWINE_X64
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
 class Memory;
 void allocExecutable64kBlock(Memory* memory, U32 page);
+#endif
+#ifdef BOXEDWINE_X64
 bool platformHasBMI2();
 #endif
 

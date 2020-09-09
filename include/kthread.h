@@ -141,7 +141,7 @@ public:
 private:
     void clearFutexes();
 
-#ifdef BOXEDWINE_X64
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
     THREAD_LOCAL
 #endif
     static KThread* runningThread;

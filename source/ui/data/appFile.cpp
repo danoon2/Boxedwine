@@ -57,12 +57,12 @@ void AppFile::runOptions(BoxedContainer* container, BoxedApp* app, const std::ve
             std::string s = option.substr(12);
             app->cpuAffinity = atoi(s.c_str());
         } else {
-            AppFile* app = GlobalSettings::getComponentByOptionName(option);
-            if (app) {
-                if (!Fs::doesNativePathExist(app->localFilePath)) {
-                    downloads.push_back(app);
+            AppFile* appOption = GlobalSettings::getComponentByOptionName(option);
+            if (appOption) {
+                if (!Fs::doesNativePathExist(appOption->localFilePath)) {
+                    downloads.push_back(appOption);
                 }
-                app->install(false, container, runner, downloads);
+                appOption->install(false, container, runner, downloads);
             }
         }
     }

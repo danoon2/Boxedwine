@@ -23,8 +23,8 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <SDL.h>
-#ifdef BOXEDWINE_MULTI_THREADED
-#include "../../source/emulation/cpu/x64/x64CPU.h"
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+#include "../../source/emulation/cpu/binaryTranslation/btCpu.h"
 #endif
 #include "pixelformat.h"
 
@@ -180,7 +180,7 @@ void Platform::setCpuAffinityForThread(KThread* thread, U32 count) {
         }
         klog("Process %s (PID=%d) set thread %d cpu affinity to %X", thread->process->name.c_str(), thread->process->id, thread->id, count);
 
-        sched_setaffinity((pid_t)((x64CPU*)thread->cpu)->nativeHandle, sizeof(cpu_set_t), &mask);
+        sched_setaffinity((pid_t)((BtCPU*)thread->cpu)->nativeHandle, sizeof(cpu_set_t), &mask);
     }
 }
 #endif

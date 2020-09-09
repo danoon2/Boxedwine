@@ -1,16 +1,14 @@
 #include "boxedwine.h"
 #include <windows.h>
-#include "../source/emulation/cpu/x64/x64cpu.h"
-#include "../source/emulation/cpu/x64/x64CodeChunk.h"
 #include "../source/emulation/hardmmu/hard_memory.h"
 #include "../source/emulation/cpu/normal/normalCPU.h"
-#include "../source/emulation/cpu/x64/x64Asm.h"
 #include "ksignal.h"
+#include "../source/emulation/cpu/binaryTranslation/btCpu.h"
 
 #ifdef BOXEDWINE_MULTI_THREADED
 
 void syncFromException(struct _EXCEPTION_POINTERS *ep, bool includeFPU) {
-    x64CPU* cpu = (x64CPU*)KThread::currentThread()->cpu;
+    BtCPU* cpu = (BtCPU*)KThread::currentThread()->cpu;
     EAX = (U32)ep->ContextRecord->Rax;
     ECX = (U32)ep->ContextRecord->Rcx;
     EDX = (U32)ep->ContextRecord->Rdx;
@@ -43,7 +41,7 @@ void syncFromException(struct _EXCEPTION_POINTERS *ep, bool includeFPU) {
 }
 
 void syncToException(struct _EXCEPTION_POINTERS *ep, bool includeFPU) {
-    x64CPU* cpu = (x64CPU*)KThread::currentThread()->cpu;
+    BtCPU* cpu = (BtCPU*)KThread::currentThread()->cpu;
     ep->ContextRecord->Rax = EAX;
     ep->ContextRecord->Rcx = ECX;
     ep->ContextRecord->Rdx = EDX;
@@ -82,9 +80,9 @@ void syncToException(struct _EXCEPTION_POINTERS *ep, bool includeFPU) {
 
 class InException {
 public:
-    InException(x64CPU* cpu) : cpu(cpu) {this->cpu->inException = true;}
+    InException(BtCPU* cpu) : cpu(cpu) {this->cpu->inException = true;}
     ~InException() {this->cpu->inException = false;}
-    x64CPU* cpu;
+    BtCPU* cpu;
 };
 
 U32 exceptionCount;
@@ -105,13 +103,13 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
     if (!currentThread) {
         return EXCEPTION_CONTINUE_SEARCH;
     }
-    x64CPU* cpu = (x64CPU*)currentThread->cpu;
+    BtCPU* cpu = (BtCPU*)currentThread->cpu;
     if (ep->ContextRecord->EFlags & AC) {
         // :TODO: is there a way to clear in now
         ep->ContextRecord->EFlags&=~AC;
         return EXCEPTION_CONTINUE_EXECUTION;
     }
-    if (cpu!=(x64CPU*)ep->ContextRecord->R13) {
+    if (cpu!=(BtCPU*)ep->ContextRecord->R13) {
         return EXCEPTION_CONTINUE_SEARCH;
     }	
 
@@ -139,7 +137,27 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
             return EXCEPTION_CONTINUE_EXECUTION;
         }
     } else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION && (ep->ContextRecord->Rip & 0xFFFFFFFF00000000l)==(U64)cpu->thread->memory->executableMemoryId) {      
-        U64 rip = cpu->handleAccessException(ep->ContextRecord->Rip, ep->ExceptionRecord->ExceptionInformation[1], ep->ExceptionRecord->ExceptionInformation[0]==0, ep->ContextRecord->Rsi, ep->ContextRecord->Rdi, ep->ContextRecord->R8, ep->ContextRecord->R9, &ep->ContextRecord->R10, doSyncFrom, doSyncTo); 
+        std::function<U64(U32 reg)> getReg = [ep] (U32 reg) {
+            if (reg == 8)
+                return ep->ContextRecord->R8;
+            if (reg == 9)
+                return ep->ContextRecord->R9;
+            if (reg == 6)
+                return ep->ContextRecord->Rsi;
+            if (reg == 7)
+                return ep->ContextRecord->Rdi;
+            kpanic("Unhandled reg: getReg: %d", reg);
+            return (U64)0;
+        };
+        std::function<void(U32 reg, U64 value)> setReg = [ep](U32 reg, U64 value) {
+            if (reg == 10) {
+                ep->ContextRecord->R10 = value;
+            } else {
+                kpanic("Unhandled reg: setReg: %d", reg);
+            }
+        };
+
+        U64 rip = cpu->handleAccessException(ep->ContextRecord->Rip, ep->ExceptionRecord->ExceptionInformation[1], ep->ExceptionRecord->ExceptionInformation[0]==0, getReg, setReg, doSyncFrom, doSyncTo);
         if (rip) {
             ep->ContextRecord->Rip = rip;
         }
@@ -164,7 +182,7 @@ U32 platformThreadCount = 0;
 
 DWORD WINAPI platformThreadProc(LPVOID lpThreadParameter) {
     KThread* thread = (KThread*)lpThreadParameter;
-    x64CPU* cpu = (x64CPU*)thread->cpu;
+    BtCPU* cpu = (BtCPU*)thread->cpu;
     
     if (!pHandler) {
         pHandler = AddVectoredExceptionHandler(1,seh_filter);
@@ -175,7 +193,7 @@ DWORD WINAPI platformThreadProc(LPVOID lpThreadParameter) {
 
 void scheduleThread(KThread* thread) {
     platformThreadCount++;
-    x64CPU* cpu = (x64CPU*)thread->cpu;
+    BtCPU* cpu = (BtCPU*)thread->cpu;
     cpu->nativeHandle = (U64)CreateThread(NULL, 0, platformThreadProc, thread, CREATE_SUSPENDED, 0);
 #ifdef BOXEDWINE_MULTI_THREADED
     if (!thread->process->isSystemProcess() && KSystem::cpuAffinityCountForApp) {

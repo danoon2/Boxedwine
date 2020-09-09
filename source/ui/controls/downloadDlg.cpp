@@ -59,7 +59,7 @@ DownloadDlg::DownloadDlg(int title, const std::vector<DownloadItem>& items, std:
                 }
             }
             if (rename(tmpFilePath.c_str(), item.filePath.c_str()) != 0) {
-                std::string errorMsg = "Failed to rename tmp file: " + tmpFilePath + " (";
+                errorMsg = "Failed to rename tmp file: " + tmpFilePath + " (";
                 errorMsg += strerror(errno);
                 errorMsg += ")";
                 result = false;
