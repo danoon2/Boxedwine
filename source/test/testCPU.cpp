@@ -4150,16 +4150,16 @@ void strTest(U8 width, U8 prefix, U8 inst, U32 startFlags, const char* str1, U32
         else if (width==4)
             offset = 3;
         for (U32 i=0;i<str1Len;i++) {
-            writeb(cpu->seg[DS].address+SI-i+offset, str1[i]);
+            writeb(cpu->seg[DS].address + (cpu->big ? ESI : SI) -i + offset, str1[i]);
         }
         for (U32 i=0;i<str2Len;i++) {
-            writeb(cpu->seg[ES].address+DI-i+offset, str2[i]);
+            writeb(cpu->seg[ES].address + (cpu->big ? EDI : DI) -i + offset, str2[i]);
         }
     } else {
         if (str1)
-            memcopyFromNative(cpu->seg[DS].address+SI, str1, str1Len);
+            memcopyFromNative(cpu->seg[DS].address + (cpu->big ? ESI : SI), str1, str1Len);
         if (str2)
-            memcopyFromNative(cpu->seg[ES].address+DI, str2, str2Len);
+            memcopyFromNative(cpu->seg[ES].address + (cpu->big ? EDI : DI), str2, str2Len);
     }
 
     runTestCPU();
@@ -4194,6 +4194,7 @@ void testCmpsb0x0a6() {
 
     // repz
     strTest(1, 0xf3, 0xa6, 0, "abcd", 4, "abce", 4, 0x12340000, 0x12340000, 0x12340010, 0x12340004, 0x12340004, 0x1234000C, true, true, false, HEAP_ADDRESS+256);
+    strTest(1, 0xf3, 0xa6, 0, "abcd", 4, "abcd", 4, 0x12340000, 0x12340000, 0x12340004, 0x12340004, 0x12340004, 0x12340000, true, false, true, HEAP_ADDRESS + 256);
 
     // repnz
     strTest(1, 0xf2, 0xa6, 0, "abcd", 4, "123d", 4, 0x12340000, 0x12340000, 0x12340010, 0x12340004, 0x12340004, 0x1234000C, true, false, true, HEAP_ADDRESS+256);
@@ -4221,7 +4222,8 @@ void testCmpsb0x2a6() {
     // repz
     STR_TEST("abcd", "abce", 10, repz cmpsb, true, true, false, 6);
     strTest(1, 0xf3, 0xa6, 0, "abcd", 4, "abce", 4, 0, 256, 256, 4, 260, 252, true, true, false, HEAP_ADDRESS);
-    
+    strTest(1, 0xf3, 0xa6, 0, "abcd", 4, "abcd", 4, 0, 256, 4, 4, 260, 0, true, false, true, HEAP_ADDRESS);
+
     // repnz
     STR_TEST("123d", "abcd", 10, repnz cmpsb, true, false, true, 6);
     strTest(1, 0xf2, 0xa6, 0, "123d", 4, "abcd", 4, 0, 256, 256, 4, 260, 252, true, false, true, HEAP_ADDRESS);
@@ -4245,6 +4247,7 @@ void testCmpsw0x0a7() {
 
     // repz
     strTest(2, 0xf3, 0xa7, 0, "abcdefgh", 8, "abcdefgi", 8, 0x12340000, 0x12340000, 0x12340010, 0x12340008, 0x12340008, 0x1234000C, true, true, false, HEAP_ADDRESS+256);
+    strTest(2, 0xf3, 0xa7, 0, "abcdefgh", 8, "abcdefgh", 8, 0x12340000, 0x12340000, 0x12340004, 0x12340008, 0x12340008, 0x12340000, true, false, true, HEAP_ADDRESS + 256);
 
     // repnz
     strTest(2, 0xf2, 0xa7, 0, "abcdefgh", 8, "123456gh", 8, 0x12340000, 0x12340000, 0x12340010, 0x12340008, 0x12340008, 0x1234000C, true, false, true, HEAP_ADDRESS+256);
@@ -4274,12 +4277,114 @@ void testCmpsd0x2a7() {
     // repz
     STR_TEST("abcdefghijklmnop", "abcdefghijklmnoq", 10, repz cmpsd, true, true, false, 6);
     strTest(4, 0xf3, 0xa7, 0, "abcdefghijklmnop", 16, "abcdefghijklmnoq", 16, 0x00000010, 0x00000020, 0x00000010, 0x00000020, 0x00000030, 0x0000000C, true, true, false, HEAP_ADDRESS+256);
+    strTest(4, 0xf3, 0xa7, 0, "abcdefghijklmnop", 16, "abcdefghijklmnop", 16, 0x00000010, 0x00000020, 0x0000004, 0x00000020, 0x00000030, 0x00000000, true, false, true, HEAP_ADDRESS + 256);
 
     // repnz
     strTest(4, 0xf2, 0xa7, 0, "abcdefghijklmnop", 16, "123456781234mnop", 16, 0x00000010, 0x00000020, 0x00000010, 0x00000020, 0x00000030, 0x0000000C, true, false, true, HEAP_ADDRESS+256);
 
     // repz (DF)
     strTest(4, 0xf3, 0xa7, DF, "abcdefghijklmnop", 16, "abcdefghijklmnoq", 16, 0x00000010, 0x00000020, 0x00000010, 0x00000000, 0x00000010, 0x0000000C, true, true, false, HEAP_ADDRESS+256);    
+}
+
+void testMovsb0x0a4() {
+    cpu->big = false;
+
+    // DF
+    strTest(1, 0, 0xa4, DF, "1", 1, "0", 1, 0x12340010, 0x12340020, 0, 0x1234000F, 0x1234001F, 0, false, false, false, HEAP_ADDRESS + 256);
+    assertTrue(readb(HEAP_ADDRESS + 256 + 0x20) == '1');
+
+    // Not DF
+    strTest(1, 0, 0xa4, 0, "1", 1, "0", 1, 0x12340010, 0x12340020, 0, 0x12340011, 0x12340021, 0, false, false, false, HEAP_ADDRESS + 256);
+    assertTrue(readb(HEAP_ADDRESS + 256 + 0x20) == '1');
+
+    // repz
+    strTest(1, 0xf3, 0xa4, 0, "abcd", 4, "0000", 4, 0x12340000, 0x12340000, 0x12340004, 0x12340004, 0x12340004, 0x12340000, false, false, false, HEAP_ADDRESS + 256);
+    assertTrue(readd(HEAP_ADDRESS + 256) == 0x64636261);
+
+    // repnz
+    strTest(1, 0xf2, 0xa4, 0, "abcd", 4, "0000", 4, 0x12340000, 0x12340000, 0x12340004, 0x12340004, 0x12340004, 0x12340000, false, false, false, HEAP_ADDRESS + 256);
+    assertTrue(readd(HEAP_ADDRESS + 256) == 0x64636261);
+
+    // repnz (DF)
+    strTest(1, 0xf2, 0xa4, DF, "abcd", 4, "0000", 4, 0x12340020, 0x12340010, 0x12340004, 0x1234001C, 0x1234000C, 0x12340000, false, false, false, HEAP_ADDRESS + 256);
+    assertTrue(readd(HEAP_ADDRESS + 256 + 0x10 - 3) == 0x61626364);
+}
+
+void testMovsb0x2a4() {
+    cpu->big = true;
+
+    // DF
+    cpu->seg[DS].address = HEAP_ADDRESS - 0x40000;
+    strTest(1, 0, 0xa4, DF, "1", 1, "0", 1, 0x40010, 0x40020, 0, 0x4000F, 0x4001F, 0, false, false, false, HEAP_ADDRESS + 256 - 0x40000);
+    assertTrue(readb(HEAP_ADDRESS + 256 + 0x20) == '1');
+
+    // Not DF
+    strTest(1, 0, 0xa4, 0, "1", 1, "0", 1, 0x40010, 0x40020, 0, 0x40011, 0x40021, 0, false, false, false, HEAP_ADDRESS + 256 - 0x40000);
+    assertTrue(readb(HEAP_ADDRESS + 256 + 0x20) == '1');
+
+    // repz
+    strTest(1, 0xf3, 0xa4, 0, "abcd", 4, "0000", 4, 0x40000, 0x40000, 4, 0x40004, 0x40004, 0, false, false, false, HEAP_ADDRESS + 256 - 0x40000);
+    assertTrue(readd(HEAP_ADDRESS + 256) == 0x64636261);
+
+    // repnz
+    strTest(1, 0xf2, 0xa4, 0, "abcd", 4, "0000", 4, 0x40000, 0x40000, 4, 0x40004, 0x40004, 0, false, false, false, HEAP_ADDRESS + 256 - 0x40000);
+    assertTrue(readd(HEAP_ADDRESS + 256) == 0x64636261);
+
+    // repnz (DF)
+    strTest(1, 0xf2, 0xa4, DF, "abcd", 4, "0000", 4, 0x40020, 0x40010, 4, 0x4001C, 0x4000C, 0, false, false, false, HEAP_ADDRESS + 256 - 0x40000);
+    assertTrue(readd(HEAP_ADDRESS + 256 + 0x10 - 3) == 0x61626364);
+}
+
+void testMovsw0x0a5() {
+    cpu->big = false;
+
+    // DF
+    strTest(2, 0, 0xa5, DF, "12", 2, "00", 2, 0x12340010, 0x12340020, 0, 0x1234000E, 0x1234001E, 0, false, false, false, HEAP_ADDRESS + 256);
+    assertTrue(readw(HEAP_ADDRESS + 256 + 0x20) == 0x3132);
+
+    // Not DF
+    strTest(2, 0, 0xa5, 0, "12", 2, "00", 2, 0x12340010, 0x12340030, 0, 0x12340012, 0x12340032, 0, false, false, false, HEAP_ADDRESS + 256);
+    assertTrue(readw(HEAP_ADDRESS + 256 + 0x30) == 0x3231);
+
+    // repz
+    strTest(2, 0xf3, 0xa5, 0, "abcd", 4, "0000", 4, 0x12340000, 0x12340000, 0x12340002, 0x12340004, 0x12340004, 0x12340000, false, false, false, HEAP_ADDRESS + 256);
+    assertTrue(readd(HEAP_ADDRESS + 256) == 0x64636261);
+
+    // repnz
+    strTest(2, 0xf2, 0xa5, 0, "abcd", 4, "0000", 4, 0x12340000, 0x12340000, 0x12340002, 0x12340004, 0x12340004, 0x12340000, false, false, false, HEAP_ADDRESS + 256);
+    assertTrue(readd(HEAP_ADDRESS + 256) == 0x64636261);
+
+    // repnz (DF)
+    strTest(2, 0xf2, 0xa5, DF, "abcd", 4, "0000", 4, 0x12340020, 0x12340010, 0x12340002, 0x1234001C, 0x1234000C, 0x12340000, false, false, false, HEAP_ADDRESS + 256);
+    assertTrue(readd(HEAP_ADDRESS + 256 + 0x10 - 2) == 0x61626364);
+}
+
+void testMovsd0x2a5() {
+    cpu->big = true;
+
+    // DF
+    cpu->seg[DS].address = HEAP_ADDRESS - 0x40000;
+    strTest(4, 0, 0xa5, DF, "1234", 4, "0000", 4, 0x40010, 0x40020, 0, 0x4000C, 0x4001C, 0, false, false, false, HEAP_ADDRESS + 256 - 0x40000);
+    assertTrue(readd(HEAP_ADDRESS + 256 + 0x20) == 0x31323334);
+
+    // Not DF
+    strTest(4, 0, 0xa5, 0, "1234", 4, "0000", 4, 0x40010, 0x40030, 0, 0x40014, 0x40034, 0, false, false, false, HEAP_ADDRESS + 256 - 0x40000);
+    assertTrue(readd(HEAP_ADDRESS + 256 + 0x30) == 0x34333231);
+
+    // repz
+    strTest(4, 0xf3, 0xa5, 0, "abcdefgh", 8, "00000000", 8, 0x40000, 0x40000, 2, 0x40008, 0x40008, 0, false, false, false, HEAP_ADDRESS + 256 - 0x40000);
+    assertTrue(readd(HEAP_ADDRESS + 256) == 0x64636261);
+    assertTrue(readd(HEAP_ADDRESS + 256 + 4) == 0x68676665);
+
+    // repnz
+    strTest(4, 0xf2, 0xa5, 0, "abcdefgh", 8, "00000000", 8, 0x40000, 0x40000, 2, 0x40008, 0x40008, 0, false, false, false, HEAP_ADDRESS + 256 - 0x40000);
+    assertTrue(readd(HEAP_ADDRESS + 256) == 0x64636261);
+    assertTrue(readd(HEAP_ADDRESS + 256 + 4) == 0x68676665);
+
+    // repnz (DF)
+    strTest(4, 0xf2, 0xa5, DF, "abcdefgh", 8, "00000000", 8, 0x40020, 0x40010, 2, 0x40018, 0x40008, 0, false, false, false, HEAP_ADDRESS + 256 - 0x40000);
+    assertTrue(readd(HEAP_ADDRESS + 256 + 0x10) == 0x61626364);
+    assertTrue(readd(HEAP_ADDRESS + 256 + 0x10 - 4) == 0x65666768);
 }
 
 // :TODO: 0xa0 - 0xaf
@@ -7308,9 +7413,13 @@ int main(int argc, char **argv) {
     run(testLahf0x29f, "Lahf 29f");
 
     // :TODO: 0xa0 - 0xaf
+    run(testMovsb0x0a4, "Movsb 0a4");
+    run(testMovsb0x2a4, "Movsb 2a4");
+    run(testMovsw0x0a5, "Movsw 0a5");
+    run(testMovsd0x2a5, "Movsd 2a5");
+
     run(testCmpsb0x0a6, "Cmpsb 0a6");
     run(testCmpsb0x2a6, "Cmpsb 2a6");
-
     run(testCmpsw0x0a7, "Cmpsw 0a7");
     run(testCmpsd0x2a7, "Cmpsd 2a7");
     
