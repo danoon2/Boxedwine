@@ -1,6 +1,10 @@
 #include "../normal/normal_shift.h"
 void dynamic_rol8_reg_op(DynamicData* data, DecodedOp* op) {
     if (!op->needsToSetFlags()) {
+        if (!(op->imm & 7)) {
+            INCREMENT_EIP(data, op);
+            return;
+        }
         movToRegFromCpu(DYN_SRC, OFFSET_REG8(op->reg), DYN_8bit);
         movToRegFromReg(DYN_DEST, DYN_8bit, DYN_SRC, DYN_8bit, false);
         instRegImm('>', DYN_SRC, DYN_8bit, 8-op->imm);
@@ -16,6 +20,10 @@ void dynamic_rol8_reg_op(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_rol8_mem_op(DynamicData* data, DecodedOp* op) {
     if (!op->needsToSetFlags()) {
+        if (!(op->imm & 7)) {
+            INCREMENT_EIP(data, op);
+            return;
+        }
         calculateEaa(op, DYN_ADDRESS);
         movFromMem(DYN_8bit, DYN_ADDRESS, false);
         movToRegFromReg(DYN_DEST, DYN_8bit, DYN_CALL_RESULT, DYN_8bit, false);
@@ -50,6 +58,10 @@ void dynamic_rol8cl_mem_op(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_rol16_reg_op(DynamicData* data, DecodedOp* op) {
     if (!op->needsToSetFlags()) {
+        if (!(op->imm & 0xf)) {
+            INCREMENT_EIP(data, op);
+            return;
+        }
         movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[op->reg].u16), DYN_16bit);
         movToRegFromReg(DYN_DEST, DYN_16bit, DYN_SRC, DYN_16bit, false);
         instRegImm('>', DYN_SRC, DYN_16bit, 16-op->imm);
@@ -65,6 +77,10 @@ void dynamic_rol16_reg_op(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_rol16_mem_op(DynamicData* data, DecodedOp* op) {
     if (!op->needsToSetFlags()) {
+        if (!(op->imm & 0xf)) {
+            INCREMENT_EIP(data, op);
+            return;
+        }
         calculateEaa(op, DYN_ADDRESS);
         movFromMem(DYN_16bit, DYN_ADDRESS, false);
         movToRegFromReg(DYN_DEST, DYN_16bit, DYN_CALL_RESULT, DYN_16bit, false);
@@ -148,6 +164,10 @@ void dynamic_rol32cl_mem_op(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_ror8_reg_op(DynamicData* data, DecodedOp* op) {
     if (!op->needsToSetFlags()) {
+        if (!(op->imm & 7)) {
+            INCREMENT_EIP(data, op);
+            return;
+        }
         movToRegFromCpu(DYN_SRC, OFFSET_REG8(op->reg), DYN_8bit);
         movToRegFromReg(DYN_DEST, DYN_8bit, DYN_SRC, DYN_8bit, false);
         instRegImm('<', DYN_SRC, DYN_8bit, 8-op->imm);
@@ -163,6 +183,10 @@ void dynamic_ror8_reg_op(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_ror8_mem_op(DynamicData* data, DecodedOp* op) {
     if (!op->needsToSetFlags()) {
+        if (!(op->imm & 7)) {
+            INCREMENT_EIP(data, op);
+            return;
+        }
         calculateEaa(op, DYN_ADDRESS);
         movFromMem(DYN_8bit, DYN_ADDRESS, false);
         movToRegFromReg(DYN_DEST, DYN_8bit, DYN_CALL_RESULT, DYN_8bit, false);
@@ -197,6 +221,10 @@ void dynamic_ror8cl_mem_op(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_ror16_reg_op(DynamicData* data, DecodedOp* op) {
     if (!op->needsToSetFlags()) {
+        if (!(op->imm & 0xf)) {
+            INCREMENT_EIP(data, op);
+            return;
+        }
         movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[op->reg].u16), DYN_16bit);
         movToRegFromReg(DYN_DEST, DYN_16bit, DYN_SRC, DYN_16bit, false);
         instRegImm('<', DYN_SRC, DYN_16bit, 16-op->imm);
@@ -212,6 +240,10 @@ void dynamic_ror16_reg_op(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_ror16_mem_op(DynamicData* data, DecodedOp* op) {
     if (!op->needsToSetFlags()) {
+        if (!(op->imm & 0xf)) {
+            INCREMENT_EIP(data, op);
+            return;
+        }
         calculateEaa(op, DYN_ADDRESS);
         movFromMem(DYN_16bit, DYN_ADDRESS, false);
         movToRegFromReg(DYN_DEST, DYN_16bit, DYN_CALL_RESULT, DYN_16bit, false);

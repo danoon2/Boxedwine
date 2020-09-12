@@ -3907,8 +3907,6 @@ public:
             if (op->imm==0)
                 op->inst = Nop;
             switch (G(rm)) {
-                case 0: op->imm &= 0x7; break;
-                case 1: op->imm &= 0x7; break;
                 case 2: op->imm = op->imm % 9; break;
                 case 3: op->imm = op->imm % 9; break;
                 default: break;
@@ -3945,8 +3943,6 @@ public:
             if (op->imm==0)
                 op->inst = Nop;
             switch (G(rm)) {
-                case 0: op->imm &= 0xf; break;
-                case 1: op->imm &= 0xf; break;
                 case 2: op->imm = op->imm % 17; break;
                 case 3: op->imm = op->imm % 17; break;
                 default: break;
