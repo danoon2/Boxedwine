@@ -262,14 +262,35 @@ void testSseCvttpd2pi12c() {
     }
 #endif 
     testSseMmx64r(0, 0x66, 0x2c, 0, f1.i, f2.i, expected);
+
+    f1.d = -12345678900.0; // should result in indefinite integer, 80000000
+    f2.d = 5000.6; // should tuncate
+
+    expected = 0x0000138880000000;
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)    
+    d1.m128i_u64[0] = f1.i;
+    d1.m128i_u64[1] = f2.i;
+    __asm {
+        movups xmm1, d1
+        cvttpd2pi mm1, xmm1
+        movq result, mm1
+        emms
+    }
+    if (result != expected) {
+        failed("Cvttpd2pi failed");
+    }
+#endif 
+    testSseMmx64r(0, 0x66, 0x2c, 0, f1.i, f2.i, expected);
 }
 
 void testSse2Cvttsd2si32c() {
     TestDouble f1;
     TestDouble f2;
+    TestDouble f3;
 
     f1.d = 12345678900.0f; // should result in indefinite integer, 80000000
     f2.d = -5000.6f; // should truncate
+    f3.d = -12345678900.0f; // should result in indefinite integer, 80000000
 
 #if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)    
     __m128i d1 = _mm_setr_epi32(0, 1, 2, 3);    
@@ -299,19 +320,38 @@ void testSse2Cvttsd2si32c() {
     if (result!=expected) {
         failed("Cvttss2si failed");
     }
+    d1.m128i_u64[0] = f3.i;
+    expected = 0x80000000;
+
+    __asm {
+        movups xmm1, d1
+        cvttsd2si eax, xmm1
+        mov result, eax
+        emms
+    }
+    if (result != expected) {
+        failed("Cvttss2si failed");
+    }
 #endif
     testSseReg32r(0, 0xF2, 0x2c, 0,   f1.i, ((U64)2) << 32 | 1, 0x80000000);
     testSseReg32r(0, 0xF2, 0x2c, 0,  f2.i, ((U64)2) << 32 | 1, 0xffffec78);
+    testSseReg32r(0, 0xF2, 0x2c, 0, f3.i, ((U64)2) << 32 | 1, 0x80000000);
 }
 
 void testSse2Cvtpd2pi12d() {
     TestDouble f1;
     TestDouble f2;
+    TestDouble f3;
+    TestDouble f4;
 
     f1.d = 12345678900.0f; // should result in indefinite integer, 80000000
     f2.d = -5000.0f; // :TODO: test rounding
 
+    f3.d = -12345678900.0f; // should result in indefinite integer, 80000000
+    f4.d = 5000.0f; // :TODO: test rounding
+
     U64 expected = 0xffffec7880000000;
+    U64 expected2 = 0x0000138880000000;
 #if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)    
     __m128i d1;
     d1.m128i_u64[0] = f1.i;
@@ -327,8 +367,22 @@ void testSse2Cvtpd2pi12d() {
     if (result!=expected) {
         failed("Cvtpd2pi failed");
     }
+
+    d1.m128i_u64[0] = f3.i;
+    d1.m128i_u64[1] = f4.i;
+
+    __asm {
+        movups xmm1, d1
+        cvtpd2pi mm1, xmm1
+        movq result, mm1
+        emms
+    }
+    if (result != expected2) {
+        failed("Cvtpd2pi failed");
+    }
 #endif 
     testSseMmx64r(0, 0x66, 0x2d, 0, f1.i, f2.i, expected);
+    testSseMmx64r(0, 0x66, 0x2d, 0, f3.i, f4.i, expected2);
 }
 
 void testSse2Cvtsd2si32d() {
@@ -1042,11 +1096,11 @@ void testSse2Cvtps2dq15b() {
     Test_Float f2;
     Test_Float f3;
     Test_Float f4;
-
-    f1.f = -50.0;
-    f2.f = 175.0;
-    f3.f = 0.0;
-    f4.f = 1000000.0;
+    
+    f1.f = 2147483648.0f;
+    f2.f = -50.0f;
+    f3.f = 0.0f;
+    f4.f = -2147483649.0f;
 #if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)    
     __m128i d1;
     d1.m128i_u32[0] = f1.i;
@@ -1054,10 +1108,10 @@ void testSse2Cvtps2dq15b() {
     d1.m128i_u32[2] = f3.i;
     d1.m128i_u32[3] = f4.i;
     __m128i expected;
-    expected.m128i_i32[0] = -50;
-    expected.m128i_i32[1] = 175;
+    expected.m128i_i32[0] = 0x80000000;
+    expected.m128i_i32[1] = -50;
     expected.m128i_i32[2] = 0;
-    expected.m128i_i32[3] = 1000000;
+    expected.m128i_u32[3] = 0x80000000;
     __m128i result;
 
     __asm {
@@ -1070,7 +1124,7 @@ void testSse2Cvtps2dq15b() {
         failed("cvtps2dq failed");
     }
 #endif 
-    testSse128(0, 0x66, 0x5b, 0, 0, f1.i | (U64)f2.i << 32, f3.i | (U64)f4.i << 32, 0x000000afffffffce, 0x000f424000000000);
+    testSse128(0, 0x66, 0x5b, 0, 0, f1.i | (U64)f2.i << 32, f3.i | (U64)f4.i << 32, 0xffffffce80000000, 0x8000000000000000);
 }
 
 void testSse2Cvtdq2ps35b() {
@@ -1116,8 +1170,8 @@ void testSse2Cvttps2dq35b() {
     Test_Float f4;
 
     f1.f = -50.1f;
-    f2.f = 175.7f;
-    f3.f = 0.0f;
+    f2.f = 2147483648.0f;
+    f3.f = -2147483649.0f;
     f4.f = 1000000.4f;
 #if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)    
     __m128i d1;
@@ -1127,9 +1181,9 @@ void testSse2Cvttps2dq35b() {
     d1.m128i_u32[3] = f4.i;
     __m128i expected;
     expected.m128i_i32[0] = -50;
-    expected.m128i_i32[1] = 175;
-    expected.m128i_i32[2] = 0;
-    expected.m128i_i32[3] = 1000000;
+    expected.m128i_u32[1] = 0x80000000;
+    expected.m128i_u32[2] = 0x80000000;
+    expected.m128i_u32[3] = 1000000;
     __m128i result;
 
     __asm {
@@ -1142,7 +1196,7 @@ void testSse2Cvttps2dq35b() {
         failed("cvtps2dq failed");
     }
 #endif 
-    testSse128(0, 0xf3, 0x5b, 0, 0, f1.i | (U64)f2.i << 32, f3.i | (U64)f4.i << 32, 0x000000afffffffce, 0x000f424000000000);
+    testSse128(0, 0xf3, 0x5b, 0, 0, f1.i | (U64)f2.i << 32, f3.i | (U64)f4.i << 32, 0x80000000ffffffce, 0x000f424080000000);
 }
 
 void testSse2Subpd15c() {
@@ -1230,11 +1284,27 @@ void testSse2Minpd15d() {
     TestDouble f2;
     TestDouble f3;
     TestDouble f4;
+    TestDouble f5;
+    TestDouble f6;
+    TestDouble f7;
+    TestDouble f8;
+    TestDouble f9;
+    TestDouble f10;
+    TestDouble f11;
+    TestDouble f12;
 
     f1.d = 4.0;
     f2.d = -5.0;
     f3.d = 0.1;
     f4.d = 2.0;
+    f5.i = DOUBLE_QUIET_NAN_BITS;
+    f6.d = 7.0;
+    f7.d = 7.0;
+    f8.i = DOUBLE_QUIET_NAN_BITS;
+    f9.d = 0.0;
+    f10.d = -0.0;
+    f11.d = -0.0;
+    f12.d = 0.0;
 
 #if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
     __m128i d1;
@@ -1258,8 +1328,45 @@ void testSse2Minpd15d() {
     if (memcmp(&result, &expected, 16)) {
         failed("minpd failed");
     }
+
+    d1.m128i_u64[0] = f5.i;
+    d1.m128i_u64[1] = f6.i;
+    d2.m128i_u64[0] = f7.i;
+    d2.m128i_u64[1] = f8.i;
+    expected.m128i_u64[0] = f6.i;
+    expected.m128i_u64[1] = f8.i;
+
+    __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        minpd xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("minpd failed");
+    }
+    d1.m128i_u64[0] = f9.i;
+    d1.m128i_u64[1] = f10.i;
+    d2.m128i_u64[0] = f11.i;
+    d2.m128i_u64[1] = f12.i;
+    expected.m128i_u64[0] = f10.i;
+    expected.m128i_u64[1] = f12.i;
+
+    __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        minpd xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("minpd failed");
+    }
 #endif 
     testSse128(0, 0x66, 0x5d, f1.i, f3.i, f2.i, f4.i, f2.i, f3.i);
+    testSse128(0, 0x66, 0x5d, f5.i, f6.i, f7.i, f8.i, f6.i, f8.i);
+    testSse128(0, 0x66, 0x5d, f9.i, f10.i, f11.i, f12.i, f10.i, f12.i);
 }
 
 void testSse2Minsd35d() {
@@ -1267,11 +1374,17 @@ void testSse2Minsd35d() {
     TestDouble f2;
     TestDouble f3;
     TestDouble f4;
+    TestDouble fNan;
+    TestDouble fNegZero;
+    TestDouble fZero;
 
     f1.d = 4.0;
     f2.d = -5.0;
     f3.d = 5.0;
     f4.d = 2.0;
+    fNan.i = DOUBLE_QUIET_NAN_BITS;
+    fZero.d = 0.0;
+    fNegZero.d = -0.0;
 
 #if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
     __m128i d1;
@@ -1295,8 +1408,98 @@ void testSse2Minsd35d() {
     if (memcmp(&result, &expected, 16)) {
         failed("minsd failed");
     }
+
+    d1.m128i_u64[0] = fNan.i;
+    d1.m128i_u64[1] = f1.i;
+    d2.m128i_u64[0] = f2.i;
+    d2.m128i_u64[1] = fNan.i;
+    expected.m128i_u64[0] = f2.i;
+    expected.m128i_u64[1] = f1.i;
+
+    __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        minsd xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("minsd failed");
+    }
+    d1.m128i_u64[0] = f2.i;
+    d1.m128i_u64[1] = f1.i;
+    d2.m128i_u64[0] = fNan.i;
+    d2.m128i_u64[1] = f3.i;
+    expected.m128i_u64[0] = fNan.i;
+    expected.m128i_u64[1] = f1.i;
+
+    __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        minsd xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("minsd failed");
+    }
+    d1.m128i_u64[0] = f2.i;
+    d1.m128i_u64[1] = f1.i;
+    d2.m128i_u64[0] = fNan.i;
+    d2.m128i_u64[1] = f2.i;
+    expected.m128i_u64[0] = fNan.i;
+    expected.m128i_u64[1] = f1.i;
+
+    __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        minsd xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("minsd failed");
+    }
+    d1.m128i_u64[0] = fZero.i;
+    d1.m128i_u64[1] = f1.i;
+    d2.m128i_u64[0] = fNegZero.i;
+    d2.m128i_u64[1] = f2.i;
+    expected.m128i_u64[0] = fNegZero.i;
+    expected.m128i_u64[1] = f1.i;
+
+    __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        minsd xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("minsd failed");
+    }
+    d1.m128i_u64[0] = fNegZero.i;
+    d1.m128i_u64[1] = f1.i;
+    d2.m128i_u64[0] = fZero.i;
+    d2.m128i_u64[1] = f2.i;
+    expected.m128i_u64[0] = fZero.i;
+    expected.m128i_u64[1] = f1.i;
+
+    __asm {
+        movups xmm0, d2
+        movups xmm1, d1
+        minsd xmm1, xmm0
+        movups result, xmm1
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("minsd failed");
+    }
 #endif 
     testSse128(0, 0xf2, 0x5d, f1.i, f3.i, f2.i, f4.i, f2.i, f3.i);
+    testSse128(0, 0xf2, 0x5d, fNan.i, f1.i, f2.i, fNan.i, f2.i, f1.i);
+    testSse128(0, 0xf2, 0x5d, f2.i, f1.i, fNan.i, f3.i, fNan.i, f1.i);
+    testSse128(0, 0xf2, 0x5d, fZero.i, f1.i, fNegZero.i, f3.i, fNegZero.i, f1.i);
+    testSse128(0, 0xf2, 0x5d, fNegZero.i, f1.i, fZero.i, f3.i, fZero.i, f1.i);
 }
 
 void testSse2Divpd15e() {
@@ -2670,6 +2873,31 @@ void testSse2Movnti3c3() {
     }    
 }
 
+void testPinsrw1c4() {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)  
+    __m128i result;
+    __m128i d1;
+    d1.m128i_u64[0] = 0x1111222233334444;
+    d1.m128i_u64[1] = 0x5555666677778888;
+    U32 reg = 0x11229900;
+    __m128i expected;
+    expected.m128i_u64[0] = 0x1111222233334444;
+    expected.m128i_u64[1] = 0x5555666699008888;
+
+    __asm {
+        __asm movups xmm0, d1
+        __asm mov ecx, reg
+        __asm pinsrw xmm0, ecx, 5
+        __asm movups result, xmm0
+        __asm emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("failed");
+    }
+#endif
+    testSse16Eimm8(0, 0x66, 0xc4, 0x1111222233334444, 0x5555666677778888, 0x55559900, 0x1111222233334444, 0x5555666699008888, 5);
+}
+
 void testSse2Shufpd1c6() {
 #if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
     __m128i d1;
@@ -3246,9 +3474,14 @@ void testSse2Pmulhw1e5() {
 void testSse2Cvttpd2dq1e6() {
     TestDouble f1;
     TestDouble f2;
+    TestDouble f3;
+    TestDouble f4;
 
     f1.d = 12345678900.0;
     f2.d = -5000.6;
+
+    f3.d = -12345678900.0;
+    f4.d = 5000.6;
 
 #if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)    
     __m128i d1;
@@ -3272,8 +3505,27 @@ void testSse2Cvttpd2dq1e6() {
     if (memcmp(&result, &expected, 16)) {
         failed("cvttpd2dq failed");
     }
+
+    d1.m128i_u64[0] = 0x1111222233334444;
+    d1.m128i_u64[1] = 0x5555666677778888;
+    d2.m128i_u64[0] = f3.i;
+    d2.m128i_u64[1] = f4.i;
+    expected.m128i_u64[0] = 0x0000138880000000;
+    expected.m128i_u64[1] = 0;
+
+    __asm {
+        movups xmm0, d1
+        movups xmm1, d2
+        cvttpd2dq xmm0, xmm1
+        movups result, xmm0
+        emms
+    }
+    if (memcmp(&result, &expected, 16)) {
+        failed("cvttpd2dq failed");
+    }
 #endif 
     testSse128(0, 0x66, 0xe6, 0x1111222233334444, 0x5555666677778888, f1.i, f2.i, 0xffffec7880000000, 0);
+    testSse128(0, 0x66, 0xe6, 0x1111222233334444, 0x5555666677778888, f3.i, f4.i, 0x0000138880000000, 0);
 }
 
 void testSse2Cvtpd2dq3e6() {

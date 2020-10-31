@@ -1617,6 +1617,112 @@ void EdGdEax(int instruction, struct Data* data) {
     }
 }
 
+void EwGwAx(int instruction, struct Data* data) {
+    while (data->valid) {
+        int ew;
+        int gw;
+        int rm;
+
+        for (ew = 1; ew < 8; ew++) {
+            for (gw = 1; gw < 8; gw++) {
+                Reg* e;
+                Reg* g;
+
+                if (ew == gw)
+                    continue;
+                rm = ew | (gw << 3) | 0xC0;
+                newInstructionWithRM(instruction, rm, data->flags);
+                pushConstant(data);
+                e = &cpu->reg[ew];
+                g = &cpu->reg[gw];
+                e->u32 = data->var1;
+                g->u32 = data->var2;
+                AX = data->constant;
+                runTestCPU();
+                assertResult(data, cpu, instruction, e->u16, AX, -1, -1, 0, 0);
+            }
+        }
+
+        for (gw = 1; gw < 8; gw++) {
+            Reg* g;
+            U32 result;
+
+            rm = (gw << 3);
+            if (cpu->big)
+                rm += 5;
+            else
+                rm += 6;
+            newInstructionWithRM(instruction, rm, data->flags);
+            if (cpu->big)
+                pushCode32(200);
+            else
+                pushCode16(200);
+            pushConstant(data);
+            writed(cpu->seg[DS].address + 200, data->var1);
+            g = &cpu->reg[gw];
+            g->u32 = data->var2;
+            AX = data->constant;
+            runTestCPU();
+            result = readw(cpu->seg[DS].address + 200);
+            assertResult(data, cpu, instruction, result, AX, -1, -1, 0, 0);
+        }
+        data++;
+    }
+}
+
+void EbGbAl(int instruction, struct Data* data) {
+    while (data->valid) {
+        int eb;
+        int gb;
+        int rm;
+
+        for (eb = 1; eb < 8; eb++) {
+            for (gb = 1; gb < 8; gb++) {
+                U8* e;
+                U8* g;
+
+                if (eb == gb)
+                    continue;
+                rm = eb | (gb << 3) | 0xC0;
+                newInstructionWithRM(instruction, rm, data->flags);
+                pushConstant(data);
+                e = cpu->reg8[eb];
+                g = cpu->reg8[gb];
+                *e = (U8)data->var1;
+                *g = (U8)data->var2;
+                AL = data->constant;
+                runTestCPU();
+                assertResult(data, cpu, instruction, *e, AL, -1, -1, 0, 0);
+            }
+        }
+
+        for (gb = 1; gb < 8; gb++) {
+            U8* g;
+            U32 result;
+
+            rm = (gb << 3);
+            if (cpu->big)
+                rm += 5;
+            else
+                rm += 6;
+            newInstructionWithRM(instruction, rm, data->flags);
+            if (cpu->big)
+                pushCode32(200);
+            else
+                pushCode16(200);
+            pushConstant(data);
+            writed(cpu->seg[DS].address + 200, data->var1);
+            g = cpu->reg8[gb];
+            *g = (U8)data->var2;
+            AL = data->constant;
+            runTestCPU();
+            result = readb(cpu->seg[DS].address + 200);
+            assertResult(data, cpu, instruction, result, AL, -1, -1, 0, 0);
+        }
+        data++;
+    }
+}
+
 void EdGdCl(int instruction, struct Data* data) {
     while (data->valid) {
         int ed;
@@ -2741,12 +2847,30 @@ static struct Data imulw[] = {
         endData()
 };
 
+static struct Data dimulw[] = {
+        allocData(2, 2, 4, 0, false, false),
+        allocData(2, 0xFFFE, 0xFFFC, 0, false, false), // -2 * 2 = -4
+        allocData(0xFFFE, 0xFFFE, 4, CF | OF, false, false), // -2 * -2 = 4 (also, make sure it clears the flags)
+        allocData(300, 300, 0x5F90, 0, true, true), // 300 x 300 = 0x15F90
+        allocData(300, (U32)(-300), 0xA070, 0, true, true),
+        endData()
+};
+
 static struct Data imuld[] = {
         allocDataConst(0, 2, 4, 2, 32, 0, false, false),
         allocDataConst(0, 0xFFFFFFFE, 0xFFFFFFFC, 2, 32, 0, false, false), // -2 * 2 = -4
         allocDataConst(0, 0xFFFFFFFE, 4, 0xFFFFFFFE, 32, CF|OF, false, false), // -2 * -2 = 4 (also, make sure it clears the flags)
         allocDataConst(0, 300000, 0xF08EB000, 400000, 32, 0, true, true), // = 1BF08EB000
         allocDataConst(0, (U32)(-300000), 0x0F715000, 400000, 32, 0, true, true),
+        endData()
+};
+
+static struct Data dimuld[] = {
+        allocData(2, 2, 4, 0, false, false),
+        allocData(2, 0xFFFFFFFE, 0xFFFFFFFC, 0, false, false), // -2 * 2 = -4
+        allocData(0xFFFFFFFE, 0xFFFFFFFE, 4, CF | OF, false, false), // -2 * -2 = 4 (also, make sure it clears the flags)
+        allocData(400000, 300000, 0xF08EB000, 0, true, true), // = 1BF08EB000
+        allocData(400000, (U32)(-300000), 0x0F715000, 0, true, true),
         endData()
 };
 
@@ -3335,18 +3459,21 @@ static struct Data notd[] = {
 static struct Data negb[] = {
         allocData(0, 0, 0x0, 0, false, false),
         allocData(4, 0, ((S8)-4) & 0xFF, 0, true, false),
+        allocData(((S8)-4), 0, 4 & 0xFF, 0, true, false),
         endData()
 };
 
 static struct Data negw[] = {
         allocData(0, 0, 0x0, 0, false, false),
         allocData(2045, 0, ((S16)-2045) & 0xFFFF, 0, true, false),
+        allocData(((S16)-2045), 0, 2045, 0, true, false),
         endData()
 };
 
 static struct Data negd[] = {
         allocData(0, 0, 0x0, 0, false, false),
         allocData(20458512, 0, (U32)(-20458512), 0, true, false),
+        allocData((U32)(-20458512), 0, 20458512, 0, true, false),
         endData()
 };
 
@@ -3480,11 +3607,14 @@ static struct Data btsd[] = {
 };
 
 static struct Data shld16[] = {
-        allocDataConstNoOF(0x1234, 0x5678, 0x2345, 4, 8, 0, true),
+        allocDataConstNoOF(0x1234, 0x5678, 0x2345, 4, 8, 0, true),        
         allocDataConst(0x8080, 0x8000, 0x0101, 1, 8, 0, true, true),
         allocDataConst(0x4080, 0x8000, 0x8101, 1, 8, 0, false, true),
         allocDataConst(0x2080, 0x8000, 0x4101, 1, 8, 0, false, false),
         allocDataConstNoOF(0x4080, 0x8000, 0x0202, 2, 8, 0, true),
+        // make sure 0 shift doesn't change flags
+        allocDataConst(0x8080, 0x8000, 0x8080, 0, 8, 0, false, false),
+        allocDataConst(0x8080, 0x8000, 0x8080, 0, 8, CF|OF, true, true),
         //allocDataConstNoOF(0x1234, 0x5678, 0x6785, 20, 8, 0, true), // undefined
         //allocDataConst(0x8080, 0x8000, 0x0001, 17, 8, 0, true, true),
         //allocDataConst(0x4080, 0x4000, 0x8000, 17, 8, 0, false, true),
@@ -3509,8 +3639,8 @@ static struct Data shrd16[] = {
         allocDataConst(0x0101, 0x0002, 0x0080, 1, 8, 0, true, false),
         allocDataConstNoOF(0x8080, 0x0001, 0x6020, 2, 8, 0, false),
         //allocDataConstNoOF(0x1234, 0x5678, 0x8567, 20, 8, 0, true, true), // undefined
-        allocDataConstNoOF(0x0101, 0x0001, 0x8000, 17, 8, 0, true),
-        allocDataConstNoOF(0x0102, 0x0002, 0x0001, 17, 8, 0, false),
+        //allocDataConstNoOF(0x0101, 0x0001, 0x8000, 17, 8, 0, true),
+        //allocDataConstNoOF(0x0102, 0x0002, 0x0001, 17, 8, 0, false),
         endData()
 };
 
@@ -3990,6 +4120,26 @@ void testPush0x268() {cpu->big = true;push32(0x68);}
 
 void testIMul0x069() {cpu->big = false;GwEw(0x69, imulw);X86_TEST2C(imul, &imulw[0], ax, cx, 2) X86_TEST2C(imul, &imulw[1], ax, cx, 2) X86_TEST2C(imul, &imulw[2], ax, cx, 0xFFFE) X86_TEST2C(imul, &imulw[3], ax, cx, 300) X86_TEST2C(imul, &imulw[4], ax, cx, 300)}
 void testIMul0x269() {cpu->big = true;GdEd(0x69, imuld);X86_TEST2C(imul, &imuld[0], eax, ecx, 2) X86_TEST2C(imul, &imuld[1], eax, ecx, 2) X86_TEST2C(imul, &imuld[2], eax, ecx, 0xFFFFFFFE) X86_TEST2C(imul, &imuld[3], eax, ecx, 400000) X86_TEST2C(imul, &imuld[4], eax, ecx, 400000)}
+
+void testImulw0x1af() { 
+    cpu->big = false; 
+    GwEw(0x1af, dimulw);
+    X86_TEST(imul, &dimulw[0], ax, cx)
+    X86_TEST(imul, &dimulw[1], ax, cx)
+    X86_TEST(imul, &dimulw[2], ax, cx)
+    X86_TEST(imul, &dimulw[3], ax, cx)
+    X86_TEST(imul, &dimulw[4], ax, cx)
+}
+
+void testImuld0x3af() {
+    cpu->big = true;
+    GdEd(0x3af, dimuld);
+    X86_TEST(imul, &dimuld[0], eax, ecx)
+    X86_TEST(imul, &dimuld[1], eax, ecx)
+    X86_TEST(imul, &dimuld[2], eax, ecx)
+    X86_TEST(imul, &dimuld[3], eax, ecx)
+    X86_TEST(imul, &dimuld[4], eax, ecx)
+}
 
 void testPush0x06a() {cpu->big = false;push16s8(0x6a);}
 void testPush0x26a() {cpu->big = true;push32s8(0x6a);}
@@ -4697,7 +4847,9 @@ void testXlat0x2d7() {
 #include <math.h>
 const U32 FLOAT_POSITIVE_INFINITY_BITS = 0x7f800000;
 const U32 FLOAT_NEGATIVE_INFINITY_BITS = 0xff800000;
-const U32 FLOAT_NAN_BITS = 0x7fd00000;
+const U32 FLOAT_QUIET_NAN_BITS = 0x7fc00000;
+
+const U64 DOUBLE_QUIET_NAN_BITS = 0x7FF8000000000000;
 
 #ifdef BOXEDWINE_MSVC
 #include <float.h>
@@ -6066,9 +6218,9 @@ void testShrd0x1ac() {
     X86_TEST2C(shrd, &shrd16[1], ax, cx, 1);
     X86_TEST2C(shrd, &shrd16[2], ax, cx, 1);
     X86_TEST2C(shrd, &shrd16[3], ax, cx, 1);
-    X86_TEST2C(shrd, &shrd16[4], ax, cx, 2);
-    X86_TEST2C(shrd, &shrd16[5], ax, cx, 17);
-    X86_TEST2C(shrd, &shrd16[6], ax, cx, 17);
+    //X86_TEST2C(shrd, &shrd16[4], ax, cx, 2);
+    //X86_TEST2C(shrd, &shrd16[5], ax, cx, 17);
+    //X86_TEST2C(shrd, &shrd16[6], ax, cx, 17);
 }
 
 void testShrd0x3ac() {
@@ -6109,6 +6261,7 @@ int valid;
     U32 hasSF;
     */
 
+// :TODO: this should test larger numbers for 16-bit and 32-bit versions
 static struct Data cmpxchgd[] = {
     // 1, D, S, D(result), EAX(result), flags, EAX, CF, OF, ZF, SF, 0, 1, 0, 1, 0, 0, 1, 1, 1
       {1, 1, 2, 2        , 1          , 0    , 1  ,  0,  0,  1,  0, 0, 1, 0, 1, 0, 0, 1, 1, 1},
@@ -6116,6 +6269,109 @@ static struct Data cmpxchgd[] = {
       {1, 9, 2, 9        , 9          , 0    , 1  ,  1,  0,  0,  1, 0, 1, 0, 1, 0, 0, 1, 1, 1},
     endData()
 };
+
+void testCmpXchg0x3b0() {
+    cpu->big = true;
+    EbGbAl(0x3b0, cmpxchgd);
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    {
+        struct Data* data = cmpxchgd;
+        U32 flagMask = CF | OF | ZF | PF | SF | AF;
+
+        while (data->valid) {
+            U32 result;
+            U32 result2 = data->constant;
+            U32 flags = data->flags;
+            __asm {
+                mov ebx, data;
+                mov ecx, [ebx].var1;
+                mov edx, [ebx].var2;
+                mov eax, result2;
+                mov ebx, flags;
+
+                push ebx
+                    popf
+
+                    cmpxchg cl, dl
+                    mov result, ecx
+                    mov result2, eax
+
+                    pushf
+                    pop ebx
+                    mov flags, ebx
+            }
+            assertTrue(result2 == data->resultvar2);
+            if (!data->dontUseResultAndCheckSFZF)
+                assertTrue(result == data->result);
+            if (data->dontUseResultAndCheckSFZF || data->hasSF)
+                assertTrue((flags & SF) != 0 == data->fSF != 0);
+            if (data->dontUseResultAndCheckSFZF || data->hasZF)
+                assertTrue((flags & ZF) != 0 == data->fZF != 0);
+            if (data->hasCF)
+                assertTrue((flags & CF) != 0 == data->fCF != 0);
+            if (data->hasOF)
+                assertTrue((flags & OF) != 0 == data->fOF != 0);
+            if (data->hasAF)
+                assertTrue((flags & AF) != 0 == data->fAF != 0);
+            data++;
+        }
+    }
+#endif
+}
+
+void testCmpXchg0x1b0() {
+    cpu->big = false;
+    EbGbAl(0x1b0, cmpxchgd);
+}
+
+void testCmpXchg0x1b1() {
+    cpu->big = false;
+    EwGwAx(0x1b1, cmpxchgd);
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    {
+        struct Data* data = cmpxchgd;
+        U32 flagMask = CF | OF | ZF | PF | SF | AF;
+
+        while (data->valid) {
+            U32 result;
+            U32 result2 = data->constant;
+            U32 flags = data->flags;
+            __asm {
+                mov ebx, data;
+                mov ecx, [ebx].var1;
+                mov edx, [ebx].var2;
+                mov eax, result2;
+                mov ebx, flags;
+
+                push ebx
+                    popf
+
+                    cmpxchg cx, dx
+                    mov result, ecx
+                    mov result2, eax
+
+                    pushf
+                    pop ebx
+                    mov flags, ebx
+            }
+            assertTrue(result2 == data->resultvar2);
+            if (!data->dontUseResultAndCheckSFZF)
+                assertTrue(result == data->result);
+            if (data->dontUseResultAndCheckSFZF || data->hasSF)
+                assertTrue((flags & SF) != 0 == data->fSF != 0);
+            if (data->dontUseResultAndCheckSFZF || data->hasZF)
+                assertTrue((flags & ZF) != 0 == data->fZF != 0);
+            if (data->hasCF)
+                assertTrue((flags & CF) != 0 == data->fCF != 0);
+            if (data->hasOF)
+                assertTrue((flags & OF) != 0 == data->fOF != 0);
+            if (data->hasAF)
+                assertTrue((flags & AF) != 0 == data->fAF != 0);
+            data++;
+        }
+    }
+#endif
+}
 
 void testCmpXchg0x3b1() {
     cpu->big=true;
@@ -7484,11 +7740,11 @@ int main(int argc, char **argv) {
     run(testXlat0x0d7, "Xlat 0d7");
     run(testXlat0x2d7, "Xlat 2d7");
 
-    run(testFPU0x0d8, "FPU 0d8");
-    run(testFPU0x2d8, "FPU 2d8");
+    //run(testFPU0x0d8, "FPU 0d8");
+    //run(testFPU0x2d8, "FPU 2d8");
 
-    run(testFPU0x0d9, "FPU 0d9");
-    run(testFPU0x2d9, "FPU 2d9");    
+    //run(testFPU0x0d9, "FPU 0d9");
+    //run(testFPU0x2d9, "FPU 2d9");    
 
     run(testCmc0x0f5, "Cmc 0f5");
     run(testCmc0x2f5, "Cmc 2f5");
@@ -7700,7 +7956,11 @@ int main(int argc, char **argv) {
     // MFENCE 3AE/6 (sse2)
     // SFENCE 3AE/7 (sse1)
     // CLFLUSH 3AE/7 (sse2)
-
+    run(testImulw0x1af, "IMUL 1af");
+    run(testImuld0x3af, "IMUL 3af");
+    run(testCmpXchg0x1b0, "CMPXCHG 1b0");
+    run(testCmpXchg0x3b0, "CMPXCHG 3b0");
+    run(testCmpXchg0x1b1, "CMPXCHG 1b1");
     run(testCmpXchg0x3b1, "CMPXCHG 3b1");
 
     run(testXadd0x3c1, "XADD 3c1");    
@@ -7709,8 +7969,10 @@ int main(int argc, char **argv) {
     run(testSse2Cmpsd3c2, "CMPSD F2 3C2 (sse2)");
     run(testCmpss0x3c2, "CMPSS F3 3C2 (sse1)");
     run(testSse2Movnti3c3, "MOVNTI 3C3 (sse2)");
+    run(testPinsrw1c4, "PINSRW 1C4 (sse2)");
     run(testPinsrw3c4, "PINSRW 3C4 (sse1)");
     run(testPextrw3c5, "PEXTRW 3C5 (sse1)");
+    run(testPextrw1c5, "PEXTRW 1C5 (sse2)");
     run(testSse2Shufpd1c6, "SHUFPD 1C6 (sse2)");
     run(testShufps3c6, "SHUFPS 3C6 (sse1)");
 
@@ -7791,7 +8053,7 @@ int main(int argc, char **argv) {
     run(testSse2Pmuludq1f4, "PMULUDQ 1F4 (sse2)");
     run(testSse2Pmuludq3f4, "PMULUDQ 3F4 (sse2)");
     run(testSse2Pmaddwd1f5, "PMADDWD 1F5 (sse2)");
-    run(testMmxPmaddwd, "PMULLW 3f5 (mmx)");
+    run(testMmxPmaddwd, "PMADDWD 3f5 (mmx)");
     run(testSse2Psadbw1f6, "PSADBW 1F6 (sse2)");
     run(testPsadbw3f6, "PSADBW 3F6 (sse1)");
     run(testSse2Maskmovdqu1f7, "MASKMOVDQU 1F7 (sse2)");

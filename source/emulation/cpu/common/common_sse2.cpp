@@ -877,10 +877,9 @@ void common_cvtps2pdXmmXmm(CPU* cpu, U32 r1, U32 r2) {
     cpu->xmm[r1].pd = simde_mm_cvtps_pd(cpu->xmm[r2].ps);
 }
 
-void common_cvtps2pdXmmE128(CPU* cpu, U32 reg, U32 address) {
+void common_cvtps2pdXmmE64(CPU* cpu, U32 reg, U32 address) {
     simde__m128 value;
     value.u64[0] = readq(address);
-    value.u64[1] = readq(address+8);
     cpu->xmm[reg].pd = simde_mm_cvtps_pd(value);
 }
 

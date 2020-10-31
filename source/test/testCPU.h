@@ -38,10 +38,12 @@ __m128i floatTo128(float f1, float f2, float f3, float f4);
 
 extern const U32 FLOAT_POSITIVE_INFINITY_BITS;
 extern const U32 FLOAT_NEGATIVE_INFINITY_BITS;
-extern const U32 FLOAT_NAN_BITS;
+extern const U32 FLOAT_QUIET_NAN_BITS;
+extern const U64 DOUBLE_QUIET_NAN_BITS;
 
 #define POSITIVE_INFINITY *(const float *)&FLOAT_POSITIVE_INFINITY_BITS
 #define NEGATIVE_INFINITY *(const float *)&FLOAT_NEGATIVE_INFINITY_BITS
-#define TEST_NAN *(const float *)&FLOAT_NAN_BITS
+#define TEST_NAN *(const float *)&FLOAT_QUIET_NAN_BITS
+#define TEST_NAN_DOUBLE *(const float *)&DOUBLE_QUIET_NAN_BITS
 
 #endif

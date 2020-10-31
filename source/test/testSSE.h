@@ -11,6 +11,7 @@ void testSseReg32r(U8 preOp1, U8 preOp2, U8 op, U32 value1, U64 value2l, U64 val
 void testSse128f(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U64 value2l, U64 value2h, U32 flagsResult);
 void testSseE32r(U8 preOp1, U8 preOp2, U8 op, U32 value1, U64 value2l, U64 value2h, U32 result, U32 memResult=0);
 void testSse128imm(U8 preOp1, U8 preOp2, U8 op, U8 imm, U64 value1l, U64 value1h, U64 value2l, U64 value2h, U64 xmmResultl, U64 xmmResulth);
+void testSse16Eimm8(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U32 value2, U64 xmmResultl, U64 xmmResulth, U8 imm8);
 void testSse128SubImm(U8 preOp1, U8 preOp2, U8 op, U8 g, U8 imm, U64 value1l, U64 value1h, U64 xmmResultl, U64 xmmResulth);
 void testSse128E64r(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U64 value2l, U64 value2h, U64 xmmResultl, U64 xmmResulth, U64 memResultl=0, U64 memResulth=0);
 
@@ -87,6 +88,7 @@ void testCmpps0x3c2();
 void testCmpss0x3c2();
 void testPinsrw3c4();
 void testPextrw3c5();
+void testPextrw1c5();
 void testShufps3c6();
 void testPmovmskb3d7();
 void testPmovmskb1d7();
