@@ -608,7 +608,11 @@ void KNativeWindowSdl::screenResized(KThread* thread) {
 void KNativeWindowSdl::displayChanged(KThread* thread) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(sdlMutex);
     firstWindowCreated = 1;
-    if (KSystem::videoEnabled) {
+    if (contextCount) {
+        // when the context is destroy, displayChanged will be called again
+        return;
+    }
+    if (KSystem::videoEnabled) {       
         destroyScreen(thread);
         {
             BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(hwndToWndMutex);
