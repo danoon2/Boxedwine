@@ -119,11 +119,14 @@ void dynamic_arith(DynamicData* data, DecodedOp* op, DynArg src, DynArg dst, Dyn
                 }
                 if (needResultReg) {
                     movFromMem(width, DYN_ADDRESS, !store);
-                    instRegReg(inst, DYN_SRC, DYN_CALL_RESULT, width, true);
+                    instRegReg(inst, DYN_CALL_RESULT, DYN_SRC, width, true);
                     if (store) {
+                        movToRegFromReg(DYN_SRC, width, DYN_CALL_RESULT, width, true);
                         movToMemFromReg(DYN_ADDRESS, DYN_SRC, width, true, false);
-                    }
-                    jmpReg = DYN_SRC;
+                        jmpReg = DYN_SRC;
+                    } else {
+                        jmpReg = DYN_CALL_RESULT;
+                    }                    
                 } else {
                     instMemReg(inst, DYN_ADDRESS, DYN_SRC, width, true, true);
                 }
@@ -185,11 +188,14 @@ void dynamic_arith(DynamicData* data, DecodedOp* op, DynArg src, DynArg dst, Dyn
                     instRegImm('+', DYN_SRC, width, op->imm);
                     if (needResultReg) {
                         movFromMem(width, DYN_ADDRESS, !store);
-                        instRegReg(inst, DYN_SRC, DYN_CALL_RESULT, width, true);
+                        instRegReg(inst, DYN_CALL_RESULT, DYN_SRC, width, true);
                         if (store) {
+                            movToRegFromReg(DYN_SRC, width, DYN_CALL_RESULT, width, true);
                             movToMemFromReg(DYN_ADDRESS, DYN_SRC, width, true, false);
-                        }
-                        jmpReg = DYN_SRC;
+                            jmpReg = DYN_SRC;
+                        } else {
+                            jmpReg = DYN_CALL_RESULT;
+                        }                        
                     } else {
                         instMemReg(inst, DYN_ADDRESS, DYN_SRC, width, true, true);
                     }
