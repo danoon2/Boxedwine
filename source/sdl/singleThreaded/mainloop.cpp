@@ -38,9 +38,9 @@ bool doMainLoop() {
             char tmp[256];
             lastTitleUpdate = t;
             if (KSystem::title.length()) {
-                snprintf(tmp, sizeof(tmp), "%s - BoxedWine 20.1.1 %u MIPS", KSystem::title.c_str(), getMIPS());
+                snprintf(tmp, sizeof(tmp), "%s", KSystem::title.c_str(), getMIPS());
             } else {
-                snprintf(tmp, sizeof(tmp), "BoxedWine 20.1.1 %u MIPS", getMIPS());
+                snprintf(tmp, sizeof(tmp), "BoxedWine " BOXEDWINE_VERSION_DISPLAY " %u MIPS", getMIPS());
             }
             KNativeWindow::getNativeWindow()->setTitle(tmp);
             checkWaitingNativeSockets(0); // just so it doesn't starve if the system is busy

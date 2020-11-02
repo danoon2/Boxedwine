@@ -209,7 +209,15 @@ std::string Fs::getParentPath(const std::string& path) {
 }
 
 std::string Fs::getNativeParentPath(const std::string& path) {
-    return path.substr(0, path.rfind(Fs::nativePathSeperator));
+    size_t pos = path.rfind(Fs::nativePathSeperator);
+    if (pos != std::string::npos) {
+        return path.substr(0, pos);
+    }
+    pos = path.rfind('/');
+    if (pos != std::string::npos) {
+        return path.substr(0, pos);
+    }
+    return path;
 }
 
 std::string Fs::getFileNameFromPath(const std::string& path) {

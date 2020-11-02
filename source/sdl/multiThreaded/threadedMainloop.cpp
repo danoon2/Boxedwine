@@ -53,9 +53,9 @@ bool doMainLoop() {
             char tmp[256];
             lastTitleUpdate = t;
             if (KSystem::title.length()) {
-                snprintf(tmp, sizeof(tmp), "%s - BoxedWine 20.1.1", KSystem::title.c_str());
+                snprintf(tmp, sizeof(tmp), "%s", KSystem::title.c_str());
             } else {
-                snprintf(tmp, sizeof(tmp), "BoxedWine 20.1.1 %dMB", (int)(nativeMemoryPagesAllocated >> 8));
+                snprintf(tmp, sizeof(tmp), "BoxedWine " BOXEDWINE_VERSION_DISPLAY " %dMB", (int)(nativeMemoryPagesAllocated >> 8));
             }
             KNativeWindow::getNativeWindow()->setTitle(tmp);
         }

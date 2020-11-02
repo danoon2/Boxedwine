@@ -222,9 +222,13 @@ bool StartUpArgs::apply() {
         std::string depend;
         FsZip::readFileFromZip(zip, "depends.txt", depend);
         if (depend.length() && !vectorContainsIgnoreCase(depends, depend) && !vectorContainsIgnoreCase(zips, depend)) {
+            std::string originalDepend = depend;
             if (!Fs::doesNativePathExist(depend)) {
                 std::string parentPath = Fs::getNativeParentPath(zip);
                 depend = parentPath + Fs::nativePathSeperator + depend;
+            }
+            if (!Fs::doesNativePathExist(depend)) {
+                klog("%s depends on %s, and %s could not be found", zip.c_str(), originalDepend.c_str(), originalDepend.c_str());
             }
             depends.push_back(depend);
         }

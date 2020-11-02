@@ -644,7 +644,15 @@ std::string GlobalSettings::createUniqueContainerPath(const std::string& name) {
 
 std::string WineVersion::getDependFilePath() const {
     if (this->depend.length()) {
-        return GlobalSettings::getFileSystemFolder() + Fs::nativePathSeperator + depend;
+        std::string result = GlobalSettings::getFileSystemFolder() + Fs::nativePathSeperator + depend;
+        if (!Fs::doesNativePathExist(result)) {
+            std::string parentPath = Fs::getNativeParentPath(this->filePath);
+            result = parentPath + Fs::nativePathSeperator + depend;
+        }
+        if (Fs::doesNativePathExist(result)) {
+            return result;
+        }
+        return depend;
     }
     return "";
 }
