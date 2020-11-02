@@ -109,6 +109,7 @@ union CAST_FPU {
 #define CONTEXT_FPU_REG_7_HIGH(context) ((S16*)&context->uc_mcontext.fpregs->_st[7].exponent)
 
 #endif
+#endif
 #include <ucontext.h>
 
 #ifdef BOXEDWINE_MULTI_THREADED

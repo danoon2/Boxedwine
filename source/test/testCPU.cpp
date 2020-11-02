@@ -3459,14 +3459,14 @@ static struct Data notd[] = {
 static struct Data negb[] = {
         allocData(0, 0, 0x0, 0, false, false),
         allocData(4, 0, ((S8)-4) & 0xFF, 0, true, false),
-        allocData(((S8)-4), 0, 4 & 0xFF, 0, true, false),
+        allocData(((S8)-4) & 0xFF, 0, 4 & 0xFF, 0, true, false),
         endData()
 };
 
 static struct Data negw[] = {
         allocData(0, 0, 0x0, 0, false, false),
         allocData(2045, 0, ((S16)-2045) & 0xFFFF, 0, true, false),
-        allocData(((S16)-2045), 0, 2045, 0, true, false),
+        allocData(((S16)-2045) & 0xFFFF, 0, 2045, 0, true, false),
         endData()
 };
 
