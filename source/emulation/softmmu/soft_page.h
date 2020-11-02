@@ -30,6 +30,7 @@ class KThread;
 #define PAGE_SHARED 0x08
 #define PAGE_MAPPED 0x20
 #define PAGE_ALLOCATED 0x40
+#define PAGE_MAPPED_HOST 0x80
 #define PAGE_PERMISSION_MASK 0x07
 
 #define GET_PAGE_PERMISSIONS(flags) (flags & PAGE_PERMISSION_MASK)

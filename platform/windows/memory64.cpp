@@ -28,6 +28,7 @@ U32 getHostAllocationSize() {
     return sSysInfo.dwAllocationGranularity;
 }
 
+#ifdef BOXEDWINE_X64
 // :TODO: what about some sort of garbage collection to MEM_DECOMMIT chunks that no longer contain code mappings
 void commitHostAddressSpaceMapping(Memory* memory, U32 page, U32 pageCount, U64 defaultValue) {
     U64 granPage;
@@ -66,6 +67,7 @@ void commitHostAddressSpaceMapping(Memory* memory, U32 page, U32 pageCount, U64 
         granPage += gran;
     }
 }
+#endif
 
 void allocNativeMemory(Memory* memory, U32 page, U32 pageCount, U32 flags) {
     U32 granPage;
@@ -186,6 +188,9 @@ static void* reserveNext32GBMemory() {
 
 void reserveNativeMemory(Memory* memory) {    
     memory->id = (U64)reserveNext4GBMemory();
+    for (int i = 0; i < K_NUMBER_OF_PAGES; i++) {
+        memory->memOffsets[i] = memory->id;
+    }
 #ifdef BOXEDWINE_X64
     memory->executableMemoryId = (U64)reserveNext4GBMemory();
     memory->nextExecutablePage = 0;
@@ -208,7 +213,8 @@ void releaseNativeMemory(Memory* memory) {
         kpanic("failed to release memory: %s", messageBuffer);
     }    
     memset(memory->flags, 0, sizeof(memory->flags));
-    memset(memory->nativeFlags, 0, sizeof(memory->nativeFlags));  
+    memset(memory->nativeFlags, 0, sizeof(memory->nativeFlags));
+    memset(memory->memOffsets, 0, sizeof(memory->memOffsets));
     memory->allocated = 0;
 #ifdef BOXEDWINE_X64
     memory->executableMemoryReleased();    

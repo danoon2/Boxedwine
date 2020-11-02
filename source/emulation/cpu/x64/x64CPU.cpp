@@ -609,6 +609,17 @@ U64 x64CPU::handleIllegalInstruction(U64 rip) {
 U32 dynamicCodeExceptionCount;
 
 U64 x64CPU::handleAccessException(U64 rip, U64 address, bool readAddress, U64 rsi, U64 rdi, U64 r8, U64 r9, U64* r10, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo) {
+    if ((address & 0xFFFFFFFF00000000l) == this->thread->memory->id) {
+        U32 emulatedAddress = (U32)address;
+        U32 page = emulatedAddress >> K_PAGE_SHIFT;
+        if (this->thread->memory->flags[page] & PAGE_MAPPED_HOST) {
+            // if this ends up being too slow for each read/write, perhaps the code block could be changed to use
+            // memory->memOffsets[page] instead of memory->id
+            //
+            // Fire Fight and Age of Empires will hammer this code
+            return this->handleCodePatch(rip, emulatedAddress, rsi, rdi, doSyncFrom, doSyncTo);
+        }
+    }
     U32 inst = *((U32*)rip);
     if (inst == 0xCE24FF43) { // useLargeAddressSpace = true
         this->translateEip((U32)r9 - this->seg[CS].address);

@@ -31,6 +31,7 @@
 Memory::Memory() : allocated(0), callbackPos(0) {
     memset(flags, 0, sizeof(flags));
     memset(nativeFlags, 0, sizeof(nativeFlags));
+    memset(memOffsets, 0, sizeof(memOffsets));
 #ifndef BOXEDWINE_X64
     memset(codeCache, 0, sizeof(codeCache));    
     //memset(ids, 0, sizeof(ids));
@@ -140,8 +141,24 @@ void writeMemory(U32 address, U8* data, int len) {
 }
 
 U32 Memory::mapNativeMemory(void* hostAddress, U32 size) {
-    kpanic("x64 mapNativeMemory is depricated");
-    return 0;
+    U32 i;
+    U32 result = 0;
+    U32 pageCount = (size >> K_PAGE_SHIFT) + 2; // 1 for size alignment, 1 for hostAddress alignment
+    U64 hostStart = (U64)hostAddress & 0xFFFFFFFFFFFFF000l;
+    U64 offset;
+    
+    for (int i = 0; i < K_NUMBER_OF_PAGES; i++) {
+        if ((i << K_PAGE_SHIFT) + this->memOffsets[i] == hostStart) {
+            return (i << (K_PAGE_SHIFT)) + ((U32)((U64)hostAddress) & K_PAGE_MASK);
+        }
+    }
+    findFirstAvailablePage(0x10000, pageCount, &result, false);
+    offset = hostStart - (result << K_PAGE_SHIFT);
+    for (i = 0; i < pageCount; i++) {
+        this->memOffsets[result + i] = offset;
+        this->flags[result + i] = PAGE_MAPPED_HOST;
+    }
+    return (result << K_PAGE_SHIFT) + ((U32)((U64)hostAddress) & K_PAGE_MASK);
 }
 
 void Memory::allocPages(U32 page, U32 pageCount, U8 permissions, FD fd, U64 offset, const BoxedPtr<MappedFile>& mappedFile) {
@@ -189,12 +206,12 @@ bool Memory::findFirstAvailablePage(U32 startingPage, U32 pageCount, U32* result
         if (i + pageCount >= K_NUMBER_OF_PAGES) {
             return false;
         }
-        if (((this->flags[i] & PAGE_MAPPED) == 0 && !this->isPageAllocated(i)) || (canBeReMapped && (this->flags[i] & PAGE_MAPPED))) {
+        if (((this->flags[i] & (PAGE_MAPPED | PAGE_MAPPED_HOST)) == 0 && !this->isPageAllocated(i)) || (canBeReMapped && (this->flags[i] & PAGE_MAPPED))) {
             U32 j;
             bool success = true;
 
             for (j=1;j<pageCount;j++) {
-                if (((this->flags[i+j] & PAGE_MAPPED) || this->isPageAllocated(i+j)) && (!canBeReMapped || !(this->flags[i+j] & PAGE_MAPPED))) {
+                if (((this->flags[i+j] & (PAGE_MAPPED | PAGE_MAPPED_HOST)) || this->isPageAllocated(i+j)) && (!canBeReMapped || !(this->flags[i+j] & PAGE_MAPPED))) {
                     success = false;
                     break;
                 }
@@ -322,12 +339,13 @@ void writeb(U32 address, U8 value) {
 #endif
 #ifdef BOXEDWINE_X64
     Memory* m = KThread::currentThread()->memory;
-    U8 flags = m->nativeFlags[address >> K_PAGE_SHIFT];
+    U32 page = address >> K_PAGE_SHIFT;
+    U8 flags = m->nativeFlags[page];
 
     if (flags & NATIVE_FLAG_CODEPAGE_READONLY) {
         X64AsmCodeMemoryWrite w((x64CPU*)KThread::currentThread()->cpu, address, 1);
         *(U8*)getNativeAddress(m, address) = value;
-    } else if (flags & NATIVE_FLAG_COMMITTED) {
+    } else if ((flags & NATIVE_FLAG_COMMITTED) || (m->flags[page] & PAGE_MAPPED_HOST)) {
         *(U8*)getNativeAddress(KThread::currentThread()->memory, address) = value;
     } else {
         kpanic("writeb about to crash");
@@ -394,12 +412,13 @@ void writed(U32 address, U32 value) {
 #endif
 #ifdef BOXEDWINE_X64
     Memory* m = KThread::currentThread()->memory;
-    U8 flags = m->nativeFlags[address >> K_PAGE_SHIFT];
+    U32 page = address >> K_PAGE_SHIFT;
+    U8 flags = m->nativeFlags[page];
 
     if (flags & NATIVE_FLAG_CODEPAGE_READONLY) {
         X64AsmCodeMemoryWrite w((x64CPU*)KThread::currentThread()->cpu, address, 4);
         *(U32*)getNativeAddress(m, address) = value;
-    } else if (flags & NATIVE_FLAG_COMMITTED) {
+    } else if ((flags & NATIVE_FLAG_COMMITTED) || (m->flags[page] & PAGE_MAPPED_HOST)) {
         *(U32*)getNativeAddress(KThread::currentThread()->memory, address) = value;
     } else {
         kpanic("writed about to crash");
@@ -416,12 +435,13 @@ U64 readq(U32 address) {
 void writeq(U32 address, U64 value) {
 #ifdef BOXEDWINE_X64
     Memory* m = KThread::currentThread()->memory;
-    U8 flags = m->nativeFlags[address >> K_PAGE_SHIFT];
+    U32 page = address >> K_PAGE_SHIFT;
+    U8 flags = m->nativeFlags[page];
 
     if (flags & NATIVE_FLAG_CODEPAGE_READONLY) {
         X64AsmCodeMemoryWrite w((x64CPU*)KThread::currentThread()->cpu, address, 8);
         *(U64*)getNativeAddress(m, address) = value;
-    } else if (flags & NATIVE_FLAG_COMMITTED) {
+    } else if ((flags & NATIVE_FLAG_COMMITTED) || (m->flags[page] & PAGE_MAPPED_HOST)) {
         *(U64*)getNativeAddress(KThread::currentThread()->memory, address) = value;
     } else {
         kpanic("writeq about to crash");

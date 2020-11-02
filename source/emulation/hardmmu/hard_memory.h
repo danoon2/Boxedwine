@@ -25,13 +25,14 @@
 #define NATIVE_FLAG_CODEPAGE_READONLY 0x02
 
 INLINE void* getNativeAddress(Memory* memory, U32 address) {
-#ifdef _DEBUG
-    if (!memory->isPageAllocated(address >> K_PAGE_SHIFT)) {
+    U32 page = address >> K_PAGE_SHIFT;
+#ifdef _DEBUG    
+    if (!memory->isPageAllocated(page) && (memory->flags[page] & PAGE_MAPPED_HOST)==0) {
         memory->log_pf(KThread::currentThread(), KThread::currentThread()->cpu->eip.u32);
         kpanic("bad memory access");
     }
 #endif
-    return (void*)(address + memory->id);
+    return (void*)(address + memory->memOffsets[page]);
 }
 
 INLINE U32 getHostAddress(KThread* thread, void* address) {
@@ -46,7 +47,8 @@ void makeCodePageReadOnly(Memory* memory, U32 page);
 bool clearCodePageReadOnly(Memory* memory, U32 page);
 U32 getHostPageSize();
 U32 getHostAllocationSize();
+#ifdef BOXEDWINE_X64
 void commitHostAddressSpaceMapping(Memory* memory, U32 page, U32 pageCount, U64 defaultValue);
-
+#endif
 #endif
 #endif
