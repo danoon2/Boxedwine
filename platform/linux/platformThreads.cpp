@@ -7,7 +7,7 @@
 #include <string.h>
 
 #ifdef BOXEDWINE_X64
-#include "x64CPU.h"
+#include "../../source/emulation/cpu/x64/x64CPU.h"
 #endif
 
 #ifdef __MACH__
