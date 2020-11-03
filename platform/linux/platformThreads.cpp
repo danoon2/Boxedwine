@@ -6,6 +6,10 @@
 #include "ksignal.h"
 #include <string.h>
 
+#ifdef BOXEDWINE_X64
+#include "x64CPU.h"
+#endif
+
 #ifdef __MACH__
 #define __USE_GNU
 #define _XOPEN_SOURCE
@@ -289,6 +293,7 @@ U32 exceptionCount;
 #include <signal.h>
 #include <pthread.h>
 
+// this will quickly store the info then exit to signalHandler() to perform the logic there
 static void handler(int sig, siginfo_t* info, void* vcontext) {
     exceptionCount++;
     KThread* currentThread = KThread::currentThread();
@@ -300,31 +305,30 @@ static void handler(int sig, siginfo_t* info, void* vcontext) {
 #ifdef BOXEDWINE_X64
     if (cpu != (BtCPU*)context->CONTEXT_R13) {
         return;
-    }    
+    }
+    x64CPU* x64Cpu = (x64CPU*)cpu;
+    
     syncFromException(cpu, context, true);
 
     cpu->exceptionReadAddress = (((ucontext_t*)context)->CONTEXT_ERR & 1) == 0;
     cpu->exceptionAddress = (U64)info->si_addr;
     cpu->exceptionSigNo = info->si_signo;
     cpu->exceptionSigCode = info->si_code;
-    cpu->exceptionRip = context->CONTEXT_RIP;
-    cpu->exceptionRSP = context->CONTEXT_RSP;
-    cpu->exceptionRSI = context->CONTEXT_RSI;
-    cpu->exceptionRDI = context->CONTEXT_RDI;
-    cpu->exceptionR8 = context->CONTEXT_R8;
-    cpu->exceptionR9 = context->CONTEXT_R9;
-    cpu->exceptionR10 = context->CONTEXT_R10;
-    if ((cpu->exceptionRip & 0xFFFFFFFF00000000l) == (U64)cpu->thread->memory->executableMemoryId) {
+    x64Cpu->exceptionRip = context->CONTEXT_RIP;
+    x64Cpu->exceptionRSP = context->CONTEXT_RSP;
+    x64Cpu->exceptionRSI = context->CONTEXT_RSI;
+    x64Cpu->exceptionRDI = context->CONTEXT_RDI;
+    x64Cpu->exceptionR8 = context->CONTEXT_R8;
+    x64Cpu->exceptionR9 = context->CONTEXT_R9;
+    x64Cpu->exceptionR10 = context->CONTEXT_R10;
+    if ((context->CONTEXT_RIP & 0xFFFFFFFF00000000l) == (U64)cpu->thread->memory->executableMemoryId) {
         unsigned char* hostAddress = (unsigned char*)context->CONTEXT_RIP;
-        std::shared_ptr<X64CodeChunk> chunk = cpu->thread->memory->getCodeChunkContainingHostAddress(hostAddress);
+        std::shared_ptr<BtCodeChunk> chunk = cpu->thread->memory->getCodeChunkContainingHostAddress(hostAddress);
         if (chunk && chunk->getEipLen()) { // during start up eip is already set
             cpu->eip.u32 = chunk->getEipThatContainsHostAddress(hostAddress, NULL, NULL) - cpu->seg[CS].address;
         }
     }
     context->CONTEXT_RIP = (U64)cpu->thread->process->runSignalAddress;
-    if (cpu->exceptionR9 == 1) {
-        int ii = 0;
-    }
 #endif
 }
 
@@ -369,25 +373,28 @@ void signalHandler() {
         cpu->returnHostAddress = cpu->exceptionIp;
         return;
     } else if ((cpu->exceptionSigNo == SIGBUS || cpu->exceptionSigNo == SIGSEGV) && ((cpu->exceptionIp & 0xFFFFFFFF00000000l)==(U64)cpu->thread->memory->executableMemoryId)) {
-        std::function<U64(U32 reg)> getReg = [cpu](U32 reg) {
+#ifdef BOXEDWINE_X64
+        x64CPU* x64Cpu = (x64CPU*)cpu;
+        std::function<U64(U32 reg)> getReg = [x64Cpu](U32 reg) {
             if (reg == 8)
-                return cpu->exceptionR8;
+                return x64Cpu->exceptionR8;
             if (reg == 9)
-                return cpu->exceptionR9;
+                return x64Cpu->exceptionR9;
             if (reg == 6)
-                return cpu->exceptionRSI;
+                return x64Cpu->exceptionRSI;
             if (reg == 7)
-                return cpu->exceptionRDI;
+                return x64Cpu->exceptionRDI;
             kpanic("Unhandled reg: getReg: %d", reg);
             return (U64)0;
         };
-        std::function<void(U32 reg, U64 value)> setReg = [cpu](U32 reg, U64 value) {
+        std::function<void(U32 reg, U64 value)> setReg = [x64Cpu](U32 reg, U64 value) {
             if (reg == 10) {
-                cpu->exceptionR10 = value;
+                x64Cpu->exceptionR10 = value;
             } else {
                 kpanic("Unhandled reg: setReg: %d", reg);
             }
         };
+#endif
         U64 rip = cpu->handleAccessException(cpu->exceptionIp, cpu->exceptionAddress, cpu->exceptionReadAddress, getReg, setReg, NULL, NULL);
         if (rip) {
             cpu->returnHostAddress = rip;

@@ -386,8 +386,6 @@ void x64CPU::translateInstruction(X64Asm* data, X64Asm* firstPass) {
 }
 
 void x64CPU::translateData(X64Asm* data, X64Asm* firstPass) {
-    Memory* memory = data->cpu->thread->memory;
-
     U32 codePage = (data->ip+data->cpu->seg[CS].address) >> K_PAGE_SHIFT;
     if (this->thread->memory->dynamicCodePageUpdateCount[codePage]==MAX_DYNAMIC_CODE_PAGE_COUNT) {
         data->dynamic = true;
@@ -422,7 +420,6 @@ void x64CPU::translateData(X64Asm* data, X64Asm* firstPass) {
             }
         }
         data->mapAddress(address, data->bufferPos);
-        U32 page = address >> K_PAGE_SHIFT;
         translateInstruction(data, firstPass);
         if (data->done) {
             break;
@@ -729,9 +726,6 @@ extern U32 platformThreadCount;
 
 void x64CPU::startThread() {
     jmp_buf jmpBuf;
-    U32 threadId = thread->id;
-    U32 processId = thread->process->id;
-
     KThread::setCurrentThread(thread);       
 
     // :TODO: hopefully this will eventually go away.  For now this prevents a signal from being generated which isn't handled yet

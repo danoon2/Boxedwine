@@ -582,10 +582,12 @@ void Memory::removeBlock(DecodedBlock* block, U32 ip) {
 }
 #endif
 
+#ifndef BOXEDWINE_BINARY_TRANSLATOR
 static void OPCALL emptyOp(CPU* cpu, DecodedOp* op) {
     cpu->nextBlock = NULL;
     cpu->yield = true;
 }
+#endif
 
 void Memory::clearCodePageFromCache(U32 page) {
 #ifdef BOXEDWINE_BINARY_TRANSLATOR

@@ -63,6 +63,7 @@
 #define socklen_t int
 #define ALIGN(t, x) __declspec(align(x)) t
 #else
+#pragma clang diagnostic ignored "-Winvalid-offsetof"
 #include <limits.h>
 #define THREAD_LOCAL thread_local
 #if ( __WORDSIZE == 64 )

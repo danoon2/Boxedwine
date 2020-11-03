@@ -152,7 +152,7 @@ void Platform::setCpuAffinityForThread(KThread* thread, U32 count) {
             count = 1;
         }
         
-        thread_port_t port = pthread_mach_thread_np((pthread_t)((x64CPU*)thread->cpu)->nativeHandle);
+        thread_port_t port = pthread_mach_thread_np((pthread_t)((BtCPU*)thread->cpu)->nativeHandle);
         struct thread_affinity_policy policy;
 
         // Threads with the same affinity tag will be scheduled to share an L2 cache "if possible". 

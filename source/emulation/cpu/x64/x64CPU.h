@@ -23,7 +23,8 @@ public:
     U32 negSegAddress[6];
 
     U64 memOffset;
-    U64 negMemOffset;    
+    U64 negMemOffset;
+    U64 exceptionRip;
     U64 exceptionRSP;
     U64 exceptionRSI;
     U64 exceptionRDI;

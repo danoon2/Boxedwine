@@ -38,9 +38,6 @@ void OPCALL normal_adde8r8(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_addr8e8(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-
-    U32 eaa = cpu->seg[op->base].address + cpu->reg[op->rm].u32 + (cpu->reg[op->sibIndex].u32 << +op->sibScale) + op->disp;
-
     cpu->dst.u8 = *cpu->reg8[op->reg];
     cpu->src.u8 = readb(eaa(cpu, op));
     cpu->result.u8 = cpu->dst.u8 + cpu->src.u8;

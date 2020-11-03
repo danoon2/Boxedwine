@@ -189,8 +189,6 @@ void X64Asm::doMemoryInstruction(U8 op, U8 reg1, bool isReg1Rex, U8 reg2, bool i
         rm|=reg2;
         this->write8(rm);
     } else {
-        U8 sib = 0;
-
         if (reg2==4 && reg3==4) {
             kpanic("Wasn't expecting [ESP+ESP*n] memory access");
         }        
@@ -2154,7 +2152,6 @@ void x64_changed(x64CPU* cpu) {
 }
 
 void X64Asm::xchange4(U8 reg1, bool isRexReg1, U8 reg2, bool isRexReg2) {
-    U8 rex = REX_BASE;
     if (isRexReg1) {
         write8(REX_BASE|REX_MOD_RM);
     }
@@ -2646,9 +2643,6 @@ void X64Asm::jmpReg(U8 reg, bool isRex, bool mightNeedCS) {
         // HOST_TMP will hold the offset
         if (x64CPU::hasBMI2) {
             if (!this->cpu->thread->process->hasSetSeg[CS] && !mightNeedCS) {
-                if (this->cpu->seg[CS].address) {
-                    int ii = 0;
-                }
                 if (reg == HOST_TMP2 && isRex) {
                     writeToRegFromValue(HOST_TMP3, true, K_PAGE_MASK, 4);
                     // PEXT HOST_TMP, HOST_TMP2, HOST_TMP3

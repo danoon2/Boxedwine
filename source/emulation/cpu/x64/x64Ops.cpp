@@ -1889,7 +1889,7 @@ static U32 invalidOp(X64Asm* data) {
 }
 
 static U32 outb(X64Asm* data) {
-    U8 port = data->fetch8();
+    /*U8 port =*/ data->fetch8();
     return 0;
 }
 
@@ -1898,7 +1898,7 @@ static U32 outb_dx(X64Asm* data) {
 }
 
 static U32 outw(X64Asm* data) {
-    U8 port = data->fetch8();
+    /*U8 port =*/ data->fetch8();
     return 0;
 }
 
@@ -1907,7 +1907,7 @@ static U32 outw_dx(X64Asm* data) {
 }
 
 static U32 outd(X64Asm* data) {
-    U8 port = data->fetch8();
+    /*U8 port =*/ data->fetch8();
     return 0;
 }
 
@@ -1916,7 +1916,7 @@ static U32 outd_dx(X64Asm* data) {
 }
 
 static U32 inb(X64Asm* data) {
-    U8 port = data->fetch8();
+    /*U8 port =*/ data->fetch8();
     data->writeToRegFromValue(0, false, 0xFF, 1);
     return 0;
 }
@@ -1927,7 +1927,7 @@ static U32 inb_dx(X64Asm* data) {
 }
 
 static U32 inw(X64Asm* data) {
-    U8 port = data->fetch8();
+    /*U8 port =*/ data->fetch8();
     data->writeToRegFromValue(0, false, 0xFFFF, 2);
     return 0;
 }
@@ -1938,7 +1938,7 @@ static U32 inw_dx(X64Asm* data) {
 }
 
 static U32 ind(X64Asm* data) {
-    U8 port = data->fetch8();
+    /*U8 port =*/ data->fetch8();
     data->writeToRegFromValue(0, false, 0xFFFFFFFF, 4);
     return 0;
 }
@@ -2433,7 +2433,7 @@ X64Decoder x64Decoder[1024] = {
     keepSameImm16, keepSameImm16, keepSameImm16, keepSameImm16, movSpIw, keepSameImm16, keepSameImm16, keepSameImm16,
     // C0
     inst8RMimm8SafeG, inst16RMimm8SafeG, retn16Iw, retn16, les16, lds16, inst8RMimm8, inst16RMimm16,
-    enter16, leave16, retf16Iw, retf16, int3, intIb, invalidOp, invalidOp,
+    enter16, leave16, retf16Iw, retf16, int3, intIb, invalidOp, iret,
     // D0
     inst8RMSafeG, inst16RMSafeG, inst8RMSafeG, inst16RMSafeG, aam, aad, salc, xlat,
     instFPU0, instFPU1, instFPU2, instFPU3, instFPU4, instFPU5, instFPU6, instFPU7,
