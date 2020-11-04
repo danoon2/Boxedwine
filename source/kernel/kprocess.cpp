@@ -28,14 +28,14 @@
 #include "../io/fsmemopennode.h"
 #include "../io/fsfilenode.h"
 
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+#include "../emulation/cpu/binaryTranslation/btCodeMemoryWrite.h"
+#endif
+
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <time.h> 
-
-#ifdef BOXEDWINE_X64
-#include "../emulation/cpu/x64/x64Asm.h"
-#endif
 
 #define MAX_ARG_COUNT 1024
 
@@ -86,7 +86,7 @@ KProcess::KProcess(U32 id) : id(id),
     threadsCondition("KProcess::threadsCond"),
     systemProcess(false) {
 
-#ifdef BOXEDWINE_X64
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
     emulateFPU=false;
     returnToLoopAddress = NULL;
     reTranslateChunkAddress = NULL;
@@ -190,7 +190,7 @@ void KProcess::onExec() {
     this->hasSetSeg[FS] = true;
     this->hasSetStackMask = false;
 
-#ifdef BOXEDWINE_X64
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
     returnToLoopAddress = NULL;
     reTranslateChunkAddress = NULL;
     reTranslateChunkAddressFromR9 = NULL;
@@ -802,7 +802,7 @@ U32 KProcess::execve(const std::string& path, std::vector<std::string>& args, co
     }
 
     // reset memory must come after we grab the args and env
-#ifdef BOXEDWINE_X64
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
 	this->previousMemory = this->memory;
 	this->memory = new Memory();
 	this->memory->onThreadChanged();
@@ -1111,8 +1111,8 @@ U32 KProcess::read(FD fildes, U32 bufferAddress, U32 bufferLen) {
     if (!fd->canRead()) {
         return -K_EINVAL;
     }
-#ifdef BOXEDWINE_X64
-    X64AsmCodeMemoryWrite w((x64CPU*)KThread::currentThread()->cpu, bufferAddress, bufferLen);
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+    BtCodeMemoryWrite w((BtCPU*)KThread::currentThread()->cpu, bufferAddress, bufferLen);
 #endif
     return fd->kobject->read(bufferAddress, bufferLen);
 }

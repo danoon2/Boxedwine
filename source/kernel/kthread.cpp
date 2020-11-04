@@ -25,7 +25,7 @@
 #include <string.h>
 #include <setjmp.h>
 
-#ifdef BOXEDWINE_X64
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
 THREAD_LOCAL
 #endif
 KThread* KThread::runningThread;

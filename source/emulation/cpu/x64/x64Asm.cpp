@@ -7,6 +7,7 @@
 #include "../../../../source/emulation/hardmmu/hard_memory.h"
 #include "../normal/normalCPU.h"
 #include "../normal/instructions.h"
+#include "../binaryTranslation/btCodeMemoryWrite.h"
 
 #include "../common/common_fpu.h"
 
@@ -188,8 +189,6 @@ void X64Asm::doMemoryInstruction(U8 op, U8 reg1, bool isReg1Rex, U8 reg2, bool i
         rm|=reg2;
         this->write8(rm);
     } else {
-        U8 sib = 0;
-
         if (reg2==4 && reg3==4) {
             kpanic("Wasn't expecting [ESP+ESP*n] memory access");
         }        
@@ -2153,7 +2152,6 @@ void x64_changed(x64CPU* cpu) {
 }
 
 void X64Asm::xchange4(U8 reg1, bool isRexReg1, U8 reg2, bool isRexReg2) {
-    U8 rex = REX_BASE;
     if (isRexReg1) {
         write8(REX_BASE|REX_MOD_RM);
     }
@@ -2645,9 +2643,6 @@ void X64Asm::jmpReg(U8 reg, bool isRex, bool mightNeedCS) {
         // HOST_TMP will hold the offset
         if (x64CPU::hasBMI2) {
             if (!this->cpu->thread->process->hasSetSeg[CS] && !mightNeedCS) {
-                if (this->cpu->seg[CS].address) {
-                    int ii = 0;
-                }
                 if (reg == HOST_TMP2 && isRex) {
                     writeToRegFromValue(HOST_TMP3, true, K_PAGE_MASK, 4);
                     // PEXT HOST_TMP, HOST_TMP2, HOST_TMP3
@@ -3484,64 +3479,6 @@ void X64Asm::writeOp(bool isG8bit) {
     }
 }
 
-
-X64AsmCodeMemoryWrite::X64AsmCodeMemoryWrite(x64CPU* cpu, U32 address, U32 len) : count(0), cpu(cpu) {
-    this->invalidateCode(address, len);
-}
-
-X64AsmCodeMemoryWrite::X64AsmCodeMemoryWrite(x64CPU* cpu) : count(0), cpu(cpu) {
-}
-
-void X64AsmCodeMemoryWrite::invalidateStringWriteToDi(bool repeat, U32 size) {
-    U32 addressStart;
-    U32 addressLen;
-
-    if (repeat) {
-        addressLen = size * (cpu->isBig()?ECX:CX);
-    } else {
-        addressLen = size;
-    }
-
-    if (cpu->df==1) {
-        addressStart = (this->cpu->isBig()?EDI:DI)+cpu->seg[ES].address;
-    } else {
-        addressStart = (this->cpu->isBig()?EDI:DI)+cpu->seg[ES].address + size - addressLen;
-    }
-    invalidateCode(addressStart, addressLen);
-}
-
-void X64AsmCodeMemoryWrite::invalidateCode(U32 addressStart, U32 addressLen) {
-    U32 pageStart = addressStart >> K_PAGE_SHIFT;
-    U32 pageStop = (addressStart+addressLen) >> K_PAGE_SHIFT;  
-    
-    for (U32 page = pageStart; page <= pageStop; page++ ) {
-        if (cpu->thread->memory->nativeFlags[page] & NATIVE_FLAG_CODEPAGE_READONLY) {
-            if (count>=CLEAR_BUFFER_SIZE) {
-                kpanic("invalidateCode CLEAR_BUFFER_SIZE is not large enough");
-            }
-            buffer[count] = page;
-            count++;
-            ::clearCodePageReadOnly(cpu->thread->memory, page);
-        }
-    }
-    if (count) {
-        this->cpu->thread->memory->invalideHostCode(addressStart, addressLen);
-    }
-}
-
-X64AsmCodeMemoryWrite::~X64AsmCodeMemoryWrite() {
-    this->restoreCodePageReadOnly();
-}
-
-void X64AsmCodeMemoryWrite::restoreCodePageReadOnly() {
-    for (U32 i=0;i<this->count;i++) {
-        if (cpu->thread->memory->dynamicCodePageUpdateCount[buffer[i]]!=MAX_DYNAMIC_CODE_PAGE_COUNT) {
-            ::makeCodePageReadOnly(cpu->thread->memory, buffer[i]);  
-        }
-    }
-    this->count = 0;
-}
-
 typedef void (*pfnStringNoArgs)(CPU* cpu);
 
 void x64_stringNoArgs(x64CPU* cpu, pfnStringNoArgs pfn, U32 size) {
@@ -3550,7 +3487,7 @@ void x64_stringNoArgs(x64CPU* cpu, pfnStringNoArgs pfn, U32 size) {
     } else {
         cpu->df = 1;
     }
-    X64AsmCodeMemoryWrite w(cpu);
+    BtCodeMemoryWrite w(cpu);
     if (cpu->stringWritesToDi) {
         w.invalidateStringWriteToDi(cpu->stringRepeat!=0, size);
     }
@@ -3566,7 +3503,7 @@ void x64_string1Arg(x64CPU* cpu, pfnString1Arg pfn, U32 arg1, U32 size) {
     } else {
         cpu->df = 1;
     }
-    X64AsmCodeMemoryWrite w(cpu);
+    BtCodeMemoryWrite w(cpu);
     if (cpu->stringWritesToDi) {
         w.invalidateStringWriteToDi(cpu->stringRepeat!=0, size);
     }
@@ -3585,7 +3522,7 @@ void x64_string2Arg(x64CPU* cpu, pfnString2Arg pfn, U32 arg1, U32 arg2) {
     } else {
         cpu->df = 1;
     }
-    X64AsmCodeMemoryWrite w(cpu);
+    BtCodeMemoryWrite w(cpu);
     if (cpu->stringWritesToDi) {
         w.invalidateStringWriteToDi(cpu->stringRepeat!=0, size);
     }
@@ -3786,7 +3723,7 @@ void X64Asm::movCrxRd(U32 which, U32 reg) {
 }
 
 void common_fpu_write_address(x64CPU* cpu, PFN_FPU_ADDRESS pfn, U32 address, U32 len) {
-    X64AsmCodeMemoryWrite w(cpu, address, len);
+    BtCodeMemoryWrite w(cpu, address, len);
     pfn(cpu, address);
 }
 

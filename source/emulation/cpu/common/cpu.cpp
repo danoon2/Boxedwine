@@ -4,19 +4,16 @@
 #include "bufferaccess.h"
 #include "kstat.h"
 
-#ifdef BOXEDWINE_X64
-#include "../x64/x64CPU.h"
-#include "../../hardmmu/hard_memory.h"
 
-CPU* CPU::allocCPU() {
-    return new x64CPU();
-}
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+#include "../../hardmmu/hard_memory.h"
 #else
 #include "../normal/normalCPU.h"
 CPU* CPU::allocCPU() {
     return new NormalCPU();
 }
 #endif
+
 U32 CPU_CHECK_COND(CPU* cpu, U32 cond, const char* msg, int exc, int sel) {
     if (cond) {
         kwarn(msg);
@@ -72,7 +69,7 @@ bool CPU::isMMXinUse() {
 }
 
 void CPU::reset() {
-    this->flags = 0;
+    this->flags = ID;
     this->eip.u32 = 0;
     this->instructionCount = 0;
     for (int i=0;i<7;i++) {
@@ -1076,7 +1073,7 @@ void CPU::push16(U16 value) {
 U32 CPU::push16_r(U32 esp, U16 value) {
     U32 new_esp=(esp & this->stackNotMask) | ((esp - 2) & this->stackMask);
     U32 address = this->seg[SS].address + (new_esp & this->stackMask);
-#ifdef BOXEDWINE_X64
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
     if (this->thread->memory->nativeFlags[address>>K_PAGE_SHIFT] & NATIVE_FLAG_CODEPAGE_READONLY) {
         clearCodePageReadOnly(this->thread->memory, address >> K_PAGE_SHIFT);
         writew(address ,value);
@@ -1099,7 +1096,7 @@ U32 CPU::push32_r(U32 esp, U32 value) {
     U32 new_esp=(esp & this->stackNotMask) | ((esp - 4) & this->stackMask);
     U32 address = this->seg[SS].address + (new_esp & this->stackMask);
 
-#ifdef BOXEDWINE_X64
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
     if (this->thread->memory->nativeFlags[address>>K_PAGE_SHIFT] & NATIVE_FLAG_CODEPAGE_READONLY) {
         clearCodePageReadOnly(this->thread->memory, address >> K_PAGE_SHIFT);
         writed(address ,value);
@@ -1192,6 +1189,10 @@ U32 CPU::readCrx(U32 which, U32 reg) {
 U32 CPU::writeCrx(U32 which, U32 value) {
     //this->prepareException(EXCEPTION_GP, 0);
     return 1;
+}
+
+void common_prepareException(CPU* cpu, int code, int error) {
+    cpu->prepareException(code, error);
 }
 
 U32 common_getCF(CPU* cpu) {

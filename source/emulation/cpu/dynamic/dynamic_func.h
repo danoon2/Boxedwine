@@ -1,9 +1,12 @@
 void dynamic_jump(DynamicData* data, DynReg reg, U32 inst, U32 len1, U32 len2) {
     startIf(reg, (inst==JumpZ?DYN_NOT_EQUALS_ZERO:DYN_EQUALS_ZERO), true);
-    INCREMENT_EIP(len2);
+    U32 extra = data->skipEipUpdateLen;
+    data->skipEipUpdateLen = 0;
+
+    INCREMENT_EIP(data, len2+extra);
     blockNext2();
     startElse();
-    INCREMENT_EIP(len1);
+    INCREMENT_EIP(data, len1+extra);
     blockNext1();
     endIf();
     data->done = true;
@@ -81,7 +84,7 @@ void dynamic_arith(DynamicData* data, DecodedOp* op, DynArg src, DynArg dst, Dyn
     }
     if (!needsToSetFlags && !store) {
         // I've seen a test followed by a cmp when running Quake 2.  Very weird
-        INCREMENT_EIP(op->len);
+        INCREMENT_EIP(data, op);
         return;
     }
     if (!needsToSetFlags || (needResultReg && DecodedOp::getNeededFlags(data->block, op->next, instructionInfo[op->inst].flagsSets) == 0)) {
@@ -302,12 +305,12 @@ void dynamic_arith(DynamicData* data, DecodedOp* op, DynArg src, DynArg dst, Dyn
                 }
             }
         }
-        movToCpu(CPU_OFFSET_OF(lazyFlags), Dyn_PtrSize, (DYN_PTR_SIZE)flags);
+        movToCpuPtr(CPU_OFFSET_OF(lazyFlags), (DYN_PTR_SIZE)flags);
         data->currentLazyFlags = flags;
     }
 
     if (!needResultReg || jmpReg == DYN_NOT_SET) {
-        INCREMENT_EIP(op->len);
+        INCREMENT_EIP(data, op);
     } else {
         if (jmpReg == DYN_NOT_SET) {
             kpanic("dynamic_arith did not properly set jmpReg");
@@ -318,7 +321,7 @@ void dynamic_arith(DynamicData* data, DecodedOp* op, DynArg src, DynArg dst, Dyn
         if (isJump) {
             dynamic_jump(data, jmpReg, op->next->inst, op->len + op->next->len + op->next->imm, op->len + op->next->len);
         } else if (isSet) {
-            INCREMENT_EIP(op->len);
+            INCREMENT_EIP(data, op);
             op = op->next;
             if (op->inst == SetZ_E8 || op->inst == SetNZ_E8) {
                 startIf(jmpReg, (op->inst == SetZ_E8 ? DYN_EQUALS_ZERO : DYN_NOT_EQUALS_ZERO), true);
@@ -335,7 +338,7 @@ void dynamic_arith(DynamicData* data, DecodedOp* op, DynArg src, DynArg dst, Dyn
                 movToCpu(OFFSET_REG8(op->reg), DYN_8bit, 0);
                 endIf();
             }
-            INCREMENT_EIP(op->len);
+            INCREMENT_EIP(data, op);
             data->skipToOp = op->next;
         }
     }

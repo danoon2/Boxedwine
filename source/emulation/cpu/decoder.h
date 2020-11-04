@@ -1313,7 +1313,7 @@ enum Instruction {
     Cvtps2dqXmmXmm,
     Cvtps2dqXmmE128,
     Cvtps2pdXmmXmm,
-    Cvtps2pdXmmE128,
+    Cvtps2pdXmmE64,
     Cvtsd2siR32Xmm,
     Cvtsd2siR32E64,
     Cvtsd2ssXmmXmm,

@@ -23,8 +23,8 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <SDL.h>
-#ifdef BOXEDWINE_MULTI_THREADED
-#include "../../source/emulation/cpu/x64/x64CPU.h"
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+#include "../../source/emulation/cpu/binaryTranslation/btCpu.h"
 #endif
 #include "pixelformat.h"
 
@@ -152,7 +152,7 @@ void Platform::setCpuAffinityForThread(KThread* thread, U32 count) {
             count = 1;
         }
         
-        thread_port_t port = pthread_mach_thread_np((pthread_t)((x64CPU*)thread->cpu)->nativeHandle);
+        thread_port_t port = pthread_mach_thread_np((pthread_t)((BtCPU*)thread->cpu)->nativeHandle);
         struct thread_affinity_policy policy;
 
         // Threads with the same affinity tag will be scheduled to share an L2 cache "if possible". 
@@ -180,7 +180,7 @@ void Platform::setCpuAffinityForThread(KThread* thread, U32 count) {
         }
         klog("Process %s (PID=%d) set thread %d cpu affinity to %X", thread->process->name.c_str(), thread->process->id, thread->id, count);
 
-        sched_setaffinity((pid_t)((x64CPU*)thread->cpu)->nativeHandle, sizeof(cpu_set_t), &mask);
+        sched_setaffinity((pid_t)((BtCPU*)thread->cpu)->nativeHandle, sizeof(cpu_set_t), &mask);
     }
 }
 #endif

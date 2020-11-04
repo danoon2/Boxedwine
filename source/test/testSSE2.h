@@ -88,6 +88,7 @@ void testSse2Movdqu37f();
 void testSse2Cmppd1c2();
 void testSse2Cmpsd3c2();
 void testSse2Movnti3c3();
+void testPinsrw1c4();
 void testSse2Shufpd1c6();
 void testSse2Psrlw1d1();
 void testSse2Psrld1d2();

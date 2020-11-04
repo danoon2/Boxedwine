@@ -5,6 +5,7 @@
 #include "../../softmmu/soft_code_page.h"
 #include "../x32/x32CPU.h"
 #include "../armv7/armv7CPU.h"
+#include "../armv8/armv8CPU.h"
 
 #ifdef _DEBUG
 #define START_OP(cpu, op) op->log(cpu)

@@ -68,7 +68,7 @@ void* glMakeRGBATexture(const unsigned char* data, int width, int height) {
 void UnloadTexture(void* texture) {
 #ifdef BOXEDWINE_IMGUI_DX9
     if (StartUpArgs::uiType == UI_TYPE_DX9) {
-        glUnloadTexture(texture);
+        dx9UnloadTexture(texture);
     }
 #endif
 #ifdef BOXEDWINE_OPENGL_SDL

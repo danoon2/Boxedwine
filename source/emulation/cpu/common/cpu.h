@@ -326,6 +326,8 @@ protected:
     U32 big;
 };
 
+void common_prepareException(CPU* cpu, int code, int error);
+
 // until I can figure out how to call cpp function directly from asm
 U32 common_getCF(CPU* cpu);
 U32 common_condition_o(CPU* cpu);

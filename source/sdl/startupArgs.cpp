@@ -258,16 +258,16 @@ bool StartUpArgs::apply() {
         klog("Loaded %s in %d ms", zip.c_str(), (U32)(endTime - startTime) / 1000);
     }
 
-    BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath("", "/wineVersion.txt", false);
-    if (node) {
-        FsOpenNode* openNode = node->open(K_O_RDONLY);
+    BoxedPtr<FsNode> wineVersionNode = Fs::getNodeFromLocalPath("", "/wineVersion.txt", false);
+    if (wineVersionNode) {
+        FsOpenNode* openNode = wineVersionNode->open(K_O_RDONLY);
         if (openNode) {
             U8 tmp[64];
             if (openNode->readNative(tmp, 64) > 5) {
                 if (tmp[5] == '2' || tmp[5] == '1') {
-                    BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath("", "/usr/lib/i386-linux-gnu/libfreetype.so.6", false);
-                    if (node) {
-                        node->link = "libfreetype.so.6.12.3";
+                    BoxedPtr<FsNode> freeTypeNode = Fs::getNodeFromLocalPath("", "/usr/lib/i386-linux-gnu/libfreetype.so.6", false);
+                    if (freeTypeNode) {
+                        freeTypeNode->link = "libfreetype.so.6.12.3";
                     }
                 }
             }
@@ -591,7 +591,7 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
     char* base = getcwd(curdir, sizeof(curdir));
     char pathSeperator;
 
-    if (strchr(base, '\\')!=0) {
+    if (base!=NULL && strchr(base, '\\')!=0) {
         pathSeperator = '\\';
     } else {
         pathSeperator = '/';
@@ -601,11 +601,13 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
         base2 = base2.substr(0, base2.length()-1); 
         if (zips.size()==0 && !nozip) {
             std::vector<Platform::ListNodeResult> results;
-            Platform::listNodes(base, results);
-            for (auto&& item : results) {
-                if (strstr(item.name.c_str(), "Wine") && strstr(item.name.c_str(), ".zip")) {
-                    this->zips.push_back(std::string(base) + pathSeperator + item.name);
-                    break;
+            if (base) {
+                Platform::listNodes(base, results);
+                for (auto&& item : results) {
+                    if (strstr(item.name.c_str(), "Wine") && strstr(item.name.c_str(), ".zip")) {
+                        this->zips.push_back(std::string(base) + pathSeperator + item.name);
+                        break;
+                    }
                 }
             }
             if (zips.size()==0) {

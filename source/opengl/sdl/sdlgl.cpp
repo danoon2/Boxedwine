@@ -94,9 +94,9 @@ void sdl_glXDestroyContext(CPU* cpu) {
 // Bool glXMakeCurrent(Display *dpy, GLXDrawable drawable, GLXContext ctx) 
 void sdl_glXMakeCurrent(CPU* cpu) {
     //U32 isWindow = ARG5;
-    U32 depth = ARG4;
-    U32 height = ARG3;
-    U32 width = ARG2;
+    //U32 depth = ARG4;
+    //U32 height = ARG3;
+    //U32 width = ARG2;
 
 #ifdef BOXEDWINE_EXPERIMENTAL_FRAME_BUFFER
     if (width) {

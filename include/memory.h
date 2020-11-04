@@ -76,7 +76,7 @@ class Page;
 class CPU;
 class DecodedOp;
 class DecodedBlock;
-class X64CodeChunk;
+class BtCodeChunk;
 
 typedef void (OPCALL *OpCallback)(CPU* cpu, DecodedOp* op);
 
@@ -146,23 +146,23 @@ public:
 #define MAX_DYNAMIC_CODE_PAGE_COUNT 0xFF
     U8 dynamicCodePageUpdateCount[K_NUMBER_OF_PAGES];
 
-#ifdef BOXEDWINE_X64
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
     BOXEDWINE_MUTEX executableMemoryMutex;
 private:
 #define EXECUTABLE_MIN_SIZE_POWER 7
 #define EXECUTABLE_MAX_SIZE_POWER 22
 #define EXECUTABLE_SIZES 16
 
-    std::unordered_map<U32, std::shared_ptr< std::list< std::shared_ptr<X64CodeChunk> > >> codeChunksByHostPage;
-    std::unordered_map<U32, std::shared_ptr< std::list< std::shared_ptr<X64CodeChunk> > >> codeChunksByEmulationPage;
+    std::unordered_map<U32, std::shared_ptr< std::list< std::shared_ptr<BtCodeChunk> > >> codeChunksByHostPage;
+    std::unordered_map<U32, std::shared_ptr< std::list< std::shared_ptr<BtCodeChunk> > >> codeChunksByEmulationPage;
 
     std::list<void*> freeExecutableMemory[EXECUTABLE_SIZES];
 public:
-    std::shared_ptr<X64CodeChunk> getCodeChunkContainingHostAddress(void* hostAddress);
+    std::shared_ptr<BtCodeChunk> getCodeChunkContainingHostAddress(void* hostAddress);
     void invalideHostCode(U32 eip, U32 len);
-    std::shared_ptr<X64CodeChunk> getCodeChunkContainingEip(U32 eip);
-    void addCodeChunk(const std::shared_ptr<X64CodeChunk>& chunk);
-    void removeCodeChunk(const std::shared_ptr<X64CodeChunk>& chunk);
+    std::shared_ptr<BtCodeChunk> getCodeChunkContainingEip(U32 eip);
+    void addCodeChunk(const std::shared_ptr<BtCodeChunk>& chunk);
+    void removeCodeChunk(const std::shared_ptr<BtCodeChunk>& chunk);
     void makePageDynamic(U32 page);
     void* getExistingHostAddress(U32 eip);
     void* allocateExcutableMemory(U32 size, U32* allocatedSize);
@@ -199,7 +199,7 @@ private:
 #endif
 #ifdef BOXEDWINE_64BIT_MMU
     U32 callbackPos;    
-#ifndef BOXEDWINE_X64
+#ifndef BOXEDWINE_BINARY_TRANSLATOR
     void* internalAddCodeBlock(U32 startIp, DecodedBlock* block);
 #endif
 #endif

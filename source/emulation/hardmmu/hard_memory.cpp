@@ -22,19 +22,15 @@
 #include <string.h>
 #include <setjmp.h>
 #include "hard_memory.h"
-#include "../cpu/x64/x64CodeChunk.h"
-
-#ifdef BOXEDWINE_X64
-#include "../cpu/x64/x64Asm.h"
-#endif
+#include "../cpu/binaryTranslation/btCodeMemoryWrite.h"
+#include "../cpu/binaryTranslation/btCodeChunk.h"
 
 Memory::Memory() : allocated(0), callbackPos(0) {
     memset(flags, 0, sizeof(flags));
     memset(nativeFlags, 0, sizeof(nativeFlags));
     memset(memOffsets, 0, sizeof(memOffsets));
-#ifndef BOXEDWINE_X64
+#ifndef BOXEDWINE_BINARY_TRANSLATOR
     memset(codeCache, 0, sizeof(codeCache));    
-    //memset(ids, 0, sizeof(ids));
 #else
     if (!KSystem::useLargeAddressSpace) {
         this->eipToHostInstructionPages = new void** [K_NUMBER_OF_PAGES];
@@ -61,7 +57,7 @@ Memory::Memory() : allocated(0), callbackPos(0) {
 
 Memory::~Memory() {    
     releaseNativeMemory(this);
-#ifdef BOXEDWINE_X64
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
     if (this->eipToHostInstructionPages) {
         delete[] this->eipToHostInstructionPages;
     }
@@ -337,13 +333,13 @@ void writeb(U32 address, U8 value) {
     if (thread->process->memory->log)
         fprintf(logFile, "writeb %X @%X\n", value, address);
 #endif
-#ifdef BOXEDWINE_X64
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
     Memory* m = KThread::currentThread()->memory;
     U32 page = address >> K_PAGE_SHIFT;
     U8 flags = m->nativeFlags[page];
 
     if (flags & NATIVE_FLAG_CODEPAGE_READONLY) {
-        X64AsmCodeMemoryWrite w((x64CPU*)KThread::currentThread()->cpu, address, 1);
+        BtCodeMemoryWrite w((BtCPU*)KThread::currentThread()->cpu, address, 1);
         *(U8*)getNativeAddress(m, address) = value;
     } else if ((flags & NATIVE_FLAG_COMMITTED) || (m->flags[page] & PAGE_MAPPED_HOST)) {
         *(U8*)getNativeAddress(KThread::currentThread()->memory, address) = value;
@@ -373,16 +369,12 @@ void writew( U32 address, U16 value) {
     if (thread->process->memory->log)
         fprintf(logFile, "writew %X @%X\n", value, address);
 #endif
-#ifdef BOXEDWINE_64BIT_MMU1
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
     Memory* m = KThread::currentThread()->memory;
     U8 flags = m->nativeFlags[address >> K_PAGE_SHIFT];
 
     if (flags & NATIVE_FLAG_CODEPAGE_READONLY) {
-#ifdef BOXEDWINE_X64
-        X64AsmCodeMemoryWrite w((x64CPU*)KThread::currentThread()->cpu, address, 2);
-#else
-        clearCodePageReadOnly(m, address >> K_PAGE_SHIFT);
-#endif
+        BtCodeMemoryWrite w((BtCPU*)KThread::currentThread()->cpu, address, 2);
         *(U16*)getNativeAddress(m, address) = value;
     } else if (flags & NATIVE_FLAG_COMMITTED) {
         *(U16*)getNativeAddress(KThread::currentThread()->memory, address) = value;
@@ -410,13 +402,13 @@ void writed(U32 address, U32 value) {
     if (thread->process->memory->log)
         fprintf(logFile, "writed %X @%X\n", value, address);
 #endif
-#ifdef BOXEDWINE_X64
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
     Memory* m = KThread::currentThread()->memory;
     U32 page = address >> K_PAGE_SHIFT;
     U8 flags = m->nativeFlags[page];
 
     if (flags & NATIVE_FLAG_CODEPAGE_READONLY) {
-        X64AsmCodeMemoryWrite w((x64CPU*)KThread::currentThread()->cpu, address, 4);
+        BtCodeMemoryWrite w((BtCPU*)KThread::currentThread()->cpu, address, 4);
         *(U32*)getNativeAddress(m, address) = value;
     } else if ((flags & NATIVE_FLAG_COMMITTED) || (m->flags[page] & PAGE_MAPPED_HOST)) {
         *(U32*)getNativeAddress(KThread::currentThread()->memory, address) = value;
@@ -433,13 +425,13 @@ U64 readq(U32 address) {
 }
 
 void writeq(U32 address, U64 value) {
-#ifdef BOXEDWINE_X64
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
     Memory* m = KThread::currentThread()->memory;
     U32 page = address >> K_PAGE_SHIFT;
     U8 flags = m->nativeFlags[page];
 
     if (flags & NATIVE_FLAG_CODEPAGE_READONLY) {
-        X64AsmCodeMemoryWrite w((x64CPU*)KThread::currentThread()->cpu, address, 8);
+        BtCodeMemoryWrite w((BtCPU*)KThread::currentThread()->cpu, address, 8);
         *(U64*)getNativeAddress(m, address) = value;
     } else if ((flags & NATIVE_FLAG_COMMITTED) || (m->flags[page] & PAGE_MAPPED_HOST)) {
         *(U64*)getNativeAddress(KThread::currentThread()->memory, address) = value;
@@ -528,7 +520,7 @@ void freeCacheBlock(BlockCache* cacheBlock) {
 }
 
 DecodedBlock* Memory::getCodeBlock(U32 startIp) {
-#ifndef BOXEDWINE_X64
+#ifndef BOXEDWINE_BINARY_TRANSLATOR
     BlockCache** cacheBlocks = (BlockCache**)this->codeCache[startIp >> K_PAGE_SHIFT];
     BlockCache* cacheBlock;
     if (!cacheBlocks)
@@ -545,12 +537,12 @@ DecodedBlock* Memory::getCodeBlock(U32 startIp) {
 }
 
 void Memory::addCodeBlock(U32 startIp, DecodedBlock* block) {
-#ifndef BOXEDWINE_X64
+#ifndef BOXEDWINE_BINARY_TRANSLATOR
     this->internalAddCodeBlock(startIp, block);
 #endif
 }
 
-#ifndef BOXEDWINE_X64
+#ifndef BOXEDWINE_BINARY_TRANSLATOR
 void* Memory::internalAddCodeBlock(U32 startIp, DecodedBlock* block) {
     BlockCache** cacheBlocks = (BlockCache**)this->codeCache[startIp >> K_PAGE_SHIFT];
     U32 index = (startIp & 0xFFF)>>BLOCK_CACHE_SHIFT;
@@ -609,13 +601,15 @@ void Memory::removeBlock(DecodedBlock* block, U32 ip) {
 }
 #endif
 
+#ifndef BOXEDWINE_BINARY_TRANSLATOR
 static void OPCALL emptyOp(CPU* cpu, DecodedOp* op) {
     cpu->nextBlock = NULL;
     cpu->yield = true;
 }
+#endif
 
 void Memory::clearCodePageFromCache(U32 page) {
-#ifdef BOXEDWINE_X64
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
     if (KSystem::useLargeAddressSpace) {
         KThread* thread = KThread::currentThread();
         std::shared_ptr<KProcess> process;
@@ -636,7 +630,7 @@ void Memory::clearCodePageFromCache(U32 page) {
             for (U32 i = 0; i < K_PAGE_SIZE; i++) {
                 void* hostAddress = table[i];
                 if (hostAddress) {
-                    std::shared_ptr<X64CodeChunk> chunk = this->getCodeChunkContainingHostAddress(hostAddress);
+                    std::shared_ptr<BtCodeChunk> chunk = this->getCodeChunkContainingHostAddress(hostAddress);
                     if (chunk) {
                         i += chunk->getHostAddressLen();
                         chunk->release(this);
@@ -706,12 +700,12 @@ U8* getPhysicalWriteAddress(U32 address, U32 len) {
     return (U8*)getNativeAddress(KThread::currentThread()->process->memory, address);
 }
 
-#ifdef BOXEDWINE_X64
-// called when X64CodeChunk is being dealloc'd
-void Memory::removeCodeChunk(const std::shared_ptr<X64CodeChunk>& chunk) {
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+// called when BtCodeChunk is being dealloc'd
+void Memory::removeCodeChunk(const std::shared_ptr<BtCodeChunk>& chunk) {
     U32 hostPage = (U32)(((size_t)chunk->getHostAddress()) >> K_PAGE_SHIFT);
     if (this->codeChunksByHostPage.count(hostPage)) {
-        std::shared_ptr< std::list<std::shared_ptr<X64CodeChunk>> > chunks = this->codeChunksByHostPage[hostPage];
+        std::shared_ptr< std::list<std::shared_ptr<BtCodeChunk>> > chunks = this->codeChunksByHostPage[hostPage];
         chunks->remove(chunk);
         if (chunks->size() == 0) {
             this->codeChunksByHostPage.erase(hostPage);
@@ -720,7 +714,7 @@ void Memory::removeCodeChunk(const std::shared_ptr<X64CodeChunk>& chunk) {
 
     U32 emulationPage = (chunk->getEip()) >> K_PAGE_SHIFT;
     if (this->codeChunksByEmulationPage.count(emulationPage)) {
-        std::shared_ptr< std::list<std::shared_ptr<X64CodeChunk>> > chunks = this->codeChunksByEmulationPage[emulationPage];
+        std::shared_ptr< std::list<std::shared_ptr<BtCodeChunk>> > chunks = this->codeChunksByEmulationPage[emulationPage];
         chunks->remove(chunk);
         if (chunks->size() == 0) {
             this->codeChunksByEmulationPage.erase(emulationPage);
@@ -728,15 +722,15 @@ void Memory::removeCodeChunk(const std::shared_ptr<X64CodeChunk>& chunk) {
     }
 }
 
-// called when X64CodeChunk is being alloc'd
-void Memory::addCodeChunk(const std::shared_ptr<X64CodeChunk>& chunk) {
+// called when BtCodeChunk is being alloc'd
+void Memory::addCodeChunk(const std::shared_ptr<BtCodeChunk>& chunk) {
     U32 hostPage = (U32)(((size_t)chunk->getHostAddress()) >> K_PAGE_SHIFT);
     U32 emulationPage = (chunk->getEip()) >> K_PAGE_SHIFT;
 #ifdef _DEBUG
     U32 lastPage = (U32)(((size_t)((U8*)chunk->getHostAddress() + chunk->getHostAddressLen())) >> K_PAGE_SHIFT);
     for (U32 i=hostPage;i<=lastPage;i++) {
         if (this->codeChunksByHostPage.count(hostPage)) {
-            std::shared_ptr< std::list<std::shared_ptr<X64CodeChunk>> > chunks = this->codeChunksByHostPage[hostPage];
+            std::shared_ptr< std::list<std::shared_ptr<BtCodeChunk>> > chunks = this->codeChunksByHostPage[hostPage];
             for (auto& otherChunk : *chunks) {
                 if (otherChunk->containsHostAddress(chunk->getHostAddress())) {
                     kpanic("Memory::addCodeChunk chunks can not overlap");
@@ -745,16 +739,16 @@ void Memory::addCodeChunk(const std::shared_ptr<X64CodeChunk>& chunk) {
         }
     }
 #endif
-    std::shared_ptr< std::list<std::shared_ptr<X64CodeChunk>> > hostChunks = this->codeChunksByHostPage[hostPage];
+    std::shared_ptr< std::list<std::shared_ptr<BtCodeChunk>> > hostChunks = this->codeChunksByHostPage[hostPage];
     if (!hostChunks) {
-        hostChunks = std::make_shared< std::list<std::shared_ptr<X64CodeChunk>> >();
+        hostChunks = std::make_shared< std::list<std::shared_ptr<BtCodeChunk>> >();
         this->codeChunksByHostPage[hostPage] = hostChunks;
     }
     hostChunks->push_back(chunk);
 
-    std::shared_ptr< std::list<std::shared_ptr<X64CodeChunk>> > chunks = this->codeChunksByEmulationPage[emulationPage];
+    std::shared_ptr< std::list<std::shared_ptr<BtCodeChunk>> > chunks = this->codeChunksByEmulationPage[emulationPage];
     if (!chunks) {
-        chunks = std::make_shared< std::list<std::shared_ptr<X64CodeChunk>> >();
+        chunks = std::make_shared< std::list<std::shared_ptr<BtCodeChunk>> >();
         this->codeChunksByEmulationPage[emulationPage] = chunks;
     }
     chunks->push_back(chunk);
@@ -762,7 +756,7 @@ void Memory::addCodeChunk(const std::shared_ptr<X64CodeChunk>& chunk) {
 
 void Memory::makePageDynamic(U32 page) {
     if (this->codeChunksByEmulationPage.count(page)) {
-        std::shared_ptr< std::list<std::shared_ptr<X64CodeChunk>> > chunks = this->codeChunksByEmulationPage[page];
+        std::shared_ptr< std::list<std::shared_ptr<BtCodeChunk>> > chunks = this->codeChunksByEmulationPage[page];
         for (auto& chunk : *chunks) {
             if (!chunk->isDynamicAware()) {
                 chunk->invalidateStartingAt(chunk->getEip());
@@ -779,7 +773,7 @@ void Memory::makePageDynamic(U32 page) {
     // check on the chunks in that page
     while (page>0) {
         if (this->codeChunksByEmulationPage.count(page)) {
-            std::shared_ptr< std::list<std::shared_ptr<X64CodeChunk>> > chunks = this->codeChunksByEmulationPage[page];
+            std::shared_ptr< std::list<std::shared_ptr<BtCodeChunk>> > chunks = this->codeChunksByEmulationPage[page];
             for (auto& chunk : *chunks) {
                 if (chunk->containsEip(eip)) {
                     chunk->invalidateStartingAt(eip);
@@ -794,10 +788,10 @@ void Memory::makePageDynamic(U32 page) {
 
 // only called during code patching, if this become a performance problem maybe we could just it up
 // like with soft_code_page
-std::shared_ptr<X64CodeChunk> Memory::getCodeChunkContainingHostAddress(void* hostAddress) {
+std::shared_ptr<BtCodeChunk> Memory::getCodeChunkContainingHostAddress(void* hostAddress) {
     U32 page = (U32)((size_t)hostAddress >> K_PAGE_SHIFT);
     if (this->codeChunksByHostPage.count(page)) {
-        std::shared_ptr< std::list<std::shared_ptr<X64CodeChunk>> > chunks = this->codeChunksByHostPage[page];
+        std::shared_ptr< std::list<std::shared_ptr<BtCodeChunk>> > chunks = this->codeChunksByHostPage[page];
         for (auto& chunk : *chunks) {
             if (chunk->containsHostAddress(hostAddress)) {
                 return chunk;
@@ -810,7 +804,7 @@ std::shared_ptr<X64CodeChunk> Memory::getCodeChunkContainingHostAddress(void* ho
     // check on the chunks in that page
     while (page>0) {
         if (this->codeChunksByHostPage.count(page)) {
-            std::shared_ptr< std::list<std::shared_ptr<X64CodeChunk>> > chunks = this->codeChunksByHostPage[page];
+            std::shared_ptr< std::list<std::shared_ptr<BtCodeChunk>> > chunks = this->codeChunksByHostPage[page];
             for (auto& chunk : *chunks) {
                 if (chunk->containsHostAddress(hostAddress)) {
                     return chunk;
@@ -823,11 +817,11 @@ std::shared_ptr<X64CodeChunk> Memory::getCodeChunkContainingHostAddress(void* ho
     return NULL;
 }
 
-std::shared_ptr<X64CodeChunk> Memory::getCodeChunkContainingEip(U32 eip) {
+std::shared_ptr<BtCodeChunk> Memory::getCodeChunkContainingEip(U32 eip) {
     for (U32 i=0;i<K_MAX_X86_OP_LEN;i++) {
         void* hostAddress = getExistingHostAddress(eip-i);
         if (hostAddress) {
-            std::shared_ptr<X64CodeChunk> result = this->getCodeChunkContainingHostAddress(hostAddress);
+            std::shared_ptr<BtCodeChunk> result = this->getCodeChunkContainingHostAddress(hostAddress);
             if (result->containsEip(eip)) {
                 return result;
             }
@@ -839,7 +833,7 @@ std::shared_ptr<X64CodeChunk> Memory::getCodeChunkContainingEip(U32 eip) {
 
 void Memory::invalideHostCode(U32 eip, U32 len) {
     for (U32 i=eip;i<eip+len;i++) {
-        std::shared_ptr<X64CodeChunk> chunk = getCodeChunkContainingEip(i);
+        std::shared_ptr<BtCodeChunk> chunk = getCodeChunkContainingEip(i);
         if (chunk && !chunk->isDynamicAware()) {
             chunk->invalidateStartingAt(i);
             i=chunk->getEip()+chunk->getEipLen()-1;
@@ -949,7 +943,7 @@ void Memory::freeExcutableMemory(void* hostMemory, U32 actualSize) {
 }
 
 void Memory::executableMemoryReleased() {
-#ifdef BOXEDWINE_X64
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
     this->codeChunksByHostPage.clear();
     this->codeChunksByEmulationPage.clear();
     for (U32 i = 0; i < EXECUTABLE_SIZES; i++) {

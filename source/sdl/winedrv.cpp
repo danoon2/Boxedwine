@@ -764,6 +764,7 @@ static U8 scanCodeToVkEx[] = {
     0x0, 0x0, 0x0, 0xEB, 0x9, 0x0, 0xC2, 0x0,
 };
 
+/*
 static U32 scanCodeToVirtualKeyEx(U32 code) {
     U32 c = 0;
     if (code < sizeof(scanCodeToVkEx)) {
@@ -771,6 +772,7 @@ static U32 scanCodeToVirtualKeyEx(U32 code) {
     }
     return c;
 }
+*/
 
 // UINT CDECL drv_MapVirtualKeyEx(UINT wCode, UINT wMapType, HKL hkl)
 void boxeddrv_MapVirtualKeyEx(CPU* cpu) {

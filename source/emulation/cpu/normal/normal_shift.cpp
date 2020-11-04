@@ -20,6 +20,15 @@
 void rol8_reg(CPU* cpu, U32 reg, U32 var2) {
     U8 result;
     U8 var1=*cpu->reg8[reg];
+    if (!(var2 & 7)) {
+        if (var2 & 0x18) {
+            cpu->fillFlagsNoCFOF();
+            cpu->setCF(var1 & 1);
+            cpu->setOF((var1 & 1) ^ (var1 >> 7));
+        }
+        return;
+    }
+    var2 &= 7;
     cpu->fillFlagsNoCFOF();
     result = (var1 << var2) | (var1 >> (8 - var2));
     cpu->setCF(result & 1);
@@ -29,6 +38,15 @@ void rol8_reg(CPU* cpu, U32 reg, U32 var2) {
 void rol8_mem(CPU* cpu, U32 eaa, U32 var2) {
     U8 result;
     U8 var1=readb(eaa);
+    if (!(var2 & 7)) {
+        if (var2 & 0x18) {
+            cpu->fillFlagsNoCFOF();
+            cpu->setCF(var1 & 1);
+            cpu->setOF((var1 & 1) ^ (var1 >> 7));
+        }
+        return;
+    }
+    var2 &= 7;
     cpu->fillFlagsNoCFOF();
     result = (var1 << var2) | (var1 >> (8 - var2));
     cpu->setCF(result & 1);
@@ -37,33 +55,52 @@ void rol8_mem(CPU* cpu, U32 eaa, U32 var2) {
 }
 void rol8cl_reg(CPU* cpu, U32 reg, U32 var2) {
     U8 result;
-    U8 var1;
-    if (var2) {
-    var2&=7;
-    var1 = *cpu->reg8[reg];
+    U8 var1 = *cpu->reg8[reg];
+    if (!(var2 & 7)) {
+        if (var2 & 0x18) {
+            cpu->fillFlagsNoCFOF();
+            cpu->setCF(var1 & 1);
+            cpu->setOF((var1 & 1) ^ (var1 >> 7));
+        }
+        return;
+    }
+    var2 &= 7;    
     cpu->fillFlagsNoCFOF();
     result = (var1 << var2) | (var1 >> (8 - var2));
     cpu->setCF(result & 1);
     cpu->setOF((result & 1) ^ (result >> 7));
     *cpu->reg8[reg] = result;
-    }
 }
 void rol8cl_mem(CPU* cpu, U32 eaa, U32 var2) {
     U8 result;
-    U8 var1;
-    if (var2) {
-    var2&=7;
-    var1 = readb(eaa);
+    U8 var1 = readb(eaa);
+    if (!(var2 & 7)) {
+        if (var2 & 0x18) {
+            cpu->fillFlagsNoCFOF();
+            cpu->setCF(var1 & 1);
+            cpu->setOF((var1 & 1) ^ (var1 >> 7));
+        }
+        return;
+    }
+    var2 &= 7;    
     cpu->fillFlagsNoCFOF();
     result = (var1 << var2) | (var1 >> (8 - var2));
     cpu->setCF(result & 1);
     cpu->setOF((result & 1) ^ (result >> 7));
     writeb(eaa, result);
-    }
 }
 void rol16_reg(CPU* cpu, U32 reg, U32 var2) {
     U16 result;
     U16 var1=cpu->reg[reg].u16;
+    if (!(var2 & 0xf)) {
+        if (var2 & 0x10) {
+            cpu->fillFlagsNoCFOF();
+            cpu->setCF(var1 & 1);
+            cpu->setOF((var1 & 1) ^ (var1 >> 15));
+        }
+        return;
+    }
+    var2 &= 0xf;
     cpu->fillFlagsNoCFOF();
     result = (var1 << var2) | (var1 >> (16 - var2));
     cpu->setCF(result & 1);
@@ -73,6 +110,15 @@ void rol16_reg(CPU* cpu, U32 reg, U32 var2) {
 void rol16_mem(CPU* cpu, U32 eaa, U32 var2) {
     U16 result;
     U16 var1=readw(eaa);
+    if (!(var2 & 0xf)) {
+        if (var2 & 0x10) {
+            cpu->fillFlagsNoCFOF();
+            cpu->setCF(var1 & 1);
+            cpu->setOF((var1 & 1) ^ (var1 >> 15));
+        }
+        return;
+    }
+    var2 &= 0xf;
     cpu->fillFlagsNoCFOF();
     result = (var1 << var2) | (var1 >> (16 - var2));
     cpu->setCF(result & 1);
@@ -81,29 +127,39 @@ void rol16_mem(CPU* cpu, U32 eaa, U32 var2) {
 }
 void rol16cl_reg(CPU* cpu, U32 reg, U32 var2) {
     U16 result;
-    U16 var1;
-    if (var2) {
-    var2&=15;
-    var1 = cpu->reg[reg].u16;
+    U16 var1 = cpu->reg[reg].u16;
+    if (!(var2 & 0xf)) {
+        if (var2 & 0x10) {
+            cpu->fillFlagsNoCFOF();
+            cpu->setCF(var1 & 1);
+            cpu->setOF((var1 & 1) ^ (var1 >> 15));
+        }
+        return;
+    }
+    var2 &= 15;    
     cpu->fillFlagsNoCFOF();
     result = (var1 << var2) | (var1 >> (16 - var2));
     cpu->setCF(result & 1);
     cpu->setOF((result & 1) ^ (result >> 15));
     cpu->reg[reg].u16 = result;
-    }
 }
 void rol16cl_mem(CPU* cpu, U32 eaa, U32 var2) {
     U16 result;
-    U16 var1;
-    if (var2) {
-    var2&=15;
-    var1 = readw(eaa);
+    U16 var1 = readw(eaa);
+    if (!(var2 & 0xf)) {
+        if (var2 & 0x10) {
+            cpu->fillFlagsNoCFOF();
+            cpu->setCF(var1 & 1);
+            cpu->setOF((var1 & 1) ^ (var1 >> 15));
+        }
+        return;
+    }
+    var2 &= 15;    
     cpu->fillFlagsNoCFOF();
     result = (var1 << var2) | (var1 >> (16 - var2));
     cpu->setCF(result & 1);
     cpu->setOF((result & 1) ^ (result >> 15));
     writew(eaa, result);
-    }
 }
 void rol32_reg(CPU* cpu, U32 reg, U32 var2) {
     U32 result;
@@ -148,6 +204,15 @@ void rol32cl_mem(CPU* cpu, U32 eaa, U32 var2) {
 void ror8_reg(CPU* cpu, U32 reg, U32 var2) {
     U8 result;
     U8 var1=*cpu->reg8[reg];
+    if (!(var2 & 7)) {
+        if (var2 & 0x18) {
+            cpu->fillFlagsNoCFOF();
+            cpu->setCF(var1 & 0x80);
+            cpu->setOF((var1 ^ (var1 << 1)) & 0x80);
+        }
+        return;
+    }
+    var2 &= 7;
     cpu->fillFlagsNoCFOF();
     result = (var1 >> var2) | (var1 << (8 - var2));
     cpu->setCF(result & 0x80);
@@ -157,6 +222,15 @@ void ror8_reg(CPU* cpu, U32 reg, U32 var2) {
 void ror8_mem(CPU* cpu, U32 eaa, U32 var2) {
     U8 result;
     U8 var1=readb(eaa);
+    if (!(var2 & 7)) {
+        if (var2 & 0x18) {
+            cpu->fillFlagsNoCFOF();
+            cpu->setCF(var1 & 0x80);
+            cpu->setOF((var1 ^ (var1 << 1)) & 0x80);
+        }
+        return;
+    }
+    var2 &= 7;
     cpu->fillFlagsNoCFOF();
     result = (var1 >> var2) | (var1 << (8 - var2));
     cpu->setCF(result & 0x80);
@@ -165,33 +239,52 @@ void ror8_mem(CPU* cpu, U32 eaa, U32 var2) {
 }
 void ror8cl_reg(CPU* cpu, U32 reg, U32 var2) {
     U8 result;
-    U8 var1;
-    if (var2) {
-    var2&=7;
-    var1 = *cpu->reg8[reg];
+    U8 var1 = *cpu->reg8[reg];
+    if (!(var2 & 7)) {
+        if (var2 & 0x18) {
+            cpu->fillFlagsNoCFOF();
+            cpu->setCF(var1 & 0x80);
+            cpu->setOF((var1 ^ (var1 << 1)) & 0x80);
+        }
+        return;
+    }
+    var2 &= 7;    
     cpu->fillFlagsNoCFOF();
     result = (var1 >> var2) | (var1 << (8 - var2));
     cpu->setCF(result & 0x80);
     cpu->setOF((result ^ (result<<1)) & 0x80);
     *cpu->reg8[reg] = result;
-    }
 }
 void ror8cl_mem(CPU* cpu, U32 eaa, U32 var2) {
     U8 result;
-    U8 var1;
-    if (var2) {
-    var2&=7;
-    var1 = readb(eaa);
+    U8 var1 = readb(eaa);
+    if (!(var2 & 7)) {
+        if (var2 & 0x18) {
+            cpu->fillFlagsNoCFOF();
+            cpu->setCF(var1 & 0x80);
+            cpu->setOF((var1 ^ (var1 << 1)) & 0x80);
+        }
+        return;
+    }
+    var2 &= 7;    
     cpu->fillFlagsNoCFOF();
     result = (var1 >> var2) | (var1 << (8 - var2));
     cpu->setCF(result & 0x80);
     cpu->setOF((result ^ (result<<1)) & 0x80);
     writeb(eaa, result);
-    }
 }
 void ror16_reg(CPU* cpu, U32 reg, U32 var2) {
     U16 result;
     U16 var1=cpu->reg[reg].u16;
+    if (!(var2 & 0xf)) {
+        if (var2 & 0x10) {
+            cpu->fillFlagsNoCFOF();
+            cpu->setCF(var1 & 0x8000);
+            cpu->setOF((var1 ^ (var1 << 1)) & 0x8000);
+        }
+        return;
+    }
+    var2 &= 0xf;
     cpu->fillFlagsNoCFOF();
     result = (var1 >> var2) | (var1 << (16 - var2));
     cpu->setCF(result & 0x8000);
@@ -201,6 +294,15 @@ void ror16_reg(CPU* cpu, U32 reg, U32 var2) {
 void ror16_mem(CPU* cpu, U32 eaa, U32 var2) {
     U16 result;
     U16 var1=readw(eaa);
+    if (!(var2 & 0xf)) {
+        if (var2 & 0x10) {
+            cpu->fillFlagsNoCFOF();
+            cpu->setCF(var1 & 0x8000);
+            cpu->setOF((var1 ^ (var1 << 1)) & 0x8000);
+        }
+        return;
+    }
+    var2 &= 0xf;
     cpu->fillFlagsNoCFOF();
     result = (var1 >> var2) | (var1 << (16 - var2));
     cpu->setCF(result & 0x8000);
@@ -209,29 +311,39 @@ void ror16_mem(CPU* cpu, U32 eaa, U32 var2) {
 }
 void ror16cl_reg(CPU* cpu, U32 reg, U32 var2) {
     U16 result;
-    U16 var1;
-    if (var2) {
-    var2&=15;
-    var1 = cpu->reg[reg].u16;
+    U16 var1 = cpu->reg[reg].u16;
+    if (!(var2 & 0xf)) {
+        if (var2 & 0x10) {
+            cpu->fillFlagsNoCFOF();
+            cpu->setCF(var1 & 0x8000);
+            cpu->setOF((var1 ^ (var1 << 1)) & 0x8000);
+        }
+        return;
+    }
+    var2 &= 15;    
     cpu->fillFlagsNoCFOF();
     result = (var1 >> var2) | (var1 << (16 - var2));
     cpu->setCF(result & 0x8000);
     cpu->setOF((result ^ (result<<1)) & 0x8000);
     cpu->reg[reg].u16 = result;
-    }
 }
 void ror16cl_mem(CPU* cpu, U32 eaa, U32 var2) {
     U16 result;
-    U16 var1;
-    if (var2) {
-    var2&=15;
-    var1 = readw(eaa);
+    U16 var1 = readw(eaa);
+    if (!(var2 & 0xf)) {
+        if (var2 & 0x10) {
+            cpu->fillFlagsNoCFOF();
+            cpu->setCF(var1 & 0x8000);
+            cpu->setOF((var1 ^ (var1 << 1)) & 0x8000);
+        }
+        return;
+    }
+    var2 &= 15;    
     cpu->fillFlagsNoCFOF();
     result = (var1 >> var2) | (var1 << (16 - var2));
     cpu->setCF(result & 0x8000);
     cpu->setOF((result ^ (result<<1)) & 0x8000);
     writew(eaa, result);
-    }
 }
 void ror32_reg(CPU* cpu, U32 reg, U32 var2) {
     U32 result;

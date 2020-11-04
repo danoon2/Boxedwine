@@ -47,7 +47,7 @@ U32 KSystem::startTimeTicks;
 U64 KSystem::startTimeMicroCounter;
 U64 KSystem::startTimeSystemTime;
 std::string KSystem::title;
-#ifdef BOXEDWINE_X64
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
 bool KSystem::useLargeAddressSpace = true;
 #endif
 #ifdef BOXEDWINE_MULTI_THREADED

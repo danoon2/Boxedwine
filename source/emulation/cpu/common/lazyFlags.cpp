@@ -338,7 +338,7 @@ static LazyFlagsDshl32 flagsDshl32;
 const LazyFlags* FLAGS_DSHL32 = &flagsDshl32;
 
 class LazyFlagsDshr16 : public LazyFlagsDefault16 {
-    U32 getCF(CPU* cpu) const {return (cpu->dst.u32 >> (cpu->src.u8 - 1)) & 1;}
+    U32 getCF(CPU* cpu) const {return (cpu->dst.u32 >> (cpu->src.u8 - 1)) & 1;} // dst is intentionally 32 bit
     U32 getOF(CPU* cpu) const {return (cpu->result.u16 ^ cpu->dst.u16) & 0x8000;}
     U32 getAF(CPU* cpu) const {return 0;}
 };

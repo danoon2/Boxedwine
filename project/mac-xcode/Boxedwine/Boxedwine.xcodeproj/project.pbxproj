@@ -11,6 +11,10 @@
 		1A4F8E1E24F740CD0046703D /* helpView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A4F8E1C24F740CC0046703D /* helpView.cpp */; };
 		1A4F8E1F24F740CD0046703D /* helpView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A4F8E1C24F740CC0046703D /* helpView.cpp */; };
 		1A4F8E2024F740CD0046703D /* helpView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A4F8E1C24F740CC0046703D /* helpView.cpp */; };
+		1A9193372551B6D3005A798A /* btCodeMemoryWrite.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A9193332551B6D3005A798A /* btCodeMemoryWrite.cpp */; };
+		1A9193382551B6D3005A798A /* btCodeMemoryWrite.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A9193332551B6D3005A798A /* btCodeMemoryWrite.cpp */; };
+		1A9193392551B6D3005A798A /* btCodeChunk.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A9193342551B6D3005A798A /* btCodeChunk.cpp */; };
+		1A91933A2551B6D3005A798A /* btCodeChunk.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A9193342551B6D3005A798A /* btCodeChunk.cpp */; };
 		71034CD924820DE600FED5C5 /* x32CPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDC72433BBBE003F17F1 /* x32CPU.cpp */; };
 		71034CDA24820DE600FED5C5 /* ksocketobject.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE202433BBBE003F17F1 /* ksocketobject.cpp */; };
 		71034CDB24820DE600FED5C5 /* Format.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81222440ED1C0038F5A4 /* Format.cpp */; };
@@ -2382,6 +2386,11 @@
 /* Begin PBXFileReference section */
 		1A4F8E1B24F740CC0046703D /* helpView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = helpView.h; sourceTree = "<group>"; };
 		1A4F8E1C24F740CC0046703D /* helpView.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = helpView.cpp; sourceTree = "<group>"; };
+		1A9193322551B6D2005A798A /* btCodeChunk.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = btCodeChunk.h; path = binaryTranslation/btCodeChunk.h; sourceTree = "<group>"; };
+		1A9193332551B6D3005A798A /* btCodeMemoryWrite.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = btCodeMemoryWrite.cpp; path = binaryTranslation/btCodeMemoryWrite.cpp; sourceTree = "<group>"; };
+		1A9193342551B6D3005A798A /* btCodeChunk.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = btCodeChunk.cpp; path = binaryTranslation/btCodeChunk.cpp; sourceTree = "<group>"; };
+		1A9193352551B6D3005A798A /* btCodeMemoryWrite.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = btCodeMemoryWrite.h; path = binaryTranslation/btCodeMemoryWrite.h; sourceTree = "<group>"; };
+		1A9193362551B6D3005A798A /* btCpu.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = btCpu.h; path = binaryTranslation/btCpu.h; sourceTree = "<group>"; };
 		71034F0A24820DE600FED5C5 /* BoxedwineAutomation.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BoxedwineAutomation.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		71034F0B24820DE700FED5C5 /* BoxedwineAutomation-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "BoxedwineAutomation-Info.plist"; path = "/Users/jamesbryant/boxedwine-source/project/mac-xcode/Boxedwine/BoxedwineAutomation-Info.plist"; sourceTree = "<absolute>"; };
 		71034F0C24820EC600FED5C5 /* Boxedwine-Automation.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Boxedwine-Automation.entitlements"; sourceTree = "<group>"; };
@@ -4249,6 +4258,11 @@
 		71FBFD5C2433BBBE003F17F1 /* cpu */ = {
 			isa = PBXGroup;
 			children = (
+				1A9193342551B6D3005A798A /* btCodeChunk.cpp */,
+				1A9193322551B6D2005A798A /* btCodeChunk.h */,
+				1A9193332551B6D3005A798A /* btCodeMemoryWrite.cpp */,
+				1A9193352551B6D3005A798A /* btCodeMemoryWrite.h */,
+				1A9193362551B6D3005A798A /* btCpu.h */,
 				71FBFD5D2433BBBE003F17F1 /* dynamic */,
 				71FBFD702433BBBE003F17F1 /* mmx.h */,
 				71FBFD712433BBBE003F17F1 /* pushpop.h */,
@@ -5740,6 +5754,7 @@
 				7103507A2482B71000FED5C5 /* ECKeyImpl.cpp in Sources */,
 				7103507B2482B71000FED5C5 /* soft_memory.cpp in Sources */,
 				7103507C2482B71000FED5C5 /* mainloop.cpp in Sources */,
+				1A9193382551B6D3005A798A /* btCodeMemoryWrite.cpp in Sources */,
 				7103507D2482B71000FED5C5 /* ECKey.cpp in Sources */,
 				7103507E2482B71000FED5C5 /* AbstractConfiguration.cpp in Sources */,
 				7103507F2482B71000FED5C5 /* PrivateKeyPassphraseHandler.cpp in Sources */,
@@ -5827,6 +5842,7 @@
 				710350D02482B71000FED5C5 /* PartSource.cpp in Sources */,
 				710350D12482B71000FED5C5 /* uihelper.cpp in Sources */,
 				710350D22482B71000FED5C5 /* FileStreamFactory.cpp in Sources */,
+				1A91933A2551B6D3005A798A /* btCodeChunk.cpp in Sources */,
 				710350D32482B71000FED5C5 /* pcre_fullinfo.c in Sources */,
 				710350D42482B71000FED5C5 /* imguitinyfiledialogs.cpp in Sources */,
 				710350D52482B71000FED5C5 /* Clock.cpp in Sources */,
@@ -6425,6 +6441,7 @@
 				715F7BFC2440E9E00038F5A4 /* ECKeyImpl.cpp in Sources */,
 				71222C4024351CBA00CDBABD /* soft_memory.cpp in Sources */,
 				71222C4124351CBA00CDBABD /* mainloop.cpp in Sources */,
+				1A9193372551B6D3005A798A /* btCodeMemoryWrite.cpp in Sources */,
 				715F7BF42440E9E00038F5A4 /* ECKey.cpp in Sources */,
 				715F34E62440E7480038F5A4 /* AbstractConfiguration.cpp in Sources */,
 				715F646B2440E9740038F5A4 /* PrivateKeyPassphraseHandler.cpp in Sources */,
@@ -6512,6 +6529,7 @@
 				715F63BD2440E9110038F5A4 /* PartSource.cpp in Sources */,
 				71222C5724351CBA00CDBABD /* uihelper.cpp in Sources */,
 				715F824C2440ED1D0038F5A4 /* FileStreamFactory.cpp in Sources */,
+				1A9193392551B6D3005A798A /* btCodeChunk.cpp in Sources */,
 				715F83C82440ED200038F5A4 /* pcre_fullinfo.c in Sources */,
 				71222C5824351CBA00CDBABD /* imguitinyfiledialogs.cpp in Sources */,
 				715F82D42440ED1E0038F5A4 /* Clock.cpp in Sources */,
@@ -7493,6 +7511,7 @@
 					BOXEDWINE_POSIX,
 					BOXEDWINE_UI_LAUNCH_IN_PROCESS,
 					BOXEDWINE_RECORDER,
+					BOXEDWINE_BINARY_TRANSLATOR,
 				);
 				HEADER_SEARCH_PATHS = "";
 				INFOPLIST_FILE = "BoxedwineX64-Info.plist";
@@ -7549,6 +7568,7 @@
 					BOXEDWINE_POSIX,
 					BOXEDWINE_UI_LAUNCH_IN_PROCESS,
 					BOXEDWINE_RECORDER,
+					BOXEDWINE_BINARY_TRANSLATOR,
 				);
 				HEADER_SEARCH_PATHS = "";
 				INFOPLIST_FILE = "BoxedwineX64-Info.plist";

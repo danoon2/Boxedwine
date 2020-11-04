@@ -63,6 +63,7 @@
 #define socklen_t int
 #define ALIGN(t, x) __declspec(align(x)) t
 #else
+#pragma clang diagnostic ignored "-Winvalid-offsetof"
 #include <limits.h>
 #define THREAD_LOCAL thread_local
 #if ( __WORDSIZE == 64 )
@@ -144,9 +145,11 @@ void freeExecutable64kBlock(void* p);
 void* allocExecutable64kBlock(int count);
 #endif
 
-#ifdef BOXEDWINE_X64
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
 class Memory;
 void allocExecutable64kBlock(Memory* memory, U32 page);
+#endif
+#ifdef BOXEDWINE_X64
 bool platformHasBMI2();
 #endif
 

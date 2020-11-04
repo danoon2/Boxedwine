@@ -1283,7 +1283,7 @@ const InstructionInfo instructionInfo[] = {
     {0, 0, 0, 0, 0, 0}, // Cvtps2dqXmmXmm
     {0, 128, 0, 0, 0, 0}, // Cvtps2dqXmmE128
     {0, 0, 0, 0, 0, 0}, // Cvtps2pdXmmXmm
-    {0, 128, 0, 0, 0, 0}, // Cvtps2pdXmmE128
+    {0, 64, 0, 0, 0, 0}, // Cvtps2pdXmmE64
     {0, 0, 0, 0, 0, 0}, // Cvtsd2siR32Xmm
     {0, 64, 0, 0, 0, 0}, // Cvtsd2siR32E64
     {0, 0, 0, 0, 0, 0}, // Cvtsd2ssXmmXmm
@@ -3907,8 +3907,6 @@ public:
             if (op->imm==0)
                 op->inst = Nop;
             switch (G(rm)) {
-                case 0: op->imm &= 0x7; break;
-                case 1: op->imm &= 0x7; break;
                 case 2: op->imm = op->imm % 9; break;
                 case 3: op->imm = op->imm % 9; break;
                 default: break;
@@ -3945,8 +3943,6 @@ public:
             if (op->imm==0)
                 op->inst = Nop;
             switch (G(rm)) {
-                case 0: op->imm &= 0xf; break;
-                case 1: op->imm &= 0xf; break;
                 case 2: op->imm = op->imm % 17; break;
                 case 3: op->imm = op->imm % 17; break;
                 default: break;
@@ -5626,7 +5622,7 @@ DecodeRMr sseXor0x157(XorpdXmmXmm, XorpdXmmE128);
 DecodeRMr sseAdd0x158(AddpdXmmXmm, AddpdXmmE128);
 DecodeRMr sseMul0x159(MulpdXmmXmm, MulpdXmmE128);
 DecodeRMr sse0x15a(Cvtpd2psXmmXmm, Cvtpd2psXmmE128);
-DecodeSSE2 sse0x35a(Cvtps2pdXmmXmm, Cvtps2pdXmmE128, Cvtsd2ssXmmXmm, Cvtsd2ssXmmE64, Cvtss2sdXmmXmm, Cvtss2sdXmmE32);
+DecodeSSE2 sse0x35a(Cvtps2pdXmmXmm, Cvtps2pdXmmE64, Cvtsd2ssXmmXmm, Cvtsd2ssXmmE64, Cvtss2sdXmmXmm, Cvtss2sdXmmE32);
 DecodeRMr sse0x15b(Cvtps2dqXmmXmm, Cvtps2dqXmmE128);
 DecodeSSE2 sse0x35b(Cvtdq2psXmmXmm, Cvtdq2psXmmE128, Invalid, Invalid, Cvttps2dqXmmXmm, Cvttps2dqXmmE128);
 DecodeRMr sse0x15c(SubpdXmmXmm, SubpdXmmE128);

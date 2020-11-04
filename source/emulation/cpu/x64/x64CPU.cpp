@@ -10,12 +10,17 @@
 #include "ksignal.h"
 #include "knativethread.h"
 #include "knativesystem.h"
+#include "../binaryTranslation/btCodeMemoryWrite.h"
+
+CPU* CPU::allocCPU() {
+    return new x64CPU();
+}
 
 // hard to guage the benifit, seems like 1% to 3% with quake 2 and quake 3
 bool x64CPU::hasBMI2 = true;
 bool x64Intialized = false;
 
-x64CPU::x64CPU() : nativeHandle(0), inException(false), exitToStartThreadLoop(0) {
+x64CPU::x64CPU() : exitToStartThreadLoop(0) {
     if (!x64Intialized) {
         x64Intialized = true;
         x64CPU::hasBMI2 = platformHasBMI2();
@@ -117,7 +122,7 @@ void* x64CPU::init() {
     
     data.calculatedEipLen = 1; // will force the long x64 chunk jump
     data.doJmp(false);
-    std::shared_ptr<X64CodeChunk> chunk = data.commit(true);
+    std::shared_ptr<BtCodeChunk> chunk = data.commit(true);
     result = chunk->getHostAddress();
     link(&data, chunk);
     this->pendingCodePages.clear();    
@@ -165,7 +170,11 @@ void* x64CPU::init() {
     return result;
 }
 
-std::shared_ptr<X64CodeChunk> x64CPU::translateChunk(X64Asm* parent, U32 ip) {
+std::shared_ptr<BtCodeChunk> x64CPU::translateChunk(U32 ip) {
+    return this->translateChunk(NULL, ip);
+}
+
+std::shared_ptr<BtCodeChunk> x64CPU::translateChunk(X64Asm* parent, U32 ip) {
     X64Asm data1(this);
     data1.ip = ip;
     data1.startOfDataIp = ip;       
@@ -181,7 +190,7 @@ std::shared_ptr<X64CodeChunk> x64CPU::translateChunk(X64Asm* parent, U32 ip) {
     S32 failedJumpOpIndex = this->preLinkCheck(&data);
 
     if (failedJumpOpIndex==-1) {
-        std::shared_ptr<X64CodeChunk> chunk = data.commit(false);
+        std::shared_ptr<BtCodeChunk> chunk = data.commit(false);
         link(&data, chunk);
         return chunk;
     } else {
@@ -200,7 +209,7 @@ std::shared_ptr<X64CodeChunk> x64CPU::translateChunk(X64Asm* parent, U32 ip) {
         data3.stopAfterInstruction = failedJumpOpIndex;
         translateData(&data3, &data2);
 
-        std::shared_ptr<X64CodeChunk> chunk = data3.commit(false);
+        std::shared_ptr<BtCodeChunk> chunk = data3.commit(false);
         link(&data3, chunk);
         return chunk;
     }    
@@ -214,7 +223,7 @@ void* x64CPU::translateEipInternal(X64Asm* parent, U32 ip) {
     void* result = this->thread->memory->getExistingHostAddress(address);
 
     if (!result) {
-        std::shared_ptr<X64CodeChunk> chunk = this->translateChunk(parent, ip);
+        std::shared_ptr<BtCodeChunk> chunk = this->translateChunk(parent, ip);
         result = chunk->getHostAddress();
         chunk->makeLive();
     }
@@ -222,6 +231,16 @@ void* x64CPU::translateEipInternal(X64Asm* parent, U32 ip) {
 }
 
 #ifdef __TEST
+void x64CPU::postTestRun() {
+    for (int i = 0; i < 8; i++) {
+        reg_mmx[i].q = *((U64*)(fpuState + 32 + i * 16));
+    }
+    for (int i = 0; i < 8; i++) {
+        xmm[i].pi.u64[0] = *((U64*)(fpuState + 160 + i * 16));
+        xmm[i].pi.u64[1] = *((U64*)(fpuState + 160 + i * 16 + 8));
+    }
+}
+
 void x64CPU::addReturnFromTest() {
     X64Asm data(this);
     data.addReturnFromTest();
@@ -251,7 +270,7 @@ S32 x64CPU::preLinkCheck(X64Asm* data) {
     return -1;
 }
 
-void x64CPU::link(X64Asm* data, std::shared_ptr<X64CodeChunk>& fromChunk, U32 offsetIntoChunk) {
+void x64CPU::link(X64Asm* data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 offsetIntoChunk) {
     U32 i;
     if (!fromChunk) {
         kpanic("x64CPU::link fromChunk missing");
@@ -277,11 +296,11 @@ void x64CPU::link(X64Asm* data, std::shared_ptr<X64CodeChunk>& fromChunk, U32 of
                 chunk->makeLive();
                 toHostAddress = (U8*)chunk->getHostAddress();            
             }
-            std::shared_ptr<X64CodeChunk> toChunk = this->thread->memory->getCodeChunkContainingHostAddress(toHostAddress);
+            std::shared_ptr<BtCodeChunk> toChunk = this->thread->memory->getCodeChunkContainingHostAddress(toHostAddress);
             if (!toChunk) {
                 kpanic("x64CPU::link to chunk missing");
             }
-            std::shared_ptr<X64CodeChunkLink> link = toChunk->addLinkFrom(fromChunk, eip, toHostAddress, offset, true);
+            std::shared_ptr<BtCodeChunkLink> link = toChunk->addLinkFrom(fromChunk, eip, toHostAddress, offset, true);
             data->write32Buffer(offset, (U32)(toHostAddress - offset - 4));            
         } else if (size==8 && !data->todoJump[i].sameChunk) {
             U8* toHostAddress = (U8*)this->thread->memory->getExistingHostAddress(eip);
@@ -295,11 +314,11 @@ void x64CPU::link(X64Asm* data, std::shared_ptr<X64CodeChunk>& fromChunk, U32 of
                 chunk->makeLive();
                 toHostAddress = (U8*)chunk->getHostAddress();
             }
-            std::shared_ptr<X64CodeChunk> toChunk = this->thread->memory->getCodeChunkContainingHostAddress(toHostAddress);
+            std::shared_ptr<BtCodeChunk> toChunk = this->thread->memory->getCodeChunkContainingHostAddress(toHostAddress);
             if (!toChunk) {
                 kpanic("x64CPU::link to chunk missing");
             }
-            std::shared_ptr<X64CodeChunkLink> link = toChunk->addLinkFrom(fromChunk, eip, toHostAddress, offset, false);
+            std::shared_ptr<BtCodeChunkLink> link = toChunk->addLinkFrom(fromChunk, eip, toHostAddress, offset, false);
             data->write64Buffer(offset, (U64)&(link->toHostInstruction));
         } else {
             kpanic("x64CPU::link unexpected patch size");
@@ -367,8 +386,6 @@ void x64CPU::translateInstruction(X64Asm* data, X64Asm* firstPass) {
 }
 
 void x64CPU::translateData(X64Asm* data, X64Asm* firstPass) {
-    Memory* memory = data->cpu->thread->memory;
-
     U32 codePage = (data->ip+data->cpu->seg[CS].address) >> K_PAGE_SHIFT;
     if (this->thread->memory->dynamicCodePageUpdateCount[codePage]==MAX_DYNAMIC_CODE_PAGE_COUNT) {
         data->dynamic = true;
@@ -403,7 +420,6 @@ void x64CPU::translateData(X64Asm* data, X64Asm* firstPass) {
             }
         }
         data->mapAddress(address, data->bufferPos);
-        U32 page = address >> K_PAGE_SHIFT;
         translateInstruction(data, firstPass);
         if (data->done) {
             break;
@@ -442,7 +458,7 @@ U64 x64CPU::handleCodePatch(U64 rip, U32 address, U64 rsi, U64 rdi, std::functio
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->thread->memory->executableMemoryMutex);
 #endif
     // get the emulated eip of the op that corresponds to the host address where the exception happened
-    std::shared_ptr<X64CodeChunk> chunk = this->thread->memory->getCodeChunkContainingHostAddress((void*)rip);
+    std::shared_ptr<BtCodeChunk> chunk = this->thread->memory->getCodeChunkContainingHostAddress((void*)rip);
     this->eip.u32 = chunk->getEipThatContainsHostAddress((void*)rip, NULL, NULL)-this->seg[CS].address;
 
     // get the emulated op that caused the write
@@ -450,7 +466,7 @@ U64 x64CPU::handleCodePatch(U64 rip, U32 address, U64 rsi, U64 rdi, std::functio
     if (op) {             
         // change permission of the page so that we can write to it
         U32 len = instructionInfo[op->inst].writeMemWidth/8;
-        X64AsmCodeMemoryWrite w(this);        
+        BtCodeMemoryWrite w(this);        
         static DecodedBlock b;
         DecodedBlock::currentBlock = &b;
         b.next1 = &b;
@@ -538,7 +554,7 @@ U64 x64CPU::handleChangedUnpatchedCode(U64 rip) {
 #endif
                         
     unsigned char* hostAddress = (unsigned char*)rip;
-    std::shared_ptr<X64CodeChunk> chunk = this->thread->memory->getCodeChunkContainingHostAddress(hostAddress);
+    std::shared_ptr<BtCodeChunk> chunk = this->thread->memory->getCodeChunkContainingHostAddress(hostAddress);
     if (!chunk) {
         kpanic("x64CPU::handleChangedUnpatchedCode: could not find chunk");
     }
@@ -561,7 +577,7 @@ U64 x64CPU::reTranslateChunk() {
     // only one thread at a time can update the host code pages and related date like opToAddressPages
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->thread->memory->executableMemoryMutex);
 #endif
-    std::shared_ptr<X64CodeChunk> chunk = this->thread->memory->getCodeChunkContainingEip(this->eip.u32 + this->seg[CS].address);
+    std::shared_ptr<BtCodeChunk> chunk = this->thread->memory->getCodeChunkContainingEip(this->eip.u32 + this->seg[CS].address);
     if (chunk) {
         chunk->releaseAndRetranslate();
     }    
@@ -608,7 +624,7 @@ U64 x64CPU::handleIllegalInstruction(U64 rip) {
 
 U32 dynamicCodeExceptionCount;
 
-U64 x64CPU::handleAccessException(U64 rip, U64 address, bool readAddress, U64 rsi, U64 rdi, U64 r8, U64 r9, U64* r10, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo) {
+U64 x64CPU::handleAccessException(U64 rip, U64 address, bool readAddress, std::function<U64(U32 reg)>getReg, std::function<void(U32 reg, U64 value)>setReg, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo) {
     if ((address & 0xFFFFFFFF00000000l) == this->thread->memory->id) {
         U32 emulatedAddress = (U32)address;
         U32 page = emulatedAddress >> K_PAGE_SHIFT;
@@ -617,16 +633,20 @@ U64 x64CPU::handleAccessException(U64 rip, U64 address, bool readAddress, U64 rs
             // memory->memOffsets[page] instead of memory->id
             //
             // Fire Fight and Age of Empires will hammer this code
-            return this->handleCodePatch(rip, emulatedAddress, rsi, rdi, doSyncFrom, doSyncTo);
+            return this->handleCodePatch(rip, emulatedAddress, getReg(6), getReg(7), doSyncFrom, doSyncTo);
         }
     }
+
     U32 inst = *((U32*)rip);
+    U64 r9 = getReg(9);
+    U64 r8 = getReg(8);
+
     if (inst == 0xCE24FF43) { // useLargeAddressSpace = true
         this->translateEip((U32)r9 - this->seg[CS].address);
         return 0;
     } else if ((inst==0x0A8B4566 || inst==0xCA148B4F) && (r8 || r9)) { // if these constants change, update handleMissingCode too     
         // rip is not adjusted so we don't need to check for stack alignment
-        *r10 = this->handleMissingCode(r8, r9, inst);
+        setReg(10, this->handleMissingCode(r8, r9, inst));
         return 0;
     } else if (inst==0xcdcdcdcd) {
         // this thread was waiting on the critical section and the thread that was currently in this handler removed the code we were running
@@ -648,12 +668,12 @@ U64 x64CPU::handleAccessException(U64 rip, U64 address, bool readAddress, U64 rs
             // check if emulated memory that caused the exception is a page that has code
             if (this->thread->memory->nativeFlags[emulatedAddress>>K_PAGE_SHIFT] & NATIVE_FLAG_CODEPAGE_READONLY) {                    
                 dynamicCodeExceptionCount++;                    
-                return this->handleCodePatch(rip, emulatedAddress, rsi, rdi, doSyncFrom, doSyncTo);                    
+                return this->handleCodePatch(rip, emulatedAddress, getReg(6), getReg(7), doSyncFrom, doSyncTo);                    
             }
         }   
 #ifdef _DEBUG
         void* fromHost = this->thread->memory->getExistingHostAddress(this->fromEip);
-        std::shared_ptr<X64CodeChunk> chunk = this->thread->memory->getCodeChunkContainingHostAddress((void*)rip);
+        std::shared_ptr<BtCodeChunk> chunk = this->thread->memory->getCodeChunkContainingHostAddress((void*)rip);
 #endif
         if (doSyncFrom) {
             doSyncFrom(NULL);
@@ -718,9 +738,6 @@ extern U32 platformThreadCount;
 
 void x64CPU::startThread() {
     jmp_buf jmpBuf;
-    U32 threadId = thread->id;
-    U32 processId = thread->process->id;
-
     KThread::setCurrentThread(thread);       
 
     // :TODO: hopefully this will eventually go away.  For now this prevents a signal from being generated which isn't handled yet

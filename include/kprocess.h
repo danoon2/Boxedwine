@@ -251,7 +251,7 @@ public:
     U32 glStrings[NUMBER_OF_STRINGS];
     U32 allocNative(U32 len);    
 #endif
-#ifdef BOXEDWINE_X64
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
     bool emulateFPU;
     void* reTranslateChunkAddress; // will be called when the program tries to jump to memory that hasn't been translated yet or needs to be retranslated
     void* reTranslateChunkAddressFromR9; // will be called when the program tries to jump to memory that hasn't been translated yet or needs to be retranslated
