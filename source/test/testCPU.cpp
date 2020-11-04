@@ -4115,6 +4115,68 @@ void testPopEsi0x25e() {cpu->big = true;Pop32(0x5e, &cpu->reg[6]);}
 void testPopDi0x05f() {cpu->big = false;Pop16(0x5f, &cpu->reg[7]);}
 void testPopEdi0x25f() {cpu->big = true;Pop32(0x5f, &cpu->reg[7]);}
 
+// :TODO: this doesn't test for an exception, only that a good value doesn't cause an exception
+void testBound0x062() {
+    cpu->big = false;
+
+    for (U8 gw = 0; gw < 8; gw++) {
+        Reg* g;
+        U32 result;
+        U8 rm = (gw << 3) + 6;
+        newInstructionWithRM(0x62, rm, 0);
+        pushCode16(200);
+
+        if (gw == 1) {
+            writew(cpu->seg[DS].address + 200, -20);
+            writew(cpu->seg[DS].address + 202, -10);
+        } else {
+            writew(cpu->seg[DS].address + 200, 10);
+            writew(cpu->seg[DS].address + 202, 20);
+        }
+
+        for (U8 i = 0; i < 8; i++) {
+            cpu->reg[i].u32 = 0x0fff0fff;
+        }
+        if (gw == 1) {
+            cpu->reg[gw].word[0] = -15;
+        } else {
+            cpu->reg[gw].word[0] = 15;
+        }
+        cpu->reg[gw].word[1] = 0x0FFF;
+        runTestCPU();
+    }
+}
+
+// :TODO: this doesn't test for an exception, only that a good value doesn't cause an exception
+void testBound0x262() {
+    cpu->big = true;
+
+    for (U8 gd = 0; gd < 8; gd++) {
+        U32 result;
+        U8 rm = (gd << 3) + 5;
+        newInstructionWithRM(0x62, rm, 0);
+        pushCode32(200);
+
+        if (gd == 1) {
+            writed(cpu->seg[DS].address + 200, -20000);
+            writed(cpu->seg[DS].address + 204, -10000);
+        } else {
+            writed(cpu->seg[DS].address + 200, 10000);
+            writed(cpu->seg[DS].address + 204, 20000);
+        }
+
+        for (U8 i = 0; i < 8; i++) {
+            cpu->reg[i].u32 = 0x0fff0fff;
+        }
+        if (gd == 1) {
+            cpu->reg[gd].u32 = -15000;
+        } else {
+            cpu->reg[gd].u32 = 15000;
+        }
+        runTestCPU();
+    }
+}
+
 void testPush0x068() {cpu->big = false;push16(0x68);}
 void testPush0x268() {cpu->big = true;push32(0x68);}
 
@@ -7584,6 +7646,9 @@ int main(int argc, char **argv) {
     run(testPopEsi0x25e, "Pop Esi 25e");
     run(testPopDi0x05f,  "Pop Di  05f");
     run(testPopEdi0x25f, "Pop Edi 25f");
+
+    run(testBound0x062, "Bound 062");
+    run(testBound0x262, "Bound 262");
 
     run(testPush0x068, "Push 068");
     run(testPush0x268, "Push 268");

@@ -69,7 +69,7 @@ bool CPU::isMMXinUse() {
 }
 
 void CPU::reset() {
-    this->flags = 0;
+    this->flags = ID;
     this->eip.u32 = 0;
     this->instructionCount = 0;
     for (int i=0;i<7;i++) {
@@ -1189,6 +1189,10 @@ U32 CPU::readCrx(U32 which, U32 reg) {
 U32 CPU::writeCrx(U32 which, U32 value) {
     //this->prepareException(EXCEPTION_GP, 0);
     return 1;
+}
+
+void common_prepareException(CPU* cpu, int code, int error) {
+    cpu->prepareException(code, error);
 }
 
 U32 common_getCF(CPU* cpu) {

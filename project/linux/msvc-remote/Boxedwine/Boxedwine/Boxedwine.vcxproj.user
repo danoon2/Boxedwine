@@ -8,6 +8,7 @@
     <RemoteDebuggerWorkingDirectory>projects/Boxedwine/project/linux/msvc-remote/Boxedwine/Boxedwine/bin/x64/Debug</RemoteDebuggerWorkingDirectory>
     <RemoteDebuggerCommandArguments>
     </RemoteDebuggerCommandArguments>
+    <RemoteTarget>126419375;192.168.1.21 (username=, port=8622, authentication=Password)</RemoteTarget>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Test|x64'">
     <RemoteDebuggerCommand>projects/Boxedwine/project/linux/msvc-remote/Boxedwine/Boxedwine/bin/x64/Debug/Boxedwine.out</RemoteDebuggerCommand>
@@ -16,9 +17,11 @@
     <AdditionalDebuggerCommands>handle SIGILL nostop noprint;handle SIGSEGV nostop noprint</AdditionalDebuggerCommands>
     <RemoteDebuggerWorkingDirectory>projects/Boxedwine/project/linux/msvc-remote/Boxedwine/Boxedwine/bin/x64/Debug</RemoteDebuggerWorkingDirectory>
     <RemoteDebuggerCommandArguments />
+    <RemoteTarget>126419375;192.168.1.21 (username=, port=8622, authentication=Password)</RemoteTarget>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
-    <RemoteDebuggingTarget>-1277036696;192.168.1.34 (username=, port=22, authentication=Password)</RemoteDebuggingTarget>
+    <RemoteTarget>-1439531474;192.168.1.18 (username=, port=22, authentication=Password)</RemoteTarget>
+    <RemoteDebuggingTarget>-1439531474;192.168.1.18 (username=, port=22, authentication=Password)</RemoteDebuggingTarget>
     <DebuggerFlavor>LinuxDebugger</DebuggerFlavor>
     <PreLaunchCommand>export DISPLAY=:0</PreLaunchCommand>
     <RemoteDebuggerCommand>projects/Boxedwine/project/linux/msvc-remote/Boxedwine/Boxedwine/bin/ARM64/Debug/Boxedwine.out</RemoteDebuggerCommand>
@@ -26,12 +29,12 @@
     <RemoteDebuggerWorkingDirectory>projects/Boxedwine/project/linux/msvc-remote/Boxedwine/Boxedwine/bin/ARM64/Debug</RemoteDebuggerWorkingDirectory>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Test|ARM64'">
-    <RemoteDebuggingTarget>-1277036696;192.168.1.34 (username=, port=22, authentication=Password)</RemoteDebuggingTarget>
+    <RemoteTarget>-1439531474;192.168.1.18 (username=, port=22, authentication=Password)</RemoteTarget>
+    <RemoteDebuggingTarget>-1439531474;192.168.1.18 (username=, port=22, authentication=Password)</RemoteDebuggingTarget>
     <DebuggerFlavor>LinuxDebugger</DebuggerFlavor>
     <PreLaunchCommand>export DISPLAY=:1</PreLaunchCommand>
     <RemoteDebuggerCommand>projects/Boxedwine/project/linux/msvc-remote/Boxedwine/Boxedwine/bin/ARM64/Test/Boxedwine.out</RemoteDebuggerCommand>
     <RemoteDebuggerWorkingDirectory>projects/Boxedwine/project/linux/msvc-remote/Boxedwine/Boxedwine/bin/ARM64/Test</RemoteDebuggerWorkingDirectory>
-    <RemoteTarget>-1277036696;192.168.1.34 (username=, port=22, authentication=Password)</RemoteTarget>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">
     <RemoteTarget>-902386300;192.168.1.41 (username=, port=22, authentication=Password)</RemoteTarget>
@@ -55,11 +58,24 @@
     <RemoteTarget>-902386300;192.168.1.41 (username=, port=22, authentication=Password)</RemoteTarget>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
-    <RemoteTarget>-1277036696;192.168.1.34 (username=, port=22, authentication=Password)</RemoteTarget>
+    <RemoteTarget>-1439531474;192.168.1.18 (username=, port=22, authentication=Password)</RemoteTarget>
+    <RemoteDebuggingTarget>-1439531474;192.168.1.18 (username=, port=22, authentication=Password)</RemoteDebuggingTarget>
     <PreLaunchCommand>export DISPLAY=:0</PreLaunchCommand>
     <DebuggerFlavor>LinuxDebugger</DebuggerFlavor>
     <RemoteDebuggerCommand>projects/Boxedwine/project/linux/msvc-remote/Boxedwine/Boxedwine/bin/ARM64/Release/Boxedwine.out</RemoteDebuggerCommand>
     <RemoteDebuggerCommandArguments>-zip /home/pi/.local/share/Boxedwine/FileSystems/Wine-5.0.zip -root /home/pi/.local/share/Boxedwine/Containers/Default/root /bin/wine notepad.exe</RemoteDebuggerCommandArguments>
     <RemoteDebuggerWorkingDirectory>projects/Boxedwine/project/linux/msvc-remote/Boxedwine/Boxedwine/bin/ARM64/Release</RemoteDebuggerWorkingDirectory>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x86'">
+    <RemoteTarget>126419375;192.168.1.21 (username=, port=8622, authentication=Password)</RemoteTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x86'">
+    <RemoteTarget>126419375;192.168.1.21 (username=, port=8622, authentication=Password)</RemoteTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <RemoteTarget>126419375;192.168.1.21 (username=, port=8622, authentication=Password)</RemoteTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Test|x86'">
+    <RemoteTarget>126419375;192.168.1.21 (username=, port=8622, authentication=Password)</RemoteTarget>
   </PropertyGroup>
 </Project>
