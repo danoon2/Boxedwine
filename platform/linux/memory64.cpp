@@ -180,6 +180,9 @@ static void* reserveNext32GBMemory() {
 
 void reserveNativeMemory(Memory* memory) {
     memory->id = (U64)reserveNext4GBMemory();
+    for (int i = 0; i < K_NUMBER_OF_PAGES; i++) {
+        memory->memOffsets[i] = memory->id;
+    }
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
     memory->executableMemoryId = (U64)reserveNext4GBMemory();
     memory->nextExecutablePage = 0;
