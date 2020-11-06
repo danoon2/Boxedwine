@@ -1685,7 +1685,7 @@ bool KNativeWindowSdl::getMousePos(U32* x, U32* y) {
     *y = (U32)iy;
     if (scaleX != 100) {
         *x = *x * 100 / scaleX;
-        *y = *y * 100 / scaleX;
+        *y = *y * 100 / scaleY;
     }
     return result;
 }
