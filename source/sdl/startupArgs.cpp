@@ -152,8 +152,11 @@ std::vector<std::string> StartUpArgs::buildArgs() {
         args.push_back("-w");
         args.push_back(workingDir);
     }
-    if (sdlFullScreen) {
+    if (sdlFullScreen == FULLSCREEN_STRETCH) {
         args.push_back("-fullscreen");
+    }
+    if (sdlFullScreen == FULLSCREEN_ASPECT) {
+        args.push_back("-fullscreenAspect");
     }
     if (sdlScaleX != 100) {
         args.push_back("-scale");
@@ -388,7 +391,7 @@ bool StartUpArgs::apply() {
             }
         }
     }
-    if (this->sdlFullScreen && !this->resolutionSet) {
+    if (this->sdlFullScreen!=FULLSCREEN_NOTSET && !this->resolutionSet) {
         U32 width = 0;
         U32 height = 0;
         if (KNativeSystem::getScreenDimensions(&width, &height)) {
@@ -488,7 +491,9 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
 			this->envValues.push_back(argv[i+1]);
             i++;
         } else if (!strcmp(argv[i], "-fullscreen")) {
-			this->setFullscreen();
+			this->setFullscreen(FULLSCREEN_STRETCH);
+        } else if (!strcmp(argv[i], "-fullscreenAspect")) {
+            this->setFullscreen(FULLSCREEN_ASPECT);
         } else if (!strcmp(argv[i], "-scale")) {
 			this->setScale(atoi(argv[i+1]));
             if (!this->resolutionSet) {

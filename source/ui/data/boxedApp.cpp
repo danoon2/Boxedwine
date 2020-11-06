@@ -14,7 +14,7 @@ bool BoxedApp::load(BoxedContainer* container, const std::string& iniFilePath) {
     this->path = config.readString("Path", "");
     this->resolution = config.readString("Resolution","");
     this->bpp = config.readInt("BPP",32);
-    this->fullScreen = config.readBool("Fullscreen",false);
+    this->fullScreen = config.readInt("Fullscreen",0);
     this->dpiAware = config.readBool("DpiAware", false);
     this->glExt = config.readString("AllowedGlExt","");
     this->scale = config.readInt("Scale",100);
@@ -60,7 +60,7 @@ bool BoxedApp::saveApp() {
     config.writeString("Path", this->path);
     config.writeString("Resolution",this->resolution);
     config.writeInt("BPP",this->bpp);
-    config.writeBool("Fullscreen",this->fullScreen);
+    config.writeInt("Fullscreen",this->fullScreen);
     config.writeBool("DpiAware", this->dpiAware);
     config.writeString("AllowedGlExt",this->glExt);
     config.writeInt("Scale",this->scale);
@@ -91,8 +91,8 @@ void BoxedApp::launch() {
     if (this->bpp) {
         GlobalSettings::startUpArgs.setBpp(this->bpp);
     }
-    if (this->fullScreen) {
-        GlobalSettings::startUpArgs.setFullscreen();
+    if (this->fullScreen != FULLSCREEN_NOTSET) {
+        GlobalSettings::startUpArgs.setFullscreen(this->fullScreen);
     }
     if (GlobalSettings::isDpiAware() && this->dpiAware) {
         GlobalSettings::startUpArgs.dpiAware = true;

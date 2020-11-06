@@ -224,13 +224,13 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
         this->currentAppChanged = true;
     };
 
-    appFullScreenControl = appSection->addCheckbox(CONTAINER_VIEW_FULL_SCREEN_LABEL, CONTAINER_VIEW_FULL_SCREEN_HELP, false);
+    std::vector<ComboboxItem> fullscreen;
+    fullscreen.push_back(ComboboxItem("Not Set", FULLSCREEN_NOTSET));
+    fullscreen.push_back(ComboboxItem("Stretch", FULLSCREEN_STRETCH));
+    fullscreen.push_back(ComboboxItem("Letterbox (maintain aspect ratio)", FULLSCREEN_ASPECT));
+    appFullScreenControl = appSection->addComboboxRow(CONTAINER_VIEW_FULL_SCREEN_LABEL, CONTAINER_VIEW_FULL_SCREEN_HELP, fullscreen);
     appFullScreenControl->onChange = [this]() {
         this->currentAppChanged = true;
-        if (appFullScreenControl->isChecked()) {
-            appScaleControl->setSelection(0);
-        }
-        appScaleControl->setReadOnly(appFullScreenControl->isChecked());
     };
 
     if (GlobalSettings::isDpiAware()) {
@@ -432,7 +432,7 @@ bool ContainersView::saveChanges() {
             this->currentApp->bpp = appBppControl->getSelectionIntValue();
             this->currentApp->scale = appScaleControl->getSelectionIntValue();
             this->currentApp->scaleQuality = this->appScaleQualityControl->getSelection();
-            this->currentApp->fullScreen = this->appFullScreenControl->isChecked();
+            this->currentApp->fullScreen = this->appFullScreenControl->getSelection();
             if (GlobalSettings::isDpiAware()) {
                 this->currentApp->dpiAware = this->appDpiAwareControl->isChecked();
             }
@@ -468,17 +468,16 @@ void ContainersView::setCurrentApp(BoxedApp* app) {
     appArgumentsControl->setText(args);
     appArgumentsControl->setNumberOfLines((int)app->args.size() + 1);
     appResolutionControl->setSelectionByLabel(app->resolution);
-    appBppControl->setSelectionIntValue(app->bpp);
+    appBppControl->setSelectionIntValue(app->bpp);    
 
-
-    if (app->fullScreen) {
+    if (app->fullScreen != FULLSCREEN_NOTSET) {
         appScaleControl->setSelection(0);
     } else {
         appScaleControl->setSelectionIntValue(app->scale);
     }
-    appScaleControl->setReadOnly(app->fullScreen);
+    appScaleControl->setReadOnly(app->fullScreen != FULLSCREEN_NOTSET);
     appScaleQualityControl->setSelection(app->scaleQuality);
-    appFullScreenControl->setCheck(app->fullScreen);
+    appFullScreenControl->setSelectionIntValue(app->fullScreen != FULLSCREEN_NOTSET);
     appDpiAwareControl->setCheck(app->dpiAware);
     appPollRateControl->setText(std::to_string(app->pollRate));
 #ifdef BOXEDWINE_MULTI_THREADED

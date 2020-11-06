@@ -278,7 +278,7 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
     case CONTAINER_VIEW_FULL_SCREEN_LABEL:
         return "Fullscreen:";
     case CONTAINER_VIEW_FULL_SCREEN_HELP:
-        return "Will launch the emulated desktop with the resolution selected and scale it to fit the screen.";
+        return "Will launch the emulated desktop with the resolution selected and scale it to fit the screen.  This will not work for OpenGL so if your game uses OpenGL or Direct3D then this will have no effect.  If you are using a DirectDraw game you can click DD GDI Renderer above to force it not to use OpenGL.";
     case CONTAINER_VIEW_DPI_AWARE_LABEL:
         return "DPI Aware:";
     case CONTAINER_VIEW_DPI_AWARE_HELP:

@@ -29,6 +29,7 @@
 #include "pixelformat.h"
 #include "../../source/emulation/hardmmu/hard_memory.h"
 #include "../../source/util/threadutils.h"
+#include "../../source/sdl/startupArgs.h"
 
 #if !defined(BOXEDWINE_DISABLE_UI) && !defined(__TEST)
 #include "../../source/ui/mainui.h"
@@ -87,7 +88,7 @@ U32 sdlCustomEvent;
 
 class KNativeWindowSdl : public KNativeWindow, public std::enable_shared_from_this<KNativeWindowSdl> {
 public:
-    KNativeWindowSdl() : scaleX(100), scaleY(100), fullScreen(false), window(NULL), renderer(NULL), shutdownWindow(NULL), shutdownRenderer(NULL), currentContext(NULL), contextCount(0), windowIsGL(false), windowIsHidden(false), timeToHideUI(0), timeWindowWasCreated(0) 
+    KNativeWindowSdl() : scaleX(100), scaleXOffset(0), scaleY(100), scaleYOffset(0), sdlDesktopWidth(0), sdlDesktopHeight(0), fullScreen(FULLSCREEN_NOTSET), window(NULL), renderer(NULL), shutdownWindow(NULL), shutdownRenderer(NULL), currentContext(NULL), contextCount(0), windowIsGL(false), windowIsHidden(false), timeToHideUI(0), timeWindowWasCreated(0)
 #ifdef BOXEDWINE_RECORDER
         , screenCopyTexture(NULL)
 #endif
@@ -107,9 +108,13 @@ public:
     U32 height;
     U32 bpp;
     U32 scaleX;
+    U32 scaleXOffset;
     U32 scaleY;
+    U32 scaleYOffset;
+    U32 sdlDesktopWidth;
+    U32 sdlDesktopHeight;
     std::string scaleQuality;
-    bool fullScreen;
+    U32 fullScreen;
 
     SDL_Window* window;
     SDL_Renderer* renderer;
@@ -202,6 +207,12 @@ public:
     bool internalScreenShot(std::string filepath, SDL_Rect* r, U32* crc);
     bool isShutdownWindowIsOpen();
     void updateShutdownWindow();
+
+private:
+    U32 xToScreen(U32 x);
+    U32 xFromScreen(U32 x);
+    U32 yToScreen(U32 y);
+    U32 yFromScreen(U32 y);
 };
 
 static std::shared_ptr<KNativeWindowSdl> screen;
@@ -244,7 +255,7 @@ bool KNativeWindowSdl::processEvents() {
     return true;
 }
 
-void KNativeWindow::init(U32 cx, U32 cy, U32 bpp, int scaleX, int scaleY, const std::string& scaleQuality, bool fullScreen) {
+void KNativeWindow::init(U32 cx, U32 cy, U32 bpp, int scaleX, int scaleY, const std::string& scaleQuality, U32 fullScreen) {
     if (!sdlCustomEvent) {
         sdlCustomEvent = SDL_RegisterEvents(1);
     }
@@ -259,6 +270,8 @@ void KNativeWindow::init(U32 cx, U32 cy, U32 bpp, int scaleX, int scaleY, const 
     screen->bpp = bpp;
     screen->scaleX = scaleX;
     screen->scaleY = scaleY;
+    screen->scaleXOffset = 0;
+    screen->scaleYOffset = 0;
     screen->scaleQuality = scaleQuality;
     screen->fullScreen = fullScreen;
 }
@@ -532,6 +545,8 @@ U32 sdlCreateOpenglWindow_main_thread(KThread* thread, std::shared_ptr<WndSdl> w
     // until I figure out how to scale GL window
     screen->scaleX = 100;
     screen->scaleY = 100;
+    screen->scaleXOffset = 0;
+    screen->scaleYOffset = 0;
     screen->delayedCreateWindowMsg = "Creating Window for OpenGL: "+std::to_string(cx) + "x" + std::to_string(cy);
     fflush(stdout);
     screen->window = SDL_CreateWindow("OpenGL Window", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, cx, cy, sdlFlags);
@@ -593,12 +608,38 @@ void KNativeWindowSdl::screenResized(KThread* thread) {
     DISPATCH_MAIN_THREAD_BLOCK_BEGIN
         if (contextCount) {
             int cx = screenWidth();
-            int cy = screenHeight();
-            if (scaleX != 100) {
-                cx = cx * scaleX / 100;
-                cy = cy * scaleX / 100;
-            }
-            SDL_SetWindowSize(window, cx, cy);
+            int cy = screenHeight();            
+
+            if (fullScreen != FULLSCREEN_NOTSET) {
+                SDL_DisplayMode dm;
+                if (SDL_GetDesktopDisplayMode(0, &dm) != 0)
+                {
+                    if (fullScreen == FULLSCREEN_STRETCH) {
+                        scaleX = dm.w * 100 / cx;
+                        scaleY = dm.h * 100 / cy;
+                    } else if (fullScreen == FULLSCREEN_ASPECT) {
+                        scaleX = dm.w * 100 / cx;
+                        scaleY = dm.h * 100 / cy;
+                        scaleXOffset = 0;
+                        scaleYOffset = 0;
+                        if (scaleY > scaleX) {
+                            scaleY = scaleX;
+                            scaleYOffset = (dm.h - cy * scaleY / 100) / 2;
+                        } else if (scaleX > scaleY) {
+                            scaleX = scaleY;
+                            scaleXOffset = (dm.w - cx * scaleX / 100) / 2;
+                        }
+                    }
+                    sdlDesktopHeight = dm.h;
+                    sdlDesktopWidth = dm.w;
+                }
+            } else {
+                if (scaleX != 100) {
+                    cx = cx * scaleX / 100;
+                    cy = cy * scaleY / 100;
+                }
+                SDL_SetWindowSize(window, cx, cy);
+            }            
         } else {
             displayChanged(thread);
         }
@@ -632,14 +673,31 @@ void KNativeWindowSdl::displayChanged(KThread* thread) {
         if (SDL_GetDesktopDisplayMode(0, &dm) != 0)
         {
             SDL_Log("SDL_GetDesktopDisplayMode failed: %s", SDL_GetError());
-            fullScreen = false;
+            fullScreen = FULLSCREEN_NOTSET;
         } else {
-            if (fullScreen) {
+            sdlDesktopHeight = dm.h;
+            sdlDesktopWidth = dm.w;
+            if (fullScreen == FULLSCREEN_STRETCH) {
                 cx = dm.w;
                 cy = dm.h;
                 flags |= SDL_WINDOW_BORDERLESS;
                 scaleX = dm.w * 100 / width;
                 scaleY = dm.h * 100 / height;
+            } else if (fullScreen == FULLSCREEN_ASPECT) {
+                cx = dm.w;
+                cy = dm.h;
+                flags |= SDL_WINDOW_BORDERLESS;
+                scaleX = dm.w * 100 / width;
+                scaleY = dm.h * 100 / height;
+                scaleXOffset = 0;
+                scaleYOffset = 0;
+                if (scaleY > scaleX) {
+                    scaleY = scaleX;
+                    scaleYOffset = (dm.h - height * scaleY / 100) / 2;
+                } else if (scaleX > scaleY) {
+                    scaleX = scaleY;
+                    scaleXOffset = (dm.w - width * scaleX / 100) / 2;
+                }
             } else if (width == (U32)dm.w && height == (U32)dm.h) {
                 flags |= SDL_WINDOW_BORDERLESS;
             }   
@@ -846,22 +904,32 @@ void KNativeWindowSdl::drawAllWindows(KThread* thread, U32 hWnd, int count) {
             SDL_SetRenderDrawColor(renderer, 58, 110, 165, 255 );
             SDL_RenderClear(renderer);
             for (int i=count-1;i>=0;i--) {
-                        std::shared_ptr<WndSdl> wnd = getWndSdl(readd(hWnd+i*4));
-                        if (wnd && wnd->sdlTextureWidth && wnd->sdlTexture) {
-                            SDL_Rect dstrect;
-                            dstrect.x = wnd->windowRect.left*(int)scaleX/100;
-                            dstrect.y = wnd->windowRect.top*(int)scaleY/100;
-                            dstrect.w = wnd->sdlTextureWidth*(int)scaleX/100;
-                            dstrect.h = wnd->sdlTextureHeight*(int)scaleY/100;
-
-            #ifdef BOXEDWINE_64BIT_MMU
-                            SDL_RenderCopyEx(renderer, wnd->sdlTexture, NULL, &dstrect, 0, NULL, SDL_FLIP_VERTICAL);
-            #else
-                            SDL_RenderCopy(renderer, wnd->sdlTexture, NULL, &dstrect);
-            #endif
-                        }
-                    }
-                    SDL_RenderPresent(renderer);
+                std::shared_ptr<WndSdl> wnd = getWndSdl(readd(hWnd+i*4));
+                if (wnd && wnd->sdlTextureWidth && wnd->sdlTexture) {
+                    SDL_Rect dstrect;
+                    dstrect.x = wnd->windowRect.left*(int)scaleX/100 + scaleXOffset;
+                    dstrect.y = wnd->windowRect.top*(int)scaleY/100 + scaleYOffset;
+                    dstrect.w = wnd->sdlTextureWidth*(int)scaleX/100;
+                    dstrect.h = wnd->sdlTextureHeight*(int)scaleY/100;
+#ifdef BOXEDWINE_64BIT_MMU
+                    SDL_RenderCopyEx(renderer, wnd->sdlTexture, NULL, &dstrect, 0, NULL, SDL_FLIP_VERTICAL);
+#else
+                    SDL_RenderCopy(renderer, wnd->sdlTexture, NULL, &dstrect);
+#endif
+                }
+            }
+            if (scaleXOffset) {                
+                SDL_Rect rect;
+                rect.x = 0;
+                rect.w = scaleXOffset;
+                rect.y = 0;
+                rect.h = sdlDesktopHeight;
+                SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+                SDL_RenderFillRect(renderer, &rect);
+                rect.x = sdlDesktopWidth - scaleXOffset;
+                SDL_RenderFillRect(renderer, &rect);
+            }
+            SDL_RenderPresent(renderer);
         }
         
         DISPATCH_MAIN_THREAD_BLOCK_END
@@ -988,11 +1056,25 @@ void writeLittleEndian_2(U8* buffer, U16 value) {
 static int lastX;
 static int lastY;
 
+U32 KNativeWindowSdl::xToScreen(U32 x) {
+    return x * scaleX / 100 + scaleXOffset;
+}
+
+U32 KNativeWindowSdl::xFromScreen(U32 x) {
+    return (x - scaleXOffset) * 100 / scaleX;
+}
+
+U32 KNativeWindowSdl::yToScreen(U32 y) {
+    return y * scaleY / 100 + scaleYOffset;
+}
+
+U32 KNativeWindowSdl::yFromScreen(U32 y) {
+    return (y - scaleYOffset) * 100 / scaleY;
+}
+
 void KNativeWindowSdl::setMousePos(U32 x, U32 y) {
-    if (scaleX != 100) {
-        x = x * scaleX / 100;
-        y = y * scaleY / 100;
-    }
+    x = xToScreen(x);
+    y = yToScreen(y);
 
     SDL_WarpMouseInWindow(window, x, y); 
 }
@@ -1000,10 +1082,8 @@ void KNativeWindowSdl::setMousePos(U32 x, U32 y) {
 int KNativeWindowSdl::mouseMove(int x, int y, bool relative) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(hwndToWndMutex);
 
-    if (scaleX != 100) {
-        x = x * 100 / scaleX;
-        y = y * 100 / scaleY;
-    }
+    x = xFromScreen(x);
+    y = yFromScreen(y);
 
     lastX = x;
     lastY = y;
@@ -1041,10 +1121,8 @@ int KNativeWindowSdl::mouseWheel(int amount, int x, int y) {
     if (!hwndToWnd.size())
         return 0;
 
-    if (scaleX != 100) {
-        x = x * 100 / scaleX;
-        y = y * 100 / scaleY;
-    }
+    x = xFromScreen(x);
+    y = yFromScreen(y);
 
     std::shared_ptr<WndSdl> wnd = getWndFromPoint(x, y);
     if (!wnd)
@@ -1077,10 +1155,8 @@ int KNativeWindowSdl::mouseButton(U32 down, U32 button, int x, int y) {
     if (!hwndToWnd.size())
         return 0;
 
-    if (scaleX != 100) {
-        x = x * 100 / scaleX;
-        y = y * 100 / scaleY;
-    }
+    x = xFromScreen(x);
+    y = yFromScreen(y);
 
     std::shared_ptr<WndSdl> wnd = getWndFromPoint(x, y);
     if (!wnd)
@@ -1681,12 +1757,9 @@ bool KNativeWindowSdl::getMousePos(U32* x, U32* y) {
     int ix = 0;
     int iy = 0;
     unsigned int result = SDL_GetMouseState(&ix, &iy);
-    *x = (U32)ix;
-    *y = (U32)iy;
-    if (scaleX != 100) {
-        *x = *x * 100 / scaleX;
-        *y = *y * 100 / scaleY;
-    }
+
+    *x = xFromScreen((U32)ix);
+    *y = yFromScreen((U32)iy);
     return result;
 }
 

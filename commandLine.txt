@@ -21,6 +21,8 @@ This will load the file system from wine.zip and write the changes to c:\root
 
 -fullscreen : if no resolution is passed in via the resolution command line argument then the resolution will be the same as the monitor
 
+-fullscreenAspect : same as -fullscreen, but will show in letterbox format in order to maintain the aspect ratio
+
 -gensrc : This is used for ahead of time (AOT) compiling and requires the source to be build with GENERATE_SOURCE.  With this enabled the user can run the program, then compile the output back into the program for a performance boost.  Currently I don't recommend using this, it should be considered experimental and the out put will not be compatible with future versions of BoxedWine.
 
 -glext: If used, when Wine requests the list of OpenGL extension, it will be limited to this list.  This is only useful if the an old OpenGL game, like Unreal, can't handle the large list of extension a modern video card returns.  For Unreal I use:
