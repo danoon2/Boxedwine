@@ -19,8 +19,8 @@ private:
 
 class BoxedApp {
 public:
-    BoxedApp() : bpp(32), fullScreen(false), dpiAware(false), scale(0), scaleQuality(0), cpuAffinity(0), pollRate(-1), container(NULL) {}
-    BoxedApp(const std::string& name, const std::string& path, const std::string& cmd, BoxedContainer* container) : name(name), path(path), cmd(cmd), bpp(0), fullScreen(false), dpiAware(false), scale(0), scaleQuality(0), cpuAffinity(0), container(container) {}
+    BoxedApp() : bpp(32), fullScreen(FULLSCREEN_NOTSET), dpiAware(false), scale(0), scaleQuality(0), cpuAffinity(0), pollRate(-1), container(NULL) {}
+    BoxedApp(const std::string& name, const std::string& path, const std::string& cmd, BoxedContainer* container) : name(name), path(path), cmd(cmd), bpp(0), fullScreen(FULLSCREEN_NOTSET), dpiAware(false), scale(0), scaleQuality(0), cpuAffinity(0), container(container) {}
     
     bool load(BoxedContainer* container, const std::string& iniFilepath);
 
@@ -57,7 +57,7 @@ private:
     // Boxedwine command line options
     std::string resolution;
     int bpp;
-    bool fullScreen;
+    U32 fullScreen;
     bool dpiAware;
     std::string glExt;
     int scale;

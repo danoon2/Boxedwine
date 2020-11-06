@@ -5,6 +5,10 @@
 #define UI_TYPE_OPENGL 1
 #define UI_TYPE_DX9 2
 
+#define FULLSCREEN_NOTSET 0
+#define FULLSCREEN_STRETCH 1
+#define FULLSCREEN_ASPECT 2
+
 class MountInfo {
 public:
     MountInfo(const std::string& localPath, const std::string& nativePath, bool wine) : localPath(localPath), nativePath(nativePath), wine(wine){}
@@ -23,7 +27,7 @@ public:
 
 class StartUpArgs {
 public:
-    StartUpArgs() : euidSet(false), nozip(false), pentiumLevel(4), rel_mouse_sensitivity(0), pollRate(DEFAULT_POLL_RATE), userId(UID), groupId(GID), effectiveUserId(UID), effectiveGroupId(GID), soundEnabled(true), videoEnabled(true), dpiAware(false), readyToLaunch(false), workingDirSet(false), resolutionSet(false), screenCx(800), screenCy(600), screenBpp(32), sdlFullScreen(false), sdlScaleX(100), sdlScaleY(100), sdlScaleQuality("0"), cpuAffinity(0) {
+    StartUpArgs() : euidSet(false), nozip(false), pentiumLevel(4), rel_mouse_sensitivity(0), pollRate(DEFAULT_POLL_RATE), userId(UID), groupId(GID), effectiveUserId(UID), effectiveGroupId(GID), soundEnabled(true), videoEnabled(true), dpiAware(false), readyToLaunch(false), workingDirSet(false), resolutionSet(false), screenCx(800), screenCy(600), screenBpp(32), sdlFullScreen(FULLSCREEN_NOTSET), sdlScaleX(100), sdlScaleY(100), sdlScaleQuality("0"), cpuAffinity(0) {
         workingDir = "/home/username";        
     }
     bool parseStartupArgs(int argc, const char **argv);
@@ -33,7 +37,7 @@ public:
     void setWorkingDir(const std::string& path) {this->workingDir = path; this->workingDirSet=true;}
     void setResolution(const std::string& path);
     void setBpp(U32 bpp) {this->screenBpp = bpp;}
-    void setFullscreen() {this->sdlFullScreen = true;}
+    void setFullscreen(U32 fullScreen) {this->sdlFullScreen = fullScreen;}
     void setAllowedGlExtension(const std::string& glExt) {this->glExt = glExt;}
     void setScale(int scale) {this->sdlScaleX = scale; this->sdlScaleY = scale;}
     void setScaleQuality(const std::string& scaleQuality) {this->sdlScaleQuality = scaleQuality;}
@@ -79,7 +83,7 @@ private:
     U32 screenCx;
     U32 screenCy;
     U32 screenBpp;
-    bool sdlFullScreen;
+    U32 sdlFullScreen;
     std::string glExt;
     int sdlScaleX;
     int sdlScaleY;
