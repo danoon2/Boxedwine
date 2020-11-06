@@ -477,7 +477,7 @@ void ContainersView::setCurrentApp(BoxedApp* app) {
     }
     appScaleControl->setReadOnly(app->fullScreen != FULLSCREEN_NOTSET);
     appScaleQualityControl->setSelection(app->scaleQuality);
-    appFullScreenControl->setSelectionIntValue(app->fullScreen != FULLSCREEN_NOTSET);
+    appFullScreenControl->setSelectionIntValue(app->fullScreen);
     appDpiAwareControl->setCheck(app->dpiAware);
     appPollRateControl->setText(std::to_string(app->pollRate));
 #ifdef BOXEDWINE_MULTI_THREADED

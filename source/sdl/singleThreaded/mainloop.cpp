@@ -34,15 +34,15 @@ bool doMainLoop() {
         if (KSystem::killTime && KSystem::killTime <= t) {
             return true;
         }
-        if (lastTitleUpdate+5000 < t) {
-            char tmp[256];
+        if (lastTitleUpdate+5000 < t) {            
             lastTitleUpdate = t;
             if (KSystem::title.length()) {
-                snprintf(tmp, sizeof(tmp), "%s", KSystem::title.c_str(), getMIPS());
+                KNativeWindow::getNativeWindow()->setTitle(KSystem::title.c_str());
             } else {
+                char tmp[256];
                 snprintf(tmp, sizeof(tmp), "BoxedWine " BOXEDWINE_VERSION_DISPLAY " %u MIPS", getMIPS());
-            }
-            KNativeWindow::getNativeWindow()->setTitle(tmp);
+                KNativeWindow::getNativeWindow()->setTitle(tmp);
+            }            
             checkWaitingNativeSockets(0); // just so it doesn't starve if the system is busy
         }
         if (!ran) {
