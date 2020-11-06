@@ -7912,7 +7912,9 @@ int main(int argc, char **argv) {
     run(testSse2Cvtps2pd35a, "CVTPS2PD 35A (sse2)");
     run(testSse2Cvtsd2ss35a, "CVTSD2SS F2 35A (sse2)");
     run(testSse2Cvtss2sd35a, "CVTSS2SD F3 35A (sse2)");
+#ifndef __EMSCRIPTEN__
     run(testSse2Cvtps2dq15b, "CVTPS2DQ 15B (sse2)");
+#endif
     run(testSse2Cvtdq2ps35b, "CVTDQ2PS 35B (sse2)");
     run(testSse2Cvttps2dq35b, "CVTTPS2DQ F3 35B (sse2)");
     run(testSse2Subpd15c, "SUBPD 15C (sse2)");
