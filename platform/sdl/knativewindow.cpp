@@ -155,8 +155,8 @@ public:
     virtual U32 screenBpp() {
         return bpp;
     }
-    virtual bool getMousePos(U32* x, U32* y);
-    virtual void setMousePos(U32 x, U32 y);
+    virtual bool getMousePos(int* x, int* y);
+    virtual void setMousePos(int x, int y);
 
     virtual bool setCursor(char* moduleName, char* resourceName, int resource);
     virtual void createAndSetCursor(char* moduleName, char* resourceName, int resource, U8* and_bits, U8* xor_bits, int width, int height, int hotX, int hotY);
@@ -209,10 +209,12 @@ public:
     void updateShutdownWindow();
 
 private:
-    U32 xToScreen(U32 x);
-    U32 xFromScreen(U32 x);
-    U32 yToScreen(U32 y);
-    U32 yFromScreen(U32 y);
+    int xToScreen(int x);
+    int xFromScreen(int x);
+    int yToScreen(int y);
+    int yFromScreen(int y);
+
+    void checkMousePos(int& x, int& y);
 };
 
 static std::shared_ptr<KNativeWindowSdl> screen;
@@ -1056,23 +1058,48 @@ void writeLittleEndian_2(U8* buffer, U16 value) {
 static int lastX;
 static int lastY;
 
-U32 KNativeWindowSdl::xToScreen(U32 x) {
-    return x * scaleX / 100 + scaleXOffset;
+int KNativeWindowSdl::xToScreen(int x) {
+    return x * (int)scaleX / 100 + (int)scaleXOffset;
 }
 
-U32 KNativeWindowSdl::xFromScreen(U32 x) {
-    return (x - scaleXOffset) * 100 / scaleX;
+int KNativeWindowSdl::xFromScreen(int x) {
+    return (x - (int)scaleXOffset) * 100 / (int)scaleX;
 }
 
-U32 KNativeWindowSdl::yToScreen(U32 y) {
-    return y * scaleY / 100 + scaleYOffset;
+int KNativeWindowSdl::yToScreen(int y) {
+    return y * (int)scaleY / 100 + (int)scaleYOffset;
 }
 
-U32 KNativeWindowSdl::yFromScreen(U32 y) {
-    return (y - scaleYOffset) * 100 / scaleY;
+int KNativeWindowSdl::yFromScreen(int y) {
+    return (y - (int)scaleYOffset) * 100 / (int)scaleY;
 }
 
-void KNativeWindowSdl::setMousePos(U32 x, U32 y) {
+void KNativeWindowSdl::checkMousePos(int& x, int& y) {
+    bool warp = false;
+    if (x < 0) {
+        x = 0;
+        warp = true;
+    }
+    if (x >= (int)width) {
+        x = (int)width - 1;
+        warp = true;
+    }
+    if (y < 0) {
+        y = 0;
+        warp = true;
+    }
+    if (y >= (int)height) {
+        y = (int)height;
+        warp = true;
+    }
+    if (warp) {
+        int scaledX = xToScreen(x);
+        int scaledY = yToScreen(y);
+        SDL_WarpMouseInWindow(window, scaledX, scaledY);
+    }
+}
+
+void KNativeWindowSdl::setMousePos(int x, int y) {
     x = xToScreen(x);
     y = yToScreen(y);
 
@@ -1084,6 +1111,8 @@ int KNativeWindowSdl::mouseMove(int x, int y, bool relative) {
 
     x = xFromScreen(x);
     y = yFromScreen(y);
+    
+    checkMousePos(x, y);
 
     lastX = x;
     lastY = y;
@@ -1124,6 +1153,8 @@ int KNativeWindowSdl::mouseWheel(int amount, int x, int y) {
     x = xFromScreen(x);
     y = yFromScreen(y);
 
+    checkMousePos(x, y);
+
     std::shared_ptr<WndSdl> wnd = getWndFromPoint(x, y);
     if (!wnd)
         wnd = getFirstVisibleWnd();
@@ -1157,6 +1188,8 @@ int KNativeWindowSdl::mouseButton(U32 down, U32 button, int x, int y) {
 
     x = xFromScreen(x);
     y = yFromScreen(y);
+
+    checkMousePos(x, y);
 
     std::shared_ptr<WndSdl> wnd = getWndFromPoint(x, y);
     if (!wnd)
@@ -1746,7 +1779,7 @@ int KNativeWindowSdl::key(U32 key, U32 down) {
     return 1;
 }
 
-bool KNativeWindowSdl::getMousePos(U32* x, U32* y) {
+bool KNativeWindowSdl::getMousePos(int* x, int* y) {
 #ifdef BOXEDWINE_RECORDER
     if (Player::instance) {
         *x = lastX;
@@ -1754,12 +1787,13 @@ bool KNativeWindowSdl::getMousePos(U32* x, U32* y) {
         return 0;
     }
 #endif
-    int ix = 0;
-    int iy = 0;
-    unsigned int result = SDL_GetMouseState(&ix, &iy);
+    unsigned int result = SDL_GetMouseState(x, y);
+    
+    *x = xFromScreen(*x);
+    *y = yFromScreen(*y);
 
-    *x = xFromScreen((U32)ix);
-    *y = yFromScreen((U32)iy);
+    checkMousePos(*x, *y);
+
     return result;
 }
 

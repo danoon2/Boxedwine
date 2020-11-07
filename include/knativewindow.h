@@ -50,8 +50,8 @@ public:
 	virtual U32 screenWidth() = 0;
 	virtual U32 screenHeight() = 0;
 	virtual U32 screenBpp() = 0;
-	virtual bool getMousePos(U32* x, U32* y) = 0;
-	virtual void setMousePos(U32 x, U32 y) = 0;
+	virtual bool getMousePos(int* x, int* y) = 0;
+	virtual void setMousePos(int x, int y) = 0;
 	
 	virtual bool setCursor(char* moduleName, char* resourceName, int resource) = 0;
 	virtual void createAndSetCursor(char* moduleName, char* resourceName, int resource, U8* and_bits, U8* xor_bits, int width, int height, int hotX, int hotY) = 0;

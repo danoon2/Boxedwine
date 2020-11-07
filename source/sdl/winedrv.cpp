@@ -541,12 +541,12 @@ void boxeddrv_GetClipboardData(CPU* cpu) {
 // BOOL CDECL drv_GetCursorPos(LPPOINT pos)
 void boxeddrv_GetCursorPos(CPU* cpu) {
     U32 pos = ARG1;
-    U32 x = 0;
-    U32 y = 0;
+    int x = 0;
+    int y = 0;
 
     if (KNativeWindow::getNativeWindow()->getMousePos(&x, &y)) {
-        writed(pos, x);
-        writed(pos + 4, y);
+        writed(pos, (U32)x);
+        writed(pos + 4, (U32)y);
         EAX = 1;
     } else {
         EAX = 0;
@@ -894,7 +894,7 @@ void boxeddrv_SetCursorBits(CPU* cpu) {
 
 // BOOL CDECL drv_SetCursorPos(INT x, INT y)
 void boxeddrv_SetCursorPos(CPU* cpu) {
-    KNativeWindow::getNativeWindow()->setMousePos(ARG1, ARG2);
+    KNativeWindow::getNativeWindow()->setMousePos((int)ARG1, (int)ARG2);
     EAX = 1;
 }
 
