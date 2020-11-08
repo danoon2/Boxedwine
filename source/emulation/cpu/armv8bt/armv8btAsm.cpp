@@ -1467,12 +1467,12 @@ void Armv8btAsm::movReg8ToReg8(U8 untranslatedDst, U8 untranslatedSrc) {
 //     writew(this->seg[SS].address + (new_esp & this->stackMask), value);
 //     THIS_ESP = new_esp;
 // }
-void Armv8btAsm::pushStack16(U8 reg, U8 resultReg) {
+void Armv8btAsm::pushStack16(U8 reg, U8 resultReg, U32 amount) {
     // U32 new_esp = (THIS_ESP & this->stackNotMask) | ((THIS_ESP - 2) & this->stackMask);
     U8 tmpReg = getTmpReg();
     U8 tmpReg2 = getTmpReg();
     andNotRegs32(tmpReg2, reg, xStackMask);
-    subValue32(tmpReg, reg, 2);
+    subValue32(tmpReg, reg, amount);
     andRegs32(tmpReg, tmpReg, xStackMask);
     orRegs32(resultReg, tmpReg2, tmpReg);
     releaseTmpReg(tmpReg);
@@ -1601,14 +1601,14 @@ void Armv8btAsm::popNativeReg32(U8 reg) {
 //     writed(this->seg[SS].address + (new_esp & this->stackMask), value);
 //     THIS_ESP = new_esp;
 // }
-void Armv8btAsm::pushStack32(U8 reg, U8 resultReg) {
+void Armv8btAsm::pushStack32(U8 reg, U8 resultReg, U32 amount) {
     if (!this->cpu->thread->process->hasSetSeg[SS]) {
-        subValue32(resultReg, reg, 4);
+        subValue32(resultReg, reg, amount);
     } else {
         U8 tmpReg = getTmpReg();
         U8 tmpReg2 = getTmpReg();
         andNotRegs32(tmpReg2, reg, xStackMask);
-        subValue32(tmpReg, reg, 4);
+        subValue32(tmpReg, reg, amount);
         andRegs32(tmpReg, tmpReg, xStackMask);
         orRegs32(resultReg, tmpReg2, tmpReg);
         releaseTmpReg(tmpReg);
@@ -1689,6 +1689,14 @@ void Armv8btAsm::setNativeFlags(U32 flags, U32 mask) {
     loadConst(xFLAGS, (flags & mask)|2);
 }
 
+void Armv8btAsm::branchNativeRegister(U8 reg) {
+    // br reg
+    write8(reg << 5);
+    write8(reg >> 3);
+    write8(0x1f);
+    write8(0xd6);
+}
+
 void Armv8btAsm::jmpReg(U8 reg, bool mightNeedCS) {
     if (KSystem::useLargeAddressSpace) {
         if (this->cpu->thread->process->hasSetSeg[CS] || mightNeedCS) {
@@ -1698,11 +1706,7 @@ void Armv8btAsm::jmpReg(U8 reg, bool mightNeedCS) {
             addRegs64(xBranch, xLargeAddress, reg, 3);            
         }
         readMem64ValueOffset(xBranch, xBranch, 0);
-        // br xBranch
-        write8(xBranch << 5);
-        write8(xBranch >> 3);
-        write8(0x1f);
-        write8(0xd6);        
+        branchNativeRegister(xBranch);              
     } else {
     }
 }
@@ -4212,6 +4216,33 @@ U8 Armv8btAsm::vGetTmpReg() {
 
 void Armv8btAsm::vReleaseTmpReg(U8 reg) {
     vTmpRegInUse[reg - vTmp1] = false;
+}
+
+static void arm_invalidOp(CPU* cpu, U32 op) {
+    klog("arm_invalidOp: 0x%X", op);
+    cpu->thread->signalIllegalInstruction(5);
+}
+
+void Armv8btAsm::invalidOp(U32 op) {
+    syncRegsFromHost();
+
+    mov64(0, xCPU); // param 1 (CPU)
+    loadConst(1, op); // param 2 (op)
+
+    callHost((void*)arm_invalidOp);
+    syncRegsToHost();
+    doJmp(true);
+}
+
+void Armv8btAsm::signalIllegalInstruction(int code) {
+    syncRegsFromHost();
+
+    mov64(0, xCPU); // param 1 (CPU)
+    loadConst(1, code); // param 2 (op)
+
+    callHost((void*)common_signalIllegalInstruction);
+    syncRegsToHost();
+    doJmp(true);
 }
 
 #ifdef __TEST

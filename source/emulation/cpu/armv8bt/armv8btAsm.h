@@ -183,6 +183,8 @@ public:
     U8 getReadNativeReg8(U8 reg);
     void releaseNativeReg8(U8 reg);
     U8 getSegReg(U8 seg);
+    void invalidOp(U32 op);
+    void signalIllegalInstruction(int code);
 
     void addDynamicCheck(bool panic);
 	void saveNativeState();
@@ -233,11 +235,12 @@ public:
     void calculateAddress32(U8 dst);
     void doIf(U8 reg, U32 value, DoIfOperator op, std::function<void(void)> ifBlock, std::function<void(void)> elseBlock, std::function<void(void)> afterCmpBeforeBranchBlock = nullptr, bool valueIsReg = false, bool generateCmp = true);
     void writeJumpAmount(U32 pos, U32 toLocation);
-    void doJmp(bool mightNeedCS); // jump to current cpu->eip    
+    void doJmp(bool mightNeedCS); // jump to current cpu->eip
     void jmpReg(U8 reg, bool mightNeedCS);
     void jumpTo(U32 eip); // a jump that could be within the same chunk, this will be filled out when the entire chunk is encoded
     void addTodoLinkJump(U32 eip, U32 size, bool sameChunk);
     U8 getRegWithConst(U64 value);
+    void branchNativeRegister(U8 reg);
     U32 branchEQ();
     U32 branchNE();
     U32 branchUnsignedGreaterThan();
@@ -262,8 +265,8 @@ public:
     void popStack32();
     void popStack32(U8 reg, U8 resultReg);
 
-    void pushStack16(U8 reg, U8 resultReg);
-    void pushStack32(U8 reg, U8 resultReg);
+    void pushStack16(U8 reg, U8 resultReg, U32 amount=2);
+    void pushStack32(U8 reg, U8 resultReg, U32 amount=4);
 
     // mov reg to reg
     void movReg8ToReg(U8 untranslatedSrc, U8 dst, bool signExtend=false);
