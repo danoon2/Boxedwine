@@ -546,9 +546,9 @@
 
         function buildBrowserFileSystem(writableStorage, isDropBox, homeAdapter, extraFSs, zipfs)
         {
-            FS.createFolder(FS.root, 'root', true, true);
-            FS.createFolder("/root", 'base', true, true);
-            FS.createFolder("/root", 'files', true, true);
+            FS.createPath(FS.root, 'root', FS.createPath);
+            FS.createPath("/root", 'base', true, true);
+            FS.createPath("/root", 'files', true, true);
             var mainfs = null;
 
             BrowserFS.FileSystem.OverlayFS.Create({"readable":zipfs,"writable":new BrowserFS.FileSystem.InMemory()}, function(e3, rootOverlay){
@@ -699,7 +699,7 @@
                 }catch(ef){
                     if(ef.message == "No such file or directory"  || ef.message === "FS error") {
                         try{
-                            FS.createFolder("/root/base/" + parent, dir, true, true);
+                            FS.createPath("/root/base/" + parent, dir, true, true);
                         }catch(cef) {
                             console.log("Directory creation error:" + cef.message + " for: " + parent + "/" + dir);
                         }
@@ -1121,7 +1121,7 @@ function createFolder(parent, dir)
 {
     var created = true;
     try{
-        FS.createFolder(parent, dir, true, true);
+        FS.createPath(parent, dir, true, true);
         //console.log(entry + " is a dir parent="+parent+" dir="+dir);
         //console.log("Directory created :" + parent + "/" +  dir);
     }catch(ef){
@@ -1132,7 +1132,7 @@ function createFolder(parent, dir)
             try{
                 //yeah, like that would work! FS.rmdir(parent + dir);
                 FS.rename(parent + dir,parent + dir + calcBackupFilename());
-                FS.createFolder(parent, dir, true, true);
+                FS.createPath(parent, dir, true, true);
                 console.log("Directory replaced: " + parent + dir);
             }catch(eef){
                 console.log("eef="+eef);
