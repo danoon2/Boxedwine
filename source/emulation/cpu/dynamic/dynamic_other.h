@@ -245,11 +245,11 @@ void dynamic_cpuid(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_enter16(DynamicData* data, DecodedOp* op) {
-    callHostFunction((void*)common_enter, false, 4, 0, DYN_PARAM_CPU, false, 0, DYN_PARAM_CONST_32, false, op->imm, DYN_PARAM_CONST_32, false, op->reg, DYN_PARAM_CONST_32, false);
+    callHostFunction((void*)common_enter, false, 4, 0, DYN_PARAM_CPU, false, 0, DYN_PARAM_CONST_32, false, op->imm, DYN_PARAM_CONST_32, false, op->disp, DYN_PARAM_CONST_32, false);
     INCREMENT_EIP(data, op);
 }
 void dynamic_enter32(DynamicData* data, DecodedOp* op) {
-    callHostFunction((void*)common_enter, false, 4, 0, DYN_PARAM_CPU, false, 1, DYN_PARAM_CONST_32, false, op->imm, DYN_PARAM_CONST_32, false, op->reg, DYN_PARAM_CONST_32, false);
+    callHostFunction((void*)common_enter, false, 4, 0, DYN_PARAM_CPU, false, 1, DYN_PARAM_CONST_32, false, op->imm, DYN_PARAM_CONST_32, false, op->disp, DYN_PARAM_CONST_32, false);
     INCREMENT_EIP(data, op);
 }
 void dynamic_leave16(DynamicData* data, DecodedOp* op) {

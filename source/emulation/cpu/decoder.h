@@ -1459,7 +1459,7 @@ public:
 
     U32 imm;
 
-#if defined _DEBUG
+#if defined _DEBUG || defined BOXEDWINE_BINARY_TRANSLATOR
     U16 originalOp;    
 #endif
 #ifdef _DEBUG

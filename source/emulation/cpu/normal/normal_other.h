@@ -270,12 +270,12 @@ void OPCALL normal_cpuid(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_enter16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    cpu->enter(0, op->imm, op->reg);
+    cpu->enter(0, op->imm, op->disp);
     NEXT();
 }
 void OPCALL normal_enter32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    cpu->enter(1, op->imm, op->reg);
+    cpu->enter(1, op->imm, op->disp);
     NEXT();
 }
 void OPCALL normal_leave16(CPU* cpu, DecodedOp* op) {

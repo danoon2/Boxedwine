@@ -6131,7 +6131,7 @@ void decodeBlock(pfnFetchByte fetchByte, U32 eip, bool isBig, U32 maxInstruction
         op->len = d.opLen;
         op->ea16 = d.ea16;
         block->bytes += d.opLen;        
-#if defined _DEBUG
+#if defined _DEBUG || defined BOXEDWINE_BINARY_TRANSLATOR
         op->originalOp = d.inst;
 #endif
         if ((maxInstructions && maxInstructions<=block->opCount) || instructionInfo[op->inst].branch || (stopIfThrowsException && instructionInfo[op->inst].throwsException))
