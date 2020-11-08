@@ -9,4 +9,8 @@ void opMovsb(Armv8btAsm* data);
 void opMovsw(Armv8btAsm* data);
 void opMovsd(Armv8btAsm* data);
 
+void opStosb(Armv8btAsm* data);
+void opStosw(Armv8btAsm* data);
+void opStosd(Armv8btAsm* data);
+
 #endif

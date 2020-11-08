@@ -3394,9 +3394,7 @@ void opCPUID(Armv8btAsm* data) {
         });
 }
 
-static void doEnter(Armv8btAsm* data, bool big, U32 bytes, U32 level) {
-    kpanic("Need to test");
-
+static void doEnter(Armv8btAsm* data, bool big, U32 bytes, U32 level) {    
     if (level != 0) {
         data->syncRegsFromHost();
         // call void common_enter(CPU* cpu, U32 big, U32 bytes, U32 level)
@@ -3424,20 +3422,73 @@ static void doEnter(Armv8btAsm* data, bool big, U32 bytes, U32 level) {
 }
 
 void opEnter16(Armv8btAsm* data) {
+    kpanic("Need to test");
     doEnter(data, false, data->decodedOp->imm, data->decodedOp->disp);
 }
 void opEnter32(Armv8btAsm* data) {
+    kpanic("Need to test");
     doEnter(data, true, data->decodedOp->imm, data->decodedOp->disp);
 }
-void opLeave16(Armv8btAsm* data) {}
-void opLeave32(Armv8btAsm* data) {}
+void opLeave16(Armv8btAsm* data) {
+    kpanic("Need to test");
+    //SP = BP;
+    //BP = cpu->pop16();
+    data->movRegToReg(xESP, xEBP, 16, false);
+    data->popNativeReg16(xEBP, false);
+}
+void opLeave32(Armv8btAsm* data) {
+    kpanic("Need to test");
+    // ESP = EBP;
+    // EBP = cpu->pop32();
+    data->movRegToReg(xESP, xEBP, 32, false);
+    data->popNativeReg32(xEBP);
+}
 
-void opLoadSegment16(Armv8btAsm* data) {}
-void opLoadSegment32(Armv8btAsm* data) {}
+void doLoadSegment(Armv8btAsm* data, bool big) {
+    // U32 eaa = eaa(cpu, op);
+    // U16 val = readw(eaa);
+    // U32 selector = readw(eaa + 2);
+    // if (cpu->setSegment(op->imm, selector)) {
+    //     cpu->reg[op->reg].u16 = val;
+    //     NEXT();
+    // } else {
+    //     NEXT_DONE();
+    // }
+    U8 addressReg = data->getAddressReg();
+    U8 valReg = data->getTmpReg();
 
-void opStosb(Armv8btAsm* data) {}
-void opStosw(Armv8btAsm* data) {}
-void opStosd(Armv8btAsm* data) {}
+    data->syncRegsFromHost();
+
+    data->readMemory(addressReg, valReg, (big?32:16), true);
+    data->addValue32(addressReg, addressReg, (big?4:2));
+
+    // U32 common_setSegment(CPU * cpu, U32 seg, U32 value)
+    data->readMemory(addressReg, 2, 16, true); // param 3 (sel) : Intentionally 16 for big and small   
+    data->mov64(0, xCPU); // param 1 (CPU)
+    data->loadConst(1, data->decodedOp->imm); // param 2 (seg)    
+
+    data->releaseTmpReg(addressReg);
+    data->callHost((void*)common_setSegment);
+
+    data->doIf(0, 0, DO_IF_EQUAL, [data]() {
+        data->doJmp(true);
+        }, [data, valReg, big]() {
+            data->movRegToReg(data->getNativeReg(data->decodedOp->reg), valReg, (big ? 32 : 16), false);
+        }, [data]() {
+            data->syncRegsToHost();
+        });
+    data->releaseTmpReg(valReg);
+}
+
+void opLoadSegment16(Armv8btAsm* data) {
+    kpanic("Need to test");
+    doLoadSegment(data, false);
+}
+void opLoadSegment32(Armv8btAsm* data) {
+    kpanic("Need to test");
+    doLoadSegment(data, true);
+}
+
 void opLodsb(Armv8btAsm* data) {}
 void opLodsw(Armv8btAsm* data) {}
 void opLodsd(Armv8btAsm* data) {}

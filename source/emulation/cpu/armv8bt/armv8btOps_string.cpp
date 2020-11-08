@@ -382,6 +382,8 @@ void movs(Armv8btAsm* data, U32 width) {
             // SI += inc;
             data->addRegs32(siReg, siReg, incReg);
             data->movRegToReg(xESI, siReg, 16, false);
+
+            data->releaseTmpReg(incReg);
         }
     } else {
         if (data->decodedOp->repZero || data->decodedOp->repNotZero) {
@@ -465,6 +467,8 @@ void movs(Armv8btAsm* data, U32 width) {
 
             // SI += inc;
             data->addRegs32(xESI, xESI, incReg);
+
+            data->releaseTmpReg(incReg);
         }
     }
 }
@@ -479,4 +483,154 @@ void opMovsd(Armv8btAsm* data) {
     movs(data, 32);
 }
 
+void stos(Armv8btAsm* data, U32 width) {
+    if (data->decodedOp->ea16) {
+        if (data->decodedOp->repZero || data->decodedOp->repNotZero) {
+            // U32 dBase = cpu->seg[ES].address;
+            // S32 inc = cpu->df;
+            // U32 count = CX;
+            // U32 i;
+            // for (i = 0; i < count; i++) {
+            //     writeb(dBase + DI, AL);
+            //     DI += inc;
+            //     CX--;
+            // }
+            U8 dBaseReg = data->getSegReg(ES);
+            U8 diReg = data->getTmpReg();
+            U8 addressReg = data->getTmpReg();
+            U8 incReg = data->getTmpReg();
+            // S32 inc = cpu->df
+            data->getDF(incReg, width);
+            U8 tmpReg = data->getTmpReg();
+
+            // if (count == 0) break;
+            data->movRegToReg(tmpReg, xECX, 16, true);
+            data->cmpValue32(tmpReg, 0);
+            U32 skipPos = data->branchEQ();
+            U32 loopPos = data->bufferPos;
+
+            // writeb(dBase + DI, AL)
+            data->movRegToReg(diReg, xEDI, 16, true);
+            data->addRegs32(addressReg, diReg, dBaseReg);
+            data->writeMemory(addressReg, xEAX, width, true);
+
+            // DI += inc;
+            data->addRegs32(diReg, diReg, incReg);
+            data->movRegToReg(xEDI, diReg, 16, false);
+
+            // CX--;
+            data->movRegToReg(tmpReg, xECX, 16, true);
+            data->subValue32(tmpReg, tmpReg, 1, true);
+            data->movRegToReg(xECX, tmpReg, 16, false);
+
+            data->writeJumpAmount(data->branchNE(), loopPos);
+
+            data->writeJumpAmount(skipPos, data->bufferPos);
+
+            data->releaseTmpReg(diReg);
+            data->releaseTmpReg(addressReg);
+            data->releaseTmpReg(incReg);
+            data->releaseTmpReg(tmpReg);
+
+        } else {
+            // writeb(cpu->seg[ES].address + DI, AL);
+            // DI += cpu->df;
+
+            U8 dBaseReg = data->getSegReg(ES);
+            U8 diReg = data->getTmpReg();
+            U8 addressReg = data->getTmpReg();
+            U8 tmpReg = data->getTmpReg();
+
+            // writeb(dBase + DI, AL)
+            data->movRegToReg(diReg, xEDI, 16, true);
+            data->addRegs32(addressReg, diReg, dBaseReg);
+            data->writeMemory(addressReg, xEAX, width, true);
+
+            data->releaseTmpReg(addressReg);
+            data->releaseTmpReg(tmpReg);
+
+            U8 incReg = data->getTmpReg();
+            // S32 inc = cpu->df
+            data->getDF(incReg, width);
+
+            // DI += inc;
+            data->addRegs32(diReg, diReg, incReg);
+            data->movRegToReg(xEDI, diReg, 16, false);
+
+            data->releaseTmpReg(incReg);
+        }
+    } else {
+        if (data->decodedOp->repZero || data->decodedOp->repNotZero) {
+            // U32 dBase = cpu->seg[ES].address;
+            // S32 inc = cpu->df;
+            // U32 count = ECX;
+            // U32 i;
+            // for (i = 0; i < count; i++) {
+            //     writeb(dBase + EDI, AL);
+            //     EDI += inc;
+            //     ECX--;
+            // }
+            U8 dBaseReg = data->getSegReg(ES);
+            U8 addressReg = data->getTmpReg();
+            U8 incReg = data->getTmpReg();
+            // S32 inc = cpu->df
+            data->getDF(incReg, width);
+            U8 tmpReg = data->getTmpReg();
+
+            // if (count == 0) break;
+            data->cmpValue32(xECX, 0);
+            U32 skipPos = data->branchEQ();
+            U32 loopPos = data->bufferPos;
+
+            // writeb(dBase + EDI, AL)
+            data->addRegs32(addressReg, xEDI, dBaseReg);
+            data->writeMemory(addressReg, xEAX, width, true);
+
+            // EDI += inc;
+            data->addRegs32(xEDI, xEDI, incReg);
+
+            // ECX--;
+            data->subValue32(xECX, xECX, 1, true);
+
+            data->writeJumpAmount(data->branchNE(), loopPos);
+
+            data->writeJumpAmount(skipPos, data->bufferPos);
+
+            data->releaseTmpReg(addressReg);
+            data->releaseTmpReg(incReg);
+            data->releaseTmpReg(tmpReg);
+        } else {
+            // writeb(cpu->seg[ES].address + EDI, AL);
+            // EDI += cpu->df;
+
+            U8 dBaseReg = data->getSegReg(ES);
+            U8 addressReg = data->getTmpReg();
+
+            // writeb(dBase + DI
+            data->addRegs32(addressReg, xEDI, dBaseReg);
+            data->writeMemory(addressReg, xEAX, width, true);
+
+            data->releaseTmpReg(addressReg);
+
+            U8 incReg = data->getTmpReg();
+            // S32 inc = cpu->df
+            data->getDF(incReg, width);
+
+            // DI += inc;
+            data->addRegs32(xEDI, xEDI, incReg);
+
+            data->releaseTmpReg(incReg);
+        }
+    }
+}
+
+void opStosb(Armv8btAsm* data) {
+    stos(data, 8);
+}
+void opStosw(Armv8btAsm* data) {
+    stos(data, 16);
+}
+void opStosd(Armv8btAsm* data) {
+    stos(data, 32);
+}
 #endif
