@@ -52,6 +52,11 @@ This will load the file system from wine.zip and write the changes to c:\root
 
 -uid X : Only useful if you want the emulated enviroment to report that it is root.  Useful if an app requires root privledges.  In that case set the uid to 0.
 
+-vsync X : X can be 0, 1 or 2
+    0 - Disabled: The frame rate can be faster than the monitor, but may introduce artifacts in the game.
+    1 - Enabled: Synchronizes the frame rate of the app/game with the monitor refresh rate for better stability.
+    2 - Adaptive: At high framerates, VSync is enabled to eliminate tearing. At low frame rates, it's disabled to minimise stuttering.  If the video card does not support this, then this option will act like Enabled.
+
 -w path : Initial working directory, default is /home/username.  This path needs to reference a path in the emulated file system.
 
 -zip path : This will load the file system from the zip file.  Use -root option for the location where new files can be created.  You can specify more than one -zip command line, like -zip 1.zip -zip 2.zip.  These will both be mounted in the root folder, "/".  If you want to mount a zip file somewhere else, use the -mount command.

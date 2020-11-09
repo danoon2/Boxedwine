@@ -82,7 +82,7 @@ void GlobalSettings::init(int argc, const char **argv) {
     GlobalSettings::theme = config.readString("Theme", "Dark");
     GlobalSettings::defaultResolution = config.readString("DefaultResolution", "1024x768");
     GlobalSettings::defaultScale = config.readInt("DefaultScale", 100);
-    GlobalSettings::defaultVsync = config.readInt("DefaultVsync", VSYNC_ADAPTIVE);
+    GlobalSettings::defaultVsync = config.readInt("DefaultVsync", VSYNC_DEFAULT);
     GlobalSettings::fontScale = (float)config.readInt("FontScale", 100) / 100.0f;
 #ifdef _DEBUG
     GlobalSettings::filesUrl = config.readString("FilesURL", "http://www.boxedwine.org/v/Debug/files.xml");
