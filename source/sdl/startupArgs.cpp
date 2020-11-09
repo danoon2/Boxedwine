@@ -155,7 +155,7 @@ std::vector<std::string> StartUpArgs::buildArgs() {
     if (sdlFullScreen == FULLSCREEN_STRETCH) {
         args.push_back("-fullscreen");
     }
-    if (vsync != VSYNC_ADAPTIVE) {
+    if (vsync != VSYNC_DEFAULT) {
         args.push_back("-vsync");
         args.push_back(std::to_string(vsync));
     }
@@ -503,7 +503,7 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
             i++;
             if (this->vsync < 0 || this->vsync > 2) {
                 klog("-vsync must be 0, 1 or 2 (0=disabled, 1=enabled, 2=adaptive)");
-                this->vsync = VSYNC_ADAPTIVE;
+                this->vsync = VSYNC_DEFAULT;
             }
         } else if (!strcmp(argv[i], "-scale")) {
 			this->setScale(atoi(argv[i+1]));
