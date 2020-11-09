@@ -37,7 +37,7 @@ public:
 class KNativeWindow {
 public:
 	static std::shared_ptr<KNativeWindow> getNativeWindow();
-    static void init(U32 cx, U32 cy, U32 bpp, int scaleX, int scaleY, const std::string& scaleQuality, U32 fullScreen);
+    static void init(U32 cx, U32 cy, U32 bpp, int scaleX, int scaleY, const std::string& scaleQuality, U32 fullScreen, U32 vsync);
     static void shutdown();
 
 	static U32 defaultScreenWidth;

@@ -36,6 +36,7 @@ private:
 	// General
 	std::shared_ptr<LayoutTextInputControl> saveLocationControl;
 	std::shared_ptr<LayoutComboboxControl> resolutionControl;
+	std::shared_ptr<LayoutComboboxControl> vsyncControl;
 	std::shared_ptr<LayoutComboboxControl> scaleControl;
 
 	// Display

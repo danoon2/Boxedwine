@@ -95,6 +95,7 @@ public:
     static void updateLastFrameDelayChange();
     static const std::vector<std::string>& getAvailableResolutions() { return GlobalSettings::availableResolutions;}
     static const int getDefaultScale() { return GlobalSettings::defaultScale; }
+    static const int getDefaultVsync() { return GlobalSettings::defaultVsync; }
     static const std::string& getDefaultResolution() { return GlobalSettings::defaultResolution; }
     static int getScreenCx() { return GlobalSettings::screenCx; }
     static int getScreenCy() { return GlobalSettings::screenCy; }
@@ -151,6 +152,7 @@ private:
     static std::vector<std::string> availableResolutions;
     static std::string defaultResolution;
     static int defaultScale;
+    static int defaultVsync;
     static int screenCx;
     static int screenCy;
     static float fontScale;

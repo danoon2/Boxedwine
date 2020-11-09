@@ -195,6 +195,7 @@ void AppFile::install(bool chooseShortCut, BoxedContainer* container, std::list<
             if (container) {
                 GlobalSettings::startUpArgs = StartUpArgs(); // reset parameters
                 GlobalSettings::startUpArgs.setScale(GlobalSettings::getDefaultScale());
+                GlobalSettings::startUpArgs.setVsync(GlobalSettings::getDefaultVsync());
                 GlobalSettings::startUpArgs.setResolution(GlobalSettings::getDefaultResolution());
                 container->launch();
                 if (mountPath.length()) {

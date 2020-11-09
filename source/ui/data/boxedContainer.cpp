@@ -101,6 +101,7 @@ bool BoxedContainer::doesWineVersionExist() {
 void BoxedContainer::launch(const std::vector<std::string>& args, const std::string& labelForWaitDlg) {
     GlobalSettings::startUpArgs = StartUpArgs();
     GlobalSettings::startUpArgs.setScale(GlobalSettings::getDefaultScale());
+    GlobalSettings::startUpArgs.setVsync(GlobalSettings::getDefaultVsync());
     GlobalSettings::startUpArgs.setResolution(GlobalSettings::getDefaultResolution());
     this->launch();
     GlobalSettings::startUpArgs.addArgs(args);
@@ -114,6 +115,7 @@ void BoxedContainer::launch(const std::vector<std::string>& args, const std::str
 
 void BoxedContainer::launch() {
     GlobalSettings::startUpArgs.setScale(GlobalSettings::getDefaultScale());
+    GlobalSettings::startUpArgs.setVsync(GlobalSettings::getDefaultVsync());
     GlobalSettings::startUpArgs.setResolution(GlobalSettings::getDefaultResolution());
     GlobalSettings::startUpArgs.addZip(GlobalSettings::getFileFromWineName(this->wineVersion));
     std::string root = GlobalSettings::getRootFolder(this);

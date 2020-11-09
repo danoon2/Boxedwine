@@ -40,6 +40,7 @@ U64 GlobalSettings::lastFrameDelayChange = 0;
 std::vector<std::string> GlobalSettings::availableResolutions;
 std::string GlobalSettings::defaultResolution;
 int GlobalSettings::defaultScale;
+int GlobalSettings::defaultVsync;
 int GlobalSettings::screenCx;
 int GlobalSettings::screenCy;
 float GlobalSettings::extraVerticalSpacing;
@@ -81,6 +82,7 @@ void GlobalSettings::init(int argc, const char **argv) {
     GlobalSettings::theme = config.readString("Theme", "Dark");
     GlobalSettings::defaultResolution = config.readString("DefaultResolution", "1024x768");
     GlobalSettings::defaultScale = config.readInt("DefaultScale", 100);
+    GlobalSettings::defaultVsync = config.readInt("DefaultVsync", VSYNC_ADAPTIVE);
     GlobalSettings::fontScale = (float)config.readInt("FontScale", 100) / 100.0f;
 #ifdef _DEBUG
     GlobalSettings::filesUrl = config.readString("FilesURL", "http://www.boxedwine.org/v/Debug/files.xml");
@@ -151,6 +153,7 @@ void GlobalSettings::saveConfig() {
     config.writeString("Theme", GlobalSettings::theme);
     config.writeString("DefaultResolution", GlobalSettings::defaultResolution);
     config.writeInt("DefaultScale", GlobalSettings::defaultScale);
+    config.writeInt("DefaultVsync", GlobalSettings::defaultVsync);
     config.writeInt("FontScale", (int)(GlobalSettings::fontScale*100));
     // don't save this so that it can be updated each release, but if someone wants to override it by entering a value they can
     //config.writeString("FilesURL", GlobalSettings::filesUrl);

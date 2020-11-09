@@ -151,6 +151,10 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "This will delete all data, including the containers folder, and cannot be undone.  You will loose all saved data inside the containers, including apps, and Boxedwine settings.";
     case OPTIONS_VIEW_DELETE_ALL_CONFIRM:
         return "Are you sure you want to permentantly delete all containers, apps, settings and any saved data you had in the containers?";
+    case OPTIONS_VIEW_VSYNC_LABEL:
+        return "Default App Vsync:";
+    case OPTIONS_VIEW_VSYNC_HELP:
+        return "Disabled: The frame rate can be faster than the monitor, but may introduce artifacts in the game.\n\nEnabled: Synchronizes the frame rate of the app/game with the monitor refresh rate for better stability.\n\nAdaptive: At high framerates, VSync is enabled to eliminate tearing. At low frame rates, it's disabled to minimise stuttering.  If the video card does not support this, then this option will act like Enabled.";
     case HELPVIEW_TITLE_ABOUT:
         return "About";
     case HELPVIEW_TITLE_HELP_INSTALL:
@@ -279,6 +283,10 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "Fullscreen:";
     case CONTAINER_VIEW_FULL_SCREEN_HELP:
         return "Will launch the emulated desktop with the resolution selected and scale it to fit the screen.  This will not work for OpenGL so if your game uses OpenGL or Direct3D then this will have no effect.  If you are using a DirectDraw game you can click DD GDI Renderer above to force it not to use OpenGL.";
+    case CONTAINER_VIEW_VSYNC_LABEL:
+        return "Vsync:";
+    case CONTAINER_VIEW_VSYNC_HELP:
+        return "Not Set: Will use the value from the BoxedWine Options\\General screen.\n\nDisabled: The frame rate can be faster than the monitor, but may introduce artifacts in the game.\n\nEnabled: Synchronizes the frame rate of the app/game with the monitor refresh rate for better stability.\n\nAdaptive: At high framerates, VSync is enabled to eliminate tearing. At low frame rates, it's disabled to minimise stuttering.  If the video card does not support this, then this option will act like Enabled.";
     case CONTAINER_VIEW_DPI_AWARE_LABEL:
         return "DPI Aware:";
     case CONTAINER_VIEW_DPI_AWARE_HELP:

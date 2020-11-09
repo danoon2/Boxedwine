@@ -14,7 +14,8 @@ bool BoxedApp::load(BoxedContainer* container, const std::string& iniFilePath) {
     this->path = config.readString("Path", "");
     this->resolution = config.readString("Resolution","");
     this->bpp = config.readInt("BPP",32);
-    this->fullScreen = config.readInt("Fullscreen",0);
+    this->fullScreen = config.readInt("Fullscreen",FULLSCREEN_NOTSET);
+    this->vsync = config.readInt("VSync", VSYNC_NOT_SET);
     this->dpiAware = config.readBool("DpiAware", false);
     this->glExt = config.readString("AllowedGlExt","");
     this->scale = config.readInt("Scale",100);
@@ -61,6 +62,7 @@ bool BoxedApp::saveApp() {
     config.writeString("Resolution",this->resolution);
     config.writeInt("BPP",this->bpp);
     config.writeInt("Fullscreen",this->fullScreen);
+    config.writeInt("VSync", this->vsync);
     config.writeBool("DpiAware", this->dpiAware);
     config.writeString("AllowedGlExt",this->glExt);
     config.writeInt("Scale",this->scale);
@@ -82,6 +84,9 @@ void BoxedApp::launch() {
     std::string args;
 
     GlobalSettings::startUpArgs = StartUpArgs();
+
+    // set container defaults first, then override with app settings
+    this->container->launch();
 
     if (this->resolution.length()) {
         GlobalSettings::startUpArgs.setResolution(this->resolution);
@@ -108,6 +113,11 @@ void BoxedApp::launch() {
     } else {
         GlobalSettings::startUpArgs.setScale(GlobalSettings::getDefaultScale());
     }
+    if (this->vsync == VSYNC_NOT_SET) {
+        GlobalSettings::startUpArgs.setVsync(GlobalSettings::getDefaultVsync());
+    } else {
+        GlobalSettings::startUpArgs.setVsync(this->vsync);
+    }
     if (this->scaleQuality) {
         GlobalSettings::startUpArgs.setScaleQuality(std::to_string(this->scaleQuality));
     }
@@ -126,9 +136,7 @@ void BoxedApp::launch() {
             GlobalSettings::startUpArgs.addArg(this->args[i]);
         }
     }
-    GlobalSettings::startUpArgs.setWorkingDir(this->path);
-
-    this->container->launch();
+    GlobalSettings::startUpArgs.setWorkingDir(this->path);    
     GlobalSettings::startUpArgs.readyToLaunch = true;
 }
 

@@ -88,7 +88,7 @@ U32 sdlCustomEvent;
 
 class KNativeWindowSdl : public KNativeWindow, public std::enable_shared_from_this<KNativeWindowSdl> {
 public:
-    KNativeWindowSdl() : scaleX(100), scaleXOffset(0), scaleY(100), scaleYOffset(0), sdlDesktopWidth(0), sdlDesktopHeight(0), fullScreen(FULLSCREEN_NOTSET), window(NULL), renderer(NULL), shutdownWindow(NULL), shutdownRenderer(NULL), currentContext(NULL), contextCount(0), windowIsGL(false), windowIsHidden(false), timeToHideUI(0), timeWindowWasCreated(0)
+    KNativeWindowSdl() : scaleX(100), scaleXOffset(0), scaleY(100), scaleYOffset(0), sdlDesktopWidth(0), sdlDesktopHeight(0), fullScreen(FULLSCREEN_NOTSET), vsync(VSYNC_ADAPTIVE), window(NULL), renderer(NULL), shutdownWindow(NULL), shutdownRenderer(NULL), currentContext(NULL), contextCount(0), windowIsGL(false), windowIsHidden(false), timeToHideUI(0), timeWindowWasCreated(0)
 #ifdef BOXEDWINE_RECORDER
         , screenCopyTexture(NULL)
 #endif
@@ -115,6 +115,7 @@ public:
     U32 sdlDesktopHeight;
     std::string scaleQuality;
     U32 fullScreen;
+    U32 vsync;
 
     SDL_Window* window;
     SDL_Renderer* renderer;
@@ -209,6 +210,8 @@ public:
     void updateShutdownWindow();
 
 private:
+    void contextCreated();
+
     int xToScreen(int x);
     int xFromScreen(int x);
     int yToScreen(int y);
@@ -257,7 +260,7 @@ bool KNativeWindowSdl::processEvents() {
     return true;
 }
 
-void KNativeWindow::init(U32 cx, U32 cy, U32 bpp, int scaleX, int scaleY, const std::string& scaleQuality, U32 fullScreen) {
+void KNativeWindow::init(U32 cx, U32 cy, U32 bpp, int scaleX, int scaleY, const std::string& scaleQuality, U32 fullScreen, U32 vsync) {
     if (!sdlCustomEvent) {
         sdlCustomEvent = SDL_RegisterEvents(1);
     }
@@ -276,6 +279,7 @@ void KNativeWindow::init(U32 cx, U32 cy, U32 bpp, int scaleX, int scaleY, const 
     screen->scaleYOffset = 0;
     screen->scaleQuality = scaleQuality;
     screen->fullScreen = fullScreen;
+    screen->vsync = vsync;
 }
 
 std::shared_ptr<Wnd> KNativeWindowSdl::getWnd(U32 hwnd) {
@@ -572,6 +576,18 @@ void KNativeWindowSdl::preOpenGLCall(U32 index) {
     }
 }
 
+void KNativeWindowSdl::contextCreated() {
+    if (this->vsync == VSYNC_ADAPTIVE) {
+        if (SDL_GL_SetSwapInterval(-1) == -1) {
+            SDL_GL_SetSwapInterval(1);
+        }
+    } else if (this->vsync == VSYNC_ENABLED) {
+        SDL_GL_SetSwapInterval(1);
+    } else {
+        SDL_GL_SetSwapInterval(0);
+    }
+}
+
 // window needs to be on the main thread
 // context needs to be on the current thread
 U32 KNativeWindowSdl::glCreateContext(KThread* thread, std::shared_ptr<Wnd> w, int major, int minor, int profile, int flags) {
@@ -597,6 +613,7 @@ U32 KNativeWindowSdl::glCreateContext(KThread* thread, std::shared_ptr<Wnd> w, i
             return 0;
             DISPATCH_MAIN_THREAD_BLOCK_END
         }
+        contextCreated();
         result = nextGlId;
         thread->addGlContext(nextGlId++, context);
         contextCount++;
@@ -715,7 +732,11 @@ void KNativeWindowSdl::displayChanged(KThread* thread) {
         delayedCreateWindowMsg = "Creating Window: " + std::to_string(cx) + "x" + std::to_string(cy);
         fflush(stdout);
         window = SDL_CreateWindow("BoxedWine", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, cx, cy, flags);
-        renderer = SDL_CreateRenderer(window, -1, 0);	
+        flags = 0;
+        if (this->vsync != VSYNC_DISABLED) {
+            flags |= SDL_RENDERER_PRESENTVSYNC;
+        }
+        renderer = SDL_CreateRenderer(window, -1, flags);
         windowIsHidden = true;
         timeWindowWasCreated = KSystem::getMilliesSinceStart();
         windowIsGL = false;

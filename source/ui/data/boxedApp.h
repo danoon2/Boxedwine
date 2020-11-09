@@ -20,7 +20,7 @@ private:
 class BoxedApp {
 public:
     BoxedApp() : bpp(32), fullScreen(FULLSCREEN_NOTSET), dpiAware(false), scale(0), scaleQuality(0), cpuAffinity(0), pollRate(-1), container(NULL) {}
-    BoxedApp(const std::string& name, const std::string& path, const std::string& cmd, BoxedContainer* container) : name(name), path(path), cmd(cmd), bpp(0), fullScreen(FULLSCREEN_NOTSET), dpiAware(false), scale(0), scaleQuality(0), cpuAffinity(0), container(container) {}
+    BoxedApp(const std::string& name, const std::string& path, const std::string& cmd, BoxedContainer* container) : name(name), path(path), cmd(cmd), bpp(0), fullScreen(FULLSCREEN_NOTSET), vsync(VSYNC_NOT_SET), dpiAware(false), scale(0), scaleQuality(0), cpuAffinity(0), pollRate(-1), container(container) {}
     
     bool load(BoxedContainer* container, const std::string& iniFilepath);
 
@@ -58,6 +58,7 @@ private:
     std::string resolution;
     int bpp;
     U32 fullScreen;
+    U32 vsync;
     bool dpiAware;
     std::string glExt;
     int scale;

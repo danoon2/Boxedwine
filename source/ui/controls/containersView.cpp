@@ -233,6 +233,16 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
         this->currentAppChanged = true;
     };
 
+    std::vector<ComboboxItem> vsync;
+    vsync.push_back(ComboboxItem("Not Set", VSYNC_NOT_SET));
+    vsync.push_back(ComboboxItem("Disabled", VSYNC_DISABLED));
+    vsync.push_back(ComboboxItem("Enabled", VSYNC_ENABLED));
+    vsync.push_back(ComboboxItem("Adaptive", VSYNC_ADAPTIVE));
+    appVSyncControl = appSection->addComboboxRow(CONTAINER_VIEW_VSYNC_LABEL, CONTAINER_VIEW_VSYNC_HELP, vsync);
+    appVSyncControl->onChange = [this]() {
+        this->currentAppChanged = true;
+    };
+
     if (GlobalSettings::isDpiAware()) {
         appDpiAwareControl = appSection->addCheckbox(CONTAINER_VIEW_DPI_AWARE_LABEL, CONTAINER_VIEW_DPI_AWARE_HELP, false);
         appDpiAwareControl->onChange = [this]() {
@@ -433,6 +443,7 @@ bool ContainersView::saveChanges() {
             this->currentApp->scale = appScaleControl->getSelectionIntValue();
             this->currentApp->scaleQuality = this->appScaleQualityControl->getSelection();
             this->currentApp->fullScreen = this->appFullScreenControl->getSelection();
+            this->currentApp->vsync = this->appVSyncControl->getSelectionIntValue();
             if (GlobalSettings::isDpiAware()) {
                 this->currentApp->dpiAware = this->appDpiAwareControl->isChecked();
             }
@@ -478,6 +489,7 @@ void ContainersView::setCurrentApp(BoxedApp* app) {
     appScaleControl->setReadOnly(app->fullScreen != FULLSCREEN_NOTSET);
     appScaleQualityControl->setSelection(app->scaleQuality);
     appFullScreenControl->setSelectionIntValue(app->fullScreen);
+    appVSyncControl->setSelectionIntValue(app->vsync);
     appDpiAwareControl->setCheck(app->dpiAware);
     appPollRateControl->setText(std::to_string(app->pollRate));
 #ifdef BOXEDWINE_MULTI_THREADED

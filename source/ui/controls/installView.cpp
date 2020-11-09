@@ -290,6 +290,7 @@ void InstallView::onInstall() {
     if (!this->errorMsg) {
         GlobalSettings::startUpArgs = StartUpArgs(); // reset parameters
         GlobalSettings::startUpArgs.setScale(GlobalSettings::getDefaultScale());
+        GlobalSettings::startUpArgs.setVsync(GlobalSettings::getDefaultVsync());
         GlobalSettings::startUpArgs.setResolution(GlobalSettings::getDefaultResolution());
         bool containerCreated = false;
         if (!container) {
