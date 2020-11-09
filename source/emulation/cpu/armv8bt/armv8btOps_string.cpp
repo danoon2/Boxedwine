@@ -633,4 +633,194 @@ void opStosw(Armv8btAsm* data) {
 void opStosd(Armv8btAsm* data) {
     stos(data, 32);
 }
+
+static void lods(Armv8btAsm* data, U32 width) {
+    if (data->decodedOp->ea16) {
+        if (data->decodedOp->repZero || data->decodedOp->repNotZero) {
+            // U32 sBase = cpu->seg[base].address;
+            // S32 inc = cpu->df;
+            // U32 count = CX;
+            // U32 i;
+            // for (i = 0; i < count; i++) {
+            //     AL = readb(sBase + SI);
+            //     SI += inc;
+            //     CX--;
+            // }
+            U8 sBaseReg = data->getSegReg(data->decodedOp->base);
+            U8 siReg = data->getTmpReg();
+            U8 addressReg = data->getTmpReg();
+            U8 incReg = data->getTmpReg();
+            // S32 inc = cpu->df
+            data->getDF(incReg, width);
+            U8 tmpReg = data->getTmpReg();
+
+            // if (count == 0) break;
+            data->movRegToReg(tmpReg, xECX, 16, true);
+            data->cmpValue32(tmpReg, 0);
+            U32 skipPos = data->branchEQ();
+            U32 loopPos = data->bufferPos;
+
+            // readb(sBase + SI)
+            data->movRegToReg(siReg, xESI, 16, true); // yes, siReg already has the value after the first loop, but we need to mask it to 16 bits and reloading does that
+            data->addRegs32(addressReg, siReg, sBaseReg);
+            if (width == 32) {
+                data->readMemory(addressReg, xEAX, width, true);
+            } else {
+                data->readMemory(addressReg, tmpReg, width, true);
+                if (width == 8) {
+                    data->movRegToReg8(tmpReg, 0);
+                } else {
+                    data->movRegToReg(xEAX, tmpReg, width, false);
+                }
+            }
+
+            // SI += inc;
+            data->addRegs32(siReg, siReg, incReg);
+            data->movRegToReg(xESI, siReg, 16, false);
+
+            // CX--;
+            data->movRegToReg(tmpReg, xECX, 16, true);
+            data->subValue32(tmpReg, tmpReg, 1, true);
+            data->movRegToReg(xECX, tmpReg, 16, false);
+
+            data->writeJumpAmount(data->branchNE(), loopPos);
+
+            data->writeJumpAmount(skipPos, data->bufferPos);
+
+            data->releaseTmpReg(siReg);
+            data->releaseTmpReg(addressReg);
+            data->releaseTmpReg(incReg);
+            data->releaseTmpReg(tmpReg);
+
+        } else {
+            // AL = readb(cpu->seg[base].address + SI);
+            // SI += cpu->df;
+
+            U8 sBaseReg = data->getSegReg(data->decodedOp->base);
+            U8 siReg = data->getTmpReg();
+            U8 addressReg = data->getTmpReg();            
+
+            // readb(sBase + SI)
+            data->movRegToReg(siReg, xESI, 16, true);
+            data->addRegs32(addressReg, siReg, sBaseReg);
+            if (width == 32) {
+                data->readMemory(addressReg, xEAX, width, true);
+            } else {
+                U8 tmpReg = data->getTmpReg();
+                data->readMemory(addressReg, tmpReg, width, true);
+                if (width == 16) {
+                    data->movRegToReg(xEAX, tmpReg, width, false);
+                } else {
+                    data->movRegToReg8(tmpReg, 0);
+                }
+                data->releaseTmpReg(tmpReg);
+            }
+
+            data->releaseTmpReg(addressReg);            
+
+            U8 incReg = data->getTmpReg();
+            // S32 inc = cpu->df
+            data->getDF(incReg, width);
+
+            // SI += inc;
+            data->addRegs32(siReg, siReg, incReg);
+            data->movRegToReg(xESI, siReg, 16, false);
+
+            data->releaseTmpReg(incReg);
+        }
+    } else {
+        if (data->decodedOp->repZero || data->decodedOp->repNotZero) {
+            // U32 sBase = cpu->seg[base].address;
+            // S32 inc = cpu->df;
+            // U32 count = ECX;
+            // U32 i;
+            // for (i = 0; i < count; i++) {
+            //     AL = readb(sBase + ESI);
+            //     ESI += inc;
+            //     ECX--;
+            // }
+
+            U8 sBaseReg = data->getSegReg(data->decodedOp->base);
+            U8 addressReg = data->getTmpReg();
+            U8 incReg = data->getTmpReg();
+
+            // S32 inc = cpu->df
+            data->getDF(incReg, width);            
+
+            // if (count == 0) break;
+            data->cmpValue32(xECX, 0);
+            U32 skipPos = data->branchEQ();
+            U32 loopPos = data->bufferPos;
+
+            // readb(sBase + ESI)
+            data->addRegs32(addressReg, xESI, sBaseReg);
+            if (width == 32) {
+                data->readMemory(addressReg, xEAX, width, true);
+            } else {
+                U8 tmpReg = data->getTmpReg();
+                data->readMemory(addressReg, tmpReg, width, true);
+                if (width == 8) {
+                    data->movRegToReg8(tmpReg, 0);
+                } else {
+                    data->movRegToReg(xEAX, tmpReg, width, false);
+                }
+                data->releaseTmpReg(tmpReg);
+            }
+
+            // ESI += inc;
+            data->addRegs32(xESI, xESI, incReg);
+
+            // ECX--;
+            data->subValue32(xECX, xECX, 1, true);
+
+            data->writeJumpAmount(data->branchNE(), loopPos);
+
+            data->writeJumpAmount(skipPos, data->bufferPos);
+
+            data->releaseTmpReg(addressReg);
+            data->releaseTmpReg(incReg);            
+        } else {
+            // AL = readb(cpu->seg[base].address + ESI);
+            // ESI += cpu->df;
+            U8 sBaseReg = data->getSegReg(data->decodedOp->base);
+            U8 addressReg = data->getTmpReg();            
+
+            // readb(sBase + SI)
+            data->addRegs32(addressReg, xESI, sBaseReg);
+            if (width == 32) {
+                data->readMemory(addressReg, xEAX, width, true);
+            } else {
+                U8 tmpReg = data->getTmpReg();
+                data->readMemory(addressReg, tmpReg, width, true);
+                if (width == 8) {
+                    data->movRegToReg8(tmpReg, 0);
+                } else {
+                    data->movRegToReg(xEAX, tmpReg, width, false);
+                }
+                data->releaseTmpReg(tmpReg);
+            }
+
+            data->releaseTmpReg(addressReg);            
+
+            U8 incReg = data->getTmpReg();
+            // S32 inc = cpu->df
+            data->getDF(incReg, width);
+
+            // SI += inc;
+            data->addRegs32(xESI, xESI, incReg);
+
+            data->releaseTmpReg(incReg);
+        }
+    }
+}
+
+void opLodsb(Armv8btAsm* data) {
+    lods(data, 8);
+}
+void opLodsw(Armv8btAsm* data) {
+    lods(data, 16);
+}
+void opLodsd(Armv8btAsm* data) {
+    lods(data, 32);
+}
 #endif
