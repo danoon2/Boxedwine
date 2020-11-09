@@ -38,7 +38,7 @@ void OptionsView::createThemeTab() {
     themes.push_back(ComboboxItem(getTranslation(OPTIONSVIEW_THEME_LIGHT), "Light"));
     themes.push_back(ComboboxItem(getTranslation(OPTIONSVIEW_THEME_CLASSIC), "Classic"));
 
-    themeControl = section->addComboboxRow(OPTIONSVIEW_DEFAULT_RESOLUTION_LABEL, OPTIONSVIEW_DEFAULT_RESOLUTION_HELP, themes);
+    themeControl = section->addComboboxRow(OPTIONSVIEW_THEME_LABEL, OPTIONSVIEW_THEME_HELP, themes);
     themeControl->setWidth((int)GlobalSettings::scaleFloatUIAndFont(150));
 
     themeControl->setSelectionStringValue(GlobalSettings::getTheme());
@@ -96,6 +96,17 @@ void OptionsView::createGeneralTab() {
     resolutionControl->setSelectionByLabel(GlobalSettings::getDefaultResolution());
     resolutionControl->onChange = [this]() {
         GlobalSettings::defaultResolution = GlobalSettings::availableResolutions[this->resolutionControl->getSelection()];
+        GlobalSettings::saveConfig();
+    };
+
+    std::vector<ComboboxItem> vsync;
+    vsync.push_back(ComboboxItem("Disabled", VSYNC_DISABLED));
+    vsync.push_back(ComboboxItem("Enabled", VSYNC_ENABLED));
+    vsync.push_back(ComboboxItem("Adaptive", VSYNC_ADAPTIVE));
+    vsyncControl = section->addComboboxRow(OPTIONS_VIEW_VSYNC_LABEL, OPTIONS_VIEW_VSYNC_HELP, vsync, GlobalSettings::defaultVsync);
+    vsyncControl->setWidth((int)GlobalSettings::scaleFloatUIAndFont(150));
+    vsyncControl->onChange = [this]() {
+        GlobalSettings::defaultVsync = this->vsyncControl->getSelectionIntValue();
         GlobalSettings::saveConfig();
     };
 

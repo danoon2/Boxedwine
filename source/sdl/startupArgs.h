@@ -9,6 +9,11 @@
 #define FULLSCREEN_STRETCH 1
 #define FULLSCREEN_ASPECT 2
 
+#define VSYNC_NOT_SET -1
+#define VSYNC_DISABLED 0
+#define VSYNC_ENABLED 1
+#define VSYNC_ADAPTIVE 2
+
 class MountInfo {
 public:
     MountInfo(const std::string& localPath, const std::string& nativePath, bool wine) : localPath(localPath), nativePath(nativePath), wine(wine){}
@@ -27,7 +32,7 @@ public:
 
 class StartUpArgs {
 public:
-    StartUpArgs() : euidSet(false), nozip(false), pentiumLevel(4), rel_mouse_sensitivity(0), pollRate(DEFAULT_POLL_RATE), userId(UID), groupId(GID), effectiveUserId(UID), effectiveGroupId(GID), soundEnabled(true), videoEnabled(true), dpiAware(false), readyToLaunch(false), workingDirSet(false), resolutionSet(false), screenCx(800), screenCy(600), screenBpp(32), sdlFullScreen(FULLSCREEN_NOTSET), sdlScaleX(100), sdlScaleY(100), sdlScaleQuality("0"), cpuAffinity(0) {
+    StartUpArgs() : euidSet(false), nozip(false), pentiumLevel(4), rel_mouse_sensitivity(0), pollRate(DEFAULT_POLL_RATE), userId(UID), groupId(GID), effectiveUserId(UID), effectiveGroupId(GID), soundEnabled(true), videoEnabled(true), vsync(VSYNC_ADAPTIVE), dpiAware(false), readyToLaunch(false), workingDirSet(false), resolutionSet(false), screenCx(800), screenCy(600), screenBpp(32), sdlFullScreen(FULLSCREEN_NOTSET), sdlScaleX(100), sdlScaleY(100), sdlScaleQuality("0"), cpuAffinity(0) {
         workingDir = "/home/username";        
     }
     bool parseStartupArgs(int argc, const char **argv);
@@ -40,6 +45,7 @@ public:
     void setFullscreen(U32 fullScreen) {this->sdlFullScreen = fullScreen;}
     void setAllowedGlExtension(const std::string& glExt) {this->glExt = glExt;}
     void setScale(int scale) {this->sdlScaleX = scale; this->sdlScaleY = scale;}
+    void setVsync(int vsync) { this->vsync = vsync; }
     void setScaleQuality(const std::string& scaleQuality) {this->sdlScaleQuality = scaleQuality;}
     void addArg(const std::string& arg) {this->args.push_back(arg);}
     void addArgs(const std::vector<std::string>& args) {this->args.insert(this->args.end(), args.begin(), args.end());}
@@ -68,6 +74,7 @@ public:
 
     bool soundEnabled;
     bool videoEnabled;
+    U32 vsync;
     bool dpiAware;
     static U32 uiType;
     bool readyToLaunch;

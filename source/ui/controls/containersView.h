@@ -43,6 +43,7 @@ private:
     std::shared_ptr<LayoutComboboxControl> appResolutionControl;
     std::shared_ptr<LayoutComboboxControl> appBppControl;
     std::shared_ptr<LayoutComboboxControl> appFullScreenControl;
+    std::shared_ptr<LayoutComboboxControl> appVSyncControl;
     std::shared_ptr<LayoutCheckboxControl> appDpiAwareControl;
     std::shared_ptr<LayoutTextInputControl> appPollRateControl;
 #ifdef BOXEDWINE_MULTI_THREADED

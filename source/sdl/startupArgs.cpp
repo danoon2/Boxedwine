@@ -155,6 +155,10 @@ std::vector<std::string> StartUpArgs::buildArgs() {
     if (sdlFullScreen == FULLSCREEN_STRETCH) {
         args.push_back("-fullscreen");
     }
+    if (vsync != VSYNC_ADAPTIVE) {
+        args.push_back("-vsync");
+        args.push_back(std::to_string(vsync));
+    }
     if (sdlFullScreen == FULLSCREEN_ASPECT) {
         args.push_back("-fullscreenAspect");
     }
@@ -406,7 +410,7 @@ bool StartUpArgs::apply() {
     }
     KSystem::videoEnabled = this->videoEnabled;
     KSystem::soundEnabled = this->soundEnabled;
-    KNativeWindow::init(this->screenCx, this->screenCy, this->screenBpp, this->sdlScaleX, this->sdlScaleY, this->sdlScaleQuality, this->sdlFullScreen);
+    KNativeWindow::init(this->screenCx, this->screenCy, this->screenBpp, this->sdlScaleX, this->sdlScaleY, this->sdlScaleQuality, this->sdlFullScreen, this->vsync);
     initWine();
 #if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
     gl_init(this->glExt);        
@@ -494,6 +498,13 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
 			this->setFullscreen(FULLSCREEN_STRETCH);
         } else if (!strcmp(argv[i], "-fullscreenAspect")) {
             this->setFullscreen(FULLSCREEN_ASPECT);
+        } else if (!strcmp(argv[i], "-vsync")) {
+            this->vsync = atoi(argv[i + 1]);
+            i++;
+            if (this->vsync < 0 || this->vsync > 2) {
+                klog("-vsync must be 0, 1 or 2 (0=disabled, 1=enabled, 2=adaptive)");
+                this->vsync = VSYNC_ADAPTIVE;
+            }
         } else if (!strcmp(argv[i], "-scale")) {
 			this->setScale(atoi(argv[i+1]));
             if (!this->resolutionSet) {
