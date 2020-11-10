@@ -3489,10 +3489,6 @@ void opLoadSegment32(Armv8btAsm* data) {
     doLoadSegment(data, true);
 }
 
-void opScasb(Armv8btAsm* data) {}
-void opScasw(Armv8btAsm* data) {}
-void opScasd(Armv8btAsm* data) {}
-
 void opFADD_ST0_STj(Armv8btAsm* data) {}
 void opFMUL_ST0_STj(Armv8btAsm* data) {}
 void opFCOM_STi(Armv8btAsm* data) {}

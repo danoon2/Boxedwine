@@ -77,7 +77,7 @@ void cmps(Armv8btAsm* data, U32 width, Arm8BtLazyFlags* lazyFlags) {
             data->movRegToReg(xECX, tmpReg, 16, false);
 
             // if ((v1 == v2) != rep_zero) break;
-            data->subRegs32(xResult, xSrc, xDst, 0, true);            
+            data->subRegs32(xResult, xDst, xSrc, 0, true);
 
             if (data->decodedOp->repZero) {
                 data->writeJumpAmount(data->branchEQ(), loopPos);
@@ -207,7 +207,7 @@ void cmps(Armv8btAsm* data, U32 width, Arm8BtLazyFlags* lazyFlags) {
             data->subValue32(xECX, xECX, 1);
 
             // if ((v1 == v2) != rep_zero) break;
-            data->subRegs32(xResult, xSrc, xDst, 0, true);
+            data->subRegs32(xResult, xDst, xSrc, 0, true);
 
             if (data->decodedOp->repZero) {
                 data->writeJumpAmount(data->branchEQ(), loopPos);
@@ -822,5 +822,218 @@ void opLodsw(Armv8btAsm* data) {
 }
 void opLodsd(Armv8btAsm* data) {
     lods(data, 32);
+}
+
+void scas(Armv8btAsm* data, U32 width, Arm8BtLazyFlags* lazyFlags) {
+    U8 siReg;
+    
+    U32 flags = data->flagsNeeded();
+    
+    if (width == 8) {
+        data->movReg8ToReg(0, xDst, false);
+        siReg = xDst;
+    } else if (width == 16) {
+        data->movRegToReg(xDst, xEAX, width, true);
+        siReg = xDst;
+    } else if (width == 32) {
+        if (lazyFlags->usesDst(flags)) {
+            data->movRegToReg(xDst, xEAX, 32, false);
+        }
+        siReg = xEAX;
+    }
+
+    U8 incReg = data->getTmpReg();
+    data->getDF(incReg, width);
+    if (data->decodedOp->ea16) {
+        if (data->decodedOp->repZero || data->decodedOp->repNotZero) {
+            // U32 dBase = cpu->seg[ES].address;
+            // S32 inc = cpu->df;
+            // U32 count = CX;
+            // if (count) {
+            //     U8 v1 = 0;
+            //     for (U32 i = 0; i < count; i++) {
+            //         v1 = readb(dBase + DI);
+            //         DI += inc;
+            //         CX--;
+            //         if ((AL == v1) != rep_zero) break;
+            //     }
+            //     cpu->dst.u8 = AL;
+            //     cpu->src.u8 = v1;
+            //     cpu->result.u8 = AL - v1;
+            //     cpu->lazyFlags = FLAGS_SUB8;
+            // }
+
+            // we need to fill in lazy flags because the follow code might or might not actually set the flags depending on if CX is 0            
+            if (data->lazyFlags) {
+                if (flags) {
+                    data->fillFlags(flags);
+                }
+                data->lazyFlags = NULL;
+            }
+            U8 dBaseReg = data->getSegReg(ES);            
+            U8 tmpReg = data->getTmpReg();
+            U32 loopPos = data->bufferPos;
+
+            // if (count == 0) break;
+            data->movRegToReg(tmpReg, xECX, 16, true);
+            data->cmpValue32(tmpReg, 0);
+            U32 skipPos = data->branchEQ();
+
+            U8 diReg = data->getTmpReg();            
+
+            // v1 = readb(dBase + DI);
+            data->movRegToReg(diReg, xEDI, 16, true);
+            data->addRegs32(tmpReg, diReg, dBaseReg);
+            data->readMemory(tmpReg, xSrc, width, true);
+
+            // DI += inc;
+            data->addRegs32(diReg, diReg, incReg);
+            data->movRegToReg(xEDI, diReg, 16, false);
+
+            // CX--;
+            data->movRegToReg(tmpReg, xECX, 16, true);
+            data->subValue32(tmpReg, tmpReg, 1);
+            data->movRegToReg(xECX, tmpReg, 16, false);
+
+            // if ((AL == v1) != rep_zero) break;
+            data->subRegs32(xResult, siReg, xSrc, 0, true);
+
+            if (data->decodedOp->repZero) {
+                data->writeJumpAmount(data->branchEQ(), loopPos);
+            } else {
+                data->writeJumpAmount(data->branchNE(), loopPos);
+            }
+
+            data->writeJumpAmount(skipPos, data->bufferPos);
+
+            data->zeroExtend(xResult, xResult, width);            
+
+            data->releaseTmpReg(tmpReg);            
+            data->releaseTmpReg(diReg);
+        } else {
+            // U32 dBase = cpu->seg[ES].address;
+            // S32 inc = cpu->df;
+            // U8 v1 = readb(dBase + DI);
+            // DI += inc;
+            // cpu->dst.u8 = AL;
+            // cpu->src.u8 = v1;
+            // cpu->result.u8 = AL - v1;
+            // cpu->lazyFlags = FLAGS_SUB8;
+
+            U8 dBaseReg = data->getSegReg(ES);
+            U8 diReg = data->getTmpReg();            
+            U8 tmpReg = data->getTmpReg();
+
+            // v1 = readb(dBase + DI);
+            data->movRegToReg(diReg, xEDI, 16, true);
+            data->addRegs32(tmpReg, diReg, dBaseReg);
+            data->readMemory(tmpReg, xSrc, width, true);
+
+            // DI += inc;
+            data->addRegs32(diReg, diReg, incReg);
+            data->movRegToReg(xEDI, diReg, 16, false);
+
+            data->subRegs32(xResult, siReg, xSrc, 0, true);
+            data->zeroExtend(xResult, xResult, width);
+            data->releaseTmpReg(tmpReg);
+            data->releaseTmpReg(diReg);
+        }
+    } else {
+        if (data->decodedOp->repZero || data->decodedOp->repNotZero) {
+            // U32 dBase = cpu->seg[ES].address;
+            // S32 inc = cpu->df;
+            // U32 count = ECX;
+            // if (count) {
+            //     U8 v1 = 0;
+            //     for (U32 i = 0; i < count; i++) {
+            //         v1 = readb(dBase + EDI);
+            //         EDI += inc;
+            //         ECX--;
+            //         if ((AL == v1) != rep_zero) break;
+            //     }
+            //     cpu->dst.u8 = AL;
+            //     cpu->src.u8 = v1;
+            //     cpu->result.u8 = AL - v1;
+            //     cpu->lazyFlags = FLAGS_SUB8;
+            // }
+
+            // we need to fill in lazy flags because the follow code might or might not actually set the flags depending on if CX is 0
+            if (data->lazyFlags) {
+                if (flags) {
+                    data->fillFlags(flags);
+                }
+                data->lazyFlags = NULL;
+            }
+
+            U8 dBaseReg = data->getSegReg(ES);
+            U8 tmpReg = data->getTmpReg();
+            U32 loopPos = data->bufferPos;
+
+            // if (count == 0) break;
+            data->cmpValue32(xECX, 0);
+            U32 skipPos = data->branchEQ();
+
+            // v1 = readb(dBase + EDI);
+            data->addRegs32(tmpReg, xEDI, dBaseReg);
+            data->readMemory(tmpReg, xSrc, width, true);
+
+            // EDI += inc;
+            data->addRegs32(xEDI, xEDI, incReg);
+
+            // ECX--;
+            data->subValue32(xECX, xECX, 1);
+
+            // if ((AL == v1) != rep_zero) break;
+            data->subRegs32(xResult, siReg, xSrc, 0, true);
+
+            if (data->decodedOp->repZero) {
+                data->writeJumpAmount(data->branchEQ(), loopPos);
+            } else {
+                data->writeJumpAmount(data->branchNE(), loopPos);
+            }
+
+            data->writeJumpAmount(skipPos, data->bufferPos);
+
+            data->zeroExtend(xResult, xResult, width);
+            data->releaseTmpReg(tmpReg);
+        } else {
+            // U32 dBase = cpu->seg[ES].address;
+            // S32 inc = cpu->df;
+            // U8 v1 = readb(dBase + EDI);
+            // EDI += inc;
+            // cpu->dst.u8 = AL;
+            // cpu->src.u8 = v1;
+            // cpu->result.u8 = AL - v1;
+            // cpu->lazyFlags = FLAGS_SUB8;
+
+            U8 dBaseReg = data->getSegReg(ES);
+            U8 tmpReg = data->getTmpReg();
+
+            // v1 = readb(dBase + EDI);
+            data->addRegs32(tmpReg, xEDI, dBaseReg);
+            data->readMemory(tmpReg, xSrc, width, true);
+
+            // EDI += inc;
+            data->addRegs32(xEDI, xEDI, incReg);
+
+            data->subRegs32(xResult, siReg, xSrc, 0, true);
+            data->zeroExtend(xResult, xResult, width);
+            data->releaseTmpReg(tmpReg);
+        }
+    }
+    data->lazyFlags = lazyFlags;
+    data->releaseTmpReg(incReg);
+}
+
+void opScasb(Armv8btAsm* data) {
+    scas(data, 8, ARM8BT_FLAGS_SUB8);
+}
+
+void opScasw(Armv8btAsm* data) {
+    scas(data, 16, ARM8BT_FLAGS_SUB16);
+}
+
+void opScasd(Armv8btAsm* data) {
+    scas(data, 32, ARM8BT_FLAGS_SUB32);
 }
 #endif

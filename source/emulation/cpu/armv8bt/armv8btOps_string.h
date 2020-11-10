@@ -17,4 +17,8 @@ void opLodsb(Armv8btAsm* data);
 void opLodsw(Armv8btAsm* data);
 void opLodsd(Armv8btAsm* data);
 
+void opScasb(Armv8btAsm* data);
+void opScasw(Armv8btAsm* data);
+void opScasd(Armv8btAsm* data);
+
 #endif
