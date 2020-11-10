@@ -4496,6 +4496,109 @@ void testCmpsd0x2a7() {
     strTest(4, 0xf3, 0xa7, DF, "abcdefghijklmnop", 16, "abcdefghijklmnoq", 16, 0x00000010, 0x00000020, 0x00000010, 0x00000000, 0x00000010, 0x0000000C, true, true, false, HEAP_ADDRESS+256);    
 }
 
+void testScasb0x0ae() {
+    cpu->big = false;
+
+    // SI > DI (DF)
+    strTest(1, 0, 0xae, DF, NULL, 0, "0", 1, 0x12340010, 0x12340020, 0, 0x12340010, 0x1234001F, 0, true, false, false, HEAP_ADDRESS + 256, 0x12345631);
+
+    // SI > DI
+    strTest(1, 0, 0xae, 0, NULL, 0, "0", 1, 0x12340010, 0x12340020, 0, 0x12340010, 0x12340021, 0, true, false, false, HEAP_ADDRESS + 256, 0x12345631);
+
+    // SI < DI
+    strTest(1, 0, 0xae, 0, NULL, 0, "1", 1, 0x12340010, 0x12340020, 0, 0x12340010, 0x12340021, 0, true, true, false, HEAP_ADDRESS + 256, 0x12345630);
+
+    // SI == DI
+    // this will test 16-bit wrapping
+    strTest(1, 0, 0xae, 0, NULL, 0, "1", 1, 0x12340010, 0x1234FFFF, 0, 0x12340010, 0x12340000, 0, true, false, true, HEAP_ADDRESS - 0x10000 + 200, 0x12345631);
+
+    // repz
+    strTest(1, 0xf3, 0xae, 0, NULL, 0, "ddde", 4, 0x12340000, 0x12340000, 0x12340010, 0x12340000, 0x12340004, 0x1234000C, true, true, false, HEAP_ADDRESS + 256, 0x12345664);
+    strTest(1, 0xf3, 0xae, 0, NULL, 0, "dddd", 4, 0x12340000, 0x12340000, 0x12340004, 0x12340000, 0x12340004, 0x12340000, true, false, true, HEAP_ADDRESS + 256, 0x12345664);
+
+    // repnz
+    strTest(1, 0xf2, 0xae, 0, NULL, 0, "123d", 4, 0x12340000, 0x12340000, 0x12340010, 0x12340000, 0x12340004, 0x1234000C, true, false, true, HEAP_ADDRESS + 256, 0x12345664);
+
+    // repnz (DF)
+    strTest(1, 0xf2, 0xae, DF, NULL, 0, "123d", 4, 0x12340020, 0x12340010, 0x12340010, 0x12340020, 0x1234000C, 0x1234000C, true, false, true, HEAP_ADDRESS + 256, 0x12345664);
+}
+
+void testScasb0x2ae() {
+    cpu->big = true;
+
+    // ESI > EDI
+    strTest(1, 0, 0xae, 0, NULL, 0, "0", 1, 0, 1, 0, 0, 2, 0, true, false, false, HEAP_ADDRESS + 256, 0x12345631);
+
+    // ESI < EDI
+    strTest(1, 0, 0xae, 0, NULL, 0, "1", 1, 0, 1, 0, 0, 2, 0, true, true, false, HEAP_ADDRESS + 256, 0x12345630);
+
+    // ESI == EDI
+    strTest(1, 0, 0xae, 0, NULL, 0, "1", 1, 0, 1, 0, 0, 2, 0, true, false, true, HEAP_ADDRESS + 256, 0x12345631);
+
+    // repz
+    strTest(1, 0xf3, 0xae, 0, NULL, 0, "ddde", 4, 0, 256, 256, 0, 260, 252, true, true, false, HEAP_ADDRESS, 0x12345664);
+    strTest(1, 0xf3, 0xae, 0, NULL, 0, "dddd", 4, 0, 256, 4, 0, 260, 0, true, false, true, HEAP_ADDRESS, 0x12345664);
+
+    // repnz
+    strTest(1, 0xf2, 0xae, 0, NULL, 0, "abcd", 4, 0, 256, 256, 0, 260, 252, true, false, true, HEAP_ADDRESS, 0x12345664);
+}
+
+void testScasw0x0af() {
+    cpu->big = false;
+
+    // SI > DI (DF)
+    strTest(2, 0, 0xaf, DF, NULL, 0, "11", 2, 0x12340010, 0x12340020, 0, 0x12340010, 0x1234001E, 0, true, false, false, HEAP_ADDRESS + 256, 0x12343231);
+
+    // SI > DI
+    strTest(2, 0, 0xaf, 0, NULL, 0, "11", 2, 0x12340010, 0x12340020, 0, 0x12340010, 0x12340022, 0, true, false, false, HEAP_ADDRESS + 256, 0x12343132);
+
+    // SI < DI
+    strTest(2, 0, 0xaf, 0, NULL, 0, "12", 2, 0x12340010, 0x12340020, 0, 0x12340010, 0x12340022, 0, true, true, false, HEAP_ADDRESS + 256, 0x12343131);
+
+    // SI == DI
+    // this will test 16-bit wrapping
+    strTest(2, 0, 0xaf, 0, NULL, 0, "11", 2, 0x12340010, 0x1234FFFE, 0, 0x12340010, 0x12340000, 0, true, false, true, HEAP_ADDRESS - 0x10000 + 200, 0x12343131);
+
+    // repz
+    strTest(2, 0xf3, 0xaf, 0, NULL, 0, "abababac", 8, 0x12340000, 0x12340000, 0x12340010, 0x12340000, 0x12340008, 0x1234000C, true, true, false, HEAP_ADDRESS + 256, 0x12346261);
+    strTest(2, 0xf3, 0xaf, 0, NULL, 0, "abababab", 8, 0x12340000, 0x12340000, 0x12340004, 0x12340000, 0x12340008, 0x12340000, true, false, true, HEAP_ADDRESS + 256, 0x12346261);
+
+    // repnz
+    strTest(2, 0xf2, 0xaf, 0, NULL, 0, "adadadab", 8, 0x12340000, 0x12340000, 0x12340010, 0x12340000, 0x12340008, 0x1234000C, true, false, true, HEAP_ADDRESS + 256, 0x12346261);
+
+    // repnz (DF)
+    strTest(2, 0xf2, 0xaf, DF, NULL, 0, "adadadab", 8, 0x12340020, 0x12340010, 0x12340010, 0x12340020, 0x12340008, 0x1234000C, true, false, true, HEAP_ADDRESS + 256, 0x12346162);
+}
+
+void testScasd0x2af() {
+    cpu->big = true;
+
+    // reminder, little endian, so the biggest part of the 4 byte word is the last byte
+
+    // ESI > EDI (DF)
+    // since this is reversed, the biggest part of the number is the first byte
+    strTest(4, 0, 0xaf, DF, NULL, 0, "1999", 4, 0x00000010, 0x00000020, 0, 0x00000010, 0x0000001C, 0, true, false, false, HEAP_ADDRESS + 256, 0x34333231);
+
+    // ESI > EDI
+    strTest(4, 0, 0xaf, 0, NULL, 0, "4321", 4, 0x00000010, 0x00000020, 0, 0x00000010, 0x00000024, 0, true, false, false, HEAP_ADDRESS + 256, 0x32323232);
+
+    // ESI < EDI
+    strTest(4, 0, 0xaf, 0, NULL, 0, "2222", 4, 0x00000010, 0x00000020, 0, 0x00000010, 0x00000024, 0, true, true, false, HEAP_ADDRESS + 256, 0x31323334);
+
+    // SI == DI
+    strTest(4, 0, 0xaf, 0, NULL, 0, "1234", 4, 0x00000010, 0x00000020, 0, 0x00000010, 0x00000024, 0, true, false, true, HEAP_ADDRESS + 256, 0x34333231);
+
+    // repz
+    strTest(4, 0xf3, 0xaf, 0, NULL, 0, "1234123412341235", 16, 0x00000010, 0x00000020, 0x00000010, 0x00000010, 0x00000030, 0x0000000C, true, true, false, HEAP_ADDRESS + 256, 0x34333231);
+    strTest(4, 0xf3, 0xaf, 0, NULL, 0, "1234123412341234", 16, 0x00000010, 0x00000020, 0x0000004, 0x00000010, 0x00000030, 0x00000000, true, false, true, HEAP_ADDRESS + 256, 0x34333231);
+
+    // repnz
+    strTest(4, 0xf2, 0xaf, 0, NULL, 0, "1235000032151234", 16, 0x00000010, 0x00000020, 0x00000010, 0x00000010, 0x00000030, 0x0000000C, true, false, true, HEAP_ADDRESS + 256, 0x34333231);
+
+    // repz (DF)
+    strTest(4, 0xf3, 0xaf, DF, NULL, 0, "1234123412341235", 16, 0x00000010, 0x00000020, 0x00000010, 0x00000010, 0x00000010, 0x0000000C, true, true, false, HEAP_ADDRESS + 256, 0x31323334);
+}
+
 void testMovsb0x0a4() {
     cpu->big = false;
 
@@ -7950,6 +8053,11 @@ int main(int argc, char **argv) {
     run(testLodsb0x2ac, "Lodsb 2ac");
     run(testLodsw0x0ad, "Lodsw 0ad");
     run(testLodsd0x2ad, "Lodsd 2ad");
+
+    run(testScasb0x0ae, "Scasb 0ae");
+    run(testScasb0x2ae, "Scasb 2ae");
+    run(testScasw0x0af, "Scasw 0af");
+    run(testScasd0x2af, "Scasd 2af");
 
     run(testMovAlIb0x0b0, "Mov 0b0");
     run(testMovAlIb0x2b0, "Mov 2b0");
