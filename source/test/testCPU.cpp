@@ -7034,6 +7034,297 @@ void testSegDs0x23e() {
     testSeg(0x3e, DS);
 }
 
+void doTestCmov(U32 instruction, bool isNotFlag, U32 flags, U32 cmpValueThatTriggersFlag, U32 cmpValueThatDoesNotTriggerFlag) {
+    for (U32 setFlags = 0; setFlags < 2; setFlags++) {
+        for (U32 useFlags = 0; useFlags < 2; useFlags++) {
+            for (U32 ed = 0; ed < 8; ed++) {
+                for (U32 gd = 0; gd < 8; gd++) {
+                    Reg* e;
+                    Reg* g;
+
+                    if (ed == gd)
+                        continue;
+                    U8 rm = ed | (gd << 3) | 0xC0;
+
+                    if (setFlags) {
+                        newInstructionWithRM(instruction, rm, useFlags ? flags : 0);
+                    } else {
+                        // cmp ed, 0
+                        newInstructionWithRM(0x81, 0xf8 | ed, 0);
+                        if (cpu->big) {
+                            pushCode32(useFlags ? cmpValueThatTriggersFlag : cmpValueThatDoesNotTriggerFlag);
+                        } else {
+                            pushCode16(useFlags ? cmpValueThatTriggersFlag : cmpValueThatDoesNotTriggerFlag);
+                        }
+                        pushCode8(0x0F);
+                        pushCode8(instruction & 0xFF);
+                        pushCode8(rm);
+                    }
+                    e = &cpu->reg[ed];
+                    g = &cpu->reg[gd];
+                    e->u32 = 0x11112222;
+                    g->u32 = 0x33334444;
+                    runTestCPU();
+
+                    bool wasChanged = useFlags;
+
+                    if (isNotFlag) {
+                        wasChanged = !wasChanged;
+                    }
+                    if (wasChanged) {
+                        if (cpu->big) {
+                            assertTrue(g->u32 == 0x11112222);
+                        } else {
+                            assertTrue(g->u32 == 0x33332222);
+                        }
+                    } else {
+                        assertTrue(g->u32 == 0x33334444);
+                    }
+                }
+            }
+            for (U32 gd = 0; gd < 8; gd++) {
+                Reg* g;
+                
+                U8 rm = (gd << 3);
+                if (cpu->big) {
+                    rm += 5;
+                } else {
+                    rm += 6;
+                }
+                if (setFlags) {
+                    newInstructionWithRM(instruction, rm, useFlags ? flags : 0);
+                } else {
+                    // cmp [200], 0
+                    newInstructionWithRM(0x81, 0x38 | (cpu->big?5:6), 0);
+                    if (cpu->big) {
+                        pushCode32(200);
+                    } else {
+                        pushCode16(200);
+                    }
+                    if (cpu->big) {
+                        pushCode32(useFlags ? cmpValueThatTriggersFlag : cmpValueThatDoesNotTriggerFlag);
+                    } else {
+                        pushCode16(useFlags ? cmpValueThatTriggersFlag : cmpValueThatDoesNotTriggerFlag);
+                    }
+                    pushCode8(0x0F);
+                    pushCode8(instruction & 0xFF);
+                    pushCode8(rm);
+                }
+                if (cpu->big) {
+                    pushCode32(200);
+                } else {
+                    pushCode16(200);
+                }
+                writed(cpu->seg[DS].address + 200, 0x11112222);
+                g = &cpu->reg[gd];
+                g->u32 = 0x33334444;
+                runTestCPU();
+
+                bool wasChanged = useFlags;
+
+                if (isNotFlag) {
+                    wasChanged = !wasChanged;
+                }
+                if (wasChanged) {
+                    if (cpu->big) {
+                        assertTrue(g->u32 == 0x11112222);
+                    } else {
+                        assertTrue(g->u32 == 0x33332222);
+                    }
+                } else {
+                    assertTrue(g->u32 == 0x33334444);
+                }
+            }            
+        }
+    }
+    runTestCPU();
+}
+
+void testCmovO0x140() {
+    cpu->big = 0;
+    doTestCmov(0x140, false, OF, 0x8333, 0x3333);
+}
+
+void testCmovO0x340() {
+    cpu->big = 1;
+    doTestCmov(0x340, false, OF, 0x83330000, 0x23330000);
+}
+
+void testCmovNO0x141() {
+    cpu->big = 0;
+    doTestCmov(0x141, true, OF, 0x8333, 0x3333);
+}
+
+void testCmovNO0x341() {
+    cpu->big = 1;
+    doTestCmov(0x341, true, OF, 0x83330000, 0x23330000);
+}
+
+void testCmovB0x142() {
+    cpu->big = 0;
+    doTestCmov(0x142, false, CF, 0x3333, 0x1333);
+}
+
+void testCmovB0x342() {
+    cpu->big = 1;
+    doTestCmov(0x342, false, CF, 0x23330000, 0x03330000);
+}
+
+void testCmovNB0x143() {
+    cpu->big = 0;
+    doTestCmov(0x143, true, CF, 0x3333, 0x1333);
+}
+
+void testCmovNB0x343() {
+    cpu->big = 1;
+    doTestCmov(0x343, true, CF, 0x23330000, 0x03330000);
+}
+
+void testCmovZ0x144() {
+    cpu->big = 0;
+    doTestCmov(0x144, false, ZF, 0x2222, 0x1333);
+}
+
+void testCmovZ0x344() {
+    cpu->big = 1;
+    doTestCmov(0x344, false, ZF, 0x11112222, 0x13332222);
+}
+
+void testCmovNZ0x145() {
+    cpu->big = 0;
+    doTestCmov(0x145, true, ZF, 0x2222, 0x3333);
+}
+
+void testCmovNZ0x345() {
+    cpu->big = 1;
+    doTestCmov(0x345, true, ZF, 0x11112222, 0x33332222);
+}
+
+void testCmovBE0x146() {
+    cpu->big = 0;
+    doTestCmov(0x146, false, ZF | CF, 0x2222, 0x1333);
+    doTestCmov(0x146, false, ZF | CF, 0x3333, 0x1333);
+}
+
+void testCmovBE0x346() {
+    cpu->big = 1;
+    doTestCmov(0x346, false, ZF | CF, 0x11112222, 0x03332222);
+    doTestCmov(0x346, false, ZF | CF, 0x23330000, 0x03330000);
+}
+
+void testCmovNBE0x147() {
+    cpu->big = 0;
+    doTestCmov(0x147, true, ZF | CF, 0x2222, 0x1333);
+    doTestCmov(0x147, true, ZF | CF, 0x3333, 0x1333);
+}
+
+void testCmovNBE0x347() {
+    cpu->big = 1;
+    doTestCmov(0x347, true, ZF | CF, 0x11112222, 0x03332222);
+    doTestCmov(0x347, true, ZF | CF, 0x23330000, 0x03330000);
+}
+
+void testCmovS0x148() {
+    cpu->big = 0;
+    doTestCmov(0x148, false, SF, 0x2223, 0x1333);
+    doTestCmov(0x148, false, SF, 0x8000, 0xFFFF);
+}
+
+void testCmovS0x348() {
+    cpu->big = 1;
+    doTestCmov(0x348, false, SF, 0x11112223, 0x03332222);
+    doTestCmov(0x348, false, SF, 0x80000000, 0xFFFFFFFF);
+}
+
+void testCmovNS0x149() {
+    cpu->big = 0;
+    doTestCmov(0x149, true, SF, 0x2223, 0x1333);
+    doTestCmov(0x149, true, SF, 0x8000, 0xFFFF);
+}
+
+void testCmovNS0x349() {
+    cpu->big = 1;
+    doTestCmov(0x349, true, SF, 0x11112223, 0x03332222);
+    doTestCmov(0x349, true, SF, 0x80000000, 0xFFFFFFFF);
+}
+
+void testCmovP0x14a() {
+    cpu->big = 0;
+    doTestCmov(0x14a, false, PF, 0x2222, 0x2221); // diff of 0 is PF, 1 is not PF
+    doTestCmov(0x14a, false, PF, 0x221f, 0x2220); // diff of 3 is PF, 2 is not PF
+}
+
+void testCmovP0x34a() {
+    cpu->big = 1;
+    doTestCmov(0x34a, false, PF, 0x11112222, 0x11112221);
+    doTestCmov(0x34a, false, PF, 0x1111221f, 0x11112220);
+}
+
+void testCmovNP0x14b() {
+    cpu->big = 0;
+    doTestCmov(0x14b, true, PF, 0x2222, 0x2221); // diff of 0 is PF, 1 is not PF
+    doTestCmov(0x14b, true, PF, 0x221f, 0x2220); // diff of 3 is PF, 2 is not PF
+}
+
+void testCmovNP0x34b() {
+    cpu->big = 1;
+    doTestCmov(0x34b, true, PF, 0x11112222, 0x11112221);
+    doTestCmov(0x34b, true, PF, 0x1111221f, 0x11112220);
+}
+
+void testCmovL0x14c() {
+    cpu->big = 0;
+    // signed less than
+    doTestCmov(0x14c, false, SF, 0x2223, 0x2222); 
+    doTestCmov(0x14c, false, OF, 0x7fff, 0xffff);
+}
+
+void testCmovL0x34c() {
+    cpu->big = 1;
+    doTestCmov(0x34c, false, SF, 0x11112223, 0x11112222);
+    doTestCmov(0x34c, false, OF, 0x7fffffff, 0xffffffff);
+}
+
+void testCmovNL0x14d() {
+    cpu->big = 0;
+    doTestCmov(0x14d, true, SF, 0x2223, 0x2222);
+    doTestCmov(0x14d, true, OF, 0x7fff, 0xffff);
+}
+
+void testCmovNL0x34d() {
+    cpu->big = 1;
+    doTestCmov(0x34d, true, SF, 0x11112223, 0x11112222);
+    doTestCmov(0x34d, true, OF, 0x7fffffff, 0xffffffff);
+}
+
+void testCmovLE0x14e() {
+    cpu->big = 0;
+    // signed less than or equal
+    doTestCmov(0x14e, false, ZF, 0x2222, 0x2221);
+    doTestCmov(0x14e, false, SF, 0x2223, 0x2221);
+    doTestCmov(0x14e, false, OF, 0x7fff, 0xffff);
+}
+
+void testCmovLE0x34e() {
+    cpu->big = 1;
+    doTestCmov(0x34e, false, ZF, 0x11112222, 0x11112221);
+    doTestCmov(0x34e, false, SF, 0x11112223, 0x11112221);
+    doTestCmov(0x34e, false, OF, 0x7fffffff, 0xffffffff);
+}
+
+void testCmovNLE0x14f() {
+    cpu->big = 0;
+    doTestCmov(0x14f, true, ZF, 0x2222, 0x2221);
+    doTestCmov(0x14f, true, SF, 0x2223, 0x2221);
+    doTestCmov(0x14f, true, OF, 0x7fff, 0xffff);
+}
+
+void testCmovNLE0x34f() {
+    cpu->big = 1;
+    doTestCmov(0x34f, true, ZF, 0x11112222, 0x11112221);
+    doTestCmov(0x34f, true, SF, 0x11112223, 0x11112221);
+    doTestCmov(0x34f, true, OF, 0x7fffffff, 0xffffffff);
+}
 void run(void (*functionPtr)(), const char* name) {
     didFail = 0;
     setup();
@@ -8199,6 +8490,39 @@ int main(int argc, char **argv) {
     run(testSseUcomiss32e, "UCOMISS 32E (sse1)");
     run(testSse2Comisd12f, "COMISD 12F (sse2)");
     run(testSseComiss32f, "COMISS 32F (sse1)");
+
+    run(testCmovO0x140, "CMOVO 140");
+    run(testCmovO0x340, "CMOVO 340");
+    run(testCmovNO0x141, "CMOVNO 141");
+    run(testCmovNO0x341, "CMOVNO 341");
+    run(testCmovB0x142, "CMOVB 142");
+    run(testCmovB0x342, "CMOVB 342");
+    run(testCmovNB0x143, "CMOVNB 143");
+    run(testCmovNB0x343, "CMOVNB 343");
+    run(testCmovZ0x144, "CMOVZ 144");
+    run(testCmovZ0x344, "CMOVZ 344");
+    run(testCmovNZ0x145, "CMOVNZ 145");
+    run(testCmovNZ0x345, "CMOVNZ 345");
+    run(testCmovBE0x146, "CMOVBE 146");
+    run(testCmovBE0x346, "CMOVBE 346");
+    run(testCmovNBE0x147, "CMOVNBE 147");
+    run(testCmovNBE0x347, "CMOVNBE 347");
+    run(testCmovS0x148, "CMOVS 148");
+    run(testCmovS0x348, "CMOVS 348");
+    run(testCmovNS0x149, "CMOVNS 149");
+    run(testCmovNS0x349, "CMOVNS 349");
+    run(testCmovP0x14a, "CMOVP 14a");
+    run(testCmovP0x34a, "CMOVP 34a");
+    run(testCmovNP0x14b, "CMOVNP 14b");
+    run(testCmovNP0x34b, "CMOVNP 34b");
+    run(testCmovL0x14c, "CMOVL 14c");
+    run(testCmovL0x34c, "CMOVL 34c");
+    run(testCmovNL0x14d, "CMOVNL 14d");
+    run(testCmovNL0x34d, "CMOVNL 34d");
+    run(testCmovLE0x14e, "CMOVLE 14e");
+    run(testCmovLE0x34e, "CMOVLE 34e");
+    run(testCmovNLE0x14f, "CMOVNLE 14f");
+    run(testCmovNLE0x34f, "CMOVNLE 34f");
 
     run(testSse2Movmskpd150, "MOVMSKPD 150 (sse2)");
     run(testSseMovmskps350, "MOVMSKPS 350 (sse1)");
