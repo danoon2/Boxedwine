@@ -750,9 +750,9 @@ void evaluateToReg(DynReg reg, DynWidth dstWidth, DynReg left, bool isRightConst
     } else {
         if (signedCompare) {
             if (regWidth == DYN_16bit) {
-                mov32sx16(left, left);
+                mov32sx16(right, right);
             } else if (regWidth == DYN_8bit) {
-                mov32sx8(left, left);
+                mov32sx8(right, right);
             }
         }
         cmpRegs32(left, right);
