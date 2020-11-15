@@ -234,6 +234,7 @@ public:
     void calculateAddress16(U8 dst);
     void calculateAddress32(U8 dst);
     void doIf(U8 reg, U32 value, DoIfOperator op, std::function<void(void)> ifBlock, std::function<void(void)> elseBlock, std::function<void(void)> afterCmpBeforeBranchBlock = nullptr, bool valueIsReg = false, bool generateCmp = true);
+    void doIfBitSet(U8 reg, U32 bitPos, std::function<void(void)> ifBlock, std::function<void(void)> elseBlock=nullptr);
     void writeJumpAmount(U32 pos, U32 toLocation);
     void doJmp(bool mightNeedCS); // jump to current cpu->eip
     void jmpReg(U8 reg, bool mightNeedCS);
@@ -320,7 +321,9 @@ public:
 
     void andRegs32(U8 dst, U8 src1, U8 src2, bool flags = false);
     void andRegs64(U8 dst, U8 src1, U8 src2);
+    void testRegs32(U8 src1, U8 src2);
     void andValue32(U8 dst, U8 src, U32 value, bool flags = false);
+    void testValue32(U8 src, U32 value);
     void andValue64(U8 dst, U8 src, U64 value);
 
     void andNotRegs32(U8 dst, U8 src1, U8 src2);    

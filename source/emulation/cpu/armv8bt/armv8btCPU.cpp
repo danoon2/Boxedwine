@@ -470,6 +470,11 @@ void Armv8btCPU::translateData(Armv8btAsm* data, Armv8btAsm* firstPass) {
         if (data->stopAfterInstruction!=-1 && (int)data->ipAddressCount==data->stopAfterInstruction) {
             break;
         }
+        for (int i = 0; i < xNumberOfTmpRegs; i++) {
+            if (data->tmpRegInUse[i]) {
+                kpanic("op(%x) leaked tmp reg", data->decodedOp->originalOp);
+            }
+        }
         data->resetForNewOp();
     }     
     block.op->dealloc(true);

@@ -187,6 +187,7 @@ static void dshl16Cl(Armv8btAsm* data, U8 result, U8 dst, U8 src, std::function<
         }, nullptr, nullptr, false, false);
     data->lazyFlags = NULL;
     data->flagsOp = NULL;
+    data->releaseTmpReg(tmpReg);
 }
 
 static void dshr16Cl(Armv8btAsm* data, U8 result, U8 dst, U8 src, std::function<void(void)> writeResult) {
@@ -243,6 +244,7 @@ static void dshr16Cl(Armv8btAsm* data, U8 result, U8 dst, U8 src, std::function<
         }, nullptr, nullptr, false, false);
     data->lazyFlags = NULL;
     data->flagsOp = NULL;
+    data->releaseTmpReg(tmpReg);
 }
 
 static void dshl32Cl(Armv8btAsm* data, U8 result, U8 dst, U8 src, std::function<void(void)> writeResult) {
@@ -296,6 +298,7 @@ static void dshl32Cl(Armv8btAsm* data, U8 result, U8 dst, U8 src, std::function<
         }, nullptr, nullptr, false, false);
     data->lazyFlags = NULL;
     data->flagsOp = NULL;
+    data->releaseTmpReg(tmpReg);
 }
 
 static void dshr32Cl(Armv8btAsm* data, U8 result, U8 dst, U8 src, std::function<void(void)> writeResult) {
@@ -349,6 +352,7 @@ static void dshr32Cl(Armv8btAsm* data, U8 result, U8 dst, U8 src, std::function<
         }, nullptr, nullptr, false, false);
     data->lazyFlags = NULL;
     data->flagsOp = NULL;
+    data->releaseTmpReg(tmpReg);
 }
 
 void opDshlR16R16(Armv8btAsm* data) {
@@ -1071,6 +1075,7 @@ void arithShiftMemoryCl(Armv8btAsm* data, shiftRegCl32 pfn, Arm8BtLazyFlags* laz
         data->readMemory(addressReg, xDst, width, true, data->decodedOp->lock != 0);
         pfn(data, xResult, xDst, tmpReg);
         data->writeMemory(addressReg, xResult, width, true, data->decodedOp->lock != 0, xDst, restartPos);
+        data->releaseTmpReg(addressReg);
 
         if (data->lazyFlags) {
             // we don't know at compile time if CL will be 0 or not, so we can save the lazy flags for later

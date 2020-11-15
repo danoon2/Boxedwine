@@ -383,6 +383,8 @@ void movs(Armv8btAsm* data, U32 width) {
             data->addRegs32(siReg, siReg, incReg);
             data->movRegToReg(xESI, siReg, 16, false);
 
+            data->releaseTmpReg(siReg);
+            data->releaseTmpReg(diReg);
             data->releaseTmpReg(incReg);
         }
     } else {
@@ -557,6 +559,7 @@ void stos(Armv8btAsm* data, U32 width) {
             data->addRegs32(diReg, diReg, incReg);
             data->movRegToReg(xEDI, diReg, 16, false);
 
+            data->releaseTmpReg(diReg);
             data->releaseTmpReg(incReg);
         }
     } else {
@@ -727,6 +730,7 @@ static void lods(Armv8btAsm* data, U32 width) {
             data->movRegToReg(xESI, siReg, 16, false);
 
             data->releaseTmpReg(incReg);
+            data->releaseTmpReg(siReg);
         }
     } else {
         if (data->decodedOp->repZero || data->decodedOp->repNotZero) {

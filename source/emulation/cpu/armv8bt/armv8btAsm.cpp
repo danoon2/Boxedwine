@@ -578,6 +578,14 @@ void Armv8btAsm::andRegs32(U8 dst, U8 src1, U8 src2, bool flags) {
     write8(flags?0x6a:0x0a); // 0a is 32-bit version (8a is 64-bit)
 }
 
+void Armv8btAsm::testRegs32(U8 src1, U8 src2) {
+    write8(0x1f | (U8)(src1 << 5));
+    write8((U8)(src1 >> 3));
+    write8(src2);
+    write8(0x6a);
+}
+
+
 void Armv8btAsm::andRegs64(U8 dst, U8 src1, U8 src2) {
     write8(dst | (U8)(src1 << 5));
     write8((U8)(src1 >> 3));
@@ -613,6 +621,23 @@ void Armv8btAsm::andValue32(U8 dst, U8 src, U32 value, bool flags) {
     } else {
         U8 tmp = getRegWithConst(value);
         andRegs32(dst, src, tmp);
+        releaseTmpReg(tmp);
+    }
+}
+
+void Armv8btAsm::testValue32(U8 src, U32 value) {
+    U64 encoding = 0;
+    if (processLogicalImmediate(value, 32, encoding)) {
+        U32 imms = encoding & 0x3f;
+        U32 immr = (encoding >> 6) & 0x3f;
+        // N will always be 0 for 32-bit
+        write8(0x1f | (U8)(src << 5));
+        write8((U8)(src >> 3) | (U8)(imms << 2));
+        write8((U8)(immr));
+        write8(0x72);
+    } else {
+        U8 tmp = getRegWithConst(value);
+        testRegs32(src, tmp);
         releaseTmpReg(tmp);
     }
 }
@@ -1940,6 +1965,40 @@ void Armv8btAsm::writeJumpAmount(U32 pos, U32 toLocation) {
         this->buffer[pos] = (U8)(amount << 5) | this->buffer[pos];
         this->buffer[pos + 1] = (U8)(amount >> 3);
         this->buffer[pos + 2] = (U8)(amount >> 11);
+    }
+}
+
+void Armv8btAsm::doIfBitSet(U8 reg, U32 bitPos, std::function<void(void)> ifBlock, std::function<void(void)> elseBlock) {
+    if (ifBlock && !elseBlock) {
+        // tbz reg, bitPos, label
+        U32 pos = bufferPos;
+        write8(reg);
+        write8(0x0);
+        write8(bitPos << 3);
+        write8(0x36);
+        ifBlock();
+        S32 amount = (S32)bufferPos - (S32)pos;
+        amount = amount >> 2;
+        this->buffer[pos] |= (U8)(amount << 5);
+        this->buffer[pos + 1] = (U8)(amount >> 3);
+        this->buffer[pos + 2] |= (U8)((amount >> 11) & 0x7);
+    } else if (!ifBlock && elseBlock) {
+        // tbnz reg, bitPos, label
+        U32 pos = bufferPos;
+        write8(reg);
+        write8(0x0);
+        write8(bitPos << 3);
+        write8(0x37);
+        elseBlock();
+        S32 amount = (S32)bufferPos - (S32)pos;
+        amount = amount >> 2;
+        this->buffer[pos] |= (U8)(amount << 5);
+        this->buffer[pos + 1] = (U8)(amount >> 3);
+        this->buffer[pos + 2] |= (U8)((amount >> 11) & 0x7);
+    } else if (ifBlock && elseBlock) {
+        kpanic("Armv8btAsm::doIfBitSet if and else combination not implemented");
+    } else {
+        kpanic("Armv8btAsm::doIfBitSet if or else block must be supplied");
     }
 }
 

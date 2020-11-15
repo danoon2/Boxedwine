@@ -116,6 +116,8 @@ class Arm8BtLazyFlagsAdd8 : public Arm8BtLazyFlagsDefault8 {
         data->andRegs32(tmp1, tmp1, tmp2);
         data->copyBitsFromSourceAtPositionToDest(tmp1, tmp1, 7, 1);
         data->copyBitsFromSourceToDestAtPosition(reg, tmp1, 11, 1); // OF is 0x800 (bit 11)
+        data->releaseTmpReg(tmp1);
+        data->releaseTmpReg(tmp2);
     }
     virtual void setAF(Armv8btAsm* data, U8 reg) {
         // ((cpu->dst.u8 ^ cpu->src.u8) ^ cpu->result.u8) & 0x10;
@@ -158,6 +160,8 @@ class Arm8BtLazyFlagsAdd16 : public Arm8BtLazyFlagsDefault16 {
         data->andRegs32(tmp1, tmp1, tmp2);
         data->copyBitsFromSourceAtPositionToDest(tmp1, tmp1, 15, 1);
         data->copyBitsFromSourceToDestAtPosition(reg, tmp1, 11, 1); // OF is 0x800 (bit 11)
+        data->releaseTmpReg(tmp1);
+        data->releaseTmpReg(tmp2);
     }
     virtual void setAF(Armv8btAsm* data, U8 reg) {
         // ((cpu->dst.u16 ^ cpu->src.u16) ^ cpu->result.u16) & 0x10;
@@ -415,6 +419,8 @@ class Arm8BtLazyFlagsSub8 : public Arm8BtLazyFlagsDefault8 {
         data->andRegs32(tmp1, tmp1, tmp2);
         data->copyBitsFromSourceAtPositionToDest(tmp1, tmp1, 7, 1);
         data->copyBitsFromSourceToDestAtPosition(reg, tmp1, 11, 1); // OF is 0x800 (bit 11)
+        data->releaseTmpReg(tmp1);
+        data->releaseTmpReg(tmp2);
     }
     virtual void setAF(Armv8btAsm* data, U8 reg) { 
         // ((cpu->dst.u8 ^ cpu->src.u8) ^ cpu->result.u8) & 0x10; 
@@ -457,6 +463,8 @@ class Arm8BtLazyFlagsSub16 : public Arm8BtLazyFlagsDefault16 {
         data->andRegs32(tmp1, tmp1, tmp2);
         data->copyBitsFromSourceAtPositionToDest(tmp1, tmp1, 15, 1);
         data->copyBitsFromSourceToDestAtPosition(reg, tmp1, 11, 1); // OF is 0x800 (bit 11)
+        data->releaseTmpReg(tmp1);
+        data->releaseTmpReg(tmp2);
     }
     virtual void setAF(Armv8btAsm* data, U8 reg) {
         // ((cpu->dst.u16 ^ cpu->src.u16) ^ cpu->result.u16) & 0x10;

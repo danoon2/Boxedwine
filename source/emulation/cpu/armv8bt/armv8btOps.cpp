@@ -794,6 +794,9 @@ void opNotE8(Armv8btAsm* data) {
     data->readMemory(addressReg, readReg, 8, true, data->decodedOp->lock != 0);
     data->notReg32(resultReg, readReg);
     data->writeMemory(addressReg, resultReg, 8, true, data->decodedOp->lock != 0, readReg, restartPos);
+    data->releaseTmpReg(addressReg);
+    data->releaseTmpReg(readReg);
+    data->releaseTmpReg(resultReg);
 }
 void opNotR16(Armv8btAsm* data) {
     // doesn't affect flags
@@ -815,6 +818,9 @@ void opNotE16(Armv8btAsm* data) {
     data->readMemory(addressReg, readReg, 16, true, data->decodedOp->lock != 0);
     data->notReg32(resultReg, readReg);
     data->writeMemory(addressReg, resultReg, 16, true, data->decodedOp->lock != 0, readReg, restartPos);
+    data->releaseTmpReg(addressReg);
+    data->releaseTmpReg(readReg);
+    data->releaseTmpReg(resultReg);
 }
 void opNotR32(Armv8btAsm* data) {
     // doesn't affect flags
@@ -833,6 +839,9 @@ void opNotE32(Armv8btAsm* data) {
     data->readMemory(addressReg, readReg, 32, true, data->decodedOp->lock != 0);
     data->notReg32(resultReg, readReg);
     data->writeMemory(addressReg, resultReg, 32, true, data->decodedOp->lock != 0, readReg, restartPos);
+    data->releaseTmpReg(addressReg);
+    data->releaseTmpReg(readReg);
+    data->releaseTmpReg(resultReg);
 }
 
 void opNegR8(Armv8btAsm* data) {
@@ -2955,6 +2964,7 @@ void opCwd(Armv8btAsm* data) {
     data->signExtend(tmpReg, xEAX, 16);
     data->shiftRegRightWithValue32(tmpReg, tmpReg, 16);
     data->movRegToReg(xEDX, tmpReg, 16, false);
+    data->releaseTmpReg(tmpReg);
 }
 // if (((S32)EAX) < 0)
 //     EDX = 0xFFFFFFFF;
@@ -2965,13 +2975,14 @@ void opCwq(Armv8btAsm* data) {
 }
 void opCallAp(Armv8btAsm* data) {
     kpanic("Need to test");
+    // cpu->call(0, op->imm, op->disp, cpu->eip.u32+op->len);
     data->syncRegsFromHost();
 
     // void common_call(CPU* cpu, U32 big, U32 selector, U32 offset, U32 oldEip)
     data->mov64(0, xCPU); // param 1 (CPU)
     data->loadConst(1, 0); // param 2 (big = false)
     data->loadConst(2, data->decodedOp->imm); // param 3 (selector)
-    data->peekNativeReg16(3, data->decodedOp->disp); // param 4 (offset)
+    data->loadConst(3, data->decodedOp->disp); // param 4 (offset)
     data->loadConst(4, data->ip); // param 5 (oldEip)
 
     data->callHost((void*)common_call);    
@@ -2981,13 +2992,14 @@ void opCallAp(Armv8btAsm* data) {
 
 void opCallFar(Armv8btAsm* data) {
     kpanic("Need to test");
+    // cpu->call(1, op->imm, op->disp, cpu->eip.u32 + op->len);
     data->syncRegsFromHost();
 
     // void common_call(CPU* cpu, U32 big, U32 selector, U32 offset, U32 oldEip)
     data->mov64(0, xCPU); // param 1 (CPU)
     data->loadConst(1, 1); // param 2 (big = true)
     data->loadConst(2, data->decodedOp->imm); // param 3 (selector)
-    data->peekNativeReg16(3, data->decodedOp->disp); // param 4 (offset)
+    data->loadConst(3, data->decodedOp->disp); // param 4 (offset)
     data->loadConst(4, data->ip); // param 5 (oldEip)
 
     data->callHost((void*)common_call);
@@ -3294,7 +3306,8 @@ void opRdtsc(Armv8btAsm* data) {
     data->getVirtualCounter(tmpReg);
     data->movRegToReg(xEAX, tmpReg, 32, false);
     data->shiftRegRightWithValue64(xEDX, tmpReg, 32);
-    
+    data->releaseTmpReg(tmpReg);
+
     /*
     data->syncRegsFromHost();
     data->mov64(0, xCPU); // param 1 (CPU)
@@ -3303,6 +3316,7 @@ void opRdtsc(Armv8btAsm* data) {
     */
 }
 void opCPUID(Armv8btAsm* data) {   
+    kpanic("Need to test");
     // switch (EAX) {
     // case 0:	/* Vendor ID String and maximum level? */
     //     EAX = 2;  /* Maximum level */
@@ -3635,109 +3649,622 @@ void opLoopZ(Armv8btAsm* data) {}
 void opLoop(Armv8btAsm* data) {}
 void opJcxz(Armv8btAsm* data) {}
 
-void opInAlIb(Armv8btAsm* data) {}
-void opInAxIb(Armv8btAsm* data) {}
-void opInEaxIb(Armv8btAsm* data) {}
-void opOutIbAl(Armv8btAsm* data) {}
-void opOutIbAx(Armv8btAsm* data) {}
-void opOutIbEax(Armv8btAsm* data) {}
-void opInAlDx(Armv8btAsm* data) {}
-void opInAxDx(Armv8btAsm* data) {}
-void opInEaxDx(Armv8btAsm* data) {}
-void opOutDxAl(Armv8btAsm* data) {}
-void opOutDxAx(Armv8btAsm* data) {}
-void opOutDxEax(Armv8btAsm* data) {}
+void opInAlIb(Armv8btAsm* data) {
+    kpanic("Need to test");
+    U8 tmpReg = data->getRegWithConst(0xFF);
+    data->movRegToReg8(tmpReg, 0);
+    data->releaseTmpReg(tmpReg);
+}
+void opInAxIb(Armv8btAsm* data) {
+    kpanic("Need to test");
+    U8 tmpReg = data->getRegWithConst(0xFFFF);
+    data->movRegToReg(xEAX, tmpReg, 16, false);
+    data->releaseTmpReg(tmpReg);
+}
+void opInEaxIb(Armv8btAsm* data) {
+    kpanic("Need to test");
+    data->orValue32(xEAX, xEAX, 0xFFFFFFFF);
+}
+void opOutIbAl(Armv8btAsm* data) {
+    kpanic("Need to test");
+}
+void opOutIbAx(Armv8btAsm* data) {
+    kpanic("Need to test");
+}
+void opOutIbEax(Armv8btAsm* data) {
+    kpanic("Need to test");
+}
+void opInAlDx(Armv8btAsm* data) {
+    kpanic("Need to test");
+    U8 tmpReg = data->getRegWithConst(0xFF);
+    data->movRegToReg8(tmpReg, 0);
+    data->releaseTmpReg(tmpReg);
+}
+void opInAxDx(Armv8btAsm* data) {
+    kpanic("Need to test");
+    U8 tmpReg = data->getRegWithConst(0xFFFF);
+    data->movRegToReg(xEAX, tmpReg, 16, false);
+    data->releaseTmpReg(tmpReg);
+}
+void opInEaxDx(Armv8btAsm* data) {
+    kpanic("Need to test");
+    data->orValue32(xEAX, xEAX, 0xFFFFFFFF);
+}
+void opOutDxAl(Armv8btAsm* data) {
+}
+void opOutDxAx(Armv8btAsm* data) {
+}
+void opOutDxEax(Armv8btAsm* data) {
+}
 
-void opCallJw(Armv8btAsm* data) {}
-void opCallJd(Armv8btAsm* data) {}
-void opJmpJw(Armv8btAsm* data) {}
-void opJmpJd(Armv8btAsm* data) {}
-void opJmpJb(Armv8btAsm* data) {}
-void opCallR16(Armv8btAsm* data) {}
-void opCallR32(Armv8btAsm* data) {}
-void opCallE16(Armv8btAsm* data) {}
-void opCallE32(Armv8btAsm* data) {}
-void opCallFarE16(Armv8btAsm* data) {}
-void opCallFarE32(Armv8btAsm* data) {}
-void opJmpR16(Armv8btAsm* data) {}
-void opJmpR32(Armv8btAsm* data) {}
-void opJmpE16(Armv8btAsm* data) {}
-void opJmpE32(Armv8btAsm* data) {}
-void opJmpFarE16(Armv8btAsm* data) {}
-void opJmpFarE32(Armv8btAsm* data) {}
+void opCallJw(Armv8btAsm* data) {
+    kpanic("Need to test");
+    // cpu->push16(cpu->eip.u32 + op->len);
+    // cpu->eip.u32 += (S16)op->imm;
+    U8 tmpReg = data->getRegWithConst(data->ip);
+    data->pushNativeReg16(tmpReg);
+    data->loadConst(tmpReg, data->startOfOpIp + (S32)((S16)data->decodedOp->imm));
+    data->jmpReg(tmpReg, false);
+    data->releaseTmpReg(tmpReg);
+}
+void opCallJd(Armv8btAsm* data) {
+    kpanic("Need to test");
+    // cpu->push32(cpu->eip.u32 + op->len);
+    // cpu->eip.u32 += (S32)op->imm;
+    U8 tmpReg = data->getRegWithConst(data->ip);
+    data->pushNativeReg32(tmpReg);
+    data->loadConst(tmpReg, data->startOfOpIp + (S32)(data->decodedOp->imm));
+    data->jmpReg(tmpReg, false);
+    data->releaseTmpReg(tmpReg);
+}
+void opJmpJw(Armv8btAsm* data) {
+    kpanic("Need to test");
+    // cpu->eip.u32 += (S16)op->imm;
+    U8 tmpReg = data->getRegWithConst(data->startOfOpIp + (S32)((S16)(data->decodedOp->imm)));
+    data->jmpReg(tmpReg, false);
+    data->releaseTmpReg(tmpReg);
+}
+void opJmpJd(Armv8btAsm* data) {
+    kpanic("Need to test");
+    // cpu->eip.u32 += (S32)op->imm;
+    U8 tmpReg = data->getRegWithConst(data->startOfOpIp + (S32)(data->decodedOp->imm));
+    data->jmpReg(tmpReg, false);
+    data->releaseTmpReg(tmpReg);
+}
+void opJmpJb(Armv8btAsm* data) {
+    kpanic("Need to test");
+    // cpu->eip.u32 += (S8)op->imm;
+    U8 tmpReg = data->getRegWithConst(data->startOfOpIp + (S32)((S8)(data->decodedOp->imm)));
+    data->jmpReg(tmpReg, false);
+    data->releaseTmpReg(tmpReg);
+}
+void opCallR16(Armv8btAsm* data) {
+    kpanic("Need to test");
+    // cpu->push16(cpu->eip.u32 + op->len);
+    // cpu->eip.u32 = cpu->reg[op->reg].u16;
+    U8 tmpReg = data->getRegWithConst(data->ip);
+    data->pushNativeReg16(tmpReg);
+    data->movRegToReg(tmpReg, data->getNativeReg(data->decodedOp->reg), 16, true);
+    data->jmpReg(tmpReg, false);
+    data->releaseTmpReg(tmpReg);
+}
+void opCallR32(Armv8btAsm* data) {
+    kpanic("Need to test");
+    // cpu->push32(cpu->eip.u32 + op->len);
+    // cpu->eip.u32 = cpu->reg[op->reg].u32;
+    U8 tmpReg = data->getRegWithConst(data->ip);
+    data->pushNativeReg32(tmpReg);
+    data->jmpReg(data->getNativeReg(data->decodedOp->reg), false);
+    data->releaseTmpReg(tmpReg);
+}
+void opCallE16(Armv8btAsm* data) {
+    kpanic("Need to test");
+    // U32 neweip = readw(eaa(cpu, op));
+    // cpu->push16(cpu->eip.u32 + op->len);
+    // cpu->eip.u32 = neweip;
+    U8 addressReg = data->getAddressReg();
+    U8 eipReg = data->getTmpReg();    
+    data->readMemory(addressReg, eipReg, 16, true);
+    data->releaseTmpReg(addressReg);
 
-void opLarR16R16(Armv8btAsm* data) {}
-void opLarR16E16(Armv8btAsm* data) {}
-void opLslR16R16(Armv8btAsm* data) {}
-void opLslR16E16(Armv8btAsm* data) {}
-void opLslR32R32(Armv8btAsm* data) {}
-void opLslR32E32(Armv8btAsm* data) {}
+    U8 tmpReg = data->getRegWithConst(data->ip);
+    data->pushNativeReg16(tmpReg);
+    data->releaseTmpReg(tmpReg);
 
-void opCmovO_R16R16(Armv8btAsm* data) {}
-void opCmovO_R16E16(Armv8btAsm* data) {}
-void opCmovNO_R16R16(Armv8btAsm* data) {}
-void opCmovNO_R16E16(Armv8btAsm* data) {}
-void opCmovB_R16R16(Armv8btAsm* data) {}
-void opCmovB_R16E16(Armv8btAsm* data) {}
-void opCmovNB_R16R16(Armv8btAsm* data) {}
-void opCmovNB_R16E16(Armv8btAsm* data) {}
-void opCmovZ_R16R16(Armv8btAsm* data) {}
-void opCmovZ_R16E16(Armv8btAsm* data) {}
-void opCmovNZ_R16R16(Armv8btAsm* data) {}
-void opCmovNZ_R16E16(Armv8btAsm* data) {}
-void opCmovBE_R16R16(Armv8btAsm* data) {}
-void opCmovBE_R16E16(Armv8btAsm* data) {}
-void opCmovNBE_R16R16(Armv8btAsm* data) {}
-void opCmovNBE_R16E16(Armv8btAsm* data) {}
-void opCmovS_R16R16(Armv8btAsm* data) {}
-void opCmovS_R16E16(Armv8btAsm* data) {}
-void opCmovNS_R16R16(Armv8btAsm* data) {}
-void opCmovNS_R16E16(Armv8btAsm* data) {}
-void opCmovP_R16R16(Armv8btAsm* data) {}
-void opCmovP_R16E16(Armv8btAsm* data) {}
-void opCmovNP_R16R16(Armv8btAsm* data) {}
-void opCmovNP_R16E16(Armv8btAsm* data) {}
-void opCmovL_R16R16(Armv8btAsm* data) {}
-void opCmovL_R16E16(Armv8btAsm* data) {}
-void opCmovNL_R16R16(Armv8btAsm* data) {}
-void opCmovNL_R16E16(Armv8btAsm* data) {}
-void opCmovLE_R16R16(Armv8btAsm* data) {}
-void opCmovLE_R16E16(Armv8btAsm* data) {}
-void opCmovNLE_R16R16(Armv8btAsm* data) {}
-void opCmovNLE_R16E16(Armv8btAsm* data) {}
+    data->jmpReg(eipReg, false);
+    data->releaseTmpReg(eipReg);
+}
+void opCallE32(Armv8btAsm* data) {
+    kpanic("Need to test");
+    // U32 neweip = readd(eaa(cpu, op));
+    // cpu->push32(cpu->eip.u32 + op->len);
+    // cpu->eip.u32 = neweip;
+    U8 addressReg = data->getAddressReg();
+    U8 eipReg = data->getTmpReg();
+    data->readMemory(addressReg, eipReg, 32, true);
+    data->releaseTmpReg(addressReg);
 
-void opCmovO_R32R32(Armv8btAsm* data) {}
-void opCmovO_R32E32(Armv8btAsm* data) {}
-void opCmovNO_R32R32(Armv8btAsm* data) {}
-void opCmovNO_R32E32(Armv8btAsm* data) {}
-void opCmovB_R32R32(Armv8btAsm* data) {}
-void opCmovB_R32E32(Armv8btAsm* data) {}
-void opCmovNB_R32R32(Armv8btAsm* data) {}
-void opCmovNB_R32E32(Armv8btAsm* data) {}
-void opCmovZ_R32R32(Armv8btAsm* data) {}
-void opCmovZ_R32E32(Armv8btAsm* data) {}
-void opCmovNZ_R32R32(Armv8btAsm* data) {}
-void opCmovNZ_R32E32(Armv8btAsm* data) {}
-void opCmovBE_R32R32(Armv8btAsm* data) {}
-void opCmovBE_R32E32(Armv8btAsm* data) {}
-void opCmovNBE_R32R32(Armv8btAsm* data) {}
-void opCmovNBE_R32E32(Armv8btAsm* data) {}
-void opCmovS_R32R32(Armv8btAsm* data) {}
-void opCmovS_R32E32(Armv8btAsm* data) {}
-void opCmovNS_R32R32(Armv8btAsm* data) {}
-void opCmovNS_R32E32(Armv8btAsm* data) {}
-void opCmovP_R32R32(Armv8btAsm* data) {}
-void opCmovP_R32E32(Armv8btAsm* data) {}
-void opCmovNP_R32R32(Armv8btAsm* data) {}
-void opCmovNP_R32E32(Armv8btAsm* data) {}
-void opCmovL_R32R32(Armv8btAsm* data) {}
-void opCmovL_R32E32(Armv8btAsm* data) {}
-void opCmovNL_R32R32(Armv8btAsm* data) {}
-void opCmovNL_R32E32(Armv8btAsm* data) {}
-void opCmovLE_R32R32(Armv8btAsm* data) {}
-void opCmovLE_R32E32(Armv8btAsm* data) {}
-void opCmovNLE_R32R32(Armv8btAsm* data) {}
-void opCmovNLE_R32E32(Armv8btAsm* data) {}
+    U8 tmpReg = data->getRegWithConst(data->ip);
+    data->pushNativeReg32(tmpReg);
+    data->releaseTmpReg(tmpReg);
+
+    data->jmpReg(eipReg, false);
+    data->releaseTmpReg(eipReg);
+}
+void opCallFarE16(Armv8btAsm* data) {
+    kpanic("Need to test");
+    // U32 eaa = eaa(cpu, op);
+    // U16 newip = readw(eaa);
+    // U16 newcs = readw(eaa + 2);
+    // cpu->call(0, newcs, newip, cpu->eip.u32 + op->len);    
+
+    data->syncRegsFromHost();
+
+    // void common_call(CPU* cpu, U32 big, U32 selector, U32 offset, U32 oldEip)
+    U8 addressReg = data->getAddressReg();
+    data->readMemory(addressReg, 3, 16, true); // param 4 (offset)
+    data->addValue32(addressReg, addressReg, 2);
+    data->readMemory(addressReg, 2, 16, true); // param 3 (selector)
+    data->releaseTmpReg(addressReg);
+    data->mov64(0, xCPU); // param 1 (CPU)
+    data->loadConst(1, 0); // param 2 (big = false)
+    data->loadConst(4, data->ip); // param 5 (oldEip)
+
+    data->callHost((void*)common_call);
+    data->syncRegsToHost();
+    data->doJmp(true);
+}
+void opCallFarE32(Armv8btAsm* data) {
+    kpanic("Need to test");
+    // U32 eaa = eaa(cpu, op);
+    // U32 newip = readd(eaa);
+    // U16 newcs = readw(eaa + 4);
+    // cpu->call(1, newcs, newip, cpu->eip.u32 + op->len);
+    data->syncRegsFromHost();
+
+    // void common_call(CPU* cpu, U32 big, U32 selector, U32 offset, U32 oldEip)
+    U8 addressReg = data->getAddressReg();
+    data->readMemory(addressReg, 3, 32, true); // param 4 (offset)
+    data->addValue32(addressReg, addressReg, 4);
+    data->readMemory(addressReg, 2, 16, true); // param 3 (selector)
+    data->releaseTmpReg(addressReg);
+    data->mov64(0, xCPU); // param 1 (CPU)
+    data->loadConst(1, 1); // param 2 (big = true)
+    data->loadConst(4, data->ip); // param 5 (oldEip)
+
+    data->callHost((void*)common_call);
+    data->syncRegsToHost();
+    data->doJmp(true);
+}
+void opJmpR16(Armv8btAsm* data) {
+    kpanic("Need to test");
+    // cpu->eip.u32 = cpu->reg[op->reg].u16;
+    U8 tmpReg = data->getRegWithConst(data->ip);
+    data->movRegToReg(tmpReg, data->getNativeReg(data->decodedOp->reg), 16, true);
+    data->jmpReg(tmpReg, false);
+    data->releaseTmpReg(tmpReg);
+}
+void opJmpR32(Armv8btAsm* data) {
+    kpanic("Need to test");
+    // cpu->eip.u32 = cpu->reg[op->reg].u32;
+    data->jmpReg(data->getNativeReg(data->decodedOp->reg), false);
+}
+void opJmpE16(Armv8btAsm* data) {
+    kpanic("Need to test");
+    // U32 neweip = readw(eaa(cpu, op));
+    // cpu->eip.u32 = neweip;
+    U8 addressReg = data->getAddressReg();
+    U8 eipReg = data->getTmpReg();
+    data->readMemory(addressReg, eipReg, 16, true);
+    data->releaseTmpReg(addressReg);
+    data->jmpReg(eipReg, false);
+    data->releaseTmpReg(eipReg);
+}
+void opJmpE32(Armv8btAsm* data) {
+    kpanic("Need to test");
+    // U32 neweip = readd(eaa(cpu, op));
+    // cpu->eip.u32 = neweip;
+    U8 addressReg = data->getAddressReg();
+    U8 eipReg = data->getTmpReg();
+    data->readMemory(addressReg, eipReg, 32, true);
+    data->releaseTmpReg(addressReg);
+    data->jmpReg(eipReg, false);
+    data->releaseTmpReg(eipReg);
+}
+void opJmpFarE16(Armv8btAsm* data) {
+    kpanic("Need to test");
+    // U32 eaa = eaa(cpu, op);
+    // U16 newip = readw(eaa);
+    // U16 newcs = readw(eaa + 2);
+    // cpu->jmp(0, newcs, newip, cpu->eip.u32 + op->len);
+    data->syncRegsFromHost();
+
+    // void common_jmp(CPU* cpu, U32 big, U32 selector, U32 offset, U32 oldEip)
+    U8 addressReg = data->getAddressReg();
+    data->readMemory(addressReg, 3, 16, true); // param 4 (offset)
+    data->addValue32(addressReg, addressReg, 2);
+    data->readMemory(addressReg, 2, 16, true); // param 3 (selector)
+    data->releaseTmpReg(addressReg);
+    data->mov64(0, xCPU); // param 1 (CPU)
+    data->loadConst(1, 0); // param 2 (big = false)
+    data->loadConst(4, data->ip); // param 5 (oldEip)
+
+    data->callHost((void*)common_jmp);
+    data->syncRegsToHost();
+    data->doJmp(true);
+}
+void opJmpFarE32(Armv8btAsm* data) {
+    kpanic("Need to test");
+    // U32 eaa = eaa(cpu, op);
+    // U32 newip = readd(eaa);
+    // U16 newcs = readw(eaa + 4);
+    // cpu->jmp(1, newcs, newip, cpu->eip.u32 + op->len);
+
+    data->syncRegsFromHost();
+
+    // void common_jmp(CPU* cpu, U32 big, U32 selector, U32 offset, U32 oldEip)
+    U8 addressReg = data->getAddressReg();
+    data->readMemory(addressReg, 3, 32, true); // param 4 (offset)
+    data->addValue32(addressReg, addressReg, 4);
+    data->readMemory(addressReg, 2, 16, true); // param 3 (selector)
+    data->releaseTmpReg(addressReg);
+    data->mov64(0, xCPU); // param 1 (CPU)
+    data->loadConst(1, 1); // param 2 (big = true)
+    data->loadConst(4, data->ip); // param 5 (oldEip)
+
+    data->callHost((void*)common_jmp);
+    data->syncRegsToHost();
+    data->doJmp(true);
+}
+
+static void callDstSrc(Armv8btAsm* data, void* pfn) {
+    data->syncRegsFromHost();
+
+    // common_larr16r16(CPU* cpu, U32 dstReg, U32 srcReg)
+    data->loadConst(1, data->decodedOp->reg);
+    data->loadConst(2, data->decodedOp->rm);
+    data->mov64(0, xCPU); // param 1 (CPU)
+
+    data->callHost((void*)pfn);
+    data->syncRegsToHost();
+}
+static void callDstAddress(Armv8btAsm* data, void* pfn) {
+    data->syncRegsFromHost();
+
+    // void common_larr16e16(CPU * cpu, U32 reg, U32 address);
+    U8 addressReg = data->getAddressReg();
+    data->loadConst(1, data->decodedOp->reg);
+    data->movRegToReg(2, addressReg, 32, false);
+    data->mov64(0, xCPU); // param 1 (CPU)
+    data->releaseTmpReg(addressReg);
+
+    data->callHost((void*)pfn);
+    data->syncRegsToHost();
+}
+void opLarR16R16(Armv8btAsm* data) {
+    kpanic("Need to test");
+    // cpu->reg[op->reg].u16 = cpu->lar(cpu->reg[op->rm].u16, cpu->reg[op->reg].u16);
+
+    callDstSrc(data, (void*)common_larr16r16);
+}
+void opLarR16E16(Armv8btAsm* data) {
+    kpanic("Need to test");
+    // cpu->reg[reg].u16 = cpu->lar(readw(address), cpu->reg[reg].u16);
+
+    callDstAddress(data, (void*)common_larr16e16);
+}
+void opLslR16R16(Armv8btAsm* data) {
+    kpanic("Need to test");
+    // cpu->reg[op->reg].u16 = cpu->lsl(cpu->reg[op->rm].u16, cpu->reg[op->reg].u16);
+
+    callDstSrc(data, (void*)common_lslr16r16);
+}
+void opLslR16E16(Armv8btAsm* data) {
+    kpanic("Need to test");
+    // cpu->reg[reg].u16 = cpu->lsl(readw(address), cpu->reg[reg].u16);
+
+    callDstAddress(data, (void*)common_lslr16e16);
+}
+void opLslR32R32(Armv8btAsm* data) {
+    kpanic("Need to test");
+    // cpu->reg[op->reg].u32 = cpu->lsl(cpu->reg[op->rm].u32, cpu->reg[op->reg].u32);
+
+    callDstSrc(data, (void*)common_lslr32r32);
+}
+void opLslR32E32(Armv8btAsm* data) {
+    kpanic("Need to test");
+    // cpu->reg[reg].u32 = cpu->lsl(readw(address), cpu->reg[reg].u32);
+
+    callDstAddress(data, (void*)common_lslr32e32);
+}
+
+static void doCMov(Armv8btAsm* data, bool neg, bool mem, U32 width, bool singleFlag, bool multiOrFlag, U32 flagsToTest, U32 oneFlagPos) {    
+    // :TODO: check hardware flags if data->lazyFlags
+
+    if (data->lazyFlags) {
+        U32 flags = DecodedOp::getNeededFlags(data->currentBlock, data->decodedOp, ZF | SF | PF | AF | OF | CF);
+        data->fillFlags(flags | flagsToTest);
+        data->lazyFlags = NULL;
+    }
+    std::function f = [mem, width, data]() {
+        if (!mem) {
+            data->movRegToReg(data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->rm), width, false);
+        } else {
+            U8 addressReg = data->getAddressReg();
+            if (width == 32) {
+                data->readMemory(addressReg, data->getNativeReg(data->decodedOp->reg), width, true);
+            } else {
+                U8 tmpReg = data->getTmpReg();
+                data->readMemory(addressReg, tmpReg, width, true);
+                data->movRegToReg(data->getNativeReg(data->decodedOp->reg), tmpReg, width, false);
+                data->releaseTmpReg(tmpReg);
+            }
+            data->releaseTmpReg(addressReg);
+        }
+    };
+    if (singleFlag) {            
+        if (neg) {
+            data->doIfBitSet(xFLAGS, oneFlagPos, nullptr, f);
+        } else {
+            data->doIfBitSet(xFLAGS, oneFlagPos, f);
+        }
+    } else {
+        U8 tmpReg = data->getTmpReg();
+        data->andValue32(tmpReg, xFLAGS, flagsToTest, false);
+        if (multiOrFlag) {
+            data->doIf(tmpReg, 0, neg ? DO_IF_EQUAL : DO_IF_NOT_EQUAL, f, nullptr);
+        } else {
+            data->doIf(tmpReg, flagsToTest, neg ? DO_IF_NOT_EQUAL : DO_IF_EQUAL, f, nullptr);
+        }
+        data->releaseTmpReg(tmpReg);
+    }
+}
+
+static void doCMovL(Armv8btAsm* data, bool neg, bool mem, U32 width, bool checkZF) {
+    // :TODO: check hardware flags if data->lazyFlags
+
+    if (data->lazyFlags) {
+        U32 flags = DecodedOp::getNeededFlags(data->currentBlock, data->decodedOp, ZF | SF | PF | AF | OF | CF);
+        if (checkZF) {
+            data->fillFlags(flags | SF | OF);
+        } else {
+            data->fillFlags(flags | SF | OF | ZF);
+        }
+        data->lazyFlags = NULL;
+    }
+    std::function f = [mem, width, data]() {
+        if (!mem) {
+            data->movRegToReg(data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->rm), width, false);
+        } else {
+            U8 addressReg = data->getAddressReg();
+            if (width == 32) {
+                data->readMemory(addressReg, data->getNativeReg(data->decodedOp->reg), width, true);
+            } else {
+                U8 tmpReg = data->getTmpReg();
+                data->readMemory(addressReg, tmpReg, width, true);
+                data->movRegToReg(data->getNativeReg(data->decodedOp->reg), tmpReg, width, false);
+                data->releaseTmpReg(tmpReg);
+            }
+            data->releaseTmpReg(addressReg);
+        }
+    };
+    U8 tmpSF = data->getTmpReg();
+    U8 tmpOF = data->getTmpReg();    
+    data->copyBitsFromSourceAtPositionToDest(tmpSF, xFLAGS, 7, 1, false);
+    data->copyBitsFromSourceAtPositionToDest(tmpOF, xFLAGS, 11, 1, false);
+    if (checkZF) {
+        // SF != OF || ZF
+        U8 tmpZF = data->getTmpReg();
+        data->copyBitsFromSourceAtPositionToDest(tmpZF, xFLAGS, 6, 1, false);
+        data->xorRegs32(tmpSF, tmpSF, tmpOF);
+        data->orRegs32(tmpSF, tmpSF, tmpZF);
+        data->doIf(tmpSF, 0, neg ? DO_IF_EQUAL : DO_IF_NOT_EQUAL, f, nullptr);
+        data->releaseTmpReg(tmpZF);
+    } else {
+        // SF != OF
+        data->doIf(tmpSF, tmpOF, neg ? DO_IF_EQUAL : DO_IF_NOT_EQUAL, f, nullptr, nullptr, true);
+    }    
+    data->releaseTmpReg(tmpSF);
+    data->releaseTmpReg(tmpOF);
+}
+
+void opCmovO_R16R16(Armv8btAsm* data) {
+    // if (cpu->getOF()) cpu->reg[op->reg].u16 = cpu->reg[op->rm].u16;
+    doCMov(data, false, false, 16, true, false, OF, 11);
+}
+void opCmovO_R16E16(Armv8btAsm* data) {
+    // if (cpu->getOF()) cpu->reg[op->reg].u16 = readw(eaa(cpu, op));
+    doCMov(data, false, true, 16, true, false, OF, 11);
+}
+void opCmovNO_R16R16(Armv8btAsm* data) {
+    // if (!cpu->getOF()) cpu->reg[op->reg].u16 = cpu->reg[op->rm].u16;
+    doCMov(data, true, false, 16, true, false, OF, 11);
+}
+void opCmovNO_R16E16(Armv8btAsm* data) {
+    // if (!cpu->getOF()) cpu->reg[op->reg].u16 = readw(eaa(cpu, op));
+    doCMov(data, true, true, 16, true, false, OF, 11);
+}
+void opCmovB_R16R16(Armv8btAsm* data) {
+    doCMov(data, false, false, 16, true, false, CF, 0);
+}
+void opCmovB_R16E16(Armv8btAsm* data) {
+    doCMov(data, false, true, 16, true, false, CF, 0);
+}
+void opCmovNB_R16R16(Armv8btAsm* data) {
+    doCMov(data, true, false, 16, true, false, CF, 0);
+}
+void opCmovNB_R16E16(Armv8btAsm* data) {
+    doCMov(data, true, true, 16, true, false, CF, 0);
+}
+void opCmovZ_R16R16(Armv8btAsm* data) {
+    doCMov(data, false, false, 16, true, false, ZF, 6);
+}
+void opCmovZ_R16E16(Armv8btAsm* data) {
+    doCMov(data, false, true, 16, true, false, ZF, 6);
+}
+void opCmovNZ_R16R16(Armv8btAsm* data) {
+    doCMov(data, true, false, 16, true, false, ZF, 6);
+}
+void opCmovNZ_R16E16(Armv8btAsm* data) {
+    doCMov(data, true, true, 16, true, false, ZF, 6);
+}
+void opCmovBE_R16R16(Armv8btAsm* data) {
+    doCMov(data, false, false, 16, false, true, ZF | CF, 0);
+}
+void opCmovBE_R16E16(Armv8btAsm* data) {
+    doCMov(data, false, true, 16, false, true, ZF | CF, 0);
+}
+void opCmovNBE_R16R16(Armv8btAsm* data) {
+    doCMov(data, true, false, 16, false, true, ZF | CF, 0);
+}
+void opCmovNBE_R16E16(Armv8btAsm* data) {
+    doCMov(data, true, true, 16, false, true, ZF | CF, 0);
+}
+void opCmovS_R16R16(Armv8btAsm* data) {
+    doCMov(data, false, false, 16, true, false, SF, 7);
+}
+void opCmovS_R16E16(Armv8btAsm* data) {
+    doCMov(data, false, true, 16, true, false, SF, 7);
+}
+void opCmovNS_R16R16(Armv8btAsm* data) {
+    doCMov(data, true, false, 16, true, false, SF, 7);
+}
+void opCmovNS_R16E16(Armv8btAsm* data) {
+    doCMov(data, true, true, 16, true, false, SF, 7);
+}
+void opCmovP_R16R16(Armv8btAsm* data) {
+    doCMov(data, false, false, 16, true, false, PF, 2);
+}
+void opCmovP_R16E16(Armv8btAsm* data) {
+    doCMov(data, false, true, 16, true, false, PF, 2);
+}
+void opCmovNP_R16R16(Armv8btAsm* data) {
+    doCMov(data, true, false, 16, true, false, PF, 2);
+}
+void opCmovNP_R16E16(Armv8btAsm* data) {
+    doCMov(data, true, true, 16, true, false, PF, 2);
+}
+void opCmovL_R16R16(Armv8btAsm* data) {
+    doCMovL(data, false, false, 16, false);
+}
+void opCmovL_R16E16(Armv8btAsm* data) {
+    doCMovL(data, false, true, 16, false);
+}
+void opCmovNL_R16R16(Armv8btAsm* data) {
+    doCMovL(data, true, false, 16, false);
+}
+void opCmovNL_R16E16(Armv8btAsm* data) {
+    doCMovL(data, true, true, 16, false);
+}
+void opCmovLE_R16R16(Armv8btAsm* data) {
+    doCMovL(data, false, false, 16, true);
+}
+void opCmovLE_R16E16(Armv8btAsm* data) {
+    doCMovL(data, false, true, 16, true);
+}
+void opCmovNLE_R16R16(Armv8btAsm* data) {
+    doCMovL(data, true, false, 16, true);
+}
+void opCmovNLE_R16E16(Armv8btAsm* data) {
+    doCMovL(data, true, true, 16, true);
+}
+
+void opCmovO_R32R32(Armv8btAsm* data) {
+    doCMov(data, false, false, 32, true, false, OF, 11);
+}
+void opCmovO_R32E32(Armv8btAsm* data) {
+    doCMov(data, false, true, 32, true, false, OF, 11);
+}
+void opCmovNO_R32R32(Armv8btAsm* data) {
+    doCMov(data, true, false, 32, true, false, OF, 11);
+}
+void opCmovNO_R32E32(Armv8btAsm* data) {
+    doCMov(data, true, true, 32, true, false, OF, 11);
+}
+void opCmovB_R32R32(Armv8btAsm* data) {
+    doCMov(data, false, false, 32, true, false, CF, 0);
+}
+void opCmovB_R32E32(Armv8btAsm* data) {
+    doCMov(data, false, true, 32, true, false, CF, 0);
+}
+void opCmovNB_R32R32(Armv8btAsm* data) {
+    doCMov(data, true, false, 32, true, false, CF, 0);
+}
+void opCmovNB_R32E32(Armv8btAsm* data) {
+    doCMov(data, true, true, 32, true, false, CF, 0);
+}
+void opCmovZ_R32R32(Armv8btAsm* data) {
+    doCMov(data, false, false, 32, true, false, ZF, 6);
+}
+void opCmovZ_R32E32(Armv8btAsm* data) {
+    doCMov(data, false, true, 32, true, false, ZF, 6);
+}
+void opCmovNZ_R32R32(Armv8btAsm* data) {
+    doCMov(data, true, false, 32, true, false, ZF, 6);
+}
+void opCmovNZ_R32E32(Armv8btAsm* data) {
+    doCMov(data, true, true, 32, true, false, ZF, 6);
+}
+void opCmovBE_R32R32(Armv8btAsm* data) {
+    doCMov(data, false, false, 32, false, true, ZF | CF, 0);
+}
+void opCmovBE_R32E32(Armv8btAsm* data) {
+    doCMov(data, false, true, 32, false, true, ZF | CF, 0);
+}
+void opCmovNBE_R32R32(Armv8btAsm* data) {
+    doCMov(data, true, false, 32, false, true, ZF | CF, 0);
+}
+void opCmovNBE_R32E32(Armv8btAsm* data) {
+    doCMov(data, true, true, 32, false, true, ZF | CF, 0);
+}
+void opCmovS_R32R32(Armv8btAsm* data) {
+    doCMov(data, false, false, 32, true, false, SF, 7);
+}
+void opCmovS_R32E32(Armv8btAsm* data) {
+    doCMov(data, false, true, 32, true, false, SF, 7);
+}
+void opCmovNS_R32R32(Armv8btAsm* data) {
+    doCMov(data, true, false, 32, true, false, SF, 7);
+}
+void opCmovNS_R32E32(Armv8btAsm* data) {
+    doCMov(data, true, true, 32, true, false, SF, 7);
+}
+void opCmovP_R32R32(Armv8btAsm* data) {
+    doCMov(data, false, false, 32, true, false, PF, 2);
+}
+void opCmovP_R32E32(Armv8btAsm* data) {
+    doCMov(data, false, true, 32, true, false, PF, 2);
+}
+void opCmovNP_R32R32(Armv8btAsm* data) {
+    doCMov(data, true, false, 32, true, false, PF, 2);
+}
+void opCmovNP_R32E32(Armv8btAsm* data) {
+    doCMov(data, true, true, 32, true, false, PF, 2);
+}
+void opCmovL_R32R32(Armv8btAsm* data) {
+    doCMovL(data, false, false, 32, false);
+}
+void opCmovL_R32E32(Armv8btAsm* data) {
+    doCMovL(data, false, true, 32, false);
+}
+void opCmovNL_R32R32(Armv8btAsm* data) {
+    doCMovL(data, true, false, 32, false);
+}
+void opCmovNL_R32E32(Armv8btAsm* data) {
+    doCMovL(data, true, true, 32, false);
+}
+void opCmovLE_R32R32(Armv8btAsm* data) {
+    doCMovL(data, false, false, 32, true);
+}
+void opCmovLE_R32E32(Armv8btAsm* data) {
+    doCMovL(data, false, true, 32, true);
+}
+void opCmovNLE_R32R32(Armv8btAsm* data) {
+    doCMovL(data, true, false, 32, true);
+}
+void opCmovNLE_R32E32(Armv8btAsm* data) {
+    doCMovL(data, true, true, 32, true);
+}
 
 void opSetO_R8(Armv8btAsm* data) {}
 void opSetO_E8(Armv8btAsm* data) {}
