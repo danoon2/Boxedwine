@@ -176,6 +176,13 @@ void Armv8btAsm::zeroReg(U8 reg) {
     movz(reg, 0, 0);
 }
 
+void Armv8btAsm::reverseBytes32(U8 dst, U8 src) {
+    write8(dst | (U8)(src << 5));
+    write8((U8)(src >> 3) | 0x08);
+    write8(0xc0);
+    write8(0x5a);
+}
+
 void Armv8btAsm::loadConst(U8 reg, U64 value) {
     U32 shift = __builtin_ctzll(value);
     if (shift < 16) {

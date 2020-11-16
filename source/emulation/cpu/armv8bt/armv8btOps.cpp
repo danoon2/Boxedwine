@@ -4499,28 +4499,76 @@ void opSetNLE_E8(Armv8btAsm* data) {
     doSetCondition(data, condional_NLE, true);
 }
 
-void opSLDTReg(Armv8btAsm* data) {}
-void opSLDTE16(Armv8btAsm* data) {}
-void opSTRReg(Armv8btAsm* data) {}
-void opSTRE16(Armv8btAsm* data) {}
-void opLLDTR16(Armv8btAsm* data) {}
-void opLLDTE16(Armv8btAsm* data) {}
-void opLTRR16(Armv8btAsm* data) {}
-void opLTRE16(Armv8btAsm* data) {}
-void opVERRR16(Armv8btAsm* data) {}
-void opVERRE16(Armv8btAsm* data) {}
-void opVERWR16(Armv8btAsm* data) {}
-void opVERWE16(Armv8btAsm* data) {}
-
-void opSGDT(Armv8btAsm* data) {}
-void opSIDT(Armv8btAsm* data) {}
-void opLGDT(Armv8btAsm* data) {}
-void opLIDT(Armv8btAsm* data) {}
-void opSMSWRreg(Armv8btAsm* data) {}
-void opSMSW(Armv8btAsm* data) {}
-void opLMSWRreg(Armv8btAsm* data) {}
-void opLMSW(Armv8btAsm* data) {}
-void opINVLPG(Armv8btAsm* data) {}
+void opSLDTReg(Armv8btAsm* data) {
+    klog("ARMv8: SDLT not implemented");
+}
+void opSLDTE16(Armv8btAsm* data) {
+    klog("ARMv8: SDLT not implemented");
+}
+void opSTRReg(Armv8btAsm* data) {
+    klog("ARMv8: STR not implemented");
+}
+void opSTRE16(Armv8btAsm* data) {
+    klog("ARMv8: STR not implemented");
+}
+void opLLDTR16(Armv8btAsm* data) {
+    klog("ARMv8: LLDT not implemented");
+}
+void opLLDTE16(Armv8btAsm* data) {
+    klog("ARMv8: LLDT not implemented");
+}
+void opLTRR16(Armv8btAsm* data) {
+    klog("ARMv8: LTR not implemented");
+}
+void opLTRE16(Armv8btAsm* data) {
+    klog("ARMv8: LTR not implemented");
+}
+void opVERRR16(Armv8btAsm* data) {
+    klog("ARMv8: VERR not implemented");
+}
+void opVERRE16(Armv8btAsm* data) {
+    klog("ARMv8: VERR not implemented");
+}
+void opVERWR16(Armv8btAsm* data) {
+    klog("ARMv8: VERW not implemented");
+}
+void opVERWE16(Armv8btAsm* data) {
+    klog("ARMv8: VERW not implemented");
+}
+void opSGDT(Armv8btAsm* data) {
+    klog("ARMv8: SGDT not implemented");
+}
+void opSIDT(Armv8btAsm* data) {
+    U8 addressReg = data->getAddressReg();
+    U8 tmpReg = data->getRegWithConst(1023);
+    data->writeMemory(addressReg, tmpReg, 16, true);
+    data->addValue32(addressReg, addressReg, 2);
+    data->loadConst(tmpReg, 0);
+    data->writeMemory(addressReg, tmpReg, 32, true);
+    data->releaseTmpReg(addressReg);
+    data->releaseTmpReg(tmpReg);
+}
+void opLGDT(Armv8btAsm* data) {
+    klog("ARMv8: LGDT not implemented");
+}
+void opLIDT(Armv8btAsm* data) {
+    klog("ARMv8: LIDT not implemented");
+}
+void opSMSWRreg(Armv8btAsm* data) {
+    klog("ARMv8: SMSWR not implemented");
+}
+void opSMSW(Armv8btAsm* data) {
+    klog("ARMv8: SMSW not implemented");
+}
+void opLMSWRreg(Armv8btAsm* data) {
+    klog("ARMv8: LMSWR not implemented");
+}
+void opLMSW(Armv8btAsm* data) {
+    klog("ARMv8: LMSW not implemented");
+}
+void opINVLPG(Armv8btAsm* data) {
+    klog("ARMv8: INVLPG not implemented");
+}
 
 void opXaddR32R32(Armv8btAsm* data) {
     // cpu->src.u32 = cpu->reg[op->r1].u32;
@@ -4576,7 +4624,10 @@ void opXaddR32E32(Armv8btAsm* data) {
     data->releaseTmpReg(addressReg);
 }
 void opCmpXchg8b(Armv8btAsm* data) {}
-void opBswap32(Armv8btAsm* data) {}
+
+void opBswap32(Armv8btAsm* data) {
+    data->reverseBytes32(data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->reg));
+}
 
 void opEmms(Armv8btAsm* data) {}
 void opFxsave(Armv8btAsm* data) {} // P2+

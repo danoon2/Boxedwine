@@ -305,6 +305,8 @@ public:
     void writeMem16RegOffset(U8 dst, U8 base, U8 offsetReg);
     void writeMem32RegOffset(U8 dst, U8 base, U8 offsetReg);
 
+    void reverseBytes32(U8 dst, U8 src);
+
     // 
     void loadConst(U8 reg, U64 value);    
 
