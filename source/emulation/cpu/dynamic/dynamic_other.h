@@ -533,12 +533,9 @@ void dynamic_xaddr32e32(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_bswap32(DynamicData* data, DecodedOp* op) {
-    movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[op->reg].byte[0]), DYN_8bit);
-    movToCpuFromCpu(CPU_OFFSET_OF(reg[op->reg].byte[0]), CPU_OFFSET_OF(reg[op->reg].byte[3]), DYN_8bit, DYN_DEST, true);
-    movToCpuFromReg(CPU_OFFSET_OF(reg[op->reg].byte[3]), DYN_SRC, DYN_8bit, true);
-    movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[op->reg].byte[1]), DYN_8bit);
-    movToCpuFromCpu(CPU_OFFSET_OF(reg[op->reg].byte[1]), CPU_OFFSET_OF(reg[op->reg].byte[2]), DYN_8bit, DYN_DEST, true);
-    movToCpuFromReg(CPU_OFFSET_OF(reg[op->reg].byte[2]), DYN_SRC, DYN_8bit, true);
+    movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[op->reg].u32), DYN_32bit);
+    byteSwapReg32(DYN_SRC);
+    movToCpuFromReg(CPU_OFFSET_OF(reg[op->reg].u32), DYN_SRC, DYN_32bit, true);
     INCREMENT_EIP(data, op);
 }
 void dynamic_cmpxchgg8b(DynamicData* data, DecodedOp* op) {

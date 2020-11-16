@@ -98,6 +98,8 @@ void movToCpuFromMem(U32 dstOffset, DynWidth dstWidth, DynReg addressReg, bool d
 void movToCpuFromCpu(U32 dstOffset, U32 srcOffset, DynWidth width, DynReg tmpReg, bool doneWithTmpReg);
 void calculateEaa(DecodedOp* op, DynReg reg);
 
+void byteSwapReg32(DynReg reg);
+
 // REG to REG
 void movToRegFromRegSignExtend(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidth, bool doneWithSrcReg);
 void movToRegFromReg(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidth, bool doneWithSrcReg);
@@ -331,6 +333,11 @@ void calculateEaa(DecodedOp* op, DynReg reg) {
             outb(0xc0|reg|(reg<<3));
         }
     }
+}
+
+void byteSwapReg32(DynReg reg) {
+    outb(0x0f);
+    outb(0xc8 + reg);
 }
 
 void movToRegFromRegSignExtend(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidth, bool doneWithSrcReg) {    
