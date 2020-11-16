@@ -14,6 +14,25 @@
 #include "armv8btOps_mmx.h"
 #include "../common/common_other.h"
 
+enum Conditional {
+    condional_O,
+    condional_NO,
+    condional_B,
+    condional_NB,
+    condional_Z,
+    condional_NZ,
+    condional_BE,
+    condional_NBE,
+    condional_S,
+    condional_NS,
+    condional_P,
+    condional_NP,
+    condional_L,
+    condional_NL,
+    condional_LE,
+    condional_NLE
+};
+
 void setupFlagsForArith(Armv8btAsm* data, Arm8BtLazyFlags* lazyFlags, U32& flags, bool& hardwareFlags, bool& usesSrc, bool& usesDst, bool& usesResult, bool& resultNeedsZeroExtends) {
     flags = data->flagsNeeded();
     
@@ -2612,22 +2631,151 @@ void opOutsd(Armv8btAsm* data) {
     data->invalidOp(data->decodedOp->originalOp);
 }
 
-void opJumpO(Armv8btAsm* data) {}
-void opJumpNO(Armv8btAsm* data) {}
-void opJumpB(Armv8btAsm* data) {}
-void opJumpNB(Armv8btAsm* data) {}
-void opJumpZ(Armv8btAsm* data) {}
-void opJumpNZ(Armv8btAsm* data) {}
-void opJumpBE(Armv8btAsm* data) {}
-void opJumpNBE(Armv8btAsm* data) {}
-void opJumpS(Armv8btAsm* data) {}
-void opJumpNS(Armv8btAsm* data) {}
-void opJumpP(Armv8btAsm* data) {}
-void opJumpNP(Armv8btAsm* data) {}
-void opJumpL(Armv8btAsm* data) {}
-void opJumpNL(Armv8btAsm* data) {}
-void opJumpLE(Armv8btAsm* data) {}
-void opJumpNLE(Armv8btAsm* data) {}
+static void doCondition(Armv8btAsm* data, Conditional conditional, const std::function<void()>& f) {
+    // :TODO: check hardware flags if data->lazyFlags
+    U32 flagsToTest;
+    bool neg = false;
+    bool singleFlag = true;
+    bool multiOrFlag = false;
+    U32 oneFlagPos = 0;
+    bool checkZF = false;
+
+    switch (conditional) {
+    case condional_O: flagsToTest = OF; oneFlagPos = 11; break;
+    case condional_NO: flagsToTest = OF; oneFlagPos = 11; neg = true; break;
+    case condional_B: flagsToTest = CF; break;
+    case condional_NB: flagsToTest = CF; neg = true; break;
+    case condional_Z: flagsToTest = ZF; oneFlagPos = 6; break;
+    case condional_NZ: flagsToTest = ZF; oneFlagPos = 6; neg = true; break;
+    case condional_BE: flagsToTest = ZF | CF; singleFlag = false; multiOrFlag = true; break;
+    case condional_NBE: flagsToTest = ZF | CF; neg = true; singleFlag = false; multiOrFlag = true; break;
+    case condional_S: flagsToTest = SF; oneFlagPos = 7; break;
+    case condional_NS: flagsToTest = SF; oneFlagPos = 7; neg = true; break;
+    case condional_P: flagsToTest = PF; oneFlagPos = 2; break;
+    case condional_NP: flagsToTest = PF; oneFlagPos = 2; neg = true; break;
+    case condional_L: flagsToTest = SF | OF; singleFlag = false; break;
+    case condional_NL: flagsToTest = SF | OF; neg = true; singleFlag = false; break;
+    case condional_LE: flagsToTest = SF | OF | ZF; singleFlag = false; checkZF = true;  break;
+    case condional_NLE: flagsToTest = SF | OF | ZF; neg = true; singleFlag = false; checkZF = true; break;
+    }
+    if (data->lazyFlags) {
+        U32 flags = DecodedOp::getNeededFlags(data->currentBlock, data->decodedOp, ZF | SF | PF | AF | OF | CF);
+        data->fillFlags(flags | flagsToTest);
+        data->lazyFlags = NULL;
+    }
+            
+    if (singleFlag) {
+        if (neg) {
+            data->doIfBitSet(xFLAGS, oneFlagPos, nullptr, f);
+        } else {
+            data->doIfBitSet(xFLAGS, oneFlagPos, f);
+        }
+    } else if (multiOrFlag) {     
+        // BE and NBE
+        U8 tmpReg = data->getTmpReg();
+        data->andValue32(tmpReg, xFLAGS, flagsToTest, false);
+        data->doIf(tmpReg, 0, neg ? DO_IF_EQUAL : DO_IF_NOT_EQUAL, f, nullptr);
+        data->releaseTmpReg(tmpReg);
+    } else {
+        U8 tmpSF = data->getTmpReg();
+        U8 tmpOF = data->getTmpReg();
+        data->copyBitsFromSourceAtPositionToDest(tmpSF, xFLAGS, 7, 1, false);
+        data->copyBitsFromSourceAtPositionToDest(tmpOF, xFLAGS, 11, 1, false);
+        if (checkZF) {
+            // LE and NLE
+            // SF != OF || ZF
+            U8 tmpZF = data->getTmpReg();
+            data->copyBitsFromSourceAtPositionToDest(tmpZF, xFLAGS, 6, 1, false);
+            data->xorRegs32(tmpSF, tmpSF, tmpOF);
+            data->orRegs32(tmpSF, tmpSF, tmpZF);
+            data->doIf(tmpSF, 0, neg ? DO_IF_EQUAL : DO_IF_NOT_EQUAL, f, nullptr);
+            data->releaseTmpReg(tmpZF);
+        } else {
+            // L and NL
+            // SF != OF
+            data->doIf(tmpSF, tmpOF, neg ? DO_IF_EQUAL : DO_IF_NOT_EQUAL, f, nullptr, nullptr, true);
+        }
+        data->releaseTmpReg(tmpSF);
+        data->releaseTmpReg(tmpOF);
+    }
+}
+
+static void doCMov(Armv8btAsm* data, Conditional conditional, bool mem, U32 width) {
+    std::function f = [mem, width, data]() {
+        if (!mem) {
+            data->movRegToReg(data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->rm), width, false);
+        } else {
+            U8 addressReg = data->getAddressReg();
+            if (width == 32) {
+                data->readMemory(addressReg, data->getNativeReg(data->decodedOp->reg), width, true);
+            } else {
+                U8 tmpReg = data->getTmpReg();
+                data->readMemory(addressReg, tmpReg, width, true);
+                data->movRegToReg(data->getNativeReg(data->decodedOp->reg), tmpReg, width, false);
+                data->releaseTmpReg(tmpReg);
+            }
+            data->releaseTmpReg(addressReg);
+        }
+    };
+    doCondition(data, conditional, f);   
+}
+
+static void doJump(Armv8btAsm* data, Conditional conditional) {
+    std::function f = [data]() {
+        data->loadConst(xBranch, data->ip + data->decodedOp->imm);
+        data->jmpReg(xBranch, false);
+    };
+    doCondition(data, conditional, f);
+}
+
+void opJumpO(Armv8btAsm* data) {
+    doJump(data, condional_O);
+}
+void opJumpNO(Armv8btAsm* data) {
+    doJump(data, condional_NO);
+}
+void opJumpB(Armv8btAsm* data) {
+    doJump(data, condional_B);
+}
+void opJumpNB(Armv8btAsm* data) {
+    doJump(data, condional_NB);
+}
+void opJumpZ(Armv8btAsm* data) {
+    doJump(data, condional_Z);
+}
+void opJumpNZ(Armv8btAsm* data) {
+    doJump(data, condional_NZ);
+}
+void opJumpBE(Armv8btAsm* data) {
+    doJump(data, condional_BE);
+}
+void opJumpNBE(Armv8btAsm* data) {
+    doJump(data, condional_NBE);
+}
+void opJumpS(Armv8btAsm* data) {
+    doJump(data, condional_S);
+}
+void opJumpNS(Armv8btAsm* data) {
+    doJump(data, condional_NS);
+}
+void opJumpP(Armv8btAsm* data) {
+    doJump(data, condional_P);
+}
+void opJumpNP(Armv8btAsm* data) {
+    doJump(data, condional_NP);
+}
+void opJumpL(Armv8btAsm* data) {
+    doJump(data, condional_L);
+}
+void opJumpNL(Armv8btAsm* data) {
+    doJump(data, condional_NL);
+}
+void opJumpLE(Armv8btAsm* data) {
+    doJump(data, condional_LE);
+}
+void opJumpNLE(Armv8btAsm* data) {
+    doJump(data, condional_NLE);
+}
 
 void opMovR8R8(Armv8btAsm* data) {
     data->movReg8ToReg8(data->decodedOp->reg, data->decodedOp->rm);
@@ -3978,292 +4126,202 @@ void opLslR32E32(Armv8btAsm* data) {
     callDstAddress(data, (void*)common_lslr32e32);
 }
 
-static void doCMov(Armv8btAsm* data, bool neg, bool mem, U32 width, bool singleFlag, bool multiOrFlag, U32 flagsToTest, U32 oneFlagPos) {    
-    // :TODO: check hardware flags if data->lazyFlags
-
-    if (data->lazyFlags) {
-        U32 flags = DecodedOp::getNeededFlags(data->currentBlock, data->decodedOp, ZF | SF | PF | AF | OF | CF);
-        data->fillFlags(flags | flagsToTest);
-        data->lazyFlags = NULL;
-    }
-    std::function f = [mem, width, data]() {
-        if (!mem) {
-            data->movRegToReg(data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->rm), width, false);
-        } else {
-            U8 addressReg = data->getAddressReg();
-            if (width == 32) {
-                data->readMemory(addressReg, data->getNativeReg(data->decodedOp->reg), width, true);
-            } else {
-                U8 tmpReg = data->getTmpReg();
-                data->readMemory(addressReg, tmpReg, width, true);
-                data->movRegToReg(data->getNativeReg(data->decodedOp->reg), tmpReg, width, false);
-                data->releaseTmpReg(tmpReg);
-            }
-            data->releaseTmpReg(addressReg);
-        }
-    };
-    if (singleFlag) {            
-        if (neg) {
-            data->doIfBitSet(xFLAGS, oneFlagPos, nullptr, f);
-        } else {
-            data->doIfBitSet(xFLAGS, oneFlagPos, f);
-        }
-    } else {
-        U8 tmpReg = data->getTmpReg();
-        data->andValue32(tmpReg, xFLAGS, flagsToTest, false);
-        if (multiOrFlag) {
-            data->doIf(tmpReg, 0, neg ? DO_IF_EQUAL : DO_IF_NOT_EQUAL, f, nullptr);
-        } else {
-            data->doIf(tmpReg, flagsToTest, neg ? DO_IF_NOT_EQUAL : DO_IF_EQUAL, f, nullptr);
-        }
-        data->releaseTmpReg(tmpReg);
-    }
-}
-
-static void doCMovL(Armv8btAsm* data, bool neg, bool mem, U32 width, bool checkZF) {
-    // :TODO: check hardware flags if data->lazyFlags
-
-    if (data->lazyFlags) {
-        U32 flags = DecodedOp::getNeededFlags(data->currentBlock, data->decodedOp, ZF | SF | PF | AF | OF | CF);
-        if (checkZF) {
-            data->fillFlags(flags | SF | OF);
-        } else {
-            data->fillFlags(flags | SF | OF | ZF);
-        }
-        data->lazyFlags = NULL;
-    }
-    std::function f = [mem, width, data]() {
-        if (!mem) {
-            data->movRegToReg(data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->rm), width, false);
-        } else {
-            U8 addressReg = data->getAddressReg();
-            if (width == 32) {
-                data->readMemory(addressReg, data->getNativeReg(data->decodedOp->reg), width, true);
-            } else {
-                U8 tmpReg = data->getTmpReg();
-                data->readMemory(addressReg, tmpReg, width, true);
-                data->movRegToReg(data->getNativeReg(data->decodedOp->reg), tmpReg, width, false);
-                data->releaseTmpReg(tmpReg);
-            }
-            data->releaseTmpReg(addressReg);
-        }
-    };
-    U8 tmpSF = data->getTmpReg();
-    U8 tmpOF = data->getTmpReg();    
-    data->copyBitsFromSourceAtPositionToDest(tmpSF, xFLAGS, 7, 1, false);
-    data->copyBitsFromSourceAtPositionToDest(tmpOF, xFLAGS, 11, 1, false);
-    if (checkZF) {
-        // SF != OF || ZF
-        U8 tmpZF = data->getTmpReg();
-        data->copyBitsFromSourceAtPositionToDest(tmpZF, xFLAGS, 6, 1, false);
-        data->xorRegs32(tmpSF, tmpSF, tmpOF);
-        data->orRegs32(tmpSF, tmpSF, tmpZF);
-        data->doIf(tmpSF, 0, neg ? DO_IF_EQUAL : DO_IF_NOT_EQUAL, f, nullptr);
-        data->releaseTmpReg(tmpZF);
-    } else {
-        // SF != OF
-        data->doIf(tmpSF, tmpOF, neg ? DO_IF_EQUAL : DO_IF_NOT_EQUAL, f, nullptr, nullptr, true);
-    }    
-    data->releaseTmpReg(tmpSF);
-    data->releaseTmpReg(tmpOF);
-}
-
 void opCmovO_R16R16(Armv8btAsm* data) {
     // if (cpu->getOF()) cpu->reg[op->reg].u16 = cpu->reg[op->rm].u16;
-    doCMov(data, false, false, 16, true, false, OF, 11);
+    doCMov(data, condional_O, false, 16);
 }
 void opCmovO_R16E16(Armv8btAsm* data) {
     // if (cpu->getOF()) cpu->reg[op->reg].u16 = readw(eaa(cpu, op));
-    doCMov(data, false, true, 16, true, false, OF, 11);
+    doCMov(data, condional_O, true, 16);
 }
 void opCmovNO_R16R16(Armv8btAsm* data) {
     // if (!cpu->getOF()) cpu->reg[op->reg].u16 = cpu->reg[op->rm].u16;
-    doCMov(data, true, false, 16, true, false, OF, 11);
+    doCMov(data, condional_NO, false, 16);
 }
 void opCmovNO_R16E16(Armv8btAsm* data) {
     // if (!cpu->getOF()) cpu->reg[op->reg].u16 = readw(eaa(cpu, op));
-    doCMov(data, true, true, 16, true, false, OF, 11);
+    doCMov(data, condional_NO, true, 16);
 }
 void opCmovB_R16R16(Armv8btAsm* data) {
-    doCMov(data, false, false, 16, true, false, CF, 0);
+    doCMov(data, condional_B, false, 16);
 }
 void opCmovB_R16E16(Armv8btAsm* data) {
-    doCMov(data, false, true, 16, true, false, CF, 0);
+    doCMov(data, condional_B, true, 16);
 }
 void opCmovNB_R16R16(Armv8btAsm* data) {
-    doCMov(data, true, false, 16, true, false, CF, 0);
+    doCMov(data, condional_NB, false, 16);
 }
 void opCmovNB_R16E16(Armv8btAsm* data) {
-    doCMov(data, true, true, 16, true, false, CF, 0);
+    doCMov(data, condional_NB, true, 16);
 }
 void opCmovZ_R16R16(Armv8btAsm* data) {
-    doCMov(data, false, false, 16, true, false, ZF, 6);
+    doCMov(data, condional_Z, false, 16);
 }
 void opCmovZ_R16E16(Armv8btAsm* data) {
-    doCMov(data, false, true, 16, true, false, ZF, 6);
+    doCMov(data, condional_Z, true, 16);
 }
 void opCmovNZ_R16R16(Armv8btAsm* data) {
-    doCMov(data, true, false, 16, true, false, ZF, 6);
+    doCMov(data, condional_NZ, false, 16);
 }
 void opCmovNZ_R16E16(Armv8btAsm* data) {
-    doCMov(data, true, true, 16, true, false, ZF, 6);
+    doCMov(data, condional_NZ, true, 16);
 }
 void opCmovBE_R16R16(Armv8btAsm* data) {
-    doCMov(data, false, false, 16, false, true, ZF | CF, 0);
+    doCMov(data, condional_BE, false, 16);
 }
 void opCmovBE_R16E16(Armv8btAsm* data) {
-    doCMov(data, false, true, 16, false, true, ZF | CF, 0);
+    doCMov(data, condional_BE, true, 16);
 }
 void opCmovNBE_R16R16(Armv8btAsm* data) {
-    doCMov(data, true, false, 16, false, true, ZF | CF, 0);
+    doCMov(data, condional_NBE, false, 16);
 }
 void opCmovNBE_R16E16(Armv8btAsm* data) {
-    doCMov(data, true, true, 16, false, true, ZF | CF, 0);
+    doCMov(data, condional_NBE, true, 16);
 }
 void opCmovS_R16R16(Armv8btAsm* data) {
-    doCMov(data, false, false, 16, true, false, SF, 7);
+    doCMov(data, condional_S, false, 16);
 }
 void opCmovS_R16E16(Armv8btAsm* data) {
-    doCMov(data, false, true, 16, true, false, SF, 7);
+    doCMov(data, condional_S, true, 16);
 }
 void opCmovNS_R16R16(Armv8btAsm* data) {
-    doCMov(data, true, false, 16, true, false, SF, 7);
+    doCMov(data, condional_NS, false, 16);
 }
 void opCmovNS_R16E16(Armv8btAsm* data) {
-    doCMov(data, true, true, 16, true, false, SF, 7);
+    doCMov(data, condional_NS, true, 16);
 }
 void opCmovP_R16R16(Armv8btAsm* data) {
-    doCMov(data, false, false, 16, true, false, PF, 2);
+    doCMov(data, condional_P, false, 16);
 }
 void opCmovP_R16E16(Armv8btAsm* data) {
-    doCMov(data, false, true, 16, true, false, PF, 2);
+    doCMov(data, condional_P, true, 16);
 }
 void opCmovNP_R16R16(Armv8btAsm* data) {
-    doCMov(data, true, false, 16, true, false, PF, 2);
+    doCMov(data, condional_NP, false, 16);
 }
 void opCmovNP_R16E16(Armv8btAsm* data) {
-    doCMov(data, true, true, 16, true, false, PF, 2);
+    doCMov(data, condional_NP, true, 16);
 }
 void opCmovL_R16R16(Armv8btAsm* data) {
-    doCMovL(data, false, false, 16, false);
+    doCMov(data, condional_L, false, 16);
 }
 void opCmovL_R16E16(Armv8btAsm* data) {
-    doCMovL(data, false, true, 16, false);
+    doCMov(data, condional_L, true, 16);
 }
 void opCmovNL_R16R16(Armv8btAsm* data) {
-    doCMovL(data, true, false, 16, false);
+    doCMov(data, condional_NL, false, 16);
 }
 void opCmovNL_R16E16(Armv8btAsm* data) {
-    doCMovL(data, true, true, 16, false);
+    doCMov(data, condional_NL, true, 16);
 }
 void opCmovLE_R16R16(Armv8btAsm* data) {
-    doCMovL(data, false, false, 16, true);
+    doCMov(data, condional_LE, false, 16);
 }
 void opCmovLE_R16E16(Armv8btAsm* data) {
-    doCMovL(data, false, true, 16, true);
+    doCMov(data, condional_LE, true, 16);
 }
 void opCmovNLE_R16R16(Armv8btAsm* data) {
-    doCMovL(data, true, false, 16, true);
+    doCMov(data, condional_NLE, false, 16);
 }
 void opCmovNLE_R16E16(Armv8btAsm* data) {
-    doCMovL(data, true, true, 16, true);
+    doCMov(data, condional_NLE, true, 16);
 }
 
 void opCmovO_R32R32(Armv8btAsm* data) {
-    doCMov(data, false, false, 32, true, false, OF, 11);
+    doCMov(data, condional_O, false, 32);
 }
 void opCmovO_R32E32(Armv8btAsm* data) {
-    doCMov(data, false, true, 32, true, false, OF, 11);
+    doCMov(data, condional_O, true, 32);
 }
 void opCmovNO_R32R32(Armv8btAsm* data) {
-    doCMov(data, true, false, 32, true, false, OF, 11);
+    doCMov(data, condional_NO, false, 32);
 }
 void opCmovNO_R32E32(Armv8btAsm* data) {
-    doCMov(data, true, true, 32, true, false, OF, 11);
+    doCMov(data, condional_NO, true, 32);
 }
 void opCmovB_R32R32(Armv8btAsm* data) {
-    doCMov(data, false, false, 32, true, false, CF, 0);
+    doCMov(data, condional_B, false, 32);
 }
 void opCmovB_R32E32(Armv8btAsm* data) {
-    doCMov(data, false, true, 32, true, false, CF, 0);
+    doCMov(data, condional_B, true, 32);
 }
 void opCmovNB_R32R32(Armv8btAsm* data) {
-    doCMov(data, true, false, 32, true, false, CF, 0);
+    doCMov(data, condional_NB, false, 32);
 }
 void opCmovNB_R32E32(Armv8btAsm* data) {
-    doCMov(data, true, true, 32, true, false, CF, 0);
+    doCMov(data, condional_NB, true, 32);
 }
 void opCmovZ_R32R32(Armv8btAsm* data) {
-    doCMov(data, false, false, 32, true, false, ZF, 6);
+    doCMov(data, condional_Z, false, 32);
 }
 void opCmovZ_R32E32(Armv8btAsm* data) {
-    doCMov(data, false, true, 32, true, false, ZF, 6);
+    doCMov(data, condional_Z, true, 32);
 }
 void opCmovNZ_R32R32(Armv8btAsm* data) {
-    doCMov(data, true, false, 32, true, false, ZF, 6);
+    doCMov(data, condional_NZ, false, 32);
 }
 void opCmovNZ_R32E32(Armv8btAsm* data) {
-    doCMov(data, true, true, 32, true, false, ZF, 6);
+    doCMov(data, condional_NZ, true, 32);
 }
 void opCmovBE_R32R32(Armv8btAsm* data) {
-    doCMov(data, false, false, 32, false, true, ZF | CF, 0);
+    doCMov(data, condional_BE, false, 32);
 }
 void opCmovBE_R32E32(Armv8btAsm* data) {
-    doCMov(data, false, true, 32, false, true, ZF | CF, 0);
+    doCMov(data, condional_BE, true, 32);
 }
 void opCmovNBE_R32R32(Armv8btAsm* data) {
-    doCMov(data, true, false, 32, false, true, ZF | CF, 0);
+    doCMov(data, condional_NBE, false, 32);
 }
 void opCmovNBE_R32E32(Armv8btAsm* data) {
-    doCMov(data, true, true, 32, false, true, ZF | CF, 0);
+    doCMov(data, condional_NBE, true, 32);
 }
 void opCmovS_R32R32(Armv8btAsm* data) {
-    doCMov(data, false, false, 32, true, false, SF, 7);
+    doCMov(data, condional_S, false, 32);
 }
 void opCmovS_R32E32(Armv8btAsm* data) {
-    doCMov(data, false, true, 32, true, false, SF, 7);
+    doCMov(data, condional_S, true, 32);
 }
 void opCmovNS_R32R32(Armv8btAsm* data) {
-    doCMov(data, true, false, 32, true, false, SF, 7);
+    doCMov(data, condional_NS, false, 32);
 }
 void opCmovNS_R32E32(Armv8btAsm* data) {
-    doCMov(data, true, true, 32, true, false, SF, 7);
+    doCMov(data, condional_NS, true, 32);
 }
 void opCmovP_R32R32(Armv8btAsm* data) {
-    doCMov(data, false, false, 32, true, false, PF, 2);
+    doCMov(data, condional_P, false, 32);
 }
 void opCmovP_R32E32(Armv8btAsm* data) {
-    doCMov(data, false, true, 32, true, false, PF, 2);
+    doCMov(data, condional_P, true, 32);
 }
 void opCmovNP_R32R32(Armv8btAsm* data) {
-    doCMov(data, true, false, 32, true, false, PF, 2);
+    doCMov(data, condional_NP, false, 32);
 }
 void opCmovNP_R32E32(Armv8btAsm* data) {
-    doCMov(data, true, true, 32, true, false, PF, 2);
+    doCMov(data, condional_NP, true, 32);
 }
 void opCmovL_R32R32(Armv8btAsm* data) {
-    doCMovL(data, false, false, 32, false);
+    doCMov(data, condional_L, false, 32);
 }
 void opCmovL_R32E32(Armv8btAsm* data) {
-    doCMovL(data, false, true, 32, false);
+    doCMov(data, condional_L, true, 32);
 }
 void opCmovNL_R32R32(Armv8btAsm* data) {
-    doCMovL(data, true, false, 32, false);
+    doCMov(data, condional_NL, false, 32);
 }
 void opCmovNL_R32E32(Armv8btAsm* data) {
-    doCMovL(data, true, true, 32, false);
+    doCMov(data, condional_NL, true, 32);
 }
 void opCmovLE_R32R32(Armv8btAsm* data) {
-    doCMovL(data, false, false, 32, true);
+    doCMov(data, condional_LE, false, 32);
 }
 void opCmovLE_R32E32(Armv8btAsm* data) {
-    doCMovL(data, false, true, 32, true);
+    doCMov(data, condional_LE, true, 32);
 }
 void opCmovNLE_R32R32(Armv8btAsm* data) {
-    doCMovL(data, true, false, 32, true);
+    doCMov(data, condional_NLE, false, 32);
 }
 void opCmovNLE_R32E32(Armv8btAsm* data) {
-    doCMovL(data, true, true, 32, true);
+    doCMov(data, condional_NLE, true, 32);
 }
 
 void opSetO_R8(Armv8btAsm* data) {}
