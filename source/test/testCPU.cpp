@@ -7325,6 +7325,288 @@ void testCmovNLE0x34f() {
     doTestCmov(0x34f, true, SF, 0x11112223, 0x11112221);
     doTestCmov(0x34f, true, OF, 0x7fffffff, 0xffffffff);
 }
+
+void doTestSet(U32 instruction, bool isNotFlag, U32 flags, U32 cmpValueThatTriggersFlag, U32 cmpValueThatDoesNotTriggerFlag) {
+    for (U32 setFlags = 0; setFlags < 2; setFlags++) {
+        for (U32 useFlags = 0; useFlags < 2; useFlags++) {
+            for (U32 ed = 0; ed < 8; ed++) {
+                Reg* e;
+
+                U8 rm = ed | 0xC0;
+
+                if (setFlags) {
+                    newInstructionWithRM(instruction, rm, useFlags ? flags : 0);
+                } else {
+                    // cmp ed, 0
+                    newInstructionWithRM(0x81, 0xf8 | (ed % 4), 0);
+                    if (cpu->big) {
+                        pushCode32(useFlags ? cmpValueThatTriggersFlag : cmpValueThatDoesNotTriggerFlag);
+                    } else {
+                        pushCode16(useFlags ? cmpValueThatTriggersFlag : cmpValueThatDoesNotTriggerFlag);
+                    }
+                    pushCode8(0x0F);
+                    pushCode8(instruction & 0xFF);
+                    pushCode8(rm);
+                }
+                e = &cpu->reg[ed % 4];
+                e->u32 = 0x11112222;
+                runTestCPU();
+
+                bool wasChanged = useFlags;
+
+                if (isNotFlag) {
+                    wasChanged = !wasChanged;
+                }
+                if (wasChanged) {
+                    if (ed > 3) {
+                        assertTrue(e->u32 == 0x11110122);
+                    } else {
+                        assertTrue(e->u32 == 0x11112201);
+                    }
+                } else {
+                    if (ed > 3) {
+                        assertTrue(e->u32 == 0x11110022);
+                    } else {
+                        assertTrue(e->u32 == 0x11112200);
+                    }
+                }
+            }
+
+            U8 rm = 0;
+            if (cpu->big) {
+                rm += 5;
+            } else {
+                rm += 6;
+            }
+            if (setFlags) {
+                newInstructionWithRM(instruction, rm, useFlags ? flags : 0);
+            } else {
+                // cmp [200], 0
+                newInstructionWithRM(0x81, 0x38 | (cpu->big ? 5 : 6), 0);
+                if (cpu->big) {
+                    pushCode32(200);
+                } else {
+                    pushCode16(200);
+                }
+                if (cpu->big) {
+                    pushCode32(useFlags ? cmpValueThatTriggersFlag : cmpValueThatDoesNotTriggerFlag);
+                } else {
+                    pushCode16(useFlags ? cmpValueThatTriggersFlag : cmpValueThatDoesNotTriggerFlag);
+                }
+                pushCode8(0x0F);
+                pushCode8(instruction & 0xFF);
+                pushCode8(rm);
+            }
+            if (cpu->big) {
+                pushCode32(200);
+            } else {
+                pushCode16(200);
+            }
+            writed(cpu->seg[DS].address + 200, 0x11112222);
+            runTestCPU();
+            U32 result = readd(cpu->seg[DS].address + 200);
+
+            bool wasChanged = useFlags;
+
+            if (isNotFlag) {
+                wasChanged = !wasChanged;
+            }
+            if (wasChanged) {
+                assertTrue(result == 0x11112201);
+            } else {
+                assertTrue(result == 0x11112200);
+            }
+        }
+    }
+    runTestCPU();
+}
+
+void testSetO0x190() {
+    cpu->big = 0;
+    doTestSet(0x190, false, OF, 0x8333, 0x3333);
+}
+
+void testSetO0x390() {
+    cpu->big = 1;
+    doTestSet(0x390, false, OF, 0x83330000, 0x23330000);
+}
+
+void testSetNO0x191() {
+    cpu->big = 0;
+    doTestSet(0x191, true, OF, 0x8333, 0x3333);
+}
+
+void testSetNO0x391() {
+    cpu->big = 1;
+    doTestSet(0x391, true, OF, 0x83330000, 0x23330000);
+}
+
+void testSetB0x192() {
+    cpu->big = 0;
+    doTestSet(0x192, false, CF, 0x3333, 0x1333);
+}
+
+void testSetB0x392() {
+    cpu->big = 1;
+    doTestSet(0x392, false, CF, 0x23330000, 0x03330000);
+}
+
+void testSetNB0x193() {
+    cpu->big = 0;
+    doTestSet(0x193, true, CF, 0x3333, 0x1333);
+}
+
+void testSetNB0x393() {
+    cpu->big = 1;
+    doTestSet(0x393, true, CF, 0x23330000, 0x03330000);
+}
+
+void testSetZ0x194() {
+    cpu->big = 0;
+    doTestSet(0x194, false, ZF, 0x2222, 0x1333);
+}
+
+void testSetZ0x394() {
+    cpu->big = 1;
+    doTestSet(0x394, false, ZF, 0x11112222, 0x13332222);
+}
+
+void testSetNZ0x195() {
+    cpu->big = 0;
+    doTestSet(0x195, true, ZF, 0x2222, 0x3333);
+}
+
+void testSetNZ0x395() {
+    cpu->big = 1;
+    doTestSet(0x395, true, ZF, 0x11112222, 0x33332222);
+}
+
+void testSetBE0x196() {
+    cpu->big = 0;
+    doTestSet(0x196, false, ZF | CF, 0x2222, 0x1333);
+    doTestSet(0x196, false, ZF | CF, 0x3333, 0x1333);
+}
+
+void testSetBE0x396() {
+    cpu->big = 1;
+    doTestSet(0x396, false, ZF | CF, 0x11112222, 0x03332222);
+    doTestSet(0x396, false, ZF | CF, 0x23330000, 0x03330000);
+}
+
+void testSetNBE0x197() {
+    cpu->big = 0;
+    doTestSet(0x197, true, ZF | CF, 0x2222, 0x1333);
+    doTestSet(0x197, true, ZF | CF, 0x3333, 0x1333);
+}
+
+void testSetNBE0x397() {
+    cpu->big = 1;
+    doTestSet(0x397, true, ZF | CF, 0x11112222, 0x03332222);
+    doTestSet(0x397, true, ZF | CF, 0x23330000, 0x03330000);
+}
+
+void testSetS0x198() {
+    cpu->big = 0;
+    doTestSet(0x198, false, SF, 0x2223, 0x1333);
+    doTestSet(0x198, false, SF, 0x8000, 0xFFFF);
+}
+
+void testSetS0x398() {
+    cpu->big = 1;
+    doTestSet(0x398, false, SF, 0x11112223, 0x03332222);
+    doTestSet(0x398, false, SF, 0x80000000, 0xFFFFFFFF);
+}
+
+void testSetNS0x199() {
+    cpu->big = 0;
+    doTestSet(0x199, true, SF, 0x2223, 0x1333);
+    doTestSet(0x199, true, SF, 0x8000, 0xFFFF);
+}
+
+void testSetNS0x399() {
+    cpu->big = 1;
+    doTestSet(0x399, true, SF, 0x11112223, 0x03332222);
+    doTestSet(0x399, true, SF, 0x80000000, 0xFFFFFFFF);
+}
+
+void testSetP0x19a() {
+    cpu->big = 0;
+    doTestSet(0x19a, false, PF, 0x2222, 0x2221); // diff of 0 is PF, 1 is not PF
+    doTestSet(0x19a, false, PF, 0x221f, 0x2220); // diff of 3 is PF, 2 is not PF
+}
+
+void testSetP0x39a() {
+    cpu->big = 1;
+    doTestSet(0x39a, false, PF, 0x11112222, 0x11112221);
+    doTestSet(0x39a, false, PF, 0x1111221f, 0x11112220);
+}
+
+void testSetNP0x19b() {
+    cpu->big = 0;
+    doTestSet(0x19b, true, PF, 0x2222, 0x2221); // diff of 0 is PF, 1 is not PF
+    doTestSet(0x19b, true, PF, 0x221f, 0x2220); // diff of 3 is PF, 2 is not PF
+}
+
+void testSetNP0x39b() {
+    cpu->big = 1;
+    doTestSet(0x39b, true, PF, 0x11112222, 0x11112221);
+    doTestSet(0x39b, true, PF, 0x1111221f, 0x11112220);
+}
+
+void testSetL0x19c() {
+    cpu->big = 0;
+    // signed less than
+    doTestSet(0x19c, false, SF, 0x2223, 0x2222);
+    doTestSet(0x19c, false, OF, 0x7fff, 0xffff);
+}
+
+void testSetL0x39c() {
+    cpu->big = 1;
+    doTestSet(0x39c, false, SF, 0x11112223, 0x11112222);
+    doTestSet(0x39c, false, OF, 0x7fffffff, 0xffffffff);
+}
+
+void testSetNL0x19d() {
+    cpu->big = 0;
+    doTestSet(0x19d, true, SF, 0x2223, 0x2222);
+    doTestSet(0x19d, true, OF, 0x7fff, 0xffff);
+}
+
+void testSetNL0x39d() {
+    cpu->big = 1;
+    doTestSet(0x39d, true, SF, 0x11112223, 0x11112222);
+    doTestSet(0x39d, true, OF, 0x7fffffff, 0xffffffff);
+}
+
+void testSetLE0x19e() {
+    cpu->big = 0;
+    // signed less than or equal
+    doTestSet(0x19e, false, ZF, 0x2222, 0x2221);
+    doTestSet(0x19e, false, SF, 0x2223, 0x2221);
+    doTestSet(0x19e, false, OF, 0x7fff, 0xffff);
+}
+
+void testSetLE0x39e() {
+    cpu->big = 1;
+    doTestSet(0x39e, false, ZF, 0x11112222, 0x11112221);
+    doTestSet(0x39e, false, SF, 0x11112223, 0x11112221);
+    doTestSet(0x39e, false, OF, 0x7fffffff, 0xffffffff);
+}
+
+void testSetNLE0x19f() {
+    cpu->big = 0;
+    doTestSet(0x19f, true, ZF, 0x2222, 0x2221);
+    doTestSet(0x19f, true, SF, 0x2223, 0x2221);
+    doTestSet(0x19f, true, OF, 0x7fff, 0xffff);
+}
+
+void testSetNLE0x39f() {
+    cpu->big = 1;
+    doTestSet(0x39f, true, ZF, 0x11112222, 0x11112221);
+    doTestSet(0x39f, true, SF, 0x11112223, 0x11112221);
+    doTestSet(0x39f, true, OF, 0x7fffffff, 0xffffffff);
+}
+
 void run(void (*functionPtr)(), const char* name) {
     didFail = 0;
     setup();
@@ -8644,6 +8926,39 @@ int main(int argc, char **argv) {
     run(testSse2Movdqa17f, "MOVDQA 17F (sse2)");
     run(testMmxMovqToE, "MOVQ 37f (mmx)");
     run(testSse2Movdqu37f, "MOVDQU F3 37F (sse2)");
+
+    run(testSetO0x190, "SETO 190");
+    run(testSetO0x390, "SETO 390");
+    run(testSetNO0x191, "SETNO 191");
+    run(testSetNO0x391, "SETNO 391");
+    run(testSetB0x192, "SETB 192");
+    run(testSetB0x392, "SETB 392");
+    run(testSetNB0x193, "SETNB 193");
+    run(testSetNB0x393, "SETNB 393");
+    run(testSetZ0x194, "SETZ 194");
+    run(testSetZ0x394, "SETZ 394");
+    run(testSetNZ0x195, "SETNZ 195");
+    run(testSetNZ0x395, "SETNZ 395");
+    run(testSetBE0x196, "SETBE 196");
+    run(testSetBE0x396, "SETBE 396");
+    run(testSetNBE0x197, "SETNBE 197");
+    run(testSetNBE0x397, "SETNBE 397");
+    run(testSetS0x198, "SETS 198");
+    run(testSetS0x398, "SETS 398");
+    run(testSetNS0x199, "SETNS 199");
+    run(testSetNS0x399, "SETNS 399");
+    run(testSetP0x19a, "SETP 19a");
+    run(testSetP0x39a, "SETP 39a");
+    run(testSetNP0x19b, "SETNP 19b");
+    run(testSetNP0x39b, "SETNP 39b");
+    run(testSetL0x19c, "SETL 19c");
+    run(testSetL0x39c, "SETL 39c");
+    run(testSetNL0x19d, "SETNL 19d");
+    run(testSetNL0x39d, "SETNL 39d");
+    run(testSetLE0x19e, "SETLE 19e");
+    run(testSetLE0x39e, "SETLE 39e");
+    run(testSetNLE0x19f, "SETNLE 19f");
+    run(testSetNLE0x39f, "SETNLE 39f");
 
     run(testBt0x1a3, "BT 1a3");
     run(testBt0x3a3, "BT 3a3");
