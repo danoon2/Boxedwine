@@ -222,6 +222,7 @@ public:
     void cls32(U8 dst, U8 src); // count leading sign bits
     void cls64(U8 dst, U8 src); // count leading sign bits
     void csetEq(U8 reg); // ZF = 1
+    void csetNe(U8 reg); // ZF = 0
     void csetCc(U8 reg); // CF = 1
     void csetVs(U8 reg); // OF = 1
     void csetLt(U8 reg);

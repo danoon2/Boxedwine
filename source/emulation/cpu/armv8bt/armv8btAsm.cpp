@@ -929,6 +929,14 @@ void Armv8btAsm::csetEq(U8 reg) {
     write8(0x1a);
 }
 
+// ZF = 0
+void Armv8btAsm::csetNe(U8 reg) {
+    write8(0xe0 | reg);
+    write8(0x07);
+    write8(0x9f);
+    write8(0x1a);
+}
+
 // CF = 1
 void Armv8btAsm::csetCc(U8 reg) {
     write8(0xe0 | reg);

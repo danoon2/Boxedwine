@@ -4324,38 +4324,180 @@ void opCmovNLE_R32E32(Armv8btAsm* data) {
     doCMov(data, condional_NLE, true, 32);
 }
 
-void opSetO_R8(Armv8btAsm* data) {}
-void opSetO_E8(Armv8btAsm* data) {}
-void opSetNO_R8(Armv8btAsm* data) {}
-void opSetNO_E8(Armv8btAsm* data) {}
-void opSetB_R8(Armv8btAsm* data) {}
-void opSetB_E8(Armv8btAsm* data) {}
-void opSetNB_R8(Armv8btAsm* data) {}
-void opSetNB_E8(Armv8btAsm* data) {}
-void opSetZ_R8(Armv8btAsm* data) {}
-void opSetZ_E8(Armv8btAsm* data) {}
-void opSetNZ_R8(Armv8btAsm* data) {}
-void opSetNZ_E8(Armv8btAsm* data) {}
-void opSetBE_R8(Armv8btAsm* data) {}
-void opSetBE_E8(Armv8btAsm* data) {}
-void opSetNBE_R8(Armv8btAsm* data) {}
-void opSetNBE_E8(Armv8btAsm* data) {}
-void opSetS_R8(Armv8btAsm* data) {}
-void opSetS_E8(Armv8btAsm* data) {}
-void opSetNS_R8(Armv8btAsm* data) {}
-void opSetNS_E8(Armv8btAsm* data) {}
-void opSetP_R8(Armv8btAsm* data) {}
-void opSetP_E8(Armv8btAsm* data) {}
-void opSetNP_R8(Armv8btAsm* data) {}
-void opSetNP_E8(Armv8btAsm* data) {}
-void opSetL_R8(Armv8btAsm* data) {}
-void opSetL_E8(Armv8btAsm* data) {}
-void opSetNL_R8(Armv8btAsm* data) {}
-void opSetNL_E8(Armv8btAsm* data) {}
-void opSetLE_R8(Armv8btAsm* data) {}
-void opSetLE_E8(Armv8btAsm* data) {}
-void opSetNLE_R8(Armv8btAsm* data) {}
-void opSetNLE_E8(Armv8btAsm* data) {}
+static void doSetCondition(Armv8btAsm* data, Conditional conditional, bool mem) {
+    // :TODO: check hardware flags if data->lazyFlags
+    U32 flagsToTest;
+    bool neg = false;
+    bool singleFlag = true;
+    bool multiOrFlag = false;
+    U32 oneFlagPos = 0;
+    bool checkZF = false;
+
+    switch (conditional) {
+    case condional_O: flagsToTest = OF; oneFlagPos = 11; break;
+    case condional_NO: flagsToTest = OF; oneFlagPos = 11; neg = true; break;
+    case condional_B: flagsToTest = CF; break;
+    case condional_NB: flagsToTest = CF; neg = true; break;
+    case condional_Z: flagsToTest = ZF; oneFlagPos = 6; break;
+    case condional_NZ: flagsToTest = ZF; oneFlagPos = 6; neg = true; break;
+    case condional_BE: flagsToTest = ZF | CF; singleFlag = false; multiOrFlag = true; break;
+    case condional_NBE: flagsToTest = ZF | CF; neg = true; singleFlag = false; multiOrFlag = true; break;
+    case condional_S: flagsToTest = SF; oneFlagPos = 7; break;
+    case condional_NS: flagsToTest = SF; oneFlagPos = 7; neg = true; break;
+    case condional_P: flagsToTest = PF; oneFlagPos = 2; break;
+    case condional_NP: flagsToTest = PF; oneFlagPos = 2; neg = true; break;
+    case condional_L: flagsToTest = SF | OF; singleFlag = false; break;
+    case condional_NL: flagsToTest = SF | OF; neg = true; singleFlag = false; break;
+    case condional_LE: flagsToTest = SF | OF | ZF; singleFlag = false; checkZF = true;  break;
+    case condional_NLE: flagsToTest = SF | OF | ZF; neg = true; singleFlag = false; checkZF = true; break;
+    }
+    if (data->lazyFlags) {
+        U32 flags = DecodedOp::getNeededFlags(data->currentBlock, data->decodedOp, ZF | SF | PF | AF | OF | CF);
+        data->fillFlags(flags | flagsToTest);
+        data->lazyFlags = NULL;
+    }
+
+    if (singleFlag || multiOrFlag) {
+        data->testValue32(xFLAGS, flagsToTest);  
+    } else {
+        U8 tmpSF = data->getTmpReg();
+        U8 tmpOF = data->getTmpReg();
+        data->copyBitsFromSourceAtPositionToDest(tmpSF, xFLAGS, 7, 1, false);
+        data->copyBitsFromSourceAtPositionToDest(tmpOF, xFLAGS, 11, 1, false);
+        if (checkZF) {
+            // LE and NLE
+            // SF != OF || ZF
+            U8 tmpZF = data->getTmpReg();
+            data->copyBitsFromSourceAtPositionToDest(tmpZF, xFLAGS, 6, 1, false);
+            data->xorRegs32(tmpSF, tmpSF, tmpOF);
+            data->orRegs32(tmpSF, tmpSF, tmpZF);
+            data->cmpValue32(tmpSF, 0);
+            // if tmpSF == 1 then ZF == 0
+            // if tmpSF == 0 then ZF == 1
+            data->releaseTmpReg(tmpZF);
+        } else {
+            // L and NL
+            // SF != OF
+            data->cmpRegs32(tmpSF, tmpOF);
+            // if tmpSF != tmpOF then ZF == 0
+        }
+        data->releaseTmpReg(tmpSF);
+        data->releaseTmpReg(tmpOF);
+    }
+    U8 tmpReg = data->getTmpReg();
+    if (neg) {
+        // ZF = 1
+        data->csetEq(tmpReg);
+    } else {
+        // ZF = 0
+        data->csetNe(tmpReg);
+    }
+    if (mem) {
+        U8 addressReg = data->getAddressReg();
+        data->writeMemory(addressReg, tmpReg, 8, true);
+        data->releaseTmpReg(addressReg);
+    } else {        
+        data->movRegToReg8(tmpReg, data->decodedOp->reg);        
+    }
+    data->releaseTmpReg(tmpReg);
+}
+
+void opSetO_R8(Armv8btAsm* data) {
+    doSetCondition(data, condional_O, false);
+}
+void opSetO_E8(Armv8btAsm* data) {
+    doSetCondition(data, condional_O, true);
+}
+void opSetNO_R8(Armv8btAsm* data) {
+    doSetCondition(data, condional_NO, false);
+}
+void opSetNO_E8(Armv8btAsm* data) {
+    doSetCondition(data, condional_NO, true);
+}
+void opSetB_R8(Armv8btAsm* data) {
+    doSetCondition(data, condional_B, false);
+}
+void opSetB_E8(Armv8btAsm* data) {
+    doSetCondition(data, condional_B, true);
+}
+void opSetNB_R8(Armv8btAsm* data) {
+    doSetCondition(data, condional_NB, false);
+}
+void opSetNB_E8(Armv8btAsm* data) {
+    doSetCondition(data, condional_NB, true);
+}
+void opSetZ_R8(Armv8btAsm* data) {
+    doSetCondition(data, condional_Z, false);
+}
+void opSetZ_E8(Armv8btAsm* data) {
+    doSetCondition(data, condional_Z, true);
+}
+void opSetNZ_R8(Armv8btAsm* data) {
+    doSetCondition(data, condional_NZ, false);
+}
+void opSetNZ_E8(Armv8btAsm* data) {
+    doSetCondition(data, condional_NZ, true);
+}
+void opSetBE_R8(Armv8btAsm* data) {
+    doSetCondition(data, condional_BE, false);
+}
+void opSetBE_E8(Armv8btAsm* data) {
+    doSetCondition(data, condional_BE, true);
+}
+void opSetNBE_R8(Armv8btAsm* data) {
+    doSetCondition(data, condional_NBE, false);
+}
+void opSetNBE_E8(Armv8btAsm* data) {
+    doSetCondition(data, condional_NBE, true);
+}
+void opSetS_R8(Armv8btAsm* data) {
+    doSetCondition(data, condional_S, false);
+}
+void opSetS_E8(Armv8btAsm* data) {
+    doSetCondition(data, condional_S, true);
+}
+void opSetNS_R8(Armv8btAsm* data) {
+    doSetCondition(data, condional_NS, false);
+}
+void opSetNS_E8(Armv8btAsm* data) {
+    doSetCondition(data, condional_NS, true);
+}
+void opSetP_R8(Armv8btAsm* data) {
+    doSetCondition(data, condional_P, false);
+}
+void opSetP_E8(Armv8btAsm* data) {
+    doSetCondition(data, condional_P, true);
+}
+void opSetNP_R8(Armv8btAsm* data) {
+    doSetCondition(data, condional_NP, false);
+}
+void opSetNP_E8(Armv8btAsm* data) {
+    doSetCondition(data, condional_NP, true);
+}
+void opSetL_R8(Armv8btAsm* data) {
+    doSetCondition(data, condional_L, false);
+}
+void opSetL_E8(Armv8btAsm* data) {
+    doSetCondition(data, condional_L, true);
+}
+void opSetNL_R8(Armv8btAsm* data) {
+    doSetCondition(data, condional_NL, false);
+}
+void opSetNL_E8(Armv8btAsm* data) {
+    doSetCondition(data, condional_NL, true);
+}
+void opSetLE_R8(Armv8btAsm* data) {
+    doSetCondition(data, condional_LE, false);
+}
+void opSetLE_E8(Armv8btAsm* data) {
+    doSetCondition(data, condional_LE, true);
+}
+void opSetNLE_R8(Armv8btAsm* data) {
+    doSetCondition(data, condional_NLE, false);
+}
+void opSetNLE_E8(Armv8btAsm* data) {
+    doSetCondition(data, condional_NLE, true);
+}
 
 void opSLDTReg(Armv8btAsm* data) {}
 void opSLDTE16(Armv8btAsm* data) {}
