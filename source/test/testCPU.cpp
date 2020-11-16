@@ -7034,6 +7034,53 @@ void testSegDs0x23e() {
     testSeg(0x3e, DS);
 }
 
+void doTestBswap(U8 reg) {
+    newInstruction(0x3c8+reg, 0);
+    cpu->reg[reg].u32 = 0x12345678;
+    runTestCPU();
+    assertTrue(cpu->reg[reg].u32 == 0x78563412);
+}
+
+void testBswap3c8() {
+    cpu->big = 1;
+    doTestBswap(0);
+}
+
+void testBswap3c9() {
+    cpu->big = 1;
+    doTestBswap(1);
+}
+
+void testBswap3ca() {
+    cpu->big = 1;
+    doTestBswap(2);
+}
+
+void testBswap3cb() {
+    cpu->big = 1;
+    doTestBswap(3);
+}
+
+void testBswap3cc() {
+    cpu->big = 1;
+    doTestBswap(4);
+}
+
+void testBswap3cd() {
+    cpu->big = 1;
+    doTestBswap(5);
+}
+
+void testBswap3ce() {
+    cpu->big = 1;
+    doTestBswap(6);
+}
+
+void testBswap3cf() {
+    cpu->big = 1;
+    doTestBswap(7);
+}
+
 void doTestCmov(U32 instruction, bool isNotFlag, U32 flags, U32 cmpValueThatTriggersFlag, U32 cmpValueThatDoesNotTriggerFlag) {
     for (U32 setFlags = 0; setFlags < 2; setFlags++) {
         for (U32 useFlags = 0; useFlags < 2; useFlags++) {
@@ -8997,6 +9044,16 @@ int main(int argc, char **argv) {
     run(testPextrw1c5, "PEXTRW 1C5 (sse2)");
     run(testSse2Shufpd1c6, "SHUFPD 1C6 (sse2)");
     run(testShufps3c6, "SHUFPS 3C6 (sse1)");
+
+    run(testBswap3c8, "BSWAP EAX 3C8");
+    run(testBswap3c9, "BSWAP ECX 3C9");
+    run(testBswap3ca, "BSWAP EDX 3CA");
+    run(testBswap3cb, "BSWAP EBX 3CB");
+    // crashes x64
+    //run(testBswap3cc, "BSWAP ESP 3CC");
+    run(testBswap3cd, "BSWAP EBP 3CD");
+    run(testBswap3ce, "BSWAP ESI 3CE");
+    run(testBswap3cf, "BSWAP EDI 3CF");
 
     run(testSse2Psrlw1d1, "PSRLW 1D1 (sse2)");
     run(testMmxPsrlw, "PSRLW 3D1 (mmx)");    
