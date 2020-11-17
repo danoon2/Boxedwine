@@ -6784,6 +6784,83 @@ void testCmpXchg0x3b1() {
 #endif
 }
 
+void testCmpXchg8b0x3c7() {
+    cpu->big = true;
+    // test with and without the flag being needed, dynamic cores may optimize the solution if ZF will be ignored
+    for (int setsFlags = 0; setsFlags < 2; setsFlags++) {
+        for (int usesFlags = 0; usesFlags < 2; usesFlags++) {
+            if (setsFlags) {
+                newInstructionWithRM(0x3c7, 13, CF);
+            } else {
+                // add esi, edi
+                newInstructionWithRM(0x01, 0xfe, 0);
+                // will cause CF to be set
+                ESI = 0xFFFFFFFF;
+                EDI = 1;
+                pushCode8(0x0f);
+                pushCode8(0xc7);
+                pushCode8(13);
+            }
+            pushCode32(200);
+            if (!usesFlags) {
+                // add esi, edi
+                pushCode8(0x01);
+                pushCode8(0xfe);
+            }
+            EAX = 0x44444444;
+            EDX = 0x55555555;
+            EBX = 0x66666666;
+            ECX = 0x77777777;
+
+            writeq(cpu->seg[DS].address + 200, 0x5555555544444444);
+            runTestCPU();
+            U64 result = readq(cpu->seg[DS].address + 200);
+            assertTrue(result == 0x7777777766666666);
+            if (usesFlags) {
+                assertTrue(cpu->flags & ZF);
+                assertTrue(cpu->flags & CF);
+            }
+            assertTrue(EDX == 0x55555555);
+            assertTrue(EAX == 0x44444444);
+
+            if (setsFlags) {
+                newInstructionWithRM(0x3c7, 13, CF);
+            } else {
+                // add esi, edi
+                newInstructionWithRM(0x01, 0xfe, 0);
+                // will cause CF to be set
+                ESI = 0xFFFFFFFF;
+                EDI = 1;
+                pushCode8(0x0f);
+                pushCode8(0xc7);
+                pushCode8(13);
+            }
+            pushCode32(200);
+            if (!usesFlags) {
+                // add esi, edi
+                pushCode8(0x01);
+                pushCode8(0xfe);
+            }
+
+            EAX = 0x44444444;
+            EDX = 0x55555555;
+            EBX = 0x66666666;
+            ECX = 0x77777777;
+
+            writeq(cpu->seg[DS].address + 200, 0x5555555044444440);
+            runTestCPU();
+            result = readq(cpu->seg[DS].address + 200);
+            assertTrue(result == 0x5555555044444440);
+            if (usesFlags) {
+                assertTrue((cpu->flags & ZF) == 0);
+                assertTrue(cpu->flags & CF);
+            }
+            assertTrue(EDX == 0x55555550);
+            assertTrue(EAX == 0x44444440);
+        }
+    }
+}
+
 void testXadd0x3c1() {
     cpu->big=true;
     EdGd(0x3c1, xadd);
@@ -9044,7 +9121,7 @@ int main(int argc, char **argv) {
     run(testPextrw1c5, "PEXTRW 1C5 (sse2)");
     run(testSse2Shufpd1c6, "SHUFPD 1C6 (sse2)");
     run(testShufps3c6, "SHUFPS 3C6 (sse1)");
-
+    run(testCmpXchg8b0x3c7, "CMPXCHG8B 3C7");
     run(testBswap3c8, "BSWAP EAX 3C8");
     run(testBswap3c9, "BSWAP ECX 3C9");
     run(testBswap3ca, "BSWAP EDX 3CA");
@@ -9053,7 +9130,7 @@ int main(int argc, char **argv) {
     //run(testBswap3cc, "BSWAP ESP 3CC");
     run(testBswap3cd, "BSWAP EBP 3CD");
     run(testBswap3ce, "BSWAP ESI 3CE");
-    run(testBswap3cf, "BSWAP EDI 3CF");
+    run(testBswap3cf, "BSWAP EDI 3CF");    
 
     run(testSse2Psrlw1d1, "PSRLW 1D1 (sse2)");
     run(testMmxPsrlw, "PSRLW 3D1 (mmx)");    
