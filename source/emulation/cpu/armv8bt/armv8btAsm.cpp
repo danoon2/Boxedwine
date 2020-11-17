@@ -372,6 +372,13 @@ void Armv8btAsm::writeMem32RegOffset(U8 dst, U8 base, U8 offsetReg) {
     write8(0xb8);
 }
 
+void Armv8btAsm::writeMem64RegOffset(U8 dst, U8 base, U8 offsetReg) {
+    write8(dst | (U8)(base << 5));
+    write8(0x68 | (U8)(base >> 3));
+    write8(0x20 | offsetReg);
+    write8(0xf8);
+}
+
 void Armv8btAsm::writeMem32ValueOffset(U8 dst, U8 base, S32 offset) {
     if (offset > 255 || offset < -256) {
         U8 tmp = getRegWithConst(offset);
@@ -565,6 +572,13 @@ void Armv8btAsm::cmpRegs32(U8 src1, U8 src2) {
     write8(0x6b); // 6b is 32-bit version (eb is 64-bit version)
 }
 
+void Armv8btAsm::cmpRegs64(U8 src1, U8 src2) {
+    write8(0x1f | (U8)(src1 << 5));
+    write8((U8)(src1 >> 3));
+    write8(src2);
+    write8(0xeb);
+}
+
 void Armv8btAsm::cmpValue32(U8 src, U32 value) {
     if (value <= 0xFFF) {
         write8(0x1f | (U8)(src << 5));
@@ -671,6 +685,13 @@ void Armv8btAsm::orRegs32(U8 dst, U8 src1, U8 src2, U32 shiftLeft) {
     write8((U8)(src1 >> 3) | (U8)(shiftLeft << 2));
     write8(src2);
     write8(0x2a); // 2a is 32-bit version (aa is 64-bit)
+}
+
+void Armv8btAsm::orRegs64(U8 dst, U8 src1, U8 src2, U32 shiftLeft) {
+    write8(dst | (U8)(src1 << 5));
+    write8((U8)(src1 >> 3) | (U8)(shiftLeft << 2));
+    write8(src2);
+    write8(0xaa);
 }
 
 void Armv8btAsm::orValue32(U8 dst, U8 src, U32 value) {
@@ -1296,7 +1317,9 @@ void Armv8btAsm::readMemory(U8 addressReg, U8 dst, U32 width, bool addMemOffsetT
         kpanic("Armv8btAsm::readMemory lock not implemented yet");
     }
     if (addMemOffsetToAddress) {
-        if (width == 32) {
+        if (width == 64) {
+            readMem64RegOffset(dst, addressReg, xMem);
+        } else if (width == 32) {
             readMem32RegOffset(dst, addressReg, xMem);
         } else if (width == 16) {
             readMem16RegOffset(dst, addressReg, xMem, signExtend);
@@ -1306,7 +1329,9 @@ void Armv8btAsm::readMemory(U8 addressReg, U8 dst, U32 width, bool addMemOffsetT
             kpanic("ArmV8bt: readMemory with invalid width: %d", width);
         }        
     } else {
-        if (width == 32) {
+        if (width == 64) {
+            readMem64ValueOffset(dst, addressReg, 0);
+        } else if (width == 32) {
             readMem32ValueOffset(dst, addressReg, 0);
         } else if (width == 16) {
             readMem16ValueOffset(dst, addressReg, 0, signExtend);
@@ -1335,7 +1360,9 @@ void Armv8btAsm::writeMemory(U8 addressReg, U8 src, U32 width, bool addMemOffset
         }
     }
     if (addMemOffsetToAddress) {
-        if (width == 32) {
+        if (width == 64) {
+            writeMem64RegOffset(src, addressReg, xMem);
+        } else if (width == 32) {
             writeMem32RegOffset(src, addressReg, xMem);
         } else if (width == 16) {
             writeMem16RegOffset(src, addressReg, xMem);
@@ -1345,7 +1372,9 @@ void Armv8btAsm::writeMemory(U8 addressReg, U8 src, U32 width, bool addMemOffset
             kpanic("ArmV8bt: writeMemory with invalid width: %d", width);
         }
     } else {
-        if (width == 32) {
+        if (width == 64) {
+            writeMem64ValueOffset(src, addressReg, 0);
+        } else if (width == 32) {
             writeMem32ValueOffset(src, addressReg, 0);
         } else if (width == 16) {
             writeMem16ValueOffset(src, addressReg, 0);

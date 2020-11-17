@@ -4623,7 +4623,74 @@ void opXaddR32E32(Armv8btAsm* data) {
     data->movRegToReg(data->getNativeReg(data->decodedOp->reg), xDst, 32, false);
     data->releaseTmpReg(addressReg);
 }
-void opCmpXchg8b(Armv8btAsm* data) {}
+
+// 29 23 03 11          add	w9, w25, #0xc8          // calculate address
+// 0a 80 02 8b          add	x10, x0, x2, lsl #32    // copy EAX/ECX into value1
+
+// 2f 69 74 f8          ldr	x15, [x9, x20]          // read 64-bit value2
+// 5f 01 0f eb          cmp	x10, x15                // compare value1 and value2
+// a0 00 00 54          b.eq	0x502d32524  
+
+// if value1 != value2
+// 08 79 19 12          and w8, w8, #0xffffffbf     // clear ZF
+// e0 03 0f 2a          mov	w0, w15                 // set EAX to value2
+// e2 fd 60 d3          lsr	x2, x15, #32            // set EDX to value2
+// 04 00 00 14          b	0x502d32530
+
+// else
+// 6b 80 01 8b          add	x11, x3, x1, lsl #32    // combine EDX/EBX so that it will be written in one instruction
+// 2b 69 34 f8          str	x11, [x9, x20]          // write EDX/EBX to memory
+// 08 01 1a 32          orr	w8, w8, #0x40           // add ZF
+
+void opCmpXchg8b(Armv8btAsm* data) {
+    // U64 value1 = ((U64)EDX) << 32 | EAX;
+    // U64 value2 = readq(address);
+    // cpu->fillFlags();
+    // if (value1 == value2) {
+    //     cpu->addZF();
+    //     writed(address, EBX);
+    //     writed(address + 4, ECX);
+    // } else {
+    //     cpu->removeZF();
+    //     EDX = (U32)(value2 >> 32);
+    //     EAX = (U32)value2;
+    // }
+    U32 flags = DecodedOp::getNeededFlags(data->currentBlock, data->decodedOp, CF | SF | PF | AF | OF | ZF);
+    if (data->lazyFlags) {
+        if (flags) {
+            data->fillFlags(flags & (CF | SF | PF | AF | OF));
+        }
+        data->lazyFlags = NULL;
+    }
+    
+    U8 addressReg = data->getAddressReg();
+    U32 restartPos = data->bufferPos;
+    U8 tmpReg = data->getTmpReg();
+    data->addRegs64(tmpReg, xEAX, xEDX, 32);
+    data->readMemory(addressReg, xSrc, 64, true, data->decodedOp->lock != 0);
+    data->cmpRegs64(tmpReg, xSrc);
+    data->doIf(0, 0, DO_IF_EQUAL, [restartPos, addressReg, data, flags]() {
+        U8 tmpReg2 = data->getTmpReg();
+        data->addRegs64(tmpReg2, xEBX, xECX, 32);        
+        data->writeMemory(addressReg, tmpReg2, 64, true, data->decodedOp->lock != 0, xSrc, restartPos, false);
+        if (flags & ZF) {
+            data->orValue32(xFLAGS, xFLAGS, ZF);
+        }
+        data->releaseTmpReg(tmpReg2);
+        }, [data, flags] {
+            if (flags & ZF) {
+                data->andValue32(xFLAGS, xFLAGS, ~ZF);
+            }
+            data->movRegToReg(xEAX, xSrc, 32, false);
+            data->copyBitsFromSourceAtPositionToDest64(xEDX, xSrc, 32, 32, false);
+        }, nullptr, false, false);
+
+    if (data->decodedOp->lock != 0) {
+        data->fullMemoryBarrier(); // don't allow out of order read/write after this instruction until this completes
+    }
+    data->releaseTmpReg(addressReg);
+    data->releaseTmpReg(tmpReg);
+}
 
 void opBswap32(Armv8btAsm* data) {
     data->reverseBytes32(data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->reg));

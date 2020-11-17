@@ -304,6 +304,7 @@ public:
     void writeMem8RegOffset(U8 dst, U8 base, U8 offsetReg);
     void writeMem16RegOffset(U8 dst, U8 base, U8 offsetReg);
     void writeMem32RegOffset(U8 dst, U8 base, U8 offsetReg);
+    void writeMem64RegOffset(U8 dst, U8 base, U8 offsetReg);
 
     void reverseBytes32(U8 dst, U8 src);
 
@@ -332,12 +333,14 @@ public:
     void andNotRegs32(U8 dst, U8 src1, U8 src2);    
 
     void orRegs32(U8 dst, U8 src1, U8 src2, U32 shiftLeft = 0);
+    void orRegs64(U8 dst, U8 src1, U8 src2, U32 shiftLeft = 0);
     void orValue32(U8 dst, U8 src, U32 value);
 
     void xorRegs32(U8 dst, U8 src1, U8 src2);
     void xorValue32(U8 dst, U8 src, U32 value);
 
     void cmpRegs32(U8 src1, U8 src2);
+    void cmpRegs64(U8 src1, U8 src2);
     void cmpValue32(U8 src, U32 value);
 
     void modValue32(U8 dst, U8 src, U32 value);
