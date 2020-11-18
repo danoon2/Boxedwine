@@ -166,14 +166,17 @@ void runTestCPU() {
     pushCode8(0xcd);
     pushCode8(0x97); // will cause TEST specific return code to be inserted
     ((BtCPU*)cpu)->translateEip(cpu->eip.u32);
+    cpu->run();
 #else
     pushCode8(0x70); // jump causes the decoder to stop building the block
     pushCode8(0);
     pushCode8(0x70); // jump will fetch the next block as well
     pushCode8(0);
     cpu->nextBlock = cpu->getNextBlock();    
-#endif
-    cpu->run();
+    while (cpu->nextBlock->op->inst != JumpO && cpu->nextBlock->op->next->inst != JumpO) {
+        cpu->run();
+    }
+#endif    
 #ifdef BOXEDWINE_64BIT_MMU
     KThread::currentThread()->memory->clearCodePageFromCache(CODE_ADDRESS>>K_PAGE_SHIFT);    
 #endif
@@ -6444,6 +6447,83 @@ void testFPU0x2d8() {cpu->big=true;testFPUD8();}
 void testFPU0x0d9() {cpu->big=false;testFPUD9();}
 void testFPU0x2d9() {cpu->big=true;testFPUD9();}
 
+void doLoopZ(U32 instruction, bool big, bool neg) {
+    cpu->big = big;
+    for (int setFlags = 0; setFlags < 2; setFlags++) {
+        for (int useFlags = 0; useFlags < 2; useFlags++) {
+            for (int zeroCX = 0; zeroCX < 2; zeroCX++) {
+                if (setFlags) {
+                    newInstruction(instruction, useFlags ? ZF : 0);
+                } else {                    
+                    // cmp (e)ax, 0
+                    newInstructionWithRM(0x83, 0xf8, 0);
+                    pushCode8(0);
+
+                    if (useFlags) {
+                        if (big) {
+                            EAX = 0;
+                        } else {
+                            EAX = 0x11110000;
+                        }
+                    } else {
+                        EAX = 1;
+                    }
+                    pushCode8(instruction);
+                }
+                if (zeroCX) {
+                    // will be 0 after decrement
+                    if (big) {
+                        ECX = 1;
+                    } else {
+                        ECX = 0x11110001;
+                    }
+                } else {
+                    ECX = 2;
+                }
+                EDX = 0;
+                pushCode8(1); // jump amount if condition was true
+                pushCode8(0x42); // inc edx
+
+                runTestCPU();
+
+                // if condition was true, then EDX should be 0 because we jump over inc edx
+                if (neg) {
+                    // if (CX != 0 && !cpu->getZF())
+
+                    // condition will be true if (E)CX is not 0 after being decremented and ZF == false
+                    if (zeroCX || useFlags) {
+                        assertTrue(EDX == 1);
+                    } else {
+                        assertTrue(EDX == 0);
+                    }
+                } else {
+                    if (zeroCX || !useFlags) {
+                        assertTrue(EDX == 1);
+                    } else {
+                        assertTrue(EDX == 0);
+                    }
+                }
+            }
+        }
+    }
+}
+
+void testLoopNZ0x0e0() {
+    doLoopZ(0xe0, false, true);
+}
+
+void testLoopNZ0x2e0() {
+    doLoopZ(0xe0, true, true);
+}
+
+void testLoopZ0x0e1() {
+    doLoopZ(0xe1, false, false);
+}
+
+void testLoopZ0x2e1() {
+    doLoopZ(0xe1, true, false);
+}
+
 void testCmc0x0f5() {cpu->big=false;EbReg(0xf5, 0, cmc);}
 void testCmc0x2f5() {cpu->big=true;EbReg(0xf5, 0, cmc);}
 
@@ -8822,6 +8902,11 @@ int main(int argc, char **argv) {
 
     //run(testFPU0x0d9, "FPU 0d9");
     //run(testFPU0x2d9, "FPU 2d9");    
+
+    run(testLoopNZ0x0e0, "LoopNZ 0e0");
+    run(testLoopNZ0x2e0, "LoopNZ 2e0");
+    run(testLoopZ0x0e1, "LoopZ 0e1");
+    run(testLoopZ0x2e1, "LoopZ 2e1");
 
     run(testCmc0x0f5, "Cmc 0f5");
     run(testCmc0x2f5, "Cmc 2f5");

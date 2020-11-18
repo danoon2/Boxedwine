@@ -67,7 +67,7 @@ void common_loopz32(CPU* cpu, U32 offset1, U32 offset2) {
 }
 void common_loopz(CPU* cpu, U32 offset1, U32 offset2){
     CX--;
-    if (CX!=0 && !cpu->getZF()) {
+    if (CX!=0 && cpu->getZF()) {
         cpu->eip.u32+=offset1;
         NEXT_BRANCH1();
     } else {
