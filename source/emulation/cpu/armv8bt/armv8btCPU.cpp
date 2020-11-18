@@ -284,17 +284,24 @@ S32 Armv8btCPU::preLinkCheck(Armv8btAsm* data) {
     return -1;
 }
 
-void Armv8btCPU::writeJumpAmount(Armv8btAsm* data, U32 pos, U32 toLocation) {
-    U32 amount = (toLocation - pos) >> 2;
-    if (data->buffer[pos + 3] == 0x14) {
+void Armv8btCPU::writeJumpAmount(Armv8btAsm* data, U32 pos, U32 toLocation, U8* offset) {
+    S32 amount = (S32)(toLocation) >> 2;
+    if (offset[pos + 3] == 0x14) {
         if (amount > 0xFFFFFF) {
             kpanic("Armv8btCPU::writeJumpAmount in large jump not supported: %d", amount);
         }
-        data->buffer[pos] = (U8)amount;
-        data->buffer[pos + 1] = (U8)(amount >> 8);
-        data->buffer[pos + 2] = (U8)(amount >> 16);
+        offset[pos] = (U8)amount;
+        offset[pos + 1] = (U8)(amount >> 8);
+        offset[pos + 2] = (U8)(amount >> 16);
+    } if (offset[pos + 3] == 0x34 || offset[pos + 3] == 0x35) {
+        if (amount >= 0x40000 || amount <= -0x40000) {
+            kpanic("Armv8btCPU::writeJumpAmount in large jump not supported: %d", amount);
+        }
+        offset[pos] |= (U8)(amount << 5);
+        offset[pos + 1] = (U8)(amount >> 3);
+        offset[pos + 2] = (U8)(amount >> 11);
     } else {
-        kpanic("Armv8btCPU::writeJumpAmount unknown jump: %d", data->buffer[pos + 3]);
+        kpanic("Armv8btCPU::writeJumpAmount unknown jump: %d", offset[pos + 3]);
     }
 }
 
@@ -313,8 +320,7 @@ void Armv8btCPU::link(Armv8btAsm* data, std::shared_ptr<BtCodeChunk>& fromChunk,
             if (!host) {
                 kpanic("Armv8btCPU::link can not link into the middle of an instruction");
             }
-            // :TODO: -4?
-            writeJumpAmount(data, data->todoJump[i].bufferPos, (U32)(host - offset - 4));
+            writeJumpAmount(data, data->todoJump[i].bufferPos, (U32)(host - offset), (U8*)fromChunk->getHostAddress() + offsetIntoChunk);
         } else if (size==4 && !data->todoJump[i].sameChunk) {
             U8* toHostAddress = (U8*)this->thread->memory->getExistingHostAddress(eip);
 
@@ -352,6 +358,9 @@ void Armv8btCPU::link(Armv8btAsm* data, std::shared_ptr<BtCodeChunk>& fromChunk,
         } else {
             kpanic("Armv8btCPU::link unexpected patch size");
         }
+    }
+    if (data->todoJump.size()) {
+
     }
     markCodePageReadOnly(data);
 }
@@ -416,7 +425,7 @@ void Armv8btCPU::translateData(Armv8btAsm* data, Armv8btAsm* firstPass) {
     if (firstPass) {
         for (int i = 0; i < vSseConstantCount; i++) {
             // :TODO: maybe combine multiple into a single read?, vReadMemMultiple128 doesn't take an offset, so it requires an instruction to add the offse to xCPU
-            // :TODO: what about code that might jump into the middle of this block?
+            // :TODO: what about code that might jump into the middle of this block?  These constants wouldn't be loaded for them.
             if (firstPass->usesSSEConstant[i]) {
                 data->vReadMem128ValueOffset(vFirstSseConstant + i, xCPU, (U32)(offsetof(Armv8btCPU, sseConstants[0]))+i*16);
             }
@@ -474,8 +483,13 @@ void Armv8btCPU::translateData(Armv8btAsm* data, Armv8btAsm* firstPass) {
             if (data->tmpRegInUse[i]) {
                 kpanic("op(%x) leaked tmp reg", data->decodedOp->originalOp);
             }
-        }
+        }        
         data->resetForNewOp();
+        if (!op) {
+            block.op->dealloc(true);
+            decodeBlock(fetchByte, data->startOfOpIp + this->seg[CS].address, this->isBig(), 0, 0, 0, &block);
+            op = block.op;
+        }
     }     
     block.op->dealloc(true);
     data->currentBlock = NULL;

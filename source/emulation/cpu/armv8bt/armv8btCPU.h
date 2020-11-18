@@ -82,7 +82,7 @@ public:
 private:      
     void* translateEipInternal(Armv8btAsm* parent, U32 ip);            
     void markCodePageReadOnly(Armv8btAsm* data);
-    void writeJumpAmount(Armv8btAsm* data, U32 pos, U32 toLocation);
+    void writeJumpAmount(Armv8btAsm* data, U32 pos, U32 toLocation, U8* offset);
 
     std::vector<U32> pendingCodePages;
 };

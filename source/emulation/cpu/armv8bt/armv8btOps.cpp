@@ -3234,7 +3234,8 @@ static void doRetn16(Armv8btAsm* data, U32 bytes) {
         data->releaseTmpReg(tmpReg2);
     }
     data->jmpReg(tmpReg, true);
-    data->releaseTmpReg(tmpReg);    
+    data->releaseTmpReg(tmpReg);   
+    data->done = true;
 }
 static void doRetn32(Armv8btAsm* data, U32 bytes) {
     kpanic("Need to test");
@@ -3249,6 +3250,7 @@ static void doRetn32(Armv8btAsm* data, U32 bytes) {
     }
     data->jmpReg(tmpReg, false);
     data->releaseTmpReg(tmpReg);
+    data->done = true;
 }
 static void doRetf(Armv8btAsm* data, U32 big) {
     kpanic("Need to test");
@@ -3262,6 +3264,7 @@ static void doRetf(Armv8btAsm* data, U32 big) {
     data->callHost((void*)common_ret);
     data->syncRegsToHost();
     data->doJmp(true);
+    data->done = true;
 }
 void opRetn16Iw(Armv8btAsm* data) {
     doRetn16(data, data->decodedOp->imm);
@@ -3283,9 +3286,11 @@ void opRetf32(Armv8btAsm* data) {
 }
 void opInvalid(Armv8btAsm* data) {
     data->invalidOp(data->decodedOp->originalOp);
+    data->done = true;
 }
 void opInt3(Armv8btAsm* data) {
     data->signalIllegalInstruction(5); // 5=ILL_PRVOPC
+    data->done = true;
 }
 void opInt80(Armv8btAsm* data) {
     kpanic("Need to test");
@@ -3334,6 +3339,7 @@ void opIntIb(Armv8btAsm* data) {
 #ifdef __TEST
     if (data->decodedOp->imm == 0x97) {
         data->addReturnFromTest();
+        data->done = true;
     } else
 #endif
     {
@@ -3342,6 +3348,7 @@ void opIntIb(Armv8btAsm* data) {
 }
 void opIntO(Armv8btAsm* data) {
     data->invalidOp(data->decodedOp->originalOp);
+    data->done = true;
 }
 static void doIret(Armv8btAsm* data, U32 big, U32 eip) {    
     kpanic("Need to test");
@@ -3355,6 +3362,7 @@ static void doIret(Armv8btAsm* data, U32 big, U32 eip) {
     data->callHost((void*)common_iret);
     data->syncRegsToHost();
     data->doJmp(false);
+    data->done = true;
 }
 void opIret(Armv8btAsm* data) {
     doIret(data, 0, data->ip);
@@ -3395,6 +3403,7 @@ void opICEBP(Armv8btAsm* data) {
 void opHlt(Armv8btAsm* data) {
     // requires ring 0 access
     data->signalIllegalInstruction(5); // 5=ILL_PRVOPC
+    data->done = true;
 }
 void opCmc(Armv8btAsm* data) {
     // Complement Carry Flag
@@ -3792,10 +3801,131 @@ void opFILD_QWORD_INTEGER(Armv8btAsm* data) {}
 void opFBSTP_PACKED_BCD(Armv8btAsm* data) {}
 void opFISTP_QWORD_INTEGER(Armv8btAsm* data) {}
 
-void opLoopNZ(Armv8btAsm* data) {}
-void opLoopZ(Armv8btAsm* data) {}
-void opLoop(Armv8btAsm* data) {}
-void opJcxz(Armv8btAsm* data) {}
+void opLoopNZ(Armv8btAsm* data) {
+    // if (op->ea16) {
+    //     CX--;
+    //     if (CX != 0 && !cpu->getZF()) {
+    //         cpu->eip.u32 += op->imm;
+    //         NEXT_BRANCH1();
+    //     } else {
+    //         NEXT_BRANCH2();
+    //     }
+    // } else {
+    //     ECX--;
+    //     if (ECX != 0 && !cpu->getZF()) {
+    //         cpu->eip.u32 += op->imm;
+    //         NEXT_BRANCH1();
+    //     } else {
+    //         NEXT_BRANCH2();
+    //     }
+    // }
+    if (data->lazyFlags) {
+        data->fillFlags(ZF);
+    }
+    U8 tmpReg = data->getTmpReg();
+    if (data->decodedOp->ea16) {
+        data->movRegToReg(tmpReg, xECX, 16, true);
+        data->subValue32(tmpReg, tmpReg, 1);
+        data->movRegToReg(xECX, tmpReg, 16, false);
+
+        // 1) set tmpReg to 0x20 if it was 0 else it will be 0
+        data->clz32(tmpReg, tmpReg);
+    } else {
+        data->subValue32(xECX, xECX, 1);
+        // 1) set tmpReg to 0x20 if it was 0 else it will be 0
+        data->clz32(tmpReg, xECX);
+    }
+    
+    // 2) cont. ... set tmpReg to 0x20 if it was 0 else it will be 0
+    data->andValue32(tmpReg, tmpReg, 0x20); 
+
+    // or into tmpReg, ZF
+    data->copyBitsFromSourceAtPositionToDest(tmpReg, xFLAGS, 6, 1); // ZF is at position 6 (0x40)
+
+    // if E(CX) is 0 || ZF
+    data->compareZeroAndBranch(tmpReg, true, data->ip + data->decodedOp->imm);
+    data->releaseTmpReg(tmpReg);
+}
+void opLoopZ(Armv8btAsm* data) {
+    // if (op->ea16) {
+    //     CX--;
+    //     if (CX != 0 && cpu->getZF()) {
+    //         cpu->eip.u32 += op->imm;
+    //         NEXT_BRANCH1();
+    //     } else {
+    //         NEXT_BRANCH2();
+    //     }
+    // } else {
+    //     ECX--;
+    //     if (ECX != 0 && cpu->getZF()) {
+    //         cpu->eip.u32 += op->imm;
+    //         NEXT_BRANCH1();
+    //     } else {
+    //         NEXT_BRANCH2();
+    //     }
+    // }
+    if (data->lazyFlags) {
+        data->fillFlags(ZF);
+    }
+    U8 tmpReg = data->getTmpReg();
+    if (data->decodedOp->ea16) {        
+        data->movRegToReg(tmpReg, xECX, 16, true);
+        data->subValue32(tmpReg, tmpReg, 1);
+        data->movRegToReg(xECX, tmpReg, 16, false);               
+    } else {
+        data->subValue32(xECX, xECX, 1);
+        data->movRegToReg(tmpReg, xECX, 32, false);
+    }
+    data->copyBitsFromSourceAtPositionToDest(tmpReg, xFLAGS, 6, 1); // ZF is at position 6 (0x40)
+    data->compareZeroAndBranch(tmpReg, false, data->ip + data->decodedOp->imm);
+    data->releaseTmpReg(tmpReg);
+}
+void opLoop(Armv8btAsm* data) {
+    // if (op->ea16) {
+    //     CX--;
+    //     if (CX != 0) {
+    //         cpu->eip.u32 += op->imm;
+    //         NEXT_BRANCH1();
+    //     } else {
+    //         NEXT_BRANCH2();
+    //     }
+    // } else {
+    //     ECX--;
+    //     if (ECX != 0) {
+    //         cpu->eip.u32 += op->imm;
+    //         NEXT_BRANCH1();
+    //     } else {
+    //         NEXT_BRANCH2();
+    //     }
+    // }
+    if (data->decodedOp->ea16) {
+        U8 tmpReg = data->getTmpReg();
+        data->movRegToReg(tmpReg, xECX, 16, true);
+        data->subValue32(tmpReg, tmpReg, 1);
+        data->movRegToReg(xECX, tmpReg, 16, false);
+        data->compareZeroAndBranch(tmpReg, false, data->ip + data->decodedOp->imm);
+        data->releaseTmpReg(tmpReg);
+    } else {
+        data->subValue32(xECX, xECX, 1);
+        data->compareZeroAndBranch(xECX, false, data->ip + data->decodedOp->imm);
+    }
+}
+void opJcxz(Armv8btAsm* data) {
+    // if ((op->ea16 ? CX : ECX) == 0) {
+    //     cpu->eip.u32 += op->imm;
+    //     NEXT_BRANCH1();
+    // } else {
+    //     NEXT_BRANCH2();
+    // }
+    if (data->decodedOp->ea16) {
+        U8 tmpReg = data->getTmpReg();
+        data->movRegToReg(tmpReg, xECX, 16, true);
+        data->compareZeroAndBranch(tmpReg, true, data->ip + data->decodedOp->imm);
+        data->releaseTmpReg(tmpReg);
+    } else {
+        data->compareZeroAndBranch(xECX, true, data->ip + data->decodedOp->imm);
+    }
+}
 
 void opInAlIb(Armv8btAsm* data) {
     kpanic("Need to test");
@@ -3854,6 +3984,7 @@ void opCallJw(Armv8btAsm* data) {
     data->loadConst(tmpReg, data->startOfOpIp + (S32)((S16)data->decodedOp->imm));
     data->jmpReg(tmpReg, false);
     data->releaseTmpReg(tmpReg);
+    data->done = true;
 }
 void opCallJd(Armv8btAsm* data) {
     kpanic("Need to test");
@@ -3864,6 +3995,7 @@ void opCallJd(Armv8btAsm* data) {
     data->loadConst(tmpReg, data->startOfOpIp + (S32)(data->decodedOp->imm));
     data->jmpReg(tmpReg, false);
     data->releaseTmpReg(tmpReg);
+    data->done = true;
 }
 void opJmpJw(Armv8btAsm* data) {
     kpanic("Need to test");
@@ -3871,6 +4003,7 @@ void opJmpJw(Armv8btAsm* data) {
     U8 tmpReg = data->getRegWithConst(data->startOfOpIp + (S32)((S16)(data->decodedOp->imm)));
     data->jmpReg(tmpReg, false);
     data->releaseTmpReg(tmpReg);
+    data->done = true;
 }
 void opJmpJd(Armv8btAsm* data) {
     kpanic("Need to test");
@@ -3878,6 +4011,7 @@ void opJmpJd(Armv8btAsm* data) {
     U8 tmpReg = data->getRegWithConst(data->startOfOpIp + (S32)(data->decodedOp->imm));
     data->jmpReg(tmpReg, false);
     data->releaseTmpReg(tmpReg);
+    data->done = true;
 }
 void opJmpJb(Armv8btAsm* data) {
     kpanic("Need to test");
@@ -3885,6 +4019,7 @@ void opJmpJb(Armv8btAsm* data) {
     U8 tmpReg = data->getRegWithConst(data->startOfOpIp + (S32)((S8)(data->decodedOp->imm)));
     data->jmpReg(tmpReg, false);
     data->releaseTmpReg(tmpReg);
+    data->done = true;
 }
 void opCallR16(Armv8btAsm* data) {
     kpanic("Need to test");
@@ -3895,6 +4030,7 @@ void opCallR16(Armv8btAsm* data) {
     data->movRegToReg(tmpReg, data->getNativeReg(data->decodedOp->reg), 16, true);
     data->jmpReg(tmpReg, false);
     data->releaseTmpReg(tmpReg);
+    data->done = true;
 }
 void opCallR32(Armv8btAsm* data) {
     kpanic("Need to test");
@@ -3904,6 +4040,7 @@ void opCallR32(Armv8btAsm* data) {
     data->pushNativeReg32(tmpReg);
     data->jmpReg(data->getNativeReg(data->decodedOp->reg), false);
     data->releaseTmpReg(tmpReg);
+    data->done = true;
 }
 void opCallE16(Armv8btAsm* data) {
     kpanic("Need to test");
@@ -3921,6 +4058,7 @@ void opCallE16(Armv8btAsm* data) {
 
     data->jmpReg(eipReg, false);
     data->releaseTmpReg(eipReg);
+    data->done = true;
 }
 void opCallE32(Armv8btAsm* data) {
     kpanic("Need to test");
@@ -3938,6 +4076,7 @@ void opCallE32(Armv8btAsm* data) {
 
     data->jmpReg(eipReg, false);
     data->releaseTmpReg(eipReg);
+    data->done = true;
 }
 void opCallFarE16(Armv8btAsm* data) {
     kpanic("Need to test");
@@ -3961,6 +4100,7 @@ void opCallFarE16(Armv8btAsm* data) {
     data->callHost((void*)common_call);
     data->syncRegsToHost();
     data->doJmp(true);
+    data->done = true;
 }
 void opCallFarE32(Armv8btAsm* data) {
     kpanic("Need to test");
@@ -3983,6 +4123,7 @@ void opCallFarE32(Armv8btAsm* data) {
     data->callHost((void*)common_call);
     data->syncRegsToHost();
     data->doJmp(true);
+    data->done = true;
 }
 void opJmpR16(Armv8btAsm* data) {
     kpanic("Need to test");
@@ -3991,11 +4132,13 @@ void opJmpR16(Armv8btAsm* data) {
     data->movRegToReg(tmpReg, data->getNativeReg(data->decodedOp->reg), 16, true);
     data->jmpReg(tmpReg, false);
     data->releaseTmpReg(tmpReg);
+    data->done = true;
 }
 void opJmpR32(Armv8btAsm* data) {
     kpanic("Need to test");
     // cpu->eip.u32 = cpu->reg[op->reg].u32;
     data->jmpReg(data->getNativeReg(data->decodedOp->reg), false);
+    data->done = true;
 }
 void opJmpE16(Armv8btAsm* data) {
     kpanic("Need to test");
@@ -4007,6 +4150,7 @@ void opJmpE16(Armv8btAsm* data) {
     data->releaseTmpReg(addressReg);
     data->jmpReg(eipReg, false);
     data->releaseTmpReg(eipReg);
+    data->done = true;
 }
 void opJmpE32(Armv8btAsm* data) {
     kpanic("Need to test");
@@ -4018,6 +4162,7 @@ void opJmpE32(Armv8btAsm* data) {
     data->releaseTmpReg(addressReg);
     data->jmpReg(eipReg, false);
     data->releaseTmpReg(eipReg);
+    data->done = true;
 }
 void opJmpFarE16(Armv8btAsm* data) {
     kpanic("Need to test");
@@ -4040,6 +4185,7 @@ void opJmpFarE16(Armv8btAsm* data) {
     data->callHost((void*)common_jmp);
     data->syncRegsToHost();
     data->doJmp(true);
+    data->done = true;
 }
 void opJmpFarE32(Armv8btAsm* data) {
     kpanic("Need to test");
@@ -4063,6 +4209,7 @@ void opJmpFarE32(Armv8btAsm* data) {
     data->callHost((void*)common_jmp);
     data->syncRegsToHost();
     data->doJmp(true);
+    data->done = true;
 }
 
 static void callDstSrc(Armv8btAsm* data, void* pfn) {
@@ -4699,14 +4846,31 @@ void opBswap32(Armv8btAsm* data) {
 void opEmms(Armv8btAsm* data) {}
 void opFxsave(Armv8btAsm* data) {} // P2+
 void opFxrstor(Armv8btAsm* data) {} // P2+
-void opLdmxcsr(Armv8btAsm* data) {} // P3+ SSE1
-void opStmxcsr(Armv8btAsm* data) {} // P3+ SSE1
+void opLdmxcsr(Armv8btAsm* data) {
+    // :TODO: need to implement SSE control/status register
+}
+void opStmxcsr(Armv8btAsm* data) {
+    // :TODO: need to implement SSE control/status register
+    U8 addressReg = data->getAddressReg();
+    U8 tmpReg = data->getRegWithConst(0x1F80);
+    data->writeMemory(addressReg, tmpReg, 32, true);
+    data->releaseTmpReg(tmpReg);
+    data->releaseTmpReg(addressReg);
+}
 void opXsave(Armv8btAsm* data) {} // Core 2+
-void opLfence(Armv8btAsm* data) {} // P4+ SSE2
 void opXrstor(Armv8btAsm* data) {} // Core 2+
-void opMfence(Armv8btAsm* data) {} // P4+ SSE2
-void opSfence(Armv8btAsm* data) {} // P3+ SSE1
-void opClflush(Armv8btAsm* data) {} // P4+ SSE2
+void opLfence(Armv8btAsm* data) {
+    data->fullMemoryBarrier(); // :TODO: is a full barrier necessary
+}
+void opMfence(Armv8btAsm* data) {
+    data->fullMemoryBarrier();
+}
+void opSfence(Armv8btAsm* data) {
+    data->fullMemoryBarrier(); // :TODO: is a full barrier necessary
+}
+void opClflush(Armv8btAsm* data) {
+    klog("clflush called.  Not sure what to do");
+}
 
 // SSE1
 void opAddpsXmm(Armv8btAsm* data) {
@@ -6549,6 +6713,7 @@ void opCallback(Armv8btAsm* data) {
     data->callHost((void*)data->decodedOp->pfn);
     data->syncRegsToHost();
     data->doJmp(true);
+    data->done = true;
 }
 
 void opDone(Armv8btAsm* data) {

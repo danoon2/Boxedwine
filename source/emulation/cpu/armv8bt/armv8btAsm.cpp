@@ -1825,7 +1825,7 @@ void Armv8btAsm::addDynamicCheck(bool panic) {
 }
 
 void Armv8btAsm::addTodoLinkJump(U32 eip, U32 size, bool sameChunk) {
-    this->todoJump.push_back(TodoJump(eip, this->bufferPos - (size == 4 ? 4 : 11), size, sameChunk, this->ipAddressCount));
+    this->todoJump.push_back(TodoJump(eip, this->bufferPos - 4, size, sameChunk, this->ipAddressCount));
 }
 
 void Armv8btAsm::jumpTo(U32 eip) {
@@ -2044,6 +2044,20 @@ void Armv8btAsm::doIfBitSet(U8 reg, U32 bitPos, std::function<void(void)> ifBloc
     } else {
         kpanic("Armv8btAsm::doIfBitSet if or else block must be supplied");
     }
+}
+
+void Armv8btAsm::compareZeroAndBranch(U8 reg, bool isZero, U32 eip) {
+    write8(reg);
+    write8(0);
+    write8(0);
+    if (isZero) {
+        // CBZ
+        write8(0x34);
+    } else {
+        // CBNZ
+        write8(0x35);
+    }
+    addTodoLinkJump(eip, 4, true);
 }
 
 void Armv8btAsm::doIf(U8 reg, U32 value, DoIfOperator op, std::function<void(void)> ifBlock, std::function<void(void)> elseBlock, std::function<void(void)> afterCmpBeforeBranchBlock, bool valueIsReg, bool generateCmp) {
