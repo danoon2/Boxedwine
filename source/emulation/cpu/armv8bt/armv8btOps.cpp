@@ -3868,16 +3868,30 @@ void opLoopZ(Armv8btAsm* data) {
         data->fillFlags(ZF);
     }
     U8 tmpReg = data->getTmpReg();
-    if (data->decodedOp->ea16) {        
+    if (data->decodedOp->ea16) {
         data->movRegToReg(tmpReg, xECX, 16, true);
         data->subValue32(tmpReg, tmpReg, 1);
-        data->movRegToReg(xECX, tmpReg, 16, false);               
+        data->movRegToReg(xECX, tmpReg, 16, false);
+
+        // 1) set tmpReg to 0x20 if it was 0 else it will be 0
+        data->clz32(tmpReg, tmpReg);
     } else {
         data->subValue32(xECX, xECX, 1);
-        data->movRegToReg(tmpReg, xECX, 32, false);
+        // 1) set tmpReg to 0x20 if it was 0 else it will be 0
+        data->clz32(tmpReg, xECX);
     }
-    data->copyBitsFromSourceAtPositionToDest(tmpReg, xFLAGS, 6, 1); // ZF is at position 6 (0x40)
-    data->compareZeroAndBranch(tmpReg, false, data->ip + data->decodedOp->imm);
+
+    // 2) cont. ... set tmpReg to 0x20 if it was 0 else it will be 0
+    data->andValue32(tmpReg, tmpReg, 0x20);
+
+    // or into tmpReg, !ZF
+    U8 tmpReg2 = data->getTmpReg();
+    data->notReg32(tmpReg2, xFLAGS);
+    data->copyBitsFromSourceAtPositionToDest(tmpReg, tmpReg2, 6, 1); // ZF is at position 6 (0x40)
+    data->releaseTmpReg(tmpReg2);
+
+    // if E(CX) is 0 || !ZF
+    data->compareZeroAndBranch(tmpReg, true, data->ip + data->decodedOp->imm);
     data->releaseTmpReg(tmpReg);
 }
 void opLoop(Armv8btAsm* data) {
