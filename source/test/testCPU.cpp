@@ -173,7 +173,7 @@ void runTestCPU() {
     pushCode8(0x70); // jump will fetch the next block as well
     pushCode8(0);
     cpu->nextBlock = cpu->getNextBlock();    
-    while (cpu->nextBlock->op->inst != JumpO && cpu->nextBlock->op->next->inst != JumpO) {
+    while (cpu->nextBlock->op->inst != JumpO && (cpu->nextBlock->op->inst != Custom1 || cpu->nextBlock->op->next->inst != JumpO)) {
         cpu->run();
     }
 #endif    
