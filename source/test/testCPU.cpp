@@ -6524,6 +6524,77 @@ void testLoopZ0x2e1() {
     doLoopZ(0xe1, true, false);
 }
 
+void doLoop(U32 instruction, bool big) {
+    cpu->big = big;
+    for (int zeroCX = 0; zeroCX < 2; zeroCX++) {
+        newInstruction(instruction, 0);
+        if (zeroCX) {
+            // will be 0 after decrement
+            if (big) {
+                ECX = 1;
+            } else {
+                ECX = 0x11110001;
+            }
+        } else {
+            ECX = 2;
+        }
+        EDX = 0;
+        pushCode8(1); // jump amount if condition was true
+        pushCode8(0x42); // inc edx
+
+        runTestCPU();
+
+        if (zeroCX) {
+            assertTrue(EDX == 1);
+        } else {
+            assertTrue(EDX == 0);
+        }
+    }
+}
+
+void testLoop0x0e2() {
+    doLoop(0xe2, false);
+}
+
+void testLoop0x2e2() {
+    doLoop(0xe2, true);
+}
+
+void doJcxz(U32 instruction, bool big) {
+    cpu->big = big;
+    for (int zeroCX = 0; zeroCX < 2; zeroCX++) {
+        newInstruction(instruction, 0);
+        if (zeroCX) {
+            if (big) {
+                ECX = 0;
+            } else {
+                ECX = 0x11110000;
+            }
+        } else {
+            ECX = 1;
+        }
+        EDX = 0;
+        pushCode8(1); // jump amount if condition was true
+        pushCode8(0x42); // inc edx
+
+        runTestCPU();
+
+        if (zeroCX) {
+            assertTrue(EDX == 0);
+        } else {
+            assertTrue(EDX == 1);
+        }
+    }
+}
+
+void testJcxz0x0e3() {
+    doJcxz(0xe3, false);
+}
+
+void testJcxz0x2e3() {
+    doJcxz(0xe3, true);
+}
+
 void testCmc0x0f5() {cpu->big=false;EbReg(0xf5, 0, cmc);}
 void testCmc0x2f5() {cpu->big=true;EbReg(0xf5, 0, cmc);}
 
@@ -8907,6 +8978,10 @@ int main(int argc, char **argv) {
     run(testLoopNZ0x2e0, "LoopNZ 2e0");
     run(testLoopZ0x0e1, "LoopZ 0e1");
     run(testLoopZ0x2e1, "LoopZ 2e1");
+    run(testLoop0x0e2, "Loop 0e2");
+    run(testLoop0x2e2, "Loop 2e2");
+    run(testJcxz0x0e3, "Jcxz 0e3");
+    run(testJcxz0x2e3, "Jcxz 2e3");
 
     run(testCmc0x0f5, "Cmc 0f5");
     run(testCmc0x2f5, "Cmc 2f5");
