@@ -38,6 +38,7 @@ typedef enum {
 
 #define xNumberOfTmpRegs 5
 
+// :TODO: if we know if a flag is going to be needed, why not just calculate it immediately
 #define xOldCF 14
 #define xSrc 15
 #define xDst 16
@@ -77,7 +78,9 @@ typedef enum {
 #define xXMM6 6
 #define xXMM7 7
 
-// v8 - v15 are non volatile for the bottom 64-bits
+// v8 - v15 are non volatile for the bottom 64-bits which is fine for MMX
+// on real x86 hardware, MMX registers are also used by the FPU, so MMX and the FPU can't exist at the same time
+// because of this, the FPU will use these registers too as cache
 #define vMMX0 8
 #define vMMX1 9
 #define vMMX2 10
@@ -168,6 +171,7 @@ enum DoIfOperator {
     DO_IF_GREATER_THAN,
     DO_IF_SIGNED_GREATER_THAN,
     DO_IF_LESS_THAN_OR_EQUAL,
+    DO_IF_LESS_THAN,
     DO_IF_SIGNED_LESS_THAN_OR_EQUAL
 };
 
@@ -254,8 +258,10 @@ public:
     U32 branchEQ();
     U32 branchNE();
     U32 branchUnsignedGreaterThan();
-    U32 branchSignedGreaterThan();
+    U32 branchUnsignedGreaterThanOrEqual();
+    U32 branchUnsignedLessThan();
     U32 branchUnsignedLessThanOrEqual();
+    U32 branchSignedGreaterThan();    
     U32 branchSignedLessThanOrEqual();
     U32 branch();
     void syncRegsToHost();
@@ -301,7 +307,7 @@ public:
 
     void readMem8RegOffset(U8 dst, U8 base, U8 offsetReg, bool signExtend = false);
     void readMem16RegOffset(U8 dst, U8 base, U8 offsetReg, bool signExtend = false);
-    void readMem32RegOffset(U8 dst, U8 base, U8 offsetReg);
+    void readMem32RegOffset(U8 dst, U8 base, U8 offsetReg, U32 lsl = 0); // lsl can be 0 or 2
     void readMem64RegOffset(U8 dst, U8 base, U8 offsetReg, U32 lsl = 0); // lsl can be 0 or 3
 
     void writeMem8ValueOffset(U8 dst, U8 base, S32 offset);

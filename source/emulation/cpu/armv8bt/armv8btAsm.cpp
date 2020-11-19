@@ -301,9 +301,15 @@ void Armv8btAsm::readMem32ValueOffset(U8 dst, U8 base, S32 offset) {
     }
 }
 
-void Armv8btAsm::readMem32RegOffset(U8 dst, U8 base, U8 offsetReg) {
+void Armv8btAsm::readMem32RegOffset(U8 dst, U8 base, U8 offsetReg, U32 lsl) {
     write8(dst | (U8)(base << 5));
-    write8(0x68 | (U8)(base >> 3));
+    if (lsl == 0) {
+        write8(0x68 | (U8)(base >> 3));
+    } else if (lsl == 2) {
+        write8(0x78 | (U8)(base >> 3));
+    } else {
+        kpanic("ArmV8bt: readMem32RegOffset lsl must be 0 or 2: %d", lsl);
+    }
     write8(0x60 | offsetReg);
     write8(0xb8);
 }
@@ -1091,6 +1097,26 @@ U32 Armv8btAsm::branchUnsignedGreaterThan() {
     // b.hi
     U32 pos = bufferPos;
     write8(0x8);
+    write8(0);
+    write8(0);
+    write8(0x54);
+    return pos;
+}
+
+U32 Armv8btAsm::branchUnsignedGreaterThanOrEqual() {
+    // b.hs
+    U32 pos = bufferPos;
+    write8(0x2);
+    write8(0);
+    write8(0);
+    write8(0x54);
+    return pos;
+}
+
+U32 Armv8btAsm::branchUnsignedLessThan() {
+    // b.lo
+    U32 pos = bufferPos;
+    write8(0x3);
     write8(0);
     write8(0);
     write8(0x54);
@@ -2119,6 +2145,8 @@ void Armv8btAsm::doIf(U8 reg, U32 value, DoIfOperator op, std::function<void(voi
             pos = branchUnsignedLessThanOrEqual();
         } else if (op == DO_IF_LESS_THAN_OR_EQUAL) {
             pos = branchUnsignedGreaterThan();
+        } else if (op == DO_IF_LESS_THAN) {
+            pos = branchUnsignedGreaterThanOrEqual();
         } else if (op == DO_IF_SIGNED_GREATER_THAN) {
             pos = branchSignedLessThanOrEqual();
         } else if (op == DO_IF_SIGNED_LESS_THAN_OR_EQUAL) {
@@ -2136,6 +2164,8 @@ void Armv8btAsm::doIf(U8 reg, U32 value, DoIfOperator op, std::function<void(voi
             pos = branchNE();
         } else if (op == DO_IF_GREATER_THAN) {
             pos = branchUnsignedGreaterThan();
+        } else if (op == DO_IF_LESS_THAN) {
+            pos = branchUnsignedLessThan();
         } else if (op == DO_IF_LESS_THAN_OR_EQUAL) {
             pos = branchUnsignedLessThanOrEqual();
         } else if (op == DO_IF_SIGNED_GREATER_THAN) {
