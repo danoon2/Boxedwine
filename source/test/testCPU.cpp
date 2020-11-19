@@ -8968,7 +8968,7 @@ int main(int argc, char **argv) {
     run(testXlat0x0d7, "Xlat 0d7");
     run(testXlat0x2d7, "Xlat 2d7");
 
-    //run(testFPU0x0d8, "FPU 0d8");
+    run(testFPU0x0d8, "FPU 0d8");
     //run(testFPU0x2d8, "FPU 2d8");
 
     //run(testFPU0x0d9, "FPU 0d9");

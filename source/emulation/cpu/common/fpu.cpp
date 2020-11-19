@@ -74,11 +74,6 @@ struct FPU_Float {
     };
 };
 
-#define TAG_Valid 0
-#define TAG_Zero 1
-#define TAG_Weird 2
-#define TAG_Empty 3
-
 #define ROUND_Nearest 0
 #define ROUND_Down 1
 #define ROUND_Up 2
@@ -117,7 +112,7 @@ void FPU::LOG_STACK() {
 
 void FPU::setReg(U32 index, double value) {
     this->regs[index].d = value;
-    this->regs[index].isIntegerLoaded = false;
+    this->isIntegerLoaded[index] = false;
 }
 
 void FPU::SetTagFromAbridged(U8 tag) {
@@ -214,13 +209,13 @@ void FPU::PUSH(double in) {
     //actually check if empty
     this->tags[this->top] = TAG_Valid;
     this->regs[this->top].d = in;
-    this->regs[this->top].isIntegerLoaded = 0;
+    this->isIntegerLoaded[this->top] = 0;
 }
 
 void FPU::PREP_PUSH() {
     this->top = (this->top - 1) & 7;
     this->tags[this->top] = TAG_Valid;
-    this->regs[this->top].isIntegerLoaded = 0;
+    this->isIntegerLoaded[this->top] = 0;
 }
 
 void FPU::FPOP() {
@@ -317,7 +312,7 @@ void FPU::FLD_F32(U32 value, int store_to) {
     struct FPU_Float f;
     f.i = value;
     this->regs[store_to].d = f.f;
-    this->regs[store_to].isIntegerLoaded = 0;
+    this->isIntegerLoaded[store_to] = 0;
 }
 
 void FPU::FLD_F64(U64 value, int store_to) {
@@ -326,23 +321,23 @@ void FPU::FLD_F64(U64 value, int store_to) {
 
 void FPU::FLD_F80(U64 low, S16 high) {
     this->regs[this->top].d = FLD80(low, high);
-    this->regs[this->top].isIntegerLoaded = 0;
+    this->isIntegerLoaded[this->top] = 0;
 }
 
 void FPU::FLD_I16(S16 value, int store_to) {
     this->regs[store_to].d = value;
-    this->regs[store_to].isIntegerLoaded = 0;
+    this->isIntegerLoaded[store_to] = 0;
 }
 
 void FPU::FLD_I32(S32 value, int store_to) {
     this->regs[store_to].d = value;
-    this->regs[store_to].isIntegerLoaded = 0;
+    this->isIntegerLoaded[store_to] = 0;
 }
 
 void FPU::FLD_I64(S64 value, int store_to) {
     this->regs[store_to].d = (double)value;
-    this->regs[store_to].loadedInteger = value;
-    this->regs[store_to].isIntegerLoaded = 1;
+    this->loadedInteger[store_to] = value;
+    this->isIntegerLoaded[store_to] = 1;
 }
 
 void FPU::FBLD(U8 data[], int store_to) {
@@ -366,7 +361,7 @@ void FPU::FBLD(U8 data[], int store_to) {
     temp += ( (in&0xf) * base );
     if(in&0x80) temp *= -1.0;
     this->regs[store_to].d = temp; 
-    this->regs[store_to].isIntegerLoaded = 0;
+    this->isIntegerLoaded[store_to] = 0;
 }
 
 void FPU::FLD_F32_EA(CPU* cpu, U32 address) {
@@ -421,15 +416,15 @@ void FPU::FST_I32(CPU* cpu, U32 addr) {
 }
 
 void FPU::FSTT_I64(CPU* cpu, U32 addr) {
-    if (this->regs[this->top].isIntegerLoaded)
-        writeq(addr, this->regs[this->top].loadedInteger);
+    if (this->isIntegerLoaded[this->top])
+        writeq(addr, this->loadedInteger[this->top]);
     else
         writeq(addr, (S64)this->regs[this->top].d);
 }
 
 void FPU::FST_I64(CPU* cpu, U32 addr) {
-    if (this->regs[this->top].isIntegerLoaded)
-        writeq(addr, this->regs[this->top].loadedInteger);
+    if (this->isIntegerLoaded[this->top])
+        writeq(addr, this->loadedInteger[this->top]);
     else
         writeq(addr, (S64) (FROUND(this->regs[this->top].d)));
 }
@@ -466,37 +461,37 @@ void FPU::FBST(CPU* cpu, U32 addr) {
 
 void FPU::FADD(int op1, int op2) {
     this->regs[op1].d += this->regs[op2].d;
-    this->regs[op1].isIntegerLoaded = 0;
+    this->isIntegerLoaded[op1] = 0;
     //flags and such :)
 }
 
 void FPU::FDIV(int st, int other) {
     this->regs[st].d = this->regs[st].d / this->regs[other].d;
-    this->regs[st].isIntegerLoaded = 0;
+    this->isIntegerLoaded[st] = 0;
     //flags and such :)
 }
 
 void FPU::FDIVR(int st, int other) {
     this->regs[st].d = this->regs[other].d / this->regs[st].d;
-    this->regs[st].isIntegerLoaded = 0;
+    this->isIntegerLoaded[st] = 0;
     // flags and such :)
 }
 
 void FPU::FMUL(int st, int other) {
     this->regs[st].d *= this->regs[other].d;
-    this->regs[st].isIntegerLoaded = 0;
+    this->isIntegerLoaded[st] = 0;
     //flags and such :)
 }
 
 void FPU::FSUB(int st, int other) {
     this->regs[st].d = this->regs[st].d - this->regs[other].d;
-    this->regs[st].isIntegerLoaded = 0;
+    this->isIntegerLoaded[st] = 0;
     //flags and such :)
 }
 
 void FPU::FSUBR(int st, int other) {
     this->regs[st].d = this->regs[other].d - this->regs[st].d;
-    this->regs[st].isIntegerLoaded = 0;
+    this->isIntegerLoaded[st] = 0;
     //flags and such :)
 }
 
@@ -573,7 +568,7 @@ void FPU::FRNDINT() {
     double value = this->regs[this->top].d;
     S64 temp = (S64)FROUND(value);
     this->regs[this->top].d = (double) (temp);
-    this->regs[this->top].isIntegerLoaded = 0;
+    this->isIntegerLoaded[this->top] = 0;
 }
 
 void FPU::FPREM() {        
@@ -584,7 +579,7 @@ void FPU::FPREM() {
     // Real64 res=valtop - ressaved*valdiv;
     // res= fmod(valtop,valdiv);
     this->regs[this->top].d = valtop - ressaved*valdiv;
-    this->regs[this->top].isIntegerLoaded = 0;
+    this->isIntegerLoaded[this->top] = 0;
     FPU_SET_C0(this, (int)(ressaved & 4));
     FPU_SET_C3(this, (int)(ressaved & 2));
     FPU_SET_C1(this, (int)(ressaved & 1));
@@ -601,7 +596,7 @@ void FPU::FPREM1() {
     else if (quot-quotf<0.5) ressaved = (S64)(quotf);
     else ressaved = (S64)(((((S64)(quotf))&1)!=0)?(quotf+1):(quotf));
     this->regs[this->top].d = valtop - ressaved*valdiv;
-    this->regs[this->top].isIntegerLoaded = 0;
+    this->isIntegerLoaded[this->top] = 0;
     FPU_SET_C0(this, (int)(ressaved&4));
     FPU_SET_C3(this, (int)(ressaved&2));
     FPU_SET_C1(this, (int)(ressaved&1));
@@ -646,18 +641,18 @@ void FPU::FXAM() {
 
 void FPU::F2XM1() {
     this->regs[this->top].d = pow(2.0, this->regs[this->top].d) - 1;
-    this->regs[this->top].isIntegerLoaded = 0;
+    this->isIntegerLoaded[this->top] = 0;
 }
 
 void FPU::FYL2X() {
     this->regs[STV(1)].d *= log(this->regs[this->top].d) / log(2.0);
-    this->regs[STV(1)].isIntegerLoaded = 0;
+    this->isIntegerLoaded[STV(1)] = 0;
     FPOP();
 }
 
 void FPU::FPTAN() {
     this->regs[this->top].d = tan(this->regs[this->top].d);
-    this->regs[this->top].isIntegerLoaded = 0;
+    this->isIntegerLoaded[this->top] = 0;
     PUSH(1.0);
     FPU_SET_C2(this, 0);
     //flags and such :)
@@ -665,27 +660,27 @@ void FPU::FPTAN() {
 
 void FPU::FPATAN() {
     this->regs[STV(1)].d = atan2(this->regs[STV(1)].d, this->regs[this->top].d);
-    this->regs[STV(1)].isIntegerLoaded = 0;
+    this->isIntegerLoaded[STV(1)] = 0;
     FPOP();
     //flags and such :)
 }
 
 void FPU::FYL2XP1() {
     this->regs[STV(1)].d *= log(this->regs[this->top].d + 1.0) / log(2.0);
-    this->regs[STV(1)].isIntegerLoaded = 0;
+    this->isIntegerLoaded[STV(1)] = 0;
     FPOP();
 }
 
 void FPU::FSQRT() {
     this->regs[this->top].d = sqrt(this->regs[this->top].d);
-    this->regs[this->top].isIntegerLoaded = 0;
+    this->isIntegerLoaded[this->top] = 0;
     //flags and such :)
 }
 
 void FPU::FSINCOS() {
     double temp = this->regs[this->top].d;
     this->regs[this->top].d = sin(temp);
-    this->regs[this->top].isIntegerLoaded = 0;
+    this->isIntegerLoaded[this->top] = 0;
     PUSH(cos(temp));
     FPU_SET_C2(this, 0);
     //flags and such :)
@@ -695,19 +690,19 @@ void FPU::FSCALE() {
     double value = this->regs[STV(1)].d;
     S64 chopped = (S64)value;
     this->regs[this->top].d *= pow(2.0, (double)chopped);
-    this->regs[this->top].isIntegerLoaded = 0;
+    this->isIntegerLoaded[this->top] = 0;
     //2^x where x is chopped.
 }
 
 void FPU::FSIN() {
     this->regs[this->top].d = sin(this->regs[this->top].d);
-    this->regs[this->top].isIntegerLoaded = 0;
+    this->isIntegerLoaded[this->top] = 0;
     FPU_SET_C2(this, 0);
 }
 
 void FPU::FCOS() {
     this->regs[this->top].d = cos(this->regs[this->top].d);
-    this->regs[this->top].isIntegerLoaded = 0;
+    this->isIntegerLoaded[this->top] = 0;
     FPU_SET_C2(this, 0);
     //flags and such :)
 }
@@ -778,7 +773,7 @@ void FPU::FRSTOR(CPU* cpu, U32 addr) {
             
     for (i = 0; i < 8; i++) {
         this->regs[STV(i)].d = FLD80(readq(addr + start), readw(addr + start + 8));
-        this->regs[STV(i)].isIntegerLoaded = 0;
+        this->isIntegerLoaded[STV(i)] = 0;
         start += 10;
     }
 }
@@ -793,67 +788,67 @@ void FPU::FXTRACT() {
     double mant = tmp.d / (pow(2.0, (double) (exp80final)));
         
     this->regs[this->top].d = (double) (exp80final);
-    this->regs[this->top].isIntegerLoaded = 0;
+    this->isIntegerLoaded[this->top] = 0;
     PUSH(mant);
 }
 
 void FPU::FCHS() {
     this->regs[this->top].d = -1.0 * (this->regs[this->top].d);
-    this->regs[this->top].isIntegerLoaded = 0;
+    this->isIntegerLoaded[this->top] = 0;
 }
 
 void FPU::FABS() {
     this->regs[this->top].d = fabs(this->regs[this->top].d);
-    this->regs[this->top].isIntegerLoaded = 0;
+    this->isIntegerLoaded[this->top] = 0;
 }
 
 void FPU::FTST() {
     this->regs[8].d = 0.0;
-    this->regs[this->top].isIntegerLoaded = 0;
+    this->isIntegerLoaded[this->top] = 0;
     FCOM(this->top, 8);
 }
 
 void FPU::FLD1() {
     PREP_PUSH();
     this->regs[this->top].d = 1.0;
-    this->regs[this->top].isIntegerLoaded = 0;
+    this->isIntegerLoaded[this->top] = 0;
 }
 
 void FPU::FLDL2T() {
     PREP_PUSH();
     this->regs[this->top].d = L2T;
-    this->regs[this->top].isIntegerLoaded = 0;
+    this->isIntegerLoaded[this->top] = 0;
 }
 
 void FPU::FLDL2E() {
     PREP_PUSH();
     this->regs[this->top].d = L2E;
-    this->regs[this->top].isIntegerLoaded = 0;
+    this->isIntegerLoaded[this->top] = 0;
 }
 
 void FPU::FLDPI() {
     PREP_PUSH();
     this->regs[this->top].d = PI;
-    this->regs[this->top].isIntegerLoaded = 0;
+    this->isIntegerLoaded[this->top] = 0;
 }
 
 void FPU::FLDLG2() {
     PREP_PUSH();
     this->regs[this->top].d = LG2;
-    this->regs[this->top].isIntegerLoaded = 0;
+    this->isIntegerLoaded[this->top] = 0;
 }
 
 void FPU::FLDLN2() {
     PREP_PUSH();
     this->regs[this->top].d = LN2;
-    this->regs[this->top].isIntegerLoaded = 0;
+    this->isIntegerLoaded[this->top] = 0;
 }
 
 void FPU::FLDZ() {
     PREP_PUSH();
     this->regs[this->top].d = 0.0;
     this->tags[this->top] = TAG_Zero;
-    this->regs[this->top].isIntegerLoaded = 0;
+    this->isIntegerLoaded[this->top] = 0;
 }
 
 

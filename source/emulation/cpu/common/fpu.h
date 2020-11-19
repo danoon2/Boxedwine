@@ -33,11 +33,15 @@ struct FPU_Reg {
     union {
         double d;
         U64 l;
-    };
-    U64 loadedInteger;
-    U8 isIntegerLoaded;
+    };    
 };
 
+#define TAG_Valid 0
+#define TAG_Zero 1
+#define TAG_Weird 2
+#define TAG_Empty 3
+
+// binary translator assumes FPU->regs will be at offset 0
 class FPU {
 public:
     void reset();
@@ -137,13 +141,14 @@ public:
     U8 GetAbridgedTag();
     void setReg(U32 index, double value);
     inline U32 GetTop() {return this->top;}
-#ifndef LOG_FPU
-private:    
-#endif
+
     int GetTag();
     void LOG_STACK();
 
     struct FPU_Reg regs[9];
+    U64 loadedInteger[9]; // moved out of FPU_Reg to make it easier for the binary translators to address
+    U8 isIntegerLoaded[9];
+
     U32 tags[9];
     U32 cw;
     U32 cw_mask_all;
