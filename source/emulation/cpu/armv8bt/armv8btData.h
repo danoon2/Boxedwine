@@ -64,6 +64,11 @@ public:
     U32 bufferPos;
     U8 bufferInternal[256];
     bool dynamic;
+
+    bool fpuTopRegSet;
+    bool fpuOffsetRegSet;
+    bool isFpuRegCached[8];
+    void clearCachedFpuRegs();
 };
 #endif
 #endif

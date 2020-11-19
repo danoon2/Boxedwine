@@ -62,6 +62,9 @@ typedef enum {
 // x29 is the frame register
 // x30 is the link register (used to return from subroutines)
 
+#define xFpuOffset 29
+#define xFpuTop 30
+
 // 18 is used as TEB?
 // Apple doc: The register x18 is reserved for the platform. Conforming software should not make use of it.
 
@@ -74,16 +77,17 @@ typedef enum {
 #define xXMM6 6
 #define xXMM7 7
 
-// 8 - 15 are non volatile for the bottom 64-bits
-#define sFPU0_MMX0 8
-#define sFPU1_MMX1 9
-#define sFPU2_MMX2 10
-#define sFPU3_MMX3 11
-#define sFPU4_MMX4 12
-#define sFPU5_MMX5 13
-#define sFPU6_MMX6 14
-#define sFPU7_MMX7 15
+// v8 - v15 are non volatile for the bottom 64-bits
+#define vMMX0 8
+#define vMMX1 9
+#define vMMX2 10
+#define vMMX3 11
+#define vMMX4 12
+#define vMMX5 13
+#define vMMX6 14
+#define vMMX7 15
 
+// v16 - v31 are volitile
 #define vTmp1 16
 #define vTmp2 17
 #define vTmp3 18
@@ -183,6 +187,9 @@ public:
     U8 getReadNativeReg8(U8 reg);
     void releaseNativeReg8(U8 reg);
     U8 getSegReg(U8 seg);
+    U8 getFpuTopReg();
+    U8 getFpuOffset();
+
     void invalidOp(U32 op);
     void signalIllegalInstruction(int code);
 
@@ -295,7 +302,7 @@ public:
     void readMem8RegOffset(U8 dst, U8 base, U8 offsetReg, bool signExtend = false);
     void readMem16RegOffset(U8 dst, U8 base, U8 offsetReg, bool signExtend = false);
     void readMem32RegOffset(U8 dst, U8 base, U8 offsetReg);
-    void readMem64RegOffset(U8 dst, U8 base, U8 offsetReg);
+    void readMem64RegOffset(U8 dst, U8 base, U8 offsetReg, U32 lsl = 0); // lsl can be 0 or 3
 
     void writeMem8ValueOffset(U8 dst, U8 base, S32 offset);
     void writeMem16ValueOffset(U8 dst, U8 base, S32 offset);
@@ -304,8 +311,8 @@ public:
 
     void writeMem8RegOffset(U8 dst, U8 base, U8 offsetReg);
     void writeMem16RegOffset(U8 dst, U8 base, U8 offsetReg);
-    void writeMem32RegOffset(U8 dst, U8 base, U8 offsetReg);
-    void writeMem64RegOffset(U8 dst, U8 base, U8 offsetReg);
+    void writeMem32RegOffset(U8 dst, U8 base, U8 offsetReg, U32 lsl = 0); // lsl can be 0 or 3
+    void writeMem64RegOffset(U8 dst, U8 base, U8 offsetReg, U32 lsl = 0); // lsl can be 0 or 3
 
     void reverseBytes32(U8 dst, U8 src);
 
@@ -393,9 +400,11 @@ public:
     void vReadMem32RegOffset(U8 dst, U8 base, U8 offsetReg);
     void vReadMemory32(U8 addressReg, U8 dst, bool addMemOffsetToAddress);
     void vReadMem32ValueOffset(U8 dst, U8 base, S32 offset);
-    void vReadMem64RegOffset(U8 dst, U8 base, U8 offsetReg);
+    void vReadMem64RegOffset(U8 dst, U8 base, U8 offsetReg, U32 lsl = 0); // lsl can be 0 or 3
     void vReadMemory64(U8 addressReg, U8 dst, bool addMemOffsetToAddress);
     void vReadMem64ValueOffset(U8 dst, U8 base, S32 offset);
+
+    void vWriteMem64RegOffset(U8 dst, U8 base, U8 offsetReg, U32 lsl = 0); // lsl can be 0 or 3
 
     void vReadMemory32(U8 addressReg, U8 dst, U32 index, bool addMemOffsetToAddress);
     void vWriteMemory32(U8 addressReg, U8 dst, U32 index, bool addMemOffsetToAddress);
@@ -426,7 +435,8 @@ public:
     void vZipFromLow128(U8 dst, U8 src1, U8 src2, VectorWidth width);
     void vZipFromHigh128(U8 dst, U8 src1, U8 src2, VectorWidth width);
     void vUnzipOdds(U8 dst, U8 src1, U8 src2, VectorWidth width);
-    void vUnzipEvens(U8 dst, U8 src1, U8 src2, VectorWidth width);    
+    void vUnzipEvens(U8 dst, U8 src1, U8 src2, VectorWidth width);
+    void vTbx(U8 dst, U8 src, U8 srcCount, U8 srcIndex, VectorWidth width);
 
     void vConvertInt32ToFloat(U8 dst, U8 src, bool isVector);
     void vConvertInt64ToDouble(U8 dst, U8 src, bool isVector);

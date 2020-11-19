@@ -92,6 +92,22 @@ void Armv8btAsm::popPair(U8 r1, U8 r2) {
     write8(0xa8);
 }
 
+U8 Armv8btAsm::getFpuOffset() {
+    if (!this->fpuOffsetRegSet) {
+        this->fpuOffsetRegSet = true;
+        addValue64(xFpuOffset, xCPU, (U32)(offsetof(CPU, fpu)));
+    }
+    return xFpuOffset;
+}
+
+U8 Armv8btAsm::getFpuTopReg() {
+    if (!this->fpuTopRegSet) {
+        this->fpuTopRegSet = true;
+        this->readMem32ValueOffset(xFpuTop, xCPU, (U32)(offsetof(CPU, fpu.top)));
+    }
+    return xFpuTop;
+}
+
 U8 Armv8btAsm::getSegReg(U8 seg) {
     switch (seg) {
     case ES: return xES;
@@ -311,9 +327,15 @@ void Armv8btAsm::readMem64ValueOffset(U8 dst, U8 base, S32 offset) {
     }
 }
 
-void Armv8btAsm::readMem64RegOffset(U8 dst, U8 base, U8 offsetReg) {
+void Armv8btAsm::readMem64RegOffset(U8 dst, U8 base, U8 offsetReg, U32 lsl) {
     write8(dst | (U8)(base << 5));
-    write8(0x68 | (U8)(base >> 3));
+    if (lsl == 0) {
+        write8(0x68 | (U8)(base >> 3));
+    } else if (lsl == 3) {
+        write8(0x78 | (U8)(base >> 3));
+    } else {
+        kpanic("ArmV8bt: readMem64RegOffset lsl must be 0 or 3: %d", lsl);
+    }
     write8(0x60 | offsetReg);
     write8(0xf8);
 }
@@ -365,16 +387,32 @@ void Armv8btAsm::writeMem16ValueOffset(U8 dst, U8 base, S32 offset) {
     }
 }
 
-void Armv8btAsm::writeMem32RegOffset(U8 dst, U8 base, U8 offsetReg) {
+void Armv8btAsm::writeMem32RegOffset(U8 dst, U8 base, U8 offsetReg, U32 lsl) {
     write8(dst | (U8)(base << 5));
-    write8(0x68 | (U8)(base >> 3));
+
+    if (lsl == 0) {
+        write8(0x68 | (U8)(base >> 3));
+    } else if (lsl == 2) {
+        write8(0x78 | (U8)(base >> 3));
+    } else {
+        kpanic("ArmV8bt: writeMem32RegOffset lsl must be 0 or 2: %d", lsl);
+    }
+
     write8(0x20 | offsetReg);
     write8(0xb8);
 }
 
-void Armv8btAsm::writeMem64RegOffset(U8 dst, U8 base, U8 offsetReg) {
+void Armv8btAsm::writeMem64RegOffset(U8 dst, U8 base, U8 offsetReg, U32 lsl) {
     write8(dst | (U8)(base << 5));
-    write8(0x68 | (U8)(base >> 3));
+    
+    if (lsl == 0) {
+        write8(0x68 | (U8)(base >> 3));
+    } else if (lsl == 3) {
+        write8(0x78 | (U8)(base >> 3));
+    } else {
+        kpanic("ArmV8bt: writeMem64RegOffset lsl must be 0 or 3: %d", lsl);
+    }
+
     write8(0x20 | offsetReg);
     write8(0xf8);
 }
@@ -1959,8 +1997,8 @@ void Armv8btAsm::syncRegsFromHost() {
     vWriteMemMultiple128(xXMM4, addressReg, 4, false);
 
     addValue64(addressReg, xCPU, (U32)(offsetof(CPU, reg_mmx[0])));
-    vWriteMemMultiple64(sFPU0_MMX0, addressReg, 4, true);
-    vWriteMemMultiple64(sFPU4_MMX4, addressReg, 4, false);
+    vWriteMemMultiple64(vMMX0, addressReg, 4, true);
+    vWriteMemMultiple64(vMMX4, addressReg, 4, false);
 
     releaseTmpReg(addressReg);
 
@@ -1985,8 +2023,8 @@ void Armv8btAsm::syncRegsToHost() {
     vReadMemMultiple128(xXMM4, addressReg, 4, false);
 
     addValue64(addressReg, xCPU, (U32)(offsetof(CPU, reg_mmx[0])));
-    vReadMemMultiple64(sFPU0_MMX0, addressReg, 4, true);
-    vReadMemMultiple64(sFPU4_MMX4, addressReg, 4, false);
+    vReadMemMultiple64(vMMX0, addressReg, 4, true);
+    vReadMemMultiple64(vMMX4, addressReg, 4, false);
 
     releaseTmpReg(addressReg);
 }
@@ -2270,11 +2308,31 @@ void Armv8btAsm::vReadMemory64(U8 addressReg, U8 dst, U32 index, bool addMemOffs
     write8((index == 1) ? 0x4d : 0x0d);
 }
 
-void Armv8btAsm::vReadMem64RegOffset(U8 dst, U8 base, U8 offsetReg) {
-    // ldr s0, [x0,x0]
+void Armv8btAsm::vReadMem64RegOffset(U8 dst, U8 base, U8 offsetReg, U32 lsl) {
+    // ldr d0, [x0,x0]
     write8(dst | (U8)(base << 5));
-    write8((U8)(base >> 3) | 0x68);
+    if (lsl == 0) {
+        write8((U8)(base >> 3) | 0x68);
+    } else if (lsl == 3) {
+        write8((U8)(base >> 3) | 0x78);
+    } else {
+        kpanic("Armv8btAsm::vReadMem64RegOffset lsl must be 0 or 3: %d", lsl);
+    }
     write8(0x60 | offsetReg);
+    write8(0xfc);
+}
+
+void Armv8btAsm::vWriteMem64RegOffset(U8 dst, U8 base, U8 offsetReg, U32 lsl) {
+    // str d0, [x0,x0]
+    write8(dst | (U8)(base << 5));
+    if (lsl == 0) {
+        write8((U8)(base >> 3) | 0x68);
+    } else if (lsl == 3) {
+        write8((U8)(base >> 3) | 0x78);
+    } else {
+        kpanic("Armv8btAsm::vWriteMem64RegOffset lsl must be 0 or 3: %d", lsl);
+    }
+    write8(0x20 | offsetReg);
     write8(0xfc);
 }
 
@@ -2630,10 +2688,23 @@ void Armv8btAsm::vUnzipEvens(U8 dst, U8 src1, U8 src2, VectorWidth width) {
         // UZP1 v0.2D, v0.2D, v0.2D
         write8(0xC0 | src2);
     } else {
-        kpanic("Armv8btAsm::vUnzipEvens invalid: %d", width);
+        kpanic("Armv8btAsm::vUnzipEvens invalid width: %d", width);
     }
 
     write8(0x4e);
+}
+
+void Armv8btAsm::vTbx(U8 dst, U8 src, U8 srcCount, U8 srcIndex, VectorWidth width) {
+    write8(dst | (U8)(src << 5));    
+    write8(0x10 | (U8)(src >> 3) | (srcCount-1) << 5);
+    write8(srcIndex);
+    if (width == B8) {        
+        write8(0x0e);
+    } else if (width == B16) {
+        write8(0x4e);
+    } else {
+        kpanic("Armv8btAsm::vTbx invalid width: %d", width);
+    }        
 }
 
 void Armv8btAsm::vCmpGreaterThan(U8 dst, U8 src1, U8 src2, VectorWidth width) {

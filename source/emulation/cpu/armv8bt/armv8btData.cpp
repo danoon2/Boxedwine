@@ -27,6 +27,9 @@ Armv8btData::Armv8btData(Armv8btCPU* cpu) : cpu(cpu) {
     this->lazyFlags = NULL;
     this->flagsOp = NULL;
     this->currentBlock = NULL;
+    this->fpuTopRegSet = false;
+    this->fpuOffsetRegSet = false;
+    this->clearCachedFpuRegs();
     memset(this->usesSSEConstant, 0, sizeof(usesSSEConstant));
 }
 
@@ -40,6 +43,10 @@ Armv8btData::~Armv8btData() {
     if (this->ipAddressBufferPos!=this->ipAddressBufferPosBuffer) {
         delete[] this->ipAddressBufferPos;
     }
+}
+
+void Armv8btData::clearCachedFpuRegs() {
+    memset(this->isFpuRegCached, 0, sizeof(isFpuRegCached));
 }
 
 void Armv8btData::write8(U8 data) {

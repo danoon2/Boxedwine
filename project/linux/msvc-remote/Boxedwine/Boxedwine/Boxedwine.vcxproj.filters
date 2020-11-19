@@ -1726,6 +1726,9 @@
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_string.cpp">
       <Filter>source\emulation\cpu\armv8bt</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_fpu.cpp">
+      <Filter>source\emulation\cpu\armv8bt</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
@@ -4709,6 +4712,7 @@
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_string.h">
       <Filter>source\emulation\cpu\armv8bt</Filter>
     </ClInclude>
+<<<<<<< HEAD
     <ClInclude Include="..\..\..\..\..\lib\simde\simde\debug-trap.h">
       <Filter>lib\simde\simde</Filter>
     </ClInclude>
@@ -4729,6 +4733,10 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\lib\simde\simde\simde-math.h">
       <Filter>lib\simde\simde</Filter>
+=======
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_fpu.h">
+      <Filter>source\emulation\cpu\armv8bt</Filter>
+>>>>>>> ARMv8: starting working on the FPU
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
