@@ -100,6 +100,16 @@ U8 Armv8btAsm::getFpuOffset() {
     return xFpuOffset;
 }
 
+U8 Armv8btAsm::getFpuTagOffset() {
+    U8 offsetReg = getTmpReg();
+    addValue64(offsetReg, getFpuOffset(), (U32)(offsetof(FPU, tags)));
+    return offsetReg;
+}
+
+void Armv8btAsm::releaseFpuTagOffset(U8 offsetReg) {
+    releaseTmpReg(offsetReg);
+}
+
 U8 Armv8btAsm::getFpuTopReg() {
     if (!this->fpuTopRegSet) {
         this->fpuTopRegSet = true;
@@ -650,6 +660,12 @@ void Armv8btAsm::testRegs32(U8 src1, U8 src2) {
     write8(0x6a);
 }
 
+void Armv8btAsm::testRegs64(U8 src1, U8 src2) {
+    write8(0x1f | (U8)(src1 << 5));
+    write8((U8)(src1 >> 3));
+    write8(src2);
+    write8(0xea);
+}
 
 void Armv8btAsm::andRegs64(U8 dst, U8 src1, U8 src2) {
     write8(dst | (U8)(src1 << 5));
@@ -715,11 +731,28 @@ void Armv8btAsm::andValue64(U8 dst, U8 src, U64 value) {
         // N will always be 0 for 32-bit
         write8(dst | (U8)(src << 5));
         write8((U8)(src >> 3) | (U8)(imms << 2));
-        write8((U8)(immr));
-        write8(0x94);
+        write8((U8)(immr) | 0x40);
+        write8(0x92);
     } else {
         U8 tmp = getRegWithConst(value);
         andRegs64(dst, src, tmp);
+        releaseTmpReg(tmp);
+    }
+}
+
+void Armv8btAsm::testValue64(U8 src, U64 value) {
+    U64 encoding = 0;
+    if (processLogicalImmediate(value, 64, encoding)) {
+        U32 imms = encoding & 0x3f;
+        U32 immr = (encoding >> 6) & 0x3f;
+        // N will always be 0 for 32-bit
+        write8(0x1f | (U8)(src << 5));
+        write8((U8)(src >> 3) | (U8)(imms << 2));
+        write8((U8)(immr) | 0x40);
+        write8(0xf2);
+    } else {
+        U8 tmp = getRegWithConst(value);
+        testRegs64(src, tmp);
         releaseTmpReg(tmp);
     }
 }
@@ -2053,6 +2086,9 @@ void Armv8btAsm::syncRegsToHost() {
     vReadMemMultiple64(vMMX4, addressReg, 4, false);
 
     releaseTmpReg(addressReg);
+    clearCachedFpuRegs();
+    fpuOffsetRegSet = false;
+    fpuTopRegSet = false;
 }
 
 void Armv8btAsm::writeJumpAmount(U32 pos, U32 toLocation) {
@@ -4271,6 +4307,54 @@ void Armv8btAsm::fRsqrt(U8 dst, U8 src, VectorWidth width) {
         kpanic("Armv8btAsm::fRsqrt invalid width: %d", width);
     }
     write8(isWidthVector(width) ?0x6e:0x7e);
+}
+
+void Armv8btAsm::fAbs(U8 dst, U8 src, VectorWidth width) {
+    write8(dst | (U8)(src << 5));    
+    if (width == S_scaler) {
+        // FABS s0, s0
+        write8(0xc0 | (U8)(src >> 3));
+        write8(0x20);
+    } else if (width == S4) {
+        // FABS v0.4s, v0.4s
+        write8(0xf8 | (U8)(src >> 3));
+        write8(0xa0);
+    } else if (width == D2) {
+        // FABS v0.2d, v0.2d
+        write8(0xf8 | (U8)(src >> 3));        
+        write8(0xe0);
+    } else if (width == D_scaler) {
+        // FABS d0, d0
+        write8(0xc0 | (U8)(src >> 3));
+        write8(0x60);
+    } else {
+        kpanic("Armv8btAsm::fAbs invalid width: %d", width);
+    }
+    write8(isWidthVector(width) ? 0x4e : 0x1e);
+}
+
+void Armv8btAsm::fNeg(U8 dst, U8 src, VectorWidth width) {
+    write8(dst | (U8)(src << 5));
+    if (width == S_scaler) {
+        // FNEG s0, s0
+        write8(0x40 | (U8)(src >> 3));
+        write8(0x21);
+    } else if (width == S4) {
+        // FNEG v0.4s, v0.4s
+        write8(0xf8 | (U8)(src >> 3));
+        write8(0xa0);
+    } else if (width == D2) {
+        // FNEG v0.2d, v0.2d
+        write8(0xf8 | (U8)(src >> 3));
+        write8(0xe0);
+    } else if (width == D_scaler) {
+        // FNEG d0, d0
+        write8(0x40 | (U8)(src >> 3));
+        write8(0x61);
+    } else {
+        kpanic("Armv8btAsm::fNeg invalid width: %d", width);
+    }
+    write8(isWidthVector(width) ? 0x6e : 0x1e);
 }
 
 void Armv8btAsm::fReciprocal(U8 dst, U8 src, VectorWidth width) {

@@ -16,25 +16,6 @@
 
 #include "../common/common_other.h"
 
-enum Conditional {
-    condional_O,
-    condional_NO,
-    condional_B,
-    condional_NB,
-    condional_Z,
-    condional_NZ,
-    condional_BE,
-    condional_NBE,
-    condional_S,
-    condional_NS,
-    condional_P,
-    condional_NP,
-    condional_L,
-    condional_NL,
-    condional_LE,
-    condional_NLE
-};
-
 void setupFlagsForArith(Armv8btAsm* data, Arm8BtLazyFlags* lazyFlags, U32& flags, bool& hardwareFlags, bool& usesSrc, bool& usesDst, bool& usesResult, bool& resultNeedsZeroExtends) {
     flags = data->flagsNeeded();
     
@@ -2633,7 +2614,7 @@ void opOutsd(Armv8btAsm* data) {
     data->invalidOp(data->decodedOp->originalOp);
 }
 
-static void doCondition(Armv8btAsm* data, Conditional conditional, const std::function<void()>& f) {
+void doCondition(Armv8btAsm* data, Conditional conditional, const std::function<void()>& f) {
     // :TODO: check hardware flags if data->lazyFlags
     U32 flagsToTest;
     bool neg = false;

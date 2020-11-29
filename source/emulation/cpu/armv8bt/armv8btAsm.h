@@ -193,6 +193,8 @@ public:
     U8 getSegReg(U8 seg);
     U8 getFpuTopReg();
     U8 getFpuOffset();
+    U8 getFpuTagOffset();
+    void releaseFpuTagOffset(U8 offsetReg);
 
     void invalidOp(U32 op);
     void signalIllegalInstruction(int code);
@@ -340,9 +342,11 @@ public:
     void andRegs32(U8 dst, U8 src1, U8 src2, bool flags = false);
     void andRegs64(U8 dst, U8 src1, U8 src2);
     void testRegs32(U8 src1, U8 src2);
+    void testRegs64(U8 src1, U8 src2);
     void andValue32(U8 dst, U8 src, U32 value, bool flags = false);
     void testValue32(U8 src, U32 value);
     void andValue64(U8 dst, U8 src, U64 value);
+    void testValue64(U8 src, U64 value);
 
     void andNotRegs32(U8 dst, U8 src1, U8 src2);    
 
@@ -533,6 +537,8 @@ public:
     void fDiv(U8 dst, U8 src1, U8 src2, VectorWidth width);
     void fMin(U8 dst, U8 src1, U8 src2, VectorWidth width);
     void fMax(U8 dst, U8 src1, U8 src2, VectorWidth width);
+    void fAbs(U8 dst, U8 src, VectorWidth width);
+    void fNeg(U8 dst, U8 src, VectorWidth width);
 
     bool tmpRegInUse[xNumberOfTmpRegs];
     bool vTmpRegInUse[vNumberOfTmpRegs];
