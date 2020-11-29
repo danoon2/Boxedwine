@@ -1460,7 +1460,8 @@ public:
     U32 imm;
 
 #if defined _DEBUG || defined BOXEDWINE_BINARY_TRANSLATOR
-    U16 originalOp;    
+    U16 originalOp;
+    U32 extra; // used by DecodeGrp8_16/DecodeGrp8_32
 #endif
 #ifdef _DEBUG
     Instruction inst;
