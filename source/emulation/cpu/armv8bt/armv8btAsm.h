@@ -323,6 +323,7 @@ public:
     void writeMem64RegOffset(U8 dst, U8 base, U8 offsetReg, U32 lsl = 0); // lsl can be 0 or 3
 
     void reverseBytes32(U8 dst, U8 src);
+    void reverseBits32(U8 dst, U8 src);
 
     // 
     void loadConst(U8 reg, U64 value);    
