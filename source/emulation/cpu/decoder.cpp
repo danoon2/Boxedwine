@@ -4216,7 +4216,12 @@ public:
         case 0x07: func(data, op, rm, BtcR16, BtcE16); break;
         default: op->inst = Invalid; op->reg = rm; op->imm = data->inst; break;
         }	
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+        op->extra = data->fetch8() & 15;
+        op->imm = 1 << op->extra;
+#else
         op->imm = 1 << (data->fetch8() & 15);
+#endif
     }
 };
 
@@ -4232,7 +4237,12 @@ public:
         case 0x07: func(data, op, rm, BtcR32, BtcE32); break;
         default: op->inst = Invalid; op->reg = rm; op->imm = data->inst; break;
         }	
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+        op->extra = data->fetch8() & 31;
+        op->imm = 1 << op->extra;
+#else
         op->imm = 1 << (data->fetch8() & 31);
+#endif
     }
 };
 

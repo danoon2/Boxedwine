@@ -211,6 +211,7 @@ struct Data {
 
 #define endData() {0}
 #define allocData(var1, var2, result, flags, fCF, fOF) { 1, var1, var2, result, 0, flags, 0, fCF, fOF, 0, 0, 0, 0, 0, true,  0, 0, 1, 0, 0 }
+#define allocDataZF(var1, var2, result, flags, fZF) { 1, var1, var2, result, 0, flags, 0, 0, 0, fZF, 0, 0, 0, 0, true,  0, 0, 0, 1, 0 }
 #define allocDataNoOF(var1, var2, result, flags, fCF) {  1, var1, var2, result, 0, flags, 0, fCF, 0,   0, 0, 0, 0, 0, false, 0, 0, 1, 0, 0 }
 #define allocDataFlags(var1, var2, fCF, fOF, fSF, fZF) { 1, var1, var2, 0, 0, 0, 0, fCF, fOF, fZF, fSF, 1, 0, 0, true, 0, 0, 1, 1, 1 }
 #define allocDataFlagsWithAF(var1, var2, result, flags, fCF, fOF, fSF, fZF, fAF, hasOF, hasZF, hasSF) { 1, var1, var2, result, 0, flags, 0, fCF, fOF, fZF, fSF, 0, 0, 0, hasOF, fAF, 1, 1, hasZF, hasSF }
@@ -3611,22 +3612,22 @@ static struct Data btsd[] = {
 
 static struct Data btrw[] = {
         allocData(0xFFFD, 1, 0xFFFD, CF, false, false),
-        allocData(0x10, 4, 0x0, 0, true, false),
+        allocData(0x110, 4, 0x100, 0, true, false),
         allocData(0xFFFD, 33, 0xFFFD, CF, false, false),
-        allocData(0x10, 36, 0x0, 0, true, false),
+        allocData(0x110, 36, 0x100, 0, true, false),
         endData()
 };
 
 static struct Data btrd[] = {
         allocData(0xFFFDFFFF, 17, 0xFFFDFFFF, CF, false, false),
-        allocData(0x100000, 20, 0x0, 0, true, false),
+        allocData(0x1100000, 20, 0x1000000, 0, true, false),
         allocData(0xFFFDFFFF, 81, 0xFFFDFFFF, CF, false, false),
-        allocData(0x100000, 84, 0x0, 0, true, false),
+        allocData(0x1100000, 84, 0x1000000, 0, true, false),
         endData()
 };
 
 static struct Data btcw[] = {
-        allocData(0xFFFD, 1, 0xFFFf, CF, false, false),
+        allocData(0x0FFD, 1, 0x0FFF, CF, false, false),
         allocData(0x11, 4, 0x1, 0, true, false),
         allocData(0xFFFD, 33, 0xFFFF, CF, false, false),
         allocData(0x11, 36, 0x1, 0, true, false),
@@ -3638,6 +3639,42 @@ static struct Data btcd[] = {
         allocData(0x100001, 20, 0x1, 0, true, false),
         allocData(0xFFFDFFFF, 81, 0xFFFFFFFF, CF, false, false),
         allocData(0x100001, 84, 0x1, 0, true, false),
+        endData()
+};
+
+static struct Data bsfw[] = {
+        allocDataZF(0, 0x0001, 0, ZF, false),
+        allocDataZF(0, 0x0002, 1, ZF, false),
+        allocDataZF(0, 0x8000, 15, ZF, false),
+        allocDataZF(0, 0x8010, 4, ZF, false),
+        allocDataZF(1, 0, 1, 0, true),
+        endData()
+};
+
+static struct Data bsfd[] = {
+        allocDataZF(0, 0x00000001, 0, ZF, false),
+        allocDataZF(0, 0x00000002, 1, ZF, false),
+        allocDataZF(0, 0x80000000, 31, ZF, false),
+        allocDataZF(0, 0x80010000, 16, ZF, false),
+        allocDataZF(1, 0, 1, 0, true),
+        endData()
+};
+
+static struct Data bsrw[] = {
+        allocDataZF(0, 0x8030, 15, ZF, false),
+        allocDataZF(0, 0x4030, 14, ZF, false),
+        allocDataZF(0, 0x0001, 0, ZF, false),
+        allocDataZF(0, 0x0800, 11, ZF, false),
+        allocDataZF(1, 0, 1, 0, true),
+        endData()
+};
+
+static struct Data bsrd[] = {
+        allocDataZF(0, 0x80000300, 31, ZF, false),
+        allocDataZF(0, 0x40000300, 30, ZF, false),
+        allocDataZF(0, 0x00000001, 0, ZF, false),
+        allocDataZF(0, 0x00080001, 19, ZF, false),
+        allocDataZF(1, 0, 1, 0, true),
         endData()
 };
 
@@ -6762,6 +6799,42 @@ void testBtc0x3bb() {
     X86_TEST(btc, btcd, eax, ecx);
 }
 
+void testBsf0x1bc() {
+    cpu->big = false;
+    GwEw(0x1bc, bsfw);
+}
+
+void testBsf0x3bc() {
+    cpu->big = true;
+    GdEd(0x3bc, bsfd);
+}
+
+void testBsr0x1bd() {
+    cpu->big = false;
+    GwEw(0x1bd, bsrw);
+}
+
+void testBsr0x3bd() {
+    cpu->big = true;
+    GdEd(0x3bd, bsrd);
+}
+
+void testGroup80x1ba() {
+    cpu->big = false;
+    EwIb(0x1ba, 4, btw);
+    EwIb(0x1ba, 5, btsw);
+    EwIb(0x1ba, 6, btrw);
+    EwIb(0x1ba, 7, btcw);
+}
+
+void testGroup80x3ba() {
+    cpu->big = true;
+    EdIb(0x3ba, 4, btd);
+    EdIb(0x3ba, 5, btsd);
+    EdIb(0x3ba, 6, btrd);
+    EdIb(0x3ba, 7, btcd);
+}
+
 void testShld0x1a4() {
     cpu->big=false;
     EwGw(0x1a4, shld16);
@@ -9345,8 +9418,14 @@ int main(int argc, char **argv) {
     run(testCmpXchg0x3b1, "CMPXCHG 3b1");
     run(testBtr0x1b3, "BTR 1b3");
     run(testBtr0x3b3, "BTR 3b3");
+    run(testGroup80x1ba, "GROUP 8 1ba");
+    run(testGroup80x3ba, "GROUP 8 3ba");
     run(testBtc0x1bb, "BTC 1bb");
     run(testBtc0x3bb, "BTC 3bb");
+    run(testBsf0x1bc, "BSF 1bc");
+    run(testBsf0x3bc, "BSF 3bc");
+    run(testBsr0x1bd, "BSR 1bd");
+    run(testBsr0x3bd, "BSR 3bd");
 
     run(testXadd0x3c1, "XADD 3c1");    
     run(testSse2Cmppd1c2, "CMPPD 1C2 (sse2)");
