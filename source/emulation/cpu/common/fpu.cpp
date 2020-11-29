@@ -605,6 +605,7 @@ void FPU::FPREM1() {
 
 void FPU::FXAM() {
     S64 bits = this->regs[this->top].l;
+    // this check before looking if the tag is empty is intentional
     if ((bits & 0x8000000000000000l) != 0)    //sign
     {
         FPU_SET_C1(this, 1);

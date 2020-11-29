@@ -5900,7 +5900,7 @@ const Decode* const decoder[] = {
     &decodePushGs32, &decodePopGs32, 0, &decodeBtsEdGd, &decodeDshrEdGd, &decodeDshrClEdGd, &decode3EA, &decodeDimulGdEd,
     // 0x3b0
     &decodeCmpXchgEbGb, &decodeCmpXchgEdGd, &decodeLss32, &decodeBtrEdGd, &decodeLfs32, &decodeLgs32, &decodeMovGdXz8, &decodeMovGdXz16,
-    0, 0, &decodeGroup8_32, &decodeBtcEwGw, &decodeBsfGdEd, &decodeBsrGdEd, &decodeMovGdSx8, &decodeMovGdSx16,
+    0, 0, &decodeGroup8_32, &decodeBtcEdGd, &decodeBsfGdEd, &decodeBsrGdEd, &decodeMovGdSx8, &decodeMovGdSx16,
     // 0x3c0
     0, &decodeXadd32, &sseCmp, &sse0x3c3, &ssePinsrwMmx, &ssePextrwMmx, &sseShufp, &decodeCmpXchg8b,
     &decodeBswapEAX, &decodeBswapECX, &decodeBswapEDX, &decodeBswapEBX, &decodeBswapESP, &decodeBswapEBP, &decodeBswapESI, &decodeBswapEDI,
