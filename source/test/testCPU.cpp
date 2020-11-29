@@ -3609,6 +3609,38 @@ static struct Data btsd[] = {
         endData()
 };
 
+static struct Data btrw[] = {
+        allocData(0xFFFD, 1, 0xFFFD, CF, false, false),
+        allocData(0x10, 4, 0x0, 0, true, false),
+        allocData(0xFFFD, 33, 0xFFFD, CF, false, false),
+        allocData(0x10, 36, 0x0, 0, true, false),
+        endData()
+};
+
+static struct Data btrd[] = {
+        allocData(0xFFFDFFFF, 17, 0xFFFDFFFF, CF, false, false),
+        allocData(0x100000, 20, 0x0, 0, true, false),
+        allocData(0xFFFDFFFF, 81, 0xFFFDFFFF, CF, false, false),
+        allocData(0x100000, 84, 0x0, 0, true, false),
+        endData()
+};
+
+static struct Data btcw[] = {
+        allocData(0xFFFD, 1, 0xFFFf, CF, false, false),
+        allocData(0x11, 4, 0x1, 0, true, false),
+        allocData(0xFFFD, 33, 0xFFFF, CF, false, false),
+        allocData(0x11, 36, 0x1, 0, true, false),
+        endData()
+};
+
+static struct Data btcd[] = {
+        allocData(0xFFFDFFFF, 17, 0xFFFFFFFF, CF, false, false),
+        allocData(0x100001, 20, 0x1, 0, true, false),
+        allocData(0xFFFDFFFF, 81, 0xFFFFFFFF, CF, false, false),
+        allocData(0x100001, 84, 0x1, 0, true, false),
+        endData()
+};
+
 static struct Data shld16[] = {
         allocDataConstNoOF(0x1234, 0x5678, 0x2345, 4, 8, 0, true),        
         allocDataConst(0x8080, 0x8000, 0x0101, 1, 8, 0, true, true),
@@ -6441,6 +6473,25 @@ void testFPUD9() {
     testFSTPFloat();
 }
 
+void testFPUDA() {
+    // REGS
+    // 0 FCMOV_ST0_STj_CF
+    // 1 FCMOV_ST0_STj_ZF
+    // 2 FCMOV_ST0_STj_CF_OR_ZF
+    // 3 FCMOV_ST0_STj_PF
+    // 4 FUCOMPP
+
+    // MEMORY
+    // 0 FIADD_DWORD_INTEGER
+    // 1 FIMUL_DWORD_INTEGER
+    // 2 FICOM_DWORD_INTEGER
+    // 3 FICOM_DWORD_INTEGER_Pop
+    // 4 FISUB_DWORD_INTEGER
+    // 5 FISUBR_DWORD_INTEGER
+    // 6 FIDIV_DWORD_INTEGER
+    // 7 FIDIVR_DWORD_INTEGER
+}
+
 void testFPU0x0d8() {cpu->big=false;testFPUD8();}
 void testFPU0x2d8() {cpu->big=true;testFPUD8();}
 
@@ -6683,8 +6734,32 @@ void testBt0x1a3() {
 
 void testBt0x3a3() {
     cpu->big=true;
-    EdGdEffective(0x1a3, btd);
+    EdGdEffective(0x3a3, btd);
     X86_TEST(bt, btd, eax, ecx);
+}
+
+void testBtr0x1b3() {
+    cpu->big = false;
+    EwGwEffective(0x1b3, btrw);
+    X86_TEST(btr, btrw, ax, cx);
+}
+
+void testBtr0x3b3() {
+    cpu->big = true;
+    EdGdEffective(0x3b3, btrd);
+    X86_TEST(btr, btrd, eax, ecx);
+}
+
+void testBtc0x1bb() {
+    cpu->big = false;
+    EwGwEffective(0x1bb, btcw);
+    X86_TEST(btc, btcw, ax, cx);
+}
+
+void testBtc0x3bb() {
+    cpu->big = true;
+    EdGdEffective(0x3bb, btcd);
+    X86_TEST(btc, btcd, eax, ecx);
 }
 
 void testShld0x1a4() {
@@ -8969,9 +9044,9 @@ int main(int argc, char **argv) {
     run(testXlat0x2d7, "Xlat 2d7");
 
     run(testFPU0x0d8, "FPU 0d8");
-    //run(testFPU0x2d8, "FPU 2d8");
+    run(testFPU0x2d8, "FPU 2d8");
 
-    //run(testFPU0x0d9, "FPU 0d9");
+    run(testFPU0x0d9, "FPU 0d9");
     //run(testFPU0x2d9, "FPU 2d9");    
 
     run(testLoopNZ0x0e0, "LoopNZ 0e0");
@@ -9268,6 +9343,10 @@ int main(int argc, char **argv) {
     run(testCmpXchg0x3b0, "CMPXCHG 3b0");
     run(testCmpXchg0x1b1, "CMPXCHG 1b1");
     run(testCmpXchg0x3b1, "CMPXCHG 3b1");
+    run(testBtr0x1b3, "BTR 1b3");
+    run(testBtr0x3b3, "BTR 3b3");
+    run(testBtc0x1bb, "BTC 1bb");
+    run(testBtc0x3bb, "BTC 3bb");
 
     run(testXadd0x3c1, "XADD 3c1");    
     run(testSse2Cmppd1c2, "CMPPD 1C2 (sse2)");
