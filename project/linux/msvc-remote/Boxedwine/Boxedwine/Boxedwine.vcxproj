@@ -128,12 +128,15 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/poco/Net/include;../../../../../lib/poco/Foundation/include;../../../../../lib/poco/Util/include;../../../../../lib/poco/NetSSL_OpenSSL/include;../../../../../lib/poco/Crypto/include</ProjectPublicIncludePath>
+    <MultiProcNumber>4</MultiProcNumber>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Test|x64'">
     <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/poco/Net/include;../../../../../lib/poco/Foundation/include;../../../../../lib/poco/Util/include;../../../../../lib/poco/NetSSL_OpenSSL/include;../../../../../lib/poco/Crypto/include</ProjectPublicIncludePath>
+    <MultiProcNumber>4</MultiProcNumber>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/poco/Net/include;../../../../../lib/poco/Foundation/include;../../../../../lib/poco/Util/include;../../../../../lib/poco/NetSSL_OpenSSL/include;../../../../../lib/poco/Crypto/include</ProjectPublicIncludePath>
+    <MultiProcNumber>4</MultiProcNumber>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x86'">
     <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/poco/Net/include;../../../../../lib/poco/Foundation/include;../../../../../lib/poco/Util/include;../../../../../lib/poco/NetSSL_OpenSSL/include;../../../../../lib/poco/Crypto/include</ProjectPublicIncludePath>
@@ -2931,6 +2934,7 @@
     <ClCompile Include="..\..\..\..\..\platform\linux\dynamic.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\linux\memory64.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\linux\platform.cpp" />
+    <ClCompile Include="..\..\..\..\..\platform\linux\platformThreads-x64.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\linux\platformThreads.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\sdl\knativeaudio.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\sdl\knativesynchronization.cpp" />
@@ -3077,6 +3081,12 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\..\..\..\..\source\ui\controls\downloadDlg.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|ARM64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|ARM'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x86'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\ui\controls\helpView.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|ARM64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|ARM'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x86'">true</ExcludedFromBuild>
@@ -4266,6 +4276,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x86'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x64'">true</ExcludedFromBuild>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\ui\controls\helpView.h" />
     <ClInclude Include="..\..\..\..\..\source\ui\controls\ImGuiLayout.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|ARM64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|ARM'">true</ExcludedFromBuild>
@@ -4404,6 +4415,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x86'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x64'">true</ExcludedFromBuild>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\ui\utils\imgui_markdown.h" />
     <ClInclude Include="..\..\..\..\..\source\ui\utils\readIcons.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|ARM64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|ARM'">true</ExcludedFromBuild>
