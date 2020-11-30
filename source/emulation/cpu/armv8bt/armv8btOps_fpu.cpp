@@ -846,13 +846,13 @@ void opFIMUL_DWORD_INTEGER(Armv8btAsm* data) {
 }
 void opFICOM_DWORD_INTEGER(Armv8btAsm* data) {
 	U8 vTmpReg = loadInt32AsDouble(data);
-	FPUReg reg(data, 0, true);
+	FPUReg reg(data, 0, false);
 	doFCOM(data, reg.reg, 0, vTmpReg, -1);
 	data->vReleaseTmpReg(vTmpReg);
 }
 void opFICOM_DWORD_INTEGER_Pop(Armv8btAsm* data) {
 	U8 vTmpReg = loadInt32AsDouble(data);
-	FPUReg reg(data, 0, true);
+	FPUReg reg(data, 0, false);
 	doFCOM(data, reg.reg, 0, vTmpReg, -1);
 	data->vReleaseTmpReg(vTmpReg);
 	FPU_POP(data);
@@ -1028,13 +1028,13 @@ void opFMUL_DOUBLE_REAL(Armv8btAsm* data) {
 }
 void opFCOM_DOUBLE_REAL(Armv8btAsm* data) {
 	U8 tmpRead = readDouble(data);
-	FPUReg dst(data, 0, true);
+	FPUReg dst(data, 0, false);
 	doFCOM(data, dst.reg, 0, tmpRead, -1);
 	data->vReleaseTmpReg(tmpRead);
 }
 void opFCOM_DOUBLE_REAL_Pop(Armv8btAsm* data) {
 	U8 tmpRead = readDouble(data);
-	FPUReg dst(data, 0, true);
+	FPUReg dst(data, 0, false);
 	doFCOM(data, dst.reg, 0, tmpRead, -1);
 	data->vReleaseTmpReg(tmpRead);
 	FPU_POP(data);
@@ -1210,13 +1210,13 @@ void opFIMUL_WORD_INTEGER(Armv8btAsm* data) {
 }
 void opFICOM_WORD_INTEGER(Armv8btAsm* data) {
 	U8 vTmpReg = loadInt16AsDouble(data);
-	FPUReg reg(data, 0, true);
+	FPUReg reg(data, 0, false);
 	doFCOM(data, reg.reg, 0, vTmpReg, -1);
 	data->vReleaseTmpReg(vTmpReg);
 }
 void opFICOM_WORD_INTEGER_Pop(Armv8btAsm* data) {
 	U8 vTmpReg = loadInt32AsDouble(data);
-	FPUReg reg(data, 0, true);
+	FPUReg reg(data, 0, false);
 	doFCOM(data, reg.reg, 0, vTmpReg, -1);
 	data->vReleaseTmpReg(vTmpReg);
 	FPU_POP(data);
