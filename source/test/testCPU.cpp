@@ -6510,30 +6510,175 @@ void testFPUD9() {
     testFSTPFloat();
 }
 
+void testFpuCmov(U8 group, U8 flags) {
+    struct FPU_Float result;
+
+    newInstruction(0);
+    fpu_init();
+    fldf32(2.0f, 1);
+    fldf32(3.0f, 2);
+    pushCode8(0xda);
+    pushCode8(rm(false, group, 1)); // cmov top-1 to top
+    writeTopFloat(3);
+    runTestCPU();
+    result.i = readd(HEAP_ADDRESS + 4 * 3);
+    assertTrue(result.f == 3.0f); // top didn't change
+
+    newInstruction(flags);
+    fpu_init();
+    fldf32(2.0f, 1);
+    fldf32(3.0f, 2);
+    pushCode8(0xda);
+    pushCode8(rm(false, group, 1)); // cmov top-1 to top
+    writeTopFloat(3);
+    runTestCPU();
+    result.i = readd(HEAP_ADDRESS + 4 * 3);
+    assertTrue(result.f == 2.0f); // top changed
+}
+
+static void doFUCOMPPTest(float val1, float val2, U32 swResult) {
+    struct FPU_Float result;
+
+    newInstruction(0);
+    fpu_init();
+    fldf32(100.0f, 1);
+    fldf32(val1, 2);
+    fldf32(val2, 3);
+    pushCode8(0xda);
+    pushCode8(rm(false, 5, 1));
+    writeTopFloat(4);
+
+    // FNSTSW AX
+    pushCode8(0xdf);
+    pushCode8(0xe0);
+
+    runTestCPU();
+    result.i = readd(HEAP_ADDRESS + 4 * 4);
+    assertTrue(result.f == 100.0f); // stack popped twice, val1 and val2 were popped off and 100.0 is now on top
+    assertTrue((AX & 0x4700) == swResult);
+}
+
+void testFUCOMPP() {
+    doFUCOMPPTest(2.0, 2.0, 0x4000);
+    doFUCOMPPTest(2.0, 1.0, 0x0100);
+    doFUCOMPPTest(2.0, 3.0, 0x0000);
+    doFUCOMPPTest(2.0, INFINITY, 0x0000);
+    doFUCOMPPTest(2.0, NAN, 0x4500);
+}
+
+static void doCOMIntTest(float val1, U32 val2, U32 swResult, bool pop, bool checkValue = true) {
+    struct FPU_Float result;
+
+    newInstruction(0);
+    fpu_init();
+    fldf32(100.0f, 1);
+    fldf32(val1, 2);
+
+    writed(HEAP_ADDRESS + 4 * 3, val2);
+
+    pushCode8(0xda);
+    pushCode8(rm(true, pop ? 3 : 2, cpu->big ? 5 : 6));
+    if (cpu->big) {
+        pushCode32(4 * 3);
+    } else {
+        pushCode16(4 * 3);
+    }
+
+    writeTopFloat(4);
+
+    // FNSTSW AX
+    pushCode8(0xdf);
+    pushCode8(0xe0);
+
+    runTestCPU();
+    result.i = readd(HEAP_ADDRESS + 4 * 4);
+    if (pop) {
+        assertTrue(result.f == 100.0f);
+    } else if (checkValue) {
+        assertTrue(result.f == val1);
+    }
+    assertTrue((AX & 0x4700) == swResult);
+}
+
+void testFCOMInt(bool pop) {
+    doCOMIntTest(2.0, 2, 0x4000, pop);
+    doCOMIntTest(1.0, 20000, 0x0100, pop);
+    doCOMIntTest(3.0, 2, 0x0000, pop);
+    doCOMIntTest(INFINITY, 2, 0x0000, pop);
+    doCOMIntTest(NAN, 2, 0x4500, pop, false);
+}
+
+void testFMemInt(U8 inst, U8 group, float val1, U32 val2, float fresult) {
+    struct FPU_Float result;
+
+    newInstruction(0);
+    fpu_init();
+    fldf32(val1, 1);
+    writed(HEAP_ADDRESS + 4 * 2, val2);
+    pushCode8(inst);
+    pushCode8(rm(true, group, cpu->big ? 5 : 6));
+    if (cpu->big) {
+        pushCode32(4 * 2);
+    } else {
+        pushCode16(4 * 2);
+    }
+    writeTopFloat(3);
+    runTestCPU();
+    result.i = readd(HEAP_ADDRESS + 4 * 3);
+    assertTrue(result.f == fresult);
+}
+
 void testFPUDA() {
     // REGS
     // 0 FCMOV_ST0_STj_CF
+    testFpuCmov(0, CF);
+
     // 1 FCMOV_ST0_STj_ZF
+    testFpuCmov(1, ZF);
+
     // 2 FCMOV_ST0_STj_CF_OR_ZF
+    testFpuCmov(2, CF);
+    testFpuCmov(2, ZF);
+    testFpuCmov(2, CF|ZF);
+
     // 3 FCMOV_ST0_STj_PF
-    // 4 FUCOMPP
+    testFpuCmov(3, PF);
+
+    // 5 FUCOMPP
+    testFUCOMPP();
 
     // MEMORY
     // 0 FIADD_DWORD_INTEGER
+    testFMemInt(0xda, 0, 100.0f, 100000, 100100.0f);
+
     // 1 FIMUL_DWORD_INTEGER
+    testFMemInt(0xda, 1, 2.0f, 100000, 200000.0f);
+
     // 2 FICOM_DWORD_INTEGER
+    testFCOMInt(false);
+
     // 3 FICOM_DWORD_INTEGER_Pop
+    testFCOMInt(true);
+
     // 4 FISUB_DWORD_INTEGER
+    testFMemInt(0xda, 4, 202020.0f, 100000, 102020.0f);
+
     // 5 FISUBR_DWORD_INTEGER
+    testFMemInt(0xda, 5, 202020.0f, 100000, -102020.0f);
+
     // 6 FIDIV_DWORD_INTEGER
+    testFMemInt(0xda, 6, 202020.0f, 2, 101010.0f);
+
     // 7 FIDIVR_DWORD_INTEGER
+    testFMemInt(0xda, 7, 2.0f, 202020, 101010.0f);
 }
 
 void testFPU0x0d8() {cpu->big=false;testFPUD8();}
 void testFPU0x2d8() {cpu->big=true;testFPUD8();}
-
 void testFPU0x0d9() {cpu->big=false;testFPUD9();}
 void testFPU0x2d9() {cpu->big=true;testFPUD9();}
+void testFPU0x0da() { cpu->big = false; testFPUDA(); }
+void testFPU0x2da() { cpu->big = true; testFPUDA(); }
 
 void doLoopZ(U32 instruction, bool big, bool neg) {
     cpu->big = big;
@@ -9118,9 +9263,10 @@ int main(int argc, char **argv) {
 
     run(testFPU0x0d8, "FPU 0d8");
     run(testFPU0x2d8, "FPU 2d8");
-
     run(testFPU0x0d9, "FPU 0d9");
-    //run(testFPU0x2d9, "FPU 2d9");    
+    run(testFPU0x2d9, "FPU 2d9");    
+    run(testFPU0x0da, "FPU 0da");
+    run(testFPU0x2da, "FPU 2da");
 
     run(testLoopNZ0x0e0, "LoopNZ 0e0");
     run(testLoopNZ0x2e0, "LoopNZ 2e0");
