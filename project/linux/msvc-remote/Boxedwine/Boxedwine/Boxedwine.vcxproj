@@ -2943,6 +2943,19 @@
     <ClCompile Include="..\..\..\..\..\platform\sdl\knativewindow.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\sdl\sdlcallback.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv7\armv7CPU.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\arm8btFlags.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btAsm.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btCodeChunk.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btCPU.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btData.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_bits.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_mmx.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_shift.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_sse_convert.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_sse_minmax.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_sse_shuffle.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_string.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8\armv8CPU.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8\llvm_helper.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeChunk.cpp" />
@@ -4114,6 +4127,19 @@
     <ClInclude Include="..\..\..\..\..\lib\zlib\contrib\minizip\unzip.h" />
     <ClInclude Include="..\..\..\..\..\platform\sdl\sdlcallback.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv7\armv7CPU.h" />
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\arm8btFlags.h" />
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btAsm.h" />
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btCodeChunk.h" />
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btCPU.h" />
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btData.h" />
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps.h" />
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_bits.h" />
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_mmx.h" />
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_shift.h" />
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_sse_convert.h" />
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_sse_minmax.h" />
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_sse_shuffle.h" />
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_string.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8\armv8CPU.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8\llvm_helper.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeChunk.h" />
@@ -4523,13 +4549,12 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Test|ARM64'">
     <ClCompile>
-      <PreprocessorDefinitions>BOXEDWINE_DYNAMIC_ARMV8;BOXEDWINE_DYNAMIC;BOXEDWINE_64BIT_MMU;SIMDE_NO_NEON;__TEST;BOXEDWINE_OPENGL_IMGUI_V2;BOXEDWINE_POSIX;POCO_UTIL_NO_JSONCONFIGURATION;POCO_UTIL_NO_XMLCONFIGURATION;SIMDE_SSE2_NO_NEON;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_MULTI_THREADED;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_ARMV8BT;BOXEDWINE_64BIT_MMU;SIMDE_NO_NEON;__TEST;BOXEDWINE_OPENGL_IMGUI_V2;BOXEDWINE_POSIX;POCO_UTIL_NO_JSONCONFIGURATION;POCO_UTIL_NO_XMLCONFIGURATION;SIMDE_SSE2_NO_NEON;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;</PreprocessorDefinitions>
       <CppLanguageStandard>c++17</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
-      <UndefinePreprocessorDefinitions>
-      </UndefinePreprocessorDefinitions>
+      <UndefinePreprocessorDefinitions>BOXEDWINE_DYNAMIC_ARMV8;BOXEDWINE_DYNAMIC</UndefinePreprocessorDefinitions>
     </ClCompile>
     <Link>
       <LibraryDependencies>ssl;crypto;pthread;m;z;minizip;SDL2;GL;stdc++fs;dl;rt</LibraryDependencies>

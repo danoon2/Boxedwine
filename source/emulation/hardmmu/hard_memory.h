@@ -47,7 +47,7 @@ void makeCodePageReadOnly(Memory* memory, U32 page);
 bool clearCodePageReadOnly(Memory* memory, U32 page);
 U32 getHostPageSize();
 U32 getHostAllocationSize();
-#ifdef BOXEDWINE_X64
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
 void commitHostAddressSpaceMapping(Memory* memory, U32 page, U32 pageCount, U64 defaultValue);
 #endif
 #endif
