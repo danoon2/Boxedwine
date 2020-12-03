@@ -2934,6 +2934,7 @@
     <ClCompile Include="..\..\..\..\..\platform\linux\dynamic.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\linux\memory64.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\linux\platform.cpp" />
+    <ClCompile Include="..\..\..\..\..\platform\linux\platformThreads-armv8.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\linux\platformThreads-x64.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\linux\platformThreads.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\sdl\knativeaudio.cpp" />
@@ -4537,13 +4538,12 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
     <ClCompile>
-      <PreprocessorDefinitions>BOXEDWINE_DYNAMIC_ARMV8;BOXEDWINE_DYNAMIC;BOXEDWINE_64;BOXEDWINE_64BIT_MMU;_DEBUG;SIMDE_NO_NEON;BOXEDWINE_OPENGL_IMGUI_V2;BOXEDWINE_POSIX;POCO_UTIL_NO_JSONCONFIGURATION;POCO_UTIL_NO_XMLCONFIGURATION;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_MULTI_THREADED;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_ARMV8BT;BOXEDWINE_64;BOXEDWINE_64BIT_MMU;_DEBUG;SIMDE_NO_NEON;BOXEDWINE_OPENGL_IMGUI_V2;BOXEDWINE_POSIX;POCO_UTIL_NO_JSONCONFIGURATION;POCO_UTIL_NO_XMLCONFIGURATION;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;</PreprocessorDefinitions>
       <CppLanguageStandard>c++17</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
-      <UndefinePreprocessorDefinitions>
-      </UndefinePreprocessorDefinitions>
+      <UndefinePreprocessorDefinitions>BOXEDWINE_DYNAMIC_ARMV8;BOXEDWINE_DYNAMIC</UndefinePreprocessorDefinitions>
     </ClCompile>
     <Link>
       <LibraryDependencies>ssl;crypto;pthread;m;z;minizip;SDL2;GL;stdc++fs;dl;rt</LibraryDependencies>

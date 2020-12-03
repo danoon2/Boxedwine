@@ -2235,8 +2235,8 @@ void opPushE16(Armv8btAsm* data) {
 
 void opPushE32(Armv8btAsm* data) {
     U8 tmpReg = data->getAddressReg();
-    data->readMemory(tmpReg, tmpReg, 16, true);
-    data->pushNativeReg16(tmpReg);
+    data->readMemory(tmpReg, tmpReg, 32, true);
+    data->pushNativeReg32(tmpReg);
     data->releaseTmpReg(tmpReg);
 }
 
@@ -3054,7 +3054,7 @@ void opMovGdXzR16(Armv8btAsm* data) {
 }
 void opMovGdXzE16(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
-    data->readMemory(data->getNativeReg(data->decodedOp->reg), addressReg, 16, true);
+    data->readMemory(addressReg, data->getNativeReg(data->decodedOp->reg), 16, true);
     data->releaseTmpReg(addressReg);
 }
 void opMovGdSxR16(Armv8btAsm* data) {
@@ -3221,7 +3221,7 @@ static void doRetn16(Armv8btAsm* data, U32 bytes) {
     data->done = true;
 }
 static void doRetn32(Armv8btAsm* data, U32 bytes) {
-    kpanic("Need to test");
+    // kpanic("Need to test");
     // U32 eip = cpu->pop32();
     // ESP = ESP + op->imm;
     // cpu->eip.u32 = eip;
@@ -3276,7 +3276,7 @@ void opInt3(Armv8btAsm* data) {
     data->done = true;
 }
 void opInt80(Armv8btAsm* data) {
-    kpanic("Need to test");
+    // kpanic("Need to test");
     data->syncRegsFromHost();
 
     // void ksyscall(cpu, op->len)
@@ -3456,7 +3456,7 @@ void opRdtsc(Armv8btAsm* data) {
     */
 }
 void opCPUID(Armv8btAsm* data) {   
-    kpanic("Need to test");
+    // kpanic("Need to test");
     // switch (EAX) {
     // case 0:	/* Vendor ID String and maximum level? */
     //     EAX = 2;  /* Maximum level */
@@ -3591,7 +3591,7 @@ void opLeave16(Armv8btAsm* data) {
     data->popNativeReg16(xEBP, false);
 }
 void opLeave32(Armv8btAsm* data) {
-    kpanic("Need to test");
+    // kpanic("Need to test");
     // ESP = EBP;
     // EBP = cpu->pop32();
     data->movRegToReg(xESP, xEBP, 32, false);
@@ -3837,18 +3837,18 @@ void opCallJw(Armv8btAsm* data) {
     // cpu->eip.u32 += (S16)op->imm;
     U8 tmpReg = data->getRegWithConst(data->ip);
     data->pushNativeReg16(tmpReg);
-    data->loadConst(tmpReg, data->startOfOpIp + (S32)((S16)data->decodedOp->imm));
+    data->loadConst(tmpReg, data->ip + (S32)((S16)data->decodedOp->imm));
     data->jmpReg(tmpReg, false);
     data->releaseTmpReg(tmpReg);
     data->done = true;
 }
 void opCallJd(Armv8btAsm* data) {
-    kpanic("Need to test");
+    // kpanic("Need to test");
     // cpu->push32(cpu->eip.u32 + op->len);
     // cpu->eip.u32 += (S32)op->imm;
     U8 tmpReg = data->getRegWithConst(data->ip);
     data->pushNativeReg32(tmpReg);
-    data->loadConst(tmpReg, data->startOfOpIp + (S32)(data->decodedOp->imm));
+    data->loadConst(tmpReg, data->ip + (S32)(data->decodedOp->imm));
     data->jmpReg(tmpReg, false);
     data->releaseTmpReg(tmpReg);
     data->done = true;
@@ -3856,23 +3856,23 @@ void opCallJd(Armv8btAsm* data) {
 void opJmpJw(Armv8btAsm* data) {
     kpanic("Need to test");
     // cpu->eip.u32 += (S16)op->imm;
-    U8 tmpReg = data->getRegWithConst(data->startOfOpIp + (S32)((S16)(data->decodedOp->imm)));
+    U8 tmpReg = data->getRegWithConst(data->ip + (S32)((S16)(data->decodedOp->imm)));
     data->jmpReg(tmpReg, false);
     data->releaseTmpReg(tmpReg);
     data->done = true;
 }
 void opJmpJd(Armv8btAsm* data) {
-    kpanic("Need to test");
+    // kpanic("Need to test");
     // cpu->eip.u32 += (S32)op->imm;
-    U8 tmpReg = data->getRegWithConst(data->startOfOpIp + (S32)(data->decodedOp->imm));
+    U8 tmpReg = data->getRegWithConst(data->ip + (S32)(data->decodedOp->imm));
     data->jmpReg(tmpReg, false);
     data->releaseTmpReg(tmpReg);
     data->done = true;
 }
 void opJmpJb(Armv8btAsm* data) {
-    kpanic("Need to test");
+    // kpanic("Need to test");
     // cpu->eip.u32 += (S8)op->imm;
-    U8 tmpReg = data->getRegWithConst(data->startOfOpIp + (S32)((S8)(data->decodedOp->imm)));
+    U8 tmpReg = data->getRegWithConst(data->ip + (S32)((S8)(data->decodedOp->imm)));
     data->jmpReg(tmpReg, false);
     data->releaseTmpReg(tmpReg);
     data->done = true;
@@ -3889,7 +3889,7 @@ void opCallR16(Armv8btAsm* data) {
     data->done = true;
 }
 void opCallR32(Armv8btAsm* data) {
-    kpanic("Need to test");
+    // kpanic("Need to test");
     // cpu->push32(cpu->eip.u32 + op->len);
     // cpu->eip.u32 = cpu->reg[op->reg].u32;
     U8 tmpReg = data->getRegWithConst(data->ip);
@@ -3917,7 +3917,7 @@ void opCallE16(Armv8btAsm* data) {
     data->done = true;
 }
 void opCallE32(Armv8btAsm* data) {
-    kpanic("Need to test");
+    // kpanic("Need to test");
     // U32 neweip = readd(eaa(cpu, op));
     // cpu->push32(cpu->eip.u32 + op->len);
     // cpu->eip.u32 = neweip;
@@ -3991,7 +3991,7 @@ void opJmpR16(Armv8btAsm* data) {
     data->done = true;
 }
 void opJmpR32(Armv8btAsm* data) {
-    kpanic("Need to test");
+    // kpanic("Need to test");
     // cpu->eip.u32 = cpu->reg[op->reg].u32;
     data->jmpReg(data->getNativeReg(data->decodedOp->reg), false);
     data->done = true;
@@ -4009,7 +4009,7 @@ void opJmpE16(Armv8btAsm* data) {
     data->done = true;
 }
 void opJmpE32(Armv8btAsm* data) {
-    kpanic("Need to test");
+    // kpanic("Need to test");
     // U32 neweip = readd(eaa(cpu, op));
     // cpu->eip.u32 = neweip;
     U8 addressReg = data->getAddressReg();

@@ -62,7 +62,7 @@ void Armv8btCPU::setSeg(U32 index, U32 address, U32 value) {
     CPU::setSeg(index, address, value);
 }
 
-void Armv8btCPU::run() {    
+void Armv8btCPU::run() {
     while (true) {
         this->memOffset = this->thread->process->memory->id;
 		this->exitToStartThreadLoop = 0;
@@ -171,18 +171,20 @@ void* Armv8btCPU::init() {
     this->reTranslateChunkAddress = this->thread->process->reTranslateChunkAddress;
     if (!this->thread->process->reTranslateChunkAddressFromR9) {
         Armv8btAsm translateData(this);
-        translateData.createCodeForRetranslateChunk(true);
+        translateData.createCodeForRetranslateChunk();
         std::shared_ptr<BtCodeChunk> chunk3 = translateData.commit(true);
         this->thread->process->reTranslateChunkAddressFromR9 = chunk3->getHostAddress();
     }
     this->reTranslateChunkAddressFromR9 = this->thread->process->reTranslateChunkAddressFromR9;
+#ifdef BOXEDWINE_X64_DEBUG_NO_EXCEPTIONS
     if (!this->thread->process->jmpAndTranslateIfNecessaryToR9) {
         Armv8btAsm translateData(this);
-        translateData.createCodeForJmpAndTranslateIfNecessary(true);
+        translateData.createCodeForJmpAndTranslateIfNecessary();
         std::shared_ptr<BtCodeChunk> chunk3 = translateData.commit(true);
         this->thread->process->jmpAndTranslateIfNecessaryToR9 = chunk3->getHostAddress();
     }
     this->jmpAndTranslateIfNecessaryToR9 = this->thread->process->jmpAndTranslateIfNecessaryToR9;
+#endif
 #ifdef BOXEDWINE_POSIX
     if (!this->thread->process->runSignalAddress) {
         Armv8btAsm translateData(this);
@@ -293,7 +295,8 @@ void Armv8btCPU::writeJumpAmount(Armv8btAsm* data, U32 pos, U32 toLocation, U8* 
         offset[pos] = (U8)amount;
         offset[pos + 1] = (U8)(amount >> 8);
         offset[pos + 2] = (U8)(amount >> 16);
-    } if (offset[pos + 3] == 0x34 || offset[pos + 3] == 0x35) {
+        offset[pos + 3] |= (U8)((amount >> 24) & 3);
+    } else if (offset[pos + 3] == 0x34 || offset[pos + 3] == 0x35) {
         if (amount >= 0x40000 || amount <= -0x40000) {
             kpanic("Armv8btCPU::writeJumpAmount in large jump not supported: %d", amount);
         }
@@ -336,7 +339,7 @@ void Armv8btCPU::link(Armv8btAsm* data, std::shared_ptr<BtCodeChunk>& fromChunk,
                 kpanic("Armv8btCPU::link to chunk missing");
             }
             std::shared_ptr<BtCodeChunkLink> link = toChunk->addLinkFrom(fromChunk, eip, toHostAddress, offset, true);
-            data->write32Buffer(offset, (U32)(toHostAddress - offset - 4));            
+            writeJumpAmount(data, data->todoJump[i].bufferPos, (U32)(toHostAddress - offset), (U8*)fromChunk->getHostAddress() + offsetIntoChunk);
         } else if (size==8 && !data->todoJump[i].sameChunk) {
             U8* toHostAddress = (U8*)this->thread->memory->getExistingHostAddress(eip);
 
@@ -401,12 +404,16 @@ static U8 fetchByte(U32* eip) {
 
 void Armv8btCPU::translateInstruction(Armv8btAsm* data, Armv8btAsm* firstPass) {
     data->startOfOpIp = data->ip;    
+    if (data->ip == 0xd027298a) {
+        int ii = 0;
+    }
     data->ip += data->decodedOp->len;
 #ifdef _DEBUG
-    //data->logOp(data->ip);
+    data->logOp(data->ip);
     // just makes debugging the asm output easier
 #ifndef __TEST
-    data->writeToMemFromValue(data->ip, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EIP, 4, false);
+    //data->loadConst(xTmp1, data->ip);
+    //data->writeMem32ValueOffset(xTmp5, xCPU, CPU_OFFSET_EIP);
 #endif
 #endif
     if (data->dynamic) {
@@ -437,7 +444,7 @@ void Armv8btCPU::translateData(Armv8btAsm* data, Armv8btAsm* firstPass) {
     }
     DecodedBlock block;
     data->currentBlock = &block;
-    decodeBlock(fetchByte, data->startOfOpIp + this->seg[CS].address, this->isBig(), 0, 0, 0, &block);
+    decodeBlock(fetchByte, data->startOfDataIp + this->seg[CS].address, this->isBig(), 0, 0, 0, &block);
     DecodedOp* op = block.op;
     while (op) {  
         U32 address = data->cpu->seg[CS].address+data->ip;
@@ -684,17 +691,14 @@ U64 Armv8btCPU::handleIllegalInstruction(U64 rip) {
 
 U32 dynamicCodeExceptionCount;
 
-U64 Armv8btCPU::handleAccessException(U64 ip, U64 address, bool readAddress, std::function<U64(U32 reg)>getReg, std::function<void(U32 reg, U64 value)>setReg, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo) {
+U64 Armv8btCPU::handleAccessException(U64 ip, U64 address, bool readAddress) {
     U32 inst = *((U32*)ip);
-    U64 r9 = getReg(9);
-    U64 r8 = getReg(8);
 
-    if (inst == 0xCE24FF43) { // useLargeAddressSpace = true
-        this->translateEip((U32)r9 - this->seg[CS].address);
-        return 0;
-    } else if ((inst==0x0A8B4566 || inst==0xCA148B4F) && (r8 || r9)) { // if these constants change, update handleMissingCode too     
+    if (inst == 0xf8400149) { // ldur x9, [x9]
+        return (U64) this->translateEip(this->destEip - this->seg[CS].address);
+    } else if (inst==0x0A8B4566 || inst==0xCA148B4F) { // if these constants change, update handleMissingCode too     
         // rip is not adjusted so we don't need to check for stack alignment
-        setReg(10, this->handleMissingCode(r8, r9, inst));
+        //setReg(10, this->handleMissingCode(r8, r9, inst));
         return 0;
     } else if (inst==0xcdcdcdcd) {
         // this thread was waiting on the critical section and the thread that was currently in this handler removed the code we were running
@@ -716,21 +720,15 @@ U64 Armv8btCPU::handleAccessException(U64 ip, U64 address, bool readAddress, std
             // check if emulated memory that caused the exception is a page that has code
             if (this->thread->memory->nativeFlags[emulatedAddress>>K_PAGE_SHIFT] & NATIVE_FLAG_CODEPAGE_READONLY) {                    
                 dynamicCodeExceptionCount++;                    
-                return this->handleCodePatch(ip, emulatedAddress, getReg(6), getReg(7), doSyncFrom, doSyncTo);                    
+                //return this->handleCodePatch(ip, emulatedAddress, getReg(6), getReg(7), doSyncFrom, doSyncTo);                    
             }
         }   
 #ifdef _DEBUG
-        void* fromHost = this->thread->memory->getExistingHostAddress(this->fromEip);
-        std::shared_ptr<BtCodeChunk> chunk = this->thread->memory->getCodeChunkContainingHostAddress((void*)rip);
+        //void* fromHost = this->thread->memory->getExistingHostAddress(this->fromEip);
+        //std::shared_ptr<BtCodeChunk> chunk = this->thread->memory->getCodeChunkContainingHostAddress((void*)rip);
 #endif
-        if (doSyncFrom) {
-            doSyncFrom(NULL);
-        }
         // this can be exercised with Wine 5.0 and CC95 demo installer, it is triggered in strlen as it tries to grow the stack
         this->thread->seg_mapper((U32)address, readAddress, !readAddress, false);
-        if (doSyncTo) {
-            doSyncTo(NULL);
-        }
         U64 result = (U64)this->translateEip(this->eip.u32); 
         if (result==0) {
             kpanic("Armv8btCPU::handleAccessException failed to translate code");

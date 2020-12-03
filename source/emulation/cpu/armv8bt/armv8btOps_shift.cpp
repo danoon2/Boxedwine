@@ -39,7 +39,7 @@ static void dshl16(Armv8btAsm* data, U8 result, U8 dst, U8 src) {
         data->copyBitsFromSourceToDestAtPosition(result, src, amount, 16 - amount, true);
         data->copyBitsFromSourceAtPositionToDest(result, src, 16 - amount, amount, true);
     }
-    if (flags & data->lazyFlags->usesResult(flags) && result != xResult) {
+    if (flags && data->lazyFlags->usesResult(flags) && result != xResult) {
         data->movRegToReg(xResult, result, 16, true);
     }
 }
@@ -76,7 +76,7 @@ static void dshr16(Armv8btAsm* data, U8 result, U8 dst, U8 src) {
         data->copyBitsFromSourceToDestAtPosition(result, src, 16 - amount, amount, true);
         data->copyBitsFromSourceAtPositionToDest(result, src, amount, 16 - amount, true);
     }
-    if (flags & data->lazyFlags->usesResult(flags) && result != xResult) {
+    if (flags && data->lazyFlags->usesResult(flags) && result != xResult) {
         data->movRegToReg(xResult, result, 16, true);
     }
 }
@@ -101,7 +101,7 @@ static void dshl32(Armv8btAsm* data, U8 result, U8 dst, U8 src) {
     // imm should already be masked to 0-31
     data->copyBitsFromSourceToDestAtPosition(result, dst, data->decodedOp->imm, 32 - data->decodedOp->imm, true);
     data->copyBitsFromSourceAtPositionToDest(result, src, 32 - data->decodedOp->imm, data->decodedOp->imm, true);
-    if (flags & data->lazyFlags->usesResult(flags) && result != xResult) {
+    if (flags && data->lazyFlags->usesResult(flags) && result != xResult) {
         data->movRegToReg(xResult, dst, 32, false);
     }
 }
@@ -126,7 +126,7 @@ static void dshr32(Armv8btAsm* data, U8 result, U8 dst, U8 src) {
     // imm should already be masked to 0-31
     data->copyBitsFromSourceAtPositionToDest(result, dst, data->decodedOp->imm, 32 - data->decodedOp->imm, true);
     data->copyBitsFromSourceToDestAtPosition(result, src, 32 - data->decodedOp->imm, data->decodedOp->imm, true);
-    if (flags & data->lazyFlags->usesResult(flags) && result != xResult) {
+    if (flags && data->lazyFlags->usesResult(flags) && result != xResult) {
         data->movRegToReg(xResult, dst, 32, false);
     }
 }
@@ -175,7 +175,7 @@ static void dshl16Cl(Armv8btAsm* data, U8 result, U8 dst, U8 src, std::function<
         data->movRegToReg(result, tmpReg2, 16, false);
         data->releaseTmpReg(tmpReg2);
 
-        if (flags & data->lazyFlags->usesResult(flags) && result != xResult) {
+        if (flags && data->lazyFlags->usesResult(flags) && result != xResult) {
             data->movRegToReg(xResult, result, 16, true);
         }
         if (flags) {
@@ -232,7 +232,7 @@ static void dshr16Cl(Armv8btAsm* data, U8 result, U8 dst, U8 src, std::function<
         data->movRegToReg(result, tmpReg2, 16, false);
         data->releaseTmpReg(tmpReg2);
 
-        if (flags & data->lazyFlags->usesResult(flags) && result != xResult) {
+        if (flags && data->lazyFlags->usesResult(flags) && result != xResult) {
             data->movRegToReg(xResult, result, 16, true);
         }
         if (flags) {
@@ -286,7 +286,7 @@ static void dshl32Cl(Armv8btAsm* data, U8 result, U8 dst, U8 src, std::function<
         data->orRegs32(result, tmpReg, tmpReg2);
         data->releaseTmpReg(tmpReg2);
 
-        if (flags & data->lazyFlags->usesResult(flags) && result != xResult) {
+        if (flags && data->lazyFlags->usesResult(flags) && result != xResult) {
             data->movRegToReg(xResult, dst, 32, true);
         }
         if (flags) {
@@ -340,7 +340,7 @@ static void dshr32Cl(Armv8btAsm* data, U8 result, U8 dst, U8 src, std::function<
         data->orRegs32(result, tmpReg, tmpReg2);
         data->releaseTmpReg(tmpReg2);
 
-        if (flags & data->lazyFlags->usesResult(flags) && result != xResult) {
+        if (flags && data->lazyFlags->usesResult(flags) && result != xResult) {
             data->movRegToReg(xResult, dst, 32, true);
         }
         if (flags) {

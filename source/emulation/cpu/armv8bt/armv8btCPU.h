@@ -18,20 +18,13 @@ public:
     
 	jmp_buf* jmpBuf;
 
+    U32 destEip;
     U64 memOffset;
-    U8* parity_lookup;            
-    U64 exceptionRSP;
-    U64 exceptionRSI;
-    U64 exceptionRDI;
-    U64 exceptionR8;
-    U64 exceptionR9;
-    U64 exceptionR10;
+    U8* parity_lookup;                
 	int exitToStartThreadLoop; // this will be checked after a syscall, if set to 1 then then Armv8btCPU.returnToLoopAddress will be called    
 	void*** eipToHostInstructionPages;
     DecodedOp* getOp(U32 eip, bool existing);
-    U32 stringRepeat;
-    U32 stringWritesToDi;
-    U32 arg5;   
+
     // 0 is vMaxInt32PlusOneAsDouble: 2147483648.0, 2147483648.0
     // 1 is vMinInt32MinusOneAsDouble: -2147483649.0, -2147483649.0
     // 2 is vMaxInt32PlusOneAsFloat: 2147483648.0, 2147483648.0, 2147483648.0, 2147483648.0
@@ -45,8 +38,9 @@ public:
 	void* returnToLoopAddress;
     void* reTranslateChunkAddress;
     void* reTranslateChunkAddressFromR9;
+#ifdef BOXEDWINE_X64_DEBUG_NO_EXCEPTIONS
     void* jmpAndTranslateIfNecessaryToR9;
-
+#endif
 #ifdef _DEBUG
     U32 fromEip;
 #endif
@@ -65,9 +59,9 @@ public:
     U64 handleChangedUnpatchedCode(U64 rip);
     U64 handleCodePatch(U64 rip, U32 address, U64 rsi, U64 rdi, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo);
     U64 handleMissingCode(U64 r8, U64 r9, U32 inst);
+    U64 handleAccessException(U64 ip, U64 address, bool readAddress); // returns new ip, if 0 then don't set ip, but continue execution
 
     virtual U64 handleIllegalInstruction(U64 rip);
-    virtual U64 handleAccessException(U64 ip, U64 address, bool readAddress, std::function<U64(U32 reg)>getReg, std::function<void(U32 reg, U64 value)>setReg, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo); // returns new ip, if 0 then don't set ip, but continue execution
     virtual void startThread();
     void wakeThreadIfWaiting();
     virtual U64 startException(U64 address, bool readAddress, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo);

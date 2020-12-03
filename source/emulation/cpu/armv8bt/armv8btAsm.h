@@ -32,6 +32,7 @@ typedef enum {
 // must be at know location for exception handler
 #define xBranch 9
 #define xTmp2 10
+#define xBranchLargeAddressOffset 10
 #define xTmp3 11
 #define xTmp4 12
 #define xTmp5 13
@@ -197,14 +198,15 @@ public:
     void releaseFpuTagOffset(U8 offsetReg);
 
     void invalidOp(U32 op);
+    void logOp(U32 eip);
     void signalIllegalInstruction(int code);
 
     void addDynamicCheck(bool panic);
 	void saveNativeState();
 	void restoreNativeState();
     void addReturn();
-    void createCodeForRetranslateChunk(bool includeSetupFromR9=false);
-    void createCodeForJmpAndTranslateIfNecessary(bool includeSetupFromR9 = false);
+    void createCodeForRetranslateChunk();
+    void createCodeForJmpAndTranslateIfNecessary();
     void callRetranslateChunk();
 #ifdef BOXEDWINE_POSIX
     void createCodeForRunSignal();
@@ -267,7 +269,7 @@ public:
     U32 branchSignedLessThanOrEqual();
     U32 branch();
     void syncRegsToHost();
-    void syncRegsFromHost();
+    void syncRegsFromHost(bool eipInBranchReg = false);
     void callHost(void* pfn);
 
     // stack
@@ -307,10 +309,10 @@ public:
     void readMem32ValueOffset(U8 dst, U8 base, S32 offset);
     void readMem64ValueOffset(U8 dst, U8 base, S32 offset);
 
-    void readMem8RegOffset(U8 dst, U8 base, U8 offsetReg, bool signExtend = false);
-    void readMem16RegOffset(U8 dst, U8 base, U8 offsetReg, bool signExtend = false);
-    void readMem32RegOffset(U8 dst, U8 base, U8 offsetReg, U32 lsl = 0); // lsl can be 0 or 2
-    void readMem64RegOffset(U8 dst, U8 base, U8 offsetReg, U32 lsl = 0); // lsl can be 0 or 3
+    void readMem8RegOffset(U8 dst, U8 base, U8 offsetReg, bool signExtend = false, bool lock = false);
+    void readMem16RegOffset(U8 dst, U8 base, U8 offsetReg, bool signExtend = false, bool lock = false);
+    void readMem32RegOffset(U8 dst, U8 base, U8 offsetReg, U32 lsl = 0, bool lock = false); // lsl can be 0 or 2
+    void readMem64RegOffset(U8 dst, U8 base, U8 offsetReg, U32 lsl = 0, bool lock = false); // lsl can be 0 or 3
 
     void writeMem8ValueOffset(U8 dst, U8 base, S32 offset);
     void writeMem16ValueOffset(U8 dst, U8 base, S32 offset);

@@ -61,9 +61,9 @@ public:
         U8 tmp = data->getTmpReg();
         U8 tmp2 = data->getTmpReg();
         // should already be zero exteded
-        //zeroExtend(data, tmp, xResult, 8);
+        // data->zeroExtend(tmp, xResult, 8);
         data->loadConst(tmp2, (U64)arm_parity_lookup);
-        data->readMem8RegOffset(tmp, tmp, tmp2);
+        data->readMem8RegOffset(tmp, tmp2, xResult);
         data->copyBitsFromSourceToDestAtPosition(reg, tmp, 2, 1); // PF is 0x4 (bit 2)
         data->releaseTmpReg(tmp);
         data->releaseTmpReg(tmp2);
