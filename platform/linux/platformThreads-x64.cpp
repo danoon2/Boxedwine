@@ -1,6 +1,6 @@
 #include "boxedwine.h"
 
-#ifdef BOXEDWINE_MULTI_THREADED
+#ifdef BOXEDWINE_X64
 
 #include "ksignal.h"
 #include "../../source/emulation/cpu/x64/x64CPU.h"
@@ -300,7 +300,7 @@ void platformHandler(int sig, siginfo_t* info, void* vcontext) {
     cpu->exceptionAddress = (U64)info->si_addr;
     cpu->exceptionSigNo = info->si_signo;
     cpu->exceptionSigCode = info->si_code;
-    x64Cpu->exceptionRip = context->CONTEXT_RIP;
+    x64Cpu->exceptionIp = context->CONTEXT_RIP;
     x64Cpu->exceptionRSP = context->CONTEXT_RSP;
     x64Cpu->exceptionRSI = context->CONTEXT_RSI;
     x64Cpu->exceptionRDI = context->CONTEXT_RDI;

@@ -3163,7 +3163,7 @@ public:
     U32 fetch32();
 
     pfnFetchByte fetchByte;
-    U32* eip;
+    U32 eip;
     U32 opCountSoFarInThisBlock;
     U8 opLen;
 };
@@ -5927,7 +5927,7 @@ const Decode* const decoder[] = {
 
 U8 DecodeData::fetch8() {
     this->opLen++;
-    return this->fetchByte(this->eip);
+    return this->fetchByte(&this->eip);
 }
 
 U16 DecodeData::fetch16() {
@@ -6112,7 +6112,7 @@ void decodeBlock(pfnFetchByte fetchByte, U32 eip, bool isBig, U32 maxInstruction
     DecodedOp* op = DecodedOp::alloc();
 
     d.fetchByte = fetchByte;
-    d.eip = &eip;
+    d.eip = eip;
     d.opCountSoFarInThisBlock = 0;
 
     block->op = op;

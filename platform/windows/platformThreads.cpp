@@ -3,7 +3,7 @@
 #include "../source/emulation/hardmmu/hard_memory.h"
 #include "../source/emulation/cpu/normal/normalCPU.h"
 #include "ksignal.h"
-#include "../source/emulation/cpu/binaryTranslation/btCpu.h"
+#include "../source/emulation/cpu/x64/x64CPU.h"
 
 #ifdef BOXEDWINE_MULTI_THREADED
 
@@ -103,7 +103,7 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
     if (!currentThread) {
         return EXCEPTION_CONTINUE_SEARCH;
     }
-    BtCPU* cpu = (BtCPU*)currentThread->cpu;
+    x64CPU* cpu = (x64CPU*)currentThread->cpu;
     if (ep->ContextRecord->EFlags & AC) {
         // :TODO: is there a way to clear in now
         ep->ContextRecord->EFlags&=~AC;
