@@ -139,7 +139,6 @@ void common_lslr32e32(CPU* cpu, U32 reg, U32 address){
 }
 
 U32 common_lsl(CPU* cpu, U32 selector, U32 limit) {
-    if (!cpu->logFile) cpu->logFile = fopen("lsl.txt", "w");
     return cpu->lsl(selector, limit);
 }
 

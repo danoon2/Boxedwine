@@ -152,6 +152,7 @@ void* x64CPU::init() {
         this->thread->process->reTranslateChunkAddressFromR9 = chunk3->getHostAddress();
     }
     this->reTranslateChunkAddressFromR9 = this->thread->process->reTranslateChunkAddressFromR9;
+#ifdef BOXEDWINE_X64_DEBUG_NO_EXCEPTIONS
     if (!this->thread->process->jmpAndTranslateIfNecessaryToR9) {
         X64Asm translateData(this);
         translateData.createCodeForJmpAndTranslateIfNecessary(true);
@@ -159,6 +160,7 @@ void* x64CPU::init() {
         this->thread->process->jmpAndTranslateIfNecessaryToR9 = chunk3->getHostAddress();
     }
     this->jmpAndTranslateIfNecessaryToR9 = this->thread->process->jmpAndTranslateIfNecessaryToR9;
+#endif
 #ifdef BOXEDWINE_POSIX
     if (!this->thread->process->runSignalAddress) {
         X64Asm translateData(this);

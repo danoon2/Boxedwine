@@ -9,7 +9,7 @@ public:
     U64 exceptionAddress;
     bool inException;
     bool exceptionReadAddress;
-    U64 returnHostAddress;
+    U64 returnHostAddress; // after returning from the signalHandler, this will contain the host address we should jump to
     int exceptionSigNo;
     int exceptionSigCode;
     U64 exceptionIp;
@@ -17,8 +17,7 @@ public:
 
     virtual void startThread() = 0;
     virtual U64 startException(U64 address, bool readAddress, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo) = 0;
-    virtual U64 handleIllegalInstruction(U64 ip) = 0;
-    virtual U64 handleAccessException(U64 ip, U64 address, bool readAddress, std::function<U64(U32 reg)>getReg, std::function<void(U32 reg, U64 value)>setReg, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo) = 0; // returns new ip, if 0 then don't set ip, but continue execution
+    virtual U64 handleIllegalInstruction(U64 ip) = 0;    
     virtual U64 handleFpuException(int code, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo) = 0;
     virtual void makePendingCodePagesReadOnly() = 0;
     virtual std::shared_ptr<BtCodeChunk> translateChunk(U32 ip) = 0;

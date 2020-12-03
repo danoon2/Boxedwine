@@ -1,6 +1,6 @@
 #include "boxedwine.h"
 
-#ifdef BOXEDWINE_MULTI_THREADED
+#ifdef BOXEDWINE_X64
 
 #include "ksignal.h"
 #include "../../source/emulation/cpu/x64/x64CPU.h"
@@ -300,7 +300,7 @@ void platformHandler(int sig, siginfo_t* info, void* vcontext) {
     cpu->exceptionAddress = (U64)info->si_addr;
     cpu->exceptionSigNo = info->si_signo;
     cpu->exceptionSigCode = info->si_code;
-    x64Cpu->exceptionRip = context->CONTEXT_RIP;
+    x64Cpu->exceptionIp = context->CONTEXT_RIP;
     x64Cpu->exceptionRSP = context->CONTEXT_RSP;
     x64Cpu->exceptionRSI = context->CONTEXT_RSI;
     x64Cpu->exceptionRDI = context->CONTEXT_RDI;
@@ -333,7 +333,7 @@ int getFPUCode(int code) {
 void signalHandler() {
     BOXEDWINE_CRITICAL_SECTION;
     KThread* currentThread = KThread::currentThread();
-    BtCPU* cpu = (BtCPU*)currentThread->cpu;
+    x64CPU* cpu = (x64CPU*)currentThread->cpu;
 
     U64 result = cpu->startException(cpu->exceptionAddress, cpu->exceptionReadAddress, NULL, NULL);
     if (result) {
@@ -358,22 +358,21 @@ void signalHandler() {
         cpu->returnHostAddress = cpu->exceptionIp;
         return;
     } else if ((cpu->exceptionSigNo == SIGBUS || cpu->exceptionSigNo == SIGSEGV) && ((cpu->exceptionIp & 0xFFFFFFFF00000000l) == (U64)cpu->thread->memory->executableMemoryId)) {
-        x64CPU* x64Cpu = (x64CPU*)cpu;
-        std::function<U64(U32 reg)> getReg = [x64Cpu](U32 reg) {
+        std::function<U64(U32 reg)> getReg = [cpu](U32 reg) {
             if (reg == 8)
-                return x64Cpu->exceptionR8;
+                return cpu->exceptionR8;
             if (reg == 9)
-                return x64Cpu->exceptionR9;
+                return cpu->exceptionR9;
             if (reg == 6)
-                return x64Cpu->exceptionRSI;
+                return cpu->exceptionRSI;
             if (reg == 7)
-                return x64Cpu->exceptionRDI;
+                return cpu->exceptionRDI;
             kpanic("Unhandled reg: getReg: %d", reg);
             return (U64)0;
         };
-        std::function<void(U32 reg, U64 value)> setReg = [x64Cpu](U32 reg, U64 value) {
+        std::function<void(U32 reg, U64 value)> setReg = [cpu](U32 reg, U64 value) {
             if (reg == 10) {
-                x64Cpu->exceptionR10 = value;
+                cpu->exceptionR10 = value;
             } else {
                 kpanic("Unhandled reg: setReg: %d", reg);
             }
