@@ -2412,6 +2412,15 @@ void Armv8btAsm::vMemMultiple(U8 dst, U8 base, U32 numberOfRegs, U8 thirdByte, b
     write8(is1128?0x4c:0x0c);
 }
 
+void Armv8btAsm::needsSSEConstant(U8 reg) { 
+    U8 index = reg - vFirstSseConstant;
+    if (!usesSSEConstant[index]) {
+        // :TODO: what if the program jumps into this block, but past this, then it won't be loaded
+        vReadMem128ValueOffset(reg, xCPU, (U32)(offsetof(Armv8btCPU, sseConstants[0])) + index * 16);
+        usesSSEConstant[index] = true;
+    }
+}
+
 void Armv8btAsm::vReadMem128RegOffset(U8 dst, U8 base, U8 offsetReg) {
     write8(dst | (U8)(base << 5));
     write8(0x68 | (U8)(base >> 3));

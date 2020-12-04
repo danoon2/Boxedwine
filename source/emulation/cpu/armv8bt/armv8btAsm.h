@@ -399,6 +399,8 @@ public:
     void getDF(U8 dst, U32 width);
     void getVirtualCounter(U8 dst);
 
+    void needsSSEConstant(U8 reg);
+
     void vReadMem128RegOffset(U8 dst, U8 base, U8 offsetReg); 
     void vReadMemory128(U8 addressReg, U8 dst, bool addMemOffsetToAddress);
     void vReadMem128ValueOffset(U8 dst, U8 base, S32 offset);

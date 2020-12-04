@@ -429,15 +429,6 @@ void Armv8btCPU::translateInstruction(Armv8btAsm* data, Armv8btAsm* firstPass) {
 void Armv8btCPU::translateData(Armv8btAsm* data, Armv8btAsm* firstPass) {
     Memory* memory = data->cpu->thread->memory;
 
-    if (firstPass) {
-        for (int i = 0; i < vSseConstantCount; i++) {
-            // :TODO: maybe combine multiple into a single read?, vReadMemMultiple128 doesn't take an offset, so it requires an instruction to add the offse to xCPU
-            // :TODO: what about code that might jump into the middle of this block?  These constants wouldn't be loaded for them.
-            if (firstPass->usesSSEConstant[i]) {
-                data->vReadMem128ValueOffset(vFirstSseConstant + i, xCPU, (U32)(offsetof(Armv8btCPU, sseConstants[0]))+i*16);
-            }
-        }
-    }
     U32 codePage = (data->ip+data->cpu->seg[CS].address) >> K_PAGE_SHIFT;
     if (this->thread->memory->dynamicCodePageUpdateCount[codePage]==MAX_DYNAMIC_CODE_PAGE_COUNT) {
         data->dynamic = true;

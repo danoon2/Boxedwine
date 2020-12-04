@@ -2705,6 +2705,7 @@ static void doCMov(Armv8btAsm* data, Conditional conditional, bool mem, U32 widt
 
 static void doJump(Armv8btAsm* data, Conditional conditional) {
     std::function f = [data]() {
+        // :TODO: use a local jump if possible
         data->loadConst(xBranch, data->ip + data->decodedOp->imm);
         data->jmpReg(xBranch, false);
     };
