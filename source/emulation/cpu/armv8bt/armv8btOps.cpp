@@ -25,6 +25,9 @@ void setupFlagsForArith(Armv8btAsm* data, Arm8BtLazyFlags* lazyFlags, U32& flags
         usesSrc = false;
         usesDst = false;
         usesResult = false;
+        if (instructionInfo[data->decodedOp->inst].flagsUsed & CF) {
+            data->copyBitsFromSourceAtPositionToDest(xOldCF, xFLAGS, 0, 1, false);
+        }
     } else {
         if (instructionInfo[data->decodedOp->inst].flagsUsed & CF) {
             if (data->lazyFlags) {
@@ -3292,7 +3295,7 @@ void opInt80(Armv8btAsm* data) {
     data->readMem32ValueOffset(tmpReg, xCPU, CPU_OFFSET_EXIT_TO_START_LOOP);
     data->doIf(tmpReg, 1, DO_IF_EQUAL, [data]() {
         U8 tmpReg2 = data->getTmpReg();
-        data->readMem32ValueOffset(tmpReg2, xCPU, CPU_OFFSET_RETURN_ADDRESS);
+        data->readMem64ValueOffset(tmpReg2, xCPU, CPU_OFFSET_RETURN_ADDRESS);
         data->branchNativeRegister(tmpReg2);
         data->releaseTmpReg(tmpReg2);
         }, nullptr);
@@ -3422,7 +3425,7 @@ void opSti(Armv8btAsm* data) {
 }
 void opCld(Armv8btAsm* data) {
     // cpu->removeFlag(DF);
-    data->andValue32(xFLAGS, xFLAGS, ~CF);
+    data->andValue32(xFLAGS, xFLAGS, ~DF);
 }
 void opStd(Armv8btAsm* data) {
     // cpu->addFlag(DF);
