@@ -24,9 +24,9 @@ U8 arm_parity_lookup[256] = {
   1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1
 };
 
-class Arm8BtLazyFlagsDefault : public Arm8BtLazyFlags {
+class Arm8BtFlagsDefault : public Arm8BtFlags {
 public:
-    Arm8BtLazyFlagsDefault(U32 width) : Arm8BtLazyFlags(width) {}
+    Arm8BtFlagsDefault(U32 width) : Arm8BtFlags(width) {}
     virtual void setPF(Armv8btAsm* data, U8 reg) {
         // xFlags &~ PF
         // xFlags |= parity_lookup[xResult.u8]
@@ -51,19 +51,18 @@ public:
     }
 };
 
-class Arm8BtLazyFlagsDefault8 : public Arm8BtLazyFlagsDefault {
+class Arm8BtFlagsDefault8 : public Arm8BtFlagsDefault {
 public:
-    Arm8BtLazyFlagsDefault8() : Arm8BtLazyFlagsDefault(8) {}
+    Arm8BtFlagsDefault8() : Arm8BtFlagsDefault(8) {}
     virtual void setPF(Armv8btAsm* data, U8 reg) {
         // xFlags &~ PF
         // xFlags |= parity_lookup[xResult.u8]
 
         U8 tmp = data->getTmpReg();
         U8 tmp2 = data->getTmpReg();
-        // should already be zero exteded
-        // data->zeroExtend(tmp, xResult, 8);
+        data->zeroExtend(tmp, xResult, 8);
         data->loadConst(tmp2, (U64)arm_parity_lookup);
-        data->readMem8RegOffset(tmp, tmp2, xResult);
+        data->readMem8RegOffset(tmp, tmp2, tmp);
         data->copyBitsFromSourceToDestAtPosition(reg, tmp, 2, 1); // PF is 0x4 (bit 2)
         data->releaseTmpReg(tmp);
         data->releaseTmpReg(tmp2);
@@ -76,9 +75,9 @@ public:
     }
 };
 
-class Arm8BtLazyFlagsDefault16 : public Arm8BtLazyFlagsDefault {
+class Arm8BtFlagsDefault16 : public Arm8BtFlagsDefault {
 public:
-    Arm8BtLazyFlagsDefault16() : Arm8BtLazyFlagsDefault(16) {}
+    Arm8BtFlagsDefault16() : Arm8BtFlagsDefault(16) {}
     virtual void setSF(Armv8btAsm* data, U8 reg) {
         U8 tmp = data->getTmpReg();
         data->copyBitsFromSourceAtPositionToDest(tmp, xResult, 15, 1);
@@ -87,9 +86,9 @@ public:
     }
 };
 
-class Arm8BtLazyFlagsDefault32 : public Arm8BtLazyFlagsDefault {
+class Arm8BtFlagsDefault32 : public Arm8BtFlagsDefault {
 public:
-    Arm8BtLazyFlagsDefault32() : Arm8BtLazyFlagsDefault(32) {}
+    Arm8BtFlagsDefault32() : Arm8BtFlagsDefault(32) {}
     virtual void setSF(Armv8btAsm* data, U8 reg) {
         U8 tmp = data->getTmpReg();
         data->copyBitsFromSourceAtPositionToDest(tmp, xResult, 31, 1);
@@ -98,7 +97,7 @@ public:
     }  
 };
 
-class Arm8BtLazyFlagsAdd8 : public Arm8BtLazyFlagsDefault8 {
+class Arm8BtFlagsAdd8 : public Arm8BtFlagsDefault8 {
     virtual void setCF(Armv8btAsm* data, U8 reg) {
         // cpu->result.u8 < cpu->dst.u8; 
         U8 tmp = data->getTmpReg();
@@ -139,10 +138,10 @@ class Arm8BtLazyFlagsAdd8 : public Arm8BtLazyFlagsDefault8 {
     }
 };
 
-static Arm8BtLazyFlagsAdd8 arm8BtFlagsAdd8;
-Arm8BtLazyFlags* ARM8BT_FLAGS_ADD8 = &arm8BtFlagsAdd8;
+static Arm8BtFlagsAdd8 arm8BtFlagsAdd8;
+Arm8BtFlags* ARM8BT_FLAGS_ADD8 = &arm8BtFlagsAdd8;
 
-class Arm8BtLazyFlagsAdd16 : public Arm8BtLazyFlagsDefault16 {
+class Arm8BtFlagsAdd16 : public Arm8BtFlagsDefault16 {
     virtual void setCF(Armv8btAsm* data, U8 reg) {
         // cpu->result.u16 < cpu->dst.u16; 
         U8 tmp = data->getTmpReg();
@@ -183,10 +182,10 @@ class Arm8BtLazyFlagsAdd16 : public Arm8BtLazyFlagsDefault16 {
     }
 };
 
-static Arm8BtLazyFlagsAdd16 arm8BtFlagsAdd16;
-Arm8BtLazyFlags* ARM8BT_FLAGS_ADD16 = &arm8BtFlagsAdd16;
+static Arm8BtFlagsAdd16 arm8BtFlagsAdd16;
+Arm8BtFlags* ARM8BT_FLAGS_ADD16 = &arm8BtFlagsAdd16;
 
-class Arm8BtLazyFlagsAdd32 : public Arm8BtLazyFlagsDefault32 {
+class Arm8BtFlagsAdd32 : public Arm8BtFlagsDefault32 {
     virtual void setCF(Armv8btAsm* data, U8 reg) {
         // cpu->result.u32 < cpu->dst.u32;
 
@@ -240,10 +239,10 @@ class Arm8BtLazyFlagsAdd32 : public Arm8BtLazyFlagsDefault32 {
     }
 };
 
-static Arm8BtLazyFlagsAdd32 arm8BtFlagsAdd32;
-Arm8BtLazyFlags* ARM8BT_FLAGS_ADD32 = &arm8BtFlagsAdd32;
+static Arm8BtFlagsAdd32 arm8BtFlagsAdd32;
+Arm8BtFlags* ARM8BT_FLAGS_ADD32 = &arm8BtFlagsAdd32;
 
-class Arm8BtLazyFlagsZero8 : public Arm8BtLazyFlagsDefault8 {
+class Arm8BtFlagsZero8 : public Arm8BtFlagsDefault8 {
     virtual void setCF(Armv8btAsm* data, U8 reg) {
         data->clearBits(reg, 0, 1);
     }
@@ -264,7 +263,7 @@ class Arm8BtLazyFlagsZero8 : public Arm8BtLazyFlagsDefault8 {
     }
 };
 
-class Arm8BtLazyFlagsZero16 : public Arm8BtLazyFlagsDefault16 {
+class Arm8BtFlagsZero16 : public Arm8BtFlagsDefault16 {
     virtual void setCF(Armv8btAsm* data, U8 reg) {
         data->clearBits(reg, 0, 1);
     }
@@ -285,7 +284,7 @@ class Arm8BtLazyFlagsZero16 : public Arm8BtLazyFlagsDefault16 {
     }
 };
 
-class Arm8BtLazyFlagsZero32 : public Arm8BtLazyFlagsDefault32 {
+class Arm8BtFlagsZero32 : public Arm8BtFlagsDefault32 {
     virtual void setCF(Armv8btAsm* data, U8 reg) {
         data->clearBits(reg, 0, 1);
     }
@@ -306,25 +305,25 @@ class Arm8BtLazyFlagsZero32 : public Arm8BtLazyFlagsDefault32 {
     }
 };
 
-static Arm8BtLazyFlagsZero8 arm8BtFlags0_8;
-Arm8BtLazyFlags* ARM8BT_FLAGS_OR8 = &arm8BtFlags0_8;
-Arm8BtLazyFlags* ARM8BT_FLAGS_AND8 = &arm8BtFlags0_8;
-Arm8BtLazyFlags* ARM8BT_FLAGS_XOR8 = &arm8BtFlags0_8;
-Arm8BtLazyFlags* ARM8BT_FLAGS_TEST8 = &arm8BtFlags0_8;
+static Arm8BtFlagsZero8 arm8BtFlags0_8;
+Arm8BtFlags* ARM8BT_FLAGS_OR8 = &arm8BtFlags0_8;
+Arm8BtFlags* ARM8BT_FLAGS_AND8 = &arm8BtFlags0_8;
+Arm8BtFlags* ARM8BT_FLAGS_XOR8 = &arm8BtFlags0_8;
+Arm8BtFlags* ARM8BT_FLAGS_TEST8 = &arm8BtFlags0_8;
 
-static Arm8BtLazyFlagsZero16 arm8BtFlags0_16;
-Arm8BtLazyFlags* ARM8BT_FLAGS_OR16 = &arm8BtFlags0_16;
-Arm8BtLazyFlags* ARM8BT_FLAGS_AND16 = &arm8BtFlags0_16;
-Arm8BtLazyFlags* ARM8BT_FLAGS_XOR16 = &arm8BtFlags0_16;
-Arm8BtLazyFlags* ARM8BT_FLAGS_TEST16 = &arm8BtFlags0_16;
+static Arm8BtFlagsZero16 arm8BtFlags0_16;
+Arm8BtFlags* ARM8BT_FLAGS_OR16 = &arm8BtFlags0_16;
+Arm8BtFlags* ARM8BT_FLAGS_AND16 = &arm8BtFlags0_16;
+Arm8BtFlags* ARM8BT_FLAGS_XOR16 = &arm8BtFlags0_16;
+Arm8BtFlags* ARM8BT_FLAGS_TEST16 = &arm8BtFlags0_16;
 
-static Arm8BtLazyFlagsZero32 arm8BtFlags0_r32;
-Arm8BtLazyFlags* ARM8BT_FLAGS_OR32 = &arm8BtFlags0_r32;
-Arm8BtLazyFlags* ARM8BT_FLAGS_AND32 = &arm8BtFlags0_r32;
-Arm8BtLazyFlags* ARM8BT_FLAGS_XOR32 = &arm8BtFlags0_r32;
-Arm8BtLazyFlags* ARM8BT_FLAGS_TEST32 = &arm8BtFlags0_r32;
+static Arm8BtFlagsZero32 arm8BtFlags0_r32;
+Arm8BtFlags* ARM8BT_FLAGS_OR32 = &arm8BtFlags0_r32;
+Arm8BtFlags* ARM8BT_FLAGS_AND32 = &arm8BtFlags0_r32;
+Arm8BtFlags* ARM8BT_FLAGS_XOR32 = &arm8BtFlags0_r32;
+Arm8BtFlags* ARM8BT_FLAGS_TEST32 = &arm8BtFlags0_r32;
 
-class Arm8BtLazyFlagsAdc8 : public Arm8BtLazyFlagsAdd8 {
+class Arm8BtFlagsAdc8 : public Arm8BtFlagsAdd8 {
     virtual void setCF(Armv8btAsm* data, U8 reg) {
         // (cpu->result.u8 < cpu->dst.u8) || (cpu->oldCF && (cpu->result.u8 == cpu->dst.u8)); 
         U8 tmp1 = data->getTmpReg();
@@ -336,7 +335,7 @@ class Arm8BtLazyFlagsAdc8 : public Arm8BtLazyFlagsAdd8 {
 
         // check if cpu->oldCF && cpu->result.u8 == cpu->dst.u8        
         data->copyBitsFromSourceAtPositionToDest(tmp2, tmp2, 5, 1, true); // bit 5 is set for the number 32, which means all bits are set to 0
-        data->andRegs32(tmp2, tmp2, xOldCF);
+        data->andRegs32(tmp2, tmp2, xFLAGS);
         
         data->orRegs32(tmp1, tmp1, tmp2);
 
@@ -347,10 +346,10 @@ class Arm8BtLazyFlagsAdc8 : public Arm8BtLazyFlagsAdd8 {
     }
 };
 
-static Arm8BtLazyFlagsAdc8 arm8BtFlagsAdc8;
-Arm8BtLazyFlags* ARM8BT_FLAGS_ADC8 = &arm8BtFlagsAdc8;
+static Arm8BtFlagsAdc8 arm8BtFlagsAdc8;
+Arm8BtFlags* ARM8BT_FLAGS_ADC8 = &arm8BtFlagsAdc8;
 
-class Arm8BtLazyFlagsAdc16 : public Arm8BtLazyFlagsAdd16 {
+class Arm8BtFlagsAdc16 : public Arm8BtFlagsAdd16 {
     virtual void setCF(Armv8btAsm* data, U8 reg) {
         // (cpu->result.u16 < cpu->dst.u16) || (cpu->oldCF && (cpu->result.u16 == cpu->dst.u16)); 
         U8 tmp1 = data->getTmpReg();
@@ -362,7 +361,7 @@ class Arm8BtLazyFlagsAdc16 : public Arm8BtLazyFlagsAdd16 {
 
         // check if cpu->oldCF && cpu->result.u16 == cpu->dst.u16        
         data->copyBitsFromSourceAtPositionToDest(tmp2, tmp2, 5, 1, true); // bit 5 is set for the number 32, which means all bits are set to 0
-        data->andRegs32(tmp2, tmp2, xOldCF);
+        data->andRegs32(tmp2, tmp2, xFLAGS);
 
         data->orRegs32(tmp1, tmp1, tmp2);
 
@@ -373,10 +372,10 @@ class Arm8BtLazyFlagsAdc16 : public Arm8BtLazyFlagsAdd16 {
     }
 };
 
-static Arm8BtLazyFlagsAdc16 arm8BtFlagsAdc16;
-Arm8BtLazyFlags* ARM8BT_FLAGS_ADC16 = &arm8BtFlagsAdc16;
+static Arm8BtFlagsAdc16 arm8BtFlagsAdc16;
+Arm8BtFlags* ARM8BT_FLAGS_ADC16 = &arm8BtFlagsAdc16;
 
-class Arm8BtLazyFlagsAdc32 : public Arm8BtLazyFlagsAdd32 {
+class Arm8BtFlagsAdc32 : public Arm8BtFlagsAdd32 {
     virtual void setCF(Armv8btAsm* data, U8 reg) {
         // (cpu->result.u32 < cpu->dst.u32) || (cpu->oldCF && (cpu->result.u32 == cpu->dst.u32));
         U8 tmp1 = data->getTmpReg();
@@ -388,7 +387,7 @@ class Arm8BtLazyFlagsAdc32 : public Arm8BtLazyFlagsAdd32 {
 
         // check if cpu->oldCF && cpu->result.u32 == cpu->dst.u32        
         data->copyBitsFromSourceAtPositionToDest(tmp2, tmp2, 6, 1, true); // bit 6 is set for the number 64, which means all bits are set to 0
-        data->andRegs32(tmp2, tmp2, xOldCF);
+        data->andRegs32(tmp2, tmp2, xFLAGS);
 
         data->orRegs32(tmp1, tmp1, tmp2);
 
@@ -399,10 +398,10 @@ class Arm8BtLazyFlagsAdc32 : public Arm8BtLazyFlagsAdd32 {
     }
 };
 
-static Arm8BtLazyFlagsAdc32 arm8BtFlagsAdc32;
-Arm8BtLazyFlags* ARM8BT_FLAGS_ADC32 = &arm8BtFlagsAdc32;
+static Arm8BtFlagsAdc32 arm8BtFlagsAdc32;
+Arm8BtFlags* ARM8BT_FLAGS_ADC32 = &arm8BtFlagsAdc32;
 
-class Arm8BtLazyFlagsSub8 : public Arm8BtLazyFlagsDefault8 {
+class Arm8BtFlagsSub8 : public Arm8BtFlagsDefault8 {
     virtual void setCF(Armv8btAsm* data, U8 reg) {
         // cpu->dst.u8 < cpu->src.u8; 
         U8 tmp = data->getTmpReg();
@@ -442,11 +441,11 @@ class Arm8BtLazyFlagsSub8 : public Arm8BtLazyFlagsDefault8 {
     }
 };
 
-static Arm8BtLazyFlagsSub8 arm8BtFlagsSub8;
-Arm8BtLazyFlags* ARM8BT_FLAGS_SUB8 = &arm8BtFlagsSub8;
-Arm8BtLazyFlags* ARM8BT_FLAGS_CMP8 = &arm8BtFlagsSub8;
+static Arm8BtFlagsSub8 arm8BtFlagsSub8;
+Arm8BtFlags* ARM8BT_FLAGS_SUB8 = &arm8BtFlagsSub8;
+Arm8BtFlags* ARM8BT_FLAGS_CMP8 = &arm8BtFlagsSub8;
 
-class Arm8BtLazyFlagsSub16 : public Arm8BtLazyFlagsDefault16 {
+class Arm8BtFlagsSub16 : public Arm8BtFlagsDefault16 {
     virtual void setCF(Armv8btAsm* data, U8 reg) {
         // cpu->dst.u16 < cpu->src.u16;
         U8 tmp = data->getTmpReg();
@@ -486,11 +485,11 @@ class Arm8BtLazyFlagsSub16 : public Arm8BtLazyFlagsDefault16 {
     }
 };
 
-static Arm8BtLazyFlagsSub16 arm8BtFlagsSub16;
-Arm8BtLazyFlags* ARM8BT_FLAGS_SUB16 = &arm8BtFlagsSub16;
-Arm8BtLazyFlags* ARM8BT_FLAGS_CMP16 = &arm8BtFlagsSub16;
+static Arm8BtFlagsSub16 arm8BtFlagsSub16;
+Arm8BtFlags* ARM8BT_FLAGS_SUB16 = &arm8BtFlagsSub16;
+Arm8BtFlags* ARM8BT_FLAGS_CMP16 = &arm8BtFlagsSub16;
 
-class Arm8BtLazyFlagsSub32 : public Arm8BtLazyFlagsDefault32 {
+class Arm8BtFlagsSub32 : public Arm8BtFlagsDefault32 {
     virtual void setCF(Armv8btAsm* data, U8 reg) {
         // cpu->dst.u32 < cpu->src.u32;
 
@@ -544,11 +543,11 @@ class Arm8BtLazyFlagsSub32 : public Arm8BtLazyFlagsDefault32 {
     }
 };
 
-static Arm8BtLazyFlagsSub32 arm8BtFlagsSub32;
-Arm8BtLazyFlags* ARM8BT_FLAGS_SUB32 = &arm8BtFlagsSub32;
-Arm8BtLazyFlags* ARM8BT_FLAGS_CMP32 = &arm8BtFlagsSub32;
+static Arm8BtFlagsSub32 arm8BtFlagsSub32;
+Arm8BtFlags* ARM8BT_FLAGS_SUB32 = &arm8BtFlagsSub32;
+Arm8BtFlags* ARM8BT_FLAGS_CMP32 = &arm8BtFlagsSub32;
 
-class Arm8BtLazyFlagsSbb8 : public Arm8BtLazyFlagsSub8 {
+class Arm8BtFlagsSbb8 : public Arm8BtFlagsSub8 {
     virtual void setCF(Armv8btAsm* data, U8 reg) {
         // (cpu->dst.u8 < cpu->result.u8) || (cpu->oldCF && (cpu->src.u8 == 0xff));
         U8 tmp1 = data->getTmpReg();
@@ -561,7 +560,7 @@ class Arm8BtLazyFlagsSbb8 : public Arm8BtLazyFlagsSub8 {
         data->xorValue32(tmp2, xSrc, 0xFF); // will cause tmp2 to be 0 if xSrc == 0xFF
         data->clz32(tmp2, tmp2); // will be 32 if xSrc == 0xFF
         data->copyBitsFromSourceAtPositionToDest(tmp2, tmp2, 5, 1, true); // bit 5 is set for the number 32, which means all bits are set to 0
-        data->andRegs32(tmp2, tmp2, xOldCF);
+        data->andRegs32(tmp2, tmp2, xFLAGS);
 
         data->orRegs32(tmp1, tmp1, tmp2);
 
@@ -572,10 +571,10 @@ class Arm8BtLazyFlagsSbb8 : public Arm8BtLazyFlagsSub8 {
     }
 };
 
-static Arm8BtLazyFlagsSbb8 arm8BtFlagsSbb8;
-Arm8BtLazyFlags* ARM8BT_FLAGS_SBB8 = &arm8BtFlagsSbb8;
+static Arm8BtFlagsSbb8 arm8BtFlagsSbb8;
+Arm8BtFlags* ARM8BT_FLAGS_SBB8 = &arm8BtFlagsSbb8;
 
-class Arm8BtLazyFlagsSbb16 : public Arm8BtLazyFlagsSub16 {
+class Arm8BtFlagsSbb16 : public Arm8BtFlagsSub16 {
     virtual void setCF(Armv8btAsm* data, U8 reg) {
         // (cpu->dst.u16 < cpu->result.u16) || (cpu->oldCF && (cpu->src.u16 == 0xffff)); 
         U8 tmp1 = data->getTmpReg();
@@ -588,7 +587,7 @@ class Arm8BtLazyFlagsSbb16 : public Arm8BtLazyFlagsSub16 {
         data->xorValue32(tmp2, xSrc, 0xFFFF); // will cause tmp2 to be 0 if xSrc == 0xFFFF
         data->clz32(tmp2, tmp2); // will be 32 if xSrc == 0xFFFF
         data->copyBitsFromSourceAtPositionToDest(tmp2, tmp2, 5, 1, true); // bit 5 is set for the number 32, which means all bits are set to 0
-        data->andRegs32(tmp2, tmp2, xOldCF);
+        data->andRegs32(tmp2, tmp2, xFLAGS);
 
         data->orRegs32(tmp1, tmp1, tmp2);
 
@@ -599,10 +598,10 @@ class Arm8BtLazyFlagsSbb16 : public Arm8BtLazyFlagsSub16 {
     }
 };
 
-static Arm8BtLazyFlagsSbb16 arm8BtFlagsSbb16;
-Arm8BtLazyFlags* ARM8BT_FLAGS_SBB16 = &arm8BtFlagsSbb16;
+static Arm8BtFlagsSbb16 arm8BtFlagsSbb16;
+Arm8BtFlags* ARM8BT_FLAGS_SBB16 = &arm8BtFlagsSbb16;
 
-class Arm8BtLazyFlagsSbb32 : public Arm8BtLazyFlagsSub32 {
+class Arm8BtFlagsSbb32 : public Arm8BtFlagsSub32 {
     virtual void setCF(Armv8btAsm* data, U8 reg) {
         // (cpu->dst.u32 < cpu->result.u32) || (cpu->oldCF && (cpu->src.u32 == 0xffffffff)); 
         U8 tmp1 = data->getTmpReg();
@@ -615,7 +614,7 @@ class Arm8BtLazyFlagsSbb32 : public Arm8BtLazyFlagsSub32 {
         data->xorValue32(tmp2, xSrc, 0xFFFFFFFF); // will cause tmp2 to be 0 if xSrc == 0xFFFF
         data->clz32(tmp2, tmp2); // will be 32 if xSrc == 0xFFFF
         data->copyBitsFromSourceAtPositionToDest(tmp2, tmp2, 5, 1, true); // bit 5 is set for the number 32, which means all bits are set to 0
-        data->andRegs32(tmp2, tmp2, xOldCF);
+        data->andRegs32(tmp2, tmp2, xFLAGS);
 
         data->orRegs32(tmp1, tmp1, tmp2);
 
@@ -626,10 +625,10 @@ class Arm8BtLazyFlagsSbb32 : public Arm8BtLazyFlagsSub32 {
     }
 };
 
-static Arm8BtLazyFlagsSbb32 arm8BtFlagsSbb32;
-Arm8BtLazyFlags* ARM8BT_FLAGS_SBB32 = &arm8BtFlagsSbb32;
+static Arm8BtFlagsSbb32 arm8BtFlagsSbb32;
+Arm8BtFlags* ARM8BT_FLAGS_SBB32 = &arm8BtFlagsSbb32;
 
-class Arm8BtLazyFlagsInc8 : public Arm8BtLazyFlagsDefault8 {
+class Arm8BtFlagsInc8 : public Arm8BtFlagsDefault8 {
     virtual void setCF(Armv8btAsm* data, U8 reg) {
         // not change
     }
@@ -662,10 +661,10 @@ class Arm8BtLazyFlagsInc8 : public Arm8BtLazyFlagsDefault8 {
     }
 };
 
-static Arm8BtLazyFlagsInc8 arm8BtFlagsInc8;
-Arm8BtLazyFlags* ARM8BT_FLAGS_INC8 = &arm8BtFlagsInc8;
+static Arm8BtFlagsInc8 arm8BtFlagsInc8;
+Arm8BtFlags* ARM8BT_FLAGS_INC8 = &arm8BtFlagsInc8;
 
-class Arm8BtLazyFlagsInc16 : public Arm8BtLazyFlagsDefault16 {
+class Arm8BtFlagsInc16 : public Arm8BtFlagsDefault16 {
     virtual void setCF(Armv8btAsm* data, U8 reg) {
         // not change
     }
@@ -698,10 +697,10 @@ class Arm8BtLazyFlagsInc16 : public Arm8BtLazyFlagsDefault16 {
     }
 };
 
-static Arm8BtLazyFlagsInc16 arm8BtFlagsInc16;
-Arm8BtLazyFlags* ARM8BT_FLAGS_INC16 = &arm8BtFlagsInc16;
+static Arm8BtFlagsInc16 arm8BtFlagsInc16;
+Arm8BtFlags* ARM8BT_FLAGS_INC16 = &arm8BtFlagsInc16;
 
-class Arm8BtLazyFlagsInc32 : public Arm8BtLazyFlagsDefault32 {
+class Arm8BtFlagsInc32 : public Arm8BtFlagsDefault32 {
     virtual void setCF(Armv8btAsm* data, U8 reg) {
         // not change
     }
@@ -734,10 +733,10 @@ class Arm8BtLazyFlagsInc32 : public Arm8BtLazyFlagsDefault32 {
     }
 };
 
-static Arm8BtLazyFlagsInc32 arm8BtFlagsInc32;
-Arm8BtLazyFlags* ARM8BT_FLAGS_INC32 = &arm8BtFlagsInc32;
+static Arm8BtFlagsInc32 arm8BtFlagsInc32;
+Arm8BtFlags* ARM8BT_FLAGS_INC32 = &arm8BtFlagsInc32;
 
-class Arm8BtLazyFlagsDec8 : public Arm8BtLazyFlagsDefault8 {
+class Arm8BtFlagsDec8 : public Arm8BtFlagsDefault8 {
     virtual void setCF(Armv8btAsm* data, U8 reg) {
         // not change
     }
@@ -771,10 +770,10 @@ class Arm8BtLazyFlagsDec8 : public Arm8BtLazyFlagsDefault8 {
     }
 };
 
-static Arm8BtLazyFlagsDec8 arm8BtFlagsDec8;
-Arm8BtLazyFlags* ARM8BT_FLAGS_DEC8 = &arm8BtFlagsDec8;
+static Arm8BtFlagsDec8 arm8BtFlagsDec8;
+Arm8BtFlags* ARM8BT_FLAGS_DEC8 = &arm8BtFlagsDec8;
 
-class Arm8BtLazyFlagsDec16 : public Arm8BtLazyFlagsDefault16 {
+class Arm8BtFlagsDec16 : public Arm8BtFlagsDefault16 {
     virtual void setCF(Armv8btAsm* data, U8 reg) {
         // not change
     }
@@ -808,10 +807,10 @@ class Arm8BtLazyFlagsDec16 : public Arm8BtLazyFlagsDefault16 {
     }
 };
 
-static Arm8BtLazyFlagsDec16 arm8BtFlagsDec16;
-Arm8BtLazyFlags* ARM8BT_FLAGS_DEC16 = &arm8BtFlagsDec16;
+static Arm8BtFlagsDec16 arm8BtFlagsDec16;
+Arm8BtFlags* ARM8BT_FLAGS_DEC16 = &arm8BtFlagsDec16;
 
-class Arm8BtLazyFlagsDec32 : public Arm8BtLazyFlagsDefault32 {
+class Arm8BtFlagsDec32 : public Arm8BtFlagsDefault32 {
     virtual void setCF(Armv8btAsm* data, U8 reg) {
         // not change
     }
@@ -845,10 +844,10 @@ class Arm8BtLazyFlagsDec32 : public Arm8BtLazyFlagsDefault32 {
     }
 };
 
-static Arm8BtLazyFlagsDec32 arm8BtFlagsDec32;
-Arm8BtLazyFlags* ARM8BT_FLAGS_DEC32 = &arm8BtFlagsDec32;
+static Arm8BtFlagsDec32 arm8BtFlagsDec32;
+Arm8BtFlags* ARM8BT_FLAGS_DEC32 = &arm8BtFlagsDec32;
 
-class Arm8BtLazyFlagsNeg8 : public Arm8BtLazyFlagsDefault8 {
+class Arm8BtFlagsNeg8 : public Arm8BtFlagsDefault8 {
     virtual void setCF(Armv8btAsm* data, U8 reg) {
         // cpu->src.u8 != 0;
         U8 tmp = data->getTmpReg();
@@ -886,10 +885,10 @@ class Arm8BtLazyFlagsNeg8 : public Arm8BtLazyFlagsDefault8 {
     }
 };
 
-static Arm8BtLazyFlagsNeg8 arm8BtFlagsNeg8;
-Arm8BtLazyFlags* ARM8BT_FLAGS_NEG8 = &arm8BtFlagsNeg8;
+static Arm8BtFlagsNeg8 arm8BtFlagsNeg8;
+Arm8BtFlags* ARM8BT_FLAGS_NEG8 = &arm8BtFlagsNeg8;
 
-class Arm8BtLazyFlagsNeg16 : public Arm8BtLazyFlagsDefault16 {
+class Arm8BtFlagsNeg16 : public Arm8BtFlagsDefault16 {
     virtual void setCF(Armv8btAsm* data, U8 reg) {
         // cpu->src.u16 != 0;
         U8 tmp = data->getTmpReg();
@@ -927,10 +926,10 @@ class Arm8BtLazyFlagsNeg16 : public Arm8BtLazyFlagsDefault16 {
     }
 };
 
-static Arm8BtLazyFlagsNeg16 arm8BtFlagsNeg16;
-Arm8BtLazyFlags* ARM8BT_FLAGS_NEG16 = &arm8BtFlagsNeg16;
+static Arm8BtFlagsNeg16 arm8BtFlagsNeg16;
+Arm8BtFlags* ARM8BT_FLAGS_NEG16 = &arm8BtFlagsNeg16;
 
-class Arm8BtLazyFlagsNeg32 : public Arm8BtLazyFlagsDefault32 {
+class Arm8BtFlagsNeg32 : public Arm8BtFlagsDefault32 {
     virtual void setCF(Armv8btAsm* data, U8 reg) {
         // cpu->src.u32 != 0;
         U8 tmp = data->getTmpReg();
@@ -968,10 +967,10 @@ class Arm8BtLazyFlagsNeg32 : public Arm8BtLazyFlagsDefault32 {
     }
 };
 
-static Arm8BtLazyFlagsNeg32 arm8BtFlagsNeg32;
-Arm8BtLazyFlags* ARM8BT_FLAGS_NEG32 = &arm8BtFlagsNeg32;
+static Arm8BtFlagsNeg32 arm8BtFlagsNeg32;
+Arm8BtFlags* ARM8BT_FLAGS_NEG32 = &arm8BtFlagsNeg32;
 
-class Arm8BtLazyFlagsShl8 : public Arm8BtLazyFlagsDefault8 {
+class Arm8BtFlagsShl8 : public Arm8BtFlagsDefault8 {
     // :TODO: could be faster if cpu->src is a constant
     virtual void setCF(Armv8btAsm* data, U8 reg) {
         // ((cpu->dst.u8 << (cpu->src.u8 - 1)) & 0x80) >> 7;
@@ -1014,10 +1013,10 @@ class Arm8BtLazyFlagsShl8 : public Arm8BtLazyFlagsDefault8 {
     }
 };
 
-static Arm8BtLazyFlagsShl8 arm8BtFlagsShl8;
-Arm8BtLazyFlags* ARM8BT_FLAGS_SHL8 = &arm8BtFlagsShl8;
+static Arm8BtFlagsShl8 arm8BtFlagsShl8;
+Arm8BtFlags* ARM8BT_FLAGS_SHL8 = &arm8BtFlagsShl8;
 
-class Arm8BtLazyFlagsShl16 : public Arm8BtLazyFlagsDefault16 {
+class Arm8BtFlagsShl16 : public Arm8BtFlagsDefault16 {
     // :TODO: could be faster if cpu->src is a constant
     virtual void setCF(Armv8btAsm* data, U8 reg) {
         // ((cpu->dst.u16 << (cpu->src.u8 - 1)) & 0x8000) >> 15;
@@ -1060,10 +1059,10 @@ class Arm8BtLazyFlagsShl16 : public Arm8BtLazyFlagsDefault16 {
     }
 };
 
-static Arm8BtLazyFlagsShl16 arm8BtFlagsShl16;
-Arm8BtLazyFlags* ARM8BT_FLAGS_SHL16 = &arm8BtFlagsShl16;
+static Arm8BtFlagsShl16 arm8BtFlagsShl16;
+Arm8BtFlags* ARM8BT_FLAGS_SHL16 = &arm8BtFlagsShl16;
 
-class Arm8BtLazyFlagsShl32 : public Arm8BtLazyFlagsDefault32 {
+class Arm8BtFlagsShl32 : public Arm8BtFlagsDefault32 {
     // :TODO: could be faster if cpu->src is a constant
     virtual void setCF(Armv8btAsm* data, U8 reg) {
         // ((cpu->dst.u32 << (cpu->src.u8 - 1)) & 0x80000000) >> 31;
@@ -1106,14 +1105,14 @@ class Arm8BtLazyFlagsShl32 : public Arm8BtLazyFlagsDefault32 {
     }
 };
 
-static Arm8BtLazyFlagsShl32 arm8BtFlagsShl32;
-Arm8BtLazyFlags* ARM8BT_FLAGS_SHL32 = &arm8BtFlagsShl32;
+static Arm8BtFlagsShl32 arm8BtFlagsShl32;
+Arm8BtFlags* ARM8BT_FLAGS_SHL32 = &arm8BtFlagsShl32;
 
-class Arm8BtLazyFlagsDshl16 : public Arm8BtLazyFlagsDefault16 {
+class Arm8BtFlagsDshl16 : public Arm8BtFlagsDefault16 {
     virtual void setCF(Armv8btAsm* data, U8 reg) {
         // (cpu->dst.u16 >> (16 - cpu->src.u8)) & 1;
         U8 tmp1 = data->getTmpReg();
-        data->shiftRegRightWithValue32(tmp1, xDst, 16 - data->flagsOp->imm);
+        data->shiftRegRightWithValue32(tmp1, xDst, 16 - data->decodedOp->imm);
         data->copyBitsFromSourceAtPositionToDest(reg, tmp1, 0, 1); // CF is 0x01 (bit 0)
         data->releaseTmpReg(tmp1);
     }
@@ -1139,14 +1138,14 @@ class Arm8BtLazyFlagsDshl16 : public Arm8BtLazyFlagsDefault16 {
     }
 };
 
-static Arm8BtLazyFlagsDshl16 arm8BtFlagsDshl16;
-Arm8BtLazyFlags* ARM8BT_FLAGS_DSHL16 = &arm8BtFlagsDshl16;
+static Arm8BtFlagsDshl16 arm8BtFlagsDshl16;
+Arm8BtFlags* ARM8BT_FLAGS_DSHL16 = &arm8BtFlagsDshl16;
 
-class Arm8BtLazyFlagsDshl32 : public Arm8BtLazyFlagsDefault32 {
+class Arm8BtFlagsDshl32 : public Arm8BtFlagsDefault32 {
     virtual void setCF(Armv8btAsm* data, U8 reg) {
         // (cpu->dst.u32 >> (32 - cpu->src.u8)) & 1;
         U8 tmp1 = data->getTmpReg();
-        data->shiftRegRightWithValue32(tmp1, xDst, 32 - data->flagsOp->imm);
+        data->shiftRegRightWithValue32(tmp1, xDst, 32 - data->decodedOp->imm);
         data->copyBitsFromSourceAtPositionToDest(reg, tmp1, 0, 1); // CF is 0x01 (bit 0)
         data->releaseTmpReg(tmp1);
     }
@@ -1172,10 +1171,10 @@ class Arm8BtLazyFlagsDshl32 : public Arm8BtLazyFlagsDefault32 {
     }
 };
 
-static Arm8BtLazyFlagsDshl32 arm8BtFlagsDshl32;
-Arm8BtLazyFlags* ARM8BT_FLAGS_DSHL32 = &arm8BtFlagsDshl32;
+static Arm8BtFlagsDshl32 arm8BtFlagsDshl32;
+Arm8BtFlags* ARM8BT_FLAGS_DSHL32 = &arm8BtFlagsDshl32;
 
-class Arm8BtLazyFlagsDshl16Cl : public Arm8BtLazyFlagsDshl16 {
+class Arm8BtFlagsDshl16Cl : public Arm8BtFlagsDshl16 {
     virtual void setCF(Armv8btAsm* data, U8 reg) {
         // (cpu->dst.u16 >> (16 - cpu->src.u8)) & 1;
         U8 tmp1 = data->getTmpReg();
@@ -1191,10 +1190,10 @@ class Arm8BtLazyFlagsDshl16Cl : public Arm8BtLazyFlagsDshl16 {
     }
 };
 
-static Arm8BtLazyFlagsDshl16Cl arm8BtFlagsDshl16Cl;
-Arm8BtLazyFlags* ARM8BT_FLAGS_DSHL16_CL = &arm8BtFlagsDshl16Cl;
+static Arm8BtFlagsDshl16Cl arm8BtFlagsDshl16Cl;
+Arm8BtFlags* ARM8BT_FLAGS_DSHL16_CL = &arm8BtFlagsDshl16Cl;
 
-class Arm8BtLazyFlagsDshl32Cl : public Arm8BtLazyFlagsDshl32 {
+class Arm8BtFlagsDshl32Cl : public Arm8BtFlagsDshl32 {
     virtual void setCF(Armv8btAsm* data, U8 reg) {
         // (cpu->dst.u32 >> (32 - cpu->src.u8)) & 1;
         U8 tmp1 = data->getTmpReg();
@@ -1210,15 +1209,15 @@ class Arm8BtLazyFlagsDshl32Cl : public Arm8BtLazyFlagsDshl32 {
     }
 };
 
-static Arm8BtLazyFlagsDshl32Cl arm8BtFlagsDshl32Cl;
-Arm8BtLazyFlags* ARM8BT_FLAGS_DSHL32_CL = &arm8BtFlagsDshl32Cl;
+static Arm8BtFlagsDshl32Cl arm8BtFlagsDshl32Cl;
+Arm8BtFlags* ARM8BT_FLAGS_DSHL32_CL = &arm8BtFlagsDshl32Cl;
 
-class Arm8BtLazyFlagsDshr16 : public Arm8BtLazyFlagsDefault16 {
+class Arm8BtFlagsDshr16 : public Arm8BtFlagsDefault16 {
     virtual void setCF(Armv8btAsm* data, U8 reg) {
         // (cpu->dst.u32 >> (cpu->src.u8 - 1)) & 1;
 
         // src.u8 should already have been masked to 0x1f
-        U8 amount = data->flagsOp->imm & 0xF;
+        U8 amount = data->decodedOp->imm & 0xF;
         U8 tmp1 = data->getTmpReg();
         data->shiftRegRightWithValue32(tmp1, xDst, amount - 1);
         data->copyBitsFromSourceAtPositionToDest(reg, tmp1, 0, 1); // CF is 0x01 (bit 0)
@@ -1246,10 +1245,10 @@ class Arm8BtLazyFlagsDshr16 : public Arm8BtLazyFlagsDefault16 {
     }
 };
 
-static Arm8BtLazyFlagsDshr16 arm8BtFlagsDshr16;
-Arm8BtLazyFlags* ARM8BT_FLAGS_DSHR16 = &arm8BtFlagsDshr16;
+static Arm8BtFlagsDshr16 arm8BtFlagsDshr16;
+Arm8BtFlags* ARM8BT_FLAGS_DSHR16 = &arm8BtFlagsDshr16;
 
-class Arm8BtLazyFlagsDshr16Cl : public Arm8BtLazyFlagsDshr16 {
+class Arm8BtFlagsDshr16Cl : public Arm8BtFlagsDshr16 {
     virtual void setCF(Armv8btAsm* data, U8 reg) {
         // (cpu->dst.u32 >> (cpu->src.u8 - 1)) & 1;
         U8 tmp1 = data->getTmpReg();
@@ -1265,17 +1264,17 @@ class Arm8BtLazyFlagsDshr16Cl : public Arm8BtLazyFlagsDshr16 {
     }
 };
 
-static Arm8BtLazyFlagsDshr16Cl arm8BtFlagsDshr16Cl;
-Arm8BtLazyFlags* ARM8BT_FLAGS_DSHR16_CL = &arm8BtFlagsDshr16Cl;
+static Arm8BtFlagsDshr16Cl arm8BtFlagsDshr16Cl;
+Arm8BtFlags* ARM8BT_FLAGS_DSHR16_CL = &arm8BtFlagsDshr16Cl;
 
-class Arm8BtLazyFlagsDshr32 : public Arm8BtLazyFlagsDefault32 {
+class Arm8BtFlagsDshr32 : public Arm8BtFlagsDefault32 {
     virtual void setCF(Armv8btAsm* data, U8 reg) {
         // (cpu->dst.u32 >> (cpu->src.u8 - 1)) & 1;
 
         // src.u8 should already have been masked to 0x1f
 
         U8 tmp1 = data->getTmpReg();
-        data->shiftRegRightWithValue32(tmp1, xDst, data->flagsOp->imm - 1);
+        data->shiftRegRightWithValue32(tmp1, xDst, data->decodedOp->imm - 1);
         data->copyBitsFromSourceAtPositionToDest(reg, tmp1, 0, 1); // CF is 0x01 (bit 0)
         data->releaseTmpReg(tmp1);
     }
@@ -1301,7 +1300,7 @@ class Arm8BtLazyFlagsDshr32 : public Arm8BtLazyFlagsDefault32 {
     }
 };
 
-class Arm8BtLazyFlagsDshr32Cl : public Arm8BtLazyFlagsDshr32 {
+class Arm8BtFlagsDshr32Cl : public Arm8BtFlagsDshr32 {
     virtual void setCF(Armv8btAsm* data, U8 reg) {
         // (cpu->dst.u32 >> (cpu->src.u8 - 1)) & 1;
         U8 tmp1 = data->getTmpReg();
@@ -1317,13 +1316,13 @@ class Arm8BtLazyFlagsDshr32Cl : public Arm8BtLazyFlagsDshr32 {
     }
 };
 
-static Arm8BtLazyFlagsDshr32Cl arm8BtFlagsDshr32Cl;
-Arm8BtLazyFlags* ARM8BT_FLAGS_DSHR32_CL = &arm8BtFlagsDshr32Cl;
+static Arm8BtFlagsDshr32Cl arm8BtFlagsDshr32Cl;
+Arm8BtFlags* ARM8BT_FLAGS_DSHR32_CL = &arm8BtFlagsDshr32Cl;
 
-static Arm8BtLazyFlagsDshr32 arm8BtFlagsDshr32;
-Arm8BtLazyFlags* ARM8BT_FLAGS_DSHR32 = &arm8BtFlagsDshr32;
+static Arm8BtFlagsDshr32 arm8BtFlagsDshr32;
+Arm8BtFlags* ARM8BT_FLAGS_DSHR32 = &arm8BtFlagsDshr32;
 
-class Arm8BtLazyFlagsShr8 : public Arm8BtLazyFlagsDefault8 {
+class Arm8BtFlagsShr8 : public Arm8BtFlagsDefault8 {
     virtual void setCF(Armv8btAsm* data, U8 reg) {
         // (cpu->dst.u8 >> (cpu->src.u8 - 1)) & 1; 
 
@@ -1366,10 +1365,10 @@ class Arm8BtLazyFlagsShr8 : public Arm8BtLazyFlagsDefault8 {
     }
 };
 
-static Arm8BtLazyFlagsShr8 arm8BtFlagsShr8;
-Arm8BtLazyFlags* ARM8BT_FLAGS_SHR8 = &arm8BtFlagsShr8;
+static Arm8BtFlagsShr8 arm8BtFlagsShr8;
+Arm8BtFlags* ARM8BT_FLAGS_SHR8 = &arm8BtFlagsShr8;
 
-class Arm8BtLazyFlagsShr16 : public Arm8BtLazyFlagsDefault16 {
+class Arm8BtFlagsShr16 : public Arm8BtFlagsDefault16 {
     virtual void setCF(Armv8btAsm* data, U8 reg) {
         // (cpu->dst.u16 >> (cpu->src.u8 - 1)) & 1;
 
@@ -1412,10 +1411,10 @@ class Arm8BtLazyFlagsShr16 : public Arm8BtLazyFlagsDefault16 {
     }
 };
 
-static Arm8BtLazyFlagsShr16 arm8BtFlagsShr16;
-Arm8BtLazyFlags* ARM8BT_FLAGS_SHR16 = &arm8BtFlagsShr16;
+static Arm8BtFlagsShr16 arm8BtFlagsShr16;
+Arm8BtFlags* ARM8BT_FLAGS_SHR16 = &arm8BtFlagsShr16;
 
-class Arm8BtLazyFlagsShr32 : public Arm8BtLazyFlagsDefault32 {
+class Arm8BtFlagsShr32 : public Arm8BtFlagsDefault32 {
     virtual void setCF(Armv8btAsm* data, U8 reg) {
         // (cpu->dst.u32 >> (cpu->src.u8 - 1)) & 1;
 
@@ -1458,10 +1457,10 @@ class Arm8BtLazyFlagsShr32 : public Arm8BtLazyFlagsDefault32 {
     }
 };
 
-static Arm8BtLazyFlagsShr32 arm8BtFlagsShr32;
-Arm8BtLazyFlags* ARM8BT_FLAGS_SHR32 = &arm8BtFlagsShr32;
+static Arm8BtFlagsShr32 arm8BtFlagsShr32;
+Arm8BtFlags* ARM8BT_FLAGS_SHR32 = &arm8BtFlagsShr32;
 
-class Arm8BtLazyFlagsSar8 : public Arm8BtLazyFlagsDefault8 {
+class Arm8BtFlagsSar8 : public Arm8BtFlagsDefault8 {
     virtual void setCF(Armv8btAsm* data, U8 reg) {
         // (((S8)cpu->dst.u8) >> (cpu->src.u8 - 1)) & 1;
 
@@ -1499,10 +1498,10 @@ class Arm8BtLazyFlagsSar8 : public Arm8BtLazyFlagsDefault8 {
     }
 };
 
-static Arm8BtLazyFlagsSar8 arm8BtFlagsSar8;
-Arm8BtLazyFlags* ARM8BT_FLAGS_SAR8 = &arm8BtFlagsSar8;
+static Arm8BtFlagsSar8 arm8BtFlagsSar8;
+Arm8BtFlags* ARM8BT_FLAGS_SAR8 = &arm8BtFlagsSar8;
 
-class Arm8BtLazyFlagsSar16 : public Arm8BtLazyFlagsDefault16 {
+class Arm8BtFlagsSar16 : public Arm8BtFlagsDefault16 {
     virtual void setCF(Armv8btAsm* data, U8 reg) {
         // (((S16)cpu->dst.u16) >> (cpu->src.u8 - 1)) & 1;
 
@@ -1540,10 +1539,10 @@ class Arm8BtLazyFlagsSar16 : public Arm8BtLazyFlagsDefault16 {
     }
 };
 
-static Arm8BtLazyFlagsSar16 arm8BtFlagsSar16;
-Arm8BtLazyFlags* ARM8BT_FLAGS_SAR16 = &arm8BtFlagsSar16;
+static Arm8BtFlagsSar16 arm8BtFlagsSar16;
+Arm8BtFlags* ARM8BT_FLAGS_SAR16 = &arm8BtFlagsSar16;
 
-class Arm8BtLazyFlagsSar32 : public Arm8BtLazyFlagsDefault32 {
+class Arm8BtFlagsSar32 : public Arm8BtFlagsDefault32 {
     U32 getCF(CPU* cpu) { return (((S32)cpu->dst.u32) >> (cpu->src.u8 - 1)) & 1; }
     virtual void setCF(Armv8btAsm* data, U8 reg) {
         // (((S32)cpu->dst.u32) >> (cpu->src.u8 - 1)) & 1;
@@ -1581,7 +1580,7 @@ class Arm8BtLazyFlagsSar32 : public Arm8BtLazyFlagsDefault32 {
     }
 };
 
-static Arm8BtLazyFlagsSar32 arm8BtFlagsSar32;
-Arm8BtLazyFlags* ARM8BT_FLAGS_SAR32 = &arm8BtFlagsSar32;
+static Arm8BtFlagsSar32 arm8BtFlagsSar32;
+Arm8BtFlags* ARM8BT_FLAGS_SAR32 = &arm8BtFlagsSar32;
 
 #endif

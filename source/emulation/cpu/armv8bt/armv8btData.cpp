@@ -24,8 +24,6 @@ Armv8btData::Armv8btData(Armv8btCPU* cpu) : cpu(cpu) {
     this->calculatedEipLen = 0;
     this->stopAfterInstruction = -1;
     this->dynamic = false;
-    this->lazyFlags = NULL;
-    this->flagsOp = NULL;
     this->currentBlock = NULL;
     this->fpuTopRegSet = false;
     this->fpuOffsetRegSet = false;

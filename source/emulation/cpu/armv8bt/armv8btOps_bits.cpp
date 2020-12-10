@@ -9,19 +9,15 @@ static void doBitTest16(Armv8btAsm* data, U8 maskReg, U8 valueReg, bool usesDone
     // U16 mask = 1 << (cpu->reg[rm].u16 & 15);
     // cpu->fillFlagsNoCF();
     // cpu->setCF(cpu->reg[reg].u16 & mask);
-    if (data->lazyFlags) {
-        U32 flags = DecodedOp::getNeededFlags(data->currentBlock, data->decodedOp, OF | SF | ZF | PF | AF);
-        if (flags) {
-            data->fillFlags(flags);
-        }
-        data->lazyFlags = NULL;
-    }
+
     U8 tmpReg = data->getTmpReg();
     U8 tmpReg2 = data->getTmpReg();
-    if ((data->flagsNeeded() & CF) || usesDone) {
+    U32 flags = data->flagsNeeded();
+
+    if ((flags & CF) || usesDone) {
         data->andValue32(tmpReg2, maskReg, 15);
     }
-    if (data->flagsNeeded() & CF) {
+    if (flags & CF) {
         data->shiftRegRightWithReg32(tmpReg, valueReg, tmpReg2);
         data->copyBitsFromSourceAtPositionToDest(xFLAGS, tmpReg, 0, 1, true);
     }
@@ -36,19 +32,14 @@ static void doBitTest32(Armv8btAsm* data, U8 maskReg, U8 valueReg, bool usesDone
     // U32 mask = 1 << (cpu->reg[maskReg].u32 & 31);
     // cpu->fillFlagsNoCF();
     // cpu->setCF(cpu->reg[reg].u32 & mask);
-    if (data->lazyFlags) {
-        U32 flags = DecodedOp::getNeededFlags(data->currentBlock, data->decodedOp, OF | SF | ZF | PF | AF);
-        if (flags) {
-            data->fillFlags(flags);
-        }
-        data->lazyFlags = NULL;
-    }
     U8 tmpReg = data->getTmpReg();
     U8 tmpReg2 = data->getTmpReg();
-    if ((data->flagsNeeded() & CF) || usesDone) {
+    U32 flags = data->flagsNeeded();
+
+    if ((flags & CF) || usesDone) {
         data->andValue32(tmpReg2, maskReg, 31);
     }
-    if (data->flagsNeeded() & CF) {
+    if (flags & CF) {
         data->shiftRegRightWithReg32(tmpReg, valueReg, tmpReg2);
         data->copyBitsFromSourceAtPositionToDest(xFLAGS, tmpReg, 0, 1, true);
     }
@@ -205,13 +196,6 @@ void opBtrE32R32(Armv8btAsm* data) {
 }
 
 static void doBsf16(Armv8btAsm* data, U8 valueReg) {
-    if (data->lazyFlags) {
-        U32 flags = DecodedOp::getNeededFlags(data->currentBlock, data->decodedOp, OF | SF | CF | PF | AF);
-        if (flags) {
-            data->fillFlags(flags);
-        }
-        data->lazyFlags = NULL;
-    }
     data->doIf(valueReg, 0, DO_IF_EQUAL, [data] {
         data->orValue32(xFLAGS, xFLAGS, ZF);
         }, [data, valueReg] {
@@ -223,13 +207,6 @@ static void doBsf16(Armv8btAsm* data, U8 valueReg) {
 }
 
 static void doBsf32(Armv8btAsm* data, U8 valueReg) {
-    if (data->lazyFlags) {
-        U32 flags = DecodedOp::getNeededFlags(data->currentBlock, data->decodedOp, OF | SF | CF | PF | AF);
-        if (flags) {
-            data->fillFlags(flags);
-        }
-        data->lazyFlags = NULL;
-    }
     data->doIf(valueReg, 0, DO_IF_EQUAL, [data] {
         data->orValue32(xFLAGS, xFLAGS, ZF);
         }, [data, valueReg] {
@@ -278,13 +255,6 @@ void opBsfR32E32(Armv8btAsm* data) {
 }
 
 static void doBsr16(Armv8btAsm* data, U8 valueReg) {
-    if (data->lazyFlags) {
-        U32 flags = DecodedOp::getNeededFlags(data->currentBlock, data->decodedOp, OF | SF | CF | PF | AF);
-        if (flags) {
-            data->fillFlags(flags);
-        }
-        data->lazyFlags = NULL;
-    }
     data->doIf(valueReg, 0, DO_IF_EQUAL, [data] {
         data->orValue32(xFLAGS, xFLAGS, ZF);
         }, [data, valueReg] {
@@ -297,13 +267,6 @@ static void doBsr16(Armv8btAsm* data, U8 valueReg) {
 }
 
 static void doBsr32(Armv8btAsm* data, U8 valueReg) {
-    if (data->lazyFlags) {
-        U32 flags = DecodedOp::getNeededFlags(data->currentBlock, data->decodedOp, OF | SF | CF | PF | AF);
-        if (flags) {
-            data->fillFlags(flags);
-        }
-        data->lazyFlags = NULL;
-    }
     data->doIf(valueReg, 0, DO_IF_EQUAL, [data] {
         data->orValue32(xFLAGS, xFLAGS, ZF);
         }, [data, valueReg] {
@@ -362,13 +325,6 @@ void opBtcE32R32(Armv8btAsm* data) {
 }
 
 void doBitTest(Armv8btAsm* data, U8 valueReg) {
-    if (data->lazyFlags) {
-        U32 flags = DecodedOp::getNeededFlags(data->currentBlock, data->decodedOp, OF | SF | ZF | PF | AF);
-        if (flags) {
-            data->fillFlags(flags);
-        }
-        data->lazyFlags = NULL;        
-    }
     data->copyBitsFromSourceAtPositionToDest(xFLAGS, valueReg, data->decodedOp->extra, 1);
 }
 

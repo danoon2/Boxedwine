@@ -29,9 +29,9 @@ typedef void(*arithValue32)(Armv8btAsm* data, U8 dst, U8 src1, U32 value, bool f
 
 void writeResultArithReg(Armv8btAsm* data, bool usesResult, bool needsResult, bool resultNeedsZeroExtends, U32 width);
 U8 setupRegForArith(Armv8btAsm* data, U8 untranslatedReg, bool usesFlagReg, U8 flagReg, U32 width);
-void setupFlagsForArith(Armv8btAsm* data, Arm8BtLazyFlags* lazyFlags, U32& flags, bool& hardwareFlags, bool& usesSrc, bool& usesDst, bool& usesResult, bool& resultNeedsZeroExtends);
-void arithRI(Armv8btAsm* data, arithReg32 pfnReg, arithValue32 pfnValue, Arm8BtLazyFlags* lazyFlags, U32 width, bool needsResult, bool resultNeedsZeroExtends, bool needRegZeroExtended=false);
-void arithEI(Armv8btAsm* data, arithReg32 pfnReg, arithValue32 pfnValue, Arm8BtLazyFlags* lazyFlags, U32 width, bool needsResult, bool resultNeedsZeroExtends);
+void setupFlagsForArith(Armv8btAsm* data, Arm8BtFlags* lazyFlags, U32& flags, bool& hardwareFlags, bool& usesSrc, bool& usesDst, bool& usesResult, bool& resultNeedsZeroExtends);
+void arithRI(Armv8btAsm* data, arithReg32 pfnReg, arithValue32 pfnValue, Arm8BtFlags* lazyFlags, U32 width, bool needsResult, bool resultNeedsZeroExtends, bool needRegZeroExtended=false);
+void arithEI(Armv8btAsm* data, arithReg32 pfnReg, arithValue32 pfnValue, Arm8BtFlags* lazyFlags, U32 width, bool needsResult, bool resultNeedsZeroExtends);
 void doCondition(Armv8btAsm* data, Conditional conditional, const std::function<void()>& f);
 
 extern Armv8btOp armv8btEncoder[InstructionCount];

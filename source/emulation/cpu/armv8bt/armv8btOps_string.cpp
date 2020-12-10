@@ -4,7 +4,7 @@
 
 #include "armv8btAsm.h"
 
-void cmps(Armv8btAsm* data, U32 width, Arm8BtLazyFlags* lazyFlags) {
+void cmps(Armv8btAsm* data, U32 width, Arm8BtFlags* lazyFlags) {
     if (data->decodedOp->ea16) {
         if (data->decodedOp->repZero || data->decodedOp->repNotZero) {
             // U32 dBase = cpu->seg[ES].address;
@@ -27,14 +27,6 @@ void cmps(Armv8btAsm* data, U32 width, Arm8BtLazyFlags* lazyFlags) {
             //     cpu->result.u8 = cpu->dst.u8 - cpu->src.u8;
             //     cpu->lazyFlags = FLAGS_SUB8;
 
-            // we need to fill in lazy flags because the follow code might or might not actually set the flags depending on if CX is 0
-            if (data->lazyFlags) {
-                U32 flags = data->flagsNeeded();
-                if (flags) {
-                    data->fillFlags(flags);
-                }
-                data->lazyFlags = NULL;
-            }
             U8 dBaseReg = data->getSegReg(ES);
             U8 sBaseReg = data->getSegReg(data->decodedOp->base);
             U8 incReg = data->getTmpReg();            
@@ -88,7 +80,6 @@ void cmps(Armv8btAsm* data, U32 width, Arm8BtLazyFlags* lazyFlags) {
             data->writeJumpAmount(skipPos, data->bufferPos);
 
             data->zeroExtend(xResult, xResult, width);
-            data->lazyFlags = lazyFlags;
 
             data->releaseTmpReg(tmpReg);
             data->releaseTmpReg(incReg);
@@ -138,7 +129,7 @@ void cmps(Armv8btAsm* data, U32 width, Arm8BtLazyFlags* lazyFlags) {
 
             data->subRegs32(xResult, xDst, xSrc, 0, true);
             data->zeroExtend(xResult, xResult, width);
-            data->lazyFlags = lazyFlags;
+
             data->releaseTmpReg(tmpReg);
             data->releaseTmpReg(siReg);
             data->releaseTmpReg(diReg);
@@ -167,14 +158,6 @@ void cmps(Armv8btAsm* data, U32 width, Arm8BtLazyFlags* lazyFlags) {
             //     cpu->lazyFlags = FLAGS_SUB8;
             // }            
 
-            // we need to fill in lazy flags because the follow code might or might not actually set the flags depending on if ECX is 0
-            if (data->lazyFlags) {
-                U32 flags = data->flagsNeeded();
-                if (flags) {
-                    data->fillFlags(flags);
-                }
-                data->lazyFlags = NULL;
-            }
             U8 dBaseReg = data->getSegReg(ES);
             U8 sBaseReg = data->getSegReg(data->decodedOp->base);
             U8 incReg = data->getTmpReg();
@@ -218,7 +201,6 @@ void cmps(Armv8btAsm* data, U32 width, Arm8BtLazyFlags* lazyFlags) {
             data->writeJumpAmount(skipPos, data->bufferPos);
 
             data->zeroExtend(xResult, xResult, width);
-            data->lazyFlags = lazyFlags;
 
             data->releaseTmpReg(tmpReg);
             data->releaseTmpReg(incReg);
@@ -261,11 +243,11 @@ void cmps(Armv8btAsm* data, U32 width, Arm8BtLazyFlags* lazyFlags) {
 
             data->subRegs32(xResult, xDst, xSrc, 0, true);
             data->zeroExtend(xResult, xResult, width);
-            data->lazyFlags = lazyFlags;
             data->releaseTmpReg(tmpReg);
             data->releaseTmpReg(incReg);
         }
     }
+    lazyFlags->setFlags(data, data->flagsNeeded());
 }
 
 void opCmpsb(Armv8btAsm* data) {
@@ -828,7 +810,7 @@ void opLodsd(Armv8btAsm* data) {
     lods(data, 32);
 }
 
-void scas(Armv8btAsm* data, U32 width, Arm8BtLazyFlags* lazyFlags) {
+void scas(Armv8btAsm* data, U32 width, Arm8BtFlags* lazyFlags) {
     U8 siReg;
     
     U32 flags = data->flagsNeeded();
@@ -867,13 +849,6 @@ void scas(Armv8btAsm* data, U32 width, Arm8BtLazyFlags* lazyFlags) {
             //     cpu->lazyFlags = FLAGS_SUB8;
             // }
 
-            // we need to fill in lazy flags because the follow code might or might not actually set the flags depending on if CX is 0            
-            if (data->lazyFlags) {
-                if (flags) {
-                    data->fillFlags(flags);
-                }
-                data->lazyFlags = NULL;
-            }
             U8 dBaseReg = data->getSegReg(ES);            
             U8 tmpReg = data->getTmpReg();
             U32 loopPos = data->bufferPos;
@@ -961,14 +936,6 @@ void scas(Armv8btAsm* data, U32 width, Arm8BtLazyFlags* lazyFlags) {
             //     cpu->lazyFlags = FLAGS_SUB8;
             // }
 
-            // we need to fill in lazy flags because the follow code might or might not actually set the flags depending on if CX is 0
-            if (data->lazyFlags) {
-                if (flags) {
-                    data->fillFlags(flags);
-                }
-                data->lazyFlags = NULL;
-            }
-
             U8 dBaseReg = data->getSegReg(ES);
             U8 tmpReg = data->getTmpReg();
             U32 loopPos = data->bufferPos;
@@ -1025,7 +992,7 @@ void scas(Armv8btAsm* data, U32 width, Arm8BtLazyFlags* lazyFlags) {
             data->releaseTmpReg(tmpReg);
         }
     }
-    data->lazyFlags = lazyFlags;
+    lazyFlags->setFlags(data, flags);
     data->releaseTmpReg(incReg);
 }
 

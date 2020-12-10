@@ -1459,10 +1459,6 @@ U8 Armv8btAsm::getAddressReg() {
 
 void Armv8btAsm::readMemory(U8 addressReg, U8 dst, U32 width, bool addMemOffsetToAddress, bool lock, bool signExtend) {
     if (lock) {
-        if (!instructionInfo[this->decodedOp->inst].flagsSets && this->lazyFlags && this->lazyFlags->usesHardwareFlags(CF | SF | ZF | PF | AF | OF)) {
-            // lock code will affect hardware flags
-            this->fillFlags();
-        }
         // :TODO: I'm not sure if we need this barrier, probably not
         // dmb	ish		// Full barrier
     }
@@ -2096,34 +2092,6 @@ void Armv8btAsm::releaseTmpReg(U8 reg) {
     tmpRegInUse[reg - xTmp1] = false;
 }
 
-void Armv8btAsm::fillFlags(U32 mask) {
-    if (this->lazyFlags) {
-        if (mask == (CF | ZF | SF | OF | AF | PF)) {
-            this->lazyFlags->setAll(this, xFLAGS);
-            this->lazyFlags = NULL;
-        } else {
-            if (mask & CF) {
-                this->lazyFlags->setCF(this, xFLAGS);
-            }
-            if (mask & ZF) {
-                this->lazyFlags->setZF(this, xFLAGS);
-            }
-            if (mask & SF) {
-                this->lazyFlags->setSF(this, xFLAGS);
-            }
-            if (mask & OF) {
-                this->lazyFlags->setOF(this, xFLAGS);
-            }
-            if (mask & AF) {
-                this->lazyFlags->setAF(this, xFLAGS);
-            }
-            if (mask & PF) {
-                this->lazyFlags->setPF(this, xFLAGS);
-            }
-        }        
-    }
-}
-
 void Armv8btAsm::callHost(void* pfn) {
     U8 tmp = getRegWithConst((U64)pfn);
     // BLR tmp
@@ -2156,7 +2124,6 @@ void Armv8btAsm::syncRegsFromHost(bool eipInBranchReg) {
     writeMem32ValueOffset(xEBP, xCPU, CPU_OFFSET_EBP);
     writeMem32ValueOffset(xESI, xCPU, CPU_OFFSET_ESI);
     writeMem32ValueOffset(xEDI, xCPU, CPU_OFFSET_EDI);
-    fillFlags(CF | ZF | SF | OF | AF | PF);
     writeMem32ValueOffset(xFLAGS, xCPU, CPU_OFFSET_FLAGS);
 
     if (eipInBranchReg) {

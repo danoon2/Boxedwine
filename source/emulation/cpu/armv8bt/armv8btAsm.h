@@ -39,8 +39,7 @@ typedef enum {
 
 #define xNumberOfTmpRegs 5
 
-// :TODO: if we know if a flag is going to be needed, why not just calculate it immediately
-#define xOldCF 14
+// #define xOldCF 14
 #define xSrc 15
 #define xDst 16
 #define xResult 17
@@ -214,7 +213,6 @@ public:
     
     void writeToRegFromValue(U8 reg, U64 value);    
     void setNativeFlags(U32 flags, U32 mask);
-    void fillFlags(U32 mask = CF | ZF | SF | OF | AF | PF);
     void write64Buffer(U8* buffer, U64 value);
     void write32Buffer(U8* buffer, U32 value); 
     void write16Buffer(U8* buffer, U16 value); 

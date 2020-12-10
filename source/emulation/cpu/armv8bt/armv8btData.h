@@ -34,8 +34,6 @@ public:
 
     DecodedOp* decodedOp;
     DecodedBlock* currentBlock;
-    Arm8BtLazyFlags* lazyFlags;
-    DecodedOp* flagsOp;
 
     U32 ip;
     U32 startOfDataIp;

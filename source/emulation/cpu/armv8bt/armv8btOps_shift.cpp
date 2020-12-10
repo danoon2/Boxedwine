@@ -19,14 +19,8 @@ static void dshl16(Armv8btAsm* data, U8 result, U8 dst, U8 src) {
     //cpu->lazyFlags = FLAGS_DSHL16;
 
     U32 flags = data->flagsNeeded();
-    if (!flags) {
-        data->lazyFlags = NULL;
-    } else {
-        data->lazyFlags = ARM8BT_FLAGS_DSHL16;
-        data->flagsOp = data->decodedOp;
-        if (data->lazyFlags->usesDst(flags)) {
-            data->movRegToReg(xDst, dst, 16, true);
-        }
+    if (ARM8BT_FLAGS_DSHL16->usesDst(flags)) {
+        data->movRegToReg(xDst, dst, 16, true);
     }
     if (data->decodedOp->imm == 16) {
         data->movRegToReg(result, src, 16, false);
@@ -39,9 +33,10 @@ static void dshl16(Armv8btAsm* data, U8 result, U8 dst, U8 src) {
         data->copyBitsFromSourceToDestAtPosition(result, src, amount, 16 - amount, true);
         data->copyBitsFromSourceAtPositionToDest(result, src, 16 - amount, amount, true);
     }
-    if (flags && data->lazyFlags->usesResult(flags) && result != xResult) {
+    if (ARM8BT_FLAGS_DSHL16->usesResult(flags) && result != xResult) {
         data->movRegToReg(xResult, result, 16, true);
     }
+    ARM8BT_FLAGS_DSHL16->setFlags(data, flags);
 }
 
 static void dshr16(Armv8btAsm* data, U8 result, U8 dst, U8 src) {
@@ -56,14 +51,9 @@ static void dshr16(Armv8btAsm* data, U8 result, U8 dst, U8 src) {
     // cpu->lazyFlags = FLAGS_DSHR16;
 
     U32 flags = data->flagsNeeded();
-    if (!flags) {
-        data->lazyFlags = NULL;
-    } else {
-        data->lazyFlags = ARM8BT_FLAGS_DSHR16;
-        data->flagsOp = data->decodedOp;
-        if (data->lazyFlags->usesDst(flags)) {
-            data->movRegToReg(xDst, dst, 16, true);
-        }
+
+    if (ARM8BT_FLAGS_DSHR16->usesDst(flags)) {
+        data->movRegToReg(xDst, dst, 16, true);
     }
     if (data->decodedOp->imm == 16) {
         data->movRegToReg(result, src, 16, false);
@@ -76,9 +66,10 @@ static void dshr16(Armv8btAsm* data, U8 result, U8 dst, U8 src) {
         data->copyBitsFromSourceToDestAtPosition(result, src, 16 - amount, amount, true);
         data->copyBitsFromSourceAtPositionToDest(result, src, amount, 16 - amount, true);
     }
-    if (flags && data->lazyFlags->usesResult(flags) && result != xResult) {
+    if (ARM8BT_FLAGS_DSHR16->usesResult(flags) && result != xResult) {
         data->movRegToReg(xResult, result, 16, true);
     }
+    ARM8BT_FLAGS_DSHR16->setFlags(data, flags);
 }
 
 static void dshl32(Armv8btAsm* data, U8 result, U8 dst, U8 src) {
@@ -89,21 +80,16 @@ static void dshl32(Armv8btAsm* data, U8 result, U8 dst, U8 src) {
     //cpu->lazyFlags = FLAGS_DSHL32;
 
     U32 flags = data->flagsNeeded();
-    if (!flags) {
-        data->lazyFlags = NULL;
-    } else {
-        data->lazyFlags = ARM8BT_FLAGS_DSHL32;
-        data->flagsOp = data->decodedOp;
-        if (data->lazyFlags->usesDst(flags)) {
-            data->movRegToReg(xDst, dst, 32, false);
-        }
+    if (ARM8BT_FLAGS_DSHL32->usesDst(flags)) {
+        data->movRegToReg(xDst, dst, 32, false);
     }
     // imm should already be masked to 0-31
     data->copyBitsFromSourceToDestAtPosition(result, dst, data->decodedOp->imm, 32 - data->decodedOp->imm, true);
     data->copyBitsFromSourceAtPositionToDest(result, src, 32 - data->decodedOp->imm, data->decodedOp->imm, true);
-    if (flags && data->lazyFlags->usesResult(flags) && result != xResult) {
+    if (flags && ARM8BT_FLAGS_DSHL32->usesResult(flags) && result != xResult) {
         data->movRegToReg(xResult, dst, 32, false);
     }
+    ARM8BT_FLAGS_DSHL32->setFlags(data, flags);
 }
 
 static void dshr32(Armv8btAsm* data, U8 result, U8 dst, U8 src) {
@@ -114,21 +100,16 @@ static void dshr32(Armv8btAsm* data, U8 result, U8 dst, U8 src) {
     // cpu->lazyFlags = FLAGS_DSHR32;
 
     U32 flags = data->flagsNeeded();
-    if (!flags) {
-        data->lazyFlags = NULL;
-    } else {
-        data->lazyFlags = ARM8BT_FLAGS_DSHR32;
-        data->flagsOp = data->decodedOp;
-        if (data->lazyFlags->usesDst(flags)) {
-            data->movRegToReg(xDst, dst, 32, false);
-        }
+    if (ARM8BT_FLAGS_DSHR32->usesDst(flags)) {
+        data->movRegToReg(xDst, dst, 32, false);
     }
     // imm should already be masked to 0-31
     data->copyBitsFromSourceAtPositionToDest(result, dst, data->decodedOp->imm, 32 - data->decodedOp->imm, true);
     data->copyBitsFromSourceToDestAtPosition(result, src, 32 - data->decodedOp->imm, data->decodedOp->imm, true);
-    if (flags && data->lazyFlags->usesResult(flags) && result != xResult) {
+    if (ARM8BT_FLAGS_DSHR32->usesResult(flags) && result != xResult) {
         data->movRegToReg(xResult, dst, 32, false);
     }
+    ARM8BT_FLAGS_DSHR32->setFlags(data, flags);
 }
 
 static void dshl16Cl(Armv8btAsm* data, U8 result, U8 dst, U8 src, std::function<void(void)> writeResult) {
@@ -147,25 +128,17 @@ static void dshl16Cl(Armv8btAsm* data, U8 result, U8 dst, U8 src, std::function<
     // }    
 
     U8 tmpReg = data->getTmpReg();
-    data->andValue32(tmpReg, xECX, 0x1f, true);
+    data->andValue32(tmpReg, xECX, 0x1f, true);    
 
-    U32 flags = data->flagsNeeded();
-    if (flags) {
-        data->fillFlags(flags);
-        data->lazyFlags = ARM8BT_FLAGS_DSHL16_CL;
-        data->flagsOp = data->decodedOp;
-    }
-
-    data->doIf(0, 0, DO_IF_NOT_EQUAL, [writeResult, flags, tmpReg, data, result, dst, src]() {
+    data->doIf(0, 0, DO_IF_NOT_EQUAL, [writeResult, tmpReg, data, result, dst, src]() {
         U8 tmpReg2 = data->getTmpReg();
+        U32 flags = data->flagsNeeded();
 
-        if (flags) {
-            if (data->lazyFlags->usesDst(flags)) {
-                data->movRegToReg(xDst, dst, 16, true);
-            }
-            if (data->lazyFlags->usesSrc(flags)) {
-                data->movRegToReg(xSrc, tmpReg, 32, false);
-            }
+        if (ARM8BT_FLAGS_DSHL16_CL->usesDst(flags)) {
+            data->movRegToReg(xDst, dst, 16, true);
+        }
+        if (ARM8BT_FLAGS_DSHL16_CL->usesSrc(flags)) {
+            data->movRegToReg(xSrc, tmpReg, 32, false);
         }
 
         data->shiftRegLeftWithValue32(tmpReg2, dst, 16);
@@ -175,18 +148,14 @@ static void dshl16Cl(Armv8btAsm* data, U8 result, U8 dst, U8 src, std::function<
         data->movRegToReg(result, tmpReg2, 16, false);
         data->releaseTmpReg(tmpReg2);
 
-        if (flags && data->lazyFlags->usesResult(flags) && result != xResult) {
+        if (ARM8BT_FLAGS_DSHL16_CL->usesResult(flags) && result != xResult) {
             data->movRegToReg(xResult, result, 16, true);
         }
-        if (flags) {
-            data->fillFlags(flags);
-        }
+        ARM8BT_FLAGS_DSHL16_CL->setFlags(data, flags);
         if (writeResult) {
             writeResult();
         }
         }, nullptr, nullptr, false, false);
-    data->lazyFlags = NULL;
-    data->flagsOp = NULL;
     data->releaseTmpReg(tmpReg);
 }
 
@@ -207,20 +176,12 @@ static void dshr16Cl(Armv8btAsm* data, U8 result, U8 dst, U8 src, std::function<
     U8 tmpReg = data->getTmpReg();
     data->andValue32(tmpReg, xECX, 0x1f, true);
 
-    U32 flags = data->flagsNeeded();
-    if (flags) {
-        data->fillFlags(flags);
-        data->lazyFlags = ARM8BT_FLAGS_DSHR16_CL;
-        data->flagsOp = data->decodedOp;
-    }
-
-    data->doIf(0, 0, DO_IF_NOT_EQUAL, [writeResult, flags, tmpReg, data, result, dst, src]() {
+    data->doIf(0, 0, DO_IF_NOT_EQUAL, [writeResult, tmpReg, data, result, dst, src]() {
         U8 tmpReg2 = data->getTmpReg();
+        U32 flags = data->flagsNeeded();
 
-        if (flags) {
-            if (data->lazyFlags->usesSrc(flags)) {
-                data->movRegToReg(xSrc, tmpReg, 32, false);
-            }
+        if (ARM8BT_FLAGS_DSHR16_CL->usesSrc(flags)) {
+            data->movRegToReg(xSrc, tmpReg, 32, false);
         }
 
         // cpu->dst.u32 = (cpu->reg[reg].u16) | ((U32)(cpu->reg[rm].u16) << 16);
@@ -232,18 +193,14 @@ static void dshr16Cl(Armv8btAsm* data, U8 result, U8 dst, U8 src, std::function<
         data->movRegToReg(result, tmpReg2, 16, false);
         data->releaseTmpReg(tmpReg2);
 
-        if (flags && data->lazyFlags->usesResult(flags) && result != xResult) {
+        if (ARM8BT_FLAGS_DSHR16_CL->usesResult(flags) && result != xResult) {
             data->movRegToReg(xResult, result, 16, true);
         }
-        if (flags) {
-            data->fillFlags(flags);
-        }
+        ARM8BT_FLAGS_DSHR16_CL->setFlags(data, flags);
         if (writeResult) {
             writeResult();
         }
         }, nullptr, nullptr, false, false);
-    data->lazyFlags = NULL;
-    data->flagsOp = NULL;
     data->releaseTmpReg(tmpReg);
 }
 
@@ -258,23 +215,16 @@ static void dshl32Cl(Armv8btAsm* data, U8 result, U8 dst, U8 src, std::function<
     // }
 
     U8 tmpReg = data->getTmpReg();
-    data->andValue32(tmpReg, xECX, 0x1f, true);
+    data->andValue32(tmpReg, xECX, 0x1f, true);    
 
-    U32 flags = data->flagsNeeded();
-    if (flags) {
-        data->fillFlags(flags);
-        data->lazyFlags = ARM8BT_FLAGS_DSHL32_CL;
-        data->flagsOp = data->decodedOp;
-    }
+    data->doIf(0, 0, DO_IF_NOT_EQUAL, [writeResult, tmpReg, data, result, dst, src]() {
+        U32 flags = data->flagsNeeded();
 
-    data->doIf(0, 0, DO_IF_NOT_EQUAL, [writeResult, flags, tmpReg, data, result, dst, src]() {
-        if (flags) {
-            if (data->lazyFlags->usesDst(flags)) {
-                data->movRegToReg(xDst, dst, 32, false);
-            }
-            if (data->lazyFlags->usesSrc(flags)) {
-                data->movRegToReg(xSrc, tmpReg, 32, false);
-            }
+        if (ARM8BT_FLAGS_DSHL32_CL->usesDst(flags)) {
+            data->movRegToReg(xDst, dst, 32, false);
+        }
+        if (ARM8BT_FLAGS_DSHL32_CL->usesSrc(flags)) {
+            data->movRegToReg(xSrc, tmpReg, 32, false);
         }
 
         // cpu->result.u32 = (cpu->dst.u32 << cpu->src.u32);
@@ -286,18 +236,14 @@ static void dshl32Cl(Armv8btAsm* data, U8 result, U8 dst, U8 src, std::function<
         data->orRegs32(result, tmpReg, tmpReg2);
         data->releaseTmpReg(tmpReg2);
 
-        if (flags && data->lazyFlags->usesResult(flags) && result != xResult) {
+        if (ARM8BT_FLAGS_DSHL32_CL->usesResult(flags) && result != xResult) {
             data->movRegToReg(xResult, dst, 32, true);
         }
-        if (flags) {
-            data->fillFlags(flags);
-        }
+        ARM8BT_FLAGS_DSHL32_CL->setFlags(data, flags);
         if (writeResult) {
             writeResult();
         }
         }, nullptr, nullptr, false, false);
-    data->lazyFlags = NULL;
-    data->flagsOp = NULL;
     data->releaseTmpReg(tmpReg);
 }
 
@@ -314,21 +260,14 @@ static void dshr32Cl(Armv8btAsm* data, U8 result, U8 dst, U8 src, std::function<
     U8 tmpReg = data->getTmpReg();
     data->andValue32(tmpReg, xECX, 0x1f, true);
 
-    U32 flags = data->flagsNeeded();
-    if (flags) {
-        data->fillFlags(flags);
-        data->lazyFlags = ARM8BT_FLAGS_DSHR32_CL;
-        data->flagsOp = data->decodedOp;
-    }
+    data->doIf(0, 0, DO_IF_NOT_EQUAL, [writeResult, tmpReg, data, result, dst, src]() {
+        U32 flags = data->flagsNeeded();
 
-    data->doIf(0, 0, DO_IF_NOT_EQUAL, [writeResult, flags, tmpReg, data, result, dst, src]() {
-        if (flags) {
-            if (data->lazyFlags->usesDst(flags)) {
-                data->movRegToReg(xDst, dst, 32, false);
-            }
-            if (data->lazyFlags->usesSrc(flags)) {
-                data->movRegToReg(xSrc, tmpReg, 32, false);
-            }
+        if (ARM8BT_FLAGS_DSHR32_CL->usesDst(flags)) {
+            data->movRegToReg(xDst, dst, 32, false);
+        }
+        if (ARM8BT_FLAGS_DSHR32_CL->usesSrc(flags)) {
+            data->movRegToReg(xSrc, tmpReg, 32, false);
         }
 
         // cpu->result.u32 = (cpu->dst.u32 >> cpu->src.u32);
@@ -340,18 +279,14 @@ static void dshr32Cl(Armv8btAsm* data, U8 result, U8 dst, U8 src, std::function<
         data->orRegs32(result, tmpReg, tmpReg2);
         data->releaseTmpReg(tmpReg2);
 
-        if (flags && data->lazyFlags->usesResult(flags) && result != xResult) {
+        if (ARM8BT_FLAGS_DSHR32_CL->usesResult(flags) && result != xResult) {
             data->movRegToReg(xResult, dst, 32, true);
         }
-        if (flags) {
-            data->fillFlags(flags);
-        }
+        ARM8BT_FLAGS_DSHR32_CL->setFlags(data, flags);
         if (writeResult) {
             writeResult();
         }
         }, nullptr, nullptr, false, false);
-    data->lazyFlags = NULL;
-    data->flagsOp = NULL;
     data->releaseTmpReg(tmpReg);
 }
 
@@ -547,9 +482,7 @@ bool doRol(Armv8btAsm* data, U8 result, U8 reg, U32 width) {
     if (!(data->decodedOp->imm & (width - 1))) {
         if (data->decodedOp->imm) {
             bool needsFlags = (flags & (CF | OF)) != 0;
-            if (needsFlags && (flags & (SF | PF | ZF | AF))) {
-                data->fillFlags(flags & (SF | PF | ZF | AF));
-            }
+
             // cpu->setCF(reg8 & 1);
             if (flags & CF) {
                 data->copyBitsFromSourceAtPositionToDest(xFLAGS, reg, 0, 1);
@@ -568,9 +501,6 @@ bool doRol(Armv8btAsm* data, U8 result, U8 reg, U32 width) {
 
     // cpu->fillFlagsNoCFOF()
     bool needsFlags = (flags & (CF | OF)) != 0;
-    if (needsFlags && (flags & (SF | PF | ZF | AF))) {
-        data->fillFlags(flags & (SF | PF | ZF | AF));
-    }
 
     if (width == 32) {
         data->rotateRightWithValue32(result, reg, 32 - imm);
@@ -621,10 +551,6 @@ bool doRolCl(Armv8btAsm* data, U8 result, U8 reg, U32 width) {
                 data->orRegs32(result, result, tmpReg);
             }
 
-            if (needsFlags && (flags & (SF | PF | ZF | AF))) {
-                data->fillFlags(flags & (SF | PF | ZF | AF));
-            }
-
             // cpu->setCF(result & 1);
             if (flags & CF) {
                 data->copyBitsFromSourceAtPositionToDest(xFLAGS, result, 0, 1);
@@ -649,9 +575,7 @@ bool doRor(Armv8btAsm* data, U8 result, U8 reg, U32 width) {
     if (!(data->decodedOp->imm & (width - 1))) {
         if (data->decodedOp->imm) {
             bool needsFlags = (flags & (CF | OF)) != 0;
-            if (needsFlags && (flags & (SF | PF | ZF | AF))) {
-                data->fillFlags(flags & (SF | PF | ZF | AF));
-            }
+
             // cpu->setCF(reg & 0x80);
             if (flags & CF) {
                 data->copyBitsFromSourceAtPositionToDest(xFLAGS, reg, width - 1, 1);
@@ -671,9 +595,6 @@ bool doRor(Armv8btAsm* data, U8 result, U8 reg, U32 width) {
 
     // cpu->fillFlagsNoCFOF()    
     bool needsFlags = (flags & (CF | OF)) != 0;
-    if (needsFlags && (flags & (SF | PF | ZF | AF))) {
-        data->fillFlags(flags & (SF | PF | ZF | AF));
-    }
 
     if (width == 32) {
         data->rotateRightWithValue32(result, reg, imm);
@@ -724,10 +645,6 @@ bool doRorCl(Armv8btAsm* data, U8 result, U8 reg, U32 width) {
                 data->orRegs32(result, result, tmpReg);
             }
 
-            if (needsFlags && (flags & (SF | PF | ZF | AF))) {
-                data->fillFlags(flags & (SF | PF | ZF | AF));
-            }
-
             // cpu->setCF(result & 0x80);
             if (flags & CF) {
                 data->copyBitsFromSourceAtPositionToDest(xFLAGS, result, width - 1, 1);
@@ -754,14 +671,6 @@ bool doRcl(Armv8btAsm* data, U8 result, U8 reg, U32 width) {
 
     // cpu->fillFlagsNoCFOF()
     U32 flags = data->flagsNeeded();
-    bool needsFlags = (flags & (CF | OF)) != 0;
-    if (needsFlags && (flags & (SF | PF | ZF | AF))) {
-        data->fillFlags(flags & (SF | PF | ZF | AF));
-    }
-
-    if (data->lazyFlags) {
-        data->lazyFlags->setCF(data, xFLAGS);
-    }
 
     // result = (var1 << var2) | ((cpu->flags & CF) << (var2 - 1)) | (var1 >> (9 - var2));
     data->shiftRegLeftWithValue32(result, reg, data->decodedOp->imm);
@@ -788,22 +697,14 @@ bool doRcl(Armv8btAsm* data, U8 result, U8 reg, U32 width) {
 // result and reg are guaranteed to be different regs
 bool doRclCl(Armv8btAsm* data, U8 result, U8 reg, U32 width) {
     U8 tmpReg = data->getTmpReg();
-    U32 flags = data->flagsNeeded();
-    // cpu->fillFlagsNoCFOF()
-    bool needsFlags = (flags & (CF | OF)) != 0;
 
     data->andValue32(tmpReg, xECX, 0x1f);
     data->doIf(tmpReg, 0, DO_IF_EQUAL, [data, result, reg, width]() {
         if (result != reg) {
             data->movRegToReg(result, reg, 32, false);
         }
-        }, [data, result, reg, tmpReg, needsFlags, flags, width]() {
-            if (data->lazyFlags) {
-                data->lazyFlags->setCF(data, xFLAGS);
-            }
-            if (needsFlags && (flags & (SF | PF | ZF | AF))) {
-                data->fillFlags(flags & (SF | PF | ZF | AF));
-            }
+        }, [data, result, reg, tmpReg, width]() {
+            U32 flags = data->flagsNeeded();
 
             // var2 = var2 % 17;
             data->tmpRegInUse[result - xTmp1] = false;
@@ -862,14 +763,6 @@ bool doRcr(Armv8btAsm* data, U8 result, U8 reg, U32 width) {
 
     // cpu->fillFlagsNoCFOF()
     U32 flags = data->flagsNeeded();
-    bool needsFlags = (flags & (CF | OF)) != 0;
-    if (needsFlags && (flags & (SF | PF | ZF | AF))) {
-        data->fillFlags(flags & (SF | PF | ZF | AF));
-    }
-
-    if (data->lazyFlags) {
-        data->lazyFlags->setCF(data, xFLAGS);
-    }
 
     // result = (var1 >> var2) | ((cpu->flags & CF) << (8 - var2)) | (var1 << (9 - var2));
     data->shiftRegRightWithValue32(result, reg, data->decodedOp->imm);
@@ -897,22 +790,14 @@ bool doRcr(Armv8btAsm* data, U8 result, U8 reg, U32 width) {
 // result and reg are guaranteed to be different regs
 bool doRcrCl(Armv8btAsm* data, U8 result, U8 reg, U32 width) {
     U8 tmpReg = data->getTmpReg();
-    U32 flags = data->flagsNeeded();
-    // cpu->fillFlagsNoCFOF()
-    bool needsFlags = (flags & (CF | OF)) != 0;
 
     data->andValue32(tmpReg, xECX, 0x1f);
     data->doIf(tmpReg, 0, DO_IF_EQUAL, [data, result, reg, width]() {
         if (result != reg) {
             data->movRegToReg(result, reg, 32, false);
         }
-        }, [data, result, reg, tmpReg, needsFlags, flags, width]() {
-            if (data->lazyFlags) {
-                data->lazyFlags->setCF(data, xFLAGS);
-            }
-            if (needsFlags && (flags & (SF | PF | ZF | AF))) {
-                data->fillFlags(flags & (SF | PF | ZF | AF));
-            }
+        }, [data, result, reg, tmpReg, width]() {
+            U32 flags = data->flagsNeeded();
 
             // var2 = var2 % 17;
             data->tmpRegInUse[result - xTmp1] = false;
@@ -976,7 +861,6 @@ void doShiftReg8(Armv8btAsm* data, shiftOp pfn) {
 
     data->releaseTmpReg(reg8);
     data->releaseTmpReg(result);
-    data->lazyFlags = NULL;
 }
 
 void doShiftReg16(Armv8btAsm* data, shiftOp pfn) {
@@ -990,7 +874,6 @@ void doShiftReg16(Armv8btAsm* data, shiftOp pfn) {
 
     data->releaseTmpReg(reg);
     data->releaseTmpReg(result);
-    data->lazyFlags = NULL;
 }
 
 void doShiftReg32(Armv8btAsm* data, shiftOp pfn) {
@@ -1002,7 +885,6 @@ void doShiftReg32(Armv8btAsm* data, shiftOp pfn) {
     }
 
     data->releaseTmpReg(result);
-    data->lazyFlags = NULL;
 }
 
 void doShiftMemory(Armv8btAsm* data, shiftOp pfn, U32 width) {
@@ -1019,12 +901,11 @@ void doShiftMemory(Armv8btAsm* data, shiftOp pfn, U32 width) {
     data->releaseTmpReg(reg);
     data->releaseTmpReg(result);
     data->releaseTmpReg(addressReg);
-    data->lazyFlags = NULL;
 }
 
 typedef void(*shiftRegCl32)(Armv8btAsm* data, U8 dst, U8 src1, U8 cl);
 
-void arithShiftRegCl(Armv8btAsm* data, shiftRegCl32 pfn, Arm8BtLazyFlags* lazyFlags, U32 width, bool regNeedsZeroExtend = false) {
+void arithShiftRegCl(Armv8btAsm* data, shiftRegCl32 pfn, Arm8BtFlags* lazyFlags, U32 width, bool regNeedsZeroExtend = false) {
     U8 tmpReg = data->getTmpReg();
     data->andValue32(tmpReg, xECX, 0x1f);
     data->doIf(tmpReg, 0, DO_IF_EQUAL, nullptr, [data, tmpReg, width, pfn, lazyFlags, regNeedsZeroExtend] {
@@ -1047,16 +928,12 @@ void arithShiftRegCl(Armv8btAsm* data, shiftRegCl32 pfn, Arm8BtLazyFlags* lazyFl
             if (width == 8) {
                 data->releaseNativeReg8(readRegDst);
             }
-            if (data->lazyFlags) {
-                // we don't know at compile time if CL will be 0 or not, so we can save the lazy flags for later
-                data->fillFlags(flags);
-                data->lazyFlags = NULL;
-            }
+            lazyFlags->setFlags(data, flags);
         });
     data->releaseTmpReg(tmpReg);
 }
 
-void arithShiftMemoryCl(Armv8btAsm* data, shiftRegCl32 pfn, Arm8BtLazyFlags* lazyFlags, U32 width) {
+void arithShiftMemoryCl(Armv8btAsm* data, shiftRegCl32 pfn, Arm8BtFlags* lazyFlags, U32 width) {
     U8 tmpReg = data->getTmpReg();
     data->andValue32(tmpReg, xECX, 0x1f);
     data->doIf(tmpReg, 0, DO_IF_EQUAL, nullptr, [data, tmpReg, width, pfn, lazyFlags] {
@@ -1077,11 +954,7 @@ void arithShiftMemoryCl(Armv8btAsm* data, shiftRegCl32 pfn, Arm8BtLazyFlags* laz
         data->writeMemory(addressReg, xResult, width, true, data->decodedOp->lock != 0, xDst, restartPos);
         data->releaseTmpReg(addressReg);
 
-        if (data->lazyFlags) {
-            // we don't know at compile time if CL will be 0 or not, so we can save the lazy flags for later
-            data->fillFlags(flags);
-            data->lazyFlags = NULL;
-        }
+        lazyFlags->setFlags(data, flags);
         });
     data->releaseTmpReg(tmpReg);
 }

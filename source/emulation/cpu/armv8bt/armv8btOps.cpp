@@ -16,34 +16,21 @@
 
 #include "../common/common_other.h"
 
-void setupFlagsForArith(Armv8btAsm* data, Arm8BtLazyFlags* lazyFlags, U32& flags, bool& hardwareFlags, bool& usesSrc, bool& usesDst, bool& usesResult, bool& resultNeedsZeroExtends) {
+void setupFlagsForArith(Armv8btAsm* data, Arm8BtFlags* lazyFlags, U32& flags, bool& hardwareFlags, bool& usesSrc, bool& usesDst, bool& usesResult, bool& resultNeedsZeroExtends) {
     flags = data->flagsNeeded();
     
     if (!flags) {
-        data->lazyFlags = NULL;
         hardwareFlags = false;
         usesSrc = false;
         usesDst = false;
         usesResult = false;
-        if (instructionInfo[data->decodedOp->inst].flagsUsed & CF) {
-            data->copyBitsFromSourceAtPositionToDest(xOldCF, xFLAGS, 0, 1, false);
-        }
     } else {
-        if (instructionInfo[data->decodedOp->inst].flagsUsed & CF) {
-            if (data->lazyFlags) {
-                data->lazyFlags->setCF(data, xOldCF);
-            } else {
-                data->copyBitsFromSourceAtPositionToDest(xOldCF, xFLAGS, 0, 1, false);
-            }
-        }
         // find out if xSrc, xDst and/or xResult will be by flag calculations so that we don't waste time populating them if they won't be used
-        data->lazyFlags = lazyFlags;
         hardwareFlags = lazyFlags->usesHardwareFlags(flags);
-        usesSrc = data->lazyFlags->usesSrc(flags);
-        usesDst = data->lazyFlags->usesDst(flags);
-        usesResult = data->lazyFlags->usesResult(flags);
+        usesSrc = lazyFlags->usesSrc(flags);
+        usesDst = lazyFlags->usesDst(flags);
+        usesResult = lazyFlags->usesResult(flags);
     }
-    data->flagsOp = data->decodedOp;
     // zf lazy flag calculation assumes result will be zero extended
     if ((flags & ZF) != 0) {
         resultNeedsZeroExtends = true;
@@ -88,7 +75,7 @@ void writeResultArithReg(Armv8btAsm* data, bool usesResult, bool needsResult, bo
 }
 
 // arith functions assume all flags are set, no flag dependency with previous ops
-void arithRE(Armv8btAsm* data, arithReg32 pfn, Arm8BtLazyFlags* lazyFlags, U32 width, bool needsResult, bool resultNeedsZeroExtends) {
+void arithRE(Armv8btAsm* data, arithReg32 pfn, Arm8BtFlags* lazyFlags, U32 width, bool needsResult, bool resultNeedsZeroExtends) {
     U8 addressReg = data->getAddressReg();
     U32 flags;
     bool hardwareFlags, usesSrc, usesDst, usesResult;
@@ -108,9 +95,10 @@ void arithRE(Armv8btAsm* data, arithReg32 pfn, Arm8BtLazyFlags* lazyFlags, U32 w
         data->releaseNativeReg8(readRegDst);
     }
     data->releaseTmpReg(addressReg);
+    lazyFlags->setFlags(data, flags);
 }
 
-void arithER(Armv8btAsm* data, arithReg32 pfn, Arm8BtLazyFlags* lazyFlags, U32 width, bool needsResult, bool resultNeedsZeroExtends) {
+void arithER(Armv8btAsm* data, arithReg32 pfn, Arm8BtFlags* lazyFlags, U32 width, bool needsResult, bool resultNeedsZeroExtends) {
     U8 addressReg = data->getAddressReg();
     U32 flags;
     bool hardwareFlags, usesSrc, usesDst, usesResult;
@@ -134,9 +122,10 @@ void arithER(Armv8btAsm* data, arithReg32 pfn, Arm8BtLazyFlags* lazyFlags, U32 w
         data->releaseNativeReg8(readRegSrc);
     }
     data->releaseTmpReg(addressReg);
+    lazyFlags->setFlags(data, flags);
 }
 
-void arithRR(Armv8btAsm* data, arithReg32 pfn, Arm8BtLazyFlags* lazyFlags, U32 width, bool needsResult, bool resultNeedsZeroExtends) {
+void arithRR(Armv8btAsm* data, arithReg32 pfn, Arm8BtFlags* lazyFlags, U32 width, bool needsResult, bool resultNeedsZeroExtends) {
     U32 flags;
     bool hardwareFlags, usesSrc, usesDst, usesResult;
     setupFlagsForArith(data, lazyFlags, flags, hardwareFlags, usesSrc, usesDst, usesResult, resultNeedsZeroExtends);
@@ -155,9 +144,10 @@ void arithRR(Armv8btAsm* data, arithReg32 pfn, Arm8BtLazyFlags* lazyFlags, U32 w
         data->releaseNativeReg8(readRegSrc);
         data->releaseNativeReg8(readRegDst);
     }
+    lazyFlags->setFlags(data, flags);
 }
 
-void arithRI(Armv8btAsm* data, arithReg32 pfnReg, arithValue32 pfnValue, Arm8BtLazyFlags* lazyFlags, U32 width, bool needsResult, bool resultNeedsZeroExtends, bool needRegZeroExtended) {
+void arithRI(Armv8btAsm* data, arithReg32 pfnReg, arithValue32 pfnValue, Arm8BtFlags* lazyFlags, U32 width, bool needsResult, bool resultNeedsZeroExtends, bool needRegZeroExtended) {
     U32 flags;
     bool hardwareFlags, usesSrc, usesDst, usesResult;
     setupFlagsForArith(data, lazyFlags, flags, hardwareFlags, usesSrc, usesDst, usesResult, resultNeedsZeroExtends);
@@ -182,9 +172,10 @@ void arithRI(Armv8btAsm* data, arithReg32 pfnReg, arithValue32 pfnValue, Arm8BtL
     if (width == 8) {
         data->releaseNativeReg8(readRegDst);
     }
+    lazyFlags->setFlags(data, flags);
 }
 
-void arithIR(Armv8btAsm* data, arithReg32 pfnReg, arithValue32 pfnValue, Arm8BtLazyFlags* lazyFlags, U32 width, bool needsResult, bool resultNeedsZeroExtends) {
+void arithIR(Armv8btAsm* data, arithReg32 pfnReg, arithValue32 pfnValue, Arm8BtFlags* lazyFlags, U32 width, bool needsResult, bool resultNeedsZeroExtends) {
     U32 flags;
     bool hardwareFlags, usesSrc, usesDst, usesResult;
     setupFlagsForArith(data, lazyFlags, flags, hardwareFlags, usesSrc, usesDst, usesResult, resultNeedsZeroExtends);
@@ -209,9 +200,10 @@ void arithIR(Armv8btAsm* data, arithReg32 pfnReg, arithValue32 pfnValue, Arm8BtL
     if (width == 8) {
         data->releaseNativeReg8(readRegSrc);
     }
+    lazyFlags->setFlags(data, flags);
 }
 
-void arithEI(Armv8btAsm* data, arithReg32 pfnReg, arithValue32 pfnValue, Arm8BtLazyFlags* lazyFlags, U32 width, bool needsResult, bool resultNeedsZeroExtends) {
+void arithEI(Armv8btAsm* data, arithReg32 pfnReg, arithValue32 pfnValue, Arm8BtFlags* lazyFlags, U32 width, bool needsResult, bool resultNeedsZeroExtends) {
     U8 addressReg = data->getAddressReg();
     U32 flags;
     bool hardwareFlags, usesSrc, usesDst, usesResult;
@@ -243,9 +235,10 @@ void arithEI(Armv8btAsm* data, arithReg32 pfnReg, arithValue32 pfnValue, Arm8BtL
         data->zeroExtend(xResult, xResult, width);
     }    
     data->releaseTmpReg(addressReg);
+    lazyFlags->setFlags(data, flags);
 }
 
-void arithIE(Armv8btAsm* data, arithReg32 pfnReg, arithValue32 pfnValue, Arm8BtLazyFlags* lazyFlags, U32 width, bool needsResult, bool resultNeedsZeroExtends) {
+void arithIE(Armv8btAsm* data, arithReg32 pfnReg, arithValue32 pfnValue, Arm8BtFlags* lazyFlags, U32 width, bool needsResult, bool resultNeedsZeroExtends) {
     U8 addressReg = data->getAddressReg();
     U32 flags;
     bool hardwareFlags, usesSrc, usesDst, usesResult;
@@ -277,6 +270,7 @@ void arithIE(Armv8btAsm* data, arithReg32 pfnReg, arithValue32 pfnValue, Arm8BtL
         data->zeroExtend(xResult, xResult, width);
     }
     data->releaseTmpReg(addressReg);
+    lazyFlags->setFlags(data, flags);
 }
 
 void addReg32(Armv8btAsm* data, U8 dst, U8 src1, U8 src2, bool flags) {
@@ -296,16 +290,16 @@ void orValue32(Armv8btAsm* data, U8 dst, U8 src1, U32 value, bool flags) {
 
 void adcReg32(Armv8btAsm* data, U8 dst, U8 src1, U8 src2, bool flags) {
     U8 tmp = data->getTmpReg();
-
-    data->addRegs32(tmp, xOldCF, src2);
+    data->copyBitsFromSourceAtPositionToDest(tmp, xFLAGS, 0, 1, false);
+    data->addRegs32(tmp, tmp, src2);
     // ZF, SF and OF hardware flags can be used
     data->addRegs32(dst, src1, tmp, 0, flags);
     data->releaseTmpReg(tmp);
 }
 void adcValue32(Armv8btAsm* data, U8 dst, U8 src1, U32 value, bool flags) {
     U8 tmp = data->getTmpReg();
-
-    data->addValue32(tmp, xOldCF, value);
+    data->copyBitsFromSourceAtPositionToDest(tmp, xFLAGS, 0, 1, false);
+    data->addValue32(tmp, tmp, value);
     // ZF, SF and OF hardware flags can be used
     data->addRegs32(dst, src1, tmp, 0, flags);
     data->releaseTmpReg(tmp);
@@ -313,16 +307,16 @@ void adcValue32(Armv8btAsm* data, U8 dst, U8 src1, U32 value, bool flags) {
 
 void sbbReg32(Armv8btAsm* data, U8 dst, U8 src1, U8 src2, bool flags) {
     U8 tmp = data->getTmpReg();
-
-    data->addRegs32(tmp, xOldCF, src2);
+    data->copyBitsFromSourceAtPositionToDest(tmp, xFLAGS, 0, 1, false);
+    data->addRegs32(tmp, tmp, src2);
     // ZF, SF and OF hardware flags can be used
     data->subRegs32(dst, src1, tmp, 0, flags);
     data->releaseTmpReg(tmp);
 }
 void sbbValue32(Armv8btAsm* data, U8 dst, U8 src1, U32 value, bool flags) {
     U8 tmp = data->getTmpReg();
-
-    data->addValue32(tmp, xOldCF, value);
+    data->copyBitsFromSourceAtPositionToDest(tmp, xFLAGS, 0, 1, false);
+    data->addValue32(tmp, tmp, value);
     // ZF, SF and OF hardware flags can be used
     data->subRegs32(dst, src1, tmp, 0, flags);
     data->releaseTmpReg(tmp);
@@ -885,14 +879,6 @@ void imul8(Armv8btAsm* data, U8 signExtendedSrc) {
     // other flags are undefined
     U8 dst = data->getTmpReg();
 
-    // :TODO: These flags should be undefined
-    if (data->lazyFlags) {
-        U32 flags = DecodedOp::getNeededFlags(data->currentBlock, data->decodedOp, ZF | SF | PF | AF);
-        if (flags) {
-            data->fillFlags(flags);
-        }
-    }
-
     data->movReg8ToReg(0, dst, true);
     data->signedMultiply32(dst, dst, signExtendedSrc);
     data->movRegToReg(xEAX, dst, 16, false);
@@ -912,7 +898,6 @@ void imul8(Armv8btAsm* data, U8 signExtendedSrc) {
     }
 
     data->releaseTmpReg(dst);
-    data->lazyFlags = NULL;
 }
 
 // cpu->fillFlagsNoCFOF();
@@ -925,14 +910,6 @@ void imul8(Armv8btAsm* data, U8 signExtendedSrc) {
 void mul8(Armv8btAsm* data, U8 src) {
     // other flags are undefined
     U8 dst = data->getTmpReg();    
-
-    // :TODO: These flags should be undefined
-    if (data->lazyFlags) {
-        U32 flags = DecodedOp::getNeededFlags(data->currentBlock, data->decodedOp, ZF | SF | PF | AF);
-        if (flags) {
-            data->fillFlags(flags);
-        }
-    }
 
     data->movReg8ToReg(0, dst);    
     data->unsignedMultiply32(dst, dst, src);
@@ -950,7 +927,6 @@ void mul8(Armv8btAsm* data, U8 src) {
     }
     
     data->releaseTmpReg(dst);
-    data->lazyFlags = NULL;
 }
 
 // S32 result = (S32)((S16)AX) * (S16)src;
@@ -964,14 +940,6 @@ void mul8(Armv8btAsm* data, U8 src) {
 // }
 void imul16(Armv8btAsm* data, U8 reg1, U8 signedSrc2, U8 dst1, U8 dst2, bool usesDst2) {
     U8 src1 = data->getTmpReg();
-
-    // :TODO: These flags should be undefined
-    if (data->lazyFlags) {
-        U32 flags = DecodedOp::getNeededFlags(data->currentBlock, data->decodedOp, ZF | SF | PF | AF);
-        if (flags) {
-            data->fillFlags(flags);
-        }
-    }
 
     // S32 result = (S32)((S16)AX) * (S16)src;
     data->signExtend(src1, reg1, 16);
@@ -995,9 +963,6 @@ void imul16(Armv8btAsm* data, U8 reg1, U8 signedSrc2, U8 dst1, U8 dst2, bool use
             data->copyBitsFromSourceToDestAtPosition(xFLAGS, xFLAGS, 11, 1); // OF is 0x800 (bit 11)
         }
     }
-
-    data->lazyFlags = NULL;
-    data->flagsOp = NULL;
     data->releaseTmpReg(src1);
 }
 
@@ -1013,14 +978,6 @@ void imul16(Armv8btAsm* data, U8 reg1, U8 signedSrc2, U8 dst1, U8 dst2, bool use
 void mul16(Armv8btAsm* data, U8 src) {
     // other flags are undefined
     U8 dst = data->getTmpReg();
-
-    // :TODO: These flags should be undefined
-    if (data->lazyFlags) {
-        U32 flags = DecodedOp::getNeededFlags(data->currentBlock, data->decodedOp, ZF | SF | PF | AF);
-        if (flags) {
-            data->fillFlags(flags);
-        }
-    }
 
     data->movRegToReg(dst, xEAX, 16, true);
     data->unsignedMultiply32(dst, dst, src);
@@ -1039,7 +996,6 @@ void mul16(Armv8btAsm* data, U8 src) {
     }
 
     data->releaseTmpReg(dst);
-    data->lazyFlags = NULL;
 }
 
 // S64 result = (S64)((S32)EAX) * ((S32)(src));
@@ -1054,13 +1010,6 @@ void mul16(Armv8btAsm* data, U8 src) {
 
 void imul32(Armv8btAsm* data, U8 reg1, U8 reg2, U8 dst1, U8 dst2, bool usesDst2) {
     U8 resultReg = data->getTmpReg();
-
-    if (data->lazyFlags) {
-        U32 flags = DecodedOp::getNeededFlags(data->currentBlock, data->decodedOp, ZF | SF | PF | AF);
-        if (flags) {
-            data->fillFlags(flags);
-        }
-    }
 
     data->signedMultiply32(resultReg, reg1, reg2); // resultReg will be 64-bit
     data->movRegToReg(dst1, resultReg, 32, false);
@@ -1080,8 +1029,6 @@ void imul32(Armv8btAsm* data, U8 reg1, U8 reg2, U8 dst1, U8 dst2, bool usesDst2)
             data->copyBitsFromSourceToDestAtPosition(xFLAGS, xFLAGS, 11, 1); // OF is 0x800 (bit 11)
         }
     }
-    data->lazyFlags = NULL;
-    data->flagsOp = NULL;
     data->releaseTmpReg(resultReg);
 }
 
@@ -1097,14 +1044,6 @@ void imul32(Armv8btAsm* data, U8 reg1, U8 reg2, U8 dst1, U8 dst2, bool usesDst2)
 void mul32(Armv8btAsm* data, U8 src) {
     // other flags are undefined
     U8 dst = data->getTmpReg();
-
-    // :TODO: These flags should be undefined
-    if (data->lazyFlags) {
-        U32 flags = DecodedOp::getNeededFlags(data->currentBlock, data->decodedOp, ZF | SF | PF | AF);
-        if (flags) {
-            data->fillFlags(flags);
-        }
-    }
 
     data->unsignedMultiply64(dst, xEAX, src);
     data->movRegToReg(xEAX, dst, 32, false);
@@ -1124,7 +1063,6 @@ void mul32(Armv8btAsm* data, U8 src) {
     }
 
     data->releaseTmpReg(dst);
-    data->lazyFlags = NULL;
 }
 
 void opMulR8(Armv8btAsm* data) {
@@ -1732,16 +1670,11 @@ void opCmpXchgR8R8(Armv8btAsm* data) {
     // }
     U32 flags = data->flagsNeeded();
 
-    if (!flags) {
-        data->lazyFlags = NULL;
-    } else {
-        data->lazyFlags = ARM8BT_FLAGS_CMP8;
-    }
     data->movReg8ToReg(0, xDst);
     data->movReg8ToReg(data->decodedOp->reg, xSrc);
 
     data->subRegs32(xResult, xDst, xSrc, 0, true); // flags used by if below
-    if (data->lazyFlags && data->lazyFlags->usesResult(flags)) {
+    if (ARM8BT_FLAGS_CMP8->usesResult(flags)) {
         data->zeroExtend(xResult, xResult, 8);
     }
     data->doIf(0, 0, DO_IF_EQUAL, [data]() {
@@ -1749,6 +1682,7 @@ void opCmpXchgR8R8(Armv8btAsm* data) {
         }, [data] {
             data->movRegToReg8(xSrc, 0);
         }, nullptr, false, false);
+    ARM8BT_FLAGS_CMP8->setFlags(data, flags);
 }
 void opCmpXchgE8R8(Armv8btAsm* data) {
     // cpu->dst.u8 = AL;
@@ -1765,14 +1699,9 @@ void opCmpXchgE8R8(Armv8btAsm* data) {
     U32 restartPos = data->bufferPos;
     data->readMemory(addressReg, xSrc, 8, true, data->decodedOp->lock != 0);
     data->movReg8ToReg(0, xDst);
-    if (!flags) {
-        data->lazyFlags = NULL;
-    } else {
-        data->lazyFlags = ARM8BT_FLAGS_CMP8;
-    }
 
     data->subRegs32(xResult, xDst, xSrc, 0, true); // flags used by if below
-    if (data->lazyFlags && data->lazyFlags->usesResult(flags)) {
+    if (ARM8BT_FLAGS_CMP8->usesResult(flags)) {
         data->zeroExtend(xResult, xResult, 8);
     }
     data->doIf(0, 0, DO_IF_EQUAL, [restartPos, addressReg, data]() {
@@ -1786,6 +1715,7 @@ void opCmpXchgE8R8(Armv8btAsm* data) {
         data->fullMemoryBarrier(); // don't allow out of order read/write after this instruction until this completes
     }
     data->releaseTmpReg(addressReg);
+    ARM8BT_FLAGS_CMP8->setFlags(data, flags);
 }
 void opCmpXchgR16R16(Armv8btAsm* data) {
     // cpu->dst.u16 = AX;
@@ -1799,16 +1729,11 @@ void opCmpXchgR16R16(Armv8btAsm* data) {
     // }
     U32 flags = data->flagsNeeded();
 
-    if (!flags) {
-        data->lazyFlags = NULL;
-    } else {
-        data->lazyFlags = ARM8BT_FLAGS_CMP16;
-    }
     data->movRegToReg(xDst, xEAX, 16, true);
     data->movRegToReg(xSrc, data->getNativeReg(data->decodedOp->reg), 16, true);
 
     data->subRegs32(xResult, xDst, xSrc, 0, true); // flags used by if below
-    if (data->lazyFlags && data->lazyFlags->usesResult(flags)) {
+    if (ARM8BT_FLAGS_CMP16->usesResult(flags)) {
         data->zeroExtend(xResult, xResult, 16);
     }
     data->doIf(0, 0, DO_IF_EQUAL, [data]() {
@@ -1816,6 +1741,7 @@ void opCmpXchgR16R16(Armv8btAsm* data) {
         }, [data] {
             data->movRegToReg(xEAX, data->getNativeReg(data->decodedOp->reg), 16, false);
         }, nullptr, false, false);
+    ARM8BT_FLAGS_CMP16->setFlags(data, flags);
 }
 void opCmpXchgE16R16(Armv8btAsm* data) {
     // cpu->dst.u16 = AX;
@@ -1832,14 +1758,9 @@ void opCmpXchgE16R16(Armv8btAsm* data) {
     U32 restartPos = data->bufferPos;
     data->readMemory(addressReg, xSrc, 16, true, data->decodedOp->lock != 0);
     data->movRegToReg(xDst, xEAX, 16, true);
-    if (!flags) {
-        data->lazyFlags = NULL;
-    } else {
-        data->lazyFlags = ARM8BT_FLAGS_CMP16;
-    }
 
     data->subRegs32(xResult, xDst, xSrc, 0, true); // flags used by if below
-    if (data->lazyFlags && data->lazyFlags->usesResult(flags)) {
+    if (ARM8BT_FLAGS_CMP16->usesResult(flags)) {
         data->zeroExtend(xResult, xResult, 16);
     }
     data->doIf(0, 0, DO_IF_EQUAL, [restartPos, addressReg, data]() {
@@ -1851,6 +1772,7 @@ void opCmpXchgE16R16(Armv8btAsm* data) {
         data->fullMemoryBarrier(); // don't allow out of order read/write after this instruction until this completes
     }
     data->releaseTmpReg(addressReg);
+    ARM8BT_FLAGS_CMP16->setFlags(data, flags);
 }
 void opCmpXchgR32R32(Armv8btAsm* data) {
     // cpu->dst.u32 = EAX;
@@ -1864,23 +1786,20 @@ void opCmpXchgR32R32(Armv8btAsm* data) {
     // }
     U32 flags = data->flagsNeeded();
 
-    if (!flags) {
-        data->lazyFlags = NULL;
-    } else {
-        data->lazyFlags = ARM8BT_FLAGS_CMP32;
-        if (data->lazyFlags->usesDst(flags)) {
-            data->movRegToReg(xDst, xEAX, 32, false);
-        }
-        if (data->lazyFlags->usesSrc(flags)) {
-            data->movRegToReg(xSrc, data->getNativeReg(data->decodedOp->reg), 32, false);
-        }
-    }    
+
+    if (ARM8BT_FLAGS_CMP32->usesDst(flags)) {
+        data->movRegToReg(xDst, xEAX, 32, false);
+    }
+    if (ARM8BT_FLAGS_CMP32->usesSrc(flags)) {
+        data->movRegToReg(xSrc, data->getNativeReg(data->decodedOp->reg), 32, false);
+    }  
     data->subRegs32(xResult, xEAX, data->getNativeReg(data->decodedOp->reg), 0, true); // flags used by if below
     data->doIf(0, 0, DO_IF_EQUAL, [data]() {
             data->movRegToReg(data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->rm), 32, false);
         }, [data] {
             data->movRegToReg(xEAX, data->getNativeReg(data->decodedOp->reg), 32, false);
         }, nullptr, false, false);
+    ARM8BT_FLAGS_CMP32->setFlags(data, flags);
 }
 
 void opCmpXchgE32R32(Armv8btAsm* data) {
@@ -1898,14 +1817,9 @@ void opCmpXchgE32R32(Armv8btAsm* data) {
     U32 restartPos = data->bufferPos;
     data->readMemory(addressReg, xSrc, 32, true, data->decodedOp->lock != 0);
 
-    if (!flags) {
-        data->lazyFlags = NULL;
-    } else {
-        data->lazyFlags = ARM8BT_FLAGS_CMP32;
-        if (data->lazyFlags->usesDst(flags)) {
-            data->movRegToReg(xDst, xEAX, 32, false);
-        }        
-    }
+    if (ARM8BT_FLAGS_CMP32->usesDst(flags)) {
+        data->movRegToReg(xDst, xEAX, 32, false);
+    }        
     
     data->subRegs32(xResult, xEAX, xSrc, 0, true); // flags used by if below
     data->doIf(0, 0, DO_IF_EQUAL, [restartPos, addressReg, data]() {
@@ -1917,6 +1831,7 @@ void opCmpXchgE32R32(Armv8btAsm* data) {
         data->fullMemoryBarrier(); // don't allow out of order read/write after this instruction until this completes
     }
     data->releaseTmpReg(addressReg);
+    ARM8BT_FLAGS_CMP32->setFlags(data, flags);
 }
 
 void opIncR8(Armv8btAsm* data) {
@@ -1929,17 +1844,12 @@ void opIncR8(Armv8btAsm* data) {
         data->releaseNativeReg8(readRegDst);
         data->releaseTmpReg(tmp);
     } else {
-        if (data->lazyFlags && DecodedOp::getNeededFlags(data->currentBlock, data->decodedOp, CF)) {
-            data->lazyFlags->setCF(data, xFLAGS);
-        }
-        data->lazyFlags = ARM8BT_FLAGS_INC8;
-        data->flagsOp = data->decodedOp;
-
         U8 readRegDst = data->getReadNativeReg8(data->decodedOp->reg);
         data->addValue32(xResult, readRegDst, 1);
         data->zeroExtend(xResult, xResult, 8);
         data->movRegToReg8(xResult, data->decodedOp->reg);
         data->releaseNativeReg8(readRegDst);
+        ARM8BT_FLAGS_INC8->setFlags(data, flags);
     }
 }
 void opIncR16(Armv8btAsm* data) {
@@ -1950,15 +1860,10 @@ void opIncR16(Armv8btAsm* data) {
         data->movRegToReg(data->decodedOp->reg, tmp, 16, false);
         data->releaseTmpReg(tmp);
     } else {
-        if (data->lazyFlags && DecodedOp::getNeededFlags(data->currentBlock, data->decodedOp, CF)) {
-            data->lazyFlags->setCF(data, xFLAGS);
-        }
-        data->lazyFlags = ARM8BT_FLAGS_INC16;
-        data->flagsOp = data->decodedOp;
-
         data->addValue32(xResult, data->getNativeReg(data->decodedOp->reg), 1);
         data->zeroExtend(xResult, xResult, 16);
         data->movRegToReg(data->getNativeReg(data->decodedOp->reg), xResult, 16, false);
+        ARM8BT_FLAGS_INC16->setFlags(data, flags);
     }
 }
 void opIncR32(Armv8btAsm* data) {
@@ -1966,14 +1871,9 @@ void opIncR32(Armv8btAsm* data) {
     if (!flags) {
         data->addValue32(data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->reg), 1);
     } else {
-        if (data->lazyFlags && DecodedOp::getNeededFlags(data->currentBlock, data->decodedOp, CF)) {
-            data->lazyFlags->setCF(data, xFLAGS);
-        }
-        data->lazyFlags = ARM8BT_FLAGS_INC32;
-        data->flagsOp = data->decodedOp;
-
         data->addValue32(xResult, data->getNativeReg(data->decodedOp->reg), 1);
         data->movRegToReg(data->getNativeReg(data->decodedOp->reg), xResult, 32, false);
+        ARM8BT_FLAGS_INC32->setFlags(data, flags);
     }
 }
 void opIncE8(Armv8btAsm* data) {
@@ -1981,19 +1881,11 @@ void opIncE8(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U32 restartPos = data->bufferPos;    
 
-    if (!flags) {
-        data->readMemory(addressReg, xDst, 8, true, data->decodedOp->lock != 0);
-        data->addValue32(xResult, xDst, 1);
-    } else {
-        if (data->lazyFlags && DecodedOp::getNeededFlags(data->currentBlock, data->decodedOp, CF)) {
-            data->lazyFlags->setCF(data, xFLAGS);
-        }
-        data->lazyFlags = ARM8BT_FLAGS_INC8;
-        data->flagsOp = data->decodedOp;
-
-        data->readMemory(addressReg, xDst, 8, true, data->decodedOp->lock != 0);
-        data->addValue32(xResult, xDst, 1);
+    data->readMemory(addressReg, xDst, 8, true, data->decodedOp->lock != 0);
+    data->addValue32(xResult, xDst, 1);
+    if (flags) {
         data->zeroExtend(xResult, xResult, 8);
+        ARM8BT_FLAGS_INC8->setFlags(data, flags);
     }
     data->writeMemory(addressReg, xResult, 8, true, data->decodedOp->lock != 0, xDst, restartPos);
     data->releaseTmpReg(addressReg);
@@ -2003,19 +1895,11 @@ void opIncE16(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U32 restartPos = data->bufferPos;    
 
-    if (!flags) {
-        data->readMemory(addressReg, xDst, 16, true, data->decodedOp->lock != 0);
-        data->addValue32(xResult, xDst, 1);
-    } else {
-        if (data->lazyFlags && DecodedOp::getNeededFlags(data->currentBlock, data->decodedOp, CF)) {
-            data->lazyFlags->setCF(data, xFLAGS);
-        }
-        data->lazyFlags = ARM8BT_FLAGS_INC16;
-        data->flagsOp = data->decodedOp;
-
-        data->readMemory(addressReg, xDst, 16, true, data->decodedOp->lock != 0);
-        data->addValue32(xResult, xDst, 1);
+    data->readMemory(addressReg, xDst, 16, true, data->decodedOp->lock != 0);
+    data->addValue32(xResult, xDst, 1);
+    if (flags) {        
         data->zeroExtend(xResult, xResult, 16);
+        ARM8BT_FLAGS_INC16->setFlags(data, flags);
     }
     data->writeMemory(addressReg, xResult, 16, true, data->decodedOp->lock != 0, xDst, restartPos);
     data->releaseTmpReg(addressReg);
@@ -2025,21 +1909,11 @@ void opIncE32(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U32 restartPos = data->bufferPos;
 
-    if (!flags) {
-        data->readMemory(addressReg, xDst, 32, true, data->decodedOp->lock != 0);
-        data->addValue32(xResult, xDst, 1);
-    } else {
-        if (data->lazyFlags && DecodedOp::getNeededFlags(data->currentBlock, data->decodedOp, CF)) {
-            data->lazyFlags->setCF(data, xFLAGS);
-        }
-        data->lazyFlags = ARM8BT_FLAGS_INC32;
-        data->flagsOp = data->decodedOp;
-
-        data->readMemory(addressReg, xDst, 32, true, data->decodedOp->lock != 0);
-        data->addValue32(xResult, xDst, 1);
-    }
+    data->readMemory(addressReg, xDst, 32, true, data->decodedOp->lock != 0);
+    data->addValue32(xResult, xDst, 1);
     data->writeMemory(addressReg, xResult, 32, true, data->decodedOp->lock != 0, xDst, restartPos);
     data->releaseTmpReg(addressReg);
+    ARM8BT_FLAGS_INC32->setFlags(data, flags);
 }
 
 void opDecR8(Armv8btAsm* data) {
@@ -2052,17 +1926,12 @@ void opDecR8(Armv8btAsm* data) {
         data->releaseNativeReg8(readRegDst);
         data->releaseTmpReg(tmp);
     } else {
-        if (data->lazyFlags && DecodedOp::getNeededFlags(data->currentBlock, data->decodedOp, CF)) {
-            data->lazyFlags->setCF(data, xFLAGS);
-        }
-        data->lazyFlags = ARM8BT_FLAGS_DEC8;
-        data->flagsOp = data->decodedOp;
-
         U8 readRegDst = data->getReadNativeReg8(data->decodedOp->reg);
         data->subValue32(xResult, readRegDst, 1);
         data->zeroExtend(xResult, xResult, 8);
         data->movRegToReg8(xResult, data->decodedOp->reg);
         data->releaseNativeReg8(readRegDst);
+        ARM8BT_FLAGS_DEC8->setFlags(data, flags);
     }
 }
 
@@ -2074,15 +1943,10 @@ void opDecR16(Armv8btAsm* data) {
         data->movRegToReg(data->decodedOp->reg, tmp, 16, false);
         data->releaseTmpReg(tmp);
     } else {
-        if (data->lazyFlags && DecodedOp::getNeededFlags(data->currentBlock, data->decodedOp, CF)) {
-            data->lazyFlags->setCF(data, xFLAGS);
-        }
-        data->lazyFlags = ARM8BT_FLAGS_DEC16;
-        data->flagsOp = data->decodedOp;
-
         data->subValue32(xResult, data->getNativeReg(data->decodedOp->reg), 1);
         data->zeroExtend(xResult, xResult, 16);
         data->movRegToReg(data->getNativeReg(data->decodedOp->reg), xResult, 16, false);
+        ARM8BT_FLAGS_DEC16->setFlags(data, flags);
     }
 }
 void opDecR32(Armv8btAsm* data) {
@@ -2090,14 +1954,9 @@ void opDecR32(Armv8btAsm* data) {
     if (!flags) {
         data->subValue32(data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->reg), 1);
     } else {
-        if (data->lazyFlags && DecodedOp::getNeededFlags(data->currentBlock, data->decodedOp, CF)) {
-            data->lazyFlags->setCF(data, xFLAGS);
-        }
-        data->lazyFlags = ARM8BT_FLAGS_DEC32;
-        data->flagsOp = data->decodedOp;
-
         data->subValue32(xResult, data->getNativeReg(data->decodedOp->reg), 1);
         data->movRegToReg(data->getNativeReg(data->decodedOp->reg), xResult, 32, false);
+        ARM8BT_FLAGS_DEC32->setFlags(data, flags);
     }
 }
 
@@ -2106,19 +1965,11 @@ void opDecE8(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U32 restartPos = data->bufferPos;
 
-    if (!flags) {
-        data->readMemory(addressReg, xDst, 8, true, data->decodedOp->lock != 0);
-        data->subValue32(xResult, xDst, 1);
-    } else {
-        if (data->lazyFlags && DecodedOp::getNeededFlags(data->currentBlock, data->decodedOp, CF)) {
-            data->lazyFlags->setCF(data, xFLAGS);
-        }
-        data->lazyFlags = ARM8BT_FLAGS_DEC8;
-        data->flagsOp = data->decodedOp;
-
-        data->readMemory(addressReg, xDst, 8, true, data->decodedOp->lock != 0);
-        data->subValue32(xResult, xDst, 1);
+    data->readMemory(addressReg, xDst, 8, true, data->decodedOp->lock != 0);
+    data->subValue32(xResult, xDst, 1);
+    if (flags) {
         data->zeroExtend(xResult, xResult, 8);
+        ARM8BT_FLAGS_DEC8->setFlags(data, flags);
     }
     data->writeMemory(addressReg, xResult, 8, true, data->decodedOp->lock != 0, xDst, restartPos);
     data->releaseTmpReg(addressReg);
@@ -2128,19 +1979,11 @@ void opDecE16(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U32 restartPos = data->bufferPos;
 
-    if (!flags) {
-        data->readMemory(addressReg, xDst, 16, true, data->decodedOp->lock != 0);
-        data->subValue32(xResult, xDst, 1);
-    } else {
-        if (data->lazyFlags && DecodedOp::getNeededFlags(data->currentBlock, data->decodedOp, CF)) {
-            data->lazyFlags->setCF(data, xFLAGS);
-        }
-        data->lazyFlags = ARM8BT_FLAGS_DEC16;
-        data->flagsOp = data->decodedOp;
-
-        data->readMemory(addressReg, xDst, 16, true, data->decodedOp->lock != 0);
-        data->subValue32(xResult, xDst, 1);
+    data->readMemory(addressReg, xDst, 16, true, data->decodedOp->lock != 0);
+    data->subValue32(xResult, xDst, 1);
+    if (flags) {
         data->zeroExtend(xResult, xResult, 16);
+        ARM8BT_FLAGS_DEC16->setFlags(data, flags);
     }
     data->writeMemory(addressReg, xResult, 16, true, data->decodedOp->lock != 0, xDst, restartPos);
     data->releaseTmpReg(addressReg);
@@ -2150,21 +1993,11 @@ void opDecE32(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U32 restartPos = data->bufferPos;
 
-    if (!flags) {
-        data->readMemory(addressReg, xDst, 32, true, data->decodedOp->lock != 0);
-        data->subValue32(xResult, xDst, 1);
-    } else {
-        if (data->lazyFlags && DecodedOp::getNeededFlags(data->currentBlock, data->decodedOp, CF)) {
-            data->lazyFlags->setCF(data, xFLAGS);
-        }
-        data->lazyFlags = ARM8BT_FLAGS_DEC32;
-        data->flagsOp = data->decodedOp;
-
-        data->readMemory(addressReg, xDst, 32, true, data->decodedOp->lock != 0);
-        data->subValue32(xResult, xDst, 1);
-    }
+    data->readMemory(addressReg, xDst, 32, true, data->decodedOp->lock != 0);
+    data->subValue32(xResult, xDst, 1);
     data->writeMemory(addressReg, xResult, 32, true, data->decodedOp->lock != 0, xDst, restartPos);
     data->releaseTmpReg(addressReg);
+    ARM8BT_FLAGS_DEC32->setFlags(data, flags);
 }
 
 void opPushSeg16(Armv8btAsm* data) {
@@ -2394,17 +2227,9 @@ void opPush32(Armv8btAsm* data) {
 }
 
 void opPushF16(Armv8btAsm* data) {
-    if (data->lazyFlags) {
-        data->lazyFlags->setAll(data, xFLAGS);
-        data->lazyFlags = NULL;
-    }
     data->pushNativeReg16(xFLAGS);
 }
 void opPushF32(Armv8btAsm* data) {
-    if (data->lazyFlags) {
-        data->lazyFlags->setAll(data, xFLAGS);
-        data->lazyFlags = NULL;
-    }
     data->pushNativeReg32(xFLAGS);
 }
 void opPopF16(Armv8btAsm* data) {
@@ -2421,10 +2246,6 @@ void opBound16(Armv8btAsm* data) {
     // if (cpu->reg[reg].u16<readw(address) || cpu->reg[reg].u16>readw(address + 2)) 
     //    cpu->prepareException(EXCEPTION_BOUND, 0);
 
-    // the comparison for doIf will interfere with hardware flags
-    if (data->lazyFlags && data->lazyFlags->usesHardwareFlags(CF | ZF | SF | OF | AF | PF)) {
-        data->fillFlags();
-    }
     U8 addressReg = data->getAddressReg();
     U8 tmpReg = data->getTmpReg();
     U8 tmpReg2 = data->getTmpReg();
@@ -2460,10 +2281,6 @@ void opBound16(Armv8btAsm* data) {
 void opBound32(Armv8btAsm* data) {
     // if (cpu->reg[reg].u32<readd(address) || cpu->reg[reg].u32>readd(address + 4)) {
     //    cpu->prepareException(EXCEPTION_BOUND, 0);
-    // the comparison for doIf will interfere with hardware flags
-    if (data->lazyFlags && data->lazyFlags->usesHardwareFlags(CF | ZF | SF | OF | AF | PF)) {
-        data->fillFlags();
-    }
     U8 addressReg = data->getAddressReg();
     U8 tmpReg = data->getTmpReg();
 
@@ -2508,8 +2325,6 @@ void opArplMem32(Armv8btAsm* data) {
 }
 
 void opDaa(Armv8btAsm* data) {
-    data->fillFlags(CF | AF); // only these two flags are used, so by filling it here, syncRegsFromHost won't write the code to fill all of them
-
     data->syncRegsFromHost();
     // void daa(CPU* cpu)
     data->mov64(0, xCPU); // param 1 (CPU)    
@@ -2518,8 +2333,6 @@ void opDaa(Armv8btAsm* data) {
 }
 
 void opDas(Armv8btAsm* data) {
-    data->fillFlags(CF | AF); // only these two flags are used, so by filling it here, syncRegsFromHost won't write the code to fill all of them
-
     data->syncRegsFromHost();
     // void das(CPU* cpu)
     data->mov64(0, xCPU); // param 1 (CPU)    
@@ -2527,8 +2340,6 @@ void opDas(Armv8btAsm* data) {
     data->syncRegsToHost();
 }
 void opAaa(Armv8btAsm* data) {
-    data->fillFlags(AF); // only this flag is used, so by filling it here, syncRegsFromHost won't write the code to fill all of them
-
     data->syncRegsFromHost();
     // void aaa(CPU* cpu)
     data->mov64(0, xCPU); // param 1 (CPU)    
@@ -2536,8 +2347,6 @@ void opAaa(Armv8btAsm* data) {
     data->syncRegsToHost();
 }
 void opAas(Armv8btAsm* data) {
-    data->fillFlags(AF); // only this flag is used
-    data->lazyFlags = NULL;
     data->syncRegsFromHost();
     // void aas(CPU* cpu)
     data->mov64(0, xCPU); // param 1 (CPU)    
@@ -2643,11 +2452,6 @@ void doCondition(Armv8btAsm* data, Conditional conditional, const std::function<
     case condional_NL: flagsToTest = SF | OF; neg = true; singleFlag = false; break;
     case condional_LE: flagsToTest = SF | OF | ZF; singleFlag = false; checkZF = true;  break;
     case condional_NLE: flagsToTest = SF | OF | ZF; neg = true; singleFlag = false; checkZF = true; break;
-    }
-    if (data->lazyFlags) {
-        U32 flags = DecodedOp::getNeededFlags(data->currentBlock, data->decodedOp, ZF | SF | PF | AF | OF | CF);
-        data->fillFlags(flags | flagsToTest);
-        data->lazyFlags = NULL;
     }
             
     if (singleFlag) {
@@ -3183,10 +2987,6 @@ void opSahf(Armv8btAsm* data) {
     data->releaseTmpReg(tmpReg);
 }
 void opLahf(Armv8btAsm* data) {
-    if (data->lazyFlags) {
-        data->lazyFlags->setAll(data, xFLAGS);
-        data->lazyFlags = NULL;
-    }
     U8 tmpReg = data->getTmpReg();
     data->andValue32(tmpReg, xFLAGS, SF | ZF | AF | PF | CF);
     data->orValue32(tmpReg, tmpReg, 2);
@@ -3194,9 +2994,6 @@ void opLahf(Armv8btAsm* data) {
     data->releaseTmpReg(tmpReg);
 }
 void opSalc(Armv8btAsm* data) {
-    if (data->lazyFlags) {
-        data->fillFlags(CF);
-    }
     // if (cpu->getCF()) AL = 0xFF; else AL = 0;
     U8 tmpReg = data->getTmpReg();
     data->copyBitsFromSourceToDestAtPosition(tmpReg, xFLAGS, 31, 1, false);
@@ -3395,9 +3192,6 @@ void opHlt(Armv8btAsm* data) {
 void opCmc(Armv8btAsm* data) {
     // Complement Carry Flag
     // cpu->setCF(!cpu->getCF());
-    if (data->lazyFlags) {
-        data->fillFlags(CF);
-    }
     U8 tmpReg = data->getTmpReg();
     data->notReg32(tmpReg, xFLAGS);
     data->copyBitsFromSourceAtPositionToDest(xFLAGS, tmpReg, 0, 1, true);
@@ -3406,13 +3200,11 @@ void opCmc(Armv8btAsm* data) {
 void opClc(Armv8btAsm* data) {
     // cpu->fillFlags();
     // cpu->removeCF();
-    data->fillFlags();
     data->andValue32(xFLAGS, xFLAGS, ~CF);
 }
 void opStc(Armv8btAsm* data) {
     // cpu->fillFlags();
     // cpu->addCF();
-    data->fillFlags();
     data->orValue32(xFLAGS, xFLAGS, CF);
 }
 void opCli(Armv8btAsm* data) {
@@ -3665,9 +3457,6 @@ void opLoopNZ(Armv8btAsm* data) {
     //         NEXT_BRANCH2();
     //     }
     // }
-    if (data->lazyFlags) {
-        data->fillFlags(ZF);
-    }
     U8 tmpReg = data->getTmpReg();
     if (data->decodedOp->ea16) {
         data->movRegToReg(tmpReg, xECX, 16, true);
@@ -3710,9 +3499,6 @@ void opLoopZ(Armv8btAsm* data) {
     //         NEXT_BRANCH2();
     //     }
     // }
-    if (data->lazyFlags) {
-        data->fillFlags(ZF);
-    }
     U8 tmpReg = data->getTmpReg();
     if (data->decodedOp->ea16) {
         data->movRegToReg(tmpReg, xECX, 16, true);
@@ -4358,12 +4144,6 @@ static void doSetCondition(Armv8btAsm* data, Conditional conditional, bool mem) 
     case condional_LE: flagsToTest = SF | OF | ZF; singleFlag = false; checkZF = true;  break;
     case condional_NLE: flagsToTest = SF | OF | ZF; neg = true; singleFlag = false; checkZF = true; break;
     }
-    if (data->lazyFlags) {
-        U32 flags = DecodedOp::getNeededFlags(data->currentBlock, data->decodedOp, ZF | SF | PF | AF | OF | CF);
-        data->fillFlags(flags | flagsToTest);
-        data->lazyFlags = NULL;
-    }
-
     if (singleFlag || multiOrFlag) {
         data->testValue32(xFLAGS, flagsToTest);  
     } else {
@@ -4587,21 +4367,17 @@ void opXaddR32R32(Armv8btAsm* data) {
     U32 flags = data->flagsNeeded();
     bool needsHardwareFlags = false;
 
-    if (!flags) {
-        data->lazyFlags = NULL;
-    } else {
-        data->lazyFlags = ARM8BT_FLAGS_ADD32;
-        if (data->lazyFlags->usesDst(flags)) {
-            data->movRegToReg(xDst, data->getNativeReg(data->decodedOp->rm), 32, false);
-        }
-        if (data->lazyFlags->usesSrc(flags)) {
-            data->movRegToReg(xSrc, data->getNativeReg(data->decodedOp->reg), 32, false);
-        }
-        needsHardwareFlags = data->lazyFlags->usesHardwareFlags(flags);
+    if (ARM8BT_FLAGS_ADD32->usesDst(flags)) {
+        data->movRegToReg(xDst, data->getNativeReg(data->decodedOp->rm), 32, false);
     }
+    if (ARM8BT_FLAGS_ADD32->usesSrc(flags)) {
+        data->movRegToReg(xSrc, data->getNativeReg(data->decodedOp->reg), 32, false);
+    }
+    needsHardwareFlags = ARM8BT_FLAGS_ADD32->usesHardwareFlags(flags);
     data->addRegs32(xResult, data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->rm), 0, needsHardwareFlags);
     data->movRegToReg(data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->rm), 32, false);
     data->movRegToReg(data->getNativeReg(data->decodedOp->rm), data->getNativeReg(xResult), 32, false);
+    ARM8BT_FLAGS_ADD32->setFlags(data, flags);
 }
 void opXaddR32E32(Armv8btAsm* data) {
     // cpu->src.u32 = cpu->reg[op->r1].u32;
@@ -4613,15 +4389,10 @@ void opXaddR32E32(Armv8btAsm* data) {
     U32 flags = data->flagsNeeded();
     bool needsHardwareFlags = false;
 
-    if (!flags) {
-        data->lazyFlags = NULL;
-    } else {
-        data->lazyFlags = ARM8BT_FLAGS_ADD32;
-        if (data->lazyFlags->usesSrc(flags)) {
-            data->movRegToReg(xSrc, data->getNativeReg(data->decodedOp->reg), 32, false);
-        }
-        needsHardwareFlags = data->lazyFlags->usesHardwareFlags(flags);
+    if (ARM8BT_FLAGS_ADD32->usesSrc(flags)) {
+        data->movRegToReg(xSrc, data->getNativeReg(data->decodedOp->reg), 32, false);
     }
+    needsHardwareFlags = ARM8BT_FLAGS_ADD32->usesHardwareFlags(flags);
     U8 addressReg = data->getAddressReg();
     U32 restartPos = data->bufferPos;
     data->readMemory(addressReg, xDst, 32, true, data->decodedOp->lock != 0);
@@ -4629,6 +4400,7 @@ void opXaddR32E32(Armv8btAsm* data) {
     data->writeMemory(addressReg, xResult, 32, true, data->decodedOp->lock != 0, xDst, restartPos);
     data->movRegToReg(data->getNativeReg(data->decodedOp->reg), xDst, 32, false);
     data->releaseTmpReg(addressReg);
+    ARM8BT_FLAGS_ADD32->setFlags(data, flags);
 }
 
 // 29 23 03 11          add	w9, w25, #0xc8          // calculate address
@@ -4663,12 +4435,6 @@ void opCmpXchg8b(Armv8btAsm* data) {
     //     EAX = (U32)value2;
     // }
     U32 flags = DecodedOp::getNeededFlags(data->currentBlock, data->decodedOp, CF | SF | PF | AF | OF | ZF);
-    if (data->lazyFlags) {
-        if (flags) {
-            data->fillFlags(flags & (CF | SF | PF | AF | OF));
-        }
-        data->lazyFlags = NULL;
-    }
     
     U8 addressReg = data->getAddressReg();
     U32 restartPos = data->bufferPos;
@@ -5363,7 +5129,6 @@ void comisXmmXmm(Armv8btAsm* data, U8 reg1, U8 reg2, bool is64bit) {
     U8 tmpReg = data->getTmpReg();
 
     // cpu->flags &= ~(AF | OF | SF | CF | PF | ZF);
-    data->lazyFlags = NULL;
     data->movn(tmpReg, AF | OF | SF | CF | PF | ZF);
     data->andRegs32(xFLAGS, xFLAGS, tmpReg);
 

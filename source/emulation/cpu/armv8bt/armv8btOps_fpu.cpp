@@ -307,7 +307,6 @@ static void doFCOMI(Armv8btAsm* data, U8 v1, S32 tagIndex1, U8 v2, S32 tagIndex2
 	// st > other
 	// setFlags(cpu, 0);
 
-	data->lazyFlags = NULL;
 	data->andValue32(xFLAGS, xFLAGS, ~FMASK_TEST);
 
 	fcompare(data, v1, tagIndex1, v2, tagIndex2, [data] {
