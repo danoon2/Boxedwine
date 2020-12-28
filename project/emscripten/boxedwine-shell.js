@@ -202,14 +202,16 @@
             if(!allowParameterOverride()){
                 glext = "";
             }else{
-                if( (glext.startsWith("%22") && glext.endsWith("%22") )
-            		|| (glext.startsWith('%27') && glext.endsWith('%27'))){
-                	glext = glext.substring(3, glext.length - 3);
-	            	glext = glext.split('%20').join(' ');
-	            	glext = '"' + glext +  '"';
-            	}else{
-	            	console.log("glext paramater must be in quoted string");
-            	}
+            	if(glext.length > 6) {
+                	if( (glext.startsWith("%22") && glext.endsWith("%22") )
+                		|| (glext.startsWith('%27') && glext.endsWith('%27'))){
+                    	glext = glext.substring(3, glext.length - 3);
+	                	glext = glext.split('%20').join(' ');
+	                	glext = '"' + glext +  '"';
+                	}else{
+	                	console.log("glext paramater must be in quoted string");
+                	}
+                }
             }
             if(glext.length > 0) {
             	console.log("setting glext to: "+glext);
@@ -676,7 +678,7 @@
         }
         function buildBrowserFileSystem(writableStorage, isDropBox, homeAdapter, extraFSs, zipfs, cdromfs)
         {
-            FS.createPath(FS.root, 'root', FS.createPath);
+            FS.createPath(FS.root, 'root', true, true);
             FS.createPath("/root", 'base', true, true);
             FS.createPath("/root", 'files', true, true);
             FS.createPath("/root", 'cdrom', true, false);
@@ -888,6 +890,9 @@
         }
         var initialSetup = function(){
             console.log("running initial setup");
+            ENV.LIBGL_NPOT = 2;
+			ENV.LIBGL_DEFAULT_WRAP = 0;
+			ENV.LIBGL_MIPMAP = 3;
             setConfiguration();
             if (Config.emEnvProps.length > 0) {
             	Config.emEnvProps.forEach(function(prop){
