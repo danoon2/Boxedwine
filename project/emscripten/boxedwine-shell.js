@@ -116,14 +116,16 @@
             if(!allowParameterOverride()){
                 glext = "";
             }else{
-                if( (glext.startsWith("%22") && glext.endsWith("%22") )
-            		|| (glext.startsWith('%27') && glext.endsWith('%27'))){
-                	glext = glext.substring(3, glext.length - 3);
-	            	glext = glext.split('%20').join(' ');
-	            	glext = '"' + glext +  '"';
-            	}else{
-	            	console.log("glext paramater must be in quoted string");
-            	}
+            	if(glext.length > 6) {
+                	if( (glext.startsWith("%22") && glext.endsWith("%22") )
+                		|| (glext.startsWith('%27') && glext.endsWith('%27'))){
+                    	glext = glext.substring(3, glext.length - 3);
+	                	glext = glext.split('%20').join(' ');
+	                	glext = '"' + glext +  '"';
+                	}else{
+	                	console.log("glext paramater must be in quoted string");
+                	}
+                }
             }
             if(glext.length > 0) {
             	console.log("setting glext to: "+glext);
@@ -544,9 +546,9 @@
 
         function buildBrowserFileSystem(writableStorage, isDropBox, homeAdapter, extraFSs, zipfs)
         {
-            FS.createFolder(FS.root, 'root', true, true);
-            FS.createFolder("/root", 'base', true, true);
-            FS.createFolder("/root", 'files', true, true);
+            FS.createPath(FS.root, 'root', true, true);
+            FS.createPath("/root", 'base', true, true);
+            FS.createPath("/root", 'files', true, true);
             var mainfs = null;
 
             BrowserFS.FileSystem.OverlayFS.Create({"readable":zipfs,"writable":new BrowserFS.FileSystem.InMemory()}, function(e3, rootOverlay){
@@ -697,7 +699,7 @@
                 }catch(ef){
                     if(ef.message == "No such file or directory"  || ef.message === "FS error") {
                         try{
-                            FS.createFolder("/root/base/" + parent, dir, true, true);
+                            FS.createPath("/root/base/" + parent, dir, true, true);
                         }catch(cef) {
                             console.log("Directory creation error:" + cef.message + " for: " + parent + "/" + dir);
                         }
@@ -751,6 +753,9 @@
         }
         var initialSetup = function(){
             console.log("running initial setup");
+            ENV.LIBGL_NPOT = 2;
+			ENV.LIBGL_DEFAULT_WRAP = 0;
+			ENV.LIBGL_MIPMAP = 3;
             setConfiguration();
             //loadScreen();
 
@@ -1119,7 +1124,7 @@ function createFolder(parent, dir)
 {
     var created = true;
     try{
-        FS.createFolder(parent, dir, true, true);
+        FS.createPath(parent, dir, true, true);
         //console.log(entry + " is a dir parent="+parent+" dir="+dir);
         //console.log("Directory created :" + parent + "/" +  dir);
     }catch(ef){
@@ -1130,7 +1135,7 @@ function createFolder(parent, dir)
             try{
                 //yeah, like that would work! FS.rmdir(parent + dir);
                 FS.rename(parent + dir,parent + dir + calcBackupFilename());
-                FS.createFolder(parent, dir, true, true);
+                FS.createPath(parent, dir, true, true);
                 console.log("Directory replaced: " + parent + dir);
             }catch(eef){
                 console.log("eef="+eef);
