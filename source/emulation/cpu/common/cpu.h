@@ -5,6 +5,7 @@
 #include "lazyFlags.h"
 #include "fpu.h"
 #include "../decoder.h"
+#define SIMDE_NO_NATIVE
 #include "../../../../lib/simde/simde/x86/sse.h"
 #include "../../../../lib/simde/simde/x86/sse2.h"
 
