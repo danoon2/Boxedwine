@@ -18,6 +18,7 @@
 
 #include "boxedwine.h"
 #include "common_sse.h"
+#include <math.h>
 
 void common_addpsXmm(CPU* cpu, U32 r1, U32 r2) {
     cpu->xmm[r1].ps = simde_mm_add_ps(cpu->xmm[r1].ps, cpu->xmm[r2].ps);

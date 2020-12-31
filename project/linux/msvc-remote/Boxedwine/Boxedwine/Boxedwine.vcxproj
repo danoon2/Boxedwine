@@ -4091,9 +4091,16 @@
     <ClInclude Include="..\..\..\..\..\lib\sdl2\include\SDL_video.h" />
     <ClInclude Include="..\..\..\..\..\lib\sdl2\include\SDL_vulkan.h" />
     <ClInclude Include="..\..\..\..\..\lib\simde\simde\check.h" />
+    <ClInclude Include="..\..\..\..\..\lib\simde\simde\debug-trap.h" />
     <ClInclude Include="..\..\..\..\..\lib\simde\simde\hedley.h" />
+    <ClInclude Include="..\..\..\..\..\lib\simde\simde\simde-align.h" />
     <ClInclude Include="..\..\..\..\..\lib\simde\simde\simde-arch.h" />
     <ClInclude Include="..\..\..\..\..\lib\simde\simde\simde-common.h" />
+    <ClInclude Include="..\..\..\..\..\lib\simde\simde\simde-constify.h" />
+    <ClInclude Include="..\..\..\..\..\lib\simde\simde\simde-detect-clang.h" />
+    <ClInclude Include="..\..\..\..\..\lib\simde\simde\simde-diagnostic.h" />
+    <ClInclude Include="..\..\..\..\..\lib\simde\simde\simde-features.h" />
+    <ClInclude Include="..\..\..\..\..\lib\simde\simde\simde-math.h" />
     <ClInclude Include="..\..\..\..\..\lib\simde\simde\x86\avx.h" />
     <ClInclude Include="..\..\..\..\..\lib\simde\simde\x86\avx2.h" />
     <ClInclude Include="..\..\..\..\..\lib\simde\simde\x86\mmx.h" />

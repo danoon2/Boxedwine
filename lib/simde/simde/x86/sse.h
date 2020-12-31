@@ -1793,8 +1793,13 @@ simde_mm_cvt_ss2si (simde__m128 a) {
   #elif defined(SIMDE_ARM_NEON_A32V8_NATIVE) && !defined(SIMDE_BUG_GCC_95399)
     return vgetq_lane_s32(vcvtnq_s32_f32(simde__m128_to_neon_f32(a)), 0);
   #else
-    simde__m128_private a_ = simde__m128_to_private(simde_mm_round_ps(a, SIMDE_MM_FROUND_CUR_DIRECTION));
-    return SIMDE_CONVERT_FTOI(int32_t, a_.f32[0]);
+    simde_float32 v = a.f32[0];
+#if !defined(SIMDE_FAST_CONVERSION_RANGE)
+    return ((v > HEDLEY_STATIC_CAST(simde_float32, INT32_MIN)) && (v < HEDLEY_STATIC_CAST(simde_float32, INT32_MAX))) ?
+        SIMDE_CONVERT_FTOI(int32_t, v) : INT32_MIN;
+#else
+    return SIMDE_CONVERT_FTOI(int32_t, v);
+#endif
   #endif
 }
 #if defined(SIMDE_X86_SSE_ENABLE_NATIVE_ALIASES)

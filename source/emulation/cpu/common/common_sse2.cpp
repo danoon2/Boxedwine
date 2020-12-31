@@ -18,6 +18,7 @@
 
 #include "boxedwine.h"
 #include "common_sse.h"
+#include <math.h>
 
 #define TO_PD simde_mm_castps_pd
 #define FROM_PD simde_mm_castpd_ps

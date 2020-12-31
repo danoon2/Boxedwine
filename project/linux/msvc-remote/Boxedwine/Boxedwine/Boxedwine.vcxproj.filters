@@ -4640,6 +4640,27 @@
     <ClInclude Include="..\..\..\..\..\source\ui\utils\imgui_markdown.h">
       <Filter>source\ui\utils</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\..\lib\simde\simde\debug-trap.h">
+      <Filter>lib\simde\simde</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\lib\simde\simde\simde-align.h">
+      <Filter>lib\simde\simde</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\lib\simde\simde\simde-constify.h">
+      <Filter>lib\simde\simde</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\lib\simde\simde\simde-detect-clang.h">
+      <Filter>lib\simde\simde</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\lib\simde\simde\simde-diagnostic.h">
+      <Filter>lib\simde\simde</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\lib\simde\simde\simde-features.h">
+      <Filter>lib\simde\simde</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\lib\simde\simde\simde-math.h">
+      <Filter>lib\simde\simde</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\..\..\..\lib\sdl2\include\SDL_config.h.cmake">
