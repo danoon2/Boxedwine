@@ -1788,6 +1788,16 @@ simde_mm_cvt_si2ss (simde__m128 a, int32_t b) {
 SIMDE_FUNCTION_ATTRIBUTES
 int32_t
 simde_mm_cvt_ss2si (simde__m128 a) {
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+#if defined(SIMDE_SSE_NATIVE)
+  return _mm_cvt_ss2si(a.n);
+#else
+  return (int32_t) a.f32[0];
+#endif
+=======
+>>>>>>> simde update
   #if defined(SIMDE_X86_SSE_NATIVE)
     return _mm_cvt_ss2si(a);
   #elif defined(SIMDE_ARM_NEON_A32V8_NATIVE) && defined(SIMDE_FAST_CONVERSION_RANGE) && !defined(SIMDE_BUG_GCC_95399)
@@ -1802,6 +1812,10 @@ simde_mm_cvt_ss2si (simde__m128 a) {
       return SIMDE_CONVERT_FTOI(int32_t, a_.f32[0]);
     #endif
   #endif
+<<<<<<< HEAD
+=======
+>>>>>>> SIMDe update, simde_mm_cvt_ss2si
+>>>>>>> simde update
 }
 #if defined(SIMDE_X86_SSE_ENABLE_NATIVE_ALIASES)
 #  define _mm_cvt_ss2si(a) simde_mm_cvt_ss2si((a))
