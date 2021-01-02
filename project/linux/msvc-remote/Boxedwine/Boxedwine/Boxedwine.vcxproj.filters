@@ -4719,7 +4719,6 @@
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_string.h">
       <Filter>source\emulation\cpu\armv8bt</Filter>
     </ClInclude>
-<<<<<<< HEAD
     <ClInclude Include="..\..\..\..\..\lib\simde\simde\debug-trap.h">
       <Filter>lib\simde\simde</Filter>
     </ClInclude>
@@ -4740,10 +4739,8 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\lib\simde\simde\simde-math.h">
       <Filter>lib\simde\simde</Filter>
-=======
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_fpu.h">
       <Filter>source\emulation\cpu\armv8bt</Filter>
->>>>>>> ARMv8: starting working on the FPU
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\ui\controls\helpView.h" />
     <ClInclude Include="..\..\..\..\..\source\ui\utils\imgui_markdown.h" />
