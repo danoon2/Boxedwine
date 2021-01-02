@@ -5,6 +5,15 @@
 #include "lazyFlags.h"
 #include "fpu.h"
 #include "../decoder.h"
+#ifndef SIMDE_NO_NATIVE
+#define SIMDE_NO_NATIVE
+#endif
+#ifndef SIMDE_NO_VECTOR
+#define SIMDE_NO_VECTOR
+#endif
+#ifndef SIMDE_NO_CHECK_IMMEDIATE_CONSTANT
+#define SIMDE_NO_CHECK_IMMEDIATE_CONSTANT
+#endif
 #include "../../../../lib/simde/simde/x86/sse.h"
 #include "../../../../lib/simde/simde/x86/sse2.h"
 

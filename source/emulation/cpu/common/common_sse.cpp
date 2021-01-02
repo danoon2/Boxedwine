@@ -18,6 +18,7 @@
 
 #include "boxedwine.h"
 #include "common_sse.h"
+#include <math.h>
 
 void common_addpsXmm(CPU* cpu, U32 r1, U32 r2) {
     cpu->xmm[r1].ps = simde_mm_add_ps(cpu->xmm[r1].ps, cpu->xmm[r2].ps);
@@ -587,7 +588,7 @@ void common_maskmovqEDIMmxMmx(CPU* cpu, U32 r1, U32 r2, U32 address) {
     mask.u64[0] = cpu->reg_mmx[r2].q;
 
     readMemory(result, address, 8);
-    simde_mm_maskmove_si64(a, mask, (char*)result);
+    simde_mm_maskmove_si64(a, mask, (int8_t*)result);
     writeMemory(address, result, 8);
 }
 
