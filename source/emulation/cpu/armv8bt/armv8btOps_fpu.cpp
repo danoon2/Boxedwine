@@ -37,7 +37,7 @@ static U8 loadInt64AsDouble(Armv8btAsm* data) {
 }
 
 static U8 calculateIndexReg(Armv8btAsm* data, U32 index) {
-	U8 result = data->vGetTmpReg();
+	U8 result = data->getTmpReg();
 	data->addValue32(result, data->getFpuTopReg(), index);
 	data->andValue32(result, result, 7);
 	return result;
@@ -109,8 +109,12 @@ static U8 readDouble(Armv8btAsm* data, U8 reg = 0) {
 
 class FPUReg {
 public:
-	FPUReg(Armv8btAsm* data, U32 index, bool writeBack, bool read = true) : data(data), writeBack(writeBack), topReg(0) {
-		this->reg = index + vMMX0;
+	FPUReg(Armv8btAsm* data, U32 index, bool writeBack, bool read = true, bool useTmpReg = false) : data(data), writeBack(writeBack), topReg(0), useTmpReg(useTmpReg) {
+		if (useTmpReg) {
+			this->reg = data->vGetTmpReg();
+		} else {
+			this->reg = index + vMMX0;
+		}
 		if (!data->isFpuRegCached[index]) {
 			if (index == 0) {
 				if (read) {
@@ -125,11 +129,16 @@ public:
 					data->releaseTmpReg(this->topReg);
 				}
 			}
-			if (read) {
+			if (read && !useTmpReg) {
 				data->isFpuRegCached[index] = true;
 			}
-		} else if (writeBack && index>0) {
-			this->topReg = calculateIndexReg(data, index);
+		} else {
+			if (useTmpReg) {
+				data->vMov64(this->reg, 0, index + vMMX0, 0);
+			}
+			if (writeBack && index > 0) {
+				this->topReg = calculateIndexReg(data, index);
+			}
 		} 
 	}
 	~FPUReg() {
@@ -144,6 +153,9 @@ public:
 				data->releaseTmpReg(this->topReg);
 			}
 			this->writeBack = false;
+		}
+		if (this->useTmpReg) {
+			data->vReleaseTmpReg(this->reg);
 		}
 	}
 	void hostReadTag(U8 resultReg) {
@@ -160,6 +172,7 @@ public:
 	bool writeBack;
 	U8 reg;
 	U8 topReg;
+	bool useTmpReg;
 };
 
 static void PREP_PUSH(Armv8btAsm* data, bool writeTag = true) {
@@ -422,10 +435,12 @@ void opFLD_STi(Armv8btAsm* data) {
 	// int reg_from = cpu->fpu.STV(reg);
 	// cpu->fpu.PREP_PUSH();
 	// cpu->fpu.FST(reg_from, cpu->fpu.STV(0));
-	FPUReg from(data, data->decodedOp->reg, false);
+	FPUReg from(data, data->decodedOp->reg, false, true, true);
 	U8 tagReg = data->getTmpReg();
 	from.hostReadTag(tagReg); // read before push changes indexes
+
 	PREP_PUSH(data, false);
+
 	FPUReg to(data, 0, true, false);
 	data->vMov64(to.reg, 0, from.reg, 0);
 	to.hostWriteTag(tagReg);
