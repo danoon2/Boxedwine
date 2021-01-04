@@ -85,7 +85,7 @@ void arithRE(Armv8btAsm* data, arithReg32 pfn, Arm8BtFlags* lazyFlags, U32 width
 
     U8 readRegDst = setupRegForArith(data, data->decodedOp->reg, usesDst, xDst, width);
 
-    if (needsResult && !usesResult && width == 32) {
+    if (needsResult && !usesResult && !usesDst && width == 32) {
         pfn(data, readRegDst, readRegDst, xSrc, hardwareFlags);
     } else {
         pfn(data, xResult, readRegDst, xSrc, hardwareFlags);
@@ -133,7 +133,7 @@ void arithRR(Armv8btAsm* data, arithReg32 pfn, Arm8BtFlags* lazyFlags, U32 width
     U8 readRegDst = setupRegForArith(data, data->decodedOp->reg, usesDst, xDst, width);
     U8 readRegSrc = setupRegForArith(data, data->decodedOp->rm, usesSrc, xSrc, width);
 
-    if (needsResult && width == 32 && !usesResult) {
+    if (needsResult && width == 32 && !usesResult && !usesDst) {
         pfn(data, readRegDst, readRegDst, readRegSrc, hardwareFlags);
     } else {
         pfn(data, xResult, readRegDst, readRegSrc, hardwareFlags);
@@ -154,7 +154,7 @@ void arithRI(Armv8btAsm* data, arithReg32 pfnReg, arithValue32 pfnValue, Arm8BtF
     bool needToReleaseReadReg = false;
     U8 readRegDst = setupRegForArith(data, data->decodedOp->reg, usesDst || needRegZeroExtended, xDst, width);
 
-    if (needsResult && !usesResult && width == 32 && !usesSrc) {
+    if (needsResult && !usesResult && width == 32 && !usesSrc && !usesDst) {
         pfnValue(data, readRegDst, readRegDst, data->decodedOp->imm, hardwareFlags);
     } else {
         if (usesSrc) {
