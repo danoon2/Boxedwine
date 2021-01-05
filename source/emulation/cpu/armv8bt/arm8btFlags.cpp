@@ -510,9 +510,14 @@ class Arm8BtFlagsSub32 : public Arm8BtFlagsDefault32 {
     virtual void setOF(Armv8btAsm* data, U8 reg) {
         // ((cpu->dst.u32 ^ cpu->src.u32) & (cpu->dst.u32 ^ cpu->result.u32)) & 0x80000000;
         U8 tmp = data->getTmpReg();
-        data->csetVs(tmp);
+        U8 tmp2 = data->getTmpReg();
+        data->xorRegs32(tmp, xDst, xSrc);
+        data->xorRegs32(tmp2, xDst, xResult);
+        data->andRegs32(tmp, tmp, tmp2);
+        data->shiftRegRightWithValue32(tmp, tmp, 31);
         data->copyBitsFromSourceToDestAtPosition(reg, tmp, 11, 1); // OF is 0x800 (bit 11)
         data->releaseTmpReg(tmp);
+        data->releaseTmpReg(tmp2);
     }
     virtual void setZF(Armv8btAsm* data, U8 reg) {
         U8 tmp = data->getTmpReg();
@@ -530,16 +535,16 @@ class Arm8BtFlagsSub32 : public Arm8BtFlagsDefault32 {
         data->releaseTmpReg(tmp);
     }
     virtual bool usesHardwareFlags(U32 mask) {
-        return (mask & (OF | ZF | SF)) != 0;
+        return (mask & (ZF | SF)) != 0;
     }
     virtual bool usesResult(U32 mask) {
-        return (mask & (AF | PF)) != 0;
+        return (mask & (AF | PF | OF)) != 0;
     }
     virtual bool usesSrc(U32 mask) {
-        return (mask & (AF | CF)) != 0;
+        return (mask & (AF | CF | OF)) != 0;
     }
     virtual bool usesDst(U32 mask) {
-        return (mask & (AF | CF)) != 0;
+        return (mask & (AF | CF | OF)) != 0;
     }
 };
 
