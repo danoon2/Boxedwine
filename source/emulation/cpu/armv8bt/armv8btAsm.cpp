@@ -4655,7 +4655,6 @@ void Armv8btAsm::logOp(U32 eip) {
     mov64(0, xCPU);
     callHost((void*)arm64log);
     syncRegsToHost();
-    loadConst(29, eip);
 }
 
 void Armv8btAsm::signalIllegalInstruction(int code) {

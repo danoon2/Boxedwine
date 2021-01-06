@@ -115,34 +115,34 @@ public:
 		} else {
 			this->reg = index + vMMX0;
 		}
-		if (!data->isFpuRegCached[index]) {
-			if (index == 0) {
-				if (read) {
-					data->vReadMem64RegOffset(this->reg, data->getFpuOffset(), data->getFpuTopReg(), 3);
+		if (index == 0) {
+			this->topReg = data->getFpuTopReg();
+			this->topRegNeedsRelease = false;
+		} else {
+			this->topReg = calculateIndexReg(data, index);
+			this->topRegNeedsRelease = true;
+		}
+		if (!data->isFpuRegCached[index]) {			
+			if (read) {
+				data->vReadMem64RegOffset(this->reg, data->getFpuOffset(), this->topReg, 3);
+				if (!useTmpReg) {
+					data->isFpuRegCached[index] = true;
 				}
-			} else {
-				this->topReg = calculateIndexReg(data, index);
-				if (read) {
-					data->vReadMem64RegOffset(this->reg, data->getFpuOffset(), this->topReg, 3);
-				}
-				if (!writeBack) {
-					data->releaseTmpReg(this->topReg);
-				}
-			}
-			if (read && !useTmpReg) {
-				data->isFpuRegCached[index] = true;
 			}
 		} else {
 			if (useTmpReg) {
 				data->vMov64(this->reg, 0, index + vMMX0, 0);
 			}
-			if (writeBack && index > 0) {
-				this->topReg = calculateIndexReg(data, index);
-			}
 		} 
 	}
 	~FPUReg() {
 		doWrite();
+		if (this->useTmpReg) {
+			data->vReleaseTmpReg(this->reg);
+		}
+		if (this->topRegNeedsRelease) {
+			data->releaseTmpReg(this->topReg);
+		}
 	}
 	void doWrite() {
 		if (this->writeBack) {
@@ -153,10 +153,7 @@ public:
 				data->releaseTmpReg(this->topReg);
 			}
 			this->writeBack = false;
-		}
-		if (this->useTmpReg) {
-			data->vReleaseTmpReg(this->reg);
-		}
+		}		
 	}
 	void hostReadTag(U8 resultReg) {
 		U8 offsetReg = data->getFpuTagOffset();
@@ -172,6 +169,7 @@ public:
 	bool writeBack;
 	U8 reg;
 	U8 topReg;
+	bool topRegNeedsRelease;
 	bool useTmpReg;
 };
 

@@ -3135,7 +3135,7 @@ void opIntO(Armv8btAsm* data) {
     data->done = true;
 }
 static void doIret(Armv8btAsm* data, U32 big, U32 eip) {    
-    kpanic("Need to test");
+    //kpanic("Need to test");
     data->syncRegsFromHost();
 
     // void common_iret(CPU * cpu, U32 big, U32 oldEip)
