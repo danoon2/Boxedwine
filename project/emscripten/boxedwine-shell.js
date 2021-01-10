@@ -29,7 +29,7 @@
         Config.showUploadDownload = false;
 		Config.recordLoadedFiles = false;
 		var recordedFiles = [];
-				
+
         var isRunning = false;
         var uniqueDirs = {};
         var timer = null;
@@ -891,9 +891,6 @@
         }
         var initialSetup = function(){
             console.log("running initial setup");
-            ENV.LIBGL_NPOT = 2;
-			ENV.LIBGL_DEFAULT_WRAP = 0;
-			ENV.LIBGL_MIPMAP = 3;
             setConfiguration();
             if (Config.emEnvProps.length > 0) {
             	Config.emEnvProps.forEach(function(prop){
