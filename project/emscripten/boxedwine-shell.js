@@ -11,7 +11,7 @@
         let DROPBOX_APP_KEY = 'put key in here';
         let RECEIVE_URL = "http://put url in here/oauth_receiver.html";
 
-        let DEFAULT_AUTO_RUN = true;
+        let DEFAULT_AUTO_RUN = false;
         let DEFAULT_SOUND_ENABLED = true;
         let DEFAULT_APP_DIRECTORY = ROOT + "/files/";
         let DEFAULT_BPP = 32;
@@ -24,7 +24,7 @@
         Config.urlParams = "";
         Config.storageMode = STORAGE_MEMORY;
         Config.isRunningInline = false;
-        Config.showUploadDownload = false;
+        Config.showUploadDownload = true;
 
         var isRunning = false;
         var uniqueDirs = {};
@@ -71,12 +71,51 @@
             Config.useRangeRequests = getUseRangeRequests();
             Config.glext = getGLExtensions();
 			Config.cpu = getCPU();
+			Config.gl4esProps = getGl4esProps();
         }
         function allowParameterOverride() {
             if(Config.urlParams.length >0) {
                 return true;
             }
             return ALLOW_PARAM_OVERRIDE_FROM_URL;
+        }
+        function getGl4esProps(){
+            var gl4es_props = getParameter("gl4es").trim();
+            let allProps = [];
+            //todo add default props ? ENV.LIBGL_NPOT = 2; ENV.LIBGL_DEFAULT_WRAP = 0;	ENV.LIBGL_MIPMAP = 3;
+	        //ie allProps.push({key: 'LIBGL_NPOT', value: 2});
+            if(allowParameterOverride()){
+                if(gl4es_props.length > 6) {
+                	if( (gl4es_props.startsWith("%22") && gl4es_props.endsWith("%22") )
+                		|| (gl4es_props.startsWith('%27') && gl4es_props.endsWith('%27'))){
+                    	gl4es_props = gl4es_props.substring(3, gl4es_props.length - 3);
+	                	gl4es_props = gl4es_props.split('%20').join(' ');
+	                	let props = gl4es_props.trim().split(";");
+            			props.forEach(function(item){
+            				let kv = item.split(":");
+            				if (kv.length == 2) {
+    	    					let key = kv[0].trim();
+    	        				let value = kv[1].trim();
+    	        				let existingIndex = allProps.findIndex(v => v.key === key);
+    	        				if (existingIndex > -1) {
+    	        				    allProps.splice(existingIndex, 1);
+								}
+	            				allProps.push({key: key, value: value});
+            				}
+            			});
+                	}else{
+	                	console.log("gl4es props parameter must be in quoted string");
+                	}
+                }
+
+            }
+            if(allProps.length > 0) {
+                console.log("setting gl4es props:");
+            	allProps.forEach(function(prop){
+            		console.log(prop.key + " = " + prop.value);
+            	});
+            }
+            return allProps;
         }
         function getCPU(){
             var cpu = getParameter("cpu");
@@ -123,7 +162,7 @@
 	                	glext = glext.split('%20').join(' ');
 	                	glext = '"' + glext +  '"';
                 	}else{
-	                	console.log("glext paramater must be in quoted string");
+	                	console.log("glext parameter must be in quoted string");
                 	}
                 }
             }
@@ -753,10 +792,12 @@
         }
         var initialSetup = function(){
             console.log("running initial setup");
-            ENV.LIBGL_NPOT = 2;
-			ENV.LIBGL_DEFAULT_WRAP = 0;
-			ENV.LIBGL_MIPMAP = 3;
             setConfiguration();
+            if (Config.gl4esProps.length > 0) {
+            	Config.gl4esProps.forEach(function(prop){
+            		ENV[prop.key] = prop.value;
+            	});
+            }
             //loadScreen();
 
             Module["addRunDependency"]("setupBoxedWine");
