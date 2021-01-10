@@ -11,7 +11,7 @@
         let DROPBOX_APP_KEY = 'put key in here';
         let RECEIVE_URL = "http://put url in here/oauth_receiver.html";
 
-        let DEFAULT_AUTO_RUN = true;
+        let DEFAULT_AUTO_RUN = false;
         let DEFAULT_SOUND_ENABLED = true;
         let DEFAULT_APP_DIRECTORY = ROOT + "/files/";
         let DEFAULT_BPP = 32;
@@ -209,7 +209,7 @@
 	                	glext = glext.split('%20').join(' ');
 	                	glext = '"' + glext +  '"';
                 	}else{
-	                	console.log("glext paramater must be in quoted string");
+	                	console.log("glext parameter must be in quoted string");
                 	}
                 }
             }
@@ -890,9 +890,6 @@
         }
         var initialSetup = function(){
             console.log("running initial setup");
-            ENV.LIBGL_NPOT = 2;
-			ENV.LIBGL_DEFAULT_WRAP = 0;
-			ENV.LIBGL_MIPMAP = 3;
             setConfiguration();
             if (Config.emEnvProps.length > 0) {
             	Config.emEnvProps.forEach(function(prop){
