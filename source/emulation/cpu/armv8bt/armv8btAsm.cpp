@@ -1961,10 +1961,26 @@ void Armv8btAsm::jmpReg(U8 reg, bool mightNeedCS) {
         } else {
             addRegs64(xBranchLargeAddressOffset, xLargeAddress, reg, 3);
         }
-        readMem64ValueOffset(xBranch, xBranchLargeAddressOffset, 0);
-        branchNativeRegister(xBranch);              
+        readMem64ValueOffset(xBranch, xBranchLargeAddressOffset, 0);        
     } else {
+        // hard coded regs so that the exception handler will know what to expect
+
+        if (this->cpu->thread->process->hasSetSeg[CS] || mightNeedCS) {
+            U8 tmpReg = getTmpReg();
+            addRegs32(tmpReg, tmpReg, xCS);
+            andValue32(xOffset, tmpReg, 0xFFF); // get page offset            
+            shiftRegRightWithValue32(xPage, tmpReg, 12); // get page
+            releaseTmpReg(tmpReg);
+        } else {
+            andValue32(xOffset, reg, 0xFFF); // get page offset
+            shiftRegRightWithValue32(xPage, reg, 12); // get page
+        }
+        readMem64ValueOffset(xBranch, xCPU, CPU_OFFSET_OP_PAGES); // get offset table pages
+        readMem64RegOffset(xBranch, xBranch, xPage, 3); // get offset table for page
+        readMem64RegOffset(xBranch, xBranch, xOffset, 3); // read value at offset for page
+        readMem8ValueOffset(xResult, xBranch, 0); // verify that where we will jump is valid
     }
+    branchNativeRegister(xBranch);
 }
 
 void Armv8btAsm::doJmp(bool mightNeedCS) {

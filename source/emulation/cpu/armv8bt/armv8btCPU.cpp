@@ -18,7 +18,7 @@ CPU* CPU::allocCPU() {
     return new Armv8btCPU();
 }
 
-Armv8btCPU::Armv8btCPU() : exitToStartThreadLoop(0) {
+Armv8btCPU::Armv8btCPU() : exitToStartThreadLoop(0), regPage(0), regOffset(0) {
     sseConstants[vMaxInt32PlusOneAsDouble- vFirstSseConstant].pd.f64[0] = 2147483648.0;
     sseConstants[vMaxInt32PlusOneAsDouble - vFirstSseConstant].pd.f64[1] = 2147483648.0;
     sseConstants[vMinInt32MinusOneAsDouble - vFirstSseConstant].pd.f64[0] = -2147483649.0;
@@ -404,15 +404,18 @@ static U8 fetchByte(U32* eip) {
 
 void Armv8btCPU::translateInstruction(Armv8btAsm* data, Armv8btAsm* firstPass) {
     data->startOfOpIp = data->ip;    
-    if (data->ip == 0xd027298a) {
+    data->ip += data->decodedOp->len;
+    if (data->ip == 0xd023efcd || data->ip == 0x7bcb0794) {
         int ii = 0;
     }
-    data->ip += data->decodedOp->len;
+    if (data->startOfOpIp == 0xD00e4714) {
+        int ii = 0;
+    }    
 #ifdef _DEBUG
-    data->logOp(data->ip);
+    //data->logOp(data->startOfOpIp);
     // just makes debugging the asm output easier
 #ifndef __TEST
-    //data->loadConst(xTmp1, data->ip);
+    data->loadConst(14, data->startOfOpIp);
     //data->writeMem32ValueOffset(xTmp5, xCPU, CPU_OFFSET_EIP);
 #endif
 #endif
@@ -650,17 +653,12 @@ U64 Armv8btCPU::reTranslateChunk() {
     return result;
 }
 
-U64 Armv8btCPU::handleMissingCode(U64 r8, U64 r9, U32 inst) {
-    U32 page = (U32)r8;
-    U32 offset = (U32)r9;
+U64 Armv8btCPU::handleMissingCode(U64 regPage, U64 regOffset, U32 inst) {
+    U32 page = (U32)regPage;
+    U32 offset = (U32)regOffset;
 
     this->eip.u32 = ((page << K_PAGE_SHIFT) | offset) - this->seg[CS].address;
-    this->translateEip(this->eip.u32);  
-    if (inst==0xCA148B4F) {
-        return (U64)(this->eipToHostInstructionPages[page]);
-    } else {
-        return (U64)(this->eipToHostInstructionPages[page][offset]);
-    }
+    return (U64)this->translateEip(this->eip.u32);  
 }
 
 U64 Armv8btCPU::handleIllegalInstruction(U64 rip) {    
@@ -682,15 +680,17 @@ U64 Armv8btCPU::handleIllegalInstruction(U64 rip) {
 
 U32 dynamicCodeExceptionCount;
 
+#define JMP_PAGE_EXCEPTION 0xf86f7929
+#define JMP_OFFSET_EXCEPTION 0x38400131
+
 U64 Armv8btCPU::handleAccessException(U64 ip, U64 address, bool readAddress) {
     U32 inst = *((U32*)ip);
 
     if (inst == 0xf8400149) { // ldur x9, [x9]
         return (U64) this->translateEip(this->destEip - this->seg[CS].address);
-    } else if (inst==0x0A8B4566 || inst==0xCA148B4F) { // if these constants change, update handleMissingCode too     
+    } else if (inst == JMP_OFFSET_EXCEPTION || inst == JMP_PAGE_EXCEPTION) {
         // rip is not adjusted so we don't need to check for stack alignment
-        //setReg(10, this->handleMissingCode(r8, r9, inst));
-        return 0;
+        return this->handleMissingCode(this->regPage, this->regOffset, inst);
     } else if (inst==0xcdcdcdcd) {
         // this thread was waiting on the critical section and the thread that was currently in this handler removed the code we were running
         void* host = this->thread->memory->getExistingHostAddress(this->eip.u32+this->seg[CS].address);

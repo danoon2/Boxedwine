@@ -38,6 +38,9 @@ public:
 	void* returnToLoopAddress;
     void* reTranslateChunkAddress;
     void* reTranslateChunkAddressFromR9;
+    // for use with exceptions caused by jumping to an eip that isn't translated yet
+    U64 regPage;
+    U64 regOffset;
 #ifdef BOXEDWINE_X64_DEBUG_NO_EXCEPTIONS
     void* jmpAndTranslateIfNecessaryToR9;
 #endif

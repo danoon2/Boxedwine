@@ -39,6 +39,9 @@ typedef enum {
 
 #define xNumberOfTmpRegs 5
 
+#define xOffset xSrc
+#define xPage xDst
+
 // #define xOldCF 14
 #define xSrc 15
 #define xDst 16
