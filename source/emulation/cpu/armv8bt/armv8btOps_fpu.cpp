@@ -109,7 +109,7 @@ static U8 readDouble(Armv8btAsm* data, U8 reg = 0) {
 
 class FPUReg {
 public:
-	FPUReg(Armv8btAsm* data, U32 index, bool writeBack, bool read = true, bool useTmpReg = false) : data(data), writeBack(writeBack), topReg(0), useTmpReg(useTmpReg) {
+	FPUReg(Armv8btAsm* data, U32 index, bool writeBack, bool read = true, bool useTmpReg = false, bool cacheTopReg = true) : data(data), writeBack(writeBack), topReg(0), useTmpReg(useTmpReg) {
 		if (useTmpReg) {
 			this->reg = data->vGetTmpReg();
 		} else {
@@ -134,6 +134,11 @@ public:
 				data->vMov64(this->reg, 0, index + vMMX0, 0);
 			}
 		} 
+		if (!cacheTopReg && this->topRegNeedsRelease && !writeBack) {
+			data->releaseTmpReg(this->topReg);
+			this->topRegNeedsRelease = false;
+			this->topReg = 0xFF;
+		}
 	}
 	~FPUReg() {
 		doWrite();
@@ -149,6 +154,9 @@ public:
 			if (this->topReg == 0) {
 				data->vWriteMem64RegOffset(this->reg, data->getFpuOffset(), data->getFpuTopReg(), 3);
 			} else {
+				if (this->topReg > 32) {
+					kpanic("FPUReg: don't release top reg since it was needed");
+				}
 				data->vWriteMem64RegOffset(this->reg, data->getFpuOffset(), this->topReg, 3);
 				data->releaseTmpReg(this->topReg);
 			}
@@ -157,11 +165,17 @@ public:
 	}
 	void hostReadTag(U8 resultReg) {
 		U8 offsetReg = data->getFpuTagOffset();
+		if (this->topReg > 32) {
+			kpanic("FPUReg: don't release top reg since it was needed");
+		}
 		data->readMem32RegOffset(resultReg, offsetReg, this->topReg, 2);
 		data->releaseFpuTagOffset(offsetReg);
 	}
 	void hostWriteTag(U8 valueReg) {
 		U8 offsetReg = data->getFpuTagOffset();
+		if (this->topReg > 32) {
+			kpanic("FPUReg: don't release top reg since it was needed");
+		}
 		data->writeMem32RegOffset(valueReg, offsetReg, this->topReg, 2);
 		data->releaseFpuTagOffset(offsetReg);
 	}
@@ -837,8 +851,8 @@ void opFCMOV_ST0_STj_PF(Armv8btAsm* data) {
 		});
 }
 void opFUCOMPP(Armv8btAsm* data) {
-	FPUReg reg1(data, 0, false);
-	FPUReg reg2(data, 1, false);
+	FPUReg reg1(data, 0, false, true, false, false);
+	FPUReg reg2(data, 1, false, true, false, false);
 	// :TODO: FCOM and FUCOM currently do the same thing
 	doFCOM(data, reg1.reg, 0, reg2.reg, 1);
 	FPU_POP(data);
@@ -1097,8 +1111,8 @@ void opFUCOM_STi(Armv8btAsm* data) {
 	doFCOM(data, dst.reg, 0, src.reg, data->decodedOp->reg);
 }
 void opFUCOM_STi_Pop(Armv8btAsm* data) {
-	FPUReg dst(data, 0, false);
-	FPUReg src(data, data->decodedOp->reg, false);
+	FPUReg dst(data, 0, false, true, false, false);
+	FPUReg src(data, data->decodedOp->reg, false, true, false, false);
 	// :TODO: FCOM and FUCOM currently do the same thing
 	doFCOM(data, dst.reg, 0, src.reg, data->decodedOp->reg);
 	FPU_POP(data);

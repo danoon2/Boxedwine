@@ -46,6 +46,7 @@ public:
 #endif
 #ifdef _DEBUG
     U32 fromEip;
+    U64 exceptionRegs[32];
 #endif
 #ifdef __TEST
     void addReturnFromTest();

@@ -3100,7 +3100,7 @@ void opInt80(Armv8btAsm* data) {
     data->doJmp(false);
 }
 void opInt98(Armv8btAsm* data) {    
-    kpanic("Need to test");
+    //kpanic("Need to test");
     data->syncRegsFromHost();
 
     // void common_int98(CPU * cpu)
@@ -3110,7 +3110,7 @@ void opInt98(Armv8btAsm* data) {
     data->syncRegsToHost();
 }
 void opInt99(Armv8btAsm* data) {
-    kpanic("Need to test");
+    //kpanic("Need to test");
     data->syncRegsFromHost();
 
     // void common_int99(CPU * cpu)
@@ -4436,10 +4436,10 @@ void opCmpXchg8b(Armv8btAsm* data) {
     // }
     U32 flags = DecodedOp::getNeededFlags(data->currentBlock, data->decodedOp, CF | SF | PF | AF | OF | ZF);
     
-    U8 addressReg = data->getAddressReg();
-    U32 restartPos = data->bufferPos;
+    U8 addressReg = data->getAddressReg();    
     U8 tmpReg = data->getTmpReg();
     data->addRegs64(tmpReg, xEAX, xEDX, 32);
+    U32 restartPos = data->bufferPos;
     data->readMemory(addressReg, xSrc, 64, true, data->decodedOp->lock != 0);
     data->cmpRegs64(tmpReg, xSrc);
     data->doIf(0, 0, DO_IF_EQUAL, [restartPos, addressReg, data, flags]() {
@@ -6328,7 +6328,7 @@ void opNone(Armv8btAsm* data) {
 }
 
 void opCallback(Armv8btAsm* data) {
-    kpanic("Need to test");
+    //kpanic("Need to test");
     // typedef void (OPCALL *OpCallback)(CPU* cpu, DecodedOp* op);
     data->syncRegsFromHost();
 
