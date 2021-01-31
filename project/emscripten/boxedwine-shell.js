@@ -94,9 +94,9 @@
         function getEmscriptenEnvProps(){
             var props = getParameter("em-env").trim();
             let allProps = [];
-	        //allProps.push({key: 'LIBGL_NPOT', value: 2});
-	        //allProps.push({key: 'LIBGL_DEFAULT_WRAP', value: 0});
-	        //allProps.push({key: 'LIBGL_MIPMAP', value: 3});	        
+	        allProps.push({key: 'LIBGL_NPOT', value: 2});
+	        allProps.push({key: 'LIBGL_DEFAULT_WRAP', value: 0});
+	        allProps.push({key: 'LIBGL_MIPMAP', value: 3});	        
             if(allowParameterOverride()){
                 if(props.length > 6) {
                 	if( (props.startsWith("%22") && props.endsWith("%22") )
