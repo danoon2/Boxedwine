@@ -226,10 +226,10 @@ class Arm8BtFlagsAdd32 : public Arm8BtFlagsDefault32 {
         data->releaseTmpReg(tmp);
     }
     virtual bool usesHardwareFlags(U32 mask) {
-        return (mask & (OF | ZF | SF)) != 0;
+        return (mask & (OF | ZF)) != 0;
     }
     virtual bool usesResult(U32 mask) {
-        return (mask & (AF | PF | CF)) != 0;
+        return (mask & (AF | PF | CF | SF)) != 0;
     }
     virtual bool usesSrc(U32 mask) {
         return (mask & AF) != 0;
@@ -535,10 +535,10 @@ class Arm8BtFlagsSub32 : public Arm8BtFlagsDefault32 {
         data->releaseTmpReg(tmp);
     }
     virtual bool usesHardwareFlags(U32 mask) {
-        return (mask & (ZF | SF)) != 0;
+        return (mask & ZF) != 0;
     }
     virtual bool usesResult(U32 mask) {
-        return (mask & (AF | PF | OF)) != 0;
+        return (mask & (AF | PF | OF | SF)) != 0;
     }
     virtual bool usesSrc(U32 mask) {
         return (mask & (AF | CF | OF)) != 0;

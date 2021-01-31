@@ -3435,7 +3435,7 @@ void opLoadSegment16(Armv8btAsm* data) {
     doLoadSegment(data, false);
 }
 void opLoadSegment32(Armv8btAsm* data) {
-    kpanic("Need to test");
+    //kpanic("Need to test");
     doLoadSegment(data, true);
 }
 

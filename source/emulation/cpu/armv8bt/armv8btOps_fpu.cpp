@@ -1192,8 +1192,8 @@ void opFMUL_STi_ST0_Pop(Armv8btAsm* data) {
 	FPU_POP(data);
 }
 void opFCOMPP(Armv8btAsm* data) {
-	FPUReg reg1(data, 0, false);
-	FPUReg reg2(data, 1, false);
+	FPUReg reg1(data, 0, false, true, false, false);
+	FPUReg reg2(data, 1, false, true, false, false);
 	doFCOM(data, reg1.reg, 0, reg2.reg, 1);
 	FPU_POP(data);
 	FPU_POP(data);
