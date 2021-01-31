@@ -71,7 +71,7 @@
             Config.useRangeRequests = getUseRangeRequests();
             Config.glext = getGLExtensions();
 			Config.cpu = getCPU();
-			Config.gl4esProps = getGl4esProps();
+			Config.envProps = getEnvProps();
         }
         function allowParameterOverride() {
             if(Config.urlParams.length >0) {
@@ -79,19 +79,19 @@
             }
             return ALLOW_PARAM_OVERRIDE_FROM_URL;
         }
-        function getGl4esProps(){
-            var gl4es_props = getParameter("gl4es").trim();
+        function getEnvProps(){
+            var props = getParameter("env").trim();
             let allProps = [];
-            //todo add default props ? ENV.LIBGL_NPOT = 2; ENV.LIBGL_DEFAULT_WRAP = 0;	ENV.LIBGL_MIPMAP = 3;
-	        //ie allProps.push({key: 'LIBGL_NPOT', value: 2});
+	        allProps.push({key: 'LIBGL_NPOT', value: 2});
+	        allProps.push({key: 'LIBGL_DEFAULT_WRAP', value: 0});
+	        allProps.push({key: 'LIBGL_MIPMAP', value: 3});	        
             if(allowParameterOverride()){
-                if(gl4es_props.length > 6) {
-                	if( (gl4es_props.startsWith("%22") && gl4es_props.endsWith("%22") )
-                		|| (gl4es_props.startsWith('%27') && gl4es_props.endsWith('%27'))){
-                    	gl4es_props = gl4es_props.substring(3, gl4es_props.length - 3);
-	                	gl4es_props = gl4es_props.split('%20').join(' ');
-	                	let props = gl4es_props.trim().split(";");
-            			props.forEach(function(item){
+                if(props.length > 6) {
+                	if( (props.startsWith("%22") && props.endsWith("%22") )
+                		|| (props.startsWith('%27') && props.endsWith('%27'))){
+                    	props = props.substring(3, props.length - 3);
+	                	props = props.split('%20').join(' ');
+            			props.trim().split(";").forEach(function(item){
             				let kv = item.split(":");
             				if (kv.length == 2) {
     	    					let key = kv[0].trim();
@@ -104,13 +104,13 @@
             				}
             			});
                 	}else{
-	                	console.log("gl4es props parameter must be in quoted string");
+	                	console.log("ENV props parameter must be in quoted string");
                 	}
                 }
 
             }
             if(allProps.length > 0) {
-                console.log("setting gl4es props:");
+                console.log("setting ENV props:");
             	allProps.forEach(function(prop){
             		console.log(prop.key + " = " + prop.value);
             	});
@@ -793,8 +793,8 @@
         var initialSetup = function(){
             console.log("running initial setup");
             setConfiguration();
-            if (Config.gl4esProps.length > 0) {
-            	Config.gl4esProps.forEach(function(prop){
+            if (Config.envProps.length > 0) {
+            	Config.envProps.forEach(function(prop){
             		ENV[prop.key] = prop.value;
             	});
             }

@@ -18,7 +18,7 @@ try:
     txt = getfiletext('boxedwine.js')
     
     func_emscriptenWebGLGet = """\
-    var result = null;
+    var result = null;//kev-hack
     if (name_ == 34811) { //0x87FB GL_VBO_FREE_MEMORY_ATI
         result = new Int32Array(4);
         result0 = 524288;
@@ -49,7 +49,7 @@ try:
     txt = txt.replace("var result = GLctx.getParameter(name_);", func_emscriptenWebGLGet)
     
     func_glTexImage2D = """\
-    let tex = GLctx["createTexture"]()
+    let tex = GLctx["createTexture"]()//kev-hack
     GLctx["bindTexture"](3553, tex)
     GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, pixels ? emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, internalFormat) : null)
     """
