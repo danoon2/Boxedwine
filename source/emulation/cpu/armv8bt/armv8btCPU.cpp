@@ -470,6 +470,9 @@ void Armv8btCPU::translateData(Armv8btAsm* data, Armv8btAsm* firstPass) {
             }
         }
         data->mapAddress(address, data->bufferPos);
+        if (firstPass && firstPass->fpuTopRegSet && !data->fpuOffsetRegSet) {
+            data->getFpuTopReg();
+        }
         U32 page = address >> K_PAGE_SHIFT;
         data->decodedOp = op;
         translateInstruction(data, firstPass);
@@ -513,7 +516,7 @@ DecodedOp* Armv8btCPU::getOp(U32 eip, bool existing) {
     return NULL;
 }
 
-U64 Armv8btCPU::handleCodePatch(U64 rip, U32 address, U64 rsi, U64 rdi, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo) {
+U64 Armv8btCPU::handleCodePatch(U64 rip, U32 address) {
 #ifndef __TEST
     // only one thread at a time can update the host code pages and related date like opToAddressPages
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->thread->memory->executableMemoryMutex);
@@ -537,49 +540,17 @@ U64 Armv8btCPU::handleCodePatch(U64 rip, U32 address, U64 rsi, U64 rdi, std::fun
         op->next = DecodedOp::alloc();
         op->next->inst = Done;
         op->next->pfn = NormalCPU::getFunctionForOp(op->next);
-        if (doSyncFrom) {
-            doSyncFrom(op);
-        }
 
         if (this->flags & DF) {
             this->df = -1;
         } else {
             this->df = 1;
         }
-        // for string instruction, we modify (add memory offset and segment) rdi and rsi so that the native string instruction can be used, this code will revert it back to the original values
-        // uses si
-        if (op->inst==Lodsb || op->inst==Lodsw || op->inst==Lodsd) {
-            THIS_ESI=(U32)(rsi - this->memOffset);
-            if (this->thread->process->hasSetSeg[op->base]) {
-                THIS_ESI-=this->seg[op->base].address;
-            }
-            // doesn't write            
-        }
-        // uses di (Examples: diablo 1 will trigger this in the middle of the Stosd when creating a new game)
-        else if (op->inst==Stosb || op->inst==Stosw || op->inst==Stosd ||
-            op->inst==Scasb || op->inst==Scasw || op->inst==Scasd) {
-            THIS_EDI=(U32)(rdi - this->memOffset);
-            if (this->thread->process->hasSetSeg[ES]) {
-                THIS_EDI-=this->seg[ES].address;
-            }
-            if (instructionInfo[op->inst].writeMemWidth) {
-                w.invalidateStringWriteToDi(op->repNotZero || op->repZero, instructionInfo[op->inst].writeMemWidth/8);
-            }
-        }
-        // uses si and di
-        else if (op->inst==Movsb || op->inst==Movsw || op->inst==Movsd ||
-            op->inst==Cmpsb || op->inst==Cmpsw || op->inst==Cmpsd) {
-            THIS_ESI=(U32)(rsi - this->memOffset);
-            THIS_EDI=(U32)(rdi - this->memOffset);
-            if (this->thread->process->hasSetSeg[ES]) {
-                THIS_EDI-=this->seg[ES].address;
-            }
-            if (this->thread->process->hasSetSeg[op->base]) {
-                THIS_ESI-=this->seg[op->base].address;
-            }
-            if (instructionInfo[op->inst].writeMemWidth) {
-                w.invalidateStringWriteToDi(op->repNotZero || op->repZero, instructionInfo[op->inst].writeMemWidth/8);
-            }
+        // (Examples: diablo 1 will trigger this in the middle of the Stosd when creating a new game)
+        if (op->inst==Stosb || op->inst==Stosw || op->inst==Stosd ||
+            op->inst==Scasb || op->inst==Scasw || op->inst==Scasd || 
+            op->inst==Movsb || op->inst==Movsw || op->inst==Movsd) {
+            w.invalidateStringWriteToDi(op->repNotZero || op->repZero, instructionInfo[op->inst].writeMemWidth/8);
         } else {
             w.invalidateCode(address, len);
         }  
@@ -587,9 +558,6 @@ U64 Armv8btCPU::handleCodePatch(U64 rip, U32 address, U64 rsi, U64 rdi, std::fun
         this->logFile = NULL;       
         op->pfn(this, op);   
         this->logFile = f;        
-        if (doSyncTo) {
-            doSyncTo(op);
-        }
 
         // eip was ajusted after running this instruction                        
         U32 a = this->getEipAddress();
@@ -598,7 +566,7 @@ U64 Armv8btCPU::handleCodePatch(U64 rip, U32 address, U64 rsi, U64 rdi, std::fun
         }
         U64 result = (U64)this->thread->memory->getExistingHostAddress(a);
         if (result==0) {
-            kpanic("x64::handleCodePatch failed to translate code");
+            kpanic("Armv8btCPU::handleCodePatch failed to translate code");
         }
         op->dealloc(true);
         return result;
@@ -689,7 +657,6 @@ U64 Armv8btCPU::handleAccessException(U64 ip, U64 address, bool readAddress) {
     if (inst == 0xf8400149) { // ldur x9, [x9]
         return (U64) this->translateEip(this->destEip - this->seg[CS].address);
     } else if (inst == JMP_OFFSET_EXCEPTION || inst == JMP_PAGE_EXCEPTION) {
-        // rip is not adjusted so we don't need to check for stack alignment
         return this->handleMissingCode(this->regPage, this->regOffset, inst);
     } else if (inst==0xcdcdcdcd) {
         // this thread was waiting on the critical section and the thread that was currently in this handler removed the code we were running
@@ -711,7 +678,7 @@ U64 Armv8btCPU::handleAccessException(U64 ip, U64 address, bool readAddress) {
             // check if emulated memory that caused the exception is a page that has code
             if (this->thread->memory->nativeFlags[emulatedAddress>>K_PAGE_SHIFT] & NATIVE_FLAG_CODEPAGE_READONLY) {                    
                 dynamicCodeExceptionCount++;                    
-                //return this->handleCodePatch(ip, emulatedAddress, getReg(6), getReg(7), doSyncFrom, doSyncTo);                    
+                return this->handleCodePatch(ip, emulatedAddress);                    
             }
         }   
 #ifdef _DEBUG

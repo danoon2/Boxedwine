@@ -61,7 +61,7 @@ public:
 
     U64 reTranslateChunk();
     U64 handleChangedUnpatchedCode(U64 rip);
-    U64 handleCodePatch(U64 rip, U32 address, U64 rsi, U64 rdi, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo);
+    U64 handleCodePatch(U64 rip, U32 address);
     U64 handleMissingCode(U64 r8, U64 r9, U32 inst);
     U64 handleAccessException(U64 ip, U64 address, bool readAddress); // returns new ip, if 0 then don't set ip, but continue execution
 

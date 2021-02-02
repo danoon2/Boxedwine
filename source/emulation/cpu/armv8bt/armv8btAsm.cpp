@@ -2081,7 +2081,7 @@ void Armv8btAsm::jumpTo(U32 eip) {
             write8(0x14);
             addTodoLinkJump(eip, 4, false);
         } else {
-            
+
         }
     }
 }
@@ -2160,6 +2160,7 @@ void Armv8btAsm::syncRegsFromHost(bool eipInBranchReg) {
     vWriteMemMultiple128(xXMM0, addressReg, 4, true);
     vWriteMemMultiple128(xXMM4, addressReg, 4, false);
 
+    // when using the FPU, these will contain cached FPU values
     addValue64(addressReg, xCPU, (U32)(offsetof(CPU, reg_mmx[0])));
     vWriteMemMultiple64(vMMX0, addressReg, 4, true);
     vWriteMemMultiple64(vMMX4, addressReg, 4, false);
@@ -2182,18 +2183,24 @@ void Armv8btAsm::syncRegsToHost() {
     readMem32ValueOffset(xFLAGS, xCPU, CPU_OFFSET_FLAGS);
 
     U8 addressReg = getTmpReg();
-    addValue64(addressReg, xCPU, (U32)(offsetof(CPU, xmm[0])));
+    addValue64(addressReg, xCPU, (U32)(offsetof(CPU, xmm[0])));    
     vReadMemMultiple128(xXMM0, addressReg, 4, true);
     vReadMemMultiple128(xXMM4, addressReg, 4, false);
 
+    // when using the FPU, these will contain cached FPU values
     addValue64(addressReg, xCPU, (U32)(offsetof(CPU, reg_mmx[0])));
     vReadMemMultiple64(vMMX0, addressReg, 4, true);
     vReadMemMultiple64(vMMX4, addressReg, 4, false);
 
+    // if we are using the FPU, these need to be restored
+    // Quake 2 time demo will require this because it will cause an exception from self modifying code while using the FPU
+    addValue64(xFpuOffset, xCPU, (U32)(offsetof(CPU, fpu)));
+
+    // these 2 instructions instead of readMem32ValueOffset because readMem32ValueOffset uses a tmp reg and we are out for the div instruction
+    loadConst(addressReg, (U32)(offsetof(CPU, fpu.top)));
+    this->readMem32RegOffset(xFpuTop, xCPU, addressReg);
+
     releaseTmpReg(addressReg);
-    clearCachedFpuRegs();
-    fpuOffsetRegSet = false;
-    fpuTopRegSet = false;
 }
 
 void Armv8btAsm::writeJumpAmount(U32 pos, U32 toLocation) {
@@ -3222,13 +3229,14 @@ void Armv8btAsm::vConvertFloatToDouble(U8 dst, U8 src, bool isVector) {
 }
 
 void Armv8btAsm::vConvertDoubleToInt64RoundToCurrentMode(U8 dst, U8 src, bool isVector) {
-    // :TODO:
-    vConvertDoubleToInt64RoundToNearest(dst, src, isVector);
+    // :TODO: need to honor current rounding mode
+    // quake 2 will crash if this isn't round toward 0 when converting sound sample, it must have set the current rounding mode
+    vConvertDoubleToInt64RoundToZero(dst, src, isVector);
 }
 
 void Armv8btAsm::vConvertFloatToInt32RoundToCurrentMode(U8 dst, U8 src, bool isVector) {
-    // :TODO:
-    vConvertFloatToInt32RoundToNearest(dst, src, isVector);
+    // :TODO: need to honor current rounding mode
+    vConvertFloatToInt32RoundToZero(dst, src, isVector);
 }
 
 void Armv8btAsm::vConvertInt64ToLowerInt32(U8 dst, U8 src) {

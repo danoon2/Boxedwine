@@ -362,13 +362,13 @@ void opFMUL_ST0_STj(Armv8btAsm* data) {
 	data->fMul(dst.reg, dst.reg, src.reg, D_scaler);
 }
 void opFCOM_STi(Armv8btAsm* data) {
-	FPUReg dst(data, 0, false);
-	FPUReg src(data, data->decodedOp->reg, false);
+	FPUReg dst(data, 0, false, true, false, false);
+	FPUReg src(data, data->decodedOp->reg, false, true, false, false);
 	doFCOM(data, dst.reg, 0, src.reg, data->decodedOp->reg);
 }
 void opFCOM_STi_Pop(Armv8btAsm* data) {
-	FPUReg dst(data, 0, false);
-	FPUReg src(data, data->decodedOp->reg, false);
+	FPUReg dst(data, 0, false, true, false, false);
+	FPUReg src(data, data->decodedOp->reg, false, true, false, false);
 	doFCOM(data, dst.reg, 0, src.reg, data->decodedOp->reg);
 	FPU_POP(data);
 }
@@ -488,14 +488,16 @@ void opFNOP(Armv8btAsm* data) {
 void opFST_STi_Pop(Armv8btAsm* data) {
 	// cpu->fpu.FST(cpu->fpu.STV(0), cpu->fpu.STV(reg));
 	// cpu->fpu.FPOP();
-	FPUReg to(data, data->decodedOp->reg, true, false);
-	FPUReg from(data, 0, false);
-	U8 tagReg = data->getTmpReg();
-	from.hostReadTag(tagReg);	
-	data->vMov64(to.reg, 0, from.reg, 0);
-	to.hostWriteTag(tagReg);
-	to.doWrite();
-	data->releaseTmpReg(tagReg);
+	if (data->decodedOp->reg != 0) {
+		FPUReg to(data, data->decodedOp->reg, true, false);
+		FPUReg from(data, 0, false);
+		U8 tagReg = data->getTmpReg();
+		from.hostReadTag(tagReg);
+		data->vMov64(to.reg, 0, from.reg, 0);
+		to.hostWriteTag(tagReg);
+		to.doWrite();
+		data->releaseTmpReg(tagReg);
+	}
 	FPU_POP(data);
 }
 void opFCHS(Armv8btAsm* data) {
@@ -1285,15 +1287,15 @@ void opFNSTSW_AX(Armv8btAsm* data) {
 	data->releaseTmpReg(tmpReg);
 }
 void opFUCOMI_ST0_STj_Pop(Armv8btAsm* data) {
-	FPUReg dst(data, 0, false);
-	FPUReg src(data, data->decodedOp->reg, false);
+	FPUReg dst(data, 0, false, true, false, false);
+	FPUReg src(data, data->decodedOp->reg, false, true, false, false);
 	// :TODO: FCOM and FUCOM currently do the same thing
 	doFCOMI(data, dst.reg, 0, src.reg, data->decodedOp->reg);
 	FPU_POP(data);
 }
 void opFCOMI_ST0_STj_Pop(Armv8btAsm* data) {
-	FPUReg dst(data, 0, false);
-	FPUReg src(data, data->decodedOp->reg, false);
+	FPUReg dst(data, 0, false, true, false, false);
+	FPUReg src(data, data->decodedOp->reg, false, true, false, false);
 	doFCOMI(data, dst.reg, 0, src.reg, data->decodedOp->reg);
 	FPU_POP(data);
 }
@@ -1361,6 +1363,7 @@ void opFISTP_QWORD_INTEGER(Armv8btAsm* data) {
 	data->vConvertDoubleToInt64RoundToCurrentMode(reg.reg, reg.reg, false);
 	data->vWriteMemory64(addressReg, reg.reg, 0, true);
 	data->releaseTmpReg(addressReg);
+	FPU_POP(data);
 }
 
 #endif
