@@ -71,12 +71,50 @@
             Config.useRangeRequests = getUseRangeRequests();
             Config.glext = getGLExtensions();
 			Config.cpu = getCPU();
+			Config.envProps = getEnvProps();
         }
         function allowParameterOverride() {
             if(Config.urlParams.length >0) {
                 return true;
             }
             return ALLOW_PARAM_OVERRIDE_FROM_URL;
+        }
+        function getEnvProps(){
+            var props = getParameter("env").trim();
+            let allProps = [];
+	        //allProps.push({key: 'LIBGL_NPOT', value: 2});
+	        //allProps.push({key: 'LIBGL_DEFAULT_WRAP', value: 0});
+	        //allProps.push({key: 'LIBGL_MIPMAP', value: 3});	        
+            if(allowParameterOverride()){
+                if(props.length > 6) {
+                	if( (props.startsWith("%22") && props.endsWith("%22") )
+                		|| (props.startsWith('%27') && props.endsWith('%27'))){
+                    	props = props.substring(3, props.length - 3);
+	                	props = props.split('%20').join(' ');
+            			props.trim().split(";").forEach(function(item){
+            				let kv = item.split(":");
+            				if (kv.length == 2) {
+    	    					let key = kv[0].trim();
+    	        				let value = kv[1].trim();
+    	        				let existingIndex = allProps.findIndex(v => v.key === key);
+    	        				if (existingIndex > -1) {
+    	        				    allProps.splice(existingIndex, 1);
+								}
+	            				allProps.push({key: key, value: value});
+            				}
+            			});
+                	}else{
+	                	console.log("ENV props parameter must be in quoted string");
+                	}
+                }
+            }
+            if(allProps.length > 0) {
+                console.log("setting ENV props:");
+            	allProps.forEach(function(prop){
+            		console.log(prop.key + " = " + prop.value);
+            	});
+            }
+            return allProps;
         }
         function getCPU(){
             var cpu = getParameter("cpu");
@@ -754,6 +792,11 @@
         var initialSetup = function(){
             console.log("running initial setup");
             setConfiguration();
+            if (Config.envProps.length > 0) {
+            	Config.envProps.forEach(function(prop){
+            		ENV[prop.key] = prop.value;
+            	});
+            }
             //loadScreen();
 
             Module["addRunDependency"]("setupBoxedWine");

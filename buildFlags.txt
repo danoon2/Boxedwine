@@ -74,6 +74,9 @@ LOCAL_STORAGE - There are limits depending on browser and OS.
 
 other dials/tweaks inside boxedwine-shell.js
 see var Module and configure as appropriate
+As an example to set linux ENV variables use the following format:
+?env="LIBGL_NPOT:2;LIBGL_DEFAULT_WRAP:0;LIBGL_MIPMAP:3;"
+
 You can avoid using url params and hardcode the values.  Search for MANUAL:
 
 Drag and drop is supported. Set AUTO_RUN to false. Simply drag a directory into the page. A dialog will appear and list entries for all executable files found. This is very useful.
