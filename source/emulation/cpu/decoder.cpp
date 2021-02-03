@@ -3681,6 +3681,10 @@ public:
     void decode(DecodeData* data, DecodedOp* op) const {
         data->opCode+=0x100;
         data->inst = data->fetch8()+data->opCode;
+        if (!decoder[data->inst]) {
+            op->inst = Invalid;
+            return;
+        }
         decoder[data->inst]->decode(data, op);
     }
 };
@@ -6129,8 +6133,15 @@ void decodeBlock(pfnFetchByte fetchByte, U32 eip, bool isBig, U32 maxInstruction
             d.opCode = 0;
             d.ea16 = 1;
         }
-        d.inst = d.opCode+d.fetch8();        
-        decoder[d.inst]->decode(&d, op);
+        d.inst = d.opCode+d.fetch8(); 
+        if (!decoder[d.inst]) {
+            op->inst = Invalid;
+        } else {
+            decoder[d.inst]->decode(&d, op);
+        }
+        if (op->inst == Invalid) {
+            break;
+        }
         d.opCountSoFarInThisBlock++;
         block->opCount++;
         if (maxLen && d.opLen+block->bytes>maxLen) {

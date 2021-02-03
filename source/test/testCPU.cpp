@@ -2549,6 +2549,7 @@ static struct Data sbbd[] = {
         allocData(0, 0xFFFFFFFF, 0, CF, true, false),
         allocData(0, 0, 0xFFFFFFFF, CF, true, false),
         allocData(0x80000000, 0x10000000, 0x6FFFFFFF, CF, false, true),
+        allocData(0, 0x7FFFFFFF, 0x80000000, CF, true, false), 
         endData()
 };
 
