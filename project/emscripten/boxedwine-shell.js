@@ -71,7 +71,8 @@
             Config.useRangeRequests = getUseRangeRequests();
             Config.glext = getGLExtensions();
 			Config.cpu = getCPU();
-			Config.envProps = getEnvProps();
+			Config.envProp = getEnvProp();
+			Config.emEnvProps = getEmscriptenEnvProps();
         }
         function allowParameterOverride() {
             if(Config.urlParams.length >0) {
@@ -79,8 +80,8 @@
             }
             return ALLOW_PARAM_OVERRIDE_FROM_URL;
         }
-        function getEnvProps(){
-            var props = getParameter("env").trim();
+        function getEmscriptenEnvProps(){
+            var props = getParameter("em-env").trim();
             let allProps = [];
 	        //allProps.push({key: 'LIBGL_NPOT', value: 2});
 	        //allProps.push({key: 'LIBGL_DEFAULT_WRAP', value: 0});
@@ -104,17 +105,32 @@
             				}
             			});
                 	}else{
-	                	console.log("ENV props parameter must be in quoted string");
+	                	console.log("EMSCRITPEN ENV props parameter must be in quoted string");
                 	}
                 }
             }
             if(allProps.length > 0) {
-                console.log("setting ENV props:");
+                console.log("setting EMSCRITPEN ENV props:");
             	allProps.forEach(function(prop){
             		console.log(prop.key + " = " + prop.value);
             	});
             }
             return allProps;
+        }
+        function getEnvProp(){
+            var property = getParameter("env").trim();
+            if(allowParameterOverride()){
+                if(property.length > 6) {
+                	if( (property.startsWith("%22") && property.endsWith("%22") )
+                		|| (property.startsWith('%27') && property.endsWith('%27'))){
+                    	let kv = property.substring(3, property.length - 3).split(':');
+                    	return '"' + kv[0].trim() + "=" + kv[1].trim() + '"';
+                	}else{
+	                	console.log("ENV property must be in quoted string");
+                	}
+                }
+            }
+            return '';
         }
         function getCPU(){
             var cpu = getParameter("cpu");
@@ -792,8 +808,8 @@
         var initialSetup = function(){
             console.log("running initial setup");
             setConfiguration();
-            if (Config.envProps.length > 0) {
-            	Config.envProps.forEach(function(prop){
+            if (Config.emEnvProps.length > 0) {
+            	Config.emEnvProps.forEach(function(prop){
             		ENV[prop.key] = prop.value;
             	});
             }
@@ -953,6 +969,11 @@
                 params.push("-glext");
                 params.push(Config.glext);
             }
+            if(Config.envProp.length > 0){
+                params.push("-env");
+                params.push(Config.envProp);
+            }
+
             if(Config.WorkingDir.length > 0){
                 params.push("-w");
                 params.push(Config.WorkingDir);
