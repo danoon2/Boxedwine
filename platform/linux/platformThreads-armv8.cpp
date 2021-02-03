@@ -166,27 +166,11 @@ void signalHandler() {
         cpu->returnHostAddress = cpu->exceptionIp;
         return;
     } else if ((cpu->exceptionSigNo == SIGBUS || cpu->exceptionSigNo == SIGSEGV) && ((cpu->exceptionIp & 0xFFFFFFFF00000000l) == (U64)cpu->thread->memory->executableMemoryId)) {
-        U32 address = (U32)cpu->exceptionAddress;
-        if (cpu->thread->memory->isValidReadAddress(address, 1) && cpu->thread->memory->isValidWriteAddress(address, 1)) {
-#ifndef __TEST
-            // only one thread at a time can update the host code pages and related date like opToAddressPages
-            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(cpu->thread->memory->executableMemoryMutex);
-#endif
-            // get the emulated eip of the op that corresponds to the host address where the exception happened
-            std::shared_ptr<BtCodeChunk> chunk = cpu->thread->memory->getCodeChunkContainingHostAddress((void*)cpu->exceptionIp);
-            cpu->eip.u32 = chunk->getEipThatContainsHostAddress((void*)cpu->exceptionIp, NULL, NULL) - cpu->seg[CS].address;
-
-            // get the emulated op that caused the write
-            DecodedOp* op = cpu->getOp(cpu->eip.u32, true);
-            if (op) {
-            }
-        }
         U64 rip = cpu->handleAccessException(cpu->exceptionIp, cpu->exceptionAddress, cpu->exceptionReadAddress);
         if (rip) {
             cpu->returnHostAddress = rip;
             return;
         }
-        // :TODO: can jumping cause us to miss something?
         cpu->returnHostAddress = cpu->exceptionIp;
         return;
     } else if (cpu->exceptionSigNo == SIGFPE) {

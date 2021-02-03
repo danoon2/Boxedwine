@@ -4543,7 +4543,8 @@
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
-      <UndefinePreprocessorDefinitions>BOXEDWINE_DYNAMIC_ARMV8;BOXEDWINE_DYNAMIC</UndefinePreprocessorDefinitions>
+      <UndefinePreprocessorDefinitions>
+      </UndefinePreprocessorDefinitions>
     </ClCompile>
     <Link>
       <LibraryDependencies>ssl;crypto;pthread;m;z;minizip;SDL2;GL;stdc++fs;dl;rt</LibraryDependencies>
@@ -4564,14 +4565,15 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
     <ClCompile>
-      <PreprocessorDefinitions>BOXEDWINE_MULTI_THREADED;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_ARMV8BT;BOXEDWINE_64;BOXEDWINE_64BIT_MMU;BOXEDWINE_OPENGL_IMGUI_V2;SIMDE_NO_NEON;BOXEDWINE_POSIX;POCO_UTIL_NO_JSONCONFIGURATION;POCO_UTIL_NO_XMLCONFIGURATION;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;NDEBUG;</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_MULTI_THREADED;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_ARMV8BT;BOXEDWINE_DYNAMIC_ARMV8;BOXEDWINE_DYNAMIC;BOXEDWINE_64;BOXEDWINE_64BIT_MMU;BOXEDWINE_OPENGL_IMGUI_V2;SIMDE_NO_NEON;BOXEDWINE_POSIX;POCO_UTIL_NO_JSONCONFIGURATION;POCO_UTIL_NO_XMLCONFIGURATION;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;NDEBUG;</PreprocessorDefinitions>
       <CppLanguageStandard>c++17</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
       <Optimization>Full</Optimization>
       <OmitFramePointers>true</OmitFramePointers>
-      <UndefinePreprocessorDefinitions>BOXEDWINE_DYNAMIC_ARMV8;BOXEDWINE_DYNAMIC</UndefinePreprocessorDefinitions>
+      <UndefinePreprocessorDefinitions>
+      </UndefinePreprocessorDefinitions>
     </ClCompile>
     <Link>
       <LibraryDependencies>ssl;crypto;pthread;m;z;minizip;SDL2;GL;stdc++fs;dl;rt</LibraryDependencies>

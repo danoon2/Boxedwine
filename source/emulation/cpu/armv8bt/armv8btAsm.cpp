@@ -2201,6 +2201,11 @@ void Armv8btAsm::syncRegsToHost() {
     this->readMem32RegOffset(xFpuTop, xCPU, addressReg);
 
     releaseTmpReg(addressReg);
+
+    // mdk perf won't draw correctly without this
+    clearCachedFpuRegs();
+    fpuOffsetRegSet = false;
+    fpuTopRegSet = false;
 }
 
 void Armv8btAsm::writeJumpAmount(U32 pos, U32 toLocation) {
