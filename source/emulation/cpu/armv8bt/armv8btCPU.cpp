@@ -278,7 +278,7 @@ S32 Armv8btCPU::preLinkCheck(Armv8btAsm* data) {
                     break;
                 }
             }
-            if (!found) {
+            if (!found && !this->translateEip(data->todoJump[i].eip)) {
                 return data->todoJump[i].opIndex;
             }
         }
@@ -317,14 +317,11 @@ void Armv8btCPU::link(Armv8btAsm* data, std::shared_ptr<BtCodeChunk>& fromChunk,
         U32 eip = this->seg[CS].address+data->todoJump[i].eip;        
         U8* offset = (U8*)fromChunk->getHostAddress()+offsetIntoChunk+data->todoJump[i].bufferPos;
         U8 size = data->todoJump[i].offsetSize;
+        U8* host = NULL;
 
-        if (size==4 && data->todoJump[i].sameChunk) {
-            U8* host = (U8*)fromChunk->getHostFromEip(eip);
-            if (!host) {
-                kpanic("Armv8btCPU::link can not link into the middle of an instruction");
-            }
+        if (size==4 && (host = (U8*)fromChunk->getHostFromEip(eip))) {
             writeJumpAmount(data, data->todoJump[i].bufferPos, (U32)(host - offset), (U8*)fromChunk->getHostAddress() + offsetIntoChunk);
-        } else if (size==4 && !data->todoJump[i].sameChunk) {
+        } else if (size==4) {
             U8* toHostAddress = (U8*)this->thread->memory->getExistingHostAddress(eip);
 
             if (!toHostAddress) {
@@ -404,13 +401,7 @@ static U8 fetchByte(U32* eip) {
 
 void Armv8btCPU::translateInstruction(Armv8btAsm* data, Armv8btAsm* firstPass) {
     data->startOfOpIp = data->ip;    
-    data->ip += data->decodedOp->len;
-    if (data->ip == 0xd023efcd || data->ip == 0x7bcb0794) {
-        int ii = 0;
-    }
-    if (data->startOfOpIp == 0xD00e4714) {
-        int ii = 0;
-    }    
+    data->ip += data->decodedOp->len;   
 #ifdef _DEBUG
     //data->logOp(data->startOfOpIp);
     // just makes debugging the asm output easier

@@ -2180,7 +2180,9 @@ void opPopA16(Armv8btAsm* data) {
 
     data->movRegToReg(xESP, tmpSP, 16, false);
     data->releaseTmpReg(tmpSP);
+    data->releaseTmpReg(addressReg);
 }
+
 void popA32_reg(Armv8btAsm* data, U8 inESP, U8 outESP, U8 reg) {
     if (!KThread::currentThread()->process->hasSetSeg[SS]) {
         data->readMem32RegOffset(reg, xMem, inESP);
@@ -2205,7 +2207,7 @@ void opPopA32(Armv8btAsm* data) {
     popA32_reg(data, xESP, tmpSP, xEDI);
     popA32_reg(data, tmpSP, tmpSP, xESI);
     popA32_reg(data, tmpSP, tmpSP, xEBP);
-    data->popStack16(tmpSP, tmpSP);
+    data->popStack32(tmpSP, tmpSP);
     popA32_reg(data, tmpSP, tmpSP, xEBX);
     popA32_reg(data, tmpSP, tmpSP, xEDX);
     popA32_reg(data, tmpSP, tmpSP, xECX);
@@ -2213,6 +2215,7 @@ void opPopA32(Armv8btAsm* data) {
 
     data->movRegToReg(xESP, tmpSP, 32, false);
     data->releaseTmpReg(tmpSP);
+    data->releaseTmpReg(addressReg);
 }
 
 void opPush16(Armv8btAsm* data) {

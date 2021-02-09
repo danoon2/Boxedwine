@@ -1105,6 +1105,7 @@ void opFST_STi(Armv8btAsm* data) {
 	src.hostReadTag(tagReg);
 	data->vMov64(dst.reg, 0, src.reg, 0);	
 	dst.hostWriteTag(tagReg);
+	data->releaseTmpReg(tagReg);
 }
 void opFUCOM_STi(Armv8btAsm* data) {
 	FPUReg dst(data, 0, false);
