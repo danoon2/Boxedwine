@@ -50,6 +50,7 @@ void allocNativeMemory(Memory* memory, U32 page, U32 pageCount, U32 flags) {
 
 void freeNativeMemory(Memory* memory, U32 page, U32 pageCount) {
     for (int i=0;i<(int)pageCount;i++) {
+        memory->clearCodePageFromCache(page + i);
         if (memory->nativeFlags[page+i] & NATIVE_FLAG_CODEPAGE_READONLY) {
             memory->nativeFlags[page+i] &= ~ NATIVE_FLAG_CODEPAGE_READONLY;
         }
