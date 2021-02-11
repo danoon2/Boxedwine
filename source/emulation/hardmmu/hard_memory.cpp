@@ -158,6 +158,9 @@ U32 Memory::mapNativeMemory(void* hostAddress, U32 size) {
 }
 
 void Memory::allocPages(U32 page, U32 pageCount, U8 permissions, FD fd, U64 offset, const BoxedPtr<MappedFile>& mappedFile) {
+    for (int i = 0; i < pageCount; i++) {
+        this->clearCodePageFromCache(page + i);
+    }
     if ((permissions & PAGE_PERMISSION_MASK) || mappedFile) {
         allocNativeMemory(this, page, pageCount, permissions);
     } else {
