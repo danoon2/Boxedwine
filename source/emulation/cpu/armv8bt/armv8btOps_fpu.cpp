@@ -6,6 +6,10 @@
 #include "armv8btOps.h"
 #include "../common/common_fpu.h"
 
+//#define NORMAL_FPU 1
+// abiwork bug because of fpu caching
+
+#ifndef NORMAL_FPU
 static U8 loadInt32AsDouble(Armv8btAsm* data) {
 	U8 addressReg = data->getAddressReg();
 	U8 tmpReg = data->vGetTmpReg();
@@ -74,7 +78,7 @@ static void hostWriteTag(Armv8btAsm* data, U8 valueReg, bool releaseValueReg, U3
 
 static void hostSaveDouble(Armv8btAsm* data, U32 index) {
 	if (index == 0) {
-		data->vWriteMem64RegOffset(vMMX0+index, data->getFpuOffset(), data->getFpuTopReg(), 3);
+		data->vWriteMem64RegOffset(vMMX0, data->getFpuOffset(), data->getFpuTopReg(), 3);
 	} else {
 		U8 topReg = calculateIndexReg(data, index);
 		data->vWriteMem64RegOffset(vMMX0 + index, data->getFpuOffset(), topReg, 3);
@@ -122,16 +126,15 @@ public:
 			this->topReg = calculateIndexReg(data, index);
 			this->topRegNeedsRelease = true;
 		}
-		if (!data->isFpuRegCached[index]) {			
+		if (useTmpReg) {
+			data->vReadMem64RegOffset(this->reg, data->getFpuOffset(), this->topReg, 3);
+		} else if (!data->isFpuRegCached[index]) {			
 			if (read) {
 				data->vReadMem64RegOffset(this->reg, data->getFpuOffset(), this->topReg, 3);
 				if (!useTmpReg) {
-					data->isFpuRegCached[index] = true;
+					// causes Abiword to fail launching
+					// data->isFpuRegCached[index] = true;
 				}
-			}
-		} else {
-			if (useTmpReg) {
-				data->vMov64(this->reg, 0, index + vMMX0, 0);
 			}
 		} 
 		if (!cacheTopReg && this->topRegNeedsRelease && !writeBack) {
@@ -151,15 +154,10 @@ public:
 	}
 	void doWrite() {
 		if (this->writeBack) {
-			if (this->topReg == 0) {
-				data->vWriteMem64RegOffset(this->reg, data->getFpuOffset(), data->getFpuTopReg(), 3);
-			} else {
-				if (this->topReg > 32) {
-					kpanic("FPUReg: don't release top reg since it was needed");
-				}
-				data->vWriteMem64RegOffset(this->reg, data->getFpuOffset(), this->topReg, 3);
-				data->releaseTmpReg(this->topReg);
+			if (this->topReg > 32) {
+				kpanic("FPUReg: don't release top reg since it was needed");
 			}
+			data->vWriteMem64RegOffset(this->reg, data->getFpuOffset(), this->topReg, 3);
 			this->writeBack = false;
 		}		
 	}
@@ -348,118 +346,228 @@ static void doFCOMI(Armv8btAsm* data, U8 v1, S32 tagIndex1, U8 v2, S32 tagIndex2
 			data->orValue32(xFLAGS, xFLAGS, CF | PF | ZF);
 		});
 }
+
+static void doCMov(Armv8btAsm* data) {
+	FPUReg from(data, data->decodedOp->reg, false);
+	U8 tagReg = data->getTmpReg();
+	from.hostReadTag(tagReg); // read before push changes indexes
+	FPUReg to(data, 0, true, false);
+	data->vMov64(to.reg, 0, from.reg, 0);
+	to.hostWriteTag(tagReg);
+	data->releaseTmpReg(tagReg);
+}
+
+#endif
+
+typedef void (*pfnFpu) (CPU* cpu);
+typedef void (*pfnFpuR) (CPU* cpu, U32 reg);
+typedef void (*pfnFpuA) (CPU* cpu, U32 address);
+
+void callFpu(Armv8btAsm* data, pfnFpu pfn) {
+	data->syncRegsFromHost();
+	data->mov64(0, xCPU); // param 1 (CPU)
+	data->callHost((void*)pfn);
+	data->syncRegsToHost();
+}
+void callFpuR(Armv8btAsm* data, pfnFpuR pfn) {
+	data->syncRegsFromHost();
+	data->mov64(0, xCPU); // param 1 (CPU)
+	data->loadConst(1, data->decodedOp->reg);
+	data->callHost((void*)pfn);
+	data->syncRegsToHost();
+}
+void callFpuA(Armv8btAsm* data, pfnFpuA pfn) {
+	U8 tmpReg = data->getAddressReg();
+	data->syncRegsFromHost();
+	data->mov64(0, xCPU); // param 1 (CPU)
+	data->movRegToReg(1, tmpReg, 32, false);
+	data->releaseTmpReg(tmpReg);
+	data->callHost((void*)pfn);
+	data->syncRegsToHost();	
+}
+
 void opFADD_ST0_STj(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuR(data, common_FADD_ST0_STj);
+#else
 	// cpu->fpu.STV(0) += cpu->fpu.STV(reg)
 	FPUReg dst(data, 0, true);
 	FPUReg src(data, data->decodedOp->reg, false);
 	data->fAdd(dst.reg, dst.reg, src.reg, D_scaler);
+#endif
 }
 
 void opFMUL_ST0_STj(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuR(data, common_FMUL_ST0_STj);
+#else
 	// cpu->fpu.STV(0) *= cpu->fpu.STV(reg)
 	FPUReg dst(data, 0, true);
 	FPUReg src(data, data->decodedOp->reg, false);
 	data->fMul(dst.reg, dst.reg, src.reg, D_scaler);
+#endif
 }
 void opFCOM_STi(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuR(data, common_FCOM_STi);
+#else
 	FPUReg dst(data, 0, false, true, false, false);
 	FPUReg src(data, data->decodedOp->reg, false, true, false, false);
 	doFCOM(data, dst.reg, 0, src.reg, data->decodedOp->reg);
+#endif
 }
 void opFCOM_STi_Pop(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuR(data, common_FCOM_STi_Pop);
+#else
 	FPUReg dst(data, 0, false, true, false, false);
 	FPUReg src(data, data->decodedOp->reg, false, true, false, false);
 	doFCOM(data, dst.reg, 0, src.reg, data->decodedOp->reg);
 	FPU_POP(data);
+#endif
 }
 void opFSUB_ST0_STj(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuR(data, common_FSUB_ST0_STj);
+#else
 	FPUReg dst(data, 0, true);
 	FPUReg src(data, data->decodedOp->reg, false);
 	data->fSub(dst.reg, dst.reg, src.reg, D_scaler);
+#endif
 }
 void opFSUBR_ST0_STj(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuR(data, common_FSUBR_ST0_STj);
+#else
 	FPUReg dst(data, 0, true);
 	FPUReg src(data, data->decodedOp->reg, false);
 	data->fSub(dst.reg, src.reg, dst.reg, D_scaler);
+#endif
 }
 void opFDIV_ST0_STj(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuR(data, common_FDIV_ST0_STj);
+#else
 	FPUReg dst(data, 0, true);
 	FPUReg src(data, data->decodedOp->reg, false);
 	data->fDiv(dst.reg, dst.reg, src.reg, D_scaler);
+#endif
 }
 void opFDIVR_ST0_STj(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuR(data, common_FDIVR_ST0_STj);
+#else
 	FPUReg dst(data, 0, true);
 	FPUReg src(data, data->decodedOp->reg, false);
 	data->fDiv(dst.reg, src.reg, dst.reg, D_scaler);
+#endif
 }
 void opFADD_SINGLE_REAL(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FADD_SINGLE_REAL);
+#else
 	// cpu->fpu.FLD_F32_EA(cpu, address);
 	// cpu->fpu.FADD_EA();
 	U8 tmpRead = readFloat(data);
 	FPUReg dst(data, 0, true);
 	data->fAdd(dst.reg, dst.reg, tmpRead, D_scaler);
 	data->vReleaseTmpReg(tmpRead);
+#endif
 }
 void opFMUL_SINGLE_REAL(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FMUL_SINGLE_REAL);
+#else
 	U8 tmpRead = readFloat(data);
 	FPUReg dst(data, 0, true);
 	data->fMul(dst.reg, dst.reg, tmpRead, D_scaler);
 	data->vReleaseTmpReg(tmpRead);
+#endif
 }
 void opFCOM_SINGLE_REAL(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FCOM_SINGLE_REAL);
+#else
 	U8 tmpRead = readFloat(data);
 	FPUReg dst(data, 0, false);
 	doFCOM(data, dst.reg, 0, tmpRead, -1);
 	data->vReleaseTmpReg(tmpRead);
+#endif
 }
 void opFCOM_SINGLE_REAL_Pop(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FCOM_SINGLE_REAL_Pop);
+#else
 	U8 tmpRead = readFloat(data);
 	FPUReg dst(data, 0, false);
 	doFCOM(data, dst.reg, 0, tmpRead, -1);
 	data->vReleaseTmpReg(tmpRead);
 	FPU_POP(data);
+#endif
 }
 void opFSUB_SINGLE_REAL(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FSUB_SINGLE_REAL);
+#else
 	U8 tmpRead = readFloat(data);
 	FPUReg dst(data, 0, true);
 	data->fSub(dst.reg, dst.reg, tmpRead, D_scaler);
 	data->vReleaseTmpReg(tmpRead);
+#endif
 }
 void opFSUBR_SINGLE_REAL(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FSUBR_SINGLE_REAL);
+#else
 	U8 tmpRead = readFloat(data);
 	FPUReg dst(data, 0, true);
 	data->fSub(dst.reg, tmpRead, dst.reg, D_scaler);
 	data->vReleaseTmpReg(tmpRead);
+#endif
 }
 void opFDIV_SINGLE_REAL(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FDIV_SINGLE_REAL);
+#else
 	U8 tmpRead = readFloat(data);
 	FPUReg dst(data, 0, true);
 	data->fDiv(dst.reg, dst.reg, tmpRead, D_scaler);
 	data->vReleaseTmpReg(tmpRead);
+#endif
 }
 void opFDIVR_SINGLE_REAL(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FDIVR_SINGLE_REAL);
+#else
 	U8 tmpRead = readFloat(data);
 	FPUReg dst(data, 0, true);
 	data->fDiv(dst.reg, tmpRead, dst.reg, D_scaler);
 	data->vReleaseTmpReg(tmpRead);
+#endif
 }
 void opFLD_STi(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuR(data, common_FLD_STi);
+#else
 	// int reg_from = cpu->fpu.STV(reg);
 	// cpu->fpu.PREP_PUSH();
 	// cpu->fpu.FST(reg_from, cpu->fpu.STV(0));
-	FPUReg from(data, data->decodedOp->reg, false, true, true);
+	FPUReg fromTmp(data, data->decodedOp->reg, false, true, true);
 	U8 tagReg = data->getTmpReg();
-	from.hostReadTag(tagReg); // read before push changes indexes
+	fromTmp.hostReadTag(tagReg); // read before push changes indexes
 
 	PREP_PUSH(data, false);
 
 	FPUReg to(data, 0, true, false);
-	data->vMov64(to.reg, 0, from.reg, 0);
+	data->vMov64(to.reg, 0, fromTmp.reg, 0);
 	to.hostWriteTag(tagReg);
 	data->releaseTmpReg(tagReg);
-	
+#endif
 }
 void opFXCH_STi(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuR(data, common_FXCH_STi);
+#else
 	// int tag = this->tags[other];
 	// struct FPU_Reg reg = this->regs[other];
 	// this->tags[other] = this->tags[st];
@@ -482,35 +590,44 @@ void opFXCH_STi(Armv8btAsm* data) {
 	to.hostWriteTag(tmpReg);
 	data->releaseTmpReg(tmpReg);
 	data->releaseTmpReg(tmpReg2);
+#endif
 }
 void opFNOP(Armv8btAsm* data) {	
 }
+
+void opFST_STi(Armv8btAsm* data);
 void opFST_STi_Pop(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuR(data, common_FST_STi_Pop);
+#else
 	// cpu->fpu.FST(cpu->fpu.STV(0), cpu->fpu.STV(reg));
 	// cpu->fpu.FPOP();
-	if (data->decodedOp->reg != 0) {
-		FPUReg to(data, data->decodedOp->reg, true, false);
-		FPUReg from(data, 0, false);
-		U8 tagReg = data->getTmpReg();
-		from.hostReadTag(tagReg);
-		data->vMov64(to.reg, 0, from.reg, 0);
-		to.hostWriteTag(tagReg);
-		to.doWrite();
-		data->releaseTmpReg(tagReg);
-	}
+	opFST_STi(data);
 	FPU_POP(data);
+#endif
 }
 void opFCHS(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpu(data, common_FCHS);
+#else
 	// this->regs[this->top].d = -1.0 * (this->regs[this->top].d);
 	FPUReg reg(data, 0, true);
 	data->fNeg(reg.reg, reg.reg, D_scaler);
+#endif
 }
 void opFABS(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpu(data, common_FABS);
+#else
 	// this->regs[this->top].d = fabs(this->regs[this->top].d);
 	FPUReg reg(data, 0, true);
 	data->fAbs(reg.reg, reg.reg, D_scaler);
+#endif
 }
 void opFTST(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpu(data, common_FTST);
+#else
 	// this->regs[8].d = 0.0;
 	// FCOM(this->top, 8);
 	FPUReg dst(data, 0, false);
@@ -518,8 +635,12 @@ void opFTST(Armv8btAsm* data) {
 	data->vMovFromGeneralReg64(vTmpReg, 0, 31);
 	doFCOM(data, dst.reg, 0, vTmpReg, -1);
 	data->vReleaseTmpReg(vTmpReg);
+#endif
 }
 void opFXAM(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpu(data, common_FXAM);
+#else
 	// S64 bits = this->regs[this->top].l;
 	// if ((bits & 0x8000000000000000l) != 0)    //sign
 	// {
@@ -604,169 +725,180 @@ void opFXAM(Armv8btAsm* data) {
 	data->releaseTmpReg(tagReg);
 	data->writeMem32ValueOffset(swReg, data->getFpuOffset(), (U32)(offsetof(FPU, sw)));
 	data->releaseTmpReg(swReg);
+#endif
 }
 void opFLD1(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpu(data, common_FLD1);
+#else
 	PREP_PUSH(data);
 	FPUReg reg(data, 0, true, false);
 	U8 tmpReg = data->getTmpReg();
 	data->loadConst(tmpReg, 0x3FF0000000000000);
 	data->vMovFromGeneralReg64(reg.reg, 0, tmpReg);
 	data->releaseTmpReg(tmpReg);
+#endif
 }
 void opFLDL2T(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpu(data, common_FLDL2T);
+#else
 	PREP_PUSH(data);
 	FPUReg reg(data, 0, true, false);
 	U8 tmpReg = data->getTmpReg();
 	data->loadConst(tmpReg, 0x400A934F0979A371);
 	data->vMovFromGeneralReg64(reg.reg, 0, tmpReg);
 	data->releaseTmpReg(tmpReg);
+#endif
 }
 void opFLDL2E(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpu(data, common_FLDL2E);
+#else
 	PREP_PUSH(data);
 	FPUReg reg(data, 0, true, false);
 	U8 tmpReg = data->getTmpReg();
 	data->loadConst(tmpReg, 0x3FF71547652B82FE);
 	data->vMovFromGeneralReg64(reg.reg, 0, tmpReg);
 	data->releaseTmpReg(tmpReg);
+#endif
 }
 void opFLDPI(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpu(data, common_FLDPI);
+#else
 	PREP_PUSH(data);
 	FPUReg reg(data, 0, true, false);
 	U8 tmpReg = data->getTmpReg();
 	data->loadConst(tmpReg, 0x400921FB54442D18);
 	data->vMovFromGeneralReg64(reg.reg, 0, tmpReg);
 	data->releaseTmpReg(tmpReg);
+#endif
 }
 void opFLDLG2(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpu(data, common_FLDLG2);
+#else
 	PREP_PUSH(data);
 	FPUReg reg(data, 0, true, false);
 	U8 tmpReg = data->getTmpReg();
 	data->loadConst(tmpReg, 0x3FD34413509F79FF);
 	data->vMovFromGeneralReg64(reg.reg, 0, tmpReg);
 	data->releaseTmpReg(tmpReg);
+#endif
 }
 void opFLDLN2(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpu(data, common_FLDLN2);
+#else
 	PREP_PUSH(data);
 	FPUReg reg(data, 0, true, false);
 	U8 tmpReg = data->getTmpReg();
 	data->loadConst(tmpReg, 0x3FE62E42FEFA39EF);
 	data->vMovFromGeneralReg64(reg.reg, 0, tmpReg);
 	data->releaseTmpReg(tmpReg);
+#endif
 }
 void opFLDZ(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpu(data, common_FLDZ);
+#else
 	PREP_PUSH(data);
 	FPUReg reg(data, 0, true, false);
 	data->vMovFromGeneralReg64(reg.reg, 0, 31);
+#endif
 }
 
 void opF2XM1(Armv8btAsm* data) {
-	data->syncRegsFromHost();
-	data->mov64(0, xCPU); // param 1 (CPU)
-	data->callHost((void*)common_F2XM1);
-	data->syncRegsToHost();
+	callFpu(data, common_F2XM1);
 }
 void opFYL2X(Armv8btAsm* data) {
-	data->syncRegsFromHost();
-	data->mov64(0, xCPU); // param 1 (CPU)
-	data->callHost((void*)common_FYL2X);
-	data->syncRegsToHost();
+	callFpu(data, common_FYL2X);
 }
 void opFPTAN(Armv8btAsm* data) {
-	data->syncRegsFromHost();
-	data->mov64(0, xCPU); // param 1 (CPU)
-	data->callHost((void*)common_FPTAN);
-	data->syncRegsToHost();
+	callFpu(data, common_FPTAN);
 }
 void opFPATAN(Armv8btAsm* data) {
-	data->syncRegsFromHost();
-	data->mov64(0, xCPU); // param 1 (CPU)
-	data->callHost((void*)common_FPATAN);
-	data->syncRegsToHost();
+	callFpu(data, common_FPATAN);
 }
 void opFXTRACT(Armv8btAsm* data) {
-	data->syncRegsFromHost();
-	data->mov64(0, xCPU); // param 1 (CPU)
-	data->callHost((void*)common_FXTRACT);
-	data->syncRegsToHost();
+	callFpu(data, common_FXTRACT);
 }
 void opFPREM_nearest(Armv8btAsm* data) {
-	data->syncRegsFromHost();
-	data->mov64(0, xCPU); // param 1 (CPU)
-	data->callHost((void*)common_FPREM_nearest);
-	data->syncRegsToHost();
+	callFpu(data, common_FPREM_nearest);
 }
 void opFDECSTP(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpu(data, common_FDECSTP);
+#else
 	// this->top = (this->top - 1) & 7;
 	U8 topReg = data->getFpuTopReg();
 	data->subValue32(topReg, topReg, 1);
 	data->andValue32(topReg, topReg, 7);
 	data->writeMem32ValueOffset(topReg, data->getFpuOffset(), (U32)(offsetof(FPU, top)));
 	data->clearCachedFpuRegs();
+#endif
 }
 void opFINCSTP(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpu(data, common_FINCSTP);
+#else
 	// this->top = (this->top + 1) & 7;
 	U8 topReg = data->getFpuTopReg();
 	data->addValue32(topReg, topReg, 1);
 	data->andValue32(topReg, topReg, 7);
 	data->writeMem32ValueOffset(topReg, data->getFpuOffset(), (U32)(offsetof(FPU, top)));
 	data->clearCachedFpuRegs();
+#endif
 }
 void opFPREM(Armv8btAsm* data) {
-	data->syncRegsFromHost();
-	data->mov64(0, xCPU); // param 1 (CPU)
-	data->callHost((void*)common_FPREM);
-	data->syncRegsToHost();
+	callFpu(data, common_FPREM);
 }
 void opFYL2XP1(Armv8btAsm* data) {
-	data->syncRegsFromHost();
-	data->mov64(0, xCPU); // param 1 (CPU)
-	data->callHost((void*)common_FYL2XP1);
-	data->syncRegsToHost();
+	callFpu(data, common_FYL2XP1);
 }
+
+// age of empires uses this for path finding
 void opFSQRT(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpu(data, common_FSQRT);
+#else
 	// this->regs[this->top].d = sqrt(this->regs[this->top].d);
-	FPUReg reg(data, 0, true, false);
+	FPUReg reg(data, 0, true);
 	data->fSqrt(reg.reg, reg.reg, D_scaler);
+#endif
 }
 void opFSINCOS(Armv8btAsm* data) {
-	data->syncRegsFromHost();
-	data->mov64(0, xCPU); // param 1 (CPU)
-	data->callHost((void*)common_FSINCOS);
-	data->syncRegsToHost();
+	callFpu(data, common_FSINCOS);
 }
 void opFRNDINT(Armv8btAsm* data) {
-	data->syncRegsFromHost();
-	data->mov64(0, xCPU); // param 1 (CPU)
-	data->callHost((void*)common_FRNDINT);
-	data->syncRegsToHost();
+	callFpu(data, common_FRNDINT);
 }
 void opFSCALE(Armv8btAsm* data) {
-	data->syncRegsFromHost();
-	data->mov64(0, xCPU); // param 1 (CPU)
-	data->callHost((void*)common_FSCALE);
-	data->syncRegsToHost();
+	callFpu(data, common_FSCALE);
 }
 void opFSIN(Armv8btAsm* data) {
-	data->syncRegsFromHost();
-	data->mov64(0, xCPU); // param 1 (CPU)
-	data->callHost((void*)common_FSIN);
-	data->syncRegsToHost();
+	callFpu(data, common_FSIN);
 }
 void opFCOS(Armv8btAsm* data) {
-	data->syncRegsFromHost();
-	data->mov64(0, xCPU); // param 1 (CPU)
-	data->callHost((void*)common_FCOS);
-	data->syncRegsToHost();
+	callFpu(data, common_FCOS);
 }
 void opFLD_SINGLE_REAL(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FLD_SINGLE_REAL);
+#else
 	// U32 value = readd(address); // might generate PF, so do before we adjust the stack
 	// cpu->fpu.PREP_PUSH();
 	// cpu->fpu.FLD_F32(value, cpu->fpu.STV(0));
 	readFloat(data, vMMX0);
 	PREP_PUSH(data);
 	hostSaveDouble(data, 0);
+#endif
 }
 void opFST_SINGLE_REAL(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FST_SINGLE_REAL);
+#else
 	FPUReg src(data, 0, false);
 	U8 vTmpReg = data->vGetTmpReg();
 	data->vConvertDoubleToFloatRoundToCurrentModeAndKeep(vTmpReg, src.reg);
@@ -774,8 +906,12 @@ void opFST_SINGLE_REAL(Armv8btAsm* data) {
 	data->vWriteMemory32(addressReg, vTmpReg, 0, true);
 	data->releaseTmpReg(addressReg);
 	data->vReleaseTmpReg(vTmpReg);
+#endif
 }
 void opFST_SINGLE_REAL_Pop(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FST_SINGLE_REAL_Pop);
+#else
 	FPUReg src(data, 0, false);
 	U8 vTmpReg = data->vGetTmpReg();
 	data->vConvertDoubleToFloatRoundToCurrentModeAndKeep(vTmpReg, src.reg);
@@ -784,35 +920,21 @@ void opFST_SINGLE_REAL_Pop(Armv8btAsm* data) {
 	data->releaseTmpReg(addressReg);
 	data->vReleaseTmpReg(vTmpReg);
 	FPU_POP(data);
+#endif
 }
 void opFLDENV(Armv8btAsm* data) {
-	U8 addressReg = data->getAddressReg();
-	data->syncRegsFromHost();
-	data->mov64(0, xCPU); // param 1 (CPU)
-	data->mov64(1, addressReg);
-	data->releaseTmpReg(addressReg);
-	data->callHost((void*)common_FLDENV);
-	data->syncRegsToHost();
+	callFpuA(data, common_FLDENV);
 }
 void opFLDCW(Armv8btAsm* data) {
-	U8 addressReg = data->getAddressReg();
-	data->syncRegsFromHost();
-	data->mov64(0, xCPU); // param 1 (CPU)
-	data->mov64(1, addressReg);
-	data->releaseTmpReg(addressReg);
-	data->callHost((void*)common_FLDCW);
-	data->syncRegsToHost();
+	callFpuA(data, common_FLDCW);
 }
 void opFNSTENV(Armv8btAsm* data) {
-	U8 addressReg = data->getAddressReg();
-	data->syncRegsFromHost();
-	data->mov64(0, xCPU); // param 1 (CPU)
-	data->mov64(1, addressReg);
-	data->releaseTmpReg(addressReg);
-	data->callHost((void*)common_FNSTENV);
-	data->syncRegsToHost();
+	callFpuA(data, common_FNSTENV);
 }
 void opFNSTCW(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FNSTCW);
+#else
 	// writew(address, cpu->fpu.CW());
 	U8 tmpReg = data->getTmpReg();
 	U8 addressReg = data->getAddressReg();
@@ -820,143 +942,222 @@ void opFNSTCW(Armv8btAsm* data) {
 	data->writeMemory(addressReg, tmpReg, 16, true);
 	data->releaseTmpReg(addressReg);
 	data->releaseTmpReg(tmpReg);
-}
-
-static void doCMov(Armv8btAsm* data) {
-	FPUReg from(data, data->decodedOp->reg, false);
-	U8 tagReg = data->getTmpReg();
-	from.hostReadTag(tagReg); // read before push changes indexes
-	FPUReg to(data, 0, true, false);
-	data->vMov64(to.reg, 0, from.reg, 0);
-	to.hostWriteTag(tagReg);
-	data->releaseTmpReg(tagReg);
+#endif
 }
 
 void opFCMOV_ST0_STj_CF(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuR(data, common_FCMOV_ST0_STj_CF);
+#else
 	doCondition(data, condional_B, [data] {
 		doCMov(data);
 		});
+#endif
 }
 void opFCMOV_ST0_STj_ZF(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuR(data, common_FCMOV_ST0_STj_ZF);
+#else
 	doCondition(data, condional_Z, [data] {
 		doCMov(data);
 		});
+#endif
 }
 void opFCMOV_ST0_STj_CF_OR_ZF(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuR(data, common_FCMOV_ST0_STj_CF_OR_ZF);
+#else
 	doCondition(data, condional_BE, [data] {
 		doCMov(data);
 		});
+#endif
 }
 void opFCMOV_ST0_STj_PF(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuR(data, common_FCMOV_ST0_STj_PF);
+#else
 	doCondition(data, condional_P, [data] {
 		doCMov(data);
 		});
+#endif
 }
 void opFUCOMPP(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpu(data, common_FUCOMPP);
+#else
 	FPUReg reg1(data, 0, false, true, false, false);
 	FPUReg reg2(data, 1, false, true, false, false);
 	// :TODO: FCOM and FUCOM currently do the same thing
 	doFCOM(data, reg1.reg, 0, reg2.reg, 1);
 	FPU_POP(data);
 	FPU_POP(data);
+#endif
 }
 void opFIADD_DWORD_INTEGER(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FIADD_DWORD_INTEGER);
+#else
 	U8 vTmpReg = loadInt32AsDouble(data);
 	FPUReg reg(data, 0, true);
 	data->fAdd(reg.reg, reg.reg, vTmpReg, D_scaler);
 	data->vReleaseTmpReg(vTmpReg);
+#endif
 }
 void opFIMUL_DWORD_INTEGER(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FIMUL_DWORD_INTEGER);
+#else
 	U8 vTmpReg = loadInt32AsDouble(data);
 	FPUReg reg(data, 0, true);
 	data->fMul(reg.reg, reg.reg, vTmpReg, D_scaler);
 	data->vReleaseTmpReg(vTmpReg);
+#endif
 }
 void opFICOM_DWORD_INTEGER(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FICOM_DWORD_INTEGER);
+#else
 	U8 vTmpReg = loadInt32AsDouble(data);
 	FPUReg reg(data, 0, false);
 	doFCOM(data, reg.reg, 0, vTmpReg, -1);
 	data->vReleaseTmpReg(vTmpReg);
+#endif
 }
 void opFICOM_DWORD_INTEGER_Pop(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FICOM_DWORD_INTEGER_Pop);
+#else
 	U8 vTmpReg = loadInt32AsDouble(data);
 	FPUReg reg(data, 0, false);
 	doFCOM(data, reg.reg, 0, vTmpReg, -1);
 	data->vReleaseTmpReg(vTmpReg);
 	FPU_POP(data);
+#endif
 }
 void opFISUB_DWORD_INTEGER(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FISUB_DWORD_INTEGER);
+#else
 	U8 vTmpReg = loadInt32AsDouble(data);
 	FPUReg reg(data, 0, true);
 	data->fSub(reg.reg, reg.reg, vTmpReg, D_scaler);
 	data->vReleaseTmpReg(vTmpReg);
+#endif
 }
 void opFISUBR_DWORD_INTEGER(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FISUBR_DWORD_INTEGER);
+#else
 	U8 vTmpReg = loadInt32AsDouble(data);
 	FPUReg reg(data, 0, true);
 	data->fSub(reg.reg, vTmpReg, reg.reg, D_scaler);
 	data->vReleaseTmpReg(vTmpReg);
+#endif
 }
 void opFIDIV_DWORD_INTEGER(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FIDIV_DWORD_INTEGER);
+#else
 	U8 vTmpReg = loadInt32AsDouble(data);
 	FPUReg reg(data, 0, true);
 	data->fDiv(reg.reg, reg.reg, vTmpReg, D_scaler);
 	data->vReleaseTmpReg(vTmpReg);
+#endif
 }
 void opFIDIVR_DWORD_INTEGER(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FIDIVR_DWORD_INTEGER);
+#else
 	U8 vTmpReg = loadInt32AsDouble(data);
 	FPUReg reg(data, 0, true);
 	data->fDiv(reg.reg, vTmpReg, reg.reg, D_scaler);
 	data->vReleaseTmpReg(vTmpReg);
+#endif
 }
 
 void opFCMOV_ST0_STj_NCF(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuR(data, common_FCMOV_ST0_STj_NCF);
+#else
 	doCondition(data, condional_NB, [data] {
 		doCMov(data);
 		});
+#endif
 }
 void opFCMOV_ST0_STj_NZF(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuR(data, common_FCMOV_ST0_STj_NZF);
+#else
 	doCondition(data, condional_NZ, [data] {
 		doCMov(data);
 		});
+#endif
 }
 void opFCMOV_ST0_STj_NCF_AND_NZF(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuR(data, common_FCMOV_ST0_STj_NCF_AND_NZF);
+#else
 	doCondition(data, condional_NBE, [data] {
 		doCMov(data);
 		});
+#endif
 }
 void opFCMOV_ST0_STj_NPF(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuR(data, common_FCMOV_ST0_STj_NPF);
+#else
 	doCondition(data, condional_NP, [data] {
 		doCMov(data);
 		});
+#endif
 }
 void opFNCLEX(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpu(data, common_FNCLEX);
+#else
 	// this->sw &= 0x7f00;
 	U8 tmpReg = data->getTmpReg();
 	data->readMem32ValueOffset(tmpReg, data->getFpuOffset(), (U32)(offsetof(FPU, sw)));
 	data->andValue32(tmpReg, tmpReg, 0x7f00);
 	data->writeMem32ValueOffset(tmpReg, data->getFpuOffset(), (U32)(offsetof(FPU, sw)));
 	data->releaseTmpReg(tmpReg);
+#endif
 }
 void opFNINIT(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpu(data, common_FNINIT);
+#else
 	data->fpuTopRegSet = true;
 	data->clearCachedFpuRegs();
 	data->zeroReg(xFpuTop);
 	data->writeMem32ValueOffset(xFpuTop, data->getFpuOffset(), (U32)(offsetof(FPU, top)));
 	data->writeMem32ValueOffset(xFpuTop, data->getFpuOffset(), (U32)(offsetof(FPU, sw)));
+	// :TODO: clear tags
+#endif
 }
 void opFUCOMI_ST0_STj(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuR(data, common_FUCOMI_ST0_STj);
+#else
 	FPUReg dst(data, 0, false);
 	FPUReg src(data, data->decodedOp->reg, false);
 	// :TODO: FCOM and FUCOM currently do the same thing
 	doFCOMI(data, dst.reg, 0, src.reg, data->decodedOp->reg);
+#endif
 }
 void opFCOMI_ST0_STj(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuR(data, common_FCOMI_ST0_STj);
+#else
 	FPUReg dst(data, 0, false);
 	FPUReg src(data, data->decodedOp->reg, false);
 	doFCOMI(data, dst.reg, 0, src.reg, data->decodedOp->reg);
+#endif
 }
 void opFILD_DWORD_INTEGER(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FILD_DWORD_INTEGER);
+#else
 	// U32 value = readd(address); // might generate PF, so do before we adjust the stack
 	// cpu->fpu.PREP_PUSH();
 	// cpu->fpu.FLD_I32(value, cpu->fpu.STV(0));
@@ -964,8 +1165,12 @@ void opFILD_DWORD_INTEGER(Armv8btAsm* data) {
 	PREP_PUSH(data);
 	data->vWriteMem64RegOffset(vTmpReg, data->getFpuOffset(), data->getFpuTopReg(), 3);
 	data->vReleaseTmpReg(vTmpReg);
+#endif
 }
 void opFISTTP32(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FISTTP32);
+#else
 	// cpu->fpu.FSTT_I32(cpu, address);
 	// cpu->fpu.FPOP();
 	U8 addressReg = data->getAddressReg();
@@ -976,8 +1181,12 @@ void opFISTTP32(Armv8btAsm* data) {
 	data->releaseTmpReg(tmpReg);
 	data->releaseTmpReg(addressReg);
 	FPU_POP(data);
+#endif
 }
 void opFIST_DWORD_INTEGER(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FIST_DWORD_INTEGER);
+#else
 	U8 addressReg = data->getAddressReg();
 	FPUReg reg(data, 0, false);
 	U8 tmpReg = data->getTmpReg();
@@ -986,117 +1195,171 @@ void opFIST_DWORD_INTEGER(Armv8btAsm* data) {
 	data->writeMemory(addressReg, tmpReg, 32, true);
 	data->releaseTmpReg(tmpReg);
 	data->releaseTmpReg(addressReg);
+#endif
 }
 void opFIST_DWORD_INTEGER_Pop(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FIST_DWORD_INTEGER_Pop);
+#else
 	opFIST_DWORD_INTEGER(data);
 	FPU_POP(data);
+#endif
 }
 void opFLD_EXTENDED_REAL(Armv8btAsm* data) {
-	// void common_FLD_EXTENDED_REAL(CPU * cpu, U32 address)
-	U8 addressReg = data->getAddressReg();
-	data->syncRegsFromHost();
-	data->mov64(0, xCPU); // param 1 (CPU)
-	data->mov64(1, addressReg);
-	data->releaseTmpReg(addressReg);
-	data->callHost((void*)common_FLD_EXTENDED_REAL);
-	data->syncRegsToHost();
+	callFpuA(data, common_FLD_EXTENDED_REAL);
 }
 void opFSTP_EXTENDED_REAL(Armv8btAsm* data) {
-	// void common_FSTP_EXTENDED_REAL(CPU* cpu, U32 address) 
-	U8 addressReg = data->getAddressReg();
-	data->syncRegsFromHost();
-	data->mov64(0, xCPU); // param 1 (CPU)
-	data->mov64(1, addressReg);
-	data->releaseTmpReg(addressReg);
-	data->callHost((void*)common_FSTP_EXTENDED_REAL);
-	data->syncRegsToHost();
+	callFpuA(data, common_FSTP_EXTENDED_REAL);
 }
 
 void opFADD_STi_ST0(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuR(data, common_FADD_STi_ST0);
+#else
 	FPUReg dst(data, data->decodedOp->reg, true);
 	FPUReg src(data, 0, false);
 	data->fAdd(dst.reg, dst.reg, src.reg, D_scaler);
+#endif
 }
 void opFMUL_STi_ST0(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuR(data, common_FMUL_STi_ST0);
+#else
 	FPUReg dst(data, data->decodedOp->reg, true);
 	FPUReg src(data, 0, false);
 	data->fMul(dst.reg, dst.reg, src.reg, D_scaler);
+#endif
 }
 void opFSUBR_STi_ST0(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuR(data, common_FSUBR_STi_ST0);
+#else
 	FPUReg dst(data, data->decodedOp->reg, true);
 	FPUReg src(data, 0, false);
 	data->fSub(dst.reg, src.reg, dst.reg, D_scaler);
+#endif
 }
 void opFSUB_STi_ST0(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuR(data, common_FSUB_STi_ST0);
+#else
 	FPUReg dst(data, data->decodedOp->reg, true);
 	FPUReg src(data, 0, false);
 	data->fSub(dst.reg, dst.reg, src.reg, D_scaler);
+#endif
 }
 void opFDIVR_STi_ST0(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuR(data, common_FDIVR_STi_ST0);
+#else
 	FPUReg dst(data, data->decodedOp->reg, true);
 	FPUReg src(data, 0, false);
 	data->fDiv(dst.reg, src.reg, dst.reg, D_scaler);
+#endif
 }
 void opFDIV_STi_ST0(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuR(data, common_FDIV_STi_ST0);
+#else
 	FPUReg dst(data, data->decodedOp->reg, true);
 	FPUReg src(data, 0, false);
 	data->fDiv(dst.reg, dst.reg, src.reg, D_scaler);
+#endif
 }
 void opFADD_DOUBLE_REAL(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FADD_DOUBLE_REAL);
+#else
 	U8 tmpRead = readDouble(data);
 	FPUReg dst(data, 0, true);
 	data->fAdd(dst.reg, dst.reg, tmpRead, D_scaler);
 	data->vReleaseTmpReg(tmpRead);
+#endif
 }
 void opFMUL_DOUBLE_REAL(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FMUL_DOUBLE_REAL);
+#else
 	U8 tmpRead = readDouble(data);
 	FPUReg dst(data, 0, true);
 	data->fMul(dst.reg, dst.reg, tmpRead, D_scaler);
 	data->vReleaseTmpReg(tmpRead);
+#endif
 }
 void opFCOM_DOUBLE_REAL(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FCOM_DOUBLE_REAL);
+#else
 	U8 tmpRead = readDouble(data);
 	FPUReg dst(data, 0, false);
 	doFCOM(data, dst.reg, 0, tmpRead, -1);
 	data->vReleaseTmpReg(tmpRead);
+#endif
 }
 void opFCOM_DOUBLE_REAL_Pop(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FCOM_DOUBLE_REAL_Pop);
+#else
 	U8 tmpRead = readDouble(data);
 	FPUReg dst(data, 0, false);
 	doFCOM(data, dst.reg, 0, tmpRead, -1);
 	data->vReleaseTmpReg(tmpRead);
 	FPU_POP(data);
+#endif
 }
 void opFSUB_DOUBLE_REAL(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FSUB_DOUBLE_REAL);
+#else
 	U8 tmpRead = readDouble(data);
 	FPUReg dst(data, 0, true);
 	data->fSub(dst.reg, dst.reg, tmpRead, D_scaler);
 	data->vReleaseTmpReg(tmpRead);
+#endif
 }
 void opFSUBR_DOUBLE_REAL(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FSUBR_DOUBLE_REAL);
+#else
 	U8 tmpRead = readDouble(data);
 	FPUReg dst(data, 0, true);
 	data->fSub(dst.reg, tmpRead, dst.reg, D_scaler);
 	data->vReleaseTmpReg(tmpRead);
+#endif
 }
 void opFDIV_DOUBLE_REAL(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FDIV_DOUBLE_REAL);
+#else
 	U8 tmpRead = readDouble(data);
 	FPUReg dst(data, 0, true);
 	data->fDiv(dst.reg, dst.reg, tmpRead, D_scaler);
 	data->vReleaseTmpReg(tmpRead);
+#endif
 }
 void opFDIVR_DOUBLE_REAL(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FDIVR_DOUBLE_REAL);
+#else
 	U8 tmpRead = readDouble(data);
 	FPUReg dst(data, 0, true);
 	data->fDiv(dst.reg, tmpRead, dst.reg, D_scaler);
 	data->vReleaseTmpReg(tmpRead);
+#endif
 }
 
 void opFFREE_STi(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuR(data, common_FFREE_STi);
+#else
 	// cpu->fpu.FFREE_STi(cpu->fpu.STV(reg));
 	hostWriteTag(data, data->getRegWithConst(TAG_Empty), true, data->decodedOp->reg);
+#endif
 }
 void opFST_STi(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuR(data, common_FST_STi);
+#else
 	// cpu->fpu.FST(cpu->fpu.STV(0), cpu->fpu.STV(reg));
 	FPUReg src(data, 0, false);
 	FPUReg dst(data, data->decodedOp->reg, true, false);
@@ -1106,29 +1369,45 @@ void opFST_STi(Armv8btAsm* data) {
 	data->vMov64(dst.reg, 0, src.reg, 0);	
 	dst.hostWriteTag(tagReg);
 	data->releaseTmpReg(tagReg);
+#endif
 }
 void opFUCOM_STi(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuR(data, common_FUCOM_STi);
+#else
 	FPUReg dst(data, 0, false);
 	FPUReg src(data, data->decodedOp->reg, false);
 	// :TODO: FCOM and FUCOM currently do the same thing
 	doFCOM(data, dst.reg, 0, src.reg, data->decodedOp->reg);
+#endif
 }
 void opFUCOM_STi_Pop(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuR(data, common_FUCOM_STi_Pop);
+#else
 	FPUReg dst(data, 0, false, true, false, false);
 	FPUReg src(data, data->decodedOp->reg, false, true, false, false);
 	// :TODO: FCOM and FUCOM currently do the same thing
 	doFCOM(data, dst.reg, 0, src.reg, data->decodedOp->reg);
 	FPU_POP(data);
+#endif
 }
 void opFLD_DOUBLE_REAL(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FLD_DOUBLE_REAL);
+#else
 	// U64 value = readq(address); // might generate PF, so do before we adjust the stack
 	// cpu->fpu.PREP_PUSH();
 	// cpu->fpu.FLD_F64(value, cpu->fpu.STV(0));
 	readDouble(data, vMMX0);
 	PREP_PUSH(data);
 	hostSaveDouble(data, 0);
+#endif
 }
 void opFISTTP64(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FISTTP64);
+#else
 	U8 addressReg = data->getAddressReg();
 	FPUReg reg(data, 0, false);
 	U8 tmpReg = data->getTmpReg();
@@ -1137,39 +1416,39 @@ void opFISTTP64(Armv8btAsm* data) {
 	data->releaseTmpReg(tmpReg);
 	data->releaseTmpReg(addressReg);
 	FPU_POP(data);
+#endif
 }
 void opFST_DOUBLE_REAL(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FST_DOUBLE_REAL);
+#else
 	FPUReg src(data, 0, false);
 	U8 addressReg = data->getAddressReg();
 	data->vWriteMemory64(addressReg, src.reg, 0, true);
 	data->releaseTmpReg(addressReg);
+#endif
 }
 void opFST_DOUBLE_REAL_Pop(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FST_DOUBLE_REAL_Pop);
+#else
 	FPUReg src(data, 0, false);
 	U8 addressReg = data->getAddressReg();
 	data->vWriteMemory64(addressReg, src.reg, 0, true);
 	data->releaseTmpReg(addressReg);
 	FPU_POP(data);
+#endif
 }
 void opFRSTOR(Armv8btAsm* data) {
-	U8 addressReg = data->getAddressReg();
-	data->syncRegsFromHost();
-	data->mov64(0, xCPU); // param 1 (CPU)
-	data->mov64(1, addressReg);
-	data->releaseTmpReg(addressReg);
-	data->callHost((void*)common_FRSTOR);
-	data->syncRegsToHost();
+	callFpuA(data, common_FRSTOR);
 }
 void opFNSAVE(Armv8btAsm* data) {
-	U8 addressReg = data->getAddressReg();
-	data->syncRegsFromHost();
-	data->mov64(0, xCPU); // param 1 (CPU)
-	data->mov64(1, addressReg);
-	data->releaseTmpReg(addressReg);
-	data->callHost((void*)common_FNSAVE);
-	data->syncRegsToHost();
+	callFpuA(data, common_FNSAVE);
 }
 void opFNSTSW(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FNSTSW);
+#else
 	// (fpu)->sw &= ~0x3800; (fpu)->sw |= (top & 7) << 11
 	// writew(address, cpu->fpu.SW());
 	U8 tmpReg = data->getTmpReg();
@@ -1180,105 +1459,173 @@ void opFNSTSW(Armv8btAsm* data) {
 	data->writeMemory(addressReg, tmpReg, 16, true);
 	data->releaseTmpReg(addressReg);
 	data->releaseTmpReg(tmpReg);
+#endif
 }
 
 void opFADD_STi_ST0_Pop(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuR(data, common_FADD_STi_ST0_Pop);
+#else
 	FPUReg dst(data, data->decodedOp->reg, true);
 	FPUReg src(data, 0, false);
 	data->fAdd(dst.reg, dst.reg, src.reg, D_scaler);
 	FPU_POP(data);
+#endif
 }
 void opFMUL_STi_ST0_Pop(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuR(data, common_FMUL_STi_ST0_Pop);
+#else
 	FPUReg dst(data, data->decodedOp->reg, true);
 	FPUReg src(data, 0, false);
 	data->fMul(dst.reg, dst.reg, src.reg, D_scaler);
 	FPU_POP(data);
+#endif
 }
 void opFCOMPP(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpu(data, common_FCOMPP);
+#else
 	FPUReg reg1(data, 0, false, true, false, false);
 	FPUReg reg2(data, 1, false, true, false, false);
 	doFCOM(data, reg1.reg, 0, reg2.reg, 1);
 	FPU_POP(data);
 	FPU_POP(data);
+#endif
 }
 void opFSUBR_STi_ST0_Pop(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuR(data, common_FSUBR_STi_ST0_Pop);
+#else
 	FPUReg dst(data, data->decodedOp->reg, true);
 	FPUReg src(data, 0, false);
 	data->fSub(dst.reg, src.reg, dst.reg, D_scaler);
 	FPU_POP(data);
+#endif
 }
 void opFSUB_STi_ST0_Pop(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuR(data, common_FSUB_STi_ST0_Pop);
+#else
 	FPUReg dst(data, data->decodedOp->reg, true);
 	FPUReg src(data, 0, false);
 	data->fSub(dst.reg, dst.reg, src.reg, D_scaler);
 	FPU_POP(data);
+#endif
 }
 void opFDIVR_STi_ST0_Pop(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuR(data, common_FDIVR_STi_ST0_Pop);
+#else
 	FPUReg dst(data, data->decodedOp->reg, true);
 	FPUReg src(data, 0, false);
 	data->fDiv(dst.reg, src.reg, dst.reg, D_scaler);
 	FPU_POP(data);
+#endif
 }
 void opFDIV_STi_ST0_Pop(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuR(data, common_FDIV_STi_ST0_Pop);
+#else
 	FPUReg dst(data, data->decodedOp->reg, true);
 	FPUReg src(data, 0, false);
 	data->fDiv(dst.reg, dst.reg, src.reg, D_scaler);
 	FPU_POP(data);
+#endif
 }
 void opFIADD_WORD_INTEGER(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FIADD_WORD_INTEGER);
+#else
 	U8 vTmpReg = loadInt16AsDouble(data);
 	FPUReg reg(data, 0, true);
 	data->fAdd(reg.reg, reg.reg, vTmpReg, D_scaler);
 	data->vReleaseTmpReg(vTmpReg);
+#endif
 }
 void opFIMUL_WORD_INTEGER(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FIMUL_WORD_INTEGER);
+#else
 	U8 vTmpReg = loadInt16AsDouble(data);
 	FPUReg reg(data, 0, true);
 	data->fMul(reg.reg, reg.reg, vTmpReg, D_scaler);
 	data->vReleaseTmpReg(vTmpReg);
+#endif
 }
 void opFICOM_WORD_INTEGER(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FICOM_WORD_INTEGER);
+#else
 	U8 vTmpReg = loadInt16AsDouble(data);
 	FPUReg reg(data, 0, false);
 	doFCOM(data, reg.reg, 0, vTmpReg, -1);
 	data->vReleaseTmpReg(vTmpReg);
+#endif
 }
 void opFICOM_WORD_INTEGER_Pop(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FICOM_WORD_INTEGER_Pop);
+#else
 	U8 vTmpReg = loadInt32AsDouble(data);
 	FPUReg reg(data, 0, false);
 	doFCOM(data, reg.reg, 0, vTmpReg, -1);
 	data->vReleaseTmpReg(vTmpReg);
 	FPU_POP(data);
+#endif
 }
 void opFISUB_WORD_INTEGER(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FISUB_WORD_INTEGER);
+#else
 	U8 vTmpReg = loadInt16AsDouble(data);
 	FPUReg reg(data, 0, true);
 	data->fSub(reg.reg, reg.reg, vTmpReg, D_scaler);
 	data->vReleaseTmpReg(vTmpReg);
+#endif
 }
 void opFISUBR_WORD_INTEGER(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FISUBR_WORD_INTEGER);
+#else
 	U8 vTmpReg = loadInt16AsDouble(data);
 	FPUReg reg(data, 0, true);
 	data->fSub(reg.reg, vTmpReg, reg.reg, D_scaler);
 	data->vReleaseTmpReg(vTmpReg);
+#endif
 }
 void opFIDIV_WORD_INTEGER(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FIDIV_WORD_INTEGER);
+#else
 	U8 vTmpReg = loadInt16AsDouble(data);
 	FPUReg reg(data, 0, true);
 	data->fDiv(reg.reg, reg.reg, vTmpReg, D_scaler);
 	data->vReleaseTmpReg(vTmpReg);
+#endif
 }
 void opFIDIVR_WORD_INTEGER(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FIDIVR_WORD_INTEGER);
+#else
 	U8 vTmpReg = loadInt16AsDouble(data);
 	FPUReg reg(data, 0, true);
 	data->fDiv(reg.reg, vTmpReg, reg.reg, D_scaler);
 	data->vReleaseTmpReg(vTmpReg);
+#endif
 }
 void opFFREEP_STi(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuR(data, common_FFREEP_STi);
+#else
 	hostWriteTag(data, data->getRegWithConst(TAG_Empty), true, data->decodedOp->reg);
 	FPU_POP(data);
+#endif
 }
 void opFNSTSW_AX(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpu(data, common_FNSTSW_AX);
+#else
 	// AX = (fpu->sw &= ~0x3800) | (top & 7) << 11
 	U8 tmpReg = data->getTmpReg();
 	data->readMem32ValueOffset(tmpReg, data->getFpuOffset(), (U32)(offsetof(FPU, sw)));
@@ -1286,21 +1633,33 @@ void opFNSTSW_AX(Armv8btAsm* data) {
 	data->orRegs32(tmpReg, tmpReg, data->getFpuTopReg(), 11);
 	data->movRegToReg(xEAX, tmpReg, 16, false);
 	data->releaseTmpReg(tmpReg);
+#endif
 }
 void opFUCOMI_ST0_STj_Pop(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuR(data, common_FUCOMI_ST0_STj_Pop);
+#else
 	FPUReg dst(data, 0, false, true, false, false);
 	FPUReg src(data, data->decodedOp->reg, false, true, false, false);
 	// :TODO: FCOM and FUCOM currently do the same thing
 	doFCOMI(data, dst.reg, 0, src.reg, data->decodedOp->reg);
 	FPU_POP(data);
+#endif
 }
 void opFCOMI_ST0_STj_Pop(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuR(data, common_FCOMI_ST0_STj_Pop);
+#else
 	FPUReg dst(data, 0, false, true, false, false);
 	FPUReg src(data, data->decodedOp->reg, false, true, false, false);
 	doFCOMI(data, dst.reg, 0, src.reg, data->decodedOp->reg);
 	FPU_POP(data);
+#endif
 }
 void opFILD_WORD_INTEGER(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FILD_WORD_INTEGER);
+#else
 	// S16 value = (S16)readw(address); // might generate PF, so do before we adjust the stack
 	// cpu->fpu.PREP_PUSH();
 	// cpu->fpu.FLD_I16(value, cpu->fpu.STV(0));
@@ -1308,8 +1667,12 @@ void opFILD_WORD_INTEGER(Armv8btAsm* data) {
 	PREP_PUSH(data);
 	data->vWriteMem64RegOffset(vTmpReg, data->getFpuOffset(), data->getFpuTopReg(), 3);
 	data->vReleaseTmpReg(vTmpReg);
+#endif
 }
 void opFISTTP16(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FISTTP16);
+#else
 	U8 addressReg = data->getAddressReg();
 	FPUReg reg(data, 0, false);
 	U8 tmpReg = data->getTmpReg();
@@ -1318,8 +1681,12 @@ void opFISTTP16(Armv8btAsm* data) {
 	data->releaseTmpReg(tmpReg);
 	data->releaseTmpReg(addressReg);
 	FPU_POP(data);
+#endif
 }
 void opFIST_WORD_INTEGER(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FIST_WORD_INTEGER);
+#else
 	U8 addressReg = data->getAddressReg();
 	FPUReg reg(data, 0, false);
 	U8 tmpReg = data->getTmpReg();
@@ -1328,36 +1695,36 @@ void opFIST_WORD_INTEGER(Armv8btAsm* data) {
 	data->writeMemory(addressReg, tmpReg, 16, true);
 	data->releaseTmpReg(tmpReg);
 	data->releaseTmpReg(addressReg);
+#endif
 }
 void opFIST_WORD_INTEGER_Pop(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FIST_WORD_INTEGER_Pop);
+#else
 	opFIST_WORD_INTEGER(data);
 	FPU_POP(data);
+#endif
 }
 void opFBLD_PACKED_BCD(Armv8btAsm* data) {
-	U8 addressReg = data->getAddressReg();
-	data->syncRegsFromHost();
-	data->mov64(0, xCPU); // param 1 (CPU)
-	data->mov64(1, addressReg);
-	data->releaseTmpReg(addressReg);
-	data->callHost((void*)common_FBLD_PACKED_BCD);
-	data->syncRegsToHost();
+	callFpuA(data, common_FBLD_PACKED_BCD);
 }
 void opFILD_QWORD_INTEGER(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FILD_QWORD_INTEGER);
+#else
 	U8 vTmpReg = loadInt64AsDouble(data);
 	PREP_PUSH(data);
 	data->vWriteMem64RegOffset(vTmpReg, data->getFpuOffset(), data->getFpuTopReg(), 3);
 	data->vReleaseTmpReg(vTmpReg);
+#endif
 }
 void opFBSTP_PACKED_BCD(Armv8btAsm* data) {
-	U8 addressReg = data->getAddressReg();
-	data->syncRegsFromHost();
-	data->mov64(0, xCPU); // param 1 (CPU)
-	data->mov64(1, addressReg);
-	data->releaseTmpReg(addressReg);
-	data->callHost((void*)common_FBSTP_PACKED_BCD);
-	data->syncRegsToHost();
+	callFpuA(data, common_FBSTP_PACKED_BCD);
 }
 void opFISTP_QWORD_INTEGER(Armv8btAsm* data) {
+#ifdef NORMAL_FPU
+	callFpuA(data, common_FISTP_QWORD_INTEGER);
+#else
 	U8 addressReg = data->getAddressReg();
 	FPUReg reg(data, 0, false);
 	// round based on control word
@@ -1365,6 +1732,7 @@ void opFISTP_QWORD_INTEGER(Armv8btAsm* data) {
 	data->vWriteMemory64(addressReg, reg.reg, 0, true);
 	data->releaseTmpReg(addressReg);
 	FPU_POP(data);
+#endif
 }
 
 #endif

@@ -58,6 +58,7 @@ void BtCodeChunk::makeLive() {
         host += this->hostInstructionLen[i];
     }
     cpu->thread->memory->addCodeChunk(shared_from_this());
+    this->clearInstructionCache((U8*)this->hostAddress, this->hostLen);
 }
 
 void BtCodeChunk::detachFromHost(Memory* memory) {
@@ -89,6 +90,7 @@ void BtCodeChunk::release(Memory* memory) {
 
 void BtCodeChunk::internalDealloc() {
     KThread::currentThread()->memory->freeExcutableMemory(this->hostAddress, this->hostAddressSize);
+    this->clearInstructionCache((U8*)this->hostAddress, this->hostAddressSize);
 }
 
 U32 BtCodeChunk::getEipThatContainsHostAddress(void* address, void** startOfHostInstruction, U32* index) {
@@ -177,6 +179,10 @@ void BtCodeChunk::releaseAndRetranslate() {
     this->internalDealloc(); // don't call dealloc() because the new chunk occupies the memory cache and we don't want to mess with it
 }
 
+void BtCodeChunk::clearInstructionCache(U8* hostAddress, U32 len) {
+    // x86 doesn't need to do anything
+}
+
 void BtCodeChunk::invalidateStartingAt(U32 eipAddress) {
     U32 eipIndex = 0;
     U8* host = NULL;
@@ -195,6 +201,7 @@ void BtCodeChunk::invalidateStartingAt(U32 eipAddress) {
     }
     U32 remainingLen = this->hostLen - (U32)(host - (U8*)this->hostAddress);
     memset(host, 0xce, remainingLen);
+    this->clearInstructionCache(host, remainingLen);
 }
 
 bool BtCodeChunk::containsEip(U32 eip, U32 len) {
