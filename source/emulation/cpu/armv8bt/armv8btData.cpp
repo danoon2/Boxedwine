@@ -28,7 +28,6 @@ Armv8btData::Armv8btData(Armv8btCPU* cpu) : cpu(cpu) {
     this->fpuTopRegSet = false;
     this->fpuOffsetRegSet = false;
     this->clearCachedFpuRegs();
-    memset(this->usesSSEConstant, 0, sizeof(usesSSEConstant));
 }
 
 Armv8btData::~Armv8btData() {

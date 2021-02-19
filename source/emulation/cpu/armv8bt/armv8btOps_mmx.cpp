@@ -790,16 +790,17 @@ void opPmovmskbR32Mmx(Armv8btAsm* data) {
     // for all 8 bytes set a bit in a mask if it is signed
     U8 vTmpReg = data->vGetTmpReg();
 
-    data->needsSSEConstant(vByte8BitMask);
+    U8 bitMaskReg = data->getSSEConstant(SSE_BYTE8_BIT_MASK);
     // turn all the bits to 1 if signed
     data->vSignedShiftRightValue(vTmpReg, data->getNativeMmxReg(data->decodedOp->rm), 7, B8);
     // mask out the bit that should be set, so index 0 will set bit 0, index 1 will set bit 1, etc
-    data->vAnd(vTmpReg, vTmpReg, vByte8BitMask, B8);
+    data->vAnd(vTmpReg, vTmpReg, bitMaskReg, B8);
     // add bits 0-7 for indexes 0-7 to end up with the mask
     data->vAddAcrossVectorToScaler(vTmpReg, vTmpReg, B8);
     data->vMovToGeneralReg32ZeroExtend(data->getNativeReg(data->decodedOp->reg), vTmpReg, 0, B16);
 
     data->vReleaseTmpReg(vTmpReg);
+    data->vReleaseTmpReg(bitMaskReg);
 }
 void opPmulhuwMmxMmx(Armv8btAsm* data) {
     U8 vTmpReg = data->vGetTmpReg();

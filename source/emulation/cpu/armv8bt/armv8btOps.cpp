@@ -4811,11 +4811,11 @@ void opPmovmskbR32Xmm(Armv8btAsm* data) {
     // for all 16 bytes set a bit in a mask if it is signed
     U8 vTmpReg = data->vGetTmpReg();
 
-    data->needsSSEConstant(vByte8BitMask);
+    U8 bitMaskReg = data->getSSEConstant(SSE_BYTE8_BIT_MASK);
     // turn all the bits to 1 if signed
     data->vSignedShiftRightValue(vTmpReg, data->getNativeSseReg(data->decodedOp->rm), 7, B16);
     // mask out the bit that should be set, so index 0 will set bit 0, index 1 will set bit 1, etc
-    data->vAnd(vTmpReg, vTmpReg, vByte8BitMask, B16);
+    data->vAnd(vTmpReg, vTmpReg, bitMaskReg, B16);
 
     U8 vTmpReg2 = data->vGetTmpReg();
     data->vDup(vTmpReg2, vTmpReg, 1, D2);
@@ -4834,6 +4834,7 @@ void opPmovmskbR32Xmm(Armv8btAsm* data) {
     data->releaseTmpReg(tmpReg2);
     data->vReleaseTmpReg(vTmpReg);
     data->vReleaseTmpReg(vTmpReg2);
+    data->vReleaseTmpReg(bitMaskReg);
 }
 void opPmulhuwXmmXmm(Armv8btAsm* data) {
     U8 vTmpReg1 = data->vGetTmpReg();
@@ -4957,13 +4958,14 @@ void opMovmskpsR32Xmm(Armv8btAsm* data) {
     // cpu->reg[reg].u32 = (cpu->xmm[rm].pd.u32[0] >> 31) | ((cpu->xmm[rm].pd.u32[1] >> 31) << 1) | ((cpu->xmm[rm].pd.u32[2] >> 31) << 2) | ((cpu->xmm[rm].pd.u32[3] >> 31) << 3)
     U8 vTmpReg = data->vGetTmpReg();
 
-    data->needsSSEConstant(vInt32BitMask);
+    U8 bitMaskReg = data->getSSEConstant(SSE_INT32_BIT_MASK);
     data->vSignedShiftRightValue(vTmpReg, data->getNativeSseReg(data->decodedOp->rm), 31, S4);
-    data->vAnd(vTmpReg, vTmpReg, vInt32BitMask, B16);
+    data->vAnd(vTmpReg, vTmpReg, bitMaskReg, B16);
     data->vAddAcrossVectorToScaler(vTmpReg, vTmpReg, S4);
     data->vMovToGeneralReg32ZeroExtend(data->getNativeReg(data->decodedOp->reg), vTmpReg, 0, S4);
 
     data->vReleaseTmpReg(vTmpReg);
+    data->vReleaseTmpReg(bitMaskReg);
 }
 void opMovssXmmXmm(Armv8btAsm* data) {
     // cpu->xmm[r1].ps.u32[0] = cpu->xmm[r2].ps.u32[0];

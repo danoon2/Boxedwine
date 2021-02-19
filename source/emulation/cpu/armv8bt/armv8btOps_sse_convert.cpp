@@ -20,15 +20,15 @@ static void cvtps2piXmm(Armv8btAsm* data, U8 to, U8 from, bool truncate) {
     //data->vMov64(vTmpReg, 0, from, 0);
     //from = vTmpReg;
 
-    data->needsSSEConstant(vMaxInt32PlusOneAsFloat);
-    data->needsSSEConstant(vMinInt32MinusOneAsFloat);
+    U8 vPlusOne = data->getSSEConstant(SSE_MAX_INT32_PLUS_ONE_AS_FLOAT);
+    U8 vMinusOne = data->getSSEConstant(SSE_MIN_INT32_MINUS_ONE_AS_FLOAT);
 
     U8 vTmpReg1 = data->vGetTmpReg();
     U8 vTmpReg2 = data->vGetTmpReg();
 
     // will set lane to all 1's if value is too large or too small to convert
-    data->fCmpGreaterThanOrEqual(vTmpReg1, from, vMaxInt32PlusOneAsFloat, S4);
-    data->fCmpGreaterThanOrEqual(vTmpReg2, vMinInt32MinusOneAsFloat, from, S4);
+    data->fCmpGreaterThanOrEqual(vTmpReg1, from, vPlusOne, S4);
+    data->fCmpGreaterThanOrEqual(vTmpReg2, vMinusOne, from, S4);
     data->vOr(vTmpReg1, vTmpReg1, vTmpReg2, B16);
 
     // do the convert from float to int32
@@ -51,6 +51,8 @@ static void cvtps2piXmm(Armv8btAsm* data, U8 to, U8 from, bool truncate) {
 
     data->vReleaseTmpReg(vTmpReg2);
     data->vReleaseTmpReg(vTmpReg1);
+    data->vReleaseTmpReg(vPlusOne);
+    data->vReleaseTmpReg(vMinusOne);
 }
 
 static void cvtsd2siR32Xmm(Armv8btAsm* data, U8 to, U8 from, bool truncate) {
@@ -62,8 +64,8 @@ static void cvtsd2siR32Xmm(Armv8btAsm* data, U8 to, U8 from, bool truncate) {
     //    cpu->reg[r1].u32 = (int32_t)cpu->xmm[rm].pd.f64[0];
     //}    
 
-    data->needsSSEConstant(vMaxInt32PlusOneAsDouble);
-    data->needsSSEConstant(vMinInt32MinusOneAsDouble);
+    U8 vPlusOne = data->getSSEConstant(SSE_MAX_INT32_PLUS_ONE_AS_DOUBLE);
+    U8 vMinusOne = data->getSSEConstant(SSE_MIN_INT32_MINUS_ONE_AS_DOUBLE);
 
     U8 vTmpReg1 = data->vGetTmpReg();
     U8 vTmpReg2 = data->vGetTmpReg();
@@ -71,8 +73,8 @@ static void cvtsd2siR32Xmm(Armv8btAsm* data, U8 to, U8 from, bool truncate) {
     U8 tmpReg2 = data->getTmpReg();
 
     // will set lane to all 1's if value is too large or too small to convert
-    data->fCmpGreaterThanOrEqual(vTmpReg1, from, vMaxInt32PlusOneAsDouble, D_scaler);
-    data->fCmpGreaterThanOrEqual(vTmpReg2, vMinInt32MinusOneAsDouble, from, D_scaler);
+    data->fCmpGreaterThanOrEqual(vTmpReg1, from, vPlusOne, D_scaler);
+    data->fCmpGreaterThanOrEqual(vTmpReg2, vMinusOne, from, D_scaler);
     data->vOr(vTmpReg1, vTmpReg1, vTmpReg2, B8);
 
     data->vMovToGeneralReg32ZeroExtend(tmpReg, vTmpReg1, 0, S4); // vTmpReg1 is all 0's or all 1's, so no conversions are necessary
@@ -96,6 +98,8 @@ static void cvtsd2siR32Xmm(Armv8btAsm* data, U8 to, U8 from, bool truncate) {
     data->releaseTmpReg(tmpReg2);
     data->vReleaseTmpReg(vTmpReg1);
     data->vReleaseTmpReg(vTmpReg2);
+    data->vReleaseTmpReg(vPlusOne);
+    data->vReleaseTmpReg(vMinusOne);
 }
 
 static void cvtpd2piXmm(Armv8btAsm* data, U8 to, U8 from, bool truncate) {
@@ -108,15 +112,15 @@ static void cvtpd2piXmm(Armv8btAsm* data, U8 to, U8 from, bool truncate) {
     //    cpu->reg_mmx[reg].sd.d0 = (int32_t)cpu->xmm[rm].pd.f64[0];
     //}    
 
-    data->needsSSEConstant(vMaxInt32PlusOneAsDouble);
-    data->needsSSEConstant(vMinInt32MinusOneAsDouble);
+    U8 vPlusOne = data->getSSEConstant(SSE_MAX_INT32_PLUS_ONE_AS_DOUBLE);
+    U8 vMinusOne = data->getSSEConstant(SSE_MIN_INT32_MINUS_ONE_AS_DOUBLE);
 
     U8 vTmpReg1 = data->vGetTmpReg();
     U8 vTmpReg2 = data->vGetTmpReg();
 
     // will set lane to all 1's if value is too large or too small to convert
-    data->fCmpGreaterThanOrEqual(vTmpReg1, from, vMaxInt32PlusOneAsDouble, D2);
-    data->fCmpGreaterThanOrEqual(vTmpReg2, vMinInt32MinusOneAsDouble, from, D2);
+    data->fCmpGreaterThanOrEqual(vTmpReg1, from, vPlusOne, D2);
+    data->fCmpGreaterThanOrEqual(vTmpReg2, vMinusOne, from, D2);
     data->vOr(vTmpReg1, vTmpReg1, vTmpReg2, B16);
 
     // do the convert from double to int64
@@ -143,6 +147,8 @@ static void cvtpd2piXmm(Armv8btAsm* data, U8 to, U8 from, bool truncate) {
 
     data->vReleaseTmpReg(vTmpReg1);
     data->vReleaseTmpReg(vTmpReg2);
+    data->vReleaseTmpReg(vPlusOne);
+    data->vReleaseTmpReg(vMinusOne);
 }
 
 static void cvtss2siR32Xmm(Armv8btAsm* data, U8 to, U8 from, bool truncate) {
@@ -154,8 +160,8 @@ static void cvtss2siR32Xmm(Armv8btAsm* data, U8 to, U8 from, bool truncate) {
     //    cpu->reg[r1].u32 = (int32_t)cpu->xmm[rm].ps.f32[0];
     //}    
 
-    data->needsSSEConstant(vMaxInt32PlusOneAsFloat);
-    data->needsSSEConstant(vMinInt32MinusOneAsFloat);
+    U8 vPlusOne = data->getSSEConstant(SSE_MAX_INT32_PLUS_ONE_AS_FLOAT);
+    U8 vMinusOne = data->getSSEConstant(SSE_MIN_INT32_MINUS_ONE_AS_FLOAT);
 
     U8 vTmpReg1 = data->vGetTmpReg();
     U8 vTmpReg2 = data->vGetTmpReg();
@@ -163,8 +169,8 @@ static void cvtss2siR32Xmm(Armv8btAsm* data, U8 to, U8 from, bool truncate) {
     U8 tmpReg2 = data->getTmpReg();
 
     // will set lane to all 1's if value is too large or too small to convert
-    data->fCmpGreaterThanOrEqual(vTmpReg1, from, vMaxInt32PlusOneAsFloat, S_scaler);
-    data->fCmpGreaterThanOrEqual(vTmpReg2, vMinInt32MinusOneAsFloat, from, S_scaler);
+    data->fCmpGreaterThanOrEqual(vTmpReg1, from, vPlusOne, S_scaler);
+    data->fCmpGreaterThanOrEqual(vTmpReg2, vMinusOne, from, S_scaler);
     data->vOr(vTmpReg1, vTmpReg1, vTmpReg2, B8);
 
     data->vMovToGeneralReg32ZeroExtend(tmpReg, vTmpReg1, 0, S4); // vTmpReg1 is all 0's or all 1's, so no conversions are necessary
@@ -188,6 +194,8 @@ static void cvtss2siR32Xmm(Armv8btAsm* data, U8 to, U8 from, bool truncate) {
     data->releaseTmpReg(tmpReg2);
     data->vReleaseTmpReg(vTmpReg1);
     data->vReleaseTmpReg(vTmpReg2);
+    data->vReleaseTmpReg(vPlusOne);
+    data->vReleaseTmpReg(vMinusOne);
 }
 
 void opCvtss2siR32Xmm(Armv8btAsm* data) {

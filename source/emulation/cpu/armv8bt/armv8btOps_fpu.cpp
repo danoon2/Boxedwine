@@ -133,6 +133,7 @@ public:
 				data->vReadMem64RegOffset(this->reg, data->getFpuOffset(), this->topReg, 3);
 				if (!useTmpReg) {
 					// causes Abiword to fail launching
+					// :TODO: what happens when we jump to an instruction, wouldn't that mess this up?
 					// data->isFpuRegCached[index] = true;
 				}
 			}

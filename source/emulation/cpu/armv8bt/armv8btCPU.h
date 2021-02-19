@@ -25,12 +25,7 @@ public:
 	void*** eipToHostInstructionPages;
     DecodedOp* getOp(U32 eip, bool existing);
 
-    // 0 is vMaxInt32PlusOneAsDouble: 2147483648.0, 2147483648.0
-    // 1 is vMinInt32MinusOneAsDouble: -2147483649.0, -2147483649.0
-    // 2 is vMaxInt32PlusOneAsFloat: 2147483648.0, 2147483648.0, 2147483648.0, 2147483648.0
-    // 3 is vMinInt32MinusOneAsFloat: -2147483649.0, -2147483649.0, -2147483649.0, -2147483649.0
-    // 4 is vInt32BitMask: 1, 2, 3, 4
-    SSE sseConstants[5];
+    SSE sseConstants[6];
 
     ALIGN(U8 fpuState[512], 16);
 	ALIGN(U8 originalFpuState[512], 16);

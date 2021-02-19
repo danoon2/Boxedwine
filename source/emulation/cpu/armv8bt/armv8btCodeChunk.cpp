@@ -3,11 +3,6 @@
 #include "armv8btCodeChunk.h"
 #include "armv8btAsm.h"
 
-void Armv8CodeChunk::makeLive() {
-    BtCodeChunk::makeLive();
-    __builtin___clear_cache((char*)this->hostAddress, ((char*)this->hostAddress) + this->hostLen);
-}
-
 bool Armv8CodeChunk::retranslateSingleInstruction(BtCPU* btCPU, void* address) {
     Armv8btCPU* cpu = (Armv8btCPU*)btCPU;
     void* startofHostInstruction;
@@ -20,11 +15,25 @@ bool Armv8CodeChunk::retranslateSingleInstruction(BtCPU* btCPU, void* address) {
     cpu->translateInstruction(&data, NULL);
     U32 eipLen = data.ip - data.startOfOpIp;
     U32 hostLen = data.bufferPos;
-    if (eipLen == this->emulatedInstructionLen[index] && hostLen == this->hostInstructionLen[index]) {
-        memcpy(startofHostInstruction, data.buffer, hostLen);
-        return true;
+    if (eipLen == this->emulatedInstructionLen[index]) {
+        if (hostLen == this->hostInstructionLen[index]) {
+            memcpy(startofHostInstruction, data.buffer, hostLen);
+            clearInstructionCache((U8*)startofHostInstruction, hostLen);
+            return true;
+        } else if (hostLen < this->hostInstructionLen[index]) {
+            while (data.bufferPos < this->hostInstructionLen[index]) {
+                data.mov32(0, 0);
+            }
+            memcpy(startofHostInstruction, data.buffer, hostLen);
+            clearInstructionCache((U8*)startofHostInstruction, hostLen);
+            return true;
+        }
     }
     return false;
+}
+
+void Armv8CodeChunk::clearInstructionCache(U8* hostAddress, U32 len) {
+    __builtin___clear_cache((char*)hostAddress, ((char*)hostAddress) + len);
 }
 
 #endif

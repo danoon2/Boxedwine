@@ -40,7 +40,6 @@ public:
     U32 startOfOpIp;
     U32 calculatedEipLen;
     bool done;
-    bool usesSSEConstant[vSseConstantCount];    
 
     Armv8btCPU* cpu;
 

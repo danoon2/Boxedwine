@@ -19,41 +19,41 @@ CPU* CPU::allocCPU() {
 }
 
 Armv8btCPU::Armv8btCPU() : exitToStartThreadLoop(0), regPage(0), regOffset(0) {
-    sseConstants[vMaxInt32PlusOneAsDouble- vFirstSseConstant].pd.f64[0] = 2147483648.0;
-    sseConstants[vMaxInt32PlusOneAsDouble - vFirstSseConstant].pd.f64[1] = 2147483648.0;
-    sseConstants[vMinInt32MinusOneAsDouble - vFirstSseConstant].pd.f64[0] = -2147483649.0;
-    sseConstants[vMinInt32MinusOneAsDouble - vFirstSseConstant].pd.f64[1] = -2147483649.0;
+    sseConstants[SSE_MAX_INT32_PLUS_ONE_AS_DOUBLE].pd.f64[0] = 2147483648.0;
+    sseConstants[SSE_MAX_INT32_PLUS_ONE_AS_DOUBLE].pd.f64[1] = 2147483648.0;
+    sseConstants[SSE_MIN_INT32_MINUS_ONE_AS_DOUBLE].pd.f64[0] = -2147483649.0;
+    sseConstants[SSE_MIN_INT32_MINUS_ONE_AS_DOUBLE].pd.f64[1] = -2147483649.0;
 
-    sseConstants[vMaxInt32PlusOneAsFloat - vFirstSseConstant].ps.f32[0] = 2147483648.0;
-    sseConstants[vMaxInt32PlusOneAsFloat - vFirstSseConstant].ps.f32[1] = 2147483648.0;
-    sseConstants[vMaxInt32PlusOneAsFloat - vFirstSseConstant].ps.f32[2] = 2147483648.0;
-    sseConstants[vMaxInt32PlusOneAsFloat - vFirstSseConstant].ps.f32[3] = 2147483648.0;
-    sseConstants[vMinInt32MinusOneAsFloat - vFirstSseConstant].ps.f32[0] = -2147483649.0;
-    sseConstants[vMinInt32MinusOneAsFloat - vFirstSseConstant].ps.f32[1] = -2147483649.0;
-    sseConstants[vMinInt32MinusOneAsFloat - vFirstSseConstant].ps.f32[2] = -2147483649.0;
-    sseConstants[vMinInt32MinusOneAsFloat - vFirstSseConstant].ps.f32[3] = -2147483649.0;
+    sseConstants[SSE_MAX_INT32_PLUS_ONE_AS_FLOAT].ps.f32[0] = 2147483648.0;
+    sseConstants[SSE_MAX_INT32_PLUS_ONE_AS_FLOAT].ps.f32[1] = 2147483648.0;
+    sseConstants[SSE_MAX_INT32_PLUS_ONE_AS_FLOAT].ps.f32[2] = 2147483648.0;
+    sseConstants[SSE_MAX_INT32_PLUS_ONE_AS_FLOAT].ps.f32[3] = 2147483648.0;
+    sseConstants[SSE_MIN_INT32_MINUS_ONE_AS_FLOAT].ps.f32[0] = -2147483649.0;
+    sseConstants[SSE_MIN_INT32_MINUS_ONE_AS_FLOAT].ps.f32[1] = -2147483649.0;
+    sseConstants[SSE_MIN_INT32_MINUS_ONE_AS_FLOAT].ps.f32[2] = -2147483649.0;
+    sseConstants[SSE_MIN_INT32_MINUS_ONE_AS_FLOAT].ps.f32[3] = -2147483649.0;
 
-    sseConstants[vInt32BitMask - vFirstSseConstant].ps.u32[0] = 1;
-    sseConstants[vInt32BitMask - vFirstSseConstant].ps.u32[1] = 2;
-    sseConstants[vInt32BitMask - vFirstSseConstant].ps.u32[2] = 4;
-    sseConstants[vInt32BitMask - vFirstSseConstant].ps.u32[3] = 8;
+    sseConstants[SSE_INT32_BIT_MASK].ps.u32[0] = 1;
+    sseConstants[SSE_INT32_BIT_MASK].ps.u32[1] = 2;
+    sseConstants[SSE_INT32_BIT_MASK].ps.u32[2] = 4;
+    sseConstants[SSE_INT32_BIT_MASK].ps.u32[3] = 8;
 
-    sseConstants[vByte8BitMask - vFirstSseConstant].pi.u8[0] = 1;
-    sseConstants[vByte8BitMask - vFirstSseConstant].ps.u8[1] = 2;
-    sseConstants[vByte8BitMask - vFirstSseConstant].ps.u8[2] = 4;
-    sseConstants[vByte8BitMask - vFirstSseConstant].ps.u8[3] = 8;
-    sseConstants[vByte8BitMask - vFirstSseConstant].ps.u8[4] = 16;
-    sseConstants[vByte8BitMask - vFirstSseConstant].ps.u8[5] = 32;
-    sseConstants[vByte8BitMask - vFirstSseConstant].ps.u8[6] = 64;
-    sseConstants[vByte8BitMask - vFirstSseConstant].ps.u8[7] = 128;
-    sseConstants[vByte8BitMask - vFirstSseConstant].pi.u8[8] = 1;
-    sseConstants[vByte8BitMask - vFirstSseConstant].ps.u8[9] = 2;
-    sseConstants[vByte8BitMask - vFirstSseConstant].ps.u8[10] = 4;
-    sseConstants[vByte8BitMask - vFirstSseConstant].ps.u8[11] = 8;
-    sseConstants[vByte8BitMask - vFirstSseConstant].ps.u8[12] = 16;
-    sseConstants[vByte8BitMask - vFirstSseConstant].ps.u8[13] = 32;
-    sseConstants[vByte8BitMask - vFirstSseConstant].ps.u8[14] = 64;
-    sseConstants[vByte8BitMask - vFirstSseConstant].ps.u8[15] = 128;
+    sseConstants[SSE_BYTE8_BIT_MASK].pi.u8[0] = 1;
+    sseConstants[SSE_BYTE8_BIT_MASK].ps.u8[1] = 2;
+    sseConstants[SSE_BYTE8_BIT_MASK].ps.u8[2] = 4;
+    sseConstants[SSE_BYTE8_BIT_MASK].ps.u8[3] = 8;
+    sseConstants[SSE_BYTE8_BIT_MASK].ps.u8[4] = 16;
+    sseConstants[SSE_BYTE8_BIT_MASK].ps.u8[5] = 32;
+    sseConstants[SSE_BYTE8_BIT_MASK].ps.u8[6] = 64;
+    sseConstants[SSE_BYTE8_BIT_MASK].ps.u8[7] = 128;
+    sseConstants[SSE_BYTE8_BIT_MASK].pi.u8[8] = 1;
+    sseConstants[SSE_BYTE8_BIT_MASK].ps.u8[9] = 2;
+    sseConstants[SSE_BYTE8_BIT_MASK].ps.u8[10] = 4;
+    sseConstants[SSE_BYTE8_BIT_MASK].ps.u8[11] = 8;
+    sseConstants[SSE_BYTE8_BIT_MASK].ps.u8[12] = 16;
+    sseConstants[SSE_BYTE8_BIT_MASK].ps.u8[13] = 32;
+    sseConstants[SSE_BYTE8_BIT_MASK].ps.u8[14] = 64;
+    sseConstants[SSE_BYTE8_BIT_MASK].ps.u8[15] = 128;
 }
 
 typedef void (*StartCPU)();
