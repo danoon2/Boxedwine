@@ -3577,44 +3577,44 @@ void opJcxz(Armv8btAsm* data) {
 }
 
 void opInAlIb(Armv8btAsm* data) {
-    kpanic("Need to test");
+    //kpanic("Need to test");
     U8 tmpReg = data->getRegWithConst(0xFF);
     data->movRegToReg8(tmpReg, 0);
     data->releaseTmpReg(tmpReg);
 }
 void opInAxIb(Armv8btAsm* data) {
-    kpanic("Need to test");
+    //kpanic("Need to test");
     U8 tmpReg = data->getRegWithConst(0xFFFF);
     data->movRegToReg(xEAX, tmpReg, 16, false);
     data->releaseTmpReg(tmpReg);
 }
 void opInEaxIb(Armv8btAsm* data) {
-    kpanic("Need to test");
+   // kpanic("Need to test");
     data->orValue32(xEAX, xEAX, 0xFFFFFFFF);
 }
 void opOutIbAl(Armv8btAsm* data) {
-    kpanic("Need to test");
+    //kpanic("Need to test");
 }
 void opOutIbAx(Armv8btAsm* data) {
-    kpanic("Need to test");
+    //kpanic("Need to test");
 }
 void opOutIbEax(Armv8btAsm* data) {
-    kpanic("Need to test");
+    //kpanic("Need to test");
 }
 void opInAlDx(Armv8btAsm* data) {
-    kpanic("Need to test");
+    //kpanic("Need to test");
     U8 tmpReg = data->getRegWithConst(0xFF);
     data->movRegToReg8(tmpReg, 0);
     data->releaseTmpReg(tmpReg);
 }
 void opInAxDx(Armv8btAsm* data) {
-    kpanic("Need to test");
+    //kpanic("Need to test");
     U8 tmpReg = data->getRegWithConst(0xFFFF);
     data->movRegToReg(xEAX, tmpReg, 16, false);
     data->releaseTmpReg(tmpReg);
 }
 void opInEaxDx(Armv8btAsm* data) {
-    kpanic("Need to test");
+    //kpanic("Need to test");
     data->orValue32(xEAX, xEAX, 0xFFFFFFFF);
 }
 void opOutDxAl(Armv8btAsm* data) {

@@ -98,17 +98,18 @@ typedef enum {
 #define vTmp2 17
 #define vTmp3 18
 #define vTmp4 19
-#define vNumberOfTmpRegs 4
+#define vTmp5 20
+#define vTmp6 21
+#define vNumberOfTmpRegs 6
 
-#define vFirstSseConstant 20
-#define vSseConstantCount 6
+#define NUMBER_OF_SSE_CONSTANTS 6
 
-#define vMaxInt32PlusOneAsDouble 20
-#define vMinInt32MinusOneAsDouble 21
-#define vMaxInt32PlusOneAsFloat 22
-#define vMinInt32MinusOneAsFloat 23
-#define vInt32BitMask 24
-#define vByte8BitMask 25
+#define SSE_MAX_INT32_PLUS_ONE_AS_DOUBLE 0
+#define SSE_MIN_INT32_MINUS_ONE_AS_DOUBLE 1
+#define SSE_MAX_INT32_PLUS_ONE_AS_FLOAT 2
+#define SSE_MIN_INT32_MINUS_ONE_AS_FLOAT 3
+#define SSE_INT32_BIT_MASK 4
+#define SSE_BYTE8_BIT_MASK 5
 
 #include "armv8btData.h"
 
@@ -151,22 +152,6 @@ typedef void (*PFN_FPU_ADDRESS)(CPU* cpu, U32 address);
 typedef void (*PFN_FPU)(CPU* cpu);
 
 #define CLEAR_BUFFER_SIZE 256
-
-class Armv8btAsmCodeMemoryWrite {
-public:
-    Armv8btAsmCodeMemoryWrite(Armv8btCPU* cpu);
-    Armv8btAsmCodeMemoryWrite(Armv8btCPU* cpu, U32 address, U32 len);
-    ~Armv8btAsmCodeMemoryWrite();
-
-    void invalidateCode(U32 address, U32 len);
-    void invalidateStringWriteToDi(bool repeat, U32 size);
-    void restoreCodePageReadOnly();    
-
-private:
-    U32 buffer[CLEAR_BUFFER_SIZE];
-    U32 count;
-    Armv8btCPU* cpu;
-};
 
 enum DoIfOperator {
     DO_IF_EQUAL,
@@ -400,7 +385,7 @@ public:
     void getDF(U8 dst, U32 width);
     void getVirtualCounter(U8 dst);
 
-    void needsSSEConstant(U8 reg);
+    U8 getSSEConstant(U32 c);
 
     void vReadMem128RegOffset(U8 dst, U8 base, U8 offsetReg); 
     void vReadMemory128(U8 addressReg, U8 dst, bool addMemOffsetToAddress);
@@ -555,6 +540,8 @@ public:
 private:
     void vMemMultiple(U8 dst, U8 base, U32 numberOfRegs, U8 thirdByte, bool is1128);
     void vIns(U8 rd, U8 rn, U8 imm4, U8 imm5);
+
+    void internal_addDynamicCheck(U32 address, U32 len);
 };
 
 #endif

@@ -15,63 +15,6 @@ static bool isWidthVector(VectorWidth width) {
     return true;
 }
 
-Armv8btAsmCodeMemoryWrite::Armv8btAsmCodeMemoryWrite(Armv8btCPU* cpu, U32 address, U32 len) : count(0), cpu(cpu) {
-    this->invalidateCode(address, len);    
-}
-
-Armv8btAsmCodeMemoryWrite::Armv8btAsmCodeMemoryWrite(Armv8btCPU* cpu) : count(0), cpu(cpu) {
-}
-
-void Armv8btAsmCodeMemoryWrite::invalidateStringWriteToDi(bool repeat, U32 size) {
-    U32 addressStart;
-    U32 addressLen;
-
-    if (repeat) {
-        addressLen = size * (cpu->isBig() ? ECX : CX);
-    } else {
-        addressLen = size;
-    }
-
-    if (cpu->df == 1) {
-        addressStart = (this->cpu->isBig() ? EDI : DI) + cpu->seg[ES].address;
-    } else {
-        addressStart = (this->cpu->isBig() ? EDI : DI) + cpu->seg[ES].address + size - addressLen;
-    }
-    invalidateCode(addressStart, addressLen);
-}
-
-void Armv8btAsmCodeMemoryWrite::invalidateCode(U32 addressStart, U32 addressLen) {
-    U32 pageStart = addressStart >> K_PAGE_SHIFT;
-    U32 pageStop = (addressStart + addressLen) >> K_PAGE_SHIFT;
-
-    for (U32 page = pageStart; page <= pageStop; page++) {
-        if (cpu->thread->memory->nativeFlags[page] & NATIVE_FLAG_CODEPAGE_READONLY) {
-            if (count >= CLEAR_BUFFER_SIZE) {
-                kpanic("invalidateCode CLEAR_BUFFER_SIZE is not large enough");
-            }
-            buffer[count] = page;
-            count++;
-            ::clearCodePageReadOnly(cpu->thread->memory, page);
-        }
-    }
-    if (count) {
-        this->cpu->thread->memory->invalideHostCode(addressStart, addressLen);
-    }
-}
-
-Armv8btAsmCodeMemoryWrite::~Armv8btAsmCodeMemoryWrite() {
-    this->restoreCodePageReadOnly();
-}
-
-void Armv8btAsmCodeMemoryWrite::restoreCodePageReadOnly() {
-    for (U32 i = 0; i < this->count; i++) {
-        if (cpu->thread->memory->dynamicCodePageUpdateCount[buffer[i]] != MAX_DYNAMIC_CODE_PAGE_COUNT) {
-            ::makeCodePageReadOnly(cpu->thread->memory, buffer[i]);
-        }
-    }
-    this->count = 0;
-}
-
 U32 Armv8btAsm::flagsNeeded() {
     return DecodedOp::getNeededFlags(this->currentBlock, this->decodedOp, instructionInfo[this->decodedOp->inst].flagsSets & ~MAYBE);
 }
@@ -1461,6 +1404,7 @@ void Armv8btAsm::readMemory(U8 addressReg, U8 dst, U32 width, bool addMemOffsetT
     if (lock) {
         // :TODO: I'm not sure if we need this barrier, probably not
         // dmb	ish		// Full barrier
+        // this->fullMemoryBarrier();
     }
     if (addMemOffsetToAddress) {
         if (width == 64) {
@@ -1980,6 +1924,10 @@ void Armv8btAsm::jmpReg(U8 reg, bool mightNeedCS) {
         readMem64RegOffset(xBranch, xBranch, xOffset, 3); // read value at offset for page
         readMem8ValueOffset(xResult, xBranch, 0); // verify that where we will jump is valid
     }
+#ifdef _DEBUG
+    // make it easier to see where we jumped from
+    loadConst(13, this->startOfOpIp);
+#endif
     branchNativeRegister(xBranch);
 }
 
@@ -2015,6 +1963,7 @@ void Armv8btAsm::createCodeForRunSignal() {
 }
 
 void Armv8btAsm::createCodeForJmpAndTranslateIfNecessary() {
+    kpanic("createCodeForJmpAndTranslateIfNecessary not implemented");
 }
 
 void Armv8btAsm::write64Buffer(U8* buffer, U64 value) {
@@ -2042,9 +1991,121 @@ void Armv8btAsm::write16Buffer(U8* buffer, U16 value) {
 }
 
 void Armv8btAsm::callRetranslateChunk() {
+    kpanic("callRetranslateChunk not implemented");
+}
+
+void Armv8btAsm::internal_addDynamicCheck(U32 address, U32 len) {
+    U8 addressReg = getRegWithConst(address);
+    switch (len) {
+    case 1: {
+        U8 tmpReg = getTmpReg();
+        readMem8RegOffset(tmpReg, xMem, addressReg);
+        doIf(tmpReg, readb(address), DO_IF_NOT_EQUAL, [this] {
+            write32(0xcececece);
+            }, nullptr);
+        releaseTmpReg(tmpReg);
+        break;
+    }
+    case 2: {
+        U8 tmpReg = getTmpReg();
+        readMem16RegOffset(tmpReg, xMem, addressReg);
+        doIf(tmpReg, readw(address), DO_IF_NOT_EQUAL, [this] {
+            write32(0xcececece);
+            }, nullptr);
+        releaseTmpReg(tmpReg);
+        break;
+    }
+    case 3: {
+        U8 tmpReg = getTmpReg();
+        readMem32RegOffset(tmpReg, xMem, addressReg);
+        andValue32(tmpReg, tmpReg, 0xFFFFFF);
+        doIf(tmpReg, readd(address) & 0x00FFFFFF, DO_IF_NOT_EQUAL, [this] {
+            write32(0xcececece);
+            }, nullptr);
+        releaseTmpReg(tmpReg);
+        break;
+    }
+    case 4: {
+        U8 tmpReg = getTmpReg();
+        readMem32RegOffset(tmpReg, xMem, addressReg);
+        doIf(tmpReg, readd(address), DO_IF_NOT_EQUAL, [this] {
+            write32(0xcececece);
+            }, nullptr);
+        releaseTmpReg(tmpReg);
+        break;
+    }
+    case 5: {
+        U8 tmpReg = getTmpReg();
+        U8 valueReg = getRegWithConst(readq(address) & 0xFFFFFFFFFF);
+
+        readMem64RegOffset(tmpReg, xMem, addressReg);
+        andValue64(tmpReg, tmpReg, 0xFFFFFFFFFF);
+        cmpRegs64(tmpReg, valueReg);
+        doIf(tmpReg, 0, DO_IF_NOT_EQUAL, [this] {
+            write32(0xcececece);
+            }, nullptr, nullptr, false, false);
+        releaseTmpReg(tmpReg);
+        releaseTmpReg(valueReg);
+        break;
+    }
+    case 6: {
+        U8 tmpReg = getTmpReg();
+        U8 valueReg = getRegWithConst(readq(address) & 0xFFFFFFFFFFFF);
+
+        readMem64RegOffset(tmpReg, xMem, addressReg);
+        andValue64(tmpReg, tmpReg, 0xFFFFFFFFFFFF);
+        cmpRegs64(tmpReg, valueReg);
+        doIf(tmpReg, 0, DO_IF_NOT_EQUAL, [this] {
+            write32(0xcececece);
+            }, nullptr, nullptr, false, false);
+        releaseTmpReg(tmpReg);
+        releaseTmpReg(valueReg);
+        break;
+    }
+    case 7: {
+        U8 tmpReg = getTmpReg();
+        U8 valueReg = getRegWithConst(readq(address) & 0xFFFFFFFFFFFFFF);
+
+        readMem64RegOffset(tmpReg, xMem, addressReg);
+        andValue64(tmpReg, tmpReg, 0xFFFFFFFFFFFFFF);
+        cmpRegs64(tmpReg, valueReg);
+        doIf(tmpReg, 0, DO_IF_NOT_EQUAL, [this] {
+            write32(0xcececece);
+            }, nullptr, nullptr, false, false);
+        releaseTmpReg(tmpReg);
+        releaseTmpReg(valueReg);
+        break;
+    }
+    case 8: {
+        U8 tmpReg = getTmpReg();
+        U8 valueReg = getRegWithConst(readq(address));
+
+        readMem64RegOffset(tmpReg, xMem, addressReg);
+        cmpRegs64(tmpReg, valueReg);
+        doIf(tmpReg, 0, DO_IF_NOT_EQUAL, [this] {
+            write32(0xcececece);
+            }, nullptr, nullptr, false, false);
+        releaseTmpReg(tmpReg);
+        releaseTmpReg(valueReg);
+        break;
+    }
+    default:
+        kpanic("Armv8btAsm::internal_addDynamicCheck invalid len = %d", len);
+    }
+    releaseTmpReg(addressReg);
 }
 
 void Armv8btAsm::addDynamicCheck(bool panic) {
+    DecodedBlock* block = NormalCPU::getBlockForInspectionButNotUsed(this->ip + this->cpu->seg[CS].address, this->cpu->isBig());
+    U32 len = block->op->len;
+    U32 address = this->startOfOpIp + this->cpu->seg[CS].address;
+
+    if (len > 8) {
+        internal_addDynamicCheck(address + 8, len - 8);
+        len = 8;
+    }
+    internal_addDynamicCheck(address, len);
+    block->dealloc(false);
 }
 
 void Armv8btAsm::addTodoLinkJump(U32 eip, U32 size, bool sameChunk) {
@@ -2072,8 +2133,8 @@ void Armv8btAsm::jumpTo(U32 eip) {
         // it is not possible to modify the executable code directly in an atomic way, so instead of embedding
         // where we will jump directly into the instruction, we will encode an instruction that reads the jump
         // address from memory (data).  That memory location can be atomically updated.
-        if (1) {
-            // this can result in random crashes, but it gives about a 5% boost, maybe in the future I can figure out when to use it
+        if (0) {
+            // this can result in random crashes for dynamic code, Quake 2 will see this
             // b
             write8(0);
             write8(0);
@@ -2081,7 +2142,8 @@ void Armv8btAsm::jumpTo(U32 eip) {
             write8(0x14);
             addTodoLinkJump(eip, 4, false);
         } else {
-
+            loadConst(xBranch, eip);
+            jmpReg(xBranch, false);
         }
     }
 }
@@ -2199,13 +2261,12 @@ void Armv8btAsm::syncRegsToHost() {
     // these 2 instructions instead of readMem32ValueOffset because readMem32ValueOffset uses a tmp reg and we are out for the div instruction
     loadConst(addressReg, (U32)(offsetof(CPU, fpu.top)));
     this->readMem32RegOffset(xFpuTop, xCPU, addressReg);
-
     releaseTmpReg(addressReg);
 
     // mdk perf won't draw correctly without this
     clearCachedFpuRegs();
-    fpuOffsetRegSet = false;
-    fpuTopRegSet = false;
+    //fpuOffsetRegSet = false;
+    //fpuTopRegSet = false;
 }
 
 void Armv8btAsm::writeJumpAmount(U32 pos, U32 toLocation) {
@@ -2407,13 +2468,10 @@ void Armv8btAsm::vMemMultiple(U8 dst, U8 base, U32 numberOfRegs, U8 thirdByte, b
     write8(is1128?0x4c:0x0c);
 }
 
-void Armv8btAsm::needsSSEConstant(U8 reg) { 
-    U8 index = reg - vFirstSseConstant;
-    if (!usesSSEConstant[index]) {
-        // :TODO: what if the program jumps into this block, but past this, then it won't be loaded
-        vReadMem128ValueOffset(reg, xCPU, (U32)(offsetof(Armv8btCPU, sseConstants[0])) + index * 16);
-        usesSSEConstant[index] = true;
-    }
+U8 Armv8btAsm::getSSEConstant(U32 c) {
+    U8 tmpReg = vGetTmpReg();
+    vReadMem128ValueOffset(tmpReg, xCPU, (U32)(offsetof(Armv8btCPU, sseConstants[0])) + c * 16);
+    return tmpReg;
 }
 
 void Armv8btAsm::vReadMem128RegOffset(U8 dst, U8 base, U8 offsetReg) {

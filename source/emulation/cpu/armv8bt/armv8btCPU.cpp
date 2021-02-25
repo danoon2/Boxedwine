@@ -11,6 +11,7 @@
 #include "knativesystem.h"
 #include "../binaryTranslation/btCodeChunk.h"
 #include "armv8btCodeChunk.h"
+#include "../binaryTranslation/btCodeMemoryWrite.h"
 
 #undef u8
 
@@ -335,7 +336,7 @@ void Armv8btCPU::link(Armv8btAsm* data, std::shared_ptr<BtCodeChunk>& fromChunk,
             if (!toChunk) {
                 kpanic("Armv8btCPU::link to chunk missing");
             }
-            std::shared_ptr<BtCodeChunkLink> link = toChunk->addLinkFrom(fromChunk, eip, toHostAddress, offset, true);
+            std::shared_ptr<BtCodeChunkLink> link = toChunk->addLinkFrom(fromChunk, eip, toHostAddress, offset, false);
             writeJumpAmount(data, data->todoJump[i].bufferPos, (U32)(toHostAddress - offset), (U8*)fromChunk->getHostAddress() + offsetIntoChunk);
         } else if (size==8 && !data->todoJump[i].sameChunk) {
             U8* toHostAddress = (U8*)this->thread->memory->getExistingHostAddress(eip);
@@ -399,11 +400,16 @@ static U8 fetchByte(U32* eip) {
     return readb((*eip)++);
 }
 
-void Armv8btCPU::translateInstruction(Armv8btAsm* data, Armv8btAsm* firstPass) {
+void Armv8btCPU::translateInstruction(Armv8btAsm* data, Armv8btAsm* firstPass) {    
     data->startOfOpIp = data->ip;    
     data->ip += data->decodedOp->len;   
 #ifdef _DEBUG
-    //data->logOp(data->startOfOpIp);
+    if (data->startOfOpIp >= 0x10014D60 && data->startOfOpIp <= 0x10014D86 ) {
+        if (!this->logFile) {
+            this->logFile = fopen("q2.txt", "w");
+        }
+        //data->logOp(data->startOfOpIp);
+    }
     // just makes debugging the asm output easier
 #ifndef __TEST
     data->loadConst(14, data->startOfOpIp);
@@ -521,7 +527,7 @@ U64 Armv8btCPU::handleCodePatch(U64 rip, U32 address) {
     if (op) {             
         // change permission of the page so that we can write to it
         U32 len = instructionInfo[op->inst].writeMemWidth/8;
-        Armv8btAsmCodeMemoryWrite w(this);        
+        BtCodeMemoryWrite w(this);
         static DecodedBlock b;
         DecodedBlock::currentBlock = &b;
         b.next1 = &b;
@@ -634,6 +640,7 @@ U64 Armv8btCPU::handleIllegalInstruction(U64 rip) {
             kpanic("Armv8btCPU::handleIllegalInstruction tried to run code in a free'd chunk");
         }
     }
+    kpanic("Armv8btCPU::handleIllegalInstruction instruction %X not handled", *(U32*)rip);
     return 0;
 }
 

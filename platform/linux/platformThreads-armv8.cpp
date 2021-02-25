@@ -75,6 +75,10 @@ void syncFromException(Armv8btCPU* cpu, ucontext_t* context) {
     memcpy(&cpu->xmm[5], &fc->vregs[xXMM5], 16);
     memcpy(&cpu->xmm[6], &fc->vregs[xXMM6], 16);
     memcpy(&cpu->xmm[7], &fc->vregs[xXMM7], 16);
+
+    for (int i = 0; i < 8; i++) {
+        cpu->reg_mmx[i].q = (U64)fc->vregs[vMMX0 + i];
+    }
 }
 
 class InException {
