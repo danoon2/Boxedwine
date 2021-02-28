@@ -101,6 +101,7 @@ class Arm8BtFlagsAdd8 : public Arm8BtFlagsDefault8 {
     virtual void setCF(Armv8btAsm* data, U8 reg) {
         // cpu->result.u8 < cpu->dst.u8; 
         U8 tmp = data->getTmpReg();
+        data->zeroExtend(xResult, xResult, 8);
         data->subRegs32(tmp, xResult, xDst);
         data->copyBitsFromSourceAtPositionToDest(reg, tmp, 8, 1); // CF is 0x01 (bit 0)
         data->releaseTmpReg(tmp);
@@ -145,6 +146,7 @@ class Arm8BtFlagsAdd16 : public Arm8BtFlagsDefault16 {
     virtual void setCF(Armv8btAsm* data, U8 reg) {
         // cpu->result.u16 < cpu->dst.u16; 
         U8 tmp = data->getTmpReg();
+        data->zeroExtend(xResult, xResult, 16);
         data->subRegs32(tmp, xResult, xDst);
         data->copyBitsFromSourceAtPositionToDest(reg, tmp, 16, 1); // CF is 0x01 (bit 0)
         data->releaseTmpReg(tmp);
@@ -329,6 +331,7 @@ class Arm8BtFlagsAdc8 : public Arm8BtFlagsAdd8 {
         U8 tmp1 = data->getTmpReg();
         U8 tmp2 = data->getTmpReg();
         // check if cpu->result.u8 < cpu->dst.u8
+        data->zeroExtend(xResult, xResult, 8);
         data->subRegs32(tmp1, xResult, xDst);
         data->clz32(tmp2, tmp1); // will be 32 if result == dst
         data->copyBitsFromSourceAtPositionToDest(tmp1, tmp1, 8, 1, true); // CF is 0x01 (bit 0)
@@ -355,6 +358,7 @@ class Arm8BtFlagsAdc16 : public Arm8BtFlagsAdd16 {
         U8 tmp1 = data->getTmpReg();
         U8 tmp2 = data->getTmpReg();
         // check if cpu->result.u16 < cpu->dst.u16
+        data->zeroExtend(xResult, xResult, 16);
         data->subRegs32(tmp1, xResult, xDst);
         data->clz32(tmp2, tmp1); // will be 32 if result == dst
         data->copyBitsFromSourceAtPositionToDest(tmp1, tmp1, 16, 1, true); // CF is 0x01 (bit 0)
@@ -558,6 +562,7 @@ class Arm8BtFlagsSbb8 : public Arm8BtFlagsSub8 {
         U8 tmp1 = data->getTmpReg();
         U8 tmp2 = data->getTmpReg();
         // check if cpu->dst.u8 < cpu->result.u8
+        data->zeroExtend(xResult, xResult, 8);
         data->subRegs32(tmp1, xDst, xResult);
         data->copyBitsFromSourceAtPositionToDest(tmp1, tmp1, 8, 1, true); // CF is 0x01 (bit 0)
 
@@ -585,6 +590,7 @@ class Arm8BtFlagsSbb16 : public Arm8BtFlagsSub16 {
         U8 tmp1 = data->getTmpReg();
         U8 tmp2 = data->getTmpReg();
         // check if cpu->dst.u16 < cpu->result.u16
+        data->zeroExtend(xResult, xResult, 16);
         data->subRegs32(tmp1, xDst, xResult);
         data->copyBitsFromSourceAtPositionToDest(tmp1, tmp1, 16, 1, true); // CF is 0x01 (bit 0)
 

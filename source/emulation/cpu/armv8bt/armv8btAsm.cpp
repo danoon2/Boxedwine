@@ -2100,6 +2100,9 @@ void Armv8btAsm::addDynamicCheck(bool panic) {
     U32 len = block->op->len;
     U32 address = this->startOfOpIp + this->cpu->seg[CS].address;
 
+    if (!len) {
+        return; // might invalid op
+    }
     if (len > 8) {
         internal_addDynamicCheck(address + 8, len - 8);
         len = 8;

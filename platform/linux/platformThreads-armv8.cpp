@@ -67,16 +67,8 @@ void syncFromException(Armv8btCPU* cpu, ucontext_t* context) {
 
     struct fpsimd_context* fc = getSimdContext(c);
 
-    memcpy(&cpu->xmm[0], &fc->vregs[xXMM0], 16);
-    memcpy(&cpu->xmm[1], &fc->vregs[xXMM1], 16);
-    memcpy(&cpu->xmm[2], &fc->vregs[xXMM2], 16);
-    memcpy(&cpu->xmm[3], &fc->vregs[xXMM3], 16);
-    memcpy(&cpu->xmm[4], &fc->vregs[xXMM4], 16);
-    memcpy(&cpu->xmm[5], &fc->vregs[xXMM5], 16);
-    memcpy(&cpu->xmm[6], &fc->vregs[xXMM6], 16);
-    memcpy(&cpu->xmm[7], &fc->vregs[xXMM7], 16);
-
     for (int i = 0; i < 8; i++) {
+        memcpy(&cpu->xmm[i], &fc->vregs[xXMM0 + i], 16);
         cpu->reg_mmx[i].q = (U64)fc->vregs[vMMX0 + i];
     }
 }
