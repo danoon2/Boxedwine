@@ -2021,6 +2021,7 @@ void opPopSeg16(Armv8btAsm* data) {
         data->doJmp(true);
         }, [data]() {            
             data->readMem32ValueOffset(data->getSegReg(data->decodedOp->reg), xCPU, (U32)(offsetof(CPU, seg[data->decodedOp->reg].address)));
+            data->readMem32ValueOffset(xStackMask, xCPU, (U32)(offsetof(CPU, stackMask)));
             data->popStack16();
         }, [data]() {
             data->syncRegsToHost();
@@ -2048,6 +2049,7 @@ void opPopSeg32(Armv8btAsm* data) {
         data->doJmp(true);
         }, [data]() {            
             data->readMem32ValueOffset(data->getSegReg(data->decodedOp->reg), xCPU, (U32)(offsetof(CPU, seg[data->decodedOp->reg].address)));
+            data->readMem32ValueOffset(xStackMask, xCPU, (U32)(offsetof(CPU, stackMask)));
             data->popStack32();
         }, [data]() {
             data->syncRegsToHost();
@@ -2693,6 +2695,7 @@ void opMovS16R16(Armv8btAsm* data) {
         data->doJmp(true);
         }, [data]() {
             data->readMem32ValueOffset(data->getSegReg(data->decodedOp->rm), xCPU, (U32)(offsetof(CPU, seg[data->decodedOp->rm].address)));
+            data->readMem32ValueOffset(xStackMask, xCPU, (U32)(offsetof(CPU, stackMask)));
         }, [data]() {
             data->syncRegsToHost();
         });
@@ -2715,6 +2718,7 @@ void opMovS16E16(Armv8btAsm* data) {
         data->doJmp(true);
         }, [data]() {
             data->readMem32ValueOffset(data->getSegReg(data->decodedOp->reg), xCPU, (U32)(offsetof(CPU, seg[data->decodedOp->reg].address)));
+            data->readMem32ValueOffset(xStackMask, xCPU, (U32)(offsetof(CPU, stackMask)));
         }, [data]() {
             data->syncRegsToHost();
         });
@@ -3040,7 +3044,7 @@ static void doRetn32(Armv8btAsm* data, U32 bytes) {
     data->done = true;
 }
 static void doRetf(Armv8btAsm* data, U32 big) {
-    kpanic("Need to test");
+    // kpanic("Need to test");
     // cpu->eip.u32 += op->len; cpu->ret(0, op->imm);    
     data->syncRegsFromHost();
     // void common_ret(CPU* cpu, U32 big, U32 bytes)

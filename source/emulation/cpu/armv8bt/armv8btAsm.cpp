@@ -1911,7 +1911,7 @@ void Armv8btAsm::jmpReg(U8 reg, bool mightNeedCS) {
 
         if (this->cpu->thread->process->hasSetSeg[CS] || mightNeedCS) {
             U8 tmpReg = getTmpReg();
-            addRegs32(tmpReg, tmpReg, xCS);
+            addRegs32(tmpReg, reg, xCS);
             andValue32(xOffset, tmpReg, 0xFFF); // get page offset            
             shiftRegRightWithValue32(xPage, tmpReg, 12); // get page
             releaseTmpReg(tmpReg);
