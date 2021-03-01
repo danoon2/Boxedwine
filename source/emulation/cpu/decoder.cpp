@@ -1374,7 +1374,8 @@ const InstructionInfo instructionInfo[] = {
     {0, 0, 0, 0, 0, 0} // Custom1
 };
 
-#ifdef _DEBUG
+// for now, kept out of emscript to keep size down
+#ifndef __EMSCRIPTEN__
 struct LogInstruction;
 
 typedef void (*LogFormat)(const LogInstruction* inst, DecodedOp* op, CPU* cpu);
@@ -6140,6 +6141,9 @@ void decodeBlock(pfnFetchByte fetchByte, U32 eip, bool isBig, U32 maxInstruction
             decoder[d.inst]->decode(&d, op);
         }
         if (op->inst == Invalid) {
+#if defined _DEBUG || defined BOXEDWINE_BINARY_TRANSLATOR
+            op->originalOp = d.inst;
+#endif
             break;
         }
         d.opCountSoFarInThisBlock++;
@@ -6160,6 +6164,14 @@ void decodeBlock(pfnFetchByte fetchByte, U32 eip, bool isBig, U32 maxInstruction
         op->next = DecodedOp::alloc();
         op = op->next;
     }
+}
+
+const char* DecodedOp::name() {
+#ifdef __EMSCRIPTEN__
+    return "unknown";
+#else
+    return instructionLog[this->inst].name;
+#endif
 }
 
 void DecodedOp::log(CPU* cpu) {
