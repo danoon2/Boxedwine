@@ -6140,6 +6140,7 @@ void decodeBlock(pfnFetchByte fetchByte, U32 eip, bool isBig, U32 maxInstruction
             decoder[d.inst]->decode(&d, op);
         }
         if (op->inst == Invalid) {
+            op->originalOp = d.inst;
             break;
         }
         d.opCountSoFarInThisBlock++;
@@ -6160,6 +6161,10 @@ void decodeBlock(pfnFetchByte fetchByte, U32 eip, bool isBig, U32 maxInstruction
         op->next = DecodedOp::alloc();
         op = op->next;
     }
+}
+
+const char* DecodedOp::name() {
+    return instructionLog[this->inst].name;
 }
 
 void DecodedOp::log(CPU* cpu) {
