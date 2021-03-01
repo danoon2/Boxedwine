@@ -400,15 +400,12 @@ static U8 fetchByte(U32* eip) {
     return readb((*eip)++);
 }
 
-void Armv8btCPU::translateInstruction(Armv8btAsm* data, Armv8btAsm* firstPass) {    
-    data->startOfOpIp = data->ip;    
-    data->ip += data->decodedOp->len;   
+void Armv8btCPU::translateInstruction(Armv8btAsm* data, Armv8btAsm* firstPass) {
+    data->startOfOpIp = data->ip;
+    data->ip += data->decodedOp->len;
 #ifdef _DEBUG
-    if (data->startOfOpIp >= 0x10014D60 && data->startOfOpIp <= 0x10014D86 ) {
-        if (!this->logFile) {
-            this->logFile = fopen("q2.txt", "w");
-        }
-        //data->logOp(data->startOfOpIp);
+    if (this->logFile) {
+        data->logOp(data->startOfOpIp);
     }
     // just makes debugging the asm output easier
 #ifndef __TEST

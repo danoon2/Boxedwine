@@ -2115,6 +2115,13 @@ void Armv8btAsm::addTodoLinkJump(U32 eip, U32 size, bool sameChunk) {
     this->todoJump.push_back(TodoJump(eip, this->bufferPos - 4, size, sameChunk, this->ipAddressCount));
 }
 
+bool Armv8btAsm::isEipInChunk(U32 eip) {
+    if (this->cpu->thread->memory->getExistingHostAddress(eip)) {
+        return false;
+    }
+    return (this->stopAfterInstruction != (S32)this->ipAddressCount && (this->calculatedEipLen == 0 || (eip >= this->startOfDataIp && eip < this->startOfDataIp + this->calculatedEipLen)));
+}
+
 void Armv8btAsm::jumpTo(U32 eip) {
     if (!this->cpu->isBig()) {
         eip = eip & 0xffff;
@@ -2124,7 +2131,7 @@ void Armv8btAsm::jumpTo(U32 eip) {
 #endif
     // :TODO: is this necessary?  who uses it?
     //this->writeToMemFromValue(eip, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EIP, 4, false);
-    if (this->stopAfterInstruction != (S32)this->ipAddressCount && (this->calculatedEipLen == 0 || (eip >= this->startOfDataIp && eip < this->startOfDataIp + this->calculatedEipLen))) {
+    if (isEipInChunk(eip)) {
         // b
         write8(0);
         write8(0);
@@ -2266,6 +2273,15 @@ void Armv8btAsm::syncRegsToHost() {
     this->readMem32RegOffset(xFpuTop, xCPU, addressReg);
     releaseTmpReg(addressReg);
 
+    // In the future, maybe only set these if they could have changed
+    this->readMem32ValueOffset(xES, xCPU, (U32)(offsetof(CPU, seg[ES].address)));
+    this->readMem32ValueOffset(xCS, xCPU, (U32)(offsetof(CPU, seg[CS].address)));
+    this->readMem32ValueOffset(xSS, xCPU, (U32)(offsetof(CPU, seg[SS].address)));
+    this->readMem32ValueOffset(xDS, xCPU, (U32)(offsetof(CPU, seg[DS].address)));
+    this->readMem32ValueOffset(xFS, xCPU, (U32)(offsetof(CPU, seg[FS].address)));
+    this->readMem32ValueOffset(xGS, xCPU, (U32)(offsetof(CPU, seg[GS].address)));
+
+    this->readMem32ValueOffset(xStackMask, xCPU, (U32)(offsetof(CPU, stackMask)));
     // mdk perf won't draw correctly without this
     clearCachedFpuRegs();
     //fpuOffsetRegSet = false;
@@ -2328,17 +2344,26 @@ void Armv8btAsm::doIfBitSet(U8 reg, U32 bitPos, std::function<void(void)> ifBloc
 }
 
 void Armv8btAsm::compareZeroAndBranch(U8 reg, bool isZero, U32 eip) {
-    write8(reg);
-    write8(0);
-    write8(0);
-    if (isZero) {
-        // CBZ
-        write8(0x34);
+    if (!isEipInChunk(eip)) {
+        doIf(reg, 0, isZero? DO_IF_EQUAL:DO_IF_NOT_EQUAL, [eip, this] {
+            U8 tmpReg = this->getRegWithConst(eip);
+            jmpReg(tmpReg, false);
+            this->releaseTmpReg(tmpReg);
+            });
     } else {
-        // CBNZ
-        write8(0x35);
+        write8(reg);
+        write8(0);
+        write8(0);
+        if (isZero) {
+            // CBZ
+            write8(0x34);
+        }
+        else {
+            // CBNZ
+            write8(0x35);
+        }
+        addTodoLinkJump(eip, 4, true);
     }
-    addTodoLinkJump(eip, 4, true);
 }
 
 void Armv8btAsm::doIf(U8 reg, U32 value, DoIfOperator op, std::function<void(void)> ifBlock, std::function<void(void)> elseBlock, std::function<void(void)> afterCmpBeforeBranchBlock, bool valueIsReg, bool generateCmp) {

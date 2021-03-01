@@ -2019,9 +2019,7 @@ void opPopSeg16(Armv8btAsm* data) {
 
     data->doIf(0, 0, DO_IF_EQUAL, [data]() {
         data->doJmp(true);
-        }, [data]() {            
-            data->readMem32ValueOffset(data->getSegReg(data->decodedOp->reg), xCPU, (U32)(offsetof(CPU, seg[data->decodedOp->reg].address)));
-            data->readMem32ValueOffset(xStackMask, xCPU, (U32)(offsetof(CPU, stackMask)));
+        }, [data]() {                        
             data->popStack16();
         }, [data]() {
             data->syncRegsToHost();
@@ -2048,8 +2046,6 @@ void opPopSeg32(Armv8btAsm* data) {
     data->doIf(0, 0, DO_IF_EQUAL, [data]() {
         data->doJmp(true);
         }, [data]() {            
-            data->readMem32ValueOffset(data->getSegReg(data->decodedOp->reg), xCPU, (U32)(offsetof(CPU, seg[data->decodedOp->reg].address)));
-            data->readMem32ValueOffset(xStackMask, xCPU, (U32)(offsetof(CPU, stackMask)));
             data->popStack32();
         }, [data]() {
             data->syncRegsToHost();
@@ -2693,10 +2689,7 @@ void opMovS16R16(Armv8btAsm* data) {
 
     data->doIf(0, 0, DO_IF_EQUAL, [data]() {
         data->doJmp(true);
-        }, [data]() {
-            data->readMem32ValueOffset(data->getSegReg(data->decodedOp->rm), xCPU, (U32)(offsetof(CPU, seg[data->decodedOp->rm].address)));
-            data->readMem32ValueOffset(xStackMask, xCPU, (U32)(offsetof(CPU, stackMask)));
-        }, [data]() {
+        }, nullptr, [data]() {
             data->syncRegsToHost();
         });
     data->cpu->thread->process->hasSetSeg[data->decodedOp->rm] = true;
@@ -2716,10 +2709,7 @@ void opMovS16E16(Armv8btAsm* data) {
 
     data->doIf(0, 0, DO_IF_EQUAL, [data]() {
         data->doJmp(true);
-        }, [data]() {
-            data->readMem32ValueOffset(data->getSegReg(data->decodedOp->reg), xCPU, (U32)(offsetof(CPU, seg[data->decodedOp->reg].address)));
-            data->readMem32ValueOffset(xStackMask, xCPU, (U32)(offsetof(CPU, stackMask)));
-        }, [data]() {
+        }, nullptr, [data]() {
             data->syncRegsToHost();
         });
     data->cpu->thread->process->hasSetSeg[data->decodedOp->reg] = true;
@@ -2920,7 +2910,7 @@ void opCwq(Armv8btAsm* data) {
     data->shiftSignedRegRightWithValue32(xEDX, xEAX, 31);
 }
 void opCallAp(Armv8btAsm* data) {
-    kpanic("Need to test");
+    //kpanic("Need to test");
     // cpu->call(0, op->imm, op->disp, cpu->eip.u32+op->len);
     data->syncRegsFromHost();
 
@@ -2937,7 +2927,7 @@ void opCallAp(Armv8btAsm* data) {
 }
 
 void opCallFar(Armv8btAsm* data) {
-    kpanic("Need to test");
+    //kpanic("Need to test");
     // cpu->call(1, op->imm, op->disp, cpu->eip.u32 + op->len);
     data->syncRegsFromHost();
 
@@ -2954,7 +2944,7 @@ void opCallFar(Armv8btAsm* data) {
 }
 
 void opJmpAp(Armv8btAsm* data) {
-    kpanic("Need to test");
+    //kpanic("Need to test");
     data->syncRegsFromHost();
 
     // void common_jmp(CPU* cpu, U32 big, U32 selector, U32 offset, U32 oldEip)
@@ -3010,7 +3000,7 @@ void opSalc(Armv8btAsm* data) {
 }
 
 static void doRetn16(Armv8btAsm* data, U32 bytes) {
-    kpanic("Need to test");
+    //kpanic("Need to test");
     // U16 eip = cpu->pop16();
     // SP = SP + op->imm;
     // cpu->eip.u32 = eip;
@@ -3134,7 +3124,11 @@ void opIntIb(Armv8btAsm* data) {
     } else
 #endif
     {
-        kpanic("ArmV8bt Int %d not handled", data->decodedOp->imm);
+        // Wine will emulate things like Int 21 (DOS)
+        data->signalIllegalInstruction(5);
+        if (!data->cpu->logFile) {
+            data->cpu->logFile = fopen("castle.txt", "w");
+        }
     }
 }
 void opIntO(Armv8btAsm* data) {
@@ -3438,7 +3432,7 @@ void doLoadSegment(Armv8btAsm* data, bool big) {
 }
 
 void opLoadSegment16(Armv8btAsm* data) {
-    kpanic("Need to test");
+    //kpanic("Need to test");
     doLoadSegment(data, false);
 }
 void opLoadSegment32(Armv8btAsm* data) {
@@ -3629,7 +3623,7 @@ void opOutDxEax(Armv8btAsm* data) {
 }
 
 void opCallJw(Armv8btAsm* data) {
-    kpanic("Need to test");
+    //kpanic("Need to test");
     // cpu->push16(cpu->eip.u32 + op->len);
     // cpu->eip.u32 += (S16)op->imm;
     U8 tmpReg = data->getRegWithConst(data->ip);
@@ -3651,7 +3645,7 @@ void opCallJd(Armv8btAsm* data) {
     data->done = true;
 }
 void opJmpJw(Armv8btAsm* data) {
-    kpanic("Need to test");
+    //kpanic("Need to test");
     // cpu->eip.u32 += (S16)op->imm;
     U8 tmpReg = data->getRegWithConst(data->ip + (S32)((S16)(data->decodedOp->imm)));
     data->jmpReg(tmpReg, false);
@@ -3732,7 +3726,7 @@ void opCallE32(Armv8btAsm* data) {
     data->done = true;
 }
 void opCallFarE16(Armv8btAsm* data) {
-    kpanic("Need to test");
+    //kpanic("Need to test");
     // U32 eaa = eaa(cpu, op);
     // U16 newip = readw(eaa);
     // U16 newcs = readw(eaa + 2);
@@ -3794,7 +3788,7 @@ void opJmpR32(Armv8btAsm* data) {
     data->done = true;
 }
 void opJmpE16(Armv8btAsm* data) {
-    kpanic("Need to test");
+    //kpanic("Need to test");
     // U32 neweip = readw(eaa(cpu, op));
     // cpu->eip.u32 = neweip;
     U8 addressReg = data->getAddressReg();
@@ -3818,7 +3812,7 @@ void opJmpE32(Armv8btAsm* data) {
     data->done = true;
 }
 void opJmpFarE16(Armv8btAsm* data) {
-    kpanic("Need to test");
+    //kpanic("Need to test");
     // U32 eaa = eaa(cpu, op);
     // U16 newip = readw(eaa);
     // U16 newcs = readw(eaa + 2);
