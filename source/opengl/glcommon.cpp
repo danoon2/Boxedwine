@@ -130,6 +130,40 @@ void glcommon_glViewport(CPU* cpu) {
     glViewport(x, y, width, height);
 }
 
+static GLfloat* feedbackBuffer;
+static GLsizei feedbackBufferSize;
+static U32 feedbackBufferAddress;
+
+void glcommon_glFeedbackBuffer(CPU* cpu) {
+    GLsizei size = ARG1;
+    GLenum type = ARG2;
+    U32 buffer = ARG3; // GLfloat*
+#ifdef BOXEDWINE_64BIT_MMU
+    GL_FUNC(glFeedbackBuffer)(size, type, (GLfloat*)getNativeAddress(cpu->thread->process->memory, buffer));
+#else
+    if (size > feedbackBufferSize) {
+        if (feedbackBuffer) {
+            delete[] feedbackBuffer;
+        }
+        feedbackBuffer = new GLfloat[size];
+        feedbackBufferSize = size;
+    }
+    GL_FUNC(glFeedbackBuffer)(size, type, feedbackBuffer);
+    feedbackBufferAddress = ARG3;
+#endif
+}
+
+void glcommon_glRenderMode(CPU* cpu) {
+    GLenum mode = ARG1;
+    EAX = GL_FUNC(glRenderMode)(mode);
+#ifndef BOXEDWINE_64BIT_MMU
+    // could be -1
+    if (EAX < feedbackBufferSize) {
+        marshalBackf(cpu, feedbackBufferAddress, feedbackBuffer, EAX);
+    }
+#endif
+}
+
 // GLAPI const GLubyte* APIENTRY glGetString( GLenum name ) {
 void glcommon_glGetString(CPU* cpu) {
     U32 name = ARG1;
@@ -387,7 +421,7 @@ void glcommon_glInterleavedArrays(CPU* cpu) {
 #ifdef BOXEDWINE_64BIT_MMU
     GL_FUNC(glInterleavedArrays)(format, stride, getNativeAddress(cpu->thread->process->memory, address));
 #else
-    kpanic("glInterleavedArrays no supported");
+    GL_FUNC(glInterleavedArrays)(format, stride, marshalInterleavedPointer(cpu, format, stride, address));
 #endif    
 }
 

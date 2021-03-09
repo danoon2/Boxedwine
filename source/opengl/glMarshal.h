@@ -198,6 +198,7 @@ GLvoid* marshalSecondaryColorPointer(CPU* cpu, GLint size, GLenum type, GLsizei 
 GLvoid* marshalSecondaryColorPointerEXT(CPU* cpu, GLint size, GLenum type, GLsizei stride, U32 ptr);
 GLvoid* marshalFogPointer(CPU* cpu, GLenum type, GLsizei stride, U32 ptr);
 GLvoid* marshalFogPointerEXT(CPU* cpu, GLenum type, GLsizei stride, U32 ptr);
+const GLvoid* marshalInterleavedPointer(CPU* cpu, GLenum format, GLsizei stride, U32 ptr);
 
 U32 getDataSize(GLenum type);
 

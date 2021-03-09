@@ -20,6 +20,35 @@ U32 getDataSize(GLenum type) {
         return 4;
     case GL_DOUBLE:
         return 8;
+
+    case GL_V2F:
+        return 8;
+    case GL_V3F:
+        return 12;
+    case GL_C4UB_V2F:
+        return 12;
+    case GL_C4UB_V3F:
+        return 16;
+    case GL_C3F_V3F:
+        return 24;
+    case GL_N3F_V3F:
+        return 24;
+    case GL_C4F_N3F_V3F:
+        return 40;
+    case GL_T2F_V3F:
+        return 20;
+    case GL_T4F_V4F:
+        return 32;
+    case GL_T2F_C4UB_V3F:
+        return 36;
+    case GL_T2F_C3F_V3F:
+        return 32;
+    case GL_T2F_N3F_V3F:
+        return 32;
+    case GL_T2F_C4F_N3F_V3F:
+        return 48;
+    case GL_T4F_C4F_N3F_V4F:
+        return 60;
     default:
         kpanic("glcommon.c getDataSize unknown type: %d", type);
         return 4;
