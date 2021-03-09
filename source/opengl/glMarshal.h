@@ -272,4 +272,10 @@ void marshalDeleteHandleIndex(U32 i);
 #define DELETE_HANDLE_INDEX(i)
 #endif
 
+// logging
+const char* glcommon_glLightv_print_pname(GLenum e);
+const char* glcommon_glLightv_print_buffer(GLenum e, GLfloat* buffer);
+const char* glcommon_glLightv_print_name(GLenum e);
+const char* glcommon_glClear_mask(GLbitfield mask);
+
 #endif

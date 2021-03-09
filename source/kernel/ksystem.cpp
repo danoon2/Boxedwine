@@ -47,6 +47,9 @@ U32 KSystem::startTimeTicks;
 U64 KSystem::startTimeMicroCounter;
 U64 KSystem::startTimeSystemTime;
 std::string KSystem::title;
+// some simple opengl apps seem to have a hard time starting if this is true
+// Not sure if this is a Boxedwine issue or if its normal for Windows to behave different for OpenGL if the window is hidden
+bool KSystem::hideNewWindows = true; 
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
 bool KSystem::useLargeAddressSpace = true;
 #endif

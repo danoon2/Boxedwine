@@ -183,6 +183,9 @@ std::vector<std::string> StartUpArgs::buildArgs() {
     if (dpiAware) {
         args.push_back("-dpiAware");
     }
+    if (!hideNewWindows) {
+        args.push_back("-dontHideNewWindows");
+    }
     if (cpuAffinity) {
         args.push_back("-cpuAffinity");
         args.push_back(std::to_string(cpuAffinity));
@@ -568,7 +571,10 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
             }
         } else if (!strcmp(argv[i], "-dpiAware")) {
             dpiAware = true;
-        } else if (!strcmp(argv[i], "-pollRate")) {
+        } else if (!strcmp(argv[i], "-dontHideNewWindows")) {
+            hideNewWindows = false;
+        }
+        else if (!strcmp(argv[i], "-pollRate")) {
             this->pollRate = atoi(argv[i + 1]);
             i++;
         } else if (!strcmp(argv[i], "-cpuAffinity")) {

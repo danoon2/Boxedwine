@@ -77,6 +77,7 @@ public:
     static U32 cpuAffinityCountForApp;
 #endif
     static U32 pollRate;
+    static bool hideNewWindows;
 
     static void init();
 	static void destroy();

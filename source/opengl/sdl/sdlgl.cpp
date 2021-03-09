@@ -51,7 +51,8 @@ void sdl_glFinish(CPU* cpu) {
 }
 
 // GLAPI void APIENTRY glFlush( void ) {
-void sdl_glFlush(CPU* cpu) {	
+void sdl_glFlush(CPU* cpu) {
+    KNativeWindow::getNativeWindow()->preOpenGLCall(Flush);
     glFlush();	
 }
 
