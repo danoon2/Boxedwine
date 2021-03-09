@@ -52,6 +52,7 @@ private:
     std::shared_ptr<LayoutComboboxControl> appScaleControl;
     std::shared_ptr<LayoutComboboxControl> appScaleQualityControl;
     std::shared_ptr<LayoutTextInputControl> appGlExControl;
+    std::shared_ptr<LayoutCheckboxControl> appShowWindowImmediatelyControl;
 };
 
 #endif

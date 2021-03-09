@@ -17,6 +17,7 @@ bool BoxedApp::load(BoxedContainer* container, const std::string& iniFilePath) {
     this->fullScreen = config.readInt("Fullscreen",FULLSCREEN_NOTSET);
     this->vsync = config.readInt("VSync", VSYNC_NOT_SET);
     this->dpiAware = config.readBool("DpiAware", false);
+    this->showWindowImmediately = config.readBool("ShowWindowImmediately", false);
     this->glExt = config.readString("AllowedGlExt","");
     this->scale = config.readInt("Scale",100);
     this->scaleQuality = config.readInt("ScaleQuality",0);    
@@ -64,6 +65,7 @@ bool BoxedApp::saveApp() {
     config.writeInt("Fullscreen",this->fullScreen);
     config.writeInt("VSync", this->vsync);
     config.writeBool("DpiAware", this->dpiAware);
+    config.writeBool("ShowWindowImmediately", this->showWindowImmediately);
     config.writeString("AllowedGlExt",this->glExt);
     config.writeInt("Scale",this->scale);
     config.writeInt("ScaleQuality",this->scaleQuality);
@@ -101,6 +103,9 @@ void BoxedApp::launch() {
     }
     if (GlobalSettings::isDpiAware() && this->dpiAware) {
         GlobalSettings::startUpArgs.dpiAware = true;
+    }
+    if (this->showWindowImmediately) {
+        GlobalSettings::startUpArgs.showWindowImmediately = true;
     }
     if (this->cpuAffinity) {
         GlobalSettings::startUpArgs.setCpuAffinity(this->cpuAffinity);
