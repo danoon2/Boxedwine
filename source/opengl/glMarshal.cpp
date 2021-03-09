@@ -454,10 +454,10 @@ GLvoid* marshalPixels(CPU* cpu, U32 is3d, GLsizei width, GLsizei height, GLsizei
     if (!pixels)
         return 0;
 
-    GL_FUNC(glGetIntegerv)(GL_UNPACK_ROW_LENGTH, &pixels_per_row);
-    GL_FUNC(glGetIntegerv)(GL_UNPACK_SKIP_PIXELS, &skipPixels);
-    GL_FUNC(glGetIntegerv)(GL_UNPACK_SKIP_ROWS, &skipRows);
-    GL_FUNC(glGetIntegerv)(GL_UNPACK_ALIGNMENT, &alignment);
+    GL_FUNC(glGetIntegerv)(GL_PACK_ROW_LENGTH, &pixels_per_row);
+    GL_FUNC(glGetIntegerv)(GL_PACK_SKIP_PIXELS, &skipPixels);
+    GL_FUNC(glGetIntegerv)(GL_PACK_SKIP_ROWS, &skipRows);
+    GL_FUNC(glGetIntegerv)(GL_PACK_ALIGNMENT, &alignment);
     if (is3d) {
         GL_FUNC(glGetIntegerv)(GL_PACK_SKIP_IMAGES, &skipImages);
     }    
@@ -562,10 +562,10 @@ void marshalBackPixels(CPU* cpu, U32 is3d, GLsizei width, GLsizei height, GLsize
     if (!pixels)
         return;
 
-    GL_FUNC(glGetIntegerv)(GL_UNPACK_ROW_LENGTH, &pixels_per_row);
-    GL_FUNC(glGetIntegerv)(GL_UNPACK_SKIP_PIXELS, &skipPixels);
-    GL_FUNC(glGetIntegerv)(GL_UNPACK_SKIP_ROWS, &skipRows);
-    GL_FUNC(glGetIntegerv)(GL_UNPACK_ALIGNMENT, &alignment);
+    GL_FUNC(glGetIntegerv)(GL_PACK_ROW_LENGTH, &pixels_per_row);
+    GL_FUNC(glGetIntegerv)(GL_PACK_SKIP_PIXELS, &skipPixels);
+    GL_FUNC(glGetIntegerv)(GL_PACK_SKIP_ROWS, &skipRows);
+    GL_FUNC(glGetIntegerv)(GL_PACK_ALIGNMENT, &alignment);
     if (is3d) {
         GL_FUNC(glGetIntegerv)(GL_PACK_SKIP_IMAGES, &skipImages);
     }    

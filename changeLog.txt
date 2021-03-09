@@ -2,6 +2,8 @@ Next Release
 
 * Added command line option: -fullscreenAspect  This will enable full screen with letter boxing in order to preserve the aspect ratio.
 * Added command line option: -vsync X where X is 0, 1 or 2.  0 is disabled, 1 is enabled and 2 is adaptive.  The default is 0 (disabled).
+* Added command line option: -showWindowImmediately  This fixes simple OpenGL GLUT examples.
+* OpenGL: Implemented glInterleavedArray, fixed glFeedbackBuffer and fixed glReadPixels when using packed formats.
 
 20.1.2
 

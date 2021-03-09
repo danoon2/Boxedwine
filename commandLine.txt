@@ -19,7 +19,7 @@ This will load the file system from wine.zip and write the changes to c:\root
 
 -bpp X : Value must be 16 or 32.  Most games are fine with 32-bit.
 
--dontHideNewWindows: By default Boxedwine will hide new Windows until it looks like they will be used.  This is done to prevent a lot of Window flashing (create and destroy) when games test the system for what resolution and capabilities they will use.  Some simple OpenGL apps seem to have a problem with this feature of Boxedwine so this flag will disable it.
+-showWindowImmediately: By default Boxedwine will hide new Windows until it looks like they will be used.  This is done to prevent a lot of Window flashing (create and destroy) when games test the system for what resolution and capabilities they will use.  Some simple OpenGL apps seem to have a problem with this feature of Boxedwine so this flag will disable it.
 
 -dpiAware: will prevent Windows from scaling the screen if you are using display scaling.
 
