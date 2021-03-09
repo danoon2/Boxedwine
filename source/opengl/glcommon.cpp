@@ -130,6 +130,40 @@ void glcommon_glViewport(CPU* cpu) {
     glViewport(x, y, width, height);
 }
 
+static GLfloat* feedbackBuffer;
+static GLsizei feedbackBufferSize;
+static U32 feedbackBufferAddress;
+
+void glcommon_glFeedbackBuffer(CPU* cpu) {
+    GLsizei size = ARG1;
+    GLenum type = ARG2;
+    U32 buffer = ARG3; // GLfloat*
+#ifdef BOXEDWINE_64BIT_MMU
+    GL_FUNC(glFeedbackBuffer)(size, type, (GLfloat*)getNativeAddress(cpu->thread->process->memory, buffer));
+#else
+    if (size > feedbackBufferSize) {
+        if (feedbackBuffer) {
+            delete[] feedbackBuffer;
+        }
+        feedbackBuffer = new GLfloat[size];
+        feedbackBufferSize = size;
+    }
+    GL_FUNC(glFeedbackBuffer)(size, type, feedbackBuffer);
+    feedbackBufferAddress = ARG3;
+#endif
+}
+
+void glcommon_glRenderMode(CPU* cpu) {
+    GLenum mode = ARG1;
+    EAX = GL_FUNC(glRenderMode)(mode);
+#ifndef BOXEDWINE_64BIT_MMU
+    // could be -1
+    if (EAX < feedbackBufferSize) {
+        marshalBackf(cpu, feedbackBufferAddress, feedbackBuffer, EAX);
+    }
+#endif
+}
+
 // GLAPI const GLubyte* APIENTRY glGetString( GLenum name ) {
 void glcommon_glGetString(CPU* cpu) {
     U32 name = ARG1;
@@ -381,7 +415,14 @@ void glcommon_glGetPointerv(CPU* cpu) {
 
 // GLAPI void APIENTRY glInterleavedArrays( GLenum format, GLsizei stride, const GLvoid *pointer ) {
 void glcommon_glInterleavedArrays(CPU* cpu) {
-    kpanic("glInterleavedArrays no supported");
+    GLenum format = ARG1;
+    GLsizei stride = ARG2;
+    U32 address = ARG3;
+#ifdef BOXEDWINE_64BIT_MMU
+    GL_FUNC(glInterleavedArrays)(format, stride, getNativeAddress(cpu->thread->process->memory, address));
+#else
+    GL_FUNC(glInterleavedArrays)(format, stride, marshalInterleavedPointer(cpu, format, stride, address));
+#endif    
 }
 
 // GLAPI void APIENTRY glReadPixels( GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, GLvoid *pixels ) {
@@ -418,7 +459,7 @@ void glcommon_glSamplePass(CPU* cpu) {
 }
 
 #undef GL_FUNCTION
-#define GL_FUNCTION(func, RET, PARAMS, ARGS, PRE, POST, LOG) void glcommon_gl##func(CPU* cpu) { PRE GL_FUNC(gl##func)ARGS; POST} 
+#define GL_FUNCTION(func, RET, PARAMS, ARGS, PRE, POST, LOG) void glcommon_gl##func(CPU* cpu) { PRE GL_FUNC(gl##func)ARGS; POST; GL_LOG LOG;} 
 
 #undef GL_FUNCTION_CUSTOM
 #define GL_FUNCTION_CUSTOM(func, RET, PARAMS)

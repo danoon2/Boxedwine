@@ -183,6 +183,9 @@ std::vector<std::string> StartUpArgs::buildArgs() {
     if (dpiAware) {
         args.push_back("-dpiAware");
     }
+    if (showWindowImmediately) {
+        args.push_back("-showWindowImmediately");
+    }
     if (cpuAffinity) {
         args.push_back("-cpuAffinity");
         args.push_back(std::to_string(cpuAffinity));
@@ -216,6 +219,7 @@ bool StartUpArgs::apply() {
 #endif
     KSystem::pentiumLevel = this->pentiumLevel;
     KSystem::pollRate = this->pollRate;
+    KSystem::showWindowImmediately = this->showWindowImmediately;
 
     for (U32 f=0;f<nonExecFileFullPaths.size();f++) {
         FsFileNode::nonExecFileFullPaths.insert(nonExecFileFullPaths[f]);
@@ -568,7 +572,10 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
             }
         } else if (!strcmp(argv[i], "-dpiAware")) {
             dpiAware = true;
-        } else if (!strcmp(argv[i], "-pollRate")) {
+        } else if (!strcmp(argv[i], "-showWindowImmediately")) {
+            showWindowImmediately = true;
+        }
+        else if (!strcmp(argv[i], "-pollRate")) {
             this->pollRate = atoi(argv[i + 1]);
             i++;
         } else if (!strcmp(argv[i], "-cpuAffinity")) {

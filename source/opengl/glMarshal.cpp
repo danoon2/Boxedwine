@@ -454,10 +454,10 @@ GLvoid* marshalPixels(CPU* cpu, U32 is3d, GLsizei width, GLsizei height, GLsizei
     if (!pixels)
         return 0;
 
-    GL_FUNC(glGetIntegerv)(GL_UNPACK_ROW_LENGTH, &pixels_per_row);
-    GL_FUNC(glGetIntegerv)(GL_UNPACK_SKIP_PIXELS, &skipPixels);
-    GL_FUNC(glGetIntegerv)(GL_UNPACK_SKIP_ROWS, &skipRows);
-    GL_FUNC(glGetIntegerv)(GL_UNPACK_ALIGNMENT, &alignment);
+    GL_FUNC(glGetIntegerv)(GL_PACK_ROW_LENGTH, &pixels_per_row);
+    GL_FUNC(glGetIntegerv)(GL_PACK_SKIP_PIXELS, &skipPixels);
+    GL_FUNC(glGetIntegerv)(GL_PACK_SKIP_ROWS, &skipRows);
+    GL_FUNC(glGetIntegerv)(GL_PACK_ALIGNMENT, &alignment);
     if (is3d) {
         GL_FUNC(glGetIntegerv)(GL_PACK_SKIP_IMAGES, &skipImages);
     }    
@@ -562,10 +562,10 @@ void marshalBackPixels(CPU* cpu, U32 is3d, GLsizei width, GLsizei height, GLsize
     if (!pixels)
         return;
 
-    GL_FUNC(glGetIntegerv)(GL_UNPACK_ROW_LENGTH, &pixels_per_row);
-    GL_FUNC(glGetIntegerv)(GL_UNPACK_SKIP_PIXELS, &skipPixels);
-    GL_FUNC(glGetIntegerv)(GL_UNPACK_SKIP_ROWS, &skipRows);
-    GL_FUNC(glGetIntegerv)(GL_UNPACK_ALIGNMENT, &alignment);
+    GL_FUNC(glGetIntegerv)(GL_PACK_ROW_LENGTH, &pixels_per_row);
+    GL_FUNC(glGetIntegerv)(GL_PACK_SKIP_PIXELS, &skipPixels);
+    GL_FUNC(glGetIntegerv)(GL_PACK_SKIP_ROWS, &skipRows);
+    GL_FUNC(glGetIntegerv)(GL_PACK_ALIGNMENT, &alignment);
     if (is3d) {
         GL_FUNC(glGetIntegerv)(GL_PACK_SKIP_IMAGES, &skipImages);
     }    
@@ -979,4 +979,106 @@ void marshalBackhandle(CPU* cpu, U32 address, GLhandleARB* buffer, U32 count) {
     }
 }
 #endif
+
+const char* glcommon_glLightv_print_name(GLenum e) {
+    THREAD_LOCAL static std::string* buffer;
+    if (!buffer) {
+        buffer = new std::string();
+    }
+    if (e >= GL_LIGHT0 && e < GL_LIGHT0 + GL_MAX_LIGHTS) {
+        *buffer = "GL_LIGHT" + std::to_string(e - GL_LIGHT0);
+    }
+    else {
+        *buffer = std::to_string(e);
+    }
+    return (*buffer).c_str();
+}
+
+const char* glcommon_glLightv_print_buffer(GLenum e, GLfloat* buffer) {
+    THREAD_LOCAL static char tmp[64];
+
+    switch (e) {
+    case GL_SPOT_EXPONENT:
+    case GL_SPOT_CUTOFF:
+    case GL_CONSTANT_ATTENUATION:
+    case GL_LINEAR_ATTENUATION:
+    case GL_QUADRATIC_ATTENUATION:
+        snprintf(tmp, sizeof(tmp), "%0.2f", buffer[0]);
+        return tmp;
+    case GL_SPOT_DIRECTION:
+        snprintf(tmp, sizeof(tmp), "{%0.2f,%0.2f,%0.2f}", buffer[0], buffer[1], buffer[2]);
+        return tmp;
+    case GL_AMBIENT:
+    case GL_DIFFUSE:
+    case GL_SPECULAR:
+    case GL_POSITION:
+        snprintf(tmp, sizeof(tmp), "{%0.2f,%0.2f,%0.2f,%0.2f}", buffer[0], buffer[1], buffer[2], buffer[3]);
+        return tmp;
+    default:
+        return "Unknown";
+    }
+}
+
+const char* glcommon_glLightv_print_pname(GLenum e)
+{
+    switch (e) {
+    case GL_SPOT_EXPONENT: return "GL_SPOT_EXPONENT";
+    case GL_SPOT_CUTOFF: return "GL_SPOT_CUTOFF";
+    case GL_CONSTANT_ATTENUATION: return "GL_CONSTANT_ATTENUATION";
+    case GL_LINEAR_ATTENUATION: return "GL_LINEAR_ATTENUATION";
+    case GL_QUADRATIC_ATTENUATION: return "GL_QUADRATIC_ATTENUATION";
+    case GL_SPOT_DIRECTION: return "GL_SPOT_DIRECTION";
+    case GL_AMBIENT: return "GL_AMBIENT";
+    case GL_DIFFUSE: return "GL_DIFFUSE";
+    case GL_SPECULAR: return "GL_SPECULAR";
+    case GL_POSITION: return "GL_POSITION";
+    default: {
+        THREAD_LOCAL static std::string* buffer;
+        if (!buffer) {
+            buffer = new std::string();
+        }
+        *buffer = std::to_string(e);
+        return (*buffer).c_str();
+    }
+    }
+}
+
+const char* glcommon_glClear_mask(GLbitfield mask) {
+    THREAD_LOCAL static std::string* buffer;
+    if (!buffer) {
+        buffer = new std::string();
+    }
+    if (mask & GL_COLOR_BUFFER_BIT) {
+        mask &= ~GL_COLOR_BUFFER_BIT;
+        *buffer = "GL_COLOR_BUFFER_BIT";
+    }
+    if (mask & GL_DEPTH_BUFFER_BIT) {
+        mask &= ~GL_DEPTH_BUFFER_BIT;
+        if (buffer->length()) {
+            *buffer += "|";
+        }
+        *buffer = "GL_DEPTH_BUFFER_BIT";
+    }
+    if (mask & GL_ACCUM_BUFFER_BIT) {
+        mask &= ~GL_ACCUM_BUFFER_BIT;
+        if (buffer->length()) {
+            *buffer += "|";
+        }
+        *buffer = "GL_ACCUM_BUFFER_BIT";
+    }
+    if (mask & GL_STENCIL_BUFFER_BIT) {
+        mask &= ~GL_STENCIL_BUFFER_BIT;
+        if (buffer->length()) {
+            *buffer += "|";
+        }
+        *buffer = "GL_STENCIL_BUFFER_BIT";
+    }
+    if (mask) {
+        if (buffer->length()) {
+            *buffer += "|";
+        }
+        *buffer = std::to_string(mask);
+    }
+    return buffer->c_str();
+}
 #endif

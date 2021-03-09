@@ -198,6 +198,7 @@ GLvoid* marshalSecondaryColorPointer(CPU* cpu, GLint size, GLenum type, GLsizei 
 GLvoid* marshalSecondaryColorPointerEXT(CPU* cpu, GLint size, GLenum type, GLsizei stride, U32 ptr);
 GLvoid* marshalFogPointer(CPU* cpu, GLenum type, GLsizei stride, U32 ptr);
 GLvoid* marshalFogPointerEXT(CPU* cpu, GLenum type, GLsizei stride, U32 ptr);
+const GLvoid* marshalInterleavedPointer(CPU* cpu, GLenum format, GLsizei stride, U32 ptr);
 
 U32 getDataSize(GLenum type);
 
@@ -271,5 +272,11 @@ void marshalDeleteHandleIndex(U32 i);
 #define INDEX_TO_HANDLE(i) i
 #define DELETE_HANDLE_INDEX(i)
 #endif
+
+// logging
+const char* glcommon_glLightv_print_pname(GLenum e);
+const char* glcommon_glLightv_print_buffer(GLenum e, GLfloat* buffer);
+const char* glcommon_glLightv_print_name(GLenum e);
+const char* glcommon_glClear_mask(GLbitfield mask);
 
 #endif

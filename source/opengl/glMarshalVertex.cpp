@@ -290,5 +290,75 @@ const GLboolean* marshalEdgeFlagPointerEXT(CPU* cpu, GLsizei stride, GLsizei cou
     }
 }
 
+static bool interleavedHasColor(GLenum format) {
+    switch (format) {
+    case GL_C4UB_V2F:
+    case GL_C4UB_V3F:
+    case GL_C3F_V3F:
+    case GL_C4F_N3F_V3F:
+    case GL_T2F_C4UB_V3F:
+    case GL_T2F_C3F_V3F:
+    case GL_T2F_C4F_N3F_V3F:
+    case GL_T4F_C4F_N3F_V4F:
+        return true;
+    default:
+        return false;
+    }
+}
+
+static bool interleavedHasTexture(GLenum format) {
+    switch (format) {
+    case GL_T2F_V3F:
+    case GL_T4F_V4F:
+    case GL_T2F_C4UB_V3F:
+    case GL_T2F_C3F_V3F:
+    case GL_T2F_N3F_V3F:
+    case GL_T2F_C4F_N3F_V3F:
+    case GL_T4F_C4F_N3F_V4F:
+        return true;
+    default:
+        return false;
+    }
+}
+
+static bool interleavedHasNormal(GLenum format) {
+    switch (format) {
+    case GL_N3F_V3F:
+    case GL_C4F_N3F_V3F:
+    case GL_T2F_N3F_V3F:
+    case GL_T2F_C4F_N3F_V3F:
+    case GL_T4F_C4F_N3F_V4F:
+        return true;
+    default:
+        return false;
+    }
+}
+
+const void* marshalInterleavedPointer(CPU* cpu, GLenum format, GLsizei stride, U32 ptr) {
+    cpu->thread->glVertextPointer.refreshEachCall = 0;
+    if (interleavedHasColor(format)) {
+        cpu->thread->glColorPointer.refreshEachCall = 0;
+    }
+    if (interleavedHasNormal(format)) {
+        cpu->thread->glNormalPointer.refreshEachCall = 0;
+    }
+    if (interleavedHasTexture(format)) {
+        cpu->thread->glTexCoordPointer.refreshEachCall = 0;
+    }
+    if (ARRAY_BUFFER()) {
+        cpu->thread->glInterleavedArray.refreshEachCall = 0;
+        return (const GLboolean*)(uintptr_t)ptr;
+    }
+    else {
+        cpu->thread->glInterleavedArray.size = 1;
+        cpu->thread->glInterleavedArray.type = format;
+        cpu->thread->glInterleavedArray.stride = stride;
+        cpu->thread->glInterleavedArray.ptr = ptr;
+        cpu->thread->glInterleavedArray.refreshEachCall = 1;
+        updateVertexPointer(cpu, &cpu->thread->glInterleavedArray, 0);
+        return cpu->thread->glInterleavedArray.marshal;
+    }
+}
+
 #endif
 #endif

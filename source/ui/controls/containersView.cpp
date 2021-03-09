@@ -141,7 +141,9 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
     row = section->addRow(CONTAINER_VIEW_SHORTCUT_LIST_LABEL, CONTAINER_VIEW_SHORTCUT_LIST_HELP);
     appPickerControl = row->addComboBox();
     appPickerControl->onChange = [this]() {
-        this->setCurrentApp(this->currentContainer->getApps()[this->appPickerControl->getSelection()]);        
+        if (this->saveChanges()) {
+            this->setCurrentApp(this->currentContainer->getApps()[this->appPickerControl->getSelection()]);
+        }
     };
 
     std::string label;
@@ -301,6 +303,12 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
         appGlExControl->setText("GL_EXT_multi_draw_arrays GL_ARB_vertex_program\nGL_ARB_fragment_program GL_ARB_multitexture\nGL_EXT_secondary_color GL_EXT_texture_lod_bias\nGL_NV_texture_env_combine4 GL_ATI_texture_env_combine3\nGL_EXT_texture_filter_anisotropic GL_ARB_texture_env_combine\nGL_EXT_texture_env_combine GL_EXT_texture_compression_s3tc\nGL_ARB_texture_compression GL_EXT_paletted_texture");
         this->currentAppChanged = true;
     };    
+
+    appShowWindowImmediatelyControl = appSection->addCheckbox(CONTAINER_VIEW_SHOW_WINDOW_LABEL, CONTAINER_VIEW_SHOW_WINDOW_HELP, false);
+    appShowWindowImmediatelyControl->onChange = [this]() {
+        this->currentAppChanged = true;
+    };
+
     for (auto& item : BoxedwineData::getContainers()) {
         addTab(item->getDir(), item->getName(), model, [this, item](bool buttonPressed, BaseViewTab& tab) {
             if (buttonPressed) {
@@ -447,6 +455,7 @@ bool ContainersView::saveChanges() {
             if (GlobalSettings::isDpiAware()) {
                 this->currentApp->dpiAware = this->appDpiAwareControl->isChecked();
             }
+            this->currentApp->showWindowImmediately = this->appShowWindowImmediatelyControl->isChecked();
 #ifdef BOXEDWINE_MULTI_THREADED
             this->currentApp->cpuAffinity = this->appCpuAffinityControl->getSelectionIntValue();
 #endif
@@ -492,6 +501,7 @@ void ContainersView::setCurrentApp(BoxedApp* app) {
     appVSyncControl->setSelectionIntValue(app->vsync);
     appDpiAwareControl->setCheck(app->dpiAware);
     appPollRateControl->setText(std::to_string(app->pollRate));
+    appShowWindowImmediatelyControl->setCheck(app->showWindowImmediately);
 #ifdef BOXEDWINE_MULTI_THREADED
     appCpuAffinityControl->setSelectionIntValue(app->cpuAffinity);
 #endif

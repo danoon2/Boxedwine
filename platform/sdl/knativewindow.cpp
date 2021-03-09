@@ -539,7 +539,10 @@ U32 sdlCreateOpenglWindow_main_thread(KThread* thread, std::shared_ptr<WndSdl> w
     firstWindowCreated = 1;
 
     SDL_DisplayMode dm;
-    int sdlFlags = SDL_WINDOW_OPENGL|SDL_WINDOW_HIDDEN;
+    int sdlFlags = SDL_WINDOW_OPENGL;
+    if (!KSystem::showWindowImmediately) {
+        sdlFlags |= SDL_WINDOW_HIDDEN;
+    }
     int cx = wnd->windowRect.right-wnd->windowRect.left;
     int cy = wnd->windowRect.bottom-wnd->windowRect.top;
 
@@ -556,7 +559,8 @@ U32 sdlCreateOpenglWindow_main_thread(KThread* thread, std::shared_ptr<WndSdl> w
     screen->delayedCreateWindowMsg = "Creating Window for OpenGL: "+std::to_string(cx) + "x" + std::to_string(cy);
     fflush(stdout);
     screen->window = SDL_CreateWindow("OpenGL Window", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, cx, cy, sdlFlags);
-    screen->windowIsHidden = true;
+    screen->windowIsHidden = !KSystem::showWindowImmediately;
+    screen->timeToHideUI = KSystem::getMilliesSinceStart() + HIDE_UI_WINDOW_DELAY;
     screen->timeWindowWasCreated = KSystem::getMilliesSinceStart();
 
     if (!screen->window) {
@@ -685,7 +689,11 @@ void KNativeWindowSdl::displayChanged(KThread* thread) {
 
         int cx = width*scaleX/100;
         int cy = height*scaleY/100;
-        int flags = SDL_WINDOW_HIDDEN;
+        int flags = 0;
+
+        if (!KSystem::showWindowImmediately) {
+            flags |= SDL_WINDOW_HIDDEN;
+        }
 
         SDL_DisplayMode dm;
 
@@ -737,13 +745,14 @@ void KNativeWindowSdl::displayChanged(KThread* thread) {
             flags |= SDL_RENDERER_PRESENTVSYNC;
         }
         renderer = SDL_CreateRenderer(window, -1, flags);
-        windowIsHidden = true;
+        windowIsHidden = !KSystem::showWindowImmediately;
         timeWindowWasCreated = KSystem::getMilliesSinceStart();
         windowIsGL = false;
     }
 }
 
 void KNativeWindowSdl::glSwapBuffers(KThread* thread) {
+    preOpenGLCall(XSwapBuffer);
     SDL_GL_SwapWindow(window);
 }
 
