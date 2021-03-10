@@ -34,6 +34,9 @@ unsigned long long int Platform::getSystemTimeAsMicroSeconds() {
 	return ((unsigned long long int)tv.tv_sec) * 1000000l + (tv.tv_usec);
 }
 
+void Platform::init() {
+}
+
 //#ifdef __EMSCRIPTEN__
 #ifdef __THIS_HANGS__
 // error TypeError: asm.js type error: missing definition of function _testSetjmp

@@ -101,6 +101,7 @@ public:
         std::string name;
         bool isDirectory;
     };
+    static void init();
     static void listNodes(const std::string& nativePath, std::vector<ListNodeResult>& results);    
     static int nativeSocketPair(S32 socks[2]);
     static U32 getCpuFreqMHz();
