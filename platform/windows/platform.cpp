@@ -19,9 +19,16 @@
 #include <winsock2.h>
 #include "pixelformat.h"
 #include "../source/emulation/cpu/x64/x64cpu.h"
+#include <VersionHelpers.h>
 
 LONGLONG PCFreq;
 LONGLONG CounterStart;
+
+void Platform::init() {
+    if (!IsWindows8OrGreater()) {
+        SetEnvironmentVariable("SDL_AUDIODRIVER", "directsound");
+    }
+}
 
 void Platform::startMicroCounter()
 {

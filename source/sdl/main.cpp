@@ -71,6 +71,7 @@ int boxedmain(int argc, const char **argv) {
     }
 #endif
 
+    Platform::init();
     if (!KNativeSystem::init(startupArgs.videoEnabled, startupArgs.soundEnabled)) {
         return 1;
     }
