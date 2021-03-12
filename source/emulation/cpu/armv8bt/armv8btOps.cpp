@@ -3126,9 +3126,6 @@ void opIntIb(Armv8btAsm* data) {
     {
         // Wine will emulate things like Int 21 (DOS)
         data->signalIllegalInstruction(5);
-        if (!data->cpu->logFile) {
-            data->cpu->logFile = fopen("castle.txt", "w");
-        }
     }
 }
 void opIntO(Armv8btAsm* data) {
@@ -3669,7 +3666,7 @@ void opJmpJb(Armv8btAsm* data) {
     data->done = true;
 }
 void opCallR16(Armv8btAsm* data) {
-    kpanic("Need to test");
+    // kpanic("Need to test");
     // cpu->push16(cpu->eip.u32 + op->len);
     // cpu->eip.u32 = cpu->reg[op->reg].u16;
     U8 tmpReg = data->getRegWithConst(data->ip);
@@ -3773,7 +3770,7 @@ void opCallFarE32(Armv8btAsm* data) {
     data->done = true;
 }
 void opJmpR16(Armv8btAsm* data) {
-    kpanic("Need to test");
+    // kpanic("Need to test");
     // cpu->eip.u32 = cpu->reg[op->reg].u16;
     U8 tmpReg = data->getRegWithConst(data->ip);
     data->movRegToReg(tmpReg, data->getNativeReg(data->decodedOp->reg), 16, true);
