@@ -68,7 +68,14 @@ public:
         version(0),
         mask(0),
         prop(0),
-        bufferCond("DevInput::bufferCond") {}
+        bufferCond("DevInput::bufferCond"),
+        clearOnExit(0) {}
+
+    virtual ~DevInput() {
+        if (clearOnExit) {
+            *clearOnExit = NULL;
+        }
+    }
     virtual U32 ioctl(U32 request);
     virtual U32 readNative(U8* buffer, U32 len);
     virtual U32 writeNative(U8* buffer, U32 len);
@@ -89,6 +96,7 @@ public:
     U32 prop;
     BOXEDWINE_CONDITION bufferCond;
     std::queue<EventData> eventQueue;
+    DevInput** clearOnExit;
 };
 
 class DevInputTouch : public DevInput {
@@ -116,6 +124,7 @@ static DevInputTouch* touchEvents;
 
 FsOpenNode* openDevInputTouch(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
     touchEvents = new DevInputTouch(node, flags);
+    touchEvents->clearOnExit = (DevInput**)&touchEvents;
     return touchEvents;
 }
 
@@ -123,6 +132,7 @@ static DevInputMouse* mouseEvents;
 
 FsOpenNode* openDevInputMouse(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
     mouseEvents = new DevInputMouse(node, flags);
+    mouseEvents->clearOnExit = (DevInput**)&mouseEvents;
     return mouseEvents;
 }
 
@@ -130,6 +140,7 @@ static DevInputKeyboard* keyboardEvents;
 
 FsOpenNode* openDevInputKeyboard(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
     keyboardEvents = new DevInputKeyboard(node, flags);
+    keyboardEvents->clearOnExit = (DevInput**)&keyboardEvents;
     return keyboardEvents;
 }
 
