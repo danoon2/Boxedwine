@@ -1,0 +1,31 @@
+{
+  "Mac" : [
+    {
+      "hash" : "84929b17a0be720b46582ce14874d726714060dab5f7079d1f44a052489a1fe3",
+      "name" : "OpenSSL",
+      "container" : "OpenSSL.xcframework",
+      "identifier" : "macos-arm64_x86_64"
+    }
+  ],
+  "watchOS" : [
+
+  ],
+  "tvOS" : [
+
+  ],
+  "commitish" : "1.1.1100",
+  "iOS" : [
+    {
+      "hash" : "2094056c0a0d83223731c88ac01277c9d3a8ffcf6e888925589ab740f49914a6",
+      "name" : "OpenSSL",
+      "container" : "OpenSSL.xcframework",
+      "identifier" : "ios-arm64_i386_x86_64-simulator"
+    },
+    {
+      "hash" : "1df06db54f7635adad4b27c4f264e30e01fd88b1acda0547c7bf7b42812546a2",
+      "name" : "OpenSSL",
+      "container" : "OpenSSL.xcframework",
+      "identifier" : "ios-arm64_armv7"
+    }
+  ]
+}
