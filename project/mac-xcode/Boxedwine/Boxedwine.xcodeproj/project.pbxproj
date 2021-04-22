@@ -7,10 +7,11 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		1A4F1C372631FDAD0076F847 /* OpenSSL.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1A4F1C362631FDAD0076F847 /* OpenSSL.xcframework */; };
 		1A4F1C3D2631FEDE0076F847 /* OpenSSL.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1A4F1C362631FDAD0076F847 /* OpenSSL.xcframework */; };
 		1A4F1C432631FEE30076F847 /* OpenSSL.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1A4F1C362631FDAD0076F847 /* OpenSSL.xcframework */; };
 		1A4F1C492631FEEA0076F847 /* OpenSSL.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1A4F1C362631FDAD0076F847 /* OpenSSL.xcframework */; };
+		1A4F1C7C26321EC60076F847 /* OpenSSL.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1A4F1C362631FDAD0076F847 /* OpenSSL.xcframework */; };
+		1A4F1C7D26321EC60076F847 /* OpenSSL.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1A4F1C362631FDAD0076F847 /* OpenSSL.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		1A4F8E1D24F740CD0046703D /* helpView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A4F8E1C24F740CC0046703D /* helpView.cpp */; };
 		1A4F8E1E24F740CD0046703D /* helpView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A4F8E1C24F740CC0046703D /* helpView.cpp */; };
 		1A4F8E1F24F740CD0046703D /* helpView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A4F8E1C24F740CC0046703D /* helpView.cpp */; };
@@ -2379,6 +2380,20 @@
 		71FBFEE72433BBBE003F17F1 /* glMarshalSize.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE592433BBBE003F17F1 /* glMarshalSize.cpp */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		1A4F1C7E26321EC60076F847 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				1A4F1C7D26321EC60076F847 /* OpenSSL.xcframework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		1A4F1C1C2631FA350076F847 /* libssl.1.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libssl.1.1.dylib; path = "Pods/OpenSSL-Universal/macos/lib/libssl.1.1.dylib"; sourceTree = "<group>"; };
 		1A4F1C1D2631FA350076F847 /* libcrypto.1.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libcrypto.1.1.dylib; path = "Pods/OpenSSL-Universal/macos/lib/libcrypto.1.1.dylib"; sourceTree = "<group>"; };
@@ -3298,10 +3313,10 @@
 			files = (
 				712227882433EE2700CDBABD /* OpenGL.framework in Frameworks */,
 				712227862433EE1200CDBABD /* Carbon.framework in Frameworks */,
+				1A4F1C7C26321EC60076F847 /* OpenSSL.xcframework in Frameworks */,
 				712227842433EDE700CDBABD /* ForceFeedback.framework in Frameworks */,
 				712227822433EDCE00CDBABD /* AudioToolbox.framework in Frameworks */,
 				7122277E2433ED7C00CDBABD /* CoreAudio.framework in Frameworks */,
-				1A4F1C372631FDAD0076F847 /* OpenSSL.xcframework in Frameworks */,
 				7122277C2433ED5700CDBABD /* libSDL2.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4721,6 +4736,7 @@
 				71FBFCA92433B815003F17F1 /* Sources */,
 				71FBFCAA2433B815003F17F1 /* Frameworks */,
 				71FBFCAB2433B815003F17F1 /* Resources */,
+				1A4F1C7E26321EC60076F847 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
