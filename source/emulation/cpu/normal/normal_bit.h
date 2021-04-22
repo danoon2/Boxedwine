@@ -29,12 +29,12 @@ void OPCALL normal_btr16(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_bte16r16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    common_bte16r16(cpu, eaa(cpu,op), op->reg);
+    common_bte16r16(cpu, op, op->reg);
     NEXT();
 }
 void OPCALL normal_bte16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    common_bte16(cpu, op->imm, eaa(cpu,op), op->reg);
+    common_bte16(cpu, op->imm, eaa(cpu, op), op->reg);
     NEXT();
 }
 void OPCALL normal_btr32r32(CPU* cpu, DecodedOp* op) {
@@ -49,12 +49,12 @@ void OPCALL normal_btr32(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_bte32r32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    common_bte32r32(cpu, eaa(cpu,op), op->reg);
+    common_bte32r32(cpu, op, op->reg);
     NEXT();
 }
 void OPCALL normal_bte32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    common_bte32(cpu, op->imm, eaa(cpu,op), op->reg);
+    common_bte32(cpu, op->imm, eaa(cpu, op), op->reg);
     NEXT();
 }
 void OPCALL normal_btsr16r16(CPU* cpu, DecodedOp* op) {
@@ -69,12 +69,12 @@ void OPCALL normal_btsr16(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_btse16r16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    common_btse16r16(cpu, eaa(cpu,op), op->reg);
+    common_btse16r16(cpu, op, op->reg);
     NEXT();
 }
 void OPCALL normal_btse16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    common_btse16(cpu, op->imm, eaa(cpu,op), op->reg);
+    common_btse16(cpu, op->imm, eaa(cpu, op), op->reg);
     NEXT();
 }
 void OPCALL normal_btsr32r32(CPU* cpu, DecodedOp* op) {
@@ -89,12 +89,12 @@ void OPCALL normal_btsr32(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_btse32r32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    common_btse32r32(cpu, eaa(cpu,op), op->reg);
+    common_btse32r32(cpu, op, op->reg);
     NEXT();
 }
 void OPCALL normal_btse32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    common_btse32(cpu, op->imm, eaa(cpu,op), op->reg);
+    common_btse32(cpu, op->imm, eaa(cpu, op), op->reg);
     NEXT();
 }
 void OPCALL normal_btrr16r16(CPU* cpu, DecodedOp* op) {
@@ -109,12 +109,12 @@ void OPCALL normal_btrr16(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_btre16r16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    common_btre16r16(cpu, eaa(cpu,op), op->reg);
+    common_btre16r16(cpu, op, op->reg);
     NEXT();
 }
 void OPCALL normal_btre16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    common_btre16(cpu, op->imm, eaa(cpu,op), op->reg);
+    common_btre16(cpu, op->imm, eaa(cpu, op), op->reg);
     NEXT();
 }
 void OPCALL normal_btrr32r32(CPU* cpu, DecodedOp* op) {
@@ -129,12 +129,12 @@ void OPCALL normal_btrr32(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_btre32r32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    common_btre32r32(cpu, eaa(cpu,op), op->reg);
+    common_btre32r32(cpu, op, op->reg);
     NEXT();
 }
 void OPCALL normal_btre32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    common_btre32(cpu, op->imm, eaa(cpu,op), op->reg);
+    common_btre32(cpu, op->imm, eaa(cpu, op), op->reg);
     NEXT();
 }
 void OPCALL normal_btcr16r16(CPU* cpu, DecodedOp* op) {
@@ -149,12 +149,12 @@ void OPCALL normal_btcr16(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_btce16r16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    common_btce16r16(cpu, eaa(cpu,op), op->reg);
+    common_btce16r16(cpu, op, op->reg);
     NEXT();
 }
 void OPCALL normal_btce16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    common_btce16(cpu, op->imm, eaa(cpu,op), op->reg);
+    common_btce16(cpu, op->imm, eaa(cpu, op), op->reg);
     NEXT();
 }
 void OPCALL normal_btcr32r32(CPU* cpu, DecodedOp* op) {
@@ -169,12 +169,12 @@ void OPCALL normal_btcr32(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_btce32r32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    common_btce32r32(cpu, eaa(cpu,op), op->reg);
+    common_btce32r32(cpu, op, op->reg);
     NEXT();
 }
 void OPCALL normal_btce32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    common_btce32(cpu, op->imm, eaa(cpu,op), op->reg);
+    common_btce32(cpu, op->imm, eaa(cpu, op), op->reg);
     NEXT();
 }
 void OPCALL normal_bsfr16r16(CPU* cpu, DecodedOp* op) {

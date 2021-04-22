@@ -119,17 +119,36 @@ static U32 inst8RMGWritten(X64Asm* data) {
 // CMOVNL
 // CMOVLE
 // CMOVNLE
-// BT Ew,Gw
 // DSHLCL Ew,Gw
 // BTS Ew,Gw
 // DSHRCL Ew,Gw
 // DIMUL Gw,Ew
 // CMPXCHG Ew,Gw
+static U32 inst16RM(X64Asm* data) {
+    data->translateRM(data->fetch8(), true, true, false, false, 0);
+    return 0;
+}
+
+// BT Ew,Gw
 // BSR Gw,Ew
 // BTS Ew,Gw (Roller Coaster Tycoon demo)
 // BSF Gw,Ew (Roller Coaster Tycoon demo)
-static U32 inst16RM(X64Asm* data) {
-    data->translateRM(data->fetch8(), true, true, false, false, 0);
+static U32 inst16RMBit(X64Asm* data) {
+    U8 rm = data->fetch8();
+
+#ifndef _TEST
+    if (rm < 0xC0 && data->ea16) {
+        static bool hasWarned = false;
+        if (!hasWarned) {
+            // see common_bte16r16 for how this should be implemented
+            // 
+            // I couldn't find any app/game that needed this, so I delayed fixing it because it would cause a refacting in how memory addresses are calculated
+            klog("X64: 16-bit memory bit instructions might not be handled correctly.  Please report which app/game caused this");
+            hasWarned = true;
+        }
+    }
+#endif
+    data->translateRM(rm, true, true, false, false, 0);    
     return 0;
 }
 
@@ -2475,11 +2494,11 @@ X64Decoder x64Decoder[1024] = {
     inst8RM, inst8RM, inst8RM, inst8RM, inst8RM, inst8RM, inst8RM, inst8RM,
     inst8RM, inst8RM, inst8RM, inst8RM, inst8RM, inst8RM, inst8RM, inst8RM,
     // 1a0
-    push16FS, pop16FS, x64cpuid, inst16RM, inst16RMimm8, inst16RM, invalidOp, invalidOp,
-    push16GS, pop16GS, invalidOp, inst16RM, inst16RMimm8, inst16RM, invalidOp, inst16RM,
+    push16FS, pop16FS, x64cpuid, inst16RMBit, inst16RMimm8, inst16RM, invalidOp, invalidOp,
+    push16GS, pop16GS, invalidOp, inst16RMBit, inst16RMimm8, inst16RM, invalidOp, inst16RM,
     // 1b0
-    inst8RM, inst16RM, lss16, inst16RM, lfs16, lgs16, inst16E8RM, invalidOp,
-    invalidOp, invalidOp, inst16RMimm8SafeG, inst16RM, inst16RM, inst16RM, inst16E8RM, invalidOp,
+    inst8RM, inst16RM, lss16, inst16RMBit, lfs16, lgs16, inst16E8RM, invalidOp,
+    invalidOp, invalidOp, inst16RMimm8SafeG, inst16RMBit, inst16RM, inst16RM, inst16E8RM, invalidOp,
     // 1c0
     invalidOp, invalidOp, sse2Imm8, invalidOp, sseXmmErI8, sseRegXmmI8, sse2Imm8, invalidOp,
     keepSame, keepSame, keepSame, keepSame, bswapSp, keepSame, keepSame, keepSame,
