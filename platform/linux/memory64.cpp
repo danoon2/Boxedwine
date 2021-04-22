@@ -240,7 +240,8 @@ bool clearCodePageReadOnly(Memory* memory, U32 page) {
 #include <ucontext.h>
 
 // from llvm
-#if defined(__aarch64__)
+#ifdef __MACH__
+#elif defined(__aarch64__)
 // Android headers in the older NDK releases miss this definition.
 struct __sanitizer_esr_context {
   struct _aarch64_ctx head;
@@ -272,7 +273,11 @@ static void handler(int sig, siginfo_t* info, void* context)
         // will continue
     } else {
 #ifdef __MACH__
+#if defined(__aarch64__)
+        bool readAccess = (((ucontext_t*)context)->uc_mcontext->__es.__esr & 1) == 0;
+#else
         bool readAccess = (((ucontext_t*)context)->uc_mcontext->__es.__err & 1) == 0;
+#endif
 #elif defined (__aarch64__)
         bool readAccess = true; // :TODO: ???
         static const U64 ESR_ELx_WNR = 1U << 6;
