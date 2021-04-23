@@ -2,9 +2,6 @@
 <Workspace
    version = "1.0">
    <FileRef
-      location = "group:../../lib/sdl2/Xcode/SDL/SDL.xcodeproj">
-   </FileRef>
-   <FileRef
       location = "container:Boxedwine/Boxedwine.xcodeproj">
    </FileRef>
 </Workspace>
