@@ -10,6 +10,4 @@ Features
     Runs on Windows, Mac and Linux
     Can run multiple version of Wine, from 1.8 to 5.0
 
-Main repo is at: https://sourceforge.net/projects/boxedwine/
-  
-Mirror repo is at: https://github.com/danoon2/Boxedwine
+Repo is at: https://github.com/danoon2/Boxedwine
