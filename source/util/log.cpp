@@ -20,6 +20,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include "knativethread.h"
+#include "knativesystem.h"
 
 #ifdef BOXEDWINE_MSVC
 #include <Windows.h>
@@ -40,15 +41,18 @@ void kpanic(const char* msg, ...) {
         fflush(logFile);
         fclose(logFile);
     }
-#ifdef BOXEDWINE_MSVC
     char buff[1024];
     vsnprintf(buff, sizeof(buff), msg, argptr);
+#ifdef BOXEDWINE_MSVC
     OutputDebugStringA(buff);
     OutputDebugStringA("\n");
 #endif
     va_end(argptr);
-    KNativeThread::sleep(5000);
-    exit(1);
+    if (KSystem::videoEnabled) {
+        KNativeSystem::exit(buff, 1);
+    } else {
+        KNativeThread::sleep(5000);
+    }
 }
 
 void kwarn(const char* msg, ...) {

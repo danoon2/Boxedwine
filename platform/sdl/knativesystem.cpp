@@ -1,6 +1,7 @@
 #include "boxedwine.h"
 #include "knativesystem.h"
 #include <SDL.h>
+#include UNISTD
 
 #ifndef __TEST
 int boxedmain(int argc, const char** argv);
@@ -24,6 +25,11 @@ bool KNativeSystem::init(bool allowVideo, bool allowAudio) {
         return false;
     }
     return true;
+}
+
+void KNativeSystem::exit(const char* msg, U32 code) {
+    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", msg, NULL);
+    _exit(code);
 }
 
 void KNativeSystem::cleanup() {
