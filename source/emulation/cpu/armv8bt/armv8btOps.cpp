@@ -3370,7 +3370,7 @@ static void doEnter(Armv8btAsm* data, bool big, U32 bytes, U32 level) {
 }
 
 void opEnter16(Armv8btAsm* data) {
-    kpanic("Need to test");
+    //kpanic("Need to test");
     doEnter(data, false, data->decodedOp->imm, data->decodedOp->disp);
 }
 void opEnter32(Armv8btAsm* data) {
@@ -3378,7 +3378,7 @@ void opEnter32(Armv8btAsm* data) {
     doEnter(data, true, data->decodedOp->imm, data->decodedOp->disp);
 }
 void opLeave16(Armv8btAsm* data) {
-    kpanic("Need to test");
+    // kpanic("Need to test");
     //SP = BP;
     //BP = cpu->pop16();
     data->movRegToReg(xESP, xEBP, 16, false);
@@ -3687,7 +3687,7 @@ void opCallR32(Armv8btAsm* data) {
     data->done = true;
 }
 void opCallE16(Armv8btAsm* data) {
-    kpanic("Need to test");
+    // kpanic("Need to test");
     // U32 neweip = readw(eaa(cpu, op));
     // cpu->push16(cpu->eip.u32 + op->len);
     // cpu->eip.u32 = neweip;
