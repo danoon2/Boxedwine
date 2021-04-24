@@ -127,12 +127,21 @@ U32 Platform::getCpuCount() {
 #ifdef __MACH__
 extern "C" {
 void MacPlatformOpenFileLocation(const char* str);
+const char* MacPlatformGetResourcePath(const char* pName);
 }
 
 void Platform::openFileLocation(const std::string& location) {
     MacPlatformOpenFileLocation(location.c_str());
 }
+
+const char* Platform::getResourceFilePath(const std::string& location) {
+    return MacPlatformGetResourcePath(location.c_str());
+}
 #else
+const char* Platform::getResourceFilePath(const std::string& location) {
+    return NULL;
+}
+
 void Platform::openFileLocation(const std::string& location) {
     std::string cmd = "xdg-open \"";
     cmd+=location;

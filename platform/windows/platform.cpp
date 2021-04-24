@@ -350,6 +350,10 @@ int getPixelFormats(PixelFormat* pfd, int maxPfs) {
     return result;
 }
 
+const char* Platform::getResourceFilePath(const std::string& location) {
+    return NULL;
+}
+
 void Platform::openFileLocation(const std::string& location) {
     ShellExecute(NULL, "open", location.c_str(), NULL, NULL, SW_SHOWNORMAL);
 }

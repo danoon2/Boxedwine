@@ -17,3 +17,25 @@ void MacPlatformOpenFileLocation(const char* str) {
         [[NSWorkspace sharedWorkspace] selectFile:path inFileViewerRootedAtPath:@""];
     }
 }
+
+static char buffer[1024];
+
+const char* MacPlatformGetResourcePath(const char* pName) {
+    CFStringRef name = CFStringCreateWithCString(NULL, pName, kCFStringEncodingUTF8);
+    CFURLRef appUrlRef = CFBundleCopyResourceURL(CFBundleGetMainBundle(), name, NULL, NULL);
+    bool result = false;
+    if (appUrlRef) {
+        CFStringRef filePathRef = CFURLCopyFileSystemPath(appUrlRef, kCFURLPOSIXPathStyle);
+        const char* filePath = CFStringGetCStringPtr(filePathRef, kCFStringEncodingUTF8);
+        strncpy(buffer, filePath, 1024);
+        // Release references
+        CFRelease(filePathRef);
+        CFRelease(appUrlRef);
+        result = true;
+    }
+    CFRelease(name);
+    if (result) {
+        return buffer;
+    }
+    return NULL;
+}

@@ -110,6 +110,7 @@ public:
     static U32 getCpuCount();
     static void openFileLocation(const std::string& location);
     static bool supportsOpenFileLocation() {return true;}
+    static const char* getResourceFilePath(const std::string& location);
     
 #ifdef BOXEDWINE_MULTI_THREADED
     static void setCpuAffinityForThread(KThread* thread, U32 count);
