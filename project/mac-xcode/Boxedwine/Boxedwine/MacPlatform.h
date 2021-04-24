@@ -9,3 +9,4 @@
 #import <Foundation/Foundation.h>
 
 void MacPlatformOpenFileLocation(const char* str);
+const char* MacPlatformGetResourcePath(const char* pName);

@@ -451,6 +451,30 @@ bool StartUpArgs::apply() {
     return true;
 }
 
+bool StartUpArgs::loadDefaultResource(const char* app) {
+    const char* cmd = Platform::getResourceFilePath("cmd.txt");
+    static std::vector<std::string> lines;
+    lines.clear();
+    lines.push_back(app);
+    if (cmd && readLinesFromFile(cmd, lines)) {
+        const char** ppArgs = new const char*[lines.size()];
+        for (int i=0;i<lines.size();i++) {
+            ppArgs[i] = lines[i].c_str();
+            if (lines[i] == "-zip" && i+1<lines.size()) {
+                if (!Fs::doesNativePathExist(lines[i+1])) {
+                    const char* zip = Platform::getResourceFilePath(lines[i+1].c_str());
+                    if (zip && Fs::doesNativePathExist(zip)) {
+                        i++;
+                        ppArgs[i] = strdup(zip); // I'm not worried about leaking this
+                    }
+                }
+            }
+        }
+        return parseStartupArgs((int)lines.size(), ppArgs);
+    }
+    return true;
+}
+
 bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
     int i = 1;
     for (;i<argc;i++) {

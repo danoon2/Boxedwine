@@ -46,9 +46,14 @@ int boxedmain(int argc, const char **argv) {
 #ifdef LOG_OPS
     logFile = fopen("log.txt", "w");
 #endif
-    if (!startupArgs.parseStartupArgs(argc, argv)) {
+    if (argc == 1) {
+        if (!startupArgs.loadDefaultResource(argv[0])) {
+            return 1;
+        }
+        
+    } else if (!startupArgs.parseStartupArgs(argc, argv)) {
         return 1;
-    }   
+    }
     
 #ifdef BOXEDWINE_MSVC
 #ifdef BOXEDWINE_DISABLE_UI    
