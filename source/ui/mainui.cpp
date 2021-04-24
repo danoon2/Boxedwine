@@ -558,10 +558,12 @@ bool uiShow(const std::string& basePath) {
 #endif
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
-    ImGuiContext* context = ImGui::CreateContext();
 #ifdef BOXEDWINE_HIGHDPI
+    ImGuiContext* context = ImGui::CreateContext();
     GlobalSettings::setScale(scale);
-    context->Style.ScaleAllSizes(GlobalSettings::scaleFloatUI(1.0f));    
+    context->Style.ScaleAllSizes(GlobalSettings::scaleFloatUI(1.0f));
+#else
+    ImGui::CreateContext();
 #endif
     GlobalSettings::loadFonts();
     BoxedwineData::loadUI();

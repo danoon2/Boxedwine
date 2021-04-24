@@ -247,7 +247,6 @@ void writeMemory(U32 address, U8* data, int len) {
 }
 
 void Memory::allocPages(U32 page, U32 pageCount, U8 permissions, FD fd, U64 offset, const BoxedPtr<MappedFile>& mappedFile) {
-    KThread* thread = KThread::currentThread();
 
     if (mappedFile) {
         U32 filePage = (U32)(offset>>K_PAGE_SHIFT);
@@ -267,7 +266,6 @@ void Memory::allocPages(U32 page, U32 pageCount, U8 permissions, FD fd, U64 offs
 }
 
 void Memory::protectPage(U32 i, U32 permissions) {
-    KThread* thread = KThread::currentThread();
     Page* page = this->getPage(i);
 
     U32 flags = page->flags;
@@ -565,7 +563,7 @@ U32 Memory::mapNativeMemory(void* hostAddress, U32 size) {
     U32 result = 0;
 
     if (this->nativeAddressStart && hostAddress>=this->nativeAddressStart && (U8*)hostAddress+size<(U8*)this->nativeAddressStart+0x10000000) {
-        return (ADDRESS_PROCESS_NATIVE<<K_PAGE_SHIFT) + ((U8*)hostAddress-(U8*)this->nativeAddressStart);
+        return (ADDRESS_PROCESS_NATIVE<<K_PAGE_SHIFT) + (U32)(((U8*)hostAddress-(U8*)this->nativeAddressStart));
     }
     if (!this->nativeAddressStart) {
         U32 i;
@@ -592,7 +590,6 @@ U32 Memory::mapNativeMemory(void* hostAddress, U32 size) {
 }
 
 void Memory::map(U32 startPage, const std::vector<U8*>& pages, U32 permissions) {
-    U32 result = 0;
     bool read = (permissions & PAGE_READ)!=0 || (permissions & PAGE_EXEC)!=0;
     bool write = (permissions & PAGE_WRITE)!=0;
 
