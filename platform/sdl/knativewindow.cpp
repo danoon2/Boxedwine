@@ -707,13 +707,13 @@ void KNativeWindowSdl::displayChanged(KThread* thread) {
             if (fullScreen == FULLSCREEN_STRETCH) {
                 cx = dm.w;
                 cy = dm.h;
-                flags |= SDL_WINDOW_BORDERLESS;
+                flags |= SDL_WINDOW_FULLSCREEN;
                 scaleX = dm.w * 100 / width;
                 scaleY = dm.h * 100 / height;
             } else if (fullScreen == FULLSCREEN_ASPECT) {
                 cx = dm.w;
                 cy = dm.h;
-                flags |= SDL_WINDOW_BORDERLESS;
+                flags |= SDL_WINDOW_FULLSCREEN;
                 scaleX = dm.w * 100 / width;
                 scaleY = dm.h * 100 / height;
                 scaleXOffset = 0;
@@ -726,14 +726,14 @@ void KNativeWindowSdl::displayChanged(KThread* thread) {
                     scaleXOffset = (dm.w - width * scaleX / 100) / 2;
                 }
             } else if (width == (U32)dm.w && height == (U32)dm.h) {
-                flags |= SDL_WINDOW_BORDERLESS;
+                flags |= SDL_WINDOW_FULLSCREEN;
             }   
             if (cx > dm.w || cy > dm.h) {
                 cx = dm.w;
                 cy = dm.h;
                 scaleX = dm.w * 100 / width;
                 scaleY = dm.h * 100 / height;
-                flags |= SDL_WINDOW_BORDERLESS;
+                flags |= SDL_WINDOW_FULLSCREEN;
             }
         }
         
