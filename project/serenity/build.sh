@@ -1,0 +1,4 @@
+#/bin/sh
+set -e
+gcc -std=c++17 -Wall -Wno-delete-incomplete -Wno-unused-result -Wno-unknown-pragmas -Wno-unused-local-typedefs -Wno-unused-variable -Wno-unused-function -Wno-unused-but-set-variable  -I../../include ../../source/sdl/*.cpp ../../source/sdl/singleThreaded/*.cpp ../../platform/sdl/*.cpp ../../platform/linux/*.cpp ../../source/emulation/cpu/*.cpp ../../source/emulation/cpu/common/*.cpp ../../source/emulation/cpu/normal/*.cpp ../../source/emulation/softmmu/*.cpp ../../source/io/*.cpp ../../source/kernel/*.cpp ../../source/kernel/devs/*.cpp ../../source/kernel/proc/*.cpp ../../source/kernel/sys/*.cpp ../../source/kernel/loader/*.cpp ../../source/util/*.cpp ../../source/opengl/sdl/*.cpp ../../source/opengl/*.cpp -o boxedwine -lm -lstdc++ -lstdc++fs -DBOXEDWINE_DISABLE_UI -DSIMDE_SSE2_NO_NATIVE -DBOXEDWINE_POSIX -DBOXEDWINE_HAS_SETJMP -O2 -DSERENITY_OS -DUSE_MMU -DSDL2 `sdl2-config --cflags --libs`
+

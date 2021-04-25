@@ -1,5 +1,6 @@
 #include "boxedwine.h"
-#if !defined (__EMSCRIPTEN__) && !defined (__TEST)
+//#if !defined (__EMSCRIPTEN__) && !defined (__TEST)
+#ifndef SERENITY_OS
 #include "Poco/Runnable.h"
 #include "Poco/Thread.h"
 

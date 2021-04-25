@@ -1,4 +1,5 @@
-#if !defined (__EMSCRIPTEN__) && !defined (__TEST)
+//#if !defined (__EMSCRIPTEN__) && !defined (__TEST)
+#ifndef SERENITY_OS
 #include "Poco/URIStreamOpener.h"
 #include "Poco/StreamCopier.h"
 #include "Poco/Path.h"
