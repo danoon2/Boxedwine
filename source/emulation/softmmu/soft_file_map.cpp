@@ -49,7 +49,7 @@ void FilePage::ondemmandFile(U32 address) {
         ram = ramPageAlloc();
         U64 pos = this->mapped->file->getPos();
         this->mapped->file->seek(((U64)this->index) << K_PAGE_SHIFT);
-        U32 len = this->mapped->file->readNative(ram, K_PAGE_SIZE);
+        this->mapped->file->readNative(ram, K_PAGE_SIZE);
         this->mapped->file->seek(pos);
         if (!write) {
             mapped->systemCacheEntry->data[this->index] = ram;

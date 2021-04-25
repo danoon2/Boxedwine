@@ -389,7 +389,6 @@ void marshalBackType(CPU* cpu, U32 type, U32 count, GLvoid* buffer, U32 address)
 
 GLvoid* marshalPixel(CPU* cpu, GLenum format, GLenum type, U32 pixel) {
     int bytes_per_comp;
-    int isSigned=0;
     int len = components_in_format (format);
     
     if (!pixel)

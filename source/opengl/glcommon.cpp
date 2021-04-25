@@ -137,8 +137,8 @@ static U32 feedbackBufferAddress;
 void glcommon_glFeedbackBuffer(CPU* cpu) {
     GLsizei size = ARG1;
     GLenum type = ARG2;
-    U32 buffer = ARG3; // GLfloat*
 #ifdef BOXEDWINE_64BIT_MMU
+    U32 buffer = ARG3; // GLfloat*
     GL_FUNC(glFeedbackBuffer)(size, type, (GLfloat*)getNativeAddress(cpu->thread->process->memory, buffer));
 #else
     if (size > feedbackBufferSize) {

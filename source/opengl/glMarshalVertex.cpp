@@ -7,8 +7,6 @@
 
 #ifndef BOXEDWINE_64BIT_MMU
 U32 updateVertexPointer(CPU* cpu, OpenGLVetexPointer* p, U32 count) {
-    U32 usingArrayBuffer = ARRAY_BUFFER();
-
     if (ARRAY_BUFFER()) {
         klog("updateVertexPointer might have failed");
         return 0;
@@ -19,8 +17,6 @@ U32 updateVertexPointer(CPU* cpu, OpenGLVetexPointer* p, U32 count) {
 
 #ifndef UNALIGNED_MEMORY
         if (count == 0 || available > datasize) {
-            unsigned char* previousMarshal = p->marshal;
-
             if (p->marshal_size) {
                 free(p->marshal);
             }            
