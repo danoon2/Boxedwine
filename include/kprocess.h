@@ -138,6 +138,15 @@ public:
 
     void iterateThreads(std::function<bool(KThread*)> callback);
 
+    U32 readd(U32 address);
+    U16 readw(U32 address);
+    U8  readb(U32 address);
+    void writed(U32 address, U32 value);
+    void writew(U32 address, U16 value);
+    void writeb(U32 address, U8 value);
+    void memcopyFromNative(U32 address, const void* p, U32 len);
+    void memcopyToNative(U32 address, void* p, U32 len);
+
     // syscalls    
     U32 access(const std::string& path, U32 mode);
     U32 alarm(U32 seconds);    

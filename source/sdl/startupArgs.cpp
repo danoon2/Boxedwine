@@ -37,6 +37,7 @@
 
 void gl_init(const std::string& allowExtensions);
 void initWine();
+void initWineAudio();
 
 U32 StartUpArgs::uiType;
 
@@ -416,6 +417,7 @@ bool StartUpArgs::apply() {
     KSystem::soundEnabled = this->soundEnabled;
     KNativeWindow::init(this->screenCx, this->screenCy, this->screenBpp, this->sdlScaleX, this->sdlScaleY, this->sdlScaleQuality, this->sdlFullScreen, this->vsync);
     initWine();
+    initWineAudio();
 #if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
     gl_init(this->glExt);        
 #endif   

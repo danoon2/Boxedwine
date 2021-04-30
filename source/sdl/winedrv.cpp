@@ -21,7 +21,7 @@
 #include "knativewindow.h"
 #include "knativesystem.h"
 
-void notImplemented(const char* s) {
+static void notImplemented(const char* s) {
     kwarn(s);
 }
 

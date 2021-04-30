@@ -2624,4 +2624,71 @@ U32 KProcess::allocNative(U32 len) {
     this->nextNativeAddress+=pageCount*K_PAGE_SIZE;
     return page << K_PAGE_SHIFT;
 }
+
+U32 KProcess::readd(U32 address) {
+    return *(U32*)getNativeAddress(memory, address);
+}
+
+U16 KProcess::readw(U32 address) {
+    return *(U16*)getNativeAddress(memory, address);
+}
+
+U8 KProcess::readb(U32 address) {
+    return *(U8*)getNativeAddress(memory, address);
+}
+
+void KProcess::writed(U32 address, U32 value) {
+    *(U32*)getNativeAddress(memory, address) = value;
+}
+
+void KProcess::writew(U32 address, U16 value) {
+    *(U16*)getNativeAddress(memory, address) = value;
+}
+
+void KProcess::writeb(U32 address, U8 value) {
+    *(U8*)getNativeAddress(memory, address) = value;
+}
+
+void KProcess::memcopyFromNative(U32 address, const void* p, U32 len) {
+    memcpy(getNativeAddress(memory, address), p, len);
+}
+
+void KProcess::memcopyToNative( U32 address, void* p, U32 len) {
+    memcpy(p, getNativeAddress(memory, address), len);
+}
+
+#else
+
+U32 KProcess::readd(U32 address) {
+    return ::readd(address);
+}
+
+U16 KProcess::readw(U32 address) {
+    return ::readw(address);
+}
+
+U8 KProcess::readb(U32 address) {
+    return ::readb(address);
+}
+
+void KProcess::writed(U32 address, U32 value) {
+    ::writed(address, value);
+}
+
+void KProcess::writew(U32 address, U16 value) {
+    ::writew(address, value);
+}
+
+void KProcess::writeb(U32 address, U8 value) {
+    ::writeb(address, value);
+}
+
+void KProcess::memcopyFromNative(U32 address, const void* p, U32 len) {
+    ::memcopyFromNative(address, p, len);
+}
+
+void KProcess::memcopyToNative(U32 address, void* p, U32 len) {
+    ::memcopyToNative(address, p, len);
+}
+
 #endif
