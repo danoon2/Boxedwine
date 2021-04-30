@@ -2660,35 +2660,90 @@ void KProcess::memcopyToNative( U32 address, void* p, U32 len) {
 #else
 
 U32 KProcess::readd(U32 address) {
-    return ::readd(address);
+    if ((address & 0xFFF) < 0xFFD) {
+        int index = address >> 12;
+#ifndef UNALIGNED_MEMORY
+        if (memory->mmuReadPtr[index])
+            return *(U32*)(&memory->mmuReadPtr[index][address & 0xFFF]);
+#endif
+        return memory->mmu[index]->readd(address);
+    } else {
+        return readb(address) | (readb(address+1) << 8) | (readb(address+2) << 16) | (readb(address+3) << 24);
+    }
 }
 
 U16 KProcess::readw(U32 address) {
-    return ::readw(address);
+    if ((address & 0xFFF) < 0xFFF) {
+        int index = address >> 12;
+#ifndef UNALIGNED_MEMORY
+        if (memory->mmuReadPtr[index])
+            return *(U16*)(&memory->mmuReadPtr[index][address & 0xFFF]);
+#endif
+        return memory->mmu[index]->readw(address);
+    }
+    return readb(address) | (readb(address+1) << 8);
 }
 
 U8 KProcess::readb(U32 address) {
-    return ::readb(address);
+    int index = address >> 12;
+    if (memory->mmuReadPtr[index])
+        return memory->mmuReadPtr[index][address & 0xFFF];
+    return memory->mmu[index]->readb(address);
 }
 
 void KProcess::writed(U32 address, U32 value) {
-    ::writed(address, value);
+    if ((address & 0xFFF) < 0xFFD) {
+        int index = address >> 12;
+#ifndef UNALIGNED_MEMORY
+        if (memory->mmuWritePtr[index])
+            *(U32*)(&memory->mmuWritePtr[index][address & 0xFFF]) = value;
+        else
+#endif
+            memory->mmu[index]->writed(address, value);
+    } else {
+        writeb(address, value);
+        writeb(address+1, value >> 8);
+        writeb(address+2, value >> 16);
+        writeb(address+3, value >> 24);
+    }
 }
 
 void KProcess::writew(U32 address, U16 value) {
-    ::writew(address, value);
+    if ((address & 0xFFF) < 0xFFF) {
+        int index = address >> 12;
+#ifndef UNALIGNED_MEMORY
+        if (memory->mmuWritePtr[index])
+            *(U16*)(&memory->mmuWritePtr[index][address & 0xFFF]) = value;
+        else
+#endif
+            memory->mmu[index]->writew(address, value);
+    } else {
+        writeb(address, (U8)value);
+        writeb(address+1, (U8)(value >> 8));
+    }
 }
 
 void KProcess::writeb(U32 address, U8 value) {
-    ::writeb(address, value);
+    int index = address >> 12;
+    if (memory->mmuWritePtr[index])
+        memory->mmuWritePtr[index][address & 0xFFF] = value;
+    else
+        memory->mmu[index]->writeb(address, value);
 }
 
-void KProcess::memcopyFromNative(U32 address, const void* p, U32 len) {
-    ::memcopyFromNative(address, p, len);
+void KProcess::memcopyFromNative(U32 address, const void* pv, U32 len) {
+    U32 i;
+    U8* p = (U8*)pv;
+    for (i=0;i<len;i++) {
+        writeb(address+i, p[i]);
+    }
 }
 
-void KProcess::memcopyToNative(U32 address, void* p, U32 len) {
-    ::memcopyToNative(address, p, len);
+void KProcess::memcopyToNative(U32 address, void* pv, U32 len) {
+    U8* p = (U8*)pv;
+    for (U32 i=0;i<len;i++) {
+        p[i] = readb(address+i);
+    }
 }
 
 #endif

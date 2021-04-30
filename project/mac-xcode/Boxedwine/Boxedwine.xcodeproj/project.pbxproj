@@ -68,6 +68,12 @@
 		1A4F8E1E24F740CD0046703D /* helpView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A4F8E1C24F740CC0046703D /* helpView.cpp */; };
 		1A9193372551B6D3005A798A /* btCodeMemoryWrite.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A9193332551B6D3005A798A /* btCodeMemoryWrite.cpp */; };
 		1A9193392551B6D3005A798A /* btCodeChunk.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A9193342551B6D3005A798A /* btCodeChunk.cpp */; };
+		1AB0CAF9263BA7AA003AF407 /* kdspaudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0CAF8263BA7AA003AF407 /* kdspaudio.cpp */; };
+		1AB0CAFA263BA7AA003AF407 /* kdspaudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0CAF8263BA7AA003AF407 /* kdspaudio.cpp */; };
+		1AB0CAFB263BA7AA003AF407 /* kdspaudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0CAF8263BA7AA003AF407 /* kdspaudio.cpp */; };
+		1AB0CAFE263BA8AC003AF407 /* wineaudiodrv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0CAFD263BA8AC003AF407 /* wineaudiodrv.cpp */; };
+		1AB0CAFF263BA8AD003AF407 /* wineaudiodrv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0CAFD263BA8AC003AF407 /* wineaudiodrv.cpp */; };
+		1AB0CB00263BA8AD003AF407 /* wineaudiodrv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0CAFD263BA8AC003AF407 /* wineaudiodrv.cpp */; };
 		711F834924527273008E6A0C /* boxedTexture.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 711F834824527273008E6A0C /* boxedTexture.cpp */; };
 		711F834A24527273008E6A0C /* boxedTexture.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 711F834824527273008E6A0C /* boxedTexture.cpp */; };
 		711F834B24534A06008E6A0C /* MacPlatform.m in Sources */ = {isa = PBXBuildFile; fileRef = 7120545D244D074000C3CB1B /* MacPlatform.m */; };
@@ -1340,6 +1346,9 @@
 		1A9193342551B6D3005A798A /* btCodeChunk.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = btCodeChunk.cpp; path = binaryTranslation/btCodeChunk.cpp; sourceTree = "<group>"; };
 		1A9193352551B6D3005A798A /* btCodeMemoryWrite.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = btCodeMemoryWrite.h; path = binaryTranslation/btCodeMemoryWrite.h; sourceTree = "<group>"; };
 		1A9193362551B6D3005A798A /* btCpu.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = btCpu.h; path = binaryTranslation/btCpu.h; sourceTree = "<group>"; };
+		1AB0CAF8263BA7AA003AF407 /* kdspaudio.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = kdspaudio.cpp; path = ../../../../../platform/sdl/kdspaudio.cpp; sourceTree = "<group>"; };
+		1AB0CAFC263BA83A003AF407 /* kdspaudio.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = kdspaudio.h; sourceTree = "<group>"; };
+		1AB0CAFD263BA8AC003AF407 /* wineaudiodrv.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = wineaudiodrv.cpp; sourceTree = "<group>"; };
 		71034F0B24820DE700FED5C5 /* BoxedwineAutomation-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "BoxedwineAutomation-Info.plist"; path = "/Users/jamesbryant/boxedwine-source/project/mac-xcode/Boxedwine/BoxedwineAutomation-Info.plist"; sourceTree = "<absolute>"; };
 		71034F0C24820EC600FED5C5 /* Boxedwine-Automation.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Boxedwine-Automation.entitlements"; sourceTree = "<group>"; };
 		710351412482B71000FED5C5 /* BoxedwineAutomationX64-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "BoxedwineAutomationX64-Info.plist"; path = "/Users/jamesbryant/boxedwine-source/project/mac-xcode/Boxedwine/BoxedwineAutomationX64-Info.plist"; sourceTree = "<absolute>"; };
@@ -2273,6 +2282,7 @@
 		1A155140263261FF006E0C8A /* sdl */ = {
 			isa = PBXGroup;
 			children = (
+				1AB0CAF8263BA7AA003AF407 /* kdspaudio.cpp */,
 				1A15514526326216006E0C8A /* knativeaudio.cpp */,
 				1A15514726326216006E0C8A /* knativesynchronization.cpp */,
 				1A15514426326216006E0C8A /* knativesystem.cpp */,
@@ -2920,6 +2930,7 @@
 		71FBFCD72433BBAD003F17F1 /* include */ = {
 			isa = PBXGroup;
 			children = (
+				1AB0CAFC263BA83A003AF407 /* kdspaudio.h */,
 				71DF8E1B248F29C300EE1E08 /* knativeaudio.h */,
 				71DF8E1E248F29C300EE1E08 /* knativesynchronization.h */,
 				71DF8E1C248F29C300EE1E08 /* knativesystem.h */,
@@ -3385,6 +3396,7 @@
 		71FBFE022433BBBE003F17F1 /* sdl */ = {
 			isa = PBXGroup;
 			children = (
+				1AB0CAFD263BA8AC003AF407 /* wineaudiodrv.cpp */,
 				71FBFE042433BBBE003F17F1 /* multiThreaded */,
 				71FBFE082433BBBE003F17F1 /* mainloop.h */,
 				71FBFE0A2433BBBE003F17F1 /* startupArgs.h */,
@@ -3746,7 +3758,9 @@
 				71222B882435169100CDBABD /* fsdiropennode.cpp in Sources */,
 				71222B6D2435169100CDBABD /* common_sse.cpp in Sources */,
 				1A1551552632621A006E0C8A /* knativesynchronization.cpp in Sources */,
+				1AB0CB00263BA8AD003AF407 /* wineaudiodrv.cpp in Sources */,
 				71222B6B2435169100CDBABD /* common_sse2.cpp in Sources */,
+				1AB0CAFB263BA7AA003AF407 /* kdspaudio.cpp in Sources */,
 				71222B652435169100CDBABD /* common_pushpop.cpp in Sources */,
 				1A15518F2632624B006E0C8A /* platform.cpp in Sources */,
 				71222B442435163F00CDBABD /* fileutils.cpp in Sources */,
@@ -3903,6 +3917,7 @@
 				715F83BC2440ED1F0038F5A4 /* DateTime.cpp in Sources */,
 				715F828E2440ED1E0038F5A4 /* Notification.cpp in Sources */,
 				71222BE724351CBA00CDBABD /* soft_file_map.cpp in Sources */,
+				1AB0CAFA263BA7AA003AF407 /* kdspaudio.cpp in Sources */,
 				71222BE824351CBA00CDBABD /* imgui_draw.cpp in Sources */,
 				715F82DA2440ED1E0038F5A4 /* MemoryStream.cpp in Sources */,
 				71222BE924351CBA00CDBABD /* stringutil.cpp in Sources */,
@@ -4011,6 +4026,7 @@
 				715F82F62440ED1E0038F5A4 /* Timezone.cpp in Sources */,
 				71222C0924351CBA00CDBABD /* main.cpp in Sources */,
 				715F83802440ED1F0038F5A4 /* Base64Decoder.cpp in Sources */,
+				1AB0CAFF263BA8AD003AF407 /* wineaudiodrv.cpp in Sources */,
 				71222C0A24351CBA00CDBABD /* self.cpp in Sources */,
 				715F82222440ED1D0038F5A4 /* Base32Encoder.cpp in Sources */,
 				715F34912440D7FC0038F5A4 /* threadutils.cpp in Sources */,
@@ -4535,6 +4551,7 @@
 				715F63DC2440E9110038F5A4 /* PartHandler.cpp in Sources */,
 				71FBFECA2433BBBE003F17F1 /* kfile.cpp in Sources */,
 				715F83232440ED1F0038F5A4 /* AtomicFlag.cpp in Sources */,
+				1AB0CAF9263BA7AA003AF407 /* kdspaudio.cpp in Sources */,
 				715F829F2440ED1E0038F5A4 /* fixed-dtoa.cc in Sources */,
 				715F34842440D7D20038F5A4 /* downloadDlg.cpp in Sources */,
 				7122287E2433EE5300CDBABD /* imgui_widgets.cpp in Sources */,
@@ -4814,6 +4831,7 @@
 				71FBFECD2433BBBE003F17F1 /* kfiledescriptor.cpp in Sources */,
 				715F63B42440E9110038F5A4 /* FilePartSource.cpp in Sources */,
 				715F82232440ED1D0038F5A4 /* Runnable.cpp in Sources */,
+				1AB0CAFE263BA8AC003AF407 /* wineaudiodrv.cpp in Sources */,
 				715F83812440ED1F0038F5A4 /* Formatter.cpp in Sources */,
 				71FBFE992433BBBE003F17F1 /* soft_wo_page.cpp in Sources */,
 				71FBFEE52433BBBE003F17F1 /* esopengl.c in Sources */,
