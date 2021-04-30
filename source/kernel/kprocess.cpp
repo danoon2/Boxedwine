@@ -1738,14 +1738,14 @@ U32 KProcess::exitgroup(U32 code) {
 
     killAllThreadsExceptCurrent();
 
+    BOXEDWINE_CONDITION_LOCK(KSystem::processesCond);
+    this->terminated = true;
+    BOXEDWINE_CONDITION_UNLOCK(KSystem::processesCond);
+
     KThread::currentThread()->cleanup(); // must happen before we clear memory
     this->threads.clear();
     this->cleanupProcess(); // release RAM, sockets, etc now.  No reason to wait to do that until waitpid is called
     this->exitCode = code;
-
-    BOXEDWINE_CONDITION_LOCK(KSystem::processesCond);
-    this->terminated = true;
-    BOXEDWINE_CONDITION_UNLOCK(KSystem::processesCond);
 
     BOXEDWINE_CONDITION_LOCK(this->exitOrExecCond);
     BOXEDWINE_CONDITION_SIGNAL_ALL(this->exitOrExecCond);
