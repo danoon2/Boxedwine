@@ -14,6 +14,8 @@ static const GUID SDL_KSDATAFORMAT_SUBTYPE_PCM(0x00000001, 0x0000, 0x0010, 0x80,
 static const GUID SDL_KSDATAFORMAT_SUBTYPE_IEEE_FLOAT(0x00000003, 0x0000, 0x0010, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71);
 
 static bool sdlAudioOpen = false;
+std::vector< std::shared_ptr<KNativeAudio> > KNativeAudio::availableAudio;
+
 static void closeSdlAudio() {
 	if (sdlAudioOpen) {
 		sdlAudioOpen = false;
@@ -85,7 +87,8 @@ public:
 	virtual U32 isFormatSupported(U32 boxedAudioId, U32 addressWaveFormat);
 	virtual U32 getMixFormat(U32 boxedAudioId, U32 addressWaveFormat);
 	virtual void setVolume(U32 boxedAudioId, float level, U32 channel);
-
+    virtual void cleanup();
+    
 	virtual U32 midiOutOpen(U32 wDevID, U32 lpDesc, U32 dwFlags);
 	virtual U32 midiOutClose(U32 wDevID);
 	virtual U32 midiOutData(U32 wDevID, U32 dwParam);
@@ -307,8 +310,7 @@ U32 KNativeAudioSDL::init(bool isRender, U32 boxedAudioId, U32 addressFmt, U32 a
 
 	if (!KSystem::soundEnabled) {
 		data->sameFormat = true;
-	}
-	else if (!sdlAudioOpen) {
+	} else {
 		// If the previous audio is still playing, it will get cut off.  If I find a game that needs this, then perhaps I should think of a mixer.
 		closeSdlAudio();
 		if (SDL_OpenAudio(&data->want, &data->got) < 0) {
@@ -336,7 +338,7 @@ U32 KNativeAudioSDL::getLatency(U32 boxedAudioId, U32* pLatency) {
 	if (!data) {
 		return E_FAIL;
 	}
-	*pLatency = data->got.samples; // sdl audio is double buffered
+	*pLatency = data->got.samples*2; // sdl audio is double buffered
 	return S_OK;
 }
 
@@ -465,11 +467,28 @@ U32 KNativeAudioSDL::midiInReset(U32 wDevID) {
 	return E_FAIL;
 }
 
+void KNativeAudioSDL::cleanup() {
+    SDL_PauseAudio(1);
+    SDL_CloseAudio();
+}
+
 std::shared_ptr<KNativeAudio> KNativeAudio::createNativeAudio() {
-	return std::make_shared<KNativeAudioSDL>();
+    // :TODO: maybe allow the user to choose in the future
+	return KNativeAudio::availableAudio.front();
 }
 
 void KNativeAudio::shutdown() {
-	SDL_PauseAudio(1);
-	SDL_CloseAudio();
+    KNativeAudio::availableAudio.front()->cleanup();
+}
+
+#ifdef BOXEDWINE_CORE_AUDIO
+void initCoreAudio();
+#endif
+
+void KNativeAudio::init() {
+#ifdef BOXEDWINE_CORE_AUDIO
+    initCoreAudio();
+#else
+    KNativeAudio::availableAudio.push_back(std::make_shared<KNativeAudioSDL>());
+#endif
 }

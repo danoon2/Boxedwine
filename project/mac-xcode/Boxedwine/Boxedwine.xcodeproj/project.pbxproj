@@ -62,6 +62,7 @@
 		1A1551FD26326745006E0C8A /* OpenSSL.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1A4F1C362631FDAD0076F847 /* OpenSSL.xcframework */; };
 		1A1551FE26326745006E0C8A /* OpenSSL.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1A4F1C362631FDAD0076F847 /* OpenSSL.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		1A1551FF26326C8A006E0C8A /* SDL2.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1A1551E82632656D006E0C8A /* SDL2.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		1A40D9DB263D9F2100F679F0 /* knativecoreaudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A40D9DA263D9F2100F679F0 /* knativecoreaudio.cpp */; };
 		1A4F1C7C26321EC60076F847 /* OpenSSL.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1A4F1C362631FDAD0076F847 /* OpenSSL.xcframework */; };
 		1A4F1C7D26321EC60076F847 /* OpenSSL.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1A4F1C362631FDAD0076F847 /* OpenSSL.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		1A4F8E1D24F740CD0046703D /* helpView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A4F8E1C24F740CC0046703D /* helpView.cpp */; };
@@ -1338,6 +1339,7 @@
 		1A1551B32632626E006E0C8A /* pugixml.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = pugixml.hpp; path = ../../../../../lib/pugixml/src/pugixml.hpp; sourceTree = "<group>"; };
 		1A1551B42632626E006E0C8A /* pugixml.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = pugixml.cpp; path = ../../../../../lib/pugixml/src/pugixml.cpp; sourceTree = "<group>"; };
 		1A1551E82632656D006E0C8A /* SDL2.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SDL2.framework; path = ../../../lib/mac/SDL2.framework; sourceTree = "<group>"; };
+		1A40D9DA263D9F2100F679F0 /* knativecoreaudio.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = knativecoreaudio.cpp; path = ../../../../platform/mac/knativecoreaudio.cpp; sourceTree = "<group>"; };
 		1A4F1C362631FDAD0076F847 /* OpenSSL.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = OpenSSL.xcframework; path = Carthage/Build/OpenSSL.xcframework; sourceTree = "<group>"; };
 		1A4F8E1B24F740CC0046703D /* helpView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = helpView.h; sourceTree = "<group>"; };
 		1A4F8E1C24F740CC0046703D /* helpView.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = helpView.cpp; sourceTree = "<group>"; };
@@ -2273,6 +2275,7 @@
 		1A15513F263261F8006E0C8A /* platform */ = {
 			isa = PBXGroup;
 			children = (
+				1A40D9D9263D9F0500F679F0 /* mac */,
 				1A15517A2632622A006E0C8A /* linux */,
 				1A155140263261FF006E0C8A /* sdl */,
 			);
@@ -2314,6 +2317,14 @@
 				1A1551B32632626E006E0C8A /* pugixml.hpp */,
 			);
 			path = pugixml;
+			sourceTree = "<group>";
+		};
+		1A40D9D9263D9F0500F679F0 /* mac */ = {
+			isa = PBXGroup;
+			children = (
+				1A40D9DA263D9F2100F679F0 /* knativecoreaudio.cpp */,
+			);
+			name = mac;
 			sourceTree = "<group>";
 		};
 		712227752433E8C400CDBABD /* Frameworks */ = {
@@ -4676,6 +4687,7 @@
 				715F34C12440E7480038F5A4 /* OptionSet.cpp in Sources */,
 				715F83512440ED1F0038F5A4 /* NullChannel.cpp in Sources */,
 				715F83F72440ED200038F5A4 /* JSONString.cpp in Sources */,
+				1A40D9DB263D9F2100F679F0 /* knativecoreaudio.cpp in Sources */,
 				715F34CF2440E7480038F5A4 /* Validator.cpp in Sources */,
 				71FBFEAE2433BBBE003F17F1 /* threadedMainloop.cpp in Sources */,
 				715F840F2440ED200038F5A4 /* Token.cpp in Sources */,
@@ -5024,12 +5036,15 @@
 		71222C7D24351CBA00CDBABD /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ARCHS = x86_64;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
 				CODE_SIGN_ENTITLEMENTS = Boxedwine/Boxedwine.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				DEVELOPMENT_ASSET_PATHS = "";
+				ENABLE_HARDENED_RUNTIME = YES;
+				EXCLUDED_ARCHS = Arm64;
 				FRAMEWORK_SEARCH_PATHS = "$(PROJECT_DIR)/../../../lib/mac";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					SIMDE_NO_NATIVE,
@@ -5051,6 +5066,7 @@
 					BOXEDWINE_UI_LAUNCH_IN_PROCESS,
 					BOXEDWINE_RECORDER,
 					BOXEDWINE_BINARY_TRANSLATOR,
+					BOXEDWINE_CORE_AUDIO,
 				);
 				HEADER_SEARCH_PATHS = "";
 				INFOPLIST_FILE = "BoxedwineX64-Info.plist";
@@ -5079,12 +5095,15 @@
 		71222C7E24351CBA00CDBABD /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ARCHS = x86_64;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
 				CODE_SIGN_ENTITLEMENTS = Boxedwine/Boxedwine.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				DEVELOPMENT_ASSET_PATHS = "";
+				ENABLE_HARDENED_RUNTIME = YES;
+				EXCLUDED_ARCHS = Arm64;
 				FRAMEWORK_SEARCH_PATHS = "$(PROJECT_DIR)/../../../lib/mac";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					SIMDE_NO_NATIVE,
@@ -5105,6 +5124,8 @@
 					BOXEDWINE_UI_LAUNCH_IN_PROCESS,
 					BOXEDWINE_RECORDER,
 					BOXEDWINE_BINARY_TRANSLATOR,
+					BOXEDWINE_X64_DEBUG_NO_EXCEPTIONS,
+					BOXEDWINE_CORE_AUDIO,
 				);
 				HEADER_SEARCH_PATHS = "";
 				INFOPLIST_FILE = "BoxedwineX64-Info.plist";
@@ -5114,6 +5135,7 @@
 				);
 				LIBRARY_SEARCH_PATHS = "$(inherited)";
 				MACOSX_DEPLOYMENT_TARGET = 10.15;
+				ONLY_ACTIVE_ARCH = YES;
 				OTHER_CPLUSPLUSFLAGS = "$(OTHER_CFLAGS)";
 				PRODUCT_BUNDLE_IDENTIFIER = org.boxedwine;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -5266,6 +5288,7 @@
 					BOXEDWINE_UI_LAUNCH_IN_PROCESS,
 					BOXEDWINE_RECORDER,
 					POCO_NO_STAT64,
+					BOXEDWINE_CORE_AUDIO,
 				);
 				HEADER_SEARCH_PATHS = "";
 				INFOPLIST_FILE = Boxedwine/Info.plist;
@@ -5319,6 +5342,7 @@
 					BOXEDWINE_UI_LAUNCH_IN_PROCESS,
 					BOXEDWINE_RECORDER,
 					POCO_NO_STAT64,
+					BOXEDWINE_CORE_AUDIO,
 				);
 				HEADER_SEARCH_PATHS = "";
 				INFOPLIST_FILE = Boxedwine/Info.plist;

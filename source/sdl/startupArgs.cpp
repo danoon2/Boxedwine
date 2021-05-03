@@ -25,6 +25,7 @@
 #include "kstat.h"
 #include "knativesystem.h"
 #include "knativewindow.h"
+#include "knativeaudio.h"
 
 #ifndef BOXEDWINE_DISABLE_UI
 #include "../ui/data/globalSettings.h"
@@ -418,6 +419,7 @@ bool StartUpArgs::apply() {
     KNativeWindow::init(this->screenCx, this->screenCy, this->screenBpp, this->sdlScaleX, this->sdlScaleY, this->sdlScaleQuality, this->sdlFullScreen, this->vsync);
     initWine();
     initWineAudio();
+    KNativeAudio::init();
 #if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
     gl_init(this->glExt);        
 #endif   
@@ -445,6 +447,7 @@ bool StartUpArgs::apply() {
 #endif
 	KSystem::destroy();
     KNativeWindow::shutdown();
+    KNativeAudio::shutdown();
     dspShutdown();
 
 #ifdef BOXEDWINE_ZLIB

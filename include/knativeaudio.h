@@ -22,7 +22,17 @@
 #define SPEAKER_RESERVED                0x7FFC0000
 #define SPEAKER_ALL                     0x80000000
 
+#define KSAUDIO_SPEAKER_DIRECTOUT 0
+#define KSAUDIO_SPEAKER_MONO SPEAKER_FRONT_CENTER
 #define KSAUDIO_SPEAKER_STEREO (SPEAKER_FRONT_LEFT | SPEAKER_FRONT_RIGHT)
+#define KSAUDIO_SPEAKER_QUAD (SPEAKER_FRONT_LEFT | SPEAKER_FRONT_RIGHT | SPEAKER_BACK_LEFT | SPEAKER_BACK_RIGHT)
+#define KSAUDIO_SPEAKER_SURROUND (SPEAKER_FRONT_LEFT | SPEAKER_FRONT_RIGHT | SPEAKER_FRONT_CENTER | SPEAKER_BACK_CENTER)
+#define KSAUDIO_SPEAKER_5POINT1 (SPEAKER_FRONT_LEFT | SPEAKER_FRONT_RIGHT | SPEAKER_FRONT_CENTER | SPEAKER_LOW_FREQUENCY | SPEAKER_BACK_LEFT | SPEAKER_BACK_RIGHT)
+/* 5:1 SIDE or BACK is not distinguished, only 0x3F shall be used (BACK) */
+#define KSAUDIO_SPEAKER_5POINT1_SURROUND (SPEAKER_FRONT_LEFT | SPEAKER_FRONT_RIGHT | SPEAKER_FRONT_CENTER | SPEAKER_LOW_FREQUENCY | SPEAKER_SIDE_LEFT | SPEAKER_SIDE_RIGHT)
+#define KSAUDIO_SPEAKER_7POINT1 (KSAUDIO_SPEAKER_5POINT1 | SPEAKER_FRONT_LEFT_OF_CENTER | SPEAKER_FRONT_RIGHT_OF_CENTER)
+/* 7:1 home theater 0x63F */
+#define KSAUDIO_SPEAKER_7POINT1_SURROUND (KSAUDIO_SPEAKER_5POINT1 | SPEAKER_SIDE_LEFT | SPEAKER_SIDE_RIGHT)
 
 class GUID {
 public:
@@ -129,6 +139,8 @@ public:
 class KNativeAudio {
 public:
 	static std::shared_ptr<KNativeAudio> createNativeAudio();
+    static std::vector< std::shared_ptr<KNativeAudio> > availableAudio;
+    static void init();
 	static void shutdown();
 
 	virtual ~KNativeAudio() {}
@@ -151,7 +163,8 @@ public:
 	virtual U32 isFormatSupported(U32 boxedAudioId, U32 addressWaveFormat) = 0;
 	virtual U32 getMixFormat(U32 boxedAudioId, U32 addressWaveFormat) = 0;
 	virtual void setVolume(U32 boxedAudioId, float level, U32 channel) = 0;
-
+    virtual void cleanup() = 0;
+    
 	virtual U32 midiOutOpen(U32 wDevID, U32 lpDesc, U32 dwFlags) = 0;
 	virtual U32 midiOutClose(U32 wDevID) = 0;
 	virtual U32 midiOutData(U32 wDevID, U32 dwParam) = 0;
