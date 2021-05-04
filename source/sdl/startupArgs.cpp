@@ -188,6 +188,10 @@ std::vector<std::string> StartUpArgs::buildArgs() {
     if (showWindowImmediately) {
         args.push_back("-showWindowImmediately");
     }
+    if (skipFrameFPS) {
+        args.push_back("-skipFrameFPS");
+        args.push_back(std::to_string(skipFrameFPS));
+    }
     if (cpuAffinity) {
         args.push_back("-cpuAffinity");
         args.push_back(std::to_string(cpuAffinity));
@@ -222,7 +226,8 @@ bool StartUpArgs::apply() {
     KSystem::pentiumLevel = this->pentiumLevel;
     KSystem::pollRate = this->pollRate;
     KSystem::showWindowImmediately = this->showWindowImmediately;
-
+    KSystem::skipFrameFPS = this->skipFrameFPS;
+    
     for (U32 f=0;f<nonExecFileFullPaths.size();f++) {
         FsFileNode::nonExecFileFullPaths.insert(nonExecFileFullPaths[f]);
     }
@@ -613,6 +618,9 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
 #else
             klog("ignoring -cpuAffinity");
 #endif
+            i++;
+        } else if (!strcmp(argv[i], "-skipFrameFPS") && i+1<argc) {
+            this->skipFrameFPS = atoi(argv[i+1]);
             i++;
         }
 #ifdef BOXEDWINE_RECORDER

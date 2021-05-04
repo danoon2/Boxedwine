@@ -66,7 +66,8 @@ private:
     int scaleQuality;
     int cpuAffinity;
     int pollRate;
-
+    int skipFramesFPS;
+    
     BoxedContainer* container;
     std::string iniFilePath;
 };

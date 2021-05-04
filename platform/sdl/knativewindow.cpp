@@ -243,7 +243,7 @@ bool KNativeWindowSdl::processEvents() {
     if (isShutdownWindowIsOpen()) {
         updateShutdownWindow();
     }
-    while (SDL_WaitEventTimeout(&e, 0) == 1) {
+    while (SDL_PollEvent(&e) == 1) {
 #ifdef BOXEDWINE_MULTI_THREADED
         if (e.type == sdlCustomEvent) {
             SdlCallback* callback = (SdlCallback*)e.user.data1;
@@ -253,6 +253,7 @@ bool KNativeWindowSdl::processEvents() {
             BOXEDWINE_CONDITION_UNLOCK(callback->cond);
         } else 
 #endif
+        
         if (!handlSdlEvent(&e)) {
             return false;
         }
@@ -863,6 +864,15 @@ U32 recorderBufferSize;
 #endif
 
 void KNativeWindowSdl::drawAllWindows(KThread* thread, U32 hWnd, int count) {
+    if (KSystem::skipFrameFPS) {
+        static U64 lastUpdate=0;
+        static U64 diff = 100000 / KSystem::skipFrameFPS;
+        U64 now = KSystem::getMicroCounter();
+        if (now - lastUpdate < diff) {
+            return;
+        }
+        lastUpdate = now;
+    }
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(sdlMutex);
     if (KSystem::videoEnabled && (!renderer || (contextCount && lastGlCallTime+1000> KSystem::getMilliesSinceStart()))) {
         // don't let window drawing and opengl drawing fight and clobber each other, if OpenGL was active in the last second, then don't draw the window
@@ -961,9 +971,8 @@ void KNativeWindowSdl::drawAllWindows(KThread* thread, U32 hWnd, int count) {
                 rect.x = sdlDesktopWidth - scaleXOffset;
                 SDL_RenderFillRect(renderer, &rect);
             }
-            SDL_RenderPresent(renderer);
         }
-        
+        SDL_RenderPresent(renderer);
         DISPATCH_MAIN_THREAD_BLOCK_END
     }
     KNativeWindow::windowUpdated = true;
