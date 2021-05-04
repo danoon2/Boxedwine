@@ -75,6 +75,14 @@
 		1AB0CAFE263BA8AC003AF407 /* wineaudiodrv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0CAFD263BA8AC003AF407 /* wineaudiodrv.cpp */; };
 		1AB0CAFF263BA8AD003AF407 /* wineaudiodrv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0CAFD263BA8AC003AF407 /* wineaudiodrv.cpp */; };
 		1AB0CB00263BA8AD003AF407 /* wineaudiodrv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0CAFD263BA8AC003AF407 /* wineaudiodrv.cpp */; };
+		1AFC4768264096CB00EE5FCC /* armv8CPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4764264096CB00EE5FCC /* armv8CPU.cpp */; };
+		1AFC4769264096CB00EE5FCC /* llvm_helper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4765264096CB00EE5FCC /* llvm_helper.cpp */; };
+		1AFC476A26409AAB00EE5FCC /* knativecoreaudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A40D9DA263D9F2100F679F0 /* knativecoreaudio.cpp */; };
+		1AFC476B26409AAC00EE5FCC /* knativecoreaudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A40D9DA263D9F2100F679F0 /* knativecoreaudio.cpp */; };
+		1AFC476D26409EB200EE5FCC /* armv8CPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4764264096CB00EE5FCC /* armv8CPU.cpp */; };
+		1AFC476E26409EB600EE5FCC /* armv8CPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4764264096CB00EE5FCC /* armv8CPU.cpp */; };
+		1AFC476F26409EBB00EE5FCC /* llvm_helper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4765264096CB00EE5FCC /* llvm_helper.cpp */; };
+		1AFC477026409EBC00EE5FCC /* llvm_helper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4765264096CB00EE5FCC /* llvm_helper.cpp */; };
 		711F834924527273008E6A0C /* boxedTexture.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 711F834824527273008E6A0C /* boxedTexture.cpp */; };
 		711F834A24527273008E6A0C /* boxedTexture.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 711F834824527273008E6A0C /* boxedTexture.cpp */; };
 		711F834B24534A06008E6A0C /* MacPlatform.m in Sources */ = {isa = PBXBuildFile; fileRef = 7120545D244D074000C3CB1B /* MacPlatform.m */; };
@@ -1351,6 +1359,12 @@
 		1AB0CAF8263BA7AA003AF407 /* kdspaudio.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = kdspaudio.cpp; path = ../../../../../platform/sdl/kdspaudio.cpp; sourceTree = "<group>"; };
 		1AB0CAFC263BA83A003AF407 /* kdspaudio.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = kdspaudio.h; sourceTree = "<group>"; };
 		1AB0CAFD263BA8AC003AF407 /* wineaudiodrv.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = wineaudiodrv.cpp; sourceTree = "<group>"; };
+		1AFC4764264096CB00EE5FCC /* armv8CPU.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = armv8CPU.cpp; sourceTree = "<group>"; };
+		1AFC4765264096CB00EE5FCC /* llvm_helper.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = llvm_helper.cpp; sourceTree = "<group>"; };
+		1AFC4766264096CB00EE5FCC /* armv8CPU.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = armv8CPU.h; sourceTree = "<group>"; };
+		1AFC4767264096CB00EE5FCC /* llvm_helper.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = llvm_helper.h; sourceTree = "<group>"; };
+		1AFC476C26409BA700EE5FCC /* dynamic_generic_base.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = dynamic_generic_base.h; sourceTree = "<group>"; };
+		1AFC47712640A64D00EE5FCC /* BoxedwineX64.entitlements */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.entitlements; path = BoxedwineX64.entitlements; sourceTree = "<group>"; };
 		71034F0B24820DE700FED5C5 /* BoxedwineAutomation-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "BoxedwineAutomation-Info.plist"; path = "/Users/jamesbryant/boxedwine-source/project/mac-xcode/Boxedwine/BoxedwineAutomation-Info.plist"; sourceTree = "<absolute>"; };
 		71034F0C24820EC600FED5C5 /* Boxedwine-Automation.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Boxedwine-Automation.entitlements"; sourceTree = "<group>"; };
 		710351412482B71000FED5C5 /* BoxedwineAutomationX64-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "BoxedwineAutomationX64-Info.plist"; path = "/Users/jamesbryant/boxedwine-source/project/mac-xcode/Boxedwine/BoxedwineAutomationX64-Info.plist"; sourceTree = "<absolute>"; };
@@ -2327,6 +2341,17 @@
 			name = mac;
 			sourceTree = "<group>";
 		};
+		1AFC47632640965500EE5FCC /* armv8 */ = {
+			isa = PBXGroup;
+			children = (
+				1AFC4764264096CB00EE5FCC /* armv8CPU.cpp */,
+				1AFC4766264096CB00EE5FCC /* armv8CPU.h */,
+				1AFC4765264096CB00EE5FCC /* llvm_helper.cpp */,
+				1AFC4767264096CB00EE5FCC /* llvm_helper.h */,
+			);
+			path = armv8;
+			sourceTree = "<group>";
+		};
 		712227752433E8C400CDBABD /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
@@ -2926,6 +2951,7 @@
 		71FBFCAF2433B815003F17F1 /* Boxedwine */ = {
 			isa = PBXGroup;
 			children = (
+				1AFC47712640A64D00EE5FCC /* BoxedwineX64.entitlements */,
 				71FBFCB02433B815003F17F1 /* AppDelegate.h */,
 				71FBFCB12433B815003F17F1 /* AppDelegate.m */,
 				71FBFCB32433B817003F17F1 /* Assets.xcassets */,
@@ -3177,6 +3203,7 @@
 		71FBFD5C2433BBBE003F17F1 /* cpu */ = {
 			isa = PBXGroup;
 			children = (
+				1AFC47632640965500EE5FCC /* armv8 */,
 				1A9193342551B6D3005A798A /* btCodeChunk.cpp */,
 				1A9193322551B6D2005A798A /* btCodeChunk.h */,
 				1A9193332551B6D3005A798A /* btCodeMemoryWrite.cpp */,
@@ -3212,6 +3239,7 @@
 		71FBFD5D2433BBBE003F17F1 /* dynamic */ = {
 			isa = PBXGroup;
 			children = (
+				1AFC476C26409BA700EE5FCC /* dynamic_generic_base.h */,
 				71FBFD5E2433BBBE003F17F1 /* dynamic_sse2.h */,
 				71FBFD5F2433BBBE003F17F1 /* dynamic_incdec.h */,
 				71FBFD602433BBBE003F17F1 /* dynamic_xchg.h */,
@@ -3705,6 +3733,7 @@
 				71222B632435169100CDBABD /* x64Data.cpp in Sources */,
 				71222B3F2435163100CDBABD /* testMMX.cpp in Sources */,
 				1A1551542632621A006E0C8A /* knativesystem.cpp in Sources */,
+				1AFC476E26409EB600EE5FCC /* armv8CPU.cpp in Sources */,
 				71222B602435169100CDBABD /* x64CPU.cpp in Sources */,
 				71222B672435169100CDBABD /* common_arith.cpp in Sources */,
 				71222B1D2435140100CDBABD /* AppDelegate.m in Sources */,
@@ -3746,6 +3775,7 @@
 				71222BC22435169100CDBABD /* sdlgl.cpp in Sources */,
 				71222BBD2435169100CDBABD /* glfunctions_ext3.cpp in Sources */,
 				71222B3E2435163100CDBABD /* testCPU.cpp in Sources */,
+				1AFC476A26409AAB00EE5FCC /* knativecoreaudio.cpp in Sources */,
 				71222B722435169100CDBABD /* normal_shift.cpp in Sources */,
 				71222BAD2435169100CDBABD /* knativesocket.cpp in Sources */,
 				71222B9F2435169100CDBABD /* ksystem.cpp in Sources */,
@@ -3812,6 +3842,7 @@
 				71222BB32435169100CDBABD /* cpuscalingmaxfreq.cpp in Sources */,
 				71222B832435169100CDBABD /* hard_memory.cpp in Sources */,
 				71222BA32435169100CDBABD /* devsequencer.cpp in Sources */,
+				1AFC477026409EBC00EE5FCC /* llvm_helper.cpp in Sources */,
 				71222BB22435169100CDBABD /* cpumaxfreq.cpp in Sources */,
 				71222BA02435169100CDBABD /* kprocess.cpp in Sources */,
 				71222B862435169100CDBABD /* fszipnode.cpp in Sources */,
@@ -3874,6 +3905,7 @@
 				715F83442440ED1F0038F5A4 /* pcre_string_utils.c in Sources */,
 				715F64692440E9740038F5A4 /* KeyFileHandler.cpp in Sources */,
 				715F83B02440ED1F0038F5A4 /* NullStream.cpp in Sources */,
+				1AFC476D26409EB200EE5FCC /* armv8CPU.cpp in Sources */,
 				715F63B92440E9110038F5A4 /* TCPServerDispatcher.cpp in Sources */,
 				715F63C12440E9110038F5A4 /* MailMessage.cpp in Sources */,
 				1A1551BF26326273006E0C8A /* pugixml.cpp in Sources */,
@@ -4140,6 +4172,7 @@
 				71222C2E24351CBA00CDBABD /* devtty.cpp in Sources */,
 				715F645D2440E9740038F5A4 /* SSLManager.cpp in Sources */,
 				715F83EA2440ED200038F5A4 /* DirectoryWatcher.cpp in Sources */,
+				1AFC476B26409AAC00EE5FCC /* knativecoreaudio.cpp in Sources */,
 				715F83CC2440ED200038F5A4 /* StreamChannel.cpp in Sources */,
 				715F63BB2440E9110038F5A4 /* HTTPResponse.cpp in Sources */,
 				71222C2F24351CBA00CDBABD /* fszipopennode.cpp in Sources */,
@@ -4310,6 +4343,7 @@
 				715F82AA2440ED1E0038F5A4 /* NumericString.cpp in Sources */,
 				71222C5D24351CBA00CDBABD /* baseDlg.cpp in Sources */,
 				715F82502440ED1D0038F5A4 /* Windows1252Encoding.cpp in Sources */,
+				1AFC476F26409EBB00EE5FCC /* llvm_helper.cpp in Sources */,
 				71222C5E24351CBA00CDBABD /* fsnode.cpp in Sources */,
 				715F637F2440E9100038F5A4 /* HTTPSession.cpp in Sources */,
 				71222C6024351CBA00CDBABD /* fileutils.cpp in Sources */,
@@ -4742,6 +4776,7 @@
 				715F83292440ED1F0038F5A4 /* Var.cpp in Sources */,
 				715F34E12440E7480038F5A4 /* Application.cpp in Sources */,
 				715F842C24464C080038F5A4 /* installView.cpp in Sources */,
+				1AFC4769264096CB00EE5FCC /* llvm_helper.cpp in Sources */,
 				715F64802440E9750038F5A4 /* SecureSMTPClientSession.cpp in Sources */,
 				715F34C32440E7480038F5A4 /* IntValidator.cpp in Sources */,
 				71FBFEA42433BBBE003F17F1 /* fszipnode.cpp in Sources */,
@@ -4899,6 +4934,7 @@
 				715F84052440ED200038F5A4 /* Stopwatch.cpp in Sources */,
 				715F63902440E9100038F5A4 /* ICMPClient.cpp in Sources */,
 				71FBFE9F2433BBBE003F17F1 /* soft_invalid_page.cpp in Sources */,
+				1AFC4768264096CB00EE5FCC /* armv8CPU.cpp in Sources */,
 				71FBFE842433BBBE003F17F1 /* lazyFlags.cpp in Sources */,
 				71FBFE902433BBBE003F17F1 /* normal_shift.cpp in Sources */,
 				71FBFE712433BBBE003F17F1 /* platformhelper.cpp in Sources */,
@@ -5036,15 +5072,15 @@
 		71222C7D24351CBA00CDBABD /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = x86_64;
+				ARCHS = "$(ARCHS_STANDARD)";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
-				CODE_SIGN_ENTITLEMENTS = Boxedwine/Boxedwine.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Boxedwine/BoxedwineX64.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				DEVELOPMENT_ASSET_PATHS = "";
 				ENABLE_HARDENED_RUNTIME = YES;
-				EXCLUDED_ARCHS = Arm64;
+				EXCLUDED_ARCHS = "";
 				FRAMEWORK_SEARCH_PATHS = "$(PROJECT_DIR)/../../../lib/mac";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					SIMDE_NO_NATIVE,
@@ -5052,21 +5088,18 @@
 					BOXEDWINE_64,
 					BOXEDWINE_ZLIB,
 					"SDL2=1",
-					BOXEDWINE_64BIT_MMU,
 					"GLH=<SDL_opengl.h>",
 					BOXEDWINE_OPENGL_SDL,
 					BOXEDWINE_GLHANDLE_ARB_POINTER,
-					BOXEDWINE_MULTI_THREADED,
-					BOXEDWINE_X64,
 					POCO_OS_FAMILY_UNIX,
 					POCO_UTIL_NO_XMLCONFIGURATION,
 					POCO_UTIL_NO_JSONCONFIGURATION,
-					BOXEDWINE_X64_DEBUG_NO_EXCEPTIONS,
 					BOXEDWINE_POSIX,
 					BOXEDWINE_UI_LAUNCH_IN_PROCESS,
 					BOXEDWINE_RECORDER,
-					BOXEDWINE_BINARY_TRANSLATOR,
 					BOXEDWINE_CORE_AUDIO,
+					BOXEDWINE_MAC_JIT,
+					POCO_NO_STAT64,
 				);
 				HEADER_SEARCH_PATHS = "";
 				INFOPLIST_FILE = "BoxedwineX64-Info.plist";
@@ -5095,15 +5128,15 @@
 		71222C7E24351CBA00CDBABD /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = x86_64;
+				ARCHS = "$(ARCHS_STANDARD)";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
-				CODE_SIGN_ENTITLEMENTS = Boxedwine/Boxedwine.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Boxedwine/BoxedwineX64.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				DEVELOPMENT_ASSET_PATHS = "";
 				ENABLE_HARDENED_RUNTIME = YES;
-				EXCLUDED_ARCHS = Arm64;
+				EXCLUDED_ARCHS = "";
 				FRAMEWORK_SEARCH_PATHS = "$(PROJECT_DIR)/../../../lib/mac";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					SIMDE_NO_NATIVE,
@@ -5111,21 +5144,18 @@
 					BOXEDWINE_64,
 					BOXEDWINE_ZLIB,
 					"SDL2=1",
-					BOXEDWINE_64BIT_MMU,
 					"GLH=<SDL_opengl.h>",
 					BOXEDWINE_OPENGL_SDL,
 					BOXEDWINE_GLHANDLE_ARB_POINTER,
-					BOXEDWINE_MULTI_THREADED,
-					BOXEDWINE_X64,
 					POCO_OS_FAMILY_UNIX,
 					POCO_UTIL_NO_XMLCONFIGURATION,
 					POCO_UTIL_NO_JSONCONFIGURATION,
 					BOXEDWINE_POSIX,
 					BOXEDWINE_UI_LAUNCH_IN_PROCESS,
 					BOXEDWINE_RECORDER,
-					BOXEDWINE_BINARY_TRANSLATOR,
-					BOXEDWINE_X64_DEBUG_NO_EXCEPTIONS,
 					BOXEDWINE_CORE_AUDIO,
+					BOXEDWINE_MAC_JIT,
+					POCO_NO_STAT64,
 				);
 				HEADER_SEARCH_PATHS = "";
 				INFOPLIST_FILE = "BoxedwineX64-Info.plist";

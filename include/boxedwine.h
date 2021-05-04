@@ -16,6 +16,24 @@
 
 #include <errno.h>
 
+#ifdef BOXEDWINE_MAC_JIT
+#include "TargetConditionals.h"
+#if TARGET_CPU_ARM64
+#define BOXEDWINE_DYNAMIC_ARMV8
+#define BOXEDWINE_DYNAMIC
+#define MAP_BOXEDWINE MAP_JIT
+#else
+#define BOXEDWINE_X64_DEBUG_NO_EXCEPTIONS
+#define BOXEDWINE_BINARY_TRANSLATOR
+#define BOXEDWINE_X64
+#define BOXEDWINE_MULTI_THREADED
+#define BOXEDWINE_64BIT_MMU
+#define MAP_BOXEDWINE 0
+#endif
+#else
+#define MAP_BOXEDWINE 0
+#endif
+
 #include "../source/util/boxedptr.h"
 
 #include "platform.h"

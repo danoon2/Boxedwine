@@ -10,7 +10,7 @@ void dynamic_btr16(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_bte16r16(DynamicData* data, DecodedOp* op) {
-    callHostFunction((void*)common_bte16r16, false, 3, 0, DYN_PARAM_CPU, false, (U32)op, DYN_PARAM_CONST_PTR, true, op->reg, DYN_PARAM_CONST_32, false);
+    callHostFunction((void*)common_bte16r16, false, 3, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)op, DYN_PARAM_CONST_PTR, true, op->reg, DYN_PARAM_CONST_32, false);
     INCREMENT_EIP(data, op);
     data->currentLazyFlags=FLAGS_NONE;
 }
@@ -31,7 +31,7 @@ void dynamic_btr32(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_bte32r32(DynamicData* data, DecodedOp* op) {
-    callHostFunction((void*)common_bte32r32, false, 3, 0, DYN_PARAM_CPU, false, (U32)op, DYN_PARAM_CONST_PTR, true, op->reg, DYN_PARAM_CONST_32, false);
+    callHostFunction((void*)common_bte32r32, false, 3, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)op, DYN_PARAM_CONST_PTR, true, op->reg, DYN_PARAM_CONST_32, false);
     data->currentLazyFlags=FLAGS_NONE;
     INCREMENT_EIP(data, op);
 }
@@ -52,7 +52,7 @@ void dynamic_btsr16(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_btse16r16(DynamicData* data, DecodedOp* op) {
-    callHostFunction((void*)common_btse16r16, false, 3, 0, DYN_PARAM_CPU, false, (U32)op, DYN_PARAM_CONST_PTR, true, op->reg, DYN_PARAM_CONST_32, false);
+    callHostFunction((void*)common_btse16r16, false, 3, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)op, DYN_PARAM_CONST_PTR, true, op->reg, DYN_PARAM_CONST_32, false);
     INCREMENT_EIP(data, op);
     data->currentLazyFlags=FLAGS_NONE;
 }
@@ -73,7 +73,7 @@ void dynamic_btsr32(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_btse32r32(DynamicData* data, DecodedOp* op) {
-    callHostFunction((void*)common_btse32r32, false, 3, 0, DYN_PARAM_CPU, false, (U32)op, DYN_PARAM_CONST_PTR, true, op->reg, DYN_PARAM_CONST_32, false);
+    callHostFunction((void*)common_btse32r32, false, 3, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)op, DYN_PARAM_CONST_PTR, true, op->reg, DYN_PARAM_CONST_32, false);
     data->currentLazyFlags=FLAGS_NONE;
     INCREMENT_EIP(data, op);
 }
@@ -94,7 +94,7 @@ void dynamic_btrr16(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_btre16r16(DynamicData* data, DecodedOp* op) {
-    callHostFunction((void*)common_btre16r16, false, 3, 0, DYN_PARAM_CPU, false, (U32)op, DYN_PARAM_CONST_PTR, true, op->reg, DYN_PARAM_CONST_32, false);
+    callHostFunction((void*)common_btre16r16, false, 3, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)op, DYN_PARAM_CONST_PTR, true, op->reg, DYN_PARAM_CONST_32, false);
     INCREMENT_EIP(data, op);
     data->currentLazyFlags=FLAGS_NONE;
 }
@@ -115,7 +115,7 @@ void dynamic_btrr32(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_btre32r32(DynamicData* data, DecodedOp* op) {
-    callHostFunction((void*)common_btre32r32, false, 3, 0, DYN_PARAM_CPU, false, (U32)op, DYN_PARAM_CONST_PTR, true, op->reg, DYN_PARAM_CONST_32, false);
+    callHostFunction((void*)common_btre32r32, false, 3, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)op, DYN_PARAM_CONST_PTR, true, op->reg, DYN_PARAM_CONST_32, false);
     data->currentLazyFlags=FLAGS_NONE;
     INCREMENT_EIP(data, op);
 }
@@ -136,7 +136,7 @@ void dynamic_btcr16(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_btce16r16(DynamicData* data, DecodedOp* op) {
-    callHostFunction((void*)common_btce16r16, false, 3, 0, DYN_PARAM_CPU, false, (U32)op, DYN_PARAM_CONST_PTR, true, op->reg, DYN_PARAM_CONST_32, false);
+    callHostFunction((void*)common_btce16r16, false, 3, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)op, DYN_PARAM_CONST_PTR, true, op->reg, DYN_PARAM_CONST_32, false);
     INCREMENT_EIP(data, op);
     data->currentLazyFlags=FLAGS_NONE;
 }
@@ -157,7 +157,7 @@ void dynamic_btcr32(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_btce32r32(DynamicData* data, DecodedOp* op) {
-    callHostFunction((void*)common_btce32r32, false, 3, 0, DYN_PARAM_CPU, false, (U32)op, DYN_PARAM_CONST_PTR, true, op->reg, DYN_PARAM_CONST_32, false);
+    callHostFunction((void*)common_btce32r32, false, 3, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)op, DYN_PARAM_CONST_PTR, true, op->reg, DYN_PARAM_CONST_32, false);
     data->currentLazyFlags=FLAGS_NONE;
     INCREMENT_EIP(data, op);
 }

@@ -257,7 +257,6 @@ U32 KNativeAudioSDL::getEndPoint(bool isRender, U32 adevid) {
 }
 
 void KNativeAudioSDL::release(U32 boxedAudioId) {
-	int ii = 0;
 }
 
 void KNativeAudioSDL::captureResample(U32 boxedAudioId) {	
@@ -281,9 +280,6 @@ U32 KNativeAudioSDL::getSdlFormat(WaveFormatExtensible* pFmt) {
 	} else {
 		return 0;
 	}
-	
-	kpanic("KNativeAudioSdl Unknow audio format");
-	return 0;
 }
 
 U32 KNativeAudioSDL::init(bool isRender, U32 boxedAudioId, U32 addressFmt, U32 addressPeriodFrames, U32 addressLocalBuffer, U32 addressWriOffsFrames, U32 addressHeldFrames, U32 addressLclOffsFrames, U32 bufsizeFrames) {
