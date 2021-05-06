@@ -362,12 +362,11 @@ static void boxedaudio_use_timer(CPU* cpu) {
     // the wine audio driver for mac used a timer to trigger DSOUND_mixthread, the other linux drivers used an event that was triggered from the audio callback.  This will switch between them.  I left this in just incase I want to experiment in the future between them.
     EAX = 0;
 }
-#include <pthread.h>
+
 static void boxedaudio_set_priority(CPU* cpu) {
     int priority = (int)ARG1;
     if (priority>0) {
         Platform::setCurrentThreadPriorityHigh();
-        pthread_setname_np("BoxedAudio");
     }
 }
 
