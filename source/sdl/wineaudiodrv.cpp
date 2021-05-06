@@ -87,7 +87,10 @@ float fARG(U32 arg) {
 #define BOXED_AUDIO_DRV_INIT                        (BOXED_BASE+36)
 #define BOXED_AUDIO_DRV_START                       (BOXED_BASE+37)
 #define BOXED_AUDIO_DRV_STOP                        (BOXED_BASE+38)
-#define BOXED_AUDIO_LAST                            (BOXED_BASE+38)
+#define BOXED_AUDIO_DRV_GET_PERIOD                  (BOXED_BASE+39)
+#define BOXED_AUDIO_DRV_USE_TIMER                   (BOXED_BASE+40)
+#define BOXED_AUDIO_DRV_SET_PRIORITY                (BOXED_BASE+41)
+#define BOXED_AUDIO_LAST                            (BOXED_BASE+41)
 
 Int99Callback* wine_audio_callback;
 U32 wine_audio_callback_size;
@@ -337,12 +340,35 @@ static void boxedaudio_drv_init(CPU* cpu) {
 
 static void boxedaudio_drv_start(CPU* cpu) {
 	U32 boxedAudioId = ARG1;
-	audio->start(boxedAudioId);
+    U32 eventFd = ARG2;
+	audio->start(boxedAudioId, eventFd);
 }
 
 static void boxedaudio_drv_stop(CPU* cpu) {
 	U32 boxedAudioId = ARG1;
 	audio->stop(boxedAudioId);
+}
+
+static void boxedaudio_get_period(CPU* cpu) {
+    //U32 minPeriodAddress = ARG1;
+    //U32 defaultPeriodAddress = ARG2;
+    //U64 minPeriod = readq(minPeriodAddress); // default for all wine audio drivers is 50000 (50ms)
+    //U64 defaultPeriod = readq(defaultPeriodAddress); // default for all wine audio drivers is 100000 (100ms)
+    //writeq(minPeriodAddress, 50000);
+    //writeq(defaultPeriodAddress, 100000);
+}
+
+static void boxedaudio_use_timer(CPU* cpu) {
+    // the wine audio driver for mac used a timer to trigger DSOUND_mixthread, the other linux drivers used an event that was triggered from the audio callback.  This will switch between them.  I left this in just incase I want to experiment in the future between them.
+    EAX = 0;
+}
+#include <pthread.h>
+static void boxedaudio_set_priority(CPU* cpu) {
+    int priority = (int)ARG1;
+    if (priority>0) {
+        Platform::setCurrentThreadPriorityHigh();
+        pthread_setname_np("BoxedAudio");
+    }
 }
 
 void initWineAudio() {
@@ -388,5 +414,8 @@ void initWineAudio() {
 		wine_audio_callback[BOXED_AUDIO_DRV_INIT] = boxedaudio_drv_init;
 		wine_audio_callback[BOXED_AUDIO_DRV_START] = boxedaudio_drv_start;
 		wine_audio_callback[BOXED_AUDIO_DRV_STOP] = boxedaudio_drv_stop;
-	}
+        wine_audio_callback[BOXED_AUDIO_DRV_GET_PERIOD] = boxedaudio_get_period;
+        wine_audio_callback[BOXED_AUDIO_DRV_USE_TIMER] = boxedaudio_use_timer;
+        wine_audio_callback[BOXED_AUDIO_DRV_SET_PRIORITY] = boxedaudio_set_priority;
+    }
 }

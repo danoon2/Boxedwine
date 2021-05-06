@@ -73,7 +73,7 @@ public:
 	virtual void free();
 	virtual bool open();
 	virtual bool close();
-	virtual void start(U32 boxedAudioId);
+	virtual void start(U32 boxedAudioId, U32 eventFd);
 	virtual void stop(U32 boxedAudioId);
 	virtual bool configure();
 	virtual U32 hasDevice(bool isRender);
@@ -224,7 +224,7 @@ bool KNativeAudioSDL::close() {
 	return true;
 }
 
-void KNativeAudioSDL::start(U32 boxedAudioId) {
+void KNativeAudioSDL::start(U32 boxedAudioId, U32 eventFd) {
 	KNativeSDLAudioData* data = getDataFromId(boxedAudioId);
 	if (!data) {
 		return;

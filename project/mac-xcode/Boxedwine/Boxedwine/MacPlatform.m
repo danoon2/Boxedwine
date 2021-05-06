@@ -8,7 +8,11 @@
 
 #import "MacPlatform.h"
 #import <Cocoa/Cocoa.h>
+#import <Foundation/Foundation.h>
 
+void MacPlatormSetThreadPriority(void) {
+    [NSThread setThreadPriority:1.0];
+}
 void MacPlatformOpenFileLocation(const char* str) {
    NSString* path = [NSString stringWithUTF8String:str];
     if ([path hasPrefix:@"http"]) {

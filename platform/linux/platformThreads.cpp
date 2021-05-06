@@ -37,7 +37,14 @@ void scheduleThread(KThread* thread) {
     BtCPU* cpu = (BtCPU*)thread->cpu;
     pthread_t threadId;
     platformThreadCount++; // need to increment before returning, otherwise if this is 0 the code will assume Wine exited
-    pthread_create(&threadId, NULL, platformThreadProc, thread);
+#ifdef __MACH__
+    pthread_attr_t qosAttribute;
+    pthread_attr_init(&qosAttribute);
+    pthread_attr_set_qos_class_np(&qosAttribute, QOS_CLASS_USER_INTERACTIVE, 0);
+    pthread_create(&threadId, &qosAttribute, platformThreadProc, thread);
+#else
+    pthread_create(&threadId, 0, platformThreadProc, thread);
+#endif
     cpu->nativeHandle = (U64)(size_t)threadId;
 }
 

@@ -149,7 +149,7 @@ public:
 	virtual void free() = 0;
 	virtual bool open() = 0;
 	virtual bool close() = 0;
-	virtual void start(U32 boxedAudioId) = 0;
+	virtual void start(U32 boxedAudioId, U32 eventFd) = 0;
 	virtual void stop(U32 boxedAudioId) = 0;
 	virtual bool configure() = 0;
 	virtual U32 hasDevice(bool isRender) = 0;

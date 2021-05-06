@@ -79,7 +79,7 @@ static const GUID CORE_AUDIO_KSDATAFORMAT_SUBTYPE_MULAW(0x00000007, 0x0000, 0x00
 
 class KNativeAudioCoreAudioData {
 public:
-	KNativeAudioCoreAudioData() : lock(OS_UNFAIR_LOCK_INIT), cap_held_frames(0), resamp_bufsize_frames(0), resamp_buffer(0), cap_offs_frames(0), bufsize_frames(0), address_local_buffer(0), address_wri_offs_frames(0), address_held_frames(0), period_frames(0) {
+	KNativeAudioCoreAudioData() : lock(OS_UNFAIR_LOCK_INIT), isRender(false), isPlaying(false), eventFd(0), cap_held_frames(0), resamp_bufsize_frames(0), resamp_buffer(0), cap_offs_frames(0), bufsize_frames(0), address_local_buffer(0), address_wri_offs_frames(0), address_held_frames(0), period_frames(0) {
     }
 	~KNativeAudioCoreAudioData() {
 		if (resamp_buffer) {
@@ -98,7 +98,8 @@ public:
 
     bool isRender;
     bool isPlaying;
-
+    U32 eventFd;
+    
     U32 cap_held_frames;
     U32 resamp_bufsize_frames;
     U8* resamp_buffer;
@@ -123,7 +124,7 @@ public:
     virtual void free();
     virtual bool open();
     virtual bool close();
-    virtual void start(U32 boxedAudioId);
+    virtual void start(U32 boxedAudioId, U32 eventFd);
     virtual void stop(U32 boxedAudioId);
     virtual bool configure();
     virtual U32 hasDevice(bool isRender);
@@ -698,7 +699,13 @@ static OSStatus ca_render_cb(void *user, AudioUnitRenderActionFlags *flags, cons
     if(nframes > to_copy_frames) {
         silence_buffer(This, ((U8 *)data->mBuffers[0].mData) + to_copy_bytes, nframes - to_copy_frames);
     }
-    
+    if (This->eventFd) {
+        KFileDescriptor* fd = This->process->getFileDescriptor(This->eventFd);
+        if (fd) {
+            U8 c = 1;
+            fd->kobject->writeNative(&c, 1);
+        }
+    }
     os_unfair_lock_unlock(&This->lock);
     BOXEDWINE_CONDITION_UNLOCK(KSystem::processesCond);
     return noErr;
@@ -1153,11 +1160,12 @@ void KNativeAudioCoreAudio::setVolume(U32 boxedAudioId, float level, U32 channel
 		kwarn("Couldn't set volume: %x\n", (int)sc);
 }
 
-void KNativeAudioCoreAudio::start(U32 boxedAudioId) {
+void KNativeAudioCoreAudio::start(U32 boxedAudioId, U32 eventFd) {
     KNativeAudioCoreAudioData* data = getDataFromId(boxedAudioId);
     if (!data) {
         return;
     }
+    data->eventFd = eventFd;
     data->isPlaying = true;
 }
 

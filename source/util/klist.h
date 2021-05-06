@@ -61,7 +61,11 @@ public:
     bool isEmpty() {return first==NULL;}
     void addToBack(KListNode<T>* node) {
         if (node->list) {
-            kpanic("Node already in list");
+            if (node->list == this) {
+                kwarn("Node already in list");
+            } else {
+                kpanic("Node already in list");
+            }
         }
         if (!this->last) {
             first = node;

@@ -358,6 +358,10 @@ void Platform::openFileLocation(const std::string& location) {
     ShellExecute(NULL, "open", location.c_str(), NULL, NULL, SW_SHOWNORMAL);
 }
 
+void Platform::setCurrentThreadPriorityHigh() {
+
+}
+
 #ifdef BOXEDWINE_MULTI_THREADED
 void Platform::setCpuAffinityForThread(KThread* thread, U32 count) {
     if (KSystem::cpuAffinityCountForApp) {

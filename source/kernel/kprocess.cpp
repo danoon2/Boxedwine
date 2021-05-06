@@ -754,6 +754,7 @@ U32 KProcess::execve(const std::string& path, std::vector<std::string>& args, co
 
     this->systemProcess = false;
     if (stringHasEnding(args[args.size() - 1], "wineserver", true)) {
+        Platform::setCurrentThreadPriorityHigh();
         this->systemProcess = true;
     } else {
         for (auto& s : args) {
