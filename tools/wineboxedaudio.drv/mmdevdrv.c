@@ -78,9 +78,9 @@ WINE_DEFAULT_DEBUG_CHANNEL(boxedaudio);
 #define BOXED_AUDIO_DRV_INIT                        (BOXED_BASE+36)
 #define BOXED_AUDIO_DRV_START                       (BOXED_BASE+37)
 #define BOXED_AUDIO_DRV_STOP                        (BOXED_BASE+38)
-#define BOXED_AUDIO_DRV_INIT2                       (BOXED_BASE+39)
-#define BOXED_WINDOW_MESSAGE						(BOXED_BASE+40)
-#define BOXED_WINDOW_POS_CHANGED					(BOXED_BASE+41)
+#define BOXED_AUDIO_DRV_GET_PERIOD                  (BOXED_BASE+39)
+#define BOXED_AUDIO_DRV_USE_TIMER                   (BOXED_BASE+40)
+#define BOXED_AUDIO_DRV_SET_PRIORITY                (BOXED_BASE+41)
 #define BOXED_WINDOW_POS_CHANGING					(BOXED_BASE+42)
 
 #define CALL_0(index) __asm__("push %1\n\tint $0x98\n\taddl $4, %%esp": "=a" (result):"i"(index):); 
@@ -105,6 +105,31 @@ WINE_DEFAULT_DEBUG_CHANNEL(boxedaudio);
 #define CALL_NORETURN_8(index, arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8) __asm__("push %8\n\tpush %7\n\tpush %6\n\tpush %5\n\tpush %4\n\tpush %3\n\tpush %2\n\tpush %1\n\tpush %0\n\tint $0x98\n\taddl $36, %%esp"::"i"(index), "g"((DWORD)arg1), "g"((DWORD)arg2), "g"((DWORD)arg3), "g"((DWORD)arg4), "g"((DWORD)arg5), "g"((DWORD)arg6), "g"((DWORD)arg7), "g"((DWORD)arg8));
 #define CALL_NORETURN_9(index, arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9) __asm__("push %9\n\tpush %8\n\tpush %7\n\tpush %6\n\tpush %5\n\tpush %4\n\tpush %3\n\tpush %2\n\tpush %1\n\tpush %0\n\tint $0x98\n\taddl $40, %%esp"::"i"(index), "g"((DWORD)arg1), "g"((DWORD)arg2), "g"((DWORD)arg3), "g"((DWORD)arg4), "g"((DWORD)arg5), "g"((DWORD)arg6), "g"((DWORD)arg7), "g"((DWORD)arg8), "g"((DWORD)arg9));
 
+struct int2Float {
+    union {
+        UINT32 i;
+        float f;
+    };
+};
+
+int pipeFd[2];
+static HANDLE thread;
+static HANDLE dsoundEvent;
+static DWORD CALLBACK msg_thread(void *p) {
+    char b;
+
+    TRACE("Start\n");
+    while (read(pipeFd[0], &b, 1)>=0) {
+        TRACE("Pump");
+        if (dsoundEvent) {
+            TRACE(" Event");
+            SetEvent(dsoundEvent);
+        }        
+        TRACE("\n");
+    }
+    TRACE("Exit\n");
+    thread = NULL;
+}
 
 /**************************************************************************
 * 				DriverProc (WINECOREAUDIO.1)
@@ -273,8 +298,8 @@ DWORD WINAPI BoxedAudio_midMessage(UINT wDevID, UINT wMsg, DWORD dwUser, DWORD d
 
 #define NULL_PTR_ERR MAKE_HRESULT(SEVERITY_ERROR, FACILITY_WIN32, RPC_X_NULL_REF_POINTER)
 #define Float32 float
-static const REFERENCE_TIME DefaultPeriod = 100000;
-static const REFERENCE_TIME MinimumPeriod = 50000;
+static REFERENCE_TIME DefaultPeriod = 100000;
+static REFERENCE_TIME MinimumPeriod = 50000;
 
 struct ACImpl;
 typedef struct ACImpl ACImpl;
@@ -369,6 +394,7 @@ struct ACImpl {
 	struct list entry;
 
 	CRITICAL_SECTION lock;
+        int lastSetPriority;
 };
 
 static const IAudioClientVtbl AudioClient_Vtbl;
@@ -989,7 +1015,7 @@ static HRESULT WINAPI AudioClient_Initialize(IAudioClient *iface,
 		TRACE("Unknown flags: %08x\n", flags);
 		return E_INVALIDARG;
 	}
-
+        CALL_NORETURN_2(BOXED_AUDIO_DRV_GET_PERIOD, &MinimumPeriod, &DefaultPeriod);
 	if (mode == AUDCLNT_SHAREMODE_SHARED) {
 		period = DefaultPeriod;
 		if (duration < 3 * period)
@@ -1318,6 +1344,7 @@ void CALLBACK ca_period_cb(void *user, BOOLEAN timer)
 static HRESULT WINAPI AudioClient_Start(IAudioClient *iface)
 {
 	ACImpl *This = impl_from_IAudioClient(iface);
+        int result = 0;
 
 	TRACE("(%p)\n", This);
 
@@ -1337,20 +1364,29 @@ static HRESULT WINAPI AudioClient_Start(IAudioClient *iface)
 		LeaveCriticalSection(&This->lock);
 		return AUDCLNT_E_EVENTHANDLE_NOT_SET;
 	}
-
-	if (This->event && !This->timer)
+        CALL_0(BOXED_AUDIO_DRV_USE_TIMER);
+        if (!result) {
+            if (!thread) {
+                pipe( pipeFd );
+                thread = CreateThread(0, 0, msg_thread, NULL, 0, 0);
+                TRACE("created msg thread: %d\n", (int)thread);
+            }
+        } else {
+            if (!This->timer) {
+                TRACE("Creater callback timer\n");
 		if (!CreateTimerQueueTimer(&This->timer, g_timer_q, ca_period_cb,
 			This, 0, This->period_ms, WT_EXECUTEINTIMERTHREAD)) {
 			This->timer = NULL;
 			LeaveCriticalSection(&This->lock);
 			WARN("Unable to create timer: %u\n", GetLastError());
 			return E_OUTOFMEMORY;
-		}
-
+                }
+            }
+        }
 	This->playing = TRUE;
 
 	LeaveCriticalSection(&This->lock);
-        CALL_NORETURN_1(BOXED_AUDIO_DRV_START, This->boxedAudioId);
+        CALL_NORETURN_2(BOXED_AUDIO_DRV_START, This->boxedAudioId, pipeFd[1]);
 	return S_OK;
 }
 
@@ -1449,6 +1485,7 @@ static HRESULT WINAPI AudioClient_SetEventHandle(IAudioClient *iface,
 	}
 
 	This->event = event;
+        dsoundEvent = event;
 
 	LeaveCriticalSection(&This->lock);
 
@@ -1610,9 +1647,14 @@ static HRESULT WINAPI AudioRenderClient_GetBuffer(IAudioRenderClient *iface,
 	ACImpl *This = impl_from_IAudioRenderClient(iface);
 	UINT32 pad;
 	HRESULT hr;
+        int priority = GetThreadPriority(GetCurrentThread());
 
 	TRACE("(%p)->(%u, %p)\n", This, frames, data);
 
+        if (priority != This->lastSetPriority) {
+            CALL_NORETURN_1(BOXED_AUDIO_DRV_SET_PRIORITY, priority);
+            This->lastSetPriority = priority;
+        }        
 	if (!data)
 		return E_POINTER;
 	*data = NULL;
@@ -2321,6 +2363,7 @@ static const IAudioSessionControl2Vtbl AudioSessionControl2_Vtbl =
 static HRESULT audio_setvol(ACImpl *This, UINT32 index)
 {
 	Float32 level;
+        struct int2Float f;
 
 	if (This->session->mute) {
 		level = 0.;
@@ -2339,7 +2382,8 @@ static HRESULT audio_setvol(ACImpl *This, UINT32 index)
 		}
 	}
 
-	CALL_NORETURN_3(BOXED_AUDIO_DRV_SET_VOLUME, This->boxedAudioId, level, index);
+        f.f = level;
+	CALL_NORETURN_3(BOXED_AUDIO_DRV_SET_VOLUME, This->boxedAudioId, f.i, index);
 
 	return S_OK;
 }
