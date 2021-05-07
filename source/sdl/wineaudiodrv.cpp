@@ -360,7 +360,9 @@ static void boxedaudio_get_period(CPU* cpu) {
 
 static void boxedaudio_use_timer(CPU* cpu) {
     // the wine audio driver for mac used a timer to trigger DSOUND_mixthread, the other linux drivers used an event that was triggered from the audio callback.  This will switch between them.  I left this in just incase I want to experiment in the future between them.
-    EAX = 0;
+
+	// when this is 1, spherejongg hangs after the first sound and the held_frames is 0, it seems like the mixer isn't being signaled any more
+    EAX = 1;
 }
 
 static void boxedaudio_set_priority(CPU* cpu) {
