@@ -1,4 +1,4 @@
-MODULE    = wineoss.drv
+MODULE    = winealsa.drv
 IMPORTS   = uuid ole32 advapi32
 DELAYIMPORTS = winmm
 
