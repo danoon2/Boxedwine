@@ -18,39 +18,6 @@
 		1A155116263261E7006E0C8A /* zip.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A155101263261DF006E0C8A /* zip.c */; };
 		1A15512B263261EA006E0C8A /* glew.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A1550F4263261B1006E0C8A /* glew.cpp */; };
 		1A155130263261EB006E0C8A /* glew.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A1550F4263261B1006E0C8A /* glew.cpp */; };
-		1A15514826326216006E0C8A /* sdlcallback.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A15514126326216006E0C8A /* sdlcallback.cpp */; };
-		1A15514926326216006E0C8A /* knativewindow.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A15514226326216006E0C8A /* knativewindow.cpp */; };
-		1A15514A26326216006E0C8A /* knativesystem.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A15514426326216006E0C8A /* knativesystem.cpp */; };
-		1A15514B26326216006E0C8A /* knativeaudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A15514526326216006E0C8A /* knativeaudio.cpp */; };
-		1A15514C26326216006E0C8A /* knativethread.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A15514626326216006E0C8A /* knativethread.cpp */; };
-		1A15514D26326216006E0C8A /* knativesynchronization.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A15514726326216006E0C8A /* knativesynchronization.cpp */; };
-		1A1551522632621A006E0C8A /* sdlcallback.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A15514126326216006E0C8A /* sdlcallback.cpp */; };
-		1A1551532632621A006E0C8A /* knativeaudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A15514526326216006E0C8A /* knativeaudio.cpp */; };
-		1A1551542632621A006E0C8A /* knativesystem.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A15514426326216006E0C8A /* knativesystem.cpp */; };
-		1A1551552632621A006E0C8A /* knativesynchronization.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A15514726326216006E0C8A /* knativesynchronization.cpp */; };
-		1A1551562632621A006E0C8A /* knativewindow.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A15514226326216006E0C8A /* knativewindow.cpp */; };
-		1A1551572632621A006E0C8A /* knativethread.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A15514626326216006E0C8A /* knativethread.cpp */; };
-		1A15515C2632621B006E0C8A /* sdlcallback.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A15514126326216006E0C8A /* sdlcallback.cpp */; };
-		1A15515D2632621B006E0C8A /* knativeaudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A15514526326216006E0C8A /* knativeaudio.cpp */; };
-		1A15515E2632621B006E0C8A /* knativesystem.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A15514426326216006E0C8A /* knativesystem.cpp */; };
-		1A15515F2632621B006E0C8A /* knativesynchronization.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A15514726326216006E0C8A /* knativesynchronization.cpp */; };
-		1A1551602632621B006E0C8A /* knativewindow.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A15514226326216006E0C8A /* knativewindow.cpp */; };
-		1A1551612632621B006E0C8A /* knativethread.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A15514626326216006E0C8A /* knativethread.cpp */; };
-		1A15518426326246006E0C8A /* dynamic.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A15517F26326246006E0C8A /* dynamic.cpp */; };
-		1A15518526326246006E0C8A /* platformThreads-x64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A15518026326246006E0C8A /* platformThreads-x64.cpp */; };
-		1A15518626326246006E0C8A /* platformThreads.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A15518126326246006E0C8A /* platformThreads.cpp */; };
-		1A15518726326246006E0C8A /* memory64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A15518226326246006E0C8A /* memory64.cpp */; };
-		1A15518826326246006E0C8A /* platform.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A15518326326246006E0C8A /* platform.cpp */; };
-		1A15518D2632624B006E0C8A /* platformThreads-x64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A15518026326246006E0C8A /* platformThreads-x64.cpp */; };
-		1A15518E2632624B006E0C8A /* memory64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A15518226326246006E0C8A /* memory64.cpp */; };
-		1A15518F2632624B006E0C8A /* platform.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A15518326326246006E0C8A /* platform.cpp */; };
-		1A1551902632624B006E0C8A /* platformThreads.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A15518126326246006E0C8A /* platformThreads.cpp */; };
-		1A1551912632624B006E0C8A /* dynamic.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A15517F26326246006E0C8A /* dynamic.cpp */; };
-		1A1551962632624B006E0C8A /* platformThreads-x64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A15518026326246006E0C8A /* platformThreads-x64.cpp */; };
-		1A1551972632624B006E0C8A /* memory64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A15518226326246006E0C8A /* memory64.cpp */; };
-		1A1551982632624B006E0C8A /* platform.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A15518326326246006E0C8A /* platform.cpp */; };
-		1A1551992632624B006E0C8A /* platformThreads.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A15518126326246006E0C8A /* platformThreads.cpp */; };
-		1A15519A2632624B006E0C8A /* dynamic.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A15517F26326246006E0C8A /* dynamic.cpp */; };
 		1A1551B52632626E006E0C8A /* pugixml.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A1551B42632626E006E0C8A /* pugixml.cpp */; };
 		1A1551BA26326273006E0C8A /* pugixml.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A1551B42632626E006E0C8A /* pugixml.cpp */; };
 		1A1551BF26326273006E0C8A /* pugixml.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A1551B42632626E006E0C8A /* pugixml.cpp */; };
@@ -62,27 +29,60 @@
 		1A1551FD26326745006E0C8A /* OpenSSL.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1A4F1C362631FDAD0076F847 /* OpenSSL.xcframework */; };
 		1A1551FE26326745006E0C8A /* OpenSSL.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1A4F1C362631FDAD0076F847 /* OpenSSL.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		1A1551FF26326C8A006E0C8A /* SDL2.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1A1551E82632656D006E0C8A /* SDL2.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
-		1A40D9DB263D9F2100F679F0 /* knativecoreaudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A40D9DA263D9F2100F679F0 /* knativecoreaudio.cpp */; };
 		1A4F1C7C26321EC60076F847 /* OpenSSL.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1A4F1C362631FDAD0076F847 /* OpenSSL.xcframework */; };
 		1A4F1C7D26321EC60076F847 /* OpenSSL.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1A4F1C362631FDAD0076F847 /* OpenSSL.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		1A4F8E1D24F740CD0046703D /* helpView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A4F8E1C24F740CC0046703D /* helpView.cpp */; };
 		1A4F8E1E24F740CD0046703D /* helpView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A4F8E1C24F740CC0046703D /* helpView.cpp */; };
 		1A9193372551B6D3005A798A /* btCodeMemoryWrite.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A9193332551B6D3005A798A /* btCodeMemoryWrite.cpp */; };
 		1A9193392551B6D3005A798A /* btCodeChunk.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A9193342551B6D3005A798A /* btCodeChunk.cpp */; };
-		1AB0CAF9263BA7AA003AF407 /* kdspaudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0CAF8263BA7AA003AF407 /* kdspaudio.cpp */; };
-		1AB0CAFA263BA7AA003AF407 /* kdspaudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0CAF8263BA7AA003AF407 /* kdspaudio.cpp */; };
-		1AB0CAFB263BA7AA003AF407 /* kdspaudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0CAF8263BA7AA003AF407 /* kdspaudio.cpp */; };
 		1AB0CAFE263BA8AC003AF407 /* wineaudiodrv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0CAFD263BA8AC003AF407 /* wineaudiodrv.cpp */; };
 		1AB0CAFF263BA8AD003AF407 /* wineaudiodrv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0CAFD263BA8AC003AF407 /* wineaudiodrv.cpp */; };
 		1AB0CB00263BA8AD003AF407 /* wineaudiodrv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0CAFD263BA8AC003AF407 /* wineaudiodrv.cpp */; };
 		1AFC4768264096CB00EE5FCC /* armv8CPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4764264096CB00EE5FCC /* armv8CPU.cpp */; };
 		1AFC4769264096CB00EE5FCC /* llvm_helper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4765264096CB00EE5FCC /* llvm_helper.cpp */; };
-		1AFC476A26409AAB00EE5FCC /* knativecoreaudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A40D9DA263D9F2100F679F0 /* knativecoreaudio.cpp */; };
-		1AFC476B26409AAC00EE5FCC /* knativecoreaudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A40D9DA263D9F2100F679F0 /* knativecoreaudio.cpp */; };
 		1AFC476D26409EB200EE5FCC /* armv8CPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4764264096CB00EE5FCC /* armv8CPU.cpp */; };
 		1AFC476E26409EB600EE5FCC /* armv8CPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4764264096CB00EE5FCC /* armv8CPU.cpp */; };
 		1AFC476F26409EBB00EE5FCC /* llvm_helper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4765264096CB00EE5FCC /* llvm_helper.cpp */; };
 		1AFC477026409EBC00EE5FCC /* llvm_helper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4765264096CB00EE5FCC /* llvm_helper.cpp */; };
+		710091302644D412003413C3 /* knativecoreaudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7100912F2644D412003413C3 /* knativecoreaudio.cpp */; };
+		710091312644D412003413C3 /* knativecoreaudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7100912F2644D412003413C3 /* knativecoreaudio.cpp */; };
+		710091322644D412003413C3 /* knativecoreaudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7100912F2644D412003413C3 /* knativecoreaudio.cpp */; };
+		7100913C2644D42C003413C3 /* knativesynchronization.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091342644D42B003413C3 /* knativesynchronization.cpp */; };
+		7100913D2644D42C003413C3 /* knativesynchronization.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091342644D42B003413C3 /* knativesynchronization.cpp */; };
+		7100913E2644D42C003413C3 /* knativesynchronization.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091342644D42B003413C3 /* knativesynchronization.cpp */; };
+		7100913F2644D42C003413C3 /* knativewindow.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091352644D42B003413C3 /* knativewindow.cpp */; };
+		710091402644D42C003413C3 /* knativewindow.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091352644D42B003413C3 /* knativewindow.cpp */; };
+		710091412644D42C003413C3 /* knativewindow.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091352644D42B003413C3 /* knativewindow.cpp */; };
+		710091422644D42C003413C3 /* kdspaudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091362644D42B003413C3 /* kdspaudio.cpp */; };
+		710091432644D42C003413C3 /* kdspaudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091362644D42B003413C3 /* kdspaudio.cpp */; };
+		710091442644D42C003413C3 /* kdspaudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091362644D42B003413C3 /* kdspaudio.cpp */; };
+		710091452644D42C003413C3 /* knativesystem.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091372644D42B003413C3 /* knativesystem.cpp */; };
+		710091462644D42C003413C3 /* knativesystem.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091372644D42B003413C3 /* knativesystem.cpp */; };
+		710091472644D42C003413C3 /* knativesystem.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091372644D42B003413C3 /* knativesystem.cpp */; };
+		710091482644D42C003413C3 /* knativethread.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091382644D42B003413C3 /* knativethread.cpp */; };
+		710091492644D42C003413C3 /* knativethread.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091382644D42B003413C3 /* knativethread.cpp */; };
+		7100914A2644D42C003413C3 /* knativethread.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091382644D42B003413C3 /* knativethread.cpp */; };
+		7100914B2644D42C003413C3 /* knativeaudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091392644D42C003413C3 /* knativeaudio.cpp */; };
+		7100914C2644D42C003413C3 /* knativeaudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091392644D42C003413C3 /* knativeaudio.cpp */; };
+		7100914D2644D42C003413C3 /* knativeaudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091392644D42C003413C3 /* knativeaudio.cpp */; };
+		7100914E2644D42C003413C3 /* sdlcallback.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7100913A2644D42C003413C3 /* sdlcallback.cpp */; };
+		7100914F2644D42C003413C3 /* sdlcallback.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7100913A2644D42C003413C3 /* sdlcallback.cpp */; };
+		710091502644D42C003413C3 /* sdlcallback.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7100913A2644D42C003413C3 /* sdlcallback.cpp */; };
+		710091572644D44E003413C3 /* dynamic.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091522644D44E003413C3 /* dynamic.cpp */; };
+		710091582644D44E003413C3 /* dynamic.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091522644D44E003413C3 /* dynamic.cpp */; };
+		710091592644D44E003413C3 /* dynamic.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091522644D44E003413C3 /* dynamic.cpp */; };
+		7100915A2644D44E003413C3 /* memory64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091532644D44E003413C3 /* memory64.cpp */; };
+		7100915B2644D44E003413C3 /* memory64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091532644D44E003413C3 /* memory64.cpp */; };
+		7100915C2644D44E003413C3 /* memory64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091532644D44E003413C3 /* memory64.cpp */; };
+		7100915D2644D44E003413C3 /* platform.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091542644D44E003413C3 /* platform.cpp */; };
+		7100915E2644D44E003413C3 /* platform.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091542644D44E003413C3 /* platform.cpp */; };
+		7100915F2644D44E003413C3 /* platform.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091542644D44E003413C3 /* platform.cpp */; };
+		710091602644D44E003413C3 /* platformThreads.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091552644D44E003413C3 /* platformThreads.cpp */; };
+		710091612644D44E003413C3 /* platformThreads.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091552644D44E003413C3 /* platformThreads.cpp */; };
+		710091622644D44E003413C3 /* platformThreads.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091552644D44E003413C3 /* platformThreads.cpp */; };
+		710091632644D44E003413C3 /* platformThreads-x64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091562644D44E003413C3 /* platformThreads-x64.cpp */; };
+		710091642644D44E003413C3 /* platformThreads-x64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091562644D44E003413C3 /* platformThreads-x64.cpp */; };
+		710091652644D44E003413C3 /* platformThreads-x64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091562644D44E003413C3 /* platformThreads-x64.cpp */; };
 		711F834924527273008E6A0C /* boxedTexture.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 711F834824527273008E6A0C /* boxedTexture.cpp */; };
 		711F834A24527273008E6A0C /* boxedTexture.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 711F834824527273008E6A0C /* boxedTexture.cpp */; };
 		711F834B24534A06008E6A0C /* MacPlatform.m in Sources */ = {isa = PBXBuildFile; fileRef = 7120545D244D074000C3CB1B /* MacPlatform.m */; };
@@ -1331,23 +1331,10 @@
 		1A155100263261DF006E0C8A /* ioapi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = ioapi.c; path = ../../../../../lib/zlib/contrib/minizip/ioapi.c; sourceTree = "<group>"; };
 		1A155101263261DF006E0C8A /* zip.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = zip.c; path = ../../../../../lib/zlib/contrib/minizip/zip.c; sourceTree = "<group>"; };
 		1A155102263261DF006E0C8A /* unzip.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = unzip.c; path = ../../../../../lib/zlib/contrib/minizip/unzip.c; sourceTree = "<group>"; };
-		1A15514126326216006E0C8A /* sdlcallback.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = sdlcallback.cpp; path = ../../../../../platform/sdl/sdlcallback.cpp; sourceTree = "<group>"; };
-		1A15514226326216006E0C8A /* knativewindow.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = knativewindow.cpp; path = ../../../../../platform/sdl/knativewindow.cpp; sourceTree = "<group>"; };
-		1A15514326326216006E0C8A /* sdlcallback.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = sdlcallback.h; path = ../../../../../platform/sdl/sdlcallback.h; sourceTree = "<group>"; };
-		1A15514426326216006E0C8A /* knativesystem.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = knativesystem.cpp; path = ../../../../../platform/sdl/knativesystem.cpp; sourceTree = "<group>"; };
-		1A15514526326216006E0C8A /* knativeaudio.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = knativeaudio.cpp; path = ../../../../../platform/sdl/knativeaudio.cpp; sourceTree = "<group>"; };
-		1A15514626326216006E0C8A /* knativethread.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = knativethread.cpp; path = ../../../../../platform/sdl/knativethread.cpp; sourceTree = "<group>"; };
-		1A15514726326216006E0C8A /* knativesynchronization.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = knativesynchronization.cpp; path = ../../../../../platform/sdl/knativesynchronization.cpp; sourceTree = "<group>"; };
-		1A15517F26326246006E0C8A /* dynamic.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = dynamic.cpp; path = ../../../../../platform/linux/dynamic.cpp; sourceTree = "<group>"; };
-		1A15518026326246006E0C8A /* platformThreads-x64.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = "platformThreads-x64.cpp"; path = "../../../../../platform/linux/platformThreads-x64.cpp"; sourceTree = "<group>"; };
-		1A15518126326246006E0C8A /* platformThreads.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = platformThreads.cpp; path = ../../../../../platform/linux/platformThreads.cpp; sourceTree = "<group>"; };
-		1A15518226326246006E0C8A /* memory64.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = memory64.cpp; path = ../../../../../platform/linux/memory64.cpp; sourceTree = "<group>"; };
-		1A15518326326246006E0C8A /* platform.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = platform.cpp; path = ../../../../../platform/linux/platform.cpp; sourceTree = "<group>"; };
 		1A1551B22632626E006E0C8A /* pugiconfig.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = pugiconfig.hpp; path = ../../../../../lib/pugixml/src/pugiconfig.hpp; sourceTree = "<group>"; };
 		1A1551B32632626E006E0C8A /* pugixml.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = pugixml.hpp; path = ../../../../../lib/pugixml/src/pugixml.hpp; sourceTree = "<group>"; };
 		1A1551B42632626E006E0C8A /* pugixml.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = pugixml.cpp; path = ../../../../../lib/pugixml/src/pugixml.cpp; sourceTree = "<group>"; };
 		1A1551E82632656D006E0C8A /* SDL2.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SDL2.framework; path = ../../../lib/mac/SDL2.framework; sourceTree = "<group>"; };
-		1A40D9DA263D9F2100F679F0 /* knativecoreaudio.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = knativecoreaudio.cpp; path = ../../../../platform/mac/knativecoreaudio.cpp; sourceTree = "<group>"; };
 		1A4F1C362631FDAD0076F847 /* OpenSSL.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = OpenSSL.xcframework; path = Carthage/Build/OpenSSL.xcframework; sourceTree = "<group>"; };
 		1A4F8E1B24F740CC0046703D /* helpView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = helpView.h; sourceTree = "<group>"; };
 		1A4F8E1C24F740CC0046703D /* helpView.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = helpView.cpp; sourceTree = "<group>"; };
@@ -1356,7 +1343,6 @@
 		1A9193342551B6D3005A798A /* btCodeChunk.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = btCodeChunk.cpp; path = binaryTranslation/btCodeChunk.cpp; sourceTree = "<group>"; };
 		1A9193352551B6D3005A798A /* btCodeMemoryWrite.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = btCodeMemoryWrite.h; path = binaryTranslation/btCodeMemoryWrite.h; sourceTree = "<group>"; };
 		1A9193362551B6D3005A798A /* btCpu.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = btCpu.h; path = binaryTranslation/btCpu.h; sourceTree = "<group>"; };
-		1AB0CAF8263BA7AA003AF407 /* kdspaudio.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = kdspaudio.cpp; path = ../../../../../platform/sdl/kdspaudio.cpp; sourceTree = "<group>"; };
 		1AB0CAFC263BA83A003AF407 /* kdspaudio.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = kdspaudio.h; sourceTree = "<group>"; };
 		1AB0CAFD263BA8AC003AF407 /* wineaudiodrv.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = wineaudiodrv.cpp; sourceTree = "<group>"; };
 		1AFC4764264096CB00EE5FCC /* armv8CPU.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = armv8CPU.cpp; sourceTree = "<group>"; };
@@ -1365,6 +1351,20 @@
 		1AFC4767264096CB00EE5FCC /* llvm_helper.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = llvm_helper.h; sourceTree = "<group>"; };
 		1AFC476C26409BA700EE5FCC /* dynamic_generic_base.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = dynamic_generic_base.h; sourceTree = "<group>"; };
 		1AFC47712640A64D00EE5FCC /* BoxedwineX64.entitlements */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.entitlements; path = BoxedwineX64.entitlements; sourceTree = "<group>"; };
+		7100912F2644D412003413C3 /* knativecoreaudio.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = knativecoreaudio.cpp; path = ../../../../platform/mac/knativecoreaudio.cpp; sourceTree = "<group>"; };
+		710091342644D42B003413C3 /* knativesynchronization.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = knativesynchronization.cpp; path = ../../../platform/sdl/knativesynchronization.cpp; sourceTree = "<group>"; };
+		710091352644D42B003413C3 /* knativewindow.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = knativewindow.cpp; path = ../../../platform/sdl/knativewindow.cpp; sourceTree = "<group>"; };
+		710091362644D42B003413C3 /* kdspaudio.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = kdspaudio.cpp; path = ../../../platform/sdl/kdspaudio.cpp; sourceTree = "<group>"; };
+		710091372644D42B003413C3 /* knativesystem.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = knativesystem.cpp; path = ../../../platform/sdl/knativesystem.cpp; sourceTree = "<group>"; };
+		710091382644D42B003413C3 /* knativethread.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = knativethread.cpp; path = ../../../platform/sdl/knativethread.cpp; sourceTree = "<group>"; };
+		710091392644D42C003413C3 /* knativeaudio.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = knativeaudio.cpp; path = ../../../platform/sdl/knativeaudio.cpp; sourceTree = "<group>"; };
+		7100913A2644D42C003413C3 /* sdlcallback.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = sdlcallback.cpp; path = ../../../platform/sdl/sdlcallback.cpp; sourceTree = "<group>"; };
+		7100913B2644D42C003413C3 /* sdlcallback.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = sdlcallback.h; path = ../../../platform/sdl/sdlcallback.h; sourceTree = "<group>"; };
+		710091522644D44E003413C3 /* dynamic.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = dynamic.cpp; path = ../../../platform/linux/dynamic.cpp; sourceTree = "<group>"; };
+		710091532644D44E003413C3 /* memory64.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = memory64.cpp; path = ../../../platform/linux/memory64.cpp; sourceTree = "<group>"; };
+		710091542644D44E003413C3 /* platform.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = platform.cpp; path = ../../../platform/linux/platform.cpp; sourceTree = "<group>"; };
+		710091552644D44E003413C3 /* platformThreads.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = platformThreads.cpp; path = ../../../platform/linux/platformThreads.cpp; sourceTree = "<group>"; };
+		710091562644D44E003413C3 /* platformThreads-x64.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = "platformThreads-x64.cpp"; path = "../../../platform/linux/platformThreads-x64.cpp"; sourceTree = "<group>"; };
 		71034F0B24820DE700FED5C5 /* BoxedwineAutomation-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "BoxedwineAutomation-Info.plist"; path = "/Users/jamesbryant/boxedwine-source/project/mac-xcode/Boxedwine/BoxedwineAutomation-Info.plist"; sourceTree = "<absolute>"; };
 		71034F0C24820EC600FED5C5 /* Boxedwine-Automation.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Boxedwine-Automation.entitlements"; sourceTree = "<group>"; };
 		710351412482B71000FED5C5 /* BoxedwineAutomationX64-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "BoxedwineAutomationX64-Info.plist"; path = "/Users/jamesbryant/boxedwine-source/project/mac-xcode/Boxedwine/BoxedwineAutomationX64-Info.plist"; sourceTree = "<absolute>"; };
@@ -2286,43 +2286,6 @@
 			path = zlib;
 			sourceTree = "<group>";
 		};
-		1A15513F263261F8006E0C8A /* platform */ = {
-			isa = PBXGroup;
-			children = (
-				1A40D9D9263D9F0500F679F0 /* mac */,
-				1A15517A2632622A006E0C8A /* linux */,
-				1A155140263261FF006E0C8A /* sdl */,
-			);
-			path = platform;
-			sourceTree = "<group>";
-		};
-		1A155140263261FF006E0C8A /* sdl */ = {
-			isa = PBXGroup;
-			children = (
-				1AB0CAF8263BA7AA003AF407 /* kdspaudio.cpp */,
-				1A15514526326216006E0C8A /* knativeaudio.cpp */,
-				1A15514726326216006E0C8A /* knativesynchronization.cpp */,
-				1A15514426326216006E0C8A /* knativesystem.cpp */,
-				1A15514626326216006E0C8A /* knativethread.cpp */,
-				1A15514226326216006E0C8A /* knativewindow.cpp */,
-				1A15514126326216006E0C8A /* sdlcallback.cpp */,
-				1A15514326326216006E0C8A /* sdlcallback.h */,
-			);
-			path = sdl;
-			sourceTree = "<group>";
-		};
-		1A15517A2632622A006E0C8A /* linux */ = {
-			isa = PBXGroup;
-			children = (
-				1A15517F26326246006E0C8A /* dynamic.cpp */,
-				1A15518226326246006E0C8A /* memory64.cpp */,
-				1A15518326326246006E0C8A /* platform.cpp */,
-				1A15518026326246006E0C8A /* platformThreads-x64.cpp */,
-				1A15518126326246006E0C8A /* platformThreads.cpp */,
-			);
-			path = linux;
-			sourceTree = "<group>";
-		};
 		1A1551B126326258006E0C8A /* pugixml */ = {
 			isa = PBXGroup;
 			children = (
@@ -2331,14 +2294,6 @@
 				1A1551B32632626E006E0C8A /* pugixml.hpp */,
 			);
 			path = pugixml;
-			sourceTree = "<group>";
-		};
-		1A40D9D9263D9F0500F679F0 /* mac */ = {
-			isa = PBXGroup;
-			children = (
-				1A40D9DA263D9F2100F679F0 /* knativecoreaudio.cpp */,
-			);
-			name = mac;
 			sourceTree = "<group>";
 		};
 		1AFC47632640965500EE5FCC /* armv8 */ = {
@@ -2350,6 +2305,51 @@
 				1AFC4767264096CB00EE5FCC /* llvm_helper.h */,
 			);
 			path = armv8;
+			sourceTree = "<group>";
+		};
+		7100912D2644D3F7003413C3 /* platform */ = {
+			isa = PBXGroup;
+			children = (
+				710091512644D431003413C3 /* linux */,
+				710091332644D416003413C3 /* sdl */,
+				7100912E2644D400003413C3 /* mac */,
+			);
+			name = platform;
+			sourceTree = "<group>";
+		};
+		7100912E2644D400003413C3 /* mac */ = {
+			isa = PBXGroup;
+			children = (
+				7100912F2644D412003413C3 /* knativecoreaudio.cpp */,
+			);
+			path = mac;
+			sourceTree = "<group>";
+		};
+		710091332644D416003413C3 /* sdl */ = {
+			isa = PBXGroup;
+			children = (
+				710091362644D42B003413C3 /* kdspaudio.cpp */,
+				710091392644D42C003413C3 /* knativeaudio.cpp */,
+				710091342644D42B003413C3 /* knativesynchronization.cpp */,
+				710091372644D42B003413C3 /* knativesystem.cpp */,
+				710091382644D42B003413C3 /* knativethread.cpp */,
+				710091352644D42B003413C3 /* knativewindow.cpp */,
+				7100913A2644D42C003413C3 /* sdlcallback.cpp */,
+				7100913B2644D42C003413C3 /* sdlcallback.h */,
+			);
+			name = sdl;
+			sourceTree = "<group>";
+		};
+		710091512644D431003413C3 /* linux */ = {
+			isa = PBXGroup;
+			children = (
+				710091522644D44E003413C3 /* dynamic.cpp */,
+				710091532644D44E003413C3 /* memory64.cpp */,
+				710091542644D44E003413C3 /* platform.cpp */,
+				710091562644D44E003413C3 /* platformThreads-x64.cpp */,
+				710091552644D44E003413C3 /* platformThreads.cpp */,
+			);
+			name = linux;
 			sourceTree = "<group>";
 		};
 		712227752433E8C400CDBABD /* Frameworks */ = {
@@ -2921,7 +2921,7 @@
 		71FBFCA42433B815003F17F1 = {
 			isa = PBXGroup;
 			children = (
-				1A15513F263261F8006E0C8A /* platform */,
+				7100912D2644D3F7003413C3 /* platform */,
 				1A1550EA2632615F006E0C8A /* lib */,
 				715F8427244115580038F5A4 /* Media.xcassets */,
 				715FEC372440D6910038F5A4 /* poco */,
@@ -3725,27 +3725,29 @@
 			buildActionMask = 2147483647;
 			files = (
 				711F834B24534A06008E6A0C /* MacPlatform.m in Sources */,
+				710091622644D44E003413C3 /* platformThreads.cpp in Sources */,
 				71222B452435163F00CDBABD /* stringutil.cpp in Sources */,
-				1A1551902632624B006E0C8A /* platformThreads.cpp in Sources */,
 				71222BA82435169100CDBABD /* devdsp.cpp in Sources */,
 				71222B402435163F00CDBABD /* crc.cpp in Sources */,
 				71222BB02435169100CDBABD /* cpuonline.cpp in Sources */,
 				71222B632435169100CDBABD /* x64Data.cpp in Sources */,
 				71222B3F2435163100CDBABD /* testMMX.cpp in Sources */,
-				1A1551542632621A006E0C8A /* knativesystem.cpp in Sources */,
+				7100913E2644D42C003413C3 /* knativesynchronization.cpp in Sources */,
 				1AFC476E26409EB600EE5FCC /* armv8CPU.cpp in Sources */,
 				71222B602435169100CDBABD /* x64CPU.cpp in Sources */,
+				710091652644D44E003413C3 /* platformThreads-x64.cpp in Sources */,
 				71222B672435169100CDBABD /* common_arith.cpp in Sources */,
 				71222B1D2435140100CDBABD /* AppDelegate.m in Sources */,
 				71222BA92435169100CDBABD /* devnull.cpp in Sources */,
 				71222B6F2435169100CDBABD /* cpu.cpp in Sources */,
 				71222BC42435169100CDBABD /* glMarshalSize.cpp in Sources */,
-				1A1551522632621A006E0C8A /* sdlcallback.cpp in Sources */,
 				71222B422435163F00CDBABD /* player.cpp in Sources */,
 				71222B792435169100CDBABD /* soft_no_page.cpp in Sources */,
 				71222B412435163F00CDBABD /* log.cpp in Sources */,
 				71222B712435169100CDBABD /* decoder.cpp in Sources */,
 				71222BAA2435169100CDBABD /* devurandom.cpp in Sources */,
+				710091502644D42C003413C3 /* sdlcallback.cpp in Sources */,
+				7100914A2644D42C003413C3 /* knativethread.cpp in Sources */,
 				71222BBB2435169100CDBABD /* kepoll.cpp in Sources */,
 				1A15512B263261EA006E0C8A /* glew.cpp in Sources */,
 				71222B732435169100CDBABD /* normalCPU.cpp in Sources */,
@@ -3757,6 +3759,7 @@
 				71222B3D2435163100CDBABD /* testSSE2.cpp in Sources */,
 				71222B852435169100CDBABD /* fsfileopennode.cpp in Sources */,
 				71222B8D2435169100CDBABD /* fsmemnode.cpp in Sources */,
+				710091322644D412003413C3 /* knativecoreaudio.cpp in Sources */,
 				71222B8F2435169100CDBABD /* fsvirtualnode.cpp in Sources */,
 				71222BBA2435169100CDBABD /* kscheduler.cpp in Sources */,
 				71222B432435163F00CDBABD /* synchronization.cpp in Sources */,
@@ -3770,12 +3773,10 @@
 				71222BAC2435169100CDBABD /* syscall.cpp in Sources */,
 				71222B8C2435169100CDBABD /* fsnode.cpp in Sources */,
 				71222BA22435169100CDBABD /* devinput.cpp in Sources */,
-				1A15518E2632624B006E0C8A /* memory64.cpp in Sources */,
 				71222BA12435169100CDBABD /* ksocketobject.cpp in Sources */,
 				71222BC22435169100CDBABD /* sdlgl.cpp in Sources */,
 				71222BBD2435169100CDBABD /* glfunctions_ext3.cpp in Sources */,
 				71222B3E2435163100CDBABD /* testCPU.cpp in Sources */,
-				1AFC476A26409AAB00EE5FCC /* knativecoreaudio.cpp in Sources */,
 				71222B722435169100CDBABD /* normal_shift.cpp in Sources */,
 				71222BAD2435169100CDBABD /* knativesocket.cpp in Sources */,
 				71222B9F2435169100CDBABD /* ksystem.cpp in Sources */,
@@ -3784,32 +3785,29 @@
 				71222B692435169100CDBABD /* common_fpu.cpp in Sources */,
 				71222B962435169100CDBABD /* main.cpp in Sources */,
 				71222B7C2435169100CDBABD /* soft_file_map.cpp in Sources */,
-				1A1551562632621A006E0C8A /* knativewindow.cpp in Sources */,
 				71222B6A2435169100CDBABD /* common_other.cpp in Sources */,
 				71222BAE2435169100CDBABD /* kfiledescriptor.cpp in Sources */,
 				71222BB52435169100CDBABD /* loader.cpp in Sources */,
 				71222B802435169100CDBABD /* soft_native_page.cpp in Sources */,
 				71222B7A2435169100CDBABD /* soft_code_page.cpp in Sources */,
 				71222BC12435169100CDBABD /* glext.cpp in Sources */,
+				710091592644D44E003413C3 /* dynamic.cpp in Sources */,
 				71222B662435169100CDBABD /* lazyFlags.cpp in Sources */,
 				71222B9E2435169100CDBABD /* kunixsocket.cpp in Sources */,
 				71222BA62435169100CDBABD /* devzero.cpp in Sources */,
-				1A15518D2632624B006E0C8A /* platformThreads-x64.cpp in Sources */,
 				71222B462435163F00CDBABD /* recorder.cpp in Sources */,
 				71222B882435169100CDBABD /* fsdiropennode.cpp in Sources */,
 				71222B6D2435169100CDBABD /* common_sse.cpp in Sources */,
-				1A1551552632621A006E0C8A /* knativesynchronization.cpp in Sources */,
 				1AB0CB00263BA8AD003AF407 /* wineaudiodrv.cpp in Sources */,
 				71222B6B2435169100CDBABD /* common_sse2.cpp in Sources */,
-				1AB0CAFB263BA7AA003AF407 /* kdspaudio.cpp in Sources */,
 				71222B652435169100CDBABD /* common_pushpop.cpp in Sources */,
-				1A15518F2632624B006E0C8A /* platform.cpp in Sources */,
 				71222B442435163F00CDBABD /* fileutils.cpp in Sources */,
 				71222B7B2435169100CDBABD /* soft_wo_page.cpp in Sources */,
 				71222B942435169100CDBABD /* startupArgs.cpp in Sources */,
 				71222BBC2435169100CDBABD /* glfunctions_ext1.cpp in Sources */,
+				7100915C2644D44E003413C3 /* memory64.cpp in Sources */,
 				71222B952435169100CDBABD /* mainloop.cpp in Sources */,
-				1A1551572632621A006E0C8A /* knativethread.cpp in Sources */,
+				710091472644D42C003413C3 /* knativesystem.cpp in Sources */,
 				71222B992435169100CDBABD /* cpuinfo.cpp in Sources */,
 				71222BAB2435169100CDBABD /* kfile.cpp in Sources */,
 				71222B6C2435169100CDBABD /* common_bit.cpp in Sources */,
@@ -3822,17 +3820,18 @@
 				71222BA52435169100CDBABD /* devtty.cpp in Sources */,
 				71222B612435169100CDBABD /* x64Asm.cpp in Sources */,
 				71222B812435169100CDBABD /* soft_invalid_page.cpp in Sources */,
-				1A1551912632624B006E0C8A /* dynamic.cpp in Sources */,
 				71222B772435169100CDBABD /* soft_memory.cpp in Sources */,
 				71222B9B2435169100CDBABD /* self.cpp in Sources */,
+				7100914D2644D42C003413C3 /* knativeaudio.cpp in Sources */,
 				71222BB82435169100CDBABD /* kobject.cpp in Sources */,
+				7100915F2644D44E003413C3 /* platform.cpp in Sources */,
 				71222B872435169100CDBABD /* fsmemopennode.cpp in Sources */,
 				71222B5F2435169100CDBABD /* x64CodeChunk.cpp in Sources */,
 				71222B902435169100CDBABD /* threadedMainloop.cpp in Sources */,
+				710091442644D42C003413C3 /* kdspaudio.cpp in Sources */,
 				71222BC32435169100CDBABD /* glMarshal.cpp in Sources */,
 				1A1551BA26326273006E0C8A /* pugixml.cpp in Sources */,
 				71222B752435169100CDBABD /* normal_strings.cpp in Sources */,
-				1A1551532632621A006E0C8A /* knativeaudio.cpp in Sources */,
 				71222B782435169100CDBABD /* soft_ondemand_page.cpp in Sources */,
 				71222B8E2435169100CDBABD /* fszipopennode.cpp in Sources */,
 				71222B842435169100CDBABD /* fszip.cpp in Sources */,
@@ -3843,6 +3842,7 @@
 				71222B832435169100CDBABD /* hard_memory.cpp in Sources */,
 				71222BA32435169100CDBABD /* devsequencer.cpp in Sources */,
 				1AFC477026409EBC00EE5FCC /* llvm_helper.cpp in Sources */,
+				710091412644D42C003413C3 /* knativewindow.cpp in Sources */,
 				71222BB22435169100CDBABD /* cpumaxfreq.cpp in Sources */,
 				71222BA02435169100CDBABD /* kprocess.cpp in Sources */,
 				71222B862435169100CDBABD /* fszipnode.cpp in Sources */,
@@ -3865,6 +3865,7 @@
 				71222BCE24351CBA00CDBABD /* ksocketobject.cpp in Sources */,
 				715F826E2440ED1E0038F5A4 /* Format.cpp in Sources */,
 				715F825E2440ED1E0038F5A4 /* PurgeStrategy.cpp in Sources */,
+				710091312644D412003413C3 /* knativecoreaudio.cpp in Sources */,
 				715F83042440ED1E0038F5A4 /* SplitterChannel.cpp in Sources */,
 				715F639B2440E9100038F5A4 /* PartStore.cpp in Sources */,
 				715F82262440ED1D0038F5A4 /* Bugcheck.cpp in Sources */,
@@ -3934,6 +3935,7 @@
 				715F63AD2440E9100038F5A4 /* UDPServerParams.cpp in Sources */,
 				715F83622440ED1F0038F5A4 /* SimpleFileChannel.cpp in Sources */,
 				715F84202440ED200038F5A4 /* pcre_valid_utf8.c in Sources */,
+				710091432644D42C003413C3 /* kdspaudio.cpp in Sources */,
 				715F34BE2440E7480038F5A4 /* OptionCallback.cpp in Sources */,
 				715F836E2440ED1F0038F5A4 /* FormattingChannel.cpp in Sources */,
 				715F7C002440E9E00038F5A4 /* RSAKeyImpl.cpp in Sources */,
@@ -3953,14 +3955,11 @@
 				715F641B2440E9110038F5A4 /* DialogSocket.cpp in Sources */,
 				715F83702440ED1F0038F5A4 /* NumberParser.cpp in Sources */,
 				71222BE524351CBA00CDBABD /* fsfileopennode.cpp in Sources */,
-				1A1551982632624B006E0C8A /* platform.cpp in Sources */,
 				715F83AC2440ED1F0038F5A4 /* SHA1Engine.cpp in Sources */,
 				71222BE624351CBA00CDBABD /* kepoll.cpp in Sources */,
-				1A15519A2632624B006E0C8A /* dynamic.cpp in Sources */,
 				715F83BC2440ED1F0038F5A4 /* DateTime.cpp in Sources */,
 				715F828E2440ED1E0038F5A4 /* Notification.cpp in Sources */,
 				71222BE724351CBA00CDBABD /* soft_file_map.cpp in Sources */,
-				1AB0CAFA263BA7AA003AF407 /* kdspaudio.cpp in Sources */,
 				71222BE824351CBA00CDBABD /* imgui_draw.cpp in Sources */,
 				715F82DA2440ED1E0038F5A4 /* MemoryStream.cpp in Sources */,
 				71222BE924351CBA00CDBABD /* stringutil.cpp in Sources */,
@@ -3972,6 +3971,7 @@
 				71222BEA24351CBA00CDBABD /* common_arith.cpp in Sources */,
 				71222BEB24351CBA00CDBABD /* cpuscalingmaxfreq.cpp in Sources */,
 				715F83142440ED1E0038F5A4 /* StringTokenizer.cpp in Sources */,
+				7100915B2644D44E003413C3 /* memory64.cpp in Sources */,
 				715F63652440E9100038F5A4 /* TCPServerConnectionFactory.cpp in Sources */,
 				71222BEC24351CBA00CDBABD /* cpumaxfreq.cpp in Sources */,
 				715F82F82440ED1E0038F5A4 /* ThreadLocal.cpp in Sources */,
@@ -3988,6 +3988,7 @@
 				715F63D72440E9110038F5A4 /* HostEntry.cpp in Sources */,
 				1A155114263261E7006E0C8A /* mztools.c in Sources */,
 				71222BEE24351CBA00CDBABD /* cpuscalingcurfreq.cpp in Sources */,
+				710091612644D44E003413C3 /* platformThreads.cpp in Sources */,
 				715F84042440ED200038F5A4 /* SharedMemory.cpp in Sources */,
 				715F63A12440E9100038F5A4 /* StringPartSource.cpp in Sources */,
 				715F63CF2440E9110038F5A4 /* WebSocketImpl.cpp in Sources */,
@@ -4021,7 +4022,6 @@
 				71222BF924351CBA00CDBABD /* x64CodeChunk.cpp in Sources */,
 				715F82802440ED1E0038F5A4 /* Message.cpp in Sources */,
 				715F83422440ED1F0038F5A4 /* TextEncoding.cpp in Sources */,
-				1A15515D2632621B006E0C8A /* knativeaudio.cpp in Sources */,
 				715F63632440E9100038F5A4 /* SocketNotification.cpp in Sources */,
 				715F63EB2440E9110038F5A4 /* HTTPSessionInstantiator.cpp in Sources */,
 				71222BFC24351CBA00CDBABD /* kobject.cpp in Sources */,
@@ -4088,14 +4088,15 @@
 				715F635F2440E9100038F5A4 /* OAuth10Credentials.cpp in Sources */,
 				715F83DA2440ED200038F5A4 /* LoggingRegistry.cpp in Sources */,
 				715F64532440E9740038F5A4 /* X509Certificate.cpp in Sources */,
+				7100915E2644D44E003413C3 /* platform.cpp in Sources */,
 				715F7C102440E9E00038F5A4 /* CryptoStream.cpp in Sources */,
 				715F82A42440ED1E0038F5A4 /* Latin1Encoding.cpp in Sources */,
 				71222C0E24351CBA00CDBABD /* glMarshal.cpp in Sources */,
 				71222C0F24351CBA00CDBABD /* cpuonline.cpp in Sources */,
 				71222C1024351CBA00CDBABD /* x64Asm.cpp in Sources */,
+				7100914F2644D42C003413C3 /* sdlcallback.cpp in Sources */,
 				71222C1124351CBA00CDBABD /* boxedwineData.cpp in Sources */,
 				71222C1324351CBA00CDBABD /* boxedTranslation.cpp in Sources */,
-				1A15515E2632621B006E0C8A /* knativesystem.cpp in Sources */,
 				715F63DF2440E9110038F5A4 /* OAuth20Credentials.cpp in Sources */,
 				71222C1424351CBA00CDBABD /* ksystem.cpp in Sources */,
 				715F7C0A2440E9E00038F5A4 /* CipherKeyImpl.cpp in Sources */,
@@ -4137,7 +4138,6 @@
 				715F63AB2440E9100038F5A4 /* HTTPServer.cpp in Sources */,
 				715F63BF2440E9110038F5A4 /* ICMPPacketImpl.cpp in Sources */,
 				715F64592440E9740038F5A4 /* SecureStreamSocket.cpp in Sources */,
-				1A1551972632624B006E0C8A /* memory64.cpp in Sources */,
 				71222C2224351CBA00CDBABD /* cpu.cpp in Sources */,
 				71222C2324351CBA00CDBABD /* imgui_impl_opengl3.cpp in Sources */,
 				715F84022440ED200038F5A4 /* NamedMutex.cpp in Sources */,
@@ -4172,7 +4172,6 @@
 				71222C2E24351CBA00CDBABD /* devtty.cpp in Sources */,
 				715F645D2440E9740038F5A4 /* SSLManager.cpp in Sources */,
 				715F83EA2440ED200038F5A4 /* DirectoryWatcher.cpp in Sources */,
-				1AFC476B26409AAC00EE5FCC /* knativecoreaudio.cpp in Sources */,
 				715F83CC2440ED200038F5A4 /* StreamChannel.cpp in Sources */,
 				715F63BB2440E9110038F5A4 /* HTTPResponse.cpp in Sources */,
 				71222C2F24351CBA00CDBABD /* fszipopennode.cpp in Sources */,
@@ -4193,11 +4192,13 @@
 				715F64232440E9110038F5A4 /* DNS.cpp in Sources */,
 				71222C3624351CBA00CDBABD /* normal_strings.cpp in Sources */,
 				71222C3824351CBA00CDBABD /* ksignal.cpp in Sources */,
+				710091462644D42C003413C3 /* knativesystem.cpp in Sources */,
 				71222C3924351CBA00CDBABD /* common_bit.cpp in Sources */,
 				715EABBB2460C839001B4730 /* unzipDlg.cpp in Sources */,
 				715F639F2440E9100038F5A4 /* MailRecipient.cpp in Sources */,
 				715F64752440E9740038F5A4 /* PrivateKeyFactory.cpp in Sources */,
 				715F647D2440E9740038F5A4 /* CertificateHandlerFactoryMgr.cpp in Sources */,
+				7100914C2644D42C003413C3 /* knativeaudio.cpp in Sources */,
 				715F825A2440ED1D0038F5A4 /* UUIDGenerator.cpp in Sources */,
 				715F840A2440ED200038F5A4 /* adler32.c in Sources */,
 				715F63D92440E9110038F5A4 /* NTPEventArgs.cpp in Sources */,
@@ -4207,13 +4208,11 @@
 				71222C3A24351CBA00CDBABD /* meminfo.cpp in Sources */,
 				715F83F62440ED200038F5A4 /* pcre_globals.c in Sources */,
 				71222C3B24351CBA00CDBABD /* soft_no_page.cpp in Sources */,
+				710091492644D42C003413C3 /* knativethread.cpp in Sources */,
 				715F832A2440ED1F0038F5A4 /* Var.cpp in Sources */,
 				715F34E22440E7480038F5A4 /* Application.cpp in Sources */,
-				1A1551612632621B006E0C8A /* knativethread.cpp in Sources */,
-				1A15515F2632621B006E0C8A /* knativesynchronization.cpp in Sources */,
 				715F842D24464C080038F5A4 /* installView.cpp in Sources */,
 				715F64812440E9750038F5A4 /* SecureSMTPClientSession.cpp in Sources */,
-				1A15515C2632621B006E0C8A /* sdlcallback.cpp in Sources */,
 				715F34C42440E7480038F5A4 /* IntValidator.cpp in Sources */,
 				71222C3C24351CBA00CDBABD /* fszipnode.cpp in Sources */,
 				71222C3D24351CBA00CDBABD /* imgui.cpp in Sources */,
@@ -4242,6 +4241,7 @@
 				715F34E62440E7480038F5A4 /* AbstractConfiguration.cpp in Sources */,
 				715F646B2440E9740038F5A4 /* PrivateKeyPassphraseHandler.cpp in Sources */,
 				71222C4224351CBA00CDBABD /* instructions.cpp in Sources */,
+				710091402644D42C003413C3 /* knativewindow.cpp in Sources */,
 				715F82C82440ED1E0038F5A4 /* UTF8Encoding.cpp in Sources */,
 				715F7BEE2440E9E00038F5A4 /* RSADigestEngine.cpp in Sources */,
 				71222C4324351CBA00CDBABD /* fpu.cpp in Sources */,
@@ -4275,11 +4275,11 @@
 				715F34D62440E7480038F5A4 /* OptionProcessor.cpp in Sources */,
 				71222C4724351CBA00CDBABD /* glext.cpp in Sources */,
 				715F83A82440ED1F0038F5A4 /* trees.c in Sources */,
+				710091582644D44E003413C3 /* dynamic.cpp in Sources */,
 				715F82CE2440ED1E0038F5A4 /* EventChannel.cpp in Sources */,
 				71222C4824351CBA00CDBABD /* spinnerControl.cpp in Sources */,
 				715F83F02440ED200038F5A4 /* pcre_dfa_exec.c in Sources */,
 				715F63B12440E9100038F5A4 /* Net.cpp in Sources */,
-				1A1551992632624B006E0C8A /* platformThreads.cpp in Sources */,
 				715F838E2440ED1F0038F5A4 /* pcre_newline.c in Sources */,
 				715F63612440E9100038F5A4 /* AbstractHTTPRequestHandler.cpp in Sources */,
 				715F82E82440ED1E0038F5A4 /* HashStatistic.cpp in Sources */,
@@ -4299,7 +4299,6 @@
 				71222C4B24351CBA00CDBABD /* soft_copy_on_write_page.cpp in Sources */,
 				715F646F2440E9740038F5A4 /* VerificationErrorArgs.cpp in Sources */,
 				71222C4E24351CBA00CDBABD /* fs.cpp in Sources */,
-				1A1551962632624B006E0C8A /* platformThreads-x64.cpp in Sources */,
 				715F34C02440E7480038F5A4 /* OptionException.cpp in Sources */,
 				1A155113263261E7006E0C8A /* unzip.c in Sources */,
 				715F638B2440E9100038F5A4 /* POP3ClientSession.cpp in Sources */,
@@ -4363,6 +4362,7 @@
 				715F827A2440ED1E0038F5A4 /* NumberFormatter.cpp in Sources */,
 				715F82582440ED1D0038F5A4 /* inflate.c in Sources */,
 				715F84262440ED200038F5A4 /* pcre_chartables.c in Sources */,
+				710091642644D44E003413C3 /* platformThreads-x64.cpp in Sources */,
 				71222C6424351CBA00CDBABD /* boxedApp.cpp in Sources */,
 				715F82822440ED1E0038F5A4 /* compress.c in Sources */,
 				715F82742440ED1E0038F5A4 /* TextConverter.cpp in Sources */,
@@ -4377,7 +4377,6 @@
 				715F7BEA2440E9E00038F5A4 /* X509Certificate.cpp in Sources */,
 				715F825C2440ED1E0038F5A4 /* Process.cpp in Sources */,
 				715F841E2440ED200038F5A4 /* HexBinaryEncoder.cpp in Sources */,
-				1A1551602632621B006E0C8A /* knativewindow.cpp in Sources */,
 				715F82A82440ED1E0038F5A4 /* Random.cpp in Sources */,
 				715F648B2440E9750038F5A4 /* InvalidCertificateHandler.cpp in Sources */,
 				715F63D32440E9110038F5A4 /* HTTPServerRequest.cpp in Sources */,
@@ -4397,6 +4396,7 @@
 				715F826A2440ED1E0038F5A4 /* ThreadTarget.cpp in Sources */,
 				715F838C2440ED1F0038F5A4 /* MD4Engine.cpp in Sources */,
 				715F823A2440ED1D0038F5A4 /* Mutex.cpp in Sources */,
+				7100913D2644D42C003413C3 /* knativesynchronization.cpp in Sources */,
 				715F64052440E9110038F5A4 /* HTTPServerRequestImpl.cpp in Sources */,
 				715F638F2440E9100038F5A4 /* HTTPAuthenticationParams.cpp in Sources */,
 				715F636D2440E9100038F5A4 /* MulticastSocket.cpp in Sources */,
@@ -4442,8 +4442,8 @@
 				715F84212440ED200038F5A4 /* BinaryReader.cpp in Sources */,
 				715F83F32440ED200038F5A4 /* TemporaryFile.cpp in Sources */,
 				715F348A2440D7D20038F5A4 /* okDlg.cpp in Sources */,
-				1A15514826326216006E0C8A /* sdlcallback.cpp in Sources */,
 				715F83B72440ED1F0038F5A4 /* Event.cpp in Sources */,
+				710091572644D44E003413C3 /* dynamic.cpp in Sources */,
 				1A155105263261DF006E0C8A /* zip.c in Sources */,
 				715F7BF52440E9E00038F5A4 /* KeyPairImpl.cpp in Sources */,
 				71FBFEE62433BBBE003F17F1 /* glshim.c in Sources */,
@@ -4478,6 +4478,7 @@
 				715F34CB2440E7480038F5A4 /* PropertyFileConfiguration.cpp in Sources */,
 				71FBFE8F2433BBBE003F17F1 /* decoder.cpp in Sources */,
 				715F64262440E9110038F5A4 /* NTLMCredentials.cpp in Sources */,
+				710091422644D42C003413C3 /* kdspaudio.cpp in Sources */,
 				715F63D02440E9110038F5A4 /* HTTPCredentials.cpp in Sources */,
 				71FBFE742433BBBE003F17F1 /* testCPU.cpp in Sources */,
 				715F63C22440E9110038F5A4 /* HTTPMessage.cpp in Sources */,
@@ -4516,7 +4517,6 @@
 				71FBFEA52433BBBE003F17F1 /* fsmemopennode.cpp in Sources */,
 				715F63EE2440E9110038F5A4 /* HTTPServerParams.cpp in Sources */,
 				715F641A2440E9110038F5A4 /* DialogSocket.cpp in Sources */,
-				1A15518826326246006E0C8A /* platform.cpp in Sources */,
 				715F836F2440ED1F0038F5A4 /* NumberParser.cpp in Sources */,
 				71FBFEA32433BBBE003F17F1 /* fsfileopennode.cpp in Sources */,
 				715F83AB2440ED1F0038F5A4 /* SHA1Engine.cpp in Sources */,
@@ -4534,6 +4534,7 @@
 				715F63FC2440E9110038F5A4 /* NTPClient.cpp in Sources */,
 				71FBFE852433BBBE003F17F1 /* common_arith.cpp in Sources */,
 				71FBFED22433BBBE003F17F1 /* cpuscalingmaxfreq.cpp in Sources */,
+				7100915D2644D44E003413C3 /* platform.cpp in Sources */,
 				715F83132440ED1E0038F5A4 /* StringTokenizer.cpp in Sources */,
 				715F63642440E9100038F5A4 /* TCPServerConnectionFactory.cpp in Sources */,
 				71FBFED12433BBBE003F17F1 /* cpumaxfreq.cpp in Sources */,
@@ -4550,6 +4551,7 @@
 				715F82ED2440ED1E0038F5A4 /* URI.cpp in Sources */,
 				715F83912440ED1F0038F5A4 /* pcre_refcount.c in Sources */,
 				715F63D62440E9110038F5A4 /* HostEntry.cpp in Sources */,
+				7100914B2644D42C003413C3 /* knativeaudio.cpp in Sources */,
 				71FBFED02433BBBE003F17F1 /* cpuscalingcurfreq.cpp in Sources */,
 				1A155104263261DF006E0C8A /* ioapi.c in Sources */,
 				715F84032440ED200038F5A4 /* SharedMemory.cpp in Sources */,
@@ -4582,7 +4584,6 @@
 				71FBFE892433BBBE003F17F1 /* common_sse2.cpp in Sources */,
 				715F83012440ED1E0038F5A4 /* PipeStream.cpp in Sources */,
 				71FBFE7D2433BBBE003F17F1 /* x64CodeChunk.cpp in Sources */,
-				1A15514B26326216006E0C8A /* knativeaudio.cpp in Sources */,
 				715F827F2440ED1E0038F5A4 /* Message.cpp in Sources */,
 				715F83412440ED1F0038F5A4 /* TextEncoding.cpp in Sources */,
 				715F63622440E9100038F5A4 /* SocketNotification.cpp in Sources */,
@@ -4596,9 +4597,9 @@
 				715F63DC2440E9110038F5A4 /* PartHandler.cpp in Sources */,
 				71FBFECA2433BBBE003F17F1 /* kfile.cpp in Sources */,
 				715F83232440ED1F0038F5A4 /* AtomicFlag.cpp in Sources */,
-				1AB0CAF9263BA7AA003AF407 /* kdspaudio.cpp in Sources */,
 				715F829F2440ED1E0038F5A4 /* fixed-dtoa.cc in Sources */,
 				715F34842440D7D20038F5A4 /* downloadDlg.cpp in Sources */,
+				710091482644D42C003413C3 /* knativethread.cpp in Sources */,
 				7122287E2433EE5300CDBABD /* imgui_widgets.cpp in Sources */,
 				715F34C92440E7480038F5A4 /* LoggingSubsystem.cpp in Sources */,
 				71205456244D01B300C3CB1B /* ImGuiLayout.cpp in Sources */,
@@ -4609,6 +4610,7 @@
 				715F83392440ED1F0038F5A4 /* fast-dtoa.cc in Sources */,
 				71FBFEDE2433BBBE003F17F1 /* glfunctions_ext2.cpp in Sources */,
 				71FBFEDF2433BBBE003F17F1 /* glcommon.cpp in Sources */,
+				710091602644D44E003413C3 /* platformThreads.cpp in Sources */,
 				715F83632440ED1F0038F5A4 /* SharedLibrary.cpp in Sources */,
 				715F82C52440ED1E0038F5A4 /* Base32Decoder.cpp in Sources */,
 				715F82F32440ED1E0038F5A4 /* RandomStream.cpp in Sources */,
@@ -4624,7 +4626,6 @@
 				71FBFE732433BBBE003F17F1 /* testSSE2.cpp in Sources */,
 				71FBFEC32433BBBE003F17F1 /* devmixer.cpp in Sources */,
 				71FBFEE22433BBBE003F17F1 /* sdlgl.cpp in Sources */,
-				1A15518626326246006E0C8A /* platformThreads.cpp in Sources */,
 				715F63742440E9100038F5A4 /* ICMPSocket.cpp in Sources */,
 				71FBFED62433BBBE003F17F1 /* ktimer.cpp in Sources */,
 				715F63A62440E9100038F5A4 /* HTTPServerSession.cpp in Sources */,
@@ -4653,11 +4654,13 @@
 				715F83D92440ED200038F5A4 /* LoggingRegistry.cpp in Sources */,
 				715F64522440E9740038F5A4 /* X509Certificate.cpp in Sources */,
 				715F7C0F2440E9E00038F5A4 /* CryptoStream.cpp in Sources */,
+				7100913F2644D42C003413C3 /* knativewindow.cpp in Sources */,
 				715F82A32440ED1E0038F5A4 /* Latin1Encoding.cpp in Sources */,
 				71FBFEE32433BBBE003F17F1 /* glMarshal.cpp in Sources */,
 				71FBFECF2433BBBE003F17F1 /* cpuonline.cpp in Sources */,
 				71FBFE7F2433BBBE003F17F1 /* x64Asm.cpp in Sources */,
 				71FBFE6D2433BBBE003F17F1 /* boxedwineData.cpp in Sources */,
+				710091452644D42C003413C3 /* knativesystem.cpp in Sources */,
 				71FBFE5A2433BBBE003F17F1 /* boxedTranslation.cpp in Sources */,
 				715F63DE2440E9110038F5A4 /* OAuth20Credentials.cpp in Sources */,
 				71FBFEBE2433BBBE003F17F1 /* ksystem.cpp in Sources */,
@@ -4676,9 +4679,8 @@
 				7120545A244D01DA00C3CB1B /* boxedReg.cpp in Sources */,
 				71FBFEB32433BBBE003F17F1 /* startupArgs.cpp in Sources */,
 				715F82972440ED1E0038F5A4 /* RotateStrategy.cpp in Sources */,
-				1A15514A26326216006E0C8A /* knativesystem.cpp in Sources */,
+				7100915A2644D44E003413C3 /* memory64.cpp in Sources */,
 				715F83932440ED1F0038F5A4 /* pcre_maketables.c in Sources */,
-				1A15514926326216006E0C8A /* knativewindow.cpp in Sources */,
 				715F82332440ED1D0038F5A4 /* bignum.cc in Sources */,
 				715F638C2440E9100038F5A4 /* Socket.cpp in Sources */,
 				715F64002440E9110038F5A4 /* NetworkInterface.cpp in Sources */,
@@ -4691,6 +4693,7 @@
 				715F83D72440ED200038F5A4 /* UTF32Encoding.cpp in Sources */,
 				71FBFEE72433BBBE003F17F1 /* glMarshalSize.cpp in Sources */,
 				715F34862440D7D20038F5A4 /* optionsView.cpp in Sources */,
+				710091632644D44E003413C3 /* platformThreads-x64.cpp in Sources */,
 				71FBFECC2433BBBE003F17F1 /* knativesocket.cpp in Sources */,
 				71FBFE982433BBBE003F17F1 /* soft_code_page.cpp in Sources */,
 				711F834924527273008E6A0C /* boxedTexture.cpp in Sources */,
@@ -4698,7 +4701,6 @@
 				71FBFE6A2433BBBE003F17F1 /* containersView.cpp in Sources */,
 				715F34CD2440E7480038F5A4 /* ConfigurationMapper.cpp in Sources */,
 				715F63AA2440E9100038F5A4 /* HTTPServer.cpp in Sources */,
-				1A15518726326246006E0C8A /* memory64.cpp in Sources */,
 				715F63BE2440E9110038F5A4 /* ICMPPacketImpl.cpp in Sources */,
 				715F64582440E9740038F5A4 /* SecureStreamSocket.cpp in Sources */,
 				71FBFE8D2433BBBE003F17F1 /* cpu.cpp in Sources */,
@@ -4721,7 +4723,6 @@
 				715F34C12440E7480038F5A4 /* OptionSet.cpp in Sources */,
 				715F83512440ED1F0038F5A4 /* NullChannel.cpp in Sources */,
 				715F83F72440ED200038F5A4 /* JSONString.cpp in Sources */,
-				1A40D9DB263D9F2100F679F0 /* knativecoreaudio.cpp in Sources */,
 				715F34CF2440E7480038F5A4 /* Validator.cpp in Sources */,
 				71FBFEAE2433BBBE003F17F1 /* threadedMainloop.cpp in Sources */,
 				715F840F2440ED200038F5A4 /* Token.cpp in Sources */,
@@ -4772,8 +4773,8 @@
 				71FBFEB92433BBBE003F17F1 /* meminfo.cpp in Sources */,
 				715F83F52440ED200038F5A4 /* pcre_globals.c in Sources */,
 				71FBFE972433BBBE003F17F1 /* soft_no_page.cpp in Sources */,
-				1A15514D26326216006E0C8A /* knativesynchronization.cpp in Sources */,
 				715F83292440ED1F0038F5A4 /* Var.cpp in Sources */,
+				710091302644D412003413C3 /* knativecoreaudio.cpp in Sources */,
 				715F34E12440E7480038F5A4 /* Application.cpp in Sources */,
 				715F842C24464C080038F5A4 /* installView.cpp in Sources */,
 				1AFC4769264096CB00EE5FCC /* llvm_helper.cpp in Sources */,
@@ -4784,12 +4785,12 @@
 				715F82C32440ED1E0038F5A4 /* DateTimeFormatter.cpp in Sources */,
 				715F83B92440ED1F0038F5A4 /* Hash.cpp in Sources */,
 				715F64762440E9740038F5A4 /* HTTPSStreamFactory.cpp in Sources */,
-				1A15514C26326216006E0C8A /* knativethread.cpp in Sources */,
 				715F83A12440ED1F0038F5A4 /* ByteOrder.cpp in Sources */,
 				715F64842440E9750038F5A4 /* Utility.cpp in Sources */,
 				715F82A12440ED1E0038F5A4 /* Channel.cpp in Sources */,
 				715F841B2440ED200038F5A4 /* pcre_ord2utf8.c in Sources */,
 				71FBFEA02433BBBE003F17F1 /* soft_rw_page.cpp in Sources */,
+				7100913C2644D42C003413C3 /* knativesynchronization.cpp in Sources */,
 				715F63762440E9100038F5A4 /* DatagramSocketImpl.cpp in Sources */,
 				715F823B2440ED1D0038F5A4 /* PipeImpl.cpp in Sources */,
 				715F34882440D7D20038F5A4 /* baseView.cpp in Sources */,
@@ -4846,7 +4847,6 @@
 				715F838D2440ED1F0038F5A4 /* pcre_newline.c in Sources */,
 				715F63602440E9100038F5A4 /* AbstractHTTPRequestHandler.cpp in Sources */,
 				715F82E72440ED1E0038F5A4 /* HashStatistic.cpp in Sources */,
-				1A15518426326246006E0C8A /* dynamic.cpp in Sources */,
 				715F83BD2440ED1F0038F5A4 /* NotificationCenter.cpp in Sources */,
 				71FBFE772433BBBE003F17F1 /* log.cpp in Sources */,
 				715F82B72440ED1E0038F5A4 /* Timer.cpp in Sources */,
@@ -4905,7 +4905,6 @@
 				715F82AB2440ED1E0038F5A4 /* PriorityNotificationQueue.cpp in Sources */,
 				715F82A92440ED1E0038F5A4 /* NumericString.cpp in Sources */,
 				71FBFE632433BBBE003F17F1 /* baseDlg.cpp in Sources */,
-				1A15518526326246006E0C8A /* platformThreads-x64.cpp in Sources */,
 				715F824F2440ED1D0038F5A4 /* Windows1252Encoding.cpp in Sources */,
 				71FBFEAA2433BBBE003F17F1 /* fsnode.cpp in Sources */,
 				715F637E2440E9100038F5A4 /* HTTPSession.cpp in Sources */,
@@ -4952,6 +4951,7 @@
 				715F647A2440E9740038F5A4 /* SecureStreamSocketImpl.cpp in Sources */,
 				715F64022440E9110038F5A4 /* TCPServerConnection.cpp in Sources */,
 				715F82B12440ED1E0038F5A4 /* PatternFormatter.cpp in Sources */,
+				7100914E2644D42C003413C3 /* sdlcallback.cpp in Sources */,
 				715F639C2440E9100038F5A4 /* RemoteSyslogListener.cpp in Sources */,
 				715F82772440ED1E0038F5A4 /* NamedEvent.cpp in Sources */,
 				715F64622440E9740038F5A4 /* ConsoleCertificateHandler.cpp in Sources */,
