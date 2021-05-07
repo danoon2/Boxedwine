@@ -62,13 +62,16 @@ do_build()
     done
     rm -rf dlls/winex11.drv/*
     cp -r ../../wineboxed.drv/*.* dlls/winex11.drv/
+    rm -rf dlls/winealsa.drv/*
+    cp -r ../../wineboxedaudio.drv/*.* dlls/winealsa.drv/
     if [[ $ADD_DEPENDS == 1 ]]
     then
       echo "@MAKE_DLL_RULES@" >> dlls/winex11.drv/Makefile.in
+      echo "@MAKE_DLL_RULES@" >> dlls/winealsa.drv/Makefile.in
     fi
 #for some reason I don't understand the config process will fail when looking for dependencies because the header does not exist, even though I wrapped it in a #ifdef
     touch include/wine/wglext.h
-    ./configure LDFLAGS="-s" CFLAGS="-O2 -march=pentium4 $WGLEXT" --without-cups --without-pulse --without-alsa --without-dbus --without-sane --without-hal --prefix=/opt/wine --disable-tests $EXTRA_ARGS
+    ./configure LDFLAGS="-s" CFLAGS="-O2 -msse2 -march=pentium4 -mfpmath=sse $WGLEXT" --without-cups --without-pulse --without-dbus --without-sane --without-hal --prefix=/opt/wine --disable-tests $EXTRA_ARGS
     make -j4
     #todo find another way to achieve what I want without using sudo
     sudo rm -rf /opt/wine
@@ -96,6 +99,7 @@ do_build()
     fi
     echo './configure CFLAGS="-O2 -march=pentium4" --without-pulse --without-alsa  --without-dbus --without-sane --without-hal --prefix=/opt/wine --disable-tests' >> build.txt
     echo "make -j4" >> build.txt
+    mv opt/wine/lib/wine/wineoss.drv.so opt/wine/lib/wine/wineoss.drv.dsp.so
     zip -r ../wine-$VERSION.zip *
     cd ../wine-git
     make clean
@@ -132,8 +136,8 @@ else
 #patch yylex 6
 #1.5.7 <= wine < 1.7.0
 
-    do_build 1.9.0 wglext patch wine18-19-gnutls.patch patch wine17-19-cups.patch
-    do_build 1.8 wglext patch wine18-19-gnutls.patch patch wine17-19-cups.patch
+#    do_build 1.9.0 wglext patch wine18-19-gnutls.patch patch wine17-19-cups.patch
+#    do_build 1.8 wglext patch wine18-19-gnutls.patch patch wine17-19-cups.patch
     do_build 1.7.0 wglext depends
-    do_build 1.6 wglext depends patch yylex.1.patch patch yylex.2.patch patch yylex.3.patch patch yylex.4.patch patch yylex.5.patch patch yylex.6.patch
+#    do_build 1.6 wglext depends patch yylex.1.patch patch yylex.2.patch patch yylex.3.patch patch yylex.4.patch patch yylex.5.patch patch yylex.6.patch
 fi
