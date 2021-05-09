@@ -1513,8 +1513,6 @@ U32 KNativeAudioCoreAudio::midiOutLongData(U32 wDevID, U32 lpMidiHdr, U32 dwSize
     if (buffer[0] != 0xF0 || buffer[wineMidiHdr.dwBufferLength - 1] != 0xF7) {
         klog("KNativeAudioCoreAudio::midiOutLongDataThe allegedly system exclusive buffer is not correct\n\tPlease report with MIDI file");
     }
-
-
     if (buffer[0] != 0xF0) {
         /* System Exclusive */
         klog("KNativeAudioCoreAudio::midiOutLongData Add missing 0xF0 marker at the beginning of system exclusive byte stream");
@@ -1529,6 +1527,9 @@ U32 KNativeAudioCoreAudio::midiOutLongData(U32 wDevID, U32 lpMidiHdr, U32 dwSize
         if (err != noErr)
         {
             klog("KNativeAudioCoreAudio::midiOutLongData MusicDeviceSysEx(%p, %p, %d) return %d", destinations[wDevID].synth, wineMidiHdr.lpData, wineMidiHdr.dwBufferLength, err);
+            if (needToDelete) {
+                ::free(buffer);
+            }
             return MMSYSERR_ERROR;
         }
     }
@@ -1540,6 +1541,9 @@ U32 KNativeAudioCoreAudio::midiOutLongData(U32 wDevID, U32 lpMidiHdr, U32 dwSize
     wineMidiHdr.dwFlags |= MHDR_DONE;
     wineMidiHdr.writeFlags(lpMidiHdr);
     // MIDI_NotifyClient(wDevID, MOM_DONE, (DWORD_PTR)lpMidiHdr, 0L);
+    if (needToDelete) {
+        ::free(buffer);
+    }
     return MMSYSERR_NOERROR;
 }
 

@@ -55,6 +55,7 @@
 		1AFC47A726489F8600EE5FCC /* CoreMIDI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1AFC47A526489F7700EE5FCC /* CoreMIDI.framework */; };
 		1AFC47A826489FB200EE5FCC /* coremidi.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4795264827A600EE5FCC /* coremidi.cpp */; };
 		1AFC47A926489FB300EE5FCC /* coremidi.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4795264827A600EE5FCC /* coremidi.cpp */; };
+		1AFC47AA2648A7A500EE5FCC /* CoreMIDI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1AFC47A526489F7700EE5FCC /* CoreMIDI.framework */; };
 		7100913C2644D42C003413C3 /* knativesynchronization.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091342644D42B003413C3 /* knativesynchronization.cpp */; };
 		7100913D2644D42C003413C3 /* knativesynchronization.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091342644D42B003413C3 /* knativesynchronization.cpp */; };
 		7100913E2644D42C003413C3 /* knativesynchronization.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091342644D42B003413C3 /* knativesynchronization.cpp */; };
@@ -2204,6 +2205,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1AFC47AA2648A7A500EE5FCC /* CoreMIDI.framework in Frameworks */,
 				71222BC92435170600CDBABD /* CoreAudio.framework in Frameworks */,
 				71222BC8243516FD00CDBABD /* AudioToolbox.framework in Frameworks */,
 				71222BC7243516F300CDBABD /* ForceFeedback.framework in Frameworks */,
