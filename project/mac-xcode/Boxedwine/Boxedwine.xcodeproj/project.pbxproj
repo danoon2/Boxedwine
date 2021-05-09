@@ -44,9 +44,17 @@
 		1AFC476E26409EB600EE5FCC /* armv8CPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4764264096CB00EE5FCC /* armv8CPU.cpp */; };
 		1AFC476F26409EBB00EE5FCC /* llvm_helper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4765264096CB00EE5FCC /* llvm_helper.cpp */; };
 		1AFC477026409EBC00EE5FCC /* llvm_helper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4765264096CB00EE5FCC /* llvm_helper.cpp */; };
-		710091302644D412003413C3 /* knativecoreaudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7100912F2644D412003413C3 /* knativecoreaudio.cpp */; };
-		710091312644D412003413C3 /* knativecoreaudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7100912F2644D412003413C3 /* knativecoreaudio.cpp */; };
-		710091322644D412003413C3 /* knativecoreaudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7100912F2644D412003413C3 /* knativecoreaudio.cpp */; };
+		1AFC4794264826FD00EE5FCC /* knativecoreaudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4793264826FD00EE5FCC /* knativecoreaudio.cpp */; };
+		1AFC4798264827A600EE5FCC /* coremidi.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4795264827A600EE5FCC /* coremidi.cpp */; };
+		1AFC479A26483DDF00EE5FCC /* knativecoreaudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4793264826FD00EE5FCC /* knativecoreaudio.cpp */; };
+		1AFC479B26483DE000EE5FCC /* knativecoreaudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4793264826FD00EE5FCC /* knativecoreaudio.cpp */; };
+		1AFC479D2648471000EE5FCC /* audiounit.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC479C2648471000EE5FCC /* audiounit.cpp */; };
+		1AFC479E2648471000EE5FCC /* audiounit.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC479C2648471000EE5FCC /* audiounit.cpp */; };
+		1AFC479F2648471000EE5FCC /* audiounit.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC479C2648471000EE5FCC /* audiounit.cpp */; };
+		1AFC47A626489F7700EE5FCC /* CoreMIDI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1AFC47A526489F7700EE5FCC /* CoreMIDI.framework */; };
+		1AFC47A726489F8600EE5FCC /* CoreMIDI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1AFC47A526489F7700EE5FCC /* CoreMIDI.framework */; };
+		1AFC47A826489FB200EE5FCC /* coremidi.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4795264827A600EE5FCC /* coremidi.cpp */; };
+		1AFC47A926489FB300EE5FCC /* coremidi.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4795264827A600EE5FCC /* coremidi.cpp */; };
 		7100913C2644D42C003413C3 /* knativesynchronization.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091342644D42B003413C3 /* knativesynchronization.cpp */; };
 		7100913D2644D42C003413C3 /* knativesynchronization.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091342644D42B003413C3 /* knativesynchronization.cpp */; };
 		7100913E2644D42C003413C3 /* knativesynchronization.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091342644D42B003413C3 /* knativesynchronization.cpp */; };
@@ -1351,7 +1359,11 @@
 		1AFC4767264096CB00EE5FCC /* llvm_helper.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = llvm_helper.h; sourceTree = "<group>"; };
 		1AFC476C26409BA700EE5FCC /* dynamic_generic_base.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = dynamic_generic_base.h; sourceTree = "<group>"; };
 		1AFC47712640A64D00EE5FCC /* BoxedwineX64.entitlements */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.entitlements; path = BoxedwineX64.entitlements; sourceTree = "<group>"; };
-		7100912F2644D412003413C3 /* knativecoreaudio.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = knativecoreaudio.cpp; path = ../../../../platform/mac/knativecoreaudio.cpp; sourceTree = "<group>"; };
+		1AFC4793264826FD00EE5FCC /* knativecoreaudio.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = knativecoreaudio.cpp; path = ../../../platform/mac/knativecoreaudio.cpp; sourceTree = "<group>"; };
+		1AFC4795264827A600EE5FCC /* coremidi.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = coremidi.cpp; path = ../../../platform/mac/coremidi.cpp; sourceTree = "<group>"; };
+		1AFC4796264827A600EE5FCC /* coremidi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = coremidi.h; path = ../../../platform/mac/coremidi.h; sourceTree = "<group>"; };
+		1AFC479C2648471000EE5FCC /* audiounit.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = audiounit.cpp; path = ../../../platform/mac/audiounit.cpp; sourceTree = "<group>"; };
+		1AFC47A526489F7700EE5FCC /* CoreMIDI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMIDI.framework; path = System/Library/Frameworks/CoreMIDI.framework; sourceTree = SDKROOT; };
 		710091342644D42B003413C3 /* knativesynchronization.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = knativesynchronization.cpp; path = ../../../platform/sdl/knativesynchronization.cpp; sourceTree = "<group>"; };
 		710091352644D42B003413C3 /* knativewindow.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = knativewindow.cpp; path = ../../../platform/sdl/knativewindow.cpp; sourceTree = "<group>"; };
 		710091362644D42B003413C3 /* kdspaudio.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = kdspaudio.cpp; path = ../../../platform/sdl/kdspaudio.cpp; sourceTree = "<group>"; };
@@ -2207,6 +2219,7 @@
 			files = (
 				71222C7424351CBA00CDBABD /* OpenGL.framework in Frameworks */,
 				71222C7524351CBA00CDBABD /* Carbon.framework in Frameworks */,
+				1AFC47A626489F7700EE5FCC /* CoreMIDI.framework in Frameworks */,
 				1A1551FD26326745006E0C8A /* OpenSSL.xcframework in Frameworks */,
 				71222C7624351CBA00CDBABD /* ForceFeedback.framework in Frameworks */,
 				71222C7724351CBA00CDBABD /* AudioToolbox.framework in Frameworks */,
@@ -2221,6 +2234,7 @@
 			files = (
 				712227882433EE2700CDBABD /* OpenGL.framework in Frameworks */,
 				712227862433EE1200CDBABD /* Carbon.framework in Frameworks */,
+				1AFC47A726489F8600EE5FCC /* CoreMIDI.framework in Frameworks */,
 				1A4F1C7C26321EC60076F847 /* OpenSSL.xcframework in Frameworks */,
 				712227842433EDE700CDBABD /* ForceFeedback.framework in Frameworks */,
 				712227822433EDCE00CDBABD /* AudioToolbox.framework in Frameworks */,
@@ -2307,22 +2321,25 @@
 			path = armv8;
 			sourceTree = "<group>";
 		};
+		1AFC4792264826E100EE5FCC /* mac */ = {
+			isa = PBXGroup;
+			children = (
+				1AFC479C2648471000EE5FCC /* audiounit.cpp */,
+				1AFC4795264827A600EE5FCC /* coremidi.cpp */,
+				1AFC4796264827A600EE5FCC /* coremidi.h */,
+				1AFC4793264826FD00EE5FCC /* knativecoreaudio.cpp */,
+			);
+			name = mac;
+			sourceTree = "<group>";
+		};
 		7100912D2644D3F7003413C3 /* platform */ = {
 			isa = PBXGroup;
 			children = (
+				1AFC4792264826E100EE5FCC /* mac */,
 				710091512644D431003413C3 /* linux */,
 				710091332644D416003413C3 /* sdl */,
-				7100912E2644D400003413C3 /* mac */,
 			);
 			name = platform;
-			sourceTree = "<group>";
-		};
-		7100912E2644D400003413C3 /* mac */ = {
-			isa = PBXGroup;
-			children = (
-				7100912F2644D412003413C3 /* knativecoreaudio.cpp */,
-			);
-			path = mac;
 			sourceTree = "<group>";
 		};
 		710091332644D416003413C3 /* sdl */ = {
@@ -2355,6 +2372,7 @@
 		712227752433E8C400CDBABD /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				1AFC47A526489F7700EE5FCC /* CoreMIDI.framework */,
 				1A1551E82632656D006E0C8A /* SDL2.framework */,
 				1A4F1C362631FDAD0076F847 /* OpenSSL.xcframework */,
 				715F7C162440EA840038F5A4 /* libminizip.a */,
@@ -3759,7 +3777,6 @@
 				71222B3D2435163100CDBABD /* testSSE2.cpp in Sources */,
 				71222B852435169100CDBABD /* fsfileopennode.cpp in Sources */,
 				71222B8D2435169100CDBABD /* fsmemnode.cpp in Sources */,
-				710091322644D412003413C3 /* knativecoreaudio.cpp in Sources */,
 				71222B8F2435169100CDBABD /* fsvirtualnode.cpp in Sources */,
 				71222BBA2435169100CDBABD /* kscheduler.cpp in Sources */,
 				71222B432435163F00CDBABD /* synchronization.cpp in Sources */,
@@ -3774,6 +3791,7 @@
 				71222B8C2435169100CDBABD /* fsnode.cpp in Sources */,
 				71222BA22435169100CDBABD /* devinput.cpp in Sources */,
 				71222BA12435169100CDBABD /* ksocketobject.cpp in Sources */,
+				1AFC47A926489FB300EE5FCC /* coremidi.cpp in Sources */,
 				71222BC22435169100CDBABD /* sdlgl.cpp in Sources */,
 				71222BBD2435169100CDBABD /* glfunctions_ext3.cpp in Sources */,
 				71222B3E2435163100CDBABD /* testCPU.cpp in Sources */,
@@ -3833,6 +3851,8 @@
 				1A1551BA26326273006E0C8A /* pugixml.cpp in Sources */,
 				71222B752435169100CDBABD /* normal_strings.cpp in Sources */,
 				71222B782435169100CDBABD /* soft_ondemand_page.cpp in Sources */,
+				1AFC479F2648471000EE5FCC /* audiounit.cpp in Sources */,
+				1AFC479B26483DE000EE5FCC /* knativecoreaudio.cpp in Sources */,
 				71222B8E2435169100CDBABD /* fszipopennode.cpp in Sources */,
 				71222B842435169100CDBABD /* fszip.cpp in Sources */,
 				71222B682435169100CDBABD /* common_mmx.cpp in Sources */,
@@ -3865,7 +3885,6 @@
 				71222BCE24351CBA00CDBABD /* ksocketobject.cpp in Sources */,
 				715F826E2440ED1E0038F5A4 /* Format.cpp in Sources */,
 				715F825E2440ED1E0038F5A4 /* PurgeStrategy.cpp in Sources */,
-				710091312644D412003413C3 /* knativecoreaudio.cpp in Sources */,
 				715F83042440ED1E0038F5A4 /* SplitterChannel.cpp in Sources */,
 				715F639B2440E9100038F5A4 /* PartStore.cpp in Sources */,
 				715F82262440ED1D0038F5A4 /* Bugcheck.cpp in Sources */,
@@ -4104,6 +4123,7 @@
 				71222C1524351CBA00CDBABD /* soft_native_page.cpp in Sources */,
 				715F82642440ED1E0038F5A4 /* Environment.cpp in Sources */,
 				71222C1624351CBA00CDBABD /* synchronization.cpp in Sources */,
+				1AFC479E2648471000EE5FCC /* audiounit.cpp in Sources */,
 				715F645B2440E9740038F5A4 /* KeyConsoleHandler.cpp in Sources */,
 				71222C1724351CBA00CDBABD /* menubar.cpp in Sources */,
 				71222C1824351CBA00CDBABD /* common_pushpop.cpp in Sources */,
@@ -4196,6 +4216,7 @@
 				71222C3924351CBA00CDBABD /* common_bit.cpp in Sources */,
 				715EABBB2460C839001B4730 /* unzipDlg.cpp in Sources */,
 				715F639F2440E9100038F5A4 /* MailRecipient.cpp in Sources */,
+				1AFC479A26483DDF00EE5FCC /* knativecoreaudio.cpp in Sources */,
 				715F64752440E9740038F5A4 /* PrivateKeyFactory.cpp in Sources */,
 				715F647D2440E9740038F5A4 /* CertificateHandlerFactoryMgr.cpp in Sources */,
 				7100914C2644D42C003413C3 /* knativeaudio.cpp in Sources */,
@@ -4253,6 +4274,7 @@
 				715F82D02440ED1E0038F5A4 /* URIStreamFactory.cpp in Sources */,
 				715F83D02440ED200038F5A4 /* InflatingStream.cpp in Sources */,
 				71222C4524351CBA00CDBABD /* appbar.cpp in Sources */,
+				1AFC47A826489FB200EE5FCC /* coremidi.cpp in Sources */,
 				715F7C042440E9E00038F5A4 /* ECDSADigestEngine.cpp in Sources */,
 				715F82542440ED1D0038F5A4 /* UnicodeConverter.cpp in Sources */,
 				715F64732440E9740038F5A4 /* Session.cpp in Sources */,
@@ -4667,6 +4689,7 @@
 				715F7C092440E9E00038F5A4 /* CipherKeyImpl.cpp in Sources */,
 				715F827D2440ED1E0038F5A4 /* pcre_ucd.c in Sources */,
 				71FBFE9E2433BBBE003F17F1 /* soft_native_page.cpp in Sources */,
+				1AFC479D2648471000EE5FCC /* audiounit.cpp in Sources */,
 				715F82632440ED1E0038F5A4 /* Environment.cpp in Sources */,
 				71FBFE792433BBBE003F17F1 /* synchronization.cpp in Sources */,
 				715F645A2440E9740038F5A4 /* KeyConsoleHandler.cpp in Sources */,
@@ -4736,6 +4759,7 @@
 				715F83792440ED1F0038F5A4 /* pcre_version.c in Sources */,
 				715F641C2440E9110038F5A4 /* HTTPBasicCredentials.cpp in Sources */,
 				71FBFEC42433BBBE003F17F1 /* devtty.cpp in Sources */,
+				1AFC4794264826FD00EE5FCC /* knativecoreaudio.cpp in Sources */,
 				715F645C2440E9740038F5A4 /* SSLManager.cpp in Sources */,
 				715F83E92440ED200038F5A4 /* DirectoryWatcher.cpp in Sources */,
 				715F83CB2440ED200038F5A4 /* StreamChannel.cpp in Sources */,
@@ -4774,7 +4798,6 @@
 				715F83F52440ED200038F5A4 /* pcre_globals.c in Sources */,
 				71FBFE972433BBBE003F17F1 /* soft_no_page.cpp in Sources */,
 				715F83292440ED1F0038F5A4 /* Var.cpp in Sources */,
-				710091302644D412003413C3 /* knativecoreaudio.cpp in Sources */,
 				715F34E12440E7480038F5A4 /* Application.cpp in Sources */,
 				715F842C24464C080038F5A4 /* installView.cpp in Sources */,
 				1AFC4769264096CB00EE5FCC /* llvm_helper.cpp in Sources */,
@@ -4875,6 +4898,7 @@
 				71FBFE692433BBBE003F17F1 /* appChooserDlg.cpp in Sources */,
 				715F83C32440ED200038F5A4 /* double-conversion.cc in Sources */,
 				715F7C052440E9E00038F5A4 /* PKCS12Container.cpp in Sources */,
+				1AFC4798264827A600EE5FCC /* coremidi.cpp in Sources */,
 				71FBFECD2433BBBE003F17F1 /* kfiledescriptor.cpp in Sources */,
 				715F63B42440E9110038F5A4 /* FilePartSource.cpp in Sources */,
 				715F82232440ED1D0038F5A4 /* Runnable.cpp in Sources */,
