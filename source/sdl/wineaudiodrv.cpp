@@ -142,7 +142,8 @@ static void boxedaudio_midi_out_open(CPU* cpu) {
 	U32 wDevID = ARG1;
 	U32 pDesc = ARG2; // LPMIDIOPENDESC
 	U32 dwFlags = ARG3;
-	EAX = audio->midiOutOpen(wDevID, pDesc, dwFlags);
+	U32 fd = ARG4;
+	EAX = audio->midiOutOpen(wDevID, pDesc, dwFlags, fd);
 }
 
 static void boxedaudio_midi_out_close(CPU* cpu) {

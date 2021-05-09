@@ -702,7 +702,7 @@ static OSStatus ca_render_cb(void *user, AudioUnitRenderActionFlags *flags, cons
     if (This->eventFd) {
         KFileDescriptor* fd = This->process->getFileDescriptor(This->eventFd);
         if (fd) {
-            U8 c = 1;
+            U8 c = EVENT_MSG_DATA_READ;
             fd->kobject->writeNative(&c, 1);
         }
     }

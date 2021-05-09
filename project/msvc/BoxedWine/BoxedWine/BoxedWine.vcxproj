@@ -988,6 +988,7 @@
     <ClInclude Include="..\..\..\..\lib\zlib\contrib\minizip\mztools.h" />
     <ClInclude Include="..\..\..\..\lib\zlib\contrib\minizip\unzip.h" />
     <ClInclude Include="..\..\..\..\lib\zlib\contrib\minizip\zip.h" />
+    <ClInclude Include="..\..\..\..\platform\sdl\knativeaudiosdl.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeChunk.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeMemoryWrite.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCpu.h" />
@@ -3573,6 +3574,7 @@
     <ClCompile Include="..\..\..\..\platform\sdl\knativewindow.cpp" />
     <ClCompile Include="..\..\..\..\platform\sdl\sdlcallback.cpp" />
     <ClCompile Include="..\..\..\..\platform\windows\dynamic.cpp" />
+    <ClCompile Include="..\..\..\..\platform\windows\kwindowsaudio.cpp" />
     <ClCompile Include="..\..\..\..\platform\windows\memory64.cpp" />
     <ClCompile Include="..\..\..\..\platform\windows\platform.cpp" />
     <ClCompile Include="..\..\..\..\platform\windows\platformThreads.cpp" />
