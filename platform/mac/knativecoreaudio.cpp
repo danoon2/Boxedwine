@@ -47,6 +47,8 @@
 #include <AudioToolbox/AudioFormat.h>
 #include <AudioToolbox/AudioConverter.h>
 #include <AudioUnit/AudioUnit.h>
+#include <CoreMIDI/CoreMIDI.h>
+#include <AudioToolbox/AudioToolbox.h>
 
 #define S_OK 0
 #define E_FAIL 0x80004005
@@ -72,10 +74,43 @@
 #define AUDCLNT_E_DEVICE_INVALIDATED         AUDCLNT_ERR(0x004)
 #define AUDCLNT_E_UNSUPPORTED_FORMAT         AUDCLNT_ERR(0x008)
 
-static const GUID CORE_AUDIO_KSDATAFORMAT_SUBTYPE_PCM(0x00000001, 0x0000, 0x0010, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71);
-static const GUID CORE_AUDIO_KSDATAFORMAT_SUBTYPE_IEEE_FLOAT(0x00000003, 0x0000, 0x0010, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71);
-static const GUID CORE_AUDIO_KSDATAFORMAT_SUBTYPE_ALAW(0x00000006, 0x0000, 0x0010, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71);
-static const GUID CORE_AUDIO_KSDATAFORMAT_SUBTYPE_MULAW(0x00000007, 0x0000, 0x0010, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71);
+static const BoxedGUID CORE_AUDIO_KSDATAFORMAT_SUBTYPE_PCM(0x00000001, 0x0000, 0x0010, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71);
+static const BoxedGUID CORE_AUDIO_KSDATAFORMAT_SUBTYPE_IEEE_FLOAT(0x00000003, 0x0000, 0x0010, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71);
+static const BoxedGUID CORE_AUDIO_KSDATAFORMAT_SUBTYPE_ALAW(0x00000006, 0x0000, 0x0010, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71);
+static const BoxedGUID CORE_AUDIO_KSDATAFORMAT_SUBTYPE_MULAW(0x00000007, 0x0000, 0x0010, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71);
+
+static U32 MIDIOut_NumDevs = 0;
+static U32 MIDIIn_NumDevs = 0;
+
+PACKED(
+struct WineMidiHdr {
+    U32       lpData;               /* pointer to locked data block */
+    U32       dwBufferLength;       /* length of data in data block */
+    U32       dwBytesRecorded;      /* used for input only */
+    U32          dwUser;               /* for client's use */
+    U32       dwFlags;              /* assorted flags (see defines) */
+    U32       lpNext;               /* reserved for driver */
+    U32       reserved;             /* reserved for driver */
+    U32       dwOffset;             /* Callback offset into buffer */
+    U32       dwReserved[8];        /* Reserved for MMSYSTEM */
+    
+    void writeFlags(U32 address) {
+        writed(address+16, dwFlags);
+    }
+    
+    void readFlags(U32 address) {
+        dwFlags = readd(address+16);
+    }
+    
+    void read(U32 address, U32 dwSize) {
+        memcopyToNative(address, this, dwSize);
+    }
+    
+    void write(U32 address, U32 dwSize) {
+        memcopyFromNative(address, this, dwSize);
+    }
+}
+);
 
 class KNativeAudioCoreAudioData {
 public:
@@ -114,7 +149,7 @@ public:
 
     // mirrored in emulator side
     U32 period_frames; // read only, doesn't change
-    WaveFormatExtensible fmt; // read only, doesn't change
+    BoxedWaveFormatExtensible fmt; // read only, doesn't change
 };
 
 class KNativeAudioCoreAudio : public KNativeAudio, public std::enable_shared_from_this<KNativeAudioCoreAudio> {
@@ -140,7 +175,7 @@ public:
     virtual void setVolume(U32 boxedAudioId, float level, U32 channel);
     virtual void cleanup();
     
-    virtual U32 midiOutOpen(U32 wDevID, U32 lpDesc, U32 dwFlags);
+    virtual U32 midiOutOpen(U32 wDevID, U32 lpDesc, U32 dwFlags, U32 fd);
     virtual U32 midiOutClose(U32 wDevID);
     virtual U32 midiOutData(U32 wDevID, U32 dwParam);
     virtual U32 midiOutLongData(U32 wDevID, U32 lpMidiHdr, U32 dwSize);
@@ -182,14 +217,14 @@ public:
 	}
 };
 
+static bool CoreAudio_MIDIInit();
 bool KNativeAudioCoreAudio::load() {
-	// if (CoreAudio_MIDIInit() != DRV_SUCCESS)
-    //    return false;
-	return true;
+    return CoreAudio_MIDIInit();
 }
 
+static void CoreAudio_MIDIRelease();
 void KNativeAudioCoreAudio::free() {
-	// CoreAudio_MIDIRelease();
+	CoreAudio_MIDIRelease();
 }
 
 bool KNativeAudioCoreAudio::open() {
@@ -544,7 +579,7 @@ void KNativeAudioCoreAudio::captureResample(U32 boxedAudioId) {
     */
 }
 
-static HRESULT ca_get_audiodesc(AudioStreamBasicDescription *desc, const WaveFormatExtensible* fmt)
+static HRESULT ca_get_audiodesc(AudioStreamBasicDescription *desc, const BoxedWaveFormatExtensible* fmt)
 {
     desc->mFormatFlags = 0;
 
@@ -574,7 +609,7 @@ static HRESULT ca_get_audiodesc(AudioStreamBasicDescription *desc, const WaveFor
     return S_OK;
 }
 
-static HRESULT ca_setup_audiounit(bool isRender, AudioComponentInstance unit, const WaveFormatExtensible* fmt, AudioStreamBasicDescription* dev_desc, AudioConverterRef* converter)
+static HRESULT ca_setup_audiounit(bool isRender, AudioComponentInstance unit, const BoxedWaveFormatExtensible* fmt, AudioStreamBasicDescription* dev_desc, AudioConverterRef* converter)
 {
     OSStatus sc;
     HRESULT hr;
@@ -702,7 +737,7 @@ static OSStatus ca_render_cb(void *user, AudioUnitRenderActionFlags *flags, cons
     if (This->eventFd) {
         KFileDescriptor* fd = This->process->getFileDescriptor(This->eventFd);
         if (fd) {
-            U8 c = 1;
+            U8 c = EVENT_MSG_DATA_READ;
             fd->kobject->writeNative(&c, 1);
         }
     }
@@ -894,7 +929,7 @@ U32 KNativeAudioCoreAudio::isFormatSupported(U32 boxedAudioId, U32 addressWaveFo
 	AudioStreamBasicDescription dev_desc;
 	AudioConverterRef converter;
 	AudioComponentInstance unit;
-    WaveFormatExtensible fmt;
+    BoxedWaveFormatExtensible fmt;
     HRESULT hr;
     
     fmt.read(addressWaveFormat);
@@ -949,7 +984,7 @@ static U32 ca_channel_layout_to_channel_mask(const AudioChannelLayout *layout)
  * GetMixFormat! Some applications behave badly if given an odd number of
  * channels (e.g. 2.1).  Here, we find the nearest configuration that Windows
  * would report for a given channel layout. */
-static void convert_channel_layout(const AudioChannelLayout *ca_layout, WaveFormatExtensible *fmt)
+static void convert_channel_layout(const AudioChannelLayout *ca_layout, BoxedWaveFormatExtensible *fmt)
 {
     U32 ca_mask = ca_channel_layout_to_channel_mask(ca_layout);
 
@@ -1050,7 +1085,7 @@ U32 KNativeAudioCoreAudio::getMixFormat(U32 boxedAudioId, U32 addressWaveFormat)
 	if (!data) {
 		return E_FAIL;
 	}
-    WaveFormatExtensible fmt;
+    BoxedWaveFormatExtensible fmt;
 	OSStatus sc;
 	UInt32 size;
 	Float64 rate;
@@ -1177,59 +1212,467 @@ void KNativeAudioCoreAudio::stop(U32 boxedAudioId) {
     data->isPlaying = false;
 }
 
-U32 KNativeAudioCoreAudio::midiOutOpen(U32 wDevID, U32 lpDesc, U32 dwFlags) {
-	// return MIDIOut_Open(wDevID, (LPMIDIOPENDESC)dwParam1, dwParam2);
-    return E_FAIL;
+#include "coremidi.h"
+static MIDIClientRef wineMIDIClient = NULL;
+
+#define MAXPNAMELEN 32
+typedef struct midioutcaps_tag {
+  U16    wMid;
+  U16    wPid;
+  U32    vDriverVersion;
+  char16_t    szPname[MAXPNAMELEN];
+  U16    wTechnology;
+  U16    wVoices;
+  U16    wNotes;
+  U16    wChannelMask;
+  U32    dwSupport;
+} MIDIOUTCAPS;
+
+typedef struct midiopendesc_tag {
+  U32      hMidi;
+  U32      dwCallback;
+  U32      dwInstance;
+  //DWORD_PTR      dnDevNode;
+  //DWORD          cIds;
+  //MIDIOPENSTRMID rgIds[1];
+} MIDIOPENDESC;
+
+typedef struct tagMIDIDestination {
+    /* graph and synth are only used for MIDI Synth */
+    AUGraph graph;
+    AudioUnit synth;
+
+    MIDIEndpointRef dest;
+
+    MIDIOUTCAPS caps;
+    MIDIOPENDESC midiDesc;
+    U16 wFlags;
+} MIDIDestination;
+
+static MIDIPortRef MIDIOutPort = NULL;
+
+#define CALLBACK_TYPEMASK 0x00070000
+
+#define HIWORD(x) (((x) >> 16) & 0xffff)
+
+#define MAX_MIDI_SYNTHS 1
+#define MIDICAPS_VOLUME 1
+
+#define MOD_MIDIPORT 1
+#define MOD_SYNTH 2
+
+#define MMSYSERR_NOERROR 0
+#define MMSYSERR_ERROR 1
+#define MMSYSERR_BADDEVICEID 2
+#define MMSYSERR_ALLOCATED 4
+#define MMSYSERR_NOTSUPPORTED 8
+#define MMSYSERR_INVALFLAG 10
+#define MMSYSERR_INVALPARAM 11
+
+#define MIDIERR_UNPREPARED 64
+#define MIDIERR_STILLPLAYING 65
+
+#define MHDR_DONE 1
+#define MHDR_PREPARED 2
+#define MHDR_INQUEUE 4
+
+MIDIDestination *destinations;
+
+int SynthUnit_CreateDefaultSynthUnit(AUGraph *graph, AudioUnit *synth);
+int SynthUnit_Initialize(AudioUnit synth, AUGraph graph);
+int SynthUnit_Close(AUGraph graph);
+int AudioUnit_GetVolume(AudioUnit au, float *left, float *right);
+int AudioUnit_SetVolume(AudioUnit au, float left, float right);
+
+#include <codecvt>
+static void toWideChar(const char* pString, char16_t* pWideString, int len) {
+    std::u16string utf16 = std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t>{}.from_bytes(pString);
+
+    utf16.copy(pWideString, len, 0);
+}
+
+static bool CoreAudio_MIDIInit()
+{
+    int i;
+    char szPname[MAXPNAMELEN] = {0};
+
+    ItemCount numDest = MIDIGetNumberOfDestinations();
+    CFStringRef name = CFStringCreateWithFormat(kCFAllocatorDefault, NULL, CFSTR("wineMIDIClient.%d"), getpid());
+
+    wineMIDIClient = CoreMIDI_CreateClient( name );
+    if (!wineMIDIClient)
+    {
+        CFRelease(name);
+        klog("can't create wineMIDIClient\n");
+        return false;
+    }
+    CFRelease(name);
+
+    MIDIOut_NumDevs = MAX_MIDI_SYNTHS;
+    MIDIOut_NumDevs += numDest;
+
+    destinations = (MIDIDestination*)calloc(MIDIOut_NumDevs, sizeof(MIDIDestination));
+
+    if (numDest > 0)
+    {
+        name = CFStringCreateWithFormat(kCFAllocatorDefault, NULL, CFSTR("WineOutputPort.%u"), getpid());
+        MIDIOutputPortCreate(wineMIDIClient, name, &MIDIOutPort);
+        CFRelease(name);
+    }
+
+    /* initialise MIDI synths */
+    for (i = 0; i < MAX_MIDI_SYNTHS; i++)
+    {
+        snprintf(szPname, sizeof(szPname), "CoreAudio MIDI Synth %d", i);
+        toWideChar(szPname, destinations[i].caps.szPname, MAXPNAMELEN);
+
+        destinations[i].caps.wTechnology = MOD_SYNTH;
+        destinations[i].caps.wChannelMask = 0xFFFF;
+
+        destinations[i].caps.wMid = 0x00FF;     /* Manufac ID */
+        destinations[i].caps.wPid = 0x0001;     /* Product ID */
+        destinations[i].caps.vDriverVersion = 0x0001;
+        destinations[i].caps.dwSupport = MIDICAPS_VOLUME;
+        destinations[i].caps.wVoices = 16;
+        destinations[i].caps.wNotes = 16;
+    }
+    /* initialise available destinations */
+    for (i = MAX_MIDI_SYNTHS; i < numDest + MAX_MIDI_SYNTHS; i++)
+    {
+        destinations[i].dest = MIDIGetDestination(i - MAX_MIDI_SYNTHS);
+
+        CoreMIDI_GetObjectName(destinations[i].dest, szPname, sizeof(szPname));
+        toWideChar(szPname, destinations[i].caps.szPname, MAXPNAMELEN);
+
+        destinations[i].caps.wTechnology = MOD_MIDIPORT;
+        destinations[i].caps.wChannelMask = 0xFFFF;
+
+        destinations[i].caps.wMid = 0x00FF;     /* Manufac ID */
+        destinations[i].caps.wPid = 0x0001;
+        destinations[i].caps.vDriverVersion = 0x0001;
+        destinations[i].caps.dwSupport = 0;
+        destinations[i].caps.wVoices = 0;
+        destinations[i].caps.wNotes = 0;
+    }
+    return true;
+}
+
+static void CoreAudio_MIDIRelease() {
+    if (wineMIDIClient) MIDIClientDispose(wineMIDIClient); /* MIDIClientDispose will close all ports */
+    free(destinations);
+}
+
+U32 KNativeAudioCoreAudio::midiOutOpen(U32 wDevID, U32 lpDesc, U32 dwFlags, U32 fd) {
+	MIDIDestination *dest;
+
+    if (lpDesc == 0) {
+        klog("KNativeAudioCoreAudio::midiOutOpen Invalid Parameter");
+        return MMSYSERR_INVALPARAM;
+    }
+
+    if (wDevID >= MIDIOut_NumDevs) {
+        klog("KNativeAudioCoreAudio::midiOutOpen bad device ID : %d", wDevID);
+        return MMSYSERR_BADDEVICEID;
+    }
+
+    if (destinations[wDevID].midiDesc.hMidi != 0) {
+        klog("KNativeAudioCoreAudio::midiOutOpen device already open !");
+        return MMSYSERR_ALLOCATED;
+    }
+
+    if ((dwFlags & ~CALLBACK_TYPEMASK) != 0) {
+        klog("KNativeAudioCoreAudio::midiOutOpen bad dwFlags");
+        return MMSYSERR_INVALFLAG;
+    }
+    dest = &destinations[wDevID];
+
+    if (dest->caps.wTechnology == MOD_SYNTH)
+    {
+        if (!SynthUnit_CreateDefaultSynthUnit(&dest->graph, &dest->synth))
+        {
+            klog("KNativeAudioCoreAudio::midiOutOpen SynthUnit_CreateDefaultSynthUnit dest=%p failed", dest);
+            return MMSYSERR_ERROR;
+        }
+
+        if (!SynthUnit_Initialize(dest->synth, dest->graph))
+        {
+            klog("KNativeAudioCoreAudio::midiOutOpen SynthUnit_Initialise dest=%p failed", dest);
+            return MMSYSERR_ERROR;
+        }
+    }
+    dest->wFlags = HIWORD(dwFlags & CALLBACK_TYPEMASK);
+    dest->midiDesc.hMidi = readd(lpDesc);
+    dest->midiDesc.dwCallback = readd(lpDesc+4);
+    dest->midiDesc.dwInstance = readd(lpDesc+8);
+    
+    // MIDI_NotifyClient(wDevID, MOM_OPEN, 0L, 0L);
+    return MMSYSERR_NOERROR;
 }
 
 U32 KNativeAudioCoreAudio::midiOutClose(U32 wDevID) {
-	// return MIDIOut_Close(wDevID);
-    return E_FAIL;
+    U32 ret = MMSYSERR_NOERROR;
+
+    if (wDevID >= MIDIOut_NumDevs) {
+        klog("KNativeAudioCoreAudio::midiOutClose bad device ID : %d", wDevID);
+        return MMSYSERR_BADDEVICEID;
+    }
+
+    if (destinations[wDevID].caps.wTechnology == MOD_SYNTH) {
+        SynthUnit_Close(destinations[wDevID].graph);
+    }
+    destinations[wDevID].graph = 0;
+    destinations[wDevID].synth = 0;
+
+    // MIDI_NotifyClient(wDevID, MOM_CLOSE, 0L, 0L);
+    destinations[wDevID].midiDesc.hMidi = 0;
+
+    return ret;
 }
 
 U32 KNativeAudioCoreAudio::midiOutData(U32 wDevID, U32 dwParam) {
-	// return MIDIOut_Data(wDevID, dwParam1);
-    return E_FAIL;
+    U32 evt = dwParam & 0xFF;
+    UInt8 chn = (evt & 0x0F);
+
+    if (wDevID >= MIDIOut_NumDevs) {
+        klog("KNativeAudioCoreAudio::midiOutData bad device ID : %d", wDevID);
+        return MMSYSERR_BADDEVICEID;
+    }
+
+    if (destinations[wDevID].caps.wTechnology == MOD_SYNTH)
+    {
+        U32 d1  = (dwParam >> 8) & 0xFF;
+        U32 d2  = (dwParam >> 16) & 0xFF;
+        OSStatus err = noErr;
+
+        err = MusicDeviceMIDIEvent(destinations[wDevID].synth, (evt & 0xF0) | chn, d1, d2, 0);
+        if (err != noErr)
+        {
+            klog("KNativeAudioCoreAudio::midiOutData MusicDeviceMIDIEvent(%p, %04x, %04x, %04x, %d) return %d", destinations[wDevID].synth, (evt & 0xF0) | chn, d1, d2, 0, err);
+            return MMSYSERR_ERROR;
+        }
+    }
+    else
+    {
+        UInt8 buffer[3];
+        buffer[0] = (evt & 0xF0) | chn;
+        buffer[1] = (dwParam >> 8) & 0xFF;
+        buffer[2] = (dwParam >> 16) & 0xFF;
+
+        MIDIOut_Send(MIDIOutPort, destinations[wDevID].dest, buffer, 3);
+    }
+
+    return MMSYSERR_NOERROR;
 }
 
 U32 KNativeAudioCoreAudio::midiOutLongData(U32 wDevID, U32 lpMidiHdr, U32 dwSize) {
-	// return MIDIOut_LongData(wDevID, (LPMIDIHDR)dwParam1, dwParam2);
-    return E_FAIL;
+    OSStatus err = noErr;
+    WineMidiHdr wineMidiHdr;
+    
+    /* Note: MS doc does not say much about the dwBytesRecorded member of the MIDIHDR structure
+     * but it seems to be used only for midi input.
+     * Taking a look at the WAVEHDR structure (which is quite similar) confirms this assumption.
+     */
+
+    if (wDevID >= MIDIOut_NumDevs) {
+        klog("KNativeAudioCoreAudio::midiOutLongData bad device ID : %d\n", wDevID);
+        return MMSYSERR_BADDEVICEID;
+    }
+
+    if (lpMidiHdr == 0) {
+        klog("KNativeAudioCoreAudio::midiOutLongData Invalid Parameter\n");
+        return MMSYSERR_INVALPARAM;
+    }
+    wineMidiHdr.read(lpMidiHdr, dwSize);
+
+    if (wineMidiHdr.lpData == 0) {
+        return MIDIERR_UNPREPARED;
+    }
+    if (!(wineMidiHdr.dwFlags & MHDR_PREPARED)) {
+        return MIDIERR_UNPREPARED;
+    }
+    if (wineMidiHdr.dwFlags & MHDR_INQUEUE) {
+        return MIDIERR_STILLPLAYING;
+    }
+    wineMidiHdr.dwFlags &= ~MHDR_DONE;
+    wineMidiHdr.dwFlags |= MHDR_INQUEUE;
+    wineMidiHdr.writeFlags(lpMidiHdr);
+    
+    U8* buffer = (U8*)getPhysicalAddress(wineMidiHdr.lpData, wineMidiHdr.dwBufferLength);
+    bool needToDelete = false;
+    if (!buffer) {
+        buffer = (U8*)malloc(wineMidiHdr.dwBufferLength);
+        memcopyToNative(wineMidiHdr.lpData, buffer, wineMidiHdr.dwBufferLength);
+        needToDelete = true;
+    }
+    
+    /* FIXME: MS doc is not 100% clear. Will lpData only contain system exclusive
+     * data, or can it also contain raw MIDI data, to be split up and sent to
+     * modShortData() ?
+     * If the latter is true, then the following WARNing will fire up
+     */
+    if (buffer[0] != 0xF0 || buffer[wineMidiHdr.dwBufferLength - 1] != 0xF7) {
+        klog("KNativeAudioCoreAudio::midiOutLongDataThe allegedly system exclusive buffer is not correct\n\tPlease report with MIDI file");
+    }
+    if (buffer[0] != 0xF0) {
+        /* System Exclusive */
+        klog("KNativeAudioCoreAudio::midiOutLongData Add missing 0xF0 marker at the beginning of system exclusive byte stream");
+    }
+    if (buffer[wineMidiHdr.dwBufferLength - 1] != 0xF7) {
+        /* Send end of System Exclusive */
+        klog("KNativeAudioCoreAudio::midiOutLongData Add missing 0xF7 marker at the end of system exclusive byte stream");
+    }
+    if (destinations[wDevID].caps.wTechnology == MOD_SYNTH) /* FIXME */
+    {
+        err = MusicDeviceSysEx(destinations[wDevID].synth, (const UInt8 *) buffer, wineMidiHdr.dwBufferLength);
+        if (err != noErr)
+        {
+            klog("KNativeAudioCoreAudio::midiOutLongData MusicDeviceSysEx(%p, %p, %d) return %d", destinations[wDevID].synth, wineMidiHdr.lpData, wineMidiHdr.dwBufferLength, err);
+            if (needToDelete) {
+                ::free(buffer);
+            }
+            return MMSYSERR_ERROR;
+        }
+    }
+    else if (destinations[wDevID].caps.wTechnology == MOD_MIDIPORT) {
+        MIDIOut_Send(MIDIOutPort, destinations[wDevID].dest, buffer, wineMidiHdr.dwBufferLength);
+    }
+
+    wineMidiHdr.dwFlags &= ~MHDR_INQUEUE;
+    wineMidiHdr.dwFlags |= MHDR_DONE;
+    wineMidiHdr.writeFlags(lpMidiHdr);
+    // MIDI_NotifyClient(wDevID, MOM_DONE, (DWORD_PTR)lpMidiHdr, 0L);
+    if (needToDelete) {
+        ::free(buffer);
+    }
+    return MMSYSERR_NOERROR;
 }
 
 U32 KNativeAudioCoreAudio::midiOutPrepare(U32 wDevID, U32 lpMidiHdr, U32 dwSize) {
-	// return MIDIOut_Prepare(wDevID, (LPMIDIHDR)dwParam1, dwParam2);
-    return E_FAIL;
+    WineMidiHdr wineMidiHdr;
+    
+    if (!lpMidiHdr) {
+        return MMSYSERR_INVALPARAM;
+    }
+    wineMidiHdr.read(lpMidiHdr, dwSize);
+    if (wineMidiHdr.lpData == 0) {
+        return MMSYSERR_INVALPARAM;
+    }
+    if (wineMidiHdr.dwFlags & MHDR_PREPARED) {
+        return MMSYSERR_NOERROR;
+    }
+
+    wineMidiHdr.lpNext = 0;
+    wineMidiHdr.dwFlags |= MHDR_PREPARED;
+    wineMidiHdr.dwFlags &= ~(MHDR_DONE|MHDR_INQUEUE); /* flags cleared since w2k */
+    wineMidiHdr.write(lpMidiHdr, dwSize);
+    return MMSYSERR_NOERROR;
 }
 
 U32 KNativeAudioCoreAudio::midiOutUnprepare(U32 wDevID, U32 lpMidiHdr, U32 dwSize) {
-	// return MIDIOut_Unprepare(wDevID, (LPMIDIHDR)dwParam1, dwParam2);
-    return E_FAIL;
+    WineMidiHdr wineMidiHdr;
+    
+    if (!lpMidiHdr) {
+        return MMSYSERR_INVALPARAM;
+    }
+    wineMidiHdr.read(lpMidiHdr, dwSize);
+    if (wineMidiHdr.lpData == 0) {
+        return MMSYSERR_INVALPARAM;
+    }
+    if (!(wineMidiHdr.dwFlags & MHDR_PREPARED)) {
+        return MMSYSERR_NOERROR;
+    }
+    if (wineMidiHdr.dwFlags & MHDR_INQUEUE) {
+        return MIDIERR_STILLPLAYING;
+    }
+
+    wineMidiHdr.dwFlags &= ~MHDR_PREPARED;
+    wineMidiHdr.writeFlags(lpMidiHdr);
+    return MMSYSERR_NOERROR;
 }
 
 U32 KNativeAudioCoreAudio::midiOutGetDevCaps(U32 wDevID, U32 lpCaps, U32 dwSize) {
-	// return MIDIOut_GetDevCaps(wDevID, (LPMIDIOUTCAPSW)dwParam1, dwParam2);
-    return E_FAIL;
+    if (lpCaps == 0) {
+        klog("KNativeAudioCoreAudio::midiOutGetDevCaps Invalid Parameter\n");
+        return MMSYSERR_INVALPARAM;
+    }
+
+    if (wDevID >= MIDIOut_NumDevs) {
+        klog("KNativeAudioCoreAudio::midiOutGetDevCapsbad device ID : %d\n", wDevID);
+        return MMSYSERR_BADDEVICEID;
+    }
+    memcopyFromNative(lpCaps, &destinations[wDevID].caps, std::min(dwSize, (U32)sizeof(destinations[wDevID].caps)));
+    return MMSYSERR_NOERROR;
 }
 
 U32 KNativeAudioCoreAudio::midiOutGetNumDevs() {
-	// return MIDIOut_NumDevs;
-    return 0;
+    return MIDIOut_NumDevs;
 }
 
 U32 KNativeAudioCoreAudio::midiOutGetVolume(U32 wDevID, U32 lpdwVolume) {
-	// return MIDIOut_GetVolume(wDevID, (DWORD*)dwParam1);
-    return E_FAIL;
+    if (wDevID >= MIDIOut_NumDevs) {
+        klog("KNativeAudioCoreAudio::midiOutGetVolume bad device ID : %d", wDevID);
+        return MMSYSERR_BADDEVICEID;
+    }
+    if (lpdwVolume == 0) {
+        klog("KNativeAudioCoreAudio::midiOutGetVolume Invalid Parameter");
+        return MMSYSERR_INVALPARAM;
+    }
+
+    if (destinations[wDevID].caps.wTechnology == MOD_SYNTH)
+    {
+        float left;
+        float right;
+        AudioUnit_GetVolume(destinations[wDevID].synth, &left, &right);
+
+        writed(lpdwVolume, (U32) (left * 0xFFFF) + ((U32) (right * 0xFFFF) << 16));
+
+        return MMSYSERR_NOERROR;
+    }
+
+    return MMSYSERR_NOTSUPPORTED;
 }
 
 U32 KNativeAudioCoreAudio::midiOutSetVolume(U32 wDevID, U32 dwVolume) {
-	// return MIDIOut_SetVolume(wDevID, dwParam1);
-    return E_FAIL;
+    if (wDevID >= MIDIOut_NumDevs) {
+        klog("KNativeAudioCoreAudio::midiOutSetVolume bad device ID : %d", wDevID);
+        return MMSYSERR_BADDEVICEID;
+    }
+    if (destinations[wDevID].caps.wTechnology == MOD_SYNTH)
+    {
+        float left;
+        float right;
+
+        left  = (dwVolume & 0xFFFF) / 65535.0f;
+        right = ((dwVolume >> 16) & 0xFFFF) / 65535.0f;
+        AudioUnit_SetVolume(destinations[wDevID].synth, left, right);
+
+        return MMSYSERR_NOERROR;
+    }
+
+    return MMSYSERR_NOTSUPPORTED;
 }
 
 U32 KNativeAudioCoreAudio::midiOutReset(U32 wDevID) {
-	// return MIDIOut_Reset(wDevID);
-    return E_FAIL;
+    unsigned chn;
+    
+    if (wDevID >= MIDIOut_NumDevs) {
+        klog("KNativeAudioCoreAudio::midiOutReset bad device ID : %d", wDevID);
+        return MMSYSERR_BADDEVICEID;
+    }
+    if (destinations[wDevID].caps.wTechnology == MOD_SYNTH)
+    {
+        for (chn = 0; chn < 16; chn++) {
+            /* turn off every note */
+            MusicDeviceMIDIEvent(destinations[wDevID].synth, 0xB0 | chn, 0x7B, 0, 0);
+            /* remove sustain on channel */
+            MusicDeviceMIDIEvent(destinations[wDevID].synth, 0xB0 | chn, 0x40, 0, 0);
+        }
+    } else {
+        //FIXME("MOD_MIDIPORT\n");
+    }
+
+    /* FIXME: the LongData buffers must also be returned to the app */
+    return MMSYSERR_NOERROR;
 }
 
 U32 KNativeAudioCoreAudio::midiInOpen(U32 wDevID, U32 lpDesc, U32 dwFlags) {

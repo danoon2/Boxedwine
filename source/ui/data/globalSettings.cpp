@@ -85,7 +85,7 @@ void GlobalSettings::init(int argc, const char **argv) {
     GlobalSettings::defaultVsync = config.readInt("DefaultVsync", VSYNC_DEFAULT);
     GlobalSettings::fontScale = (float)config.readInt("FontScale", 100) / 100.0f;
 #ifdef _DEBUG
-    GlobalSettings::filesUrl = config.readString("FilesURL", "http://www.boxedwine.org/v/Debug/files.xml");
+    GlobalSettings::filesUrl = config.readString("FilesURL", "http://www.boxedwine.org/v/Debug/" BOXEDWINE_VERSION_STR "/files.xml");
 #else
     GlobalSettings::filesUrl = config.readString("FilesURL", "http://www.boxedwine.org/v/" BOXEDWINE_VERSION_STR "/files.xml");
 #endif

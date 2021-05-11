@@ -1,8 +1,8 @@
 #ifndef __BOXEDWINE_H__
 #define __BOXEDWINE_H__
 
-#define BOXEDWINE_VERSION_STR "201"
-#define BOXEDWINE_VERSION_DISPLAY "20.1.7"
+#define BOXEDWINE_VERSION_STR "211"
+#define BOXEDWINE_VERSION_DISPLAY "21.0.0"
 
 #include <string>
 #include <vector>

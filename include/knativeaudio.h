@@ -1,6 +1,12 @@
 #ifndef __KNATIVEAUDIO_H__
 #define __KNATIVEAUDIO_H__
 
+// no params
+#define EVENT_MSG_DATA_READ 1
+
+// dwCallBack, uFlags, hDev, wMsg, dwInstance, dwParam1, dwParam2
+#define EVENT_MSG_NOTIFY 2
+
 #define SPEAKER_FRONT_LEFT              0x00000001
 #define SPEAKER_FRONT_RIGHT             0x00000002
 #define SPEAKER_FRONT_CENTER            0x00000004
@@ -34,10 +40,10 @@
 /* 7:1 home theater 0x63F */
 #define KSAUDIO_SPEAKER_7POINT1_SURROUND (KSAUDIO_SPEAKER_5POINT1 | SPEAKER_SIDE_LEFT | SPEAKER_SIDE_RIGHT)
 
-class GUID {
+class BoxedGUID {
 public:
-	GUID() : Data1(0), Data2(0), Data3(0), Data4() {}
-	GUID(U32 Data1, U16 Data2, U16 Data3, U8 Data4, U8 Data5, U8 Data6, U8 Data7, U8 Data8, U8 Data9, U8 Data10, U8 Data11) : Data1(Data1), Data2(Data2), Data3(Data3) {
+	BoxedGUID() : Data1(0), Data2(0), Data3(0), Data4() {}
+	BoxedGUID(U32 Data1, U16 Data2, U16 Data3, U8 Data4, U8 Data5, U8 Data6, U8 Data7, U8 Data8, U8 Data9, U8 Data10, U8 Data11) : Data1(Data1), Data2(Data2), Data3(Data3) {
 		this->Data4[0] = Data4;
 		this->Data4[1] = Data5;
 		this->Data4[2] = Data6;
@@ -47,7 +53,7 @@ public:
 		this->Data4[6] = Data10;
 		this->Data4[7] = Data11;
 	}
-	bool operator==(const GUID& other) const {
+	bool operator==(const BoxedGUID& other) const {
 		if (Data1 != other.Data1) {
 			return false;
 		}
@@ -77,9 +83,9 @@ public:
 	U8   Data4[8];
 };
 
-class WaveFormatEx {
+class BoxedWaveFormatEx {
 public:
-	WaveFormatEx() : wFormatTag(0), nChannels(0), nSamplesPerSec(0), nAvgBytesPerSec(0), nBlockAlign(0), wBitsPerSample(0), cbSize(0) {}
+	BoxedWaveFormatEx() : wFormatTag(0), nChannels(0), nSamplesPerSec(0), nAvgBytesPerSec(0), nBlockAlign(0), wBitsPerSample(0), cbSize(0) {}
 	U32 read(U32 address) {
 		wFormatTag = readw(address); address += 2;
 		nChannels = readw(address); address += 2;
@@ -112,11 +118,11 @@ public:
 	U16	cbSize;
 };
 
-class WaveFormatExtensible : public WaveFormatEx {
+class BoxedWaveFormatExtensible : public BoxedWaveFormatEx {
 public:
-	WaveFormatExtensible() : WaveFormatEx(), wValidBitsPerSample(0), dwChannelMask(0) {}
+	BoxedWaveFormatExtensible() : BoxedWaveFormatEx(), wValidBitsPerSample(0), dwChannelMask(0) {}
 	void read(U32 address) {
-		address = WaveFormatEx::read(address);
+		address = BoxedWaveFormatEx::read(address);
 		if (this->cbSize == 0 || this->cbSize >= 22) {
 			wValidBitsPerSample = readw(address); address += 2;
 			dwChannelMask = readd(address); address += 4;
@@ -124,7 +130,7 @@ public:
 		}
 	}
 	void write(U32 address) {
-		address = WaveFormatEx::write(address);
+		address = BoxedWaveFormatEx::write(address);
 		if (this->cbSize == 0 || this->cbSize >= 22) {
 			writew(address, wValidBitsPerSample); address += 2;
 			writed(address, dwChannelMask); address += 4;
@@ -133,7 +139,7 @@ public:
 	}
 	U16 wValidBitsPerSample; // union with wSamplesPerBlock
 	U32 dwChannelMask;
-	GUID SubFormat;
+	BoxedGUID SubFormat;
 };
 
 class KNativeAudio {
@@ -165,7 +171,7 @@ public:
 	virtual void setVolume(U32 boxedAudioId, float level, U32 channel) = 0;
     virtual void cleanup() = 0;
     
-	virtual U32 midiOutOpen(U32 wDevID, U32 lpDesc, U32 dwFlags) = 0;
+	virtual U32 midiOutOpen(U32 wDevID, U32 lpDesc, U32 dwFlags, U32 fd) = 0;
 	virtual U32 midiOutClose(U32 wDevID) = 0;
 	virtual U32 midiOutData(U32 wDevID, U32 dwParam) = 0;
 	virtual U32 midiOutLongData(U32 wDevID, U32 lpMidiHdr, U32 dwSize) = 0;
