@@ -115,17 +115,45 @@ struct int2Float {
 int pipeFd[2];
 static HANDLE thread;
 static HANDLE dsoundEvent;
+static unsigned char read8() {
+    unsigned char b;
+    while (read(pipeFd[0], &b, 1) == 0) {
+    }
+    return b;
+}
+
+static DWORD read32() {
+    DWORD result = read8();
+    result |= (read8() << 8);
+    result |= (read8() << 16);
+    result |= (read8() << 24);
+    return result;
+}
+
 static DWORD CALLBACK msg_thread(void *p) {
     char b;
 
     TRACE("Start\n");
     while (read(pipeFd[0], &b, 1)>=0) {
-        TRACE("Pump");
-        if (dsoundEvent) {
-            TRACE(" Event");
-            SetEvent(dsoundEvent);
-        }        
-        TRACE("\n");
+        if (b == 1) {
+            TRACE("Pump");
+            if (dsoundEvent) {
+                TRACE(" Event");
+                SetEvent(dsoundEvent);
+            }        
+            TRACE("\n");
+        } else if (b == 2) {
+            DWORD dwCallBack, uFlags, hDev, wMsg, dwInstance , dwParam1, dwParam2;
+            dwCallBack = read32();
+            uFlags = read32();
+            hDev = read32();
+            wMsg = read32();
+            dwInstance = read32();
+            dwParam1 = read32();
+            dwParam2 = read32();
+            TRACE("MIDI_NotifyClient dwCallBack=%x uFlags=%X hDev=%X wMsg=%d dwInstance=%X dwParam1=%X dwParam2=%X\n", dwCallBack, uFlags, hDev, wMsg, dwInstance, dwParam1, dwParam2);
+            DriverCallback(dwCallBack, uFlags, hDev, wMsg, dwInstance, dwParam1, dwParam2);
+        }
     }
     TRACE("Exit\n");
     thread = NULL;
@@ -198,6 +226,11 @@ DWORD WINAPI BoxedAudio_modMessage(UINT wDevID, UINT wMsg, DWORD dwUser, DWORD d
 	case DRVM_DISABLE:
 		return 0;
 	case MODM_OPEN: {
+                if (!thread) {
+                    pipe( pipeFd );
+                    thread = CreateThread(0, 0, msg_thread, NULL, 0, 0);
+                    TRACE("created msg thread: %d\n", (int)thread);
+                }
 		CALL_3(BOXED_AUDIO_MIDIOUT_OPEN, wDevID, (DWORD)(LPMIDIOPENDESC)dwParam1, dwParam2);
                 return result;
 	    }

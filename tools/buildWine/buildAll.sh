@@ -97,7 +97,7 @@ do_build()
     then
       echo "Patched: $PATCHES" >> build.txt
     fi
-    echo './configure CFLAGS="-O2 -march=pentium4" --without-pulse --without-alsa  --without-dbus --without-sane --without-hal --prefix=/opt/wine --disable-tests' >> build.txt
+    echo './configure CFLAGS="-O2 -msse2 -march=pentium4 -mfpmath=sse" --without-pulse --without-dbus --without-sane --without-hal --prefix=/opt/wine --disable-tests' >> build.txt
     echo "make -j4" >> build.txt
     mv opt/wine/lib/wine/wineoss.drv.so opt/wine/lib/wine/wineoss.drv.dsp.so
     zip -r ../wine-$VERSION.zip *
@@ -114,9 +114,9 @@ then
 # f2e5b8070776268912e1886d4516d7ddec6969fc
 # kernel32: Use the Get/SetComputerName functions from kernelbase. 
 # reverted because on slower systems it will fail to create a window, not sure why
-    do_build 5.0 patch wine5-lz.patch revert f2e5b8070776268912e1886d4516d7ddec6969fc
-#    do_build 4.0
-#    do_build 3.1
+    do_build 5.0 patch ddraw_waitvblank.patch patch wine5-lz.patch revert f2e5b8070776268912e1886d4516d7ddec6969fc
+    do_build 4.0
+    do_build 3.1
 else
     do_build 2.0 wglext
 
