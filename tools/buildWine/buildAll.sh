@@ -115,10 +115,10 @@ then
 # kernel32: Use the Get/SetComputerName functions from kernelbase. 
 # reverted because on slower systems it will fail to create a window, not sure why
     do_build 5.0 patch ddraw_waitvblank.patch patch wine5-lz.patch revert f2e5b8070776268912e1886d4516d7ddec6969fc
-    do_build 4.0
-    do_build 3.1
+    do_build 4.0 patch ddraw_waitvblank.patch
+    do_build 3.1 patch ddraw_waitvblank.patch
 else
-    do_build 2.0 wglext
+    do_build 2.0 wglext patch ddraw_waitvblank.patch
 
 #patch wine18-19-gnutls.patch
 #1.7.47 <= wine < 1.9.13"
@@ -136,8 +136,8 @@ else
 #patch yylex 6
 #1.5.7 <= wine < 1.7.0
 
-#    do_build 1.9.0 wglext patch wine18-19-gnutls.patch patch wine17-19-cups.patch
-#    do_build 1.8 wglext patch wine18-19-gnutls.patch patch wine17-19-cups.patch
-    do_build 1.7.0 wglext depends
-#    do_build 1.6 wglext depends patch yylex.1.patch patch yylex.2.patch patch yylex.3.patch patch yylex.4.patch patch yylex.5.patch patch yylex.6.patch
+    do_build 1.9.0 wglext patch ddraw_waitvblank.patch patch wine18-19-gnutls.patch patch wine17-19-cups.patch
+    do_build 1.8 wglext patch ddraw_waitvblank.patch patch wine18-19-gnutls.patch patch wine17-19-cups.patch
+    do_build 1.7.0 wglext depends patch ddraw_waitvblank_17.patch
+    do_build 1.6 wglext depends patch ddraw_waitvblank_17.patch patch yylex.1.patch patch yylex.2.patch patch yylex.3.patch patch yylex.4.patch patch yylex.5.patch patch yylex.6.patch
 fi
