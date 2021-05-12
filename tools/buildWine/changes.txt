@@ -1,3 +1,7 @@
-v1
-
-2/21/2020 * Initial creation
+v6 5/08/2021 * Recompiled Wine, will now use SSE for floating point math.  
+               Added winealsa.drv.so which will talk to Boxedwine directly.
+               Added an implementation for ddraw.dll ddraw7_WaitForVerticalBlank
+v5 8/25/2020 * Issue #19 updated winexll.drv/wineboxed.drv.  This fixes some games that hang when there is a lot of keyboard or mouse input.
+v4 5/29/2020 * Issue #12 reverted kernel32: Use the Get/SetComputerName functions from kernelbase. f2e5b8070776268912e1886d4516d7ddec6969fc
+v2 2/28/2020 * Added icoutils package
+v1 2/21/2020 * Initial creation

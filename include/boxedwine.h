@@ -1,8 +1,8 @@
 #ifndef __BOXEDWINE_H__
 #define __BOXEDWINE_H__
 
-#define BOXEDWINE_VERSION_STR "201"
-#define BOXEDWINE_VERSION_DISPLAY "20.1.7"
+#define BOXEDWINE_VERSION_STR "211"
+#define BOXEDWINE_VERSION_DISPLAY "21.0.0"
 
 #include <string>
 #include <vector>
@@ -15,6 +15,24 @@
 #include <filesystem>
 
 #include <errno.h>
+
+#ifdef BOXEDWINE_MAC_JIT
+#include "TargetConditionals.h"
+#if TARGET_CPU_ARM64
+#define BOXEDWINE_DYNAMIC_ARMV8
+#define BOXEDWINE_DYNAMIC
+#define MAP_BOXEDWINE MAP_JIT
+#else
+#define BOXEDWINE_X64_DEBUG_NO_EXCEPTIONS
+#define BOXEDWINE_BINARY_TRANSLATOR
+#define BOXEDWINE_X64
+#define BOXEDWINE_MULTI_THREADED
+#define BOXEDWINE_64BIT_MMU
+#define MAP_BOXEDWINE 0
+#endif
+#else
+#define MAP_BOXEDWINE 0
+#endif
 
 #include "../source/util/boxedptr.h"
 

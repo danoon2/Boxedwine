@@ -25,6 +25,7 @@
 #include "kstat.h"
 #include "knativesystem.h"
 #include "knativewindow.h"
+#include "knativeaudio.h"
 
 #ifndef BOXEDWINE_DISABLE_UI
 #include "../ui/data/globalSettings.h"
@@ -37,6 +38,7 @@
 
 void gl_init(const std::string& allowExtensions);
 void initWine();
+void initWineAudio();
 
 U32 StartUpArgs::uiType;
 
@@ -186,6 +188,10 @@ std::vector<std::string> StartUpArgs::buildArgs() {
     if (showWindowImmediately) {
         args.push_back("-showWindowImmediately");
     }
+    if (skipFrameFPS) {
+        args.push_back("-skipFrameFPS");
+        args.push_back(std::to_string(skipFrameFPS));
+    }
     if (cpuAffinity) {
         args.push_back("-cpuAffinity");
         args.push_back(std::to_string(cpuAffinity));
@@ -220,7 +226,8 @@ bool StartUpArgs::apply() {
     KSystem::pentiumLevel = this->pentiumLevel;
     KSystem::pollRate = this->pollRate;
     KSystem::showWindowImmediately = this->showWindowImmediately;
-
+    KSystem::skipFrameFPS = this->skipFrameFPS;
+    
     for (U32 f=0;f<nonExecFileFullPaths.size();f++) {
         FsFileNode::nonExecFileFullPaths.insert(nonExecFileFullPaths[f]);
     }
@@ -416,6 +423,8 @@ bool StartUpArgs::apply() {
     KSystem::soundEnabled = this->soundEnabled;
     KNativeWindow::init(this->screenCx, this->screenCy, this->screenBpp, this->sdlScaleX, this->sdlScaleY, this->sdlScaleQuality, this->sdlFullScreen, this->vsync);
     initWine();
+    initWineAudio();
+    KNativeAudio::init();
 #if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
     gl_init(this->glExt);        
 #endif   
@@ -443,6 +452,7 @@ bool StartUpArgs::apply() {
 #endif
 	KSystem::destroy();
     KNativeWindow::shutdown();
+    KNativeAudio::shutdown();
     dspShutdown();
 
 #ifdef BOXEDWINE_ZLIB
@@ -608,6 +618,9 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
 #else
             klog("ignoring -cpuAffinity");
 #endif
+            i++;
+        } else if (!strcmp(argv[i], "-skipFrameFPS") && i+1<argc) {
+            this->skipFrameFPS = atoi(argv[i+1]);
             i++;
         }
 #ifdef BOXEDWINE_RECORDER

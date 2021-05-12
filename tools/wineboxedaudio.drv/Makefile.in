@@ -1,0 +1,6 @@
+MODULE    = winealsa.drv
+IMPORTS   = uuid ole32 advapi32
+DELAYIMPORTS = winmm
+
+C_SRCS = \
+	mmdevdrv.c

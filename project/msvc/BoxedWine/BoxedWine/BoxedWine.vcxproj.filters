@@ -1579,6 +1579,15 @@
     <ClCompile Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeMemoryWrite.cpp">
       <Filter>source\emulation\cpu\binaryTranslation</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\sdl\wineaudiodrv.cpp">
+      <Filter>source\sdl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\platform\sdl\kdspaudio.cpp">
+      <Filter>platform\sdl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\platform\windows\kwindowsaudio.cpp">
+      <Filter>platform\windows</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -3755,6 +3764,12 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCpu.h">
       <Filter>source\emulation\cpu\binaryTranslation</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\kdspaudio.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\platform\sdl\knativeaudiosdl.h">
+      <Filter>platform\sdl</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -243,7 +243,7 @@ bool KNativeWindowSdl::processEvents() {
     if (isShutdownWindowIsOpen()) {
         updateShutdownWindow();
     }
-    while (SDL_WaitEventTimeout(&e, 0) == 1) {
+    while (SDL_PollEvent(&e) == 1) {
 #ifdef BOXEDWINE_MULTI_THREADED
         if (e.type == sdlCustomEvent) {
             SdlCallback* callback = (SdlCallback*)e.user.data1;
@@ -253,6 +253,7 @@ bool KNativeWindowSdl::processEvents() {
             BOXEDWINE_CONDITION_UNLOCK(callback->cond);
         } else 
 #endif
+        
         if (!handlSdlEvent(&e)) {
             return false;
         }
@@ -707,13 +708,13 @@ void KNativeWindowSdl::displayChanged(KThread* thread) {
             if (fullScreen == FULLSCREEN_STRETCH) {
                 cx = dm.w;
                 cy = dm.h;
-                flags |= SDL_WINDOW_FULLSCREEN;
+                flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
                 scaleX = dm.w * 100 / width;
                 scaleY = dm.h * 100 / height;
             } else if (fullScreen == FULLSCREEN_ASPECT) {
                 cx = dm.w;
                 cy = dm.h;
-                flags |= SDL_WINDOW_FULLSCREEN;
+                flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
                 scaleX = dm.w * 100 / width;
                 scaleY = dm.h * 100 / height;
                 scaleXOffset = 0;
@@ -726,14 +727,14 @@ void KNativeWindowSdl::displayChanged(KThread* thread) {
                     scaleXOffset = (dm.w - width * scaleX / 100) / 2;
                 }
             } else if (width == (U32)dm.w && height == (U32)dm.h) {
-                flags |= SDL_WINDOW_FULLSCREEN;
+                flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
             }   
             if (cx > dm.w || cy > dm.h) {
                 cx = dm.w;
                 cy = dm.h;
                 scaleX = dm.w * 100 / width;
                 scaleY = dm.h * 100 / height;
-                flags |= SDL_WINDOW_FULLSCREEN;
+                flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
             }
         }
         
@@ -863,6 +864,15 @@ U32 recorderBufferSize;
 #endif
 
 void KNativeWindowSdl::drawAllWindows(KThread* thread, U32 hWnd, int count) {
+    if (KSystem::skipFrameFPS) {
+        static U64 lastUpdate=0;
+        static U64 diff = 100000 / KSystem::skipFrameFPS;
+        U64 now = KSystem::getMicroCounter();
+        if (now - lastUpdate < diff) {
+            return;
+        }
+        lastUpdate = now;
+    }
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(sdlMutex);
     if (KSystem::videoEnabled && (!renderer || (contextCount && lastGlCallTime+1000> KSystem::getMilliesSinceStart()))) {
         // don't let window drawing and opengl drawing fight and clobber each other, if OpenGL was active in the last second, then don't draw the window
@@ -961,9 +971,8 @@ void KNativeWindowSdl::drawAllWindows(KThread* thread, U32 hWnd, int count) {
                 rect.x = sdlDesktopWidth - scaleXOffset;
                 SDL_RenderFillRect(renderer, &rect);
             }
-            SDL_RenderPresent(renderer);
         }
-        
+        SDL_RenderPresent(renderer);
         DISPATCH_MAIN_THREAD_BLOCK_END
     }
     KNativeWindow::windowUpdated = true;

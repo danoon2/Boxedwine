@@ -29,6 +29,7 @@
 #include <time.h>
 
 bool KSystem::modesInitialized = false;
+U32 KSystem::skipFrameFPS = 0;
 bool KSystem::videoEnabled = true;
 bool KSystem::soundEnabled = true;
 unsigned int KSystem::nextThreadId=10;

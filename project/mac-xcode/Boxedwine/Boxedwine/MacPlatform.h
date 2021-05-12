@@ -10,3 +10,4 @@
 
 void MacPlatformOpenFileLocation(const char* str);
 const char* MacPlatformGetResourcePath(const char* pName);
+void MacPlatormSetThreadPriority(void);

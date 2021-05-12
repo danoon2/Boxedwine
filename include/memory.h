@@ -115,8 +115,8 @@ private:
 public: 
 
 #ifdef BOXEDWINE_DEFAULT_MMU
-private:
-    Page* mmu[K_NUMBER_OF_PAGES];        
+    Page* mmu[K_NUMBER_OF_PAGES];
+
     U8* mmuReadPtr[K_NUMBER_OF_PAGES];
     U8* mmuWritePtr[K_NUMBER_OF_PAGES];
 

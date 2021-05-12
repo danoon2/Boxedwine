@@ -187,6 +187,8 @@ void OPCALL normal_int98(CPU* cpu, DecodedOp* op) {
     U32 index = cpu->peek32(0);
     if (index<wine_callbackSize && wine_callback[index]) {
         wine_callback[index](cpu);
+    } else if (index >= wine_audio_callback_base && index < wine_audio_callback_base + wine_audio_callback_size) {
+        wine_audio_callback[index - wine_audio_callback_base](cpu);
     } else {
         kpanic("Uknown int 98 call: %d", index);
     }
