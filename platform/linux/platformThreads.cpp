@@ -10,6 +10,11 @@ U32 platformThreadCount = 0;
 
 void platformHandler(int sig, siginfo_t* info, void* vcontext);
 
+#ifdef __MACH__
+#include <mach/task.h>
+#include <mach/mach_init.h>
+#include <mach/mach_port.h>
+#endif
 void* platformThreadProc(void* param) {
     static bool initializedHandler = false;
     if (!initializedHandler) {
@@ -26,6 +31,14 @@ void* platformThreadProc(void* param) {
         }
         sigaction(SIGTRAP, &sa, &oldsa);
         initializedHandler = true;
+#ifdef __MACH__
+        // proc hand -p true -s false SIGILL
+        // proc hand -p true -s false SIGBUS
+        // in the debug out put window, (lldb) enter the above 2 commands in order to run while debugging on Mac
+        
+        // set a break point on this line then enter the above commands.
+        task_set_exception_ports(mach_task_self(), EXC_MASK_BAD_ACCESS | EXC_MASK_BAD_INSTRUCTION, MACH_PORT_NULL, EXCEPTION_DEFAULT, 0);
+#endif
     }
     KThread* thread = (KThread*)param;
     BtCPU* cpu = (BtCPU*)thread->cpu;
