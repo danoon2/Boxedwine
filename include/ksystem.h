@@ -79,7 +79,8 @@ public:
     static U32 pollRate;
     static bool showWindowImmediately;
     static U32 skipFrameFPS;
-    
+    static FILE* logFile;
+
     static void init();
 	static void destroy();
     static U32 getNextThreadId();

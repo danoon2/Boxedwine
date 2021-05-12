@@ -43,9 +43,6 @@ int boxedmain(int argc, const char **argv) {
 
     klog("Starting ...");    
     KSystem::startMicroCounter();
-#ifdef LOG_OPS
-    logFile = fopen("log.txt", "w");
-#endif
     if (argc == 1) {
         if (!startupArgs.loadDefaultResource(argv[0])) {
             return 1;

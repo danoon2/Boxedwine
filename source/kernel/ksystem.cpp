@@ -58,6 +58,7 @@ bool KSystem::useLargeAddressSpace = true;
 U32 KSystem::cpuAffinityCountForApp = 1;
 #endif
 U32 KSystem::pollRate = DEFAULT_POLL_RATE;
+FILE* KSystem::logFile;
 
 BOXEDWINE_CONDITION KSystem::processesCond("KSystem::processesCond");
 
@@ -107,6 +108,10 @@ void KSystem::destroy() {
 	Fs::shutDown();
     DecodedOp::clearCache();
     NormalCPU::clearCache();
+    if (KSystem::logFile) {
+        fclose(KSystem::logFile);
+        KSystem::logFile = NULL;
+    }
 }
 
 U32 KSystem::getProcessCount() {

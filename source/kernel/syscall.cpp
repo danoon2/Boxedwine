@@ -1940,10 +1940,10 @@ void ksyscall(CPU* cpu, U32 eipCount) {
     }
     if (EAX>373) {
         result = -K_ENOSYS;
-        kwarn("no syscall for %d", EAX);
+        kdebug("no syscall for %d", EAX);
     } else if (!syscallFunc[EAX]) {
         result = -K_ENOSYS;
-        kwarn("no syscall for %d", EAX);
+        kdebug("no syscall for %d", EAX);
     } else {
 #ifndef BOXEDWINE_MULTI_THREADED
         U64 startTime = KSystem::getMicroCounter();

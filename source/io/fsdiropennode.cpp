@@ -39,7 +39,7 @@ U32 FsDirOpenNode::ioctl(U32 request) {
 
 void FsDirOpenNode::setAsync(bool isAsync) {
     if (isAsync)
-        kwarn("FsDirOpenNode::setAsync not implemented");
+        kdebug("FsDirOpenNode::setAsync not implemented");
 }
 
 bool FsDirOpenNode::isAsync() {
@@ -47,7 +47,7 @@ bool FsDirOpenNode::isAsync() {
 }
 
 void FsDirOpenNode::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) {
-    kwarn("FsDirOpenNode::waitForEvents not implemented");
+    kdebug("FsDirOpenNode::waitForEvents not implemented");
 }
 
 bool FsDirOpenNode::isWriteReady() {

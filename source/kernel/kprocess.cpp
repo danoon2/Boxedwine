@@ -977,7 +977,7 @@ static S32 internalAccess(BoxedPtr<FsNode> node, U32 flags) {
         }
     }
     if ((flags & 1)!=0) {
-        kwarn("access not fully implemented.  Can't test for executable permission");
+        kdebug("access not fully implemented.  Can't test for executable permission");
     }
     return 0;
 }
@@ -1083,9 +1083,7 @@ U32 KProcess::link(const std::string& from, const std::string& to) {
     fromOpenNode->close();
     toNode->hardLinkCount++;
     fromNode->hardLinkCount++;
-#ifdef _DEBUG
-    kwarn("Hard link not implemented");
-#endif
+    kdebug("Hard link not implemented");
     return 0;
 }
 
@@ -2017,7 +2015,7 @@ U32 KProcess::prctl(U32 option, U32 arg2) {
     } else if (option == 38) { // PR_SET_NO_NEW_PRIVS
         return 0;
     } else {
-        kwarn("prctl not implemented");
+        kwarn("prctl not implemented for option: %d", option);
     }
     return -1;
 }
@@ -2166,7 +2164,7 @@ U32 KProcess::fcntrl(FD fildes, U32 cmd, U32 arg) {
     switch (cmd) {
         case K_F_SETOWN:
             if (this->id != arg) {
-                kwarn("F_SETOWN not implemented: %d",fildes);
+                kdebug("F_SETOWN not implemented: %d",fildes);
             }
             return 0;
         case K_F_DUPFD: {

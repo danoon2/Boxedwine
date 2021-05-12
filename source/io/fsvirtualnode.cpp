@@ -36,13 +36,13 @@ FsOpenNode* FsVirtualNode::open(U32 flags) {
         //return 0;
     }
     if (flags & K_O_EXCL) {
-        kwarn("What about exclusive virtual files");
+        kdebug("What about exclusive virtual files");
     }
     if (flags & K_O_TRUNC) {
-        kwarn("What about truncating a virtual file");
+        kdebug("What about truncating a virtual file");
     }
     if (flags & K_O_APPEND) {
-        kwarn("What about appending a virtual file");
+        kdebug("What about appending a virtual file");
     }
     BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath("", this->path, true);
     return this->openFunc(node, flags, this->openData);

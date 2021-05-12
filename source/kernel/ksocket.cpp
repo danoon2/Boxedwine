@@ -164,10 +164,12 @@ U32 ksocketpair(U32 af, U32 type, U32 protocol, U32 socks, U32 flags) {
     KThread* thread = KThread::currentThread();
 
     if (af!=K_AF_UNIX) {
-        kpanic("socketpair with adress family %d not implemented", af);
+        kwarn("socketpair with adress family %d not implemented", af);
+        return -1;
     }
     if (type!=K_SOCK_DGRAM && type!=K_SOCK_STREAM) {
-        kpanic("socketpair with type %d not implemented", type);
+        kwarn("socketpair with type %d not implemented", type);
+        return -1;
     }
     fd1 = ksocket(af, type, protocol);
     fd2 = ksocket(af, type, protocol);

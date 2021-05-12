@@ -209,7 +209,7 @@ U32 KNativeAudioSDL::init(bool isRender, U32 boxedAudioId, U32 addressFmt, U32 a
 		// If the previous audio is still playing, it will get cut off.  If I find a game that needs this, then perhaps I should think of a mixer.
 		closeSdlAudio();
 		if (SDL_OpenAudio(&data->want, &data->got) < 0) {
-			printf("Failed to open audio: %s\n", SDL_GetError());
+			klog("Failed to open audio: %s", SDL_GetError());
 		}		
 		sdlAudioOpen = true;
 		if (data->want.freq != data->got.freq || data->want.channels != data->got.channels || data->want.format != data->got.format) {
@@ -224,7 +224,7 @@ U32 KNativeAudioSDL::init(bool isRender, U32 boxedAudioId, U32 addressFmt, U32 a
 	if (KSystem::soundEnabled) {
 		SDL_PauseAudio(0);
 	}
-	printf("openAudio: freq=%d(got %d) format=%x(got %x) channels=%d(got %d)\n", data->got.freq, data->got.freq, data->want.format, data->got.format, data->want.channels, data->got.channels);
+	klog("openAudio: freq=%d(got %d) format=%x(got %x) channels=%d(got %d)", data->got.freq, data->got.freq, data->want.format, data->got.format, data->want.channels, data->got.channels);
 	return S_OK;
 }
 

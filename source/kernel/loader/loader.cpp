@@ -133,7 +133,7 @@ FsOpenNode* ElfLoader::inspectNode(const std::string& currentDirectory, const Bo
     if (interpreter.length()) {
         interpreterNode = Fs::getNodeFromLocalPath(currentDirectory, interpreter, true);	
         if (!interpreterNode) {
-            printf("Interpreter not found: %s\n", interpreter.c_str());
+            kwarn("Interpreter not found: %s", interpreter.c_str());
             return NULL;
         }
         openNode = interpreterNode->open(K_O_RDONLY);		

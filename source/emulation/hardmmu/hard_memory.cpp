@@ -112,7 +112,7 @@ void Memory::clone(Memory* from) {
             if ((from->flags[i] & PAGE_SHARED) && (from->flags[i] & PAGE_WRITE)) {
                 static U32 shown = 0;
                 if (!shown) {
-                    klog("forking a process with shared memory is not fully supported with BOXEDWINE_64BIT_MMU");
+                    kdebug("forking a process with shared memory is not fully supported with BOXEDWINE_64BIT_MMU");
                     shown=1;
                 }
             }

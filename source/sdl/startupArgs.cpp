@@ -196,9 +196,13 @@ std::vector<std::string> StartUpArgs::buildArgs() {
         args.push_back("-cpuAffinity");
         args.push_back(std::to_string(cpuAffinity));
     }
-    if (pollRate >= 0) {
+    if (pollRate > 0) {
         args.push_back("-pollRate");
         args.push_back(std::to_string(this->pollRate));
+    }
+    if (logPath.c_str()) {
+        args.push_back("-log");
+        args.push_back(logPath);
     }
     for (auto& m : mountInfo) {
         if (m.wine) {
@@ -225,9 +229,15 @@ bool StartUpArgs::apply() {
 #endif
     KSystem::pentiumLevel = this->pentiumLevel;
     KSystem::pollRate = this->pollRate;
+    if (KSystem::pollRate < 0) {
+        KSystem::pollRate = 0;
+    }
     KSystem::showWindowImmediately = this->showWindowImmediately;
     KSystem::skipFrameFPS = this->skipFrameFPS;
-    
+    if (!KSystem::logFile && this->logPath.length()) {
+        KSystem::logFile = fopen(this->logPath.c_str(), "w");
+    }
+
     for (U32 f=0;f<nonExecFileFullPaths.size();f++) {
         FsFileNode::nonExecFileFullPaths.insert(nonExecFileFullPaths[f]);
     }
@@ -303,6 +313,9 @@ bool StartUpArgs::apply() {
     envValues.push_back("USER=username");
     envValues.push_back("PWD="+this->workingDir);
     envValues.push_back("DISPLAY=:0");
+    envValues.push_back("WINE_FAKE_WAIT_VBLANK=60");
+    envValues.push_back("WINEDLLOVERRIDES=mscoree,mshtml=");
+    //envValues.push_back("WINEDEBUG=+ddraw");
                             
     // if this strlen is more than 88 (1 more character than now), then diablo demo will crash before we get to the menu
     // if I create more env values that are longer it doesn't crash, what is special about this one?
@@ -430,11 +443,11 @@ bool StartUpArgs::apply() {
 #endif   
 
     if (this->args.size()) {
-        printf("Launching ");
+        klog_nonewline("Launching ");
         for (U32 i=0;i<this->args.size();i++) {
-            printf("\"%s\" ", this->args[i].c_str());
+            klog_nonewline("\"%s\" ", this->args[i].c_str());
         }
-        printf("\n");
+        klog_nonewline("\n");
         bool result = false;
         {
             std::shared_ptr<KProcess> process = KProcess::create();// keep in this small scope so we don't hold onto it for the life of the program
@@ -450,6 +463,7 @@ bool StartUpArgs::apply() {
     if (gensrc)
         writeSource();
 #endif
+    klog("Boxedwine has shutdown"); // must call before KSystem::destroy()
 	KSystem::destroy();
     KNativeWindow::shutdown();
     KNativeAudio::shutdown();
@@ -457,7 +471,7 @@ bool StartUpArgs::apply() {
 
 #ifdef BOXEDWINE_ZLIB
     openZips.clear();
-#endif
+#endif    
     return true;
 }
 
@@ -486,8 +500,21 @@ bool StartUpArgs::loadDefaultResource(const char* app) {
 }
 
 bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
-    int i = 1;
-    for (;i<argc;i++) {
+    int i;
+    // look for -log as soon as possible so that logging is enabled as soon as possible
+    for (i = 1; i < argc; i++) {
+        if (!strcmp(argv[i], "-log") && i + 1 < argc) {
+            this->logPath = argv[i + 1];
+            KSystem::logFile = fopen(this->logPath.c_str(), "w");
+            i++;
+        }
+    }
+    klog_nonewline("Command line arguments:");
+    for (i = 0; i < argc; i++) {
+        klog_nonewline(" \"%s\"", argv[i]);
+    }
+    klog_nonewline("\n");
+    for (i=1;i<argc;i++) {
         if (!strcmp(argv[i], "-root") && i+1<argc) {
             this->setRoot(argv[i+1]);
             i++;
@@ -495,7 +522,7 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
 #ifdef BOXEDWINE_ZLIB
             this->addZip(argv[i+1]);
 #else
-            printf("BoxedWine wasn't compiled with zlib support");
+            kwarn("BoxedWine wasn't compiled with zlib support");
 #endif
             i++;
         } else if (!strcmp(argv[i], "-title") && i + 1 < argc) {
@@ -578,17 +605,17 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
             i++;
         } else if (!strcmp(argv[i], "-mount_drive")) {
             if (strlen(argv[i+2])!=1) {
-                printf("-mount_drive expects 2 parameters: <host directory to mount> <drive letter to use for wine>");
-                printf("example: -mount_drive \"c:\\my games\" d\n");
+                klog("-mount_drive expects 2 parameters: <host directory to mount> <drive letter to use for wine>");
+                klog("  example: -mount_drive \"c:\\my games\" d");
             } else {
                 this->mountInfo.push_back(MountInfo(argv[i+2], argv[i+1], true));
             }
             i+=2;
         } else if (!strcmp(argv[i], "-mount")) {
             if (argv[i+2][0]!='/') {
-                printf("-mount expects 2 parameters: <host directory to mount or zip file> <full path on root file>\n");
-                printf("example: -mount \"c:\\my games\" \"/home/username/my games\"\n");
-                printf("example: -mount_zip \"c:\\my games\\mygame.zip\" /mnt/game\n");
+                klog("-mount expects 2 parameters: <host directory to mount or zip file> <full path on root file>\n");
+                klog("example: -mount \"c:\\my games\" \"/home/username/my games\"");
+                klog("example: -mount_zip \"c:\\my games\\mygame.zip\" /mnt/game");
             } else {
                 if (Fs::doesNativePathExist(argv[i + 2])) {
                     klog("mount directory/file does not exist: %s", argv[i + 2]);
@@ -621,6 +648,9 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
             i++;
         } else if (!strcmp(argv[i], "-skipFrameFPS") && i+1<argc) {
             this->skipFrameFPS = atoi(argv[i+1]);
+            i++;
+        } else if (!strcmp(argv[i], "-log") && i + 1 < argc) {
+            this->logPath = argv[i + 1];
             i++;
         }
 #ifdef BOXEDWINE_RECORDER

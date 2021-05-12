@@ -193,7 +193,7 @@ void KDspAudioSdl::openAudio(U32 format, U32 freq, U32 channels) {
 		// If the previous audio is still playing, it will get cut off.  If I find a game that needs this, then perhaps I should think of a mixer.
 		closeSdlAudio();
 		if (SDL_OpenAudio(&this->want, &this->got) < 0) {
-			printf("Failed to open audio: %s\n", SDL_GetError());
+			klog("Failed to open audio: %s", SDL_GetError());
 		}
 		sdlSilence = this->got.silence;
 		sdlAudioOpen = true;
@@ -212,7 +212,7 @@ void KDspAudioSdl::openAudio(U32 format, U32 freq, U32 channels) {
 	if (this->got.size) {
 		this->dspFragSize = this->got.size;
 	}
-	printf("openAudio: freq=%d(got %d) format=%x(got %x) channels=%d(got %d)\n", this->want.freq, this->got.freq, this->want.format, this->got.format, this->want.channels, this->got.channels);
+	klog("openAudio: freq=%d(got %d) format=%x(got %x) channels=%d(got %d)", this->want.freq, this->got.freq, this->want.format, this->got.format, this->want.channels, this->got.channels);
 }
 
 void KDspAudioSdl::closeAudioFromAudioThread() {

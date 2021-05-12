@@ -27,7 +27,7 @@ KFile::~KFile() {
 
 void KFile::setBlocking(bool blocking) {
     if (blocking) {
-        kwarn("KFile::setBlocking not implemented");
+        kdebug("KFile::setBlocking not implemented");
     }
 }
 

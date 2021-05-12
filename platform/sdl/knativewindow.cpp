@@ -565,7 +565,7 @@ U32 sdlCreateOpenglWindow_main_thread(KThread* thread, std::shared_ptr<WndSdl> w
     screen->timeWindowWasCreated = KSystem::getMilliesSinceStart();
 
     if (!screen->window) {
-        fprintf(stderr, "Couldn't create window: %s\n", SDL_GetError());
+        kwarn("Couldn't create window: %s", SDL_GetError());
         screen->displayChanged(thread);
         return 0;
     }
@@ -612,7 +612,7 @@ U32 KNativeWindowSdl::glCreateContext(KThread* thread, std::shared_ptr<Wnd> w, i
         DISPATCH_MAIN_THREAD_BLOCK_END
 #endif
         if (!context) {
-            fprintf(stderr, "Couldn't create context: %s\n", SDL_GetError());
+            kwarn("Couldn't create context: %s", SDL_GetError());
             DISPATCH_MAIN_THREAD_BLOCK_BEGIN_RETURN
             displayChanged(thread);
             return 0;
@@ -1796,7 +1796,7 @@ int KNativeWindowSdl::key(U32 key, U32 down) {
                     break;
 
                 default:
-                    kwarn("Unhandled key: %d", key);
+                    kdebug("Unhandled key: %d", key);
                     return 1;
                 }
                 if (scan & 0x100)               
@@ -2206,7 +2206,7 @@ static U32 translate(U32 key) {
         case SDLK_PAUSE:
             return K_KEY_PAUSE;
         default:
-            kwarn("Unhandled key: %d", key);
+            kdebug("Unhandled key: %d", key);
             return 0;
     }
 }

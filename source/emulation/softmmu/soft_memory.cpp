@@ -50,10 +50,10 @@ void Memory::log_pf(KThread* thread, U32 address) {
     std::shared_ptr<KProcess> process = thread->process;
 
     std::string name = process->getModuleName(cpu->seg[CS].address+cpu->eip.u32);
-    printf("%.8X EAX=%.8X ECX=%.8X EDX=%.8X EBX=%.8X ESP=%.8X EBP=%.8X ESI=%.8X EDI=%.8X %s at %.8X\n", cpu->seg[CS].address + cpu->eip.u32, cpu->reg[0].u32, cpu->reg[1].u32, cpu->reg[2].u32, cpu->reg[3].u32, cpu->reg[4].u32, cpu->reg[5].u32, cpu->reg[6].u32, cpu->reg[7].u32, name.c_str(), process->getModuleEip(cpu->seg[CS].address+cpu->eip.u32));
+    klog("%.8X EAX=%.8X ECX=%.8X EDX=%.8X EBX=%.8X ESP=%.8X EBP=%.8X ESI=%.8X EDI=%.8X %s at %.8X", cpu->seg[CS].address + cpu->eip.u32, cpu->reg[0].u32, cpu->reg[1].u32, cpu->reg[2].u32, cpu->reg[3].u32, cpu->reg[4].u32, cpu->reg[5].u32, cpu->reg[6].u32, cpu->reg[7].u32, name.c_str(), process->getModuleEip(cpu->seg[CS].address+cpu->eip.u32));
 
-    printf("Page Fault at %.8X\n", address);
-    printf("Valid address ranges:\n");
+    klog("Page Fault at %.8X", address);
+    klog("Valid address ranges:");
     for (i=0;i<K_NUMBER_OF_PAGES;i++) {
         if (!start) {
             if (process->memory->getPage(i) != invalidPage) {
@@ -61,12 +61,12 @@ void Memory::log_pf(KThread* thread, U32 address) {
             }
         } else {
             if (process->memory->getPage(i) == invalidPage) {
-                printf("    %.8X - %.8X\n", start*K_PAGE_SIZE, i*K_PAGE_SIZE);
+                klog("    %.8X - %.8X", start*K_PAGE_SIZE, i*K_PAGE_SIZE);
                 start = 0;
             }
         }
     }
-    printf("Mapped Files:\n");
+    klog("Mapped Files:");
     process->printMappedFiles();
     cpu->walkStack(cpu->eip.u32, EBP, 2);
     kpanic("pf");
@@ -314,11 +314,11 @@ void Memory::protectPage(U32 i, U32 permissions) {
         page->flags = flags;
     } else if (page->type == Page::Type::Code_Page) {
         if (!(permissions & PAGE_READ)) {
-            kwarn("Memory::protect removing read flag from code page is not handled");
+            kdebug("Memory::protect removing read flag from code page is not handled");
         }
         page->flags = flags;
     } else {
-        kwarn("Memory::protect didn't expect page type: %d", page->type);
+        kdebug("Memory::protect didn't expect page type: %d", page->type);
     }
 }
 
