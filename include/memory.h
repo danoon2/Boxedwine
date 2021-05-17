@@ -93,7 +93,10 @@ public:
     void map(U32 startPage, const std::vector<U8*>& pages, U32 permissions);
     U32 mapNativeMemory(void* buf, U32 len);
 
-    bool findFirstAvailablePage(U32 startingPage, U32 pageCount, U32* result, bool canBeMapped);
+    bool findFirstAvailablePage(U32 startingPage, U32 pageCount, U32* result, bool canBeMapped, bool alignNative = false);
+    bool isAlignedNativePage(U32 page) { return (page & ~(K_NATIVE_PAGES_PER_PAGE - 1)) == page;}
+    U32 getNativePage(U32 page) { return (page << K_PAGE_SHIFT) >> K_NATIVE_PAGE_SHIFT;}
+    U32 getEmulatedPage(U32 nativePage) {return (nativePage << K_NATIVE_PAGE_SHIFT) >> K_PAGE_SHIFT;}
     void protectPage(U32 i, U32 permissions);
     void allocPages(U32 page, U32 pageCount, U8 permissions, FD fd, U64 offset, const BoxedPtr<MappedFile>& mappedFile);
     bool isValidReadAddress(U32 address, U32 len);
@@ -137,14 +140,14 @@ public:
 
 #ifdef BOXEDWINE_64BIT_MMU
     U8 flags[K_NUMBER_OF_PAGES];
-    U8 nativeFlags[K_NUMBER_OF_PAGES]; // :TODO: maybe make this based of the number of native pages?
+    U8 nativeFlags[K_NATIVE_NUMBER_OF_PAGES];
     U32 allocated;
     U64 id; 
 
     // this will contain id in each page unless that page was mapped to native host memory
     U64 memOffsets[K_NUMBER_OF_PAGES];
 #define MAX_DYNAMIC_CODE_PAGE_COUNT 0xFF
-    U8 dynamicCodePageUpdateCount[K_NUMBER_OF_PAGES];
+    U8 dynamicCodePageUpdateCount[K_NATIVE_NUMBER_OF_PAGES];
 
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
     BOXEDWINE_MUTEX executableMemoryMutex;
@@ -163,7 +166,7 @@ public:
     std::shared_ptr<BtCodeChunk> getCodeChunkContainingEip(U32 eip);
     void addCodeChunk(const std::shared_ptr<BtCodeChunk>& chunk);
     void removeCodeChunk(const std::shared_ptr<BtCodeChunk>& chunk);
-    void makePageDynamic(U32 page);
+    void makeNativePageDynamic(U32 nativePage);
     void* getExistingHostAddress(U32 eip);
     void* allocateExcutableMemory(U32 size, U32* allocatedSize);
     void freeExcutableMemory(void* hostMemory, U32 size);
@@ -198,7 +201,7 @@ private:
     U8* nativeAddressStart;
 #endif
 #ifdef BOXEDWINE_64BIT_MMU
-    U32 callbackPos;    
+    U32 callbackPos;
 #ifndef BOXEDWINE_BINARY_TRANSLATOR
     void* internalAddCodeBlock(U32 startIp, DecodedBlock* block);
 #endif

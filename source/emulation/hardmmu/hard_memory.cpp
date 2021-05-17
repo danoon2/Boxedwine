@@ -45,7 +45,7 @@ Memory::Memory() : allocated(0), callbackPos(0) {
 #endif    
     reserveNativeMemory(this);
 
-    allocNativeMemory(this, CALL_BACK_ADDRESS >> K_PAGE_SHIFT, 1, PAGE_READ | PAGE_EXEC | PAGE_WRITE);
+    allocNativeMemory(this, CALL_BACK_ADDRESS >> K_PAGE_SHIFT, K_NATIVE_PAGES_PER_PAGE, PAGE_READ | PAGE_EXEC | PAGE_WRITE);
     this->addCallback(onExitSignal);
 #ifdef BOXEDWINE_DYNAMIC
     this->dynamicExecutableMemoryPos = 0;
@@ -97,6 +97,7 @@ void Memory::reset() {
     reserveNativeMemory(this);
 
     this->callbackPos = 0;
+    allocNativeMemory(this, CALL_BACK_ADDRESS >> K_PAGE_SHIFT, K_NATIVE_PAGES_PER_PAGE, PAGE_READ | PAGE_EXEC | PAGE_WRITE);
     this->addCallback(onExitSignal);
 }
 
@@ -198,10 +199,13 @@ void Memory::protectPage(U32 i, U32 permissions) {
     } 
 }
 
-bool Memory::findFirstAvailablePage(U32 startingPage, U32 pageCount, U32* result, bool canBeReMapped) {
+bool Memory::findFirstAvailablePage(U32 startingPage, U32 pageCount, U32* result, bool canBeReMapped, bool alignNative) {
     U32 i;
     
     for (i=startingPage;i<K_NUMBER_OF_PAGES;i++) {
+        if (alignNative && !isAlignedNativePage(i)) {
+            continue;
+        }
         if (i + pageCount >= K_NUMBER_OF_PAGES) {
             return false;
         }
@@ -449,11 +453,6 @@ void writeq(U32 address, U64 value) {
 void Memory::addCallback(OpCallback func) {
     U64 funcAddress = (U64)func;
 
-    if (callbackPos==0) {
-        U32 page = CALL_BACK_ADDRESS >> K_PAGE_SHIFT;
-        allocNativeMemory(this, page, 1, PAGE_READ|PAGE_EXEC);
-    }
-
     U8* address = (U8*)getNativeAddress(this, CALL_BACK_ADDRESS)+this->callbackPos;
     
     *address=0xFE;
@@ -567,7 +566,7 @@ void* Memory::internalAddCodeBlock(U32 startIp, DecodedBlock* block) {
         cacheBlock->linkTo = to;
         to->linkFrom = cacheBlock;
     }
-    makeCodePageReadOnly(this, startIp>>K_PAGE_SHIFT);
+    makeCodePageReadOnly(this, this->getNativePage(startIp>>K_PAGE_SHIFT));
     return cacheBlock;
     return NULL;
 }
@@ -645,6 +644,15 @@ void Memory::clearCodePageFromCache(U32 page) {
         }
     }
     this->dynamicCodePageUpdateCount[page] = 0;
+    
+    U32 nativePage = this->getNativePage(page);
+    U32 startingPage = this->getEmulatedPage(nativePage);
+    for (int i=0;i<K_NATIVE_PAGES_PER_PAGE;i++) {
+        if (this->eipToHostInstructionPages[startingPage+i]) {
+            return;
+        }
+    }
+    clearCodePageReadOnly(this, nativePage);
 #else
     BlockCache** cacheblocks = (BlockCache**)this->codeCache[page];
     if (cacheblocks) {
@@ -673,9 +681,16 @@ void Memory::clearCodePageFromCache(U32 page) {
         }
         delete[] cacheblocks;
         this->codeCache[page] = 0;
-    }  
+    }
+    U32 nativePage = this->getNativePage(page);
+    U32 startingPage = this->getEmulatedPage(nativePage);
+    for (int i=0;i<K_NATIVE_PAGES_PER_PAGE;i++) {
+        if (this->codeCache[startingPage+i]) {
+            return;
+        }
+    }
+    clearCodePageReadOnly(this, nativePage);
 #endif
-    clearCodePageReadOnly(this, page);
 }
 
 U32 Memory::getPageFlags(U32 page) {
@@ -757,18 +772,23 @@ void Memory::addCodeChunk(const std::shared_ptr<BtCodeChunk>& chunk) {
     chunks->push_back(chunk);
 }
 
-void Memory::makePageDynamic(U32 page) {
-    if (this->codeChunksByEmulationPage.count(page)) {
-        std::shared_ptr< std::list<std::shared_ptr<BtCodeChunk>> > chunks = this->codeChunksByEmulationPage[page];
-        for (auto& chunk : *chunks) {
-            if (!chunk->isDynamicAware()) {
-                chunk->invalidateStartingAt(chunk->getEip());
+void Memory::makeNativePageDynamic(U32 nativePage) {
+    U32 startPage = getEmulatedPage(nativePage);
+    for (U32 i = 0; i < K_NATIVE_PAGES_PER_PAGE; i++) {
+        U32 page = startPage + i;
+        if (this->codeChunksByEmulationPage.count(page)) {
+            std::shared_ptr< std::list<std::shared_ptr<BtCodeChunk>> > chunks = this->codeChunksByEmulationPage[page];
+            for (auto& chunk : *chunks) {
+                if (!chunk->isDynamicAware()) {
+                    chunk->invalidateStartingAt(chunk->getEip());
+                }
             }
         }
     }
-    if (this->nativeFlags[page] & NATIVE_FLAG_CODEPAGE_READONLY) {
-        ::clearCodePageReadOnly(this, page);
+    if (this->nativeFlags[nativePage] & NATIVE_FLAG_CODEPAGE_READONLY) {
+        ::clearCodePageReadOnly(this, nativePage);
     }
+    U32 page = startPage;
     U32 eip = page << K_PAGE_SHIFT;
     page--;
     // look to see if a chunk that starts in a previous page contains this address
@@ -843,13 +863,13 @@ void Memory::invalideHostCode(U32 eip, U32 len) {
         }
     }
 
-    U32 startPage = eip >> K_PAGE_SHIFT;
-    U32 endPage = (eip+len) >> K_PAGE_SHIFT;
-    for (U32 page = startPage; page <= endPage; page++) {
-        if (dynamicCodePageUpdateCount[page]!=MAX_DYNAMIC_CODE_PAGE_COUNT) {
-            dynamicCodePageUpdateCount[page]++;
-            if (dynamicCodePageUpdateCount[page]==MAX_DYNAMIC_CODE_PAGE_COUNT) {
-                this->makePageDynamic(page);
+    U32 startPage = this->getNativePage(eip >> K_PAGE_SHIFT);
+    U32 endPage = this->getNativePagegetNativePage((eip+len) >> K_PAGE_SHIFT);
+    for (U32 nativePage = startPage; nativePage <= endPage; nativePage++) {
+        if (dynamicCodePageUpdateCount[nativePage]!=MAX_DYNAMIC_CODE_PAGE_COUNT) {
+            dynamicCodePageUpdateCount[nativePage]++;
+            if (dynamicCodePageUpdateCount[nativePage]==MAX_DYNAMIC_CODE_PAGE_COUNT) {
+                this->makeNativePageDynamic(nativePage);
             }
         }
     }

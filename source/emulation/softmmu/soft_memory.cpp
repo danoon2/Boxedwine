@@ -322,10 +322,13 @@ void Memory::protectPage(U32 i, U32 permissions) {
     }
 }
 
-bool Memory::findFirstAvailablePage(U32 startingPage, U32 pageCount, U32* result, bool canBeReMapped) {
+bool Memory::findFirstAvailablePage(U32 startingPage, U32 pageCount, U32* result, bool canBeReMapped, bool alignNative) {
     U32 i;
     
     for (i=startingPage;i<K_NUMBER_OF_PAGES;i++) {
+        if (alignNative && !isAlignedNativePage(i)) {
+            continue;
+        }
         if (i + pageCount >= K_NUMBER_OF_PAGES) {
             return false;
         }

@@ -26,8 +26,37 @@
 U32 nativeMemoryPagesAllocated;
 
 #ifdef BOXEDWINE_64BIT_MMU
+static void updateNativePermission(Memory* memory, U32 nativePage) {
+    bool canRead = true;
+    bool canWrite = true;
+    U32 emulatedPage = memory->getEmulatedPage(nativePage);
+    U32 proto = 0;
+    
+    for (int i=0;i<K_NATIVE_PAGES_PER_PAGE;i++) {
+        if (!(memory->flags[emulatedPage+i] & (PAGE_READ|PAGE_EXEC))) {
+            canRead = false;
+        }
+        if (!(memory->flags[emulatedPage+i] & (PAGE_WRITE))) {
+            canWrite = false;
+        }
+    }
+    if (canRead) {
+        proto|=PROT_READ;
+    }
+    if (canWrite) {
+        proto|=PROT_WRITE;
+    }
+    if (!proto) {
+        proto = PROT_NONE;
+    }
+    mprotect((char*)memory->id + (nativePage << K_NATIVE_PAGE_SHIFT), K_NATIVE_PAGE_SIZE, proto);
+}
+
 void allocNativeMemory(Memory* memory, U32 page, U32 pageCount, U32 flags) {
     U32 proto = 0;
+    U32 nativePageStart = memory->getNativePage(page);
+    U32 nativePageStop = memory->getNativePage(page+pageCount-1);
+    U32 nativePageCount = nativePageStop - nativePageStart + 1;
     
     if ((flags & PAGE_READ) || (flags & PAGE_EXEC)) {
         proto|=PROT_READ;
@@ -35,32 +64,65 @@ void allocNativeMemory(Memory* memory, U32 page, U32 pageCount, U32 flags) {
     if (flags & PAGE_WRITE) {
         proto|=PROT_WRITE;
     }
-    void* p = (char*)memory->id + (page << K_PAGE_SHIFT);
-    if (mprotect(p, pageCount << K_PAGE_SHIFT, PAGE_READ|PROT_WRITE)<0) {
+    void* p = (char*)memory->id + (nativePageStart << K_NATIVE_PAGE_SHIFT);
+    if (mprotect(p, nativePageCount << K_NATIVE_PAGE_SHIFT, PROT_READ | PROT_WRITE)<0) {
         kpanic("allocNativeMemory mprotect failed: %s", strerror(errno));
     }
     memory->allocated += pageCount<< K_PAGE_SHIFT;
-    for (int i=0;i<(int)pageCount;i++) {
-        memory->flags[page+i] = flags |= PAGE_ALLOCATED;
-        memory->nativeFlags[page+i] |= NATIVE_FLAG_COMMITTED;
+    for (U32 i=0;i<pageCount;i++) {
+        //if (!(memory->flags[page+i] & PAGE_ALLOCATED)) {
+            memory->flags[page+i] = flags |= PAGE_ALLOCATED;
+            memset(getNativeAddress(memory, (page+i) << K_PAGE_SHIFT), 0, K_PAGE_SIZE);
+        //}
     }
-    memset(getNativeAddress(memory, page << K_PAGE_SHIFT), 0, pageCount << K_PAGE_SHIFT);
-    nativeMemoryPagesAllocated+=pageCount;
+    // :TODO: figure out how to re-enable
+    // if (mprotect(p, nativePageCount << K_NATIVE_PAGE_SHIFT, proto)<0) {
+    //     kpanic("allocNativeMemory mprotect failed: %s", strerror(errno));
+    // }
+    for (U32 i=nativePageStart;i<=nativePageStop;i++) {
+        if (!(memory->nativeFlags[i] & NATIVE_FLAG_COMMITTED)) {
+            memory->nativeFlags[page+i] |= NATIVE_FLAG_COMMITTED;
+            nativeMemoryPagesAllocated++;
+        }
+        U32 emulatedPageStart = memory->getEmulatedPage(i);
+        for (U32 j=0;j<K_NATIVE_PAGES_PER_PAGE;j++) {
+            U32 pageFlags = GET_PAGE_PERMISSIONS(memory->flags[emulatedPageStart+j]);
+            if (pageFlags != GET_PAGE_PERMISSIONS(flags)) {
+                //updateNativePermission(memory, i);
+            }
+        }
+    }
 }
 
 void freeNativeMemory(Memory* memory, U32 page, U32 pageCount) {
+    U32 nativePageStart = memory->getNativePage(page);
+    U32 nativePageStop = memory->getNativePage(page+pageCount-1);
+    U32 nativePageCount = nativePageStop - nativePageStart + 1;
+    
     for (int i=0;i<(int)pageCount;i++) {
         memory->clearCodePageFromCache(page + i);
-        if (memory->nativeFlags[page+i] & NATIVE_FLAG_CODEPAGE_READONLY) {
-            memory->nativeFlags[page+i] &= ~ NATIVE_FLAG_CODEPAGE_READONLY;
-        }
-        if (memory->nativeFlags[page+i] & NATIVE_FLAG_COMMITTED) {
-            memory->nativeFlags[page+i] &= ~ NATIVE_FLAG_COMMITTED;
-            mprotect((char*)memory->id + ((page+i) << K_PAGE_SHIFT), 1 << K_PAGE_SHIFT, PROT_NONE);
-        }
         memory->flags[page+i] = 0;
     }
-    nativeMemoryPagesAllocated-=pageCount;
+    for (int i=0;i<nativePageCount;i++) {
+        U32 emulatedPageStart = memory->getEmulatedPage(nativePageStart+i);
+        bool canClear = true;
+        for (U32 j=0;j<K_NATIVE_PAGES_PER_PAGE;j++) {
+            if (memory->flags[emulatedPageStart+j]) {
+                canClear = false;
+                break;
+            }
+        }
+        if (canClear) {
+            if (memory->nativeFlags[nativePageStart+i] & NATIVE_FLAG_CODEPAGE_READONLY) {
+                memory->nativeFlags[nativePageStart+i] &= ~ NATIVE_FLAG_CODEPAGE_READONLY;
+            }
+            if (memory->nativeFlags[nativePageStart+i] & NATIVE_FLAG_COMMITTED) {
+                memory->nativeFlags[nativePageStart+i] &= ~ NATIVE_FLAG_COMMITTED;
+                mprotect((char*)memory->id + ((nativePageStart+i) << K_NATIVE_PAGE_SHIFT), K_NATIVE_PAGE_SIZE, PROT_NONE);
+                nativeMemoryPagesAllocated-=pageCount;
+            }
+        }
+    }
 }
 
 static U64 nextMemoryId = 2;
@@ -214,9 +276,10 @@ void makeCodePageReadOnly(Memory* memory, U32 page) {
         if (memory->dynamicCodePageUpdateCount[page]==MAX_DYNAMIC_CODE_PAGE_COUNT) {
             kpanic("makeCodePageReadOnly: tried to make a dynamic code page read-only");
         }
-        if (mprotect((char*)memory->id + (page << K_PAGE_SHIFT), 1 << K_PAGE_SHIFT, PROT_READ)==-1) {
-            kpanic("makeCodePageReadOnly mprotect failed: %s", strerror(errno));
-        }
+        // :TODO: re-enable for self modifying code
+        //if (mprotect((char*)memory->id + (page << K_NATIVE_PAGE_SHIFT), 1 << K_NATIVE_PAGE_SHIFT, PROT_READ)==-1) {
+         //   kpanic("makeCodePageReadOnly mprotect failed: %s", strerror(errno));
+       // }
         memory->nativeFlags[page] |= NATIVE_FLAG_CODEPAGE_READONLY;
     }
 }
@@ -225,7 +288,7 @@ bool clearCodePageReadOnly(Memory* memory, U32 page) {
     bool result = false;
     
     if (memory->nativeFlags[page] & NATIVE_FLAG_CODEPAGE_READONLY) {
-        if (mprotect((char*)memory->id + (page << K_PAGE_SHIFT), 1 << K_PAGE_SHIFT, PROT_READ|PROT_WRITE)==-1) {
+        if (mprotect((char*)memory->id + (page << K_NATIVE_PAGE_SHIFT), 1 << K_NATIVE_PAGE_SHIFT, PROT_READ|PROT_WRITE)==-1) {
             kpanic("clearCodePageReadOnly mprotect failed: %s", strerror(errno));
         }
         memory->nativeFlags[page] &= ~NATIVE_FLAG_CODEPAGE_READONLY;
@@ -324,6 +387,10 @@ void allocExecutable64kBlock(Memory* memory, U32 page) {
 }
 
 void commitHostAddressSpaceMapping(Memory* memory, U32 page, U32 pageCount, U64 defaultValue) {
+    // for K_NATIVE_PAGES_PER_PAGE = 1, 2, 4, or 8, this should align fine
+    if (K_NATIVE_PAGES_PER_PAGE > sizeof(void*)) {
+        kpanic("commitHostAddressSpaceMapping does not handle a page size of %d", K_NATIVE_PAGE_SIZE);
+    }
     for (U32 i=0;i<pageCount;i++) {
         if (!memory->isEipPageCommitted(page+i)) {
             U8* address = (U8*)memory->eipToHostInstructionAddressSpaceMapping+((U64)(page+i))*K_PAGE_SIZE*sizeof(void*);

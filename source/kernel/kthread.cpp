@@ -71,22 +71,22 @@ void KThread::reset() {
 void KThread::setupStack() {
     U32 page = 0;
     U32 pageCount = MAX_STACK_SIZE >> K_PAGE_SHIFT; // 1MB for max stack
-    pageCount+=2; // guard pages
-    if (!this->memory->findFirstAvailablePage(ADDRESS_PROCESS_STACK_START, pageCount, &page, false)) {
-		if (!this->memory->findFirstAvailablePage(0xC0000, pageCount, &page, false)) {
-			if (!this->memory->findFirstAvailablePage(0x80000, pageCount, &page, false)) {
+    pageCount+=K_NATIVE_PAGES_PER_PAGE*2; // guard pages
+    if (!this->memory->findFirstAvailablePage(ADDRESS_PROCESS_STACK_START, pageCount, &page, false, true)) {
+		if (!this->memory->findFirstAvailablePage(0xC0000, pageCount, &page, false, true)) {
+			if (!this->memory->findFirstAvailablePage(0x80000, pageCount, &page, false, true)) {
 				kpanic("Failed to allocate stack for thread");
             }
         }
     }
-    this->memory->allocPages(page+1, pageCount-2, PAGE_READ|PAGE_WRITE, 0, 0, 0);
+    this->memory->allocPages(page+K_NATIVE_PAGES_PER_PAGE, pageCount-2*K_NATIVE_PAGES_PER_PAGE, PAGE_READ|PAGE_WRITE, 0, 0, 0);
     // 1 page above (catch stack underrun)
-    this->memory->allocPages(page+pageCount-1, 1, 0, 0, 0, 0);
+    this->memory->allocPages(page+pageCount-K_NATIVE_PAGES_PER_PAGE, K_NATIVE_PAGES_PER_PAGE, 0, 0, 0, 0);
     // 1 page below (catch stack overrun)
-    this->memory->allocPages(page, 1, 0, 0, 0, 0);
+    this->memory->allocPages(page, K_NATIVE_PAGES_PER_PAGE, 0, 0, 0, 0);
     this->stackPageCount = pageCount;
     this->stackPageStart = page;
-    this->cpu->reg[4].u32 = (this->stackPageStart + this->stackPageCount - 1) << K_PAGE_SHIFT; // one page away from the top    
+    this->cpu->reg[4].u32 = (this->stackPageStart + this->stackPageCount - K_NATIVE_PAGES_PER_PAGE) << K_PAGE_SHIFT;  
 }
 
 KThread::KThread(U32 id, const std::shared_ptr<KProcess>& process) : 

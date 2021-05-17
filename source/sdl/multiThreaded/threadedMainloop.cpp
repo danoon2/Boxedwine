@@ -55,7 +55,7 @@ bool doMainLoop() {
             if (KSystem::title.length()) {
                 snprintf(tmp, sizeof(tmp), "%s", KSystem::title.c_str());
             } else {
-                snprintf(tmp, sizeof(tmp), "BoxedWine " BOXEDWINE_VERSION_DISPLAY " %dMB", (int)(nativeMemoryPagesAllocated >> 8));
+                snprintf(tmp, sizeof(tmp), "BoxedWine " BOXEDWINE_VERSION_DISPLAY " %dMB", (int)(nativeMemoryPagesAllocated >> 8)*K_NATIVE_PAGES_PER_PAGE);
             }
             KNativeWindow::getNativeWindow()->setTitle(tmp);
         }
