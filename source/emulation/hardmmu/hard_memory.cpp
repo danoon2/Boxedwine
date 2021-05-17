@@ -173,11 +173,16 @@ void Memory::allocPages(U32 page, U32 pageCount, U8 permissions, FD fd, U64 offs
     }
     if (mappedFile) {
         bool addedWritePermission = false;
+        U32 nativePageStart = getNativePage(page);
+        U32 nativePageStop = getNativePage(page+pageCount-1);
+        U32 nativePageCount = nativePageStop - nativePageStart + 1;
+        
         if (!(permissions & PAGE_WRITE)) {
             for (U32 i=0;i<pageCount;i++) {
                 this->flags[i+page]|=PAGE_WRITE;
             }
             addedWritePermission = true;
+            updateNativePermission(this, nativePageStart, nativePageCount, true, true);
         }
         // :TODO: need to implement writing back to the file
         // :TODO: need to sync shared pages acrosss processes for hard_memory.cpp
@@ -186,6 +191,9 @@ void Memory::allocPages(U32 page, U32 pageCount, U8 permissions, FD fd, U64 offs
             for (U32 i=0;i<pageCount;i++) {
                 this->flags[i+page]&=~PAGE_WRITE;
             }
+            // :TODO: why is it necessary to keep write permission on this read only memory
+            bool canRead = (permissions & (PAGE_READ | PAGE_EXEC)) != 0;//
+            //updateNativePermission(this, nativePageStart, nativePageCount, canRead, false);
         }
     }    
 }
@@ -343,7 +351,8 @@ void writeb(U32 address, U8 value) {
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
     Memory* m = KThread::currentThread()->memory;
     U32 page = address >> K_PAGE_SHIFT;
-    U8 flags = m->nativeFlags[page];
+    U32 nativePage = m->getNativePage(page);
+    U8 flags = m->nativeFlags[nativePage];
 
     if (flags & NATIVE_FLAG_CODEPAGE_READONLY) {
         BtCodeMemoryWrite w((BtCPU*)KThread::currentThread()->cpu, address, 1);
@@ -378,7 +387,9 @@ void writew( U32 address, U16 value) {
 #endif
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
     Memory* m = KThread::currentThread()->memory;
-    U8 flags = m->nativeFlags[address >> K_PAGE_SHIFT];
+    U32 page = address >> K_PAGE_SHIFT;
+    U32 nativePage = m->getNativePage(page);
+    U8 flags = m->nativeFlags[nativePage];
 
     if (flags & NATIVE_FLAG_CODEPAGE_READONLY) {
         BtCodeMemoryWrite w((BtCPU*)KThread::currentThread()->cpu, address, 2);
@@ -412,7 +423,8 @@ void writed(U32 address, U32 value) {
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
     Memory* m = KThread::currentThread()->memory;
     U32 page = address >> K_PAGE_SHIFT;
-    U8 flags = m->nativeFlags[page];
+    U32 nativePage = m->getNativePage(page);
+    U8 flags = m->nativeFlags[nativePage];
 
     if (flags & NATIVE_FLAG_CODEPAGE_READONLY) {
         BtCodeMemoryWrite w((BtCPU*)KThread::currentThread()->cpu, address, 4);
@@ -435,7 +447,8 @@ void writeq(U32 address, U64 value) {
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
     Memory* m = KThread::currentThread()->memory;
     U32 page = address >> K_PAGE_SHIFT;
-    U8 flags = m->nativeFlags[page];
+    U32 nativePage = m->getNativePage(page);
+    U8 flags = m->nativeFlags[nativePage];
 
     if (flags & NATIVE_FLAG_CODEPAGE_READONLY) {
         BtCodeMemoryWrite w((BtCPU*)KThread::currentThread()->cpu, address, 8);
@@ -647,9 +660,11 @@ void Memory::clearCodePageFromCache(U32 page) {
     
     U32 nativePage = this->getNativePage(page);
     U32 startingPage = this->getEmulatedPage(nativePage);
-    for (int i=0;i<K_NATIVE_PAGES_PER_PAGE;i++) {
-        if (this->eipToHostInstructionPages[startingPage+i]) {
-            return;
+    if (this->eipToHostInstructionPages) {
+        for (int i=0;i<K_NATIVE_PAGES_PER_PAGE;i++) {
+            if (this->eipToHostInstructionPages[startingPage+i]) {
+                return;
+            }
         }
     }
     clearCodePageReadOnly(this, nativePage);
@@ -864,7 +879,7 @@ void Memory::invalideHostCode(U32 eip, U32 len) {
     }
 
     U32 startPage = this->getNativePage(eip >> K_PAGE_SHIFT);
-    U32 endPage = this->getNativePagegetNativePage((eip+len) >> K_PAGE_SHIFT);
+    U32 endPage = this->getNativePage((eip+len) >> K_PAGE_SHIFT);
     for (U32 nativePage = startPage; nativePage <= endPage; nativePage++) {
         if (dynamicCodePageUpdateCount[nativePage]!=MAX_DYNAMIC_CODE_PAGE_COUNT) {
             dynamicCodePageUpdateCount[nativePage]++;

@@ -26,20 +26,8 @@
 U32 nativeMemoryPagesAllocated;
 
 #ifdef BOXEDWINE_64BIT_MMU
-static void updateNativePermission(Memory* memory, U32 nativePage) {
-    bool canRead = true;
-    bool canWrite = true;
-    U32 emulatedPage = memory->getEmulatedPage(nativePage);
+void updateNativePermission(Memory* memory, U32 nativePage, U32 nativePageCount, bool canRead, bool canWrite) {
     U32 proto = 0;
-    
-    for (int i=0;i<K_NATIVE_PAGES_PER_PAGE;i++) {
-        if (!(memory->flags[emulatedPage+i] & (PAGE_READ|PAGE_EXEC))) {
-            canRead = false;
-        }
-        if (!(memory->flags[emulatedPage+i] & (PAGE_WRITE))) {
-            canWrite = false;
-        }
-    }
     if (canRead) {
         proto|=PROT_READ;
     }
@@ -49,7 +37,23 @@ static void updateNativePermission(Memory* memory, U32 nativePage) {
     if (!proto) {
         proto = PROT_NONE;
     }
-    mprotect((char*)memory->id + (nativePage << K_NATIVE_PAGE_SHIFT), K_NATIVE_PAGE_SIZE, proto);
+    mprotect((char*)memory->id + (nativePage << K_NATIVE_PAGE_SHIFT), nativePageCount << K_NATIVE_PAGE_SHIFT, proto);
+}
+
+static void updateNativePermission(Memory* memory, U32 nativePage) {
+    bool canRead = true;
+    bool canWrite = true;
+    U32 emulatedPage = memory->getEmulatedPage(nativePage);
+    
+    for (int i=0;i<K_NATIVE_PAGES_PER_PAGE;i++) {
+        if (!(memory->flags[emulatedPage+i] & (PAGE_READ|PAGE_EXEC))) {
+            canRead = false;
+        }
+        if (!(memory->flags[emulatedPage+i] & (PAGE_WRITE))) {
+            canWrite = false;
+        }
+    }
+    updateNativePermission(memory, nativePage, 1, canRead, canWrite);
 }
 
 void allocNativeMemory(Memory* memory, U32 page, U32 pageCount, U32 flags) {
@@ -57,7 +61,7 @@ void allocNativeMemory(Memory* memory, U32 page, U32 pageCount, U32 flags) {
     U32 nativePageStart = memory->getNativePage(page);
     U32 nativePageStop = memory->getNativePage(page+pageCount-1);
     U32 nativePageCount = nativePageStop - nativePageStart + 1;
-    
+
     if ((flags & PAGE_READ) || (flags & PAGE_EXEC)) {
         proto|=PROT_READ;
     }
@@ -70,10 +74,8 @@ void allocNativeMemory(Memory* memory, U32 page, U32 pageCount, U32 flags) {
     }
     memory->allocated += pageCount<< K_PAGE_SHIFT;
     for (U32 i=0;i<pageCount;i++) {
-        //if (!(memory->flags[page+i] & PAGE_ALLOCATED)) {
-            memory->flags[page+i] = flags |= PAGE_ALLOCATED;
-            memset(getNativeAddress(memory, (page+i) << K_PAGE_SHIFT), 0, K_PAGE_SIZE);
-        //}
+        memory->flags[page+i] = flags |= PAGE_ALLOCATED;
+        memset(getNativeAddress(memory, (page+i) << K_PAGE_SHIFT), 0, K_PAGE_SIZE);
     }
     // :TODO: figure out how to re-enable
     // if (mprotect(p, nativePageCount << K_NATIVE_PAGE_SHIFT, proto)<0) {
@@ -81,10 +83,10 @@ void allocNativeMemory(Memory* memory, U32 page, U32 pageCount, U32 flags) {
     // }
     for (U32 i=nativePageStart;i<=nativePageStop;i++) {
         if (!(memory->nativeFlags[i] & NATIVE_FLAG_COMMITTED)) {
-            memory->nativeFlags[page+i] |= NATIVE_FLAG_COMMITTED;
+            memory->nativeFlags[i] |= NATIVE_FLAG_COMMITTED;
             nativeMemoryPagesAllocated++;
         }
-        U32 emulatedPageStart = memory->getEmulatedPage(i);
+        U32 emulatedPageStart = memory->getEmulatedPage(nativePageStart+i);
         for (U32 j=0;j<K_NATIVE_PAGES_PER_PAGE;j++) {
             U32 pageFlags = GET_PAGE_PERMISSIONS(memory->flags[emulatedPageStart+j]);
             if (pageFlags != GET_PAGE_PERMISSIONS(flags)) {
@@ -277,9 +279,9 @@ void makeCodePageReadOnly(Memory* memory, U32 page) {
             kpanic("makeCodePageReadOnly: tried to make a dynamic code page read-only");
         }
         // :TODO: re-enable for self modifying code
-        //if (mprotect((char*)memory->id + (page << K_NATIVE_PAGE_SHIFT), 1 << K_NATIVE_PAGE_SHIFT, PROT_READ)==-1) {
-         //   kpanic("makeCodePageReadOnly mprotect failed: %s", strerror(errno));
-       // }
+        if (mprotect((char*)memory->id + (page << K_NATIVE_PAGE_SHIFT), 1 << K_NATIVE_PAGE_SHIFT, PROT_READ)==-1) {
+           kpanic("makeCodePageReadOnly mprotect failed: %s", strerror(errno));
+        }
         memory->nativeFlags[page] |= NATIVE_FLAG_CODEPAGE_READONLY;
     }
 }
@@ -331,9 +333,13 @@ static void handler(int sig, siginfo_t* info, void* context)
 {
     KThread* thread = KThread::currentThread();
     U32 address = getHostAddress(thread, (void*)info->si_addr);
-    if (thread->process->memory->nativeFlags[address>>K_PAGE_SHIFT] & NATIVE_FLAG_CODEPAGE_READONLY) {
-        U32 page = address>>K_PAGE_SHIFT;
-        thread->process->memory->clearCodePageFromCache(page);
+    U32 page = address >> K_PAGE_SHIFT;
+    U32 nativePage = thread->memory->getNativePage(page);
+    if (thread->process->memory->nativeFlags[nativePage] & NATIVE_FLAG_CODEPAGE_READONLY) {
+        U32 emulatedPage = thread->memory->getEmulatedPage(nativePage);
+        for (int i=0;i<K_NATIVE_PAGES_PER_PAGE;i++) {
+            thread->process->memory->clearCodePageFromCache(emulatedPage + i);
+        }
         // will continue
     } else {
 #ifdef __MACH__
@@ -343,7 +349,11 @@ static void handler(int sig, siginfo_t* info, void* context)
         bool readAccess = (((ucontext_t*)context)->uc_mcontext->__es.__err & 1) == 0;
 #endif
 #elif defined (__aarch64__)
-        bool readAccess = true; // :TODO: ???
+        DecodedOp* op = DecodedBlock::currentBlock->getOp(thread->cpu->getEipAddress());
+        bool readAccess = true; // :TODO: ??? where is this in the signal info
+        if (op) {
+            readAccess = instructionInfo[op->inst].writeMemWidth == 0;
+        }
         static const U64 ESR_ELx_WNR = 1U << 6;
         U64 esr;
         if (Aarch64GetESR((ucontext_t*)context, &esr)) {
@@ -352,6 +362,12 @@ static void handler(int sig, siginfo_t* info, void* context)
 #else
         bool readAccess = (((ucontext_t*)context)->uc_mcontext.gregs[REG_ERR] & 1) == 0;
 #endif
+        
+        if (!readAccess && (thread->process->memory->flags[page] & PROT_WRITE)) {
+            void* p = (void*)(thread->memory->id + (thread->memory->getNativePage(page) << K_NATIVE_PAGE_SHIFT));
+            mprotect(p, K_NATIVE_PAGE_SIZE, PROT_READ | PROT_WRITE);
+            return;
+        }
         if (info->si_code==SEGV_MAPERR) {
             thread->seg_mapper(address, readAccess, !readAccess, true);
         } else {
@@ -374,6 +390,13 @@ void platformRunThreadSlice(KThread* thread) {
         sigaction(SIGSEGV, &sa, &oldsa);
 #endif
         initializedHandler = true;
+#ifdef __MACH__
+        // proc hand -p true -s false SIGBUS
+        // in the debug output window, (lldb) enter the above command in order to run while debugging on Mac
+        
+        // set a break point on this line then enter the above commands.
+        task_set_exception_ports(mach_task_self(), EXC_MASK_BAD_ACCESS, MACH_PORT_NULL, EXCEPTION_DEFAULT, 0);
+#endif
     }
     runThreadSlice(thread);
 }
