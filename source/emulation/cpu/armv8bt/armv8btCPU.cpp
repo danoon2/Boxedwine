@@ -321,7 +321,17 @@ void Armv8btCPU::link(Armv8btAsm* data, std::shared_ptr<BtCodeChunk>& fromChunk,
         U8* host = NULL;
 
         if (size==4 && (host = (U8*)fromChunk->getHostFromEip(eip))) {
+#ifdef BOXEDWINE_MAC_JIT
+        if (__builtin_available(macOS 11.0, *)) {
+            pthread_jit_write_protect_np(false);
+        }
+#endif
             writeJumpAmount(data, data->todoJump[i].bufferPos, (U32)(host - offset), (U8*)fromChunk->getHostAddress() + offsetIntoChunk);
+#ifdef BOXEDWINE_MAC_JIT
+        if (__builtin_available(macOS 11.0, *)) {
+            pthread_jit_write_protect_np(true);
+        }
+#endif
         } else if (size==4) {
             U8* toHostAddress = (U8*)this->thread->memory->getExistingHostAddress(eip);
 

@@ -6,10 +6,20 @@
 #include "../../source/emulation/cpu/armv8bt/armv8btAsm.h"
 #include "../../source/emulation/cpu/binaryTranslation/btCodeChunk.h"
 
+#ifdef __MACH__
+#define __USE_GNU
+#define _XOPEN_SOURCE
 #include <ucontext.h>
 #include <signal.h>
 #include <pthread.h>
-
+#define CONTEXT_REG(x) uc_mcontext->__ss.__x[x]
+#define CONTEXT_PC uc_mcontext->__ss.__pc
+#else
+#define CONTEXT_REG(x) uc_mcontext->regs[x]
+#define CONTEXT_PC uc_mcontext->pc
+#include <ucontext.h>
+#include <signal.h>
+#include <pthread.h>
 struct fpsimd_context* getSimdContext(mcontext_t* mc) {
     struct _aarch64_ctx* head = (struct _aarch64_ctx*) &mc->__reserved;
     size_t offset = 0;
@@ -23,13 +33,13 @@ struct fpsimd_context* getSimdContext(mcontext_t* mc) {
         U32 size = head->size;
         
         switch (magic) {
-            case 0: 
+            case 0:
                 return NULL;
-            case FPSIMD_MAGIC: 
+            case FPSIMD_MAGIC:
                 return (struct fpsimd_context*)head;
-            case ESR_MAGIC: 
-                break; // ignore 
-            default: 
+            case ESR_MAGIC:
+                break; // ignore
+            default:
                 return NULL;
         }
         if (size < sizeof(*head)) {
@@ -41,36 +51,43 @@ struct fpsimd_context* getSimdContext(mcontext_t* mc) {
         offset += size;
     }
 }
+#endif
+
 
 void syncFromException(Armv8btCPU* cpu, ucontext_t* context) {
-    mcontext_t* c = &context->uc_mcontext;
-
-    EAX = (U32)c->regs[xEAX];
-    ECX = (U32)c->regs[xECX];
-    EDX = (U32)c->regs[xEDX];
-    EBX = (U32)c->regs[xEBX];
-    ESP = (U32)c->regs[xESP];
-    EBP = (U32)c->regs[xEBP];
-    ESI = (U32)c->regs[xESI];
-    EDI = (U32)c->regs[xEDI];
-    cpu->regPage = c->regs[xPage];
-    cpu->regOffset = c->regs[xOffset];
+    EAX = (U32)context->CONTEXT_REG(xEAX);
+    ECX = (U32)context->CONTEXT_REG(xECX);
+    EDX = (U32)context->CONTEXT_REG(xEDX);
+    EBX = (U32)context->CONTEXT_REG(xEBX);
+    ESP = (U32)context->CONTEXT_REG(xESP);
+    EBP = (U32)context->CONTEXT_REG(xEBP);
+    ESI = (U32)context->CONTEXT_REG(xESI);
+    EDI = (U32)context->CONTEXT_REG(xEDI);
+    cpu->regPage = context->CONTEXT_REG(xPage);
+    cpu->regOffset = context->CONTEXT_REG(xOffset);
 
 #ifdef _DEBUG
     for (int i = 0; i < 32; i++) {
-        cpu->exceptionRegs[i] = c->regs[i];
+        cpu->exceptionRegs[i] = context->CONTEXT_REG(i);
     }
 #endif
-    cpu->destEip = (U32)((c->regs[xBranchLargeAddressOffset] - (U64)cpu->eipToHostInstructionAddressSpaceMapping) >> 3);
-    cpu->flags = (U32)c->regs[xFLAGS];
+    cpu->destEip = (U32)((context->CONTEXT_REG(xBranchLargeAddressOffset) - (U64)cpu->eipToHostInstructionAddressSpaceMapping) >> 3);
+    cpu->flags = (U32)context->CONTEXT_REG(xFLAGS);
     cpu->lazyFlags = FLAGS_NONE;
 
-    struct fpsimd_context* fc = getSimdContext(c);
+#ifdef __MACH__
+    for (int i = 0; i < 8; i++) {
+        memcpy(&cpu->xmm[i], &context->uc_mcontext->__ns.__v[xXMM0 + i], 16);
+        cpu->reg_mmx[i].q = (U64)context->uc_mcontext->__ns.__v[vMMX0 + i];
+    }
+#else
+    struct fpsimd_context* fc = getSimdContext(&context->uc_mcontext);
 
     for (int i = 0; i < 8; i++) {
         memcpy(&cpu->xmm[i], &fc->vregs[xXMM0 + i], 16);
         cpu->reg_mmx[i].q = (U64)fc->vregs[vMMX0 + i];
     }
+#endif
 }
 
 class InException {
@@ -90,10 +107,9 @@ void platformHandler(int sig, siginfo_t* info, void* vcontext) {
         return;
     }
     ucontext_t* context = (ucontext_t*)vcontext;
-    mcontext_t* mc = &context->uc_mcontext;
 
     BtCPU* cpu = (BtCPU*)currentThread->cpu;
-    if (cpu != (BtCPU*)mc->regs[xCPU]) {
+    if (cpu != (BtCPU*)context->CONTEXT_REG(xCPU)) {
         return;
     }
     Armv8btCPU* armCpu = (Armv8btCPU*)cpu;
@@ -101,23 +117,23 @@ void platformHandler(int sig, siginfo_t* info, void* vcontext) {
     syncFromException(armCpu, context);
 
     // :TODO:
-    // cpu->exceptionReadAddress = mc->error_code == 0;
+    //cpu->exceptionReadAddress = mc->error_code == 0;
     cpu->exceptionAddress = (U64)info->si_addr;
     cpu->exceptionSigNo = info->si_signo;
     cpu->exceptionSigCode = info->si_code;
-    armCpu->exceptionIp = mc->pc;
+    armCpu->exceptionIp = context->CONTEXT_PC;
 
     if (armCpu->exceptionIp == 0) {
         kpanic("oops jumps to 0");
     }
-    if ((armCpu->exceptionIp & 0xFFFFFFFF00000000l) == (U64)cpu->thread->memory->executableMemoryId) {
+    if (cpu->thread->memory->isAddressExecutable((void*)armCpu->exceptionIp)) {
         unsigned char* hostAddress = (unsigned char*)armCpu->exceptionIp;
         std::shared_ptr<BtCodeChunk> chunk = cpu->thread->memory->getCodeChunkContainingHostAddress(hostAddress);
         if (chunk && chunk->getEipLen()) { // during start up eip is already set
             cpu->eip.u32 = chunk->getEipThatContainsHostAddress(hostAddress, NULL, NULL) - cpu->seg[CS].address;
         }
     }
-    mc->pc = (U64)cpu->thread->process->runSignalAddress;
+    context->CONTEXT_PC = (U64)cpu->thread->process->runSignalAddress;
 }
 
 int getFPUCode(int code) {
@@ -161,7 +177,7 @@ void signalHandler() {
         cpu->flags &= ~AC;
         cpu->returnHostAddress = cpu->exceptionIp;
         return;
-    } else if ((cpu->exceptionSigNo == SIGBUS || cpu->exceptionSigNo == SIGSEGV) && ((cpu->exceptionIp & 0xFFFFFFFF00000000l) == (U64)cpu->thread->memory->executableMemoryId)) {
+    } else if ((cpu->exceptionSigNo == SIGBUS || cpu->exceptionSigNo == SIGSEGV) && cpu->thread->memory->isAddressExecutable((void*)cpu->exceptionIp)) {
         U64 rip = cpu->handleAccessException(cpu->exceptionIp, cpu->exceptionAddress, cpu->exceptionReadAddress);
         if (rip) {
             cpu->returnHostAddress = rip;

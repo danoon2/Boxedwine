@@ -56,6 +56,66 @@
 		1AFC47A826489FB200EE5FCC /* coremidi.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4795264827A600EE5FCC /* coremidi.cpp */; };
 		1AFC47A926489FB300EE5FCC /* coremidi.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4795264827A600EE5FCC /* coremidi.cpp */; };
 		1AFC47AA2648A7A500EE5FCC /* CoreMIDI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1AFC47A526489F7700EE5FCC /* CoreMIDI.framework */; };
+		1AFC47CC2653631700EE5FCC /* armv8btOps_bits.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47B32653631600EE5FCC /* armv8btOps_bits.cpp */; };
+		1AFC47CD2653631700EE5FCC /* armv8btOps_bits.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47B32653631600EE5FCC /* armv8btOps_bits.cpp */; };
+		1AFC47CE2653631700EE5FCC /* armv8btOps_bits.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47B32653631600EE5FCC /* armv8btOps_bits.cpp */; };
+		1AFC47CF2653631700EE5FCC /* armv8btOps_bits.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47B32653631600EE5FCC /* armv8btOps_bits.cpp */; };
+		1AFC47D02653631700EE5FCC /* armv8btOps_sse_convert.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47B62653631600EE5FCC /* armv8btOps_sse_convert.cpp */; };
+		1AFC47D12653631700EE5FCC /* armv8btOps_sse_convert.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47B62653631600EE5FCC /* armv8btOps_sse_convert.cpp */; };
+		1AFC47D22653631700EE5FCC /* armv8btOps_sse_convert.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47B62653631600EE5FCC /* armv8btOps_sse_convert.cpp */; };
+		1AFC47D32653631700EE5FCC /* armv8btOps_sse_convert.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47B62653631600EE5FCC /* armv8btOps_sse_convert.cpp */; };
+		1AFC47D42653631700EE5FCC /* armv8btCPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47BA2653631600EE5FCC /* armv8btCPU.cpp */; };
+		1AFC47D52653631700EE5FCC /* armv8btCPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47BA2653631600EE5FCC /* armv8btCPU.cpp */; };
+		1AFC47D62653631700EE5FCC /* armv8btCPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47BA2653631600EE5FCC /* armv8btCPU.cpp */; };
+		1AFC47D72653631700EE5FCC /* armv8btCPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47BA2653631600EE5FCC /* armv8btCPU.cpp */; };
+		1AFC47D82653631700EE5FCC /* armv8btAsm.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47BC2653631700EE5FCC /* armv8btAsm.cpp */; };
+		1AFC47D92653631700EE5FCC /* armv8btAsm.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47BC2653631700EE5FCC /* armv8btAsm.cpp */; };
+		1AFC47DA2653631700EE5FCC /* armv8btAsm.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47BC2653631700EE5FCC /* armv8btAsm.cpp */; };
+		1AFC47DB2653631700EE5FCC /* armv8btAsm.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47BC2653631700EE5FCC /* armv8btAsm.cpp */; };
+		1AFC47DC2653631700EE5FCC /* armv8btOps_sse_shuffle.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47BD2653631700EE5FCC /* armv8btOps_sse_shuffle.cpp */; };
+		1AFC47DD2653631700EE5FCC /* armv8btOps_sse_shuffle.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47BD2653631700EE5FCC /* armv8btOps_sse_shuffle.cpp */; };
+		1AFC47DE2653631700EE5FCC /* armv8btOps_sse_shuffle.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47BD2653631700EE5FCC /* armv8btOps_sse_shuffle.cpp */; };
+		1AFC47DF2653631700EE5FCC /* armv8btOps_sse_shuffle.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47BD2653631700EE5FCC /* armv8btOps_sse_shuffle.cpp */; };
+		1AFC47E02653631700EE5FCC /* armv8btCodeChunk.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47C02653631700EE5FCC /* armv8btCodeChunk.cpp */; };
+		1AFC47E12653631700EE5FCC /* armv8btCodeChunk.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47C02653631700EE5FCC /* armv8btCodeChunk.cpp */; };
+		1AFC47E22653631700EE5FCC /* armv8btCodeChunk.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47C02653631700EE5FCC /* armv8btCodeChunk.cpp */; };
+		1AFC47E32653631700EE5FCC /* armv8btCodeChunk.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47C02653631700EE5FCC /* armv8btCodeChunk.cpp */; };
+		1AFC47E42653631700EE5FCC /* armv8btOps_sse_minmax.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47C12653631700EE5FCC /* armv8btOps_sse_minmax.cpp */; };
+		1AFC47E52653631700EE5FCC /* armv8btOps_sse_minmax.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47C12653631700EE5FCC /* armv8btOps_sse_minmax.cpp */; };
+		1AFC47E62653631700EE5FCC /* armv8btOps_sse_minmax.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47C12653631700EE5FCC /* armv8btOps_sse_minmax.cpp */; };
+		1AFC47E72653631700EE5FCC /* armv8btOps_sse_minmax.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47C12653631700EE5FCC /* armv8btOps_sse_minmax.cpp */; };
+		1AFC47E82653631700EE5FCC /* armv8btData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47C22653631700EE5FCC /* armv8btData.cpp */; };
+		1AFC47E92653631700EE5FCC /* armv8btData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47C22653631700EE5FCC /* armv8btData.cpp */; };
+		1AFC47EA2653631700EE5FCC /* armv8btData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47C22653631700EE5FCC /* armv8btData.cpp */; };
+		1AFC47EB2653631700EE5FCC /* armv8btData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47C22653631700EE5FCC /* armv8btData.cpp */; };
+		1AFC47EC2653631700EE5FCC /* armv8btOps_shift.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47C32653631700EE5FCC /* armv8btOps_shift.cpp */; };
+		1AFC47ED2653631700EE5FCC /* armv8btOps_shift.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47C32653631700EE5FCC /* armv8btOps_shift.cpp */; };
+		1AFC47EE2653631700EE5FCC /* armv8btOps_shift.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47C32653631700EE5FCC /* armv8btOps_shift.cpp */; };
+		1AFC47EF2653631700EE5FCC /* armv8btOps_shift.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47C32653631700EE5FCC /* armv8btOps_shift.cpp */; };
+		1AFC47F02653631700EE5FCC /* armv8btOps_string.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47C42653631700EE5FCC /* armv8btOps_string.cpp */; };
+		1AFC47F12653631700EE5FCC /* armv8btOps_string.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47C42653631700EE5FCC /* armv8btOps_string.cpp */; };
+		1AFC47F22653631700EE5FCC /* armv8btOps_string.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47C42653631700EE5FCC /* armv8btOps_string.cpp */; };
+		1AFC47F32653631700EE5FCC /* armv8btOps_string.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47C42653631700EE5FCC /* armv8btOps_string.cpp */; };
+		1AFC47F42653631700EE5FCC /* armv8btOps_mmx.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47C52653631700EE5FCC /* armv8btOps_mmx.cpp */; };
+		1AFC47F52653631700EE5FCC /* armv8btOps_mmx.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47C52653631700EE5FCC /* armv8btOps_mmx.cpp */; };
+		1AFC47F62653631700EE5FCC /* armv8btOps_mmx.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47C52653631700EE5FCC /* armv8btOps_mmx.cpp */; };
+		1AFC47F72653631700EE5FCC /* armv8btOps_mmx.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47C52653631700EE5FCC /* armv8btOps_mmx.cpp */; };
+		1AFC47F82653631700EE5FCC /* arm8btFlags.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47C62653631700EE5FCC /* arm8btFlags.cpp */; };
+		1AFC47F92653631700EE5FCC /* arm8btFlags.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47C62653631700EE5FCC /* arm8btFlags.cpp */; };
+		1AFC47FA2653631700EE5FCC /* arm8btFlags.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47C62653631700EE5FCC /* arm8btFlags.cpp */; };
+		1AFC47FB2653631700EE5FCC /* arm8btFlags.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47C62653631700EE5FCC /* arm8btFlags.cpp */; };
+		1AFC47FC2653631700EE5FCC /* armv8btOps.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47C92653631700EE5FCC /* armv8btOps.cpp */; };
+		1AFC47FD2653631700EE5FCC /* armv8btOps.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47C92653631700EE5FCC /* armv8btOps.cpp */; };
+		1AFC47FE2653631700EE5FCC /* armv8btOps.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47C92653631700EE5FCC /* armv8btOps.cpp */; };
+		1AFC47FF2653631700EE5FCC /* armv8btOps.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47C92653631700EE5FCC /* armv8btOps.cpp */; };
+		1AFC48002653631700EE5FCC /* armv8btOps_fpu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47CA2653631700EE5FCC /* armv8btOps_fpu.cpp */; };
+		1AFC48012653631700EE5FCC /* armv8btOps_fpu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47CA2653631700EE5FCC /* armv8btOps_fpu.cpp */; };
+		1AFC48022653631700EE5FCC /* armv8btOps_fpu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47CA2653631700EE5FCC /* armv8btOps_fpu.cpp */; };
+		1AFC48032653631700EE5FCC /* armv8btOps_fpu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC47CA2653631700EE5FCC /* armv8btOps_fpu.cpp */; };
+		1AFC4805265364EB00EE5FCC /* platformThreads-armv8.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4804265364EB00EE5FCC /* platformThreads-armv8.cpp */; };
+		1AFC4806265364EB00EE5FCC /* platformThreads-armv8.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4804265364EB00EE5FCC /* platformThreads-armv8.cpp */; };
+		1AFC4807265364EB00EE5FCC /* platformThreads-armv8.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4804265364EB00EE5FCC /* platformThreads-armv8.cpp */; };
+		1AFC4808265364EB00EE5FCC /* platformThreads-armv8.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4804265364EB00EE5FCC /* platformThreads-armv8.cpp */; };
 		7100913C2644D42C003413C3 /* knativesynchronization.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091342644D42B003413C3 /* knativesynchronization.cpp */; };
 		7100913D2644D42C003413C3 /* knativesynchronization.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091342644D42B003413C3 /* knativesynchronization.cpp */; };
 		7100913E2644D42C003413C3 /* knativesynchronization.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091342644D42B003413C3 /* knativesynchronization.cpp */; };
@@ -1520,6 +1580,35 @@
 		1AFC4796264827A600EE5FCC /* coremidi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = coremidi.h; path = ../../../platform/mac/coremidi.h; sourceTree = "<group>"; };
 		1AFC479C2648471000EE5FCC /* audiounit.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = audiounit.cpp; path = ../../../platform/mac/audiounit.cpp; sourceTree = "<group>"; };
 		1AFC47A526489F7700EE5FCC /* CoreMIDI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMIDI.framework; path = System/Library/Frameworks/CoreMIDI.framework; sourceTree = SDKROOT; };
+		1AFC47B02653631600EE5FCC /* armv8btAsm.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = armv8btAsm.h; path = armv8bt/armv8btAsm.h; sourceTree = "<group>"; };
+		1AFC47B12653631600EE5FCC /* armv8btCodeChunk.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = armv8btCodeChunk.h; path = armv8bt/armv8btCodeChunk.h; sourceTree = "<group>"; };
+		1AFC47B22653631600EE5FCC /* armv8btCPU.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = armv8btCPU.h; path = armv8bt/armv8btCPU.h; sourceTree = "<group>"; };
+		1AFC47B32653631600EE5FCC /* armv8btOps_bits.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = armv8btOps_bits.cpp; path = armv8bt/armv8btOps_bits.cpp; sourceTree = "<group>"; };
+		1AFC47B42653631600EE5FCC /* armv8btData.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = armv8btData.h; path = armv8bt/armv8btData.h; sourceTree = "<group>"; };
+		1AFC47B52653631600EE5FCC /* arm8btFlags.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = arm8btFlags.h; path = armv8bt/arm8btFlags.h; sourceTree = "<group>"; };
+		1AFC47B62653631600EE5FCC /* armv8btOps_sse_convert.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = armv8btOps_sse_convert.cpp; path = armv8bt/armv8btOps_sse_convert.cpp; sourceTree = "<group>"; };
+		1AFC47B72653631600EE5FCC /* armv8btOps_sse_convert.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = armv8btOps_sse_convert.h; path = armv8bt/armv8btOps_sse_convert.h; sourceTree = "<group>"; };
+		1AFC47B82653631600EE5FCC /* armv8btOps_mmx.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = armv8btOps_mmx.h; path = armv8bt/armv8btOps_mmx.h; sourceTree = "<group>"; };
+		1AFC47B92653631600EE5FCC /* armv8btOps_string.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = armv8btOps_string.h; path = armv8bt/armv8btOps_string.h; sourceTree = "<group>"; };
+		1AFC47BA2653631600EE5FCC /* armv8btCPU.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = armv8btCPU.cpp; path = armv8bt/armv8btCPU.cpp; sourceTree = "<group>"; };
+		1AFC47BB2653631700EE5FCC /* armv8btOps_bits.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = armv8btOps_bits.h; path = armv8bt/armv8btOps_bits.h; sourceTree = "<group>"; };
+		1AFC47BC2653631700EE5FCC /* armv8btAsm.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = armv8btAsm.cpp; path = armv8bt/armv8btAsm.cpp; sourceTree = "<group>"; };
+		1AFC47BD2653631700EE5FCC /* armv8btOps_sse_shuffle.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = armv8btOps_sse_shuffle.cpp; path = armv8bt/armv8btOps_sse_shuffle.cpp; sourceTree = "<group>"; };
+		1AFC47BE2653631700EE5FCC /* armv8btOps_sse_shuffle.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = armv8btOps_sse_shuffle.h; path = armv8bt/armv8btOps_sse_shuffle.h; sourceTree = "<group>"; };
+		1AFC47BF2653631700EE5FCC /* armv8btOps_shift.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = armv8btOps_shift.h; path = armv8bt/armv8btOps_shift.h; sourceTree = "<group>"; };
+		1AFC47C02653631700EE5FCC /* armv8btCodeChunk.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = armv8btCodeChunk.cpp; path = armv8bt/armv8btCodeChunk.cpp; sourceTree = "<group>"; };
+		1AFC47C12653631700EE5FCC /* armv8btOps_sse_minmax.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = armv8btOps_sse_minmax.cpp; path = armv8bt/armv8btOps_sse_minmax.cpp; sourceTree = "<group>"; };
+		1AFC47C22653631700EE5FCC /* armv8btData.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = armv8btData.cpp; path = armv8bt/armv8btData.cpp; sourceTree = "<group>"; };
+		1AFC47C32653631700EE5FCC /* armv8btOps_shift.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = armv8btOps_shift.cpp; path = armv8bt/armv8btOps_shift.cpp; sourceTree = "<group>"; };
+		1AFC47C42653631700EE5FCC /* armv8btOps_string.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = armv8btOps_string.cpp; path = armv8bt/armv8btOps_string.cpp; sourceTree = "<group>"; };
+		1AFC47C52653631700EE5FCC /* armv8btOps_mmx.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = armv8btOps_mmx.cpp; path = armv8bt/armv8btOps_mmx.cpp; sourceTree = "<group>"; };
+		1AFC47C62653631700EE5FCC /* arm8btFlags.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = arm8btFlags.cpp; path = armv8bt/arm8btFlags.cpp; sourceTree = "<group>"; };
+		1AFC47C72653631700EE5FCC /* armv8btOps.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = armv8btOps.h; path = armv8bt/armv8btOps.h; sourceTree = "<group>"; };
+		1AFC47C82653631700EE5FCC /* armv8btOps_fpu.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = armv8btOps_fpu.h; path = armv8bt/armv8btOps_fpu.h; sourceTree = "<group>"; };
+		1AFC47C92653631700EE5FCC /* armv8btOps.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = armv8btOps.cpp; path = armv8bt/armv8btOps.cpp; sourceTree = "<group>"; };
+		1AFC47CA2653631700EE5FCC /* armv8btOps_fpu.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = armv8btOps_fpu.cpp; path = armv8bt/armv8btOps_fpu.cpp; sourceTree = "<group>"; };
+		1AFC47CB2653631700EE5FCC /* armv8btOps_sse_minmax.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = armv8btOps_sse_minmax.h; path = armv8bt/armv8btOps_sse_minmax.h; sourceTree = "<group>"; };
+		1AFC4804265364EB00EE5FCC /* platformThreads-armv8.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = "platformThreads-armv8.cpp"; path = "../../../platform/linux/platformThreads-armv8.cpp"; sourceTree = "<group>"; };
 		710091342644D42B003413C3 /* knativesynchronization.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = knativesynchronization.cpp; path = ../../../platform/sdl/knativesynchronization.cpp; sourceTree = "<group>"; };
 		710091352644D42B003413C3 /* knativewindow.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = knativewindow.cpp; path = ../../../platform/sdl/knativewindow.cpp; sourceTree = "<group>"; };
 		710091362644D42B003413C3 /* kdspaudio.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = kdspaudio.cpp; path = ../../../platform/sdl/kdspaudio.cpp; sourceTree = "<group>"; };
@@ -2505,6 +2594,41 @@
 			name = mac;
 			sourceTree = "<group>";
 		};
+		1AFC47AD265362E100EE5FCC /* armv8bt */ = {
+			isa = PBXGroup;
+			children = (
+				1AFC47C62653631700EE5FCC /* arm8btFlags.cpp */,
+				1AFC47B52653631600EE5FCC /* arm8btFlags.h */,
+				1AFC47BC2653631700EE5FCC /* armv8btAsm.cpp */,
+				1AFC47B02653631600EE5FCC /* armv8btAsm.h */,
+				1AFC47C02653631700EE5FCC /* armv8btCodeChunk.cpp */,
+				1AFC47B12653631600EE5FCC /* armv8btCodeChunk.h */,
+				1AFC47BA2653631600EE5FCC /* armv8btCPU.cpp */,
+				1AFC47B22653631600EE5FCC /* armv8btCPU.h */,
+				1AFC47C22653631700EE5FCC /* armv8btData.cpp */,
+				1AFC47B42653631600EE5FCC /* armv8btData.h */,
+				1AFC47B32653631600EE5FCC /* armv8btOps_bits.cpp */,
+				1AFC47BB2653631700EE5FCC /* armv8btOps_bits.h */,
+				1AFC47CA2653631700EE5FCC /* armv8btOps_fpu.cpp */,
+				1AFC47C82653631700EE5FCC /* armv8btOps_fpu.h */,
+				1AFC47C52653631700EE5FCC /* armv8btOps_mmx.cpp */,
+				1AFC47B82653631600EE5FCC /* armv8btOps_mmx.h */,
+				1AFC47C32653631700EE5FCC /* armv8btOps_shift.cpp */,
+				1AFC47BF2653631700EE5FCC /* armv8btOps_shift.h */,
+				1AFC47B62653631600EE5FCC /* armv8btOps_sse_convert.cpp */,
+				1AFC47B72653631600EE5FCC /* armv8btOps_sse_convert.h */,
+				1AFC47C12653631700EE5FCC /* armv8btOps_sse_minmax.cpp */,
+				1AFC47CB2653631700EE5FCC /* armv8btOps_sse_minmax.h */,
+				1AFC47BD2653631700EE5FCC /* armv8btOps_sse_shuffle.cpp */,
+				1AFC47BE2653631700EE5FCC /* armv8btOps_sse_shuffle.h */,
+				1AFC47C42653631700EE5FCC /* armv8btOps_string.cpp */,
+				1AFC47B92653631600EE5FCC /* armv8btOps_string.h */,
+				1AFC47C92653631700EE5FCC /* armv8btOps.cpp */,
+				1AFC47C72653631700EE5FCC /* armv8btOps.h */,
+			);
+			name = armv8bt;
+			sourceTree = "<group>";
+		};
 		7100912D2644D3F7003413C3 /* platform */ = {
 			isa = PBXGroup;
 			children = (
@@ -2533,6 +2657,7 @@
 		710091512644D431003413C3 /* linux */ = {
 			isa = PBXGroup;
 			children = (
+				1AFC4804265364EB00EE5FCC /* platformThreads-armv8.cpp */,
 				710091522644D44E003413C3 /* dynamic.cpp */,
 				710091532644D44E003413C3 /* memory64.cpp */,
 				710091542644D44E003413C3 /* platform.cpp */,
@@ -3396,6 +3521,7 @@
 		71FBFD5C2433BBBE003F17F1 /* cpu */ = {
 			isa = PBXGroup;
 			children = (
+				1AFC47AD265362E100EE5FCC /* armv8bt */,
 				1AFC47632640965500EE5FCC /* armv8 */,
 				1A9193342551B6D3005A798A /* btCodeChunk.cpp */,
 				1A9193322551B6D2005A798A /* btCodeChunk.h */,
@@ -3972,6 +4098,7 @@
 				71222BBB2435169100CDBABD /* kepoll.cpp in Sources */,
 				1A15512B263261EA006E0C8A /* glew.cpp in Sources */,
 				71222B732435169100CDBABD /* normalCPU.cpp in Sources */,
+				1AFC47FE2653631700EE5FCC /* armv8btOps.cpp in Sources */,
 				71222BC02435169100CDBABD /* glMarshalVertex.cpp in Sources */,
 				71222BAF2435169100CDBABD /* kmemory.cpp in Sources */,
 				71222B742435169100CDBABD /* instructions.cpp in Sources */,
@@ -3979,9 +4106,11 @@
 				71222B6E2435169100CDBABD /* fpu.cpp in Sources */,
 				71222B3D2435163100CDBABD /* testSSE2.cpp in Sources */,
 				71222B852435169100CDBABD /* fsfileopennode.cpp in Sources */,
+				1AFC47EA2653631700EE5FCC /* armv8btData.cpp in Sources */,
 				71222B8D2435169100CDBABD /* fsmemnode.cpp in Sources */,
 				71222B8F2435169100CDBABD /* fsvirtualnode.cpp in Sources */,
 				71222BBA2435169100CDBABD /* kscheduler.cpp in Sources */,
+				1AFC47D62653631700EE5FCC /* armv8btCPU.cpp in Sources */,
 				71222B432435163F00CDBABD /* synchronization.cpp in Sources */,
 				71222B8A2435169100CDBABD /* fsfilenode.cpp in Sources */,
 				71222B622435169100CDBABD /* x64Ops.cpp in Sources */,
@@ -3990,6 +4119,7 @@
 				71222B7E2435169100CDBABD /* soft_copy_on_write_page.cpp in Sources */,
 				71222B822435169100CDBABD /* soft_rw_page.cpp in Sources */,
 				71222B892435169100CDBABD /* fs.cpp in Sources */,
+				1AFC4807265364EB00EE5FCC /* platformThreads-armv8.cpp in Sources */,
 				71222BAC2435169100CDBABD /* syscall.cpp in Sources */,
 				71222B8C2435169100CDBABD /* fsnode.cpp in Sources */,
 				71222BA22435169100CDBABD /* devinput.cpp in Sources */,
@@ -4015,17 +4145,22 @@
 				710091592644D44E003413C3 /* dynamic.cpp in Sources */,
 				71222B662435169100CDBABD /* lazyFlags.cpp in Sources */,
 				71222B9E2435169100CDBABD /* kunixsocket.cpp in Sources */,
+				1AFC47E62653631700EE5FCC /* armv8btOps_sse_minmax.cpp in Sources */,
 				71222BA62435169100CDBABD /* devzero.cpp in Sources */,
+				1AFC48022653631700EE5FCC /* armv8btOps_fpu.cpp in Sources */,
 				71222B462435163F00CDBABD /* recorder.cpp in Sources */,
 				71222B882435169100CDBABD /* fsdiropennode.cpp in Sources */,
 				71222B6D2435169100CDBABD /* common_sse.cpp in Sources */,
 				1AB0CB00263BA8AD003AF407 /* wineaudiodrv.cpp in Sources */,
+				1AFC47DA2653631700EE5FCC /* armv8btAsm.cpp in Sources */,
+				1AFC47E22653631700EE5FCC /* armv8btCodeChunk.cpp in Sources */,
 				71222B6B2435169100CDBABD /* common_sse2.cpp in Sources */,
 				71222B652435169100CDBABD /* common_pushpop.cpp in Sources */,
 				71222B442435163F00CDBABD /* fileutils.cpp in Sources */,
 				71222B7B2435169100CDBABD /* soft_wo_page.cpp in Sources */,
 				71222B942435169100CDBABD /* startupArgs.cpp in Sources */,
 				71222BBC2435169100CDBABD /* glfunctions_ext1.cpp in Sources */,
+				1AFC47D22653631700EE5FCC /* armv8btOps_sse_convert.cpp in Sources */,
 				7100915C2644D44E003413C3 /* memory64.cpp in Sources */,
 				71222B952435169100CDBABD /* mainloop.cpp in Sources */,
 				710091472644D42C003413C3 /* knativesystem.cpp in Sources */,
@@ -4038,13 +4173,16 @@
 				71222B982435169100CDBABD /* bufferaccess.cpp in Sources */,
 				71222B762435169100CDBABD /* x32CPU.cpp in Sources */,
 				71222BBE2435169100CDBABD /* glfunctions_ext2.cpp in Sources */,
+				1AFC47EE2653631700EE5FCC /* armv8btOps_shift.cpp in Sources */,
 				71222BA52435169100CDBABD /* devtty.cpp in Sources */,
 				71222B612435169100CDBABD /* x64Asm.cpp in Sources */,
+				1AFC47F22653631700EE5FCC /* armv8btOps_string.cpp in Sources */,
 				71222B812435169100CDBABD /* soft_invalid_page.cpp in Sources */,
 				71222B772435169100CDBABD /* soft_memory.cpp in Sources */,
 				71222B9B2435169100CDBABD /* self.cpp in Sources */,
 				7100914D2644D42C003413C3 /* knativeaudio.cpp in Sources */,
 				71222BB82435169100CDBABD /* kobject.cpp in Sources */,
+				1AFC47DE2653631700EE5FCC /* armv8btOps_sse_shuffle.cpp in Sources */,
 				7100915F2644D44E003413C3 /* platform.cpp in Sources */,
 				71222B872435169100CDBABD /* fsmemopennode.cpp in Sources */,
 				71222B5F2435169100CDBABD /* x64CodeChunk.cpp in Sources */,
@@ -4054,6 +4192,7 @@
 				1A1551BA26326273006E0C8A /* pugixml.cpp in Sources */,
 				71222B752435169100CDBABD /* normal_strings.cpp in Sources */,
 				71222B782435169100CDBABD /* soft_ondemand_page.cpp in Sources */,
+				1AFC47F62653631700EE5FCC /* armv8btOps_mmx.cpp in Sources */,
 				1AFC479F2648471000EE5FCC /* audiounit.cpp in Sources */,
 				1AFC479B26483DE000EE5FCC /* knativecoreaudio.cpp in Sources */,
 				71222B8E2435169100CDBABD /* fszipopennode.cpp in Sources */,
@@ -4067,12 +4206,14 @@
 				1AFC477026409EBC00EE5FCC /* llvm_helper.cpp in Sources */,
 				710091412644D42C003413C3 /* knativewindow.cpp in Sources */,
 				71222BB22435169100CDBABD /* cpumaxfreq.cpp in Sources */,
+				1AFC47CE2653631700EE5FCC /* armv8btOps_bits.cpp in Sources */,
 				71222BA02435169100CDBABD /* kprocess.cpp in Sources */,
 				71222B862435169100CDBABD /* fszipnode.cpp in Sources */,
 				71222B932435169100CDBABD /* winedrv.cpp in Sources */,
 				71222BA42435169100CDBABD /* devmixer.cpp in Sources */,
 				71222BBF2435169100CDBABD /* glcommon.cpp in Sources */,
 				71222B7D2435169100CDBABD /* soft_ram.cpp in Sources */,
+				1AFC47FA2653631700EE5FCC /* arm8btFlags.cpp in Sources */,
 				71222B9D2435169100CDBABD /* ksignal.cpp in Sources */,
 				71222B642435169100CDBABD /* srcgen.cpp in Sources */,
 				71222BB92435169100CDBABD /* kpoll.cpp in Sources */,
@@ -4123,6 +4264,7 @@
 				715F34932440D7FC0038F5A4 /* networkutils.cpp in Sources */,
 				71222BD724351CBA00CDBABD /* devfb.cpp in Sources */,
 				71222BD824351CBA00CDBABD /* esdisplaylist.c in Sources */,
+				1AFC47F92653631700EE5FCC /* arm8btFlags.cpp in Sources */,
 				715F64652440E9740038F5A4 /* SecureServerSocketImpl.cpp in Sources */,
 				715F63F32440E9110038F5A4 /* MediaType.cpp in Sources */,
 				715F83442440ED1F0038F5A4 /* pcre_string_utils.c in Sources */,
@@ -4133,6 +4275,7 @@
 				715F63C12440E9110038F5A4 /* MailMessage.cpp in Sources */,
 				1A1551BF26326273006E0C8A /* pugixml.cpp in Sources */,
 				715F636B2440E9100038F5A4 /* DatagramSocket.cpp in Sources */,
+				1AFC4806265364EB00EE5FCC /* platformThreads-armv8.cpp in Sources */,
 				715F34CC2440E7480038F5A4 /* PropertyFileConfiguration.cpp in Sources */,
 				71222BDA24351CBA00CDBABD /* decoder.cpp in Sources */,
 				715F64272440E9110038F5A4 /* NTLMCredentials.cpp in Sources */,
@@ -4183,6 +4326,7 @@
 				715F828E2440ED1E0038F5A4 /* Notification.cpp in Sources */,
 				71222BE724351CBA00CDBABD /* soft_file_map.cpp in Sources */,
 				71222BE824351CBA00CDBABD /* imgui_draw.cpp in Sources */,
+				1AFC47D12653631700EE5FCC /* armv8btOps_sse_convert.cpp in Sources */,
 				715F82DA2440ED1E0038F5A4 /* MemoryStream.cpp in Sources */,
 				71222BE924351CBA00CDBABD /* stringutil.cpp in Sources */,
 				715F63E92440E9110038F5A4 /* SSPINTLMCredentials.cpp in Sources */,
@@ -4214,6 +4358,7 @@
 				715F84042440ED200038F5A4 /* SharedMemory.cpp in Sources */,
 				715F63A12440E9100038F5A4 /* StringPartSource.cpp in Sources */,
 				715F63CF2440E9110038F5A4 /* WebSocketImpl.cpp in Sources */,
+				1AFC47CD2653631700EE5FCC /* armv8btOps_bits.cpp in Sources */,
 				715F640B2440E9110038F5A4 /* HTTPStreamFactory.cpp in Sources */,
 				71222BF024351CBA00CDBABD /* fsmemnode.cpp in Sources */,
 				715F64172440E9110038F5A4 /* HTTPIOStream.cpp in Sources */,
@@ -4274,6 +4419,7 @@
 				71222C0224351CBA00CDBABD /* kmemory.cpp in Sources */,
 				715F34E42440E7480038F5A4 /* IniFileConfiguration.cpp in Sources */,
 				715F83DE2440ED200038F5A4 /* MemoryPool.cpp in Sources */,
+				1AFC48012653631700EE5FCC /* armv8btOps_fpu.cpp in Sources */,
 				715F64872440E9750038F5A4 /* AcceptCertificateHandler.cpp in Sources */,
 				715F83182440ED1F0038F5A4 /* SynchronizedObject.cpp in Sources */,
 				715F837E2440ED1F0038F5A4 /* Debugger.cpp in Sources */,
@@ -4286,6 +4432,7 @@
 				71222C0824351CBA00CDBABD /* ktimer.cpp in Sources */,
 				715F63A72440E9100038F5A4 /* HTTPServerSession.cpp in Sources */,
 				715F642D2440E9110038F5A4 /* SocketReactor.cpp in Sources */,
+				1AFC47F12653631700EE5FCC /* armv8btOps_string.cpp in Sources */,
 				715F83782440ED1F0038F5A4 /* Path.cpp in Sources */,
 				715F83EE2440ED200038F5A4 /* diy-fp.cc in Sources */,
 				715F82F62440ED1E0038F5A4 /* Timezone.cpp in Sources */,
@@ -4294,6 +4441,7 @@
 				1AB0CAFF263BA8AD003AF407 /* wineaudiodrv.cpp in Sources */,
 				71222C0A24351CBA00CDBABD /* self.cpp in Sources */,
 				715F82222440ED1D0038F5A4 /* Base32Encoder.cpp in Sources */,
+				1AFC47ED2653631700EE5FCC /* armv8btOps_shift.cpp in Sources */,
 				715F34912440D7FC0038F5A4 /* threadutils.cpp in Sources */,
 				715F640F2440E9110038F5A4 /* ICMPv4PacketImpl.cpp in Sources */,
 				71222C0B24351CBA00CDBABD /* testSSE.cpp in Sources */,
@@ -4304,6 +4452,7 @@
 				715F821C2440ED1D0038F5A4 /* pcre_compile.c in Sources */,
 				715F83EC2440ED200038F5A4 /* FPEnvironment.cpp in Sources */,
 				715F82462440ED1D0038F5A4 /* VarIterator.cpp in Sources */,
+				1AFC47E92653631700EE5FCC /* armv8btData.cpp in Sources */,
 				715F83082440ED1E0038F5A4 /* Void.cpp in Sources */,
 				715F82422440ED1D0038F5A4 /* Thread.cpp in Sources */,
 				7120545F244D074000C3CB1B /* MacPlatform.m in Sources */,
@@ -4370,6 +4519,7 @@
 				71222C2524351CBA00CDBABD /* kunixsocket.cpp in Sources */,
 				71222C2624351CBA00CDBABD /* hard_memory.cpp in Sources */,
 				71222C2724351CBA00CDBABD /* common_mmx.cpp in Sources */,
+				1AFC47DD2653631700EE5FCC /* armv8btOps_sse_shuffle.cpp in Sources */,
 				715F7BF02440E9E00038F5A4 /* KeyPair.cpp in Sources */,
 				715F63732440E9100038F5A4 /* PollSet.cpp in Sources */,
 				71222C2824351CBA00CDBABD /* recorder.cpp in Sources */,
@@ -4410,8 +4560,10 @@
 				715F832C2440ED1F0038F5A4 /* TimedNotificationQueue.cpp in Sources */,
 				715F63692440E9100038F5A4 /* HTTPCookie.cpp in Sources */,
 				71222C3324351CBA00CDBABD /* fsfilenode.cpp in Sources */,
+				1AFC47F52653631700EE5FCC /* armv8btOps_mmx.cpp in Sources */,
 				71222C3424351CBA00CDBABD /* player.cpp in Sources */,
 				715F826C2440ED1E0038F5A4 /* TaskManager.cpp in Sources */,
+				1AFC47FD2653631700EE5FCC /* armv8btOps.cpp in Sources */,
 				715F64232440E9110038F5A4 /* DNS.cpp in Sources */,
 				71222C3624351CBA00CDBABD /* normal_strings.cpp in Sources */,
 				71222C3824351CBA00CDBABD /* ksignal.cpp in Sources */,
@@ -4432,6 +4584,7 @@
 				71222C3A24351CBA00CDBABD /* meminfo.cpp in Sources */,
 				715F83F62440ED200038F5A4 /* pcre_globals.c in Sources */,
 				71222C3B24351CBA00CDBABD /* soft_no_page.cpp in Sources */,
+				1AFC47E12653631700EE5FCC /* armv8btCodeChunk.cpp in Sources */,
 				710091492644D42C003413C3 /* knativethread.cpp in Sources */,
 				715F832A2440ED1F0038F5A4 /* Var.cpp in Sources */,
 				715F34E22440E7480038F5A4 /* Application.cpp in Sources */,
@@ -4490,6 +4643,7 @@
 				715F63CD2440E9110038F5A4 /* HTTPChunkedStream.cpp in Sources */,
 				715F34EE2440E7490038F5A4 /* ServerApplication.cpp in Sources */,
 				715F82DC2440ED1E0038F5A4 /* SyslogChannel.cpp in Sources */,
+				1AFC47D92653631700EE5FCC /* armv8btAsm.cpp in Sources */,
 				715F82942440ED1E0038F5A4 /* LogStream.cpp in Sources */,
 				715F82162440ED1D0038F5A4 /* DateTimeParser.cpp in Sources */,
 				715F63FB2440E9110038F5A4 /* QuotedPrintableEncoder.cpp in Sources */,
@@ -4505,6 +4659,7 @@
 				71222C4824351CBA00CDBABD /* spinnerControl.cpp in Sources */,
 				715F83F02440ED200038F5A4 /* pcre_dfa_exec.c in Sources */,
 				715F63B12440E9100038F5A4 /* Net.cpp in Sources */,
+				1AFC47D52653631700EE5FCC /* armv8btCPU.cpp in Sources */,
 				715F838E2440ED1F0038F5A4 /* pcre_newline.c in Sources */,
 				715F63612440E9100038F5A4 /* AbstractHTTPRequestHandler.cpp in Sources */,
 				715F82E82440ED1E0038F5A4 /* HashStatistic.cpp in Sources */,
@@ -4565,6 +4720,7 @@
 				715F83102440ED1E0038F5A4 /* Configurable.cpp in Sources */,
 				715F82AC2440ED1E0038F5A4 /* PriorityNotificationQueue.cpp in Sources */,
 				715F82AA2440ED1E0038F5A4 /* NumericString.cpp in Sources */,
+				1AFC47E52653631700EE5FCC /* armv8btOps_sse_minmax.cpp in Sources */,
 				71222C5D24351CBA00CDBABD /* baseDlg.cpp in Sources */,
 				715F82502440ED1D0038F5A4 /* Windows1252Encoding.cpp in Sources */,
 				1AFC476F26409EBB00EE5FCC /* llvm_helper.cpp in Sources */,
@@ -4654,20 +4810,27 @@
 				7135DC12264EBCD0005D6AA6 /* MacPlatform.m in Sources */,
 				7135DC13264EBCD0005D6AA6 /* platformThreads.cpp in Sources */,
 				7135DC14264EBCD0005D6AA6 /* stringutil.cpp in Sources */,
+				1AFC47D32653631700EE5FCC /* armv8btOps_sse_convert.cpp in Sources */,
 				7135DC15264EBCD0005D6AA6 /* devdsp.cpp in Sources */,
 				7135DC16264EBCD0005D6AA6 /* crc.cpp in Sources */,
+				1AFC47DF2653631700EE5FCC /* armv8btOps_sse_shuffle.cpp in Sources */,
 				7135DC17264EBCD0005D6AA6 /* cpuonline.cpp in Sources */,
 				7135DC18264EBCD0005D6AA6 /* x64Data.cpp in Sources */,
 				7135DC19264EBCD0005D6AA6 /* testMMX.cpp in Sources */,
 				7135DC1A264EBCD0005D6AA6 /* knativesynchronization.cpp in Sources */,
 				7135DC1B264EBCD0005D6AA6 /* armv8CPU.cpp in Sources */,
+				1AFC47FF2653631700EE5FCC /* armv8btOps.cpp in Sources */,
 				7135DC1C264EBCD0005D6AA6 /* x64CPU.cpp in Sources */,
+				1AFC47F72653631700EE5FCC /* armv8btOps_mmx.cpp in Sources */,
 				7135DC1D264EBCD0005D6AA6 /* platformThreads-x64.cpp in Sources */,
 				7135DC1E264EBCD0005D6AA6 /* common_arith.cpp in Sources */,
 				7135DC1F264EBCD0005D6AA6 /* AppDelegate.m in Sources */,
 				7135DC20264EBCD0005D6AA6 /* devnull.cpp in Sources */,
+				1AFC47D72653631700EE5FCC /* armv8btCPU.cpp in Sources */,
 				7135DC21264EBCD0005D6AA6 /* cpu.cpp in Sources */,
+				1AFC47DB2653631700EE5FCC /* armv8btAsm.cpp in Sources */,
 				7135DC22264EBCD0005D6AA6 /* glMarshalSize.cpp in Sources */,
+				1AFC4808265364EB00EE5FCC /* platformThreads-armv8.cpp in Sources */,
 				7135DC23264EBCD0005D6AA6 /* player.cpp in Sources */,
 				7135DC24264EBCD0005D6AA6 /* soft_no_page.cpp in Sources */,
 				7135DC25264EBCD0005D6AA6 /* log.cpp in Sources */,
@@ -4676,6 +4839,7 @@
 				7135DC28264EBCD0005D6AA6 /* sdlcallback.cpp in Sources */,
 				7135DC29264EBCD0005D6AA6 /* knativethread.cpp in Sources */,
 				7135DC2A264EBCD0005D6AA6 /* kepoll.cpp in Sources */,
+				1AFC47E32653631700EE5FCC /* armv8btCodeChunk.cpp in Sources */,
 				7135DC2B264EBCD0005D6AA6 /* glew.cpp in Sources */,
 				7135DC2C264EBCD0005D6AA6 /* normalCPU.cpp in Sources */,
 				7135DC2D264EBCD0005D6AA6 /* glMarshalVertex.cpp in Sources */,
@@ -4709,8 +4873,10 @@
 				7135DC48264EBCD0005D6AA6 /* knativesocket.cpp in Sources */,
 				7135DC49264EBCD0005D6AA6 /* ksystem.cpp in Sources */,
 				7135DC4A264EBCD0005D6AA6 /* fsopennode.cpp in Sources */,
+				1AFC47CF2653631700EE5FCC /* armv8btOps_bits.cpp in Sources */,
 				7135DC4B264EBCD0005D6AA6 /* devfb.cpp in Sources */,
 				7135DC4C264EBCD0005D6AA6 /* common_fpu.cpp in Sources */,
+				1AFC47F32653631700EE5FCC /* armv8btOps_string.cpp in Sources */,
 				7135DC4D264EBCD0005D6AA6 /* main.cpp in Sources */,
 				7135DC4E264EBCD0005D6AA6 /* soft_file_map.cpp in Sources */,
 				7135DC4F264EBCD0005D6AA6 /* common_other.cpp in Sources */,
@@ -4725,6 +4891,7 @@
 				7135DC58264EBCD0005D6AA6 /* devzero.cpp in Sources */,
 				7135DC59264EBCD0005D6AA6 /* recorder.cpp in Sources */,
 				7135DC5A264EBCD0005D6AA6 /* fsdiropennode.cpp in Sources */,
+				1AFC47EB2653631700EE5FCC /* armv8btData.cpp in Sources */,
 				7135DC5B264EBCD0005D6AA6 /* common_sse.cpp in Sources */,
 				7135DC5C264EBCD0005D6AA6 /* wineaudiodrv.cpp in Sources */,
 				7135DC5D264EBCD0005D6AA6 /* common_sse2.cpp in Sources */,
@@ -4744,6 +4911,7 @@
 				7135DC6B264EBCD0005D6AA6 /* common_xchg.cpp in Sources */,
 				7135DC6C264EBCD0005D6AA6 /* bufferaccess.cpp in Sources */,
 				7135DC6D264EBCD0005D6AA6 /* x32CPU.cpp in Sources */,
+				1AFC48032653631700EE5FCC /* armv8btOps_fpu.cpp in Sources */,
 				7135DC6E264EBCD0005D6AA6 /* glfunctions_ext2.cpp in Sources */,
 				7135DC6F264EBCD0005D6AA6 /* devtty.cpp in Sources */,
 				7135DC70264EBCD0005D6AA6 /* x64Asm.cpp in Sources */,
@@ -4760,10 +4928,12 @@
 				7135DC7B264EBCD0005D6AA6 /* glMarshal.cpp in Sources */,
 				7135DC7C264EBCD0005D6AA6 /* pugixml.cpp in Sources */,
 				7135DC7D264EBCD0005D6AA6 /* normal_strings.cpp in Sources */,
+				1AFC47EF2653631700EE5FCC /* armv8btOps_shift.cpp in Sources */,
 				7135DC7E264EBCD0005D6AA6 /* soft_ondemand_page.cpp in Sources */,
 				7135DC7F264EBCD0005D6AA6 /* audiounit.cpp in Sources */,
 				7135DC80264EBCD0005D6AA6 /* knativecoreaudio.cpp in Sources */,
 				7135DC81264EBCD0005D6AA6 /* fszipopennode.cpp in Sources */,
+				1AFC47FB2653631700EE5FCC /* arm8btFlags.cpp in Sources */,
 				7135DC82264EBCD0005D6AA6 /* fszip.cpp in Sources */,
 				7135DC83264EBCD0005D6AA6 /* common_mmx.cpp in Sources */,
 				7135DC84264EBCD0005D6AA6 /* meminfo.cpp in Sources */,
@@ -4772,6 +4942,7 @@
 				7135DC87264EBCD0005D6AA6 /* hard_memory.cpp in Sources */,
 				7135DC88264EBCD0005D6AA6 /* devsequencer.cpp in Sources */,
 				7135DC89264EBCD0005D6AA6 /* llvm_helper.cpp in Sources */,
+				1AFC47E72653631700EE5FCC /* armv8btOps_sse_minmax.cpp in Sources */,
 				7135DCA8264EBED6005D6AA6 /* btCodeChunk.cpp in Sources */,
 				7135DC8A264EBCD0005D6AA6 /* knativewindow.cpp in Sources */,
 				7135DC8B264EBCD0005D6AA6 /* cpumaxfreq.cpp in Sources */,
@@ -4881,6 +5052,7 @@
 				715F83872440ED1F0038F5A4 /* pcre_study.c in Sources */,
 				71FBFEC12433BBBE003F17F1 /* devinput.cpp in Sources */,
 				71FBFEA52433BBBE003F17F1 /* fsmemopennode.cpp in Sources */,
+				1AFC47F42653631700EE5FCC /* armv8btOps_mmx.cpp in Sources */,
 				715F63EE2440E9110038F5A4 /* HTTPServerParams.cpp in Sources */,
 				715F641A2440E9110038F5A4 /* DialogSocket.cpp in Sources */,
 				715F836F2440ED1F0038F5A4 /* NumberParser.cpp in Sources */,
@@ -4931,6 +5103,7 @@
 				715F82FB2440ED1E0038F5A4 /* strtod.cc in Sources */,
 				715F83152440ED1E0038F5A4 /* TaskNotification.cpp in Sources */,
 				71FBFEC92433BBBE003F17F1 /* devurandom.cpp in Sources */,
+				1AFC47D02653631700EE5FCC /* armv8btOps_sse_convert.cpp in Sources */,
 				715F83A52440ED1F0038F5A4 /* DateTimeFormat.cpp in Sources */,
 				715F83952440ED1F0038F5A4 /* Timestamp.cpp in Sources */,
 				715F7BF12440E9E00038F5A4 /* DigestEngine.cpp in Sources */,
@@ -4952,6 +5125,7 @@
 				71FBFE7D2433BBBE003F17F1 /* x64CodeChunk.cpp in Sources */,
 				715F827F2440ED1E0038F5A4 /* Message.cpp in Sources */,
 				715F83412440ED1F0038F5A4 /* TextEncoding.cpp in Sources */,
+				1AFC47E02653631700EE5FCC /* armv8btCodeChunk.cpp in Sources */,
 				715F63622440E9100038F5A4 /* SocketNotification.cpp in Sources */,
 				715F63EA2440E9110038F5A4 /* HTTPSessionInstantiator.cpp in Sources */,
 				71FBFED72433BBBE003F17F1 /* kobject.cpp in Sources */,
@@ -4996,6 +5170,7 @@
 				71FBFED62433BBBE003F17F1 /* ktimer.cpp in Sources */,
 				715F63A62440E9100038F5A4 /* HTTPServerSession.cpp in Sources */,
 				715F642C2440E9110038F5A4 /* SocketReactor.cpp in Sources */,
+				1AFC47DC2653631700EE5FCC /* armv8btOps_sse_shuffle.cpp in Sources */,
 				715F83772440ED1F0038F5A4 /* Path.cpp in Sources */,
 				715F83ED2440ED200038F5A4 /* diy-fp.cc in Sources */,
 				715F82F52440ED1E0038F5A4 /* Timezone.cpp in Sources */,
@@ -5018,6 +5193,7 @@
 				7120545E244D074000C3CB1B /* MacPlatform.m in Sources */,
 				715F635E2440E9100038F5A4 /* OAuth10Credentials.cpp in Sources */,
 				715F83D92440ED200038F5A4 /* LoggingRegistry.cpp in Sources */,
+				1AFC47E42653631700EE5FCC /* armv8btOps_sse_minmax.cpp in Sources */,
 				715F64522440E9740038F5A4 /* X509Certificate.cpp in Sources */,
 				715F7C0F2440E9E00038F5A4 /* CryptoStream.cpp in Sources */,
 				7100913F2644D42C003413C3 /* knativewindow.cpp in Sources */,
@@ -5041,6 +5217,7 @@
 				71FBFE832433BBBE003F17F1 /* common_pushpop.cpp in Sources */,
 				715F63942440E9100038F5A4 /* HTTPFixedLengthStream.cpp in Sources */,
 				715F34D72440E7480038F5A4 /* MapConfiguration.cpp in Sources */,
+				1AFC47D42653631700EE5FCC /* armv8btCPU.cpp in Sources */,
 				71FBFECB2433BBBE003F17F1 /* syscall.cpp in Sources */,
 				715F83E12440ED200038F5A4 /* ArchiveStrategy.cpp in Sources */,
 				7120545A244D01DA00C3CB1B /* boxedReg.cpp in Sources */,
@@ -5051,6 +5228,7 @@
 				715F82332440ED1D0038F5A4 /* bignum.cc in Sources */,
 				715F638C2440E9100038F5A4 /* Socket.cpp in Sources */,
 				715F64002440E9110038F5A4 /* NetworkInterface.cpp in Sources */,
+				1AFC47F82653631700EE5FCC /* arm8btFlags.cpp in Sources */,
 				71FBFEA62433BBBE003F17F1 /* fsdiropennode.cpp in Sources */,
 				715F645E2440E9740038F5A4 /* SSLException.cpp in Sources */,
 				715F34F72440E7490038F5A4 /* RegExpValidator.cpp in Sources */,
@@ -5084,6 +5262,7 @@
 				71FBFE7C2433BBBE003F17F1 /* recorder.cpp in Sources */,
 				715F34EF2440E7490038F5A4 /* Subsystem.cpp in Sources */,
 				71FBFE752433BBBE003F17F1 /* testMMX.cpp in Sources */,
+				1AFC47EC2653631700EE5FCC /* armv8btOps_shift.cpp in Sources */,
 				715F647E2440E9740038F5A4 /* HTTPSClientSession.cpp in Sources */,
 				715F63862440E9100038F5A4 /* HTTPNTLMCredentials.cpp in Sources */,
 				1A1551B52632626E006E0C8A /* pugixml.cpp in Sources */,
@@ -5143,6 +5322,7 @@
 				71FBFE972433BBBE003F17F1 /* soft_no_page.cpp in Sources */,
 				715F83292440ED1F0038F5A4 /* Var.cpp in Sources */,
 				715F34E12440E7480038F5A4 /* Application.cpp in Sources */,
+				1AFC47FC2653631700EE5FCC /* armv8btOps.cpp in Sources */,
 				715F842C24464C080038F5A4 /* installView.cpp in Sources */,
 				1AFC4769264096CB00EE5FCC /* llvm_helper.cpp in Sources */,
 				715F64802440E9750038F5A4 /* SecureSMTPClientSession.cpp in Sources */,
@@ -5170,8 +5350,10 @@
 				715F7BFB2440E9E00038F5A4 /* ECKeyImpl.cpp in Sources */,
 				71FBFE952433BBBE003F17F1 /* soft_memory.cpp in Sources */,
 				71FBFEB42433BBBE003F17F1 /* mainloop.cpp in Sources */,
+				1AFC4805265364EB00EE5FCC /* platformThreads-armv8.cpp in Sources */,
 				715F7BF32440E9E00038F5A4 /* ECKey.cpp in Sources */,
 				715F34E52440E7480038F5A4 /* AbstractConfiguration.cpp in Sources */,
+				1AFC47F02653631700EE5FCC /* armv8btOps_string.cpp in Sources */,
 				715F646A2440E9740038F5A4 /* PrivateKeyPassphraseHandler.cpp in Sources */,
 				71FBFE922433BBBE003F17F1 /* instructions.cpp in Sources */,
 				715F82C72440ED1E0038F5A4 /* UTF8Encoding.cpp in Sources */,
@@ -5239,7 +5421,9 @@
 				715F64822440E9750038F5A4 /* SecureServerSocket.cpp in Sources */,
 				715F63C82440E9110038F5A4 /* HTTPSessionFactory.cpp in Sources */,
 				715F7C132440E9E00038F5A4 /* CipherFactory.cpp in Sources */,
+				1AFC47E82653631700EE5FCC /* armv8btData.cpp in Sources */,
 				71FBFE692433BBBE003F17F1 /* appChooserDlg.cpp in Sources */,
+				1AFC48002653631700EE5FCC /* armv8btOps_fpu.cpp in Sources */,
 				715F83C32440ED200038F5A4 /* double-conversion.cc in Sources */,
 				715F7C052440E9E00038F5A4 /* PKCS12Container.cpp in Sources */,
 				1AFC4798264827A600EE5FCC /* coremidi.cpp in Sources */,
@@ -5320,9 +5504,11 @@
 				715F64022440E9110038F5A4 /* TCPServerConnection.cpp in Sources */,
 				715F82B12440ED1E0038F5A4 /* PatternFormatter.cpp in Sources */,
 				7100914E2644D42C003413C3 /* sdlcallback.cpp in Sources */,
+				1AFC47CC2653631700EE5FCC /* armv8btOps_bits.cpp in Sources */,
 				715F639C2440E9100038F5A4 /* RemoteSyslogListener.cpp in Sources */,
 				715F82772440ED1E0038F5A4 /* NamedEvent.cpp in Sources */,
 				715F64622440E9740038F5A4 /* ConsoleCertificateHandler.cpp in Sources */,
+				1AFC47D82653631700EE5FCC /* armv8btAsm.cpp in Sources */,
 				715F83D32440ED200038F5A4 /* RegularExpression.cpp in Sources */,
 				715F82C92440ED1E0038F5A4 /* FileChannel.cpp in Sources */,
 				715F82692440ED1E0038F5A4 /* ThreadTarget.cpp in Sources */,

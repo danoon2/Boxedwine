@@ -655,10 +655,10 @@ void Memory::clearCodePageFromCache(U32 page) {
             this->eipToHostInstructionPages[page] = NULL;
         }
     }
-    this->dynamicCodePageUpdateCount[page] = 0;
     
     U32 nativePage = this->getNativePage(page);
     U32 startingPage = this->getEmulatedPage(nativePage);
+    this->dynamicCodePageUpdateCount[nativePage] = 0;
     if (this->eipToHostInstructionPages) {
         for (int i=0;i<K_NATIVE_PAGES_PER_PAGE;i++) {
             if (this->eipToHostInstructionPages[startingPage+i]) {
@@ -971,8 +971,17 @@ void* Memory::allocateExcutableMemory(U32 requestedSize, U32* allocatedSize) {
 }
 
 void Memory::freeExcutableMemory(void* hostMemory, U32 actualSize) {
+#ifdef BOXEDWINE_MAC_JIT
+        if (__builtin_available(macOS 11.0, *)) {
+            pthread_jit_write_protect_np(false);
+        }
+#endif
     memset(hostMemory, 0xcd, actualSize);
-    
+#ifdef BOXEDWINE_MAC_JIT
+        if (__builtin_available(macOS 11.0, *)) {
+            pthread_jit_write_protect_np(true);
+        }
+#endif
     U32 size = 0;
     U32 powerOf2Size = powerOf2(actualSize, size);
     U32 index = powerOf2Size - EXECUTABLE_MIN_SIZE_POWER;

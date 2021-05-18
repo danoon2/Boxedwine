@@ -14,6 +14,11 @@ BtCodeChunk::BtCodeChunk(U32 instructionCount, U32* eipInstructionAddress, U32* 
     this->emulatedInstructionLen = (U8*)this->hostAddress + this->hostAddressSize - instructionCount * sizeof(U8) - instructionCount * sizeof(U32);
     this->hostInstructionLen = (U32*)((U8*)this->hostAddress + this->hostAddressSize - instructionCount * sizeof(U32));// should be aligned to 4 byte boundry
     this->dynamic = dynamic;
+#ifdef BOXEDWINE_MAC_JIT
+        if (__builtin_available(macOS 11.0, *)) {
+            pthread_jit_write_protect_np(false);
+        }
+#endif
     memset(this->hostAddress, 0xce, this->hostAddressSize);
     if (instructionCount) {
         for (U32 i = 0; i < instructionCount; i++) {
@@ -30,6 +35,11 @@ BtCodeChunk::BtCodeChunk(U32 instructionCount, U32* eipInstructionAddress, U32* 
         }
     }
     memcpy(this->hostAddress, hostInstructionBuffer, hostInstructionBufferLen);
+#ifdef BOXEDWINE_MAC_JIT
+        if (__builtin_available(macOS 11.0, *)) {
+            pthread_jit_write_protect_np(true);
+        }
+#endif
 }
 
 void BtCodeChunk::makeLive() {
