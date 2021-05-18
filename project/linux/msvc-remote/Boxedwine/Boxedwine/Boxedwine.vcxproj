@@ -2936,6 +2936,7 @@
     <ClCompile Include="..\..\..\..\..\platform\linux\platform.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\linux\platformThreads-x64.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\linux\platformThreads.cpp" />
+    <ClCompile Include="..\..\..\..\..\platform\sdl\kdspaudio.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\sdl\knativeaudio.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\sdl\knativesynchronization.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\sdl\knativesystem.cpp" />
@@ -3045,6 +3046,7 @@
     <ClCompile Include="..\..\..\..\..\source\sdl\multiThreaded\threadedMainloop.cpp" />
     <ClCompile Include="..\..\..\..\..\source\sdl\singleThreaded\mainloop.cpp" />
     <ClCompile Include="..\..\..\..\..\source\sdl\startupArgs.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\sdl\wineaudiodrv.cpp" />
     <ClCompile Include="..\..\..\..\..\source\sdl\winedrv.cpp" />
     <ClCompile Include="..\..\..\..\..\source\test\testCPU.cpp" />
     <ClCompile Include="..\..\..\..\..\source\test\testMMX.cpp" />
@@ -3269,6 +3271,7 @@
     <ClInclude Include="..\..\..\..\..\include\devzero.h" />
     <ClInclude Include="..\..\..\..\..\include\fpu.h" />
     <ClInclude Include="..\..\..\..\..\include\jit.h" />
+    <ClInclude Include="..\..\..\..\..\include\kdspaudio.h" />
     <ClInclude Include="..\..\..\..\..\include\kepoll.h" />
     <ClInclude Include="..\..\..\..\..\include\kerror.h" />
     <ClInclude Include="..\..\..\..\..\include\kfile.h" />
@@ -4112,6 +4115,7 @@
     <ClInclude Include="..\..\..\..\..\lib\simde\simde\x86\ssse3.h" />
     <ClInclude Include="..\..\..\..\..\lib\zlib\contrib\minizip\ioapi.h" />
     <ClInclude Include="..\..\..\..\..\lib\zlib\contrib\minizip\unzip.h" />
+    <ClInclude Include="..\..\..\..\..\platform\sdl\knativeaudiosdl.h" />
     <ClInclude Include="..\..\..\..\..\platform\sdl\sdlcallback.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv7\armv7CPU.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8\armv8CPU.h" />
