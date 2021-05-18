@@ -42,7 +42,7 @@ U32 FsMemOpenNode::ioctl(U32 request) {
 
 void FsMemOpenNode::setAsync(bool isAsync) {
     if (isAsync)
-        kwarn("FsMemOpenNode::setAsync not implemented");
+        kdebug("FsMemOpenNode::setAsync not implemented");
 }
 
 bool FsMemOpenNode::isAsync() {
@@ -50,7 +50,7 @@ bool FsMemOpenNode::isAsync() {
 }
 
 void FsMemOpenNode::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) {
-    kwarn("FsMemOpenNode::::waitForEvents not implemented");
+    kdebug("FsMemOpenNode::::waitForEvents not implemented");
 }
 
 bool FsMemOpenNode::isWriteReady() {

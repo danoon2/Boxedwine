@@ -45,7 +45,7 @@ U32 FsZipOpenNode::ioctl(U32 request) {
 
 void FsZipOpenNode::setAsync(bool isAsync) {
     if (isAsync)
-        kwarn("FsZipOpenNode::setAsync not implemented");
+        kdebug("FsZipOpenNode::setAsync not implemented");
 }
 
 bool FsZipOpenNode::isAsync() {
@@ -53,7 +53,7 @@ bool FsZipOpenNode::isAsync() {
 }
 
 void FsZipOpenNode::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) {
-    kwarn("FsZipOpenNode::waitForEvents not implemented");
+    kdebug("FsZipOpenNode::waitForEvents not implemented");
 }
 
 bool FsZipOpenNode::isWriteReady() {

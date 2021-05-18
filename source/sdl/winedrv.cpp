@@ -21,7 +21,7 @@
 #include "knativewindow.h"
 #include "knativesystem.h"
 
-void notImplemented(const char* s) {
+static void notImplemented(const char* s) {
     kwarn(s);
 }
 
@@ -745,6 +745,7 @@ static U32 scanCodeToVirtualKey(U32 code) {
     return c;
 }
 
+/*
 static U8 scanCodeToVkEx[] = {
     0x0, 0x1B, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36,
     0x37, 0x38, 0x39, 0x30, 0xBD, 0xBB, 0x8, 0x9,
@@ -764,7 +765,6 @@ static U8 scanCodeToVkEx[] = {
     0x0, 0x0, 0x0, 0xEB, 0x9, 0x0, 0xC2, 0x0,
 };
 
-/*
 static U32 scanCodeToVirtualKeyEx(U32 code) {
     U32 c = 0;
     if (code < sizeof(scanCodeToVkEx)) {
@@ -1059,7 +1059,7 @@ static U32 toUnicodeEx(KThread* thread, U32 virtKey, U32 scanCode, U32 lpKeyStat
             case BOXED_VK_BACK: c = 8; break;
             case BOXED_VK_ADD: c = '+'; break;
             default:
-                kwarn("Unhandled key: %d", virtKey);
+                kdebug("Unhandled key: %d", virtKey);
                 break;
             }
         }
@@ -1087,7 +1087,7 @@ static U32 toUnicodeEx(KThread* thread, U32 virtKey, U32 scanCode, U32 lpKeyStat
             case BOXED_VK_BACK: c = 8; break;
             case BOXED_VK_ADD: c = '+'; break;
             default:
-                kwarn("Unhandled key: %d", virtKey);
+                kdebug("Unhandled key: %d", virtKey);
                 break;
             }
         }
@@ -1459,7 +1459,7 @@ void boxeddrv_GetDeviceCaps(CPU* cpu) {
         ret = 96;
         break;
     case CAPS1:
-        kwarn("CAPS1 is unimplemented, will return 0\n");
+        kdebug("CAPS1 is unimplemented, will return 0\n");
         /* please see wingdi.h for the possible bit-flag values that need
         to be returned. */
         ret = 0;
@@ -1479,7 +1479,7 @@ void boxeddrv_GetDeviceCaps(CPU* cpu) {
         ret = 0;
         break;
     default:
-        kwarn("unsupported capability %d %d %d %d, will return 0\n", ARG1, ARG2, ARG3, ARG4);
+        kdebug("unsupported capability %d %d %d %d, will return 0\n", ARG1, ARG2, ARG3, ARG4);
         ret = 0;
         break;
     }

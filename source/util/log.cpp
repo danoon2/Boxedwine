@@ -20,50 +20,87 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include "knativethread.h"
+#include "knativesystem.h"
 
 #ifdef BOXEDWINE_MSVC
 #include <Windows.h>
 #endif
 
-FILE* logFile;
-
 void kpanic(const char* msg, ...) {
     va_list argptr;
     va_start(argptr, msg);
-    vfprintf(stderr, msg, argptr);
-    if (logFile) {
-        vfprintf(logFile, msg, argptr);
-    }    
-    fprintf(stderr, "\n");
-    if (logFile) {
-        fprintf(logFile, "\n");
-        fflush(logFile);
-        fclose(logFile);
+    
+    if (KSystem::logFile) {
+        va_list argptr2;
+        va_copy(argptr2, argptr);
+        vfprintf(KSystem::logFile, msg, argptr2);
+        fflush(KSystem::logFile);
+        va_end(argptr2);
     }
-#ifdef BOXEDWINE_MSVC
+    vfprintf(stderr, msg, argptr);
+    fprintf(stderr, "\n");
+    if (KSystem::logFile) {
+        fprintf(KSystem::logFile, "\n");
+        fflush(KSystem::logFile);
+        fclose(KSystem::logFile);
+    }
     char buff[1024];
     vsnprintf(buff, sizeof(buff), msg, argptr);
+#ifdef BOXEDWINE_MSVC
     OutputDebugStringA(buff);
     OutputDebugStringA("\n");
 #endif
     va_end(argptr);
-    KNativeThread::sleep(5000);
-    exit(1);
+    if (KSystem::videoEnabled) {
+        KNativeSystem::exit(buff, 1);
+    } else {
+        KNativeThread::sleep(5000);
+    }
 }
 
 void kwarn(const char* msg, ...) {
-#ifdef _DEBUG
     va_list argptr;
     va_start(argptr, msg);
     BOXEDWINE_CRITICAL_SECTION;
 
+    if (KSystem::logFile) {
+        va_list argptr2;
+        va_copy(argptr2, argptr);
+        vfprintf(KSystem::logFile, msg, argptr2);
+        fflush(KSystem::logFile);
+        va_end(argptr2);
+    }
+    vfprintf(stdout, msg, argptr);
+    fprintf(stdout, "\n");
+    if (KSystem::logFile) {
+        fprintf(KSystem::logFile, "\n");
+    }
+#ifdef BOXEDWINE_MSVC
+    char buff[1024];
+    vsnprintf(buff, sizeof(buff), msg, argptr);
+    OutputDebugStringA(buff);
+    OutputDebugStringA("\n");
+#endif
+    va_end(argptr);
+}
+
+void kdebug(const char* msg, ...) {
+#ifdef _DEBUG
+    va_list argptr;
+    va_start(argptr, msg);
+    BOXEDWINE_CRITICAL_SECTION;
+    
+    if (KSystem::logFile) {
+        va_list argptr2;
+        va_copy(argptr2, argptr);
+        vfprintf(KSystem::logFile, msg, argptr2);
+        fflush(KSystem::logFile);
+        va_end(argptr2);
+    }
     vfprintf(stderr, msg, argptr);
-    if (logFile) {
-        vfprintf(logFile, msg, argptr);
-    }    
     fprintf(stderr, "\n");
-    if (logFile) {
-        fprintf(logFile, "\n");
+    if (KSystem::logFile) {
+        fprintf(KSystem::logFile, "\n");
     }
 #ifdef BOXEDWINE_MSVC
     char buff[1024];
@@ -73,6 +110,29 @@ void kwarn(const char* msg, ...) {
 #endif
     va_end(argptr);
 #endif
+}
+
+void klog_nonewline(const char* msg, ...) {
+    va_list argptr;
+    va_start(argptr, msg);
+    BOXEDWINE_CRITICAL_SECTION;
+
+    
+    if (KSystem::logFile) {
+        va_list argptr2;
+        va_copy(argptr2, argptr);
+        vfprintf(KSystem::logFile, msg, argptr2);
+        fflush(KSystem::logFile);
+        va_end(argptr2);
+    }
+    vfprintf(stdout, msg, argptr);
+    fflush(stdout);
+#ifdef BOXEDWINE_MSVC
+    char buff[1024];
+    vsnprintf(buff, sizeof(buff), msg, argptr);
+    OutputDebugStringA(buff);
+#endif
+    va_end(argptr);
 }
 
 void klog(const char* msg, ...) {
@@ -80,14 +140,18 @@ void klog(const char* msg, ...) {
     va_start(argptr, msg);
     BOXEDWINE_CRITICAL_SECTION;
     
-    vfprintf(stdout, msg, argptr);
-    if (logFile) {
-        vfprintf(logFile, msg, argptr);
+    if (KSystem::logFile) {
+        va_list argptr2;
+        va_copy(argptr2, argptr);
+        vfprintf(KSystem::logFile, msg, argptr2);
+        va_end(argptr2);
     }
+    vfprintf(stdout, msg, argptr);
+    
     fprintf(stdout, "\n");
-    if (logFile) {
-        fprintf(logFile, "\n");
-        fflush(logFile);
+    if (KSystem::logFile) {
+        fprintf(KSystem::logFile, "\n");
+        fflush(KSystem::logFile);
     }
     fflush(stdout);
 #ifdef BOXEDWINE_MSVC

@@ -108,6 +108,9 @@ U32 DevTTY::writeNative(U8* buffer, U32 len) {
     if (stringContains(s, "winemenubuilder")) {
         return len;
     }
+    if (KSystem::logFile) {
+        fwrite(buffer, len, 1, KSystem::logFile);
+    }
     return (U32)::write(1, buffer, len);    
 }
 

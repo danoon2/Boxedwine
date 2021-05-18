@@ -380,12 +380,12 @@ bool KNativeSocketObject::isAsync() {
 }
 
 KFileLock* KNativeSocketObject::getLock(KFileLock* lock) {
-    kwarn("KNativeSocketObject::getLock not implemented yet");
+    kdebug("KNativeSocketObject::getLock not implemented yet");
     return 0;
 }
 
 U32 KNativeSocketObject::setLock(KFileLock* lock, bool wait) {
-    kwarn("KNativeSocketObject::setLock not implemented yet");
+    kdebug("KNativeSocketObject::setLock not implemented yet");
     return -1;
 }
 

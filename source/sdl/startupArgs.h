@@ -33,9 +33,10 @@ public:
 
 class StartUpArgs {
 public:
-    StartUpArgs() : euidSet(false), nozip(false), pentiumLevel(4), rel_mouse_sensitivity(0), pollRate(DEFAULT_POLL_RATE), userId(UID), groupId(GID), effectiveUserId(UID), effectiveGroupId(GID), soundEnabled(true), videoEnabled(true), vsync(VSYNC_DEFAULT), dpiAware(false), showWindowImmediately(false), readyToLaunch(false), workingDirSet(false), resolutionSet(false), screenCx(800), screenCy(600), screenBpp(32), sdlFullScreen(FULLSCREEN_NOTSET), sdlScaleX(100), sdlScaleY(100), sdlScaleQuality("0"), cpuAffinity(0) {
+    StartUpArgs() : euidSet(false), nozip(false), pentiumLevel(4), rel_mouse_sensitivity(0), pollRate(DEFAULT_POLL_RATE), userId(UID), groupId(GID), effectiveUserId(UID), effectiveGroupId(GID), soundEnabled(true), videoEnabled(true), vsync(VSYNC_DEFAULT), dpiAware(false), showWindowImmediately(false), skipFrameFPS(0), readyToLaunch(false), workingDirSet(false), resolutionSet(false), screenCx(800), screenCy(600), screenBpp(32), sdlFullScreen(FULLSCREEN_NOTSET), sdlScaleX(100), sdlScaleY(100), sdlScaleQuality("0"), cpuAffinity(0) {
         workingDir = "/home/username";        
     }
+    bool loadDefaultResource(const char* app);
     bool parseStartupArgs(int argc, const char **argv);
     bool apply();
     bool shouldStartUI() {return this->args.size()==0;}
@@ -78,6 +79,7 @@ public:
     U32 vsync;
     bool dpiAware;
     bool showWindowImmediately;
+    U32 skipFrameFPS;
     static U32 uiType;
     bool readyToLaunch;
     std::string showAppPickerForContainerDir;

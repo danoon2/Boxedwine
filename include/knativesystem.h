@@ -6,6 +6,7 @@
 class KNativeSystem {
 public:
 	static bool init(bool allowVideo, bool allowAudio);
+	static void exit(const char* msg, U32 code);
 	static void cleanup();
 	static void preReturnToUI();
 

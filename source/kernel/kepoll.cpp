@@ -50,17 +50,17 @@ bool KEPoll::isAsync() {
 }
 
 KFileLock* KEPoll::getLock(KFileLock* lock) {
-    kwarn("KEPoll::getLock not implemented yet");
+    kdebug("KEPoll::getLock not implemented yet");
     return 0;
 }
 
 U32 KEPoll::setLock(KFileLock* lock, bool wait) {
-    kwarn("KEPoll::setLock not implemented yet");
+    kdebug("KEPoll::setLock not implemented yet");
     return -1;
 }
 
 bool KEPoll::isOpen() {
-    kpanic("KEPoll::isOpen not implemented yet");
+    kdebug("KEPoll::isOpen not implemented yet");
     return false;
 }
 

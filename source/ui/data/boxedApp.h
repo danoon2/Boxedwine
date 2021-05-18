@@ -19,8 +19,8 @@ private:
 
 class BoxedApp {
 public:
-    BoxedApp() : bpp(32), fullScreen(FULLSCREEN_NOTSET), dpiAware(false), showWindowImmediately(false), scale(0), scaleQuality(0), cpuAffinity(0), pollRate(-1), container(NULL) {}
-    BoxedApp(const std::string& name, const std::string& path, const std::string& cmd, BoxedContainer* container) : name(name), path(path), cmd(cmd), bpp(0), fullScreen(FULLSCREEN_NOTSET), vsync(VSYNC_NOT_SET), dpiAware(false), scale(0), scaleQuality(0), cpuAffinity(0), pollRate(-1), container(container) {}
+    BoxedApp() : bpp(32), fullScreen(FULLSCREEN_NOTSET), vsync(VSYNC_NOT_SET), dpiAware(false), showWindowImmediately(false), scale(0), scaleQuality(0), cpuAffinity(0), pollRate(DEFAULT_POLL_RATE), skipFramesFPS(0), container(NULL) {}
+    BoxedApp(const std::string& name, const std::string& path, const std::string& cmd, BoxedContainer* container) : name(name), path(path), cmd(cmd), bpp(0), fullScreen(FULLSCREEN_NOTSET), vsync(VSYNC_NOT_SET), dpiAware(false), showWindowImmediately(false), scale(0), scaleQuality(0), cpuAffinity(0), pollRate(DEFAULT_POLL_RATE), skipFramesFPS(0), container(container) {}
     
     bool load(BoxedContainer* container, const std::string& iniFilepath);
 
@@ -66,7 +66,8 @@ private:
     int scaleQuality;
     int cpuAffinity;
     int pollRate;
-
+    int skipFramesFPS;
+    
     BoxedContainer* container;
     std::string iniFilePath;
 };

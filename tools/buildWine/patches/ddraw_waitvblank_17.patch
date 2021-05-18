@@ -1,0 +1,52 @@
+diff --git a/dlls/ddraw/ddraw.c b/dlls/ddraw/ddraw.c
+index d744df8c918..9eca7cf0994 100644
+--- a/dlls/ddraw/ddraw.c
++++ b/dlls/ddraw/ddraw.c
+@@ -2117,6 +2117,10 @@ static HRESULT WINAPI ddraw1_FlipToGDISurface(IDirectDraw *iface)
+ static HRESULT WINAPI ddraw7_WaitForVerticalBlank(IDirectDraw7 *iface, DWORD Flags, HANDLE event)
+ {
+     static BOOL hide;
++    ULONGLONG time;
++    static ULONGLONG startTime;
++    static BOOL initialized = FALSE;
++    static DWORD refreshTime = 0;
+ 
+     TRACE("iface %p, flags %#x, event %p.\n", iface, Flags, event);
+ 
+@@ -2131,6 +2135,35 @@ static HRESULT WINAPI ddraw7_WaitForVerticalBlank(IDirectDraw7 *iface, DWORD Fla
+     if(Flags & DDWAITVB_BLOCKBEGINEVENT)
+         return DDERR_UNSUPPORTED; /* unchecked */
+ 
++    if (!initialized) {
++        char setting[64];
++        if (GetEnvironmentVariableA("WINE_FAKE_WAIT_VBLANK", setting, sizeof(setting))) {
++            FILETIME ft;
++            DWORD refreshRate;
++
++            refreshRate = atoi(setting);
++            if (refreshRate == 0) {
++                refreshRate = 60;
++            }  
++            refreshTime = 1000000 / refreshRate; // number of microseconds per vblank
++            GetSystemTimeAsFileTime(&ft);
++            startTime = ((ULONGLONG)ft.dwHighDateTime << 32) | ft.dwLowDateTime;
++            TRACE("Initialized fake vblank: refresh rate = %d Hz\n", refreshRate);
++        }
++        initialized = TRUE;
++    } else if (startTime) {
++        ULONGLONG diff;
++        DWORD timeToSleep;
++        FILETIME ft;
++
++        GetSystemTimeAsFileTime(&ft);
++        time = ((ULONGLONG)ft.dwHighDateTime << 32) | ft.dwLowDateTime;
++        diff = (time - startTime) / 10; // diff is in micro seconds
++        timeToSleep = (DWORD) ((refreshTime - (diff % refreshTime)) / 100);
++        if (timeToSleep > 78) {
++            Sleep(timeToSleep/10);
++        }
++    }
+     return DD_OK;
+ }
+
+

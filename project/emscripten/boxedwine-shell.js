@@ -56,6 +56,10 @@
         pathExistsAction: function() { return 0; },
         pathNotExistsAction: function() { return 1; }
     };
+    	function logAndExit(msg) {
+    		console.log("FATAL ERROR: " + msg);
+    		throw new Error(msg);
+    	}
         function setConfiguration() {
             Config.appDirPrefix = DEFAULT_APP_DIRECTORY;
             Config.isAutoRunSet = getAutoRun();
@@ -465,17 +469,17 @@
                         rootListingObject[Config.rootZipFile] =  null;
                         BrowserFS.FileSystem.XmlHttpRequest.Create({"index":rootListingObject, "baseUrl": Config.locateRootBaseUrl}, function(e2, xmlHttpFs){
                             if(e2){
-                                console.log(e2);
+                                logAndExit(e2);
                             }
                             var rootMfs = new BrowserFS.FileSystem.MountableFileSystem();
                             rootMfs.mount('/temp', xmlHttpFs);
                             rootMfs.readFile('/temp/' + Config.rootZipFile, null, flag_r, function callback(e, contents){
                                 if(e){
-                                    console.log(e);
+                                    logAndExit(e);
                                 }
                                 BrowserFS.FileSystem.ZipFS.Create({"zipData":new Buffer(contents)}, function(e3, zipfs){
                                     if(e3){
-                                        console.log(e3);
+                                        logAndExit(e3);
                                     }
                                     buildBrowserFileSystem(writableStorage, isDropBox, homeAdapter, extraFSs, zipfs);
                                 });
@@ -498,7 +502,7 @@
                 let contents = syncGet(zipFilename, centralOffset, remainingLength);
                 BrowserFS.FileSystem.ZipFS.Create({"name": Config.locateRootBaseUrl + zipFilename , "zipData":new Buffer(contents)}, function(e3, zipfs){
                     if(e3){
-                        console.log(e3);
+                        logAndExit(e3);
                     }
                     zipFileCallback(zipfs);
                 });
@@ -521,7 +525,7 @@
             	let contents = getBase64Data(Config.appPayload);
                 BrowserFS.FileSystem.ZipFS.Create({"zipData":new Buffer(contents)}, function(e4, additionalZipfs){
                     if(e4){
-                        console.log(e4);
+                        logAndExit(e4);
                     }
                     let homeAdapter = new BrowserFS.FileSystem.FolderAdapter("/", additionalZipfs);
                     adapterCallback(homeAdapter);
@@ -532,16 +536,16 @@
                     var mfs = new BrowserFS.FileSystem.MountableFileSystem();
                     BrowserFS.FileSystem.XmlHttpRequest.Create({"index":listingObject, "baseUrl": Config.locateAppBaseUrl}, function(e2, xmlHttpFs){
                         if(e2){
-                            console.log(e2);
+                            logAndExit(e2);
                         }
                         mfs.mount('/temp', xmlHttpFs);
                         mfs.readFile('/temp/' + Config.appZipFile, null, flag_r, function callback(e, contents){
                             if(e){
-                                console.log(e);
+                                logAndExit(e);
                             }
                             BrowserFS.FileSystem.ZipFS.Create({"zipData":new Buffer(contents)}, function(e3, additionalZipfs){
                                 if(e3){
-                                    console.log(e3);
+                                    logAndExit(e3);
                                 }
                                 let homeAdapter = new BrowserFS.FileSystem.FolderAdapter("/", additionalZipfs);
                                 adapterCallback(homeAdapter);
@@ -561,7 +565,7 @@
             	let contents = getBase64Data(Config.extraPayload);
                 BrowserFS.FileSystem.ZipFS.Create({"zipData":new Buffer(contents)}, function(e2, zipfs){
                 	if(e2){
-                    	console.log(e2);
+                    	logAndExit(e2);
                 	}
                 	extraFSs.push(zipfs);
                 	fsCallback(extraFSs);
@@ -573,16 +577,16 @@
                     var mfs = new BrowserFS.FileSystem.MountableFileSystem();
                     BrowserFS.FileSystem.XmlHttpRequest.Create({"index":listingObject, "baseUrl": Config.locateOverlayBaseUrl}, function(e2, xmlHttpFs){
                         if(e2){
-                            console.log(e2);
+                            logAndExit(e2);
                         }
                         mfs.mount('/temp', xmlHttpFs);
                         mfs.readFile('/temp/' + Config.extraZipFiles[i], null, flag_r, function(e, contents){
                             if(e){
-                                console.log(e);
+                                logAndExit(e);
                             }
                             BrowserFS.FileSystem.ZipFS.Create({"zipData":new Buffer(contents)}, function(e3, zipfs){
                                 if(e3){
-                                    console.log(e3);
+                                    logAndExit(e3);
                                 }
                                 extraFSs.push(zipfs);
                                 if(extraFSs.length == Config.extraZipFiles.length) {
@@ -607,7 +611,7 @@
 
             BrowserFS.FileSystem.OverlayFS.Create({"readable":zipfs,"writable":new BrowserFS.FileSystem.InMemory()}, function(e3, rootOverlay){
                 if(e3){
-                    console.log(e3);
+                    logAndExit(e3);
                 }
                 if(SUPPRESS_WINEBOOT) {
                    deleteFile(rootOverlay, "/lib/wine/wineboot.exe.so");
@@ -615,17 +619,17 @@
 
                 homeAdapter.initialize(function callback(e){
                     if(e){
-                        console.log(e);
+                        logAndExit(e);
                     }
                     BrowserFS.FileSystem.OverlayFS.Create({"readable":homeAdapter,"writable":writableStorage}, function(e2, homeOverlay){
                         if(e2){
-                            console.log(e2);
+                            logAndExit(e2);
                         }
                         if(isDropBox) {
                             var mirrorFS = new BrowserFS.FileSystem.AsyncMirror(homeOverlay, new BrowserFS.FileSystem.Dropbox(client));
                             mirrorFS.initialize(function callback(e4){
                                 if(e4){
-                                    console.log(e4);
+                                    logAndExit(e4);
                                 }
                                 postBuildFileSystem(rootOverlay, mirrorFS, extraFSs);
                             });
@@ -927,7 +931,6 @@
         }, false);
         dropzone.addEventListener("drop", function(event){
             event.preventDefault();
-            //if only i know something about async
             let items = event.dataTransfer.items;
             let exeFiles = [];
             let allFiles = [];

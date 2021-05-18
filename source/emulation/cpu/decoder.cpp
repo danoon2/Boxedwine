@@ -6088,6 +6088,22 @@ void DecodedBlock::addReferenceFrom(DecodedBlock* block) {
     this->referencedFrom = node;
 }
 
+DecodedOp* DecodedBlock::getOp(U32 eip) {
+    DecodedOp* op = this->op;
+    if (op->len == 0) {
+        op = op->next;
+    }
+    U32 opEip = this->address;
+    while (op) {
+        if (opEip == eip) {
+            return op;
+        }
+        opEip += op->len;
+        op = op->next;
+    }
+    return NULL;
+}
+
 void DecodedBlock::removeReferenceFrom(DecodedBlock* block) {
     DecodedBlockFromNode* from = this->referencedFrom;
 	DecodedBlockFromNode* prev = NULL;

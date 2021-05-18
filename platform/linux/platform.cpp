@@ -126,19 +126,40 @@ U32 Platform::getCpuCount() {
 
 #ifdef __MACH__
 extern "C" {
+void MacPlatormSetThreadPriority();
 void MacPlatformOpenFileLocation(const char* str);
+const char* MacPlatformGetResourcePath(const char* pName);
 }
 
 void Platform::openFileLocation(const std::string& location) {
     MacPlatformOpenFileLocation(location.c_str());
 }
+
+const char* Platform::getResourceFilePath(const std::string& location) {
+    return MacPlatformGetResourcePath(location.c_str());
+}
+
+void Platform::setCurrentThreadPriorityHigh() {
+#ifdef BOXEDWINE_MULTI_THREADED
+    MacPlatormSetThreadPriority();
+#endif
+}
 #else
+const char* Platform::getResourceFilePath(const std::string& location) {
+    return NULL;
+}
+
 void Platform::openFileLocation(const std::string& location) {
     std::string cmd = "xdg-open \"";
     cmd+=location;
     cmd+="\"";
     system(cmd.c_str());
 }
+
+void Platform::setCurrentThreadPriorityHigh() {
+
+}
+
 #endif
 
 #ifdef BOXEDWINE_MULTI_THREADED

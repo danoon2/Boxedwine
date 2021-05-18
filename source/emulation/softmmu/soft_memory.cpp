@@ -50,10 +50,10 @@ void Memory::log_pf(KThread* thread, U32 address) {
     std::shared_ptr<KProcess> process = thread->process;
 
     std::string name = process->getModuleName(cpu->seg[CS].address+cpu->eip.u32);
-    printf("%.8X EAX=%.8X ECX=%.8X EDX=%.8X EBX=%.8X ESP=%.8X EBP=%.8X ESI=%.8X EDI=%.8X %s at %.8X\n", cpu->seg[CS].address + cpu->eip.u32, cpu->reg[0].u32, cpu->reg[1].u32, cpu->reg[2].u32, cpu->reg[3].u32, cpu->reg[4].u32, cpu->reg[5].u32, cpu->reg[6].u32, cpu->reg[7].u32, name.c_str(), process->getModuleEip(cpu->seg[CS].address+cpu->eip.u32));
+    klog("%.8X EAX=%.8X ECX=%.8X EDX=%.8X EBX=%.8X ESP=%.8X EBP=%.8X ESI=%.8X EDI=%.8X %s at %.8X", cpu->seg[CS].address + cpu->eip.u32, cpu->reg[0].u32, cpu->reg[1].u32, cpu->reg[2].u32, cpu->reg[3].u32, cpu->reg[4].u32, cpu->reg[5].u32, cpu->reg[6].u32, cpu->reg[7].u32, name.c_str(), process->getModuleEip(cpu->seg[CS].address+cpu->eip.u32));
 
-    printf("Page Fault at %.8X\n", address);
-    printf("Valid address ranges:\n");
+    klog("Page Fault at %.8X", address);
+    klog("Valid address ranges:");
     for (i=0;i<K_NUMBER_OF_PAGES;i++) {
         if (!start) {
             if (process->memory->getPage(i) != invalidPage) {
@@ -61,12 +61,12 @@ void Memory::log_pf(KThread* thread, U32 address) {
             }
         } else {
             if (process->memory->getPage(i) == invalidPage) {
-                printf("    %.8X - %.8X\n", start*K_PAGE_SIZE, i*K_PAGE_SIZE);
+                klog("    %.8X - %.8X", start*K_PAGE_SIZE, i*K_PAGE_SIZE);
                 start = 0;
             }
         }
     }
-    printf("Mapped Files:\n");
+    klog("Mapped Files:");
     process->printMappedFiles();
     cpu->walkStack(cpu->eip.u32, EBP, 2);
     kpanic("pf");
@@ -247,7 +247,6 @@ void writeMemory(U32 address, U8* data, int len) {
 }
 
 void Memory::allocPages(U32 page, U32 pageCount, U8 permissions, FD fd, U64 offset, const BoxedPtr<MappedFile>& mappedFile) {
-    KThread* thread = KThread::currentThread();
 
     if (mappedFile) {
         U32 filePage = (U32)(offset>>K_PAGE_SHIFT);
@@ -267,7 +266,6 @@ void Memory::allocPages(U32 page, U32 pageCount, U8 permissions, FD fd, U64 offs
 }
 
 void Memory::protectPage(U32 i, U32 permissions) {
-    KThread* thread = KThread::currentThread();
     Page* page = this->getPage(i);
 
     U32 flags = page->flags;
@@ -316,18 +314,21 @@ void Memory::protectPage(U32 i, U32 permissions) {
         page->flags = flags;
     } else if (page->type == Page::Type::Code_Page) {
         if (!(permissions & PAGE_READ)) {
-            kwarn("Memory::protect removing read flag from code page is not handled");
+            kdebug("Memory::protect removing read flag from code page is not handled");
         }
         page->flags = flags;
     } else {
-        kwarn("Memory::protect didn't expect page type: %d", page->type);
+        kdebug("Memory::protect didn't expect page type: %d", page->type);
     }
 }
 
-bool Memory::findFirstAvailablePage(U32 startingPage, U32 pageCount, U32* result, bool canBeReMapped) {
+bool Memory::findFirstAvailablePage(U32 startingPage, U32 pageCount, U32* result, bool canBeReMapped, bool alignNative) {
     U32 i;
     
     for (i=startingPage;i<K_NUMBER_OF_PAGES;i++) {
+        if (alignNative && !isAlignedNativePage(i)) {
+            continue;
+        }
         if (i + pageCount >= K_NUMBER_OF_PAGES) {
             return false;
         }
@@ -565,7 +566,7 @@ U32 Memory::mapNativeMemory(void* hostAddress, U32 size) {
     U32 result = 0;
 
     if (this->nativeAddressStart && hostAddress>=this->nativeAddressStart && (U8*)hostAddress+size<(U8*)this->nativeAddressStart+0x10000000) {
-        return (ADDRESS_PROCESS_NATIVE<<K_PAGE_SHIFT) + ((U8*)hostAddress-(U8*)this->nativeAddressStart);
+        return (ADDRESS_PROCESS_NATIVE<<K_PAGE_SHIFT) + (U32)(((U8*)hostAddress-(U8*)this->nativeAddressStart));
     }
     if (!this->nativeAddressStart) {
         U32 i;
@@ -592,7 +593,6 @@ U32 Memory::mapNativeMemory(void* hostAddress, U32 size) {
 }
 
 void Memory::map(U32 startPage, const std::vector<U8*>& pages, U32 permissions) {
-    U32 result = 0;
     bool read = (permissions & PAGE_READ)!=0 || (permissions & PAGE_EXEC)!=0;
     bool write = (permissions & PAGE_WRITE)!=0;
 

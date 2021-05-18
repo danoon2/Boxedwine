@@ -29,6 +29,7 @@
 #include <time.h>
 
 bool KSystem::modesInitialized = false;
+U32 KSystem::skipFrameFPS = 0;
 bool KSystem::videoEnabled = true;
 bool KSystem::soundEnabled = true;
 unsigned int KSystem::nextThreadId=10;
@@ -57,6 +58,7 @@ bool KSystem::useLargeAddressSpace = false;
 U32 KSystem::cpuAffinityCountForApp = 1;
 #endif
 U32 KSystem::pollRate = DEFAULT_POLL_RATE;
+FILE* KSystem::logFile;
 
 BOXEDWINE_CONDITION KSystem::processesCond("KSystem::processesCond");
 
@@ -106,6 +108,10 @@ void KSystem::destroy() {
 	Fs::shutDown();
     DecodedOp::clearCache();
     NormalCPU::clearCache();
+    if (KSystem::logFile) {
+        fclose(KSystem::logFile);
+        KSystem::logFile = NULL;
+    }
 }
 
 U32 KSystem::getProcessCount() {

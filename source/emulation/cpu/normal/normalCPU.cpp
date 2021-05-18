@@ -223,6 +223,7 @@ void NormalBlock::dealloc(bool delayed) {
 DecodedBlock* NormalCPU::getBlockForInspectionButNotUsed(U32 address, bool big) {
     DecodedBlock* block = NormalBlock::alloc();
     decodeBlock(fetchByte, address, big, 0, K_PAGE_SIZE, 0, block);
+    block->address = address;
     return block;
 }
 
@@ -236,7 +237,8 @@ DecodedBlock* NormalCPU::getNextBlock() {
     if (!block) {
         block = NormalBlock::alloc();
         decodeBlock(fetchByte, startIp, this->isBig(), 0, K_PAGE_SIZE, 0, block);
-
+        block->address = startIp;
+        
         DecodedOp* op = block->op;
         while (op) {
             if (!op->pfn) // callback will be set by decoder

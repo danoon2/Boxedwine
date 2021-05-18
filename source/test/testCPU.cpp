@@ -211,6 +211,7 @@ struct Data {
 
 #define endData() {0}
 #define allocData(var1, var2, result, flags, fCF, fOF) { 1, var1, var2, result, 0, flags, 0, fCF, fOF, 0, 0, 0, 0, 0, true,  0, 0, 1, 0, 0 }
+#define allocDataOFCFZF(var1, var2, result, flags, fCF, fOF, fZF) { 1, var1, var2, result, 0, flags, 0, fCF, fOF, fZF, 0, 0, 0, 0, true,  0, 0, 1, 1, 0 }
 #define allocDataZF(var1, var2, result, flags, fZF) { 1, var1, var2, result, 0, flags, 0, 0, 0, fZF, 0, 0, 0, 0, true,  0, 0, 0, 1, 0 }
 #define allocDataNoOF(var1, var2, result, flags, fCF) {  1, var1, var2, result, 0, flags, 0, fCF, 0,   0, 0, 0, 0, 0, false, 0, 0, 1, 0, 0 }
 #define allocDataFlags(var1, var2, fCF, fOF, fSF, fZF) { 1, var1, var2, 0, 0, 0, 0, fCF, fOF, fZF, fSF, 1, 0, 0, true, 0, 0, 1, 1, 1 }
@@ -2796,52 +2797,53 @@ static struct Data testd[] = {
 };
 
 static struct Data incb[] = {
-        allocData(0, 0, 1, 0, false, false),
-        allocData(0, 0, 1, CF, true, false), // it should keep the previous carry flag
-        allocData(0x80, 0, 0x81, 0, false, false),
-        allocData(0x7F, 0, 0x80, 0, false, true),
+        allocDataOFCFZF(0, 0, 1, ZF, false, false, false),
+        allocDataOFCFZF(0, 0, 1, CF, true, false, false), // it should keep the previous carry flag
+        allocDataOFCFZF(0x80, 0, 0x81, 0, false, false, false),
+        allocDataOFCFZF(0x7F, 0, 0x80, 0, false, true, false),
+        allocDataOFCFZF(0xFF, 0, 0x0, 0, false, false, true),
         endData()
 };
 
 static struct Data incw[] = {
-        allocData(0, 0, 1, 0, false, false),
-        allocData(0, 0, 1, CF, true, false), // it should keep the previous carry flag
-        allocData(0x8000, 0, 0x8001, 0, false, false),
-        allocData(0x7FFF, 0, 0x8000, 0, false, true),
-        allocData(0xFFFF, 0, 0, 0, false, false), // carry flag is not set
+        allocDataOFCFZF(0, 0, 1, ZF, false, false, false),
+        allocDataOFCFZF(0, 0, 1, CF, true, false, false), // it should keep the previous carry flag
+        allocDataOFCFZF(0x8000, 0, 0x8001, 0, false, false, false),
+        allocDataOFCFZF(0x7FFF, 0, 0x8000, 0, false, true, false),
+        allocDataOFCFZF(0xFFFF, 0, 0, 0, false, false, true), // carry flag is not set
         endData()
 };
 
 static struct Data incd[] = {
-        allocData(0, 0, 1, 0, false, false),
-        allocData(0, 0, 1, CF, true, false), // it should keep the previous carry flag
-        allocData(0x80000000, 0, 0x80000001, 0, false, false),
-        allocData(0x7FFFFFFF, 0, 0x80000000, 0, false, true),
-        allocData(0xFFFFFFFF, 0, 0, 0, false, false), // carry flag is not set
+        allocDataOFCFZF(0, 0, 1, ZF, false, false, false),
+        allocDataOFCFZF(0, 0, 1, CF, true, false, false), // it should keep the previous carry flag
+        allocDataOFCFZF(0x80000000, 0, 0x80000001, 0, false, false, false),
+        allocDataOFCFZF(0x7FFFFFFF, 0, 0x80000000, 0, false, true, false),
+        allocDataOFCFZF(0xFFFFFFFF, 0, 0, 0, false, false, true), // carry flag is not set
         endData()
 };
 
 static struct Data decb[] = {
-        allocData(2, 0, 1, 0, false, false),
-        allocData(1, 0, 0, CF, true, false), // it should keep the previous carry flag
-        allocData(0x80, 0, 0x7F, 0, false, true),
-        allocData(0, 0, 0xFF, 0, false, false),
+        allocDataOFCFZF(2, 0, 1, ZF, false, false, false),
+        allocDataOFCFZF(1, 0, 0, CF, true, false, true), // it should keep the previous carry flag
+        allocDataOFCFZF(0x80, 0, 0x7F, 0, false, true, false),
+        allocDataOFCFZF(0, 0, 0xFF, 0, false, false, false),
         endData()
 };
 
 static struct Data decw[] = {
-        allocData(2, 0, 1, 0, false, false),
-        allocData(1, 0, 0, CF, true, false), // it should keep the previous carry flag
-        allocData(0x8000, 0, 0x7FFF, 0, false, true),
-        allocData(0, 0, 0xFFFF, 0, false, false),
+        allocDataOFCFZF(2, 0, 1, ZF, false, false, false),
+        allocDataOFCFZF(1, 0, 0, CF, true, false, true), // it should keep the previous carry flag
+        allocDataOFCFZF(0x8000, 0, 0x7FFF, 0, false, true, false),
+        allocDataOFCFZF(0, 0, 0xFFFF, 0, false, false, false),
         endData()
 };
 
 static struct Data decd[] = {
-        allocData(2, 0, 1, 0, false, false),
-        allocData(1, 0, 0, CF, true, false), // it should keep the previous carry flag
-        allocData(0x80000000, 0, 0x7FFFFFFF, 0, false, true),
-        allocData(0, 0, 0xFFFFFFFF, 0, false, false),
+        allocDataOFCFZF(2, 0, 1, ZF, false, false, false),
+        allocDataOFCFZF(1, 0, 0, CF, true, false, true), // it should keep the previous carry flag
+        allocDataOFCFZF(0x80000000, 0, 0x7FFFFFFF, 0, false, true, false),
+        allocDataOFCFZF(0, 0, 0xFFFFFFFF, 0, false, false, false),
         endData()
 };
 

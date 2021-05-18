@@ -70,12 +70,12 @@ bool  KUnixSocketObject::isAsync() {
 }
 
 KFileLock*  KUnixSocketObject::getLock(KFileLock* lock) {
-    kwarn("UnixSocketObject::getLock not implemented yet");
+    kdebug("UnixSocketObject::getLock not implemented yet");
     return NULL;
 }
 
 U32  KUnixSocketObject::setLock(KFileLock* lock, bool wait) {
-    kwarn(" UnixSocketObject::setLock not implemented yet");
+    kdebug(" UnixSocketObject::setLock not implemented yet");
     return -1;
 }
 
@@ -192,7 +192,7 @@ U32 KUnixSocketObject::write(U32 buffer, U32 len) {
 U32 KUnixSocketObject::writeNative(U8* buffer, U32 len) {
     if (this->type == K_SOCK_DGRAM) {
         if (!strcmp(this->destAddress.data, "/dev/log")) {
-            printf("%s\n", buffer);
+            klog("%s", buffer);
         }
         return len;
     }
@@ -568,7 +568,8 @@ U32 KUnixSocketObject::getpeername(KFileDescriptor* fd, U32 address, U32 plen) {
 
 U32 KUnixSocketObject::shutdown(KFileDescriptor* fd, U32 how) {
     if (this->type == K_SOCK_DGRAM) {
-        kpanic("shutdown on SOCK_DGRAM not implemented");
+        kwarn("shutdown on SOCK_DGRAM not implemented");
+        return -1;
     }
     std::shared_ptr<KUnixSocketObject> con = this->connection.lock();
     if (!con) {

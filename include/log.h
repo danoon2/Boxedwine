@@ -21,8 +21,6 @@
 
 #include <stdio.h>
 
-extern FILE* logFile;
-
 // this will help static analysis
 #ifdef BOXEDWINE_MSVC
 __declspec(noreturn)
@@ -30,4 +28,6 @@ __declspec(noreturn)
 void kpanic(const char* msg, ...);
 void kwarn(const char* msg, ...);
 void klog(const char* msg, ...);
+void klog_nonewline(const char* msg, ...);
+void kdebug(const char* msg, ...);
 #endif

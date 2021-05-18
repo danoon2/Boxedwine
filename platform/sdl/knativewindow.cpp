@@ -243,7 +243,7 @@ bool KNativeWindowSdl::processEvents() {
     if (isShutdownWindowIsOpen()) {
         updateShutdownWindow();
     }
-    while (SDL_WaitEventTimeout(&e, 0) == 1) {
+    while (SDL_PollEvent(&e) == 1) {
 #ifdef BOXEDWINE_MULTI_THREADED
         if (e.type == sdlCustomEvent) {
             SdlCallback* callback = (SdlCallback*)e.user.data1;
@@ -253,6 +253,7 @@ bool KNativeWindowSdl::processEvents() {
             BOXEDWINE_CONDITION_UNLOCK(callback->cond);
         } else 
 #endif
+        
         if (!handlSdlEvent(&e)) {
             return false;
         }
@@ -564,7 +565,7 @@ U32 sdlCreateOpenglWindow_main_thread(KThread* thread, std::shared_ptr<WndSdl> w
     screen->timeWindowWasCreated = KSystem::getMilliesSinceStart();
 
     if (!screen->window) {
-        fprintf(stderr, "Couldn't create window: %s\n", SDL_GetError());
+        kwarn("Couldn't create window: %s", SDL_GetError());
         screen->displayChanged(thread);
         return 0;
     }
@@ -611,7 +612,7 @@ U32 KNativeWindowSdl::glCreateContext(KThread* thread, std::shared_ptr<Wnd> w, i
         DISPATCH_MAIN_THREAD_BLOCK_END
 #endif
         if (!context) {
-            fprintf(stderr, "Couldn't create context: %s\n", SDL_GetError());
+            kwarn("Couldn't create context: %s", SDL_GetError());
             DISPATCH_MAIN_THREAD_BLOCK_BEGIN_RETURN
             displayChanged(thread);
             return 0;
@@ -707,13 +708,13 @@ void KNativeWindowSdl::displayChanged(KThread* thread) {
             if (fullScreen == FULLSCREEN_STRETCH) {
                 cx = dm.w;
                 cy = dm.h;
-                flags |= SDL_WINDOW_BORDERLESS;
+                flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
                 scaleX = dm.w * 100 / width;
                 scaleY = dm.h * 100 / height;
             } else if (fullScreen == FULLSCREEN_ASPECT) {
                 cx = dm.w;
                 cy = dm.h;
-                flags |= SDL_WINDOW_BORDERLESS;
+                flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
                 scaleX = dm.w * 100 / width;
                 scaleY = dm.h * 100 / height;
                 scaleXOffset = 0;
@@ -726,14 +727,14 @@ void KNativeWindowSdl::displayChanged(KThread* thread) {
                     scaleXOffset = (dm.w - width * scaleX / 100) / 2;
                 }
             } else if (width == (U32)dm.w && height == (U32)dm.h) {
-                flags |= SDL_WINDOW_BORDERLESS;
+                flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
             }   
             if (cx > dm.w || cy > dm.h) {
                 cx = dm.w;
                 cy = dm.h;
                 scaleX = dm.w * 100 / width;
                 scaleY = dm.h * 100 / height;
-                flags |= SDL_WINDOW_BORDERLESS;
+                flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
             }
         }
         
@@ -863,6 +864,15 @@ U32 recorderBufferSize;
 #endif
 
 void KNativeWindowSdl::drawAllWindows(KThread* thread, U32 hWnd, int count) {
+    if (KSystem::skipFrameFPS) {
+        static U64 lastUpdate=0;
+        static U64 diff = 100000 / KSystem::skipFrameFPS;
+        U64 now = KSystem::getMicroCounter();
+        if (now - lastUpdate < diff) {
+            return;
+        }
+        lastUpdate = now;
+    }
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(sdlMutex);
     if (KSystem::videoEnabled && (!renderer || (contextCount && lastGlCallTime+1000> KSystem::getMilliesSinceStart()))) {
         // don't let window drawing and opengl drawing fight and clobber each other, if OpenGL was active in the last second, then don't draw the window
@@ -961,9 +971,8 @@ void KNativeWindowSdl::drawAllWindows(KThread* thread, U32 hWnd, int count) {
                 rect.x = sdlDesktopWidth - scaleXOffset;
                 SDL_RenderFillRect(renderer, &rect);
             }
-            SDL_RenderPresent(renderer);
         }
-        
+        SDL_RenderPresent(renderer);
         DISPATCH_MAIN_THREAD_BLOCK_END
     }
     KNativeWindow::windowUpdated = true;
@@ -1787,7 +1796,7 @@ int KNativeWindowSdl::key(U32 key, U32 down) {
                     break;
 
                 default:
-                    kwarn("Unhandled key: %d", key);
+                    kdebug("Unhandled key: %d", key);
                     return 1;
                 }
                 if (scan & 0x100)               
@@ -2197,7 +2206,7 @@ static U32 translate(U32 key) {
         case SDLK_PAUSE:
             return K_KEY_PAUSE;
         default:
-            kwarn("Unhandled key: %d", key);
+            kdebug("Unhandled key: %d", key);
             return 0;
     }
 }

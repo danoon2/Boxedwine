@@ -66,12 +66,12 @@ bool KSignal::isAsync() {
 }
 
 KFileLock* KSignal::getLock(KFileLock* lock) {
-    kwarn("KSignal::getLock not implemented yet");
+    kdebug("KSignal::getLock not implemented yet");
     return 0;
 }
 
 U32 KSignal::setLock(KFileLock* lock, bool wait) {
-    kwarn("KSignal::setLock not implemented yet");
+    kdebug("KSignal::setLock not implemented yet");
     return -1;
 }
 

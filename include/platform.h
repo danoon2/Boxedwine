@@ -30,6 +30,14 @@
 #include "platformtypes.h"
 #define FD S32
 
+#ifndef K_NATIVE_PAGE_SIZE
+#define K_NATIVE_PAGE_SIZE 4096
+#define K_NATIVE_NUMBER_OF_PAGES 0x100000
+#define K_NATIVE_PAGE_MASK 0xFFF
+#define K_NATIVE_PAGE_SHIFT 12
+#define K_NATIVE_PAGES_PER_PAGE 1
+#endif
+
 #ifndef BOXEDWINE_64BIT_MMU
 #define BOXEDWINE_DEFAULT_MMU 1
 #endif
@@ -110,7 +118,8 @@ public:
     static U32 getCpuCount();
     static void openFileLocation(const std::string& location);
     static bool supportsOpenFileLocation() {return true;}
-    
+    static const char* getResourceFilePath(const std::string& location);
+    static void setCurrentThreadPriorityHigh();
 #ifdef BOXEDWINE_MULTI_THREADED
     static void setCpuAffinityForThread(KThread* thread, U32 count);
 #endif

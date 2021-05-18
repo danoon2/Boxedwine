@@ -361,6 +361,10 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "Poll Rate:";
     case CONTAINER_VIEW_POLL_RATE_HELP:
         return "Poll Rate is how often a mouse or keyboard event will be given to Wine.  If the event happens before allowed, the event will be paused or in the case of a mouse move event, dropped.  Some games will experience lockups/hangs when moving the mouse quickly with a high DPI mouse.  Lowering this number can help with that.  A value of 0 means there will be no delay.";
+    case CONTAINER_VIEW_SKIP_FRAMES_LABEL:
+        return "Skip Frames:";
+    case CONTAINER_VIEW_SKIP_FRAMES_HELP:
+            return "Some games draw directly to the screen/window instead of using DirectX or OpenGL.  There is no reason to update to the screen more than the refresh rate of the monitor, so if a game updates the screen/window by drawing small updates each time, this could result in things like 900 updates per seconds, which would make Boxedwine update the monitor at 900 FPS.  This is a waste of CPU and could slow down the emulation.\n\nIf your app/game is running slow and it doesn't use DirectX or OpenGL, you could try changing this value to 30 or 60.";
     case ERROR_NO_WINE:
         return "There are no versions of Wine installed.  Would you like to install the default version of Wine now?";
     case ERROR_NO_WINE_HIGH_DPI:

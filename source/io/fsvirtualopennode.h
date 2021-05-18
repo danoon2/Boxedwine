@@ -15,9 +15,9 @@ public:
     virtual U32  map( U32 address, U32 len, S32 prot, S32 flags, U64 off) {return 0;}
     virtual bool canMap() {return false;}
     virtual U32  ioctl(U32 request) {return -K_ENODEV;	}
-    virtual void setAsync(bool isAsync) {if (isAsync) kwarn("FsVirtualOpenNode::setAsync not implemented");}
+    virtual void setAsync(bool isAsync) {if (isAsync) kdebug("FsVirtualOpenNode::setAsync not implemented");}
     virtual bool isAsync() {return false;}
-    virtual void waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) {kwarn("FsVirtualOpenNode::waitForEvents not implemented");}
+    virtual void waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) { kdebug("FsVirtualOpenNode::waitForEvents not implemented");}
     virtual bool isWriteReady() {return true;}
     virtual bool isReadReady() {return true;}    
     virtual U32 readNative(U8* buffer, U32 len) = 0;

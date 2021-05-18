@@ -23,12 +23,12 @@
 #include "oss.h"
 #include <math.h>
 #include <string.h>
-#include "knativeaudio.h"
+#include "kdspaudio.h"
 
 class DevDsp : public FsVirtualOpenNode {
 public:
     DevDsp(const BoxedPtr<FsNode>& node, U32 flags) : FsVirtualOpenNode(node, flags) {                
-        this->audio = KNativeAudio::createNativeAudio();
+        this->audio = KDspAudio::createDspAudio();
         this->freq = 11025;
         this->channels = 1;
         this->format = AFMT_U8;
@@ -41,7 +41,7 @@ public:
     virtual U32 writeNative(U8* buffer, U32 len);
     virtual void waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events);    
 
-    std::shared_ptr<KNativeAudio> audio;
+    std::shared_ptr<KDspAudio> audio;
     U32 freq;
     U32 channels;
     U32 format;
@@ -49,7 +49,7 @@ public:
 
 
 void dspShutdown() {
-    KNativeAudio::shutdown();
+    KDspAudio::shutdown();
 }
 
 bool DevDsp::setLength(S64 len) {

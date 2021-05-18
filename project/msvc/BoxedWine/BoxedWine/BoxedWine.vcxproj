@@ -221,7 +221,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>BOXEDWINE_UI_LAUNCH_IN_PROCESS;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_HIGHDPI;POCO_UTIL_NO_JSONCONFIGURATION;POCO_UTIL_NO_XMLCONFIGURATION;POCO_NO_AUTOMATIC_LIBS;GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;BOXEDWINE_64;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;BOXEDWINE_64BIT_MMU;_NO_DEBUG_HEAP=0;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>__WINDOWS_WASAPI__;BOXEDWINE_UI_LAUNCH_IN_PROCESS;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_HIGHDPI;POCO_UTIL_NO_JSONCONFIGURATION;POCO_UTIL_NO_XMLCONFIGURATION;POCO_NO_AUTOMATIC_LIBS;GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;BOXEDWINE_64;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;BOXEDWINE_64BIT_MMU;_NO_DEBUG_HEAP=0;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\..\..\lib\soloud\include;..\..\..\..\include;..\..\..\..\lib\glew\include;..\..\..\..\lib\imgui;..\..\..\..\lib\poco\Net\include;..\..\..\..\lib\poco\Foundation\include;..\..\..\..\lib\poco\NetSSL_Win\include;;..\..\..\..\lib\poco\Util\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -424,6 +424,7 @@
     <ClInclude Include="..\..\..\..\include\devtty.h" />
     <ClInclude Include="..\..\..\..\include\devurandom.h" />
     <ClInclude Include="..\..\..\..\include\jit.h" />
+    <ClInclude Include="..\..\..\..\include\kdspaudio.h" />
     <ClInclude Include="..\..\..\..\include\kepoll.h" />
     <ClInclude Include="..\..\..\..\include\kerror.h" />
     <ClInclude Include="..\..\..\..\include\kfile.h" />
@@ -985,6 +986,7 @@
     <ClInclude Include="..\..\..\..\lib\zlib\contrib\minizip\mztools.h" />
     <ClInclude Include="..\..\..\..\lib\zlib\contrib\minizip\unzip.h" />
     <ClInclude Include="..\..\..\..\lib\zlib\contrib\minizip\zip.h" />
+    <ClInclude Include="..\..\..\..\platform\sdl\knativeaudiosdl.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeChunk.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeMemoryWrite.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCpu.h" />
@@ -3562,6 +3564,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\platform\sdl\kdspaudio.cpp" />
     <ClCompile Include="..\..\..\..\platform\sdl\knativeaudio.cpp" />
     <ClCompile Include="..\..\..\..\platform\sdl\knativesynchronization.cpp" />
     <ClCompile Include="..\..\..\..\platform\sdl\knativesystem.cpp" />
@@ -3569,6 +3572,7 @@
     <ClCompile Include="..\..\..\..\platform\sdl\knativewindow.cpp" />
     <ClCompile Include="..\..\..\..\platform\sdl\sdlcallback.cpp" />
     <ClCompile Include="..\..\..\..\platform\windows\dynamic.cpp" />
+    <ClCompile Include="..\..\..\..\platform\windows\kwindowsaudio.cpp" />
     <ClCompile Include="..\..\..\..\platform\windows\memory64.cpp" />
     <ClCompile Include="..\..\..\..\platform\windows\platform.cpp" />
     <ClCompile Include="..\..\..\..\platform\windows\platformThreads.cpp" />
@@ -3673,6 +3677,7 @@
     <ClCompile Include="..\..\..\..\source\sdl\multiThreaded\threadedMainloop.cpp" />
     <ClCompile Include="..\..\..\..\source\sdl\singleThreaded\mainloop.cpp" />
     <ClCompile Include="..\..\..\..\source\sdl\startupArgs.cpp" />
+    <ClCompile Include="..\..\..\..\source\sdl\wineaudiodrv.cpp" />
     <ClCompile Include="..\..\..\..\source\sdl\winedrv.cpp" />
     <ClCompile Include="..\..\..\..\source\test\testCPU.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Use</PrecompiledHeader>

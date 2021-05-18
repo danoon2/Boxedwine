@@ -1,4 +1,9 @@
 #include "boxedwine.h"
+
+#define eaa1_bit(cpu, op, offset) cpu->seg[op->base].address + (U16)(cpu->reg[op->rm].u16 + (S16)cpu->reg[op->sibIndex].u16 + op->disp + (offset))
+#define eaa3_bit(cpu, op, offset) cpu->seg[op->base].address + cpu->reg[op->rm].u32 + (cpu->reg[op->sibIndex].u32 << + op->sibScale) + op->disp + (offset)
+#define eaa_bit(cpu, op, offset) (op->ea16)?(eaa1_bit(cpu, op, offset)):(eaa3_bit(cpu, op, offset))
+
 // BT/BTR/BTE/BTS affected OF flags prior to Pentium 2
 void common_btr16r16(CPU* cpu, U32 maskReg, U32 reg) {
     U16 mask=1 << (cpu->reg[maskReg].u16 & 15);
@@ -9,11 +14,11 @@ void common_btr16(CPU* cpu, U16 mask, U32 reg) {
     cpu->fillFlagsNoCF();
     cpu->setCF(cpu->reg[reg].u16 & mask);
 }
-void common_bte16r16(CPU* cpu, U32 address, U32 reg) {
+void common_bte16r16(CPU* cpu, DecodedOp* op, U32 reg) {
     U16 mask=1 << (cpu->reg[reg].u16 & 15);
     U16 value;
+    U32 address = eaa_bit(cpu, op, ((((S16)cpu->reg[reg].u16) >> 4) * 2));
     cpu->fillFlagsNoCF();
-    address+=(((S16)cpu->reg[reg].u16)>>4)*2;
     value = readw(address);
     cpu->setCF(value & mask);
 }
@@ -32,11 +37,11 @@ void common_btr32(CPU* cpu, U32 mask, U32 reg) {
     cpu->fillFlagsNoCF();
     cpu->setCF(cpu->reg[reg].u32 & mask);
 }
-void common_bte32r32(CPU* cpu, U32 address, U32 reg) {
+void common_bte32r32(CPU* cpu, DecodedOp* op, U32 reg) {
     U32 mask=1 << (cpu->reg[reg].u32 & 31);
     U32 value;
+    U32 address = eaa_bit(cpu, op, ((((S32)cpu->reg[reg].u32) >> 5) * 4));
     cpu->fillFlagsNoCF();
-    address+=(((S32)cpu->reg[reg].u32)>>5)*4;
     value = readd(address);
     cpu->setCF(value & mask);
 }
@@ -57,11 +62,11 @@ void common_btsr16(CPU* cpu, U16 mask, U32 reg) {
     cpu->setCF(cpu->reg[reg].u16 & mask);
     cpu->reg[reg].u16 |= mask;
 }
-void common_btse16r16(CPU* cpu, U32 address, U32 reg) {
+void common_btse16r16(CPU* cpu, DecodedOp* op, U32 reg) {
     U16 mask=1 << (cpu->reg[reg].u16 & 15);
     U16 value;
+    U32 address = eaa_bit(cpu, op, ((((S16)cpu->reg[reg].u16) >> 4) * 2));
     cpu->fillFlagsNoCF();
-    address+=(((S16)cpu->reg[reg].u16)>>4)*2;
     value = readw(address);
     cpu->setCF(value & mask);
     writew(address, value | mask);
@@ -84,11 +89,11 @@ void common_btsr32(CPU* cpu, U32 mask, U32 reg) {
     cpu->setCF(cpu->reg[reg].u32 & mask);
     cpu->reg[reg].u32 |= mask;
 }
-void common_btse32r32(CPU* cpu, U32 address, U32 reg) {
+void common_btse32r32(CPU* cpu, DecodedOp* op, U32 reg) {
     U32 mask=1 << (cpu->reg[reg].u32 & 31);
     U32 value;
+    U32 address = eaa_bit(cpu, op, ((((S32)cpu->reg[reg].u32) >> 5) * 4));
     cpu->fillFlagsNoCF();
-    address+=(((S32)cpu->reg[reg].u32)>>5)*4;
     value = readd(address);
     cpu->setCF(value & mask);
     writed(address, value | mask);
@@ -111,11 +116,11 @@ void common_btrr16(CPU* cpu, U16 mask, U32 reg) {
     cpu->setCF(cpu->reg[reg].u16 & mask);
     cpu->reg[reg].u16 &= ~mask;
 }
-void common_btre16r16(CPU* cpu, U32 address, U32 reg) {
+void common_btre16r16(CPU* cpu, DecodedOp* op, U32 reg) {
     U16 mask=1 << (cpu->reg[reg].u16 & 15);
     U16 value;
+    U32 address = eaa_bit(cpu, op, ((((S16)cpu->reg[reg].u16) >> 4) * 2));
     cpu->fillFlagsNoCF();
-    address+=(((S16)cpu->reg[reg].u16)>>4)*2;
     value = readw(address);
     cpu->setCF(value & mask);
     writew(address, value & ~mask);
@@ -138,11 +143,11 @@ void common_btrr32(CPU* cpu, U32 mask, U32 reg) {
     cpu->setCF(cpu->reg[reg].u32 & mask);
     cpu->reg[reg].u32 &= ~mask;
 }
-void common_btre32r32(CPU* cpu, U32 address, U32 reg) {
+void common_btre32r32(CPU* cpu, DecodedOp* op, U32 reg) {
     U32 mask=1 << (cpu->reg[reg].u32 & 31);
     U32 value;
+    U32 address = eaa_bit(cpu, op, ((((S32)cpu->reg[reg].u32) >> 5) * 4));
     cpu->fillFlagsNoCF();
-    address+=(((S32)cpu->reg[reg].u32)>>5)*4;
     value = readd(address);
     cpu->setCF(value & mask);
     writed(address, value & ~mask);
@@ -165,11 +170,11 @@ void common_btcr16(CPU* cpu, U16 mask, U32 reg) {
     cpu->setCF(cpu->reg[reg].u16 & mask);
     cpu->reg[reg].u16 ^= mask;
 }
-void common_btce16r16(CPU* cpu, U32 address, U32 reg) {
+void common_btce16r16(CPU* cpu, DecodedOp* op, U32 reg) {
     U16 mask=1 << (cpu->reg[reg].u16 & 15);
     U16 value;
+    U32 address = eaa_bit(cpu, op, ((((S16)cpu->reg[reg].u16) >> 4) * 2));
     cpu->fillFlagsNoCF();
-    address+=(((S16)cpu->reg[reg].u16)>>4)*2;
     value = readw(address);
     cpu->setCF(value & mask);
     writew(address, value ^ mask);
@@ -192,11 +197,11 @@ void common_btcr32(CPU* cpu, U32 mask, U32 reg) {
     cpu->setCF(cpu->reg[reg].u32 & mask);
     cpu->reg[reg].u32 ^= mask;
 }
-void common_btce32r32(CPU* cpu, U32 address, U32 reg) {
+void common_btce32r32(CPU* cpu, DecodedOp* op, U32 reg) {
     U32 mask=1 << (cpu->reg[reg].u32 & 31);
     U32 value;
+    U32 address = eaa_bit(cpu, op, ((((S32)cpu->reg[reg].u32) >> 5) * 4));
     cpu->fillFlagsNoCF();
-    address+=(((S32)cpu->reg[reg].u32)>>5)*4;
     value = readd(address);
     cpu->setCF(value & mask);
     writed(address, value ^ mask);

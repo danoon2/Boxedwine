@@ -1018,7 +1018,17 @@ void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
             }
         }
         U8* begin = (U8*)mem + memory->dynamicExecutableMemoryPos;
+#ifdef BOXEDWINE_MAC_JIT
+        if (__builtin_available(macOS 11.0, *)) {
+            pthread_jit_write_protect_np(false);
+        }
+#endif
         memcpy(begin, outBuffer, outBufferPos);
+#ifdef BOXEDWINE_MAC_JIT
+        if (__builtin_available(macOS 11.0, *)) {
+            pthread_jit_write_protect_np(true);
+        }
+#endif
         codeCreated(begin, begin + outBufferPos);
 
         memory->dynamicExecutableMemoryPos += outBufferPos;

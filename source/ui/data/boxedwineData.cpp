@@ -109,13 +109,6 @@ void BoxedwineData::startApp() {
     if (uiIsRunning()) {
         uiShutdown();
     }
-    if (GlobalSettings::startUpArgs.logPath.length()) {
-        stringReplaceAll(log, "\r\n", "\n");
-        FILE* f = fopen(GlobalSettings::startUpArgs.logPath.c_str(), "w");
-        fwrite(log.c_str(), 1, log.length(), f);
-        fflush(f);
-        fclose(f);
-    }
 #endif
 }
 

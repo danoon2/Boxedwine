@@ -255,7 +255,12 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
     appPollRateControl->onChange = [this]() {
         this->currentApp->pollRate = atoi(appPollRateControl->getText().c_str());
         this->currentAppChanged = true;
-    };    
+    };
+    appSkipFramesControl = appSection->addTextInputRow(CONTAINER_VIEW_SKIP_FRAMES_LABEL, CONTAINER_VIEW_SKIP_FRAMES_HELP);
+    appSkipFramesControl->onChange = [this]() {
+        this->currentApp->skipFramesFPS = atoi(appSkipFramesControl->getText().c_str());
+        this->currentAppChanged = true;
+    };
 #ifdef BOXEDWINE_MULTI_THREADED
     std::vector<ComboboxItem> affinity;
     affinity.push_back(ComboboxItem(getTranslation(GENERIC_COMBOBOX_ALL), 0));
@@ -501,6 +506,7 @@ void ContainersView::setCurrentApp(BoxedApp* app) {
     appVSyncControl->setSelectionIntValue(app->vsync);
     appDpiAwareControl->setCheck(app->dpiAware);
     appPollRateControl->setText(std::to_string(app->pollRate));
+    appSkipFramesControl->setText(std::to_string(app->skipFramesFPS));
     appShowWindowImmediatelyControl->setCheck(app->showWindowImmediately);
 #ifdef BOXEDWINE_MULTI_THREADED
     appCpuAffinityControl->setSelectionIntValue(app->cpuAffinity);

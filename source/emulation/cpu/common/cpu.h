@@ -23,7 +23,10 @@ void callOpenGL(CPU* cpu, U32 index);
 extern U32 lastGlCallTime;
 extern U32 int99CallbackSize;
 extern Int99Callback* wine_callback;
+extern Int99Callback* wine_audio_callback;
 extern U32 wine_callbackSize;
+extern U32 wine_audio_callback_size;
+extern U32 wine_audio_callback_base;
 
 #define EXCEPTION_DIVIDE 0
 #define EXCEPTION_BOUND 5

@@ -78,6 +78,8 @@ public:
 #endif
     static U32 pollRate;
     static bool showWindowImmediately;
+    static U32 skipFrameFPS;
+    static FILE* logFile;
 
     static void init();
 	static void destroy();
@@ -137,7 +139,7 @@ private:
     static U64 startTimeMicroCounter;
     static U64 startTimeSystemTime;    
     static bool modesInitialized;
-
+    
     static std::unordered_map<void*, SHM*> shm;
     static std::unordered_map<U32, std::shared_ptr<KProcess> > processes;
 #ifdef BOXEDWINE_DEFAULT_MMU

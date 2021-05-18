@@ -29,9 +29,11 @@ This will load the file system from wine.zip and write the changes to c:\root
 
 -gensrc : This is used for ahead of time (AOT) compiling and requires the source to be build with GENERATE_SOURCE.  With this enabled the user can run the program, then compile the output back into the program for a performance boost.  Currently I don't recommend using this, it should be considered experimental and the out put will not be compatible with future versions of BoxedWine.
 
--glext: If used, when Wine requests the list of OpenGL extension, it will be limited to this list.  This is only useful if the an old OpenGL game, like Unreal, can't handle the large list of extension a modern video card returns.  For Unreal I use:
+-glext : If used, when Wine requests the list of OpenGL extension, it will be limited to this list.  This is only useful if the an old OpenGL game, like Unreal, can't handle the large list of extension a modern video card returns.  For Unreal I use:
 
     -glext "GL_EXT_multi_draw_arrays GL_ARB_vertex_program GL_ARB_fragment_program GL_ARB_multitexture GL_EXT_secondary_color GL_EXT_texture_lod_bias GL_NV_texture_env_combine4 GL_ATI_texture_env_combine3 GL_EXT_texture_filter_anisotropic GL_ARB_texture_env_combine GL_EXT_texture_env_combine GL_EXT_texture_compression_s3tc GL_ARB_texture_compression GL_EXT_paletted_texture"
+
+-log filePath : Will copy the output sent to the terminal to a file.  For example -log "c:\games\mygame\log.txt"
 
 -mount : Will mount a host directory or zip file, in the emulated file systems.  Example: -mount "c:\my games" "/home/username/my games" or -mount "c:\my games\mygame.zip" "/home/username/my games"
 
@@ -39,7 +41,7 @@ This will load the file system from wine.zip and write the changes to c:\root
 
 -nosound : Will mute sounds, but the emulated program will still think they are being played
 
--nozip: if -zip command line is not supplied, Boxedwine might try to find a suitable zip file system.  If you don't want a default zip file system, you can specific the -nozip command line option.
+-nozip : if -zip command line is not supplied, Boxedwine might try to find a suitable zip file system.  If you don't want a default zip file system, you can specific the -nozip command line option.
 -p2 : sets the emulated cpu to be a Pentium 2 with MMX
 
 -p3 : sets the emulated cpu to be a Pentium 3 with MMX/SSE (default)

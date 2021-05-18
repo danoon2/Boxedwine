@@ -1501,12 +1501,13 @@ public:
     static DecodedBlock* currentBlock;
     virtual ~DecodedBlock() {}
 
-    DecodedBlock() : op(NULL), opCount(0), bytes(0), runCount(0), next1(NULL), next2(NULL), referencedFrom(NULL) {}
+    DecodedBlock() : op(NULL), opCount(0), bytes(0), runCount(0), address(0), next1(NULL), next2(NULL), referencedFrom(NULL) {}
     DecodedOp* op;
     U32 opCount;
     U32 bytes;
     U32 runCount;
-
+    U32 address;
+    
     DecodedBlock* next1;
     DecodedBlock* next2;    
 
@@ -1515,6 +1516,8 @@ public:
 
     void addReferenceFrom(DecodedBlock* block);
     void removeReferenceFrom(DecodedBlock* block);
+    
+    DecodedOp* getOp(U32 eip);
 protected:
     DecodedBlockFromNode* referencedFrom;
 };

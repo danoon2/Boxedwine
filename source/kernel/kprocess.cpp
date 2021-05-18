@@ -754,6 +754,7 @@ U32 KProcess::execve(const std::string& path, std::vector<std::string>& args, co
 
     this->systemProcess = false;
     if (stringHasEnding(args[args.size() - 1], "wineserver", true)) {
+        Platform::setCurrentThreadPriorityHigh();
         this->systemProcess = true;
     } else {
         for (auto& s : args) {
@@ -976,7 +977,7 @@ static S32 internalAccess(BoxedPtr<FsNode> node, U32 flags) {
         }
     }
     if ((flags & 1)!=0) {
-        kwarn("access not fully implemented.  Can't test for executable permission");
+        kdebug("access not fully implemented.  Can't test for executable permission");
     }
     return 0;
 }
@@ -1082,9 +1083,7 @@ U32 KProcess::link(const std::string& from, const std::string& to) {
     fromOpenNode->close();
     toNode->hardLinkCount++;
     fromNode->hardLinkCount++;
-#ifdef _DEBUG
-    kwarn("Hard link not implemented");
-#endif
+    kdebug("Hard link not implemented");
     return 0;
 }
 
@@ -1738,14 +1737,14 @@ U32 KProcess::exitgroup(U32 code) {
 
     killAllThreadsExceptCurrent();
 
+    BOXEDWINE_CONDITION_LOCK(KSystem::processesCond);
+    this->terminated = true;
+    BOXEDWINE_CONDITION_UNLOCK(KSystem::processesCond);
+
     KThread::currentThread()->cleanup(); // must happen before we clear memory
     this->threads.clear();
     this->cleanupProcess(); // release RAM, sockets, etc now.  No reason to wait to do that until waitpid is called
     this->exitCode = code;
-
-    BOXEDWINE_CONDITION_LOCK(KSystem::processesCond);
-    this->terminated = true;
-    BOXEDWINE_CONDITION_UNLOCK(KSystem::processesCond);
 
     BOXEDWINE_CONDITION_LOCK(this->exitOrExecCond);
     BOXEDWINE_CONDITION_SIGNAL_ALL(this->exitOrExecCond);
@@ -2016,7 +2015,7 @@ U32 KProcess::prctl(U32 option, U32 arg2) {
     } else if (option == 38) { // PR_SET_NO_NEW_PRIVS
         return 0;
     } else {
-        kwarn("prctl not implemented");
+        kwarn("prctl not implemented for option: %d", option);
     }
     return -1;
 }
@@ -2165,7 +2164,7 @@ U32 KProcess::fcntrl(FD fildes, U32 cmd, U32 arg) {
     switch (cmd) {
         case K_F_SETOWN:
             if (this->id != arg) {
-                kwarn("F_SETOWN not implemented: %d",fildes);
+                kdebug("F_SETOWN not implemented: %d",fildes);
             }
             return 0;
         case K_F_DUPFD: {
@@ -2624,4 +2623,126 @@ U32 KProcess::allocNative(U32 len) {
     this->nextNativeAddress+=pageCount*K_PAGE_SIZE;
     return page << K_PAGE_SHIFT;
 }
+
+U32 KProcess::readd(U32 address) {
+    return *(U32*)getNativeAddress(memory, address);
+}
+
+U16 KProcess::readw(U32 address) {
+    return *(U16*)getNativeAddress(memory, address);
+}
+
+U8 KProcess::readb(U32 address) {
+    return *(U8*)getNativeAddress(memory, address);
+}
+
+void KProcess::writed(U32 address, U32 value) {
+    *(U32*)getNativeAddress(memory, address) = value;
+}
+
+void KProcess::writew(U32 address, U16 value) {
+    *(U16*)getNativeAddress(memory, address) = value;
+}
+
+void KProcess::writeb(U32 address, U8 value) {
+    *(U8*)getNativeAddress(memory, address) = value;
+}
+
+void KProcess::memcopyFromNative(U32 address, const void* p, U32 len) {
+    memcpy(getNativeAddress(memory, address), p, len);
+}
+
+void KProcess::memcopyToNative( U32 address, void* p, U32 len) {
+    memcpy(p, getNativeAddress(memory, address), len);
+}
+
+#else
+
+U32 KProcess::readd(U32 address) {
+    if ((address & 0xFFF) < 0xFFD) {
+        int index = address >> 12;
+#ifndef UNALIGNED_MEMORY
+        if (memory->mmuReadPtr[index])
+            return *(U32*)(&memory->mmuReadPtr[index][address & 0xFFF]);
+#endif
+        return memory->mmu[index]->readd(address);
+    } else {
+        return readb(address) | (readb(address+1) << 8) | (readb(address+2) << 16) | (readb(address+3) << 24);
+    }
+}
+
+U16 KProcess::readw(U32 address) {
+    if ((address & 0xFFF) < 0xFFF) {
+        int index = address >> 12;
+#ifndef UNALIGNED_MEMORY
+        if (memory->mmuReadPtr[index])
+            return *(U16*)(&memory->mmuReadPtr[index][address & 0xFFF]);
+#endif
+        return memory->mmu[index]->readw(address);
+    }
+    return readb(address) | (readb(address+1) << 8);
+}
+
+U8 KProcess::readb(U32 address) {
+    int index = address >> 12;
+    if (memory->mmuReadPtr[index])
+        return memory->mmuReadPtr[index][address & 0xFFF];
+    return memory->mmu[index]->readb(address);
+}
+
+void KProcess::writed(U32 address, U32 value) {
+    if ((address & 0xFFF) < 0xFFD) {
+        int index = address >> 12;
+#ifndef UNALIGNED_MEMORY
+        if (memory->mmuWritePtr[index])
+            *(U32*)(&memory->mmuWritePtr[index][address & 0xFFF]) = value;
+        else
+#endif
+            memory->mmu[index]->writed(address, value);
+    } else {
+        writeb(address, value);
+        writeb(address+1, value >> 8);
+        writeb(address+2, value >> 16);
+        writeb(address+3, value >> 24);
+    }
+}
+
+void KProcess::writew(U32 address, U16 value) {
+    if ((address & 0xFFF) < 0xFFF) {
+        int index = address >> 12;
+#ifndef UNALIGNED_MEMORY
+        if (memory->mmuWritePtr[index])
+            *(U16*)(&memory->mmuWritePtr[index][address & 0xFFF]) = value;
+        else
+#endif
+            memory->mmu[index]->writew(address, value);
+    } else {
+        writeb(address, (U8)value);
+        writeb(address+1, (U8)(value >> 8));
+    }
+}
+
+void KProcess::writeb(U32 address, U8 value) {
+    int index = address >> 12;
+    if (memory->mmuWritePtr[index])
+        memory->mmuWritePtr[index][address & 0xFFF] = value;
+    else
+        memory->mmu[index]->writeb(address, value);
+}
+
+void KProcess::memcopyFromNative(U32 address, const void* pv, U32 len) {
+    U32 i;
+    U8* p = (U8*)pv;
+    for (i=0;i<len;i++) {
+        writeb(address+i, p[i]);
+    }
+}
+
+void KProcess::memcopyToNative(U32 address, void* pv, U32 len) {
+    U8* p = (U8*)pv;
+    for (U32 i=0;i<len;i++) {
+        p[i] = readb(address+i);
+    }
+}
+
 #endif
