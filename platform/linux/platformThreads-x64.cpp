@@ -307,7 +307,7 @@ void platformHandler(int sig, siginfo_t* info, void* vcontext) {
     x64Cpu->exceptionR8 = context->CONTEXT_R8;
     x64Cpu->exceptionR9 = context->CONTEXT_R9;
     x64Cpu->exceptionR10 = context->CONTEXT_R10;
-    if ((context->CONTEXT_RIP & 0xFFFFFFFF00000000l) == (U64)cpu->thread->memory->executableMemoryId) {
+    if (cpu->thread->memory->isAddressExecutable((void*)context->CONTEXT_RIP)) {
         unsigned char* hostAddress = (unsigned char*)context->CONTEXT_RIP;
         std::shared_ptr<BtCodeChunk> chunk = cpu->thread->memory->getCodeChunkContainingHostAddress(hostAddress);
         if (chunk && chunk->getEipLen()) { // during start up eip is already set
@@ -357,7 +357,7 @@ void signalHandler() {
         cpu->flags &= ~AC;
         cpu->returnHostAddress = cpu->exceptionIp;
         return;
-    } else if ((cpu->exceptionSigNo == SIGBUS || cpu->exceptionSigNo == SIGSEGV) && ((cpu->exceptionIp & 0xFFFFFFFF00000000l) == (U64)cpu->thread->memory->executableMemoryId)) {
+    } else if ((cpu->exceptionSigNo == SIGBUS || cpu->exceptionSigNo == SIGSEGV) && cpu->thread->memory->isAddressExecutable((void*)cpu->exceptionIp)) {
         std::function<U64(U32 reg)> getReg = [cpu](U32 reg) {
             if (reg == 8)
                 return cpu->exceptionR8;

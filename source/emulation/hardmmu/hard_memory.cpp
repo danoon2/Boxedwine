@@ -41,7 +41,6 @@ Memory::Memory() : allocated(0), callbackPos(0) {
     this->eipToHostInstructionAddressSpaceMapping = NULL;
     memset(this->dynamicCodePageUpdateCount, 0, sizeof(this->dynamicCodePageUpdateCount));
     memset(this->committedEipPages, 0, sizeof(this->committedEipPages));
-    this->executableMemoryId = 0;
 #endif    
     reserveNativeMemory(this);
 
@@ -933,6 +932,15 @@ int powerOf2(U32 requestedSize, U32& size) {
     return powerOf2Size;
 }
 
+bool Memory::isAddressExecutable(void* address) {
+    for (auto& p : this->allocatedExecutableMemory) {
+        if (address >= p.memory && address < (U8*)p.memory + p.size) {
+            return true;
+        }
+    }
+    return false;
+}
+
 void* Memory::allocateExcutableMemory(U32 requestedSize, U32* allocatedSize) {
     U32 size = 0;
     U32 powerOf2Size = powerOf2(requestedSize, size);
@@ -952,13 +960,9 @@ void* Memory::allocateExcutableMemory(U32 requestedSize, U32* allocatedSize) {
         this->freeExecutableMemory[index].pop_front();
         return result;
     }
-    void* result = (void*)(this->executableMemoryId | (this->nextExecutablePage << K_PAGE_SHIFT));
     U32 count = (size+65535)/65536;
-    for (U32 i=0;i<count;i++) {
-        allocExecutable64kBlock(this, this->nextExecutablePage);
-        this->nextExecutablePage+=16;
-    }
-    
+    void* result = allocExecutable64kBlock(this, count);
+    this->allocatedExecutableMemory.push_back(Memory::AllocatedMemory(result, count*64*1024));
     count = 65536 / size;
     for (U32 i=1;i<count;i++) {
         this->freeExecutableMemory[index].push_back(((U8*)result) + size * i);

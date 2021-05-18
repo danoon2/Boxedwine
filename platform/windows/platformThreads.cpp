@@ -136,7 +136,7 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
             ep->ContextRecord->Rip = rip;
             return EXCEPTION_CONTINUE_EXECUTION;
         }
-    } else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION && (ep->ContextRecord->Rip & 0xFFFFFFFF00000000l)==(U64)cpu->thread->memory->executableMemoryId) {      
+    } else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION && cpu->thread->memory->isAddressExecutable((void*)ep->ContextRecord->Rip)) {
         std::function<U64(U32 reg)> getReg = [ep] (U32 reg) {
             if (reg == 8)
                 return ep->ContextRecord->R8;

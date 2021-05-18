@@ -172,12 +172,14 @@ void freeNativeMemory(Memory* memory, U32 page, U32 pageCount) {
 }
 
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
-void allocExecutable64kBlock(Memory* memory, U32 page) {
-    if (!VirtualAlloc((void*)((page << K_PAGE_SHIFT) | memory->executableMemoryId), 64*1024, MEM_COMMIT, PAGE_EXECUTE_READWRITE)) {
+void* allocExecutable64kBlock(Memory* memory, U32 count) {
+    void* result = VirtualAlloc(NULL, 64 * 1024 * count, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+    if (!result) {
         LPSTR messageBuffer = NULL;
         size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
-        kpanic("allocExecutable64kBlock: failed to commit memory 0x%x: %s", (page << K_PAGE_SHIFT), messageBuffer);
+        kpanic("allocExecutable64kBlock: failed to commit memory : %s", messageBuffer);
     }
+    return result;
 }
 #endif
 
@@ -211,8 +213,6 @@ void reserveNativeMemory(Memory* memory) {
         memory->memOffsets[i] = memory->id;
     }
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
-    memory->executableMemoryId = (U64)reserveNext4GBMemory();
-    memory->nextExecutablePage = 0;
     if (KSystem::useLargeAddressSpace) {
         memory->eipToHostInstructionAddressSpaceMapping = reserveNext32GBMemory();
     }
@@ -237,12 +237,13 @@ void releaseNativeMemory(Memory* memory) {
     memory->allocated = 0;
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
     memory->executableMemoryReleased();    
-    if (!VirtualFree((void*)memory->executableMemoryId, 0, MEM_RELEASE)) {
-        LPSTR messageBuffer = NULL;
-        size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
-        kpanic("failed to release executable memory: %s", messageBuffer);
-    } 
-    memory->executableMemoryId = 0;
+    for (auto& p : memory->allocatedExecutableMemory) {
+        if (!VirtualFree(p.memory, 0, MEM_RELEASE)) {
+            LPSTR messageBuffer = NULL;
+            size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
+            kpanic("failed to release executable memory: %s", messageBuffer);
+        }
+    }
     if (KSystem::useLargeAddressSpace) {
         if (!VirtualFree((void*)memory->eipToHostInstructionAddressSpaceMapping, 0, MEM_RELEASE)) {
             LPSTR messageBuffer = NULL;
