@@ -171,9 +171,15 @@ public:
     void* allocateExcutableMemory(U32 size, U32* allocatedSize);
     void freeExcutableMemory(void* hostMemory, U32 size);
     void executableMemoryReleased();
-    U64 executableMemoryId;
-    U32 nextExecutablePage;
+    bool isAddressExecutable(void* address);
 
+    class AllocatedMemory {
+    public:
+        AllocatedMemory(void* memory, U32 size) : memory(memory), size(size) {}
+        void* memory;
+        U32 size;
+    };
+    std::list<AllocatedMemory> allocatedExecutableMemory;
 private:
     bool committedEipPages[K_NUMBER_OF_PAGES];
 

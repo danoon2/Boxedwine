@@ -1738,6 +1738,12 @@
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_string.cpp">
       <Filter>source\emulation\cpu\armv8bt</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\sdl\wineaudiodrv.cpp">
+      <Filter>source\sdl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\platform\sdl\kdspaudio.cpp">
+      <Filter>sdlPlatform</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
@@ -4750,6 +4756,12 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_string.h">
       <Filter>source\emulation\cpu\armv8bt</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\platform\sdl\knativeaudiosdl.h">
+      <Filter>sdlPlatform</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\include\kdspaudio.h">
+      <Filter>include</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
