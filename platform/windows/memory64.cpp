@@ -29,6 +29,25 @@ U32 getHostAllocationSize() {
 }
 
 #ifdef BOXEDWINE_X64
+void updateNativePermission(Memory* memory, U32 nativePage, U32 nativePageCount, bool canRead, bool canWrite) {
+    DWORD proto = 0;
+    DWORD oldProtect;
+
+    if (canWrite) {
+        proto = PAGE_READWRITE;
+    } else if (canRead) {
+        proto = PAGE_READONLY;
+    } else {
+        proto = PAGE_NOACCESS;
+    }
+
+    if (!VirtualProtect(getNativeAddress(memory, (nativePage << K_NATIVE_PAGE_SHIFT)), nativePageCount << K_NATIVE_PAGE_SHIFT, proto, &oldProtect)) {
+        LPSTR messageBuffer = NULL;
+        size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
+        kpanic("failed to protect memory: %s", messageBuffer);
+    }
+}
+
 // :TODO: what about some sort of garbage collection to MEM_DECOMMIT chunks that no longer contain code mappings
 void commitHostAddressSpaceMapping(Memory* memory, U32 page, U32 pageCount, U64 defaultValue) {
     U64 granPage;
