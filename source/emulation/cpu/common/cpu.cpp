@@ -1074,10 +1074,11 @@ U32 CPU::push16_r(U32 esp, U16 value) {
     U32 new_esp=(esp & this->stackNotMask) | ((esp - 2) & this->stackMask);
     U32 address = this->seg[SS].address + (new_esp & this->stackMask);
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
-    if (this->thread->memory->nativeFlags[address>>K_PAGE_SHIFT] & NATIVE_FLAG_CODEPAGE_READONLY) {
-        clearCodePageReadOnly(this->thread->memory, address >> K_PAGE_SHIFT);
+    U32 nativePage = this->thread->memory->getNativePage(address>>K_PAGE_SHIFT);
+    if (this->thread->memory->nativeFlags[nativePage] & NATIVE_FLAG_CODEPAGE_READONLY) {
+        clearCodePageReadOnly(this->thread->memory, nativePage);
         writew(address ,value);
-        makeCodePageReadOnly(this->thread->memory, address >> K_PAGE_SHIFT);
+        makeCodePageReadOnly(this->thread->memory, nativePage);
     } else 
 #endif
     {
@@ -1097,10 +1098,11 @@ U32 CPU::push32_r(U32 esp, U32 value) {
     U32 address = this->seg[SS].address + (new_esp & this->stackMask);
 
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
-    if (this->thread->memory->nativeFlags[address>>K_PAGE_SHIFT] & NATIVE_FLAG_CODEPAGE_READONLY) {
-        clearCodePageReadOnly(this->thread->memory, address >> K_PAGE_SHIFT);
+    U32 nativePage = this->thread->memory->getNativePage(address>>K_PAGE_SHIFT);
+    if (this->thread->memory->nativeFlags[nativePage] & NATIVE_FLAG_CODEPAGE_READONLY) {
+        clearCodePageReadOnly(this->thread->memory, nativePage);
         writed(address ,value);
-        makeCodePageReadOnly(this->thread->memory, address >> K_PAGE_SHIFT);
+        makeCodePageReadOnly(this->thread->memory, nativePage);
     } else 
 #endif
     {

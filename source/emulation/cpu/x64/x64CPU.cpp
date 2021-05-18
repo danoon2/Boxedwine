@@ -330,8 +330,8 @@ void x64CPU::link(X64Asm* data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 off
 }
 
 void x64CPU::markCodePageReadOnly(X64Asm* data) {
-    U32 pageStart = (data->startOfDataIp+this->seg[CS].address) >> K_PAGE_SHIFT;
-    U32 pageEnd = (data->startOfDataIp+this->seg[CS].address) >> K_PAGE_SHIFT;
+    U32 pageStart = this->thread->memory->getNativePage((data->startOfDataIp+this->seg[CS].address) >> K_PAGE_SHIFT);
+    U32 pageEnd = this->thread->memory->getNativePage((data->startOfDataIp+this->seg[CS].address) >> K_PAGE_SHIFT);
     S32 pageCount = pageEnd-pageStart+1;
 
 #ifndef __TEST
@@ -389,7 +389,8 @@ void x64CPU::translateInstruction(X64Asm* data, X64Asm* firstPass) {
 
 void x64CPU::translateData(X64Asm* data, X64Asm* firstPass) {
     U32 codePage = (data->ip+data->cpu->seg[CS].address) >> K_PAGE_SHIFT;
-    if (this->thread->memory->dynamicCodePageUpdateCount[codePage]==MAX_DYNAMIC_CODE_PAGE_COUNT) {
+    U32 nativePage = this->thread->memory->getNativePage(codePage);
+    if (this->thread->memory->dynamicCodePageUpdateCount[nativePage]==MAX_DYNAMIC_CODE_PAGE_COUNT) {
         data->dynamic = true;
     }
     while (1) {  
@@ -405,14 +406,15 @@ void x64CPU::translateData(X64Asm* data, X64Asm* firstPass) {
 
             if (page!=codePage) {
                 codePage = page;
+                nativePage = this->thread->memory->getNativePage(codePage);
                 if (data->dynamic) {                    
-                    if (this->thread->memory->dynamicCodePageUpdateCount[codePage] == MAX_DYNAMIC_CODE_PAGE_COUNT) {
+                    if (this->thread->memory->dynamicCodePageUpdateCount[nativePage] == MAX_DYNAMIC_CODE_PAGE_COUNT) {
                         // continue to cross from my dynamic page into another dynamic page
                     } else {
                         // we will continue to emit code that will self check for modified code, even though the page we spill into is not dynamic
                     }
                 } else {
-                    if (this->thread->memory->dynamicCodePageUpdateCount[codePage] == MAX_DYNAMIC_CODE_PAGE_COUNT) {
+                    if (this->thread->memory->dynamicCodePageUpdateCount[nativePage] == MAX_DYNAMIC_CODE_PAGE_COUNT) {
                         // we crossed a page boundry from a non dynamic page to a dynamic page
                         data->dynamic = true; // the instructions from this point on will do their own check
                     } else {

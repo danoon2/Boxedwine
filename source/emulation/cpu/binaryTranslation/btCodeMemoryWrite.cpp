@@ -30,8 +30,8 @@ void BtCodeMemoryWrite::invalidateStringWriteToDi(bool repeat, U32 size) {
 }
 
 void BtCodeMemoryWrite::invalidateCode(U32 addressStart, U32 addressLen) {
-    U32 pageStart = addressStart >> K_PAGE_SHIFT;
-    U32 pageStop = (addressStart + addressLen) >> K_PAGE_SHIFT;
+    U32 pageStart = this->cpu->thread->memory->getNativePage(addressStart >> K_PAGE_SHIFT);
+    U32 pageStop = this->cpu->thread->memory->getNativePage((addressStart + addressLen) >> K_PAGE_SHIFT);
 
     for (U32 page = pageStart; page <= pageStop; page++) {
         if (cpu->thread->memory->nativeFlags[page] & NATIVE_FLAG_CODEPAGE_READONLY) {
