@@ -9,10 +9,10 @@ BtCodeChunk::BtCodeChunk(U32 instructionCount, U32* eipInstructionAddress, U32* 
     this->instructionCount = instructionCount;
     this->emulatedAddress = eip + cpu->seg[CS].address;
     this->emulatedLen = eipLen;
-    this->hostAddress = cpu->thread->memory->allocateExcutableMemory(hostInstructionBufferLen + instructionCount * sizeof(U32) + instructionCount * sizeof(U8) + 4, &this->hostAddressSize); // +4 for a guard
+    this->hostAddress = cpu->thread->memory->allocateExcutableMemory(hostInstructionBufferLen + 4, &this->hostAddressSize); // +4 for a guard
     this->hostLen = hostInstructionBufferLen;
-    this->emulatedInstructionLen = (U8*)this->hostAddress + this->hostAddressSize - instructionCount * sizeof(U8) - instructionCount * sizeof(U32);
-    this->hostInstructionLen = (U32*)((U8*)this->hostAddress + this->hostAddressSize - instructionCount * sizeof(U32));// should be aligned to 4 byte boundry
+    this->emulatedInstructionLen = new U8[instructionCount];
+    this->hostInstructionLen = new U32[instructionCount];
     this->dynamic = dynamic;
 
     Platform::writeCodeToMemory(this->hostAddress, this->hostAddressSize, [this]() {
@@ -95,7 +95,11 @@ void BtCodeChunk::release(Memory* memory) {
 
 void BtCodeChunk::internalDealloc() {
     KThread::currentThread()->memory->freeExcutableMemory(this->hostAddress, this->hostAddressSize);
-    this->clearInstructionCache((U8*)this->hostAddress, this->hostAddressSize);
+    this->hostAddress = NULL;
+    delete[] this->emulatedInstructionLen;
+    this->emulatedInstructionLen = NULL;
+    delete[] this->hostInstructionLen;
+    this->hostInstructionLen = NULL;
 }
 
 U32 BtCodeChunk::getEipThatContainsHostAddress(void* address, void** startOfHostInstruction, U32* index) {

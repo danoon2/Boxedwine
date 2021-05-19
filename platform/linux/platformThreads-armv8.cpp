@@ -15,8 +15,8 @@
 #define CONTEXT_REG(x) uc_mcontext->__ss.__x[x]
 #define CONTEXT_PC uc_mcontext->__ss.__pc
 #else
-#define CONTEXT_REG(x) uc_mcontext->regs[x]
-#define CONTEXT_PC uc_mcontext->pc
+#define CONTEXT_REG(x) uc_mcontext.regs[x]
+#define CONTEXT_PC uc_mcontext.pc
 #include <ucontext.h>
 #include <signal.h>
 #include <pthread.h>
