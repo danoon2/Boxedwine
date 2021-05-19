@@ -32,12 +32,12 @@ public:
 	U64 originalCpuRegs[16];
 	void* returnToLoopAddress;
     void* reTranslateChunkAddress;
-    void* reTranslateChunkAddressFromR9;
+    void* reTranslateChunkAddressFromReg;
     // for use with exceptions caused by jumping to an eip that isn't translated yet
     U64 regPage;
     U64 regOffset;
-#ifdef BOXEDWINE_X64_DEBUG_NO_EXCEPTIONS
-    void* jmpAndTranslateIfNecessaryToR9;
+#ifdef BOXEDWINE_BT_DEBUG_NO_EXCEPTIONS
+    void* jmpAndTranslateIfNecessary;
 #endif
 #ifdef _DEBUG
     U32 fromEip;

@@ -1905,7 +1905,15 @@ void Armv8btAsm::jmpReg(U8 reg, bool mightNeedCS) {
         } else {
             addRegs64(xBranchLargeAddressOffset, xLargeAddress, reg, 3);
         }
-        readMem64ValueOffset(xBranch, xBranchLargeAddressOffset, 0);        
+#ifdef BOXEDWINE_BT_DEBUG_NO_EXCEPTIONS
+        U8 tmpIndex = xBranchLargeAddressOffset - xTmp1;
+        this->tmpRegInUse[tmpIndex] = true;
+        // don't let this call overwrite xBranchLargeAddressOffset
+        readMem64ValueOffset(xBranch, xCPU, (U32)(offsetof(Armv8btCPU, jmpAndTranslateIfNecessary)));
+        this->tmpRegInUse[tmpIndex] = false;
+#else
+        readMem64ValueOffset(xBranch, xBranchLargeAddressOffset, 0);
+#endif
     } else {
         // hard coded regs so that the exception handler will know what to expect
 
@@ -1962,8 +1970,21 @@ void Armv8btAsm::createCodeForRunSignal() {
     branchNativeRegister(xBranch);
 }
 
+static void armv8_translateIfNecessary() {
+    Armv8btCPU* cpu = ((Armv8btCPU*)KThread::currentThread()->cpu);
+    cpu->eip.u32 -= cpu->seg[CS].address;
+    if (!cpu->isBig()) {
+        cpu->eip.u32 = cpu->eip.u32 & 0xFFFF;
+    }
+    cpu->returnHostAddress = (U64)cpu->translateEip(cpu->eip.u32);
+}
+
 void Armv8btAsm::createCodeForJmpAndTranslateIfNecessary() {
-    kpanic("createCodeForJmpAndTranslateIfNecessary not implemented");
+    syncRegsFromHost(true);
+    callHost((void*)armv8_translateIfNecessary);
+    syncRegsToHost();
+    readMem64ValueOffset(xBranch, xCPU, (U32)(offsetof(BtCPU, returnHostAddress)));
+    branchNativeRegister(xBranch);
 }
 
 void Armv8btAsm::write64Buffer(U8* buffer, U64 value) {

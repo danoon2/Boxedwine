@@ -52,7 +52,7 @@ std::string KSystem::title;
 // Not sure if this is a Boxedwine issue or if its normal for Windows to behave different for OpenGL if the window is hidden
 bool KSystem::showWindowImmediately = false;
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
-bool KSystem::useLargeAddressSpace = false;
+bool KSystem::useLargeAddressSpace = true;
 #endif
 #ifdef BOXEDWINE_MULTI_THREADED
 U32 KSystem::cpuAffinityCountForApp = 1;

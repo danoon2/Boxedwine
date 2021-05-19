@@ -172,11 +172,6 @@ void signalHandler() {
         cpu->translateEip(cpu->eip.u32);
         cpu->returnHostAddress = cpu->exceptionIp;
         return;
-    } else if (cpu->exceptionSigNo == SIGBUS && cpu->exceptionSigCode == BUS_ADRALN) {
-        // :TODO: figure out how AC got set, I've only seen this while op logging
-        cpu->flags &= ~AC;
-        cpu->returnHostAddress = cpu->exceptionIp;
-        return;
     } else if ((cpu->exceptionSigNo == SIGBUS || cpu->exceptionSigNo == SIGSEGV) && cpu->thread->memory->isAddressExecutable((void*)cpu->exceptionIp)) {
         U64 rip = cpu->handleAccessException(cpu->exceptionIp, cpu->exceptionAddress, cpu->exceptionReadAddress);
         if (rip) {

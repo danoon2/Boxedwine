@@ -170,21 +170,21 @@ void* Armv8btCPU::init() {
         this->thread->process->reTranslateChunkAddress = chunk3->getHostAddress();
     }
     this->reTranslateChunkAddress = this->thread->process->reTranslateChunkAddress;
-    if (!this->thread->process->reTranslateChunkAddressFromR9) {
+    if (!this->thread->process->reTranslateChunkAddressFromReg) {
         Armv8btAsm translateData(this);
         translateData.createCodeForRetranslateChunk();
         std::shared_ptr<BtCodeChunk> chunk3 = translateData.commit(true);
-        this->thread->process->reTranslateChunkAddressFromR9 = chunk3->getHostAddress();
+        this->thread->process->reTranslateChunkAddressFromReg = chunk3->getHostAddress();
     }
-    this->reTranslateChunkAddressFromR9 = this->thread->process->reTranslateChunkAddressFromR9;
-#ifdef BOXEDWINE_X64_DEBUG_NO_EXCEPTIONS
-    if (!this->thread->process->jmpAndTranslateIfNecessaryToR9) {
+    this->reTranslateChunkAddressFromReg = this->thread->process->reTranslateChunkAddressFromReg;
+#ifdef BOXEDWINE_BT_DEBUG_NO_EXCEPTIONS
+    if (!this->thread->process->jmpAndTranslateIfNecessary) {
         Armv8btAsm translateData(this);
         translateData.createCodeForJmpAndTranslateIfNecessary();
         std::shared_ptr<BtCodeChunk> chunk3 = translateData.commit(true);
-        this->thread->process->jmpAndTranslateIfNecessaryToR9 = chunk3->getHostAddress();
+        this->thread->process->jmpAndTranslateIfNecessary = chunk3->getHostAddress();
     }
-    this->jmpAndTranslateIfNecessaryToR9 = this->thread->process->jmpAndTranslateIfNecessaryToR9;
+    this->jmpAndTranslateIfNecessary = this->thread->process->jmpAndTranslateIfNecessary;
 #endif
 #ifdef BOXEDWINE_POSIX
     if (!this->thread->process->runSignalAddress) {
@@ -679,14 +679,14 @@ U64 Armv8btCPU::handleAccessException(U64 ip, U64 address, bool readAddress) {
         // check if the emulated memory caused the exception
         if ((address & 0xFFFFFFFF00000000l) == this->thread->memory->id) {                
             U32 emulatedAddress = (U32)address;
-            
+            U32 nativePage = this->thread->memory->getNativePage(emulatedAddress >> K_PAGE_SHIFT);
             // check if emulated memory that caused the exception is a page that has code
-            if (this->thread->memory->nativeFlags[emulatedAddress>>K_PAGE_SHIFT] & NATIVE_FLAG_CODEPAGE_READONLY) {                    
+            if (this->thread->memory->nativeFlags[nativePage] & NATIVE_FLAG_CODEPAGE_READONLY) {
                 dynamicCodeExceptionCount++;                    
                 return this->handleCodePatch(ip, emulatedAddress);                    
             }
         }   
-#ifdef _DEBUG
+#ifdef _DEBUG 0x102d46fb0
         //void* fromHost = this->thread->memory->getExistingHostAddress(this->fromEip);
         //std::shared_ptr<BtCodeChunk> chunk = this->thread->memory->getCodeChunkContainingHostAddress((void*)rip);
 #endif
