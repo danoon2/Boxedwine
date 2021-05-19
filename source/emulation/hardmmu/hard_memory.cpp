@@ -654,11 +654,11 @@ void Memory::clearCodePageFromCache(U32 page) {
             delete[] table;
             this->eipToHostInstructionPages[page] = NULL;
         }
-    }
-    this->dynamicCodePageUpdateCount[page] = 0;
+    }    
     
     U32 nativePage = this->getNativePage(page);
     U32 startingPage = this->getEmulatedPage(nativePage);
+    this->dynamicCodePageUpdateCount[nativePage] = 0;
     if (this->eipToHostInstructionPages) {
         for (int i=0;i<K_NATIVE_PAGES_PER_PAGE;i++) {
             if (this->eipToHostInstructionPages[startingPage+i]) {
