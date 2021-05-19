@@ -971,7 +971,7 @@ void* Memory::allocateExcutableMemory(U32 requestedSize, U32* allocatedSize) {
 }
 
 void Memory::freeExcutableMemory(void* hostMemory, U32 actualSize) {
-    Platform::writeCodeToMemory([hostMemory, actualSize] {
+    Platform::writeCodeToMemory(hostMemory, actualSize, [hostMemory, actualSize] {
         memset(hostMemory, 0xcd, actualSize);
         });
 

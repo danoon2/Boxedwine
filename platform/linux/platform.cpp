@@ -37,7 +37,7 @@ unsigned long long int Platform::getSystemTimeAsMicroSeconds() {
 void Platform::init() {
 }
 
-void Platform::writeCodeToMemory(std::function<void()> callback) {
+void Platform::writeCodeToMemory(void* address, U32 len, std::function<void()> callback) {
 #ifdef BOXEDWINE_MAC_JIT
     if (__builtin_available(macOS 11.0, *)) {
         pthread_jit_write_protect_np(false);
@@ -49,6 +49,8 @@ void Platform::writeCodeToMemory(std::function<void()> callback) {
         pthread_jit_write_protect_np(true);
     }
 #endif
+    // GCC, this is required for ARM, but for x86 it will just do nothing
+    __builtin___clear_cache((char*)address, (char*)address+len);
 }
 
 //#ifdef __EMSCRIPTEN__

@@ -30,7 +30,7 @@ void Platform::init() {
     }
 }
 
-void Platform::writeCodeToMemory(std::function<void()> callback) {
+void Platform::writeCodeToMemory(void* address, U32 len, std::function<void()> callback) {
     callback();
 }
 

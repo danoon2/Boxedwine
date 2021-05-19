@@ -1019,11 +1019,9 @@ void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
         }
         U8* begin = (U8*)mem + memory->dynamicExecutableMemoryPos;
 
-        Platform::writeCodeToMemory([begin, outBuffer, outBufferPos] {
+        Platform::writeCodeToMemory(begin, outBufferPos, [begin, outBuffer, outBufferPos] {
             memcpy(begin, outBuffer, outBufferPos);
             });
-   
-        codeCreated(begin, begin + outBufferPos);
 
         memory->dynamicExecutableMemoryPos += outBufferPos;
 

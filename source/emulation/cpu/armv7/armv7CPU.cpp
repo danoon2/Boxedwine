@@ -952,10 +952,6 @@ void byteSwapReg32(DynReg reg) {
 
 #endif
 
-void codeCreated(U8* start, U8* end) {
-    __builtin___clear_cache((char*)start, (char*)end);
-}
-
 void startBlock() {
     pushRegs(BLOCK_REGS_SAVED); 
     movToRegFromReg(REG_CPU, DYN_32bit, DYN_R0, DYN_32bit, false);

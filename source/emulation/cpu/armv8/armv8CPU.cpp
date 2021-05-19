@@ -1102,10 +1102,6 @@ void popPair(U8 r1, U8 r2) {
     outb(0xa8);
 }
 
-void codeCreated(U8* start, U8* end) {
-    __builtin___clear_cache((char*)start, (char*)end);
-}
-
 static bool calledFunction = false;
 
 void startBlock() {
