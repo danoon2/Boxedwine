@@ -194,7 +194,9 @@ void BtCodeChunk::invalidateStartingAt(U32 eipAddress) {
         eip = this->getStartOfInstructionByEip(eip + this->emulatedInstructionLen[eipIndex], &host, &eipIndex);
     }
     U32 remainingLen = this->hostLen - (U32)(host - (U8*)this->hostAddress);
-    memset(host, 0xce, remainingLen);
+    Platform::writeCodeToMemory([host, remainingLen] {
+        memset(host, 0xce, remainingLen);
+        });
 }
 
 bool BtCodeChunk::containsEip(U32 eip, U32 len) {

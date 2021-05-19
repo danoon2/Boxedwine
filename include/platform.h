@@ -120,6 +120,8 @@ public:
     static bool supportsOpenFileLocation() {return true;}
     static const char* getResourceFilePath(const std::string& location);
     static void setCurrentThreadPriorityHigh();
+    static void writeCodeToMemory(std::function<void()> callback);
+
 #ifdef BOXEDWINE_MULTI_THREADED
     static void setCpuAffinityForThread(KThread* thread, U32 count);
 #endif
