@@ -30,6 +30,10 @@ void Platform::init() {
     }
 }
 
+void Platform::writeCodeToMemory(std::function<void()> callback) {
+    callback();
+}
+
 void Platform::startMicroCounter()
 {
     LARGE_INTEGER li;

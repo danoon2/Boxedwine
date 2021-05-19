@@ -37,6 +37,20 @@ unsigned long long int Platform::getSystemTimeAsMicroSeconds() {
 void Platform::init() {
 }
 
+void Platform::writeCodeToMemory(std::function<void()> callback) {
+#ifdef BOXEDWINE_MAC_JIT
+    if (__builtin_available(macOS 11.0, *)) {
+        pthread_jit_write_protect_np(false);
+    }
+#endif
+    callback();
+#ifdef BOXEDWINE_MAC_JIT
+    if (__builtin_available(macOS 11.0, *)) {
+        pthread_jit_write_protect_np(true);
+    }
+#endif
+}
+
 //#ifdef __EMSCRIPTEN__
 #ifdef __THIS_HANGS__
 // error TypeError: asm.js type error: missing definition of function _testSetjmp

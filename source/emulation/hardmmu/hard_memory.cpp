@@ -158,7 +158,7 @@ U32 Memory::mapNativeMemory(void* hostAddress, U32 size) {
 }
 
 void Memory::allocPages(U32 page, U32 pageCount, U8 permissions, FD fd, U64 offset, const BoxedPtr<MappedFile>& mappedFile) {
-    for (int i = 0; i < pageCount; i++) {
+    for (U32 i = 0; i < pageCount; i++) {
         this->clearCodePageFromCache(page + i);
     }
     if ((permissions & PAGE_PERMISSION_MASK) || mappedFile) {
@@ -971,17 +971,10 @@ void* Memory::allocateExcutableMemory(U32 requestedSize, U32* allocatedSize) {
 }
 
 void Memory::freeExcutableMemory(void* hostMemory, U32 actualSize) {
-#ifdef BOXEDWINE_MAC_JIT
-        if (__builtin_available(macOS 11.0, *)) {
-            pthread_jit_write_protect_np(false);
-        }
-#endif
-    memset(hostMemory, 0xcd, actualSize);
-#ifdef BOXEDWINE_MAC_JIT
-        if (__builtin_available(macOS 11.0, *)) {
-            pthread_jit_write_protect_np(true);
-        }
-#endif
+    Platform::writeCodeToMemory([hostMemory, actualSize] {
+        memset(hostMemory, 0xcd, actualSize);
+        });
+
     U32 size = 0;
     U32 powerOf2Size = powerOf2(actualSize, size);
     U32 index = powerOf2Size - EXECUTABLE_MIN_SIZE_POWER;

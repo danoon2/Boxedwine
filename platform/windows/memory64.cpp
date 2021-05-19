@@ -244,6 +244,7 @@ void releaseNativeMemory(Memory* memory) {
             kpanic("failed to release executable memory: %s", messageBuffer);
         }
     }
+    memory->allocatedExecutableMemory.clear();
     if (KSystem::useLargeAddressSpace) {
         if (!VirtualFree((void*)memory->eipToHostInstructionAddressSpaceMapping, 0, MEM_RELEASE)) {
             LPSTR messageBuffer = NULL;

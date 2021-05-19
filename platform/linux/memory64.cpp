@@ -268,7 +268,7 @@ void releaseNativeMemory(Memory* memory) {
     for (auto& p : memory->allocatedExecutableMemory) {
         munmap(p.memory, p.size);
     }
-    memory->allocatedExecutableMemory.clear();
+	memory->allocatedExecutableMemory.clear();
     if (memory->eipToHostInstructionAddressSpaceMapping) {
         munmap((char*)memory->eipToHostInstructionAddressSpaceMapping, 0x800000000l);
         memory->eipToHostInstructionAddressSpaceMapping = NULL;
