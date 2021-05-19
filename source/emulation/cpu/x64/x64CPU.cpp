@@ -145,19 +145,19 @@ void* x64CPU::init() {
         this->thread->process->reTranslateChunkAddress = chunk3->getHostAddress();
     }
     this->reTranslateChunkAddress = this->thread->process->reTranslateChunkAddress;
-    if (!this->thread->process->reTranslateChunkAddressFromR9) {
+    if (!this->thread->process->reTranslateChunkAddressFromReg) {
         X64Asm translateData(this);
         translateData.createCodeForRetranslateChunk(true);
         std::shared_ptr<X64CodeChunk> chunk3 = translateData.commit(true);
-        this->thread->process->reTranslateChunkAddressFromR9 = chunk3->getHostAddress();
+        this->thread->process->reTranslateChunkAddressFromReg = chunk3->getHostAddress();
     }
-    this->reTranslateChunkAddressFromR9 = this->thread->process->reTranslateChunkAddressFromR9;
-#ifdef BOXEDWINE_X64_DEBUG_NO_EXCEPTIONS
-    if (!this->thread->process->jmpAndTranslateIfNecessaryToR9) {
+    this->reTranslateChunkAddressFromReg = this->thread->process->reTranslateChunkAddressFromReg;
+#ifdef BOXEDWINE_BT_DEBUG_NO_EXCEPTIONS
+    if (!this->thread->process->jmpAndTranslateIfNecessary) {
         X64Asm translateData(this);
         translateData.createCodeForJmpAndTranslateIfNecessary(true);
         std::shared_ptr<X64CodeChunk> chunk3 = translateData.commit(true);
-        this->thread->process->jmpAndTranslateIfNecessaryToR9 = chunk3->getHostAddress();
+        this->thread->process->jmpAndTranslateIfNecessary = chunk3->getHostAddress();
     }
     this->jmpAndTranslateIfNecessaryToR9 = this->thread->process->jmpAndTranslateIfNecessaryToR9;
 #endif

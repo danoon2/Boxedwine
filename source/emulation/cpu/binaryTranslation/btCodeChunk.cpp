@@ -75,7 +75,7 @@ void BtCodeChunk::detachFromHost(Memory* memory) {
 
     for (U32 i = 0; i < this->instructionCount; i++) {
         if (KSystem::useLargeAddressSpace) {
-            memory->setEipForHostMapping(eip, process ? process->reTranslateChunkAddressFromR9 : NULL);
+            memory->setEipForHostMapping(eip, process ? process->reTranslateChunkAddressFromReg : NULL);
         } else {
             if (memory->eipToHostInstructionPages[eip >> K_PAGE_SHIFT]) { // might span multiple pages and the other pages are already deleted
                 memory->eipToHostInstructionPages[eip >> K_PAGE_SHIFT][eip & K_PAGE_MASK] = NULL;
