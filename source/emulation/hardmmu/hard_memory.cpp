@@ -635,7 +635,7 @@ void Memory::clearCodePageFromCache(U32 page) {
             U64 offset = (U64)(page << K_PAGE_SHIFT) * sizeof(void*);
             U64* address64 = (U64*)((U8*)this->eipToHostInstructionAddressSpaceMapping + offset);
             for (U32 j = 0; j < K_PAGE_SIZE; j++, address64++) {
-                *address64 = (U64)process->reTranslateChunkAddressFromR9;
+                *address64 = (U64)process->reTranslateChunkAddressFromReg;
             }
         }
     } else {
@@ -896,7 +896,7 @@ void* Memory::getExistingHostAddress(U32 eip) {
             return NULL;
         }
         void* result = (void*)(*(U64*)(((U8*)this->eipToHostInstructionAddressSpaceMapping) + ((U64)eip * sizeof(void*))));
-        if (result == KThread::currentThread()->process->reTranslateChunkAddressFromR9) {
+        if (result == KThread::currentThread()->process->reTranslateChunkAddressFromReg) {
             return NULL;
         }
         return result;
@@ -916,7 +916,7 @@ bool Memory::isEipPageCommitted(U32 page) {
 void Memory::setEipForHostMapping(U32 eip, void* host) {
     U32 page = eip >> K_PAGE_SHIFT;
     if (!this->isEipPageCommitted(page)) {
-        commitHostAddressSpaceMapping(this, page, 1, (U64)KThread::currentThread()->process->reTranslateChunkAddressFromR9);
+        commitHostAddressSpaceMapping(this, page, 1, (U64)KThread::currentThread()->process->reTranslateChunkAddressFromReg);
     }
     U64* address = (U64*)(((U8*)this->eipToHostInstructionAddressSpaceMapping) + ((U64)eip) * sizeof(void*));
     *address = (U64)host;

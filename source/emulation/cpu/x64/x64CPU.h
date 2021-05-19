@@ -41,9 +41,9 @@ public:
 	U64 originalCpuRegs[16];
 	void* returnToLoopAddress;
     void* reTranslateChunkAddress;
-    void* reTranslateChunkAddressFromR9;
-#ifdef BOXEDWINE_X64_DEBUG_NO_EXCEPTIONS
-    void* jmpAndTranslateIfNecessaryToR9;
+    void* reTranslateChunkAddressFromReg;
+#ifdef BOXEDWINE_BT_DEBUG_NO_EXCEPTIONS
+    void* jmpAndTranslateIfNecessary;
 #endif
     static bool hasBMI2;
 

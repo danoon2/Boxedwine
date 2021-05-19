@@ -90,9 +90,9 @@ KProcess::KProcess(U32 id) : id(id),
     emulateFPU=false;
     returnToLoopAddress = NULL;
     reTranslateChunkAddress = NULL;
-    reTranslateChunkAddressFromR9 = NULL;
-#ifdef BOXEDWINE_X64_DEBUG_NO_EXCEPTIONS
-    jmpAndTranslateIfNecessaryToR9 = NULL;
+    reTranslateChunkAddressFromReg = NULL;
+#ifdef BOXEDWINE_BT_DEBUG_NO_EXCEPTIONS
+    jmpAndTranslateIfNecessary = NULL;
 #endif
 #ifdef BOXEDWINE_POSIX
     runSignalAddress = NULL;
@@ -195,9 +195,9 @@ void KProcess::onExec() {
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
     returnToLoopAddress = NULL;
     reTranslateChunkAddress = NULL;
-    reTranslateChunkAddressFromR9 = NULL;
-#ifdef BOXEDWINE_X64_DEBUG_NO_EXCEPTIONS
-    jmpAndTranslateIfNecessaryToR9 = NULL;
+    reTranslateChunkAddressFromReg = NULL;
+#ifdef BOXEDWINE_BT_DEBUG_NO_EXCEPTIONS
+    jmpAndTranslateIfNecessary = NULL;
 #endif
 #ifdef BOXEDWINE_POSIX
     runSignalAddress = NULL;

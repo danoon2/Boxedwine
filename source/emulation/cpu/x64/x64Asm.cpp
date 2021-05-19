@@ -2628,7 +2628,7 @@ void X64Asm::jmpReg(U8 reg, bool isRex, bool mightNeedCS) {
         if (this->cpu->thread->process->hasSetSeg[CS] || mightNeedCS) {
             addWithLea(1, true, 1, true, getRegForSeg(CS, 0), true, 0, 0, 4);
         }
-#ifdef BOXEDWINE_X64_DEBUG_NO_EXCEPTIONS
+#ifdef BOXEDWINE_BT_DEBUG_NO_EXCEPTIONS
         writeToRegFromMem(0, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_JMP_AND_TRANSLATE_IF_NECESSARY_TO_R9, 8, false);
         jmpNativeReg(0, true);
 #else
