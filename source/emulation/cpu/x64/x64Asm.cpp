@@ -33,7 +33,7 @@
 #define CPU_OFFSET_FPU_STATE (U32)(offsetof(x64CPU, fpuState))
 #define CPU_OFFSET_RETURN_HOST_ADDRESS (U32)(offsetof(x64CPU, returnHostAddress))
 #define CPU_OFFSET_RETRANSLATE_CHUNK_ADDRESS (U32)(offsetof(x64CPU, reTranslateChunkAddress))
-#define CPU_OFFSET_JMP_AND_TRANSLATE_IF_NECESSARY_TO_R9 (U32)(offsetof(x64CPU, jmpAndTranslateIfNecessaryToR9))
+#define CPU_OFFSET_JMP_AND_TRANSLATE_IF_NECESSARY (U32)(offsetof(x64CPU, jmpAndTranslateIfNecessary))
 
 #ifdef BOXEDWINE_MSVC
 // RCX
@@ -2629,7 +2629,7 @@ void X64Asm::jmpReg(U8 reg, bool isRex, bool mightNeedCS) {
             addWithLea(1, true, 1, true, getRegForSeg(CS, 0), true, 0, 0, 4);
         }
 #ifdef BOXEDWINE_BT_DEBUG_NO_EXCEPTIONS
-        writeToRegFromMem(0, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_JMP_AND_TRANSLATE_IF_NECESSARY_TO_R9, 8, false);
+        writeToRegFromMem(0, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_JMP_AND_TRANSLATE_IF_NECESSARY, 8, false);
         jmpNativeReg(0, true);
 #else
         // must use r9, the exception handler expects it

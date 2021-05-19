@@ -159,7 +159,7 @@ void* x64CPU::init() {
         std::shared_ptr<X64CodeChunk> chunk3 = translateData.commit(true);
         this->thread->process->jmpAndTranslateIfNecessary = chunk3->getHostAddress();
     }
-    this->jmpAndTranslateIfNecessaryToR9 = this->thread->process->jmpAndTranslateIfNecessaryToR9;
+    this->jmpAndTranslateIfNecessary = this->thread->process->jmpAndTranslateIfNecessary;
 #endif
 #ifdef BOXEDWINE_POSIX
     if (!this->thread->process->runSignalAddress) {
