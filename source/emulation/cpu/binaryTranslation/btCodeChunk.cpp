@@ -14,7 +14,9 @@ BtCodeChunk::BtCodeChunk(U32 instructionCount, U32* eipInstructionAddress, U32* 
     this->emulatedInstructionLen = (U8*)this->hostAddress + this->hostAddressSize - instructionCount * sizeof(U8) - instructionCount * sizeof(U32);
     this->hostInstructionLen = (U32*)((U8*)this->hostAddress + this->hostAddressSize - instructionCount * sizeof(U32));// should be aligned to 4 byte boundry
     this->dynamic = dynamic;
-    memset(this->hostAddress, 0xce, this->hostAddressSize);
+    Platform::writeCodeToMemory(this->hostAddress, this->hostAddressSize, [this]() {
+        memset(this->hostAddress, 0xce, this->hostAddressSize);
+        });
     if (instructionCount) {
         for (U32 i = 0; i < instructionCount; i++) {
             if (i == instructionCount - 1) {
@@ -29,7 +31,9 @@ BtCodeChunk::BtCodeChunk(U32 instructionCount, U32* eipInstructionAddress, U32* 
             }
         }
     }
-    memcpy(this->hostAddress, hostInstructionBuffer, hostInstructionBufferLen);
+    Platform::writeCodeToMemory(this->hostAddress, this->hostAddressSize, [=]() {
+        memcpy(this->hostAddress, hostInstructionBuffer, hostInstructionBufferLen);
+        });
 }
 
 void BtCodeChunk::makeLive() {
@@ -194,7 +198,7 @@ void BtCodeChunk::invalidateStartingAt(U32 eipAddress) {
         eip = this->getStartOfInstructionByEip(eip + this->emulatedInstructionLen[eipIndex], &host, &eipIndex);
     }
     U32 remainingLen = this->hostLen - (U32)(host - (U8*)this->hostAddress);
-    Platform::writeCodeToMemory([host, remainingLen] {
+    Platform::writeCodeToMemory(host, remainingLen, [host, remainingLen] {
         memset(host, 0xce, remainingLen);
         });
 }

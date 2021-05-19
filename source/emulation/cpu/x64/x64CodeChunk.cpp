@@ -16,7 +16,9 @@ bool X64CodeChunk::retranslateSingleInstruction(BtCPU* btCPU, void* address) {
     U32 eipLen = data.ip - data.startOfOpIp;
     U32 hostLen = data.bufferPos;
     if (eipLen == this->emulatedInstructionLen[index] && hostLen == this->hostInstructionLen[index]) {
-        memcpy(startofHostInstruction, data.buffer, hostLen);
+        Platform::writeCodeToMemory(startofHostInstruction, hostLen, [=]() {
+            memcpy(startofHostInstruction, data.buffer, hostLen);
+            });
         return true;
     }
     return false;
