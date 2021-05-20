@@ -133,6 +133,16 @@ U32 kselect(U32 nfds, U32 readfds, U32 writefds, U32 errorfds, U32 timeout) {
     U32 i;
     int count = 0;
     U32 pollCount = 0;
+
+    if (timeout == 0)
+        timeout = 0x7FFFFFFF;
+    else {
+        timeout = readd(timeout) * 1000 + readd(timeout + 4) / 1000;
+        if (timeout < 20 && nfds == 0) {
+            return KThread::currentThread()->sleep(timeout);
+        }
+    }    
+
     KPollData* pollData = new KPollData[nfds];
 
     for (i=0;i<nfds;) {
@@ -168,13 +178,7 @@ U32 kselect(U32 nfds, U32 readfds, U32 writefds, U32 errorfds, U32 timeout) {
                 pollCount++;
             }
         }
-    }
-    if (timeout==0)
-        timeout = 0x7FFFFFFF;
-    else {
-        timeout = readd(timeout) * 1000 + readd(timeout + 4) / 1000;
-    }
-
+    }    
     result = internal_poll(pollData, pollCount, timeout);
     if (result == -K_WAIT) {
         delete[] pollData;
