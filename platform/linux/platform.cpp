@@ -140,6 +140,22 @@ U32 Platform::getCpuCount() {
 #endif
 }
 
+U32 Platform::nanoSleep(U64 nano) {
+    struct timespec req, rem;
+
+    if (nano > 999999999)
+    {
+        req.tv_sec = (int)(nano / 1000000000l);                  /* Must be Non-Negative */
+        req.tv_nsec = (nano - ((long)req.tv_sec * 1000000000l)); /* Must be in range of 0 to 999999999 */
+    } else {
+        req.tv_sec = 0;        /* Must be Non-Negative */
+        req.tv_nsec = nano;    /* Must be in range of 0 to 999999999 */
+    }
+
+    nanosleep(&req, &rem);
+    return 0;
+}
+
 #ifdef __MACH__
 extern "C" {
 void MacPlatormSetThreadPriority();

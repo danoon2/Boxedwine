@@ -366,6 +366,26 @@ void Platform::setCurrentThreadPriorityHigh() {
 
 }
 
+U32 Platform::nanoSleep(U64 nano) {
+    U32 millies = nano / 1000000;
+    LARGE_INTEGER startTime;
+
+    if (millies > NUMBER_OF_MILLIES_TO_SPIN_FOR_WAIT || !PCFreq || !QueryPerformanceCounter(&startTime)) {
+        Sleep(millies);
+    } else {
+        LONGLONG endTime = startTime.QuadPart + nano * PCFreq / 1000000000;
+        while (true) {
+            LARGE_INTEGER currentTime;
+            if (!QueryPerformanceCounter(&currentTime))
+                break;
+            if (currentTime.QuadPart >= endTime) {
+                break;
+            }
+        }
+    }
+    return 0;
+}
+
 #ifdef BOXEDWINE_MULTI_THREADED
 void Platform::setCpuAffinityForThread(KThread* thread, U32 count) {
     if (KSystem::cpuAffinityCountForApp) {

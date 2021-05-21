@@ -78,6 +78,7 @@ public:
     U32 sigreturn();
     U32 sigsuspend(U32 mask, U32 sigsetSize);
     U32 sleep(U32 ms);
+    U32 nanoSleep(U64 nano);
 
     U32 id;
     U64 sigMask; // :TODO: what happens when this is changed while in a signal
