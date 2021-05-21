@@ -138,7 +138,7 @@ U32 kselect(U32 nfds, U32 readfds, U32 writefds, U32 errorfds, U32 timeout) {
         timeout = 0x7FFFFFFF;
     else {
         timeout = readd(timeout) * 1000 + readd(timeout + 4) / 1000;
-        if (timeout < 20 && nfds == 0) {
+        if (timeout < NUMBER_OF_MILLIES_TO_SPIN_FOR_WAIT && nfds == 0) {
             return KThread::currentThread()->sleep(timeout);
         }
     }    
