@@ -15,6 +15,7 @@
         let DEFAULT_SOUND_ENABLED = true;
         let DEFAULT_APP_DIRECTORY = ROOT + "/files/";
         let DEFAULT_BPP = 32;
+        let DEFAULT_FRAME_SKIP = "0";
         let DEFAULT_ROOT_ZIP_FILE = "boxedwine.zip";
         //params
         let Config = {};
@@ -77,6 +78,7 @@
 			Config.cpu = getCPU();
 			Config.envProp = getEnvProp();
 			Config.emEnvProps = getEmscriptenEnvProps();
+			Config.frameSkip = getFrameSkip();
         }
         function allowParameterOverride() {
             if(Config.urlParams.length >0) {
@@ -109,12 +111,12 @@
             				}
             			});
                 	}else{
-	                	console.log("EMSCRITPEN ENV props parameter must be in quoted string");
+	                	console.log("EMSCRIPTEN ENV props parameter must be in quoted string");
                 	}
                 }
             }
             if(allProps.length > 0) {
-                console.log("setting EMSCRITPEN ENV props:");
+                console.log("setting EMSCRIPTEN ENV props:");
             	allProps.forEach(function(prop){
             		console.log(prop.key + " = " + prop.value);
             	});
@@ -152,8 +154,20 @@
             }
             return cpu;
         }
-        function getBitsPerPixel(){
+        function getFrameSkip(){
 
+            var frameskip =  getParameter("frameskip");
+            if(!allowParameterOverride()){
+                frameskip = DEFAULT_FRAME_SKIP;
+            }else if(frameskip == ""){
+                frameskip = DEFAULT_FRAME_SKIP;
+            }else if(Number(frameskip) < 0 || Number(frameskip) > 50){
+                frameskip = DEFAULT_FRAME_SKIP;
+            }
+            console.log("setting frameskip to: "+frameskip);
+            return frameskip;
+        }
+        function getBitsPerPixel(){
             var bpp =  getParameter("bpp");
             if(!allowParameterOverride()){
                 bpp = DEFAULT_BPP;
@@ -958,6 +972,12 @@
             params.push(Config.appDirPrefix);
             params.push("d");
             params.push("-nozip");
+            
+            if (Config.frameSkip != "0") {
+            	params.push("-skipFrameFPS");
+            	params.push(Config.frameSkip);
+			}            
+            
             if(!Config.isSoundEnabled){
                 params.push("-nosound");
             }
