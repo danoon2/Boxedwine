@@ -49,8 +49,10 @@ void Platform::writeCodeToMemory(void* address, U32 len, std::function<void()> c
         pthread_jit_write_protect_np(true);
     }
 #endif
+#ifndef __EMSCRIPTEN__
     // GCC, this is required for ARM, but for x86 it will just do nothing
     __builtin___clear_cache((char*)address, (char*)address+len);
+#endif //__EMSCRIPTEN__
 }
 
 //#ifdef __EMSCRIPTEN__
