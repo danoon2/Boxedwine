@@ -1,0 +1,37 @@
+# Add rules here to build your software
+# See https://docs.bazel.build/versions/master/build-ref.html#BUILD_files
+
+load("@rules_foreign_cc//foreign_cc:defs.bzl", "cmake")
+
+_OUT_BINARIES = [
+    "cpspc",
+    "f2cpsp",
+]
+
+_OUT_SHARED_LIBRARIES = [
+    "libPocoCrypto.so",
+    "libPocoData.so",
+    "libPocoDataMySQL.so",
+    "libPocoDataPostgreSQL.so",
+    "libPocoDataSQLite.so",
+    "libPocoEncodings.so",
+    "libPocoFoundation.so",
+    "libPocoJSON.so",
+    "libPocoJWT.so",
+    "libPocoMongoDB.so",
+    "libPocoNet.so",
+]
+
+cmake(
+    name = "poco",
+    build_args = ["--config Release"],
+    cache_entries = {
+        "CMAKE_C_FLAGS": "-fPIC",
+    },
+    lib_source = "@poco//:all_srcs",
+    out_bin_dir = "bin",
+    out_binaries = _OUT_BINARIES,
+    out_include_dir = "include",
+    out_lib_dir = "lib",
+    out_shared_libs = _OUT_SHARED_LIBRARIES,
+)

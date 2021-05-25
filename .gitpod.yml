@@ -1,0 +1,4 @@
+
+# List the start up tasks. You can start them in parallel in multiple terminals. See https://www.gitpod.io/docs/config-start-tasks/
+tasks:
+  - command: npm install -g @bazel/bazelisk @bazel/buildifier @bazel/ibazel

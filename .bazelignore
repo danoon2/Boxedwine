@@ -1,0 +1,6 @@
+# NB: semantics here are not the same as .gitignore
+# see https://github.com/bazelbuild/bazel/issues/8106
+# For example, every nested node_modules directory needs to be listed here.
+node_modules
+dist
+bazel-out

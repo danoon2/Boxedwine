@@ -26,3 +26,7 @@ project/linux/msvc-remote/Boxedwine/.vs/
 project/linux/msvc-remote/Boxedwine/Boxedwine/bin/
 project/linux/msvc-remote/Boxedwine/Boxedwine/obj/
 **/xcuserdata/*
+.bazelrc.user
+dist
+bazel-out
+node_modules
