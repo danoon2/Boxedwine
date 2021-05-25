@@ -332,6 +332,8 @@ void GlobalSettings::loadFileLists() {
             std::string installOptions = demo.child("InstallOptions").text().as_string();
             std::vector<std::string> args;
 
+            stringReplaceAll(help, "\\n", "\n");
+            stringReplaceAll(help, "\\t", "    ");
             for (int i = 1; i < 100; i++) {
                 std::string name = "Arg" + std::to_string(i);
                 if (!demo.child(name.c_str()).empty()) {
