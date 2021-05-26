@@ -126,7 +126,7 @@ public:
 private:    
     static void initWineVersions();
     static void lookForFileSystems(const std::string& path);    
-    static void loadFileList();
+    static void loadFileLists();
     static void updateFileList(const std::string& fileLocation);
     static bool checkFileListForUpdate();
 
@@ -157,7 +157,7 @@ private:
     static int screenCy;
     static float fontScale;
     static bool iconFontsLoaded;
-    static std::string filesUrl;
+    static std::vector<std::string> fileUrls;
     static int lastScreenCx;
     static int lastScreenCy;
     static int lastScreenX;

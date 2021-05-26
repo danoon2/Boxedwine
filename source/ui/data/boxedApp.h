@@ -30,7 +30,7 @@ public:
     const std::string& getIniFilePath() {return this->iniFilePath;}
 
     void setName(const std::string& name) {this->name = name;}
-
+    void setArgs(const std::vector<std::string>& args) {this->args = args;}
     void launch();
     const BoxedAppIcon* getIconTexture(int iconSize=0);
 
