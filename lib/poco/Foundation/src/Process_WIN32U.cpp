@@ -325,6 +325,25 @@ ProcessHandleImpl* ProcessImpl::launchImpl(const std::string& command, const Arg
 	if (!env.empty())
 	{
 		envChars = getUnicodeEnvironmentVariablesBuffer(env);
+		std::vector<std::wstring> env_strings;
+		std::size_t len;
+		LPWCH e = GetEnvironmentStringsW();
+
+		while ((len = wcslen(e)) > 0)
+		{
+			env_strings.push_back(std::wstring(e, len));
+			e += len + 1;
+		}		
+		std::size_t pos = envChars.size() - 1; // remove last \0
+		for (auto& s : env_strings) {
+			envChars.resize(pos + s.length() + 1);
+			std::copy(s.begin(), s.end(), &envChars[pos]);
+			pos += s.length();
+			envChars[pos] = L'\0';
+			++pos;
+		}
+		envChars.resize(pos + 1);
+		envChars[pos] = L'\0';
 		pEnv = &envChars[0];
 	}
 

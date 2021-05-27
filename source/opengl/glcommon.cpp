@@ -164,6 +164,12 @@ void glcommon_glRenderMode(CPU* cpu) {
 #endif
 }
 
+void printOpenGLInfo() {
+    klog("GL Vendor: %s", (const char*)GL_FUNC(glGetString)(GL_VENDOR));
+    klog("GL Renderer: %s", (const char*)GL_FUNC(glGetString)(GL_RENDERER));
+    klog("GL Version: %s", (const char*)GL_FUNC(glGetString)(GL_VERSION));
+}
+
 // GLAPI const GLubyte* APIENTRY glGetString( GLenum name ) {
 void glcommon_glGetString(CPU* cpu) {
     U32 name = ARG1;

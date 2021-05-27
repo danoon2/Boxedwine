@@ -296,6 +296,25 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
         this->currentAppChanged = true;
     };
 
+#ifdef BOXEDWINE_HAS_OPENGL_MESA
+    std::vector<ComboboxItem> glOptions;
+    glOptions.push_back(ComboboxItem(getTranslation(GENERIC_DEFAULT), OPENGL_TYPE_NOT_SET));
+    glOptions.push_back(ComboboxItem("Native", OPENGL_TYPE_NATIVE));
+#ifdef BOXEDWINE_MSVC
+    glOptions.push_back(ComboboxItem("Mesa - OpenGL over Direct3D 12", OPENGL_TYPE_D3D12));
+#endif
+    glOptions.push_back(ComboboxItem("Mesa - OpenGL Software using LLVM", OPENGL_TYPE_LLVM));
+#ifdef BOXEDWINE_HAS_OPENGL_SWR
+    glOptions.push_back(ComboboxItem("Mesa - OpenGL Software using SWR", OPENGL_TYPE_SWR));
+#endif
+    glOptions.push_back(ComboboxItem("Mesa - OpenGL Software", OPENGL_TYPE_SOFT));
+    appOpenGlControl = appSection->addComboboxRow(OPTIONSVIEW_DEFAULT_OPENGL_LABEL, OPTIONSVIEW_DEFAULT_OPENGL_HELP, glOptions);
+    appOpenGlControl->setWidth((int)GlobalSettings::scaleFloatUIAndFont(250));
+    appOpenGlControl->onChange = [this]() {
+        this->currentAppChanged = true;
+    };
+#endif
+
     row = appSection->addRow(CONTAINER_VIEW_GL_EXT_LABEL, CONTAINER_VIEW_GL_EXT_HELP);
     appGlExControl = row->addTextInput();
     appGlExControl->setNumberOfLines(3);
@@ -455,6 +474,7 @@ bool ContainersView::saveChanges() {
             this->currentApp->bpp = appBppControl->getSelectionIntValue();
             this->currentApp->scale = appScaleControl->getSelectionIntValue();
             this->currentApp->scaleQuality = this->appScaleQualityControl->getSelection();
+            this->currentApp->openGlType = this->appOpenGlControl->getSelectionIntValue();
             this->currentApp->fullScreen = this->appFullScreenControl->getSelection();
             this->currentApp->vsync = this->appVSyncControl->getSelectionIntValue();
             if (GlobalSettings::isDpiAware()) {
@@ -502,6 +522,7 @@ void ContainersView::setCurrentApp(BoxedApp* app) {
     }
     appScaleControl->setReadOnly(app->fullScreen != FULLSCREEN_NOTSET);
     appScaleQualityControl->setSelection(app->scaleQuality);
+    appOpenGlControl->setSelectionIntValue(app->openGlType);
     appFullScreenControl->setSelectionIntValue(app->fullScreen);
     appVSyncControl->setSelectionIntValue(app->vsync);
     appDpiAwareControl->setCheck(app->dpiAware);

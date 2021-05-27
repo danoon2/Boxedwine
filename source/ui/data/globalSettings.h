@@ -72,6 +72,7 @@ public:
     static std::string getDemoFolder();
     static std::string getExePath() {return GlobalSettings::exePath;}
     static std::string getExeFilePath() { return GlobalSettings::exeFilePath; }
+    static std::string getMesaExeFilePath() { return GlobalSettings::mesaFilePath; }
     static const std::vector<WineVersion>& getWineVersions() {return GlobalSettings::wineVersions;}
     static const std::vector<WineVersion>& getAvailableWineVersions() { return GlobalSettings::availableWineVersions; }
     static std::string getDataFolder() {return GlobalSettings::dataFolderLocation;}
@@ -97,6 +98,7 @@ public:
     static const int getDefaultScale() { return GlobalSettings::defaultScale; }
     static const int getDefaultVsync() { return GlobalSettings::defaultVsync; }
     static const std::string& getDefaultResolution() { return GlobalSettings::defaultResolution; }
+    static U32 getDefaultOpenGL() { return GlobalSettings::defaultOpenGL; }
     static int getScreenCx() { return GlobalSettings::screenCx; }
     static int getScreenCy() { return GlobalSettings::screenCy; }
     static void setFontScale(float scale);
@@ -136,6 +138,7 @@ private:
     static std::vector<WineVersion> wineVersions;
     static std::string exePath;
     static std::string exeFilePath;
+    static std::string mesaFilePath;
     static std::string theme;
     static std::string configFilePath;
 
@@ -162,6 +165,7 @@ private:
     static int lastScreenCy;
     static int lastScreenX;
     static int lastScreenY;
+    static U32 defaultOpenGL;
 };
 
 #endif

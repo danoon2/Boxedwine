@@ -65,7 +65,27 @@ void BoxedwineData::startApp() {
     }
     try {
         Poco::Pipe outPipe;
-        Poco::ProcessHandle handle = Poco::Process::launch(GlobalSettings::getExeFilePath(), args, 0, &outPipe, 0);
+        Poco::Process::Env e;
+        std::string cmd = GlobalSettings::getExeFilePath();
+
+        if (GlobalSettings::startUpArgs.openGlType > OPENGL_TYPE_NATIVE) {
+            cmd = GlobalSettings::getMesaExeFilePath();
+            switch (GlobalSettings::startUpArgs.openGlType) {
+            case OPENGL_TYPE_D3D12:
+                e["GALLIUM_DRIVER"] = "d3d12";
+                break;
+            case OPENGL_TYPE_LLVM:
+                e["GALLIUM_DRIVER"] = "llvmpipe";
+                break;
+            case OPENGL_TYPE_SWR:
+                e["GALLIUM_DRIVER"] = "swr";
+                break;
+            case OPENGL_TYPE_SOFT:
+                e["GALLIUM_DRIVER"] = "softpipe";
+                break;
+            }            
+        }
+        Poco::ProcessHandle handle = Poco::Process::launch(cmd, args,  0, &outPipe, 0, e);
         bool threadRunning = true;
         bool windowCreated = false;
 

@@ -509,7 +509,7 @@ U32 KNativeWindowSdl::glShareLists(KThread* thread, U32 srcContext, U32 destCont
     }
     return 0;
 }
-
+void printOpenGLInfo();
 U32 sdlCreateOpenglWindow_main_thread(KThread* thread, std::shared_ptr<WndSdl> wnd, int major, int minor, int profile, int flags) {
     DISPATCH_MAIN_THREAD_BLOCK_BEGIN_RETURN
     screen->destroyScreen(thread);
@@ -591,6 +591,13 @@ void KNativeWindowSdl::contextCreated() {
     } else {
         SDL_GL_SetSwapInterval(0);
     }
+#if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
+    static bool hasPrintedInfo = false;
+    if (!hasPrintedInfo) {
+        hasPrintedInfo = true;
+        printOpenGLInfo();
+    }
+#endif
 }
 
 // window needs to be on the main thread

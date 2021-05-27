@@ -15,6 +15,13 @@
 #define VSYNC_ADAPTIVE 2
 #define VSYNC_DEFAULT VSYNC_DISABLED
 
+#define OPENGL_TYPE_NOT_SET 0
+#define OPENGL_TYPE_NATIVE 1
+#define OPENGL_TYPE_D3D12 2
+#define OPENGL_TYPE_LLVM 3
+#define OPENGL_TYPE_SWR 4
+#define OPENGL_TYPE_SOFT 5
+
 class MountInfo {
 public:
     MountInfo(const std::string& localPath, const std::string& nativePath, bool wine) : localPath(localPath), nativePath(nativePath), wine(wine){}
@@ -33,7 +40,7 @@ public:
 
 class StartUpArgs {
 public:
-    StartUpArgs() : euidSet(false), nozip(false), pentiumLevel(4), rel_mouse_sensitivity(0), pollRate(DEFAULT_POLL_RATE), userId(UID), groupId(GID), effectiveUserId(UID), effectiveGroupId(GID), soundEnabled(true), videoEnabled(true), vsync(VSYNC_DEFAULT), dpiAware(false), showWindowImmediately(false), skipFrameFPS(0), readyToLaunch(false), workingDirSet(false), resolutionSet(false), screenCx(800), screenCy(600), screenBpp(32), sdlFullScreen(FULLSCREEN_NOTSET), sdlScaleX(100), sdlScaleY(100), sdlScaleQuality("0"), cpuAffinity(0) {
+    StartUpArgs() : euidSet(false), nozip(false), pentiumLevel(4), rel_mouse_sensitivity(0), pollRate(DEFAULT_POLL_RATE), userId(UID), groupId(GID), effectiveUserId(UID), effectiveGroupId(GID), soundEnabled(true), videoEnabled(true), vsync(VSYNC_DEFAULT), dpiAware(false), showWindowImmediately(false), skipFrameFPS(0), readyToLaunch(false), openGlType(OPENGL_TYPE_NOT_SET), workingDirSet(false), resolutionSet(false), screenCx(800), screenCy(600), screenBpp(32), sdlFullScreen(FULLSCREEN_NOTSET), sdlScaleX(100), sdlScaleY(100), sdlScaleQuality("0"), cpuAffinity(0) {
         workingDir = "/home/username";        
     }
     bool loadDefaultResource(const char* app);
@@ -82,6 +89,7 @@ public:
     U32 skipFrameFPS;
     static U32 uiType;
     bool readyToLaunch;
+    U32 openGlType;
     std::string showAppPickerForContainerDir;
     std::function<void()> runOnRestartUI;
     std::string logPath;
