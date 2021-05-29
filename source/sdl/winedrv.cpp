@@ -1619,7 +1619,7 @@ void boxeddrv_wglGetPixelFormat(CPU* cpu) {
         EAX = 0;
 }
 
-#if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
+#ifdef BOXEDWINE_OPENGL
 std::unordered_map<std::string, void*> glFunctionMap;
 void boxeddrv_wglGetProcAddress(CPU* cpu) {
     char tmp[1024];

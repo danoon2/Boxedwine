@@ -144,7 +144,7 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
     case OPTIONSVIEW_DEFAULT_OPENGL_LABEL:
         return "Default OpenGL Backend:";
     case OPTIONSVIEW_DEFAULT_OPENGL_HELP:
-        return "OpenGL Backends:\n\n Native - This will use the OpenGL that is installed on your computer for your graphics card.  This is the best option if it works for you and will probably be the fastest.\n\nThe other options available to choose are in the order of expected performance.  They might be help older games/apps that try to use a color depth no longer supported by modern OpenGL graphics cards.";
+        return "OpenGL Backends:\n\nNative - This will use the OpenGL that is installed on your computer for your graphics card.  This is the best option if it works for you and will probably be the fastest.\n\nThe other options available to choose are in the order of expected performance.  They might be help older games/apps that try to use a color depth no longer supported by modern OpenGL graphics cards.";
     case OPTIONSVIEW_DEFAULT_FONT_SCALE_LABEL:
         return "Font Scale";
     case OPTIONSVIEW_DEFAULT_FONT_SCALE_HELP:

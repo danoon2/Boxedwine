@@ -33,6 +33,11 @@
 #define CALL_BACK_ADDRESS 0xFFFF0000
 #define SIG_RETURN_ADDRESS CALL_BACK_ADDRESS
 
+#define OPENGL_TYPE_NOT_SET 0
+#define OPENGL_TYPE_UNAVAILABLE 1
+#define OPENGL_TYPE_SDL 2
+#define OPENGL_TYPE_OSMESA 3
+
 class MappedFileCache;
 class KTimer;
 class CPU;
@@ -65,6 +70,7 @@ public:
 class KSystem {
 public:    
     static bool videoEnabled;
+    static U32 openglType;
     static bool soundEnabled;
     static U32 pentiumLevel;
 	static bool shutingDown;

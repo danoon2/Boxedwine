@@ -1,6 +1,6 @@
 #include "boxedwine.h"
 
-#if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
+#ifdef BOXEDWINE_OPENGL
 #include GLH
 #include "glcommon.h"
 #include "glMarshal.h"
@@ -788,7 +788,7 @@ U32 getMap2Count(GLenum target) {
 GLint glcommon_glGetPixelMap_size(GLenum map) {
     GLint len;
 
-    GL_FUNC(glGetIntegerv)(map, &len);
+    GL_FUNC(pglGetIntegerv)(map, &len);
     return len;
 }
 

@@ -2,6 +2,10 @@
 #include "../boxedwineui.h"
 #include "../../../lib/imgui/addon/imguitinyfiledialogs.h"
 
+#ifdef BOXEDWINE_OPENGL_OSMESA
+bool isMesaOpenglAvailable();
+#endif
+
 OptionsView::OptionsView(std::string tab) : BaseView("OptionsView") {
     if (tab.length()) {
         if (tab == "Wine") {
@@ -122,24 +126,19 @@ void OptionsView::createGeneralTab() {
         GlobalSettings::saveConfig();
     };
 
-#ifdef BOXEDWINE_HAS_OPENGL_MESA
-    std::vector<ComboboxItem> glOptions;
-    glOptions.push_back(ComboboxItem("Native", OPENGL_TYPE_NATIVE));
-#ifdef BOXEDWINE_MSVC
-    glOptions.push_back(ComboboxItem("Mesa - OpenGL over Direct3D 12", OPENGL_TYPE_D3D12));
-#endif
-    glOptions.push_back(ComboboxItem("Mesa - OpenGL Software using LLVM", OPENGL_TYPE_LLVM));
-#ifdef BOXEDWINE_HAS_OPENGL_SWR
-    glOptions.push_back(ComboboxItem("Mesa - OpenGL Software using SWR", OPENGL_TYPE_SWR));
-#endif
-    glOptions.push_back(ComboboxItem("Mesa - OpenGL Software", OPENGL_TYPE_SOFT));
-    openGlControl = section->addComboboxRow(OPTIONSVIEW_DEFAULT_OPENGL_LABEL, OPTIONSVIEW_DEFAULT_OPENGL_HELP, glOptions, GlobalSettings::defaultOpenGL);
-    openGlControl->setWidth((int)GlobalSettings::scaleFloatUIAndFont(250));
-    openGlControl->setSelectionIntValue(GlobalSettings::defaultOpenGL);
-    openGlControl->onChange = [this]() {
-        GlobalSettings::defaultOpenGL = this->openGlControl->getSelectionIntValue();
-        GlobalSettings::saveConfig();
-    };
+#if defined(BOXEDWINE_OPENGL_OSMESA) && defined(BOXEDWINE_OPENGL_SDL)
+    if (isMesaOpenglAvailable()) {
+        std::vector<ComboboxItem> glOptions;
+        glOptions.push_back(ComboboxItem("Native", OPENGL_TYPE_SDL));
+        glOptions.push_back(ComboboxItem("Mesa - OpenGL in Software", OPENGL_TYPE_OSMESA));
+        openGlControl = section->addComboboxRow(OPTIONSVIEW_DEFAULT_OPENGL_LABEL, OPTIONSVIEW_DEFAULT_OPENGL_HELP, glOptions, GlobalSettings::defaultOpenGL);
+        openGlControl->setWidth((int)GlobalSettings::scaleFloatUIAndFont(250));
+        openGlControl->setSelectionIntValue(GlobalSettings::defaultOpenGL);
+        openGlControl->onChange = [this]() {
+            GlobalSettings::defaultOpenGL = this->openGlControl->getSelectionIntValue();
+            GlobalSettings::saveConfig();
+        };
+    }
 #endif
 
     std::shared_ptr<LayoutSection> bottomSection = model->addSection();

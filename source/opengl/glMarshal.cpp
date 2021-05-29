@@ -1,6 +1,6 @@
 #include "boxedwine.h"
 
-#if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
+#ifdef BOXEDWINE_OPENGL
 #include GLH
 #include "glcommon.h"
 #include "glMarshal.h"
@@ -453,12 +453,12 @@ GLvoid* marshalPixels(CPU* cpu, U32 is3d, GLsizei width, GLsizei height, GLsizei
     if (!pixels)
         return 0;
 
-    GL_FUNC(glGetIntegerv)(GL_PACK_ROW_LENGTH, &pixels_per_row);
-    GL_FUNC(glGetIntegerv)(GL_PACK_SKIP_PIXELS, &skipPixels);
-    GL_FUNC(glGetIntegerv)(GL_PACK_SKIP_ROWS, &skipRows);
-    GL_FUNC(glGetIntegerv)(GL_PACK_ALIGNMENT, &alignment);
+    GL_FUNC(pglGetIntegerv)(GL_PACK_ROW_LENGTH, &pixels_per_row);
+    GL_FUNC(pglGetIntegerv)(GL_PACK_SKIP_PIXELS, &skipPixels);
+    GL_FUNC(pglGetIntegerv)(GL_PACK_SKIP_ROWS, &skipRows);
+    GL_FUNC(pglGetIntegerv)(GL_PACK_ALIGNMENT, &alignment);
     if (is3d) {
-        GL_FUNC(glGetIntegerv)(GL_PACK_SKIP_IMAGES, &skipImages);
+        GL_FUNC(pglGetIntegerv)(GL_PACK_SKIP_IMAGES, &skipImages);
     }    
 
     if (!pixels_per_row)
@@ -561,12 +561,12 @@ void marshalBackPixels(CPU* cpu, U32 is3d, GLsizei width, GLsizei height, GLsize
     if (!pixels)
         return;
 
-    GL_FUNC(glGetIntegerv)(GL_PACK_ROW_LENGTH, &pixels_per_row);
-    GL_FUNC(glGetIntegerv)(GL_PACK_SKIP_PIXELS, &skipPixels);
-    GL_FUNC(glGetIntegerv)(GL_PACK_SKIP_ROWS, &skipRows);
-    GL_FUNC(glGetIntegerv)(GL_PACK_ALIGNMENT, &alignment);
+    GL_FUNC(pglGetIntegerv)(GL_PACK_ROW_LENGTH, &pixels_per_row);
+    GL_FUNC(pglGetIntegerv)(GL_PACK_SKIP_PIXELS, &skipPixels);
+    GL_FUNC(pglGetIntegerv)(GL_PACK_SKIP_ROWS, &skipRows);
+    GL_FUNC(pglGetIntegerv)(GL_PACK_ALIGNMENT, &alignment);
     if (is3d) {
-        GL_FUNC(glGetIntegerv)(GL_PACK_SKIP_IMAGES, &skipImages);
+        GL_FUNC(pglGetIntegerv)(GL_PACK_SKIP_IMAGES, &skipImages);
     }    
 
     if (!pixels_per_row)
@@ -866,7 +866,7 @@ GLvoid* marshalGetConvolutionFilter(CPU* cpu, U32 target, U32 format, U32 type, 
 
 GLint marshalGet(GLenum param) {
     GLint result = 0;
-    glGetIntegerv(param, &result);
+    GL_FUNC(pglGetIntegerv)(param, &result);
     return result;
 }
 

@@ -1,6 +1,6 @@
 #include "boxedwine.h"
 
-#if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
+#ifdef BOXEDWINE_OPENGL
 #include GLH
 #include "glcommon.h"
 

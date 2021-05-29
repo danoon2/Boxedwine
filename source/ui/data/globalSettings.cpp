@@ -6,6 +6,7 @@
 #include "../../util/threadutils.h"
 #include "../../../lib/pugixml/src/pugixml.hpp"
 #include "knativesystem.h"
+#include "ksystem.h"
 #include "crc.h"
 
 #include <sys/stat.h>
@@ -23,7 +24,6 @@ int GlobalSettings::iconSize;
 StartUpArgs GlobalSettings::startUpArgs;
 std::string GlobalSettings::exePath;
 std::string GlobalSettings::exeFilePath;
-std::string GlobalSettings::mesaFilePath;
 std::string GlobalSettings::theme;
 std::string GlobalSettings::configFilePath;
 ImFont* GlobalSettings::largeFontBold;
@@ -52,7 +52,7 @@ int GlobalSettings::lastScreenCx;
 int GlobalSettings::lastScreenCy;
 int GlobalSettings::lastScreenX;
 int GlobalSettings::lastScreenY;
-U32 GlobalSettings::defaultOpenGL = OPENGL_TYPE_NATIVE;
+U32 GlobalSettings::defaultOpenGL = OPENGL_TYPE_SDL;
 
 void GlobalSettings::init(int argc, const char **argv) {
     GlobalSettings::largeFontBold = NULL;
@@ -73,7 +73,6 @@ void GlobalSettings::init(int argc, const char **argv) {
     GlobalSettings::dataFolderLocation = GlobalSettings::dataFolderLocation.substr(0, GlobalSettings::dataFolderLocation.length()-1);
     GlobalSettings::exePath = Fs::getNativeParentPath(argv[0]);
     GlobalSettings::exeFilePath = argv[0];
-    GlobalSettings::mesaFilePath = GlobalSettings::exePath + Fs::nativePathSeperator + "mesa" + GlobalSettings::exeFilePath.substr(GlobalSettings::exePath.length());
     if (!Fs::doesNativePathExist(GlobalSettings::dataFolderLocation)) {
         Fs::makeNativeDirs(GlobalSettings::dataFolderLocation);
     }
@@ -99,7 +98,7 @@ void GlobalSettings::init(int argc, const char **argv) {
     GlobalSettings::lastScreenCy = config.readInt("WindowHeight", 0);
     GlobalSettings::lastScreenX = config.readInt("WindowX", 0);
     GlobalSettings::lastScreenY = config.readInt("WindowY", 0);
-    GlobalSettings::defaultOpenGL = config.readInt("OpenGL", OPENGL_TYPE_NATIVE);
+    GlobalSettings::defaultOpenGL = config.readInt("OpenGL", OPENGL_TYPE_SDL);
 
     if (!Fs::doesNativePathExist(configFilePath)) {
         saveConfig();

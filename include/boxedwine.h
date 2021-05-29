@@ -16,6 +16,10 @@
 
 #include <errno.h>
 
+#if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES) || defined(BOXEDWINE_OPENGL_OSMESA)
+#define BOXEDWINE_OPENGL
+#endif
+
 #ifdef BOXEDWINE_MAC_JIT
 #include "TargetConditionals.h"
 #if TARGET_CPU_ARM64

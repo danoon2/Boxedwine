@@ -19,7 +19,7 @@
 #ifndef __GLCOMMON_H__
 #define __GLCOMMON_H__
 
-#if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGLS_ES)
+#ifdef BOXEDWINE_OPENGL
 #include "../../tools/opengl/gldef.h"
 #include <inttypes.h>
 
@@ -170,8 +170,8 @@ struct long2Double {
 float fARG(CPU* cpu, U32 arg);
 double dARG(CPU* cpu, int address);
 
-#define GL_FUNCTION(func, RET, PARAMS, ARGS, PRE, POST, LOG)
-#define GL_FUNCTION_CUSTOM(func, RET, PARAMS)
+#define GL_FUNCTION(func, RET, PARAMS, ARGS, PRE, POST, LOG) typedef RET (OPENGL_CALL_TYPE *gl##func##_func)PARAMS; extern gl##func##_func pgl##func;
+#define GL_FUNCTION_CUSTOM(func, RET, PARAMS) typedef RET (OPENGL_CALL_TYPE *gl##func##_func)PARAMS; extern gl##func##_func pgl##func;
 #define GL_EXT_FUNCTION(func, RET, PARAMS) typedef RET (OPENGL_CALL_TYPE *gl##func##_func)PARAMS; extern gl##func##_func ext_gl##func;
 
 #include "glfunctions.h"

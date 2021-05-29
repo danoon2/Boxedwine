@@ -15,13 +15,6 @@
 #define VSYNC_ADAPTIVE 2
 #define VSYNC_DEFAULT VSYNC_DISABLED
 
-#define OPENGL_TYPE_NOT_SET 0
-#define OPENGL_TYPE_NATIVE 1
-#define OPENGL_TYPE_D3D12 2
-#define OPENGL_TYPE_LLVM 3
-#define OPENGL_TYPE_SWR 4
-#define OPENGL_TYPE_SOFT 5
-
 class MountInfo {
 public:
     MountInfo(const std::string& localPath, const std::string& nativePath, bool wine) : localPath(localPath), nativePath(nativePath), wine(wine){}

@@ -17,7 +17,7 @@
  */
 #include "boxedwine.h"
 
-#if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
+#ifdef BOXEDWINE_OPENGL
 #include GLH
 #include "knativewindow.h"
 #include "glcommon.h"
@@ -127,7 +127,7 @@ void glcommon_glViewport(CPU* cpu) {
     GLint y = ARG2;
     GLsizei width = ARG3;
     GLsizei height = ARG4;
-    glViewport(x, y, width, height);
+    GL_FUNC(pglViewport)(x, y, width, height);
 }
 
 static GLfloat* feedbackBuffer;
@@ -139,7 +139,7 @@ void glcommon_glFeedbackBuffer(CPU* cpu) {
     GLenum type = ARG2;
 #ifdef BOXEDWINE_64BIT_MMU
     U32 buffer = ARG3; // GLfloat*
-    GL_FUNC(glFeedbackBuffer)(size, type, (GLfloat*)getNativeAddress(cpu->thread->process->memory, buffer));
+    GL_FUNC(pglFeedbackBuffer)(size, type, (GLfloat*)getNativeAddress(cpu->thread->process->memory, buffer));
 #else
     if (size > feedbackBufferSize) {
         if (feedbackBuffer) {
@@ -148,14 +148,14 @@ void glcommon_glFeedbackBuffer(CPU* cpu) {
         feedbackBuffer = new GLfloat[size];
         feedbackBufferSize = size;
     }
-    GL_FUNC(glFeedbackBuffer)(size, type, feedbackBuffer);
+    GL_FUNC(pglFeedbackBuffer)(size, type, feedbackBuffer);
     feedbackBufferAddress = ARG3;
 #endif
 }
 
 void glcommon_glRenderMode(CPU* cpu) {
     GLenum mode = ARG1;
-    EAX = GL_FUNC(glRenderMode)(mode);
+    EAX = GL_FUNC(pglRenderMode)(mode);
 #ifndef BOXEDWINE_64BIT_MMU
     // could be -1
     if (EAX < feedbackBufferSize) {
@@ -165,16 +165,16 @@ void glcommon_glRenderMode(CPU* cpu) {
 }
 
 void printOpenGLInfo() {
-    klog("GL Vendor: %s", (const char*)GL_FUNC(glGetString)(GL_VENDOR));
-    klog("GL Renderer: %s", (const char*)GL_FUNC(glGetString)(GL_RENDERER));
-    klog("GL Version: %s", (const char*)GL_FUNC(glGetString)(GL_VERSION));
+    klog("GL Vendor: %s", (const char*)GL_FUNC(pglGetString)(GL_VENDOR));
+    klog("GL Renderer: %s", (const char*)GL_FUNC(pglGetString)(GL_RENDERER));
+    klog("GL Version: %s", (const char*)GL_FUNC(pglGetString)(GL_VERSION));
 }
 
 // GLAPI const GLubyte* APIENTRY glGetString( GLenum name ) {
 void glcommon_glGetString(CPU* cpu) {
     U32 name = ARG1;
     U32 index = 0;
-    const char* result = (const char*)GL_FUNC(glGetString)(name);
+    const char* result = (const char*)GL_FUNC(pglGetString)(name);
     
     if (name == GL_VENDOR) {
         index = STRING_GL_VENDOR;
@@ -252,11 +252,11 @@ void glcommon_glGetTexImage(CPU* cpu) {
     if (b) {
         pixels = (GLvoid*)pARG5;
     } else {
-        GL_FUNC(glGetTexLevelParameteriv)(target, level, GL_TEXTURE_WIDTH, &width);
-        GL_FUNC(glGetTexLevelParameteriv)(target, level, GL_TEXTURE_HEIGHT, &height);
+        GL_FUNC(pglGetTexLevelParameteriv)(target, level, GL_TEXTURE_WIDTH, &width);
+        GL_FUNC(pglGetTexLevelParameteriv)(target, level, GL_TEXTURE_HEIGHT, &height);
         pixels = marshalPixels(cpu, target == GL_TEXTURE_3D, width, height, 1, format, type, ARG5);
     }
-    GL_FUNC(glGetTexImage)(target, level, format, type, pixels);
+    GL_FUNC(pglGetTexImage)(target, level, format, type, pixels);
     if (!b)
         marshalBackPixels(cpu, target == GL_TEXTURE_3D, width, height, 1, format, type, ARG5, pixels);
 }
@@ -290,25 +290,25 @@ void glcommon_glGetMapdv(CPU* cpu) {
         GLint order[2];
         int count;
 
-        GL_FUNC(glGetMapiv)(target, GL_ORDER, order);
+        GL_FUNC(pglGetMapiv)(target, GL_ORDER, order);
         if (isMap2(target)) {
             count = order[0]*order[1];
         } else {
             count = order[0];
         }
         buffer = marshald(cpu, ARG3, count);
-        GL_FUNC(glGetMapdv)(target, query, buffer);
+        GL_FUNC(pglGetMapdv)(target, query, buffer);
         marshalBackd(cpu, ARG3, buffer, count);
         break;
     }
     case GL_ORDER: {
         GLdouble buffer[2];
-        GL_FUNC(glGetMapdv)(target, query, buffer);
+        GL_FUNC(pglGetMapdv)(target, query, buffer);
         marshalBackd(cpu, ARG3, buffer, isMap2(target)?2:1);
     }
     case GL_DOMAIN: {
         GLdouble buffer[4];
-        GL_FUNC(glGetMapdv)(target, query, buffer);
+        GL_FUNC(pglGetMapdv)(target, query, buffer);
         marshalBackd(cpu, ARG3, buffer, isMap2(target)?4:2);
         break;
     }
@@ -329,25 +329,25 @@ void glcommon_glGetMapfv(CPU* cpu) {
         GLint order[2];
         int count;
 
-        GL_FUNC(glGetMapiv)(target, GL_ORDER, order);
+        GL_FUNC(pglGetMapiv)(target, GL_ORDER, order);
         if (isMap2(target)) {
             count = order[0]*order[1];
         } else {
             count = order[0];
         }
         buffer = marshalf(cpu, ARG3, count);
-        GL_FUNC(glGetMapfv)(target, query, buffer);
+        GL_FUNC(pglGetMapfv)(target, query, buffer);
         marshalBackf(cpu, ARG3, buffer, count);
         break;
     }
     case GL_ORDER: {
         GLfloat buffer[2];
-        GL_FUNC(glGetMapfv)(target, query, buffer);
+        GL_FUNC(pglGetMapfv)(target, query, buffer);
         marshalBackf(cpu, ARG3, buffer, isMap2(target)?2:1);
     }
     case GL_DOMAIN: {
         GLfloat buffer[4];
-        GL_FUNC(glGetMapfv)(target, query, buffer);
+        GL_FUNC(pglGetMapfv)(target, query, buffer);
         marshalBackf(cpu, ARG3, buffer, isMap2(target)?4:2);
         break;
     }
@@ -368,25 +368,25 @@ void glcommon_glGetMapiv(CPU* cpu) {
         GLint order[2];
         int count;
 
-        GL_FUNC(glGetMapiv)(target, GL_ORDER, order);
+        GL_FUNC(pglGetMapiv)(target, GL_ORDER, order);
         if (isMap2(target)) {
             count = order[0]*order[1];
         } else {
             count = order[0];
         }
         buffer = marshali(cpu, ARG3, count);
-        GL_FUNC(glGetMapiv)(target, query, buffer);
+        GL_FUNC(pglGetMapiv)(target, query, buffer);
         marshalBacki(cpu, ARG3, buffer, count);
         break;
     }
     case GL_ORDER: {
         GLint buffer[2];
-        GL_FUNC(glGetMapiv)(target, query, buffer);
+        GL_FUNC(pglGetMapiv)(target, query, buffer);
         marshalBacki(cpu, ARG3, buffer, isMap2(target)?2:1);
     }
     case GL_DOMAIN: {
         GLint buffer[4];
-        GL_FUNC(glGetMapiv)(target, query, buffer);
+        GL_FUNC(pglGetMapiv)(target, query, buffer);
         marshalBacki(cpu, ARG3, buffer, isMap2(target)?4:2);
         break;
     }
@@ -401,7 +401,7 @@ void glcommon_glGetPointerv(CPU* cpu) {
 #ifdef BOXEDWINE_64BIT_MMU
     {
         GLvoid* params;
-        GL_FUNC(glGetPointerv)(ARG1, &params);
+        GL_FUNC(pglGetPointerv)(ARG1, &params);
         if ((U64)params>0xFFFFFFFFl)
             kwarn("problem with glGetPointerv");
         writed(ARG2, (U32)(size_t)params);
@@ -425,9 +425,9 @@ void glcommon_glInterleavedArrays(CPU* cpu) {
     GLsizei stride = ARG2;
     U32 address = ARG3;
 #ifdef BOXEDWINE_64BIT_MMU
-    GL_FUNC(glInterleavedArrays)(format, stride, getNativeAddress(cpu->thread->process->memory, address));
+    GL_FUNC(pglInterleavedArrays)(format, stride, getNativeAddress(cpu->thread->process->memory, address));
 #else
-    GL_FUNC(glInterleavedArrays)(format, stride, marshalInterleavedPointer(cpu, format, stride, address));
+    GL_FUNC(pglInterleavedArrays)(format, stride, marshalInterleavedPointer(cpu, format, stride, address));
 #endif    
 }
 
@@ -446,7 +446,7 @@ void glcommon_glReadPixels(CPU* cpu) {
         pixels = (GLvoid*)pARG7;
     else
         pixels = marshalPixels(cpu, 0, width, height, 1, format, type, ARG7);
-    GL_FUNC(glReadPixels)(ARG1, ARG2, width, height, format, type, pixels);
+    GL_FUNC(pglReadPixels)(ARG1, ARG2, width, height, format, type, pixels);
     if (!b)
         marshalBackPixels(cpu, 0, width, height, 1, format, type, ARG7, pixels);
 }
@@ -464,8 +464,21 @@ void glcommon_glSamplePass(CPU* cpu) {
     }
 }
 
+// create variables to hold standard opengl calls like glClear
 #undef GL_FUNCTION
-#define GL_FUNCTION(func, RET, PARAMS, ARGS, PRE, POST, LOG) void glcommon_gl##func(CPU* cpu) { PRE GL_FUNC(gl##func)ARGS; POST; GL_LOG LOG;} 
+#define GL_FUNCTION(func, RET, PARAMS, ARGS, PRE, POST, LOG) gl##func##_func pgl##func;
+
+#undef GL_FUNCTION_CUSTOM
+#define GL_FUNCTION_CUSTOM(func, RET, PARAMS) gl##func##_func pgl##func;
+
+#undef GL_EXT_FUNCTION
+#define GL_EXT_FUNCTION(func, RET, PARAMS)
+
+#include "glfunctions.h"
+
+// create the functions that will make the OpenGL call, these will be assigned into gl_callback
+#undef GL_FUNCTION
+#define GL_FUNCTION(func, RET, PARAMS, ARGS, PRE, POST, LOG) void glcommon_gl##func(CPU* cpu) { PRE GL_FUNC(pgl##func)ARGS; POST; GL_LOG LOG;} 
 
 #undef GL_FUNCTION_CUSTOM
 #define GL_FUNCTION_CUSTOM(func, RET, PARAMS)
@@ -483,6 +496,8 @@ U32 lastGlCallTime;
 
 void esgl_init();
 void sdlgl_init();
+void osmesagl_init();
+
 void gl_init(const std::string& allowExtensions) {    
     int99Callback=gl_callback;
     int99CallbackSize=GL_FUNC_COUNT;
@@ -502,6 +517,9 @@ void gl_init(const std::string& allowExtensions) {
 #ifdef BOXEDWINE_OPENGL_SDL
     sdlgl_init();
 #endif
+#ifdef BOXEDWINE_OPENGL_OSMESA
+    osmesagl_init();
+#endif
 #ifdef BOXEDWINE_ES
     esgl_init();
 #endif        
@@ -517,7 +535,7 @@ void gl_init() {
 #endif
 
 void callOpenGL(CPU* cpu, U32 index) {
-#if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
+#ifdef BOXEDWINE_OPENGL
     KNativeWindow::getNativeWindow()->preOpenGLCall(index);
     if (index < int99CallbackSize && int99Callback[index]) {
         lastGlCallTime = KSystem::getMilliesSinceStart();
