@@ -480,7 +480,8 @@ U32 KNativeWindowSdl::glMakeCurrent(KThread* thread, U32 arg) {
 #endif
             return 1;
         } else {
-            klog("sdlMakeCurrent failed: %s\n", BoxedwineGL::current->getLastError());
+            std::string lastError = BoxedwineGL::current->getLastError();
+            klog("sdlMakeCurrent failed: %s", lastError.c_str());
         }
     } else if (arg == 0) {
         BoxedwineGL::current->makeCurrent(NULL, window);
@@ -623,12 +624,13 @@ U32 KNativeWindowSdl::glCreateContext(KThread* thread, std::shared_ptr<Wnd> w, i
 #ifdef BOXEDWINE_MSVC
         context = BoxedwineGL::current->createContext(window, wnd, wnd->pixelFormat, cx, cy, major, minor, profile);
 #else
-        DISPATCH_MAIN_THREAD_BLOCK_BEGIN_WITH_ARG(&context COMMA this)
-        context = BoxedwineGL::current->createContext(window);
+        DISPATCH_MAIN_THREAD_BLOCK_BEGIN_WITH_ARG(&context COMMA this COMMA wnd COMMA cx COMMA cy COMMA major COMMA minor COMMA profile)
+        context = BoxedwineGL::current->createContext(window, wnd, wnd->pixelFormat, cx, cy, major, minor, profile);
         DISPATCH_MAIN_THREAD_BLOCK_END
 #endif
         if (!context) {
-            kwarn("Couldn't create context: %s", BoxedwineGL::current->getLastError());
+            std::string lastError = BoxedwineGL::current->getLastError();
+            kwarn("Couldn't create context: %s", lastError.c_str());
             DISPATCH_MAIN_THREAD_BLOCK_BEGIN_RETURN
             displayChanged(thread);
             return 0;

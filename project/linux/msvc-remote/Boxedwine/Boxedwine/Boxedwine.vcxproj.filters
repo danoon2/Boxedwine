@@ -1699,6 +1699,12 @@
     <ClCompile Include="..\..\..\..\..\platform\sdl\kdspaudio.cpp">
       <Filter>sdlPlatform</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\opengl\osmesa\osmesa.cpp">
+      <Filter>source\opengl\mesa</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\opengl\boxedwineGL.cpp">
+      <Filter>source\opengl</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
@@ -1934,6 +1940,9 @@
     </Filter>
     <Filter Include="source\emulation\cpu\binaryTranslation">
       <UniqueIdentifier>{b32fd766-2acb-4145-a3d1-4cf997c48774}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\opengl\mesa">
+      <UniqueIdentifier>{0d4507ea-ed6c-4ba6-8ba0-aa24f2b6c5af}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -4672,6 +4681,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\include\kdspaudio.h">
       <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\opengl\boxedwineGL.h">
+      <Filter>source\opengl</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
