@@ -188,7 +188,7 @@ void glcommon_glGetString(CPU* cpu) {
 #else
         static char* ext;
         if (!ext) {
-            U32 len = (U32)strlen(result)+1;
+            U32 len = (U32)strlen(result)+1+23;//23 for WGL_ARG_create_context
             ext = new char[len];
             memset(ext, 0, len);
         }
@@ -211,6 +211,7 @@ void glcommon_glGetString(CPU* cpu) {
                     strcat(ext, hardwareExt[i].c_str());
                 }
             }
+            strcat(ext, " WGL_ARB_create_context");
         }
         result = ext;
 #endif

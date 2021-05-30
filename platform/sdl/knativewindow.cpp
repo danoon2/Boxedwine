@@ -88,7 +88,7 @@ U32 sdlCustomEvent;
 
 class KNativeWindowSdl : public KNativeWindow, public std::enable_shared_from_this<KNativeWindowSdl> {
 public:
-    KNativeWindowSdl() : scaleX(100), scaleXOffset(0), scaleY(100), scaleYOffset(0), sdlDesktopWidth(0), sdlDesktopHeight(0), fullScreen(FULLSCREEN_NOTSET), vsync(VSYNC_DEFAULT), window(NULL), renderer(NULL), shutdownWindow(NULL), shutdownRenderer(NULL), currentContext(NULL), contextCount(0), windowIsGL(false), windowIsHidden(false), timeToHideUI(0), timeWindowWasCreated(0)
+    KNativeWindowSdl() : scaleX(100), scaleXOffset(0), scaleY(100), scaleYOffset(0), sdlDesktopWidth(0), sdlDesktopHeight(0), fullScreen(FULLSCREEN_NOTSET), vsync(VSYNC_DEFAULT), window(NULL), renderer(NULL), shutdownWindow(NULL), shutdownRenderer(NULL), currentContext(NULL), contextCount(0), windowIsGL(false), glWindowVersionMajor(0), windowIsHidden(false), timeToHideUI(0), timeWindowWasCreated(0)
 #ifdef BOXEDWINE_RECORDER
         , screenCopyTexture(NULL)
 #endif
@@ -125,6 +125,7 @@ public:
     BOXEDWINE_MUTEX sdlMutex;
     int contextCount;
     bool windowIsGL;
+    U32 glWindowVersionMajor;
     bool windowIsHidden;
     U32 timeToHideUI;
     U32 timeWindowWasCreated;
@@ -381,6 +382,7 @@ void KNativeWindowSdl::destroyScreen(KThread* thread) {
         SDL_DestroyWindow(window);
         window = 0;
         windowIsGL = false;
+        glWindowVersionMajor = 0;
     }   
     contextCount = 0;
 }
@@ -530,6 +532,15 @@ U32 sdlCreateOpenglWindow_main_thread(KThread* thread, std::shared_ptr<WndSdl> w
     SDL_GL_SetAttribute(SDL_GL_ACCUM_BLUE_SIZE, wnd->pixelFormat->cAccumBlueBits);
     SDL_GL_SetAttribute(SDL_GL_ACCUM_ALPHA_SIZE, wnd->pixelFormat->cAccumAlphaBits);
 
+    if (major) {
+        if (major >= 3) {
+            SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+        }
+#ifdef BOXEDWINE_MSVC
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, major);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, minor);
+#endif
+    }
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, (wnd->pixelFormat->dwFlags & K_PFD_DOUBLEBUFFER)?1:0);
     SDL_GL_SetAttribute(SDL_GL_ACCELERATED_VISUAL, (wnd->pixelFormat->dwFlags & K_PFD_GENERIC_FORMAT)?0:1);
 
@@ -570,6 +581,7 @@ U32 sdlCreateOpenglWindow_main_thread(KThread* thread, std::shared_ptr<WndSdl> w
         return 0;
     }
     screen->windowIsGL = true;
+    screen->glWindowVersionMajor = major;
     return thread->id;
     DISPATCH_MAIN_THREAD_BLOCK_END
 }
@@ -598,6 +610,11 @@ void KNativeWindowSdl::contextCreated() {
 U32 KNativeWindowSdl::glCreateContext(KThread* thread, std::shared_ptr<Wnd> w, int major, int minor, int profile, int flags) {
     U32 result = 1;
     std::shared_ptr<WndSdl> wnd = std::dynamic_pointer_cast<WndSdl>(w);
+    if (windowIsGL && glWindowVersionMajor != major) {
+        DISPATCH_MAIN_THREAD_BLOCK_BEGIN_RETURN
+        screen->destroyScreen(thread);
+        DISPATCH_MAIN_THREAD_BLOCK_END
+    }
     if (!windowIsGL) {
         result = sdlCreateOpenglWindow_main_thread(thread, wnd, major, minor, profile, flags);
     }
@@ -1141,8 +1158,9 @@ void KNativeWindowSdl::checkMousePos(int& x, int& y) {
 void KNativeWindowSdl::setMousePos(int x, int y) {
     x = xToScreen(x);
     y = yToScreen(y);
-
-    SDL_WarpMouseInWindow(window, x, y); 
+    DISPATCH_MAIN_THREAD_BLOCK_BEGIN
+    SDL_WarpMouseInWindow(window, x, y);
+    DISPATCH_MAIN_THREAD_BLOCK_END
 }
 
 int KNativeWindowSdl::mouseMove(int x, int y, bool relative) {

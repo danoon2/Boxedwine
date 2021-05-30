@@ -889,25 +889,25 @@ int getPixelFormats(PixelFormat* pfs, int maxPfs) {
     if (count > maxPfs) {
         count = maxPfs;
     }
-    for (int i=0;i<nb_formats && result < count;i++) {
+    for (int i=1;i<=nb_formats && result < count;i++) {
 
-        if (!(pf = get_pixel_format(i+1, FALSE))) {
+        if (!(pf = get_pixel_format(i, FALSE))) {
             continue;
         }
             
 
-        memset(&pfs[i], 0, sizeof(PixelFormat));
-        pfs[i].nSize            = 40;
-        pfs[i].nVersion         = 1;
+        memset(&pfs[result], 0, sizeof(PixelFormat));
+        pfs[result].nSize            = 40;
+        pfs[result].nVersion         = 1;
 
-        pfs[i].dwFlags          = K_PFD_SUPPORT_OPENGL;
-        if (pf->window)         pfs[i].dwFlags |= K_PFD_DRAW_TO_WINDOW;
-        if (!pf->accelerated)   pfs[i].dwFlags |= K_PFD_GENERIC_FORMAT;
-        if (pf->double_buffer)  pfs[i].dwFlags |= K_PFD_DOUBLEBUFFER;
-        if (pf->stereo)         pfs[i].dwFlags |= K_PFD_STEREO;
-        if (pf->backing_store)  pfs[i].dwFlags |= K_PFD_SWAP_COPY;
+        pfs[result].dwFlags          = K_PFD_SUPPORT_OPENGL;
+        if (pf->window)         pfs[result].dwFlags |= K_PFD_DRAW_TO_WINDOW;
+        if (!pf->accelerated)   pfs[result].dwFlags |= K_PFD_GENERIC_FORMAT;
+        if (pf->double_buffer)  pfs[result].dwFlags |= K_PFD_DOUBLEBUFFER;
+        if (pf->stereo)         pfs[result].dwFlags |= K_PFD_STEREO;
+        if (pf->backing_store)  pfs[result].dwFlags |= K_PFD_SWAP_COPY;
 
-        pfs[i].iPixelType       = K_PFD_TYPE_RGBA;
+        pfs[result].iPixelType       = K_PFD_TYPE_RGBA;
 
         mode = &color_modes[pf->color_mode];
         /* If the mode doesn't have alpha, return bits per pixel instead of color bits.
@@ -915,32 +915,33 @@ int getPixelFormats(PixelFormat* pfs, int maxPfs) {
            R8G8B8A0 pixel format).  If an app depends on that and expects that
            cColorBits >= 32 for such a pixel format, we need to accommodate that. */
         if (mode->alpha_bits) {
-            pfs[i].cColorBits   = mode->color_bits;
+            pfs[result].cColorBits   = mode->color_bits;
         } else {
-            pfs[i].cColorBits   = mode->bits_per_pixel;
+            pfs[result].cColorBits   = mode->bits_per_pixel;
         }
-        pfs[i].cRedBits         = mode->red_bits;
-        pfs[i].cRedShift        = mode->red_shift;
-        pfs[i].cGreenBits       = mode->green_bits;
-        pfs[i].cGreenShift      = mode->green_shift;
-        pfs[i].cBlueBits        = mode->blue_bits;
-        pfs[i].cBlueShift       = mode->blue_shift;
-        pfs[i].cAlphaBits       = mode->alpha_bits;
-        pfs[i].cAlphaShift      = mode->alpha_shift;
+        pfs[result].cRedBits         = mode->red_bits;
+        pfs[result].cRedShift        = mode->red_shift;
+        pfs[result].cGreenBits       = mode->green_bits;
+        pfs[result].cGreenShift      = mode->green_shift;
+        pfs[result].cBlueBits        = mode->blue_bits;
+        pfs[result].cBlueShift       = mode->blue_shift;
+        pfs[result].cAlphaBits       = mode->alpha_bits;
+        pfs[result].cAlphaShift      = mode->alpha_shift;
 
         if (pf->accum_mode) {
             mode = &color_modes[pf->accum_mode - 1];
-            pfs[i].cAccumBits       = mode->color_bits;
-            pfs[i].cAccumRedBits    = mode->red_bits;
-            pfs[i].cAccumGreenBits  = mode->green_bits;
-            pfs[i].cAccumBlueBits   = mode->blue_bits;
-            pfs[i].cAccumAlphaBits  = mode->alpha_bits;
+            pfs[result].cAccumBits       = mode->color_bits;
+            pfs[result].cAccumRedBits    = mode->red_bits;
+            pfs[result].cAccumGreenBits  = mode->green_bits;
+            pfs[result].cAccumBlueBits   = mode->blue_bits;
+            pfs[result].cAccumAlphaBits  = mode->alpha_bits;
         }
 
-        pfs[i].cDepthBits       = pf->depth_bits;
-        pfs[i].cStencilBits     = pf->stencil_bits;
-        pfs[i].cAuxBuffers      = pf->aux_buffers;
-        pfs[i].iLayerType       = K_PFD_MAIN_PLANE;
+        pfs[result].cDepthBits       = pf->depth_bits;
+        pfs[result].cStencilBits     = pf->stencil_bits;
+        pfs[result].cAuxBuffers      = pf->aux_buffers;
+        pfs[result].iLayerType       = K_PFD_MAIN_PLANE;
+        result++;
     }
     return result;
 }
