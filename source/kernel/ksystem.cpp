@@ -849,7 +849,7 @@ U32 KSystem::getNextThreadId() {
     return KSystem::nextThreadId++;
 }
 
-PixelFormat pfs[512];
+PixelFormat pfs[1024];
 U32 numberOfPfs;
 
 void KSystem::initDisplayModes() {
