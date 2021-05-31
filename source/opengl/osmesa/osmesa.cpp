@@ -190,50 +190,6 @@ bool MesaBoxedwineGL::shareList(KThreadGlContext* src, KThreadGlContext* dst, vo
 
 static MesaBoxedwineGL mesaBoxedwineGL;
 
-#undef GL_FUNCTION
-#define GL_FUNCTION(func, RET, PARAMS, ARGS, PRE, POST, LOG) pgl##func = (gl##func##_func)pOSMesaGetProcAddress("gl" #func);
-
-#undef GL_FUNCTION_CUSTOM
-#define GL_FUNCTION_CUSTOM(func, RET, PARAMS) pgl##func = (gl##func##_func)pOSMesaGetProcAddress("gl" #func);
-
-#undef GL_EXT_FUNCTION
-#define GL_EXT_FUNCTION(func, RET, PARAMS) ext_gl##func = (gl##func##_func)pOSMesaGetProcAddress("gl" #func);
-
-static bool mesaOpenGlExtensionsLoaded = false;
-static void* pDLL;
-
-void initMesaOpenGL() {
-    if (BoxedwineGL::current != &mesaBoxedwineGL) {
-        BoxedwineGL::current = &mesaBoxedwineGL;
-        mesaOpenGlExtensionsLoaded = false;
-        if (!pDLL) {
-            pDLL = SDL_LoadObject(LIBRARY_NAME);
-            if (!pDLL) {
-                return;
-            }
-        }
-        pOSMesaGetProcAddress = (fn_OSMesaGetProcAddress)SDL_LoadFunction(pDLL, "OSMesaGetProcAddress");
-        if (!pOSMesaGetProcAddress) {
-            return;
-        }
-        pOSMesaMakeCurrent = (fn_OSMesaMakeCurrent)SDL_LoadFunction(pDLL, "OSMesaMakeCurrent");
-        pOSMesaCreateContextAttribs = (fn_OSMesaCreateContextAttribs)SDL_LoadFunction(pDLL, "OSMesaCreateContextAttribs");
-        pOSMesaDestroyContext = (fn_OSMesaDestroyContext)SDL_LoadFunction(pDLL, "OSMesaDestroyContext");
-        pOSMesaPixelStore = (fn_OSMesaPixelStore)SDL_LoadFunction(pDLL, "OSMesaPixelStore");
-
-        pglFinish = pOSMesaGetProcAddress("glFinish");
-        pglFlush = pOSMesaGetProcAddress("glFlush");
-#include "../glfunctions.h"
-    }
-}
-
-void shutdownMesaOpenGL() {
-    if (pDLL) {
-        SDL_UnloadObject(pDLL);
-        pDLL = NULL;
-    }
-}
-
 static bool isAvailable = false;
 static bool isAvailableInitialized = false;
 
@@ -250,6 +206,7 @@ bool isMesaOpenglAvailable() {
 }
 
 void glExtensionsLoaded();
+static bool mesaOpenGlExtensionsLoaded = false;
 
 void loadMesaExtensions() {
     if (!mesaOpenGlExtensionsLoaded) {
@@ -294,13 +251,54 @@ void osmesa_glXMakeCurrent(CPU* cpu) {
 void osmesa_glXSwapBuffers(CPU* cpu) {
 }
 
-void osmesagl_init() {
-    int99Callback[Finish] = osmesa_glFinish;
-    int99Callback[Flush] = osmesa_glFlush;
-    int99Callback[XCreateContext] = osmesa_glXCreateContext;
-    int99Callback[XMakeCurrent] = osmesa_glXMakeCurrent;
-    int99Callback[XDestroyContext] = osmesa_glXDestroyContext;
-    int99Callback[XSwapBuffer] = osmesa_glXSwapBuffers;
+static void* pDLL;
+
+#undef GL_FUNCTION
+#define GL_FUNCTION(func, RET, PARAMS, ARGS, PRE, POST, LOG) pgl##func = (gl##func##_func)pOSMesaGetProcAddress("gl" #func);
+
+#undef GL_FUNCTION_CUSTOM
+#define GL_FUNCTION_CUSTOM(func, RET, PARAMS) pgl##func = (gl##func##_func)pOSMesaGetProcAddress("gl" #func);
+
+#undef GL_EXT_FUNCTION
+#define GL_EXT_FUNCTION(func, RET, PARAMS) ext_gl##func = (gl##func##_func)pOSMesaGetProcAddress("gl" #func);
+
+void initMesaOpenGL() {
+    if (BoxedwineGL::current != &mesaBoxedwineGL) {
+        BoxedwineGL::current = &mesaBoxedwineGL;
+        mesaOpenGlExtensionsLoaded = false;
+        if (!pDLL) {
+            pDLL = SDL_LoadObject(LIBRARY_NAME);
+            if (!pDLL) {
+                return;
+            }
+        }
+        pOSMesaGetProcAddress = (fn_OSMesaGetProcAddress)SDL_LoadFunction(pDLL, "OSMesaGetProcAddress");
+        if (!pOSMesaGetProcAddress) {
+            return;
+        }
+        pOSMesaMakeCurrent = (fn_OSMesaMakeCurrent)SDL_LoadFunction(pDLL, "OSMesaMakeCurrent");
+        pOSMesaCreateContextAttribs = (fn_OSMesaCreateContextAttribs)SDL_LoadFunction(pDLL, "OSMesaCreateContextAttribs");
+        pOSMesaDestroyContext = (fn_OSMesaDestroyContext)SDL_LoadFunction(pDLL, "OSMesaDestroyContext");
+        pOSMesaPixelStore = (fn_OSMesaPixelStore)SDL_LoadFunction(pDLL, "OSMesaPixelStore");
+
+        pglFinish = pOSMesaGetProcAddress("glFinish");
+        pglFlush = pOSMesaGetProcAddress("glFlush");
+#include "../glfunctions.h"
+
+        int99Callback[Finish] = osmesa_glFinish;
+        int99Callback[Flush] = osmesa_glFlush;
+        int99Callback[XCreateContext] = osmesa_glXCreateContext;
+        int99Callback[XMakeCurrent] = osmesa_glXMakeCurrent;
+        int99Callback[XDestroyContext] = osmesa_glXDestroyContext;
+        int99Callback[XSwapBuffer] = osmesa_glXSwapBuffers;
+    }
+}
+
+void shutdownMesaOpenGL() {
+    if (pDLL) {
+        SDL_UnloadObject(pDLL);
+        pDLL = NULL;
+    }
 }
 
 #endif

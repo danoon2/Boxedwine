@@ -556,10 +556,6 @@ Int99Callback* int99Callback;
 U32 int99CallbackSize;
 U32 lastGlCallTime;
 
-void esgl_init();
-void sdlgl_init();
-void osmesagl_init();
-
 void gl_init(const std::string& allowExtensions) {    
     int99Callback=gl_callback;
     int99CallbackSize=GL_FUNC_COUNT;
@@ -574,17 +570,7 @@ void gl_init(const std::string& allowExtensions) {
 #undef GL_EXT_FUNCTION
 #define GL_EXT_FUNCTION(func, RET, PARAMS) gl_callback[func] = glcommon_gl##func;
 
-#include "glfunctions.h"
-       
-#ifdef BOXEDWINE_OPENGL_SDL
-    sdlgl_init();
-#endif
-#ifdef BOXEDWINE_OPENGL_OSMESA
-    osmesagl_init();
-#endif
-#ifdef BOXEDWINE_ES
-    esgl_init();
-#endif        
+#include "glfunctions.h"      
 }
 
 #else

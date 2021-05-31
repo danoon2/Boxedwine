@@ -128,23 +128,6 @@ void loadSdlExtensions() {
     }
 }
 
-#undef GL_FUNCTION
-#define GL_FUNCTION(func, RET, PARAMS, ARGS, PRE, POST, LOG) pgl##func = gl##func;
-
-#undef GL_FUNCTION_CUSTOM
-#define GL_FUNCTION_CUSTOM(func, RET, PARAMS) pgl##func = gl##func;
-
-#undef GL_EXT_FUNCTION
-#define GL_EXT_FUNCTION(func, RET, PARAMS)
-
-void initSdlOpenGL() {
-    if (BoxedwineGL::current != &sdlBoxedwineGL) {
-        BoxedwineGL::current = &sdlBoxedwineGL;
-        sdlOpenExtensionsLoaded = false;
-        #include "../glfunctions.h"
-    }
-}
-
 // GLAPI void APIENTRY glFinish( void ) {
 void sdl_glFinish(CPU* cpu) {	
     glFinish();
@@ -215,12 +198,27 @@ void sdl_glXSwapBuffers(CPU* cpu) {
     KNativeWindow::getNativeWindow()->glSwapBuffers(cpu->thread);
 }
 
-void sdlgl_init() {	
+#undef GL_FUNCTION
+#define GL_FUNCTION(func, RET, PARAMS, ARGS, PRE, POST, LOG) pgl##func = gl##func;
+
+#undef GL_FUNCTION_CUSTOM
+#define GL_FUNCTION_CUSTOM(func, RET, PARAMS) pgl##func = gl##func;
+
+#undef GL_EXT_FUNCTION
+#define GL_EXT_FUNCTION(func, RET, PARAMS)
+
+void initSdlOpenGL() {
+    if (BoxedwineGL::current != &sdlBoxedwineGL) {
+        BoxedwineGL::current = &sdlBoxedwineGL;
+        sdlOpenExtensionsLoaded = false;
+#include "../glfunctions.h"
+    }
+
     int99Callback[Finish] = sdl_glFinish;
     int99Callback[Flush] = sdl_glFlush;
     int99Callback[XCreateContext] = sdl_glXCreateContext;
     int99Callback[XMakeCurrent] = sdl_glXMakeCurrent;
-    int99Callback[XDestroyContext] = sdl_glXDestroyContext;	
+    int99Callback[XDestroyContext] = sdl_glXDestroyContext;
     int99Callback[XSwapBuffer] = sdl_glXSwapBuffers;
 }
 
