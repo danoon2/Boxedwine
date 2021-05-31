@@ -105,17 +105,21 @@ static const char* extentions[] = {
 #endif
 
 // const GLubyte *glGetStringi(GLenum name, GLuint index);
+void glcommon_glGetString(CPU* cpu);
 void glcommon_glGetStringi(CPU* cpu) { 
-    if (!ext_glGetStringi)
-        kpanic("ext_glGetStringi is NULL");
-    {
-    const GLubyte* result = GL_FUNC(ext_glGetStringi)(ARG1, ARG2);
-    if (result) {
-        EAX = cpu->thread->memory->mapNativeMemory((void*)result, (U32)strlen((const char*)result)+1);
+    GLenum pname = ARG1;
+    if (pname == GL_EXTENSIONS) {
+        GLuint index = ARG2;
+        if (!cpu->thread->process->glStringsiExtensions) {
+            glcommon_glGetString(cpu);
+        }
+        if (index < cpu->thread->process->glStringsiExtensionsOffset.size()) {
+            EAX = cpu->thread->process->glStringsiExtensions + cpu->thread->process->glStringsiExtensionsOffset[index];
+        } else {
+            EAX = 0;
+        }
     } else {
-        EAX = 0;
-    }
-    GL_LOG ("glGetStringi GLenum name=%d GLuint index=%d", ARG1,ARG2);
+        glcommon_glGetString(cpu);
     }
 }
 
@@ -153,6 +157,19 @@ void glcommon_glFeedbackBuffer(CPU* cpu) {
 #endif
 }
 
+static char* addedExt[] = { "WGL_ARB_create_context" };
+
+void glcommon_glGetIntegerv(CPU* cpu) {
+    GLenum pname = ARG1;
+    if (pname == GL_NUM_EXTENSIONS) {
+        writed(ARG2, cpu->thread->process->numberOfExtensions);
+    } else {
+        GLint* buffer = marshali(cpu, ARG2, getSize(ARG1));
+        GL_FUNC(glGetIntegerv)(pname, buffer);
+        marshalBacki(cpu, ARG2, buffer, getSize(ARG1));
+    }
+}
+
 void glcommon_glRenderMode(CPU* cpu) {
     GLenum mode = ARG1;
     EAX = GL_FUNC(glRenderMode)(mode);
@@ -188,7 +205,10 @@ void glcommon_glGetString(CPU* cpu) {
 #else
         static char* ext;
         if (!ext) {
-            U32 len = (U32)strlen(result)+1+23;//23 for WGL_ARG_create_context
+            U32 len = (U32)strlen(result)+1;
+            for (U32 i = 0; i < sizeof(addedExt) / sizeof(*addedExt); i++) {
+                len += (U32)strlen(addedExt[i])+1;
+            }
             ext = new char[len];
             memset(ext, 0, len);
         }
@@ -200,6 +220,7 @@ void glcommon_glGetString(CPU* cpu) {
             for (U32 i=0;i<sizeof(extentions)/sizeof(char*);i++) {
                 supportedExt.push_back(extentions[i]);
             }
+            cpu->thread->process->numberOfExtensions = 0;
             for (U32 i=0;i<hardwareExt.size();i++) {
                 if (std::find(supportedExt.begin(), supportedExt.end(), hardwareExt[i]) == supportedExt.end()) {
                     continue;
@@ -208,10 +229,17 @@ void glcommon_glGetString(CPU* cpu) {
                 if (!glExt.length() || strstr(glExt.c_str(), hardwareExt[i].c_str())) {
                     if (ext[0]!=0)
                         strcat(ext, " ");
+                    cpu->thread->process->numberOfExtensions++;
                     strcat(ext, hardwareExt[i].c_str());
                 }
             }
-            strcat(ext, " WGL_ARB_create_context");
+            for (U32 i = 0; i < sizeof(addedExt) / sizeof(*addedExt); i++) {
+                if (ext[0] != 0)
+                    strcat(ext, " ");
+                cpu->thread->process->numberOfExtensions++;
+                strcat(ext, addedExt[i]);
+            }
+
         }
         result = ext;
 #endif
@@ -224,6 +252,21 @@ void glcommon_glGetString(CPU* cpu) {
         char* nativeResult = (char*)getNativeAddress(cpu->thread->process->memory, address);
         strcpy(nativeResult, result);
         cpu->thread->process->glStrings[index] = address;
+
+        if (name == GL_EXTENSIONS) {
+            address = cpu->thread->process->allocNative(len + 1);
+            cpu->thread->process->glStringsiExtensions = address;
+            nativeResult = (char*)getNativeAddress(cpu->thread->process->memory, address);
+            strcpy(nativeResult, result);
+            cpu->thread->process->glStringsiExtensionsOffset.push_back(0);
+            for (int i = 0; i < (int)len; i++) {
+                char c = nativeResult[i];
+                if (c == ' ') {
+                    nativeResult[i] = 0;
+                    cpu->thread->process->glStringsiExtensionsOffset.push_back(i + 1);
+                }
+            }
+        }
     }
     EAX = cpu->thread->process->glStrings[index];
 #else

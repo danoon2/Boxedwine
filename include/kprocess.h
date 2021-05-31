@@ -258,6 +258,9 @@ public:
 	Memory* previousMemory;
     U32 nextNativeAddress;
     U32 glStrings[NUMBER_OF_STRINGS];
+    U32 glStringsiExtensions;
+    std::vector<U32> glStringsiExtensionsOffset;
+    U32 numberOfExtensions;
     U32 allocNative(U32 len);    
 #endif
 #ifdef BOXEDWINE_BINARY_TRANSLATOR

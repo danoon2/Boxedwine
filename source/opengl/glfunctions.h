@@ -309,6 +309,7 @@ GL_FUNCTION_CUSTOM(InterleavedArrays, void, (GLenum format, GLsizei stride, cons
 GL_FUNCTION_CUSTOM(Viewport, void, (GLint x, GLint y, GLsizei width, GLsizei height))
 GL_FUNCTION_CUSTOM(FeedbackBuffer, void, (GLsizei size, GLenum type, GLfloat* buffer))
 GL_FUNCTION_CUSTOM(RenderMode, GLint, (GLenum mode))
+GL_FUNCTION_CUSTOM(GetIntegerv, void, (GLenum pname, GLint* params))
 
 GL_FUNCTION(GetTexGendv, void, (GLenum coord, GLenum pname, GLdouble *params), (ARG1, ARG2, buffer), GLdouble buffer[1];, marshalBackd(cpu, ARG3, buffer, 1);,("glGetTexGendv"))
 GL_FUNCTION(GetTexGenfv, void, (GLenum coord, GLenum pname, GLfloat *params), (ARG1, ARG2, buffer), GLfloat buffer[1];, marshalBackf(cpu, ARG3, buffer, 1);,("glGetTexGenfv"))
@@ -327,7 +328,6 @@ GL_FUNCTION(GenTextures, void, (GLsizei n, GLuint *textures), (ARG1, buffer), GL
 GL_FUNCTION(GetBooleanv, void, (GLenum pname, GLboolean *params), (ARG1, buffer), GLboolean* buffer = marshalbool(cpu, ARG2, getSize(ARG1));, marshalBackbool(cpu, ARG2, buffer, getSize(ARG1));,("glGetBooleanv"))
 GL_FUNCTION(GetDoublev, void, (GLenum pname, GLdouble *params), (ARG1, buffer), GLdouble* buffer = marshald(cpu, ARG2, getSize(ARG1));, marshalBackd(cpu, ARG2, buffer, getSize(ARG1));,("glGetDoublev"))
 GL_FUNCTION(GetFloatv, void, (GLenum pname, GLfloat *params), (ARG1, buffer), GLfloat* buffer = marshalf(cpu, ARG2, getSize(ARG1));, marshalBackf(cpu, ARG2, buffer, getSize(ARG1));,("glGetFloatv"))
-GL_FUNCTION(GetIntegerv, void, (GLenum pname, GLint *params), (ARG1, buffer), GLint* buffer = marshali(cpu, ARG2, getSize(ARG1));, marshalBacki(cpu, ARG2, buffer, getSize(ARG1));,("glGetIntegerv"))
 GL_FUNCTION(GetLightfv, void, (GLenum light, GLenum pname, GLfloat *params), (ARG1, ARG2, buffer), GLfloat* buffer = marshalf(cpu, ARG3, glcommon_glLightv_size(ARG2));, marshalBackf(cpu, ARG3, buffer, glcommon_glLightv_size(ARG2));,("glGetLightfv"))
 GL_FUNCTION(GetLightiv, void, (GLenum light, GLenum pname, GLint *params), (ARG1, ARG2, buffer), GLint* buffer = marshali(cpu, ARG3, glcommon_glLightv_size(ARG2));, marshalBacki(cpu, ARG3, buffer, glcommon_glLightv_size(ARG2));,("glGetLightiv"))
 GL_FUNCTION(GetMaterialfv, void, (GLenum face, GLenum pname, GLfloat *params), (ARG1, ARG2, buffer), GLfloat* buffer = marshalf(cpu, ARG3, glcommon_glMaterialv_size(ARG2));, marshalBackf(cpu, ARG3, buffer, glcommon_glMaterialv_size(ARG2));,("glGetMaterialfv"))

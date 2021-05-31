@@ -129,6 +129,8 @@ KProcess::KProcess(U32 id) : id(id),
     for (int i=0;i<NUMBER_OF_STRINGS;i++) {
         this->glStrings[i] = 0;
     }
+    this->glStringsiExtensions = 0;
+    this->numberOfExtensions = 0;
 	this->previousMemory = NULL;
 #endif
 }
