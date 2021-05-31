@@ -97,6 +97,7 @@ public:
     static const int getDefaultScale() { return GlobalSettings::defaultScale; }
     static const int getDefaultVsync() { return GlobalSettings::defaultVsync; }
     static const std::string& getDefaultResolution() { return GlobalSettings::defaultResolution; }
+    static U32 getDefaultOpenGL() { return GlobalSettings::defaultOpenGL; }
     static int getScreenCx() { return GlobalSettings::screenCx; }
     static int getScreenCy() { return GlobalSettings::screenCy; }
     static void setFontScale(float scale);
@@ -162,6 +163,7 @@ private:
     static int lastScreenCy;
     static int lastScreenX;
     static int lastScreenY;
+    static U32 defaultOpenGL;
 };
 
 #endif

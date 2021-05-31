@@ -24,6 +24,8 @@ bool BoxedApp::load(BoxedContainer* container, const std::string& iniFilePath) {
     this->cpuAffinity = config.readInt("CpuAffinity", 0);
     this->pollRate = config.readInt("PollRate", 0);
     this->skipFramesFPS = config.readInt("SkipFramesFPS", 0);
+    this->openGlType = config.readInt("OpenGL", OPENGL_TYPE_NOT_SET);
+    
     int i = 1;
     this->args.clear();
     while (true) {
@@ -73,7 +75,8 @@ bool BoxedApp::saveApp() {
     config.writeInt("CpuAffinity",this->cpuAffinity);
     config.writeInt("PollRate", this->pollRate);
     config.writeInt("SkipFramesFPS", this->skipFramesFPS);
-    
+    config.writeInt("OpenGL", this->openGlType);
+
     for (int i = 0; i < (int)this->args.size(); i++) {
         std::string key = "Arg";
         key += (i + 1);
@@ -147,6 +150,10 @@ void BoxedApp::launch() {
         }
     }
     GlobalSettings::startUpArgs.setWorkingDir(this->path);    
+    GlobalSettings::startUpArgs.openGlType = this->openGlType;
+    if (GlobalSettings::startUpArgs.openGlType == OPENGL_TYPE_NOT_SET) {
+        GlobalSettings::startUpArgs.openGlType = GlobalSettings::getDefaultOpenGL();
+    }
     GlobalSettings::startUpArgs.readyToLaunch = true;
 }
 

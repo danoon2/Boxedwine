@@ -321,7 +321,7 @@ GL_FUNCTION(GetTexParameteriv, void, (GLenum target, GLenum pname, GLint *params
 GL_FUNCTION(GetTexLevelParameterfv, void, (GLenum target, GLint level, GLenum pname, GLfloat *params), (ARG1, ARG2, ARG3, buffer), GLfloat buffer[1];, marshalBackf(cpu, ARG4, buffer, 1);,("glGetTexLevelParameterfv"))
 GL_FUNCTION(GetTexLevelParameteriv, void, (GLenum target, GLint level, GLenum pname, GLint *params), (ARG1, ARG2, ARG3, buffer), GLint buffer[1];, marshalBacki(cpu, ARG4, buffer, 1);,("glGetTexLevelParameteriv"))
 
-GL_FUNCTION(AreTexturesResident, void, (GLsizei n, const GLuint *textures, GLboolean *residences), (ARG1, marshalui(cpu, ARG2, ARG1), buffer), GLboolean* buffer = marshal2ub(cpu, ARG3, ARG1);, marshalBackub(cpu, ARG3, buffer, ARG1);,("glAreTexturesResident"))
+GL_FUNCTION(AreTexturesResident, GLboolean, (GLsizei n, const GLuint *textures, GLboolean *residences), (ARG1, marshalui(cpu, ARG2, ARG1), buffer), GLboolean* buffer = marshal2ub(cpu, ARG3, ARG1);, marshalBackub(cpu, ARG3, buffer, ARG1);,("glAreTexturesResident"))
 GL_FUNCTION(SelectBuffer, void, (GLsizei size, GLuint *buffer), (ARG1, buffer), GLuint* buffer = marshalui(cpu, ARG2, ARG1);, marshalBackui(cpu, ARG2, buffer, ARG1);,("glSelectBuffer"))
 GL_FUNCTION(GenTextures, void, (GLsizei n, GLuint *textures), (ARG1, buffer), GLuint* buffer = marshalui(cpu, ARG2, ARG1);, marshalBackui(cpu, ARG2, buffer, ARG1);,("glGenTextures"))
 

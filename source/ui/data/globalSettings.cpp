@@ -6,6 +6,7 @@
 #include "../../util/threadutils.h"
 #include "../../../lib/pugixml/src/pugixml.hpp"
 #include "knativesystem.h"
+#include "ksystem.h"
 #include "crc.h"
 
 #include <sys/stat.h>
@@ -51,6 +52,7 @@ int GlobalSettings::lastScreenCx;
 int GlobalSettings::lastScreenCy;
 int GlobalSettings::lastScreenX;
 int GlobalSettings::lastScreenY;
+U32 GlobalSettings::defaultOpenGL = OPENGL_TYPE_SDL;
 
 void GlobalSettings::init(int argc, const char **argv) {
     GlobalSettings::largeFontBold = NULL;
@@ -96,6 +98,7 @@ void GlobalSettings::init(int argc, const char **argv) {
     GlobalSettings::lastScreenCy = config.readInt("WindowHeight", 0);
     GlobalSettings::lastScreenX = config.readInt("WindowX", 0);
     GlobalSettings::lastScreenY = config.readInt("WindowY", 0);
+    GlobalSettings::defaultOpenGL = config.readInt("OpenGL", OPENGL_TYPE_SDL);
 
     if (!Fs::doesNativePathExist(configFilePath)) {
         saveConfig();
@@ -164,6 +167,7 @@ void GlobalSettings::saveConfig() {
     config.writeInt("WindowHeight", GlobalSettings::lastScreenCy);
     config.writeInt("WindowX", GlobalSettings::lastScreenX);
     config.writeInt("WindowY", GlobalSettings::lastScreenY);
+    config.writeInt("OpenGL", GlobalSettings::defaultOpenGL);
     config.saveChanges();
 }
 

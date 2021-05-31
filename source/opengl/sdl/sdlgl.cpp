@@ -24,9 +24,92 @@
 #include <stdio.h>
 #include <SDL.h>
 #include "knativewindow.h"
+#include "../boxedwineGL.h"
+#include "../../sdl/startupArgs.h"
 
-int extLoaded = 0;
+class SdlBoxedwineGL : public BoxedwineGL {
+public:
+    virtual void deleteContext(void* context);
+    virtual bool makeCurrent(void* context, void* window);
+    virtual std::string getLastError();
+    virtual void* createContext(void* window, std::shared_ptr<Wnd> wnd, PixelFormat* pixelFormat, U32 width, U32 height, int major, int minor, int profile);
+    virtual void swapBuffer(void* window);
+    virtual void setSwapInterval(U32 vsync);
+    virtual bool shareList(KThreadGlContext* src, KThreadGlContext* dst, void* window);
+};
 
+void SdlBoxedwineGL::deleteContext(void* context) {
+    SDL_GL_DeleteContext(context);
+}
+
+bool SdlBoxedwineGL::makeCurrent(void* context, void* window) {
+    return SDL_GL_MakeCurrent((SDL_Window*)window, context) == 0;
+}
+
+std::string SdlBoxedwineGL::getLastError() {
+    return SDL_GetError();
+}
+
+void* SdlBoxedwineGL::createContext(void* window, std::shared_ptr<Wnd> wnd, PixelFormat* pixelFormat, U32 width, U32 height, int major, int minor, int profile) {
+    return SDL_GL_CreateContext((SDL_Window*)window);
+}
+
+void SdlBoxedwineGL::swapBuffer(void* window) {
+    SDL_GL_SwapWindow((SDL_Window*)window);
+}
+
+void SdlBoxedwineGL::setSwapInterval(U32 vsync) {
+    if (vsync == VSYNC_ADAPTIVE) {
+        if (SDL_GL_SetSwapInterval(-1) == -1) {
+            SDL_GL_SetSwapInterval(1);
+        }
+    }
+    else if (vsync == VSYNC_ENABLED) {
+        SDL_GL_SetSwapInterval(1);
+    }
+    else {
+        SDL_GL_SetSwapInterval(0);
+    }
+}
+
+bool SdlBoxedwineGL::shareList(KThreadGlContext* src, KThreadGlContext* dst, void* window) {
+    if (src && dst) {
+        if (dst->hasBeenMadeCurrent) {
+            klog("could not share display lists, the destination context has been current already");
+            return 0;
+        }
+        else if (dst->sharing)
+        {
+            klog("could not share display lists because dest has already shared lists before\n");
+            return 0;
+        }
+        SDL_GL_DeleteContext(dst->context);
+        KThread* thread = KThread::currentThread();
+        SDL_GLContext currentContext = (SDL_GLContext)thread->currentContext;
+        bool changedContext = false;
+
+        if (thread->currentContext != src->context) {
+            changedContext = true;
+            SDL_GL_MakeCurrent((SDL_Window*)window, (SDL_GLContext)src->context);
+        }
+        SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1);
+        dst->context = SDL_GL_CreateContext((SDL_Window*)window);
+        SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 0);
+
+        if (changedContext) {
+            SDL_GL_MakeCurrent((SDL_Window*)window, currentContext);
+        }
+        dst->sharing = true;
+        return true;
+    }
+    return false;
+}
+
+static SdlBoxedwineGL sdlBoxedwineGL;
+
+static int sdlOpenExtensionsLoaded = false;
+
+#undef GL_FUNCTION
 #define GL_FUNCTION(func, RET, PARAMS, ARGS, PRE, POST, LOG)
 
 #undef GL_FUNCTION_CUSTOM
@@ -37,11 +120,28 @@ int extLoaded = 0;
 
 void glExtensionsLoaded();
 
-void loadExtensions() {
-    if (!extLoaded) {
-        extLoaded = 1;
+void loadSdlExtensions() {
+    if (!sdlOpenExtensionsLoaded) {
+        sdlOpenExtensionsLoaded = true;
         #include "../glfunctions.h"
         glExtensionsLoaded();
+    }
+}
+
+#undef GL_FUNCTION
+#define GL_FUNCTION(func, RET, PARAMS, ARGS, PRE, POST, LOG) pgl##func = gl##func;
+
+#undef GL_FUNCTION_CUSTOM
+#define GL_FUNCTION_CUSTOM(func, RET, PARAMS) pgl##func = gl##func;
+
+#undef GL_EXT_FUNCTION
+#define GL_EXT_FUNCTION(func, RET, PARAMS)
+
+void initSdlOpenGL() {
+    if (BoxedwineGL::current != &sdlBoxedwineGL) {
+        BoxedwineGL::current = &sdlBoxedwineGL;
+        sdlOpenExtensionsLoaded = false;
+        #include "../glfunctions.h"
     }
 }
 

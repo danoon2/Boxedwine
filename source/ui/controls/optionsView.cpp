@@ -2,6 +2,10 @@
 #include "../boxedwineui.h"
 #include "../../../lib/imgui/addon/imguitinyfiledialogs.h"
 
+#ifdef BOXEDWINE_OPENGL_OSMESA
+bool isMesaOpenglAvailable();
+#endif
+
 OptionsView::OptionsView(std::string tab) : BaseView("OptionsView") {
     if (tab.length()) {
         if (tab == "Wine") {
@@ -121,6 +125,21 @@ void OptionsView::createGeneralTab() {
         GlobalSettings::defaultScale = this->scaleControl->getSelectionIntValue();
         GlobalSettings::saveConfig();
     };
+
+#if defined(BOXEDWINE_OPENGL_OSMESA) && defined(BOXEDWINE_OPENGL_SDL)
+    if (isMesaOpenglAvailable()) {
+        std::vector<ComboboxItem> glOptions;
+        glOptions.push_back(ComboboxItem("Native", OPENGL_TYPE_SDL));
+        glOptions.push_back(ComboboxItem("Mesa - OpenGL in Software", OPENGL_TYPE_OSMESA));
+        openGlControl = section->addComboboxRow(OPTIONSVIEW_DEFAULT_OPENGL_LABEL, OPTIONSVIEW_DEFAULT_OPENGL_HELP, glOptions, GlobalSettings::defaultOpenGL);
+        openGlControl->setWidth((int)GlobalSettings::scaleFloatUIAndFont(250));
+        openGlControl->setSelectionIntValue(GlobalSettings::defaultOpenGL);
+        openGlControl->onChange = [this]() {
+            GlobalSettings::defaultOpenGL = this->openGlControl->getSelectionIntValue();
+            GlobalSettings::saveConfig();
+        };
+    }
+#endif
 
     std::shared_ptr<LayoutSection> bottomSection = model->addSection();
     bottomSection->addSeparator();

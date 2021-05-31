@@ -31,6 +31,13 @@
 bool KSystem::modesInitialized = false;
 U32 KSystem::skipFrameFPS = 0;
 bool KSystem::videoEnabled = true;
+#ifdef BOXEDWINE_OPENGL_SDL
+U32 KSystem::openglType = OPENGL_TYPE_SDL;
+#elif defined (BOXEDWINE_OPENGL_OSMESA) 
+U32 KSystem::openglType = OPENGL_TYPE_OSMESA;
+#else
+U32 KSystem::openglType = OPENGL_TYPE_UNAVAILABLE;
+#endif
 bool KSystem::soundEnabled = true;
 unsigned int KSystem::nextThreadId=10;
 std::unordered_map<void*, SHM*> KSystem::shm;

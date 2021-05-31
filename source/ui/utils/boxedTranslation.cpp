@@ -141,6 +141,10 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "Default App Scale:";
     case OPTIONSVIEW_DEFAULT_SCALE_HELP:
         return "This is the default scale that Boxedwine will use to create the main window.  This can be overriden in the Containers view under the shortcut specific options on a per app basis.\n\nThis simple scaling option will blow up or shrink the emualted screen.  This is useful for applications that want to run in low resolution, like 640x480, and you want it to show larger on your monitor.";
+    case OPTIONSVIEW_DEFAULT_OPENGL_LABEL:
+        return "Default OpenGL Backend:";
+    case OPTIONSVIEW_DEFAULT_OPENGL_HELP:
+        return "OpenGL Backends:\n\nNative - This will use the OpenGL that is installed on your computer for your graphics card.  This is the best option if it works for you and will probably be the fastest.\n\nThe other options available to choose are in the order of expected performance.  They might be help older games/apps that try to use a color depth no longer supported by modern OpenGL graphics cards.";
     case OPTIONSVIEW_DEFAULT_FONT_SCALE_LABEL:
         return "Font Scale";
     case OPTIONSVIEW_DEFAULT_FONT_SCALE_HELP:

@@ -42,10 +42,10 @@ class Memory;
 
 class KThreadGlContext {
 public:
-    KThreadGlContext():context(NULL), hasBeenMakeCurrent(false), sharing(false) {}
-    KThreadGlContext(void* context):context(context), hasBeenMakeCurrent(false), sharing(false) {}
+    KThreadGlContext():context(NULL), hasBeenMadeCurrent(false), sharing(false) {}
+    KThreadGlContext(void* context):context(context), hasBeenMadeCurrent(false), sharing(false) {}
     void* context;
-    bool hasBeenMakeCurrent;
+    bool hasBeenMadeCurrent;
     bool sharing;
 };
 
