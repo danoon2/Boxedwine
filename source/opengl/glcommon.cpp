@@ -270,6 +270,24 @@ void glcommon_glGetString(CPU* cpu) {
     }
     EAX = cpu->thread->process->glStrings[index];
 #else
+    if (name == GL_EXTENSIONS && !cpu->thread->process->glStringsiExtensions) {
+        int len = strlen(result);
+        U32 pageCount = ((len + 1) + K_PAGE_MASK) >> K_PAGE_SHIFT;
+        U32 page = 0;
+        cpu->thread->memory->findFirstAvailablePage(ADDRESS_PROCESS_NATIVE, pageCount, &page, false);
+        cpu->thread->memory->allocPages(page, pageCount, PAGE_READ | PAGE_WRITE, 0, 0, nullptr);
+        U32 address = page << K_PAGE_SHIFT;
+        cpu->thread->process->glStringsiExtensions = address;
+        memcopyFromNative(address, result, len + 1);
+        cpu->thread->process->glStringsiExtensionsOffset.push_back(0);
+        for (int i = 0; i < (int)len; i++) {
+            char c = readb(address+i);
+            if (c == ' ') {
+                writeb(address+i, 0);
+                cpu->thread->process->glStringsiExtensionsOffset.push_back(i + 1);
+            }
+        }
+    }
     EAX = cpu->thread->memory->mapNativeMemory((void*)result, (U32)(strlen(result)+1));
 #endif
 }
