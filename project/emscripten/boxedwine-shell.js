@@ -16,6 +16,7 @@
         let DEFAULT_APP_DIRECTORY = ROOT + "/files/";
         let DEFAULT_BPP = 32;
         let DEFAULT_FRAME_SKIP = "0";
+        let DEFAULT_RENDERER = "gdi";
         let DEFAULT_ROOT_ZIP_FILE = "boxedwine.zip";
         //params
         let Config = {};
@@ -79,6 +80,7 @@
 			Config.envProp = getEnvProp();
 			Config.emEnvProps = getEmscriptenEnvProps();
 			Config.frameSkip = getFrameSkip();
+			Config.directDrawRenderer = getDirectDrawRenderer();
         }
         function allowParameterOverride() {
             if(Config.urlParams.length >0) {
@@ -143,9 +145,7 @@
             if(!allowParameterOverride()){
                 cpu = "";
             }else if(cpu == "p2") {
-                cpu = "p2";
             }else if(cpu == "p3") {
-                cpu = "p3";
             }else{
                 cpu = "";
             }
@@ -154,9 +154,20 @@
             }
             return cpu;
         }
+        function getDirectDrawRenderer(){
+            var renderer = getParameter("renderer");
+            if(!allowParameterOverride()){
+                renderer = DEFAULT_RENDERER;
+            }else if(renderer == "gdi" || renderer == "opengl") {
+            }else{
+                renderer = DEFAULT_RENDERER;
+            }
+            console.log("setting DirectDrawRenderer to: "+renderer);
+            return renderer;
+        }
         function getFrameSkip(){
 
-            var frameskip =  getParameter("frameskip");
+            var frameskip =  getParameter("skipFrameFPS");
             if(!allowParameterOverride()){
                 frameskip = DEFAULT_FRAME_SKIP;
             }else if(frameskip == ""){
@@ -164,7 +175,7 @@
             }else if(Number(frameskip) < 0 || Number(frameskip) > 50){
                 frameskip = DEFAULT_FRAME_SKIP;
             }
-            console.log("setting frameskip to: "+frameskip);
+            console.log("setting skipFrameFPS to: "+frameskip);
             return frameskip;
         }
         function getBitsPerPixel(){
@@ -668,6 +679,7 @@
                 recursiveCopy(extraFSs[i], Config.extraZipFiles[i], '/');
             }
             extraFSs = null;
+        	setDirectDrawRenderer(Config.directDrawRenderer);
 
             if(Config.showUploadDownload){
                 document.getElementById('uploadbtn').style.display = "";
@@ -966,7 +978,27 @@
             }
             return false;
         }
-        function getEmulatorParams() {
+        function setDirectDrawRenderer(val) {
+        	let fileLocation = "root/base/home/username/.wine/user.reg";
+        	let data = FS.readFile(fileLocation, { encoding: 'utf8' });
+        	let keyIndex = data.indexOf('"DirectDrawRenderer');
+        	if (keyIndex != -1) {
+        		let endOfKeyLineIndex = data.indexOf('\n', keyIndex+1)
+        		if (endOfKeyLineIndex != -1) {
+        			//"DirectDrawRenderer\"=\"opengl\""
+        			//let keyLine = data.substring(keyIndex, endOfKeyLineIndex);
+        			//console.log(keyLine);
+        			let replacementLine = '"DirectDrawRenderer"="' + val + '"';
+        			let newData = data.substring(0, keyIndex) + replacementLine + data.substring(endOfKeyLineIndex, data.length);
+        			FS.writeFile(fileLocation, newData);
+        		} else {
+		        	console.log("Unable to set DirectDrawRenderer in user.reg");        	
+        		}
+        	} else {
+	        	console.log("Unable to find DirectDrawRenderer in user.reg");        	
+        	}
+        }
+        function getEmulatorParams() {        
             var params = ["-root", "/root/base"];
             params.push("-mount_drive");
             params.push(Config.appDirPrefix);
