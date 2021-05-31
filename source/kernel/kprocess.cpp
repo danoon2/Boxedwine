@@ -128,9 +128,11 @@ KProcess::KProcess(U32 id) : id(id),
     this->nextNativeAddress = ADDRESS_PROCESS_NATIVE;
     for (int i=0;i<NUMBER_OF_STRINGS;i++) {
         this->glStrings[i] = 0;
-    }
+    }    
 	this->previousMemory = NULL;
 #endif
+    this->glStringsiExtensions = 0;
+    this->numberOfExtensions = 0;
 }
 
 void KProcess::onExec() {

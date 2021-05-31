@@ -25,6 +25,8 @@
 #define K_PFD_TYPE_RGBA        0
 #define K_PFD_TYPE_COLORINDEX  1
 
+#define K_PFD_MAIN_PLANE 0
+
 typedef struct tagPixelFormat {
     U16  nSize;
     U16  nVersion;
