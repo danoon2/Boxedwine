@@ -193,19 +193,7 @@ void glcommon_glGetString(CPU* cpu) {
     U32 index = 0;
     const char* result = (const char*)GL_FUNC(pglGetString)(name);
     
-    if (name == GL_VENDOR) {
-        index = STRING_GL_VENDOR;
-        GL_LOG("glGetString GLenum name=STRING_GL_VENDOR ret=%s", result);
-    } else if (name == GL_RENDERER) {
-        index = STRING_GL_RENDERER;
-        GL_LOG("glGetString GLenum name=GL_RENDERER ret=%s", result);
-    } else if (name == GL_VERSION) {
-        index = STRING_GL_VERSION;
-        GL_LOG("glGetString GLenum name=STRING_GL_VERSION ret=%s", result);
-    } else if (name == GL_SHADING_LANGUAGE_VERSION) {
-        index = STRING_GL_SHADING_LANGUAGE_VERSION;
-        GL_LOG("glGetString GLenum name=GL_SHADING_LANGUAGE_VERSION ret=%s", result);
-    } else if (name == GL_EXTENSIONS) {
+    if (name == GL_EXTENSIONS) {
 #ifdef DISABLE_GL_EXTENSIONS
         result = "GL_EXT_texture3D";
 #else
@@ -218,7 +206,6 @@ void glcommon_glGetString(CPU* cpu) {
             ext = new char[len];
             memset(ext, 0, len);
         }
-        index = STRING_GL_EXTENSIONS;
         if (ext[0]==0) {
             std::vector<std::string> hardwareExt;
             std::vector<std::string> supportedExt;
@@ -250,14 +237,15 @@ void glcommon_glGetString(CPU* cpu) {
         result = ext;
 #endif
         GL_LOG("glGetString GLenum name=GL_EXTENSIONS ret=%s", result);
+    } else {
     }
 #ifdef BOXEDWINE_64BIT_MMU
-    if (!cpu->thread->process->glStrings[index]) {
+    if (!cpu->thread->process->glStrings.count(name)) {
         U32 len = (U32)strlen(result);
         U32 address = cpu->thread->process->allocNative(len+1);
         char* nativeResult = (char*)getNativeAddress(cpu->thread->process->memory, address);
         strcpy(nativeResult, result);
-        cpu->thread->process->glStrings[index] = address;
+        cpu->thread->process->glStrings[name] = address;
 
         if (name == GL_EXTENSIONS) {
             address = cpu->thread->process->allocNative(len + 1);
@@ -274,7 +262,7 @@ void glcommon_glGetString(CPU* cpu) {
             }
         }
     }
-    EAX = cpu->thread->process->glStrings[index];
+    EAX = cpu->thread->process->glStrings[name];
 #else
     if (name == GL_EXTENSIONS && !cpu->thread->process->glStringsiExtensions) {
         int len = strlen(result);
