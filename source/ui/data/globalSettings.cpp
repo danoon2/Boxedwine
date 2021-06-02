@@ -6,6 +6,7 @@
 #include "../../util/threadutils.h"
 #include "../../../lib/pugixml/src/pugixml.hpp"
 #include "knativesystem.h"
+#include "ksystem.h"
 #include "crc.h"
 
 #include <sys/stat.h>
@@ -46,11 +47,12 @@ int GlobalSettings::screenCy;
 float GlobalSettings::extraVerticalSpacing;
 float GlobalSettings::fontScale;
 bool GlobalSettings::iconFontsLoaded;
-std::string GlobalSettings::filesUrl;
+std::vector<std::string> GlobalSettings::fileUrls;
 int GlobalSettings::lastScreenCx;
 int GlobalSettings::lastScreenCy;
 int GlobalSettings::lastScreenX;
 int GlobalSettings::lastScreenY;
+U32 GlobalSettings::defaultOpenGL = OPENGL_TYPE_SDL;
 
 void GlobalSettings::init(int argc, const char **argv) {
     GlobalSettings::largeFontBold = NULL;
@@ -84,15 +86,19 @@ void GlobalSettings::init(int argc, const char **argv) {
     GlobalSettings::defaultScale = config.readInt("DefaultScale", 100);
     GlobalSettings::defaultVsync = config.readInt("DefaultVsync", VSYNC_DEFAULT);
     GlobalSettings::fontScale = (float)config.readInt("FontScale", 100) / 100.0f;
-#ifdef _DEBUG
-    GlobalSettings::filesUrl = config.readString("FilesURL", "http://www.boxedwine.org/v/Debug/" BOXEDWINE_VERSION_STR "/files.xml");
-#else
-    GlobalSettings::filesUrl = config.readString("FilesURL", "http://www.boxedwine.org/v/" BOXEDWINE_VERSION_STR "/files.xml");
-#endif
+    GlobalSettings::fileUrls.push_back(config.readString("FilesURL", "http://www.boxedwine.org/v/" BOXEDWINE_VERSION_STR "/files.xml"));
+    for (int i = 1; i < 10; i++) {
+        std::string name = "FilesURL" + std::to_string(i + 1);
+        std::string url = config.readString(name, "");
+        if (url.length()) {
+            GlobalSettings::fileUrls.push_back(url);
+        }
+    }
     GlobalSettings::lastScreenCx = config.readInt("WindowWidth", 0);
     GlobalSettings::lastScreenCy = config.readInt("WindowHeight", 0);
     GlobalSettings::lastScreenX = config.readInt("WindowX", 0);
     GlobalSettings::lastScreenY = config.readInt("WindowY", 0);
+    GlobalSettings::defaultOpenGL = config.readInt("OpenGL", OPENGL_TYPE_SDL);
 
     if (!Fs::doesNativePathExist(configFilePath)) {
         saveConfig();
@@ -134,7 +140,7 @@ void GlobalSettings::startUp() {
         BoxedApp app("WineMine", "/opt/wine/lib/wine/fakedlls", "winemine.exe", container);
         app.saveApp();
     }
-    GlobalSettings::loadFileList();
+    GlobalSettings::loadFileLists();
     GlobalSettings::checkFileListForUpdate();
 }
 
@@ -161,6 +167,7 @@ void GlobalSettings::saveConfig() {
     config.writeInt("WindowHeight", GlobalSettings::lastScreenCy);
     config.writeInt("WindowX", GlobalSettings::lastScreenX);
     config.writeInt("WindowY", GlobalSettings::lastScreenY);
+    config.writeInt("OpenGL", GlobalSettings::defaultOpenGL);
     config.saveChanges();
 }
 
@@ -271,79 +278,98 @@ void GlobalSettings::reloadApps() {
     loadApps();
 }
 
-void GlobalSettings::loadFileList() {
+void GlobalSettings::loadFileLists() {
     BOXEDWINE_CRITICAL_SECTION;
 
-    std::string filesConfigPath = GlobalSettings::dataFolderLocation + Fs::nativePathSeperator + "files.xml";
-    pugi::xml_document doc;
-    pugi::xml_parse_result result = doc.load_file(filesConfigPath.c_str());
-    if (!result) {
-        return;
-    }
-    pugi::xml_node node = doc.child("XML");
     GlobalSettings::availableWineVersions.clear();
-    for (pugi::xml_node wine : node.children("Wine")) {
-        std::string name = wine.child("Name").text().as_string();
-        std::string ver = wine.child("FileVersion").text().as_string();
-        std::string file = wine.child("FileURL").text().as_string();
-        std::string file2 = wine.child("FileURL2").text().as_string();
-        std::string depend = wine.child("Depend").text().as_string();
-        int fileSize = wine.child("FileSizeMB").text().as_int();
-
-        if (name.length() && ver.length() && file.length()) {
-            GlobalSettings::availableWineVersions.push_back(WineVersion(name, ver, file, file2, depend, fileSize));
-        } else {
-            break;
-        }
-    }
     GlobalSettings::availableWineDependencies.clear();
-    for (pugi::xml_node wine : node.children("Dependency")) {
-        std::string name = wine.child("Name").text().as_string();
-        std::string ver = wine.child("FileVersion").text().as_string();
-        std::string file = wine.child("FileURL").text().as_string();
-        std::string depend = wine.child("Depend").text().as_string();
-        int fileSize = wine.child("FileSizeMB").text().as_int();
-
-        if (name.length() && ver.length() && file.length()) {
-            GlobalSettings::availableWineDependencies.push_back(WineVersion(name, ver, file, "", depend, fileSize));
-        } else {
-            break;
-        }
-    }
     GlobalSettings::demos.clear();
-    for (pugi::xml_node demo : node.children("Demo")) {
-        std::string name = demo.child("Name").text().as_string();
-        std::string installType = demo.child("InstallType").text().as_string();
-        std::string icon = demo.child("IconURL").text().as_string();
-        int fileSize = demo.child("FileSizeMB").text().as_int();
-        std::string file = demo.child("FileURL").text().as_string();
-        std::string exe = demo.child("ShortcutExe").text().as_string();
-        std::string installExe = demo.child("InstallExe").text().as_string();
-        std::string help = demo.child("Help").text().as_string();
-        std::string options = demo.child("Options").text().as_string();
-        std::string installOptions = demo.child("InstallOptions").text().as_string();
-        if (name.length() && file.length()) {
-            GlobalSettings::demos.push_back(AppFile(name, installType, icon, file, fileSize, exe, options, help, "", installOptions, installExe));
-        } else {
-            break;
-        }
-    }
     GlobalSettings::components.clear();
-    for (pugi::xml_node component : node.children("Component")) {
-        std::string name = component.child("Name").text().as_string();
-        std::string optionsName = component.child("OptionsName").text().as_string();
-        std::string installType = component.child("InstallType").text().as_string();
-        std::string icon = component.child("IconURL").text().as_string();
-        int fileSize = component.child("FileSizeMB").text().as_int();
-        std::string file = component.child("FileURL").text().as_string();
-        std::string exe = component.child("ShortcutExe").text().as_string();
-        std::string help = component.child("Help").text().as_string();
-        std::string options = component.child("Options").text().as_string();
-        std::string installOptions = component.child("InstallOptions").text().as_string();
-        if (name.length() && file.length()) {
-            GlobalSettings::components.push_back(AppFile(name, installType, icon, file, fileSize, exe, options, help, optionsName, installOptions, ""));
-        } else {
-            break;
+
+    for (auto& url : GlobalSettings::fileUrls) {
+        std::string name = Fs::getFileNameFromPath(url);
+        std::string filesConfigPath = GlobalSettings::dataFolderLocation + Fs::nativePathSeperator + name;
+        pugi::xml_document doc;
+        pugi::xml_parse_result result = doc.load_file(filesConfigPath.c_str());
+        if (!result) {
+            return;
+        }
+        pugi::xml_node node = doc.child("XML");        
+        for (pugi::xml_node wine : node.children("Wine")) {
+            std::string name = wine.child("Name").text().as_string();
+            std::string ver = wine.child("FileVersion").text().as_string();
+            std::string file = wine.child("FileURL").text().as_string();
+            std::string file2 = wine.child("FileURL2").text().as_string();
+            std::string depend = wine.child("Depend").text().as_string();
+            int fileSize = wine.child("FileSizeMB").text().as_int();
+
+            if (name.length() && ver.length() && file.length()) {
+                GlobalSettings::availableWineVersions.push_back(WineVersion(name, ver, file, file2, depend, fileSize));
+            }
+            else {
+                break;
+            }
+        }        
+        for (pugi::xml_node wine : node.children("Dependency")) {
+            std::string name = wine.child("Name").text().as_string();
+            std::string ver = wine.child("FileVersion").text().as_string();
+            std::string file = wine.child("FileURL").text().as_string();
+            std::string depend = wine.child("Depend").text().as_string();
+            int fileSize = wine.child("FileSizeMB").text().as_int();
+
+            if (name.length() && ver.length() && file.length()) {
+                GlobalSettings::availableWineDependencies.push_back(WineVersion(name, ver, file, "", depend, fileSize));
+            } else {
+                break;
+            }
+        }        
+        for (pugi::xml_node demo : node.children("Demo")) {
+            std::string name = demo.child("Name").text().as_string();
+            std::string installType = demo.child("InstallType").text().as_string();
+            std::string icon = demo.child("IconURL").text().as_string();
+            int fileSize = demo.child("FileSizeMB").text().as_int();
+            std::string file = demo.child("FileURL").text().as_string();
+            std::string exe = demo.child("ShortcutExe").text().as_string();
+            std::string installExe = demo.child("InstallExe").text().as_string();
+            std::string help = demo.child("Help").text().as_string();
+            std::string options = demo.child("Options").text().as_string();
+            std::string installOptions = demo.child("InstallOptions").text().as_string();
+            std::vector<std::string> args;
+
+            stringReplaceAll(help, "\\n", "\n");
+            stringReplaceAll(help, "\\t", "    ");
+            for (int i = 1; i < 100; i++) {
+                std::string name = "Arg" + std::to_string(i);
+                if (!demo.child(name.c_str()).empty()) {
+                    args.push_back(demo.child(name.c_str()).text().as_string());
+                } else {
+                    break;
+                }
+            }
+            if (name.length() && file.length()) {
+                GlobalSettings::demos.push_back(AppFile(name, installType, icon, file, fileSize, exe, options, help, "", installOptions, installExe, args));
+            } else {
+                break;
+            }
+        }        
+        for (pugi::xml_node component : node.children("Component")) {
+            std::string name = component.child("Name").text().as_string();
+            std::string optionsName = component.child("OptionsName").text().as_string();
+            std::string installType = component.child("InstallType").text().as_string();
+            std::string icon = component.child("IconURL").text().as_string();
+            int fileSize = component.child("FileSizeMB").text().as_int();
+            std::string file = component.child("FileURL").text().as_string();
+            std::string exe = component.child("ShortcutExe").text().as_string();
+            std::string help = component.child("Help").text().as_string();
+            std::string options = component.child("Options").text().as_string();
+            std::string installOptions = component.child("InstallOptions").text().as_string();
+            std::vector<std::string> args;
+
+            if (name.length() && file.length()) {
+                GlobalSettings::components.push_back(AppFile(name, installType, icon, file, fileSize, exe, options, help, optionsName, installOptions, "", args));
+            } else {
+                break;
+            }
         }
     }
     runOnMainUI([]() { // might not have an OpenGL context while starting up
@@ -367,10 +393,11 @@ AppFile* GlobalSettings::getComponentByOptionName(const std::string& name) {
 }
 
 bool GlobalSettings::checkFileListForUpdate() {
-    std::string filesConfigPath = GlobalSettings::dataFolderLocation + Fs::nativePathSeperator + "files.xml";
+    std::string filesConfigPath = GlobalSettings::dataFolderLocation + Fs::nativePathSeperator;
+    std::string first = GlobalSettings::dataFolderLocation + Fs::nativePathSeperator + Fs::getFileNameFromPath(GlobalSettings::fileUrls[0]);
 
     PLATFORM_STAT_STRUCT buf;
-    if (PLATFORM_STAT(filesConfigPath.c_str(), &buf) == 0) {
+    if (PLATFORM_STAT(first.c_str(), &buf) == 0) {
         U64 t = (U64)buf.st_mtime; // time as seconds
         U64 currentTime = KSystem::getSystemTimeAsMicroSeconds() / 1000000l;
         if (t + 24 * 60 * 60 < currentTime) {
@@ -408,16 +435,31 @@ void doUpgrade() {
 
 void GlobalSettings::updateFileList(const std::string& fileLocation) {
     runInBackgroundThread([fileLocation]() {
-        unsigned int oldcrc = crc32File(fileLocation);
-        std::string errorMsg;
+        bool changed = false;
         GlobalSettings::filesListDownloading = true;
-        ::downloadFile(GlobalSettings::filesUrl, fileLocation, [](U64 bytesCompleted) {
-            }, NULL, errorMsg);
-        unsigned int newcrc = crc32File(fileLocation);
-        runOnMainUI([oldcrc, newcrc]() {
-            GlobalSettings::loadFileList();
+
+        for (auto& url : GlobalSettings::fileUrls) {
+            std::string name = Fs::getFileNameFromPath(url);
+            std::string path = fileLocation + name;
+            std::string tmpPath = fileLocation + "tmp.xml";
+            unsigned int oldcrc = crc32File(path);
+            std::string errorMsg;
+            GlobalSettings::filesListDownloading = true;
+            if (::downloadFile(url, tmpPath, [](U64 bytesCompleted) {
+                }, NULL, errorMsg)) {
+                ::rename(tmpPath.c_str(), path.c_str());
+                unsigned int newcrc = crc32File(path);
+                if (newcrc != oldcrc) {
+                    changed = true;
+                }
+            }
+            
+
+        }        
+        runOnMainUI([changed]() {
+            GlobalSettings::loadFileLists();
             GlobalSettings::filesListDownloading = false;
-            runInBackgroundThread([oldcrc, newcrc]() {
+            runInBackgroundThread([changed]() {
                 std::string errorMsg;
 
                 for (auto& demo : GlobalSettings::getDemos()) {
@@ -439,7 +481,7 @@ void GlobalSettings::updateFileList(const std::string& fileLocation) {
                         }
                     }
                 }
-                if (newcrc != oldcrc) {
+                if (changed) {
                     upgradeAvailable.clear();
                     std::string wineLabel;
                     for (auto& ver : GlobalSettings::wineVersions) {
@@ -454,13 +496,16 @@ void GlobalSettings::updateFileList(const std::string& fileLocation) {
                         }
                     }
                     if (upgradeAvailable.size()) {
-                        new YesNoDlg(WINE_UPGRADE_AVAILABLE_TITLE, getTranslationWithFormat(WINE_UPGRADE_AVAILABLE_LABEL, false, wineLabel), [](bool yes) {
-                            if (yes) {
-                                runInBackgroundThread([]() {
-                                    doUpgrade();
-                                    });
-                            }
-                            });
+                        runOnMainUI([wineLabel]() {
+                            new YesNoDlg(WINE_UPGRADE_AVAILABLE_TITLE, getTranslationWithFormat(WINE_UPGRADE_AVAILABLE_LABEL, false, wineLabel), [](bool yes) {
+                                if (yes) {
+                                    runInBackgroundThread([]() {
+                                        doUpgrade();
+                                        });
+                                }
+                                });
+                            return false;
+                        });
                     }
                 }
             });

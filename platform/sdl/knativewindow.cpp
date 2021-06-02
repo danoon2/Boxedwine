@@ -30,6 +30,7 @@
 #include "../../source/emulation/hardmmu/hard_memory.h"
 #include "../../source/util/threadutils.h"
 #include "../../source/sdl/startupArgs.h"
+#include "../../source/opengl/boxedwineGL.h"
 
 #if !defined(BOXEDWINE_DISABLE_UI) && !defined(__TEST)
 #include "../../source/ui/mainui.h"
@@ -88,7 +89,7 @@ U32 sdlCustomEvent;
 
 class KNativeWindowSdl : public KNativeWindow, public std::enable_shared_from_this<KNativeWindowSdl> {
 public:
-    KNativeWindowSdl() : scaleX(100), scaleXOffset(0), scaleY(100), scaleYOffset(0), sdlDesktopWidth(0), sdlDesktopHeight(0), fullScreen(FULLSCREEN_NOTSET), vsync(VSYNC_DEFAULT), window(NULL), renderer(NULL), shutdownWindow(NULL), shutdownRenderer(NULL), currentContext(NULL), contextCount(0), windowIsGL(false), windowIsHidden(false), timeToHideUI(0), timeWindowWasCreated(0)
+    KNativeWindowSdl() : scaleX(100), scaleXOffset(0), scaleY(100), scaleYOffset(0), sdlDesktopWidth(0), sdlDesktopHeight(0), fullScreen(FULLSCREEN_NOTSET), vsync(VSYNC_DEFAULT), window(NULL), renderer(NULL), shutdownWindow(NULL), shutdownRenderer(NULL), currentContext(NULL), contextCount(0), windowIsGL(false), glWindowVersionMajor(0), windowIsHidden(false), timeToHideUI(0), timeWindowWasCreated(0)
 #ifdef BOXEDWINE_RECORDER
         , screenCopyTexture(NULL)
 #endif
@@ -121,10 +122,11 @@ public:
     SDL_Renderer* renderer;
     SDL_Window* shutdownWindow;
     SDL_Renderer* shutdownRenderer;
-    SDL_GLContext currentContext;
+    void* currentContext;
     BOXEDWINE_MUTEX sdlMutex;
     int contextCount;
     bool windowIsGL;
+    U32 glWindowVersionMajor;
     bool windowIsHidden;
     U32 timeToHideUI;
     U32 timeWindowWasCreated;
@@ -165,7 +167,9 @@ public:
     virtual std::shared_ptr<Wnd> getWnd(U32 hwnd);
     virtual std::shared_ptr<Wnd> createWnd(KThread* thread, U32 processId, U32 hwnd, U32 windowRect, U32 clientRect);
     virtual void bltWnd(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32 yOrg, U32 width, U32 height, U32 rect);
+    virtual void bltWnd(KThread* thread, std::shared_ptr<Wnd> w, U8* bytes, U32 pitch, U32 bpp, U32 width, U32 height);
     virtual void drawAllWindows(KThread* thread, U32 hWnd, int count);
+    virtual void drawWindow(std::shared_ptr<Wnd> w);
     virtual void setTitle(const std::string& title);
 
     virtual U32 getGammaRamp(U32 ramp);
@@ -346,7 +350,7 @@ void KNativeWindowSdl::destroyScreen(KThread* thread) {
     if (!thread) {
         // :TODO: should probably store all context in this file instead of in the threads
         if (currentContext) {
-            SDL_GL_DeleteContext(currentContext);
+            BoxedwineGL::current->deleteContext(currentContext);
             contextCount=0;
         }
     } else {
@@ -381,6 +385,7 @@ void KNativeWindowSdl::destroyScreen(KThread* thread) {
         SDL_DestroyWindow(window);
         window = 0;
         windowIsGL = false;
+        glWindowVersionMajor = 0;
     }   
     contextCount = 0;
 }
@@ -390,7 +395,9 @@ void KNativeWindowSdl::preDrawWindow() {
     if (timeToHideUI && timeToHideUI < KSystem::getMilliesSinceStart()) {
         if (uiIsRunning()) {
             DISPATCH_MAIN_THREAD_BLOCK_BEGIN
-            uiShutdown();
+            if (uiIsRunning()) {
+                uiShutdown();
+            }
             DISPATCH_MAIN_THREAD_BLOCK_END
         }
         timeToHideUI = 0;
@@ -416,13 +423,19 @@ void KNativeWindowSdl::preDrawWindow() {
 }
 
 #if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
-void loadExtensions();
+void loadSdlExtensions();
+void initSdlOpenGL();
+#endif
+#if defined(BOXEDWINE_OPENGL_OSMESA)
+void loadMesaExtensions();
+void initMesaOpenGL();
+void shutdownMesaOpenGL();
 #endif
 
 void KNativeWindowSdl::glDeleteContext(KThread* thread, U32 contextId) {
     KThreadGlContext* threadContext = thread->getGlContextById(contextId);
     if (threadContext && threadContext->context) {
-        SDL_GL_DeleteContext(threadContext->context);
+        BoxedwineGL::current->deleteContext(threadContext->context);
         thread->removeGlContextById(contextId);
         contextCount--;
         if (contextCount==0) {
@@ -435,27 +448,45 @@ void KNativeWindowSdl::glDeleteContext(KThread* thread, U32 contextId) {
 
 void KNativeWindowSdl::glUpdateContextForThread(KThread* thread) {
     if (thread->currentContext && thread->currentContext!=currentContext) {
-        SDL_GL_MakeCurrent(window, thread->currentContext);
+        BoxedwineGL::current->makeCurrent(thread->currentContext, window);
         currentContext = thread->currentContext;        
     }
 }
 
+void printOpenGLInfo();
 U32 KNativeWindowSdl::glMakeCurrent(KThread* thread, U32 arg) {
     KThreadGlContext* threadContext = thread->getGlContextById(arg);
     if (threadContext && threadContext->context) {
-        if (SDL_GL_MakeCurrent(window, threadContext->context)==0) {
-            threadContext->hasBeenMakeCurrent = true;
+        if (BoxedwineGL::current->makeCurrent(threadContext->context, window)) {
+            threadContext->hasBeenMadeCurrent = true;
             thread->currentContext = threadContext->context;
             currentContext = threadContext->context;
+#if defined(BOXEDWINE_OPENGL_OSMESA)
+            if (KSystem::openglType == OPENGL_TYPE_OSMESA) {
+                loadMesaExtensions();
+            } else
+#endif
 #if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
-            loadExtensions();
+            {
+                loadSdlExtensions();
+            }
+#else
+            {}
+#endif
+#ifdef BOXEDWINE_OPENGL
+            static bool hasPrintedInfo = false;
+            if (!hasPrintedInfo) {
+                hasPrintedInfo = true;
+                printOpenGLInfo();
+            }
 #endif
             return 1;
         } else {
-            klog("sdlMakeCurrent failed: %s\n", SDL_GetError());
+            std::string lastError = BoxedwineGL::current->getLastError();
+            klog("sdlMakeCurrent failed: %s", lastError.c_str());
         }
     } else if (arg == 0) {
-        SDL_GL_MakeCurrent(window, 0);
+        BoxedwineGL::current->makeCurrent(NULL, window);
         thread->currentContext = 0;
         currentContext = NULL;
         return 1;
@@ -479,37 +510,13 @@ U32 KNativeWindowSdl::glShareLists(KThread* thread, U32 srcContext, U32 destCont
     KThreadGlContext* src = getGlContextByIdInUnknownThread(thread->process, srcContext);
     KThreadGlContext* dst = getGlContextByIdInUnknownThread(thread->process, destContext);
 
-    if (src && dst) {
-        if (dst->hasBeenMakeCurrent) {
-            klog("could not share display lists, the destination context has been current already");
-            return 0;
-        }
-        else if (dst->sharing)
-        {
-            klog("could not share display lists because dest has already shared lists before\n");
-            return 0;
-        }
-        SDL_GL_DeleteContext(dst->context);
-        SDL_GLContext currentContext = (SDL_GLContext)thread->currentContext;
-        bool changedContext = false;
-
-        if (thread->currentContext!=src->context) {
-            changedContext = true;
-            SDL_GL_MakeCurrent(window, (SDL_GLContext)src->context);
-        }
-        SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1); 
-        dst->context = SDL_GL_CreateContext(window);
-        SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 0); 
-
-        if (changedContext) {
-            SDL_GL_MakeCurrent(window, currentContext);
-        }
-        dst->sharing = true;
+    if (BoxedwineGL::current->shareList(src, dst, window)) {
         return 1;
     }
     return 0;
 }
 
+#ifdef BOXEDWINE_OPENGL_SDL
 U32 sdlCreateOpenglWindow_main_thread(KThread* thread, std::shared_ptr<WndSdl> wnd, int major, int minor, int profile, int flags) {
     DISPATCH_MAIN_THREAD_BLOCK_BEGIN_RETURN
     screen->destroyScreen(thread);
@@ -530,6 +537,15 @@ U32 sdlCreateOpenglWindow_main_thread(KThread* thread, std::shared_ptr<WndSdl> w
     SDL_GL_SetAttribute(SDL_GL_ACCUM_BLUE_SIZE, wnd->pixelFormat->cAccumBlueBits);
     SDL_GL_SetAttribute(SDL_GL_ACCUM_ALPHA_SIZE, wnd->pixelFormat->cAccumAlphaBits);
 
+    if (major) {
+        if (major >= 3) {
+            SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+        }
+#ifdef BOXEDWINE_MSVC
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, major);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, minor);
+#endif
+    }
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, (wnd->pixelFormat->dwFlags & K_PFD_DOUBLEBUFFER)?1:0);
     SDL_GL_SetAttribute(SDL_GL_ACCELERATED_VISUAL, (wnd->pixelFormat->dwFlags & K_PFD_GENERIC_FORMAT)?0:1);
 
@@ -570,9 +586,12 @@ U32 sdlCreateOpenglWindow_main_thread(KThread* thread, std::shared_ptr<WndSdl> w
         return 0;
     }
     screen->windowIsGL = true;
+    screen->glWindowVersionMajor = major;
     return thread->id;
     DISPATCH_MAIN_THREAD_BLOCK_END
 }
+#endif
+
 #include "../../tools/opengl/gldef.h"
 void KNativeWindowSdl::preOpenGLCall(U32 index) {
     // The Breakdown requires this extra time check, I'm not sure what call it uses to actually draw on the screen
@@ -582,37 +601,53 @@ void KNativeWindowSdl::preOpenGLCall(U32 index) {
 }
 
 void KNativeWindowSdl::contextCreated() {
-    if (this->vsync == VSYNC_ADAPTIVE) {
-        if (SDL_GL_SetSwapInterval(-1) == -1) {
-            SDL_GL_SetSwapInterval(1);
-        }
-    } else if (this->vsync == VSYNC_ENABLED) {
-        SDL_GL_SetSwapInterval(1);
-    } else {
-        SDL_GL_SetSwapInterval(0);
-    }
+    BoxedwineGL::current->setSwapInterval(this->vsync);
 }
 
 // window needs to be on the main thread
 // context needs to be on the current thread
 U32 KNativeWindowSdl::glCreateContext(KThread* thread, std::shared_ptr<Wnd> w, int major, int minor, int profile, int flags) {
+#if defined(BOXEDWINE_OPENGL_OSMESA)
+    if (KSystem::openglType == OPENGL_TYPE_OSMESA) {
+        initMesaOpenGL();
+    }
+    else
+#endif
+#if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
+    {
+        initSdlOpenGL();
+    }
+#else
+    {}
+#endif
     U32 result = 1;
     std::shared_ptr<WndSdl> wnd = std::dynamic_pointer_cast<WndSdl>(w);
-    if (!windowIsGL) {
+    if (windowIsGL && glWindowVersionMajor != major && KSystem::openglType != OPENGL_TYPE_OSMESA) {
+        DISPATCH_MAIN_THREAD_BLOCK_BEGIN_RETURN
+        screen->destroyScreen(thread);
+        DISPATCH_MAIN_THREAD_BLOCK_END
+    }
+#ifdef BOXEDWINE_OPENGL_SDL
+    if (!windowIsGL && KSystem::openglType != OPENGL_TYPE_OSMESA) {
         result = sdlCreateOpenglWindow_main_thread(thread, wnd, major, minor, profile, flags);
     }
+#endif
     if (result) {
-        SDL_GLContext context;
+        void* context;
+        int cx = wnd->windowRect.right - wnd->windowRect.left;
+        int cy = wnd->windowRect.bottom - wnd->windowRect.top;
+
         // Mac requires this on the main thread, but Windows make current will fail if its not on the same thread as create context
 #ifdef BOXEDWINE_MSVC
-        context = SDL_GL_CreateContext(window);
+        context = BoxedwineGL::current->createContext(window, wnd, wnd->pixelFormat, cx, cy, major, minor, profile);
 #else
-        DISPATCH_MAIN_THREAD_BLOCK_BEGIN_WITH_ARG(&context COMMA this)
-        context = SDL_GL_CreateContext(window);
+        DISPATCH_MAIN_THREAD_BLOCK_BEGIN_WITH_ARG(&context COMMA this COMMA wnd COMMA cx COMMA cy COMMA major COMMA minor COMMA profile)
+        context = BoxedwineGL::current->createContext(window, wnd, wnd->pixelFormat, cx, cy, major, minor, profile);
         DISPATCH_MAIN_THREAD_BLOCK_END
 #endif
         if (!context) {
-            kwarn("Couldn't create context: %s", SDL_GetError());
+            std::string lastError = BoxedwineGL::current->getLastError();
+            kwarn("Couldn't create context: %s", lastError.c_str());
             DISPATCH_MAIN_THREAD_BLOCK_BEGIN_RETURN
             displayChanged(thread);
             return 0;
@@ -754,7 +789,7 @@ void KNativeWindowSdl::displayChanged(KThread* thread) {
 
 void KNativeWindowSdl::glSwapBuffers(KThread* thread) {
     preOpenGLCall(XSwapBuffer);
-    SDL_GL_SwapWindow(window);
+    BoxedwineGL::current->swapBuffer(window);
 }
 
 #if defined(BOXEDWINE_RECORDER) || ! defined(BOXEDWINE_64BIT_MMU)
@@ -853,6 +888,60 @@ void KNativeWindowSdl::bltWnd(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32
     }
 }
 
+void KNativeWindowSdl::bltWnd(KThread* thread, std::shared_ptr<Wnd> w, U8* bytes, U32 pitch, U32 bpp, U32 width, U32 height) {
+    if (!firstWindowCreated) {
+        DISPATCH_MAIN_THREAD_BLOCK_BEGIN
+            displayChanged(thread);
+        DISPATCH_MAIN_THREAD_BLOCK_END
+    }
+
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(sdlMutex);
+    std::shared_ptr<WndSdl> wnd = std::dynamic_pointer_cast<WndSdl>(w);
+
+    preDrawWindow();
+    SDL_Texture* sdlTexture = NULL;
+
+    if (wnd->sdlTexture) {
+        sdlTexture = (SDL_Texture*)wnd->sdlTexture;
+        if (sdlTexture && (((U32)wnd->sdlTextureHeight) != height || ((U32)wnd->sdlTextureWidth) != width)) {
+            SDL_DestroyTexture(sdlTexture);
+            wnd->sdlTexture = NULL;
+            sdlTexture = NULL;
+        }
+    }
+    if (!sdlTexture) {
+        U32 format = SDL_PIXELFORMAT_ARGB8888;
+        if (bpp == 16) {
+            format = SDL_PIXELFORMAT_RGB565;
+        }
+        else if (bpp == 15) {
+            format = SDL_PIXELFORMAT_RGB555;
+        }
+        if (KSystem::videoEnabled && renderer) {
+            sdlTexture = SDL_CreateTexture(renderer, format, SDL_TEXTUREACCESS_STREAMING, width, height);
+            wnd->sdlTexture = sdlTexture;
+        }
+        wnd->sdlTextureHeight = height;
+        wnd->sdlTextureWidth = width;
+    }
+#ifdef BOXEDWINE_RECORDER
+    if (Recorder::instance || Player::instance) {
+        U32 toCopy = pitch * height;
+        if (wnd->bitsSize < toCopy) {
+            if (wnd->bits) {
+                delete[] wnd->bits;
+            }
+            wnd->bits = new U8[toCopy];
+            wnd->bitsSize = toCopy;
+        }
+        memcpy(wnd->bits, bytes, toCopy);
+    }
+#endif        
+    if (KSystem::videoEnabled && renderer) {
+        SDL_UpdateTexture(sdlTexture, NULL, bytes, pitch);
+    }
+}
+
 void KNativeWindowSdl::setTitle(const std::string& title) {
     if (window)
         SDL_SetWindowTitle(window, title.c_str());
@@ -862,6 +951,37 @@ void KNativeWindowSdl::setTitle(const std::string& title) {
 U8* recorderBuffer;
 U32 recorderBufferSize;
 #endif
+
+void KNativeWindowSdl::drawWindow(std::shared_ptr<Wnd> w) {
+    if (KSystem::videoEnabled && renderer) {        
+        std::shared_ptr<WndSdl> wnd = std::dynamic_pointer_cast<WndSdl>(w);
+        DISPATCH_MAIN_THREAD_BLOCK_BEGIN
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(sdlMutex);
+        SDL_SetRenderDrawColor(renderer, 58, 110, 165, 255);
+        SDL_RenderClear(renderer);
+        if (wnd && wnd->sdlTextureWidth && wnd->sdlTexture) {
+            SDL_Rect dstrect;
+            dstrect.x = wnd->windowRect.left * (int)scaleX / 100 + scaleXOffset;
+            dstrect.y = wnd->windowRect.top * (int)scaleY / 100 + scaleYOffset;
+            dstrect.w = wnd->sdlTextureWidth * (int)scaleX / 100;
+            dstrect.h = wnd->sdlTextureHeight * (int)scaleY / 100;
+            SDL_RenderCopy(renderer, wnd->sdlTexture, NULL, &dstrect);
+        }
+        if (scaleXOffset) {
+            SDL_Rect rect;
+            rect.x = 0;
+            rect.w = scaleXOffset;
+            rect.y = 0;
+            rect.h = sdlDesktopHeight;
+            SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+            SDL_RenderFillRect(renderer, &rect);
+            rect.x = sdlDesktopWidth - scaleXOffset;
+            SDL_RenderFillRect(renderer, &rect);
+        }
+        SDL_RenderPresent(renderer);
+        DISPATCH_MAIN_THREAD_BLOCK_END
+    }
+}
 
 void KNativeWindowSdl::drawAllWindows(KThread* thread, U32 hWnd, int count) {
     if (KSystem::skipFrameFPS) {
@@ -1141,8 +1261,9 @@ void KNativeWindowSdl::checkMousePos(int& x, int& y) {
 void KNativeWindowSdl::setMousePos(int x, int y) {
     x = xToScreen(x);
     y = yToScreen(y);
-
-    SDL_WarpMouseInWindow(window, x, y); 
+    DISPATCH_MAIN_THREAD_BLOCK_BEGIN
+    SDL_WarpMouseInWindow(window, x, y);
+    DISPATCH_MAIN_THREAD_BLOCK_END
 }
 
 int KNativeWindowSdl::mouseMove(int x, int y, bool relative) {
@@ -2410,4 +2531,7 @@ void KNativeWindow::shutdown() {
         
     }
     screen = NULL;
+#if defined(BOXEDWINE_OPENGL_OSMESA)
+    shutdownMesaOpenGL();
+#endif
 }

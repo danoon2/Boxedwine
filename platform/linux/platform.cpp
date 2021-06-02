@@ -49,8 +49,10 @@ void Platform::writeCodeToMemory(void* address, U32 len, std::function<void()> c
         pthread_jit_write_protect_np(true);
     }
 #endif
+#ifndef __EMSCRIPTEN__
     // GCC, this is required for ARM, but for x86 it will just do nothing
     __builtin___clear_cache((char*)address, (char*)address+len);
+#endif //__EMSCRIPTEN__
 }
 
 //#ifdef __EMSCRIPTEN__
@@ -93,6 +95,7 @@ void Platform::listNodes(const std::string& nativePath, std::vector<ListNodeResu
     	}
 }
 
+#ifndef __MACH__
 int getPixelFormats(PixelFormat* pfs, int maxPfs) {
     pfs[1].nSize = 40;
     pfs[1].nVersion = 1;
@@ -114,6 +117,7 @@ int getPixelFormats(PixelFormat* pfs, int maxPfs) {
     pfs[1].dwFlags|=K_PFD_GENERIC_FORMAT;
     return 2;
 }
+#endif
 
 int Platform::nativeSocketPair(S32 socks[2]) {
     return socketpair(AF_LOCAL, SOCK_STREAM, 0, socks);
@@ -138,6 +142,22 @@ U32 Platform::getCpuCount() {
 #else
     return 1;
 #endif
+}
+
+U32 Platform::nanoSleep(U64 nano) {
+    struct timespec req, rem;
+
+    if (nano > 999999999)
+    {
+        req.tv_sec = (int)(nano / 1000000000l);                  /* Must be Non-Negative */
+        req.tv_nsec = (nano - ((long)req.tv_sec * 1000000000l)); /* Must be in range of 0 to 999999999 */
+    } else {
+        req.tv_sec = 0;        /* Must be Non-Negative */
+        req.tv_nsec = nano;    /* Must be in range of 0 to 999999999 */
+    }
+
+    nanosleep(&req, &rem);
+    return 0;
 }
 
 #ifdef __MACH__

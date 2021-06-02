@@ -101,6 +101,12 @@
 class FsNode;
 class KThread;
 
+#ifdef BOXEDWINE_MULTI_THREADED
+#define NUMBER_OF_MILLIES_TO_SPIN_FOR_WAIT 20
+#else 
+#define NUMBER_OF_MILLIES_TO_SPIN_FOR_WAIT 2
+#endif
+
 class Platform {
 public:
     class ListNodeResult {
@@ -121,6 +127,7 @@ public:
     static const char* getResourceFilePath(const std::string& location);
     static void setCurrentThreadPriorityHigh();
     static void writeCodeToMemory(void* address, U32 len, std::function<void()> callback);
+    static U32 nanoSleep(U64 nano);
 
 #ifdef BOXEDWINE_MULTI_THREADED
     static void setCpuAffinityForThread(KThread* thread, U32 count);

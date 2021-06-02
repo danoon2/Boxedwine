@@ -15,6 +15,8 @@
         let DEFAULT_SOUND_ENABLED = true;
         let DEFAULT_APP_DIRECTORY = ROOT + "/files/";
         let DEFAULT_BPP = 32;
+        let DEFAULT_FRAME_SKIP = "0";
+        let DEFAULT_RENDERER = "gdi";
         let DEFAULT_ROOT_ZIP_FILE = "boxedwine.zip";
         //params
         let Config = {};
@@ -77,6 +79,8 @@
 			Config.cpu = getCPU();
 			Config.envProp = getEnvProp();
 			Config.emEnvProps = getEmscriptenEnvProps();
+			Config.frameSkip = getFrameSkip();
+			Config.directDrawRenderer = getDirectDrawRenderer();
         }
         function allowParameterOverride() {
             if(Config.urlParams.length >0) {
@@ -109,12 +113,12 @@
             				}
             			});
                 	}else{
-	                	console.log("EMSCRITPEN ENV props parameter must be in quoted string");
+	                	console.log("EMSCRIPTEN ENV props parameter must be in quoted string");
                 	}
                 }
             }
             if(allProps.length > 0) {
-                console.log("setting EMSCRITPEN ENV props:");
+                console.log("setting EMSCRIPTEN ENV props:");
             	allProps.forEach(function(prop){
             		console.log(prop.key + " = " + prop.value);
             	});
@@ -141,9 +145,7 @@
             if(!allowParameterOverride()){
                 cpu = "";
             }else if(cpu == "p2") {
-                cpu = "p2";
             }else if(cpu == "p3") {
-                cpu = "p3";
             }else{
                 cpu = "";
             }
@@ -152,8 +154,31 @@
             }
             return cpu;
         }
-        function getBitsPerPixel(){
+        function getDirectDrawRenderer(){
+            var renderer = getParameter("renderer");
+            if(!allowParameterOverride()){
+                renderer = DEFAULT_RENDERER;
+            }else if(renderer == "gdi" || renderer == "opengl") {
+            }else{
+                renderer = DEFAULT_RENDERER;
+            }
+            console.log("setting DirectDrawRenderer to: "+renderer);
+            return renderer;
+        }
+        function getFrameSkip(){
 
+            var frameskip =  getParameter("skipFrameFPS");
+            if(!allowParameterOverride()){
+                frameskip = DEFAULT_FRAME_SKIP;
+            }else if(frameskip == ""){
+                frameskip = DEFAULT_FRAME_SKIP;
+            }else if(Number(frameskip) < 0 || Number(frameskip) > 50){
+                frameskip = DEFAULT_FRAME_SKIP;
+            }
+            console.log("setting skipFrameFPS to: "+frameskip);
+            return frameskip;
+        }
+        function getBitsPerPixel(){
             var bpp =  getParameter("bpp");
             if(!allowParameterOverride()){
                 bpp = DEFAULT_BPP;
@@ -654,6 +679,7 @@
                 recursiveCopy(extraFSs[i], Config.extraZipFiles[i], '/');
             }
             extraFSs = null;
+        	setDirectDrawRenderer(Config.directDrawRenderer);
 
             if(Config.showUploadDownload){
                 document.getElementById('uploadbtn').style.display = "";
@@ -952,12 +978,38 @@
             }
             return false;
         }
-        function getEmulatorParams() {
+        function setDirectDrawRenderer(val) {
+        	let fileLocation = "root/base/home/username/.wine/user.reg";
+        	let data = FS.readFile(fileLocation, { encoding: 'utf8' });
+        	let keyIndex = data.indexOf('"DirectDrawRenderer');
+        	if (keyIndex != -1) {
+        		let endOfKeyLineIndex = data.indexOf('\n', keyIndex+1)
+        		if (endOfKeyLineIndex != -1) {
+        			//"DirectDrawRenderer\"=\"opengl\""
+        			//let keyLine = data.substring(keyIndex, endOfKeyLineIndex);
+        			//console.log(keyLine);
+        			let replacementLine = '"DirectDrawRenderer"="' + val + '"';
+        			let newData = data.substring(0, keyIndex) + replacementLine + data.substring(endOfKeyLineIndex, data.length);
+        			FS.writeFile(fileLocation, newData);
+        		} else {
+		        	console.log("Unable to set DirectDrawRenderer in user.reg");        	
+        		}
+        	} else {
+	        	console.log("Unable to find DirectDrawRenderer in user.reg");        	
+        	}
+        }
+        function getEmulatorParams() {        
             var params = ["-root", "/root/base"];
             params.push("-mount_drive");
             params.push(Config.appDirPrefix);
             params.push("d");
             params.push("-nozip");
+            
+            if (Config.frameSkip != "0") {
+            	params.push("-skipFrameFPS");
+            	params.push(Config.frameSkip);
+			}            
+            
             if(!Config.isSoundEnabled){
                 params.push("-nosound");
             }

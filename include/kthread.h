@@ -42,10 +42,10 @@ class Memory;
 
 class KThreadGlContext {
 public:
-    KThreadGlContext():context(NULL), hasBeenMakeCurrent(false), sharing(false) {}
-    KThreadGlContext(void* context):context(context), hasBeenMakeCurrent(false), sharing(false) {}
+    KThreadGlContext():context(NULL), hasBeenMadeCurrent(false), sharing(false) {}
+    KThreadGlContext(void* context):context(context), hasBeenMadeCurrent(false), sharing(false) {}
     void* context;
-    bool hasBeenMakeCurrent;
+    bool hasBeenMadeCurrent;
     bool sharing;
 };
 
@@ -78,6 +78,7 @@ public:
     U32 sigreturn();
     U32 sigsuspend(U32 mask, U32 sigsetSize);
     U32 sleep(U32 ms);
+    U32 nanoSleep(U64 nano);
 
     U32 id;
     U64 sigMask; // :TODO: what happens when this is changed while in a signal

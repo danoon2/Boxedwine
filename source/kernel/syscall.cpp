@@ -806,7 +806,7 @@ static U32 syscall_sched_get_priority_min(CPU* cpu, U32 eipCount) {
 
 static U32 syscall_nanosleep(CPU* cpu, U32 eipCount) {
     SYS_LOG1(SYSCALL_THREAD, cpu, "nanosleep: req=%X(%d.%.09d sec)", ARG1, readd(ARG1), readd(ARG1+4));
-    U32 result = cpu->thread->sleep(readd(ARG1)*1000+readd(ARG1+4)/1000000);
+    U32 result = cpu->thread->nanoSleep(((U64)readd(ARG1))*1000000000l+readd(ARG1+4));
     SYS_LOG(SYSCALL_THREAD, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }

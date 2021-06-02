@@ -1,6 +1,6 @@
 #include "boxedwine.h"
 
-#if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
+#ifdef BOXEDWINE_OPENGL
 #include GLH
 #include "glcommon.h"
 #include "glMarshal.h"
@@ -55,12 +55,12 @@ U32 updateVertexPointer(CPU* cpu, OpenGLVetexPointer* p, U32 count) {
 void updateVertexPointers(CPU* cpu, U32 count) {    
     if (cpu->thread->glVertextPointer.refreshEachCall) {        
         if (updateVertexPointer(cpu, &cpu->thread->glVertextPointer, count))
-            GL_FUNC(glVertexPointer)(cpu->thread->glVertextPointer.size, cpu->thread->glVertextPointer.type, cpu->thread->glVertextPointer.stride, cpu->thread->glVertextPointer.marshal);
+            GL_FUNC(pglVertexPointer)(cpu->thread->glVertextPointer.size, cpu->thread->glVertextPointer.type, cpu->thread->glVertextPointer.stride, cpu->thread->glVertextPointer.marshal);
     }
     
     if (cpu->thread->glNormalPointer.refreshEachCall) {
         if (updateVertexPointer(cpu, &cpu->thread->glNormalPointer, count))
-            GL_FUNC(glNormalPointer)(cpu->thread->glNormalPointer.type, cpu->thread->glNormalPointer.stride, cpu->thread->glNormalPointer.marshal);
+            GL_FUNC(pglNormalPointer)(cpu->thread->glNormalPointer.type, cpu->thread->glNormalPointer.stride, cpu->thread->glNormalPointer.marshal);
     }
 
 #ifndef DISABLE_GL_EXTENSIONS
@@ -101,22 +101,22 @@ void updateVertexPointers(CPU* cpu, U32 count) {
 #endif
     if (cpu->thread->glColorPointer.refreshEachCall) {
         if (updateVertexPointer(cpu, &cpu->thread->glColorPointer, count))
-            GL_FUNC(glColorPointer)(cpu->thread->glColorPointer.size, cpu->thread->glColorPointer.type, cpu->thread->glColorPointer.stride, cpu->thread->glColorPointer.marshal);
+            GL_FUNC(pglColorPointer)(cpu->thread->glColorPointer.size, cpu->thread->glColorPointer.type, cpu->thread->glColorPointer.stride, cpu->thread->glColorPointer.marshal);
     }    
     
     if (cpu->thread->glIndexPointer.refreshEachCall) {
         if (updateVertexPointer(cpu, &cpu->thread->glIndexPointer, count))
-            GL_FUNC(glIndexPointer)(cpu->thread->glIndexPointer.type, cpu->thread->glIndexPointer.stride, cpu->thread->glIndexPointer.marshal);
+            GL_FUNC(pglIndexPointer)(cpu->thread->glIndexPointer.type, cpu->thread->glIndexPointer.stride, cpu->thread->glIndexPointer.marshal);
     }
     
     if (cpu->thread->glTexCoordPointer.refreshEachCall) {
         if (updateVertexPointer(cpu, &cpu->thread->glTexCoordPointer, count))
-            GL_FUNC(glTexCoordPointer)(cpu->thread->glTexCoordPointer.size, cpu->thread->glTexCoordPointer.type, cpu->thread->glTexCoordPointer.stride, cpu->thread->glTexCoordPointer.marshal);
+            GL_FUNC(pglTexCoordPointer)(cpu->thread->glTexCoordPointer.size, cpu->thread->glTexCoordPointer.type, cpu->thread->glTexCoordPointer.stride, cpu->thread->glTexCoordPointer.marshal);
     }
     
     if (cpu->thread->glEdgeFlagPointer.refreshEachCall) {
         if (updateVertexPointer(cpu, &cpu->thread->glEdgeFlagPointer, count))
-            GL_FUNC(glEdgeFlagPointer)(cpu->thread->glEdgeFlagPointer.stride, cpu->thread->glEdgeFlagPointer.marshal);
+            GL_FUNC(pglEdgeFlagPointer)(cpu->thread->glEdgeFlagPointer.stride, cpu->thread->glEdgeFlagPointer.marshal);
     }
 }
 

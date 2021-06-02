@@ -257,9 +257,12 @@ public:
 #ifdef BOXEDWINE_64BIT_MMU
 	Memory* previousMemory;
     U32 nextNativeAddress;
-    U32 glStrings[NUMBER_OF_STRINGS];
+    U32 glStrings[NUMBER_OF_STRINGS];    
     U32 allocNative(U32 len);    
 #endif
+    U32 glStringsiExtensions;
+    std::vector<U32> glStringsiExtensionsOffset;
+    U32 numberOfExtensions;
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
     bool emulateFPU;
     void* reTranslateChunkAddress; // will be called when the program tries to jump to memory that hasn't been translated yet or needs to be retranslated

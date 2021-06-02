@@ -97,6 +97,7 @@ public:
     static const int getDefaultScale() { return GlobalSettings::defaultScale; }
     static const int getDefaultVsync() { return GlobalSettings::defaultVsync; }
     static const std::string& getDefaultResolution() { return GlobalSettings::defaultResolution; }
+    static U32 getDefaultOpenGL() { return GlobalSettings::defaultOpenGL; }
     static int getScreenCx() { return GlobalSettings::screenCx; }
     static int getScreenCy() { return GlobalSettings::screenCy; }
     static void setFontScale(float scale);
@@ -126,7 +127,7 @@ public:
 private:    
     static void initWineVersions();
     static void lookForFileSystems(const std::string& path);    
-    static void loadFileList();
+    static void loadFileLists();
     static void updateFileList(const std::string& fileLocation);
     static bool checkFileListForUpdate();
 
@@ -157,11 +158,12 @@ private:
     static int screenCy;
     static float fontScale;
     static bool iconFontsLoaded;
-    static std::string filesUrl;
+    static std::vector<std::string> fileUrls;
     static int lastScreenCx;
     static int lastScreenCy;
     static int lastScreenX;
     static int lastScreenY;
+    static U32 defaultOpenGL;
 };
 
 #endif

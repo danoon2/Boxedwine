@@ -185,6 +185,9 @@ std::vector<std::string> StartUpArgs::buildArgs() {
     if (dpiAware) {
         args.push_back("-dpiAware");
     }
+    if (openGlType == OPENGL_TYPE_OSMESA) {
+        args.push_back("-mesa");
+    }
     if (showWindowImmediately) {
         args.push_back("-showWindowImmediately");
     }
@@ -232,6 +235,7 @@ bool StartUpArgs::apply() {
     if (KSystem::pollRate < 0) {
         KSystem::pollRate = 0;
     }
+    KSystem::openglType = this->openGlType;
     KSystem::showWindowImmediately = this->showWindowImmediately;
     KSystem::skipFrameFPS = this->skipFrameFPS;
     if (!KSystem::logFile && this->logPath.length()) {
@@ -438,7 +442,7 @@ bool StartUpArgs::apply() {
     initWine();
     initWineAudio();
     KNativeAudio::init();
-#if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
+#ifdef BOXEDWINE_OPENGL
     gl_init(this->glExt);        
 #endif   
 
@@ -635,10 +639,11 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
             dpiAware = true;
         } else if (!strcmp(argv[i], "-showWindowImmediately")) {
             showWindowImmediately = true;
-        }
-        else if (!strcmp(argv[i], "-pollRate")) {
+        } else if (!strcmp(argv[i], "-pollRate")) {
             this->pollRate = atoi(argv[i + 1]);
             i++;
+        } else if (!strcmp(argv[i], "-mesa")) {
+            this->openGlType = OPENGL_TYPE_OSMESA;
         } else if (!strcmp(argv[i], "-cpuAffinity")) {
 #ifdef BOXEDWINE_MULTI_THREADED
             this->cpuAffinity = atoi(argv[i+1]);

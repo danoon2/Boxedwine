@@ -3048,6 +3048,7 @@
     <ClCompile Include="..\..\..\..\..\source\kernel\sys\cpuonline.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\sys\cpuscalingcurfreq.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\sys\cpuscalingmaxfreq.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\opengl\boxedwineGL.cpp" />
     <ClCompile Include="..\..\..\..\..\source\opengl\glcommon.cpp" />
     <ClCompile Include="..\..\..\..\..\source\opengl\glext.cpp" />
     <ClCompile Include="..\..\..\..\..\source\opengl\glfunctions_ext1.cpp" />
@@ -3056,6 +3057,7 @@
     <ClCompile Include="..\..\..\..\..\source\opengl\glMarshal.cpp" />
     <ClCompile Include="..\..\..\..\..\source\opengl\glMarshalSize.cpp" />
     <ClCompile Include="..\..\..\..\..\source\opengl\glMarshalVertex.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\opengl\osmesa\osmesa.cpp" />
     <ClCompile Include="..\..\..\..\..\source\opengl\sdl\sdlgl.cpp" />
     <ClCompile Include="..\..\..\..\..\source\sdl\main.cpp" />
     <ClCompile Include="..\..\..\..\..\source\sdl\multiThreaded\threadedMainloop.cpp" />
@@ -4263,6 +4265,7 @@
     <ClInclude Include="..\..\..\..\..\source\io\fszipopennode.h" />
     <ClInclude Include="..\..\..\..\..\source\kernel\devs\oss.h" />
     <ClInclude Include="..\..\..\..\..\source\kernel\loader\kelf.h" />
+    <ClInclude Include="..\..\..\..\..\source\opengl\boxedwineGL.h" />
     <ClInclude Include="..\..\..\..\..\source\opengl\glcommon.h" />
     <ClInclude Include="..\..\..\..\..\source\opengl\glfunctions.h" />
     <ClInclude Include="..\..\..\..\..\source\opengl\glfunctions_ext.h" />

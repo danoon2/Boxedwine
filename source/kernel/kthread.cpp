@@ -860,7 +860,18 @@ U32 KThread::modify_ldt(U32 func, U32 ptr, U32 count) {
     }
 }
 
+U32 KThread::nanoSleep(U64 nano) {
+    U32 millies = nano / 1000000;
+    if (millies > NUMBER_OF_MILLIES_TO_SPIN_FOR_WAIT) {
+        return sleep(millies);
+    }
+    return Platform::nanoSleep(nano);
+}
+
 U32 KThread::sleep(U32 ms) {
+    if (ms <= NUMBER_OF_MILLIES_TO_SPIN_FOR_WAIT) {
+        return Platform::nanoSleep(((U64)ms) * 1000000l);
+    }
     while (true) {
         if (!this->condStartWaitTime) {
             this->condStartWaitTime = KSystem::getMilliesSinceStart();
