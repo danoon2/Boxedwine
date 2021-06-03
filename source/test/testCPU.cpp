@@ -6478,53 +6478,6 @@ void testFSQRT() {
     doFSQRT();
 }
 
-void FSCALE_asm_inst(FPU_Float* st0, FPU_Float* st1, FPU_Float* result) {
-#if defined (BOXEDWINE_MSVC1) && !defined (BOXEDWINE_64)
-    FPU_Float* data
-        struct Data* data = cmpxchgd;
-        U32 flagMask = CF | OF | ZF | PF | SF | AF;
-
-        while (data->valid) {
-            U32 result;
-            U32 result2 = data->constant;
-            U32 flags = data->flags;
-            __asm {
-                mov ebx, data;
-                mov ecx, [ebx].var1;
-                mov edx, [ebx].var2;
-                mov eax, result2;
-                mov ebx, flags;
-
-                push ebx
-                    popf
-
-                    cmpxchg cl, dl
-                    mov result, ecx
-                    mov result2, eax
-
-                    pushf
-                    pop ebx
-                    mov flags, ebx
-            }
-            assertTrue(result2 == data->resultvar2);
-            if (!data->dontUseResultAndCheckSFZF)
-                assertTrue(result == data->result);
-            if (data->dontUseResultAndCheckSFZF || data->hasSF)
-                assertTrue((flags & SF) != 0 == data->fSF != 0);
-            if (data->dontUseResultAndCheckSFZF || data->hasZF)
-                assertTrue((flags & ZF) != 0 == data->fZF != 0);
-            if (data->hasCF)
-                assertTrue((flags & CF) != 0 == data->fCF != 0);
-            if (data->hasOF)
-                assertTrue((flags & OF) != 0 == data->fOF != 0);
-            if (data->hasAF)
-                assertTrue((flags & AF) != 0 == data->fAF != 0);
-            data++;
-        }
-    }
-#endif
-}
-
 void doFSCALE_inst(FPU_Float* st0, FPU_Float* st1, FPU_Float* st0Result) {
 #if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
     {
