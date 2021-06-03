@@ -707,11 +707,14 @@ void FPU::FSCALE() {
     if (this->regs[this->top].l == DOUBLE_NEGATIVE_INFINITY_BITS || this->regs[this->top].l == DOUBLE_POSITIVE_INFINITY_BITS) {
         if (this->regs[STV(1)].l == DOUBLE_POSITIVE_INFINITY_BITS) {
             return; // keep top at DOUBLE_NEGATIVE_INFINITY_BITS/DOUBLE_POSITIVE_INFINITY_BITS
+        } else if (this->regs[STV(1)].l == DOUBLE_NEGATIVE_INFINITY_BITS) {
+            this->regs[this->top].l = DOUBLE_QUIET_NAN_BITS;
+            return;
         }
     }
     if (this->regs[STV(1)].l == DOUBLE_POSITIVE_INFINITY_BITS && isfinite(this->regs[this->top].d)) {
         if (this->regs[this->top].d == +0.0 || this->regs[this->top].d == -0.0) {
-            this->regs[this->top].l = DOUBLE_QUIET_NAN_BITS;            
+            this->regs[this->top].l = DOUBLE_QUIET_NAN_BITS;
         } else if (this->regs[this->top].d < 0.0) {
             this->regs[this->top].l = DOUBLE_NEGATIVE_INFINITY_BITS;
         } else {
@@ -719,6 +722,18 @@ void FPU::FSCALE() {
         }
         this->isIntegerLoaded[this->top] = 0;
         return;
+    }
+    if (this->regs[STV(1)].l == DOUBLE_NEGATIVE_INFINITY_BITS) {
+        if (isfinite(this->regs[this->top].d)) {
+            if (this->regs[this->top].d < 0.0) {
+                this->regs[this->top].d = -0.0;
+            }
+            else {
+                this->regs[this->top].d = +0.0;
+            }
+        } else {
+            this->regs[this->top].l = DOUBLE_QUIET_NAN_BITS;
+        }
     }
     if (isnan(this->regs[STV(1)].d)) {
         this->regs[this->top].l = DOUBLE_QUIET_NAN_BITS;
