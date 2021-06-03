@@ -687,9 +687,44 @@ void FPU::FSINCOS() {
     //flags and such :)
 }
 
+               
+// ST(0) 		ST(1)
+//        -inf -F   -0   +0   +F   +inf  NaN
+// -inf   NaN  -inf -inf -inf -inf -inf  NaN
+// -F     -0   -F   -F   -F   -F   -inf  NaN
+// -0     -0   -0   -0   -0   -0   NaN   NaN
+// +0     +0   +0   +0   +0   +0   NaN   NaN
+// +F     +0   +F   +F   +F   +F   +inf  NaN
+// +inf   NaN +inf  +inf +inf +inf +inf  NaN
+// NaN    NaN NaN   NaN  NaN  NaN  NaN   NaN
+static const U64 DOUBLE_POSITIVE_INFINITY_BITS = 0x7ff0000000000000;
+static const U64 DOUBLE_NEGATIVE_INFINITY_BITS = 0xfff0000000000000;
+static const U64 DOUBLE_QUIET_NAN_BITS = 0x7FF8000000000000;
+
 void FPU::FSCALE() {
     double value = this->regs[STV(1)].d;
     S64 chopped = (S64)value;
+    if (this->regs[this->top].l == DOUBLE_NEGATIVE_INFINITY_BITS || this->regs[this->top].l == DOUBLE_POSITIVE_INFINITY_BITS) {
+        if (this->regs[STV(1)].l == DOUBLE_POSITIVE_INFINITY_BITS) {
+            return; // keep top at DOUBLE_NEGATIVE_INFINITY_BITS/DOUBLE_POSITIVE_INFINITY_BITS
+        }
+    }
+    if (this->regs[STV(1)].l == DOUBLE_POSITIVE_INFINITY_BITS && isfinite(this->regs[this->top].d)) {
+        if (this->regs[this->top].d == +0.0 || this->regs[this->top].d == -0.0) {
+            this->regs[this->top].l = DOUBLE_QUIET_NAN_BITS;            
+        } else if (this->regs[this->top].d < 0.0) {
+            this->regs[this->top].l = DOUBLE_NEGATIVE_INFINITY_BITS;
+        } else {
+            this->regs[this->top].l = DOUBLE_POSITIVE_INFINITY_BITS;
+        }
+        this->isIntegerLoaded[this->top] = 0;
+        return;
+    }
+    if (isnan(this->regs[STV(1)].d)) {
+        this->regs[this->top].l = DOUBLE_QUIET_NAN_BITS;
+        this->isIntegerLoaded[this->top] = 0;
+        return;
+    }
     this->regs[this->top].d *= pow(2.0, (double)chopped);
     this->isIntegerLoaded[this->top] = 0;
     //2^x where x is chopped.
