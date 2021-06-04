@@ -1,9 +1,14 @@
-Next Release
+21.0.1
 
 * Added command line option: -fullscreenAspect  This will enable full screen with letter boxing in order to preserve the aspect ratio.
 * Added command line option: -vsync X where X is 0, 1 or 2.  0 is disabled, 1 is enabled and 2 is adaptive.  The default is 0 (disabled).
 * Added command line option: -showWindowImmediately  This fixes simple OpenGL GLUT examples.
 * OpenGL: Implemented glInterleavedArray, fixed glFeedbackBuffer and fixed glReadPixels when using packed formats.
+* Recompiled Wine: will now use SSE for floating point math.  
+* Rewrote the audio driver, now winealsa.drv.so will talk to Boxedwine directly.
+* Added an implementation for ddraw.dll ddraw7_WaitForVerticalBlank.
+* Lots of work on the Mac build.
+* Windows build will use DirectX 9 for UI instead of OpenGL
 
 20.1.2
 

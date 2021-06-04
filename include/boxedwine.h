@@ -2,7 +2,7 @@
 #define __BOXEDWINE_H__
 
 #define BOXEDWINE_VERSION_STR "211"
-#define BOXEDWINE_VERSION_DISPLAY "21.0.0"
+#define BOXEDWINE_VERSION_DISPLAY "21.1.0"
 
 #include <string>
 #include <vector>
@@ -15,6 +15,10 @@
 #include <filesystem>
 
 #include <errno.h>
+
+#if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES) || defined(BOXEDWINE_OPENGL_OSMESA)
+#define BOXEDWINE_OPENGL
+#endif
 
 #ifdef BOXEDWINE_MAC_JIT
 #include "TargetConditionals.h"

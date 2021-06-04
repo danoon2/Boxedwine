@@ -95,6 +95,7 @@ void Platform::listNodes(const std::string& nativePath, std::vector<ListNodeResu
     	}
 }
 
+#ifndef __MACH__
 int getPixelFormats(PixelFormat* pfs, int maxPfs) {
     pfs[1].nSize = 40;
     pfs[1].nVersion = 1;
@@ -116,6 +117,7 @@ int getPixelFormats(PixelFormat* pfs, int maxPfs) {
     pfs[1].dwFlags|=K_PFD_GENERIC_FORMAT;
     return 2;
 }
+#endif
 
 int Platform::nativeSocketPair(S32 socks[2]) {
     return socketpair(AF_LOCAL, SOCK_STREAM, 0, socks);

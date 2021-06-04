@@ -1,7 +1,7 @@
 #include "boxedwine.h"
 #include "../boxedwineui.h"
 
-AppFile::AppFile(const std::string& name, const std::string& installType, const std::string& iconPath, const std::string& filePath, U32 size, const std::string& exe, const std::string& exeOptions, const std::string& help, const std::string& optionsName, const std::string& installOptions, const std::string& installExe) : name(name), optionsName(optionsName), installType(installType), filePath(filePath), iconPath(iconPath), size(size), exe(exe), installExe(installExe), help(help), iconTexture(NULL) {
+AppFile::AppFile(const std::string& name, const std::string& installType, const std::string& iconPath, const std::string& filePath, U32 size, const std::string& exe, const std::string& exeOptions, const std::string& help, const std::string& optionsName, const std::string& installOptions, const std::string& installExe, const std::vector<std::string>& args) : name(name), optionsName(optionsName), installType(installType), filePath(filePath), iconPath(iconPath), size(size), exe(exe), args(args), installExe(installExe), help(help), iconTexture(NULL) {
     if (iconPath.length()) {
         size_t pos = iconPath.rfind("/");
         if (pos != std::string::npos) {
@@ -51,6 +51,10 @@ void AppFile::runOptions(BoxedContainer* container, BoxedApp* app, const std::ve
         } else if (option=="GDI") {
             container->setGDI(true);
             hasContainerOption = true;
+        } else if (stringStartsWith(option, "glext=")) {
+            if (app) {
+                app->glExt = option.substr(6);
+            }
         } else if (option=="16bpp") {
             if (app) {
                 app->bpp = 16;
@@ -149,6 +153,7 @@ void AppFile::install(bool chooseShortCut, BoxedContainer* container, std::list<
     std::string cmd = this->exe;
     std::string appName = this->name;
     std::vector<std::string> exeOptions = this->exeOptions;
+    std::vector<std::string> args = this->args;
     std::string appPath = localFilePath;
     std::string mountPath;
 
@@ -220,8 +225,8 @@ void AppFile::install(bool chooseShortCut, BoxedContainer* container, std::list<
     }
 
     if (cmd.length() || exeOptions.size() || chooseShortCut) {
-        std::function<bool() > runPostInstall = [appName, cmd, containerDir, chooseShortCut, exeOptions]() {
-            runOnMainUI([appName, cmd, containerDir, chooseShortCut, exeOptions]() {
+        std::function<bool() > runPostInstall = [args, appName, cmd, containerDir, chooseShortCut, exeOptions]() {
+            runOnMainUI([args, appName, cmd, containerDir, chooseShortCut, exeOptions]() {
                 BoxedContainer* container = BoxedwineData::getContainerByDir(containerDir);
                 if (container) {
                     std::vector<BoxedApp> items;
@@ -231,6 +236,7 @@ void AppFile::install(bool chooseShortCut, BoxedContainer* container, std::list<
                     for (auto& app : items) {
                         if (app.getCmd() == cmd) {
                             app.setName(appName);
+                            app.setArgs(args);
                             runOptions(container, &app, exeOptions, r, d);
                             app.saveApp();
                             app.getContainer()->reload();

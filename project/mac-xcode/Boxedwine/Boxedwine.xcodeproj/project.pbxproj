@@ -56,6 +56,14 @@
 		1AFC47A826489FB200EE5FCC /* coremidi.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4795264827A600EE5FCC /* coremidi.cpp */; };
 		1AFC47A926489FB300EE5FCC /* coremidi.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4795264827A600EE5FCC /* coremidi.cpp */; };
 		1AFC47AA2648A7A500EE5FCC /* CoreMIDI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1AFC47A526489F7700EE5FCC /* CoreMIDI.framework */; };
+		1AFC480A2663FFC000EE5FCC /* pixelformat.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC48092663FFC000EE5FCC /* pixelformat.cpp */; };
+		1AFC480B2663FFC000EE5FCC /* pixelformat.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC48092663FFC000EE5FCC /* pixelformat.cpp */; };
+		1AFC480C2663FFC000EE5FCC /* pixelformat.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC48092663FFC000EE5FCC /* pixelformat.cpp */; };
+		1AFC480D2663FFC000EE5FCC /* pixelformat.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC48092663FFC000EE5FCC /* pixelformat.cpp */; };
+		1AFC4810266570FD00EE5FCC /* boxedwineGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC480F266570FD00EE5FCC /* boxedwineGL.cpp */; };
+		1AFC48112665728500EE5FCC /* boxedwineGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC480F266570FD00EE5FCC /* boxedwineGL.cpp */; };
+		1AFC48122665728600EE5FCC /* boxedwineGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC480F266570FD00EE5FCC /* boxedwineGL.cpp */; };
+		1AFC48132665728700EE5FCC /* boxedwineGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC480F266570FD00EE5FCC /* boxedwineGL.cpp */; };
 		7100913C2644D42C003413C3 /* knativesynchronization.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091342644D42B003413C3 /* knativesynchronization.cpp */; };
 		7100913D2644D42C003413C3 /* knativesynchronization.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091342644D42B003413C3 /* knativesynchronization.cpp */; };
 		7100913E2644D42C003413C3 /* knativesynchronization.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091342644D42B003413C3 /* knativesynchronization.cpp */; };
@@ -1520,6 +1528,9 @@
 		1AFC4796264827A600EE5FCC /* coremidi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = coremidi.h; path = ../../../platform/mac/coremidi.h; sourceTree = "<group>"; };
 		1AFC479C2648471000EE5FCC /* audiounit.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = audiounit.cpp; path = ../../../platform/mac/audiounit.cpp; sourceTree = "<group>"; };
 		1AFC47A526489F7700EE5FCC /* CoreMIDI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMIDI.framework; path = System/Library/Frameworks/CoreMIDI.framework; sourceTree = SDKROOT; };
+		1AFC48092663FFC000EE5FCC /* pixelformat.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = pixelformat.cpp; path = ../../../platform/mac/pixelformat.cpp; sourceTree = "<group>"; };
+		1AFC480E266570FD00EE5FCC /* boxedwineGL.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = boxedwineGL.h; sourceTree = "<group>"; };
+		1AFC480F266570FD00EE5FCC /* boxedwineGL.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = boxedwineGL.cpp; sourceTree = "<group>"; };
 		710091342644D42B003413C3 /* knativesynchronization.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = knativesynchronization.cpp; path = ../../../platform/sdl/knativesynchronization.cpp; sourceTree = "<group>"; };
 		710091352644D42B003413C3 /* knativewindow.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = knativewindow.cpp; path = ../../../platform/sdl/knativewindow.cpp; sourceTree = "<group>"; };
 		710091362644D42B003413C3 /* kdspaudio.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = kdspaudio.cpp; path = ../../../platform/sdl/kdspaudio.cpp; sourceTree = "<group>"; };
@@ -2497,6 +2508,7 @@
 		1AFC4792264826E100EE5FCC /* mac */ = {
 			isa = PBXGroup;
 			children = (
+				1AFC48092663FFC000EE5FCC /* pixelformat.cpp */,
 				1AFC479C2648471000EE5FCC /* audiounit.cpp */,
 				1AFC4795264827A600EE5FCC /* coremidi.cpp */,
 				1AFC4796264827A600EE5FCC /* coremidi.h */,
@@ -3736,6 +3748,8 @@
 		71FBFE402433BBBE003F17F1 /* opengl */ = {
 			isa = PBXGroup;
 			children = (
+				1AFC480F266570FD00EE5FCC /* boxedwineGL.cpp */,
+				1AFC480E266570FD00EE5FCC /* boxedwineGL.h */,
 				71FBFE412433BBBE003F17F1 /* mesa */,
 				71FBFE432433BBBE003F17F1 /* glfunctions_ext1.cpp */,
 				71FBFE442433BBBE003F17F1 /* glfunctions_ext3.cpp */,
@@ -3963,6 +3977,7 @@
 				71222B6F2435169100CDBABD /* cpu.cpp in Sources */,
 				71222BC42435169100CDBABD /* glMarshalSize.cpp in Sources */,
 				71222B422435163F00CDBABD /* player.cpp in Sources */,
+				1AFC48122665728600EE5FCC /* boxedwineGL.cpp in Sources */,
 				71222B792435169100CDBABD /* soft_no_page.cpp in Sources */,
 				71222B412435163F00CDBABD /* log.cpp in Sources */,
 				71222B712435169100CDBABD /* decoder.cpp in Sources */,
@@ -4052,6 +4067,7 @@
 				710091442644D42C003413C3 /* kdspaudio.cpp in Sources */,
 				71222BC32435169100CDBABD /* glMarshal.cpp in Sources */,
 				1A1551BA26326273006E0C8A /* pugixml.cpp in Sources */,
+				1AFC480C2663FFC000EE5FCC /* pixelformat.cpp in Sources */,
 				71222B752435169100CDBABD /* normal_strings.cpp in Sources */,
 				71222B782435169100CDBABD /* soft_ondemand_page.cpp in Sources */,
 				1AFC479F2648471000EE5FCC /* audiounit.cpp in Sources */,
@@ -4160,6 +4176,7 @@
 				710091432644D42C003413C3 /* kdspaudio.cpp in Sources */,
 				715F34BE2440E7480038F5A4 /* OptionCallback.cpp in Sources */,
 				715F836E2440ED1F0038F5A4 /* FormattingChannel.cpp in Sources */,
+				1AFC48112665728500EE5FCC /* boxedwineGL.cpp in Sources */,
 				715F7C002440E9E00038F5A4 /* RSAKeyImpl.cpp in Sources */,
 				715F63E72440E9110038F5A4 /* ServerSocketImpl.cpp in Sources */,
 				715F83382440ED1F0038F5A4 /* File.cpp in Sources */,
@@ -4353,6 +4370,7 @@
 				71222C1D24351CBA00CDBABD /* glMarshalSize.cpp in Sources */,
 				715F34872440D7D20038F5A4 /* optionsView.cpp in Sources */,
 				71222C1E24351CBA00CDBABD /* knativesocket.cpp in Sources */,
+				1AFC480B2663FFC000EE5FCC /* pixelformat.cpp in Sources */,
 				71222C1F24351CBA00CDBABD /* soft_code_page.cpp in Sources */,
 				711F834A24527273008E6A0C /* boxedTexture.cpp in Sources */,
 				715F64152440E9110038F5A4 /* HTTPDigestCredentials.cpp in Sources */,
@@ -4691,6 +4709,7 @@
 				7135DC36264EBCD0005D6AA6 /* kscheduler.cpp in Sources */,
 				7135DC37264EBCD0005D6AA6 /* synchronization.cpp in Sources */,
 				7135DC38264EBCD0005D6AA6 /* fsfilenode.cpp in Sources */,
+				1AFC48132665728700EE5FCC /* boxedwineGL.cpp in Sources */,
 				7135DC39264EBCD0005D6AA6 /* x64Ops.cpp in Sources */,
 				7135DC3A264EBCD0005D6AA6 /* cpuscalingcurfreq.cpp in Sources */,
 				7135DC3B264EBCD0005D6AA6 /* kthread.cpp in Sources */,
@@ -4722,6 +4741,7 @@
 				7135DC55264EBCD0005D6AA6 /* dynamic.cpp in Sources */,
 				7135DC56264EBCD0005D6AA6 /* lazyFlags.cpp in Sources */,
 				7135DC57264EBCD0005D6AA6 /* kunixsocket.cpp in Sources */,
+				1AFC480D2663FFC000EE5FCC /* pixelformat.cpp in Sources */,
 				7135DC58264EBCD0005D6AA6 /* devzero.cpp in Sources */,
 				7135DC59264EBCD0005D6AA6 /* recorder.cpp in Sources */,
 				7135DC5A264EBCD0005D6AA6 /* fsdiropennode.cpp in Sources */,
@@ -5104,6 +5124,7 @@
 				715F641C2440E9110038F5A4 /* HTTPBasicCredentials.cpp in Sources */,
 				71FBFEC42433BBBE003F17F1 /* devtty.cpp in Sources */,
 				1AFC4794264826FD00EE5FCC /* knativecoreaudio.cpp in Sources */,
+				1AFC4810266570FD00EE5FCC /* boxedwineGL.cpp in Sources */,
 				715F645C2440E9740038F5A4 /* SSLManager.cpp in Sources */,
 				715F83E92440ED200038F5A4 /* DirectoryWatcher.cpp in Sources */,
 				715F83CB2440ED200038F5A4 /* StreamChannel.cpp in Sources */,
@@ -5324,6 +5345,7 @@
 				715F82772440ED1E0038F5A4 /* NamedEvent.cpp in Sources */,
 				715F64622440E9740038F5A4 /* ConsoleCertificateHandler.cpp in Sources */,
 				715F83D32440ED200038F5A4 /* RegularExpression.cpp in Sources */,
+				1AFC480A2663FFC000EE5FCC /* pixelformat.cpp in Sources */,
 				715F82C92440ED1E0038F5A4 /* FileChannel.cpp in Sources */,
 				715F82692440ED1E0038F5A4 /* ThreadTarget.cpp in Sources */,
 				715F838B2440ED1F0038F5A4 /* MD4Engine.cpp in Sources */,

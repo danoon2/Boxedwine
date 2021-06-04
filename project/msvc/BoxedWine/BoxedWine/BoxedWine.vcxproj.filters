@@ -1588,6 +1588,12 @@
     <ClCompile Include="..\..\..\..\platform\windows\kwindowsaudio.cpp">
       <Filter>platform\windows</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\opengl\osmesa\osmesa.cpp">
+      <Filter>opengl\osmesa</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\opengl\boxedwineGL.cpp">
+      <Filter>opengl</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -3771,6 +3777,9 @@
     <ClInclude Include="..\..\..\..\platform\sdl\knativeaudiosdl.h">
       <Filter>platform\sdl</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\source\opengl\boxedwineGL.h">
+      <Filter>opengl</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
@@ -3928,6 +3937,9 @@
     </Filter>
     <Filter Include="source\emulation\cpu\binaryTranslation">
       <UniqueIdentifier>{96c6e302-3534-4426-be3e-83673afb6d5b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="opengl\osmesa">
+      <UniqueIdentifier>{c16a03b0-cb55-44fa-99bd-ea9eb8db949c}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

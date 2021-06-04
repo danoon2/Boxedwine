@@ -65,7 +65,7 @@ void BoxedwineData::startApp() {
     }
     try {
         Poco::Pipe outPipe;
-        Poco::ProcessHandle handle = Poco::Process::launch(GlobalSettings::getExeFilePath(), args, 0, &outPipe, 0);
+        Poco::ProcessHandle handle = Poco::Process::launch(GlobalSettings::getExeFilePath(), args,  0, &outPipe, 0);
         bool threadRunning = true;
         bool windowCreated = false;
 

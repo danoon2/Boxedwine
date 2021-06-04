@@ -2,6 +2,10 @@
 #include "../boxedwineui.h"
 #include "../../../lib/imgui/addon/imguitinyfiledialogs.h"
 
+#ifdef BOXEDWINE_OPENGL_OSMESA
+bool isMesaOpenglAvailable();
+#endif
+
 ContainersView::ContainersView(std::string tab, std::string app) : BaseView("ContainersView"), currentContainer(NULL), currentContainerChanged(false), currentContainerMountChanged(false), currentApp(NULL), currentAppChanged(false) {
     std::shared_ptr<ImGuiLayout> model = std::make_shared<ImGuiLayout>();        
     section = model->addSection();
@@ -296,6 +300,18 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
         this->currentAppChanged = true;
     };
 
+#if defined(BOXEDWINE_OPENGL_OSMESA) && defined(BOXEDWINE_OPENGL_SDL)
+    std::vector<ComboboxItem> glOptions;
+    glOptions.push_back(ComboboxItem(getTranslation(GENERIC_DEFAULT), OPENGL_TYPE_NOT_SET));
+    glOptions.push_back(ComboboxItem("Native", OPENGL_TYPE_SDL));
+    glOptions.push_back(ComboboxItem("Mesa - OpenGL in Software", OPENGL_TYPE_OSMESA));
+    appOpenGlControl = appSection->addComboboxRow(OPTIONSVIEW_DEFAULT_OPENGL_LABEL, OPTIONSVIEW_DEFAULT_OPENGL_HELP, glOptions);
+    appOpenGlControl->setWidth((int)GlobalSettings::scaleFloatUIAndFont(250));
+    appOpenGlControl->onChange = [this]() {
+        this->currentAppChanged = true;
+    };
+#endif
+
     row = appSection->addRow(CONTAINER_VIEW_GL_EXT_LABEL, CONTAINER_VIEW_GL_EXT_HELP);
     appGlExControl = row->addTextInput();
     appGlExControl->setNumberOfLines(3);
@@ -455,6 +471,9 @@ bool ContainersView::saveChanges() {
             this->currentApp->bpp = appBppControl->getSelectionIntValue();
             this->currentApp->scale = appScaleControl->getSelectionIntValue();
             this->currentApp->scaleQuality = this->appScaleQualityControl->getSelection();
+            if (this->appOpenGlControl) {
+                this->currentApp->openGlType = this->appOpenGlControl->getSelectionIntValue();
+            }
             this->currentApp->fullScreen = this->appFullScreenControl->getSelection();
             this->currentApp->vsync = this->appVSyncControl->getSelectionIntValue();
             if (GlobalSettings::isDpiAware()) {
@@ -502,6 +521,9 @@ void ContainersView::setCurrentApp(BoxedApp* app) {
     }
     appScaleControl->setReadOnly(app->fullScreen != FULLSCREEN_NOTSET);
     appScaleQualityControl->setSelection(app->scaleQuality);
+    if (this->appOpenGlControl) {
+        appOpenGlControl->setSelectionIntValue(app->openGlType);
+    }
     appFullScreenControl->setSelectionIntValue(app->fullScreen);
     appVSyncControl->setSelectionIntValue(app->vsync);
     appDpiAwareControl->setCheck(app->dpiAware);

@@ -38,6 +38,7 @@ private:
 	std::shared_ptr<LayoutComboboxControl> resolutionControl;
 	std::shared_ptr<LayoutComboboxControl> vsyncControl;
 	std::shared_ptr<LayoutComboboxControl> scaleControl;
+	std::shared_ptr<LayoutComboboxControl> openGlControl;
 
 	// Display
 	std::shared_ptr<LayoutComboboxControl> themeControl;
