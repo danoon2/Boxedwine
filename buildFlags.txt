@@ -50,7 +50,12 @@ ie
 This approach has the advantage that the downloaded zipped filesystems are smaller, but it has the disadvantage that
 the network requests for on demand files are synchronous (may block ui thread and also potentially crash the emulator when retrieving large files) and the web server must support range requests.
 Provided in /project/linux/buildFiles is wine1.7.55-v8-min.zip which contains the minimum files necessary to load a basic wine application
-To generate your own minimal set of files follow the instructions in /tools/common/Main.java
+To generate your own minimal set of files follow the instructions in /tools/common/Main.java or alternatively:
+1. Clear style on element saveFSImage in shellfs.html
+2. Set Config.recordLoadedFiles = true; in boxedwine-shell.js
+3. Execute program in boxedwine
+4. click the 'Save FS Image' button
+Step 4 will generate a zip file containing all the files loaded in step 3
 
 Dynamically sending files
 The *-payload parameters can be used to pass in a base64 encoded zip file. 
