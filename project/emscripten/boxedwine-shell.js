@@ -27,7 +27,9 @@
         Config.storageMode = STORAGE_MEMORY;
         Config.isRunningInline = false;
         Config.showUploadDownload = false;
-
+		Config.recordLoadedFiles = false;
+		var recordedFiles = [];
+				
         var isRunning = false;
         var uniqueDirs = {};
         var timer = null;
@@ -1059,7 +1061,7 @@
             return params;
         }
       var Module = {
-        logReadFiles : false, //enable if you want to prune with tools/common utility
+        logReadFiles : Config.recordLoadedFiles, //enable if you want to prune with tools/common utility
         preRun: [initialSetup],
         arguments: [],
         postRun: [],
@@ -1085,7 +1087,16 @@
           if (0) { // XXX disabled for safety typeof dump == 'function') {
             dump(text + '\n'); // fast, straight to the real console
           } else {
-            console.error(text);
+			if (Config.recordLoadedFiles && text.startsWith("FS.trackingDelegate error on read file:")) {
+				console.log(text);
+				let filePath = text.substring(text.indexOf("/"));
+				let prefix = "/root/base/";
+				if(filePath.startsWith(prefix)) {
+					recordedFiles.push(filePath);
+				}
+			} else {
+				console.error(text);
+			}
           }
         },
         canvas: (function() {
@@ -1133,7 +1144,29 @@
           if (text) Module.printErr('[post-exception status] ' + text);
         };
       };
-
+		function saveFSImage() {
+			console.log("saving filesystem files:" + recordedFiles.length);
+			let prefix = "/root/base/";
+			var zip = new JSZip();
+			zip.file("tmp", null, {dir: true});
+			recordedFiles.forEach(filePath => {
+				try {
+				if (!FS.isDir(FS.stat(filePath).mode)) {
+					let data = FS.readFile(filePath, { encoding: 'binary' });
+					zip.file(filePath.substring(prefix.length), data);
+				}
+				} catch(ex) {
+					console.log("unable to read file:" + filePath + " error:" + ex);
+				}
+			});
+			console.log("generating zip file");
+			let zipFile = zip.generate({type:"blob", compression:"DEFLATE"});
+			console.log("finished generating zip file");
+			url = window.URL.createObjectURL(zipFile);
+			ae.href = url;
+			ae.download = "boxedwine-min.zip";
+			ae.click();
+		}
         function isHomeDirectory(str){
             if(str.length >= 10){
                 if(str.substring(0,10) === '/root/home'){
