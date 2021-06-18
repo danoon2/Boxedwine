@@ -11,7 +11,9 @@
 #endif
 
 static U32 lastTitleUpdate = 0;
-
+bool isMainthread() {
+    return true;
+}
 bool doMainLoop() {
     bool shouldQuit = false;
 

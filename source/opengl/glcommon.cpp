@@ -190,7 +190,6 @@ void printOpenGLInfo() {
 // GLAPI const GLubyte* APIENTRY glGetString( GLenum name ) {
 void glcommon_glGetString(CPU* cpu) {
     U32 name = ARG1;
-    U32 index = 0;
     const char* result = (const char*)GL_FUNC(pglGetString)(name);
     
     if (name == GL_EXTENSIONS) {
@@ -268,7 +267,7 @@ void glcommon_glGetString(CPU* cpu) {
         int len = strlen(result);
         U32 pageCount = ((len + 1) + K_PAGE_MASK) >> K_PAGE_SHIFT;
         U32 page = 0;
-        cpu->thread->memory->findFirstAvailablePage(ADDRESS_PROCESS_NATIVE, pageCount, &page, false);
+        cpu->thread->memory->findFirstAvailablePage(ADDRESS_PROCESS_MMAP_START, pageCount, &page, false);
         cpu->thread->memory->allocPages(page, pageCount, PAGE_READ | PAGE_WRITE, 0, 0, nullptr);
         U32 address = page << K_PAGE_SHIFT;
         cpu->thread->process->glStringsiExtensions = address;
