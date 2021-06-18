@@ -1970,8 +1970,7 @@ void Armv8btAsm::createCodeForRunSignal() {
     branchNativeRegister(xBranch);
 }
 
-static void armv8_translateIfNecessary() {
-    Armv8btCPU* cpu = ((Armv8btCPU*)KThread::currentThread()->cpu);
+static void armv8_translateIfNecessary(Armv8btCPU* cpu) {
     cpu->eip.u32 -= cpu->seg[CS].address;
     if (!cpu->isBig()) {
         cpu->eip.u32 = cpu->eip.u32 & 0xFFFF;
@@ -1981,6 +1980,7 @@ static void armv8_translateIfNecessary() {
 
 void Armv8btAsm::createCodeForJmpAndTranslateIfNecessary() {
     syncRegsFromHost(true);
+    mov64(0, xCPU); // param 1 (CPU)
     callHost((void*)armv8_translateIfNecessary);
     syncRegsToHost();
     readMem64ValueOffset(xBranch, xCPU, (U32)(offsetof(BtCPU, returnHostAddress)));
