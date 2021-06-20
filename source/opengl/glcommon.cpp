@@ -165,7 +165,7 @@ void glcommon_glGetIntegerv(CPU* cpu) {
         writed(ARG2, cpu->thread->process->numberOfExtensions);
     } else {
         GLint* buffer = marshali(cpu, ARG2, getSize(ARG1));
-        GL_FUNC(glGetIntegerv)(pname, buffer);
+        GL_FUNC(pglGetIntegerv)(pname, buffer);
         marshalBacki(cpu, ARG2, buffer, getSize(ARG1));
     }
 }

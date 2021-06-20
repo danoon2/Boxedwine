@@ -29,7 +29,9 @@
 
 #ifdef BOXEDWINE_MSVC
 #define LIBRARY_NAME "osmesa.dll"
-#else 
+#elif defined (__APPLE__)
+#define LIBRARY_NAME "libOSMesa.8.dylib"
+#else
 #define LIBRARY_NAME Name needs to be set for this platform
 #endif
 
@@ -103,6 +105,9 @@ bool MesaBoxedwineGL::makeCurrent(void* context, void* window) {
         return true;
     }
     MesaBoxedwineGlContext* c = (MesaBoxedwineGlContext*)context;
+    if (!c->context) {
+        return true;
+    }
     c->buffer = new U8[c->width * c->height * 4];
     if (pOSMesaMakeCurrent(c->context, c->buffer, GL_UNSIGNED_BYTE, c->width, c->height)) {
         pOSMesaPixelStore(OSMESA_Y_UP, 0);
@@ -133,7 +138,7 @@ void* MesaBoxedwineGL::internalCreateContext(void* window, std::shared_ptr<Wnd> 
     attribs[n++] = pixelFormat->cAccumBits;
     if (profile) {
         attribs[n++] = OSMESA_PROFILE;
-        attribs[n++] = profile;
+        attribs[n++] = OSMESA_CORE_PROFILE;
     }
     if (major) {
         attribs[n++] = OSMESA_CONTEXT_MAJOR_VERSION;
@@ -144,6 +149,10 @@ void* MesaBoxedwineGL::internalCreateContext(void* window, std::shared_ptr<Wnd> 
     attribs[n++] = 0;
 
     c->context = pOSMesaCreateContextAttribs(attribs, sharedContext);
+    if (!c->context) {
+        delete  c;
+        return NULL;
+    }
     c->width = width;
     c->height = height;   
     c->bpp = pixelFormat->cColorBits;
@@ -159,8 +168,7 @@ void* MesaBoxedwineGL::internalCreateContext(void* window, std::shared_ptr<Wnd> 
 void MesaBoxedwineGL::swapBuffer(void* window) {
     MesaBoxedwineGlContext* c = (MesaBoxedwineGlContext*)KThread::currentThread()->currentContext;
     pglFlush();
-    KNativeWindow::getNativeWindow()->bltWnd(KThread::currentThread(), c->wnd, c->buffer, c->pitch, c->bpp, c->width, c->height);
-    KNativeWindow::getNativeWindow()->drawWindow(c->wnd);
+    KNativeWindow::getNativeWindow()->drawWnd(KThread::currentThread(), c->wnd, c->buffer, c->pitch, c->bpp, c->width, c->height);
 }
 
 void MesaBoxedwineGL::setSwapInterval(U32 vsync) {
@@ -196,7 +204,8 @@ static bool isAvailableInitialized = false;
 bool isMesaOpenglAvailable() {
     if (!isAvailableInitialized) {
         isAvailableInitialized = true;
-        void* dll = SDL_LoadObject(LIBRARY_NAME);
+        std::string libPath = KSystem::exePath + LIBRARY_NAME;
+        void* dll = SDL_LoadObject(libPath.c_str());
         if (dll) {
             isAvailable = true;
             SDL_UnloadObject(dll);
@@ -224,8 +233,7 @@ void osmesa_glFinish(CPU* cpu) {
 void osmesa_glFlush(CPU* cpu) {
     MesaBoxedwineGlContext* c = (MesaBoxedwineGlContext*)KThread::currentThread()->currentContext;
     pglFlush();
-    KNativeWindow::getNativeWindow()->bltWnd(KThread::currentThread(), c->wnd, c->buffer, c->pitch, c->bpp, c->width, c->height);
-    KNativeWindow::getNativeWindow()->drawWindow(c->wnd);
+    KNativeWindow::getNativeWindow()->drawWnd(KThread::currentThread(), c->wnd, c->buffer, c->pitch, c->bpp, c->width, c->height);
 }
 
 // GLXContext glXCreateContext(Display *dpy, XVisualInfo *vis, GLXContext share_list, Bool direct)
@@ -267,8 +275,10 @@ void initMesaOpenGL() {
         BoxedwineGL::current = &mesaBoxedwineGL;
         mesaOpenGlExtensionsLoaded = false;
         if (!pDLL) {
-            pDLL = SDL_LoadObject(LIBRARY_NAME);
+            std::string libPath = KSystem::exePath + LIBRARY_NAME;
+            pDLL = SDL_LoadObject(libPath.c_str());
             if (!pDLL) {
+                klog("Failed to load %s", libPath.c_str());
                 return;
             }
         }

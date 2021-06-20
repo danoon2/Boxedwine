@@ -86,7 +86,8 @@ public:
     static bool showWindowImmediately;
     static U32 skipFrameFPS;
     static FILE* logFile;
-
+    static std::string exePath;
+    
     static void init();
 	static void destroy();
     static U32 getNextThreadId();

@@ -167,9 +167,8 @@ public:
     virtual std::shared_ptr<Wnd> getWnd(U32 hwnd);
     virtual std::shared_ptr<Wnd> createWnd(KThread* thread, U32 processId, U32 hwnd, U32 windowRect, U32 clientRect);
     virtual void bltWnd(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32 yOrg, U32 width, U32 height, U32 rect);
-    virtual void bltWnd(KThread* thread, std::shared_ptr<Wnd> w, U8* bytes, U32 pitch, U32 bpp, U32 width, U32 height);
+    virtual void drawWnd(KThread* thread, std::shared_ptr<Wnd> w, U8* bytes, U32 pitch, U32 bpp, U32 width, U32 height);
     virtual void drawAllWindows(KThread* thread, U32 hWnd, int count);
-    virtual void drawWindow(std::shared_ptr<Wnd> w);
     virtual void setTitle(const std::string& title);
 
     virtual U32 getGammaRamp(U32 ramp);
@@ -896,13 +895,13 @@ void KNativeWindowSdl::bltWnd(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32
     }
 }
 
-void KNativeWindowSdl::bltWnd(KThread* thread, std::shared_ptr<Wnd> w, U8* bytes, U32 pitch, U32 bpp, U32 width, U32 height) {
+void KNativeWindowSdl::drawWnd(KThread* thread, std::shared_ptr<Wnd> w, U8* bytes, U32 pitch, U32 bpp, U32 width, U32 height) {
     if (!firstWindowCreated) {
         DISPATCH_MAIN_THREAD_BLOCK_BEGIN
             displayChanged(thread);
         DISPATCH_MAIN_THREAD_BLOCK_END
     }
-
+    DISPATCH_MAIN_THREAD_BLOCK_BEGIN
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(sdlMutex);
     std::shared_ptr<WndSdl> wnd = std::dynamic_pointer_cast<WndSdl>(w);
 
@@ -947,24 +946,7 @@ void KNativeWindowSdl::bltWnd(KThread* thread, std::shared_ptr<Wnd> w, U8* bytes
 #endif        
     if (KSystem::videoEnabled && renderer) {
         SDL_UpdateTexture(sdlTexture, NULL, bytes, pitch);
-    }
-}
-
-void KNativeWindowSdl::setTitle(const std::string& title) {
-    if (window)
-        SDL_SetWindowTitle(window, title.c_str());
-}
-
-#ifdef BOXEDWINE_RECORDER
-U8* recorderBuffer;
-U32 recorderBufferSize;
-#endif
-
-void KNativeWindowSdl::drawWindow(std::shared_ptr<Wnd> w) {
-    if (KSystem::videoEnabled && renderer) {        
-        std::shared_ptr<WndSdl> wnd = std::dynamic_pointer_cast<WndSdl>(w);
-        DISPATCH_MAIN_THREAD_BLOCK_BEGIN
-        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(sdlMutex);
+        
         SDL_SetRenderDrawColor(renderer, 58, 110, 165, 255);
         SDL_RenderClear(renderer);
         if (wnd && wnd->sdlTextureWidth && wnd->sdlTexture) {
@@ -987,9 +969,19 @@ void KNativeWindowSdl::drawWindow(std::shared_ptr<Wnd> w) {
             SDL_RenderFillRect(renderer, &rect);
         }
         SDL_RenderPresent(renderer);
-        DISPATCH_MAIN_THREAD_BLOCK_END
     }
+    DISPATCH_MAIN_THREAD_BLOCK_END
 }
+
+void KNativeWindowSdl::setTitle(const std::string& title) {
+    if (window)
+        SDL_SetWindowTitle(window, title.c_str());
+}
+
+#ifdef BOXEDWINE_RECORDER
+U8* recorderBuffer;
+U32 recorderBufferSize;
+#endif
 
 void KNativeWindowSdl::drawAllWindows(KThread* thread, U32 hWnd, int count) {
     if (KSystem::skipFrameFPS) {

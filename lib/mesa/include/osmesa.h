@@ -54,8 +54,8 @@
 extern "C" {
 #endif
 
-
-#include <GL/gl.h>
+#include <SDL_opengl.h>
+//#include <GL/gl.h>
 
 
 #define OSMESA_MAJOR_VERSION 11
