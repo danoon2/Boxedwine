@@ -125,10 +125,7 @@ KProcess::KProcess(U32 id) : id(id),
     this->hasSetSeg[FS] = true;    
 
 #ifdef BOXEDWINE_64BIT_MMU
-    this->nextNativeAddress = ADDRESS_PROCESS_NATIVE;
-    for (int i=0;i<NUMBER_OF_STRINGS;i++) {
-        this->glStrings[i] = 0;
-    }    
+    this->nextNativeAddress = ADDRESS_PROCESS_NATIVE;  
 	this->previousMemory = NULL;
 #endif
     this->glStringsiExtensions = 0;

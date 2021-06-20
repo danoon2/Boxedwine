@@ -1309,6 +1309,14 @@
 		715F8429244115580038F5A4 /* Media.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 715F8427244115580038F5A4 /* Media.xcassets */; };
 		715F842C24464C080038F5A4 /* installView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F842A24464C080038F5A4 /* installView.cpp */; };
 		715F842D24464C080038F5A4 /* installView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F842A24464C080038F5A4 /* installView.cpp */; };
+		718B713D267EB86500CDBC74 /* libc++abi.1.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 718B7139267EB86400CDBC74 /* libc++abi.1.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		718B713F267EB86500CDBC74 /* libc++.1.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 718B713B267EB86500CDBC74 /* libc++.1.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		718B7145267F883900CDBC74 /* libOSMesa.8.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 718B7143267F883900CDBC74 /* libOSMesa.8.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		718B7146267F883900CDBC74 /* libglapi.0.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 718B7144267F883900CDBC74 /* libglapi.0.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		71B2D2FD2668178700010AB6 /* osmesa.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71B2D2FC2668178700010AB6 /* osmesa.cpp */; };
+		71B2D2FE2668178700010AB6 /* osmesa.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71B2D2FC2668178700010AB6 /* osmesa.cpp */; };
+		71B2D2FF2668178700010AB6 /* osmesa.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71B2D2FC2668178700010AB6 /* osmesa.cpp */; };
+		71B2D3002668178700010AB6 /* osmesa.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71B2D2FC2668178700010AB6 /* osmesa.cpp */; };
 		71FBFCB22433B815003F17F1 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFCB12433B815003F17F1 /* AppDelegate.m */; };
 		71FBFCB42433B817003F17F1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 71FBFCB32433B817003F17F1 /* Assets.xcassets */; };
 		71FBFE5A2433BBBE003F17F1 /* boxedTranslation.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD122433BBBE003F17F1 /* boxedTranslation.cpp */; };
@@ -1492,6 +1500,19 @@
 				7135DCA2264EBCD0005D6AA6 /* SDL2.framework in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		718B712A267EA8C800CDBC74 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 6;
+			files = (
+				718B7145267F883900CDBC74 /* libOSMesa.8.dylib in CopyFiles */,
+				718B7146267F883900CDBC74 /* libglapi.0.dylib in CopyFiles */,
+				718B713D267EB86500CDBC74 /* libc++abi.1.dylib in CopyFiles */,
+				718B713F267EB86500CDBC74 /* libc++.1.dylib in CopyFiles */,
+			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
@@ -2016,6 +2037,15 @@
 		715F8427244115580038F5A4 /* Media.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Media.xcassets; sourceTree = "<group>"; };
 		715F842A24464C080038F5A4 /* installView.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = installView.cpp; sourceTree = "<group>"; };
 		715F842B24464C080038F5A4 /* installView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = installView.h; sourceTree = "<group>"; };
+		718B7124267EA76F00CDBC74 /* libc++abi.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libc++abi.1.dylib"; path = "../../../lib/mac/precompiledMac/libc++abi.1.dylib"; sourceTree = "<group>"; };
+		718B7125267EA77000CDBC74 /* libc++.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libc++.1.dylib"; path = "../../../lib/mac/precompiledMac/libc++.1.dylib"; sourceTree = "<group>"; };
+		718B7139267EB86400CDBC74 /* libc++abi.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libc++abi.1.dylib"; path = "../../../lib/mac/precompiledMac/libc++abi.1.dylib"; sourceTree = "<group>"; };
+		718B713B267EB86500CDBC74 /* libc++.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libc++.1.dylib"; path = "../../../lib/mac/precompiledMac/libc++.1.dylib"; sourceTree = "<group>"; };
+		718B7143267F883900CDBC74 /* libOSMesa.8.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libOSMesa.8.dylib; path = ../../../lib/mac/precompiledMac/libOSMesa.8.dylib; sourceTree = "<group>"; };
+		718B7144267F883900CDBC74 /* libglapi.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libglapi.0.dylib; path = ../../../lib/mac/precompiledMac/libglapi.0.dylib; sourceTree = "<group>"; };
+		71B2D2F82668170000010AB6 /* libOSMesa.8.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libOSMesa.8.dylib; path = ../../../lib/mac/precompiledMac/libOSMesa.8.dylib; sourceTree = "<group>"; };
+		71B2D2FC2668178700010AB6 /* osmesa.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = osmesa.cpp; path = osmesa/osmesa.cpp; sourceTree = "<group>"; };
+		71B2D30926681CCA00010AB6 /* libglapi.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libglapi.0.dylib; path = ../../../lib/mac/precompiledMac/libglapi.0.dylib; sourceTree = "<group>"; };
 		71DF8E1B248F29C300EE1E08 /* knativeaudio.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = knativeaudio.h; sourceTree = "<group>"; };
 		71DF8E1C248F29C300EE1E08 /* knativesystem.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = knativesystem.h; sourceTree = "<group>"; };
 		71DF8E1D248F29C300EE1E08 /* knativethread.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = knativethread.h; sourceTree = "<group>"; };
@@ -2557,6 +2587,10 @@
 		712227752433E8C400CDBABD /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				718B7125267EA77000CDBC74 /* libc++.1.dylib */,
+				718B7124267EA76F00CDBC74 /* libc++abi.1.dylib */,
+				71B2D30926681CCA00010AB6 /* libglapi.0.dylib */,
+				71B2D2F82668170000010AB6 /* libOSMesa.8.dylib */,
 				1AFC47A526489F7700EE5FCC /* CoreMIDI.framework */,
 				1A1551E82632656D006E0C8A /* SDL2.framework */,
 				1A4F1C362631FDAD0076F847 /* OpenSSL.xcframework */,
@@ -3121,9 +3155,21 @@
 			name = poco;
 			sourceTree = "<group>";
 		};
+		71B2D2FB2668177300010AB6 /* osmesa */ = {
+			isa = PBXGroup;
+			children = (
+				71B2D2FC2668178700010AB6 /* osmesa.cpp */,
+			);
+			name = osmesa;
+			sourceTree = "<group>";
+		};
 		71FBFCA42433B815003F17F1 = {
 			isa = PBXGroup;
 			children = (
+				718B7144267F883900CDBC74 /* libglapi.0.dylib */,
+				718B7143267F883900CDBC74 /* libOSMesa.8.dylib */,
+				718B713B267EB86500CDBC74 /* libc++.1.dylib */,
+				718B7139267EB86400CDBC74 /* libc++abi.1.dylib */,
 				7100912D2644D3F7003413C3 /* platform */,
 				1A1550EA2632615F006E0C8A /* lib */,
 				715F8427244115580038F5A4 /* Media.xcassets */,
@@ -3748,6 +3794,7 @@
 		71FBFE402433BBBE003F17F1 /* opengl */ = {
 			isa = PBXGroup;
 			children = (
+				71B2D2FB2668177300010AB6 /* osmesa */,
 				1AFC480F266570FD00EE5FCC /* boxedwineGL.cpp */,
 				1AFC480E266570FD00EE5FCC /* boxedwineGL.h */,
 				71FBFE412433BBBE003F17F1 /* mesa */,
@@ -3829,6 +3876,7 @@
 				71222C7324351CBA00CDBABD /* Frameworks */,
 				71222C7A24351CBA00CDBABD /* Resources */,
 				1A1551FC2632673F006E0C8A /* Embed Frameworks */,
+				718B712A267EA8C800CDBC74 /* CopyFiles */,
 			);
 			buildRules = (
 			);
@@ -4020,6 +4068,7 @@
 				71222BA72435169100CDBABD /* devfb.cpp in Sources */,
 				71222B692435169100CDBABD /* common_fpu.cpp in Sources */,
 				71222B962435169100CDBABD /* main.cpp in Sources */,
+				71B2D2FF2668178700010AB6 /* osmesa.cpp in Sources */,
 				71222B7C2435169100CDBABD /* soft_file_map.cpp in Sources */,
 				71222B6A2435169100CDBABD /* common_other.cpp in Sources */,
 				71222BAE2435169100CDBABD /* kfiledescriptor.cpp in Sources */,
@@ -4563,6 +4612,7 @@
 				71222C5524351CBA00CDBABD /* configFile.cpp in Sources */,
 				715F63A52440E9100038F5A4 /* FTPClientSession.cpp in Sources */,
 				71222C5624351CBA00CDBABD /* readIcons.cpp in Sources */,
+				71B2D2FE2668178700010AB6 /* osmesa.cpp in Sources */,
 				715F63BD2440E9110038F5A4 /* PartSource.cpp in Sources */,
 				71222C5724351CBA00CDBABD /* uihelper.cpp in Sources */,
 				715F824C2440ED1D0038F5A4 /* FileStreamFactory.cpp in Sources */,
@@ -4787,6 +4837,7 @@
 				7135DC82264EBCD0005D6AA6 /* fszip.cpp in Sources */,
 				7135DC83264EBCD0005D6AA6 /* common_mmx.cpp in Sources */,
 				7135DC84264EBCD0005D6AA6 /* meminfo.cpp in Sources */,
+				71B2D3002668178700010AB6 /* osmesa.cpp in Sources */,
 				7135DC85264EBCD0005D6AA6 /* kfilelock.cpp in Sources */,
 				7135DC86264EBCD0005D6AA6 /* cpuscalingmaxfreq.cpp in Sources */,
 				7135DC87264EBCD0005D6AA6 /* hard_memory.cpp in Sources */,
@@ -5083,6 +5134,7 @@
 				710091632644D44E003413C3 /* platformThreads-x64.cpp in Sources */,
 				71FBFECC2433BBBE003F17F1 /* knativesocket.cpp in Sources */,
 				71FBFE982433BBBE003F17F1 /* soft_code_page.cpp in Sources */,
+				71B2D2FD2668178700010AB6 /* osmesa.cpp in Sources */,
 				711F834924527273008E6A0C /* boxedTexture.cpp in Sources */,
 				715F64142440E9110038F5A4 /* HTTPDigestCredentials.cpp in Sources */,
 				71FBFE6A2433BBBE003F17F1 /* containersView.cpp in Sources */,
@@ -5490,6 +5542,7 @@
 					BOXEDWINE_CORE_AUDIO,
 					BOXEDWINE_MAC_JIT,
 					POCO_NO_STAT64,
+					BOXEDWINE_OPENGL_OSMESA,
 				);
 				HEADER_SEARCH_PATHS = "";
 				INFOPLIST_FILE = "BoxedwineX64-Info.plist";
@@ -5546,6 +5599,7 @@
 					BOXEDWINE_CORE_AUDIO,
 					BOXEDWINE_MAC_JIT,
 					POCO_NO_STAT64,
+					BOXEDWINE_OPENGL_OSMESA,
 				);
 				HEADER_SEARCH_PATHS = "";
 				INFOPLIST_FILE = "BoxedwineX64-Info.plist";

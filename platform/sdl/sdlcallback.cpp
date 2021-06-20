@@ -31,6 +31,9 @@ void freeSdlCallback(SdlCallback* callback) {
 }
 
 U32 sdlDispatch(std::function<U32()> p) {
+    if (isMainthread()) {
+        return p();
+    }
     SdlCallback* callback = allocSdlCallback();
     callback->pfn = p;
     BOXEDWINE_CONDITION_LOCK(callback->cond);

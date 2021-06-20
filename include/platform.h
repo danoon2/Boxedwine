@@ -187,4 +187,6 @@ void PlaySysex(U8 * sysex,U32 len);
 
 #define DEFAULT_POLL_RATE 0
 #define DEFAULT_POLL_RATE_str "0"
+
+bool isMainthread();
 #endif
