@@ -3079,7 +3079,7 @@ const LogInstruction instructionLog[] = {
     {"Cvttps2dq", 0, logXmmXmm},
     {"Cvttps2dq", 128, logXmmE},
     {"Cvttsd2si", 0, logRXmm},
-    {"Cvttsd2si", 64, logRE},
+    {"Cvttsd2si", 32, logRE},
     {"Movq", 0, logXmmXmm},
     {"Movq", 64, logEXmm},
     {"Movq", 64, logXmmE},   
