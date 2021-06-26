@@ -616,7 +616,7 @@ U32 KNativeWindowSdl::glCreateContext(KThread* thread, std::shared_ptr<Wnd> w, i
     U32 result = 1;
     std::shared_ptr<WndSdl> wnd = std::dynamic_pointer_cast<WndSdl>(w);
     if (windowIsGL && glWindowVersionMajor != major && KSystem::openglType != OPENGL_TYPE_OSMESA) {
-        DISPATCH_MAIN_THREAD_BLOCK_BEGIN_RETURN
+        DISPATCH_MAIN_THREAD_BLOCK_BEGIN
         screen->destroyScreen(thread);
         DISPATCH_MAIN_THREAD_BLOCK_END
     }

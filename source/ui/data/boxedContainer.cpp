@@ -45,6 +45,10 @@ BoxedContainer* BoxedContainer::createContainer(const std::string& dirPath, cons
     if (!Fs::doesNativePathExist(dirPath)) {
         Fs::makeNativeDirs(dirPath);
     }
+#ifdef __APPLE__
+    // FBO's don't work with the Mac OpenGL code, so for DirectDraw games, instead of using OpenGL with FBO's which Wine does by default, tell Wine to take care of it in software
+    container->setGDI(true);
+#endif
     container->saveContainer();
     return container;
 }
