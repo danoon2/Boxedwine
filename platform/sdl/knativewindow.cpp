@@ -547,10 +547,14 @@ U32 sdlCreateOpenglWindow_main_thread(KThread* thread, std::shared_ptr<WndSdl> w
     firstWindowCreated = 1;
 
     SDL_DisplayMode dm;
+#ifdef __EMSCRIPTEN__
+    int sdlFlags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN;
+#else
     int sdlFlags = SDL_WINDOW_OPENGL;
     if (!KSystem::showWindowImmediately) {
         sdlFlags |= SDL_WINDOW_HIDDEN;
     }
+#endif
     int cx = wnd->windowRect.right-wnd->windowRect.left;
     int cy = wnd->windowRect.bottom-wnd->windowRect.top;
 

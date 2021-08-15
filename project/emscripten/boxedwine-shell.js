@@ -11,7 +11,7 @@
         let DROPBOX_APP_KEY = 'put key in here';
         let RECEIVE_URL = "http://put url in here/oauth_receiver.html";
 
-        let DEFAULT_AUTO_RUN = true;
+        let DEFAULT_AUTO_RUN = false;
         let DEFAULT_SOUND_ENABLED = true;
         let DEFAULT_APP_DIRECTORY = ROOT + "/files/";
         let DEFAULT_BPP = 32;
@@ -94,9 +94,9 @@
         function getEmscriptenEnvProps(){
             var props = getParameter("em-env").trim();
             let allProps = [];
-	        //allProps.push({key: 'LIBGL_NPOT', value: 2});
-	        //allProps.push({key: 'LIBGL_DEFAULT_WRAP', value: 0});
-	        //allProps.push({key: 'LIBGL_MIPMAP', value: 3});	        
+	        allProps.push({key: 'LIBGL_NPOT', value: 2});
+	        allProps.push({key: 'LIBGL_DEFAULT_WRAP', value: 0});
+	        allProps.push({key: 'LIBGL_MIPMAP', value: 3});	        
             if(allowParameterOverride()){
                 if(props.length > 6) {
                 	if( (props.startsWith("%22") && props.endsWith("%22") )
@@ -209,7 +209,7 @@
 	                	glext = glext.split('%20').join(' ');
 	                	glext = '"' + glext +  '"';
                 	}else{
-	                	console.log("glext paramater must be in quoted string");
+	                	console.log("glext parameter must be in quoted string");
                 	}
                 }
             }

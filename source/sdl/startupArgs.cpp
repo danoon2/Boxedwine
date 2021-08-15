@@ -36,6 +36,10 @@
 
 #define mdev(x,y) ((x << 8) | y)
 
+#ifdef __EMSCRIPTEN__
+extern "C" void initialize_gl4es();
+#endif
+
 void gl_init(const std::string& allowExtensions);
 void initWine();
 void initWineAudio();
@@ -443,6 +447,9 @@ bool StartUpArgs::apply() {
     initWineAudio();
     KNativeAudio::init();
 #ifdef BOXEDWINE_OPENGL
+	#ifdef __EMSCRIPTEN__
+	initialize_gl4es();
+	#endif 
     gl_init(this->glExt);        
 #endif   
 

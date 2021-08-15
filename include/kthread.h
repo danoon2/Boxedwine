@@ -114,16 +114,16 @@ public:
     void* currentContext;
     bool log; // syscalls
     OpenGLVetexPointer glVertextPointer;
-    OpenGLVetexPointer glNormalPointer;
+    OpenGLVetexPointer gl4es_glNormalPointer;
     OpenGLVetexPointer glFogPointer;
     OpenGLVetexPointer glFogPointerEXT;
-    OpenGLVetexPointer glColorPointer;
-    OpenGLVetexPointer glSecondaryColorPointer;
-    OpenGLVetexPointer glSecondaryColorPointerEXT;
-    OpenGLVetexPointer glIndexPointer;
-    OpenGLVetexPointer glTexCoordPointer;
-    OpenGLVetexPointer glEdgeFlagPointer;
-    OpenGLVetexPointer glEdgeFlagPointerEXT;
+    OpenGLVetexPointer gl4es_glColorPointer;
+    OpenGLVetexPointer gl4es_glSecondaryColorPointer;
+    OpenGLVetexPointer gl4es_glSecondaryColorPointerEXT;
+    OpenGLVetexPointer gl4es_glIndexPointer;
+    OpenGLVetexPointer gl4es_glTexCoordPointer;
+    OpenGLVetexPointer gl4es_glEdgeFlagPointer;
+    OpenGLVetexPointer gl4es_glEdgeFlagPointerEXT;
     OpenGLVetexPointer glInterleavedArray;
 
     inline static KThread* currentThread() {return runningThread;}
