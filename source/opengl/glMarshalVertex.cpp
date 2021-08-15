@@ -333,13 +333,13 @@ static bool interleavedHasNormal(GLenum format) {
 const void* marshalInterleavedPointer(CPU* cpu, GLenum format, GLsizei stride, U32 ptr) {
     cpu->thread->glVertextPointer.refreshEachCall = 0;
     if (interleavedHasColor(format)) {
-        cpu->thread->glColorPointer.refreshEachCall = 0;
+        cpu->thread->gglColorPointer.refreshEachCall = 0;
     }
     if (interleavedHasNormal(format)) {
-        cpu->thread->glNormalPointer.refreshEachCall = 0;
+        cpu->thread->gglNormalPointer.refreshEachCall = 0;
     }
     if (interleavedHasTexture(format)) {
-        cpu->thread->glTexCoordPointer.refreshEachCall = 0;
+        cpu->thread->gglTexCoordPointer.refreshEachCall = 0;
     }
     if (ARRAY_BUFFER()) {
         cpu->thread->glInterleavedArray.refreshEachCall = 0;

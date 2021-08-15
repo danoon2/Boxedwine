@@ -125,6 +125,7 @@ public:
     OpenGLVetexPointer gglTexCoordPointer;
     OpenGLVetexPointer gglEdgeFlagPointer;
     OpenGLVetexPointer gglEdgeFlagPointerEXT;
+	OpenGLVetexPointer glInterleavedArray;
 
     inline static KThread* currentThread() {return runningThread;}
 	inline static void setCurrentThread(KThread* thread) { runningThread = thread; if (thread) { thread->memory->onThreadChanged(); } }
