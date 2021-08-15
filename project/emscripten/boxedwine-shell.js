@@ -650,7 +650,6 @@
         }
     	function buildCDROMFileSystem(Buffer, fsCallback)
         {
-<<<<<<< HEAD
 			if(Config.cdromImage.length > 0){
                     var listingObject = {};
                     listingObject[Config.cdromImage] =  null;

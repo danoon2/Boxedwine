@@ -60,7 +60,7 @@ void updateVertexPointers(CPU* cpu, U32 count) {
     
     if (cpu->thread->gglNormalPointer.refreshEachCall) {
         if (updateVertexPointer(cpu, &cpu->thread->gglNormalPointer, count))
-            GL_FUNC(glNormalPointer)(cpu->thread->gglNormalPointer.type, cpu->thread->gglNormalPointer.stride, cpu->thread->gglNormalPointer.marshal);
+            GL_FUNC(pglNormalPointer)(cpu->thread->gglNormalPointer.type, cpu->thread->gglNormalPointer.stride, cpu->thread->gglNormalPointer.marshal);
     }
 
 #ifndef DISABLE_GL_EXTENSIONS
@@ -101,22 +101,22 @@ void updateVertexPointers(CPU* cpu, U32 count) {
 #endif
     if (cpu->thread->gglColorPointer.refreshEachCall) {
         if (updateVertexPointer(cpu, &cpu->thread->gglColorPointer, count))
-            GL_FUNC(glColorPointer)(cpu->thread->gglColorPointer.size, cpu->thread->gglColorPointer.type, cpu->thread->gglColorPointer.stride, cpu->thread->gglColorPointer.marshal);
+            GL_FUNC(pglColorPointer)(cpu->thread->gglColorPointer.size, cpu->thread->gglColorPointer.type, cpu->thread->gglColorPointer.stride, cpu->thread->gglColorPointer.marshal);
     }    
     
     if (cpu->thread->gglIndexPointer.refreshEachCall) {
         if (updateVertexPointer(cpu, &cpu->thread->gglIndexPointer, count))
-            GL_FUNC(glIndexPointer)(cpu->thread->gglIndexPointer.type, cpu->thread->gglIndexPointer.stride, cpu->thread->gglIndexPointer.marshal);
+            GL_FUNC(pglIndexPointer)(cpu->thread->gglIndexPointer.type, cpu->thread->gglIndexPointer.stride, cpu->thread->gglIndexPointer.marshal);
     }
     
     if (cpu->thread->gglTexCoordPointer.refreshEachCall) {
         if (updateVertexPointer(cpu, &cpu->thread->gglTexCoordPointer, count))
-            GL_FUNC(glTexCoordPointer)(cpu->thread->gglTexCoordPointer.size, cpu->thread->gglTexCoordPointer.type, cpu->thread->gglTexCoordPointer.stride, cpu->thread->gglTexCoordPointer.marshal);
+            GL_FUNC(pglTexCoordPointer)(cpu->thread->gglTexCoordPointer.size, cpu->thread->gglTexCoordPointer.type, cpu->thread->gglTexCoordPointer.stride, cpu->thread->gglTexCoordPointer.marshal);
     }
     
     if (cpu->thread->gglEdgeFlagPointer.refreshEachCall) {
         if (updateVertexPointer(cpu, &cpu->thread->gglEdgeFlagPointer, count))
-            GL_FUNC(glEdgeFlagPointer)(cpu->thread->gglEdgeFlagPointer.stride, cpu->thread->gglEdgeFlagPointer.marshal);
+            GL_FUNC(pglEdgeFlagPointer)(cpu->thread->gglEdgeFlagPointer.stride, cpu->thread->gglEdgeFlagPointer.marshal);
     }
 }
 
