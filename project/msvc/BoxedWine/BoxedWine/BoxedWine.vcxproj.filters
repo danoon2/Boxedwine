@@ -1594,6 +1594,9 @@
     <ClCompile Include="..\..\..\..\source\opengl\boxedwineGL.cpp">
       <Filter>opengl</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\io\fsdynamiclinknode.cpp">
+      <Filter>source\io</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -3779,6 +3782,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\opengl\boxedwineGL.h">
       <Filter>opengl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\io\fsdynamiclinknode.h">
+      <Filter>source\io</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

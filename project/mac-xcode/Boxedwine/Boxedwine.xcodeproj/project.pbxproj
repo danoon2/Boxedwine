@@ -38,6 +38,10 @@
 		1AB0CAFE263BA8AC003AF407 /* wineaudiodrv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0CAFD263BA8AC003AF407 /* wineaudiodrv.cpp */; };
 		1AB0CAFF263BA8AD003AF407 /* wineaudiodrv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0CAFD263BA8AC003AF407 /* wineaudiodrv.cpp */; };
 		1AB0CB00263BA8AD003AF407 /* wineaudiodrv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0CAFD263BA8AC003AF407 /* wineaudiodrv.cpp */; };
+		1AB0D6DC26CB4AA800E18A08 /* fsdynamiclinknode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0D6DA26CB4AA800E18A08 /* fsdynamiclinknode.cpp */; };
+		1AB0D6DD26CB4AA800E18A08 /* fsdynamiclinknode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0D6DA26CB4AA800E18A08 /* fsdynamiclinknode.cpp */; };
+		1AB0D6DE26CB4AAE00E18A08 /* fsdynamiclinknode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0D6DA26CB4AA800E18A08 /* fsdynamiclinknode.cpp */; };
+		1AB0D6DF26CB4AAF00E18A08 /* fsdynamiclinknode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0D6DA26CB4AA800E18A08 /* fsdynamiclinknode.cpp */; };
 		1AFC4768264096CB00EE5FCC /* armv8CPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4764264096CB00EE5FCC /* armv8CPU.cpp */; };
 		1AFC4769264096CB00EE5FCC /* llvm_helper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4765264096CB00EE5FCC /* llvm_helper.cpp */; };
 		1AFC476D26409EB200EE5FCC /* armv8CPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4764264096CB00EE5FCC /* armv8CPU.cpp */; };
@@ -1538,6 +1542,8 @@
 		1A9193362551B6D3005A798A /* btCpu.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = btCpu.h; path = binaryTranslation/btCpu.h; sourceTree = "<group>"; };
 		1AB0CAFC263BA83A003AF407 /* kdspaudio.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = kdspaudio.h; sourceTree = "<group>"; };
 		1AB0CAFD263BA8AC003AF407 /* wineaudiodrv.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = wineaudiodrv.cpp; sourceTree = "<group>"; };
+		1AB0D6DA26CB4AA800E18A08 /* fsdynamiclinknode.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = fsdynamiclinknode.cpp; sourceTree = "<group>"; };
+		1AB0D6DB26CB4AA800E18A08 /* fsdynamiclinknode.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = fsdynamiclinknode.h; sourceTree = "<group>"; };
 		1AFC4764264096CB00EE5FCC /* armv8CPU.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = armv8CPU.cpp; sourceTree = "<group>"; };
 		1AFC4765264096CB00EE5FCC /* llvm_helper.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = llvm_helper.cpp; sourceTree = "<group>"; };
 		1AFC4766264096CB00EE5FCC /* armv8CPU.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = armv8CPU.h; sourceTree = "<group>"; };
@@ -3654,6 +3660,8 @@
 		71FBFDE82433BBBE003F17F1 /* io */ = {
 			isa = PBXGroup;
 			children = (
+				1AB0D6DA26CB4AA800E18A08 /* fsdynamiclinknode.cpp */,
+				1AB0D6DB26CB4AA800E18A08 /* fsdynamiclinknode.h */,
 				71FBFDE92433BBBE003F17F1 /* fszip.cpp */,
 				71FBFDEA2433BBBE003F17F1 /* fsfileopennode.cpp */,
 				71FBFDEB2433BBBE003F17F1 /* fsfilenode.h */,
@@ -4135,6 +4143,7 @@
 				71222BA02435169100CDBABD /* kprocess.cpp in Sources */,
 				71222B862435169100CDBABD /* fszipnode.cpp in Sources */,
 				71222B932435169100CDBABD /* winedrv.cpp in Sources */,
+				1AB0D6DE26CB4AAE00E18A08 /* fsdynamiclinknode.cpp in Sources */,
 				71222BA42435169100CDBABD /* devmixer.cpp in Sources */,
 				71222BBF2435169100CDBABD /* glcommon.cpp in Sources */,
 				71222B7D2435169100CDBABD /* soft_ram.cpp in Sources */,
@@ -4469,6 +4478,7 @@
 				715F63852440E9100038F5A4 /* FTPStreamFactory.cpp in Sources */,
 				715F82F02440ED1E0038F5A4 /* Ascii.cpp in Sources */,
 				715F63A92440E9100038F5A4 /* HTTPServerConnectionFactory.cpp in Sources */,
+				1AB0D6DD26CB4AA800E18A08 /* fsdynamiclinknode.cpp in Sources */,
 				715F63CB2440E9110038F5A4 /* NTPPacket.cpp in Sources */,
 				71222C3024351CBA00CDBABD /* fsopennode.cpp in Sources */,
 				715F833C2440ED1F0038F5A4 /* zutil.c in Sources */,
@@ -4781,6 +4791,7 @@
 				7135DC4B264EBCD0005D6AA6 /* devfb.cpp in Sources */,
 				7135DC4C264EBCD0005D6AA6 /* common_fpu.cpp in Sources */,
 				7135DC4D264EBCD0005D6AA6 /* main.cpp in Sources */,
+				1AB0D6DF26CB4AAF00E18A08 /* fsdynamiclinknode.cpp in Sources */,
 				7135DC4E264EBCD0005D6AA6 /* soft_file_map.cpp in Sources */,
 				7135DC4F264EBCD0005D6AA6 /* common_other.cpp in Sources */,
 				7135DC50264EBCD0005D6AA6 /* kfiledescriptor.cpp in Sources */,
@@ -5323,6 +5334,7 @@
 				715F83812440ED1F0038F5A4 /* Formatter.cpp in Sources */,
 				71FBFE992433BBBE003F17F1 /* soft_wo_page.cpp in Sources */,
 				71FBFEE52433BBBE003F17F1 /* esopengl.c in Sources */,
+				1AB0D6DC26CB4AA800E18A08 /* fsdynamiclinknode.cpp in Sources */,
 				71FBFE702433BBBE003F17F1 /* configFile.cpp in Sources */,
 				715F63A42440E9100038F5A4 /* FTPClientSession.cpp in Sources */,
 				71FBFE5C2433BBBE003F17F1 /* readIcons.cpp in Sources */,

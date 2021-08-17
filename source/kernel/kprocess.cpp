@@ -283,8 +283,24 @@ void KProcess::setupCommandlineNode() {
         this->procNode = Fs::addFileNode(std::string("/proc/")+std::to_string(this->id), "", "", true, proc);
     }
     this->commandLineNode = Fs::addVirtualFile(std::string("/proc/")+std::to_string(this->id)+std::string("/cmdline"), openCommandLine, K__S_IREAD, 0, this->procNode);
+    std::string exePath = std::string("/proc/") + std::to_string(this->id) + std::string("/exe");
+    BoxedPtr<FsNode> exeNode = Fs::getNodeFromLocalPath("", exePath, true);
+    if (!exeNode) {
+        U32 id = this->id;
+        Fs::addDynamicLinkFile(exePath, 0, this->procNode, false, [id] {
+            std::shared_ptr<KProcess> p = KSystem::getProcess(id);
+            if (p) {
+                return Fs::getNodeFromLocalPath("", p->exe, true)->path;
+            }
+            return std::string("(deleted)");
+            });
+    }
 }
 
+std::string KProcess::getAbsoluteExePath() { 
+    std::string path = Fs::getNodeFromLocalPath("", this->exe, true)->path;
+    return Fs::getParentPath(path);
+}
 void KProcess::clone(const std::shared_ptr<KProcess>& from) {
     U32 i;
 
@@ -1309,10 +1325,10 @@ U32 KProcess::readlinkInDirectory(const std::string& currentDirectory, const std
     BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath(currentDirectory, path, false);
     if (!node || !node->isLink())
         return -K_EINVAL;
-    U32 len = (U32)node->link.length();
+    U32 len = (U32)node->getLink().length();
     if (len>bufSize)
         len = bufSize;
-    memcopyFromNative(buffer, node->link.c_str(), len);
+    memcopyFromNative(buffer, node->getLink().c_str(), len);
     return len; 
 }
 
@@ -2118,7 +2134,7 @@ U32 KProcess::lstat64(const std::string& path, U32 buffer) {
     U32 mode;
 
     if (node->isLink()) {
-        len = node->link.length();
+        len = node->getLink().length();
         mode = K__S_IFLNK | (node->getMode() & 0xFFF);
     } else {
         len = node->length();
