@@ -34,8 +34,10 @@ public:
     virtual bool canRead();
     virtual bool canWrite();
 
-    U32 getHardLinkCount() {return this->hardLinkCount;}
-    bool isLink() {return this->link.size()>0;}
+    virtual std::string getLink() {return this->link;}
+    virtual bool isLink() { return this->link.size() > 0; }
+
+    U32 getHardLinkCount() {return this->hardLinkCount;}    
     bool isDirectory() {return this->isDir;}
     BoxedPtr<FsNode> getParent() {return this->parent;}
 

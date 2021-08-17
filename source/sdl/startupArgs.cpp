@@ -110,6 +110,9 @@ void StartUpArgs::buildVirtualFileSystem() {
     Fs::addVirtualFile("/dev/zero", openDevZero, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, mdev(1, 5), devNode);
     Fs::addVirtualFile("/proc/meminfo", openMemInfo, K__S_IREAD, mdev(0, 0), procNode);
     Fs::addVirtualFile("/proc/cpuinfo", openCpuInfo, K__S_IREAD, mdev(0, 0), procNode);
+    Fs::addDynamicLinkFile("/proc/self", mdev(0, 0), procNode, true, [] {
+        return std::to_string(KThread::currentThread()->process->id);
+        });
     Fs::addVirtualFile("/proc/self/exe", openProcSelfExe, K__S_IREAD, mdev(0, 0), procSelfNode);
     Fs::addVirtualFile("/proc/cmdline", openKernelCommandLine, K__S_IREAD, mdev(0, 0), procNode); // kernel command line
 #ifdef BOXEDWINE_EXPERIMENTAL_FRAME_BUFFER

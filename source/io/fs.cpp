@@ -2,6 +2,8 @@
 
 #include "fsfilenode.h"
 #include "fsvirtualnode.h"
+#include "fsdynamiclinknode.h"
+
 #ifdef BOXEDWINE_ZLIB
 #include "fszip.h"
 #endif
@@ -88,6 +90,13 @@ BoxedPtr<FsNode> Fs::addVirtualFile(const std::string& path, OpenVirtualNode fun
     return result;
 }
 
+BoxedPtr<FsNode> Fs::addDynamicLinkFile(const std::string& path, U32 rdev, const BoxedPtr<FsNode>& parent, bool isDirectory, std::function<std::string(void)> fnGetLink) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(Fs::nextNodeIdMutex);
+    BoxedPtr<FsNode> result = new FsDynamicLinkNode(Fs::nextNodeId++, rdev, path, parent, isDirectory, fnGetLink);
+    parent->addChild(result);
+    return result;
+}
+
 BoxedPtr<FsNode> Fs::getNodeFromLocalPath(const std::string& currentDirectory, const std::string& path, bool followLink, bool* isLink) {
     BoxedPtr<FsNode> lastNode;
     std::vector<std::string> missingParts;
@@ -169,10 +178,10 @@ BoxedPtr<FsNode> Fs::getNodeFromLocalPath(const std::string& currentDirectory, c
             }
 
             std::vector<std::string> linkParts;
-            Fs::splitPath(node->link, linkParts);
+            Fs::splitPath(node->getLink(), linkParts);
             parts.erase(parts.begin()+i, parts.begin()+i+1);
             parts.insert(parts.begin()+i, linkParts.begin(), linkParts.end());
-            if (stringStartsWith(node->link, "/")) {
+            if (stringStartsWith(node->getLink(), "/")) {
                 parts.erase(parts.begin(), parts.begin()+i);
             }   
             if (!cleanPath(parts))

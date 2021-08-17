@@ -107,7 +107,7 @@ public:
 	void deleteThread(KThread* thread);
     void killAllThreadsExceptCurrent();
     void killAllThreads();
-
+    std::string getAbsoluteExePath();
     void clone(const std::shared_ptr<KProcess>& from);
     U32 getNextFileDescriptorHandle(int after);
 
