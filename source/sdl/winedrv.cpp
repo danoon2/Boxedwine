@@ -1686,8 +1686,8 @@ void boxeddrv_GetVersion(CPU* cpu) {
 #ifdef BOXEDWINE_VULKAN
 #include <SDL_vulkan.h>
 #define VK_NO_PROTOTYPES
-#include "../vulkan/vulkan.h"
-#include "../vulkan/vulkan_core.h"
+#include "../vulkan/vk/vulkan.h"
+#include "../vulkan/vk/vulkan_core.h"
 
 // VkResult boxedwine_vkCreateInstance(const VkInstanceCreateInfo* create_info, const VkAllocationCallbacks* allocator, VkInstance* instance)
 static void boxeddrv_vkCreateInstance(CPU* cpu) {
