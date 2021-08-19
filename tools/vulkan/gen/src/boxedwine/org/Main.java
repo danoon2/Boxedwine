@@ -294,7 +294,9 @@ public class Main {
                     stackPos+=2;
                 }
                 if (param.isPointer) {
-                    out.append(", 0)");
+                    out.append(", ");
+                    out.append(param.arrayLen);
+                    out.append(")");
                 }
                 out.append(";\n");
             }
@@ -643,9 +645,17 @@ public class Main {
                 param.len = eElement.getAttribute("len");
             }
             param.full = eElement.getTextContent().replaceAll("\\s{2,}", " ").trim();
-            param.isDoublePointer = param.full.contains("**");
-            param.isPointer = param.full.contains("*");
             param.isConst = param.full.contains("const ");
+            if (param.full.contains("[")) {
+                param.isPointer = true;
+                int pos = param.full.indexOf('[');
+                int pos2 = param.full.indexOf(']');
+                String len = param.full.substring(pos+1, pos2);
+                param.arrayLen = Integer.parseInt(len);
+            } else {
+                param.isDoublePointer = param.full.contains("**");
+                param.isPointer = param.full.contains("*");
+            }
             if (param.paramType == null && !param.isPointer) {
                 throw new Exception("Could not find param type: "+eElement.getElementsByTagName("type").item(0).getTextContent());
             }

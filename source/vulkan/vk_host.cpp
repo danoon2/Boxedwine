@@ -820,7 +820,7 @@ void vk_CmdSetDepthBias(CPU* cpu) {
 PFN_vkCmdSetBlendConstants vkCmdSetBlendConstants;
 void vk_CmdSetBlendConstants(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)dARG1;
-    const float blendConstants[4] = (float)ARG3;
+    float* blendConstants = (float*)getPhysicalAddress(ARG3, 4);
     vkCmdSetBlendConstants(commandBuffer, blendConstants);
 }
 PFN_vkCmdSetDepthBounds vkCmdSetDepthBounds;

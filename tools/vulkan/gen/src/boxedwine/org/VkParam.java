@@ -4,6 +4,7 @@ public class VkParam {
     VkType paramType;
     String name;
     String len; // for pointer types, this is how many items are in it
+    int arrayLen;
     String full;
     boolean isPointer;
     boolean isDoublePointer;
