@@ -105,7 +105,7 @@ void freeNativeMemory(Memory* memory, U32 page, U32 pageCount) {
         memory->clearCodePageFromCache(page + i);
         memory->flags[page+i] = 0;
     }
-    for (int i=0;i<nativePageCount;i++) {
+    for (U32 i=0;i<nativePageCount;i++) {
         U32 emulatedPageStart = memory->getEmulatedPage(nativePageStart+i);
         bool canClear = true;
         for (U32 j=0;j<K_NATIVE_PAGES_PER_PAGE;j++) {
