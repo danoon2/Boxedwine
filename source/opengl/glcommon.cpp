@@ -175,7 +175,7 @@ void glcommon_glRenderMode(CPU* cpu) {
     EAX = GL_FUNC(pglRenderMode)(mode);
 #ifndef BOXEDWINE_64BIT_MMU
     // could be -1
-    if (EAX < feedbackBufferSize) {
+    if (EAX < (U32)feedbackBufferSize) {
         marshalBackf(cpu, feedbackBufferAddress, feedbackBuffer, EAX);
     }
 #endif

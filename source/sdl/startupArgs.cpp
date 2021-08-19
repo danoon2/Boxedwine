@@ -493,9 +493,9 @@ bool StartUpArgs::loadDefaultResource(const char* app) {
     lines.push_back(app);
     if (cmd && readLinesFromFile(cmd, lines)) {
         const char** ppArgs = new const char*[lines.size()];
-        for (int i=0;i<lines.size();i++) {
+        for (int i=0;i<(int)lines.size();i++) {
             ppArgs[i] = lines[i].c_str();
-            if (lines[i] == "-zip" && i+1<lines.size()) {
+            if (lines[i] == "-zip" && i+1<(int)lines.size()) {
                 if (!Fs::doesNativePathExist(lines[i+1])) {
                     const char* zip = Platform::getResourceFilePath(lines[i+1].c_str());
                     if (zip && Fs::doesNativePathExist(zip)) {
