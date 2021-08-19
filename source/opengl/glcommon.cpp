@@ -157,7 +157,7 @@ void glcommon_glFeedbackBuffer(CPU* cpu) {
 #endif
 }
 
-static char* addedExt[] = { "WGL_ARB_create_context" };
+static const char* addedExt[] = { "WGL_ARB_create_context" };
 
 void glcommon_glGetIntegerv(CPU* cpu) {
     GLenum pname = ARG1;

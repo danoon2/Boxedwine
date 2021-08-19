@@ -42,6 +42,14 @@
 		1AB0D6DD26CB4AA800E18A08 /* fsdynamiclinknode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0D6DA26CB4AA800E18A08 /* fsdynamiclinknode.cpp */; };
 		1AB0D6DE26CB4AAE00E18A08 /* fsdynamiclinknode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0D6DA26CB4AA800E18A08 /* fsdynamiclinknode.cpp */; };
 		1AB0D6DF26CB4AAF00E18A08 /* fsdynamiclinknode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0D6DA26CB4AA800E18A08 /* fsdynamiclinknode.cpp */; };
+		1AB0D6EE26CF0C5400E18A08 /* vk_host.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0D6EA26CF0C5400E18A08 /* vk_host.cpp */; };
+		1AB0D6EF26CF0C5400E18A08 /* vk_host.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0D6EA26CF0C5400E18A08 /* vk_host.cpp */; };
+		1AB0D6F026CF0C5400E18A08 /* vk_host.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0D6EA26CF0C5400E18A08 /* vk_host.cpp */; };
+		1AB0D6F126CF0C5400E18A08 /* vk_host.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0D6EA26CF0C5400E18A08 /* vk_host.cpp */; };
+		1AB0D6F226CF0C5400E18A08 /* vulkancommon.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0D6EB26CF0C5400E18A08 /* vulkancommon.cpp */; };
+		1AB0D6F326CF0C5400E18A08 /* vulkancommon.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0D6EB26CF0C5400E18A08 /* vulkancommon.cpp */; };
+		1AB0D6F426CF0C5400E18A08 /* vulkancommon.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0D6EB26CF0C5400E18A08 /* vulkancommon.cpp */; };
+		1AB0D6F526CF0C5400E18A08 /* vulkancommon.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0D6EB26CF0C5400E18A08 /* vulkancommon.cpp */; };
 		1AFC4768264096CB00EE5FCC /* armv8CPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4764264096CB00EE5FCC /* armv8CPU.cpp */; };
 		1AFC4769264096CB00EE5FCC /* llvm_helper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4765264096CB00EE5FCC /* llvm_helper.cpp */; };
 		1AFC476D26409EB200EE5FCC /* armv8CPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4764264096CB00EE5FCC /* armv8CPU.cpp */; };
@@ -1544,6 +1552,11 @@
 		1AB0CAFD263BA8AC003AF407 /* wineaudiodrv.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = wineaudiodrv.cpp; sourceTree = "<group>"; };
 		1AB0D6DA26CB4AA800E18A08 /* fsdynamiclinknode.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = fsdynamiclinknode.cpp; sourceTree = "<group>"; };
 		1AB0D6DB26CB4AA800E18A08 /* fsdynamiclinknode.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = fsdynamiclinknode.h; sourceTree = "<group>"; };
+		1AB0D6E826CF0C5300E18A08 /* vkfuncs.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = vkfuncs.h; path = vulkan/vkfuncs.h; sourceTree = "<group>"; };
+		1AB0D6E926CF0C5400E18A08 /* vk_host.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = vk_host.h; path = vulkan/vk_host.h; sourceTree = "<group>"; };
+		1AB0D6EA26CF0C5400E18A08 /* vk_host.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = vk_host.cpp; path = vulkan/vk_host.cpp; sourceTree = "<group>"; };
+		1AB0D6EB26CF0C5400E18A08 /* vulkancommon.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = vulkancommon.cpp; path = vulkan/vulkancommon.cpp; sourceTree = "<group>"; };
+		1AB0D6ED26CF0C5400E18A08 /* vkdef.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = vkdef.h; path = vulkan/vkdef.h; sourceTree = "<group>"; };
 		1AFC4764264096CB00EE5FCC /* armv8CPU.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = armv8CPU.cpp; sourceTree = "<group>"; };
 		1AFC4765264096CB00EE5FCC /* llvm_helper.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = llvm_helper.cpp; sourceTree = "<group>"; };
 		1AFC4766264096CB00EE5FCC /* armv8CPU.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = armv8CPU.h; sourceTree = "<group>"; };
@@ -2530,6 +2543,18 @@
 			path = pugixml;
 			sourceTree = "<group>";
 		};
+		1AB0D6E126CF0B8F00E18A08 /* vulkan */ = {
+			isa = PBXGroup;
+			children = (
+				1AB0D6EA26CF0C5400E18A08 /* vk_host.cpp */,
+				1AB0D6E926CF0C5400E18A08 /* vk_host.h */,
+				1AB0D6ED26CF0C5400E18A08 /* vkdef.h */,
+				1AB0D6E826CF0C5300E18A08 /* vkfuncs.h */,
+				1AB0D6EB26CF0C5400E18A08 /* vulkancommon.cpp */,
+			);
+			name = vulkan;
+			sourceTree = "<group>";
+		};
 		1AFC47632640965500EE5FCC /* armv8 */ = {
 			isa = PBXGroup;
 			children = (
@@ -3290,6 +3315,7 @@
 		71FBFD0C2433BBBE003F17F1 /* source */ = {
 			isa = PBXGroup;
 			children = (
+				1AB0D6E126CF0B8F00E18A08 /* vulkan */,
 				71FBFD0D2433BBBE003F17F1 /* ui */,
 				71FBFD442433BBBE003F17F1 /* test */,
 				71FBFD4D2433BBBE003F17F1 /* util */,
@@ -4038,6 +4064,7 @@
 				71222B412435163F00CDBABD /* log.cpp in Sources */,
 				71222B712435169100CDBABD /* decoder.cpp in Sources */,
 				71222BAA2435169100CDBABD /* devurandom.cpp in Sources */,
+				1AB0D6F426CF0C5400E18A08 /* vulkancommon.cpp in Sources */,
 				710091502644D42C003413C3 /* sdlcallback.cpp in Sources */,
 				7100914A2644D42C003413C3 /* knativethread.cpp in Sources */,
 				71222BBB2435169100CDBABD /* kepoll.cpp in Sources */,
@@ -4051,6 +4078,7 @@
 				71222B3D2435163100CDBABD /* testSSE2.cpp in Sources */,
 				71222B852435169100CDBABD /* fsfileopennode.cpp in Sources */,
 				71222B8D2435169100CDBABD /* fsmemnode.cpp in Sources */,
+				1AB0D6F026CF0C5400E18A08 /* vk_host.cpp in Sources */,
 				71222B8F2435169100CDBABD /* fsvirtualnode.cpp in Sources */,
 				71222BBA2435169100CDBABD /* kscheduler.cpp in Sources */,
 				71222B432435163F00CDBABD /* synchronization.cpp in Sources */,
@@ -4400,6 +4428,7 @@
 				715F827E2440ED1E0038F5A4 /* pcre_ucd.c in Sources */,
 				71222C1524351CBA00CDBABD /* soft_native_page.cpp in Sources */,
 				715F82642440ED1E0038F5A4 /* Environment.cpp in Sources */,
+				1AB0D6EF26CF0C5400E18A08 /* vk_host.cpp in Sources */,
 				71222C1624351CBA00CDBABD /* synchronization.cpp in Sources */,
 				1AFC479E2648471000EE5FCC /* audiounit.cpp in Sources */,
 				715F645B2440E9740038F5A4 /* KeyConsoleHandler.cpp in Sources */,
@@ -4702,6 +4731,7 @@
 				7100913D2644D42C003413C3 /* knativesynchronization.cpp in Sources */,
 				715F64052440E9110038F5A4 /* HTTPServerRequestImpl.cpp in Sources */,
 				715F638F2440E9100038F5A4 /* HTTPAuthenticationParams.cpp in Sources */,
+				1AB0D6F326CF0C5400E18A08 /* vulkancommon.cpp in Sources */,
 				715F636D2440E9100038F5A4 /* MulticastSocket.cpp in Sources */,
 				71222C6D24351CBA00CDBABD /* normalCPU.cpp in Sources */,
 				715F822E2440ED1D0038F5A4 /* StreamConverter.cpp in Sources */,
@@ -4764,6 +4794,7 @@
 				7135DC31264EBCD0005D6AA6 /* fpu.cpp in Sources */,
 				7135DC32264EBCD0005D6AA6 /* testSSE2.cpp in Sources */,
 				7135DC33264EBCD0005D6AA6 /* fsfileopennode.cpp in Sources */,
+				1AB0D6F526CF0C5400E18A08 /* vulkancommon.cpp in Sources */,
 				7135DC34264EBCD0005D6AA6 /* fsmemnode.cpp in Sources */,
 				7135DC35264EBCD0005D6AA6 /* fsvirtualnode.cpp in Sources */,
 				7135DC36264EBCD0005D6AA6 /* kscheduler.cpp in Sources */,
@@ -4784,6 +4815,7 @@
 				7135DC44264EBCD0005D6AA6 /* sdlgl.cpp in Sources */,
 				7135DC45264EBCD0005D6AA6 /* glfunctions_ext3.cpp in Sources */,
 				7135DC46264EBCD0005D6AA6 /* testCPU.cpp in Sources */,
+				1AB0D6F126CF0C5400E18A08 /* vk_host.cpp in Sources */,
 				7135DC47264EBCD0005D6AA6 /* normal_shift.cpp in Sources */,
 				7135DC48264EBCD0005D6AA6 /* knativesocket.cpp in Sources */,
 				7135DC49264EBCD0005D6AA6 /* ksystem.cpp in Sources */,
@@ -4927,6 +4959,7 @@
 				71FBFE8F2433BBBE003F17F1 /* decoder.cpp in Sources */,
 				715F64262440E9110038F5A4 /* NTLMCredentials.cpp in Sources */,
 				710091422644D42C003413C3 /* kdspaudio.cpp in Sources */,
+				1AB0D6EE26CF0C5400E18A08 /* vk_host.cpp in Sources */,
 				715F63D02440E9110038F5A4 /* HTTPCredentials.cpp in Sources */,
 				71FBFE742433BBBE003F17F1 /* testCPU.cpp in Sources */,
 				715F63C22440E9110038F5A4 /* HTTPMessage.cpp in Sources */,
@@ -5412,6 +5445,7 @@
 				1AFC480A2663FFC000EE5FCC /* pixelformat.cpp in Sources */,
 				715F82C92440ED1E0038F5A4 /* FileChannel.cpp in Sources */,
 				715F82692440ED1E0038F5A4 /* ThreadTarget.cpp in Sources */,
+				1AB0D6F226CF0C5400E18A08 /* vulkancommon.cpp in Sources */,
 				715F838B2440ED1F0038F5A4 /* MD4Engine.cpp in Sources */,
 				715F82392440ED1D0038F5A4 /* Mutex.cpp in Sources */,
 				715F64042440E9110038F5A4 /* HTTPServerRequestImpl.cpp in Sources */,
