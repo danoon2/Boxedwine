@@ -2936,6 +2936,18 @@ void X64Asm::int99(U32 opLen) {
     //doJmp();
 }
 
+void X64Asm::int9A(U32 opLen) {
+    minSyncRegsFromHost();
+
+    // void common_int9A(CPU* cpu)
+    lockParamReg(PARAM_1_REG, PARAM_1_REX);
+    writeToRegFromReg(PARAM_1_REG, PARAM_1_REX, HOST_CPU, true, 8); // CPU* param
+
+    callHost((void*)common_int9A);
+    minSyncRegsToHost();
+    //doJmp();
+}
+
 void X64Asm::writeXchgEspEax() {
     write8(REX_MOD_RM|REX_BASE);
     write8(0x90+HOST_ESP);

@@ -36,7 +36,9 @@
 #include "shellapi.h"
 #include "imm.h"
 #include "ddk/imm.h"
+#ifndef BOXED_IGNORE_WINELIB
 #include "wine/library.h"
+#endif
 #include "wine/wgl.h"
 #include "wine/wgl_driver.h"
 #ifdef BOXED_NEED_WGLEXT
@@ -49,12 +51,26 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#if WINE_VULKAN_DRIVER_VERSION >= 7
+#define VK_NO_PROTOTYPES
+#define WINE_VK_HOST
+
+#include "wine/vulkan.h"
+#include "wine/vulkan_driver.h"
+#endif
+
 WINE_DEFAULT_DEBUG_CHANNEL(boxeddrv);
 
-#if WINE_GDI_DRIVER_VERSION == 50
+#if WINE_GDI_DRIVER_VERSION >= 50
 #define WINE_CDECL CDECL
 #else
 #define WINE_CDECL
+#endif
+
+#if WINE_WGL_DRIVER_VERSION >= 21
+#define BOXED_GLAPI WINAPI
+#else
+#define BOXED_GLAPI
 #endif
 
 #define USE_GL_FUNC(name) #name,
@@ -163,6 +179,26 @@ typedef struct
 #define BOXED_CREATE_DESKTOP                        (BOXED_BASE+86)
 #define BOXED_HAS_WND                               (BOXED_BASE+87)
 #define BOXED_GET_VERSION                           (BOXED_BASE+88)
+
+#define BOXED_VK_CREATE_INSTANCE                    (BOXED_BASE+89)
+#define BOXED_VK_CREATE_SWAPCHAIN                   (BOXED_BASE+90)
+#define BOXED_VK_CREATE_SURFACE                     (BOXED_BASE+91)
+#define BOXED_VK_DESTROY_INSTANCE                   (BOXED_BASE+92)
+#define BOXED_VK_DESTROY_SURFACE                    (BOXED_BASE+93)
+#define BOXED_VK_DESTROY_SWAPCHAIN                  (BOXED_BASE+94)
+#define BOXED_VK_ENUMERATE_INSTANCE_EXTENSION_PROPERTIES (BOXED_BASE+95)
+#define BOXED_VK_GET_DEVICE_GROUP_SURFACE_PRESENT_MODES  (BOXED_BASE+96)
+#define BOXED_VK_GET_PHYSICAL_DEVICE_PRESENT_RECTANGLES  (BOXED_BASE+97)
+#define BOXED_VK_GET_PHYSICAL_DEVICE_SURFACE_CAPABILITIES   (BOXED_BASE+98)
+#define BOXED_VK_GET_PHYSICAL_DEVICE_SURFACE_FORMATS (BOXED_BASE+99)
+#define BOXED_VK_GET_PHYSICAL_DEVICE_SURFACE_PRESENT_MODES (BOXED_BASE+100)
+#define BOXED_VK_GET_PHYSICAL_DEVICE_SURFACE_SUPPORT (BOXED_BASE+101)
+#define BOXED_VK_GET_PHYSICAL_DEVICE_WIN32_PRESENTATION_SUPPORT (BOXED_BASE+102)
+#define BOXED_VK_GET_SWAPCHAIN_IMAGES                (BOXED_BASE+103)
+#define BOXED_VK_QUEUE_PRESENT                       (BOXED_BASE+104)
+#define BOXED_VK_GET_PHYSICAL_DEVICE_SURFACE_CAPABILITIES2   (BOXED_BASE+105)
+#define BOXED_VK_GET_PHYSICAL_DEVICE_SURFACE_FORMATS2 (BOXED_BASE+106)
+#define BOXED_VK_GET_NATIVE_SURFACE                  (BOXED_BASE+107)
 
 #define CALL_0(index) __asm__("push %1\n\tint $0x98\n\taddl $4, %%esp": "=a" (result):"i"(index):); 
 #define CALL_1(index, arg1) __asm__("push %2\n\tpush %1\n\tint $0x98\n\taddl $8, %%esp": "=a" (result):"i"(index), "g"((DWORD)arg1):); 
@@ -450,7 +486,7 @@ static HKL get_locale_kbd_layout(void)
      */
     langid = PRIMARYLANGID(LANGIDFROMLCID(layout));
     if (langid == LANG_CHINESE || langid == LANG_JAPANESE || langid == LANG_KOREAN)
-        layout |= 0xe001 << 16; /* IME */
+        layout |= (ULONG_PTR)0xe001 << 16; /* IME */
     else
         layout |= layout << 16;
 
@@ -1086,34 +1122,34 @@ BOOL WINAPI NotifyIME(HIMC hIMC, DWORD dwAction, DWORD dwIndex, DWORD dwValue) {
     return (BOOL)result;
 }
 
-static BOOL boxeddrv_wglCopyContext(struct wgl_context *src, struct wgl_context *dst, UINT mask) {
+static BOOL BOXED_GLAPI boxeddrv_wglCopyContext(struct wgl_context *src, struct wgl_context *dst, UINT mask) {
     int result;
     CALL_3(BOXED_GL_COPY_CONTEXT, src, dst, mask);
     TRACE("boxeddrv_wglCopyContext src=%p dst=%p mask=%X result=%d\n", src, dst, mask, result);
     return (BOOL)result;
 }
 
-static struct wgl_context *boxeddrv_wglCreateContext(HDC hdc) {
+static struct wgl_context * BOXED_GLAPI boxeddrv_wglCreateContext(HDC hdc) {
     struct wgl_context* result;
     CALL_5(BOXED_GL_CREATE_CONTEXT, WindowFromDC(hdc), 0, 0, 0, 0);
     TRACE("boxeddrv_wglCreateContext hdc=%X result=%p\n", (int)hdc, result);
     return result;
 }
 
-static BOOL boxeddrv_wglDeleteContext(struct wgl_context *context) {
+static BOOL BOXED_GLAPI boxeddrv_wglDeleteContext(struct wgl_context *context) {
     TRACE("boxeddrv_wglDeleteContext context=%p\n", context);
     CALL_NORETURN_1(BOXED_GL_DELETE_CONTEXT, context);
     return TRUE;
 }
 
-static int boxeddrv_wglDescribePixelFormat(HDC hdc, int fmt, UINT size, PIXELFORMATDESCRIPTOR *descr) {
+static int BOXED_GLAPI boxeddrv_wglDescribePixelFormat(HDC hdc, int fmt, UINT size, PIXELFORMATDESCRIPTOR *descr) {
     int result;
     CALL_4(BOXED_GL_DESCRIBE_PIXEL_FORMAT, hdc, fmt, size, descr);
     TRACE("boxeddrv_wglDescribePixelFormat hdc=%X fmt=%d size=%d descr=%p result=%d\n", (int)hdc, fmt, size, descr, result);
     return result;
 }
 
-static int boxeddrv_wglGetPixelFormat(HDC hdc) {
+static int BOXED_GLAPI boxeddrv_wglGetPixelFormat(HDC hdc) {
     int result;
     CALL_1(BOXED_GL_GET_PIXEL_FORMAT, WindowFromDC(hdc));
     TRACE("boxeddrv_wglGetPixelFormat hdc=%X result=%d\n", (int)hdc, result);
@@ -1123,7 +1159,7 @@ static int boxeddrv_wglGetPixelFormat(HDC hdc) {
 static struct wgl_context *boxeddrv_wglCreateContextAttribsARB(HDC hdc, struct wgl_context *share_context, const int *attrib_list);
 static void* glModule;
 
-static PROC boxeddrv_wglGetProcAddress(const char *proc) {
+static PROC BOXED_GLAPI boxeddrv_wglGetProcAddress(const char *proc) {
     TRACE("boxeddrv_wglGetProcAddress %s\n", proc);
     if (!strcmp(proc, "wglCreateContextAttribsARB"))
         return (PROC)boxeddrv_wglCreateContextAttribsARB;
@@ -1148,28 +1184,28 @@ static PROC boxeddrv_wglGetProcAddress(const char *proc) {
     return NULL;
 }
 
-static BOOL boxeddrv_wglMakeCurrent(HDC hdc, struct wgl_context *context) {
+static BOOL BOXED_GLAPI boxeddrv_wglMakeCurrent(HDC hdc, struct wgl_context *context) {
     int result;
     CALL_2(BOXED_GL_MAKE_CURRENT, WindowFromDC(hdc), context);
     TRACE("boxeddrv_wglMakeCurrent hdc=%X context=%p result=%d\n",(int)hdc, context, result);
     return (BOOL)result;
 }
 
-static BOOL boxeddrv_wglSetPixelFormat(HDC hdc, int fmt, const PIXELFORMATDESCRIPTOR *descr) {
+static BOOL BOXED_GLAPI boxeddrv_wglSetPixelFormat(HDC hdc, int fmt, const PIXELFORMATDESCRIPTOR *descr) {
     int result;
     CALL_3(BOXED_GL_SET_PIXEL_FORMAT, WindowFromDC(hdc), fmt, descr);
     TRACE("boxeddrv_wglSetPixelFormat hdc=%X fmt=%d descr=%p result=%d\n", (int)hdc, fmt, descr, result);
     return (BOOL)result;
 }
 
-static BOOL boxeddrv_wglShareLists(struct wgl_context *org, struct wgl_context *dest) {
+static BOOL BOXED_GLAPI boxeddrv_wglShareLists(struct wgl_context *org, struct wgl_context *dest) {
     int result;
     CALL_2(BOXED_GL_SHARE_LISTS, org, dest);
     TRACE("boxeddrv_wglShareLists org=%p dest=%p result=%d\n", org, dest, result);
     return (BOOL)result;
 }
 
-static BOOL boxeddrv_wglSwapBuffers(HDC hdc) {
+static BOOL BOXED_GLAPI boxeddrv_wglSwapBuffers(HDC hdc) {
     int result;
     CALL_1(BOXED_GL_SWAP_BUFFERS, hdc);
     return (BOOL)result;
@@ -1207,11 +1243,311 @@ static struct opengl_funcs opengl_funcs =
     }
 };
 
+#if WINE_VULKAN_DRIVER_VERSION >= 7
+static void* (*pvkGetDeviceProcAddr)(VkDevice, const char*);
+static void* (*pvkGetInstanceProcAddr)(VkInstance, const char*);
+
+static void* vulkan_handle;
+
+static BOOL wine_vk_init(void)
+{
+    if (!(vulkan_handle = dlopen("/lib/libvulkan.so.1", RTLD_NOW)))
+    {
+        ERR("Failed to load libvulkan.so.1.\n");
+        return TRUE;
+    }
+#define LOAD_FUNCPTR(f) p##f = dlsym(vulkan_handle, #f);
+        LOAD_FUNCPTR(vkGetDeviceProcAddr)
+        LOAD_FUNCPTR(vkGetInstanceProcAddr)
+#undef LOAD_FUNCPTR
+#undef LOAD_OPTIONAL_FUNCPTR
+    return TRUE;
+
+}
+
+static VkResult boxedwine_vkCreateInstance(const VkInstanceCreateInfo* create_info, const VkAllocationCallbacks* allocator, VkInstance* instance)
+{
+    int result;
+    TRACE("create_info %p, allocator %p, instance %p\n", create_info, allocator, instance);
+    CALL_3(BOXED_VK_CREATE_INSTANCE, create_info, allocator, instance);    
+    return (VkResult)result;
+}
+
+static VkResult boxedwine_vkCreateSwapchainKHR(VkDevice device, const VkSwapchainCreateInfoKHR* create_info, const VkAllocationCallbacks* allocator, VkSwapchainKHR* swapchain)
+{
+    int result;
+    TRACE("%p %p %p %p\n", device, create_info, allocator, swapchain);
+    CALL_4(BOXED_VK_CREATE_SWAPCHAIN, device, create_info, allocator, swapchain);
+    return (VkResult)result;
+}
+
+static VkResult boxedwine_vkCreateWin32SurfaceKHR(VkInstance instance, const VkWin32SurfaceCreateInfoKHR* create_info, const VkAllocationCallbacks* allocator, VkSurfaceKHR* surface)
+{
+    int result;
+    TRACE("%p %p %p %p\n", instance, create_info, allocator, surface);
+    CALL_4(BOXED_VK_CREATE_SURFACE, instance, create_info, allocator, surface);
+    return (VkResult)result;
+}
+
+static void boxedwine_vkDestroyInstance(VkInstance instance, const VkAllocationCallbacks* allocator)
+{
+    TRACE("%p %p\n", instance, allocator);
+    CALL_NORETURN_2(BOXED_VK_DESTROY_INSTANCE, instance, allocator);
+}
+
+static void boxedwine_vkDestroySurfaceKHR(VkInstance instance, VkSurfaceKHR surface, const VkAllocationCallbacks* allocator)
+{
+    TRACE("%p 0x%s %p\n", instance, wine_dbgstr_longlong(surface), allocator);
+    CALL_NORETURN_3(BOXED_VK_DESTROY_SURFACE, instance, &surface, allocator);
+}
+
+static void boxedwine_vkDestroySwapchainKHR(VkDevice device, VkSwapchainKHR swapchain, const VkAllocationCallbacks* allocator)
+{
+    TRACE("%p, 0x%s %p\n", device, wine_dbgstr_longlong(swapchain), allocator);
+    CALL_NORETURN_3(BOXED_VK_DESTROY_SWAPCHAIN, device, &swapchain, allocator);
+}
+
+static VkResult boxedwine_vkEnumerateInstanceExtensionProperties(const char* layer_name, uint32_t* count, VkExtensionProperties* properties)
+{
+    int result;
+    TRACE("layer_name %s, count %p, properties %p\n", debugstr_a(layer_name), count, properties);
+    CALL_3(BOXED_VK_ENUMERATE_INSTANCE_EXTENSION_PROPERTIES, layer_name, count, properties);
+    return (VkResult)result;
+}
+
+static VkResult boxedwine_vkGetDeviceGroupSurfacePresentModesKHR(VkDevice device, VkSurfaceKHR surface, VkDeviceGroupPresentModeFlagsKHR* flags)
+{
+    int result;
+    TRACE("%p, 0x%s, %p\n", device, wine_dbgstr_longlong(surface), flags);
+    CALL_3(BOXED_VK_GET_DEVICE_GROUP_SURFACE_PRESENT_MODES, device, &surface, flags);
+    return (VkResult)result;
+}
+
+static void* boxedwine_vkGetDeviceProcAddr(VkDevice device, const char* name)
+{
+    TRACE("%p, %s\n", device, debugstr_a(name));
+    return pvkGetDeviceProcAddr(device, name);
+}
+
+static void* boxedwine_vkGetInstanceProcAddr(VkInstance instance, const char* name)
+{
+    TRACE("%p, %s\n", instance, debugstr_a(name));
+    return pvkGetInstanceProcAddr(instance, name);
+}
+
+static VkResult boxedwine_vkGetPhysicalDevicePresentRectanglesKHR(VkPhysicalDevice phys_dev, VkSurfaceKHR surface, uint32_t* count, VkRect2D* rects)
+{
+    int result;
+    TRACE("%p, 0x%s, %p, %p\n", phys_dev, wine_dbgstr_longlong(surface), count, rects);
+    CALL_4(BOXED_VK_GET_PHYSICAL_DEVICE_PRESENT_RECTANGLES, phys_dev, &surface, count, rects);
+    return (VkResult)result;
+}
+
+static VkResult boxedwine_vkGetPhysicalDeviceSurfaceCapabilitiesKHR(VkPhysicalDevice phys_dev, VkSurfaceKHR surface, VkSurfaceCapabilitiesKHR* capabilities)
+{
+    int result;
+    TRACE("%p, 0x%s, %p\n", phys_dev, wine_dbgstr_longlong(surface), capabilities);
+    CALL_3(BOXED_VK_GET_PHYSICAL_DEVICE_SURFACE_CAPABILITIES, phys_dev, &surface, capabilities);
+    return (VkResult)result;
+}
+
+static VkResult boxedwine_vkGetPhysicalDeviceSurfaceCapabilities2KHR(VkPhysicalDevice phys_dev, const VkPhysicalDeviceSurfaceInfo2KHR* surface_info, VkSurfaceCapabilities2KHR* capabilities)
+{
+    int result;
+    TRACE("%p, %p, %p\n", phys_dev, surface_info, capabilities);
+    CALL_3(BOXED_VK_GET_PHYSICAL_DEVICE_SURFACE_CAPABILITIES2, phys_dev, surface_info, capabilities);
+    return (VkResult)result;
+}
+
+static VkResult boxedwine_vkGetPhysicalDeviceSurfaceFormatsKHR(VkPhysicalDevice phys_dev, VkSurfaceKHR surface, uint32_t* count, VkSurfaceFormatKHR* formats)
+{
+    int result;
+    TRACE("%p, 0x%s, %p, %p\n", phys_dev, wine_dbgstr_longlong(surface), count, formats);
+    CALL_4(BOXED_VK_GET_PHYSICAL_DEVICE_SURFACE_FORMATS, phys_dev, &surface, count, formats);
+    return (VkResult)result;
+}
+
+static VkResult boxedwine_vkGetPhysicalDeviceSurfaceFormats2KHR(VkPhysicalDevice phys_dev, const VkPhysicalDeviceSurfaceInfo2KHR* surface_info, uint32_t* count, VkSurfaceFormat2KHR* formats)
+{
+    int result;
+    TRACE("%p, %p, %p, %p\n", phys_dev, surface_info, count, formats);
+    CALL_4(BOXED_VK_GET_PHYSICAL_DEVICE_SURFACE_FORMATS2, phys_dev, surface_info, count, formats);
+    return (VkResult)result;
+}
+
+static VkResult boxedwine_vkGetPhysicalDeviceSurfacePresentModesKHR(VkPhysicalDevice phys_dev, VkSurfaceKHR surface, uint32_t* count, VkPresentModeKHR* modes)
+{
+    int result;
+    TRACE("%p, 0x%s, %p, %p\n", phys_dev, wine_dbgstr_longlong(surface), count, modes);
+    CALL_4(BOXED_VK_GET_PHYSICAL_DEVICE_SURFACE_PRESENT_MODES, phys_dev, &surface, count, modes);
+    return (VkResult)result;
+}
+
+static VkResult boxedwine_vkGetPhysicalDeviceSurfaceSupportKHR(VkPhysicalDevice phys_dev, uint32_t index, VkSurfaceKHR surface, VkBool32* supported)
+{
+    int result;
+    TRACE("%p, %u, 0x%s, %p\n", phys_dev, index, wine_dbgstr_longlong(surface), supported);
+    CALL_4(BOXED_VK_GET_PHYSICAL_DEVICE_SURFACE_SUPPORT, phys_dev, index, &surface, supported);
+    return (VkResult)result;
+}
+
+static VkBool32 boxedwine_vkGetPhysicalDeviceWin32PresentationSupportKHR(VkPhysicalDevice phys_dev, uint32_t index)
+{
+    int result;
+    TRACE("%p %u\n", phys_dev, index);
+    CALL_2(BOXED_VK_GET_PHYSICAL_DEVICE_WIN32_PRESENTATION_SUPPORT, phys_dev, index);
+    return (VkBool32)result;
+}
+
+static VkResult boxedwine_vkGetSwapchainImagesKHR(VkDevice device, VkSwapchainKHR swapchain, uint32_t* count, VkImage* images)
+{
+    int result;
+    TRACE("%p, 0x%s %p %p\n", device, wine_dbgstr_longlong(swapchain), count, images);
+    CALL_4(BOXED_VK_GET_SWAPCHAIN_IMAGES, device, &swapchain, count, images);
+    return (VkResult)result;
+}
+
+static VkResult boxedwine_vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR* present_info)
+{
+    int result;
+    TRACE("%p, %p\n", queue, present_info);
+    CALL_2(BOXED_VK_QUEUE_PRESENT, queue, present_info);
+    return (VkResult)result;
+}
+
+#if WINE_VULKAN_DRIVER_VERSION >= 10
+static VkSurfaceKHR boxedwine_wine_get_native_surface(VkSurfaceKHR surface)
+{
+    VkSurfaceKHR result;
+    TRACE("0x%s\n", wine_dbgstr_longlong(surface));
+    CALL_NORETURN_2(BOXED_VK_GET_NATIVE_SURFACE, &surface, &result);
+    return result;
+}
+#endif
+
+#if WINE_VULKAN_DRIVER_VERSION == 7
+static const struct vulkan_funcs vulkan_funcs =
+{
+    boxeddrv_vkCreateInstance,
+    boxedwine_vkCreateSwapchainKHR,
+    boxedwine_vkCreateWin32SurfaceKHR,
+    boxedwine_vkDestroyInstance,
+    boxedwine_vkDestroySurfaceKHR,
+    boxedwine_vkDestroySwapchainKHR,
+    boxedwine_vkEnumerateInstanceExtensionProperties,
+    boxedwine_vkGetDeviceGroupSurfacePresentModesKHR,
+    boxedwine_vkGetDeviceProcAddr,
+    boxedwine_vkGetInstanceProcAddr,
+    boxedwine_vkGetPhysicalDevicePresentRectanglesKHR,
+    boxedwine_vkGetPhysicalDeviceSurfaceCapabilitiesKHR,
+    boxedwine_vkGetPhysicalDeviceSurfaceFormatsKHR,
+    boxedwine_vkGetPhysicalDeviceSurfacePresentModesKHR,
+    boxedwine_vkGetPhysicalDeviceSurfaceSupportKHR,
+    boxedwine_vkGetPhysicalDeviceWin32PresentationSupportKHR,
+    boxedwine_vkGetSwapchainImagesKHR,
+    boxedwine_vkQueuePresentKHR,
+};
+#elif WINE_VULKAN_DRIVER_VERSION == 8
+static const struct vulkan_funcs vulkan_funcs =
+{
+    boxedwine_vkCreateInstance,
+    boxedwine_vkCreateSwapchainKHR,
+    boxedwine_vkCreateWin32SurfaceKHR,
+    boxedwine_vkDestroyInstance,
+    boxedwine_vkDestroySurfaceKHR,
+    boxedwine_vkDestroySwapchainKHR,
+    boxedwine_vkEnumerateInstanceExtensionProperties,
+    boxedwine_vkGetDeviceGroupSurfacePresentModesKHR,
+    boxedwine_vkGetDeviceProcAddr,
+    boxedwine_vkGetInstanceProcAddr,
+    boxedwine_vkGetPhysicalDevicePresentRectanglesKHR,
+    boxedwine_vkGetPhysicalDeviceSurfaceCapabilities2KHR,
+    boxedwine_vkGetPhysicalDeviceSurfaceCapabilitiesKHR,
+    boxedwine_vkGetPhysicalDeviceSurfaceFormats2KHR,
+    boxedwine_vkGetPhysicalDeviceSurfaceFormatsKHR,
+    boxedwine_vkGetPhysicalDeviceSurfacePresentModesKHR,
+    boxedwine_vkGetPhysicalDeviceSurfaceSupportKHR,
+    boxedwine_vkGetPhysicalDeviceWin32PresentationSupportKHR,
+    boxedwine_vkGetSwapchainImagesKHR,
+    boxedwine_vkQueuePresentKHR,
+};
+#elif WINE_VULKAN_DRIVER_VERSION == 10
+static const struct vulkan_funcs vulkan_funcs =
+{
+    boxedwine_vkCreateInstance,
+    boxedwine_vkCreateSwapchainKHR,
+    boxedwine_vkCreateWin32SurfaceKHR,
+    boxedwine_vkDestroyInstance,
+    boxedwine_vkDestroySurfaceKHR,
+    boxedwine_vkDestroySwapchainKHR,
+    boxedwine_vkEnumerateInstanceExtensionProperties,
+    boxedwine_vkGetDeviceGroupSurfacePresentModesKHR,
+    boxedwine_vkGetDeviceProcAddr,
+    boxedwine_vkGetInstanceProcAddr,
+    boxedwine_vkGetPhysicalDevicePresentRectanglesKHR,
+    boxedwine_vkGetPhysicalDeviceSurfaceCapabilities2KHR,
+    boxedwine_vkGetPhysicalDeviceSurfaceCapabilitiesKHR,
+    boxedwine_vkGetPhysicalDeviceSurfaceFormats2KHR,
+    boxedwine_vkGetPhysicalDeviceSurfaceFormatsKHR,
+    boxedwine_vkGetPhysicalDeviceSurfacePresentModesKHR,
+    boxedwine_vkGetPhysicalDeviceSurfaceSupportKHR,
+    boxedwine_vkGetPhysicalDeviceWin32PresentationSupportKHR,
+    boxedwine_vkGetSwapchainImagesKHR,
+    boxedwine_vkQueuePresentKHR,
+};
+#else
+static const struct vulkan_funcs vulkan_funcs =
+{
+    boxedwine_vkCreateInstance,
+    boxedwine_vkCreateSwapchainKHR,
+    boxedwine_vkCreateWin32SurfaceKHR,
+    boxedwine_vkDestroyInstance,
+    boxedwine_vkDestroySurfaceKHR,
+    boxedwine_vkDestroySwapchainKHR,
+    boxedwine_vkEnumerateInstanceExtensionProperties,
+    boxedwine_vkGetDeviceGroupSurfacePresentModesKHR,
+    boxedwine_vkGetDeviceProcAddr,
+    boxedwine_vkGetInstanceProcAddr,
+    boxedwine_vkGetPhysicalDevicePresentRectanglesKHR,
+    boxedwine_vkGetPhysicalDeviceSurfaceCapabilities2KHR,
+    boxedwine_vkGetPhysicalDeviceSurfaceCapabilitiesKHR,
+    boxedwine_vkGetPhysicalDeviceSurfaceFormats2KHR,
+    boxedwine_vkGetPhysicalDeviceSurfaceFormatsKHR,
+    boxedwine_vkGetPhysicalDeviceSurfacePresentModesKHR,
+    boxedwine_vkGetPhysicalDeviceSurfaceSupportKHR,
+    boxedwine_vkGetPhysicalDeviceWin32PresentationSupportKHR,
+    boxedwine_vkGetSwapchainImagesKHR,
+    boxedwine_vkQueuePresentKHR,
+
+    boxedwine_wine_get_native_surface,
+};
+#endif
+
+// WINE_VULKAN_DRIVER_VERSION
+// 7  Jul 16, 2018 (Wine 3.13)
+// 8  Apr 7, 2020 (Wine 6.0)
+// 9  Jan 22, 2021 (Wine 6.1)
+// 10 Jan 26, 2021 (Wine 6.1)
+
+const struct vulkan_funcs* WINE_CDECL boxeddrv_wine_get_vulkan_driver(PHYSDEV dev, UINT version)
+{
+    TRACE("version %d\n", version);
+    if (version != WINE_VULKAN_DRIVER_VERSION)
+    {
+        ERR("version mismatch, vulkan wants %u but boxeddrv has %u\n", version, WINE_WGL_DRIVER_VERSION);
+        return NULL;
+    }
+
+    if (wine_vk_init())
+        return &vulkan_funcs;
+    return NULL;
+}
+#endif
+
 int initOpengl(void) {
     static int init_done;
     static void *opengl_handle;
 
-    char buffer[200];
     unsigned int i;
 
     if (init_done) return (opengl_handle != NULL);
@@ -1219,17 +1555,17 @@ int initOpengl(void) {
 
     /* No need to load any other libraries as according to the ABI, libGL should be self-sufficient
        and include all dependencies */
-    opengl_handle = wine_dlopen("libGL.so.1", RTLD_NOW|RTLD_GLOBAL, buffer, sizeof(buffer));
+    opengl_handle = dlopen("libGL.so.1", RTLD_NOW|RTLD_GLOBAL);
     if (opengl_handle == NULL)
     {
-        ERR( "Failed to load libGL: %s\n", buffer );
+        ERR( "Failed to load libGL\n");
         ERR( "OpenGL support is disabled.\n");
         return FALSE;
     }
 
     for (i = 0; i < sizeof(opengl_func_names)/sizeof(opengl_func_names[0]); i++)
     {
-        if (!(((void **)&opengl_funcs.gl)[i] = wine_dlsym( opengl_handle, opengl_func_names[i], NULL, 0 )))
+        if (!(((void **)&opengl_funcs.gl)[i] = dlsym( opengl_handle, opengl_func_names[i])))
         {
             ERR( "%s not found in libGL, disabling OpenGL.\n", opengl_func_names[i] );
             goto failed;
@@ -1238,15 +1574,12 @@ int initOpengl(void) {
     return TRUE;
 
 failed:
-    wine_dlclose(opengl_handle, NULL, 0);
+    dlclose(opengl_handle);
     opengl_handle = NULL;
     return FALSE;
 }
 
-/**********************************************************************
-*              macdrv_wine_get_wgl_driver
-*/
-struct opengl_funcs * WINE_CDECL boxeddrv_wine_get_wgl_driver(PHYSDEV dev, UINT version)
+struct opengl_funcs* WINE_CDECL boxeddrv_wine_get_wgl_driver(PHYSDEV dev, UINT version)
 {
     if (version != WINE_WGL_DRIVER_VERSION)
     {
@@ -2019,7 +2352,7 @@ static const struct gdi_dc_funcs boxeddrv_funcs =
     NULL,                                   /* pD3DKMTCheckVidPnExclusiveOwnership */
     NULL,                                   /* pD3DKMTSetVidPnSourceOwner */
     boxeddrv_wine_get_wgl_driver,           /* wine_get_wgl_driver */
-    NULL,                                   /* wine_get_vulkan_driver */
+    boxeddrv_wine_get_vulkan_driver,        /* wine_get_vulkan_driver */
     GDI_PRIORITY_GRAPHICS_DRV               /* priority */
 };
 #endif

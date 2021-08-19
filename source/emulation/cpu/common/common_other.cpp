@@ -31,6 +31,10 @@ void common_int99(CPU* cpu){
     U32 index = cpu->peek32(0);
     callOpenGL(cpu, index);    
 }
+void common_int9A(CPU* cpu) {
+    U32 index = cpu->peek32(0);
+    callVulkan(cpu, index);
+}
 void common_intIb(CPU* cpu){
     cpu->thread->signalIllegalInstruction(5);// 5=ILL_PRVOPC  // :TODO: just a guess
 }

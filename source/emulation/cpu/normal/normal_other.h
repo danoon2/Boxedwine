@@ -200,6 +200,12 @@ void OPCALL normal_int99(CPU* cpu, DecodedOp* op) {
     callOpenGL(cpu, index);
     NEXT();
 }
+void OPCALL normal_int9A(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
+    U32 index = cpu->peek32(0);
+    callVulkan(cpu, index);
+    NEXT();
+}
 void OPCALL normal_intIb(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     cpu->thread->signalIllegalInstruction(5);// 5=ILL_PRVOPC  // :TODO: just a guess

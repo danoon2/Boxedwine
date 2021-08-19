@@ -463,6 +463,7 @@ enum Instruction {
     Int80,
     Int98,
     Int99,
+    Int9A,
     IntIb,
     IntO,
     Iret,

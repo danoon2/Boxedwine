@@ -10,7 +10,9 @@
 #include "wingdi.h"
 #include "winuser.h"
 #include "mmddk.h"
+#ifndef BOXED_IGNORE_WINELIB
 #include "wine/library.h"
+#endif
 #include "wine/debug.h"
 
 #include "winnls.h"

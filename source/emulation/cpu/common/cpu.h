@@ -20,6 +20,7 @@
 typedef void (*Int99Callback)(CPU* cpu);
 extern Int99Callback* int99Callback;
 void callOpenGL(CPU* cpu, U32 index);
+void callVulkan(CPU* cpu, U32 index);
 extern U32 lastGlCallTime;
 extern U32 int99CallbackSize;
 extern Int99Callback* wine_callback;
