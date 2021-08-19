@@ -16,6 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 #include "boxedwine.h"
+#ifdef BOXEDWINE_VULKAN
 #include "vk_host.h"
 #include "vkdef.h"
 
@@ -34,6 +35,7 @@ void vulkan_init() {
 #include "vkfuncs.h"      
 }
 
+#endif
 
 void callVulkan(CPU* cpu, U32 index) {
 #ifdef BOXEDWINE_VULKAN

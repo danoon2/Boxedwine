@@ -37,6 +37,7 @@
 #define mdev(x,y) ((x << 8) | y)
 
 void gl_init(const std::string& allowExtensions);
+void vulkan_init();
 void initWine();
 void initWineAudio();
 
@@ -448,6 +449,9 @@ bool StartUpArgs::apply() {
 #ifdef BOXEDWINE_OPENGL
     gl_init(this->glExt);        
 #endif   
+#ifdef BOXEDWINE_VULKAN
+    vulkan_init();
+#endif
 
     if (this->args.size()) {
         klog_nonewline("Launching ");
