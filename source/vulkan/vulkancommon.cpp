@@ -28,7 +28,7 @@ U32 int9ACallbackSize;
         Error("Failed to get address of \""#p"\"");}
 
 void vulkan_init() {
-    int99CallbackSize = VK_LAST_VALUE+1;
+    int9ACallbackSize = VK_LAST_VALUE+1;
 
 #undef VKFUNC
 #define VKFUNC(name) int9ACallback[name] = vk_##name;

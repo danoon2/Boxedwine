@@ -3,9 +3,25 @@ package boxedwine.org;
 import java.util.Vector;
 
 public class VkFunction {
-    VkType returnType;
-    String name;
-    Vector<VkParam> params = new Vector<VkParam>();
-    String def;
-    String extension;
+    public VkType returnType;
+    public String name;
+    public Vector<VkParam> params = new Vector<VkParam>();
+    public String def;
+    public String extension;
+
+    public void getCountParam(VkParam param) {
+        if (param.len != null) {
+            for (VkParam p : params) {
+                if (p.name.equals(param.len)) {
+                    param.countParam = p;
+                    return;
+                }
+                if (param.len.startsWith(p.name + "->")) {
+                    param.countParam = p;
+                    param.countInStructure = true;
+                    return;
+                }
+            }
+        }
+    }
 }

@@ -1,9 +1,7 @@
 package boxedwine.org;
 
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
+import boxedwine.org.marshal.*;
+import org.w3c.dom.*;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -18,6 +16,7 @@ public class Main {
     static Vector<VkFunction> hostFunctions = new Vector<>();
     static Hashtable<String, VkType> types = new Hashtable<>();
     static Hashtable<String, String> defs = new Hashtable<>();
+    static Hashtable<String, String> constants = new Hashtable<>();
     static HashSet<String> blacklistedExtensions = new HashSet<>();
 
     static String hostSource = "source/vulkan/";
@@ -78,15 +77,18 @@ public class Main {
             types.put("uint64_t", new VkType("uint64_t", "uint64_t", "platform", 8));
             types.put("size_t", new VkType("size_t", "size_t", "platform", 4));
             types.put("VK_DEFINE_NON_DISPATCHABLE_HANDLE", new VkType("VK_DEFINE_NON_DISPATCHABLE_HANDLE", "uint64_t", "define", 8));
-            types.put("VK_DEFINE_HANDLE", new VkType("VK_DEFINE_HANDLE", "uint64_t", "define", 8));
+            types.put("VK_DEFINE_HANDLE", new VkType("VK_DEFINE_HANDLE", "uint32_t", "define", 4));
             types.put("VisualID", new VkType("VisualID", "uint64_t", "define", 8));
             types.put("xcb_visualid_t", new VkType("xcb_visualid_t", "uint32_t", "define", 4));
             types.put("HANDLE", new VkType("HANDLE", "uint32_t", "define", 4));
             types.put("zx_handle_t", new VkType("zx_handle_t", "uint32_t", "define", 4));
             types.put("RROutput", new VkType("RROutput", "uint32_t", "define", 4));
             types.put("void", new VkType("void", "void", "platform", 0));
+            types.put("PFN_vkVoidFunction", new VkType("PFN_vkVoidFunction", "void*", "platform", 4));
 
-            parseTypes(typesNode, typeList);
+            parseConstants(doc.getElementsByTagName("enums"));
+            parseTypes(typesNode, typeList, true);
+            parseTypes(typesNode, typeList, false);
             Element commandsNode = (Element)doc.getElementsByTagName("commands").item(0);
             NodeList commands = commandsNode.getElementsByTagName("command");
             parseCommands(commandsNode, commands);
@@ -131,11 +133,11 @@ public class Main {
             fosPassThrough.close();
 
             fosPassThrough = new FileOutputStream(hostSource+"vk_host.cpp");
-            writeHostPassthroughFile(fosPassThrough);
+            VkHost.write(fosPassThrough, hostFunctions);
             fosPassThrough.close();
 
             fosPassThrough = new FileOutputStream(hostSource+"vk_host.h");
-            writeHostPassthroughHeader(fosPassThrough);
+            VkHost.writeHeader(fosPassThrough, hostFunctions);
             fosPassThrough.close();
 
         } catch (Exception e) {
@@ -200,138 +202,6 @@ public class Main {
         fos.write(out.toString().getBytes());
     }
 
-    public static void writeHostPassthroughHeader(FileOutputStream fos) throws Exception {
-        StringBuilder out = new StringBuilder();
-        out.append("#ifndef __VK_HOST__H__\n");
-        out.append("#define __VK_HOST__H__\n");
-        for (VkFunction fn : hostFunctions ) {
-            out.append("void vk_");
-            out.append(fn.name.substring(2));
-            out.append("(CPU* cpu);\n");
-        }
-        out.append("#endif\n");
-        fos.write(out.toString().getBytes());
-    }
-
-    public static void writeHostPassthroughFile(FileOutputStream fos) throws Exception {
-        StringBuilder out = new StringBuilder();
-        out.append("#include \"boxedwine.h\"\n");
-        out.append("#ifdef BOXEDWINE_VULKAN\n");
-        out.append("#include <SDL.h>\n");
-        out.append("#include <SDL_vulkan.h>\n");
-        out.append("#define VK_NO_PROTOTYPES\n");
-        out.append("#include \"vk/vulkan.h\"\n");
-        out.append("#include \"vk/vulkan_core.h\"\n\n");
-
-        for (int i=0;i<15;i++) {
-            out.append("#define ARG");
-            out.append(i+1);
-            out.append(" cpu->peek32(");
-            out.append(i+1);
-            out.append(")\n");
-        }
-        for (int i=0;i<15;i++) {
-            out.append("#define dARG");
-            out.append(i+1);
-            out.append(" (cpu->peek32(");
-            out.append(i+1);
-            out.append(") | ((U64)cpu->peek32(");
-            out.append(i+2);
-            out.append(")) << 32)\n");
-        }
-
-        for (VkFunction fn : hostFunctions ) {
-            out.append("PFN_");
-            out.append(fn.name);
-            out.append(" ");
-            out.append(fn.name);
-            out.append(";\n");
-            if (fn.returnType.sizeof != 0) {
-                out.append("// return type: "+fn.returnType.name+"("+fn.returnType.sizeof+" bytes)\n");
-            }
-            out.append("void vk_" + fn.name.substring(2) + "(CPU* cpu) {\n");
-            int stackPos = 1;
-            for (VkParam param : fn.params) {
-                out.append("    ");
-                if (param.isPointer) {
-                    if (param.paramType == null) {
-                        // undefined struct pointers
-                        out.append(param.full.substring(0, param.full.length()-param.name.length()-1)+" "+param.name);
-                    } else {
-                        out.append(param.paramType.name);
-                        out.append("*");
-                        if (param.isDoublePointer) {
-                            out.append("*");
-                        }
-                        out.append(" " + param.name);
-                    }
-                } else {
-                    out.append(param.full);
-                }
-                out.append(" = ");
-                if (param.isPointer) {
-                    out.append("(");
-                    if (param.paramType == null) {
-                        out.append(param.full.substring(0, param.full.length()-param.name.length()-1)+" "+param.name);
-                    } else {
-                        out.append(param.paramType.name);
-                    }
-                    out.append("*");
-                    if (param.isDoublePointer) {
-                        out.append("*");
-                    }
-                    out.append(")getPhysicalAddress(");
-                } else if (param.paramType != null) {
-                    out.append("("+param.paramType.name+")");
-                }
-                if (param.isPointer || param.sizeof <= 4) {
-                    out.append("ARG");
-                    out.append(stackPos);
-                    stackPos++;
-                } else {
-                    out.append("dARG");
-                    out.append(stackPos);
-                    stackPos+=2;
-                }
-                if (param.isPointer) {
-                    out.append(", ");
-                    out.append(param.arrayLen);
-                    out.append(")");
-                }
-                out.append(";\n");
-            }
-            out.append("    ");
-            if (fn.returnType.sizeof == 0) {
-                out.append(fn.name);
-            } else if (fn.returnType.sizeof == 4) {
-                out.append("EAX = ");
-                out.append(fn.name);
-            } else if (fn.returnType.sizeof == 8) {
-                out.append(fn.returnType.name);
-                out.append(" result = ");
-                out.append(fn.name);
-            } else {
-                throw new Exception("Unhandled call return size: " + fn.returnType.sizeof);
-            }
-            boolean first = true;
-            out.append("(");
-            for (VkParam param : fn.params) {
-                if (!first) {
-                    out.append(", ");
-                }
-                first = false;
-                out.append(param.name);
-            }
-            out.append(");\n");
-            if (fn.returnType.sizeof == 8) {
-                out.append("    EAX = (U32)result;\n");
-                out.append("    EDX = (U32)(result >> 32);\n");
-            }
-            out.append("}\n");
-        }
-        out.append("#endif\n\n");
-        fos.write(out.toString().getBytes());
-    }
     static void defineCall(StringBuilder out, int i, int returnSize) {
         out.append("#define CALL_");
         out.append(i);
@@ -351,7 +221,7 @@ public class Main {
             out.append(j);
             out.append("\\n\\t");
         }
-        out.append("int $0x99\\n\\t");
+        out.append("int $0x9a\\n\\t");
         out.append("addl $");
         out.append(4*(i+1));
         out.append(", %%esp\"::\"i\"(index)");
@@ -381,14 +251,14 @@ public class Main {
         boolean[] returnCalls64 = new boolean[20];
         boolean[] voidCalls = new boolean[20];
         for (VkFunction fn : functions ) {
-            if (fn.returnType.sizeof == 0) {
+            if (fn.returnType.getSize() == 0) {
                 voidCalls[fn.params.size()] = true;
-            } else if (fn.returnType.sizeof == 4) {
+            } else if (fn.returnType.getSize() == 4) {
                 returnCalls32[fn.params.size()] = true;
-            } else if (fn.returnType.sizeof == 8) {
+            } else if (fn.returnType.getSize() == 8) {
                 returnCalls64[fn.params.size()] = true;
             } else {
-                throw new Exception("Unhandled call return size: " + fn.returnType.sizeof);
+                throw new Exception("Unhandled call return size: " + fn.returnType.getSize());
             }
         }
         out.append("\n");
@@ -413,7 +283,7 @@ public class Main {
         //#define CALL_0_R(index) __asm__("push %0\n\tint $0x99\n\taddl $4, %%esp"::"i"(index):"%eax");
         for (VkFunction fn : functions ) {
             out.append(fn.returnType.getEmulatedType());
-            if (fn.returnType.sizeof != 0) {
+            if (fn.returnType.getSize() != 0) {
                 out.append(" /* " + fn.returnType.name + " */");
             }
             out.append(" " + fn.name + "(");
@@ -436,14 +306,14 @@ public class Main {
                 out.append("    return result;\n");
             } else {
                 String callType = "";
-                if (fn.returnType.sizeof == 0) {
+                if (fn.returnType.getSize() == 0) {
                     callType = "";
-                } else if (fn.returnType.sizeof == 4) {
+                } else if (fn.returnType.getSize() == 4) {
                     callType = "_R32";
-                } else if (fn.returnType.sizeof == 8) {
+                } else if (fn.returnType.getSize() == 8) {
                     callType = "_R64";
                 } else {
-                    throw new Exception("Unhandled call return size: " + fn.returnType.sizeof);
+                    throw new Exception("Unhandled call return size: " + fn.returnType.getSize());
                 }
                 out.append("    CALL_" + fn.params.size() + callType + "(" + fn.name.substring(2));
                 for (VkParam param : fn.params) {
@@ -461,19 +331,33 @@ public class Main {
         }
         fos.write(out.toString().getBytes());
     }
-    public static void parseTypes(Node parent, NodeList nList) throws Exception {
+    public static void parseTypes(Node parent, NodeList nList, boolean ignoreMissingTypes) throws Exception {
         for (int temp = 0; temp < nList.getLength(); temp++) {
             Node command = nList.item(temp);
             if (command.getParentNode().isSameNode(parent)) {
-                parseType(command);
+                parseType(command, ignoreMissingTypes);
             }
         }
     }
 
-    public static void parseType(Node command) throws Exception {
+    public static void parseType(Node command, boolean ignoreMissingTypes) throws Exception {
         if (command.getNodeType() == Node.ELEMENT_NODE) {
             Element eElement = (Element) command;
+            if (eElement.hasAttribute("alias")) {
+                String alias = eElement.getAttribute("alias");
+                VkType t = types.get(alias);
+                if (t != null) {
+                    types.put(eElement.getAttribute("name"), t);
+                    return;
+                }
+            }
             VkType t = new VkType();
+            if (eElement.hasAttribute("parent")) {
+                t.parent = types.get(eElement.getAttribute("parent"));
+            }
+            if (eElement.hasAttribute("returnedonly")) {
+                t.returnedonly = eElement.hasAttribute("returnedonly");
+            }
             if (eElement.hasAttribute("category")) {
                 t.category = eElement.getAttribute("category");
                 if (t.category.equals("define")) {
@@ -485,6 +369,9 @@ public class Main {
             NodeList tt = eElement.getElementsByTagName("type");
             if (tt.getLength() > 0) {
                 t.type = tt.item(0).getTextContent();
+                if (t.parent == null) {
+                    t.parent = types.get(t.type);
+                }
             }
             if (t.category.equals("struct") || t.category.equals("enum") || t.category.equals("union")) {
                 if (eElement.hasAttribute("name")) {
@@ -497,21 +384,15 @@ public class Main {
                 } else if (t.category.equals("union")) {
                     NodeList members = eElement.getElementsByTagName("member");
                     t.type = "union";
+                }
+                if (t.category.equals("union") || t.category.equals("struct")) {
+                    NodeList members = eElement.getElementsByTagName("member");
+                    t.members = new Vector<>();
                     for (int i = 0;i<members.getLength();i++) {
-                        if (members.item(i).getTextContent().contains("*")) {
-                            if (t.sizeof < 4) {
-                                t.sizeof = 4;
-                            }
-                            continue;
-                        }
-                        Element member = (Element)members.item(i);
-                        NodeList unionType = member.getElementsByTagName("type");
-                        VkType vkType = types.get(unionType.item(0).getTextContent());
-                        if (vkType == null) {
-                            throw new Exception("Failed to parse union: " + unionType.item(0).getTextContent());
-                        }
-                        if (t.sizeof < vkType.sizeof) {
-                            t.sizeof = vkType.sizeof;
+                        Node member = members.item(i);
+                        VkParam vkParam = parseParam(member, ignoreMissingTypes);
+                        if (vkParam != null) {
+                            t.members.add(vkParam);
                         }
                     }
                 }
@@ -526,16 +407,8 @@ public class Main {
             if (t.name.equals(t.type) && t.category.equals("basetype")) {
                 return;
             }
-            if (t.category.equals("funcpointer")) {
-                t.sizeof = 4;
-            } else if (t.type == null) {
+            if (t.type == null) {
                 return;
-            } else if (!t.category.equals("struct") && !t.category.equals("union")) {
-                VkType k = types.get(t.type);
-                if (k == null) {
-                    throw new Exception("Could not find type: " + t.type);
-                }
-                t.sizeof = k.sizeof;
             }
             types.put(t.name, t);
         }
@@ -626,20 +499,149 @@ public class Main {
         }
     }
 
-    public static void parseParams(Element parent, NodeList params, VkFunction fn) throws Exception {
-        for (int p = 0; p < params.getLength(); p++) {
-            Node param = params.item(p);
-            if (param.getParentNode().isSameNode(parent)) {
-                parseParam(param, fn);
+    static VkHostMarshalInOut inOut = new VkHostMarshalInOut();
+    static VkHostMarshalOutHandleArray outHandleArray = new VkHostMarshalOutHandleArray();
+    static VkHostMarshalOutData outData = new VkHostMarshalOutData();
+    static VkHostMarshalOutStructure outStructure = new VkHostMarshalOutStructure();
+    static VkHostMarshalOutHandle outHandle = new VkHostMarshalOutHandle();
+    static VkHostMarshalInMemory inMemory = new VkHostMarshalInMemory();
+    static VkHostMarshalInStructure inStructure = new VkHostMarshalInStructure();
+    static VkHostMarshalInHandleArray inHandleArray = new VkHostMarshalInHandleArray();
+    static VkHostMarshalOutEnumArray outEnumArray = new VkHostMarshalOutEnumArray();
+    static VkHostMarshalInStructureArray inStructureArray = new VkHostMarshalInStructureArray();
+    static VkHostMarshalOutStructureArray outStructureArray = new VkHostMarshalOutStructureArray();
+    static VkHostMarshalOutEnum outEnum = new VkHostMarshalOutEnum();
+    static VkHostMarshalInEnumArray inEnumArray = new VkHostMarshalInEnumArray();
+    static VkHostMarshalInHandle inHandle = new VkHostMarshalInHandle();
+    static VkHostMarshalNone none = new VkHostMarshalNone();
+
+    static void findMarshals(VkFunction fn) throws Exception {
+        for (VkParam param : fn.params) {
+            if (!param.isPointer) {
+                if (param.paramType.type.equals("VK_DEFINE_HANDLE")) {
+                    param.marshal = inHandle;
+                } else {
+                    param.marshal = none;
+                }
+            } else {
+                if (param.isConst) {
+                    if (param.len != null || param.arrayLen != 0) {
+                        if (!param.paramType.needsMarshaling() || param.paramType.type.equals("void")) {
+                            param.marshal = inMemory;
+                        } else if (param.paramType.type.equals("VK_DEFINE_HANDLE")) {
+                            param.marshal = inHandleArray;
+                        } else if (param.paramType.category.equals("struct") || param.paramType.category.equals("union")){
+                            param.marshal = inStructureArray;
+                        } else if (param.paramType.category.equals("enum")){
+                            param.marshal = inEnumArray;
+                        } else {
+                            throw new Exception("Unhandled param type: " + fn.name + ":" + param.name);
+                        }
+                    } else if ((param.paramType.category.equals("struct") || param.paramType.category.equals("union")) && param.paramType.needsMarshaling()) {
+                        param.marshal = inStructure;
+                    } else if (!param.paramType.needsMarshaling() || param.paramType.type.equals("void")) {
+                        param.marshal = inMemory;
+                    } else if (param.paramType.type.equals("")) {
+                        System.out.println("Unhandled param type: " + fn.name + ":" + param.full);
+                    } else {
+                        throw new Exception("Unhandled param type: " + fn.name + ":" + param.name);
+                    }
+                } else {
+                    boolean isCountParam = false;
+                    for (VkParam p : fn.params) {
+                        if (p.len != null && p.len.equals(param.name)) {
+                            isCountParam = true;
+                        }
+                    }
+                    if (fn.name.equals("vkMapMemory") && param.name.equals("ppData")) {
+                        param.marshal = new VkHostMarshalMapMemory();
+                    } else if (isCountParam) {
+                        param.marshal = inOut;
+                    } else if (param.len != null || param.arrayLen != 0) {
+                        if (!param.paramType.needsMarshaling() || param.paramType.type.equals("void")) {
+                            param.marshal = inMemory;
+                        } else if (param.paramType.type.equals("VK_DEFINE_HANDLE")) {
+                            param.marshal = outHandleArray;
+                        } else if (param.paramType.category.equals("struct") || param.paramType.category.equals("union")){
+                            param.marshal = outStructureArray;
+                        } else if (param.len != null && param.paramType.category.equals("enum")) {
+                            param.marshal = outEnumArray;
+                        } else {
+                            throw new Exception("Unhandled param type: " + fn.name + ":" + param.name);
+                        }
+                    } else if (!param.paramType.needsMarshaling() || (param.len != null && param.paramType.type.equals("void"))) {
+                        param.marshal = outData;
+                    } else if (param.paramType.type.equals("VK_DEFINE_HANDLE")) {
+                        param.marshal = outHandle;
+                    } else if (param.paramType.category.equals("struct")) {
+                        param.marshal = outStructure;
+                    } else if (param.paramType.category.equals("enum")) {
+                        param.marshal = outEnum;
+                    } else if (param.paramType.type.equals("")) {
+                        System.out.println("Unhandled param type: " + fn.name + ":" + param.full);
+                    } else {
+                        throw new Exception("Unhandled param type: " + fn.name + ":" + param.name);
+                    }
+                }
             }
         }
     }
 
-    public static void parseParam(Node paramNode, VkFunction fn) throws Exception {
+    public static void parseParams(Element parent, NodeList params, VkFunction fn) throws Exception {
+        for (int p = 0; p < params.getLength(); p++) {
+            Node param = params.item(p);
+            if (param.getParentNode().isSameNode(parent)) {
+                VkParam vkParam = parseParam(param, false);
+                if (vkParam != null) {
+                    fn.params.add(vkParam);
+                }
+            }
+        }
+        findMarshals(fn);
+    }
+
+    public static void parseConstants(NodeList enums) throws Exception {
+        for (int temp = 0; temp < enums.getLength(); temp++) {
+            Node e = enums.item(temp);
+            String n = e.getAttributes().getNamedItem("name").getTextContent();
+            if (n.equals("API Constants")) {
+                NodeList children = e.getChildNodes();
+                for (int c = 0; c < children.getLength(); c++) {
+                    Node child = children.item(c);
+                    NamedNodeMap attributes = child.getAttributes();
+                    if (attributes != null) {
+                        String name = attributes.getNamedItem("name").getTextContent();
+                        String value = null;
+                        Node valueNode = attributes.getNamedItem("value");
+                        if (valueNode != null) {
+                            value = valueNode.getTextContent();
+                        }
+                        String alias = null;
+                        Node aliasNode = attributes.getNamedItem("alias");
+                        if (aliasNode != null) {
+                            alias = aliasNode.getTextContent();
+                        }
+                        if (alias != null) {
+                            constants.put(name, constants.get(alias));
+                        } else {
+                            constants.put(name, value);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    public static VkParam parseParam(Node paramNode, boolean ignoreMissingTypes) throws Exception {
         if (paramNode.getNodeType() == Node.ELEMENT_NODE) {
             Element eElement = (Element) paramNode;
             VkParam param = new VkParam();
             param.paramType = types.get(eElement.getElementsByTagName("type").item(0).getTextContent());
+            if (param.paramType == null) {
+                param.paramType = new VkType();
+                param.paramType.category = "";
+                param.paramType.type = "";
+            }
             param.name = eElement.getElementsByTagName("name").item(0).getTextContent();
             if (eElement.hasAttribute("len")) {
                 param.len = eElement.getAttribute("len");
@@ -651,23 +653,20 @@ public class Main {
                 int pos = param.full.indexOf('[');
                 int pos2 = param.full.indexOf(']');
                 String len = param.full.substring(pos+1, pos2);
-                param.arrayLen = Integer.parseInt(len);
+                try {
+                    param.arrayLen = Integer.parseInt(len);
+                } catch (Exception e) {
+                    String constant = constants.get(len);
+                    if (constant != null) {
+                        param.arrayLen = Integer.parseInt(constant);
+                    }
+                }
             } else {
                 param.isDoublePointer = param.full.contains("**");
                 param.isPointer = param.full.contains("*");
             }
-            if (param.paramType == null && !param.isPointer) {
-                throw new Exception("Could not find param type: "+eElement.getElementsByTagName("type").item(0).getTextContent());
-            }
-            if (param.isPointer) {
-                param.sizeof = 4;
-            } else {
-                param.sizeof = param.paramType.sizeof;
-                if (param.sizeof == 0) {
-                    throw new Exception("Unknown size of param: " + param.full);
-                }
-            }
-            fn.params.add(param);
+            return param;
         }
+        return null;
     }
 }

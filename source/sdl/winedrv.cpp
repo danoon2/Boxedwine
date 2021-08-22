@@ -1689,9 +1689,219 @@ void boxeddrv_GetVersion(CPU* cpu) {
 #include "../vulkan/vk/vulkan.h"
 #include "../vulkan/vk/vulkan_core.h"
 
+static bool vulkanInitialized;
+
+static PFN_vkGetInstanceProcAddr pvkGetInstanceProcAddr = NULL;
+static PFN_vkEnumerateInstanceExtensionProperties pvkEnumerateInstanceExtensionProperties = NULL;
+static PFN_vkCreateInstance pvkCreateInstance = NULL;
+static U32 freePtrMaps;
+
+BoxedWineMutex freeVulkanPtrMutex;
+
+U32 getFreeVulkanPtr() {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(freeVulkanPtrMutex);
+    if (!freePtrMaps) {
+        U32 address = KThread::currentThread()->process->allocNative(K_PAGE_SIZE);
+        for (U32 i = 0; i < K_PAGE_SIZE; i += sizeof(void*)) {
+            writed(address + i, freePtrMaps);
+            freePtrMaps = address + i;
+        }
+    }
+    U32 result = freePtrMaps;
+    freePtrMaps = readd(freePtrMaps);
+    return result;
+}
+
+void freeVulkanPtr(U32 p) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(freeVulkanPtrMutex);
+    writed(p, freePtrMaps);
+}
+
+void* getVulkanPtr(U32 address) {
+    return (void*)(readq(address));
+}
+
+static void initVulkan() {
+    if (!vulkanInitialized) {
+        vulkanInitialized = true;
+
+        if (SDL_Vulkan_LoadLibrary(NULL)) {
+            kpanic("Failed to load vulkan: %d\n", SDL_GetError());
+        }
+        pvkGetInstanceProcAddr = (PFN_vkGetInstanceProcAddr)SDL_Vulkan_GetVkGetInstanceProcAddr();
+
+#define LOAD_FUNCPTR(f) p##f = (PFN_##f)pvkGetInstanceProcAddr(VK_NULL_HANDLE, #f)
+        LOAD_FUNCPTR(vkEnumerateInstanceExtensionProperties);
+        LOAD_FUNCPTR(vkCreateInstance);
+#undef LOAD_FUNCPTR
+    }
+}
+
+#define BOXED_VK_BUFFER_SIZE 64
+
+class BoxedVkApplicationInfo {
+public:
+    BoxedVkApplicationInfo() : deleteApplicationName(false), deleteEngineName(false) {}
+    ~BoxedVkApplicationInfo();
+    VkApplicationInfo info;
+    void read(U32 address);
+
+    bool deleteApplicationName;
+    bool deleteEngineName;
+
+    char applicationName[BOXED_VK_BUFFER_SIZE];
+    char engineName[BOXED_VK_BUFFER_SIZE];
+};
+
+BoxedVkApplicationInfo::~BoxedVkApplicationInfo() {
+    if (this->deleteApplicationName) {
+        free((void*)info.pApplicationName);
+    }
+    if (this->deleteEngineName) {
+        free((void*)info.pEngineName);
+    }
+}
+
+void BoxedVkApplicationInfo::read(U32 address) {
+    info.sType = (VkStructureType)readd(address); address += 4;
+    U32 address_next = readd(address); address += 4;
+    if (!address_next) {
+        info.pNext = NULL;
+    }
+    else {
+        // :TODO:
+        kpanic("oops");
+    }
+    U32 address_applicationName = readd(address); address += 4;
+    if (!address_applicationName) {
+        info.pApplicationName = NULL;
+    }
+    else {
+        const char* p = (const char*)getPhysicalAddress(address_applicationName, 0);
+        U32 len = (U32)strlen(p);
+        if (len < BOXED_VK_BUFFER_SIZE) {
+            strcpy(this->applicationName, p);
+            info.pApplicationName = this->applicationName;
+        } else {
+            info.pApplicationName = strdup(p);
+            this->deleteApplicationName = true;
+        }
+    }
+    info.applicationVersion = readd(address); address += 4;
+    U32 address_engineName = readd(address); address += 4;
+    if (!address_engineName) {
+        info.pEngineName = NULL;
+    } else {
+        const char* p = (const char*)getPhysicalAddress(address_engineName, 0);
+        U32 len = (U32)strlen(p);
+        if (len < BOXED_VK_BUFFER_SIZE) {
+            strcpy(this->engineName, p);
+            info.pEngineName = this->engineName;
+        }
+        else {
+            info.pEngineName = strdup(p);
+            this->deleteEngineName = true;
+        }
+    }
+    info.engineVersion = readd(address); address += 4;
+    info.apiVersion = readd(address);
+}
+
+class BoxedVkInstanceCreateInfo {
+public:
+    ~BoxedVkInstanceCreateInfo();
+    VkInstanceCreateInfo info;
+    void read(U32 address);
+    void fixSurfaceExtension();
+    BoxedVkApplicationInfo appInfo;
+};
+
+void BoxedVkInstanceCreateInfo::fixSurfaceExtension() {
+    for (U32 i = 0; i < info.enabledExtensionCount; i++) {
+        if (!strcmp(info.ppEnabledExtensionNames[i], "VK_KHR_win32_surface")) {
+#ifdef BOXEDWINE_LINUX
+            info.ppEnabledExtensionNames[i] = "VK_KHR_xlib_surface";
+#endif
+#ifdef BOXEDWINE_MAC
+            info.ppEnabledExtensionNames[i] = pvkCreateMetalSurfaceEXT ? "VK_EXT_metal_surface" : "VK_MVK_macos_surface";
+#endif
+        }
+    }
+}
+
+void BoxedVkInstanceCreateInfo::read(U32 address) {
+    info.sType = (VkStructureType)readd(address); address += 4;
+    U32 address_next = readd(address); address += 4;
+    if (!address_next) {
+        info.pNext = NULL;
+    } else {
+        // :TODO:
+        kpanic("oops");
+    }
+    info.flags = (VkInstanceCreateFlags)readd(address); address += 4;
+    U32 address_applicationInfo = readd(address); address += 4;
+    if (!address_applicationInfo) {
+        info.pApplicationInfo = NULL;
+    } else {
+        info.pApplicationInfo = &appInfo.info;
+        appInfo.read(address_applicationInfo);
+    }
+    info.enabledLayerCount = readd(address); address += 4;
+    U32 address_ppEnabledLayerNames = readd(address); address += 4;
+    if (!info.enabledLayerCount) {
+        info.ppEnabledLayerNames = NULL;
+    } else {
+        // :TODO:
+        kpanic("oops");
+    }
+    info.enabledExtensionCount = readd(address); address += 4;
+    U32 address_ppEnabledExtensionNames = readd(address);
+    if (!info.enabledExtensionCount) {
+        info.ppEnabledExtensionNames = NULL;
+    } else {
+        char** p = new char* [info.enabledExtensionCount];
+        info.ppEnabledExtensionNames = p;
+        for (U32 i = 0; i < info.enabledExtensionCount; i++) {
+            p[i] = strdup((const char*)getPhysicalAddress(readd(address_ppEnabledExtensionNames+i*4), 0));
+        }
+    }
+}
+
+BoxedVkInstanceCreateInfo::~BoxedVkInstanceCreateInfo() {
+    if (info.enabledExtensionCount) {
+        for (U32 i = 0; i < info.enabledExtensionCount; i++) {
+            free((void*)info.ppEnabledExtensionNames[i]);
+        }
+        delete[] info.ppEnabledExtensionNames;
+    }
+}
+
 // VkResult boxedwine_vkCreateInstance(const VkInstanceCreateInfo* create_info, const VkAllocationCallbacks* allocator, VkInstance* instance)
 static void boxeddrv_vkCreateInstance(CPU* cpu) {
-    kpanic("boxeddrv_vkCreateInstance not implemented");
+    BoxedVkInstanceCreateInfo create_info_host;
+    U32 address_create_info = ARG1;
+    U32 address_allocator = ARG2;
+    U32 address_instance = ARG3;
+    VkInstance result;
+    VkResult res;
+
+    if (address_allocator) {
+        kwarn("boxeddrv_vkCreateInstance: Support for allocation callbacks not implemented yet");
+    }
+    /* Perform a second pass on converting VkInstanceCreateInfo. Winevulkan
+     * performed a first pass in which it handles everything except for WSI
+     * functionality such as VK_KHR_win32_surface. Handle this now.
+     */
+    create_info_host.read(address_create_info);
+    create_info_host.fixSurfaceExtension();
+
+    res = pvkCreateInstance(&create_info_host.info, NULL /* allocator */, &result);
+    if (res == VK_SUCCESS) {
+        U32 address = getFreeVulkanPtr();
+        writeq(address, (U64)result);
+        writed(address_instance, address);
+    }
+    EAX = (U32)res;
 }
 
 // VkResult boxedwine_vkCreateSwapchainKHR(VkDevice device, const VkSwapchainCreateInfoKHR* create_info, const VkAllocationCallbacks* allocator, VkSwapchainKHR* swapchain)
@@ -1721,7 +1931,42 @@ static void boxeddrv_vkDestroySwapchain(CPU* cpu) {
 
 // VkResult boxedwine_vkEnumerateInstanceExtensionProperties(const char* layer_name, uint32_t* count, VkExtensionProperties* properties)
 static void boxeddrv_vkEnumerateInstanceExtensionProperties(CPU* cpu) {
-    kpanic("boxeddrv_vkEnumerateInstanceExtensionProperties not implemented");
+    const char* layer_name = (const char*)getPhysicalAddress(ARG1, 0);
+    uint32_t* count = (uint32_t*)getPhysicalAddress(ARG2, 0);
+    VkExtensionProperties* properties = (VkExtensionProperties*)getPhysicalAddress(ARG3, sizeof(VkExtensionProperties)*(*count));
+    unsigned int i;
+    VkResult res;
+
+    /* This shouldn't get called with layer_name set, the ICD loader prevents it. */
+    if (layer_name)
+    {
+        kwarn("Layer enumeration not supported from ICD.");
+        EAX = VK_ERROR_LAYER_NOT_PRESENT;
+        return;
+    }
+
+    initVulkan(); // this is the first API call by wine
+
+    /* We will return the same number of instance extensions reported by the host back to
+     * winevulkan. Along the way we may replace xlib extensions with their win32 equivalents.
+     * Winevulkan will perform more detailed filtering as it knows whether it has thunks
+     * for a particular extension.
+     */
+    res = pvkEnumerateInstanceExtensionProperties(layer_name, count, properties);
+    if (!properties || res < 0) {
+        EAX = (U32)res;
+        return;
+    }
+    for (i = 0; i < *count; i++)
+    {
+        /* For now the only x11/MoltenVK extension we need to fixup. Long-term we may need an array. */
+        if (!strcmp(properties[i].extensionName, "VK_MVK_macos_surface") || !strcmp(properties[i].extensionName, "VK_EXT_metal_surface") || !strcmp(properties[i].extensionName, "VK_KHR_xlib_surface"))
+        {
+            snprintf(properties[i].extensionName, sizeof(properties[i].extensionName), "VK_KHR_win32_surface");
+            properties[i].specVersion = 6;
+        }
+    }
+    EAX = (U32)res;
 }
 
 // VkResult boxedwine_vkGetDeviceGroupSurfacePresentModesKHR(VkDevice device, VkSurfaceKHR surface, VkDeviceGroupPresentModeFlagsKHR* flags)

@@ -2632,10 +2632,10 @@ void KProcess::printMappedFiles() {
 #ifdef BOXEDWINE_64BIT_MMU
 #include "../emulation/hardmmu/hard_memory.h"
 U32 KProcess::allocNative(U32 len) {
-    U32 page = this->nextNativeAddress >> K_PAGE_SHIFT;
+    U32 page = this->nextNativeAddress;
     U32 pageCount = (len+K_PAGE_SIZE-1) >> K_PAGE_SHIFT;
     allocNativeMemory(this->memory, page, pageCount, 0);
-    this->nextNativeAddress+=pageCount*K_PAGE_SIZE;
+    this->nextNativeAddress+=pageCount;
     return page << K_PAGE_SHIFT;
 }
 
