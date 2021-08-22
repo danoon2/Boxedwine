@@ -318,7 +318,7 @@ public class Main {
                 out.append("    CALL_" + fn.params.size() + callType + "(" + fn.name.substring(2));
                 for (VkParam param : fn.params) {
                     out.append(", ");
-                    if (param.sizeof == 8) {
+                    if (param.getEmulatedType().equals("U64")) {
                         out.append("&");
                     } else if (param.sizeof > 8) {
                         throw new Exception("Param has size more than 8");

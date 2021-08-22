@@ -12,14 +12,24 @@ public class VkType {
         this.sizeof = sizeof;
     }
     public String getEmulatedType() throws Exception {
-        if (sizeof == 8) {
+        if (type.equals("VK_DEFINE_NON_DISPATCHABLE_HANDLE")) {
             return "U64";
-        } else if (sizeof == 0) {
-            return "void";
-        } else if (sizeof <= 4) {
+        }
+        if (type.equals("VK_DEFINE_HANDLE")) {
             return "U32";
         }
-        throw new Exception("Unhandled param size: "+sizeof);
+        if (parent != null) {
+            return parent.getEmulatedType();
+        }
+        if (sizeof == 8) {
+            return "U64";
+        } else if (type.equals("void")) {
+            return "void";
+        } else if (sizeof == 4 || category.equals("enum") || sizeof == 2) {
+            return "U32";
+        } else {
+            throw new Exception("Unknow size");
+        }
     }
     public boolean hasParent(String parentName) {
         if (name.equals(parentName)) {
@@ -69,6 +79,9 @@ public class VkType {
             for (VkParam param : members) {
                 result += param.getSize();
             }
+        }
+        if (result == 0 && parent != null) {
+            return parent.getSize();
         }
         return result;
     }
