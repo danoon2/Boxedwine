@@ -31,6 +31,27 @@ public class VkType {
             throw new Exception("Unknow size");
         }
     }
+    public int getEmulatedReadWriteWidth() throws Exception {
+        if (type.equals("VK_DEFINE_NON_DISPATCHABLE_HANDLE")) {
+            return 8;
+        }
+        if (type.equals("VK_DEFINE_HANDLE")) {
+            return 4;
+        }
+        if (sizeof == 8) {
+            return 8;
+        } else if (sizeof == 4 || category.equals("enum")) {
+            return 4;
+        } else if (sizeof == 2) {
+            return 2;
+        } else {
+
+            if (parent != null) {
+                return parent.getEmulatedReadWriteWidth();
+            }
+            throw new Exception("Unknow size");
+        }
+    }
     public boolean hasParent(String parentName) {
         if (name.equals(parentName)) {
             return true;
@@ -80,6 +101,12 @@ public class VkType {
                 result += param.getSize();
             }
         }
+        if (type.equals("VK_DEFINE_NON_DISPATCHABLE_HANDLE")) {
+            return 8;
+        }
+        if (type.equals("VK_DEFINE_HANDLE")) {
+            return 4;
+        }
         if (result == 0 && parent != null) {
             return parent.getSize();
         }
@@ -92,6 +119,8 @@ public class VkType {
     public boolean returnedonly;
     public VkType parent;
     public Vector<VkParam> members;
+    public boolean needMarshalIn;
+    public boolean needMarshalOut;
 
     private int sizeof;
 }

@@ -1698,7 +1698,7 @@ static U32 freePtrMaps;
 
 BoxedWineMutex freeVulkanPtrMutex;
 
-U32 getFreeVulkanPtr() {
+U32 createVulkanPtr(U64 value) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(freeVulkanPtrMutex);
     if (!freePtrMaps) {
         U32 address = KThread::currentThread()->process->allocNative(K_PAGE_SIZE);
@@ -1709,16 +1709,29 @@ U32 getFreeVulkanPtr() {
     }
     U32 result = freePtrMaps;
     freePtrMaps = readd(freePtrMaps);
+    writeq(result, value);
     return result;
 }
 
 void freeVulkanPtr(U32 p) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(freeVulkanPtrMutex);
     writed(p, freePtrMaps);
+    freePtrMaps = p;
 }
 
 void* getVulkanPtr(U32 address) {
     return (void*)(readq(address));
+}
+
+void* vulkanGetNextPtr(U32 address) {
+    if (address == 0) {
+        return NULL;
+    }
+    kpanic("getNext not implemented");
+}
+
+void vulkanWriteNextPtr(U32 address, void* pNext) {
+    kpanic("writeNext not implemented");
 }
 
 static void initVulkan() {
@@ -1897,8 +1910,7 @@ static void boxeddrv_vkCreateInstance(CPU* cpu) {
 
     res = pvkCreateInstance(&create_info_host.info, NULL /* allocator */, &result);
     if (res == VK_SUCCESS) {
-        U32 address = getFreeVulkanPtr();
-        writeq(address, (U64)result);
+        U32 address = createVulkanPtr((U64)result);
         writed(address_instance, address);
     }
     EAX = (U32)res;

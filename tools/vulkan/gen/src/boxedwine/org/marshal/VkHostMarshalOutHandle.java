@@ -5,7 +5,7 @@ import boxedwine.org.VkParam;
 
 public class VkHostMarshalOutHandle extends VkHostMarshal {
     // VkInstance pInstance;
-    public void before(VkFunction fn, StringBuilder out, VkParam param) {
+    public void before(VkFunction fn, StringBuilder out, VkParam param) throws Exception {
         out.append("    ");
         out.append(param.paramType.name);
         out.append(" ");
@@ -14,7 +14,7 @@ public class VkHostMarshalOutHandle extends VkHostMarshal {
         param.nameInFunction = "&"+param.name;
     }
 
-    public void after(VkFunction fn, StringBuilder out, VkParam param) {
+    public void after(VkFunction fn, StringBuilder out, VkParam param) throws Exception {
 
     }
 }

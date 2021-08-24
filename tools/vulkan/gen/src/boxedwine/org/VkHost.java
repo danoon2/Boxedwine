@@ -1,5 +1,7 @@
 package boxedwine.org;
 
+import boxedwine.org.marshal.VkHostMarshalType;
+
 import java.io.FileOutputStream;
 import java.util.Vector;
 
@@ -20,23 +22,13 @@ public class VkHost {
         out.append("void vk_" + fn.name.substring(2) + "(CPU* cpu) {\n");
     }
 
-    static private int hostStartParam(VkFunction fn, StringBuilder out, VkParam param, int stackPos) throws Exception {
+    static private void hostStartParam(VkFunction fn, StringBuilder out, VkParam param, int stackPos) throws Exception {
         param.nameInFunction = param.name;
+        param.paramArg = "ARG" + String.valueOf(stackPos);
         if (param.isPointer) {
-            param.paramArg = "ARG" + String.valueOf(stackPos);
             fn.getCountParam(param);
-            stackPos++;
-        } else {
-            if (param.sizeof <= 4) {
-                param.paramArg = "ARG" + String.valueOf(stackPos);
-                stackPos++;
-            } else {
-                param.paramArg = "dARG" + String.valueOf(stackPos);
-                stackPos+=2;
-            }
         }
         param.marshal.before(fn, out, param);
-        return stackPos;
     }
 
     static private void hostCall(VkFunction fn, StringBuilder out) throws Exception {
@@ -73,7 +65,8 @@ public class VkHost {
         int stackPos = 1;
         hostStart(fn, out);
         for (VkParam param : fn.params) {
-            stackPos = hostStartParam(fn, out, param, stackPos);
+            hostStartParam(fn, out, param, stackPos);
+            stackPos++;
         }
         hostCall(fn, out);
         for (VkParam param : fn.params) {
@@ -116,20 +109,35 @@ public class VkHost {
             out.append(i+1);
             out.append(")\n");
         }
-        for (int i=0;i<15;i++) {
-            out.append("#define dARG");
-            out.append(i+1);
-            out.append(" (cpu->peek32(");
-            out.append(i+1);
-            out.append(") | ((U64)cpu->peek32(");
-            out.append(i+2);
-            out.append(")) << 32)\n");
-        }
+        StringBuilder part2 = new StringBuilder();
 
         for (VkFunction fn : hostFunctions ) {
-            VkHost.writeFunction(fn, out);
+            VkHost.writeFunction(fn, part2);
         }
-        out.append("#endif\n\n");
+
+        out.append("void* vulkanGetNextPtr(U32 address);\n");
+        out.append("void vulkanWriteNextPtr(U32 address, void* pNext);\n");
+        StringBuilder tmp = new StringBuilder();
+        // pass 1 will add more types that need marshaling, like VkApplicationInfo
+        for (VkType t : Main.orderedTypes) {
+            if (t.needMarshalIn || t.needMarshalOut) {
+                VkHostMarshalType.write(t, tmp);
+            }
+        }
+        // pass 2 will had 2nd level structures
+        for (VkType t : Main.orderedTypes) {
+            if (t.needMarshalIn || t.needMarshalOut) {
+                VkHostMarshalType.write(t, tmp);
+            }
+        }
+        // pass 3
+        for (VkType t : Main.orderedTypes) {
+            if (t.needMarshalIn || t.needMarshalOut) {
+                VkHostMarshalType.write(t, out);
+            }
+        }
+        part2.append("#endif\n\n");
         fos.write(out.toString().getBytes());
+        fos.write(part2.toString().getBytes());
     }
 }

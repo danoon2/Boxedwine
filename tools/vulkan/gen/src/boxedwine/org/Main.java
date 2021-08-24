@@ -15,6 +15,7 @@ public class Main {
     static Vector<VkFunction> functions = new Vector<>();
     static Vector<VkFunction> hostFunctions = new Vector<>();
     static Hashtable<String, VkType> types = new Hashtable<>();
+    static Vector<VkType> orderedTypes = new Vector<>();
     static Hashtable<String, String> defs = new Hashtable<>();
     static Hashtable<String, String> constants = new Hashtable<>();
     static HashSet<String> blacklistedExtensions = new HashSet<>();
@@ -411,6 +412,7 @@ public class Main {
                 return;
             }
             types.put(t.name, t);
+            orderedTypes.add(t);
         }
     }
     public static void parseCommands(Node parent, NodeList nList) throws Exception {
@@ -517,7 +519,7 @@ public class Main {
 
     static void findMarshals(VkFunction fn) throws Exception {
         for (VkParam param : fn.params) {
-            if (!param.isPointer) {
+            if (!param.isPointer && param.arrayLen == 0) {
                 if (param.paramType.type.equals("VK_DEFINE_HANDLE")) {
                     param.marshal = inHandle;
                 } else {
@@ -643,13 +645,14 @@ public class Main {
                 param.paramType.type = "";
             }
             param.name = eElement.getElementsByTagName("name").item(0).getTextContent();
-            if (eElement.hasAttribute("len")) {
+            if (eElement.hasAttribute("altlen")) {
+                param.len = eElement.getAttribute("altlen");
+            } else if (eElement.hasAttribute("len")) {
                 param.len = eElement.getAttribute("len");
             }
             param.full = eElement.getTextContent().replaceAll("\\s{2,}", " ").trim();
             param.isConst = param.full.contains("const ");
             if (param.full.contains("[")) {
-                param.isPointer = true;
                 int pos = param.full.indexOf('[');
                 int pos2 = param.full.indexOf(']');
                 String len = param.full.substring(pos+1, pos2);
@@ -662,7 +665,7 @@ public class Main {
                     }
                 }
             } else {
-                param.isDoublePointer = param.full.contains("**");
+                param.isDoublePointer = param.full.chars().filter(ch -> ch == '*').count() == 2;
                 param.isPointer = param.full.contains("*");
             }
             return param;
