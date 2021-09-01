@@ -720,7 +720,7 @@ void close_gl4es() {
 	  #endif
 }
 
-#if defined(BUILD_WINDOWS_DLL) || defined(BOXEDWINE_MSVC)
+#if defined(BUILD_WINDOWS_DLL)
 #if !defined(_MSC_VER) || defined(__clang__)
 __attribute__((constructor(103)))
 #endif

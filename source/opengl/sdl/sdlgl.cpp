@@ -131,7 +131,29 @@ extern "C" {
 
 void glExtensionsLoaded();
 
+#ifdef BOXEDWINE_MSVC
+#define ES_API _stdcall
+#else
+#define ES_API
+#endif
+
+#ifdef BOXEDWINE_OPENGL_ES
+extern "C" {
+    void set_getprocaddress(void* (ES_API* new_proc_address)(const char*));
+    void initialize_gl4es();
+}
+typedef const GLubyte* (*PFNGETSTRING)(GLenum);
+static void* ES_API loadES(const char* name) {
+    return SDL_GL_GetProcAddress(name);
+}
+#endif
+
 void loadSdlExtensions() {
+#ifdef BOXEDWINE_OPENGL_ES
+    // context is already created by this point which initialize_gl4es needs
+    set_getprocaddress(loadES);
+    initialize_gl4es();
+#endif
     if (!sdlOpenExtensionsLoaded) {
         sdlOpenExtensionsLoaded = true;
         #include "../glfunctions.h"
@@ -218,20 +240,6 @@ static void sdl_glXSwapBuffers(CPU* cpu) {
 #undef GL_EXT_FUNCTION
 #define GL_EXT_FUNCTION(func, RET, PARAMS)
 
-#ifdef BOXEDWINE_MSVC
-#define ES_API _stdcall
-#else
-#define ES_API
-#endif
-
-#ifdef BOXEDWINE_OPENGL_ES
-extern "C" {
-    void set_getprocaddress(void* (ES_API* new_proc_address)(const char*));
-}
-static void* ES_API loadES(const char* name) {
-    return SDL_GL_GetProcAddress(name);
-}
-#endif
 void initSdlOpenGL() {
     if (BoxedwineGL::current != &sdlBoxedwineGL) {
         BoxedwineGL::current = &sdlBoxedwineGL;
@@ -239,9 +247,6 @@ void initSdlOpenGL() {
 #include "../glfunctions.h"
     }
 
-#ifdef BOXEDWINE_OPENGL_ES
-    set_getprocaddress(loadES);
-#endif
     int99Callback[Finish] = sdl_glFinish;
     int99Callback[Flush] = sdl_glFlush;
     int99Callback[XCreateContext] = sdl_glXCreateContext;
