@@ -26,12 +26,7 @@
 //#define GL_LOG klog
 #define GL_LOG if (0) klog
 
-#ifdef BOXEDWINE_OPENGL_ES
-#define GL_FUNC(name) es_##name
-#include "es/esopengl.h"
-#else
 #define GL_FUNC(name) name
-#endif
 
 struct int2Float {
     union {

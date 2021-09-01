@@ -1,0 +1,13 @@
+packed_call_t* glCopyPackedCall(const packed_call_t *packed) {
+    switch (packed->format) {
+        {% for f in formats %}
+        case FORMAT_{{ f.types }}: {
+            int sizeofpacked = sizeof(PACKED_{{ f.types }});
+            PACKED_{{ f.types }} *newpacked = (PACKED_{{ f.types }}*)malloc(sizeofpacked);
+            memcpy(newpacked, packed, sizeofpacked);
+            return (packed_call_t*)newpacked;
+            break;
+        }
+        {% endfor %}
+    }
+}

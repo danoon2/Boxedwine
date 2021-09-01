@@ -1597,6 +1597,225 @@
     <ClCompile Include="..\..\..\..\source\io\fsdynamiclinknode.cpp">
       <Filter>source\io</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\arbconverter.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\arbgenerator.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\arbhelper.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\arbparser.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\array.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\blend.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\blit.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\buffers.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\build_info.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\debug.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\decompress.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\depth.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\directstate.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\drawing.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\enable.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\envvars.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\eval.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\face.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\fog.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\fpe.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\fpe_cache.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\fpe_shader.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\framebuffers.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\getter.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\gl_lookup.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\gl4es.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\glstate.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\hint.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\init.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\light.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\line.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\list.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\listdraw.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\listrl.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\glloader.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\logs.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\matrix.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\matvec.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\oldprogram.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\pixel.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\planes.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\pointsprite.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\preproc.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\program.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\queries.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\raster.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\render.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\samplers.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\shader.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\shader_hacks.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\shaderconv.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\stack.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\stencil.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\string_utils.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\stubs.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\texenv.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\texgen.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\texture.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\texture_3d.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\texture_compressed.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\texture_params.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\texture_read.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\uniform.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\vertexattrib.c">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\wrap\gl4eswraps.c">
+      <Filter>opengl\gl4es\src\wrap</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\wrap\gles.c">
+      <Filter>opengl\gl4es\src\wrap</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\wrap\glstub.c">
+      <Filter>opengl\gl4es\src\wrap</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\glx\gbm.c">
+      <Filter>opengl\gl4es\src\glx</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\glx\hardext.c">
+      <Filter>opengl\gl4es\src\glx</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\glx\lookup.c">
+      <Filter>opengl\gl4es\src\glx</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\glx\streaming.c">
+      <Filter>opengl\gl4es\src\glx</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\glx\utils.c">
+      <Filter>opengl\gl4es\src\glx</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\gl4es\src\gl\math\matheval.c">
+      <Filter>opengl\gl4es\src\math</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -3786,6 +4005,222 @@
     <ClInclude Include="..\..\..\..\source\io\fsdynamiclinknode.h">
       <Filter>source\io</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\arbconverter.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\arbgenerator.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\arbhelper.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\arbparser.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\array.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\attributes.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\blend.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\blit.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\buffers.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\build_info.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\const.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\debug.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\decompress.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\depth.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\directstate.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\enum_info.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\envvars.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\eval.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\face.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\fog.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\fpe.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\fpe_cache.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\fpe_shader.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\framebuffers.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\gl_lookup.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\gl4es.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\glcase.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\gles.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\glstate.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\hint.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\init.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\light.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\line.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\list.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\loader.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\logs.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\matrix.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\matvec.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\oldprogram.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\pixel.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\planes.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\pointsprite.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\preproc.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\program.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\queries.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\raster.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\render.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\samplers.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\shader.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\shader_hacks.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\shaderconv.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\stack.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\state.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\stb_dxt_104.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\stencil.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\string_utils.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\texenv.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\texgen.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\texture.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\uniform.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\vertexattrib.h">
+      <Filter>opengl\gl4es\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\wrap\gl4es.h">
+      <Filter>opengl\gl4es\src\wrap</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\wrap\gles.h">
+      <Filter>opengl\gl4es\src\wrap</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\wrap\skips.h">
+      <Filter>opengl\gl4es\src\wrap</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\wrap\stub.h">
+      <Filter>opengl\gl4es\src\wrap</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\glx\drmfunc.h">
+      <Filter>opengl\gl4es\src\glx</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\glx\gbmfunc.h">
+      <Filter>opengl\gl4es\src\glx</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\glx\glx_gbm.h">
+      <Filter>opengl\gl4es\src\glx</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\glx\hardext.h">
+      <Filter>opengl\gl4es\src\glx</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\glx\streaming.h">
+      <Filter>opengl\gl4es\src\glx</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\glx\utils.h">
+      <Filter>opengl\gl4es\src\glx</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\gl4es\src\gl\math\eval.h">
+      <Filter>opengl\gl4es\src\math</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
@@ -3947,9 +4382,27 @@
     <Filter Include="opengl\osmesa">
       <UniqueIdentifier>{c16a03b0-cb55-44fa-99bd-ea9eb8db949c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="opengl\gl4es">
+      <UniqueIdentifier>{15b49a67-fbf1-4490-8eef-973147b98cc5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="opengl\gl4es\src">
+      <UniqueIdentifier>{d162c1ba-8890-4806-95df-dcba01bb8d00}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="opengl\gl4es\src\wrap">
+      <UniqueIdentifier>{32219f58-ffa6-475d-8786-87044a173a22}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="opengl\gl4es\src\glx">
+      <UniqueIdentifier>{c8b4520d-3a12-4769-bca1-f85d7421752b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="opengl\gl4es\src\math">
+      <UniqueIdentifier>{35e2c758-671c-4299-afcc-de7194affc07}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <None Include="ClassDiagram.cd" />
+    <None Include="..\..\..\..\lib\gl4es\src\gl\glesfuncs.inc">
+      <Filter>opengl\gl4es\src</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\Boxedwine.rc" />

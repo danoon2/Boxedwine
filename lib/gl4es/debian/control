@@ -1,0 +1,29 @@
+Source: gl4es
+Section: libs
+Priority: optional
+Maintainer: licheng <shiptux@gmail.com>
+Build-Depends: debhelper (>= 11),cmake,libx11-dev
+Standards-Version: 4.1.3
+Homepage: https://github.com/ptitSeb/gl4es
+
+Package: libgl4es
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Multi-arch: no
+Description: GL4ES - OpenGL for GLES Hardware
+ This is a library provide OpenGL 2.x functionality for GLES2.0 accelerated Hardware
+ (and of course also support OpenGL 1.5 function, so metimes better than when using
+ GLES 1.1 backend) There is also support for GLES 1.1 Hardware, emulating OpenGL 1.5,
+ and some OpenGL 2.x + extensions.
+ This package contains the shared libraries.
+
+Package: libgl4es-dev
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Multi-arch: no
+Description: GL4ES - OpenGL for GLES Hardware
+ This is a headers provide OpenGL 2.x functionality for GLES2.0 accelerated Hardware
+ (and of course also support OpenGL 1.5 function, so metimes better than when using
+ GLES 1.1 backend) There is also support for GLES 1.1 Hardware, emulating OpenGL 1.5,
+ and some OpenGL 2.x + extensions.
+ This package contains the development files.

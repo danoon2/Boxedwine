@@ -1,0 +1,36 @@
+#GLES 1.1 Extensions (might be GLES 2.0 Core)
+glBlendColor_OES_: [void, GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha]
+glBlendEquation_OES_: [void, GLenum mode]
+glBlendEquationSeparate_OES_: [void, GLenum modeRGB, GLenum modeA]
+glBlendFuncSeparate_OES_: [void, GLenum sfactorRGB, GLenum dfactorRGB, GLenum sfactorAlpha, GLenum dfactorAlpha]
+# glTexGenfOES_OES_: [void, GLenum coord, GLenum pname, GLfloat param]
+glTexGenfv_OES_: [void, GLenum coord, GLenum pname, "const GLfloat *params"]
+glTexGeni_OES_: [void, GLenum coord, GLenum pname, GLint param]
+# glTexGenivOES_OES_: [void, GLenum coord, GLenum pname, "const GLint *params"]
+
+glGenFramebuffers_OES_: [void, GLsizei n, "GLuint *ids"]
+glDeleteFramebuffers_OES_: [void, GLsizei n, "GLuint *framebuffers"]
+glIsFramebuffer_OES_: [GLboolean, GLuint framebuffer]
+glCheckFramebufferStatus_OES_: [GLenum, GLenum target]
+glBindFramebuffer_OES_: [void, GLenum target, GLuint framebuffer]
+glFramebufferTexture2D_OES_: [void, GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level]
+glGenRenderbuffers_OES_: [void, GLsizei n, "GLuint *renderbuffers"]
+glFramebufferRenderbuffer_OES_: [void, GLenum target, GLenum attachment, GLenum renderbuffertarget, GLuint renderbuffer]
+glDeleteRenderbuffers_OES_: [void, GLsizei n, "GLuint *renderbuffers"]
+glRenderbufferStorage_OES_: [void, GLenum target, GLenum internalformat, GLsizei width, GLsizei height]
+glBindRenderbuffer_OES_: [void, GLenum target, GLuint renderbuffer]
+glIsRenderbuffer_OES_: [GLboolean, GLuint renderbuffer]
+glGenerateMipmap_OES_: [void, GLenum target]
+glGetFramebufferAttachmentParameteriv_OES_: [void, GLenum target, GLenum attachment, GLenum pname, "GLint *params"]
+glGetRenderbufferParameteriv_OES_: [void, GLenum target, GLenum pname, "GLint * params"]
+
+glDrawTexi_OES_: [void, GLint x, GLint y, GLint z, GLint width, GLint height]
+glDrawTexf_OES_: [void, GLfloat x, GLfloat y, GLfloat z, GLfloat width, GLfloat height]
+
+glMultiDrawArrays_OES_: [void, GLenum mode, "const GLint *first", "const GLsizei *count", GLsizei primcount]
+glMultiDrawElements_OES_: [void, GLenum mode, "GLsizei *count", GLenum type, "const void * const *indices", GLsizei primcount]
+
+glGetProgramBinary_OES_ : [void, GLuint program, GLsizei bufSize, "GLsizei *length", "GLenum *binaryFormat", "GLvoid *binary"]
+glProgramBinary_OES_ : [void, GLuint program, GLenum binaryFormat, "const GLvoid *binary", GLint length]
+
+glDrawBuffers_EXT_ : [void, GLsizei n, "const GLenum *bufs"]

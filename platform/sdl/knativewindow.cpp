@@ -507,7 +507,7 @@ U32 KNativeWindowSdl::glShareLists(KThread* thread, U32 srcContext, U32 destCont
     return 0;
 }
 
-#ifdef BOXEDWINE_OPENGL_SDL
+#if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
 U32 sdlCreateOpenglWindow_main_thread(KThread* thread, std::shared_ptr<WndSdl> wnd, int major, int minor, int profile, int flags) {
     //DISPATCH_MAIN_THREAD_BLOCK_BEGIN_RETURN
     screen->destroyScreen(thread);
@@ -528,6 +528,11 @@ U32 sdlCreateOpenglWindow_main_thread(KThread* thread, std::shared_ptr<WndSdl> w
     SDL_GL_SetAttribute(SDL_GL_ACCUM_BLUE_SIZE, wnd->pixelFormat->cAccumBlueBits);
     SDL_GL_SetAttribute(SDL_GL_ACCUM_ALPHA_SIZE, wnd->pixelFormat->cAccumAlphaBits);
 
+#ifdef BOXEDWINE_OPENGL_ES
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+#else
     if (major) {
         if (major >= 3) {
             SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
@@ -537,6 +542,7 @@ U32 sdlCreateOpenglWindow_main_thread(KThread* thread, std::shared_ptr<WndSdl> w
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, minor);
 //#endif
     }
+#endif
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, (wnd->pixelFormat->dwFlags & K_PFD_DOUBLEBUFFER)?1:0);
     SDL_GL_SetAttribute(SDL_GL_ACCELERATED_VISUAL, (wnd->pixelFormat->dwFlags & K_PFD_GENERIC_FORMAT)?0:1);
 
@@ -620,7 +626,7 @@ U32 KNativeWindowSdl::glCreateContext(KThread* thread, std::shared_ptr<Wnd> w, i
         screen->destroyScreen(thread);
         DISPATCH_MAIN_THREAD_BLOCK_END
     }
-#ifdef BOXEDWINE_OPENGL_SDL
+#if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
     if (!windowIsGL && KSystem::openglType != OPENGL_TYPE_OSMESA) {
         result = sdlCreateOpenglWindow_main_thread(thread, wnd, major, minor, profile, flags);
     }

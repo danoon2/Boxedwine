@@ -1,0 +1,18 @@
+#!/bin/bash -ux
+cd "$(dirname "$0")"
+
+base=../src/
+if [ -e yml/gles-1.1-full.yml ]; then rm yml/gles-1.1-full.yml ;fi
+touch yml/gles-1.1-full.yml
+cat yml/*-1.1.yml >> yml/gles-1.1-full.yml
+#gles1=$(ls -1 yml/*-1.1-full.yml | tr '\n' ',' | sed -e 's/,$//')
+#gles=$(ls -1 yml/*es-1.1.yml | tr '\n' ',' | sed -e 's/,$//')
+#glext=$(ls -1 yml/*ext-1.1.yml | tr '\n' ',' | sed -e 's/,$//')
+gles1="yml/gles-1.1-full.yml"
+
+#./gen.py "$gles" gleswrap.c.j2 gleswrap.c gles.h > "$base/gl/wrap/gles.c"
+#./gen.py "$glext" glextwrap.c.j2 glextwrap.c gles.h > "$base/gl/wrap/glesext.c"
+./gen.py "$gles1" gleswrap.c.j2 gleswrap.c gles.h ../gl4es.h ../loader.h skips.h > "$base/gl/wrap/gles.c"
+./gen.py "$gles1" glwrap.h.j2 gleswrap.h ../gles.h > "$base/gl/wrap/gles.h"
+./gen.py "$gles1" glxfuncs.j2 glxfuncs.inc ../gl/gl4es.h > "$base/glx/glesfuncs.inc"
+

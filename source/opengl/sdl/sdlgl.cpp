@@ -17,7 +17,7 @@
  */
 #include "boxedwine.h"
 
-#ifdef BOXEDWINE_OPENGL_SDL
+#if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
 #include <SDL_opengl.h>
 #include "../glcommon.h"
 
@@ -116,7 +116,18 @@ static int sdlOpenExtensionsLoaded = false;
 #define GL_FUNCTION_CUSTOM(func, RET, PARAMS)
 
 #undef GL_EXT_FUNCTION
+#ifdef BOXEDWINE_OPENGL_ES
+extern "C" {
+#ifdef BOXEDWINE_MSVC
+    void* _stdcall gl4es_GetProcAddress(const char* name);
+#else
+    void* gl4es_GetProcAddress(const char* name);
+#endif
+}
+#define GL_EXT_FUNCTION(func, RET, PARAMS) ext_gl##func = (gl##func##_func)gl4es_GetProcAddress("gl" #func);
+#else
 #define GL_EXT_FUNCTION(func, RET, PARAMS) ext_gl##func = (gl##func##_func)SDL_GL_GetProcAddress("gl" #func);
+#endif
 
 void glExtensionsLoaded();
 
@@ -129,12 +140,12 @@ void loadSdlExtensions() {
 }
 
 // GLAPI void APIENTRY glFinish( void ) {
-void sdl_glFinish(CPU* cpu) {	
+static void sdl_glFinish(CPU* cpu) {
     glFinish();
 }
 
 // GLAPI void APIENTRY glFlush( void ) {
-void sdl_glFlush(CPU* cpu) {
+static void sdl_glFlush(CPU* cpu) {
     KNativeWindow::getNativeWindow()->preOpenGLCall(Flush);
     glFlush();	
 }
@@ -145,7 +156,7 @@ void fbSetupScreen();
 #endif
 
 // GLXContext glXCreateContext(Display *dpy, XVisualInfo *vis, GLXContext share_list, Bool direct)
-void sdl_glXCreateContext(CPU* cpu) {
+static void sdl_glXCreateContext(CPU* cpu) {
     U32 doubleBuffered = ARG6;
     U32 format = ARG5;
     //U32 share = ARG4;
@@ -171,12 +182,12 @@ void sdl_glXCreateContext(CPU* cpu) {
 }
 
 // void glXDestroyContext(Display *dpy, GLXContext ctx)
-void sdl_glXDestroyContext(CPU* cpu) {
+static void sdl_glXDestroyContext(CPU* cpu) {
 
 }
 
 // Bool glXMakeCurrent(Display *dpy, GLXDrawable drawable, GLXContext ctx) 
-void sdl_glXMakeCurrent(CPU* cpu) {
+static void sdl_glXMakeCurrent(CPU* cpu) {
     //U32 isWindow = ARG5;
     //U32 depth = ARG4;
     //U32 height = ARG3;
@@ -194,7 +205,7 @@ void sdl_glXMakeCurrent(CPU* cpu) {
 
 // void glXSwapBuffers(Display *dpy, GLXDrawable drawable)
 
-void sdl_glXSwapBuffers(CPU* cpu) {
+static void sdl_glXSwapBuffers(CPU* cpu) {
     KNativeWindow::getNativeWindow()->glSwapBuffers(cpu->thread);
 }
 
@@ -207,6 +218,20 @@ void sdl_glXSwapBuffers(CPU* cpu) {
 #undef GL_EXT_FUNCTION
 #define GL_EXT_FUNCTION(func, RET, PARAMS)
 
+#ifdef BOXEDWINE_MSVC
+#define ES_API _stdcall
+#else
+#define ES_API
+#endif
+
+#ifdef BOXEDWINE_OPENGL_ES
+extern "C" {
+    void set_getprocaddress(void* (ES_API* new_proc_address)(const char*));
+}
+static void* ES_API loadES(const char* name) {
+    return SDL_GL_GetProcAddress(name);
+}
+#endif
 void initSdlOpenGL() {
     if (BoxedwineGL::current != &sdlBoxedwineGL) {
         BoxedwineGL::current = &sdlBoxedwineGL;
@@ -214,6 +239,9 @@ void initSdlOpenGL() {
 #include "../glfunctions.h"
     }
 
+#ifdef BOXEDWINE_OPENGL_ES
+    set_getprocaddress(loadES);
+#endif
     int99Callback[Finish] = sdl_glFinish;
     int99Callback[Flush] = sdl_glFlush;
     int99Callback[XCreateContext] = sdl_glXCreateContext;
