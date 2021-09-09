@@ -10,16 +10,17 @@ import java.util.Vector;
  */
 public class VkHost {
     static private void hostStart(VkFunction fn, StringBuilder out) throws Exception {
-        out.append("PFN_");
-        out.append(fn.name);
-        out.append(" ");
-        out.append(fn.name);
-        out.append(";\n");
-
         if (fn.returnType.getSize() != 0) {
             out.append("// return type: "+fn.returnType.name+"("+fn.returnType.getSize()+" bytes)\n");
         }
         out.append("void vk_" + fn.name.substring(2) + "(CPU* cpu) {\n");
+        if (!fn.params.elementAt(0).paramType.type.equals("VK_DEFINE_HANDLE")) {
+            out.append("    initVulkan();\n");
+        }/*
+        out.append("    klog(\"");
+        out.append(fn.name);
+        out.append("\");\n");
+        */
     }
 
     static private void hostStartParam(VkFunction fn, StringBuilder out, VkParam param, int stackPos) throws Exception {
@@ -32,16 +33,22 @@ public class VkHost {
     }
 
     static private void hostCall(VkFunction fn, StringBuilder out) throws Exception {
+        String pfn = "";
+        if (fn.params.elementAt(0).paramType.type.equals("VK_DEFINE_HANDLE")) {
+            pfn += "pBoxedInfo->";
+        }
+        pfn += "p";
+        pfn += fn.name;
         out.append("    ");
         if (fn.returnType.getSize() == 0) {
-            out.append(fn.name);
+            out.append(pfn);
         } else if (fn.returnType.getSize() == 4) {
-            out.append("EAX = ");
-            out.append(fn.name);
+            out.append("EAX = ");;
+            out.append(pfn);
         } else if (fn.returnType.getSize() == 8) {
             out.append(fn.returnType.name);
             out.append(" result = ");
-            out.append(fn.name);
+            out.append(pfn);
         } else {
             throw new Exception("Unhandled call return size: " + fn.returnType.getSize());
         }
@@ -66,6 +73,9 @@ public class VkHost {
         hostStart(fn, out);
         for (VkParam param : fn.params) {
             hostStartParam(fn, out, param, stackPos);
+            if (stackPos == 1 && fn.params.elementAt(0).paramType.type.equals("VK_DEFINE_HANDLE")) {
+                out.append("    BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);\n");
+            }
             stackPos++;
         }
         hostCall(fn, out);
@@ -81,11 +91,39 @@ public class VkHost {
         StringBuilder out = new StringBuilder();
         out.append("#ifndef __VK_HOST__H__\n");
         out.append("#define __VK_HOST__H__\n");
+        out.append("#define VK_NO_PROTOTYPES\n");
+        out.append("#include \"vk/vulkan.h\"\n");
+        out.append("#include \"vk/vulkan_core.h\"\n");
+        out.append("#ifndef BOXED_VK_EXTERN\n");
+        out.append("#define BOXED_VK_EXTERN extern\n");
+        out.append("#endif\n");
+        for (VkFunction fn : hostFunctions ) {
+            if (!fn.params.elementAt(0).paramType.type.equals("VK_DEFINE_HANDLE")) {
+                out.append("BOXED_VK_EXTERN PFN_");
+                out.append(fn.name);
+                out.append(" p");
+                out.append(fn.name);
+                out.append(";\n");
+            }
+        }
         for (VkFunction fn : hostFunctions ) {
             out.append("void vk_");
             out.append(fn.name.substring(2));
             out.append("(CPU* cpu);\n");
         }
+        out.append("class BoxedVulkanInfo {\npublic:\n");
+        out.append("    VkInstance instance;\n");
+        for (VkFunction fn : hostFunctions ) {
+            if (fn.params.elementAt(0).paramType.type.equals("VK_DEFINE_HANDLE")) {
+                out.append("    PFN_");
+                out.append(fn.name);
+                out.append(" p");
+                out.append(fn.name);
+                out.append(";\n");
+            }
+        }
+        out.append("};\n");
+
         out.append("#endif\n");
         fos.write(out.toString().getBytes());
     }
@@ -98,9 +136,13 @@ public class VkHost {
         out.append("#include <SDL_vulkan.h>\n");
         out.append("#define VK_NO_PROTOTYPES\n");
         out.append("#include \"vk/vulkan.h\"\n");
-        out.append("#include \"vk/vulkan_core.h\"\n\n");
+        out.append("#include \"vk/vulkan_core.h\"\n");
+        out.append("#define BOXED_VK_EXTERN\n");
+        out.append("#include \"vk_host.h\"\n\n");
+        out.append("void initVulkan();\n");
         out.append("void* getVulkanPtr(U32 address);\n");
-        out.append("U32 createVulkanPtr(U64 value);\n");
+        out.append("U32 createVulkanPtr(U64 value, BoxedVulkanInfo* info);\n");
+        out.append("BoxedVulkanInfo* getInfoFromHandle(U32 address);\n");
         out.append("void freeVulkanPtr(U32 p);\n\n");
         for (int i=0;i<15;i++) {
             out.append("#define ARG");
@@ -118,6 +160,14 @@ public class VkHost {
         out.append("void* vulkanGetNextPtr(U32 address);\n");
         out.append("void vulkanWriteNextPtr(U32 address, void* pNext);\n");
         StringBuilder tmp = new StringBuilder();
+
+        for (String ext : Main.typeExtensions.values()) {
+            VkType extType = Main.types.get(ext);
+            if (extType != null) {
+                extType.needMarshalIn = true;
+                extType.needMarshalOut = true;
+            }
+        }
         // pass 1 will add more types that need marshaling, like VkApplicationInfo
         for (VkType t : Main.orderedTypes) {
             if (t.needMarshalIn || t.needMarshalOut) {
@@ -136,6 +186,55 @@ public class VkHost {
                 VkHostMarshalType.write(t, out);
             }
         }
+
+        part2.append("void* vulkanGetNextPtr(U32 address) {\n");
+        part2.append("    if (address == 0) {\n");
+        part2.append("        return NULL;\n");
+        part2.append("    }\n");
+        part2.append("    VkStructureType type = (VkStructureType)readd(address);\n");
+        part2.append("    switch (type) {\n");
+        for (String key : Main.typeExtensions.keySet()) {
+            part2.append("        case ");
+            part2.append(key);
+            part2.append(": {\n");
+            part2.append("            ");
+            part2.append(Main.typeExtensions.get(key));
+            part2.append("* p = new ");
+            part2.append(Main.typeExtensions.get(key));
+            part2.append("();\n");
+            part2.append("            Marshal");
+            part2.append(Main.typeExtensions.get(key));
+            part2.append("::read(address, p);\n");
+            part2.append("            return p;\n");
+            part2.append("        }\n");
+        }
+        part2.append("       default:\n");
+        part2.append("            kpanic(\"vulkanGetNextPtr not implemented for %d\", type);\n");
+        part2.append("    }\n");
+        part2.append("}\n");
+
+        part2.append("void vulkanWriteNextPtr(U32 address, void* p) {\n");
+        part2.append("    if (address == 0) {\n");
+        part2.append("        return;\n");
+        part2.append("    }\n");
+        part2.append("    VkStructureType type = (VkStructureType)readd(address);\n");
+        part2.append("    switch (type) {\n");
+        for (String key : Main.typeExtensions.keySet()) {
+            part2.append("        case ");
+            part2.append(key);
+            part2.append(": {\n");
+            part2.append("            Marshal");
+            part2.append(Main.typeExtensions.get(key));
+            part2.append("::write(address, (");
+            part2.append(Main.typeExtensions.get(key));
+            part2.append("*)p);\n");
+            part2.append("            break;\n");
+            part2.append("        }\n");
+        }
+        part2.append("       default:\n");
+        part2.append("            kpanic(\"vulkanWriteNextPtr not implemented for %d\", type);\n");
+        part2.append("    }\n");
+        part2.append("}\n");
         part2.append("#endif\n\n");
         fos.write(out.toString().getBytes());
         fos.write(part2.toString().getBytes());

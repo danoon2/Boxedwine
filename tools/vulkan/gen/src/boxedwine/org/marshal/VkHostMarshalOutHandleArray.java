@@ -39,6 +39,9 @@ public class VkHostMarshalOutHandleArray extends VkHostMarshal {
         out.append(param.paramArg);
         out.append(" + i*4, createVulkanPtr((U64)");
         out.append(param.name);
-        out.append("[i]));\n        }\n    }\n");
+        out.append("[i], pBoxedInfo));\n        }\n");
+        out.append("        delete[] ");
+        out.append(param.name);
+        out.append(";\n    }\n");
     }
 }

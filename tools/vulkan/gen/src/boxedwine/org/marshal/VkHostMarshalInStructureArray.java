@@ -30,6 +30,10 @@ public class VkHostMarshalInStructureArray  extends VkHostMarshal {
     }
 
     public void after(VkFunction fn, StringBuilder out, VkParam param) throws Exception {
-
+        out.append("    if (");
+        out.append(param.name);
+        out.append(") {\n        delete[] ");
+        out.append(param.name);
+        out.append(";\n    }\n");
     }
 }

@@ -62,7 +62,7 @@ public class VkHostMarshalType {
                                     out.append(p.name);
                                     out.append("[i] = (");
                                     out.append(p.paramType.name);
-                                    out.append("*)getPhysicalAddress(paramAddress + i*4, 0);\n");
+                                    out.append("*)getPhysicalAddress(readd(paramAddress + i*4), 0);\n");
                                     out.append("            }\n");
                                     out.append("            s->");
                                     out.append(p.name);
@@ -141,27 +141,39 @@ public class VkHostMarshalType {
                     }
                     out.append("        }\n");
                 } else {
-                    int width = p.paramType.getSize();
-                    if (width > 8) {
-                        out.append("        memcopyToNative(paramAddress, &s->");
+                    if (p.arrayLen > 0) {
+                        out.append("        memcopyToNative(address, &s->");
                         out.append(p.name);
                         out.append(", ");
-                        out.append(width);
-                        out.append(");\n");
+                        out.append(p.arrayLen);
+                        out.append(");address+=");
+                        out.append(p.arrayLen);
+                        out.append(";\n");
                     } else {
-                        out.append("        s->");
-                        out.append(p.name);
-                        out.append(" = (");
-                        out.append(p.paramType.name);
-                        out.append(")read");
-                        if (width == 8) {
-                            out.append("q(address);address+=8;\n");
-                        } else if (width == 4) {
-                            out.append("d(address);address+=4;\n");
-                        } else if (width == 2) {
-                            out.append("w(address);address+=2;\n");
+                        int width = p.paramType.getSize();
+                        if (width > 8 || p.arrayLen > 0) {
+                            out.append("        memcopyToNative(address, &s->");
+                            out.append(p.name);
+                            out.append(", ");
+                            out.append(width);
+                            out.append(");address+=");
+                            out.append(width);
+                            out.append(";\n");
                         } else {
-                            throw new Exception("Unknown width");
+                            out.append("        s->");
+                            out.append(p.name);
+                            out.append(" = (");
+                            out.append(p.paramType.name);
+                            out.append(")read");
+                            if (width == 8) {
+                                out.append("q(address);address+=8;\n");
+                            } else if (width == 4) {
+                                out.append("d(address);address+=4;\n");
+                            } else if (width == 2) {
+                                out.append("w(address);address+=2;\n");
+                            } else {
+                                throw new Exception("Unknown width");
+                            }
                         }
                     }
                 }
@@ -185,6 +197,7 @@ public class VkHostMarshalType {
                     out.append("        if (paramAddress != 0) {\n");
                     if (p.name.equals("pNext")) {
                         out.append("            vulkanWriteNextPtr(paramAddress, s->pNext);\n");
+                        out.append("            delete s->pNext;\n");
                     } else if (p.paramType.category.equals("struct")) {
                         p.paramType.needMarshalIn = true;
                         out.append("            ");
@@ -210,7 +223,7 @@ public class VkHostMarshalType {
                     out.append("        }\n");
                 } else {
                     int width = p.getSize();
-                    if (width > 8) {
+                    if (width > 8 || p.arrayLen > 0) {
                         out.append("        memcopyFromNative(address, ");
                         if (p.arrayLen == 0) {
                             out.append("&");

@@ -161,7 +161,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>BOXEDWINE_HAS_OPENGL_MESA;BOXEDWINE_DYNAMIC32;BOXEDWINE_DYNAMIC;BOXEDWINE_UI_LAUNCH_IN_PROCESS;BOXEDWINE_HIGHDPI;POCO_UTIL_NO_JSONCONFIGURATION;POCO_UTIL_NO_XMLCONFIGURATION;POCO_NO_AUTOMATIC_LIBS;GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;LOG_SYSCALLS;BOXEDWINE_HAS_SETJMP;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_MSVC;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_VULKAN;BOXEDWINE_HAS_OPENGL_MESA;BOXEDWINE_DYNAMIC32;BOXEDWINE_DYNAMIC;BOXEDWINE_UI_LAUNCH_IN_PROCESS;BOXEDWINE_HIGHDPI;POCO_UTIL_NO_JSONCONFIGURATION;POCO_UTIL_NO_XMLCONFIGURATION;POCO_NO_AUTOMATIC_LIBS;GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;LOG_SYSCALLS;BOXEDWINE_HAS_SETJMP;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_MSVC;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\..\..\lib\soloud\include;..\..\..\..\include;..\..\..\..\lib\glew\include;..\..\..\..\lib\imgui;..\..\..\..\lib\poco\Net\include;..\..\..\..\lib\poco\Foundation\include;..\..\..\..\lib\poco\NetSSL_Win\include;;..\..\..\..\lib\poco\Util\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>

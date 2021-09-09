@@ -1685,56 +1685,12 @@ void boxeddrv_GetVersion(CPU* cpu) {
 
 #ifdef BOXEDWINE_VULKAN
 #include <SDL_vulkan.h>
-#define VK_NO_PROTOTYPES
-#include "../vulkan/vk/vulkan.h"
-#include "../vulkan/vk/vulkan_core.h"
+#include "../vulkan/vk_host.h"
 
 static bool vulkanInitialized;
-
 static PFN_vkGetInstanceProcAddr pvkGetInstanceProcAddr = NULL;
-static PFN_vkEnumerateInstanceExtensionProperties pvkEnumerateInstanceExtensionProperties = NULL;
-static PFN_vkCreateInstance pvkCreateInstance = NULL;
-static U32 freePtrMaps;
 
-BoxedWineMutex freeVulkanPtrMutex;
-
-U32 createVulkanPtr(U64 value) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(freeVulkanPtrMutex);
-    if (!freePtrMaps) {
-        U32 address = KThread::currentThread()->process->allocNative(K_PAGE_SIZE);
-        for (U32 i = 0; i < K_PAGE_SIZE; i += sizeof(void*)) {
-            writed(address + i, freePtrMaps);
-            freePtrMaps = address + i;
-        }
-    }
-    U32 result = freePtrMaps;
-    freePtrMaps = readd(freePtrMaps);
-    writeq(result, value);
-    return result;
-}
-
-void freeVulkanPtr(U32 p) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(freeVulkanPtrMutex);
-    writed(p, freePtrMaps);
-    freePtrMaps = p;
-}
-
-void* getVulkanPtr(U32 address) {
-    return (void*)(readq(address));
-}
-
-void* vulkanGetNextPtr(U32 address) {
-    if (address == 0) {
-        return NULL;
-    }
-    kpanic("getNext not implemented");
-}
-
-void vulkanWriteNextPtr(U32 address, void* pNext) {
-    kpanic("writeNext not implemented");
-}
-
-static void initVulkan() {
+void initVulkan() {
     if (!vulkanInitialized) {
         vulkanInitialized = true;
 
@@ -1742,10 +1698,9 @@ static void initVulkan() {
             kpanic("Failed to load vulkan: %d\n", SDL_GetError());
         }
         pvkGetInstanceProcAddr = (PFN_vkGetInstanceProcAddr)SDL_Vulkan_GetVkGetInstanceProcAddr();
-
-#define LOAD_FUNCPTR(f) p##f = (PFN_##f)pvkGetInstanceProcAddr(VK_NULL_HANDLE, #f)
-        LOAD_FUNCPTR(vkEnumerateInstanceExtensionProperties);
-        LOAD_FUNCPTR(vkCreateInstance);
+#define VKFUNC_INSTANCE(f)
+#define VKFUNC(f) pvk##f = (PFN_vk##f)pvkGetInstanceProcAddr(VK_NULL_HANDLE, "vk"#f); if (!pvk##f) {kwarn("Failed to load vk"#f);}
+#include "../vulkan/vkfuncs.h"
 #undef LOAD_FUNCPTR
     }
 }
@@ -1879,7 +1834,7 @@ void BoxedVkInstanceCreateInfo::read(U32 address) {
         }
     }
 }
-
+U32 createVulkanPtr(U64 value, BoxedVulkanInfo* info);
 BoxedVkInstanceCreateInfo::~BoxedVkInstanceCreateInfo() {
     if (info.enabledExtensionCount) {
         for (U32 i = 0; i < info.enabledExtensionCount; i++) {
@@ -1910,7 +1865,7 @@ static void boxeddrv_vkCreateInstance(CPU* cpu) {
 
     res = pvkCreateInstance(&create_info_host.info, NULL /* allocator */, &result);
     if (res == VK_SUCCESS) {
-        U32 address = createVulkanPtr((U64)result);
+        U32 address = createVulkanPtr((U64)result, NULL);
         writed(address_instance, address);
     }
     EAX = (U32)res;

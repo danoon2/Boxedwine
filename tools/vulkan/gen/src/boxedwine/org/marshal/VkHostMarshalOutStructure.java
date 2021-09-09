@@ -12,9 +12,12 @@ public class VkHostMarshalOutStructure extends VkHostMarshal {
         out.append(param.paramType.name);
         out.append(" ");
         out.append(param.name);
-        out.append(";\n");
+        out.append("(");
+        out.append(param.paramArg);
+        out.append(");\n");
         param.nameInFunction = "&"+param.name+".s";
         param.paramType.needMarshalOut = true;
+        param.paramType.needMarshalIn = true;
     }
 
     public void after(VkFunction fn, StringBuilder out, VkParam param) throws Exception {

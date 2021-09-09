@@ -41,6 +41,12 @@ public class VkHostMarshalOutStructureArray extends VkHostMarshal {
         out.append(", &");
         out.append(param.name);
         out.append("[i]);\n    }\n");
+        out.append("    if (");
+        out.append(param.paramArg);
+        out.append(") {\n");
+        out.append("        delete[] ");
+        out.append(param.name);
+        out.append(";\n    }\n");
         param.paramType.needMarshalOut = true;
     }
 }

@@ -19,6 +19,7 @@ public class Main {
     static Hashtable<String, String> defs = new Hashtable<>();
     static Hashtable<String, String> constants = new Hashtable<>();
     static HashSet<String> blacklistedExtensions = new HashSet<>();
+    static Hashtable<String, String> typeExtensions = new Hashtable<>();
 
     static String hostSource = "source/vulkan/";
     static String fsSource = "tools/vulkan/";
@@ -54,6 +55,8 @@ public class Main {
         // # Deprecated extensions
         blacklistedExtensions.add("VK_NV_external_memory_capabilities");
         blacklistedExtensions.add("VK_NV_external_memory_win32");
+
+        typeExtensions.put("VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES", "VkPhysicalDeviceIDProperties");
 
         try {
             File inputFile = new File("lib/mesa/vkRegistry/vk.xml");
@@ -196,7 +199,11 @@ public class Main {
     public static void writeFuncs(FileOutputStream fos) throws Exception {
         StringBuilder out = new StringBuilder();
         for (VkFunction fn : hostFunctions ) {
-            out.append("VKFUNC(");
+            if (fn.params.elementAt(0).paramType.type.equals("VK_DEFINE_HANDLE")) {
+                out.append("VKFUNC_INSTANCE(");
+            } else {
+                out.append("VKFUNC(");
+            }
             out.append(fn.name.substring(2));
             out.append(")\n");
         }
