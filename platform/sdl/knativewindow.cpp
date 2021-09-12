@@ -1088,7 +1088,7 @@ void KNativeWindowSdl::drawAllWindows(KThread* thread, U32 hWnd, int count) {
                     dstrect.y = wnd->windowRect.top*(int)scaleY/100 + scaleYOffset;
                     dstrect.w = wnd->sdlTextureWidth*(int)scaleX/100;
                     dstrect.h = wnd->sdlTextureHeight*(int)scaleY/100;
-#ifdef BOXEDWINE_64BIT_MMU
+#ifndef BOXEDWINE_FLIP_MANUALLY
                     SDL_RenderCopyEx(renderer, wnd->sdlTexture, NULL, &dstrect, 0, NULL, SDL_FLIP_VERTICAL);
 #else
                     SDL_RenderCopy(renderer, wnd->sdlTexture, NULL, &dstrect);
