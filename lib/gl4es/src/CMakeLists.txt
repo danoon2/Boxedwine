@@ -36,7 +36,7 @@ SET(GL_SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/gl/list.c
     ${CMAKE_CURRENT_SOURCE_DIR}/gl/listdraw.c
     ${CMAKE_CURRENT_SOURCE_DIR}/gl/listrl.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/gl/loader.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/gl/glloader.c
     ${CMAKE_CURRENT_SOURCE_DIR}/gl/logs.c
     ${CMAKE_CURRENT_SOURCE_DIR}/gl/matrix.c
     ${CMAKE_CURRENT_SOURCE_DIR}/gl/matvec.c

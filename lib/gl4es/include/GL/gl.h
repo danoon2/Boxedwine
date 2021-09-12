@@ -27,11 +27,7 @@
 #ifndef __gl_h_
 #define __gl_h_
 
-#if defined(__EMSCRIPTEN__) || defined(__APPLE__)
-#define USE_MGL_NAMESPACE    1
-#define GL_GLEXT_PROTOTYPES  1
-#define MANGLE(x)            gl4es_gl##x
-#endif
+
 
 #if defined(USE_MGL_NAMESPACE)
 #include "gl_mangle.h"
@@ -174,6 +170,19 @@ typedef float		GLclampf;	/* single precision float in [0,1] */
 typedef double		GLdouble;	/* double precision float */
 typedef double		GLclampd;	/* double precision float in [0,1] */
 
+typedef GLint GLfixed;
+
+#define GL_TRANSLATE_X_NV                 0x908E
+#define GL_TRANSLATE_Y_NV                 0x908F
+#define GL_TRANSLATE_2D_NV                0x9090
+#define GL_TRANSLATE_3D_NV                0x9091
+
+#define GL_AFFINE_2D_NV                   0x9092
+#define GL_AFFINE_3D_NV                   0x9094
+#define GL_TRANSPOSE_AFFINE_2D_NV         0x9096
+#define GL_TRANSPOSE_AFFINE_3D_NV         0x9098
+
+#define GL_ATOMIC_COUNTER_BUFFER_ACTIVE_ATOMIC_COUNTER_INDICES 0x92C6
 
 
 /*
