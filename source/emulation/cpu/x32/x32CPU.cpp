@@ -968,7 +968,7 @@ void movToMem(DynReg addressReg, DynWidth width, U32 value, DynCallParamType par
         reg2 = DYN_EBX;
     } else {
         if ((isParamReg && value == DYN_ECX) || reg1 == DYN_ECX) {
-            if (reg1==DYN_EAX) {
+            if (reg1==DYN_EAX || (isParamReg && value == DYN_EAX)) {
                 reg2 = DYN_EDX;
             } else {
                 reg2 = DYN_EAX;
