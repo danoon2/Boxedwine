@@ -1555,43 +1555,46 @@ void instRegReg(char inst, DynReg reg, DynReg rm, DynWidth regWidth, bool doneWi
             outb(0xd2);
         }
         outb(group | reg);
-        return;
     }
-
-    U8 i=0;
-    switch (inst) {
+    else {
+        U8 i = 0;
+        switch (inst) {
         case '+':
-            i=0x01;
+            i = 0x01;
             break;
         case '-':
-            i=0x29;
+            i = 0x29;
             break;
         case '|':
-            i=0x09;
+            i = 0x09;
             break;
         case '&':
-            i=0x21;
+            i = 0x21;
             break;
         case '^':
-            i=0x31;
+            i = 0x31;
             break;
         default:
             kpanic("unhandled op in x32CPU::instRegReg %c", inst);
             break;
-    }
-    // add reg, imm
-    if (regWidth==DYN_32bit) {            
-        outb(i);
-        outb(0xC0 | rm << 3 | reg);
-    } else if (regWidth == DYN_16bit) {
-        outb(0x66);
-        outb(i);
-        outb(0xC0 | rm << 3 | reg);
-    } else if (regWidth == DYN_8bit) {
-        outb(i-1);
-        outb(0xC0 | rm << 3 | reg);
-    } else {
-        kpanic("unknown regWidth in x32CPU::instRegImm + %d", regWidth);
+        }
+        // add reg, imm
+        if (regWidth == DYN_32bit) {
+            outb(i);
+            outb(0xC0 | rm << 3 | reg);
+        }
+        else if (regWidth == DYN_16bit) {
+            outb(0x66);
+            outb(i);
+            outb(0xC0 | rm << 3 | reg);
+        }
+        else if (regWidth == DYN_8bit) {
+            outb(i - 1);
+            outb(0xC0 | rm << 3 | reg);
+        }
+        else {
+            kpanic("unknown regWidth in x32CPU::instRegImm + %d", regWidth);
+        }
     }
     if (doneWithRmReg) {
         regUsed[rm] = false;
