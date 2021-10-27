@@ -57,6 +57,8 @@ public class Main {
         blacklistedExtensions.add("VK_NV_external_memory_win32");
 
         typeExtensions.put("VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES", "VkPhysicalDeviceIDProperties");
+        typeExtensions.put("VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT", "VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT");
+        typeExtensions.put("VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT", "VkPhysicalDeviceTransformFeedbackFeaturesEXT");
 
         try {
             File inputFile = new File("lib/mesa/vkRegistry/vk.xml");

@@ -1814,6 +1814,62 @@ public:
     }
 };
 
+class MarshalVkPhysicalDeviceVertexAttributeDivisorFeaturesEXT {
+public:
+    MarshalVkPhysicalDeviceVertexAttributeDivisorFeaturesEXT() {}
+    VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT s;
+    MarshalVkPhysicalDeviceVertexAttributeDivisorFeaturesEXT(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT* s) {
+        s->sType = (VkStructureType)readd(address);address+=4;
+        U32 paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pNext = NULL;
+        } else {
+            s->pNext = vulkanGetNextPtr(paramAddress);
+        }
+        s->vertexAttributeInstanceRateDivisor = (VkBool32)readd(address);address+=4;
+        s->vertexAttributeInstanceRateZeroDivisor = (VkBool32)readd(address);address+=4;
+    }
+    static void write(U32 address, VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT* s) {
+        writed(address, s->sType);address+=4;
+        U32 paramAddress = readd(address);address+=4;
+        if (paramAddress != 0) {
+            vulkanWriteNextPtr(paramAddress, s->pNext);
+            delete s->pNext;
+        }
+        writed(address, s->vertexAttributeInstanceRateDivisor);address+=4;
+        writed(address, s->vertexAttributeInstanceRateZeroDivisor);address+=4;
+    }
+};
+
+class MarshalVkPhysicalDeviceTransformFeedbackFeaturesEXT {
+public:
+    MarshalVkPhysicalDeviceTransformFeedbackFeaturesEXT() {}
+    VkPhysicalDeviceTransformFeedbackFeaturesEXT s;
+    MarshalVkPhysicalDeviceTransformFeedbackFeaturesEXT(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkPhysicalDeviceTransformFeedbackFeaturesEXT* s) {
+        s->sType = (VkStructureType)readd(address);address+=4;
+        U32 paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pNext = NULL;
+        } else {
+            s->pNext = vulkanGetNextPtr(paramAddress);
+        }
+        s->transformFeedback = (VkBool32)readd(address);address+=4;
+        s->geometryStreams = (VkBool32)readd(address);address+=4;
+    }
+    static void write(U32 address, VkPhysicalDeviceTransformFeedbackFeaturesEXT* s) {
+        writed(address, s->sType);address+=4;
+        U32 paramAddress = readd(address);address+=4;
+        if (paramAddress != 0) {
+            vulkanWriteNextPtr(paramAddress, s->pNext);
+            delete s->pNext;
+        }
+        writed(address, s->transformFeedback);address+=4;
+        writed(address, s->geometryStreams);address+=4;
+    }
+};
+
 class MarshalVkBufferDeviceAddressInfo {
 public:
     MarshalVkBufferDeviceAddressInfo() {}
@@ -3665,6 +3721,16 @@ void* vulkanGetNextPtr(U32 address) {
     }
     VkStructureType type = (VkStructureType)readd(address);
     switch (type) {
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT: {
+            VkPhysicalDeviceTransformFeedbackFeaturesEXT* p = new VkPhysicalDeviceTransformFeedbackFeaturesEXT();
+            MarshalVkPhysicalDeviceTransformFeedbackFeaturesEXT::read(address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT: {
+            VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT* p = new VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT();
+            MarshalVkPhysicalDeviceVertexAttributeDivisorFeaturesEXT::read(address, p);
+            return p;
+        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES: {
             VkPhysicalDeviceIDProperties* p = new VkPhysicalDeviceIDProperties();
             MarshalVkPhysicalDeviceIDProperties::read(address, p);
@@ -3680,6 +3746,14 @@ void vulkanWriteNextPtr(U32 address, void* p) {
     }
     VkStructureType type = (VkStructureType)readd(address);
     switch (type) {
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceTransformFeedbackFeaturesEXT::write(address, (VkPhysicalDeviceTransformFeedbackFeaturesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceVertexAttributeDivisorFeaturesEXT::write(address, (VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES: {
             MarshalVkPhysicalDeviceIDProperties::write(address, (VkPhysicalDeviceIDProperties*)p);
             break;
