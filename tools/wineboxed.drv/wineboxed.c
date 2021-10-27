@@ -46,7 +46,10 @@
 #endif
 #include "wine/unicode.h"
 #include "wine/server.h"
-
+#ifdef BOXED_NEED_VULKAN
+#include "wine/vulkan.h"
+#include "wine/vulkan_driver.h"
+#endif
 #include <dlfcn.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -220,6 +223,7 @@ typedef struct
 #define CALL_NORETURN_9(index, arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9) __asm__("push %9\n\tpush %8\n\tpush %7\n\tpush %6\n\tpush %5\n\tpush %4\n\tpush %3\n\tpush %2\n\tpush %1\n\tpush %0\n\tint $0x98\n\taddl $40, %%esp"::"i"(index), "g"((DWORD)arg1), "g"((DWORD)arg2), "g"((DWORD)arg3), "g"((DWORD)arg4), "g"((DWORD)arg5), "g"((DWORD)arg6), "g"((DWORD)arg7), "g"((DWORD)arg8), "g"((DWORD)arg9));
 
 INT WINE_CDECL boxeddrv_GetDeviceCaps(PHYSDEV dev, INT cap);
+void BOXEDDRV_DisplayDevices_Init(BOOL force);
 
 static inline BOOL can_activate_window(HWND hwnd)
 {
@@ -281,6 +285,7 @@ LONG CDECL boxeddrv_ChangeDisplaySettingsEx(LPCWSTR devname, LPDEVMODEW devmode,
         TRACE("SendMessageTimeoutW\n");
         SendMessageTimeoutW( HWND_BROADCAST, WM_DISPLAYCHANGE, bpp, MAKELPARAM( cx, cy ), SMTO_ABORTIFHUNG, 2000, NULL );       
         TRACE("SendMessageTimeoutW returned\n");
+        BOXEDDRV_DisplayDevices_Init(TRUE);
     }    
     return result;
 }
@@ -2518,4 +2523,18 @@ void CDECL boxeddrv_UpdateClipboard(void)
 
 void CDECL boxeddrv_ThreadDetach(void) 
 {
+}
+
+BOOL WINAPI DllMain(HINSTANCE hinst, DWORD reason, LPVOID reserved)
+{
+    BOOL ret = TRUE;
+
+    switch (reason)
+    {
+    case DLL_PROCESS_ATTACH:
+        DisableThreadLibraryCalls(hinst);
+        BOXEDDRV_DisplayDevices_Init(FALSE);
+        break;
+    }
+    return ret;
 }
