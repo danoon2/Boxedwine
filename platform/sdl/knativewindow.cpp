@@ -592,11 +592,13 @@ U32 sdlCreateOpenglWindow_main_thread(KThread* thread, std::shared_ptr<WndSdl> w
 #endif
 
 void* KNativeWindowSdl::createVulkanSurface(void* instance) {
+#ifdef BOXEDWINE_VULKAN
     VkSurfaceKHR result;
 
     if (SDL_Vulkan_CreateSurface(this->window, (VkInstance)instance, &result)) {
         return result;
     }
+#endif
     return NULL;
 }
 
