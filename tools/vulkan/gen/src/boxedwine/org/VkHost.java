@@ -158,7 +158,7 @@ public class VkHost {
         }
 
         out.append("void* vulkanGetNextPtr(U32 address);\n");
-        out.append("void vulkanWriteNextPtr(U32 address, void* pNext);\n");
+        out.append("void vulkanWriteNextPtr(U32 address, const void* pNext);\n");
         StringBuilder tmp = new StringBuilder();
 
         for (String ext : Main.typeExtensions.values()) {
@@ -213,7 +213,7 @@ public class VkHost {
         part2.append("    }\n");
         part2.append("}\n");
 
-        part2.append("void vulkanWriteNextPtr(U32 address, void* p) {\n");
+        part2.append("void vulkanWriteNextPtr(U32 address, const void* p) {\n");
         part2.append("    if (address == 0) {\n");
         part2.append("        return;\n");
         part2.append("    }\n");

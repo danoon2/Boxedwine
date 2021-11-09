@@ -75,7 +75,7 @@ public class VkHostMarshalType {
                             } else {
                                 throw new  Exception("oops");
                             }
-                        } else if (!p.paramType.needsMarshaling() || (p.isPointer && !p.isDoublePointer && p.paramType.type.equals("void"))) {
+                        } else if (!p.paramType.needsMarshaling() || (p.isPointer && !p.isDoublePointer && p.paramType.type.equals("void")) || p.paramType.category.equals("enum")) {
                             out.append("            s->");
                             out.append(p.name);
                             out.append(" = (");
@@ -151,7 +151,7 @@ public class VkHostMarshalType {
                         out.append(";\n");
                     } else {
                         int width = p.paramType.getSize();
-                        if (width > 8 || p.arrayLen > 0) {
+                        if (width > 8 || p.arrayLen > 0 || p.paramType.category.equals("struct")) {
                             out.append("        memcopyToNative(address, &s->");
                             out.append(p.name);
                             out.append(", ");
@@ -218,12 +218,12 @@ public class VkHostMarshalType {
                         out.append(p.name);
                         out.append(";\n");
                     } else {
-                        throw new Exception("oops");
+                        out.append("kpanic(\"        Can't marshal void*\");\n");
                     }
                     out.append("        }\n");
                 } else {
                     int width = p.getSize();
-                    if (width > 8 || p.arrayLen > 0) {
+                    if (width > 8 || p.arrayLen > 0 || p.paramType.category.equals("struct")) {
                         out.append("        memcopyFromNative(address, ");
                         if (p.arrayLen == 0) {
                             out.append("&");

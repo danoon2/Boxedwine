@@ -51,6 +51,17 @@ public class Main {
 
         // # Extensions which require callback handling
         blacklistedExtensions.add("VK_EXT_device_memory_report");
+        blacklistedExtensions.add("VK_EXT_debug_report");
+        blacklistedExtensions.add("VK_EXT_debug_utils");
+
+        // # has void pointer in structure
+        blacklistedExtensions.add("VK_NV_device_diagnostic_checkpoints");
+        blacklistedExtensions.add("VK_INTEL_performance_query");
+        blacklistedExtensions.add("VK_KHR_pipeline_executable_properties");
+        blacklistedExtensions.add("VK_NV_device_diagnostic_checkpoints");
+
+        // # has a more complicated count structure I need to work on
+        blacklistedExtensions.add("VK_KHR_acceleration_structure");
 
         // # Deprecated extensions
         blacklistedExtensions.add("VK_NV_external_memory_capabilities");
@@ -87,6 +98,8 @@ public class Main {
             types.put("VisualID", new VkType("VisualID", "uint64_t", "define", 8));
             types.put("xcb_visualid_t", new VkType("xcb_visualid_t", "uint32_t", "define", 4));
             types.put("HANDLE", new VkType("HANDLE", "uint32_t", "define", 4));
+            types.put("HINSTANCE", new VkType("HINSTANCE", "uint32_t", "define", 4));
+            types.put("HWND", new VkType("HWND", "uint32_t", "define", 4));
             types.put("zx_handle_t", new VkType("zx_handle_t", "uint32_t", "define", 4));
             types.put("RROutput", new VkType("RROutput", "uint32_t", "define", 4));
             types.put("void", new VkType("void", "void", "platform", 0));
@@ -106,10 +119,13 @@ public class Main {
 
             hostFunctions = (Vector<VkFunction>)functions.clone();
             for (VkFunction fn : functions) {
-                if (fn.name.equals("vkGetDeviceProcAddr") || fn.name.equals("vkGetInstanceProcAddr") || fn.name.toLowerCase().contains("android")) {
+                if (fn.name.equals("vkGetPhysicalDeviceSurfaceSupportKHR")) {
+                    int ii=0;
+                }
+                if (fn.name.equals("vkGetDeviceProcAddr") || fn.name.equals("vkGetInstanceProcAddr") || fn.name.toLowerCase().contains("android") || fn.name.equals("VkDebugReportCallbackCreateInfoEXT")) {
                     hostFunctions.remove(fn);
                 }
-                if (fn.extension != null && blacklistedExtensions.contains(fn.extension)) {
+                if (fn.extension != null && (blacklistedExtensions.contains(fn.extension) || fn.name.contains("Win32"))) {
                     hostFunctions.remove(fn);
                 }
             }
@@ -121,6 +137,7 @@ public class Main {
             } catch (Exception e) {
 
             }
+
             applyDefs();
             FileOutputStream fosDefs = new FileOutputStream(hostSource+"vkdef.h");
             writeDefs(fosDefs);
@@ -189,6 +206,9 @@ public class Main {
             out.append("#define ");
             out.append(fn.name.substring(2));
             out.append(" ");
+            if (fn.def == null) {
+                fn.def = defs.get(fn.name.substring(2));
+            }
             out.append(fn.def);
             out.append("\n");
         }
@@ -488,7 +508,7 @@ public class Main {
             if (name.toLowerCase().contains("khx") || name.toLowerCase().contains("nvx")) {
                 blacklistedExtensions.add(name);
             }
-            if (platform != null && !platform.equals("win32")) {
+            if (platform != null && !platform.equals("win32") && !platform.equals("")) {
                 blacklistedExtensions.add(name);
             }
             if (requires != null) {

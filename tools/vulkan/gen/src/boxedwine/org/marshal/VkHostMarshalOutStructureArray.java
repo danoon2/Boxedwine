@@ -30,9 +30,12 @@ public class VkHostMarshalOutStructureArray extends VkHostMarshal {
     }
 
     public void after(VkFunction fn, StringBuilder out, VkParam param) throws Exception {
-        out.append("    for (U32 i=0;i<");
+        out.append("    if (");
+        out.append(param.paramArg);
+        out.append(") {\n");
+        out.append("        for (U32 i=0;i<");
         out.append(param.countString);
-        out.append(";i++) {\n        Marshal");
+        out.append(";i++) {\n            Marshal");
         out.append(param.paramType.name);
         out.append("::write(");
         out.append(param.paramArg);
@@ -40,10 +43,7 @@ public class VkHostMarshalOutStructureArray extends VkHostMarshal {
         out.append(param.paramType.getSize());
         out.append(", &");
         out.append(param.name);
-        out.append("[i]);\n    }\n");
-        out.append("    if (");
-        out.append(param.paramArg);
-        out.append(") {\n");
+        out.append("[i]);\n        }\n");
         out.append("        delete[] ");
         out.append(param.name);
         out.append(";\n    }\n");

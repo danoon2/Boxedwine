@@ -20,6 +20,7 @@
 #include "vk_host.h"
 #include "vkdef.h"
 #include <SDL_vulkan.h>
+#include "knativewindow.h"
 
 static PFN_vkGetInstanceProcAddr pvkGetInstanceProcAddr = NULL;
 
@@ -70,6 +71,31 @@ void* getVulkanPtr(U32 address) {
     return (void*)(readq(address));
 }
 
+static void BOXED_vkCreateWin32SurfaceKHR(CPU* cpu) {
+    //VkInstance instance,
+    //const VkWin32SurfaceCreateInfoKHR* create_info,
+    //const VkAllocationCallbacks* allocator, 
+    // VkSurfaceKHR* surface
+
+    std::shared_ptr<KNativeWindow> wnd = KNativeWindow::getNativeWindow();
+
+    if (!wnd->isVulkan) {
+        wnd->needsVulkan = true;
+        wnd->updateDisplay(cpu->thread);
+    }
+    void* instance = getVulkanPtr(cpu->peek32(1));
+
+    void* surface = wnd->createVulkanSurface(instance);
+    int ii = sizeof(VkAttachmentLoadOp);
+    if (!surface) {
+        EAX = VK_ERROR_OUT_OF_HOST_MEMORY;
+    } else {
+        EAX = VK_SUCCESS;
+        // VK_DEFINE_NON_DISPATCHABLE_HANDLE (always 64 bit)
+        writeq(cpu->peek32(4), (U64)surface);
+    }
+}
+
 Int99Callback int9ACallback[VK_LAST_VALUE+1];
 U32 int9ACallbackSize;
 
@@ -81,6 +107,8 @@ void vulkan_init() {
 #define VKFUNC(name) int9ACallback[name] = vk_##name;
 #define VKFUNC_INSTANCE(name) int9ACallback[name] = vk_##name;
 #include "vkfuncs.h"      
+
+    int9ACallback[CreateWin32SurfaceKHR] = BOXED_vkCreateWin32SurfaceKHR;
 }
 
 #endif
