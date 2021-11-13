@@ -1,0 +1,79 @@
+name: Linux CI
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install dependencies
+      run: sudo apt-get update && sudo apt-get install zlib1g-dev libminizip-dev libsdl2-dev
+
+    - name: Build Linux
+      run: cd project/linux && sh buildtest.sh
+
+    - name: Run boxedwineTest
+      run: ./project/linux/bin/boxedwineTest
+
+    - name: Upload Binary
+      uses: actions/upload-artifact@v2
+      with:
+        name: boxedwineTest-linux
+        path: project/linux/bin/boxedwineTest
+
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install dependencies
+      run: sudo apt-get update && sudo apt-get install zlib1g-dev libminizip-dev libsdl2-dev
+
+    - name: Build Linux
+      run: cd project/linux && sh build.sh
+
+    - name: Upload Binary
+      uses: actions/upload-artifact@v2
+      with:
+        name: boxedwine-linux
+        path: project/linux/bin/boxedwine
+
+  build-x64:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install dependencies
+      run: sudo apt-get update && sudo apt-get install zlib1g-dev libminizip-dev libsdl2-dev
+
+    - name: Build Linux
+      run: cd project/linux && sh build64.sh
+
+    - name: Upload Binary
+      uses: actions/upload-artifact@v2
+      with:
+        name: boxedwine64-linux
+        path: project/linux/bin/boxedwine64
+
+  build-x64-static:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install dependencies
+      run: sudo apt-get update && sudo apt-get install zlib1g-dev libminizip-dev libsdl2-dev
+
+    - name: Build Linux
+      run: cd project/linux && sh build64static.sh
+
+    - name: Upload Binary
+      uses: actions/upload-artifact@v2
+      with:
+        name: boxedwine64static-linux
+        path: project/linux/bin/boxedwine64
