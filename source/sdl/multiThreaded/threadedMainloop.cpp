@@ -42,7 +42,7 @@ bool doMainLoop() {
             timeout = 33;
         }
 #endif
-    #ifdef BOXEDWINE_64BIT_MMU
+    #ifdef defined(BOXEDWINE_64BIT_MMU) && defined(BOXEDWINE_EXPERIMENTAL_FRAME_BUFFER)
         if (isFbReady()) {
             timeout = 17;
             flipFB();
