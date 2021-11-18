@@ -147,7 +147,7 @@ FsOpenNode* openDevInputKeyboard(const BoxedPtr<FsNode>& node, U32 flags, U32 da
 // :TODO: can this be blocking
 U32 DevInput::readNative(U8* buffer, U32 len) {
     U32 result = 0;
-
+    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->bufferCond);
     while (this->eventQueue.size() && result+16<=len) {
         const EventData& e = this->eventQueue.front();
         U32* b = (U32*)buffer+result;
@@ -157,6 +157,9 @@ U32 DevInput::readNative(U8* buffer, U32 len) {
         b[3] = e.value;
         result+=16;
         this->eventQueue.pop();
+    }
+    if (result == 0) {
+        return -K_EWOULDBLOCK;
     }
     return result;
 }
@@ -336,7 +339,7 @@ bool DevInput::isReadReady() {
 }
 
 
-DevInputTouch::DevInputTouch(const BoxedPtr<FsNode>& node, U32 flags) : DevInput(node, flags) {
+DevInputTouch::DevInputTouch(const BoxedPtr<FsNode>& node, U32 flags) : DevInput(node, flags), lastX(0), lastY(0) {
     this->bustype = 3;
     this->vendor = 0;
     this->product = 0;
@@ -607,8 +610,10 @@ void queueEvent(DevInput* queue, U32 type, U32 code, U32 value, U64 time) {
     data.type = type;
     data.code = code;
     data.value = value;
-    if (queue)
+    if (queue) {
+        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(queue->bufferCond);
         queue->eventQueue.push(data);
+    }
 }
 
 /*
@@ -737,28 +742,54 @@ void onMouseMove(U32 x, U32 y, bool relative) {
     U32 send = 0;
     U64 time = KSystem::getSystemTimeAsMicroSeconds();
 
-    if (touchEvents) {
-        if (x!=touchEvents->lastX) {
-            if (relative) {
-                queueEvent(touchEvents, K_EV_REL, K_REL_X, x, time);
-            } else {
-                queueEvent(touchEvents, K_EV_ABS, K_ABS_X, x, time);
+    if (relative) {
+        if (mouseEvents) {            
+            if (x) {
+                queueEvent(mouseEvents, K_EV_REL, K_REL_X, x, time);
+                send = 1;
             }
-            touchEvents->lastX = x;            
-            send = 1;
-        }
-        if (y!=touchEvents->lastY) {
-            if (relative) {
-                queueEvent(touchEvents, K_EV_REL, K_REL_Y, y, time);
-            } else {
-                queueEvent(touchEvents, K_EV_ABS, K_ABS_Y, y, time);
+            if (y) {
+                queueEvent(mouseEvents, K_EV_REL, K_REL_Y, y, time);
+                send = 1;
+            }                        
+            if (send) {
+                postSendEvent(mouseEvents, time);
             }
-            touchEvents->lastY = y;            
-            send = 1;
         }
-        if (send) {
-            postSendEvent(touchEvents, time);
-        }
+    }
+    else {
+        if (touchEvents) {
+            // :TODO this is a huge hack, for some reason xorg only picks up the first event so
+            // to make the mouse mostly smooth, just alternate which axis is first in the queue
+            static int count = 0;
+            count++;
+            if (count % 2 == 0) {
+                if (x != touchEvents->lastX) {
+                    queueEvent(touchEvents, K_EV_ABS, K_ABS_X, x, time);
+                    touchEvents->lastX = x;
+                    send = 1;
+                }
+                if (y != touchEvents->lastY) {
+                    queueEvent(touchEvents, K_EV_ABS, K_ABS_Y, y, time);
+                    touchEvents->lastY = y;
+                    send = 1;
+                }
+            } else {
+                if (y != touchEvents->lastY) {
+                    queueEvent(touchEvents, K_EV_ABS, K_ABS_Y, y, time);
+                    touchEvents->lastY = y;
+                    send = 1;
+                }
+                if (x != touchEvents->lastX) {
+                    queueEvent(touchEvents, K_EV_ABS, K_ABS_X, x, time);
+                    touchEvents->lastX = x;
+                    send = 1;
+                }
+            }
+            if (send) {
+                postSendEvent(touchEvents, time);
+            }
+        }        
     }
 }
 

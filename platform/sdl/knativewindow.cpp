@@ -2409,8 +2409,12 @@ bool KNativeWindowSdl::handlSdlEvent(SDL_Event* e) {
         }
         BOXEDWINE_RECORDER_HANDLE_MOUSE_MOVE(e->motion.x, e->motion.y);
         if (relativeMouse) {
-            if (!mouseMove((e->motion.x-screenWidth()/2)*rel_mouse_sensitivity/100, (e->motion.y-screenHeight()/2)*rel_mouse_sensitivity/100, true)) {
-                onMouseMove((e->motion.x-screenWidth()/2)*rel_mouse_sensitivity/100, (e->motion.y-screenHeight()/2)*rel_mouse_sensitivity/100, true);                
+            int x = e->motion.x - screenWidth() / 2;
+            int y = e->motion.y - screenHeight() / 2;
+            x = x * rel_mouse_sensitivity / 100;
+            y = y * rel_mouse_sensitivity / 100;
+            if (!mouseMove(x, y, true)) {
+                onMouseMove(x, y, true);                
             }      
             SDL_WarpMouseInWindow(window, screenWidth()/2, screenHeight()/2);
         } else {

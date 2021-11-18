@@ -28,6 +28,7 @@ package org.boxedwine;
 import java.io.*;
 import java.net.URL;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Vector;
 import java.util.zip.GZIPInputStream;
 
@@ -36,14 +37,18 @@ public class DebianPackages {
     private HashMap<String, DebianPackage> packages;
     private String debUrl = "http://ftp.us.debian.org/debian/";
 
+    public HashSet<String> prefered;
+
+    public static DebianPackages instance;
+
+    public static DebianPackage getPackage(String name) {
+        return instance.packages.get(name);
+    }
+
     public DebianPackages(String debName) {
         this.name = debName;
         this.packages = new HashMap<>();
         loadPackages(getX86BinaryPackageURL());
-    }
-
-    public DebianPackage getPackage(String pkgName) {
-        return this.packages.get(pkgName);
     }
 
     URL getX86BinaryPackageURL() {
