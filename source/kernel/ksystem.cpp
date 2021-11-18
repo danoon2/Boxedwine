@@ -95,7 +95,7 @@ void KSystem::destroy() {
             BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(processesCond);
             if (KSystem::processes.size()) {
                 for (auto& process : KSystem::processes) {
-                    if (process.second->getThreadCount()) {
+                    if (process.second && process.second->getThreadCount()) {
                         p = process.second;
                         break;
                     }
