@@ -83,6 +83,9 @@ public class VkHostMarshalType {
                             out.append("*)getPhysicalAddress(paramAddress, ");
                             if (p.arrayLen != 0) {
                                 out.append(p.arrayLen);
+                            } else if (p.len.startsWith("(")) {
+                                out.append("(s->");
+                                out.append(p.len.substring(1));
                             } else if (!p.len.equals("null-terminated")) {
                                 out.append("s->");
                                 out.append(p.len);
@@ -95,7 +98,30 @@ public class VkHostMarshalType {
                                 out.append(")");
                             }
                             out.append(");\n");
-                        } else if (p.isPointer && p.paramType.category.equals("struct")) {
+                        } else if (p.paramType.type.equals("VK_DEFINE_HANDLE") && p.len != null && p.len.length() > 0) {
+                            out.append("            ");
+                            out.append(p.paramType.name);
+                            out.append("* ");
+                            out.append(p.name);
+                            out.append(" = new ");
+                            out.append(p.paramType.name);
+                            out.append("[s->");
+                            out.append(p.len);
+                            out.append("];\n");
+                            out.append("            for (int i=0;i<(int)s->");
+                            out.append(p.len);
+                            out.append(";i++) {\n");
+                            out.append("                ");
+                            out.append(p.name);
+                            out.append("[i] = (");
+                            out.append(p.paramType.name);
+                            out.append(")getVulkanPtr(paramAddress);\n            }\n");
+                            out.append("            s->");
+                            out.append(p.name);
+                            out.append(" = ");
+                            out.append(p.name);
+                            out.append(";\n");
+                        } else if (p.paramType.category.equals("struct")) {
                             out.append("            ");
                             out.append(p.paramType.name);
                             out.append("* ");
@@ -159,6 +185,12 @@ public class VkHostMarshalType {
                             out.append(");address+=");
                             out.append(width);
                             out.append(";\n");
+                        } else if (p.paramType.type.equals("VK_DEFINE_HANDLE")) {
+                            out.append("        s->");
+                            out.append(p.name);
+                            out.append(" = (");
+                            out.append(p.paramType.name);
+                            out.append(")getVulkanPtr(readd(address));address+=4;\n");
                         } else {
                             out.append("        s->");
                             out.append(p.name);

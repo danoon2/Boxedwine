@@ -183,10 +183,15 @@ public class VkHost {
         // pass 3
         for (VkType t : Main.orderedTypes) {
             if (t.needMarshalIn || t.needMarshalOut) {
+                VkHostMarshalType.write(t, tmp);
+            }
+        }
+        // pass 4
+        for (VkType t : Main.orderedTypes) {
+            if (t.needMarshalIn || t.needMarshalOut) {
                 VkHostMarshalType.write(t, out);
             }
         }
-
         part2.append("void* vulkanGetNextPtr(U32 address) {\n");
         part2.append("    if (address == 0) {\n");
         part2.append("        return NULL;\n");

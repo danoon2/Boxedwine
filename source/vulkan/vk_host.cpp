@@ -301,6 +301,96 @@ public:
     }
 };
 
+class MarshalVkMappedMemoryRange {
+public:
+    MarshalVkMappedMemoryRange() {}
+    VkMappedMemoryRange s;
+    MarshalVkMappedMemoryRange(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkMappedMemoryRange* s) {
+        s->sType = (VkStructureType)readd(address);address+=4;
+        U32 paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pNext = NULL;
+        } else {
+            s->pNext = vulkanGetNextPtr(paramAddress);
+        }
+        s->memory = (VkDeviceMemory)readq(address);address+=8;
+        s->offset = (VkDeviceSize)readq(address);address+=8;
+        s->size = (VkDeviceSize)readq(address);address+=8;
+    }
+};
+
+class MarshalVkDescriptorImageInfo {
+public:
+    MarshalVkDescriptorImageInfo() {}
+    VkDescriptorImageInfo s;
+    MarshalVkDescriptorImageInfo(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkDescriptorImageInfo* s) {
+        s->sampler = (VkSampler)readq(address);address+=8;
+        s->imageView = (VkImageView)readq(address);address+=8;
+        s->imageLayout = (VkImageLayout)readd(address);address+=4;
+    }
+};
+
+class MarshalVkWriteDescriptorSet {
+public:
+    MarshalVkWriteDescriptorSet() {}
+    VkWriteDescriptorSet s;
+    MarshalVkWriteDescriptorSet(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkWriteDescriptorSet* s) {
+        s->sType = (VkStructureType)readd(address);address+=4;
+        U32 paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pNext = NULL;
+        } else {
+            s->pNext = vulkanGetNextPtr(paramAddress);
+        }
+        s->dstSet = (VkDescriptorSet)readq(address);address+=8;
+        s->dstBinding = (uint32_t)readd(address);address+=4;
+        s->dstArrayElement = (uint32_t)readd(address);address+=4;
+        s->descriptorCount = (uint32_t)readd(address);address+=4;
+        s->descriptorType = (VkDescriptorType)readd(address);address+=4;
+        paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pImageInfo = NULL;
+        } else {
+            VkDescriptorImageInfo* pImageInfo = new VkDescriptorImageInfo();
+            MarshalVkDescriptorImageInfo::read(paramAddress, pImageInfo);
+            s->pImageInfo = pImageInfo;
+        }
+        memcopyToNative(address, &s->pBufferInfo, 24);address+=24;
+        paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pTexelBufferView = NULL;
+        } else {
+            s->pTexelBufferView = (VkBufferView*)getPhysicalAddress(paramAddress, s->descriptorCount * sizeof(VkBufferView));
+        }
+    }
+};
+
+class MarshalVkCopyDescriptorSet {
+public:
+    MarshalVkCopyDescriptorSet() {}
+    VkCopyDescriptorSet s;
+    MarshalVkCopyDescriptorSet(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkCopyDescriptorSet* s) {
+        s->sType = (VkStructureType)readd(address);address+=4;
+        U32 paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pNext = NULL;
+        } else {
+            s->pNext = vulkanGetNextPtr(paramAddress);
+        }
+        s->srcSet = (VkDescriptorSet)readq(address);address+=8;
+        s->srcBinding = (uint32_t)readd(address);address+=4;
+        s->srcArrayElement = (uint32_t)readd(address);address+=4;
+        s->dstSet = (VkDescriptorSet)readq(address);address+=8;
+        s->dstBinding = (uint32_t)readd(address);address+=4;
+        s->dstArrayElement = (uint32_t)readd(address);address+=4;
+        s->descriptorCount = (uint32_t)readd(address);address+=4;
+    }
+};
+
 class MarshalVkBufferCreateInfo {
 public:
     MarshalVkBufferCreateInfo() {}
@@ -346,6 +436,71 @@ public:
         s->format = (VkFormat)readd(address);address+=4;
         s->offset = (VkDeviceSize)readq(address);address+=8;
         s->range = (VkDeviceSize)readq(address);address+=8;
+    }
+};
+
+class MarshalVkMemoryBarrier {
+public:
+    MarshalVkMemoryBarrier() {}
+    VkMemoryBarrier s;
+    MarshalVkMemoryBarrier(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkMemoryBarrier* s) {
+        s->sType = (VkStructureType)readd(address);address+=4;
+        U32 paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pNext = NULL;
+        } else {
+            s->pNext = vulkanGetNextPtr(paramAddress);
+        }
+        s->srcAccessMask = (VkAccessFlags)readd(address);address+=4;
+        s->dstAccessMask = (VkAccessFlags)readd(address);address+=4;
+    }
+};
+
+class MarshalVkBufferMemoryBarrier {
+public:
+    MarshalVkBufferMemoryBarrier() {}
+    VkBufferMemoryBarrier s;
+    MarshalVkBufferMemoryBarrier(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkBufferMemoryBarrier* s) {
+        s->sType = (VkStructureType)readd(address);address+=4;
+        U32 paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pNext = NULL;
+        } else {
+            s->pNext = vulkanGetNextPtr(paramAddress);
+        }
+        s->srcAccessMask = (VkAccessFlags)readd(address);address+=4;
+        s->dstAccessMask = (VkAccessFlags)readd(address);address+=4;
+        s->srcQueueFamilyIndex = (uint32_t)readd(address);address+=4;
+        s->dstQueueFamilyIndex = (uint32_t)readd(address);address+=4;
+        s->buffer = (VkBuffer)readq(address);address+=8;
+        s->offset = (VkDeviceSize)readq(address);address+=8;
+        s->size = (VkDeviceSize)readq(address);address+=8;
+    }
+};
+
+class MarshalVkImageMemoryBarrier {
+public:
+    MarshalVkImageMemoryBarrier() {}
+    VkImageMemoryBarrier s;
+    MarshalVkImageMemoryBarrier(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkImageMemoryBarrier* s) {
+        s->sType = (VkStructureType)readd(address);address+=4;
+        U32 paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pNext = NULL;
+        } else {
+            s->pNext = vulkanGetNextPtr(paramAddress);
+        }
+        s->srcAccessMask = (VkAccessFlags)readd(address);address+=4;
+        s->dstAccessMask = (VkAccessFlags)readd(address);address+=4;
+        s->oldLayout = (VkImageLayout)readd(address);address+=4;
+        s->newLayout = (VkImageLayout)readd(address);address+=4;
+        s->srcQueueFamilyIndex = (uint32_t)readd(address);address+=4;
+        s->dstQueueFamilyIndex = (uint32_t)readd(address);address+=4;
+        s->image = (VkImage)readq(address);address+=8;
+        memcopyToNative(address, &s->subresourceRange, 20);address+=20;
     }
 };
 
@@ -402,6 +557,114 @@ public:
         s->format = (VkFormat)readd(address);address+=4;
         memcopyToNative(address, &s->components, 16);address+=16;
         memcopyToNative(address, &s->subresourceRange, 20);address+=20;
+    }
+};
+
+class MarshalVkSparseBufferMemoryBindInfo {
+public:
+    MarshalVkSparseBufferMemoryBindInfo() {}
+    VkSparseBufferMemoryBindInfo s;
+    MarshalVkSparseBufferMemoryBindInfo(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkSparseBufferMemoryBindInfo* s) {
+        s->buffer = (VkBuffer)readq(address);address+=8;
+        s->bindCount = (uint32_t)readd(address);address+=4;
+        U32 paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pBinds = NULL;
+        } else {
+            s->pBinds = (VkSparseMemoryBind*)getPhysicalAddress(paramAddress, s->bindCount * sizeof(VkSparseMemoryBind));
+        }
+    }
+};
+
+class MarshalVkSparseImageOpaqueMemoryBindInfo {
+public:
+    MarshalVkSparseImageOpaqueMemoryBindInfo() {}
+    VkSparseImageOpaqueMemoryBindInfo s;
+    MarshalVkSparseImageOpaqueMemoryBindInfo(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkSparseImageOpaqueMemoryBindInfo* s) {
+        s->image = (VkImage)readq(address);address+=8;
+        s->bindCount = (uint32_t)readd(address);address+=4;
+        U32 paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pBinds = NULL;
+        } else {
+            s->pBinds = (VkSparseMemoryBind*)getPhysicalAddress(paramAddress, s->bindCount * sizeof(VkSparseMemoryBind));
+        }
+    }
+};
+
+class MarshalVkSparseImageMemoryBindInfo {
+public:
+    MarshalVkSparseImageMemoryBindInfo() {}
+    VkSparseImageMemoryBindInfo s;
+    MarshalVkSparseImageMemoryBindInfo(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkSparseImageMemoryBindInfo* s) {
+        s->image = (VkImage)readq(address);address+=8;
+        s->bindCount = (uint32_t)readd(address);address+=4;
+        U32 paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pBinds = NULL;
+        } else {
+            s->pBinds = (VkSparseImageMemoryBind*)getPhysicalAddress(paramAddress, s->bindCount * sizeof(VkSparseImageMemoryBind));
+        }
+    }
+};
+
+class MarshalVkBindSparseInfo {
+public:
+    MarshalVkBindSparseInfo() {}
+    VkBindSparseInfo s;
+    MarshalVkBindSparseInfo(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkBindSparseInfo* s) {
+        s->sType = (VkStructureType)readd(address);address+=4;
+        U32 paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pNext = NULL;
+        } else {
+            s->pNext = vulkanGetNextPtr(paramAddress);
+        }
+        s->waitSemaphoreCount = (uint32_t)readd(address);address+=4;
+        paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pWaitSemaphores = NULL;
+        } else {
+            s->pWaitSemaphores = (VkSemaphore*)getPhysicalAddress(paramAddress, s->waitSemaphoreCount * sizeof(VkSemaphore));
+        }
+        s->bufferBindCount = (uint32_t)readd(address);address+=4;
+        paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pBufferBinds = NULL;
+        } else {
+            VkSparseBufferMemoryBindInfo* pBufferBinds = new VkSparseBufferMemoryBindInfo();
+            MarshalVkSparseBufferMemoryBindInfo::read(paramAddress, pBufferBinds);
+            s->pBufferBinds = pBufferBinds;
+        }
+        s->imageOpaqueBindCount = (uint32_t)readd(address);address+=4;
+        paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pImageOpaqueBinds = NULL;
+        } else {
+            VkSparseImageOpaqueMemoryBindInfo* pImageOpaqueBinds = new VkSparseImageOpaqueMemoryBindInfo();
+            MarshalVkSparseImageOpaqueMemoryBindInfo::read(paramAddress, pImageOpaqueBinds);
+            s->pImageOpaqueBinds = pImageOpaqueBinds;
+        }
+        s->imageBindCount = (uint32_t)readd(address);address+=4;
+        paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pImageBinds = NULL;
+        } else {
+            VkSparseImageMemoryBindInfo* pImageBinds = new VkSparseImageMemoryBindInfo();
+            MarshalVkSparseImageMemoryBindInfo::read(paramAddress, pImageBinds);
+            s->pImageBinds = pImageBinds;
+        }
+        s->signalSemaphoreCount = (uint32_t)readd(address);address+=4;
+        paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pSignalSemaphores = NULL;
+        } else {
+            s->pSignalSemaphores = (VkSemaphore*)getPhysicalAddress(paramAddress, s->signalSemaphoreCount * sizeof(VkSemaphore));
+        }
     }
 };
 
@@ -533,6 +796,479 @@ public:
         } else {
             s->pSetLayouts = (VkDescriptorSetLayout*)getPhysicalAddress(paramAddress, s->descriptorSetCount * sizeof(VkDescriptorSetLayout));
         }
+    }
+};
+
+class MarshalVkSpecializationMapEntry {
+public:
+    MarshalVkSpecializationMapEntry() {}
+    VkSpecializationMapEntry s;
+    MarshalVkSpecializationMapEntry(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkSpecializationMapEntry* s) {
+        s->constantID = (uint32_t)readd(address);address+=4;
+        s->offset = (uint32_t)readd(address);address+=4;
+        s->size = (size_t)readd(address);address+=4;
+    }
+};
+
+class MarshalVkSpecializationInfo {
+public:
+    MarshalVkSpecializationInfo() {}
+    VkSpecializationInfo s;
+    MarshalVkSpecializationInfo(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkSpecializationInfo* s) {
+        s->mapEntryCount = (uint32_t)readd(address);address+=4;
+        U32 paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pMapEntries = NULL;
+        } else {
+            VkSpecializationMapEntry* pMapEntries = new VkSpecializationMapEntry();
+            MarshalVkSpecializationMapEntry::read(paramAddress, pMapEntries);
+            s->pMapEntries = pMapEntries;
+        }
+        s->dataSize = (size_t)readd(address);address+=4;
+        paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pData = NULL;
+        } else {
+            s->pData = (void*)getPhysicalAddress(paramAddress, s->dataSize);
+        }
+    }
+};
+
+class MarshalVkPipelineShaderStageCreateInfo {
+public:
+    MarshalVkPipelineShaderStageCreateInfo() {}
+    VkPipelineShaderStageCreateInfo s;
+    MarshalVkPipelineShaderStageCreateInfo(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkPipelineShaderStageCreateInfo* s) {
+        s->sType = (VkStructureType)readd(address);address+=4;
+        U32 paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pNext = NULL;
+        } else {
+            s->pNext = vulkanGetNextPtr(paramAddress);
+        }
+        s->flags = (VkPipelineShaderStageCreateFlags)readd(address);address+=4;
+        s->stage = (VkShaderStageFlagBits)readd(address);address+=4;
+        s->module = (VkShaderModule)readq(address);address+=8;
+        paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pName = NULL;
+        } else {
+            s->pName = (char*)getPhysicalAddress(paramAddress, 0 * sizeof(char));
+        }
+        paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pSpecializationInfo = NULL;
+        } else {
+            VkSpecializationInfo* pSpecializationInfo = new VkSpecializationInfo();
+            MarshalVkSpecializationInfo::read(paramAddress, pSpecializationInfo);
+            s->pSpecializationInfo = pSpecializationInfo;
+        }
+    }
+};
+
+class MarshalVkComputePipelineCreateInfo {
+public:
+    MarshalVkComputePipelineCreateInfo() {}
+    VkComputePipelineCreateInfo s;
+    MarshalVkComputePipelineCreateInfo(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkComputePipelineCreateInfo* s) {
+        s->sType = (VkStructureType)readd(address);address+=4;
+        U32 paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pNext = NULL;
+        } else {
+            s->pNext = vulkanGetNextPtr(paramAddress);
+        }
+        s->flags = (VkPipelineCreateFlags)readd(address);address+=4;
+        memcopyToNative(address, &s->stage, 32);address+=32;
+        s->layout = (VkPipelineLayout)readq(address);address+=8;
+        s->basePipelineHandle = (VkPipeline)readq(address);address+=8;
+        s->basePipelineIndex = (int32_t)readd(address);address+=4;
+    }
+};
+
+class MarshalVkVertexInputBindingDescription {
+public:
+    MarshalVkVertexInputBindingDescription() {}
+    VkVertexInputBindingDescription s;
+    MarshalVkVertexInputBindingDescription(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkVertexInputBindingDescription* s) {
+        s->binding = (uint32_t)readd(address);address+=4;
+        s->stride = (uint32_t)readd(address);address+=4;
+        s->inputRate = (VkVertexInputRate)readd(address);address+=4;
+    }
+};
+
+class MarshalVkVertexInputAttributeDescription {
+public:
+    MarshalVkVertexInputAttributeDescription() {}
+    VkVertexInputAttributeDescription s;
+    MarshalVkVertexInputAttributeDescription(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkVertexInputAttributeDescription* s) {
+        s->location = (uint32_t)readd(address);address+=4;
+        s->binding = (uint32_t)readd(address);address+=4;
+        s->format = (VkFormat)readd(address);address+=4;
+        s->offset = (uint32_t)readd(address);address+=4;
+    }
+};
+
+class MarshalVkPipelineVertexInputStateCreateInfo {
+public:
+    MarshalVkPipelineVertexInputStateCreateInfo() {}
+    VkPipelineVertexInputStateCreateInfo s;
+    MarshalVkPipelineVertexInputStateCreateInfo(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkPipelineVertexInputStateCreateInfo* s) {
+        s->sType = (VkStructureType)readd(address);address+=4;
+        U32 paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pNext = NULL;
+        } else {
+            s->pNext = vulkanGetNextPtr(paramAddress);
+        }
+        s->flags = (VkPipelineVertexInputStateCreateFlags)readd(address);address+=4;
+        s->vertexBindingDescriptionCount = (uint32_t)readd(address);address+=4;
+        paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pVertexBindingDescriptions = NULL;
+        } else {
+            VkVertexInputBindingDescription* pVertexBindingDescriptions = new VkVertexInputBindingDescription();
+            MarshalVkVertexInputBindingDescription::read(paramAddress, pVertexBindingDescriptions);
+            s->pVertexBindingDescriptions = pVertexBindingDescriptions;
+        }
+        s->vertexAttributeDescriptionCount = (uint32_t)readd(address);address+=4;
+        paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pVertexAttributeDescriptions = NULL;
+        } else {
+            VkVertexInputAttributeDescription* pVertexAttributeDescriptions = new VkVertexInputAttributeDescription();
+            MarshalVkVertexInputAttributeDescription::read(paramAddress, pVertexAttributeDescriptions);
+            s->pVertexAttributeDescriptions = pVertexAttributeDescriptions;
+        }
+    }
+};
+
+class MarshalVkPipelineInputAssemblyStateCreateInfo {
+public:
+    MarshalVkPipelineInputAssemblyStateCreateInfo() {}
+    VkPipelineInputAssemblyStateCreateInfo s;
+    MarshalVkPipelineInputAssemblyStateCreateInfo(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkPipelineInputAssemblyStateCreateInfo* s) {
+        s->sType = (VkStructureType)readd(address);address+=4;
+        U32 paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pNext = NULL;
+        } else {
+            s->pNext = vulkanGetNextPtr(paramAddress);
+        }
+        s->flags = (VkPipelineInputAssemblyStateCreateFlags)readd(address);address+=4;
+        s->topology = (VkPrimitiveTopology)readd(address);address+=4;
+        s->primitiveRestartEnable = (VkBool32)readd(address);address+=4;
+    }
+};
+
+class MarshalVkPipelineTessellationStateCreateInfo {
+public:
+    MarshalVkPipelineTessellationStateCreateInfo() {}
+    VkPipelineTessellationStateCreateInfo s;
+    MarshalVkPipelineTessellationStateCreateInfo(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkPipelineTessellationStateCreateInfo* s) {
+        s->sType = (VkStructureType)readd(address);address+=4;
+        U32 paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pNext = NULL;
+        } else {
+            s->pNext = vulkanGetNextPtr(paramAddress);
+        }
+        s->flags = (VkPipelineTessellationStateCreateFlags)readd(address);address+=4;
+        s->patchControlPoints = (uint32_t)readd(address);address+=4;
+    }
+};
+
+class MarshalVkPipelineViewportStateCreateInfo {
+public:
+    MarshalVkPipelineViewportStateCreateInfo() {}
+    VkPipelineViewportStateCreateInfo s;
+    MarshalVkPipelineViewportStateCreateInfo(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkPipelineViewportStateCreateInfo* s) {
+        s->sType = (VkStructureType)readd(address);address+=4;
+        U32 paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pNext = NULL;
+        } else {
+            s->pNext = vulkanGetNextPtr(paramAddress);
+        }
+        s->flags = (VkPipelineViewportStateCreateFlags)readd(address);address+=4;
+        s->viewportCount = (uint32_t)readd(address);address+=4;
+        paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pViewports = NULL;
+        } else {
+            s->pViewports = (VkViewport*)getPhysicalAddress(paramAddress, s->viewportCount * sizeof(VkViewport));
+        }
+        s->scissorCount = (uint32_t)readd(address);address+=4;
+        paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pScissors = NULL;
+        } else {
+            s->pScissors = (VkRect2D*)getPhysicalAddress(paramAddress, s->scissorCount * sizeof(VkRect2D));
+        }
+    }
+};
+
+class MarshalVkPipelineRasterizationStateCreateInfo {
+public:
+    MarshalVkPipelineRasterizationStateCreateInfo() {}
+    VkPipelineRasterizationStateCreateInfo s;
+    MarshalVkPipelineRasterizationStateCreateInfo(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkPipelineRasterizationStateCreateInfo* s) {
+        s->sType = (VkStructureType)readd(address);address+=4;
+        U32 paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pNext = NULL;
+        } else {
+            s->pNext = vulkanGetNextPtr(paramAddress);
+        }
+        s->flags = (VkPipelineRasterizationStateCreateFlags)readd(address);address+=4;
+        s->depthClampEnable = (VkBool32)readd(address);address+=4;
+        s->rasterizerDiscardEnable = (VkBool32)readd(address);address+=4;
+        s->polygonMode = (VkPolygonMode)readd(address);address+=4;
+        s->cullMode = (VkCullModeFlags)readd(address);address+=4;
+        s->frontFace = (VkFrontFace)readd(address);address+=4;
+        s->depthBiasEnable = (VkBool32)readd(address);address+=4;
+        s->depthBiasConstantFactor = (float)readd(address);address+=4;
+        s->depthBiasClamp = (float)readd(address);address+=4;
+        s->depthBiasSlopeFactor = (float)readd(address);address+=4;
+        s->lineWidth = (float)readd(address);address+=4;
+    }
+};
+
+class MarshalVkPipelineMultisampleStateCreateInfo {
+public:
+    MarshalVkPipelineMultisampleStateCreateInfo() {}
+    VkPipelineMultisampleStateCreateInfo s;
+    MarshalVkPipelineMultisampleStateCreateInfo(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkPipelineMultisampleStateCreateInfo* s) {
+        s->sType = (VkStructureType)readd(address);address+=4;
+        U32 paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pNext = NULL;
+        } else {
+            s->pNext = vulkanGetNextPtr(paramAddress);
+        }
+        s->flags = (VkPipelineMultisampleStateCreateFlags)readd(address);address+=4;
+        s->rasterizationSamples = (VkSampleCountFlagBits)readd(address);address+=4;
+        s->sampleShadingEnable = (VkBool32)readd(address);address+=4;
+        s->minSampleShading = (float)readd(address);address+=4;
+        paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pSampleMask = NULL;
+        } else {
+            s->pSampleMask = (VkSampleMask*)getPhysicalAddress(paramAddress, (s->rasterizationSamples + 31) / 32 * sizeof(VkSampleMask));
+        }
+        s->alphaToCoverageEnable = (VkBool32)readd(address);address+=4;
+        s->alphaToOneEnable = (VkBool32)readd(address);address+=4;
+    }
+};
+
+class MarshalVkPipelineColorBlendAttachmentState {
+public:
+    MarshalVkPipelineColorBlendAttachmentState() {}
+    VkPipelineColorBlendAttachmentState s;
+    MarshalVkPipelineColorBlendAttachmentState(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkPipelineColorBlendAttachmentState* s) {
+        s->blendEnable = (VkBool32)readd(address);address+=4;
+        s->srcColorBlendFactor = (VkBlendFactor)readd(address);address+=4;
+        s->dstColorBlendFactor = (VkBlendFactor)readd(address);address+=4;
+        s->colorBlendOp = (VkBlendOp)readd(address);address+=4;
+        s->srcAlphaBlendFactor = (VkBlendFactor)readd(address);address+=4;
+        s->dstAlphaBlendFactor = (VkBlendFactor)readd(address);address+=4;
+        s->alphaBlendOp = (VkBlendOp)readd(address);address+=4;
+        s->colorWriteMask = (VkColorComponentFlags)readd(address);address+=4;
+    }
+};
+
+class MarshalVkPipelineColorBlendStateCreateInfo {
+public:
+    MarshalVkPipelineColorBlendStateCreateInfo() {}
+    VkPipelineColorBlendStateCreateInfo s;
+    MarshalVkPipelineColorBlendStateCreateInfo(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkPipelineColorBlendStateCreateInfo* s) {
+        s->sType = (VkStructureType)readd(address);address+=4;
+        U32 paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pNext = NULL;
+        } else {
+            s->pNext = vulkanGetNextPtr(paramAddress);
+        }
+        s->flags = (VkPipelineColorBlendStateCreateFlags)readd(address);address+=4;
+        s->logicOpEnable = (VkBool32)readd(address);address+=4;
+        s->logicOp = (VkLogicOp)readd(address);address+=4;
+        s->attachmentCount = (uint32_t)readd(address);address+=4;
+        paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pAttachments = NULL;
+        } else {
+            VkPipelineColorBlendAttachmentState* pAttachments = new VkPipelineColorBlendAttachmentState();
+            MarshalVkPipelineColorBlendAttachmentState::read(paramAddress, pAttachments);
+            s->pAttachments = pAttachments;
+        }
+        memcopyToNative(address, &s->blendConstants, 4);address+=4;
+    }
+};
+
+class MarshalVkPipelineDynamicStateCreateInfo {
+public:
+    MarshalVkPipelineDynamicStateCreateInfo() {}
+    VkPipelineDynamicStateCreateInfo s;
+    MarshalVkPipelineDynamicStateCreateInfo(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkPipelineDynamicStateCreateInfo* s) {
+        s->sType = (VkStructureType)readd(address);address+=4;
+        U32 paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pNext = NULL;
+        } else {
+            s->pNext = vulkanGetNextPtr(paramAddress);
+        }
+        s->flags = (VkPipelineDynamicStateCreateFlags)readd(address);address+=4;
+        s->dynamicStateCount = (uint32_t)readd(address);address+=4;
+        paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pDynamicStates = NULL;
+        } else {
+            s->pDynamicStates = (VkDynamicState*)getPhysicalAddress(paramAddress, s->dynamicStateCount * sizeof(VkDynamicState));
+        }
+    }
+};
+
+class MarshalVkPipelineDepthStencilStateCreateInfo {
+public:
+    MarshalVkPipelineDepthStencilStateCreateInfo() {}
+    VkPipelineDepthStencilStateCreateInfo s;
+    MarshalVkPipelineDepthStencilStateCreateInfo(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkPipelineDepthStencilStateCreateInfo* s) {
+        s->sType = (VkStructureType)readd(address);address+=4;
+        U32 paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pNext = NULL;
+        } else {
+            s->pNext = vulkanGetNextPtr(paramAddress);
+        }
+        s->flags = (VkPipelineDepthStencilStateCreateFlags)readd(address);address+=4;
+        s->depthTestEnable = (VkBool32)readd(address);address+=4;
+        s->depthWriteEnable = (VkBool32)readd(address);address+=4;
+        s->depthCompareOp = (VkCompareOp)readd(address);address+=4;
+        s->depthBoundsTestEnable = (VkBool32)readd(address);address+=4;
+        s->stencilTestEnable = (VkBool32)readd(address);address+=4;
+        memcopyToNative(address, &s->front, 28);address+=28;
+        memcopyToNative(address, &s->back, 28);address+=28;
+        s->minDepthBounds = (float)readd(address);address+=4;
+        s->maxDepthBounds = (float)readd(address);address+=4;
+    }
+};
+
+class MarshalVkGraphicsPipelineCreateInfo {
+public:
+    MarshalVkGraphicsPipelineCreateInfo() {}
+    VkGraphicsPipelineCreateInfo s;
+    MarshalVkGraphicsPipelineCreateInfo(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkGraphicsPipelineCreateInfo* s) {
+        s->sType = (VkStructureType)readd(address);address+=4;
+        U32 paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pNext = NULL;
+        } else {
+            s->pNext = vulkanGetNextPtr(paramAddress);
+        }
+        s->flags = (VkPipelineCreateFlags)readd(address);address+=4;
+        s->stageCount = (uint32_t)readd(address);address+=4;
+        paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pStages = NULL;
+        } else {
+            VkPipelineShaderStageCreateInfo* pStages = new VkPipelineShaderStageCreateInfo();
+            MarshalVkPipelineShaderStageCreateInfo::read(paramAddress, pStages);
+            s->pStages = pStages;
+        }
+        paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pVertexInputState = NULL;
+        } else {
+            VkPipelineVertexInputStateCreateInfo* pVertexInputState = new VkPipelineVertexInputStateCreateInfo();
+            MarshalVkPipelineVertexInputStateCreateInfo::read(paramAddress, pVertexInputState);
+            s->pVertexInputState = pVertexInputState;
+        }
+        paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pInputAssemblyState = NULL;
+        } else {
+            VkPipelineInputAssemblyStateCreateInfo* pInputAssemblyState = new VkPipelineInputAssemblyStateCreateInfo();
+            MarshalVkPipelineInputAssemblyStateCreateInfo::read(paramAddress, pInputAssemblyState);
+            s->pInputAssemblyState = pInputAssemblyState;
+        }
+        paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pTessellationState = NULL;
+        } else {
+            VkPipelineTessellationStateCreateInfo* pTessellationState = new VkPipelineTessellationStateCreateInfo();
+            MarshalVkPipelineTessellationStateCreateInfo::read(paramAddress, pTessellationState);
+            s->pTessellationState = pTessellationState;
+        }
+        paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pViewportState = NULL;
+        } else {
+            VkPipelineViewportStateCreateInfo* pViewportState = new VkPipelineViewportStateCreateInfo();
+            MarshalVkPipelineViewportStateCreateInfo::read(paramAddress, pViewportState);
+            s->pViewportState = pViewportState;
+        }
+        paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pRasterizationState = NULL;
+        } else {
+            VkPipelineRasterizationStateCreateInfo* pRasterizationState = new VkPipelineRasterizationStateCreateInfo();
+            MarshalVkPipelineRasterizationStateCreateInfo::read(paramAddress, pRasterizationState);
+            s->pRasterizationState = pRasterizationState;
+        }
+        paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pMultisampleState = NULL;
+        } else {
+            VkPipelineMultisampleStateCreateInfo* pMultisampleState = new VkPipelineMultisampleStateCreateInfo();
+            MarshalVkPipelineMultisampleStateCreateInfo::read(paramAddress, pMultisampleState);
+            s->pMultisampleState = pMultisampleState;
+        }
+        paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pDepthStencilState = NULL;
+        } else {
+            VkPipelineDepthStencilStateCreateInfo* pDepthStencilState = new VkPipelineDepthStencilStateCreateInfo();
+            MarshalVkPipelineDepthStencilStateCreateInfo::read(paramAddress, pDepthStencilState);
+            s->pDepthStencilState = pDepthStencilState;
+        }
+        paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pColorBlendState = NULL;
+        } else {
+            VkPipelineColorBlendStateCreateInfo* pColorBlendState = new VkPipelineColorBlendStateCreateInfo();
+            MarshalVkPipelineColorBlendStateCreateInfo::read(paramAddress, pColorBlendState);
+            s->pColorBlendState = pColorBlendState;
+        }
+        paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pDynamicState = NULL;
+        } else {
+            VkPipelineDynamicStateCreateInfo* pDynamicState = new VkPipelineDynamicStateCreateInfo();
+            MarshalVkPipelineDynamicStateCreateInfo::read(paramAddress, pDynamicState);
+            s->pDynamicState = pDynamicState;
+        }
+        s->layout = (VkPipelineLayout)readq(address);address+=8;
+        s->renderPass = (VkRenderPass)readq(address);address+=8;
+        s->subpass = (uint32_t)readd(address);address+=4;
+        s->basePipelineHandle = (VkPipeline)readq(address);address+=8;
+        s->basePipelineIndex = (int32_t)readd(address);address+=4;
     }
 };
 
@@ -952,6 +1688,53 @@ public:
         s->width = (uint32_t)readd(address);address+=4;
         s->height = (uint32_t)readd(address);address+=4;
         s->layers = (uint32_t)readd(address);address+=4;
+    }
+};
+
+class MarshalVkSubmitInfo {
+public:
+    MarshalVkSubmitInfo() {}
+    VkSubmitInfo s;
+    MarshalVkSubmitInfo(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkSubmitInfo* s) {
+        s->sType = (VkStructureType)readd(address);address+=4;
+        U32 paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pNext = NULL;
+        } else {
+            s->pNext = vulkanGetNextPtr(paramAddress);
+        }
+        s->waitSemaphoreCount = (uint32_t)readd(address);address+=4;
+        paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pWaitSemaphores = NULL;
+        } else {
+            s->pWaitSemaphores = (VkSemaphore*)getPhysicalAddress(paramAddress, s->waitSemaphoreCount * sizeof(VkSemaphore));
+        }
+        paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pWaitDstStageMask = NULL;
+        } else {
+            s->pWaitDstStageMask = (VkPipelineStageFlags*)getPhysicalAddress(paramAddress, s->waitSemaphoreCount * sizeof(VkPipelineStageFlags));
+        }
+        s->commandBufferCount = (uint32_t)readd(address);address+=4;
+        paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pCommandBuffers = NULL;
+        } else {
+            VkCommandBuffer* pCommandBuffers = new VkCommandBuffer[s->commandBufferCount];
+            for (int i=0;i<(int)s->commandBufferCount;i++) {
+                pCommandBuffers[i] = (VkCommandBuffer)getVulkanPtr(paramAddress);
+            }
+            s->pCommandBuffers = pCommandBuffers;
+        }
+        s->signalSemaphoreCount = (uint32_t)readd(address);address+=4;
+        paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pSignalSemaphores = NULL;
+        } else {
+            s->pSignalSemaphores = (VkSemaphore*)getPhysicalAddress(paramAddress, s->signalSemaphoreCount * sizeof(VkSemaphore));
+        }
     }
 };
 
@@ -1611,6 +2394,44 @@ public:
     }
 };
 
+class MarshalVkBindBufferMemoryInfo {
+public:
+    MarshalVkBindBufferMemoryInfo() {}
+    VkBindBufferMemoryInfo s;
+    MarshalVkBindBufferMemoryInfo(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkBindBufferMemoryInfo* s) {
+        s->sType = (VkStructureType)readd(address);address+=4;
+        U32 paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pNext = NULL;
+        } else {
+            s->pNext = vulkanGetNextPtr(paramAddress);
+        }
+        s->buffer = (VkBuffer)readq(address);address+=8;
+        s->memory = (VkDeviceMemory)readq(address);address+=8;
+        s->memoryOffset = (VkDeviceSize)readq(address);address+=8;
+    }
+};
+
+class MarshalVkBindImageMemoryInfo {
+public:
+    MarshalVkBindImageMemoryInfo() {}
+    VkBindImageMemoryInfo s;
+    MarshalVkBindImageMemoryInfo(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkBindImageMemoryInfo* s) {
+        s->sType = (VkStructureType)readd(address);address+=4;
+        U32 paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pNext = NULL;
+        } else {
+            s->pNext = vulkanGetNextPtr(paramAddress);
+        }
+        s->image = (VkImage)readq(address);address+=8;
+        s->memory = (VkDeviceMemory)readq(address);address+=8;
+        s->memoryOffset = (VkDeviceSize)readq(address);address+=8;
+    }
+};
+
 class MarshalVkDeviceGroupPresentCapabilitiesKHR {
 public:
     MarshalVkDeviceGroupPresentCapabilitiesKHR() {}
@@ -2045,6 +2866,23 @@ public:
     }
 };
 
+class MarshalVkCalibratedTimestampInfoEXT {
+public:
+    MarshalVkCalibratedTimestampInfoEXT() {}
+    VkCalibratedTimestampInfoEXT s;
+    MarshalVkCalibratedTimestampInfoEXT(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkCalibratedTimestampInfoEXT* s) {
+        s->sType = (VkStructureType)readd(address);address+=4;
+        U32 paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pNext = NULL;
+        } else {
+            s->pNext = vulkanGetNextPtr(paramAddress);
+        }
+        s->timeDomain = (VkTimeDomainEXT)readd(address);address+=4;
+    }
+};
+
 class MarshalVkAttachmentDescription2 {
 public:
     MarshalVkAttachmentDescription2() {}
@@ -2361,6 +3199,100 @@ public:
     }
 };
 
+class MarshalVkShadingRatePaletteNV {
+public:
+    MarshalVkShadingRatePaletteNV() {}
+    VkShadingRatePaletteNV s;
+    MarshalVkShadingRatePaletteNV(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkShadingRatePaletteNV* s) {
+        s->shadingRatePaletteEntryCount = (uint32_t)readd(address);address+=4;
+        U32 paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pShadingRatePaletteEntries = NULL;
+        } else {
+            s->pShadingRatePaletteEntries = (VkShadingRatePaletteEntryNV*)getPhysicalAddress(paramAddress, s->shadingRatePaletteEntryCount * sizeof(VkShadingRatePaletteEntryNV));
+        }
+    }
+};
+
+class MarshalVkCoarseSampleOrderCustomNV {
+public:
+    MarshalVkCoarseSampleOrderCustomNV() {}
+    VkCoarseSampleOrderCustomNV s;
+    MarshalVkCoarseSampleOrderCustomNV(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkCoarseSampleOrderCustomNV* s) {
+        s->shadingRate = (VkShadingRatePaletteEntryNV)readd(address);address+=4;
+        s->sampleCount = (uint32_t)readd(address);address+=4;
+        s->sampleLocationCount = (uint32_t)readd(address);address+=4;
+        U32 paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pSampleLocations = NULL;
+        } else {
+            s->pSampleLocations = (VkCoarseSampleLocationNV*)getPhysicalAddress(paramAddress, s->sampleLocationCount * sizeof(VkCoarseSampleLocationNV));
+        }
+    }
+};
+
+class MarshalVkRayTracingShaderGroupCreateInfoNV {
+public:
+    MarshalVkRayTracingShaderGroupCreateInfoNV() {}
+    VkRayTracingShaderGroupCreateInfoNV s;
+    MarshalVkRayTracingShaderGroupCreateInfoNV(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkRayTracingShaderGroupCreateInfoNV* s) {
+        s->sType = (VkStructureType)readd(address);address+=4;
+        U32 paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pNext = NULL;
+        } else {
+            s->pNext = vulkanGetNextPtr(paramAddress);
+        }
+        s->type = (VkRayTracingShaderGroupTypeKHR)readd(address);address+=4;
+        s->generalShader = (uint32_t)readd(address);address+=4;
+        s->closestHitShader = (uint32_t)readd(address);address+=4;
+        s->anyHitShader = (uint32_t)readd(address);address+=4;
+        s->intersectionShader = (uint32_t)readd(address);address+=4;
+    }
+};
+
+class MarshalVkRayTracingPipelineCreateInfoNV {
+public:
+    MarshalVkRayTracingPipelineCreateInfoNV() {}
+    VkRayTracingPipelineCreateInfoNV s;
+    MarshalVkRayTracingPipelineCreateInfoNV(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkRayTracingPipelineCreateInfoNV* s) {
+        s->sType = (VkStructureType)readd(address);address+=4;
+        U32 paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pNext = NULL;
+        } else {
+            s->pNext = vulkanGetNextPtr(paramAddress);
+        }
+        s->flags = (VkPipelineCreateFlags)readd(address);address+=4;
+        s->stageCount = (uint32_t)readd(address);address+=4;
+        paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pStages = NULL;
+        } else {
+            VkPipelineShaderStageCreateInfo* pStages = new VkPipelineShaderStageCreateInfo();
+            MarshalVkPipelineShaderStageCreateInfo::read(paramAddress, pStages);
+            s->pStages = pStages;
+        }
+        s->groupCount = (uint32_t)readd(address);address+=4;
+        paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pGroups = NULL;
+        } else {
+            VkRayTracingShaderGroupCreateInfoNV* pGroups = new VkRayTracingShaderGroupCreateInfoNV();
+            MarshalVkRayTracingShaderGroupCreateInfoNV::read(paramAddress, pGroups);
+            s->pGroups = pGroups;
+        }
+        s->maxRecursionDepth = (uint32_t)readd(address);address+=4;
+        s->layout = (VkPipelineLayout)readq(address);address+=8;
+        s->basePipelineHandle = (VkPipeline)readq(address);address+=8;
+        s->basePipelineIndex = (int32_t)readd(address);address+=4;
+    }
+};
+
 class MarshalVkGeometryNV {
 public:
     MarshalVkGeometryNV() {}
@@ -2423,6 +3355,32 @@ public:
         }
         s->compactedSize = (VkDeviceSize)readq(address);address+=8;
         memcopyToNative(address, &s->info, 28);address+=28;
+    }
+};
+
+class MarshalVkBindAccelerationStructureMemoryInfoNV {
+public:
+    MarshalVkBindAccelerationStructureMemoryInfoNV() {}
+    VkBindAccelerationStructureMemoryInfoNV s;
+    MarshalVkBindAccelerationStructureMemoryInfoNV(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkBindAccelerationStructureMemoryInfoNV* s) {
+        s->sType = (VkStructureType)readd(address);address+=4;
+        U32 paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pNext = NULL;
+        } else {
+            s->pNext = vulkanGetNextPtr(paramAddress);
+        }
+        s->accelerationStructure = (VkAccelerationStructureNV)readq(address);address+=8;
+        s->memory = (VkDeviceMemory)readq(address);address+=8;
+        s->memoryOffset = (VkDeviceSize)readq(address);address+=8;
+        s->deviceIndexCount = (uint32_t)readd(address);address+=4;
+        paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pDeviceIndices = NULL;
+        } else {
+            s->pDeviceIndices = (uint32_t*)getPhysicalAddress(paramAddress, s->deviceIndexCount * sizeof(uint32_t));
+        }
     }
 };
 
@@ -2922,6 +3880,46 @@ public:
     }
 };
 
+class MarshalVkVertexInputBindingDescription2EXT {
+public:
+    MarshalVkVertexInputBindingDescription2EXT() {}
+    VkVertexInputBindingDescription2EXT s;
+    MarshalVkVertexInputBindingDescription2EXT(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkVertexInputBindingDescription2EXT* s) {
+        s->sType = (VkStructureType)readd(address);address+=4;
+        U32 paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pNext = NULL;
+        } else {
+            s->pNext = vulkanGetNextPtr(paramAddress);
+        }
+        s->binding = (uint32_t)readd(address);address+=4;
+        s->stride = (uint32_t)readd(address);address+=4;
+        s->inputRate = (VkVertexInputRate)readd(address);address+=4;
+        s->divisor = (uint32_t)readd(address);address+=4;
+    }
+};
+
+class MarshalVkVertexInputAttributeDescription2EXT {
+public:
+    MarshalVkVertexInputAttributeDescription2EXT() {}
+    VkVertexInputAttributeDescription2EXT s;
+    MarshalVkVertexInputAttributeDescription2EXT(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkVertexInputAttributeDescription2EXT* s) {
+        s->sType = (VkStructureType)readd(address);address+=4;
+        U32 paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pNext = NULL;
+        } else {
+            s->pNext = vulkanGetNextPtr(paramAddress);
+        }
+        s->location = (uint32_t)readd(address);address+=4;
+        s->binding = (uint32_t)readd(address);address+=4;
+        s->format = (VkFormat)readd(address);address+=4;
+        s->offset = (uint32_t)readd(address);address+=4;
+    }
+};
+
 class MarshalVkMemoryBarrier2KHR {
 public:
     MarshalVkMemoryBarrier2KHR() {}
@@ -3033,6 +4031,88 @@ public:
             VkImageMemoryBarrier2KHR* pImageMemoryBarriers = new VkImageMemoryBarrier2KHR();
             MarshalVkImageMemoryBarrier2KHR::read(paramAddress, pImageMemoryBarriers);
             s->pImageMemoryBarriers = pImageMemoryBarriers;
+        }
+    }
+};
+
+class MarshalVkSemaphoreSubmitInfoKHR {
+public:
+    MarshalVkSemaphoreSubmitInfoKHR() {}
+    VkSemaphoreSubmitInfoKHR s;
+    MarshalVkSemaphoreSubmitInfoKHR(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkSemaphoreSubmitInfoKHR* s) {
+        s->sType = (VkStructureType)readd(address);address+=4;
+        U32 paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pNext = NULL;
+        } else {
+            s->pNext = vulkanGetNextPtr(paramAddress);
+        }
+        s->semaphore = (VkSemaphore)readq(address);address+=8;
+        s->value = (uint64_t)readq(address);address+=8;
+        s->stageMask = (VkPipelineStageFlags2KHR)readq(address);address+=8;
+        s->deviceIndex = (uint32_t)readd(address);address+=4;
+    }
+};
+
+class MarshalVkCommandBufferSubmitInfoKHR {
+public:
+    MarshalVkCommandBufferSubmitInfoKHR() {}
+    VkCommandBufferSubmitInfoKHR s;
+    MarshalVkCommandBufferSubmitInfoKHR(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkCommandBufferSubmitInfoKHR* s) {
+        s->sType = (VkStructureType)readd(address);address+=4;
+        U32 paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pNext = NULL;
+        } else {
+            s->pNext = vulkanGetNextPtr(paramAddress);
+        }
+        s->commandBuffer = (VkCommandBuffer)getVulkanPtr(readd(address));address+=4;
+        s->deviceMask = (uint32_t)readd(address);address+=4;
+    }
+};
+
+class MarshalVkSubmitInfo2KHR {
+public:
+    MarshalVkSubmitInfo2KHR() {}
+    VkSubmitInfo2KHR s;
+    MarshalVkSubmitInfo2KHR(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkSubmitInfo2KHR* s) {
+        s->sType = (VkStructureType)readd(address);address+=4;
+        U32 paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pNext = NULL;
+        } else {
+            s->pNext = vulkanGetNextPtr(paramAddress);
+        }
+        s->flags = (VkSubmitFlagsKHR)readd(address);address+=4;
+        s->waitSemaphoreInfoCount = (uint32_t)readd(address);address+=4;
+        paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pWaitSemaphoreInfos = NULL;
+        } else {
+            VkSemaphoreSubmitInfoKHR* pWaitSemaphoreInfos = new VkSemaphoreSubmitInfoKHR();
+            MarshalVkSemaphoreSubmitInfoKHR::read(paramAddress, pWaitSemaphoreInfos);
+            s->pWaitSemaphoreInfos = pWaitSemaphoreInfos;
+        }
+        s->commandBufferInfoCount = (uint32_t)readd(address);address+=4;
+        paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pCommandBufferInfos = NULL;
+        } else {
+            VkCommandBufferSubmitInfoKHR* pCommandBufferInfos = new VkCommandBufferSubmitInfoKHR();
+            MarshalVkCommandBufferSubmitInfoKHR::read(paramAddress, pCommandBufferInfos);
+            s->pCommandBufferInfos = pCommandBufferInfos;
+        }
+        s->signalSemaphoreInfoCount = (uint32_t)readd(address);address+=4;
+        paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pSignalSemaphoreInfos = NULL;
+        } else {
+            VkSemaphoreSubmitInfoKHR* pSignalSemaphoreInfos = new VkSemaphoreSubmitInfoKHR();
+            MarshalVkSemaphoreSubmitInfoKHR::read(paramAddress, pSignalSemaphoreInfos);
+            s->pSignalSemaphoreInfos = pSignalSemaphoreInfos;
         }
     }
 };
@@ -3212,6 +4292,9 @@ void vk_QueueSubmit(CPU* cpu) {
     VkSubmitInfo* pSubmits = NULL;
     if (ARG3) {
         pSubmits = new VkSubmitInfo[submitCount];
+        for (U32 i=0;i<submitCount;i++) {
+            MarshalVkSubmitInfo::read(ARG3 + i * 36, &pSubmits[i]);
+        }
     }
     VkFence fence = *(VkFence*)getPhysicalAddress(ARG4, 8);
 ;
@@ -3282,6 +4365,9 @@ void vk_FlushMappedMemoryRanges(CPU* cpu) {
     VkMappedMemoryRange* pMemoryRanges = NULL;
     if (ARG3) {
         pMemoryRanges = new VkMappedMemoryRange[memoryRangeCount];
+        for (U32 i=0;i<memoryRangeCount;i++) {
+            MarshalVkMappedMemoryRange::read(ARG3 + i * 32, &pMemoryRanges[i]);
+        }
     }
     EAX = pBoxedInfo->pvkFlushMappedMemoryRanges(device, memoryRangeCount, pMemoryRanges);
     if (pMemoryRanges) {
@@ -3296,6 +4382,9 @@ void vk_InvalidateMappedMemoryRanges(CPU* cpu) {
     VkMappedMemoryRange* pMemoryRanges = NULL;
     if (ARG3) {
         pMemoryRanges = new VkMappedMemoryRange[memoryRangeCount];
+        for (U32 i=0;i<memoryRangeCount;i++) {
+            MarshalVkMappedMemoryRange::read(ARG3 + i * 32, &pMemoryRanges[i]);
+        }
     }
     EAX = pBoxedInfo->pvkInvalidateMappedMemoryRanges(device, memoryRangeCount, pMemoryRanges);
     if (pMemoryRanges) {
@@ -3379,6 +4468,9 @@ void vk_QueueBindSparse(CPU* cpu) {
     VkBindSparseInfo* pBindInfo = NULL;
     if (ARG3) {
         pBindInfo = new VkBindSparseInfo[bindInfoCount];
+        for (U32 i=0;i<bindInfoCount;i++) {
+            MarshalVkBindSparseInfo::read(ARG3 + i * 48, &pBindInfo[i]);
+        }
     }
     VkFence fence = *(VkFence*)getPhysicalAddress(ARG4, 8);
 ;
@@ -3701,6 +4793,9 @@ void vk_CreateGraphicsPipelines(CPU* cpu) {
     VkGraphicsPipelineCreateInfo* pCreateInfos = NULL;
     if (ARG4) {
         pCreateInfos = new VkGraphicsPipelineCreateInfo[createInfoCount];
+        for (U32 i=0;i<createInfoCount;i++) {
+            MarshalVkGraphicsPipelineCreateInfo::read(ARG4 + i * 88, &pCreateInfos[i]);
+        }
     }
     static bool shown; if (!shown && ARG5) { klog("vkCreateGraphicsPipelines:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
@@ -3720,6 +4815,9 @@ void vk_CreateComputePipelines(CPU* cpu) {
     VkComputePipelineCreateInfo* pCreateInfos = NULL;
     if (ARG4) {
         pCreateInfos = new VkComputePipelineCreateInfo[createInfoCount];
+        for (U32 i=0;i<createInfoCount;i++) {
+            MarshalVkComputePipelineCreateInfo::read(ARG4 + i * 64, &pCreateInfos[i]);
+        }
     }
     static bool shown; if (!shown && ARG5) { klog("vkCreateComputePipelines:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
@@ -3861,11 +4959,17 @@ void vk_UpdateDescriptorSets(CPU* cpu) {
     VkWriteDescriptorSet* pDescriptorWrites = NULL;
     if (ARG3) {
         pDescriptorWrites = new VkWriteDescriptorSet[descriptorWriteCount];
+        for (U32 i=0;i<descriptorWriteCount;i++) {
+            MarshalVkWriteDescriptorSet::read(ARG3 + i * 64, &pDescriptorWrites[i]);
+        }
     }
     uint32_t descriptorCopyCount = (uint32_t)ARG4;
     VkCopyDescriptorSet* pDescriptorCopies = NULL;
     if (ARG5) {
         pDescriptorCopies = new VkCopyDescriptorSet[descriptorCopyCount];
+        for (U32 i=0;i<descriptorCopyCount;i++) {
+            MarshalVkCopyDescriptorSet::read(ARG5 + i * 44, &pDescriptorCopies[i]);
+        }
     }
     pBoxedInfo->pvkUpdateDescriptorSets(device, descriptorWriteCount, pDescriptorWrites, descriptorCopyCount, pDescriptorCopies);
     if (pDescriptorWrites) {
@@ -4349,16 +5453,25 @@ void vk_CmdWaitEvents(CPU* cpu) {
     VkMemoryBarrier* pMemoryBarriers = NULL;
     if (ARG7) {
         pMemoryBarriers = new VkMemoryBarrier[memoryBarrierCount];
+        for (U32 i=0;i<memoryBarrierCount;i++) {
+            MarshalVkMemoryBarrier::read(ARG7 + i * 16, &pMemoryBarriers[i]);
+        }
     }
     uint32_t bufferMemoryBarrierCount = (uint32_t)ARG8;
     VkBufferMemoryBarrier* pBufferMemoryBarriers = NULL;
     if (ARG9) {
         pBufferMemoryBarriers = new VkBufferMemoryBarrier[bufferMemoryBarrierCount];
+        for (U32 i=0;i<bufferMemoryBarrierCount;i++) {
+            MarshalVkBufferMemoryBarrier::read(ARG9 + i * 48, &pBufferMemoryBarriers[i]);
+        }
     }
     uint32_t imageMemoryBarrierCount = (uint32_t)ARG10;
     VkImageMemoryBarrier* pImageMemoryBarriers = NULL;
     if (ARG11) {
         pImageMemoryBarriers = new VkImageMemoryBarrier[imageMemoryBarrierCount];
+        for (U32 i=0;i<imageMemoryBarrierCount;i++) {
+            MarshalVkImageMemoryBarrier::read(ARG11 + i * 60, &pImageMemoryBarriers[i]);
+        }
     }
     pBoxedInfo->pvkCmdWaitEvents(commandBuffer, eventCount, pEvents, srcStageMask, dstStageMask, memoryBarrierCount, pMemoryBarriers, bufferMemoryBarrierCount, pBufferMemoryBarriers, imageMemoryBarrierCount, pImageMemoryBarriers);
     if (pMemoryBarriers) {
@@ -4381,16 +5494,25 @@ void vk_CmdPipelineBarrier(CPU* cpu) {
     VkMemoryBarrier* pMemoryBarriers = NULL;
     if (ARG6) {
         pMemoryBarriers = new VkMemoryBarrier[memoryBarrierCount];
+        for (U32 i=0;i<memoryBarrierCount;i++) {
+            MarshalVkMemoryBarrier::read(ARG6 + i * 16, &pMemoryBarriers[i]);
+        }
     }
     uint32_t bufferMemoryBarrierCount = (uint32_t)ARG7;
     VkBufferMemoryBarrier* pBufferMemoryBarriers = NULL;
     if (ARG8) {
         pBufferMemoryBarriers = new VkBufferMemoryBarrier[bufferMemoryBarrierCount];
+        for (U32 i=0;i<bufferMemoryBarrierCount;i++) {
+            MarshalVkBufferMemoryBarrier::read(ARG8 + i * 48, &pBufferMemoryBarriers[i]);
+        }
     }
     uint32_t imageMemoryBarrierCount = (uint32_t)ARG9;
     VkImageMemoryBarrier* pImageMemoryBarriers = NULL;
     if (ARG10) {
         pImageMemoryBarriers = new VkImageMemoryBarrier[imageMemoryBarrierCount];
+        for (U32 i=0;i<imageMemoryBarrierCount;i++) {
+            MarshalVkImageMemoryBarrier::read(ARG10 + i * 60, &pImageMemoryBarriers[i]);
+        }
     }
     pBoxedInfo->pvkCmdPipelineBarrier(commandBuffer, srcStageMask, dstStageMask, dependencyFlags, memoryBarrierCount, pMemoryBarriers, bufferMemoryBarrierCount, pBufferMemoryBarriers, imageMemoryBarrierCount, pImageMemoryBarriers);
     if (pMemoryBarriers) {
@@ -4756,6 +5878,9 @@ void vk_CmdPushDescriptorSetKHR(CPU* cpu) {
     VkWriteDescriptorSet* pDescriptorWrites = NULL;
     if (ARG6) {
         pDescriptorWrites = new VkWriteDescriptorSet[descriptorWriteCount];
+        for (U32 i=0;i<descriptorWriteCount;i++) {
+            MarshalVkWriteDescriptorSet::read(ARG6 + i * 64, &pDescriptorWrites[i]);
+        }
     }
     pBoxedInfo->pvkCmdPushDescriptorSetKHR(commandBuffer, pipelineBindPoint, layout, set, descriptorWriteCount, pDescriptorWrites);
     if (pDescriptorWrites) {
@@ -4831,6 +5956,9 @@ void vk_BindBufferMemory2(CPU* cpu) {
     VkBindBufferMemoryInfo* pBindInfos = NULL;
     if (ARG3) {
         pBindInfos = new VkBindBufferMemoryInfo[bindInfoCount];
+        for (U32 i=0;i<bindInfoCount;i++) {
+            MarshalVkBindBufferMemoryInfo::read(ARG3 + i * 32, &pBindInfos[i]);
+        }
     }
     EAX = pBoxedInfo->pvkBindBufferMemory2(device, bindInfoCount, pBindInfos);
     if (pBindInfos) {
@@ -4845,6 +5973,9 @@ void vk_BindImageMemory2(CPU* cpu) {
     VkBindImageMemoryInfo* pBindInfos = NULL;
     if (ARG3) {
         pBindInfos = new VkBindImageMemoryInfo[bindInfoCount];
+        for (U32 i=0;i<bindInfoCount;i++) {
+            MarshalVkBindImageMemoryInfo::read(ARG3 + i * 32, &pBindInfos[i]);
+        }
     }
     EAX = pBoxedInfo->pvkBindImageMemory2(device, bindInfoCount, pBindInfos);
     if (pBindInfos) {
@@ -5148,6 +6279,9 @@ void vk_GetCalibratedTimestampsEXT(CPU* cpu) {
     VkCalibratedTimestampInfoEXT* pTimestampInfos = NULL;
     if (ARG3) {
         pTimestampInfos = new VkCalibratedTimestampInfoEXT[timestampCount];
+        for (U32 i=0;i<timestampCount;i++) {
+            MarshalVkCalibratedTimestampInfoEXT::read(ARG3 + i * 12, &pTimestampInfos[i]);
+        }
     }
     uint64_t* pTimestamps = (uint64_t*)getPhysicalAddress(ARG4, (U32)timestampCount * 4);
     uint64_t* pMaxDeviation = (uint64_t*)getPhysicalAddress(ARG5, 4);
@@ -5354,6 +6488,9 @@ void vk_CmdSetViewportShadingRatePaletteNV(CPU* cpu) {
     VkShadingRatePaletteNV* pShadingRatePalettes = NULL;
     if (ARG4) {
         pShadingRatePalettes = new VkShadingRatePaletteNV[viewportCount];
+        for (U32 i=0;i<viewportCount;i++) {
+            MarshalVkShadingRatePaletteNV::read(ARG4 + i * 8, &pShadingRatePalettes[i]);
+        }
     }
     pBoxedInfo->pvkCmdSetViewportShadingRatePaletteNV(commandBuffer, firstViewport, viewportCount, pShadingRatePalettes);
     if (pShadingRatePalettes) {
@@ -5368,6 +6505,9 @@ void vk_CmdSetCoarseSampleOrderNV(CPU* cpu) {
     VkCoarseSampleOrderCustomNV* pCustomSampleOrders = NULL;
     if (ARG4) {
         pCustomSampleOrders = new VkCoarseSampleOrderCustomNV[customSampleOrderCount];
+        for (U32 i=0;i<customSampleOrderCount;i++) {
+            MarshalVkCoarseSampleOrderCustomNV::read(ARG4 + i * 16, &pCustomSampleOrders[i]);
+        }
     }
     pBoxedInfo->pvkCmdSetCoarseSampleOrderNV(commandBuffer, sampleOrderType, customSampleOrderCount, pCustomSampleOrders);
     if (pCustomSampleOrders) {
@@ -5453,6 +6593,9 @@ void vk_BindAccelerationStructureMemoryNV(CPU* cpu) {
     VkBindAccelerationStructureMemoryInfoNV* pBindInfos = NULL;
     if (ARG3) {
         pBindInfos = new VkBindAccelerationStructureMemoryInfoNV[bindInfoCount];
+        for (U32 i=0;i<bindInfoCount;i++) {
+            MarshalVkBindAccelerationStructureMemoryInfoNV::read(ARG3 + i * 40, &pBindInfos[i]);
+        }
     }
     EAX = pBoxedInfo->pvkBindAccelerationStructureMemoryNV(device, bindInfoCount, pBindInfos);
     if (pBindInfos) {
@@ -5550,6 +6693,9 @@ void vk_CreateRayTracingPipelinesNV(CPU* cpu) {
     VkRayTracingPipelineCreateInfoNV* pCreateInfos = NULL;
     if (ARG4) {
         pCreateInfos = new VkRayTracingPipelineCreateInfoNV[createInfoCount];
+        for (U32 i=0;i<createInfoCount;i++) {
+            MarshalVkRayTracingPipelineCreateInfoNV::read(ARG4 + i * 52, &pCreateInfos[i]);
+        }
     }
     static bool shown; if (!shown && ARG5) { klog("vkCreateRayTracingPipelinesNV:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
@@ -5988,11 +7134,17 @@ void vk_CmdSetVertexInputEXT(CPU* cpu) {
     VkVertexInputBindingDescription2EXT* pVertexBindingDescriptions = NULL;
     if (ARG3) {
         pVertexBindingDescriptions = new VkVertexInputBindingDescription2EXT[vertexBindingDescriptionCount];
+        for (U32 i=0;i<vertexBindingDescriptionCount;i++) {
+            MarshalVkVertexInputBindingDescription2EXT::read(ARG3 + i * 24, &pVertexBindingDescriptions[i]);
+        }
     }
     uint32_t vertexAttributeDescriptionCount = (uint32_t)ARG4;
     VkVertexInputAttributeDescription2EXT* pVertexAttributeDescriptions = NULL;
     if (ARG5) {
         pVertexAttributeDescriptions = new VkVertexInputAttributeDescription2EXT[vertexAttributeDescriptionCount];
+        for (U32 i=0;i<vertexAttributeDescriptionCount;i++) {
+            MarshalVkVertexInputAttributeDescription2EXT::read(ARG5 + i * 24, &pVertexAttributeDescriptions[i]);
+        }
     }
     pBoxedInfo->pvkCmdSetVertexInputEXT(commandBuffer, vertexBindingDescriptionCount, pVertexBindingDescriptions, vertexAttributeDescriptionCount, pVertexAttributeDescriptions);
     if (pVertexBindingDescriptions) {
@@ -6035,6 +7187,9 @@ void vk_CmdWaitEvents2KHR(CPU* cpu) {
     VkDependencyInfoKHR* pDependencyInfos = NULL;
     if (ARG4) {
         pDependencyInfos = new VkDependencyInfoKHR[eventCount];
+        for (U32 i=0;i<eventCount;i++) {
+            MarshalVkDependencyInfoKHR::read(ARG4 + i * 36, &pDependencyInfos[i]);
+        }
     }
     pBoxedInfo->pvkCmdWaitEvents2KHR(commandBuffer, eventCount, pEvents, pDependencyInfos);
     if (pDependencyInfos) {
@@ -6056,6 +7211,9 @@ void vk_QueueSubmit2KHR(CPU* cpu) {
     VkSubmitInfo2KHR* pSubmits = NULL;
     if (ARG3) {
         pSubmits = new VkSubmitInfo2KHR[submitCount];
+        for (U32 i=0;i<submitCount;i++) {
+            MarshalVkSubmitInfo2KHR::read(ARG3 + i * 36, &pSubmits[i]);
+        }
     }
     VkFence fence = *(VkFence*)getPhysicalAddress(ARG4, 8);
 ;
