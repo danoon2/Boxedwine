@@ -30,7 +30,8 @@ U32 updateAvailable;
 U32 paletteChanged;
 U8* screenPixels;
 #ifdef BOXEDWINE_64BIT_MMU
-U64 isFbActive;
+bool isFbActive;
+bool isFbReady() {return isFbActive;}
 #endif
 struct fb_fix_screeninfo {
     char id[16];			// identification string eg "TT Builtin"
@@ -473,11 +474,9 @@ DevFB::DevFB(const BoxedPtr<FsNode>& node, U32 flags) : FsVirtualOpenNode(node, 
 #ifdef BOXEDWINE_64BIT_MMU
     if (!isFbActive) {
         allocNativeMemory(KThread::currentThread()->memory, ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS >> K_PAGE_SHIFT, (16*1024*1024) >> K_PAGE_SHIFT, PAGE_READ | PAGE_WRITE);		
-        isFbActive = KThread::currentThread()->memory->id;
+        isFbActive = true;
         screenPixels = (U8*)KThread::currentThread()->memory->id;
         screenPixels+=ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS;
-    } else if (isFbActive!=KThread::currentThread()->memory->id) {
-        kpanic("DevFB::DevFB only one process can open the framebuffer at a time");
     }
 #endif
 }
@@ -486,7 +485,7 @@ void DevFB::close() {
 #ifdef BOXEDWINE_64BIT_MMU
     if (isFbActive) {
         freeNativeMemory(KThread::currentThread()->memory, ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS >> K_PAGE_SHIFT, (16*1024*1024) >> K_PAGE_SHIFT);
-        isFbActive = 0;
+        isFbActive = false;
     }
 #endif
     FsVirtualOpenNode::close();
@@ -631,4 +630,6 @@ FsOpenNode* openDevFB(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
     return new DevFB(node, flags);
 }
 
+#else 
+bool isFbReady() { return false; }
 #endif

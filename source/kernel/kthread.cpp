@@ -767,6 +767,11 @@ void KThread::runSignal(U32 signal, U32 trapNo, U32 errorNo) {
         this->cpu->setSegment(DS, 0x17);
         this->cpu->setSegment(ES, 0x17);
         this->cpu->setIsBig(1);
+#ifdef BOXEDWINE_MULTI_THREADED
+        if (this->waitingCond) {
+            this->waitingCond->signal();
+        }
+#endif
     }        
 }
 
@@ -950,8 +955,7 @@ U32 KThread::sigsuspend(U32 mask, U32 sigsetSize) {
     BOXEDWINE_CONDITION_WAIT(this->waitingForSignalToEndCond);
     BOXEDWINE_CONDITION_UNLOCK(this->waitingForSignalToEndCond);
 #ifdef BOXEDWINE_MULTI_THREADED
-    this->waitingForSignalToEndMaskToRestore = 0;
-    return -K_EINTR;
+    return -K_CONTINUE; // so that cpu.eip is not incremented by syscall
 #endif
 }
 

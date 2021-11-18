@@ -879,10 +879,19 @@ void KProcess::signalProcess(U32 signal) {
 	BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(threadsCondition);
     // give each thread a chance to run a signal, some or all of them might have the signal masked off.  
     // In that case when the user unmasks the signal with sigprocmask it will be caught then
+#ifdef BOXEDWINE_MULTI_THREADED
+    for (auto& t : this->threads) {
+        KThread* thread = t.second;
+        if (thread->waitingCond) {
+            thread->runSignals();
+        }
+    }
+#else
     for (auto& t : this->threads) {
         KThread* thread = t.second;
         thread->runSignals();
     }
+#endif
     {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->pendingSignalsMutex);
         if (this->pendingSignals & signalMask) {

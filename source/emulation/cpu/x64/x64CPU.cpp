@@ -773,15 +773,6 @@ void x64CPU::wakeThreadIfWaiting() {
     }    
 }
 
-void addTimer(KTimer* timer) {
-    kwarn("addTimer not implemented yet");
-}
-
-void removeTimer(KTimer* timer) {
-    if (timer->active)
-        kpanic("removeTimer not implemented yet");
-}
-
 void terminateOtherThread(const std::shared_ptr<KProcess>&  process, U32 threadId) {
 	process->threadsCondition.lock();
 	KThread* thread = process->getThreadById(threadId);

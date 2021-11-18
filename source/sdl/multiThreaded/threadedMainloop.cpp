@@ -7,6 +7,10 @@
 #include "knativesystem.h"
 #include "knativewindow.h"
 
+bool isFbReady();
+U32 getNextTimer();
+void runTimers();
+
 extern U32 platformThreadCount;
 extern U32 exceptionCount;
 extern U32 dynamicCodeExceptionCount;
@@ -38,6 +42,18 @@ bool doMainLoop() {
             timeout = 33;
         }
 #endif
+    #ifdef BOXEDWINE_64BIT_MMU
+        if (isFbReady()) {
+            timeout = 17;
+            flipFB();
+        }
+    #endif
+        U32 nextTimer = getNextTimer();
+        if (nextTimer == 0) {
+            runTimers();
+        } else if (nextTimer < timeout) {
+            timeout = nextTimer;
+        }
 #ifdef BOXEDWINE_RECORDER
         if (Player::instance || Recorder::instance) {
             KNativeWindow::getNativeWindow()->waitForEvent(10);
@@ -53,7 +69,6 @@ bool doMainLoop() {
             uiLoop();
         }
 #endif                
-        //flipFB();
         if (lastTitleUpdate+5000 < t) {
             char tmp[256];
             lastTitleUpdate = t;
