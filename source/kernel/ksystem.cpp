@@ -62,7 +62,7 @@ bool KSystem::showWindowImmediately = false;
 bool KSystem::useLargeAddressSpace = true;
 #endif
 #ifdef BOXEDWINE_MULTI_THREADED
-U32 KSystem::cpuAffinityCountForApp = 1;
+U32 KSystem::cpuAffinityCountForApp = 0;
 #endif
 U32 KSystem::pollRate = DEFAULT_POLL_RATE;
 FILE* KSystem::logFile;
@@ -128,11 +128,19 @@ U32 KSystem::getProcessCount() {
 }
 
 U32 KSystem::uname(U32 address) {
-    writeNativeString(address, "Linux");
-    writeNativeString(address + 65, "Linux");
-    //writeNativeString(address + 130, "4.19.0-6-686");
-    writeNativeString(address + 130, "4.15.0-20-generic");
-    writeNativeString(address + 260, "i686");
+    writeNativeString(address, "Linux"); // sysname
+    writeNativeString(address + 65, "Linux"); // nodename
+    writeNativeString(address + 130, "4.15.0-20-generic"); // release
+#ifdef BOXEDWINE_MULTI_THREADED
+    if (Platform::getCpuCount() > 1 && KSystem::cpuAffinityCountForApp != 1) {
+        writeNativeString(address + 105, "SMP Boxedwine"); // version
+    } else {
+        writeNativeString(address + 105, "Boxedwine"); // version
+    }
+#else
+    writeNativeString(address + 105, "Boxedwine"); // version
+#endif
+    writeNativeString(address + 260, "i686"); // machine
     return 0;
 }
 

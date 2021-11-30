@@ -42,12 +42,12 @@ bool doMainLoop() {
             timeout = 33;
         }
 #endif
-    #ifdef defined(BOXEDWINE_64BIT_MMU) && defined(BOXEDWINE_EXPERIMENTAL_FRAME_BUFFER)
+#if defined(BOXEDWINE_64BIT_MMU) && defined(BOXEDWINE_EXPERIMENTAL_FRAME_BUFFER)
         if (isFbReady()) {
             timeout = 17;
             flipFB();
         }
-    #endif
+#endif
         U32 nextTimer = getNextTimer();
         if (nextTimer == 0) {
             runTimers();

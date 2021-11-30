@@ -26,7 +26,13 @@
 FsOpenNode* openCpuInfo(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
     static std::string result;
     if (result.length()==0) {
-        for (U32 i=0;i<Platform::getCpuCount();i++) {
+        U32 count = Platform::getCpuCount();
+#ifdef BOXEDWINE_MULTI_THREADED
+        if (KSystem::cpuAffinityCountForApp != 0 && KSystem::cpuAffinityCountForApp < count) {
+            count = KSystem::cpuAffinityCountForApp;
+        }
+#endif
+        for (U32 i=0;i<count;i++) {
             result+="processor	: "+std::to_string(i)+"\n";
             result+="vendor_id	: GenuineIntel\n";
             result+="cpu family	: 15\n";
