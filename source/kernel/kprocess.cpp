@@ -1647,7 +1647,7 @@ U32 KProcess::clone(U32 flags, U32 child_stack, U32 ptid, U32 tls, U32 ctid) {
         if ((flags & K_CLONE_CHILD_SETTID)!=0) {
             if (ctid!=0) {
                 ChangeThread c(newThread); // so that writed will go to the new memory space
-                writed(ctid, newThread->id);
+                 ::writed(ctid, newThread->id);
             }
         }
         if ((flags & K_CLONE_CHILD_CLEARTID)!=0) {
