@@ -230,6 +230,7 @@ U32 KUnixSocketObject::readNative(U8* buffer, U32 len) {
     std::shared_ptr<KUnixSocketObject> con = this->connection.lock();
     if (!this->inClosed && !con)
         return -K_EPIPE;
+    con = nullptr; // don't hold a strong reference to this, it we are blocking then it would prevent the con object from being destroyed when its process is closed
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->lockCond);
     while (this->recvBuffer.size()==0) {
         if (this->inClosed) {
@@ -267,6 +268,7 @@ U32 KUnixSocketObject::read(U32 buffer, U32 len) {
     std::shared_ptr<KUnixSocketObject> con = this->connection.lock();
     if (!this->inClosed && !con)
         return -K_EPIPE;
+    con = nullptr; // don't hold a strong reference to this, it we are blocking then it would prevent the con object from being destroyed when its process is closed
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->lockCond);
     while (this->recvBuffer.size()==0) {
         if (this->inClosed) {
@@ -425,6 +427,7 @@ U32 KUnixSocketObject::connect(KFileDescriptor* fd, U32 address, U32 len) {
                 this->connected = 1;
                 return 0;
             }     
+            con = nullptr; // don't hold a strong reference to this, it we are blocking then it would prevent the con object from being destroyed when its process is closed
             if (!this->connecting.expired()) {
                 if (this->blocking) {
                     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->lockCond);
