@@ -2529,13 +2529,11 @@ bool KNativeWindowSdl::handlSdlEvent(SDL_Event* e) {
             }
         }
     }
-#ifdef BOXEDWINE_EXPERIMENTAL_FRAME_BUFFER
     else if (e->type == SDL_WINDOWEVENT) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(hwndToWndMutex);
         if (!hwndToWnd.size())
             flipFBNoCheck();
     }
-#endif
     return true;
 }
 
