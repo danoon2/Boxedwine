@@ -184,7 +184,7 @@ U32 kselect(U32 nfds, U32 readfds, U32 writefds, U32 errorfds, U32 timeout) {
         }
     }    
     result = internal_poll(pollData, pollCount, timeout);
-    if (result == -K_WAIT) {
+    if (result == -K_WAIT || result == -K_CONTINUE) {
         delete[] pollData;
         return result;
     }
