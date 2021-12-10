@@ -348,6 +348,10 @@ U32 KSystem::waitpid(S32 pid, U32 statusAddress, U32 options) {
 				if (KThread::currentThread()->terminating) {
 					return -K_EINTR;
 				}
+                if (KThread::currentThread()->startSignal) {
+                    KThread::currentThread()->startSignal = false;
+                    return -K_CONTINUE;
+                }
 #endif
             }
         }     

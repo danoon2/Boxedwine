@@ -883,7 +883,10 @@ void KProcess::signalProcess(U32 signal) {
     for (auto& t : this->threads) {
         KThread* thread = t.second;
         if (thread->waitingCond) {
-            thread->runSignals();
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(thread->waitingCondSync);
+            if (thread->waitingCond) {
+                thread->runSignals();
+            }
         }
     }
 #else

@@ -103,7 +103,8 @@ KThread::KThread(U32 id, const std::shared_ptr<KProcess>& process) :
     interrupted(false),
     inSignal(0),
 #ifdef BOXEDWINE_MULTI_THREADED
-    exited(false),	
+    exited(false),
+    startSignal(false),
 #endif
     terminating(false),
     clear_child_tid(0),
@@ -325,6 +326,10 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime) {
 			if (this->terminating) {
 				return -K_EINTR; // probably doesn't matter
 			}
+            if (KThread::currentThread()->startSignal) {
+                KThread::currentThread()->startSignal = false;
+                return -K_CONTINUE;
+            }
 #endif
         }
     } else if (op==FUTEX_WAKE_PRIVATE || op==FUTEX_WAKE) {
@@ -768,8 +773,10 @@ void KThread::runSignal(U32 signal, U32 trapNo, U32 errorNo) {
         this->cpu->setSegment(ES, 0x17);
         this->cpu->setIsBig(1);
 #ifdef BOXEDWINE_MULTI_THREADED
-        if (this->waitingCond) {
-            this->waitingCond->signal();
+        BOXEDWINE_CONDITION* cond = this->waitingCond;
+        if (cond) {
+            this->startSignal = true;
+            BOXEDWINE_CONDITION_SIGNAL_ALL_NEED_LOCK(*cond);
         }
 #endif
     }        
@@ -896,6 +903,10 @@ U32 KThread::sleep(U32 ms) {
 		if (this->terminating) {
 			return -K_EINTR;
 		}
+        if (KThread::currentThread()->startSignal) {
+            KThread::currentThread()->startSignal = false;
+            return -K_CONTINUE;
+        }
 #endif
     }
 }
@@ -955,6 +966,7 @@ U32 KThread::sigsuspend(U32 mask, U32 sigsetSize) {
     BOXEDWINE_CONDITION_WAIT(this->waitingForSignalToEndCond);
     BOXEDWINE_CONDITION_UNLOCK(this->waitingForSignalToEndCond);
 #ifdef BOXEDWINE_MULTI_THREADED
+    this->startSignal = false;
     return -K_CONTINUE; // so that cpu.eip is not incremented by syscall
 #endif
 }

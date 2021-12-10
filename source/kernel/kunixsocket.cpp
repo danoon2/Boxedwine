@@ -243,6 +243,10 @@ U32 KUnixSocketObject::readNative(U8* buffer, U32 len) {
 		if (KThread::currentThread()->terminating) {
 			return -K_EINTR;
 		}
+        if (KThread::currentThread()->startSignal) {
+            KThread::currentThread()->startSignal = false;
+            return -K_CONTINUE;
+        }
 #endif
     }
     //printf("readNative: %0.8X size=%d capacity=%d writeLen=%d", (int)&this->recvBuffer, (int)this->recvBuffer.size(), (int)this->recvBuffer.capacity(), len);
@@ -276,6 +280,10 @@ U32 KUnixSocketObject::read(U32 buffer, U32 len) {
 		if (KThread::currentThread()->terminating) {
 			return -K_EINTR;
 		}
+        if (KThread::currentThread()->startSignal) {
+            KThread::currentThread()->startSignal = false;
+            return -K_CONTINUE;
+        }
 #endif
     }
     // :TODO: remove extra copy
@@ -426,6 +434,10 @@ U32 KUnixSocketObject::connect(KFileDescriptor* fd, U32 address, U32 len) {
 						if (KThread::currentThread()->terminating) {
 							return -K_EINTR;
 						}
+                        if (KThread::currentThread()->startSignal) {
+                            KThread::currentThread()->startSignal = false;
+                            return -K_CONTINUE;
+                        }
 #endif
                     }
                     if (this->connection.expired()) {
@@ -458,6 +470,10 @@ U32 KUnixSocketObject::connect(KFileDescriptor* fd, U32 address, U32 len) {
 					if (KThread::currentThread()->terminating) {
 						return -K_EINTR;
 					}
+                    if (KThread::currentThread()->startSignal) {
+                        KThread::currentThread()->startSignal = false;
+                        return -K_CONTINUE;
+                    }
 #endif
                 }
                 if (this->connection.expired()) {
@@ -499,6 +515,10 @@ U32 KUnixSocketObject::accept(KFileDescriptor* fd, U32 address, U32 len, U32 fla
 		if (KThread::currentThread()->terminating) {
 			return -K_EINTR;
 		}
+        if (KThread::currentThread()->startSignal) {
+            KThread::currentThread()->startSignal = false;
+            return -K_CONTINUE;
+        }
 #endif
     }
     
@@ -758,6 +778,10 @@ U32 KUnixSocketObject::recvmsg(KFileDescriptor* fd, U32 address, U32 flags) {
 		if (KThread::currentThread()->terminating) {
 			return -K_EINTR;
 		}
+        if (KThread::currentThread()->startSignal) {
+            KThread::currentThread()->startSignal = false;
+            return -K_CONTINUE;
+        }
 #endif
     }
 

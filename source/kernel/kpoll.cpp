@@ -98,6 +98,10 @@ S32 internal_poll(KPollData* data, U32 count, U32 timeout) {
 		if (KThread::currentThread()->terminating) {
 			return -K_EINTR;
 		}
+        if (KThread::currentThread()->startSignal) {
+            KThread::currentThread()->startSignal = false;
+            return -K_CONTINUE;
+        }
 #endif
     }
 }
