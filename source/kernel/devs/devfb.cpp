@@ -32,7 +32,8 @@ static U32 paletteChanged;
 static U8* screenPixels;
 #ifdef BOXEDWINE_64BIT_MMU
 static bool isFbActive;
-bool isFbReady() {return isFbActive;}
+static U32 screenProcessId;
+bool isFbReady() {return isFbActive && KSystem::getProcess(screenProcessId);}
 #endif
 struct fb_fix_screeninfo {
     char id[16];			// identification string eg "TT Builtin"
@@ -574,6 +575,7 @@ U32 DevFB::map(U32 address, U32 len, S32 prot, S32 flags, U64 off) {
         klog("64-bit Boxedwine does not yet support /dev/fb being mapped more than 1 time");
     }
     isFbActive = true;
+    screenProcessId = KThread::currentThread()->process->id;
     screenPixels = (U8*)KThread::currentThread()->memory->id;
     screenPixels += ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS;
 #endif
