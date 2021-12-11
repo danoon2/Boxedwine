@@ -35,8 +35,13 @@ public class DPkg {
         if (ignoreDependency.contains(name)) {
             return;
         }
+        ignoreDependency.add(name);
         HashMap<String, DebianPackage> depends = new HashMap<>();
         DebianPackage pkg = DebianPackages.getPackage(name);
+        if (pkg == null) {
+            System.out.println("Package not found: "+name);
+            return;
+        }
         pkg.getDepends(ignoreDependency, depends);
 
         if (!force) {
