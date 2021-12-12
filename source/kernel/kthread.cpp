@@ -880,6 +880,13 @@ U32 KThread::nanoSleep(U64 nano) {
     return Platform::nanoSleep(nano);
 }
 
+U32 KThread::clockNanoSleep(U32 clock, U32 flags, U64 nano, U32 addressRemain) {
+    if (flags) {
+        kpanic("clockNanoSleep flags (%x) does not equal 0: this has not been implemented yet", flags);
+    }
+    return Platform::nanoSleep(nano);
+}
+
 U32 KThread::sleep(U32 ms) {
     if (ms <= NUMBER_OF_MILLIES_TO_SPIN_FOR_WAIT) {
         return Platform::nanoSleep(((U64)ms) * 1000000l);

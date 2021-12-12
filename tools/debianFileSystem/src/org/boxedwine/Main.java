@@ -15,11 +15,11 @@ public class Main {
         Settings.fileCachePath = new File("c:\\debianCache");
         Settings.outputDir = new File("c:\\debianCache\\out");
         Settings.extraFiles = new File("C:\\Boxedwine-Public\\tools\\debianFileSystem\\fs");
-        Settings.finishedZip = new File("c:\\debianCache\\debian10.zip");
+        Settings.finishedZip = new File("c:\\debianCache\\debian11.zip");
         Settings.boxedwinePath = "boxedwine"; // find it in the OS path
         Settings.winePath = "c:\\debianCache\\wine-5.0.zip";
 
-        DebianPackages.instance = new DebianPackages("buster");
+        DebianPackages.instance = new DebianPackages("bullseye");
         DebianPackages.instance.prefered = new HashSet<>();
         HashSet<String> ignored = new HashSet<>();
         DebianPackages.instance.prefered.add("fonts-liberation");
@@ -155,6 +155,7 @@ public class Main {
                     DPkg.install("gawk", ignoreDependency, true, downloadOnly); // requires libc
                     //DPkg.install("libbz2-1.0", ignoreDependency, false);
                     DPkg.install("libc6", ignoreDependency, true, downloadOnly);
+                    DPkg.install("libcrypt1", ignoreDependency, true, downloadOnly);
 
                     // now install cleanly
                     DPkg.install("libc6", downloadOnly);
@@ -175,6 +176,10 @@ public class Main {
                     DPkg.install("xserver-xorg-video-fbdev", downloadOnly); // since xserver-xorg-video-all is ignored in DPkg.install
                     DPkg.install("xorg", downloadOnly);
                     DPkg.install("xserver-xorg-input-evdev", downloadOnly);
+
+
+                    //DPkg.install("gnome", downloadOnly);
+
                     DPkg.install("icewm", downloadOnly);
                     DPkg.install("xdemineur", downloadOnly);
                     DPkg.install("xfe", downloadOnly); // file manager

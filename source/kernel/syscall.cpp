@@ -804,6 +804,13 @@ static U32 syscall_sched_get_priority_min(CPU* cpu, U32 eipCount) {
     return result;
 }
 
+static U32 syscall_clock_nanosleep(CPU* cpu, U32 eipCount) {
+    SYS_LOG1(SYSCALL_THREAD, cpu, "clock_nanosleep: clock=%d flags=%x req=%X(%d.%.09d sec) remaining=%X", ARG1, ARG2, ARG3, readd(ARG3), readd(ARG3 + 4), ARG4);
+    U32 result = cpu->thread->clockNanoSleep(ARG1, ARG2, ((U64)readd(ARG3)) * 1000000000l + readd(ARG3 + 4), ARG4);
+    SYS_LOG(SYSCALL_THREAD, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
+}
+
 static U32 syscall_nanosleep(CPU* cpu, U32 eipCount) {
     SYS_LOG1(SYSCALL_THREAD, cpu, "nanosleep: req=%X(%d.%.09d sec)", ARG1, readd(ARG1), readd(ARG1+4));
     U32 result = cpu->thread->nanoSleep(((U64)readd(ARG1))*1000000000l+readd(ARG1+4));
@@ -1819,7 +1826,7 @@ static const SyscallFunc syscallFunc[] = {
     0,                  // 264
     syscall_clock_gettime, // 265 __NR_clock_gettime
     syscall_clock_getres, // 266 __NR_clock_getres
-    0,                  // 267
+    syscall_clock_nanosleep, // 267 __NR_clock_nanosleep
     syscall_statfs64,   // 268 __NR_statfs64
     syscall_fstatfs64,  // 269 __NR_fstatfs64
     syscall_tgkill,     // 270 __NR_tgkill
