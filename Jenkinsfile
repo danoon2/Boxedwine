@@ -112,11 +112,12 @@ pipeline {
                         label "raspberry"
                     }
                     steps {
-                        sh '''#!/bin/bash
-                            cd project/linux
-                            sh buildRaspberryTest.sh || exit
-                            ./bin/boxedwineTest
-                        '''
+                        dir("project/linux") {
+                            sh '''#!/bin/bash
+                                make testJit || exit
+                                ./Build/TestJit/boxedwine
+                            '''
+                        }
                     }
                 }
                 stage ('Test Windows') {
@@ -151,7 +152,7 @@ pipeline {
                     steps {
                         dir("project/linux") {
                             sh '''#!/bin/bash
-                                make test
+                                make release
                             '''
                         }
                     }
@@ -185,10 +186,11 @@ pipeline {
                         label "raspberry"
                     }
                     steps {
-                        sh '''#!/bin/bash
-                            cd project/linux
-                            sh buildRaspberry.sh
-                        ''' 
+                        dir("project/linux") {
+                            sh '''#!/bin/bash
+                                make jit
+                            '''
+                        }
                     }
                 }
                 stage ('Build Windows') {

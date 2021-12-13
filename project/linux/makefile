@@ -1,15 +1,38 @@
 ifndef BUILD_DIR
 
-.PHONY: default all release test
+.PHONY: default all release test jit testJit
 
-default all: release
+default all: jit
 
+uname_m := $(shell uname -m)
+ifeq ($(uname_m), armv7l)
+JIT_FLAGS := -DBOXEDWINE_DYNAMIC_ARMV7 -DBOXEDWINE_DYNAMIC
+else ifeq($(uname_m), aarch64)
+JIT_FLAGS := -DBOXEDWINE_DYNAMIC_ARMV8 -DBOXEDWINE_DYNAMIC
+else ifeq($(uname_m), i386)
+JIT_FLAGS := -DBOXEDWINE_DYNAMIC32 -DBOXEDWINE_DYNAMIC
+else ifeq($(uname_m), i686)
+JIT_FLAGS := -DBOXEDWINE_DYNAMIC32 -DBOXEDWINE_DYNAMIC
+endif
+
+jit: export BUILD_DIR := Build/Jit
+jit: export EXTRA_CPP_FLAGS := $(JIT_FLAGS)
+testJit: export BUILD_DIR := Build/TestJit
+testJit: export EXTRA_CPP_FLAGS := $(JIT_FLAGS) -D__TEST
 release: export BUILD_DIR := Build/Release
 test:   export BUILD_DIR := Build/Test
 test: export EXTRA_CPP_FLAGS := -D__TEST
 
-export MAKEFLAGS="-j $(grep -c ^processor /proc/cpuinfo)"
-release test:
+cpus  := $(shell grep -c ^processor /proc/cpuinfo)
+ifeq ($(cpus), 0)
+else ifeq ($(cpus), 1)
+else ifeq ($(cpus), 2)
+else
+cpus := $(shell echo $$(($(cpus)-1)))
+export MAKEFLAGS := -j $(cpus)
+$(info MAKEFLAGS is $(MAKEFLAGS))
+endif
+jit release test testJit:
 	sh buildPocoLib.sh
 	@$(MAKE)
 
@@ -18,7 +41,7 @@ else
 TARGET_EXEC ?= boxedwine
 PROJDIR := $(realpath $(CURDIR)/../..)
 TEST_BUILD_DIR ?= ./build/build_test
-
+$(info MAKEFLAGS $(MAKE_FLAGS))
 SOURCES = $(shell find $(PROJDIR)/source -type f -name '*.cpp')
 SOURCES += $(wildcard $(PROJDIR)/platform/linux/*.cpp)
 SOURCES += $(wildcard $(PROJDIR)/platform/sdl/*.cpp)
@@ -37,8 +60,7 @@ TEST_SOURCES += $(wildcard $(PROJDIR)/source/sdl/singleThreaded/*.cpp)
 TEST_SOURCES += $(wildcard $(PROJDIR)/platform/sdl/*.cpp)
 TEST_SOURCES += $(wildcard $(PROJDIR)/platform/linux/*.cpp)
 TEST_SOURCES += $(wildcard $(PROJDIR)/source/emulation/cpu/*.cpp)
-TEST_SOURCES += $(wildcard $(PROJDIR)/source/emulation/cpu/common/*.cpp)
-TEST_SOURCES += $(wildcard $(PROJDIR)/source/emulation/cpu/normal/*.cpp)
+TEST_SOURCES += $(wildcard $(PROJDIR)/source/emulation/cpu/**/*.cpp)
 TEST_SOURCES += $(wildcard $(PROJDIR)/source/emulation/softmmu/*.cpp)
 TEST_SOURCES += $(wildcard $(PROJDIR)/source/io/*.cpp)
 TEST_SOURCES += $(wildcard $(PROJDIR)/source/kernel/*.cpp)
@@ -48,6 +70,8 @@ TEST_SOURCES += $(wildcard $(PROJDIR)/source/opengl/sdl/*.cpp)
 TEST_SOURCES += $(wildcard $(PROJDIR)/source/opengl/*.cpp)
 
 ifeq ($(BUILD_DIR), Build/Test)
+SRCS := $(TEST_SOURCES)
+else ifeq ($(BUILD_DIR), Build/TestJit)
 SRCS := $(TEST_SOURCES)
 else
 SRCS := $(SOURCES)
