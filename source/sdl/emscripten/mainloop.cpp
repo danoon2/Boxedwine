@@ -1,3 +1,4 @@
+#ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
 #include "boxedwine.h"
 #include "knativewindow.h"
@@ -44,3 +45,4 @@ bool doMainLoop() {
     emscripten_set_main_loop(mainloop, 0, 1);
     return false;
 }
+#endif

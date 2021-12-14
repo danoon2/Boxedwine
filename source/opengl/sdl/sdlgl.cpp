@@ -183,9 +183,9 @@ void sdl_glXMakeCurrent(CPU* cpu) {
     //U32 width = ARG2;
 
 #ifdef BOXEDWINE_EXPERIMENTAL_FRAME_BUFFER
-    if (width) {
-        loadExtensions();
-        fbSetupScreenForOpenGL(width, height, depth);
+    if (ARG2) {
+        loadSdlExtensions();
+        fbSetupScreenForOpenGL(ARG2, ARG3, ARG4);
     } else {
         fbSetupScreen();
     }

@@ -84,6 +84,7 @@
 			Config.frameSkip = getFrameSkip();
 			Config.directDrawRenderer = getDirectDrawRenderer();
 			Config.cdromImage = getCDROMImage();
+			Config.resolution = getResolution();
         }
         function allowParameterOverride() {
             if(Config.urlParams.length >0) {
@@ -167,6 +168,33 @@
             }
             console.log("setting DirectDrawRenderer to: "+renderer);
             return renderer;
+        }
+        function getResolution(){
+            var resolution = getParameter("resolution");
+            if(!allowParameterOverride()){
+                resolution = null;
+            }else{
+            	if (resolution != null) {
+            		if (resolution.indexOf('x') > -1) {
+            			let resNumbers = resolution.split('x');
+            			if (!(resNumbers.length == 2 && isNumber(resNumbers[0]) && isNumber(resNumbers[1]))) {
+            				resolution = null;
+            			}            				
+            		} else {
+            			resolution = null;
+            		}
+            	}
+            }
+            if (resolution == null) {
+            	console.log("not setting Resolution");
+            } else {
+            	console.log("setting Resolution to: "+resolution);
+            }
+            return resolution;
+        }
+        function isNumber(num) {
+        	const result = Number(num);
+        	return !isNaN(result) && result > 0 && result < 2000;
         }
         function getFrameSkip(){
 
@@ -1062,6 +1090,11 @@
             	params.push("-mount_drive");
             	params.push("/root/cdrom");
             	params.push("e");
+            }
+            
+            if (Config.resolution != null) {
+            	params.push("-resolution");
+            	params.push(Config.resolution);
             }
             
             if (Config.frameSkip != "0") {

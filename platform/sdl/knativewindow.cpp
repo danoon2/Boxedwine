@@ -805,10 +805,22 @@ void KNativeWindowSdl::displayChanged(KThread* thread) {
         if (window && (flags & SDL_WINDOW_VULKAN)) {
             this->isVulkan = true;
         }
+#ifdef BOXEDWINE_LINUX
+// NVidia drivers need this
+        flags = SDL_RENDERER_SOFTWARE;
+#else
+        flags = SDL_RENDERER_ACCELERATED;
+#endif
         if (this->vsync != VSYNC_DISABLED) {
             flags |= SDL_RENDERER_PRESENTVSYNC;
         }
         renderer = SDL_CreateRenderer(window, -1, flags);
+        if (!renderer) {
+            klog("Failed to create SDL accelerated renderer, will try software");
+            flags &= ~SDL_RENDERER_ACCELERATED;
+            flags |= SDL_RENDERER_SOFTWARE;
+            renderer = SDL_CreateRenderer(window, -1, flags);
+        }
         windowIsHidden = !KSystem::showWindowImmediately;
         timeWindowWasCreated = KSystem::getMilliesSinceStart();
         windowIsGL = false;
@@ -820,7 +832,11 @@ void KNativeWindowSdl::glSwapBuffers(KThread* thread) {
     BoxedwineGL::current->swapBuffer(window);
 }
 
-#if defined(BOXEDWINE_RECORDER) || ! defined(BOXEDWINE_64BIT_MMU)
+#if !defined(BOXEDWINE_64BIT_MMU) || defined(BOXEDWINE_LINUX)
+#define BOXEDWINE_FLIP_MANUALLY
+#endif
+
+#if defined(BOXEDWINE_RECORDER) || defined(BOXEDWINE_FLIP_MANUALLY)
 static S8 sdlBuffer[1024*1024*4];
 #endif
 
@@ -880,7 +896,7 @@ void KNativeWindowSdl::bltWnd(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32
         if (!thread->memory->isValidReadAddress(bits, height*pitch)) {
             return;
         }
-#ifndef BOXEDWINE_64BIT_MMU        
+#ifdef BOXEDWINE_FLIP_MANUALLY        
         for (U32 y = 0; y < height; y++) {
             memcopyToNative(bits+(height-y-1)*pitch, sdlBuffer+y*pitch, pitch);
         } 
@@ -898,7 +914,7 @@ void KNativeWindowSdl::bltWnd(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32
                 wnd->bits = new U8[toCopy];
                 wnd->bitsSize = toCopy;
             }
-#ifdef BOXEDWINE_64BIT_MMU
+#ifndef BOXEDWINE_FLIP_MANUALLY
             for (U32 y = 0; y < height; y++) {
                 memcopyToNative(bits+(height-y-1)*pitch, sdlBuffer+y*pitch, pitch);
             } 
@@ -907,10 +923,10 @@ void KNativeWindowSdl::bltWnd(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32
         }
 #endif        
         if (KSystem::videoEnabled && renderer) {
-#ifdef BOXEDWINE_64BIT_MMU
-            SDL_UpdateTexture(sdlTexture, NULL, getNativeAddress(KThread::currentThread()->process->memory, bits), pitch);
-#else
+#ifdef BOXEDWINE_FLIP_MANUALLY
             SDL_UpdateTexture(sdlTexture, NULL, sdlBuffer, pitch);
+#else
+            SDL_UpdateTexture(sdlTexture, NULL, getNativeAddress(KThread::currentThread()->process->memory, bits), pitch);            
 #endif
         }
     }
@@ -1094,7 +1110,7 @@ void KNativeWindowSdl::drawAllWindows(KThread* thread, U32 hWnd, int count) {
                     dstrect.y = wnd->windowRect.top*(int)scaleY/100 + scaleYOffset;
                     dstrect.w = wnd->sdlTextureWidth*(int)scaleX/100;
                     dstrect.h = wnd->sdlTextureHeight*(int)scaleY/100;
-#ifdef BOXEDWINE_64BIT_MMU
+#ifndef BOXEDWINE_FLIP_MANUALLY
                     SDL_RenderCopyEx(renderer, wnd->sdlTexture, NULL, &dstrect, 0, NULL, SDL_FLIP_VERTICAL);
 #else
                     SDL_RenderCopy(renderer, wnd->sdlTexture, NULL, &dstrect);
@@ -2415,8 +2431,12 @@ bool KNativeWindowSdl::handlSdlEvent(SDL_Event* e) {
         }
         BOXEDWINE_RECORDER_HANDLE_MOUSE_MOVE(e->motion.x, e->motion.y);
         if (relativeMouse) {
-            if (!mouseMove((e->motion.x-screenWidth()/2)*rel_mouse_sensitivity/100, (e->motion.y-screenHeight()/2)*rel_mouse_sensitivity/100, true)) {
-                onMouseMove((e->motion.x-screenWidth()/2)*rel_mouse_sensitivity/100, (e->motion.y-screenHeight()/2)*rel_mouse_sensitivity/100, true);                
+            int x = e->motion.x - screenWidth() / 2;
+            int y = e->motion.y - screenHeight() / 2;
+            x = x * rel_mouse_sensitivity / 100;
+            y = y * rel_mouse_sensitivity / 100;
+            if (!mouseMove(x, y, true)) {
+                onMouseMove(x, y, true);                
             }      
             SDL_WarpMouseInWindow(window, screenWidth()/2, screenHeight()/2);
         } else {
