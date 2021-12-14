@@ -5,21 +5,21 @@ pipeline {
             parallel {     
                 stage ('Checkout Emscripten') {
                     agent {
-                        label "linux"
+                        label "emscripten"
                     }
                     steps {
                         checkout scm
                     }
                 }
-                stage ('Checkout Linux') {
+                stage ('Checkout Linux (x64)') {
                     agent {
-                        label "linux"
+                        label "linux64"
                     }
                     steps {
                         checkout scm
                     }
                 }
-                stage ('Checkout Mac (x86)') {
+                stage ('Checkout Mac (x64)') {
                     agent {
                         label "mac"
                     }
@@ -35,7 +35,7 @@ pipeline {
                         checkout scm
                     }
                 }
-                stage ('Checkout Raspberry Pi') {
+                stage ('Checkout Raspberry Pi (ARMv7)') {
                     agent {
                         label "raspberry"
                     }
@@ -57,7 +57,7 @@ pipeline {
             parallel {
                 stage ('Test Emscripten') {
                     agent {
-                        label "linux"
+                        label "emscripten"
                     }
                     steps {
                         sh '''#!/bin/bash
@@ -68,20 +68,22 @@ pipeline {
                         '''
                     }
                 }
-                stage ('Test Linux') {
+                stage ('Test Linux (x64)') {
                     agent {
-                        label "linux"
+                        label "linux64"
                     }
                     steps {
                         dir("project/linux") {
                             sh '''#!/bin/bash
                                 make test || exit
-                                ./Build/Test/boxedwine
+                                ./Build/Test/boxedwine || exit
+                                make testMultiThreaded || exit
+                                ./Build/TestMultiThreaded/boxedwine
                             '''
                         }
                     }
                 }
-                stage ('Test Mac (x86)') {
+                stage ('Test Mac (x64)') {
                     agent {
                         label "mac"
                     }
@@ -107,7 +109,7 @@ pipeline {
                         '''
                     }
                 }
-                stage ('Test Raspberry Pi') {
+                stage ('Test Raspberry Pi (ARMv7)') {
                     agent {
                         label "raspberry"
                     }
@@ -127,6 +129,8 @@ pipeline {
                     steps {
                         bat "\"${env.MSBUILD}\" \"project/msvc/BoxedWine/BoxedWine.sln\" /p:Configuration=Test;Platform=win32"
                         bat "project\\msvc\\BoxedWine\\Test\\BoxedWine.exe"
+                        bat "\"${env.MSBUILD}\" \"project/msvc/BoxedWine/BoxedWine.sln\" /p:Configuration=Test;Platform=x64"
+                        bat "project\\msvc\\BoxedWine\\x64\\Test\\BoxedWine.exe"
                     }
                 }                    
             }
@@ -135,7 +139,7 @@ pipeline {
             parallel {
                 stage ('Build Emscripten') {
                     agent {
-                        label "linux"
+                        label "emscripten"
                     }
                     steps {
                         sh '''#!/bin/bash
@@ -145,19 +149,20 @@ pipeline {
                         ''' 
                     }
                 } 
-                stage ('Build Linux') {
+                stage ('Build Linux (x64)') {
                     agent {
-                        label "linux"
+                        label "linux64"
                     }
                     steps {
                         dir("project/linux") {
                             sh '''#!/bin/bash
-                                make release
+                                make release || exit
+                                make multiThreaded
                             '''
                         }
                     }
                 }
-                stage ('Build Mac (x86)') {
+                stage ('Build Mac (x64)') {
                     agent {
                         label "mac"
                     }
@@ -181,7 +186,7 @@ pipeline {
                         '''
                     }
                 }
-                stage ('Build Raspberry Pi') {
+                stage ('Build Raspberry Pi (ARMv7)') {
                     agent {
                         label "raspberry"
                     }
@@ -199,8 +204,49 @@ pipeline {
                     }
                     steps {
                         bat "\"${env.MSBUILD}\" \"project/msvc/BoxedWine/BoxedWine.sln\" /p:Configuration=Release;Platform=win32"
+                        bat "\"${env.MSBUILD}\" \"project/msvc/BoxedWine/BoxedWine.sln\" /p:Configuration=Release;Platform=x64"
                     }
                 }      
+            }
+        }
+    }
+
+    post {
+        changed {
+            script {
+                if ("${env.BRANCH_NAME}" == 'master') {
+                    emailext subject: '$DEFAULT_SUBJECT',
+                        body: '$DEFAULT_CONTENT',
+                        recipientProviders: [
+                            [$class: 'CulpritsRecipientProvider'],
+                            [$class: 'DevelopersRecipientProvider'],
+                            [$class: 'RequesterRecipientProvider']
+                        ], 
+                        replyTo: '$DEFAULT_REPLYTO',
+                        to: '$DEFAULT_RECIPIENTS'
+                }
+            }
+        }
+        success {
+            script {
+                emailext subject: '$DEFAULT_SUBJECT',
+                    body: '$DEFAULT_CONTENT',
+                    recipientProviders: [
+                        [$class: 'CulpritsRecipientProvider'],
+                        [$class: 'RequesterRecipientProvider']
+                    ], 
+                    replyTo: '$DEFAULT_REPLYTO'
+            }
+        }
+        failure {
+            script {
+                emailext subject: '$DEFAULT_SUBJECT',
+                    body: '$DEFAULT_CONTENT',
+                    recipientProviders: [
+                        [$class: 'CulpritsRecipientProvider'],
+                        [$class: 'RequesterRecipientProvider']
+                    ], 
+                    replyTo: '$DEFAULT_REPLYTO'
             }
         }
     }
