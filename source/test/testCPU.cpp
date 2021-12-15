@@ -5290,6 +5290,16 @@ const U32 FLOAT_QUIET_NAN_BITS = 0x7fc00000;
 
 const U64 DOUBLE_QUIET_NAN_BITS = 0x7FF8000000000000;
 
+static struct Test_Float fInf = { FLOAT_POSITIVE_INFINITY_BITS };
+static struct Test_Float fNegInf = { FLOAT_NEGATIVE_INFINITY_BITS };
+static struct Test_Float fNan = { FLOAT_QUIET_NAN_BITS };
+static struct TestDouble dNan = { DOUBLE_QUIET_NAN_BITS };
+
+const float POSITIVE_INFINITY = fInf.f;
+const float NEGATIVE_INFINITY = fNegInf.f;
+const float TEST_NAN = fNan.f;
+const double TEST_NAN_DOUBLE = dNan.d;
+
 #ifdef BOXEDWINE_MSVC
 #include <float.h>
 //#define isnan(x) _isnan(x)

@@ -17,7 +17,7 @@ CopyOnWritePage* CopyOnWritePage::alloc(U8* page, U32 address, U32 flags) {
 void CopyOnWritePage::copyOnWrite(U32 address) {	
     Memory* memory = KThread::currentThread()->memory;
     U32 page = address >> K_PAGE_SHIFT;
-    bool read = this->canRead() | this->canExec();
+    bool read = this->canRead() || this->canExec();
     bool write = this->canWrite();
     U8* ram;
 

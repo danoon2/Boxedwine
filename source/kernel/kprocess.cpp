@@ -2349,7 +2349,7 @@ U32 KProcess::utimes(const std::string& path, U32 times) {
             lastModifiedTime = readd(times+8);
             lastModifiedTimeNano = readd(times+12)*1000;
         }
-        return node->setTimes(lastAccessTime, lastAccessTimeNano, lastModifiedTime, lastAccessTimeNano);
+        return node->setTimes(lastAccessTime, lastAccessTimeNano, lastModifiedTime, lastModifiedTimeNano);
     }
 }
 
