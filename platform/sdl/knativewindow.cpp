@@ -144,6 +144,7 @@ public:
             screenResized(thread);
         } else {
             this->bpp = bpp;
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(sdlMutex);
             DISPATCH_MAIN_THREAD_BLOCK_BEGIN
             displayChanged(thread);
             DISPATCH_MAIN_THREAD_BLOCK_END
@@ -365,10 +366,13 @@ void KNativeWindowSdl::destroyScreen(KThread* thread) {
         kwarn("Not all OpenGL contexts were cleanly destroyed");
     }
     if (renderer) {
-        DISPATCH_MAIN_THREAD_BLOCK_BEGIN
-        SDL_DestroyRenderer(renderer);
-        DISPATCH_MAIN_THREAD_BLOCK_END
-        renderer = NULL;
+        DISPATCH_MAIN_THREAD_BLOCK_BEGIN        
+        SDL_Renderer* r = renderer;
+        if (r) {
+            SDL_DestroyRenderer(r);
+            renderer = NULL;
+        }
+        DISPATCH_MAIN_THREAD_BLOCK_END                    
     }
     // :TODO: what about other threads?
     if (thread) {
@@ -436,12 +440,18 @@ void shutdownMesaOpenGL();
 #endif
 
 void KNativeWindowSdl::glDeleteContext(KThread* thread, U32 contextId) {
-    KThreadGlContext* threadContext = thread->getGlContextById(contextId);
+    KThreadGlContext* threadContext = thread->getGlContextById(contextId);    
     if (threadContext && threadContext->context) {
-        BoxedwineGL::current->deleteContext(threadContext->context);
+        if (!thread->hasContextBeenMadeCurrentSinceCreation && screen->windowIsGL) {
+            // This is a weird one, SDL can believe this is the current context, yet it wasn't recorded as being created on this this thread, did I miss something?
+            // If this calls into SDL delete context it will crash when trying to get the current windows because the TLS isn't setup
+        } else {
+            BoxedwineGL::current->deleteContext(threadContext->context);
+        }
         thread->removeGlContextById(contextId);
         contextCount--;
         if (contextCount==0) {
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(sdlMutex);
             DISPATCH_MAIN_THREAD_BLOCK_BEGIN
             displayChanged(thread);
             DISPATCH_MAIN_THREAD_BLOCK_END
@@ -453,6 +463,7 @@ void KNativeWindowSdl::glUpdateContextForThread(KThread* thread) {
     if (thread->currentContext && thread->currentContext!=currentContext) {
         BoxedwineGL::current->makeCurrent(thread->currentContext, window);
         currentContext = thread->currentContext;        
+        thread->hasContextBeenMadeCurrentSinceCreation = true;
     }
 }
 
@@ -462,6 +473,7 @@ U32 KNativeWindowSdl::glMakeCurrent(KThread* thread, U32 arg) {
     if (threadContext && threadContext->context) {
         if (BoxedwineGL::current->makeCurrent(threadContext->context, window)) {
             threadContext->hasBeenMadeCurrent = true;
+            thread->hasContextBeenMadeCurrentSinceCreation = true;
             thread->currentContext = threadContext->context;
             currentContext = threadContext->context;
 #ifdef BOXEDWINE_OPENGL
@@ -477,12 +489,15 @@ U32 KNativeWindowSdl::glMakeCurrent(KThread* thread, U32 arg) {
             klog("sdlMakeCurrent failed: %s", lastError.c_str());
         }
     } else if (arg == 0) {
-        BoxedwineGL::current->makeCurrent(NULL, window);
+        if (thread->hasContextBeenMadeCurrentSinceCreation) {
+            // SDL requires that a context have been created before this call since it will store the current windows in TLS which will then be retrieved in this call
+            BoxedwineGL::current->makeCurrent(NULL, window);
+        }
         thread->currentContext = 0;
         currentContext = NULL;
         return 1;
     } else {
-        kpanic("Tried to make an OpenGL context current for a different thread?");
+        klog("Tried to make an OpenGL context current for a different thread?");
     }
     return 0;
 }
@@ -509,6 +524,7 @@ U32 KNativeWindowSdl::glShareLists(KThread* thread, U32 srcContext, U32 destCont
 
 #ifdef BOXEDWINE_OPENGL_SDL
 U32 sdlCreateOpenglWindow_main_thread(KThread* thread, std::shared_ptr<WndSdl> wnd, int major, int minor, int profile, int flags) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(screen->sdlMutex);
     //DISPATCH_MAIN_THREAD_BLOCK_BEGIN_RETURN
     screen->destroyScreen(thread);
 
@@ -569,13 +585,20 @@ U32 sdlCreateOpenglWindow_main_thread(KThread* thread, std::shared_ptr<WndSdl> w
     DISPATCH_MAIN_THREAD_BLOCK_BEGIN
     screen->window = SDL_CreateWindow("OpenGL Window", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, cx, cy, sdlFlags);
     DISPATCH_MAIN_THREAD_BLOCK_END
+    thread->process->iterateThreads([](KThread* t) {
+        t->hasContextBeenMadeCurrentSinceCreation = false;
+        return true;
+    });
     screen->windowIsHidden = !KSystem::showWindowImmediately;
     screen->timeToHideUI = KSystem::getMilliesSinceStart() + HIDE_UI_WINDOW_DELAY;
     screen->timeWindowWasCreated = KSystem::getMilliesSinceStart();
 
     if (!screen->window) {
         kwarn("Couldn't create window: %s", SDL_GetError());
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(screen->sdlMutex);
+        DISPATCH_MAIN_THREAD_BLOCK_BEGIN
         screen->displayChanged(thread);
+        DISPATCH_MAIN_THREAD_BLOCK_END
         return 0;
     }
     screen->windowIsGL = true;
@@ -616,6 +639,7 @@ U32 KNativeWindowSdl::glCreateContext(KThread* thread, std::shared_ptr<Wnd> w, i
     U32 result = 1;
     std::shared_ptr<WndSdl> wnd = std::dynamic_pointer_cast<WndSdl>(w);
     if (windowIsGL && glWindowVersionMajor != major && KSystem::openglType != OPENGL_TYPE_OSMESA) {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(sdlMutex);
         DISPATCH_MAIN_THREAD_BLOCK_BEGIN
         screen->destroyScreen(thread);
         DISPATCH_MAIN_THREAD_BLOCK_END
@@ -633,6 +657,7 @@ U32 KNativeWindowSdl::glCreateContext(KThread* thread, std::shared_ptr<Wnd> w, i
         // Mac requires this on the main thread, but Windows make current will fail if its not on the same thread as create context
 #ifdef BOXEDWINE_MSVC
         context = BoxedwineGL::current->createContext(window, wnd, wnd->pixelFormat, cx, cy, major, minor, profile);
+        thread->hasContextBeenMadeCurrentSinceCreation = true;
 #else
         DISPATCH_MAIN_THREAD_BLOCK_BEGIN_WITH_ARG(&context COMMA this COMMA wnd COMMA cx COMMA cy COMMA major COMMA minor COMMA profile)
         context = BoxedwineGL::current->createContext(window, wnd, wnd->pixelFormat, cx, cy, major, minor, profile);
@@ -671,6 +696,7 @@ U32 KNativeWindowSdl::glCreateContext(KThread* thread, std::shared_ptr<Wnd> w, i
 }
 
 void KNativeWindowSdl::screenResized(KThread* thread) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(sdlMutex);
     DISPATCH_MAIN_THREAD_BLOCK_BEGIN
         if (contextCount) {
             int cx = screenWidth();
@@ -712,8 +738,7 @@ void KNativeWindowSdl::screenResized(KThread* thread) {
     DISPATCH_MAIN_THREAD_BLOCK_END
 }
 
-void KNativeWindowSdl::displayChanged(KThread* thread) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(sdlMutex);
+void KNativeWindowSdl::displayChanged(KThread* thread) {    
     firstWindowCreated = 1;
     if (contextCount) {
         // when the context is destroy, displayChanged will be called again
@@ -820,6 +845,7 @@ static S8 sdlBuffer[1024*1024*4];
 
 void KNativeWindowSdl::bltWnd(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32 yOrg, U32 width, U32 height, U32 rect) {
     if (!firstWindowCreated) {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(sdlMutex);
         DISPATCH_MAIN_THREAD_BLOCK_BEGIN
         displayChanged(thread);
         DISPATCH_MAIN_THREAD_BLOCK_END
@@ -912,6 +938,7 @@ void KNativeWindowSdl::bltWnd(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32
 
 void KNativeWindowSdl::drawWnd(KThread* thread, std::shared_ptr<Wnd> w, U8* bytes, U32 pitch, U32 bpp, U32 width, U32 height) {
     if (!firstWindowCreated) {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(sdlMutex);
         DISPATCH_MAIN_THREAD_BLOCK_BEGIN
             displayChanged(thread);
         DISPATCH_MAIN_THREAD_BLOCK_END
