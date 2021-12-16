@@ -113,6 +113,7 @@ KThread::KThread(U32 id, const std::shared_ptr<KProcess>& process) :
     waitingForSignalToEndCond("KThread::waitingForSignalToEndCond"),
     waitingForSignalToEndMaskToRestore(0),
     pendingSignals(0),
+    hasContextBeenMadeCurrentSinceCreation(false),
     glContext(0),
     currentContext(0),
     log(false),
