@@ -68,6 +68,7 @@ public:
     static std::string getContainerFolder();
     static std::string getFileSystemFolder();    
     static std::string getAppFolder(BoxedContainer* container);
+    static std::string getAutomationFolder(BoxedContainer* container);
     static std::string getRootFolder(BoxedContainer* container);    
     static std::string getDemoFolder();
     static std::string getExePath() {return GlobalSettings::exePath;}
@@ -113,6 +114,7 @@ public:
     static int getPreviousScreenX() { return GlobalSettings::lastScreenX; }
     static int getPreviousScreenY() { return GlobalSettings::lastScreenY; }
     static void clearData();
+    static bool isAutomationEnabled() {return GlobalSettings::enabledAutomation;}
 
     static StartUpArgs startUpArgs;
 
@@ -164,6 +166,7 @@ private:
     static int lastScreenX;
     static int lastScreenY;
     static U32 defaultOpenGL;
+    static bool enabledAutomation;
 };
 
 #endif

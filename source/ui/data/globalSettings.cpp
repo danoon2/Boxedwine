@@ -53,6 +53,7 @@ int GlobalSettings::lastScreenCy;
 int GlobalSettings::lastScreenX;
 int GlobalSettings::lastScreenY;
 U32 GlobalSettings::defaultOpenGL = OPENGL_TYPE_SDL;
+bool GlobalSettings::enabledAutomation = false;
 
 void GlobalSettings::init(int argc, const char **argv) {
     GlobalSettings::largeFontBold = NULL;
@@ -99,6 +100,7 @@ void GlobalSettings::init(int argc, const char **argv) {
     GlobalSettings::lastScreenX = config.readInt("WindowX", 0);
     GlobalSettings::lastScreenY = config.readInt("WindowY", 0);
     GlobalSettings::defaultOpenGL = config.readInt("OpenGL", OPENGL_TYPE_SDL);
+    GlobalSettings::enabledAutomation = config.readBool("EnableAutomation", false);
 
     if (!Fs::doesNativePathExist(configFilePath)) {
         saveConfig();
@@ -168,6 +170,7 @@ void GlobalSettings::saveConfig() {
     config.writeInt("WindowX", GlobalSettings::lastScreenX);
     config.writeInt("WindowY", GlobalSettings::lastScreenY);
     config.writeInt("OpenGL", GlobalSettings::defaultOpenGL);
+    config.writeBool("EnableAutomation", GlobalSettings::enabledAutomation);
     config.saveChanges();
 }
 
@@ -240,6 +243,10 @@ std::string GlobalSettings::getRootFolder(BoxedContainer* container) {
 
 std::string GlobalSettings::getAppFolder(BoxedContainer* container) {
     return container->dirPath + Fs::nativePathSeperator + "apps";
+}
+
+std::string GlobalSettings::getAutomationFolder(BoxedContainer* container) {
+    return container->dirPath + Fs::nativePathSeperator + "automation";
 }
 
 U32 GlobalSettings::scaleIntUI(U32 value) {
