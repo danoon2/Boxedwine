@@ -145,6 +145,10 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "Default OpenGL Backend:";
     case OPTIONSVIEW_DEFAULT_OPENGL_HELP:
         return "OpenGL Backends:\n\nNative - This will use the OpenGL that is installed on your computer for your graphics card.  This is the best option if it works for you and will probably be the fastest.\n\nThe other options available to choose are in the order of expected performance.  They might be help older games/apps that try to use a color depth no longer supported by modern OpenGL graphics cards.";
+    case OPTIONSVIEW_ENABLE_AUTOMATION_LABEL:
+        return "Enable Automation:";
+    case OPTIONSVIEW_ENABLE_AUTOMATION_HELP:
+        return "This option should not be enabled for most people.  This will add an automation option to the shortcuts that will allow someone to record some acation and play them back for the app.  This automation testing makes it easier to test apps quickly.  It works by comparing screen shots so it is not very useful for screens that change with animations.  F11 key will capture a full screen shot.  If you want a partial screen shot, then hit the F11 key and keep it down.  With the mouse hold down the left mouse button and raw a rectangle to capture just that area.";
     case OPTIONSVIEW_DEFAULT_FONT_SCALE_LABEL:
         return "Font Scale";
     case OPTIONSVIEW_DEFAULT_FONT_SCALE_HELP:
@@ -327,6 +331,10 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "These arguments will be passed to the app.  Place each argument on its own line.";
     case CONTAINER_VIEW_DELETE_SHORTCUT:
         return "Delete Shortcut";
+    case CONTAINER_VIEW_CREATE_AUTOMATION:
+        return "Create Automation";
+    case CONTAINER_VIEW_RUN_AUTOMATION:
+        return "Run Automation";
     case CONTAINER_VIEW_SHORTCUT_LIST_HELP:
         return "Shortcuts are links to apps inside a container.  They will appear in the app list and clicking them in the app list will launch the app with the settings you set here.";
     case CONTAINER_VIEW_DELETE_SHORTCUT_CONFIRMATION:

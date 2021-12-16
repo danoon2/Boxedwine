@@ -141,6 +141,14 @@ void OptionsView::createGeneralTab() {
     }
 #endif
 
+#ifdef BOXEDWINE_RECORDER
+    automationControl = section->addCheckbox(OPTIONSVIEW_ENABLE_AUTOMATION_LABEL, OPTIONSVIEW_ENABLE_AUTOMATION_HELP, GlobalSettings::enabledAutomation);
+    automationControl->onChange = [this]() {
+        GlobalSettings::enabledAutomation = this->automationControl->isChecked();
+        GlobalSettings::saveConfig();
+    };
+#endif
+
     std::shared_ptr<LayoutSection> bottomSection = model->addSection();
     bottomSection->addSeparator();
     std::string deleteLabel = "";
