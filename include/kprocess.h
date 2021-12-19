@@ -54,13 +54,6 @@ public:
     void readSigAction(U32 address, U32 sigsetSize);
 };
 
-#define NUMBER_OF_STRINGS 5
-#define STRING_GL_VENDOR 0
-#define STRING_GL_RENDERER 1
-#define STRING_GL_VERSION 2
-#define STRING_GL_SHADING_LANGUAGE_VERSION 3
-#define STRING_GL_EXTENSIONS 4
-
 #define MAX_SIG_ACTIONS 64
 
 #define K_PROT_NONE  0x0
@@ -114,7 +107,7 @@ public:
 	void deleteThread(KThread* thread);
     void killAllThreadsExceptCurrent();
     void killAllThreads();
-
+    std::string getAbsoluteExePath();
     void clone(const std::shared_ptr<KProcess>& from);
     U32 getNextFileDescriptorHandle(int after);
 
@@ -257,7 +250,7 @@ public:
 #ifdef BOXEDWINE_64BIT_MMU
 	Memory* previousMemory;
     U32 nextNativeAddress;
-    U32 glStrings[NUMBER_OF_STRINGS];    
+    std::unordered_map<U32, U32> glStrings;    
     U32 allocNative(U32 len);    
 #endif
     U32 glStringsiExtensions;

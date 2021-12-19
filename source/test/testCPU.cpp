@@ -5290,6 +5290,16 @@ const U32 FLOAT_QUIET_NAN_BITS = 0x7fc00000;
 
 const U64 DOUBLE_QUIET_NAN_BITS = 0x7FF8000000000000;
 
+static struct Test_Float fInf = { FLOAT_POSITIVE_INFINITY_BITS };
+static struct Test_Float fNegInf = { FLOAT_NEGATIVE_INFINITY_BITS };
+static struct Test_Float fNan = { FLOAT_QUIET_NAN_BITS };
+static struct TestDouble dNan = { DOUBLE_QUIET_NAN_BITS };
+
+const float POSITIVE_INFINITY = fInf.f;
+const float NEGATIVE_INFINITY = fNegInf.f;
+const float TEST_NAN = fNan.f;
+const double TEST_NAN_DOUBLE = dNan.d;
+
 #ifdef BOXEDWINE_MSVC
 #include <float.h>
 //#define isnan(x) _isnan(x)
@@ -6478,6 +6488,276 @@ void testFSQRT() {
     doFSQRT();
 }
 
+void doFSCALE_inst(FPU_Float* st0, FPU_Float* st1, FPU_Float* st0Result) {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    {
+        float f1 = st0->f;
+        float f2 = st1->f;
+        struct FPU_Float result;
+        __asm {
+            finit;
+            fld f2;
+            fld f1;
+            fscale;
+            fstp result.f;
+        }
+        if (st0Result->i == FLOAT_QUIET_NAN_BITS) {
+            assertTrue(isnan(result.f));
+        } else {
+            assertTrue(result.f == st0Result->f);
+        }
+    }
+#endif
+    struct FPU_Float result;
+
+    newInstruction(0);
+    fpu_init();
+    fldf32(st1->f, 1);
+    fldf32(st0->f, 2);
+    pushCode8(0xd9);
+    pushCode8(rm(false, 7, 5));
+    writeTopFloat(2);
+    runTestCPU();
+    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    if (st0Result->i == FLOAT_QUIET_NAN_BITS) {
+        assertTrue(isnan(result.f));
+    } else {
+        assertTrue(result.f == st0Result->f);
+    }
+}
+
+// ST(0) 		ST(1)
+//        -inf -F   -0   +0   +F   +inf  NaN
+// -inf   NaN  -inf -inf -inf -inf -inf  NaN
+// -F     -0   -F   -F   -F   -F   -inf  NaN
+// -0     -0   -0   -0   -0   -0   NaN   NaN
+// +0     +0   +0   +0   +0   +0   NaN   NaN
+// +F     +0   +F   +F   +F   +F   +inf  NaN
+// +inf   NaN +inf  +inf +inf +inf +inf  NaN
+// NaN    NaN NaN   NaN  NaN  NaN  NaN   NaN
+void testFSCALE() {
+    FPU_Float st0;
+    FPU_Float st1;
+    FPU_Float result;
+
+    // line 1 of the grid above -inf
+    st0.i = FLOAT_NEGATIVE_INFINITY_BITS;
+
+    st1.i = FLOAT_NEGATIVE_INFINITY_BITS;
+    result.i = FLOAT_QUIET_NAN_BITS;
+    doFSCALE_inst(&st0, &st1, &result);
+    
+    st1.f = -2.0;
+    result.i = FLOAT_NEGATIVE_INFINITY_BITS;
+    doFSCALE_inst(&st0, &st1, &result);
+
+    st1.f = -0.0;
+    result.i = FLOAT_NEGATIVE_INFINITY_BITS;
+    doFSCALE_inst(&st0, &st1, &result);
+
+    st1.f = +0.0;
+    result.i = FLOAT_NEGATIVE_INFINITY_BITS;
+    doFSCALE_inst(&st0, &st1, &result);
+
+    st1.f = +2.0;
+    result.i = FLOAT_NEGATIVE_INFINITY_BITS;
+    doFSCALE_inst(&st0, &st1, &result);
+
+    st1.i = FLOAT_POSITIVE_INFINITY_BITS;
+    result.i = FLOAT_NEGATIVE_INFINITY_BITS;
+    doFSCALE_inst(&st0, &st1, &result);
+
+    st1.i = FLOAT_QUIET_NAN_BITS;
+    result.i = FLOAT_QUIET_NAN_BITS;
+    doFSCALE_inst(&st0, &st1, &result);
+
+    // line 2 of the grid above -F
+    st0.f = -2.0;
+
+    st1.i = FLOAT_NEGATIVE_INFINITY_BITS;
+    result.f = -0.0f;
+    doFSCALE_inst(&st0, &st1, &result);
+
+    st1.f = -2.0;
+    result.f = -0.5;
+    doFSCALE_inst(&st0, &st1, &result);
+
+    st1.f = -0.0;
+    result.f = -2.0;
+    doFSCALE_inst(&st0, &st1, &result);
+
+    st1.f = +0.0;
+    result.f = -2.0;
+    doFSCALE_inst(&st0, &st1, &result);
+
+    st1.f = +2.0;
+    result.f = -8.0;
+    doFSCALE_inst(&st0, &st1, &result);
+
+    st1.i = FLOAT_POSITIVE_INFINITY_BITS;
+    result.i = FLOAT_NEGATIVE_INFINITY_BITS;
+    doFSCALE_inst(&st0, &st1, &result);
+
+    st1.i = FLOAT_QUIET_NAN_BITS;
+    result.i = FLOAT_QUIET_NAN_BITS;
+    doFSCALE_inst(&st0, &st1, &result);
+
+    // line 3 of the grid above -0
+    st0.f = -0.0;
+
+    st1.i = FLOAT_NEGATIVE_INFINITY_BITS;
+    result.f = -0.0f;
+    doFSCALE_inst(&st0, &st1, &result);
+
+    st1.f = -2.0;
+    result.f = -0.0;
+    doFSCALE_inst(&st0, &st1, &result);
+
+    st1.f = -0.0;
+    result.f = -0.0;
+    doFSCALE_inst(&st0, &st1, &result);
+
+    st1.f = +0.0;
+    result.f = -0.0;
+    doFSCALE_inst(&st0, &st1, &result);
+
+    st1.f = +2.0;
+    result.f = -0.0;
+    doFSCALE_inst(&st0, &st1, &result);
+
+    st1.i = FLOAT_POSITIVE_INFINITY_BITS;
+    result.i = FLOAT_QUIET_NAN_BITS;
+    doFSCALE_inst(&st0, &st1, &result);
+
+    st1.i = FLOAT_QUIET_NAN_BITS;
+    result.i = FLOAT_QUIET_NAN_BITS;
+    doFSCALE_inst(&st0, &st1, &result);
+
+    // line 4 of the grid above +0
+    st0.f = +0.0;
+
+    st1.i = FLOAT_NEGATIVE_INFINITY_BITS;
+    result.f = +0.0f;
+    doFSCALE_inst(&st0, &st1, &result);
+
+    st1.f = -2.0;
+    result.f = +0.0;
+    doFSCALE_inst(&st0, &st1, &result);
+
+    st1.f = -0.0;
+    result.f = +0.0;
+    doFSCALE_inst(&st0, &st1, &result);
+
+    st1.f = +0.0;
+    result.f = +0.0;
+    doFSCALE_inst(&st0, &st1, &result);
+
+    st1.f = +2.0;
+    result.f = +0.0;
+    doFSCALE_inst(&st0, &st1, &result);
+
+    st1.i = FLOAT_POSITIVE_INFINITY_BITS;
+    result.i = FLOAT_QUIET_NAN_BITS;
+    doFSCALE_inst(&st0, &st1, &result);
+
+    st1.i = FLOAT_QUIET_NAN_BITS;
+    result.i = FLOAT_QUIET_NAN_BITS;
+    doFSCALE_inst(&st0, &st1, &result);
+
+    // line 5 of the grid above +F
+    st0.f = +2.0;
+
+    st1.i = FLOAT_NEGATIVE_INFINITY_BITS;
+    result.f = +0.0f;
+    doFSCALE_inst(&st0, &st1, &result);
+
+    st1.f = -2.0;
+    result.f = +0.5;
+    doFSCALE_inst(&st0, &st1, &result);
+
+    st1.f = -0.0;
+    result.f = +2.0;
+    doFSCALE_inst(&st0, &st1, &result);
+
+    st1.f = +0.0;
+    result.f = +2.0;
+    doFSCALE_inst(&st0, &st1, &result);
+
+    st1.f = +2.0;
+    result.f = +8.0;
+    doFSCALE_inst(&st0, &st1, &result);
+
+    st1.i = FLOAT_POSITIVE_INFINITY_BITS;
+    result.i = FLOAT_POSITIVE_INFINITY_BITS;
+    doFSCALE_inst(&st0, &st1, &result);
+
+    st1.i = FLOAT_QUIET_NAN_BITS;
+    result.i = FLOAT_QUIET_NAN_BITS;
+    doFSCALE_inst(&st0, &st1, &result);
+
+    // line 6 of the grid above +inf
+    st0.i = FLOAT_POSITIVE_INFINITY_BITS;
+
+    st1.i = FLOAT_NEGATIVE_INFINITY_BITS;
+    result.i = FLOAT_QUIET_NAN_BITS;
+    doFSCALE_inst(&st0, &st1, &result);
+
+    st1.f = -2.0;
+    result.i = FLOAT_POSITIVE_INFINITY_BITS;
+    doFSCALE_inst(&st0, &st1, &result);
+
+    st1.f = -0.0;
+    result.i = FLOAT_POSITIVE_INFINITY_BITS;
+    doFSCALE_inst(&st0, &st1, &result);
+
+    st1.f = +0.0;
+    result.i = FLOAT_POSITIVE_INFINITY_BITS;
+    doFSCALE_inst(&st0, &st1, &result);
+
+    st1.f = +2.0;
+    result.i = FLOAT_POSITIVE_INFINITY_BITS;
+    doFSCALE_inst(&st0, &st1, &result);
+
+    st1.i = FLOAT_POSITIVE_INFINITY_BITS;
+    result.i = FLOAT_POSITIVE_INFINITY_BITS;
+    doFSCALE_inst(&st0, &st1, &result);
+
+    st1.i = FLOAT_QUIET_NAN_BITS;
+    result.i = FLOAT_QUIET_NAN_BITS;
+    doFSCALE_inst(&st0, &st1, &result);
+
+    // line 7 of the grid above nan
+    st0.i = FLOAT_QUIET_NAN_BITS;
+
+    st1.i = FLOAT_NEGATIVE_INFINITY_BITS;
+    result.i = FLOAT_QUIET_NAN_BITS;
+    doFSCALE_inst(&st0, &st1, &result);
+
+    st1.f = -2.0;
+    result.i = FLOAT_QUIET_NAN_BITS;
+    doFSCALE_inst(&st0, &st1, &result);
+
+    st1.f = -0.0;
+    result.i = FLOAT_QUIET_NAN_BITS;
+    doFSCALE_inst(&st0, &st1, &result);
+
+    st1.f = +0.0;
+    result.i = FLOAT_QUIET_NAN_BITS;
+    doFSCALE_inst(&st0, &st1, &result);
+
+    st1.f = +2.0;
+    result.i = FLOAT_QUIET_NAN_BITS;
+    doFSCALE_inst(&st0, &st1, &result);
+
+    st1.i = FLOAT_POSITIVE_INFINITY_BITS;
+    result.i = FLOAT_QUIET_NAN_BITS;
+    doFSCALE_inst(&st0, &st1, &result);
+
+    st1.i = FLOAT_QUIET_NAN_BITS;
+    result.i = FLOAT_QUIET_NAN_BITS;
+    doFSCALE_inst(&st0, &st1, &result);
+}
+
 void testFPUD9() {
     // 0
     testFLDSTi();
@@ -6509,6 +6789,7 @@ void testFPUD9() {
 
     // 7
     testFSQRT();
+    testFSCALE();
 
     // ea
     testFSTFloat();

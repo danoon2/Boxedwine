@@ -87,6 +87,10 @@ public:
     std::function<void()> runOnRestartUI;
     std::string logPath;
     std::string title;
+
+    std::string recordAutomation;
+    std::string runAutomation;
+
 private:
     bool workingDirSet;
     bool resolutionSet;    

@@ -20,7 +20,7 @@ public class DebianPackage {
         return FileCache.getFile(url);
     }
 
-    private DebianPackage getDepend(DebianPackages pkgs, String depend, HashSet<String> prefered) {
+    private DebianPackage getDepend(String depend) {
         String[] parts = depend.split("\\|");
         String dep = depend;
         if (parts.length > 1) {
@@ -28,7 +28,7 @@ public class DebianPackage {
             dep = parts[0];
             for (String p : parts) {
                 p = p.trim();
-                if (prefered.contains(p)) {
+                if (DebianPackages.instance.prefered.contains(p)) {
                     dep = p;
                     break;
                 }
@@ -39,29 +39,29 @@ public class DebianPackage {
             dep = dep.substring(0, pos-1);
         }
         dep = dep.trim();
-        DebianPackage result = pkgs.getPackage(dep);
+        DebianPackage result = DebianPackages.getPackage(dep);
         if (result == null) {
             int ii=0;
         }
         return result;
     }
 
-    public void getDepends(DebianPackages pkgs, HashSet<String> ignore, HashSet<String> prefered, HashMap<String, DebianPackage> results) {
+    public void getDepends(HashSet<String> ignore, HashMap<String, DebianPackage> results) {
         if (preDepends != null) {
             for (String d : preDepends) {
-                DebianPackage p = getDepend(pkgs, d, prefered);
+                DebianPackage p = getDepend(d);
                 if (p != null && !results.containsKey(p.name) && !ignore.contains(p.name)) {
                     results.put(p.name, p);
-                    p.getDepends(pkgs, ignore, prefered, results);
+                    p.getDepends(ignore, results);
                 }
             }
         }
         if (depends != null) {
             for (String d : depends) {
-                DebianPackage p = getDepend(pkgs, d, prefered);
+                DebianPackage p = getDepend(d);
                 if (p != null && !results.containsKey(p.name) && !ignore.contains(p.name)) {
                     results.put(p.name, p);
-                    p.getDepends(pkgs, ignore, prefered, results);
+                    p.getDepends(ignore, results);
                 }
             }
         }
@@ -105,9 +105,15 @@ public class DebianPackage {
         debInputStream.close();
     }
 
+    public String getFileName() {
+        return url.getFile();
+    }
     public String name;
     public String version;
     public URL url;
     public Vector<String> preDepends;
     public Vector<String> depends;
+    public boolean installed;
+    public boolean downloaded;
+    public boolean force;
 }

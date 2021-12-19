@@ -33,7 +33,9 @@ settings:
  - change the program to execute via ?p=/home/username/chomp/CHOMP.EXE. surround in quotes if path includes spaces. Can call a .BAT file.
  - set the working directory via ?work=chomp. This simplifies p as it can then be relative to the working directory.
  - set an overlay via ?overlay=more.zip;files.zip. Where each zip file contains additional files to add to the root file system. Existing files are overridden.
- - use c:/ as shorthand for /home/username/.wine/dosdevices/c:/ (also works for d:/)
+ - load a ISO CD-ROM image via ?iso=cdrom.iso. The whole image file is loaded into memory and mounted as e:.
+ - set the initial emulated screen size via ?resolution=WxH. Ie resolution=640x480.
+ - use c:/ as shorthand for /home/username/.wine/dosdevices/c:/ (also works for d:/ and e:/)
 Some simplifications are possible:
 boxedwine.html?p=notepad - run notepad in the root fs
 boxedwine.html?root=win32&app=chomp&work=chomp&p=CHOMP.EXE - no need to add .zip for root and app zip file name
@@ -50,7 +52,12 @@ ie
 This approach has the advantage that the downloaded zipped filesystems are smaller, but it has the disadvantage that
 the network requests for on demand files are synchronous (may block ui thread and also potentially crash the emulator when retrieving large files) and the web server must support range requests.
 Provided in /project/linux/buildFiles is wine1.7.55-v8-min.zip which contains the minimum files necessary to load a basic wine application
-To generate your own minimal set of files follow the instructions in /tools/common/Main.java
+To generate your own minimal set of files follow the instructions in /tools/common/Main.java or alternatively:
+1. Clear style on element saveFSImage in shellfs.html
+2. Set Config.recordLoadedFiles = true; in boxedwine-shell.js
+3. Execute program in boxedwine
+4. click the 'Save FS Image' button
+Step 4 will generate a zip file containing all the files loaded in step 3
 
 Dynamically sending files
 The *-payload parameters can be used to pass in a base64 encoded zip file. 

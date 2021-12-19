@@ -2,6 +2,11 @@
 #define __RECORDER_H__
 
 #ifdef BOXEDWINE_RECORDER
+#ifdef BOXEDWINE_64
+#define RECORDER_SCRIPT "script.x64.txt"
+#else
+#define RECORDER_SCRIPT "script.txt"
+#endif
 class Recorder {
 public:
     static void start(std::string directory);

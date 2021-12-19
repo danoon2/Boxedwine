@@ -79,6 +79,7 @@ public:
     U32 sigsuspend(U32 mask, U32 sigsetSize);
     U32 sleep(U32 ms);
     U32 nanoSleep(U64 nano);
+    U32 clockNanoSleep(U32 clock, U32 flags, U64 nano, U32 addressRemain);
 
     U32 id;
     U64 sigMask; // :TODO: what happens when this is changed while in a signal
@@ -108,6 +109,7 @@ public:
     void removeGlContextById(U32 id);
     void addGlContext(U32 id, void* context);
     void removeAllGlContexts();
+    bool hasContextBeenMadeCurrentSinceCreation;
 
     std::unordered_map<U32, KThreadGlContext> glContext;
 public:

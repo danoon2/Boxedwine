@@ -52,7 +52,7 @@ void Player::readCommand() {
 
 bool Player::start(std::string directory) {
     Player::instance = new Player();
-    std::string script = std::string(directory+"/script.txt");
+    std::string script = std::string(directory+"/"+RECORDER_SCRIPT);
     instance->directory = directory;
     instance->file = fopen(script.c_str(), "rb");
     instance->lastCommandTime = 0;
@@ -60,6 +60,8 @@ bool Player::start(std::string directory) {
     if (!instance->file) {
         klog("script not found: %s error=%d(%s)", script.c_str(), errno, strerror(errno));
         exit(100);
+    } else {
+        klog("using script: %s", script.c_str());
     }
     instance->readCommand();
     instance->version = instance->nextValue;

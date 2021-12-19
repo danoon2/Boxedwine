@@ -53,6 +53,7 @@ public:
     static BoxedPtr<FsNode> getNodeFromLocalPath(const std::string& currentDirectory, const std::string& path, bool followLink, bool* isLink=NULL);    
     static BoxedPtr<FsNode> addFileNode(const std::string& path, const std::string& link, const std::string& nativePath, bool isDirectory, const BoxedPtr<FsNode>& parent);
     static BoxedPtr<FsNode> addVirtualFile(const std::string& path, OpenVirtualNode func, U32 mode, U32 rdev, const BoxedPtr<FsNode>& parent, U32 data=0);
+    static BoxedPtr<FsNode> addDynamicLinkFile(const std::string& path, U32 rdev, const BoxedPtr<FsNode>& parent, bool isDirectory, std::function<std::string(void)> fnGetLink);
     static BoxedPtr<FsNode> addRootDirectoryNode(const std::string& path, const std::string& nativePath, const BoxedPtr<FsNode>& parent);
     static void remoteNameToLocal(std::string& path);
     static void localNameToRemote(std::string& path);

@@ -243,6 +243,24 @@ void loadApps() {
                                     return false;
                                     });
                             }
+#ifdef BOXEDWINE_RECORDER
+                            if (GlobalSettings::isAutomationEnabled()) {
+                                if (ImGui::Selectable(getTranslation(CONTAINER_VIEW_CREATE_AUTOMATION))) {
+                                    runOnMainUI([app]() {
+                                        new WaitDlg(WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(WAITDLG_LAUNCH_APP_LABEL, true, app->getName()));
+                                        app->createAutomation();
+                                        return false;
+                                        });
+                                }
+                                if (ImGui::Selectable(getTranslation(CONTAINER_VIEW_RUN_AUTOMATION), false, app->hasAutomation()? 0 : ImGuiSelectableFlags_Disabled)) {
+                                    runOnMainUI([app]() {
+                                        new WaitDlg(WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(WAITDLG_LAUNCH_APP_LABEL, true, app->getName()));
+                                        app->runAutomation();
+                                        return false;
+                                        });
+                                }
+                            }
+#endif
                             ImGui::EndPopup();
                             result = true;
                         }

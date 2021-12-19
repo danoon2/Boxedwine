@@ -1,7 +1,8 @@
 #!/bin/bash
 mkdir -p bin
 sh buildPocoLib.sh
-gcc -std=c++17 -O2 \
+# the minizip stuff will give warnings about mixing c and cpp file, probably time to move to build program like cmake
+gcc -std=c++17 -O2 -no-pie \
   -Wall \
   -Wno-delete-incomplete \
   -Wno-invalid-offsetof \
@@ -52,6 +53,9 @@ gcc -std=c++17 -O2 \
   ../../source/util/*.cpp \
   ../../source/opengl/sdl/*.cpp \
   ../../source/opengl/*.cpp \
+  ../../lib/zlib/contrib/minizip/ioapi.c \
+  ../../lib/zlib/contrib/minizip/mztools.c \
+  ../../lib/zlib/contrib/minizip/unzip.c \
   -L./linux_build/lib \
   -lPocoNetSSL \
   -lPocoNet \
@@ -63,7 +67,6 @@ gcc -std=c++17 -O2 \
   -lpthread \
   -lm \
   -lz \
-  -lminizip \
   -lGL \
   -lstdc++ \
   -lstdc++fs \
@@ -73,7 +76,10 @@ gcc -std=c++17 -O2 \
   -DSDL2=1 \
   "-DGLH=<SDL_opengl.h>" \
   -DBOXEDWINE_OPENGL_SDL \
-  `sdl2-config --cflags --libs` \
+  -Wl,-Bstatic \
+  -lSDL2 \
+  -Wl,-Bdynamic \
+  `sdl2-config --cflags --static-libs` \
   -DSIMDE_SSE2_NO_NATIVE \
   -DBOXEDWINE_64 \
   -DBOXEDWINE_64BIT_MMU \
@@ -85,4 +91,4 @@ gcc -std=c++17 -O2 \
   -DBOXEDWINE_OPENGL_IMGUI_V2 \
   -DBOXEDWINE_BINARY_TRANSLATOR \
   -DBOXEDWINE_LINUX \
-  -o bin/boxedwine64
+  -o bin/boxedwine64 

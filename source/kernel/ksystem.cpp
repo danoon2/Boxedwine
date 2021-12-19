@@ -66,6 +66,7 @@ U32 KSystem::cpuAffinityCountForApp = 1;
 #endif
 U32 KSystem::pollRate = DEFAULT_POLL_RATE;
 FILE* KSystem::logFile;
+std::string KSystem::exePath;
 
 BOXEDWINE_CONDITION KSystem::processesCond("KSystem::processesCond");
 
@@ -94,7 +95,7 @@ void KSystem::destroy() {
             BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(processesCond);
             if (KSystem::processes.size()) {
                 for (auto& process : KSystem::processes) {
-                    if (process.second->getThreadCount()) {
+                    if (process.second && process.second->getThreadCount()) {
                         p = process.second;
                         break;
                     }

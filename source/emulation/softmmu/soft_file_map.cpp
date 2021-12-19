@@ -37,7 +37,7 @@ FilePage* FilePage::alloc(const BoxedPtr<MappedFile>& mapped, U32 index, U32 fla
 void FilePage::ondemmandFile(U32 address) {
     Memory* memory = KThread::currentThread()->process->memory;
     U32 page = address >> K_PAGE_SHIFT;
-    bool read = this->canRead() | this->canExec();
+    bool read = this->canRead() || this->canExec();
     bool write = this->canWrite();
     U8* ram=NULL;
 

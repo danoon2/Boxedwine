@@ -113,6 +113,7 @@ KThread::KThread(U32 id, const std::shared_ptr<KProcess>& process) :
     waitingForSignalToEndCond("KThread::waitingForSignalToEndCond"),
     waitingForSignalToEndMaskToRestore(0),
     pendingSignals(0),
+    hasContextBeenMadeCurrentSinceCreation(false),
     glContext(0),
     currentContext(0),
     log(false),
@@ -861,9 +862,16 @@ U32 KThread::modify_ldt(U32 func, U32 ptr, U32 count) {
 }
 
 U32 KThread::nanoSleep(U64 nano) {
-    U32 millies = nano / 1000000;
+    U32 millies = (U32)(nano / 1000000);
     if (millies > NUMBER_OF_MILLIES_TO_SPIN_FOR_WAIT) {
         return sleep(millies);
+    }
+    return Platform::nanoSleep(nano);
+}
+
+U32 KThread::clockNanoSleep(U32 clock, U32 flags, U64 nano, U32 addressRemain) {
+    if (flags) {
+        kpanic("clockNanoSleep flags (%x) does not equal 0: this has not been implemented yet", flags);
     }
     return Platform::nanoSleep(nano);
 }

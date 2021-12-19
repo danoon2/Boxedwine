@@ -13,7 +13,12 @@ extern U32 dynamicCodeExceptionCount;
 static U32 lastTitleUpdate = 0;
 extern U32 nativeMemoryPagesAllocated;
 
+static THREAD_LOCAL bool isMainThread;
+bool isMainthread() {
+    return isMainThread;
+}
 bool doMainLoop() {
+    isMainThread = true;
     while (platformThreadCount) {
         U32 timeout = 5000;
         U32 t = KSystem::getMilliesSinceStart();
