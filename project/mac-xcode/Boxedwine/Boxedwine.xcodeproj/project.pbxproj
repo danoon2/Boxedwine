@@ -86,7 +86,7 @@
 		1A80EE7A276EBCC70032A70A /* decoder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDAA2433BBBE003F17F1 /* decoder.cpp */; };
 		1A80EE7B276EBCC70032A70A /* NTLMCredentials.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63582440E9100038F5A4 /* NTLMCredentials.cpp */; };
 		1A80EE7C276EBCC70032A70A /* kdspaudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091362644D42B003413C3 /* kdspaudio.cpp */; };
-		1A80EE7D276EBCC70032A70A /* vk_host.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0D6EA26CF0C5400E18A08 /* vk_host.cpp */; };
+		1A80EE7D276EBCC70032A70A /* (null) in Sources */ = {isa = PBXBuildFile; };
 		1A80EE7E276EBCC70032A70A /* HTTPCredentials.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F632D2440E9100038F5A4 /* HTTPCredentials.cpp */; };
 		1A80EE7F276EBCC70032A70A /* testCPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD492433BBBE003F17F1 /* testCPU.cpp */; };
 		1A80EE80276EBCC70032A70A /* HTTPMessage.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63262440E9100038F5A4 /* HTTPMessage.cpp */; };
@@ -572,7 +572,7 @@
 		1A80F060276EBCC70032A70A /* pixelformat.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC48092663FFC000EE5FCC /* pixelformat.cpp */; };
 		1A80F061276EBCC70032A70A /* FileChannel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81552440ED1C0038F5A4 /* FileChannel.cpp */; };
 		1A80F062276EBCC70032A70A /* ThreadTarget.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81202440ED1C0038F5A4 /* ThreadTarget.cpp */; };
-		1A80F063276EBCC70032A70A /* vulkancommon.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0D6EB26CF0C5400E18A08 /* vulkancommon.cpp */; };
+		1A80F063276EBCC70032A70A /* (null) in Sources */ = {isa = PBXBuildFile; };
 		1A80F064276EBCC70032A70A /* MD4Engine.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81BF2440ED1D0038F5A4 /* MD4Engine.cpp */; };
 		1A80F065276EBCC70032A70A /* Mutex.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81062440ED1C0038F5A4 /* Mutex.cpp */; };
 		1A80F066276EBCC70032A70A /* HTTPServerRequestImpl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63472440E9100038F5A4 /* HTTPServerRequestImpl.cpp */; };
@@ -852,7 +852,7 @@
 		1A80F182276EBF170032A70A /* pcre_ucd.c in Sources */ = {isa = PBXBuildFile; fileRef = 715F812A2440ED1C0038F5A4 /* pcre_ucd.c */; };
 		1A80F183276EBF170032A70A /* soft_native_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDDD2433BBBE003F17F1 /* soft_native_page.cpp */; };
 		1A80F184276EBF170032A70A /* Environment.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F811D2440ED1C0038F5A4 /* Environment.cpp */; };
-		1A80F185276EBF170032A70A /* vk_host.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0D6EA26CF0C5400E18A08 /* vk_host.cpp */; };
+		1A80F185276EBF170032A70A /* (null) in Sources */ = {isa = PBXBuildFile; };
 		1A80F186276EBF170032A70A /* synchronization.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD532433BBBE003F17F1 /* synchronization.cpp */; };
 		1A80F187276EBF170032A70A /* audiounit.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC479C2648471000EE5FCC /* audiounit.cpp */; };
 		1A80F188276EBF170032A70A /* KeyConsoleHandler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F64392440E9740038F5A4 /* KeyConsoleHandler.cpp */; };
@@ -1155,7 +1155,7 @@
 		1A80F2B1276EBF170032A70A /* knativesynchronization.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091342644D42B003413C3 /* knativesynchronization.cpp */; };
 		1A80F2B2276EBF170032A70A /* HTTPServerRequestImpl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F63472440E9100038F5A4 /* HTTPServerRequestImpl.cpp */; };
 		1A80F2B3276EBF170032A70A /* HTTPAuthenticationParams.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F630C2440E9100038F5A4 /* HTTPAuthenticationParams.cpp */; };
-		1A80F2B4276EBF170032A70A /* vulkancommon.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0D6EB26CF0C5400E18A08 /* vulkancommon.cpp */; };
+		1A80F2B4276EBF170032A70A /* (null) in Sources */ = {isa = PBXBuildFile; };
 		1A80F2B5276EBF170032A70A /* MulticastSocket.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F62FB2440E9100038F5A4 /* MulticastSocket.cpp */; };
 		1A80F2B6276EBF170032A70A /* normalCPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDBB2433BBBE003F17F1 /* normalCPU.cpp */; };
 		1A80F2B7276EBF170032A70A /* StreamConverter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F80FF2440ED1C0038F5A4 /* StreamConverter.cpp */; };
@@ -5364,7 +5364,7 @@
 				1A80EE7A276EBCC70032A70A /* decoder.cpp in Sources */,
 				1A80EE7B276EBCC70032A70A /* NTLMCredentials.cpp in Sources */,
 				1A80EE7C276EBCC70032A70A /* kdspaudio.cpp in Sources */,
-				1A80EE7D276EBCC70032A70A /* vk_host.cpp in Sources */,
+				1A80EE7D276EBCC70032A70A /* (null) in Sources */,
 				1A80EE7E276EBCC70032A70A /* HTTPCredentials.cpp in Sources */,
 				1A80EE7F276EBCC70032A70A /* testCPU.cpp in Sources */,
 				1A80EE80276EBCC70032A70A /* HTTPMessage.cpp in Sources */,
@@ -5850,7 +5850,7 @@
 				1A80F060276EBCC70032A70A /* pixelformat.cpp in Sources */,
 				1A80F061276EBCC70032A70A /* FileChannel.cpp in Sources */,
 				1A80F062276EBCC70032A70A /* ThreadTarget.cpp in Sources */,
-				1A80F063276EBCC70032A70A /* vulkancommon.cpp in Sources */,
+				1A80F063276EBCC70032A70A /* (null) in Sources */,
 				1A80F064276EBCC70032A70A /* MD4Engine.cpp in Sources */,
 				1A80F065276EBCC70032A70A /* Mutex.cpp in Sources */,
 				1A80F066276EBCC70032A70A /* HTTPServerRequestImpl.cpp in Sources */,
@@ -6124,7 +6124,7 @@
 				1A80F182276EBF170032A70A /* pcre_ucd.c in Sources */,
 				1A80F183276EBF170032A70A /* soft_native_page.cpp in Sources */,
 				1A80F184276EBF170032A70A /* Environment.cpp in Sources */,
-				1A80F185276EBF170032A70A /* vk_host.cpp in Sources */,
+				1A80F185276EBF170032A70A /* (null) in Sources */,
 				1A80F186276EBF170032A70A /* synchronization.cpp in Sources */,
 				1A80F187276EBF170032A70A /* audiounit.cpp in Sources */,
 				1A80F188276EBF170032A70A /* KeyConsoleHandler.cpp in Sources */,
@@ -6427,7 +6427,7 @@
 				1A80F2B1276EBF170032A70A /* knativesynchronization.cpp in Sources */,
 				1A80F2B2276EBF170032A70A /* HTTPServerRequestImpl.cpp in Sources */,
 				1A80F2B3276EBF170032A70A /* HTTPAuthenticationParams.cpp in Sources */,
-				1A80F2B4276EBF170032A70A /* vulkancommon.cpp in Sources */,
+				1A80F2B4276EBF170032A70A /* (null) in Sources */,
 				1A80F2B5276EBF170032A70A /* MulticastSocket.cpp in Sources */,
 				1A80F2B6276EBF170032A70A /* normalCPU.cpp in Sources */,
 				1A80F2B7276EBF170032A70A /* StreamConverter.cpp in Sources */,
@@ -7923,7 +7923,7 @@
 					BOXEDWINE_CORE_AUDIO,
 				);
 				HEADER_SEARCH_PATHS = "";
-				INFOPLIST_FILE = "Boxedwine copy-Info.plist";
+				INFOPLIST_FILE = Boxedwine/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -7977,7 +7977,7 @@
 					BOXEDWINE_CORE_AUDIO,
 				);
 				HEADER_SEARCH_PATHS = "";
-				INFOPLIST_FILE = "Boxedwine copy-Info.plist";
+				INFOPLIST_FILE = Boxedwine/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -8035,7 +8035,7 @@
 					BOXEDWINE_OPENGL_OSMESA,
 				);
 				HEADER_SEARCH_PATHS = "";
-				INFOPLIST_FILE = "BoxedwineX64 copy-Info.plist";
+				INFOPLIST_FILE = "BoxedwineX64-Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -8092,7 +8092,7 @@
 					BOXEDWINE_OPENGL_OSMESA,
 				);
 				HEADER_SEARCH_PATHS = "";
-				INFOPLIST_FILE = "BoxedwineX64 copy-Info.plist";
+				INFOPLIST_FILE = "BoxedwineX64-Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
