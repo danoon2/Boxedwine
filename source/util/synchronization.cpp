@@ -21,6 +21,10 @@ void BoxedWineMutex::lock() {
     this->m.lock();
 }
 
+bool BoxedWineMutex::tryLock() {
+    return this->m.tryLock();
+}
+
 void BoxedWineMutex::unlock() {
     this->m.unlock();
 }

@@ -1042,6 +1042,7 @@ void KNativeWindowSdl::drawAllWindows(KThread* thread, U32 hWnd, int count) {
     }
 #ifdef BOXEDWINE_RECORDER
     if (Recorder::instance || Player::instance) {
+        DISPATCH_MAIN_THREAD_BLOCK_BEGIN
         int bpp = screenBpp()==8?32:screenBpp();
         S32 bytesPerPixel = (bpp+7)/8;
         S32 recorderPitch = (width*((bpp+7)/8)+3) & ~3;
@@ -1097,6 +1098,7 @@ void KNativeWindowSdl::drawAllWindows(KThread* thread, U32 hWnd, int count) {
                 }
             }        	
         }
+        DISPATCH_MAIN_THREAD_BLOCK_END
     }
 #endif
     if (KSystem::videoEnabled && renderer) {
@@ -2079,21 +2081,28 @@ int getMouseButtonFromEvent(SDL_Event* e) {
 
 void KNativeWindowSdl::processCustomEvents(std::function<bool(bool isKeyDown, int key, bool isF11)> onKey, std::function<bool(bool isButtonDown, int button, int x, int y)> onMouseButton, std::function<bool(int x, int y)> onMouseMove) {
     SDL_Event e;
+    while (!BOXEDWINE_MUTEX_TRY_LOCK(sdlMutex)) {
+        KNativeWindow::getNativeWindow()->processEvents();
+    }
     while (SDL_WaitEvent(&e)) {
         if (e.type == SDL_KEYUP) {
             if (!onKey(false, e.key.keysym.sym, e.key.keysym.sym == SDLK_F11)) {
+                BOXEDWINE_MUTEX_UNLOCK(sdlMutex);
                 return;
             }
         } else if (e.type == SDL_MOUSEBUTTONDOWN) {
             if (!onMouseButton(true, getMouseButtonFromEvent(&e), e.motion.x, e.motion.y)) {
+                BOXEDWINE_MUTEX_UNLOCK(sdlMutex);
                 return;
             }
         } else if (e.type == SDL_MOUSEBUTTONUP) {
             if (!onMouseButton(false, getMouseButtonFromEvent(&e), e.motion.x, e.motion.y)) {
+                BOXEDWINE_MUTEX_UNLOCK(sdlMutex);
                 return;
             }
         } else if (e.type == SDL_MOUSEMOTION) {
             if (!onMouseMove(e.motion.x, e.motion.y)) {
+                BOXEDWINE_MUTEX_UNLOCK(sdlMutex);
                 return;
             }
         }
@@ -2107,6 +2116,7 @@ void KNativeWindowSdl::processCustomEvents(std::function<bool(bool isKeyDown, in
         }
 #endif
     }
+    BOXEDWINE_MUTEX_UNLOCK(sdlMutex);
 }
 
 #endif

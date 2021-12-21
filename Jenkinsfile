@@ -3,50 +3,6 @@
 pipeline {
     agent none
     stages {
-        stage ('Checkout') {
-            parallel {     
-                stage ('Checkout Emscripten') {
-                    agent {
-                        label "emscripten"
-                    }
-                    steps {
-                        checkout scm
-                    }
-                }
-                stage ('Checkout Linux (x64)') {
-                    agent {
-                        label "linux64"
-                    }
-                    steps {
-                        checkout scm
-                    }
-                }
-                stage ('Checkout Mac') {
-                    agent {
-                        label "macArmv8"
-                    }
-                    steps {
-                        checkout scm
-                    }
-                }
-                stage ('Checkout Raspberry Pi (ARMv7)') {
-                    agent {
-                        label "raspberry"
-                    }
-                    steps {
-                        checkout scm
-                    }
-                }
-                stage ('Checkout Windows') {
-                    agent {
-                        label "windows"
-                    }
-                    steps {
-                        checkout scm
-                    }
-                }   
-            }
-        }
         stage ('Test') {
             parallel {
                 stage ('Test Emscripten') {
@@ -99,6 +55,19 @@ pipeline {
                             sh '''#!/bin/bash
                                 make testJit || exit
                                 ./Build/TestJit/boxedwine
+                            '''
+                        }
+                    }
+                }
+                stage ('Test Raspberry Pi (ARMv8)') {
+                    agent {
+                        label "raspberry64"
+                    }
+                    steps {
+                        dir("project/linux") {
+                            sh '''#!/bin/bash
+                                make testMultiThreaded || exit
+                                ./Build/TestMultiThreaded/boxedwine
                             '''
                         }
                     }
@@ -234,6 +203,30 @@ pipeline {
                         }
                     }
                 }
+                stage ('Build Raspberry Pi (ARMv8)') {
+                    agent {
+                        label "raspberry64"
+                    }
+                    steps {
+                        dir("project/linux") {
+                            sh '''#!/bin/bash
+                                rm Build/MultiThreaded/boxedwine
+                                rm Deploy/RaspberryPi64/boxedwine
+                                mkdir -p Deploy/RaspberryPi64
+                                make multiThreaded
+                                if [ ! -f "Build/MultiThreaded/boxedwine" ] 
+                                then
+                                    echo "Build/MultiThreaded/boxedwine DOES NOT exists."
+                                    exit 999
+                                fi
+                                mv Build/MultiThreaded/boxedwine Deploy/RaspberryPi64/
+                            '''
+                        }
+                        dir("project/linux") {
+                            stash includes: 'Deploy/RaspberryPi64/boxedwine', name: 'raspberry64'
+                        }
+                    }
+                }
                 stage ('Build Windows') {
                     agent {
                         label "windows"
@@ -338,6 +331,30 @@ pipeline {
 
                     }
                 }
+                stage ('Raspberry Pi (ARMv8) Automation') {
+                    agent {
+                        label "raspberry64"
+                    }
+                    options {
+                        timeout(time: 20, unit: 'MINUTES')   // timeout on this stage
+                    }
+                    steps {
+                        dir("project/linux") {
+                            sh '''#!/bin/bash
+                                wget -N --no-if-modified-since -np http://boxedwine.org/v/automation.zip
+                                rm -rf automation
+                                unzip automation.zip
+                            '''
+                        }
+                        dir("project/linux/automation") {
+                            unstash "raspberry64"
+                            sh '''#!/bin/bash
+                                java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/Wine-5.0.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/RaspberryPi64/boxedwine\" -nosound -novideo || exit 1
+                            '''
+                        }
+
+                    }
+                }
                 stage ('Windows Automation') {
                     agent {
                         label "windows"
@@ -373,10 +390,11 @@ pipeline {
                     unstash "linux64"
                     unstash "macArmv8"
                     unstash "raspberry"
+                    unstash "raspberry64"
                     unstash "windows"
                     dir('Deploy') {
                         sh '''
-                        echo "Linux64 and Win64 use the binary translator CPU core and are much faster.  The others use the normal core or normal core + JIT." > readme.txt
+                        echo "Linux64, Raspberry64 (experimental and buggy) and Win64 use the binary translator CPU core and are much faster.  The others use the normal core or normal core + JIT." > readme.txt
                         zip -r build-$BUILD_NUMBER.zip *
                         '''
                         archiveArtifacts artifacts: "build-${env.BUILD_NUMBER}.zip", fingerprint: true, allowEmptyArchive: true
