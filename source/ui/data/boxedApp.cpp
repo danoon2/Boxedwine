@@ -101,7 +101,7 @@ void BoxedApp::runAutomation() {
 }
 
 bool BoxedApp::hasAutomation() {
-    std::string path = GlobalSettings::getAutomationFolder(this->container) + Fs::nativePathSeperator + "script.txt";
+    std::string path = GlobalSettings::getAutomationFolder(this->container) + Fs::nativePathSeperator + RECORDER_SCRIPT;
     return Fs::doesNativePathExist(path);
 }
 

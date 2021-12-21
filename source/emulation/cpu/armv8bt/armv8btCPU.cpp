@@ -686,7 +686,7 @@ U64 Armv8btCPU::handleAccessException(U64 ip, U64 address, bool readAddress) {
                 return this->handleCodePatch(ip, emulatedAddress);                    
             }
         }   
-#ifdef _DEBUG 0x102d46fb0
+#ifdef _DEBUG
         //void* fromHost = this->thread->memory->getExistingHostAddress(this->fromEip);
         //std::shared_ptr<BtCodeChunk> chunk = this->thread->memory->getCodeChunkContainingHostAddress((void*)rip);
 #endif

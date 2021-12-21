@@ -3,7 +3,11 @@
 
 #ifdef BOXEDWINE_RECORDER
 #ifdef BOXEDWINE_64
+#ifdef BOXEDWINE_ARMV8BT
+#define RECORDER_SCRIPT "script.arm64.txt"
+#else
 #define RECORDER_SCRIPT "script.x64.txt"
+#endif
 #else
 #define RECORDER_SCRIPT "script.txt"
 #endif

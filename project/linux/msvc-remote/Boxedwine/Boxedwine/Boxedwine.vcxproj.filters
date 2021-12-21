@@ -1750,6 +1750,9 @@
     <ClCompile Include="..\..\..\..\..\source\opengl\boxedwineGL.cpp">
       <Filter>source\opengl</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\io\fsdynamiclinknode.cpp">
+      <Filter>source\io</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
@@ -4774,6 +4777,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\opengl\boxedwineGL.h">
       <Filter>source\opengl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\io\fsdynamiclinknode.h">
+      <Filter>source\io</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

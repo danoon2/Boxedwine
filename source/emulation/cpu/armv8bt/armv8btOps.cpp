@@ -2978,8 +2978,8 @@ void opWait(Armv8btAsm* data) {
 }
 void opSahf(Armv8btAsm* data) {
     U8 tmpReg = data->getTmpReg();
-    data->andRegs32(tmpReg, xEAX, 0xD500); // only SF|ZF|AF|PF|CF
-    data->orRegs32(tmpReg, tmpReg, 0x200); // always set
+    data->andValue32(tmpReg, xEAX, 0xD500); // only SF|ZF|AF|PF|CF
+    data->orValue32(tmpReg, tmpReg, 0x200); // always set
     data->copyBitsFromSourceAtPositionToDest(xFLAGS, tmpReg, 8, 8);
     data->releaseTmpReg(tmpReg);
 }

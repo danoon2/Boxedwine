@@ -1,15 +1,16 @@
 ifndef BUILD_DIR
 
-.PHONY: default all release test jit testJit multiThreaded testMultiThreaded
+.PHONY: default all clean release test jit testJit multiThreaded testMultiThreaded
 
-default all: jit
+default all: multiThreaded
 
 uname_m := $(shell uname -m)
+uname_n := $(shell uname -n)
 $(info uname -m is $(uname_m))
 ifeq ($(uname_m), armv7l)
 JIT_FLAGS := -DBOXEDWINE_DYNAMIC_ARMV7 -DBOXEDWINE_DYNAMIC
 else ifeq ($(uname_m), aarch64)
-BT_FLAGS := -DBOXEDWINE_64 -DBOXEDWINE_BINARY_TRANSLATOR -DBOXEDWINE_ARMV8BT -DBOXEDWINE_64BIT_MMU -DBOXEDWINE_MULTI_THREADED
+BT_FLAGS := -O0 -DBOXEDWINE_64 -DBOXEDWINE_BINARY_TRANSLATOR -DBOXEDWINE_ARMV8BT -DBOXEDWINE_64BIT_MMU -DBOXEDWINE_MULTI_THREADED -DSIMDE_NO_NEON -DSIMDE_SSE2_NO_NEON
 RELEASE_FLAGS := -DBOXEDWINE_64
 else ifeq ($(uname_m), i386)
 JIT_FLAGS := -DBOXEDWINE_DYNAMIC32 -DBOXEDWINE_DYNAMIC
@@ -20,6 +21,9 @@ BT_FLAGS := -DBOXEDWINE_64 -DBOXEDWINE_BINARY_TRANSLATOR -DBOXEDWINE_X64 -DBOXED
 RELEASE_FLAGS := -DBOXEDWINE_64
 endif
 
+ifeq ($(uname_n), raspberrypi)
+BT_FLAGS += -DBOXEDWINE_SMALL_VIRTUAL_MEMORY
+endif
 jit: export BUILD_DIR := Build/Jit
 jit: export EXTRA_CPP_FLAGS := $(JIT_FLAGS)
 testJit: export BUILD_DIR := Build/TestJit
@@ -45,6 +49,9 @@ endif
 jit release test testJit multiThreaded testMultiThreaded:
 	sh buildPocoLib.sh
 	@$(MAKE)
+
+clean:
+	$(RM) -r Build
 
 else
 
@@ -123,11 +130,7 @@ $(BUILD_DIR)/%.c.o: %.c
 # c++ source
 $(BUILD_DIR)/%.cpp.o: %.cpp
 	$(MKDIR_P) $(dir $@)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@
-
-$(TEST_BUILD_DIR)/%.cpp.o: %.cpp
-	$(MKDIR_P) $(dir $@)
-	$(CXX) $(TEST_CPPFLAGS) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -MMD -MP -c $< -o $@
 
 .PHONY: clean
 

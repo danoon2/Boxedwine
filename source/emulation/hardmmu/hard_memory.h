@@ -28,8 +28,6 @@ INLINE void* getNativeAddress(Memory* memory, U32 address) {
     U32 page = address >> K_PAGE_SHIFT;
 #ifdef _DEBUG    
     if (!memory->isPageAllocated(page) && (memory->flags[page] & PAGE_MAPPED_HOST)==0) {
-        static U32 i = 0;
-        return &i;
         memory->log_pf(KThread::currentThread(), KThread::currentThread()->cpu->eip.u32);
         kpanic("bad memory access");
     }

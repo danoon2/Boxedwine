@@ -1487,7 +1487,7 @@ class Arm8BtFlagsSar8 : public Arm8BtFlagsDefault8 {
         data->releaseTmpReg(tmp2);
     }
     virtual void setOF(Armv8btAsm* data, U8 reg) {
-        data->andRegs32(reg, reg, ~OF);
+        data->andValue32(reg, reg, ~OF);
     }
     virtual void setAF(Armv8btAsm* data, U8 reg) {
         // cpu->src.u8 & 0x1f;
@@ -1528,7 +1528,7 @@ class Arm8BtFlagsSar16 : public Arm8BtFlagsDefault16 {
         data->releaseTmpReg(tmp2);
     }
     virtual void setOF(Armv8btAsm* data, U8 reg) {
-        data->andRegs32(reg, reg, ~OF);
+        data->andValue32(reg, reg, ~OF);
     }
     virtual void setAF(Armv8btAsm* data, U8 reg) {
         // cpu->src.u8 & 0x1f;
@@ -1569,7 +1569,7 @@ class Arm8BtFlagsSar32 : public Arm8BtFlagsDefault32 {
         data->releaseTmpReg(tmp2);
     }
     virtual void setOF(Armv8btAsm* data, U8 reg) {
-        data->andRegs32(reg, reg, ~OF);
+        data->andValue32(reg, reg, ~OF);
     }
     virtual void setAF(Armv8btAsm* data, U8 reg) {
         // cpu->src.u8 & 0x1f;

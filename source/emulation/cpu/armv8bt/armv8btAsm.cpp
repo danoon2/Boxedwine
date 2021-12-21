@@ -4531,7 +4531,7 @@ void Armv8btAsm::fSqrt(U8 dst, U8 src, VectorWidth width) {
 void Armv8btAsm::fRsqrt(U8 dst, U8 src, VectorWidth width) {
     write8(dst | (U8)(src << 5));
     write8(0xd8 | (U8)(src >> 3));
-    if (width == S4 || S_scaler) {
+    if (width == S4 || width == S_scaler) {
         // FRSQRTE s0, s0
         write8(0xa1);
     } else if (width == D2 || width == D_scaler) {
