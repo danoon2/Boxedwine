@@ -56,6 +56,10 @@ bool Fs::initFileSystem(const std::string& rootPath) {
             children[i]->remove();
         }
     }
+    BoxedPtr<FsNode> lock = Fs::getNodeFromLocalPath("", "/tmp/.X0-lock", false, NULL);
+    if (lock) {
+        lock->remove();
+    }
     return true;
 }
 

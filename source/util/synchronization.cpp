@@ -127,6 +127,7 @@ void BoxedWineCondition::wait() {
     }
     this->c.wait(this->m);
     if (thread) {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(thread->waitingCondSync);
         thread->waitingCond = NULL;
     }
     for (auto &child : this->children) {
@@ -150,6 +151,7 @@ void BoxedWineCondition::waitWithTimeout(U32 ms) {
     }
     this->c.waitWithTimeout(this->m, KSystem::emulatedMilliesToHost(ms));
     if (!KSystem::shutingDown && thread) {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(thread->waitingCondSync);
         thread->waitingCond = NULL;
     }
 

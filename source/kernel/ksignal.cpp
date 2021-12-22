@@ -194,6 +194,10 @@ U32 KSignal::readNative(U8* buffer, U32 len) {
 		if (KThread::currentThread()->terminating) {
 			return -K_EINTR;
 		}
+        if (KThread::currentThread()->startSignal) {
+            KThread::currentThread()->startSignal = false;
+            return -K_CONTINUE;
+        }
 #endif
     }
     return 0;

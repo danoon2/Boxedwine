@@ -879,10 +879,22 @@ void KProcess::signalProcess(U32 signal) {
 	BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(threadsCondition);
     // give each thread a chance to run a signal, some or all of them might have the signal masked off.  
     // In that case when the user unmasks the signal with sigprocmask it will be caught then
+#ifdef BOXEDWINE_MULTI_THREADED
+    for (auto& t : this->threads) {
+        KThread* thread = t.second;
+        if (thread->waitingCond) {
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(thread->waitingCondSync);
+            if (thread->waitingCond) {
+                thread->runSignals();
+            }
+        }
+    }
+#else
     for (auto& t : this->threads) {
         KThread* thread = t.second;
         thread->runSignals();
     }
+#endif
     {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->pendingSignalsMutex);
         if (this->pendingSignals & signalMask) {
@@ -1638,7 +1650,7 @@ U32 KProcess::clone(U32 flags, U32 child_stack, U32 ptid, U32 tls, U32 ctid) {
         if ((flags & K_CLONE_CHILD_SETTID)!=0) {
             if (ctid!=0) {
                 ChangeThread c(newThread); // so that writed will go to the new memory space
-                writed(ctid, newThread->id);
+                 ::writed(ctid, newThread->id);
             }
         }
         if ((flags & K_CLONE_CHILD_CLEARTID)!=0) {
