@@ -654,7 +654,7 @@ void Memory::clearCodePageFromCache(U32 page) {
             delete[] table;
             this->eipToHostInstructionPages[page] = NULL;
         }
-    }    
+    }
     
     U32 nativePage = this->getNativePage(page);
     U32 startingPage = this->getEmulatedPage(nativePage);
@@ -974,7 +974,7 @@ void Memory::freeExcutableMemory(void* hostMemory, U32 actualSize) {
     Platform::writeCodeToMemory(hostMemory, actualSize, [hostMemory, actualSize] {
         memset(hostMemory, 0xcd, actualSize);
         });
-        
+
     U32 size = 0;
     U32 powerOf2Size = powerOf2(actualSize, size);
     U32 index = powerOf2Size - EXECUTABLE_MIN_SIZE_POWER;

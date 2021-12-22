@@ -86,6 +86,25 @@ bool BoxedApp::saveApp() {
     return true;
 }
 
+void BoxedApp::createAutomation() {
+    std::string path = GlobalSettings::getAutomationFolder(this->container);
+    if (!Fs::doesNativePathExist(path)) {
+        Fs::makeNativeDirs(path);
+    }
+    this->launch();
+    GlobalSettings::startUpArgs.recordAutomation = GlobalSettings::getAutomationFolder(this->container);
+}
+
+void BoxedApp::runAutomation() {
+    this->launch();
+    GlobalSettings::startUpArgs.runAutomation = GlobalSettings::getAutomationFolder(this->container);
+}
+
+bool BoxedApp::hasAutomation() {
+    std::string path = GlobalSettings::getAutomationFolder(this->container) + Fs::nativePathSeperator + RECORDER_SCRIPT;
+    return Fs::doesNativePathExist(path);
+}
+
 void BoxedApp::launch() {
     std::string launchCmd;
     std::string args;

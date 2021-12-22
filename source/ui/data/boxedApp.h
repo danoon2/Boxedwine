@@ -32,6 +32,9 @@ public:
     void setName(const std::string& name) {this->name = name;}
     void setArgs(const std::vector<std::string>& args) {this->args = args;}
     void launch();
+    void createAutomation();
+    void runAutomation();
+    bool hasAutomation();
     const BoxedAppIcon* getIconTexture(int iconSize=0);
 
     BoxedContainer* getContainer() {return this->container;}

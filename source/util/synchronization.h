@@ -16,6 +16,7 @@ public:
 class BoxedWineMutex {
 public:
     void lock();
+    bool tryLock();
     void unlock();
 
 private:
@@ -74,6 +75,7 @@ private:
 
 #define BOXEDWINE_MUTEX BoxedWineMutex
 #define BOXEDWINE_MUTEX_LOCK(mutex) mutex.lock()
+#define BOXEDWINE_MUTEX_TRY_LOCK(mutex) mutex.tryLock()
 #define BOXEDWINE_MUTEX_UNLOCK(mutex) mutex.unlock()
 
 #define BOXEDWINE_CONDITION BoxedWineCondition
@@ -95,6 +97,7 @@ private:
 
 typedef void* BOXEDWINE_MUTEX;
 #define BOXEDWINE_MUTEX_LOCK(mutex)
+#define BOXEDWINE_MUTEX_TRY_LOCK(mutex) true
 #define BOXEDWINE_MUTEX_UNLOCK(mutex)
 
 class KThread;

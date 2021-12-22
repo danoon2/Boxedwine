@@ -1,50 +1,8 @@
+// Notes:
+// Windows build: put wget, msbuild and build tools in path (C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.29.30037\bin\Hostx64\x64)
 pipeline {
     agent none
     stages {
-        stage ('Checkout') {
-            parallel {     
-                stage ('Checkout Emscripten') {
-                    agent {
-                        label "emscripten"
-                    }
-                    steps {
-                        checkout scm
-                    }
-                }
-                stage ('Checkout Linux (x64)') {
-                    agent {
-                        label "linux64"
-                    }
-                    steps {
-                        checkout scm
-                    }
-                }
-                stage ('Checkout Mac') {
-                    agent {
-                        label "macArmv8"
-                    }
-                    steps {
-                        checkout scm
-                    }
-                }
-                stage ('Checkout Raspberry Pi (ARMv7)') {
-                    agent {
-                        label "raspberry"
-                    }
-                    steps {
-                        checkout scm
-                    }
-                }
-                stage ('Checkout Windows') {
-                    agent {
-                        label "windows"
-                    }
-                    steps {
-                        checkout scm
-                    }
-                }   
-            }
-        }
         stage ('Test') {
             parallel {
                 stage ('Test Emscripten') {
@@ -97,6 +55,19 @@ pipeline {
                             sh '''#!/bin/bash
                                 make testJit || exit
                                 ./Build/TestJit/boxedwine
+                            '''
+                        }
+                    }
+                }
+                stage ('Test Raspberry Pi (ARMv8)') {
+                    agent {
+                        label "raspberry64"
+                    }
+                    steps {
+                        dir("project/linux") {
+                            sh '''#!/bin/bash
+                                make testMultiThreaded || exit
+                                ./Build/TestMultiThreaded/boxedwine
                             '''
                         }
                     }
@@ -159,9 +130,10 @@ pipeline {
                                 rm Build/MultiThreaded/boxedwine
                                 rm Build/Release/boxedwine
                                 rm Build/Deploy/Linux64/boxedwine
-                                make release || exit
+                                make release
                                 make multiThreaded
                                 mkdir -p Build/Deploy/Linux64
+                                mkdir -p Build/Deploy/Linux
                                 if [ ! -f "Build/MultiThreaded/boxedwine" ] 
                                 then
                                     echo "Build/MultiThreaded/boxedwine DOES NOT exists."
@@ -173,11 +145,13 @@ pipeline {
                                     exit 999
                                 fi
                                 cp Build/MultiThreaded/boxedwine Build/Deploy/Linux64/
+                                cp Build/Release/boxedwine Build/Deploy/Linux/
                             '''
                         }
                         
                         dir("project/linux/Build") {
-                            stash includes: 'Deploy/Linux64/boxedwine', name: 'linux64'                            
+                            stash includes: 'Deploy/Linux64/boxedwine', name: 'linux64'
+                            stash includes: 'Deploy/Linux/boxedwine', name: 'linux'
                         }
                     }
                 }
@@ -191,7 +165,6 @@ pipeline {
                                 rm -rf bin/Boxedwine.app
                                 rm -rf Deploy/Mac/Boxedwine.app
                                 mkdir -p Deploy/Mac
-                                export PATH=/bin:/usr/bin:/usr/local/bin:/Users/alla/homebrew/bin
                                 /bin/bash buildRelease.sh
                                 if [ ! -d "bin/Boxedwine.app" ] 
                                 then
@@ -230,6 +203,30 @@ pipeline {
                         }
                     }
                 }
+                stage ('Build Raspberry Pi (ARMv8)') {
+                    agent {
+                        label "raspberry64"
+                    }
+                    steps {
+                        dir("project/linux") {
+                            sh '''#!/bin/bash
+                                rm Build/MultiThreaded/boxedwine
+                                rm Deploy/RaspberryPi64/boxedwine
+                                mkdir -p Deploy/RaspberryPi64
+                                make multiThreaded
+                                if [ ! -f "Build/MultiThreaded/boxedwine" ] 
+                                then
+                                    echo "Build/MultiThreaded/boxedwine DOES NOT exists."
+                                    exit 999
+                                fi
+                                mv Build/MultiThreaded/boxedwine Deploy/RaspberryPi64/
+                            '''
+                        }
+                        dir("project/linux") {
+                            stash includes: 'Deploy/RaspberryPi64/boxedwine', name: 'raspberry64'
+                        }
+                    }
+                }
                 stage ('Build Windows') {
                     agent {
                         label "windows"
@@ -245,13 +242,139 @@ pipeline {
                         bat "\"${env.MSBUILD}\" \"project/msvc/BoxedWine/BoxedWine.sln\" /p:Configuration=Release;Platform=x64"
                         bat '''
                             move project\\msvc\\Boxedwine\\Release\\Boxedwine.exe project\\msvc\\Deploy\\Win32\\
+                            copy project\\msvc\\Deploy\\Win32\\Boxedwine.exe project\\msvc\\Deploy\\Win32\\Boxedwine_console.exe
+                            editbin.exe /subsystem:console project\\msvc\\Deploy\\Win32\\Boxedwine_console.exe
                             move project\\msvc\\Boxedwine\\x64\\Release\\Boxedwine.exe project\\msvc\\Deploy\\Win64\\
+                            copy project\\msvc\\Deploy\\Win64\\Boxedwine.exe project\\msvc\\Deploy\\Win64\\Boxedwine_console.exe
+                            editbin.exe /subsystem:console project\\msvc\\Deploy\\Win64\\Boxedwine_console.exe
                         '''
                         dir("project/msvc") {
                             stash includes: 'Deploy/**/*', name: 'windows'
                         }
                     }
                 }      
+            }
+        }
+        stage ('Automation') {
+            parallel {
+                stage ('Linux (x64) Automation') {
+                    agent {
+                        label "linux64"
+                    }
+                    steps {
+                        dir("project/linux") {                                                        
+                            sh '''#!/bin/bash
+                                wget -N --no-if-modified-since -np http://boxedwine.org/v/automation.zip
+                                rm -rf automation
+                                unzip automation.zip
+                            '''
+                        }
+                        dir("project/linux/automation") {
+                            unstash "linux64"
+                            unstash "linux"
+                            sh '''
+                                java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/Wine-5.0.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/Linux64/boxedwine\" -nosound -novideo || exit 1
+                                java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/Wine-5.0.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/Linux/boxedwine\" -nosound -novideo || exit 1
+                            '''
+                        }
+                    }
+                }
+                stage ('Mac Automation') {
+                    agent {
+                        label "macArmv8"
+                    }
+                    steps {
+                        dir("project/mac-xcode") {
+                            sh '''#!/bin/bash
+                                curl -z automation.zip http://boxedwine.org/v/automation.zip --output automation.zip
+                                rm -rf automation
+                                unzip automation.zip
+
+                                rm -rf bin/BoxedwineAutomation.app
+                                /bin/bash buildAutomation.sh
+                                if [ ! -d "bin/BoxedwineAutomation.app" ] 
+                                then
+                                    echo "bin/BoxedwineAutomation.app DOES NOT exists."
+                                    exit 999
+                                fi
+                            '''
+                        }
+                        
+                        dir("project/mac-xcode/automation") {
+                            sh '''#!/bin/bash    
+                                java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/mac-xcode/automation/fs/Wine-5.0.zip\" \"$WORKSPACE/project/mac-xcode/automation/scripts/" \"$WORKSPACE/project/mac-xcode/bin/BoxedwineAutomation.app/Contents/MacOS/BoxedwineAutomation\" -nosound -novideo || exit 1
+                            '''
+                        }
+                    }
+                }
+                stage ('Raspberry Pi (ARMv7) Automation') {
+                    agent {
+                        label "raspberry"
+                    }
+                    options {
+                        timeout(time: 20, unit: 'MINUTES')   // timeout on this stage
+                    }
+                    steps {
+                        dir("project/linux") {
+                            sh '''#!/bin/bash
+                                wget -N --no-if-modified-since -np http://boxedwine.org/v/automation.zip
+                                rm -rf automation
+                                unzip automation.zip
+                            '''
+                        }
+                        dir("project/linux/automation") {
+                            unstash "raspberry"
+                            sh '''#!/bin/bash
+                                java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/Wine-5.0.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/RaspberryPi/boxedwine\" -nosound -novideo || exit 1
+                            '''
+                        }
+
+                    }
+                }
+                stage ('Raspberry Pi (ARMv8) Automation') {
+                    agent {
+                        label "raspberry64"
+                    }
+                    options {
+                        timeout(time: 20, unit: 'MINUTES')   // timeout on this stage
+                    }
+                    steps {
+                        dir("project/linux") {
+                            sh '''#!/bin/bash
+                                wget -N --no-if-modified-since -np http://boxedwine.org/v/automation.zip
+                                rm -rf automation
+                                unzip automation.zip
+                            '''
+                        }
+                        dir("project/linux/automation") {
+                            unstash "raspberry64"
+                            sh '''#!/bin/bash
+                                java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/Wine-5.0.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/RaspberryPi64/boxedwine\" -nosound -novideo || exit 1
+                            '''
+                        }
+
+                    }
+                }
+                stage ('Windows Automation') {
+                    agent {
+                        label "windows"
+                    }
+                    steps {
+                        bat '''
+                            wget -N --no-if-modified-since -np http://boxedwine.org/v/automation.zip
+                            IF EXIST "automation" rmdir /q /s "automation"
+                            unzip automation.zip
+                        '''
+                        dir("automation") {
+                            unstash "windows"
+                            bat '''
+                                java -jar bin\\BoxedWineRunner.jar \"%WORKSPACE%\\automation\\fs\\Wine-5.0.zip\" \"%WORKSPACE%\\automation\\scripts\" \"%WORKSPACE%\\automation\\Deploy\\Win32\\Boxedwine.exe\" -nosound -novideo
+                                if %errorlevel% neq 0 exit /b %errorlevel%
+                                java -jar bin\\BoxedWineRunner.jar \"%WORKSPACE%\\automation\\fs\\Wine-5.0.zip\" \"%WORKSPACE%\\automation\\scripts\" \"%WORKSPACE%\\automation\\Deploy\\Win64\\Boxedwine.exe\" -nosound -novideo
+                            '''
+                        }
+                    }
+                } 
             }
         }
     }
@@ -267,9 +390,11 @@ pipeline {
                     unstash "linux64"
                     unstash "macArmv8"
                     unstash "raspberry"
+                    unstash "raspberry64"
                     unstash "windows"
                     dir('Deploy') {
                         sh '''
+                        echo "Linux64, Raspberry64 (experimental and buggy) and Win64 use the binary translator CPU core and are much faster.  The others use the normal core or normal core + JIT." > readme.txt
                         zip -r build-$BUILD_NUMBER.zip *
                         '''
                         archiveArtifacts artifacts: "build-${env.BUILD_NUMBER}.zip", fingerprint: true, allowEmptyArchive: true
