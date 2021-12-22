@@ -145,9 +145,11 @@ static bool isAddressRangeInUse(void* p, U64 len) {
     struct vm_region_submap_info_64 info;
     mach_msg_type_number_t count = VM_REGION_SUBMAP_INFO_COUNT_64;
     
-    if (vm_region_recurse_64(target_task, &addr, &lsize, &depth, (vm_region_info_t)&info, &count))
-    {
-        kpanic("isAddressRangeInUse vm_region_recurse_64 failed");
+    kern_return_t result = vm_region_recurse_64(target_task, &addr, &lsize, &depth, (vm_region_info_t)&info, &count);
+    if (result == KERN_INVALID_ADDRESS) {
+        return false;
+    } else if (result) {
+        kpanic("isAddressRangeInUse vm_region_recurse_64 failed: %d", (int)result);
     }
     if (addr>=(U64)p+len) {
         return false;
