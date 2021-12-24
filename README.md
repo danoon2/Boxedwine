@@ -58,6 +58,7 @@ Raspberry Pi 4 32-bit
 
 
 Windows 10 on Intel i7-6700K
+- **48** Normal CPU Core
 - **64** Normal CPU Core + JIT
 - **985** x64 CPU Core
 
