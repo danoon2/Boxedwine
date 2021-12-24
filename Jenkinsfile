@@ -1,7 +1,20 @@
 // Notes:
 // Windows build: put wget, msbuild and build tools in path (C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.29.30037\bin\Hostx64\x64)
+void gitCheckout() {
+    def retryAttempt = 0
+    retry(3) {
+        if (retryAttempt > 0) {
+            sleep(120  * retryAttempt)
+        }
+        checkout scm
+    }
+}
+
 pipeline {
     agent none
+    options { 
+        skipDefaultCheckout(true) 
+    }
     stages {
         stage ('Test') {
             parallel {
@@ -10,6 +23,9 @@ pipeline {
                         label "emscripten"
                     }
                     steps {
+                        script { 
+                            gitCheckout() 
+                        }
                         sh '''#!/bin/bash
                             source ~/emsdk/emsdk_env.sh
                             cd project/emscripten
@@ -23,6 +39,9 @@ pipeline {
                         label "linux64"
                     }
                     steps {
+                        script { 
+                            gitCheckout() 
+                        }
                         dir("project/linux") {
                             sh '''#!/bin/bash
                                 make test || exit
@@ -33,13 +52,30 @@ pipeline {
                         }
                     }
                 }
-                stage ('Test Mac') {
+                stage ('Test Mac (ARMv8)') {
                     agent {
                         label "macArmv8"
                     }
                     steps {
+                        script { 
+                            gitCheckout() 
+                        }
                         sh '''#!/bin/bash
-                            export PATH=/bin:/usr/bin:/usr/local/bin:/Users/alla/homebrew/bin
+                            cd project/mac-xcode
+                            /bin/bash buildTest.sh || exit
+                            bin/BoxedwineTest.app/Contents/MacOS/BoxedwineTest
+                        '''
+                    }
+                }
+                stage ('Test Mac (x86)') {
+                    agent {
+                        label "mac"
+                    }
+                    steps {
+                        script { 
+                            gitCheckout() 
+                        }
+                        sh '''#!/bin/bash
                             cd project/mac-xcode
                             /bin/bash buildTest.sh || exit
                             bin/BoxedwineTest.app/Contents/MacOS/BoxedwineTest
@@ -51,6 +87,9 @@ pipeline {
                         label "raspberry"
                     }
                     steps {
+                        script { 
+                            gitCheckout() 
+                        }
                         dir("project/linux") {
                             sh '''#!/bin/bash
                                 make testJit || exit
@@ -64,6 +103,9 @@ pipeline {
                         label "raspberry64"
                     }
                     steps {
+                        script { 
+                            gitCheckout() 
+                        }
                         dir("project/linux") {
                             sh '''#!/bin/bash
                                 make testMultiThreaded || exit
@@ -77,6 +119,9 @@ pipeline {
                         label "windows"
                     }
                     steps {
+                        script { 
+                            gitCheckout() 
+                        }
                         bat "\"${env.MSBUILD}\" \"project/msvc/BoxedWine/BoxedWine.sln\" /p:Configuration=Test;Platform=win32"
                         bat "project\\msvc\\BoxedWine\\Test\\BoxedWine.exe"
                         bat "\"${env.MSBUILD}\" \"project/msvc/BoxedWine/BoxedWine.sln\" /p:Configuration=Test;Platform=x64"
@@ -92,6 +137,9 @@ pipeline {
                         label "emscripten"
                     }
                     steps {
+                        script { 
+                            gitCheckout() 
+                        }
                         dir("project/emscripten") {
                             sh '''#!/bin/bash
                                 source ~/emsdk/emsdk_env.sh
@@ -125,6 +173,9 @@ pipeline {
                         label "linux64"
                     }
                     steps {
+                        script { 
+                            gitCheckout() 
+                        }
                         dir("project/linux") {
                             sh '''#!/bin/bash
                                 rm Build/MultiThreaded/boxedwine
@@ -155,11 +206,14 @@ pipeline {
                         }
                     }
                 }
-                stage ('Build Mac') {
+                stage ('Build Mac (ARMv8)') {
                     agent {
                         label "macArmv8"
                     }
                     steps {
+                        script { 
+                            gitCheckout() 
+                        }
                         dir("project/mac-xcode") {
                             sh '''#!/bin/bash
                                 rm -rf bin/Boxedwine.app
@@ -179,11 +233,41 @@ pipeline {
                         }
                     }
                 }
+                stage ('Build Mac (x86)') {
+                    agent {
+                        label "mac"
+                    }
+                    steps {
+                        script { 
+                            gitCheckout() 
+                        }
+                        dir("project/mac-xcode") {
+                            sh '''#!/bin/bash
+                                rm -rf bin/Boxedwine.app
+                                rm -rf Deploy/MacIntel/Boxedwine.app
+                                mkdir -p Deploy/MacIntel
+                                /bin/bash buildRelease.sh
+                                if [ ! -d "bin/Boxedwine.app" ] 
+                                then
+                                    echo "bin/Boxedwine.app DOES NOT exists."
+                                    exit 999
+                                fi
+                                mv bin/Boxedwine.app/ Deploy/MacIntel/
+                            '''
+                        }
+                        dir("project/mac-xcode") {
+                            stash includes: 'Deploy/MacIntel/**', name: 'mac'                            
+                        }
+                    }
+                }
                 stage ('Build Raspberry Pi (ARMv7)') {
                     agent {
                         label "raspberry"
                     }
                     steps {
+                        script { 
+                            gitCheckout() 
+                        }
                         dir("project/linux") {
                             sh '''#!/bin/bash
                                 rm Build/Jit/boxedwine
@@ -208,6 +292,9 @@ pipeline {
                         label "raspberry64"
                     }
                     steps {
+                        script { 
+                            gitCheckout() 
+                        }
                         dir("project/linux") {
                             sh '''#!/bin/bash
                                 rm Build/MultiThreaded/boxedwine
@@ -232,6 +319,9 @@ pipeline {
                         label "windows"
                     }
                     steps {
+                        script { 
+                            gitCheckout() 
+                        }
                         bat '''
                             IF EXIST "project\\msvc\\Boxedwine\\Release\\Boxedwine.exe" DEL "project\\msvc\\Boxedwine\\Release\\Boxedwine.exe"
                             IF EXIST "project\\msvc\\Boxedwine\\x64\\Release\\Boxedwine.exe" DEL "project\\msvc\\Boxedwine\\x64\\Release\\Boxedwine.exe"
@@ -272,18 +362,27 @@ pipeline {
                         dir("project/linux/automation") {
                             unstash "linux64"
                             unstash "linux"
-                            sh '''
-                                java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/Wine-5.0.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/Linux64/boxedwine\" -nosound -novideo || exit 1
-                                java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/Wine-5.0.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/Linux/boxedwine\" -nosound -novideo || exit 1
-                            '''
+                            retry(3) {
+                                sh '''
+                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/Wine-5.0.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/Linux64/boxedwine\" -nosound -novideo
+                                '''
+                            }
+                            retry(3) {
+                                sh '''
+                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/Wine-5.0.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/Linux/boxedwine\" -nosound -novideo
+                                '''
+                            }
                         }
                     }
                 }
-                stage ('Mac Automation') {
+                stage ('Mac Automation (ARMv8)') {
                     agent {
                         label "macArmv8"
                     }
                     steps {
+                        script { 
+                            gitCheckout() 
+                        }
                         dir("project/mac-xcode") {
                             sh '''#!/bin/bash
                                 curl -z automation.zip http://boxedwine.org/v/automation.zip --output automation.zip
@@ -301,9 +400,44 @@ pipeline {
                         }
                         
                         dir("project/mac-xcode/automation") {
-                            sh '''#!/bin/bash    
-                                java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/mac-xcode/automation/fs/Wine-5.0.zip\" \"$WORKSPACE/project/mac-xcode/automation/scripts/" \"$WORKSPACE/project/mac-xcode/bin/BoxedwineAutomation.app/Contents/MacOS/BoxedwineAutomation\" -nosound -novideo || exit 1
+                            retry(3) {
+                                sh '''#!/bin/bash    
+                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/mac-xcode/automation/fs/Wine-5.0.zip\" \"$WORKSPACE/project/mac-xcode/automation/scripts/" \"$WORKSPACE/project/mac-xcode/bin/BoxedwineAutomation.app/Contents/MacOS/BoxedwineAutomation\" -nosound -novideo || exit 1
+                                '''
+                            }
+                        }
+                    }
+                }
+                stage ('Mac Automation (x86)') {
+                    agent {
+                        label "mac"
+                    }
+                    steps {
+                        script { 
+                            gitCheckout() 
+                        }                      
+                        dir("project/mac-xcode") {
+                            sh '''#!/bin/bash
+                                curl -z automation.zip http://boxedwine.org/v/automation.zip --output automation.zip
+                                rm -rf automation
+                                unzip automation.zip
+
+                                rm -rf bin/BoxedwineAutomation.app
+                                /bin/bash buildAutomation.sh
+                                if [ ! -d "bin/BoxedwineAutomation.app" ] 
+                                then
+                                    echo "bin/BoxedwineAutomation.app DOES NOT exists."
+                                    exit 999
+                                fi
                             '''
+                        }
+                        
+                        dir("project/mac-xcode/automation") {
+                            retry(3) {
+                                sh '''#!/bin/bash    
+                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/mac-xcode/automation/fs/Wine-5.0.zip\" \"$WORKSPACE/project/mac-xcode/automation/scripts/" \"$WORKSPACE/project/mac-xcode/bin/BoxedwineAutomation.app/Contents/MacOS/BoxedwineAutomation\" -nosound -novideo || exit 1
+                                '''
+                            }
                         }
                     }
                 }
@@ -324,9 +458,11 @@ pipeline {
                         }
                         dir("project/linux/automation") {
                             unstash "raspberry"
-                            sh '''#!/bin/bash
-                                java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/Wine-5.0.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/RaspberryPi/boxedwine\" -nosound -novideo || exit 1
-                            '''
+                            retry(3) {
+                                sh '''#!/bin/bash
+                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/Wine-5.0.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/RaspberryPi/boxedwine\" -nosound -novideo || exit 1
+                                '''
+                            }
                         }
 
                     }
@@ -348,9 +484,11 @@ pipeline {
                         }
                         dir("project/linux/automation") {
                             unstash "raspberry64"
-                            sh '''#!/bin/bash
-                                java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/Wine-5.0.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/RaspberryPi64/boxedwine\" -nosound -novideo || exit 1
-                            '''
+                            retry(3) {
+                                sh '''#!/bin/bash
+                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/Wine-5.0.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/RaspberryPi64/boxedwine\" -nosound -novideo || exit 1
+                                '''
+                            }
                         }
 
                     }
@@ -367,11 +505,16 @@ pipeline {
                         '''
                         dir("automation") {
                             unstash "windows"
-                            bat '''
-                                java -jar bin\\BoxedWineRunner.jar \"%WORKSPACE%\\automation\\fs\\Wine-5.0.zip\" \"%WORKSPACE%\\automation\\scripts\" \"%WORKSPACE%\\automation\\Deploy\\Win32\\Boxedwine.exe\" -nosound -novideo
-                                if %errorlevel% neq 0 exit /b %errorlevel%
-                                java -jar bin\\BoxedWineRunner.jar \"%WORKSPACE%\\automation\\fs\\Wine-5.0.zip\" \"%WORKSPACE%\\automation\\scripts\" \"%WORKSPACE%\\automation\\Deploy\\Win64\\Boxedwine.exe\" -nosound -novideo
-                            '''
+                            retry(3) {
+                                bat '''
+                                    java -jar bin\\BoxedWineRunner.jar \"%WORKSPACE%\\automation\\fs\\Wine-5.0.zip\" \"%WORKSPACE%\\automation\\scripts\" \"%WORKSPACE%\\automation\\Deploy\\Win32\\Boxedwine.exe\" -nosound -novideo
+                                '''
+                            }
+                            retry(3) {
+                                bat '''
+                                    java -jar bin\\BoxedWineRunner.jar \"%WORKSPACE%\\automation\\fs\\Wine-5.0.zip\" \"%WORKSPACE%\\automation\\scripts\" \"%WORKSPACE%\\automation\\Deploy\\Win64\\Boxedwine.exe\" -nosound -novideo
+                                '''
+                            }
                         }
                     }
                 } 

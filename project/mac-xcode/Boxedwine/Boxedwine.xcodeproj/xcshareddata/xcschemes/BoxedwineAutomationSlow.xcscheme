@@ -14,9 +14,9 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "71222BCB24351CBA00CDBABD"
-               BuildableName = "Boxedwine.app"
-               BlueprintName = "Boxedwine"
+               BlueprintIdentifier = "1A80EE46276EBCC70032A70A"
+               BuildableName = "BoxedwineAutomationSlow.app"
+               BlueprintName = "BoxedwineAutomationSlow"
                ReferencedContainer = "container:Boxedwine.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -44,9 +44,9 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "71222BCB24351CBA00CDBABD"
-            BuildableName = "Boxedwine.app"
-            BlueprintName = "Boxedwine"
+            BlueprintIdentifier = "1A80EE46276EBCC70032A70A"
+            BuildableName = "BoxedwineAutomationSlow.app"
+            BlueprintName = "BoxedwineAutomationSlow"
             ReferencedContainer = "container:Boxedwine.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -61,9 +61,9 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "71222BCB24351CBA00CDBABD"
-            BuildableName = "Boxedwine.app"
-            BlueprintName = "Boxedwine"
+            BlueprintIdentifier = "1A80EE46276EBCC70032A70A"
+            BuildableName = "BoxedwineAutomationSlow.app"
+            BlueprintName = "BoxedwineAutomationSlow"
             ReferencedContainer = "container:Boxedwine.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
