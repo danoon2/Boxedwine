@@ -6,22 +6,22 @@ Boxedwine is open source and released under the terms of the GNU General Public 
 **Features**
 
 -Runs 16-bit Windows applications
--Runs 32-bit Windows applications
--Runs in a browser with Emscripten (wasm and asm.js)
--Runs on Windows, Mac and Linux
--Can run multiple version of Wine, from 1.8 to 5.0
+- Runs 32-bit Windows applications
+- Runs in a browser with Emscripten (wasm and asm.js)
+- Runs on Windows, Mac and Linux
+- Can run multiple version of Wine, from 1.8 to 5.0
 
 
 **Platforms that are tested**
 
--Emscripten (WASM)
--Linux 64-bit
--Mac (Arm)
--Mac (Intel)
--Raspberry Pi 4 32-bit
+- Emscripten (WASM)
+- Linux 64-bit
+- Mac (Arm)
+- Mac (Intel)
+- Raspberry Pi 4 32-bit
 -Raspberry Pi 4 64-bit
--Windows 32-bit
--Windows 64-bit
+- Windows 32-bit
+- Windows 64-bit
 
 
 **Performance Test using MDK Perf with GDI backend on Wine**
