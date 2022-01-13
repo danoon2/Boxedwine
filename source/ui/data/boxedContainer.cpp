@@ -98,6 +98,23 @@ void BoxedContainer::deleteApp(BoxedApp* app) {
     }
 }
 
+int BoxedContainer::getWineVersionAsNumber() {
+    return getWineVersionAsNumber(this->wineVersion);
+}
+
+int BoxedContainer::getWineVersionAsNumber(const std::string& wineVersion) {
+    std::string ver = wineVersion;
+    ver = ver.substr(5);
+    std::vector<std::string> parts;
+    stringSplit(parts, ver, '.');
+    if (parts.size() > 1) {
+        std::string major = parts[0];
+        std::string minor = parts[1];
+        return atoi(major.c_str()) * 100 + atoi(minor.c_str());
+    }
+    return 0;
+}
+
 bool BoxedContainer::doesWineVersionExist() {
     return Fs::doesNativePathExist(GlobalSettings::getFileFromWineName(this->wineVersion));
 }
@@ -311,6 +328,23 @@ bool BoxedContainer::isGDI() {
 void BoxedContainer::setGDI(bool gdi) {
     BoxedReg reg(this, false);
     reg.writeKey("Software\\Wine\\Direct3D", "DirectDrawRenderer", (gdi ? "gdi" : "opengl"));
+    reg.save();
+}
+
+std::string BoxedContainer::getRenderer() {
+    BoxedReg reg(this, false);
+    std::string value;
+
+    reg.readKey("Software\\Wine\\Direct3D", "renderer", value);
+    if (value.length() == 0) {
+        value = "gl";
+    }
+    return value;
+}
+
+void BoxedContainer::setRenderer(const std::string& renderer) {
+    BoxedReg reg(this, false);
+    reg.writeKey("Software\\Wine\\Direct3D", "renderer", renderer.c_str());
     reg.save();
 }
 

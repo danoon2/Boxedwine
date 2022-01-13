@@ -333,6 +333,10 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "Are you sure you want to the {0} shortcut?";
     case CONTAINER_VIEW_GDI_RENDERER_LABEL:
         return "DD GDI Renderer:";
+    case CONTAINER_VIEW_RENDERER_LABEL:
+        return "Renderer:";
+    case CONTAINER_VIEW_RENDERER_HELP:
+        return "This requires Wine 6.0 or higher.  DirectDraw will use OpenGL by default.  But a few games, like Diable and Startcraft, may have graphical issues.  Sometimes changing the renderer to GDI can help.  Vulkan is considered experimental.";
     case CONTAINER_VIEW_PROGRAMS_LABEL:
         return "Run in Container:";
     case CONTAINER_VIEW_COMPONENTS_LABEL:

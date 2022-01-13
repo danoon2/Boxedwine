@@ -27,6 +27,7 @@ private:
     std::shared_ptr<LayoutComboboxControl> containerWineVersionControl;
     std::shared_ptr<LayoutComboboxControl> containerWindowsVersionControl;
     std::shared_ptr<LayoutCheckboxControl> containerGdiControl;
+    std::shared_ptr<LayoutComboboxControl> containerRendererControl;
     std::shared_ptr<LayoutComboboxControl> containerMouseWarpControl;
     std::shared_ptr<LayoutComboboxControl> containerMountDriveControl;
     std::shared_ptr<LayoutTextInputControl> containerMountPathControl;

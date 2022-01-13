@@ -25,6 +25,8 @@ public:
     const std::string& getName() {return this->name;}
     const std::string& getDir() {return this->dirPath;}
     const std::string& getWineVersion() {return this->wineVersion;}
+    int getWineVersionAsNumber();
+    int getWineVersionAsNumber(const std::string& wineVersion);
     const std::string& getSize() {return this->cachedSize;}
 
     void setName(const std::string& name);
@@ -42,6 +44,8 @@ public:
 
     bool isGDI();
     void setGDI(bool gdi);
+    std::string getRenderer();
+    void setRenderer(const std::string& renderer);
     std::string getMouseWarpOverride();
     void setMouseWarpOverride(const std::string& value);
     std::string getWindowsVersion();

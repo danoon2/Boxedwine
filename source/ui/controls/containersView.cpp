@@ -21,11 +21,14 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
     containerWineVersionControl = createWineVersionCombobox(section);
     containerWineVersionControl->onChange = [this]() {        
         this->currentContainerChanged = true;
+        bool renderer = this->currentContainer->getWineVersionAsNumber(this->containerWineVersionControl->getSelectionStringValue()) > 500;
+        containerGdiControl->setRowHidden(renderer);
+        containerRendererControl->setRowHidden(!renderer);
     };
 
     containerWindowsVersionControl = createWindowsVersionCombobox(section);
     containerWindowsVersionControl->onChange = [this]() {        
-        this->currentContainerChanged = true;
+        this->currentContainerChanged = true;        
     };
 
 
@@ -33,6 +36,16 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
     containerGdiControl->onChange = [this]() {        
         this->currentContainerChanged = true;
     };
+
+    std::vector<ComboboxItem> rendererOptions;
+    rendererOptions.push_back(ComboboxItem("OpenGL", "gl"));
+    rendererOptions.push_back(ComboboxItem("Vulkan", "vulkan"));
+    rendererOptions.push_back(ComboboxItem("GDI", "gdi"));
+    containerRendererControl = section->addComboboxRow(CONTAINER_VIEW_RENDERER_LABEL, CONTAINER_VIEW_RENDERER_HELP, rendererOptions);
+    containerRendererControl->onChange = [this]() {
+        this->currentContainerChanged = true;
+    };
+    containerRendererControl->setWidth((int)GlobalSettings::scaleFloatUIAndFont(150));
 
     std::vector<ComboboxItem> mouseOptions;
     mouseOptions.push_back(ComboboxItem("Enable", "enable"));
@@ -453,6 +466,7 @@ bool ContainersView::saveChanges() {
             this->currentContainer->setWineVersion(this->containerWineVersionControl->getSelectionStringValue());
             this->currentContainer->setWindowsVersion(BoxedwineData::getWinVersions()[this->containerWindowsVersionControl->getSelection()]);
             this->currentContainer->setGDI(containerGdiControl->isChecked());
+            this->currentContainer->setRenderer(containerRendererControl->getSelectionStringValue());
             this->currentContainer->setMouseWarpOverride(containerMouseWarpControl->getSelectionStringValue());
             this->currentContainer->saveContainer();
             this->currentContainerChanged = false;            
@@ -573,7 +587,20 @@ void ContainersView::setCurrentContainer(BoxedContainer* container) {
         this->currentApp = NULL;
     }    
     showAppSection(this->currentContainer->getApps().size() != 0);
-    containerGdiControl->setCheck(container->isGDI()); 
+    if (this->currentContainer->getWineVersionAsNumber() > 500) {
+        containerGdiControl->setCheck(false);        
+        containerRendererControl->setSelectionStringValue(container->getRenderer());
+
+        containerGdiControl->setRowHidden(true);
+        containerRendererControl->setRowHidden(false);
+    }
+    else {        
+        containerGdiControl->setCheck(container->isGDI());
+        containerRendererControl->setSelectionStringValue(container->getRenderer());
+
+        containerGdiControl->setRowHidden(false);
+        containerRendererControl->setRowHidden(true);
+    }
     containerMouseWarpControl->setSelectionStringValue(container->getMouseWarpOverride());
 }
 
