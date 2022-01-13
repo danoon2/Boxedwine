@@ -7,7 +7,7 @@ Recorder* Recorder::instance;
 void Recorder::start(std::string directory) {
     Recorder::instance = new Recorder();
     instance->directory = directory;
-    instance->file = fopen(std::string(directory+"/script.txt").c_str(), "wb");
+    instance->file = fopen(std::string(directory+"/"+RECORDER_SCRIPT).c_str(), "wb");
     instance->screenShotCount = 0;
     instance->out("VERSION=1\r\n");
 }
@@ -212,8 +212,8 @@ U32 BOXEDWINE_RECORDER_QUIT() {
     }
     if (Player::instance) {
         if (Player::instance->nextCommand=="DONE") {
-            klog("script: success");
-            return 0;
+            klog("script: success.  Setting exit code to 111");
+            return 111;
         } else {
             klog("script: failed");
             klog("  nextCommand is: %s", Player::instance->nextCommand.c_str());

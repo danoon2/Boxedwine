@@ -37,7 +37,7 @@ unsigned int crc32File(const std::string& filePath) {
     if (PLATFORM_STAT(filePath.c_str(), &buf) == 0 && buf.st_size) {
         FILE* fp = fopen(filePath.c_str(), "rb");
         if (fp) {
-            unsigned char* buffer = new unsigned char[buf.st_size];
+            unsigned char* buffer = new unsigned char[(int)buf.st_size];
             if ((U64)fread(buffer, 1, buf.st_size, fp) == (U64)buf.st_size) {
                 unsigned int result = crc32b(buffer, (int)buf.st_size);
                 delete[] buffer;

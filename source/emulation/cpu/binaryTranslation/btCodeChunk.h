@@ -26,7 +26,7 @@ public:
     void release(Memory* memory);
     void releaseAndRetranslate();
     void invalidateStartingAt(U32 eipAddress);
-    virtual void makeLive();
+    void makeLive();
 
     U32 getEipThatContainsHostAddress(void* hostAddress, void** startOfHostInstruction, U32* index);
 
@@ -48,6 +48,7 @@ public:
 protected:
     void detachFromHost(Memory* memory);
     void internalDealloc();
+    virtual void clearInstructionCache(U8* hostAddress, U32 len);
 
     U32 emulatedAddress;
     U32 emulatedLen;

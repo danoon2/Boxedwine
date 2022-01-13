@@ -212,11 +212,9 @@ void Memory::clone(Memory* from) {
         } else if (page->type == Page::Type::Invalid_Page) { 
             this->setPage(i, from->getPage(i));
         } 
-#ifdef BOXEDWINE_EXPERIMENTAL_FRAME_BUFFER
         else if (page->type == Page::Type::Frame_Buffer) { 
             this->setPage(i, allocFBPage(from->getPageFlags(i)));
         } 
-#endif
         else {
             kpanic("unhandled case when cloning memory: page type = %d", page->type);
         }

@@ -82,7 +82,7 @@ typedef U32 (*SyscallFunc)(CPU* cpu, U32 eipCount);
 #define SYSCALL_FUTEX       0x200
 
 #ifdef _DEBUG
-static U32 syscallMask = 0;
+static U32 syscallMask = 0xfff;
 #else
 static U32 syscallMask = 0;
 #endif
@@ -1940,7 +1940,9 @@ extern S32 contextTime; // about the # instruction per 10 ms
 #endif
 void ksyscall(CPU* cpu, U32 eipCount) {
     U32 result;
-    
+#ifdef BOXEDWINE_MULTI_THREADED 
+    U32 syscallNo = EAX;
+#endif
     if (cpu->thread->terminating) {
         terminateCurrentThread(cpu->thread); // there is a race condition, just signal it again
 		return;
@@ -1962,7 +1964,11 @@ void ksyscall(CPU* cpu, U32 eipCount) {
         cpu->blockInstructionCount+=(U32)(contextTime*diff/10000);
 #endif
     }    
-
+#ifdef BOXEDWINE_MULTI_THREADED
+    if (cpu->thread->startSignal) {
+        kpanic("syscall %d was not interrupted correctly by signal", syscallNo);
+    }
+#endif
     if (result==(U32)(-K_CONTINUE)) {
 
     } else if (result==(U32)(-K_WAIT)) {

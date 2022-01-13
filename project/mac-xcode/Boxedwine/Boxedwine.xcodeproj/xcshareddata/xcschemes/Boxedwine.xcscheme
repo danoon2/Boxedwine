@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Scheme
-   LastUpgradeVersion = "1130"
+   LastUpgradeVersion = "1300"
    version = "1.3">
    <BuildAction
       parallelizeBuildables = "YES"
@@ -14,7 +14,7 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "71FBFCAC2433B815003F17F1"
+               BlueprintIdentifier = "71222BCB24351CBA00CDBABD"
                BuildableName = "Boxedwine.app"
                BlueprintName = "Boxedwine"
                ReferencedContainer = "container:Boxedwine.xcodeproj">
@@ -44,7 +44,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "71FBFCAC2433B815003F17F1"
+            BlueprintIdentifier = "71222BCB24351CBA00CDBABD"
             BuildableName = "Boxedwine.app"
             BlueprintName = "Boxedwine"
             ReferencedContainer = "container:Boxedwine.xcodeproj">
@@ -61,7 +61,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "71FBFCAC2433B815003F17F1"
+            BlueprintIdentifier = "71222BCB24351CBA00CDBABD"
             BuildableName = "Boxedwine.app"
             BlueprintName = "Boxedwine"
             ReferencedContainer = "container:Boxedwine.xcodeproj">

@@ -17,7 +17,56 @@
  */
 #include "boxedwine.h"
 
-#ifndef BOXEDWINE_MULTI_THREADED
+#ifdef BOXEDWINE_MULTI_THREADED
+static KList<KTimer*> timers;
+static BOXEDWINE_MUTEX timerMutex;
+void runTimers() {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(timerMutex);
+    U32 millies = KSystem::getMilliesSinceStart();
+    timers.for_each([millies](KListNode<KTimer*>* node) {
+        KTimer* timer = node->data;
+
+        if (timer->millies <= millies) {
+            if (timer->run()) {
+                timer->node.remove();
+            }
+        }
+        });
+}
+
+U32 getNextTimer() {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(timerMutex);
+    U32 millies = KSystem::getMilliesSinceStart();
+    U32 result = 0xFFFFFFFF;
+
+    timers.for_each([millies, &result](KListNode<KTimer*>* node) {
+        KTimer* timer = node->data;
+        U32 next;
+        if (timer->millies <= millies) {
+            next = 0;
+        }
+        else {
+            next = timer->millies - millies;
+        }
+        if (next < result) {
+            result = next;
+        }
+        });
+    return result;
+}
+
+void addTimer(KTimer* timer) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(timerMutex);
+    timers.addToBack(&timer->node);
+    timer->active = true;
+}
+
+void removeTimer(KTimer* timer) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(timerMutex);
+    timer->node.remove();
+    timer->active = false;
+}
+#else
 #include "devfb.h"
 #include "kscheduler.h"
 #include "knativewindow.h"
@@ -122,9 +171,7 @@ bool runSlice() {
     if (scheduledThreads.isEmpty())
         return false;
     
-#ifdef BOXEDWINE_EXPERIMENTAL_FRAME_BUFFER
     flipFB();	
-#endif
     U64 elapsedTime = 0;
 
     contextTimeRemaining = contextTime;

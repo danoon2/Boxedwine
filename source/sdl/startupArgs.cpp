@@ -116,9 +116,7 @@ void StartUpArgs::buildVirtualFileSystem() {
         });
     Fs::addVirtualFile("/proc/self/exe", openProcSelfExe, K__S_IREAD, mdev(0, 0), procSelfNode);
     Fs::addVirtualFile("/proc/cmdline", openKernelCommandLine, K__S_IREAD, mdev(0, 0), procNode); // kernel command line
-#ifdef BOXEDWINE_EXPERIMENTAL_FRAME_BUFFER
     Fs::addVirtualFile("/dev/fb0", openDevFB, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, mdev(0x1d, 0), devNode);
-#endif
     Fs::addVirtualFile("/dev/input/event3", openDevInputTouch, K__S_IWRITE|K__S_IREAD|K__S_IFCHR, mdev(0xd, 0x43), inputNode);
     Fs::addVirtualFile("/dev/input/event4", openDevInputKeyboard, K__S_IWRITE|K__S_IREAD|K__S_IFCHR, mdev(0xd, 0x44), inputNode);
 	Fs::addVirtualFile("/dev/dsp", openDevDsp, K__S_IWRITE | K__S_IREAD | K__S_IFCHR, mdev(14, 3), devNode);
@@ -192,6 +190,14 @@ std::vector<std::string> StartUpArgs::buildArgs() {
     if (openGlType == OPENGL_TYPE_OSMESA) {
         args.push_back("-mesa");
     }
+    if (recordAutomation.length()) {
+        args.push_back("-record");
+        args.push_back(recordAutomation);
+    }
+    if (runAutomation.length()) {
+        args.push_back("-automation");
+        args.push_back(runAutomation);
+    }
     if (showWindowImmediately) {
         args.push_back("-showWindowImmediately");
     }
@@ -249,7 +255,15 @@ bool StartUpArgs::apply() {
     for (U32 f=0;f<nonExecFileFullPaths.size();f++) {
         FsFileNode::nonExecFileFullPaths.insert(nonExecFileFullPaths[f]);
     }
+#ifdef BOXEDWINE_RECORDER
+    if (this->recordAutomation.length()) {
+        Recorder::start(this->recordAutomation);
+    }
+    if (this->runAutomation.length()) {
+        Player::start(this->runAutomation);
+    }
     BOXEDWINE_RECORDER_INIT(this->root, this->zips, this->workingDir, this->args);
+#endif
 
     klog("Using root directory: %s", root.c_str());
 #ifdef BOXEDWINE_ZLIB
@@ -674,14 +688,14 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
                     return false;
                 }
             }
-            Recorder::start(argv[i+1]);
+            this->recordAutomation = argv[i + 1];
             i++;
         }  else if (!strcmp(argv[i], "-automation")) {
             if (!Fs::doesNativePathExist(argv[i+1])) {
                 klog("-automation directory does not exist %s", argv[i+1]);
                 return false;
             }
-            Player::start(argv[i+1]);
+            this->runAutomation = argv[i + 1];
             i++;
         }
 #endif

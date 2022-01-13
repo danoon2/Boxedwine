@@ -29,8 +29,7 @@ public class Main {
         Vector<String> output;
     }
     static public void copyFolder(Path src, Path dest) throws IOException {
-        Files.walk(src)
-                .forEach(source -> copy(source, dest.resolve(src.relativize(source))));
+        Files.walk(src).forEach(source -> copy(source, dest.resolve(src.relativize(source))));
     }
 
     static private void copy(Path source, Path dest) {
@@ -160,8 +159,8 @@ public class Main {
     public static void runTest(String name) {
         try {
             Results results = new Results();
-            runTest(scriptDir+".."+File.separator+"files"+File.separator+name, scriptDir+name, results);
-            if (results.exitCode==1) {
+            runTest(scriptDir+File.separator+name+File.separator+"files", scriptDir+name, results);
+            if (results.exitCode==111) {
                 System.out.println("OK   "+name+" completed in "+results.timeToComplete+" seconds");
             } else {
                 System.out.println("FAILED "+name);
@@ -176,6 +175,7 @@ public class Main {
             }
         } catch (IOException e) {
             e.printStackTrace();
+            System.exit(4);
         }
     }
 
@@ -185,6 +185,7 @@ public class Main {
         }
         if (args.length<2) {
             System.out.print("You must pass in <zip dir> and <script dir>");
+            System.exit(3);
             return;
         }
         int index=0;
@@ -218,6 +219,7 @@ public class Main {
         File[] scripts = dir.listFiles();
         if (scripts==null) {
             System.out.println("Did not find any script folder in "+scriptDir);
+            System.exit(2);
             return;
         }
         Arrays.sort(scripts);
@@ -232,6 +234,7 @@ public class Main {
         int seconds = elapsedTime - minutes*60;
         System.out.println("Total Time: "+minutes+"m "+seconds+"s");
         if (atleastOneFailed) {
+            System.out.println("1 or more scripts failed:  Exiting with code 1");
             System.exit(1);
         }
     }

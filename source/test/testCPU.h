@@ -20,15 +20,15 @@ extern CPU* cpu;
 
 struct Test_Float {
     union {
-        float f;
         U32   i;
+        float f;
     };
 };
 
 struct TestDouble {
     union {
-        double d;
         U64   i;
+        double d;
     };
 };
 
@@ -41,9 +41,9 @@ extern const U32 FLOAT_NEGATIVE_INFINITY_BITS;
 extern const U32 FLOAT_QUIET_NAN_BITS;
 extern const U64 DOUBLE_QUIET_NAN_BITS;
 
-#define POSITIVE_INFINITY *(const float *)&FLOAT_POSITIVE_INFINITY_BITS
-#define NEGATIVE_INFINITY *(const float *)&FLOAT_NEGATIVE_INFINITY_BITS
-#define TEST_NAN *(const float *)&FLOAT_QUIET_NAN_BITS
-#define TEST_NAN_DOUBLE *(const float *)&DOUBLE_QUIET_NAN_BITS
+extern const float POSITIVE_INFINITY;
+extern const float NEGATIVE_INFINITY;
+extern const float TEST_NAN;
+extern const double TEST_NAN_DOUBLE;
 
 #endif

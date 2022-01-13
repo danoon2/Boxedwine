@@ -19,18 +19,20 @@
 // This code was written before the winedrv code existed.  Now this is considered dead code, but is kept for experimentation
 #include "boxedwine.h"
 
-#ifdef BOXEDWINE_EXPERIMENTAL_FRAME_BUFFER
 #include <SDL.h>
 #include "../../io/fsvirtualopennode.h"
 #include "../../emulation//hardmmu/hard_memory.h"
 #include "knativewindow.h"
+#include "../../../platform/sdl/sdlcallback.h"
 
 static U32 screenBPP=32;
-U32 updateAvailable;
-U32 paletteChanged;
-U8* screenPixels;
+static U32 updateAvailable;
+static U32 paletteChanged;
+static U8* screenPixels;
 #ifdef BOXEDWINE_64BIT_MMU
-U64 isFbActive;
+static bool isFbActive;
+static U32 screenProcessId;
+bool isFbReady() {return isFbActive && KSystem::getProcess(screenProcessId);}
 #endif
 struct fb_fix_screeninfo {
     char id[16];			// identification string eg "TT Builtin"
@@ -283,9 +285,6 @@ void destroySDL2() {
         SDL_DestroyWindow(sdlWindow);
         sdlWindow = 0;
     }
-#ifdef BOXEDWINE_64BIT_MMU
-    isFbActive = false;
-#endif
 }
 
 void writeCMap(U32 address, struct fb_cmap* cmap) {
@@ -326,12 +325,15 @@ void fbSetupScreenForMesa(int width, int height, int depth) {
 
 void fbSetupScreen() {
     bOpenGL = 0;
+    DISPATCH_MAIN_THREAD_BLOCK_BEGIN
     destroySDL2();
     sdlWindow = SDL_CreateWindow("", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, fb_var_screeninfo.xres, fb_var_screeninfo.yres, SDL_WINDOW_SHOWN);
     sdlRenderer = SDL_CreateRenderer(sdlWindow, -1, 0);
-    sdlTexture = SDL_CreateTexture(sdlRenderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, fb_var_screeninfo.xres, fb_var_screeninfo.yres);
+    sdlTexture = SDL_CreateTexture(sdlRenderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, fb_var_screeninfo.xres, fb_var_screeninfo.yres);    
 
     SDL_ShowCursor(0);
+    DISPATCH_MAIN_THREAD_BLOCK_END
+
     fb_fix_screeninfo.visual = 2; // FB_VISUAL_TRUECOLOR
     fb_fix_screeninfo.type = 0; // FB_TYPE_PACKED_PIXELS
     //fb_fix_screeninfo.smem_start = ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS;		
@@ -343,7 +345,9 @@ void fbSetupScreen() {
     fb_var_screeninfo.green.length = 8;		
     fb_var_screeninfo.blue.length = 8;
     fb_fix_screeninfo.line_length = 4 * fb_var_screeninfo.xres;
+#ifndef BOXEDWINE_64BIT_MMU
     screenPixels = new U8[fb_fix_screeninfo.line_length*fb_var_screeninfo.yres];
+#endif
     updateAvailable = 1;
     
     fb_fix_screeninfo.smem_len = fb_fix_screeninfo.line_length*fb_var_screeninfo.yres_virtual;	
@@ -470,24 +474,12 @@ DevFB::DevFB(const BoxedPtr<FsNode>& node, U32 flags) : FsVirtualOpenNode(node, 
         fb_fix_screeninfo.smem_len = 8*1024*1024;
         fb_fix_screeninfo.line_length = fb_var_screeninfo.width*32;
     }
-#ifdef BOXEDWINE_64BIT_MMU
-    if (!isFbActive) {
-        allocNativeMemory(KThread::currentThread()->memory, ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS >> K_PAGE_SHIFT, (16*1024*1024) >> K_PAGE_SHIFT, PAGE_READ | PAGE_WRITE);		
-        isFbActive = KThread::currentThread()->memory->id;
-        screenPixels = (U8*)KThread::currentThread()->memory->id;
-        screenPixels+=ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS;
-    } else if (isFbActive!=KThread::currentThread()->memory->id) {
-        kpanic("DevFB::DevFB only one process can open the framebuffer at a time");
-    }
-#endif
 }
 
 void DevFB::close() {
 #ifdef BOXEDWINE_64BIT_MMU
-    if (isFbActive) {
-        freeNativeMemory(KThread::currentThread()->memory, ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS >> K_PAGE_SHIFT, (16*1024*1024) >> K_PAGE_SHIFT);
-        isFbActive = 0;
-    }
+    freeNativeMemory(KThread::currentThread()->memory, ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS >> K_PAGE_SHIFT, (16*1024*1024) >> K_PAGE_SHIFT);
+    isFbActive = false;
 #endif
     FsVirtualOpenNode::close();
 }
@@ -565,6 +557,27 @@ U32 DevFB::map(U32 address, U32 len, S32 prot, S32 flags, U64 off) {
     if ((flags & K_MAP_FIXED) && address!=fb_fix_screeninfo.smem_start) {
         kpanic("Mapping /dev/fb at fixed address not supported");
     }
+#ifdef BOXEDWINE_64BIT_MMU
+    U32 allocFlags = 0;
+    if (prot & K_PROT_READ) {
+        allocFlags |= PAGE_READ;
+    }
+    if (prot & K_PROT_WRITE) {
+        allocFlags |= PAGE_WRITE;
+    }
+    if (flags & K_MAP_SHARED) {
+        allocFlags |= PAGE_SHARED;
+    }
+    allocNativeMemory(KThread::currentThread()->memory, ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS >> K_PAGE_SHIFT, (16 * 1024 * 1024) >> K_PAGE_SHIFT, allocFlags);
+    if (isFbActive) {
+        // :TODO: if and when 64-bit Boxedwine supports page sharing across processes, then we can use that
+        klog("64-bit Boxedwine does not yet support /dev/fb being mapped more than 1 time");
+    }
+    isFbActive = true;
+    screenProcessId = KThread::currentThread()->process->id;
+    screenPixels = (U8*)KThread::currentThread()->memory->id;
+    screenPixels += ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS;
+#endif
 #ifdef BOXEDWINE_DEFAULT_MMU
     U32 pageStart = fb_fix_screeninfo.smem_start >> K_PAGE_SHIFT;
     U32 pageCount = (len+K_PAGE_SIZE-1)>>K_PAGE_SHIFT;
@@ -606,7 +619,7 @@ void flipFB() {
 
 void flipFBNoCheck() {
 #ifdef BOXEDWINE_64BIT_MMU
-    if (!isFbActive) {
+    if (!isFbReady()) {
         return;
     }
 #endif
@@ -630,5 +643,3 @@ void fbSwapOpenGL() {
 FsOpenNode* openDevFB(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
     return new DevFB(node, flags);
 }
-
-#endif

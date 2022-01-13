@@ -21,6 +21,10 @@ void BoxedWineMutex::lock() {
     this->m.lock();
 }
 
+bool BoxedWineMutex::tryLock() {
+    return this->m.tryLock();
+}
+
 void BoxedWineMutex::unlock() {
     this->m.unlock();
 }
@@ -123,6 +127,7 @@ void BoxedWineCondition::wait() {
     }
     this->c.wait(this->m);
     if (thread) {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(thread->waitingCondSync);
         thread->waitingCond = NULL;
     }
     for (auto &child : this->children) {
@@ -146,6 +151,7 @@ void BoxedWineCondition::waitWithTimeout(U32 ms) {
     }
     this->c.waitWithTimeout(this->m, KSystem::emulatedMilliesToHost(ms));
     if (!KSystem::shutingDown && thread) {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(thread->waitingCondSync);
         thread->waitingCond = NULL;
     }
 

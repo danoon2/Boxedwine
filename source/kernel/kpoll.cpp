@@ -98,6 +98,10 @@ S32 internal_poll(KPollData* data, U32 count, U32 timeout) {
 		if (KThread::currentThread()->terminating) {
 			return -K_EINTR;
 		}
+        if (KThread::currentThread()->startSignal) {
+            KThread::currentThread()->startSignal = false;
+            return -K_CONTINUE;
+        }
 #endif
     }
 }
@@ -180,7 +184,7 @@ U32 kselect(U32 nfds, U32 readfds, U32 writefds, U32 errorfds, U32 timeout) {
         }
     }    
     result = internal_poll(pollData, pollCount, timeout);
-    if (result == -K_WAIT) {
+    if (result == -K_WAIT || result == -K_CONTINUE) {
         delete[] pollData;
         return result;
     }

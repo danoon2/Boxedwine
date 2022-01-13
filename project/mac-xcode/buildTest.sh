@@ -1,4 +1,8 @@
 #!/bin/sh
+if [ ! -d "../../lib/mac" ]
+then
+   sh fetchDepends.sh
+fi
 mkdir bin
 rm -rf bin/BoxedwineTest.app
 xcodebuild build -workspace "Boxedwine.xcworkspace" -config Release -scheme BoxedwineTest -archivePath archiveTest archive
