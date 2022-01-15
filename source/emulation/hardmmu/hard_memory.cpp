@@ -136,6 +136,18 @@ void writeMemory(U32 address, U8* data, int len) {
     memcpy(getNativeAddress(KThread::currentThread()->process->memory, address), data, len);
 }
 
+void Memory::unmapNativeMemory(U32 address, U32 size) {
+    U32 i;
+    U32 result = 0;
+    U32 pageCount = (size >> K_PAGE_SHIFT) + 2; // 1 for size alignment, 1 for hostAddress alignment
+    U64 pageStart = address >> K_PAGE_SHIFT;
+
+    for (int i = 0; i < pageCount; i++) {
+        this->memOffsets[i + pageStart] = this->id;
+        this->flags[i + pageStart] = 0;
+    }
+}
+
 U32 Memory::mapNativeMemory(void* hostAddress, U32 size) {
     U32 i;
     U32 result = 0;

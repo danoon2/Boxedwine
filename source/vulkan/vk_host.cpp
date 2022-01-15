@@ -13,6 +13,10 @@ void* getVulkanPtr(U32 address);
 U32 createVulkanPtr(U64 value, BoxedVulkanInfo* info);
 BoxedVulkanInfo* getInfoFromHandle(U32 address);
 void freeVulkanPtr(U32 p);
+void registerVkMemoryAllocation(VkDeviceMemory memory, VkDeviceSize size);
+void unregisterVkMemoryAllocation(VkDeviceMemory memory);
+U32 mapVkMemory(VkDeviceMemory memory, void* pData, VkDeviceSize len);
+void unmapVkMemory(VkDeviceMemory memory);
 
 #define ARG1 cpu->peek32(1)
 #define ARG2 cpu->peek32(2)
@@ -4297,7 +4301,6 @@ void vk_QueueSubmit(CPU* cpu) {
         }
     }
     VkFence fence = *(VkFence*)getPhysicalAddress(ARG4, 8);
-;
     EAX = pBoxedInfo->pvkQueueSubmit(queue, submitCount, pSubmits, fence);
     if (pSubmits) {
         delete[] pSubmits;
@@ -4325,37 +4328,39 @@ void vk_AllocateMemory(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkDeviceMemory* pMemory = (VkDeviceMemory*)getPhysicalAddress(ARG4, 4);
     EAX = pBoxedInfo->pvkAllocateMemory(device, pAllocateInfo, pAllocator, pMemory);
+    if (EAX == 0 && pMemory) {
+        registerVkMemoryAllocation(*pMemory, pAllocateInfo->allocationSize);
+    }
 }
 void vk_FreeMemory(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkDeviceMemory memory = *(VkDeviceMemory*)getPhysicalAddress(ARG2, 8);
-;
     static bool shown; if (!shown && ARG3) { klog("vkFreeMemory:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkFreeMemory(device, memory, pAllocator);
+    unregisterVkMemoryAllocation(memory);
 }
 // return type: VkResult(4 bytes)
 void vk_MapMemory(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkDeviceMemory memory = *(VkDeviceMemory*)getPhysicalAddress(ARG2, 8);
-;
     VkDeviceSize offset = *(VkDeviceSize*)getPhysicalAddress(ARG3, 8);
-;
     VkDeviceSize size = *(VkDeviceSize*)getPhysicalAddress(ARG4, 8);
-;
     VkMemoryMapFlags flags = (VkMemoryMapFlags)ARG5;
-    void **ppData = NULL;
-    kpanic("vkMapMemory not implemented");
-    EAX = pBoxedInfo->pvkMapMemory(device, memory, offset, size, flags, ppData);
+    void *pData = NULL;
+    EAX = pBoxedInfo->pvkMapMemory(device, memory, offset, size, flags, &pData);
+    if (EAX == 0) {
+        writed(ARG6, mapVkMemory(memory, pData, size));
+    }
 }
 void vk_UnmapMemory(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkDeviceMemory memory = *(VkDeviceMemory*)getPhysicalAddress(ARG2, 8);
-;
     pBoxedInfo->pvkUnmapMemory(device, memory);
+    unmapVkMemory(memory);
 }
 // return type: VkResult(4 bytes)
 void vk_FlushMappedMemoryRanges(CPU* cpu) {
@@ -4395,7 +4400,6 @@ void vk_GetDeviceMemoryCommitment(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkDeviceMemory memory = *(VkDeviceMemory*)getPhysicalAddress(ARG2, 8);
-;
     VkDeviceSize* pCommittedMemoryInBytes = (VkDeviceSize*)getPhysicalAddress(ARG3, 4);
     pBoxedInfo->pvkGetDeviceMemoryCommitment(device, memory, pCommittedMemoryInBytes);
 }
@@ -4403,7 +4407,6 @@ void vk_GetBufferMemoryRequirements(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkBuffer buffer = *(VkBuffer*)getPhysicalAddress(ARG2, 8);
-;
     VkMemoryRequirements* pMemoryRequirements = (VkMemoryRequirements*)getPhysicalAddress(ARG3, 4);
     pBoxedInfo->pvkGetBufferMemoryRequirements(device, buffer, pMemoryRequirements);
 }
@@ -4412,18 +4415,14 @@ void vk_BindBufferMemory(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkBuffer buffer = *(VkBuffer*)getPhysicalAddress(ARG2, 8);
-;
     VkDeviceMemory memory = *(VkDeviceMemory*)getPhysicalAddress(ARG3, 8);
-;
     VkDeviceSize memoryOffset = *(VkDeviceSize*)getPhysicalAddress(ARG4, 8);
-;
     EAX = pBoxedInfo->pvkBindBufferMemory(device, buffer, memory, memoryOffset);
 }
 void vk_GetImageMemoryRequirements(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkImage image = *(VkImage*)getPhysicalAddress(ARG2, 8);
-;
     VkMemoryRequirements* pMemoryRequirements = (VkMemoryRequirements*)getPhysicalAddress(ARG3, 4);
     pBoxedInfo->pvkGetImageMemoryRequirements(device, image, pMemoryRequirements);
 }
@@ -4432,18 +4431,14 @@ void vk_BindImageMemory(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkImage image = *(VkImage*)getPhysicalAddress(ARG2, 8);
-;
     VkDeviceMemory memory = *(VkDeviceMemory*)getPhysicalAddress(ARG3, 8);
-;
     VkDeviceSize memoryOffset = *(VkDeviceSize*)getPhysicalAddress(ARG4, 8);
-;
     EAX = pBoxedInfo->pvkBindImageMemory(device, image, memory, memoryOffset);
 }
 void vk_GetImageSparseMemoryRequirements(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkImage image = *(VkImage*)getPhysicalAddress(ARG2, 8);
-;
     uint32_t* pSparseMemoryRequirementCount = (uint32_t*)getPhysicalAddress(ARG3, 4);
     VkSparseImageMemoryRequirements* pSparseMemoryRequirements = (VkSparseImageMemoryRequirements*)getPhysicalAddress(ARG4, (U32)(pSparseMemoryRequirementCount ? *pSparseMemoryRequirementCount : 0));
     pBoxedInfo->pvkGetImageSparseMemoryRequirements(device, image, pSparseMemoryRequirementCount, pSparseMemoryRequirements);
@@ -4473,7 +4468,6 @@ void vk_QueueBindSparse(CPU* cpu) {
         }
     }
     VkFence fence = *(VkFence*)getPhysicalAddress(ARG4, 8);
-;
     EAX = pBoxedInfo->pvkQueueBindSparse(queue, bindInfoCount, pBindInfo, fence);
     if (pBindInfo) {
         delete[] pBindInfo;
@@ -4494,7 +4488,6 @@ void vk_DestroyFence(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkFence fence = *(VkFence*)getPhysicalAddress(ARG2, 8);
-;
     static bool shown; if (!shown && ARG3) { klog("vkDestroyFence:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyFence(device, fence, pAllocator);
@@ -4512,7 +4505,6 @@ void vk_GetFenceStatus(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkFence fence = *(VkFence*)getPhysicalAddress(ARG2, 8);
-;
     EAX = pBoxedInfo->pvkGetFenceStatus(device, fence);
 }
 // return type: VkResult(4 bytes)
@@ -4523,7 +4515,6 @@ void vk_WaitForFences(CPU* cpu) {
     VkFence* pFences = (VkFence*)getPhysicalAddress(ARG3, (U32)fenceCount * 4);
     VkBool32 waitAll = (VkBool32)ARG4;
     uint64_t timeout = *(uint64_t*)getPhysicalAddress(ARG5, 8);
-;
     EAX = pBoxedInfo->pvkWaitForFences(device, fenceCount, pFences, waitAll, timeout);
 }
 // return type: VkResult(4 bytes)
@@ -4541,7 +4532,6 @@ void vk_DestroySemaphore(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkSemaphore semaphore = *(VkSemaphore*)getPhysicalAddress(ARG2, 8);
-;
     static bool shown; if (!shown && ARG3) { klog("vkDestroySemaphore:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroySemaphore(device, semaphore, pAllocator);
@@ -4561,7 +4551,6 @@ void vk_DestroyEvent(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkEvent event = *(VkEvent*)getPhysicalAddress(ARG2, 8);
-;
     static bool shown; if (!shown && ARG3) { klog("vkDestroyEvent:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyEvent(device, event, pAllocator);
@@ -4571,7 +4560,6 @@ void vk_GetEventStatus(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkEvent event = *(VkEvent*)getPhysicalAddress(ARG2, 8);
-;
     EAX = pBoxedInfo->pvkGetEventStatus(device, event);
 }
 // return type: VkResult(4 bytes)
@@ -4579,7 +4567,6 @@ void vk_SetEvent(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkEvent event = *(VkEvent*)getPhysicalAddress(ARG2, 8);
-;
     EAX = pBoxedInfo->pvkSetEvent(device, event);
 }
 // return type: VkResult(4 bytes)
@@ -4587,7 +4574,6 @@ void vk_ResetEvent(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkEvent event = *(VkEvent*)getPhysicalAddress(ARG2, 8);
-;
     EAX = pBoxedInfo->pvkResetEvent(device, event);
 }
 // return type: VkResult(4 bytes)
@@ -4605,7 +4591,6 @@ void vk_DestroyQueryPool(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkQueryPool queryPool = *(VkQueryPool*)getPhysicalAddress(ARG2, 8);
-;
     static bool shown; if (!shown && ARG3) { klog("vkDestroyQueryPool:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyQueryPool(device, queryPool, pAllocator);
@@ -4615,13 +4600,11 @@ void vk_GetQueryPoolResults(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkQueryPool queryPool = *(VkQueryPool*)getPhysicalAddress(ARG2, 8);
-;
     uint32_t firstQuery = (uint32_t)ARG3;
     uint32_t queryCount = (uint32_t)ARG4;
     size_t dataSize = (size_t)ARG5;
     void* pData = (void*)getPhysicalAddress(ARG6, (U32)dataSize * 4);
     VkDeviceSize stride = *(VkDeviceSize*)getPhysicalAddress(ARG7, 8);
-;
     VkQueryResultFlags flags = (VkQueryResultFlags)ARG8;
     EAX = pBoxedInfo->pvkGetQueryPoolResults(device, queryPool, firstQuery, queryCount, dataSize, pData, stride, flags);
 }
@@ -4629,7 +4612,6 @@ void vk_ResetQueryPool(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkQueryPool queryPool = *(VkQueryPool*)getPhysicalAddress(ARG2, 8);
-;
     uint32_t firstQuery = (uint32_t)ARG3;
     uint32_t queryCount = (uint32_t)ARG4;
     pBoxedInfo->pvkResetQueryPool(device, queryPool, firstQuery, queryCount);
@@ -4649,7 +4631,6 @@ void vk_DestroyBuffer(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkBuffer buffer = *(VkBuffer*)getPhysicalAddress(ARG2, 8);
-;
     static bool shown; if (!shown && ARG3) { klog("vkDestroyBuffer:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyBuffer(device, buffer, pAllocator);
@@ -4669,7 +4650,6 @@ void vk_DestroyBufferView(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkBufferView bufferView = *(VkBufferView*)getPhysicalAddress(ARG2, 8);
-;
     static bool shown; if (!shown && ARG3) { klog("vkDestroyBufferView:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyBufferView(device, bufferView, pAllocator);
@@ -4684,12 +4664,14 @@ void vk_CreateImage(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkImage* pImage = (VkImage*)getPhysicalAddress(ARG4, 4);
     EAX = pBoxedInfo->pvkCreateImage(device, pCreateInfo, pAllocator, pImage);
+    if (EAX) {
+        int ii = 0;
+    }
 }
 void vk_DestroyImage(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkImage image = *(VkImage*)getPhysicalAddress(ARG2, 8);
-;
     static bool shown; if (!shown && ARG3) { klog("vkDestroyImage:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyImage(device, image, pAllocator);
@@ -4698,7 +4680,6 @@ void vk_GetImageSubresourceLayout(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkImage image = *(VkImage*)getPhysicalAddress(ARG2, 8);
-;
     VkImageSubresource* pSubresource = (VkImageSubresource*)getPhysicalAddress(ARG3, 4);
     VkSubresourceLayout* pLayout = (VkSubresourceLayout*)getPhysicalAddress(ARG4, 4);
     pBoxedInfo->pvkGetImageSubresourceLayout(device, image, pSubresource, pLayout);
@@ -4718,7 +4699,6 @@ void vk_DestroyImageView(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkImageView imageView = *(VkImageView*)getPhysicalAddress(ARG2, 8);
-;
     static bool shown; if (!shown && ARG3) { klog("vkDestroyImageView:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyImageView(device, imageView, pAllocator);
@@ -4738,7 +4718,6 @@ void vk_DestroyShaderModule(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkShaderModule shaderModule = *(VkShaderModule*)getPhysicalAddress(ARG2, 8);
-;
     static bool shown; if (!shown && ARG3) { klog("vkDestroyShaderModule:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyShaderModule(device, shaderModule, pAllocator);
@@ -4758,7 +4737,6 @@ void vk_DestroyPipelineCache(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkPipelineCache pipelineCache = *(VkPipelineCache*)getPhysicalAddress(ARG2, 8);
-;
     static bool shown; if (!shown && ARG3) { klog("vkDestroyPipelineCache:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyPipelineCache(device, pipelineCache, pAllocator);
@@ -4768,7 +4746,6 @@ void vk_GetPipelineCacheData(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkPipelineCache pipelineCache = *(VkPipelineCache*)getPhysicalAddress(ARG2, 8);
-;
     size_t* pDataSize = (size_t*)getPhysicalAddress(ARG3, 4);
     void* pData = (void*)getPhysicalAddress(ARG4, (U32)(pDataSize ? *pDataSize : 0));
     EAX = pBoxedInfo->pvkGetPipelineCacheData(device, pipelineCache, pDataSize, pData);
@@ -4778,7 +4755,6 @@ void vk_MergePipelineCaches(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkPipelineCache dstCache = *(VkPipelineCache*)getPhysicalAddress(ARG2, 8);
-;
     uint32_t srcCacheCount = (uint32_t)ARG3;
     VkPipelineCache* pSrcCaches = (VkPipelineCache*)getPhysicalAddress(ARG4, (U32)srcCacheCount * 4);
     EAX = pBoxedInfo->pvkMergePipelineCaches(device, dstCache, srcCacheCount, pSrcCaches);
@@ -4788,7 +4764,6 @@ void vk_CreateGraphicsPipelines(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkPipelineCache pipelineCache = *(VkPipelineCache*)getPhysicalAddress(ARG2, 8);
-;
     uint32_t createInfoCount = (uint32_t)ARG3;
     VkGraphicsPipelineCreateInfo* pCreateInfos = NULL;
     if (ARG4) {
@@ -4810,7 +4785,6 @@ void vk_CreateComputePipelines(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkPipelineCache pipelineCache = *(VkPipelineCache*)getPhysicalAddress(ARG2, 8);
-;
     uint32_t createInfoCount = (uint32_t)ARG3;
     VkComputePipelineCreateInfo* pCreateInfos = NULL;
     if (ARG4) {
@@ -4831,7 +4805,6 @@ void vk_CreateComputePipelines(CPU* cpu) {
 void vk_GetSubpassShadingMaxWorkgroupSizeHUAWEI(CPU* cpu) {
     initVulkan();
     VkRenderPass renderpass = *(VkRenderPass*)getPhysicalAddress(ARG1, 8);
-;
     VkExtent2D* pMaxWorkgroupSize = (VkExtent2D*)getPhysicalAddress(ARG2, 4);
     EAX = pvkGetSubpassShadingMaxWorkgroupSizeHUAWEI(renderpass, pMaxWorkgroupSize);
 }
@@ -4839,7 +4812,6 @@ void vk_DestroyPipeline(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkPipeline pipeline = *(VkPipeline*)getPhysicalAddress(ARG2, 8);
-;
     static bool shown; if (!shown && ARG3) { klog("vkDestroyPipeline:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyPipeline(device, pipeline, pAllocator);
@@ -4859,7 +4831,6 @@ void vk_DestroyPipelineLayout(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkPipelineLayout pipelineLayout = *(VkPipelineLayout*)getPhysicalAddress(ARG2, 8);
-;
     static bool shown; if (!shown && ARG3) { klog("vkDestroyPipelineLayout:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyPipelineLayout(device, pipelineLayout, pAllocator);
@@ -4879,7 +4850,6 @@ void vk_DestroySampler(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkSampler sampler = *(VkSampler*)getPhysicalAddress(ARG2, 8);
-;
     static bool shown; if (!shown && ARG3) { klog("vkDestroySampler:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroySampler(device, sampler, pAllocator);
@@ -4899,7 +4869,6 @@ void vk_DestroyDescriptorSetLayout(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkDescriptorSetLayout descriptorSetLayout = *(VkDescriptorSetLayout*)getPhysicalAddress(ARG2, 8);
-;
     static bool shown; if (!shown && ARG3) { klog("vkDestroyDescriptorSetLayout:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyDescriptorSetLayout(device, descriptorSetLayout, pAllocator);
@@ -4919,7 +4888,6 @@ void vk_DestroyDescriptorPool(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkDescriptorPool descriptorPool = *(VkDescriptorPool*)getPhysicalAddress(ARG2, 8);
-;
     static bool shown; if (!shown && ARG3) { klog("vkDestroyDescriptorPool:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyDescriptorPool(device, descriptorPool, pAllocator);
@@ -4929,7 +4897,6 @@ void vk_ResetDescriptorPool(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkDescriptorPool descriptorPool = *(VkDescriptorPool*)getPhysicalAddress(ARG2, 8);
-;
     VkDescriptorPoolResetFlags flags = (VkDescriptorPoolResetFlags)ARG3;
     EAX = pBoxedInfo->pvkResetDescriptorPool(device, descriptorPool, flags);
 }
@@ -4947,7 +4914,6 @@ void vk_FreeDescriptorSets(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkDescriptorPool descriptorPool = *(VkDescriptorPool*)getPhysicalAddress(ARG2, 8);
-;
     uint32_t descriptorSetCount = (uint32_t)ARG3;
     VkDescriptorSet* pDescriptorSets = (VkDescriptorSet*)getPhysicalAddress(ARG4, (U32)descriptorSetCount * 4);
     EAX = pBoxedInfo->pvkFreeDescriptorSets(device, descriptorPool, descriptorSetCount, pDescriptorSets);
@@ -4994,7 +4960,6 @@ void vk_DestroyFramebuffer(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkFramebuffer framebuffer = *(VkFramebuffer*)getPhysicalAddress(ARG2, 8);
-;
     static bool shown; if (!shown && ARG3) { klog("vkDestroyFramebuffer:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyFramebuffer(device, framebuffer, pAllocator);
@@ -5014,7 +4979,6 @@ void vk_DestroyRenderPass(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkRenderPass renderPass = *(VkRenderPass*)getPhysicalAddress(ARG2, 8);
-;
     static bool shown; if (!shown && ARG3) { klog("vkDestroyRenderPass:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyRenderPass(device, renderPass, pAllocator);
@@ -5023,7 +4987,6 @@ void vk_GetRenderAreaGranularity(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkRenderPass renderPass = *(VkRenderPass*)getPhysicalAddress(ARG2, 8);
-;
     VkExtent2D* pGranularity = (VkExtent2D*)getPhysicalAddress(ARG3, 4);
     pBoxedInfo->pvkGetRenderAreaGranularity(device, renderPass, pGranularity);
 }
@@ -5042,7 +5005,6 @@ void vk_DestroyCommandPool(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkCommandPool commandPool = *(VkCommandPool*)getPhysicalAddress(ARG2, 8);
-;
     static bool shown; if (!shown && ARG3) { klog("vkDestroyCommandPool:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyCommandPool(device, commandPool, pAllocator);
@@ -5052,7 +5014,6 @@ void vk_ResetCommandPool(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkCommandPool commandPool = *(VkCommandPool*)getPhysicalAddress(ARG2, 8);
-;
     VkCommandPoolResetFlags flags = (VkCommandPoolResetFlags)ARG3;
     EAX = pBoxedInfo->pvkResetCommandPool(device, commandPool, flags);
 }
@@ -5078,7 +5039,6 @@ void vk_FreeCommandBuffers(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkCommandPool commandPool = *(VkCommandPool*)getPhysicalAddress(ARG2, 8);
-;
     uint32_t commandBufferCount = (uint32_t)ARG3;
     VkCommandBuffer* pCommandBuffers = new VkCommandBuffer[commandBufferCount];
     for (U32 i=0;i<commandBufferCount;i++) {
@@ -5113,7 +5073,6 @@ void vk_CmdBindPipeline(CPU* cpu) {
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkPipelineBindPoint pipelineBindPoint = (VkPipelineBindPoint)ARG2;
     VkPipeline pipeline = *(VkPipeline*)getPhysicalAddress(ARG3, 8);
-;
     pBoxedInfo->pvkCmdBindPipeline(commandBuffer, pipelineBindPoint, pipeline);
 }
 void vk_CmdSetViewport(CPU* cpu) {
@@ -5185,7 +5144,6 @@ void vk_CmdBindDescriptorSets(CPU* cpu) {
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkPipelineBindPoint pipelineBindPoint = (VkPipelineBindPoint)ARG2;
     VkPipelineLayout layout = *(VkPipelineLayout*)getPhysicalAddress(ARG3, 8);
-;
     uint32_t firstSet = (uint32_t)ARG4;
     uint32_t descriptorSetCount = (uint32_t)ARG5;
     VkDescriptorSet* pDescriptorSets = (VkDescriptorSet*)getPhysicalAddress(ARG6, (U32)descriptorSetCount * 4);
@@ -5197,9 +5155,7 @@ void vk_CmdBindIndexBuffer(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkBuffer buffer = *(VkBuffer*)getPhysicalAddress(ARG2, 8);
-;
     VkDeviceSize offset = *(VkDeviceSize*)getPhysicalAddress(ARG3, 8);
-;
     VkIndexType indexType = (VkIndexType)ARG4;
     pBoxedInfo->pvkCmdBindIndexBuffer(commandBuffer, buffer, offset, indexType);
 }
@@ -5256,9 +5212,7 @@ void vk_CmdDrawIndirect(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkBuffer buffer = *(VkBuffer*)getPhysicalAddress(ARG2, 8);
-;
     VkDeviceSize offset = *(VkDeviceSize*)getPhysicalAddress(ARG3, 8);
-;
     uint32_t drawCount = (uint32_t)ARG4;
     uint32_t stride = (uint32_t)ARG5;
     pBoxedInfo->pvkCmdDrawIndirect(commandBuffer, buffer, offset, drawCount, stride);
@@ -5267,9 +5221,7 @@ void vk_CmdDrawIndexedIndirect(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkBuffer buffer = *(VkBuffer*)getPhysicalAddress(ARG2, 8);
-;
     VkDeviceSize offset = *(VkDeviceSize*)getPhysicalAddress(ARG3, 8);
-;
     uint32_t drawCount = (uint32_t)ARG4;
     uint32_t stride = (uint32_t)ARG5;
     pBoxedInfo->pvkCmdDrawIndexedIndirect(commandBuffer, buffer, offset, drawCount, stride);
@@ -5286,9 +5238,7 @@ void vk_CmdDispatchIndirect(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkBuffer buffer = *(VkBuffer*)getPhysicalAddress(ARG2, 8);
-;
     VkDeviceSize offset = *(VkDeviceSize*)getPhysicalAddress(ARG3, 8);
-;
     pBoxedInfo->pvkCmdDispatchIndirect(commandBuffer, buffer, offset);
 }
 void vk_CmdSubpassShadingHUAWEI(CPU* cpu) {
@@ -5300,9 +5250,7 @@ void vk_CmdCopyBuffer(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkBuffer srcBuffer = *(VkBuffer*)getPhysicalAddress(ARG2, 8);
-;
     VkBuffer dstBuffer = *(VkBuffer*)getPhysicalAddress(ARG3, 8);
-;
     uint32_t regionCount = (uint32_t)ARG4;
     VkBufferCopy* pRegions = (VkBufferCopy*)getPhysicalAddress(ARG5, (U32)regionCount * 4);
     pBoxedInfo->pvkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, regionCount, pRegions);
@@ -5311,10 +5259,8 @@ void vk_CmdCopyImage(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkImage srcImage = *(VkImage*)getPhysicalAddress(ARG2, 8);
-;
     VkImageLayout srcImageLayout = (VkImageLayout)ARG3;
     VkImage dstImage = *(VkImage*)getPhysicalAddress(ARG4, 8);
-;
     VkImageLayout dstImageLayout = (VkImageLayout)ARG5;
     uint32_t regionCount = (uint32_t)ARG6;
     VkImageCopy* pRegions = (VkImageCopy*)getPhysicalAddress(ARG7, (U32)regionCount * 4);
@@ -5324,10 +5270,8 @@ void vk_CmdBlitImage(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkImage srcImage = *(VkImage*)getPhysicalAddress(ARG2, 8);
-;
     VkImageLayout srcImageLayout = (VkImageLayout)ARG3;
     VkImage dstImage = *(VkImage*)getPhysicalAddress(ARG4, 8);
-;
     VkImageLayout dstImageLayout = (VkImageLayout)ARG5;
     uint32_t regionCount = (uint32_t)ARG6;
     VkImageBlit* pRegions = (VkImageBlit*)getPhysicalAddress(ARG7, (U32)regionCount * 4);
@@ -5338,9 +5282,7 @@ void vk_CmdCopyBufferToImage(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkBuffer srcBuffer = *(VkBuffer*)getPhysicalAddress(ARG2, 8);
-;
     VkImage dstImage = *(VkImage*)getPhysicalAddress(ARG3, 8);
-;
     VkImageLayout dstImageLayout = (VkImageLayout)ARG4;
     uint32_t regionCount = (uint32_t)ARG5;
     VkBufferImageCopy* pRegions = (VkBufferImageCopy*)getPhysicalAddress(ARG6, (U32)regionCount * 4);
@@ -5350,10 +5292,8 @@ void vk_CmdCopyImageToBuffer(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkImage srcImage = *(VkImage*)getPhysicalAddress(ARG2, 8);
-;
     VkImageLayout srcImageLayout = (VkImageLayout)ARG3;
     VkBuffer dstBuffer = *(VkBuffer*)getPhysicalAddress(ARG4, 8);
-;
     uint32_t regionCount = (uint32_t)ARG5;
     VkBufferImageCopy* pRegions = (VkBufferImageCopy*)getPhysicalAddress(ARG6, (U32)regionCount * 4);
     pBoxedInfo->pvkCmdCopyImageToBuffer(commandBuffer, srcImage, srcImageLayout, dstBuffer, regionCount, pRegions);
@@ -5362,11 +5302,8 @@ void vk_CmdUpdateBuffer(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkBuffer dstBuffer = *(VkBuffer*)getPhysicalAddress(ARG2, 8);
-;
     VkDeviceSize dstOffset = *(VkDeviceSize*)getPhysicalAddress(ARG3, 8);
-;
     VkDeviceSize dataSize = *(VkDeviceSize*)getPhysicalAddress(ARG4, 8);
-;
     void* pData = (void*)getPhysicalAddress(ARG5, (U32)dataSize * 8);
     pBoxedInfo->pvkCmdUpdateBuffer(commandBuffer, dstBuffer, dstOffset, dataSize, pData);
 }
@@ -5374,11 +5311,8 @@ void vk_CmdFillBuffer(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkBuffer dstBuffer = *(VkBuffer*)getPhysicalAddress(ARG2, 8);
-;
     VkDeviceSize dstOffset = *(VkDeviceSize*)getPhysicalAddress(ARG3, 8);
-;
     VkDeviceSize size = *(VkDeviceSize*)getPhysicalAddress(ARG4, 8);
-;
     uint32_t data = (uint32_t)ARG5;
     pBoxedInfo->pvkCmdFillBuffer(commandBuffer, dstBuffer, dstOffset, size, data);
 }
@@ -5386,7 +5320,6 @@ void vk_CmdClearColorImage(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkImage image = *(VkImage*)getPhysicalAddress(ARG2, 8);
-;
     VkImageLayout imageLayout = (VkImageLayout)ARG3;
     VkClearColorValue* pColor = (VkClearColorValue*)getPhysicalAddress(ARG4, 4);
     uint32_t rangeCount = (uint32_t)ARG5;
@@ -5397,7 +5330,6 @@ void vk_CmdClearDepthStencilImage(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkImage image = *(VkImage*)getPhysicalAddress(ARG2, 8);
-;
     VkImageLayout imageLayout = (VkImageLayout)ARG3;
     VkClearDepthStencilValue* pDepthStencil = (VkClearDepthStencilValue*)getPhysicalAddress(ARG4, 4);
     uint32_t rangeCount = (uint32_t)ARG5;
@@ -5417,10 +5349,8 @@ void vk_CmdResolveImage(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkImage srcImage = *(VkImage*)getPhysicalAddress(ARG2, 8);
-;
     VkImageLayout srcImageLayout = (VkImageLayout)ARG3;
     VkImage dstImage = *(VkImage*)getPhysicalAddress(ARG4, 8);
-;
     VkImageLayout dstImageLayout = (VkImageLayout)ARG5;
     uint32_t regionCount = (uint32_t)ARG6;
     VkImageResolve* pRegions = (VkImageResolve*)getPhysicalAddress(ARG7, (U32)regionCount * 4);
@@ -5430,7 +5360,6 @@ void vk_CmdSetEvent(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkEvent event = *(VkEvent*)getPhysicalAddress(ARG2, 8);
-;
     VkPipelineStageFlags stageMask = (VkPipelineStageFlags)ARG3;
     pBoxedInfo->pvkCmdSetEvent(commandBuffer, event, stageMask);
 }
@@ -5438,7 +5367,6 @@ void vk_CmdResetEvent(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkEvent event = *(VkEvent*)getPhysicalAddress(ARG2, 8);
-;
     VkPipelineStageFlags stageMask = (VkPipelineStageFlags)ARG3;
     pBoxedInfo->pvkCmdResetEvent(commandBuffer, event, stageMask);
 }
@@ -5529,7 +5457,6 @@ void vk_CmdBeginQuery(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkQueryPool queryPool = *(VkQueryPool*)getPhysicalAddress(ARG2, 8);
-;
     uint32_t query = (uint32_t)ARG3;
     VkQueryControlFlags flags = (VkQueryControlFlags)ARG4;
     pBoxedInfo->pvkCmdBeginQuery(commandBuffer, queryPool, query, flags);
@@ -5538,7 +5465,6 @@ void vk_CmdEndQuery(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkQueryPool queryPool = *(VkQueryPool*)getPhysicalAddress(ARG2, 8);
-;
     uint32_t query = (uint32_t)ARG3;
     pBoxedInfo->pvkCmdEndQuery(commandBuffer, queryPool, query);
 }
@@ -5558,7 +5484,6 @@ void vk_CmdResetQueryPool(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkQueryPool queryPool = *(VkQueryPool*)getPhysicalAddress(ARG2, 8);
-;
     uint32_t firstQuery = (uint32_t)ARG3;
     uint32_t queryCount = (uint32_t)ARG4;
     pBoxedInfo->pvkCmdResetQueryPool(commandBuffer, queryPool, firstQuery, queryCount);
@@ -5568,7 +5493,6 @@ void vk_CmdWriteTimestamp(CPU* cpu) {
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkPipelineStageFlagBits pipelineStage = (VkPipelineStageFlagBits)ARG2;
     VkQueryPool queryPool = *(VkQueryPool*)getPhysicalAddress(ARG3, 8);
-;
     uint32_t query = (uint32_t)ARG4;
     pBoxedInfo->pvkCmdWriteTimestamp(commandBuffer, pipelineStage, queryPool, query);
 }
@@ -5576,15 +5500,11 @@ void vk_CmdCopyQueryPoolResults(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkQueryPool queryPool = *(VkQueryPool*)getPhysicalAddress(ARG2, 8);
-;
     uint32_t firstQuery = (uint32_t)ARG3;
     uint32_t queryCount = (uint32_t)ARG4;
     VkBuffer dstBuffer = *(VkBuffer*)getPhysicalAddress(ARG5, 8);
-;
     VkDeviceSize dstOffset = *(VkDeviceSize*)getPhysicalAddress(ARG6, 8);
-;
     VkDeviceSize stride = *(VkDeviceSize*)getPhysicalAddress(ARG7, 8);
-;
     VkQueryResultFlags flags = (VkQueryResultFlags)ARG8;
     pBoxedInfo->pvkCmdCopyQueryPoolResults(commandBuffer, queryPool, firstQuery, queryCount, dstBuffer, dstOffset, stride, flags);
 }
@@ -5592,7 +5512,6 @@ void vk_CmdPushConstants(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkPipelineLayout layout = *(VkPipelineLayout*)getPhysicalAddress(ARG2, 8);
-;
     VkShaderStageFlags stageFlags = (VkShaderStageFlags)ARG3;
     uint32_t offset = (uint32_t)ARG4;
     uint32_t size = (uint32_t)ARG5;
@@ -5633,7 +5552,6 @@ void vk_DestroySurfaceKHR(CPU* cpu) {
     VkInstance instance = (VkInstance)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkSurfaceKHR surface = *(VkSurfaceKHR*)getPhysicalAddress(ARG2, 8);
-;
     static bool shown; if (!shown && ARG3) { klog("vkDestroySurfaceKHR:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroySurfaceKHR(instance, surface, pAllocator);
@@ -5644,7 +5562,6 @@ void vk_GetPhysicalDeviceSurfaceSupportKHR(CPU* cpu) {
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     uint32_t queueFamilyIndex = (uint32_t)ARG2;
     VkSurfaceKHR surface = *(VkSurfaceKHR*)getPhysicalAddress(ARG3, 8);
-;
     VkBool32* pSupported = (VkBool32*)getPhysicalAddress(ARG4, 4);
     EAX = pBoxedInfo->pvkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, queueFamilyIndex, surface, pSupported);
 }
@@ -5653,7 +5570,6 @@ void vk_GetPhysicalDeviceSurfaceCapabilitiesKHR(CPU* cpu) {
     VkPhysicalDevice physicalDevice = (VkPhysicalDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkSurfaceKHR surface = *(VkSurfaceKHR*)getPhysicalAddress(ARG2, 8);
-;
     MarshalVkSurfaceCapabilitiesKHR pSurfaceCapabilities(ARG3);
     EAX = pBoxedInfo->pvkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &pSurfaceCapabilities.s);
     MarshalVkSurfaceCapabilitiesKHR::write(ARG3, &pSurfaceCapabilities.s);
@@ -5663,7 +5579,6 @@ void vk_GetPhysicalDeviceSurfaceFormatsKHR(CPU* cpu) {
     VkPhysicalDevice physicalDevice = (VkPhysicalDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkSurfaceKHR surface = *(VkSurfaceKHR*)getPhysicalAddress(ARG2, 8);
-;
     uint32_t* pSurfaceFormatCount = (uint32_t*)getPhysicalAddress(ARG3, 4);
     VkSurfaceFormatKHR* pSurfaceFormats = NULL;
     if (ARG4) {
@@ -5682,7 +5597,6 @@ void vk_GetPhysicalDeviceSurfacePresentModesKHR(CPU* cpu) {
     VkPhysicalDevice physicalDevice = (VkPhysicalDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkSurfaceKHR surface = *(VkSurfaceKHR*)getPhysicalAddress(ARG2, 8);
-;
     uint32_t* pPresentModeCount = (uint32_t*)getPhysicalAddress(ARG3, 4);
     static_assert (sizeof(VkPresentModeKHR) == 4, "unhandled enum size");
     VkPresentModeKHR* pPresentModes = (VkPresentModeKHR*)getPhysicalAddress(ARG4, (U32)(pPresentModeCount ? *pPresentModeCount : 0));
@@ -5703,7 +5617,6 @@ void vk_DestroySwapchainKHR(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkSwapchainKHR swapchain = *(VkSwapchainKHR*)getPhysicalAddress(ARG2, 8);
-;
     static bool shown; if (!shown && ARG3) { klog("vkDestroySwapchainKHR:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroySwapchainKHR(device, swapchain, pAllocator);
@@ -5713,7 +5626,6 @@ void vk_GetSwapchainImagesKHR(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkSwapchainKHR swapchain = *(VkSwapchainKHR*)getPhysicalAddress(ARG2, 8);
-;
     uint32_t* pSwapchainImageCount = (uint32_t*)getPhysicalAddress(ARG3, 4);
     VkImage* pSwapchainImages = (VkImage*)getPhysicalAddress(ARG4, (U32)(pSwapchainImageCount ? *pSwapchainImageCount : 0));
     EAX = pBoxedInfo->pvkGetSwapchainImagesKHR(device, swapchain, pSwapchainImageCount, pSwapchainImages);
@@ -5723,13 +5635,9 @@ void vk_AcquireNextImageKHR(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkSwapchainKHR swapchain = *(VkSwapchainKHR*)getPhysicalAddress(ARG2, 8);
-;
     uint64_t timeout = *(uint64_t*)getPhysicalAddress(ARG3, 8);
-;
     VkSemaphore semaphore = *(VkSemaphore*)getPhysicalAddress(ARG4, 8);
-;
     VkFence fence = *(VkFence*)getPhysicalAddress(ARG5, 8);
-;
     uint32_t* pImageIndex = (uint32_t*)getPhysicalAddress(ARG6, 4);
     EAX = pBoxedInfo->pvkAcquireNextImageKHR(device, swapchain, timeout, semaphore, fence, pImageIndex);
 }
@@ -5761,7 +5669,6 @@ void vk_CmdBindPipelineShaderGroupNV(CPU* cpu) {
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkPipelineBindPoint pipelineBindPoint = (VkPipelineBindPoint)ARG2;
     VkPipeline pipeline = *(VkPipeline*)getPhysicalAddress(ARG3, 8);
-;
     uint32_t groupIndex = (uint32_t)ARG4;
     pBoxedInfo->pvkCmdBindPipelineShaderGroupNV(commandBuffer, pipelineBindPoint, pipeline, groupIndex);
 }
@@ -5789,7 +5696,6 @@ void vk_DestroyIndirectCommandsLayoutNV(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkIndirectCommandsLayoutNV indirectCommandsLayout = *(VkIndirectCommandsLayoutNV*)getPhysicalAddress(ARG2, 8);
-;
     static bool shown; if (!shown && ARG3) { klog("vkDestroyIndirectCommandsLayoutNV:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyIndirectCommandsLayoutNV(device, indirectCommandsLayout, pAllocator);
@@ -5872,7 +5778,6 @@ void vk_CmdPushDescriptorSetKHR(CPU* cpu) {
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkPipelineBindPoint pipelineBindPoint = (VkPipelineBindPoint)ARG2;
     VkPipelineLayout layout = *(VkPipelineLayout*)getPhysicalAddress(ARG3, 8);
-;
     uint32_t set = (uint32_t)ARG4;
     uint32_t descriptorWriteCount = (uint32_t)ARG5;
     VkWriteDescriptorSet* pDescriptorWrites = NULL;
@@ -5891,7 +5796,6 @@ void vk_TrimCommandPool(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkCommandPool commandPool = *(VkCommandPool*)getPhysicalAddress(ARG2, 8);
-;
     VkCommandPoolTrimFlags flags = (VkCommandPoolTrimFlags)ARG3;
     pBoxedInfo->pvkTrimCommandPool(device, commandPool, flags);
 }
@@ -6001,7 +5905,6 @@ void vk_GetDeviceGroupSurfacePresentModesKHR(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkSurfaceKHR surface = *(VkSurfaceKHR*)getPhysicalAddress(ARG2, 8);
-;
     VkDeviceGroupPresentModeFlagsKHR* pModes = (VkDeviceGroupPresentModeFlagsKHR*)getPhysicalAddress(ARG3, 4);
     EAX = pBoxedInfo->pvkGetDeviceGroupSurfacePresentModesKHR(device, surface, pModes);
 }
@@ -6030,7 +5933,6 @@ void vk_GetPhysicalDevicePresentRectanglesKHR(CPU* cpu) {
     VkPhysicalDevice physicalDevice = (VkPhysicalDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkSurfaceKHR surface = *(VkSurfaceKHR*)getPhysicalAddress(ARG2, 8);
-;
     uint32_t* pRectCount = (uint32_t*)getPhysicalAddress(ARG3, 4);
     VkRect2D* pRects = (VkRect2D*)getPhysicalAddress(ARG4, (U32)(pRectCount ? *pRectCount : 0));
     EAX = pBoxedInfo->pvkGetPhysicalDevicePresentRectanglesKHR(physicalDevice, surface, pRectCount, pRects);
@@ -6050,7 +5952,6 @@ void vk_DestroyDescriptorUpdateTemplate(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkDescriptorUpdateTemplate descriptorUpdateTemplate = *(VkDescriptorUpdateTemplate*)getPhysicalAddress(ARG2, 8);
-;
     static bool shown; if (!shown && ARG3) { klog("vkDestroyDescriptorUpdateTemplate:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyDescriptorUpdateTemplate(device, descriptorUpdateTemplate, pAllocator);
@@ -6059,9 +5960,7 @@ void vk_UpdateDescriptorSetWithTemplate(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkDescriptorSet descriptorSet = *(VkDescriptorSet*)getPhysicalAddress(ARG2, 8);
-;
     VkDescriptorUpdateTemplate descriptorUpdateTemplate = *(VkDescriptorUpdateTemplate*)getPhysicalAddress(ARG3, 8);
-;
     void* pData = (void*)getPhysicalAddress(ARG4, 4);
     pBoxedInfo->pvkUpdateDescriptorSetWithTemplate(device, descriptorSet, descriptorUpdateTemplate, pData);
 }
@@ -6069,9 +5968,7 @@ void vk_CmdPushDescriptorSetWithTemplateKHR(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkDescriptorUpdateTemplate descriptorUpdateTemplate = *(VkDescriptorUpdateTemplate*)getPhysicalAddress(ARG2, 8);
-;
     VkPipelineLayout layout = *(VkPipelineLayout*)getPhysicalAddress(ARG3, 8);
-;
     uint32_t set = (uint32_t)ARG4;
     void* pData = (void*)getPhysicalAddress(ARG5, 4);
     pBoxedInfo->pvkCmdPushDescriptorSetWithTemplateKHR(commandBuffer, descriptorUpdateTemplate, layout, set, pData);
@@ -6187,7 +6084,6 @@ void vk_DestroySamplerYcbcrConversion(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkSamplerYcbcrConversion ycbcrConversion = *(VkSamplerYcbcrConversion*)getPhysicalAddress(ARG2, 8);
-;
     static bool shown; if (!shown && ARG3) { klog("vkDestroySamplerYcbcrConversion:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroySamplerYcbcrConversion(device, ycbcrConversion, pAllocator);
@@ -6216,7 +6112,6 @@ void vk_DestroyValidationCacheEXT(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkValidationCacheEXT validationCache = *(VkValidationCacheEXT*)getPhysicalAddress(ARG2, 8);
-;
     static bool shown; if (!shown && ARG3) { klog("vkDestroyValidationCacheEXT:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyValidationCacheEXT(device, validationCache, pAllocator);
@@ -6226,7 +6121,6 @@ void vk_GetValidationCacheDataEXT(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkValidationCacheEXT validationCache = *(VkValidationCacheEXT*)getPhysicalAddress(ARG2, 8);
-;
     size_t* pDataSize = (size_t*)getPhysicalAddress(ARG3, 4);
     void* pData = (void*)getPhysicalAddress(ARG4, (U32)(pDataSize ? *pDataSize : 0));
     EAX = pBoxedInfo->pvkGetValidationCacheDataEXT(device, validationCache, pDataSize, pData);
@@ -6236,7 +6130,6 @@ void vk_MergeValidationCachesEXT(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkValidationCacheEXT dstCache = *(VkValidationCacheEXT*)getPhysicalAddress(ARG2, 8);
-;
     uint32_t srcCacheCount = (uint32_t)ARG3;
     VkValidationCacheEXT* pSrcCaches = (VkValidationCacheEXT*)getPhysicalAddress(ARG4, (U32)srcCacheCount * 4);
     EAX = pBoxedInfo->pvkMergeValidationCachesEXT(device, dstCache, srcCacheCount, pSrcCaches);
@@ -6255,7 +6148,6 @@ void vk_GetShaderInfoAMD(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkPipeline pipeline = *(VkPipeline*)getPhysicalAddress(ARG2, 8);
-;
     VkShaderStageFlagBits shaderStage = (VkShaderStageFlagBits)ARG3;
     VkShaderInfoTypeAMD infoType = (VkShaderInfoTypeAMD)ARG4;
     size_t* pInfoSize = (size_t*)getPhysicalAddress(ARG5, 4);
@@ -6305,9 +6197,7 @@ void vk_CmdWriteBufferMarkerAMD(CPU* cpu) {
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkPipelineStageFlagBits pipelineStage = (VkPipelineStageFlagBits)ARG2;
     VkBuffer dstBuffer = *(VkBuffer*)getPhysicalAddress(ARG3, 8);
-;
     VkDeviceSize dstOffset = *(VkDeviceSize*)getPhysicalAddress(ARG4, 8);
-;
     uint32_t marker = (uint32_t)ARG5;
     pBoxedInfo->pvkCmdWriteBufferMarkerAMD(commandBuffer, pipelineStage, dstBuffer, dstOffset, marker);
 }
@@ -6352,7 +6242,6 @@ void vk_GetSemaphoreCounterValue(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkSemaphore semaphore = *(VkSemaphore*)getPhysicalAddress(ARG2, 8);
-;
     uint64_t* pValue = (uint64_t*)getPhysicalAddress(ARG3, 4);
     EAX = pBoxedInfo->pvkGetSemaphoreCounterValue(device, semaphore, pValue);
 }
@@ -6363,7 +6252,6 @@ void vk_WaitSemaphores(CPU* cpu) {
     MarshalVkSemaphoreWaitInfo local_pWaitInfo(ARG2);
     VkSemaphoreWaitInfo* pWaitInfo = &local_pWaitInfo.s;
     uint64_t timeout = *(uint64_t*)getPhysicalAddress(ARG3, 8);
-;
     EAX = pBoxedInfo->pvkWaitSemaphores(device, pWaitInfo, timeout);
 }
 // return type: VkResult(4 bytes)
@@ -6378,13 +6266,9 @@ void vk_CmdDrawIndirectCount(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkBuffer buffer = *(VkBuffer*)getPhysicalAddress(ARG2, 8);
-;
     VkDeviceSize offset = *(VkDeviceSize*)getPhysicalAddress(ARG3, 8);
-;
     VkBuffer countBuffer = *(VkBuffer*)getPhysicalAddress(ARG4, 8);
-;
     VkDeviceSize countBufferOffset = *(VkDeviceSize*)getPhysicalAddress(ARG5, 8);
-;
     uint32_t maxDrawCount = (uint32_t)ARG6;
     uint32_t stride = (uint32_t)ARG7;
     pBoxedInfo->pvkCmdDrawIndirectCount(commandBuffer, buffer, offset, countBuffer, countBufferOffset, maxDrawCount, stride);
@@ -6393,13 +6277,9 @@ void vk_CmdDrawIndexedIndirectCount(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkBuffer buffer = *(VkBuffer*)getPhysicalAddress(ARG2, 8);
-;
     VkDeviceSize offset = *(VkDeviceSize*)getPhysicalAddress(ARG3, 8);
-;
     VkBuffer countBuffer = *(VkBuffer*)getPhysicalAddress(ARG4, 8);
-;
     VkDeviceSize countBufferOffset = *(VkDeviceSize*)getPhysicalAddress(ARG5, 8);
-;
     uint32_t maxDrawCount = (uint32_t)ARG6;
     uint32_t stride = (uint32_t)ARG7;
     pBoxedInfo->pvkCmdDrawIndexedIndirectCount(commandBuffer, buffer, offset, countBuffer, countBufferOffset, maxDrawCount, stride);
@@ -6436,7 +6316,6 @@ void vk_CmdBeginQueryIndexedEXT(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkQueryPool queryPool = *(VkQueryPool*)getPhysicalAddress(ARG2, 8);
-;
     uint32_t query = (uint32_t)ARG3;
     VkQueryControlFlags flags = (VkQueryControlFlags)ARG4;
     uint32_t index = (uint32_t)ARG5;
@@ -6446,7 +6325,6 @@ void vk_CmdEndQueryIndexedEXT(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkQueryPool queryPool = *(VkQueryPool*)getPhysicalAddress(ARG2, 8);
-;
     uint32_t query = (uint32_t)ARG3;
     uint32_t index = (uint32_t)ARG4;
     pBoxedInfo->pvkCmdEndQueryIndexedEXT(commandBuffer, queryPool, query, index);
@@ -6457,9 +6335,7 @@ void vk_CmdDrawIndirectByteCountEXT(CPU* cpu) {
     uint32_t instanceCount = (uint32_t)ARG2;
     uint32_t firstInstance = (uint32_t)ARG3;
     VkBuffer counterBuffer = *(VkBuffer*)getPhysicalAddress(ARG4, 8);
-;
     VkDeviceSize counterBufferOffset = *(VkDeviceSize*)getPhysicalAddress(ARG5, 8);
-;
     uint32_t counterOffset = (uint32_t)ARG6;
     uint32_t vertexStride = (uint32_t)ARG7;
     pBoxedInfo->pvkCmdDrawIndirectByteCountEXT(commandBuffer, instanceCount, firstInstance, counterBuffer, counterBufferOffset, counterOffset, vertexStride);
@@ -6476,7 +6352,6 @@ void vk_CmdBindShadingRateImageNV(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkImageView imageView = *(VkImageView*)getPhysicalAddress(ARG2, 8);
-;
     VkImageLayout imageLayout = (VkImageLayout)ARG3;
     pBoxedInfo->pvkCmdBindShadingRateImageNV(commandBuffer, imageView, imageLayout);
 }
@@ -6525,9 +6400,7 @@ void vk_CmdDrawMeshTasksIndirectNV(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkBuffer buffer = *(VkBuffer*)getPhysicalAddress(ARG2, 8);
-;
     VkDeviceSize offset = *(VkDeviceSize*)getPhysicalAddress(ARG3, 8);
-;
     uint32_t drawCount = (uint32_t)ARG4;
     uint32_t stride = (uint32_t)ARG5;
     pBoxedInfo->pvkCmdDrawMeshTasksIndirectNV(commandBuffer, buffer, offset, drawCount, stride);
@@ -6536,13 +6409,9 @@ void vk_CmdDrawMeshTasksIndirectCountNV(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkBuffer buffer = *(VkBuffer*)getPhysicalAddress(ARG2, 8);
-;
     VkDeviceSize offset = *(VkDeviceSize*)getPhysicalAddress(ARG3, 8);
-;
     VkBuffer countBuffer = *(VkBuffer*)getPhysicalAddress(ARG4, 8);
-;
     VkDeviceSize countBufferOffset = *(VkDeviceSize*)getPhysicalAddress(ARG5, 8);
-;
     uint32_t maxDrawCount = (uint32_t)ARG6;
     uint32_t stride = (uint32_t)ARG7;
     pBoxedInfo->pvkCmdDrawMeshTasksIndirectCountNV(commandBuffer, buffer, offset, countBuffer, countBufferOffset, maxDrawCount, stride);
@@ -6552,7 +6421,6 @@ void vk_CompileDeferredNV(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkPipeline pipeline = *(VkPipeline*)getPhysicalAddress(ARG2, 8);
-;
     uint32_t shader = (uint32_t)ARG3;
     EAX = pBoxedInfo->pvkCompileDeferredNV(device, pipeline, shader);
 }
@@ -6571,7 +6439,6 @@ void vk_DestroyAccelerationStructureNV(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkAccelerationStructureNV accelerationStructure = *(VkAccelerationStructureNV*)getPhysicalAddress(ARG2, 8);
-;
     static bool shown; if (!shown && ARG3) { klog("vkDestroyAccelerationStructureNV:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyAccelerationStructureNV(device, accelerationStructure, pAllocator);
@@ -6606,9 +6473,7 @@ void vk_CmdCopyAccelerationStructureNV(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkAccelerationStructureNV dst = *(VkAccelerationStructureNV*)getPhysicalAddress(ARG2, 8);
-;
     VkAccelerationStructureNV src = *(VkAccelerationStructureNV*)getPhysicalAddress(ARG3, 8);
-;
     VkCopyAccelerationStructureModeKHR mode = (VkCopyAccelerationStructureModeKHR)ARG4;
     pBoxedInfo->pvkCmdCopyAccelerationStructureNV(commandBuffer, dst, src, mode);
 }
@@ -6619,7 +6484,6 @@ void vk_CmdWriteAccelerationStructuresPropertiesNV(CPU* cpu) {
     VkAccelerationStructureNV* pAccelerationStructures = (VkAccelerationStructureNV*)getPhysicalAddress(ARG3, (U32)accelerationStructureCount * 4);
     VkQueryType queryType = (VkQueryType)ARG4;
     VkQueryPool queryPool = *(VkQueryPool*)getPhysicalAddress(ARG5, 8);
-;
     uint32_t firstQuery = (uint32_t)ARG6;
     pBoxedInfo->pvkCmdWriteAccelerationStructuresPropertiesNV(commandBuffer, accelerationStructureCount, pAccelerationStructures, queryType, queryPool, firstQuery);
 }
@@ -6629,45 +6493,28 @@ void vk_CmdBuildAccelerationStructureNV(CPU* cpu) {
     MarshalVkAccelerationStructureInfoNV local_pInfo(ARG2);
     VkAccelerationStructureInfoNV* pInfo = &local_pInfo.s;
     VkBuffer instanceData = *(VkBuffer*)getPhysicalAddress(ARG3, 8);
-;
     VkDeviceSize instanceOffset = *(VkDeviceSize*)getPhysicalAddress(ARG4, 8);
-;
     VkBool32 update = (VkBool32)ARG5;
     VkAccelerationStructureNV dst = *(VkAccelerationStructureNV*)getPhysicalAddress(ARG6, 8);
-;
     VkAccelerationStructureNV src = *(VkAccelerationStructureNV*)getPhysicalAddress(ARG7, 8);
-;
     VkBuffer scratch = *(VkBuffer*)getPhysicalAddress(ARG8, 8);
-;
     VkDeviceSize scratchOffset = *(VkDeviceSize*)getPhysicalAddress(ARG9, 8);
-;
     pBoxedInfo->pvkCmdBuildAccelerationStructureNV(commandBuffer, pInfo, instanceData, instanceOffset, update, dst, src, scratch, scratchOffset);
 }
 void vk_CmdTraceRaysNV(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkBuffer raygenShaderBindingTableBuffer = *(VkBuffer*)getPhysicalAddress(ARG2, 8);
-;
     VkDeviceSize raygenShaderBindingOffset = *(VkDeviceSize*)getPhysicalAddress(ARG3, 8);
-;
     VkBuffer missShaderBindingTableBuffer = *(VkBuffer*)getPhysicalAddress(ARG4, 8);
-;
     VkDeviceSize missShaderBindingOffset = *(VkDeviceSize*)getPhysicalAddress(ARG5, 8);
-;
     VkDeviceSize missShaderBindingStride = *(VkDeviceSize*)getPhysicalAddress(ARG6, 8);
-;
     VkBuffer hitShaderBindingTableBuffer = *(VkBuffer*)getPhysicalAddress(ARG7, 8);
-;
     VkDeviceSize hitShaderBindingOffset = *(VkDeviceSize*)getPhysicalAddress(ARG8, 8);
-;
     VkDeviceSize hitShaderBindingStride = *(VkDeviceSize*)getPhysicalAddress(ARG9, 8);
-;
     VkBuffer callableShaderBindingTableBuffer = *(VkBuffer*)getPhysicalAddress(ARG10, 8);
-;
     VkDeviceSize callableShaderBindingOffset = *(VkDeviceSize*)getPhysicalAddress(ARG11, 8);
-;
     VkDeviceSize callableShaderBindingStride = *(VkDeviceSize*)getPhysicalAddress(ARG12, 8);
-;
     uint32_t width = (uint32_t)ARG13;
     uint32_t height = (uint32_t)ARG14;
     uint32_t depth = (uint32_t)ARG15;
@@ -6678,7 +6525,6 @@ void vk_GetAccelerationStructureHandleNV(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkAccelerationStructureNV accelerationStructure = *(VkAccelerationStructureNV*)getPhysicalAddress(ARG2, 8);
-;
     size_t dataSize = (size_t)ARG3;
     void* pData = (void*)getPhysicalAddress(ARG4, (U32)dataSize * 4);
     EAX = pBoxedInfo->pvkGetAccelerationStructureHandleNV(device, accelerationStructure, dataSize, pData);
@@ -6688,7 +6534,6 @@ void vk_CreateRayTracingPipelinesNV(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkPipelineCache pipelineCache = *(VkPipelineCache*)getPhysicalAddress(ARG2, 8);
-;
     uint32_t createInfoCount = (uint32_t)ARG3;
     VkRayTracingPipelineCreateInfoNV* pCreateInfos = NULL;
     if (ARG4) {
@@ -6866,7 +6711,6 @@ void vk_DestroyDeferredOperationKHR(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkDeferredOperationKHR operation = *(VkDeferredOperationKHR*)getPhysicalAddress(ARG2, 8);
-;
     static bool shown; if (!shown && ARG3) { klog("vkDestroyDeferredOperationKHR:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyDeferredOperationKHR(device, operation, pAllocator);
@@ -6876,7 +6720,6 @@ void vk_GetDeferredOperationMaxConcurrencyKHR(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkDeferredOperationKHR operation = *(VkDeferredOperationKHR*)getPhysicalAddress(ARG2, 8);
-;
     EAX = pBoxedInfo->pvkGetDeferredOperationMaxConcurrencyKHR(device, operation);
 }
 // return type: VkResult(4 bytes)
@@ -6884,7 +6727,6 @@ void vk_GetDeferredOperationResultKHR(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkDeferredOperationKHR operation = *(VkDeferredOperationKHR*)getPhysicalAddress(ARG2, 8);
-;
     EAX = pBoxedInfo->pvkGetDeferredOperationResultKHR(device, operation);
 }
 // return type: VkResult(4 bytes)
@@ -6892,7 +6734,6 @@ void vk_DeferredOperationJoinKHR(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkDeferredOperationKHR operation = *(VkDeferredOperationKHR*)getPhysicalAddress(ARG2, 8);
-;
     EAX = pBoxedInfo->pvkDeferredOperationJoinKHR(device, operation);
 }
 void vk_CmdSetCullModeEXT(CPU* cpu) {
@@ -7023,7 +6864,6 @@ void vk_DestroyPrivateDataSlotEXT(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkPrivateDataSlotEXT privateDataSlot = *(VkPrivateDataSlotEXT*)getPhysicalAddress(ARG2, 8);
-;
     static bool shown; if (!shown && ARG3) { klog("vkDestroyPrivateDataSlotEXT:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyPrivateDataSlotEXT(device, privateDataSlot, pAllocator);
@@ -7034,11 +6874,8 @@ void vk_SetPrivateDataEXT(CPU* cpu) {
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkObjectType objectType = (VkObjectType)ARG2;
     uint64_t objectHandle = *(uint64_t*)getPhysicalAddress(ARG3, 8);
-;
     VkPrivateDataSlotEXT privateDataSlot = *(VkPrivateDataSlotEXT*)getPhysicalAddress(ARG4, 8);
-;
     uint64_t data = *(uint64_t*)getPhysicalAddress(ARG5, 8);
-;
     EAX = pBoxedInfo->pvkSetPrivateDataEXT(device, objectType, objectHandle, privateDataSlot, data);
 }
 void vk_GetPrivateDataEXT(CPU* cpu) {
@@ -7046,9 +6883,7 @@ void vk_GetPrivateDataEXT(CPU* cpu) {
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkObjectType objectType = (VkObjectType)ARG2;
     uint64_t objectHandle = *(uint64_t*)getPhysicalAddress(ARG3, 8);
-;
     VkPrivateDataSlotEXT privateDataSlot = *(VkPrivateDataSlotEXT*)getPhysicalAddress(ARG4, 8);
-;
     uint64_t* pData = (uint64_t*)getPhysicalAddress(ARG5, 4);
     pBoxedInfo->pvkGetPrivateDataEXT(device, objectType, objectHandle, privateDataSlot, pData);
 }
@@ -7165,7 +7000,6 @@ void vk_CmdSetEvent2KHR(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkEvent event = *(VkEvent*)getPhysicalAddress(ARG2, 8);
-;
     MarshalVkDependencyInfoKHR local_pDependencyInfo(ARG3);
     VkDependencyInfoKHR* pDependencyInfo = &local_pDependencyInfo.s;
     pBoxedInfo->pvkCmdSetEvent2KHR(commandBuffer, event, pDependencyInfo);
@@ -7174,9 +7008,7 @@ void vk_CmdResetEvent2KHR(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkEvent event = *(VkEvent*)getPhysicalAddress(ARG2, 8);
-;
     VkPipelineStageFlags2KHR stageMask = *(VkPipelineStageFlags2KHR*)getPhysicalAddress(ARG3, 8);
-;
     pBoxedInfo->pvkCmdResetEvent2KHR(commandBuffer, event, stageMask);
 }
 void vk_CmdWaitEvents2KHR(CPU* cpu) {
@@ -7216,7 +7048,6 @@ void vk_QueueSubmit2KHR(CPU* cpu) {
         }
     }
     VkFence fence = *(VkFence*)getPhysicalAddress(ARG4, 8);
-;
     EAX = pBoxedInfo->pvkQueueSubmit2KHR(queue, submitCount, pSubmits, fence);
     if (pSubmits) {
         delete[] pSubmits;
@@ -7226,9 +7057,7 @@ void vk_CmdWriteTimestamp2KHR(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkPipelineStageFlags2KHR stage = *(VkPipelineStageFlags2KHR*)getPhysicalAddress(ARG2, 8);
-;
     VkQueryPool queryPool = *(VkQueryPool*)getPhysicalAddress(ARG3, 8);
-;
     uint32_t query = (uint32_t)ARG4;
     pBoxedInfo->pvkCmdWriteTimestamp2KHR(commandBuffer, stage, queryPool, query);
 }
@@ -7236,11 +7065,8 @@ void vk_CmdWriteBufferMarker2AMD(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(ARG1);
     VkPipelineStageFlags2KHR stage = *(VkPipelineStageFlags2KHR*)getPhysicalAddress(ARG2, 8);
-;
     VkBuffer dstBuffer = *(VkBuffer*)getPhysicalAddress(ARG3, 8);
-;
     VkDeviceSize dstOffset = *(VkDeviceSize*)getPhysicalAddress(ARG4, 8);
-;
     uint32_t marker = (uint32_t)ARG5;
     pBoxedInfo->pvkCmdWriteBufferMarker2AMD(commandBuffer, stage, dstBuffer, dstOffset, marker);
 }

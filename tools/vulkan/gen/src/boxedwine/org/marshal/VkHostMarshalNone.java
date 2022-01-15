@@ -22,12 +22,16 @@ public class VkHostMarshalNone extends VkHostMarshal {
             out.append(param.paramArg);
             out.append(", ");
             out.append(param.getSize());
-            out.append(");\n");
+            out.append(")");
         }
         out.append(";\n");
     }
 
     public void after(VkFunction fn, StringBuilder out, VkParam param) throws Exception {
-
+        if (fn.name.equals("vkFreeMemory") && param.name.equals("memory")) {
+            out.append("    unregisterVkMemoryAllocation(memory);\n");
+        } else if (fn.name.equals("vkUnmapMemory") && param.name.equals("memory")) {
+            out.append("    unmapVkMemory(memory);\n");
+        }
     }
 }

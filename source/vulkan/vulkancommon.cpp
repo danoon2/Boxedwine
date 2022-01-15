@@ -71,6 +71,72 @@ void* getVulkanPtr(U32 address) {
     return (void*)(readq(address));
 }
 
+class VMemory : public BoxedPtrBase {
+public:
+    VkDeviceMemory memory;
+    VkDeviceSize size;
+    VkDeviceSize mappedLen;
+    U32 mappedAddress;
+};
+
+std::unordered_map<VkDeviceMemory, BoxedPtr<VMemory>> vmemory;
+BOXEDWINE_MUTEX vmemoryMutex;
+
+BoxedPtr<VMemory> getVMemory(VkDeviceMemory memory) {
+    if (vmemory.count(memory))
+        return vmemory[memory];
+    return NULL;
+}
+
+void registerVkMemoryAllocation(VkDeviceMemory memory, VkDeviceSize size) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(vmemoryMutex);
+    BoxedPtr<VMemory> m = new VMemory();
+    m->memory = memory;
+    m->size = size;
+    m->mappedLen = 0;
+    m->mappedAddress = 0;
+    vmemory[memory] = m;
+}
+
+void unregisterVkMemoryAllocation(VkDeviceMemory memory) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(vmemoryMutex);
+    BoxedPtr<VMemory> m = getVMemory(memory);
+    if (m) {
+        vmemory.erase(memory);
+    }
+}
+
+U32 mapVkMemory(VkDeviceMemory memory, void* pData, VkDeviceSize len) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(vmemoryMutex);
+    BoxedPtr<VMemory> m = getVMemory(memory);
+    if (!m) {
+        kpanic("Wasn't expecting mapVkMemory before registerVkMemoryAllocation");
+    }
+    if (m->mappedAddress) {
+        kpanic("Wasn't expecting mapVkMemory to be called twice on the same memory");
+    }
+    if ((S32)len == -1) {
+        len = m->size;
+    }
+    m->mappedLen = len;
+    m->mappedAddress = KThread::currentThread()->memory->mapNativeMemory(pData, (U32)len);
+    return m->mappedAddress;
+}
+
+void unmapVkMemory(VkDeviceMemory memory) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(vmemoryMutex);
+    BoxedPtr<VMemory> m = getVMemory(memory);
+    if (!m) {
+        kpanic("Wasn't expecting mapVkMemory before registerVkMemoryAllocation");
+    }
+    if (!m->mappedAddress) {
+        klog("unmapVkMemory called, but no record of being mapped");
+    }
+    KThread::currentThread()->memory->unmapNativeMemory(m->mappedAddress, (U32)m->mappedLen);
+    m->mappedAddress = 0;
+    m->mappedLen = 0;
+}
+
 static void BOXED_vkCreateWin32SurfaceKHR(CPU* cpu) {
     //VkInstance instance,
     //const VkWin32SurfaceCreateInfoKHR* create_info,

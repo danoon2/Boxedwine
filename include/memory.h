@@ -92,6 +92,7 @@ public:
 
     void map(U32 startPage, const std::vector<U8*>& pages, U32 permissions);
     U32 mapNativeMemory(void* buf, U32 len);
+    void unmapNativeMemory(U32 address, U32 len);
 
     bool findFirstAvailablePage(U32 startingPage, U32 pageCount, U32* result, bool canBeMapped, bool alignNative = false);
     bool isAlignedNativePage(U32 page) { return (page & ~(K_NATIVE_PAGES_PER_PAGE - 1)) == page;}

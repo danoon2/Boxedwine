@@ -71,6 +71,9 @@ public class VkHost {
     static private void writeFunction(VkFunction fn, StringBuilder out) throws Exception {
         int stackPos = 1;
         hostStart(fn, out);
+        if (fn.name.equals("vkCreateImage")) {
+            int ii=0;
+        }
         for (VkParam param : fn.params) {
             hostStartParam(fn, out, param, stackPos);
             if (stackPos == 1 && fn.params.elementAt(0).paramType.type.equals("VK_DEFINE_HANDLE")) {
@@ -143,7 +146,11 @@ public class VkHost {
         out.append("void* getVulkanPtr(U32 address);\n");
         out.append("U32 createVulkanPtr(U64 value, BoxedVulkanInfo* info);\n");
         out.append("BoxedVulkanInfo* getInfoFromHandle(U32 address);\n");
-        out.append("void freeVulkanPtr(U32 p);\n\n");
+        out.append("void freeVulkanPtr(U32 p);\n");
+        out.append("void registerVkMemoryAllocation(VkDeviceMemory memory, VkDeviceSize size);\n");
+        out.append("void unregisterVkMemoryAllocation(VkDeviceMemory memory);\n");
+        out.append("U32 mapVkMemory(VkDeviceMemory memory, void* pData, VkDeviceSize len);\n");
+        out.append("void unmapVkMemory(VkDeviceMemory memory);\n\n");
         for (int i=0;i<15;i++) {
             out.append("#define ARG");
             out.append(i+1);

@@ -15,16 +15,14 @@ public class VkHostMarshalMapMemory extends VkHostMarshal {
             out.append("*");
         }
         if (param.isDoublePointer) {
-            out.append("*");
+            param.name = "pData";
+            param.nameInFunction = "&pData";
         }
         out.append(param.name);
         out.append(" = NULL;\n");
-        out.append("    kpanic(\"");
-        out.append(fn.name);
-        out.append(" not implemented\");\n");
     }
 
     public void after(VkFunction fn, StringBuilder out, VkParam param) throws Exception {
-
+        out.append("    if (EAX == 0) {\n        writed(ARG6, mapVkMemory(memory, pData, size));\n    }\n");
     }
 }
