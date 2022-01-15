@@ -3128,6 +3128,15 @@ void opIntIb(Armv8btAsm* data) {
         data->signalIllegalInstruction(5);
     }
 }
+void opInt9A(Armv8btAsm* data) {
+    data->syncRegsFromHost();
+
+    // void common_int9A(CPU * cpu)
+    data->mov64(0, xCPU); // param 1 (CPU)
+
+    data->callHost((void*)common_int9A);
+    data->syncRegsToHost();
+}
 void opIntO(Armv8btAsm* data) {
     data->invalidOp(data->decodedOp->originalOp);
     data->done = true;
@@ -6778,6 +6787,7 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opInt80,
     opInt98,
     opInt99,
+    opInt9A,
     opIntIb,
     opIntO,
     opIret,
