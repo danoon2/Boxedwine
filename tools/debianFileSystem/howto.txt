@@ -1,0 +1,43 @@
+To run the debian file system creator
+
+1) Open toos/debianFileSystem in IntelliJ (free IDE)
+
+
+2) Modify the settings in Main.java
+
+        Settings.fileCachePath = new File("c:\\debianCache");
+        Settings.outputDir = new File("c:\\debianCache\\out");
+        Settings.extraFiles = new File("C:\\boxedwine\\tools\\debianFileSystem\\fs");
+        Settings.boxedwinePath = "boxedwine"; // find it in the OS path
+
+* set boxedwinePath to the absolute path to boxedwine.exe if it is not in your path
+* set extraFiles to the location of the boxedwine source code tools\debianFileSystems\fs
+
+3) set the flag in Main.java for whether or not you want to include x11 (the offical debian.zip files I create do not include this)
+
+* static boolean includeX11 = true;
+
+
+4) add extra packages if you want them, search in Main.java for // :TODO: add extra packages here
+
+For example 
+
+DPkg.install("git", downloadOnly);
+
+
+5) run the project with no command line arguments
+
+* if includeX11 is false it should only take a couple of seconds because it justs unzips the packages.
+* if includeX11 is true it will take several minutes because it is actually installing each package with dpkg.  udev package will crash Boxedwine.  Just hit ok for the error and it will continue.
+
+
+6) zip up debianCache\out from inside the folder so that home, bin, etc are at the top level of the zip file.  
+
+
+7) you can remove some files from the zip to make it smaller if you don't need them
+
+For example:
+
+/usr/share/doc/*
+/usr/share/man/*
+/usr/share/locale/* except en
