@@ -1,12 +1,13 @@
 #pragma GCC diagnostic ignored "-Wreturn-type"
 #define NONAMELESSUNION
 #define COBJMACROS
-#include "config.h"
 
 #include <stdarg.h>
+#include <stdlib.h>
 
 #include "windef.h"
 #include "winbase.h"
+#include "winternl.h"
 #include "wingdi.h"
 #include "winuser.h"
 #include "mmddk.h"
@@ -18,7 +19,7 @@
 #include "winnls.h"
 #include "winreg.h"
 #include "wine/debug.h"
-#include "wine/unicode.h"
+//#include "wine/unicode.h"
 #include "wine/list.h"
 
 #include "ole2.h"
@@ -32,9 +33,10 @@
 #include "audioclient.h"
 #include "audiopolicy.h"
 
-#include <dlfcn.h>
 #include <fcntl.h>
 #include <unistd.h>
+
+int pipe(int pipefd[2]);
 
 WINE_DEFAULT_DEBUG_CHANNEL(boxedaudio);
 
@@ -117,6 +119,7 @@ struct int2Float {
 int pipeFd[2];
 static HANDLE thread;
 static HANDLE dsoundEvent;
+
 static unsigned char read8() {
     unsigned char b;
     while (read(pipeFd[0], &b, 1) == 0) {
@@ -600,7 +603,7 @@ static void get_device_guid(EDataFlow flow, AudioDeviceID device, GUID *guid)
 		key_name[0] = '0';
 	key_name[1] = ',';
 
-	sprintfW(key_name + 2, key_fmt, device);
+	swprintf(key_name + 2, ARRAY_SIZE(key_name) - 2, key_fmt, device);
 
 	if (RegOpenKeyExW(HKEY_CURRENT_USER, drv_key_devicesW, 0, KEY_WRITE | KEY_READ, &key) == ERROR_SUCCESS) {
 		if (RegOpenKeyExW(key, key_name, 0, KEY_READ, &dev_key) == ERROR_SUCCESS) {
@@ -660,7 +663,7 @@ HRESULT WINAPI AUDDRV_GetEndpointIDs(EDataFlow flow, WCHAR ***ids,
 		HeapFree(GetProcessHeap(), 0, *guids);
 		return E_OUTOFMEMORY;
 	}
-	strcpyW((*ids)[0], deviceName);
+	wcscpy((*ids)[0], deviceName);
 	get_device_guid(flow, 1, &(*guids)[0]);
 
 	TRACE("device 0: id %s key 1(default)\n", debugstr_w(deviceName));
@@ -713,7 +716,7 @@ static BOOL get_deviceid_by_guid(GUID *guid, AudioDeviceID *id, EDataFlow *flow)
 					return FALSE;
 				}
 
-				*id = strtoulW(key_name + 2, NULL, 10);
+				*id = wcstoul(key_name + 2, NULL, 10);
 
 				return TRUE;
 			}

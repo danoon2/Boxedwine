@@ -26,12 +26,15 @@
 #include "windef.h"
 #include "winbase.h"
 #include "winuser.h"
+
+#if WINE_GDI_DRIVER_VERSION < 71
 #include "rpc.h"
 #include "winreg.h"
 #include "initguid.h"
 #include "devguid.h"
 #include "devpkey.h"
 #include "setupapi.h"
+#endif
 #define WIN32_NO_STATUS
 #include "winternl.h"
 #include "wine/debug.h"
@@ -39,7 +42,6 @@
 
 #include "wingdi.h"
 #include "wine/gdi_driver.h"
-
 
 WINE_DEFAULT_DEBUG_CHANNEL(boxeddrv);
 
@@ -50,6 +52,8 @@ WINE_DEFAULT_DEBUG_CHANNEL(boxeddrv);
 #endif
 
 INT WINE_CDECL boxeddrv_GetDeviceCaps(PHYSDEV dev, INT cap);
+
+#if WINE_GDI_DRIVER_VERSION < 70
 
 struct boxed_gpu
 {
@@ -584,3 +588,59 @@ done:
         handler->free_monitors(monitors);
         */
 }
+
+#else 
+static BOOL force_display_devices_refresh;
+
+void CDECL boxedwine_UpdateDisplayDevices(const struct gdi_device_manager* device_manager, BOOL force, void* param) {
+    DWORD len;
+    INT width = boxeddrv_GetDeviceCaps(NULL, DESKTOPHORZRES);
+    INT height = boxeddrv_GetDeviceCaps(NULL, DESKTOPVERTRES);
+    const char* gpuName = "Boxedwine GPU";
+    const char* monitorName = "Boxedwine Monitor";
+    RECT r = { 0, 0, width, height };
+    struct gdi_gpu gdi_gpu =
+    {
+        .id = 1,
+        .vendor_id = 0,
+        .device_id = 0,
+        .subsys_id = 0,
+        .revision_id = 0,
+    };
+    struct gdi_adapter gdi_adapter =
+    {
+        .id = 1,
+        .state_flags = DISPLAY_DEVICE_PRIMARY_DEVICE | DISPLAY_DEVICE_ATTACHED_TO_DESKTOP,
+    };
+    struct gdi_monitor gdi_monitor =
+    {
+        .rc_monitor = r,
+        .rc_work = r,
+        .state_flags = DISPLAY_DEVICE_ATTACHED | DISPLAY_DEVICE_ACTIVE,
+    };
+
+    if (!force && !force_display_devices_refresh) {
+        TRACE("Not forced\n");
+        return;
+    }
+    TRACE("Forced\n");
+    force_display_devices_refresh = FALSE;
+        
+    RtlUTF8ToUnicodeN(gdi_gpu.name, sizeof(gdi_gpu.name), &len, gpuName, strlen(gpuName));
+    device_manager->add_gpu(&gdi_gpu, param);
+    
+    device_manager->add_adapter(&gdi_adapter, param);    
+       
+    RtlUTF8ToUnicodeN(gdi_monitor.name, sizeof(gdi_monitor.name), &len, monitorName, strlen(monitorName));
+    device_manager->add_monitor(&gdi_monitor, param);
+}
+
+void BOXEDDRV_DisplayDevices_Init(BOOL force) {
+    UINT32 num_path, num_mode;
+
+    TRACE("force=%d\n", force);
+    if (force) force_display_devices_refresh = TRUE;
+    /* trigger refresh in win32u */
+    NtUserGetDisplayConfigBufferSizes(QDC_ONLY_ACTIVE_PATHS, &num_path, &num_mode);
+}
+#endif

@@ -20,16 +20,17 @@ cd wine-git
 do_build()
 {
   VERSION=$1
-  EXTRA=""
   shift
+  BVERSION=$1
+  EXTRA=" -DBOXED_WINE_VERSION=$BVERSION"
+  shift
+  if ((BVERSION > 6000))
+  then
+    EXTRA+=" -DBOXEDWINE_VULKAN"
+  fi
   if [[ $1 == "wglext" ]]
   then
     EXTRA+=" -DBOXED_NEED_WGLEXT"
-    shift
-  fi
-  if [[ $1 == "ignorewinelib" ]]
-  then
-    EXTRA+=" -DBOXED_IGNORE_WINELIB"
     shift
   fi
   if [ ! -f ../wine-$VERSION.zip ]
@@ -87,11 +88,20 @@ do_build()
     mkdir ../tmp_install/opt
     cp -r /opt/wine ../tmp_install/opt/
     cd ../tmp_install
-    rm opt/wine/lib/wine/winemenubuilder.exe.so
-    rm -f opt/wine/lib/libwine.so 
-    rm opt/wine/lib/libwine.so.1
-    printf "libwine.so.1.0" > opt/wine/lib/libwine.so.link
-    printf "libwine.so.1.0" > opt/wine/lib/libwine.so.1.link
+    if [ -d opt/wine/lib/wine/i386-unix ]
+    then
+        rm opt/wine/lib/wine/i386-unix/winemenubuilder.exe.so
+        rm opt/wine/lib/wine/i386-unix/libwine.so.1
+        printf "libwine.so.1.0" > opt/wine/lib/wine/i386-unix/libwine.so.1.link
+        mv opt/wine/lib/wine/i386-unix/wineoss.drv.so opt/wine/lib/wine/i386-unix/wineoss.drv.dsp.so
+    else
+        rm opt/wine/lib/wine/winemenubuilder.exe.so
+        rm -f opt/wine/lib/libwine.so 
+        rm opt/wine/lib/libwine.so.1
+        printf "libwine.so.1.0" > opt/wine/lib/libwine.so.link
+        printf "libwine.so.1.0" > opt/wine/lib/libwine.so.1.link
+        mv opt/wine/lib/wine/wineoss.drv.so opt/wine/lib/wine/wineoss.drv.dsp.so
+    fi
     printf "Wine $VERSION" > wineVersion.txt
     printf "debian10.zip" > depends.txt
     cp ../changes.txt changes.txt
@@ -106,11 +116,14 @@ do_build()
     fi
     echo './configure CFLAGS="-O2 -msse2 -march=pentium4 -mfpmath=sse $EXTRA" --without-pulse --without-dbus --without-sane --without-hal --prefix=/opt/wine --disable-tests' >> build.txt
     echo "make -j4" >> build.txt
-    mv opt/wine/lib/wine/wineoss.drv.so opt/wine/lib/wine/wineoss.drv.dsp.so
     zip -r ../wine-$VERSION.zip *
     cd ../wine-git
     make clean
     rm -rf ../tmp_install
+    if [[ -f include/wine/library.h ]]
+    then
+      rm include/wine/library.h
+    fi
   fi
 }
 
@@ -121,10 +134,11 @@ then
 # f2e5b8070776268912e1886d4516d7ddec6969fc
 # kernel32: Use the Get/SetComputerName functions from kernelbase. 
 # reverted because on slower systems it will fail to create a window, not sure why
-    do_build 6.0 ignorewinelib patch ddraw_waitvblank.patch
-    do_build 5.0 patch ddraw_waitvblank.patch patch wine5-lz.patch revert f2e5b8070776268912e1886d4516d7ddec6969fc
-    do_build 4.0 patch ddraw_waitvblank.patch
-    do_build 3.1 patch ddraw_waitvblank.patch
+    do_build 7.0 7000 patch ddraw_waitvblank.patch
+    do_build 6.3 6030 patch ddraw_waitvblank.patch
+    do_build 5.0 5000 patch ddraw_waitvblank.patch patch wine5-lz.patch revert f2e5b8070776268912e1886d4516d7ddec6969fc
+    do_build 4.1 4010 patch ddraw_waitvblank.patch
+    do_build 3.1 3010 patch ddraw_waitvblank.patch
 else
     do_build 2.0 wglext patch ddraw_waitvblank.patch
 
