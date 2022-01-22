@@ -82,7 +82,7 @@ typedef U32 (*SyscallFunc)(CPU* cpu, U32 eipCount);
 #define SYSCALL_FUTEX       0x200
 
 #ifdef _DEBUG
-static U32 syscallMask = 0xfff;
+static U32 syscallMask = 0;
 #else
 static U32 syscallMask = 0;
 #endif

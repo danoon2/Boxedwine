@@ -39,10 +39,11 @@ void FilePage::ondemmandFile(U32 address) {
     U32 page = address >> K_PAGE_SHIFT;
     bool read = this->canRead() || this->canExec();
     bool write = this->canWrite();
+    bool shared = this->mapShared();
     U8* ram=NULL;
 
     address = address & (~K_PAGE_MASK);
-    if (read && !write) {
+    if ((read && !write) || shared) {
         ram = mapped->systemCacheEntry->data[this->index];   
     } 
     if (!ram) {
@@ -51,7 +52,7 @@ void FilePage::ondemmandFile(U32 address) {
         this->mapped->file->seek(((U64)this->index) << K_PAGE_SHIFT);
         this->mapped->file->readNative(ram, K_PAGE_SIZE);
         this->mapped->file->seek(pos);
-        if (!write) {
+        if (!write || shared) {
             mapped->systemCacheEntry->data[this->index] = ram;
             ramPageIncRef(ram);
         }
