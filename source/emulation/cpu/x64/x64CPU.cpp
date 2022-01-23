@@ -632,7 +632,10 @@ U64 x64CPU::handleAccessException(U64 rip, U64 address, bool readAddress, std::f
     if ((address & 0xFFFFFFFF00000000l) == this->thread->memory->id) {
         U32 emulatedAddress = (U32)address;
         U32 page = emulatedAddress >> K_PAGE_SHIFT;
-        if (this->thread->memory->flags[page] & PAGE_MAPPED_HOST) {
+        Memory* m = this->thread->memory;
+        U32 nativeFlags = m->nativeFlags[page];
+        U32 flags = m->flags[page];
+        if ((flags & PAGE_MAPPED_HOST) || (flags & PAGE_PERMISSION_MASK) != (nativeFlags & PAGE_PERMISSION_MASK)) {
             // if this ends up being too slow for each read/write, perhaps the code block could be changed to use
             // memory->memOffsets[page] instead of memory->id
             //

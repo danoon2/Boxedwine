@@ -116,8 +116,23 @@ void Memory::clone(Memory* from) {
                     shown=1;
                 }
             }
-            allocNativeMemory(this, i, 1, from->flags[i]);
+            bool changedWritePermission = false;
+            if (!(from->flags[i] & PAGE_WRITE)) {
+                changedWritePermission = true;
+            }
+            bool changedReadPermission = false;
+            if (!(from->flags[i] & PAGE_READ)) {
+                changedReadPermission = true;
+                updateNativePermission(from, i, 1, PAGE_READ);
+            }
+            allocNativeMemory(this, i, 1, from->flags[i] | PAGE_WRITE);
             memcpy(getNativeAddress(this, i << K_PAGE_SHIFT), getNativeAddress(from, i << K_PAGE_SHIFT), K_PAGE_SIZE);
+            if (changedWritePermission) {
+                updateNativePermission(this, i, 1, from->flags[i]);
+            }
+            if (changedReadPermission) {
+                updateNativePermission(from, i, 1, from->flags[i]);
+            }
         } else {
             this->flags[i] = from->flags[i];
         }     
@@ -137,12 +152,11 @@ void writeMemory(U32 address, U8* data, int len) {
 }
 
 void Memory::unmapNativeMemory(U32 address, U32 size) {
-    U32 i;
     U32 result = 0;
     U32 pageCount = (size >> K_PAGE_SHIFT) + 2; // 1 for size alignment, 1 for hostAddress alignment
     U64 pageStart = address >> K_PAGE_SHIFT;
 
-    for (int i = 0; i < pageCount; i++) {
+    for (U32 i = 0; i < pageCount; i++) {
         this->memOffsets[i + pageStart] = this->id;
         this->flags[i + pageStart] = 0;
     }
@@ -193,7 +207,7 @@ void Memory::allocPages(U32 page, U32 pageCount, U8 permissions, FD fd, U64 offs
                 this->flags[i+page]|=PAGE_WRITE;
             }
             addedWritePermission = true;
-            updateNativePermission(this, nativePageStart, nativePageCount, true, true);
+            updateNativePermission(this, nativePageStart, nativePageCount, PAGE_WRITE|PAGE_READ);
         }
         // :TODO: need to implement writing back to the file
         // :TODO: need to sync shared pages acrosss processes for hard_memory.cpp
@@ -203,8 +217,7 @@ void Memory::allocPages(U32 page, U32 pageCount, U8 permissions, FD fd, U64 offs
                 this->flags[i+page]&=~PAGE_WRITE;
             }
             // :TODO: why is it necessary to keep write permission on this read only memory
-            bool canRead = (permissions & (PAGE_READ | PAGE_EXEC)) != 0;//
-            //updateNativePermission(this, nativePageStart, nativePageCount, canRead, false);
+            updateNativePermission(this, nativePageStart, nativePageCount, permissions);
         }
     }    
 }
@@ -215,6 +228,9 @@ void Memory::protectPage(U32 i, U32 permissions) {
     } else {
         this->flags[i] &=~ PAGE_PERMISSION_MASK;
         this->flags[i] |= permissions;
+        if (this->isPageAllocated(i)) {
+            updateNativePermission(this, i, 1, permissions);
+        }
     } 
 }
 

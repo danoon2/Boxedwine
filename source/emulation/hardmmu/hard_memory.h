@@ -21,8 +21,8 @@
 
 #ifdef BOXEDWINE_64BIT_MMU
 
-#define NATIVE_FLAG_COMMITTED 0x01
-#define NATIVE_FLAG_CODEPAGE_READONLY 0x02
+#define NATIVE_FLAG_COMMITTED 0x08
+#define NATIVE_FLAG_CODEPAGE_READONLY 0x10
 
 INLINE void* getNativeAddress(Memory* memory, U32 address) {
     U32 page = address >> K_PAGE_SHIFT;
@@ -32,6 +32,11 @@ INLINE void* getNativeAddress(Memory* memory, U32 address) {
         kpanic("bad memory access");
     }
 #endif
+    return (void*)(address + memory->memOffsets[page]);
+}
+
+INLINE void* getNativeAddressNoCheck(Memory* memory, U32 address) {
+    U32 page = address >> K_PAGE_SHIFT;
     return (void*)(address + memory->memOffsets[page]);
 }
 
@@ -45,7 +50,7 @@ void allocNativeMemory(Memory* memory, U32 page, U32 pageCount, U32 flags);
 void freeNativeMemory(Memory* memory, U32 page, U32 pageCount);
 void makeCodePageReadOnly(Memory* memory, U32 page);
 bool clearCodePageReadOnly(Memory* memory, U32 page);
-void updateNativePermission(Memory* memory, U32 nativePage, U32 nativePageCount, bool canRead, bool canWrite);
+void updateNativePermission(Memory* memory, U32 nativePage, U32 nativePageCount, U32 permission);
 U32 getHostPageSize();
 U32 getHostAllocationSize();
 #ifdef BOXEDWINE_BINARY_TRANSLATOR

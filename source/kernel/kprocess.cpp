@@ -2646,7 +2646,7 @@ void KProcess::printMappedFiles() {
 U32 KProcess::allocNative(U32 len) {
     U32 page = this->nextNativeAddress;
     U32 pageCount = (len+K_PAGE_SIZE-1) >> K_PAGE_SHIFT;
-    allocNativeMemory(this->memory, page, pageCount, 0);
+    allocNativeMemory(this->memory, page, pageCount, PAGE_READ|PAGE_WRITE);
     this->nextNativeAddress+=pageCount;
     return page << K_PAGE_SHIFT;
 }

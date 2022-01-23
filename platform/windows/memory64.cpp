@@ -29,22 +29,27 @@ U32 getHostAllocationSize() {
 }
 
 #ifdef BOXEDWINE_X64
-void updateNativePermission(Memory* memory, U32 nativePage, U32 nativePageCount, bool canRead, bool canWrite) {
+void updateNativePermission(Memory* memory, U32 nativePage, U32 nativePageCount, U32 permission) {
     DWORD proto = 0;
     DWORD oldProtect;
 
-    if (canWrite) {
+    permission &= PAGE_PERMISSION_MASK;
+    if (permission & PAGE_WRITE) {
         proto = PAGE_READWRITE;
-    } else if (canRead) {
+    } else if ((permission & PAGE_READ) || (permission & PAGE_EXEC)) {
         proto = PAGE_READONLY;
     } else {
         proto = PAGE_NOACCESS;
     }
 
-    if (!VirtualProtect(getNativeAddress(memory, (nativePage << K_NATIVE_PAGE_SHIFT)), nativePageCount << K_NATIVE_PAGE_SHIFT, proto, &oldProtect)) {
+    if (!VirtualProtect(getNativeAddressNoCheck(memory, (nativePage << K_NATIVE_PAGE_SHIFT)), nativePageCount << K_NATIVE_PAGE_SHIFT, proto, &oldProtect)) {
         LPSTR messageBuffer = NULL;
         size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
         kpanic("failed to protect memory: %s", messageBuffer);
+    }
+    for (U32 i = 0; i < nativePageCount; i++) {
+        memory->nativeFlags[i + nativePage] &= ~PAGE_PERMISSION_MASK;
+        memory->nativeFlags[i + nativePage] |= permission;
     }
 }
 
@@ -97,7 +102,7 @@ void allocNativeMemory(Memory* memory, U32 page, U32 pageCount, U32 flags) {
         gran = getHostAllocationSize() / K_PAGE_SIZE;
     }
     granPage = page & ~(gran-1);
-    granCount = ((gran - 1) + pageCount + (page - granPage)) / gran;
+    granCount = ((gran - 1) + pageCount + (page - granPage)) / gran; 
     for (i=0; i < granCount; i++) {
         if (!(memory->nativeFlags[granPage] & NATIVE_FLAG_COMMITTED)) {
             U32 j;
@@ -111,13 +116,35 @@ void allocNativeMemory(Memory* memory, U32 page, U32 pageCount, U32 flags) {
             memory->allocated+=(gran << K_PAGE_SHIFT);
             for (j=0;j<gran;j++)
                 memory->nativeFlags[granPage+j] |= NATIVE_FLAG_COMMITTED;
+        } else {
+            // so that the memset works below
+            updateNativePermission(memory, granPage, gran, PAGE_READ|PAGE_WRITE);
         }
         granPage+=gran;
     }
-    for (i=0;i<pageCount;i++) {
-        memory->flags[page+i] = flags | PAGE_ALLOCATED;
+    for (i = 0; i < pageCount; i++) {
+        memory->flags[page + i] = flags | PAGE_ALLOCATED;
+    }
+    granPage = page & ~(gran - 1);
+    if (granPage < page) {
+        for (U32 i = 0; i < page - granPage; i++) {
+            if (!memory->isPageAllocated(i + granPage)) {
+                updateNativePermission(memory, i + granPage, 1, 0);
+            }
+        }        
+    }
+    U32 granPageCount = granCount * gran;
+    if (granPage + granPageCount > page + pageCount) {
+        U32 diff = granPage + granPageCount - (page + pageCount);
+        U32 p = granPage + granPageCount - diff;
+        for (U32 i = 0; i < diff; i++) {
+            if (!memory->isPageAllocated(i + p)) {
+                updateNativePermission(memory, i + p, 1, 0);
+            }
+        }
     }
     memset(getNativeAddress(memory, page << K_PAGE_SHIFT), 0, pageCount << K_PAGE_SHIFT);
+    updateNativePermission(memory, page, pageCount, flags & PAGE_PERMISSION_MASK);
     //printf("allocated %X - %X\n", page << PAGE_SHIFT, (page+pageCount) << PAGE_SHIFT);
 }
 
@@ -165,6 +192,14 @@ void freeNativeMemory(Memory* memory, U32 page, U32 pageCount) {
                     memory->nativeFlags[granPage + j] = 0;
                 }
                 memory->allocated -= (gran << K_PAGE_SHIFT);
+            }
+            else {
+                for (U32 j = 0; j < gran; j++) {
+                    U32 p = granPage + j;
+                    if (p >= page && p < page + pageCount && (memory->nativeFlags[p] & PAGE_PERMISSION_MASK)) {
+                        updateNativePermission(memory, p, 1, 0);
+                    }
+                }
             }
         }
         granPage+=gran;
