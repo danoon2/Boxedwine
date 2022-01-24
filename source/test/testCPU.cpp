@@ -51,6 +51,8 @@ __m128i floatTo128(float f1, float f2, float f3, float f4) {
 }
 #endif
 
+#define PAGES_PER_SEG 32
+
 static KThread* thread;
 static Memory* memory;
 CPU* cpu;
@@ -81,9 +83,9 @@ void setup() {
         cpu = thread->cpu;
         thread->memory = memory;
         KThread::setCurrentThread(thread);
-        process->memory->allocPages((STACK_ADDRESS >> K_PAGE_SHIFT)-17, 17, PAGE_READ|PAGE_WRITE, 0, 0, 0);
-        process->memory->allocPages(CODE_ADDRESS >> K_PAGE_SHIFT, 17, PAGE_READ|PAGE_WRITE|PAGE_EXEC, 0, 0, 0);
-        process->memory->allocPages(HEAP_ADDRESS >> K_PAGE_SHIFT, 17, PAGE_READ|PAGE_WRITE, 0, 0, 0);
+        process->memory->allocPages((STACK_ADDRESS >> K_PAGE_SHIFT)-PAGES_PER_SEG, PAGES_PER_SEG, PAGE_READ|PAGE_WRITE, 0, 0, 0);
+        process->memory->allocPages(CODE_ADDRESS >> K_PAGE_SHIFT, PAGES_PER_SEG, PAGE_READ|PAGE_WRITE|PAGE_EXEC, 0, 0, 0);
+        process->memory->allocPages(HEAP_ADDRESS >> K_PAGE_SHIFT, PAGES_PER_SEG, PAGE_READ|PAGE_WRITE, 0, 0, 0);
     }
 
     for (int i=0;i<6;i++) {
@@ -92,14 +94,14 @@ void setup() {
     }
     cpu->seg[CS].address = CODE_ADDRESS;
     cpu->seg[DS].address = HEAP_ADDRESS;
-    cpu->seg[SS].address = STACK_ADDRESS-K_PAGE_SIZE*17;
+    cpu->seg[SS].address = STACK_ADDRESS-K_PAGE_SIZE*PAGES_PER_SEG;
     cpu->thread->process->hasSetSeg[CS] = true;
     cpu->thread->process->hasSetSeg[DS] = true;
     cpu->thread->process->hasSetSeg[SS] = true;
 
-    zeroMemory(CODE_ADDRESS, K_PAGE_SIZE*17);
-    zeroMemory(STACK_ADDRESS-K_PAGE_SIZE*17, K_PAGE_SIZE*17);
-    zeroMemory(HEAP_ADDRESS, K_PAGE_SIZE*17);
+    zeroMemory(CODE_ADDRESS, K_PAGE_SIZE*PAGES_PER_SEG);
+    zeroMemory(STACK_ADDRESS-K_PAGE_SIZE*PAGES_PER_SEG, K_PAGE_SIZE*PAGES_PER_SEG);
+    zeroMemory(HEAP_ADDRESS, K_PAGE_SIZE*PAGES_PER_SEG);
 
     ESP=4096;
 }
@@ -8519,9 +8521,9 @@ void runLeaGd(int rm, int hasSib, U32 sib, int hasDisp8, int hasDisp32, S32 disp
 }
 
 void initMem32() {
-    zeroMemory(CODE_ADDRESS, K_PAGE_SIZE*17);
-    zeroMemory(STACK_ADDRESS-K_PAGE_SIZE*17, K_PAGE_SIZE*17);
-    zeroMemory(HEAP_ADDRESS, K_PAGE_SIZE*17);
+    zeroMemory(CODE_ADDRESS, K_PAGE_SIZE*PAGES_PER_SEG);
+    zeroMemory(STACK_ADDRESS-K_PAGE_SIZE*PAGES_PER_SEG, K_PAGE_SIZE*PAGES_PER_SEG);
+    zeroMemory(HEAP_ADDRESS, K_PAGE_SIZE*PAGES_PER_SEG);
 
     cpu->big = true;
     EAX = 0x12345678;
@@ -8932,9 +8934,9 @@ void runLeaGw(int rm, int hasDisp8, int hasDisp16, U32 d, U16 result, U32 seg) {
 }
 
 void initMem16() {
-    zeroMemory(CODE_ADDRESS, K_PAGE_SIZE*17);
-    zeroMemory(STACK_ADDRESS-K_PAGE_SIZE*17, K_PAGE_SIZE*17);
-    zeroMemory(HEAP_ADDRESS, K_PAGE_SIZE*17);
+    zeroMemory(CODE_ADDRESS, K_PAGE_SIZE*PAGES_PER_SEG);
+    zeroMemory(STACK_ADDRESS-K_PAGE_SIZE*PAGES_PER_SEG, K_PAGE_SIZE*PAGES_PER_SEG);
+    zeroMemory(HEAP_ADDRESS, K_PAGE_SIZE*PAGES_PER_SEG);
 
     cpu->big = false;
     EAX = 0x12345678;

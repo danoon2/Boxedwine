@@ -1042,7 +1042,7 @@ void Memory::allocNativeMemory(U32 page, U32 pageCount, U32 flags) {
             Platform::allocateNativeMemory(address);
             this->allocated += (gran << K_PAGE_SHIFT);
             for (U32 j = 0; j < permPerAllocPage; j++) {
-                this->nativeFlags[granPage + j] |= NATIVE_FLAG_COMMITTED;
+                this->nativeFlags[nativePermissionIndex + j] |= NATIVE_FLAG_COMMITTED;
             }
         } else {
             // so that the memset works below
@@ -1076,7 +1076,8 @@ void Memory::freeNativeMemory(U32 page, U32 pageCount) {
     U32 granPage = page & ~(gran - 1);
     U32 granCount = ((gran - 1) + pageCount + (page - granPage)) / gran;
     for (U32 i = 0; i < granCount; i++) {
-        if (this->nativeFlags[granPage] & NATIVE_FLAG_COMMITTED) {
+        U32 nativePermissionIndex = getNativePermissionIndex(granPage);
+        if (this->nativeFlags[nativePermissionIndex] & NATIVE_FLAG_COMMITTED) {
             bool inUse = false;
 
             for (U32 j = 0; j < gran; j++) {
@@ -1089,7 +1090,7 @@ void Memory::freeNativeMemory(U32 page, U32 pageCount) {
                 U64 address = (this->id | (granPage << K_PAGE_SHIFT));
                 Platform::freeNativeMemory(address);
                 for (U32 j = 0; j < permPerAllocPage; j++) {
-                    this->nativeFlags[granPage + j] = 0;
+                    this->nativeFlags[nativePermissionIndex + j] = 0;
                 }
                 this->allocated -= (gran << K_PAGE_SHIFT);
             } else {
