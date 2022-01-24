@@ -216,6 +216,7 @@ U32 Platform::allocateNativeMemory(U64 address) {
 
 U32 Platform::freeNativeMemory(U64 address) {
     mprotect((void*)address, getPageAllocationGranularity() << K_PAGE_SHIFT, PROT_NONE);
+    return 0;
 }
 
 U32 Platform::updateNativePermission(U64 address, U32 permission, U32 len) {
