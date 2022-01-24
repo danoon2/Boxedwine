@@ -46,11 +46,8 @@ INLINE U32 getHostAddress(KThread* thread, void* address) {
 
 void reserveNativeMemory(Memory* memory);
 void releaseNativeMemory(Memory* memory);
-void allocNativeMemory(Memory* memory, U32 page, U32 pageCount, U32 flags);
-void freeNativeMemory(Memory* memory, U32 page, U32 pageCount);
 void makeCodePageReadOnly(Memory* memory, U32 page);
 bool clearCodePageReadOnly(Memory* memory, U32 page);
-void updateNativePermission(Memory* memory, U32 nativePage, U32 nativePageCount, U32 permission);
 U32 getHostPageSize();
 U32 getHostAllocationSize();
 #ifdef BOXEDWINE_BINARY_TRANSLATOR

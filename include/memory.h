@@ -141,7 +141,7 @@ public:
 
 #ifdef BOXEDWINE_64BIT_MMU
     U8 flags[K_NUMBER_OF_PAGES];
-    U8 nativeFlags[K_NATIVE_NUMBER_OF_PAGES];
+    U8 nativeFlags[K_NATIVE_NUMBER_OF_PAGES]; // this is based on the granularity for permissions, Platform::getPagePermissionGranularity.  It is 
     U32 allocated;
     U64 id; 
 
@@ -173,6 +173,11 @@ public:
     void freeExcutableMemory(void* hostMemory, U32 size);
     void executableMemoryReleased();
     bool isAddressExecutable(void* address);
+
+    void allocNativeMemory(U32 page, U32 pageCount, U32 flags);
+    void freeNativeMemory(U32 page, U32 pageCount);    
+    void updatePagePermission(U32 page, U32 pageCount); // called after page permission has changed, code will give the native page the highest permission possible
+    void updateNativePermission(U32 page, U32 pageCount, U32 permission); // for a native page change so that it can be read or written too now, updatePagePermission should be called when done to restore correct permissions
 
     class AllocatedMemory {
     public:

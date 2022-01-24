@@ -128,6 +128,11 @@ public:
     static void setCurrentThreadPriorityHigh();
     static void writeCodeToMemory(void* address, U32 len, std::function<void()> callback);
     static U32 nanoSleep(U64 nano);
+    static U32 getPageAllocationGranularity();
+    static U32 getPagePermissionGranularity(); // assumed to be smaller or equal to getPageAllocationGranularity and that getPageAllocationGranularity / getPagePermissionGranularity is a whole number
+    static U32 allocateNativeMemory(U64 address); // page must be aligned to Platform::getAllocationGranularity
+    static U32 freeNativeMemory(U64 address); // page  must be aligned to Platform::getAllocationGranularity
+    static U32 updateNativePermission(U64 address, U32 permission, U32 len = 0); // page must be aligned to Platform::getProtectionGranularity.  when len == 0, it will default to getPagePermissionGranularity() << K_PAGE_SHIFT
 
 #ifdef BOXEDWINE_MULTI_THREADED
     static void setCpuAffinityForThread(KThread* thread, U32 count);

@@ -478,7 +478,7 @@ DevFB::DevFB(const BoxedPtr<FsNode>& node, U32 flags) : FsVirtualOpenNode(node, 
 
 void DevFB::close() {
 #ifdef BOXEDWINE_64BIT_MMU
-    freeNativeMemory(KThread::currentThread()->memory, ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS >> K_PAGE_SHIFT, (16*1024*1024) >> K_PAGE_SHIFT);
+    KThread::currentThread()->memory->freeNativeMemory(ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS >> K_PAGE_SHIFT, (16*1024*1024) >> K_PAGE_SHIFT);
     isFbActive = false;
 #endif
     FsVirtualOpenNode::close();
@@ -568,7 +568,7 @@ U32 DevFB::map(U32 address, U32 len, S32 prot, S32 flags, U64 off) {
     if (flags & K_MAP_SHARED) {
         allocFlags |= PAGE_SHARED;
     }
-    allocNativeMemory(KThread::currentThread()->memory, ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS >> K_PAGE_SHIFT, (16 * 1024 * 1024) >> K_PAGE_SHIFT, allocFlags);
+    KThread::currentThread()->memory->allocNativeMemory(ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS >> K_PAGE_SHIFT, (16 * 1024 * 1024) >> K_PAGE_SHIFT, allocFlags);
     if (isFbActive) {
         // :TODO: if and when 64-bit Boxedwine supports page sharing across processes, then we can use that
         klog("64-bit Boxedwine does not yet support /dev/fb being mapped more than 1 time");
