@@ -101,8 +101,12 @@ void BoxedApp::runAutomation() {
 }
 
 bool BoxedApp::hasAutomation() {
+#ifdef BOXEDWINE_RECORDER
     std::string path = GlobalSettings::getAutomationFolder(this->container) + Fs::nativePathSeperator + RECORDER_SCRIPT;
     return Fs::doesNativePathExist(path);
+#else
+    return false;
+#endif
 }
 
 void BoxedApp::launch() {

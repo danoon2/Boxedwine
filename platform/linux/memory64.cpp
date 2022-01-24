@@ -26,36 +26,6 @@
 U32 nativeMemoryPagesAllocated;
 
 #ifdef BOXEDWINE_64BIT_MMU
-void updateNativePermission(Memory* memory, U32 nativePage, U32 nativePageCount, bool canRead, bool canWrite) {
-    U32 proto = 0;
-    if (canRead) {
-        proto|=PROT_READ;
-    }
-    if (canWrite) {
-        proto|=PROT_WRITE;
-    }
-    if (!proto) {
-        proto = PROT_NONE;
-    }
-    mprotect((char*)memory->id + (nativePage << K_NATIVE_PAGE_SHIFT), nativePageCount << K_NATIVE_PAGE_SHIFT, proto);
-}
-
-static void updateNativePermission(Memory* memory, U32 nativePage) {
-    bool canRead = true;
-    bool canWrite = true;
-    U32 emulatedPage = memory->getEmulatedPage(nativePage);
-    
-    for (int i=0;i<K_NATIVE_PAGES_PER_PAGE;i++) {
-        if (!(memory->flags[emulatedPage+i] & (PAGE_READ|PAGE_EXEC))) {
-            canRead = false;
-        }
-        if (!(memory->flags[emulatedPage+i] & (PAGE_WRITE))) {
-            canWrite = false;
-        }
-    }
-    updateNativePermission(memory, nativePage, 1, canRead, canWrite);
-}
-
 void allocNativeMemory(Memory* memory, U32 page, U32 pageCount, U32 flags) {
     U32 proto = 0;
     U32 nativePageStart = memory->getNativePage(page);
@@ -91,37 +61,6 @@ void allocNativeMemory(Memory* memory, U32 page, U32 pageCount, U32 flags) {
             U32 pageFlags = GET_PAGE_PERMISSIONS(memory->flags[emulatedPageStart+j]);
             if (pageFlags != GET_PAGE_PERMISSIONS(flags)) {
                 //updateNativePermission(memory, i);
-            }
-        }
-    }
-}
-
-void freeNativeMemory(Memory* memory, U32 page, U32 pageCount) {
-    U32 nativePageStart = memory->getNativePage(page);
-    U32 nativePageStop = memory->getNativePage(page+pageCount-1);
-    U32 nativePageCount = nativePageStop - nativePageStart + 1;
-    
-    for (int i=0;i<(int)pageCount;i++) {
-        memory->clearCodePageFromCache(page + i);
-        memory->flags[page+i] = 0;
-    }
-    for (U32 i=0;i<nativePageCount;i++) {
-        U32 emulatedPageStart = memory->getEmulatedPage(nativePageStart+i);
-        bool canClear = true;
-        for (U32 j=0;j<K_NATIVE_PAGES_PER_PAGE;j++) {
-            if (memory->flags[emulatedPageStart+j]) {
-                canClear = false;
-                break;
-            }
-        }
-        if (canClear) {
-            if (memory->nativeFlags[nativePageStart+i] & NATIVE_FLAG_CODEPAGE_READONLY) {
-                memory->nativeFlags[nativePageStart+i] &= ~ NATIVE_FLAG_CODEPAGE_READONLY;
-            }
-            if (memory->nativeFlags[nativePageStart+i] & NATIVE_FLAG_COMMITTED) {
-                memory->nativeFlags[nativePageStart+i] &= ~ NATIVE_FLAG_COMMITTED;
-                mprotect((char*)memory->id + ((nativePageStart+i) << K_NATIVE_PAGE_SHIFT), K_NATIVE_PAGE_SIZE, PROT_NONE);
-                nativeMemoryPagesAllocated-=pageCount;
             }
         }
     }
