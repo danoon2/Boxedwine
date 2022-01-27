@@ -331,7 +331,7 @@ void x64CPU::link(X64Asm* data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 off
 
 void x64CPU::markCodePageReadOnly(X64Asm* data) {
     U32 pageStart = this->thread->memory->getNativePage((data->startOfDataIp+this->seg[CS].address) >> K_PAGE_SHIFT);
-    U32 pageEnd = this->thread->memory->getNativePage((data->startOfDataIp+this->seg[CS].address) >> K_PAGE_SHIFT);
+    U32 pageEnd = this->thread->memory->getNativePage((data->ip+this->seg[CS].address) >> K_PAGE_SHIFT);
     S32 pageCount = pageEnd-pageStart+1;
 
 #ifndef __TEST
@@ -633,7 +633,7 @@ U64 x64CPU::handleAccessException(U64 rip, U64 address, bool readAddress, std::f
         U32 emulatedAddress = (U32)address;
         U32 page = emulatedAddress >> K_PAGE_SHIFT;
         Memory* m = this->thread->memory;
-        U32 nativeFlags = m->nativeFlags[page];
+        U32 nativeFlags = m->nativeFlags[m->getNativePage(page)];
         U32 flags = m->flags[page];
         if ((flags & PAGE_MAPPED_HOST) || (flags & PAGE_PERMISSION_MASK) != (nativeFlags & PAGE_PERMISSION_MASK)) {
             // if this ends up being too slow for each read/write, perhaps the code block could be changed to use
@@ -671,9 +671,9 @@ U64 x64CPU::handleAccessException(U64 rip, U64 address, bool readAddress, std::f
         // check if the emulated memory caused the exception
         if ((address & 0xFFFFFFFF00000000l) == this->thread->memory->id) {                
             U32 emulatedAddress = (U32)address;
-            
+            U32 page = emulatedAddress >> K_PAGE_SHIFT;
             // check if emulated memory that caused the exception is a page that has code
-            if (this->thread->memory->nativeFlags[emulatedAddress>>K_PAGE_SHIFT] & NATIVE_FLAG_CODEPAGE_READONLY) {                    
+            if (this->thread->memory->nativeFlags[this->thread->memory->getNativePage(page)] & NATIVE_FLAG_CODEPAGE_READONLY) {
                 dynamicCodeExceptionCount++;                    
                 return this->handleCodePatch(rip, emulatedAddress, getReg(6), getReg(7), doSyncFrom, doSyncTo);                    
             }

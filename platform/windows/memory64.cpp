@@ -163,10 +163,10 @@ void makeCodePageReadOnly(Memory* memory, U32 page) {
         if (memory->dynamicCodePageUpdateCount[page]==MAX_DYNAMIC_CODE_PAGE_COUNT) {
             kpanic("makeCodePageReadOnly: tried to make a dynamic code page read-only");
         }
-        if (!VirtualProtect(getNativeAddress(memory, page << K_PAGE_SHIFT), (1 << K_PAGE_SHIFT), PAGE_READONLY, &oldProtect)) {
+        if (!VirtualProtect(getNativeAddressNoCheck(memory, page << K_NATIVE_PAGE_SHIFT), (1 << K_NATIVE_PAGE_SHIFT), PAGE_READONLY, &oldProtect)) {
             LPSTR messageBuffer = NULL;
             size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
-            kpanic("makeCodePageReadOnly: Failed to protect memory 0x%0.8X: %s", (page<<K_PAGE_SHIFT), messageBuffer);
+            kpanic("makeCodePageReadOnly: Failed to protect memory 0x%0.8X: %s", (page<< K_NATIVE_PAGE_SHIFT), messageBuffer);
         }
         memory->nativeFlags[page] |= NATIVE_FLAG_CODEPAGE_READONLY;
     }
@@ -178,7 +178,7 @@ bool clearCodePageReadOnly(Memory* memory, U32 page) {
 
     // :TODO: would the granularity ever be more than 4k?  should I check: SYSTEM_INFO System_Info; GetSystemInfo(&System_Info);
     if (memory->nativeFlags[page] & NATIVE_FLAG_CODEPAGE_READONLY) {        
-        if (!VirtualProtect(getNativeAddress(memory, page << K_PAGE_SHIFT), (1 << K_PAGE_SHIFT), PAGE_READWRITE, &oldProtect)) {
+        if (!VirtualProtect(getNativeAddressNoCheck(memory, page << K_NATIVE_PAGE_SHIFT), (1 << K_NATIVE_PAGE_SHIFT), PAGE_READWRITE, &oldProtect)) {
             LPSTR messageBuffer = NULL;
             size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
             kpanic("failed to unprotect memory: %s", messageBuffer);
