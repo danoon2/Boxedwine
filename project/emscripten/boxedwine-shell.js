@@ -882,6 +882,9 @@
                 document.getElementById('inline-runbtn').style.display = 'none';
                 document.getElementById('inline').style.display = "";
             }
+            if(Config.recordLoadedFiles) {
+                document.getElementById('saveFSImage').style.display = "";
+            }
             if(Config.storageMode === STORAGE_DROPBOX){
                 if(client == null || !client.isAuthenticated()){
                     dropboxLogin();
