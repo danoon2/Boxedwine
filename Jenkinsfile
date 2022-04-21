@@ -18,22 +18,6 @@ pipeline {
     stages {
         stage ('Test') {
             parallel {
-                stage ('Test Emscripten') {
-                    agent {
-                        label "emscripten"
-                    }
-                    steps {
-                        script { 
-                            gitCheckout() 
-                        }
-                        sh '''#!/bin/bash
-                            source ~/emsdk/emsdk_env.sh
-                            cd project/emscripten
-                            sh buildtestjs.sh
-                            emrun --kill_start --browser "firefox" --browser_args="--headless" boxedwineTest.html
-                        '''
-                    }
-                }
                 stage ('Test Linux (x64)') {
                     agent {
                         label "linux64"

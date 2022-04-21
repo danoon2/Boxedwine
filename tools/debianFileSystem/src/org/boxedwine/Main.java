@@ -14,10 +14,8 @@ public class Main {
     public static void main(String[] args) {
         Settings.fileCachePath = new File("c:\\debianCache");
         Settings.outputDir = new File("c:\\debianCache\\out");
-        Settings.extraFiles = new File("C:\\Boxedwine-Public\\tools\\debianFileSystem\\fs");
-        Settings.finishedZip = new File("c:\\debianCache\\debian11.zip");
+        Settings.extraFiles = new File("C:\\boxedwine\\tools\\debianFileSystem\\fs");
         Settings.boxedwinePath = "boxedwine"; // find it in the OS path
-        Settings.winePath = "c:\\debianCache\\wine-5.0.zip";
 
         DebianPackages.instance = new DebianPackages("bullseye");
         DebianPackages.instance.prefered = new HashSet<>();
@@ -122,7 +120,7 @@ public class Main {
             if (includeX11) {
                 new File(Settings.outputDir+"/lib/libGL.so.1").delete();
             }
-            ProcessBuilder builder = new ProcessBuilder(Settings.boxedwinePath, "-root", Settings.outputDir.getAbsolutePath(), "-zip", Settings.winePath, "-uid", "0", "/sbin/ldconfig");
+            ProcessBuilder builder = new ProcessBuilder(Settings.boxedwinePath, "-root", Settings.outputDir.getAbsolutePath(), "-uid", "0", "/sbin/ldconfig");
             Process process = builder.start();
 
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
@@ -183,6 +181,10 @@ public class Main {
                     DPkg.install("icewm", downloadOnly);
                     DPkg.install("xdemineur", downloadOnly);
                     DPkg.install("xfe", downloadOnly); // file manager
+
+                    // :TODO: add extra packages here
+                    // for example
+                    // DPkg.install("git", downloadOnly);
 
                     new File(Settings.outputDir + "/sys/class/devices/virtual/graphics/fb0").mkdirs();
                     new File(Settings.outputDir + "/sys/class/graphics").mkdirs();
