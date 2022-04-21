@@ -95,6 +95,7 @@ void* x64CPU::init() {
 
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->executableMemoryMutex);
     this->eipToHostInstructionAddressSpaceMapping = this->thread->memory->eipToHostInstructionAddressSpaceMapping;
+    this->memOffsets = memory->memOffsets;
 
 	// will push 15 regs, since it is odd, it will balance rip being pushed on the stack and give use a 16-byte alignment
 	data.saveNativeState(); // also sets HOST_CPU
@@ -107,7 +108,6 @@ void* x64CPU::init() {
     } else {
         data.writeToRegFromValue(HOST_SMALL_ADDRESS_SPACE_SS, true, (U32)cpu->seg[SS].address, 4);
     }
-    data.writeToRegFromValue(HOST_DS, true, (U32)cpu->seg[DS].address, 4);
 
     data.setNativeFlags(this->flags, FMASK_TEST|DF);
 
