@@ -152,11 +152,11 @@ public:
     bool param2InUse;
     bool param3InUse;
     bool param4InUse;
-    void stos16(void* pfn, U32 size, bool repeat);
-    void scas16(void* pfn, U32 size, bool repeat, bool repeatZero);
-    void movs16(void* pfn, U32 size, bool repeat, U32 base);
-    void lods16(void* pfn, U32 size, bool repeat, U32 base);
-    void cmps16(void* pfn, U32 size, bool repeat, bool repeatZero, U32 base);
+    void stos(void* pfn, U32 size, bool repeat);
+    void scas(void* pfn, U32 size, bool repeat, bool repeatZero);
+    void movs(void* pfn, U32 size, bool repeat, U32 base);
+    void lods(void* pfn, U32 size, bool repeat, U32 base);
+    void cmps(void* pfn, U32 size, bool repeat, bool repeatZero, U32 base);
     void doJmp(bool mightNeedCS);
     void bound32(U8 rm);
     void bound16(U8 rm);

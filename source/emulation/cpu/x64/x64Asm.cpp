@@ -3104,13 +3104,27 @@ void X64Asm::bswapSp() {
 void X64Asm::DsEdiMmxOrSSE(U8 rm) {
     U8 tmpReg = getTmpReg();
     addWithLea(7, false, 7, false, getRegForSeg(this->ds, tmpReg), true, 0, 0, 4);
-    addWithLea(7, false, 7, false, HOST_MEM, true, 0, 0, 8);
+    U8 hostReg = getHostMem(7, false);
+    addWithLea(7, false, 7, false, HOST_MEM, true, 0, 0, 8);    
 
     this->translateRM(rm, false, false, false, false, 0);
 
-    writeToRegFromMem(tmpReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_NEG_MEM, 8, false);
+    if (hostReg == HOST_MEM) {
+        writeToRegFromMem(tmpReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_NEG_MEM, 8, false);
+    } else {
+        pushFlagsToReg(tmpReg, true, true);
+        // neg hostReg
+        write8(0x49);
+        write8(0xf7);
+        write8(0xd8 + hostReg);
+        popFlagsFromReg(tmpReg, true, true);
+    }
+
+    releaseHostMem(hostReg);
+
     addWithLea(7, false, 7, false, tmpReg, true, 0, 0, 8);    
     addWithLea(7, false, 7, false, getRegForNegSeg(this->ds, tmpReg), true, 0, 0, 4);    
+    releaseTmpReg(tmpReg);
 }
 
 void X64Asm::string32(bool hasSi, bool hasDi) {    
@@ -3670,7 +3684,7 @@ void x64_string2Arg(x64CPU* cpu, pfnString2Arg pfn, U32 arg1, U32 arg2) {
     cpu->fillFlags();
 }
 
-void X64Asm::stos16(void* pfn, U32 size, bool repeat) {
+void X64Asm::stos(void* pfn, U32 size, bool repeat) {
     writeToMemFromValue(1, HOST_CPU, true, -1, false, 0, CPU_OFFSET_STRING_WRITES_DI, 4, false);
     writeToMemFromValue(repeat?1:0, HOST_CPU, true, -1, false, 0, CPU_OFFSET_STRING_REPEAT, 4, false);
     syncRegsFromHost(); 
@@ -3688,7 +3702,7 @@ void X64Asm::stos16(void* pfn, U32 size, bool repeat) {
     syncRegsToHost();
 }
 
-void X64Asm::scas16(void* pfn, U32 size, bool repeat, bool repeatZero) {
+void X64Asm::scas(void* pfn, U32 size, bool repeat, bool repeatZero) {
     writeToMemFromValue(0, HOST_CPU, true, -1, false, 0, CPU_OFFSET_STRING_WRITES_DI, 4, false);
     writeToMemFromValue(repeat?1:0, HOST_CPU, true, -1, false, 0, CPU_OFFSET_STRING_REPEAT, 4, false);
     syncRegsFromHost(); 
@@ -3709,7 +3723,7 @@ void X64Asm::scas16(void* pfn, U32 size, bool repeat, bool repeatZero) {
     syncRegsToHost();
 }
 
-void X64Asm::movs16(void* pfn, U32 size, bool repeat, U32 base) {
+void X64Asm::movs(void* pfn, U32 size, bool repeat, U32 base) {
     writeToMemFromValue(1, HOST_CPU, true, -1, false, 0, CPU_OFFSET_STRING_WRITES_DI, 4, false);
     writeToMemFromValue(repeat?1:0, HOST_CPU, true, -1, false, 0, CPU_OFFSET_STRING_REPEAT, 4, false);
     syncRegsFromHost(); 
@@ -3730,7 +3744,7 @@ void X64Asm::movs16(void* pfn, U32 size, bool repeat, U32 base) {
     syncRegsToHost();
 }
 
-void X64Asm::lods16(void* pfn, U32 size, bool repeat, U32 base) {
+void X64Asm::lods(void* pfn, U32 size, bool repeat, U32 base) {
     writeToMemFromValue(0, HOST_CPU, true, -1, false, 0, CPU_OFFSET_STRING_WRITES_DI, 4, false);
     writeToMemFromValue(repeat?1:0, HOST_CPU, true, -1, false, 0, CPU_OFFSET_STRING_REPEAT, 4, false);
     syncRegsFromHost(); 
@@ -3751,7 +3765,7 @@ void X64Asm::lods16(void* pfn, U32 size, bool repeat, U32 base) {
     syncRegsToHost();
 }
 
-void X64Asm::cmps16(void* pfn, U32 size, bool repeat, bool repeatZero, U32 base) {
+void X64Asm::cmps(void* pfn, U32 size, bool repeat, bool repeatZero, U32 base) {
     writeToMemFromValue(0, HOST_CPU, true, -1, false, 0, CPU_OFFSET_STRING_WRITES_DI, 4, false);
     writeToMemFromValue(repeat?1:0, HOST_CPU, true, -1, false, 0, CPU_OFFSET_STRING_REPEAT, 4, false);
     syncRegsFromHost(); 

@@ -361,6 +361,7 @@ void* x64CPU::translateEip(U32 ip) {
 
 void x64CPU::translateInstruction(X64Asm* data, X64Asm* firstPass) {
     data->startOfOpIp = data->ip;  
+    data->useSingleMemOffset = !data->cpu->thread->memory->doesInstructionNeedMemoryOffset(data->ip);
 #ifdef _DEBUG
     //data->logOp(data->ip);
     // just makes debugging the asm output easier
@@ -526,6 +527,16 @@ U64 x64CPU::handleCodePatch(U64 rip, U32 address, U64 rsi, U64 rdi, std::functio
         } else {
             w.invalidateCode(address, len);
         }  
+        U32 page = address >> K_PAGE_SHIFT;
+        // shared or mapped native memory
+        if (this->thread->memory->flags[page] & PAGE_MAPPED_HOST) {
+            this->thread->memory->addNeedsMemoryOffset(this->eip.u32);
+            // won't trigger retranslate the first time through, that way we will minimize the number of retranslates for the chunk 
+            // since we will go through most of the chunk at least once before the retranslate
+            if (this->thread->memory->doesInstructionNeedMemoryOffset(this->eip.u32)) {
+                chunk->releaseAndRetranslate();
+            }
+        }
         FILE* f = (FILE*)this->logFile;
         this->logFile = NULL;       
         op->pfn(this, op);   

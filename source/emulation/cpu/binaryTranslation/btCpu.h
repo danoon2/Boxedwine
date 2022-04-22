@@ -14,7 +14,7 @@ public:
     int exceptionSigCode;
     U64 exceptionIp;
     void* eipToHostInstructionAddressSpaceMapping;
-    U64* memOffsets;
+    U64* memOffsets;    
 
     virtual void startThread() = 0;
     virtual U64 startException(U64 address, bool readAddress, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo) = 0;

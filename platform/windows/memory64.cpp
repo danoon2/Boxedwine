@@ -124,6 +124,7 @@ void releaseNativeMemory(Memory* memory) {
     for (i=0;i<K_NUMBER_OF_PAGES;i++) {
         memory->clearCodePageFromCache(i);
     }
+    memory->clearAllNeedsMemoryOffset();
 
     if (!VirtualFree((void*)memory->id, 0, MEM_RELEASE)) {
         LPSTR messageBuffer = NULL;
