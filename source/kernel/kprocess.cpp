@@ -1447,8 +1447,13 @@ U32 KProcess::mmap(U32 addr, U32 len, S32 prot, S32 flags, FD fildes, U64 off) {
                     cache = new MappedFileCache(mappedFile->file->openFile->node->path);
                     KSystem::setFileCache(mappedFile->file->openFile->node->path, cache);
                     cache->file = mappedFile->file;
+#ifdef BOXEDWINE_DEFAULT_MMU
                     U32 size = ((U32)((fd->kobject->length() + K_PAGE_SIZE - 1) >> K_PAGE_SHIFT));
+#else
+                    U32 size = 1;
+#endif
                     cache->data = new U8 * [size];
+                    cache->dataSize = size;
                     memset(cache->data, 0, size * sizeof(U8*));
                 }
                 mappedFile->systemCacheEntry = cache;

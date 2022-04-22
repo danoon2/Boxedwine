@@ -23,11 +23,12 @@ class KFile;
 
 class MappedFileCache : public BoxedPtrBase {
 public:
-    MappedFileCache(const std::string& name) : name(name) {}
+    MappedFileCache(const std::string& name) : name(name), data(NULL), dataSize(0) {}
     virtual ~MappedFileCache();
     const std::string name;
     std::shared_ptr<KFile> file;
     U8** data;
+    U32 dataSize;
 };
 
 #define K_PAGE_SIZE 4096
@@ -107,6 +108,7 @@ public:
     void addCodeBlock(U32 startIp, DecodedBlock* block);
 
     U32 getPageFlags(U32 page);
+    bool isShared(U32 page);
 
     void onThreadChanged();
 
@@ -146,7 +148,35 @@ public:
     U64 id; 
 
     // this will contain id in each page unless that page was mapped to native host memory
-    U64 memOffsets[K_NUMBER_OF_PAGES];
+    U64 memOffsets[K_NUMBER_OF_PAGES];    
+private:
+    std::unordered_map<U32, std::unordered_map<U32, U32> > needsMemoryOffset; // first index is page, second index is offset
+public:
+    bool doesInstructionNeedMemoryOffset(U32 eip) {
+        U32 page = eip >> K_PAGE_SHIFT;
+        U32 offset = eip & K_PAGE_MASK;
+        if (this->needsMemoryOffset.count(page) && this->needsMemoryOffset[page].count(offset)) {
+            return this->needsMemoryOffset[page][offset] > 1;
+        }
+        return false;
+    }
+    void clearNeedsMemoryOffset(U32 page, U32 pageCount) {
+        for (U32 i = 0; i < pageCount; i++) {
+            if (this->needsMemoryOffset.count(page + i)) {
+                this->needsMemoryOffset.erase(page + i);
+            }
+        }
+    }
+    void addNeedsMemoryOffset(U32 eip) {
+        U32 page = eip >> K_PAGE_SHIFT;
+        U32 offset = eip & K_PAGE_MASK;
+        this->needsMemoryOffset[page][offset] += 1;
+    }
+
+    void clearAllNeedsMemoryOffset() {
+        this->needsMemoryOffset.clear();
+    }
+
 #define MAX_DYNAMIC_CODE_PAGE_COUNT 0xFF
     U8 dynamicCodePageUpdateCount[K_NATIVE_NUMBER_OF_PAGES];
 

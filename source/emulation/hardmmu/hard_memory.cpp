@@ -110,7 +110,7 @@ void Memory::clone(Memory* from) {
 
     for (i=0;i<0x100000;i++) {
         if (from->isPageAllocated(i)) {
-            if (from->flags[i] & PAGE_SHARED) {
+            if (from->flags[i] & PAGE_MAPPED_HOST) {
                 this->flags[i] = from->flags[i];
                 this->memOffsets[i] = from->memOffsets[i];
                 continue;
@@ -204,6 +204,9 @@ void Memory::allocPages(U32 page, U32 pageCount, U8 permissions, FD fd, U64 offs
                 memset(ram, 0, len);
                 needToLoad = true;
                 mappedFile->systemCacheEntry->data[0] = ram;
+                if (offset) {
+                    kpanic("allocPages doesn't support offset with shared memory");
+                }
             }
             U64 offset = (U64)mappedFile->systemCacheEntry->data[0] - (page << K_PAGE_SHIFT);
             for (U32 i = 0; i < pageCount; i++) {
