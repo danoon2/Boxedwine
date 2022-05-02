@@ -462,6 +462,7 @@
     <ClInclude Include="..\..\..\..\include\syscpumaxfreq.h" />
     <ClInclude Include="..\..\..\..\include\syscpuonline.h" />
     <ClInclude Include="..\..\..\..\include\syscpuscalingmaxfreq.h" />
+    <ClInclude Include="..\..\..\..\include\uptime.h" />
     <ClInclude Include="..\..\..\..\lib\imgui\addon\imguitinyfiledialogs.h" />
     <ClInclude Include="..\..\..\..\lib\imgui\examples\imgui_impl_dx9.h" />
     <ClInclude Include="..\..\..\..\lib\imgui\examples\imgui_impl_opengl3.h" />
@@ -3665,6 +3666,7 @@
     <ClCompile Include="..\..\..\..\source\kernel\proc\cpuinfo.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\proc\meminfo.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\proc\self.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\proc\uptime.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\syscall.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\sys\cpumaxfreq.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\sys\cpuonline.cpp" />
