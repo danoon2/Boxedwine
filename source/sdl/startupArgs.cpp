@@ -16,6 +16,7 @@
 #include "syscpuscalingmaxfreq.h"
 #include "bufferaccess.h"
 #include "meminfo.h"
+#include "uptime.h"
 #include "devmixer.h"
 #include "devsequencer.h"
 #include "mainloop.h"
@@ -110,6 +111,7 @@ void StartUpArgs::buildVirtualFileSystem() {
     Fs::addVirtualFile("/dev/null", openDevNull, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, mdev(1, 3), devNode);
     Fs::addVirtualFile("/dev/zero", openDevZero, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, mdev(1, 5), devNode);
     Fs::addVirtualFile("/proc/meminfo", openMemInfo, K__S_IREAD, mdev(0, 0), procNode);
+    Fs::addVirtualFile("/proc/uptime", openUptime, K__S_IREAD, mdev(0, 0), procNode);
     Fs::addVirtualFile("/proc/cpuinfo", openCpuInfo, K__S_IREAD, mdev(0, 0), procNode);
     Fs::addDynamicLinkFile("/proc/self", mdev(0, 0), procNode, true, [] {
         return std::to_string(KThread::currentThread()->process->id);
