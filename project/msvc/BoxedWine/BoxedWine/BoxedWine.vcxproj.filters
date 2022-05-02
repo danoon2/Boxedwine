@@ -1603,6 +1603,9 @@
     <ClCompile Include="..\..\..\..\source\vulkan\vulkancommon.cpp">
       <Filter>vulkan</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\proc\uptime.cpp">
+      <Filter>source\kernel\proc</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -3800,6 +3803,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\vulkan\vk_host.h">
       <Filter>vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\uptime.h">
+      <Filter>include</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
