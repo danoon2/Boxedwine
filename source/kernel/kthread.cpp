@@ -43,7 +43,7 @@ void KThread::cleanup() {
     BOXEDWINE_CONDITION_SIGNAL_ALL_NEED_LOCK(this->waitingForSignalToEndCond);
     if (!KSystem::shutingDown && this->clear_child_tid && this->process && this->process->memory->isValidWriteAddress(this->clear_child_tid, 4)) {
         writed(this->clear_child_tid, 0);
-        this->futex(this->clear_child_tid, 1, 1, 0);        
+        this->futex(this->clear_child_tid, 1, 1, 0, 0, 0);        
     }
 	this->clear_child_tid = 0;
 #ifndef BOXEDWINE_MULTI_THREADED
@@ -218,6 +218,8 @@ U32 KThread::signal(U32 signal, bool wait) {
 #define FUTEX_WAKE 1
 #define FUTEX_WAIT_PRIVATE 128
 #define FUTEX_WAKE_PRIVATE 129
+#define FUTEX_WAIT_BITSET_PRIVATE 137
+#define FUTEX_WAKE_BITSET_PRIVATE 138
 
 struct futex {
 public:
@@ -225,6 +227,7 @@ public:
     KThread* thread;
     U8* address;  
     U32 expireTimeInMillies;
+    U32 mask;
     bool wake;
     BOXEDWINE_CONDITION cond;
 };
@@ -254,6 +257,7 @@ struct futex* allocFutex(KThread* thread, U8* address, U32 millies) {
             system_futex[i].address = address;
             system_futex[i].expireTimeInMillies = millies;
             system_futex[i].wake = false;
+            system_futex[i].mask = 0;
             return &system_futex[i];
         }
     }
@@ -277,13 +281,13 @@ void KThread::clearFutexes() {
     }
 }
 
-U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime) {    
+U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3) {
     U8* ramAddress = getPhysicalReadAddress(addr, 4);
 
     if (ramAddress==0) {
         kpanic("Could not find futex address: %0.8X", addr);
     }
-    if (op==FUTEX_WAIT || op==FUTEX_WAIT_PRIVATE) {
+    if (op==FUTEX_WAIT || op==FUTEX_WAIT_PRIVATE || op == FUTEX_WAIT_BITSET_PRIVATE) {
         struct futex* f=getFutex(this, ramAddress);
         U32 expireTime;
 
@@ -299,6 +303,9 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime) {
         if (!f) {
             checkValue = true;
             f = allocFutex(this, ramAddress, expireTime);
+            if (op == FUTEX_WAIT_BITSET_PRIVATE) {
+                f->mask = val3;
+            }
         }
         while (true) {
             BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(f->cond);
@@ -333,11 +340,11 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime) {
             }
 #endif
         }
-    } else if (op==FUTEX_WAKE_PRIVATE || op==FUTEX_WAKE) {
+    } else if (op==FUTEX_WAKE_PRIVATE || op==FUTEX_WAKE || op==FUTEX_WAKE_BITSET_PRIVATE) {
         int i;
         U32 count = 0;
         for (i=0;i<MAX_FUTEXES && count<value;i++) {
-            if (system_futex[i].address==ramAddress && !system_futex[i].wake) {
+            if (system_futex[i].address==ramAddress && !system_futex[i].wake && (op!= FUTEX_WAKE_BITSET_PRIVATE || (system_futex[i].mask & val3))) {
                 BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(system_futex[i].cond);
                 system_futex[i].wake = true;
                 BOXEDWINE_CONDITION_SIGNAL(system_futex[i].cond);
@@ -369,9 +376,8 @@ void KThread::signalIllegalInstruction(int code) {
     memset(this->process->sigActions[K_SIGILL].sigInfo, 0, sizeof(this->process->sigActions[K_SIGILL].sigInfo));
     this->process->sigActions[K_SIGILL].sigInfo[0] = K_SIGILL;
     this->process->sigActions[K_SIGILL].sigInfo[2] = code;
-    this->process->sigActions[K_SIGILL].sigInfo[3] = this->process->id;
-    this->process->sigActions[K_SIGILL].sigInfo[4] = this->process->userId;
-    this->runSignal(K_SIGILL, -1, 0); // blocking signal, signalfd can't handle this
+    this->process->sigActions[K_SIGILL].sigInfo[3] = cpu->eip.u32;
+    this->runSignal(K_SIGILL, 13, 0); // blocking signal, signalfd can't handle this
 }
 
 bool KThread::runSignals() {

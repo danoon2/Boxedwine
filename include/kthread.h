@@ -71,7 +71,7 @@ public:
     void setTLS(struct user_desc* desc);
 
     // syscalls
-    U32 futex(U32 addr, U32 op, U32 value, U32 pTime) ;
+    U32 futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3) ;
     U32 modify_ldt(U32 func, U32 ptr, U32 count);
     U32 signalstack(U32 ss, U32 oss);
     U32 sigprocmask(U32 how, U32 set, U32 oset, U32 sigsetSize);
