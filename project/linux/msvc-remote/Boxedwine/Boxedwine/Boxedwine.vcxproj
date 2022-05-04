@@ -3044,6 +3044,7 @@
     <ClCompile Include="..\..\..\..\..\source\kernel\proc\cpuinfo.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\proc\meminfo.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\proc\self.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\kernel\proc\uptime.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\syscall.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\sys\cpumaxfreq.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\sys\cpuonline.cpp" />
@@ -3332,6 +3333,7 @@
     <ClInclude Include="..\..\..\..\..\include\syscpuonline.h" />
     <ClInclude Include="..\..\..\..\..\include\syscpuscalingcurfreq.h" />
     <ClInclude Include="..\..\..\..\..\include\syscpuscalingmaxfreq.h" />
+    <ClInclude Include="..\..\..\..\..\include\uptime.h" />
     <ClInclude Include="..\..\..\..\..\include\x64dynamic.h" />
     <ClInclude Include="..\..\..\..\..\lib\glew\include\GL\glew.h" />
     <ClInclude Include="..\..\..\..\..\lib\glew\include\GL\glxew.h" />

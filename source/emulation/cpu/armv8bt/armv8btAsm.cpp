@@ -214,25 +214,19 @@ void Armv8btAsm::readMem8ValueOffset(U8 dst, U8 base, S32 offset, bool signExten
     }
 }
 
-void Armv8btAsm::readMem8RegOffset(U8 dst, U8 base, U8 offsetReg, bool signExtend, bool lock) {
-    if (!lock) {
-        // ldrb dst, [base, offsetReg]
-        write8(dst | (U8)(base << 5));
-        write8(0x68 | (U8)(base >> 3));
-        write8((signExtend ? 0xe0 : 0x60) | offsetReg);
-        write8(0x38);
-    } else {
-        // LDAXRB dst, [base, offsetReg]
-        // intentionally change addressReg so that write won't have to do the same calculation
-        addRegs64(base, base, offsetReg);
-        write8(dst | (U8)(base << 5));
-        write8(0xfc | (U8)(base >> 3));
-        write8(0x5f);
-        write8(0x08);
-        if (signExtend) {
-            this->signExtend(dst, dst, 8);
-        }
-    }
+void Armv8btAsm::readMem8Lock(U8 dst, U8 base) {
+    write8(dst | (U8)(base << 5));
+    write8(0xfc | (U8)(base >> 3));
+    write8(0x5f);
+    write8(0x08);
+}
+
+void Armv8btAsm::readMem8RegOffset(U8 dst, U8 base, U8 offsetReg, bool signExtend) {
+    // ldrb dst, [base, offsetReg]
+    write8(dst | (U8)(base << 5));
+    write8(0x68 | (U8)(base >> 3));
+    write8((signExtend ? 0xe0 : 0x60) | offsetReg);
+    write8(0x38);
 }
 
 void Armv8btAsm::readMem16ValueOffset(U8 dst, U8 base, S32 offset, bool signExtend) {
@@ -249,24 +243,18 @@ void Armv8btAsm::readMem16ValueOffset(U8 dst, U8 base, S32 offset, bool signExte
     }
 }
 
-void Armv8btAsm::readMem16RegOffset(U8 dst, U8 base, U8 offsetReg, bool signExtend, bool lock) {
-    if (!lock) {
-        write8(dst | (U8)(base << 5));
-        write8(0x68 | (U8)(base >> 3));
-        write8((signExtend ? 0xe0 : 0x60) | offsetReg);
-        write8(0x78);
-    } else {
-        // LDAXRH dst, [base, offsetReg]
-        // intentionally change addressReg so that write won't have to do the same calculation
-        addRegs64(base, base, offsetReg);
-        write8(dst | (U8)(base << 5));
-        write8(0xfc | (U8)(base >> 3));
-        write8(0x5f);
-        write8(0x48);
-        if (signExtend) {
-            this->signExtend(dst, dst, 16);
-        }
-    }
+void Armv8btAsm::readMem16Lock(U8 dst, U8 base) {
+    write8(dst | (U8)(base << 5));
+    write8(0xfc | (U8)(base >> 3));
+    write8(0x5f);
+    write8(0x48);
+}
+
+void Armv8btAsm::readMem16RegOffset(U8 dst, U8 base, U8 offsetReg, bool signExtend) {
+    write8(dst | (U8)(base << 5));
+    write8(0x68 | (U8)(base >> 3));
+    write8((signExtend ? 0xe0 : 0x60) | offsetReg);
+    write8(0x78);
 }
 
 void Armv8btAsm::readMem32ValueOffset(U8 dst, U8 base, S32 offset) {
@@ -288,27 +276,24 @@ void Armv8btAsm::readMem32ValueOffset(U8 dst, U8 base, S32 offset) {
     }
 }
 
-void Armv8btAsm::readMem32RegOffset(U8 dst, U8 base, U8 offsetReg, U32 lsl, bool lock) {
-    if (!lock) {
-        write8(dst | (U8)(base << 5));
-        if (lsl == 0) {
-            write8(0x68 | (U8)(base >> 3));
-        } else if (lsl == 2) {
-            write8(0x78 | (U8)(base >> 3));
-        } else {
-            kpanic("ArmV8bt: readMem32RegOffset lsl must be 0 or 2: %d", lsl);
-        }
-        write8(0x60 | offsetReg);
-        write8(0xb8);
+void Armv8btAsm::readMem32Lock(U8 dst, U8 base) {
+    write8(dst | (U8)(base << 5));
+    write8(0xfc | (U8)(base >> 3));
+    write8(0x5f);
+    write8(0x88);
+}
+
+void Armv8btAsm::readMem32RegOffset(U8 dst, U8 base, U8 offsetReg, U32 lsl) {
+    write8(dst | (U8)(base << 5));
+    if (lsl == 0) {
+        write8(0x68 | (U8)(base >> 3));
+    } else if (lsl == 2) {
+        write8(0x78 | (U8)(base >> 3));
     } else {
-        // LDAXR dst, [base, offsetReg]
-        // intentionally change addressReg so that write won't have to do the same calculation
-        addRegs64(base, base, offsetReg, lsl);
-        write8(dst | (U8)(base << 5));
-        write8(0xfc | (U8)(base >> 3));
-        write8(0x5f);
-        write8(0x88);
+        kpanic("ArmV8bt: readMem32RegOffset lsl must be 0 or 2: %d", lsl);
     }
+    write8(0x60 | offsetReg);
+    write8(0xb8);
 }
 
 void Armv8btAsm::readMem64ValueOffset(U8 dst, U8 base, S32 offset) {
@@ -330,27 +315,24 @@ void Armv8btAsm::readMem64ValueOffset(U8 dst, U8 base, S32 offset) {
     }
 }
 
-void Armv8btAsm::readMem64RegOffset(U8 dst, U8 base, U8 offsetReg, U32 lsl, bool lock) {
-    if (!lock) {
-        write8(dst | (U8)(base << 5));
-        if (lsl == 0) {
-            write8(0x68 | (U8)(base >> 3));
-        } else if (lsl == 3) {
-            write8(0x78 | (U8)(base >> 3));
-        } else {
-            kpanic("ArmV8bt: readMem64RegOffset lsl must be 0 or 3: %d", lsl);
-        }
-        write8(0x60 | offsetReg);
-        write8(0xf8);
+void Armv8btAsm::readMem64Lock(U8 dst, U8 base) {
+    write8(dst | (U8)(base << 5));
+    write8(0xfc | (U8)(base >> 3));
+    write8(0x5f);
+    write8(0xc8);
+}
+
+void Armv8btAsm::readMem64RegOffset(U8 dst, U8 base, U8 offsetReg, U32 lsl) {
+    write8(dst | (U8)(base << 5));
+    if (lsl == 0) {
+        write8(0x68 | (U8)(base >> 3));
+    } else if (lsl == 3) {
+        write8(0x78 | (U8)(base >> 3));
     } else {
-        // LDAXR dst, [base, offsetReg]
-        // intentionally change addressReg so that write won't have to do the same calculation
-        addRegs64(base, base, offsetReg, lsl);
-        write8(dst | (U8)(base << 5));
-        write8(0xfc | (U8)(base >> 3));
-        write8(0x5f);
-        write8(0xc8);
+        kpanic("ArmV8bt: readMem64RegOffset lsl must be 0 or 3: %d", lsl);
     }
+    write8(0x60 | offsetReg);
+    write8(0xf8);
 }
 
 void Armv8btAsm::writeMem8RegOffset(U8 dst, U8 base, U8 offsetReg) {
@@ -1400,28 +1382,101 @@ U8 Armv8btAsm::getAddressReg() {
     return tmp;
 }
 
+U8 Armv8btAsm::getHostMem(U8 regEmulatedAddress) {
+    if (this->useSingleMemOffset) {
+        return xMem;
+    } else {
+        U8 resultReg = getTmpReg();
+        U8 tmpReg = getTmpReg();
+
+        shiftRegRightWithValue32(tmpReg, regEmulatedAddress, 12); // get page
+        readMem64ValueOffset(resultReg, xCPU, CPU_OFFSET_MEMOFFSET);
+        readMem64RegOffset(resultReg, resultReg, tmpReg, 3); // read memOffset, shift page << 3 (page*8), since sizeof(U64)==8 to get the value in memOffsets[page]        
+        releaseTmpReg(tmpReg);
+        return resultReg;
+    }
+}
+
+U8 Armv8btAsm::getHostMemWithOffset(U8 regEmulatedAddress, U32 offset) {
+    if (this->useSingleMemOffset) {
+        return xMem;
+    } else {
+        U8 resultReg = getTmpReg();
+        U8 tmpReg = getTmpReg();
+        S32 value = (S32)offset;
+        if (value < 0) {
+            subValue32(tmpReg, regEmulatedAddress, (U32)(-value));
+        } else {
+            addValue32(tmpReg, regEmulatedAddress, offset);
+        }
+        shiftRegRightWithValue32(tmpReg, tmpReg, 12); // get page
+        readMem64ValueOffset(resultReg, xCPU, CPU_OFFSET_MEMOFFSET);
+        readMem64RegOffset(resultReg, resultReg, tmpReg, 3); // read memOffset, shift page << 3 (page*8), since sizeof(U64)==8 to get the value in memOffsets[page]        
+        releaseTmpReg(tmpReg);
+        return resultReg;
+    }
+}
+
+U8 Armv8btAsm::getHostMemFromAddress(U32 address) {
+    if (this->useSingleMemOffset) {
+        return xMem;
+    } else {
+        U8 resultReg = getTmpReg();
+        U8 tmpReg = getRegWithConst(address >> 12);
+
+        readMem64ValueOffset(resultReg, xCPU, CPU_OFFSET_MEMOFFSET);
+        readMem64RegOffset(resultReg, resultReg, tmpReg, 3); // read memOffset, shift page << 3 (page*8), since sizeof(U64)==8 to get the value in memOffsets[page]        
+        releaseTmpReg(tmpReg);
+        return resultReg;
+    }
+}
+
+void Armv8btAsm::releaseHostMem(U8 reg) {
+    if (reg != xMem) {
+        releaseTmpReg(reg);
+    }
+}
+
 void Armv8btAsm::readMemory(U8 addressReg, U8 dst, U32 width, bool addMemOffsetToAddress, bool lock, bool signExtend) {
-    if (lock) {
+    if (lock) {        
         // :TODO: I'm not sure if we need this barrier, probably not
         // dmb	ish		// Full barrier
         // this->fullMemoryBarrier();
     }
     if (addMemOffsetToAddress) {
+        if (lock) {
+            kpanic("ArmV8bt: readMemory lock not implement for addMemOffsetToAddress = true");
+        }
+        U8 memReg = getHostMem(addressReg);
         if (width == 64) {
-            readMem64RegOffset(dst, addressReg, xMem, 0, lock);
+            readMem64RegOffset(dst, addressReg, memReg, 0);
         } else if (width == 32) {
-            readMem32RegOffset(dst, addressReg, xMem, 0, lock);
+            readMem32RegOffset(dst, addressReg, memReg, 0);
         } else if (width == 16) {
-            readMem16RegOffset(dst, addressReg, xMem, signExtend, lock);
+            readMem16RegOffset(dst, addressReg, memReg, signExtend);
         } else if (width == 8) {
-            readMem8RegOffset(dst, addressReg, xMem, signExtend, lock);
+            readMem8RegOffset(dst, addressReg, memReg, signExtend);
         } else {
             kpanic("ArmV8bt: readMemory with invalid width: %d", width);
-        }        
-    } else {
-        if (lock) {
-            kpanic("ArmV8bt: readMemory lock not implemented for addMemOffsetToAddress = false");
+        }    
+        releaseHostMem(memReg);
+    } else if (lock) {
+        if (width == 64) {
+            readMem64Lock(dst, addressReg);
         }
+        else if (width == 32) {
+            readMem32Lock(dst, addressReg);
+        }
+        else if (width == 16) {
+            readMem16Lock(dst, addressReg);
+        }
+        else if (width == 8) {
+            readMem8Lock(dst, addressReg);
+        }
+        else {
+            kpanic("ArmV8bt: readMemory with invalid width: %d", width);
+        }
+    } else {
         if (width == 64) {
             readMem64ValueOffset(dst, addressReg, 0);
         } else if (width == 32) {
@@ -1448,8 +1503,8 @@ void Armv8btAsm::writeMemory(U8 addressReg, U8 src, U32 width, bool addMemOffset
     if (lock) {
         // :TODO: maybe use ldrx/stxr instead of ldarx/stlxr since we have a dmb ish at the end?
         // stlxr        
-        if (!addMemOffsetToAddress) {
-            kpanic("ArmV8bt: writeMemory lock not implement for addMemOffsetToAddress = false");
+        if (addMemOffsetToAddress) {
+            kpanic("ArmV8bt: writeMemory lock not implement for addMemOffsetToAddress = true");
         }
         U8 statusReg = getTmpReg();       
         // addressReg should already be added with xMem
@@ -1474,7 +1529,7 @@ void Armv8btAsm::writeMemory(U8 addressReg, U8 src, U32 width, bool addMemOffset
             kpanic("ArmV8bt: writeMemory with invalid width: %d", width);
         }
 
-        S32 amount = -(S32)(this->bufferPos - restartPos - 4);
+        S32 amount = -(S32)(this->bufferPos - restartPos);
         amount /= 4;
         // CBNZ
         write8(statusReg | ((U8)amount) << 5);
@@ -1491,17 +1546,19 @@ void Armv8btAsm::writeMemory(U8 addressReg, U8 src, U32 width, bool addMemOffset
         return;
     }
     if (addMemOffsetToAddress) {
+        U8 memReg = getHostMem(addressReg);
         if (width == 64) {
-            writeMem64RegOffset(src, addressReg, xMem);
+            writeMem64RegOffset(src, addressReg, memReg);
         } else if (width == 32) {
-            writeMem32RegOffset(src, addressReg, xMem);
+            writeMem32RegOffset(src, addressReg, memReg);
         } else if (width == 16) {
-            writeMem16RegOffset(src, addressReg, xMem);
+            writeMem16RegOffset(src, addressReg, memReg);
         } else if (width == 8) {
-            writeMem8RegOffset(src, addressReg, xMem);
+            writeMem8RegOffset(src, addressReg, memReg);
         } else {
             kpanic("ArmV8bt: writeMemory with invalid width: %d", width);
         }
+        releaseHostMem(memReg);
     } else {
         if (width == 64) {
             writeMem64ValueOffset(src, addressReg, 0);
@@ -1684,14 +1741,16 @@ void Armv8btAsm::pushNativeReg16(U8 reg) {
     // U32 new_esp = (THIS_ESP & this->stackNotMask) | ((THIS_ESP - 2) & this->stackMask);
     pushStack16(xESP, addressReg);
 
-    U8 tmpReg = getTmpReg();
+    U8 tmpReg = getTmpReg();    
 
     // this->seg[SS].address + (new_esp & this->stackMask)
     andRegs32(tmpReg, addressReg, xStackMask);
     addRegs32(tmpReg, tmpReg, xSS);
 
     // writew(address, value)
-    writeMem16RegOffset(reg, xMem, tmpReg);
+    U8 memReg = getHostMem(tmpReg);
+    writeMem16RegOffset(reg, memReg, tmpReg);
+    releaseHostMem(memReg);
 
     // THIS_ESP = new_esp;
     movRegToReg(xESP, addressReg, 32, false);
@@ -1712,12 +1771,14 @@ void Armv8btAsm::peekNativeReg16(U8 reg, bool zeroExtend) {
     andRegs32(tmpReg, xESP, xStackMask);
     addRegs32(tmpReg, tmpReg, xSS);
 
-    if (zeroExtend) {
-        readMem16RegOffset(reg, xMem, tmpReg);
+    U8 memReg = getHostMem(tmpReg);
+    if (zeroExtend) {        
+        readMem16RegOffset(reg, memReg, tmpReg);
     } else {
-        readMem16RegOffset(tmpReg, xMem, tmpReg);
+        readMem16RegOffset(tmpReg, memReg, tmpReg);
         movRegToReg(reg, tmpReg, 16, false);
     }
+    releaseHostMem(memReg);
     releaseTmpReg(tmpReg);
 }
 
@@ -1754,7 +1815,9 @@ void Armv8btAsm::popNativeReg16(U8 reg, bool zeroExtend) {
 // }
 void Armv8btAsm::peekNativeReg32(U8 reg) {
     if (!KThread::currentThread()->process->hasSetSeg[SS]) {
-        readMem32RegOffset(reg, xMem, xESP);
+        U8 memReg = getHostMem(xESP);
+        readMem32RegOffset(reg, memReg, xESP);
+        releaseHostMem(memReg);
     } else {
         U8 tmpReg = getTmpReg();
 
@@ -1762,7 +1825,9 @@ void Armv8btAsm::peekNativeReg32(U8 reg) {
         andRegs32(tmpReg, xESP, xStackMask);
         addRegs32(tmpReg, tmpReg, xSS);
 
-        readMem32RegOffset(reg, xMem, tmpReg);
+        U8 memReg = getHostMem(tmpReg);
+        readMem32RegOffset(reg, memReg, tmpReg);
+        releaseHostMem(memReg);
         releaseTmpReg(tmpReg);
     }    
 }
@@ -1820,7 +1885,9 @@ void Armv8btAsm::pushNativeReg32(U8 reg) {
         // don't adjust esp until after the write succeeds
         // write reg
         U8 addressReg = getTmpReg();
-        addRegs64(addressReg, xMem, xESP);
+        U8 memReg = getHostMemWithOffset(xESP, -4);
+        addRegs64(addressReg, memReg, xESP);
+        releaseHostMem(memReg);
         writeMem32ValueOffset(reg, addressReg, -4);
         subValue32(xESP, xESP, 4);
         releaseTmpReg(addressReg);
@@ -1837,7 +1904,9 @@ void Armv8btAsm::pushNativeReg32(U8 reg) {
         addRegs32(tmpReg, tmpReg, xSS);
 
         // writed(address, value)
-        writeMem32RegOffset(reg, xMem, tmpReg);
+        U8 memReg = getHostMem(tmpReg);
+        writeMem32RegOffset(reg, memReg, tmpReg);
+        releaseHostMem(memReg);
 
         // THIS_ESP = new_esp;
         movRegToReg(xESP, addressReg, 32, false);
@@ -2015,6 +2084,7 @@ void Armv8btAsm::callRetranslateChunk() {
     kpanic("callRetranslateChunk not implemented");
 }
 
+// :TODO: assming code is not in shared memory
 void Armv8btAsm::internal_addDynamicCheck(U32 address, U32 len) {
     U8 addressReg = getRegWithConst(address);
     switch (len) {
@@ -2553,7 +2623,9 @@ void Armv8btAsm::vReadMem128ValueOffset(U8 dst, U8 base, S32 offset) {
 
 void Armv8btAsm::vReadMemory128(U8 addressReg, U8 dst, bool addMemOffsetToAddress) {
     if (addMemOffsetToAddress) {
-        vReadMem128RegOffset(dst, addressReg, xMem);
+        U8 memReg = getHostMem(addressReg);
+        vReadMem128RegOffset(dst, addressReg, memReg);
+        releaseHostMem(memReg);
     } else {
         vReadMem128ValueOffset(dst, addressReg, 0);
     }
@@ -2590,7 +2662,9 @@ void Armv8btAsm::vWriteMem128ValueOffset(U8 dst, U8 base, S32 offset) {
 
 void Armv8btAsm::vWriteMemory128(U8 addressReg, U8 dst, bool addMemOffsetToAddress) {
     if (addMemOffsetToAddress) {
-        vWriteMem128RegOffset(dst, addressReg, xMem);
+        U8 memReg = getHostMem(addressReg);
+        vWriteMem128RegOffset(dst, addressReg, memReg);
+        releaseHostMem(memReg);
     } else {
         vWriteMem128ValueOffset(dst, addressReg, 0);
     }
@@ -2598,7 +2672,9 @@ void Armv8btAsm::vWriteMemory128(U8 addressReg, U8 dst, bool addMemOffsetToAddre
 
 void Armv8btAsm::vReadMemory64(U8 addressReg, U8 dst, U32 index, bool addMemOffsetToAddress) {
     if (addMemOffsetToAddress) {
-        addRegs64(addressReg, addressReg, xMem);
+        U8 memReg = getHostMem(addressReg);
+        addRegs64(addressReg, addressReg, memReg);
+        releaseHostMem(memReg);
     }
     // ld1 {v0.d} [1], [x0]
     write8(dst | (U8)(addressReg << 5));
@@ -2637,7 +2713,9 @@ void Armv8btAsm::vWriteMem64RegOffset(U8 dst, U8 base, U8 offsetReg, U32 lsl) {
 
 void Armv8btAsm::vReadMemory64(U8 addressReg, U8 dst, bool addMemOffsetToAddress) {
     if (addMemOffsetToAddress) {
-        vReadMem64RegOffset(dst, addressReg, xMem);
+        U8 memReg = getHostMem(addressReg);
+        vReadMem64RegOffset(dst, addressReg, memReg);
+        releaseHostMem(memReg);
     } else {
         vReadMem64ValueOffset(dst, addressReg, 0);
     }
@@ -2659,7 +2737,9 @@ void Armv8btAsm::vReadMem64ValueOffset(U8 dst, U8 base, S32 offset) {
 
 void Armv8btAsm::vWriteMemory64(U8 addressReg, U8 dst, U32 index, bool addMemOffsetToAddress) {
     if (addMemOffsetToAddress) {
-        addRegs64(addressReg, addressReg, xMem);
+        U8 memReg = getHostMem(addressReg);
+        addRegs64(addressReg, addressReg, memReg);
+        releaseHostMem(memReg);
     }
     // st1{ v0.d } [0] , [x0]
     write8(dst | (U8)(addressReg << 5));
@@ -2670,7 +2750,9 @@ void Armv8btAsm::vWriteMemory64(U8 addressReg, U8 dst, U32 index, bool addMemOff
 
 void Armv8btAsm::vReadMemory16(U8 addressReg, U8 dst, U32 index, bool addMemOffsetToAddress) {
     if (addMemOffsetToAddress) {
-        addRegs64(addressReg, addressReg, xMem);
+        U8 memReg = getHostMem(addressReg);
+        addRegs64(addressReg, addressReg, memReg);
+        releaseHostMem(memReg);
     }
     // ld1 {v0.h} [1], [x0]
     write8(dst | (U8)(addressReg << 5));
@@ -2689,7 +2771,9 @@ void Armv8btAsm::vReadMemory16(U8 addressReg, U8 dst, U32 index, bool addMemOffs
 
 void Armv8btAsm::vWriteMemory16(U8 addressReg, U8 dst, U32 index, bool addMemOffsetToAddress) {
     if (addMemOffsetToAddress) {
-        addRegs64(addressReg, addressReg, xMem);
+        U8 memReg = getHostMem(addressReg);
+        addRegs64(addressReg, addressReg, memReg);
+        releaseHostMem(memReg);
     }
     // st1{ v0.h } [1] , [x0]
     write8(dst | (U8)(addressReg << 5));
@@ -2708,7 +2792,9 @@ void Armv8btAsm::vWriteMemory16(U8 addressReg, U8 dst, U32 index, bool addMemOff
 
 void Armv8btAsm::vReadMemory32(U8 addressReg, U8 dst, U32 index, bool addMemOffsetToAddress) {
     if (addMemOffsetToAddress) {
-        addRegs64(addressReg, addressReg, xMem);
+        U8 memReg = getHostMem(addressReg);
+        addRegs64(addressReg, addressReg, memReg);
+        releaseHostMem(memReg);
     }
     // ld1 {v0.s} [1], [x0]
     write8(dst | (U8)(addressReg << 5));
@@ -2727,7 +2813,9 @@ void Armv8btAsm::vReadMem32RegOffset(U8 dst, U8 base, U8 offsetReg) {
 
 void Armv8btAsm::vReadMemory32(U8 addressReg, U8 dst, bool addMemOffsetToAddress) {
     if (addMemOffsetToAddress) {
-        vReadMem32RegOffset(dst, addressReg, xMem);
+        U8 memReg = getHostMem(addressReg);
+        vReadMem32RegOffset(dst, addressReg, memReg);
+        releaseHostMem(memReg);
     } else {
         vReadMem32ValueOffset(dst, addressReg, 0);
     }
@@ -2749,7 +2837,9 @@ void Armv8btAsm::vReadMem32ValueOffset(U8 dst, U8 base, S32 offset) {
 
 void Armv8btAsm::vWriteMemory32(U8 addressReg, U8 dst, U32 index, bool addMemOffsetToAddress) {
     if (addMemOffsetToAddress) {
-        addRegs64(addressReg, addressReg, xMem);
+        U8 memReg = getHostMem(addressReg);
+        addRegs64(addressReg, addressReg, memReg);
+        releaseHostMem(memReg);
     }
     // st1{ v0.s } [1] , [x0]
     write8(dst | (U8)(addressReg << 5));

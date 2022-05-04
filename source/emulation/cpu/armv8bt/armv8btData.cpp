@@ -18,6 +18,7 @@ Armv8btData::Armv8btData(Armv8btCPU* cpu) : cpu(cpu) {
     this->bufferSize = sizeof(this->bufferInternal);
     this->bufferPos = 0;
     this->done = false;
+    this->useSingleMemOffset = false;
     this->ip = 0;
     this->startOfDataIp = 0;
     this->startOfOpIp = 0;

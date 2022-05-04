@@ -1759,6 +1759,9 @@
     <ClCompile Include="..\..\..\..\..\source\vulkan\vulkancommon.cpp">
       <Filter>source\vulkan</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\kernel\proc\uptime.cpp">
+      <Filter>source\kernel\proc</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
@@ -4789,6 +4792,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\io\fsdynamiclinknode.h">
       <Filter>source\io</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\include\uptime.h">
+      <Filter>include</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

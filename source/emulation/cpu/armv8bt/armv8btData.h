@@ -40,6 +40,7 @@ public:
     U32 startOfOpIp;
     U32 calculatedEipLen;
     bool done;
+    bool useSingleMemOffset;
 
     Armv8btCPU* cpu;
 

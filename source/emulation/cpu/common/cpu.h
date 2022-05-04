@@ -236,6 +236,9 @@ public:
     U32 flags;
     Reg eip;    
     U8* reg8[9];
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+    U64* memOffsets; // ARM will use one less instruction for shared memory access if the offset of this is in the first 256 bytes
+#endif
     MMX_reg reg_mmx[8];
     SSE xmm[8]; // :TODO: alignment?
 
