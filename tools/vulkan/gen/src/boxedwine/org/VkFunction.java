@@ -9,6 +9,16 @@ public class VkFunction {
     public String def;
     public String extension;
 
+    public VkFunction clone() {
+        VkFunction fn = new VkFunction();
+        fn.returnType = returnType;
+        fn.name = name;
+        fn.def = def;
+        fn.extension = extension;
+        fn.params = params; // ok to not deep clone this
+        return fn;
+    }
+
     public void getCountParam(VkParam param) {
         if (param.len != null) {
             for (VkParam p : params) {

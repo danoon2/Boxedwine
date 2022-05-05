@@ -70,6 +70,7 @@ public class Main {
         typeExtensions.put("VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES", "VkPhysicalDeviceIDProperties");
         typeExtensions.put("VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT", "VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT");
         typeExtensions.put("VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT", "VkPhysicalDeviceTransformFeedbackFeaturesEXT");
+        typeExtensions.put("VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES", "VkPhysicalDeviceHostQueryResetFeatures");
 
         try {
             File inputFile = new File("lib/mesa/vkRegistry/vk.xml");
@@ -171,10 +172,11 @@ public class Main {
     public static void applyDefs() {
         int lastValue = 0;
 
-        if (defs.contains("VK_LAST_VALUE")) {
-            lastValue = Integer.parseInt(defs.get("VK_LAST_VALUE"));
+        String s = defs.get("VK_LAST_VALUE");
+        if (s != null) {
+            lastValue = Integer.parseInt(s);
         }
-        for (VkFunction fn : hostFunctions ) {
+        for (VkFunction fn : functions ) {
             String key = fn.name.substring(2);
             String def = defs.get(key);
             if (def != null) {
@@ -208,6 +210,10 @@ public class Main {
             out.append(" ");
             if (fn.def == null) {
                 fn.def = defs.get(fn.name.substring(2));
+            }
+            if (fn.def == null) {
+                fn.def = String.valueOf(defs.size());
+                defs.put(fn.name, fn.def);
             }
             out.append(fn.def);
             out.append("\n");
@@ -466,6 +472,19 @@ public class Main {
         if (command.getNodeType() == Node.ELEMENT_NODE) {
             Element eElement = (Element) command;
             VkFunction fn = new VkFunction();
+            if (eElement.hasAttribute("alias") && eElement.hasAttribute("name")) {
+                String name = eElement.getAttribute("name");
+                String alias = eElement.getAttribute("alias");
+
+                for (VkFunction f : functions) {
+                    if (f.name.equals(alias)) {
+                        VkFunction a = f.clone();
+                        a.name = name;
+                        functions.add(a);
+                        break;
+                    }
+                }
+            }
             NodeList protoNodeList = eElement.getElementsByTagName("proto");
             if (protoNodeList.getLength() == 0) {
                 return;

@@ -190,6 +190,9 @@ U32 /* VkResult */ vkGetQueryPoolResults(U32/* VkDevice */ device, U64/* VkQuery
 void vkResetQueryPool(U32/* VkDevice */ device, U64/* VkQueryPool */ queryPool, U32/* uint32_t */ firstQuery, U32/* uint32_t */ queryCount) {
     CALL_4(ResetQueryPool, device, &queryPool, firstQuery, queryCount);
 }
+void vkResetQueryPoolEXT(U32/* VkDevice */ device, U64/* VkQueryPool */ queryPool, U32/* uint32_t */ firstQuery, U32/* uint32_t */ queryCount) {
+    CALL_4(ResetQueryPoolEXT, device, &queryPool, firstQuery, queryCount);
+}
 U32 /* VkResult */ vkCreateBuffer(U32/* VkDevice */ device, U32/* const VkBufferCreateInfo* */ pCreateInfo, U32/* const VkAllocationCallbacks* */ pAllocator, U32/* VkBuffer* */ pBuffer) {
     CALL_4_R32(CreateBuffer, device, pCreateInfo, pAllocator, pBuffer);
 }
@@ -622,23 +625,44 @@ void vkDestroyIndirectCommandsLayoutNV(U32/* VkDevice */ device, U64/* VkIndirec
 void vkGetPhysicalDeviceFeatures2(U32/* VkPhysicalDevice */ physicalDevice, U32/* VkPhysicalDeviceFeatures2* */ pFeatures) {
     CALL_2(GetPhysicalDeviceFeatures2, physicalDevice, pFeatures);
 }
+void vkGetPhysicalDeviceFeatures2KHR(U32/* VkPhysicalDevice */ physicalDevice, U32/* VkPhysicalDeviceFeatures2* */ pFeatures) {
+    CALL_2(GetPhysicalDeviceFeatures2KHR, physicalDevice, pFeatures);
+}
 void vkGetPhysicalDeviceProperties2(U32/* VkPhysicalDevice */ physicalDevice, U32/* VkPhysicalDeviceProperties2* */ pProperties) {
     CALL_2(GetPhysicalDeviceProperties2, physicalDevice, pProperties);
+}
+void vkGetPhysicalDeviceProperties2KHR(U32/* VkPhysicalDevice */ physicalDevice, U32/* VkPhysicalDeviceProperties2* */ pProperties) {
+    CALL_2(GetPhysicalDeviceProperties2KHR, physicalDevice, pProperties);
 }
 void vkGetPhysicalDeviceFormatProperties2(U32/* VkPhysicalDevice */ physicalDevice, U32/* VkFormat */ format, U32/* VkFormatProperties2* */ pFormatProperties) {
     CALL_3(GetPhysicalDeviceFormatProperties2, physicalDevice, format, pFormatProperties);
 }
+void vkGetPhysicalDeviceFormatProperties2KHR(U32/* VkPhysicalDevice */ physicalDevice, U32/* VkFormat */ format, U32/* VkFormatProperties2* */ pFormatProperties) {
+    CALL_3(GetPhysicalDeviceFormatProperties2KHR, physicalDevice, format, pFormatProperties);
+}
 U32 /* VkResult */ vkGetPhysicalDeviceImageFormatProperties2(U32/* VkPhysicalDevice */ physicalDevice, U32/* const VkPhysicalDeviceImageFormatInfo2* */ pImageFormatInfo, U32/* VkImageFormatProperties2* */ pImageFormatProperties) {
     CALL_3_R32(GetPhysicalDeviceImageFormatProperties2, physicalDevice, pImageFormatInfo, pImageFormatProperties);
+}
+U32 /* VkResult */ vkGetPhysicalDeviceImageFormatProperties2KHR(U32/* VkPhysicalDevice */ physicalDevice, U32/* const VkPhysicalDeviceImageFormatInfo2* */ pImageFormatInfo, U32/* VkImageFormatProperties2* */ pImageFormatProperties) {
+    CALL_3_R32(GetPhysicalDeviceImageFormatProperties2KHR, physicalDevice, pImageFormatInfo, pImageFormatProperties);
 }
 void vkGetPhysicalDeviceQueueFamilyProperties2(U32/* VkPhysicalDevice */ physicalDevice, U32/* uint32_t* */ pQueueFamilyPropertyCount, U32/* VkQueueFamilyProperties2* */ pQueueFamilyProperties) {
     CALL_3(GetPhysicalDeviceQueueFamilyProperties2, physicalDevice, pQueueFamilyPropertyCount, pQueueFamilyProperties);
 }
+void vkGetPhysicalDeviceQueueFamilyProperties2KHR(U32/* VkPhysicalDevice */ physicalDevice, U32/* uint32_t* */ pQueueFamilyPropertyCount, U32/* VkQueueFamilyProperties2* */ pQueueFamilyProperties) {
+    CALL_3(GetPhysicalDeviceQueueFamilyProperties2KHR, physicalDevice, pQueueFamilyPropertyCount, pQueueFamilyProperties);
+}
 void vkGetPhysicalDeviceMemoryProperties2(U32/* VkPhysicalDevice */ physicalDevice, U32/* VkPhysicalDeviceMemoryProperties2* */ pMemoryProperties) {
     CALL_2(GetPhysicalDeviceMemoryProperties2, physicalDevice, pMemoryProperties);
 }
+void vkGetPhysicalDeviceMemoryProperties2KHR(U32/* VkPhysicalDevice */ physicalDevice, U32/* VkPhysicalDeviceMemoryProperties2* */ pMemoryProperties) {
+    CALL_2(GetPhysicalDeviceMemoryProperties2KHR, physicalDevice, pMemoryProperties);
+}
 void vkGetPhysicalDeviceSparseImageFormatProperties2(U32/* VkPhysicalDevice */ physicalDevice, U32/* const VkPhysicalDeviceSparseImageFormatInfo2* */ pFormatInfo, U32/* uint32_t* */ pPropertyCount, U32/* VkSparseImageFormatProperties2* */ pProperties) {
     CALL_4(GetPhysicalDeviceSparseImageFormatProperties2, physicalDevice, pFormatInfo, pPropertyCount, pProperties);
+}
+void vkGetPhysicalDeviceSparseImageFormatProperties2KHR(U32/* VkPhysicalDevice */ physicalDevice, U32/* const VkPhysicalDeviceSparseImageFormatInfo2* */ pFormatInfo, U32/* uint32_t* */ pPropertyCount, U32/* VkSparseImageFormatProperties2* */ pProperties) {
+    CALL_4(GetPhysicalDeviceSparseImageFormatProperties2KHR, physicalDevice, pFormatInfo, pPropertyCount, pProperties);
 }
 void vkCmdPushDescriptorSetKHR(U32/* VkCommandBuffer */ commandBuffer, U32/* VkPipelineBindPoint */ pipelineBindPoint, U64/* VkPipelineLayout */ layout, U32/* uint32_t */ set, U32/* uint32_t */ descriptorWriteCount, U32/* const VkWriteDescriptorSet* */ pDescriptorWrites) {
     CALL_6(CmdPushDescriptorSetKHR, commandBuffer, pipelineBindPoint, &layout, set, descriptorWriteCount, pDescriptorWrites);
@@ -646,8 +670,14 @@ void vkCmdPushDescriptorSetKHR(U32/* VkCommandBuffer */ commandBuffer, U32/* VkP
 void vkTrimCommandPool(U32/* VkDevice */ device, U64/* VkCommandPool */ commandPool, U32/* VkCommandPoolTrimFlags */ flags) {
     CALL_3(TrimCommandPool, device, &commandPool, flags);
 }
+void vkTrimCommandPoolKHR(U32/* VkDevice */ device, U64/* VkCommandPool */ commandPool, U32/* VkCommandPoolTrimFlags */ flags) {
+    CALL_3(TrimCommandPoolKHR, device, &commandPool, flags);
+}
 void vkGetPhysicalDeviceExternalBufferProperties(U32/* VkPhysicalDevice */ physicalDevice, U32/* const VkPhysicalDeviceExternalBufferInfo* */ pExternalBufferInfo, U32/* VkExternalBufferProperties* */ pExternalBufferProperties) {
     CALL_3(GetPhysicalDeviceExternalBufferProperties, physicalDevice, pExternalBufferInfo, pExternalBufferProperties);
+}
+void vkGetPhysicalDeviceExternalBufferPropertiesKHR(U32/* VkPhysicalDevice */ physicalDevice, U32/* const VkPhysicalDeviceExternalBufferInfo* */ pExternalBufferInfo, U32/* VkExternalBufferProperties* */ pExternalBufferProperties) {
+    CALL_3(GetPhysicalDeviceExternalBufferPropertiesKHR, physicalDevice, pExternalBufferInfo, pExternalBufferProperties);
 }
 U32 /* VkResult */ vkGetMemoryWin32HandleKHR(U32/* VkDevice */ device, U32/* const VkMemoryGetWin32HandleInfoKHR* */ pGetWin32HandleInfo, U32/* HANDLE* */ pHandle) {
     CALL_3_R32(GetMemoryWin32HandleKHR, device, pGetWin32HandleInfo, pHandle);
@@ -670,6 +700,9 @@ U32 /* VkResult */ vkGetMemoryZirconHandlePropertiesFUCHSIA(U32/* VkDevice */ de
 void vkGetPhysicalDeviceExternalSemaphoreProperties(U32/* VkPhysicalDevice */ physicalDevice, U32/* const VkPhysicalDeviceExternalSemaphoreInfo* */ pExternalSemaphoreInfo, U32/* VkExternalSemaphoreProperties* */ pExternalSemaphoreProperties) {
     CALL_3(GetPhysicalDeviceExternalSemaphoreProperties, physicalDevice, pExternalSemaphoreInfo, pExternalSemaphoreProperties);
 }
+void vkGetPhysicalDeviceExternalSemaphorePropertiesKHR(U32/* VkPhysicalDevice */ physicalDevice, U32/* const VkPhysicalDeviceExternalSemaphoreInfo* */ pExternalSemaphoreInfo, U32/* VkExternalSemaphoreProperties* */ pExternalSemaphoreProperties) {
+    CALL_3(GetPhysicalDeviceExternalSemaphorePropertiesKHR, physicalDevice, pExternalSemaphoreInfo, pExternalSemaphoreProperties);
+}
 U32 /* VkResult */ vkGetSemaphoreWin32HandleKHR(U32/* VkDevice */ device, U32/* const VkSemaphoreGetWin32HandleInfoKHR* */ pGetWin32HandleInfo, U32/* HANDLE* */ pHandle) {
     CALL_3_R32(GetSemaphoreWin32HandleKHR, device, pGetWin32HandleInfo, pHandle);
 }
@@ -690,6 +723,9 @@ U32 /* VkResult */ vkImportSemaphoreZirconHandleFUCHSIA(U32/* VkDevice */ device
 }
 void vkGetPhysicalDeviceExternalFenceProperties(U32/* VkPhysicalDevice */ physicalDevice, U32/* const VkPhysicalDeviceExternalFenceInfo* */ pExternalFenceInfo, U32/* VkExternalFenceProperties* */ pExternalFenceProperties) {
     CALL_3(GetPhysicalDeviceExternalFenceProperties, physicalDevice, pExternalFenceInfo, pExternalFenceProperties);
+}
+void vkGetPhysicalDeviceExternalFencePropertiesKHR(U32/* VkPhysicalDevice */ physicalDevice, U32/* const VkPhysicalDeviceExternalFenceInfo* */ pExternalFenceInfo, U32/* VkExternalFenceProperties* */ pExternalFenceProperties) {
+    CALL_3(GetPhysicalDeviceExternalFencePropertiesKHR, physicalDevice, pExternalFenceInfo, pExternalFenceProperties);
 }
 U32 /* VkResult */ vkGetFenceWin32HandleKHR(U32/* VkDevice */ device, U32/* const VkFenceGetWin32HandleInfoKHR* */ pGetWin32HandleInfo, U32/* HANDLE* */ pHandle) {
     CALL_3_R32(GetFenceWin32HandleKHR, device, pGetWin32HandleInfo, pHandle);
@@ -736,17 +772,32 @@ U32 /* VkResult */ vkGetPhysicalDeviceSurfaceCapabilities2EXT(U32/* VkPhysicalDe
 U32 /* VkResult */ vkEnumeratePhysicalDeviceGroups(U32/* VkInstance */ instance, U32/* uint32_t* */ pPhysicalDeviceGroupCount, U32/* VkPhysicalDeviceGroupProperties* */ pPhysicalDeviceGroupProperties) {
     CALL_3_R32(EnumeratePhysicalDeviceGroups, instance, pPhysicalDeviceGroupCount, pPhysicalDeviceGroupProperties);
 }
+U32 /* VkResult */ vkEnumeratePhysicalDeviceGroupsKHR(U32/* VkInstance */ instance, U32/* uint32_t* */ pPhysicalDeviceGroupCount, U32/* VkPhysicalDeviceGroupProperties* */ pPhysicalDeviceGroupProperties) {
+    CALL_3_R32(EnumeratePhysicalDeviceGroupsKHR, instance, pPhysicalDeviceGroupCount, pPhysicalDeviceGroupProperties);
+}
 void vkGetDeviceGroupPeerMemoryFeatures(U32/* VkDevice */ device, U32/* uint32_t */ heapIndex, U32/* uint32_t */ localDeviceIndex, U32/* uint32_t */ remoteDeviceIndex, U32/* VkPeerMemoryFeatureFlags* */ pPeerMemoryFeatures) {
     CALL_5(GetDeviceGroupPeerMemoryFeatures, device, heapIndex, localDeviceIndex, remoteDeviceIndex, pPeerMemoryFeatures);
+}
+void vkGetDeviceGroupPeerMemoryFeaturesKHR(U32/* VkDevice */ device, U32/* uint32_t */ heapIndex, U32/* uint32_t */ localDeviceIndex, U32/* uint32_t */ remoteDeviceIndex, U32/* VkPeerMemoryFeatureFlags* */ pPeerMemoryFeatures) {
+    CALL_5(GetDeviceGroupPeerMemoryFeaturesKHR, device, heapIndex, localDeviceIndex, remoteDeviceIndex, pPeerMemoryFeatures);
 }
 U32 /* VkResult */ vkBindBufferMemory2(U32/* VkDevice */ device, U32/* uint32_t */ bindInfoCount, U32/* const VkBindBufferMemoryInfo* */ pBindInfos) {
     CALL_3_R32(BindBufferMemory2, device, bindInfoCount, pBindInfos);
 }
+U32 /* VkResult */ vkBindBufferMemory2KHR(U32/* VkDevice */ device, U32/* uint32_t */ bindInfoCount, U32/* const VkBindBufferMemoryInfo* */ pBindInfos) {
+    CALL_3_R32(BindBufferMemory2KHR, device, bindInfoCount, pBindInfos);
+}
 U32 /* VkResult */ vkBindImageMemory2(U32/* VkDevice */ device, U32/* uint32_t */ bindInfoCount, U32/* const VkBindImageMemoryInfo* */ pBindInfos) {
     CALL_3_R32(BindImageMemory2, device, bindInfoCount, pBindInfos);
 }
+U32 /* VkResult */ vkBindImageMemory2KHR(U32/* VkDevice */ device, U32/* uint32_t */ bindInfoCount, U32/* const VkBindImageMemoryInfo* */ pBindInfos) {
+    CALL_3_R32(BindImageMemory2KHR, device, bindInfoCount, pBindInfos);
+}
 void vkCmdSetDeviceMask(U32/* VkCommandBuffer */ commandBuffer, U32/* uint32_t */ deviceMask) {
     CALL_2(CmdSetDeviceMask, commandBuffer, deviceMask);
+}
+void vkCmdSetDeviceMaskKHR(U32/* VkCommandBuffer */ commandBuffer, U32/* uint32_t */ deviceMask) {
+    CALL_2(CmdSetDeviceMaskKHR, commandBuffer, deviceMask);
 }
 U32 /* VkResult */ vkGetDeviceGroupPresentCapabilitiesKHR(U32/* VkDevice */ device, U32/* VkDeviceGroupPresentCapabilitiesKHR* */ pDeviceGroupPresentCapabilities) {
     CALL_2_R32(GetDeviceGroupPresentCapabilitiesKHR, device, pDeviceGroupPresentCapabilities);
@@ -760,17 +811,29 @@ U32 /* VkResult */ vkAcquireNextImage2KHR(U32/* VkDevice */ device, U32/* const 
 void vkCmdDispatchBase(U32/* VkCommandBuffer */ commandBuffer, U32/* uint32_t */ baseGroupX, U32/* uint32_t */ baseGroupY, U32/* uint32_t */ baseGroupZ, U32/* uint32_t */ groupCountX, U32/* uint32_t */ groupCountY, U32/* uint32_t */ groupCountZ) {
     CALL_7(CmdDispatchBase, commandBuffer, baseGroupX, baseGroupY, baseGroupZ, groupCountX, groupCountY, groupCountZ);
 }
+void vkCmdDispatchBaseKHR(U32/* VkCommandBuffer */ commandBuffer, U32/* uint32_t */ baseGroupX, U32/* uint32_t */ baseGroupY, U32/* uint32_t */ baseGroupZ, U32/* uint32_t */ groupCountX, U32/* uint32_t */ groupCountY, U32/* uint32_t */ groupCountZ) {
+    CALL_7(CmdDispatchBaseKHR, commandBuffer, baseGroupX, baseGroupY, baseGroupZ, groupCountX, groupCountY, groupCountZ);
+}
 U32 /* VkResult */ vkGetPhysicalDevicePresentRectanglesKHR(U32/* VkPhysicalDevice */ physicalDevice, U64/* VkSurfaceKHR */ surface, U32/* uint32_t* */ pRectCount, U32/* VkRect2D* */ pRects) {
     CALL_4_R32(GetPhysicalDevicePresentRectanglesKHR, physicalDevice, &surface, pRectCount, pRects);
 }
 U32 /* VkResult */ vkCreateDescriptorUpdateTemplate(U32/* VkDevice */ device, U32/* const VkDescriptorUpdateTemplateCreateInfo* */ pCreateInfo, U32/* const VkAllocationCallbacks* */ pAllocator, U32/* VkDescriptorUpdateTemplate* */ pDescriptorUpdateTemplate) {
     CALL_4_R32(CreateDescriptorUpdateTemplate, device, pCreateInfo, pAllocator, pDescriptorUpdateTemplate);
 }
+U32 /* VkResult */ vkCreateDescriptorUpdateTemplateKHR(U32/* VkDevice */ device, U32/* const VkDescriptorUpdateTemplateCreateInfo* */ pCreateInfo, U32/* const VkAllocationCallbacks* */ pAllocator, U32/* VkDescriptorUpdateTemplate* */ pDescriptorUpdateTemplate) {
+    CALL_4_R32(CreateDescriptorUpdateTemplateKHR, device, pCreateInfo, pAllocator, pDescriptorUpdateTemplate);
+}
 void vkDestroyDescriptorUpdateTemplate(U32/* VkDevice */ device, U64/* VkDescriptorUpdateTemplate */ descriptorUpdateTemplate, U32/* const VkAllocationCallbacks* */ pAllocator) {
     CALL_3(DestroyDescriptorUpdateTemplate, device, &descriptorUpdateTemplate, pAllocator);
 }
+void vkDestroyDescriptorUpdateTemplateKHR(U32/* VkDevice */ device, U64/* VkDescriptorUpdateTemplate */ descriptorUpdateTemplate, U32/* const VkAllocationCallbacks* */ pAllocator) {
+    CALL_3(DestroyDescriptorUpdateTemplateKHR, device, &descriptorUpdateTemplate, pAllocator);
+}
 void vkUpdateDescriptorSetWithTemplate(U32/* VkDevice */ device, U64/* VkDescriptorSet */ descriptorSet, U64/* VkDescriptorUpdateTemplate */ descriptorUpdateTemplate, U32/* const void* */ pData) {
     CALL_4(UpdateDescriptorSetWithTemplate, device, &descriptorSet, &descriptorUpdateTemplate, pData);
+}
+void vkUpdateDescriptorSetWithTemplateKHR(U32/* VkDevice */ device, U64/* VkDescriptorSet */ descriptorSet, U64/* VkDescriptorUpdateTemplate */ descriptorUpdateTemplate, U32/* const void* */ pData) {
+    CALL_4(UpdateDescriptorSetWithTemplateKHR, device, &descriptorSet, &descriptorUpdateTemplate, pData);
 }
 void vkCmdPushDescriptorSetWithTemplateKHR(U32/* VkCommandBuffer */ commandBuffer, U64/* VkDescriptorUpdateTemplate */ descriptorUpdateTemplate, U64/* VkPipelineLayout */ layout, U32/* uint32_t */ set, U32/* const void* */ pData) {
     CALL_5(CmdPushDescriptorSetWithTemplateKHR, commandBuffer, &descriptorUpdateTemplate, &layout, set, pData);
@@ -829,17 +892,32 @@ U32 /* VkResult */ vkGetDisplayPlaneCapabilities2KHR(U32/* VkPhysicalDevice */ p
 void vkGetBufferMemoryRequirements2(U32/* VkDevice */ device, U32/* const VkBufferMemoryRequirementsInfo2* */ pInfo, U32/* VkMemoryRequirements2* */ pMemoryRequirements) {
     CALL_3(GetBufferMemoryRequirements2, device, pInfo, pMemoryRequirements);
 }
+void vkGetBufferMemoryRequirements2KHR(U32/* VkDevice */ device, U32/* const VkBufferMemoryRequirementsInfo2* */ pInfo, U32/* VkMemoryRequirements2* */ pMemoryRequirements) {
+    CALL_3(GetBufferMemoryRequirements2KHR, device, pInfo, pMemoryRequirements);
+}
 void vkGetImageMemoryRequirements2(U32/* VkDevice */ device, U32/* const VkImageMemoryRequirementsInfo2* */ pInfo, U32/* VkMemoryRequirements2* */ pMemoryRequirements) {
     CALL_3(GetImageMemoryRequirements2, device, pInfo, pMemoryRequirements);
+}
+void vkGetImageMemoryRequirements2KHR(U32/* VkDevice */ device, U32/* const VkImageMemoryRequirementsInfo2* */ pInfo, U32/* VkMemoryRequirements2* */ pMemoryRequirements) {
+    CALL_3(GetImageMemoryRequirements2KHR, device, pInfo, pMemoryRequirements);
 }
 void vkGetImageSparseMemoryRequirements2(U32/* VkDevice */ device, U32/* const VkImageSparseMemoryRequirementsInfo2* */ pInfo, U32/* uint32_t* */ pSparseMemoryRequirementCount, U32/* VkSparseImageMemoryRequirements2* */ pSparseMemoryRequirements) {
     CALL_4(GetImageSparseMemoryRequirements2, device, pInfo, pSparseMemoryRequirementCount, pSparseMemoryRequirements);
 }
+void vkGetImageSparseMemoryRequirements2KHR(U32/* VkDevice */ device, U32/* const VkImageSparseMemoryRequirementsInfo2* */ pInfo, U32/* uint32_t* */ pSparseMemoryRequirementCount, U32/* VkSparseImageMemoryRequirements2* */ pSparseMemoryRequirements) {
+    CALL_4(GetImageSparseMemoryRequirements2KHR, device, pInfo, pSparseMemoryRequirementCount, pSparseMemoryRequirements);
+}
 U32 /* VkResult */ vkCreateSamplerYcbcrConversion(U32/* VkDevice */ device, U32/* const VkSamplerYcbcrConversionCreateInfo* */ pCreateInfo, U32/* const VkAllocationCallbacks* */ pAllocator, U32/* VkSamplerYcbcrConversion* */ pYcbcrConversion) {
     CALL_4_R32(CreateSamplerYcbcrConversion, device, pCreateInfo, pAllocator, pYcbcrConversion);
 }
+U32 /* VkResult */ vkCreateSamplerYcbcrConversionKHR(U32/* VkDevice */ device, U32/* const VkSamplerYcbcrConversionCreateInfo* */ pCreateInfo, U32/* const VkAllocationCallbacks* */ pAllocator, U32/* VkSamplerYcbcrConversion* */ pYcbcrConversion) {
+    CALL_4_R32(CreateSamplerYcbcrConversionKHR, device, pCreateInfo, pAllocator, pYcbcrConversion);
+}
 void vkDestroySamplerYcbcrConversion(U32/* VkDevice */ device, U64/* VkSamplerYcbcrConversion */ ycbcrConversion, U32/* const VkAllocationCallbacks* */ pAllocator) {
     CALL_3(DestroySamplerYcbcrConversion, device, &ycbcrConversion, pAllocator);
+}
+void vkDestroySamplerYcbcrConversionKHR(U32/* VkDevice */ device, U64/* VkSamplerYcbcrConversion */ ycbcrConversion, U32/* const VkAllocationCallbacks* */ pAllocator) {
+    CALL_3(DestroySamplerYcbcrConversionKHR, device, &ycbcrConversion, pAllocator);
 }
 void vkGetDeviceQueue2(U32/* VkDevice */ device, U32/* const VkDeviceQueueInfo2* */ pQueueInfo, U32/* VkQueue* */ pQueue) {
     CALL_3(GetDeviceQueue2, device, pQueueInfo, pQueue);
@@ -858,6 +936,9 @@ U32 /* VkResult */ vkMergeValidationCachesEXT(U32/* VkDevice */ device, U64/* Vk
 }
 void vkGetDescriptorSetLayoutSupport(U32/* VkDevice */ device, U32/* const VkDescriptorSetLayoutCreateInfo* */ pCreateInfo, U32/* VkDescriptorSetLayoutSupport* */ pSupport) {
     CALL_3(GetDescriptorSetLayoutSupport, device, pCreateInfo, pSupport);
+}
+void vkGetDescriptorSetLayoutSupportKHR(U32/* VkDevice */ device, U32/* const VkDescriptorSetLayoutCreateInfo* */ pCreateInfo, U32/* VkDescriptorSetLayoutSupport* */ pSupport) {
+    CALL_3(GetDescriptorSetLayoutSupportKHR, device, pCreateInfo, pSupport);
 }
 U32 /* VkResult */ vkGetSwapchainGrallocUsageANDROID(U32/* VkDevice */ device, U32/* VkFormat */ format, U32/* VkImageUsageFlags */ imageUsage, U32/* int* */ grallocUsage) {
     CALL_4_R32(GetSwapchainGrallocUsageANDROID, device, format, imageUsage, grallocUsage);
@@ -925,23 +1006,44 @@ void vkCmdWriteBufferMarkerAMD(U32/* VkCommandBuffer */ commandBuffer, U32/* VkP
 U32 /* VkResult */ vkCreateRenderPass2(U32/* VkDevice */ device, U32/* const VkRenderPassCreateInfo2* */ pCreateInfo, U32/* const VkAllocationCallbacks* */ pAllocator, U32/* VkRenderPass* */ pRenderPass) {
     CALL_4_R32(CreateRenderPass2, device, pCreateInfo, pAllocator, pRenderPass);
 }
+U32 /* VkResult */ vkCreateRenderPass2KHR(U32/* VkDevice */ device, U32/* const VkRenderPassCreateInfo2* */ pCreateInfo, U32/* const VkAllocationCallbacks* */ pAllocator, U32/* VkRenderPass* */ pRenderPass) {
+    CALL_4_R32(CreateRenderPass2KHR, device, pCreateInfo, pAllocator, pRenderPass);
+}
 void vkCmdBeginRenderPass2(U32/* VkCommandBuffer */ commandBuffer, U32/* const VkRenderPassBeginInfo* */ pRenderPassBegin, U32/* const VkSubpassBeginInfo* */ pSubpassBeginInfo) {
     CALL_3(CmdBeginRenderPass2, commandBuffer, pRenderPassBegin, pSubpassBeginInfo);
+}
+void vkCmdBeginRenderPass2KHR(U32/* VkCommandBuffer */ commandBuffer, U32/* const VkRenderPassBeginInfo* */ pRenderPassBegin, U32/* const VkSubpassBeginInfo* */ pSubpassBeginInfo) {
+    CALL_3(CmdBeginRenderPass2KHR, commandBuffer, pRenderPassBegin, pSubpassBeginInfo);
 }
 void vkCmdNextSubpass2(U32/* VkCommandBuffer */ commandBuffer, U32/* const VkSubpassBeginInfo* */ pSubpassBeginInfo, U32/* const VkSubpassEndInfo* */ pSubpassEndInfo) {
     CALL_3(CmdNextSubpass2, commandBuffer, pSubpassBeginInfo, pSubpassEndInfo);
 }
+void vkCmdNextSubpass2KHR(U32/* VkCommandBuffer */ commandBuffer, U32/* const VkSubpassBeginInfo* */ pSubpassBeginInfo, U32/* const VkSubpassEndInfo* */ pSubpassEndInfo) {
+    CALL_3(CmdNextSubpass2KHR, commandBuffer, pSubpassBeginInfo, pSubpassEndInfo);
+}
 void vkCmdEndRenderPass2(U32/* VkCommandBuffer */ commandBuffer, U32/* const VkSubpassEndInfo* */ pSubpassEndInfo) {
     CALL_2(CmdEndRenderPass2, commandBuffer, pSubpassEndInfo);
+}
+void vkCmdEndRenderPass2KHR(U32/* VkCommandBuffer */ commandBuffer, U32/* const VkSubpassEndInfo* */ pSubpassEndInfo) {
+    CALL_2(CmdEndRenderPass2KHR, commandBuffer, pSubpassEndInfo);
 }
 U32 /* VkResult */ vkGetSemaphoreCounterValue(U32/* VkDevice */ device, U64/* VkSemaphore */ semaphore, U32/* uint64_t* */ pValue) {
     CALL_3_R32(GetSemaphoreCounterValue, device, &semaphore, pValue);
 }
+U32 /* VkResult */ vkGetSemaphoreCounterValueKHR(U32/* VkDevice */ device, U64/* VkSemaphore */ semaphore, U32/* uint64_t* */ pValue) {
+    CALL_3_R32(GetSemaphoreCounterValueKHR, device, &semaphore, pValue);
+}
 U32 /* VkResult */ vkWaitSemaphores(U32/* VkDevice */ device, U32/* const VkSemaphoreWaitInfo* */ pWaitInfo, U64/* uint64_t */ timeout) {
     CALL_3_R32(WaitSemaphores, device, pWaitInfo, &timeout);
 }
+U32 /* VkResult */ vkWaitSemaphoresKHR(U32/* VkDevice */ device, U32/* const VkSemaphoreWaitInfo* */ pWaitInfo, U64/* uint64_t */ timeout) {
+    CALL_3_R32(WaitSemaphoresKHR, device, pWaitInfo, &timeout);
+}
 U32 /* VkResult */ vkSignalSemaphore(U32/* VkDevice */ device, U32/* const VkSemaphoreSignalInfo* */ pSignalInfo) {
     CALL_2_R32(SignalSemaphore, device, pSignalInfo);
+}
+U32 /* VkResult */ vkSignalSemaphoreKHR(U32/* VkDevice */ device, U32/* const VkSemaphoreSignalInfo* */ pSignalInfo) {
+    CALL_2_R32(SignalSemaphoreKHR, device, pSignalInfo);
 }
 U32 /* VkResult */ vkGetAndroidHardwareBufferPropertiesANDROID(U32/* VkDevice */ device, U32/* const struct AHardwareBuffer* */ buffer, U32/* VkAndroidHardwareBufferPropertiesANDROID* */ pProperties) {
     CALL_3_R32(GetAndroidHardwareBufferPropertiesANDROID, device, buffer, pProperties);
@@ -952,8 +1054,20 @@ U32 /* VkResult */ vkGetMemoryAndroidHardwareBufferANDROID(U32/* VkDevice */ dev
 void vkCmdDrawIndirectCount(U32/* VkCommandBuffer */ commandBuffer, U64/* VkBuffer */ buffer, U64/* VkDeviceSize */ offset, U64/* VkBuffer */ countBuffer, U64/* VkDeviceSize */ countBufferOffset, U32/* uint32_t */ maxDrawCount, U32/* uint32_t */ stride) {
     CALL_7(CmdDrawIndirectCount, commandBuffer, &buffer, &offset, &countBuffer, &countBufferOffset, maxDrawCount, stride);
 }
+void vkCmdDrawIndirectCountKHR(U32/* VkCommandBuffer */ commandBuffer, U64/* VkBuffer */ buffer, U64/* VkDeviceSize */ offset, U64/* VkBuffer */ countBuffer, U64/* VkDeviceSize */ countBufferOffset, U32/* uint32_t */ maxDrawCount, U32/* uint32_t */ stride) {
+    CALL_7(CmdDrawIndirectCountKHR, commandBuffer, &buffer, &offset, &countBuffer, &countBufferOffset, maxDrawCount, stride);
+}
+void vkCmdDrawIndirectCountAMD(U32/* VkCommandBuffer */ commandBuffer, U64/* VkBuffer */ buffer, U64/* VkDeviceSize */ offset, U64/* VkBuffer */ countBuffer, U64/* VkDeviceSize */ countBufferOffset, U32/* uint32_t */ maxDrawCount, U32/* uint32_t */ stride) {
+    CALL_7(CmdDrawIndirectCountAMD, commandBuffer, &buffer, &offset, &countBuffer, &countBufferOffset, maxDrawCount, stride);
+}
 void vkCmdDrawIndexedIndirectCount(U32/* VkCommandBuffer */ commandBuffer, U64/* VkBuffer */ buffer, U64/* VkDeviceSize */ offset, U64/* VkBuffer */ countBuffer, U64/* VkDeviceSize */ countBufferOffset, U32/* uint32_t */ maxDrawCount, U32/* uint32_t */ stride) {
     CALL_7(CmdDrawIndexedIndirectCount, commandBuffer, &buffer, &offset, &countBuffer, &countBufferOffset, maxDrawCount, stride);
+}
+void vkCmdDrawIndexedIndirectCountKHR(U32/* VkCommandBuffer */ commandBuffer, U64/* VkBuffer */ buffer, U64/* VkDeviceSize */ offset, U64/* VkBuffer */ countBuffer, U64/* VkDeviceSize */ countBufferOffset, U32/* uint32_t */ maxDrawCount, U32/* uint32_t */ stride) {
+    CALL_7(CmdDrawIndexedIndirectCountKHR, commandBuffer, &buffer, &offset, &countBuffer, &countBufferOffset, maxDrawCount, stride);
+}
+void vkCmdDrawIndexedIndirectCountAMD(U32/* VkCommandBuffer */ commandBuffer, U64/* VkBuffer */ buffer, U64/* VkDeviceSize */ offset, U64/* VkBuffer */ countBuffer, U64/* VkDeviceSize */ countBufferOffset, U32/* uint32_t */ maxDrawCount, U32/* uint32_t */ stride) {
+    CALL_7(CmdDrawIndexedIndirectCountAMD, commandBuffer, &buffer, &offset, &countBuffer, &countBufferOffset, maxDrawCount, stride);
 }
 void vkCmdSetCheckpointNV(U32/* VkCommandBuffer */ commandBuffer, U32/* const void* */ pCheckpointMarker) {
     CALL_2(CmdSetCheckpointNV, commandBuffer, pCheckpointMarker);
@@ -1060,6 +1174,9 @@ void vkCmdTraceRaysNV(U32/* VkCommandBuffer */ commandBuffer, U64/* VkBuffer */ 
 U32 /* VkResult */ vkGetRayTracingShaderGroupHandlesKHR(U32/* VkDevice */ device, U64/* VkPipeline */ pipeline, U32/* uint32_t */ firstGroup, U32/* uint32_t */ groupCount, U32/* size_t */ dataSize, U32/* void* */ pData) {
     CALL_6_R32(GetRayTracingShaderGroupHandlesKHR, device, &pipeline, firstGroup, groupCount, dataSize, pData);
 }
+U32 /* VkResult */ vkGetRayTracingShaderGroupHandlesNV(U32/* VkDevice */ device, U64/* VkPipeline */ pipeline, U32/* uint32_t */ firstGroup, U32/* uint32_t */ groupCount, U32/* size_t */ dataSize, U32/* void* */ pData) {
+    CALL_6_R32(GetRayTracingShaderGroupHandlesNV, device, &pipeline, firstGroup, groupCount, dataSize, pData);
+}
 U32 /* VkResult */ vkGetRayTracingCaptureReplayShaderGroupHandlesKHR(U32/* VkDevice */ device, U64/* VkPipeline */ pipeline, U32/* uint32_t */ firstGroup, U32/* uint32_t */ groupCount, U32/* size_t */ dataSize, U32/* void* */ pData) {
     CALL_6_R32(GetRayTracingCaptureReplayShaderGroupHandlesKHR, device, &pipeline, firstGroup, groupCount, dataSize, pData);
 }
@@ -1123,8 +1240,17 @@ U32 /* VkResult */ vkGetImageDrmFormatModifierPropertiesEXT(U32/* VkDevice */ de
 U64 /* uint64_t */ vkGetBufferOpaqueCaptureAddress(U32/* VkDevice */ device, U32/* const VkBufferDeviceAddressInfo* */ pInfo) {
     CALL_2_R64(GetBufferOpaqueCaptureAddress, device, pInfo);
 }
+U64 /* uint64_t */ vkGetBufferOpaqueCaptureAddressKHR(U32/* VkDevice */ device, U32/* const VkBufferDeviceAddressInfo* */ pInfo) {
+    CALL_2_R64(GetBufferOpaqueCaptureAddressKHR, device, pInfo);
+}
 U64 /* VkDeviceAddress */ vkGetBufferDeviceAddress(U32/* VkDevice */ device, U32/* const VkBufferDeviceAddressInfo* */ pInfo) {
     CALL_2_R64(GetBufferDeviceAddress, device, pInfo);
+}
+U64 /* VkDeviceAddress */ vkGetBufferDeviceAddressKHR(U32/* VkDevice */ device, U32/* const VkBufferDeviceAddressInfo* */ pInfo) {
+    CALL_2_R64(GetBufferDeviceAddressKHR, device, pInfo);
+}
+U64 /* VkDeviceAddress */ vkGetBufferDeviceAddressEXT(U32/* VkDevice */ device, U32/* const VkBufferDeviceAddressInfo* */ pInfo) {
+    CALL_2_R64(GetBufferDeviceAddressEXT, device, pInfo);
 }
 U32 /* VkResult */ vkCreateHeadlessSurfaceEXT(U32/* VkInstance */ instance, U32/* const VkHeadlessSurfaceCreateInfoEXT* */ pCreateInfo, U32/* const VkAllocationCallbacks* */ pAllocator, U32/* VkSurfaceKHR* */ pSurface) {
     CALL_4_R32(CreateHeadlessSurfaceEXT, instance, pCreateInfo, pAllocator, pSurface);
@@ -1161,6 +1287,9 @@ U32 /* VkResult */ vkGetPerformanceParameterINTEL(U32/* VkDevice */ device, U32/
 }
 U64 /* uint64_t */ vkGetDeviceMemoryOpaqueCaptureAddress(U32/* VkDevice */ device, U32/* const VkDeviceMemoryOpaqueCaptureAddressInfo* */ pInfo) {
     CALL_2_R64(GetDeviceMemoryOpaqueCaptureAddress, device, pInfo);
+}
+U64 /* uint64_t */ vkGetDeviceMemoryOpaqueCaptureAddressKHR(U32/* VkDevice */ device, U32/* const VkDeviceMemoryOpaqueCaptureAddressInfo* */ pInfo) {
+    CALL_2_R64(GetDeviceMemoryOpaqueCaptureAddressKHR, device, pInfo);
 }
 U32 /* VkResult */ vkGetPipelineExecutablePropertiesKHR(U32/* VkDevice */ device, U32/* const VkPipelineInfoKHR* */ pPipelineInfo, U32/* uint32_t* */ pExecutableCount, U32/* VkPipelineExecutablePropertiesKHR* */ pProperties) {
     CALL_4_R32(GetPipelineExecutablePropertiesKHR, device, pPipelineInfo, pExecutableCount, pProperties);

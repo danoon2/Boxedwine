@@ -339,7 +339,7 @@ bool StartUpArgs::apply() {
     envValues.push_back("DISPLAY=:0");
     envValues.push_back("WINE_FAKE_WAIT_VBLANK=60");
     envValues.push_back("WINEDLLOVERRIDES=mscoree,mshtml=");
-    //envValues.push_back("WINEDEBUG=+ddraw");
+    envValues.push_back("WINEDEBUG=+vulkan");
                             
     // if this strlen is more than 88 (1 more character than now), then diablo demo will crash before we get to the menu
     // if I create more env values that are longer it doesn't crash, what is special about this one?

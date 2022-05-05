@@ -354,7 +354,7 @@
       <breakpoints>
         <line-breakpoint enabled="true" type="java-line">
           <url>file://$PROJECT_DIR$/src/boxedwine/org/Main.java</url>
-          <line>616</line>
+          <line>635</line>
           <option name="timeStamp" value="52" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
@@ -383,9 +383,14 @@
           <option name="timeStamp" value="148" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
-          <url>file://$PROJECT_DIR$/src/boxedwine/org/VkHost.java</url>
-          <line>74</line>
-          <option name="timeStamp" value="160" />
+          <url>file://$PROJECT_DIR$/src/boxedwine/org/Main.java</url>
+          <line>214</line>
+          <option name="timeStamp" value="166" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="java-line">
+          <url>file://$PROJECT_DIR$/src/boxedwine/org/Main.java</url>
+          <line>175</line>
+          <option name="timeStamp" value="167" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
