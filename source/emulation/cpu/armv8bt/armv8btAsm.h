@@ -137,6 +137,8 @@ typedef enum {
 #define CPU_OFFSET_FS (U32)(offsetof(CPU, seg[FS].value))
 #define CPU_OFFSET_GS (U32)(offsetof(CPU, seg[GS].value))
 
+#define CPU_OFFSET_SEG_VALUE(i) ((U32)(offsetof(CPU, seg)) + sizeof(Seg) * i + (U32)(offsetof(Seg, value)))
+
 #define CPU_OFFSET_MEM (U32)(offsetof(Armv8btCPU, memOffset))
 #define CPU_OFFSET_NEG_MEM (U32)(offsetof(Armv8btCPU, negMemOffset))
 #define CPU_OFFSET_OP_PAGES (U32)(offsetof(Armv8btCPU, eipToHostInstructionPages))

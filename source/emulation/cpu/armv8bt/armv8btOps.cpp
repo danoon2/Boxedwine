@@ -2002,7 +2002,7 @@ void opDecE32(Armv8btAsm* data) {
 
 void opPushSeg16(Armv8btAsm* data) {
     U8 tmp = data->getTmpReg();
-    data->readMem32ValueOffset(tmp, xCPU, (S32)((U32)(offsetof(CPU, seg[data->decodedOp->reg].value))));
+    data->readMem32ValueOffset(tmp, xCPU, (S32)CPU_OFFSET_SEG_VALUE(data->decodedOp->reg));
     data->pushNativeReg16(tmp);
     data->releaseTmpReg(tmp);
 }
@@ -2029,10 +2029,11 @@ void opPopSeg16(Armv8btAsm* data) {
 
 void opPushSeg32(Armv8btAsm* data) {
     U8 tmp = data->getTmpReg();
-    data->readMem32ValueOffset(tmp, xCPU, (S32)((U32)(offsetof(CPU, seg[data->decodedOp->reg].value))));
+    data->readMem32ValueOffset(tmp, xCPU, (S32)CPU_OFFSET_SEG_VALUE(data->decodedOp->reg));
     data->pushNativeReg32(tmp);
     data->releaseTmpReg(tmp);
 }
+
 void opPopSeg32(Armv8btAsm* data) {
     data->syncRegsFromHost();
 
@@ -2653,7 +2654,7 @@ void opMovE32I32(Armv8btAsm* data) {
 
 void opMovR16S16(Armv8btAsm* data) {
     U8 tmpReg = data->getTmpReg();
-    data->readMem32ValueOffset(tmpReg, xCPU, (S32)((U32)(offsetof(CPU, seg[data->decodedOp->rm].value))));
+    data->readMem32ValueOffset(tmpReg, xCPU, (S32)CPU_OFFSET_SEG_VALUE(data->decodedOp->reg));
     data->movRegToReg(data->getNativeReg(data->decodedOp->reg), tmpReg, 16, false);
     data->releaseTmpReg(tmpReg);
 }
@@ -2664,13 +2665,13 @@ void opMovR32S16(Armv8btAsm* data) {
     // bits of the general - purpose register are the destination or source operand.If the register is a destination operand, the resulting 
     // value in the two high - order bytes of the register is implementation dependent.For the Pentium 4, Intel Xeon, and P6 family processors, 
     // the two high - order bytes are filled with zeros; for earlier 32 - bit IA - 32 processors, the two high order bytes are undefined.
-    data->readMem32ValueOffset(data->getNativeReg(data->decodedOp->reg), xCPU, (S32)((U32)(offsetof(CPU, seg[data->decodedOp->rm].value))));
+    data->readMem32ValueOffset(data->getNativeReg(data->decodedOp->reg), xCPU, (S32)CPU_OFFSET_SEG_VALUE(data->decodedOp->reg));
 }
 
 void opMovE16S16(Armv8btAsm* data) {
     U8 tmpReg = data->getTmpReg();
     U8 addressReg = data->getAddressReg();
-    data->readMem32ValueOffset(tmpReg, xCPU, (S32)((U32)(offsetof(CPU, seg[data->decodedOp->reg].value))));
+    data->readMem32ValueOffset(tmpReg, xCPU, (S32)CPU_OFFSET_SEG_VALUE(data->decodedOp->reg));
     data->writeMemory(addressReg, tmpReg, 16, true);
     data->releaseTmpReg(tmpReg);
     data->releaseTmpReg(addressReg);
