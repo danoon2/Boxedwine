@@ -689,5 +689,6 @@ public:
     PFN_vkCmdWriteTimestamp2KHR pvkCmdWriteTimestamp2KHR;
     PFN_vkCmdWriteBufferMarker2AMD pvkCmdWriteBufferMarker2AMD;
     PFN_vkGetQueueCheckpointData2NV pvkGetQueueCheckpointData2NV;
+    std::unordered_map<std::string, U32> functionAddressByName;
 };
 #endif

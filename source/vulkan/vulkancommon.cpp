@@ -48,7 +48,7 @@ U32 createVulkanPtr(U64 value, BoxedVulkanInfo* info) {
         }
 #undef VKFUNC
 #undef VKFUNC_INSTANCE
-#define VKFUNC_INSTANCE(f) info->pvk##f = (PFN_vk##f)pvkGetInstanceProcAddr((VkInstance)value, "vk"#f); if (!info->pvk##f) {kwarn("Failed to load vk"#f);}
+#define VKFUNC_INSTANCE(f) info->pvk##f = (PFN_vk##f)pvkGetInstanceProcAddr((VkInstance)value, "vk"#f); if (!info->pvk##f) {kwarn("Failed to load vk"#f);} else {info->functionAddressByName["vk"#f]=1;}
 #define VKFUNC(f)
 #include "vkfuncs.h" 
         info->instance = (VkInstance)value;
@@ -59,6 +59,24 @@ U32 createVulkanPtr(U64 value, BoxedVulkanInfo* info) {
 
 BoxedVulkanInfo* getInfoFromHandle(U32 address) {
     return (BoxedVulkanInfo*)readq(address+8);
+}
+
+static void hasProcAddress(CPU* cpu) {
+    U32 handle = cpu->peek32(1);
+    if (!handle) {
+        EAX = 1;
+    } else {
+        BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(handle);
+        char tmp[256];
+        const char* pName = getNativeString(cpu->peek32(2), tmp, sizeof(tmp));
+
+        if (pBoxedInfo->functionAddressByName.count(pName) || !strcmp(pName, "vkGetDeviceProcAddr") || !strcmp(pName, "vkCreateWin32SurfaceKHR")) {
+            EAX = 1;
+        }
+        else {
+            EAX = 0;
+        }
+    }
 }
 
 void freeVulkanPtr(U32 p) {
@@ -175,6 +193,8 @@ void vulkan_init() {
 #include "vkfuncs.h"      
 
     int9ACallback[CreateWin32SurfaceKHR] = BOXED_vkCreateWin32SurfaceKHR;
+    int9ACallback[GetDeviceProcAddr] = hasProcAddress;
+    int9ACallback[GetInstanceProcAddr] = hasProcAddress;
 }
 
 #endif

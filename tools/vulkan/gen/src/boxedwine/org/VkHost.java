@@ -125,6 +125,7 @@ public class VkHost {
                 out.append(";\n");
             }
         }
+        out.append("    std::unordered_map<std::string, U32> functionAddressByName;\n");
         out.append("};\n");
 
         out.append("#endif\n");

@@ -99,6 +99,134 @@ public:
     }
 };
 
+class MarshalVkPhysicalDeviceLimits {
+public:
+    MarshalVkPhysicalDeviceLimits() {}
+    VkPhysicalDeviceLimits s;
+    MarshalVkPhysicalDeviceLimits(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkPhysicalDeviceLimits* s) {
+        s->maxImageDimension1D = (uint32_t)readd(address);address+=4;
+        s->maxImageDimension2D = (uint32_t)readd(address);address+=4;
+        s->maxImageDimension3D = (uint32_t)readd(address);address+=4;
+        s->maxImageDimensionCube = (uint32_t)readd(address);address+=4;
+        s->maxImageArrayLayers = (uint32_t)readd(address);address+=4;
+        s->maxTexelBufferElements = (uint32_t)readd(address);address+=4;
+        s->maxUniformBufferRange = (uint32_t)readd(address);address+=4;
+        s->maxStorageBufferRange = (uint32_t)readd(address);address+=4;
+        s->maxPushConstantsSize = (uint32_t)readd(address);address+=4;
+        s->maxMemoryAllocationCount = (uint32_t)readd(address);address+=4;
+        s->maxSamplerAllocationCount = (uint32_t)readd(address);address+=4;
+        s->bufferImageGranularity = (VkDeviceSize)readq(address);address+=8;
+        s->sparseAddressSpaceSize = (VkDeviceSize)readq(address);address+=8;
+        s->maxBoundDescriptorSets = (uint32_t)readd(address);address+=4;
+        s->maxPerStageDescriptorSamplers = (uint32_t)readd(address);address+=4;
+        s->maxPerStageDescriptorUniformBuffers = (uint32_t)readd(address);address+=4;
+        s->maxPerStageDescriptorStorageBuffers = (uint32_t)readd(address);address+=4;
+        s->maxPerStageDescriptorSampledImages = (uint32_t)readd(address);address+=4;
+        s->maxPerStageDescriptorStorageImages = (uint32_t)readd(address);address+=4;
+        s->maxPerStageDescriptorInputAttachments = (uint32_t)readd(address);address+=4;
+        s->maxPerStageResources = (uint32_t)readd(address);address+=4;
+        s->maxDescriptorSetSamplers = (uint32_t)readd(address);address+=4;
+        s->maxDescriptorSetUniformBuffers = (uint32_t)readd(address);address+=4;
+        s->maxDescriptorSetUniformBuffersDynamic = (uint32_t)readd(address);address+=4;
+        s->maxDescriptorSetStorageBuffers = (uint32_t)readd(address);address+=4;
+        s->maxDescriptorSetStorageBuffersDynamic = (uint32_t)readd(address);address+=4;
+        s->maxDescriptorSetSampledImages = (uint32_t)readd(address);address+=4;
+        s->maxDescriptorSetStorageImages = (uint32_t)readd(address);address+=4;
+        s->maxDescriptorSetInputAttachments = (uint32_t)readd(address);address+=4;
+        s->maxVertexInputAttributes = (uint32_t)readd(address);address+=4;
+        s->maxVertexInputBindings = (uint32_t)readd(address);address+=4;
+        s->maxVertexInputAttributeOffset = (uint32_t)readd(address);address+=4;
+        s->maxVertexInputBindingStride = (uint32_t)readd(address);address+=4;
+        s->maxVertexOutputComponents = (uint32_t)readd(address);address+=4;
+        s->maxTessellationGenerationLevel = (uint32_t)readd(address);address+=4;
+        s->maxTessellationPatchSize = (uint32_t)readd(address);address+=4;
+        s->maxTessellationControlPerVertexInputComponents = (uint32_t)readd(address);address+=4;
+        s->maxTessellationControlPerVertexOutputComponents = (uint32_t)readd(address);address+=4;
+        s->maxTessellationControlPerPatchOutputComponents = (uint32_t)readd(address);address+=4;
+        s->maxTessellationControlTotalOutputComponents = (uint32_t)readd(address);address+=4;
+        s->maxTessellationEvaluationInputComponents = (uint32_t)readd(address);address+=4;
+        s->maxTessellationEvaluationOutputComponents = (uint32_t)readd(address);address+=4;
+        s->maxGeometryShaderInvocations = (uint32_t)readd(address);address+=4;
+        s->maxGeometryInputComponents = (uint32_t)readd(address);address+=4;
+        s->maxGeometryOutputComponents = (uint32_t)readd(address);address+=4;
+        s->maxGeometryOutputVertices = (uint32_t)readd(address);address+=4;
+        s->maxGeometryTotalOutputComponents = (uint32_t)readd(address);address+=4;
+        s->maxFragmentInputComponents = (uint32_t)readd(address);address+=4;
+        s->maxFragmentOutputAttachments = (uint32_t)readd(address);address+=4;
+        s->maxFragmentDualSrcAttachments = (uint32_t)readd(address);address+=4;
+        s->maxFragmentCombinedOutputResources = (uint32_t)readd(address);address+=4;
+        s->maxComputeSharedMemorySize = (uint32_t)readd(address);address+=4;
+        memcopyToNative(address, &s->maxComputeWorkGroupCount, 3);address+=3;
+        s->maxComputeWorkGroupInvocations = (uint32_t)readd(address);address+=4;
+        memcopyToNative(address, &s->maxComputeWorkGroupSize, 3);address+=3;
+        s->subPixelPrecisionBits = (uint32_t)readd(address);address+=4;
+        s->subTexelPrecisionBits = (uint32_t)readd(address);address+=4;
+        s->mipmapPrecisionBits = (uint32_t)readd(address);address+=4;
+        s->maxDrawIndexedIndexValue = (uint32_t)readd(address);address+=4;
+        s->maxDrawIndirectCount = (uint32_t)readd(address);address+=4;
+        s->maxSamplerLodBias = (float)readd(address);address+=4;
+        s->maxSamplerAnisotropy = (float)readd(address);address+=4;
+        s->maxViewports = (uint32_t)readd(address);address+=4;
+        memcopyToNative(address, &s->maxViewportDimensions, 2);address+=2;
+        memcopyToNative(address, &s->viewportBoundsRange, 2);address+=2;
+        s->viewportSubPixelBits = (uint32_t)readd(address);address+=4;
+        s->minMemoryMapAlignment = (size_t)readd(address);address+=4;
+        s->minTexelBufferOffsetAlignment = (VkDeviceSize)readq(address);address+=8;
+        s->minUniformBufferOffsetAlignment = (VkDeviceSize)readq(address);address+=8;
+        s->minStorageBufferOffsetAlignment = (VkDeviceSize)readq(address);address+=8;
+        s->minTexelOffset = (int32_t)readd(address);address+=4;
+        s->maxTexelOffset = (uint32_t)readd(address);address+=4;
+        s->minTexelGatherOffset = (int32_t)readd(address);address+=4;
+        s->maxTexelGatherOffset = (uint32_t)readd(address);address+=4;
+        s->minInterpolationOffset = (float)readd(address);address+=4;
+        s->maxInterpolationOffset = (float)readd(address);address+=4;
+        s->subPixelInterpolationOffsetBits = (uint32_t)readd(address);address+=4;
+        s->maxFramebufferWidth = (uint32_t)readd(address);address+=4;
+        s->maxFramebufferHeight = (uint32_t)readd(address);address+=4;
+        s->maxFramebufferLayers = (uint32_t)readd(address);address+=4;
+        s->framebufferColorSampleCounts = (VkSampleCountFlags)readd(address);address+=4;
+        s->framebufferDepthSampleCounts = (VkSampleCountFlags)readd(address);address+=4;
+        s->framebufferStencilSampleCounts = (VkSampleCountFlags)readd(address);address+=4;
+        s->framebufferNoAttachmentsSampleCounts = (VkSampleCountFlags)readd(address);address+=4;
+        s->maxColorAttachments = (uint32_t)readd(address);address+=4;
+        s->sampledImageColorSampleCounts = (VkSampleCountFlags)readd(address);address+=4;
+        s->sampledImageIntegerSampleCounts = (VkSampleCountFlags)readd(address);address+=4;
+        s->sampledImageDepthSampleCounts = (VkSampleCountFlags)readd(address);address+=4;
+        s->sampledImageStencilSampleCounts = (VkSampleCountFlags)readd(address);address+=4;
+        s->storageImageSampleCounts = (VkSampleCountFlags)readd(address);address+=4;
+        s->maxSampleMaskWords = (uint32_t)readd(address);address+=4;
+        s->timestampComputeAndGraphics = (VkBool32)readd(address);address+=4;
+        s->timestampPeriod = (float)readd(address);address+=4;
+        s->maxClipDistances = (uint32_t)readd(address);address+=4;
+        s->maxCullDistances = (uint32_t)readd(address);address+=4;
+        s->maxCombinedClipAndCullDistances = (uint32_t)readd(address);address+=4;
+        s->discreteQueuePriorities = (uint32_t)readd(address);address+=4;
+        memcopyToNative(address, &s->pointSizeRange, 2);address+=2;
+        memcopyToNative(address, &s->lineWidthRange, 2);address+=2;
+        s->pointSizeGranularity = (float)readd(address);address+=4;
+        s->lineWidthGranularity = (float)readd(address);address+=4;
+        s->strictLines = (VkBool32)readd(address);address+=4;
+        s->standardSampleLocations = (VkBool32)readd(address);address+=4;
+        s->optimalBufferCopyOffsetAlignment = (VkDeviceSize)readq(address);address+=8;
+        s->optimalBufferCopyRowPitchAlignment = (VkDeviceSize)readq(address);address+=8;
+        s->nonCoherentAtomSize = (VkDeviceSize)readq(address);address+=8;
+    }
+};
+
+class MarshalVkComponentMapping {
+public:
+    MarshalVkComponentMapping() {}
+    VkComponentMapping s;
+    MarshalVkComponentMapping(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkComponentMapping* s) {
+        s->r = (VkComponentSwizzle)readd(address);address+=4;
+        s->g = (VkComponentSwizzle)readd(address);address+=4;
+        s->b = (VkComponentSwizzle)readd(address);address+=4;
+        s->a = (VkComponentSwizzle)readd(address);address+=4;
+    }
+};
+
 class MarshalVkPhysicalDeviceProperties {
 public:
     MarshalVkPhysicalDeviceProperties() {}
@@ -112,7 +240,7 @@ public:
         s->deviceType = (VkPhysicalDeviceType)readd(address);address+=4;
         memcopyToNative(address, &s->deviceName, 256);address+=256;
         memcopyToNative(address, &s->pipelineCacheUUID, 16);address+=16;
-        memcopyToNative(address, &s->limits, 488);address+=488;
+        MarshalVkPhysicalDeviceLimits::read(address, &s->limits); address+=488;
         memcopyToNative(address, &s->sparseProperties, 20);address+=20;
     }
     static void write(U32 address, VkPhysicalDeviceProperties* s) {
@@ -203,8 +331,10 @@ public:
         if (paramAddress == 0) {
             s->pQueueCreateInfos = NULL;
         } else {
-            VkDeviceQueueCreateInfo* pQueueCreateInfos = new VkDeviceQueueCreateInfo();
-            MarshalVkDeviceQueueCreateInfo::read(paramAddress, pQueueCreateInfos);
+            VkDeviceQueueCreateInfo* pQueueCreateInfos = new VkDeviceQueueCreateInfo[s->queueCreateInfoCount];
+            for (U32 i = 0; i < s->queueCreateInfoCount; i++) {
+                MarshalVkDeviceQueueCreateInfo::read(paramAddress, &pQueueCreateInfos[i]);
+            }
             s->pQueueCreateInfos = pQueueCreateInfos;
         }
         s->enabledLayerCount = (uint32_t)readd(address);address+=4;
@@ -358,8 +488,10 @@ public:
         if (paramAddress == 0) {
             s->pImageInfo = NULL;
         } else {
-            VkDescriptorImageInfo* pImageInfo = new VkDescriptorImageInfo();
-            MarshalVkDescriptorImageInfo::read(paramAddress, pImageInfo);
+            VkDescriptorImageInfo* pImageInfo = new VkDescriptorImageInfo[s->descriptorCount];
+            for (U32 i = 0; i < s->descriptorCount; i++) {
+                MarshalVkDescriptorImageInfo::read(paramAddress, &pImageInfo[i]);
+            }
             s->pImageInfo = pImageInfo;
         }
         memcopyToNative(address, &s->pBufferInfo, 24);address+=24;
@@ -559,7 +691,7 @@ public:
         s->image = (VkImage)readq(address);address+=8;
         s->viewType = (VkImageViewType)readd(address);address+=4;
         s->format = (VkFormat)readd(address);address+=4;
-        memcopyToNative(address, &s->components, 16);address+=16;
+        MarshalVkComponentMapping::read(address, &s->components); address+=16;
         memcopyToNative(address, &s->subresourceRange, 20);address+=20;
     }
 };
@@ -640,8 +772,10 @@ public:
         if (paramAddress == 0) {
             s->pBufferBinds = NULL;
         } else {
-            VkSparseBufferMemoryBindInfo* pBufferBinds = new VkSparseBufferMemoryBindInfo();
-            MarshalVkSparseBufferMemoryBindInfo::read(paramAddress, pBufferBinds);
+            VkSparseBufferMemoryBindInfo* pBufferBinds = new VkSparseBufferMemoryBindInfo[s->bufferBindCount];
+            for (U32 i = 0; i < s->bufferBindCount; i++) {
+                MarshalVkSparseBufferMemoryBindInfo::read(paramAddress, &pBufferBinds[i]);
+            }
             s->pBufferBinds = pBufferBinds;
         }
         s->imageOpaqueBindCount = (uint32_t)readd(address);address+=4;
@@ -649,8 +783,10 @@ public:
         if (paramAddress == 0) {
             s->pImageOpaqueBinds = NULL;
         } else {
-            VkSparseImageOpaqueMemoryBindInfo* pImageOpaqueBinds = new VkSparseImageOpaqueMemoryBindInfo();
-            MarshalVkSparseImageOpaqueMemoryBindInfo::read(paramAddress, pImageOpaqueBinds);
+            VkSparseImageOpaqueMemoryBindInfo* pImageOpaqueBinds = new VkSparseImageOpaqueMemoryBindInfo[s->imageOpaqueBindCount];
+            for (U32 i = 0; i < s->imageOpaqueBindCount; i++) {
+                MarshalVkSparseImageOpaqueMemoryBindInfo::read(paramAddress, &pImageOpaqueBinds[i]);
+            }
             s->pImageOpaqueBinds = pImageOpaqueBinds;
         }
         s->imageBindCount = (uint32_t)readd(address);address+=4;
@@ -658,8 +794,10 @@ public:
         if (paramAddress == 0) {
             s->pImageBinds = NULL;
         } else {
-            VkSparseImageMemoryBindInfo* pImageBinds = new VkSparseImageMemoryBindInfo();
-            MarshalVkSparseImageMemoryBindInfo::read(paramAddress, pImageBinds);
+            VkSparseImageMemoryBindInfo* pImageBinds = new VkSparseImageMemoryBindInfo[s->imageBindCount];
+            for (U32 i = 0; i < s->imageBindCount; i++) {
+                MarshalVkSparseImageMemoryBindInfo::read(paramAddress, &pImageBinds[i]);
+            }
             s->pImageBinds = pImageBinds;
         }
         s->signalSemaphoreCount = (uint32_t)readd(address);address+=4;
@@ -734,8 +872,10 @@ public:
         if (paramAddress == 0) {
             s->pBindings = NULL;
         } else {
-            VkDescriptorSetLayoutBinding* pBindings = new VkDescriptorSetLayoutBinding();
-            MarshalVkDescriptorSetLayoutBinding::read(paramAddress, pBindings);
+            VkDescriptorSetLayoutBinding* pBindings = new VkDescriptorSetLayoutBinding[s->bindingCount];
+            for (U32 i = 0; i < s->bindingCount; i++) {
+                MarshalVkDescriptorSetLayoutBinding::read(paramAddress, &pBindings[i]);
+            }
             s->pBindings = pBindings;
         }
     }
@@ -772,8 +912,10 @@ public:
         if (paramAddress == 0) {
             s->pPoolSizes = NULL;
         } else {
-            VkDescriptorPoolSize* pPoolSizes = new VkDescriptorPoolSize();
-            MarshalVkDescriptorPoolSize::read(paramAddress, pPoolSizes);
+            VkDescriptorPoolSize* pPoolSizes = new VkDescriptorPoolSize[s->poolSizeCount];
+            for (U32 i = 0; i < s->poolSizeCount; i++) {
+                MarshalVkDescriptorPoolSize::read(paramAddress, &pPoolSizes[i]);
+            }
             s->pPoolSizes = pPoolSizes;
         }
     }
@@ -826,8 +968,10 @@ public:
         if (paramAddress == 0) {
             s->pMapEntries = NULL;
         } else {
-            VkSpecializationMapEntry* pMapEntries = new VkSpecializationMapEntry();
-            MarshalVkSpecializationMapEntry::read(paramAddress, pMapEntries);
+            VkSpecializationMapEntry* pMapEntries = new VkSpecializationMapEntry[s->mapEntryCount];
+            for (U32 i = 0; i < s->mapEntryCount; i++) {
+                MarshalVkSpecializationMapEntry::read(paramAddress, &pMapEntries[i]);
+            }
             s->pMapEntries = pMapEntries;
         }
         s->dataSize = (size_t)readd(address);address+=4;
@@ -887,7 +1031,7 @@ public:
             s->pNext = vulkanGetNextPtr(paramAddress);
         }
         s->flags = (VkPipelineCreateFlags)readd(address);address+=4;
-        memcopyToNative(address, &s->stage, 32);address+=32;
+        MarshalVkPipelineShaderStageCreateInfo::read(address, &s->stage); address+=32;
         s->layout = (VkPipelineLayout)readq(address);address+=8;
         s->basePipelineHandle = (VkPipeline)readq(address);address+=8;
         s->basePipelineIndex = (int32_t)readd(address);address+=4;
@@ -938,8 +1082,10 @@ public:
         if (paramAddress == 0) {
             s->pVertexBindingDescriptions = NULL;
         } else {
-            VkVertexInputBindingDescription* pVertexBindingDescriptions = new VkVertexInputBindingDescription();
-            MarshalVkVertexInputBindingDescription::read(paramAddress, pVertexBindingDescriptions);
+            VkVertexInputBindingDescription* pVertexBindingDescriptions = new VkVertexInputBindingDescription[s->vertexBindingDescriptionCount];
+            for (U32 i = 0; i < s->vertexBindingDescriptionCount; i++) {
+                MarshalVkVertexInputBindingDescription::read(paramAddress, &pVertexBindingDescriptions[i]);
+            }
             s->pVertexBindingDescriptions = pVertexBindingDescriptions;
         }
         s->vertexAttributeDescriptionCount = (uint32_t)readd(address);address+=4;
@@ -947,8 +1093,10 @@ public:
         if (paramAddress == 0) {
             s->pVertexAttributeDescriptions = NULL;
         } else {
-            VkVertexInputAttributeDescription* pVertexAttributeDescriptions = new VkVertexInputAttributeDescription();
-            MarshalVkVertexInputAttributeDescription::read(paramAddress, pVertexAttributeDescriptions);
+            VkVertexInputAttributeDescription* pVertexAttributeDescriptions = new VkVertexInputAttributeDescription[s->vertexAttributeDescriptionCount];
+            for (U32 i = 0; i < s->vertexAttributeDescriptionCount; i++) {
+                MarshalVkVertexInputAttributeDescription::read(paramAddress, &pVertexAttributeDescriptions[i]);
+            }
             s->pVertexAttributeDescriptions = pVertexAttributeDescriptions;
         }
     }
@@ -1115,8 +1263,10 @@ public:
         if (paramAddress == 0) {
             s->pAttachments = NULL;
         } else {
-            VkPipelineColorBlendAttachmentState* pAttachments = new VkPipelineColorBlendAttachmentState();
-            MarshalVkPipelineColorBlendAttachmentState::read(paramAddress, pAttachments);
+            VkPipelineColorBlendAttachmentState* pAttachments = new VkPipelineColorBlendAttachmentState[s->attachmentCount];
+            for (U32 i = 0; i < s->attachmentCount; i++) {
+                MarshalVkPipelineColorBlendAttachmentState::read(paramAddress, &pAttachments[i]);
+            }
             s->pAttachments = pAttachments;
         }
         memcopyToNative(address, &s->blendConstants, 4);address+=4;
@@ -1147,6 +1297,22 @@ public:
     }
 };
 
+class MarshalVkStencilOpState {
+public:
+    MarshalVkStencilOpState() {}
+    VkStencilOpState s;
+    MarshalVkStencilOpState(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkStencilOpState* s) {
+        s->failOp = (VkStencilOp)readd(address);address+=4;
+        s->passOp = (VkStencilOp)readd(address);address+=4;
+        s->depthFailOp = (VkStencilOp)readd(address);address+=4;
+        s->compareOp = (VkCompareOp)readd(address);address+=4;
+        s->compareMask = (uint32_t)readd(address);address+=4;
+        s->writeMask = (uint32_t)readd(address);address+=4;
+        s->reference = (uint32_t)readd(address);address+=4;
+    }
+};
+
 class MarshalVkPipelineDepthStencilStateCreateInfo {
 public:
     MarshalVkPipelineDepthStencilStateCreateInfo() {}
@@ -1166,8 +1332,8 @@ public:
         s->depthCompareOp = (VkCompareOp)readd(address);address+=4;
         s->depthBoundsTestEnable = (VkBool32)readd(address);address+=4;
         s->stencilTestEnable = (VkBool32)readd(address);address+=4;
-        memcopyToNative(address, &s->front, 28);address+=28;
-        memcopyToNative(address, &s->back, 28);address+=28;
+        MarshalVkStencilOpState::read(address, &s->front); address+=28;
+        MarshalVkStencilOpState::read(address, &s->back); address+=28;
         s->minDepthBounds = (float)readd(address);address+=4;
         s->maxDepthBounds = (float)readd(address);address+=4;
     }
@@ -1192,8 +1358,10 @@ public:
         if (paramAddress == 0) {
             s->pStages = NULL;
         } else {
-            VkPipelineShaderStageCreateInfo* pStages = new VkPipelineShaderStageCreateInfo();
-            MarshalVkPipelineShaderStageCreateInfo::read(paramAddress, pStages);
+            VkPipelineShaderStageCreateInfo* pStages = new VkPipelineShaderStageCreateInfo[s->stageCount];
+            for (U32 i = 0; i < s->stageCount; i++) {
+                MarshalVkPipelineShaderStageCreateInfo::read(paramAddress, &pStages[i]);
+            }
             s->pStages = pStages;
         }
         paramAddress = readd(address);address+=4;
@@ -1515,8 +1683,10 @@ public:
         if (paramAddress == 0) {
             s->pInputAttachments = NULL;
         } else {
-            VkAttachmentReference* pInputAttachments = new VkAttachmentReference();
-            MarshalVkAttachmentReference::read(paramAddress, pInputAttachments);
+            VkAttachmentReference* pInputAttachments = new VkAttachmentReference[s->inputAttachmentCount];
+            for (U32 i = 0; i < s->inputAttachmentCount; i++) {
+                MarshalVkAttachmentReference::read(paramAddress, &pInputAttachments[i]);
+            }
             s->pInputAttachments = pInputAttachments;
         }
         s->colorAttachmentCount = (uint32_t)readd(address);address+=4;
@@ -1524,16 +1694,20 @@ public:
         if (paramAddress == 0) {
             s->pColorAttachments = NULL;
         } else {
-            VkAttachmentReference* pColorAttachments = new VkAttachmentReference();
-            MarshalVkAttachmentReference::read(paramAddress, pColorAttachments);
+            VkAttachmentReference* pColorAttachments = new VkAttachmentReference[s->colorAttachmentCount];
+            for (U32 i = 0; i < s->colorAttachmentCount; i++) {
+                MarshalVkAttachmentReference::read(paramAddress, &pColorAttachments[i]);
+            }
             s->pColorAttachments = pColorAttachments;
         }
         paramAddress = readd(address);address+=4;
         if (paramAddress == 0) {
             s->pResolveAttachments = NULL;
         } else {
-            VkAttachmentReference* pResolveAttachments = new VkAttachmentReference();
-            MarshalVkAttachmentReference::read(paramAddress, pResolveAttachments);
+            VkAttachmentReference* pResolveAttachments = new VkAttachmentReference[s->colorAttachmentCount];
+            for (U32 i = 0; i < s->colorAttachmentCount; i++) {
+                MarshalVkAttachmentReference::read(paramAddress, &pResolveAttachments[i]);
+            }
             s->pResolveAttachments = pResolveAttachments;
         }
         paramAddress = readd(address);address+=4;
@@ -1573,8 +1747,10 @@ public:
         if (paramAddress == 0) {
             s->pAttachments = NULL;
         } else {
-            VkAttachmentDescription* pAttachments = new VkAttachmentDescription();
-            MarshalVkAttachmentDescription::read(paramAddress, pAttachments);
+            VkAttachmentDescription* pAttachments = new VkAttachmentDescription[s->attachmentCount];
+            for (U32 i = 0; i < s->attachmentCount; i++) {
+                MarshalVkAttachmentDescription::read(paramAddress, &pAttachments[i]);
+            }
             s->pAttachments = pAttachments;
         }
         s->subpassCount = (uint32_t)readd(address);address+=4;
@@ -1582,8 +1758,10 @@ public:
         if (paramAddress == 0) {
             s->pSubpasses = NULL;
         } else {
-            VkSubpassDescription* pSubpasses = new VkSubpassDescription();
-            MarshalVkSubpassDescription::read(paramAddress, pSubpasses);
+            VkSubpassDescription* pSubpasses = new VkSubpassDescription[s->subpassCount];
+            for (U32 i = 0; i < s->subpassCount; i++) {
+                MarshalVkSubpassDescription::read(paramAddress, &pSubpasses[i]);
+            }
             s->pSubpasses = pSubpasses;
         }
         s->dependencyCount = (uint32_t)readd(address);address+=4;
@@ -1938,8 +2116,10 @@ public:
         if (paramAddress == 0) {
             s->pTokens = NULL;
         } else {
-            VkIndirectCommandsLayoutTokenNV* pTokens = new VkIndirectCommandsLayoutTokenNV();
-            MarshalVkIndirectCommandsLayoutTokenNV::read(paramAddress, pTokens);
+            VkIndirectCommandsLayoutTokenNV* pTokens = new VkIndirectCommandsLayoutTokenNV[s->tokenCount];
+            for (U32 i = 0; i < s->tokenCount; i++) {
+                MarshalVkIndirectCommandsLayoutTokenNV::read(paramAddress, &pTokens[i]);
+            }
             s->pTokens = pTokens;
         }
         s->streamCount = (uint32_t)readd(address);address+=4;
@@ -2045,7 +2225,7 @@ public:
         } else {
             s->pNext = vulkanGetNextPtr(paramAddress);
         }
-        memcopyToNative(address, &s->properties, 800);address+=800;
+        MarshalVkPhysicalDeviceProperties::read(address, &s->properties); address+=800;
     }
     static void write(U32 address, VkPhysicalDeviceProperties2* s) {
         writed(address, s->sType);address+=4;
@@ -2519,8 +2699,10 @@ public:
         if (paramAddress == 0) {
             s->pDescriptorUpdateEntries = NULL;
         } else {
-            VkDescriptorUpdateTemplateEntry* pDescriptorUpdateEntries = new VkDescriptorUpdateTemplateEntry();
-            MarshalVkDescriptorUpdateTemplateEntry::read(paramAddress, pDescriptorUpdateEntries);
+            VkDescriptorUpdateTemplateEntry* pDescriptorUpdateEntries = new VkDescriptorUpdateTemplateEntry[s->descriptorUpdateEntryCount];
+            for (U32 i = 0; i < s->descriptorUpdateEntryCount; i++) {
+                MarshalVkDescriptorUpdateTemplateEntry::read(paramAddress, &pDescriptorUpdateEntries[i]);
+            }
             s->pDescriptorUpdateEntries = pDescriptorUpdateEntries;
         }
         s->templateType = (VkDescriptorUpdateTemplateType)readd(address);address+=4;
@@ -2561,7 +2743,7 @@ public:
         } else {
             s->pNext = vulkanGetNextPtr(paramAddress);
         }
-        memcopyToNative(address, &s->surfaceCapabilities, 52);address+=52;
+        MarshalVkSurfaceCapabilitiesKHR::read(address, &s->surfaceCapabilities); address+=52;
     }
     static void write(U32 address, VkSurfaceCapabilities2KHR* s) {
         writed(address, s->sType);address+=4;
@@ -2697,7 +2879,7 @@ public:
         s->format = (VkFormat)readd(address);address+=4;
         s->ycbcrModel = (VkSamplerYcbcrModelConversion)readd(address);address+=4;
         s->ycbcrRange = (VkSamplerYcbcrRange)readd(address);address+=4;
-        memcopyToNative(address, &s->components, 16);address+=16;
+        MarshalVkComponentMapping::read(address, &s->components); address+=16;
         s->xChromaOffset = (VkChromaLocation)readd(address);address+=4;
         s->yChromaOffset = (VkChromaLocation)readd(address);address+=4;
         s->chromaFilter = (VkFilter)readd(address);address+=4;
@@ -2978,8 +3160,10 @@ public:
         if (paramAddress == 0) {
             s->pInputAttachments = NULL;
         } else {
-            VkAttachmentReference2* pInputAttachments = new VkAttachmentReference2();
-            MarshalVkAttachmentReference2::read(paramAddress, pInputAttachments);
+            VkAttachmentReference2* pInputAttachments = new VkAttachmentReference2[s->inputAttachmentCount];
+            for (U32 i = 0; i < s->inputAttachmentCount; i++) {
+                MarshalVkAttachmentReference2::read(paramAddress, &pInputAttachments[i]);
+            }
             s->pInputAttachments = pInputAttachments;
         }
         s->colorAttachmentCount = (uint32_t)readd(address);address+=4;
@@ -2987,16 +3171,20 @@ public:
         if (paramAddress == 0) {
             s->pColorAttachments = NULL;
         } else {
-            VkAttachmentReference2* pColorAttachments = new VkAttachmentReference2();
-            MarshalVkAttachmentReference2::read(paramAddress, pColorAttachments);
+            VkAttachmentReference2* pColorAttachments = new VkAttachmentReference2[s->colorAttachmentCount];
+            for (U32 i = 0; i < s->colorAttachmentCount; i++) {
+                MarshalVkAttachmentReference2::read(paramAddress, &pColorAttachments[i]);
+            }
             s->pColorAttachments = pColorAttachments;
         }
         paramAddress = readd(address);address+=4;
         if (paramAddress == 0) {
             s->pResolveAttachments = NULL;
         } else {
-            VkAttachmentReference2* pResolveAttachments = new VkAttachmentReference2();
-            MarshalVkAttachmentReference2::read(paramAddress, pResolveAttachments);
+            VkAttachmentReference2* pResolveAttachments = new VkAttachmentReference2[s->colorAttachmentCount];
+            for (U32 i = 0; i < s->colorAttachmentCount; i++) {
+                MarshalVkAttachmentReference2::read(paramAddress, &pResolveAttachments[i]);
+            }
             s->pResolveAttachments = pResolveAttachments;
         }
         paramAddress = readd(address);address+=4;
@@ -3060,8 +3248,10 @@ public:
         if (paramAddress == 0) {
             s->pAttachments = NULL;
         } else {
-            VkAttachmentDescription2* pAttachments = new VkAttachmentDescription2();
-            MarshalVkAttachmentDescription2::read(paramAddress, pAttachments);
+            VkAttachmentDescription2* pAttachments = new VkAttachmentDescription2[s->attachmentCount];
+            for (U32 i = 0; i < s->attachmentCount; i++) {
+                MarshalVkAttachmentDescription2::read(paramAddress, &pAttachments[i]);
+            }
             s->pAttachments = pAttachments;
         }
         s->subpassCount = (uint32_t)readd(address);address+=4;
@@ -3069,8 +3259,10 @@ public:
         if (paramAddress == 0) {
             s->pSubpasses = NULL;
         } else {
-            VkSubpassDescription2* pSubpasses = new VkSubpassDescription2();
-            MarshalVkSubpassDescription2::read(paramAddress, pSubpasses);
+            VkSubpassDescription2* pSubpasses = new VkSubpassDescription2[s->subpassCount];
+            for (U32 i = 0; i < s->subpassCount; i++) {
+                MarshalVkSubpassDescription2::read(paramAddress, &pSubpasses[i]);
+            }
             s->pSubpasses = pSubpasses;
         }
         s->dependencyCount = (uint32_t)readd(address);address+=4;
@@ -3078,8 +3270,10 @@ public:
         if (paramAddress == 0) {
             s->pDependencies = NULL;
         } else {
-            VkSubpassDependency2* pDependencies = new VkSubpassDependency2();
-            MarshalVkSubpassDependency2::read(paramAddress, pDependencies);
+            VkSubpassDependency2* pDependencies = new VkSubpassDependency2[s->dependencyCount];
+            for (U32 i = 0; i < s->dependencyCount; i++) {
+                MarshalVkSubpassDependency2::read(paramAddress, &pDependencies[i]);
+            }
             s->pDependencies = pDependencies;
         }
         s->correlatedViewMaskCount = (uint32_t)readd(address);address+=4;
@@ -3303,8 +3497,10 @@ public:
         if (paramAddress == 0) {
             s->pStages = NULL;
         } else {
-            VkPipelineShaderStageCreateInfo* pStages = new VkPipelineShaderStageCreateInfo();
-            MarshalVkPipelineShaderStageCreateInfo::read(paramAddress, pStages);
+            VkPipelineShaderStageCreateInfo* pStages = new VkPipelineShaderStageCreateInfo[s->stageCount];
+            for (U32 i = 0; i < s->stageCount; i++) {
+                MarshalVkPipelineShaderStageCreateInfo::read(paramAddress, &pStages[i]);
+            }
             s->pStages = pStages;
         }
         s->groupCount = (uint32_t)readd(address);address+=4;
@@ -3312,14 +3508,74 @@ public:
         if (paramAddress == 0) {
             s->pGroups = NULL;
         } else {
-            VkRayTracingShaderGroupCreateInfoNV* pGroups = new VkRayTracingShaderGroupCreateInfoNV();
-            MarshalVkRayTracingShaderGroupCreateInfoNV::read(paramAddress, pGroups);
+            VkRayTracingShaderGroupCreateInfoNV* pGroups = new VkRayTracingShaderGroupCreateInfoNV[s->groupCount];
+            for (U32 i = 0; i < s->groupCount; i++) {
+                MarshalVkRayTracingShaderGroupCreateInfoNV::read(paramAddress, &pGroups[i]);
+            }
             s->pGroups = pGroups;
         }
         s->maxRecursionDepth = (uint32_t)readd(address);address+=4;
         s->layout = (VkPipelineLayout)readq(address);address+=8;
         s->basePipelineHandle = (VkPipeline)readq(address);address+=8;
         s->basePipelineIndex = (int32_t)readd(address);address+=4;
+    }
+};
+
+class MarshalVkGeometryTrianglesNV {
+public:
+    MarshalVkGeometryTrianglesNV() {}
+    VkGeometryTrianglesNV s;
+    MarshalVkGeometryTrianglesNV(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkGeometryTrianglesNV* s) {
+        s->sType = (VkStructureType)readd(address);address+=4;
+        U32 paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pNext = NULL;
+        } else {
+            s->pNext = vulkanGetNextPtr(paramAddress);
+        }
+        s->vertexData = (VkBuffer)readq(address);address+=8;
+        s->vertexOffset = (VkDeviceSize)readq(address);address+=8;
+        s->vertexCount = (uint32_t)readd(address);address+=4;
+        s->vertexStride = (VkDeviceSize)readq(address);address+=8;
+        s->vertexFormat = (VkFormat)readd(address);address+=4;
+        s->indexData = (VkBuffer)readq(address);address+=8;
+        s->indexOffset = (VkDeviceSize)readq(address);address+=8;
+        s->indexCount = (uint32_t)readd(address);address+=4;
+        s->indexType = (VkIndexType)readd(address);address+=4;
+        s->transformData = (VkBuffer)readq(address);address+=8;
+        s->transformOffset = (VkDeviceSize)readq(address);address+=8;
+    }
+};
+
+class MarshalVkGeometryAABBNV {
+public:
+    MarshalVkGeometryAABBNV() {}
+    VkGeometryAABBNV s;
+    MarshalVkGeometryAABBNV(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkGeometryAABBNV* s) {
+        s->sType = (VkStructureType)readd(address);address+=4;
+        U32 paramAddress = readd(address);address+=4;
+        if (paramAddress == 0) {
+            s->pNext = NULL;
+        } else {
+            s->pNext = vulkanGetNextPtr(paramAddress);
+        }
+        s->aabbData = (VkBuffer)readq(address);address+=8;
+        s->numAABBs = (uint32_t)readd(address);address+=4;
+        s->stride = (uint32_t)readd(address);address+=4;
+        s->offset = (VkDeviceSize)readq(address);address+=8;
+    }
+};
+
+class MarshalVkGeometryDataNV {
+public:
+    MarshalVkGeometryDataNV() {}
+    VkGeometryDataNV s;
+    MarshalVkGeometryDataNV(U32 address) {read(address, &this->s);}
+    static void read(U32 address, VkGeometryDataNV* s) {
+        MarshalVkGeometryTrianglesNV::read(address, &s->triangles); address+=80;
+        MarshalVkGeometryAABBNV::read(address, &s->aabbs); address+=32;
     }
 };
 
@@ -3337,7 +3593,7 @@ public:
             s->pNext = vulkanGetNextPtr(paramAddress);
         }
         s->geometryType = (VkGeometryTypeKHR)readd(address);address+=4;
-        memcopyToNative(address, &s->geometry, 112);address+=112;
+        MarshalVkGeometryDataNV::read(address, &s->geometry); address+=112;
         s->flags = (VkGeometryFlagsKHR)readd(address);address+=4;
     }
 };
@@ -3363,8 +3619,10 @@ public:
         if (paramAddress == 0) {
             s->pGeometries = NULL;
         } else {
-            VkGeometryNV* pGeometries = new VkGeometryNV();
-            MarshalVkGeometryNV::read(paramAddress, pGeometries);
+            VkGeometryNV* pGeometries = new VkGeometryNV[s->geometryCount];
+            for (U32 i = 0; i < s->geometryCount; i++) {
+                MarshalVkGeometryNV::read(paramAddress, &pGeometries[i]);
+            }
             s->pGeometries = pGeometries;
         }
     }
@@ -3384,7 +3642,7 @@ public:
             s->pNext = vulkanGetNextPtr(paramAddress);
         }
         s->compactedSize = (VkDeviceSize)readq(address);address+=8;
-        memcopyToNative(address, &s->info, 28);address+=28;
+        MarshalVkAccelerationStructureInfoNV::read(address, &s->info); address+=28;
     }
 };
 
@@ -3743,8 +4001,10 @@ public:
         if (paramAddress == 0) {
             s->pRegions = NULL;
         } else {
-            VkBufferCopy2KHR* pRegions = new VkBufferCopy2KHR();
-            MarshalVkBufferCopy2KHR::read(paramAddress, pRegions);
+            VkBufferCopy2KHR* pRegions = new VkBufferCopy2KHR[s->regionCount];
+            for (U32 i = 0; i < s->regionCount; i++) {
+                MarshalVkBufferCopy2KHR::read(paramAddress, &pRegions[i]);
+            }
             s->pRegions = pRegions;
         }
     }
@@ -3772,8 +4032,10 @@ public:
         if (paramAddress == 0) {
             s->pRegions = NULL;
         } else {
-            VkImageCopy2KHR* pRegions = new VkImageCopy2KHR();
-            MarshalVkImageCopy2KHR::read(paramAddress, pRegions);
+            VkImageCopy2KHR* pRegions = new VkImageCopy2KHR[s->regionCount];
+            for (U32 i = 0; i < s->regionCount; i++) {
+                MarshalVkImageCopy2KHR::read(paramAddress, &pRegions[i]);
+            }
             s->pRegions = pRegions;
         }
     }
@@ -3801,8 +4063,10 @@ public:
         if (paramAddress == 0) {
             s->pRegions = NULL;
         } else {
-            VkImageBlit2KHR* pRegions = new VkImageBlit2KHR();
-            MarshalVkImageBlit2KHR::read(paramAddress, pRegions);
+            VkImageBlit2KHR* pRegions = new VkImageBlit2KHR[s->regionCount];
+            for (U32 i = 0; i < s->regionCount; i++) {
+                MarshalVkImageBlit2KHR::read(paramAddress, &pRegions[i]);
+            }
             s->pRegions = pRegions;
         }
         s->filter = (VkFilter)readd(address);address+=4;
@@ -3830,8 +4094,10 @@ public:
         if (paramAddress == 0) {
             s->pRegions = NULL;
         } else {
-            VkBufferImageCopy2KHR* pRegions = new VkBufferImageCopy2KHR();
-            MarshalVkBufferImageCopy2KHR::read(paramAddress, pRegions);
+            VkBufferImageCopy2KHR* pRegions = new VkBufferImageCopy2KHR[s->regionCount];
+            for (U32 i = 0; i < s->regionCount; i++) {
+                MarshalVkBufferImageCopy2KHR::read(paramAddress, &pRegions[i]);
+            }
             s->pRegions = pRegions;
         }
     }
@@ -3858,8 +4124,10 @@ public:
         if (paramAddress == 0) {
             s->pRegions = NULL;
         } else {
-            VkBufferImageCopy2KHR* pRegions = new VkBufferImageCopy2KHR();
-            MarshalVkBufferImageCopy2KHR::read(paramAddress, pRegions);
+            VkBufferImageCopy2KHR* pRegions = new VkBufferImageCopy2KHR[s->regionCount];
+            for (U32 i = 0; i < s->regionCount; i++) {
+                MarshalVkBufferImageCopy2KHR::read(paramAddress, &pRegions[i]);
+            }
             s->pRegions = pRegions;
         }
     }
@@ -3887,8 +4155,10 @@ public:
         if (paramAddress == 0) {
             s->pRegions = NULL;
         } else {
-            VkImageResolve2KHR* pRegions = new VkImageResolve2KHR();
-            MarshalVkImageResolve2KHR::read(paramAddress, pRegions);
+            VkImageResolve2KHR* pRegions = new VkImageResolve2KHR[s->regionCount];
+            for (U32 i = 0; i < s->regionCount; i++) {
+                MarshalVkImageResolve2KHR::read(paramAddress, &pRegions[i]);
+            }
             s->pRegions = pRegions;
         }
     }
@@ -4040,8 +4310,10 @@ public:
         if (paramAddress == 0) {
             s->pMemoryBarriers = NULL;
         } else {
-            VkMemoryBarrier2KHR* pMemoryBarriers = new VkMemoryBarrier2KHR();
-            MarshalVkMemoryBarrier2KHR::read(paramAddress, pMemoryBarriers);
+            VkMemoryBarrier2KHR* pMemoryBarriers = new VkMemoryBarrier2KHR[s->memoryBarrierCount];
+            for (U32 i = 0; i < s->memoryBarrierCount; i++) {
+                MarshalVkMemoryBarrier2KHR::read(paramAddress, &pMemoryBarriers[i]);
+            }
             s->pMemoryBarriers = pMemoryBarriers;
         }
         s->bufferMemoryBarrierCount = (uint32_t)readd(address);address+=4;
@@ -4049,8 +4321,10 @@ public:
         if (paramAddress == 0) {
             s->pBufferMemoryBarriers = NULL;
         } else {
-            VkBufferMemoryBarrier2KHR* pBufferMemoryBarriers = new VkBufferMemoryBarrier2KHR();
-            MarshalVkBufferMemoryBarrier2KHR::read(paramAddress, pBufferMemoryBarriers);
+            VkBufferMemoryBarrier2KHR* pBufferMemoryBarriers = new VkBufferMemoryBarrier2KHR[s->bufferMemoryBarrierCount];
+            for (U32 i = 0; i < s->bufferMemoryBarrierCount; i++) {
+                MarshalVkBufferMemoryBarrier2KHR::read(paramAddress, &pBufferMemoryBarriers[i]);
+            }
             s->pBufferMemoryBarriers = pBufferMemoryBarriers;
         }
         s->imageMemoryBarrierCount = (uint32_t)readd(address);address+=4;
@@ -4058,8 +4332,10 @@ public:
         if (paramAddress == 0) {
             s->pImageMemoryBarriers = NULL;
         } else {
-            VkImageMemoryBarrier2KHR* pImageMemoryBarriers = new VkImageMemoryBarrier2KHR();
-            MarshalVkImageMemoryBarrier2KHR::read(paramAddress, pImageMemoryBarriers);
+            VkImageMemoryBarrier2KHR* pImageMemoryBarriers = new VkImageMemoryBarrier2KHR[s->imageMemoryBarrierCount];
+            for (U32 i = 0; i < s->imageMemoryBarrierCount; i++) {
+                MarshalVkImageMemoryBarrier2KHR::read(paramAddress, &pImageMemoryBarriers[i]);
+            }
             s->pImageMemoryBarriers = pImageMemoryBarriers;
         }
     }
@@ -4122,8 +4398,10 @@ public:
         if (paramAddress == 0) {
             s->pWaitSemaphoreInfos = NULL;
         } else {
-            VkSemaphoreSubmitInfoKHR* pWaitSemaphoreInfos = new VkSemaphoreSubmitInfoKHR();
-            MarshalVkSemaphoreSubmitInfoKHR::read(paramAddress, pWaitSemaphoreInfos);
+            VkSemaphoreSubmitInfoKHR* pWaitSemaphoreInfos = new VkSemaphoreSubmitInfoKHR[s->waitSemaphoreInfoCount];
+            for (U32 i = 0; i < s->waitSemaphoreInfoCount; i++) {
+                MarshalVkSemaphoreSubmitInfoKHR::read(paramAddress, &pWaitSemaphoreInfos[i]);
+            }
             s->pWaitSemaphoreInfos = pWaitSemaphoreInfos;
         }
         s->commandBufferInfoCount = (uint32_t)readd(address);address+=4;
@@ -4131,8 +4409,10 @@ public:
         if (paramAddress == 0) {
             s->pCommandBufferInfos = NULL;
         } else {
-            VkCommandBufferSubmitInfoKHR* pCommandBufferInfos = new VkCommandBufferSubmitInfoKHR();
-            MarshalVkCommandBufferSubmitInfoKHR::read(paramAddress, pCommandBufferInfos);
+            VkCommandBufferSubmitInfoKHR* pCommandBufferInfos = new VkCommandBufferSubmitInfoKHR[s->commandBufferInfoCount];
+            for (U32 i = 0; i < s->commandBufferInfoCount; i++) {
+                MarshalVkCommandBufferSubmitInfoKHR::read(paramAddress, &pCommandBufferInfos[i]);
+            }
             s->pCommandBufferInfos = pCommandBufferInfos;
         }
         s->signalSemaphoreInfoCount = (uint32_t)readd(address);address+=4;
@@ -4140,8 +4420,10 @@ public:
         if (paramAddress == 0) {
             s->pSignalSemaphoreInfos = NULL;
         } else {
-            VkSemaphoreSubmitInfoKHR* pSignalSemaphoreInfos = new VkSemaphoreSubmitInfoKHR();
-            MarshalVkSemaphoreSubmitInfoKHR::read(paramAddress, pSignalSemaphoreInfos);
+            VkSemaphoreSubmitInfoKHR* pSignalSemaphoreInfos = new VkSemaphoreSubmitInfoKHR[s->signalSemaphoreInfoCount];
+            for (U32 i = 0; i < s->signalSemaphoreInfoCount; i++) {
+                MarshalVkSemaphoreSubmitInfoKHR::read(paramAddress, &pSignalSemaphoreInfos[i]);
+            }
             s->pSignalSemaphoreInfos = pSignalSemaphoreInfos;
         }
     }
@@ -4698,6 +4980,9 @@ void vk_CreateImage(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkImage* pImage = (VkImage*)getPhysicalAddress(ARG4, 4);
     EAX = pBoxedInfo->pvkCreateImage(device, pCreateInfo, pAllocator, pImage);
+    if (EAX) {
+        int ii = 0;
+    }
 }
 void vk_DestroyImage(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(ARG1);

@@ -2,7 +2,7 @@
 #define __BOXEDWINE_H__
 
 #define BOXEDWINE_VERSION_STR "221"
-#define BOXEDWINE_VERSION_DISPLAY "22.0.0"
+#define BOXEDWINE_VERSION_DISPLAY "22.0.0b"
 
 #include <string>
 #include <vector>

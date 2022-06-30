@@ -24,6 +24,9 @@ public class VkHostMarshalType {
             out.append("* s");
             out.append(") {\n");
             boolean createdParamAddress = false;
+            if (t.name.equals("VkComputePipelineCreateInfo")) {
+                int ii=0;
+            }
             for (VkParam p : t.members) {
                 if (p.isPointer) {
                     if (createdParamAddress) {
@@ -122,23 +125,51 @@ public class VkHostMarshalType {
                             out.append(p.name);
                             out.append(";\n");
                         } else if (p.paramType.category.equals("struct")) {
-                            out.append("            ");
-                            out.append(p.paramType.name);
-                            out.append("* ");
-                            out.append(p.name);
-                            out.append(" = new ");
-                            out.append(p.paramType.name);
-                            out.append("();\n");
-                            out.append("            Marshal");
-                            out.append(p.paramType.name);
-                            out.append("::read(paramAddress, ");
-                            out.append(p.name);
-                            out.append(");\n");
-                            out.append("            s->");
-                            out.append(p.name);
-                            out.append(" = ");
-                            out.append(p.name);
-                            out.append(";\n");
+                            if (p.len != null && p.len.length() > 0) {
+                                out.append("            ");
+                                out.append(p.paramType.name);
+                                out.append("* ");
+                                out.append(p.name);
+                                out.append(" = new ");
+                                out.append(p.paramType.name);
+                                out.append("[s->");
+                                out.append(p.len);
+                                out.append("];\n");
+                                out.append("            for (U32 i = 0; i < s->");
+                                out.append(p.len);
+                                out.append("; i++) {\n");
+
+                                out.append("                Marshal");
+                                out.append(p.paramType.name);
+                                out.append("::read(paramAddress, &");
+                                out.append(p.name);
+                                out.append("[i]);\n");
+
+                                out.append("            }\n");
+                                out.append("            s->");
+                                out.append(p.name);
+                                out.append(" = ");
+                                out.append(p.name);
+                                out.append(";\n");
+                            } else {
+                                out.append("            ");
+                                out.append(p.paramType.name);
+                                out.append("* ");
+                                out.append(p.name);
+                                out.append(" = new ");
+                                out.append(p.paramType.name);
+                                out.append("();\n");
+                                out.append("            Marshal");
+                                out.append(p.paramType.name);
+                                out.append("::read(paramAddress, ");
+                                out.append(p.name);
+                                out.append(");\n");
+                                out.append("            s->");
+                                out.append(p.name);
+                                out.append(" = ");
+                                out.append(p.name);
+                                out.append(";\n");
+                            }
                             p.paramType.needMarshalIn = true;
                         } else {
                             throw new Exception("oops");
@@ -167,7 +198,16 @@ public class VkHostMarshalType {
                     }
                     out.append("        }\n");
                 } else {
-                    if (p.arrayLen > 0) {
+                    if (p.paramType.category.equals("struct") && p.paramType.needsMarshaling()) {
+                        p.paramType.needMarshalIn = true;
+                        out.append("        Marshal");
+                        out.append(p.paramType.name);
+                        out.append("::read(address, &s->");
+                        out.append(p.name);
+                        out.append("); address+=");
+                        out.append(p.paramType.getSize());
+                         out.append(";\n");
+                    } else if (p.arrayLen > 0) {
                         out.append("        memcopyToNative(address, &s->");
                         out.append(p.name);
                         out.append(", ");
