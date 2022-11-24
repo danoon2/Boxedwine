@@ -663,7 +663,8 @@ BOOL CDECL boxeddrv_SetClipboardData(UINT format_id, HANDLE data, BOOL owner) {
 }
 
 void CDECL boxeddrv_SetCursor(HCURSOR cursor) {
-    ICONINFOEXW info;    
+    ICONINFOEXW info;
+    ICONINFOEXW infoOriginal;    
     DWORD found = 0;
 
     TRACE("cursor=%p\n", cursor);
@@ -677,7 +678,7 @@ void CDECL boxeddrv_SetCursor(HCURSOR cursor) {
         WARN("GetIconInfoExW failed\n");
         return;
     }        
-
+    infoOriginal = info;
     TRACE("info->szModName %s info->szResName %s info->wResID %hu\n", debugstr_w(info.szModName), debugstr_w(info.szResName), (DWORD)info.wResID);
     CALL_NORETURN_5(BOXED_SET_CURSOR, cursor, info.szModName, info.szResName, (DWORD)info.wResID, &found);
 
@@ -730,7 +731,7 @@ void CDECL boxeddrv_SetCursor(HCURSOR cursor) {
                 GetDIBits(hdc, info.hbmColor, 0, bmMask.bmHeight, (LPVOID)((char*)bits+bmInfo->bmiHeader.biSizeImage), bmInfo, DIB_RGB_COLORS);                
                 bmMask.bmHeight=-bmMask.bmHeight;
             }
-            CALL_NORETURN_9(BOXED_SET_CURSOR_BITS, cursor, info.szModName, info.szResName, (DWORD)info.wResID, bits, (DWORD)bmMask.bmWidth, (DWORD)bmMask.bmHeight, info.xHotspot, info.yHotspot);
+            CALL_NORETURN_9(BOXED_SET_CURSOR_BITS, cursor, infoOriginal.szModName, infoOriginal.szResName, (DWORD)infoOriginal.wResID, bits, (DWORD)bmMask.bmWidth, (DWORD)bmMask.bmHeight, info.xHotspot, info.yHotspot);
         }
         HeapFree(GetProcessHeap(), 0, bits);
         DeleteDC(hdc);
