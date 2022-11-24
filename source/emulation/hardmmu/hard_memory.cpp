@@ -1178,9 +1178,9 @@ void Memory::updateNativePermission(U32 page, U32 pageCount, U32 permission) {
 
     for (U32 i = 0; i < permissionGranCount; i++) {
         U64 address = (this->id | (permissionGranPage << K_PAGE_SHIFT));
-        if (this->nativeFlags[permissionGranPage] & NATIVE_FLAG_COMMITTED) {
+        U32 nativePage = getNativePage(permissionGranPage);
+        if (this->nativeFlags[nativePage] & NATIVE_FLAG_COMMITTED) {
             Platform::updateNativePermission(address, permission);
-            U32 nativePage = getNativePage(permissionGranPage);
             this->nativeFlags[nativePage] &= ~PAGE_PERMISSION_MASK;
             this->nativeFlags[nativePage] |= (permission & (PAGE_READ | PAGE_WRITE));
         }
