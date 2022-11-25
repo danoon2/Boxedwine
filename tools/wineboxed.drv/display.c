@@ -53,7 +53,7 @@ WINE_DEFAULT_DEBUG_CHANNEL(boxeddrv);
 
 INT WINE_CDECL boxeddrv_GetDeviceCaps(PHYSDEV dev, INT cap);
 
-#if WINE_GDI_DRIVER_VERSION < 70
+#if WINE_GDI_DRIVER_VERSION < 71
 
 struct boxed_gpu
 {

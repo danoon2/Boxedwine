@@ -373,7 +373,7 @@ UINT CDECL boxeddrv_EnumClipboardFormats(UINT prev_format) {
     return result;
 }
 
-// removed in version 70?
+// removed in version 73
 INT WINE_CDECL boxeddrv_GetDeviceCaps(PHYSDEV dev, INT cap);
 BOOL CDECL boxeddrv_EnumDisplayMonitors(HDC hdc, LPRECT rect, MONITORENUMPROC proc, LPARAM lparam) {
     RECT r;
@@ -4519,9 +4519,9 @@ static const struct user_driver_funcs boxeddrv_funcs =
     .pDestroyCursorIcon = boxeddrv_DestroyCursorIcon,
     .pDestroyWindow = boxeddrv_DestroyWindow,
     .pEnumDisplaySettingsEx = boxeddrv_EnumDisplaySettingsEx,
+    .pEnumDisplayMonitors = boxeddrv_EnumDisplayMonitors,
     //.pFlashWindowEx = boxeddrv_FlashWindowEx,
     //.pGetDC = boxeddrv_GetDC,
-    .pUpdateDisplayDevices = boxedwine_UpdateDisplayDevices,
     .pGetCursorPos = boxeddrv_GetCursorPos,
     .pGetKeyboardLayoutList = boxeddrv_GetKeyboardLayoutList,
     .pGetKeyNameText = boxeddrv_GetKeyNameText,
@@ -4555,7 +4555,7 @@ static const struct user_driver_funcs boxeddrv_funcs =
 };
 #endif
 
-// Nov 30, 2021 wine-6.23 (no changed?)
+// Nov 30, 2021 wine-6.23 added pUpdateDisplayDevices
 #if WINE_GDI_DRIVER_VERSION == 71
 static const struct user_driver_funcs boxeddrv_funcs =
 {
@@ -4583,6 +4583,7 @@ static const struct user_driver_funcs boxeddrv_funcs =
     .pDestroyCursorIcon = boxeddrv_DestroyCursorIcon,
     .pDestroyWindow = boxeddrv_DestroyWindow,
     .pEnumDisplaySettingsEx = boxeddrv_EnumDisplaySettingsEx,
+    .pEnumDisplayMonitors = boxeddrv_EnumDisplayMonitors,
     //.pFlashWindowEx = boxeddrv_FlashWindowEx,
     //.pGetDC = boxeddrv_GetDC,
     .pUpdateDisplayDevices = boxedwine_UpdateDisplayDevices,
@@ -4619,7 +4620,7 @@ static const struct user_driver_funcs boxeddrv_funcs =
 };
 #endif
 
-// Dec 2, 2021  wine-6.23 (no changed?)
+// Dec 2, 2021  wine-6.23 removed pGetMonitorInfo
 #if WINE_GDI_DRIVER_VERSION == 72
 static const struct user_driver_funcs boxeddrv_funcs =
 {
@@ -4647,6 +4648,7 @@ static const struct user_driver_funcs boxeddrv_funcs =
     .pDestroyCursorIcon = boxeddrv_DestroyCursorIcon,
     .pDestroyWindow = boxeddrv_DestroyWindow,
     .pEnumDisplaySettingsEx = boxeddrv_EnumDisplaySettingsEx,
+    .pEnumDisplayMonitors = boxeddrv_EnumDisplayMonitors,
     //.pFlashWindowEx = boxeddrv_FlashWindowEx,
     //.pGetDC = boxeddrv_GetDC,
     .pUpdateDisplayDevices = boxedwine_UpdateDisplayDevices,
@@ -4683,7 +4685,7 @@ static const struct user_driver_funcs boxeddrv_funcs =
 };
 #endif
 
-// Dec 2, 2021  wine-6.23 (no changed?)
+// Dec 2, 2021  wine-6.23 removed pEnumDisplayMonitors
 #if WINE_GDI_DRIVER_VERSION == 73
 static const struct user_driver_funcs boxeddrv_funcs =
 {
