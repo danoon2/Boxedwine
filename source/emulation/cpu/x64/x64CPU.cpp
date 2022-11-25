@@ -659,7 +659,7 @@ U64 x64CPU::handleAccessException(U64 rip, U64 address, bool readAddress, std::f
     U64 r9 = getReg(9);
     U64 r8 = getReg(8);
 
-    if (inst == 0xCE24FF43) { // useLargeAddressSpace = true
+    if (inst == 0xCE24FF43 && r9) { // useLargeAddressSpace = true
         this->translateEip((U32)r9 - this->seg[CS].address);
         return 0;
     } else if ((inst==0x0A8B4566 || inst==0xCA148B4F) && (r8 || r9)) { // if these constants change, update handleMissingCode too     
