@@ -258,6 +258,99 @@ void CDECL boxeddrv_Beep(void) {
     CALL_NORETURN_0(BOXED_BEEP);
 }
 
+void BOXEDDRV_DisplayDevices_Init(BOOL force);
+
+static BOOL get_display_device_reg_key(const WCHAR* device_name, WCHAR* key, unsigned len)
+{
+    static const WCHAR display[] = { '\\','\\','.','\\','D','I','S','P','L','A','Y' };
+    static const WCHAR video_value_fmt[] = { '\\','D','e','v','i','c','e','\\',
+                                            'V','i','d','e','o','%','d',0 };
+    static const WCHAR video_key[] = { 'H','A','R','D','W','A','R','E','\\',
+                                      'D','E','V','I','C','E','M','A','P','\\',
+                                      'V','I','D','E','O','\\',0 };
+    WCHAR value_name[MAX_PATH], buffer[MAX_PATH], * end_ptr;
+    DWORD adapter_index, size;
+
+    /* Device name has to be \\.\DISPLAY%d */
+    if (strncmpiW(device_name, display, ARRAY_SIZE(display)))
+        return FALSE;
+
+    /* Parse \\.\DISPLAY* */
+    adapter_index = strtolW(device_name + ARRAY_SIZE(display), &end_ptr, 10) - 1;
+    if (*end_ptr)
+        return FALSE;
+
+    /* Open \Device\Video* in HKLM\HARDWARE\DEVICEMAP\VIDEO\ */
+    sprintfW(value_name, video_value_fmt, adapter_index);
+    size = sizeof(buffer);
+    if (RegGetValueW(HKEY_LOCAL_MACHINE, video_key, value_name, RRF_RT_REG_SZ, NULL, buffer, &size))
+        return FALSE;
+
+    if (len < lstrlenW(buffer + 18) + 1)
+        return FALSE;
+
+    /* Skip \Registry\Machine\ prefix */
+    lstrcpyW(key, buffer + 18);
+    TRACE("display device %s registry settings key %s.\n", wine_dbgstr_w(device_name), wine_dbgstr_w(key));
+    return TRUE;
+}
+
+static HANDLE get_display_device_init_mutex(void)
+{
+    static const WCHAR init_mutexW[] = { 'd','i','s','p','l','a','y','_','d','e','v','i','c','e','_','i','n','i','t',0 };
+    HANDLE mutex = CreateMutexW(NULL, FALSE, init_mutexW);
+
+    WaitForSingleObject(mutex, INFINITE);
+    return mutex;
+}
+
+static void release_display_device_init_mutex(HANDLE mutex)
+{
+    ReleaseMutex(mutex);
+    CloseHandle(mutex);
+}
+
+static BOOL write_registry_settings(const WCHAR* device_name, const DEVMODEW* dm)
+{
+    WCHAR wine_x11_reg_key[MAX_PATH];
+    HANDLE mutex;
+    HKEY hkey;
+    BOOL ret = TRUE;
+
+    mutex = get_display_device_init_mutex();
+    if (!get_display_device_reg_key(device_name, wine_x11_reg_key, ARRAY_SIZE(wine_x11_reg_key)))
+    {
+        release_display_device_init_mutex(mutex);
+        return FALSE;
+    }
+
+    if (RegCreateKeyExW(HKEY_CURRENT_CONFIG, wine_x11_reg_key, 0, NULL, REG_OPTION_VOLATILE, KEY_WRITE, NULL, &hkey, NULL))
+    {
+        release_display_device_init_mutex(mutex);
+        return FALSE;
+    }
+
+#define set_value(name, data) \
+    if (RegSetValueExA(hkey, name, 0, REG_DWORD, (const BYTE*)(data), sizeof(DWORD))) \
+        ret = FALSE
+
+    set_value("DefaultSettings.BitsPerPel", &dm->dmBitsPerPel);
+    set_value("DefaultSettings.XResolution", &dm->dmPelsWidth);
+    set_value("DefaultSettings.YResolution", &dm->dmPelsHeight);
+    set_value("DefaultSettings.VRefresh", &dm->dmDisplayFrequency);
+    set_value("DefaultSettings.Flags", &dm->dmDisplayFlags);
+    set_value("DefaultSettings.XPanning", &dm->dmPosition.x);
+    set_value("DefaultSettings.YPanning", &dm->dmPosition.y);
+    set_value("DefaultSettings.Orientation", &dm->dmDisplayOrientation);
+    set_value("DefaultSettings.FixedOutput", &dm->dmDisplayFixedOutput);
+
+#undef set_value
+
+    RegCloseKey(hkey);
+    release_display_device_init_mutex(mutex);
+    return ret;
+}
+
 LONG CDECL boxeddrv_ChangeDisplaySettingsEx(LPCWSTR devname, LPDEVMODEW devmode, HWND hwnd, DWORD flags, LPVOID lpvoid) {
     LONG result;
     LONG cx, cy, bpp;
@@ -266,6 +359,17 @@ LONG CDECL boxeddrv_ChangeDisplaySettingsEx(LPCWSTR devname, LPDEVMODEW devmode,
     CALL_NORETURN_9(BOXED_CHANGE_DISPLAY_SETTINGS_EX, devname, devmode, hwnd, flags, lpvoid, &result, &cx, &cy, &bpp);
     TRACE("result=%d width=%d height=%d bpp=%d\n", result, cx, cy, bpp);
     if (result==DISP_CHANGE_SUCCESSFUL) {
+        if (flags & CDS_UPDATEREGISTRY && devname && devmode) {
+            if (!write_registry_settings(devname, devmode))
+            {
+                ERR("Failed to write %s display settings to registry.\n", wine_dbgstr_w(devname));
+                return DISP_CHANGE_NOTUPDATED;
+            }
+        }
+        if (flags & (CDS_TEST | CDS_NORESET)) {
+            return result;
+        }
+        BOXEDDRV_DisplayDevices_Init(TRUE);
         TRACE("SetWindowPos\n");
         SetWindowPos(GetDesktopWindow(), 0, 0, 0, cx, cy, SWP_NOZORDER | SWP_NOACTIVATE | SWP_DEFERERASE );
         TRACE("SendMessageTimeoutW\n");
@@ -4987,7 +5091,6 @@ BOOL CDECL boxeddrv_UnloadKeyboardLayout(HKL hkl)
     return FALSE;
 }
 
-void BOXEDDRV_DisplayDevices_Init(BOOL force);
 BOOL WINAPI DllMain(HINSTANCE hinst, DWORD reason, LPVOID reserved)
 {
     BOOL ret = TRUE;

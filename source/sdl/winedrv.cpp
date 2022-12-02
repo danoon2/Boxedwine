@@ -296,20 +296,34 @@ void boxeddrv_Beep(CPU* cpu) {
 #define DM_PANNINGHEIGHT        __MSABI_LONG(0x10000000)
 #define DM_DISPLAYFIXEDOUTPUT   __MSABI_LONG(0x20000000)
 
+#define CDS_UPDATEREGISTRY          0x00000001
+#define CDS_TEST                    0x00000002
+#define CDS_FULLSCREEN              0x00000004
+#define CDS_GLOBAL                  0x00000008
+#define CDS_SET_PRIMARY             0x00000010
+#define CDS_VIDEOPARAMETERS         0x00000020
+#define CDS_ENABLE_UNSAFE_MODES     0x00000100
+#define CDS_DISABLE_UNSAFE_MODES    0x00000200
+#define CDS_NORESET                 0x10000000
+#define CDS_RESET_EX                0x20000000
+#define CDS_RESET                   0x40000000
+
 // LONG CDECL drv_ChangeDisplaySettingsEx(LPCWSTR devname, LPDEVMODEW devmode, HWND hwnd, DWORD flags, LPVOID lpvoid)
 void boxeddrv_ChangeDisplaySettingsEx(CPU* cpu) {
     U32 devmode = ARG2;
+    U32 flags = ARG4;
+
     if (devmode)
     {
         U32 dmFields;
-        U32 dmSize = readw( devmode + 68);
+        U32 dmSize = readw(devmode + 68);
         U32 width = KNativeWindow::defaultScreenWidth;
         U32 height = KNativeWindow::defaultScreenHeight;
         U32 bpp = KNativeWindow::defaultScreenBpp;
 
         /* this is the minimal dmSize that XP accepts */
         if (dmSize < 44) {
-            writed(ARG6, DISP_CHANGE_FAILED);	
+            writed(ARG6, DISP_CHANGE_FAILED);
             return;
         }
 
@@ -326,7 +340,9 @@ void boxeddrv_ChangeDisplaySettingsEx(CPU* cpu) {
         if (dmFields & DM_PELSHEIGHT) {
             height = readd(devmode + 176);
         }
-        KNativeWindow::getNativeWindow()->screenChanged(cpu->thread, width, height, bpp);
+        if (!(flags & (CDS_TEST | CDS_NORESET))) {
+            KNativeWindow::getNativeWindow()->screenChanged(cpu->thread, width, height, bpp);
+        }
     }	    
     writed(ARG6, DISP_CHANGE_SUCCESSFUL);	
     writed(ARG7, KNativeWindow::getNativeWindow()->screenWidth());

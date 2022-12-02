@@ -589,6 +589,9 @@ done:
         */
 }
 
+void boxedwine_displayChanged() {
+}
+
 #else 
 static BOOL force_display_devices_refresh;
 
