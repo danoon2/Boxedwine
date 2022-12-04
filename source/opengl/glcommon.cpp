@@ -157,7 +157,8 @@ void glcommon_glFeedbackBuffer(CPU* cpu) {
 #endif
 }
 
-static const char* addedExt[] = { "WGL_ARB_create_context" };
+// changed this to an invalid value to fix motorhead under windows.  I will need to reevaluate why it was necessary for ma
+static const char* addedExt[] = { "WGL_ARB_create_context_Invalid" };
 
 void glcommon_glGetIntegerv(CPU* cpu) {
     GLenum pname = ARG1;
