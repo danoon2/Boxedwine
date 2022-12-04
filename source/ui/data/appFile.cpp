@@ -50,6 +50,7 @@ void AppFile::runOptions(BoxedContainer* container, BoxedApp* app, const std::ve
             hasContainerOption = true;
         } else if (option=="GDI") {
             container->setGDI(true);
+            container->setRenderer("gdi");
             hasContainerOption = true;
         } else if (stringStartsWith(option, "glext=")) {
             if (app) {
