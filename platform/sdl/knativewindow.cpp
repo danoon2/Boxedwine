@@ -2607,6 +2607,7 @@ void KNativeWindow::shutdown() {
         
     }
     screen = NULL;
+    firstWindowCreated = false;
 #if defined(BOXEDWINE_OPENGL_OSMESA)
     shutdownMesaOpenGL();
 #endif
