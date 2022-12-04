@@ -66,10 +66,19 @@ void AppFile::runOptions(BoxedContainer* container, BoxedApp* app, const std::ve
                 app->cpuAffinity = atoi(s.c_str());
             }
         } else if (stringStartsWith(option, "wine=")) {
-            WineVersion* wineVer = GlobalSettings::getAvailableWineFromName(option.substr(5));
+            WineVersion* wineVer = GlobalSettings::getInstalledWineFromName(option.substr(5));
             if (wineVer) {
                 container->setWineVersion(wineVer->name);
                 hasContainerOption = true;
+            } else {
+                WineVersion* wineVer = GlobalSettings::getAvailableWineFromName(option.substr(5));
+                if (wineVer) {
+                    GlobalSettings::downloadWine(GlobalSettings::getAvailableWineVersions().front(), [container, wineVer](bool success) {
+                        container->setWineVersion(wineVer->name);
+                        container->saveContainer();
+                        }
+                    );
+                }
             }
         } else if (stringStartsWith(option, "resolution=")) {
             if (app) {
@@ -81,6 +90,7 @@ void AppFile::runOptions(BoxedContainer* container, BoxedApp* app, const std::ve
                 if (!Fs::doesNativePathExist(component->localFilePath)) {
                     downloads.push_back(component);
                 }
+                // :TODO: delay this if a wine version is specified and needs downloading
                 component->install(false, container, runner, downloads);
             }
         }

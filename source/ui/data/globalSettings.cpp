@@ -183,8 +183,17 @@ std::string GlobalSettings::getFileFromWineName(const std::string& name) {
     return "";
 }
 
-WineVersion* GlobalSettings::getAvailableWineFromName(const std::string& name) {
+WineVersion* GlobalSettings::getInstalledWineFromName(const std::string& name) {
     for (auto& ver : GlobalSettings::wineVersions) {
+        if (stringCaseInSensativeEquals(ver.name, name)) {
+            return &ver;
+        }
+    }
+    return NULL;
+}
+
+WineVersion* GlobalSettings::getAvailableWineFromName(const std::string& name) {
+    for (auto& ver : GlobalSettings::availableWineVersions) {
         if (stringCaseInSensativeEquals(ver.name, name)) {
             return &ver;
         }
