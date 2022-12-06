@@ -106,12 +106,16 @@ void arithER(Armv8btAsm* data, arithReg32 pfn, Arm8BtFlags* lazyFlags, U32 width
     
     U8 readRegSrc = setupRegForArith(data, data->decodedOp->reg, usesSrc, xSrc, width);
     
+    U8 memReg = data->getHostMem(addressReg);
+    data->addRegs64(addressReg, addressReg, memReg);
+    data->releaseHostMem(memReg);
+
     // keep the locked read/write loop as small as possible
     U32 restartPos = data->bufferPos;
-    data->readMemory(addressReg, xDst, width, true, data->decodedOp->lock != 0);
+    data->readMemory(addressReg, xDst, width, false, data->decodedOp->lock != 0);
     pfn(data, xResult, xDst, readRegSrc, hardwareFlags);
     if (needsResult) {
-        data->writeMemory(addressReg, xResult, width, true, data->decodedOp->lock != 0, xDst, restartPos);
+        data->writeMemory(addressReg, xResult, width, false, data->decodedOp->lock != 0, xDst, restartPos);
     }
 
     // resultNeedsZeroExtends: for example, AND/OR will never need to be zero extended
@@ -213,9 +217,13 @@ void arithEI(Armv8btAsm* data, arithReg32 pfnReg, arithValue32 pfnValue, Arm8BtF
         data->loadConst(xSrc, data->decodedOp->imm);
     }
 
+    U8 memReg = data->getHostMem(addressReg);
+    data->addRegs64(addressReg, addressReg, memReg);
+    data->releaseHostMem(memReg);
+
     // keep the locked read/write loop as small as possible
     U32 restartPos = data->bufferPos;
-    data->readMemory(addressReg, xDst, width, true, data->decodedOp->lock != 0);
+    data->readMemory(addressReg, xDst, width, false, data->decodedOp->lock != 0);
     if (usesSrc) {
         if (pfnReg) {
             pfnReg(data, xResult, xDst, xSrc, flags);
@@ -226,7 +234,7 @@ void arithEI(Armv8btAsm* data, arithReg32 pfnReg, arithValue32 pfnValue, Arm8BtF
         pfnValue(data, xResult, xDst, data->decodedOp->imm, flags);
     }
     if (needsResult) {
-        data->writeMemory(addressReg, xResult, width, true, data->decodedOp->lock != 0, xDst, restartPos);
+        data->writeMemory(addressReg, xResult, width, false, data->decodedOp->lock != 0, xDst, restartPos);
     }
 
     // resultNeedsZeroExtends: for example, AND/OR will never need to be zero extended
@@ -248,9 +256,13 @@ void arithIE(Armv8btAsm* data, arithReg32 pfnReg, arithValue32 pfnValue, Arm8BtF
         data->loadConst(xDst, data->decodedOp->imm);
     }
 
+    U8 memReg = data->getHostMem(addressReg);
+    data->addRegs64(addressReg, addressReg, memReg);
+    data->releaseHostMem(memReg);
+
     // keep the locked read/write loop as small as possible
     U32 restartPos = data->bufferPos;
-    data->readMemory(addressReg, xSrc, width, true, data->decodedOp->lock != 0);
+    data->readMemory(addressReg, xSrc, width, false, data->decodedOp->lock != 0);
     if (usesDst) {
         if (pfnReg) {
             pfnReg(data, xResult, xSrc, xDst, flags);
@@ -261,7 +273,7 @@ void arithIE(Armv8btAsm* data, arithReg32 pfnReg, arithValue32 pfnValue, Arm8BtF
         pfnValue(data, xResult, xSrc, data->decodedOp->imm, flags);
     }
     if (needsResult) {
-        data->writeMemory(addressReg, xResult, width, true, data->decodedOp->lock != 0, xSrc, restartPos);
+        data->writeMemory(addressReg, xResult, width, false, data->decodedOp->lock != 0, xSrc, restartPos);
     }
 
     // resultNeedsZeroExtends: for example, AND/OR will never need to be zero extended
@@ -789,10 +801,14 @@ void opNotE8(Armv8btAsm* data) {
     U8 readReg = data->getTmpReg();
     U8 resultReg = data->getTmpReg();
 
+    U8 memReg = data->getHostMem(addressReg);
+    data->addRegs64(addressReg, addressReg, memReg);
+    data->releaseHostMem(memReg);
+
     U32 restartPos = data->bufferPos;
-    data->readMemory(addressReg, readReg, 8, true, data->decodedOp->lock != 0);
+    data->readMemory(addressReg, readReg, 8, false, data->decodedOp->lock != 0);
     data->notReg32(resultReg, readReg);
-    data->writeMemory(addressReg, resultReg, 8, true, data->decodedOp->lock != 0, readReg, restartPos);
+    data->writeMemory(addressReg, resultReg, 8, false, data->decodedOp->lock != 0, readReg, restartPos);
     data->releaseTmpReg(addressReg);
     data->releaseTmpReg(readReg);
     data->releaseTmpReg(resultReg);
@@ -813,10 +829,14 @@ void opNotE16(Armv8btAsm* data) {
     U8 readReg = data->getTmpReg();
     U8 resultReg = data->getTmpReg();
 
+    U8 memReg = data->getHostMem(addressReg);
+    data->addRegs64(addressReg, addressReg, memReg);
+    data->releaseHostMem(memReg);
+
     U32 restartPos = data->bufferPos;
-    data->readMemory(addressReg, readReg, 16, true, data->decodedOp->lock != 0);
+    data->readMemory(addressReg, readReg, 16, false, data->decodedOp->lock != 0);
     data->notReg32(resultReg, readReg);
-    data->writeMemory(addressReg, resultReg, 16, true, data->decodedOp->lock != 0, readReg, restartPos);
+    data->writeMemory(addressReg, resultReg, 16, false, data->decodedOp->lock != 0, readReg, restartPos);
     data->releaseTmpReg(addressReg);
     data->releaseTmpReg(readReg);
     data->releaseTmpReg(resultReg);
@@ -834,10 +854,14 @@ void opNotE32(Armv8btAsm* data) {
     U8 readReg = data->getTmpReg();
     U8 resultReg = data->getTmpReg();
 
+    U8 memReg = data->getHostMem(addressReg);
+    data->addRegs64(addressReg, addressReg, memReg);
+    data->releaseHostMem(memReg);
+
     U32 restartPos = data->bufferPos;
-    data->readMemory(addressReg, readReg, 32, true, data->decodedOp->lock != 0);
+    data->readMemory(addressReg, readReg, 32, false, data->decodedOp->lock != 0);
     data->notReg32(resultReg, readReg);
-    data->writeMemory(addressReg, resultReg, 32, true, data->decodedOp->lock != 0, readReg, restartPos);
+    data->writeMemory(addressReg, resultReg, 32, false, data->decodedOp->lock != 0, readReg, restartPos);
     data->releaseTmpReg(addressReg);
     data->releaseTmpReg(readReg);
     data->releaseTmpReg(resultReg);
@@ -1574,9 +1598,14 @@ void opXchgE8R8(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 tmpReg = data->getTmpReg();
     U8 srcReg = data->getReadNativeReg8(data->decodedOp->reg);
+
+    U8 memReg = data->getHostMem(addressReg);
+    data->addRegs64(addressReg, addressReg, memReg);
+    data->releaseHostMem(memReg);
+
     U32 restartPos = data->bufferPos;
-    data->readMemory(addressReg, tmpReg, 8, true, data->decodedOp->lock != 0);
-    data->writeMemory(addressReg, srcReg, 8, true, data->decodedOp->lock != 0, tmpReg, restartPos);
+    data->readMemory(addressReg, tmpReg, 8, false, data->decodedOp->lock != 0);
+    data->writeMemory(addressReg, srcReg, 8, false, data->decodedOp->lock != 0, tmpReg, restartPos);
     data->movRegToReg8(tmpReg, data->decodedOp->reg);
     data->releaseTmpReg(tmpReg);
     data->releaseNativeReg8(srcReg);
@@ -1592,9 +1621,14 @@ void opXchgR16R16(Armv8btAsm* data) {
 void opXchgE16R16(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 tmpReg = data->getTmpReg();
+
+    U8 memReg = data->getHostMem(addressReg);
+    data->addRegs64(addressReg, addressReg, memReg);
+    data->releaseHostMem(memReg);
+
     U32 restartPos = data->bufferPos;
-    data->readMemory(addressReg, tmpReg, 16, true, data->decodedOp->lock != 0);
-    data->writeMemory(addressReg, data->decodedOp->reg, 16, true, data->decodedOp->lock != 0, tmpReg, restartPos);
+    data->readMemory(addressReg, tmpReg, 16, false, data->decodedOp->lock != 0);
+    data->writeMemory(addressReg, data->decodedOp->reg, 16, false, data->decodedOp->lock != 0, tmpReg, restartPos);
     data->movRegToReg(data->decodedOp->reg, tmpReg, 16, false);
     data->releaseTmpReg(tmpReg);
     data->releaseTmpReg(addressReg);
@@ -1609,9 +1643,14 @@ void opXchgR32R32(Armv8btAsm* data) {
 void opXchgE32R32(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 tmpReg = data->getTmpReg();
+
+    U8 memReg = data->getHostMem(addressReg);
+    data->addRegs64(addressReg, addressReg, memReg);
+    data->releaseHostMem(memReg);
+
     U32 restartPos = data->bufferPos;
-    data->readMemory(addressReg, tmpReg, 32, true, data->decodedOp->lock != 0);
-    data->writeMemory(addressReg, data->decodedOp->reg, 32, true, data->decodedOp->lock != 0, tmpReg, restartPos);
+    data->readMemory(addressReg, tmpReg, 32, false, data->decodedOp->lock != 0);
+    data->writeMemory(addressReg, data->decodedOp->reg, 32, false, data->decodedOp->lock != 0, tmpReg, restartPos);
     data->movRegToReg(data->decodedOp->reg, tmpReg, 32, false);
     data->releaseTmpReg(tmpReg);
     data->releaseTmpReg(addressReg);
@@ -1696,8 +1735,13 @@ void opCmpXchgE8R8(Armv8btAsm* data) {
     // }
     U32 flags = data->flagsNeeded();
     U8 addressReg = data->getAddressReg();
+
+    U8 memReg = data->getHostMem(addressReg);
+    data->addRegs64(addressReg, addressReg, memReg);
+    data->releaseHostMem(memReg);
+
     U32 restartPos = data->bufferPos;
-    data->readMemory(addressReg, xSrc, 8, true, data->decodedOp->lock != 0);
+    data->readMemory(addressReg, xSrc, 8, false, data->decodedOp->lock != 0);
     data->movReg8ToReg(0, xDst);
 
     data->subRegs32(xResult, xDst, xSrc, 0, true); // flags used by if below
@@ -1706,7 +1750,7 @@ void opCmpXchgE8R8(Armv8btAsm* data) {
     }
     data->doIf(0, 0, DO_IF_EQUAL, [restartPos, addressReg, data]() {
         U8 tmpReg = data->getReadNativeReg8(data->decodedOp->reg);
-        data->writeMemory(addressReg, tmpReg, 8, true, data->decodedOp->lock != 0, xSrc, restartPos, false);
+        data->writeMemory(addressReg, tmpReg, 8, false, data->decodedOp->lock != 0, xSrc, restartPos, false);
         data->releaseNativeReg8(tmpReg);
         }, [data] {
             data->movRegToReg8(xSrc, 0);
@@ -1755,8 +1799,13 @@ void opCmpXchgE16R16(Armv8btAsm* data) {
     // }
     U32 flags = data->flagsNeeded();
     U8 addressReg = data->getAddressReg();
+
+    U8 memReg = data->getHostMem(addressReg);
+    data->addRegs64(addressReg, addressReg, memReg);
+    data->releaseHostMem(memReg);
+
     U32 restartPos = data->bufferPos;
-    data->readMemory(addressReg, xSrc, 16, true, data->decodedOp->lock != 0);
+    data->readMemory(addressReg, xSrc, 16, false, data->decodedOp->lock != 0);
     data->movRegToReg(xDst, xEAX, 16, true);
 
     data->subRegs32(xResult, xDst, xSrc, 0, true); // flags used by if below
@@ -1764,7 +1813,7 @@ void opCmpXchgE16R16(Armv8btAsm* data) {
         data->zeroExtend(xResult, xResult, 16);
     }
     data->doIf(0, 0, DO_IF_EQUAL, [restartPos, addressReg, data]() {
-        data->writeMemory(addressReg, data->getNativeReg(data->decodedOp->reg), 16, true, data->decodedOp->lock != 0, xSrc, restartPos, false);
+        data->writeMemory(addressReg, data->getNativeReg(data->decodedOp->reg), 16, false, data->decodedOp->lock != 0, xSrc, restartPos, false);
         }, [data] {
             data->movRegToReg(xEAX, xSrc, 16, false);
         }, nullptr, false, false);
@@ -1814,8 +1863,13 @@ void opCmpXchgE32R32(Armv8btAsm* data) {
     // }
     U32 flags = data->flagsNeeded();
     U8 addressReg = data->getAddressReg();
+
+    U8 memReg = data->getHostMem(addressReg);
+    data->addRegs64(addressReg, addressReg, memReg);
+    data->releaseHostMem(memReg);
+
     U32 restartPos = data->bufferPos;
-    data->readMemory(addressReg, xSrc, 32, true, data->decodedOp->lock != 0);
+    data->readMemory(addressReg, xSrc, 32, false, data->decodedOp->lock != 0);
 
     if (ARM8BT_FLAGS_CMP32->usesDst(flags)) {
         data->movRegToReg(xDst, xEAX, 32, false);
@@ -1823,7 +1877,7 @@ void opCmpXchgE32R32(Armv8btAsm* data) {
     
     data->subRegs32(xResult, xEAX, xSrc, 0, true); // flags used by if below
     data->doIf(0, 0, DO_IF_EQUAL, [restartPos, addressReg, data]() {
-        data->writeMemory(addressReg, data->getNativeReg(data->decodedOp->reg), 32, true, data->decodedOp->lock != 0, xSrc, restartPos, false);
+        data->writeMemory(addressReg, data->getNativeReg(data->decodedOp->reg), 32, false, data->decodedOp->lock != 0, xSrc, restartPos, false);
         }, [data] {
             data->movRegToReg(xEAX, xSrc, 32, false);
         }, nullptr, false, false);
@@ -1879,39 +1933,54 @@ void opIncR32(Armv8btAsm* data) {
 void opIncE8(Armv8btAsm* data) {
     U32 flags = data->flagsNeeded();
     U8 addressReg = data->getAddressReg();
+
+    U8 memReg = data->getHostMem(addressReg);
+    data->addRegs64(addressReg, addressReg, memReg);
+    data->releaseHostMem(memReg);
+
     U32 restartPos = data->bufferPos;    
 
-    data->readMemory(addressReg, xDst, 8, true, data->decodedOp->lock != 0);
+    data->readMemory(addressReg, xDst, 8, false, data->decodedOp->lock != 0);
     data->addValue32(xResult, xDst, 1);
     if (flags) {
         data->zeroExtend(xResult, xResult, 8);
         ARM8BT_FLAGS_INC8->setFlags(data, flags);
     }
-    data->writeMemory(addressReg, xResult, 8, true, data->decodedOp->lock != 0, xDst, restartPos);
+    data->writeMemory(addressReg, xResult, 8, false, data->decodedOp->lock != 0, xDst, restartPos);
     data->releaseTmpReg(addressReg);
 }
 void opIncE16(Armv8btAsm* data) {
     U32 flags = data->flagsNeeded();
     U8 addressReg = data->getAddressReg();
+
+    U8 memReg = data->getHostMem(addressReg);
+    data->addRegs64(addressReg, addressReg, memReg);
+    data->releaseHostMem(memReg);
+
     U32 restartPos = data->bufferPos;    
 
-    data->readMemory(addressReg, xDst, 16, true, data->decodedOp->lock != 0);
+    data->readMemory(addressReg, xDst, 16, false, data->decodedOp->lock != 0);
     data->addValue32(xResult, xDst, 1);
     if (flags) {        
         data->zeroExtend(xResult, xResult, 16);
         ARM8BT_FLAGS_INC16->setFlags(data, flags);
     }
-    data->writeMemory(addressReg, xResult, 16, true, data->decodedOp->lock != 0, xDst, restartPos);
+    data->writeMemory(addressReg, xResult, 16, false, data->decodedOp->lock != 0, xDst, restartPos);
     data->releaseTmpReg(addressReg);
 }
 void opIncE32(Armv8btAsm* data) {
     U32 flags = data->flagsNeeded();
     U8 addressReg = data->getAddressReg();
+
+    U8 memReg = data->getHostMem(addressReg);
+    data->addRegs64(addressReg, addressReg, memReg);
+    data->releaseHostMem(memReg);
+
     U32 restartPos = data->bufferPos;
 
-    data->readMemory(addressReg, xDst, 32, true, data->decodedOp->lock != 0);
+    data->readMemory(addressReg, xDst, 32, false, data->decodedOp->lock != 0);
     data->addValue32(xResult, xDst, 1);
-    data->writeMemory(addressReg, xResult, 32, true, data->decodedOp->lock != 0, xDst, restartPos);
+    data->writeMemory(addressReg, xResult, 32, false, data->decodedOp->lock != 0, xDst, restartPos);
     data->releaseTmpReg(addressReg);
     ARM8BT_FLAGS_INC32->setFlags(data, flags);
 }
@@ -1963,39 +2032,54 @@ void opDecR32(Armv8btAsm* data) {
 void opDecE8(Armv8btAsm* data) {
     U32 flags = data->flagsNeeded();
     U8 addressReg = data->getAddressReg();
+
+    U8 memReg = data->getHostMem(addressReg);
+    data->addRegs64(addressReg, addressReg, memReg);
+    data->releaseHostMem(memReg);
+
     U32 restartPos = data->bufferPos;
 
-    data->readMemory(addressReg, xDst, 8, true, data->decodedOp->lock != 0);
+    data->readMemory(addressReg, xDst, 8, false, data->decodedOp->lock != 0);
     data->subValue32(xResult, xDst, 1);
     if (flags) {
         data->zeroExtend(xResult, xResult, 8);
         ARM8BT_FLAGS_DEC8->setFlags(data, flags);
     }
-    data->writeMemory(addressReg, xResult, 8, true, data->decodedOp->lock != 0, xDst, restartPos);
+    data->writeMemory(addressReg, xResult, 8, false, data->decodedOp->lock != 0, xDst, restartPos);
     data->releaseTmpReg(addressReg);
 }
 void opDecE16(Armv8btAsm* data) {
     U32 flags = data->flagsNeeded();
     U8 addressReg = data->getAddressReg();
+
+    U8 memReg = data->getHostMem(addressReg);
+    data->addRegs64(addressReg, addressReg, memReg);
+    data->releaseHostMem(memReg);
+
     U32 restartPos = data->bufferPos;
 
-    data->readMemory(addressReg, xDst, 16, true, data->decodedOp->lock != 0);
+    data->readMemory(addressReg, xDst, 16, false, data->decodedOp->lock != 0);
     data->subValue32(xResult, xDst, 1);
     if (flags) {
         data->zeroExtend(xResult, xResult, 16);
         ARM8BT_FLAGS_DEC16->setFlags(data, flags);
     }
-    data->writeMemory(addressReg, xResult, 16, true, data->decodedOp->lock != 0, xDst, restartPos);
+    data->writeMemory(addressReg, xResult, 16, false, data->decodedOp->lock != 0, xDst, restartPos);
     data->releaseTmpReg(addressReg);
 }
 void opDecE32(Armv8btAsm* data) {
     U32 flags = data->flagsNeeded();
     U8 addressReg = data->getAddressReg();
+
+    U8 memReg = data->getHostMem(addressReg);
+    data->addRegs64(addressReg, addressReg, memReg);
+    data->releaseHostMem(memReg);
+
     U32 restartPos = data->bufferPos;
 
-    data->readMemory(addressReg, xDst, 32, true, data->decodedOp->lock != 0);
+    data->readMemory(addressReg, xDst, 32, false, data->decodedOp->lock != 0);
     data->subValue32(xResult, xDst, 1);
-    data->writeMemory(addressReg, xResult, 32, true, data->decodedOp->lock != 0, xDst, restartPos);
+    data->writeMemory(addressReg, xResult, 32, false, data->decodedOp->lock != 0, xDst, restartPos);
     data->releaseTmpReg(addressReg);
     ARM8BT_FLAGS_DEC32->setFlags(data, flags);
 }
@@ -2104,7 +2188,9 @@ void pushA16_reg(Armv8btAsm* data, U8 inESP, U8 outESP, U8 reg) {
     U8 addressReg = data->getTmpReg();
     data->andRegs32(addressReg, outESP, xStackMask);
     data->addRegs32(addressReg, addressReg, xSS);
-    data->writeMem32RegOffset(reg, xMem, addressReg);
+    U8 memReg = data->getHostMem(addressReg);
+    data->writeMem32RegOffset(reg, memReg, addressReg);
+    data->releaseHostMem(memReg);
     data->releaseTmpReg(addressReg);
 }
 
@@ -2127,12 +2213,16 @@ void opPushA16(Armv8btAsm* data) {
 void pushA32_reg(Armv8btAsm* data, U8 inESP, U8 outESP, U8 reg) {
     data->pushStack32(inESP, outESP);
     if (!KThread::currentThread()->process->hasSetSeg[SS]) {
-        data->writeMem32RegOffset(reg, xMem, outESP);
+        U8 memReg = data->getHostMem(outESP);
+        data->writeMem32RegOffset(reg, memReg, outESP);
+        data->releaseHostMem(memReg);
     } else {
         U8 addressReg = data->getTmpReg();
         data->andRegs32(addressReg, outESP, xStackMask);
         data->addRegs32(addressReg, addressReg, xSS);
-        data->writeMem32RegOffset(reg, xMem, addressReg);
+        U8 memReg = data->getHostMem(addressReg);
+        data->writeMem32RegOffset(reg, memReg, addressReg);
+        data->releaseHostMem(memReg);
         data->releaseTmpReg(addressReg);
     }
 }
@@ -2158,7 +2248,9 @@ void popA16_reg(Armv8btAsm* data, U8 inESP, U8 outESP, U8 reg) {
     U8 tmpReg = data->getTmpReg();
     data->andRegs32(tmpReg, inESP, xStackMask);
     data->addRegs32(tmpReg, tmpReg, xSS);
-    data->readMem16RegOffset(tmpReg, xMem, tmpReg);
+    U8 memReg = data->getHostMem(tmpReg);
+    data->readMem16RegOffset(tmpReg, memReg, tmpReg);
+    data->releaseHostMem(memReg);
     data->movRegToReg(reg, tmpReg, 16, false);
     data->popStack16(inESP, outESP);
     data->releaseTmpReg(tmpReg);
@@ -2184,7 +2276,9 @@ void opPopA16(Armv8btAsm* data) {
 
 void popA32_reg(Armv8btAsm* data, U8 inESP, U8 outESP, U8 reg) {
     if (!KThread::currentThread()->process->hasSetSeg[SS]) {
-        data->readMem32RegOffset(reg, xMem, inESP);
+        U8 memReg = data->getHostMem(inESP);
+        data->readMem32RegOffset(reg, memReg, inESP);
+        data->releaseHostMem(memReg);
     } else {
         U8 tmpReg = data->getTmpReg();
 
@@ -2192,7 +2286,9 @@ void popA32_reg(Armv8btAsm* data, U8 inESP, U8 outESP, U8 reg) {
         data->andRegs32(tmpReg, inESP, xStackMask);
         data->addRegs32(tmpReg, tmpReg, inESP);
 
-        data->readMem32RegOffset(reg, xMem, tmpReg);
+        U8 memReg = data->getHostMem(tmpReg);
+        data->readMem32RegOffset(reg, memReg, tmpReg);
+        data->releaseHostMem(memReg);
         data->releaseTmpReg(tmpReg);
     }
     data->popStack32(inESP, outESP);
@@ -2480,15 +2576,17 @@ void doCondition(Armv8btAsm* data, Conditional conditional, const std::function<
             data->copyBitsFromSourceAtPositionToDest(tmpZF, xFLAGS, 6, 1, false);
             data->xorRegs32(tmpSF, tmpSF, tmpOF);
             data->orRegs32(tmpSF, tmpSF, tmpZF);
-            data->doIf(tmpSF, 0, neg ? DO_IF_EQUAL : DO_IF_NOT_EQUAL, f, nullptr);
             data->releaseTmpReg(tmpZF);
+            data->releaseTmpReg(tmpOF);
+            data->doIf(tmpSF, 0, neg ? DO_IF_EQUAL : DO_IF_NOT_EQUAL, f, nullptr);
+            data->releaseTmpReg(tmpSF);
         } else {
             // L and NL
             // SF != OF
             data->doIf(tmpSF, tmpOF, neg ? DO_IF_EQUAL : DO_IF_NOT_EQUAL, f, nullptr, nullptr, true);
-        }
-        data->releaseTmpReg(tmpSF);
-        data->releaseTmpReg(tmpOF);
+            data->releaseTmpReg(tmpSF);
+            data->releaseTmpReg(tmpOF);
+        }        
     }
 }
 
@@ -2726,7 +2824,9 @@ void opMovAlOb(Armv8btAsm* data) {
         data->releaseTmpReg(tmp);
     } else {
         U8 tmp = data->getTmpReg();
-        data->addValue64(tmp, xMem, data->decodedOp->disp);
+        U8 memReg = data->getHostMemFromAddress(data->decodedOp->disp);
+        data->addValue64(tmp, memReg, data->decodedOp->disp);
+        data->releaseHostMem(memReg);
         data->readMemory(tmp, tmp, 8, false);
         data->movRegToReg8(tmp, 0);
         data->releaseTmpReg(tmp);
@@ -2741,8 +2841,10 @@ void opMovAxOw(Armv8btAsm* data) {
         data->releaseTmpReg(tmp);
     } else {
         U8 tmp = data->getTmpReg();
-        data->addValue64(tmp, xMem, data->decodedOp->disp);
+        U8 memReg = data->getHostMemFromAddress(data->decodedOp->disp);
+        data->addValue64(tmp, memReg, data->decodedOp->disp);
         data->readMemory(tmp, tmp, 16, false);
+        data->releaseHostMem(memReg);
         data->movRegToReg(xEAX, tmp, 16, false);
         data->releaseTmpReg(tmp);
     }
@@ -2755,7 +2857,9 @@ void opMovEaxOd(Armv8btAsm* data) {
         data->releaseTmpReg(tmp);
     } else {
         U8 tmp = data->getTmpReg();
-        data->addValue64(tmp, xMem, data->decodedOp->disp);
+        U8 memReg = data->getHostMemFromAddress(data->decodedOp->disp);
+        data->addValue64(tmp, memReg, data->decodedOp->disp);
+        data->releaseHostMem(memReg);
         data->readMemory(tmp, xEAX, 32, false);
         data->releaseTmpReg(tmp);
     }
@@ -2768,7 +2872,9 @@ void opMovObAl(Armv8btAsm* data) {
         data->releaseTmpReg(tmp);
     } else {
         U8 tmp = data->getTmpReg();
-        data->addValue64(tmp, xMem, data->decodedOp->disp);
+        U8 memReg = data->getHostMemFromAddress(data->decodedOp->disp);
+        data->addValue64(tmp, memReg, data->decodedOp->disp);
+        data->releaseHostMem(memReg);
         data->writeMemory(tmp, xEAX, 8, false);
         data->releaseTmpReg(tmp);
     }
@@ -2781,7 +2887,9 @@ void opMovOwAx(Armv8btAsm* data) {
         data->releaseTmpReg(tmp);
     } else {
         U8 tmp = data->getTmpReg();
-        data->addValue64(tmp, xMem, data->decodedOp->disp);
+        U8 memReg = data->getHostMemFromAddress(data->decodedOp->disp);
+        data->addValue64(tmp, memReg, data->decodedOp->disp);
+        data->releaseHostMem(memReg);
         data->writeMemory(tmp, xEAX, 16, false);
         data->releaseTmpReg(tmp);
     }
@@ -2794,7 +2902,9 @@ void opMovOdEax(Armv8btAsm* data) {
         data->releaseTmpReg(tmp);
     } else {
         U8 tmp = data->getTmpReg();
-        data->addValue64(tmp, xMem, data->decodedOp->disp);
+        U8 memReg = data->getHostMemFromAddress(data->decodedOp->disp);
+        data->addValue64(tmp, memReg, data->decodedOp->disp);
+        data->releaseHostMem(memReg);
         data->writeMemory(tmp, xEAX, 32, false);
         data->releaseTmpReg(tmp);
     }
@@ -3128,6 +3238,15 @@ void opIntIb(Armv8btAsm* data) {
         // Wine will emulate things like Int 21 (DOS)
         data->signalIllegalInstruction(5);
     }
+}
+void opInt9A(Armv8btAsm* data) {
+    data->syncRegsFromHost();
+
+    // void common_int9A(CPU * cpu)
+    data->mov64(0, xCPU); // param 1 (CPU)
+
+    data->callHost((void*)common_int9A);
+    data->syncRegsToHost();
 }
 void opIntO(Armv8btAsm* data) {
     data->invalidOp(data->decodedOp->originalOp);
@@ -4393,10 +4512,14 @@ void opXaddR32E32(Armv8btAsm* data) {
     }
     needsHardwareFlags = ARM8BT_FLAGS_ADD32->usesHardwareFlags(flags);
     U8 addressReg = data->getAddressReg();
+    U8 memReg = data->getHostMem(addressReg);
+    data->addRegs64(addressReg, addressReg, memReg);
+    data->releaseHostMem(memReg);
+
     U32 restartPos = data->bufferPos;
-    data->readMemory(addressReg, xDst, 32, true, data->decodedOp->lock != 0);
+    data->readMemory(addressReg, xDst, 32, false, data->decodedOp->lock != 0);
     data->addRegs32(xResult, data->getNativeReg(data->decodedOp->reg), xDst, 0, needsHardwareFlags);
-    data->writeMemory(addressReg, xResult, 32, true, data->decodedOp->lock != 0, xDst, restartPos);
+    data->writeMemory(addressReg, xResult, 32, false, data->decodedOp->lock != 0, xDst, restartPos);
     data->movRegToReg(data->getNativeReg(data->decodedOp->reg), xDst, 32, false);
     data->releaseTmpReg(addressReg);
     ARM8BT_FLAGS_ADD32->setFlags(data, flags);
@@ -4438,13 +4561,18 @@ void opCmpXchg8b(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();    
     U8 tmpReg = data->getTmpReg();
     data->addRegs64(tmpReg, xEAX, xEDX, 32);
+
+    U8 memReg = data->getHostMem(addressReg);
+    data->addRegs64(addressReg, addressReg, memReg);
+    data->releaseHostMem(memReg);
+
     U32 restartPos = data->bufferPos;
-    data->readMemory(addressReg, xSrc, 64, true, data->decodedOp->lock != 0);
+    data->readMemory(addressReg, xSrc, 64, false, data->decodedOp->lock != 0);
     data->cmpRegs64(tmpReg, xSrc);
     data->doIf(0, 0, DO_IF_EQUAL, [restartPos, addressReg, data, flags]() {
         U8 tmpReg2 = data->getTmpReg();
         data->addRegs64(tmpReg2, xEBX, xECX, 32);        
-        data->writeMemory(addressReg, tmpReg2, 64, true, data->decodedOp->lock != 0, xSrc, restartPos, false);
+        data->writeMemory(addressReg, tmpReg2, 64, false, data->decodedOp->lock != 0, xSrc, restartPos, false);
         if (flags & ZF) {
             data->orValue32(xFLAGS, xFLAGS, ZF);
         }
@@ -6779,6 +6907,7 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opInt80,
     opInt98,
     opInt99,
+    opInt9A,
     opIntIb,
     opIntO,
     opIret,

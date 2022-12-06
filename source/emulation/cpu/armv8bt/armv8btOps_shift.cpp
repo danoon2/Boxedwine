@@ -297,11 +297,16 @@ void opDshlR16R16(Armv8btAsm* data) {
 void opDshlE16R16(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 tmpReg = data->getTmpReg();
+
+    U8 memReg = data->getHostMem(addressReg);
+    data->addRegs64(addressReg, addressReg, memReg);
+    data->releaseHostMem(memReg);
+
     U32 restartPos = data->bufferPos;
 
-    data->readMemory(addressReg, tmpReg, 16, true, data->decodedOp->lock != 0);
+    data->readMemory(addressReg, tmpReg, 16, false, data->decodedOp->lock != 0);
     dshl16(data, xResult, tmpReg, data->decodedOp->reg);
-    data->writeMemory(addressReg, xResult, 16, true, data->decodedOp->lock != 0, tmpReg, restartPos);
+    data->writeMemory(addressReg, xResult, 16, false, data->decodedOp->lock != 0, tmpReg, restartPos);
     data->releaseTmpReg(addressReg);
     data->releaseTmpReg(tmpReg);
 }
@@ -312,11 +317,16 @@ void opDshlClR16R16(Armv8btAsm* data) {
 void opDshlClE16R16(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 tmpReg = data->getTmpReg();
+
+    U8 memReg = data->getHostMem(addressReg);
+    data->addRegs64(addressReg, addressReg, memReg);
+    data->releaseHostMem(memReg);
+
     U32 restartPos = data->bufferPos;
 
-    data->readMemory(addressReg, tmpReg, 16, true, data->decodedOp->lock != 0);
+    data->readMemory(addressReg, tmpReg, 16, false, data->decodedOp->lock != 0);
     dshl16Cl(data, xResult, tmpReg, data->decodedOp->reg, [data, addressReg, tmpReg, restartPos]() {
-        data->writeMemory(addressReg, xResult, 16, true, data->decodedOp->lock != 0, tmpReg, restartPos);
+        data->writeMemory(addressReg, xResult, 16, false, data->decodedOp->lock != 0, tmpReg, restartPos);
         });
     data->releaseTmpReg(addressReg);
     data->releaseTmpReg(tmpReg);
@@ -327,11 +337,16 @@ void opDshrR16R16(Armv8btAsm* data) {
 void opDshrE16R16(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 tmpReg = data->getTmpReg();
+
+    U8 memReg = data->getHostMem(addressReg);
+    data->addRegs64(addressReg, addressReg, memReg);
+    data->releaseHostMem(memReg);
+
     U32 restartPos = data->bufferPos;
 
-    data->readMemory(addressReg, tmpReg, 16, true, data->decodedOp->lock != 0);
+    data->readMemory(addressReg, tmpReg, 16, false, data->decodedOp->lock != 0);
     dshr16(data, xResult, tmpReg, data->decodedOp->reg);
-    data->writeMemory(addressReg, xResult, 16, true, data->decodedOp->lock != 0, tmpReg, restartPos);
+    data->writeMemory(addressReg, xResult, 16, false, data->decodedOp->lock != 0, tmpReg, restartPos);
     data->releaseTmpReg(addressReg);
     data->releaseTmpReg(tmpReg);
 }
@@ -341,11 +356,16 @@ void opDshrClR16R16(Armv8btAsm* data) {
 void opDshrClE16R16(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 tmpReg = data->getTmpReg();
+
+    U8 memReg = data->getHostMem(addressReg);
+    data->addRegs64(addressReg, addressReg, memReg);
+    data->releaseHostMem(memReg);
+
     U32 restartPos = data->bufferPos;
 
-    data->readMemory(addressReg, tmpReg, 16, true, data->decodedOp->lock != 0);
+    data->readMemory(addressReg, tmpReg, 16, false, data->decodedOp->lock != 0);
     dshr16Cl(data, xResult, tmpReg, data->decodedOp->reg, [data, addressReg, tmpReg, restartPos]() {
-        data->writeMemory(addressReg, xResult, 16, true, data->decodedOp->lock != 0, tmpReg, restartPos);
+        data->writeMemory(addressReg, xResult, 16, false, data->decodedOp->lock != 0, tmpReg, restartPos);
         });
     data->releaseTmpReg(addressReg);
     data->releaseTmpReg(tmpReg);
@@ -357,11 +377,16 @@ void opDshlR32R32(Armv8btAsm* data) {
 void opDshlE32R32(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 tmpReg = data->getTmpReg();
+
+    U8 memReg = data->getHostMem(addressReg);
+    data->addRegs64(addressReg, addressReg, memReg);
+    data->releaseHostMem(memReg);
+
     U32 restartPos = data->bufferPos;
 
-    data->readMemory(addressReg, tmpReg, 32, true, data->decodedOp->lock != 0);
+    data->readMemory(addressReg, tmpReg, 32, false, data->decodedOp->lock != 0);
     dshl32(data, xResult, tmpReg, data->decodedOp->reg);
-    data->writeMemory(addressReg, xResult, 32, true, data->decodedOp->lock != 0, tmpReg, restartPos);
+    data->writeMemory(addressReg, xResult, 32, false, data->decodedOp->lock != 0, tmpReg, restartPos);
     data->releaseTmpReg(addressReg);
     data->releaseTmpReg(tmpReg);
 }
@@ -372,11 +397,16 @@ void opDshlClR32R32(Armv8btAsm* data) {
 void opDshlClE32R32(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 tmpReg = data->getTmpReg();
+
+    U8 memReg = data->getHostMem(addressReg);
+    data->addRegs64(addressReg, addressReg, memReg);
+    data->releaseHostMem(memReg);
+
     U32 restartPos = data->bufferPos;
 
-    data->readMemory(addressReg, tmpReg, 32, true, data->decodedOp->lock != 0);
+    data->readMemory(addressReg, tmpReg, 32, false, data->decodedOp->lock != 0);
     dshl32Cl(data, xResult, tmpReg, data->decodedOp->reg, [data, addressReg, tmpReg, restartPos]() {
-        data->writeMemory(addressReg, xResult, 32, true, data->decodedOp->lock != 0, tmpReg, restartPos);
+        data->writeMemory(addressReg, xResult, 32, false, data->decodedOp->lock != 0, tmpReg, restartPos);
         });
     data->releaseTmpReg(addressReg);
     data->releaseTmpReg(tmpReg);
@@ -389,11 +419,16 @@ void opDshrR32R32(Armv8btAsm* data) {
 void opDshrE32R32(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 tmpReg = data->getTmpReg();
+
+    U8 memReg = data->getHostMem(addressReg);
+    data->addRegs64(addressReg, addressReg, memReg);
+    data->releaseHostMem(memReg);
+
     U32 restartPos = data->bufferPos;
 
-    data->readMemory(addressReg, tmpReg, 32, true, data->decodedOp->lock != 0);
+    data->readMemory(addressReg, tmpReg, 32, false, data->decodedOp->lock != 0);
     dshr32(data, xResult, tmpReg, data->decodedOp->reg);
-    data->writeMemory(addressReg, xResult, 32, true, data->decodedOp->lock != 0, tmpReg, restartPos);
+    data->writeMemory(addressReg, xResult, 32, false, data->decodedOp->lock != 0, tmpReg, restartPos);
     data->releaseTmpReg(addressReg);
     data->releaseTmpReg(tmpReg);
 }
@@ -404,11 +439,16 @@ void opDshrClR32R32(Armv8btAsm* data) {
 void opDshrClE32R32(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 tmpReg = data->getTmpReg();
+
+    U8 memReg = data->getHostMem(addressReg);
+    data->addRegs64(addressReg, addressReg, memReg);
+    data->releaseHostMem(memReg);
+
     U32 restartPos = data->bufferPos;
 
-    data->readMemory(addressReg, tmpReg, 32, true, data->decodedOp->lock != 0);
+    data->readMemory(addressReg, tmpReg, 32, false, data->decodedOp->lock != 0);
     dshr32Cl(data, xResult, tmpReg, data->decodedOp->reg, [data, addressReg, tmpReg, restartPos]() {
-        data->writeMemory(addressReg, xResult, 32, true, data->decodedOp->lock != 0, tmpReg, restartPos);
+        data->writeMemory(addressReg, xResult, 32, false, data->decodedOp->lock != 0, tmpReg, restartPos);
         });
     data->releaseTmpReg(addressReg);
     data->releaseTmpReg(tmpReg);
@@ -891,11 +931,16 @@ void doShiftMemory(Armv8btAsm* data, shiftOp pfn, U32 width) {
     U8 addressReg = data->getAddressReg();
     U32 restartPos = data->bufferPos;
     U8 reg = data->getTmpReg();
+
+    U8 memReg = data->getHostMem(addressReg);
+    data->addRegs64(addressReg, addressReg, memReg);
+    data->releaseHostMem(memReg);
+
     U8 result = data->getTmpReg();
 
-    data->readMemory(addressReg, reg, width, true, data->decodedOp->lock != 0);
+    data->readMemory(addressReg, reg, width, false, data->decodedOp->lock != 0);
     if (pfn(data, result, reg, width)) {
-        data->writeMemory(addressReg, result, width, true, data->decodedOp->lock != 0, reg, restartPos);
+        data->writeMemory(addressReg, result, width, false, data->decodedOp->lock != 0, reg, restartPos);
     }
 
     data->releaseTmpReg(reg);
@@ -947,11 +992,15 @@ void arithShiftMemoryCl(Armv8btAsm* data, shiftRegCl32 pfn, Arm8BtFlags* lazyFla
             data->movRegToReg(xSrc, tmpReg, 32, false);
         }
 
+        U8 memReg = data->getHostMem(addressReg);
+        data->addRegs64(addressReg, addressReg, memReg);
+        data->releaseHostMem(memReg);
+
         // keep the locked read/write loop as small as possible
         U32 restartPos = data->bufferPos;
-        data->readMemory(addressReg, xDst, width, true, data->decodedOp->lock != 0);
+        data->readMemory(addressReg, xDst, width, false, data->decodedOp->lock != 0);
         pfn(data, xResult, xDst, tmpReg);
-        data->writeMemory(addressReg, xResult, width, true, data->decodedOp->lock != 0, xDst, restartPos);
+        data->writeMemory(addressReg, xResult, width, false, data->decodedOp->lock != 0, xDst, restartPos);
         data->releaseTmpReg(addressReg);
 
         lazyFlags->setFlags(data, flags);

@@ -113,9 +113,11 @@ void BoxedReg::writeKey(const char* path, const char* key, const char* value, bo
         line += value;
         if (useQuotesAroundValue) {
             line += "\"";
+        }        
+        if (!found) {
+            lines.push_back("");
+            lines.push_back(section);
         }
-        lines.push_back("");
-        lines.push_back(section);
         lines.push_back(line);    
     }
 }

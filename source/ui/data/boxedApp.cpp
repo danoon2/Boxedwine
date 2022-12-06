@@ -101,8 +101,12 @@ void BoxedApp::runAutomation() {
 }
 
 bool BoxedApp::hasAutomation() {
+#ifdef BOXEDWINE_RECORDER
     std::string path = GlobalSettings::getAutomationFolder(this->container) + Fs::nativePathSeperator + RECORDER_SCRIPT;
     return Fs::doesNativePathExist(path);
+#else
+    return false;
+#endif
 }
 
 void BoxedApp::launch() {
@@ -142,7 +146,7 @@ void BoxedApp::launch() {
     } else {
         GlobalSettings::startUpArgs.setScale(GlobalSettings::getDefaultScale());
     }
-    if (this->vsync == VSYNC_NOT_SET) {
+    if (this->vsync == (U32)VSYNC_NOT_SET) {
         GlobalSettings::startUpArgs.setVsync(GlobalSettings::getDefaultVsync());
     } else {
         GlobalSettings::startUpArgs.setVsync(this->vsync);

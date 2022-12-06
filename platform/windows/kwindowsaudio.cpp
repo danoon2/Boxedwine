@@ -27,9 +27,19 @@ struct WineMidiHdr {
 }
 );
 
+class NativeMidiData {
+public:
+	NativeMidiData() {
+		memset(&wineHeader, 0, sizeof(wineHeader));
+		memset(&nativeHeader, 0, sizeof(nativeHeader));
+	}
+	WineMidiHdr wineHeader;
+	MIDIHDR nativeHeader;
+};
+
 class KNativeAudioWindows : public KNativeAudioSDL, public std::enable_shared_from_this<KNativeAudioWindows> {
 public:
-	KNativeAudioWindows() : m_out(0), prepared(false), wDevID(0), eventFd(0), hMidi(0), dwCallback(0), dwInstance(0), wFlags(0) {}
+	KNativeAudioWindows() : m_out(0), wDevID(0), eventFd(0), hMidi(0), dwCallback(0), dwInstance(0), wFlags(0) {}
 	virtual ~KNativeAudioWindows() {}
 
 	virtual U32 midiOutOpen(U32 fd, U32 wDevID, U32 lpDesc, U32 dwFlags);
@@ -46,11 +56,9 @@ public:
 
 	HMIDIOUT m_out;
 
+	std::unordered_map<U32, NativeMidiData> data;
 
-	MIDIHDR mhdr;
-	WineMidiHdr wineMidiHdr;
 	std::shared_ptr<KProcess> process;
-	bool prepared;
 	U32 wDevID;
 	U32 eventFd;
 
@@ -136,48 +144,59 @@ U32 KNativeAudioWindows::midiOutData(U32 wDevID, U32 dwParam) {
 }
 
 U32 KNativeAudioWindows::midiOutLongData(U32 wDevID, U32 lpMidiHdr, U32 dwSize) {
-	memcopyToNative(lpMidiHdr, &wineMidiHdr, dwSize);
-	mhdr.dwFlags = wineMidiHdr.dwFlags;
-	wineMidiHdr.dwFlags |= MHDR_INQUEUE;
-	wineMidiHdr.writeFlags(lpMidiHdr);
-	U32 result = ::midiOutLongMsg(m_out, &mhdr, sizeof(mhdr));
-	wineMidiHdr.dwFlags = mhdr.dwFlags;
-	wineMidiHdr.writeFlags(lpMidiHdr);
+	U32 dataAddress = readd(lpMidiHdr);
+	if (this->data.count(dataAddress)==0) {
+		kwarn("KNativeAudioWindows::midiOutLongData tried to play unprepared buffer");
+		return MIDIERR_UNPREPARED;
+	}
+	NativeMidiData& hdr = data[dataAddress];
+	memcopyToNative(lpMidiHdr, &hdr.wineHeader, dwSize);
+	hdr.nativeHeader.dwFlags = hdr.wineHeader.dwFlags;
+	hdr.wineHeader.dwFlags |= MHDR_INQUEUE;
+	hdr.wineHeader.writeFlags(lpMidiHdr);
+	U32 result = ::midiOutLongMsg(m_out, &hdr.nativeHeader, sizeof(hdr.nativeHeader));
+	hdr.wineHeader.dwFlags = hdr.nativeHeader.dwFlags;
+	hdr.wineHeader.writeFlags(lpMidiHdr);
 	return result;
 }
 
 U32 KNativeAudioWindows::midiOutPrepare(U32 wDevID, U32 lpMidiHdr, U32 dwSize) {
-	if (this->prepared) {
-		kpanic("KNativeAudioWindows::midiOutPrepare need to add support for more than one repared midi header");
+	U32 dataAddress = readd(lpMidiHdr);
+	if (this->data.count(dataAddress)) {
+		kpanic("KNativeAudioWindows::midiOutPrepare tried to prepare already prepared buffer");
 	}
-	this->prepared = true;
-	memset(&wineMidiHdr, 0, sizeof(wineMidiHdr));
-	memset(&mhdr, 0, sizeof(mhdr));
-	memcopyToNative(lpMidiHdr, &wineMidiHdr, dwSize);
-	mhdr.lpData = (LPSTR)getPhysicalAddress(wineMidiHdr.lpData, mhdr.dwBufferLength);
-	if (!mhdr.lpData) {
-		wineMidiHdr.buffer = malloc(mhdr.dwBufferLength);
-		memcopyToNative(wineMidiHdr.lpData, wineMidiHdr.buffer, mhdr.dwBufferLength);
-		mhdr.lpData = (LPSTR)wineMidiHdr.buffer;
+	NativeMidiData& hdr = data[dataAddress];
+
+	memcopyToNative(lpMidiHdr, &hdr.wineHeader, dwSize);
+	hdr.nativeHeader.lpData = (LPSTR)getPhysicalAddress(hdr.wineHeader.lpData, hdr.wineHeader.dwBufferLength);
+	if (!hdr.nativeHeader.lpData) {
+		hdr.wineHeader.buffer = malloc(hdr.wineHeader.dwBufferLength);
+		memcopyToNative(hdr.wineHeader.lpData, hdr.wineHeader.buffer, hdr.wineHeader.dwBufferLength);
+		hdr.nativeHeader.lpData = (LPSTR)hdr.wineHeader.buffer;
 	}
-	mhdr.dwBufferLength = wineMidiHdr.dwBufferLength;
-	mhdr.dwFlags = wineMidiHdr.dwFlags;
-	mhdr.dwBytesRecorded = wineMidiHdr.dwBytesRecorded;
-	U32 result = ::midiOutPrepareHeader(m_out, &mhdr, sizeof(mhdr));
-	wineMidiHdr.dwFlags = mhdr.dwFlags;
-	wineMidiHdr.writeFlags(lpMidiHdr);
+	hdr.nativeHeader.dwBufferLength = hdr.wineHeader.dwBufferLength;
+	hdr.nativeHeader.dwFlags = hdr.wineHeader.dwFlags;
+	hdr.nativeHeader.dwBytesRecorded = hdr.wineHeader.dwBytesRecorded;
+	U32 result = ::midiOutPrepareHeader(m_out, &hdr.nativeHeader, sizeof(hdr.nativeHeader));
+	hdr.wineHeader.dwFlags = hdr.nativeHeader.dwFlags;
+	hdr.wineHeader.writeFlags(lpMidiHdr);
 	return result;
 }
 
 U32 KNativeAudioWindows::midiOutUnprepare(U32 wDevID, U32 lpMidiHdr, U32 dwSize) {
-	this->prepared = false;
-	U32 result = ::midiOutUnprepareHeader(m_out, &mhdr, sizeof(mhdr));
-	wineMidiHdr.dwFlags = mhdr.dwFlags;
-	memcopyFromNative(lpMidiHdr, &wineMidiHdr, dwSize);
-	if (wineMidiHdr.buffer) {
-		::free(wineMidiHdr.buffer);
-		wineMidiHdr.buffer = NULL;
+	U32 dataAddress = readd(lpMidiHdr);
+	if (this->data.count(dataAddress)==0) {
+		return MMSYSERR_NOERROR;
 	}
+	NativeMidiData& hdr = data[dataAddress];
+	U32 result = ::midiOutUnprepareHeader(m_out, &hdr.nativeHeader, sizeof(hdr.nativeHeader));
+	hdr.wineHeader.dwFlags = hdr.nativeHeader.dwFlags;
+	memcopyFromNative(lpMidiHdr, &hdr.wineHeader, dwSize);
+	if (hdr.wineHeader.buffer) {
+		::free(hdr.wineHeader.buffer);
+		hdr.wineHeader.buffer = NULL;
+	}
+	this->data.erase(dataAddress);
 	return result;
 }
 

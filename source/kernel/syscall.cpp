@@ -82,7 +82,7 @@ typedef U32 (*SyscallFunc)(CPU* cpu, U32 eipCount);
 #define SYSCALL_FUTEX       0x200
 
 #ifdef _DEBUG
-static U32 syscallMask = 0xfff;
+static U32 syscallMask = 0;
 #else
 static U32 syscallMask = 0;
 #endif
@@ -1130,12 +1130,16 @@ static U32 syscall_flistxattr(CPU* cpu, U32 eipCount) {
 #define FUTEX_WAKE 1
 #define FUTEX_WAIT_PRIVATE 128
 #define FUTEX_WAKE_PRIVATE 129
+#define FUTEX_WAIT_BITSET_PRIVATE 137
+#define FUTEX_WAKE_BITSET_PRIVATE 138
 
 static const char* getFutexOp(U32 op) {
     if (op==0) return "WAIT";
     if (op==1) return "WAKE";
     if (op==128) return "WAIT PRIVATE";
     if (op==129) return "WAKE PRIVATE";
+    if (op == 137) return "WAIT BITSET PRIVATE";
+    if (op == 138) return "WAKE BITSET PRIVATE";
     static std::string tmp;
     tmp = std::to_string(op);
     return tmp.c_str();
@@ -1143,7 +1147,7 @@ static const char* getFutexOp(U32 op) {
 
 static U32 syscall_futex(CPU* cpu, U32 eipCount) {
     SYS_LOG1(SYSCALL_FUTEX, cpu, "futex start: address=%X op=%s value=%d\n", ARG1, getFutexOp(ARG2), ARG3);
-    U32 result = cpu->thread->futex(ARG1, ARG2, ARG3, ARG4);
+    U32 result = cpu->thread->futex(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6);
     SYS_LOG1(SYSCALL_FUTEX, cpu, "futex   end: address=%X op=%s value=%d result=%d(0x%X)\n", ARG1, getFutexOp(ARG2), ARG3, result, result);
     return result;
 }

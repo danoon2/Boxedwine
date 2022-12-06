@@ -86,12 +86,41 @@ void unmarshalBufferRange(CPU* cpu, GLenum target, U32 offset, U32 size) {
     memcopyToNative(t.bufferedAddress+offset, t.originalBufferedAddress+offset, size);
 }
 
-U32 marshalBackSync(CPU* cpu, GLsync sync) {
-    return 0;
+GLsync* syncBuffer;
+U32 syncBufferSize;
+
+U32 marshalBackSync(CPU* cpu, GLsync h) {
+    if (!syncBufferSize) {
+        syncBuffer = new GLsync[1024];
+        syncBufferSize = 1024;
+        memset(syncBuffer, 0, sizeof(GLsync) * syncBufferSize);
+    }
+    for (U32 i = 0; i < syncBufferSize; i++) {
+        if (syncBuffer[i] == h) {
+            return i;
+        }
+    }
+    for (U32 i = 0; i < syncBufferSize; i++) {
+        if (syncBuffer[i] == NULL) {
+            syncBuffer[i] = h;
+            return i;
+        }
+    }
+    GLsync* b = new GLsync[syncBufferSize * 2];
+    memset(syncBuffer, 0, sizeof(GLsync) * syncBufferSize * 2);
+    memcpy(b, syncBuffer, syncBufferSize);
+    U32 result = syncBufferSize;
+    syncBufferSize *= 2;
+    delete[] syncBuffer;
+    syncBuffer = b;
+    return result;
 }
 
-GLsync marshalSync(CPU* cpu, U32 sync) {
-    return 0;
+GLsync marshalSync(CPU* cpu, U32 i) {
+    if (syncBuffer && i < syncBufferSize) {
+        return syncBuffer[i];
+    }
+    return NULL;
 }
 
 GLchar** bufferszArray;

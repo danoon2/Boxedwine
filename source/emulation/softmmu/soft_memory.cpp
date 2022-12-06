@@ -640,6 +640,10 @@ U32 Memory::getPageFlags(U32 page) {
     return this->getPage(page)->flags;
 }
 
+bool Memory::isShared(U32 page) {
+    return (this->getPage(page)->flags & PAGE_SHARED) != 0; 
+}
+
 void Memory::onThreadChanged() {
     Memory::currentMMU = this->mmu;
     Memory::currentMMUReadPtr = this->mmuReadPtr;

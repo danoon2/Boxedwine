@@ -16,6 +16,7 @@
 #include "syscpuscalingmaxfreq.h"
 #include "bufferaccess.h"
 #include "meminfo.h"
+#include "uptime.h"
 #include "devmixer.h"
 #include "devsequencer.h"
 #include "mainloop.h"
@@ -37,6 +38,7 @@
 #define mdev(x,y) ((x << 8) | y)
 
 void gl_init(const std::string& allowExtensions);
+void vulkan_init();
 void initWine();
 void initWineAudio();
 
@@ -109,6 +111,7 @@ void StartUpArgs::buildVirtualFileSystem() {
     Fs::addVirtualFile("/dev/null", openDevNull, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, mdev(1, 3), devNode);
     Fs::addVirtualFile("/dev/zero", openDevZero, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, mdev(1, 5), devNode);
     Fs::addVirtualFile("/proc/meminfo", openMemInfo, K__S_IREAD, mdev(0, 0), procNode);
+    Fs::addVirtualFile("/proc/uptime", openUptime, K__S_IREAD, mdev(0, 0), procNode);
     Fs::addVirtualFile("/proc/cpuinfo", openCpuInfo, K__S_IREAD, mdev(0, 0), procNode);
     Fs::addDynamicLinkFile("/proc/self", mdev(0, 0), procNode, true, [] {
         return std::to_string(KThread::currentThread()->process->id);
@@ -336,7 +339,7 @@ bool StartUpArgs::apply() {
     envValues.push_back("DISPLAY=:0");
     envValues.push_back("WINE_FAKE_WAIT_VBLANK=60");
     envValues.push_back("WINEDLLOVERRIDES=mscoree,mshtml=");
-    //envValues.push_back("WINEDEBUG=+ddraw");
+    // envValues.push_back("WINEDEBUG=+vulkan,+d3d");
                             
     // if this strlen is more than 88 (1 more character than now), then diablo demo will crash before we get to the menu
     // if I create more env values that are longer it doesn't crash, what is special about this one?
@@ -462,6 +465,9 @@ bool StartUpArgs::apply() {
 #ifdef BOXEDWINE_OPENGL
     gl_init(this->glExt);        
 #endif   
+#ifdef BOXEDWINE_VULKAN
+    vulkan_init();
+#endif
 
     if (this->args.size()) {
         klog_nonewline("Launching ");

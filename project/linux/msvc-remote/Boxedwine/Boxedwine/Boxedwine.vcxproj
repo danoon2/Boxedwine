@@ -3044,6 +3044,7 @@
     <ClCompile Include="..\..\..\..\..\source\kernel\proc\cpuinfo.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\proc\meminfo.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\proc\self.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\kernel\proc\uptime.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\syscall.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\sys\cpumaxfreq.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\sys\cpuonline.cpp" />
@@ -3271,6 +3272,8 @@
     <ClCompile Include="..\..\..\..\..\source\util\stringutil.cpp" />
     <ClCompile Include="..\..\..\..\..\source\util\synchronization.cpp" />
     <ClCompile Include="..\..\..\..\..\source\util\threadutils.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\vulkan\vk_host.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\vulkan\vulkancommon.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\..\include\boxedwine.h" />
@@ -3330,6 +3333,7 @@
     <ClInclude Include="..\..\..\..\..\include\syscpuonline.h" />
     <ClInclude Include="..\..\..\..\..\include\syscpuscalingcurfreq.h" />
     <ClInclude Include="..\..\..\..\..\include\syscpuscalingmaxfreq.h" />
+    <ClInclude Include="..\..\..\..\..\include\uptime.h" />
     <ClInclude Include="..\..\..\..\..\include\x64dynamic.h" />
     <ClInclude Include="..\..\..\..\..\lib\glew\include\GL\glew.h" />
     <ClInclude Include="..\..\..\..\..\lib\glew\include\GL\glxew.h" />
@@ -4590,7 +4594,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <PreprocessorDefinitions>BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_POSIX;_DEBUG;BOXEDWINE_64;BOXEDWINE_64BIT_MMU;BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;POCO_UTIL_NO_JSONCONFIGURATION;POCO_UTIL_NO_XMLCONFIGURATION;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_POSIX;_DEBUG;BOXEDWINE_64;BOXEDWINE_64BIT_MMU;BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;POCO_UTIL_NO_JSONCONFIGURATION;POCO_UTIL_NO_XMLCONFIGURATION;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;BOXEDWINE_OPENGL_IMGUI_V2</PreprocessorDefinitions>
       <CppLanguageStandard>c++17</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
@@ -4614,7 +4618,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <PreprocessorDefinitions>BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_POSIX;BOXEDWINE_64;BOXEDWINE_64BIT_MMU;BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;POCO_UTIL_NO_JSONCONFIGURATION;POCO_UTIL_NO_XMLCONFIGURATION;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_POSIX;BOXEDWINE_64;BOXEDWINE_64BIT_MMU;BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;POCO_UTIL_NO_JSONCONFIGURATION;POCO_UTIL_NO_XMLCONFIGURATION;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;NDEBUG;BOXEDWINE_OPENGL_IMGUI_V2;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <CppLanguageStandard>c++17</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>

@@ -109,6 +109,7 @@ public:
     void syscall(U32 opLen);
     void int98(U32 opLen);
     void int99(U32 opLen);
+    void int9A(U32 opLen);
     void writeToEFromCpuOffset(U8 rm, U32 offset, U8 fromBytes, U8 toBytes);    
     void writeToRegFromMemAddress(U8 seg, U8 reg, bool isRegRex, U32 disp, U8 bytes);
     void writeToMemAddressFromReg(U8 seg, U8 reg, bool isRegRex, U32 disp, U8 bytes);
@@ -142,7 +143,7 @@ public:
     void pushNativeFlags();
     void popNativeFlags();
     void logOp(U32 eip);
-    U8 autoReleaseTmpAfterWriteOp;
+    std::vector<U8> autoReleaseTmpAfterWriteOp;
     bool tmp1InUse;
     bool tmp2InUse;
     bool tmp3InUse;
@@ -151,11 +152,11 @@ public:
     bool param2InUse;
     bool param3InUse;
     bool param4InUse;
-    void stos16(void* pfn, U32 size, bool repeat);
-    void scas16(void* pfn, U32 size, bool repeat, bool repeatZero);
-    void movs16(void* pfn, U32 size, bool repeat, U32 base);
-    void lods16(void* pfn, U32 size, bool repeat, U32 base);
-    void cmps16(void* pfn, U32 size, bool repeat, bool repeatZero, U32 base);
+    void stos(void* pfn, U32 size, bool repeat);
+    void scas(void* pfn, U32 size, bool repeat, bool repeatZero);
+    void movs(void* pfn, U32 size, bool repeat, U32 base);
+    void lods(void* pfn, U32 size, bool repeat, U32 base);
+    void cmps(void* pfn, U32 size, bool repeat, bool repeatZero, U32 base);
     void doJmp(bool mightNeedCS);
     void bound32(U8 rm);
     void bound16(U8 rm);
@@ -177,6 +178,7 @@ public:
 #endif
 private:
     U8 getTmpReg();
+    bool isTmpRegAvailable();
     void releaseTmpReg(U8 reg);
     bool isTmpReg(U8 tmpReg);
     void lockParamReg(U8 paramReg, bool paramRex);
@@ -217,6 +219,9 @@ private:
     void zeroReg(U8 reg, bool isRexReg, bool keepFlags);
     void doMemoryInstruction(U8 op, U8 reg1, bool isReg1Rex, U8 reg2, bool isReg2Rex, S8 reg3, bool isReg3Rex, U8 reg3Shift, S32 displacement, U8 bytes);
     void writeHostPlusTmp(U8 rm, bool checkG, bool isG8bit, bool isE8bit, U8 tmpReg);
+    U8 getHostMem(U8 regEmulatedAddress, bool isRex);
+    U8 getHostMemFromAddress(U32 address);
+    void releaseHostMem(U8 reg);
     U8 getRegForSeg(U8 base, U8 tmpReg);
     U8 getRegForNegSeg(U8 base, U8 tmpReg);
     void translateMemory16(U32 rm, bool checkG, bool isG8bit, bool isE8bit, S8 r1, S8 r2, S16 disp, U8 seg);    
@@ -230,6 +235,7 @@ private:
     void jmpReg(U8 reg, bool isRex, bool mightNeedCS);
     void jmpNativeReg(U8 reg, bool isRegRex);
     void shiftRightReg(U8 reg, bool isRegRex, U8 shiftAmount);
+    void bmi2ShiftRightReg(U8 dstReg, U8 srcReg, bool isSrcRex, U8 amountReg);
     void andReg(U8 reg, bool isRegRex, U32 mask);
     void writeToEFromReg(U8 rm, U8 reg, bool isRegRex, U8 bytes); // will trash current op data
     void writeToRegFromE(U8 reg, bool isRegRex, U8 rm, U8 bytes); // will trash current op data

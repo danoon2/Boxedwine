@@ -134,6 +134,26 @@ static void notImplemented(const char* s) {
 #define BOXED_HAS_WND                               (BOXED_BASE+87)
 #define BOXED_GET_VERSION                           (BOXED_BASE+88)
 
+#define BOXED_VK_CREATE_INSTANCE                    (BOXED_BASE+89)
+#define BOXED_VK_CREATE_SWAPCHAIN                   (BOXED_BASE+90)
+#define BOXED_VK_CREATE_SURFACE                     (BOXED_BASE+91)
+#define BOXED_VK_DESTROY_INSTANCE                   (BOXED_BASE+92)
+#define BOXED_VK_DESTROY_SURFACE                    (BOXED_BASE+93)
+#define BOXED_VK_DESTROY_SWAPCHAIN                  (BOXED_BASE+94)
+#define BOXED_VK_ENUMERATE_INSTANCE_EXTENSION_PROPERTIES (BOXED_BASE+95)
+#define BOXED_VK_GET_DEVICE_GROUP_SURFACE_PRESENT_MODES  (BOXED_BASE+96)
+#define BOXED_VK_GET_PHYSICAL_DEVICE_PRESENT_RECTANGLES  (BOXED_BASE+97)
+#define BOXED_VK_GET_PHYSICAL_DEVICE_SURFACE_CAPABILITIES   (BOXED_BASE+98)
+#define BOXED_VK_GET_PHYSICAL_DEVICE_SURFACE_FORMATS (BOXED_BASE+99)
+#define BOXED_VK_GET_PHYSICAL_DEVICE_SURFACE_PRESENT_MODES (BOXED_BASE+100)
+#define BOXED_VK_GET_PHYSICAL_DEVICE_SURFACE_SUPPORT (BOXED_BASE+101)
+#define BOXED_VK_GET_PHYSICAL_DEVICE_WIN32_PRESENTATION_SUPPORT (BOXED_BASE+102)
+#define BOXED_VK_GET_SWAPCHAIN_IMAGES                (BOXED_BASE+103)
+#define BOXED_VK_QUEUE_PRESENT                       (BOXED_BASE+104)
+#define BOXED_VK_GET_PHYSICAL_DEVICE_SURFACE_CAPABILITIES2   (BOXED_BASE+105)
+#define BOXED_VK_GET_PHYSICAL_DEVICE_SURFACE_FORMATS2 (BOXED_BASE+106)
+#define BOXED_VK_GET_NATIVE_SURFACE                  (BOXED_BASE+107)
+
 # define __MSABI_LONG(x)         x
 
 #define WS_OVERLAPPED          __MSABI_LONG(0x00000000)
@@ -276,20 +296,34 @@ void boxeddrv_Beep(CPU* cpu) {
 #define DM_PANNINGHEIGHT        __MSABI_LONG(0x10000000)
 #define DM_DISPLAYFIXEDOUTPUT   __MSABI_LONG(0x20000000)
 
+#define CDS_UPDATEREGISTRY          0x00000001
+#define CDS_TEST                    0x00000002
+#define CDS_FULLSCREEN              0x00000004
+#define CDS_GLOBAL                  0x00000008
+#define CDS_SET_PRIMARY             0x00000010
+#define CDS_VIDEOPARAMETERS         0x00000020
+#define CDS_ENABLE_UNSAFE_MODES     0x00000100
+#define CDS_DISABLE_UNSAFE_MODES    0x00000200
+#define CDS_NORESET                 0x10000000
+#define CDS_RESET_EX                0x20000000
+#define CDS_RESET                   0x40000000
+
 // LONG CDECL drv_ChangeDisplaySettingsEx(LPCWSTR devname, LPDEVMODEW devmode, HWND hwnd, DWORD flags, LPVOID lpvoid)
 void boxeddrv_ChangeDisplaySettingsEx(CPU* cpu) {
     U32 devmode = ARG2;
+    U32 flags = ARG4;
+
     if (devmode)
     {
         U32 dmFields;
-        U32 dmSize = readw( devmode + 68);
+        U32 dmSize = readw(devmode + 68);
         U32 width = KNativeWindow::defaultScreenWidth;
         U32 height = KNativeWindow::defaultScreenHeight;
         U32 bpp = KNativeWindow::defaultScreenBpp;
 
         /* this is the minimal dmSize that XP accepts */
         if (dmSize < 44) {
-            writed(ARG6, DISP_CHANGE_FAILED);	
+            writed(ARG6, DISP_CHANGE_FAILED);
             return;
         }
 
@@ -306,7 +340,9 @@ void boxeddrv_ChangeDisplaySettingsEx(CPU* cpu) {
         if (dmFields & DM_PELSHEIGHT) {
             height = readd(devmode + 176);
         }
-        KNativeWindow::getNativeWindow()->screenChanged(cpu->thread, width, height, bpp);
+        if (!(flags & (CDS_TEST | CDS_NORESET))) {
+            KNativeWindow::getNativeWindow()->screenChanged(cpu->thread, width, height, bpp);
+        }
     }	    
     writed(ARG6, DISP_CHANGE_SUCCESSFUL);	
     writed(ARG7, KNativeWindow::getNativeWindow()->screenWidth());
@@ -1663,6 +1699,382 @@ void boxeddrv_GetVersion(CPU* cpu) {
     EAX = 3;
 }
 
+#ifdef BOXEDWINE_VULKAN
+#include <SDL_vulkan.h>
+#include "../vulkan/vk_host.h"
+
+static bool vulkanInitialized;
+static PFN_vkGetInstanceProcAddr pvkGetInstanceProcAddr = NULL;
+
+void initVulkan() {
+    if (!vulkanInitialized) {
+        vulkanInitialized = true;
+
+        if (SDL_Vulkan_LoadLibrary(NULL)) {
+            kpanic("Failed to load vulkan: %d\n", SDL_GetError());
+        }
+        pvkGetInstanceProcAddr = (PFN_vkGetInstanceProcAddr)SDL_Vulkan_GetVkGetInstanceProcAddr();
+#define VKFUNC_INSTANCE(f)
+#define VKFUNC(f) pvk##f = (PFN_vk##f)pvkGetInstanceProcAddr(VK_NULL_HANDLE, "vk"#f); if (!pvk##f) {kwarn("Failed to load vk"#f);}
+#include "../vulkan/vkfuncs.h"
+#undef LOAD_FUNCPTR
+    }
+}
+
+#define BOXED_VK_BUFFER_SIZE 64
+
+class BoxedVkApplicationInfo {
+public:
+    BoxedVkApplicationInfo() : deleteApplicationName(false), deleteEngineName(false) {}
+    ~BoxedVkApplicationInfo();
+    VkApplicationInfo info;
+    void read(U32 address);
+
+    bool deleteApplicationName;
+    bool deleteEngineName;
+
+    char applicationName[BOXED_VK_BUFFER_SIZE];
+    char engineName[BOXED_VK_BUFFER_SIZE];
+};
+
+BoxedVkApplicationInfo::~BoxedVkApplicationInfo() {
+    if (this->deleteApplicationName) {
+        free((void*)info.pApplicationName);
+    }
+    if (this->deleteEngineName) {
+        free((void*)info.pEngineName);
+    }
+}
+
+void BoxedVkApplicationInfo::read(U32 address) {
+    info.sType = (VkStructureType)readd(address); address += 4;
+    U32 address_next = readd(address); address += 4;
+    if (!address_next) {
+        info.pNext = NULL;
+    }
+    else {
+        // :TODO:
+        kpanic("oops");
+    }
+    U32 address_applicationName = readd(address); address += 4;
+    if (!address_applicationName) {
+        info.pApplicationName = NULL;
+    }
+    else {
+        const char* p = (const char*)getPhysicalAddress(address_applicationName, 0);
+        U32 len = (U32)strlen(p);
+        if (len < BOXED_VK_BUFFER_SIZE) {
+            strcpy(this->applicationName, p);
+            info.pApplicationName = this->applicationName;
+        } else {
+            info.pApplicationName = strdup(p);
+            this->deleteApplicationName = true;
+        }
+    }
+    info.applicationVersion = readd(address); address += 4;
+    U32 address_engineName = readd(address); address += 4;
+    if (!address_engineName) {
+        info.pEngineName = NULL;
+    } else {
+        const char* p = (const char*)getPhysicalAddress(address_engineName, 0);
+        U32 len = (U32)strlen(p);
+        if (len < BOXED_VK_BUFFER_SIZE) {
+            strcpy(this->engineName, p);
+            info.pEngineName = this->engineName;
+        }
+        else {
+            info.pEngineName = strdup(p);
+            this->deleteEngineName = true;
+        }
+    }
+    info.engineVersion = readd(address); address += 4;
+    info.apiVersion = readd(address);
+}
+
+class BoxedVkInstanceCreateInfo {
+public:
+    ~BoxedVkInstanceCreateInfo();
+    VkInstanceCreateInfo info;
+    void read(U32 address);
+    void fixSurfaceExtension();
+    BoxedVkApplicationInfo appInfo;
+};
+
+void BoxedVkInstanceCreateInfo::fixSurfaceExtension() {
+    for (U32 i = 0; i < info.enabledExtensionCount; i++) {
+        if (!strcmp(info.ppEnabledExtensionNames[i], "VK_KHR_win32_surface")) {
+#ifdef BOXEDWINE_LINUX
+            info.ppEnabledExtensionNames[i] = "VK_KHR_xlib_surface";
+#endif
+#ifdef BOXEDWINE_MAC
+            info.ppEnabledExtensionNames[i] = pvkCreateMetalSurfaceEXT ? "VK_EXT_metal_surface" : "VK_MVK_macos_surface";
+#endif
+        }
+    }
+}
+
+void BoxedVkInstanceCreateInfo::read(U32 address) {
+    info.sType = (VkStructureType)readd(address); address += 4;
+    U32 address_next = readd(address); address += 4;
+    if (!address_next) {
+        info.pNext = NULL;
+    } else {
+        // :TODO:
+        kpanic("oops");
+    }
+    info.flags = (VkInstanceCreateFlags)readd(address); address += 4;
+    U32 address_applicationInfo = readd(address); address += 4;
+    if (!address_applicationInfo) {
+        info.pApplicationInfo = NULL;
+    } else {
+        info.pApplicationInfo = &appInfo.info;
+        appInfo.read(address_applicationInfo);
+    }
+    info.enabledLayerCount = readd(address); address += 4;
+    U32 address_ppEnabledLayerNames = readd(address); address += 4;
+    if (!info.enabledLayerCount) {
+        info.ppEnabledLayerNames = NULL;
+    } else {
+        // :TODO:
+        kpanic("oops");
+    }
+    info.enabledExtensionCount = readd(address); address += 4;
+    U32 address_ppEnabledExtensionNames = readd(address);
+    if (!info.enabledExtensionCount) {
+        info.ppEnabledExtensionNames = NULL;
+    } else {
+        char** p = new char* [info.enabledExtensionCount];
+        info.ppEnabledExtensionNames = p;
+        for (U32 i = 0; i < info.enabledExtensionCount; i++) {
+            p[i] = strdup((const char*)getPhysicalAddress(readd(address_ppEnabledExtensionNames+i*4), 0));
+        }
+    }
+}
+U32 createVulkanPtr(U64 value, BoxedVulkanInfo* info);
+BoxedVkInstanceCreateInfo::~BoxedVkInstanceCreateInfo() {
+    if (info.enabledExtensionCount) {
+        for (U32 i = 0; i < info.enabledExtensionCount; i++) {
+            free((void*)info.ppEnabledExtensionNames[i]);
+        }
+        delete[] info.ppEnabledExtensionNames;
+    }
+}
+
+// VkResult boxedwine_vkCreateInstance(const VkInstanceCreateInfo* create_info, const VkAllocationCallbacks* allocator, VkInstance* instance)
+static void boxeddrv_vkCreateInstance(CPU* cpu) {
+    BoxedVkInstanceCreateInfo create_info_host;
+    U32 address_create_info = ARG1;
+    U32 address_allocator = ARG2;
+    U32 address_instance = ARG3;
+    VkInstance result;
+    VkResult res;
+
+    if (address_allocator) {
+        kwarn("boxeddrv_vkCreateInstance: Support for allocation callbacks not implemented yet");
+    }
+    /* Perform a second pass on converting VkInstanceCreateInfo. Winevulkan
+     * performed a first pass in which it handles everything except for WSI
+     * functionality such as VK_KHR_win32_surface. Handle this now.
+     */
+    create_info_host.read(address_create_info);
+    create_info_host.fixSurfaceExtension();
+
+    res = pvkCreateInstance(&create_info_host.info, NULL /* allocator */, &result);
+    if (res == VK_SUCCESS) {
+        U32 address = createVulkanPtr((U64)result, NULL);
+        writed(address_instance, address);
+    }
+    EAX = (U32)res;
+}
+
+// VkResult boxedwine_vkCreateSwapchainKHR(VkDevice device, const VkSwapchainCreateInfoKHR* create_info, const VkAllocationCallbacks* allocator, VkSwapchainKHR* swapchain)
+static void boxeddrv_vkCreateSwapChain(CPU* cpu) {
+    kpanic("boxeddrv_vkCreateSwapChain not implemented");
+}
+
+// VkResult boxedwine_vkCreateWin32SurfaceKHR(VkInstance instance, const VkWin32SurfaceCreateInfoKHR* create_info, const VkAllocationCallbacks* allocator, VkSurfaceKHR* surface)
+static void boxeddrv_vk_CreateSurface(CPU* cpu) {
+    kpanic("boxeddrv_vk_CreateSurface not implemented");
+}
+
+// void boxedwine_vkDestroyInstance(VkInstance instance, const VkAllocationCallbacks* allocator)
+static void boxeddrv_vkDestroyInstance(CPU* cpu) {
+    kpanic("boxeddrv_vkDestroyInstance not implemented");
+}
+
+// void boxedwine_vkDestroySurfaceKHR(VkInstance instance, VkSurfaceKHR surface, const VkAllocationCallbacks* allocator)
+static void boxeddrv_vkDestroySurface(CPU* cpu) {
+    kpanic("boxeddrv_vkDestroySurface not implemented");
+}
+
+// void boxedwine_vkDestroySwapchainKHR(VkDevice device, VkSwapchainKHR swapchain, const VkAllocationCallbacks* allocator)
+static void boxeddrv_vkDestroySwapchain(CPU* cpu) {
+    kpanic("boxeddrv_vkDestroySwapchain not implemented");
+}
+
+// VkResult boxedwine_vkEnumerateInstanceExtensionProperties(const char* layer_name, uint32_t* count, VkExtensionProperties* properties)
+static void boxeddrv_vkEnumerateInstanceExtensionProperties(CPU* cpu) {
+    const char* layer_name = (const char*)getPhysicalAddress(ARG1, 0);
+    uint32_t* count = (uint32_t*)getPhysicalAddress(ARG2, 0);
+    VkExtensionProperties* properties = (VkExtensionProperties*)getPhysicalAddress(ARG3, sizeof(VkExtensionProperties)*(*count));
+    unsigned int i;
+    VkResult res;
+
+    /* This shouldn't get called with layer_name set, the ICD loader prevents it. */
+    if (layer_name)
+    {
+        kwarn("Layer enumeration not supported from ICD.");
+        EAX = VK_ERROR_LAYER_NOT_PRESENT;
+        return;
+    }
+
+    initVulkan(); // this is the first API call by wine
+
+    /* We will return the same number of instance extensions reported by the host back to
+     * winevulkan. Along the way we may replace xlib extensions with their win32 equivalents.
+     * Winevulkan will perform more detailed filtering as it knows whether it has thunks
+     * for a particular extension.
+     */
+    res = pvkEnumerateInstanceExtensionProperties(layer_name, count, properties);
+    if (!properties || res < 0) {
+        EAX = (U32)res;
+        return;
+    }
+    for (i = 0; i < *count; i++)
+    {
+        /* For now the only x11/MoltenVK extension we need to fixup. Long-term we may need an array. */
+        if (!strcmp(properties[i].extensionName, "VK_MVK_macos_surface") || !strcmp(properties[i].extensionName, "VK_EXT_metal_surface") || !strcmp(properties[i].extensionName, "VK_KHR_xlib_surface"))
+        {
+            snprintf(properties[i].extensionName, sizeof(properties[i].extensionName), "VK_KHR_win32_surface");
+            properties[i].specVersion = 6;
+        }
+    }
+    EAX = (U32)res;
+}
+
+// VkResult boxedwine_vkGetDeviceGroupSurfacePresentModesKHR(VkDevice device, VkSurfaceKHR surface, VkDeviceGroupPresentModeFlagsKHR* flags)
+static void boxeddrv_vkGetDeviceGroupSurfacePresentModes(CPU* cpu) {
+    kpanic("boxeddrv_vkGetDeviceGroupSurfacePresentModes not implemented");
+}
+
+// VkResult boxedwine_vkGetPhysicalDevicePresentRectanglesKHR(VkPhysicalDevice phys_dev, VkSurfaceKHR surface, uint32_t* count, VkRect2D* rects)
+static void boxeddrv_vkGetPhysicalDevicePresentRectangles(CPU* cpu) {
+    kpanic("boxeddrv_vkGetPhysicalDevicePresentRectangles not implemented");
+}
+
+// VkResult boxedwine_vkGetPhysicalDeviceSurfaceCapabilitiesKHR(VkPhysicalDevice phys_dev, VkSurfaceKHR surface, VkSurfaceCapabilitiesKHR* capabilities)
+static void boxeddrv_vkGetPhysicalDeviceSurfaceCapabilities(CPU* cpu) {
+    kpanic("boxeddrv_vkGetPhysicalDeviceSurfaceCapabilities not implemented");
+}
+
+// VkResult boxedwine_vkGetPhysicalDeviceSurfaceFormatsKHR(VkPhysicalDevice phys_dev, VkSurfaceKHR surface, uint32_t* count, VkSurfaceFormatKHR* formats)
+static void boxeddrv_vkGetPhysicalDeviceSurfaceFormats(CPU* cpu) {
+    kpanic("boxeddrv_vkGetPhysicalDeviceSurfaceFormats not implemented");
+}
+
+// VkResult boxedwine_vkGetPhysicalDeviceSurfacePresentModesKHR(VkPhysicalDevice phys_dev, VkSurfaceKHR surface, uint32_t* count, VkPresentModeKHR* modes)
+static void boxeddrv_vkGetPhysicalDeviceSurfacePresentModes(CPU* cpu) {
+    kpanic("boxeddrv_vkGetPhysicalDeviceSurfacePresentModes not implemented");
+}
+
+// VkResult boxedwine_vkGetPhysicalDeviceSurfaceSupportKHR(VkPhysicalDevice phys_dev, uint32_t index, VkSurfaceKHR surface, VkBool32* supported)
+static void boxeddrv_vkGetPhysicalDeviceSurfaceSupport(CPU* cpu) {
+    kpanic("boxeddrv_vkGetPhysicalDeviceSurfaceSupport not implemented");
+}
+
+// VkBool32 boxedwine_vkGetPhysicalDeviceWin32PresentationSupportKHR(VkPhysicalDevice phys_dev, uint32_t index)
+static void boxeddrv_vkGetPhysicalDeviceWine32PresentationSupport(CPU* cpu) {
+    kpanic("boxeddrv_vkGetPhysicalDeviceWine32PresentationSupport not implemented");
+}
+
+// VkResult boxedwine_vkGetSwapchainImagesKHR(VkDevice device, VkSwapchainKHR swapchain, uint32_t* count, VkImage* images)
+static void boxeddrv_vkGetSwapchainImages(CPU* cpu) {
+    kpanic("boxeddrv_vkGetSwapchainImages not implemented");
+}
+
+// VkResult boxedwine_vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR* present_info)
+static void boxeddrv_vkQueuePresent(CPU* cpu) {
+    kpanic("boxeddrv_vkQueuePresent not implemented");
+}
+
+// VkResult boxedwine_vkGetPhysicalDeviceSurfaceCapabilities2KHR(VkPhysicalDevice phys_dev, const VkPhysicalDeviceSurfaceInfo2KHR* surface_info, VkSurfaceCapabilities2KHR* capabilities)
+static void boxeddrv_vkGetPhysicalDeviceSurfaceCapabilities2(CPU* cpu) {
+    kpanic("boxeddrv_vkGetPhysicalDeviceSurfaceCapabilities2 not implemented");
+}
+
+// VkResult boxedwine_vkGetPhysicalDeviceSurfaceFormats2KHR(VkPhysicalDevice phys_dev, const VkPhysicalDeviceSurfaceInfo2KHR* surface_info, uint32_t* count, VkSurfaceFormat2KHR* formats)
+static void boxeddrv_vkGetPhysicalDeviceSurfaceFormats2(CPU* cpu) {
+    kpanic("boxeddrv_vkGetPhysicalDeviceSurfaceFormats2 not implemented");
+}
+
+// VkSurfaceKHR boxedwine_wine_get_native_surface(VkSurfaceKHR surface)
+static void boxeddrv_vkGetNativeSurface(CPU* cpu) {
+    VkSurfaceKHR surface = (VkSurfaceKHR)readq(ARG1);
+    VkSurfaceKHR result;
+
+    kpanic("boxeddrv_vkGetNativeSurface not implemented");
+    writeq(ARG2, (U64)result);
+}
+
+#else 
+static void boxeddrv_vkCreateInstance(CPU* cpu) {
+}
+
+static void boxeddrv_vkCreateSwapChain(CPU* cpu) {
+}
+
+static void boxeddrv_vk_CreateSurface(CPU* cpu) {
+}
+
+static void boxeddrv_vkDestroyInstance(CPU* cpu) {
+}
+
+static void boxeddrv_vkDestroySurface(CPU* cpu) {
+}
+
+static void boxeddrv_vkDestroySwapchain(CPU* cpu) {
+}
+
+static void boxeddrv_vkEnumerateInstanceExtensionProperties(CPU* cpu) {
+}
+
+static void boxeddrv_vkGetDeviceGroupSurfacePresentModes(CPU* cpu) {
+}
+
+static void boxeddrv_vkGetPhysicalDevicePresentRectangles(CPU* cpu) {
+}
+
+static void boxeddrv_vkGetPhysicalDeviceSurfaceCapabilities(CPU* cpu) {
+}
+
+static void boxeddrv_vkGetPhysicalDeviceSurfaceFormats(CPU* cpu) {
+}
+
+static void boxeddrv_vkGetPhysicalDeviceSurfacePresentModes(CPU* cpu) {
+}
+
+static void boxeddrv_vkGetPhysicalDeviceSurfaceSupport(CPU* cpu) {
+}
+
+static void boxeddrv_vkGetPhysicalDeviceWine32PresentationSupport(CPU* cpu) {
+}
+
+static void boxeddrv_vkGetSwapchainImages(CPU* cpu) {
+}
+
+static void boxeddrv_vkQueuePresent(CPU* cpu) {
+}
+
+static void boxeddrv_vkGetPhysicalDeviceSurfaceCapabilities2(CPU* cpu) {
+}
+
+static void boxeddrv_vkGetPhysicalDeviceSurfaceFormats2(CPU* cpu) {
+}
+
+static void boxeddrv_vkGetNativeSurface(CPU* cpu) {
+
+}
+#endif
 void boxeddrv_wglShareLists(CPU* cpu) {
     EAX = KNativeWindow::getNativeWindow()->glShareLists(cpu->thread, ARG1, ARG2);
 }
@@ -1736,7 +2148,7 @@ U32 wine_callbackSize;
 
 void initWine() {
 	if (!wine_callback) {
-		wine_callback = new Int99Callback[89];
+		wine_callback = new Int99Callback[108];
 		wine_callback[BOXED_ACQUIRE_CLIPBOARD] = boxeddrv_AcquireClipboard;
 		wine_callback[BOXED_ACTIVATE_KEYBOARD_LAYOUT] = boxeddrv_ActivateKeyboardLayout;
 		wine_callback[BOXED_BEEP] = boxeddrv_Beep;
@@ -1826,6 +2238,27 @@ void initWine() {
 		wine_callback[BOXED_CREATE_DESKTOP] = boxeddrv_CreateDesktop;
 		wine_callback[BOXED_HAS_WND] = boxeddrv_HasWnd;
 		wine_callback[BOXED_GET_VERSION] = boxeddrv_GetVersion;
-		wine_callbackSize = 89;
+
+        wine_callback[BOXED_VK_CREATE_INSTANCE] = boxeddrv_vkCreateInstance;
+        wine_callback[BOXED_VK_CREATE_SWAPCHAIN] = boxeddrv_vkCreateSwapChain;
+        wine_callback[BOXED_VK_CREATE_SURFACE] = boxeddrv_vk_CreateSurface;
+        wine_callback[BOXED_VK_DESTROY_INSTANCE] = boxeddrv_vkDestroyInstance;
+        wine_callback[BOXED_VK_DESTROY_SURFACE] = boxeddrv_vkDestroySurface;
+        wine_callback[BOXED_VK_DESTROY_SWAPCHAIN] = boxeddrv_vkDestroySwapchain;
+        wine_callback[BOXED_VK_ENUMERATE_INSTANCE_EXTENSION_PROPERTIES] = boxeddrv_vkEnumerateInstanceExtensionProperties;
+        wine_callback[BOXED_VK_GET_DEVICE_GROUP_SURFACE_PRESENT_MODES] = boxeddrv_vkGetDeviceGroupSurfacePresentModes;
+        wine_callback[BOXED_VK_GET_PHYSICAL_DEVICE_PRESENT_RECTANGLES] = boxeddrv_vkGetPhysicalDevicePresentRectangles;
+        wine_callback[BOXED_VK_GET_PHYSICAL_DEVICE_SURFACE_CAPABILITIES] = boxeddrv_vkGetPhysicalDeviceSurfaceCapabilities;
+        wine_callback[BOXED_VK_GET_PHYSICAL_DEVICE_SURFACE_FORMATS] = boxeddrv_vkGetPhysicalDeviceSurfaceFormats;
+        wine_callback[BOXED_VK_GET_PHYSICAL_DEVICE_SURFACE_PRESENT_MODES] = boxeddrv_vkGetPhysicalDeviceSurfacePresentModes;
+        wine_callback[BOXED_VK_GET_PHYSICAL_DEVICE_SURFACE_SUPPORT] = boxeddrv_vkGetPhysicalDeviceSurfaceSupport;
+        wine_callback[BOXED_VK_GET_PHYSICAL_DEVICE_WIN32_PRESENTATION_SUPPORT] = boxeddrv_vkGetPhysicalDeviceWine32PresentationSupport;
+        wine_callback[BOXED_VK_GET_SWAPCHAIN_IMAGES] = boxeddrv_vkGetSwapchainImages;
+        wine_callback[BOXED_VK_QUEUE_PRESENT] = boxeddrv_vkQueuePresent;
+        wine_callback[BOXED_VK_GET_PHYSICAL_DEVICE_SURFACE_CAPABILITIES2] = boxeddrv_vkGetPhysicalDeviceSurfaceCapabilities2;
+        wine_callback[BOXED_VK_GET_PHYSICAL_DEVICE_SURFACE_FORMATS2] = boxeddrv_vkGetPhysicalDeviceSurfaceFormats2;
+        wine_callback[BOXED_VK_GET_NATIVE_SURFACE] = boxeddrv_vkGetNativeSurface;
+
+		wine_callbackSize = 108;
 	}
 }

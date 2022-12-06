@@ -170,7 +170,7 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
     case HELPVIEW_TITLE_HELP_TROUBLESHOOTING:
         return "Troubleshooting";
     case HELPVIEW_ABOUT_LABEL:
-        return "## What is Boxedwine?\n[Boxedwine](http://boxedwine.org) is a multi-platform app for running 16-bit and 32-bit Windows programs.  It does this by emulating the CPU and running [Wine](https://www.winehq.org/).  Wine is the program that emulates all of the Windows API calls.  The goal of Boxedwine is to be able to run everything that Wine can.  If you want to know if your app or game will run in Boxedwine or get hints how to run it, you should start by looking at the [Wine Application Database (AppDB)](https://appdb.winehq.org/)\n## Supported Platforms:\n* Windows 32-bit (Vista or later)\n* Windows 64-bit (Vista or later)\n* Mac OSX\n* Linux (32-bit and 64-bit)\n* Web Browsers using WASM\n* Raspberry Pi (32-bit and 64-bit)\n## Current Version: " BOXEDWINE_VERSION_DISPLAY "\n* Added command line option: -fullscreenAspect  This will enable full screen with letter boxing in order to preserve the aspect ratio.\n* Added command line option : -vsync X where X is 0, 1 or 2.  0 is disabled, 1 is enabled and 2 is adaptive.The default is 0 (disabled).\n* Added command line option : -showWindowImmediately  This fixes simple OpenGL GLUT examples.\n* OpenGL : Implemented glInterleavedArray, fixed glFeedbackBufferand fixed glReadPixels when using packed formats.\n* Recompiled Wine : will now use SSE for floating point math.\n* Rewrote the audio driver, now winealsa.drv.so will talk to Boxedwine directly.\n* Added an implementation for ddraw.dll ddraw7_WaitForVerticalBlank.\n* Lots of work on the Mac build.\n* Windows build will use DirectX 9 for UI instead of OpenGL";
+        return "## What is Boxedwine?\n[Boxedwine](http://boxedwine.org) is a multi-platform app for running 16-bit and 32-bit Windows programs.  It does this by emulating the CPU and running [Wine](https://www.winehq.org/).  Wine is the program that emulates all of the Windows API calls.  The goal of Boxedwine is to be able to run everything that Wine can.  If you want to know if your app or game will run in Boxedwine or get hints how to run it, you should start by looking at the [Wine Application Database (AppDB)](https://appdb.winehq.org/)\n## Supported Platforms:\n* Windows 32-bit (Vista or later)\n* Windows 64-bit (Vista or later)\n* Mac OSX\n* Linux (32-bit and 64-bit)\n* Web Browsers using WASM\n* Raspberry Pi (32-bit and 64-bit)\n## Current Version: " BOXEDWINE_VERSION_DISPLAY "\n*Added support for Wine 6.";
     case HELPVIEW_HELP_INSTALL_LABEL:
         return "Apps/Games are installed into containers.  A container is a folder that contains all of the files necessary for Boxedwine and Wine to run and a place for them to store changes.  It acts as a virtual file system.  Each app can be installed into its own container.  To install an app or game, just drag the installer, for example, setup.exe, onto Boxedwine.  You can also drag a folder onto Boxedwine and it will be copied into a container.";
     case HELPVIEW_HELP_TROUBLESHOOTING_LABEL:
@@ -341,6 +341,10 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "Are you sure you want to the {0} shortcut?";
     case CONTAINER_VIEW_GDI_RENDERER_LABEL:
         return "DD GDI Renderer:";
+    case CONTAINER_VIEW_RENDERER_LABEL:
+        return "Renderer:";
+    case CONTAINER_VIEW_RENDERER_HELP:
+        return "This requires Wine 6.0 or higher.  DirectDraw will use OpenGL by default.  But a few games, like Diable and Startcraft, may have graphical issues.  Sometimes changing the renderer to GDI can help.  Vulkan is considered experimental.";
     case CONTAINER_VIEW_PROGRAMS_LABEL:
         return "Run in Container:";
     case CONTAINER_VIEW_COMPONENTS_LABEL:

@@ -473,7 +473,7 @@ namespace ImGui
                         line.headingCount++;
                         bool bContinueChecking = true;
                         uint32_t j = i;
-                        while( ++j < (int)markdownLength_ && bContinueChecking )
+                        while( ++j < (uint32_t)markdownLength_ && bContinueChecking )
                         {
                             c = markdown_[j];
                             switch( c )

@@ -1,22 +1,26 @@
 #pragma GCC diagnostic ignored "-Wreturn-type"
 #define NONAMELESSUNION
 #define COBJMACROS
-#include "config.h"
+//#include "config.h"
 
 #include <stdarg.h>
+//#include <stdlib.h>
 
 #include "windef.h"
 #include "winbase.h"
+//#include "winternl.h"
 #include "wingdi.h"
 #include "winuser.h"
 #include "mmddk.h"
+#ifndef BOXED_IGNORE_WINELIB
 #include "wine/library.h"
+#endif
 #include "wine/debug.h"
 
 #include "winnls.h"
 #include "winreg.h"
 #include "wine/debug.h"
-#include "wine/unicode.h"
+//#include "wine/unicode.h"
 #include "wine/list.h"
 
 #include "ole2.h"
@@ -24,15 +28,18 @@
 #include "devpkey.h"
 #include "dshow.h"
 #include "dsound.h"
+#include "shlwapi.h"
 
 #include "initguid.h"
 #include "endpointvolume.h"
 #include "audioclient.h"
 #include "audiopolicy.h"
 
-#include <dlfcn.h>
+//#include <dlfcn.h>
 #include <fcntl.h>
 #include <unistd.h>
+
+int pipe(int pipefd[2]);
 
 WINE_DEFAULT_DEBUG_CHANNEL(boxedaudio);
 
@@ -115,14 +122,15 @@ struct int2Float {
 int pipeFd[2];
 static HANDLE thread;
 static HANDLE dsoundEvent;
-static unsigned char read8() {
+
+static unsigned char read8(void) {
     unsigned char b;
     while (read(pipeFd[0], &b, 1) == 0) {
     }
     return b;
 }
 
-static DWORD read32() {
+static DWORD read32(void) {
     DWORD result = read8();
     result |= (read8() << 8);
     result |= (read8() << 16);
@@ -143,10 +151,11 @@ static DWORD CALLBACK msg_thread(void *p) {
             }        
             TRACE("\n");
         } else if (b == 2) {
-            DWORD dwCallBack, uFlags, hDev, wMsg, dwInstance , dwParam1, dwParam2;
+            DWORD dwCallBack, uFlags, wMsg, dwInstance , dwParam1, dwParam2;
+            HDRVR hDev;
             dwCallBack = read32();
             uFlags = read32();
-            hDev = read32();
+            hDev = (HDRVR)read32();
             wMsg = read32();
             dwInstance = read32();
             dwParam1 = read32();
@@ -598,7 +607,7 @@ static void get_device_guid(EDataFlow flow, AudioDeviceID device, GUID *guid)
 		key_name[0] = '0';
 	key_name[1] = ',';
 
-	sprintfW(key_name + 2, key_fmt, device);
+	wsprintfW(key_name + 2, key_fmt, device);
 
 	if (RegOpenKeyExW(HKEY_CURRENT_USER, drv_key_devicesW, 0, KEY_WRITE | KEY_READ, &key) == ERROR_SUCCESS) {
 		if (RegOpenKeyExW(key, key_name, 0, KEY_READ, &dev_key) == ERROR_SUCCESS) {
@@ -658,7 +667,7 @@ HRESULT WINAPI AUDDRV_GetEndpointIDs(EDataFlow flow, WCHAR ***ids,
 		HeapFree(GetProcessHeap(), 0, *guids);
 		return E_OUTOFMEMORY;
 	}
-	strcpyW((*ids)[0], deviceName);
+	lstrcpyW((*ids)[0], deviceName);
 	get_device_guid(flow, 1, &(*guids)[0]);
 
 	TRACE("device 0: id %s key 1(default)\n", debugstr_w(deviceName));
@@ -711,7 +720,7 @@ static BOOL get_deviceid_by_guid(GUID *guid, AudioDeviceID *id, EDataFlow *flow)
 					return FALSE;
 				}
 
-				*id = strtoulW(key_name + 2, NULL, 10);
+				*id = wcstoul(key_name + 2, NULL, 10);
 
 				return TRUE;
 			}

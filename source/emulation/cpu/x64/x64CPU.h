@@ -59,8 +59,7 @@ public:
     S32 preLinkCheck(X64Asm* data); // returns the index of the jump that failed
     virtual void makePendingCodePagesReadOnly();
     virtual std::shared_ptr<BtCodeChunk> translateChunk(U32 ip);
-    void translateData(X64Asm* data, X64Asm* firstPass=NULL);
-    std::shared_ptr<BtCodeChunk> translateChunk(X64Asm* parent, U32 ip);
+    void translateData(X64Asm* data, X64Asm* firstPass=NULL);    
 
     U64 reTranslateChunk();
     U64 handleChangedUnpatchedCode(U64 rip);
@@ -79,6 +78,7 @@ public:
     virtual void postTestRun();
 #endif
 private:      
+    std::shared_ptr<BtCodeChunk> translateChunk(X64Asm* parent, U32 ip);
     void* translateEipInternal(X64Asm* parent, U32 ip);            
     void markCodePageReadOnly(X64Asm* data);
 

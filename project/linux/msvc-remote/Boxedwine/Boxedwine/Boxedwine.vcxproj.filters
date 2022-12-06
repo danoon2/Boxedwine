@@ -1753,6 +1753,15 @@
     <ClCompile Include="..\..\..\..\..\source\io\fsdynamiclinknode.cpp">
       <Filter>source\io</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\vulkan\vk_host.cpp">
+      <Filter>source\vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\vulkan\vulkancommon.cpp">
+      <Filter>source\vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\kernel\proc\uptime.cpp">
+      <Filter>source\kernel\proc</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
@@ -1994,6 +2003,9 @@
     </Filter>
     <Filter Include="source\opengl\mesa">
       <UniqueIdentifier>{0d4507ea-ed6c-4ba6-8ba0-aa24f2b6c5af}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\vulkan">
+      <UniqueIdentifier>{4bf872fb-766a-43e0-b55e-8e10fc3803fb}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -4780,6 +4792,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\io\fsdynamiclinknode.h">
       <Filter>source\io</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\include\uptime.h">
+      <Filter>include</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

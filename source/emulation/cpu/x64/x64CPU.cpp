@@ -95,6 +95,7 @@ void* x64CPU::init() {
 
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->executableMemoryMutex);
     this->eipToHostInstructionAddressSpaceMapping = this->thread->memory->eipToHostInstructionAddressSpaceMapping;
+    this->memOffsets = memory->memOffsets;
 
 	// will push 15 regs, since it is odd, it will balance rip being pushed on the stack and give use a 16-byte alignment
 	data.saveNativeState(); // also sets HOST_CPU
@@ -107,7 +108,6 @@ void* x64CPU::init() {
     } else {
         data.writeToRegFromValue(HOST_SMALL_ADDRESS_SPACE_SS, true, (U32)cpu->seg[SS].address, 4);
     }
-    data.writeToRegFromValue(HOST_DS, true, (U32)cpu->seg[DS].address, 4);
 
     data.setNativeFlags(this->flags, FMASK_TEST|DF);
 
@@ -331,7 +331,7 @@ void x64CPU::link(X64Asm* data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 off
 
 void x64CPU::markCodePageReadOnly(X64Asm* data) {
     U32 pageStart = this->thread->memory->getNativePage((data->startOfDataIp+this->seg[CS].address) >> K_PAGE_SHIFT);
-    U32 pageEnd = this->thread->memory->getNativePage((data->startOfDataIp+this->seg[CS].address) >> K_PAGE_SHIFT);
+    U32 pageEnd = this->thread->memory->getNativePage((data->ip+this->seg[CS].address) >> K_PAGE_SHIFT);
     S32 pageCount = pageEnd-pageStart+1;
 
 #ifndef __TEST
@@ -361,6 +361,7 @@ void* x64CPU::translateEip(U32 ip) {
 
 void x64CPU::translateInstruction(X64Asm* data, X64Asm* firstPass) {
     data->startOfOpIp = data->ip;  
+    data->useSingleMemOffset = !data->cpu->thread->memory->doesInstructionNeedMemoryOffset(data->ip);
 #ifdef _DEBUG
     //data->logOp(data->ip);
     // just makes debugging the asm output easier
@@ -526,6 +527,16 @@ U64 x64CPU::handleCodePatch(U64 rip, U32 address, U64 rsi, U64 rdi, std::functio
         } else {
             w.invalidateCode(address, len);
         }  
+        U32 page = address >> K_PAGE_SHIFT;
+        // shared or mapped native memory
+        if (this->thread->memory->flags[page] & PAGE_MAPPED_HOST) {
+            this->thread->memory->addNeedsMemoryOffset(this->eip.u32);
+            // won't trigger retranslate the first time through, that way we will minimize the number of retranslates for the chunk 
+            // since we will go through most of the chunk at least once before the retranslate
+            if (this->thread->memory->doesInstructionNeedMemoryOffset(this->eip.u32)) {
+                chunk->releaseAndRetranslate();
+            }
+        }
         FILE* f = (FILE*)this->logFile;
         this->logFile = NULL;       
         op->pfn(this, op);   
@@ -632,7 +643,10 @@ U64 x64CPU::handleAccessException(U64 rip, U64 address, bool readAddress, std::f
     if ((address & 0xFFFFFFFF00000000l) == this->thread->memory->id) {
         U32 emulatedAddress = (U32)address;
         U32 page = emulatedAddress >> K_PAGE_SHIFT;
-        if (this->thread->memory->flags[page] & PAGE_MAPPED_HOST) {
+        Memory* m = this->thread->memory;
+        U32 nativeFlags = m->nativeFlags[m->getNativePage(page)];
+        U32 flags = m->flags[page];
+        if ((flags & PAGE_MAPPED_HOST) || (flags & (PAGE_READ | PAGE_WRITE)) != (nativeFlags & (PAGE_READ | PAGE_WRITE))) {
             // if this ends up being too slow for each read/write, perhaps the code block could be changed to use
             // memory->memOffsets[page] instead of memory->id
             //
@@ -645,7 +659,7 @@ U64 x64CPU::handleAccessException(U64 rip, U64 address, bool readAddress, std::f
     U64 r9 = getReg(9);
     U64 r8 = getReg(8);
 
-    if (inst == 0xCE24FF43) { // useLargeAddressSpace = true
+    if (inst == 0xCE24FF43 && r9) { // useLargeAddressSpace = true
         this->translateEip((U32)r9 - this->seg[CS].address);
         return 0;
     } else if ((inst==0x0A8B4566 || inst==0xCA148B4F) && (r8 || r9)) { // if these constants change, update handleMissingCode too     
@@ -668,9 +682,9 @@ U64 x64CPU::handleAccessException(U64 rip, U64 address, bool readAddress, std::f
         // check if the emulated memory caused the exception
         if ((address & 0xFFFFFFFF00000000l) == this->thread->memory->id) {                
             U32 emulatedAddress = (U32)address;
-            
+            U32 page = emulatedAddress >> K_PAGE_SHIFT;
             // check if emulated memory that caused the exception is a page that has code
-            if (this->thread->memory->nativeFlags[emulatedAddress>>K_PAGE_SHIFT] & NATIVE_FLAG_CODEPAGE_READONLY) {                    
+            if (this->thread->memory->nativeFlags[this->thread->memory->getNativePage(page)] & NATIVE_FLAG_CODEPAGE_READONLY) {
                 dynamicCodeExceptionCount++;                    
                 return this->handleCodePatch(rip, emulatedAddress, getReg(6), getReg(7), doSyncFrom, doSyncTo);                    
             }

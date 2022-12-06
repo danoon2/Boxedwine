@@ -366,6 +366,68 @@ void Platform::setCurrentThreadPriorityHigh() {
 
 }
 
+U32 Platform::getPageAllocationGranularity() {
+    static U32 granularity;
+
+    if (!granularity) {
+        SYSTEM_INFO sSysInfo;
+
+        GetSystemInfo(&sSysInfo);
+        if ((sSysInfo.dwAllocationGranularity & K_PAGE_SIZE) != 0) {
+            kpanic("Unexpected host allocation granularity size: %d", sSysInfo.dwAllocationGranularity);
+        }
+        granularity = sSysInfo.dwAllocationGranularity;
+    }
+    return granularity / K_PAGE_SIZE;
+}
+
+U32 Platform::getPagePermissionGranularity() {
+    return 1;
+}
+
+U32 Platform::allocateNativeMemory(U64 address) {
+    if (!VirtualAlloc((void*)address, getPageAllocationGranularity() << K_PAGE_SHIFT, MEM_COMMIT, PAGE_READWRITE)) {
+        LPSTR messageBuffer = NULL;
+        size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
+        kpanic("allocateNativeMemory: failed to commit memory: page=%x : %s", address, messageBuffer);
+    }
+    return 0;
+}
+
+U32 Platform::freeNativeMemory(U64 address) {
+    if (!VirtualFree((void*)address, getPageAllocationGranularity() << K_PAGE_SHIFT, MEM_DECOMMIT)) {
+        LPSTR messageBuffer = NULL;
+        size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
+        kpanic("failed to release memory: %s", messageBuffer);
+    }
+    return 0;
+}
+
+U32 Platform::updateNativePermission(U64 address, U32 permission, U32 len) {
+    DWORD proto = 0;
+    DWORD oldProtect;
+
+    if (len == 0) {
+        len = getPagePermissionGranularity() << K_PAGE_SHIFT;
+    }
+    permission &= PAGE_PERMISSION_MASK;
+    if (permission & PAGE_WRITE) {
+        proto = PAGE_READWRITE;
+    }
+    else if ((permission & PAGE_READ) || (permission & PAGE_EXEC)) {
+        proto = PAGE_READONLY;
+    }
+    else {
+        proto = PAGE_NOACCESS;
+    }
+    if (!VirtualProtect((void*)address, len, proto, &oldProtect)) {
+        LPSTR messageBuffer = NULL;
+        size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
+        kpanic("failed to protect memory: %s", messageBuffer);
+    }
+    return 0;
+}
+
 U32 Platform::nanoSleep(U64 nano) {
     U32 millies = (U32)(nano / 1000000);
     LARGE_INTEGER startTime;

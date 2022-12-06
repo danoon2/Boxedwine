@@ -42,10 +42,8 @@ bool KSystem::soundEnabled = true;
 unsigned int KSystem::nextThreadId=10;
 std::unordered_map<void*, SHM*> KSystem::shm;
 std::unordered_map<U32, std::shared_ptr<KProcess> > KSystem::processes;
-#ifdef BOXEDWINE_DEFAULT_MMU
 std::unordered_map<std::string, BoxedPtr<MappedFileCache> > KSystem::fileCache;
 BOXEDWINE_MUTEX KSystem::fileCacheMutex;
-#endif
 U32 KSystem::pentiumLevel = 4;
 bool KSystem::shutingDown;
 U32 KSystem::killTime;
@@ -787,7 +785,6 @@ std::shared_ptr<KProcess> KSystem::getProcess(U32 id) {
     return NULL;
 }
 
-#ifdef BOXEDWINE_DEFAULT_MMU
 void KSystem::eraseFileCache(const std::string& name) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(KSystem::fileCacheMutex);
     KSystem::fileCache.erase(name);
@@ -804,7 +801,7 @@ void KSystem::setFileCache(const std::string& name, const BoxedPtr<MappedFileCac
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(KSystem::fileCacheMutex);
     KSystem::fileCache[name] = fileCache;
 }
-#endif
+
 void KSystem::eraseProcess(U32 id) {
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(processesCond);
     KSystem::processes.erase(id);

@@ -178,6 +178,10 @@ void dynamic_int99(DynamicData* data, DecodedOp* op) {
     callHostFunction((void*)common_int99, false, 1, 0, DYN_PARAM_CPU, false);
     INCREMENT_EIP(data, op);
 }
+void dynamic_int9A(DynamicData* data, DecodedOp* op) {
+    callHostFunction((void*)common_int9A, false, 1, 0, DYN_PARAM_CPU, false);
+    INCREMENT_EIP(data, op);
+}
 void dynamic_intIb(DynamicData* data, DecodedOp* op) {
     callHostFunction((void*)common_intIb, false, 1, 0, DYN_PARAM_CPU, false);
     blockDone();

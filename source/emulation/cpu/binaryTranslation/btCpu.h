@@ -4,7 +4,7 @@
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
 class BtCPU : public CPU {
 public:
-    BtCPU() : nativeHandle(0), exceptionAddress(0), inException(false), exceptionReadAddress(false), returnHostAddress(0), exceptionSigNo(0), exceptionSigCode(0), exceptionIp(0) {}
+    BtCPU() : nativeHandle(0), exceptionAddress(0), inException(false), exceptionReadAddress(false), returnHostAddress(0), exceptionSigNo(0), exceptionSigCode(0), exceptionIp(0), eipToHostInstructionAddressSpaceMapping(NULL) {}
     U64 nativeHandle;
     U64 exceptionAddress;
     bool inException;
@@ -13,7 +13,7 @@ public:
     int exceptionSigNo;
     int exceptionSigCode;
     U64 exceptionIp;
-    void* eipToHostInstructionAddressSpaceMapping;
+    void* eipToHostInstructionAddressSpaceMapping;    
 
     virtual void startThread() = 0;
     virtual U64 startException(U64 address, bool readAddress, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo) = 0;

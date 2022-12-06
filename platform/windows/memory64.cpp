@@ -29,24 +29,6 @@ U32 getHostAllocationSize() {
 }
 
 #ifdef BOXEDWINE_X64
-void updateNativePermission(Memory* memory, U32 nativePage, U32 nativePageCount, bool canRead, bool canWrite) {
-    DWORD proto = 0;
-    DWORD oldProtect;
-
-    if (canWrite) {
-        proto = PAGE_READWRITE;
-    } else if (canRead) {
-        proto = PAGE_READONLY;
-    } else {
-        proto = PAGE_NOACCESS;
-    }
-
-    if (!VirtualProtect(getNativeAddress(memory, (nativePage << K_NATIVE_PAGE_SHIFT)), nativePageCount << K_NATIVE_PAGE_SHIFT, proto, &oldProtect)) {
-        LPSTR messageBuffer = NULL;
-        size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
-        kpanic("failed to protect memory: %s", messageBuffer);
-    }
-}
 
 // :TODO: what about some sort of garbage collection to MEM_DECOMMIT chunks that no longer contain code mappings
 void commitHostAddressSpaceMapping(Memory* memory, U32 page, U32 pageCount, U64 defaultValue) {
@@ -87,89 +69,6 @@ void commitHostAddressSpaceMapping(Memory* memory, U32 page, U32 pageCount, U64 
     }
 }
 #endif
-
-void allocNativeMemory(Memory* memory, U32 page, U32 pageCount, U32 flags) {
-    U32 granPage;
-    U32 granCount;
-    U32 i;    
-
-    if (!gran) {
-        gran = getHostAllocationSize() / K_PAGE_SIZE;
-    }
-    granPage = page & ~(gran-1);
-    granCount = ((gran - 1) + pageCount + (page - granPage)) / gran;
-    for (i=0; i < granCount; i++) {
-        if (!(memory->nativeFlags[granPage] & NATIVE_FLAG_COMMITTED)) {
-            U32 j;
-
-            if (!VirtualAlloc((void*)(((U64)granPage << K_PAGE_SHIFT) | memory->id), (gran << K_PAGE_SHIFT), MEM_COMMIT, PAGE_READWRITE)) {
-                LPSTR messageBuffer = NULL;
-                size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
-                kpanic("allocNativeMemory: failed to commit memory: granPage=%x page=%x pageCount=%d: %s", granPage, page, pageCount, messageBuffer);
-            }
-            nativeMemoryPagesAllocated += gran;
-            memory->allocated+=(gran << K_PAGE_SHIFT);
-            for (j=0;j<gran;j++)
-                memory->nativeFlags[granPage+j] |= NATIVE_FLAG_COMMITTED;
-        }
-        granPage+=gran;
-    }
-    for (i=0;i<pageCount;i++) {
-        memory->flags[page+i] = flags | PAGE_ALLOCATED;
-    }
-    memset(getNativeAddress(memory, page << K_PAGE_SHIFT), 0, pageCount << K_PAGE_SHIFT);
-    //printf("allocated %X - %X\n", page << PAGE_SHIFT, (page+pageCount) << PAGE_SHIFT);
-}
-
-void freeNativeMemory(Memory* memory, U32 page, U32 pageCount) {
-    U32 i;
-    U32 granPage;
-    U32 granCount;
-
-    for (i=0;i<pageCount;i++) {
-        DWORD oldProtect;
-
-        if ((memory->nativeFlags[page+i] & NATIVE_FLAG_CODEPAGE_READONLY)) {
-            if (!VirtualProtect(getNativeAddress(memory, (page+i) << K_PAGE_SHIFT), (1 << K_PAGE_SHIFT), PAGE_READWRITE, &oldProtect)) {
-                LPSTR messageBuffer = NULL;
-                size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
-                kpanic("failed to unprotect memory: %s", messageBuffer);
-            }
-            memory->nativeFlags[page] &= ~NATIVE_FLAG_CODEPAGE_READONLY;
-        }
-        memory->clearCodePageFromCache(page+i);
-        memory->flags[page+i] = 0;
-    }    
-
-    granPage = page & ~(gran-1);
-    granCount = ((gran - 1) + pageCount + (page - granPage)) / gran;
-    for (i=0; i < granCount; i++) {
-        if (memory->nativeFlags[granPage] & NATIVE_FLAG_COMMITTED) {
-            U32 j;
-            BOOL inUse = FALSE;
-
-            for (j = 0; j < gran; j++) {
-                if (memory->isPageAllocated(granPage + j)) {
-                    inUse = TRUE;
-                    break;
-                }
-            }
-            if (!inUse) {
-                if (!VirtualFree((void*)((granPage << K_PAGE_SHIFT) | memory->id), gran, MEM_DECOMMIT)) {
-                    LPSTR messageBuffer = NULL;
-                    size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
-                    kpanic("failed to release memory: %s", messageBuffer);
-                }
-                nativeMemoryPagesAllocated -= gran;
-                for (j = 0; j < gran; j++) {
-                    memory->nativeFlags[granPage + j] = 0;
-                }
-                memory->allocated -= (gran << K_PAGE_SHIFT);
-            }
-        }
-        granPage+=gran;
-    }  
-}
 
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
 void* allocExecutable64kBlock(Memory* memory, U32 count) {
@@ -225,6 +124,7 @@ void releaseNativeMemory(Memory* memory) {
     for (i=0;i<K_NUMBER_OF_PAGES;i++) {
         memory->clearCodePageFromCache(i);
     }
+    memory->clearAllNeedsMemoryOffset();
 
     if (!VirtualFree((void*)memory->id, 0, MEM_RELEASE)) {
         LPSTR messageBuffer = NULL;
@@ -264,10 +164,10 @@ void makeCodePageReadOnly(Memory* memory, U32 page) {
         if (memory->dynamicCodePageUpdateCount[page]==MAX_DYNAMIC_CODE_PAGE_COUNT) {
             kpanic("makeCodePageReadOnly: tried to make a dynamic code page read-only");
         }
-        if (!VirtualProtect(getNativeAddress(memory, page << K_PAGE_SHIFT), (1 << K_PAGE_SHIFT), PAGE_READONLY, &oldProtect)) {
+        if (!VirtualProtect(getNativeAddressNoCheck(memory, page << K_NATIVE_PAGE_SHIFT), (1 << K_NATIVE_PAGE_SHIFT), PAGE_READONLY, &oldProtect)) {
             LPSTR messageBuffer = NULL;
             size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
-            kpanic("makeCodePageReadOnly: Failed to protect memory 0x%0.8X: %s", (page<<K_PAGE_SHIFT), messageBuffer);
+            kpanic("makeCodePageReadOnly: Failed to protect memory 0x%0.8X: %s", (page<< K_NATIVE_PAGE_SHIFT), messageBuffer);
         }
         memory->nativeFlags[page] |= NATIVE_FLAG_CODEPAGE_READONLY;
     }
@@ -279,7 +179,7 @@ bool clearCodePageReadOnly(Memory* memory, U32 page) {
 
     // :TODO: would the granularity ever be more than 4k?  should I check: SYSTEM_INFO System_Info; GetSystemInfo(&System_Info);
     if (memory->nativeFlags[page] & NATIVE_FLAG_CODEPAGE_READONLY) {        
-        if (!VirtualProtect(getNativeAddress(memory, page << K_PAGE_SHIFT), (1 << K_PAGE_SHIFT), PAGE_READWRITE, &oldProtect)) {
+        if (!VirtualProtect(getNativeAddressNoCheck(memory, page << K_NATIVE_PAGE_SHIFT), (1 << K_NATIVE_PAGE_SHIFT), PAGE_READWRITE, &oldProtect)) {
             LPSTR messageBuffer = NULL;
             size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
             kpanic("failed to unprotect memory: %s", messageBuffer);

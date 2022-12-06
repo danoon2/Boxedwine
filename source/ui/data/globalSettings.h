@@ -65,6 +65,7 @@ public:
     static void reloadWineVersions();
     static std::string getFileFromWineName(const std::string& name);    
     static WineVersion* getAvailableWineFromName(const std::string& name);
+    static WineVersion* getInstalledWineFromName(const std::string& name);
     static std::string getContainerFolder();
     static std::string getFileSystemFolder();    
     static std::string getAppFolder(BoxedContainer* container);

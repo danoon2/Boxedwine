@@ -1158,6 +1158,8 @@ static U32 intIb(X64Asm* data) {
         data->int98(data->ip-data->startOfOpIp);
     } else if (i==0x99) {
         data->int99(data->ip-data->startOfOpIp);
+    } else if (i == 0x9A) {
+        data->int9A(data->ip - data->startOfOpIp);
     }
 #ifdef __TEST
     else if (i==0x97) {
@@ -1428,216 +1430,196 @@ static U32 bswapEsp(X64Asm* data) {
     return 0;
 }
 
-static void mov16(X64Asm* data, void* pfn, U8 size, bool repeat, U32 base) {
-    data->movs16(pfn, size, repeat, base);
-}
-
-static void cmp16(X64Asm* data, void* pfn, U8 size, bool repeat, bool rep_zero, U32 base) {
-    data->cmps16(pfn, size, repeat, rep_zero, base);
-}
-
-static void sto16(X64Asm* data, void* pfn, U8 size, bool repeat) {
-    data->stos16(pfn, size, repeat);
-}
-
-static void lod16(X64Asm* data, void* pfn, U8 size, bool repeat, U32 base) {
-    data->lods16(pfn, size, repeat, base);
-}
-
-static void sca16(X64Asm* data, void* pfn, U8 size, bool repeat, bool rep_zero) {
-    data->scas16(pfn, size, repeat, rep_zero);
-}
-
 static U32 movsb(X64Asm* data) {
-    if (!data->ea16) {
+    if (!data->ea16 && data->useSingleMemOffset) {
         data->string32(true, true);
     } else {
         if (data->repNotZeroPrefix || data->repZeroPrefix) {
-            mov16(data, (void*)movsb16r, 1, true, data->ds);
+            data->movs((void*)(data->ea16 ? movsb16r : movsb32r), 1, true, data->ds);
         } else {
-            mov16(data, (void*)movsb16, 1, false, data->ds);
+            data->movs((void*)(data->ea16 ? movsb16 : movsb32), 1, false, data->ds);
         }
     }
     return 0;
 }
 
 static U32 movsw(X64Asm* data) {
-    if (!data->ea16) {
+    if (!data->ea16 && data->useSingleMemOffset) {
         data->string32(true, true);
     } else {
         if (data->repNotZeroPrefix || data->repZeroPrefix) {
-            mov16(data, (void*)movsw16r, 2, true, data->ds);
+            data->movs((void*)(data->ea16 ? movsw16r : movsw32r), 2, true, data->ds);
         } else {
-            mov16(data, (void*)movsw16, 2, false, data->ds);
+            data->movs((void*)(data->ea16 ? movsw16 : movsw32), 2, false, data->ds);
         }
     }
     return 0;
 }
 
 static U32 movsd(X64Asm* data) {
-    if (!data->ea16) {
+    if (!data->ea16 && data->useSingleMemOffset) {
         data->string32(true, true);
     } else {
         if (data->repNotZeroPrefix || data->repZeroPrefix) {
-            mov16(data, (void*)movsd16r, 4, true, data->ds);
+            data->movs((void*)(data->ea16 ? movsd16r : movsd32r), 4, true, data->ds);
         } else {
-            mov16(data, (void*)movsd16, 4, false, data->ds);
+            data->movs((void*)(data->ea16 ? movsd16 : movsd32), 4, false, data->ds);
         }
     }
     return 0;
 }
 
 static U32 cmpsb(X64Asm* data) {
-    if (!data->ea16) {
+    if (!data->ea16 && data->useSingleMemOffset) {
         data->string32(true, true);
     } else {
         if (data->repNotZeroPrefix || data->repZeroPrefix) {
-            cmp16(data, (void*)cmpsb16r, 1, true, data->repZeroPrefix, data->ds);
+            data->cmps((void*)(data->ea16 ? cmpsb16r : cmpsb32r), 1, true, data->repZeroPrefix, data->ds);
         } else {
-            cmp16(data, (void*)cmpsb16, 1, false, data->repZeroPrefix, data->ds);
+            data->cmps((void*)(data->ea16 ? cmpsb16 : cmpsb32), 1, false, data->repZeroPrefix, data->ds);
         }
     }
     return 0;
 }
 
 static U32 cmpsw(X64Asm* data) {
-    if (!data->ea16) {
+    if (!data->ea16 && data->useSingleMemOffset) {
         data->string32(true, true);
     } else {
         if (data->repNotZeroPrefix || data->repZeroPrefix) {
-            cmp16(data, (void*)cmpsw16r, 2, true, data->repZeroPrefix, data->ds);
+            data->cmps((void*)(data->ea16 ? cmpsw16r : cmpsw32r), 2, true, data->repZeroPrefix, data->ds);
         } else {
-            cmp16(data, (void*)cmpsw16, 2, false, data->repZeroPrefix, data->ds);
+            data->cmps((void*)(data->ea16 ? cmpsw16 : cmpsw32), 2, false, data->repZeroPrefix, data->ds);
         }
     }
     return 0;
 }
 
 static U32 cmpsd(X64Asm* data) {
-    if (!data->ea16) {
+    if (!data->ea16 && data->useSingleMemOffset) {
         data->string32(true, true);
     } else {
         if (data->repNotZeroPrefix || data->repZeroPrefix) {
-            cmp16(data, (void*)cmpsd16r, 4, true, data->repZeroPrefix, data->ds);
+            data->cmps((void*)(data->ea16 ? cmpsd16r : cmpsd32r), 4, true, data->repZeroPrefix, data->ds);
         } else {
-            cmp16(data, (void*)cmpsd16, 4, false, data->repZeroPrefix, data->ds);
+            data->cmps((void*)(data->ea16 ? cmpsd16 :cmpsd32), 4, false, data->repZeroPrefix, data->ds);
         }
     }
     return 0;
 }
 
 static U32 stosb(X64Asm* data) {
-    if (!data->ea16) {
+    if (!data->ea16 && data->useSingleMemOffset) {
         data->string32(false, true);
     } else {
         if (data->repNotZeroPrefix || data->repZeroPrefix) {
-            sto16(data, (void*)stosb16r, 1, true);
+            data->stos((void*)(data->ea16 ? stosb16r : stosb32r), 1, true);
         } else {
-            sto16(data, (void*)stosb16, 1, false);
+            data->stos((void*)(data->ea16 ? stosb16 : stosb32), 1, false);
         }
     }
     return 0;
 }
 
 static U32 stosw(X64Asm* data) {
-    if (!data->ea16) {
+    if (!data->ea16 && data->useSingleMemOffset) {
         data->string32(false, true);
     } else {
         if (data->repNotZeroPrefix || data->repZeroPrefix) {
-            sto16(data, (void*)stosw16r, 2, true);
+            data->stos((void*)(data->ea16 ? stosw16r : stosw32r), 2, true);
         } else {
-            sto16(data, (void*)stosw16, 2, false);
+            data->stos((void*)(data->ea16 ? stosw16 : stosw32), 2, false);
         }
     }
     return 0;
 }
 
 static U32 stosd(X64Asm* data) {
-    if (!data->ea16) {
+    if (!data->ea16 && data->useSingleMemOffset) {
         data->string32(false, true);
     } else {
         if (data->repNotZeroPrefix || data->repZeroPrefix) {
-            sto16(data, (void*)stosd16r, 4, true);
+            data->stos((void*)(data->ea16 ? stosd16r : stosd32r), 4, true);
         } else {
-            sto16(data, (void*)stosd16, 4, false);
+            data->stos((void*)(data->ea16 ? stosd16 : stosd32), 4, false);
         }
     }
     return 0;
 }
 
 static U32 lodsb(X64Asm* data) {
-    if (!data->ea16) {
+    if (!data->ea16 && data->useSingleMemOffset) {
         data->string32(true, false);
     } else {
         if (data->repNotZeroPrefix || data->repZeroPrefix) {
-            lod16(data, (void*)lodsb16r, 1, true, data->ds);
+            data->lods((void*)(data->ea16 ? lodsb16r : lodsb32r), 1, true, data->ds);
         } else {
-            lod16(data, (void*)lodsb16, 1, false, data->ds);
+            data->lods((void*)(data->ea16 ? lodsb16 : lodsb32), 1, false, data->ds);
         }
     }
     return 0;
 }
 
 static U32 lodsw(X64Asm* data) {
-    if (!data->ea16) {
+    if (!data->ea16 && data->useSingleMemOffset) {
         data->string32(true, false);
     } else {
         if (data->repNotZeroPrefix || data->repZeroPrefix) {
-            lod16(data, (void*)lodsw16r, 2, true, data->ds);
+            data->lods((void*)(data->ea16 ? lodsw16r : lodsw32r), 2, true, data->ds);
         } else {
-            lod16(data, (void*)lodsw16, 2, false, data->ds);
+            data->lods((void*)(data->ea16 ? lodsw16 : lodsw32), 2, false, data->ds);
         }
     }
     return 0;
 }
 
 static U32 lodsd(X64Asm* data) {
-    if (!data->ea16) {
+    if (!data->ea16 && data->useSingleMemOffset) {
         data->string32(true, false);
     } else {
         if (data->repNotZeroPrefix || data->repZeroPrefix) {
-            lod16(data, (void*)lodsd16r, 4, true, data->ds);
+            data->lods((void*)(data->ea16 ? lodsd16r : lodsd32r), 4, true, data->ds);
         } else {
-            lod16(data, (void*)lodsd16, 4, false, data->ds);
+            data->lods((void*)(data->ea16 ? lodsd16 : lodsd32), 4, false, data->ds);
         }
     }
     return 0;
 }
 
 static U32 scasb(X64Asm* data) {
-    if (!data->ea16) {
+    if (!data->ea16 && data->useSingleMemOffset) {
         data->string32(false, true);
     } else {
         if (data->repNotZeroPrefix || data->repZeroPrefix) {
-            sca16(data, (void*)scasb16r, 1, true, data->repZeroPrefix);
+            data->scas((void*)(data->ea16 ? scasb16r : scasb32r), 1, true, data->repZeroPrefix);
         } else {
-            sca16(data, (void*)scasb16, 1, false, data->repZeroPrefix);
+            data->scas((void*)(data->ea16 ? scasb16 : scasb32), 1, false, data->repZeroPrefix);
         }
     }
     return 0;
 }
 
 static U32 scasw(X64Asm* data) {
-    if (!data->ea16) {
+    if (!data->ea16 && data->useSingleMemOffset) {
         data->string32(false, true);
     } else {
         if (data->repNotZeroPrefix || data->repZeroPrefix) {
-            sca16(data, (void*)scasw16r, 2, true, data->repZeroPrefix);
+            data->scas((void*)(data->ea16 ? scasw16r : scasw32r), 2, true, data->repZeroPrefix);
         } else {
-            sca16(data, (void*)scasw16, 2, false, data->repZeroPrefix);
+            data->scas((void*)(data->ea16 ? scasw16 : scasw32), 2, false, data->repZeroPrefix);
         }
     }
     return 0;
 }
 
 static U32 scasd(X64Asm* data) {
-    if (!data->ea16) {
+    if (!data->ea16 && data->useSingleMemOffset) {
         data->string32(false, true);
     } else {
         if (data->repNotZeroPrefix || data->repZeroPrefix) {
-            sca16(data, (void*)scasd16r, 4, true, data->repZeroPrefix);
+            data->scas((void*)(data->ea16 ? scasd16r : scasd32r), 4, true, data->repZeroPrefix);
         } else {
-            sca16(data, (void*)scasd16, 4, false, data->repZeroPrefix);
+            data->scas((void*)(data->ea16 ? scasd16 : scasd32), 4, false, data->repZeroPrefix);
         }
     }
     return 0;

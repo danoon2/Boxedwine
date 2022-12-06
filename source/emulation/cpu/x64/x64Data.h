@@ -36,7 +36,7 @@
 #define HOST_LARGE_ADDRESS_SPACE_MAPPING           6
 #define HOST_SMALL_ADDRESS_SPACE_SS                6
 
-#define HOST_DS           7
+#define HOST_TMP4         7
 
 class TodoJump {
 public:
@@ -124,7 +124,7 @@ public:
     U32 bufferPos;
     U8 bufferInternal[256];
     bool dynamic;
-
+    bool useSingleMemOffset;
     bool skipWriteOp;
     bool isG8bitWritten;
 };

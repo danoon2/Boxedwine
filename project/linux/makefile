@@ -83,6 +83,7 @@ TEST_SOURCES += $(wildcard $(PROJDIR)/source/kernel/**/*.cpp)
 TEST_SOURCES += $(wildcard $(PROJDIR)/source/util/*.cpp)
 TEST_SOURCES += $(wildcard $(PROJDIR)/source/opengl/sdl/*.cpp)
 TEST_SOURCES += $(wildcard $(PROJDIR)/source/opengl/*.cpp)
+TEST_SOURCES += $(wildcard $(PROJDIR)/source/vulkan/*.cpp)
 
 ifeq ($(BUILD_DIR), Build/Test)
 SRCS := $(TEST_SOURCES)

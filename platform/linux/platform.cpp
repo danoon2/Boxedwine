@@ -23,6 +23,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <SDL.h>
+#include <sys/mman.h>
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
 #include "../../source/emulation/cpu/binaryTranslation/btCpu.h"
 #endif
@@ -197,6 +198,44 @@ void Platform::setCurrentThreadPriorityHigh() {
 }
 
 #endif
+
+U32 Platform::getPageAllocationGranularity() {
+    return K_NATIVE_PAGES_PER_PAGE;
+}
+
+U32 Platform::getPagePermissionGranularity() {
+    return K_NATIVE_PAGES_PER_PAGE;
+}
+
+U32 Platform::allocateNativeMemory(U64 address) {
+    if (mprotect((void*)address, getPageAllocationGranularity() << K_PAGE_SHIFT, PROT_READ | PROT_WRITE) < 0) {
+        kpanic("allocNativeMemory mprotect failed: %s", strerror(errno));
+    }
+    return 0;
+}
+
+U32 Platform::freeNativeMemory(U64 address) {
+    mprotect((void*)address, getPageAllocationGranularity() << K_PAGE_SHIFT, PROT_NONE);
+    return 0;
+}
+
+U32 Platform::updateNativePermission(U64 address, U32 permission, U32 len) {
+    U32 proto = 0;
+    if ((permission & PAGE_READ) || (permission & PAGE_EXEC)) {
+        proto |= PROT_READ;
+    }
+    if (permission & PAGE_WRITE) {
+        proto |= PROT_WRITE;
+    }
+    if (!proto) {
+        proto = PROT_NONE;
+    }
+    if (len == 0) {
+        len = getPagePermissionGranularity() << K_PAGE_SHIFT;
+    }
+    mprotect((void*)address, len, proto);
+    return 0;
+}
 
 #ifdef BOXEDWINE_MULTI_THREADED
 #ifdef __MACH__

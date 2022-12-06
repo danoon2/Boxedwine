@@ -23,6 +23,7 @@ X64Data::X64Data(x64CPU* cpu) : cpu(cpu) {
     this->calculatedEipLen = 0;
     this->stopAfterInstruction = -1;
     this->dynamic = false;
+    this->useSingleMemOffset = true;
 }
 
 X64Data::~X64Data() {

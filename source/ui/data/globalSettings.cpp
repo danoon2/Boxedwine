@@ -183,8 +183,17 @@ std::string GlobalSettings::getFileFromWineName(const std::string& name) {
     return "";
 }
 
-WineVersion* GlobalSettings::getAvailableWineFromName(const std::string& name) {
+WineVersion* GlobalSettings::getInstalledWineFromName(const std::string& name) {
     for (auto& ver : GlobalSettings::wineVersions) {
+        if (stringCaseInSensativeEquals(ver.name, name)) {
+            return &ver;
+        }
+    }
+    return NULL;
+}
+
+WineVersion* GlobalSettings::getAvailableWineFromName(const std::string& name) {
+    for (auto& ver : GlobalSettings::availableWineVersions) {
         if (stringCaseInSensativeEquals(ver.name, name)) {
             return &ver;
         }
@@ -713,9 +722,19 @@ std::string WineVersion::getDependFilePath() const {
 }
 
 WineVersion* WineVersion::getMissingDependency() const {
+    std::string dependPath = GlobalSettings::getFileSystemFolder() + Fs::nativePathSeperator + depend;
+    for (auto& w : GlobalSettings::availableWineDependencies) {
+        if (w.name == this->depend) {
+            std::string version;
+            if (FsZip::readFileFromZip(dependPath, "version.txt", version)) {
+                if (version != w.fsVersion) {
+                    return &w;
+                }
+            }
+        }
+    }
     if (this->depend.length()) {
-        if (!Fs::doesNativePathExist(this->depend)) {
-            std::string dependPath = GlobalSettings::getFileSystemFolder() + Fs::nativePathSeperator + depend;
+        if (!Fs::doesNativePathExist(this->depend)) {            
             if (!Fs::doesNativePathExist(dependPath)) {
                 for (auto& w : GlobalSettings::availableWineDependencies) {
                     if (w.name == this->depend) {

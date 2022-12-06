@@ -29,6 +29,12 @@
 		1A1551FD26326745006E0C8A /* OpenSSL.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1A4F1C362631FDAD0076F847 /* OpenSSL.xcframework */; };
 		1A1551FE26326745006E0C8A /* OpenSSL.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1A4F1C362631FDAD0076F847 /* OpenSSL.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		1A1551FF26326C8A006E0C8A /* SDL2.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1A1551E82632656D006E0C8A /* SDL2.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		1A2236372820A85200E74D88 /* uptime.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A2236362820A85200E74D88 /* uptime.cpp */; };
+		1A2236382820A85200E74D88 /* uptime.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A2236362820A85200E74D88 /* uptime.cpp */; };
+		1A2236392820A85200E74D88 /* uptime.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A2236362820A85200E74D88 /* uptime.cpp */; };
+		1A22363A2820A85200E74D88 /* uptime.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A2236362820A85200E74D88 /* uptime.cpp */; };
+		1A22363B2820A85200E74D88 /* uptime.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A2236362820A85200E74D88 /* uptime.cpp */; };
+		1A22363C2820A85200E74D88 /* uptime.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A2236362820A85200E74D88 /* uptime.cpp */; };
 		1A4F1C7C26321EC60076F847 /* OpenSSL.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1A4F1C362631FDAD0076F847 /* OpenSSL.xcframework */; };
 		1A4F1C7D26321EC60076F847 /* OpenSSL.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1A4F1C362631FDAD0076F847 /* OpenSSL.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		1A4F8E1D24F740CD0046703D /* helpView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A4F8E1C24F740CC0046703D /* helpView.cpp */; };
@@ -1292,6 +1298,18 @@
 		1AC5F2FD2772D9D6001D0FCA /* platformThreads-armv8.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AC5F2F92772D9D6001D0FCA /* platformThreads-armv8.cpp */; };
 		1AC5F2FE2772D9D6001D0FCA /* platformThreads-armv8.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AC5F2F92772D9D6001D0FCA /* platformThreads-armv8.cpp */; };
 		1AC5F2FF2772D9D6001D0FCA /* platformThreads-armv8.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AC5F2F92772D9D6001D0FCA /* platformThreads-armv8.cpp */; };
+		1AC96017278FB69600107ED0 /* vk_host.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AC96012278FB69500107ED0 /* vk_host.cpp */; };
+		1AC96018278FB69600107ED0 /* vk_host.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AC96012278FB69500107ED0 /* vk_host.cpp */; };
+		1AC96019278FB69600107ED0 /* vk_host.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AC96012278FB69500107ED0 /* vk_host.cpp */; };
+		1AC9601A278FB69600107ED0 /* vk_host.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AC96012278FB69500107ED0 /* vk_host.cpp */; };
+		1AC9601B278FB69600107ED0 /* vk_host.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AC96012278FB69500107ED0 /* vk_host.cpp */; };
+		1AC9601C278FB69600107ED0 /* vk_host.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AC96012278FB69500107ED0 /* vk_host.cpp */; };
+		1AC9601D278FB69600107ED0 /* vulkancommon.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AC96016278FB69600107ED0 /* vulkancommon.cpp */; };
+		1AC9601E278FB69600107ED0 /* vulkancommon.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AC96016278FB69600107ED0 /* vulkancommon.cpp */; };
+		1AC9601F278FB69600107ED0 /* vulkancommon.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AC96016278FB69600107ED0 /* vulkancommon.cpp */; };
+		1AC96020278FB69600107ED0 /* vulkancommon.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AC96016278FB69600107ED0 /* vulkancommon.cpp */; };
+		1AC96021278FB69600107ED0 /* vulkancommon.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AC96016278FB69600107ED0 /* vulkancommon.cpp */; };
+		1AC96022278FB69600107ED0 /* vulkancommon.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AC96016278FB69600107ED0 /* vulkancommon.cpp */; };
 		1AFC4768264096CB00EE5FCC /* armv8CPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4764264096CB00EE5FCC /* armv8CPU.cpp */; };
 		1AFC4769264096CB00EE5FCC /* llvm_helper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4765264096CB00EE5FCC /* llvm_helper.cpp */; };
 		1AFC476D26409EB200EE5FCC /* armv8CPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4764264096CB00EE5FCC /* armv8CPU.cpp */; };
@@ -2819,6 +2837,8 @@
 		1A1551B32632626E006E0C8A /* pugixml.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = pugixml.hpp; path = ../../../../../lib/pugixml/src/pugixml.hpp; sourceTree = "<group>"; };
 		1A1551B42632626E006E0C8A /* pugixml.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = pugixml.cpp; path = ../../../../../lib/pugixml/src/pugixml.cpp; sourceTree = "<group>"; };
 		1A1551E82632656D006E0C8A /* SDL2.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SDL2.framework; path = ../../../lib/mac/SDL2.framework; sourceTree = "<group>"; };
+		1A2236352820A84100E74D88 /* uptime.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = uptime.h; sourceTree = "<group>"; };
+		1A2236362820A85200E74D88 /* uptime.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = uptime.cpp; sourceTree = "<group>"; };
 		1A4F1C362631FDAD0076F847 /* OpenSSL.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = OpenSSL.xcframework; path = Carthage/Build/OpenSSL.xcframework; sourceTree = "<group>"; };
 		1A4F8E1B24F740CC0046703D /* helpView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = helpView.h; sourceTree = "<group>"; };
 		1A4F8E1C24F740CC0046703D /* helpView.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = helpView.cpp; sourceTree = "<group>"; };
@@ -2863,6 +2883,11 @@
 		1AC5F2A32772D956001D0FCA /* armv8btCodeChunk.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = armv8btCodeChunk.h; path = armv8bt/armv8btCodeChunk.h; sourceTree = "<group>"; };
 		1AC5F2A42772D956001D0FCA /* armv8btCPU.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = armv8btCPU.cpp; path = armv8bt/armv8btCPU.cpp; sourceTree = "<group>"; };
 		1AC5F2F92772D9D6001D0FCA /* platformThreads-armv8.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = "platformThreads-armv8.cpp"; path = "../../../platform/linux/platformThreads-armv8.cpp"; sourceTree = "<group>"; };
+		1AC96012278FB69500107ED0 /* vk_host.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = vk_host.cpp; path = vulkan/vk_host.cpp; sourceTree = "<group>"; };
+		1AC96013278FB69600107ED0 /* vkfuncs.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = vkfuncs.h; path = vulkan/vkfuncs.h; sourceTree = "<group>"; };
+		1AC96014278FB69600107ED0 /* vk_host.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = vk_host.h; path = vulkan/vk_host.h; sourceTree = "<group>"; };
+		1AC96015278FB69600107ED0 /* vkdef.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = vkdef.h; path = vulkan/vkdef.h; sourceTree = "<group>"; };
+		1AC96016278FB69600107ED0 /* vulkancommon.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = vulkancommon.cpp; path = vulkan/vulkancommon.cpp; sourceTree = "<group>"; };
 		1AFC4764264096CB00EE5FCC /* armv8CPU.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = armv8CPU.cpp; sourceTree = "<group>"; };
 		1AFC4765264096CB00EE5FCC /* llvm_helper.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = llvm_helper.cpp; sourceTree = "<group>"; };
 		1AFC4766264096CB00EE5FCC /* armv8CPU.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = armv8CPU.h; sourceTree = "<group>"; };
@@ -3910,6 +3935,18 @@
 			name = armv8bt;
 			sourceTree = "<group>";
 		};
+		1AC96011278FB67800107ED0 /* vulkan */ = {
+			isa = PBXGroup;
+			children = (
+				1AC96012278FB69500107ED0 /* vk_host.cpp */,
+				1AC96014278FB69600107ED0 /* vk_host.h */,
+				1AC96015278FB69600107ED0 /* vkdef.h */,
+				1AC96013278FB69600107ED0 /* vkfuncs.h */,
+				1AC96016278FB69600107ED0 /* vulkancommon.cpp */,
+			);
+			name = vulkan;
+			sourceTree = "<group>";
+		};
 		1AFC47632640965500EE5FCC /* armv8 */ = {
 			isa = PBXGroup;
 			children = (
@@ -4604,6 +4641,7 @@
 		71FBFCD72433BBAD003F17F1 /* include */ = {
 			isa = PBXGroup;
 			children = (
+				1A2236352820A84100E74D88 /* uptime.h */,
 				1AB0CAFC263BA83A003AF407 /* kdspaudio.h */,
 				71DF8E1B248F29C300EE1E08 /* knativeaudio.h */,
 				71DF8E1E248F29C300EE1E08 /* knativesynchronization.h */,
@@ -4670,6 +4708,7 @@
 		71FBFD0C2433BBBE003F17F1 /* source */ = {
 			isa = PBXGroup;
 			children = (
+				1AC96011278FB67800107ED0 /* vulkan */,
 				71FBFD0D2433BBBE003F17F1 /* ui */,
 				71FBFD442433BBBE003F17F1 /* test */,
 				71FBFD4D2433BBBE003F17F1 /* util */,
@@ -5135,6 +5174,7 @@
 		71FBFE162433BBBE003F17F1 /* proc */ = {
 			isa = PBXGroup;
 			children = (
+				1A2236362820A85200E74D88 /* uptime.cpp */,
 				71FBFE172433BBBE003F17F1 /* bufferaccess.cpp */,
 				71FBFE182433BBBE003F17F1 /* cpuinfo.cpp */,
 				71FBFE192433BBBE003F17F1 /* meminfo.cpp */,
@@ -5580,6 +5620,7 @@
 				1A80EEC2276EBCC70032A70A /* RWLock.cpp in Sources */,
 				1A80EEC3276EBCC70032A70A /* URI.cpp in Sources */,
 				1A80EEC4276EBCC70032A70A /* pcre_refcount.c in Sources */,
+				1A2236392820A85200E74D88 /* uptime.cpp in Sources */,
 				1A80EEC5276EBCC70032A70A /* HostEntry.cpp in Sources */,
 				1A80EEC6276EBCC70032A70A /* knativeaudio.cpp in Sources */,
 				1A80EEC7276EBCC70032A70A /* cpuscalingcurfreq.cpp in Sources */,
@@ -5945,6 +5986,7 @@
 				1A80F020276EBCC70032A70A /* CertificateHandlerFactory.cpp in Sources */,
 				1A80F021276EBCC70032A70A /* LogFile.cpp in Sources */,
 				1A80F022276EBCC70032A70A /* devdsp.cpp in Sources */,
+				1AC9601F278FB69600107ED0 /* vulkancommon.cpp in Sources */,
 				1A80F023276EBCC70032A70A /* globalSettings.cpp in Sources */,
 				1A80F024276EBCC70032A70A /* NetException.cpp in Sources */,
 				1A80F025276EBCC70032A70A /* UUID.cpp in Sources */,
@@ -5977,6 +6019,7 @@
 				1A80F040276EBCC70032A70A /* pcre_chartables.c in Sources */,
 				1A80F041276EBCC70032A70A /* boxedApp.cpp in Sources */,
 				1A80F042276EBCC70032A70A /* compress.c in Sources */,
+				1AC96019278FB69600107ED0 /* vk_host.cpp in Sources */,
 				1A80F043276EBCC70032A70A /* TextConverter.cpp in Sources */,
 				1A80F044276EBCC70032A70A /* ActiveDispatcher.cpp in Sources */,
 				1A80F045276EBCC70032A70A /* DataURIStream.cpp in Sources */,
@@ -6205,6 +6248,7 @@
 				1A80F12D276EBF170032A70A /* kscheduler.cpp in Sources */,
 				1A80F12E276EBF170032A70A /* bignum-dtoa.cc in Sources */,
 				1A80F12F276EBF170032A70A /* common_sse2.cpp in Sources */,
+				1AC9601A278FB69600107ED0 /* vk_host.cpp in Sources */,
 				1A80F130276EBF170032A70A /* PipeStream.cpp in Sources */,
 				1A80F131276EBF170032A70A /* x64CodeChunk.cpp in Sources */,
 				1A80F132276EBF170032A70A /* Message.cpp in Sources */,
@@ -6215,6 +6259,7 @@
 				1A80F137276EBF170032A70A /* HTTPHeaderStream.cpp in Sources */,
 				1A80F138276EBF170032A70A /* Exception.cpp in Sources */,
 				1A80F139276EBF170032A70A /* SocketAddress.cpp in Sources */,
+				1A22363A2820A85200E74D88 /* uptime.cpp in Sources */,
 				1A80F13A276EBF170032A70A /* infback.c in Sources */,
 				1A80F13B276EBF170032A70A /* SocketImpl.cpp in Sources */,
 				1A80F13C276EBF170032A70A /* PartHandler.cpp in Sources */,
@@ -6486,6 +6531,7 @@
 				1A80F240276EBF170032A70A /* log.cpp in Sources */,
 				1A80F241276EBF170032A70A /* Timer.cpp in Sources */,
 				1A80F242276EBF170032A70A /* ErrorHandler.cpp in Sources */,
+				1AC96020278FB69600107ED0 /* vulkancommon.cpp in Sources */,
 				1A80F243276EBF170032A70A /* Latin2Encoding.cpp in Sources */,
 				1A80F244276EBF170032A70A /* ICMPSocketImpl.cpp in Sources */,
 				1A80F245276EBF170032A70A /* TCPServerParams.cpp in Sources */,
@@ -6655,6 +6701,7 @@
 				71222B792435169100CDBABD /* soft_no_page.cpp in Sources */,
 				1AC5F2AF2772D957001D0FCA /* armv8btOps_sse_shuffle.cpp in Sources */,
 				71222B412435163F00CDBABD /* log.cpp in Sources */,
+				1AC9601B278FB69600107ED0 /* vk_host.cpp in Sources */,
 				71222B712435169100CDBABD /* decoder.cpp in Sources */,
 				71222BAA2435169100CDBABD /* devurandom.cpp in Sources */,
 				710091502644D42C003413C3 /* sdlcallback.cpp in Sources */,
@@ -6747,11 +6794,13 @@
 				710091442644D42C003413C3 /* kdspaudio.cpp in Sources */,
 				71222BC32435169100CDBABD /* glMarshal.cpp in Sources */,
 				1AC5F2D92772D957001D0FCA /* armv8btOps_fpu.cpp in Sources */,
+				1AC96021278FB69600107ED0 /* vulkancommon.cpp in Sources */,
 				1A1551BA26326273006E0C8A /* pugixml.cpp in Sources */,
 				1AFC480C2663FFC000EE5FCC /* pixelformat.cpp in Sources */,
 				1AC5F2B52772D957001D0FCA /* armv8btCodeChunk.cpp in Sources */,
 				71222B752435169100CDBABD /* normal_strings.cpp in Sources */,
 				71222B782435169100CDBABD /* soft_ondemand_page.cpp in Sources */,
+				1A22363B2820A85200E74D88 /* uptime.cpp in Sources */,
 				1AC5F2CD2772D957001D0FCA /* armv8btOps_mmx.cpp in Sources */,
 				1AFC479F2648471000EE5FCC /* audiounit.cpp in Sources */,
 				1AFC479B26483DE000EE5FCC /* knativecoreaudio.cpp in Sources */,
@@ -6912,6 +6961,7 @@
 				715F82EE2440ED1E0038F5A4 /* URI.cpp in Sources */,
 				715F83922440ED1F0038F5A4 /* pcre_refcount.c in Sources */,
 				715F63D72440E9110038F5A4 /* HostEntry.cpp in Sources */,
+				1A2236382820A85200E74D88 /* uptime.cpp in Sources */,
 				1A155114263261E7006E0C8A /* mztools.c in Sources */,
 				71222BEE24351CBA00CDBABD /* cpuscalingcurfreq.cpp in Sources */,
 				710091612644D44E003413C3 /* platformThreads.cpp in Sources */,
@@ -7277,6 +7327,7 @@
 				71222C5924351CBA00CDBABD /* winedrv.cpp in Sources */,
 				715F64712440E9740038F5A4 /* CertificateHandlerFactory.cpp in Sources */,
 				715F830A2440ED1E0038F5A4 /* LogFile.cpp in Sources */,
+				1AC9601E278FB69600107ED0 /* vulkancommon.cpp in Sources */,
 				71222C5A24351CBA00CDBABD /* devdsp.cpp in Sources */,
 				71222C5B24351CBA00CDBABD /* globalSettings.cpp in Sources */,
 				715F63ED2440E9110038F5A4 /* NetException.cpp in Sources */,
@@ -7309,6 +7360,7 @@
 				715F827A2440ED1E0038F5A4 /* NumberFormatter.cpp in Sources */,
 				715F82582440ED1D0038F5A4 /* inflate.c in Sources */,
 				715F84262440ED200038F5A4 /* pcre_chartables.c in Sources */,
+				1AC96018278FB69600107ED0 /* vk_host.cpp in Sources */,
 				710091642644D44E003413C3 /* platformThreads-x64.cpp in Sources */,
 				71222C6424351CBA00CDBABD /* boxedApp.cpp in Sources */,
 				715F82822440ED1E0038F5A4 /* compress.c in Sources */,
@@ -7383,6 +7435,7 @@
 				7135DC18264EBCD0005D6AA6 /* x64Data.cpp in Sources */,
 				7135DC19264EBCD0005D6AA6 /* testMMX.cpp in Sources */,
 				7135DC1A264EBCD0005D6AA6 /* knativesynchronization.cpp in Sources */,
+				1AC96022278FB69600107ED0 /* vulkancommon.cpp in Sources */,
 				7135DC1B264EBCD0005D6AA6 /* armv8CPU.cpp in Sources */,
 				7135DC1C264EBCD0005D6AA6 /* x64CPU.cpp in Sources */,
 				7135DC1D264EBCD0005D6AA6 /* platformThreads-x64.cpp in Sources */,
@@ -7397,6 +7450,7 @@
 				1AC5F2B62772D957001D0FCA /* armv8btCodeChunk.cpp in Sources */,
 				7135DC25264EBCD0005D6AA6 /* log.cpp in Sources */,
 				7135DC26264EBCD0005D6AA6 /* decoder.cpp in Sources */,
+				1AC9601C278FB69600107ED0 /* vk_host.cpp in Sources */,
 				7135DC27264EBCD0005D6AA6 /* devurandom.cpp in Sources */,
 				7135DC28264EBCD0005D6AA6 /* sdlcallback.cpp in Sources */,
 				7135DC29264EBCD0005D6AA6 /* knativethread.cpp in Sources */,
@@ -7490,6 +7544,7 @@
 				7135DC74264EBCD0005D6AA6 /* knativeaudio.cpp in Sources */,
 				7135DC75264EBCD0005D6AA6 /* kobject.cpp in Sources */,
 				7135DC76264EBCD0005D6AA6 /* platform.cpp in Sources */,
+				1A22363C2820A85200E74D88 /* uptime.cpp in Sources */,
 				7135DC77264EBCD0005D6AA6 /* fsmemopennode.cpp in Sources */,
 				7135DC78264EBCD0005D6AA6 /* x64CodeChunk.cpp in Sources */,
 				1AC5F2D42772D957001D0FCA /* armv8btOps_sse_convert.cpp in Sources */,
@@ -7670,6 +7725,7 @@
 				715F63CE2440E9110038F5A4 /* WebSocketImpl.cpp in Sources */,
 				715F640A2440E9110038F5A4 /* HTTPStreamFactory.cpp in Sources */,
 				71FBFEAB2433BBBE003F17F1 /* fsmemnode.cpp in Sources */,
+				1AC9601D278FB69600107ED0 /* vulkancommon.cpp in Sources */,
 				715F64162440E9110038F5A4 /* HTTPIOStream.cpp in Sources */,
 				1AC5F2A52772D957001D0FCA /* armv8btOps_string.cpp in Sources */,
 				715F63F82440E9110038F5A4 /* MessageHeader.cpp in Sources */,
@@ -7855,6 +7911,7 @@
 				715F83752440ED1F0038F5A4 /* RefCountedObject.cpp in Sources */,
 				715F83532440ED1F0038F5A4 /* HexBinaryDecoder.cpp in Sources */,
 				715F83792440ED1F0038F5A4 /* pcre_version.c in Sources */,
+				1A2236372820A85200E74D88 /* uptime.cpp in Sources */,
 				715F641C2440E9110038F5A4 /* HTTPBasicCredentials.cpp in Sources */,
 				71FBFEC42433BBBE003F17F1 /* devtty.cpp in Sources */,
 				1AFC4794264826FD00EE5FCC /* knativecoreaudio.cpp in Sources */,
@@ -7893,6 +7950,7 @@
 				715F63D82440E9110038F5A4 /* NTPEventArgs.cpp in Sources */,
 				715F82C12440ED1E0038F5A4 /* AtomicCounter.cpp in Sources */,
 				715F83712440ED1F0038F5A4 /* UTF16Encoding.cpp in Sources */,
+				1AC96017278FB69600107ED0 /* vk_host.cpp in Sources */,
 				715F63702440E9100038F5A4 /* MultipartReader.cpp in Sources */,
 				71FBFEB92433BBBE003F17F1 /* meminfo.cpp in Sources */,
 				715F83F52440ED200038F5A4 /* pcre_globals.c in Sources */,

@@ -45,7 +45,12 @@ public:
 	static U32 defaultScreenBpp;
     static bool windowUpdated;
 
+    bool isVulkan;
+    bool needsVulkan;
+
+    KNativeWindow() : isVulkan(false), needsVulkan(false) {}
     virtual ~KNativeWindow() {}
+    void updateDisplay(KThread* thread) { screenChanged(thread, screenWidth(), screenHeight(), screenBpp()); }
 	virtual void screenChanged(KThread* thread, U32 width, U32 height, U32 bpp) = 0;
 	virtual U32 screenWidth() = 0;
 	virtual U32 screenHeight() = 0;
@@ -92,6 +97,8 @@ public:
     virtual void popWindowSurface() = 0;
     virtual void drawRectOnPushedSurfaceAndDisplay(U32 x, U32 y, U32 w, U32 h, U8 r, U8 g, U8 b, U8 a) = 0;
 #endif
+
+    virtual void* createVulkanSurface(void* instance) = 0;
 };
 
 #define BOXED_KEYEVENTF_EXTENDEDKEY        0x0001

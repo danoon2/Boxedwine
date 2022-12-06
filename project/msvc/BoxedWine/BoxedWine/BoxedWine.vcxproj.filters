@@ -1597,6 +1597,15 @@
     <ClCompile Include="..\..\..\..\source\io\fsdynamiclinknode.cpp">
       <Filter>source\io</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\vulkan\vk_host.cpp">
+      <Filter>vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\vulkan\vulkancommon.cpp">
+      <Filter>vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\proc\uptime.cpp">
+      <Filter>source\kernel\proc</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -3786,6 +3795,18 @@
     <ClInclude Include="..\..\..\..\source\io\fsdynamiclinknode.h">
       <Filter>source\io</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\source\vulkan\vkdef.h">
+      <Filter>vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\vulkan\vkfuncs.h">
+      <Filter>vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\vulkan\vk_host.h">
+      <Filter>vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\uptime.h">
+      <Filter>include</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
@@ -3946,6 +3967,9 @@
     </Filter>
     <Filter Include="opengl\osmesa">
       <UniqueIdentifier>{c16a03b0-cb55-44fa-99bd-ea9eb8db949c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="vulkan">
+      <UniqueIdentifier>{30fe2744-f038-4f14-be86-a165f2ac883f}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

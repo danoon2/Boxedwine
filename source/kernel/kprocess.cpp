@@ -1435,22 +1435,35 @@ U32 KProcess::mmap(U32 addr, U32 len, S32 prot, S32 flags, FD fildes, U64 off) {
             mappedFile->address = pageStart << K_PAGE_SHIFT;
             mappedFile->len = ((U64)pageCount) << K_PAGE_SHIFT;
             mappedFile->offset = off;     
-            mappedFile->file = std::dynamic_pointer_cast<KFile>(fd->kobject);
+            mappedFile->file = std::dynamic_pointer_cast<KFile>(fd->kobject);            
 #ifdef BOXEDWINE_DEFAULT_MMU
-            BoxedPtr<MappedFileCache> cache = KSystem::getFileCache(mappedFile->file->openFile->node->path);
-            if (!cache) {
-                cache = new MappedFileCache(mappedFile->file->openFile->node->path);
-                KSystem::setFileCache(mappedFile->file->openFile->node->path, cache);
-                cache->file = mappedFile->file;
-                U32 size = ((U32)((fd->kobject->length() + K_PAGE_SIZE-1) >> K_PAGE_SHIFT));
-                cache->data = new U8*[size];
-                memset(cache->data, 0, size*sizeof(U8*));
-            }
-            mappedFile->systemCacheEntry = cache;
+            bool addFileToSystemCache = true;
+#else
+            bool addFileToSystemCache = shared;
 #endif
+            if (addFileToSystemCache) {
+                BoxedPtr<MappedFileCache> cache = KSystem::getFileCache(mappedFile->file->openFile->node->path);
+                if (!cache) {
+                    cache = new MappedFileCache(mappedFile->file->openFile->node->path);
+                    KSystem::setFileCache(mappedFile->file->openFile->node->path, cache);
+                    cache->file = mappedFile->file;
+#ifdef BOXEDWINE_DEFAULT_MMU
+                    U32 size = ((U32)((fd->kobject->length() + K_PAGE_SIZE - 1) >> K_PAGE_SHIFT));
+#else
+                    U32 size = 1;
+#endif
+                    cache->data = new U8 * [size];
+                    cache->dataSize = size;
+                    memset(cache->data, 0, size * sizeof(U8*));
+                }
+                mappedFile->systemCacheEntry = cache;
+            }
             KThread::currentThread()->process->mappedFiles[mappedFile->address] = mappedFile;
             this->memory->allocPages(pageStart, pageCount, permissions, fildes, off, mappedFile);
         } else {
+            if (shared) {
+                int ii = 0;
+            }
             this->memory->allocPages(pageStart, pageCount, permissions, 0, 0, NULL);
         }		
     }
@@ -2644,10 +2657,10 @@ void KProcess::printMappedFiles() {
 #ifdef BOXEDWINE_64BIT_MMU
 #include "../emulation/hardmmu/hard_memory.h"
 U32 KProcess::allocNative(U32 len) {
-    U32 page = this->nextNativeAddress >> K_PAGE_SHIFT;
+    U32 page = this->nextNativeAddress;
     U32 pageCount = (len+K_PAGE_SIZE-1) >> K_PAGE_SHIFT;
-    allocNativeMemory(this->memory, page, pageCount, 0);
-    this->nextNativeAddress+=pageCount*K_PAGE_SIZE;
+    this->memory->allocNativeMemory(page, pageCount, PAGE_READ|PAGE_WRITE);
+    this->nextNativeAddress+=pageCount;
     return page << K_PAGE_SHIFT;
 }
 

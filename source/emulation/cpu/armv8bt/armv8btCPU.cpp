@@ -116,6 +116,7 @@ void* Armv8btCPU::init() {
 
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->executableMemoryMutex);
     this->eipToHostInstructionAddressSpaceMapping = this->thread->memory->eipToHostInstructionAddressSpaceMapping;
+    this->memOffsets = memory->memOffsets;
 
 	data.saveNativeState();
 
@@ -412,6 +413,7 @@ static U8 fetchByte(U32* eip) {
 
 void Armv8btCPU::translateInstruction(Armv8btAsm* data, Armv8btAsm* firstPass) {
     data->startOfOpIp = data->ip;
+    data->useSingleMemOffset = !data->cpu->thread->memory->doesInstructionNeedMemoryOffset(data->ip);
     data->ip += data->decodedOp->len;
 #ifdef _DEBUG
     if (this->logFile) {
@@ -558,6 +560,17 @@ U64 Armv8btCPU::handleCodePatch(U64 rip, U32 address) {
         } else {
             w.invalidateCode(address, len);
         }  
+        // shared or mapped native memory
+        U32 page = address >> K_PAGE_SHIFT;
+        if (this->thread->memory->flags[page] & PAGE_MAPPED_HOST) {
+            this->thread->memory->addNeedsMemoryOffset(this->eip.u32);
+            // won't trigger retranslate the first time through, that way we will minimize the number of retranslates for the chunk 
+            // since we will go through most of the chunk at least once before the retranslate
+            if (this->thread->memory->doesInstructionNeedMemoryOffset(this->eip.u32)) {
+                chunk->releaseAndRetranslate();
+            }
+        }
+
         FILE* f = (FILE*)this->logFile;
         this->logFile = NULL;       
         op->pfn(this, op);   
@@ -679,9 +692,12 @@ U64 Armv8btCPU::handleAccessException(U64 ip, U64 address, bool readAddress) {
         // check if the emulated memory caused the exception
         if ((address & 0xFFFFFFFF00000000l) == this->thread->memory->id) {                
             U32 emulatedAddress = (U32)address;
-            U32 nativePage = this->thread->memory->getNativePage(emulatedAddress >> K_PAGE_SHIFT);
+            U32 page = emulatedAddress >> K_PAGE_SHIFT;
+            Memory* m = this->thread->memory;
+            U32 nativeFlags = m->nativeFlags[m->getNativePage(page)];
+            U32 flags = m->flags[page];
             // check if emulated memory that caused the exception is a page that has code
-            if (this->thread->memory->nativeFlags[nativePage] & NATIVE_FLAG_CODEPAGE_READONLY) {
+            if ((flags & PAGE_MAPPED_HOST) || (flags & (PAGE_READ | PAGE_WRITE)) != (nativeFlags & (PAGE_READ | PAGE_WRITE))) {
                 dynamicCodeExceptionCount++;                    
                 return this->handleCodePatch(ip, emulatedAddress);                    
             }
@@ -690,6 +706,20 @@ U64 Armv8btCPU::handleAccessException(U64 ip, U64 address, bool readAddress) {
         //void* fromHost = this->thread->memory->getExistingHostAddress(this->fromEip);
         //std::shared_ptr<BtCodeChunk> chunk = this->thread->memory->getCodeChunkContainingHostAddress((void*)rip);
 #endif
+        
+        U32 emulatedAddress = (U32)address;
+        U32 page = emulatedAddress >> K_PAGE_SHIFT;        
+        Memory* m = this->thread->memory;
+        U64 offset = m->memOffsets[page];
+        U32 nativeFlags = m->nativeFlags[m->getNativePage(page)];
+        U32 flags = m->flags[page];
+        if ((address & 0xFFFFFFFF00000000l) == this->thread->memory->id) {
+            // check if emulated memory that caused the exception is a page that has code
+            if ((flags & PAGE_MAPPED_HOST) || (flags & (PAGE_READ | PAGE_WRITE)) != (nativeFlags & (PAGE_READ | PAGE_WRITE))) {
+                dynamicCodeExceptionCount++;
+                return this->handleCodePatch(ip, emulatedAddress);
+            }
+        }
         // this can be exercised with Wine 5.0 and CC95 demo installer, it is triggered in strlen as it tries to grow the stack
         this->thread->seg_mapper((U32)address, readAddress, !readAddress, false);
         U64 result = (U64)this->translateEip(this->eip.u32); 

@@ -44,7 +44,7 @@ Memory::Memory() : allocated(0), callbackPos(0) {
 #endif    
     reserveNativeMemory(this);
 
-    allocNativeMemory(this, CALL_BACK_ADDRESS >> K_PAGE_SHIFT, K_NATIVE_PAGES_PER_PAGE, PAGE_READ | PAGE_EXEC | PAGE_WRITE);
+    allocNativeMemory(CALL_BACK_ADDRESS >> K_PAGE_SHIFT, K_NATIVE_PAGES_PER_PAGE, PAGE_READ | PAGE_EXEC | PAGE_WRITE);
     this->addCallback(onExitSignal);
 #ifdef BOXEDWINE_DYNAMIC
     this->dynamicExecutableMemoryPos = 0;
@@ -96,12 +96,13 @@ void Memory::reset() {
     reserveNativeMemory(this);
 
     this->callbackPos = 0;
-    allocNativeMemory(this, CALL_BACK_ADDRESS >> K_PAGE_SHIFT, K_NATIVE_PAGES_PER_PAGE, PAGE_READ | PAGE_EXEC | PAGE_WRITE);
+    allocNativeMemory(CALL_BACK_ADDRESS >> K_PAGE_SHIFT, K_NATIVE_PAGES_PER_PAGE, PAGE_READ | PAGE_EXEC | PAGE_WRITE);
     this->addCallback(onExitSignal);
 }
 
 void Memory::reset(U32 page, U32 pageCount) {
-    freeNativeMemory(this, page, pageCount);        
+    this->clearNeedsMemoryOffset(page, pageCount);
+    freeNativeMemory(page, pageCount);        
 }
 
 void Memory::clone(Memory* from) {
@@ -109,15 +110,28 @@ void Memory::clone(Memory* from) {
 
     for (i=0;i<0x100000;i++) {
         if (from->isPageAllocated(i)) {
-            if ((from->flags[i] & PAGE_SHARED) && (from->flags[i] & PAGE_WRITE)) {
-                static U32 shown = 0;
-                if (!shown) {
-                    kdebug("forking a process with shared memory is not fully supported with BOXEDWINE_64BIT_MMU");
-                    shown=1;
-                }
+            if (from->flags[i] & PAGE_MAPPED_HOST) {
+                this->flags[i] = from->flags[i];
+                this->memOffsets[i] = from->memOffsets[i];
+                continue;
             }
-            allocNativeMemory(this, i, 1, from->flags[i]);
+            bool changedWritePermission = false;
+            if (!(from->flags[i] & PAGE_WRITE)) {
+                changedWritePermission = true;
+            }
+            bool changedReadPermission = false;
+            if (!from->isShared(i) && !(from->flags[i] & PAGE_READ)) {
+                changedReadPermission = true;
+                from->updateNativePermission(i, 1, PAGE_READ);
+            }
+            allocNativeMemory(i, 1, from->flags[i] | PAGE_WRITE);
             memcpy(getNativeAddress(this, i << K_PAGE_SHIFT), getNativeAddress(from, i << K_PAGE_SHIFT), K_PAGE_SIZE);
+            if (changedWritePermission) {
+                updatePagePermission(i, 1);
+            }
+            if (changedReadPermission) {
+                from->updatePagePermission(i, 1);
+            }
         } else {
             this->flags[i] = from->flags[i];
         }     
@@ -136,11 +150,23 @@ void writeMemory(U32 address, U8* data, int len) {
     memcpy(getNativeAddress(KThread::currentThread()->process->memory, address), data, len);
 }
 
+void Memory::unmapNativeMemory(U32 address, U32 size) {
+    U32 result = 0;
+    U32 pageCount = (size >> K_PAGE_SHIFT) + 2; // 1 for size alignment, 1 for hostAddress alignment
+    U64 pageStart = address >> K_PAGE_SHIFT;
+
+    for (U32 i = 0; i < pageCount; i++) {
+        this->memOffsets[i + pageStart] = this->id;
+        this->flags[i + pageStart] = 0;
+    }
+}
+
 U32 Memory::mapNativeMemory(void* hostAddress, U32 size) {
     U32 i;
     U32 result = 0;
-    U32 pageCount = (size >> K_PAGE_SHIFT) + 2; // 1 for size alignment, 1 for hostAddress alignment
     U64 hostStart = (U64)hostAddress & 0xFFFFFFFFFFFFF000l;
+    U64 hostEnd = ((U64)hostAddress + size) & 0xFFFFFFFFFFFFF000l;
+    U32 pageCount = (U32)(hostEnd - hostStart + K_PAGE_MASK) >> K_PAGE_SHIFT;
     U64 offset;
     
     for (int i = 0; i < K_NUMBER_OF_PAGES; i++) {
@@ -148,7 +174,7 @@ U32 Memory::mapNativeMemory(void* hostAddress, U32 size) {
             return (i << (K_PAGE_SHIFT)) + ((U32)((U64)hostAddress) & K_PAGE_MASK);
         }
     }
-    findFirstAvailablePage(0x10000, pageCount, &result, false);
+    findFirstAvailablePage(0x10000, pageCount, &result, false, true);
     offset = hostStart - (result << K_PAGE_SHIFT);
     for (i = 0; i < pageCount; i++) {
         this->memOffsets[result + i] = offset;
@@ -161,38 +187,65 @@ void Memory::allocPages(U32 page, U32 pageCount, U8 permissions, FD fd, U64 offs
     for (U32 i = 0; i < pageCount; i++) {
         this->clearCodePageFromCache(page + i);
     }
+    this->clearNeedsMemoryOffset(page, pageCount);
     if ((permissions & PAGE_PERMISSION_MASK) || mappedFile) {
-        allocNativeMemory(this, page, pageCount, permissions);
+        if ((permissions & PAGE_SHARED) == 0) {
+            allocNativeMemory(page, pageCount, permissions);
+        } else {
+            bool needToLoad = false;       
+            
+            freeNativeMemory(page, pageCount);
+
+            if (!mappedFile->systemCacheEntry->data[0]) {
+                U32 len = pageCount << K_PAGE_SHIFT;
+                U8* ram = new U8[len]; // make it continuous
+
+                klog("shared ram %.08X%.08X @%.08X len=%X\n", (U32)((U64)ram >> 32), (U32)((U64)ram), (page << K_PAGE_SHIFT), len);
+                memset(ram, 0, len);
+                needToLoad = true;
+                mappedFile->systemCacheEntry->data[0] = ram;
+                if (offset) {
+                    kpanic("allocPages doesn't support offset with shared memory");
+                }
+            }
+            U64 offset = (U64)mappedFile->systemCacheEntry->data[0] - (page << K_PAGE_SHIFT);
+            for (U32 i = 0; i < pageCount; i++) {
+                this->memOffsets[page + i] = offset;
+                this->flags[page + i] = PAGE_MAPPED_HOST | PAGE_ALLOCATED | permissions;
+            }
+            // if the native page wasn't removed from memory because the allocation granularity is more than 1 page and a near by page is in use, 
+            // then if we don't mark the page as read only, it won't generate an exception and the shared memory won't be used.  updatePagePermission
+            // will see that these pages are shared and will use a strict (lowest permission) for all pages in the granulaty
+            updatePagePermission(page, pageCount);
+            if (!needToLoad) {
+                return;
+            }
+        }
     } else {
         U32 i;
-        freeNativeMemory(this, page, pageCount);
+        freeNativeMemory(page, pageCount);
         for (i=0;i<pageCount;i++) {
             this->flags[i+page]=permissions;
         }
     }
     if (mappedFile) {
         bool addedWritePermission = false;
-        U32 nativePageStart = getNativePage(page);
-        U32 nativePageStop = getNativePage(page+pageCount-1);
-        U32 nativePageCount = nativePageStop - nativePageStart + 1;
         
+        // shared pages aren't in the normal native range
         if (!(permissions & PAGE_WRITE)) {
             for (U32 i=0;i<pageCount;i++) {
                 this->flags[i+page]|=PAGE_WRITE;
             }
             addedWritePermission = true;
-            updateNativePermission(this, nativePageStart, nativePageCount, true, true);
+            updateNativePermission(page, pageCount, PAGE_WRITE|PAGE_READ);
         }
         // :TODO: need to implement writing back to the file
-        // :TODO: need to sync shared pages acrosss processes for hard_memory.cpp
         KThread::currentThread()->process->pread64(fd, page<<K_PAGE_SHIFT, pageCount << K_PAGE_SHIFT, offset);
         if (addedWritePermission) {
             for (U32 i=0;i<pageCount;i++) {
                 this->flags[i+page]&=~PAGE_WRITE;
             }
-            // :TODO: why is it necessary to keep write permission on this read only memory
-            bool canRead = (permissions & (PAGE_READ | PAGE_EXEC)) != 0;//
-            //updateNativePermission(this, nativePageStart, nativePageCount, canRead, false);
+            updatePagePermission(page, pageCount);
         }
     }    
 }
@@ -203,6 +256,9 @@ void Memory::protectPage(U32 i, U32 permissions) {
     } else {
         this->flags[i] &=~ PAGE_PERMISSION_MASK;
         this->flags[i] |= permissions;
+        if (this->isPageAllocated(i)) {
+            updatePagePermission(i, 1);
+        }
     } 
 }
 
@@ -393,7 +449,7 @@ void writew( U32 address, U16 value) {
     if (flags & NATIVE_FLAG_CODEPAGE_READONLY) {
         BtCodeMemoryWrite w((BtCPU*)KThread::currentThread()->cpu, address, 2);
         *(U16*)getNativeAddress(m, address) = value;
-    } else if (flags & NATIVE_FLAG_COMMITTED) {
+    } else if (flags & NATIVE_FLAG_COMMITTED || (m->flags[page] & PAGE_MAPPED_HOST)) {
         *(U16*)getNativeAddress(KThread::currentThread()->memory, address) = value;
     } else {
         kpanic("writew about to crash");
@@ -711,6 +767,10 @@ U32 Memory::getPageFlags(U32 page) {
     return this->flags[page];
 }
 
+bool Memory::isShared(U32 page) {
+    return (this->flags[page] & PAGE_SHARED) != 0;
+}
+
 void Memory::onThreadChanged() {
 }
 
@@ -997,4 +1057,134 @@ void Memory::executableMemoryReleased() {
 }
 #endif
 
+static U32 getNativePermissionIndex(U32 page) {
+    return (page << K_PAGE_SHIFT) >> K_NATIVE_PAGE_SHIFT;
+}
+
+void Memory::allocNativeMemory(U32 page, U32 pageCount, U32 flags) {
+    U32 gran = Platform::getPageAllocationGranularity();
+    U32 permissionGran = Platform::getPagePermissionGranularity();
+    U32 granPage = page & ~(gran - 1);
+    U32 granCount = ((gran - 1) + pageCount + (page - granPage)) / gran;    
+    U32 permPerAllocPage = gran / permissionGran;
+
+    for (U32 i = 0; i < granCount; i++) {
+        U64 address = (this->id | (granPage << K_PAGE_SHIFT));
+        U32 nativePermissionIndex = getNativePermissionIndex(granPage);
+        if (!(this->nativeFlags[nativePermissionIndex] & NATIVE_FLAG_COMMITTED)) {            
+            Platform::allocateNativeMemory(address);
+            this->allocated += (gran << K_PAGE_SHIFT);
+            for (U32 j = 0; j < permPerAllocPage; j++) {
+                this->nativeFlags[nativePermissionIndex + j] |= NATIVE_FLAG_COMMITTED;
+            }
+        } else {
+            // so that the memset works below
+            Platform::updateNativePermission(address, PAGE_READ | PAGE_WRITE, gran << K_PAGE_SHIFT);
+        }
+        granPage += gran;
+    }
+    for (U32 i = 0; i < pageCount; i++) {
+        this->flags[page + i] = flags | PAGE_ALLOCATED;
+        this->memOffsets[page + i] = this->id;
+    }
+    
+    memset(getNativeAddress(this, page << K_PAGE_SHIFT), 0, pageCount << K_PAGE_SHIFT);
+
+    granPage = page & ~(gran - 1);
+    U32 granPageCount = granCount * gran;
+    this->updatePagePermission(granPage, granPageCount);
+    //printf("allocated %X - %X\n", page << PAGE_SHIFT, (page+pageCount) << PAGE_SHIFT);
+}
+
+void Memory::freeNativeMemory(U32 page, U32 pageCount) {    
+    for (U32 i = 0; i < pageCount; i++) {
+        U32 nativePermissionIndex = getNativePermissionIndex(page + i);
+        this->nativeFlags[nativePermissionIndex] &= ~NATIVE_FLAG_CODEPAGE_READONLY;
+        this->clearCodePageFromCache(page + i);
+        this->flags[page + i] = 0;
+        this->memOffsets[page + i] = this->id;
+    }
+
+    U32 gran = Platform::getPageAllocationGranularity();
+    U32 permissionGran = Platform::getPagePermissionGranularity();
+    U32 permPerAllocPage = gran / permissionGran;
+    U32 granPage = page & ~(gran - 1);
+    U32 granCount = ((gran - 1) + pageCount + (page - granPage)) / gran;
+    for (U32 i = 0; i < granCount; i++) {
+        U32 nativePermissionIndex = getNativePermissionIndex(granPage);
+        if (this->nativeFlags[nativePermissionIndex] & NATIVE_FLAG_COMMITTED) {
+            bool inUse = false;
+
+            for (U32 j = 0; j < gran; j++) {
+                if (this->isPageAllocated(granPage + j)) {
+                    inUse = true;
+                    break;
+                }
+            }
+            if (!inUse) {
+                U64 address = (this->id | (granPage << K_PAGE_SHIFT));
+                Platform::freeNativeMemory(address);
+                for (U32 j = 0; j < permPerAllocPage; j++) {
+                    this->nativeFlags[nativePermissionIndex + j] = 0;
+                }
+                this->allocated -= (gran << K_PAGE_SHIFT);
+            } else {
+                updatePagePermission(granPage, gran);
+            }
+        }
+        granPage += gran;
+    }
+}
+
+void Memory::updatePagePermission(U32 page, U32 pageCount) {
+    U32 permissionGran = Platform::getPagePermissionGranularity();
+    U32 permissionGranPage = page & ~(permissionGran - 1);
+    U32 permissionGranCount = ((permissionGran - 1) + pageCount + (page - permissionGranPage)) / permissionGran;    
+
+    // could be mixed (M1 is 16K permission)
+    for (U32 i = 0; i < permissionGranCount; i++) {
+        bool hasShared = false;
+        for (U32 i = 0; i < permissionGran; i++) {
+            if (isShared(i + permissionGranPage)) {
+                hasShared = true;
+                break;
+            }
+        }
+        U32 permissions = 0;
+        
+        // shared needs to have 0 permission so that it generates an exception
+        if (!hasShared) {
+            permissions = this->flags[permissionGranPage];
+            for (U32 j = 1; j < permissionGran; j++) {
+                // :TODO: this should always be &, in order to use the most restrictive but this slows things down too much because of the generated exceptions
+                permissions |= this->flags[permissionGranPage + j];
+            }
+        }
+        U64 address = (this->id | (permissionGranPage << K_PAGE_SHIFT));
+        U32 index = getNativePermissionIndex(permissionGranPage);
+        if (this->nativeFlags[index] & NATIVE_FLAG_COMMITTED) {
+            this->nativeFlags[index] &= ~PAGE_PERMISSION_MASK;
+            this->nativeFlags[index] |= (permissions & (PAGE_READ | PAGE_WRITE));
+            Platform::updateNativePermission(address, permissions);
+        }
+        permissionGranPage += permissionGran;
+    }
+}
+
+void Memory::updateNativePermission(U32 page, U32 pageCount, U32 permission) {
+    U32 permissionGran = Platform::getPagePermissionGranularity();
+    U32 permissionGranPage = page & ~(permissionGran - 1);
+    U32 permissionGranCount = ((permissionGran - 1) + pageCount + (page - permissionGranPage)) / permissionGran;
+
+    for (U32 i = 0; i < permissionGranCount; i++) {
+        U64 address = (this->id | (permissionGranPage << K_PAGE_SHIFT));
+        U32 nativePage = getNativePage(permissionGranPage);
+        if (this->nativeFlags[nativePage] & NATIVE_FLAG_COMMITTED) {
+            Platform::updateNativePermission(address, permission);
+            this->nativeFlags[nativePage] &= ~PAGE_PERMISSION_MASK;
+            this->nativeFlags[nativePage] |= (permission & (PAGE_READ | PAGE_WRITE));
+        }
+        permissionGranPage += permissionGran;
+    }
+}
 #endif

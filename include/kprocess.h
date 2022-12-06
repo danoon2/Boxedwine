@@ -31,9 +31,7 @@ class Memory;
 
 class MappedFile : public BoxedPtrBase {
 public:
-#ifdef BOXEDWINE_DEFAULT_MMU
     BoxedPtr<MappedFileCache> systemCacheEntry;
-#endif
     std::shared_ptr<KFile> file;
     U32 address;
     U64 len;

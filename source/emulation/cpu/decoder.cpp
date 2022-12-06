@@ -433,6 +433,7 @@ const InstructionInfo instructionInfo[] = {
     {DECODE_BRANCH_NO_CACHE, 1, 1, 0, 0, 0, 0}, // Int80 Syscall
     {0, 1, 1, 0, 0, 0, 0}, // Int98 Wine callback
     {0, 1, 1, 0, 0, 0, 0}, // Int99 OpenGL callback
+    {0, 1, 1, 0, 0, 0, 0}, // Int9A Vulkan callback
     {DECODE_BRANCH_NO_CACHE, 0, 1, 0, 0, 0, 0}, // IntIb,
     {DECODE_BRANCH_NO_CACHE, 0, 1, 0, OF, 0, 0}, // IntO,
 
@@ -2214,6 +2215,7 @@ const LogInstruction instructionLog[] = {
     {"Int80 Syscall", 0, logName},
     {"Int98 Wine", 0, logName},
     {"Int99 OpenGL", 0, logName},
+    {"Int9A Vulkan", 0, logName },
     {"Int", 0, logName, true},
     {"Int0", 0, logName},
 
@@ -3651,6 +3653,8 @@ public:
             op->inst = Int98;
         else if (op->imm==0x99)
             op->inst = Int99;
+        else if (op->imm == 0x9a)
+            op->inst = Int9A;
         else
             op->inst = IntIb;
     }

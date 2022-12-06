@@ -23,11 +23,12 @@ class KFile;
 
 class MappedFileCache : public BoxedPtrBase {
 public:
-    MappedFileCache(const std::string& name) : name(name) {}
+    MappedFileCache(const std::string& name) : name(name), data(NULL), dataSize(0) {}
     virtual ~MappedFileCache();
     const std::string name;
     std::shared_ptr<KFile> file;
     U8** data;
+    U32 dataSize;
 };
 
 #define K_PAGE_SIZE 4096
@@ -92,6 +93,7 @@ public:
 
     void map(U32 startPage, const std::vector<U8*>& pages, U32 permissions);
     U32 mapNativeMemory(void* buf, U32 len);
+    void unmapNativeMemory(U32 address, U32 len);
 
     bool findFirstAvailablePage(U32 startingPage, U32 pageCount, U32* result, bool canBeMapped, bool alignNative = false);
     bool isAlignedNativePage(U32 page) { return (page & ~(K_NATIVE_PAGES_PER_PAGE - 1)) == page;}
@@ -106,6 +108,7 @@ public:
     void addCodeBlock(U32 startIp, DecodedBlock* block);
 
     U32 getPageFlags(U32 page);
+    bool isShared(U32 page);
 
     void onThreadChanged();
 
@@ -140,12 +143,40 @@ public:
 
 #ifdef BOXEDWINE_64BIT_MMU
     U8 flags[K_NUMBER_OF_PAGES];
-    U8 nativeFlags[K_NATIVE_NUMBER_OF_PAGES];
+    U8 nativeFlags[K_NATIVE_NUMBER_OF_PAGES]; // this is based on the granularity for permissions, Platform::getPagePermissionGranularity.  It is 
     U32 allocated;
     U64 id; 
 
     // this will contain id in each page unless that page was mapped to native host memory
-    U64 memOffsets[K_NUMBER_OF_PAGES];
+    U64 memOffsets[K_NUMBER_OF_PAGES];    
+private:
+    std::unordered_map<U32, std::unordered_map<U32, U32> > needsMemoryOffset; // first index is page, second index is offset
+public:
+    bool doesInstructionNeedMemoryOffset(U32 eip) {
+        U32 page = eip >> K_PAGE_SHIFT;
+        U32 offset = eip & K_PAGE_MASK;
+        if (this->needsMemoryOffset.count(page) && this->needsMemoryOffset[page].count(offset)) {
+            return this->needsMemoryOffset[page][offset] > 1;
+        }
+        return false;
+    }
+    void clearNeedsMemoryOffset(U32 page, U32 pageCount) {
+        for (U32 i = 0; i < pageCount; i++) {
+            if (this->needsMemoryOffset.count(page + i)) {
+                this->needsMemoryOffset.erase(page + i);
+            }
+        }
+    }
+    void addNeedsMemoryOffset(U32 eip) {
+        U32 page = eip >> K_PAGE_SHIFT;
+        U32 offset = eip & K_PAGE_MASK;
+        this->needsMemoryOffset[page][offset] += 1;
+    }
+
+    void clearAllNeedsMemoryOffset() {
+        this->needsMemoryOffset.clear();
+    }
+
 #define MAX_DYNAMIC_CODE_PAGE_COUNT 0xFF
     U8 dynamicCodePageUpdateCount[K_NATIVE_NUMBER_OF_PAGES];
 
@@ -172,6 +203,11 @@ public:
     void freeExcutableMemory(void* hostMemory, U32 size);
     void executableMemoryReleased();
     bool isAddressExecutable(void* address);
+
+    void allocNativeMemory(U32 page, U32 pageCount, U32 flags);
+    void freeNativeMemory(U32 page, U32 pageCount);    
+    void updatePagePermission(U32 page, U32 pageCount); // called after page permission has changed, code will give the native page the highest permission possible
+    void updateNativePermission(U32 page, U32 pageCount, U32 permission); // for a native page change so that it can be read or written too now, updatePagePermission should be called when done to restore correct permissions
 
     class AllocatedMemory {
     public:

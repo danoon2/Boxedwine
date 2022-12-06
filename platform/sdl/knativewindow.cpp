@@ -20,6 +20,10 @@
 #include "knativewindow.h"
 #include <SDL.h>
 
+#ifdef BOXEDWINE_VULKAN
+#include <SDL_vulkan.h>
+#endif
+
 #include "kscheduler.h"
 #include "crc.h"
 #include "devfb.h"
@@ -192,6 +196,8 @@ public:
     virtual int mouseWheel(int amount, int x, int y);
     virtual int mouseButton(U32 down, U32 button, int x, int y);
     virtual int key(U32 key, U32 down);
+
+    virtual void* createVulkanSurface(void* instance);
 
     std::shared_ptr<WndSdl> getWndFromPoint(int x, int y);
     std::shared_ptr<WndSdl> getFirstVisibleWnd();
@@ -608,6 +614,17 @@ U32 sdlCreateOpenglWindow_main_thread(KThread* thread, std::shared_ptr<WndSdl> w
 }
 #endif
 
+void* KNativeWindowSdl::createVulkanSurface(void* instance) {
+#ifdef BOXEDWINE_VULKAN
+    VkSurfaceKHR result;
+
+    if (SDL_Vulkan_CreateSurface(this->window, (VkInstance)instance, &result)) {
+        return result;
+    }
+#endif
+    return NULL;
+}
+
 #include "../../tools/opengl/gldef.h"
 void KNativeWindowSdl::preOpenGLCall(U32 index) {
     // The Breakdown requires this extra time check, I'm not sure what call it uses to actually draw on the screen
@@ -638,7 +655,7 @@ U32 KNativeWindowSdl::glCreateContext(KThread* thread, std::shared_ptr<Wnd> w, i
 #endif
     U32 result = 1;
     std::shared_ptr<WndSdl> wnd = std::dynamic_pointer_cast<WndSdl>(w);
-    if (windowIsGL && glWindowVersionMajor != major && KSystem::openglType != OPENGL_TYPE_OSMESA) {
+    if (windowIsGL && (int)glWindowVersionMajor != major && KSystem::openglType != OPENGL_TYPE_OSMESA) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(sdlMutex);
         DISPATCH_MAIN_THREAD_BLOCK_BEGIN
         screen->destroyScreen(thread);
@@ -762,7 +779,9 @@ void KNativeWindowSdl::displayChanged(KThread* thread) {
         if (!KSystem::showWindowImmediately) {
             flags |= SDL_WINDOW_HIDDEN;
         }
-
+        if (this->needsVulkan) {
+            flags |= SDL_WINDOW_VULKAN;
+        }
         SDL_DisplayMode dm;
 
         if (SDL_GetDesktopDisplayMode(0, &dm) != 0)
@@ -808,6 +827,9 @@ void KNativeWindowSdl::displayChanged(KThread* thread) {
         delayedCreateWindowMsg = "Creating Window: " + std::to_string(cx) + "x" + std::to_string(cy);
         fflush(stdout);
         window = SDL_CreateWindow("BoxedWine", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, cx, cy, flags);
+        if (window && (flags & SDL_WINDOW_VULKAN)) {
+            this->isVulkan = true;
+        }
 #ifdef BOXEDWINE_LINUX
 // NVidia drivers need this
         flags = SDL_RENDERER_SOFTWARE;
@@ -2585,6 +2607,7 @@ void KNativeWindow::shutdown() {
         
     }
     screen = NULL;
+    firstWindowCreated = false;
 #if defined(BOXEDWINE_OPENGL_OSMESA)
     shutdownMesaOpenGL();
 #endif

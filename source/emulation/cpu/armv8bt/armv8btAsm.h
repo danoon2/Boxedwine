@@ -36,13 +36,13 @@ typedef enum {
 #define xTmp3 11
 #define xTmp4 12
 #define xTmp5 13
+#define xTmp6 14
 
-#define xNumberOfTmpRegs 5
+#define xNumberOfTmpRegs 6
 
 #define xOffset xSrc
 #define xPage xDst
 
-// #define xOldCF 14
 #define xSrc 15
 #define xDst 16
 #define xResult 17
@@ -148,6 +148,7 @@ typedef enum {
 #define CPU_OFFSET_EIP_FROM (U32)(offsetof(Armv8btCPU, fromEip))
 #define CPU_OFFSET_EXIT_TO_START_LOOP (U32)(offsetof(Armv8btCPU, exitToStartThreadLoop))
 #define CPU_OFFSET_RETURN_ADDRESS (U32)(offsetof(Armv8btCPU, returnToLoopAddress))
+#define CPU_OFFSET_MEMOFFSET (U32)(offsetof(CPU, memOffsets))
 
 typedef void (*PFN_FPU_REG)(CPU* cpu, U32 reg);
 typedef void (*PFN_FPU_ADDRESS)(CPU* cpu, U32 address);
@@ -287,6 +288,11 @@ public:
     void signExtend64(U8 dst, U8 src, U32 width);
     void notReg32(U8 dst, U8 src);
 
+    U8 getHostMem(U8 regEmulatedAddress);
+    U8 getHostMemWithOffset(U8 regEmulatedAddress, U32 offset);
+    U8 getHostMemFromAddress(U32 address);
+    void releaseHostMem(U8 reg);
+
     // mov to/from memory
     void readMemory(U8 addressReg, U8 dst, U32 width, bool addMemOffsetToAddress, bool lock = false, bool signExtend = false);
     void writeMemory(U8 addressReg, U8 src, U32 width, bool addMemOffsetToAddress, bool lock = false, U8 regWithOriginalValue = 0, U32 restartPos = 0, bool generateMemoryBarrierForLock = true);
@@ -297,10 +303,15 @@ public:
     void readMem32ValueOffset(U8 dst, U8 base, S32 offset);
     void readMem64ValueOffset(U8 dst, U8 base, S32 offset);
 
-    void readMem8RegOffset(U8 dst, U8 base, U8 offsetReg, bool signExtend = false, bool lock = false);
-    void readMem16RegOffset(U8 dst, U8 base, U8 offsetReg, bool signExtend = false, bool lock = false);
-    void readMem32RegOffset(U8 dst, U8 base, U8 offsetReg, U32 lsl = 0, bool lock = false); // lsl can be 0 or 2
-    void readMem64RegOffset(U8 dst, U8 base, U8 offsetReg, U32 lsl = 0, bool lock = false); // lsl can be 0 or 3
+    void readMem8RegOffset(U8 dst, U8 base, U8 offsetReg, bool signExtend = false);
+    void readMem16RegOffset(U8 dst, U8 base, U8 offsetReg, bool signExtend = false);
+    void readMem32RegOffset(U8 dst, U8 base, U8 offsetReg, U32 lsl = 0); // lsl can be 0 or 2
+    void readMem64RegOffset(U8 dst, U8 base, U8 offsetReg, U32 lsl = 0); // lsl can be 0 or 3
+
+    void readMem8Lock(U8 dst, U8 base);
+    void readMem16Lock(U8 dst, U8 base);
+    void readMem32Lock(U8 dst, U8 base);
+    void readMem64Lock(U8 dst, U8 base);
 
     void writeMem8ValueOffset(U8 dst, U8 base, S32 offset);
     void writeMem16ValueOffset(U8 dst, U8 base, S32 offset);
