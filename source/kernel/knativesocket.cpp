@@ -15,6 +15,7 @@ static int winsock_intialized;
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
@@ -728,8 +729,8 @@ U32 KNativeSocketObject::setsockopt(KFileDescriptor* fd, U32 level, U32 name, U3
                     len = 4;
 #else
                     struct timeval v;
-                    tval.tv_usec = readd(value+4);
-                    tval.tv_sec = readd(value);
+                    v.tv_usec = readd(value+4);
+                    v.tv_sec = readd(value);
                     len = sizeof(struct timeval);
 #endif
                     ::setsockopt(this->nativeSocket, SOL_SOCKET, SO_SNDTIMEO, (const char*)&v, len);
@@ -747,8 +748,8 @@ U32 KNativeSocketObject::setsockopt(KFileDescriptor* fd, U32 level, U32 name, U3
                     len = 4;
 #else
                     struct timeval v;
-                    tval.tv_usec = readd(value + 4);
-                    tval.tv_sec = readd(value);
+                    v.tv_usec = readd(value + 4);
+                    v.tv_sec = readd(value);
                     len = sizeof(struct timeval);
 #endif
                     ::setsockopt(this->nativeSocket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&v, len);
