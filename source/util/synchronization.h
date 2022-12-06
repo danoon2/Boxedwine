@@ -55,6 +55,7 @@ private:
     std::vector<BoxedWineCondition*> parents;
     std::vector<BoxedWineConditionChild> children;  
 
+    BoxedWineMutex parentsMutex;
     KNativeMutex m;
     KNativeCondition c;
     U32 lockOwner;

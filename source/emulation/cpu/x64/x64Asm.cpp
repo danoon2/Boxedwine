@@ -2334,11 +2334,23 @@ void X64Asm::popFlagsFromReg(U8 reg, bool isRexReg, bool includeOF) {
 void X64Asm::internal_addDynamicCheck(U32 address, U32 len, U32 needsFlags, bool panic, U8 tmpReg3) {    
     bool saveAllFlags = (needsFlags & OF) != 0;
     bool saveLowBitFlags = needsFlags!=0 && !saveAllFlags;    
-    
+    U32 missed = 0;
+
     {
         U8 tmpReg1 = getTmpReg();
         U8 tmpReg2 = getTmpReg();
         bool inlineCmp = false;
+        U32 offset = address & 0xFFF;
+        U32 remainingOnPage = 0x1000 - offset;        
+
+        // make sure we don't artificially read past the end of the page since we don't know if it will be available
+        if (len == 3 && remainingOnPage < 4) {
+            len = 2;
+            missed = 1;
+        } else if (len > 4 && len != 8 && remainingOnPage < 8) { // we havea  5, 6 or 7 len instruction/partial instruction, but we don't have the space to read 8 bytes on this page
+            missed = len - 4;
+            len = 4;            
+        }
 
         if ((S32)address>=0 && (len==1 || len==2 || len==4)) {
             inlineCmp = true;
@@ -2503,6 +2515,10 @@ void X64Asm::internal_addDynamicCheck(U32 address, U32 len, U32 needsFlags, bool
         write32(tmp-pos-4);
         this->bufferPos = tmp;
     }    
+    if (missed) {
+        // :TODO: could probably be more efficient about comparing the last couple of bytes, maybe combining it above with another compare
+        internal_addDynamicCheck(address + len, missed, needsFlags, panic, tmpReg3);
+    }
 }
 
 void X64Asm::addDynamicCheck(bool panic) {
@@ -3217,7 +3233,8 @@ void X64Asm::loadSeg(U8 seg, U8 rm, bool b32) {
         }); 
         this->cpu->thread->process->hasSetSeg[seg] = true;
     } else {
-        kpanic("Invalid op: loadSeg rm=%x", rm);
+        this->invalidOp(this->inst);
+        this->done = true;
     }
 }
 

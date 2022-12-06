@@ -1196,7 +1196,7 @@ U32 KNativeWindowSdl::getGammaRamp(U32 ramp) {
     U16 g[256];
     U16 b[256];
 
-    if (KSystem::videoEnabled) {
+    if (KSystem::videoEnabled && window) {
         if (SDL_GetWindowGammaRamp(window, r, g, b)==0) {
             int i;
             for (i=0;i<256;i++) {

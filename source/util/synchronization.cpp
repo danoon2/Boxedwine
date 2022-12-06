@@ -58,16 +58,20 @@ bool BoxedWineCondition::tryLock() {
     return false;
 }
 
-void BoxedWineCondition::signal() {    
+void BoxedWineCondition::signal() { 
+    parentsMutex.lock();
     if (this->parents.size()>0) {
         // signal will change this->parents so we can't iterate this->parents directly
         BoxedWineCondition** pp = NULL;
+        int count = (int)this->parents.size();
         VECTOR_TO_ARRAY_ON_STACK(this->parents, BoxedWineCondition*, pp);
-        for (int i=0;i<(int)this->parents.size();i++) {
+        for (int i=0;i<count;i++) {
             BoxedWineCondition* p  = pp[i];
             while(!p->tryLock()) {
                 this->unlock();
+                parentsMutex.unlock();
                 this->lock();
+                parentsMutex.lock();
             }
             if(VECTOR_CONTAINS(this->parents, p)) {
                 p->signal();            
@@ -75,19 +79,24 @@ void BoxedWineCondition::signal() {
             p->unlock();
         }
     } else {
+        parentsMutex.unlock();
         this->c.signal();
     }
 }
 
 void BoxedWineCondition::signalAll() {
+    parentsMutex.lock();
     if (this->parents.size()>0) {
         BoxedWineCondition** pp = NULL;
+        int count = (int)this->parents.size();
         VECTOR_TO_ARRAY_ON_STACK(this->parents, BoxedWineCondition*, pp);
-        for (int i=0;i<(int)this->parents.size();i++) {
+        for (int i=0;i<count;i++) {
             BoxedWineCondition* p  = pp[i];
             while(!p->tryLock()) {
                 this->unlock();
+                parentsMutex.unlock();
                 this->lock();
+                parentsMutex.lock();
             }
             if(VECTOR_CONTAINS(this->parents, p)) {
                 p->signalAll();            
@@ -95,6 +104,7 @@ void BoxedWineCondition::signalAll() {
             p->unlock();
         }
     }
+    parentsMutex.unlock();
     this->c.signalAll();
 }
 
@@ -106,7 +116,9 @@ void BoxedWineCondition::signalAllLock() {
 
 void BoxedWineCondition::unlockAndRemoveChildren() {
     for (auto &child : this->children) {
+        child.cond->parentsMutex.lock();
         VECTOR_REMOVE(child.cond->parents, this);
+        child.cond->parentsMutex.unlock();
         child.cond->unlock();
     }
     for (auto &child : this->children) {
@@ -132,7 +144,9 @@ void BoxedWineCondition::wait() {
     }
     for (auto &child : this->children) {
         child.cond->lock();
+        child.cond->parentsMutex.lock();
         VECTOR_REMOVE(child.cond->parents, this);
+        child.cond->parentsMutex.unlock();
         child.cond->unlock();
     }
     this->children.clear();
@@ -141,9 +155,11 @@ void BoxedWineCondition::wait() {
 void BoxedWineCondition::waitWithTimeout(U32 ms) {
     for (auto &child : this->children) {
         child.cond->unlock();
+        child.cond->parentsMutex.lock();
         if (!VECTOR_CONTAINS(child.cond->parents, this)) {
             kpanic("BoxedWineCondition::waitWithTimeout in bad state");
         }
+        child.cond->parentsMutex.unlock();
     }
     KThread* thread = KThread::currentThread();
     if (!KSystem::shutingDown && thread) {
@@ -157,7 +173,9 @@ void BoxedWineCondition::waitWithTimeout(U32 ms) {
 
     for (auto &child : this->children) {
         child.cond->lock();
+        child.cond->parentsMutex.lock();
         VECTOR_REMOVE(child.cond->parents, this);
+        child.cond->parentsMutex.unlock();
         child.cond->unlock();
     }
     this->children.clear();
@@ -171,14 +189,17 @@ void BoxedWineCondition::unlock() {
 void BoxedWineCondition::addChildCondition(BoxedWineCondition& cond, const std::function<void(void)>& doneWaitingCallback) {
     // this (parent) should be be locked while we call this
     cond.lock();
+    cond.parentsMutex.lock();
     if (VECTOR_CONTAINS(cond.parents, this)) {
         kpanic("BoxedWineCondition::addChildCondition cond already has this parent");
     }
     cond.parents.push_back(this);
+    cond.parentsMutex.unlock();
     this->children.push_back(BoxedWineConditionChild(&cond, doneWaitingCallback));
 }
 
 U32 BoxedWineCondition::waitCount() {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(parentsMutex)
     return (U32)this->parents.size();
 }
 

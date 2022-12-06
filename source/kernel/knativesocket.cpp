@@ -6,7 +6,8 @@
 
 #ifdef WIN32
 #undef BOOL
-#include <winsock.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>
 static int winsock_intialized;
 #define BOOL unsigned int
 #pragma comment(lib, "Ws2_32.lib")
@@ -403,10 +404,14 @@ bool KNativeSocketObject::isReadReady() {
 
     FD_ZERO(&sready);
     FD_SET(this->nativeSocket, &sready);
-    memset((char *)&nowait,0,sizeof(nowait));
+    memset((char*)&nowait, 0, sizeof(nowait));
 
-    ::select(this->nativeSocket+1,&sready,NULL,NULL,&nowait);
-    return FD_ISSET(this->nativeSocket,&sready)!=0;
+    ::select(this->nativeSocket + 1, &sready, NULL, NULL, &nowait);
+    bool result = FD_ISSET(this->nativeSocket, &sready) != 0;
+    if (result) {
+        this->error = 0;
+    }
+    return result;
 }
 
 bool KNativeSocketObject::isWriteReady() {
@@ -415,10 +420,14 @@ bool KNativeSocketObject::isWriteReady() {
 
     FD_ZERO(&sready);
     FD_SET(this->nativeSocket, &sready);
-    memset((char *)&nowait,0,sizeof(nowait));
+    memset((char*)&nowait, 0, sizeof(nowait));
 
-    ::select(this->nativeSocket+1,NULL,&sready,NULL,&nowait);
-    return FD_ISSET(this->nativeSocket,&sready)!=0;
+    ::select(this->nativeSocket + 1, NULL, &sready, NULL, &nowait);
+    bool result = FD_ISSET(this->nativeSocket, &sready) != 0;
+    if (result) {
+        this->error = 0;
+    }
+    return result;
 }
 
 void KNativeSocketObject::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) {
@@ -502,21 +511,22 @@ U32 KNativeSocketObject::connect(KFileDescriptor* fd, U32 address, U32 len) {
             this->connected = true;
             removeWaitingSocket(this->nativeSocket);
             return 0;
-        } else {
-            int error=0;
+        }
+        else {
+            int error = 0;
             socklen_t errLen = 4;
             if (::getsockopt(this->nativeSocket, SOL_SOCKET, SO_ERROR, (char*)&error, &errLen) < 0) {
                 return -K_EIO;
             }
             if (error) {
                 result = translateNativeSocketError(error);
-                if (result!=(U32)(-K_EWOULDBLOCK)) {
+                if (result != (U32)(-K_EWOULDBLOCK)) {
                     return result;
                 }
             }
         }
         std::shared_ptr< KNativeSocketObject> t = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
-        addWaitingNativeSocket(t); 
+        addWaitingNativeSocket(t);
         BOXEDWINE_CONDITION_LOCK(this->writingCond);
         BOXEDWINE_CONDITION_WAIT(this->writingCond);
         BOXEDWINE_CONDITION_UNLOCK(this->writingCond);
@@ -525,12 +535,13 @@ U32 KNativeSocketObject::connect(KFileDescriptor* fd, U32 address, U32 len) {
     memcopyToNative(address, buffer, len);
 #ifdef BOXEDWINE_MULTI_THREADED
     bool setBlocking = false;
-
+    /*
     if (!this->blocking) {
         // :TODO: why is this necessary?
         setBlocking = true;
         setNativeBlocking(this->nativeSocket, true);
     }
+    */
 #endif
     U16 family = readw(address);
     if (family == K_AF_INET) {
@@ -543,7 +554,7 @@ U32 KNativeSocketObject::connect(KFileDescriptor* fd, U32 address, U32 len) {
         }
     }
 
-    if (::connect(this->nativeSocket, (struct sockaddr*)buffer, len)==0) {
+    if (::connect(this->nativeSocket, (struct sockaddr*)buffer, len) == 0) {
         int error;
         socklen_t optLen = 4;
         ::getsockopt(this->nativeSocket, SOL_SOCKET, SO_ERROR, (char*)&error, &optLen);
@@ -552,15 +563,24 @@ U32 KNativeSocketObject::connect(KFileDescriptor* fd, U32 address, U32 len) {
             setNativeBlocking(this->nativeSocket, false);
         }
 #endif
-        if (error==0) {
+        if (error == 0) {
             this->connected = true;
             return 0;
         }
         this->connecting = false;
         return -K_ECONNREFUSED;
-    }   
+    }
     std::shared_ptr< KNativeSocketObject> t = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
     result = handleNativeSocketError(t, true);
+#ifdef BOXEDWINE_MSVC
+    if (result == -K_EWOULDBLOCK) {
+        result = -K_EINPROGRESS;
+        t->error = K_EINPROGRESS;
+    }
+#endif
+    if (result == -K_EINPROGRESS) {
+        this->connected = true;
+    }
 #ifdef BOXEDWINE_MULTI_THREADED
         if (setBlocking) {
             setNativeBlocking(this->nativeSocket, false);
@@ -655,7 +675,34 @@ U32 KNativeSocketObject::shutdown(KFileDescriptor* fd, U32 how) {
 }
 
 U32 KNativeSocketObject::setsockopt(KFileDescriptor* fd, U32 level, U32 name, U32 value, U32 len) {
-    if (level == K_SOL_SOCKET) {
+    if (level == K_IPPROTO_IP) {
+        U32 v;
+        switch (name) {
+        case K_IP_MTU_DISCOVER:
+            if (len != 4)
+                kpanic("KNativeSocketObject::setsockopt K_IP_MULTICAST_TTL expecting len of 4");
+            v = readd(value);
+#if defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DO) && defined(IP_PMTUDISC_DONT)
+            ::setsockopt(this->nativeSocket, IPPROTO_IP, IP_MTU_DISCOVER, (const char*)&v, 4);
+#endif
+            break;
+        default:
+            kwarn("KNativeSocketObject::setsockopt IPPROTO_IP name %d not implemented", name);
+        }
+    }
+    else if (level == K_IPPROTO_TCP) {
+        U32 v;
+        switch (name) {
+        case K_TCP_NODELAY:
+            if (len != 4)
+                kpanic("KNativeSocketObject::setsockopt K_IP_MULTICAST_TTL expecting len of 4");
+            v = readd(value);
+            ::setsockopt(this->nativeSocket, IPPROTO_TCP, TCP_NODELAY, (const char*)&v, 4);
+            break;
+        default:
+            kwarn("KNativeSocketObject::setsockopt IPPROTO_TCP name %d not implemented", name);
+        }
+    } else if (level == K_SOL_SOCKET) {
         switch (name) {
             case K_SO_RCVBUF:
                 if (len!=4)
@@ -669,8 +716,46 @@ U32 KNativeSocketObject::setsockopt(KFileDescriptor* fd, U32 level, U32 name, U3
                 this->sendLen = readd(value);
                 ::setsockopt(this->nativeSocket, SOL_SOCKET, SO_SNDBUF, (const char*)&this->recvLen, 4);
                 break;
+            case K_SO_SNDTIMEO:            
+                if (len != 8) {
+                    kpanic("KNativeSocketObject::setsockopt SO_SNDTIMEO expecting len of 8");
+                }
+                {
+                    U32 sec = readd(value);
+                    U32 usec = readd(value+4);
+#ifdef BOXEDWINE_MSVC
+                    DWORD v = sec * 1000 + usec / 1000;
+                    len = 4;
+#else
+                    struct timeval v;
+                    tval.tv_usec = readd(value+4);
+                    tval.tv_sec = readd(value);
+                    len = sizeof(struct timeval);
+#endif
+                    ::setsockopt(this->nativeSocket, SOL_SOCKET, SO_SNDTIMEO, (const char*)&v, len);
+                }
+                break;
+            case K_SO_RCVTIMEO:
+                if (len != 8) {
+                    kpanic("KNativeSocketObject::setsockopt SO_RCVTIMEO expecting len of 8");
+                }
+                {
+                    U32 sec = readd(value);
+                    U32 usec = readd(value + 4);
+#ifdef BOXEDWINE_MSVC
+                    DWORD v = sec * 1000 + usec / 1000;
+                    len = 4;
+#else
+                    struct timeval v;
+                    tval.tv_usec = readd(value + 4);
+                    tval.tv_sec = readd(value);
+                    len = sizeof(struct timeval);
+#endif
+                    ::setsockopt(this->nativeSocket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&v, len);
+                }
+                break;
             default:
-                kwarn("KNativeSocketObject::setsockopt name %d not implemented", name);
+                kwarn("KNativeSocketObject::setsockopt SOL_SOCKET name %d not implemented", name);
         }
     } else {
         kwarn("KNativeSocketObject::setsockopt level %d not implemented", level);
@@ -680,17 +765,23 @@ U32 KNativeSocketObject::setsockopt(KFileDescriptor* fd, U32 level, U32 name, U3
 
 U32 KNativeSocketObject::getsockopt(KFileDescriptor* fd, U32 level, U32 name, U32 value, U32 len_address) {
     socklen_t len = (socklen_t)readd(len_address);
+    S32 result = 0;
+
     if (level == K_SOL_SOCKET) {
         if (name == K_SO_RCVBUF) {
             if (len!=4)
                 kpanic("KNativeSocketObject::getsockopt SO_RCVBUF expecting len of 4");
-            ::getsockopt(this->nativeSocket, SOL_SOCKET, SO_RCVBUF, (char*)&this->recvLen, &len);
-            writed(value, this->recvLen);
+            result = ::getsockopt(this->nativeSocket, SOL_SOCKET, SO_RCVBUF, (char*)&this->recvLen, &len);
+            if (!result) {
+                writed(value, this->recvLen);
+            }
         } else if (name == K_SO_SNDBUF) {
             if (len != 4)
                 kpanic("KNativeSocketObject::getsockopt SO_SNDBUF expecting len of 4");
-            ::getsockopt(this->nativeSocket, SOL_SOCKET, SO_SNDBUF, (char*)&this->sendLen, &len);
-            writed(value, this->sendLen);
+            result = ::getsockopt(this->nativeSocket, SOL_SOCKET, SO_SNDBUF, (char*)&this->sendLen, &len);
+            if (!result) {
+                writed(value, this->sendLen);
+            }
         } else if (name == K_SO_ERROR) {
             if (len != 4)
                 kpanic("KNativeSocketObject::getsockopt SO_ERROR expecting len of 4");
@@ -704,8 +795,54 @@ U32 KNativeSocketObject::getsockopt(KFileDescriptor* fd, U32 level, U32 name, U3
             if (len != 4)
                 kpanic("KNativeSocketObject::getsockopt SO_OOBINLINE expecting len of 4");
             U32 result = 0;
-            ::getsockopt(this->nativeSocket, SOL_SOCKET, SO_OOBINLINE, (char*)&result, &len);
-            writed(value, result);
+            result = ::getsockopt(this->nativeSocket, SOL_SOCKET, SO_OOBINLINE, (char*)&result, &len);
+            if (!result) {
+                writed(value, result);
+            }
+        } else if (name == K_SO_RCVTIMEO) {
+            if (len != 8)
+                kpanic("KNativeSocketObject::getsockopt SO_RCVTIMEO expecting len of 8");            
+#ifdef BOXEDWINE_MSVC            
+            len = 4;
+            DWORD v = 0;
+            result = ::getsockopt(this->nativeSocket, SOL_SOCKET, SO_RCVTIMEO, (char*)&v, &len);
+
+            U32 sec = v / 1000;
+            U32 usec = (v % 1000) * 1000;
+#else
+            struct timeval v;
+            len = sizeof(struct timeval);
+            result = ::getsockopt(this->nativeSocket, SOL_SOCKET, SO_RCVTIMEO, (char*)&v, &len);
+
+            U32 sec = (U32)v.tv_sec;
+            U32 usec = (U32)v.tv_usec;
+#endif
+            if (!result) {
+                writed(value, sec);
+                writed(value + 4, usec);
+            }
+        } else if (name == K_SO_SNDTIMEO) {
+            if (len != 8)
+                kpanic("KNativeSocketObject::getsockopt SO_SNDTIMEO expecting len of 8");
+#ifdef BOXEDWINE_MSVC            
+            len = 4;
+            DWORD v = 0;
+            result = ::getsockopt(this->nativeSocket, SOL_SOCKET, SO_SNDTIMEO, (char*)&v, &len);
+
+            U32 sec = v / 1000;
+            U32 usec = (v % 1000) * 1000;
+#else
+            struct timeval v;
+            len = sizeof(struct timeval);
+            result = ::getsockopt(this->nativeSocket, SOL_SOCKET, SO_RCVTIMEO, (char*)&v, &len);
+
+            U32 sec = (U32)v.tv_sec;
+            U32 usec = (U32)v.tv_usec;
+#endif
+            if (!result) {
+                writed(value, sec);
+                writed(value + 4, usec);
+            }
         } else {
             kwarn("KNativeSocketObject::getsockopt name %d not implemented", name);
             return -K_EINVAL;
@@ -714,7 +851,11 @@ U32 KNativeSocketObject::getsockopt(KFileDescriptor* fd, U32 level, U32 name, U3
         kwarn("KNativeSocketObject::getsockopt level %d not implemented", level);
         return -K_EINVAL;
     }
-    return 0;
+    if (result != 0) {
+        std::shared_ptr< KNativeSocketObject> t = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
+        return handleNativeSocketError(t, true);
+    }
+    return (U32)result;
 }
 
 U32 KNativeSocketObject::sendmsg(KFileDescriptor* fd, U32 address, U32 flags) {
