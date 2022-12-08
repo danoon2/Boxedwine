@@ -52,7 +52,9 @@ S32 internal_poll(KPollData* data, U32 count, U32 timeout) {
                 if (!fd->kobject->isOpen()) {
                     data->revents = K_POLLHUP;
                 } else {
-                    if ((data->events & K_POLLIN) != 0 && fd->kobject->isReadReady()) {
+                    if ((data->events & K_POLLPRI) && fd->kobject->isPriorityReadReady()) {
+                        data->revents |= K_POLLPRI;
+                    } else if ((data->events & K_POLLIN) != 0 && fd->kobject->isReadReady()) {
                         data->revents |= K_POLLIN;
                     } else if ((data->events & K_POLLOUT) != 0 && fd->kobject->isWriteReady()) {
                         data->revents |= K_POLLOUT;

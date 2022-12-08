@@ -21,6 +21,7 @@ public:
     virtual bool supportsLocks();
     virtual bool isOpen();
     virtual bool isReadReady();
+    virtual bool isPriorityReadReady();
     virtual bool isWriteReady();
     virtual void waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events);
     virtual U32  writeNative(U8* buffer, U32 len);

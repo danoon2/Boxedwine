@@ -49,7 +49,7 @@ GLvoid* marshalp(CPU* cpu, U32 instance, U32 buffer, U32 len) {
     if (buffer == 0)
         return NULL;
     if (!cpu->thread->memory->isValidReadAddress(buffer, 4)) {
-        return (GLvoid*)buffer;
+        return (GLvoid*)(U64)buffer;
     }
     return (GLvoid*)getPhysicalAddress(buffer, 0);
 }

@@ -331,7 +331,7 @@ void x64CPU::link(X64Asm* data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 off
 
 void x64CPU::markCodePageReadOnly(X64Asm* data) {
     U32 pageStart = this->thread->memory->getNativePage((data->startOfDataIp+this->seg[CS].address) >> K_PAGE_SHIFT);
-    U32 pageEnd = this->thread->memory->getNativePage((data->ip+this->seg[CS].address) >> K_PAGE_SHIFT);
+    U32 pageEnd = this->thread->memory->getNativePage((data->ip+this->seg[CS].address-1) >> K_PAGE_SHIFT);
     S32 pageCount = pageEnd-pageStart+1;
 
 #ifndef __TEST
@@ -361,6 +361,9 @@ void* x64CPU::translateEip(U32 ip) {
 
 void x64CPU::translateInstruction(X64Asm* data, X64Asm* firstPass) {
     data->startOfOpIp = data->ip;  
+    if (data->ip == 0x40CB1B) {
+        data->logOp(data->ip);
+    }
     data->useSingleMemOffset = !data->cpu->thread->memory->doesInstructionNeedMemoryOffset(data->ip);
 #ifdef _DEBUG
     //data->logOp(data->ip);
@@ -457,105 +460,111 @@ DecodedOp* x64CPU::getOp(U32 eip, bool existing) {
     return NULL;
 }
 
+// for string instruction, we modify (add memory offset and segment) rdi and rsi so that the native string instruction can be used, this code will revert it back to the original values
+bool x64CPU::fixStringOp(DecodedOp* op, U64 rsi, U64 rdi) {
+    if (op->inst == Lodsb || op->inst == Lodsw || op->inst == Lodsd) {
+        THIS_ESI = (U32)(rsi - this->memOffset);
+        if (this->thread->process->hasSetSeg[op->base]) {
+            THIS_ESI -= this->seg[op->base].address;
+        }
+        return true;
+    }
+    // uses di (Examples: diablo 1 will trigger this in the middle of the Stosd when creating a new game)
+    else if (op->inst == Stosb || op->inst == Stosw || op->inst == Stosd ||
+        op->inst == Scasb || op->inst == Scasw || op->inst == Scasd) {
+        THIS_EDI = (U32)(rdi - this->memOffset);
+        if (this->thread->process->hasSetSeg[ES]) {
+            THIS_EDI -= this->seg[ES].address;
+        }
+        return true;
+    }
+    // uses si and di
+    else if (op->inst == Movsb || op->inst == Movsw || op->inst == Movsd ||
+        op->inst == Cmpsb || op->inst == Cmpsw || op->inst == Cmpsd) {
+        THIS_ESI = (U32)(rsi - this->memOffset);
+        THIS_EDI = (U32)(rdi - this->memOffset);
+        if (this->thread->process->hasSetSeg[ES]) {
+            THIS_EDI -= this->seg[ES].address;
+        }
+        if (this->thread->process->hasSetSeg[op->base]) {
+            THIS_ESI -= this->seg[op->base].address;
+        }
+        return true;
+    }
+    return false;
+}
+
+U64 x64CPU::getRipFromEip() {
+    U32 a = this->getEipAddress();
+    U64 result = (U64)this->thread->memory->getExistingHostAddress(a);
+    if (!result) {
+        this->translateEip(this->eip.u32);
+        result = (U64)this->thread->memory->getExistingHostAddress(a);
+    }
+    if (result == 0) {
+        kpanic("x64::getRipFromEip failed to translate code");
+    }
+    return result;
+}
+
+// if the page we are writing to has code that we have cached, then it will be marked NATIVE_FLAG_CODEPAGE_READONLY
+//
+// 1) This function will clear the page of all cached code
+// 2) Mark all the old cached code with "0xce" so that if the program tries to run it again, it will re-compile it
+// 3) NATIVE_FLAG_CODEPAGE_READONLY will be removed
 U64 x64CPU::handleCodePatch(U64 rip, U32 address, U64 rsi, U64 rdi, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo) {
 #ifndef __TEST
     // only one thread at a time can update the host code pages and related date like opToAddressPages
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->thread->memory->executableMemoryMutex);
 #endif
+    Memory* memory = this->thread->memory;
+    U32 nativePage = memory->getNativePage(address >> K_PAGE_SHIFT);
     // get the emulated eip of the op that corresponds to the host address where the exception happened
     std::shared_ptr<BtCodeChunk> chunk = this->thread->memory->getCodeChunkContainingHostAddress((void*)rip);
-    this->eip.u32 = chunk->getEipThatContainsHostAddress((void*)rip, NULL, NULL)-this->seg[CS].address;
+    
+    this->eip.u32 = chunk->getEipThatContainsHostAddress((void*)rip, NULL, NULL) - this->seg[CS].address;
+
+    // make sure it wasn't changed before we got the executableMemoryMutex lock
+    if (!(memory->nativeFlags[nativePage] & NATIVE_FLAG_CODEPAGE_READONLY)) {
+        return getRipFromEip();
+    }    
 
     // get the emulated op that caused the write
     DecodedOp* op = this->getOp(this->eip.u32, true);
-    if (op) {             
-        // change permission of the page so that we can write to it
-        U32 len = instructionInfo[op->inst].writeMemWidth/8;
-        BtCodeMemoryWrite w(this);        
-        static DecodedBlock b;
-        DecodedBlock::currentBlock = &b;
-        b.next1 = &b;
-        b.next2 = &b;
-        // do the write
-        op->pfn = NormalCPU::getFunctionForOp(op);
-        op->next = DecodedOp::alloc();
-        op->next->inst = Done;
-        op->next->pfn = NormalCPU::getFunctionForOp(op->next);
+    if (op) {  
         if (doSyncFrom) {
             doSyncFrom(op);
         }
-
         if (this->flags & DF) {
             this->df = -1;
         } else {
             this->df = 1;
         }
-        // for string instruction, we modify (add memory offset and segment) rdi and rsi so that the native string instruction can be used, this code will revert it back to the original values
-        // uses si
-        if (op->inst==Lodsb || op->inst==Lodsw || op->inst==Lodsd) {
-            THIS_ESI=(U32)(rsi - this->memOffset);
-            if (this->thread->process->hasSetSeg[op->base]) {
-                THIS_ESI-=this->seg[op->base].address;
-            }
-            // doesn't write            
-        }
-        // uses di (Examples: diablo 1 will trigger this in the middle of the Stosd when creating a new game)
-        else if (op->inst==Stosb || op->inst==Stosw || op->inst==Stosd ||
-            op->inst==Scasb || op->inst==Scasw || op->inst==Scasd) {
-            THIS_EDI=(U32)(rdi - this->memOffset);
-            if (this->thread->process->hasSetSeg[ES]) {
-                THIS_EDI-=this->seg[ES].address;
-            }
-            if (instructionInfo[op->inst].writeMemWidth) {
-                w.invalidateStringWriteToDi(op->repNotZero || op->repZero, instructionInfo[op->inst].writeMemWidth/8);
-            }
-        }
-        // uses si and di
-        else if (op->inst==Movsb || op->inst==Movsw || op->inst==Movsd ||
-            op->inst==Cmpsb || op->inst==Cmpsw || op->inst==Cmpsd) {
-            THIS_ESI=(U32)(rsi - this->memOffset);
-            THIS_EDI=(U32)(rdi - this->memOffset);
-            if (this->thread->process->hasSetSeg[ES]) {
-                THIS_EDI-=this->seg[ES].address;
-            }
-            if (this->thread->process->hasSetSeg[op->base]) {
-                THIS_ESI-=this->seg[op->base].address;
-            }
-            if (instructionInfo[op->inst].writeMemWidth) {
-                w.invalidateStringWriteToDi(op->repNotZero || op->repZero, instructionInfo[op->inst].writeMemWidth/8);
-            }
-        } else {
-            w.invalidateCode(address, len);
-        }  
-        U32 page = address >> K_PAGE_SHIFT;
-        // shared or mapped native memory
-        if (this->thread->memory->flags[page] & PAGE_MAPPED_HOST) {
-            this->thread->memory->addNeedsMemoryOffset(this->eip.u32);
-            // won't trigger retranslate the first time through, that way we will minimize the number of retranslates for the chunk 
-            // since we will go through most of the chunk at least once before the retranslate
-            if (this->thread->memory->doesInstructionNeedMemoryOffset(this->eip.u32)) {
-                chunk->releaseAndRetranslate();
-            }
-        }
-        FILE* f = (FILE*)this->logFile;
-        this->logFile = NULL;       
-        op->pfn(this, op);   
-        this->logFile = f;        
-        if (doSyncTo) {
-            doSyncTo(op);
-        }
+        U32 addressStart = address;
+        U32 len = instructionInfo[op->inst].writeMemWidth / 8;
 
-        // eip was ajusted after running this instruction                        
-        U32 a = this->getEipAddress();
-        if (!this->thread->memory->getExistingHostAddress(a)) {
-            this->translateEip(this->eip.u32);
+        // Fix string will set EDI and ESI back to their correct values so we can re-enter this instruction
+        if (fixStringOp(op, rsi, rdi)) {
+            if (op->repNotZero || op->repZero) {
+                len = len * (isBig() ? THIS_ECX : THIS_CX);
+            }
+
+            if (this->df == 1) {
+                addressStart = (this->isBig() ? THIS_EDI : THIS_DI) + this->seg[ES].address;
+            } else {
+                addressStart = (this->isBig() ? THIS_EDI : THIS_DI) + this->seg[ES].address + (instructionInfo[op->inst].writeMemWidth / 8) - len;
+            }
+
+            // only need to sync back if we changed ESI or EDI for string op
+            if (doSyncTo) {
+                doSyncTo(op);
+            }
         }
-        U64 result = (U64)this->thread->memory->getExistingHostAddress(a);
-        if (result==0) {
-            kpanic("x64::handleCodePatch failed to translate code");
-        }
+        U32 startPage = addressStart >> K_PAGE_SHIFT;
+        U32 endPage = (addressStart + len - 1) >> K_PAGE_SHIFT;
+        memory->clearHostCodeForWriting(memory->getNativePage(startPage), memory->getNativePage(endPage - startPage + 1));            
         op->dealloc(true);
-        return result;
+        return getRipFromEip();
     } else {                        
         kpanic("Threw an exception from a host location that doesn't map to an emulated instruction");
     }
@@ -644,14 +653,29 @@ U64 x64CPU::handleAccessException(U64 rip, U64 address, bool readAddress, std::f
         U32 emulatedAddress = (U32)address;
         U32 page = emulatedAddress >> K_PAGE_SHIFT;
         Memory* m = this->thread->memory;
-        U32 nativeFlags = m->nativeFlags[m->getNativePage(page)];
         U32 flags = m->flags[page];
-        if ((flags & PAGE_MAPPED_HOST) || (flags & (PAGE_READ | PAGE_WRITE)) != (nativeFlags & (PAGE_READ | PAGE_WRITE))) {
-            // if this ends up being too slow for each read/write, perhaps the code block could be changed to use
-            // memory->memOffsets[page] instead of memory->id
-            //
-            // Fire Fight and Age of Empires will hammer this code
-            return this->handleCodePatch(rip, emulatedAddress, getReg(6), getReg(7), doSyncFrom, doSyncTo);
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->thread->memory->executableMemoryMutex);
+
+        std::shared_ptr<BtCodeChunk> chunk = m->getCodeChunkContainingHostAddress((void*)rip);
+        if (chunk) {
+            this->eip.u32 = chunk->getEipThatContainsHostAddress((void*)rip, NULL, NULL) - this->seg[CS].address;
+            // if the page we are trying to access needs a special memory offset and this instruction isn't flagged to looked at that special memory offset, then flag it
+            if (flags & PAGE_MAPPED_HOST && (((flags & PAGE_READ) && readAddress) || ((flags & PAGE_WRITE) && !readAddress))) {
+                m->setNeedsMemoryOffset(getEipAddress());
+                DecodedOp* op = this->getOp(this->eip.u32, true);
+                fixStringOp(op, getReg(6), getReg(7)); // if we were in the middle of a string op, then reset RSI and RDI so that we can re-enter the same op
+                chunk->releaseAndRetranslate();
+                return getRipFromEip();
+            }
+            else {
+                if (!readAddress && (flags & PAGE_WRITE) && !(this->thread->memory->nativeFlags[this->thread->memory->getNativePage(page)] & NATIVE_FLAG_CODEPAGE_READONLY)) {
+                    // :TODO: this is a hack, why is it necessary
+                    m->updatePagePermission(page, 1);
+                    return 0;
+                } else {
+                    int ii = 0;
+                }
+            }
         }
     }
 
@@ -659,7 +683,7 @@ U64 x64CPU::handleAccessException(U64 rip, U64 address, bool readAddress, std::f
     U64 r9 = getReg(9);
     U64 r8 = getReg(8);
 
-    if (inst == 0xCE24FF43 && r9) { // useLargeAddressSpace = true
+    if (inst == 0xCE24FF43 && this->thread->memory->isValidReadAddress((U32)r9, 1)) { // useLargeAddressSpace = true
         this->translateEip((U32)r9 - this->seg[CS].address);
         return 0;
     } else if ((inst==0x0A8B4566 || inst==0xCA148B4F) && (r8 || r9)) { // if these constants change, update handleMissingCode too     

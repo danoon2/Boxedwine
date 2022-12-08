@@ -101,6 +101,7 @@ void Memory::reset() {
 }
 
 void Memory::reset(U32 page, U32 pageCount) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(pageMutex);
     this->clearNeedsMemoryOffset(page, pageCount);
     freeNativeMemory(page, pageCount);        
 }
@@ -151,6 +152,7 @@ void writeMemory(U32 address, U8* data, int len) {
 }
 
 void Memory::unmapNativeMemory(U32 address, U32 size) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(pageMutex);
     U32 result = 0;
     U32 pageCount = (size >> K_PAGE_SHIFT) + 2; // 1 for size alignment, 1 for hostAddress alignment
     U64 pageStart = address >> K_PAGE_SHIFT;
@@ -162,6 +164,7 @@ void Memory::unmapNativeMemory(U32 address, U32 size) {
 }
 
 U32 Memory::mapNativeMemory(void* hostAddress, U32 size) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(pageMutex);
     U32 i;
     U32 result = 0;
     U64 hostStart = (U64)hostAddress & 0xFFFFFFFFFFFFF000l;
@@ -184,6 +187,7 @@ U32 Memory::mapNativeMemory(void* hostAddress, U32 size) {
 }
 
 void Memory::allocPages(U32 page, U32 pageCount, U8 permissions, FD fd, U64 offset, const BoxedPtr<MappedFile>& mappedFile) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(pageMutex);
     for (U32 i = 0; i < pageCount; i++) {
         this->clearCodePageFromCache(page + i);
     }
@@ -251,6 +255,7 @@ void Memory::allocPages(U32 page, U32 pageCount, U8 permissions, FD fd, U64 offs
 }
 
 void Memory::protectPage(U32 i, U32 permissions) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(pageMutex);
     if (!this->isPageAllocated(i) && (permissions & PAGE_PERMISSION_MASK)) {
         this->allocPages(i, 1, permissions, 0, 0, 0);
     } else {
@@ -928,8 +933,10 @@ std::shared_ptr<BtCodeChunk> Memory::getCodeChunkContainingEip(U32 eip) {
     return NULL;
 }
 
-void Memory::invalideHostCode(U32 eip, U32 len) {
-    for (U32 i=eip;i<eip+len;i++) {
+void Memory::clearHostCodeForWriting(U32 nativePage, U32 count) {
+    U32 addressStart = getEmulatedPage(nativePage) << K_PAGE_SHIFT;
+    U32 addressStop = getEmulatedPage(nativePage + count) << K_PAGE_SHIFT;
+    for (U32 i= addressStart;i < addressStop;i++) {
         std::shared_ptr<BtCodeChunk> chunk = getCodeChunkContainingEip(i);
         if (chunk && !chunk->isDynamicAware()) {
             chunk->invalidateStartingAt(i);
@@ -937,14 +944,15 @@ void Memory::invalideHostCode(U32 eip, U32 len) {
         }
     }
 
-    U32 startPage = this->getNativePage(eip >> K_PAGE_SHIFT);
-    U32 endPage = this->getNativePage((eip+len) >> K_PAGE_SHIFT);
-    for (U32 nativePage = startPage; nativePage <= endPage; nativePage++) {
-        if (dynamicCodePageUpdateCount[nativePage]!=MAX_DYNAMIC_CODE_PAGE_COUNT) {
-            dynamicCodePageUpdateCount[nativePage]++;
-            if (dynamicCodePageUpdateCount[nativePage]==MAX_DYNAMIC_CODE_PAGE_COUNT) {
-                this->makeNativePageDynamic(nativePage);
+    for (U32 page = nativePage; page < nativePage + count; page++) {
+        if (this->nativeFlags[page] & NATIVE_FLAG_CODEPAGE_READONLY) {
+            if (dynamicCodePageUpdateCount[page] != MAX_DYNAMIC_CODE_PAGE_COUNT) {
+                dynamicCodePageUpdateCount[page]++;
+                if (dynamicCodePageUpdateCount[page] == MAX_DYNAMIC_CODE_PAGE_COUNT) {
+                    this->makeNativePageDynamic(page);
+                }
             }
+            ::clearCodePageReadOnly(this, page);
         }
     }
 }
@@ -993,6 +1001,7 @@ int powerOf2(U32 requestedSize, U32& size) {
 }
 
 bool Memory::isAddressExecutable(void* address) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(executableMemoryMutex);
     for (auto& p : this->allocatedExecutableMemory) {
         if (address >= p.memory && address < (U8*)p.memory + p.size) {
             return true;
@@ -1002,6 +1011,7 @@ bool Memory::isAddressExecutable(void* address) {
 }
 
 void* Memory::allocateExcutableMemory(U32 requestedSize, U32* allocatedSize) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(executableMemoryMutex);
     U32 size = 0;
     U32 powerOf2Size = powerOf2(requestedSize, size);
 
@@ -1047,6 +1057,7 @@ void Memory::freeExcutableMemory(void* hostMemory, U32 actualSize) {
 }
 
 void Memory::executableMemoryReleased() {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(executableMemoryMutex);
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
     this->codeChunksByHostPage.clear();
     this->codeChunksByEmulationPage.clear();

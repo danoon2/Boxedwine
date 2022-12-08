@@ -399,6 +399,22 @@ bool KNativeSocketObject::isOpen() {
     return this->listening || this->connected;
 }
 
+bool KNativeSocketObject::isPriorityReadReady() {
+    fd_set          sready;
+    struct timeval  nowait;
+
+    FD_ZERO(&sready);
+    FD_SET(this->nativeSocket, &sready);
+    memset((char*)&nowait, 0, sizeof(nowait));
+
+    ::select(this->nativeSocket + 1, NULL, NULL, &sready, &nowait);
+    bool result = FD_ISSET(this->nativeSocket, &sready) != 0;
+    if (result) {
+        this->error = 0;
+    }
+    return result;
+}
+
 bool KNativeSocketObject::isReadReady() {
     fd_set          sready;
     struct timeval  nowait;

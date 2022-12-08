@@ -120,7 +120,7 @@ void reserveNativeMemory(Memory* memory) {
 
 void releaseNativeMemory(Memory* memory) {
     U32 i;
-
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->executableMemoryMutex);
     for (i=0;i<K_NUMBER_OF_PAGES;i++) {
         memory->clearCodePageFromCache(i);
     }

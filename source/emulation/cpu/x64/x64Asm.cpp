@@ -564,7 +564,7 @@ void X64Asm::translateMemory(U32 rm, bool checkG, bool isG8bit, bool isE8bit) {
                     setDisplacement32(this->fetch32());
                 } else {
                     U32 disp = this->fetch32();
-                    if (!this->cpu->thread->process->hasSetSeg[this->ds] && disp<=0x7FFFFFFF) {
+                    if (!this->cpu->thread->process->hasSetSeg[this->ds] && disp<=0x7FFFFFFF && this->useSingleMemOffset) {
                         // converts [disp32] to [HOST_MEM+disp32]
                         this->rex |= REX_BASE | REX_MOD_RM;    
                         setRM((rm & ~(0xC7)) | 4 | 0x80, checkG, false, isG8bit, isE8bit);
@@ -614,7 +614,7 @@ void X64Asm::translateMemory(U32 rm, bool checkG, bool isG8bit, bool isE8bit) {
                         } else {
                             U8 seg = base==4?this->ss:this->ds;
                             // convert [base + index << shift] to HOST_TMP=[base + index << shift];HOST_TMP=[HOST_TMP+SEG];[HOST_TMP+MEM]
-                            if (!this->cpu->thread->process->hasSetSeg[seg]) {                                                                 
+                            if (!this->cpu->thread->process->hasSetSeg[seg] && this->useSingleMemOffset) {
                                 if (index==4) { // no index
                                     // probably something like mov ebx,DWORD PTR [esp] 
                                     this->rex |= REX_BASE | REX_SIB_INDEX | REX_MOD_RM;    
@@ -3502,6 +3502,8 @@ void X64Asm::verr(U8 rm) {
 
 static void x64_invalidOp(CPU* cpu, U32 op) {
     klog("x64_invalidOp: 0x%X", op);
+    std::string name = cpu->thread->process->getModuleName(cpu->seg[CS].address + cpu->eip.u32);
+    klog("%.8X EAX=%.8X ECX=%.8X EDX=%.8X EBX=%.8X ESP=%.8X EBP=%.8X ESI=%.8X EDI=%.8X %s at %.8X\n", cpu->seg[CS].address + cpu->eip.u32, cpu->reg[0].u32, cpu->reg[1].u32, cpu->reg[2].u32, cpu->reg[3].u32, cpu->reg[4].u32, cpu->reg[5].u32, cpu->reg[6].u32, cpu->reg[7].u32, name.c_str(), cpu->thread->process->getModuleEip(cpu->seg[CS].address + cpu->eip.u32));
     cpu->thread->signalIllegalInstruction(5);
 }
 
