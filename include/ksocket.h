@@ -40,17 +40,38 @@
 #define K_SHUT_WR      1
 #define K_SHUT_RDWR    2
 
+#define K_SO_DEBUG     1
+#define K_SO_REUSEADDR 2
 #define K_SO_TYPE      3
 #define	K_SO_ERROR     4
+#define K_SO_DONTROUTE 5
+#define K_SO_BROADCAST 6
 #define K_SO_SNDBUF    7
 #define K_SO_RCVBUF    8
-#define K_SO_OOBINLINE   10
+#define K_SO_KEEPALIVE 9
+#define K_SO_OOBINLINE 10
+#define K_SO_NO_CHECK  11
+#define K_SO_PRIORITY  12
+#define K_SO_LINGER    13
+#define K_SO_BSDCOMPAT 14
+#define K_SO_REUSEPORT 15
 #define K_SO_PASSCRED  16
 #define K_SO_PEERCRED  17
+#define K_SO_RCVLOWAT  18
+#define K_SO_SNDLOWAT  19
+#define K_SO_RCVTIMEO  20
+#define K_SO_SNDTIMEO  21
 #define K_SO_ATTACH_FILTER  26
 
+#define K_IPPROTO_IP 0
 #define K_SOL_SOCKET  1
+#define K_IPPROTO_TCP 6
+
 #define K_SCM_RIGHTS  1
+
+#define K_IP_MTU_DISCOVER 10
+
+#define K_TCP_NODELAY 1
 
 U32 ksocket(U32 domain, U32 type, U32 protocol);
 U32 kbind(U32 socket, U32 address, U32 len);
@@ -75,5 +96,5 @@ U32 syscall_pipe(U32 address);
 U32 syscall_pipe2(U32 address, U32 flags);
 
 const char* socketAddressName(U32 address, U32 len, char* result, U32 cbResult);
-U32 isNativeSocket(int desc);
+bool isNativeSocket(KThread* thread, int desc);
 #endif

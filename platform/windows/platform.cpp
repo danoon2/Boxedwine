@@ -17,6 +17,7 @@
  */
 #include "boxedwine.h"
 #include <winsock2.h>
+#include <ws2tcpip.h>
 #include "pixelformat.h"
 #include "../source/emulation/cpu/binaryTranslation/btCpu.h"
 #include <VersionHelpers.h>

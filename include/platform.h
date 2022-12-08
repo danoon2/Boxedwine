@@ -68,7 +68,6 @@
 #define INLINE __inline
 #define OPENGL_CALL_TYPE __stdcall
 #define PACKED( s ) __pragma( pack(push, 1) ) s __pragma( pack(pop) )
-#define socklen_t int
 #define ALIGN(t, x) __declspec(align(x)) t
 #else
 #pragma clang diagnostic ignored "-Winvalid-offsetof"
@@ -132,7 +131,7 @@ public:
     static U32 getPagePermissionGranularity(); // assumed to be smaller or equal to getPageAllocationGranularity and that getPageAllocationGranularity / getPagePermissionGranularity is a whole number
     static U32 allocateNativeMemory(U64 address); // page must be aligned to Platform::getAllocationGranularity
     static U32 freeNativeMemory(U64 address); // page  must be aligned to Platform::getAllocationGranularity
-    static U32 updateNativePermission(U64 address, U32 permission, U32 len = 0); // page must be aligned to Platform::getProtectionGranularity.  when len == 0, it will default to getPagePermissionGranularity() << K_PAGE_SHIFT
+    static U32 updateNativePermission(U64 address, U32 permission, U32 len = 0); // page must be aligned to Platform::getPagePermissionGranularity.  when len == 0, it will default to getPagePermissionGranularity() << K_PAGE_SHIFT
 
 #ifdef BOXEDWINE_MULTI_THREADED
     static void setCpuAffinityForThread(KThread* thread, U32 count);

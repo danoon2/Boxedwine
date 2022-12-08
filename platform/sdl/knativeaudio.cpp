@@ -46,6 +46,11 @@ static void audioCallback(void* userdata, U8* stream, S32 len) {
 	}
 	U32 nframes = len / blockAlign;
 	U32 to_copy_bytes, to_copy_frames, chunk_bytes, lcl_offs_bytes;
+	if (!data->process->memory->isValidReadAddress(data->address_lcl_offs_frames, 4)) {
+		memset(stream, data->got.silence, len);
+		BOXEDWINE_CONDITION_UNLOCK(KSystem::processesCond);
+		return;
+	}
 	U32 lcl_offs_frames = data->process->readd(data->address_lcl_offs_frames);
 	U32 held_frames = data->process->readd(data->address_held_frames);
 
