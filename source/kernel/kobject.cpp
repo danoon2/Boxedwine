@@ -53,7 +53,7 @@ U32 KObject::read(U32 address, U32 len) {
             didRead = this->readNative((U8*)tmp, todo);
             memcopyFromNative(address, tmp, didRead);
         }
-        if (didRead<todo)
+        if (didRead<(S32)todo)
             break;
         len-=didRead;
         address+=didRead;

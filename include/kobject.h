@@ -43,6 +43,7 @@ public:
     virtual bool supportsLocks()=0;
     virtual bool isOpen()=0;
     virtual bool isReadReady()=0;
+    virtual bool isPriorityReadReady() { return isReadReady(); }
     virtual bool isWriteReady()=0;
     virtual void waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events)=0;
     virtual U32  write(U32 buffer, U32 len);

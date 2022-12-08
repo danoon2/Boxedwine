@@ -4,11 +4,11 @@
 #include "btCpu.h"
 #include "../../hardmmu/hard_memory.h"
 
-BtCodeMemoryWrite::BtCodeMemoryWrite(BtCPU* cpu, U32 address, U32 len) : count(0), cpu(cpu) {
+BtCodeMemoryWrite::BtCodeMemoryWrite(BtCPU* cpu, U32 address, U32 len) : cpu(cpu) {
     this->invalidateCode(address, len);
 }
 
-BtCodeMemoryWrite::BtCodeMemoryWrite(BtCPU* cpu) : count(0), cpu(cpu) {
+BtCodeMemoryWrite::BtCodeMemoryWrite(BtCPU* cpu) : cpu(cpu) {
 }
 
 void BtCodeMemoryWrite::invalidateStringWriteToDi(bool repeat, U32 size) {
@@ -31,33 +31,15 @@ void BtCodeMemoryWrite::invalidateStringWriteToDi(bool repeat, U32 size) {
 
 void BtCodeMemoryWrite::invalidateCode(U32 addressStart, U32 addressLen) {
     U32 pageStart = this->cpu->thread->memory->getNativePage(addressStart >> K_PAGE_SHIFT);
-    U32 pageStop = this->cpu->thread->memory->getNativePage((addressStart + addressLen) >> K_PAGE_SHIFT);
+    U32 pageStop = this->cpu->thread->memory->getNativePage((addressStart + addressLen - 1) >> K_PAGE_SHIFT);
 
     for (U32 page = pageStart; page <= pageStop; page++) {
         if (cpu->thread->memory->nativeFlags[page] & NATIVE_FLAG_CODEPAGE_READONLY) {
-            if (count >= CLEAR_BUFFER_SIZE) {
-                kpanic("invalidateCode CLEAR_BUFFER_SIZE is not large enough");
-            }
-            buffer[count] = page;
-            count++;
-            ::clearCodePageReadOnly(cpu->thread->memory, page);
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(cpu->thread->memory->executableMemoryMutex);
+            this->cpu->thread->memory->clearHostCodeForWriting(pageStart, pageStop - pageStart + 1);
+            return;
         }
-    }
-    if (count) {
-        this->cpu->thread->memory->invalideHostCode(addressStart, addressLen);
-    }
+    }    
 }
 
-BtCodeMemoryWrite::~BtCodeMemoryWrite() {
-    this->restoreCodePageReadOnly();
-}
-
-void BtCodeMemoryWrite::restoreCodePageReadOnly() {
-    for (U32 i = 0; i < this->count; i++) {
-        if (cpu->thread->memory->dynamicCodePageUpdateCount[buffer[i]] != MAX_DYNAMIC_CODE_PAGE_COUNT) {
-            ::makeCodePageReadOnly(cpu->thread->memory, buffer[i]);
-        }
-    }
-    this->count = 0;
-}
 #endif

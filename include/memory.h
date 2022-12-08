@@ -142,6 +142,7 @@ public:
 #endif
 
 #ifdef BOXEDWINE_64BIT_MMU
+    BOXEDWINE_MUTEX pageMutex;
     U8 flags[K_NUMBER_OF_PAGES];
     U8 nativeFlags[K_NATIVE_NUMBER_OF_PAGES]; // this is based on the granularity for permissions, Platform::getPagePermissionGranularity. 
     U32 allocated;
@@ -156,7 +157,7 @@ public:
         U32 page = eip >> K_PAGE_SHIFT;
         U32 offset = eip & K_PAGE_MASK;
         if (this->needsMemoryOffset.count(page) && this->needsMemoryOffset[page].count(offset)) {
-            return this->needsMemoryOffset[page][offset] > 1;
+            return this->needsMemoryOffset[page][offset] > 0;
         }
         return false;
     }
@@ -167,10 +168,10 @@ public:
             }
         }
     }
-    void addNeedsMemoryOffset(U32 eip) {
+    void setNeedsMemoryOffset(U32 eip) {
         U32 page = eip >> K_PAGE_SHIFT;
         U32 offset = eip & K_PAGE_MASK;
-        this->needsMemoryOffset[page][offset] += 1;
+        this->needsMemoryOffset[page][offset] = 1;
     }
 
     void clearAllNeedsMemoryOffset() {
@@ -181,7 +182,7 @@ public:
     U8 dynamicCodePageUpdateCount[K_NATIVE_NUMBER_OF_PAGES];
 
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
-    BOXEDWINE_MUTEX executableMemoryMutex;
+    BOXEDWINE_MUTEX executableMemoryMutex;    
 private:
 #define EXECUTABLE_MIN_SIZE_POWER 7
 #define EXECUTABLE_MAX_SIZE_POWER 22
@@ -193,7 +194,7 @@ private:
     std::list<void*> freeExecutableMemory[EXECUTABLE_SIZES];
 public:
     std::shared_ptr<BtCodeChunk> getCodeChunkContainingHostAddress(void* hostAddress);
-    void invalideHostCode(U32 eip, U32 len);
+    void clearHostCodeForWriting(U32 nativePage, U32 count);
     std::shared_ptr<BtCodeChunk> getCodeChunkContainingEip(U32 eip);
     void addCodeChunk(const std::shared_ptr<BtCodeChunk>& chunk);
     void removeCodeChunk(const std::shared_ptr<BtCodeChunk>& chunk);
