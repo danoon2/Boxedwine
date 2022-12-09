@@ -11,6 +11,7 @@
 static int winsock_intialized;
 #define BOOL unsigned int
 #pragma comment(lib, "Ws2_32.lib")
+#undef min
 #else
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -927,7 +928,7 @@ U32 KNativeSocketObject::sendmsg(KFileDescriptor* fd, U32 address, U32 flags) {
         len += toCopy;
     }
     struct sockaddr dest;
-    U32 destLen = min(sizeof(struct sockaddr), hdr.msg_namelen);
+    U32 destLen = std::min((U32)sizeof(struct sockaddr), hdr.msg_namelen);
     if (destLen) {
         memcopyToNative(hdr.msg_name, &dest, destLen);
     }
@@ -1041,7 +1042,7 @@ U32 KNativeSocketObject::recvfrom(KFileDescriptor* fd, U32 buffer, U32 length, U
     U32 result = (U32)::recvfrom(this->nativeSocket, tmp, length, nativeFlags, (struct sockaddr*)fromBuffer, &outLen);
     if ((S32)result>=0) {
         memcopyFromNative(buffer, tmp, result);
-        memcopyFromNative(address, fromBuffer, min(outLen, inLen));
+        memcopyFromNative(address, fromBuffer, std::min(outLen, inLen));
         writed(address_len, outLen);
         this->error = 0;
     } else {
@@ -1051,7 +1052,7 @@ U32 KNativeSocketObject::recvfrom(KFileDescriptor* fd, U32 buffer, U32 length, U
             if (length && buffer) {
                 memcopyFromNative(buffer, tmp, length);
             }
-            memcopyFromNative(address, fromBuffer, min(outLen, inLen));
+            memcopyFromNative(address, fromBuffer, std::min(outLen, inLen));
             writed(address_len, outLen);
         } 
     }
