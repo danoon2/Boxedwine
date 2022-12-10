@@ -821,7 +821,6 @@ U32 KNativeSocketObject::setsockopt(KFileDescriptor* fd, U32 level, U32 name, U3
                 this->recvLen = readd(value);
                 ::setsockopt(this->nativeSocket, SOL_SOCKET, SO_KEEPALIVE, (const char*)&this->recvLen, 4);
                 break;
-                break;
             default:
                 kwarn("KNativeSocketObject::setsockopt SOL_SOCKET name %d not implemented", name);
                 return -K_EINVAL;

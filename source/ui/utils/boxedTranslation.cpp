@@ -219,6 +219,8 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "You can choose from a list of applications in this container to create a shortcut to.";
     case CONTAINER_OPTIONS_DLG_ADD_APP_BUTTON_LABEL:
         return "Choose App";
+    case CONTAINER_OPTIONS_DOWNLOAD_WINETRICKS:
+        return "Winetricks is a helper script to download and install various redistributable runtime libraries needed to run some programs in Wine.";
     case COMMON_WINE_VERSION_LABEL:
         return "Wine Version:";
     case COMMON_WINE_VERSION_HELP:
@@ -245,6 +247,8 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "Default";
     case GENERIC_COMBOBOX_ALL:
         return "All";
+    case GENERIC_DOWNLOAD:
+        return "Download {0} MB";
     case MAIN_BUTTON_INSTALL:
         return "Install";
     case MAIN_BUTTON_CONTAINERS:
@@ -349,6 +353,12 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "Run in Container:";
     case CONTAINER_VIEW_COMPONENTS_LABEL:
         return "Components:";
+    case CONTAINER_VIEW_WINETRICKS_LABEL:
+        return "Winetricks:";
+    case CONTAINER_VIEW_WINETRICKS_FONTS_LABEL:
+        return "Winetricks fonts:";
+    case CONTAINER_VIEW_WINETRICKS_DLLS_LABEL:
+        return "Winetricks Dlls:";
     case CONTAINER_VIEW_REGEDIT_BUTTON_LABEL:
         return "Regedit";
     case CONTAINER_VIEW_WINECFG_BUTTON_LABEL:

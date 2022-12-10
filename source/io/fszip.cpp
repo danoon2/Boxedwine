@@ -145,13 +145,14 @@ bool FsZip::readFileFromZip(const std::string& zipFile, const std::string& file,
         
         if (file == tmp) {
             U32 read;
-
+            char* buffer = new char[file_info.uncompressed_size+1];
             unzOpenCurrentFile(z);            
-            read = unzReadCurrentFile(z, tmp, MAX_FILEPATH_LEN);
-            tmp[read]=0;              
+            read = unzReadCurrentFile(z, buffer, file_info.uncompressed_size + 1);
+            buffer[read]=0;
             unzCloseCurrentFile(z);
             unzClose(z);
-            result = tmp;
+            result = buffer;
+            delete[] buffer;
             return true;
         }
         unzGoToNextFile(z);

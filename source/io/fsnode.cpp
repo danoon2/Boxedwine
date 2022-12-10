@@ -13,6 +13,7 @@ FsNode::FsNode(Type type, U32 id, U32 rdev, const std::string& path, const std::
     type(type),  
     parent(parent),
     isDir(isDirectory),  
+    locksCS("FsNode.lockCS"),
     hasLoadedChildrenFromFileSystem(false)
  {   
 }
