@@ -94,6 +94,8 @@
 #define K_IP_TRANSPARENT  19
 
 #define K_TCP_NODELAY 1
+#define K_TCP_KEEPIDLE 4
+#define K_TCP_KEEPINTVL 5
 
 U32 ksocket(U32 domain, U32 type, U32 protocol);
 U32 kbind(U32 socket, U32 address, U32 len);

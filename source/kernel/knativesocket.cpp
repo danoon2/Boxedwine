@@ -718,6 +718,12 @@ U32 KNativeSocketObject::setsockopt(KFileDescriptor* fd, U32 level, U32 name, U3
             v = readd(value);
             ::setsockopt(this->nativeSocket, IPPROTO_IP, IP_RECVTOS, (const char*)&v, 4);
             break;
+        case K_IP_RECVERR:
+            if (len != 4)
+                kpanic("KNativeSocketObject::setsockopt K_IP_RECVERR expecting len of 4");
+            v = readd(value);
+            ::setsockopt(this->nativeSocket, IPPROTO_IP, IP_RECVERR, (const char*)&v, 4);
+            break;
         default:
             kwarn("KNativeSocketObject::setsockopt IPPROTO_IP name %d not implemented", name);
             return -K_EINVAL;
@@ -728,9 +734,21 @@ U32 KNativeSocketObject::setsockopt(KFileDescriptor* fd, U32 level, U32 name, U3
         switch (name) {
         case K_TCP_NODELAY:
             if (len != 4)
-                kpanic("KNativeSocketObject::setsockopt K_IP_MULTICAST_TTL expecting len of 4");
+                kpanic("KNativeSocketObject::setsockopt TCP_NODELAY expecting len of 4");
             v = readd(value);
             ::setsockopt(this->nativeSocket, IPPROTO_TCP, TCP_NODELAY, (const char*)&v, 4);
+            break;
+        case K_TCP_KEEPIDLE:
+            if (len != 4)
+                kpanic("KNativeSocketObject::setsockopt TCP_KEEPIDLE expecting len of 4");
+            v = readd(value);
+            ::setsockopt(this->nativeSocket, IPPROTO_TCP, TCP_KEEPIDLE, (const char*)&v, 4);
+            break;
+        case K_TCP_KEEPINTVL:
+            if (len != 4)
+                kpanic("KNativeSocketObject::setsockopt TCP_KEEPINTVL expecting len of 4");
+            v = readd(value);
+            ::setsockopt(this->nativeSocket, IPPROTO_TCP, TCP_KEEPINTVL, (const char*)&v, 4);
             break;
         default:
             kwarn("KNativeSocketObject::setsockopt IPPROTO_TCP name %d not implemented", name);
@@ -789,6 +807,13 @@ U32 KNativeSocketObject::setsockopt(KFileDescriptor* fd, U32 level, U32 name, U3
                 }
                 break;
             case K_SO_TIMESTAMP:
+                break;
+            case K_SO_KEEPALIVE:
+                if (len != 4)
+                    kpanic("KNativeSocketObject::setsockopt SO_KEEPALIVE expecting len of 4");
+                this->recvLen = readd(value);
+                ::setsockopt(this->nativeSocket, SOL_SOCKET, SO_KEEPALIVE, (const char*)&this->recvLen, 4);
+                break;
                 break;
             default:
                 kwarn("KNativeSocketObject::setsockopt SOL_SOCKET name %d not implemented", name);
@@ -936,6 +961,7 @@ U32 KNativeSocketObject::sendmsg(KFileDescriptor* fd, U32 address, U32 flags) {
     U32 nativeFlags = 0;
     if (flags & K_MSG_OOB)
         nativeFlags |= MSG_OOB;
+    flags &= ~K_MSG_NOSIGNAL;
     if (flags & (~1)) {
         kwarn("KNativeSocketObject::sendmsg unsupported flags: %d", flags);
     }
