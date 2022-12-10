@@ -11,6 +11,7 @@
 static int winsock_intialized;
 #define BOOL unsigned int
 #pragma comment(lib, "Ws2_32.lib")
+#undef min
 #else
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -21,6 +22,11 @@ static int winsock_intialized;
 #include <sys/ioctl.h>
 #include <fcntl.h>
 void closesocket(int socket) { close(socket); }
+
+#if !defined(TCP_KEEPIDLE) && defined(TCP_KEEPALIVE)
+#define TCP_KEEPIDLE TCP_KEEPALIVE
+#endif
+
 #endif
 
 std::vector<std::shared_ptr<KNativeSocketObject>> waitingNativeSockets;
@@ -215,7 +221,7 @@ S32 translateNativeSocketError(int error) {
     else if (error == WSAEISCONN)
         result = -K_EISCONN;
     else if (error == WSAEMSGSIZE)
-        result = 0;
+        result = -K_EMSGSIZE;
     else
         result =-K_EIO;
 
@@ -236,6 +242,8 @@ S32 translateNativeSocketError(int error) {
         result = -K_EISCONN;
     else if (error == ECONNREFUSED)
         result = -K_ECONNREFUSED;
+    else if (error == EMSGSIZE)
+        result = -K_EMSGSIZE;
     else
         result = -K_EIO;
 #endif
@@ -703,8 +711,29 @@ U32 KNativeSocketObject::setsockopt(KFileDescriptor* fd, U32 level, U32 name, U3
             ::setsockopt(this->nativeSocket, IPPROTO_IP, IP_MTU_DISCOVER, (const char*)&v, 4);
 #endif
             break;
+        case K_IP_TOS: 
+            if (len != 4)
+                kpanic("KNativeSocketObject::setsockopt K_IP_TOS expecting len of 4");
+            v = readd(value);
+            ::setsockopt(this->nativeSocket, IPPROTO_IP, IP_TOS, (const char*)&v, 4);
+            break;
+        case K_IP_RECVTOS:
+            if (len != 4)
+                kpanic("KNativeSocketObject::setsockopt K_IP_RECVTOS expecting len of 4");
+            v = readd(value);
+            ::setsockopt(this->nativeSocket, IPPROTO_IP, IP_RECVTOS, (const char*)&v, 4);
+            break;
+        case K_IP_RECVERR:
+            if (len != 4)
+                kpanic("KNativeSocketObject::setsockopt K_IP_RECVERR expecting len of 4");
+            v = readd(value);
+#ifdef IP_RECVERR
+            ::setsockopt(this->nativeSocket, IPPROTO_IP, IP_RECVERR, (const char*)&v, 4);
+#endif
+            break;
         default:
             kwarn("KNativeSocketObject::setsockopt IPPROTO_IP name %d not implemented", name);
+            return -K_EINVAL;
         }
     }
     else if (level == K_IPPROTO_TCP) {
@@ -712,12 +741,25 @@ U32 KNativeSocketObject::setsockopt(KFileDescriptor* fd, U32 level, U32 name, U3
         switch (name) {
         case K_TCP_NODELAY:
             if (len != 4)
-                kpanic("KNativeSocketObject::setsockopt K_IP_MULTICAST_TTL expecting len of 4");
+                kpanic("KNativeSocketObject::setsockopt TCP_NODELAY expecting len of 4");
             v = readd(value);
             ::setsockopt(this->nativeSocket, IPPROTO_TCP, TCP_NODELAY, (const char*)&v, 4);
             break;
+        case K_TCP_KEEPIDLE:
+            if (len != 4)
+                kpanic("KNativeSocketObject::setsockopt TCP_KEEPIDLE expecting len of 4");
+            v = readd(value);
+            ::setsockopt(this->nativeSocket, IPPROTO_TCP, TCP_KEEPIDLE, (const char*)&v, 4);
+            break;
+        case K_TCP_KEEPINTVL:
+            if (len != 4)
+                kpanic("KNativeSocketObject::setsockopt TCP_KEEPINTVL expecting len of 4");
+            v = readd(value);
+            ::setsockopt(this->nativeSocket, IPPROTO_TCP, TCP_KEEPINTVL, (const char*)&v, 4);
+            break;
         default:
             kwarn("KNativeSocketObject::setsockopt IPPROTO_TCP name %d not implemented", name);
+            return -K_EINVAL;
         }
     } else if (level == K_SOL_SOCKET) {
         switch (name) {
@@ -771,11 +813,22 @@ U32 KNativeSocketObject::setsockopt(KFileDescriptor* fd, U32 level, U32 name, U3
                     ::setsockopt(this->nativeSocket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&v, len);
                 }
                 break;
+            case K_SO_TIMESTAMP:
+                break;
+            case K_SO_KEEPALIVE:
+                if (len != 4)
+                    kpanic("KNativeSocketObject::setsockopt SO_KEEPALIVE expecting len of 4");
+                this->recvLen = readd(value);
+                ::setsockopt(this->nativeSocket, SOL_SOCKET, SO_KEEPALIVE, (const char*)&this->recvLen, 4);
+                break;
+                break;
             default:
                 kwarn("KNativeSocketObject::setsockopt SOL_SOCKET name %d not implemented", name);
+                return -K_EINVAL;
         }
     } else {
         kwarn("KNativeSocketObject::setsockopt level %d not implemented", level);
+        return -K_EINVAL;
     }
     return 0;
 }
@@ -884,23 +937,49 @@ U32 KNativeSocketObject::sendmsg(KFileDescriptor* fd, U32 address, U32 flags) {
 
         readCMsgHdr(hdr.msg_control, &cmsg);
         if (cmsg.cmsg_level != K_SOL_SOCKET) {
-            kpanic("KNativeSocketObject::sendmsg control level %d not implemented", cmsg.cmsg_level);
+            kwarn("KNativeSocketObject::sendmsg control level %d not implemented", cmsg.cmsg_level);
         } else if (cmsg.cmsg_type != K_SCM_RIGHTS) {
-            kpanic("KNativeSocketObject::sendmsg control type %d not implemented", cmsg.cmsg_level);
+            kwarn("KNativeSocketObject::sendmsg control type %d not implemented", cmsg.cmsg_level);
         } else if ((cmsg.cmsg_len & 3) != 0) {
-            kpanic("KNativeSocketObject::sendmsg control len %d not implemented", cmsg.cmsg_len);
+            kwarn("KNativeSocketObject::sendmsg control len %d not implemented", cmsg.cmsg_len);
         }
         if (hdr.msg_controllen>0) {
-            kpanic("KNativeSocketObject::sendmsg does not support sending file handles");
+            kwarn("KNativeSocketObject::sendmsg does not support sending file handles");
         }				
     }
-    U32 result = 0;
+    U32 len = 0;
     for (U32 i=0;i<hdr.msg_iovlen;i++) {
-        U32 p = readd(hdr.msg_iov + 8 * i);
-        U32 len = readd(hdr.msg_iov + 8 * i + 4);
-        result+=fd->kobject->write(p, len);
+        len += readd(hdr.msg_iov + 8 * i + 4);
     }
-    return result;
+    U8* buffer = new U8[len];
+    len = 0;
+    for (U32 i = 0; i < hdr.msg_iovlen; i++) {
+        U32 p = readd(hdr.msg_iov + 8 * i);
+        U32 toCopy = readd(hdr.msg_iov + 8 * i + 4);
+        memcopyToNative(p, buffer + len, toCopy);
+        len += toCopy;
+    }
+    struct sockaddr dest;
+    U32 destLen = std::min((U32)sizeof(struct sockaddr), hdr.msg_namelen);
+    if (destLen) {
+        memcopyToNative(hdr.msg_name, &dest, destLen);
+    }
+
+    U32 nativeFlags = 0;
+    if (flags & K_MSG_OOB)
+        nativeFlags |= MSG_OOB;
+    flags &= ~K_MSG_NOSIGNAL;
+    if (flags & (~1)) {
+        kwarn("KNativeSocketObject::sendmsg unsupported flags: %d", flags);
+    }
+
+    U32 result = (U32)::sendto(this->nativeSocket, (const char*)buffer, len, nativeFlags, &dest, destLen);
+    if ((S32)result >= 0) {
+        this->error = 0;
+        return result;
+    }
+    std::shared_ptr< KNativeSocketObject> t = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
+    return handleNativeSocketError(t, true);
 }
 
 U32 KNativeSocketObject::recvmsg(KFileDescriptor* fd, U32 address, U32 flags) {
@@ -993,21 +1072,21 @@ U32 KNativeSocketObject::recvfrom(KFileDescriptor* fd, U32 buffer, U32 length, U
         tmp = new char[length];
     }
     outLen = inLen;
-    // :TODO: what about tmp size
     U32 result = (U32)::recvfrom(this->nativeSocket, tmp, length, nativeFlags, (struct sockaddr*)fromBuffer, &outLen);
     if ((S32)result>=0) {
         memcopyFromNative(buffer, tmp, result);
-        memcopyFromNative(address, fromBuffer, inLen);
+        memcopyFromNative(address, fromBuffer, std::min((int)outLen, inLen));
         writed(address_len, outLen);
         this->error = 0;
     } else {
         std::shared_ptr< KNativeSocketObject> t = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
         result = handleNativeSocketError(t, false);
-        if (result == 0) { // WSAEMSGSIZE for example
-            result = length;
-            memcopyFromNative(address, fromBuffer, inLen);
+        if (result == -K_EMSGSIZE) {
+            if (length && buffer) {
+                memcopyFromNative(buffer, tmp, length);
+            }
+            memcopyFromNative(address, fromBuffer, std::min((int)outLen, inLen));
             writed(address_len, outLen);
-            this->error = 0;
         } 
     }
     if (tmp) {

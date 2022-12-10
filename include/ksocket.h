@@ -35,6 +35,7 @@
 
 #define K_MSG_OOB 1
 #define	K_MSG_PEEK     0x2
+#define K_MSG_NOSIGNAL 0x4000
 
 #define K_SHUT_RD      0
 #define K_SHUT_WR      1
@@ -62,6 +63,9 @@
 #define K_SO_RCVTIMEO  20
 #define K_SO_SNDTIMEO  21
 #define K_SO_ATTACH_FILTER  26
+#define K_SO_DETACH_FILTER  27
+#define K_SO_PEERNAME  28
+#define K_SO_TIMESTAMP 29
 
 #define K_IPPROTO_IP 0
 #define K_SOL_SOCKET  1
@@ -69,9 +73,29 @@
 
 #define K_SCM_RIGHTS  1
 
+#define K_IP_TOS      1
+#define K_IP_TTL      2
+#define K_IP_HDRINCL  3
+#define K_IP_OPTIONS  4
+#define K_IP_ROUTER_ALERT 5
+#define K_IP_RECVOPTS 6
+#define K_IP_RETOPTS  7
+#define K_IP_PKTINFO  8
+#define K_IP_PKTOPTIONS   9
 #define K_IP_MTU_DISCOVER 10
+#define K_IP_RECVERR  11
+#define K_IP_RECVTTL  12
+#define K_IP_RECVTOS  13
+#define K_IP_MTU      14
+#define K_IP_FREEBIND 15
+#define K_IP_IPSEC_POLICY 16
+#define K_IP_XFRM_POLICY  17
+#define K_IP_PASSSEC  18
+#define K_IP_TRANSPARENT  19
 
 #define K_TCP_NODELAY 1
+#define K_TCP_KEEPIDLE 4
+#define K_TCP_KEEPINTVL 5
 
 U32 ksocket(U32 domain, U32 type, U32 protocol);
 U32 kbind(U32 socket, U32 address, U32 len);

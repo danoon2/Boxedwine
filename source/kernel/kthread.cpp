@@ -220,6 +220,7 @@ U32 KThread::signal(U32 signal, bool wait) {
 #define FUTEX_WAKE_PRIVATE 129
 #define FUTEX_WAIT_BITSET_PRIVATE 137
 #define FUTEX_WAKE_BITSET_PRIVATE 138
+#define FUTEX_CLOCK_REALTIME 256
 
 struct futex {
 public:
@@ -287,6 +288,7 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3) {
     if (ramAddress==0) {
         kpanic("Could not find futex address: %0.8X", addr);
     }
+    op = op & ~FUTEX_CLOCK_REALTIME;
     if (op==FUTEX_WAIT || op==FUTEX_WAIT_PRIVATE || op == FUTEX_WAIT_BITSET_PRIVATE) {
         struct futex* f=getFutex(this, ramAddress);
         U32 expireTime;
