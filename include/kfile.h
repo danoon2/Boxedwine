@@ -33,6 +33,7 @@ public:
     virtual bool isAsync();
     virtual KFileLock* getLock(KFileLock* lock);
     virtual U32  setLock(KFileLock* lock, bool wait);
+    virtual void unlockAll(U32 pid);
     virtual bool supportsLocks();
     virtual bool isOpen();
     virtual bool isReadReady();

@@ -26,6 +26,11 @@ KFileDescriptor::~KFileDescriptor() {
     std::shared_ptr<KProcess> p = this->process.lock();
     if (p) {
         p->clearFdHandle(this->handle);
+        /*  As well as being removed by an explicit F_UNLCK, record locks are
+            automatically released when the process terminates or if it closes any
+            file descriptor referring to a file on which locks are held.
+        */
+        this->kobject->unlockAll(p->id);
     }
 }
 

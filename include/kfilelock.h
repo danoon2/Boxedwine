@@ -27,6 +27,11 @@ public:
     U64 l_len;
     U32 l_pid;
 
+    bool operator==(const KFileLock& r) const
+    {
+        return l_type == r.l_type && l_whence == r.l_whence && l_start == r.l_start && l_len == r.l_len && l_pid == r.l_pid;
+    }
+
     void writeFileLock(KThread* thread, U32 address, bool is64);
     void readFileLock(KThread* thread, U32 address, bool is64);
 };

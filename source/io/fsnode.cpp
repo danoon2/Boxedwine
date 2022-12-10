@@ -114,15 +114,70 @@ void FsNode::getAllChildren(std::vector<BoxedPtr<FsNode> > & results) {
     }
 }
 
-void FsNode::addLock(KFileLock* lock) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->locksMutex);
-    this->locks.push_back(*lock);
+bool FsNode::unlock(KFileLock* lock) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->locksCS);
+    KFileLock* found = getLock(lock, false);
+    bool result = false;
+
+    while (found) {
+        this->locks.erase(std::remove(locks.begin(), locks.end(), *found), locks.end());
+        found = getLock(lock, false);
+        result = true;
+    }
+    if (result) {
+        BOXEDWINE_CONDITION_SIGNAL(this->locksCS);
+    }
+    return result;
 }
 
-KFileLock* FsNode::getLock(KFileLock* lock) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->locksMutex);
+U32 FsNode::addLock(KFileLock* lock) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->locksCS);
+    KFileLock* found = getLock(lock, true);
+    if (found) {
+        return -K_EAGAIN;
+    }
+    this->locks.push_back(*lock);    
+    return 0;
+}
+
+U32 FsNode::addLockAndWait(KFileLock* lock, bool otherProcess) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->locksCS);
+    KFileLock* found = getLock(lock, otherProcess);
+    bool result = false;
+
+    while (found) {
+        BOXEDWINE_CONDITION_WAIT(this->locksCS);
+        found = getLock(lock, otherProcess);
+    }
+    this->locks.push_back(*lock);
+    return 0;
+}
+
+bool FsNode::hasLock(U32 pid) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->locksCS);
+
+    for (auto& n : this->locks) {
+        KFileLock* next = &n;
+        if (next->l_pid == pid) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void FsNode::unlockAll(U32 pid) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->locksCS);
+    auto it = std::remove_if(locks.begin(), locks.end(), [pid](auto&& item)
+        { return (item.l_pid == pid); });
+    locks.erase(it, locks.end());
+    BOXEDWINE_CONDITION_SIGNAL(this->locksCS);
+}
+
+KFileLock* FsNode::getLock(KFileLock* lock, bool otherProcess) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->locksCS);
     U64 l1 = lock->l_start;
     U64 l2 = l1+lock->l_len;
+    U32 pid = KThread::currentThread()->process->id;
 
     if (lock->l_len == 0)
         l2 = 0xFFFFFFFF;
@@ -133,7 +188,7 @@ KFileLock* FsNode::getLock(KFileLock* lock) {
         
         if (next->l_len == 0)
             s2 = 0xFFFFFFFF;
-        if ((s1>=l1 && s1<=l2) || (s2>=l1 && s2<=l2)) {
+        if (((s1>=l1 && s1<=l2) || (s2>=l1 && s2<=l2)) && ((otherProcess && next->l_pid != pid) || (!otherProcess && next->l_pid == pid))) {
             return next;
         }
     }

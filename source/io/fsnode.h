@@ -62,8 +62,12 @@ public:
     void removeChildByName(const std::string& name);
     void getAllChildren(std::vector<BoxedPtr<FsNode> > & results);
 
-    void addLock(KFileLock* lock);
-    KFileLock* getLock(KFileLock* lock);
+    U32 addLock(KFileLock* lock);
+    bool unlock(KFileLock* lock);
+    KFileLock* getLock(KFileLock* lock, bool otherProcess);
+    U32 addLockAndWait(KFileLock* lock, bool otherProcess);
+    bool hasLock(U32 pid);
+    void unlockAll(U32 pid);
 
     void addOpenNode(KListNode<FsOpenNode*>* node);
 protected:
@@ -80,7 +84,7 @@ private:
     BOXEDWINE_MUTEX childrenByNameMutex;
 
     std::vector<KFileLock> locks;       
-    BOXEDWINE_MUTEX locksMutex;    
+    BOXEDWINE_CONDITION locksCS;    
 
     void loadChildren();
 };

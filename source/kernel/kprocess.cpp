@@ -768,24 +768,22 @@ U32 KProcess::execve(const std::string& path, std::vector<std::string>& args, co
     std::vector<std::string> cmdLine;
 
     this->systemProcess = false;
-    if (stringHasEnding(args[args.size() - 1], "wineserver", true)) {
-        Platform::setCurrentThreadPriorityHigh();
-        this->systemProcess = true;
-    } else {
-        for (auto& s : args) {
-            if (stringHasEnding(s, "wineboot.exe", true)) {
-                this->systemProcess = true;
-            } else if (stringHasEnding(s, "winemenubuilder.exe", true)) {
-                this->systemProcess = true;
-            } else if (stringHasEnding(s, "services.exe", true)) {
-                this->systemProcess = true;
-            } else if (stringHasEnding(s, "plugplay.exe", true)) {
-                this->systemProcess = true;
-            } else if (stringHasEnding(s, "winedevice.exe", true)) {
-                this->systemProcess = true;
-            } else if (stringHasEnding(s, "explorer.exe", true)) {
-                this->systemProcess = true;
-            }
+    for (auto& s : args) {
+        if (stringHasEnding(s, "wineboot.exe", true)) {
+            this->systemProcess = true;
+        } else if (stringHasEnding(s, "winemenubuilder.exe", true)) {
+            this->systemProcess = true;
+        } else if (stringHasEnding(s, "services.exe", true)) {
+            this->systemProcess = true;
+        } else if (stringHasEnding(s, "plugplay.exe", true)) {
+            this->systemProcess = true;
+        } else if (stringHasEnding(s, "winedevice.exe", true)) {
+            this->systemProcess = true;
+        } else if (stringHasEnding(s, "explorer.exe", true)) {
+            this->systemProcess = true;
+        } else if (stringHasEnding(s, "wineserver", true)) {
+            Platform::setCurrentThreadPriorityHigh();
+            this->systemProcess = true;
         }
     }
     node = this->findInPath(path);

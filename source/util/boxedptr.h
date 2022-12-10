@@ -66,6 +66,10 @@ public:
             ptr->retain();
         return *this;
     }
+    bool operator==(const BoxedPtr& r) {
+        return ptr == r.ptr;
+    }
+
     T &operator*() const { return *ptr; }
     T *operator->() const { return ptr; }
     T *get() const { return ptr; }

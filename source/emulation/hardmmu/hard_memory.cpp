@@ -204,7 +204,7 @@ void Memory::allocPages(U32 page, U32 pageCount, U8 permissions, FD fd, U64 offs
                 U32 len = pageCount << K_PAGE_SHIFT;
                 U8* ram = new U8[len]; // make it continuous
 
-                klog("shared ram %.08X%.08X @%.08X len=%X\n", (U32)((U64)ram >> 32), (U32)((U64)ram), (page << K_PAGE_SHIFT), len);
+                //klog("shared ram %.08X%.08X @%.08X len=%X\n", (U32)((U64)ram >> 32), (U32)((U64)ram), (page << K_PAGE_SHIFT), len);
                 memset(ram, 0, len);
                 needToLoad = true;
                 mappedFile->systemCacheEntry->data[0] = ram;

@@ -197,9 +197,32 @@ U32 KSystem::clock_gettime(U32 clock_id, U32 tp) {
     return 0;
 }
 
+U32 KSystem::clock_gettime64(U32 clock_id, U32 tp) {
+    if (clock_id == 0 || clock_id == 5) { // CLOCK_REALTIME / CLOCK_REALTIME_COARSE
+        U64 m = KSystem::getSystemTimeAsMicroSeconds();
+        writeq(tp, m / 1000000l);
+        writed(tp + 4, (U32)(m % 1000000l) * 1000);
+    }
+    else if (clock_id == 1 || clock_id == 2 || clock_id == 4 || clock_id == 6) { // CLOCK_MONOTONIC_RAW, CLOCK_PROCESS_CPUTIME_ID , CLOCK_MONOTONIC_COARSE
+        U64 diff = KSystem::getMicroCounter();
+        writeq(tp, diff / 1000000l);
+        writed(tp + 4, (U32)(diff % 1000000l) * 1000);
+    }
+    else {
+        kpanic("Unknown clock id for clock_gettime64: %d", clock_id);
+    }
+    return 0;
+}
+
 U32 KSystem::clock_getres(U32 clk_id, U32 timespecAddress) {
     writed(timespecAddress, 0);
     writed(timespecAddress+4, 1000000);
+    return 0;
+}
+
+U32 KSystem::clock_getres64(U32 clk_id, U32 timespecAddress) {
+    writeq(timespecAddress, 0);
+    writed(timespecAddress + 4, 1000000);
     return 0;
 }
 

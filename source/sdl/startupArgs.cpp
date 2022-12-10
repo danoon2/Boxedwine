@@ -269,11 +269,19 @@ bool StartUpArgs::apply() {
 
     klog("Using root directory: %s", root.c_str());
 #ifdef BOXEDWINE_ZLIB
+    std::vector<std::string> fullfilled;
+    for (auto& zip : zips) {
+        std::string fullfills;
+        FsZip::readFileFromZip(zip, "fullfills.txt", fullfills);
+        if (fullfills.length()) {
+            fullfilled.push_back(fullfills);
+        }
+    }
     std::vector<std::string> depends;
     for (auto& zip : zips) {
         std::string depend;
         FsZip::readFileFromZip(zip, "depends.txt", depend);
-        if (depend.length() && !vectorContainsIgnoreCase(depends, depend) && !vectorContainsIgnoreCase(zips, depend)) {
+        if (depend.length() && !vectorContainsIgnoreCase(depends, depend) && !vectorContainsIgnoreCase(zips, depend) && !vectorContainsIgnoreCase(fullfilled, depend)) {
             std::string originalDepend = depend;
             if (!Fs::doesNativePathExist(depend)) {
                 std::string parentPath = Fs::getNativeParentPath(zip);
@@ -338,7 +346,7 @@ bool StartUpArgs::apply() {
     envValues.push_back("PWD="+this->workingDir);
     envValues.push_back("DISPLAY=:0");
     envValues.push_back("WINE_FAKE_WAIT_VBLANK=60");
-    envValues.push_back("WINEDLLOVERRIDES=mscoree,mshtml=");
+    //envValues.push_back("WINEDLLOVERRIDES=mscoree,mshtml=");
     // envValues.push_back("WINEDEBUG=+vulkan,+d3d");
                             
     // if this strlen is more than 88 (1 more character than now), then diablo demo will crash before we get to the menu

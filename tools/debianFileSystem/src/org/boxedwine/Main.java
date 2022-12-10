@@ -11,6 +11,10 @@ import java.util.HashSet;
 public class Main {
     static boolean includeX11 = true;
 
+    public static void add(String name, HashMap<String, DebianPackage> depends, HashSet<String> ignored) {
+        DebianPackages.getPackage(name).getDepends(ignored, depends);
+        depends.put(name, DebianPackages.getPackage(name));
+    }
     public static void main(String[] args) {
         Settings.fileCachePath = new File("c:\\debianCache");
         Settings.outputDir = new File("c:\\debianCache\\out");
@@ -51,6 +55,25 @@ public class Main {
         }
 
         HashMap<String, DebianPackage> depends = new HashMap<>();
+        add("curl", depends, ignored);
+        add("libnss-mdns", depends, ignored);
+        add("binutils", depends, ignored);
+        add("cabextract", depends, ignored);
+        add("p7zip", depends, ignored);
+        add("unzip", depends, ignored);
+        //add("unrar", depends, ignored);
+        add("xz-utils", depends, ignored);
+        add("dash", depends, ignored);
+        add("sed", depends, ignored);
+        add("grep", depends, ignored);
+        add("aria2", depends, ignored);
+        add("gawk", depends, ignored);
+        add("coreutils", depends, ignored);
+        add("xdg-utils", depends, ignored);
+        add("zenity", depends, ignored);
+        add("openssl", depends, ignored);
+        add("winbind", depends, ignored);
+
         DebianPackages.getPackage("wine32-preloader").getDepends(ignored, depends);
         depends.put("libc-bin", DebianPackages.getPackage("libc-bin"));
         DebianPackages.getPackage("libc-bin").getDepends(ignored, depends);
@@ -96,9 +119,12 @@ public class Main {
                 e.printStackTrace();
             }
         }
+
         try {
             File wineLink = new File(Settings.outputDir + File.separator + "bin" + File.separator + "wine.link");
             FileUtils.writeStringToFile(wineLink, "/opt/wine/bin/wine", "UTF-8");
+            File wineserverLink = new File(Settings.outputDir + File.separator + "bin" + File.separator + "wineserver.link");
+            FileUtils.writeStringToFile(wineserverLink, "/opt/wine/bin/wineserver", "UTF-8");
             File ldConfig = new File(Settings.outputDir + File.separator + "etc" + File.separator + "ld.so.conf.d" + File.separator + "wine.conf");
             FileUtils.writeStringToFile(ldConfig, "/opt/wine/lib", "UTF-8");
             File resolv = new File(Settings.outputDir + File.separator + "etc" + File.separator + "resolv.conf");
@@ -204,9 +230,11 @@ public class Main {
                     FileUtils.writeStringToFile(programs, "prog \"File Manager (Xfe)\" xfe xfe", "UTF-8");
 
                     // :TODO: to make the zip smaller delete
+                    // 230MB vs 400MB
                     // /usr/share/doc/*
                     // /usr/share/man/*
                     // /usr/share/locale/* except en
+                    // /var/cache/deb/*
                 }
             }
             // using 7zip created a 3% smaller zip
