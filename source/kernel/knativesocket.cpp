@@ -22,6 +22,11 @@ static int winsock_intialized;
 #include <sys/ioctl.h>
 #include <fcntl.h>
 void closesocket(int socket) { close(socket); }
+
+#if !defined(TCP_KEEPIDLE) && defined(TCP_KEEPALIVE)
+#define TCP_KEEPIDLE TCP_KEEPALIVE
+#endif
+
 #endif
 
 std::vector<std::shared_ptr<KNativeSocketObject>> waitingNativeSockets;
@@ -722,7 +727,9 @@ U32 KNativeSocketObject::setsockopt(KFileDescriptor* fd, U32 level, U32 name, U3
             if (len != 4)
                 kpanic("KNativeSocketObject::setsockopt K_IP_RECVERR expecting len of 4");
             v = readd(value);
+#ifdef IP_RECVERR
             ::setsockopt(this->nativeSocket, IPPROTO_IP, IP_RECVERR, (const char*)&v, 4);
+#endif
             break;
         default:
             kwarn("KNativeSocketObject::setsockopt IPPROTO_IP name %d not implemented", name);
@@ -966,7 +973,7 @@ U32 KNativeSocketObject::sendmsg(KFileDescriptor* fd, U32 address, U32 flags) {
         kwarn("KNativeSocketObject::sendmsg unsupported flags: %d", flags);
     }
 
-    U32 result = ::sendto(this->nativeSocket, (const char*)buffer, len, nativeFlags, &dest, destLen);
+    U32 result = (U32)::sendto(this->nativeSocket, (const char*)buffer, len, nativeFlags, &dest, destLen);
     if ((S32)result >= 0) {
         this->error = 0;
         return result;
@@ -1068,7 +1075,7 @@ U32 KNativeSocketObject::recvfrom(KFileDescriptor* fd, U32 buffer, U32 length, U
     U32 result = (U32)::recvfrom(this->nativeSocket, tmp, length, nativeFlags, (struct sockaddr*)fromBuffer, &outLen);
     if ((S32)result>=0) {
         memcopyFromNative(buffer, tmp, result);
-        memcopyFromNative(address, fromBuffer, std::min(outLen, inLen));
+        memcopyFromNative(address, fromBuffer, std::min((int)outLen, inLen));
         writed(address_len, outLen);
         this->error = 0;
     } else {
@@ -1078,7 +1085,7 @@ U32 KNativeSocketObject::recvfrom(KFileDescriptor* fd, U32 buffer, U32 length, U
             if (length && buffer) {
                 memcopyFromNative(buffer, tmp, length);
             }
-            memcopyFromNative(address, fromBuffer, std::min(outLen, inLen));
+            memcopyFromNative(address, fromBuffer, std::min((int)outLen, inLen));
             writed(address_len, outLen);
         } 
     }
