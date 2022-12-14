@@ -1397,10 +1397,7 @@ U32 KProcess::mmap(U32 addr, U32 len, S32 prot, S32 flags, FD fildes, U64 off) {
                 return -K_ENOMEM;
             }
             for (U32 page = pageStart; page < pageStart + pageCount; page++) {
-                if (memory->flags[page] & PAGE_MAPPED) {
-                    if (page < 0x000d0000) {
-                        int ii = 0;
-                    }
+                if (memory->isPageMapped(page)) {
                     return -K_EEXIST;
                 }
             }

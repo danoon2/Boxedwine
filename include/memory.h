@@ -104,6 +104,7 @@ public:
     bool isValidReadAddress(U32 address, U32 len);
     bool isValidWriteAddress(U32 address, U32 len);
     bool isPageAllocated(U32 page);
+    bool isPageMapped(U32 page);
     DecodedBlock* getCodeBlock(U32 eip);
     void addCodeBlock(U32 startIp, DecodedBlock* block);
 

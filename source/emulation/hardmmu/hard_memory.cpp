@@ -328,6 +328,10 @@ bool Memory::isPageAllocated(U32 page) {
     return (this->flags[page] & PAGE_ALLOCATED) != 0;
 }
 
+bool Memory::isPageMapped(U32 page) {
+    return (this->flags[page] & PAGE_MAPPED) != 0;
+}
+
 void memcopyFromNative(U32 address, const void* p, U32 len) {
     memcpy(getNativeAddress(KThread::currentThread()->process->memory, address), p, len);
 }
