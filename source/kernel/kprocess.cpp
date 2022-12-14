@@ -1355,6 +1355,7 @@ U32 KProcess::readlink(const std::string& path, U32 buffer, U32 bufSize) {
 }
 
 U32 KProcess::mmap(U32 addr, U32 len, S32 prot, S32 flags, FD fildes, U64 off) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->pageMutex); // race condition between findFirstAvailablePage and setting the flags
     bool shared = (flags & K_MAP_SHARED)!=0;
     bool priv = (flags & K_MAP_PRIVATE)!=0;
     bool read = (prot & K_PROT_READ)!=0;
@@ -1386,12 +1387,23 @@ U32 KProcess::mmap(U32 addr, U32 len, S32 prot, S32 flags, FD fildes, U64 off) {
             return -K_EACCES;
         }
     }        
-    if (flags & K_MAP_FIXED) {
+    if (flags & (K_MAP_FIXED | K_MAP_FIXED_NOREPLACE)) {
         if (addr & (K_PAGE_SIZE-1)) {
-#ifdef _DEBUG
             klog("tried to call mmap with invalid address: %X", addr);
             return -K_EINVAL;
-#endif
+        }
+        if (flags & K_MAP_FIXED_NOREPLACE) {
+            if (addr != 0 && pageStart + pageCount > ADDRESS_PROCESS_MMAP_START) {
+                return -K_ENOMEM;
+            }
+            for (U32 page = pageStart; page < pageStart + pageCount; page++) {
+                if (memory->flags[page] & PAGE_MAPPED) {
+                    if (page < 0x000d0000) {
+                        int ii = 0;
+                    }
+                    return -K_EEXIST;
+                }
+            }
         }
     } else {		
         if (pageStart + pageCount> ADDRESS_PROCESS_MMAP_START)
@@ -1802,6 +1814,7 @@ U32 KProcess::exitgroup(U32 code) {
 }
 
 U32 KProcess::mprotect(U32 address, U32 len, U32 prot) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->pageMutex);
     bool read = (prot & K_PROT_READ)!=0;
     bool write = (prot & K_PROT_WRITE)!=0;
     bool exec = (prot & K_PROT_EXEC)!=0;
@@ -2521,6 +2534,45 @@ U32 KProcess::utimesat(FD dirfd, const std::string& path, U32 times, U32 flags) 
         lastAccessTimeNano = readd(times+4);
         lastModifiedTime = readd(times+8);
         lastModifiedTimeNano = readd(times+12);
+    }
+    if (lastAccessTimeNano != K_UTIME_OMIT) {
+        if (lastAccessTimeNano == K_UTIME_NOW) {
+            lastAccessTime = time(NULL);
+            lastAccessTimeNano = 0;
+        }
+    }
+    if (lastModifiedTimeNano != K_UTIME_OMIT) {
+        if (lastModifiedTimeNano == K_UTIME_NOW) {
+            lastModifiedTime = (U32)time(NULL);
+            lastModifiedTimeNano = 0;
+        }
+    }
+    return node->setTimes(lastAccessTime, lastAccessTimeNano, lastModifiedTime, lastAccessTimeNano);
+}
+
+U32 KProcess::utimesat64(FD dirfd, const std::string& path, U32 times, U32 flags) {
+    std::string dir;
+    U32 result = 0;
+
+    if (path[0] != '/')
+        result = getCurrentDirectoryFromDirFD(dirfd, dir);
+
+    if (result)
+        return result;
+    BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath(dir, path, (flags & 0x100) == 0);
+    if (!node) {
+        return -K_ENOENT;
+    }
+    U64 lastAccessTime = 0;
+    U32 lastAccessTimeNano = 0;
+    U64 lastModifiedTime = 0;
+    U32 lastModifiedTimeNano = 0;
+
+    if (times) {
+        lastAccessTime = readq(times);
+        lastAccessTimeNano = readd(times + 8);
+        lastModifiedTime = readq(times + 12);
+        lastModifiedTimeNano = readd(times + 20);
     }
     if (lastAccessTimeNano != K_UTIME_OMIT) {
         if (lastAccessTimeNano == K_UTIME_NOW) {

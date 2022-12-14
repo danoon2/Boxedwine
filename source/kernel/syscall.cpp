@@ -1422,6 +1422,13 @@ static U32 syscall_utimensat(CPU* cpu, U32 eipCount) {
     return result;
 }
 
+static U32 syscall_utimensat_time64(CPU* cpu, U32 eipCount) {
+    char tmp[MAX_FILEPATH_LEN];
+    SYS_LOG1(SYSCALL_FILE, cpu, "utimensat_time64 dirfd=%d path=%X(%s) times=%X flags=%X", ARG1, ARG2, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, ARG4);
+    U32 result = cpu->thread->process->utimesat(ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, ARG4);
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
+}
 
 static U32 syscall_signalfd4(CPU* cpu, U32 eipCount) {
     SYS_LOG1(SYSCALL_SIGNAL, cpu, "signalfd4 fd=%d mask=%X(0x%0.8X%0.8X) size=%d flags=%X", ARG1, ARG2, (ARG3>=8?readd(ARG2+4):0), readd(ARG2), ARG3, ARG4);
@@ -1983,7 +1990,7 @@ static const SyscallFunc syscallFunc[] = {
     0,                  // 380
     0,                  // 381
     0,                  // 382
-    0,                  // 383
+    0,                  // 383 statx
     0,                  // 384
     0,                  // 385
     0,                  // 386
@@ -2007,7 +2014,12 @@ static const SyscallFunc syscallFunc[] = {
     0,                  // 404
     0,                  // 405
     syscall_clock_getres_time64,   // 406
-    syscall_clock_nanosleep_time64 // 407
+    syscall_clock_nanosleep_time64, // 407
+    0,                  // 408
+    0,                  // 409
+    0,                  // 410
+    0,                  // 411
+    syscall_utimensat_time64 // 412
 };
 
 #ifndef BOXEDWINE_MULTI_THREADED
@@ -2029,7 +2041,7 @@ void ksyscall(CPU* cpu, U32 eipCount) {
             return;
         }
     }
-    if (EAX>407) {
+    if (EAX>412) {
         result = -K_ENOSYS;
         kdebug("no syscall for %d", EAX);
     } else if (!syscallFunc[EAX]) {

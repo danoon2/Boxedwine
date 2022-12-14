@@ -254,8 +254,7 @@ void Memory::allocPages(U32 page, U32 pageCount, U8 permissions, FD fd, U64 offs
     }    
 }
 
-void Memory::protectPage(U32 i, U32 permissions) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(pageMutex);
+void Memory::protectPage(U32 i, U32 permissions) {    
     if (!this->isPageAllocated(i) && (permissions & PAGE_PERMISSION_MASK)) {
         this->allocPages(i, 1, permissions, 0, 0, 0);
     } else {
