@@ -9,7 +9,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 
 public class Main {
-    static boolean includeX11 = true;
+    static boolean includeX11 = false;
 
     public static void add(String name, HashMap<String, DebianPackage> depends, HashSet<String> ignored) {
         DebianPackages.getPackage(name).getDepends(ignored, depends);
@@ -52,6 +52,9 @@ public class Main {
 
             ignored.add("iso-codes"); // this a big one and only required by libgstreamer-plugins-base1.0-0
             ignored.add("libicu63");
+            ignored.add("adwaita-icon-theme");
+            ignored.add("ahicolor-icon-theme");
+            ignored.add("libgl1");
         }
 
         HashMap<String, DebianPackage> depends = new HashMap<>();
@@ -73,6 +76,13 @@ public class Main {
         add("zenity", depends, ignored);
         add("openssl", depends, ignored);
         add("winbind", depends, ignored);
+        add("gstreamer1.0-libav", depends, ignored);
+        add("gstreamer1.0-plugins-bad", depends, ignored);
+        add("gstreamer1.0-plugins-ugly", depends, ignored);
+        add("fonts-wine", depends, ignored);
+        add("libosmesa6", depends, ignored);
+        add("libsdl2-2.0-0", depends, ignored);
+        add("ca-certificates", depends, ignored);
 
         DebianPackages.getPackage("wine32-preloader").getDepends(ignored, depends);
         depends.put("libc-bin", DebianPackages.getPackage("libc-bin"));
@@ -228,13 +238,15 @@ public class Main {
                     FileUtils.writeStringToFile(games, "prog XDemineur /usr/share/pixmaps/xdemineur-icon.xpm /usr/games/xdemineur", "UTF-8");
                     File programs = new File(Settings.outputDir + "/home/username/.icewm/programs");
                     FileUtils.writeStringToFile(programs, "prog \"File Manager (Xfe)\" xfe xfe", "UTF-8");
-
-                    // :TODO: to make the zip smaller delete
-                    // 230MB vs 400MB
-                    // /usr/share/doc/*
-                    // /usr/share/man/*
-                    // /usr/share/locale/* except en
-                    // /var/cache/deb/*
+                }
+                // 230MB vs 400MB
+                FileUtils.deleteDirectory(new File(Settings.outputDir+"/usr/share/doc"));
+                FileUtils.deleteDirectory(new File(Settings.outputDir+"/usr/share/man"));
+                FileUtils.deleteDirectory(new File(Settings.outputDir+"/var/cache/deb"));
+                FileUtils.deleteDirectory(new File(Settings.outputDir+"/usr/share/locale"));
+                FileUtils.deleteDirectory(new File(Settings.outputDir+"/usr/lib/i386-linux-gnu/dri"));
+                if (!includeX11) {
+                    FileUtils.deleteDirectory(new File(Settings.outputDir+"/home"));
                 }
             }
             // using 7zip created a 3% smaller zip
