@@ -110,7 +110,7 @@ U32 marshalBackSync(CPU* cpu, GLsync h) {
         }
     }
     GLsync* b = new GLsync[syncBufferSize * 2];
-    memset(syncBuffer, 0, sizeof(GLsync) * syncBufferSize * 2);
+    memset(b, 0, sizeof(GLsync) * syncBufferSize * 2);
     memcpy(b, syncBuffer, syncBufferSize);
     U32 result = syncBufferSize;
     syncBufferSize *= 2;
