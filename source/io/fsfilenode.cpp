@@ -58,6 +58,11 @@ bool FsFileNode::remove() {
     bool result = false;
     bool exists = Fs::doesNativePathExist(this->nativePath);
 
+    if (zipNode) {
+        zipNode->fsZip->remove(this->path);
+        zipNode = nullptr;
+        result = true;
+    }
     if (exists)
         result = unlink(nativePath.c_str())==0;
     // if the file failed to be deleted and it exists then its because someone else has it open, 

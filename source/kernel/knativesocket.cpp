@@ -973,6 +973,7 @@ U32 KNativeSocketObject::sendmsg(KFileDescriptor* fd, U32 address, U32 flags) {
     }
 
     U32 result = (U32)::sendto(this->nativeSocket, (const char*)buffer, len, nativeFlags, &dest, destLen);
+    delete[] buffer;
     if ((S32)result >= 0) {
         this->error = 0;
         return result;
