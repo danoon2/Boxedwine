@@ -2598,6 +2598,10 @@ void glcommon_glUnmapBuffer(CPU* cpu) {
     if (!ext_glUnmapBuffer)
         kpanic("ext_glUnmapBuffer is NULL");
     {
+
+#ifdef BOXEDWINE_64BIT_MMU
+        unmapBuffer(cpu, ARG1);
+#endif
     EAX=GL_FUNC(ext_glUnmapBuffer)(ARG1);
     GL_LOG ("glUnmapBuffer GLenum target=%d",ARG1);
     }
