@@ -724,12 +724,16 @@ GLvoid* marshalp(CPU* cpu, U32 instance, U32 buffer, U32 len) {
 
 U32 marshalBackSync(CPU* cpu, GLsync sync) {
     //klog("marshalBackSync not implemented");
+#ifdef BOXEDWINE_64
+    return (U32)(U64)sync;
+#else
     return (U32)sync;
+#endif
 }
 
 GLsync marshalSync(CPU* cpu, U32 sync) {
     //klog("marshalSync not implemented");
-    return (GLsync)sync;
+    return (GLsync)(U32)sync;
 }
 
 GLvoid** bufferpp;
