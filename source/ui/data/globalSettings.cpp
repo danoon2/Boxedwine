@@ -497,7 +497,7 @@ void GlobalSettings::updateFileList(const std::string& fileLocation) {
             if (::downloadFile(url, tmpPath, [](U64 bytesCompleted) {
                 }, NULL, errorMsg)) {
                 if (Fs::doesNativePathExist(path)) {
-                    ::unlink(path.c_str());
+                    Fs::deleteNativeFile(path);
                 }
                 ::rename(tmpPath.c_str(), path.c_str());
                 unsigned int newcrc = crc32File(path);
