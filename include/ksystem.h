@@ -86,6 +86,8 @@ public:
     static bool showWindowImmediately;
     static U32 skipFrameFPS;
     static FILE* logFile;
+    static std::function<void(const std::string& line)> watchTTY;
+    static bool ttyPrepend;
     static std::string exePath;
     
     static void init();

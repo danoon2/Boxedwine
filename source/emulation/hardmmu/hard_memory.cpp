@@ -181,7 +181,7 @@ U32 Memory::mapNativeMemory(void* hostAddress, U32 size) {
     offset = hostStart - (result << K_PAGE_SHIFT);
     for (i = 0; i < pageCount; i++) {
         this->memOffsets[result + i] = offset;
-        this->flags[result + i] = PAGE_MAPPED_HOST;
+        this->flags[result + i] = PAGE_MAPPED_HOST | PAGE_READ | PAGE_WRITE;
     }
     return (result << K_PAGE_SHIFT) + ((U32)((U64)hostAddress) & K_PAGE_MASK);
 }

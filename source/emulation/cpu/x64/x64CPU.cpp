@@ -331,6 +331,9 @@ void x64CPU::link(X64Asm* data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 off
 
 void x64CPU::markCodePageReadOnly(X64Asm* data) {
     U32 pageStart = this->thread->memory->getNativePage((data->startOfDataIp+this->seg[CS].address) >> K_PAGE_SHIFT);
+    if (pageStart == 0) {
+        return; // x64CPU::init()
+    }
     U32 pageEnd = this->thread->memory->getNativePage((data->ip+this->seg[CS].address-1) >> K_PAGE_SHIFT);
     S32 pageCount = pageEnd-pageStart+1;
 

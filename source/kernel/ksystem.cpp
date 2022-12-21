@@ -68,6 +68,8 @@ U32 KSystem::cpuAffinityCountForApp = 0;
 #endif
 U32 KSystem::pollRate = DEFAULT_POLL_RATE;
 FILE* KSystem::logFile;
+std::function<void(const std::string& line)> KSystem::watchTTY;
+bool KSystem::ttyPrepend;
 std::string KSystem::exePath;
 
 BOXEDWINE_CONDITION KSystem::processesCond("KSystem::processesCond");

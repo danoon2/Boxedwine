@@ -83,6 +83,7 @@ public class Main {
         add("libosmesa6", depends, ignored);
         add("libsdl2-2.0-0", depends, ignored);
         add("ca-certificates", depends, ignored);
+        add("findutils", depends, ignored); //arial font in winetricks needs this
 
         DebianPackages.getPackage("wine32-preloader").getDepends(ignored, depends);
         depends.put("libc-bin", DebianPackages.getPackage("libc-bin"));

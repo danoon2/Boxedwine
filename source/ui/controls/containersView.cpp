@@ -679,10 +679,22 @@ void ContainersView::winetricks(const WineVersion& winetricks, const std::string
     GlobalSettings::startUpArgs.title = "Winetricks " + verb;
     GlobalSettings::startUpArgs.addArg("/bin/sh");
     GlobalSettings::startUpArgs.addArg("/usr/bin/winetricks");
-    GlobalSettings::startUpArgs.addArg(verb);
-    GlobalSettings::startUpArgs.envValues.push_back("WINETRICKS_DOWNLOADER=curl");
-    GlobalSettings::startUpArgs.envValues.push_back("WINESERVER=/opt/wine/bin/wineserver");
-    GlobalSettings::startUpArgs.envValues.push_back("WINE=/opt/wine/bin/wine");
+    GlobalSettings::startUpArgs.addArg(verb);    
     GlobalSettings::startUpArgs.readyToLaunch = true;
-    new WaitDlg(WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(WAITDLG_LAUNCH_APP_LABEL, true, GlobalSettings::startUpArgs.title));
+#ifndef BOXEDWINE_UI_LAUNCH_IN_PROCESS
+    GlobalSettings::startUpArgs.ttyPrepend = true;
+#endif
+    runOnMainUI([]() {
+        WaitDlg* dlg = new WaitDlg(WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(WAITDLG_LAUNCH_APP_LABEL, true, GlobalSettings::startUpArgs.title));
+        KSystem::watchTTY = [dlg](const std::string& line) {
+            if (!KThread::currentThread() || KThread::currentThread()->process->name != "curl") {
+                dlg->addSubLabel(line, 5);
+            }
+        };
+        dlg->onDone = []() {
+            KSystem::watchTTY = nullptr;
+        };
+        return false;
+        });
+  
 }

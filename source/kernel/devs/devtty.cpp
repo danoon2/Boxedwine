@@ -108,8 +108,28 @@ U32 DevTTY::writeNative(U8* buffer, U32 len) {
     if (stringContains(s, "winemenubuilder")) {
         return len;
     }
+    // for now I don't want users seeing this and assuming its a problem
+    if (stringContains(s, "WS_getaddrinfo Failed to resolve your host name IP")) {
+        return len;
+    }
     if (KSystem::logFile) {
         fwrite(buffer, len, 1, KSystem::logFile);
+    }
+    if (KSystem::watchTTY) {
+        KSystem::watchTTY(s);
+    }
+    if (KSystem::ttyPrepend) {
+        THREAD_LOCAL static bool newLine = true;
+        if (newLine) {
+            ::write(1, "TTY:", 4);
+            std::string name = KThread::currentThread()->process->name;
+            ::write(1, name.c_str(), (U32)name.length());
+            ::write(1, ":", 1);
+            newLine = false;
+        }
+        if (buffer[len - 1] == '\n') {
+            newLine = true;
+        }
     }
     return (U32)::write(1, buffer, len);    
 }

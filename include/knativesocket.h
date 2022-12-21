@@ -52,5 +52,7 @@ public:
 };
 
 bool checkWaitingNativeSockets(int timeout);
+FsOpenNode* openHosts(const BoxedPtr<FsNode>& node, U32 flags, U32 data);
+FsOpenNode* openHostname(const BoxedPtr<FsNode>& node, U32 flags, U32 data);
 
 #endif

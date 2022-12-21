@@ -27,6 +27,7 @@
 #include "knativesystem.h"
 #include "knativewindow.h"
 #include "knativeaudio.h"
+#include "knativesocket.h"
 
 #ifndef BOXEDWINE_DISABLE_UI
 #include "../ui/data/globalSettings.h"
@@ -93,6 +94,8 @@ void StartUpArgs::buildVirtualFileSystem() {
     BoxedPtr<FsNode> procNode = Fs::addFileNode("/proc", "", "", true, rootNode);
     BoxedPtr<FsNode> procSelfNode = Fs::addFileNode("/proc/self", "", "", true, procNode);
     BoxedPtr<FsNode> sysNode = Fs::getNodeFromLocalPath("", "/sys", true); 
+    BoxedPtr<FsNode> etcNode = Fs::getNodeFromLocalPath("", "/etc", true);
+
     if (!sysNode) {
         sysNode = Fs::addFileNode("/sys", "", "", true, rootNode);
     }
@@ -125,6 +128,9 @@ void StartUpArgs::buildVirtualFileSystem() {
 	Fs::addVirtualFile("/dev/mixer", openDevMixer, K__S_IWRITE | K__S_IREAD | K__S_IFCHR, mdev(14, 0), devNode);
     Fs::addVirtualFile("/dev/sequencer", openDevSequencer, K__S_IWRITE | K__S_IREAD | K__S_IFCHR, mdev(14, 1), devNode);    
     Fs::addVirtualFile("/sys/devices/system/cpu/online", openSysCpuOnline, K__S_IREAD, mdev(0, 0), cpuNode);
+
+    Fs::addVirtualFile("/etc/hostname", openHosts, K__S_IREAD, mdev(0, 0), etcNode);
+    Fs::addVirtualFile("/etc/hosts", openHostname, K__S_IREAD, mdev(0, 0), etcNode);
 
     if (Platform::getCpuFreqMHz()) {        
         for (U32 i=0;i<Platform::getCpuCount();i++) {
@@ -192,6 +198,9 @@ std::vector<std::string> StartUpArgs::buildArgs() {
     if (openGlType == OPENGL_TYPE_OSMESA) {
         args.push_back("-mesa");
     }
+    if (ttyPrepend) {
+        args.push_back("-ttyPrepend");
+    }
     if (recordAutomation.length()) {
         args.push_back("-record");
         args.push_back(recordAutomation);
@@ -248,6 +257,7 @@ bool StartUpArgs::apply() {
         KSystem::pollRate = 0;
     }
     KSystem::openglType = this->openGlType;
+    KSystem::ttyPrepend = this->ttyPrepend;
     KSystem::showWindowImmediately = this->showWindowImmediately;
     KSystem::skipFrameFPS = this->skipFrameFPS;
     if (!KSystem::logFile && this->logPath.length()) {
@@ -347,7 +357,7 @@ bool StartUpArgs::apply() {
     envValues.push_back("DISPLAY=:0");
     envValues.push_back("WINE_FAKE_WAIT_VBLANK=60");
     //envValues.push_back("WINEDLLOVERRIDES=mscoree,mshtml=");
-    // envValues.push_back("WINEDEBUG=+vulkan,+d3d");
+    //envValues.push_back("WINEDEBUG=+d3d");
                             
     // if this strlen is more than 88 (1 more character than now), then diablo demo will crash before we get to the menu
     // if I create more env values that are longer it doesn't crash, what is special about this one?
@@ -675,6 +685,9 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
             i++;
         } else if (!strcmp(argv[i], "-mesa")) {
             this->openGlType = OPENGL_TYPE_OSMESA;
+        }
+        else if (!strcmp(argv[i], "-ttyPrepend")) { // used to send tty back to WaitDlg for winetricks when BOXEDWINE_UI_LAUNCH_IN_PROCESS is not defined
+            this->ttyPrepend = true;
         } else if (!strcmp(argv[i], "-cpuAffinity")) {
 #ifdef BOXEDWINE_MULTI_THREADED
             this->cpuAffinity = atoi(argv[i+1]);
@@ -688,7 +701,7 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
         } else if (!strcmp(argv[i], "-log") && i + 1 < argc) {
             this->logPath = argv[i + 1];
             i++;
-        }
+        } 
 #ifdef BOXEDWINE_RECORDER
         else if (!strcmp(argv[i], "-record")) {
             if (!Fs::doesNativePathExist(argv[i+1])) {
