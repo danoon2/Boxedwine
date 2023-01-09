@@ -296,7 +296,7 @@ void platformHandler(int sig, siginfo_t* info, void* vcontext) {
 
     syncFromException(cpu, context, true);
 
-    cpu->exceptionReadAddress = (((ucontext_t*)context)->CONTEXT_ERR & 1) == 0;
+    cpu->exceptionReadAddress = (((ucontext_t*)context)->CONTEXT_ERR & 2) == 0;
     cpu->exceptionAddress = (U64)info->si_addr;
     cpu->exceptionSigNo = info->si_signo;
     cpu->exceptionSigCode = info->si_code;
