@@ -595,7 +595,6 @@
 		1A80F071276EBCC70032A70A /* LocalDateTime.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81E92440ED1D0038F5A4 /* LocalDateTime.cpp */; };
 		1A80F072276EBCC70032A70A /* HTTPRequestHandler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F635D2440E9100038F5A4 /* HTTPRequestHandler.cpp */; };
 		1A80F073276EBCC70032A70A /* soft_ram.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDD82433BBBE003F17F1 /* soft_ram.cpp */; };
-		1A80F074276EBCC70032A70A /* srcgen.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD7F2433BBBE003F17F1 /* srcgen.cpp */; };
 		1A80F075276EBCC70032A70A /* helpView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A4F8E1C24F740CC0046703D /* helpView.cpp */; };
 		1A80F076276EBCC70032A70A /* fsvirtualnode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDFF2433BBBE003F17F1 /* fsvirtualnode.cpp */; };
 		1A80F077276EBCC70032A70A /* Timer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F34A92440E7470038F5A4 /* Timer.cpp */; };
@@ -1174,7 +1173,6 @@
 		1A80F2BE276EBF170032A70A /* LocalDateTime.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F81E92440ED1D0038F5A4 /* LocalDateTime.cpp */; };
 		1A80F2BF276EBF170032A70A /* HTTPRequestHandler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F635D2440E9100038F5A4 /* HTTPRequestHandler.cpp */; };
 		1A80F2C0276EBF170032A70A /* soft_ram.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDD82433BBBE003F17F1 /* soft_ram.cpp */; };
-		1A80F2C1276EBF170032A70A /* srcgen.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD7F2433BBBE003F17F1 /* srcgen.cpp */; };
 		1A80F2C2276EBF170032A70A /* helpView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A4F8E1C24F740CC0046703D /* helpView.cpp */; };
 		1A80F2C3276EBF170032A70A /* fsvirtualnode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDFF2433BBBE003F17F1 /* fsvirtualnode.cpp */; };
 		1A80F2C4276EBF170032A70A /* Timer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F34A92440E7470038F5A4 /* Timer.cpp */; };
@@ -1199,6 +1197,9 @@
 		1A80F2DB276EBF170032A70A /* libglapi.0.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 718B7144267F883900CDBC74 /* libglapi.0.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		1A80F2DC276EBF170032A70A /* libc++abi.1.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 718B7139267EB86400CDBC74 /* libc++abi.1.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		1A80F2DD276EBF170032A70A /* libc++.1.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 718B713B267EB86500CDBC74 /* libc++.1.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		1A8962A8296FAEF1009BD747 /* gen.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A8962A2296FAEF1009BD747 /* gen.cpp */; };
+		1A8962A9296FAEF1009BD747 /* usegen.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A8962A5296FAEF1009BD747 /* usegen.cpp */; };
+		1A8962AA296FAEF1009BD747 /* aot.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A8962A6296FAEF1009BD747 /* aot.cpp */; };
 		1A9193372551B6D3005A798A /* btCodeMemoryWrite.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A9193332551B6D3005A798A /* btCodeMemoryWrite.cpp */; };
 		1A9193392551B6D3005A798A /* btCodeChunk.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A9193342551B6D3005A798A /* btCodeChunk.cpp */; };
 		1AB0CAFE263BA8AC003AF407 /* wineaudiodrv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0CAFD263BA8AC003AF407 /* wineaudiodrv.cpp */; };
@@ -1413,7 +1414,6 @@
 		71222B612435169100CDBABD /* x64Asm.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD762433BBBE003F17F1 /* x64Asm.cpp */; };
 		71222B622435169100CDBABD /* x64Ops.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD792433BBBE003F17F1 /* x64Ops.cpp */; };
 		71222B632435169100CDBABD /* x64Data.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD7C2433BBBE003F17F1 /* x64Data.cpp */; };
-		71222B642435169100CDBABD /* srcgen.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD7F2433BBBE003F17F1 /* srcgen.cpp */; };
 		71222B652435169100CDBABD /* common_pushpop.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD852433BBBE003F17F1 /* common_pushpop.cpp */; };
 		71222B662435169100CDBABD /* lazyFlags.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD8B2433BBBE003F17F1 /* lazyFlags.cpp */; };
 		71222B672435169100CDBABD /* common_arith.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD8D2433BBBE003F17F1 /* common_arith.cpp */; };
@@ -1651,7 +1651,6 @@
 		71222C6E24351CBA00CDBABD /* glfunctions_ext3.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE442433BBBE003F17F1 /* glfunctions_ext3.cpp */; };
 		71222C6F24351CBA00CDBABD /* listView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD1D2433BBBE003F17F1 /* listView.cpp */; };
 		71222C7024351CBA00CDBABD /* soft_ram.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDD82433BBBE003F17F1 /* soft_ram.cpp */; };
-		71222C7124351CBA00CDBABD /* srcgen.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD7F2433BBBE003F17F1 /* srcgen.cpp */; };
 		71222C7224351CBA00CDBABD /* fsvirtualnode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDFF2433BBBE003F17F1 /* fsvirtualnode.cpp */; };
 		71222C7424351CBA00CDBABD /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 712227872433EE2700CDBABD /* OpenGL.framework */; };
 		71222C7524351CBA00CDBABD /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 712227852433EE1200CDBABD /* Carbon.framework */; };
@@ -1788,7 +1787,6 @@
 		7135DC90264EBCD0005D6AA6 /* glcommon.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE482433BBBE003F17F1 /* glcommon.cpp */; };
 		7135DC91264EBCD0005D6AA6 /* soft_ram.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDD82433BBBE003F17F1 /* soft_ram.cpp */; };
 		7135DC92264EBCD0005D6AA6 /* ksignal.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE1C2433BBBE003F17F1 /* ksignal.cpp */; };
-		7135DC93264EBCD0005D6AA6 /* srcgen.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD7F2433BBBE003F17F1 /* srcgen.cpp */; };
 		7135DC94264EBCD0005D6AA6 /* kpoll.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE3D2433BBBE003F17F1 /* kpoll.cpp */; };
 		7135DC95264EBCD0005D6AA6 /* testSSE.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD452433BBBE003F17F1 /* testSSE.cpp */; };
 		7135DC97264EBCD0005D6AA6 /* CoreMIDI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1AFC47A526489F7700EE5FCC /* CoreMIDI.framework */; };
@@ -2627,7 +2625,6 @@
 		71FBFE7F2433BBBE003F17F1 /* x64Asm.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD762433BBBE003F17F1 /* x64Asm.cpp */; };
 		71FBFE802433BBBE003F17F1 /* x64Ops.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD792433BBBE003F17F1 /* x64Ops.cpp */; };
 		71FBFE812433BBBE003F17F1 /* x64Data.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD7C2433BBBE003F17F1 /* x64Data.cpp */; };
-		71FBFE822433BBBE003F17F1 /* srcgen.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD7F2433BBBE003F17F1 /* srcgen.cpp */; };
 		71FBFE832433BBBE003F17F1 /* common_pushpop.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD852433BBBE003F17F1 /* common_pushpop.cpp */; };
 		71FBFE842433BBBE003F17F1 /* lazyFlags.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD8B2433BBBE003F17F1 /* lazyFlags.cpp */; };
 		71FBFE852433BBBE003F17F1 /* common_arith.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD8D2433BBBE003F17F1 /* common_arith.cpp */; };
@@ -2845,6 +2842,12 @@
 		1A80F08F276EBCC70032A70A /* BoxedwineAutomationSlow.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BoxedwineAutomationSlow.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1A80F2E1276EBF170032A70A /* BoxedwineAutomation.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BoxedwineAutomation.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1A80F2F6276EBFF40032A70A /* BoxedwineX64-Automation.entitlements */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.entitlements; path = "BoxedwineX64-Automation.entitlements"; sourceTree = "<group>"; };
+		1A8962A2296FAEF1009BD747 /* gen.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = gen.cpp; path = aot/gen.cpp; sourceTree = "<group>"; };
+		1A8962A3296FAEF1009BD747 /* usegen.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = usegen.h; path = aot/usegen.h; sourceTree = "<group>"; };
+		1A8962A4296FAEF1009BD747 /* aot.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = aot.h; path = aot/aot.h; sourceTree = "<group>"; };
+		1A8962A5296FAEF1009BD747 /* usegen.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = usegen.cpp; path = aot/usegen.cpp; sourceTree = "<group>"; };
+		1A8962A6296FAEF1009BD747 /* aot.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = aot.cpp; path = aot/aot.cpp; sourceTree = "<group>"; };
+		1A8962A7296FAEF1009BD747 /* gen.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = gen.h; path = aot/gen.h; sourceTree = "<group>"; };
 		1A9193322551B6D2005A798A /* btCodeChunk.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = btCodeChunk.h; path = binaryTranslation/btCodeChunk.h; sourceTree = "<group>"; };
 		1A9193332551B6D3005A798A /* btCodeMemoryWrite.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = btCodeMemoryWrite.cpp; path = binaryTranslation/btCodeMemoryWrite.cpp; sourceTree = "<group>"; };
 		1A9193342551B6D3005A798A /* btCodeChunk.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = btCodeChunk.cpp; path = binaryTranslation/btCodeChunk.cpp; sourceTree = "<group>"; };
@@ -3550,8 +3553,6 @@
 		71FBFD7C2433BBBE003F17F1 /* x64Data.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = x64Data.cpp; sourceTree = "<group>"; };
 		71FBFD7D2433BBBE003F17F1 /* strings_op.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = strings_op.h; sourceTree = "<group>"; };
 		71FBFD7E2433BBBE003F17F1 /* decoder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = decoder.h; sourceTree = "<group>"; };
-		71FBFD7F2433BBBE003F17F1 /* srcgen.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = srcgen.cpp; sourceTree = "<group>"; };
-		71FBFD802433BBBE003F17F1 /* gensrc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = gensrc.h; sourceTree = "<group>"; };
 		71FBFD812433BBBE003F17F1 /* strings.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = strings.h; sourceTree = "<group>"; };
 		71FBFD822433BBBE003F17F1 /* shift.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = shift.h; sourceTree = "<group>"; };
 		71FBFD842433BBBE003F17F1 /* common_other.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = common_other.h; sourceTree = "<group>"; };
@@ -3898,6 +3899,19 @@
 				1A1551B32632626E006E0C8A /* pugixml.hpp */,
 			);
 			path = pugixml;
+			sourceTree = "<group>";
+		};
+		1A8962A1296FAEDD009BD747 /* aot */ = {
+			isa = PBXGroup;
+			children = (
+				1A8962A6296FAEF1009BD747 /* aot.cpp */,
+				1A8962A4296FAEF1009BD747 /* aot.h */,
+				1A8962A2296FAEF1009BD747 /* gen.cpp */,
+				1A8962A7296FAEF1009BD747 /* gen.h */,
+				1A8962A5296FAEF1009BD747 /* usegen.cpp */,
+				1A8962A3296FAEF1009BD747 /* usegen.h */,
+			);
+			name = aot;
 			sourceTree = "<group>";
 		};
 		1AC5F2882772D93B001D0FCA /* armv8bt */ = {
@@ -4879,6 +4893,7 @@
 		71FBFD5C2433BBBE003F17F1 /* cpu */ = {
 			isa = PBXGroup;
 			children = (
+				1A8962A1296FAEDD009BD747 /* aot */,
 				1AC5F2882772D93B001D0FCA /* armv8bt */,
 				1AFC47632640965500EE5FCC /* armv8 */,
 				1A9193342551B6D3005A798A /* btCodeChunk.cpp */,
@@ -4892,8 +4907,6 @@
 				71FBFD722433BBBE003F17F1 /* x64 */,
 				71FBFD7D2433BBBE003F17F1 /* strings_op.h */,
 				71FBFD7E2433BBBE003F17F1 /* decoder.h */,
-				71FBFD7F2433BBBE003F17F1 /* srcgen.cpp */,
-				71FBFD802433BBBE003F17F1 /* gensrc.h */,
 				71FBFD812433BBBE003F17F1 /* strings.h */,
 				71FBFD822433BBBE003F17F1 /* shift.h */,
 				71FBFD832433BBBE003F17F1 /* common */,
@@ -6069,7 +6082,6 @@
 				1A80F071276EBCC70032A70A /* LocalDateTime.cpp in Sources */,
 				1A80F072276EBCC70032A70A /* HTTPRequestHandler.cpp in Sources */,
 				1A80F073276EBCC70032A70A /* soft_ram.cpp in Sources */,
-				1A80F074276EBCC70032A70A /* srcgen.cpp in Sources */,
 				1A80F075276EBCC70032A70A /* helpView.cpp in Sources */,
 				1A80F076276EBCC70032A70A /* fsvirtualnode.cpp in Sources */,
 				1A80F077276EBCC70032A70A /* Timer.cpp in Sources */,
@@ -6659,7 +6671,6 @@
 				1A80F2BE276EBF170032A70A /* LocalDateTime.cpp in Sources */,
 				1A80F2BF276EBF170032A70A /* HTTPRequestHandler.cpp in Sources */,
 				1A80F2C0276EBF170032A70A /* soft_ram.cpp in Sources */,
-				1A80F2C1276EBF170032A70A /* srcgen.cpp in Sources */,
 				1A80F2C2276EBF170032A70A /* helpView.cpp in Sources */,
 				1A80F2C3276EBF170032A70A /* fsvirtualnode.cpp in Sources */,
 				1A80F2C4276EBF170032A70A /* Timer.cpp in Sources */,
@@ -6826,7 +6837,6 @@
 				71222BBF2435169100CDBABD /* glcommon.cpp in Sources */,
 				71222B7D2435169100CDBABD /* soft_ram.cpp in Sources */,
 				71222B9D2435169100CDBABD /* ksignal.cpp in Sources */,
-				71222B642435169100CDBABD /* srcgen.cpp in Sources */,
 				71222BB92435169100CDBABD /* kpoll.cpp in Sources */,
 				71222B3C2435163100CDBABD /* testSSE.cpp in Sources */,
 			);
@@ -7410,7 +7420,6 @@
 				715F83E02440ED200038F5A4 /* LocalDateTime.cpp in Sources */,
 				715F64312440E9110038F5A4 /* HTTPRequestHandler.cpp in Sources */,
 				71222C7024351CBA00CDBABD /* soft_ram.cpp in Sources */,
-				71222C7124351CBA00CDBABD /* srcgen.cpp in Sources */,
 				1A4F8E1E24F740CD0046703D /* helpView.cpp in Sources */,
 				71222C7224351CBA00CDBABD /* fsvirtualnode.cpp in Sources */,
 				715F34D22440E7480038F5A4 /* Timer.cpp in Sources */,
@@ -7577,7 +7586,6 @@
 				7135DC90264EBCD0005D6AA6 /* glcommon.cpp in Sources */,
 				7135DC91264EBCD0005D6AA6 /* soft_ram.cpp in Sources */,
 				7135DC92264EBCD0005D6AA6 /* ksignal.cpp in Sources */,
-				7135DC93264EBCD0005D6AA6 /* srcgen.cpp in Sources */,
 				7135DC94264EBCD0005D6AA6 /* kpoll.cpp in Sources */,
 				7135DC95264EBCD0005D6AA6 /* testSSE.cpp in Sources */,
 				1AC5F2E02772D957001D0FCA /* arm8btFlags.cpp in Sources */,
@@ -7654,6 +7662,7 @@
 				715F825F2440ED1E0038F5A4 /* TeeStream.cpp in Sources */,
 				715F839F2440ED1F0038F5A4 /* VarHolder.cpp in Sources */,
 				71FBFED52433BBBE003F17F1 /* ksocket.cpp in Sources */,
+				1A8962A8296FAEF1009BD747 /* gen.cpp in Sources */,
 				715F829D2440ED1E0038F5A4 /* pcre_byte_order.c in Sources */,
 				715F34F32440E7490038F5A4 /* TimerTask.cpp in Sources */,
 				71FBFEB82433BBBE003F17F1 /* cpuinfo.cpp in Sources */,
@@ -7767,6 +7776,7 @@
 				71FBFECA2433BBBE003F17F1 /* kfile.cpp in Sources */,
 				1AC5F2AB2772D957001D0FCA /* armv8btOps_sse_shuffle.cpp in Sources */,
 				715F83232440ED1F0038F5A4 /* AtomicFlag.cpp in Sources */,
+				1A8962AA296FAEF1009BD747 /* aot.cpp in Sources */,
 				715F829F2440ED1E0038F5A4 /* fixed-dtoa.cc in Sources */,
 				715F34842440D7D20038F5A4 /* downloadDlg.cpp in Sources */,
 				710091482644D42C003413C3 /* knativethread.cpp in Sources */,
@@ -7905,6 +7915,7 @@
 				715F840F2440ED200038F5A4 /* Token.cpp in Sources */,
 				715F63882440E9100038F5A4 /* SocketAddressImpl.cpp in Sources */,
 				71FBFEB72433BBBE003F17F1 /* bufferaccess.cpp in Sources */,
+				1A8962A9296FAEF1009BD747 /* usegen.cpp in Sources */,
 				71FBFE672433BBBE003F17F1 /* uiSettings.cpp in Sources */,
 				715F34DF2440E7480038F5A4 /* SystemConfiguration.cpp in Sources */,
 				715F82CB2440ED1E0038F5A4 /* DigestStream.cpp in Sources */,
@@ -8160,7 +8171,6 @@
 				715F83DF2440ED200038F5A4 /* LocalDateTime.cpp in Sources */,
 				715F64302440E9110038F5A4 /* HTTPRequestHandler.cpp in Sources */,
 				71FBFE9B2433BBBE003F17F1 /* soft_ram.cpp in Sources */,
-				71FBFE822433BBBE003F17F1 /* srcgen.cpp in Sources */,
 				1A4F8E1D24F740CD0046703D /* helpView.cpp in Sources */,
 				71FBFEAD2433BBBE003F17F1 /* fsvirtualnode.cpp in Sources */,
 				715F34D12440E7480038F5A4 /* Timer.cpp in Sources */,
