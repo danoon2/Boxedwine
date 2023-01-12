@@ -27,6 +27,7 @@
 #include "knativesystem.h"
 #include "knativewindow.h"
 #include "knativeaudio.h"
+#include "../emulation/cpu/aot/aot.h"
 
 #ifndef BOXEDWINE_DISABLE_UI
 #include "../ui/data/globalSettings.h"
@@ -486,9 +487,10 @@ bool StartUpArgs::apply() {
             }
         }
     }
-#ifdef GENERATE_SOURCE
-    if (gensrc)
-        writeSource();
+#ifdef BOXEDWINE_GENERATE_SOURCE
+    if (this->aotPath.size()) {
+        writeSource(this->aotPath);
+    }
 #endif
     klog("Boxedwine has shutdown"); // must call before KSystem::destroy()
 	KSystem::destroy();
@@ -680,6 +682,11 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
         } else if (!strcmp(argv[i], "-log") && i + 1 < argc) {
             this->logPath = argv[i + 1];
             i++;
+        } else if (!strcmp(argv[i], "-aot") && i + 1 < argc) {            
+#ifdef BOXEDWINE_GENERATE_SOURCE
+            this->aotPath = argv[i + 1];
+#endif
+            i++;
         }
 #ifdef BOXEDWINE_RECORDER
         else if (!strcmp(argv[i], "-record")) {
@@ -692,7 +699,7 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
             }
             this->recordAutomation = argv[i + 1];
             i++;
-        }  else if (!strcmp(argv[i], "-automation")) {
+        } else if (!strcmp(argv[i], "-automation")) {
             if (!Fs::doesNativePathExist(argv[i+1])) {
                 klog("-automation directory does not exist %s", argv[i+1]);
                 return false;

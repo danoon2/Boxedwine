@@ -1762,6 +1762,9 @@
     <ClCompile Include="..\..\..\..\..\source\kernel\proc\uptime.cpp">
       <Filter>source\kernel\proc</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\aot\aot.cpp">
+      <Filter>source\emulation\cpu\aot</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
@@ -2006,6 +2009,9 @@
     </Filter>
     <Filter Include="source\vulkan">
       <UniqueIdentifier>{4bf872fb-766a-43e0-b55e-8e10fc3803fb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\emulation\cpu\aot">
+      <UniqueIdentifier>{0f9e586c-471c-41d6-9970-f20f6da146c4}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -4795,6 +4801,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\include\uptime.h">
       <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\aot\aot.h">
+      <Filter>source\emulation\cpu\aot</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

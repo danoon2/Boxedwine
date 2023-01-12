@@ -25,6 +25,7 @@
 #include "../emulation/hardmmu/hard_memory.h"
 #include "../emulation/cpu/binaryTranslation/btCpu.h"
 #include "knativethread.h"
+#include "../emulation/cpu/aot/aot.h"
 
 #ifdef BOXEDWINE_MSVC
 #include <nmmintrin.h>
@@ -9980,8 +9981,9 @@ int main(int argc, char **argv) {
     run(testMmxPaddw, "PADDW 3fd (mmx)");
     run(testSse2Paddd1fe, "PADDD 1FE (sse2)");
     run(testMmxPaddd, "PADDD 3fe (mmx)");                                  
-            
-
+#ifdef BOXEDWINE_GENERATE_SOURCE        
+    writeSource("gen.cpp");
+#endif
     printf("%d tests FAILED\n", totalFails);
     KNativeThread::sleep(5000);
     if (totalFails)

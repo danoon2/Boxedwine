@@ -6,6 +6,8 @@
 #include "../x32/x32CPU.h"
 #include "../armv7/armv7CPU.h"
 #include "../armv8/armv8CPU.h"
+#include "../aot/aot.h"
+#include "../aot/usegen.h"
 
 #ifdef _DEBUG
 #define START_OP(cpu, op) op->log(cpu)

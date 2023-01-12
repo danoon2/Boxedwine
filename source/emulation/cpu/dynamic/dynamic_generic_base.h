@@ -251,9 +251,9 @@ void movToCpu(U32 dstOffset, DynWidth dstWidth, U32 imm) {
     }
 }
 
-void movToCpuPtr(U32 dstOffset, DYN_PTR_SIZE imm) {
+void movToCpuLazyFlags(std::string dstOffset, const LazyFlags* lazyFlags) {
     // mov [cpu+dstOffset], imm
-    saveValueToCpuOffsetPtr(imm, dstOffset);
+    saveValueToCpuOffsetPtr((DYN_PTR_SIZE)lazyFlags, dstOffset);
 }
 
 void movToReg(DynReg reg, DynWidth width, U32 imm) {
@@ -279,11 +279,11 @@ void movFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg) {
 #else
     // :TODO: inline
     if (width == DYN_16bit) {
-        callHostFunction((void*)readw, true, 1, addressReg, DYN_PARAM_REG_32, doneWithAddressReg);
+        callHostFunction(DYN_HOST_FN(readw), true, 1, addressReg, DYN_PARAM_REG_32, doneWithAddressReg);
     } else if (width == DYN_32bit) {
-        callHostFunction((void*)readd, true, 1, addressReg, DYN_PARAM_REG_32, doneWithAddressReg);
+        callHostFunction(DYN_HOST_FN(readd), true, 1, addressReg, DYN_PARAM_REG_32, doneWithAddressReg);
     } else {
-        callHostFunction((void*)readb, true, 1, addressReg, DYN_PARAM_REG_32, doneWithAddressReg);
+        callHostFunction(DYN_HOST_FN(readb), true, 1, addressReg, DYN_PARAM_REG_32, doneWithAddressReg);
     }
 #endif
     if (doneWithAddressReg) {
@@ -318,34 +318,10 @@ void pushValue(U32 arg, DynCallParamType argType) {
         clearRegUsed(tmp);
         break;
     }
-    case DYN_PARAM_CONST_PTR:
+    case DYN_PARAM_OP:
     {
         DynReg tmp = getUnsavedTmpReg();
         loadConstPtr(tmp, arg);
-        pushRegs(1 << tmp);
-        clearRegUsed(tmp);
-        break;
-    }
-    case DYN_PARAM_ABSOLUTE_ADDRESS_8:
-    {
-        DynReg tmp = getUnsavedTmpReg();
-        readMem8(tmp, arg, 0);
-        pushRegs(1 << tmp);
-        clearRegUsed(tmp);
-        break;
-    }
-    case DYN_PARAM_ABSOLUTE_ADDRESS_16:
-    {
-        DynReg tmp = getUnsavedTmpReg();
-        readMem16(tmp, arg, 0);
-        pushRegs(1 << tmp);
-        clearRegUsed(tmp);
-        break;
-    }
-    case DYN_PARAM_ABSOLUTE_ADDRESS_32:
-    {
-        DynReg tmp = getUnsavedTmpReg();
-        readMem32(tmp, arg, 0);
         pushRegs(1 << tmp);
         clearRegUsed(tmp);
         break;
@@ -398,17 +374,8 @@ void setValue(DYN_PTR_SIZE arg, DynCallParamType argType, U8 reg) {
     case DYN_PARAM_CONST_32:
         loadConst32(reg, arg);
         break;
-    case DYN_PARAM_CONST_PTR:
+    case DYN_PARAM_OP:
         loadConstPtr(reg, arg);
-        break;
-    case DYN_PARAM_ABSOLUTE_ADDRESS_8:
-        readMem8(reg, arg, 0);
-        break;
-    case DYN_PARAM_ABSOLUTE_ADDRESS_16:
-        readMem16(reg, arg, 0);
-        break;
-    case DYN_PARAM_ABSOLUTE_ADDRESS_32:
-        readMem32(reg, arg, 0);
         break;
     case DYN_PARAM_CPU_ADDRESS_8:
         readMem8(reg, REG_CPU, arg);
@@ -468,11 +435,11 @@ void movToMem(DynReg addressReg, DynWidth width, U32 value, DynCallParamType par
 #else
     // :TODO: inline?
     if (width == DYN_16bit) {
-        callHostFunction((void*)writew, false, 2, addressReg, DYN_PARAM_REG_32, false, value, paramType, doneWithValueReg);
+        callHostFunction(DYN_HOST_FN(writew), false, 2, addressReg, DYN_PARAM_REG_32, false, value, paramType, doneWithValueReg);
     } else if (width == DYN_32bit) {
-        callHostFunction((void*)writed, false, 2, addressReg, DYN_PARAM_REG_32, false, value, paramType, doneWithValueReg);
+        callHostFunction(DYN_HOST_FN(writed), false, 2, addressReg, DYN_PARAM_REG_32, false, value, paramType, doneWithValueReg);
     } else {
-        callHostFunction((void*)writeb, false, 2, addressReg, DYN_PARAM_REG_32, false, value, paramType, doneWithValueReg);
+        callHostFunction(DYN_HOST_FN(writeb), false, 2, addressReg, DYN_PARAM_REG_32, false, value, paramType, doneWithValueReg);
     }
 #endif
 }
@@ -834,7 +801,7 @@ void incrementEip(DynamicData* data, DecodedOp* op) {
 
 void blockDone() {
     // cpu->nextBlock = cpu->getNextBlock();
-    callHostFunction((void*)common_getNextBlock, true, 1, 0, DYN_PARAM_CPU, false);
+    callHostFunction(DYN_HOST_FN(common_getNextBlock), true, 1, 0, DYN_PARAM_CPU, false);
     movToCpuFromRegPtr(offsetof(CPU, nextBlock), DYN_CALL_RESULT, true);
     endBlock();
 }
@@ -857,7 +824,7 @@ void blockNext1() {
     readMemPtr(DYN_CALL_RESULT, DYN_CALL_RESULT, offsetof(DecodedBlock, next1));
 
     startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, false);
-    callHostFunction((void*)updateNext1, true, 1, 0, DYN_PARAM_CPU);
+    callHostFunction(DYN_HOST_FN(updateNext1), true, 1, 0, DYN_PARAM_CPU);
     endIf();
 
     saveRegToCpuOffsetPtr(DYN_CALL_RESULT, offsetof(CPU, nextBlock));
@@ -881,7 +848,7 @@ void blockNext2() {
     readMemPtr(DYN_CALL_RESULT, DYN_CALL_RESULT, offsetof(DecodedBlock, next2));
 
     startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, false);
-    callHostFunction((void*)updateNext2, true, 1, 0, DYN_PARAM_CPU);
+    callHostFunction(DYN_HOST_FN(updateNext2), true, 1, 0, DYN_PARAM_CPU);
     endIf();
 
     saveRegToCpuOffsetPtr(DYN_CALL_RESULT, offsetof(CPU, nextBlock));
@@ -897,7 +864,7 @@ void dyn_onExitSignal(CPU* cpu) {
 
 void dyn_callback(DynamicData* data, DecodedOp* op) {
     if (op->pfn == onExitSignal) {
-        callHostFunction((void*)dyn_onExitSignal, false, 1, 0, DYN_PARAM_CPU);
+        callHostFunction(DYN_HOST_FN(dyn_onExitSignal), false, 1, 0, DYN_PARAM_CPU);
     } else {
         kpanic("dyn_callback unhandled callback");
     }
@@ -967,7 +934,7 @@ void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
             resetRegsUsed();
 #ifndef __TEST
 #ifdef _DEBUG
-            //callHostFunction((void*)common_log, false, 2, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)o, DYN_PARAM_CONST_PTR, false);
+            //callHostFunction(DYN_HOST_FN(common_log), false, 2, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)o, DYN_PARAM_OP, false);
 #endif
 #endif
             dynOps[o->inst](&data, o);
@@ -988,7 +955,7 @@ void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
 #ifndef __TEST
 #ifdef _DEBUG
                 //f (o->next)
-                //    callHostFunction((void*)common_log, false, 2, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)o->next, DYN_PARAM_CONST_PTR, false);
+                //    callHostFunction(DYN_HOST_FN(common_log), false, 2, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)o->next, DYN_PARAM_OP, false);
 #endif
 #endif
                 break;

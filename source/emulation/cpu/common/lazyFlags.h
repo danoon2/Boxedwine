@@ -5,7 +5,7 @@ class CPU;
 
 class LazyFlags {
 public:
-    LazyFlags(U32 width) : width(width) {}
+    LazyFlags(std::string name, U32 width) : width(width), name(name) {}
     virtual U32 getCF(CPU* cpu) const=0; // will always return 0 or 1, optimizations count on this
     virtual U32 getSF(CPU* cpu) const=0;
     virtual U32 getZF(CPU* cpu) const=0;
@@ -13,6 +13,7 @@ public:
     virtual U32 getAF(CPU* cpu) const=0;
     virtual U32 getPF(CPU* cpu) const=0;
     U32 width;
+    std::string name;
 };
 
 extern const LazyFlags* FLAGS_NONE;

@@ -25,18 +25,11 @@
 #include "../ui/data/globalSettings.h"
 #endif
 #include "knativesystem.h"
-
 #ifdef BOXEDWINE_MSVC
 #include <Windows.h>
 #endif
 
 #ifndef __TEST
-
-U32 gensrc;
-
-#ifdef GENERATE_SOURCE
-void writeSource();
-#endif
 
 int boxedmain(int argc, const char **argv) {
     StartUpArgs startupArgs;                  

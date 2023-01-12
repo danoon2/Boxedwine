@@ -87,6 +87,7 @@ public:
     std::function<void()> runOnRestartUI;
     std::string logPath;
     std::string title;
+    std::string aotPath;
 
     std::string recordAutomation;
     std::string runAutomation;

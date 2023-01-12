@@ -316,9 +316,6 @@
     <ClCompile Include="..\..\..\..\source\emulation\cpu\x64\x64CodeChunk.cpp">
       <Filter>source\emulation\cpu\x64</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\source\emulation\cpu\srcgen.cpp">
-      <Filter>source\emulation\cpu</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\source\emulation\cpu\common\common_sse.cpp">
       <Filter>source\emulation\cpu\common</Filter>
     </ClCompile>
@@ -1605,6 +1602,15 @@
     </ClCompile>
     <ClCompile Include="..\..\..\..\source\kernel\proc\uptime.cpp">
       <Filter>source\kernel\proc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\aot\aot.cpp">
+      <Filter>source\emulation\cpu\aot</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\aot\gen.cpp">
+      <Filter>source\emulation\cpu\aot</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\aot\usegen.cpp">
+      <Filter>source\emulation\cpu\aot</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -3807,6 +3813,15 @@
     <ClInclude Include="..\..\..\..\include\uptime.h">
       <Filter>include</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\aot\aot.h">
+      <Filter>source\emulation\cpu\aot</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\aot\gen.h">
+      <Filter>source\emulation\cpu\aot</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\aot\usegen.h">
+      <Filter>source\emulation\cpu\aot</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
@@ -3970,6 +3985,9 @@
     </Filter>
     <Filter Include="vulkan">
       <UniqueIdentifier>{30fe2744-f038-4f14-be86-a165f2ac883f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\emulation\cpu\aot">
+      <UniqueIdentifier>{c052ae0e-5b43-4285-9638-f44502e95afe}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

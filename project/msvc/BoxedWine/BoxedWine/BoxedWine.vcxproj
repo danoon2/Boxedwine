@@ -988,6 +988,9 @@
     <ClInclude Include="..\..\..\..\lib\zlib\contrib\minizip\unzip.h" />
     <ClInclude Include="..\..\..\..\lib\zlib\contrib\minizip\zip.h" />
     <ClInclude Include="..\..\..\..\platform\sdl\knativeaudiosdl.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\aot\aot.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\aot\gen.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\aot\usegen.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeChunk.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeMemoryWrite.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCpu.h" />
@@ -3583,6 +3586,9 @@
     <ClCompile Include="..\..\..\..\platform\windows\platform.cpp" />
     <ClCompile Include="..\..\..\..\platform\windows\platformThreads.cpp" />
     <ClCompile Include="..\..\..\..\platform\windows\winmidi.cpp" />
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\aot\aot.cpp" />
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\aot\gen.cpp" />
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\aot\usegen.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeChunk.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeMemoryWrite.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\common\common_arith.cpp" />
@@ -3602,7 +3608,6 @@
     <ClCompile Include="..\..\..\..\source\emulation\cpu\normal\normalCPU.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\normal\normal_shift.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\normal\normal_strings.cpp" />
-    <ClCompile Include="..\..\..\..\source\emulation\cpu\srcgen.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\x32\x32CPU.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\x64\x64Asm.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\x64\x64CodeChunk.cpp" />

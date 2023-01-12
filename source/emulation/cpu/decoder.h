@@ -1522,6 +1522,23 @@ public:
 protected:
     DecodedBlockFromNode* referencedFrom;
 };
+
+#ifndef __EMSCRIPTEN__
+struct LogInstruction;
+
+typedef void (*LogFormat)(const LogInstruction* inst, DecodedOp* op, CPU* cpu);
+
+struct LogInstruction {
+    const char* name;
+    S32 width;
+    LogFormat pfnFormat;
+    bool imm;
+    const char* postfix;
+};
+
+extern const LogInstruction instructionLog[];
+#endif
+
 void decodeBlock(pfnFetchByte fetchByte, U32 eip, bool isBig, U32 maxInstructions, U32 maxLen, U32 stopIfThrowsException, DecodedBlock* block);
 
 #endif
