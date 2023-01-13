@@ -2944,6 +2944,9 @@
     <ClCompile Include="..\..\..\..\..\platform\sdl\knativethread.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\sdl\knativewindow.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\sdl\sdlcallback.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\aot\aot.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\aot\gen.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\aot\usegen.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv7\armv7CPU.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\arm8btFlags.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btAsm.cpp" />
@@ -2980,7 +2983,6 @@
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\normal\normalCPU.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\normal\normal_shift.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\normal\normal_strings.cpp" />
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\srcgen.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\x32\x32CPU.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\x64\x64Asm.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\x64\x64CodeChunk.cpp" />
@@ -4139,6 +4141,9 @@
     <ClInclude Include="..\..\..\..\..\lib\zlib\contrib\minizip\unzip.h" />
     <ClInclude Include="..\..\..\..\..\platform\sdl\knativeaudiosdl.h" />
     <ClInclude Include="..\..\..\..\..\platform\sdl\sdlcallback.h" />
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\aot\aot.h" />
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\aot\gen.h" />
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\aot\usegen.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv7\armv7CPU.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\arm8btFlags.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btAsm.h" />
@@ -4204,7 +4209,6 @@
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\dynamic\dynamic_strings.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\dynamic\dynamic_xchg.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\fpu.h" />
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\gensrc.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\incdec.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\instructions.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\mmx.h" />

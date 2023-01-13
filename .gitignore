@@ -3,12 +3,15 @@ project/msvc/BoxedWine/BoxedWine/BoxedWine.vcxproj.user
 project/msvc/BoxedWine/x64/
 project/msvc/BoxedWine/Debug/
 project/msvc/BoxedWine/Release/
+project/msvc/BoxedWine/Release AOT/
 project/msvc/BoxedWine/BoxedWine/x64/
 project/msvc/BoxedWine/BoxedWine/Debug/
 project/msvc/BoxedWine/BoxedWine/Release/
+project/msvc/BoxedWine/BoxedWine/Release AOT/
 project/msvc/BoxedWine/zlib/x64/
 project/msvc/BoxedWine/zlib/Debug/
 project/msvc/BoxedWine/zlib/Release/
+project/msvc/BoxedWine/zlib/Release AOT/
 project/msvc/BoxedWine/BoxedWine/Test/
 project/msvc/BoxedWine/zlib/Test/
 project/msvc/BoxedWine/Test/
@@ -16,6 +19,9 @@ lib/sdl2/VisualC/SDL/Win32/
 lib/sdl2/VisualC/SDL/x64/
 lib/sdl2/VisualC/SDLmain/Win32/
 lib/sdl2/VisualC/SDLmain/x64/
+tools/debianFileSystem/out
+tools/debianFileSystem/fs
+tools/vulkan/gen
 project/msvc/BoxedWine/BoxedWine/imgui.ini
 project/linux/bin/
 project/linux/linux_build/

@@ -82,7 +82,7 @@ void dynamic_movs16e16(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_movs16r16(DynamicData* data, DecodedOp* op) {
-    callHostFunction(DYN_HOST_FN(common_setSegment), true, 3, 0, DYN_PARAM_CPU, false, op->rm, DYN_PARAM_CONST_32, false, (U32)CPU_OFFSET_OF_REG16(op->reg), DYN_PARAM_CPU_ADDRESS_16, false);
+    callHostFunction(DYN_HOST_FN(common_setSegment), true, 3, 0, DYN_PARAM_CPU, false, op->rm, DYN_PARAM_CONST_32, false, (DYN_PTR_SIZE)CPU_OFFSET_OF_REG16(op->reg), DYN_PARAM_CPU_ADDRESS_16, false);
     startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
     blockDone();
     endIf();

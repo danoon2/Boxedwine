@@ -106,9 +106,6 @@
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\decoder.cpp">
       <Filter>source\emulation\cpu</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\srcgen.cpp">
-      <Filter>source\emulation\cpu</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\..\source\emulation\hardmmu\hard_memory.cpp">
       <Filter>source\emulation\hardmmu</Filter>
     </ClCompile>
@@ -1765,6 +1762,12 @@
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\aot\aot.cpp">
       <Filter>source\emulation\cpu\aot</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\aot\gen.cpp">
+      <Filter>source\emulation\cpu\aot</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\aot\usegen.cpp">
+      <Filter>source\emulation\cpu\aot</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
@@ -2011,7 +2014,7 @@
       <UniqueIdentifier>{4bf872fb-766a-43e0-b55e-8e10fc3803fb}</UniqueIdentifier>
     </Filter>
     <Filter Include="source\emulation\cpu\aot">
-      <UniqueIdentifier>{0f9e586c-471c-41d6-9970-f20f6da146c4}</UniqueIdentifier>
+      <UniqueIdentifier>{da699237-fd48-4a70-9389-cfd0823d6591}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -2406,9 +2409,6 @@
       <Filter>source\emulation\cpu</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\fpu.h">
-      <Filter>source\emulation\cpu</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\gensrc.h">
       <Filter>source\emulation\cpu</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\incdec.h">
@@ -4803,6 +4803,12 @@
       <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\aot\aot.h">
+      <Filter>source\emulation\cpu\aot</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\aot\gen.h">
+      <Filter>source\emulation\cpu\aot</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\aot\usegen.h">
       <Filter>source\emulation\cpu\aot</Filter>
     </ClInclude>
   </ItemGroup>

@@ -14,9 +14,9 @@ static const char* getOffsetValue(const char* pre, U32 value, const char* post) 
     return tmpValue[tmpValueIndex];
 }
 
-const char* r8(int r);
-const char* r16(int r);
-const char* r32(int r);
+static const char* r8(int r);
+static const char* r16(int r);
+static const char* r32(int r);
 
 #define OFFSET_REG8(x) r8(x)
 #define CPU_OFFSET_OF(x) "cpu->"#x
@@ -72,7 +72,11 @@ enum DynConditionEvaluate {
 #define DYN_ADDRESS DYN_TMP3
 #define DYN_ANY DYN_DEST
 
+#ifdef BOXEDWINE_64
+#define DYN_PTR_SIZE U64
+#else
 #define DYN_PTR_SIZE U32
+#endif
 
 enum DynWidth {
     DYN_8bit = 0,
@@ -116,75 +120,75 @@ enum DynConditional {
 #define Dyn_PtrSize DYN_32bit
 
 // helper, can be done with multiple other calls
-void movToCpuFromMem(std::string dstOffset, DynWidth dstWidth, DynReg addressReg, bool doneWithAddressReg, bool doneWithCallResult);
-void movToCpuFromCpu(std::string dstOffset, std::string srcOffset, DynWidth width, DynReg tmpReg, bool doneWithTmpReg);
-void calculateEaa(DecodedOp* op, DynReg reg);
+static void movToCpuFromMem(std::string dstOffset, DynWidth dstWidth, DynReg addressReg, bool doneWithAddressReg, bool doneWithCallResult);
+static void movToCpuFromCpu(std::string dstOffset, std::string srcOffset, DynWidth width, DynReg tmpReg, bool doneWithTmpReg);
+static void calculateEaa(DecodedOp* op, DynReg reg);
 
-void byteSwapReg32(DynReg reg);
+static void byteSwapReg32(DynReg reg);
 
 // REG to REG
-void movToRegFromRegSignExtend(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidth, bool doneWithSrcReg);
-void movToRegFromReg(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidth, bool doneWithSrcReg);
+static void movToRegFromRegSignExtend(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidth, bool doneWithSrcReg);
+static void movToRegFromReg(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidth, bool doneWithSrcReg);
 
 // to Reg
-void movToReg(DynReg reg, DynWidth width, U32 imm);
+static void movToReg(DynReg reg, DynWidth width, U32 imm);
 
 // to CPU
-void movToCpuFromReg(std::string dstOffset, DynReg reg, DynWidth width, bool doneWithReg);
-void movToCpu(std::string dstOffset, DynWidth dstWidth, U32 imm);
-void movToCpuLazyFlags(std::string dstOffset, std::string lazyFlags);
+static void movToCpuFromReg(std::string dstOffset, DynReg reg, DynWidth width, bool doneWithReg);
+static void movToCpu(std::string dstOffset, DynWidth dstWidth, U32 imm);
+static void movToCpuLazyFlags(std::string dstOffset, std::string lazyFlags);
 
 // from CPU
-void movToRegFromCpu(DynReg reg, std::string srcOffset, DynWidth width);
+static void movToRegFromCpu(DynReg reg, std::string srcOffset, DynWidth width);
 
 // from Mem to DYN_READ_RESULT
-void movFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg);
+static void movFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg);
 
 // to Mem
-void movToMemFromReg(DynReg addressReg, DynReg reg, DynWidth width, bool doneWithAddressReg, bool doneWithReg);
-void movToMemFromImm(DynReg addressReg, DynWidth width, U32 imm, bool doneWithAddressReg);
+static void movToMemFromReg(DynReg addressReg, DynReg reg, DynWidth width, bool doneWithAddressReg, bool doneWithReg);
+static void movToMemFromImm(DynReg addressReg, DynWidth width, U32 imm, bool doneWithAddressReg);
 
 // arith
-void instRegReg(char inst, DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg);
-void instMemReg(char inst, DynReg addressReg, DynReg rm, DynWidth regWidth, bool doneWithAddressReg, bool doneWithRmReg);
-void instCPUReg(char inst, std::string dstOffset, DynReg rm, DynWidth regWidth, bool doneWithRmReg);
+static void instRegReg(char inst, DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg);
+static void instMemReg(char inst, DynReg addressReg, DynReg rm, DynWidth regWidth, bool doneWithAddressReg, bool doneWithRmReg);
+static void instCPUReg(char inst, std::string dstOffset, DynReg rm, DynWidth regWidth, bool doneWithRmReg);
 
-void instRegImm(U32 inst, DynReg reg, DynWidth regWidth, U32 imm);
-void instMemImm(char inst, DynReg addressReg, DynWidth regWidth, U32 imm, bool doneWithAddressReg);
-void instCPUImm(char inst, std::string dstOffset, DynWidth regWidth, U32 imm);
+static void instRegImm(U32 inst, DynReg reg, DynWidth regWidth, U32 imm);
+static void instMemImm(char inst, DynReg addressReg, DynWidth regWidth, U32 imm, bool doneWithAddressReg);
+static void instCPUImm(char inst, std::string dstOffset, DynWidth regWidth, U32 imm);
 
-void instReg(char inst, DynReg reg, DynWidth regWidth);
-void instMem(char inst, DynReg addressReg, DynWidth regWidth, bool doneWithAddressReg);
-void instCPU(char inst, std::string dstOffset, DynWidth regWidth);
+static void instReg(char inst, DynReg reg, DynWidth regWidth);
+static void instMem(char inst, DynReg addressReg, DynWidth regWidth, bool doneWithAddressReg);
+static void instCPU(char inst, std::string dstOffset, DynWidth regWidth);
 
 // if conditions
-void startIf(DynReg reg, DynCondition condition, bool doneWithReg);
-void startElse();
-void endIf();
-void evaluateToReg(DynReg reg, DynWidth dstWidth, DynReg left, bool isRightConst, DynReg right, U32 rightConst, DynWidth regWidth, DynConditionEvaluate condition, bool doneWithLeftReg, bool doneWithRightReg);
-void setCPU(DynamicData* data, std::string offset, DynWidth regWidth, DynConditional condition);
-void setMem(DynamicData* data, DynReg addressReg, DynWidth regWidth, DynConditional condition, bool doneWithAddressReg);
+static void startIf(DynReg reg, DynCondition condition, bool doneWithReg);
+static void startElse();
+static void endIf();
+static void evaluateToReg(DynReg reg, DynWidth dstWidth, DynReg left, bool isRightConst, DynReg right, U32 rightConst, DynWidth regWidth, DynConditionEvaluate condition, bool doneWithLeftReg, bool doneWithRightReg);
+static void setCPU(DynamicData* data, std::string offset, DynWidth regWidth, DynConditional condition);
+static void setMem(DynamicData* data, DynReg addressReg, DynWidth regWidth, DynConditional condition, bool doneWithAddressReg);
 
 // call into emulator, like setFlags, getCF, etc
-void callHostFunction(std::string func, bool hasReturn = false, U32 argCount = 0, U32 arg1 = 0, DynCallParamType arg1Type = DYN_PARAM_CONST_32, bool doneWithArg1 = true, U32 arg2 = 0, DynCallParamType arg2Type = DYN_PARAM_CONST_32, bool doneWithArg2 = true, U32 arg3 = 0, DynCallParamType arg3Type = DYN_PARAM_CONST_32, bool doneWithArg3 = true, U32 arg4 = 0, DynCallParamType arg4Type = DYN_PARAM_CONST_32, bool doneWithArg4 = true, U32 arg5 = 0, DynCallParamType arg5Type = DYN_PARAM_CONST_32, bool doneWithArg5 = true);
+static void callHostFunction(std::string func, bool hasReturn = false, U32 argCount = 0, DYN_PTR_SIZE arg1 = 0, DynCallParamType arg1Type = DYN_PARAM_CONST_32, bool doneWithArg1 = true, DYN_PTR_SIZE arg2 = 0, DynCallParamType arg2Type = DYN_PARAM_CONST_32, bool doneWithArg2 = true, DYN_PTR_SIZE arg3 = 0, DynCallParamType arg3Type = DYN_PARAM_CONST_32, bool doneWithArg3 = true, DYN_PTR_SIZE arg4 = 0, DynCallParamType arg4Type = DYN_PARAM_CONST_32, bool doneWithArg4 = true, DYN_PTR_SIZE arg5 = 0, DynCallParamType arg5Type = DYN_PARAM_CONST_32, bool doneWithArg5 = true);
 
 // set up the cpu to the correct next block
 
 // this is called for cases where we don't know ahead of time where the next block will be, so we need to look it up
-void blockDone();
+static void blockDone();
 // next block is also set in common_other.cpp for loop instructions, so don't use this as a hook for something else
-void blockNext1();
-void blockNext2();
+static void blockNext1();
+static void blockNext2();
 
-const char* getReg8(int r);
+static const char* getReg8(int r);
 
 /********************************************************/
 /* End required for dynamic code                        */
 /********************************************************/
 
 // referenced in macro above
-void incrementEip(DynamicData* data, DecodedOp* op);
-void incrementEip(DynamicData* data, U32 len);
+static void incrementEip(DynamicData* data, DecodedOp* op);
+static void incrementEip(DynamicData* data, U32 len);
 
 #include "../normal/instructions.h"
 #include "../common/common_arith.h"
@@ -371,13 +375,11 @@ static std::string getEaa16(DecodedOp* op) {
             }
         }
         if (op->disp) {
-            char tmp[32];
             if (op->rm < 8) {
                 result += " + ";
             }
             result += "0x";
-            itoa(op->disp, tmp, 16);
-            result += tmp;
+            result += toHexString(op->disp);
         }
         result += ")";
     }
@@ -413,12 +415,10 @@ static std::string getEaa32(DecodedOp* op) {
         }
     }
     if (op->disp) {
-        char tmp[32];
         if (result.length())
             result += " + ";
         result += "0x";
-        itoa(op->disp, tmp, 16);
-        result += tmp;
+        result += toHexString(op->disp);
     }
     if (!result.size()) {
         result = "0";
@@ -967,7 +967,7 @@ static void setMem(DynamicData* data, DynReg addressReg, DynWidth regWidth, DynC
 }
 
 
-static void outArg(U32 arg, DynCallParamType type, bool doneWithReg) {
+static void outArg(DYN_PTR_SIZE arg, DynCallParamType type, bool doneWithReg) {
     switch (type) {
     case DYN_PARAM_REG_8:
         outDynReg((DynReg)arg, DYN_8bit);
@@ -1035,7 +1035,7 @@ static void outArg(U32 arg, DynCallParamType type, bool doneWithReg) {
 }
 
 // call into emulator, like setFlags, getCF, etc
-static void callHostFunction(std::string func, bool hasReturn, U32 argCount, U32 arg1, DynCallParamType arg1Type, bool doneWithArg1, U32 arg2, DynCallParamType arg2Type, bool doneWithArg2, U32 arg3, DynCallParamType arg3Type, bool doneWithArg3, U32 arg4, DynCallParamType arg4Type, bool doneWithArg4, U32 arg5, DynCallParamType arg5Type, bool doneWithArg5) {
+static void callHostFunction(std::string func, bool hasReturn, U32 argCount, DYN_PTR_SIZE arg1, DynCallParamType arg1Type, bool doneWithArg1, DYN_PTR_SIZE arg2, DynCallParamType arg2Type, bool doneWithArg2, DYN_PTR_SIZE arg3, DynCallParamType arg3Type, bool doneWithArg3, DYN_PTR_SIZE arg4, DynCallParamType arg4Type, bool doneWithArg4, DYN_PTR_SIZE arg5, DynCallParamType arg5Type, bool doneWithArg5) {
     outStartLine();
     if (hasReturn) {
         outDynReg(DYN_CALL_RESULT, DYN_32bit);
@@ -1343,7 +1343,11 @@ static void generateSource(CPU* cpu, DecodedOp* op) {
 }
 
 void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
+#ifdef __TEST
+    if (DecodedBlock::currentBlock->runCount == 0) {
+#else
     if (DecodedBlock::currentBlock->runCount == 50) {
+#endif
         generateSource(cpu, op);
     }
     op->next->pfn(cpu, op->next);
@@ -1351,6 +1355,10 @@ void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
 
 static void outfp(FILE* fp, const char* str) {
     fwrite(str, strlen(str), 1, fp);
+}
+
+static void outfp(FILE* fp, const std::string& str) {
+    fwrite(str.c_str(), str.size(), 1, fp);
 }
 
 static bool compareGeneratedFunctionsByCRC(std::shared_ptr<GeneratedFunction>& f1, std::shared_ptr<GeneratedFunction>& f2)
@@ -1365,8 +1373,7 @@ static void writeLookups(FILE* fp) {
 
     for (U32 i = 0; i < functionArray.size(); i++) {
         outfp(fp, "const unsigned char data");
-        itoa(i, tmp, 10);
-        outfp(fp, tmp);
+        outfp(fp, std::to_string(i));
         outfp(fp, "[] = {");
         for (U32 j = 0; j < functionArray[i]->len; j++) {
             if (j > 0)
@@ -1394,16 +1401,13 @@ static void writeLookups(FILE* fp) {
     
     for (U32 i = 0; i < functionArray.size(); i++) {
         outfp(fp, "CompiledCode(0x");
-        itoa(functionArray[i]->crc, tmp, 16);
-        outfp(fp, tmp);
+        outfp(fp, toHexString(functionArray[i]->crc));
         outfp(fp, ", ");
         outfp(fp, functionArray[i]->name.c_str());
         outfp(fp, ", data");
-        itoa(i, tmp, 10);
-        outfp(fp, tmp);
+        outfp(fp, std::to_string(i));
         outfp(fp, ", ");
-        itoa(functionArray[i]->len, tmp, 10);
-        outfp(fp, tmp);
+        outfp(fp, std::to_string(functionArray[i]->len));
         outfp(fp, ", ");
         outfp(fp, functionArray[i]->big ? "true" : "false");
         outfp(fp, "),\n");

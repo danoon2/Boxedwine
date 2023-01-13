@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.29920.165
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.32014.148
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "BoxedWine", "BoxedWine\BoxedWine.vcxproj", "{AB172CEA-C4FE-4F1B-821E-2886B90344CB}"
 	ProjectSection(ProjectDependencies) = postProject
@@ -20,6 +20,8 @@ Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
 		Debug|x64 = Debug|x64
+		Release AOT|Win32 = Release AOT|Win32
+		Release AOT|x64 = Release AOT|x64
 		Release SDL1|Win32 = Release SDL1|Win32
 		Release SDL1|x64 = Release SDL1|x64
 		Release|Win32 = Release|Win32
@@ -32,6 +34,10 @@ Global
 		{AB172CEA-C4FE-4F1B-821E-2886B90344CB}.Debug|Win32.Build.0 = Debug|Win32
 		{AB172CEA-C4FE-4F1B-821E-2886B90344CB}.Debug|x64.ActiveCfg = Debug|x64
 		{AB172CEA-C4FE-4F1B-821E-2886B90344CB}.Debug|x64.Build.0 = Debug|x64
+		{AB172CEA-C4FE-4F1B-821E-2886B90344CB}.Release AOT|Win32.ActiveCfg = Release AOT|Win32
+		{AB172CEA-C4FE-4F1B-821E-2886B90344CB}.Release AOT|Win32.Build.0 = Release AOT|Win32
+		{AB172CEA-C4FE-4F1B-821E-2886B90344CB}.Release AOT|x64.ActiveCfg = Release AOT|x64
+		{AB172CEA-C4FE-4F1B-821E-2886B90344CB}.Release AOT|x64.Build.0 = Release AOT|x64
 		{AB172CEA-C4FE-4F1B-821E-2886B90344CB}.Release SDL1|Win32.ActiveCfg = Release SDL1|Win32
 		{AB172CEA-C4FE-4F1B-821E-2886B90344CB}.Release SDL1|Win32.Build.0 = Release SDL1|Win32
 		{AB172CEA-C4FE-4F1B-821E-2886B90344CB}.Release SDL1|x64.ActiveCfg = Release SDL1|x64
@@ -48,6 +54,10 @@ Global
 		{A70E4294-DDE4-4D80-AFB8-039ED014ED7A}.Debug|Win32.Build.0 = Debug|Win32
 		{A70E4294-DDE4-4D80-AFB8-039ED014ED7A}.Debug|x64.ActiveCfg = Debug|x64
 		{A70E4294-DDE4-4D80-AFB8-039ED014ED7A}.Debug|x64.Build.0 = Debug|x64
+		{A70E4294-DDE4-4D80-AFB8-039ED014ED7A}.Release AOT|Win32.ActiveCfg = Release AOT|Win32
+		{A70E4294-DDE4-4D80-AFB8-039ED014ED7A}.Release AOT|Win32.Build.0 = Release AOT|Win32
+		{A70E4294-DDE4-4D80-AFB8-039ED014ED7A}.Release AOT|x64.ActiveCfg = Release AOT|x64
+		{A70E4294-DDE4-4D80-AFB8-039ED014ED7A}.Release AOT|x64.Build.0 = Release AOT|x64
 		{A70E4294-DDE4-4D80-AFB8-039ED014ED7A}.Release SDL1|Win32.ActiveCfg = Release SDL1|Win32
 		{A70E4294-DDE4-4D80-AFB8-039ED014ED7A}.Release SDL1|Win32.Build.0 = Release SDL1|Win32
 		{A70E4294-DDE4-4D80-AFB8-039ED014ED7A}.Release SDL1|x64.ActiveCfg = Release SDL1|x64
@@ -64,6 +74,10 @@ Global
 		{DA956FD3-E142-46F2-9DD5-C78BEBB56B7A}.Debug|Win32.Build.0 = Debug|Win32
 		{DA956FD3-E142-46F2-9DD5-C78BEBB56B7A}.Debug|x64.ActiveCfg = Debug|x64
 		{DA956FD3-E142-46F2-9DD5-C78BEBB56B7A}.Debug|x64.Build.0 = Debug|x64
+		{DA956FD3-E142-46F2-9DD5-C78BEBB56B7A}.Release AOT|Win32.ActiveCfg = Release AOT|Win32
+		{DA956FD3-E142-46F2-9DD5-C78BEBB56B7A}.Release AOT|Win32.Build.0 = Release AOT|Win32
+		{DA956FD3-E142-46F2-9DD5-C78BEBB56B7A}.Release AOT|x64.ActiveCfg = Release AOT|x64
+		{DA956FD3-E142-46F2-9DD5-C78BEBB56B7A}.Release AOT|x64.Build.0 = Release AOT|x64
 		{DA956FD3-E142-46F2-9DD5-C78BEBB56B7A}.Release SDL1|Win32.ActiveCfg = Release|Win32
 		{DA956FD3-E142-46F2-9DD5-C78BEBB56B7A}.Release SDL1|Win32.Build.0 = Release|Win32
 		{DA956FD3-E142-46F2-9DD5-C78BEBB56B7A}.Release SDL1|x64.ActiveCfg = Release|x64
@@ -80,6 +94,10 @@ Global
 		{81CE8DAF-EBB2-4761-8E45-B71ABCCA8C68}.Debug|Win32.Build.0 = Debug|Win32
 		{81CE8DAF-EBB2-4761-8E45-B71ABCCA8C68}.Debug|x64.ActiveCfg = Debug|x64
 		{81CE8DAF-EBB2-4761-8E45-B71ABCCA8C68}.Debug|x64.Build.0 = Debug|x64
+		{81CE8DAF-EBB2-4761-8E45-B71ABCCA8C68}.Release AOT|Win32.ActiveCfg = Release AOT|Win32
+		{81CE8DAF-EBB2-4761-8E45-B71ABCCA8C68}.Release AOT|Win32.Build.0 = Release AOT|Win32
+		{81CE8DAF-EBB2-4761-8E45-B71ABCCA8C68}.Release AOT|x64.ActiveCfg = Release AOT|x64
+		{81CE8DAF-EBB2-4761-8E45-B71ABCCA8C68}.Release AOT|x64.Build.0 = Release AOT|x64
 		{81CE8DAF-EBB2-4761-8E45-B71ABCCA8C68}.Release SDL1|Win32.ActiveCfg = Release|Win32
 		{81CE8DAF-EBB2-4761-8E45-B71ABCCA8C68}.Release SDL1|Win32.Build.0 = Release|Win32
 		{81CE8DAF-EBB2-4761-8E45-B71ABCCA8C68}.Release SDL1|x64.ActiveCfg = Release|x64

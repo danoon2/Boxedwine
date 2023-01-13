@@ -265,7 +265,7 @@ void glcommon_glGetString(CPU* cpu) {
     EAX = cpu->thread->process->glStrings[name];
 #else
     if (name == GL_EXTENSIONS && !cpu->thread->process->glStringsiExtensions) {
-        int len = strlen(result);
+        int len = (int)strlen(result);
         U32 pageCount = ((len + 1) + K_PAGE_MASK) >> K_PAGE_SHIFT;
         U32 page = 0;
         cpu->thread->memory->findFirstAvailablePage(ADDRESS_PROCESS_MMAP_START, pageCount, &page, false);

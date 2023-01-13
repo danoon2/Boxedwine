@@ -251,7 +251,7 @@ void movToCpu(U32 dstOffset, DynWidth dstWidth, U32 imm) {
     }
 }
 
-void movToCpuLazyFlags(std::string dstOffset, const LazyFlags* lazyFlags) {
+void movToCpuLazyFlags(U32 dstOffset, const LazyFlags* lazyFlags) {
     // mov [cpu+dstOffset], imm
     saveValueToCpuOffsetPtr((DYN_PTR_SIZE)lazyFlags, dstOffset);
 }
