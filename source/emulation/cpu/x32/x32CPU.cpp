@@ -1818,15 +1818,15 @@ void evaluateToReg(DynReg reg, DynWidth dstWidth, DynReg left, bool isRightConst
         outb(0xc0+reg);
         break;
     case DYN_LESS_THAN_SIGNED:
-        // setnle reg
+        // setnl reg
         outb(0x0f);
-        outb(0x9f);
+        outb(0x9c);
         outb(0xc0+reg);
         break;
     case DYN_LESS_THAN_EQUAL_SIGNED:
-        // setnl reg
+        // setle reg
         outb(0x0f);
-        outb(0x9d);
+        outb(0x9e);
         outb(0xc0+reg);
         break;
     default:
