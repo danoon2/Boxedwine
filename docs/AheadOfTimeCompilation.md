@@ -10,7 +10,7 @@ AOT requires 2 steps.  Step 1 is to generated the AOT code file.  Step 2 is to c
 - Run the build and your app then exit cleanly.  You will need to pass in a command line argument, -aot fileName, where fileName is the path to the file that will be generated.
 - Create a build that includes your generated file and define BOXEDWINE_USE_GENERATE_SOURCE and BOXEDWINE_DYNAMIC
 
-AOT does not work with other dynamic JIT compilers and it does not work with the binary translators.  It only works swith a plain normal single threaded CPU core.
+AOT does not work with other dynamic JIT compilers and it does not work with the binary translators.  It only works with a plain normal single threaded CPU core.
 
 ## On Windows
 

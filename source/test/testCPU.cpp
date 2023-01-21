@@ -9982,7 +9982,7 @@ int main(int argc, char **argv) {
     run(testSse2Paddd1fe, "PADDD 1FE (sse2)");
     run(testMmxPaddd, "PADDD 3fe (mmx)");                                  
 #ifdef BOXEDWINE_GENERATE_SOURCE        
-    writeSource("gen.cpp");
+    writeSource("../../../../source/emulation/cpu/aot/gen.cpp");
 #endif
     printf("%d tests FAILED\n", totalFails);
     KNativeThread::sleep(5000);

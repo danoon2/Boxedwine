@@ -212,24 +212,53 @@ static void incrementEip(DynamicData* data, U32 len);
 #include "../dynamic/dynamic_fpu.h"
 
 #define NUMBER_OF_TEMP_REGS 4
+
+class InlineReg {
+public:
+    InlineReg() : calculated(false), pendingClear(false) {}
+    void reset() {
+        calculated = false;
+        value = "";
+        pendingClear = false;
+        for (int i = 0; i < 8; i++) {
+            readReg[i] = false;
+        }
+    }
+    bool readReg[8];
+    bool calculated;
+    std::string value;
+    DynWidth width;
+    bool pendingClear;
+};
+
 static bool needReg[NUMBER_OF_TEMP_REGS];
+static InlineReg inlineReg[NUMBER_OF_TEMP_REGS];
 static std::string body;
 static U32 indentLevel = 1;
-static std::string inlineEaa;
 
 static void initNewFunction() {
     indentLevel = 1;
-    inlineEaa = "";
     body = "";
     for (U32 i = 0; i < NUMBER_OF_TEMP_REGS; i++) {
         needReg[i] = false;
+        inlineReg[i].reset();
+    }
+}
+
+static void clearPendingInlineRegs() {
+    for (U32 i = 0; i < NUMBER_OF_TEMP_REGS; i++) {
+        if (inlineReg[i].pendingClear) {
+            inlineReg[i].pendingClear = false;
+            inlineReg[i].value = "";
+        }
     }
 }
 
 static void outStartLine() {
     for (U32 i = 0; i < indentLevel; i++) {
-        body += "    ";
+        body += "    ";        
     }
+    clearPendingInlineRegs();
 }
 
 static void out(const std::string& s) {    
@@ -265,42 +294,149 @@ static const char* getReg8(int r) {
     }
 }
 
-static void outDynRegName(DynReg reg) {
+static const char* dynRegName(DynReg reg) {
     if (reg == 0) {
         needReg[reg] = true;
-        out("reg0");
+        return "reg0";
     } else if (reg == 1) {
         needReg[reg] = true;
-        out("reg1");
+        return "reg1";
     } else if (reg == 2) {
         needReg[reg] = true;
-        out("reg2");
+        return "reg2";
     } else if (reg == 3) {
         needReg[reg] = true;
-        out("reg3");
+        return "reg3";
     } else {
         kpanic("getDynReg");
     }
 }
 
-static void outDynRegWidth(DynWidth width) {
+static const char* dynRegWidth(DynWidth width) {
     if (width == DYN_32bit) {
-        out(".u32");
+        return ".u32";
     }
     else if (width == DYN_16bit) {
-        out(".u16");
+        return ".u16";
     }
     else if (width == DYN_8bit) {
-        out(".u8");
+        return ".u8";
     }
     else {
         kpanic("unknown width in aot::outDynRegWidth %d", width);
+        return nullptr;
     }
 }
 
-static void outDynReg(DynReg reg, DynWidth width) {
-    outDynRegName(reg);
-    outDynRegWidth(width);
+static void outDynRegRead(DynReg reg, DynWidth width) {
+    if (inlineReg[reg].value.length()) {
+        out(inlineReg[reg].value);
+    } else {
+        out(dynRegName(reg));
+        out(dynRegWidth(width));
+    }
+}
+
+static std::string dynRegRead(DynReg reg, DynWidth width) {
+    if (inlineReg[reg].value.length()) {
+        return inlineReg[reg].value;
+    }
+    return dynRegName(reg) + std::string(dynRegWidth(width));
+}
+
+static void outDynRegWrite(DynReg reg, DynWidth width) {
+    out(dynRegName(reg));
+    out(dynRegWidth(width));
+    inlineReg[reg].pendingClear = true;
+}
+
+static std::string dynRegWrite(DynReg reg, DynWidth width) {
+    inlineReg[reg].pendingClear = true;
+    return dynRegName(reg) + std::string(dynRegWidth(width));
+}
+
+static int getRegIndex(const std::string& r) {
+    if (r == "AL" || r == "AH" || r == "AX" || r == "EAX") {
+        return 0;
+    }
+    if (r == "CL" || r == "CH" || r == "CX" || r == "ECX") {
+        return 1;
+    }
+    if (r == "DL" || r == "DH" || r == "DX" || r == "EDX") {
+        return 2;
+    }
+    if (r == "BL" || r == "BH" || r == "BX" || r == "EBX") {
+        return 3;
+    }
+    if (r == "SP" || r == "ESP") {
+        return 4;
+    }
+    if (r == "BP" || r == "EBP") {
+        return 5;
+    }
+    if (r == "SI" || r == "ESI") {
+        return 6;
+    }
+    if (r == "DI" || r == "EDI") {
+        return 7;
+    }
+    return -1;
+}
+
+static void ensureInlineRegNotClobbered(int regIndex, int ignoreTmpRegIndex) {
+    if (regIndex >= 0 && regIndex < 8) {
+        for (int i = 0; i < NUMBER_OF_TEMP_REGS; i++) {
+            if (i == ignoreTmpRegIndex) {
+                continue;
+            }
+            if (inlineReg[i].pendingClear) {
+                inlineReg[i].pendingClear = false;
+                inlineReg[i].reset();
+            }
+            if (inlineReg[i].value.size() && inlineReg[i].readReg[regIndex]) {
+                outStartLine();
+                DynReg reg = (DynReg)i;
+                outDynRegWrite(reg, inlineReg[i].width);
+                out(" = ");
+                out(inlineReg[reg].value);
+                out(";\r\n");
+                inlineReg[reg].reset();
+            }
+        }
+    }
+}
+
+static void ensureCalculatedReg(DynReg reg, DynWidth width) {
+    if (inlineReg[reg].pendingClear) {
+        inlineReg[reg].pendingClear = false;
+        inlineReg[reg].reset();
+    }
+    if (inlineReg[reg].value.size() && inlineReg[reg].calculated) {
+        outStartLine();
+        outDynRegWrite(reg, width);
+        out(" = ");
+        out(inlineReg[reg].value);
+        out(";\r\n");
+        inlineReg[reg].reset();
+    }
+}
+
+static void flushRegs() {
+    for (int i = 0; i < NUMBER_OF_TEMP_REGS; i++) {
+        if (inlineReg[i].pendingClear) {
+            inlineReg[i].pendingClear = false;
+            inlineReg[i].reset();
+        }
+        if (inlineReg[i].value.size()) {
+            outStartLine();
+            DynReg reg = (DynReg)i;
+            outDynRegWrite(reg, inlineReg[i].width);
+            out(" = ");
+            out(inlineReg[reg].value);
+            out(";\r\n");
+            inlineReg[reg].reset();
+        }
+    }
 }
 
 static const char* r8(int r) {
@@ -428,54 +564,65 @@ static std::string getEaa32(DecodedOp* op) {
 
 static void calculateEaa(DecodedOp* op, DynReg reg) {
     if (op->ea16) {
-        inlineEaa = getEaa16(op);
+        inlineReg[DYN_ADDRESS].value = getEaa16(op);
     } else {
-        inlineEaa = getEaa32(op);
+        inlineReg[DYN_ADDRESS].value = getEaa32(op);
+    }
+    inlineReg[DYN_ADDRESS].calculated = true;
+    inlineReg[DYN_ADDRESS].width = DYN_32bit;
+    if (op->rm < 8) {
+        inlineReg[DYN_ADDRESS].readReg[op->rm] = true;
+    }
+    if (op->sibIndex < 8) {
+        inlineReg[DYN_ADDRESS].readReg[op->sibIndex] = true;
     }
 }
 
 static void writeEaa(DynReg reg) {
-    if (inlineEaa.size()) {
+    if (inlineReg[DYN_ADDRESS].value.size()) {
         outStartLine();
-        outDynReg(reg, DYN_32bit);
+        outDynRegWrite(reg, DYN_32bit);
         out(" = ");
-        out(inlineEaa);
+        out(inlineReg[DYN_ADDRESS].value);
         out(";\r\n");
-        inlineEaa = "";
+        inlineReg[DYN_ADDRESS].reset();
     }
 }
 
-static void readFromMem(DynWidth width, DynReg addressReg) {
+static std::string readFromMem(DynWidth width, DynReg addressReg) {
+    std::string result;
     if (width == DYN_32bit) {
-        out("readd(");
+        result+="readd(";
     }
     else if (width == DYN_16bit) {
-        out("readw(");
+        result+="readw(";
     }
     else if (width == DYN_8bit) {
-        out("readb(");
+        result+="readb(";
     }
     else {
         kpanic("unknown width in aot::movFromMem %d", width);
     }
-    if (inlineEaa.size()) {
-        out(inlineEaa);
-        inlineEaa = "";
-    } else {
-        outDynReg(addressReg, DYN_32bit);
-    }
-    out(")");
+    result+=dynRegRead(addressReg, DYN_32bit);
+    result+=")";
+    return result;
 }
 
 static void movFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg) {
+    clearPendingInlineRegs();
     if (!doneWithAddressReg) {
         writeEaa(addressReg);
     }
-    outStartLine();
-    outDynReg(DYN_CALL_RESULT, width);
-    out(" = ");
-    readFromMem(width, addressReg);
-    out(";\r\n");
+    inlineReg[DYN_CALL_RESULT].value = readFromMem(width, addressReg);
+    inlineReg[DYN_CALL_RESULT].calculated = true;
+    inlineReg[DYN_CALL_RESULT].width = width;
+    if (inlineReg[DYN_ADDRESS].value.size()) {
+        memcpy(inlineReg[DYN_CALL_RESULT].readReg, inlineReg[DYN_ADDRESS].readReg, sizeof(inlineReg[DYN_ADDRESS].readReg));
+    }
+    
+    if (doneWithAddressReg) {
+        inlineReg[DYN_ADDRESS].reset();
+    }
 }
 
 static const char* getBitCount(DynWidth width) {
@@ -499,19 +646,32 @@ static void movToCpuFromMem(std::string dstOffset, DynWidth dstWidth, DynReg add
         outStartLine();
         out(dstOffset);
         out(" = ");
-        readFromMem(dstWidth, addressReg);
+        out(readFromMem(dstWidth, addressReg));
         out(";\r\n");
     } else {
         movFromMem(dstWidth, addressReg, doneWithAddressReg); // has its own outStartLine();
         outStartLine();
         out(dstOffset);
         out(" = ");
-        outDynReg(DYN_CALL_RESULT, dstWidth);
+        outDynRegRead(DYN_CALL_RESULT, dstWidth);
         out(";\r\n");
+        inlineReg[DYN_CALL_RESULT].reset();
+        inlineReg[DYN_CALL_RESULT].value = dstOffset;
+        int regIndex = getRegIndex(dstOffset);
+        if (regIndex >= 0 && regIndex < 8) {
+            inlineReg[DYN_CALL_RESULT].readReg[regIndex] = true;
+        }
+    }
+    if (doneWithAddressReg) {
+        inlineReg[DYN_ADDRESS].reset();
+    }
+    if (doneWithCallResult) {
+        inlineReg[DYN_CALL_RESULT].reset();
     }
 }
 
 static void movToCpuFromCpu(std::string dstOffset, std::string srcOffset, DynWidth width, DynReg tmpReg, bool doneWithTmpReg) {
+    ensureInlineRegNotClobbered(getRegIndex(dstOffset), -1);
     outStartLine();
     out(dstOffset);
     out(" = ");
@@ -519,7 +679,7 @@ static void movToCpuFromCpu(std::string dstOffset, std::string srcOffset, DynWid
     out(";\r\n");
     if (!doneWithTmpReg) {
         outStartLine();
-        outDynReg(tmpReg, width);
+        outDynRegWrite(tmpReg, width);
         out(" = ");
         out(srcOffset);
         out(";\r\n");
@@ -527,15 +687,19 @@ static void movToCpuFromCpu(std::string dstOffset, std::string srcOffset, DynWid
 }
 
 static void byteSwapReg32(DynReg reg) {
+    ensureCalculatedReg(reg, DYN_32bit);
     outStartLine();
-    outDynReg(reg, DYN_32bit);
+    outDynRegWrite(reg, DYN_32bit);
     out(" = ");
-    out("((("); outDynReg(reg, DYN_32bit); out(" & 0xff000000) >> 24) | (("); outDynReg(reg, DYN_32bit); out(" & 0x00ff0000) >> 8) | (("); outDynReg(reg, DYN_32bit); out(" & 0x0000ff00) << 8) | (("); outDynReg(reg, DYN_32bit); out(" & 0x000000ff) << 24)); \r\n");
+    out("((("); outDynRegRead(reg, DYN_32bit); out(" & 0xff000000) >> 24) | (("); outDynRegRead(reg, DYN_32bit); out(" & 0x00ff0000) >> 8) | (("); outDynRegRead(reg, DYN_32bit); out(" & 0x0000ff00) << 8) | (("); outDynRegRead(reg, DYN_32bit); out(" & 0x000000ff) << 24)); \r\n");
 }
 
 static void movToRegFromRegSignExtend(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidth, bool doneWithSrcReg) {
+    if (!doneWithSrcReg) {
+        ensureCalculatedReg(src, srcWidth);
+    }
     outStartLine();
-    outDynReg(dst, dstWidth);
+    outDynRegWrite(dst, dstWidth);
     out(" = ");
     out("(U");
     out(getBitCount(dstWidth));
@@ -543,49 +707,55 @@ static void movToRegFromRegSignExtend(DynReg dst, DynWidth dstWidth, DynReg src,
     out("(S");
     out(getBitCount(srcWidth));
     out(")");
-    outDynReg(src, srcWidth);
+    outDynRegRead(src, srcWidth);
     out(";\r\n");
+    if (doneWithSrcReg) {
+        inlineReg[src].reset();
+    }
 }
 
 static void movToRegFromReg(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidth, bool doneWithSrcReg) {
+    if (!doneWithSrcReg) {
+        ensureCalculatedReg(src, srcWidth);
+    }
     outStartLine();
-    outDynReg(dst, dstWidth);
+    outDynRegWrite(dst, dstWidth);
     out(" = ");
     if (dstWidth < srcWidth) {
         out("(U");
         out(getBitCount(dstWidth));
         out(")");
     }
-    outDynReg(src, srcWidth);
+    outDynRegRead(src, srcWidth);
     out(";\r\n");
+    if (doneWithSrcReg) {
+        inlineReg[src].reset();
+    }
 }
 
 static void movToReg(DynReg reg, DynWidth width, U32 imm) {
-    outStartLine();
-    outDynReg(reg, width);
-    out(" = ");
-    std::string i = std::to_string(imm);
-    out(i);
-    out(";\r\n");
+    inlineReg[reg].value = std::to_string(imm);
+    inlineReg[reg].width = width;
 }
 
 static void movToCpuFromReg(std::string dstOffset, DynReg reg, DynWidth width, bool doneWithReg) {
-    if (reg == DYN_ADDRESS && !doneWithReg) {
-        writeEaa(reg);
+    if (!doneWithReg) {
+        ensureCalculatedReg(reg, width);
     }
+    
+    ensureInlineRegNotClobbered(getRegIndex(dstOffset), doneWithReg?reg:-1);
     outStartLine();
     out(dstOffset);
     out(" = ");
-    if (reg == DYN_ADDRESS && inlineEaa.size()) {
-        out(inlineEaa);
-        inlineEaa = "";
-    } else {
-        outDynReg(reg, width);
-    }
+    outDynRegRead(reg, width);
     out(";\r\n");
+    if (doneWithReg) {
+        inlineReg[reg].reset();
+    }
 }
 
 static void movToCpu(std::string dstOffset, DynWidth dstWidth, U32 imm) {
+    ensureInlineRegNotClobbered(getRegIndex(dstOffset), -1);
     outStartLine();
     out(dstOffset);
     out(" = ");
@@ -603,16 +773,20 @@ static void movToCpuLazyFlags(std::string dstOffset, std::string lazyFlags) {
 }
 
 static void movToRegFromCpu(DynReg reg, std::string srcOffset, DynWidth width) {
-    outStartLine();
-    outDynReg(reg, width);
-    out(" = ");
-    out(srcOffset);
-    out(";\r\n");
+    inlineReg[reg].value = srcOffset;
+    inlineReg[reg].width = width;
+    int regIndex = getRegIndex(srcOffset);
+    if (regIndex >= 0 && regIndex < 8) {
+        inlineReg[reg].readReg[regIndex] = true;
+    }
 }
 
 static void movToMemFromReg(DynReg addressReg, DynReg reg, DynWidth width, bool doneWithAddressReg, bool doneWithReg) {
     if (!doneWithAddressReg) {
-        writeEaa(addressReg);
+        ensureCalculatedReg(addressReg, DYN_32bit);
+    }
+    if (!doneWithAddressReg) {
+        ensureCalculatedReg(reg, width);
     }
     outStartLine();
     if (width == DYN_32bit) {
@@ -627,20 +801,21 @@ static void movToMemFromReg(DynReg addressReg, DynReg reg, DynWidth width, bool 
     else {
         kpanic("unknown width in aot::movToMemFromReg %d", width);
     }
-    if (inlineEaa.size()) {
-        out(inlineEaa);
-        inlineEaa = "";
-    } else {
-        outDynReg(addressReg, DYN_32bit);
-    }
+    outDynRegRead(addressReg, DYN_32bit);
     out(", ");
-    outDynReg(reg, width);
+    outDynRegRead(reg, width);
     out(");\r\n");
+    if (doneWithAddressReg) {
+        inlineReg[DYN_ADDRESS].reset();
+    }
+    if (doneWithReg) {
+        inlineReg[reg].reset();
+    }
 }
 
 static void movToMemFromImm(DynReg addressReg, DynWidth width, U32 imm, bool doneWithAddressReg) {
     if (!doneWithAddressReg) {
-        writeEaa(addressReg);
+        ensureCalculatedReg(addressReg, DYN_32bit);
     }
     outStartLine();
     if (width == DYN_32bit) {
@@ -655,23 +830,21 @@ static void movToMemFromImm(DynReg addressReg, DynWidth width, U32 imm, bool don
     else {
         kpanic("unknown width in aot::movToMemFromReg %d", width);
     }
-    if (inlineEaa.size()) {
-        out(inlineEaa);
-        inlineEaa = "";
-    } else {
-        outDynReg(addressReg, DYN_32bit);
-    }
+    outDynRegRead(addressReg, DYN_32bit);
     out(", ");
     std::string i = std::to_string(imm);
     out(i);
     out(");\r\n");
+    if (doneWithAddressReg) {
+        inlineReg[DYN_ADDRESS].reset();
+    }
 }
 
 // inst can be +, |, -, &, ^, <, >, ) right parens is for signed right shift
 static void outInst(char inst, std::function<void(void)> dest, std::function<void(void)> left, std::function<void(void)> right, DynWidth regWidth) {
     std::string op(1, inst);
     bool isSigned = false;
-
+    
     outStartLine();
     if (op == "<") {
         op = "<<";
@@ -701,24 +874,28 @@ static void outInst(char inst, std::function<void(void)> dest, std::function<voi
 static void instRegReg(char inst, DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) {
     outInst(inst, 
         [reg, regWidth]() {
-            outDynReg(reg, regWidth);
+            outDynRegWrite(reg, regWidth);
         },
         [reg, regWidth]() {
-            outDynReg(reg, regWidth);
+            outDynRegRead(reg, regWidth);
         },
         [rm, regWidth]() {
-            outDynReg(rm, regWidth);
+            outDynRegRead(rm, regWidth);
         }, regWidth);
+    if (doneWithRmReg) {
+        inlineReg[rm].reset();
+    }
 }
 
 static void instMemReg(char inst, DynReg addressReg, DynReg rm, DynWidth regWidth, bool doneWithAddressReg, bool doneWithRmReg) {
     writeEaa(addressReg);
     movFromMem(regWidth, addressReg, false);
     instRegReg(inst, DYN_CALL_RESULT, rm, regWidth, true);
-    movToMemFromReg(addressReg, DYN_CALL_RESULT, regWidth, true, true);
+    movToMemFromReg(addressReg, DYN_CALL_RESULT, regWidth, doneWithAddressReg, doneWithRmReg);
 }
 
 static void instCPUReg(char inst, std::string dstOffset, DynReg rm, DynWidth regWidth, bool doneWithRmReg) {
+    ensureInlineRegNotClobbered(getRegIndex(dstOffset), doneWithRmReg?rm:-1);
     outInst(inst,
         [dstOffset]() {
             out(dstOffset);
@@ -727,17 +904,20 @@ static void instCPUReg(char inst, std::string dstOffset, DynReg rm, DynWidth reg
             out(dstOffset);
         },
             [rm, regWidth]() {
-            outDynReg(rm, regWidth);
+            outDynRegRead(rm, regWidth);
         }, regWidth);
+    if (doneWithRmReg) {
+        inlineReg[rm].reset();
+    }
 }
 
 static void instRegImm(U32 inst, DynReg reg, DynWidth regWidth, U32 imm) {
     outInst(inst,
         [reg, regWidth]() {
-            outDynReg(reg, regWidth);
+            outDynRegWrite(reg, regWidth);
         },
         [reg, regWidth]() {
-            outDynReg(reg, regWidth);
+            outDynRegRead(reg, regWidth);
         },
             [imm]() {
             std::string i = std::to_string(imm);
@@ -749,10 +929,11 @@ static void instMemImm(char inst, DynReg addressReg, DynWidth regWidth, U32 imm,
     writeEaa(addressReg);
     movFromMem(regWidth, addressReg, false);
     instRegImm(inst, DYN_CALL_RESULT, regWidth, imm);
-    movToMemFromReg(addressReg, DYN_CALL_RESULT, regWidth, true, true);
+    movToMemFromReg(addressReg, DYN_CALL_RESULT, regWidth, doneWithAddressReg, true);
 }
 
 static void instCPUImm(char inst, std::string dstOffset, DynWidth regWidth, U32 imm) {
+    ensureInlineRegNotClobbered(getRegIndex(dstOffset), -1);
     outInst(inst,
         [dstOffset]() {
             out(dstOffset);
@@ -770,7 +951,7 @@ static void instCPUImm(char inst, std::string dstOffset, DynWidth regWidth, U32 
 static void instReg(char inst, DynReg reg, DynWidth regWidth) {
     std::string op(1, inst);
     outStartLine();
-    outDynReg(reg, regWidth);
+    outDynRegWrite(reg, regWidth);
     out(" = ");
     if (op == "~") {
         out(op);
@@ -778,7 +959,7 @@ static void instReg(char inst, DynReg reg, DynWidth regWidth) {
     } else {
         out("0 - ");
     }
-    outDynReg(reg, regWidth);
+    outDynRegRead(reg, regWidth);
     out(";\r\n");
 }
 
@@ -786,10 +967,11 @@ static void instMem(char inst, DynReg addressReg, DynWidth regWidth, bool doneWi
     writeEaa(addressReg);
     movFromMem(regWidth, addressReg, false);
     instReg(inst, DYN_CALL_RESULT, regWidth);
-    movToMemFromReg(addressReg, DYN_CALL_RESULT, regWidth, true, true);
+    movToMemFromReg(addressReg, DYN_CALL_RESULT, regWidth, doneWithAddressReg, true);
 }
 
 static void instCPU(char inst, std::string dstOffset, DynWidth regWidth) {
+    ensureInlineRegNotClobbered(getRegIndex(dstOffset), -1);
     std::string op(1, inst);
     outStartLine();
     out(dstOffset);
@@ -807,17 +989,24 @@ static void instCPU(char inst, std::string dstOffset, DynWidth regWidth) {
 
 // if conditions
 static void startIf(DynReg reg, DynCondition condition, bool doneWithReg) {
+    if (!doneWithReg) {
+        ensureCalculatedReg(reg, DYN_32bit);
+    }
     outStartLine();
     out("if (");    
     if (condition == DYN_EQUALS_ZERO) {
         out("!");
     }
-    outDynReg(reg, DYN_32bit);
+    outDynRegRead(reg, DYN_32bit);
     out("){\r\n");
     indentLevel++;
+    if (doneWithReg) {
+        inlineReg[reg].reset();
+    }
 }
 
 static void startElse() {
+    flushRegs();
     indentLevel--;
     outStartLine();
     out("} else {\r\n");
@@ -825,6 +1014,7 @@ static void startElse() {
 }
 
 static void endIf() {
+    flushRegs();
     indentLevel--;
     outStartLine();
     out("}\r\n");
@@ -832,15 +1022,21 @@ static void endIf() {
 
 static void evaluateToReg(DynReg reg, DynWidth dstWidth, DynReg left, bool isRightConst, DynReg right, U32 rightConst, DynWidth regWidth, DynConditionEvaluate condition, bool doneWithLeftReg, bool doneWithRightReg) {
     bool isSigned = condition == DYN_LESS_THAN_SIGNED || condition == DYN_LESS_THAN_EQUAL_SIGNED;
+    if (!doneWithLeftReg) {
+        ensureCalculatedReg(left, regWidth);
+    }
+    if (!doneWithRightReg && !isRightConst) {
+        ensureCalculatedReg(right, regWidth);
+    }
     outStartLine();
-    outDynReg(reg, dstWidth);
+    outDynRegWrite(reg, dstWidth);
     out(" = ");
     if (isSigned) {
         out("(S");
         out(getBitCount(regWidth));
         out(")");
     }
-    outDynReg(left, regWidth);
+    outDynRegRead(left, regWidth);
     switch (condition) {
     case DYN_EQUALS:
         out(" == ");
@@ -876,9 +1072,15 @@ static void evaluateToReg(DynReg reg, DynWidth dstWidth, DynReg left, bool isRig
         std::string i = std::to_string(rightConst);
         out(i);
     } else {
-        outDynReg(right, regWidth);
+        outDynRegRead(right, regWidth);
     }
     out(";\r\n");
+    if (doneWithLeftReg) {
+        inlineReg[left].reset();
+    }
+    if (doneWithRightReg && !isRightConst) {
+        inlineReg[right].reset();
+    }
 }
 
 static void setCPU(DynamicData* data, std::string offset, DynWidth regWidth, DynConditional condition) {
@@ -960,7 +1162,7 @@ static void setMem(DynamicData* data, DynReg addressReg, DynWidth regWidth, DynC
 
     setConditionInReg(data, condition, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, cond, true);
-    movToMemFromImm(addressReg, regWidth, 0, true);
+    movToMemFromImm(addressReg, regWidth, 0, false);
     startElse();
     movToMemFromImm(addressReg, regWidth, 1, true);
     endIf();
@@ -970,22 +1172,38 @@ static void setMem(DynamicData* data, DynReg addressReg, DynWidth regWidth, DynC
 static void outArg(DYN_PTR_SIZE arg, DynCallParamType type, bool doneWithReg) {
     switch (type) {
     case DYN_PARAM_REG_8:
-        outDynReg((DynReg)arg, DYN_8bit);
+    {
+        DynReg reg = (DynReg)arg;
+        if (!doneWithReg) {
+            ensureCalculatedReg(reg, DYN_8bit);
+        }
+        outDynRegRead((DynReg)arg, DYN_8bit);
+        if (doneWithReg) {
+            inlineReg[reg].reset();
+        }
         break;
+    }
     case DYN_PARAM_REG_16:
-        outDynReg((DynReg)arg, DYN_16bit);
+    {
+        DynReg reg = (DynReg)arg;
+        if (!doneWithReg) {
+            ensureCalculatedReg(reg, DYN_16bit);
+        }
+        outDynRegRead((DynReg)arg, DYN_16bit);
+        if (doneWithReg) {
+            inlineReg[reg].reset();
+        }
         break;
+    }
     case DYN_PARAM_REG_32:
     {
         DynReg reg = (DynReg)arg;
-        if (reg == DYN_ADDRESS && !doneWithReg) {
-            writeEaa(reg);
+        if (!doneWithReg) {
+            ensureCalculatedReg(reg, DYN_32bit);
         }
-        if (reg == DYN_ADDRESS && inlineEaa.size()) {
-            out(inlineEaa);
-            inlineEaa = "";
-        } else {
-            outDynReg(reg, DYN_32bit);
+        outDynRegRead(reg, DYN_32bit);
+        if (doneWithReg) {
+            inlineReg[reg].reset();
         }
         break;
     }
@@ -1038,7 +1256,7 @@ static void outArg(DYN_PTR_SIZE arg, DynCallParamType type, bool doneWithReg) {
 static void callHostFunction(std::string func, bool hasReturn, U32 argCount, DYN_PTR_SIZE arg1, DynCallParamType arg1Type, bool doneWithArg1, DYN_PTR_SIZE arg2, DynCallParamType arg2Type, bool doneWithArg2, DYN_PTR_SIZE arg3, DynCallParamType arg3Type, bool doneWithArg3, DYN_PTR_SIZE arg4, DynCallParamType arg4Type, bool doneWithArg4, DYN_PTR_SIZE arg5, DynCallParamType arg5Type, bool doneWithArg5) {
     outStartLine();
     if (hasReturn) {
-        outDynReg(DYN_CALL_RESULT, DYN_32bit);
+        outDynRegWrite(DYN_CALL_RESULT, DYN_32bit);
         out(" = ");
     }    
     out(func);
@@ -1071,6 +1289,7 @@ static void callHostFunction(std::string func, bool hasReturn, U32 argCount, DYN
 static void blockDone() {
     outStartLine();
     out("cpu->nextBlock = cpu->getNextBlock();\r\n");
+    out("return;\r\n");
 }
 
 // next block is also set in common_other.cpp for loop instructions, so don't use this as a hook for something else
@@ -1298,6 +1517,10 @@ static void generateSource(CPU* cpu, DecodedOp* op) {
     initNewFunction();
     DecodedOp* o = op->next;    
 
+    out("// ");
+    std::string s = toHexString(cpu->eip.u32);
+    out(s);
+    out("\r\n");
     while (o) {
 #ifdef _DEBUG
         out("// ");
@@ -1314,6 +1537,9 @@ static void generateSource(CPU* cpu, DecodedOp* op) {
         }
         else {
             o = o->next;
+        }
+        for (int i = 0; i < NUMBER_OF_TEMP_REGS; i++) {
+            inlineReg[i].reset();
         }
     }
     std::string name = "generated" + std::to_string(functionCount++);

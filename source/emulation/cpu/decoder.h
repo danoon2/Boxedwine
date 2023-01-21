@@ -1519,6 +1519,7 @@ public:
     void removeReferenceFrom(DecodedBlock* block);
     
     DecodedOp* getOp(U32 eip);
+    U32 getEip(DecodedOp*);
 protected:
     DecodedBlockFromNode* referencedFrom;
 };
