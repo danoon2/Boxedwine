@@ -6044,16 +6044,14 @@ U32 DecodedOp::getNeededFlags(DecodedBlock* block, DecodedOp* op, U32 flags, U32
             next2 = NormalCPU::getBlockForInspectionButNotUsed(eip, cpu->isBig());
             next2Alloc = true;
         }
-        // :TODO: maybe decode the missing branch?  but how to figure out the jump amount, for example jump8 is "op->len+(S32)((S8)op->imm))", maybe hardcode jmp8, jmp16 and call16
         if (next1 && (next2 || !(instructionInfo[lastOp->inst].branch & DECODE_BRANCH_2))) {
-            U32 needsToSet1 = DecodedOp::getNeededFlags(next1, next1->op, flags, depth-1);          
+            U32 needsToSet1 = DecodedOp::getNeededFlags(next1, next1->op, flags, depth-1) | (instructionInfo[next1->op->inst].flagsUsed & flags);
 
             U32 needsToSet2 = 0;
             if ((instructionInfo[lastOp->inst].branch & DECODE_BRANCH_2)) {
                 needsToSet2 = flags;
-                // :TODO: maybe decode the missing branch?
                 if (next2) {
-                    needsToSet2 = (DecodedOp::getNeededFlags(next2, next2->op, flags, depth-1));
+                    needsToSet2 = (DecodedOp::getNeededFlags(next2, next2->op, flags, depth-1)) | (instructionInfo[next2->op->inst].flagsUsed & flags);
                 }
             }
             flags = needsToSet1 | needsToSet2;
