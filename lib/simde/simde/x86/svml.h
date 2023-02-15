@@ -47,6 +47,8 @@
 #include "avx512/sqrt.h"
 #include "avx512/sub.h"
 
+#include "../simde-complex.h"
+
 #if !defined(SIMDE_X86_SVML_NATIVE) && defined(SIMDE_ENABLE_NATIVE_ALIASES)
 #  define SIMDE_X86_SVML_ENABLE_NATIVE_ALIASES
 #endif
@@ -2075,7 +2077,7 @@ simde_x_mm_deg2rad_ps(simde__m128 a) {
     #if defined(SIMDE_ARM_NEON_A32V7_NATIVE)
       r_.neon_f32 = vmulq_n_f32(a_.neon_i32, SIMDE_MATH_PI_OVER_180F);
     #elif defined(SIMDE_VECTOR_SUBSCRIPT_SCALAR) && !defined(SIMDE_BUG_GCC_53784)
-    r_.f32 = a_.f32 * SIMDE_MATH_PI_OVER_180F;
+      r_.f32 = a_.f32 * SIMDE_MATH_PI_OVER_180F;
     #elif defined(SIMDE_VECTOR_SUBSCRIPT_OPS)
     const __typeof__(r_.f32) tmp = { SIMDE_MATH_PI_OVER_180F, SIMDE_MATH_PI_OVER_180F, SIMDE_MATH_PI_OVER_180F, SIMDE_MATH_PI_OVER_180F };
       r_.f32 = a_.f32 * tmp;
@@ -6326,7 +6328,6 @@ simde_mm512_cdfnorminv_ps (simde__m512 a) {
 
       /* else */
       simde__mmask16 mask_el = ~matched;
-      mask = mask | mask_el;
 
       /* r = a - 0.5f */
       simde__m512 r = simde_mm512_sub_ps(a, simde_mm512_set1_ps(SIMDE_FLOAT32_C(0.5)));
@@ -6435,7 +6436,6 @@ simde_mm512_cdfnorminv_pd (simde__m512d a) {
 
       /* else */
       simde__mmask8 mask_el = ~matched;
-      mask = mask | mask_el;
 
       /* r = a - 0.5f */
       simde__m512d r = simde_mm512_sub_pd(a, simde_mm512_set1_pd(SIMDE_FLOAT64_C(0.5)));
@@ -8918,7 +8918,7 @@ simde_mm_rem_epi8 (simde__m128i a, simde__m128i b) {
       a_ = simde__m128i_to_private(a),
       b_ = simde__m128i_to_private(b);
 
-    #if defined(SIMDE_VECTOR_SUBSCRIPT_OPS)
+    #if defined(SIMDE_VECTOR_SUBSCRIPT_OPS) && !defined(SIMDE_BUG_PGI_30104)
       r_.i8 = a_.i8 % b_.i8;
     #else
       SIMDE_VECTORIZE
@@ -8946,7 +8946,7 @@ simde_mm_rem_epi16 (simde__m128i a, simde__m128i b) {
       a_ = simde__m128i_to_private(a),
       b_ = simde__m128i_to_private(b);
 
-    #if defined(SIMDE_VECTOR_SUBSCRIPT_OPS)
+    #if defined(SIMDE_VECTOR_SUBSCRIPT_OPS) && !defined(SIMDE_BUG_PGI_30104)
       r_.i16 = a_.i16 % b_.i16;
     #else
       SIMDE_VECTORIZE
@@ -8974,7 +8974,7 @@ simde_mm_rem_epi32 (simde__m128i a, simde__m128i b) {
       a_ = simde__m128i_to_private(a),
       b_ = simde__m128i_to_private(b);
 
-    #if defined(SIMDE_VECTOR_SUBSCRIPT_OPS)
+    #if defined(SIMDE_VECTOR_SUBSCRIPT_OPS) && !defined(SIMDE_BUG_PGI_30104)
       r_.i32 = a_.i32 % b_.i32;
     #else
       SIMDE_VECTORIZE
@@ -9005,7 +9005,7 @@ simde_mm_rem_epi64 (simde__m128i a, simde__m128i b) {
       a_ = simde__m128i_to_private(a),
       b_ = simde__m128i_to_private(b);
 
-    #if defined(SIMDE_VECTOR_SUBSCRIPT_OPS)
+    #if defined(SIMDE_VECTOR_SUBSCRIPT_OPS) && !defined(SIMDE_BUG_PGI_30104)
       r_.i64 = a_.i64 % b_.i64;
     #else
       SIMDE_VECTORIZE
@@ -9033,7 +9033,7 @@ simde_mm_rem_epu8 (simde__m128i a, simde__m128i b) {
       a_ = simde__m128i_to_private(a),
       b_ = simde__m128i_to_private(b);
 
-    #if defined(SIMDE_VECTOR_SUBSCRIPT_OPS)
+    #if defined(SIMDE_VECTOR_SUBSCRIPT_OPS) && !defined(SIMDE_BUG_PGI_30104)
       r_.u8 = a_.u8 % b_.u8;
     #else
       SIMDE_VECTORIZE
@@ -9061,7 +9061,7 @@ simde_mm_rem_epu16 (simde__m128i a, simde__m128i b) {
       a_ = simde__m128i_to_private(a),
       b_ = simde__m128i_to_private(b);
 
-    #if defined(SIMDE_VECTOR_SUBSCRIPT_OPS)
+    #if defined(SIMDE_VECTOR_SUBSCRIPT_OPS) && !defined(SIMDE_BUG_PGI_30104)
       r_.u16 = a_.u16 % b_.u16;
     #else
       SIMDE_VECTORIZE
@@ -9089,7 +9089,7 @@ simde_mm_rem_epu32 (simde__m128i a, simde__m128i b) {
       a_ = simde__m128i_to_private(a),
       b_ = simde__m128i_to_private(b);
 
-    #if defined(SIMDE_VECTOR_SUBSCRIPT_OPS)
+    #if defined(SIMDE_VECTOR_SUBSCRIPT_OPS) && !defined(SIMDE_BUG_PGI_30104)
       r_.u32 = a_.u32 % b_.u32;
     #else
       SIMDE_VECTORIZE
@@ -9120,7 +9120,7 @@ simde_mm_rem_epu64 (simde__m128i a, simde__m128i b) {
       a_ = simde__m128i_to_private(a),
       b_ = simde__m128i_to_private(b);
 
-    #if defined(SIMDE_VECTOR_SUBSCRIPT_OPS)
+    #if defined(SIMDE_VECTOR_SUBSCRIPT_OPS) && !defined(SIMDE_BUG_PGI_30104)
       r_.u64 = a_.u64 % b_.u64;
     #else
       SIMDE_VECTORIZE
@@ -9148,7 +9148,7 @@ simde_mm256_rem_epi8 (simde__m256i a, simde__m256i b) {
       a_ = simde__m256i_to_private(a),
       b_ = simde__m256i_to_private(b);
 
-    #if defined(SIMDE_VECTOR_SUBSCRIPT_OPS)
+    #if defined(SIMDE_VECTOR_SUBSCRIPT_OPS) && !defined(SIMDE_BUG_PGI_30104)
       r_.i8 = a_.i8 % b_.i8;
     #else
       #if SIMDE_NATURAL_VECTOR_SIZE_LE(128)
@@ -9182,7 +9182,7 @@ simde_mm256_rem_epi16 (simde__m256i a, simde__m256i b) {
       a_ = simde__m256i_to_private(a),
       b_ = simde__m256i_to_private(b);
 
-    #if defined(SIMDE_VECTOR_SUBSCRIPT_OPS)
+    #if defined(SIMDE_VECTOR_SUBSCRIPT_OPS) && !defined(SIMDE_BUG_PGI_30104)
       r_.i16 = a_.i16 % b_.i16;
     #else
       #if SIMDE_NATURAL_VECTOR_SIZE_LE(128)
@@ -9216,7 +9216,7 @@ simde_mm256_rem_epi32 (simde__m256i a, simde__m256i b) {
       a_ = simde__m256i_to_private(a),
       b_ = simde__m256i_to_private(b);
 
-    #if defined(SIMDE_VECTOR_SUBSCRIPT_OPS)
+    #if defined(SIMDE_VECTOR_SUBSCRIPT_OPS) && !defined(SIMDE_BUG_PGI_30104)
       r_.i32 = a_.i32 % b_.i32;
     #else
       #if SIMDE_NATURAL_VECTOR_SIZE_LE(128)
@@ -9253,7 +9253,7 @@ simde_mm256_rem_epi64 (simde__m256i a, simde__m256i b) {
       a_ = simde__m256i_to_private(a),
       b_ = simde__m256i_to_private(b);
 
-    #if defined(SIMDE_VECTOR_SUBSCRIPT_OPS)
+    #if defined(SIMDE_VECTOR_SUBSCRIPT_OPS) && !defined(SIMDE_BUG_PGI_30104)
       r_.i64 = a_.i64 % b_.i64;
     #else
       #if SIMDE_NATURAL_VECTOR_SIZE_LE(128)
@@ -9287,7 +9287,7 @@ simde_mm256_rem_epu8 (simde__m256i a, simde__m256i b) {
       a_ = simde__m256i_to_private(a),
       b_ = simde__m256i_to_private(b);
 
-    #if defined(SIMDE_VECTOR_SUBSCRIPT_OPS)
+    #if defined(SIMDE_VECTOR_SUBSCRIPT_OPS) && !defined(SIMDE_BUG_PGI_30104)
       r_.u8 = a_.u8 % b_.u8;
     #else
       #if SIMDE_NATURAL_VECTOR_SIZE_LE(128)
@@ -9321,7 +9321,7 @@ simde_mm256_rem_epu16 (simde__m256i a, simde__m256i b) {
       a_ = simde__m256i_to_private(a),
       b_ = simde__m256i_to_private(b);
 
-    #if defined(SIMDE_VECTOR_SUBSCRIPT_OPS)
+    #if defined(SIMDE_VECTOR_SUBSCRIPT_OPS) && !defined(SIMDE_BUG_PGI_30104)
       r_.u16 = a_.u16 % b_.u16;
     #else
       #if SIMDE_NATURAL_VECTOR_SIZE_LE(128)
@@ -9355,7 +9355,7 @@ simde_mm256_rem_epu32 (simde__m256i a, simde__m256i b) {
       a_ = simde__m256i_to_private(a),
       b_ = simde__m256i_to_private(b);
 
-    #if defined(SIMDE_VECTOR_SUBSCRIPT_OPS)
+    #if defined(SIMDE_VECTOR_SUBSCRIPT_OPS) && !defined(SIMDE_BUG_PGI_30104)
       r_.u32 = a_.u32 % b_.u32;
     #else
       #if SIMDE_NATURAL_VECTOR_SIZE_LE(128)
@@ -9392,7 +9392,7 @@ simde_mm256_rem_epu64 (simde__m256i a, simde__m256i b) {
       a_ = simde__m256i_to_private(a),
       b_ = simde__m256i_to_private(b);
 
-    #if defined(SIMDE_VECTOR_SUBSCRIPT_OPS)
+    #if defined(SIMDE_VECTOR_SUBSCRIPT_OPS) && !defined(SIMDE_BUG_PGI_30104)
       r_.u64 = a_.u64 % b_.u64;
     #else
       #if SIMDE_NATURAL_VECTOR_SIZE_LE(128)
@@ -9426,7 +9426,7 @@ simde_mm512_rem_epi8 (simde__m512i a, simde__m512i b) {
       a_ = simde__m512i_to_private(a),
       b_ = simde__m512i_to_private(b);
 
-    #if defined(SIMDE_VECTOR_SUBSCRIPT_OPS)
+    #if defined(SIMDE_VECTOR_SUBSCRIPT_OPS) && !defined(SIMDE_BUG_PGI_30104)
       r_.i8 = a_.i8 % b_.i8;
     #else
       #if SIMDE_NATURAL_VECTOR_SIZE_LE(256)
@@ -9460,7 +9460,7 @@ simde_mm512_rem_epi16 (simde__m512i a, simde__m512i b) {
       a_ = simde__m512i_to_private(a),
       b_ = simde__m512i_to_private(b);
 
-    #if defined(SIMDE_VECTOR_SUBSCRIPT_OPS)
+    #if defined(SIMDE_VECTOR_SUBSCRIPT_OPS) && !defined(SIMDE_BUG_PGI_30104)
       r_.i16 = a_.i16 % b_.i16;
     #else
       #if SIMDE_NATURAL_VECTOR_SIZE_LE(256)
@@ -9494,7 +9494,7 @@ simde_mm512_rem_epi32 (simde__m512i a, simde__m512i b) {
       a_ = simde__m512i_to_private(a),
       b_ = simde__m512i_to_private(b);
 
-    #if defined(SIMDE_VECTOR_SUBSCRIPT_OPS)
+    #if defined(SIMDE_VECTOR_SUBSCRIPT_OPS) && !defined(SIMDE_BUG_PGI_30104)
       r_.i32 = a_.i32 % b_.i32;
     #else
       #if SIMDE_NATURAL_VECTOR_SIZE_LE(256)
@@ -9542,7 +9542,7 @@ simde_mm512_rem_epi64 (simde__m512i a, simde__m512i b) {
       a_ = simde__m512i_to_private(a),
       b_ = simde__m512i_to_private(b);
 
-    #if defined(SIMDE_VECTOR_SUBSCRIPT_OPS)
+    #if defined(SIMDE_VECTOR_SUBSCRIPT_OPS) && !defined(SIMDE_BUG_PGI_30104)
       r_.i64 = a_.i64 % b_.i64;
     #else
       #if SIMDE_NATURAL_VECTOR_SIZE_LE(256)
@@ -9576,7 +9576,7 @@ simde_mm512_rem_epu8 (simde__m512i a, simde__m512i b) {
       a_ = simde__m512i_to_private(a),
       b_ = simde__m512i_to_private(b);
 
-    #if defined(SIMDE_VECTOR_SUBSCRIPT_OPS)
+    #if defined(SIMDE_VECTOR_SUBSCRIPT_OPS) && !defined(SIMDE_BUG_PGI_30104)
       r_.u8 = a_.u8 % b_.u8;
     #else
       #if SIMDE_NATURAL_VECTOR_SIZE_LE(256)
@@ -9610,7 +9610,7 @@ simde_mm512_rem_epu16 (simde__m512i a, simde__m512i b) {
       a_ = simde__m512i_to_private(a),
       b_ = simde__m512i_to_private(b);
 
-    #if defined(SIMDE_VECTOR_SUBSCRIPT_OPS)
+    #if defined(SIMDE_VECTOR_SUBSCRIPT_OPS) && !defined(SIMDE_BUG_PGI_30104)
       r_.u16 = a_.u16 % b_.u16;
     #else
       #if SIMDE_NATURAL_VECTOR_SIZE_LE(256)
@@ -9644,7 +9644,7 @@ simde_mm512_rem_epu32 (simde__m512i a, simde__m512i b) {
       a_ = simde__m512i_to_private(a),
       b_ = simde__m512i_to_private(b);
 
-    #if defined(SIMDE_VECTOR_SUBSCRIPT_OPS)
+    #if defined(SIMDE_VECTOR_SUBSCRIPT_OPS) && !defined(SIMDE_BUG_PGI_30104)
       r_.u32 = a_.u32 % b_.u32;
     #else
       #if SIMDE_NATURAL_VECTOR_SIZE_LE(256)
@@ -9692,7 +9692,7 @@ simde_mm512_rem_epu64 (simde__m512i a, simde__m512i b) {
       a_ = simde__m512i_to_private(a),
       b_ = simde__m512i_to_private(b);
 
-    #if defined(SIMDE_VECTOR_SUBSCRIPT_OPS)
+    #if defined(SIMDE_VECTOR_SUBSCRIPT_OPS) && !defined(SIMDE_BUG_PGI_30104)
       r_.u64 = a_.u64 % b_.u64;
     #else
       #if SIMDE_NATURAL_VECTOR_SIZE_LE(256)
