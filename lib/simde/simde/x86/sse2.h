@@ -2648,6 +2648,7 @@ simde_mm_cvtpd_ps (simde__m128d a) {
       r_.altivec_f32 = vec_float2(a_.altivec_f64, vec_splats(0.0));
     #elif defined(SIMDE_WASM_SIMD128_NATIVE)
       r_.wasm_v128 = wasm_f32x4_demote_f64x2_zero(a_.wasm_v128);
+    /*
     #elif HEDLEY_HAS_BUILTIN(__builtin_shufflevector) && HEDLEY_HAS_BUILTIN(__builtin_convertvector)
       float __attribute__((__vector_size__(8))) z = { 0.0f, 0.0f };
       r_.f32 =
@@ -2655,6 +2656,7 @@ simde_mm_cvtpd_ps (simde__m128d a) {
           __builtin_convertvector(__builtin_shufflevector(a_.f64, a_.f64, 0, 1), __typeof__(z)), z,
           0, 1, 2, 3
         );
+     */
     #else
       r_.f32[0] = HEDLEY_STATIC_CAST(simde_float32, a_.f64[0]);
       r_.f32[1] = HEDLEY_STATIC_CAST(simde_float32, a_.f64[1]);
@@ -2665,6 +2667,7 @@ simde_mm_cvtpd_ps (simde__m128d a) {
     return simde__m128_from_private(r_);
   #endif
 }
+
 #if defined(SIMDE_X86_SSE2_ENABLE_NATIVE_ALIASES)
   #define _mm_cvtpd_ps(a) simde_mm_cvtpd_ps(a)
 #endif
