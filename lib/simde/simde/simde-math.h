@@ -30,6 +30,7 @@
  * libm, we may need to define our own implementations. */
 
 #if !defined(SIMDE_MATH_H)
+#define SIMDE_MATH_H 1
 
 #include "hedley.h"
 #include "simde-features.h"
@@ -131,92 +132,6 @@ SIMDE_DISABLE_UNWANTED_DIAGNOSTICS
   #endif
 #endif
 
-/* Try to avoid including <complex> since it pulls in a *lot* of code. */
-#if \
-    HEDLEY_HAS_BUILTIN(__builtin_creal) || \
-    HEDLEY_GCC_VERSION_CHECK(4,7,0) || \
-    HEDLEY_INTEL_VERSION_CHECK(13,0,0)
-  HEDLEY_DIAGNOSTIC_PUSH
-  SIMDE_DIAGNOSTIC_DISABLE_C99_EXTENSIONS_
-    typedef __complex__ float simde_cfloat32;
-    typedef __complex__ double simde_cfloat64;
-  HEDLEY_DIAGNOSTIC_POP
-  #define SIMDE_MATH_CMPLX(x, y) (HEDLEY_STATIC_CAST(double, x) + HEDLEY_STATIC_CAST(double, y) * (__extension__ 1.0j))
-  #define SIMDE_MATH_CMPLXF(x, y) (HEDLEY_STATIC_CAST(float, x) + HEDLEY_STATIC_CAST(float, y) * (__extension__ 1.0fj))
-
-  #if !defined(simde_math_creal)
-    #define simde_math_crealf(z) __builtin_crealf(z)
-  #endif
-  #if !defined(simde_math_crealf)
-    #define simde_math_creal(z) __builtin_creal(z)
-  #endif
-  #if !defined(simde_math_cimag)
-    #define simde_math_cimagf(z) __builtin_cimagf(z)
-  #endif
-  #if !defined(simde_math_cimagf)
-    #define simde_math_cimag(z) __builtin_cimag(z)
-  #endif
-#elif !defined(__cplusplus)
-  #include <complex.h>
-
-  #if !defined(HEDLEY_MSVC_VERSION)
-    typedef float _Complex simde_cfloat32;
-    typedef double _Complex simde_cfloat64;
-  #else
-    typedef _Fcomplex simde_cfloat32;
-    typedef _Dcomplex simde_cfloat64;
-  #endif
-
-  #if defined(HEDLEY_MSVC_VERSION)
-    #define SIMDE_MATH_CMPLX(x, y) ((simde_cfloat64) { (x), (y) })
-    #define SIMDE_MATH_CMPLXF(x, y) ((simde_cfloat32) { (x), (y) })
-  #elif defined(CMPLX) && defined(CMPLXF)
-    #define SIMDE_MATH_CMPLX(x, y) CMPLX(x, y)
-    #define SIMDE_MATH_CMPLXF(x, y) CMPLXF(x, y)
-  #else
-    #define SIMDE_MATH_CMPLX(x, y) (HEDLEY_STATIC_CAST(double, x) + HEDLEY_STATIC_CAST(double, y) * I)
-    #define SIMDE_MATH_CMPLXF(x, y) (HEDLEY_STATIC_CAST(float, x) + HEDLEY_STATIC_CAST(float, y) * I)
-  #endif
-
-  #if !defined(simde_math_creal)
-    #define simde_math_creal(z) creal(z)
-  #endif
-  #if !defined(simde_math_crealf)
-    #define simde_math_crealf(z) crealf(z)
-  #endif
-  #if !defined(simde_math_cimag)
-    #define simde_math_cimag(z) cimag(z)
-  #endif
-  #if !defined(simde_math_cimagf)
-    #define simde_math_cimagf(z) cimagf(z)
-  #endif
-#else
-  HEDLEY_DIAGNOSTIC_PUSH
-  #if defined(HEDLEY_MSVC_VERSION)
-    #pragma warning(disable:4530)
-  #endif
-  #include <complex>
-  HEDLEY_DIAGNOSTIC_POP
-
-  typedef std::complex<float> simde_cfloat32;
-  typedef std::complex<double> simde_cfloat64;
-  #define SIMDE_MATH_CMPLX(x, y) (std::complex<double>(x, y))
-  #define SIMDE_MATH_CMPLXF(x, y) (std::complex<float>(x, y))
-
-  #if !defined(simde_math_creal)
-    #define simde_math_creal(z) ((z).real())
-  #endif
-  #if !defined(simde_math_crealf)
-    #define simde_math_crealf(z) ((z).real())
-  #endif
-  #if !defined(simde_math_cimag)
-    #define simde_math_cimag(z) ((z).imag())
-  #endif
-  #if !defined(simde_math_cimagf)
-    #define simde_math_cimagf(z) ((z).imag())
-  #endif
-#endif
-
 #if !defined(SIMDE_MATH_INFINITY)
   #if \
       HEDLEY_HAS_BUILTIN(__builtin_inf) || \
@@ -307,30 +222,62 @@ SIMDE_DISABLE_UNWANTED_DIAGNOSTICS
 #endif
 
 #if !defined(SIMDE_MATH_FLT_MIN)
-  #if defined(FLT_MIN)
-    #define SIMDE_MATH_FLT_MIN FLT_MIN
-  #elif defined(__FLT_MIN__)
+  #if defined(__FLT_MIN__)
     #define SIMDE_MATH_FLT_MIN __FLT_MIN__
-  #elif defined(__cplusplus)
-    #include <cfloat>
-    #define SIMDE_MATH_FLT_MIN FLT_MIN
   #else
-    #include <float.h>
+    #if !defined(FLT_MIN)
+      #if defined(__cplusplus)
+        #include <cfloat>
+      #else
+        #include <float.h>
+      #endif
+    #endif
     #define SIMDE_MATH_FLT_MIN FLT_MIN
   #endif
 #endif
 
-#if !defined(SIMDE_MATH_DBL_MIN)
-  #if defined(DBL_MIN)
-    #define SIMDE_MATH_DBL_MIN DBL_MIN
-  #elif defined(__DBL_MIN__)
-    #define SIMDE_MATH_DBL_MIN __DBL_MIN__
-  #elif defined(__cplusplus)
-    #include <cfloat>
-    #define SIMDE_MATH_DBL_MIN DBL_MIN
+#if !defined(SIMDE_MATH_FLT_MAX)
+  #if defined(__FLT_MAX__)
+    #define SIMDE_MATH_FLT_MAX __FLT_MAX__
   #else
-    #include <float.h>
+    #if !defined(FLT_MAX)
+      #if defined(__cplusplus)
+        #include <cfloat>
+      #else
+        #include <float.h>
+      #endif
+    #endif
+    #define SIMDE_MATH_FLT_MAX FLT_MAX
+  #endif
+#endif
+
+#if !defined(SIMDE_MATH_DBL_MIN)
+  #if defined(__DBL_MIN__)
+    #define SIMDE_MATH_DBL_MIN __DBL_MIN__
+  #else
+    #if !defined(DBL_MIN)
+      #if defined(__cplusplus)
+        #include <cfloat>
+      #else
+        #include <float.h>
+      #endif
+    #endif
     #define SIMDE_MATH_DBL_MIN DBL_MIN
+  #endif
+#endif
+
+#if !defined(SIMDE_MATH_DBL_MAX)
+  #if defined(__DBL_MAX__)
+    #define SIMDE_MATH_DBL_MAX __DBL_MAX__
+  #else
+    #if !defined(DBL_MAX)
+      #if defined(__cplusplus)
+        #include <cfloat>
+      #else
+        #include <float.h>
+      #endif
+    #endif
+    #define SIMDE_MATH_DBL_MAX DBL_MAX
   #endif
 #endif
 
@@ -407,6 +354,86 @@ SIMDE_DISABLE_UNWANTED_DIAGNOSTICS
   #endif
 #endif
 
+#if !defined(simde_math_issubnormalf)
+  #if SIMDE_MATH_BUILTIN_LIBM(fpclassify)
+    #define simde_math_issubnormalf(v) __builtin_fpclassify(0, 0, 0, 1, 0, v)
+  #elif defined(fpclassify)
+    #define simde_math_issubnormalf(v) (fpclassify(v) == FP_SUBNORMAL)
+  #elif defined(SIMDE_IEEE754_STORAGE)
+    #define simde_math_issubnormalf(v) (((simde_float32_as_uint32(v) & UINT32_C(0x7F800000)) == UINT32_C(0)) && ((simde_float32_as_uint32(v) & UINT32_C(0x007FFFFF)) != UINT32_C(0)))
+  #endif
+#endif
+
+#if !defined(simde_math_issubnormal)
+  #if SIMDE_MATH_BUILTIN_LIBM(fpclassify)
+    #define simde_math_issubnormal(v) __builtin_fpclassify(0, 0, 0, 1, 0, v)
+  #elif defined(fpclassify)
+    #define simde_math_issubnormal(v) (fpclassify(v) == FP_SUBNORMAL)
+  #elif defined(SIMDE_IEEE754_STORAGE)
+    #define simde_math_issubnormal(v) (((simde_float64_as_uint64(v) & UINT64_C(0x7FF0000000000000)) == UINT64_C(0)) && ((simde_float64_as_uint64(v) & UINT64_C(0x00FFFFFFFFFFFFF)) != UINT64_C(0)))
+  #endif
+#endif
+
+#if defined(FP_NAN)
+  #define SIMDE_MATH_FP_NAN FP_NAN
+#else
+  #define SIMDE_MATH_FP_NAN 0
+#endif
+#if defined(FP_INFINITE)
+  #define SIMDE_MATH_FP_INFINITE FP_INFINITE
+#else
+  #define SIMDE_MATH_FP_INFINITE 1
+#endif
+#if defined(FP_ZERO)
+  #define SIMDE_MATH_FP_ZERO FP_ZERO
+#else
+  #define SIMDE_MATH_FP_ZERO 2
+#endif
+#if defined(FP_SUBNORMAL)
+  #define SIMDE_MATH_FP_SUBNORMAL FP_SUBNORMAL
+#else
+  #define SIMDE_MATH_FP_SUBNORMAL 3
+#endif
+#if defined(FP_NORMAL)
+  #define SIMDE_MATH_FP_NORMAL FP_NORMAL
+#else
+  #define SIMDE_MATH_FP_NORMAL 4
+#endif
+
+static HEDLEY_INLINE
+int
+simde_math_fpclassifyf(float v) {
+  #if SIMDE_MATH_BUILTIN_LIBM(fpclassify)
+    return __builtin_fpclassify(SIMDE_MATH_FP_NAN, SIMDE_MATH_FP_INFINITE, SIMDE_MATH_FP_NORMAL, SIMDE_MATH_FP_SUBNORMAL, SIMDE_MATH_FP_ZERO, v);
+  #elif defined(fpclassify)
+    return fpclassify(v);
+  #else
+    return
+      simde_math_isnormalf(v) ? SIMDE_MATH_FP_NORMAL    :
+      (v == 0.0f)             ? SIMDE_MATH_FP_ZERO      :
+      simde_math_isnanf(v)    ? SIMDE_MATH_FP_NAN       :
+      simde_math_isinff(v)    ? SIMDE_MATH_FP_INFINITE  :
+                                SIMDE_MATH_FP_SUBNORMAL;
+  #endif
+}
+
+static HEDLEY_INLINE
+int
+simde_math_fpclassify(double v) {
+  #if SIMDE_MATH_BUILTIN_LIBM(fpclassify)
+    return __builtin_fpclassify(SIMDE_MATH_FP_NAN, SIMDE_MATH_FP_INFINITE, SIMDE_MATH_FP_NORMAL, SIMDE_MATH_FP_SUBNORMAL, SIMDE_MATH_FP_ZERO, v);
+  #elif defined(fpclassify)
+    return fpclassify(v);
+  #else
+    return
+      simde_math_isnormal(v) ? SIMDE_MATH_FP_NORMAL    :
+      (v == 0.0)             ? SIMDE_MATH_FP_ZERO      :
+      simde_math_isnan(v)    ? SIMDE_MATH_FP_NAN       :
+      simde_math_isinf(v)    ? SIMDE_MATH_FP_INFINITE  :
+                               SIMDE_MATH_FP_SUBNORMAL;
+  #endif
+}
+
 /*** Manipulation functions ***/
 
 #if !defined(simde_math_nextafter)
@@ -446,6 +473,26 @@ SIMDE_DISABLE_UNWANTED_DIAGNOSTICS
     #define simde_math_abs(v) std::abs(v)
   #elif defined(SIMDE_MATH_HAVE_MATH_H)
     #define simde_math_abs(v) abs(v)
+  #endif
+#endif
+
+#if !defined(simde_math_labs)
+  #if SIMDE_MATH_BUILTIN_LIBM(labs)
+    #define simde_math_labs(v) __builtin_labs(v)
+  #elif defined(SIMDE_MATH_HAVE_CMATH)
+    #define simde_math_labs(v) std::labs(v)
+  #elif defined(SIMDE_MATH_HAVE_MATH_H)
+    #define simde_math_labs(v) labs(v)
+  #endif
+#endif
+
+#if !defined(simde_math_llabs)
+  #if SIMDE_MATH_BUILTIN_LIBM(llabs)
+    #define simde_math_llabs(v) __builtin_llabs(v)
+  #elif defined(SIMDE_MATH_HAVE_CMATH)
+    #define simde_math_llabs(v) std::llabs(v)
+  #elif defined(SIMDE_MATH_HAVE_MATH_H)
+    #define simde_math_llabs(v) llabs(v)
   #endif
 #endif
 
@@ -879,21 +926,21 @@ SIMDE_DISABLE_UNWANTED_DIAGNOSTICS
 
 #if !defined(simde_math_fmax)
   #if SIMDE_MATH_BUILTIN_LIBM(fmax)
-    #define simde_math_fmax(x, y, z) __builtin_fmax(x, y, z)
+    #define simde_math_fmax(x, y) __builtin_fmax(x, y)
   #elif defined(SIMDE_MATH_HAVE_CMATH)
-    #define simde_math_fmax(x, y, z) std::fmax(x, y, z)
+    #define simde_math_fmax(x, y) std::fmax(x, y)
   #elif defined(SIMDE_MATH_HAVE_MATH_H)
-    #define simde_math_fmax(x, y, z) fmax(x, y, z)
+    #define simde_math_fmax(x, y) fmax(x, y)
   #endif
 #endif
 
 #if !defined(simde_math_fmaxf)
   #if SIMDE_MATH_BUILTIN_LIBM(fmaxf)
-    #define simde_math_fmaxf(x, y, z) __builtin_fmaxf(x, y, z)
+    #define simde_math_fmaxf(x, y) __builtin_fmaxf(x, y)
   #elif defined(SIMDE_MATH_HAVE_CMATH)
-    #define simde_math_fmaxf(x, y, z) std::fmax(x, y, z)
+    #define simde_math_fmaxf(x, y) std::fmax(x, y)
   #elif defined(SIMDE_MATH_HAVE_MATH_H)
-    #define simde_math_fmaxf(x, y, z) fmaxf(x, y, z)
+    #define simde_math_fmaxf(x, y) fmaxf(x, y)
   #endif
 #endif
 
@@ -1277,26 +1324,27 @@ SIMDE_DISABLE_UNWANTED_DIAGNOSTICS
   #endif
 #endif
 
-/***  Complex functions ***/
+/*** Comparison macros (which don't raise invalid errors) ***/
 
-#if !defined(simde_math_cexp)
-  #if SIMDE_MATH_BUILTIN_LIBM(cexp)
-    #define simde_math_cexp(v) __builtin_cexp(v)
-  #elif defined(__cplusplus)
-    #define simde_math_cexp(v) std::cexp(v)
-  #elif defined(SIMDE_MATH_HAVE_MATH_H)
-    #define simde_math_cexp(v) cexp(v)
-  #endif
+#if defined(isunordered)
+  #define simde_math_isunordered(x, y) isunordered(x, y)
+#elif HEDLEY_HAS_BUILTIN(__builtin_isunordered)
+  #define simde_math_isunordered(x, y) __builtin_isunordered(x, y)
+#else
+  static HEDLEY_INLINE
+  int simde_math_isunordered(double x, double y) {
+    return (x != y) && (x != x || y != y);
+  }
+  #define simde_math_isunordered simde_math_isunordered
+
+  static HEDLEY_INLINE
+  int simde_math_isunorderedf(float x, float y) {
+    return (x != y) && (x != x || y != y);
+  }
+  #define simde_math_isunorderedf simde_math_isunorderedf
 #endif
-
-#if !defined(simde_math_cexpf)
-  #if SIMDE_MATH_BUILTIN_LIBM(cexpf)
-    #define simde_math_cexpf(v) __builtin_cexpf(v)
-  #elif defined(__cplusplus)
-    #define simde_math_cexpf(v) std::exp(v)
-  #elif defined(SIMDE_MATH_HAVE_MATH_H)
-    #define simde_math_cexpf(v) cexpf(v)
-  #endif
+#if !defined(simde_math_isunorderedf)
+  #define simde_math_isunorderedf simde_math_isunordered
 #endif
 
 /*** Additional functions not in libm ***/
@@ -1536,7 +1584,7 @@ SIMDE_DIAGNOSTIC_DISABLE_FLOAT_EQUAL_
     if(x >= 0.0625 && x < 2.0) {
       return simde_math_erfinv(1.0 - x);
     } else if (x < 0.0625 && x >= 1.0e-100) {
-      double p[6] = {
+      static const double p[6] = {
         0.1550470003116,
         1.382719649631,
         0.690969348887,
@@ -1544,7 +1592,7 @@ SIMDE_DIAGNOSTIC_DISABLE_FLOAT_EQUAL_
         0.680544246825,
         -0.16444156791
       };
-      double q[3] = {
+      static const double q[3] = {
         0.155024849822,
         1.385228141995,
         1.000000000000
@@ -1554,13 +1602,13 @@ SIMDE_DIAGNOSTIC_DISABLE_FLOAT_EQUAL_
       return (p[0] / t + p[1] + t * (p[2] + t * (p[3] + t * (p[4] + t * p[5])))) /
             (q[0] + t * (q[1] + t * (q[2])));
     } else if (x < 1.0e-100 && x >= SIMDE_MATH_DBL_MIN) {
-      double p[4] = {
+      static const double p[4] = {
         0.00980456202915,
         0.363667889171,
         0.97302949837,
         -0.5374947401
       };
-      double q[3] = {
+      static const double q[3] = {
         0.00980451277802,
         0.363699971544,
         1.000000000000
