@@ -189,8 +189,22 @@ U32 KThread::signal(U32 signal, bool wait) {
         else {
             // :TODO: how to interrupt the thread (the current approache assumes the thread will yield to the signal)
             {
-                BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->pendingSignalsMutex);
-                this->pendingSignals |= ((U64)1 << (signal-1));
+                {
+                    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->pendingSignalsMutex);
+                    this->pendingSignals |= ((U64)1 << (signal - 1));
+                }
+                BOXEDWINE_CONDITION* waitCond = waitingCond;
+                if (signal == K_SIGQUIT && waitCond) {                    
+                    waitCond->lock();
+                    if (waitingCond) {
+                        this->startSignal = true;
+                        this->runSignal(K_SIGQUIT, -1, 0);
+                    } else {
+                        int ii = 0;
+                    }
+                    waitCond->signalAll();
+                    waitCond->unlock();
+                }
             }
             if (wait) {
                 BOXEDWINE_CONDITION_LOCK(this->waitingForSignalToEndCond);            
@@ -318,6 +332,12 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3) {
                     return -K_EWOULDBLOCK;
                 } 
             }
+            if (this->pendingSignals) {
+                // I know this is a nested if statement, but it makes setting a break point easier
+                if (runSignals()) {
+                    return -K_CONTINUE;
+                }
+            }
             if (f->wake) {
                 freeFutex(f);
                 return 0;
@@ -334,7 +354,7 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3) {
             }
 #ifdef BOXEDWINE_MULTI_THREADED
 			if (this->terminating) {
-				return -K_EINTR; // probably doesn't matter
+				return -K_EINTR;
 			}
             if (KThread::currentThread()->startSignal) {
                 KThread::currentThread()->startSignal = false;
@@ -392,15 +412,15 @@ bool KThread::runSignals() {
         for (i=0;i<32;i++) {
             if ((todoProcess & ((U64)1 << i))!=0) {
                 BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->process->pendingSignalsMutex);
-                if ((this->process->pendingSignals & ((U64)1 << i))!=0) {
+                if ((this->process->pendingSignals & ((U64)1 << i))!=0 || i + 1 == K_SIGKILL) { // SIGKILL can't be ignored
                     this->process->pendingSignals &= ~(1 << i);
                     this->runSignal(i+1, -1, 0);
                     return true;
                 }
             }
             if ((todoThread & ((U64)1 << i))!=0) {
-                BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->process->pendingSignalsMutex);
-                if ((this->process->pendingSignals & ((U64)1 << i))!=0) {
+                BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->pendingSignalsMutex);
+                if ((this->pendingSignals & ((U64)1 << i))!=0 || i+1 == K_SIGKILL) { // SIGKILL can't be ignored
                     this->pendingSignals &= ~(1 << i);
                     this->runSignal(i+1, -1, 0);
                     return true;

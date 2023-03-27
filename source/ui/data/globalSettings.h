@@ -52,6 +52,8 @@ public:
     std::string filePathBackup;
     std::string fsVersion;
     std::string depend;
+    std::string data;
+    std::string data2;
     U32 size;
     bool operator<(const WineVersion& rhs) const { return name < rhs.name; }
 };
@@ -76,6 +78,8 @@ public:
     static std::string getExeFilePath() { return GlobalSettings::exeFilePath; }
     static const std::vector<WineVersion>& getWineVersions() {return GlobalSettings::wineVersions;}
     static const std::vector<WineVersion>& getAvailableWineVersions() { return GlobalSettings::availableWineVersions; }
+    static const std::vector<WineVersion>& getAvailableWinetricksVersions() { return GlobalSettings::availableWinetricksVersions; }
+    static const std::vector<WineVersion>& getInstalledWinetricksVersions() { return GlobalSettings::winetricksVersions; }
     static std::string getDataFolder() {return GlobalSettings::dataFolderLocation;}
     static void setDataFolder(const std::string& location) {GlobalSettings::dataFolderLocation = location;}
     static void setTheme(const std::string& theme);
@@ -138,6 +142,7 @@ private:
     static U32 scale;
     static std::string dataFolderLocation;
     static std::vector<WineVersion> wineVersions;
+    static std::vector<WineVersion> winetricksVersions;
     static std::string exePath;
     static std::string exeFilePath;
     static std::string theme;
@@ -147,6 +152,7 @@ private:
     friend class WineVersion;
     static std::vector<WineVersion> availableWineVersions;
     static std::vector<WineVersion> availableWineDependencies;
+    static std::vector<WineVersion> availableWinetricksVersions;
     static std::vector<AppFile> demos;
     static std::vector<AppFile> components;
     static bool filesListDownloading;

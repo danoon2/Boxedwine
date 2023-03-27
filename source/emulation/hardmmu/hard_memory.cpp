@@ -181,7 +181,7 @@ U32 Memory::mapNativeMemory(void* hostAddress, U32 size) {
     offset = hostStart - (result << K_PAGE_SHIFT);
     for (i = 0; i < pageCount; i++) {
         this->memOffsets[result + i] = offset;
-        this->flags[result + i] = PAGE_MAPPED_HOST;
+        this->flags[result + i] = PAGE_MAPPED_HOST | PAGE_READ | PAGE_WRITE;
     }
     return (result << K_PAGE_SHIFT) + ((U32)((U64)hostAddress) & K_PAGE_MASK);
 }
@@ -204,7 +204,7 @@ void Memory::allocPages(U32 page, U32 pageCount, U8 permissions, FD fd, U64 offs
                 U32 len = pageCount << K_PAGE_SHIFT;
                 U8* ram = new U8[len]; // make it continuous
 
-                klog("shared ram %.08X%.08X @%.08X len=%X\n", (U32)((U64)ram >> 32), (U32)((U64)ram), (page << K_PAGE_SHIFT), len);
+                //klog("shared ram %.08X%.08X @%.08X len=%X\n", (U32)((U64)ram >> 32), (U32)((U64)ram), (page << K_PAGE_SHIFT), len);
                 memset(ram, 0, len);
                 needToLoad = true;
                 mappedFile->systemCacheEntry->data[0] = ram;
@@ -254,8 +254,7 @@ void Memory::allocPages(U32 page, U32 pageCount, U8 permissions, FD fd, U64 offs
     }    
 }
 
-void Memory::protectPage(U32 i, U32 permissions) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(pageMutex);
+void Memory::protectPage(U32 i, U32 permissions) {    
     if (!this->isPageAllocated(i) && (permissions & PAGE_PERMISSION_MASK)) {
         this->allocPages(i, 1, permissions, 0, 0, 0);
     } else {
@@ -327,6 +326,10 @@ bool Memory::isValidWriteAddress(U32 address, U32 len) {
 
 bool Memory::isPageAllocated(U32 page) {
     return (this->flags[page] & PAGE_ALLOCATED) != 0;
+}
+
+bool Memory::isPageMapped(U32 page) {
+    return (this->flags[page] & PAGE_MAPPED) != 0;
 }
 
 void memcopyFromNative(U32 address, const void* p, U32 len) {

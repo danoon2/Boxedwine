@@ -35,6 +35,8 @@ bool FsZip::init(const std::string& zipPath, const std::string& mount) {
 #ifdef BOXEDWINE_ZLIB
     std::string strippedMount;
 
+    BoxedPtr<FsNode> root = Fs::getNodeFromLocalPath("", "", true);
+    deleteFilePath = root->nativePath + Fs::nativePathSeperator + Fs::getFileNameFromNativePath(zipPath) + ".deleted";
     if (mount.length()) {
         Fs::makeLocalDirs(mount);
         strippedMount = mount.substr(0, mount.length() - 1);
@@ -100,10 +102,17 @@ bool FsZip::init(const std::string& zipPath, const std::string& mount) {
 
             unzGoToNextFile(this->zipfile);
         }
+
+        std::vector<std::string> deletedLocalPaths;
+        readLinesFromFile(deleteFilePath, deletedLocalPaths);
+
         for (i = 0; i < global_info.number_entry; ++i) {
             std::string localZipPart = zipInfo[i].filename;
             Fs::remoteNameToLocal(localZipPart);
             std::string localPath = strippedMount + localZipPart;
+            if (vectorIndexOf(deletedLocalPaths, localPath) != -1) {
+                continue;
+            }
             std::string parentPath = Fs::getParentPath(localPath);
             BoxedPtr<FsNode> parent = Fs::getNodeFromLocalPath("", parentPath, true);            
             std::string localFileName = Fs::getFileNameFromPath(localPath);
@@ -122,6 +131,15 @@ FsZip::~FsZip() {
 #ifdef BOXEDWINE_ZLIB
     unzClose(this->zipfile);
 #endif
+}
+
+void FsZip::remove(const std::string& localPath) {
+    std::vector<std::string> lines;
+    readLinesFromFile(deleteFilePath, lines);
+    if (vectorIndexOf(lines, localPath) == -1) {
+        lines.push_back(localPath);
+        writeLinesToFile(deleteFilePath, lines);
+    }
 }
 
 bool FsZip::readFileFromZip(const std::string& zipFile, const std::string& file, std::string& result) {
@@ -145,13 +163,14 @@ bool FsZip::readFileFromZip(const std::string& zipFile, const std::string& file,
         
         if (file == tmp) {
             U32 read;
-
+            char* buffer = new char[file_info.uncompressed_size+1];
             unzOpenCurrentFile(z);            
-            read = unzReadCurrentFile(z, tmp, MAX_FILEPATH_LEN);
-            tmp[read]=0;              
+            read = unzReadCurrentFile(z, buffer, file_info.uncompressed_size + 1);
+            buffer[read]=0;
             unzCloseCurrentFile(z);
             unzClose(z);
-            result = tmp;
+            result = buffer;
+            delete[] buffer;
             return true;
         }
         unzGoToNextFile(z);

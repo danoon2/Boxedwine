@@ -16,7 +16,9 @@
 
 std::string GlobalSettings::dataFolderLocation;
 std::vector<WineVersion> GlobalSettings::wineVersions;
+std::vector<WineVersion> GlobalSettings::winetricksVersions;
 std::vector<WineVersion> GlobalSettings::availableWineVersions;
+std::vector<WineVersion> GlobalSettings::availableWinetricksVersions;
 std::vector<WineVersion> GlobalSettings::availableWineDependencies;
 std::vector<AppFile> GlobalSettings::demos;
 std::vector<AppFile> GlobalSettings::components;
@@ -63,8 +65,10 @@ void GlobalSettings::init(int argc, const char **argv) {
     GlobalSettings::sectionTitleFont = NULL;
     GlobalSettings::iconFontsLoaded = false;
     GlobalSettings::availableWineVersions.clear();
+    GlobalSettings::availableWinetricksVersions.clear();
     GlobalSettings::demos.clear();
     GlobalSettings::wineVersions.clear();
+    GlobalSettings::winetricksVersions.clear();
     GlobalSettings::components.clear();
 
     GlobalSettings::dataFolderLocation = KNativeSystem::getLocalDirectory();
@@ -212,7 +216,22 @@ void GlobalSettings::lookForFileSystems(const std::string& path) {
                 FsZip::readFileFromZip(filepath, "depends.txt", depend);
                 GlobalSettings::wineVersions.push_back(WineVersion(wineVersion, fsVersion, filepath, "", depend));
             }
-        }
+            std::string winetricksVersion;
+            if (FsZip::readFileFromZip(filepath, "winetricksVersion.txt", winetricksVersion) && winetricksVersion.length()) {
+                std::string fsVersion;
+                std::string depend;
+                std::string dlls;
+                std::string fonts;
+                FsZip::readFileFromZip(filepath, "version.txt", fsVersion);
+                FsZip::readFileFromZip(filepath, "depends.txt", depend);
+                FsZip::readFileFromZip(filepath, "dlls.txt", dlls);
+                FsZip::readFileFromZip(filepath, "fonts.txt", fonts);
+                WineVersion v = WineVersion(winetricksVersion, fsVersion, filepath, "", depend);
+                v.data = fonts;
+                v.data2 = dlls;
+                GlobalSettings::winetricksVersions.push_back(v);
+            }
+        }        
         return 0;
     });
 }
@@ -298,6 +317,7 @@ void GlobalSettings::loadFileLists() {
     BOXEDWINE_CRITICAL_SECTION;
 
     GlobalSettings::availableWineVersions.clear();
+    GlobalSettings::availableWinetricksVersions.clear();
     GlobalSettings::availableWineDependencies.clear();
     GlobalSettings::demos.clear();
     GlobalSettings::components.clear();
@@ -325,7 +345,20 @@ void GlobalSettings::loadFileLists() {
             else {
                 break;
             }
-        }        
+        }    
+        for (pugi::xml_node wine : node.children("Winetricks")) {
+            std::string name = wine.child("Name").text().as_string();
+            std::string ver = wine.child("FileVersion").text().as_string();
+            std::string file = wine.child("FileURL").text().as_string();
+            int fileSize = wine.child("FileSizeMB").text().as_int();
+
+            if (name.length() && ver.length() && file.length()) {
+                GlobalSettings::availableWinetricksVersions.push_back(WineVersion(name, ver, file, "", "", fileSize));
+            }
+            else {
+                break;
+            }
+        }
         for (pugi::xml_node wine : node.children("Dependency")) {
             std::string name = wine.child("Name").text().as_string();
             std::string ver = wine.child("FileVersion").text().as_string();
@@ -463,6 +496,9 @@ void GlobalSettings::updateFileList(const std::string& fileLocation) {
             GlobalSettings::filesListDownloading = true;
             if (::downloadFile(url, tmpPath, [](U64 bytesCompleted) {
                 }, NULL, errorMsg)) {
+                if (Fs::doesNativePathExist(path)) {
+                    Fs::deleteNativeFile(path);
+                }
                 ::rename(tmpPath.c_str(), path.c_str());
                 unsigned int newcrc = crc32File(path);
                 if (newcrc != oldcrc) {

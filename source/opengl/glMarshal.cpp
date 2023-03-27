@@ -71,12 +71,9 @@ public:
 // :TODO: what about multiple context support
 static std::unordered_map<U32, BufferedTarget> bufferedTargets;
 
-U32 marshalBufferRange(CPU* cpu, GLenum target, GLvoid* buffer, U32 size) {
-    if (bufferedTargets[target].originalBufferedAddress == buffer && bufferedTargets[target].size>=size) {
-        memcopyFromNative(bufferedTargets[target].bufferedAddress, buffer, size);
-        return bufferedTargets[target].bufferedAddress;
-    } else if (bufferedTargets[target].bufferedAddress) {
-        cpu->thread->process->unmap(bufferedTargets[target].bufferedAddress, bufferedTargets[target].size);
+U32 mapBufferRange(CPU* cpu, GLenum target, GLvoid* buffer, U32 offset, U32 size) {
+    if (bufferedTargets[target].bufferedAddress) {
+        kpanic("mapBufferRange already mapped");
     }
     U32 result = cpu->thread->process->mmap(0, size, K_PROT_WRITE|K_PROT_READ, K_MAP_PRIVATE|K_MAP_ANONYMOUS, -1, 0);
     memcopyFromNative(result, buffer, size);
@@ -84,15 +81,29 @@ U32 marshalBufferRange(CPU* cpu, GLenum target, GLvoid* buffer, U32 size) {
     return result;
 }
 
-void unmarshalBufferRange(CPU* cpu, GLenum target, U32 offset, U32 size) {
+void flushBufferRange(CPU* cpu, GLenum target, U32 offset, U32 size) {
     BufferedTarget t = bufferedTargets[target];
     memcopyToNative(t.bufferedAddress+offset, t.originalBufferedAddress+offset, size);
 }
 
+void unmapBuffer(CPU* cpu, GLenum target) {
+    BufferedTarget t = bufferedTargets[target];
+    memcopyToNative(t.bufferedAddress, t.originalBufferedAddress, t.size);
+    cpu->thread->process->unmap(t.bufferedAddress, t.size);
+    bufferedTargets.erase(target);
+}
+
 GLsync* syncBuffer;
 U32 syncBufferSize;
+#define SYNC_OFFSET 1024
 
 U32 marshalBackSync(CPU* cpu, GLsync h) {
+    if (sizeof(GLsync) == 32) {
+        return (U32)(U64)h;
+    }
+    if ((U64)h < SYNC_OFFSET) {
+        return (U32)(U64)h;
+    }
     if (!syncBufferSize) {
         syncBuffer = new GLsync[1024];
         syncBufferSize = 1024;
@@ -100,26 +111,33 @@ U32 marshalBackSync(CPU* cpu, GLsync h) {
     }
     for (U32 i = 0; i < syncBufferSize; i++) {
         if (syncBuffer[i] == h) {
-            return i;
+            return i + SYNC_OFFSET;
         }
     }
     for (U32 i = 0; i < syncBufferSize; i++) {
         if (syncBuffer[i] == NULL) {
             syncBuffer[i] = h;
-            return i;
+            return i + SYNC_OFFSET;
         }
     }
     GLsync* b = new GLsync[syncBufferSize * 2];
-    memset(syncBuffer, 0, sizeof(GLsync) * syncBufferSize * 2);
+    memset(b, 0, sizeof(GLsync) * syncBufferSize * 2);
     memcpy(b, syncBuffer, syncBufferSize);
     U32 result = syncBufferSize;
     syncBufferSize *= 2;
     delete[] syncBuffer;
     syncBuffer = b;
-    return result;
+    return result + SYNC_OFFSET;
 }
 
 GLsync marshalSync(CPU* cpu, U32 i) {
+    if (sizeof(GLsync) == 32) {
+        return (GLsync)(U64)i;
+    }
+    if (i < SYNC_OFFSET) {
+        return (GLsync)(U64)i;
+    }
+    i -= SYNC_OFFSET;
     if (syncBuffer && i < syncBufferSize) {
         return syncBuffer[i];
     }
@@ -705,13 +723,17 @@ GLvoid* marshalp(CPU* cpu, U32 instance, U32 buffer, U32 len) {
 }
 
 U32 marshalBackSync(CPU* cpu, GLsync sync) {
-    klog("marshalBackSync not implemented");
-    return 0;
+    //klog("marshalBackSync not implemented");
+#ifdef BOXEDWINE_64
+    return (U32)(U64)sync;
+#else
+    return (U32)sync;
+#endif
 }
 
 GLsync marshalSync(CPU* cpu, U32 sync) {
-    klog("marshalSync not implemented");
-    return 0;
+    //klog("marshalSync not implemented");
+    return (GLsync)(U32)sync;
 }
 
 GLvoid** bufferpp;

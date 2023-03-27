@@ -1724,7 +1724,7 @@ void glcommon_glMapBufferRange(CPU* cpu) {
             shown++;
         }
     }
-    EAX=marshalBufferRange(cpu, ARG1, ret, ARG3);
+    EAX=mapBufferRange(cpu, ARG1, ret, ARG2, ARG3);
 #else
     EAX=marshalBackp(cpu, ret, ARG3);
 #endif

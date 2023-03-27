@@ -131,6 +131,69 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
         };
     }
 
+    if (GlobalSettings::getAvailableWinetricksVersions().size() > 0) {
+        WineVersion version = GlobalSettings::getAvailableWinetricksVersions()[0];        
+        if (GlobalSettings::getInstalledWinetricksVersions().size() == 0) {
+            row = section->addRow(CONTAINER_VIEW_WINETRICKS_LABEL, 0);
+            std::shared_ptr<LayoutButtonControl> selectWineAppButton = row->addButton(getTranslationWithFormat(GENERIC_DOWNLOAD, true, std::to_string(GlobalSettings::getAvailableWinetricksVersions()[0].size)));
+            selectWineAppButton->setHelpId(CONTAINER_OPTIONS_DOWNLOAD_WINETRICKS);
+            selectWineAppButton->onChange = [this, version]() {
+                if (this->saveChanges()) {
+                    GlobalSettings::downloadWine(version, [this](bool success) {
+                        if (success) {
+                            // reload container view so that we rebuild this row with the new winetricks options
+                            runOnMainUI([this]()->bool {
+                                gotoView(VIEW_CONTAINERS, currentContainer->getDir());
+                                return false;
+                                });
+                        }
+                        });
+                }
+            };
+        } else {
+            row = section->addRow(CONTAINER_VIEW_WINETRICKS_FONTS_LABEL, 0);
+            WineVersion version = GlobalSettings::getInstalledWinetricksVersions()[0];
+            std::vector<ComboboxItem> fonts;
+            std::vector<std::string> lines;
+            stringSplit(lines, version.data, '\n');
+            for (auto& line : lines) {
+                std::string verb = line.substr(0, line.find(' '));
+                stringReplaceAll(line, "[downloadable]", "");
+                fonts.push_back(ComboboxItem(line, verb));
+            }
+            fontsControl = row->addComboBox(fonts, 0);
+
+            std::shared_ptr<LayoutButtonControl> installButton = row->addButton(getTranslation(INSTALLVIEW_INSTALL_BUTTON_LABEL));
+            installButton->onChange = [version, this]() {
+                if (this->saveChanges()) {
+                    std::string verb = fontsControl->getSelectionStringValue();
+                    this->winetricks(version, verb);
+                }
+            };
+            installButton->setHelpId(CONTAINER_OPTIONS_DOWNLOAD_WINETRICKS);
+
+            row = section->addRow(CONTAINER_VIEW_WINETRICKS_DLLS_LABEL, 0);
+            std::vector<ComboboxItem> dlls;
+            lines.clear();
+            stringSplit(lines, version.data2, '\n');
+            for (auto& line : lines) {
+                std::string verb = line.substr(0, line.find(' '));
+                stringReplaceAll(line, "[downloadable]", "");
+                dlls.push_back(ComboboxItem(line, verb));
+            }
+            dllsControl = row->addComboBox(dlls, 0);
+
+            std::shared_ptr<LayoutButtonControl> installButton2 = row->addButton(getTranslation(INSTALLVIEW_INSTALL_BUTTON_LABEL));
+            installButton2->onChange = [version, this]() {
+                if (this->saveChanges()) {
+                    std::string verb = dllsControl->getSelectionStringValue();
+                    this->winetricks(version, verb);
+                }
+            };
+            installButton2->setHelpId(CONTAINER_OPTIONS_DOWNLOAD_WINETRICKS);
+        }
+    }
+
     section->addSeparator();
     std::shared_ptr<LayoutButtonControl> selectAppButton = section->addButton(CONTAINER_OPTIONS_DLG_ADD_APP_LABEL, CONTAINER_OPTIONS_DLG_ADD_APP_HELP, getTranslation(CONTAINER_OPTIONS_DLG_ADD_APP_BUTTON_LABEL));
     selectAppButton->onChange = [this]() {
@@ -607,4 +670,31 @@ void ContainersView::setCurrentContainer(BoxedContainer* container) {
 void ContainersView::showAppSection(bool show) {
     appSection->setHidden(!show);
     appPickerControl->setRowHidden(!show);
+}
+
+void ContainersView::winetricks(const WineVersion& winetricks, const std::string& verb) {
+    GlobalSettings::startUpArgs = StartUpArgs();
+    GlobalSettings::startUpArgs.addZip(winetricks.filePath);
+    currentContainer->launch();     
+    GlobalSettings::startUpArgs.title = "Winetricks " + verb;
+    GlobalSettings::startUpArgs.addArg("/bin/sh");
+    GlobalSettings::startUpArgs.addArg("/usr/bin/winetricks");
+    GlobalSettings::startUpArgs.addArg(verb);    
+    GlobalSettings::startUpArgs.readyToLaunch = true;
+#ifndef BOXEDWINE_UI_LAUNCH_IN_PROCESS
+    GlobalSettings::startUpArgs.ttyPrepend = true;
+#endif
+    runOnMainUI([]() {
+        WaitDlg* dlg = new WaitDlg(WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(WAITDLG_LAUNCH_APP_LABEL, true, GlobalSettings::startUpArgs.title));
+        KSystem::watchTTY = [dlg](const std::string& line) {
+            if (!KThread::currentThread() || KThread::currentThread()->process->name != "curl") {
+                dlg->addSubLabel(line, 5);
+            }
+        };
+        dlg->onDone = []() {
+            KSystem::watchTTY = nullptr;
+        };
+        return false;
+        });
+  
 }

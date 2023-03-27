@@ -22,7 +22,9 @@
 #include "knativesystem.h"
 
 static void notImplemented(const char* s) {
+#ifdef _DEBUG
     kwarn(s);
+#endif
 }
 
 #define ARG1 cpu->peek32(1)

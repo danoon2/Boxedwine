@@ -9,8 +9,12 @@ import java.util.HashMap;
 import java.util.HashSet;
 
 public class Main {
-    static boolean includeX11 = true;
+    static boolean includeX11 = false;
 
+    public static void add(String name, HashMap<String, DebianPackage> depends, HashSet<String> ignored) {
+        DebianPackages.getPackage(name).getDepends(ignored, depends);
+        depends.put(name, DebianPackages.getPackage(name));
+    }
     public static void main(String[] args) {
         Settings.fileCachePath = new File("c:\\debianCache");
         Settings.outputDir = new File("c:\\debianCache\\out");
@@ -48,9 +52,39 @@ public class Main {
 
             ignored.add("iso-codes"); // this a big one and only required by libgstreamer-plugins-base1.0-0
             ignored.add("libicu63");
+            ignored.add("adwaita-icon-theme");
+            ignored.add("ahicolor-icon-theme");
+            ignored.add("libgl1");
         }
 
         HashMap<String, DebianPackage> depends = new HashMap<>();
+        add("curl", depends, ignored);
+        add("libnss-mdns", depends, ignored);
+        add("binutils", depends, ignored);
+        add("cabextract", depends, ignored);
+        add("p7zip", depends, ignored);
+        add("unzip", depends, ignored);
+        //add("unrar", depends, ignored);
+        add("xz-utils", depends, ignored);
+        add("dash", depends, ignored);
+        add("sed", depends, ignored);
+        add("grep", depends, ignored);
+        add("aria2", depends, ignored);
+        add("gawk", depends, ignored);
+        add("coreutils", depends, ignored);
+        add("xdg-utils", depends, ignored);
+        add("zenity", depends, ignored);
+        add("openssl", depends, ignored);
+        add("winbind", depends, ignored);
+        add("gstreamer1.0-libav", depends, ignored);
+        add("gstreamer1.0-plugins-bad", depends, ignored);
+        add("gstreamer1.0-plugins-ugly", depends, ignored);
+        add("fonts-wine", depends, ignored);
+        add("libosmesa6", depends, ignored);
+        add("libsdl2-2.0-0", depends, ignored);
+        add("ca-certificates", depends, ignored);
+        add("findutils", depends, ignored); //arial font in winetricks needs this
+
         DebianPackages.getPackage("wine32-preloader").getDepends(ignored, depends);
         depends.put("libc-bin", DebianPackages.getPackage("libc-bin"));
         DebianPackages.getPackage("libc-bin").getDepends(ignored, depends);
@@ -96,9 +130,12 @@ public class Main {
                 e.printStackTrace();
             }
         }
+
         try {
             File wineLink = new File(Settings.outputDir + File.separator + "bin" + File.separator + "wine.link");
             FileUtils.writeStringToFile(wineLink, "/opt/wine/bin/wine", "UTF-8");
+            File wineserverLink = new File(Settings.outputDir + File.separator + "bin" + File.separator + "wineserver.link");
+            FileUtils.writeStringToFile(wineserverLink, "/opt/wine/bin/wineserver", "UTF-8");
             File ldConfig = new File(Settings.outputDir + File.separator + "etc" + File.separator + "ld.so.conf.d" + File.separator + "wine.conf");
             FileUtils.writeStringToFile(ldConfig, "/opt/wine/lib", "UTF-8");
             File resolv = new File(Settings.outputDir + File.separator + "etc" + File.separator + "resolv.conf");
@@ -202,11 +239,15 @@ public class Main {
                     FileUtils.writeStringToFile(games, "prog XDemineur /usr/share/pixmaps/xdemineur-icon.xpm /usr/games/xdemineur", "UTF-8");
                     File programs = new File(Settings.outputDir + "/home/username/.icewm/programs");
                     FileUtils.writeStringToFile(programs, "prog \"File Manager (Xfe)\" xfe xfe", "UTF-8");
-
-                    // :TODO: to make the zip smaller delete
-                    // /usr/share/doc/*
-                    // /usr/share/man/*
-                    // /usr/share/locale/* except en
+                }
+                // 230MB vs 400MB
+                FileUtils.deleteDirectory(new File(Settings.outputDir+"/usr/share/doc"));
+                FileUtils.deleteDirectory(new File(Settings.outputDir+"/usr/share/man"));
+                FileUtils.deleteDirectory(new File(Settings.outputDir+"/var/cache/deb"));
+                FileUtils.deleteDirectory(new File(Settings.outputDir+"/usr/share/locale"));
+                FileUtils.deleteDirectory(new File(Settings.outputDir+"/usr/lib/i386-linux-gnu/dri"));
+                if (!includeX11) {
+                    FileUtils.deleteDirectory(new File(Settings.outputDir+"/home"));
                 }
             }
             // using 7zip created a 3% smaller zip

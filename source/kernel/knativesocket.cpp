@@ -3,6 +3,7 @@
 #include "knativesocket.h"
 #include "ksocket.h"
 #include "kstat.h"
+#include "bufferaccess.h"
 
 #ifdef WIN32
 #undef BOOL
@@ -821,7 +822,6 @@ U32 KNativeSocketObject::setsockopt(KFileDescriptor* fd, U32 level, U32 name, U3
                 this->recvLen = readd(value);
                 ::setsockopt(this->nativeSocket, SOL_SOCKET, SO_KEEPALIVE, (const char*)&this->recvLen, 4);
                 break;
-                break;
             default:
                 kwarn("KNativeSocketObject::setsockopt SOL_SOCKET name %d not implemented", name);
                 return -K_EINVAL;
@@ -974,6 +974,7 @@ U32 KNativeSocketObject::sendmsg(KFileDescriptor* fd, U32 address, U32 flags) {
     }
 
     U32 result = (U32)::sendto(this->nativeSocket, (const char*)buffer, len, nativeFlags, &dest, destLen);
+    delete[] buffer;
     if ((S32)result >= 0) {
         this->error = 0;
         return result;
@@ -1095,4 +1096,20 @@ U32 KNativeSocketObject::recvfrom(KFileDescriptor* fd, U32 buffer, U32 length, U
     if (fromBuffer)
         delete[] fromBuffer;
     return result;
+}
+
+FsOpenNode* openHosts(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
+    char name[256];
+    char buf[256];
+    name[0] = 0;
+    gethostname(name, 256);
+    sprintf(buf, "127.0.0.1\tlocalhost\n127.0.1.1\t%s\n::1\tip6-localhost ip6-loopback", name);
+    return new BufferAccess(node, flags, buf);
+}
+
+FsOpenNode* openHostname(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
+    char buf[256];
+    buf[0] = 0;
+    gethostname(buf, 256);
+    return new BufferAccess(node, flags, buf);
 }

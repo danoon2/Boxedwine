@@ -11,6 +11,9 @@ WaitDlg::WaitDlg(int title, const std::string& label, std::function<bool()> chec
 
 WaitDlg::~WaitDlg() {
     GlobalSettings::useFastFrameRate(false);
+    if (this->onDone) {
+        this->onDone();
+    }
 }
 
 void WaitDlg::run() {
@@ -20,7 +23,27 @@ void WaitDlg::run() {
     ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing));
     ImGui::SetCursorPosX(this->width/2-ImGui::CalcTextSize(this->label.c_str()).x/2);
     SAFE_IMGUI_TEXT(this->label.c_str());
+    if (this->subLabels.size() > 0) {
+        ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing));
+        ImGui::Separator();
+        for (auto& line : subLabels) {
+            ImGui::SetCursorPosX(GlobalSettings::scaleIntUI(5));
+            SAFE_IMGUI_TEXT(line.c_str());
+        }
+    }
     if (checkIfShouldContinue && !checkIfShouldContinue()) {
         this->done();
+    }
+}
+
+void WaitDlg::addSubLabel(const std::string& subLabel, int max) {
+    while (subLabels.size() > max) {
+        subLabels.pop_front();
+    }
+    this->subLabels.push_back(subLabel);
+    if (this->subLabels.size() > 2) {
+        this->height = GlobalSettings::scaleIntUI(150) + (this->subLabels.size() - 1) * ImGui::GetFontSize();
+    } else {
+        this->height = GlobalSettings::scaleIntUI(150);
     }
 }

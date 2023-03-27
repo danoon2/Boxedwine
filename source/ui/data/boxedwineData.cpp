@@ -75,9 +75,22 @@ void BoxedwineData::startApp() {
                 tmp[1] = 0;
                 while (outPipe.readBytes(tmp, 1)) {
                     log += tmp;
+                    if (tmp[0] != '\n') {                        
+                        continue;
+                    }
                     if (stringContains(log, "Creating Window")) {
                         windowCreated = true;
                     }
+                    if (KSystem::watchTTY && stringStartsWith(log, "TTY:")) {
+                        std::string line = log.substr(4);
+                        std::vector<std::string> parts;
+                        stringSplit(parts, line, ':', 2);
+                        if (parts.size() == 2 && parts[0] != "curl") {
+                            line = line.substr(parts[0].size()+1);
+                            KSystem::watchTTY(line);
+                        }
+                    }
+                    log = "";
                 }
             } catch (Poco::Exception& e) {
                 runOnMainUI([e]() {

@@ -63,7 +63,7 @@ public:
 #define K_MAP_PRIVATE 0x02
 #define K_MAP_FIXED 0x10
 #define K_MAP_ANONYMOUS 0x20
-#define K_MAP_TRY_FIXED 0x4000
+#define K_MAP_FIXED_NOREPLACE 0x100000
 
 #define K_MADV_DONTNEED 4
 
@@ -203,6 +203,7 @@ public:
     U32 unmap(U32 address, U32 len);
     U32 utimes(const std::string& path, U32 times);
     U32 utimesat(FD dirfd, const std::string& path, U32 times, U32 flags);
+    U32 utimesat64(FD dirfd, const std::string& path, U32 times, U32 flags);
     U32 write(FD fildes, U32 bufferAddress, U32 bufferLen);
     U32 writev(FD handle, U32 iov, S32 iovcnt);
     U32 memfd_create(const std::string& name, U32 flags);

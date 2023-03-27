@@ -375,6 +375,10 @@ bool Memory::isPageAllocated(U32 page) {
     return this->getPage(page)->type!=Page::Type::Invalid_Page;
 }
 
+bool Memory::isPageMapped(U32 page) {
+    return (this->getPage(page)->flags & PAGE_MAPPED) != 0;
+}
+
 U8* getPhysicalReadAddress(U32 address, U32 len) {
     int index = address >> 12;
     if (len<=K_PAGE_SIZE-(address & K_PAGE_MASK)) {

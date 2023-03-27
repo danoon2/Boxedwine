@@ -811,6 +811,13 @@ static U32 syscall_clock_nanosleep(CPU* cpu, U32 eipCount) {
     return result;
 }
 
+static U32 syscall_clock_nanosleep_time64(CPU* cpu, U32 eipCount) {
+    SYS_LOG1(SYSCALL_THREAD, cpu, "clock_nanosleep_time64: clock=%d flags=%x req=%X(%d.%.09d sec) remaining=%X", ARG1, ARG2, ARG3, readd(ARG3), readd(ARG3 + 4), ARG4);
+    U32 result = cpu->thread->clockNanoSleep(ARG1, ARG2, ((U64)readq(ARG3)) * 1000000000l + readd(ARG3 + 8), ARG4);
+    SYS_LOG(SYSCALL_THREAD, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
+}
+
 static U32 syscall_nanosleep(CPU* cpu, U32 eipCount) {
     SYS_LOG1(SYSCALL_THREAD, cpu, "nanosleep: req=%X(%d.%.09d sec)", ARG1, readd(ARG1), readd(ARG1+4));
     U32 result = cpu->thread->nanoSleep(((U64)readd(ARG1))*1000000000l+readd(ARG1+4));
@@ -1114,6 +1121,22 @@ static U32 syscall_fsetxattr(CPU* cpu, U32 eipCount) {
     return result;
 }
 
+static U32 syscall_getxattr(CPU* cpu, U32 eipCount) {
+    char tmp[MAX_FILEPATH_LEN];
+    char tmp2[MAX_FILEPATH_LEN];
+    U32 result = -K_ENOTSUP;
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "getxattr: path=%s name=%s result = ENOTSUP IGNORED", getNativeString(ARG1, tmp, sizeof(tmp)), getNativeString(ARG2, tmp2, sizeof(tmp2)));
+    return result;
+}
+
+static U32 syscall_lgetxattr(CPU* cpu, U32 eipCount) {
+    char tmp[MAX_FILEPATH_LEN];
+    char tmp2[MAX_FILEPATH_LEN];
+    U32 result = -K_ENOTSUP;
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "lgetxattr: path=%s name=%s result = ENOTSUP IGNORED", getNativeString(ARG1, tmp, sizeof(tmp)), getNativeString(ARG2, tmp2, sizeof(tmp2)));
+    return result;
+}
+
 static U32 syscall_fgetxattr(CPU* cpu, U32 eipCount) {
     U32 result = -K_ENOTSUP;
     SYS_LOG1(SYSCALL_SYSTEM, cpu, "fgetxattr: result = ENOTSUP IGNORED");
@@ -1217,9 +1240,23 @@ static U32 syscall_clock_gettime(CPU* cpu, U32 eipCount) {
     return result;
 }
 
+static U32 syscall_clock_gettime64(CPU* cpu, U32 eipCount) {
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "clock_gettime64: clock_id=%d tp=%X", ARG1, ARG2);
+    U32 result = KSystem::clock_gettime64(ARG1, ARG2);
+    SYS_LOG(SYSCALL_SYSTEM, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
+}
+
 static U32 syscall_clock_getres(CPU* cpu, U32 eipCount) {
     SYS_LOG1(SYSCALL_SYSTEM, cpu, "clock_getres: clock_id=%d res=%X", ARG1, ARG2);
     U32 result = KSystem::clock_getres(ARG1, ARG2);
+    SYS_LOG(SYSCALL_SYSTEM, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
+}
+
+static U32 syscall_clock_getres_time64(CPU* cpu, U32 eipCount) {
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "clock_getres_time64: clock_id=%d res=%X", ARG1, ARG2);
+    U32 result = KSystem::clock_getres64(ARG1, ARG2);
     SYS_LOG(SYSCALL_SYSTEM, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }
@@ -1364,7 +1401,7 @@ static U32 syscall_faccessat(CPU* cpu, U32 eipCount) {
 
 static U32 syscall_set_robust_list(CPU* cpu, U32 eipCount) {    
 #ifdef _DEBUG
-        kwarn("syscall __NR_set_robust_list not implemented");
+        //kwarn("syscall __NR_set_robust_list not implemented");
 #endif
     U32 result = -K_ENOSYS;
     SYS_LOG1(SYSCALL_THREAD, cpu, "set_robust_list: result=%d(0x%X) IGNORED\n", result, result);
@@ -1385,6 +1422,13 @@ static U32 syscall_utimensat(CPU* cpu, U32 eipCount) {
     return result;
 }
 
+static U32 syscall_utimensat_time64(CPU* cpu, U32 eipCount) {
+    char tmp[MAX_FILEPATH_LEN];
+    SYS_LOG1(SYSCALL_FILE, cpu, "utimensat_time64 dirfd=%d path=%X(%s) times=%X flags=%X", ARG1, ARG2, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, ARG4);
+    U32 result = cpu->thread->process->utimesat(ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, ARG4);
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
+}
 
 static U32 syscall_signalfd4(CPU* cpu, U32 eipCount) {
     SYS_LOG1(SYSCALL_SIGNAL, cpu, "signalfd4 fd=%d mask=%X(0x%0.8X%0.8X) size=%d flags=%X", ARG1, ARG2, (ARG3>=8?readd(ARG2+4):0), readd(ARG2), ARG3, ARG4);
@@ -1792,8 +1836,8 @@ static const SyscallFunc syscallFunc[] = {
     0,                  // 226
     0,                  // 227
     syscall_fsetxattr,  // 228 __NR_fsetxattr
-    0,                  // 229
-    0,                  // 230
+    syscall_getxattr,   // 229
+    syscall_lgetxattr,  // 230
     syscall_fgetxattr,  // 231 __NR_fgetxattr
     0,                  // 232
     0,                  // 233
@@ -1865,7 +1909,7 @@ static const SyscallFunc syscallFunc[] = {
     0,                  // 299
     syscall_fstatat64,  // 300 __NR_fstatat64
     syscall_unlinkat,   // 301 __NR_unlinkat
-    0,                  // 302
+    syscall_renameat,   // 302
     0,                  // 303
     syscall_symlinkat,  // 304 __NR_symlinkat
     syscall_readlinkat, // 305 __NR_readlinkat
@@ -1936,7 +1980,46 @@ static const SyscallFunc syscallFunc[] = {
     syscall_sendmsg,    // 370 __NR_sendmsg
     syscall_recvfrom,   // 371 __NR_recvfrom
     syscall_recvmsg,    // 372 __NR_recvmsg
-    syscall_shutdown    // 373 __NR_shutdown
+    syscall_shutdown,   // 373 __NR_shutdown
+    0,                  // 374
+    0,                  // 375
+    0,                  // 376
+    0,                  // 377
+    0,                  // 378
+    0,                  // 379
+    0,                  // 380
+    0,                  // 381
+    0,                  // 382
+    0,                  // 383 statx
+    0,                  // 384
+    0,                  // 385
+    0,                  // 386
+    0,                  // 387
+    0,                  // 388
+    0,                  // 389
+    0,                  // 390
+    0,                  // 391
+    0,                  // 392
+    0,                  // 393
+    0,                  // 394
+    0,                  // 395
+    0,                  // 396
+    0,                  // 397
+    0,                  // 398
+    0,                  // 399
+    0,                  // 400
+    0,                  // 401
+    0,                  // 402
+    syscall_clock_gettime64,     // 403
+    0,                  // 404
+    0,                  // 405
+    syscall_clock_getres_time64,   // 406
+    syscall_clock_nanosleep_time64, // 407
+    0,                  // 408
+    0,                  // 409
+    0,                  // 410
+    0,                  // 411
+    syscall_utimensat_time64 // 412
 };
 
 #ifndef BOXEDWINE_MULTI_THREADED
@@ -1951,7 +2034,14 @@ void ksyscall(CPU* cpu, U32 eipCount) {
         terminateCurrentThread(cpu->thread); // there is a race condition, just signal it again
 		return;
     }
-    if (EAX>373) {
+    if (cpu->thread->pendingSignals) {
+        // I know this is a nested if statement, but it makes setting a break point easier
+        if (cpu->thread->runSignals()) {
+            cpu->nextBlock = NULL;
+            return;
+        }
+    }
+    if (EAX>412) {
         result = -K_ENOSYS;
         kdebug("no syscall for %d", EAX);
     } else if (!syscallFunc[EAX]) {

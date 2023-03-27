@@ -86,6 +86,8 @@ public:
     static bool showWindowImmediately;
     static U32 skipFrameFPS;
     static FILE* logFile;
+    static std::function<void(const std::string& line)> watchTTY;
+    static bool ttyPrepend;
     static std::string exePath;
     
     static void init();
@@ -108,7 +110,9 @@ public:
 
     // syscalls
     static U32 clock_getres(U32 clk_id, U32 timespecAddress);
+    static U32 clock_getres64(U32 clk_id, U32 timespecAddress);
     static U32 clock_gettime(U32 clock_id, U32 tp);
+    static U32 clock_gettime64(U32 clock_id, U32 tp);
     static U32 getpgid(U32 pid);
     static U32 gettimeofday(U32 tv, U32 tz);
     static U32 kill(S32 pid, U32 signal);
