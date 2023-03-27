@@ -93,7 +93,7 @@ U32 sdlCustomEvent;
 
 class KNativeWindowSdl : public KNativeWindow, public std::enable_shared_from_this<KNativeWindowSdl> {
 public:
-    KNativeWindowSdl() : scaleX(100), scaleXOffset(0), scaleY(100), scaleYOffset(0), sdlDesktopWidth(0), sdlDesktopHeight(0), fullScreen(FULLSCREEN_NOTSET), vsync(VSYNC_DEFAULT), window(NULL), renderer(NULL), shutdownWindow(NULL), shutdownRenderer(NULL), currentContext(NULL), contextCount(0), windowIsGL(false), glWindowVersionMajor(0), windowIsHidden(false), timeToHideUI(0), timeWindowWasCreated(0)
+    KNativeWindowSdl() : scaleX(100), scaleXOffset(0), scaleY(100), scaleYOffset(0), sdlDesktopWidth(0), sdlDesktopHeight(0), fullScreen(FULLSCREEN_NOTSET), vsync(VSYNC_DEFAULT), window(NULL), renderer(NULL), shutdownWindow(NULL), shutdownRenderer(NULL), currentContext(NULL), contextCount(0), windowIsGL(false), glWindowVersionMajor(0), windowIsHidden(false), timeToHideUI(0), timeWindowWasCreated(0), lastChildWndCreated(0)
 #ifdef BOXEDWINE_RECORDER
         , screenCopyTexture(NULL)
 #endif
@@ -134,6 +134,7 @@ public:
     bool windowIsHidden;
     U32 timeToHideUI;
     U32 timeWindowWasCreated;
+    U32 lastChildWndCreated;
     std::string delayedCreateWindowMsg; // the ui will watch for this message
     std::unordered_map<std::string, SDL_Cursor*> cursors;
     std::unordered_map<U32, std::shared_ptr<WndSdl>> hwndToWnd;
@@ -1058,7 +1059,7 @@ void KNativeWindowSdl::drawAllWindows(KThread* thread, U32 hWnd, int count) {
         lastUpdate = now;
     }
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(sdlMutex);
-    if (KSystem::videoEnabled && (!renderer || (contextCount && lastGlCallTime+1000> KSystem::getMilliesSinceStart()))) {
+    if (KSystem::videoEnabled && (lastChildWndCreated < lastGlCallTime) && (!renderer || (contextCount && lastGlCallTime+1000> KSystem::getMilliesSinceStart()))) {
         // don't let window drawing and opengl drawing fight and clobber each other, if OpenGL was active in the last second, then don't draw the window
         return;
     }
@@ -1171,6 +1172,7 @@ std::shared_ptr<Wnd> KNativeWindowSdl::createWnd(KThread* thread, U32 processId,
     wnd->processId = processId;
     wnd->hwnd = hwnd;
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(hwndToWndMutex);
+    lastChildWndCreated = KSystem::getMilliesSinceStart();
     hwndToWnd[hwnd] = wnd;
     return wnd;
 }
