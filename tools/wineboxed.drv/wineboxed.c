@@ -44,7 +44,7 @@ MAKE_DEP_UNIX
 #define wcsnicmp strncmpiW
 #undef wcstol
 #define wcstol strtolW
-#include BOXED_UNICODE
+#include INCLUDE_UNICODE
 #endif
 
 // needed for wine 3 build

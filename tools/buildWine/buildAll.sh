@@ -33,7 +33,7 @@ do_build()
     EXTRA+=" -DBOXED_NEED_WGLEXT"
     shift
   fi
-  if ((BVERSION <= 6220))
+  if ((BVERSION <= 7110))
   then
     EXTRA+=' -DINCLUDE_UNICODE=\"wine/unicode.h\"'
   fi
@@ -77,11 +77,14 @@ do_build()
     then
       cp dlls/winex11.drv/Makefile.7110.in dlls/winex11.drv/Makefile.in
     fi
-    if ((BVERSION > 7110))
+    elif ((BVERSION > 7110))
     then
       sed -i 's/MAKE_DEP_UNIX/#pragma makedep unix/g' dlls/winex11.drv/*.c
-      cp dlls/winex11.drv/Makefile.7220.in dlls/winex11.drv/Makefile.in
-      cp dlls/winex11.drv/winex11.drv.7220.spec dlls/winex11.drv/winex11.drv.spec
+      cp dlls/winex11.drv/Makefile.7120.in dlls/winex11.drv/Makefile.in
+      cp dlls/winex11.drv/winex11.drv.7120.spec dlls/winex11.drv/winex11.drv.spec
+    elif ((BVERSION >= 6117))
+    then
+      cp dlls/winex11.drv/Makefile.6117.in dlls/winex11.drv/Makefile.in
     fi
     rm -rf dlls/winealsa.drv/*
     cp -r ../../wineboxedaudio.drv/*.* dlls/winealsa.drv/
@@ -105,6 +108,10 @@ do_build()
     else
       echo "#include \"imm.h\"" > dlls/winex11.drv/boxed_imm.h
       echo "#include \"ddk/imm.h\"" >> dlls/winex11.drv/boxed_imm.h
+    fi
+    if ((BVERSION < 7000))
+    then
+      echo "" > dlls/winex11.drv/unixlib.h
     fi
     ./configure LDFLAGS="-s" CFLAGS="-O2 -msse2 -march=pentium4 -mfpmath=sse $EXTRA" --without-cups --without-pulse --without-dbus --without-sane --without-hal --prefix=/opt/wine --disable-tests $EXTRA_ARGS
     make -j4
