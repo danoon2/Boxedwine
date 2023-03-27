@@ -448,6 +448,21 @@ void boxeddrv_EnumDisplaySettingsEx(CPU* cpu) {
         
         KNativeSystem::getScreenDimensions(&desktopCx, &desktopCy);
         displayModes = new DisplayModes[18];
+        if (desktopCx > 1600) {
+            displayModes[displayModesCount].bpp = 32;
+            displayModes[displayModesCount].cx = desktopCx;
+            displayModes[displayModesCount++].cy = desktopCy;
+        }
+        if (desktopCx && desktopCx > 1600 && desktopCy > 1200) {
+            displayModes[displayModesCount].bpp = 32;
+            displayModes[displayModesCount].cx = 1600;
+            displayModes[displayModesCount++].cy = 1200;
+        }
+        if (desktopCx && desktopCx > 1280 && desktopCy > 1024) {
+            displayModes[displayModesCount].bpp = 32;
+            displayModes[displayModesCount].cx = 1280;
+            displayModes[displayModesCount++].cy = 1024;
+        }
         displayModes[displayModesCount].bpp = 32;
         displayModes[displayModesCount].cx = 1024;
         displayModes[displayModesCount++].cy = 768;
@@ -458,6 +473,21 @@ void boxeddrv_EnumDisplaySettingsEx(CPU* cpu) {
         displayModes[displayModesCount].cx = 640;
         displayModes[displayModesCount++].cy = 480;
 
+        if (desktopCx > 1600) {
+            displayModes[displayModesCount].bpp = 16;
+            displayModes[displayModesCount].cx = desktopCx;
+            displayModes[displayModesCount++].cy = desktopCy;
+        }
+        if (desktopCx && desktopCx > 1600 && desktopCy > 1200) {
+            displayModes[displayModesCount].bpp = 16;
+            displayModes[displayModesCount].cx = 1600;
+            displayModes[displayModesCount++].cy = 1200;
+        }
+        if (desktopCx && desktopCx > 1280 && desktopCy > 1024) {
+            displayModes[displayModesCount].bpp = 16;
+            displayModes[displayModesCount].cx = 1280;
+            displayModes[displayModesCount++].cy = 1024;
+        }
         displayModes[displayModesCount].bpp = 16;
         displayModes[displayModesCount].cx = 1024;
         displayModes[displayModesCount++].cy = 768;
@@ -468,6 +498,21 @@ void boxeddrv_EnumDisplaySettingsEx(CPU* cpu) {
         displayModes[displayModesCount].cx = 640;
         displayModes[displayModesCount++].cy = 480;
 
+        if (desktopCx > 1600) {
+            displayModes[displayModesCount].bpp = 8;
+            displayModes[displayModesCount].cx = desktopCx;
+            displayModes[displayModesCount++].cy = desktopCy;
+        }
+        if (desktopCx && desktopCx > 1600 && desktopCy > 1200) {
+            displayModes[displayModesCount].bpp = 8;
+            displayModes[displayModesCount].cx = 1600;
+            displayModes[displayModesCount++].cy = 1200;
+        }
+        if (desktopCx && desktopCx > 1280 && desktopCy > 1024) {
+            displayModes[displayModesCount].bpp = 8;
+            displayModes[displayModesCount].cx = 1280;
+            displayModes[displayModesCount++].cy = 1024;
+        }
         displayModes[displayModesCount].bpp = 8;
         displayModes[displayModesCount].cx = 1024;
         displayModes[displayModesCount++].cy = 768;
@@ -477,42 +522,6 @@ void boxeddrv_EnumDisplaySettingsEx(CPU* cpu) {
         displayModes[displayModesCount].bpp = 8;
         displayModes[displayModesCount].cx = 640;
         displayModes[displayModesCount++].cy = 480;
-
-        if (desktopCx && desktopCx>1280 && desktopCy>1024) {
-            displayModes[displayModesCount].bpp = 32;
-            displayModes[displayModesCount].cx = 1280;
-            displayModes[displayModesCount++].cy = 1024;
-            displayModes[displayModesCount].bpp = 16;
-            displayModes[displayModesCount].cx = 1280;
-            displayModes[displayModesCount++].cy = 1024;
-            displayModes[displayModesCount].bpp = 8;
-            displayModes[displayModesCount].cx = 1280;
-            displayModes[displayModesCount++].cy = 1024;
-        }
-
-        if (desktopCx && desktopCx>1600 && desktopCy>1200) {
-            displayModes[displayModesCount].bpp = 32;
-            displayModes[displayModesCount].cx = 1600;
-            displayModes[displayModesCount++].cy = 1200;
-            displayModes[displayModesCount].bpp = 16;
-            displayModes[displayModesCount].cx = 1600;
-            displayModes[displayModesCount++].cy = 1200;
-            displayModes[displayModesCount].bpp = 8;
-            displayModes[displayModesCount].cx = 1600;
-            displayModes[displayModesCount++].cy = 1200;
-        }
-
-        if (desktopCx) {
-            displayModes[displayModesCount].bpp = 32;
-            displayModes[displayModesCount].cx = desktopCx;
-            displayModes[displayModesCount++].cy = desktopCy;
-            displayModes[displayModesCount].bpp = 16;
-            displayModes[displayModesCount].cx = desktopCx;
-            displayModes[displayModesCount++].cy = desktopCy;
-            displayModes[displayModesCount].bpp = 8;
-            displayModes[displayModesCount].cx = desktopCx;
-            displayModes[displayModesCount++].cy = desktopCy;
-        }
     }
     zeroMemory(devmode, 188);
 

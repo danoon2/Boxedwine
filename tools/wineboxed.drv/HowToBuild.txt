@@ -13,3 +13,11 @@ Even if this builds there are 2 things that could prevent it from working
 1) WINE_GDI_DRIVER_VERSION was bumped, currently this supports 46 and 47 (I've tested Wine 1.6.2 and Wine 2.0).  I have not tried versions of Wine before 1.6.2 but Wine 1.4 would be the ealiest this driver could possibly work with because it uses the dib engine that was introduced in 1.4.
 
 2) The source version that was used to build winex11.drv replacement needs to closely match the version that it will run on.  This is because if there are any changes in the client/server protocol with wineserver then you will probably see "Can't store handle for event queue fd"
+
+Starting in wine 7.12 the build changed quite a bit
+
+MAKE_DEP_UNIX will be replaced by 
+
+#pragma makedep unix 
+
+in some of the c files, the Makefile also changed.  See tools/buildWine/buildAll.sh for exactly how it works.
