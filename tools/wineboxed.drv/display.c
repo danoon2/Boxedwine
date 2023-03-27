@@ -18,14 +18,18 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
+#if 0
+MAKE_DEP_UNIX
+#endif
+#if BOXED_WINE_VERSION <= 7110
+#define WINE_UNIX_LIB
+#endif
 // adapted and copies from dlls\winex11.drv\display.c in the Wine project
+//#if BOXED_WINE_VERSION >= 7110
+//#define WINE_UNIX_LIB
+//#endif
 #include "config.h"
-
-#include <stdarg.h>
-
-#include "windef.h"
-#include "winbase.h"
-#include "winuser.h"
+#include "wineboxed.h"
 
 #if WINE_GDI_DRIVER_VERSION < 71
 #include "rpc.h"
@@ -38,14 +42,21 @@
 #define WIN32_NO_STATUS
 #include "winternl.h"
 #include "wine/debug.h"
-#include "wine/unicode.h"
+#ifdef INCLUDE_UNICODE
+#include INCLUDE_UNICODE
+#endif
 
 #include "wingdi.h"
 #include "wine/gdi_driver.h"
+#include "driver.h"
 
 WINE_DEFAULT_DEBUG_CHANNEL(boxeddrv);
 
-#if WINE_GDI_DRIVER_VERSION >= 50
+#if BOXED_WINE_VERSION < 5000
+void BOXEDDRV_DisplayDevices_Init(BOOL force) {
+}
+#else
+#if WINE_GDI_DRIVER_VERSION >= 50 && WINE_GDI_DRIVER_VERSION <= 76
 #define WINE_CDECL CDECL
 #else
 #define WINE_CDECL
@@ -595,12 +606,18 @@ void boxedwine_displayChanged() {
 #else 
 static BOOL force_display_devices_refresh;
 
-void CDECL boxedwine_UpdateDisplayDevices(const struct gdi_device_manager* device_manager, BOOL force, void* param) {
+#if WINE_GDI_DRIVER_VERSION >= 81
+BOOL WINE_CDECL boxedwine_UpdateDisplayDevices(const struct gdi_device_manager* device_manager, BOOL force, void* param) {
+#elif WINE_GDI_DRIVER_VERSION >= 70
+void WINE_CDECL boxedwine_UpdateDisplayDevices(const struct gdi_device_manager* device_manager, BOOL force, void* param) {
+#endif
     DWORD len;
     INT width = boxeddrv_GetDeviceCaps(NULL, DESKTOPHORZRES);
     INT height = boxeddrv_GetDeviceCaps(NULL, DESKTOPVERTRES);
     const char* gpuName = "Boxedwine GPU";
+#if BOXED_WINE_VERSION < 8020
     const char* monitorName = "Boxedwine Monitor";
+#endif
     RECT r = { 0, 0, width, height };
     struct gdi_gpu gdi_gpu =
     {
@@ -624,18 +641,50 @@ void CDECL boxedwine_UpdateDisplayDevices(const struct gdi_device_manager* devic
 
     if (!force && !force_display_devices_refresh) {
         TRACE("Not forced\n");
+#if WINE_GDI_DRIVER_VERSION >= 81
+        return TRUE;
+#else
         return;
+#endif
     }
     TRACE("Forced\n");
     force_display_devices_refresh = FALSE;
         
+
     RtlUTF8ToUnicodeN(gdi_gpu.name, sizeof(gdi_gpu.name), &len, gpuName, strlen(gpuName));
     device_manager->add_gpu(&gdi_gpu, param);
-    
     device_manager->add_adapter(&gdi_adapter, param);    
-       
+
+#if BOXED_WINE_VERSION < 8020
     RtlUTF8ToUnicodeN(gdi_monitor.name, sizeof(gdi_monitor.name), &len, monitorName, strlen(monitorName));
+#endif
     device_manager->add_monitor(&gdi_monitor, param);
+
+#if WINE_GDI_DRIVER_VERSION >= 81 && BOXED_WINE_VERSION >= 7140
+    {
+        DEVMODEW devMode;
+        DWORD i = 0;
+        while (boxeddrv_EnumDisplaySettingsEx(0, i, &devMode, 0)) {
+            TRACE("mode: %dx%dx%dbpp @%d Hz, %sstretched %sinterlaced\n", (int)devMode.dmPelsWidth, (int)devMode.dmPelsHeight,
+                (int)devMode.dmBitsPerPel, (int)devMode.dmDisplayFrequency,
+                devMode.dmDisplayFixedOutput == DMDFO_STRETCH ? "" : "un",
+                devMode.dmDisplayFlags & DM_INTERLACED ? "" : "non-");
+            device_manager->add_mode(&devMode, param);
+            i++;
+        }        
+    }
+#endif
+#if WINE_GDI_DRIVER_VERSION >= 81
+    return TRUE;
+#endif
+}
+
+#if BOXED_WINE_VERSION >= 7210
+BOOL WINE_CDECL boxeddrv_GetCurrentDisplaySettings(LPCWSTR name, BOOL is_primary, LPDEVMODEW devmode) {
+#else
+BOOL WINE_CDECL boxeddrv_GetCurrentDisplaySettings(LPCWSTR name, LPDEVMODEW devmode) {
+#endif
+    return boxeddrv_EnumDisplaySettingsEx(name, ENUM_CURRENT_SETTINGS, devmode, 0);
 }
 
 void BOXEDDRV_DisplayDevices_Init(BOOL force) {
@@ -645,5 +694,46 @@ void BOXEDDRV_DisplayDevices_Init(BOOL force) {
     if (force) force_display_devices_refresh = TRUE;
     /* trigger refresh in win32u */
     NtUserGetDisplayConfigBufferSizes(QDC_ONLY_ACTIVE_PATHS, &num_path, &num_mode);
+}
+#endif
+#endif
+
+// removed in version 73
+#if BOXED_WINE_VERSION <= 7110
+BOOL WINE_CDECL boxeddrv_EnumDisplayMonitors(HDC hdc, LPRECT rect, MONITORENUMPROC proc, LPARAM lparam) {
+    RECT r;
+    r.left = 0;
+    r.right = internal_GetDeviceCaps(HORZRES);
+    r.top = 0;
+    r.bottom = internal_GetDeviceCaps(VERTRES);
+
+    TRACE("hdc=%p rect=%s proc=%p lparam=0x%08x\n", hdc, wine_dbgstr_rect(rect), proc, (int)lparam);
+    if (hdc) {
+        POINT origin;
+        RECT limit;
+        RECT monrect = r;
+
+        if (!GetDCOrgEx(hdc, &origin)) return FALSE;
+        if (GetClipBox(hdc, &limit) == ERROR) return FALSE;
+
+        if (rect && !IntersectRect(&limit, &limit, rect)) return TRUE;
+
+        if (IntersectRect(&monrect, &monrect, &limit)) {
+            if (!proc((HMONITOR)1, hdc, &monrect, lparam))
+                return FALSE;
+        }
+    }
+    else {
+        RECT monrect = r;
+        RECT unused;
+
+        if (!rect || IntersectRect(&unused, &monrect, rect)) {
+            TRACE("calling proc hdc=%p monrect=%s proc=%p lparam=0x%08x\n", hdc, wine_dbgstr_rect(&monrect), proc, (int)lparam);
+            if (!proc((HMONITOR)1, hdc, &monrect, lparam))
+                return FALSE;
+        }
+    }
+
+    return TRUE;
 }
 #endif

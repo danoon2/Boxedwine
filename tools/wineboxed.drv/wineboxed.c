@@ -19,189 +19,108 @@
  * Foundation, Inc.1 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 #pragma GCC diagnostic ignored "-Wreturn-type"
+
+#if 0
+MAKE_DEP_UNIX
+#endif
+#if BOXED_WINE_VERSION <= 7110
+#define WINE_UNIX_LIB
+#endif
+
 #include "config.h"
-
-#include <stdarg.h>
-
-#include "windef.h"
-#include "winbase.h"
-#include "wingdi.h"
-#include "wine/debug.h"
+#include "wineboxed.h"
 #include "wine/gdi_driver.h"
+#include "wine/debug.h"
 #include "winreg.h"
-
-#include "winuser.h"
 #include "winternl.h"
-#include "winnt.h"
+//#include "winnt.h"
 #include "shellapi.h"
-#include "imm.h"
-#include "ddk/imm.h"
-#if BOXED_WINE_VERSION < 5170
-#include "wine/library.h"
-#endif
-#include "wine/wgl.h"
-#include "wine/wgl_driver.h"
-#ifdef BOXED_NEED_WGLEXT
-#include "wine/wglext.h"
-#endif
-#include "wine/unicode.h"
 #include "wine/server.h"
+#include "unixlib.h"
 
-#include <dlfcn.h>
-#include <fcntl.h>
-#include <unistd.h>
+#if BOXED_WINE_VERSION <= 7110
+#define WINE_UNIX_LIB
+#undef wcsnicmp
+#define wcsnicmp strncmpiW
+#undef wcstol
+#define wcstol strtolW
+#include INCLUDE_UNICODE
+#endif
 
-#ifdef BOXEDWINE_VULKAN
-#include "wine/vulkan.h"
-#include "wine/vulkan_driver.h"
+// needed for wine 3 build
+#ifndef ARRAY_SIZE
+#define ARRAY_SIZE(array) (sizeof(array) / sizeof(*array))
+#endif
+
+#if BOXED_WINE_VERSION >= 7120
+
+static LRESULT send_message_timeout(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam,
+    UINT flags, UINT timeout, PDWORD_PTR res_ptr)
+{
+    struct send_message_timeout_params params = { .flags = flags, .timeout = timeout };
+    LRESULT res = NtUserMessageCall(hwnd, msg, wparam, lparam, &params,
+        NtUserSendMessageTimeout, FALSE);
+    if (res_ptr) *res_ptr = params.result;
+    return res;
+}
+
+static BOOL get_icon_info(HICON handle, ICONINFOEXW* ret)
+{
+    UNICODE_STRING module, res_name;
+    ICONINFO info;
+
+    module.Buffer = ret->szModName;
+    module.MaximumLength = sizeof(ret->szModName) - sizeof(WCHAR);
+    res_name.Buffer = ret->szResName;
+    res_name.MaximumLength = sizeof(ret->szResName) - sizeof(WCHAR);
+    if (!NtUserGetIconInfo(handle, &info, &module, &res_name, NULL, 0)) return FALSE;
+    ret->fIcon = info.fIcon;
+    ret->xHotspot = info.xHotspot;
+    ret->yHotspot = info.yHotspot;
+    ret->hbmColor = info.hbmColor;
+    ret->hbmMask = info.hbmMask;
+    ret->wResID = res_name.Length ? 0 : LOWORD(res_name.Buffer);
+    ret->szModName[module.Length] = 0;
+    ret->szResName[res_name.Length] = 0;
+    return TRUE;
+}
+
+static HWND get_focus(void)
+{
+    GUITHREADINFO info;
+    info.cbSize = sizeof(info);
+    return NtUserGetGUIThreadInfo(GetCurrentThreadId(), &info) ? info.hwndFocus : 0;
+}
+
+#define HeapAlloc(x, y, z) calloc(1, z)
+#define HeapFree(x, y, z) free(z)
+#define GetWindowLongW NtUserGetWindowLongW
+#define GetDesktopWindow NtUserGetDesktopWindow
+#define SetWindowPos NtUserSetWindowPos
+#define GetForegroundWindow NtUserGetForegroundWindow
+#if BOXED_WINE_VERSION >= 7180
+#define SendMessageW(hwnd, msg, wparam, lparam) NtUserMessageCall(hwnd, msg, wparam, lparam, NULL, NtUserSendDriverMessage, FALSE)
+#else
+#define SendMessageW(hwnd, msg, wparam, lparam) NtUserMessageCall(hwnd, msg, wparam, lparam, NULL, NtUserSendMessage, FALSE);
+#endif
+#define SendMessageTimeoutW send_message_timeout
+#define GetTopWindow(hwnd) NtUserGetWindowRelative(hwnd ? hwnd : NtUserGetDesktopWindow(), GW_CHILD)
+#define GetObjectW NtGdiExtGetObjectW
+#define GetIconInfoExW get_icon_info
+#define CreateCompatibleDC NtGdiCreateCompatibleDC
+#define GetDIBits(hdc, hbm, start, cLines, lpvBits, lpbmi, usage) NtGdiGetDIBitsInternal(hdc, hbm, start, cLines, lpvBits, lpbmi, usage, 0, 0)
+#define DeleteDC NtGdiDeleteObjectApp
+#define DeleteObject NtGdiDeleteObjectApp
+#define GetAncestor NtUserGetAncestor
+#define GetWindow NtUserGetWindowRelative
+#define SetForegroundWindow NtUserSetForegroundWindow
+#define GetFocus get_focus
+#define IsChild NtUserIsChild
+#define GetWindowThreadProcessId NtUserGetWindowThread
+#define RegCloseKey NtClose
 #endif
 
 WINE_DEFAULT_DEBUG_CHANNEL(boxeddrv);
-
-#if WINE_WGL_DRIVER_VERSION >= 21
-#define BGLAPI WINAPI
-#else
-#define BGLAPI
-#endif
-
-#if WINE_GDI_DRIVER_VERSION >= 50
-#define WINE_CDECL CDECL
-#else
-#define WINE_CDECL
-#endif
-
-#if WINE_GDI_DRIVER_VERSION >= 70
-void CDECL boxedwine_UpdateDisplayDevices(const struct gdi_device_manager* device_manager, BOOL force, void* param);
-#endif
-
-
-#define USE_GL_FUNC(name) #name,
-static const char *opengl_func_names[] = { ALL_WGL_FUNCS };
-#undef USE_GL_FUNC
-
-typedef struct
-{
-    struct gdi_physdev  dev;
-} BOXEDDRV_PDEVICE;
-
-#define BOXED_BASE 0
-
-#define BOXED_ACQUIRE_CLIPBOARD						(BOXED_BASE)
-#define BOXED_ACTIVATE_KEYBOARD_LAYOUT				(BOXED_BASE+1)
-#define BOXED_BEEP									(BOXED_BASE+2)
-#define BOXED_CHANGE_DISPLAY_SETTINGS_EX			(BOXED_BASE+3)
-#define BOXED_CLIP_CURSOR							(BOXED_BASE+4)
-#define BOXED_COUNT_CLIPBOARD_FORMATS				(BOXED_BASE+5)
-#define BOXED_CREATE_DESKTOP_WINDOW					(BOXED_BASE+6)
-#define BOXED_CREATE_WINDOW							(BOXED_BASE+7)
-#define BOXED_DESTROY_CURSOR_ICON					(BOXED_BASE+8)
-#define BOXED_DESTROY_WINDOW						(BOXED_BASE+9)
-#define BOXED_EMPTY_CLIPBOARD						(BOXED_BASE+10)
-#define BOXED_END_CLIPBOARD_UPDATE					(BOXED_BASE+11)
-#define BOXED_ENUM_CLIPBOARD_FORMATS				(BOXED_BASE+12)
-#define BOXED_ENUM_DISPLAY_MONITORS					(BOXED_BASE+13)
-#define BOXED_ENUM_DISPLAY_SETTINGS_EX				(BOXED_BASE+14)
-#define BOXED_GET_CLIPBOARD_DATA					(BOXED_BASE+15)
-#define BOXED_GET_CURSOR_POS						(BOXED_BASE+16)
-#define BOXED_GET_KEYBOARD_LAYOUT					(BOXED_BASE+17)
-#define BOXED_GET_KEYBOARD_LAYOUT_NAME				(BOXED_BASE+18)
-#define BOXED_GET_KEY_NAME							(BOXED_BASE+19)
-#define BOXED_GET_MONITOR_INFO						(BOXED_BASE+20)
-#define BOXED_IS_CLIPBOARD_FORMAT_AVAILABLE			(BOXED_BASE+21)
-#define BOXED_MAP_VIRTUAL_KEY_EX					(BOXED_BASE+22)
-#define BOXED_MSG_WAIT_FOR_MULTIPLE_OBJECTS_EX		(BOXED_BASE+23)
-#define BOXED_SET_CAPTURE							(BOXED_BASE+24)
-#define BOXED_SET_CLIPBOARD_DATA					(BOXED_BASE+25)
-#define BOXED_SET_CURSOR							(BOXED_BASE+26)
-#define BOXED_SET_CURSOR_POS						(BOXED_BASE+27)
-#define BOXED_SET_FOCUS								(BOXED_BASE+28)
-#define BOXED_SET_LAYERED_WINDOW_ATTRIBUTES			(BOXED_BASE+29)
-#define BOXED_SET_PARENT							(BOXED_BASE+30)
-#define BOXED_SET_WINDOW_RGN						(BOXED_BASE+31)
-#define BOXED_SET_WINDOW_STYLE						(BOXED_BASE+32)
-#define BOXED_SET_WINDOW_TEXT						(BOXED_BASE+33)
-#define BOXED_SHOW_WINDOW							(BOXED_BASE+34)
-#define BOXED_SYS_COMMAND							(BOXED_BASE+35)
-#define BOXED_SYSTEM_PARAMETERS_INFO				(BOXED_BASE+36)
-#define BOXED_TO_UNICODE_EX							(BOXED_BASE+37)
-#define BOXED_UPDATE_LAYERED_WINDOW					(BOXED_BASE+38)
-#define BOXED_VK_KEY_SCAN_EX						(BOXED_BASE+39)
-#define BOXED_WINDOW_MESSAGE						(BOXED_BASE+40)
-#define BOXED_WINDOW_POS_CHANGED					(BOXED_BASE+41)
-#define BOXED_WINDOW_POS_CHANGING					(BOXED_BASE+42)
-
-#define BOXED_GET_DEVICE_GAMMA_RAMP					(BOXED_BASE+43)
-#define BOXED_SET_DEVICE_GAMMA_RAMP					(BOXED_BASE+44)
-#define BOXED_GET_DEVICE_CAPS						(BOXED_BASE+45)
-
-#define BOXED_WINE_NOTIFY_ICON						(BOXED_BASE+46)
-
-#define BOXED_IME_CONFIGURE							(BOXED_BASE+47)
-#define BOXED_IME_CONVERSION_LIST					(BOXED_BASE+48)
-#define BOXED_IME_DESTROY							(BOXED_BASE+49)
-#define BOXED_IME_ENUM_REGISTER_WORD				(BOXED_BASE+50)
-#define BOXED_IME_ESCAPE							(BOXED_BASE+51)
-#define BOXED_IME_GET_IME_MENU_ITEMS				(BOXED_BASE+52)
-#define BOXED_IME_GET_REGISTER_WORD_STYLE			(BOXED_BASE+53)
-#define BOXED_IME_INQUIRE							(BOXED_BASE+54)
-#define BOXED_IME_PROCESS_KEY						(BOXED_BASE+55)
-#define BOXED_IME_REGISTER_WORD						(BOXED_BASE+56)
-#define BOXED_IME_SELECT							(BOXED_BASE+57)
-#define BOXED_IME_SET_ACTIVE_CONTEXT				(BOXED_BASE+58)
-#define BOXED_IME_SET_COMPOSITION_STRING			(BOXED_BASE+59)
-#define BOXED_IME_TO_ASCII_EX						(BOXED_BASE+60)
-#define BOXED_IME_UNREGISTER_WORD					(BOXED_BASE+61)
-#define BOXED_NOTIFY_IME							(BOXED_BASE+62)
-
-#define BOXED_GL_COPY_CONTEXT						(BOXED_BASE+63)
-#define BOXED_GL_CREATE_CONTEXT						(BOXED_BASE+64)
-#define BOXED_GL_DELETE_CONTEXT						(BOXED_BASE+65)
-#define BOXED_GL_DESCRIBE_PIXEL_FORMAT				(BOXED_BASE+66)
-#define BOXED_GL_GET_PIXEL_FORMAT					(BOXED_BASE+67)
-#define BOXED_GL_GET_PROC_ADDRESS					(BOXED_BASE+68)
-#define BOXED_GL_MAKE_CURRENT						(BOXED_BASE+69)
-#define BOXED_GL_SET_PIXEL_FORMAT					(BOXED_BASE+70)
-#define BOXED_GL_SHARE_LISTS						(BOXED_BASE+71)
-#define BOXED_GL_SWAP_BUFFERS						(BOXED_BASE+72)
-
-#define BOXED_GET_KEYBOARD_LAYOUT_LIST				(BOXED_BASE+73)
-#define BOXED_REGISTER_HOT_KEY						(BOXED_BASE+74)
-#define BOXED_UNREGISTER_HOT_KEY					(BOXED_BASE+75)
-#define BOXED_SET_SURFACE							(BOXED_BASE+76)
-#define BOXED_GET_SURFACE							(BOXED_BASE+77)
-#define BOXED_FLUSH_SURFACE							(BOXED_BASE+78)
-
-#define BOXED_CREATE_DC                             (BOXED_BASE+79)
-#define BOXED_GET_SYSTEM_PALETTE                    (BOXED_BASE+80)
-#define BOXED_GET_NEAREST_COLOR                     (BOXED_BASE+81)
-#define BOXED_REALIZE_PALETTE                       (BOXED_BASE+82)
-#define BOXED_REALIZE_DEFAULT_PALETTE               (BOXED_BASE+83)
-#define BOXED_SET_EVENT_FD                          (BOXED_BASE+84)
-#define BOXED_SET_CURSOR_BITS                       (BOXED_BASE+85)
-#define BOXED_CREATE_DESKTOP                        (BOXED_BASE+86)
-#define BOXED_HAS_WND                               (BOXED_BASE+87)
-#define BOXED_GET_VERSION                           (BOXED_BASE+88)
-
-#define CALL_0(index) __asm__("push %1\n\tint $0x98\n\taddl $4, %%esp": "=a" (result):"i"(index):); 
-#define CALL_1(index, arg1) __asm__("push %2\n\tpush %1\n\tint $0x98\n\taddl $8, %%esp": "=a" (result):"i"(index), "g"((DWORD)arg1):); 
-#define CALL_2(index, arg1,arg2) __asm__("push %3\n\tpush %2\n\tpush %1\n\tint $0x98\n\taddl $12, %%esp": "=a" (result):"i"(index), "g"((DWORD)arg1), "g"((DWORD)arg2):);
-#define CALL_3(index, arg1,arg2,arg3) __asm__("push %4\n\tpush %3\n\tpush %2\n\tpush %1\n\tint $0x98\n\taddl $16, %%esp": "=a" (result):"i"(index), "g"((DWORD)arg1), "g"((DWORD)arg2), "g"((DWORD)arg3):);
-#define CALL_4(index, arg1,arg2,arg3,arg4) __asm__("push %5\n\tpush %4\n\tpush %3\n\tpush %2\n\tpush %1\n\tint $0x98\n\taddl $20, %%esp": "=a" (result):"i"(index), "g"((DWORD)arg1), "g"((DWORD)arg2), "g"((DWORD)arg3), "g"((DWORD)arg4):);
-#define CALL_5(index, arg1,arg2,arg3,arg4,arg5) __asm__("push %6\n\tpush %5\n\tpush %4\n\tpush %3\n\tpush %2\n\tpush %1\n\tint $0x98\n\taddl $24, %%esp": "=a" (result):"i"(index), "g"((DWORD)arg1), "g"((DWORD)arg2), "g"((DWORD)arg3), "g"((DWORD)arg4), "g"((DWORD)arg5):);
-#define CALL_6(index, arg1,arg2,arg3,arg4,arg5,arg6) __asm__("push %7\n\tpush %6\n\tpush %5\n\tpush %4\n\tpush %3\n\tpush %2\n\tpush %1\n\tint $0x98\n\taddl $28, %%esp": "=a" (result):"i"(index), "g"((DWORD)arg1), "g"((DWORD)arg2), "g"((DWORD)arg3), "g"((DWORD)arg4), "g"((DWORD)arg5), "g"((DWORD)arg6):);
-#define CALL_7(index, arg1,arg2,arg3,arg4,arg5,arg6,arg7) __asm__("push %8\n\tpush %7\n\tpush %6\n\tpush %5\n\tpush %4\n\tpush %3\n\tpush %2\n\tpush %1\n\tint $0x98\n\taddl $32, %%esp": "=a" (result):"i"(index), "g"((DWORD)arg1), "g"((DWORD)arg2), "g"((DWORD)arg3), "g"((DWORD)arg4), "g"((DWORD)arg5), "g"((DWORD)arg6), "g"((DWORD)arg7):);
-
-#define CALL_NORETURN_0(index) __asm__("push %0\n\tint $0x98\n\taddl $4, %%esp"::"i"(index)); 
-#define CALL_NORETURN_1(index, arg1) __asm__("push %1\n\tpush %0\n\tint $0x98\n\taddl $8, %%esp"::"i"(index), "g"((DWORD)arg1)); 
-#define CALL_NORETURN_2(index, arg1, arg2) __asm__("push %2\n\tpush %1\n\tpush %0\n\tint $0x98\n\taddl $12, %%esp"::"i"(index), "g"((DWORD)arg1), "g"((DWORD)arg2)); 
-#define CALL_NORETURN_3(index, arg1, arg2, arg3) __asm__("push %3\n\rpush %2\n\tpush %1\n\tpush %0\n\tint $0x98\n\taddl $16, %%esp"::"i"(index), "g"((DWORD)arg1), "g"((DWORD)arg2), "g"((DWORD)arg3)); 
-#define CALL_NORETURN_4(index, arg1, arg2, arg3, arg4) __asm__("push %4\n\tpush %3\n\rpush %2\n\tpush %1\n\tpush %0\n\tint $0x98\n\taddl $20, %%esp"::"i"(index), "g"((DWORD)arg1), "g"((DWORD)arg2), "g"((DWORD)arg3), "g"((DWORD)arg4)); 
-#define CALL_NORETURN_5(index, arg1, arg2, arg3, arg4, arg5) __asm__("push %5\n\tpush %4\n\tpush %3\n\rpush %2\n\tpush %1\n\tpush %0\n\tint $0x98\n\taddl $24, %%esp"::"i"(index), "g"((DWORD)arg1), "g"((DWORD)arg2), "g"((DWORD)arg3), "g"((DWORD)arg4), "g"((DWORD)arg5)); 
-#define CALL_NORETURN_7(index, arg1,arg2,arg3,arg4,arg5,arg6,arg7) __asm__("push %7\n\tpush %6\n\tpush %5\n\tpush %4\n\tpush %3\n\tpush %2\n\tpush %1\n\tpush %0\n\tint $0x98\n\taddl $32, %%esp"::"i"(index), "g"((DWORD)arg1), "g"((DWORD)arg2), "g"((DWORD)arg3), "g"((DWORD)arg4), "g"((DWORD)arg5), "g"((DWORD)arg6), "g"((DWORD)arg7));
-#define CALL_NORETURN_8(index, arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8) __asm__("push %8\n\tpush %7\n\tpush %6\n\tpush %5\n\tpush %4\n\tpush %3\n\tpush %2\n\tpush %1\n\tpush %0\n\tint $0x98\n\taddl $36, %%esp"::"i"(index), "g"((DWORD)arg1), "g"((DWORD)arg2), "g"((DWORD)arg3), "g"((DWORD)arg4), "g"((DWORD)arg5), "g"((DWORD)arg6), "g"((DWORD)arg7), "g"((DWORD)arg8));
-#define CALL_NORETURN_9(index, arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9) __asm__("push %9\n\tpush %8\n\tpush %7\n\tpush %6\n\tpush %5\n\tpush %4\n\tpush %3\n\tpush %2\n\tpush %1\n\tpush %0\n\tint $0x98\n\taddl $40, %%esp"::"i"(index), "g"((DWORD)arg1), "g"((DWORD)arg2), "g"((DWORD)arg3), "g"((DWORD)arg4), "g"((DWORD)arg5), "g"((DWORD)arg6), "g"((DWORD)arg7), "g"((DWORD)arg8), "g"((DWORD)arg9));
-
-INT WINE_CDECL boxeddrv_GetDeviceCaps(PHYSDEV dev, INT cap);
 
 static inline BOOL can_activate_window(HWND hwnd)
 {
@@ -230,84 +149,162 @@ static inline BOOL can_activate_window(HWND hwnd)
     return TRUE;
 }
 
+struct winZOrder {
+    int count;
+    HWND windows[1024];
+};
 
-int CDECL boxeddrv_AcquireClipboard(HWND hwnd) {
-    int result;
-    CALL_1(BOXED_ACQUIRE_CLIPBOARD, hwnd);
-    TRACE("hwnd=%p result=%d\n", hwnd, result);
-    return result;
+BOOL getZOrderCallback(HWND hWnd, LPARAM lParam) {
+    struct winZOrder* zorder = (struct winZOrder*)lParam;
+    TRACE("hWnd=%p zorder->count=%d\n", hWnd, zorder->count);
+    if (zorder->count < 1024) {
+        zorder->windows[zorder->count++] = hWnd;
+}
+    return TRUE;
+}
+void boxeddrv_FlushSurface(HWND hwnd, void* bits, int xOrg, int yOrg, int width, int height, RECT* rects, int rectCount) {
+    struct winZOrder zorder;
+    HWND h = GetTopWindow(NULL);
+
+    zorder.count = 0;
+    while (h) {
+        zorder.windows[zorder.count++] = h;
+        h = GetWindow(h, GW_HWNDNEXT);
+    }
+
+    // EnumWindows((WNDENUMPROC)getZOrderCallback, (LPARAM)&zorder);
+    TRACE("hwnd=%p bits=%p width=%d height=%d rects=%p rectCount=%d hWndCount=%d\n", hwnd, bits, width, height, rects, rectCount, zorder.count);
+    CALL_NORETURN_9(BOXED_FLUSH_SURFACE, hwnd, bits, xOrg, yOrg, width, height, &zorder, rects, rectCount);
 }
 
 #if BOXED_WINE_VERSION >= 6080
-BOOL CDECL boxeddrv_ActivateKeyboardLayout(HKL hkl, UINT flags) {
+BOOL WINE_CDECL boxeddrv_ActivateKeyboardLayout(HKL hkl, UINT flags) {
     int result;
     CALL_2(BOXED_ACTIVATE_KEYBOARD_LAYOUT, hkl, flags);
     TRACE("hkl=%p flags=0x%08x result=%d\n", hkl, flags, result);
     return result!=0;
 }
 #else
-HKL CDECL boxeddrv_ActivateKeyboardLayout(HKL hkl, UINT flags) {
+HKL WINE_CDECL boxeddrv_ActivateKeyboardLayout(HKL hkl, UINT flags) {
     int result;
     CALL_2(BOXED_ACTIVATE_KEYBOARD_LAYOUT, hkl, flags);
     TRACE("hkl=%p flags=0x%08x result=%d\n", hkl, flags, result);
     return (HKL)result;
 }
 #endif
-void CDECL boxeddrv_Beep(void) {
+void WINE_CDECL boxeddrv_Beep(void) {
     TRACE("\n");
     CALL_NORETURN_0(BOXED_BEEP);
 }
 
-void BOXEDDRV_DisplayDevices_Init(BOOL force);
+#if BOXED_WINE_VERSION < 7130
+ULONG query_reg_value(HKEY hkey, const WCHAR* name, KEY_VALUE_PARTIAL_INFORMATION* info, ULONG size)
+{
+    unsigned int name_size = name ? lstrlenW(name) * sizeof(WCHAR) : 0;
+    UNICODE_STRING nameW = { name_size, name_size, (WCHAR*)name };
 
-static BOOL get_display_device_reg_key(const WCHAR* device_name, WCHAR* key, unsigned len)
+    if (NtQueryValueKey(hkey, &nameW, KeyValuePartialInformation,
+        info, size, &size))
+        return 0;
+
+    return size - FIELD_OFFSET(KEY_VALUE_PARTIAL_INFORMATION, Data);
+}
+
+HKEY reg_open_key(HKEY root, const WCHAR* name, ULONG name_len)
+{
+    UNICODE_STRING nameW = { name_len, name_len, (WCHAR*)name };
+    OBJECT_ATTRIBUTES attr;
+    HANDLE ret;
+
+    attr.Length = sizeof(attr);
+    attr.RootDirectory = root;
+    attr.ObjectName = &nameW;
+    attr.Attributes = 0;
+    attr.SecurityDescriptor = NULL;
+    attr.SecurityQualityOfService = NULL;
+
+    return NtOpenKeyEx(&ret, MAXIMUM_ALLOWED, &attr, 0) ? 0 : ret;
+}
+
+static inline UINT asciiz_to_unicode(WCHAR* dst, const char* src)
+{
+    WCHAR* p = dst;
+    while ((*p++ = *src++));
+    return (p - dst) * sizeof(WCHAR);
+}
+
+static HKEY get_display_device_reg_key(const WCHAR* device_name)
 {
     static const WCHAR display[] = { '\\','\\','.','\\','D','I','S','P','L','A','Y' };
-    static const WCHAR video_value_fmt[] = { '\\','D','e','v','i','c','e','\\',
-                                            'V','i','d','e','o','%','d',0 };
-    static const WCHAR video_key[] = { 'H','A','R','D','W','A','R','E','\\',
-                                      'D','E','V','I','C','E','M','A','P','\\',
-                                      'V','I','D','E','O','\\',0 };
-    WCHAR value_name[MAX_PATH], buffer[MAX_PATH], * end_ptr;
+    static const WCHAR video_key[] = {
+        '\\','R','e','g','i','s','t','r','y',
+        '\\','M','a','c','h','i','n','e',
+        '\\','H','A','R','D','W','A','R','E',
+        '\\','D','E','V','I','C','E','M','A','P',
+        '\\','V','I','D','E','O' };
+    static const WCHAR current_config_key[] = {
+        '\\','R','e','g','i','s','t','r','y',
+        '\\','M','a','c','h','i','n','e',
+        '\\','S','y','s','t','e','m',
+        '\\','C','u','r','r','e','n','t','C','o','n','t','r','o','l','S','e','t',
+        '\\','H','a','r','d','w','a','r','e',' ','P','r','o','f','i','l','e','s',
+        '\\','C','u','r','r','e','n','t' };
+    WCHAR value_name[MAX_PATH], buffer[4096], * end_ptr;
+    KEY_VALUE_PARTIAL_INFORMATION* value = (void*)buffer;
     DWORD adapter_index, size;
+    char adapter_name[100];
+    HKEY hkey;
 
     /* Device name has to be \\.\DISPLAY%d */
-    if (strncmpiW(device_name, display, ARRAY_SIZE(display)))
+    if (wcsnicmp(device_name, display, ARRAY_SIZE(display)))
         return FALSE;
 
     /* Parse \\.\DISPLAY* */
-    adapter_index = strtolW(device_name + ARRAY_SIZE(display), &end_ptr, 10) - 1;
+    adapter_index = wcstol(device_name + ARRAY_SIZE(display), &end_ptr, 10) - 1;
     if (*end_ptr)
         return FALSE;
 
     /* Open \Device\Video* in HKLM\HARDWARE\DEVICEMAP\VIDEO\ */
-    sprintfW(value_name, video_value_fmt, adapter_index);
-    size = sizeof(buffer);
-    if (RegGetValueW(HKEY_LOCAL_MACHINE, video_key, value_name, RRF_RT_REG_SZ, NULL, buffer, &size))
-        return FALSE;
+    if (!(hkey = reg_open_key(NULL, video_key, sizeof(video_key)))) return FALSE;
+    sprintf(adapter_name, "\\Device\\Video%d", (int)adapter_index);
+    asciiz_to_unicode(value_name, adapter_name);
+    size = query_reg_value(hkey, value_name, value, sizeof(buffer));
+    NtClose(hkey);
+    if (!size || value->Type != REG_SZ) return FALSE;
 
-    if (len < lstrlenW(buffer + 18) + 1)
-        return FALSE;
-
-    /* Skip \Registry\Machine\ prefix */
-    lstrcpyW(key, buffer + 18);
-    TRACE("display device %s registry settings key %s.\n", wine_dbgstr_w(device_name), wine_dbgstr_w(key));
-    return TRUE;
+    /* Replace \Registry\Machine\ prefix with HKEY_CURRENT_CONFIG */
+    memmove(buffer + ARRAY_SIZE(current_config_key), (const WCHAR*)value->Data + 17,
+        size - 17 * sizeof(WCHAR));
+    memcpy(buffer, current_config_key, sizeof(current_config_key));
+    TRACE("display device %s registry settings key %s.\n", wine_dbgstr_w(device_name),
+        wine_dbgstr_w(buffer));
+    return reg_open_key(NULL, buffer, lstrlenW(buffer) * sizeof(WCHAR));
 }
 
 static HANDLE get_display_device_init_mutex(void)
 {
-    static const WCHAR init_mutexW[] = { 'd','i','s','p','l','a','y','_','d','e','v','i','c','e','_','i','n','i','t',0 };
-    HANDLE mutex = CreateMutexW(NULL, FALSE, init_mutexW);
+    static const WCHAR init_mutexW[] = { 'd','i','s','p','l','a','y','_','d','e','v','i','c','e','_','i','n','i','t' };
+    UNICODE_STRING name = { sizeof(init_mutexW), sizeof(init_mutexW), (WCHAR*)init_mutexW };
+    OBJECT_ATTRIBUTES attr;
+    HANDLE mutex = 0;
 
-    WaitForSingleObject(mutex, INFINITE);
+    InitializeObjectAttributes(&attr, &name, OBJ_OPENIF, NULL, NULL);
+    NtCreateMutant(&mutex, MUTEX_ALL_ACCESS, &attr, FALSE);
+    if (mutex) NtWaitForSingleObject(mutex, FALSE, NULL);
     return mutex;
 }
 
 static void release_display_device_init_mutex(HANDLE mutex)
 {
-    ReleaseMutex(mutex);
-    CloseHandle(mutex);
+    NtReleaseMutant(mutex, NULL);
+    NtClose(mutex);
+}
+
+static BOOL set_setting_value(HKEY hkey, const char* name, DWORD val)
+{
+    WCHAR nameW[128];
+    UNICODE_STRING str = { asciiz_to_unicode(nameW, name) - sizeof(WCHAR), sizeof(nameW), nameW };
+    return !NtSetValueKey(hkey, &str, 0, REG_DWORD, &val, sizeof(val));
 }
 
 static BOOL write_registry_settings(const WCHAR* device_name, const DEVMODEW* dm)
@@ -318,31 +315,21 @@ static BOOL write_registry_settings(const WCHAR* device_name, const DEVMODEW* dm
     BOOL ret = TRUE;
 
     mutex = get_display_device_init_mutex();
-    if (!get_display_device_reg_key(device_name, wine_x11_reg_key, ARRAY_SIZE(wine_x11_reg_key)))
+    if (!(hkey = get_display_device_reg_key(device_name)))
     {
         release_display_device_init_mutex(mutex);
         return FALSE;
     }
 
-    if (RegCreateKeyExW(HKEY_CURRENT_CONFIG, wine_x11_reg_key, 0, NULL, REG_OPTION_VOLATILE, KEY_WRITE, NULL, &hkey, NULL))
-    {
-        release_display_device_init_mutex(mutex);
-        return FALSE;
-    }
-
-#define set_value(name, data) \
-    if (RegSetValueExA(hkey, name, 0, REG_DWORD, (const BYTE*)(data), sizeof(DWORD))) \
-        ret = FALSE
-
-    set_value("DefaultSettings.BitsPerPel", &dm->dmBitsPerPel);
-    set_value("DefaultSettings.XResolution", &dm->dmPelsWidth);
-    set_value("DefaultSettings.YResolution", &dm->dmPelsHeight);
-    set_value("DefaultSettings.VRefresh", &dm->dmDisplayFrequency);
-    set_value("DefaultSettings.Flags", &dm->dmDisplayFlags);
-    set_value("DefaultSettings.XPanning", &dm->dmPosition.x);
-    set_value("DefaultSettings.YPanning", &dm->dmPosition.y);
-    set_value("DefaultSettings.Orientation", &dm->dmDisplayOrientation);
-    set_value("DefaultSettings.FixedOutput", &dm->dmDisplayFixedOutput);
+    ret &= set_setting_value(hkey, "DefaultSettings.BitsPerPel", dm->dmBitsPerPel);
+    ret &= set_setting_value(hkey, "DefaultSettings.XResolution", dm->dmPelsWidth);
+    ret &= set_setting_value(hkey, "DefaultSettings.YResolution", dm->dmPelsHeight);
+    ret &= set_setting_value(hkey, "DefaultSettings.VRefresh", dm->dmDisplayFrequency);
+    ret &= set_setting_value(hkey, "DefaultSettings.Flags", dm->dmDisplayFlags);
+    ret &= set_setting_value(hkey, "DefaultSettings.XPanning", dm->dmPosition.x);
+    ret &= set_setting_value(hkey, "DefaultSettings.YPanning", dm->dmPosition.y);
+    ret &= set_setting_value(hkey, "DefaultSettings.Orientation", dm->dmDisplayOrientation);
+    ret &= set_setting_value(hkey, "DefaultSettings.FixedOutput", dm->dmDisplayFixedOutput);
 
 #undef set_value
 
@@ -350,15 +337,24 @@ static BOOL write_registry_settings(const WCHAR* device_name, const DEVMODEW* dm
     release_display_device_init_mutex(mutex);
     return ret;
 }
+#endif
 
-LONG CDECL boxeddrv_ChangeDisplaySettingsEx(LPCWSTR devname, LPDEVMODEW devmode, HWND hwnd, DWORD flags, LPVOID lpvoid) {
+BOOL WINE_CDECL boxeddrv_EnumDisplaySettingsEx(LPCWSTR devname, DWORD mode, LPDEVMODEW devmode, DWORD flags) {
+    int result;
+    CALL_4(BOXED_ENUM_DISPLAY_SETTINGS_EX, devname, mode, devmode, flags);
+    TRACE("devname=%s mode=%d devmode=%p flags=0x%08x result=%d\n", debugstr_w(devname), (int)mode, devmode, (int)flags, result);
+    return (BOOL)result;
+}
+
+LONG WINE_CDECL boxeddrv_ChangeDisplaySettingsEx(LPCWSTR devname, LPDEVMODEW devmode, HWND hwnd, DWORD flags, LPVOID lpvoid) {
     LONG result;
     LONG cx, cy, bpp;
 
-    TRACE("devname=%s devmode=%p hwnd=%p flags=0x%08x %p &result=%p &cx=%p &cy=%p\n", debugstr_w(devname), devmode, hwnd, flags, lpvoid, &result, &cx, &cy);
+    TRACE("devname=%s devmode=%p hwnd=%p flags=0x%08x %p &result=%p &cx=%p &cy=%p\n", debugstr_w(devname), devmode, hwnd, (int)flags, lpvoid, &result, &cx, &cy);
     CALL_NORETURN_9(BOXED_CHANGE_DISPLAY_SETTINGS_EX, devname, devmode, hwnd, flags, lpvoid, &result, &cx, &cy, &bpp);
-    TRACE("result=%d width=%d height=%d bpp=%d\n", result, cx, cy, bpp);
+    TRACE("result=%d width=%d height=%d bpp=%d\n", (int)result, (int)cx, (int)cy, (int)bpp);
     if (result==DISP_CHANGE_SUCCESSFUL) {
+#if BOXED_WINE_VERSION < 7130
         if (flags & CDS_UPDATEREGISTRY && devname && devmode) {
             if (!write_registry_settings(devname, devmode))
             {
@@ -366,6 +362,7 @@ LONG CDECL boxeddrv_ChangeDisplaySettingsEx(LPCWSTR devname, LPDEVMODEW devmode,
                 return DISP_CHANGE_NOTUPDATED;
             }
         }
+#endif
         if (flags & (CDS_TEST | CDS_NORESET)) {
             return result;
         }
@@ -379,18 +376,19 @@ LONG CDECL boxeddrv_ChangeDisplaySettingsEx(LPCWSTR devname, LPDEVMODEW devmode,
     return result;
 }
 
-BOOL CDECL boxeddrv_ClipCursor(LPCRECT clip) {
+#if BOXED_WINE_VERSION >= 7210
+LONG WINE_CDECL boxeddrv_ChangeDisplaySettings(LPDEVMODEW devmode, LPCWSTR primary_name, HWND hwnd, DWORD flags, LPVOID lpvoid) {
+#else
+LONG WINE_CDECL boxeddrv_ChangeDisplaySettings(LPDEVMODEW devmode, HWND hwnd, DWORD flags, LPVOID lpvoid) {
+#endif
+    return boxeddrv_ChangeDisplaySettingsEx(NULL, devmode, hwnd, flags, lpvoid);
+}
+
+BOOL WINE_CDECL boxeddrv_ClipCursor(LPCRECT clip) {
     int result;
     CALL_1(BOXED_CLIP_CURSOR, clip);
     TRACE("clip=%s result=%d\n", wine_dbgstr_rect(clip), result);
     return (BOOL)result;
-}
-
-INT CDECL boxeddrv_CountClipboardFormats(void) {
-    INT result;
-    CALL_0(BOXED_COUNT_CLIPBOARD_FORMATS);
-    TRACE("result=%d\n", result);
-    return result;
 }
 
 void initDesktop(HWND hwnd) {
@@ -411,8 +409,8 @@ void initDesktop(HWND hwnd) {
 
     if (!width && !height)  /* not initialized yet */
     {
-        width = boxeddrv_GetDeviceCaps(NULL, DESKTOPHORZRES); 
-        height = boxeddrv_GetDeviceCaps(NULL, DESKTOPVERTRES);
+        width = internal_GetDeviceCaps(DESKTOPHORZRES);
+        height = internal_GetDeviceCaps(DESKTOPVERTRES);
 
         SERVER_START_REQ(set_window_pos)
         {
@@ -429,26 +427,26 @@ void initDesktop(HWND hwnd) {
         SERVER_END_REQ;
     }
 }
-BOOL CDECL boxeddrv_CreateDesktopWindow(HWND hwnd) {
+BOOL WINE_CDECL boxeddrv_CreateDesktopWindow(HWND hwnd) {
     int result;
     CALL_1(BOXED_CREATE_DESKTOP_WINDOW, hwnd);
     initDesktop(hwnd);
     return (BOOL)result;
 }
 
-BOOL CDECL boxeddrv_CreateWindow(HWND hwnd) {
+BOOL WINE_CDECL boxeddrv_CreateWindow(HWND hwnd) {
     int result;
     CALL_1(BOXED_CREATE_WINDOW, hwnd);
     TRACE("hwnd=%p result=%d\n", hwnd, result);
     return (BOOL)result;
 }
 
-void CDECL boxeddrv_DestroyCursorIcon(HCURSOR cursor) {
+void WINE_CDECL boxeddrv_DestroyCursorIcon(HCURSOR cursor) {
     TRACE("cursor=%p\n", cursor);
     CALL_NORETURN_1(BOXED_DESTROY_CURSOR_ICON, cursor);
 }
 
-void CDECL boxeddrv_DestroyWindow(HWND hwnd) {
+void WINE_CDECL boxeddrv_DestroyWindow(HWND hwnd) {
     TRACE("hwnd=%p\n", hwnd);
     CALL_NORETURN_1(BOXED_DESTROY_WINDOW, hwnd);
 
@@ -460,164 +458,27 @@ void CDECL boxeddrv_DestroyWindow(HWND hwnd) {
     }
 }
 
-void CDECL boxeddrv_EmptyClipboard(BOOL keepunowned) {
-    TRACE("keepunowned=%d\n", keepunowned);
-    CALL_NORETURN_1(BOXED_EMPTY_CLIPBOARD, keepunowned);
-}
-
-void CDECL boxeddrv_EndClipboardUpdate(void) {
-    TRACE("\n");
-    CALL_NORETURN_0(BOXED_END_CLIPBOARD_UPDATE);
-}
-
-UINT CDECL boxeddrv_EnumClipboardFormats(UINT prev_format) {
-    UINT result;
-    CALL_1(BOXED_ENUM_CLIPBOARD_FORMATS, prev_format);
-    TRACE("prev_format=%d result=%d\n", prev_format, result);
-    return result;
-}
-
-// removed in version 73
-INT WINE_CDECL boxeddrv_GetDeviceCaps(PHYSDEV dev, INT cap);
-BOOL CDECL boxeddrv_EnumDisplayMonitors(HDC hdc, LPRECT rect, MONITORENUMPROC proc, LPARAM lparam) {
-    RECT r;
-    r.left = 0;
-    r.right = boxeddrv_GetDeviceCaps(0, HORZRES);
-    r.top = 0;
-    r.bottom = boxeddrv_GetDeviceCaps(0, VERTRES);
-
-    TRACE("hdc=%p rect=%s proc=%p lparam=0x%08x\n", hdc, wine_dbgstr_rect(rect), proc, (int)lparam);
-    if (hdc) {
-        POINT origin;
-        RECT limit;
-        RECT monrect = r;
-
-        if (!GetDCOrgEx(hdc, &origin)) return FALSE;
-        if (GetClipBox(hdc, &limit) == ERROR) return FALSE;
-
-        if (rect && !IntersectRect(&limit, &limit, rect)) return TRUE;
-
-        if (IntersectRect(&monrect, &monrect, &limit)) {
-            if (!proc((HMONITOR)1, hdc, &monrect, lparam))
-                return FALSE;
-        }
-    }
-    else {
-        RECT monrect = r;
-        RECT unused;
-
-        if (!rect || IntersectRect(&unused, &monrect, rect)) {
-            TRACE("calling proc hdc=%p monrect=%s proc=%p lparam=0x%08x\n", hdc, wine_dbgstr_rect(&monrect), proc, (int)lparam);
-            if (!proc((HMONITOR)1, hdc, &monrect, lparam))
-                return FALSE;
-        }
-    }
-    
-    return TRUE;
-}
-
-BOOL CDECL boxeddrv_EnumDisplaySettingsEx(LPCWSTR devname, DWORD mode, LPDEVMODEW devmode, DWORD flags) {
-    int result;
-    CALL_4(BOXED_ENUM_DISPLAY_SETTINGS_EX, devname, mode, devmode, flags);
-    TRACE("devname=%s mode=%d devmode=%p flags=0x%08x result=%d\n", debugstr_w(devname), mode, devmode, flags, result);
-    return (BOOL)result;
-}
-
-char tmp64k[64*1024];
-
-HANDLE CDECL boxeddrv_GetClipboardData(UINT desired_format) {
-    int result;
-    HANDLE h = 0;
-
-    CALL_3(BOXED_GET_CLIPBOARD_DATA, desired_format, tmp64k, sizeof(tmp64k));
-    TRACE("desired_format=%d result=%d %s\n", desired_format, result, result>0?tmp64k:"");
-    if (result) {
-        LPVOID p;
-
-        h = GlobalAlloc(GMEM_MOVEABLE | GMEM_DDESHARE, result);
-        if (!h)
-            return NULL;
-        p = GlobalLock(h);
-        if (!p) {
-            GlobalFree(h);
-            return NULL;
-        }
-        memcpy(p, tmp64k, result);
-        GlobalUnlock(h);
-    }
-    return h;
-}
-
-BOOL CDECL boxeddrv_GetCursorPos(LPPOINT pos) {
+BOOL WINE_CDECL boxeddrv_GetCursorPos(LPPOINT pos) {
     int result;
     CALL_1(BOXED_GET_CURSOR_POS, pos);
-    TRACE("pos=%p(%d,%d) result=%d\n", pos, pos->x, pos->y, result);
+    TRACE("pos=%p(%d,%d) result=%d\n", pos, (int)pos->x, (int)pos->y, result);
     return result;
 }
 
-static HKL get_locale_kbd_layout(void)
-{
-    ULONG_PTR layout;
-    LANGID langid;
-
-    /* FIXME:
-     *
-     * layout = main_key_tab[kbd_layout].lcid;
-     *
-     * Winword uses return value of GetKeyboardLayout as a codepage
-     * to translate ANSI keyboard messages to unicode. But we have
-     * a problem with it: for instance Polish keyboard layout is
-     * identical to the US one, and therefore instead of the Polish
-     * locale id we return the US one.
-     */
-
-    layout = GetUserDefaultLCID();
-
-    /*
-     * Microsoft Office expects this value to be something specific
-     * for Japanese and Korean Windows with an IME the value is 0xe001
-     * We should probably check to see if an IME exists and if so then
-     * set this word properly.
-     */
-    langid = PRIMARYLANGID(LANGIDFROMLCID(layout));
-    if (langid == LANG_CHINESE || langid == LANG_JAPANESE || langid == LANG_KOREAN)
-        layout |= 0xe0010000; /* IME */
-    else
-        layout |= layout << 16;
-
-    return (HKL)layout;
-}
-
-HKL CDECL boxeddrv_GetKeyboardLayout(DWORD thread_id) {
-     return get_locale_kbd_layout();
-}
-
-// removed in version 70?
-BOOL CDECL boxeddrv_GetKeyboardLayoutName(LPWSTR name) {
-    static const WCHAR formatW[] = {'%','0','8','x',0};
-    DWORD layout;
-
-    layout = HandleToUlong( get_locale_kbd_layout() );
-    if (HIWORD(layout) == LOWORD(layout)) layout = LOWORD(layout);
-    sprintfW(name, formatW, layout);
-    TRACE("returning %s\n", debugstr_w(name));
-    return TRUE;
-}
-
-INT CDECL boxeddrv_GetKeyNameText(LONG lparam, LPWSTR buffer, INT size) {
+INT WINE_CDECL boxeddrv_GetKeyNameText(LONG lparam, LPWSTR buffer, INT size) {
     INT result;
     CALL_3(BOXED_GET_KEY_NAME, lparam, buffer, size);
-    TRACE("lparam=0x%08x buffer=%p size=%d result=%d\n", lparam, buffer, size, result);
+    TRACE("lparam=0x%08x buffer=%p size=%d result=%d\n", (int)lparam, buffer, size, result);
     return result;
 }
 
 // removed in version 70?
-BOOL CDECL boxeddrv_GetMonitorInfo(HMONITOR monitor, LPMONITORINFO info) {
+BOOL WINE_CDECL boxeddrv_GetMonitorInfo(HMONITOR monitor, LPMONITORINFO info) {
     static const WCHAR adapter_name[] = { '\\','\\','.','\\','D','I','S','P','L','A','Y','1',0 };
 
     TRACE("monitor=%p info=%p\n", monitor, info);
-    SetRect(&info->rcMonitor, 0, 0, boxeddrv_GetDeviceCaps(NULL, DESKTOPHORZRES), boxeddrv_GetDeviceCaps(NULL, DESKTOPVERTRES));
-    SetRect(&info->rcWork, 0, 0, boxeddrv_GetDeviceCaps(NULL, DESKTOPHORZRES), boxeddrv_GetDeviceCaps(NULL, DESKTOPVERTRES));
+    SetRect(&info->rcMonitor, 0, 0, internal_GetDeviceCaps(DESKTOPHORZRES), internal_GetDeviceCaps(DESKTOPVERTRES));
+    SetRect(&info->rcWork, 0, 0, internal_GetDeviceCaps(DESKTOPHORZRES), internal_GetDeviceCaps(DESKTOPVERTRES));
     info->dwFlags = MONITORINFOF_PRIMARY;
 
     if (info->cbSize >= sizeof(MONITORINFOEXW))
@@ -626,147 +487,41 @@ BOOL CDECL boxeddrv_GetMonitorInfo(HMONITOR monitor, LPMONITORINFO info) {
     //CALL_2(BOXED_GET_MONITOR_INFO, monitor, info);
 }
 
-BOOL CDECL boxeddrv_IsClipboardFormatAvailable(UINT desired_format) {
-    int result;
-    CALL_1(BOXED_IS_CLIPBOARD_FORMAT_AVAILABLE, desired_format);
-    TRACE("desired_format=%d result=%d\n", desired_format, result);
-    return (BOOL)result;
-}
-
-UINT CDECL boxeddrv_MapVirtualKeyEx(UINT wCode, UINT wMapType, HKL hkl) {
+UINT WINE_CDECL boxeddrv_MapVirtualKeyEx(UINT wCode, UINT wMapType, HKL hkl) {
     UINT result;
     CALL_3(BOXED_MAP_VIRTUAL_KEY_EX, wCode, wMapType, hkl);
     TRACE("wCode=%d wMapType=%d hkl=%p result=%d\n", wCode, wMapType, hkl, result);
     return result;
 }
 
-int eventsInitialized = 0;
-int eventQueueFD;
-
-void initEvents(void) 
-{
-    HANDLE handle;
-    int ret;
-    int fds[2];
-
-    if (eventsInitialized)
-        return;
-    eventsInitialized = 1;
-    pipe(fds);
-    fcntl(fds[0], F_SETFD, 1);
-    fcntl(fds[0], F_SETFL, O_NONBLOCK);
-    fcntl(fds[1], F_SETFD, 1);
-    fcntl(fds[1], F_SETFL, O_NONBLOCK);
-
-    eventQueueFD = fds[0];
-    CALL_NORETURN_1(BOXED_SET_EVENT_FD, fds[1]);
-
-    if (wine_server_fd_to_handle(fds[0], GENERIC_READ | SYNCHRONIZE, 0, &handle))
-    {
-        MESSAGE("wineboxed.drv: Can't allocate handle for event queue fd\n");
-        ExitProcess(1);
-    }
-    SERVER_START_REQ(set_queue_fd)
-    {
-        req->handle = wine_server_obj_handle(handle);
-        ret = wine_server_call(req);
-    }
-    SERVER_END_REQ;
-    if (ret)
-    {
-        MESSAGE("wineboxed.drv: Can't store handle for event queue fd\n");
-        ExitProcess(1);
-    } else {
-        TRACE("event queue read fd=%d\n", eventQueueFD);
-    }
-    CloseHandle(handle);
-}
-
-BOOL processEvents(void) {
-    HWND hwnd;
-    INPUT input;
-    int r;
-	BOOL result = FALSE;
-    while (1) {
-        if ((r=read(eventQueueFD, &input, sizeof(INPUT)))==-1) {
-            return result;
-        }
-        TRACE("read event: type=");
-        if (input.type == 0) {
-            const char* type = "rel";
-            if (input.mi.dwFlags & MOUSEEVENTF_WHEEL) {
-                hwnd = GetForegroundWindow();
-            } else if (input.mi.dwFlags & MOUSEEVENTF_ABSOLUTE) {
-                POINT p;
-                p.x = input.mi.dx;
-                p.y = input.mi.dy;
-                hwnd = WindowFromPoint(p);
-                if (!hwnd) {
-                    continue;
-                }
-                hwnd = GetAncestor(hwnd, GA_ROOT);                
-            } else {
-                hwnd = GetForegroundWindow();
-            }
-            if (input.mi.dwFlags & MOUSEEVENTF_ABSOLUTE) {
-                type = "abs";
-            }
-            TRACE("mouse %s %s hwnd=%p dx=%d dy=%d dwFlags=%X time=%X\n", ((input.mi.dwFlags & MOUSEEVENTF_WHEEL)?"wheel":""), type, hwnd, input.mi.dx, input.mi.dy, input.mi.dwFlags, input.mi.time);
-        } else {
-            hwnd = GetForegroundWindow();
-        }
-    
-        TRACE("hwnd=%p GetFocus()=%p GetForegroundWindow()=%p\n", hwnd, GetFocus(), GetForegroundWindow());
-// Apr 15, 2021 wine-6.7
-#if BOXED_WINE_VERSION >= 6070
-        __wine_send_input(hwnd, &input, NULL);
+#if WINE_GDI_DRIVER_VERSION >= 78
+NTSTATUS WINE_CDECL boxeddrv_MsgWaitForMultipleObjectsEx(DWORD count, const HANDLE* handles, const LARGE_INTEGER* timeout, DWORD mask, DWORD flags) {
 #else
-        __wine_send_input(hwnd, &input);
+DWORD WINE_CDECL boxeddrv_MsgWaitForMultipleObjectsEx(DWORD count, const HANDLE *handles, DWORD timeout, DWORD mask, DWORD flags) {
 #endif
-		result = TRUE;
-    }
-}
-
-DWORD CDECL boxeddrv_MsgWaitForMultipleObjectsEx(DWORD count, const HANDLE *handles, DWORD timeout, DWORD mask, DWORD flags) {
     DWORD result;
 
-    TRACE("count=%d handles=%p timeout=0x%08x mask=0x%08x flags=0x%08x\n", count, handles, timeout, mask, flags);
+    TRACE("count=%d handles=%p timeout=0x%08x mask=0x%08x flags=0x%08x\n", (int)count, handles, (int)timeout, (int)mask, (int)flags);
     initEvents();
     CALL_5(BOXED_MSG_WAIT_FOR_MULTIPLE_OBJECTS_EX, count, handles, timeout, mask, flags);
 	if (processEvents()) {
 		return count - 1;
 	}
     if (!count && !timeout) 
-        return WAIT_TIMEOUT;    
-    result = WaitForMultipleObjectsEx(count, handles, flags & MWMO_WAITALL, timeout, flags & MWMO_ALERTABLE);	
-    return result;
+        return WAIT_TIMEOUT;  
+#if WINE_GDI_DRIVER_VERSION >= 78
+    return NtWaitForMultipleObjects(count, handles, !(flags & MWMO_WAITALL), !!(flags & MWMO_ALERTABLE), timeout);
+#else
+    return WaitForMultipleObjectsEx(count, handles, flags & MWMO_WAITALL, timeout, flags & MWMO_ALERTABLE);	
+#endif
 }
 
-void CDECL boxeddrv_SetCapture(HWND hwnd, UINT flags) {
+void WINE_CDECL boxeddrv_SetCapture(HWND hwnd, UINT flags) {
     TRACE("hwnd=%p flags=0x%08x\n", hwnd, flags);
     CALL_NORETURN_2(BOXED_SET_CAPTURE, hwnd, flags);
 }
 
-BOOL CDECL boxeddrv_SetClipboardData(UINT format_id, HANDLE data, BOOL owner) {
-    int result;
-    int len = GlobalSize(data);
-    LPVOID src = GlobalLock(data);
-    WCHAR buffer[256];
-
-    buffer[0]=0;
-    GetClipboardFormatNameW(format_id, buffer, sizeof(buffer) / sizeof(buffer[0]));
-    CALL_4(BOXED_SET_CLIPBOARD_DATA, format_id, src, len, owner);
-    GlobalUnlock(data);
-    TRACE("format_id=%d (%s) data=%p dataLen=%d owner=%d\n", format_id, debugstr_w(buffer), data, len, owner);
-    if (len && format_id != CF_TEXT && format_id != CF_UNICODETEXT) {
-        HWND clipboardOwner = GetClipboardOwner();
-        SendMessageW(clipboardOwner, WM_RENDERFORMAT, CF_UNICODETEXT, 0);
-        TRACE("Requesting HWND=%x to convert %s to CF_UNICODETEXT\n", (int)clipboardOwner, debugstr_w(buffer));
-    }
-    return (BOOL)result;
-}
-
-void CDECL boxeddrv_SetCursor(HCURSOR cursor) {
+void WINE_CDECL boxeddrv_SetCursor(HCURSOR cursor) {
     ICONINFOEXW info;
     ICONINFOEXW infoOriginal;    
     DWORD found = 0;
@@ -783,7 +538,7 @@ void CDECL boxeddrv_SetCursor(HCURSOR cursor) {
         return;
     }        
     infoOriginal = info;
-    TRACE("info->szModName %s info->szResName %s info->wResID %hu\n", debugstr_w(info.szModName), debugstr_w(info.szResName), (DWORD)info.wResID);
+    TRACE("info->szModName %s info->szResName %s info->wResID %hu\n", debugstr_w(info.szModName), debugstr_w(info.szResName), (int)info.wResID);
     CALL_NORETURN_5(BOXED_SET_CURSOR, cursor, info.szModName, info.szResName, (DWORD)info.wResID, &found);
 
     if (!found) {
@@ -810,7 +565,7 @@ void CDECL boxeddrv_SetCursor(HCURSOR cursor) {
 
         GetObjectW(info.hbmMask, sizeof(bmMask), &bmMask);
         //GetObjectW(info.hbmColor, sizeof(bmColor), &bmColor);    
-        TRACE("info.hbmColor=%d bmMask.bmWidth=%d bmMask.bmHeight=%d\n", (DWORD)info.hbmColor, (DWORD)bmMask.bmWidth, (DWORD)bmMask.bmHeight);
+        TRACE("info.hbmColor=%d bmMask.bmWidth=%d bmMask.bmHeight=%d\n", (int)info.hbmColor, (int)bmMask.bmWidth, (int)bmMask.bmHeight);
         bmInfo->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
         bmInfo->bmiHeader.biWidth = bmMask.bmWidth;
         bmInfo->bmiHeader.biHeight = -bmMask.bmHeight;
@@ -845,14 +600,14 @@ void CDECL boxeddrv_SetCursor(HCURSOR cursor) {
     DeleteObject(info.hbmMask);
 }
 
-BOOL CDECL boxeddrv_SetCursorPos(INT x, INT y) {
+BOOL WINE_CDECL boxeddrv_SetCursorPos(INT x, INT y) {
     int result;
     CALL_2(BOXED_SET_CURSOR_POS, x, y);
     TRACE("x=%d y=%d result=%d\n", x, y, result);
     return (BOOL)result;
 }
 
-void CDECL boxeddrv_SetFocus(HWND hwnd) {
+void WINE_CDECL boxeddrv_SetFocus(HWND hwnd) {
     LONG style = GetWindowLongW(hwnd, GWL_STYLE);    
 
     TRACE("hwnd=%p\n", hwnd);	
@@ -876,31 +631,31 @@ void CDECL boxeddrv_SetFocus(HWND hwnd) {
     }
 }
 
-void CDECL boxeddrv_SetLayeredWindowAttributes(HWND hwnd, COLORREF key, BYTE alpha, DWORD flags) {
-    TRACE("hwnd=%p key=0x%08x alpha=0x%02x flags=0x%08x\n", hwnd, key, alpha, flags);
+void WINE_CDECL boxeddrv_SetLayeredWindowAttributes(HWND hwnd, COLORREF key, BYTE alpha, DWORD flags) {
+    TRACE("hwnd=%p key=0x%08x alpha=0x%02x flags=0x%08x\n", hwnd, (int)key, alpha, (int)flags);
     CALL_NORETURN_4(BOXED_SET_LAYERED_WINDOW_ATTRIBUTES, hwnd, key, alpha, flags);
 }
 
-void CDECL boxeddrv_SetParent(HWND hwnd, HWND parent, HWND old_parent) {
+void WINE_CDECL boxeddrv_SetParent(HWND hwnd, HWND parent, HWND old_parent) {
     TRACE("hwnd=%p parent=%p old_parent=%p\n", hwnd, parent, old_parent);
     CALL_NORETURN_3(BOXED_SET_PARENT, hwnd, parent, old_parent);
 }
 
 #if BOXED_WINE_VERSION >= 1718
-void CDECL boxeddrv_SetWindowRgn(HWND hwnd, HRGN hrgn, BOOL redraw) {
+void WINE_CDECL boxeddrv_SetWindowRgn(HWND hwnd, HRGN hrgn, BOOL redraw) {
     int result;
     CALL_3(BOXED_SET_WINDOW_RGN, hwnd, hrgn, redraw);
     TRACE("hwnd=%p hrgn=%p redraw=%d\n", hwnd, hrgn, redraw);
 }
 #else
-int CDECL boxeddrv_SetWindowRgn(HWND hwnd, HRGN hrgn, BOOL redraw) {
+int WINE_CDECL boxeddrv_SetWindowRgn(HWND hwnd, HRGN hrgn, BOOL redraw) {
     int result;
     CALL_3(BOXED_SET_WINDOW_RGN, hwnd, hrgn, redraw);
     TRACE("hwnd=%p hrgn=%p redraw=%d result=%d\n", hwnd, hrgn, redraw, result);
     return result;
 }
 #endif
-void CDECL boxeddrv_SetWindowStyle(HWND hwnd, INT offset, STYLESTRUCT *style) {
+void WINE_CDECL boxeddrv_SetWindowStyle(HWND hwnd, INT offset, STYLESTRUCT *style) {
     HWND hwndFocus;
 
     TRACE("hwnd=%p offset=%d style=%p\n", hwnd, offset, style);
@@ -910,12 +665,12 @@ void CDECL boxeddrv_SetWindowStyle(HWND hwnd, INT offset, STYLESTRUCT *style) {
         boxeddrv_SetFocus(hwnd);
 }
 
-void CDECL boxeddrv_SetWindowText(HWND hwnd, LPCWSTR text) {
+void WINE_CDECL boxeddrv_SetWindowText(HWND hwnd, LPCWSTR text) {
     TRACE("hwnd=%p text=%s\n", hwnd, debugstr_w(text));
     CALL_NORETURN_2(BOXED_SET_WINDOW_TEXT, hwnd, text);
 }
 
-UINT CDECL boxeddrv_ShowWindow(HWND hwnd, INT cmd, RECT *rect, UINT swp) {
+UINT WINE_CDECL boxeddrv_ShowWindow(HWND hwnd, INT cmd, RECT *rect, UINT swp) {
     HWND hwndFocus;
     UINT result;
 
@@ -928,4182 +683,86 @@ UINT CDECL boxeddrv_ShowWindow(HWND hwnd, INT cmd, RECT *rect, UINT swp) {
     return result;
 }
 
-LRESULT CDECL boxeddrv_SysCommand(HWND hwnd, WPARAM wparam, LPARAM lparam) {
+LRESULT WINE_CDECL boxeddrv_SysCommand(HWND hwnd, WPARAM wparam, LPARAM lparam) {
     int result;
     CALL_3(BOXED_SYS_COMMAND, hwnd, wparam, lparam);
     TRACE("hwnd=%p wparam=0x%08x lparam=0x%08x result=%d\n", hwnd, (int)wparam, (int)lparam, result);
     return (LRESULT)result;
 }
 
-BOOL CDECL boxeddrv_SystemParametersInfo(UINT action, UINT int_param, void *ptr_param, UINT flags) {
+BOOL WINE_CDECL boxeddrv_SystemParametersInfo(UINT action, UINT int_param, void *ptr_param, UINT flags) {
     int result;
     CALL_4(BOXED_SYSTEM_PARAMETERS_INFO, action, int_param, ptr_param, flags);
     TRACE("action=%d int_param=%d ptr_param=%p flags=0x%08x result=%d\n", action, int_param, ptr_param, flags, result);
     return (BOOL)result;
 }
 
-INT CDECL boxeddrv_ToUnicodeEx(UINT virtKey, UINT scanCode, const BYTE *lpKeyState, LPWSTR bufW, int bufW_size, UINT flags, HKL hkl) {
+INT WINE_CDECL boxeddrv_ToUnicodeEx(UINT virtKey, UINT scanCode, const BYTE *lpKeyState, LPWSTR bufW, int bufW_size, UINT flags, HKL hkl) {
     INT result;
     CALL_7(BOXED_TO_UNICODE_EX, virtKey, scanCode, lpKeyState, bufW, bufW_size, flags, hkl);
     return result;
 }
 
-BOOL CDECL boxeddrv_UpdateLayeredWindow(HWND hwnd, const UPDATELAYEREDWINDOWINFO *info, const RECT *window_rect) {
+BOOL WINE_CDECL boxeddrv_UpdateLayeredWindow(HWND hwnd, const UPDATELAYEREDWINDOWINFO *info, const RECT *window_rect) {
     int result;
     CALL_3(BOXED_UPDATE_LAYERED_WINDOW, hwnd, info, window_rect);
     return (BOOL)result;
 }
 
-SHORT CDECL boxeddrv_VkKeyScanEx(WCHAR wChar, HKL hkl) {
+SHORT WINE_CDECL boxeddrv_VkKeyScanEx(WCHAR wChar, HKL hkl) {
     int result;
     CALL_2(BOXED_VK_KEY_SCAN_EX, wChar, hkl);
     return (SHORT)result;
 }
 
-LRESULT CDECL boxeddrv_WindowMessage(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
+LRESULT WINE_CDECL boxeddrv_WindowMessage(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     int result;
     CALL_4(BOXED_WINDOW_MESSAGE, hwnd, msg, wp, lp);
     return (LRESULT)result;
 }
 
-void boxeddrv_SetSurface(HWND hwnd, struct window_surface *surface) {
-    CALL_NORETURN_2(BOXED_SET_SURFACE, hwnd, surface);
-}
-
-struct window_surface* boxeddrv_GetSurface(HWND hwnd) {
-    struct window_surface* result;
-    CALL_1(BOXED_GET_SURFACE, hwnd);
-    return result;
-}
-
-BOOL boxeddrv_HasWnd(HWND hwnd) {
-    int result;
-    CALL_1(BOXED_HAS_WND, hwnd);
-    return (BOOL)result;
-}
-
-void CDECL boxeddrv_WindowPosChanged(HWND hwnd, HWND insert_after, UINT swp_flags, const RECT *window_rect, const RECT *client_rect, const RECT *visible_rect, const RECT *valid_rects, struct window_surface *surface) {
-    DWORD new_style = GetWindowLongW(hwnd, GWL_STYLE);
-    struct window_surface* oldSurface = boxeddrv_GetSurface(hwnd);
-    RECT r;
-
-    if (!boxeddrv_HasWnd(hwnd))
-        return;
-
-    GetWindowRect(hwnd, &r);
-    TRACE("hwnd=%p insert_after=%p swp_flags=0x%08x window_rect=%s client_rect=%s visible_rect=%s valid_rects=%s surface=%p style=0x%08x GetWindowRect()=%s\n", hwnd, insert_after, swp_flags, wine_dbgstr_rect(window_rect), wine_dbgstr_rect(client_rect), wine_dbgstr_rect(visible_rect), wine_dbgstr_rect(valid_rects), surface, new_style, wine_dbgstr_rect(&r));
-    if (surface) {
-        TRACE("     using new surface %p (ref=%d)\n", surface, surface->ref);
-        window_surface_add_ref(surface);
-    }
-    if (oldSurface) {
-        TRACE("     releasing old surface %p (ref=%d)\n", oldSurface, oldSurface->ref);
-        window_surface_release(oldSurface);
-    }
-    boxeddrv_SetSurface(hwnd, surface);	
-    CALL_NORETURN_8(BOXED_WINDOW_POS_CHANGED, hwnd, insert_after, swp_flags, window_rect, client_rect, visible_rect, valid_rects, new_style);
-}
-
-void surface_clip_to_visible_rect(struct window_surface *window_surface, const RECT *visible_rect);
-struct window_surface *create_surface(HWND window, const RECT *rect, struct window_surface *old_surface, BOOL use_alpha);
-
-#if BOXED_WINE_VERSION >= 6090
-BOOL CDECL boxeddrv_WindowPosChanging(HWND hwnd, HWND insert_after, UINT swp_flags, const RECT *window_rect, const RECT *client_rect, RECT *visible_rect, struct window_surface **surface) {
-#else
-void CDECL boxeddrv_WindowPosChanging(HWND hwnd, HWND insert_after, UINT swp_flags, const RECT * window_rect, const RECT * client_rect, RECT * visible_rect, struct window_surface** surface) {
-#endif
-    DWORD style = GetWindowLongW(hwnd, GWL_STYLE); 
-    struct window_surface *oldSurface = NULL;
-    HWND parent = GetAncestor(hwnd, GA_PARENT);
-
-    initEvents();
-    TRACE("hwnd=%p (parent=%p) insert_after=%p swp_flags=0x%08x window_rect=%s client_rect=%s visible_rect=%s surface=%p\n", hwnd, parent, insert_after, swp_flags, wine_dbgstr_rect(window_rect), wine_dbgstr_rect(client_rect), wine_dbgstr_rect(visible_rect), surface);     
-
-    if (GetWindowThreadProcessId(hwnd, NULL) != GetCurrentThreadId()) {
-#if BOXED_WINE_VERSION >= 6090
-        return TRUE;
-#else
-        return;
-#endif
-    }
-
-    if (!parent)  /* desktop */
-    {
-#if BOXED_WINE_VERSION >= 6090
-        return TRUE;
-#else
-        return;
-#endif
-    }
-
-    /* don't create wnd for HWND_MESSAGE windows */
-    if (parent != GetDesktopWindow() && !GetAncestor(parent, GA_PARENT)) {
-#if BOXED_WINE_VERSION >= 6090
-        return TRUE;
-#else
-        return;
-#endif
-    }
-    if (*surface)  {
-        oldSurface = *surface;
-        TRACE("     setting old surface %p (ref=%d)\n", *surface, (*surface)->ref);
-    }
-    *surface = NULL;
-    
-    *visible_rect = *window_rect;
-    if (swp_flags & SWP_HIDEWINDOW) {
-#if BOXED_WINE_VERSION >= 6090
-        return TRUE;
-#else
-        return;
-#endif
-    }
-    CALL_NORETURN_7(BOXED_WINDOW_POS_CHANGING, hwnd, insert_after, swp_flags, window_rect, client_rect, visible_rect, surface);
-
-    if (parent != GetDesktopWindow()) {
-#if BOXED_WINE_VERSION >= 6090
-        return TRUE;
-#else
-        return;
-#endif
-    }
-    /*
-    if (*surface) {
-        int surfaceWidth = (*surface)->rect.right - (*surface)->rect.left;
-        int surfaceHeight = (*surface)->rect.bottom - (*surface)->rect.top;
-        int windowWidth = window_rect->right - window_rect->left;
-        int windowHeight = window_rect->bottom - window_rect->top;
-
-        if (oldSurface)  {
-            TRACE("     releasing old surface %p (ref=%d)\n", oldSurface, oldSurface->ref);
-            window_surface_release(oldSurface);
-        }
-        TRACE("     checking existing surface %p (ref=%d)\n", *surface, (*surface)->ref);
-        if (surfaceWidth==windowWidth && surfaceHeight==windowHeight) {
-            // use existing surface
-            surface_clip_to_visible_rect(*surface, visible_rect);
-            window_surface_add_ref(*surface);
-            return;
-        }
-    }
-    */
-    if (oldSurface)  {
-        TRACE("     releasing old surface %p (ref=%d)\n", oldSurface, oldSurface->ref);
-        window_surface_release(oldSurface);
-        *surface = NULL;
-    }
-    if ((swp_flags & SWP_SHOWWINDOW) || (style & WS_VISIBLE)) {
-        RECT rc;
-        rc.left = 0;
-        rc.right = window_rect->right - window_rect->left;
-        rc.top = 0;
-        rc.bottom = window_rect->bottom - window_rect->top;
-        if (rc.right && rc.bottom) {
-            *surface = create_surface(hwnd, &rc, *surface, FALSE);
-            TRACE("     created new surface %p (ref=%d)\n", *surface, (*surface)->ref);
-        }
-    }
-#if BOXED_WINE_VERSION >= 6090
-    return TRUE;
-#endif
-}
-
-struct winZOrder {
-    int count;
-    HWND windows[1024];
-};
-
-BOOL getZOrderCallback(HWND hWnd, LPARAM lParam) {
-    struct winZOrder* zorder = (struct winZOrder*)lParam;
-    TRACE("hWnd=%p zorder->count=%d\n", hWnd, zorder->count);
-    if (zorder->count<1024) {
-        zorder->windows[zorder->count++] = hWnd;
-    }
-    return TRUE;
-}
-
-void boxeddrv_FlushSurface(HWND hwnd, void* bits, int xOrg, int yOrg, int width, int height, RECT* rects, int rectCount) {
-    struct winZOrder zorder;
-    HWND h = GetTopWindow(NULL);
-
-    zorder.count = 0;	    
-    while (h) {
-        zorder.windows[zorder.count++] = h;
-        h = GetWindow(h, GW_HWNDNEXT);
-    }
-
-    // EnumWindows((WNDENUMPROC)getZOrderCallback, (LPARAM)&zorder);
-    TRACE("hwnd=%p bits=%p width=%d height=%d rects=%p rectCount=%d hWndCount=%d\n", hwnd, bits, width, height, rects, rectCount, zorder.count); 
-    CALL_NORETURN_9(BOXED_FLUSH_SURFACE, hwnd, bits, xOrg, yOrg, width, height, &zorder, rects, rectCount);
-}
-
-BOOL WINE_CDECL boxeddrv_GetDeviceGammaRamp(PHYSDEV dev, LPVOID ramp) {
-    int result;
-    CALL_2(BOXED_GET_DEVICE_GAMMA_RAMP, dev, ramp);
-    TRACE("dev=%p ramp=%p result=%d\n", dev, ramp, result);
-    return (BOOL)result;
-}
-
-BOOL WINE_CDECL boxeddrv_SetDeviceGammaRamp(PHYSDEV dev, LPVOID ramp) {
-    int result;
-    CALL_2(BOXED_SET_DEVICE_GAMMA_RAMP, dev, ramp);
-    TRACE("dev=%p ramp=%p result=%d\n", dev, ramp, result);
-    return (BOOL)result;
-}
-
-INT WINE_CDECL boxeddrv_GetDeviceCaps(PHYSDEV dev, INT cap) {
-    INT result;
-    switch (cap) {
-    case PDEVICESIZE:
-        return sizeof(BOXEDDRV_PDEVICE);
-    }
-    TRACE("BOXED_GET_DEVICE_CAPS=%d\n", BOXED_GET_DEVICE_CAPS);
-    CALL_2(BOXED_GET_DEVICE_CAPS, dev, cap);
-    TRACE("dev=%p cap=%d result=%d\n", dev, cap, result);
-    return result;
-}
-
-int CDECL wine_notify_icon(DWORD msg, NOTIFYICONDATAW *data) {
-    int result;
-    CALL_2(BOXED_WINE_NOTIFY_ICON, msg, data);
-    return result;
-}
-
-BOOL WINAPI ImeConfigure(HKL hKL, HWND hWnd, DWORD dwMode, LPVOID lpData) {
-    int result;
-    CALL_4(BOXED_IME_CONFIGURE, hKL, hWnd, dwMode, lpData);
-    return (BOOL)result;
-}
-
-DWORD WINAPI ImeConversionList(HIMC hIMC, LPCWSTR lpSource, LPCANDIDATELIST lpCandList, DWORD dwBufLen, UINT uFlag) {
-    DWORD result;
-    CALL_5(BOXED_IME_CONVERSION_LIST, hIMC, lpSource, lpCandList, dwBufLen, uFlag);
-    return result;
-}
-
-BOOL WINAPI ImeDestroy(UINT uForce) {
-    int result;
-    CALL_1(BOXED_IME_DESTROY, uForce);
-    return (BOOL)result;
-}
-
-UINT WINAPI ImeEnumRegisterWord(REGISTERWORDENUMPROCW lpfnEnumProc, LPCWSTR lpszReading, DWORD dwStyle, LPCWSTR lpszRegister, LPVOID lpData) {
-    UINT result;
-    CALL_5(BOXED_IME_ENUM_REGISTER_WORD, lpfnEnumProc, lpszReading, dwStyle, lpszRegister, lpData);
-    return result;
-}
-
-LRESULT WINAPI ImeEscape(HIMC hIMC, UINT uSubFunc, LPVOID lpData) {
-    LRESULT result;
-    CALL_3(BOXED_IME_ESCAPE, hIMC, uSubFunc, lpData);
-    return result;
-}
-
-DWORD WINAPI ImeGetImeMenuItems(HIMC hIMC, DWORD dwFlags, DWORD dwType, LPIMEMENUITEMINFOW lpImeParentMenu, LPIMEMENUITEMINFOW lpImeMenu, DWORD dwSize) {
-    DWORD result;
-    CALL_6(BOXED_IME_GET_IME_MENU_ITEMS, hIMC, dwFlags, dwType, lpImeParentMenu, lpImeMenu, dwSize);
-    return result;
-}
-
-UINT WINAPI ImeGetRegisterWordStyle(UINT nItem, LPSTYLEBUFW lpStyleBuf) {
-    UINT result;
-    CALL_2(BOXED_IME_GET_REGISTER_WORD_STYLE, nItem, lpStyleBuf);
-    return result;
-}
-
-BOOL WINAPI ImeInquire(LPIMEINFO lpIMEInfo, LPWSTR lpszUIClass, LPCWSTR lpszOption) {
-    int result;
-    CALL_3(BOXED_IME_INQUIRE, lpIMEInfo, lpszUIClass, lpszOption);
-    return (BOOL)result;
-}
-
-BOOL WINAPI ImeProcessKey(HIMC hIMC, UINT vKey, LPARAM lKeyData, const LPBYTE lpbKeyState) {
-    int result;
-    CALL_4(BOXED_IME_PROCESS_KEY, hIMC, vKey, lKeyData, lpbKeyState);
-    return (BOOL)result;
-}
-
-BOOL WINAPI ImeRegisterWord(LPCWSTR lpszReading, DWORD dwStyle, LPCWSTR lpszRegister) {
-    int result;
-    CALL_3(BOXED_IME_REGISTER_WORD, lpszReading, dwStyle, lpszRegister);
-    return (BOOL)result;
-}
-
-BOOL WINAPI ImeSelect(HIMC hIMC, BOOL fSelect) {
-    int result;
-    CALL_2(BOXED_IME_SELECT, hIMC, fSelect);
-    return (BOOL)result;
-}
-
-BOOL WINAPI ImeSetActiveContext(HIMC hIMC, BOOL fFlag) {
-    int result;
-    CALL_2(BOXED_IME_SET_ACTIVE_CONTEXT, hIMC, fFlag);
-    return (BOOL)result;
-}
-
-BOOL WINAPI ImeSetCompositionString(HIMC hIMC, DWORD dwIndex, LPCVOID lpComp, DWORD dwCompLen, LPCVOID lpRead, DWORD dwReadLen) {
-    int result;
-    CALL_6(BOXED_IME_SET_COMPOSITION_STRING, hIMC, dwIndex, lpComp, dwCompLen, lpRead, dwReadLen);
-    return (BOOL)result;
-}
-
-UINT WINAPI ImeToAsciiEx(UINT uVKey, UINT uScanCode, const LPBYTE lpbKeyState, LPDWORD lpdwTransKey, UINT fuState, HIMC hIMC) {
-    UINT result;
-    CALL_6(BOXED_IME_TO_ASCII_EX, uVKey, uScanCode, lpbKeyState, lpdwTransKey, fuState, hIMC);
-    return (UINT)result;
-}
-
-BOOL WINAPI ImeUnregisterWord(LPCWSTR lpszReading, DWORD dwStyle, LPCWSTR lpszUnregister) {
-    int result;
-    CALL_3(BOXED_IME_UNREGISTER_WORD, lpszReading, dwStyle, lpszUnregister);
-    return (BOOL)result;
-}
-
-BOOL WINAPI NotifyIME(HIMC hIMC, DWORD dwAction, DWORD dwIndex, DWORD dwValue) {
-    int result;
-    CALL_4(BOXED_NOTIFY_IME, hIMC, dwAction, dwIndex, dwValue);
-    return (BOOL)result;
-}
-
-static BOOL BGLAPI boxeddrv_wglCopyContext(struct wgl_context *src, struct wgl_context *dst, UINT mask) {
-    int result;
-    CALL_3(BOXED_GL_COPY_CONTEXT, src, dst, mask);
-    TRACE("boxeddrv_wglCopyContext src=%p dst=%p mask=%X result=%d\n", src, dst, mask, result);
-    return (BOOL)result;
-}
-
-static struct wgl_context* BGLAPI boxeddrv_wglCreateContext(HDC hdc) {
-    struct wgl_context* result;
-    CALL_5(BOXED_GL_CREATE_CONTEXT, WindowFromDC(hdc), 0, 0, 0, 0);
-    TRACE("boxeddrv_wglCreateContext hdc=%X result=%p\n", (int)hdc, result);
-    return result;
-}
-
-static BOOL BGLAPI boxeddrv_wglDeleteContext(struct wgl_context *context) {
-    TRACE("boxeddrv_wglDeleteContext context=%p\n", context);
-    CALL_NORETURN_1(BOXED_GL_DELETE_CONTEXT, context);
-    return TRUE;
-}
-
-static int BGLAPI boxeddrv_wglDescribePixelFormat(HDC hdc, int fmt, UINT size, PIXELFORMATDESCRIPTOR *descr) {
-    int result;
-    CALL_4(BOXED_GL_DESCRIBE_PIXEL_FORMAT, hdc, fmt, size, descr);
-    TRACE("boxeddrv_wglDescribePixelFormat hdc=%X fmt=%d size=%d descr=%p result=%d\n", (int)hdc, fmt, size, descr, result);
-    return result;
-}
-
-static int BGLAPI boxeddrv_wglGetPixelFormat(HDC hdc) {
-    int result;
-    CALL_1(BOXED_GL_GET_PIXEL_FORMAT, WindowFromDC(hdc));
-    TRACE("boxeddrv_wglGetPixelFormat hdc=%X result=%d\n", (int)hdc, result);
-    return result;
-}
-
-static struct wgl_context *boxeddrv_wglCreateContextAttribsARB(HDC hdc, struct wgl_context *share_context, const int *attrib_list);
-static void* glModule;
-
-static PROC BGLAPI boxeddrv_wglGetProcAddress(const char *proc) {
-    TRACE("boxeddrv_wglGetProcAddress %s\n", proc);
-    if (!strcmp(proc, "wglCreateContextAttribsARB"))
-        return (PROC)boxeddrv_wglCreateContextAttribsARB;
-
-    if (!glModule) {
-        glModule = dlopen("/lib/libGL.so.1", RTLD_LAZY);        
-    } 
-    if (glModule) {
-        int result = 0;
-        PROC pfn;
-
-        CALL_1(BOXED_GL_GET_PROC_ADDRESS, proc);
-        if (!result) {
-            TRACE("    %s not found\n", proc);
-            return 0;
-        }
-        pfn = dlsym(glModule, proc);
-        TRACE("glModule=%p result=%p\n", glModule, pfn);
-        return pfn;
-    }
-    TRACE("could not find /lib/libGL.so.1\n");
-    return NULL;
-}
-
-static BOOL BGLAPI boxeddrv_wglMakeCurrent(HDC hdc, struct wgl_context *context) {
-    int result;
-    CALL_2(BOXED_GL_MAKE_CURRENT, WindowFromDC(hdc), context);
-    TRACE("boxeddrv_wglMakeCurrent hdc=%X context=%p result=%d\n",(int)hdc, context, result);
-    return (BOOL)result;
-}
-
-static BOOL BGLAPI boxeddrv_wglSetPixelFormat(HDC hdc, int fmt, const PIXELFORMATDESCRIPTOR *descr) {
-    int result;
-    CALL_3(BOXED_GL_SET_PIXEL_FORMAT, WindowFromDC(hdc), fmt, descr);
-    TRACE("boxeddrv_wglSetPixelFormat hdc=%X fmt=%d descr=%p result=%d\n", (int)hdc, fmt, descr, result);
-    return (BOOL)result;
-}
-
-static BOOL BGLAPI boxeddrv_wglShareLists(struct wgl_context *org, struct wgl_context *dest) {
-    int result;
-    CALL_2(BOXED_GL_SHARE_LISTS, org, dest);
-    TRACE("boxeddrv_wglShareLists org=%p dest=%p result=%d\n", org, dest, result);
-    return (BOOL)result;
-}
-
-static BOOL BGLAPI boxeddrv_wglSwapBuffers(HDC hdc) {
-    int result;
-    CALL_1(BOXED_GL_SWAP_BUFFERS, hdc);
-    return (BOOL)result;
-}
-
-UINT CDECL boxeddrv_GetKeyboardLayoutList(INT size, HKL *list) {
+UINT WINE_CDECL boxeddrv_GetKeyboardLayoutList(INT size, HKL *list) {
     UINT result;
     CALL_2(BOXED_GET_KEYBOARD_LAYOUT_LIST, size, list);
     return result;
 }
 
-BOOL CDECL boxeddrv_RegisterHotKey(HWND hwnd, UINT mod_flags, UINT vkey) {
+BOOL WINE_CDECL boxeddrv_RegisterHotKey(HWND hwnd, UINT mod_flags, UINT vkey) {
     int result;
     CALL_3(BOXED_REGISTER_HOT_KEY, hwnd, mod_flags, vkey);
     return (BOOL)result;
 }
 
-void CDECL boxeddrv_UnregisterHotKey(HWND hwnd, UINT modifiers, UINT vkey) {
+void WINE_CDECL boxeddrv_UnregisterHotKey(HWND hwnd, UINT modifiers, UINT vkey) {
     CALL_NORETURN_3(BOXED_UNREGISTER_HOT_KEY, hwnd, modifiers, vkey);
 }
 
-void CDECL boxeddrv_FlashWindowEx(PFLASHWINFO pfinfo)
+void WINE_CDECL boxeddrv_ThreadDetach(void)
 {
 }
 
-static struct opengl_funcs opengl_funcs =
+void WINE_CDECL boxeddrv_UpdateClipboard(void)
 {
-    {
-        boxeddrv_wglCopyContext,          /* p_wglCopyContext */
-        boxeddrv_wglCreateContext,        /* p_wglCreateContext */
-        boxeddrv_wglDeleteContext,        /* p_wglDeleteContext */
-        boxeddrv_wglDescribePixelFormat,  /* p_wglDescribePixelFormat */
-        boxeddrv_wglGetPixelFormat,       /* p_wglGetPixelFormat */
-        boxeddrv_wglGetProcAddress,       /* p_wglGetProcAddress */
-        boxeddrv_wglMakeCurrent,          /* p_wglMakeCurrent */
-        boxeddrv_wglSetPixelFormat,       /* p_wglSetPixelFormat */
-        boxeddrv_wglShareLists,           /* p_wglShareLists */
-        boxeddrv_wglSwapBuffers,          /* p_wglSwapBuffers */
-    }
-};
-
-#if WINE_VULKAN_DRIVER_VERSION >= 7
-static void* (*pvkGetDeviceProcAddr)(VkDevice, const char*);
-static void* (*pvkGetInstanceProcAddr)(VkInstance, const char*);
-
-static void* vulkan_handle;
-
-static BOOL wine_vk_init(void)
-{
-    if (!(vulkan_handle = dlopen("/lib/libvulkan.so.1", RTLD_NOW)))
-    {
-        ERR("Failed to load libvulkan.so.1.\n");
-        return TRUE;
-    }
-#define LOAD_FUNCPTR(f) p##f = dlsym(vulkan_handle, #f);
-        LOAD_FUNCPTR(vkGetDeviceProcAddr)
-        LOAD_FUNCPTR(vkGetInstanceProcAddr)
-#undef LOAD_FUNCPTR
-#undef LOAD_OPTIONAL_FUNCPTR
-    return TRUE;
-
 }
 
-static VkResult boxedwine_vkCreateInstance(const VkInstanceCreateInfo* create_info, const VkAllocationCallbacks* allocator, VkInstance* instance)
-{
-    int result;
-    TRACE("create_info %p, allocator %p, instance %p\n", create_info, allocator, instance);
-    CALL_3(1, create_info, allocator, instance);    
-    return (VkResult)result;
+INT WINE_CDECL boxeddrv_GetDisplayDepth(LPCWSTR name, BOOL is_primary) {
+    return internal_GetDeviceCaps(BITSPIXEL);
 }
 
-static VkResult boxedwine_vkCreateSwapchainKHR(VkDevice device, const VkSwapchainCreateInfoKHR* create_info, const VkAllocationCallbacks* allocator, VkSwapchainKHR* swapchain)
-{
-    int result;
-    TRACE("%p %p %p %p\n", device, create_info, allocator, swapchain);
-    CALL_4(160, device, create_info, allocator, swapchain);
-    return (VkResult)result;
-}
-
-static VkResult boxedwine_vkCreateWin32SurfaceKHR(VkInstance instance, const VkWin32SurfaceCreateInfoKHR* create_info, const VkAllocationCallbacks* allocator, VkSurfaceKHR* surface)
-{
-    int result;
-    TRACE("%p %p %p %p\n", instance, create_info, allocator, surface);
-    CALL_4(168, instance, create_info, allocator, surface);
-    return (VkResult)result;
-}
-
-static void boxedwine_vkDestroyInstance(VkInstance instance, const VkAllocationCallbacks* allocator)
-{
-    TRACE("%p %p\n", instance, allocator);
-    CALL_NORETURN_2(2, instance, allocator);
-}
-
-static void boxedwine_vkDestroySurfaceKHR(VkInstance instance, VkSurfaceKHR surface, const VkAllocationCallbacks* allocator)
-{
-    TRACE("%p 0x%s %p\n", instance, wine_dbgstr_longlong(surface), allocator);
-    CALL_NORETURN_3(155, instance, &surface, allocator);
-}
-
-static void boxedwine_vkDestroySwapchainKHR(VkDevice device, VkSwapchainKHR swapchain, const VkAllocationCallbacks* allocator)
-{
-    TRACE("%p, 0x%s %p\n", device, wine_dbgstr_longlong(swapchain), allocator);
-    CALL_NORETURN_3(161, device, &swapchain, allocator);
-}
-
-static VkResult boxedwine_vkEnumerateInstanceExtensionProperties(const char* layer_name, uint32_t* count, VkExtensionProperties* properties)
-{
-    int result;
-    TRACE("layer_name %s, count %p, properties %p\n", debugstr_a(layer_name), count, properties);
-    CALL_3(16, layer_name, count, properties);
-    return (VkResult)result;
-}
-
-static VkResult boxedwine_vkGetDeviceGroupSurfacePresentModesKHR(VkDevice device, VkSurfaceKHR surface, VkDeviceGroupPresentModeFlagsKHR* flags)
-{
-    int result;
-    TRACE("%p, 0x%s, %p\n", device, wine_dbgstr_longlong(surface), flags);
-    CALL_3(240, device, &surface, flags);
-    return (VkResult)result;
-}
-
-static void* boxedwine_vkGetDeviceProcAddr(VkDevice device, const char* name)
-{
-    TRACE("%p, %s\n", device, debugstr_a(name));
-    return pvkGetDeviceProcAddr(device, name);
-}
-
-static void* boxedwine_vkGetInstanceProcAddr(VkInstance instance, const char* name)
-{
-    TRACE("%p, %s\n", instance, debugstr_a(name));
-    return pvkGetInstanceProcAddr(instance, name);
-}
-
-static VkResult boxedwine_vkGetPhysicalDevicePresentRectanglesKHR(VkPhysicalDevice phys_dev, VkSurfaceKHR surface, uint32_t* count, VkRect2D* rects)
-{
-    int result;
-    TRACE("%p, 0x%s, %p, %p\n", phys_dev, wine_dbgstr_longlong(surface), count, rects);
-    CALL_4(243, phys_dev, &surface, count, rects);
-    return (VkResult)result;
-}
-
-static VkResult boxedwine_vkGetPhysicalDeviceSurfaceCapabilitiesKHR(VkPhysicalDevice phys_dev, VkSurfaceKHR surface, VkSurfaceCapabilitiesKHR* capabilities)
-{
-    int result;
-    TRACE("%p, 0x%s, %p\n", phys_dev, wine_dbgstr_longlong(surface), capabilities);
-    CALL_3(157, phys_dev, &surface, capabilities);
-    return (VkResult)result;
-}
-
-static VkResult boxedwine_vkGetPhysicalDeviceSurfaceCapabilities2KHR(VkPhysicalDevice phys_dev, const VkPhysicalDeviceSurfaceInfo2KHR* surface_info, VkSurfaceCapabilities2KHR* capabilities)
-{
-    int result;
-    TRACE("%p, %p, %p\n", phys_dev, surface_info, capabilities);
-    CALL_3(259, phys_dev, surface_info, capabilities);
-    return (VkResult)result;
-}
-
-static VkResult boxedwine_vkGetPhysicalDeviceSurfaceFormatsKHR(VkPhysicalDevice phys_dev, VkSurfaceKHR surface, uint32_t* count, VkSurfaceFormatKHR* formats)
-{
-    int result;
-    TRACE("%p, 0x%s, %p, %p\n", phys_dev, wine_dbgstr_longlong(surface), count, formats);
-    CALL_4(158, phys_dev, &surface, count, formats);
-    return (VkResult)result;
-}
-
-static VkResult boxedwine_vkGetPhysicalDeviceSurfaceFormats2KHR(VkPhysicalDevice phys_dev, const VkPhysicalDeviceSurfaceInfo2KHR* surface_info, uint32_t* count, VkSurfaceFormat2KHR* formats)
-{
-    int result;
-    TRACE("%p, %p, %p, %p\n", phys_dev, surface_info, count, formats);
-    CALL_4(260, phys_dev, surface_info, count, formats);
-    return (VkResult)result;
-}
-
-static VkResult boxedwine_vkGetPhysicalDeviceSurfacePresentModesKHR(VkPhysicalDevice phys_dev, VkSurfaceKHR surface, uint32_t* count, VkPresentModeKHR* modes)
-{
-    int result;
-    TRACE("%p, 0x%s, %p, %p\n", phys_dev, wine_dbgstr_longlong(surface), count, modes);
-    CALL_4(159, phys_dev, &surface, count, modes);
-    return (VkResult)result;
-}
-
-static VkResult boxedwine_vkGetPhysicalDeviceSurfaceSupportKHR(VkPhysicalDevice phys_dev, uint32_t index, VkSurfaceKHR surface, VkBool32* supported)
-{
-    int result;
-    TRACE("%p, %u, 0x%s, %p\n", phys_dev, index, wine_dbgstr_longlong(surface), supported);
-    CALL_4(156, phys_dev, index, &surface, supported);
-    return (VkResult)result;
-}
-
-static VkBool32 boxedwine_vkGetPhysicalDeviceWin32PresentationSupportKHR(VkPhysicalDevice phys_dev, uint32_t index)
-{
-    int result;
-    TRACE("%p %u\n", phys_dev, index);
-    CALL_2(169, phys_dev, index);
-    return (VkBool32)result;
-}
-
-static VkResult boxedwine_vkGetSwapchainImagesKHR(VkDevice device, VkSwapchainKHR swapchain, uint32_t* count, VkImage* images)
-{
-    int result;
-    TRACE("%p, 0x%s %p %p\n", device, wine_dbgstr_longlong(swapchain), count, images);
-    CALL_4(162, device, &swapchain, count, images);
-    return (VkResult)result;
-}
-
-static VkResult boxedwine_vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR* present_info)
-{
-    int result;
-    TRACE("%p, %p\n", queue, present_info);
-    CALL_2(164, queue, present_info);
-    return (VkResult)result;
-}
-
-#if WINE_VULKAN_DRIVER_VERSION >= 10
-static VkSurfaceKHR boxedwine_wine_get_native_surface(VkSurfaceKHR surface)
-{
-    TRACE("0x%s\n", wine_dbgstr_longlong(surface));
-    return surface;
-}
+#ifndef STATUS_SUCCESS
+#define STATUS_SUCCESS                   ((NTSTATUS)0x00000000L)
 #endif
 
-#if WINE_VULKAN_DRIVER_VERSION == 7
-static const struct vulkan_funcs vulkan_funcs =
+static NTSTATUS boxedwine_init(void* arg)
 {
-    boxeddrv_vkCreateInstance,
-    boxedwine_vkCreateSwapchainKHR,
-    boxedwine_vkCreateWin32SurfaceKHR,
-    boxedwine_vkDestroyInstance,
-    boxedwine_vkDestroySurfaceKHR,
-    boxedwine_vkDestroySwapchainKHR,
-    boxedwine_vkEnumerateInstanceExtensionProperties,
-    boxedwine_vkGetDeviceGroupSurfacePresentModesKHR,
-    boxedwine_vkGetDeviceProcAddr,
-    boxedwine_vkGetInstanceProcAddr,
-    boxedwine_vkGetPhysicalDevicePresentRectanglesKHR,
-    boxedwine_vkGetPhysicalDeviceSurfaceCapabilitiesKHR,
-    boxedwine_vkGetPhysicalDeviceSurfaceFormatsKHR,
-    boxedwine_vkGetPhysicalDeviceSurfacePresentModesKHR,
-    boxedwine_vkGetPhysicalDeviceSurfaceSupportKHR,
-    boxedwine_vkGetPhysicalDeviceWin32PresentationSupportKHR,
-    boxedwine_vkGetSwapchainImagesKHR,
-    boxedwine_vkQueuePresentKHR,
-};
-#elif WINE_VULKAN_DRIVER_VERSION == 8
-static const struct vulkan_funcs vulkan_funcs =
-{
-    boxedwine_vkCreateInstance,
-    boxedwine_vkCreateSwapchainKHR,
-    boxedwine_vkCreateWin32SurfaceKHR,
-    boxedwine_vkDestroyInstance,
-    boxedwine_vkDestroySurfaceKHR,
-    boxedwine_vkDestroySwapchainKHR,
-    boxedwine_vkEnumerateInstanceExtensionProperties,
-    boxedwine_vkGetDeviceGroupSurfacePresentModesKHR,
-    boxedwine_vkGetDeviceProcAddr,
-    boxedwine_vkGetInstanceProcAddr,
-    boxedwine_vkGetPhysicalDevicePresentRectanglesKHR,
-    boxedwine_vkGetPhysicalDeviceSurfaceCapabilities2KHR,
-    boxedwine_vkGetPhysicalDeviceSurfaceCapabilitiesKHR,
-    boxedwine_vkGetPhysicalDeviceSurfaceFormats2KHR,
-    boxedwine_vkGetPhysicalDeviceSurfaceFormatsKHR,
-    boxedwine_vkGetPhysicalDeviceSurfacePresentModesKHR,
-    boxedwine_vkGetPhysicalDeviceSurfaceSupportKHR,
-    boxedwine_vkGetPhysicalDeviceWin32PresentationSupportKHR,
-    boxedwine_vkGetSwapchainImagesKHR,
-    boxedwine_vkQueuePresentKHR,
-};
-#elif WINE_VULKAN_DRIVER_VERSION == 9
-static const struct vulkan_funcs vulkan_funcs =
-{
-    boxedwine_vkCreateInstance,
-    boxedwine_vkCreateSwapchainKHR,
-    boxedwine_vkCreateWin32SurfaceKHR,
-    boxedwine_vkDestroyInstance,
-    boxedwine_vkDestroySurfaceKHR,
-    boxedwine_vkDestroySwapchainKHR,
-    boxedwine_vkEnumerateInstanceExtensionProperties,
-    boxedwine_vkGetDeviceGroupSurfacePresentModesKHR,
-    boxedwine_vkGetDeviceProcAddr,
-    boxedwine_vkGetInstanceProcAddr,
-    boxedwine_vkGetPhysicalDevicePresentRectanglesKHR,
-    boxedwine_vkGetPhysicalDeviceSurfaceCapabilities2KHR,
-    boxedwine_vkGetPhysicalDeviceSurfaceCapabilitiesKHR,
-    boxedwine_vkGetPhysicalDeviceSurfaceFormats2KHR,
-    boxedwine_vkGetPhysicalDeviceSurfaceFormatsKHR,
-    boxedwine_vkGetPhysicalDeviceSurfacePresentModesKHR,
-    boxedwine_vkGetPhysicalDeviceSurfaceSupportKHR,
-    boxedwine_vkGetPhysicalDeviceWin32PresentationSupportKHR,
-    boxedwine_vkGetSwapchainImagesKHR,
-    boxedwine_vkQueuePresentKHR,
-};
-#else
-static const struct vulkan_funcs vulkan_funcs =
-{
-    boxedwine_vkCreateInstance,
-    boxedwine_vkCreateSwapchainKHR,
-    boxedwine_vkCreateWin32SurfaceKHR,
-    boxedwine_vkDestroyInstance,
-    boxedwine_vkDestroySurfaceKHR,
-    boxedwine_vkDestroySwapchainKHR,
-    boxedwine_vkEnumerateInstanceExtensionProperties,
-    boxedwine_vkGetDeviceGroupSurfacePresentModesKHR,
-    boxedwine_vkGetDeviceProcAddr,
-    boxedwine_vkGetInstanceProcAddr,
-    boxedwine_vkGetPhysicalDevicePresentRectanglesKHR,
-    boxedwine_vkGetPhysicalDeviceSurfaceCapabilities2KHR,
-    boxedwine_vkGetPhysicalDeviceSurfaceCapabilitiesKHR,
-    boxedwine_vkGetPhysicalDeviceSurfaceFormats2KHR,
-    boxedwine_vkGetPhysicalDeviceSurfaceFormatsKHR,
-    boxedwine_vkGetPhysicalDeviceSurfacePresentModesKHR,
-    boxedwine_vkGetPhysicalDeviceSurfaceSupportKHR,
-    boxedwine_vkGetPhysicalDeviceWin32PresentationSupportKHR,
-    boxedwine_vkGetSwapchainImagesKHR,
-    boxedwine_vkQueuePresentKHR,
+    BOXEDDRV_ProcessAttach();
+    BOXEDDRV_DisplayDevices_Init(FALSE);
+    return STATUS_SUCCESS;
+}
 
-    boxedwine_wine_get_native_surface,
+#if BOXED_WINE_VERSION >= 7120
+const unixlib_entry_t __wine_unix_call_funcs[] =
+{
+    boxedwine_init
 };
 #endif
-
-// WINE_VULKAN_DRIVER_VERSION
-// 7  Jul 16, 2018 (Wine 3.13)
-// 8  Apr 7, 2020 (Wine 6.0)
-// 9  Jan 22, 2021 (Wine 6.1)
-// 10 Jan 26, 2021 (Wine 6.1)
-
-const struct vulkan_funcs* WINE_CDECL boxeddrv_wine_get_vulkan_driver(PHYSDEV dev, UINT version)
-{
-    TRACE("version %d\n", version);
-    if (version != WINE_VULKAN_DRIVER_VERSION)
-    {
-        ERR("version mismatch, vulkan wants %u but boxeddrv has %u\n", version, WINE_VULKAN_DRIVER_VERSION);
-        return NULL;
-    }
-
-    if (wine_vk_init())
-        return &vulkan_funcs;
-    return NULL;
-}
-
-const struct vulkan_funcs* WINE_CDECL boxeddrv_wine_get_vulkan_driver2(UINT version)
-{
-    TRACE("version %d\n", version);
-    if (version != WINE_VULKAN_DRIVER_VERSION)
-    {
-        ERR("version mismatch, vulkan wants %u but boxeddrv has %u\n", version, WINE_VULKAN_DRIVER_VERSION);
-        return NULL;
-    }
-
-    if (wine_vk_init())
-        return &vulkan_funcs;
-    return NULL;
-}
-#endif
-
-int initOpengl(void) {
-    static int init_done;
-    static void *opengl_handle;
-
-    char buffer[200];
-    unsigned int i;
-
-    if (init_done) return (opengl_handle != NULL);
-    init_done = 1;
-
-    /* No need to load any other libraries as according to the ABI, libGL should be self-sufficient
-       and include all dependencies */
-    opengl_handle = dlopen("libGL.so.1", RTLD_NOW|RTLD_GLOBAL);
-    if (opengl_handle == NULL)
-    {
-        ERR( "Failed to load libGL: %s\n", buffer );
-        ERR( "OpenGL support is disabled.\n");
-        return FALSE;
-    }
-
-    for (i = 0; i < sizeof(opengl_func_names)/sizeof(opengl_func_names[0]); i++)
-    {
-        if (!(((void **)&opengl_funcs.gl)[i] = dlsym( opengl_handle, opengl_func_names[i])))
-        {
-            ERR( "%s not found in libGL, disabling OpenGL.\n", opengl_func_names[i] );
-            goto failed;
-        }
-    }
-    return TRUE;
-
-failed:
-    dlclose(opengl_handle);
-    opengl_handle = NULL;
-    return FALSE;
-}
-
-/**********************************************************************
-*              macdrv_wine_get_wgl_driver
-*/
-struct opengl_funcs * WINE_CDECL boxeddrv_wine_get_wgl_driver(PHYSDEV dev, UINT version)
-{
-    if (version != WINE_WGL_DRIVER_VERSION)
-    {
-        ERR("version mismatch, opengl32 wants %u but boxeddrv has %u\n", version, WINE_WGL_DRIVER_VERSION);
-        return NULL;
-    }
-
-    if (initOpengl())
-        return &opengl_funcs;
-    return NULL;
-}
-
-static inline BOXEDDRV_PDEVICE *get_boxeddrv_dev(PHYSDEV dev)
-{
-    return (BOXEDDRV_PDEVICE*)dev;
-}
-
-static BOXEDDRV_PDEVICE *create_boxed_physdev(void)
-{
-    return HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(BOXEDDRV_PDEVICE));
-}
-
-
-/**********************************************************************
-*              DeleteDC (BOXEDDRV.@)
-*/
-static BOOL WINE_CDECL boxeddrv_DeleteDC(PHYSDEV dev)
-{
-    BOXEDDRV_PDEVICE *physDev = get_boxeddrv_dev(dev);
-
-    TRACE("hdc %p\n", dev->hdc);
-
-    HeapFree(GetProcessHeap(), 0, physDev);
-    return TRUE;
-}
-
-UINT WINE_CDECL boxeddrv_RealizePalette( PHYSDEV dev, HPALETTE hpal, BOOL primary ) {
-    PALETTEENTRY entries[256];
-    WORD num_entries;
-    UINT result;
-
-    TRACE("dev=%p hpal=%p primary=%d\n", dev, hpal, primary);
-    if (!GetObjectW( hpal, sizeof(num_entries), &num_entries )) return 0;
-
-     if (num_entries > 256)
-    {
-        FIXME( "more than 256 entries not supported\n" );
-        num_entries = 256;
-    }
-    if (!(num_entries = GetPaletteEntries( hpal, 0, num_entries, entries ))) return 0;
-    CALL_2(BOXED_REALIZE_PALETTE, (DWORD)num_entries, entries);
-    TRACE("num_entries=%d entries=%p result=%d\n", num_entries, entries, result);
-    return result;
-}
-
-BOOL WINE_CDECL boxeddrv_UnrealizePalette( HPALETTE hpal )
-{
-    return TRUE;
-}
-
-UINT WINE_CDECL boxeddrv_GetSystemPaletteEntries( PHYSDEV dev, UINT start, UINT count, LPPALETTEENTRY entries )
-{
-    UINT result;
-    CALL_3(BOXED_GET_SYSTEM_PALETTE, start, count, entries);
-    TRACE("dev=%p start=%d count=%d entries=%p result=%d\n", dev, start, count, entries, result);
-    return result;
-}
-
-COLORREF WINE_CDECL boxeddrv_GetNearestColor( PHYSDEV dev, COLORREF color )
-{
-    COLORREF result;
-    CALL_1(BOXED_GET_NEAREST_COLOR, color);
-    return result;
-}
-
-UINT WINE_CDECL boxeddrv_RealizeDefaultPalette( PHYSDEV dev )
-{
-    PALETTEENTRY entries[256];
-    int count;
-    UINT result;
-
-    count = GetPaletteEntries( GetStockObject(DEFAULT_PALETTE), 0, 256, entries );
-    CALL_2(BOXED_REALIZE_DEFAULT_PALETTE, count, entries);
-    TRACE("dev=%p result=%d\n",dev, result);
-    return result;
-}
-
-void CDECL boxeddrv_GetDC(HDC hdc, HWND hwnd, HWND top, const RECT* win_rect, const RECT* top_rect, DWORD flags)
-{
-}
-
-void CDECL boxeddrv_ReleaseDC(HWND hwnd, HDC hdc)
-{
-}
-
-BOOL CDECL boxeddrv_ScrollDC(HDC hdc, INT dx, INT dy, HRGN update)
-{
-    return FALSE;
-}
-
-void CDECL boxeddrv_SetWindowIcon(HWND hwnd, UINT type, HICON icon)
-{
-}
-
-void CDECL boxeddrv_UpdateClipboard(void)
-{
-}
-
-void CDECL boxeddrv_ThreadDetach(void)
-{
-}
-
-#if WINE_GDI_DRIVER_VERSION >= 69
-static BOOL WINE_CDECL boxeddrv_CreateDC(PHYSDEV *pdev, LPCWSTR device, LPCWSTR output, const DEVMODEW* initData);
-#else
-static BOOL WINE_CDECL boxeddrv_CreateDC(PHYSDEV* pdev, LPCWSTR driver, LPCWSTR device, LPCWSTR output, const DEVMODEW* initData);
-#endif
-static BOOL WINE_CDECL boxeddrv_CreateCompatibleDC(PHYSDEV orig, PHYSDEV *pdev);
-
-// Dec 18, 2012, wine-1.5.20 
-#if WINE_GDI_DRIVER_VERSION == 46
-static const struct gdi_dc_funcs boxeddrv_funcs =
-{
-    NULL,                                   /* pAbortDoc */
-    NULL,                                   /* pAbortPath */
-    NULL,                                   /* pAlphaBlend */
-    NULL,                                   /* pAngleArc */
-    NULL,                                   /* pArc */
-    NULL,                                   /* pArcTo */
-    NULL,                                   /* pBeginPath */
-    NULL,                                   /* pBlendImage */
-    NULL,                                   /* pChord */
-    NULL,                                   /* pCloseFigure */
-    boxeddrv_CreateCompatibleDC,            /* pCreateCompatibleDC */
-    boxeddrv_CreateDC,                      /* pCreateDC */
-    boxeddrv_DeleteDC,                      /* pDeleteDC */
-    NULL,                                   /* pDeleteObject */
-    NULL,                                   /* pDeviceCapabilities */
-    NULL,                                   /* pEllipse */
-    NULL,                                   /* pEndDoc */
-    NULL,                                   /* pEndPage */
-    NULL,                                   /* pEndPath */
-    NULL,                                   /* pEnumFonts */
-    NULL,                                   /* pEnumICMProfiles */
-    NULL,                                   /* pExcludeClipRect */
-    NULL,                                   /* pExtDeviceMode */
-    NULL,                                   /* pExtEscape */
-    NULL,                                   /* pExtFloodFill */
-    NULL,                                   /* pExtSelectClipRgn */
-    NULL,                                   /* pExtTextOut */
-    NULL,                                   /* pFillPath */
-    NULL,                                   /* pFillRgn */
-    NULL,                                   /* pFlattenPath */
-    NULL,                                   /* pFontIsLinked */
-    NULL,                                   /* pFrameRgn */
-    NULL,                                   /* pGdiComment */
-    NULL,                                   /* pGdiRealizationInfo */
-    NULL,                                   /* pGetBoundsRect */
-    NULL,                                   /* pGetCharABCWidths */
-    NULL,                                   /* pGetCharABCWidthsI */
-    NULL,                                   /* pGetCharWidth */
-    boxeddrv_GetDeviceCaps,                 /* pGetDeviceCaps */
-    boxeddrv_GetDeviceGammaRamp,            /* pGetDeviceGammaRamp */
-    NULL,                                   /* pGetFontData */
-    NULL,                                   /* pGetFontUnicodeRanges */
-    NULL,                                   /* pGetGlyphIndices */
-    NULL,                                   /* pGetGlyphOutline */
-    NULL,                                   /* pGetICMProfile */
-    NULL,                                   /* pGetImage */
-    NULL,                                   /* pGetKerningPairs */
-    boxeddrv_GetNearestColor,               /* pGetNearestColor */
-    NULL,                                   /* pGetOutlineTextMetrics */
-    NULL,                                   /* pGetPixel */
-    boxeddrv_GetSystemPaletteEntries,       /* pGetSystemPaletteEntries */
-    NULL,                                   /* pGetTextCharsetInfo */
-    NULL,                                   /* pGetTextExtentExPoint */
-    NULL,                                   /* pGetTextExtentExPointI */
-    NULL,                                   /* pGetTextFace */
-    NULL,                                   /* pGetTextMetrics */
-    NULL,                                   /* pGradientFill */
-    NULL,                                   /* pIntersectClipRect */
-    NULL,                                   /* pInvertRgn */
-    NULL,                                   /* pLineTo */
-    NULL,                                   /* pModifyWorldTransform */
-    NULL,                                   /* pMoveTo */
-    NULL,                                   /* pOffsetClipRgn */
-    NULL,                                   /* pOffsetViewportOrg */
-    NULL,                                   /* pOffsetWindowOrg */
-    NULL,                                   /* pPaintRgn */
-    NULL,                                   /* pPatBlt */
-    NULL,                                   /* pPie */
-    NULL,                                   /* pPolyBezier */
-    NULL,                                   /* pPolyBezierTo */
-    NULL,                                   /* pPolyDraw */
-    NULL,                                   /* pPolyPolygon */
-    NULL,                                   /* pPolyPolyline */
-    NULL,                                   /* pPolygon */
-    NULL,                                   /* pPolyline */
-    NULL,                                   /* pPolylineTo */
-    NULL,                                   /* pPutImage */
-    boxeddrv_RealizeDefaultPalette,         /* pRealizeDefaultPalette */
-    boxeddrv_RealizePalette,                /* pRealizePalette */
-    NULL,                                   /* pRectangle */
-    NULL,                                   /* pResetDC */
-    NULL,                                   /* pRestoreDC */
-    NULL,                                   /* pRoundRect */
-    NULL,                                   /* pSaveDC */
-    NULL,                                   /* pScaleViewportExt */
-    NULL,                                   /* pScaleWindowExt */
-    NULL,                                   /* pSelectBitmap */
-    NULL,                                   /* pSelectBrush */
-    NULL,                                   /* pSelectClipPath */
-    NULL,                                   /* pSelectFont */
-    NULL,                                   /* pSelectPalette */
-    NULL,                                   /* pSelectPen */
-    NULL,                                   /* pSetArcDirection */
-    NULL,                                   /* pSetBkColor */
-    NULL,                                   /* pSetBkMode */
-    NULL,                                   /* pSetBoundsRect */
-    NULL,                                   /* pSetDCBrushColor */
-    NULL,                                   /* pSetDCPenColor */
-    NULL,                                   /* pSetDIBitsToDevice */
-    NULL,                                   /* pSetDeviceClipping */
-    boxeddrv_SetDeviceGammaRamp,            /* pSetDeviceGammaRamp */
-    NULL,                                   /* pSetLayout */
-    NULL,                                   /* pSetMapMode */
-    NULL,                                   /* pSetMapperFlags */
-    NULL,                                   /* pSetPixel */
-    NULL,                                   /* pSetPolyFillMode */
-    NULL,                                   /* pSetROP2 */
-    NULL,                                   /* pSetRelAbs */
-    NULL,                                   /* pSetStretchBltMode */
-    NULL,                                   /* pSetTextAlign */
-    NULL,                                   /* pSetTextCharacterExtra */
-    NULL,                                   /* pSetTextColor */
-    NULL,                                   /* pSetTextJustification */
-    NULL,                                   /* pSetViewportExt */
-    NULL,                                   /* pSetViewportOrg */
-    NULL,                                   /* pSetWindowExt */
-    NULL,                                   /* pSetWindowOrg */
-    NULL,                                   /* pSetWorldTransform */
-    NULL,                                   /* pStartDoc */
-    NULL,                                   /* pStartPage */
-    NULL,                                   /* pStretchBlt */
-    NULL,                                   /* pStretchDIBits */
-    NULL,                                   /* pStrokeAndFillPath */
-    NULL,                                   /* pStrokePath */
-    boxeddrv_UnrealizePalette,              /* pUnrealizePalette */
-    NULL,                                   /* pWidenPath */
-    boxeddrv_wine_get_wgl_driver,           /* wine_get_wgl_driver */
-    GDI_PRIORITY_GRAPHICS_DRV               /* priority */
-};
-#endif
-
-// Sep 1, 2015, wine-1.7.51
-#if WINE_GDI_DRIVER_VERSION == 47
-static const struct gdi_dc_funcs boxeddrv_funcs =
-{
-    NULL,                                   /* pAbortDoc */
-    NULL,                                   /* pAbortPath */
-    NULL,                                   /* pAlphaBlend */
-    NULL,                                   /* pAngleArc */
-    NULL,                                   /* pArc */
-    NULL,                                   /* pArcTo */
-    NULL,                                   /* pBeginPath */
-    NULL,                                   /* pBlendImage */
-    NULL,                                   /* pChord */
-    NULL,                                   /* pCloseFigure */
-    boxeddrv_CreateCompatibleDC,            /* pCreateCompatibleDC */
-    boxeddrv_CreateDC,                      /* pCreateDC */
-    boxeddrv_DeleteDC,                      /* pDeleteDC */
-    NULL,                                   /* pDeleteObject */
-    NULL,                                   /* pDeviceCapabilities */
-    NULL,                                   /* pEllipse */
-    NULL,                                   /* pEndDoc */
-    NULL,                                   /* pEndPage */
-    NULL,                                   /* pEndPath */
-    NULL,                                   /* pEnumFonts */
-    NULL,                                   /* pEnumICMProfiles */
-    NULL,                                   /* pExcludeClipRect */
-    NULL,                                   /* pExtDeviceMode */
-    NULL,                                   /* pExtEscape */
-    NULL,                                   /* pExtFloodFill */
-    NULL,                                   /* pExtSelectClipRgn */
-    NULL,                                   /* pExtTextOut */
-    NULL,                                   /* pFillPath */
-    NULL,                                   /* pFillRgn */
-    NULL,                                   /* pFlattenPath */
-    NULL,                                   /* pFontIsLinked */
-    NULL,                                   /* pFrameRgn */
-    NULL,                                   /* pGdiComment */
-    NULL,                                   /* pGetBoundsRect */
-    NULL,                                   /* pGetCharABCWidths */
-    NULL,                                   /* pGetCharABCWidthsI */
-    NULL,                                   /* pGetCharWidth */
-    boxeddrv_GetDeviceCaps,                 /* pGetDeviceCaps */
-    boxeddrv_GetDeviceGammaRamp,            /* pGetDeviceGammaRamp */
-    NULL,                                   /* pGetFontData */
-    NULL,                                   /* pGetFontRealizationInfo */
-    NULL,                                   /* pGetFontUnicodeRanges */
-    NULL,                                   /* pGetGlyphIndices */
-    NULL,                                   /* pGetGlyphOutline */
-    NULL,                                   /* pGetICMProfile */
-    NULL,                                   /* pGetImage */
-    NULL,                                   /* pGetKerningPairs */
-    boxeddrv_GetNearestColor,               /* pGetNearestColor */
-    NULL,                                   /* pGetOutlineTextMetrics */
-    NULL,                                   /* pGetPixel */
-    boxeddrv_GetSystemPaletteEntries,       /* pGetSystemPaletteEntries */
-    NULL,                                   /* pGetTextCharsetInfo */
-    NULL,                                   /* pGetTextExtentExPoint */
-    NULL,                                   /* pGetTextExtentExPointI */
-    NULL,                                   /* pGetTextFace */
-    NULL,                                   /* pGetTextMetrics */
-    NULL,                                   /* pGradientFill */
-    NULL,                                   /* pIntersectClipRect */
-    NULL,                                   /* pInvertRgn */
-    NULL,                                   /* pLineTo */
-    NULL,                                   /* pModifyWorldTransform */
-    NULL,                                   /* pMoveTo */
-    NULL,                                   /* pOffsetClipRgn */
-    NULL,                                   /* pOffsetViewportOrg */
-    NULL,                                   /* pOffsetWindowOrg */
-    NULL,                                   /* pPaintRgn */
-    NULL,                                   /* pPatBlt */
-    NULL,                                   /* pPie */
-    NULL,                                   /* pPolyBezier */
-    NULL,                                   /* pPolyBezierTo */
-    NULL,                                   /* pPolyDraw */
-    NULL,                                   /* pPolyPolygon */
-    NULL,                                   /* pPolyPolyline */
-    NULL,                                   /* pPolygon */
-    NULL,                                   /* pPolyline */
-    NULL,                                   /* pPolylineTo */
-    NULL,                                   /* pPutImage */
-    boxeddrv_RealizeDefaultPalette,         /* pRealizeDefaultPalette */
-    boxeddrv_RealizePalette,                /* pRealizePalette */
-    NULL,                                   /* pRectangle */
-    NULL,                                   /* pResetDC */
-    NULL,                                   /* pRestoreDC */
-    NULL,                                   /* pRoundRect */
-    NULL,                                   /* pSaveDC */
-    NULL,                                   /* pScaleViewportExt */
-    NULL,                                   /* pScaleWindowExt */
-    NULL,                                   /* pSelectBitmap */
-    NULL,                                   /* pSelectBrush */
-    NULL,                                   /* pSelectClipPath */
-    NULL,                                   /* pSelectFont */
-    NULL,                                   /* pSelectPalette */
-    NULL,                                   /* pSelectPen */
-    NULL,                                   /* pSetArcDirection */
-    NULL,                                   /* pSetBkColor */
-    NULL,                                   /* pSetBkMode */
-    NULL,                                   /* pSetBoundsRect */
-    NULL,                                   /* pSetDCBrushColor */
-    NULL,                                   /* pSetDCPenColor */
-    NULL,                                   /* pSetDIBitsToDevice */
-    NULL,                                   /* pSetDeviceClipping */
-    boxeddrv_SetDeviceGammaRamp,            /* pSetDeviceGammaRamp */
-    NULL,                                   /* pSetLayout */
-    NULL,                                   /* pSetMapMode */
-    NULL,                                   /* pSetMapperFlags */
-    NULL,                                   /* pSetPixel */
-    NULL,                                   /* pSetPolyFillMode */
-    NULL,                                   /* pSetROP2 */
-    NULL,                                   /* pSetRelAbs */
-    NULL,                                   /* pSetStretchBltMode */
-    NULL,                                   /* pSetTextAlign */
-    NULL,                                   /* pSetTextCharacterExtra */
-    NULL,                                   /* pSetTextColor */
-    NULL,                                   /* pSetTextJustification */
-    NULL,                                   /* pSetViewportExt */
-    NULL,                                   /* pSetViewportOrg */
-    NULL,                                   /* pSetWindowExt */
-    NULL,                                   /* pSetWindowOrg */
-    NULL,                                   /* pSetWorldTransform */
-    NULL,                                   /* pStartDoc */
-    NULL,                                   /* pStartPage */
-    NULL,                                   /* pStretchBlt */
-    NULL,                                   /* pStretchDIBits */
-    NULL,                                   /* pStrokeAndFillPath */
-    NULL,                                   /* pStrokePath */
-    boxeddrv_UnrealizePalette,              /* pUnrealizePalette */
-    NULL,                                   /* pWidenPath */
-    boxeddrv_wine_get_wgl_driver,           /* wine_get_wgl_driver */
-    GDI_PRIORITY_GRAPHICS_DRV               /* priority */
-};
-#endif
-
-// Feb 27, 2018 wine-3.3
-#if WINE_GDI_DRIVER_VERSION == 48
-static const struct gdi_dc_funcs boxeddrv_funcs =
-{
-    NULL,                                   /* pAbortDoc */
-    NULL,                                   /* pAbortPath */
-    NULL,                                   /* pAlphaBlend */
-    NULL,                                   /* pAngleArc */
-    NULL,                                   /* pArc */
-    NULL,                                   /* pArcTo */
-    NULL,                                   /* pBeginPath */
-    NULL,                                   /* pBlendImage */
-    NULL,                                   /* pChord */
-    NULL,                                   /* pCloseFigure */
-    boxeddrv_CreateCompatibleDC,            /* pCreateCompatibleDC */
-    boxeddrv_CreateDC,                      /* pCreateDC */
-    boxeddrv_DeleteDC,                      /* pDeleteDC */
-    NULL,                                   /* pDeleteObject */
-    NULL,                                   /* pDeviceCapabilities */
-    NULL,                                   /* pEllipse */
-    NULL,                                   /* pEndDoc */
-    NULL,                                   /* pEndPage */
-    NULL,                                   /* pEndPath */
-    NULL,                                   /* pEnumFonts */
-    NULL,                                   /* pEnumICMProfiles */
-    NULL,                                   /* pExcludeClipRect */
-    NULL,                                   /* pExtDeviceMode */
-    NULL,                                   /* pExtEscape */
-    NULL,                                   /* pExtFloodFill */
-    NULL,                                   /* pExtSelectClipRgn */
-    NULL,                                   /* pExtTextOut */
-    NULL,                                   /* pFillPath */
-    NULL,                                   /* pFillRgn */
-    NULL,                                   /* pFlattenPath */
-    NULL,                                   /* pFontIsLinked */
-    NULL,                                   /* pFrameRgn */
-    NULL,                                   /* pGdiComment */
-    NULL,                                   /* pGetBoundsRect */
-    NULL,                                   /* pGetCharABCWidths */
-    NULL,                                   /* pGetCharABCWidthsI */
-    NULL,                                   /* pGetCharWidth */
-    boxeddrv_GetDeviceCaps,                 /* pGetDeviceCaps */
-    boxeddrv_GetDeviceGammaRamp,            /* pGetDeviceGammaRamp */
-    NULL,                                   /* pGetFontData */
-    NULL,                                   /* pGetFontRealizationInfo */
-    NULL,                                   /* pGetFontUnicodeRanges */
-    NULL,                                   /* pGetGlyphIndices */
-    NULL,                                   /* pGetGlyphOutline */
-    NULL,                                   /* pGetICMProfile */
-    NULL,                                   /* pGetImage */
-    NULL,                                   /* pGetKerningPairs */
-    boxeddrv_GetNearestColor,               /* pGetNearestColor */
-    NULL,                                   /* pGetOutlineTextMetrics */
-    NULL,                                   /* pGetPixel */
-    boxeddrv_GetSystemPaletteEntries,       /* pGetSystemPaletteEntries */
-    NULL,                                   /* pGetTextCharsetInfo */
-    NULL,                                   /* pGetTextExtentExPoint */
-    NULL,                                   /* pGetTextExtentExPointI */
-    NULL,                                   /* pGetTextFace */
-    NULL,                                   /* pGetTextMetrics */
-    NULL,                                   /* pGradientFill */
-    NULL,                                   /* pIntersectClipRect */
-    NULL,                                   /* pInvertRgn */
-    NULL,                                   /* pLineTo */
-    NULL,                                   /* pModifyWorldTransform */
-    NULL,                                   /* pMoveTo */
-    NULL,                                   /* pOffsetClipRgn */
-    NULL,                                   /* pOffsetViewportOrg */
-    NULL,                                   /* pOffsetWindowOrg */
-    NULL,                                   /* pPaintRgn */
-    NULL,                                   /* pPatBlt */
-    NULL,                                   /* pPie */
-    NULL,                                   /* pPolyBezier */
-    NULL,                                   /* pPolyBezierTo */
-    NULL,                                   /* pPolyDraw */
-    NULL,                                   /* pPolyPolygon */
-    NULL,                                   /* pPolyPolyline */
-    NULL,                                   /* pPolygon */
-    NULL,                                   /* pPolyline */
-    NULL,                                   /* pPolylineTo */
-    NULL,                                   /* pPutImage */
-    boxeddrv_RealizeDefaultPalette,         /* pRealizeDefaultPalette */
-    boxeddrv_RealizePalette,                /* pRealizePalette */
-    NULL,                                   /* pRectangle */
-    NULL,                                   /* pResetDC */
-    NULL,                                   /* pRestoreDC */
-    NULL,                                   /* pRoundRect */
-    NULL,                                   /* pSaveDC */
-    NULL,                                   /* pScaleViewportExt */
-    NULL,                                   /* pScaleWindowExt */
-    NULL,                                   /* pSelectBitmap */
-    NULL,                                   /* pSelectBrush */
-    NULL,                                   /* pSelectClipPath */
-    NULL,                                   /* pSelectFont */
-    NULL,                                   /* pSelectPalette */
-    NULL,                                   /* pSelectPen */
-    NULL,                                   /* pSetArcDirection */
-    NULL,                                   /* pSetBkColor */
-    NULL,                                   /* pSetBkMode */
-    NULL,                                   /* pSetBoundsRect */
-    NULL,                                   /* pSetDCBrushColor */
-    NULL,                                   /* pSetDCPenColor */
-    NULL,                                   /* pSetDIBitsToDevice */
-    NULL,                                   /* pSetDeviceClipping */
-    boxeddrv_SetDeviceGammaRamp,            /* pSetDeviceGammaRamp */
-    NULL,                                   /* pSetLayout */
-    NULL,                                   /* pSetMapMode */
-    NULL,                                   /* pSetMapperFlags */
-    NULL,                                   /* pSetPixel */
-    NULL,                                   /* pSetPolyFillMode */
-    NULL,                                   /* pSetROP2 */
-    NULL,                                   /* pSetRelAbs */
-    NULL,                                   /* pSetStretchBltMode */
-    NULL,                                   /* pSetTextAlign */
-    NULL,                                   /* pSetTextCharacterExtra */
-    NULL,                                   /* pSetTextColor */
-    NULL,                                   /* pSetTextJustification */
-    NULL,                                   /* pSetViewportExt */
-    NULL,                                   /* pSetViewportOrg */
-    NULL,                                   /* pSetWindowExt */
-    NULL,                                   /* pSetWindowOrg */
-    NULL,                                   /* pSetWorldTransform */
-    NULL,                                   /* pStartDoc */
-    NULL,                                   /* pStartPage */
-    NULL,                                   /* pStretchBlt */
-    NULL,                                   /* pStretchDIBits */
-    NULL,                                   /* pStrokeAndFillPath */
-    NULL,                                   /* pStrokePath */
-    boxeddrv_UnrealizePalette,              /* pUnrealizePalette */
-    NULL,                                   /* pWidenPath */
-    boxeddrv_wine_get_wgl_driver,           /* wine_get_wgl_driver */
-    NULL,                                   /* wine_get_vulkan_driver */
-    GDI_PRIORITY_GRAPHICS_DRV               /* priority */
-};
-#endif
-
-// Apr 9, 2019, wine-4.6
-#if WINE_GDI_DRIVER_VERSION == 49 || WINE_GDI_DRIVER_VERSION == 50
-static const struct gdi_dc_funcs boxeddrv_funcs =
-{
-    NULL,                                   /* pAbortDoc */
-    NULL,                                   /* pAbortPath */
-    NULL,                                   /* pAlphaBlend */
-    NULL,                                   /* pAngleArc */
-    NULL,                                   /* pArc */
-    NULL,                                   /* pArcTo */
-    NULL,                                   /* pBeginPath */
-    NULL,                                   /* pBlendImage */
-    NULL,                                   /* pChord */
-    NULL,                                   /* pCloseFigure */
-    boxeddrv_CreateCompatibleDC,            /* pCreateCompatibleDC */
-    boxeddrv_CreateDC,                      /* pCreateDC */
-    boxeddrv_DeleteDC,                      /* pDeleteDC */
-    NULL,                                   /* pDeleteObject */
-    NULL,                                   /* pDeviceCapabilities */
-    NULL,                                   /* pEllipse */
-    NULL,                                   /* pEndDoc */
-    NULL,                                   /* pEndPage */
-    NULL,                                   /* pEndPath */
-    NULL,                                   /* pEnumFonts */
-    NULL,                                   /* pEnumICMProfiles */
-    NULL,                                   /* pExcludeClipRect */
-    NULL,                                   /* pExtDeviceMode */
-    NULL,                                   /* pExtEscape */
-    NULL,                                   /* pExtFloodFill */
-    NULL,                                   /* pExtSelectClipRgn */
-    NULL,                                   /* pExtTextOut */
-    NULL,                                   /* pFillPath */
-    NULL,                                   /* pFillRgn */
-    NULL,                                   /* pFlattenPath */
-    NULL,                                   /* pFontIsLinked */
-    NULL,                                   /* pFrameRgn */
-    NULL,                                   /* pGdiComment */
-    NULL,                                   /* pGetBoundsRect */
-    NULL,                                   /* pGetCharABCWidths */
-    NULL,                                   /* pGetCharABCWidthsI */
-    NULL,                                   /* pGetCharWidth */
-    NULL,                                   /* pGetCharWidthInfo */
-    boxeddrv_GetDeviceCaps,                 /* pGetDeviceCaps */
-    boxeddrv_GetDeviceGammaRamp,            /* pGetDeviceGammaRamp */
-    NULL,                                   /* pGetFontData */
-    NULL,                                   /* pGetFontRealizationInfo */
-    NULL,                                   /* pGetFontUnicodeRanges */
-    NULL,                                   /* pGetGlyphIndices */
-    NULL,                                   /* pGetGlyphOutline */
-    NULL,                                   /* pGetICMProfile */
-    NULL,                                   /* pGetImage */
-    NULL,                                   /* pGetKerningPairs */
-    boxeddrv_GetNearestColor,               /* pGetNearestColor */
-    NULL,                                   /* pGetOutlineTextMetrics */
-    NULL,                                   /* pGetPixel */
-    boxeddrv_GetSystemPaletteEntries,       /* pGetSystemPaletteEntries */
-    NULL,                                   /* pGetTextCharsetInfo */
-    NULL,                                   /* pGetTextExtentExPoint */
-    NULL,                                   /* pGetTextExtentExPointI */
-    NULL,                                   /* pGetTextFace */
-    NULL,                                   /* pGetTextMetrics */
-    NULL,                                   /* pGradientFill */
-    NULL,                                   /* pIntersectClipRect */
-    NULL,                                   /* pInvertRgn */
-    NULL,                                   /* pLineTo */
-    NULL,                                   /* pModifyWorldTransform */
-    NULL,                                   /* pMoveTo */
-    NULL,                                   /* pOffsetClipRgn */
-    NULL,                                   /* pOffsetViewportOrg */
-    NULL,                                   /* pOffsetWindowOrg */
-    NULL,                                   /* pPaintRgn */
-    NULL,                                   /* pPatBlt */
-    NULL,                                   /* pPie */
-    NULL,                                   /* pPolyBezier */
-    NULL,                                   /* pPolyBezierTo */
-    NULL,                                   /* pPolyDraw */
-    NULL,                                   /* pPolyPolygon */
-    NULL,                                   /* pPolyPolyline */
-    NULL,                                   /* pPolygon */
-    NULL,                                   /* pPolyline */
-    NULL,                                   /* pPolylineTo */
-    NULL,                                   /* pPutImage */
-    boxeddrv_RealizeDefaultPalette,         /* pRealizeDefaultPalette */
-    boxeddrv_RealizePalette,                /* pRealizePalette */
-    NULL,                                   /* pRectangle */
-    NULL,                                   /* pResetDC */
-    NULL,                                   /* pRestoreDC */
-    NULL,                                   /* pRoundRect */
-    NULL,                                   /* pSaveDC */
-    NULL,                                   /* pScaleViewportExt */
-    NULL,                                   /* pScaleWindowExt */
-    NULL,                                   /* pSelectBitmap */
-    NULL,                                   /* pSelectBrush */
-    NULL,                                   /* pSelectClipPath */
-    NULL,                                   /* pSelectFont */
-    NULL,                                   /* pSelectPalette */
-    NULL,                                   /* pSelectPen */
-    NULL,                                   /* pSetArcDirection */
-    NULL,                                   /* pSetBkColor */
-    NULL,                                   /* pSetBkMode */
-    NULL,                                   /* pSetBoundsRect */
-    NULL,                                   /* pSetDCBrushColor */
-    NULL,                                   /* pSetDCPenColor */
-    NULL,                                   /* pSetDIBitsToDevice */
-    NULL,                                   /* pSetDeviceClipping */
-    boxeddrv_SetDeviceGammaRamp,            /* pSetDeviceGammaRamp */
-    NULL,                                   /* pSetLayout */
-    NULL,                                   /* pSetMapMode */
-    NULL,                                   /* pSetMapperFlags */
-    NULL,                                   /* pSetPixel */
-    NULL,                                   /* pSetPolyFillMode */
-    NULL,                                   /* pSetROP2 */
-    NULL,                                   /* pSetRelAbs */
-    NULL,                                   /* pSetStretchBltMode */
-    NULL,                                   /* pSetTextAlign */
-    NULL,                                   /* pSetTextCharacterExtra */
-    NULL,                                   /* pSetTextColor */
-    NULL,                                   /* pSetTextJustification */
-    NULL,                                   /* pSetViewportExt */
-    NULL,                                   /* pSetViewportOrg */
-    NULL,                                   /* pSetWindowExt */
-    NULL,                                   /* pSetWindowOrg */
-    NULL,                                   /* pSetWorldTransform */
-    NULL,                                   /* pStartDoc */
-    NULL,                                   /* pStartPage */
-    NULL,                                   /* pStretchBlt */
-    NULL,                                   /* pStretchDIBits */
-    NULL,                                   /* pStrokeAndFillPath */
-    NULL,                                   /* pStrokePath */
-    boxeddrv_UnrealizePalette,              /* pUnrealizePalette */
-    NULL,                                   /* pWidenPath */
-    boxeddrv_wine_get_wgl_driver,           /* wine_get_wgl_driver */
-    NULL,                                   /* wine_get_vulkan_driver */
-    GDI_PRIORITY_GRAPHICS_DRV               /* priority */
-};
-#endif
-
-// Jul 6, 2019 wine-4.12.1
-#if WINE_GDI_DRIVER_VERSION == 50
-// added CDECL
-#endif
-
-// Oct 22, 2019 wine-4.19
-#if WINE_GDI_DRIVER_VERSION == 51
-static const struct gdi_dc_funcs boxeddrv_funcs =
-{
-    NULL,                                   /* pAbortDoc */
-    NULL,                                   /* pAbortPath */
-    NULL,                                   /* pAlphaBlend */
-    NULL,                                   /* pAngleArc */
-    NULL,                                   /* pArc */
-    NULL,                                   /* pArcTo */
-    NULL,                                   /* pBeginPath */
-    NULL,                                   /* pBlendImage */
-    NULL,                                   /* pChord */
-    NULL,                                   /* pCloseFigure */
-    boxeddrv_CreateCompatibleDC,            /* pCreateCompatibleDC */
-    boxeddrv_CreateDC,                      /* pCreateDC */
-    boxeddrv_DeleteDC,                      /* pDeleteDC */
-    NULL,                                   /* pDeleteObject */
-    NULL,                                   /* pDeviceCapabilities */
-    NULL,                                   /* pEllipse */
-    NULL,                                   /* pEndDoc */
-    NULL,                                   /* pEndPage */
-    NULL,                                   /* pEndPath */
-    NULL,                                   /* pEnumFonts */
-    NULL,                                   /* pEnumICMProfiles */
-    NULL,                                   /* pExcludeClipRect */
-    NULL,                                   /* pExtDeviceMode */
-    NULL,                                   /* pExtEscape */
-    NULL,                                   /* pExtFloodFill */
-    NULL,                                   /* pExtSelectClipRgn */
-    NULL,                                   /* pExtTextOut */
-    NULL,                                   /* pFillPath */
-    NULL,                                   /* pFillRgn */
-    NULL,                                   /* pFlattenPath */
-    NULL,                                   /* pFontIsLinked */
-    NULL,                                   /* pFrameRgn */
-    NULL,                                   /* pGdiComment */
-    NULL,                                   /* pGetBoundsRect */
-    NULL,                                   /* pGetCharABCWidths */
-    NULL,                                   /* pGetCharABCWidthsI */
-    NULL,                                   /* pGetCharWidth */
-    NULL,                                   /* pGetCharWidthInfo */
-    boxeddrv_GetDeviceCaps,                 /* pGetDeviceCaps */
-    boxeddrv_GetDeviceGammaRamp,            /* pGetDeviceGammaRamp */
-    NULL,                                   /* pGetFontData */
-    NULL,                                   /* pGetFontRealizationInfo */
-    NULL,                                   /* pGetFontUnicodeRanges */
-    NULL,                                   /* pGetGlyphIndices */
-    NULL,                                   /* pGetGlyphOutline */
-    NULL,                                   /* pGetICMProfile */
-    NULL,                                   /* pGetImage */
-    NULL,                                   /* pGetKerningPairs */
-    boxeddrv_GetNearestColor,               /* pGetNearestColor */
-    NULL,                                   /* pGetOutlineTextMetrics */
-    NULL,                                   /* pGetPixel */
-    boxeddrv_GetSystemPaletteEntries,       /* pGetSystemPaletteEntries */
-    NULL,                                   /* pGetTextCharsetInfo */
-    NULL,                                   /* pGetTextExtentExPoint */
-    NULL,                                   /* pGetTextExtentExPointI */
-    NULL,                                   /* pGetTextFace */
-    NULL,                                   /* pGetTextMetrics */
-    NULL,                                   /* pGradientFill */
-    NULL,                                   /* pIntersectClipRect */
-    NULL,                                   /* pInvertRgn */
-    NULL,                                   /* pLineTo */
-    NULL,                                   /* pModifyWorldTransform */
-    NULL,                                   /* pMoveTo */
-    NULL,                                   /* pOffsetClipRgn */
-    NULL,                                   /* pOffsetViewportOrg */
-    NULL,                                   /* pOffsetWindowOrg */
-    NULL,                                   /* pPaintRgn */
-    NULL,                                   /* pPatBlt */
-    NULL,                                   /* pPie */
-    NULL,                                   /* pPolyBezier */
-    NULL,                                   /* pPolyBezierTo */
-    NULL,                                   /* pPolyDraw */
-    NULL,                                   /* pPolyPolygon */
-    NULL,                                   /* pPolyPolyline */
-    NULL,                                   /* pPolygon */
-    NULL,                                   /* pPolyline */
-    NULL,                                   /* pPolylineTo */
-    NULL,                                   /* pPutImage */
-    boxeddrv_RealizeDefaultPalette,         /* pRealizeDefaultPalette */
-    boxeddrv_RealizePalette,                /* pRealizePalette */
-    NULL,                                   /* pRectangle */
-    NULL,                                   /* pResetDC */
-    NULL,                                   /* pRestoreDC */
-    NULL,                                   /* pRoundRect */
-    NULL,                                   /* pSaveDC */
-    NULL,                                   /* pScaleViewportExt */
-    NULL,                                   /* pScaleWindowExt */
-    NULL,                                   /* pSelectBitmap */
-    NULL,                                   /* pSelectBrush */
-    NULL,                                   /* pSelectClipPath */
-    NULL,                                   /* pSelectFont */
-    NULL,                                   /* pSelectPalette */
-    NULL,                                   /* pSelectPen */
-    NULL,                                   /* pSetArcDirection */
-    NULL,                                   /* pSetBkColor */
-    NULL,                                   /* pSetBkMode */
-    NULL,                                   /* pSetBoundsRect */
-    NULL,                                   /* pSetDCBrushColor */
-    NULL,                                   /* pSetDCPenColor */
-    NULL,                                   /* pSetDIBitsToDevice */
-    NULL,                                   /* pSetDeviceClipping */
-    boxeddrv_SetDeviceGammaRamp,            /* pSetDeviceGammaRamp */
-    NULL,                                   /* pSetLayout */
-    NULL,                                   /* pSetMapMode */
-    NULL,                                   /* pSetMapperFlags */
-    NULL,                                   /* pSetPixel */
-    NULL,                                   /* pSetPolyFillMode */
-    NULL,                                   /* pSetROP2 */
-    NULL,                                   /* pSetRelAbs */
-    NULL,                                   /* pSetStretchBltMode */
-    NULL,                                   /* pSetTextAlign */
-    NULL,                                   /* pSetTextCharacterExtra */
-    NULL,                                   /* pSetTextColor */
-    NULL,                                   /* pSetTextJustification */
-    NULL,                                   /* pSetViewportExt */
-    NULL,                                   /* pSetViewportOrg */
-    NULL,                                   /* pSetWindowExt */
-    NULL,                                   /* pSetWindowOrg */
-    NULL,                                   /* pSetWorldTransform */
-    NULL,                                   /* pStartDoc */
-    NULL,                                   /* pStartPage */
-    NULL,                                   /* pStretchBlt */
-    NULL,                                   /* pStretchDIBits */
-    NULL,                                   /* pStrokeAndFillPath */
-    NULL,                                   /* pStrokePath */
-    boxeddrv_UnrealizePalette,              /* pUnrealizePalette */
-    NULL,                                   /* pWidenPath */
-    NULL,                                   /* pD3DKMTCheckVidPnExclusiveOwnership */
-    NULL,                                   /* pD3DKMTSetVidPnSourceOwner */
-    boxeddrv_wine_get_wgl_driver,           /* wine_get_wgl_driver */
-    NULL,                                   /* wine_get_vulkan_driver */
-    GDI_PRIORITY_GRAPHICS_DRV               /* priority */
-};
-#endif
-
-// Jul 22, 2021 wine-6.14
-#if WINE_GDI_DRIVER_VERSION == 52
-static const struct gdi_dc_funcs boxeddrv_funcs =
-{
-    NULL,                                   /* pAbortDoc */
-    NULL,                                   /* pAbortPath */
-    NULL,                                   /* pAlphaBlend */
-    NULL,                                   /* pAngleArc */
-    NULL,                                   /* pArc */
-    NULL,                                   /* pArcTo */
-    NULL,                                   /* pBeginPath */
-    NULL,                                   /* pBlendImage */
-    NULL,                                   /* pChord */
-    NULL,                                   /* pCloseFigure */
-    boxeddrv_CreateCompatibleDC,            /* pCreateCompatibleDC */
-    boxeddrv_CreateDC,                      /* pCreateDC */
-    boxeddrv_DeleteDC,                      /* pDeleteDC */
-    NULL,                                   /* pDeleteObject */
-    NULL,                                   /* pDeviceCapabilities */
-    NULL,                                   /* pEllipse */
-    NULL,                                   /* pEndDoc */
-    NULL,                                   /* pEndPage */
-    NULL,                                   /* pEndPath */
-    NULL,                                   /* pEnumFonts */
-    NULL,                                   /* pEnumICMProfiles */
-    NULL,                                   /* pExcludeClipRect */
-    NULL,                                   /* pExtDeviceMode */
-    NULL,                                   /* pExtEscape */
-    NULL,                                   /* pExtFloodFill */
-    NULL,                                   /* pExtSelectClipRgn */
-    NULL,                                   /* pExtTextOut */
-    NULL,                                   /* pFillPath */
-    NULL,                                   /* pFillRgn */
-    NULL,                                   /* pFlattenPath */
-    NULL,                                   /* pFontIsLinked */
-    NULL,                                   /* pFrameRgn */
-    NULL,                                   /* pGdiComment */
-    NULL,                                   /* pGetBoundsRect */
-    NULL,                                   /* pGetCharABCWidths */
-    NULL,                                   /* pGetCharABCWidthsI */
-    NULL,                                   /* pGetCharWidth */
-    NULL,                                   /* pGetCharWidthInfo */
-    boxeddrv_GetDeviceCaps,                 /* pGetDeviceCaps */
-    boxeddrv_GetDeviceGammaRamp,            /* pGetDeviceGammaRamp */
-    NULL,                                   /* pGetFontData */
-    NULL,                                   /* pGetFontRealizationInfo */
-    NULL,                                   /* pGetFontUnicodeRanges */
-    NULL,                                   /* pGetGlyphIndices */
-    NULL,                                   /* pGetGlyphOutline */
-    NULL,                                   /* pGetICMProfile */
-    NULL,                                   /* pGetImage */
-    NULL,                                   /* pGetKerningPairs */
-    boxeddrv_GetNearestColor,               /* pGetNearestColor */
-    NULL,                                   /* pGetOutlineTextMetrics */
-    NULL,                                   /* pGetPixel */
-    boxeddrv_GetSystemPaletteEntries,       /* pGetSystemPaletteEntries */
-    NULL,                                   /* pGetTextCharsetInfo */
-    NULL,                                   /* pGetTextExtentExPoint */
-    NULL,                                   /* pGetTextExtentExPointI */
-    NULL,                                   /* pGetTextFace */
-    NULL,                                   /* pGetTextMetrics */
-    NULL,                                   /* pGradientFill */
-    NULL,                                   /* pIntersectClipRect */
-    NULL,                                   /* pInvertRgn */
-    NULL,                                   /* pLineTo */
-    NULL,                                   /* pModifyWorldTransform */
-    NULL,                                   /* pMoveTo */
-    NULL,                                   /* pOffsetClipRgn */
-    NULL,                                   /* pOffsetViewportOrg */
-    NULL,                                   /* pOffsetWindowOrg */
-    NULL,                                   /* pPaintRgn */
-    NULL,                                   /* pPatBlt */
-    NULL,                                   /* pPie */
-    NULL,                                   /* pPolyBezier */
-    NULL,                                   /* pPolyBezierTo */
-    NULL,                                   /* pPolyDraw */
-    NULL,                                   /* pPolyPolygon */
-    NULL,                                   /* pPolyPolyline */
-    NULL,                                   /* pPolylineTo */
-    NULL,                                   /* pPutImage */
-    boxeddrv_RealizeDefaultPalette,         /* pRealizeDefaultPalette */
-    boxeddrv_RealizePalette,                /* pRealizePalette */
-    NULL,                                   /* pRectangle */
-    NULL,                                   /* pResetDC */
-    NULL,                                   /* pRestoreDC */
-    NULL,                                   /* pRoundRect */
-    NULL,                                   /* pSaveDC */
-    NULL,                                   /* pScaleViewportExt */
-    NULL,                                   /* pScaleWindowExt */
-    NULL,                                   /* pSelectBitmap */
-    NULL,                                   /* pSelectBrush */
-    NULL,                                   /* pSelectClipPath */
-    NULL,                                   /* pSelectFont */
-    NULL,                                   /* pSelectPalette */
-    NULL,                                   /* pSelectPen */
-    NULL,                                   /* pSetArcDirection */
-    NULL,                                   /* pSetBkColor */
-    NULL,                                   /* pSetBkMode */
-    NULL,                                   /* pSetBoundsRect */
-    NULL,                                   /* pSetDCBrushColor */
-    NULL,                                   /* pSetDCPenColor */
-    NULL,                                   /* pSetDIBitsToDevice */
-    NULL,                                   /* pSetDeviceClipping */
-    boxeddrv_SetDeviceGammaRamp,            /* pSetDeviceGammaRamp */
-    NULL,                                   /* pSetLayout */
-    NULL,                                   /* pSetMapMode */
-    NULL,                                   /* pSetMapperFlags */
-    NULL,                                   /* pSetPixel */
-    NULL,                                   /* pSetPolyFillMode */
-    NULL,                                   /* pSetROP2 */
-    NULL,                                   /* pSetRelAbs */
-    NULL,                                   /* pSetStretchBltMode */
-    NULL,                                   /* pSetTextAlign */
-    NULL,                                   /* pSetTextCharacterExtra */
-    NULL,                                   /* pSetTextColor */
-    NULL,                                   /* pSetTextJustification */
-    NULL,                                   /* pSetViewportExt */
-    NULL,                                   /* pSetViewportOrg */
-    NULL,                                   /* pSetWindowExt */
-    NULL,                                   /* pSetWindowOrg */
-    NULL,                                   /* pSetWorldTransform */
-    NULL,                                   /* pStartDoc */
-    NULL,                                   /* pStartPage */
-    NULL,                                   /* pStretchBlt */
-    NULL,                                   /* pStretchDIBits */
-    NULL,                                   /* pStrokeAndFillPath */
-    NULL,                                   /* pStrokePath */
-    boxeddrv_UnrealizePalette,              /* pUnrealizePalette */
-    NULL,                                   /* pWidenPath */
-    NULL,                                   /* pD3DKMTCheckVidPnExclusiveOwnership */
-    NULL,                                   /* pD3DKMTSetVidPnSourceOwner */
-    boxeddrv_wine_get_wgl_driver,           /* wine_get_wgl_driver */
-    boxeddrv_wine_get_vulkan_driver,        /* wine_get_vulkan_driver */
-    GDI_PRIORITY_GRAPHICS_DRV               /* priority */
-};
-#endif
-
-// Jul 28, 2021  wine-6.14
-#if WINE_GDI_DRIVER_VERSION == 53
-static const struct gdi_dc_funcs boxeddrv_funcs =
-{
-    NULL,                                   /* pAbortDoc */
-    NULL,                                   /* pAbortPath */
-    NULL,                                   /* pAlphaBlend */
-    NULL,                                   /* pAngleArc */
-    NULL,                                   /* pArc */
-    NULL,                                   /* pArcTo */
-    NULL,                                   /* pBeginPath */
-    NULL,                                   /* pBlendImage */
-    NULL,                                   /* pChord */
-    NULL,                                   /* pCloseFigure */
-    boxeddrv_CreateCompatibleDC,            /* pCreateCompatibleDC */
-    boxeddrv_CreateDC,                      /* pCreateDC */
-    boxeddrv_DeleteDC,                      /* pDeleteDC */
-    NULL,                                   /* pDeleteObject */
-    NULL,                                   /* pDeviceCapabilities */
-    NULL,                                   /* pEllipse */
-    NULL,                                   /* pEndDoc */
-    NULL,                                   /* pEndPage */
-    NULL,                                   /* pEndPath */
-    NULL,                                   /* pEnumFonts */
-    NULL,                                   /* pEnumICMProfiles */
-    NULL,                                   /* pExcludeClipRect */
-    NULL,                                   /* pExtDeviceMode */
-    NULL,                                   /* pExtEscape */
-    NULL,                                   /* pExtFloodFill */
-    NULL,                                   /* pExtSelectClipRgn */
-    NULL,                                   /* pExtTextOut */
-    NULL,                                   /* pFillPath */
-    NULL,                                   /* pFillRgn */
-    NULL,                                   /* pFlattenPath */
-    NULL,                                   /* pFontIsLinked */
-    NULL,                                   /* pFrameRgn */
-    NULL,                                   /* pGdiComment */
-    NULL,                                   /* pGetBoundsRect */
-    NULL,                                   /* pGetCharABCWidths */
-    NULL,                                   /* pGetCharABCWidthsI */
-    NULL,                                   /* pGetCharWidth */
-    NULL,                                   /* pGetCharWidthInfo */
-    boxeddrv_GetDeviceCaps,                 /* pGetDeviceCaps */
-    boxeddrv_GetDeviceGammaRamp,            /* pGetDeviceGammaRamp */
-    NULL,                                   /* pGetFontData */
-    NULL,                                   /* pGetFontRealizationInfo */
-    NULL,                                   /* pGetFontUnicodeRanges */
-    NULL,                                   /* pGetGlyphIndices */
-    NULL,                                   /* pGetGlyphOutline */
-    NULL,                                   /* pGetICMProfile */
-    NULL,                                   /* pGetImage */
-    NULL,                                   /* pGetKerningPairs */
-    boxeddrv_GetNearestColor,               /* pGetNearestColor */
-    NULL,                                   /* pGetOutlineTextMetrics */
-    NULL,                                   /* pGetPixel */
-    boxeddrv_GetSystemPaletteEntries,       /* pGetSystemPaletteEntries */
-    NULL,                                   /* pGetTextCharsetInfo */
-    NULL,                                   /* pGetTextExtentExPoint */
-    NULL,                                   /* pGetTextExtentExPointI */
-    NULL,                                   /* pGetTextFace */
-    NULL,                                   /* pGetTextMetrics */
-    NULL,                                   /* pGradientFill */
-    NULL,                                   /* pIntersectClipRect */
-    NULL,                                   /* pInvertRgn */
-    NULL,                                   /* pLineTo */
-    NULL,                                   /* pModifyWorldTransform */
-    NULL,                                   /* pMoveTo */
-    NULL,                                   /* pOffsetClipRgn */
-    NULL,                                   /* pOffsetViewportOrg */
-    NULL,                                   /* pOffsetWindowOrg */
-    NULL,                                   /* pPaintRgn */
-    NULL,                                   /* pPatBlt */
-    NULL,                                   /* pPie */
-    NULL,                                   /* pPolyBezier */
-    NULL,                                   /* pPolyBezierTo */
-    NULL,                                   /* pPolyDraw */
-    NULL,                                   /* pPolyPolygon */
-    NULL,                                   /* pPolyPolyline */
-    NULL,                                   /* pPolylineTo */
-    NULL,                                   /* pPutImage */
-    boxeddrv_RealizeDefaultPalette,         /* pRealizeDefaultPalette */
-    boxeddrv_RealizePalette,                /* pRealizePalette */
-    NULL,                                   /* pRectangle */
-    NULL,                                   /* pResetDC */
-    NULL,                                   /* pRestoreDC */
-    NULL,                                   /* pRoundRect */
-    NULL,                                   /* pSaveDC */
-    NULL,                                   /* pScaleViewportExt */
-    NULL,                                   /* pScaleWindowExt */
-    NULL,                                   /* pSelectBitmap */
-    NULL,                                   /* pSelectBrush */
-    NULL,                                   /* pSelectClipPath */
-    NULL,                                   /* pSelectFont */
-    NULL,                                   /* pSelectPalette */
-    NULL,                                   /* pSelectPen */
-    NULL,                                   /* pSetArcDirection */
-    NULL,                                   /* pSetBkColor */
-    NULL,                                   /* pSetBoundsRect */
-    NULL,                                   /* pSetDCBrushColor */
-    NULL,                                   /* pSetDCPenColor */
-    NULL,                                   /* pSetDIBitsToDevice */
-    NULL,                                   /* pSetDeviceClipping */
-    boxeddrv_SetDeviceGammaRamp,            /* pSetDeviceGammaRamp */
-    NULL,                                   /* pSetLayout */
-    NULL,                                   /* pSetMapMode */
-    NULL,                                   /* pSetMapperFlags */
-    NULL,                                   /* pSetPixel */
-    NULL,                                   /* pSetPolyFillMode */
-    NULL,                                   /* pSetRelAbs */
-    NULL,                                   /* pSetStretchBltMode */
-    NULL,                                   /* pSetTextCharacterExtra */
-    NULL,                                   /* pSetTextColor */
-    NULL,                                   /* pSetTextJustification */
-    NULL,                                   /* pSetViewportExt */
-    NULL,                                   /* pSetViewportOrg */
-    NULL,                                   /* pSetWindowExt */
-    NULL,                                   /* pSetWindowOrg */
-    NULL,                                   /* pSetWorldTransform */
-    NULL,                                   /* pStartDoc */
-    NULL,                                   /* pStartPage */
-    NULL,                                   /* pStretchBlt */
-    NULL,                                   /* pStretchDIBits */
-    NULL,                                   /* pStrokeAndFillPath */
-    NULL,                                   /* pStrokePath */
-    boxeddrv_UnrealizePalette,              /* pUnrealizePalette */
-    NULL,                                   /* pWidenPath */
-    NULL,                                   /* pD3DKMTCheckVidPnExclusiveOwnership */
-    NULL,                                   /* pD3DKMTSetVidPnSourceOwner */
-    boxeddrv_wine_get_wgl_driver,           /* wine_get_wgl_driver */
-    boxeddrv_wine_get_vulkan_driver,        /* wine_get_vulkan_driver */
-    GDI_PRIORITY_GRAPHICS_DRV               /* priority */
-};
-#endif
-
-// Jul 29, 2021 wine-6.14
-#if WINE_GDI_DRIVER_VERSION == 54
-static const struct gdi_dc_funcs boxeddrv_funcs =
-{
-    NULL,                                   /* pAbortDoc */
-    NULL,                                   /* pAbortPath */
-    NULL,                                   /* pAlphaBlend */
-    NULL,                                   /* pAngleArc */
-    NULL,                                   /* pArc */
-    NULL,                                   /* pArcTo */
-    NULL,                                   /* pBeginPath */
-    NULL,                                   /* pBlendImage */
-    NULL,                                   /* pChord */
-    NULL,                                   /* pCloseFigure */
-    boxeddrv_CreateCompatibleDC,            /* pCreateCompatibleDC */
-    boxeddrv_CreateDC,                      /* pCreateDC */
-    boxeddrv_DeleteDC,                      /* pDeleteDC */
-    NULL,                                   /* pDeleteObject */
-    NULL,                                   /* pDeviceCapabilities */
-    NULL,                                   /* pEllipse */
-    NULL,                                   /* pEndDoc */
-    NULL,                                   /* pEndPage */
-    NULL,                                   /* pEndPath */
-    NULL,                                   /* pEnumFonts */
-    NULL,                                   /* pEnumICMProfiles */
-    NULL,                                   /* pExcludeClipRect */
-    NULL,                                   /* pExtDeviceMode */
-    NULL,                                   /* pExtEscape */
-    NULL,                                   /* pExtFloodFill */
-    NULL,                                   /* pExtSelectClipRgn */
-    NULL,                                   /* pExtTextOut */
-    NULL,                                   /* pFillPath */
-    NULL,                                   /* pFillRgn */
-    NULL,                                   /* pFlattenPath */
-    NULL,                                   /* pFontIsLinked */
-    NULL,                                   /* pFrameRgn */
-    NULL,                                   /* pGdiComment */
-    NULL,                                   /* pGetBoundsRect */
-    NULL,                                   /* pGetCharABCWidths */
-    NULL,                                   /* pGetCharABCWidthsI */
-    NULL,                                   /* pGetCharWidth */
-    NULL,                                   /* pGetCharWidthInfo */
-    boxeddrv_GetDeviceCaps,                 /* pGetDeviceCaps */
-    boxeddrv_GetDeviceGammaRamp,            /* pGetDeviceGammaRamp */
-    NULL,                                   /* pGetFontData */
-    NULL,                                   /* pGetFontRealizationInfo */
-    NULL,                                   /* pGetFontUnicodeRanges */
-    NULL,                                   /* pGetGlyphIndices */
-    NULL,                                   /* pGetGlyphOutline */
-    NULL,                                   /* pGetICMProfile */
-    NULL,                                   /* pGetImage */
-    NULL,                                   /* pGetKerningPairs */
-    boxeddrv_GetNearestColor,               /* pGetNearestColor */
-    NULL,                                   /* pGetOutlineTextMetrics */
-    NULL,                                   /* pGetPixel */
-    boxeddrv_GetSystemPaletteEntries,       /* pGetSystemPaletteEntries */
-    NULL,                                   /* pGetTextCharsetInfo */
-    NULL,                                   /* pGetTextExtentExPoint */
-    NULL,                                   /* pGetTextExtentExPointI */
-    NULL,                                   /* pGetTextFace */
-    NULL,                                   /* pGetTextMetrics */
-    NULL,                                   /* pGradientFill */
-    NULL,                                   /* pIntersectClipRect */
-    NULL,                                   /* pInvertRgn */
-    NULL,                                   /* pLineTo */
-    NULL,                                   /* pModifyWorldTransform */
-    NULL,                                   /* pMoveTo */
-    NULL,                                   /* pOffsetClipRgn */
-    NULL,                                   /* pOffsetViewportOrg */
-    NULL,                                   /* pOffsetWindowOrg */
-    NULL,                                   /* pPaintRgn */
-    NULL,                                   /* pPatBlt */
-    NULL,                                   /* pPie */
-    NULL,                                   /* pPolyBezier */
-    NULL,                                   /* pPolyBezierTo */
-    NULL,                                   /* pPolyDraw */
-    NULL,                                   /* pPolyPolygon */
-    NULL,                                   /* pPolyPolyline */
-    NULL,                                   /* pPolylineTo */
-    NULL,                                   /* pPutImage */
-    boxeddrv_RealizeDefaultPalette,         /* pRealizeDefaultPalette */
-    boxeddrv_RealizePalette,                /* pRealizePalette */
-    NULL,                                   /* pRectangle */
-    NULL,                                   /* pResetDC */
-    NULL,                                   /* pRestoreDC */
-    NULL,                                   /* pRoundRect */
-    NULL,                                   /* pSaveDC */
-    NULL,                                   /* pScaleViewportExt */
-    NULL,                                   /* pScaleWindowExt */
-    NULL,                                   /* pSelectBitmap */
-    NULL,                                   /* pSelectBrush */
-    NULL,                                   /* pSelectClipPath */
-    NULL,                                   /* pSelectFont */
-    NULL,                                   /* pSelectPalette */
-    NULL,                                   /* pSelectPen */
-    NULL,                                   /* pSetBkColor */
-    NULL,                                   /* pSetBoundsRect */
-    NULL,                                   /* pSetDCBrushColor */
-    NULL,                                   /* pSetDCPenColor */
-    NULL,                                   /* pSetDIBitsToDevice */
-    NULL,                                   /* pSetDeviceClipping */
-    boxeddrv_SetDeviceGammaRamp,            /* pSetDeviceGammaRamp */
-    NULL,                                   /* pSetLayout */
-    NULL,                                   /* pSetMapMode */
-    NULL,                                   /* pSetMapperFlags */
-    NULL,                                   /* pSetPixel */
-    NULL,                                   /* pSetTextCharacterExtra */
-    NULL,                                   /* pSetTextColor */
-    NULL,                                   /* pSetTextJustification */
-    NULL,                                   /* pSetViewportExt */
-    NULL,                                   /* pSetViewportOrg */
-    NULL,                                   /* pSetWindowExt */
-    NULL,                                   /* pSetWindowOrg */
-    NULL,                                   /* pSetWorldTransform */
-    NULL,                                   /* pStartDoc */
-    NULL,                                   /* pStartPage */
-    NULL,                                   /* pStretchBlt */
-    NULL,                                   /* pStretchDIBits */
-    NULL,                                   /* pStrokeAndFillPath */
-    NULL,                                   /* pStrokePath */
-    boxeddrv_UnrealizePalette,              /* pUnrealizePalette */
-    NULL,                                   /* pWidenPath */
-    NULL,                                   /* pD3DKMTCheckVidPnExclusiveOwnership */
-    NULL,                                   /* pD3DKMTSetVidPnSourceOwner */
-    boxeddrv_wine_get_wgl_driver,           /* wine_get_wgl_driver */
-    boxeddrv_wine_get_vulkan_driver,        /* wine_get_vulkan_driver */
-    GDI_PRIORITY_GRAPHICS_DRV               /* priority */
-};
-#endif
-
-// Jul 30, 2021 wine-6.14
-#if WINE_GDI_DRIVER_VERSION == 55
-static const struct gdi_dc_funcs boxeddrv_funcs =
-{
-    NULL,                                   /* pAbortDoc */
-    NULL,                                   /* pAbortPath */
-    NULL,                                   /* pAlphaBlend */
-    NULL,                                   /* pAngleArc */
-    NULL,                                   /* pArc */
-    NULL,                                   /* pArcTo */
-    NULL,                                   /* pBeginPath */
-    NULL,                                   /* pBlendImage */
-    NULL,                                   /* pChord */
-    NULL,                                   /* pCloseFigure */
-    boxeddrv_CreateCompatibleDC,            /* pCreateCompatibleDC */
-    boxeddrv_CreateDC,                      /* pCreateDC */
-    boxeddrv_DeleteDC,                      /* pDeleteDC */
-    NULL,                                   /* pDeleteObject */
-    NULL,                                   /* pDeviceCapabilities */
-    NULL,                                   /* pEllipse */
-    NULL,                                   /* pEndDoc */
-    NULL,                                   /* pEndPage */
-    NULL,                                   /* pEndPath */
-    NULL,                                   /* pEnumFonts */
-    NULL,                                   /* pEnumICMProfiles */
-    NULL,                                   /* pExcludeClipRect */
-    NULL,                                   /* pExtDeviceMode */
-    NULL,                                   /* pExtEscape */
-    NULL,                                   /* pExtFloodFill */
-    NULL,                                   /* pExtSelectClipRgn */
-    NULL,                                   /* pExtTextOut */
-    NULL,                                   /* pFillPath */
-    NULL,                                   /* pFillRgn */
-    NULL,                                   /* pFlattenPath */
-    NULL,                                   /* pFontIsLinked */
-    NULL,                                   /* pFrameRgn */
-    NULL,                                   /* pGdiComment */
-    NULL,                                   /* pGetBoundsRect */
-    NULL,                                   /* pGetCharABCWidths */
-    NULL,                                   /* pGetCharABCWidthsI */
-    NULL,                                   /* pGetCharWidth */
-    NULL,                                   /* pGetCharWidthInfo */
-    boxeddrv_GetDeviceCaps,                 /* pGetDeviceCaps */
-    boxeddrv_GetDeviceGammaRamp,            /* pGetDeviceGammaRamp */
-    NULL,                                   /* pGetFontData */
-    NULL,                                   /* pGetFontRealizationInfo */
-    NULL,                                   /* pGetFontUnicodeRanges */
-    NULL,                                   /* pGetGlyphIndices */
-    NULL,                                   /* pGetGlyphOutline */
-    NULL,                                   /* pGetICMProfile */
-    NULL,                                   /* pGetImage */
-    NULL,                                   /* pGetKerningPairs */
-    boxeddrv_GetNearestColor,               /* pGetNearestColor */
-    NULL,                                   /* pGetOutlineTextMetrics */
-    NULL,                                   /* pGetPixel */
-    boxeddrv_GetSystemPaletteEntries,       /* pGetSystemPaletteEntries */
-    NULL,                                   /* pGetTextCharsetInfo */
-    NULL,                                   /* pGetTextExtentExPoint */
-    NULL,                                   /* pGetTextExtentExPointI */
-    NULL,                                   /* pGetTextFace */
-    NULL,                                   /* pGetTextMetrics */
-    NULL,                                   /* pGradientFill */
-    NULL,                                   /* pIntersectClipRect */
-    NULL,                                   /* pInvertRgn */
-    NULL,                                   /* pLineTo */
-    NULL,                                   /* pModifyWorldTransform */
-    NULL,                                   /* pMoveTo */
-    NULL,                                   /* pOffsetClipRgn */
-    NULL,                                   /* pOffsetViewportOrg */
-    NULL,                                   /* pOffsetWindowOrg */
-    NULL,                                   /* pPaintRgn */
-    NULL,                                   /* pPatBlt */
-    NULL,                                   /* pPie */
-    NULL,                                   /* pPolyBezier */
-    NULL,                                   /* pPolyBezierTo */
-    NULL,                                   /* pPolyDraw */
-    NULL,                                   /* pPolyPolygon */
-    NULL,                                   /* pPolyPolyline */
-    NULL,                                   /* pPolylineTo */
-    NULL,                                   /* pPutImage */
-    boxeddrv_RealizeDefaultPalette,         /* pRealizeDefaultPalette */
-    boxeddrv_RealizePalette,                /* pRealizePalette */
-    NULL,                                   /* pRectangle */
-    NULL,                                   /* pResetDC */
-    NULL,                                   /* pRestoreDC */
-    NULL,                                   /* pRoundRect */
-    NULL,                                   /* pScaleViewportExt */
-    NULL,                                   /* pScaleWindowExt */
-    NULL,                                   /* pSelectBitmap */
-    NULL,                                   /* pSelectBrush */
-    NULL,                                   /* pSelectClipPath */
-    NULL,                                   /* pSelectFont */
-    NULL,                                   /* pSelectPalette */
-    NULL,                                   /* pSelectPen */
-    NULL,                                   /* pSetBkColor */
-    NULL,                                   /* pSetBoundsRect */
-    NULL,                                   /* pSetDCBrushColor */
-    NULL,                                   /* pSetDCPenColor */
-    NULL,                                   /* pSetDIBitsToDevice */
-    NULL,                                   /* pSetDeviceClipping */
-    boxeddrv_SetDeviceGammaRamp,            /* pSetDeviceGammaRamp */
-    NULL,                                   /* pSetLayout */
-    NULL,                                   /* pSetMapMode */
-    NULL,                                   /* pSetMapperFlags */
-    NULL,                                   /* pSetPixel */
-    NULL,                                   /* pSetTextCharacterExtra */
-    NULL,                                   /* pSetTextColor */
-    NULL,                                   /* pSetTextJustification */
-    NULL,                                   /* pSetViewportExt */
-    NULL,                                   /* pSetViewportOrg */
-    NULL,                                   /* pSetWindowExt */
-    NULL,                                   /* pSetWindowOrg */
-    NULL,                                   /* pSetWorldTransform */
-    NULL,                                   /* pStartDoc */
-    NULL,                                   /* pStartPage */
-    NULL,                                   /* pStretchBlt */
-    NULL,                                   /* pStretchDIBits */
-    NULL,                                   /* pStrokeAndFillPath */
-    NULL,                                   /* pStrokePath */
-    boxeddrv_UnrealizePalette,              /* pUnrealizePalette */
-    NULL,                                   /* pWidenPath */
-    NULL,                                   /* pD3DKMTCheckVidPnExclusiveOwnership */
-    NULL,                                   /* pD3DKMTSetVidPnSourceOwner */
-    boxeddrv_wine_get_wgl_driver,           /* wine_get_wgl_driver */
-    boxeddrv_wine_get_vulkan_driver,        /* wine_get_vulkan_driver */
-    GDI_PRIORITY_GRAPHICS_DRV               /* priority */
-};
-#endif
-
-// Aug 4, 2021 wine-6.15
-#if WINE_GDI_DRIVER_VERSION == 56
-static const struct gdi_dc_funcs boxeddrv_funcs =
-{
-    NULL,                                   /* pAbortDoc */
-    NULL,                                   /* pAbortPath */
-    NULL,                                   /* pAlphaBlend */
-    NULL,                                   /* pAngleArc */
-    NULL,                                   /* pArc */
-    NULL,                                   /* pArcTo */
-    NULL,                                   /* pBeginPath */
-    NULL,                                   /* pBlendImage */
-    NULL,                                   /* pChord */
-    NULL,                                   /* pCloseFigure */
-    boxeddrv_CreateCompatibleDC,            /* pCreateCompatibleDC */
-    boxeddrv_CreateDC,                      /* pCreateDC */
-    boxeddrv_DeleteDC,                      /* pDeleteDC */
-    NULL,                                   /* pDeleteObject */
-    NULL,                                   /* pDeviceCapabilities */
-    NULL,                                   /* pEllipse */
-    NULL,                                   /* pEndDoc */
-    NULL,                                   /* pEndPage */
-    NULL,                                   /* pEndPath */
-    NULL,                                   /* pEnumFonts */
-    NULL,                                   /* pEnumICMProfiles */
-    NULL,                                   /* pExtDeviceMode */
-    NULL,                                   /* pExtEscape */
-    NULL,                                   /* pExtFloodFill */
-    NULL,                                   /* pExtTextOut */
-    NULL,                                   /* pFillPath */
-    NULL,                                   /* pFillRgn */
-    NULL,                                   /* pFlattenPath */
-    NULL,                                   /* pFontIsLinked */
-    NULL,                                   /* pFrameRgn */
-    NULL,                                   /* pGdiComment */
-    NULL,                                   /* pGetBoundsRect */
-    NULL,                                   /* pGetCharABCWidths */
-    NULL,                                   /* pGetCharABCWidthsI */
-    NULL,                                   /* pGetCharWidth */
-    NULL,                                   /* pGetCharWidthInfo */
-    boxeddrv_GetDeviceCaps,                 /* pGetDeviceCaps */
-    boxeddrv_GetDeviceGammaRamp,            /* pGetDeviceGammaRamp */
-    NULL,                                   /* pGetFontData */
-    NULL,                                   /* pGetFontRealizationInfo */
-    NULL,                                   /* pGetFontUnicodeRanges */
-    NULL,                                   /* pGetGlyphIndices */
-    NULL,                                   /* pGetGlyphOutline */
-    NULL,                                   /* pGetICMProfile */
-    NULL,                                   /* pGetImage */
-    NULL,                                   /* pGetKerningPairs */
-    boxeddrv_GetNearestColor,               /* pGetNearestColor */
-    NULL,                                   /* pGetOutlineTextMetrics */
-    NULL,                                   /* pGetPixel */
-    boxeddrv_GetSystemPaletteEntries,       /* pGetSystemPaletteEntries */
-    NULL,                                   /* pGetTextCharsetInfo */
-    NULL,                                   /* pGetTextExtentExPoint */
-    NULL,                                   /* pGetTextExtentExPointI */
-    NULL,                                   /* pGetTextFace */
-    NULL,                                   /* pGetTextMetrics */
-    NULL,                                   /* pGradientFill */
-    NULL,                                   /* pInvertRgn */
-    NULL,                                   /* pLineTo */
-    NULL,                                   /* pModifyWorldTransform */
-    NULL,                                   /* pMoveTo */
-    NULL,                                   /* pOffsetViewportOrg */
-    NULL,                                   /* pOffsetWindowOrg */
-    NULL,                                   /* pPaintRgn */
-    NULL,                                   /* pPatBlt */
-    NULL,                                   /* pPie */
-    NULL,                                   /* pPolyBezier */
-    NULL,                                   /* pPolyBezierTo */
-    NULL,                                   /* pPolyDraw */
-    NULL,                                   /* pPolyPolygon */
-    NULL,                                   /* pPolyPolyline */
-    NULL,                                   /* pPolylineTo */
-    NULL,                                   /* pPutImage */
-    boxeddrv_RealizeDefaultPalette,         /* pRealizeDefaultPalette */
-    boxeddrv_RealizePalette,                /* pRealizePalette */
-    NULL,                                   /* pRectangle */
-    NULL,                                   /* pResetDC */
-    NULL,                                   /* pRestoreDC */
-    NULL,                                   /* pRoundRect */
-    NULL,                                   /* pScaleViewportExt */
-    NULL,                                   /* pScaleWindowExt */
-    NULL,                                   /* pSelectBitmap */
-    NULL,                                   /* pSelectBrush */
-    NULL,                                   /* pSelectClipPath */
-    NULL,                                   /* pSelectFont */
-    NULL,                                   /* pSelectPalette */
-    NULL,                                   /* pSelectPen */
-    NULL,                                   /* pSetBkColor */
-    NULL,                                   /* pSetBoundsRect */
-    NULL,                                   /* pSetDCBrushColor */
-    NULL,                                   /* pSetDCPenColor */
-    NULL,                                   /* pSetDIBitsToDevice */
-    NULL,                                   /* pSetDeviceClipping */
-    boxeddrv_SetDeviceGammaRamp,            /* pSetDeviceGammaRamp */
-    NULL,                                   /* pSetLayout */
-    NULL,                                   /* pSetMapMode */
-    NULL,                                   /* pSetMapperFlags */
-    NULL,                                   /* pSetPixel */
-    NULL,                                   /* pSetTextCharacterExtra */
-    NULL,                                   /* pSetTextColor */
-    NULL,                                   /* pSetTextJustification */
-    NULL,                                   /* pSetViewportExt */
-    NULL,                                   /* pSetViewportOrg */
-    NULL,                                   /* pSetWindowExt */
-    NULL,                                   /* pSetWindowOrg */
-    NULL,                                   /* pSetWorldTransform */
-    NULL,                                   /* pStartDoc */
-    NULL,                                   /* pStartPage */
-    NULL,                                   /* pStretchBlt */
-    NULL,                                   /* pStretchDIBits */
-    NULL,                                   /* pStrokeAndFillPath */
-    NULL,                                   /* pStrokePath */
-    boxeddrv_UnrealizePalette,              /* pUnrealizePalette */
-    NULL,                                   /* pWidenPath */
-    NULL,                                   /* pD3DKMTCheckVidPnExclusiveOwnership */
-    NULL,                                   /* pD3DKMTSetVidPnSourceOwner */
-    boxeddrv_wine_get_wgl_driver,           /* wine_get_wgl_driver */
-    boxeddrv_wine_get_vulkan_driver,        /* wine_get_vulkan_driver */
-    GDI_PRIORITY_GRAPHICS_DRV               /* priority */
-};
-#endif
-
-// Aug 5, 2021 wine-6.15
-#if WINE_GDI_DRIVER_VERSION == 57
-static const struct gdi_dc_funcs boxeddrv_funcs =
-{
-    NULL,                                   /* pAbortDoc */
-    NULL,                                   /* pAbortPath */
-    NULL,                                   /* pAlphaBlend */
-    NULL,                                   /* pAngleArc */
-    NULL,                                   /* pArc */
-    NULL,                                   /* pArcTo */
-    NULL,                                   /* pBeginPath */
-    NULL,                                   /* pBlendImage */
-    NULL,                                   /* pChord */
-    NULL,                                   /* pCloseFigure */
-    boxeddrv_CreateCompatibleDC,            /* pCreateCompatibleDC */
-    boxeddrv_CreateDC,                      /* pCreateDC */
-    boxeddrv_DeleteDC,                      /* pDeleteDC */
-    NULL,                                   /* pDeleteObject */
-    NULL,                                   /* pDeviceCapabilities */
-    NULL,                                   /* pEllipse */
-    NULL,                                   /* pEndDoc */
-    NULL,                                   /* pEndPage */
-    NULL,                                   /* pEndPath */
-    NULL,                                   /* pEnumFonts */
-    NULL,                                   /* pEnumICMProfiles */
-    NULL,                                   /* pExtDeviceMode */
-    NULL,                                   /* pExtEscape */
-    NULL,                                   /* pExtFloodFill */
-    NULL,                                   /* pExtTextOut */
-    NULL,                                   /* pFillPath */
-    NULL,                                   /* pFillRgn */
-    NULL,                                   /* pFlattenPath */
-    NULL,                                   /* pFontIsLinked */
-    NULL,                                   /* pFrameRgn */
-    NULL,                                   /* pGdiComment */
-    NULL,                                   /* pGetBoundsRect */
-    NULL,                                   /* pGetCharABCWidths */
-    NULL,                                   /* pGetCharABCWidthsI */
-    NULL,                                   /* pGetCharWidth */
-    NULL,                                   /* pGetCharWidthInfo */
-    boxeddrv_GetDeviceCaps,                 /* pGetDeviceCaps */
-    boxeddrv_GetDeviceGammaRamp,            /* pGetDeviceGammaRamp */
-    NULL,                                   /* pGetFontData */
-    NULL,                                   /* pGetFontRealizationInfo */
-    NULL,                                   /* pGetFontUnicodeRanges */
-    NULL,                                   /* pGetGlyphIndices */
-    NULL,                                   /* pGetGlyphOutline */
-    NULL,                                   /* pGetICMProfile */
-    NULL,                                   /* pGetImage */
-    NULL,                                   /* pGetKerningPairs */
-    boxeddrv_GetNearestColor,               /* pGetNearestColor */
-    NULL,                                   /* pGetOutlineTextMetrics */
-    NULL,                                   /* pGetPixel */
-    boxeddrv_GetSystemPaletteEntries,       /* pGetSystemPaletteEntries */
-    NULL,                                   /* pGetTextCharsetInfo */
-    NULL,                                   /* pGetTextExtentExPoint */
-    NULL,                                   /* pGetTextExtentExPointI */
-    NULL,                                   /* pGetTextFace */
-    NULL,                                   /* pGetTextMetrics */
-    NULL,                                   /* pGradientFill */
-    NULL,                                   /* pInvertRgn */
-    NULL,                                   /* pLineTo */
-    NULL,                                   /* pModifyWorldTransform */
-    NULL,                                   /* pMoveTo */
-    NULL,                                   /* pOffsetViewportOrg */
-    NULL,                                   /* pOffsetWindowOrg */
-    NULL,                                   /* pPaintRgn */
-    NULL,                                   /* pPatBlt */
-    NULL,                                   /* pPie */
-    NULL,                                   /* pPolyBezier */
-    NULL,                                   /* pPolyBezierTo */
-    NULL,                                   /* pPolyDraw */
-    NULL,                                   /* pPolyPolygon */
-    NULL,                                   /* pPolyPolyline */
-    NULL,                                   /* pPolylineTo */
-    NULL,                                   /* pPutImage */
-    boxeddrv_RealizeDefaultPalette,         /* pRealizeDefaultPalette */
-    boxeddrv_RealizePalette,                /* pRealizePalette */
-    NULL,                                   /* pRectangle */
-    NULL,                                   /* pResetDC */
-    NULL,                                   /* pRestoreDC */
-    NULL,                                   /* pRoundRect */
-    NULL,                                   /* pScaleViewportExt */
-    NULL,                                   /* pScaleWindowExt */
-    NULL,                                   /* pSelectBitmap */
-    NULL,                                   /* pSelectBrush */
-    NULL,                                   /* pSelectClipPath */
-    NULL,                                   /* pSelectFont */
-    NULL,                                   /* pSelectPalette */
-    NULL,                                   /* pSelectPen */
-    NULL,                                   /* pSetBkColor */
-    NULL,                                   /* pSetBoundsRect */
-    NULL,                                   /* pSetDCBrushColor */
-    NULL,                                   /* pSetDCPenColor */
-    NULL,                                   /* pSetDIBitsToDevice */
-    NULL,                                   /* pSetDeviceClipping */
-    boxeddrv_SetDeviceGammaRamp,            /* pSetDeviceGammaRamp */
-    NULL,                                   /* pSetPixel */
-    NULL,                                   /* pSetTextColor */
-    NULL,                                   /* pSetViewportExt */
-    NULL,                                   /* pSetViewportOrg */
-    NULL,                                   /* pSetWindowExt */
-    NULL,                                   /* pSetWindowOrg */
-    NULL,                                   /* pSetWorldTransform */
-    NULL,                                   /* pStartDoc */
-    NULL,                                   /* pStartPage */
-    NULL,                                   /* pStretchBlt */
-    NULL,                                   /* pStretchDIBits */
-    NULL,                                   /* pStrokeAndFillPath */
-    NULL,                                   /* pStrokePath */
-    boxeddrv_UnrealizePalette,              /* pUnrealizePalette */
-    NULL,                                   /* pWidenPath */
-    NULL,                                   /* pD3DKMTCheckVidPnExclusiveOwnership */
-    NULL,                                   /* pD3DKMTSetVidPnSourceOwner */
-    boxeddrv_wine_get_wgl_driver,           /* wine_get_wgl_driver */
-    boxeddrv_wine_get_vulkan_driver,        /* wine_get_vulkan_driver */
-    GDI_PRIORITY_GRAPHICS_DRV               /* priority */
-};
-#endif
-
-// Aug 6, 2021 wine-6.15
-#if WINE_GDI_DRIVER_VERSION == 58
-static const struct gdi_dc_funcs boxeddrv_funcs =
-{
-    NULL,                                   /* pAbortDoc */
-    NULL,                                   /* pAbortPath */
-    NULL,                                   /* pAlphaBlend */
-    NULL,                                   /* pAngleArc */
-    NULL,                                   /* pArc */
-    NULL,                                   /* pArcTo */
-    NULL,                                   /* pBeginPath */
-    NULL,                                   /* pBlendImage */
-    NULL,                                   /* pChord */
-    NULL,                                   /* pCloseFigure */
-    boxeddrv_CreateCompatibleDC,            /* pCreateCompatibleDC */
-    boxeddrv_CreateDC,                      /* pCreateDC */
-    boxeddrv_DeleteDC,                      /* pDeleteDC */
-    NULL,                                   /* pDeleteObject */
-    NULL,                                   /* pDeviceCapabilities */
-    NULL,                                   /* pEllipse */
-    NULL,                                   /* pEndDoc */
-    NULL,                                   /* pEndPage */
-    NULL,                                   /* pEndPath */
-    NULL,                                   /* pEnumFonts */
-    NULL,                                   /* pEnumICMProfiles */
-    NULL,                                   /* pExtDeviceMode */
-    NULL,                                   /* pExtEscape */
-    NULL,                                   /* pExtFloodFill */
-    NULL,                                   /* pExtTextOut */
-    NULL,                                   /* pFillPath */
-    NULL,                                   /* pFillRgn */
-    NULL,                                   /* pFlattenPath */
-    NULL,                                   /* pFontIsLinked */
-    NULL,                                   /* pFrameRgn */
-    NULL,                                   /* pGdiComment */
-    NULL,                                   /* pGetBoundsRect */
-    NULL,                                   /* pGetCharABCWidths */
-    NULL,                                   /* pGetCharABCWidthsI */
-    NULL,                                   /* pGetCharWidth */
-    NULL,                                   /* pGetCharWidthInfo */
-    boxeddrv_GetDeviceCaps,                 /* pGetDeviceCaps */
-    boxeddrv_GetDeviceGammaRamp,            /* pGetDeviceGammaRamp */
-    NULL,                                   /* pGetFontData */
-    NULL,                                   /* pGetFontRealizationInfo */
-    NULL,                                   /* pGetFontUnicodeRanges */
-    NULL,                                   /* pGetGlyphIndices */
-    NULL,                                   /* pGetGlyphOutline */
-    NULL,                                   /* pGetICMProfile */
-    NULL,                                   /* pGetImage */
-    NULL,                                   /* pGetKerningPairs */
-    boxeddrv_GetNearestColor,               /* pGetNearestColor */
-    NULL,                                   /* pGetOutlineTextMetrics */
-    NULL,                                   /* pGetPixel */
-    boxeddrv_GetSystemPaletteEntries,       /* pGetSystemPaletteEntries */
-    NULL,                                   /* pGetTextCharsetInfo */
-    NULL,                                   /* pGetTextExtentExPoint */
-    NULL,                                   /* pGetTextExtentExPointI */
-    NULL,                                   /* pGetTextFace */
-    NULL,                                   /* pGetTextMetrics */
-    NULL,                                   /* pGradientFill */
-    NULL,                                   /* pInvertRgn */
-    NULL,                                   /* pLineTo */
-    NULL,                                   /* pModifyWorldTransform */
-    NULL,                                   /* pMoveTo */
-    NULL,                                   /* pOffsetViewportOrg */
-    NULL,                                   /* pOffsetWindowOrg */
-    NULL,                                   /* pPaintRgn */
-    NULL,                                   /* pPatBlt */
-    NULL,                                   /* pPie */
-    NULL,                                   /* pPolyBezier */
-    NULL,                                   /* pPolyBezierTo */
-    NULL,                                   /* pPolyDraw */
-    NULL,                                   /* pPolyPolygon */
-    NULL,                                   /* pPolyPolyline */
-    NULL,                                   /* pPolylineTo */
-    NULL,                                   /* pPutImage */
-    boxeddrv_RealizeDefaultPalette,         /* pRealizeDefaultPalette */
-    boxeddrv_RealizePalette,                /* pRealizePalette */
-    NULL,                                   /* pRectangle */
-    NULL,                                   /* pResetDC */
-    NULL,                                   /* pRestoreDC */
-    NULL,                                   /* pRoundRect */
-    NULL,                                   /* pSelectBitmap */
-    NULL,                                   /* pSelectBrush */
-    NULL,                                   /* pSelectClipPath */
-    NULL,                                   /* pSelectFont */
-    NULL,                                   /* pSelectPalette */
-    NULL,                                   /* pSelectPen */
-    NULL,                                   /* pSetBkColor */
-    NULL,                                   /* pSetBoundsRect */
-    NULL,                                   /* pSetDCBrushColor */
-    NULL,                                   /* pSetDCPenColor */
-    NULL,                                   /* pSetDIBitsToDevice */
-    NULL,                                   /* pSetDeviceClipping */
-    boxeddrv_SetDeviceGammaRamp,            /* pSetDeviceGammaRamp */
-    NULL,                                   /* pSetPixel */
-    NULL,                                   /* pSetTextColor */
-    NULL,                                   /* pSetViewportExt */
-    NULL,                                   /* pSetViewportOrg */
-    NULL,                                   /* pSetWindowExt */
-    NULL,                                   /* pSetWindowOrg */
-    NULL,                                   /* pSetWorldTransform */
-    NULL,                                   /* pStartDoc */
-    NULL,                                   /* pStartPage */
-    NULL,                                   /* pStretchBlt */
-    NULL,                                   /* pStretchDIBits */
-    NULL,                                   /* pStrokeAndFillPath */
-    NULL,                                   /* pStrokePath */
-    boxeddrv_UnrealizePalette,              /* pUnrealizePalette */
-    NULL,                                   /* pWidenPath */
-    NULL,                                   /* pD3DKMTCheckVidPnExclusiveOwnership */
-    NULL,                                   /* pD3DKMTSetVidPnSourceOwner */
-    boxeddrv_wine_get_wgl_driver,           /* wine_get_wgl_driver */
-    boxeddrv_wine_get_vulkan_driver,        /* wine_get_vulkan_driver */
-    GDI_PRIORITY_GRAPHICS_DRV               /* priority */
-};
-#endif
-
-// Aug 10, 2021  wine-6.15
-#if WINE_GDI_DRIVER_VERSION == 59
-static const struct gdi_dc_funcs boxeddrv_funcs =
-{
-    NULL,                                   /* pAbortDoc */
-    NULL,                                   /* pAbortPath */
-    NULL,                                   /* pAlphaBlend */
-    NULL,                                   /* pAngleArc */
-    NULL,                                   /* pArc */
-    NULL,                                   /* pArcTo */
-    NULL,                                   /* pBeginPath */
-    NULL,                                   /* pBlendImage */
-    NULL,                                   /* pChord */
-    NULL,                                   /* pCloseFigure */
-    boxeddrv_CreateCompatibleDC,            /* pCreateCompatibleDC */
-    boxeddrv_CreateDC,                      /* pCreateDC */
-    boxeddrv_DeleteDC,                      /* pDeleteDC */
-    NULL,                                   /* pDeleteObject */
-    NULL,                                   /* pDeviceCapabilities */
-    NULL,                                   /* pEllipse */
-    NULL,                                   /* pEndDoc */
-    NULL,                                   /* pEndPage */
-    NULL,                                   /* pEndPath */
-    NULL,                                   /* pEnumFonts */
-    NULL,                                   /* pEnumICMProfiles */
-    NULL,                                   /* pExtDeviceMode */
-    NULL,                                   /* pExtEscape */
-    NULL,                                   /* pExtFloodFill */
-    NULL,                                   /* pExtTextOut */
-    NULL,                                   /* pFillPath */
-    NULL,                                   /* pFillRgn */
-    NULL,                                   /* pFlattenPath */
-    NULL,                                   /* pFontIsLinked */
-    NULL,                                   /* pFrameRgn */
-    NULL,                                   /* pGdiComment */
-    NULL,                                   /* pGetBoundsRect */
-    NULL,                                   /* pGetCharABCWidths */
-    NULL,                                   /* pGetCharABCWidthsI */
-    NULL,                                   /* pGetCharWidth */
-    NULL,                                   /* pGetCharWidthInfo */
-    boxeddrv_GetDeviceCaps,                 /* pGetDeviceCaps */
-    boxeddrv_GetDeviceGammaRamp,            /* pGetDeviceGammaRamp */
-    NULL,                                   /* pGetFontData */
-    NULL,                                   /* pGetFontRealizationInfo */
-    NULL,                                   /* pGetFontUnicodeRanges */
-    NULL,                                   /* pGetGlyphIndices */
-    NULL,                                   /* pGetGlyphOutline */
-    NULL,                                   /* pGetICMProfile */
-    NULL,                                   /* pGetImage */
-    NULL,                                   /* pGetKerningPairs */
-    boxeddrv_GetNearestColor,               /* pGetNearestColor */
-    NULL,                                   /* pGetOutlineTextMetrics */
-    NULL,                                   /* pGetPixel */
-    boxeddrv_GetSystemPaletteEntries,       /* pGetSystemPaletteEntries */
-    NULL,                                   /* pGetTextCharsetInfo */
-    NULL,                                   /* pGetTextExtentExPoint */
-    NULL,                                   /* pGetTextExtentExPointI */
-    NULL,                                   /* pGetTextFace */
-    NULL,                                   /* pGetTextMetrics */
-    NULL,                                   /* pGradientFill */
-    NULL,                                   /* pInvertRgn */
-    NULL,                                   /* pLineTo */
-    NULL,                                   /* pModifyWorldTransform */
-    NULL,                                   /* pMoveTo */
-    NULL,                                   /* pPaintRgn */
-    NULL,                                   /* pPatBlt */
-    NULL,                                   /* pPie */
-    NULL,                                   /* pPolyBezier */
-    NULL,                                   /* pPolyBezierTo */
-    NULL,                                   /* pPolyDraw */
-    NULL,                                   /* pPolyPolygon */
-    NULL,                                   /* pPolyPolyline */
-    NULL,                                   /* pPolylineTo */
-    NULL,                                   /* pPutImage */
-    boxeddrv_RealizeDefaultPalette,         /* pRealizeDefaultPalette */
-    boxeddrv_RealizePalette,                /* pRealizePalette */
-    NULL,                                   /* pRectangle */
-    NULL,                                   /* pResetDC */
-    NULL,                                   /* pRestoreDC */
-    NULL,                                   /* pRoundRect */
-    NULL,                                   /* pSelectBitmap */
-    NULL,                                   /* pSelectBrush */
-    NULL,                                   /* pSelectClipPath */
-    NULL,                                   /* pSelectFont */
-    NULL,                                   /* pSelectPen */
-    NULL,                                   /* pSetBkColor */
-    NULL,                                   /* pSetBoundsRect */
-    NULL,                                   /* pSetDCBrushColor */
-    NULL,                                   /* pSetDCPenColor */
-    NULL,                                   /* pSetDIBitsToDevice */
-    NULL,                                   /* pSetDeviceClipping */
-    boxeddrv_SetDeviceGammaRamp,            /* pSetDeviceGammaRamp */
-    NULL,                                   /* pSetPixel */
-    NULL,                                   /* pSetTextColor */
-    NULL,                                   /* pSetWorldTransform */
-    NULL,                                   /* pStartDoc */
-    NULL,                                   /* pStartPage */
-    NULL,                                   /* pStretchBlt */
-    NULL,                                   /* pStretchDIBits */
-    NULL,                                   /* pStrokeAndFillPath */
-    NULL,                                   /* pStrokePath */
-    boxeddrv_UnrealizePalette,              /* pUnrealizePalette */
-    NULL,                                   /* pWidenPath */
-    NULL,                                   /* pD3DKMTCheckVidPnExclusiveOwnership */
-    NULL,                                   /* pD3DKMTSetVidPnSourceOwner */
-    boxeddrv_wine_get_wgl_driver,           /* wine_get_wgl_driver */
-    boxeddrv_wine_get_vulkan_driver,        /* wine_get_vulkan_driver */
-    GDI_PRIORITY_GRAPHICS_DRV               /* priority */
-};
-#endif
-
-// Aug 13, 2021   wine-6.15
-#if WINE_GDI_DRIVER_VERSION == 60
-static const struct gdi_dc_funcs boxeddrv_funcs =
-{
-    NULL,                                   /* pAbortDoc */
-    NULL,                                   /* pAbortPath */
-    NULL,                                   /* pAlphaBlend */
-    NULL,                                   /* pAngleArc */
-    NULL,                                   /* pArc */
-    NULL,                                   /* pArcTo */
-    NULL,                                   /* pBeginPath */
-    NULL,                                   /* pBlendImage */
-    NULL,                                   /* pChord */
-    NULL,                                   /* pCloseFigure */
-    boxeddrv_CreateCompatibleDC,            /* pCreateCompatibleDC */
-    boxeddrv_CreateDC,                      /* pCreateDC */
-    boxeddrv_DeleteDC,                      /* pDeleteDC */
-    NULL,                                   /* pDeleteObject */
-    NULL,                                   /* pDeviceCapabilities */
-    NULL,                                   /* pEllipse */
-    NULL,                                   /* pEndDoc */
-    NULL,                                   /* pEndPage */
-    NULL,                                   /* pEndPath */
-    NULL,                                   /* pEnumFonts */
-    NULL,                                   /* pEnumICMProfiles */
-    NULL,                                   /* pExtDeviceMode */
-    NULL,                                   /* pExtEscape */
-    NULL,                                   /* pExtFloodFill */
-    NULL,                                   /* pExtTextOut */
-    NULL,                                   /* pFillPath */
-    NULL,                                   /* pFillRgn */
-    NULL,                                   /* pFlattenPath */
-    NULL,                                   /* pFontIsLinked */
-    NULL,                                   /* pFrameRgn */
-    NULL,                                   /* pGdiComment */
-    NULL,                                   /* pGetBoundsRect */
-    NULL,                                   /* pGetCharABCWidths */
-    NULL,                                   /* pGetCharABCWidthsI */
-    NULL,                                   /* pGetCharWidth */
-    NULL,                                   /* pGetCharWidthInfo */
-    boxeddrv_GetDeviceCaps,                 /* pGetDeviceCaps */
-    boxeddrv_GetDeviceGammaRamp,            /* pGetDeviceGammaRamp */
-    NULL,                                   /* pGetFontData */
-    NULL,                                   /* pGetFontRealizationInfo */
-    NULL,                                   /* pGetFontUnicodeRanges */
-    NULL,                                   /* pGetGlyphIndices */
-    NULL,                                   /* pGetGlyphOutline */
-    NULL,                                   /* pGetICMProfile */
-    NULL,                                   /* pGetImage */
-    NULL,                                   /* pGetKerningPairs */
-    boxeddrv_GetNearestColor,               /* pGetNearestColor */
-    NULL,                                   /* pGetOutlineTextMetrics */
-    NULL,                                   /* pGetPixel */
-    boxeddrv_GetSystemPaletteEntries,       /* pGetSystemPaletteEntries */
-    NULL,                                   /* pGetTextCharsetInfo */
-    NULL,                                   /* pGetTextExtentExPoint */
-    NULL,                                   /* pGetTextExtentExPointI */
-    NULL,                                   /* pGetTextFace */
-    NULL,                                   /* pGetTextMetrics */
-    NULL,                                   /* pGradientFill */
-    NULL,                                   /* pInvertRgn */
-    NULL,                                   /* pLineTo */
-    NULL,                                   /* pMoveTo */
-    NULL,                                   /* pPaintRgn */
-    NULL,                                   /* pPatBlt */
-    NULL,                                   /* pPie */
-    NULL,                                   /* pPolyBezier */
-    NULL,                                   /* pPolyBezierTo */
-    NULL,                                   /* pPolyDraw */
-    NULL,                                   /* pPolyPolygon */
-    NULL,                                   /* pPolyPolyline */
-    NULL,                                   /* pPolylineTo */
-    NULL,                                   /* pPutImage */
-    boxeddrv_RealizeDefaultPalette,         /* pRealizeDefaultPalette */
-    boxeddrv_RealizePalette,                /* pRealizePalette */
-    NULL,                                   /* pRectangle */
-    NULL,                                   /* pResetDC */
-    NULL,                                   /* pRestoreDC */
-    NULL,                                   /* pRoundRect */
-    NULL,                                   /* pSelectBitmap */
-    NULL,                                   /* pSelectBrush */
-    NULL,                                   /* pSelectClipPath */
-    NULL,                                   /* pSelectFont */
-    NULL,                                   /* pSelectPen */
-    NULL,                                   /* pSetBkColor */
-    NULL,                                   /* pSetBoundsRect */
-    NULL,                                   /* pSetDCBrushColor */
-    NULL,                                   /* pSetDCPenColor */
-    NULL,                                   /* pSetDIBitsToDevice */
-    NULL,                                   /* pSetDeviceClipping */
-    boxeddrv_SetDeviceGammaRamp,            /* pSetDeviceGammaRamp */
-    NULL,                                   /* pSetPixel */
-    NULL,                                   /* pSetTextColor */
-    NULL,                                   /* pStartDoc */
-    NULL,                                   /* pStartPage */
-    NULL,                                   /* pStretchBlt */
-    NULL,                                   /* pStretchDIBits */
-    NULL,                                   /* pStrokeAndFillPath */
-    NULL,                                   /* pStrokePath */
-    boxeddrv_UnrealizePalette,              /* pUnrealizePalette */
-    NULL,                                   /* pWidenPath */
-    NULL,                                   /* pD3DKMTCheckVidPnExclusiveOwnership */
-    NULL,                                   /* pD3DKMTSetVidPnSourceOwner */
-    boxeddrv_wine_get_wgl_driver,           /* wine_get_wgl_driver */
-    boxeddrv_wine_get_vulkan_driver,        /* wine_get_vulkan_driver */
-    GDI_PRIORITY_GRAPHICS_DRV               /* priority */
-};
-#endif
-
-// Aug 17, 2021 wine-6.16
-#if WINE_GDI_DRIVER_VERSION == 61
-static const struct gdi_dc_funcs boxeddrv_funcs =
-{
-    NULL,                                   /* pAbortDoc */
-    NULL,                                   /* pAbortPath */
-    NULL,                                   /* pAlphaBlend */
-    NULL,                                   /* pAngleArc */
-    NULL,                                   /* pArc */
-    NULL,                                   /* pArcTo */
-    NULL,                                   /* pBeginPath */
-    NULL,                                   /* pBlendImage */
-    NULL,                                   /* pChord */
-    NULL,                                   /* pCloseFigure */
-    boxeddrv_CreateCompatibleDC,            /* pCreateCompatibleDC */
-    boxeddrv_CreateDC,                      /* pCreateDC */
-    boxeddrv_DeleteDC,                      /* pDeleteDC */
-    NULL,                                   /* pDeleteObject */
-    NULL,                                   /* pDeviceCapabilities */
-    NULL,                                   /* pEllipse */
-    NULL,                                   /* pEndDoc */
-    NULL,                                   /* pEndPage */
-    NULL,                                   /* pEndPath */
-    NULL,                                   /* pEnumFonts */
-    NULL,                                   /* pEnumICMProfiles */
-    NULL,                                   /* pExtDeviceMode */
-    NULL,                                   /* pExtEscape */
-    NULL,                                   /* pExtFloodFill */
-    NULL,                                   /* pExtTextOut */
-    NULL,                                   /* pFillPath */
-    NULL,                                   /* pFillRgn */
-    NULL,                                   /* pFlattenPath */
-    NULL,                                   /* pFontIsLinked */
-    NULL,                                   /* pFrameRgn */
-    NULL,                                   /* pGetBoundsRect */
-    NULL,                                   /* pGetCharABCWidths */
-    NULL,                                   /* pGetCharABCWidthsI */
-    NULL,                                   /* pGetCharWidth */
-    NULL,                                   /* pGetCharWidthInfo */
-    boxeddrv_GetDeviceCaps,                 /* pGetDeviceCaps */
-    boxeddrv_GetDeviceGammaRamp,            /* pGetDeviceGammaRamp */
-    NULL,                                   /* pGetFontData */
-    NULL,                                   /* pGetFontRealizationInfo */
-    NULL,                                   /* pGetFontUnicodeRanges */
-    NULL,                                   /* pGetGlyphIndices */
-    NULL,                                   /* pGetGlyphOutline */
-    NULL,                                   /* pGetICMProfile */
-    NULL,                                   /* pGetImage */
-    NULL,                                   /* pGetKerningPairs */
-    boxeddrv_GetNearestColor,               /* pGetNearestColor */
-    NULL,                                   /* pGetOutlineTextMetrics */
-    NULL,                                   /* pGetPixel */
-    boxeddrv_GetSystemPaletteEntries,       /* pGetSystemPaletteEntries */
-    NULL,                                   /* pGetTextCharsetInfo */
-    NULL,                                   /* pGetTextExtentExPoint */
-    NULL,                                   /* pGetTextExtentExPointI */
-    NULL,                                   /* pGetTextFace */
-    NULL,                                   /* pGetTextMetrics */
-    NULL,                                   /* pGradientFill */
-    NULL,                                   /* pInvertRgn */
-    NULL,                                   /* pLineTo */
-    NULL,                                   /* pMoveTo */
-    NULL,                                   /* pPaintRgn */
-    NULL,                                   /* pPatBlt */
-    NULL,                                   /* pPie */
-    NULL,                                   /* pPolyBezier */
-    NULL,                                   /* pPolyBezierTo */
-    NULL,                                   /* pPolyDraw */
-    NULL,                                   /* pPolyPolygon */
-    NULL,                                   /* pPolyPolyline */
-    NULL,                                   /* pPolylineTo */
-    NULL,                                   /* pPutImage */
-    boxeddrv_RealizeDefaultPalette,         /* pRealizeDefaultPalette */
-    boxeddrv_RealizePalette,                /* pRealizePalette */
-    NULL,                                   /* pRectangle */
-    NULL,                                   /* pResetDC */
-    NULL,                                   /* pRoundRect */
-    NULL,                                   /* pSelectBitmap */
-    NULL,                                   /* pSelectBrush */
-    NULL,                                   /* pSelectClipPath */
-    NULL,                                   /* pSelectFont */
-    NULL,                                   /* pSelectPen */
-    NULL,                                   /* pSetBkColor */
-    NULL,                                   /* pSetBoundsRect */
-    NULL,                                   /* pSetDCBrushColor */
-    NULL,                                   /* pSetDCPenColor */
-    NULL,                                   /* pSetDIBitsToDevice */
-    NULL,                                   /* pSetDeviceClipping */
-    boxeddrv_SetDeviceGammaRamp,            /* pSetDeviceGammaRamp */
-    NULL,                                   /* pSetPixel */
-    NULL,                                   /* pSetTextColor */
-    NULL,                                   /* pStartDoc */
-    NULL,                                   /* pStartPage */
-    NULL,                                   /* pStretchBlt */
-    NULL,                                   /* pStretchDIBits */
-    NULL,                                   /* pStrokeAndFillPath */
-    NULL,                                   /* pStrokePath */
-    boxeddrv_UnrealizePalette,              /* pUnrealizePalette */
-    NULL,                                   /* pWidenPath */
-    NULL,                                   /* pD3DKMTCheckVidPnExclusiveOwnership */
-    NULL,                                   /* pD3DKMTSetVidPnSourceOwner */
-    boxeddrv_wine_get_wgl_driver,           /* wine_get_wgl_driver */
-    boxeddrv_wine_get_vulkan_driver,        /* wine_get_vulkan_driver */
-    GDI_PRIORITY_GRAPHICS_DRV               /* priority */
-};
-#endif
-
-// Aug 18, 2021  wine-6.16
-#if WINE_GDI_DRIVER_VERSION == 62
-static const struct gdi_dc_funcs boxeddrv_funcs =
-{
-    NULL,                                   /* pAbortDoc */
-    NULL,                                   /* pAbortPath */
-    NULL,                                   /* pAlphaBlend */
-    NULL,                                   /* pAngleArc */
-    NULL,                                   /* pArc */
-    NULL,                                   /* pArcTo */
-    NULL,                                   /* pBeginPath */
-    NULL,                                   /* pBlendImage */
-    NULL,                                   /* pChord */
-    NULL,                                   /* pCloseFigure */
-    boxeddrv_CreateCompatibleDC,            /* pCreateCompatibleDC */
-    boxeddrv_CreateDC,                      /* pCreateDC */
-    boxeddrv_DeleteDC,                      /* pDeleteDC */
-    NULL,                                   /* pDeleteObject */
-    NULL,                                   /* pDeviceCapabilities */
-    NULL,                                   /* pEllipse */
-    NULL,                                   /* pEndDoc */
-    NULL,                                   /* pEndPage */
-    NULL,                                   /* pEndPath */
-    NULL,                                   /* pEnumFonts */
-    NULL,                                   /* pEnumICMProfiles */
-    NULL,                                   /* pExtDeviceMode */
-    NULL,                                   /* pExtEscape */
-    NULL,                                   /* pExtFloodFill */
-    NULL,                                   /* pExtTextOut */
-    NULL,                                   /* pFillPath */
-    NULL,                                   /* pFillRgn */
-    NULL,                                   /* pFontIsLinked */
-    NULL,                                   /* pFrameRgn */
-    NULL,                                   /* pGetBoundsRect */
-    NULL,                                   /* pGetCharABCWidths */
-    NULL,                                   /* pGetCharABCWidthsI */
-    NULL,                                   /* pGetCharWidth */
-    NULL,                                   /* pGetCharWidthInfo */
-    boxeddrv_GetDeviceCaps,                 /* pGetDeviceCaps */
-    boxeddrv_GetDeviceGammaRamp,            /* pGetDeviceGammaRamp */
-    NULL,                                   /* pGetFontData */
-    NULL,                                   /* pGetFontRealizationInfo */
-    NULL,                                   /* pGetFontUnicodeRanges */
-    NULL,                                   /* pGetGlyphIndices */
-    NULL,                                   /* pGetGlyphOutline */
-    NULL,                                   /* pGetICMProfile */
-    NULL,                                   /* pGetImage */
-    NULL,                                   /* pGetKerningPairs */
-    boxeddrv_GetNearestColor,               /* pGetNearestColor */
-    NULL,                                   /* pGetOutlineTextMetrics */
-    NULL,                                   /* pGetPixel */
-    boxeddrv_GetSystemPaletteEntries,       /* pGetSystemPaletteEntries */
-    NULL,                                   /* pGetTextCharsetInfo */
-    NULL,                                   /* pGetTextExtentExPoint */
-    NULL,                                   /* pGetTextExtentExPointI */
-    NULL,                                   /* pGetTextFace */
-    NULL,                                   /* pGetTextMetrics */
-    NULL,                                   /* pGradientFill */
-    NULL,                                   /* pInvertRgn */
-    NULL,                                   /* pLineTo */
-    NULL,                                   /* pMoveTo */
-    NULL,                                   /* pPaintRgn */
-    NULL,                                   /* pPatBlt */
-    NULL,                                   /* pPie */
-    NULL,                                   /* pPolyBezier */
-    NULL,                                   /* pPolyBezierTo */
-    NULL,                                   /* pPolyDraw */
-    NULL,                                   /* pPolyPolygon */
-    NULL,                                   /* pPolyPolyline */
-    NULL,                                   /* pPolylineTo */
-    NULL,                                   /* pPutImage */
-    boxeddrv_RealizeDefaultPalette,         /* pRealizeDefaultPalette */
-    boxeddrv_RealizePalette,                /* pRealizePalette */
-    NULL,                                   /* pRectangle */
-    NULL,                                   /* pResetDC */
-    NULL,                                   /* pRoundRect */
-    NULL,                                   /* pSelectBitmap */
-    NULL,                                   /* pSelectBrush */
-    NULL,                                   /* pSelectFont */
-    NULL,                                   /* pSelectPen */
-    NULL,                                   /* pSetBkColor */
-    NULL,                                   /* pSetBoundsRect */
-    NULL,                                   /* pSetDCBrushColor */
-    NULL,                                   /* pSetDCPenColor */
-    NULL,                                   /* pSetDIBitsToDevice */
-    NULL,                                   /* pSetDeviceClipping */
-    boxeddrv_SetDeviceGammaRamp,            /* pSetDeviceGammaRamp */
-    NULL,                                   /* pSetPixel */
-    NULL,                                   /* pSetTextColor */
-    NULL,                                   /* pStartDoc */
-    NULL,                                   /* pStartPage */
-    NULL,                                   /* pStretchBlt */
-    NULL,                                   /* pStretchDIBits */
-    NULL,                                   /* pStrokeAndFillPath */
-    NULL,                                   /* pStrokePath */
-    boxeddrv_UnrealizePalette,              /* pUnrealizePalette */
-    NULL,                                   /* pWidenPath */
-    NULL,                                   /* pD3DKMTCheckVidPnExclusiveOwnership */
-    NULL,                                   /* pD3DKMTSetVidPnSourceOwner */
-    boxeddrv_wine_get_wgl_driver,           /* wine_get_wgl_driver */
-    boxeddrv_wine_get_vulkan_driver,        /* wine_get_vulkan_driver */
-    GDI_PRIORITY_GRAPHICS_DRV               /* priority */
-};
-#endif
-
-// Aug 19, 2021 wine-6.16
-#if WINE_GDI_DRIVER_VERSION == 63
-static const struct gdi_dc_funcs boxeddrv_funcs =
-{
-    NULL,                                   /* pAbortDoc */
-    NULL,                                   /* pAbortPath */
-    NULL,                                   /* pAlphaBlend */
-    NULL,                                   /* pAngleArc */
-    NULL,                                   /* pArc */
-    NULL,                                   /* pArcTo */
-    NULL,                                   /* pBeginPath */
-    NULL,                                   /* pBlendImage */
-    NULL,                                   /* pChord */
-    NULL,                                   /* pCloseFigure */
-    boxeddrv_CreateCompatibleDC,            /* pCreateCompatibleDC */
-    boxeddrv_CreateDC,                      /* pCreateDC */
-    boxeddrv_DeleteDC,                      /* pDeleteDC */
-    NULL,                                   /* pDeleteObject */
-    NULL,                                   /* pDeviceCapabilities */
-    NULL,                                   /* pEllipse */
-    NULL,                                   /* pEndDoc */
-    NULL,                                   /* pEndPage */
-    NULL,                                   /* pEndPath */
-    NULL,                                   /* pEnumFonts */
-    NULL,                                   /* pEnumICMProfiles */
-    NULL,                                   /* pExtDeviceMode */
-    NULL,                                   /* pExtEscape */
-    NULL,                                   /* pExtFloodFill */
-    NULL,                                   /* pExtTextOut */
-    NULL,                                   /* pFillPath */
-    NULL,                                   /* pFillRgn */
-    NULL,                                   /* pFontIsLinked */
-    NULL,                                   /* pFrameRgn */
-    NULL,                                   /* pGetBoundsRect */
-    NULL,                                   /* pGetCharABCWidths */
-    NULL,                                   /* pGetCharABCWidthsI */
-    NULL,                                   /* pGetCharWidth */
-    NULL,                                   /* pGetCharWidthInfo */
-    boxeddrv_GetDeviceCaps,                 /* pGetDeviceCaps */
-    boxeddrv_GetDeviceGammaRamp,            /* pGetDeviceGammaRamp */
-    NULL,                                   /* pGetFontData */
-    NULL,                                   /* pGetFontRealizationInfo */
-    NULL,                                   /* pGetFontUnicodeRanges */
-    NULL,                                   /* pGetGlyphIndices */
-    NULL,                                   /* pGetGlyphOutline */
-    NULL,                                   /* pGetICMProfile */
-    NULL,                                   /* pGetImage */
-    NULL,                                   /* pGetKerningPairs */
-    boxeddrv_GetNearestColor,               /* pGetNearestColor */
-    NULL,                                   /* pGetOutlineTextMetrics */
-    NULL,                                   /* pGetPixel */
-    boxeddrv_GetSystemPaletteEntries,       /* pGetSystemPaletteEntries */
-    NULL,                                   /* pGetTextCharsetInfo */
-    NULL,                                   /* pGetTextExtentExPoint */
-    NULL,                                   /* pGetTextExtentExPointI */
-    NULL,                                   /* pGetTextFace */
-    NULL,                                   /* pGetTextMetrics */
-    NULL,                                   /* pGradientFill */
-    NULL,                                   /* pInvertRgn */
-    NULL,                                   /* pLineTo */
-    NULL,                                   /* pMoveTo */
-    NULL,                                   /* pPaintRgn */
-    NULL,                                   /* pPatBlt */
-    NULL,                                   /* pPie */
-    NULL,                                   /* pPolyBezier */
-    NULL,                                   /* pPolyBezierTo */
-    NULL,                                   /* pPolyDraw */
-    NULL,                                   /* pPolyPolygon */
-    NULL,                                   /* pPolyPolyline */
-    NULL,                                   /* pPolylineTo */
-    NULL,                                   /* pPutImage */
-    boxeddrv_RealizeDefaultPalette,         /* pRealizeDefaultPalette */
-    boxeddrv_RealizePalette,                /* pRealizePalette */
-    NULL,                                   /* pRectangle */
-    NULL,                                   /* pResetDC */
-    NULL,                                   /* pRoundRect */
-    NULL,                                   /* pSelectBitmap */
-    NULL,                                   /* pSelectBrush */
-    NULL,                                   /* pSelectFont */
-    NULL,                                   /* pSelectPen */
-    NULL,                                   /* pSetBkColor */
-    NULL,                                   /* pSetBoundsRect */
-    NULL,                                   /* pSetDCBrushColor */
-    NULL,                                   /* pSetDCPenColor */
-    NULL,                                   /* pSetDIBitsToDevice */
-    NULL,                                   /* pSetDeviceClipping */
-    boxeddrv_SetDeviceGammaRamp,            /* pSetDeviceGammaRamp */
-    NULL,                                   /* pSetPixel */
-    NULL,                                   /* pSetTextColor */
-    NULL,                                   /* pStartDoc */
-    NULL,                                   /* pStartPage */
-    NULL,                                   /* pStretchBlt */
-    NULL,                                   /* pStretchDIBits */
-    NULL,                                   /* pStrokeAndFillPath */
-    NULL,                                   /* pStrokePath */
-    boxeddrv_UnrealizePalette,              /* pUnrealizePalette */
-    NULL,                                   /* pD3DKMTCheckVidPnExclusiveOwnership */
-    NULL,                                   /* pD3DKMTSetVidPnSourceOwner */
-    boxeddrv_wine_get_wgl_driver,           /* wine_get_wgl_driver */
-    boxeddrv_wine_get_vulkan_driver,        /* wine_get_vulkan_driver */
-    GDI_PRIORITY_GRAPHICS_DRV               /* priority */
-};
-#endif
-
-// Aug 23, 2021 wine-6.16 (pResetDC changed)
-#if WINE_GDI_DRIVER_VERSION == 64
-static const struct gdi_dc_funcs boxeddrv_funcs =
-{
-    NULL,                                   /* pAbortDoc */
-    NULL,                                   /* pAbortPath */
-    NULL,                                   /* pAlphaBlend */
-    NULL,                                   /* pAngleArc */
-    NULL,                                   /* pArc */
-    NULL,                                   /* pArcTo */
-    NULL,                                   /* pBeginPath */
-    NULL,                                   /* pBlendImage */
-    NULL,                                   /* pChord */
-    NULL,                                   /* pCloseFigure */
-    boxeddrv_CreateCompatibleDC,            /* pCreateCompatibleDC */
-    boxeddrv_CreateDC,                      /* pCreateDC */
-    boxeddrv_DeleteDC,                      /* pDeleteDC */
-    NULL,                                   /* pDeleteObject */
-    NULL,                                   /* pDeviceCapabilities */
-    NULL,                                   /* pEllipse */
-    NULL,                                   /* pEndDoc */
-    NULL,                                   /* pEndPage */
-    NULL,                                   /* pEndPath */
-    NULL,                                   /* pEnumFonts */
-    NULL,                                   /* pEnumICMProfiles */
-    NULL,                                   /* pExtDeviceMode */
-    NULL,                                   /* pExtEscape */
-    NULL,                                   /* pExtFloodFill */
-    NULL,                                   /* pExtTextOut */
-    NULL,                                   /* pFillPath */
-    NULL,                                   /* pFillRgn */
-    NULL,                                   /* pFontIsLinked */
-    NULL,                                   /* pFrameRgn */
-    NULL,                                   /* pGetBoundsRect */
-    NULL,                                   /* pGetCharABCWidths */
-    NULL,                                   /* pGetCharABCWidthsI */
-    NULL,                                   /* pGetCharWidth */
-    NULL,                                   /* pGetCharWidthInfo */
-    boxeddrv_GetDeviceCaps,                 /* pGetDeviceCaps */
-    boxeddrv_GetDeviceGammaRamp,            /* pGetDeviceGammaRamp */
-    NULL,                                   /* pGetFontData */
-    NULL,                                   /* pGetFontRealizationInfo */
-    NULL,                                   /* pGetFontUnicodeRanges */
-    NULL,                                   /* pGetGlyphIndices */
-    NULL,                                   /* pGetGlyphOutline */
-    NULL,                                   /* pGetICMProfile */
-    NULL,                                   /* pGetImage */
-    NULL,                                   /* pGetKerningPairs */
-    boxeddrv_GetNearestColor,               /* pGetNearestColor */
-    NULL,                                   /* pGetOutlineTextMetrics */
-    NULL,                                   /* pGetPixel */
-    boxeddrv_GetSystemPaletteEntries,       /* pGetSystemPaletteEntries */
-    NULL,                                   /* pGetTextCharsetInfo */
-    NULL,                                   /* pGetTextExtentExPoint */
-    NULL,                                   /* pGetTextExtentExPointI */
-    NULL,                                   /* pGetTextFace */
-    NULL,                                   /* pGetTextMetrics */
-    NULL,                                   /* pGradientFill */
-    NULL,                                   /* pInvertRgn */
-    NULL,                                   /* pLineTo */
-    NULL,                                   /* pMoveTo */
-    NULL,                                   /* pPaintRgn */
-    NULL,                                   /* pPatBlt */
-    NULL,                                   /* pPie */
-    NULL,                                   /* pPolyBezier */
-    NULL,                                   /* pPolyBezierTo */
-    NULL,                                   /* pPolyDraw */
-    NULL,                                   /* pPolyPolygon */
-    NULL,                                   /* pPolyPolyline */
-    NULL,                                   /* pPolylineTo */
-    NULL,                                   /* pPutImage */
-    boxeddrv_RealizeDefaultPalette,         /* pRealizeDefaultPalette */
-    boxeddrv_RealizePalette,                /* pRealizePalette */
-    NULL,                                   /* pRectangle */
-    NULL,                                   /* pResetDC */
-    NULL,                                   /* pRoundRect */
-    NULL,                                   /* pSelectBitmap */
-    NULL,                                   /* pSelectBrush */
-    NULL,                                   /* pSelectFont */
-    NULL,                                   /* pSelectPen */
-    NULL,                                   /* pSetBkColor */
-    NULL,                                   /* pSetBoundsRect */
-    NULL,                                   /* pSetDCBrushColor */
-    NULL,                                   /* pSetDCPenColor */
-    NULL,                                   /* pSetDIBitsToDevice */
-    NULL,                                   /* pSetDeviceClipping */
-    boxeddrv_SetDeviceGammaRamp,            /* pSetDeviceGammaRamp */
-    NULL,                                   /* pSetPixel */
-    NULL,                                   /* pSetTextColor */
-    NULL,                                   /* pStartDoc */
-    NULL,                                   /* pStartPage */
-    NULL,                                   /* pStretchBlt */
-    NULL,                                   /* pStretchDIBits */
-    NULL,                                   /* pStrokeAndFillPath */
-    NULL,                                   /* pStrokePath */
-    boxeddrv_UnrealizePalette,              /* pUnrealizePalette */
-    NULL,                                   /* pD3DKMTCheckVidPnExclusiveOwnership */
-    NULL,                                   /* pD3DKMTSetVidPnSourceOwner */
-    boxeddrv_wine_get_wgl_driver,           /* wine_get_wgl_driver */
-    boxeddrv_wine_get_vulkan_driver,        /* wine_get_vulkan_driver */
-    GDI_PRIORITY_GRAPHICS_DRV               /* priority */
-};
-#endif
-
-// Aug 26, 2021 wine-6.16 (pGetCharWidth changed)
-#if WINE_GDI_DRIVER_VERSION == 65
-static const struct gdi_dc_funcs boxeddrv_funcs =
-{
-    NULL,                                   /* pAbortDoc */
-    NULL,                                   /* pAbortPath */
-    NULL,                                   /* pAlphaBlend */
-    NULL,                                   /* pAngleArc */
-    NULL,                                   /* pArc */
-    NULL,                                   /* pArcTo */
-    NULL,                                   /* pBeginPath */
-    NULL,                                   /* pBlendImage */
-    NULL,                                   /* pChord */
-    NULL,                                   /* pCloseFigure */
-    boxeddrv_CreateCompatibleDC,            /* pCreateCompatibleDC */
-    boxeddrv_CreateDC,                      /* pCreateDC */
-    boxeddrv_DeleteDC,                      /* pDeleteDC */
-    NULL,                                   /* pDeleteObject */
-    NULL,                                   /* pDeviceCapabilities */
-    NULL,                                   /* pEllipse */
-    NULL,                                   /* pEndDoc */
-    NULL,                                   /* pEndPage */
-    NULL,                                   /* pEndPath */
-    NULL,                                   /* pEnumFonts */
-    NULL,                                   /* pEnumICMProfiles */
-    NULL,                                   /* pExtDeviceMode */
-    NULL,                                   /* pExtEscape */
-    NULL,                                   /* pExtFloodFill */
-    NULL,                                   /* pExtTextOut */
-    NULL,                                   /* pFillPath */
-    NULL,                                   /* pFillRgn */
-    NULL,                                   /* pFontIsLinked */
-    NULL,                                   /* pFrameRgn */
-    NULL,                                   /* pGetBoundsRect */
-    NULL,                                   /* pGetCharABCWidths */
-    NULL,                                   /* pGetCharABCWidthsI */
-    NULL,                                   /* pGetCharWidth */
-    NULL,                                   /* pGetCharWidthInfo */
-    boxeddrv_GetDeviceCaps,                 /* pGetDeviceCaps */
-    boxeddrv_GetDeviceGammaRamp,            /* pGetDeviceGammaRamp */
-    NULL,                                   /* pGetFontData */
-    NULL,                                   /* pGetFontRealizationInfo */
-    NULL,                                   /* pGetFontUnicodeRanges */
-    NULL,                                   /* pGetGlyphIndices */
-    NULL,                                   /* pGetGlyphOutline */
-    NULL,                                   /* pGetICMProfile */
-    NULL,                                   /* pGetImage */
-    NULL,                                   /* pGetKerningPairs */
-    boxeddrv_GetNearestColor,               /* pGetNearestColor */
-    NULL,                                   /* pGetOutlineTextMetrics */
-    NULL,                                   /* pGetPixel */
-    boxeddrv_GetSystemPaletteEntries,       /* pGetSystemPaletteEntries */
-    NULL,                                   /* pGetTextCharsetInfo */
-    NULL,                                   /* pGetTextExtentExPoint */
-    NULL,                                   /* pGetTextExtentExPointI */
-    NULL,                                   /* pGetTextFace */
-    NULL,                                   /* pGetTextMetrics */
-    NULL,                                   /* pGradientFill */
-    NULL,                                   /* pInvertRgn */
-    NULL,                                   /* pLineTo */
-    NULL,                                   /* pMoveTo */
-    NULL,                                   /* pPaintRgn */
-    NULL,                                   /* pPatBlt */
-    NULL,                                   /* pPie */
-    NULL,                                   /* pPolyBezier */
-    NULL,                                   /* pPolyBezierTo */
-    NULL,                                   /* pPolyDraw */
-    NULL,                                   /* pPolyPolygon */
-    NULL,                                   /* pPolyPolyline */
-    NULL,                                   /* pPolylineTo */
-    NULL,                                   /* pPutImage */
-    boxeddrv_RealizeDefaultPalette,         /* pRealizeDefaultPalette */
-    boxeddrv_RealizePalette,                /* pRealizePalette */
-    NULL,                                   /* pRectangle */
-    NULL,                                   /* pResetDC */
-    NULL,                                   /* pRoundRect */
-    NULL,                                   /* pSelectBitmap */
-    NULL,                                   /* pSelectBrush */
-    NULL,                                   /* pSelectFont */
-    NULL,                                   /* pSelectPen */
-    NULL,                                   /* pSetBkColor */
-    NULL,                                   /* pSetBoundsRect */
-    NULL,                                   /* pSetDCBrushColor */
-    NULL,                                   /* pSetDCPenColor */
-    NULL,                                   /* pSetDIBitsToDevice */
-    NULL,                                   /* pSetDeviceClipping */
-    boxeddrv_SetDeviceGammaRamp,            /* pSetDeviceGammaRamp */
-    NULL,                                   /* pSetPixel */
-    NULL,                                   /* pSetTextColor */
-    NULL,                                   /* pStartDoc */
-    NULL,                                   /* pStartPage */
-    NULL,                                   /* pStretchBlt */
-    NULL,                                   /* pStretchDIBits */
-    NULL,                                   /* pStrokeAndFillPath */
-    NULL,                                   /* pStrokePath */
-    boxeddrv_UnrealizePalette,              /* pUnrealizePalette */
-    NULL,                                   /* pD3DKMTCheckVidPnExclusiveOwnership */
-    NULL,                                   /* pD3DKMTSetVidPnSourceOwner */
-    boxeddrv_wine_get_wgl_driver,           /* wine_get_wgl_driver */
-    boxeddrv_wine_get_vulkan_driver,        /* wine_get_vulkan_driver */
-    GDI_PRIORITY_GRAPHICS_DRV               /* priority */
-};
-#endif
-
-// Aug 27, 2021 wine-6.16 (pGetCharABCWidths changed)
-#if WINE_GDI_DRIVER_VERSION == 66
-static const struct gdi_dc_funcs boxeddrv_funcs =
-{
-    NULL,                                   /* pAbortDoc */
-    NULL,                                   /* pAbortPath */
-    NULL,                                   /* pAlphaBlend */
-    NULL,                                   /* pAngleArc */
-    NULL,                                   /* pArc */
-    NULL,                                   /* pArcTo */
-    NULL,                                   /* pBeginPath */
-    NULL,                                   /* pBlendImage */
-    NULL,                                   /* pChord */
-    NULL,                                   /* pCloseFigure */
-    boxeddrv_CreateCompatibleDC,            /* pCreateCompatibleDC */
-    boxeddrv_CreateDC,                      /* pCreateDC */
-    boxeddrv_DeleteDC,                      /* pDeleteDC */
-    NULL,                                   /* pDeleteObject */
-    NULL,                                   /* pDeviceCapabilities */
-    NULL,                                   /* pEllipse */
-    NULL,                                   /* pEndDoc */
-    NULL,                                   /* pEndPage */
-    NULL,                                   /* pEndPath */
-    NULL,                                   /* pEnumFonts */
-    NULL,                                   /* pEnumICMProfiles */
-    NULL,                                   /* pExtDeviceMode */
-    NULL,                                   /* pExtEscape */
-    NULL,                                   /* pExtFloodFill */
-    NULL,                                   /* pExtTextOut */
-    NULL,                                   /* pFillPath */
-    NULL,                                   /* pFillRgn */
-    NULL,                                   /* pFontIsLinked */
-    NULL,                                   /* pFrameRgn */
-    NULL,                                   /* pGetBoundsRect */
-    NULL,                                   /* pGetCharABCWidths */
-    NULL,                                   /* pGetCharABCWidthsI */
-    NULL,                                   /* pGetCharWidth */
-    NULL,                                   /* pGetCharWidthInfo */
-    boxeddrv_GetDeviceCaps,                 /* pGetDeviceCaps */
-    boxeddrv_GetDeviceGammaRamp,            /* pGetDeviceGammaRamp */
-    NULL,                                   /* pGetFontData */
-    NULL,                                   /* pGetFontRealizationInfo */
-    NULL,                                   /* pGetFontUnicodeRanges */
-    NULL,                                   /* pGetGlyphIndices */
-    NULL,                                   /* pGetGlyphOutline */
-    NULL,                                   /* pGetICMProfile */
-    NULL,                                   /* pGetImage */
-    NULL,                                   /* pGetKerningPairs */
-    boxeddrv_GetNearestColor,               /* pGetNearestColor */
-    NULL,                                   /* pGetOutlineTextMetrics */
-    NULL,                                   /* pGetPixel */
-    boxeddrv_GetSystemPaletteEntries,       /* pGetSystemPaletteEntries */
-    NULL,                                   /* pGetTextCharsetInfo */
-    NULL,                                   /* pGetTextExtentExPoint */
-    NULL,                                   /* pGetTextExtentExPointI */
-    NULL,                                   /* pGetTextFace */
-    NULL,                                   /* pGetTextMetrics */
-    NULL,                                   /* pGradientFill */
-    NULL,                                   /* pInvertRgn */
-    NULL,                                   /* pLineTo */
-    NULL,                                   /* pMoveTo */
-    NULL,                                   /* pPaintRgn */
-    NULL,                                   /* pPatBlt */
-    NULL,                                   /* pPie */
-    NULL,                                   /* pPolyBezier */
-    NULL,                                   /* pPolyBezierTo */
-    NULL,                                   /* pPolyDraw */
-    NULL,                                   /* pPolyPolygon */
-    NULL,                                   /* pPolyPolyline */
-    NULL,                                   /* pPolylineTo */
-    NULL,                                   /* pPutImage */
-    boxeddrv_RealizeDefaultPalette,         /* pRealizeDefaultPalette */
-    boxeddrv_RealizePalette,                /* pRealizePalette */
-    NULL,                                   /* pRectangle */
-    NULL,                                   /* pResetDC */
-    NULL,                                   /* pRoundRect */
-    NULL,                                   /* pSelectBitmap */
-    NULL,                                   /* pSelectBrush */
-    NULL,                                   /* pSelectFont */
-    NULL,                                   /* pSelectPen */
-    NULL,                                   /* pSetBkColor */
-    NULL,                                   /* pSetBoundsRect */
-    NULL,                                   /* pSetDCBrushColor */
-    NULL,                                   /* pSetDCPenColor */
-    NULL,                                   /* pSetDIBitsToDevice */
-    NULL,                                   /* pSetDeviceClipping */
-    boxeddrv_SetDeviceGammaRamp,            /* pSetDeviceGammaRamp */
-    NULL,                                   /* pSetPixel */
-    NULL,                                   /* pSetTextColor */
-    NULL,                                   /* pStartDoc */
-    NULL,                                   /* pStartPage */
-    NULL,                                   /* pStretchBlt */
-    NULL,                                   /* pStretchDIBits */
-    NULL,                                   /* pStrokeAndFillPath */
-    NULL,                                   /* pStrokePath */
-    boxeddrv_UnrealizePalette,              /* pUnrealizePalette */
-    NULL,                                   /* pD3DKMTCheckVidPnExclusiveOwnership */
-    NULL,                                   /* pD3DKMTSetVidPnSourceOwner */
-    boxeddrv_wine_get_wgl_driver,           /* wine_get_wgl_driver */
-    boxeddrv_wine_get_vulkan_driver,        /* wine_get_vulkan_driver */
-    GDI_PRIORITY_GRAPHICS_DRV               /* priority */
-};
-#endif
-
-// Sep 9, 2021  wine-6.17 (pGetICMProfile changed, pEnumICMProfiles removed)
-#if WINE_GDI_DRIVER_VERSION == 67
-static const struct gdi_dc_funcs boxeddrv_funcs =
-{
-    NULL,                                   /* pAbortDoc */
-    NULL,                                   /* pAbortPath */
-    NULL,                                   /* pAlphaBlend */
-    NULL,                                   /* pAngleArc */
-    NULL,                                   /* pArc */
-    NULL,                                   /* pArcTo */
-    NULL,                                   /* pBeginPath */
-    NULL,                                   /* pBlendImage */
-    NULL,                                   /* pChord */
-    NULL,                                   /* pCloseFigure */
-    boxeddrv_CreateCompatibleDC,            /* pCreateCompatibleDC */
-    boxeddrv_CreateDC,                      /* pCreateDC */
-    boxeddrv_DeleteDC,                      /* pDeleteDC */
-    NULL,                                   /* pDeleteObject */
-    NULL,                                   /* pDeviceCapabilities */
-    NULL,                                   /* pEllipse */
-    NULL,                                   /* pEndDoc */
-    NULL,                                   /* pEndPage */
-    NULL,                                   /* pEndPath */
-    NULL,                                   /* pEnumFonts */
-    NULL,                                   /* pExtDeviceMode */
-    NULL,                                   /* pExtEscape */
-    NULL,                                   /* pExtFloodFill */
-    NULL,                                   /* pExtTextOut */
-    NULL,                                   /* pFillPath */
-    NULL,                                   /* pFillRgn */
-    NULL,                                   /* pFontIsLinked */
-    NULL,                                   /* pFrameRgn */
-    NULL,                                   /* pGetBoundsRect */
-    NULL,                                   /* pGetCharABCWidths */
-    NULL,                                   /* pGetCharABCWidthsI */
-    NULL,                                   /* pGetCharWidth */
-    NULL,                                   /* pGetCharWidthInfo */
-    boxeddrv_GetDeviceCaps,                 /* pGetDeviceCaps */
-    boxeddrv_GetDeviceGammaRamp,            /* pGetDeviceGammaRamp */
-    NULL,                                   /* pGetFontData */
-    NULL,                                   /* pGetFontRealizationInfo */
-    NULL,                                   /* pGetFontUnicodeRanges */
-    NULL,                                   /* pGetGlyphIndices */
-    NULL,                                   /* pGetGlyphOutline */
-    NULL,                                   /* pGetICMProfile */
-    NULL,                                   /* pGetImage */
-    NULL,                                   /* pGetKerningPairs */
-    boxeddrv_GetNearestColor,               /* pGetNearestColor */
-    NULL,                                   /* pGetOutlineTextMetrics */
-    NULL,                                   /* pGetPixel */
-    boxeddrv_GetSystemPaletteEntries,       /* pGetSystemPaletteEntries */
-    NULL,                                   /* pGetTextCharsetInfo */
-    NULL,                                   /* pGetTextExtentExPoint */
-    NULL,                                   /* pGetTextExtentExPointI */
-    NULL,                                   /* pGetTextFace */
-    NULL,                                   /* pGetTextMetrics */
-    NULL,                                   /* pGradientFill */
-    NULL,                                   /* pInvertRgn */
-    NULL,                                   /* pLineTo */
-    NULL,                                   /* pMoveTo */
-    NULL,                                   /* pPaintRgn */
-    NULL,                                   /* pPatBlt */
-    NULL,                                   /* pPie */
-    NULL,                                   /* pPolyBezier */
-    NULL,                                   /* pPolyBezierTo */
-    NULL,                                   /* pPolyDraw */
-    NULL,                                   /* pPolyPolygon */
-    NULL,                                   /* pPolyPolyline */
-    NULL,                                   /* pPolylineTo */
-    NULL,                                   /* pPutImage */
-    boxeddrv_RealizeDefaultPalette,         /* pRealizeDefaultPalette */
-    boxeddrv_RealizePalette,                /* pRealizePalette */
-    NULL,                                   /* pRectangle */
-    NULL,                                   /* pResetDC */
-    NULL,                                   /* pRoundRect */
-    NULL,                                   /* pSelectBitmap */
-    NULL,                                   /* pSelectBrush */
-    NULL,                                   /* pSelectFont */
-    NULL,                                   /* pSelectPen */
-    NULL,                                   /* pSetBkColor */
-    NULL,                                   /* pSetBoundsRect */
-    NULL,                                   /* pSetDCBrushColor */
-    NULL,                                   /* pSetDCPenColor */
-    NULL,                                   /* pSetDIBitsToDevice */
-    NULL,                                   /* pSetDeviceClipping */
-    boxeddrv_SetDeviceGammaRamp,            /* pSetDeviceGammaRamp */
-    NULL,                                   /* pSetPixel */
-    NULL,                                   /* pSetTextColor */
-    NULL,                                   /* pStartDoc */
-    NULL,                                   /* pStartPage */
-    NULL,                                   /* pStretchBlt */
-    NULL,                                   /* pStretchDIBits */
-    NULL,                                   /* pStrokeAndFillPath */
-    NULL,                                   /* pStrokePath */
-    boxeddrv_UnrealizePalette,              /* pUnrealizePalette */
-    NULL,                                   /* pD3DKMTCheckVidPnExclusiveOwnership */
-    NULL,                                   /* pD3DKMTSetVidPnSourceOwner */
-    boxeddrv_wine_get_wgl_driver,           /* wine_get_wgl_driver */
-    boxeddrv_wine_get_vulkan_driver,        /* wine_get_vulkan_driver */
-    GDI_PRIORITY_GRAPHICS_DRV               /* priority */
-};
-#endif
-
-// Sep 13, 2021 wine-6.18
-#if WINE_GDI_DRIVER_VERSION == 68
-static const struct gdi_dc_funcs boxeddrv_funcs =
-{
-    NULL,                                   /* pAbortDoc */
-    NULL,                                   /* pAbortPath */
-    NULL,                                   /* pAlphaBlend */
-    NULL,                                   /* pAngleArc */
-    NULL,                                   /* pArc */
-    NULL,                                   /* pArcTo */
-    NULL,                                   /* pBeginPath */
-    NULL,                                   /* pBlendImage */
-    NULL,                                   /* pChord */
-    NULL,                                   /* pCloseFigure */
-    boxeddrv_CreateCompatibleDC,            /* pCreateCompatibleDC */
-    boxeddrv_CreateDC,                      /* pCreateDC */
-    boxeddrv_DeleteDC,                      /* pDeleteDC */
-    NULL,                                   /* pDeleteObject */
-    NULL,                                   /* pEllipse */
-    NULL,                                   /* pEndDoc */
-    NULL,                                   /* pEndPage */
-    NULL,                                   /* pEndPath */
-    NULL,                                   /* pEnumFonts */
-    NULL,                                   /* pExtEscape */
-    NULL,                                   /* pExtFloodFill */
-    NULL,                                   /* pExtTextOut */
-    NULL,                                   /* pFillPath */
-    NULL,                                   /* pFillRgn */
-    NULL,                                   /* pFontIsLinked */
-    NULL,                                   /* pFrameRgn */
-    NULL,                                   /* pGetBoundsRect */
-    NULL,                                   /* pGetCharABCWidths */
-    NULL,                                   /* pGetCharABCWidthsI */
-    NULL,                                   /* pGetCharWidth */
-    NULL,                                   /* pGetCharWidthInfo */
-    boxeddrv_GetDeviceCaps,                 /* pGetDeviceCaps */
-    boxeddrv_GetDeviceGammaRamp,            /* pGetDeviceGammaRamp */
-    NULL,                                   /* pGetFontData */
-    NULL,                                   /* pGetFontRealizationInfo */
-    NULL,                                   /* pGetFontUnicodeRanges */
-    NULL,                                   /* pGetGlyphIndices */
-    NULL,                                   /* pGetGlyphOutline */
-    NULL,                                   /* pGetICMProfile */
-    NULL,                                   /* pGetImage */
-    NULL,                                   /* pGetKerningPairs */
-    boxeddrv_GetNearestColor,               /* pGetNearestColor */
-    NULL,                                   /* pGetOutlineTextMetrics */
-    NULL,                                   /* pGetPixel */
-    boxeddrv_GetSystemPaletteEntries,       /* pGetSystemPaletteEntries */
-    NULL,                                   /* pGetTextCharsetInfo */
-    NULL,                                   /* pGetTextExtentExPoint */
-    NULL,                                   /* pGetTextExtentExPointI */
-    NULL,                                   /* pGetTextFace */
-    NULL,                                   /* pGetTextMetrics */
-    NULL,                                   /* pGradientFill */
-    NULL,                                   /* pInvertRgn */
-    NULL,                                   /* pLineTo */
-    NULL,                                   /* pMoveTo */
-    NULL,                                   /* pPaintRgn */
-    NULL,                                   /* pPatBlt */
-    NULL,                                   /* pPie */
-    NULL,                                   /* pPolyBezier */
-    NULL,                                   /* pPolyBezierTo */
-    NULL,                                   /* pPolyDraw */
-    NULL,                                   /* pPolyPolygon */
-    NULL,                                   /* pPolyPolyline */
-    NULL,                                   /* pPolylineTo */
-    NULL,                                   /* pPutImage */
-    boxeddrv_RealizeDefaultPalette,         /* pRealizeDefaultPalette */
-    boxeddrv_RealizePalette,                /* pRealizePalette */
-    NULL,                                   /* pRectangle */
-    NULL,                                   /* pResetDC */
-    NULL,                                   /* pRoundRect */
-    NULL,                                   /* pSelectBitmap */
-    NULL,                                   /* pSelectBrush */
-    NULL,                                   /* pSelectFont */
-    NULL,                                   /* pSelectPen */
-    NULL,                                   /* pSetBkColor */
-    NULL,                                   /* pSetBoundsRect */
-    NULL,                                   /* pSetDCBrushColor */
-    NULL,                                   /* pSetDCPenColor */
-    NULL,                                   /* pSetDIBitsToDevice */
-    NULL,                                   /* pSetDeviceClipping */
-    boxeddrv_SetDeviceGammaRamp,            /* pSetDeviceGammaRamp */
-    NULL,                                   /* pSetPixel */
-    NULL,                                   /* pSetTextColor */
-    NULL,                                   /* pStartDoc */
-    NULL,                                   /* pStartPage */
-    NULL,                                   /* pStretchBlt */
-    NULL,                                   /* pStretchDIBits */
-    NULL,                                   /* pStrokeAndFillPath */
-    NULL,                                   /* pStrokePath */
-    boxeddrv_UnrealizePalette,              /* pUnrealizePalette */
-    NULL,                                   /* pD3DKMTCheckVidPnExclusiveOwnership */
-    NULL,                                   /* pD3DKMTSetVidPnSourceOwner */
-    boxeddrv_wine_get_wgl_driver,           /* wine_get_wgl_driver */
-    boxeddrv_wine_get_vulkan_driver,        /* wine_get_vulkan_driver */
-    GDI_PRIORITY_GRAPHICS_DRV               /* priority */
-};
-#endif
-
-// Sep 29, 2021 wine-6.18 (pCreateDC changed)
-#if WINE_GDI_DRIVER_VERSION == 69
-static const struct gdi_dc_funcs boxeddrv_funcs =
-{
-    NULL,                                   /* pAbortDoc */
-    NULL,                                   /* pAbortPath */
-    NULL,                                   /* pAlphaBlend */
-    NULL,                                   /* pAngleArc */
-    NULL,                                   /* pArc */
-    NULL,                                   /* pArcTo */
-    NULL,                                   /* pBeginPath */
-    NULL,                                   /* pBlendImage */
-    NULL,                                   /* pChord */
-    NULL,                                   /* pCloseFigure */
-    boxeddrv_CreateCompatibleDC,            /* pCreateCompatibleDC */
-    boxeddrv_CreateDC,                      /* pCreateDC */
-    boxeddrv_DeleteDC,                      /* pDeleteDC */
-    NULL,                                   /* pDeleteObject */
-    NULL,                                   /* pEllipse */
-    NULL,                                   /* pEndDoc */
-    NULL,                                   /* pEndPage */
-    NULL,                                   /* pEndPath */
-    NULL,                                   /* pEnumFonts */
-    NULL,                                   /* pExtEscape */
-    NULL,                                   /* pExtFloodFill */
-    NULL,                                   /* pExtTextOut */
-    NULL,                                   /* pFillPath */
-    NULL,                                   /* pFillRgn */
-    NULL,                                   /* pFontIsLinked */
-    NULL,                                   /* pFrameRgn */
-    NULL,                                   /* pGetBoundsRect */
-    NULL,                                   /* pGetCharABCWidths */
-    NULL,                                   /* pGetCharABCWidthsI */
-    NULL,                                   /* pGetCharWidth */
-    NULL,                                   /* pGetCharWidthInfo */
-    boxeddrv_GetDeviceCaps,                 /* pGetDeviceCaps */
-    boxeddrv_GetDeviceGammaRamp,            /* pGetDeviceGammaRamp */
-    NULL,                                   /* pGetFontData */
-    NULL,                                   /* pGetFontRealizationInfo */
-    NULL,                                   /* pGetFontUnicodeRanges */
-    NULL,                                   /* pGetGlyphIndices */
-    NULL,                                   /* pGetGlyphOutline */
-    NULL,                                   /* pGetICMProfile */
-    NULL,                                   /* pGetImage */
-    NULL,                                   /* pGetKerningPairs */
-    boxeddrv_GetNearestColor,               /* pGetNearestColor */
-    NULL,                                   /* pGetOutlineTextMetrics */
-    NULL,                                   /* pGetPixel */
-    boxeddrv_GetSystemPaletteEntries,       /* pGetSystemPaletteEntries */
-    NULL,                                   /* pGetTextCharsetInfo */
-    NULL,                                   /* pGetTextExtentExPoint */
-    NULL,                                   /* pGetTextExtentExPointI */
-    NULL,                                   /* pGetTextFace */
-    NULL,                                   /* pGetTextMetrics */
-    NULL,                                   /* pGradientFill */
-    NULL,                                   /* pInvertRgn */
-    NULL,                                   /* pLineTo */
-    NULL,                                   /* pMoveTo */
-    NULL,                                   /* pPaintRgn */
-    NULL,                                   /* pPatBlt */
-    NULL,                                   /* pPie */
-    NULL,                                   /* pPolyBezier */
-    NULL,                                   /* pPolyBezierTo */
-    NULL,                                   /* pPolyDraw */
-    NULL,                                   /* pPolyPolygon */
-    NULL,                                   /* pPolyPolyline */
-    NULL,                                   /* pPolylineTo */
-    NULL,                                   /* pPutImage */
-    boxeddrv_RealizeDefaultPalette,         /* pRealizeDefaultPalette */
-    boxeddrv_RealizePalette,                /* pRealizePalette */
-    NULL,                                   /* pRectangle */
-    NULL,                                   /* pResetDC */
-    NULL,                                   /* pRoundRect */
-    NULL,                                   /* pSelectBitmap */
-    NULL,                                   /* pSelectBrush */
-    NULL,                                   /* pSelectFont */
-    NULL,                                   /* pSelectPen */
-    NULL,                                   /* pSetBkColor */
-    NULL,                                   /* pSetBoundsRect */
-    NULL,                                   /* pSetDCBrushColor */
-    NULL,                                   /* pSetDCPenColor */
-    NULL,                                   /* pSetDIBitsToDevice */
-    NULL,                                   /* pSetDeviceClipping */
-    boxeddrv_SetDeviceGammaRamp,            /* pSetDeviceGammaRamp */
-    NULL,                                   /* pSetPixel */
-    NULL,                                   /* pSetTextColor */
-    NULL,                                   /* pStartDoc */
-    NULL,                                   /* pStartPage */
-    NULL,                                   /* pStretchBlt */
-    NULL,                                   /* pStretchDIBits */
-    NULL,                                   /* pStrokeAndFillPath */
-    NULL,                                   /* pStrokePath */
-    boxeddrv_UnrealizePalette,              /* pUnrealizePalette */
-    NULL,                                   /* pD3DKMTCheckVidPnExclusiveOwnership */
-    NULL,                                   /* pD3DKMTSetVidPnSourceOwner */
-    boxeddrv_wine_get_wgl_driver,           /* wine_get_wgl_driver */
-    boxeddrv_wine_get_vulkan_driver,        /* wine_get_vulkan_driver */
-    GDI_PRIORITY_GRAPHICS_DRV               /* priority */
-};
-#endif
-
-// Nov 11, 2021 wine-6.22 (changed to how set)
-#if WINE_GDI_DRIVER_VERSION == 70
-static const struct user_driver_funcs boxeddrv_funcs =
-{
-    .dc_funcs.pCreateCompatibleDC = boxeddrv_CreateCompatibleDC,
-    .dc_funcs.pCreateDC = boxeddrv_CreateDC,
-    .dc_funcs.pDeleteDC = boxeddrv_DeleteDC,
-    .dc_funcs.pGetDeviceCaps = boxeddrv_GetDeviceCaps,
-    .dc_funcs.pGetDeviceGammaRamp = boxeddrv_GetDeviceGammaRamp,
-    .dc_funcs.pGetNearestColor = boxeddrv_GetNearestColor,
-    .dc_funcs.pGetSystemPaletteEntries = boxeddrv_GetSystemPaletteEntries,
-    .dc_funcs.pRealizeDefaultPalette = boxeddrv_RealizeDefaultPalette,
-    .dc_funcs.pRealizePalette = boxeddrv_RealizePalette,
-    .dc_funcs.pSetDeviceGammaRamp = boxeddrv_SetDeviceGammaRamp,
-    .dc_funcs.pUnrealizePalette = boxeddrv_UnrealizePalette,
-    .dc_funcs.wine_get_wgl_driver = boxeddrv_wine_get_wgl_driver,
-    .dc_funcs.wine_get_vulkan_driver = boxeddrv_wine_get_vulkan_driver,
-    .dc_funcs.priority = GDI_PRIORITY_GRAPHICS_DRV,
-
-    .pActivateKeyboardLayout = boxeddrv_ActivateKeyboardLayout,
-    .pBeep = boxeddrv_Beep,
-    .pChangeDisplaySettingsEx = boxeddrv_ChangeDisplaySettingsEx,
-    .pClipCursor = boxeddrv_ClipCursor,
-    .pCreateDesktopWindow = boxeddrv_CreateDesktopWindow,
-    .pCreateWindow = boxeddrv_CreateWindow,
-    .pDestroyCursorIcon = boxeddrv_DestroyCursorIcon,
-    .pDestroyWindow = boxeddrv_DestroyWindow,
-    .pEnumDisplaySettingsEx = boxeddrv_EnumDisplaySettingsEx,
-    .pEnumDisplayMonitors = boxeddrv_EnumDisplayMonitors,
-    .pGetMonitorInfo = boxeddrv_GetMonitorInfo,
-    //.pFlashWindowEx = boxeddrv_FlashWindowEx,
-    //.pGetDC = boxeddrv_GetDC,
-    .pGetCursorPos = boxeddrv_GetCursorPos,
-    .pGetKeyboardLayoutList = boxeddrv_GetKeyboardLayoutList,
-    .pGetKeyNameText = boxeddrv_GetKeyNameText,
-    .pMapVirtualKeyEx = boxeddrv_MapVirtualKeyEx,
-    .pMsgWaitForMultipleObjectsEx = boxeddrv_MsgWaitForMultipleObjectsEx,
-    //.pReleaseDC = boxeddrv_ReleaseDC,
-    //.pScrollDC = boxeddrv_ScrollDC,
-    .pRegisterHotKey = boxeddrv_RegisterHotKey,
-    .pSetCapture = boxeddrv_SetCapture,
-    .pSetCursor = boxeddrv_SetCursor,
-    .pSetCursorPos = boxeddrv_SetCursorPos,
-    .pSetFocus = boxeddrv_SetFocus,
-    .pSetLayeredWindowAttributes = boxeddrv_SetLayeredWindowAttributes,
-    .pSetParent = boxeddrv_SetParent,
-    //.pSetWindowIcon = boxeddrv_SetWindowIcon,
-    .pSetWindowRgn = boxeddrv_SetWindowRgn,
-    .pSetWindowStyle = boxeddrv_SetWindowStyle,
-    .pSetWindowText = boxeddrv_SetWindowText,
-    .pShowWindow = boxeddrv_ShowWindow,
-    .pSysCommand = boxeddrv_SysCommand,
-    .pSystemParametersInfo = boxeddrv_SystemParametersInfo,
-    .pThreadDetach = boxeddrv_ThreadDetach,
-    .pToUnicodeEx = boxeddrv_ToUnicodeEx,
-    .pUnregisterHotKey = boxeddrv_UnregisterHotKey,
-    .pUpdateClipboard = boxeddrv_UpdateClipboard,
-    .pUpdateLayeredWindow = boxeddrv_UpdateLayeredWindow,
-    .pVkKeyScanEx = boxeddrv_VkKeyScanEx,
-    .pWindowMessage = boxeddrv_WindowMessage,
-    .pWindowPosChanged = boxeddrv_WindowPosChanged,
-    .pWindowPosChanging = boxeddrv_WindowPosChanging,
-};
-#endif
-
-// Nov 30, 2021 wine-6.23 added pUpdateDisplayDevices
-#if WINE_GDI_DRIVER_VERSION == 71
-static const struct user_driver_funcs boxeddrv_funcs =
-{
-    .dc_funcs.pCreateCompatibleDC = boxeddrv_CreateCompatibleDC,
-    .dc_funcs.pCreateDC = boxeddrv_CreateDC,
-    .dc_funcs.pDeleteDC = boxeddrv_DeleteDC,
-    .dc_funcs.pGetDeviceCaps = boxeddrv_GetDeviceCaps,
-    .dc_funcs.pGetDeviceGammaRamp = boxeddrv_GetDeviceGammaRamp,
-    .dc_funcs.pGetNearestColor = boxeddrv_GetNearestColor,
-    .dc_funcs.pGetSystemPaletteEntries = boxeddrv_GetSystemPaletteEntries,
-    .dc_funcs.pRealizeDefaultPalette = boxeddrv_RealizeDefaultPalette,
-    .dc_funcs.pRealizePalette = boxeddrv_RealizePalette,
-    .dc_funcs.pSetDeviceGammaRamp = boxeddrv_SetDeviceGammaRamp,
-    .dc_funcs.pUnrealizePalette = boxeddrv_UnrealizePalette,
-    .dc_funcs.wine_get_wgl_driver = boxeddrv_wine_get_wgl_driver,
-    .dc_funcs.wine_get_vulkan_driver = boxeddrv_wine_get_vulkan_driver,
-    .dc_funcs.priority = GDI_PRIORITY_GRAPHICS_DRV,
-
-    .pActivateKeyboardLayout = boxeddrv_ActivateKeyboardLayout,
-    .pBeep = boxeddrv_Beep,
-    .pChangeDisplaySettingsEx = boxeddrv_ChangeDisplaySettingsEx,
-    .pClipCursor = boxeddrv_ClipCursor,
-    .pCreateDesktopWindow = boxeddrv_CreateDesktopWindow,
-    .pCreateWindow = boxeddrv_CreateWindow,
-    .pDestroyCursorIcon = boxeddrv_DestroyCursorIcon,
-    .pDestroyWindow = boxeddrv_DestroyWindow,
-    .pEnumDisplaySettingsEx = boxeddrv_EnumDisplaySettingsEx,
-    .pEnumDisplayMonitors = boxeddrv_EnumDisplayMonitors,
-    .pGetMonitorInfo = boxeddrv_GetMonitorInfo,
-    //.pFlashWindowEx = boxeddrv_FlashWindowEx,
-    //.pGetDC = boxeddrv_GetDC,
-    .pUpdateDisplayDevices = boxedwine_UpdateDisplayDevices,
-    .pGetCursorPos = boxeddrv_GetCursorPos,
-    .pGetKeyboardLayoutList = boxeddrv_GetKeyboardLayoutList,
-    .pGetKeyNameText = boxeddrv_GetKeyNameText,
-    .pMapVirtualKeyEx = boxeddrv_MapVirtualKeyEx,
-    .pMsgWaitForMultipleObjectsEx = boxeddrv_MsgWaitForMultipleObjectsEx,
-    //.pReleaseDC = boxeddrv_ReleaseDC,
-    //.pScrollDC = boxeddrv_ScrollDC,
-    .pRegisterHotKey = boxeddrv_RegisterHotKey,
-    .pSetCapture = boxeddrv_SetCapture,
-    .pSetCursor = boxeddrv_SetCursor,
-    .pSetCursorPos = boxeddrv_SetCursorPos,
-    .pSetFocus = boxeddrv_SetFocus,
-    .pSetLayeredWindowAttributes = boxeddrv_SetLayeredWindowAttributes,
-    .pSetParent = boxeddrv_SetParent,
-    //.pSetWindowIcon = boxeddrv_SetWindowIcon,
-    .pSetWindowRgn = boxeddrv_SetWindowRgn,
-    .pSetWindowStyle = boxeddrv_SetWindowStyle,
-    .pSetWindowText = boxeddrv_SetWindowText,
-    .pShowWindow = boxeddrv_ShowWindow,
-    .pSysCommand = boxeddrv_SysCommand,
-    .pSystemParametersInfo = boxeddrv_SystemParametersInfo,
-    .pThreadDetach = boxeddrv_ThreadDetach,
-    .pToUnicodeEx = boxeddrv_ToUnicodeEx,
-    .pUnregisterHotKey = boxeddrv_UnregisterHotKey,
-    .pUpdateClipboard = boxeddrv_UpdateClipboard,
-    .pUpdateLayeredWindow = boxeddrv_UpdateLayeredWindow,
-    .pVkKeyScanEx = boxeddrv_VkKeyScanEx,
-    .pWindowMessage = boxeddrv_WindowMessage,
-    .pWindowPosChanged = boxeddrv_WindowPosChanged,
-    .pWindowPosChanging = boxeddrv_WindowPosChanging,
-};
-#endif
-
-// Dec 2, 2021  wine-6.23 removed pGetMonitorInfo
-#if WINE_GDI_DRIVER_VERSION == 72
-static const struct user_driver_funcs boxeddrv_funcs =
-{
-    .dc_funcs.pCreateCompatibleDC = boxeddrv_CreateCompatibleDC,
-    .dc_funcs.pCreateDC = boxeddrv_CreateDC,
-    .dc_funcs.pDeleteDC = boxeddrv_DeleteDC,
-    .dc_funcs.pGetDeviceCaps = boxeddrv_GetDeviceCaps,
-    .dc_funcs.pGetDeviceGammaRamp = boxeddrv_GetDeviceGammaRamp,
-    .dc_funcs.pGetNearestColor = boxeddrv_GetNearestColor,
-    .dc_funcs.pGetSystemPaletteEntries = boxeddrv_GetSystemPaletteEntries,
-    .dc_funcs.pRealizeDefaultPalette = boxeddrv_RealizeDefaultPalette,
-    .dc_funcs.pRealizePalette = boxeddrv_RealizePalette,
-    .dc_funcs.pSetDeviceGammaRamp = boxeddrv_SetDeviceGammaRamp,
-    .dc_funcs.pUnrealizePalette = boxeddrv_UnrealizePalette,
-    .dc_funcs.wine_get_wgl_driver = boxeddrv_wine_get_wgl_driver,
-    .dc_funcs.wine_get_vulkan_driver = boxeddrv_wine_get_vulkan_driver,
-    .dc_funcs.priority = GDI_PRIORITY_GRAPHICS_DRV,
-
-    .pActivateKeyboardLayout = boxeddrv_ActivateKeyboardLayout,
-    .pBeep = boxeddrv_Beep,
-    .pChangeDisplaySettingsEx = boxeddrv_ChangeDisplaySettingsEx,
-    .pClipCursor = boxeddrv_ClipCursor,
-    .pCreateDesktopWindow = boxeddrv_CreateDesktopWindow,
-    .pCreateWindow = boxeddrv_CreateWindow,
-    .pDestroyCursorIcon = boxeddrv_DestroyCursorIcon,
-    .pDestroyWindow = boxeddrv_DestroyWindow,
-    .pEnumDisplaySettingsEx = boxeddrv_EnumDisplaySettingsEx,
-    .pEnumDisplayMonitors = boxeddrv_EnumDisplayMonitors,
-    //.pFlashWindowEx = boxeddrv_FlashWindowEx,
-    //.pGetDC = boxeddrv_GetDC,
-    .pUpdateDisplayDevices = boxedwine_UpdateDisplayDevices,
-    .pGetCursorPos = boxeddrv_GetCursorPos,
-    .pGetKeyboardLayoutList = boxeddrv_GetKeyboardLayoutList,
-    .pGetKeyNameText = boxeddrv_GetKeyNameText,
-    .pMapVirtualKeyEx = boxeddrv_MapVirtualKeyEx,
-    .pMsgWaitForMultipleObjectsEx = boxeddrv_MsgWaitForMultipleObjectsEx,
-    //.pReleaseDC = boxeddrv_ReleaseDC,
-    //.pScrollDC = boxeddrv_ScrollDC,
-    .pRegisterHotKey = boxeddrv_RegisterHotKey,
-    .pSetCapture = boxeddrv_SetCapture,
-    .pSetCursor = boxeddrv_SetCursor,
-    .pSetCursorPos = boxeddrv_SetCursorPos,
-    .pSetFocus = boxeddrv_SetFocus,
-    .pSetLayeredWindowAttributes = boxeddrv_SetLayeredWindowAttributes,
-    .pSetParent = boxeddrv_SetParent,
-    //.pSetWindowIcon = boxeddrv_SetWindowIcon,
-    .pSetWindowRgn = boxeddrv_SetWindowRgn,
-    .pSetWindowStyle = boxeddrv_SetWindowStyle,
-    .pSetWindowText = boxeddrv_SetWindowText,
-    .pShowWindow = boxeddrv_ShowWindow,
-    .pSysCommand = boxeddrv_SysCommand,
-    .pSystemParametersInfo = boxeddrv_SystemParametersInfo,
-    .pThreadDetach = boxeddrv_ThreadDetach,
-    .pToUnicodeEx = boxeddrv_ToUnicodeEx,
-    .pUnregisterHotKey = boxeddrv_UnregisterHotKey,
-    .pUpdateClipboard = boxeddrv_UpdateClipboard,
-    .pUpdateLayeredWindow = boxeddrv_UpdateLayeredWindow,
-    .pVkKeyScanEx = boxeddrv_VkKeyScanEx,
-    .pWindowMessage = boxeddrv_WindowMessage,
-    .pWindowPosChanged = boxeddrv_WindowPosChanged,
-    .pWindowPosChanging = boxeddrv_WindowPosChanging,
-};
-#endif
-
-// Dec 2, 2021  wine-6.23 removed pEnumDisplayMonitors
-#if WINE_GDI_DRIVER_VERSION == 73
-static const struct user_driver_funcs boxeddrv_funcs =
-{
-    .dc_funcs.pCreateCompatibleDC = boxeddrv_CreateCompatibleDC,
-    .dc_funcs.pCreateDC = boxeddrv_CreateDC,
-    .dc_funcs.pDeleteDC = boxeddrv_DeleteDC,
-    .dc_funcs.pGetDeviceCaps = boxeddrv_GetDeviceCaps,
-    .dc_funcs.pGetDeviceGammaRamp = boxeddrv_GetDeviceGammaRamp,
-    .dc_funcs.pGetNearestColor = boxeddrv_GetNearestColor,
-    .dc_funcs.pGetSystemPaletteEntries = boxeddrv_GetSystemPaletteEntries,
-    .dc_funcs.pRealizeDefaultPalette = boxeddrv_RealizeDefaultPalette,
-    .dc_funcs.pRealizePalette = boxeddrv_RealizePalette,
-    .dc_funcs.pSetDeviceGammaRamp = boxeddrv_SetDeviceGammaRamp,
-    .dc_funcs.pUnrealizePalette = boxeddrv_UnrealizePalette,
-    .dc_funcs.wine_get_wgl_driver = boxeddrv_wine_get_wgl_driver,
-    .dc_funcs.wine_get_vulkan_driver = boxeddrv_wine_get_vulkan_driver,
-    .dc_funcs.priority = GDI_PRIORITY_GRAPHICS_DRV,
-
-    .pActivateKeyboardLayout = boxeddrv_ActivateKeyboardLayout,
-    .pBeep = boxeddrv_Beep,
-    .pChangeDisplaySettingsEx = boxeddrv_ChangeDisplaySettingsEx,
-    .pClipCursor = boxeddrv_ClipCursor,
-    .pCreateDesktopWindow = boxeddrv_CreateDesktopWindow,
-    .pCreateWindow = boxeddrv_CreateWindow,
-    .pDestroyCursorIcon = boxeddrv_DestroyCursorIcon,
-    .pDestroyWindow = boxeddrv_DestroyWindow,
-    .pEnumDisplaySettingsEx = boxeddrv_EnumDisplaySettingsEx,
-    //.pFlashWindowEx = boxeddrv_FlashWindowEx,
-    //.pGetDC = boxeddrv_GetDC,
-    .pUpdateDisplayDevices = boxedwine_UpdateDisplayDevices,
-    .pGetCursorPos = boxeddrv_GetCursorPos,
-    .pGetKeyboardLayoutList = boxeddrv_GetKeyboardLayoutList,
-    .pGetKeyNameText = boxeddrv_GetKeyNameText,
-    .pMapVirtualKeyEx = boxeddrv_MapVirtualKeyEx,
-    .pMsgWaitForMultipleObjectsEx = boxeddrv_MsgWaitForMultipleObjectsEx,
-    //.pReleaseDC = boxeddrv_ReleaseDC,
-    //.pScrollDC = boxeddrv_ScrollDC,
-    .pRegisterHotKey = boxeddrv_RegisterHotKey,
-    .pSetCapture = boxeddrv_SetCapture,
-    .pSetCursor = boxeddrv_SetCursor,
-    .pSetCursorPos = boxeddrv_SetCursorPos,
-    .pSetFocus = boxeddrv_SetFocus,
-    .pSetLayeredWindowAttributes = boxeddrv_SetLayeredWindowAttributes,
-    .pSetParent = boxeddrv_SetParent,
-    //.pSetWindowIcon = boxeddrv_SetWindowIcon,
-    .pSetWindowRgn = boxeddrv_SetWindowRgn,
-    .pSetWindowStyle = boxeddrv_SetWindowStyle,
-    .pSetWindowText = boxeddrv_SetWindowText,
-    .pShowWindow = boxeddrv_ShowWindow,
-    .pSysCommand = boxeddrv_SysCommand,
-    .pSystemParametersInfo = boxeddrv_SystemParametersInfo,
-    .pThreadDetach = boxeddrv_ThreadDetach,
-    .pToUnicodeEx = boxeddrv_ToUnicodeEx,
-    .pUnregisterHotKey = boxeddrv_UnregisterHotKey,
-    .pUpdateClipboard = boxeddrv_UpdateClipboard,
-    .pUpdateLayeredWindow = boxeddrv_UpdateLayeredWindow,
-    .pVkKeyScanEx = boxeddrv_VkKeyScanEx,
-    .pWindowMessage = boxeddrv_WindowMessage,
-    .pWindowPosChanged = boxeddrv_WindowPosChanged,
-    .pWindowPosChanging = boxeddrv_WindowPosChanging,
-};
-#endif
-
-// Dec 8, 2021 wine-7.0-rc1
-#if WINE_GDI_DRIVER_VERSION == 74
-static const struct user_driver_funcs boxeddrv_funcs =
-{
-    .dc_funcs.pCreateCompatibleDC = boxeddrv_CreateCompatibleDC,
-    .dc_funcs.pCreateDC = boxeddrv_CreateDC,
-    .dc_funcs.pDeleteDC = boxeddrv_DeleteDC,
-    .dc_funcs.pGetDeviceCaps = boxeddrv_GetDeviceCaps,
-    .dc_funcs.pGetDeviceGammaRamp = boxeddrv_GetDeviceGammaRamp,
-    .dc_funcs.pGetNearestColor = boxeddrv_GetNearestColor,
-    .dc_funcs.pGetSystemPaletteEntries = boxeddrv_GetSystemPaletteEntries,
-    .dc_funcs.pRealizeDefaultPalette = boxeddrv_RealizeDefaultPalette,
-    .dc_funcs.pRealizePalette = boxeddrv_RealizePalette,
-    .dc_funcs.pSetDeviceGammaRamp = boxeddrv_SetDeviceGammaRamp,
-    .dc_funcs.pUnrealizePalette = boxeddrv_UnrealizePalette,
-    .dc_funcs.wine_get_wgl_driver = boxeddrv_wine_get_wgl_driver,
-    .dc_funcs.priority = GDI_PRIORITY_GRAPHICS_DRV,
-
-    .pActivateKeyboardLayout = boxeddrv_ActivateKeyboardLayout,
-    .pBeep = boxeddrv_Beep,
-    .pChangeDisplaySettingsEx = boxeddrv_ChangeDisplaySettingsEx,
-    .pClipCursor = boxeddrv_ClipCursor,
-    .pCreateDesktopWindow = boxeddrv_CreateDesktopWindow,
-    .pCreateWindow = boxeddrv_CreateWindow,
-    .pDestroyCursorIcon = boxeddrv_DestroyCursorIcon,
-    .pDestroyWindow = boxeddrv_DestroyWindow,
-    .pEnumDisplaySettingsEx = boxeddrv_EnumDisplaySettingsEx,
-    //.pFlashWindowEx = boxeddrv_FlashWindowEx,
-    //.pGetDC = boxeddrv_GetDC,
-    .pUpdateDisplayDevices = boxedwine_UpdateDisplayDevices,
-    .pGetCursorPos = boxeddrv_GetCursorPos,
-    .pGetKeyboardLayoutList = boxeddrv_GetKeyboardLayoutList,
-    .pGetKeyNameText = boxeddrv_GetKeyNameText,
-    .pMapVirtualKeyEx = boxeddrv_MapVirtualKeyEx,
-    .pMsgWaitForMultipleObjectsEx = boxeddrv_MsgWaitForMultipleObjectsEx,
-    //.pReleaseDC = boxeddrv_ReleaseDC,
-    //.pScrollDC = boxeddrv_ScrollDC,
-    .pRegisterHotKey = boxeddrv_RegisterHotKey,
-    .pSetCapture = boxeddrv_SetCapture,
-    .pSetCursor = boxeddrv_SetCursor,
-    .pSetCursorPos = boxeddrv_SetCursorPos,
-    .pSetFocus = boxeddrv_SetFocus,
-    .pSetLayeredWindowAttributes = boxeddrv_SetLayeredWindowAttributes,
-    .pSetParent = boxeddrv_SetParent,
-    //.pSetWindowIcon = boxeddrv_SetWindowIcon,
-    .pSetWindowRgn = boxeddrv_SetWindowRgn,
-    .pSetWindowStyle = boxeddrv_SetWindowStyle,
-    .pSetWindowText = boxeddrv_SetWindowText,
-    .pShowWindow = boxeddrv_ShowWindow,
-    .pSysCommand = boxeddrv_SysCommand,
-    .pSystemParametersInfo = boxeddrv_SystemParametersInfo,
-    .pThreadDetach = boxeddrv_ThreadDetach,
-    .pToUnicodeEx = boxeddrv_ToUnicodeEx,
-    .pUnregisterHotKey = boxeddrv_UnregisterHotKey,
-    .pUpdateClipboard = boxeddrv_UpdateClipboard,
-    .pUpdateLayeredWindow = boxeddrv_UpdateLayeredWindow,
-    .pVkKeyScanEx = boxeddrv_VkKeyScanEx,
-    .pWindowMessage = boxeddrv_WindowMessage,
-    .pWindowPosChanged = boxeddrv_WindowPosChanged,
-    .pWindowPosChanging = boxeddrv_WindowPosChanging,
-    .pwine_get_vulkan_driver = boxeddrv_wine_get_vulkan_driver2,
-};
-#endif
-
-/**********************************************************************
-*              CreateDC (BOXEDDRV.@)
-*/
-#if WINE_GDI_DRIVER_VERSION >= 69
-static BOOL WINE_CDECL boxeddrv_CreateDC(PHYSDEV* pdev, LPCWSTR device,
-    LPCWSTR output, const DEVMODEW* initData)
-#else
-static BOOL WINE_CDECL boxeddrv_CreateDC(PHYSDEV *pdev, LPCWSTR driver, LPCWSTR device,
-    LPCWSTR output, const DEVMODEW* initData)
-#endif
-{
-    BOXEDDRV_PDEVICE *physDev = create_boxed_physdev();
-
-#if WINE_GDI_DRIVER_VERSION >= 69
-    TRACE("pdev %p hdc %p device %s output %s initData %p\n", pdev,
-        (*pdev)->hdc, debugstr_w(device), debugstr_w(output),
-        initData);
-#else
-    TRACE("pdev %p hdc %p driver %s device %s output %s initData %p\n", pdev,
-        (*pdev)->hdc, debugstr_w(driver), debugstr_w(device), debugstr_w(output),
-        initData);
-#endif
-    if (!physDev) return FALSE;
-
-#if WINE_GDI_DRIVER_VERSION >= 70
-    push_dc_driver(pdev, &physDev->dev, &boxeddrv_funcs.dc_funcs);
-#else
-    push_dc_driver(pdev, &physDev->dev, &boxeddrv_funcs);
-#endif
-    CALL_NORETURN_1(BOXED_CREATE_DC, physDev);    
-    return TRUE;
-}
-
-
-/**********************************************************************
-*              CreateCompatibleDC (BOXEDDRV.@)
-*/
-static BOOL WINE_CDECL boxeddrv_CreateCompatibleDC(PHYSDEV orig, PHYSDEV *pdev)
-{
-    BOXEDDRV_PDEVICE *physDev = create_boxed_physdev();
-
-    TRACE("orig %p orig->hdc %p pdev %p pdev->hdc %p\n", orig, (orig ? orig->hdc : NULL), pdev,
-        ((pdev && *pdev) ? (*pdev)->hdc : NULL));
-
-    if (!physDev) return FALSE;
-
-#if WINE_GDI_DRIVER_VERSION >= 70
-    push_dc_driver(pdev, &physDev->dev, &boxeddrv_funcs.dc_funcs);
-#else
-    push_dc_driver(pdev, &physDev->dev, &boxeddrv_funcs);
-#endif
-    CALL_NORETURN_1(BOXED_CREATE_DC, physDev);
-    return TRUE;
-}
-
-/******************************************************************************
- *              boxeddrv_get_gdi_driver
- */
-const struct gdi_dc_funcs * CDECL boxeddrv_get_gdi_driver(unsigned int version)
-{
-    int result;
-
-    if (version != WINE_GDI_DRIVER_VERSION)
-    {
-        ERR("version mismatch, gdi32 wants %u but wineboxed has %u\n", version, WINE_GDI_DRIVER_VERSION);
-        return NULL;
-    }
-    CALL_0(BOXED_GET_VERSION)
-    if (result != 3) {
-        ERR("version mismatch, boxedwine wants %u but winex11.drv has %u\n", result, 3);
-        return NULL;
-    }
-#if WINE_GDI_DRIVER_VERSION >= 70
-    return &boxeddrv_funcs.dc_funcs;
-#else
-    return &boxeddrv_funcs;
-#endif
-}
-
-/*
-#if WINE_GDI_DRIVER_VERSION < 70
-void CDECL boxeddrv_set_display_driver(struct user_driver_funcs* funcs, UINT version)
-{
-    if (version != WINE_GDI_DRIVER_VERSION)
-    {
-        ERR("version mismatch, driver wants %u but win32u has %u\n",
-            version, WINE_GDI_DRIVER_VERSION);
-        return;
-    }
-
-    InterlockedExchangePointer((void**)&user_driver, funcs);
-}
-#endif
-*/
-static struct wgl_context *boxeddrv_wglCreateContextAttribsARB(HDC hdc, struct wgl_context *share_context, const int *attrib_list)
-{
-    const int *iptr;
-    int major = 1, minor = 0, profile = WGL_CONTEXT_CORE_PROFILE_BIT_ARB, flags = 0;
-    struct wgl_context* result;
-
-    TRACE("boxeddrv_wglCreateContextAttribsARB hdc=%p share_context=%p attrib_list=%p\n", hdc, share_context, attrib_list);
-
-    for (iptr = attrib_list; iptr && *iptr; iptr += 2)
-    {
-        int attr = iptr[0];
-        int value = iptr[1];
-
-        TRACE("attribute %d.%d\n", attr, value);
-
-        switch (attr)
-        {
-            case WGL_CONTEXT_MAJOR_VERSION_ARB:
-                major = value;
-                break;
-
-            case WGL_CONTEXT_MINOR_VERSION_ARB:
-                minor = value;
-                break;
-
-            case WGL_CONTEXT_LAYER_PLANE_ARB:
-                WARN("WGL_CONTEXT_LAYER_PLANE_ARB attribute ignored\n");
-                break;
-
-            case WGL_CONTEXT_FLAGS_ARB:
-                flags = value;
-                if (flags & ~WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB)
-                    WARN("WGL_CONTEXT_FLAGS_ARB attributes %#x ignored\n", flags & ~WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB);
-                break;
-
-            case WGL_CONTEXT_PROFILE_MASK_ARB:
-                if (value != WGL_CONTEXT_CORE_PROFILE_BIT_ARB &&
-                    value != WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB)
-                {
-                    WARN("WGL_CONTEXT_PROFILE_MASK_ARB bits %#x invalid\n", value);
-                    SetLastError(ERROR_INVALID_PROFILE_ARB);
-                    return NULL;
-                }
-                profile = value;
-                break;            
-            default:
-                WARN("Unknown attribute %d.%d\n", attr, value);
-                SetLastError(ERROR_INVALID_PARAMETER);
-                return NULL;
-        }
-    }
-
-    CALL_5(BOXED_GL_CREATE_CONTEXT, WindowFromDC(hdc), major, minor, profile, flags);
-    return result;
-}
-
-BOOL CDECL boxeddrv_create_desktop( UINT width, UINT height )
-{
-    int result;
-    CALL_2(BOXED_CREATE_DESKTOP, width, height);
-    return (BOOL)result;
-}
-
-// removed in version 70?
-HKL CDECL boxeddrv_LoadKeyboardLayout(LPCWSTR name, UINT flags)
-{
-    FIXME("%s, %04x: semi-stub! Returning default layout.\n", debugstr_w(name), flags);
-    return get_locale_kbd_layout();
-}
-
-// removed in version 70?
-BOOL CDECL boxeddrv_UnloadKeyboardLayout(HKL hkl)
-{
-    FIXME("%p: stub!\n", hkl);
-    SetLastError(ERROR_CALL_NOT_IMPLEMENTED);
-    return FALSE;
-}
-
-BOOL WINAPI DllMain(HINSTANCE hinst, DWORD reason, LPVOID reserved)
-{
-    BOOL ret = TRUE;
-
-    switch (reason)
-    {
-    case DLL_PROCESS_ATTACH:
-        DisableThreadLibraryCalls(hinst);
-#if WINE_GDI_DRIVER_VERSION >= 70
-        __wine_set_user_driver(&boxeddrv_funcs, WINE_GDI_DRIVER_VERSION);
-#endif
-        BOXEDDRV_DisplayDevices_Init(FALSE);
-        break;
-    }
-    return ret;
-}
