@@ -43,7 +43,7 @@
 class KNativeWindowSdl;
 class Boxed_Surface {
 public:
-    Boxed_Surface(KNativeWindowSdl* screen, KThread* thread, U32 bits, U32 width, U32 height, U32 pitch, U32 flags, U32 palette) : screen(screen), thread(thread), bits(bits), width(width), height(height), pitch(pitch), flags(flags), palette(palette), done(false) {}
+    Boxed_Surface(KNativeWindowSdl* screen, KThread* thread, U32 bits, U32 width, U32 height, U32 pitch, U32 flags) : screen(screen), thread(thread), bits(bits), width(width), height(height), pitch(pitch), flags(flags), done(false) {}
     KNativeWindowSdl* screen;
     KThread* thread;
     U32 bits;
@@ -51,7 +51,7 @@ public:
     U32 height;
     U32 pitch;
     U32 flags;
-    U32 palette;
+    SDL_Color colors[256];
     BOXEDWINE_MUTEX mutex;
     bool done;
 };
@@ -244,7 +244,7 @@ public:
     bool internalScreenShot(std::string filepath, SDL_Rect* r, U32* crc);
     bool isShutdownWindowIsOpen();
     void updateShutdownWindow();
-    void updatePrimarySurface(KThread* thread, U32 bits, U32 width, U32 height, U32 pitch, U32 flags, U32 palette);
+    void updatePrimarySurface(KThread* thread, U32 bits, U32 width, U32 height, U32 pitch, U32 flags, SDL_Color* palette);
 
 private:    
     void contextCreated();
@@ -989,7 +989,7 @@ void KNativeWindowSdl::bltWnd(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32
     }
 }
 
-void KNativeWindowSdl::updatePrimarySurface(KThread* thread, U32 bits, U32 width, U32 height, U32 pitch, U32 flags, U32 palette) {
+void KNativeWindowSdl::updatePrimarySurface(KThread* thread, U32 bits, U32 width, U32 height, U32 pitch, U32 flags, SDL_Color* colors) {
     if (bits == 0) {
         if (desktopTexture) {
             SDL_DestroyTexture(desktopTexture);
@@ -1031,14 +1031,7 @@ void KNativeWindowSdl::updatePrimarySurface(KThread* thread, U32 bits, U32 width
         return;
     }   
     if (KSystem::videoEnabled && renderer) {
-        if (flags & 0x20) { // palette
-            SDL_Color colors[256];
-            memcopyToNative(palette, colors, 1024);
-            for (int i = 0; i < 256; i++) {
-                Uint8 b = colors[i].r;
-                colors[i].r = colors[i].b;
-                colors[i].b = b;
-            }
+        if ((flags & 0x20) && colors) { // palette            
             for (U32 y = 0; y < height; y++) {
                 SDL_Color* to = (SDL_Color*)&(sdlBuffer[width * 4 * y]);
                 for (U32 x = 0; x < width; x++) {
@@ -1061,7 +1054,7 @@ static int sdl_start_thread(void* ptr) {
                 BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(data->mutex);
                 if (data->bits && !data->done) {
                     KThread::setCurrentThread(data->thread);
-                    data->screen->updatePrimarySurface(data->thread, data->bits, data->width, data->height, data->pitch, data->flags, data->palette);                    
+                    data->screen->updatePrimarySurface(data->thread, data->bits, data->width, data->height, data->pitch, data->flags, data->colors);                    
                     data->screen->drawAllWindows(data->thread, 0, 0);
                 }
             }
@@ -1085,12 +1078,19 @@ void KNativeWindowSdl::setPrimarySurface(KThread* thread, U32 bits, U32 width, U
             primarySurface->height = height;
             primarySurface->pitch = pitch;
             primarySurface->flags = flags;
-            primarySurface->palette = palette;
-            primarySurface->thread = thread;
+            primarySurface->thread = thread;            
         } else {
-            primarySurface = new Boxed_Surface(this, thread, bits, width, height, pitch, flags, palette);
+            primarySurface = new Boxed_Surface(this, thread, bits, width, height, pitch, flags);
             SDL_CreateThread(sdl_start_thread, "AutoUpdateSurface", primarySurface);
         }        
+        if (flags & 0x20) { // palette
+            memcopyToNative(palette, primarySurface->colors, 1024);
+            for (int i = 0; i < 256; i++) {
+                Uint8 b = primarySurface->colors[i].r;
+                primarySurface->colors[i].r = primarySurface->colors[i].b;
+                primarySurface->colors[i].b = b;
+            }
+        }
     }
 }
 
