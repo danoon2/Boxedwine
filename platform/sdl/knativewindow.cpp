@@ -1040,7 +1040,15 @@ void KNativeWindowSdl::updatePrimarySurface(KThread* thread, U32 bits, U32 width
             }
             SDL_UpdateTexture(desktopTexture, NULL, sdlBuffer, width * 4);
         } else {
-            SDL_UpdateTexture(desktopTexture, NULL, getNativeAddress(thread->process->memory, bits), pitch);
+            U32 pitch = (width * ((bpp + 7) / 8) + 3) & ~3;
+            U32 len = pitch * height;
+            U8* p = getPhysicalReadAddress(bits, len);
+
+            if (!p) {
+                p = (U8*)sdlBuffer;
+                memcopyToNative(bits, p, len);
+            }
+            SDL_UpdateTexture(desktopTexture, NULL, p, pitch);
         }
     }
 }
