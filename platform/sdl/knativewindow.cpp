@@ -1070,7 +1070,7 @@ void KNativeWindowSdl::updatePrimarySurface(KThread* thread, U32 bits, U32 width
                     buf = new U8[len];
                     bufLen = len;
                 }
-                p = (U8*)sdlBuffer;
+                p = (U8*)buf;
                 memcopyToNative(bits, p, len);
             }
             SDL_UpdateTexture(desktopTexture, NULL, p, pitch);
