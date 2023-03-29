@@ -18,6 +18,7 @@ bool BoxedApp::load(BoxedContainer* container, const std::string& iniFilePath) {
     this->vsync = config.readInt("VSync", VSYNC_NOT_SET);
     this->dpiAware = config.readBool("DpiAware", false);
     this->showWindowImmediately = config.readBool("ShowWindowImmediately", false);
+    this->autoRefresh = config.readBool("AutoRefresh", false);
     this->glExt = config.readString("AllowedGlExt","");
     this->scale = config.readInt("Scale",100);
     this->scaleQuality = config.readInt("ScaleQuality",0);    
@@ -69,6 +70,7 @@ bool BoxedApp::saveApp() {
     config.writeInt("VSync", this->vsync);
     config.writeBool("DpiAware", this->dpiAware);
     config.writeBool("ShowWindowImmediately", this->showWindowImmediately);
+    config.writeBool("AutoRefresh", this->autoRefresh);
     config.writeString("AllowedGlExt",this->glExt);
     config.writeInt("Scale",this->scale);
     config.writeInt("ScaleQuality",this->scaleQuality);
@@ -134,6 +136,9 @@ void BoxedApp::launch() {
     }
     if (this->showWindowImmediately) {
         GlobalSettings::startUpArgs.showWindowImmediately = true;
+    }
+    if (this->autoRefresh) {
+        GlobalSettings::startUpArgs.envValues.push_back("BOXED_DD_AUTOREFRESH=1");
     }
     if (this->cpuAffinity) {
         GlobalSettings::startUpArgs.setCpuAffinity(this->cpuAffinity);

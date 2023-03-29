@@ -38,7 +38,7 @@ do_build()
     EXTRA+=' -DINCLUDE_UNICODE=\"wine/unicode.h\"'
   fi
   if [ ! -f ../wine-$VERSION.zip ]
-    then
+  then
     git reset --hard
     git checkout wine-$VERSION
     while [[ $1 != "" ]]; do
@@ -76,15 +76,23 @@ do_build()
     if ((BVERSION == 7110))
     then
       cp dlls/winex11.drv/Makefile.7110.in dlls/winex11.drv/Makefile.in
-    fi
     elif ((BVERSION > 7110))
     then
       sed -i 's/MAKE_DEP_UNIX/#pragma makedep unix/g' dlls/winex11.drv/*.c
       cp dlls/winex11.drv/Makefile.7120.in dlls/winex11.drv/Makefile.in
       cp dlls/winex11.drv/winex11.drv.7120.spec dlls/winex11.drv/winex11.drv.spec
-    elif ((BVERSION >= 6117))
+    elif ((BVERSION >= 6170))
     then
-      cp dlls/winex11.drv/Makefile.6117.in dlls/winex11.drv/Makefile.in
+      cp dlls/winex11.drv/Makefile.6170.in dlls/winex11.drv/Makefile.in
+    fi
+    if ((BVERSION >= 7190))
+    then
+      git apply ../patches/auto_refresh/auto_refresh719.patch
+    elif ((BVERSION >= 4000))
+    then
+      git apply ../patches/auto_refresh/auto_refresh6.patch
+    else
+      git apply ../patches/auto_refresh/auto_refresh3.patch
     fi
     rm -rf dlls/winealsa.drv/*
     cp -r ../../wineboxedaudio.drv/*.* dlls/winealsa.drv/
@@ -114,7 +122,7 @@ do_build()
       echo "" > dlls/winex11.drv/unixlib.h
     fi
     ./configure LDFLAGS="-s" CFLAGS="-O2 -msse2 -march=pentium4 -mfpmath=sse $EXTRA" --without-cups --without-pulse --without-dbus --without-sane --without-hal --prefix=/opt/wine --disable-tests $EXTRA_ARGS
-    make -j4
+    make -j16
     #todo find another way to achieve what I want without using sudo
     sudo rm -rf /opt/wine
     sudo make install
@@ -122,6 +130,9 @@ do_build()
     mkdir ../tmp_install/opt
     cp -r /opt/wine ../tmp_install/opt/
     cd ../tmp_install
+    mkdir home
+    mkdir home/username
+    ../boxedwine -root . -zip ../debian10.zip /bin/wine notfound || true
     if [ -d opt/wine/lib/wine/i386-unix ]
     then
         rm opt/wine/lib/wine/i386-unix/winemenubuilder.exe.so
