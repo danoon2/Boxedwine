@@ -1,0 +1,121 @@
+diff --git a/dlls/ddraw/surface.c b/dlls/ddraw/surface.c
+index 08e3811436d..09c1b520ac1 100644
+--- a/dlls/ddraw/surface.c
++++ b/dlls/ddraw/surface.c
+@@ -25,6 +25,50 @@
+ 
+ WINE_DEFAULT_DEBUG_CHANNEL(ddraw);
+ 
++static HANDLE lockThread;
++static struct ddraw_surface* lockedSurface;
++static void* lockedBits;
++#define CALL_NORETURN_7(index, arg1,arg2,arg3,arg4,arg5,arg6,arg7) __asm__("push %7\n\tpush %6\n\tpush %5\n\tpush %4\n\tpush %3\n\tpush %2\n\tpush %1\n\tpush %0\n\tint $0x98\n\taddl $32, %%esp"::"i"(index), "g"((DWORD)arg1), "g"((DWORD)arg2), "g"((DWORD)arg3), "g"((DWORD)arg4), "g"((DWORD)arg5), "g"((DWORD)arg6), "g"((DWORD)arg7));
++#define BOXED_AUTO_FLUSH_PRIMARY 108
++
++// This seem necessary mainly just to catch palette changes, which is why the refresh can be so slow
++DWORD WINAPI AutoRefresh(LPVOID lpParameter)
++{
++    TRACE("Started auto refresh\n");
++#define DXWREFRESHINTERVAL 200
++    while (TRUE) {
++        Sleep(DXWREFRESHINTERVAL);
++        if (lockedSurface) {
++            wined3d_mutex_lock();
++            if (lockedSurface) {
++                /*
++                     DWORD saved = lockedSurfaceTime;
++                     TRACE("pre\n");
++                     ddraw_surface_update_frontbuffer(lockedSurface, NULL, FALSE, 0);
++                     lockedSurfaceTime = saved;
++     */
++                PALETTEENTRY colors[256];
++                if (format_is_paletteindexed(&lockedSurface->surface_desc.u4.ddpfPixelFormat))
++                {
++                    struct ddraw_palette* palette = NULL;
++
++                    if (lockedSurface->palette)
++                        palette = lockedSurface->palette;
++                    else if (lockedSurface->ddraw->primary)
++                        palette = lockedSurface->ddraw->primary->palette;
++                    if (palette) {
++                        IDirectDrawPalette_GetEntries(&palette->IDirectDrawPalette_iface, 0, 0, 256, colors);
++                    }
++                }
++                CALL_NORETURN_7(BOXED_AUTO_FLUSH_PRIMARY, lockedBits, lockedSurface->surface_desc.dwWidth, lockedSurface->surface_desc.u1.lPitch, lockedSurface->surface_desc.dwHeight, lockedSurface->surface_desc.u4.ddpfPixelFormat.dwFlags, lockedSurface->surface_desc.u4.ddpfPixelFormat.u1.dwRGBBitCount, colors);
++            }
++            wined3d_mutex_unlock();
++        }
++    }
++    lockThread = NULL;
++    return 0;
++}
++
+ static struct ddraw_surface *unsafe_impl_from_IDirectDrawSurface2(IDirectDrawSurface2 *iface);
+ static struct ddraw_surface *unsafe_impl_from_IDirectDrawSurface3(IDirectDrawSurface3 *iface);
+ 
+@@ -526,6 +570,21 @@ static HRESULT ddraw_surface_set_palette(struct ddraw_surface *surface, IDirectD
+         wined3d_swapchain_set_palette(surface->ddraw->wined3d_swapchain,
+                 palette_impl ? palette_impl->wined3d_palette : NULL);
+         ddraw_surface_update_frontbuffer(surface, NULL, FALSE, 0);
++        if (lockedBits && lockedSurface) {
++            if (format_is_paletteindexed(&lockedSurface->surface_desc.u4.ddpfPixelFormat)) {
++                struct ddraw_palette* palette = NULL;
++                PALETTEENTRY colors[256];
++
++                if (lockedSurface->palette)
++                    palette = lockedSurface->palette;
++                else if (lockedSurface->ddraw->primary)
++                    palette = lockedSurface->ddraw->primary->palette;
++                if (palette) {
++                    IDirectDrawPalette_GetEntries(&palette->IDirectDrawPalette_iface, 0, 0, 256, colors);
++                }
++                CALL_NORETURN_7(BOXED_AUTO_FLUSH_PRIMARY, lockedBits, lockedSurface->surface_desc.dwWidth, lockedSurface->surface_desc.u1.lPitch, lockedSurface->surface_desc.dwHeight, lockedSurface->surface_desc.u4.ddpfPixelFormat.dwFlags, lockedSurface->surface_desc.u4.ddpfPixelFormat.u1.dwRGBBitCount, colors);
++            }
++        }
+     }
+     if (palette_impl)
+         IDirectDrawPalette_AddRef(&palette_impl->IDirectDrawPalette_iface);
+@@ -610,6 +669,12 @@ static ULONG ddraw_surface_release_iface(struct ddraw_surface *This)
+ 
+         /* Complex attached surfaces are destroyed implicitly when the root is released */
+         wined3d_mutex_lock();
++        if (This == lockedSurface) {
++             TRACE("Auto refresh surface released\n");
++             lockedSurface = NULL;
++             lockedBits = NULL;
++             CALL_NORETURN_7(BOXED_AUTO_FLUSH_PRIMARY, 0, 0, 0, 0, 0, 0, 0);
++         }
+         if(!This->is_complex_root)
+         {
+             WARN("(%p) Attempt to destroy a surface that is not a complex root\n", This);
+@@ -1102,6 +1167,30 @@ static HRESULT surface_lock(struct ddraw_surface *surface,
+     if (TRACE_ON(ddraw))
+         DDRAW_dump_surface_desc(surface_desc);
+ 
++     if ((surface->surface_desc.ddsCaps.dwCaps & DDSCAPS_PRIMARYSURFACE) && getenv("BOXED_DD_AUTOREFRESH")) {
++         PALETTEENTRY colors[256];
++         lockedSurface = surface;
++         TRACE("Auto refresh surface\n");
++
++         lockedBits = surface_desc->lpSurface;
++         if (format_is_paletteindexed(&lockedSurface->surface_desc.u4.ddpfPixelFormat))
++         {
++             struct ddraw_palette* palette = NULL;
++
++             if (lockedSurface->palette)
++                 palette = lockedSurface->palette;
++             else if (lockedSurface->ddraw->primary)
++                 palette = lockedSurface->ddraw->primary->palette;
++             if (palette) {
++                 IDirectDrawPalette_GetEntries(&palette->IDirectDrawPalette_iface, 0, 0, 256, colors);
++             }
++         }
++         if (!lockThread) {
++            lockThread = CreateThread(NULL, 0, AutoRefresh, NULL, 0, NULL);
++         }
++         CALL_NORETURN_7(BOXED_AUTO_FLUSH_PRIMARY, lockedBits, lockedSurface->surface_desc.dwWidth, lockedSurface->surface_desc.u1.lPitch, lockedSurface->surface_desc.dwHeight, lockedSurface->surface_desc.u4.ddpfPixelFormat.dwFlags, lockedSurface->surface_desc.u4.ddpfPixelFormat.u1.dwRGBBitCount, colors);
++     }
++
+     wined3d_mutex_unlock();
+ 
+     return DD_OK;
