@@ -1031,16 +1031,29 @@ void KNativeWindowSdl::updatePrimarySurface(KThread* thread, U32 bits, U32 width
         return;
     }   
     if (KSystem::videoEnabled && renderer) {
-        if ((flags & 0x20) && colors) { // palette            
+        if ((flags & 0x20) && colors) { // palette    
+            U32 len = pitch * height * 4;
+            static U8* buf;
+            static U32 bufLen;
+
+            if (buf && bufLen < len) {
+                delete[] buf;
+                buf = NULL;
+                bufLen = 0;
+            }
+            if (!buf) {
+                buf = new U8[len];
+                bufLen = len;
+            }
+
             for (U32 y = 0; y < height; y++) {
-                SDL_Color* to = (SDL_Color*)&(sdlBuffer[width * 4 * y]);
+                SDL_Color* to = (SDL_Color*)&(buf[width * 4 * y]);
                 for (U32 x = 0; x < width; x++) {
                     to[x] = colors[readb(bits + y * pitch + x)];
                 }
             }
-            SDL_UpdateTexture(desktopTexture, NULL, sdlBuffer, width * 4);
+            SDL_UpdateTexture(desktopTexture, NULL, buf, width * 4);
         } else {
-            U32 pitch = (width * ((bpp + 7) / 8) + 3) & ~3;
             U32 len = pitch * height;
             U8* p = getPhysicalReadAddress(bits, len);
 
