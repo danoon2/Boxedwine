@@ -61,11 +61,17 @@ void initEvents(void)
     CloseHandle(handle);
 }
 
-BOOL processEvents(void) {
+BOOL processEvents(DWORD mask) {
     HWND hwnd;
     INPUT input;
     int r;
     BOOL result = FALSE;
+    static BOOL inEvent;
+
+    if (inEvent || (mask & (QS_KEY | QS_MOUSEBUTTON | QS_MOUSEMOVE)) == 0) {
+        TRACE("skipping event inEvent=%d mask=%x\n", (int)inEvent, (int)mask);
+        return FALSE;
+    }
     while (1) {
         if ((r = read(eventQueueFD, &input, sizeof(INPUT))) == -1) {
             return result;
@@ -99,12 +105,14 @@ BOOL processEvents(void) {
         }
 
         TRACE("hwnd=%p GetForegroundWindow()=%p\n", hwnd, GetForegroundWindow());
+        inEvent = TRUE;
         // Apr 15, 2021 wine-6.7
 #if BOXED_WINE_VERSION >= 6070
         __wine_send_input(hwnd, &input, NULL);
 #else
         __wine_send_input(hwnd, &input);
 #endif
+        inEvent = FALSE;
         result = TRUE;
     }
 }

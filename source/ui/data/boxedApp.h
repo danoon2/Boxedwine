@@ -19,8 +19,8 @@ private:
 
 class BoxedApp {
 public:
-    BoxedApp() : openGlType(OPENGL_TYPE_NOT_SET), bpp(32), fullScreen(FULLSCREEN_NOTSET), vsync(VSYNC_NOT_SET), dpiAware(false), showWindowImmediately(false), scale(0), scaleQuality(0), cpuAffinity(0), pollRate(DEFAULT_POLL_RATE), skipFramesFPS(0), container(NULL) {}
-    BoxedApp(const std::string& name, const std::string& path, const std::string& cmd, BoxedContainer* container) : name(name), path(path), cmd(cmd), bpp(0), fullScreen(FULLSCREEN_NOTSET), vsync(VSYNC_NOT_SET), dpiAware(false), showWindowImmediately(false), scale(0), scaleQuality(0), cpuAffinity(0), pollRate(DEFAULT_POLL_RATE), skipFramesFPS(0), container(container) {}
+    BoxedApp() : openGlType(OPENGL_TYPE_NOT_SET), bpp(32), fullScreen(FULLSCREEN_NOTSET), vsync(VSYNC_NOT_SET), dpiAware(false), showWindowImmediately(false), autoRefresh(false), scale(0), scaleQuality(0), cpuAffinity(0), pollRate(DEFAULT_POLL_RATE), skipFramesFPS(0), container(NULL) {}
+    BoxedApp(const std::string& name, const std::string& path, const std::string& cmd, BoxedContainer* container) : name(name), path(path), cmd(cmd), bpp(0), fullScreen(FULLSCREEN_NOTSET), vsync(VSYNC_NOT_SET), dpiAware(false), showWindowImmediately(false), autoRefresh(false), scale(0), scaleQuality(0), cpuAffinity(0), pollRate(DEFAULT_POLL_RATE), skipFramesFPS(0), container(container) {}
     
     bool load(BoxedContainer* container, const std::string& iniFilepath);
 
@@ -65,6 +65,7 @@ private:
     U32 vsync;
     bool dpiAware;
     bool showWindowImmediately;
+    bool autoRefresh;
     std::string glExt;
     int scale;
     int scaleQuality;

@@ -65,6 +65,7 @@ public:
     virtual std::shared_ptr<Wnd> createWnd(KThread* thread, U32 processId, U32 hwnd, U32 windowRect, U32 clientRect) = 0;
     virtual void bltWnd(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32 yOrg, U32 width, U32 height, U32 rect) = 0;
     virtual void drawWnd(KThread* thread, std::shared_ptr<Wnd> w, U8* bytes, U32 pitch, U32 bpp, U32 width, U32 height) = 0;
+    virtual void setPrimarySurface(KThread* thread, U32 bits, U32 width, U32 height, U32 pitch, U32 flags, U32 palette) = 0;
     virtual void drawAllWindows(KThread* thread, U32 hWnd, int count) = 0;
     virtual void setTitle(const std::string& title) = 0;
 

@@ -170,7 +170,7 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
     case HELPVIEW_TITLE_HELP_TROUBLESHOOTING:
         return "Troubleshooting";
     case HELPVIEW_ABOUT_LABEL:
-        return "## What is Boxedwine?\n[Boxedwine](http://boxedwine.org) is a multi-platform app for running 16-bit and 32-bit Windows programs.  It does this by emulating the CPU and running [Wine](https://www.winehq.org/).  Wine is the program that emulates all of the Windows API calls.  The goal of Boxedwine is to be able to run everything that Wine can.  If you want to know if your app or game will run in Boxedwine or get hints how to run it, you should start by looking at the [Wine Application Database (AppDB)](https://appdb.winehq.org/)\n## Supported Platforms:\n* Windows 32-bit (Vista or later)\n* Windows 64-bit (Vista or later)\n* Mac OSX\n* Linux (32-bit and 64-bit)\n* Web Browsers using WASM\n* Raspberry Pi (32-bit and 64-bit)\n## Current Version: " BOXEDWINE_VERSION_DISPLAY "\n*Added support for Wine 6.";
+        return "## What is Boxedwine?\n[Boxedwine](http://boxedwine.org) is a multi-platform app for running 16-bit and 32-bit Windows programs.  It does this by emulating the CPU and running [Wine](https://www.winehq.org/).  Wine is the program that emulates all of the Windows API calls.  The goal of Boxedwine is to be able to run everything that Wine can.  If you want to know if your app or game will run in Boxedwine or get hints how to run it, you should start by looking at the [Wine Application Database (AppDB)](https://appdb.winehq.org/)\n## Supported Platforms:\n* Windows 32-bit (Vista or later)\n* Windows 64-bit (Vista or later)\n* Mac OSX\n* Linux (32-bit and 64-bit)\n* Web Browsers using WASM\n* Raspberry Pi (32-bit and 64-bit)\n## Current Version: " BOXEDWINE_VERSION_DISPLAY "\n*Added support for Wine 6.\n*Added DirectDraw Auto Refresh Option for apps.  This is a hack to help some older games.";
     case HELPVIEW_HELP_INSTALL_LABEL:
         return "Apps/Games are installed into containers.  A container is a folder that contains all of the files necessary for Boxedwine and Wine to run and a place for them to store changes.  It acts as a virtual file system.  Each app can be installed into its own container.  To install an app or game, just drag the installer, for example, setup.exe, onto Boxedwine.  You can also drag a folder onto Boxedwine and it will be copied into a container.";
     case HELPVIEW_HELP_TROUBLESHOOTING_LABEL:
@@ -307,6 +307,10 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "Show Window Immediatly:";
     case CONTAINER_VIEW_SHOW_WINDOW_HELP:
         return "By default Boxedwine will hide new Windows until it looks like they will be used.  This is done to prevent a lot of Window flashing (create and destroy) when games test the system for what resolution and capabilities they will use.  Some simple OpenGL apps seem to have a problem with this feature of Boxedwine so this flag will disable it by showing the windows as soon as it is created.";
+    case CONTAINER_VIEW_AUTO_REFRESH_LABEL:
+        return "Direct Draw Auto Refresh:";
+    case CONTAINER_VIEW_AUTO_REFRESH_HELP:
+        return "Some Direct Draw games will lock the primary surface and draw directly on it.  If the game unlocks it, those changes will be flushed to the screen.  On older versions of Windows this unlock procedure was not required, but on newer Windows versions and in Wine it is.  Without the unlock the surface is never flushed and there will just be a back screen.  This hack will constantly flush the primary surface to the screen.";
     case CONTAINER_VIEW_SCALE_LABEL:
         return "Scaling:";
     case CONTAINER_VIEW_SCALE_HELP:

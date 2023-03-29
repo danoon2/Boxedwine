@@ -504,16 +504,20 @@ DWORD WINE_CDECL boxeddrv_MsgWaitForMultipleObjectsEx(DWORD count, const HANDLE 
     TRACE("count=%d handles=%p timeout=0x%08x mask=0x%08x flags=0x%08x\n", (int)count, handles, (int)timeout, (int)mask, (int)flags);
     initEvents();
     CALL_5(BOXED_MSG_WAIT_FOR_MULTIPLE_OBJECTS_EX, count, handles, timeout, mask, flags);
-	if (processEvents()) {
+	if (processEvents(mask)) {
 		return count - 1;
 	}
     if (!count && !timeout) 
         return WAIT_TIMEOUT;  
 #if WINE_GDI_DRIVER_VERSION >= 78
-    return NtWaitForMultipleObjects(count, handles, !(flags & MWMO_WAITALL), !!(flags & MWMO_ALERTABLE), timeout);
+    result = NtWaitForMultipleObjects(count, handles, !(flags & MWMO_WAITALL), !!(flags & MWMO_ALERTABLE), timeout);
 #else
-    return WaitForMultipleObjectsEx(count, handles, flags & MWMO_WAITALL, timeout, flags & MWMO_ALERTABLE);	
+    result = WaitForMultipleObjectsEx(count, handles, flags & MWMO_WAITALL, timeout, flags & MWMO_ALERTABLE);	
 #endif
+    if (result == count - 1) {
+        processEvents(mask);
+    }
+    return result;
 }
 
 void WINE_CDECL boxeddrv_SetCapture(HWND hwnd, UINT flags) {

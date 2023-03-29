@@ -156,6 +156,8 @@ static void notImplemented(const char* s) {
 #define BOXED_VK_GET_PHYSICAL_DEVICE_SURFACE_FORMATS2 (BOXED_BASE+106)
 #define BOXED_VK_GET_NATIVE_SURFACE                  (BOXED_BASE+107)
 
+#define BOXED_AUTO_FLUSH_PRIMARY                  (BOXED_BASE+108)
+
 # define __MSABI_LONG(x)         x
 
 #define WS_OVERLAPPED          __MSABI_LONG(0x00000000)
@@ -1017,6 +1019,16 @@ static U32 toUnicodeEx(KThread* thread, U32 virtKey, U32 scanCode, U32 lpKeyStat
     U8 c = 0;
     U32 shift = readb(lpKeyState + BOXED_VK_SHIFT) & 0x80;
     U32 ctrl = readb(lpKeyState + BOXED_VK_CONTROL) & 0x80;
+    U32 menu = readb(lpKeyState + BOXED_VK_CONTROL) & 0x80;
+
+    if (scanCode & 0x8000) {
+        return 0;
+    }
+    if (menu && ctrl)
+    {
+        // "Ctrl+Alt+[key] won't generate a character
+        return 0;
+    }
 
     if (!virtKey)
         goto done;
@@ -2122,7 +2134,10 @@ void boxeddrv_CreateDC(CPU* cpu) {
 }
 
 void boxeddrv_GetSystemPalette(CPU* cpu) {
-    klog("GetSystemPalette not implemented");
+    U32 start = ARG2;
+    U32 count = ARG3;
+    U32 addressEntries = ARG4;
+    //klog("GetSystemPalette not implemented");
     EAX = 0;
 }
 
@@ -2154,12 +2169,24 @@ void boxeddrv_CreateDesktop(CPU* cpu) {
     EAX = 1;
 }
 
+void boxeddrv_autoFlushPrimary(CPU* cpu) {
+    U32 addressBits = ARG1;
+    U32 width = ARG2;
+    U32 pitch = ARG3;
+    U32 height = ARG4;    
+    U32 flags = ARG5;
+    U32 bpp = ARG6;
+    U32 addressPalette = ARG7;
+
+    KNativeWindow::getNativeWindow()->setPrimarySurface(cpu->thread, addressBits, width, height, pitch, flags, addressPalette);
+}
+
 Int99Callback* wine_callback;
 U32 wine_callbackSize;
 
 void initWine() {
 	if (!wine_callback) {
-		wine_callback = new Int99Callback[108];
+		wine_callback = new Int99Callback[109];
 		wine_callback[BOXED_ACQUIRE_CLIPBOARD] = boxeddrv_AcquireClipboard;
 		wine_callback[BOXED_ACTIVATE_KEYBOARD_LAYOUT] = boxeddrv_ActivateKeyboardLayout;
 		wine_callback[BOXED_BEEP] = boxeddrv_Beep;
@@ -2270,6 +2297,7 @@ void initWine() {
         wine_callback[BOXED_VK_GET_PHYSICAL_DEVICE_SURFACE_FORMATS2] = boxeddrv_vkGetPhysicalDeviceSurfaceFormats2;
         wine_callback[BOXED_VK_GET_NATIVE_SURFACE] = boxeddrv_vkGetNativeSurface;
 
-		wine_callbackSize = 108;
+        wine_callback[BOXED_AUTO_FLUSH_PRIMARY] = boxeddrv_autoFlushPrimary;
+		wine_callbackSize = 109;
 	}
 }

@@ -40,6 +40,22 @@
 #include "../../source/ui/mainui.h"
 #endif
 
+class KNativeWindowSdl;
+class Boxed_Surface {
+public:
+    Boxed_Surface(KNativeWindowSdl* screen, KThread* thread, U32 bits, U32 width, U32 height, U32 pitch, U32 flags, U32 palette) : screen(screen), thread(thread), bits(bits), width(width), height(height), pitch(pitch), flags(flags), palette(palette), done(false) {}
+    KNativeWindowSdl* screen;
+    KThread* thread;
+    U32 bits;
+    U32 width;
+    U32 height;
+    U32 pitch;
+    U32 flags;
+    U32 palette;
+    BOXEDWINE_MUTEX mutex;
+    bool done;
+};
+
 class WndSdl : public Wnd {
 public:
     WndSdl() : pixelFormat(NULL), pixelFormatIndex(0), openGlContext(NULL), activated(0), processId(0), hwnd(0)
@@ -93,7 +109,7 @@ U32 sdlCustomEvent;
 
 class KNativeWindowSdl : public KNativeWindow, public std::enable_shared_from_this<KNativeWindowSdl> {
 public:
-    KNativeWindowSdl() : scaleX(100), scaleXOffset(0), scaleY(100), scaleYOffset(0), sdlDesktopWidth(0), sdlDesktopHeight(0), fullScreen(FULLSCREEN_NOTSET), vsync(VSYNC_DEFAULT), window(NULL), renderer(NULL), shutdownWindow(NULL), shutdownRenderer(NULL), currentContext(NULL), contextCount(0), windowIsGL(false), glWindowVersionMajor(0), windowIsHidden(false), timeToHideUI(0), timeWindowWasCreated(0), lastChildWndCreated(0)
+    KNativeWindowSdl() : scaleX(100), scaleXOffset(0), scaleY(100), scaleYOffset(0), sdlDesktopWidth(0), sdlDesktopHeight(0), fullScreen(FULLSCREEN_NOTSET), vsync(VSYNC_DEFAULT), window(NULL), renderer(NULL), shutdownWindow(NULL), shutdownRenderer(NULL), desktopTexture(NULL), currentContext(NULL), contextCount(0), windowIsGL(false), glWindowVersionMajor(0), windowIsHidden(false), timeToHideUI(0), timeWindowWasCreated(0), lastChildWndCreated(0), primarySurface(NULL)
 #ifdef BOXEDWINE_RECORDER
         , screenCopyTexture(NULL)
 #endif
@@ -105,6 +121,11 @@ public:
     ~KNativeWindowSdl() {
         for (auto& n : this->cursors) {
             SDL_FreeCursor(n.second);
+        }
+        if (primarySurface) {
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(primarySurface->mutex);
+            primarySurface->done;
+            // thread will delete primarySurface
         }
         this->cursors.clear();
     }
@@ -126,6 +147,7 @@ public:
     SDL_Renderer* renderer;
     SDL_Window* shutdownWindow;
     SDL_Renderer* shutdownRenderer;
+    SDL_Texture* desktopTexture;
     void* currentContext;
     BOXEDWINE_MUTEX sdlMutex;
     int contextCount;
@@ -135,6 +157,8 @@ public:
     U32 timeToHideUI;
     U32 timeWindowWasCreated;
     U32 lastChildWndCreated;
+    Boxed_Surface* primarySurface;
+
     std::string delayedCreateWindowMsg; // the ui will watch for this message
     std::unordered_map<std::string, SDL_Cursor*> cursors;
     std::unordered_map<U32, std::shared_ptr<WndSdl>> hwndToWnd;
@@ -174,6 +198,7 @@ public:
     virtual std::shared_ptr<Wnd> createWnd(KThread* thread, U32 processId, U32 hwnd, U32 windowRect, U32 clientRect);
     virtual void bltWnd(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32 yOrg, U32 width, U32 height, U32 rect);
     virtual void drawWnd(KThread* thread, std::shared_ptr<Wnd> w, U8* bytes, U32 pitch, U32 bpp, U32 width, U32 height);
+    virtual void setPrimarySurface(KThread* thread, U32 bits, U32 width, U32 height, U32 pitch, U32 flags, U32 palette);
     virtual void drawAllWindows(KThread* thread, U32 hWnd, int count);
     virtual void setTitle(const std::string& title);
 
@@ -219,8 +244,9 @@ public:
     bool internalScreenShot(std::string filepath, SDL_Rect* r, U32* crc);
     bool isShutdownWindowIsOpen();
     void updateShutdownWindow();
+    void updatePrimarySurface(KThread* thread, U32 bits, U32 width, U32 height, U32 pitch, U32 flags, U32 palette);
 
-private:
+private:    
     void contextCreated();
 
     int xToScreen(int x);
@@ -352,6 +378,10 @@ void KNativeWindowSdl::destroyScreen(KThread* thread) {
                 wnd->sdlTextureHeight = 0;
                 wnd->sdlTextureWidth = 0;
             }
+        }
+        if (desktopTexture) {
+            SDL_DestroyTexture(desktopTexture);
+            desktopTexture = NULL;
         }
     }
     if (!thread) {
@@ -959,6 +989,111 @@ void KNativeWindowSdl::bltWnd(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32
     }
 }
 
+void KNativeWindowSdl::updatePrimarySurface(KThread* thread, U32 bits, U32 width, U32 height, U32 pitch, U32 flags, U32 palette) {
+    if (bits == 0) {
+        if (desktopTexture) {
+            SDL_DestroyTexture(desktopTexture);
+            desktopTexture = NULL;
+        }
+        return;
+    }
+    if (!firstWindowCreated) {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(sdlMutex);
+        DISPATCH_MAIN_THREAD_BLOCK_BEGIN
+            displayChanged(thread);
+        DISPATCH_MAIN_THREAD_BLOCK_END
+    }
+
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(sdlMutex);
+    int bpp = screenBpp() == 8 ? 32 : screenBpp();
+
+    if (!renderer) {
+        BOXEDWINE_MUTEX_UNLOCK(sdlMutex);
+        DISPATCH_MAIN_THREAD_BLOCK_BEGIN
+            renderer = SDL_CreateRenderer(window, -1, 0);
+        DISPATCH_MAIN_THREAD_BLOCK_END
+            BOXEDWINE_MUTEX_LOCK(sdlMutex);
+    }
+
+    if (!desktopTexture) {
+        U32 format = SDL_PIXELFORMAT_ARGB8888;
+        if (bpp == 16) {
+            format = SDL_PIXELFORMAT_RGB565;
+        }
+        else if (bpp == 15) {
+            format = SDL_PIXELFORMAT_RGB555;
+        }
+        if (KSystem::videoEnabled && renderer) {
+            desktopTexture = SDL_CreateTexture(renderer, format, SDL_TEXTUREACCESS_STREAMING, width, height);
+        }
+    }
+    if (!thread->memory->isValidReadAddress(bits, height * pitch)) {
+        return;
+    }   
+    if (KSystem::videoEnabled && renderer) {
+        if (flags & 0x20) { // palette
+            SDL_Color colors[256];
+            memcopyToNative(palette, colors, 1024);
+            for (int i = 0; i < 256; i++) {
+                Uint8 b = colors[i].r;
+                colors[i].r = colors[i].b;
+                colors[i].b = b;
+            }
+            for (U32 y = 0; y < height; y++) {
+                SDL_Color* to = (SDL_Color*)&(sdlBuffer[width * 4 * y]);
+                for (U32 x = 0; x < width; x++) {
+                    to[x] = colors[readb(bits + y * pitch + x)];
+                }
+            }
+            SDL_UpdateTexture(desktopTexture, NULL, sdlBuffer, width * 4);
+        } else {
+            SDL_UpdateTexture(desktopTexture, NULL, getNativeAddress(thread->process->memory, bits), pitch);
+        }
+    }
+}
+
+static int sdl_start_thread(void* ptr) {
+    Boxed_Surface* data = (Boxed_Surface*)ptr;
+    while (!data->done) {
+        SDL_Delay(20);
+        {
+            if (data->bits) {
+                BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(data->mutex);
+                if (data->bits && !data->done) {
+                    KThread::setCurrentThread(data->thread);
+                    data->screen->updatePrimarySurface(data->thread, data->bits, data->width, data->height, data->pitch, data->flags, data->palette);                    
+                    data->screen->drawAllWindows(data->thread, 0, 0);
+                }
+            }
+        }
+    }
+    delete data;
+    return 0;
+}
+
+void KNativeWindowSdl::setPrimarySurface(KThread* thread, U32 bits, U32 width, U32 height, U32 pitch, U32 flags, U32 palette) {
+    if (bits == 0) {
+        if (primarySurface) {
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(primarySurface->mutex);
+            primarySurface->bits = 0;
+        }
+    } else {
+        if (primarySurface) {
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(primarySurface->mutex);
+            primarySurface->bits = bits;
+            primarySurface->width = width;
+            primarySurface->height = height;
+            primarySurface->pitch = pitch;
+            primarySurface->flags = flags;
+            primarySurface->palette = palette;
+            primarySurface->thread = thread;
+        } else {
+            primarySurface = new Boxed_Surface(this, thread, bits, width, height, pitch, flags, palette);
+            SDL_CreateThread(sdl_start_thread, "AutoUpdateSurface", primarySurface);
+        }        
+    }
+}
+
 void KNativeWindowSdl::drawWnd(KThread* thread, std::shared_ptr<Wnd> w, U8* bytes, U32 pitch, U32 bpp, U32 width, U32 height) {
     if (!firstWindowCreated) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(sdlMutex);
@@ -1146,6 +1281,14 @@ void KNativeWindowSdl::drawAllWindows(KThread* thread, U32 hWnd, int count) {
                     SDL_RenderCopy(renderer, wnd->sdlTexture, NULL, &dstrect);
 #endif
                 }
+            }
+            if (desktopTexture) {
+                SDL_Rect dstrect;
+                dstrect.x = scaleXOffset;
+                dstrect.y = scaleYOffset;
+                dstrect.w = this->screenWidth() * (int)scaleX / 100;
+                dstrect.h = this->screenHeight() * (int)scaleY / 100;
+                SDL_RenderCopyEx(renderer, desktopTexture, NULL, &dstrect, 0, NULL, SDL_FLIP_NONE);
             }
             if (scaleXOffset) {                
                 SDL_Rect rect;
@@ -1569,439 +1712,449 @@ void KNativeWindowSdl::createAndSetCursor(char* moduleName, char* resourceName, 
 #define SDLK_KP9 SDLK_KP_9
 
 int KNativeWindowSdl::key(U32 key, U32 down) {
+    static U32 lastProcessId;
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(hwndToWndMutex);
     
     if (!hwndToWnd.size())
         return 0;
     std::shared_ptr<WndSdl> wnd = getFirstVisibleWnd();
+    std::shared_ptr<KProcess> process;
+
+    if (!wnd) {
+        int ii = 0;
+    }
     if (wnd) {
-        std::shared_ptr<KProcess> process = KSystem::getProcess(wnd->processId);
-        if (process) {
-            KFileDescriptor* fd = process->getFileDescriptor(process->eventQueueFD);
-            if (fd) {
-                U16 vKey = 0;
-                U16 scan = 0;
-                U8 buffer[28];
+        process = KSystem::getProcess(wnd->processId);
+    } else if (lastProcessId) {
+        process = KSystem::getProcess(lastProcessId);
+    }
 
-                U32 flags = 0;
-                if (!down) 
-                    flags|=BOXED_KEYEVENTF_KEYUP;
+    if (process) {
+        KFileDescriptor* fd = process->getFileDescriptor(process->eventQueueFD);        
+        lastProcessId = process->id;
+        if (fd) {
+            U16 vKey = 0;
+            U16 scan = 0;
+            U8 buffer[28];
 
-                switch (key) {
-                case SDLK_ESCAPE:
-                    vKey = BOXED_VK_ESCAPE;
-                    scan = 0x01;
-                    break;
-                case SDLK_1:
-                    vKey = '1';
-                    scan = 0x02;
-                    break;
-                case SDLK_2:
-                    vKey = '2';
-                    scan = 0x03;
-                    break;
-                case SDLK_3:
-                    vKey = '3';
-                    scan = 0x04;
-                    break;
-                case SDLK_4:
-                    vKey = '4';
-                    scan = 0x05;
-                    break;
-                case SDLK_5:
-                    vKey = '5';
-                    scan = 0x06;
-                    break;
-                case SDLK_6:
-                    vKey = '6';
-                    scan = 0x07;
-                    break;
-                case SDLK_7:
-                    vKey = '7';
-                    scan = 0x08;
-                    break;
-                case SDLK_8:
-                    vKey = '8';
-                    scan = 0x09;
-                    break;
-                case SDLK_9:
-                    vKey = '9';
-                    scan = 0x0a;
-                    break;
-                case SDLK_0:
-                    vKey = '0';
-                    scan = 0x0b;
-                    break;
-                case SDLK_MINUS:
-                    vKey = BOXED_VK_OEM_MINUS;
-                    scan = 0x0c;
-                    break;
-                case SDLK_EQUALS:
-                    vKey = BOXED_VK_OEM_PLUS;
-                    scan = 0x0d;
-                    break;
-                case SDLK_BACKSPACE:
-                    vKey = BOXED_VK_BACK;
-                    scan = 0x0e;
-                    break;
-                case SDLK_TAB:
-                    vKey = BOXED_VK_TAB;
-                    scan = 0x0f;
-                    break;
-                case SDLK_q:
-                    vKey = 'Q';
-                    scan = 0x10;
-                    break;
-                case SDLK_w:
-                    vKey = 'W';
-                    scan = 0x11;
-                    break;
-                case SDLK_e:
-                    vKey = 'E';
-                    scan = 0x12;
-                    break;
-                case SDLK_r:
-                    vKey = 'R';
-                    scan = 0x13;
-                    break;
-                case SDLK_t:
-                    vKey = 'T';
-                    scan = 0x14;
-                    break;
-                case SDLK_y:
-                    vKey = 'Y';
-                    scan = 0x15;
-                    break;
-                case SDLK_u:
-                    vKey = 'U';
-                    scan = 0x16;
-                    break;
-                case SDLK_i:
-                    vKey = 'I';
-                    scan = 0x17;
-                    break;
-                case SDLK_o:
-                    vKey = 'O';
-                    scan = 0x18;
-                    break;
-                case SDLK_p:
-                    vKey = 'P';
-                    scan = 0x19;
-                    break;
-                case SDLK_LEFTBRACKET:
-                    vKey = BOXED_VK_OEM_4;
-                    scan = 0x1a;
-                    break;
-                case SDLK_RIGHTBRACKET:
-                    vKey = BOXED_VK_OEM_6;
-                    scan = 0x1b;
-                    break;
-                case SDLK_RETURN:
-                    vKey = BOXED_VK_RETURN;
-                    scan = 0x1c;
-                    break;
-                case SDLK_LCTRL:
-                    vKey = BOXED_VK_LCONTROL;
-                    scan = 0x1d;
-                    break;
-                case SDLK_RCTRL:
-                    vKey = BOXED_VK_RCONTROL;
-                    scan = 0x11d;
-                    break;
-                case SDLK_a:
-                    vKey = 'A';
-                    scan = 0x1e;
-                    break;
-                case SDLK_s:
-                    vKey = 'S';
-                    scan = 0x1f;
-                    break;
-                case SDLK_d:
-                    vKey = 'D';
-                    scan = 0x20;
-                    break;
-                case SDLK_f:
-                    vKey = 'F';
-                    scan = 0x21;
-                    break;
-                case SDLK_g:
-                    vKey = 'G';
-                    scan = 0x22;
-                    break;
-                case SDLK_h:
-                    vKey = 'H';
-                    scan = 0x23;
-                    break;
-                case SDLK_j:
-                    vKey = 'J';
-                    scan = 0x24;
-                    break;
-                case SDLK_k:
-                    vKey = 'K';
-                    scan = 0x25;
-                    break;
-                case SDLK_l:
-                    vKey = 'L';
-                    scan = 0x26;
-                    break;
-                case SDLK_SEMICOLON:
-                    vKey = BOXED_VK_OEM_1;
-                    scan = 0x27;
-                    break;
-                case SDLK_QUOTE:
-                    vKey = BOXED_VK_OEM_7;
-                    scan = 0x28;
-                    break;
-                case SDLK_BACKQUOTE:
-                    vKey = BOXED_VK_OEM_3;
-                    scan = 0x29;
-                    break;
-                case SDLK_LSHIFT:
-                    vKey = BOXED_VK_LSHIFT;
-                    scan = 0x2a;
-                    break;
-                case SDLK_RSHIFT:
-                    vKey = BOXED_VK_RSHIFT;
-                    scan = 0x36;
-                    break;
-                case SDLK_BACKSLASH:
-                    vKey = BOXED_VK_OEM_5;
-                    scan = 0x2b;
-                    break;
-                case SDLK_z:
-                    vKey = 'Z';
-                    scan = 0x2c;
-                    break;
-                case SDLK_x:
-                    vKey = 'X';
-                    scan = 0x2d;
-                    break;
-                case SDLK_c:
-                    vKey = 'C';
-                    scan = 0x2e;
-                    break;
-                case SDLK_v:
-                    vKey = 'V';
-                    scan = 0x2f;
-                    break;
-                case SDLK_b:
-                    vKey = 'B';
-                    scan = 0x30;
-                    break;
-                case SDLK_n:
-                    vKey = 'N';
-                    scan = 0x31;
-                    break;
-                case SDLK_m:
-                    vKey = 'M';
-                    scan = 0x32;
-                    break;
-                case SDLK_COMMA:
-                    vKey = BOXED_VK_OEM_COMMA;
-                    scan = 0x33;
-                    break;
-                case SDLK_PERIOD:
-                    vKey = BOXED_VK_OEM_PERIOD;
-                    scan = 0x34;
-                    break;
-                case SDLK_SLASH:
-                    vKey = BOXED_VK_OEM_2;
-                    scan = 0x35;
-                    break;
-                case SDLK_LALT:
-                    vKey = BOXED_VK_LMENU;
-                    scan = 0x38;
-                    break;
-                case SDLK_RALT:
-                    vKey = BOXED_VK_RMENU;
-                    scan = 0x138;
-                    break;
-                case SDLK_SPACE:
-                    vKey = BOXED_VK_SPACE;
-                    scan = 0x39;
-                    break;
-                case SDLK_CAPSLOCK:
-                    vKey = BOXED_VK_CAPITAL;
-                    scan = 0x3a;
-                    break;
-                case SDLK_F1:
-                    vKey = BOXED_VK_F1;
-                    scan = 0x3b;
-                    break;
-                case SDLK_F2:
-                    vKey = BOXED_VK_F2;
-                    scan = 0x3c;
-                    break;
-                case SDLK_F3:
-                    vKey = BOXED_VK_F3;
-                    scan = 0x3d;
-                    break;
-                case SDLK_F4:
-                    vKey = BOXED_VK_F4;
-                    scan = 0x3e;
-                    break;
-                case SDLK_F5:
-                    vKey = BOXED_VK_F5;
-                    scan = 0x3f;
-                    break;
-                case SDLK_F6:
-                    vKey = BOXED_VK_F6;
-                    scan = 0x40;
-                    break;
-                case SDLK_F7:
-                    vKey = BOXED_VK_F7;
-                    scan = 0x41;
-                    break;
-                case SDLK_F8:
-                    vKey = BOXED_VK_F8;
-                    scan = 0x42;
-                    break;
-                case SDLK_F9:
-                    vKey = BOXED_VK_F9;
-                    scan = 0x43;
-                    break;
-                case SDLK_F10:
-                    vKey = BOXED_VK_F10;
-                    scan = 0x44;
-                    break;
-                case SDLK_NUMLOCK:
-                    vKey = BOXED_VK_NUMLOCK;
-                    break;
-                case SDLK_SCROLLOCK:
-                    vKey = BOXED_VK_SCROLL;
-                    break;
-                case SDLK_F11:
-                    vKey = BOXED_VK_F11;
-                    scan = 0x57;
-                    break;
-                case SDLK_F12:
-                    vKey = BOXED_VK_F12;
-                    scan = 0x58;
-                    break;
-                case SDLK_HOME:
-                    vKey = BOXED_VK_HOME;
-                    scan = 0x147;
-                    break;
-                case SDLK_UP:
-                    vKey = BOXED_VK_UP;
-                    scan = 0x148;
-                    break;
-                case SDLK_PAGEUP:
-                    vKey = BOXED_VK_PRIOR;
-                    scan = 0x149;
-                    break;
-                case SDLK_LEFT:
-                    vKey = BOXED_VK_LEFT;
-                    scan = 0x14b;
-                    break;
-                case SDLK_RIGHT:
-                    vKey = BOXED_VK_RIGHT;
-                    scan = 0x14d;
-                    break;
-                case SDLK_END:
-                    vKey = BOXED_VK_END;
-                    scan = 0x14f;
-                    break;
-                case SDLK_DOWN:
-                    vKey = BOXED_VK_DOWN;
-                    scan = 0x150;
-                    break;
-                case SDLK_PAGEDOWN:
-                    vKey = BOXED_VK_NEXT;
-                    scan = 0x151;
-                    break;
-                case SDLK_INSERT:
-                    vKey = BOXED_VK_INSERT;
-                    scan = 0x152;
-                    break;
-                case SDLK_DELETE:
-                    vKey = BOXED_VK_DELETE;
-                    scan = 0x153;
-                    break;
-                case SDLK_PAUSE:
-                    vKey = BOXED_VK_PAUSE;
-                    scan = 0x154; // :TODO: is this right?
-                    break;
-                case SDLK_KP0:
-                    scan = 0x52;
-                    break;
-                case SDLK_KP1:
-                    vKey = BOXED_VK_END;
-                    scan = 0x4F;
-                    break;
-                case SDLK_KP2:
-                    vKey = BOXED_VK_DOWN;
-                    scan = 0x50;
-                    break;
-                case SDLK_KP3:
-                    vKey = BOXED_VK_NEXT;
-                    scan = 0x51;
-                    break;
-                case SDLK_KP4:
-                    vKey = BOXED_VK_LEFT;
-                    scan = 0x4B;
-                    break;
-                case SDLK_KP5:
-                    scan = 0x4C;
-                    break;
-                case SDLK_KP6:
-                    vKey = BOXED_VK_RIGHT;
-                    scan = 0x4D;
-                    break;
-                case SDLK_KP7:
-                    vKey = BOXED_VK_HOME;
-                    scan = 0x47;
-                    break;
-                case SDLK_KP8:
-                    vKey = BOXED_VK_UP;
-                    scan = 0x48;
-                    break;
-                case SDLK_KP9:
-                    vKey = BOXED_VK_PRIOR;
-                    scan = 0x49;
-                    break;
-                case SDLK_KP_PERIOD:
-                    vKey = BOXED_VK_DECIMAL;
-                    scan = 0x53;
-                    break;
-                case SDLK_KP_DIVIDE:
-                    vKey = BOXED_VK_DIVIDE;
-                    scan = 0x135;
-                    break;
-                case SDLK_KP_MULTIPLY:
-                    vKey = BOXED_VK_MULTIPLY;
-                    scan = 0x137;
-                    break;
-                case SDLK_KP_MINUS:
-                    scan = 0x4A;
-                    break;
-                case SDLK_KP_PLUS:
-                    vKey = BOXED_VK_ADD;
-                    scan = 0x4E;
-                    break;
-                case SDLK_KP_ENTER:
-                    vKey = BOXED_VK_RETURN;
-                    scan = 0x11C;
-                    break;
+            U32 flags = 0;
+            if (!down) 
+                flags|=BOXED_KEYEVENTF_KEYUP;
 
-                default:
-                    kdebug("Unhandled key: %d", key);
-                    return 1;
-                }
-                if (scan & 0x100)               
-                    flags |= BOXED_KEYEVENTF_EXTENDEDKEY;
+            switch (key) {
+            case SDLK_ESCAPE:
+                vKey = BOXED_VK_ESCAPE;
+                scan = 0x01;
+                break;
+            case SDLK_1:
+                vKey = '1';
+                scan = 0x02;
+                break;
+            case SDLK_2:
+                vKey = '2';
+                scan = 0x03;
+                break;
+            case SDLK_3:
+                vKey = '3';
+                scan = 0x04;
+                break;
+            case SDLK_4:
+                vKey = '4';
+                scan = 0x05;
+                break;
+            case SDLK_5:
+                vKey = '5';
+                scan = 0x06;
+                break;
+            case SDLK_6:
+                vKey = '6';
+                scan = 0x07;
+                break;
+            case SDLK_7:
+                vKey = '7';
+                scan = 0x08;
+                break;
+            case SDLK_8:
+                vKey = '8';
+                scan = 0x09;
+                break;
+            case SDLK_9:
+                vKey = '9';
+                scan = 0x0a;
+                break;
+            case SDLK_0:
+                vKey = '0';
+                scan = 0x0b;
+                break;
+            case SDLK_MINUS:
+                vKey = BOXED_VK_OEM_MINUS;
+                scan = 0x0c;
+                break;
+            case SDLK_EQUALS:
+                vKey = BOXED_VK_OEM_PLUS;
+                scan = 0x0d;
+                break;
+            case SDLK_BACKSPACE:
+                vKey = BOXED_VK_BACK;
+                scan = 0x0e;
+                break;
+            case SDLK_TAB:
+                vKey = BOXED_VK_TAB;
+                scan = 0x0f;
+                break;
+            case SDLK_q:
+                vKey = 'Q';
+                scan = 0x10;
+                break;
+            case SDLK_w:
+                vKey = 'W';
+                scan = 0x11;
+                break;
+            case SDLK_e:
+                vKey = 'E';
+                scan = 0x12;
+                break;
+            case SDLK_r:
+                vKey = 'R';
+                scan = 0x13;
+                break;
+            case SDLK_t:
+                vKey = 'T';
+                scan = 0x14;
+                break;
+            case SDLK_y:
+                vKey = 'Y';
+                scan = 0x15;
+                break;
+            case SDLK_u:
+                vKey = 'U';
+                scan = 0x16;
+                break;
+            case SDLK_i:
+                vKey = 'I';
+                scan = 0x17;
+                break;
+            case SDLK_o:
+                vKey = 'O';
+                scan = 0x18;
+                break;
+            case SDLK_p:
+                vKey = 'P';
+                scan = 0x19;
+                break;
+            case SDLK_LEFTBRACKET:
+                vKey = BOXED_VK_OEM_4;
+                scan = 0x1a;
+                break;
+            case SDLK_RIGHTBRACKET:
+                vKey = BOXED_VK_OEM_6;
+                scan = 0x1b;
+                break;
+            case SDLK_RETURN:
+                vKey = BOXED_VK_RETURN;
+                scan = 0x1c;
+                break;
+            case SDLK_LCTRL:
+                vKey = BOXED_VK_LCONTROL;
+                scan = 0x1d;
+                break;
+            case SDLK_RCTRL:
+                vKey = BOXED_VK_RCONTROL;
+                scan = 0x11d;
+                break;
+            case SDLK_a:
+                vKey = 'A';
+                scan = 0x1e;
+                break;
+            case SDLK_s:
+                vKey = 'S';
+                scan = 0x1f;
+                break;
+            case SDLK_d:
+                vKey = 'D';
+                scan = 0x20;
+                break;
+            case SDLK_f:
+                vKey = 'F';
+                scan = 0x21;
+                break;
+            case SDLK_g:
+                vKey = 'G';
+                scan = 0x22;
+                break;
+            case SDLK_h:
+                vKey = 'H';
+                scan = 0x23;
+                break;
+            case SDLK_j:
+                vKey = 'J';
+                scan = 0x24;
+                break;
+            case SDLK_k:
+                vKey = 'K';
+                scan = 0x25;
+                break;
+            case SDLK_l:
+                vKey = 'L';
+                scan = 0x26;
+                break;
+            case SDLK_SEMICOLON:
+                vKey = BOXED_VK_OEM_1;
+                scan = 0x27;
+                break;
+            case SDLK_QUOTE:
+                vKey = BOXED_VK_OEM_7;
+                scan = 0x28;
+                break;
+            case SDLK_BACKQUOTE:
+                vKey = BOXED_VK_OEM_3;
+                scan = 0x29;
+                break;
+            case SDLK_LSHIFT:
+                vKey = BOXED_VK_LSHIFT;
+                scan = 0x2a;
+                break;
+            case SDLK_RSHIFT:
+                vKey = BOXED_VK_RSHIFT;
+                scan = 0x36;
+                break;
+            case SDLK_BACKSLASH:
+                vKey = BOXED_VK_OEM_5;
+                scan = 0x2b;
+                break;
+            case SDLK_z:
+                vKey = 'Z';
+                scan = 0x2c;
+                break;
+            case SDLK_x:
+                vKey = 'X';
+                scan = 0x2d;
+                break;
+            case SDLK_c:
+                vKey = 'C';
+                scan = 0x2e;
+                break;
+            case SDLK_v:
+                vKey = 'V';
+                scan = 0x2f;
+                break;
+            case SDLK_b:
+                vKey = 'B';
+                scan = 0x30;
+                break;
+            case SDLK_n:
+                vKey = 'N';
+                scan = 0x31;
+                break;
+            case SDLK_m:
+                vKey = 'M';
+                scan = 0x32;
+                break;
+            case SDLK_COMMA:
+                vKey = BOXED_VK_OEM_COMMA;
+                scan = 0x33;
+                break;
+            case SDLK_PERIOD:
+                vKey = BOXED_VK_OEM_PERIOD;
+                scan = 0x34;
+                break;
+            case SDLK_SLASH:
+                vKey = BOXED_VK_OEM_2;
+                scan = 0x35;
+                break;
+            case SDLK_LALT:
+                vKey = BOXED_VK_LMENU;
+                scan = 0x38;
+                break;
+            case SDLK_RALT:
+                vKey = BOXED_VK_RMENU;
+                scan = 0x138;
+                break;
+            case SDLK_SPACE:
+                vKey = BOXED_VK_SPACE;
+                scan = 0x39;
+                break;
+            case SDLK_CAPSLOCK:
+                vKey = BOXED_VK_CAPITAL;
+                scan = 0x3a;
+                break;
+            case SDLK_F1:
+                vKey = BOXED_VK_F1;
+                scan = 0x3b;
+                break;
+            case SDLK_F2:
+                vKey = BOXED_VK_F2;
+                scan = 0x3c;
+                break;
+            case SDLK_F3:
+                vKey = BOXED_VK_F3;
+                scan = 0x3d;
+                break;
+            case SDLK_F4:
+                vKey = BOXED_VK_F4;
+                scan = 0x3e;
+                break;
+            case SDLK_F5:
+                vKey = BOXED_VK_F5;
+                scan = 0x3f;
+                break;
+            case SDLK_F6:
+                vKey = BOXED_VK_F6;
+                scan = 0x40;
+                break;
+            case SDLK_F7:
+                vKey = BOXED_VK_F7;
+                scan = 0x41;
+                break;
+            case SDLK_F8:
+                vKey = BOXED_VK_F8;
+                scan = 0x42;
+                break;
+            case SDLK_F9:
+                vKey = BOXED_VK_F9;
+                scan = 0x43;
+                break;
+            case SDLK_F10:
+                vKey = BOXED_VK_F10;
+                scan = 0x44;
+                break;
+            case SDLK_NUMLOCK:
+                vKey = BOXED_VK_NUMLOCK;
+                break;
+            case SDLK_SCROLLOCK:
+                vKey = BOXED_VK_SCROLL;
+                break;
+            case SDLK_F11:
+                vKey = BOXED_VK_F11;
+                scan = 0x57;
+                break;
+            case SDLK_F12:
+                vKey = BOXED_VK_F12;
+                scan = 0x58;
+                break;
+            case SDLK_HOME:
+                vKey = BOXED_VK_HOME;
+                scan = 0x147;
+                break;
+            case SDLK_UP:
+                vKey = BOXED_VK_UP;
+                scan = 0x148;
+                break;
+            case SDLK_PAGEUP:
+                vKey = BOXED_VK_PRIOR;
+                scan = 0x149;
+                break;
+            case SDLK_LEFT:
+                vKey = BOXED_VK_LEFT;
+                scan = 0x14b;
+                break;
+            case SDLK_RIGHT:
+                vKey = BOXED_VK_RIGHT;
+                scan = 0x14d;
+                break;
+            case SDLK_END:
+                vKey = BOXED_VK_END;
+                scan = 0x14f;
+                break;
+            case SDLK_DOWN:
+                vKey = BOXED_VK_DOWN;
+                scan = 0x150;
+                break;
+            case SDLK_PAGEDOWN:
+                vKey = BOXED_VK_NEXT;
+                scan = 0x151;
+                break;
+            case SDLK_INSERT:
+                vKey = BOXED_VK_INSERT;
+                scan = 0x152;
+                break;
+            case SDLK_DELETE:
+                vKey = BOXED_VK_DELETE;
+                scan = 0x153;
+                break;
+            case SDLK_PAUSE:
+                vKey = BOXED_VK_PAUSE;
+                scan = 0x154; // :TODO: is this right?
+                break;
+            case SDLK_KP0:
+                scan = 0x52;
+                break;
+            case SDLK_KP1:
+                vKey = BOXED_VK_END;
+                scan = 0x4F;
+                break;
+            case SDLK_KP2:
+                vKey = BOXED_VK_DOWN;
+                scan = 0x50;
+                break;
+            case SDLK_KP3:
+                vKey = BOXED_VK_NEXT;
+                scan = 0x51;
+                break;
+            case SDLK_KP4:
+                vKey = BOXED_VK_LEFT;
+                scan = 0x4B;
+                break;
+            case SDLK_KP5:
+                scan = 0x4C;
+                break;
+            case SDLK_KP6:
+                vKey = BOXED_VK_RIGHT;
+                scan = 0x4D;
+                break;
+            case SDLK_KP7:
+                vKey = BOXED_VK_HOME;
+                scan = 0x47;
+                break;
+            case SDLK_KP8:
+                vKey = BOXED_VK_UP;
+                scan = 0x48;
+                break;
+            case SDLK_KP9:
+                vKey = BOXED_VK_PRIOR;
+                scan = 0x49;
+                break;
+            case SDLK_KP_PERIOD:
+                vKey = BOXED_VK_DECIMAL;
+                scan = 0x53;
+                break;
+            case SDLK_KP_DIVIDE:
+                vKey = BOXED_VK_DIVIDE;
+                scan = 0x135;
+                break;
+            case SDLK_KP_MULTIPLY:
+                vKey = BOXED_VK_MULTIPLY;
+                scan = 0x137;
+                break;
+            case SDLK_KP_MINUS:
+                scan = 0x4A;
+                break;
+            case SDLK_KP_PLUS:
+                vKey = BOXED_VK_ADD;
+                scan = 0x4E;
+                break;
+            case SDLK_KP_ENTER:
+                vKey = BOXED_VK_RETURN;
+                scan = 0x11C;
+                break;
 
-                writeLittleEndian_4(buffer, 1); // INPUT_KEYBOARD
-                writeLittleEndian_2(buffer+4, vKey); // wVk
-                writeLittleEndian_2(buffer+6, scan & 0xFF); // wScan
-                writeLittleEndian_4(buffer+8, flags); // dwFlags
-                writeLittleEndian_4(buffer+12, KSystem::getMilliesSinceStart()); // time
-                writeLittleEndian_4(buffer+16, 0); // dwExtraInfo
-                writeLittleEndian_4(buffer+20, 0); // pad
-                writeLittleEndian_4(buffer+24, 0); // pad
-
-                KUnixSocketObject::unixsocket_write_native_nowait(fd->kobject, buffer, 28);
+            default:
+                kdebug("Unhandled key: %d", key);
+                return 1;
             }
+            if (scan & 0x100)               
+                flags |= BOXED_KEYEVENTF_EXTENDEDKEY;
+
+            writeLittleEndian_4(buffer, 1); // INPUT_KEYBOARD
+            writeLittleEndian_2(buffer+4, vKey); // wVk
+            writeLittleEndian_2(buffer+6, scan & 0xFF); // wScan
+            writeLittleEndian_4(buffer+8, flags); // dwFlags
+            writeLittleEndian_4(buffer+12, KSystem::getMilliesSinceStart()); // time
+            writeLittleEndian_4(buffer+16, 0); // dwExtraInfo
+            writeLittleEndian_4(buffer+20, 0); // pad
+            writeLittleEndian_4(buffer+24, 0); // pad
+
+            KUnixSocketObject::unixsocket_write_native_nowait(fd->kobject, buffer, 28);
         }
     }
     return 1;

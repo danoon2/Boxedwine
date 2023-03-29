@@ -406,6 +406,11 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
         this->currentAppChanged = true;
     };
 
+    appDirectDrawAutoRefreshControl = appSection->addCheckbox(CONTAINER_VIEW_AUTO_REFRESH_LABEL, CONTAINER_VIEW_AUTO_REFRESH_HELP, false);
+    appDirectDrawAutoRefreshControl->onChange = [this]() {
+        this->currentAppChanged = true;
+    };
+
     for (auto& item : BoxedwineData::getContainers()) {
         addTab(item->getDir(), item->getName(), model, [this, item](bool buttonPressed, BaseViewTab& tab) {
             if (buttonPressed) {
@@ -557,6 +562,7 @@ bool ContainersView::saveChanges() {
                 this->currentApp->dpiAware = this->appDpiAwareControl->isChecked();
             }
             this->currentApp->showWindowImmediately = this->appShowWindowImmediatelyControl->isChecked();
+            this->currentApp->autoRefresh = appDirectDrawAutoRefreshControl->isChecked();
 #ifdef BOXEDWINE_MULTI_THREADED
             this->currentApp->cpuAffinity = this->appCpuAffinityControl->getSelectionIntValue();
 #endif
@@ -607,6 +613,7 @@ void ContainersView::setCurrentApp(BoxedApp* app) {
     appPollRateControl->setText(std::to_string(app->pollRate));
     appSkipFramesControl->setText(std::to_string(app->skipFramesFPS));
     appShowWindowImmediatelyControl->setCheck(app->showWindowImmediately);
+    appDirectDrawAutoRefreshControl->setCheck(app->autoRefresh);
 #ifdef BOXEDWINE_MULTI_THREADED
     appCpuAffinityControl->setSelectionIntValue(app->cpuAffinity);
 #endif
