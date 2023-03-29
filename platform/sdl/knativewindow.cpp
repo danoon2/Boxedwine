@@ -1045,6 +1045,18 @@ void KNativeWindowSdl::updatePrimarySurface(KThread* thread, U32 bits, U32 width
             U8* p = getPhysicalReadAddress(bits, len);
 
             if (!p) {
+                static U8* buf;
+                static U32 bufLen;
+
+                if (buf && bufLen < len) {
+                    delete[] buf;
+                    buf = NULL;
+                    bufLen = 0;
+                }
+                if (!buf) {
+                    buf = new U8[len];
+                    bufLen = len;
+                }
                 p = (U8*)sdlBuffer;
                 memcopyToNative(bits, p, len);
             }
