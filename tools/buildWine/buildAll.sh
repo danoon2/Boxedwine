@@ -88,8 +88,11 @@ do_build()
     if ((BVERSION >= 7190))
     then
       git apply ../patches/auto_refresh/auto_refresh719.patch
-    else
+    elif ((BVERSION >= 4000))
+    then
       git apply ../patches/auto_refresh/auto_refresh6.patch
+    else
+      git apply ../patches/auto_refresh/auto_refresh3.patch
     fi
     rm -rf dlls/winealsa.drv/*
     cp -r ../../wineboxedaudio.drv/*.* dlls/winealsa.drv/
