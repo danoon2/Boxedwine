@@ -9,6 +9,6 @@ public:
 	std::string password;
 };
 
-bool downloadFile(const std::string& url, const std::string& filePath, std::function<void(U64 bytesCompleted)> f, NetworkProxy* proxy, std::string& errorMsg, bool* cancel=NULL, U64* socketfd=NULL);
+bool downloadFile(const std::string& url, const std::string& filePath, std::function<void(U64 bytesCompleted)> f, NetworkProxy* proxy, std::string& errorMsg, bool* cancel=NULL);
 
 #endif

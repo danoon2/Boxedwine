@@ -36,7 +36,7 @@ using Poco::Net::Context;
 
 static bool sslInitialized;
 
-bool downloadFile(const std::string& url, const std::string& filePath, std::function<void(U64 bytesCompleted)> f, NetworkProxy* proxy, std::string& errorMsg, bool* cancel, U64* socketfd) {
+bool downloadFile(const std::string& url, const std::string& filePath, std::function<void(U64 bytesCompleted)> f, NetworkProxy* proxy, std::string& errorMsg, bool* cancel) {
     try
     {
         std::string complete_page_url = "";
@@ -91,10 +91,6 @@ bool downloadFile(const std::string& url, const std::string& filePath, std::func
             file_stream.open(filePath, std::ios::out | std::ios::trunc | std::ios::binary);
             //StreamCopier::copyStream(*pStr.get(), file_stream);
 
-            if (socketfd) {
-                Poco::Net::HTTPResponseStream* s = (Poco::Net::HTTPResponseStream*)pStr.get();
-                *socketfd = (U64)s->_pSession->socket().sockfd();
-            }
             std::istream& is = *pStr.get();
 
             Poco::Buffer<char> buffer(8192);
