@@ -1125,7 +1125,11 @@ void KNativeWindowSdl::setPrimarySurface(KThread* thread, U32 bits, U32 width, U
             primarySurface->thread = thread;            
         } else {
             primarySurface = new Boxed_Surface(this, thread, bits, width, height, pitch, flags);
-            //SDL_CreateThread(sdl_start_thread, "AutoUpdateSurface", primarySurface);
+#ifdef BOXEDWINE_SDL1
+            SDL_CreateThread(sdl_start_thread, primarySurface);
+#else
+            SDL_CreateThread(sdl_start_thread, "AutoUpdateSurface", primarySurface);
+#endif
         }        
         if (flags & 0x20) { // palette
             memcopyToNative(palette, primarySurface->colors, 1024);
