@@ -292,6 +292,10 @@ bool StartUpArgs::apply() {
         }
     }
     std::vector<std::string> depends;
+    if (!Fs::initFileSystem(root)) {
+        kwarn("root %s does not exist", root.c_str());
+        return false;
+    }
     for (auto& zip : zips) {
         std::string depend;
         FsZip::readFileFromZip(zip, "depends.txt", depend);
@@ -313,10 +317,6 @@ bool StartUpArgs::apply() {
 #endif
     for (auto& zip : zips) {
         klog("Using zip file system: %s", zip.c_str());
-    }
-    if (!Fs::initFileSystem(root)) {
-        kwarn("root %s does not exist", root.c_str());
-        return false;
     }
     if (this->resolutionSet) {
         klog("Resolution set to: %dx%d", this->screenCx, this->screenCy);

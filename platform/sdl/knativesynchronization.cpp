@@ -1,6 +1,7 @@
 #include "boxedwine.h"
 #include "knativesynchronization.h"
 
+#ifdef BOXEDWINE_MULTI_THREADED
 #include <SDL.h>
 
 KNativeCondition::KNativeCondition() {
@@ -46,3 +47,4 @@ bool KNativeMutex::tryLock() {
 void KNativeMutex::unlock() {
 	SDL_UnlockMutex((SDL_mutex*)this->m);
 }
+#endif

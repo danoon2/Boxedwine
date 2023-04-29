@@ -82,7 +82,9 @@ public:
     virtual bool partialScreenShot(std::string filepath, U32 x, U32 y, U32 w, U32 h, U32* crc) = 0;
     virtual bool screenShot(std::string filepath, U32* crc) = 0;
 
+#ifdef BOXEDWINE_MULTI_THREADED
     virtual bool waitForEvent(U32 ms) = 0; // if return is true, then event is available
+#endif
     virtual bool processEvents() = 0; // if return is false, then shutdown    
 
 #ifdef BOXEDWINE_RECORDER

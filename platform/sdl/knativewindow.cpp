@@ -105,7 +105,10 @@ U32 KNativeWindow::defaultScreenWidth = 800;
 U32 KNativeWindow::defaultScreenHeight = 600;
 U32 KNativeWindow::defaultScreenBpp = 32;
 bool KNativeWindow::windowUpdated = false;
+
+#ifdef BOXEDWINE_MULTI_THREADED
 U32 sdlCustomEvent;
+#endif
 
 class KNativeWindowSdl : public KNativeWindow, public std::enable_shared_from_this<KNativeWindowSdl> {
 public:
@@ -215,7 +218,9 @@ public:
     virtual bool partialScreenShot(std::string filepath, U32 x, U32 y, U32 w, U32 h, U32* crc);
     virtual bool screenShot(std::string filepath, U32* crc);    
 
+#ifdef BOXEDWINE_MULTI_THREADED
     virtual bool waitForEvent(U32 ms);
+#endif
     virtual bool processEvents();
 
     virtual int mouseMove(int x, int y, bool relative);
@@ -266,6 +271,7 @@ static bool relativeMouse = false;
 
 static int firstWindowCreated;
 
+#ifdef BOXEDWINE_MULTI_THREADED
 bool KNativeWindowSdl::waitForEvent(U32 ms) {
     if (isShutdownWindowIsOpen()) {
         ms = 100;
@@ -273,6 +279,7 @@ bool KNativeWindowSdl::waitForEvent(U32 ms) {
     }
     return SDL_WaitEventTimeout(NULL, ms) == 1;
 }
+#endif
 
 bool KNativeWindowSdl::processEvents() {
     SDL_Event e;
@@ -299,10 +306,11 @@ bool KNativeWindowSdl::processEvents() {
 }
 
 void KNativeWindow::init(U32 cx, U32 cy, U32 bpp, int scaleX, int scaleY, const std::string& scaleQuality, U32 fullScreen, U32 vsync) {
+#ifdef BOXEDWINE_MULTI_THREADED
     if (!sdlCustomEvent) {
         sdlCustomEvent = SDL_RegisterEvents(1);
     }
-
+#endif
     screen = std::make_shared<KNativeWindowSdl>();
 
     KNativeWindow::defaultScreenWidth = cx;
@@ -953,7 +961,10 @@ void KNativeWindowSdl::bltWnd(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32
         if (!thread->memory->isValidReadAddress(bits, height*pitch)) {
             return;
         }
-#ifdef BOXEDWINE_FLIP_MANUALLY        
+
+#ifdef BOXEDWINE_SDL1
+        memcopyToNative(bits, sdlBuffer, pitch*height);
+#elif defined(BOXEDWINE_FLIP_MANUALLY)
         for (U32 y = 0; y < height; y++) {
             memcopyToNative(bits+(height-y-1)*pitch, sdlBuffer+y*pitch, pitch);
         } 
@@ -1114,7 +1125,7 @@ void KNativeWindowSdl::setPrimarySurface(KThread* thread, U32 bits, U32 width, U
             primarySurface->thread = thread;            
         } else {
             primarySurface = new Boxed_Surface(this, thread, bits, width, height, pitch, flags);
-            SDL_CreateThread(sdl_start_thread, "AutoUpdateSurface", primarySurface);
+            //SDL_CreateThread(sdl_start_thread, "AutoUpdateSurface", primarySurface);
         }        
         if (flags & 0x20) { // palette
             memcopyToNative(palette, primarySurface->colors, 1024);
@@ -1731,6 +1742,7 @@ void KNativeWindowSdl::createAndSetCursor(char* moduleName, char* resourceName, 
     DISPATCH_MAIN_THREAD_BLOCK_END
 }
 
+#ifndef BOXEDWINE_SDL1
 #define SDLK_NUMLOCK SDL_SCANCODE_NUMLOCKCLEAR
 #define SDLK_SCROLLOCK SDLK_SCROLLLOCK
 #define SDLK_KP0 SDLK_KP_0
@@ -1743,6 +1755,8 @@ void KNativeWindowSdl::createAndSetCursor(char* moduleName, char* resourceName, 
 #define SDLK_KP7 SDLK_KP_7
 #define SDLK_KP8 SDLK_KP_8
 #define SDLK_KP9 SDLK_KP_9
+
+#endif
 
 int KNativeWindowSdl::key(U32 key, U32 down) {
     static U32 lastProcessId;
@@ -2415,9 +2429,6 @@ bool KNativeWindowSdl::screenShot(std::string filepath, U32* crc) {
 
 }
 
-#define SDLK_NUMLOCK SDL_SCANCODE_NUMLOCKCLEAR
-#define SDLK_SCROLLOCK SDLK_SCROLLLOCK
-
 static U32 translate(U32 key) {
     switch (key) {
         case SDLK_ESCAPE:
@@ -2605,6 +2616,7 @@ void KNativeWindowSdl::updateShutdownWindow() {
     rect.y = 90;
     rect.w = (320 - 20) * i / 100;
     rect.h = 20;
+    SDL_SetRenderDrawColor(shutdownRenderer, 255, 255, 0, 255);
     SDL_RenderFillRect(shutdownRenderer, &rect);
     SDL_RenderPresent(shutdownRenderer);
 }
@@ -2631,7 +2643,6 @@ bool KNativeWindowSdl::handlSdlEvent(SDL_Event* e) {
             SDL_SetRenderDrawColor(shutdownRenderer, 0, 0, 0, 255);
             SDL_RenderClear(shutdownRenderer);
             SDL_RenderPresent(shutdownRenderer);
-            SDL_SetRenderDrawColor(shutdownRenderer, 255, 255, 0, 255);
             KSystem::killTime = KSystem::getMilliesSinceStart()+10000;
             updateShutdownWindow();
 #if defined (BOXEDWINE_MULTI_THREADED) && !defined (__TEST)
@@ -2714,7 +2725,9 @@ bool KNativeWindowSdl::handlSdlEvent(SDL_Event* e) {
             if (!mouseButton(0, 1, (relativeMouse?0:e->motion.x), (relativeMouse?0:e->motion.y)))
                 onMouseButtonUp(1);
         }
-    } else if (e->type == SDL_MOUSEWHEEL) {
+    } 
+#ifdef SDL_MOUSEWHEEL
+    else if (e->type == SDL_MOUSEWHEEL) {
 #ifdef BOXEDWINE_MULTI_THREADED
         if (KSystem::pollRate) {
             while (lastEvent + (1000000 / KSystem::pollRate) > KSystem::getMicroCounter()) {
@@ -2729,7 +2742,9 @@ bool KNativeWindowSdl::handlSdlEvent(SDL_Event* e) {
         if (!mouseWheel(e->wheel.y*80, (relativeMouse?0:x), (relativeMouse?0:y))) {
             onMouseWheel(e->wheel.y);
         }
-    } else if (e->type == SDL_KEYDOWN) {
+    } 
+#endif
+    else if (e->type == SDL_KEYDOWN) {
 #ifdef BOXEDWINE_MULTI_THREADED
         if (KSystem::pollRate) {
             while (lastEvent + (1000000 / KSystem::pollRate) > KSystem::getMicroCounter()) {
@@ -2776,11 +2791,13 @@ bool KNativeWindowSdl::handlSdlEvent(SDL_Event* e) {
             }
         }
     }
+#ifdef SDL_WINDOWEVENT
     else if (e->type == SDL_WINDOWEVENT) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(hwndToWndMutex);
         if (!hwndToWnd.size())
             flipFBNoCheck();
     }
+#endif
     return true;
 }
 

@@ -19,6 +19,7 @@
 // This code was written before the winedrv code existed.  Now this is considered dead code, but is kept for experimentation
 #include "boxedwine.h"
 
+#ifndef BOXEDWINE_SDL1
 #include <SDL.h>
 #include "../../io/fsvirtualopennode.h"
 #include "../../emulation//hardmmu/hard_memory.h"
@@ -643,3 +644,18 @@ void fbSwapOpenGL() {
 FsOpenNode* openDevFB(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
     return new DevFB(node, flags);
 }
+
+#else
+
+Page* allocFBPage(U32 flags) {
+    return NULL;
+}
+
+void flipFB() {
+}
+
+FsOpenNode* openDevFB(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
+    return NULL;
+}
+
+#endif
