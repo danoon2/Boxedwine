@@ -19,68 +19,68 @@
 #ifdef BOXEDWINE_SDL1
 #define SDL_INIT_EVENTS 0
 #define SDL_ShowSimpleMessageBox(a, b, c, d)
-#define SDL_HasClipboardText() false
-#define SDL_GetClipboardText() NULL
-#define SDL_SetClipboardText(x) NULL
+//#define SDL_HasClipboardText() false
+//#define SDL_GetClipboardText() NULL
+//#define SDL_SetClipboardText(x) NULL
 #define SDL_GetDisplayDPI(a, b, c, d) 0
-#define SDL_GetCurrentDisplayMode(x, y) 1
-#define SDL_GetDesktopDisplayMode(a, b) 1
-#define SDL_DisplayMode SDL_Rect
+//#define SDL_GetCurrentDisplayMode(x, y) 1
+//#define SDL_GetDesktopDisplayMode(a, b) 1
+//#define SDL_DisplayMode SDL_Rect
 #define SDL_GetBasePath() NULL
 #define SDL_GetPrefPath(x, y) NULL
-#define SDL_FlushEvent(x) 
+//! #define SDL_FlushEvent(x)
 #ifdef BOXEDWINE_MULTI_THREADED
 #error "BOXEDWINE_MULTI_THREADED cannot be defined for SDL1"
 #endif
 #ifdef BOXEDWINE_OPENGL_SDL
 #error "BOXEDWINE_OPENGL_SDL cannot be defined for SDL1"
 #endif
-#define AUDIO_S32LSB 0
-#define AUDIO_F32LSB 0
-#define SDL_CreateWindow(title, x, y, cx, cy, flags) SDL_SetVideoMode(cx, cy, 32, 0)
-#define SDL_WarpMouseInWindow(w, x, y) SDL_WarpMouse(x, y)
+//#define AUDIO_S32LSB 0
+//#define AUDIO_F32LSB 0
+//#define SDL_CreateWindow(title, x, y, cx, cy, flags) SDL_SetVideoMode(cx, cy, 32, 0)
+//#define SDL_WarpMouseInWindow(w, x, y) SDL_WarpMouse(x, y)
 #define SDL_Texture SDL_Surface
 #define SDL_Window SDL_Surface
-#define SDL_Renderer SDL_Surface
+//#define SDL_Renderer SDL_Surface
 #define SDL_DestroyTexture SDL_FreeSurface
-#define SDL_DestroyRenderer(x)
-#define SDL_DestroyWindow(x)
-#define SDL_SetWindowSize(window, x, y)
-#define SDL_SetHint(a, b)
-#define SDL_WINDOW_HIDDEN 0
+//! #define SDL_DestroyRenderer(x)
+//! #define SDL_DestroyWindow(x)
+//! #define SDL_SetWindowSize(window, x, y)
+//! #define SDL_SetHint(a, b)
+//#define SDL_WINDOW_HIDDEN 0
 #define SDL_WINDOW_VULKAN 0
-#define SDL_Log(x, y)
+//! #define SDL_Log(x, y)
 #define SDL_WINDOW_FULLSCREEN_DESKTOP 0
-#define SDL_RENDERER_ACCELERATED 0
-#define SDL_RENDERER_PRESENTVSYNC 0
-#define SDL_CreateRenderer(a, b, c) window
-#define SDL_RENDERER_SOFTWARE 0
-#define SDL_CreateTexture(renderer, format, access, w, h) SDL_CreateRGBSurface(0, w, h, bpp, 0xff0000, 0xff00, 0xff, 0)
-#define SDL_UpdateTexture(s, a, bits, p) \
-        if (SDL_MUSTLOCK(s)) {      \
-            SDL_LockSurface(s);     \
-        }                           \
-        for (int y = 0; y < height; y++) {  \
-            memcpy((S8*)(s->pixels) + y * s->pitch, bits + (height - y - 1) * (p), p); \
-        }                           \
-        if (SDL_MUSTLOCK(s)) {      \
-            SDL_UnlockSurface(s);   \
-        }
-#define SDL_PIXELFORMAT_ARGB8888 0
-#define SDL_PIXELFORMAT_RGB565 0
-#define SDL_PIXELFORMAT_RGB555 0
-#define SDL_SetRenderDrawColor(renderer, r, g, b, a) U32 drawColor = SDL_MapRGB(renderer->format, r, g, b)
-#define SDL_RenderClear(renderer) SDL_FillRect(renderer, NULL, drawColor)
-#define SDL_RenderFillRect(renderer, rect) SDL_FillRect(renderer, rect, drawColor)
-#define SDL_RenderPresent(renderer) SDL_UpdateRect(renderer, 0, 0, 0, 0)
-#define SDL_RenderCopy(renderer, texture, srcRect, dstRect) SDL_BlitSurface(texture, srcRect, renderer, dstRect)
-#define SDL_SetWindowTitle(window, title) SDL_WM_SetCaption(title, title)
-#define SDL_RenderCopyEx(renderer, texture, srcRect, dstRect, angle, center, flip) SDL_BlitSurface(texture, srcRect, renderer, dstRect)
+//#define SDL_RENDERER_ACCELERATED 0
+//#define SDL_RENDERER_PRESENTVSYNC 0
+//! #define SDL_CreateRenderer(a, b, c) window
+//#define SDL_RENDERER_SOFTWARE 0
+//#define SDL_CreateTexture(renderer, format, access, w, h) SDL_CreateRGBSurface(0, w, h, bpp, 0xff0000, 0xff00, 0xff, 0)
+//#define SDL_UpdateTexture(s, a, bits, p) \
+//        if (SDL_MUSTLOCK(s)) {      \
+//            SDL_LockSurface(s);     \
+//        }                           \
+//        for (int y = 0; y < height; y++) {  \
+//            memcpy((S8*)(s->pixels) + y * s->pitch, bits + (height - y - 1) * (p), p); \
+//        }                           \
+//        if (SDL_MUSTLOCK(s)) {      \
+//            SDL_UnlockSurface(s);   \
+//        }
+//#define SDL_PIXELFORMAT_ARGB8888 0
+//#define SDL_PIXELFORMAT_RGB565 0
+//#define SDL_PIXELFORMAT_RGB555 0
+//#define SDL_SetRenderDrawColor(renderer, r, g, b, a) U32 drawColor = SDL_MapRGB(renderer->format, r, g, b)
+//#define SDL_RenderClear(renderer) SDL_FillRect(renderer, NULL, drawColor)
+//#define SDL_RenderFillRect(renderer, rect) SDL_FillRect(renderer, rect, drawColor)
+//#define SDL_RenderPresent(renderer) SDL_UpdateRect(renderer, 0, 0, 0, 0)
+//#define SDL_RenderCopy(renderer, texture, srcRect, dstRect) SDL_BlitSurface(texture, srcRect, renderer, dstRect)
+//! #define SDL_SetWindowTitle(window, title) SDL_WM_SetCaption(title, title)
+//! #define SDL_RenderCopyEx(renderer, texture, srcRect, dstRect, angle, center, flip) SDL_BlitSurface(texture, srcRect, renderer, dstRect)
 #define SDL_GetWindowGammaRamp(window, r, g, b) SDL_GetGammaRamp(r, g, b)
 
-#define SDL_GetWindowSize(window, w, h)
-#define SDL_ShowWindow(window)
-#define SDL_RaiseWindow(window)
+//! #define SDL_GetWindowSize(window, w, h)
+//! #define SDL_ShowWindow(window)
+//! #define SDL_RaiseWindow(window)
 #endif
 
 #if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES) || defined(BOXEDWINE_OPENGL_OSMESA)

@@ -1336,7 +1336,11 @@ void KNativeWindowSdl::drawAllWindows(KThread* thread, U32 hWnd, int count) {
                 dstrect.y = scaleYOffset;
                 dstrect.w = this->screenWidth() * (int)scaleX / 100;
                 dstrect.h = this->screenHeight() * (int)scaleY / 100;
+#ifndef BOXEDWINE_FLIP_MANUALLY
                 SDL_RenderCopyEx(renderer, desktopTexture, NULL, &dstrect, 0, NULL, SDL_FLIP_NONE);
+#else
+                SDL_RenderCopy(renderer, desktopTexture, NULL, &dstrect);
+#endif
             }
             if (scaleXOffset) {                
                 SDL_Rect rect;
