@@ -47,7 +47,6 @@ export MAKEFLAGS := -j $(cpus)
 $(info MAKEFLAGS is $(MAKEFLAGS))
 endif
 jit release test testJit multiThreaded testMultiThreaded:
-	sh buildPocoLib.sh
 	@$(MAKE)
 
 clean:
@@ -98,19 +97,14 @@ OBJS := $(SRCS:%=$(BUILD_DIR)/%.o)
 DEPS := $(OBJS:.o=.d)
 
 INCLUDES = -I../../include
-INCLUDES += -I../../lib/poco/Net/include
-INCLUDES += -I../../lib/poco/Crypto/include
-INCLUDES += -I../../lib/poco/Util/include
-INCLUDES += -I../../lib/poco/Foundation/include
-INCLUDES += -I../../lib/poco/NetSSL_OpenSSL/include
 INCLUDES += -I../../lib/glew/include
 INCLUDES += -I../../lib/imgui
 
 SDL_CFLAGS = $(shell sdl2-config --cflags)
 SDL_LIBS = $(shell sdl2-config --libs)
-CPPFLAGS ?= -std=c++17 -O2 -Wall -Wno-invalid-offsetof -Wno-delete-incomplete -Wno-unused-result -Wno-unknown-pragmas -Wno-unused-local-typedefs -Wno-unused-variable -Wno-unused-function -Wno-unused-but-set-variable $(INCLUDES) -DBOXEDWINE_RECORDER -DBOXEDWINE_ZLIB -DBOXEDWINE_HAS_SETJMP -DSDL2=1 "-DGLH=<SDL_opengl.h>" -DBOXEDWINE_OPENGL_SDL -DSIMDE_SSE2_NO_NATIVE -DPOCO_UTIL_NO_JSONCONFIGURATION -DPOCO_UTIL_NO_XMLCONFIGURATION -DBOXEDWINE_POSIX -DBOXEDWINE_OPENGL_IMGUI_V2 $(SDL_CFLAGS) $(EXTRA_CPP_FLAGS)
+CPPFLAGS ?= -std=c++17 -O2 -Wall -Wno-invalid-offsetof -Wno-delete-incomplete -Wno-unused-result -Wno-unknown-pragmas -Wno-unused-local-typedefs -Wno-unused-variable -Wno-unused-function -Wno-unused-but-set-variable $(INCLUDES) -DBOXEDWINE_RECORDER -DBOXEDWINE_ZLIB -DBOXEDWINE_HAS_SETJMP -DSDL2=1 "-DGLH=<SDL_opengl.h>" -DBOXEDWINE_OPENGL_SDL -DSIMDE_SSE2_NO_NATIVE -DBOXEDWINE_POSIX -DBOXEDWINE_OPENGL_IMGUI_V2 $(SDL_CFLAGS) $(EXTRA_CPP_FLAGS)
 
-LDFLAGS = -L./linux_build/lib -lPocoNetSSL -lPocoNet -lPocoCrypto -lPocoUtil -lPocoFoundation -lssl -lcrypto -lpthread -lm -lz -lminizip -lGL -lstdc++ -lstdc++fs $(SDL_LIBS)
+LDFLAGS = -L./linux_build/lib -lcurl -lssl -lcrypto -lpthread -lm -lz -lminizip -lGL -lstdc++ -lstdc++fs $(SDL_LIBS)
 
 #$(TEST_BUILD_DIR)/boxedwineTest: $(TEST_OBJS)
 #	$(CC) $(TEST_OBJS) -o $@ $(LDFLAGS)

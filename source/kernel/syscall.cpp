@@ -25,10 +25,7 @@
 
 #include <stdarg.h>
 #include <random>
-
-#if defined(BOXEDWINE_MULTI_THREADED) && !defined(__TEST)
-#include "../../lib/poco/Foundation/include/Poco/Thread.h"
-#endif
+#include <thread>
 
 U64 sysCallTime;
 extern struct Block emptyBlock;
@@ -785,9 +782,7 @@ static U32 syscall_sched_getscheduler(CPU* cpu, U32 eipCount) {
 static U32 syscall_sched_yield(CPU* cpu, U32 eipCount) {    
     cpu->yield = true;
     U32 result = 0;
-#if defined(BOXEDWINE_MULTI_THREADED) && !defined(__TEST)
-    Poco::Thread::yield();
-#endif
+    std::this_thread::yield();
     SYS_LOG1(SYSCALL_SYSTEM, cpu, "yield: result=%d(0x%X)\n", result, result);
     return result;
 }

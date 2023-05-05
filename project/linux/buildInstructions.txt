@@ -5,13 +5,6 @@ build-essential
 libsdl2-dev
 libssl-dev
 libminizip-dev
+libcurl4-openssl-dev
 
 On other platforms, you need to make sure you have gcc version 8 or higher.
-
-
-Troubleshooting:
-
-/usr/bin/ld: cannot find -lPocoNetSSL
-/usr/bin/ld: cannot find -lPocoCrypto
-
-Then you probably installed libssl-dev after trying to build.  This can be fixed by deleting the project/linux/linux_build directory and building again.

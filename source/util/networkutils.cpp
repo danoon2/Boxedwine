@@ -1,17 +1,4 @@
 #if !defined (__EMSCRIPTEN__) && !defined (__TEST)
-#include "Poco/URIStreamOpener.h"
-#include "Poco/StreamCopier.h"
-#include "Poco/Path.h"
-#include "Poco/URI.h"
-#include "Poco/Exception.h"
-#include "Poco/Net/HTTPStreamFactory.h"
-#include "Poco/Net/HTTPSStreamFactory.h"
-#include "Poco/Net/FTPStreamFactory.h"
-#include "Poco/Net/AcceptCertificateHandler.h"
-#include "Poco/Net/SSLManager.h"
-#include "Poco/Net/Context.h"
-#include "Poco/Net/HTTPIOStream.h"
-#include "Poco/Net/HTTPClientSession.h"
 
 #ifdef U64
 #undef U64
@@ -22,104 +9,137 @@
 #include <fstream>
 #include "networkutils.h"
 
-using Poco::URIStreamOpener;
-using Poco::StreamCopier;
-using Poco::Path;
-using Poco::URI;
-using Poco::Exception;
-using Poco::Net::HTTPStreamFactory;
-using Poco::Net::HTTPSStreamFactory;
-using Poco::Net::FTPStreamFactory;
-using Poco::Net::AcceptCertificateHandler;
-using Poco::Net::SSLManager;
-using Poco::Net::Context;
+#ifdef _WIN32
+#include <Windows.h>
+#pragma comment(lib, "urlmon.lib")
+class DownloadProgress : public IBindStatusCallback {
+public:
+    bool* cancel;
+    std::function<void(U64 bytesCompleted)> f;
 
-static bool sslInitialized;
-
-bool downloadFile(const std::string& url, const std::string& filePath, std::function<void(U64 bytesCompleted)> f, NetworkProxy* proxy, std::string& errorMsg, bool* cancel) {
-    try
-    {
-        std::string complete_page_url = "";
-        std::ofstream file_stream;
-        std::unique_ptr<std::istream> pStr = nullptr;
-
-        // Create the URI from the URL to the file.
-        URI uri(url);
-
-        //std::auto_ptr<std::istream>pStr(URIStreamOpener::defaultOpener().open(uri);
-        //StreamCopier::copyStream(*pStr.get(), std::cout);
-
-        if (stringStartsWith(url, "https", true)) {
-            std::unique_ptr<HTTPSStreamFactory> https_stream_factory = nullptr;
-
-            if (!sslInitialized) {
-                sslInitialized = true;
-                Poco::Net::initializeSSL();
-
-                static Poco::SharedPtr<AcceptCertificateHandler> pCertHandler;
-                pCertHandler = new AcceptCertificateHandler(false); // ask the user via console
-                Context::Ptr pContext = new Context(Context::CLIENT_USE, "");
-                SSLManager::instance().initializeClient(0, pCertHandler, pContext);
-            }
-            if (proxy) {
-                https_stream_factory = std::unique_ptr<HTTPSStreamFactory>(new HTTPSStreamFactory(proxy->host, proxy->port, proxy->username, proxy->password));
-            } else {
-                https_stream_factory = std::unique_ptr<HTTPSStreamFactory>(new HTTPSStreamFactory());
-            }
-
-            if (https_stream_factory) {
-                pStr = std::unique_ptr<std::istream>(https_stream_factory->open(uri));
-            }
-        } else
-        {
-            std::unique_ptr<HTTPStreamFactory> http_stream_factory = nullptr;
-
-            if (proxy) {
-                http_stream_factory = std::unique_ptr<HTTPStreamFactory>(new HTTPStreamFactory(proxy->host, proxy->port, proxy->username, proxy->password));
-            } else {
-                http_stream_factory = std::unique_ptr<HTTPStreamFactory>(new HTTPStreamFactory());
-            }
-
-            if (http_stream_factory) {
-                pStr = std::unique_ptr<std::istream>(http_stream_factory->open(uri));
-            }
-        }
-
-        // :TODO: why can't I get the length from pStr?
-        if (pStr && (!cancel || !(*cancel))) {
-
-            file_stream.open(filePath, std::ios::out | std::ios::trunc | std::ios::binary);
-            //StreamCopier::copyStream(*pStr.get(), file_stream);
-
-            std::istream& is = *pStr.get();
-
-            Poco::Buffer<char> buffer(8192);
-            std::streamsize len = 0;
-            is.read(buffer.begin(), 8192);
-            std::streamsize n = is.gcount();
-            while (n > 0 && (!cancel || !(*cancel)))
-            {
-                len += n;
-                file_stream.write(buffer.begin(), n);
-                f(len);
-                if (is && file_stream)
-                {
-                    is.read(buffer.begin(), 8192);
-                    n = is.gcount();
-                } else {
-                    n = 0;
-                }
-            }
-
-            file_stream.close();            
-            return (!cancel || !(*cancel));
-        }
-        return false;
-    } catch (Exception& exc) {
-        klog("HttpClient:: Exception in DownloadFile , error code: %d", exc.code());
-        errorMsg = exc.displayText();
+    HRESULT __stdcall QueryInterface(const IID&, void**) {
+        return E_NOINTERFACE;
+    }
+    ULONG STDMETHODCALLTYPE AddRef(void) {
+        return 1;
+    }
+    ULONG STDMETHODCALLTYPE Release(void) {
+        return 1;
+    }
+    HRESULT STDMETHODCALLTYPE OnStartBinding(DWORD dwReserved, IBinding* pib) {
+        return E_NOTIMPL;
+    }
+    virtual HRESULT STDMETHODCALLTYPE GetPriority(LONG* pnPriority) {
+        return E_NOTIMPL;
+    }
+    virtual HRESULT STDMETHODCALLTYPE OnLowResource(DWORD reserved) {
+        return S_OK;
+    }
+    virtual HRESULT STDMETHODCALLTYPE OnStopBinding(HRESULT hresult, LPCWSTR szError) {
+        return E_NOTIMPL;
+    }
+    virtual HRESULT STDMETHODCALLTYPE GetBindInfo(DWORD* grfBINDF, BINDINFO* pbindinfo) {
+        return E_NOTIMPL;
+    }
+    virtual HRESULT STDMETHODCALLTYPE OnDataAvailable(DWORD grfBSCF, DWORD dwSize, FORMATETC* pformatetc, STGMEDIUM* pstgmed) {
+        return E_NOTIMPL;
+    }
+    virtual HRESULT STDMETHODCALLTYPE OnObjectAvailable(REFIID riid, IUnknown* punk) {
+        return E_NOTIMPL;
     }
 
-    return false;
+    virtual HRESULT __stdcall OnProgress(ULONG ulProgress, ULONG ulProgressMax, ULONG ulStatusCode, LPCWSTR szStatusText)
+    {
+        f(ulProgress);
+
+        if (cancel && *cancel) {
+            return E_ABORT;
+        }
+        return S_OK;
+    }
+};
+
+
+bool downloadFile(const std::string& url, const std::string& filePath, std::function<void(U64 bytesCompleted)> f, NetworkProxy* proxy, std::string& errorMsg, bool* cancel) {
+    DownloadProgress progress;
+    progress.cancel = cancel;
+    progress.f = f;
+
+    HRESULT hr = URLDownloadToFile(0, url.c_str(), filePath.c_str(), 0, static_cast<IBindStatusCallback*>(&progress));
+    if (hr != S_OK) {
+        LPSTR messageBuffer = NULL;
+        size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, hr, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
+        errorMsg = messageBuffer;
+        LocalFree(messageBuffer);
+    }
+    return hr == S_OK;
 }
+
+#else
+#include <curl/curl.h>
+
+class ProgressData {
+public:
+    std::function<void(U64 bytesCompleted)> f;
+    bool* cancel;
+};
+
+static size_t write_data(void* ptr, size_t size, size_t nmemb, void* stream)
+{
+    size_t written = fwrite(ptr, size, nmemb, (FILE*)stream);
+    return written;
+}
+
+static int xferinfo(void* p, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow)
+{
+    ProgressData* data = (ProgressData*)p;
+    data->f(dlnow);
+    if (data->cancel && *data->cancel) {
+        return 1;
+    }
+    return 0;
+}
+
+bool downloadFile(const std::string& url, const std::string& filePath, std::function<void(U64 bytesCompleted)> f, NetworkProxy* proxy, std::string& errorMsg, bool* cancel) {
+    CURL* curl;
+    CURLcode res = CURLE_OK;
+    ProgressData data;
+
+    curl = curl_easy_init();
+    if (curl) {
+        data.f = f;
+        data.cancel = cancel;
+
+        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
+
+        curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, xferinfo);
+        /* pass the struct pointer into the xferinfo function */
+        curl_easy_setopt(curl, CURLOPT_XFERINFODATA, &data);
+
+        curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
+
+        FILE* file = fopen(filePath.c_str(), "wb");
+        if (file) {
+
+            /* write the page body to this file handle */
+            curl_easy_setopt(curl, CURLOPT_WRITEDATA, file);
+
+            /* get it! */
+            curl_easy_perform(curl);
+
+            /* close the header file */
+            fclose(file);
+        }
+
+        if (res != CURLE_OK)
+            fprintf(stderr, "%s\n", curl_easy_strerror(res));
+
+        /* always cleanup */
+        curl_easy_cleanup(curl);
+    }
+    return res == CURLE_OK;
+}
+#endif
 #endif
