@@ -1,10 +1,10 @@
 #include "boxedwine.h"
 #include "../boxedwineui.h"
-#include "Poco/Process.h"
-#include "Poco/PipeStream.h"
-#include "Poco/Exception.h"
 #include "../../util/threadutils.h"
 #include "knativethread.h"
+#ifndef BOXEDWINE_UI_LAUNCH_IN_PROCESS
+#include "../../../lib/tiny-process/process.hpp"
+#endif
 
 std::vector<BoxedContainer*> BoxedwineData::containers;
 std::vector<BoxedWinVersion> BoxedwineData::winVersions;
@@ -51,74 +51,52 @@ void BoxedwineData::startApp() {
         uiShutdown();
     }
 #else
-    Poco::Process::Args args;
     std::vector<std::string> a = GlobalSettings::startUpArgs.buildArgs();
     std::string log;
+    std::string cmd = GlobalSettings::getExeFilePath();
 
     log = "Starting process: " + GlobalSettings::getExeFilePath() + " ";
+    cmd += " ";
     for (auto& arg : a) {
         log += "\"" + arg + "\" ";
+        cmd += "\"" + arg + "\" ";
     }
     log += "\n";
-    for (auto& arg : a) {
-        args.push_back(arg);
-    }
-    try {
-        Poco::Pipe outPipe;
-        Poco::ProcessHandle handle = Poco::Process::launch(GlobalSettings::getExeFilePath(), args,  0, &outPipe, 0);
-        bool threadRunning = true;
-        bool windowCreated = false;
 
-        runInBackgroundThread([&outPipe, &handle, &threadRunning, &windowCreated, &log]() {
-            char tmp[2];
-            try {                
-                tmp[1] = 0;
-                while (outPipe.readBytes(tmp, 1)) {
-                    log += tmp;
-                    if (tmp[0] != '\n') {                        
-                        continue;
-                    }
-                    if (stringContains(log, "Creating Window")) {
-                        windowCreated = true;
-                    }
-                    if (KSystem::watchTTY && stringStartsWith(log, "TTY:")) {
-                        std::string line = log.substr(4);
-                        std::vector<std::string> parts;
-                        stringSplit(parts, line, ':', 2);
-                        if (parts.size() == 2 && parts[0] != "curl") {
-                            line = line.substr(parts[0].size()+1);
-                            KSystem::watchTTY(line);
-                        }
-                    }
-                    log = "";
-                }
-            } catch (Poco::Exception& e) {
-                runOnMainUI([e]() {
-                    new OkDlg(GENERIC_DLG_ERROR_TITLE, e.displayText(), nullptr);
-                    return false;
-                    });
-                printf("%s", e.displayText().c_str());
+    std::string out;
+    bool windowCreated = false;
+    TinyProcessLib::Process process(cmd.c_str(), "", [&out, &windowCreated](const char* bytes, size_t n) {
+        for (int i=0;i<n;i++) {
+            out += bytes[i];
+            if (bytes[i] != '\n') {
+                continue;
             }
-            handle.wait();
-            threadRunning = false;
-            });
-        while (threadRunning) {
-            if (windowCreated) {
-                if (uiIsRunning()) {
-                    uiShutdown();
-                }
-            } else {
-                uiLoop();
+            if (stringContains(out, "Creating Window")) {
+                windowCreated = true;
             }
-            KNativeThread::sleep(16);
+            if (KSystem::watchTTY && stringStartsWith(out, "TTY:")) {
+                std::string line = out.substr(4);
+                std::vector<std::string> parts;
+                stringSplit(parts, line, ':', 2);
+                if (parts.size() == 2 && parts[0] != "curl") {
+                    line = line.substr(parts[0].size()+1);
+                    KSystem::watchTTY(line);
+                }
+            }
+            out = "";
         }
-    } catch (Poco::Exception& e) {
-        runOnMainUI([e]() {
-            new OkDlg(GENERIC_DLG_ERROR_TITLE, e.displayText(), nullptr);
-            return false;
-            });
-        printf("%s", e.displayText().c_str());
-    }    
+    });
+    int status = 0;
+    while (!process.try_get_exit_status(status)) {
+        if (windowCreated) {
+            if (uiIsRunning()) {
+                uiShutdown();
+            }
+        } else {
+            uiLoop();
+        }
+        KNativeThread::sleep(16);
+    }  
     if (uiIsRunning()) {
         uiShutdown();
     }

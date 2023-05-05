@@ -13,11 +13,6 @@ gcc -std=c++17 -O2 -no-pie \
   -Wno-unused-function \
   -Wno-unused-but-set-variable \
   -I../../include \
-  -I../../lib/poco/Net/include \
-  -I../../lib/poco/Crypto/include \
-  -I../../lib/poco/Util/include \
-  -I../../lib/poco/Foundation/include \
-  -I../../lib/poco/NetSSL_OpenSSL/include \
   -I../../lib/glew/include \
   -I../../lib/imgui \
   ../../lib/imgui/imgui.cpp \
@@ -56,12 +51,9 @@ gcc -std=c++17 -O2 -no-pie \
   ../../lib/zlib/contrib/minizip/ioapi.c \
   ../../lib/zlib/contrib/minizip/mztools.c \
   ../../lib/zlib/contrib/minizip/unzip.c \
-  -L./linux_build/lib \
-  -lPocoNetSSL \
-  -lPocoNet \
-  -lPocoCrypto \
-  -lPocoUtil \
-  -lPocoFoundation \
+  ../../lib/tiny-process/process.cpp \
+  ../../lib/tiny-process/process_unix.cpp \
+  -lcurl \
   -lssl \
   -lcrypto \
   -lpthread \
@@ -85,8 +77,6 @@ gcc -std=c++17 -O2 -no-pie \
   -DBOXEDWINE_64BIT_MMU \
   -DBOXEDWINE_X64 \
   -DBOXEDWINE_MULTI_THREADED \
-  -DPOCO_UTIL_NO_JSONCONFIGURATION \
-  -DPOCO_UTIL_NO_XMLCONFIGURATION \
   -DBOXEDWINE_POSIX \
   -DBOXEDWINE_OPENGL_IMGUI_V2 \
   -DBOXEDWINE_BINARY_TRANSLATOR \

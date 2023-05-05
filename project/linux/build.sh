@@ -1,6 +1,5 @@
 #!/bin/bash
 mkdir -p bin
-sh buildPocoLib.sh
 gcc -std=c++17 -O2 \
   -Wall \
   -Wno-delete-incomplete \
@@ -11,11 +10,6 @@ gcc -std=c++17 -O2 \
   -Wno-unused-function \
   -Wno-unused-but-set-variable \
   -I../../include \
-  -I../../lib/poco/Net/include \
-  -I../../lib/poco/Crypto/include \
-  -I../../lib/poco/Util/include \
-  -I../../lib/poco/Foundation/include \
-  -I../../lib/poco/NetSSL_OpenSSL/include \
   -I../../lib/glew/include \
   -I../../lib/imgui \
   ../../lib/imgui/imgui.cpp \
@@ -48,12 +42,9 @@ gcc -std=c++17 -O2 \
   ../../source/util/*.cpp \
   ../../source/opengl/sdl/*.cpp \
   ../../source/opengl/*.cpp \
-  -L./linux_build/lib \
-  -lPocoNetSSL \
-  -lPocoNet \
-  -lPocoCrypto \
-  -lPocoUtil \
-  -lPocoFoundation \
+  ../../lib/tiny-process/process.cpp \
+  ../../lib/tiny-process/process_unix.cpp \
+  -lcurl \
   -lssl \
   -lcrypto \
   -lpthread \
@@ -71,8 +62,6 @@ gcc -std=c++17 -O2 \
   -DBOXEDWINE_OPENGL_SDL \
   `sdl2-config --cflags --libs` \
   -DSIMDE_SSE2_NO_NATIVE \
-  -DPOCO_UTIL_NO_JSONCONFIGURATION \
-  -DPOCO_UTIL_NO_XMLCONFIGURATION \
   -DBOXEDWINE_POSIX \
   -DBOXEDWINE_OPENGL_IMGUI_V2 \
   -o bin/boxedwine
