@@ -69,6 +69,8 @@ SOURCES += $(PROJDIR)/lib/imgui/examples/imgui_impl_opengl2.cpp
 SOURCES += $(PROJDIR)/lib/imgui/imgui_widgets.cpp
 SOURCES += $(PROJDIR)/lib/imgui/imgui_draw.cpp
 SOURCES += $(PROJDIR)/lib/imgui/imgui.cpp
+SOURCES += $(PROJDIR)/lib/tiny-process/process.cpp
+SOURCES += $(PROJDIR)/lib/tiny-process/process_unix.cpp
 
 TEST_SOURCES = $(wildcard $(PROJDIR)/source/test/*.cpp)
 TEST_SOURCES += $(wildcard $(PROJDIR)/source/sdl/*.cpp)
