@@ -1,10 +1,15 @@
-On Ubuntu 20.04 the follow packages need to be installed
+On Ubuntu 20.04/Raspberry Pi the follow packages need to be installed
 
-cmake
-build-essential
+build-essential (might already be installed)
 libsdl2-dev
 libssl-dev
 libminizip-dev
 libcurl4-openssl-dev
 
 On other platforms, you need to make sure you have gcc version 8 or higher.
+
+To build on 64-bit systems all you have to do is type in the project/linux directory
+make
+
+On 32-bit systems, you need to type
+make jit
