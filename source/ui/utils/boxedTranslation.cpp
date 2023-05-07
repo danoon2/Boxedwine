@@ -311,6 +311,8 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         return "Direct Draw Auto Refresh:";
     case CONTAINER_VIEW_AUTO_REFRESH_HELP:
         return "Some Direct Draw games will lock the primary surface and draw directly on it.  If the game unlocks it, those changes will be flushed to the screen.  On older versions of Windows this unlock procedure was not required, but on newer Windows versions and in Wine it is.  Without the unlock the surface is never flushed and there will just be a back screen.  This hack will constantly flush the primary surface to the screen.";
+    case CONTAINER_VIEW_AUTO_REFRESH_MISSING_HELP:
+        return "This feature requires a newer version of the Wine file system";
     case CONTAINER_VIEW_SCALE_LABEL:
         return "Scaling:";
     case CONTAINER_VIEW_SCALE_HELP:

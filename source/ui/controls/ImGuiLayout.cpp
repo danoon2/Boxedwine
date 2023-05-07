@@ -146,11 +146,13 @@ void LayoutComboboxControl::draw(int width) {
 }
 
 void LayoutCheckboxControl::draw(int width) {
-	ImGui::PushID(this);
-	if (ImGui::Checkbox("##Checkbox", &this->checked) && this->onChange) {
-		this->onChange();
+	if (!this->isReadOnly()) {
+		ImGui::PushID(this);
+		if (ImGui::Checkbox("##Checkbox", &this->checked) && this->onChange) {
+			this->onChange();
+		}
+		ImGui::PopID();
 	}
-	ImGui::PopID();
 }
 
 void LayoutTextInputControl::draw(int width) {

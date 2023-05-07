@@ -27,7 +27,7 @@ void WaitDlg::run() {
         ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing));
         ImGui::Separator();
         for (auto& line : subLabels) {
-            ImGui::SetCursorPosX(GlobalSettings::scaleIntUI(5));
+            ImGui::SetCursorPosX((float)GlobalSettings::scaleIntUI(5));
             SAFE_IMGUI_TEXT(line.c_str());
         }
     }
@@ -42,7 +42,7 @@ void WaitDlg::addSubLabel(const std::string& subLabel, int max) {
     }
     this->subLabels.push_back(subLabel);
     if (this->subLabels.size() > 2) {
-        this->height = GlobalSettings::scaleIntUI(150) + (this->subLabels.size() - 1) * ImGui::GetFontSize();
+        this->height = GlobalSettings::scaleIntUI(150) + (int)((this->subLabels.size() - 1) * ImGui::GetFontSize());
     } else {
         this->height = GlobalSettings::scaleIntUI(150);
     }
