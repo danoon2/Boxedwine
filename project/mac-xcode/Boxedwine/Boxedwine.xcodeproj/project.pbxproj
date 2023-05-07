@@ -39,6 +39,58 @@
 		1A5405272A054D310061653D /* libcurl.4.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 1A5405252A04AB4E0061653D /* libcurl.4.tbd */; };
 		1A5405282A054D3C0061653D /* libcurl.4.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 1A5405252A04AB4E0061653D /* libcurl.4.tbd */; };
 		1A5405292A054D460061653D /* libcurl.4.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 1A5405252A04AB4E0061653D /* libcurl.4.tbd */; };
+		1A55D62D2A0841E2002B7021 /* inflate.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6242A0841E1002B7021 /* inflate.c */; };
+		1A55D62E2A0841E2002B7021 /* inflate.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6242A0841E1002B7021 /* inflate.c */; };
+		1A55D62F2A0841E2002B7021 /* inflate.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6242A0841E1002B7021 /* inflate.c */; };
+		1A55D6302A0841E2002B7021 /* inflate.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6242A0841E1002B7021 /* inflate.c */; };
+		1A55D6312A0841E2002B7021 /* make_vms.com in Resources */ = {isa = PBXBuildFile; fileRef = 1A55D6252A0841E1002B7021 /* make_vms.com */; };
+		1A55D6322A0841E2002B7021 /* make_vms.com in Resources */ = {isa = PBXBuildFile; fileRef = 1A55D6252A0841E1002B7021 /* make_vms.com */; };
+		1A55D6332A0841E2002B7021 /* make_vms.com in Resources */ = {isa = PBXBuildFile; fileRef = 1A55D6252A0841E1002B7021 /* make_vms.com */; };
+		1A55D6342A0841E2002B7021 /* make_vms.com in Resources */ = {isa = PBXBuildFile; fileRef = 1A55D6252A0841E1002B7021 /* make_vms.com */; };
+		1A55D6352A0841E2002B7021 /* inffast.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6272A0841E2002B7021 /* inffast.c */; };
+		1A55D6362A0841E2002B7021 /* inffast.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6272A0841E2002B7021 /* inffast.c */; };
+		1A55D6372A0841E2002B7021 /* inffast.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6272A0841E2002B7021 /* inffast.c */; };
+		1A55D6382A0841E2002B7021 /* inffast.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6272A0841E2002B7021 /* inffast.c */; };
+		1A55D6392A0841E2002B7021 /* inftrees.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6282A0841E2002B7021 /* inftrees.c */; };
+		1A55D63A2A0841E2002B7021 /* inftrees.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6282A0841E2002B7021 /* inftrees.c */; };
+		1A55D63B2A0841E2002B7021 /* inftrees.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6282A0841E2002B7021 /* inftrees.c */; };
+		1A55D63C2A0841E2002B7021 /* inftrees.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6282A0841E2002B7021 /* inftrees.c */; };
+		1A55D63D2A0841E2002B7021 /* infback.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D62A2A0841E2002B7021 /* infback.c */; };
+		1A55D63E2A0841E2002B7021 /* infback.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D62A2A0841E2002B7021 /* infback.c */; };
+		1A55D63F2A0841E2002B7021 /* infback.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D62A2A0841E2002B7021 /* infback.c */; };
+		1A55D6402A0841E2002B7021 /* infback.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D62A2A0841E2002B7021 /* infback.c */; };
+		1A55D64B2A08428F002B7021 /* deflate.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6412A08428E002B7021 /* deflate.c */; };
+		1A55D64C2A08428F002B7021 /* deflate.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6412A08428E002B7021 /* deflate.c */; };
+		1A55D64D2A08428F002B7021 /* deflate.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6412A08428E002B7021 /* deflate.c */; };
+		1A55D64E2A08428F002B7021 /* deflate.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6412A08428E002B7021 /* deflate.c */; };
+		1A55D64F2A08428F002B7021 /* crc32.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6422A08428F002B7021 /* crc32.c */; };
+		1A55D6502A08428F002B7021 /* crc32.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6422A08428F002B7021 /* crc32.c */; };
+		1A55D6512A08428F002B7021 /* crc32.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6422A08428F002B7021 /* crc32.c */; };
+		1A55D6522A08428F002B7021 /* crc32.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6422A08428F002B7021 /* crc32.c */; };
+		1A55D6532A08428F002B7021 /* gzclose.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6432A08428F002B7021 /* gzclose.c */; };
+		1A55D6542A08428F002B7021 /* gzclose.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6432A08428F002B7021 /* gzclose.c */; };
+		1A55D6552A08428F002B7021 /* gzclose.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6432A08428F002B7021 /* gzclose.c */; };
+		1A55D6562A08428F002B7021 /* gzclose.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6432A08428F002B7021 /* gzclose.c */; };
+		1A55D6572A08428F002B7021 /* zutil.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6452A08428F002B7021 /* zutil.c */; };
+		1A55D6582A08428F002B7021 /* zutil.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6452A08428F002B7021 /* zutil.c */; };
+		1A55D6592A08428F002B7021 /* zutil.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6452A08428F002B7021 /* zutil.c */; };
+		1A55D65A2A08428F002B7021 /* zutil.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6452A08428F002B7021 /* zutil.c */; };
+		1A55D65B2A08428F002B7021 /* compress.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6462A08428F002B7021 /* compress.c */; };
+		1A55D65C2A08428F002B7021 /* compress.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6462A08428F002B7021 /* compress.c */; };
+		1A55D65D2A08428F002B7021 /* compress.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6462A08428F002B7021 /* compress.c */; };
+		1A55D65E2A08428F002B7021 /* compress.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6462A08428F002B7021 /* compress.c */; };
+		1A55D65F2A08428F002B7021 /* uncompr.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6482A08428F002B7021 /* uncompr.c */; };
+		1A55D6602A08428F002B7021 /* uncompr.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6482A08428F002B7021 /* uncompr.c */; };
+		1A55D6612A08428F002B7021 /* uncompr.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6482A08428F002B7021 /* uncompr.c */; };
+		1A55D6622A08428F002B7021 /* uncompr.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6482A08428F002B7021 /* uncompr.c */; };
+		1A55D6632A08428F002B7021 /* adler32.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6492A08428F002B7021 /* adler32.c */; };
+		1A55D6642A08428F002B7021 /* adler32.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6492A08428F002B7021 /* adler32.c */; };
+		1A55D6652A08428F002B7021 /* adler32.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6492A08428F002B7021 /* adler32.c */; };
+		1A55D6662A08428F002B7021 /* adler32.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6492A08428F002B7021 /* adler32.c */; };
+		1A55D6682A0842E8002B7021 /* trees.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6672A0842E8002B7021 /* trees.c */; };
+		1A55D6692A0842E8002B7021 /* trees.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6672A0842E8002B7021 /* trees.c */; };
+		1A55D66A2A0842E8002B7021 /* trees.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6672A0842E8002B7021 /* trees.c */; };
+		1A55D66B2A0842E8002B7021 /* trees.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6672A0842E8002B7021 /* trees.c */; };
 		1A80EE48276EBCC70032A70A /* x32CPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDC72433BBBE003F17F1 /* x32CPU.cpp */; };
 		1A80EE49276EBCC70032A70A /* ksocketobject.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE202433BBBE003F17F1 /* ksocketobject.cpp */; };
 		1A80EE54276EBCC70032A70A /* glfunctions_ext1.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE432433BBBE003F17F1 /* glfunctions_ext1.cpp */; };
@@ -1319,6 +1371,26 @@
 		1A4F8E1B24F740CC0046703D /* helpView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = helpView.h; sourceTree = "<group>"; };
 		1A4F8E1C24F740CC0046703D /* helpView.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = helpView.cpp; sourceTree = "<group>"; };
 		1A5405252A04AB4E0061653D /* libcurl.4.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libcurl.4.tbd; path = usr/lib/libcurl.4.tbd; sourceTree = SDKROOT; };
+		1A55D6242A0841E1002B7021 /* inflate.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = inflate.c; path = ../../../../../lib/zlib/inflate.c; sourceTree = "<group>"; };
+		1A55D6252A0841E1002B7021 /* make_vms.com */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = make_vms.com; path = ../../../../../lib/zlib/make_vms.com; sourceTree = "<group>"; };
+		1A55D6262A0841E2002B7021 /* inffast.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = inffast.h; path = ../../../../../lib/zlib/inffast.h; sourceTree = "<group>"; };
+		1A55D6272A0841E2002B7021 /* inffast.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = inffast.c; path = ../../../../../lib/zlib/inffast.c; sourceTree = "<group>"; };
+		1A55D6282A0841E2002B7021 /* inftrees.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = inftrees.c; path = ../../../../../lib/zlib/inftrees.c; sourceTree = "<group>"; };
+		1A55D6292A0841E2002B7021 /* inflate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = inflate.h; path = ../../../../../lib/zlib/inflate.h; sourceTree = "<group>"; };
+		1A55D62A2A0841E2002B7021 /* infback.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = infback.c; path = ../../../../../lib/zlib/infback.c; sourceTree = "<group>"; };
+		1A55D62B2A0841E2002B7021 /* inftrees.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = inftrees.h; path = ../../../../../lib/zlib/inftrees.h; sourceTree = "<group>"; };
+		1A55D62C2A0841E2002B7021 /* inffixed.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = inffixed.h; path = ../../../../../lib/zlib/inffixed.h; sourceTree = "<group>"; };
+		1A55D6412A08428E002B7021 /* deflate.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = deflate.c; path = ../../../../../lib/zlib/deflate.c; sourceTree = "<group>"; };
+		1A55D6422A08428F002B7021 /* crc32.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = crc32.c; path = ../../../../../lib/zlib/crc32.c; sourceTree = "<group>"; };
+		1A55D6432A08428F002B7021 /* gzclose.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = gzclose.c; path = ../../../../../lib/zlib/gzclose.c; sourceTree = "<group>"; };
+		1A55D6442A08428F002B7021 /* deflate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = deflate.h; path = ../../../../../lib/zlib/deflate.h; sourceTree = "<group>"; };
+		1A55D6452A08428F002B7021 /* zutil.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = zutil.c; path = ../../../../../lib/zlib/zutil.c; sourceTree = "<group>"; };
+		1A55D6462A08428F002B7021 /* compress.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = compress.c; path = ../../../../../lib/zlib/compress.c; sourceTree = "<group>"; };
+		1A55D6472A08428F002B7021 /* crc32.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = crc32.h; path = ../../../../../lib/zlib/crc32.h; sourceTree = "<group>"; };
+		1A55D6482A08428F002B7021 /* uncompr.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = uncompr.c; path = ../../../../../lib/zlib/uncompr.c; sourceTree = "<group>"; };
+		1A55D6492A08428F002B7021 /* adler32.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = adler32.c; path = ../../../../../lib/zlib/adler32.c; sourceTree = "<group>"; };
+		1A55D64A2A08428F002B7021 /* zutil.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = zutil.h; path = ../../../../../lib/zlib/zutil.h; sourceTree = "<group>"; };
+		1A55D6672A0842E8002B7021 /* trees.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = trees.c; path = ../../../../../lib/zlib/trees.c; sourceTree = "<group>"; };
 		1A80F08F276EBCC70032A70A /* BoxedwineAutomationSlow.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BoxedwineAutomationSlow.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1A80F2E1276EBF170032A70A /* BoxedwineAutomation.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BoxedwineAutomation.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1A80F2F6276EBFF40032A70A /* BoxedwineX64-Automation.entitlements */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.entitlements; path = "BoxedwineX64-Automation.entitlements"; sourceTree = "<group>"; };
@@ -1955,6 +2027,26 @@
 		1A1550FE263261BF006E0C8A /* zlib */ = {
 			isa = PBXGroup;
 			children = (
+				1A55D6672A0842E8002B7021 /* trees.c */,
+				1A55D6492A08428F002B7021 /* adler32.c */,
+				1A55D6462A08428F002B7021 /* compress.c */,
+				1A55D6422A08428F002B7021 /* crc32.c */,
+				1A55D6472A08428F002B7021 /* crc32.h */,
+				1A55D6412A08428E002B7021 /* deflate.c */,
+				1A55D6442A08428F002B7021 /* deflate.h */,
+				1A55D6432A08428F002B7021 /* gzclose.c */,
+				1A55D6482A08428F002B7021 /* uncompr.c */,
+				1A55D6452A08428F002B7021 /* zutil.c */,
+				1A55D64A2A08428F002B7021 /* zutil.h */,
+				1A55D62A2A0841E2002B7021 /* infback.c */,
+				1A55D6272A0841E2002B7021 /* inffast.c */,
+				1A55D6262A0841E2002B7021 /* inffast.h */,
+				1A55D62C2A0841E2002B7021 /* inffixed.h */,
+				1A55D6242A0841E1002B7021 /* inflate.c */,
+				1A55D6292A0841E2002B7021 /* inflate.h */,
+				1A55D6282A0841E2002B7021 /* inftrees.c */,
+				1A55D62B2A0841E2002B7021 /* inftrees.h */,
+				1A55D6252A0841E1002B7021 /* make_vms.com */,
 				1A155100263261DF006E0C8A /* ioapi.c */,
 				1A1550FF263261DF006E0C8A /* mztools.c */,
 				1A155102263261DF006E0C8A /* unzip.c */,
@@ -3013,6 +3105,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				1A80F086276EBCC70032A70A /* Assets.xcassets in Resources */,
+				1A55D6332A0841E2002B7021 /* make_vms.com in Resources */,
 				1A80F087276EBCC70032A70A /* Media.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -3022,6 +3115,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				1A80F2D3276EBF170032A70A /* Assets.xcassets in Resources */,
+				1A55D6342A0841E2002B7021 /* make_vms.com in Resources */,
 				1A80F2D4276EBF170032A70A /* Media.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -3040,6 +3134,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				71222C7B24351CBA00CDBABD /* Assets.xcassets in Resources */,
+				1A55D6322A0841E2002B7021 /* make_vms.com in Resources */,
 				715F8429244115580038F5A4 /* Media.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -3058,6 +3153,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				71FBFCB42433B817003F17F1 /* Assets.xcassets in Resources */,
+				1A55D6312A0841E2002B7021 /* make_vms.com in Resources */,
 				715F8428244115580038F5A4 /* Media.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -3079,6 +3175,7 @@
 				1A80EE5F276EBCC70032A70A /* kfilelock.cpp in Sources */,
 				1A80EE62276EBCC70032A70A /* waitDlg.cpp in Sources */,
 				1A80EE65276EBCC70032A70A /* kpoll.cpp in Sources */,
+				1A55D65D2A08428F002B7021 /* compress.c in Sources */,
 				1A80EE6B276EBCC70032A70A /* mainui.cpp in Sources */,
 				1A80EE6D276EBCC70032A70A /* common_other.cpp in Sources */,
 				1A80EE6E276EBCC70032A70A /* networkutils.cpp in Sources */,
@@ -3102,6 +3199,7 @@
 				1A80EEAB276EBCC70032A70A /* imgui_draw.cpp in Sources */,
 				1A80EEAD276EBCC70032A70A /* stringutil.cpp in Sources */,
 				1A80EEB3276EBCC70032A70A /* common_arith.cpp in Sources */,
+				1A55D6512A08428F002B7021 /* crc32.c in Sources */,
 				1A80EEB4276EBCC70032A70A /* cpuscalingmaxfreq.cpp in Sources */,
 				1A80EEB5276EBCC70032A70A /* platform.cpp in Sources */,
 				1A80EEB8276EBCC70032A70A /* cpumaxfreq.cpp in Sources */,
@@ -3152,7 +3250,9 @@
 				1A80EF32276EBCC70032A70A /* boxedwineData.cpp in Sources */,
 				1A80EF33276EBCC70032A70A /* knativesystem.cpp in Sources */,
 				1A80EF34276EBCC70032A70A /* boxedTranslation.cpp in Sources */,
+				1A55D6592A08428F002B7021 /* zutil.c in Sources */,
 				1A80EF36276EBCC70032A70A /* ksystem.cpp in Sources */,
+				1A55D62F2A0841E2002B7021 /* inflate.c in Sources */,
 				1A80EF39276EBCC70032A70A /* soft_native_page.cpp in Sources */,
 				1A80EF3A276EBCC70032A70A /* audiounit.cpp in Sources */,
 				1A80EF3C276EBCC70032A70A /* synchronization.cpp in Sources */,
@@ -3170,9 +3270,12 @@
 				1A80EF55276EBCC70032A70A /* platformThreads-x64.cpp in Sources */,
 				1A80EF56276EBCC70032A70A /* knativesocket.cpp in Sources */,
 				1A80EF57276EBCC70032A70A /* soft_code_page.cpp in Sources */,
+				1A55D64D2A08428F002B7021 /* deflate.c in Sources */,
 				1A80EF58276EBCC70032A70A /* osmesa.cpp in Sources */,
 				1A80EF59276EBCC70032A70A /* boxedTexture.cpp in Sources */,
+				1A55D63F2A0841E2002B7021 /* infback.c in Sources */,
 				1A80EF5B276EBCC70032A70A /* containersView.cpp in Sources */,
+				1A55D63B2A0841E2002B7021 /* inftrees.c in Sources */,
 				1AC5F2EF2772D957001D0FCA /* armv8btOps_bits.cpp in Sources */,
 				1A80EF60276EBCC70032A70A /* cpu.cpp in Sources */,
 				1A80EF61276EBCC70032A70A /* imgui_impl_opengl3.cpp in Sources */,
@@ -3192,7 +3295,9 @@
 				1AC5F2B92772D957001D0FCA /* armv8btOps_sse_minmax.cpp in Sources */,
 				1A80EF81276EBCC70032A70A /* knativecoreaudio.cpp in Sources */,
 				1A80EF82276EBCC70032A70A /* boxedwineGL.cpp in Sources */,
+				1A55D6552A08428F002B7021 /* gzclose.c in Sources */,
 				1A80EF87276EBCC70032A70A /* fszipopennode.cpp in Sources */,
+				1A55D6612A08428F002B7021 /* uncompr.c in Sources */,
 				1A80EF8D276EBCC70032A70A /* fsopennode.cpp in Sources */,
 				1A80EF8F276EBCC70032A70A /* x64Data.cpp in Sources */,
 				1AC5F2CB2772D957001D0FCA /* armv8btOps_mmx.cpp in Sources */,
@@ -3214,6 +3319,7 @@
 				1AC5F2C52772D957001D0FCA /* armv8btOps_shift.cpp in Sources */,
 				1A80EFB8276EBCC70032A70A /* knativesynchronization.cpp in Sources */,
 				1A80EFBB276EBCC70032A70A /* baseView.cpp in Sources */,
+				1A55D6652A08428F002B7021 /* adler32.c in Sources */,
 				1A80EFC3276EBCC70032A70A /* soft_memory.cpp in Sources */,
 				1A80EFC4276EBCC70032A70A /* mainloop.cpp in Sources */,
 				1A80EFC8276EBCC70032A70A /* instructions.cpp in Sources */,
@@ -3233,6 +3339,7 @@
 				1A80F00A276EBCC70032A70A /* appChooserDlg.cpp in Sources */,
 				1A80F00D276EBCC70032A70A /* coremidi.cpp in Sources */,
 				1A80F00E276EBCC70032A70A /* kfiledescriptor.cpp in Sources */,
+				1A55D6372A0841E2002B7021 /* inffast.c in Sources */,
 				1A80F011276EBCC70032A70A /* wineaudiodrv.cpp in Sources */,
 				1A80F013276EBCC70032A70A /* soft_wo_page.cpp in Sources */,
 				1A80F014276EBCC70032A70A /* esopengl.c in Sources */,
@@ -3253,6 +3360,7 @@
 				1A80F030276EBCC70032A70A /* fileutils.cpp in Sources */,
 				1A80F034276EBCC70032A70A /* loader.cpp in Sources */,
 				1A80F039276EBCC70032A70A /* glMarshalVertex.cpp in Sources */,
+				1A55D66A2A0842E8002B7021 /* trees.c in Sources */,
 				1A80F041276EBCC70032A70A /* boxedApp.cpp in Sources */,
 				1AC96019278FB69600107ED0 /* vk_host.cpp in Sources */,
 				1A80F048276EBCC70032A70A /* soft_invalid_page.cpp in Sources */,
@@ -3307,6 +3415,7 @@
 				1A80F0DC276EBF170032A70A /* kdspaudio.cpp in Sources */,
 				1A80F0DF276EBF170032A70A /* boxedwineGL.cpp in Sources */,
 				1A80F0E4276EBF170032A70A /* fszip.cpp in Sources */,
+				1A55D64E2A08428F002B7021 /* deflate.c in Sources */,
 				1A80F0E7276EBF170032A70A /* devzero.cpp in Sources */,
 				1A80F0E8276EBF170032A70A /* common_xchg.cpp in Sources */,
 				1A80F0E9276EBF170032A70A /* x64CPU.cpp in Sources */,
@@ -3357,6 +3466,7 @@
 				1A80F166276EBF170032A70A /* threadutils.cpp in Sources */,
 				1A80F168276EBF170032A70A /* testSSE.cpp in Sources */,
 				1A80F16C276EBF170032A70A /* soft_ro_page.cpp in Sources */,
+				1A55D6622A08428F002B7021 /* uncompr.c in Sources */,
 				1A80F172276EBF170032A70A /* MacPlatform.m in Sources */,
 				1A80F176276EBF170032A70A /* platform.cpp in Sources */,
 				1A80F179276EBF170032A70A /* glMarshal.cpp in Sources */,
@@ -3367,6 +3477,7 @@
 				1A80F17E276EBF170032A70A /* boxedTranslation.cpp in Sources */,
 				1A80F180276EBF170032A70A /* ksystem.cpp in Sources */,
 				1A80F183276EBF170032A70A /* soft_native_page.cpp in Sources */,
+				1A55D65A2A08428F002B7021 /* zutil.c in Sources */,
 				1A80F185276EBF170032A70A /* (null) in Sources */,
 				1A80F186276EBF170032A70A /* synchronization.cpp in Sources */,
 				1A80F187276EBF170032A70A /* audiounit.cpp in Sources */,
@@ -3384,6 +3495,7 @@
 				1AC5F2C02772D957001D0FCA /* armv8btData.cpp in Sources */,
 				1A80F1A1276EBF170032A70A /* knativesocket.cpp in Sources */,
 				1A80F1A2276EBF170032A70A /* pixelformat.cpp in Sources */,
+				1A55D6562A08428F002B7021 /* gzclose.c in Sources */,
 				1A80F1A3276EBF170032A70A /* soft_code_page.cpp in Sources */,
 				1A80F1A4276EBF170032A70A /* boxedTexture.cpp in Sources */,
 				1A80F1A6276EBF170032A70A /* containersView.cpp in Sources */,
@@ -3396,8 +3508,10 @@
 				1A80F1B3276EBF170032A70A /* common_mmx.cpp in Sources */,
 				1A80F1B6276EBF170032A70A /* recorder.cpp in Sources */,
 				1A80F1B8276EBF170032A70A /* testMMX.cpp in Sources */,
+				1A55D6302A0841E2002B7021 /* inflate.c in Sources */,
 				1A80F1BF276EBF170032A70A /* threadedMainloop.cpp in Sources */,
 				1A80F1C2276EBF170032A70A /* bufferaccess.cpp in Sources */,
+				1A55D63C2A0841E2002B7021 /* inftrees.c in Sources */,
 				1A80F1C3276EBF170032A70A /* uiSettings.cpp in Sources */,
 				1A80F1CA276EBF170032A70A /* devtty.cpp in Sources */,
 				1A80F1CF276EBF170032A70A /* fszipopennode.cpp in Sources */,
@@ -3406,12 +3520,16 @@
 				1A80F1D6276EBF170032A70A /* fsopennode.cpp in Sources */,
 				1A80F1D8276EBF170032A70A /* x64Data.cpp in Sources */,
 				1A80F1D9276EBF170032A70A /* yesNoDlg.cpp in Sources */,
+				1A55D6402A0841E2002B7021 /* infback.c in Sources */,
 				1A80F1DC276EBF170032A70A /* fsfilenode.cpp in Sources */,
 				1A80F1DD276EBF170032A70A /* player.cpp in Sources */,
 				1A80F1E0276EBF170032A70A /* normal_strings.cpp in Sources */,
 				1A80F1E1276EBF170032A70A /* ksignal.cpp in Sources */,
+				1A55D66B2A0842E8002B7021 /* trees.c in Sources */,
 				1A80F1E2276EBF170032A70A /* knativesystem.cpp in Sources */,
 				1A80F1E3276EBF170032A70A /* common_bit.cpp in Sources */,
+				1A55D6382A0841E2002B7021 /* inffast.c in Sources */,
+				1A55D6522A08428F002B7021 /* crc32.c in Sources */,
 				1A80F1E4276EBF170032A70A /* unzipDlg.cpp in Sources */,
 				1A80F1E6276EBF170032A70A /* knativecoreaudio.cpp in Sources */,
 				1A80F1E9276EBF170032A70A /* knativeaudio.cpp in Sources */,
@@ -3471,6 +3589,7 @@
 				1A80F290276EBF170032A70A /* boxedApp.cpp in Sources */,
 				1A80F297276EBF170032A70A /* soft_invalid_page.cpp in Sources */,
 				1A80F298276EBF170032A70A /* lazyFlags.cpp in Sources */,
+				1A55D65E2A08428F002B7021 /* compress.c in Sources */,
 				1A80F299276EBF170032A70A /* normal_shift.cpp in Sources */,
 				1A80F29A276EBF170032A70A /* platformhelper.cpp in Sources */,
 				1A80F2A1276EBF170032A70A /* crc.cpp in Sources */,
@@ -3484,6 +3603,7 @@
 				1A80F2C0276EBF170032A70A /* soft_ram.cpp in Sources */,
 				1A80F2C1276EBF170032A70A /* srcgen.cpp in Sources */,
 				1A80F2C2276EBF170032A70A /* helpView.cpp in Sources */,
+				1A55D6662A08428F002B7021 /* adler32.c in Sources */,
 				1A80F2C3276EBF170032A70A /* fsvirtualnode.cpp in Sources */,
 				1AC5F2DE2772D957001D0FCA /* arm8btFlags.cpp in Sources */,
 			);
@@ -3664,6 +3784,7 @@
 				71222BD324351CBA00CDBABD /* kpoll.cpp in Sources */,
 				71222BD524351CBA00CDBABD /* mainui.cpp in Sources */,
 				71222BD624351CBA00CDBABD /* common_other.cpp in Sources */,
+				1A55D65C2A08428F002B7021 /* compress.c in Sources */,
 				715F34932440D7FC0038F5A4 /* networkutils.cpp in Sources */,
 				71222BD724351CBA00CDBABD /* devfb.cpp in Sources */,
 				71222BD824351CBA00CDBABD /* esdisplaylist.c in Sources */,
@@ -3687,6 +3808,7 @@
 				71222BE824351CBA00CDBABD /* imgui_draw.cpp in Sources */,
 				71222BE924351CBA00CDBABD /* stringutil.cpp in Sources */,
 				71222BEA24351CBA00CDBABD /* common_arith.cpp in Sources */,
+				1A55D6502A08428F002B7021 /* crc32.c in Sources */,
 				71222BEB24351CBA00CDBABD /* cpuscalingmaxfreq.cpp in Sources */,
 				7100915B2644D44E003413C3 /* memory64.cpp in Sources */,
 				71222BEC24351CBA00CDBABD /* cpumaxfreq.cpp in Sources */,
@@ -3737,7 +3859,9 @@
 				71222C1124351CBA00CDBABD /* boxedwineData.cpp in Sources */,
 				71222C1324351CBA00CDBABD /* boxedTranslation.cpp in Sources */,
 				71222C1424351CBA00CDBABD /* ksystem.cpp in Sources */,
+				1A55D6582A08428F002B7021 /* zutil.c in Sources */,
 				71222C1524351CBA00CDBABD /* soft_native_page.cpp in Sources */,
+				1A55D62E2A0841E2002B7021 /* inflate.c in Sources */,
 				71222C1624351CBA00CDBABD /* synchronization.cpp in Sources */,
 				1AFC479E2648471000EE5FCC /* audiounit.cpp in Sources */,
 				71222C1724351CBA00CDBABD /* menubar.cpp in Sources */,
@@ -3755,9 +3879,12 @@
 				71222C1E24351CBA00CDBABD /* knativesocket.cpp in Sources */,
 				1AFC480B2663FFC000EE5FCC /* pixelformat.cpp in Sources */,
 				71222C1F24351CBA00CDBABD /* soft_code_page.cpp in Sources */,
+				1A55D64C2A08428F002B7021 /* deflate.c in Sources */,
 				711F834A24527273008E6A0C /* boxedTexture.cpp in Sources */,
 				71222C2024351CBA00CDBABD /* containersView.cpp in Sources */,
+				1A55D63E2A0841E2002B7021 /* infback.c in Sources */,
 				1AC5F2EE2772D957001D0FCA /* armv8btOps_bits.cpp in Sources */,
+				1A55D63A2A0841E2002B7021 /* inftrees.c in Sources */,
 				71222C2224351CBA00CDBABD /* cpu.cpp in Sources */,
 				71222C2324351CBA00CDBABD /* imgui_impl_opengl3.cpp in Sources */,
 				71222C2424351CBA00CDBABD /* kthread.cpp in Sources */,
@@ -3777,7 +3904,9 @@
 				1AB0D6DD26CB4AA800E18A08 /* fsdynamiclinknode.cpp in Sources */,
 				71222C3024351CBA00CDBABD /* fsopennode.cpp in Sources */,
 				71222C3224351CBA00CDBABD /* x64Data.cpp in Sources */,
+				1A55D6542A08428F002B7021 /* gzclose.c in Sources */,
 				715F34832440D7D10038F5A4 /* yesNoDlg.cpp in Sources */,
+				1A55D6602A08428F002B7021 /* uncompr.c in Sources */,
 				1AC5F2CA2772D957001D0FCA /* armv8btOps_mmx.cpp in Sources */,
 				71222C3324351CBA00CDBABD /* fsfilenode.cpp in Sources */,
 				71222C3424351CBA00CDBABD /* player.cpp in Sources */,
@@ -3799,6 +3928,7 @@
 				715F34892440D7D20038F5A4 /* baseView.cpp in Sources */,
 				71222C4024351CBA00CDBABD /* soft_memory.cpp in Sources */,
 				71222C4124351CBA00CDBABD /* mainloop.cpp in Sources */,
+				1A55D6642A08428F002B7021 /* adler32.c in Sources */,
 				1A9193372551B6D3005A798A /* btCodeMemoryWrite.cpp in Sources */,
 				71222C4224351CBA00CDBABD /* instructions.cpp in Sources */,
 				710091402644D42C003413C3 /* knativewindow.cpp in Sources */,
@@ -3818,6 +3948,7 @@
 				1A155113263261E7006E0C8A /* unzip.c in Sources */,
 				71222C5024351CBA00CDBABD /* soft_ondemand_page.cpp in Sources */,
 				71222C5124351CBA00CDBABD /* appChooserDlg.cpp in Sources */,
+				1A55D6362A0841E2002B7021 /* inffast.c in Sources */,
 				71222C5224351CBA00CDBABD /* kfiledescriptor.cpp in Sources */,
 				71222C5324351CBA00CDBABD /* soft_wo_page.cpp in Sources */,
 				71222C5424351CBA00CDBABD /* esopengl.c in Sources */,
@@ -3838,6 +3969,7 @@
 				1AFC476F26409EBB00EE5FCC /* llvm_helper.cpp in Sources */,
 				71222C5E24351CBA00CDBABD /* fsnode.cpp in Sources */,
 				71222C6024351CBA00CDBABD /* fileutils.cpp in Sources */,
+				1A55D6692A0842E8002B7021 /* trees.c in Sources */,
 				71222C6124351CBA00CDBABD /* loader.cpp in Sources */,
 				71222C6224351CBA00CDBABD /* glMarshalVertex.cpp in Sources */,
 				1AC96018278FB69600107ED0 /* vk_host.cpp in Sources */,
@@ -4042,8 +4174,10 @@
 				71FBFE882433BBBE003F17F1 /* common_other.cpp in Sources */,
 				715F34922440D7FC0038F5A4 /* networkutils.cpp in Sources */,
 				1AC5F2DB2772D957001D0FCA /* arm8btFlags.cpp in Sources */,
+				1A55D62D2A0841E2002B7021 /* inflate.c in Sources */,
 				71FBFEC62433BBBE003F17F1 /* devfb.cpp in Sources */,
 				71FBFEE42433BBBE003F17F1 /* esdisplaylist.c in Sources */,
+				1A55D6352A0841E2002B7021 /* inffast.c in Sources */,
 				71FBFE8F2433BBBE003F17F1 /* decoder.cpp in Sources */,
 				710091422644D42C003413C3 /* kdspaudio.cpp in Sources */,
 				71FBFE742433BBBE003F17F1 /* testCPU.cpp in Sources */,
@@ -4064,8 +4198,10 @@
 				712228F82433EE5400CDBABD /* imgui_draw.cpp in Sources */,
 				71FBFE7B2433BBBE003F17F1 /* stringutil.cpp in Sources */,
 				71FBFE852433BBBE003F17F1 /* common_arith.cpp in Sources */,
+				1A55D6532A08428F002B7021 /* gzclose.c in Sources */,
 				71FBFED22433BBBE003F17F1 /* cpuscalingmaxfreq.cpp in Sources */,
 				7100915D2644D44E003413C3 /* platform.cpp in Sources */,
+				1A55D6392A0841E2002B7021 /* inftrees.c in Sources */,
 				71FBFED12433BBBE003F17F1 /* cpumaxfreq.cpp in Sources */,
 				1A155103263261DF006E0C8A /* mztools.c in Sources */,
 				712228F42433EE5400CDBABD /* imgui_impl_sdl.cpp in Sources */,
@@ -4082,6 +4218,7 @@
 				71FBFED92433BBBE003F17F1 /* kscheduler.cpp in Sources */,
 				71FBFE892433BBBE003F17F1 /* common_sse2.cpp in Sources */,
 				71FBFE7D2433BBBE003F17F1 /* x64CodeChunk.cpp in Sources */,
+				1A55D65F2A08428F002B7021 /* uncompr.c in Sources */,
 				1AC5F2C32772D957001D0FCA /* armv8btOps_shift.cpp in Sources */,
 				71FBFED72433BBBE003F17F1 /* kobject.cpp in Sources */,
 				71FBFECA2433BBBE003F17F1 /* kfile.cpp in Sources */,
@@ -4091,6 +4228,7 @@
 				7122287E2433EE5300CDBABD /* imgui_widgets.cpp in Sources */,
 				71205456244D01B300C3CB1B /* ImGuiLayout.cpp in Sources */,
 				71FBFEDE2433BBBE003F17F1 /* glfunctions_ext2.cpp in Sources */,
+				1A55D6632A08428F002B7021 /* adler32.c in Sources */,
 				71FBFEDF2433BBBE003F17F1 /* glcommon.cpp in Sources */,
 				710091602644D44E003413C3 /* platformThreads.cpp in Sources */,
 				71FBFECE2433BBBE003F17F1 /* kmemory.cpp in Sources */,
@@ -4110,6 +4248,8 @@
 				1AC5F2F32772D957001D0FCA /* armv8btCPU.cpp in Sources */,
 				7100913F2644D42C003413C3 /* knativewindow.cpp in Sources */,
 				71FBFEE32433BBBE003F17F1 /* glMarshal.cpp in Sources */,
+				1A55D64F2A08428F002B7021 /* crc32.c in Sources */,
+				1A55D65B2A08428F002B7021 /* compress.c in Sources */,
 				71FBFECF2433BBBE003F17F1 /* cpuonline.cpp in Sources */,
 				71FBFE7F2433BBBE003F17F1 /* x64Asm.cpp in Sources */,
 				71FBFE6D2433BBBE003F17F1 /* boxedwineData.cpp in Sources */,
@@ -4119,6 +4259,7 @@
 				71FBFE9E2433BBBE003F17F1 /* soft_native_page.cpp in Sources */,
 				1AFC479D2648471000EE5FCC /* audiounit.cpp in Sources */,
 				71FBFE792433BBBE003F17F1 /* synchronization.cpp in Sources */,
+				1A55D6682A0842E8002B7021 /* trees.c in Sources */,
 				71FBFE642433BBBE003F17F1 /* menubar.cpp in Sources */,
 				71FBFE832433BBBE003F17F1 /* common_pushpop.cpp in Sources */,
 				71FBFECB2433BBBE003F17F1 /* syscall.cpp in Sources */,
@@ -4137,6 +4278,7 @@
 				71FBFE6A2433BBBE003F17F1 /* containersView.cpp in Sources */,
 				71FBFE8D2433BBBE003F17F1 /* cpu.cpp in Sources */,
 				712228CE2433EE5300CDBABD /* imgui_impl_opengl3.cpp in Sources */,
+				1A55D6572A08428F002B7021 /* zutil.c in Sources */,
 				71FBFED32433BBBE003F17F1 /* kthread.cpp in Sources */,
 				71FBFEBD2433BBBE003F17F1 /* kunixsocket.cpp in Sources */,
 				71FBFEA12433BBBE003F17F1 /* hard_memory.cpp in Sources */,
@@ -4159,6 +4301,7 @@
 				1AC5F2E12772D957001D0FCA /* armv8btOps.cpp in Sources */,
 				715F34822440D7D10038F5A4 /* yesNoDlg.cpp in Sources */,
 				71FBFEA82433BBBE003F17F1 /* fsfilenode.cpp in Sources */,
+				1A55D63D2A0841E2002B7021 /* infback.c in Sources */,
 				71FBFE782433BBBE003F17F1 /* player.cpp in Sources */,
 				71FBFE932433BBBE003F17F1 /* normal_strings.cpp in Sources */,
 				71FBFEBC2433BBBE003F17F1 /* ksignal.cpp in Sources */,
@@ -4175,6 +4318,7 @@
 				71FBFEA02433BBBE003F17F1 /* soft_rw_page.cpp in Sources */,
 				7100913C2644D42C003413C3 /* knativesynchronization.cpp in Sources */,
 				715F34882440D7D20038F5A4 /* baseView.cpp in Sources */,
+				1A55D64B2A08428F002B7021 /* deflate.c in Sources */,
 				71FBFE952433BBBE003F17F1 /* soft_memory.cpp in Sources */,
 				71FBFEB42433BBBE003F17F1 /* mainloop.cpp in Sources */,
 				71FBFE922433BBBE003F17F1 /* instructions.cpp in Sources */,
