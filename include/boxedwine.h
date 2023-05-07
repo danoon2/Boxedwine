@@ -1,7 +1,7 @@
 #ifndef __BOXEDWINE_H__
 #define __BOXEDWINE_H__
 
-#define BOXEDWINE_VERSION_STR "222"
+#define BOXEDWINE_VERSION_STR "231"
 #define BOXEDWINE_VERSION_DISPLAY "23.0.2 (beta)"
 
 #include <string>
