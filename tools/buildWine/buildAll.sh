@@ -5,6 +5,7 @@
 #And copied include/soundcard.h to /usr/lib/oss/include/sys/soundcard.h
 
 set -e
+ARG1=${1:-main}
 if [ ! -d wine-git ]
 then
   git clone git://source.winehq.org/git/wine.git wine-git
@@ -122,7 +123,7 @@ do_build()
       echo "" > dlls/winex11.drv/unixlib.h
     fi
     ./configure LDFLAGS="-s" CFLAGS="-O2 -msse2 -march=pentium4 -mfpmath=sse $EXTRA" --without-cups --without-pulse --without-dbus --without-sane --without-hal --prefix=/opt/wine --disable-tests $EXTRA_ARGS
-    make -j16
+    make -j$(getconf _NPROCESSORS_ONLN)
     #todo find another way to achieve what I want without using sudo
     sudo rm -rf /opt/wine
     sudo make install
@@ -150,6 +151,7 @@ do_build()
     printf "Wine $VERSION" > wineVersion.txt
     printf "debian10.zip" > depends.txt
     cp ../changes.txt changes.txt
+    cp ../version.txt version.txt
     echo "git checkout wine-$VERSION" > build.txt
     if [[ $REVERTS != "" ]]
     then
@@ -159,9 +161,9 @@ do_build()
     then
       echo "Patched: $PATCHES" >> build.txt
     fi
-    echo './configure CFLAGS="-O2 -msse2 -march=pentium4 -mfpmath=sse $EXTRA" --without-pulse --without-dbus --without-sane --without-hal --prefix=/opt/wine --disable-tests' >> build.txt
-    echo "make -j4" >> build.txt
-    zip -r ../wine-$VERSION.zip *
+    echo './configure CFLAGS="-O2 -msse2 -march=pentium4 -mfpmath=sse $EXTRA" --without-cups --without-pulse --without-dbus --without-sane --without-hal --prefix=/opt/wine --disable-tests $EXTRA_ARGS' >> build.txt
+    echo "make " >> build.txt
+    zip -r ../Wine-$VERSION.zip *
     cd ../wine-git
     make clean
     rm -rf ../tmp_install
@@ -179,6 +181,14 @@ then
 # f2e5b8070776268912e1886d4516d7ddec6969fc
 # kernel32: Use the Get/SetComputerName functions from kernelbase. 
 # reverted because on slower systems it will fail to create a window, not sure why
+  if [[ $ARG1 != "all" ]]
+  then
+    do_build 7.0 7000 patch ddraw_waitvblank.patch
+    do_build 6.0 6000 patch ddraw_waitvblank.patch
+    do_build 5.0 5000 patch ddraw_waitvblank.patch patch wine5-lz.patch revert f2e5b8070776268912e1886d4516d7ddec6969fc
+    do_build 4.1 4010 patch ddraw_waitvblank.patch
+    do_build 3.1 3010 patch ddraw_waitvblank.patch
+  else
     do_build 8.2 8020
     do_build 8.1 8010
     do_build 8.0 8000
@@ -232,6 +242,7 @@ then
     do_build 5.0 5000 patch ddraw_waitvblank.patch patch wine5-lz.patch revert f2e5b8070776268912e1886d4516d7ddec6969fc
     do_build 4.1 4010 patch ddraw_waitvblank.patch
     do_build 3.1 3010 patch ddraw_waitvblank.patch
+  fi
 else
     do_build 2.0 wglext patch ddraw_waitvblank.patch
 
