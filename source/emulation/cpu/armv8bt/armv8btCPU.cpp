@@ -379,7 +379,7 @@ void Armv8btCPU::link(Armv8btAsm* data, std::shared_ptr<BtCodeChunk>& fromChunk,
 
 void Armv8btCPU::markCodePageReadOnly(Armv8btAsm* data) {
     U32 pageStart = (data->startOfDataIp+this->seg[CS].address) >> K_PAGE_SHIFT;
-    U32 pageEnd = (data->startOfDataIp+this->seg[CS].address) >> K_PAGE_SHIFT;
+    U32 pageEnd = (data->startOfDataIp+this->seg[CS].address-1) >> K_PAGE_SHIFT;
     S32 pageCount = pageEnd-pageStart+1;
 
 #ifndef __TEST
@@ -439,7 +439,7 @@ void Armv8btCPU::translateData(Armv8btAsm* data, Armv8btAsm* firstPass) {
     Memory* memory = data->cpu->thread->memory;
 
     U32 codePage = (data->ip+data->cpu->seg[CS].address) >> K_PAGE_SHIFT;
-    if (this->thread->memory->dynamicCodePageUpdateCount[codePage]==MAX_DYNAMIC_CODE_PAGE_COUNT) {
+    if (memory->dynamicCodePageUpdateCount[codePage]==MAX_DYNAMIC_CODE_PAGE_COUNT) {
         data->dynamic = true;
     }
     DecodedBlock block;
@@ -448,7 +448,7 @@ void Armv8btCPU::translateData(Armv8btAsm* data, Armv8btAsm* firstPass) {
     DecodedOp* op = block.op;
     while (op) {  
         U32 address = data->cpu->seg[CS].address+data->ip;
-        void* hostAddress = this->thread->memory->getExistingHostAddress(address);
+        void* hostAddress = memory->getExistingHostAddress(address);
         if (hostAddress) {
             data->jumpTo(data->ip);
             break;
@@ -460,13 +460,13 @@ void Armv8btCPU::translateData(Armv8btAsm* data, Armv8btAsm* firstPass) {
             if (page!=codePage) {
                 codePage = page;
                 if (data->dynamic) {                    
-                    if (this->thread->memory->dynamicCodePageUpdateCount[codePage] == MAX_DYNAMIC_CODE_PAGE_COUNT) {
+                    if (memory->dynamicCodePageUpdateCount[codePage] == MAX_DYNAMIC_CODE_PAGE_COUNT) {
                         // continue to cross from my dynamic page into another dynamic page
                     } else {
                         // we will continue to emit code that will self check for modified code, even though the page we spill into is not dynamic
                     }
                 } else {
-                    if (this->thread->memory->dynamicCodePageUpdateCount[codePage] == MAX_DYNAMIC_CODE_PAGE_COUNT) {
+                    if (memory->dynamicCodePageUpdateCount[codePage] == MAX_DYNAMIC_CODE_PAGE_COUNT) {
                         // we crossed a page boundry from a non dynamic page to a dynamic page
                         data->dynamic = true; // the instructions from this point on will do their own check
                     } else {
@@ -479,7 +479,6 @@ void Armv8btCPU::translateData(Armv8btAsm* data, Armv8btAsm* firstPass) {
         if (firstPass && firstPass->fpuTopRegSet && !data->fpuOffsetRegSet) {
             data->getFpuTopReg();
         }
-        U32 page = address >> K_PAGE_SHIFT;
         data->decodedOp = op;
         translateInstruction(data, firstPass);
         op = op->next;
@@ -522,6 +521,37 @@ DecodedOp* Armv8btCPU::getOp(U32 eip, bool existing) {
     return NULL;
 }
 
+U64 Armv8btCPU::getIpFromEip() {
+    U32 a = this->getEipAddress();
+    U64 result = (U64)this->thread->memory->getExistingHostAddress(a);
+    if (!result) {
+        this->translateEip(this->eip.u32);
+        result = (U64)this->thread->memory->getExistingHostAddress(a);
+    }
+    if (result == 0) {
+        kpanic("Armv8btCPU::getIpFromEip failed to translate code");
+    }
+    return result;
+}
+
+bool Armv8btCPU::isStringOp(DecodedOp* op) {
+    if (op->inst == Lodsb || op->inst == Lodsw || op->inst == Lodsd) {
+        return true;
+    }
+    // uses di (Examples: diablo 1 will trigger this in the middle of the Stosd when creating a new game)
+    else if (op->inst == Stosb || op->inst == Stosw || op->inst == Stosd ||
+        op->inst == Scasb || op->inst == Scasw || op->inst == Scasd) {
+        return true;
+    }
+    // uses si and di
+    else if (op->inst == Movsb || op->inst == Movsw || op->inst == Movsd ||
+        op->inst == Cmpsb || op->inst == Cmpsw || op->inst == Cmpsd) {
+
+        return true;
+    }
+    return false;
+}
+
 U64 Armv8btCPU::handleCodePatch(U64 rip, U32 address) {
 #ifndef __TEST
     // only one thread at a time can update the host code pages and related date like opToAddressPages
@@ -534,59 +564,32 @@ U64 Armv8btCPU::handleCodePatch(U64 rip, U32 address) {
     // get the emulated op that caused the write
     DecodedOp* op = this->getOp(this->eip.u32, true);
     if (op) {             
-        // change permission of the page so that we can write to it
-        U32 len = instructionInfo[op->inst].writeMemWidth/8;
-        BtCodeMemoryWrite w(this);
-        static DecodedBlock b;
-        DecodedBlock::currentBlock = &b;
-        b.next1 = &b;
-        b.next2 = &b;
-        // do the write
-        op->pfn = NormalCPU::getFunctionForOp(op);
-        op->next = DecodedOp::alloc();
-        op->next->inst = Done;
-        op->next->pfn = NormalCPU::getFunctionForOp(op->next);
-
         if (this->flags & DF) {
             this->df = -1;
         } else {
             this->df = 1;
         }
-        // (Examples: diablo 1 will trigger this in the middle of the Stosd when creating a new game)
-        if (op->inst==Stosb || op->inst==Stosw || op->inst==Stosd ||
-            op->inst==Scasb || op->inst==Scasw || op->inst==Scasd || 
-            op->inst==Movsb || op->inst==Movsw || op->inst==Movsd) {
-            w.invalidateStringWriteToDi(op->repNotZero || op->repZero, instructionInfo[op->inst].writeMemWidth/8);
-        } else {
-            w.invalidateCode(address, len);
-        }  
-        // shared or mapped native memory
-        U32 page = address >> K_PAGE_SHIFT;
-        if (this->thread->memory->flags[page] & PAGE_MAPPED_HOST) {
-            this->thread->memory->setNeedsMemoryOffset(this->eip.u32);
-            // won't trigger retranslate the first time through, that way we will minimize the number of retranslates for the chunk 
-            // since we will go through most of the chunk at least once before the retranslate
-            if (this->thread->memory->doesInstructionNeedMemoryOffset(this->eip.u32)) {
-                chunk->releaseAndRetranslate();
+        U32 addressStart = address;
+        U32 len = instructionInfo[op->inst].writeMemWidth / 8;
+
+        // Fix string will set EDI and ESI back to their correct values so we can re-enter this instruction
+        if (isStringOp(op)) {
+            if (op->repNotZero || op->repZero) {
+                len = len * (isBig() ? THIS_ECX : THIS_CX);
+            }
+
+            if (this->df == 1) {
+                addressStart = (this->isBig() ? THIS_EDI : THIS_DI) + this->seg[ES].address;
+            } else {
+                addressStart = (this->isBig() ? THIS_EDI : THIS_DI) + this->seg[ES].address + (instructionInfo[op->inst].writeMemWidth / 8) - len;
             }
         }
-
-        FILE* f = (FILE*)this->logFile;
-        this->logFile = NULL;       
-        op->pfn(this, op);   
-        this->logFile = f;        
-
-        // eip was ajusted after running this instruction                        
-        U32 a = this->getEipAddress();
-        if (!this->thread->memory->getExistingHostAddress(a)) {
-            this->translateEip(this->eip.u32);
-        }
-        U64 result = (U64)this->thread->memory->getExistingHostAddress(a);
-        if (result==0) {
-            kpanic("Armv8btCPU::handleCodePatch failed to translate code");
-        }
+        Memory* memory = thread->memory;
+        U32 startPage = addressStart >> K_PAGE_SHIFT;
+        U32 endPage = (addressStart + len - 1) >> K_PAGE_SHIFT;
+        memory->clearHostCodeForWriting(memory->getNativePage(startPage), memory->getNativePage(endPage - startPage + 1));
         op->dealloc(true);
-        return result;
+        return getIpFromEip();
     } else {                        
         kpanic("Threw an exception from a host location that doesn't map to an emulated instruction");
     }
@@ -670,9 +673,39 @@ U32 dynamicCodeExceptionCount;
 #define JMP_OFFSET_EXCEPTION 0x38400131
 
 U64 Armv8btCPU::handleAccessException(U64 ip, U64 address, bool readAddress) {
+    if ((address & 0xFFFFFFFF00000000l) == this->thread->memory->id) {
+        U32 emulatedAddress = (U32)address;
+        U32 page = emulatedAddress >> K_PAGE_SHIFT;
+        Memory* m = this->thread->memory;
+        U32 flags = m->flags[page];
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->thread->memory->executableMemoryMutex);
+
+        std::shared_ptr<BtCodeChunk> chunk = m->getCodeChunkContainingHostAddress((void*)ip);
+        if (chunk) {
+            this->eip.u32 = chunk->getEipThatContainsHostAddress((void*)ip, NULL, NULL) - this->seg[CS].address;
+            // if the page we are trying to access needs a special memory offset and this instruction isn't flagged to looked at that special memory offset, then flag it
+            if ((flags & PAGE_MAPPED_HOST) && (((flags & PAGE_READ) && readAddress) || ((flags & PAGE_WRITE) && !readAddress))) {
+                m->setNeedsMemoryOffset(getEipAddress());
+                //DecodedOp* op = this->getOp(this->eip.u32, true);
+                //fixStringOp(op, getReg(6), getReg(7)); // if we were in the middle of a string op, then reset RSI and RDI so that we can re-enter the same op
+                chunk->releaseAndRetranslate();
+                return getIpFromEip();
+            }
+            else {
+                if (!readAddress && (flags & PAGE_WRITE) && !(this->thread->memory->nativeFlags[this->thread->memory->getNativePage(page)] & NATIVE_FLAG_CODEPAGE_READONLY)) {
+                    // :TODO: this is a hack, why is it necessary
+                    m->updatePagePermission(page, 1);
+                    return 0;
+                } else {
+                    int ii = 0;
+                }
+            }
+        }
+    }
+    
     U32 inst = *((U32*)ip);
 
-    if (inst == 0xf8400149) { // ldur x9, [x9]
+    if (inst == 0xf8400149 && thread->memory->isValidReadAddress(this->destEip, 1)) { // ldur x9, [x9]
         return (U64) this->translateEip(this->destEip - this->seg[CS].address);
     } else if (inst == JMP_OFFSET_EXCEPTION || inst == JMP_PAGE_EXCEPTION) {
         return this->handleMissingCode(this->regPage, this->regOffset, inst);
@@ -710,7 +743,6 @@ U64 Armv8btCPU::handleAccessException(U64 ip, U64 address, bool readAddress) {
         U32 emulatedAddress = (U32)address;
         U32 page = emulatedAddress >> K_PAGE_SHIFT;        
         Memory* m = this->thread->memory;
-        U64 offset = m->memOffsets[page];
         U32 nativeFlags = m->nativeFlags[m->getNativePage(page)];
         U32 flags = m->flags[page];
         if ((address & 0xFFFFFFFF00000000l) == this->thread->memory->id) {
@@ -777,8 +809,6 @@ extern U32 platformThreadCount;
 
 void Armv8btCPU::startThread() {
     jmp_buf jmpBuf;
-    U32 threadId = thread->id;
-    U32 processId = thread->process->id;
 
     KThread::setCurrentThread(thread);       
 
