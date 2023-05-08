@@ -227,6 +227,7 @@ void makeCodePageReadOnly(Memory* memory, U32 page) {
            kpanic("makeCodePageReadOnly mprotect failed: %s", strerror(errno));
         }
         memory->nativeFlags[page] |= NATIVE_FLAG_CODEPAGE_READONLY;
+        memory->nativeFlags[page] &= ~PROT_WRITE;
     }
 }
 
@@ -238,6 +239,7 @@ bool clearCodePageReadOnly(Memory* memory, U32 page) {
             kpanic("clearCodePageReadOnly mprotect failed: %s", strerror(errno));
         }
         memory->nativeFlags[page] &= ~NATIVE_FLAG_CODEPAGE_READONLY;
+        memory->nativeFlags[page] |= PROT_WRITE;
         result = true;
     }
     return result;

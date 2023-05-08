@@ -557,10 +557,17 @@ U64 Armv8btCPU::handleCodePatch(U64 rip, U32 address) {
     // only one thread at a time can update the host code pages and related date like opToAddressPages
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->thread->memory->executableMemoryMutex);
 #endif
+    Memory* memory = this->thread->memory;
+    U32 nativePage = memory->getNativePage(address >> K_PAGE_SHIFT);
     // get the emulated eip of the op that corresponds to the host address where the exception happened
-    std::shared_ptr<BtCodeChunk> chunk = this->thread->memory->getCodeChunkContainingHostAddress((void*)rip);
+    std::shared_ptr<BtCodeChunk> chunk = memory->getCodeChunkContainingHostAddress((void*)rip);
     this->eip.u32 = chunk->getEipThatContainsHostAddress((void*)rip, NULL, NULL)-this->seg[CS].address;
 
+    // make sure it wasn't changed before we got the executableMemoryMutex lock
+    if (!(memory->nativeFlags[nativePage] & NATIVE_FLAG_CODEPAGE_READONLY)) {
+        return getIpFromEip();
+    }
+    
     // get the emulated op that caused the write
     DecodedOp* op = this->getOp(this->eip.u32, true);
     if (op) {             
@@ -584,10 +591,9 @@ U64 Armv8btCPU::handleCodePatch(U64 rip, U32 address) {
                 addressStart = (this->isBig() ? THIS_EDI : THIS_DI) + this->seg[ES].address + (instructionInfo[op->inst].writeMemWidth / 8) - len;
             }
         }
-        Memory* memory = thread->memory;
         U32 startPage = addressStart >> K_PAGE_SHIFT;
         U32 endPage = (addressStart + len - 1) >> K_PAGE_SHIFT;
-        memory->clearHostCodeForWriting(memory->getNativePage(startPage), memory->getNativePage(endPage - startPage + 1));
+        memory->clearHostCodeForWriting(memory->getNativePage(startPage), memory->getNativePage(endPage - startPage) + 1);
         op->dealloc(true);
         return getIpFromEip();
     } else {                        
@@ -692,7 +698,8 @@ U64 Armv8btCPU::handleAccessException(U64 ip, U64 address, bool readAddress) {
                 return getIpFromEip();
             }
             else {
-                if (!readAddress && (flags & PAGE_WRITE) && !(this->thread->memory->nativeFlags[this->thread->memory->getNativePage(page)] & NATIVE_FLAG_CODEPAGE_READONLY)) {
+                U32 nativeFlags = this->thread->memory->nativeFlags[this->thread->memory->getNativePage(page)];
+                if (!readAddress && (flags & PAGE_WRITE) && !(nativeFlags & NATIVE_FLAG_CODEPAGE_READONLY)) {
                     // :TODO: this is a hack, why is it necessary
                     m->updatePagePermission(page, 1);
                     return 0;
