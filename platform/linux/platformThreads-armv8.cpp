@@ -116,13 +116,12 @@ void platformHandler(int sig, siginfo_t* info, void* vcontext) {
 
     syncFromException(armCpu, context);
 
-    // :TODO:
     cpu->exceptionReadAddress = true;
     
     cpu->exceptionAddress = (U64)info->si_addr;
     cpu->exceptionSigNo = info->si_signo;
     cpu->exceptionSigCode = info->si_code;
-    armCpu->exceptionIp = context->uc_mcontext->__ss.__pc;
+    armCpu->exceptionIp = context->CONTEXT_PC;
 
     if ((cpu->exceptionSigNo == SIGBUS || cpu->exceptionSigNo == SIGSEGV) && cpu->thread->memory->isAddressExecutable((void*)cpu->exceptionIp)) {
         U32 insn = *(U32*)(cpu->exceptionIp);
