@@ -810,9 +810,11 @@ void KNativeWindowSdl::displayChanged(KThread* thread) {
         if (!KSystem::showWindowImmediately) {
             flags |= SDL_WINDOW_HIDDEN;
         }
+#if !defined(BOXEDWINE_DISABLE_UI) && !defined(__TEST)
         else if (uiIsRunning()) {
             uiShutdown();
         }
+#endif
         if (this->needsVulkan) {
             flags |= SDL_WINDOW_VULKAN;
         }
