@@ -198,6 +198,9 @@ public:
     virtual std::shared_ptr<Wnd> createWnd(KThread* thread, U32 processId, U32 hwnd, U32 windowRect, U32 clientRect);
     virtual void bltWnd(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32 yOrg, U32 width, U32 height, U32 rect);
     virtual void drawWnd(KThread* thread, std::shared_ptr<Wnd> w, U8* bytes, U32 pitch, U32 bpp, U32 width, U32 height);
+#ifndef BOXEDWINE_MULTI_THREADED
+    virtual void flipFB();
+#endif
     virtual void setPrimarySurface(KThread* thread, U32 bits, U32 width, U32 height, U32 pitch, U32 flags, U32 palette);
     virtual void drawAllWindows(KThread* thread, U32 hWnd, int count);
     virtual void setTitle(const std::string& title);
@@ -1114,7 +1117,9 @@ void KNativeWindowSdl::setPrimarySurface(KThread* thread, U32 bits, U32 width, U
             primarySurface->thread = thread;            
         } else {
             primarySurface = new Boxed_Surface(this, thread, bits, width, height, pitch, flags);
+#ifdef BOXEDWINE_MULTI_THREADED
             SDL_CreateThread(sdl_start_thread, "AutoUpdateSurface", primarySurface);
+#endif
         }        
         if (flags & 0x20) { // palette
             memcopyToNative(palette, primarySurface->colors, 1024);
@@ -1206,6 +1211,14 @@ void KNativeWindowSdl::drawWnd(KThread* thread, std::shared_ptr<Wnd> w, U8* byte
     DISPATCH_MAIN_THREAD_BLOCK_END
 }
 
+#ifndef BOXEDWINE_MULTI_THREADED
+void KNativeWindowSdl::flipFB() {
+    if (primarySurface) {
+        primarySurface->screen->updatePrimarySurface(primarySurface->thread, primarySurface->bits, primarySurface->width, primarySurface->height, primarySurface->pitch, primarySurface->flags, primarySurface->colors);
+        primarySurface->screen->drawAllWindows(primarySurface->thread, 0, 0);
+    }
+}
+#endif
 void KNativeWindowSdl::setTitle(const std::string& title) {
     if (window)
         SDL_SetWindowTitle(window, title.c_str());
