@@ -280,6 +280,22 @@ bool KNativeWindowSdl::waitForEvent(U32 ms) {
 bool KNativeWindowSdl::processEvents() {
     SDL_Event e;
 
+#if !defined(BOXEDWINE_DISABLE_UI) && !defined(__TEST)
+    if (timeToHideUI && timeToHideUI < KSystem::getMilliesSinceStart()) {
+        if (uiIsRunning()) {
+            DISPATCH_MAIN_THREAD_BLOCK_BEGIN
+                if (uiIsRunning()) {
+                    uiShutdown();
+                }
+            DISPATCH_MAIN_THREAD_BLOCK_END
+        }
+        timeToHideUI = 0;
+        if (delayedCreateWindowMsg.length()) {
+            klog(delayedCreateWindowMsg.c_str());
+            delayedCreateWindowMsg = "";
+        }
+    }
+#endif
     if (isShutdownWindowIsOpen()) {
         updateShutdownWindow();
     }
@@ -437,23 +453,7 @@ void KNativeWindowSdl::destroyScreen(KThread* thread) {
     contextCount = 0;
 }
 
-void KNativeWindowSdl::preDrawWindow() {    
-#if !defined(BOXEDWINE_DISABLE_UI) && !defined(__TEST)
-    if (timeToHideUI && timeToHideUI < KSystem::getMilliesSinceStart()) {
-        if (uiIsRunning()) {
-            DISPATCH_MAIN_THREAD_BLOCK_BEGIN
-            if (uiIsRunning()) {
-                uiShutdown();
-            }
-            DISPATCH_MAIN_THREAD_BLOCK_END
-        }
-        timeToHideUI = 0;
-        if (delayedCreateWindowMsg.length()) {
-            klog(delayedCreateWindowMsg.c_str());
-            delayedCreateWindowMsg = "";
-        }
-    }
-#endif
+void KNativeWindowSdl::preDrawWindow() {  
     if (windowIsHidden) {
         int w = 0;
         int h = 0;
@@ -813,6 +813,11 @@ void KNativeWindowSdl::displayChanged(KThread* thread) {
         if (!KSystem::showWindowImmediately) {
             flags |= SDL_WINDOW_HIDDEN;
         }
+#if !defined(BOXEDWINE_DISABLE_UI) && !defined(__TEST)
+        else if (uiIsRunning()) {
+            uiShutdown();
+        }
+#endif
         if (this->needsVulkan) {
             flags |= SDL_WINDOW_VULKAN;
         }
