@@ -2234,6 +2234,7 @@ void Armv8btAsm::jumpTo(U32 eip) {
         // it is not possible to modify the executable code directly in an atomic way, so instead of embedding
         // where we will jump directly into the instruction, we will encode an instruction that reads the jump
         // address from memory (data).  That memory location can be atomically updated.
+        /*
         if (0) {
             // this can result in random crashes for dynamic code, Quake 2 will see this
             // b
@@ -2242,7 +2243,7 @@ void Armv8btAsm::jumpTo(U32 eip) {
             write8(0);
             write8(0x14);
             addTodoLinkJump(eip, 4, false);
-        } else {
+        } else */{
             loadConst(xBranch, eip);
             jmpReg(xBranch, false);
         }
@@ -2469,7 +2470,7 @@ void Armv8btAsm::doIf(U8 reg, U32 value, DoIfOperator op, std::function<void(voi
         afterCmpBeforeBranchBlock();
     }
     if (!elseBlock) {
-        U32 pos;
+        U32 pos = 0;
         if (op == DO_IF_EQUAL) {
             pos = branchNE();
         } else if (op == DO_IF_NOT_EQUAL) {
@@ -2572,7 +2573,7 @@ void Armv8btAsm::vMemMultiple(U8 dst, U8 base, U32 numberOfRegs, U8 thirdByte, b
     // ld1.16b{ v0, v1, v2, v3 }, [x0], x0
     // st1.16b{ v0, v1, v2, v3 }, [x0], x0
     write8(dst | (U8)(base << 5));
-    U8 regCount;
+    U8 regCount = 0;
     if (numberOfRegs == 2) {
         regCount = 0xa0;
     } else if (numberOfRegs == 3) {
@@ -2903,8 +2904,6 @@ void Armv8btAsm::vMov32ToScaler(U8 dst, U8 src, U32 srcIndex) {
 }
 
 void Armv8btAsm::vLoadConst(U8 dst, U64 value, VectorWidth width) {
-    int count = 16 / width;
-
     // movi v0.16b, 0
     if (width == B16) {
         write8(dst | (U8)(value << 5));
@@ -2986,7 +2985,7 @@ void Armv8btAsm::vExtractVectorFromPair(U8 dst, U8 src1, U8 src2, U32 startIndex
 void Armv8btAsm::vZipFromLow128(U8 dst, U8 src1, U8 src2, VectorWidth width) {    
     write8(dst | (U8)(src1 << 5));
     write8(0x38 | (U8)(src1 >> 3));
-    U8 type;
+
     if (width == B16) {
         // zip1 v0.16b, v0.16b, v0.16b
         write8(src2);
@@ -3023,7 +3022,7 @@ void Armv8btAsm::vZipFromHigh128(U8 dst, U8 src1, U8 src2, VectorWidth width) {
     // zip2 v0.4s, v0.4s, v1.4s
     write8(dst | (U8)(src1 << 5));
     write8(0x78 | (U8)(src1 >> 3));
-    U8 type;
+    U8 type = 0;
     if (width == B16) {
         type = 0;
     } else if (width == H8) {
@@ -3134,7 +3133,7 @@ void Armv8btAsm::vCmpGreaterThan(U8 dst, U8 src1, U8 src2, VectorWidth width) {
     } else {        
         write8(dst | (U8)(src1 << 5));
         write8(0x34 | (U8)(src1 >> 3));
-        U8 type;
+        U8 type = 0;
         if (width == D_scaler) {
             // CMGT d0, d0, d0
             type = 0xe0;
@@ -3150,7 +3149,7 @@ void Armv8btAsm::vCmpEqual(U8 dst, U8 src1, U8 src2, VectorWidth width) {
     if (isWidthVector(width)) {
         write8(dst | (U8)(src1 << 5));
         write8(0x8C | (U8)(src1 >> 3));
-        U8 type;
+        U8 type = 0;
         if (width == B16) {
             // CMEQ v0.16b, v0.16b, v0.16b
             type = 0x20;
@@ -3171,7 +3170,7 @@ void Armv8btAsm::vCmpEqual(U8 dst, U8 src1, U8 src2, VectorWidth width) {
     } else {
         write8(dst | (U8)(src1 << 5));
         write8(0x8C | (U8)(src1 >> 3));
-        U8 type;
+        U8 type = 0;
         if (width == D_scaler) {
             // CMEQ d0, d0, d0
             type = 0xe0;

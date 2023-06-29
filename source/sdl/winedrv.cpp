@@ -2134,9 +2134,9 @@ void boxeddrv_CreateDC(CPU* cpu) {
 }
 
 void boxeddrv_GetSystemPalette(CPU* cpu) {
-    U32 start = ARG2;
-    U32 count = ARG3;
-    U32 addressEntries = ARG4;
+    //U32 start = ARG2;
+    //U32 count = ARG3;
+    //U32 addressEntries = ARG4;
     //klog("GetSystemPalette not implemented");
     EAX = 0;
 }
@@ -2175,7 +2175,7 @@ void boxeddrv_autoFlushPrimary(CPU* cpu) {
     U32 pitch = ARG3;
     U32 height = ARG4;    
     U32 flags = ARG5;
-    U32 bpp = ARG6;
+    //U32 bpp = ARG6;
     U32 addressPalette = ARG7;
 
     KNativeWindow::getNativeWindow()->setPrimarySurface(cpu->thread, addressBits, width, height, pitch, flags, addressPalette);

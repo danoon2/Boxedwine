@@ -153,7 +153,6 @@ void writeMemory(U32 address, U8* data, int len) {
 
 void Memory::unmapNativeMemory(U32 address, U32 size) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(pageMutex);
-    U32 result = 0;
     U32 pageCount = (size >> K_PAGE_SHIFT) + 2; // 1 for size alignment, 1 for hostAddress alignment
     U64 pageStart = address >> K_PAGE_SHIFT;
 
@@ -1048,9 +1047,9 @@ void Memory::freeExcutableMemory(void* hostMemory, U32 actualSize) {
         memset(hostMemory, 0xcd, actualSize);
         });
 
-    U32 size = 0;
-    U32 powerOf2Size = powerOf2(actualSize, size);
-    U32 index = powerOf2Size - EXECUTABLE_MIN_SIZE_POWER;
+    //U32 size = 0;
+    //U32 powerOf2Size = powerOf2(actualSize, size);
+    //U32 index = powerOf2Size - EXECUTABLE_MIN_SIZE_POWER;
     //this->freeExecutableMemory[index].push_back(hostMemory);
 
     // :TODO: when this recycled, make sure we delay the recycling in case another thread is also waiting in seh_filter 

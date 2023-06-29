@@ -155,7 +155,6 @@ void arithRI(Armv8btAsm* data, arithReg32 pfnReg, arithValue32 pfnValue, Arm8BtF
     U32 flags;
     bool hardwareFlags, usesSrc, usesDst, usesResult;
     setupFlagsForArith(data, lazyFlags, flags, hardwareFlags, usesSrc, usesDst, usesResult, resultNeedsZeroExtends);
-    bool needToReleaseReadReg = false;
     U8 readRegDst = setupRegForArith(data, data->decodedOp->reg, usesDst || needRegZeroExtended, xDst, width);
 
     if (needsResult && !usesResult && width == 32 && !usesSrc && !usesDst) {
@@ -183,7 +182,6 @@ void arithIR(Armv8btAsm* data, arithReg32 pfnReg, arithValue32 pfnValue, Arm8BtF
     U32 flags;
     bool hardwareFlags, usesSrc, usesDst, usesResult;
     setupFlagsForArith(data, lazyFlags, flags, hardwareFlags, usesSrc, usesDst, usesResult, resultNeedsZeroExtends);
-    bool needToReleaseReadReg = false;
     U8 readRegSrc = setupRegForArith(data, data->decodedOp->reg, usesSrc, xSrc, width);
 
     if (needsResult && !usesResult && width == 32 && !usesSrc) {

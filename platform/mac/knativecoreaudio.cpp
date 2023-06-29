@@ -50,8 +50,19 @@
 #include <CoreMIDI/CoreMIDI.h>
 #include <AudioToolbox/AudioToolbox.h>
 
+#ifdef S_OK
+#undef S_OK
+#endif
 #define S_OK 0
+
+#ifdef E_FAIL
+#undef E_FAIL
+#endif
 #define E_FAIL 0x80004005
+
+#ifdef E_OUTOFMEMORY
+#undef E_OUTOFMEMORY
+#endif
 #define E_OUTOFMEMORY 0x8007000E
 
 #define WAVE_FORMAT_EXTENSIBLE                 0xFFFE
@@ -60,16 +71,19 @@
 #define WAVE_FORMAT_ALAW                0x0006
 #define WAVE_FORMAT_MULAW 0x0007
 
+#ifdef FAILED
+#undef FAILED
+#endif
 #define FAILED(hr) (((HRESULT)(hr)) < 0)
 #define HRESULT S32
 #define SCODE S32
-#define MAKE_HRESULT(sev,fac,code) ((HRESULT) (((U32)(sev)<<31) | ((U32)(fac)<<16) | ((U32)(code))) )
-#define MAKE_SCODE(sev,fac,code) ((SCODE) (((U32)(sev)<<31) | ((U32)(fac)<<16) | ((U32)(code))) )
+#define K_MAKE_HRESULT(sev,fac,code) ((HRESULT) (((U32)(sev)<<31) | ((U32)(fac)<<16) | ((U32)(code))) )
+#define K_MAKE_SCODE(sev,fac,code) ((SCODE) (((U32)(sev)<<31) | ((U32)(fac)<<16) | ((U32)(code))) )
 #define SEVERITY_SUCCESS    0
 #define SEVERITY_ERROR      1
 #define FACILITY_AUDCLNT 0x889
-#define AUDCLNT_ERR(n) MAKE_HRESULT(SEVERITY_ERROR, FACILITY_AUDCLNT, n)
-#define AUDCLNT_SUCCESS(n) MAKE_SCODE(SEVERITY_SUCCESS, FACILITY_AUDCLNT, n)
+#define AUDCLNT_ERR(n) K_MAKE_HRESULT(SEVERITY_ERROR, FACILITY_AUDCLNT, n)
+#define AUDCLNT_SUCCESS(n) K_MAKE_SCODE(SEVERITY_SUCCESS, FACILITY_AUDCLNT, n)
 
 #define AUDCLNT_E_DEVICE_INVALIDATED         AUDCLNT_ERR(0x004)
 #define AUDCLNT_E_UNSUPPORTED_FORMAT         AUDCLNT_ERR(0x008)
@@ -80,7 +94,7 @@ static const BoxedGUID CORE_AUDIO_KSDATAFORMAT_SUBTYPE_ALAW(0x00000006, 0x0000, 
 static const BoxedGUID CORE_AUDIO_KSDATAFORMAT_SUBTYPE_MULAW(0x00000007, 0x0000, 0x0010, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71);
 
 static U32 MIDIOut_NumDevs = 0;
-static U32 MIDIIn_NumDevs = 0;
+//static U32 MIDIIn_NumDevs = 0;
 
 PACKED(
 struct WineMidiHdr {

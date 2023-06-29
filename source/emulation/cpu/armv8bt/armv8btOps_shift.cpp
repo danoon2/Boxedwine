@@ -521,8 +521,6 @@ bool doRol(Armv8btAsm* data, U8 result, U8 reg, U32 width) {
 
     if (!(data->decodedOp->imm & (width - 1))) {
         if (data->decodedOp->imm) {
-            bool needsFlags = (flags & (CF | OF)) != 0;
-
             // cpu->setCF(reg8 & 1);
             if (flags & CF) {
                 data->copyBitsFromSourceAtPositionToDest(xFLAGS, reg, 0, 1);
@@ -540,7 +538,6 @@ bool doRol(Armv8btAsm* data, U8 result, U8 reg, U32 width) {
     U32 imm = data->decodedOp->imm & (width - 1);
 
     // cpu->fillFlagsNoCFOF()
-    bool needsFlags = (flags & (CF | OF)) != 0;
 
     if (width == 32) {
         data->rotateRightWithValue32(result, reg, 32 - imm);
@@ -614,8 +611,6 @@ bool doRor(Armv8btAsm* data, U8 result, U8 reg, U32 width) {
     U32 flags = data->flagsNeeded();
     if (!(data->decodedOp->imm & (width - 1))) {
         if (data->decodedOp->imm) {
-            bool needsFlags = (flags & (CF | OF)) != 0;
-
             // cpu->setCF(reg & 0x80);
             if (flags & CF) {
                 data->copyBitsFromSourceAtPositionToDest(xFLAGS, reg, width - 1, 1);
@@ -633,9 +628,7 @@ bool doRor(Armv8btAsm* data, U8 result, U8 reg, U32 width) {
     }
     U32 imm = data->decodedOp->imm & (width - 1);
 
-    // cpu->fillFlagsNoCFOF()    
-    bool needsFlags = (flags & (CF | OF)) != 0;
-
+    // cpu->fillFlagsNoCFOF()
     if (width == 32) {
         data->rotateRightWithValue32(result, reg, imm);
     } else {

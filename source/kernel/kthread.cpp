@@ -199,8 +199,6 @@ U32 KThread::signal(U32 signal, bool wait) {
                     if (waitingCond) {
                         this->startSignal = true;
                         this->runSignal(K_SIGQUIT, -1, 0);
-                    } else {
-                        int ii = 0;
                     }
                     waitCond->signalAll();
                     waitCond->unlock();

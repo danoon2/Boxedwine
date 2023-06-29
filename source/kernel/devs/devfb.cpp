@@ -25,7 +25,6 @@
 #include "knativewindow.h"
 #include "../../../platform/sdl/sdlcallback.h"
 
-static U32 screenBPP=32;
 static U32 updateAvailable;
 static U32 paletteChanged;
 static U8* screenPixels;

@@ -124,7 +124,7 @@ public:
         }
         if (primarySurface) {
             BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(primarySurface->mutex);
-            primarySurface->done;
+            primarySurface->done = true;
             // thread will delete primarySurface
         }
         this->cursors.clear();
@@ -1753,9 +1753,6 @@ int KNativeWindowSdl::key(U32 key, U32 down) {
     std::shared_ptr<WndSdl> wnd = getFirstVisibleWnd();
     std::shared_ptr<KProcess> process;
 
-    if (!wnd) {
-        int ii = 0;
-    }
     if (wnd) {
         process = KSystem::getProcess(wnd->processId);
     } else if (lastProcessId) {

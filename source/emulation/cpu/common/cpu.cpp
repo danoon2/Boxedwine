@@ -277,17 +277,15 @@ std::string getFunctionName(const std::string& name, U32 moduleEip) {
     std::shared_ptr<KProcess> process = KProcess::create();
     std::vector<std::string> args;
     std::vector<std::string> env;
-    char tmp[16];
     KFileDescriptor* fd = NULL;
 
     if (!name.length())
         return "Unknown";
-    sprintf(tmp, "%X", moduleEip);
     args.push_back("/usr/bin/addr2line");
     args.push_back("-e");
-    args.push_back(name.c_str());
+    args.push_back(name);
     args.push_back("-f");
-    args.push_back(tmp);
+    args.push_back(toHexString(moduleEip));
     thread = process->startProcess("/usr/bin", args, env, 0, 0, 0, 0);
     if (!thread)
         return "";
