@@ -692,19 +692,14 @@ U64 Armv8btCPU::handleAccessException(U64 ip, U64 address, bool readAddress) {
             // if the page we are trying to access needs a special memory offset and this instruction isn't flagged to looked at that special memory offset, then flag it
             if ((flags & PAGE_MAPPED_HOST) && (((flags & PAGE_READ) && readAddress) || ((flags & PAGE_WRITE) && !readAddress))) {
                 m->setNeedsMemoryOffset(getEipAddress());
-                //DecodedOp* op = this->getOp(this->eip.u32, true);
-                //fixStringOp(op, getReg(6), getReg(7)); // if we were in the middle of a string op, then reset RSI and RDI so that we can re-enter the same op
                 chunk->releaseAndRetranslate();
                 return getIpFromEip();
-            }
-            else {
+            } else {
                 U32 nativeFlags = this->thread->memory->nativeFlags[this->thread->memory->getNativePage(page)];
                 if (!readAddress && (flags & PAGE_WRITE) && !(nativeFlags & NATIVE_FLAG_CODEPAGE_READONLY)) {
                     // :TODO: this is a hack, why is it necessary
                     m->updatePagePermission(page, 1);
                     return 0;
-                } else {
-                    int ii = 0;
                 }
             }
         }

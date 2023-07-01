@@ -2611,7 +2611,11 @@ static void doCMov(Armv8btAsm* data, Conditional conditional, bool mem, U32 widt
 static void doJump(Armv8btAsm* data, Conditional conditional) {
     std::function f = [data]() {
         // :TODO: use a local jump if possible
-        data->loadConst(xBranch, data->ip + data->decodedOp->imm);
+        U32 eip = data->ip + data->decodedOp->imm;
+        if (!data->cpu->isBig()) {
+            eip &= 0xFFFF;
+        }
+        data->loadConst(xBranch, eip);
         data->jmpReg(xBranch, false);
     };
     doCondition(data, conditional, f);
@@ -3144,13 +3148,13 @@ static void doRetn32(Armv8btAsm* data, U32 bytes) {
 }
 static void doRetf(Armv8btAsm* data, U32 big) {
     // kpanic("Need to test");
-    // cpu->eip.u32 += op->len; cpu->ret(0, op->imm);    
-    data->syncRegsFromHost();
+    // cpu->eip.u32 += op->len; cpu->ret(0, op->imm);
+    data->startOfOpIp = data->ip;
+    data->syncRegsFromHost(); // syncRegsFromHost stores startOfOpIp into cpu->eip, which already needs to point to the next instruction
     // void common_ret(CPU* cpu, U32 big, U32 bytes)
     data->mov64(0, xCPU); // param 1 (CPU)
     data->loadConst(1, big); // param 2
     data->loadConst(2, data->decodedOp->imm); // param 3 (bytes)
-    data->startOfOpIp = data->ip;
     data->callHost((void*)common_ret);
     data->syncRegsToHost();
     data->doJmp(true);
@@ -3743,7 +3747,7 @@ void opCallJw(Armv8btAsm* data) {
     // cpu->eip.u32 += (S16)op->imm;
     U8 tmpReg = data->getRegWithConst(data->ip);
     data->pushNativeReg16(tmpReg);
-    data->loadConst(tmpReg, data->ip + (S32)((S16)data->decodedOp->imm));
+    data->loadConst(tmpReg, (data->ip + (S16)data->decodedOp->imm) & 0xFFFF);
     data->jmpReg(tmpReg, false);
     data->releaseTmpReg(tmpReg);
     data->done = true;
@@ -3762,25 +3766,19 @@ void opCallJd(Armv8btAsm* data) {
 void opJmpJw(Armv8btAsm* data) {
     //kpanic("Need to test");
     // cpu->eip.u32 += (S16)op->imm;
-    U8 tmpReg = data->getRegWithConst(data->ip + (S32)((S16)(data->decodedOp->imm)));
-    data->jmpReg(tmpReg, false);
-    data->releaseTmpReg(tmpReg);
+    data->jumpTo(data->ip + (S16)(data->decodedOp->imm));
     data->done = true;
 }
 void opJmpJd(Armv8btAsm* data) {
     // kpanic("Need to test");
     // cpu->eip.u32 += (S32)op->imm;
-    U8 tmpReg = data->getRegWithConst(data->ip + (S32)(data->decodedOp->imm));
-    data->jmpReg(tmpReg, false);
-    data->releaseTmpReg(tmpReg);
+    data->jumpTo(data->ip + (S32)(data->decodedOp->imm));
     data->done = true;
 }
 void opJmpJb(Armv8btAsm* data) {
     // kpanic("Need to test");
     // cpu->eip.u32 += (S8)op->imm;
-    U8 tmpReg = data->getRegWithConst(data->ip + (S32)((S8)(data->decodedOp->imm)));
-    data->jmpReg(tmpReg, false);
-    data->releaseTmpReg(tmpReg);
+    data->jumpTo(data->ip + (S8)(data->decodedOp->imm));
     data->done = true;
 }
 void opCallR16(Armv8btAsm* data) {
@@ -3890,7 +3888,7 @@ void opCallFarE32(Armv8btAsm* data) {
 void opJmpR16(Armv8btAsm* data) {
     // kpanic("Need to test");
     // cpu->eip.u32 = cpu->reg[op->reg].u16;
-    U8 tmpReg = data->getRegWithConst(data->ip);
+    U8 tmpReg = data->getTmpReg();
     data->movRegToReg(tmpReg, data->getNativeReg(data->decodedOp->reg), 16, true);
     data->jmpReg(tmpReg, false);
     data->releaseTmpReg(tmpReg);

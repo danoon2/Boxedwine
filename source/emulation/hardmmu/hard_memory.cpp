@@ -1092,7 +1092,7 @@ void Memory::allocNativeMemory(U32 page, U32 pageCount, U32 flags) {
             }
         } else {
             // so that the memset works below
-            Platform::updateNativePermission(address, PAGE_READ | PAGE_WRITE, gran << K_PAGE_SHIFT);
+            Platform::updateNativePermission(address, PAGE_READ | PAGE_WRITE, permissionGran << K_PAGE_SHIFT);
         }
         granPage += gran;
     }
@@ -1161,6 +1161,9 @@ void Memory::updatePagePermission(U32 page, U32 pageCount) {
             if (isShared(i + permissionGranPage)) {
                 hasShared = true;
                 break;
+            } else if (flags[i + permissionGranPage] & PAGE_MAPPED_HOST) {
+                hasShared = true;
+                break;
             }
         }
         U32 permissions = 0;
@@ -1175,6 +1178,9 @@ void Memory::updatePagePermission(U32 page, U32 pageCount) {
         }
         U64 address = (this->id | (permissionGranPage << K_PAGE_SHIFT));
         U32 index = getNativePermissionIndex(permissionGranPage);
+        if (this->nativeFlags[index] & NATIVE_FLAG_CODEPAGE_READONLY) {
+            permissions &= ~PAGE_WRITE;
+        }
         if (this->nativeFlags[index] & NATIVE_FLAG_COMMITTED) {
             this->nativeFlags[index] &= ~PAGE_PERMISSION_MASK;
             this->nativeFlags[index] |= (permissions & (PAGE_READ | PAGE_WRITE));

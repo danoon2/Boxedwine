@@ -2009,6 +2009,7 @@ void Armv8btAsm::jmpReg(U8 reg, bool mightNeedCS) {
 }
 
 void Armv8btAsm::doJmp(bool mightNeedCS) {
+    // ok to call 32-bit read for 16-bit instruction, cpu->eip.u32 will be properly masked by this point
     readMem32ValueOffset(xBranch, xCPU, CPU_OFFSET_EIP);
     jmpReg(xBranch, mightNeedCS);
 }
@@ -2436,6 +2437,9 @@ void Armv8btAsm::doIfBitSet(U8 reg, U32 bitPos, std::function<void(void)> ifBloc
 }
 
 void Armv8btAsm::compareZeroAndBranch(U8 reg, bool isZero, U32 eip) {
+    if (!cpu->isBig()) {
+        eip &= 0xFFFF;
+    }
     if (!isEipInChunk(eip)) {
         doIf(reg, 0, isZero? DO_IF_EQUAL:DO_IF_NOT_EQUAL, [eip, this] {
             U8 tmpReg = this->getRegWithConst(eip);

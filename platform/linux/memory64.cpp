@@ -235,11 +235,8 @@ bool clearCodePageReadOnly(Memory* memory, U32 page) {
     bool result = false;
     
     if (memory->nativeFlags[page] & NATIVE_FLAG_CODEPAGE_READONLY) {
-        if (mprotect((char*)memory->id + (page << K_NATIVE_PAGE_SHIFT), 1 << K_NATIVE_PAGE_SHIFT, PROT_READ|PROT_WRITE)==-1) {
-            kpanic("clearCodePageReadOnly mprotect failed: %s", strerror(errno));
-        }
         memory->nativeFlags[page] &= ~NATIVE_FLAG_CODEPAGE_READONLY;
-        memory->nativeFlags[page] |= PROT_WRITE;
+        memory->updatePagePermission(memory->getEmulatedPage(page), 1);
         result = true;
     }
     return result;

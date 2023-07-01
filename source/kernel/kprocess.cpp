@@ -1468,9 +1468,6 @@ U32 KProcess::mmap(U32 addr, U32 len, S32 prot, S32 flags, FD fildes, U64 off) {
             KThread::currentThread()->process->mappedFiles[mappedFile->address] = mappedFile;
             this->memory->allocPages(pageStart, pageCount, permissions, fildes, off, mappedFile);
         } else {
-            if (shared) {
-                int ii = 0;
-            }
             this->memory->allocPages(pageStart, pageCount, permissions, 0, 0, NULL);
         }		
     }
