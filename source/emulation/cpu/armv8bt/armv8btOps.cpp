@@ -3060,7 +3060,7 @@ void opJmpAp(Armv8btAsm* data) {
     data->mov64(0, xCPU); // param 1 (CPU)
     data->loadConst(1, 0); // param 2 (big = false)
     data->loadConst(2, data->decodedOp->imm); // param 3 (selector)
-    data->peekNativeReg16(3, data->decodedOp->disp); // param 4 (offset)
+    data->loadConst(3, data->decodedOp->disp); // param 4 (offset)
     data->loadConst(4, data->ip); // param 5 (oldEip)
 
     data->callHost((void*)common_jmp);
@@ -3075,7 +3075,7 @@ void opJmpFar(Armv8btAsm* data) {
     data->mov64(0, xCPU); // param 1 (CPU)
     data->loadConst(1, 1); // param 2 (big = true)
     data->loadConst(2, data->decodedOp->imm); // param 3 (selector)
-    data->peekNativeReg16(3, data->decodedOp->disp); // param 4 (offset)
+    data->loadConst(3, data->decodedOp->disp); // param 4 (offset)
     data->loadConst(4, data->ip); // param 5 (oldEip)
 
     data->callHost((void*)common_jmp);
