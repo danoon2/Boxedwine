@@ -934,6 +934,10 @@ void KNativeWindowSdl::bltWnd(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32
     r.readRect(rect);    
     if (wnd)
     {
+        if (!thread->memory->isValidReadAddress(bits, height * pitch)) {
+            return;
+        }
+        DISPATCH_MAIN_THREAD_BLOCK_BEGIN
         SDL_Texture *sdlTexture = NULL;
         
         if (wnd->sdlTexture) {
@@ -957,10 +961,7 @@ void KNativeWindowSdl::bltWnd(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32
             }
             wnd->sdlTextureHeight = height;
             wnd->sdlTextureWidth = width;
-        }
-        if (!thread->memory->isValidReadAddress(bits, height*pitch)) {
-            return;
-        }
+        }        
 #ifdef BOXEDWINE_FLIP_MANUALLY        
         for (U32 y = 0; y < height; y++) {
             memcopyToNative(bits+(height-y-1)*pitch, sdlBuffer+y*pitch, pitch);
@@ -994,7 +995,8 @@ void KNativeWindowSdl::bltWnd(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32
             SDL_UpdateTexture(sdlTexture, NULL, getNativeAddress(KThread::currentThread()->process->memory, bits), pitch);            
 #endif
         }
-    }
+        DISPATCH_MAIN_THREAD_BLOCK_END
+    }    
 }
 
 void KNativeWindowSdl::updatePrimarySurface(KThread* thread, U32 bits, U32 width, U32 height, U32 pitch, U32 flags, SDL_Color* colors) {
