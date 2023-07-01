@@ -93,16 +93,10 @@ void dynamic_jmpFar(DynamicData* data, DecodedOp* op) {
     blockDone();
 }
 void dynamic_retf16(DynamicData* data, DecodedOp* op) {
-    movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(eip.u32), DYN_32bit);
-    instRegImm('+', DYN_SRC, DYN_32bit, op->len);
-    movToCpuFromReg(CPU_OFFSET_OF(eip.u32), DYN_SRC, DYN_32bit, true);
     callHostFunction((void*)common_ret, false, 3, 0, DYN_PARAM_CPU, false, 0, DYN_PARAM_CONST_32, false, op->imm, DYN_PARAM_CONST_32, false);
     blockDone();
 }
 void dynamic_retf32(DynamicData* data, DecodedOp* op) {
-    movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(eip.u32), DYN_32bit);
-    instRegImm('+', DYN_SRC, DYN_32bit, op->len);
-    movToCpuFromReg(CPU_OFFSET_OF(eip.u32), DYN_SRC, DYN_32bit, true);
     callHostFunction((void*)common_ret, false, 3, 0, DYN_PARAM_CPU, false, 1, DYN_PARAM_CONST_32, false, op->imm, DYN_PARAM_CONST_32, false);
     blockDone();
 }
