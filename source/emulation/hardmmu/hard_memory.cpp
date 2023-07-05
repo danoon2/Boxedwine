@@ -1092,7 +1092,12 @@ void Memory::allocNativeMemory(U32 page, U32 pageCount, U32 flags) {
             }
         } else {
             // so that the memset works below
-            Platform::updateNativePermission(address, PAGE_READ | PAGE_WRITE, permissionGran << K_PAGE_SHIFT);
+#ifdef _DEBUG
+            if (permissionGran > gran) {
+                kpanic("Wasn't expecting a larger permission size than the allocation size");
+            }
+#endif
+            Platform::updateNativePermission(address, PAGE_READ | PAGE_WRITE, gran << K_PAGE_SHIFT);
         }
         granPage += gran;
     }
