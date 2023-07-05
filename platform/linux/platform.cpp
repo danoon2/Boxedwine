@@ -219,6 +219,89 @@ U32 Platform::freeNativeMemory(U64 address) {
     return 0;
 }
 
+#ifdef __MACH__
+#include <mach/mach.h>
+
+static bool isAddressRangeInUse(void* p, U64 len) {
+    // get task for pid
+    vm_map_t target_task = mach_task_self();
+
+    vm_address_t iter = (vm_address_t)p;
+    vm_address_t addr = iter;
+    vm_size_t lsize = 0;
+    uint32_t depth;
+    struct vm_region_submap_info_64 info;
+    mach_msg_type_number_t count = VM_REGION_SUBMAP_INFO_COUNT_64;
+
+    kern_return_t result = vm_region_recurse_64(target_task, &addr, &lsize, &depth, (vm_region_info_t)&info, &count);
+    if (result == KERN_INVALID_ADDRESS) {
+        return false;
+    }
+    else if (result) {
+        kpanic("isAddressRangeInUse vm_region_recurse_64 failed: %d", (int)result);
+    }
+    if (addr >= (U64)p + len) {
+        return false;
+    }
+    return true;
+}
+#else
+
+static bool isAddressRangeInUse(void* p, U64 len) {
+    FILE* file = fopen("/proc/self/maps", "r");
+    if (!file) {
+        kpanic("reservereNext4GBMemory : cannot open /proc/self/maps, %s\n", strerror(errno));
+        return false;
+    }
+
+    char buf[1024];
+    while (!feof(file)) {
+        char addr1[20], addr2[20];
+
+        fgets(buf, 1024, file);
+
+        int index = 0;
+        int startIndex = 0;
+
+        //addr1
+        while (buf[index] != '-') {
+            addr1[index - startIndex] = buf[index];
+            index++;
+        }
+        addr1[index] = '\0';
+        index++;
+        //addr2
+        startIndex = index;
+        while (buf[index] != '\t' && buf[index] != ' ') {
+            addr2[index - startIndex] = buf[index];
+            index++;
+        }
+        addr2[index - startIndex] = '\0';
+
+        unsigned long startAddress;
+        unsigned long endAddress;
+        sscanf(addr1, "%lx", (long unsigned*)&startAddress);
+        sscanf(addr2, "%lx", (long unsigned*)&endAddress);
+        if (startAddress >= (U64)p && startAddress < (U64)p + len) {
+            fclose(file);
+            return true;
+        }
+        if (endAddress >= (U64)p && endAddress < (U64)p + len) {
+            fclose(file);
+            return true;
+        }
+        if (startAddress<(U64)p + len && endAddress>(U64)p) {
+            fclose(file);
+            return true;
+        }
+    }
+    fclose(file);
+    return false;
+}
+#endif
+
+static U64 nextMemoryId = 2;
+
 U32 Platform::updateNativePermission(U64 address, U32 permission, U32 len) {
     U32 proto = 0;
     if ((permission & PAGE_READ) || (permission & PAGE_EXEC)) {
@@ -235,6 +318,42 @@ U32 Platform::updateNativePermission(U64 address, U32 permission, U32 len) {
     }
     mprotect((void*)address, len, proto);
     return 0;
+}
+
+void Platform::releaseNativeMemory(void* address, U64 len) {
+    munmap(address, len);
+}
+
+void Platform::commitNativeMemory(void* address, U64 len) {
+    if (mprotect(address, len, PAGE_READ | PROT_WRITE) < 0) {
+        kpanic("commitHostAddressSpaceMapping mprotect failed: %s", strerror(errno));
+    }
+}
+
+void* Platform::allocExecutable64kBlock(U32 count) {
+    void* result = mmap(NULL, 64 * 1024 * count, PROT_EXEC | PROT_WRITE | PROT_READ, MAP_ANONYMOUS | MAP_PRIVATE | MAP_BOXEDWINE, -1, 0);
+    if (result == MAP_FAILED) {
+        kpanic("allocExecutable64kBlock: failed to commit memory : %s", strerror(errno));
+    }
+    return result;
+}
+
+void* Platform::reserveNativeMemory(bool large) {
+    void* p;
+
+    U64 len = large ? 0x800000000l : 0x100000000l;
+    while (true) {
+        nextMemoryId++;
+        p = (void*)(nextMemoryId << 32);
+
+        if (isAddressRangeInUse(p, len)) {
+            continue;
+        }
+        if (mmap(p, 0x100000000l, PROT_NONE, MAP_ANONYMOUS | MAP_FIXED | MAP_PRIVATE, -1, 0) == p) {
+            break;
+        }
+    }
+    return p;
 }
 
 #ifdef BOXEDWINE_MULTI_THREADED

@@ -42,7 +42,7 @@ Memory::Memory() : allocated(0), callbackPos(0) {
     memset(this->dynamicCodePageUpdateCount, 0, sizeof(this->dynamicCodePageUpdateCount));
     memset(this->committedEipPages, 0, sizeof(this->committedEipPages));
 #endif    
-    reserveNativeMemory(this);
+    reserveNativeMemory();
 
     allocNativeMemory(CALL_BACK_ADDRESS >> K_PAGE_SHIFT, K_NATIVE_PAGES_PER_PAGE, PAGE_READ | PAGE_EXEC | PAGE_WRITE);
     this->addCallback(onExitSignal);
@@ -55,7 +55,7 @@ Memory::Memory() : allocated(0), callbackPos(0) {
 }
 
 Memory::~Memory() {    
-    releaseNativeMemory(this);
+    releaseNativeMemory();
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
     if (this->eipToHostInstructionPages) {
         delete[] this->eipToHostInstructionPages;
@@ -92,12 +92,66 @@ void Memory::log_pf(KThread* thread, U32 address) {
 }
 
 void Memory::reset() {
-    releaseNativeMemory(this);
-    reserveNativeMemory(this);
+    releaseNativeMemory();
+    reserveNativeMemory();
 
     this->callbackPos = 0;
     allocNativeMemory(CALL_BACK_ADDRESS >> K_PAGE_SHIFT, K_NATIVE_PAGES_PER_PAGE, PAGE_READ | PAGE_EXEC | PAGE_WRITE);
     this->addCallback(onExitSignal);
+}
+
+void Memory::releaseNativeMemory() {
+    U32 i;
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->executableMemoryMutex);
+    for (i = 0; i < K_NUMBER_OF_PAGES; i++) {
+        clearCodePageFromCache(i);
+    }
+    clearAllNeedsMemoryOffset();
+    Platform::releaseNativeMemory((void*)this->id, 0x100000000l);
+    memset(this->flags, 0, sizeof(this->flags));
+    memset(this->nativeFlags, 0, sizeof(this->nativeFlags));
+    memset(this->memOffsets, 0, sizeof(this->memOffsets));
+    this->allocated = 0;
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+    executableMemoryReleased();
+    for (auto& p : this->allocatedExecutableMemory) {
+        Platform::releaseNativeMemory(p.memory, p.size);
+    }
+    this->allocatedExecutableMemory.clear();
+    if (KSystem::useLargeAddressSpace) {
+        Platform::releaseNativeMemory((char*)this->eipToHostInstructionAddressSpaceMapping, 0x800000000l);
+        this->eipToHostInstructionAddressSpaceMapping = NULL;
+    }
+#endif
+}
+
+void Memory::commitHostAddressSpaceMapping(U32 page, U32 pageCount, U64 defaultValue) {
+    U64 granPage;
+    U64 granCount;
+    U32 gran = Platform::getPageAllocationGranularity();
+    U64 hostPage = page * sizeof(void*);
+    U64 hostPageCount = pageCount * sizeof(void*);
+
+    granPage = hostPage & ~((U64)gran - 1);
+    granCount = ((gran - 1) + hostPageCount + (hostPage - granPage)) / gran;
+    for (U32 i = 0; i < granCount; i++) {
+        if (!this->isEipPageCommitted((U32)(granPage / sizeof(void*)))) {
+            U8* address = (U8*)this->eipToHostInstructionAddressSpaceMapping + (granPage << K_PAGE_SHIFT);
+            Platform::commitNativeMemory(address, (gran << K_PAGE_SHIFT));
+
+            U64* address64 = (U64*)address;
+            U32 count = (gran << K_PAGE_SHIFT) / sizeof(void*); // 8K
+            for (U32 j = 0; j < count; j++, address64++) {
+                *address64 = defaultValue;
+            }
+            U32 startPage = (U32)(granPage / sizeof(void*));
+            U32 pageCount = (U32)((granCount * gran) / sizeof(void*));
+            for (U32 j = 0; j < pageCount; j++) {
+                this->setEipPageCommitted(startPage + j);
+            }
+        }
+        granPage += gran;
+    }
 }
 
 void Memory::reset(U32 page, U32 pageCount) {
@@ -440,8 +494,6 @@ U16 readw(U32 address) {
 #endif
 }
 
-bool clearCodePageReadOnly(Memory* memory, U32 page);
-
 void writew( U32 address, U16 value) {
 #ifdef LOG_OPS
     if (thread->process->memory->log)
@@ -641,7 +693,7 @@ void* Memory::internalAddCodeBlock(U32 startIp, DecodedBlock* block) {
         cacheBlock->linkTo = to;
         to->linkFrom = cacheBlock;
     }
-    makeCodePageReadOnly(this, this->getNativePage(startIp>>K_PAGE_SHIFT));
+    makeCodePageReadOnly(this->getNativePage(startIp>>K_PAGE_SHIFT));
     return cacheBlock;
     return NULL;
 }
@@ -729,7 +781,7 @@ void Memory::clearCodePageFromCache(U32 page) {
             }
         }
     }
-    clearCodePageReadOnly(this, nativePage);
+    clearCodePageReadOnly(nativePage);
 #else
     BlockCache** cacheblocks = (BlockCache**)this->codeCache[page];
     if (cacheblocks) {
@@ -766,7 +818,7 @@ void Memory::clearCodePageFromCache(U32 page) {
             return;
         }
     }
-    clearCodePageReadOnly(this, nativePage);
+    clearCodePageReadOnly(nativePage);
 #endif
 }
 
@@ -867,7 +919,7 @@ void Memory::makeNativePageDynamic(U32 nativePage) {
         }
     }
     if (this->nativeFlags[nativePage] & NATIVE_FLAG_CODEPAGE_READONLY) {
-        ::clearCodePageReadOnly(this, nativePage);
+        clearCodePageReadOnly(nativePage);
     }
     U32 page = startPage;
     U32 eip = page << K_PAGE_SHIFT;
@@ -935,6 +987,38 @@ std::shared_ptr<BtCodeChunk> Memory::getCodeChunkContainingEip(U32 eip) {
     return NULL;
 }
 
+void Memory::makeCodePageReadOnly(U32 nativePage) {
+    if (!(this->nativeFlags[nativePage] & NATIVE_FLAG_CODEPAGE_READONLY)) {
+        if (this->dynamicCodePageUpdateCount[nativePage] == MAX_DYNAMIC_CODE_PAGE_COUNT) {
+            kpanic("makeCodePageReadOnly: tried to make a dynamic code page read-only");
+        }
+        this->nativeFlags[nativePage] |= NATIVE_FLAG_CODEPAGE_READONLY;
+        this->updatePagePermission(this->getEmulatedPage(nativePage), K_NATIVE_PAGES_PER_PAGE);
+    }
+}
+
+bool Memory::clearCodePageReadOnly(U32 nativePage) {
+    bool result = false;
+
+    if (this->nativeFlags[nativePage] & NATIVE_FLAG_CODEPAGE_READONLY) {
+        this->nativeFlags[nativePage] &= ~NATIVE_FLAG_CODEPAGE_READONLY;
+        this->updatePagePermission(this->getEmulatedPage(nativePage), K_NATIVE_PAGES_PER_PAGE);
+        result = true;
+    }
+    return result;
+}
+
+void Memory::reserveNativeMemory() {
+    this->id = (U64)Platform::reserveNativeMemory(false);
+    for (int i = 0; i < K_NUMBER_OF_PAGES; i++) {
+        this->memOffsets[i] = this->id;
+    }
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+    if (KSystem::useLargeAddressSpace) {
+        this->eipToHostInstructionAddressSpaceMapping = Platform::reserveNativeMemory(true);
+    }
+#endif
+}
 void Memory::clearHostCodeForWriting(U32 nativePage, U32 count) {
     U32 addressStart = getEmulatedPage(nativePage) << K_PAGE_SHIFT;
     U32 addressStop = getEmulatedPage(nativePage + count) << K_PAGE_SHIFT;
@@ -954,7 +1038,7 @@ void Memory::clearHostCodeForWriting(U32 nativePage, U32 count) {
                     this->makeNativePageDynamic(page);
                 }
             }
-            ::clearCodePageReadOnly(this, page);
+            clearCodePageReadOnly(page);
         }
     }
 }
@@ -986,7 +1070,7 @@ bool Memory::isEipPageCommitted(U32 page) {
 void Memory::setEipForHostMapping(U32 eip, void* host) {
     U32 page = eip >> K_PAGE_SHIFT;
     if (!this->isEipPageCommitted(page)) {
-        commitHostAddressSpaceMapping(this, page, 1, (U64)KThread::currentThread()->process->reTranslateChunkAddressFromReg);
+        commitHostAddressSpaceMapping(page, 1, (U64)KThread::currentThread()->process->reTranslateChunkAddressFromReg);
     }
     U64* address = (U64*)(((U8*)this->eipToHostInstructionAddressSpaceMapping) + ((U64)eip) * sizeof(void*));
     *address = (U64)host;
@@ -1033,7 +1117,7 @@ void* Memory::allocateExcutableMemory(U32 requestedSize, U32* allocatedSize) {
         return result;
     }
     U32 count = (size+65535)/65536;
-    void* result = allocExecutable64kBlock(this, count);
+    void* result = Platform::allocExecutable64kBlock(count);
     this->allocatedExecutableMemory.push_back(Memory::AllocatedMemory(result, count*64*1024));
     count = 65536 / size;
     for (U32 i=1;i<count;i++) {

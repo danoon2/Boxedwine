@@ -1004,7 +1004,7 @@ void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
         if (memory->dynamicExecutableMemory.size() == 0) {
             int blocks = (outBufferPos + 0xffff) / 0x10000;
             memory->dynamicExecutableMemoryLen = blocks * 0x10000;
-            mem = allocExecutable64kBlock(blocks);
+            mem = Platform::allocExecutable64kBlock(blocks);
             memory->dynamicExecutableMemoryPos = 0;
             memory->dynamicExecutableMemory.push_back(mem);
         } else {
@@ -1012,7 +1012,7 @@ void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
             if (memory->dynamicExecutableMemoryPos + outBufferPos >= memory->dynamicExecutableMemoryLen) {
                 int blocks = (outBufferPos + 0xffff) / 0x10000;
                 memory->dynamicExecutableMemoryLen = blocks * 0x10000;
-                mem = allocExecutable64kBlock(blocks);
+                mem = Platform::allocExecutable64kBlock(blocks);
                 memory->dynamicExecutableMemoryPos = 0;
                 memory->dynamicExecutableMemory.push_back(mem);
             }

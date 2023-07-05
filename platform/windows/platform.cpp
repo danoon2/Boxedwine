@@ -383,7 +383,7 @@ U32 Platform::getPageAllocationGranularity() {
 }
 
 U32 Platform::getPagePermissionGranularity() {
-    return 1;
+    return K_NATIVE_PAGES_PER_PAGE;
 }
 
 U32 Platform::allocateNativeMemory(U64 address) {
@@ -402,6 +402,33 @@ U32 Platform::freeNativeMemory(U64 address) {
         kpanic("failed to release memory: %s", messageBuffer);
     }
     return 0;
+}
+
+void Platform::releaseNativeMemory(void* address, U64 len) {
+    // per Windows spec, if MEM_RELEASE is used, then the dwSize must be 0 and the entire chunk will be released
+    if (!VirtualFree(address, 0, MEM_RELEASE)) {
+        LPSTR messageBuffer = NULL;
+        size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
+        kpanic("failed to release executable memory: %s", messageBuffer);
+    }
+}
+
+void Platform::commitNativeMemory(void* address, U64 len) {
+    if (!VirtualAlloc(address, len, MEM_COMMIT, PAGE_READWRITE)) {
+        LPSTR messageBuffer = NULL;
+        size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
+        kpanic("allocNativeMemory: failed to commit memory: %s", messageBuffer);
+    }
+}
+
+void* Platform::allocExecutable64kBlock(U32 count) {
+    void* result = VirtualAlloc(NULL, 64 * 1024 * count, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+    if (!result) {
+        LPSTR messageBuffer = NULL;
+        size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
+        kpanic("allocExecutable64kBlock: failed to commit memory : %s", messageBuffer);
+    }
+    return result;
 }
 
 U32 Platform::updateNativePermission(U64 address, U32 permission, U32 len) {
@@ -427,6 +454,19 @@ U32 Platform::updateNativePermission(U64 address, U32 permission, U32 len) {
         kpanic("failed to protect memory: %s", messageBuffer);
     }
     return 0;
+}
+
+void* Platform::reserveNativeMemory(bool large) {
+    void* p;
+    U64 i = 1;
+    U64 len = large ? 0x800000000l : 0x100000000l;
+
+    p = (void*)(i << 32);
+    while (VirtualAlloc(p, len, MEM_RESERVE, PAGE_READWRITE) == 0) {
+        i++;
+        p = (void*)(i << 32);
+    }
+    return p;
 }
 
 U32 Platform::nanoSleep(U64 nano) {

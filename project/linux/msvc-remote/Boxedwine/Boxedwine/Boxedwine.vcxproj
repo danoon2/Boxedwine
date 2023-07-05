@@ -159,7 +159,6 @@
     <ClCompile Include="..\..\..\..\..\lib\pugixml\src\pugixml.cpp" />
     <ClCompile Include="..\..\..\..\..\lib\tiny-process\process.cpp" />
     <ClCompile Include="..\..\..\..\..\lib\tiny-process\process_unix.cpp" />
-    <ClCompile Include="..\..\..\..\..\platform\linux\dynamic.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\linux\memory64.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\linux\platform.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\linux\platformThreads-armv8.cpp" />

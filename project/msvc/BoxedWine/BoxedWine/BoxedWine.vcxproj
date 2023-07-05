@@ -767,7 +767,6 @@
     <ClCompile Include="..\..\..\..\platform\sdl\knativethread.cpp" />
     <ClCompile Include="..\..\..\..\platform\sdl\knativewindow.cpp" />
     <ClCompile Include="..\..\..\..\platform\sdl\sdlcallback.cpp" />
-    <ClCompile Include="..\..\..\..\platform\windows\dynamic.cpp" />
     <ClCompile Include="..\..\..\..\platform\windows\kwindowsaudio.cpp" />
     <ClCompile Include="..\..\..\..\platform\windows\memory64.cpp" />
     <ClCompile Include="..\..\..\..\platform\windows\platform.cpp" />

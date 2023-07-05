@@ -393,7 +393,7 @@ void Armv8btCPU::makePendingCodePagesReadOnly() {
     for (int i=0;i<(int)this->pendingCodePages.size();i++) {
         // the chunk could cross a page and be a mix of dynamic and non dynamic code
         if (this->thread->memory->dynamicCodePageUpdateCount[this->pendingCodePages[i]]!=MAX_DYNAMIC_CODE_PAGE_COUNT) {
-            ::makeCodePageReadOnly(this->thread->memory, this->pendingCodePages[i]);
+            this->thread->memory->makeCodePageReadOnly(this->pendingCodePages[i]);
         }
     }
     this->pendingCodePages.clear();

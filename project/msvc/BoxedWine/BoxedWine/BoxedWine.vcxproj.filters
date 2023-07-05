@@ -271,9 +271,6 @@
     <ClCompile Include="..\..\..\..\source\emulation\cpu\common\common_fpu.cpp">
       <Filter>source\emulation\cpu\common</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\platform\windows\dynamic.cpp">
-      <Filter>platform\windows</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\source\util\recorder.cpp">
       <Filter>source\util</Filter>
     </ClCompile>

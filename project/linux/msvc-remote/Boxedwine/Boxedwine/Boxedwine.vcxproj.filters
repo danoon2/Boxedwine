@@ -487,9 +487,6 @@
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv7\armv7CPU.cpp">
       <Filter>source\emulation\cpu\armv7</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\..\platform\linux\dynamic.cpp">
-      <Filter>platform</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8\armv8CPU.cpp">
       <Filter>source\emulation\cpu\armv8</Filter>
     </ClCompile>
