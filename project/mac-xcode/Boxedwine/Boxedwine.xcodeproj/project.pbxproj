@@ -95,7 +95,6 @@
 		1A80EE49276EBCC70032A70A /* ksocketobject.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE202433BBBE003F17F1 /* ksocketobject.cpp */; };
 		1A80EE54276EBCC70032A70A /* glfunctions_ext1.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE432433BBBE003F17F1 /* glfunctions_ext1.cpp */; };
 		1A80EE57276EBCC70032A70A /* okDlg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F34812440D7D10038F5A4 /* okDlg.cpp */; };
-		1A80EE59276EBCC70032A70A /* dynamic.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091522644D44E003413C3 /* dynamic.cpp */; };
 		1A80EE5A276EBCC70032A70A /* zip.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A155101263261DF006E0C8A /* zip.c */; };
 		1A80EE5C276EBCC70032A70A /* glshim.c in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE572433BBBE003F17F1 /* glshim.c */; };
 		1A80EE5F276EBCC70032A70A /* kfilelock.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE1B2433BBBE003F17F1 /* kfilelock.cpp */; };
@@ -429,7 +428,6 @@
 		1A80F224276EBF170032A70A /* appFile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71205460244FDA2400C3CB1B /* appFile.cpp */; };
 		1A80F225276EBF170032A70A /* common_fpu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD912433BBBE003F17F1 /* common_fpu.cpp */; };
 		1A80F235276EBF170032A70A /* glext.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE4A2433BBBE003F17F1 /* glext.cpp */; };
-		1A80F237276EBF170032A70A /* dynamic.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091522644D44E003413C3 /* dynamic.cpp */; };
 		1A80F239276EBF170032A70A /* spinnerControl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD212433BBBE003F17F1 /* spinnerControl.cpp */; };
 		1A80F240276EBF170032A70A /* log.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD502433BBBE003F17F1 /* log.cpp */; };
 		1A80F246276EBF170032A70A /* common_sse.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD9A2433BBBE003F17F1 /* common_sse.cpp */; };
@@ -647,9 +645,6 @@
 		7100914E2644D42C003413C3 /* sdlcallback.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7100913A2644D42C003413C3 /* sdlcallback.cpp */; };
 		7100914F2644D42C003413C3 /* sdlcallback.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7100913A2644D42C003413C3 /* sdlcallback.cpp */; };
 		710091502644D42C003413C3 /* sdlcallback.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7100913A2644D42C003413C3 /* sdlcallback.cpp */; };
-		710091572644D44E003413C3 /* dynamic.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091522644D44E003413C3 /* dynamic.cpp */; };
-		710091582644D44E003413C3 /* dynamic.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091522644D44E003413C3 /* dynamic.cpp */; };
-		710091592644D44E003413C3 /* dynamic.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091522644D44E003413C3 /* dynamic.cpp */; };
 		7100915A2644D44E003413C3 /* memory64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091532644D44E003413C3 /* memory64.cpp */; };
 		7100915B2644D44E003413C3 /* memory64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091532644D44E003413C3 /* memory64.cpp */; };
 		7100915C2644D44E003413C3 /* memory64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091532644D44E003413C3 /* memory64.cpp */; };
@@ -1016,7 +1011,6 @@
 		7135DC52264EBCD0005D6AA6 /* soft_native_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDDD2433BBBE003F17F1 /* soft_native_page.cpp */; };
 		7135DC53264EBCD0005D6AA6 /* soft_code_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDD12433BBBE003F17F1 /* soft_code_page.cpp */; };
 		7135DC54264EBCD0005D6AA6 /* glext.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE4A2433BBBE003F17F1 /* glext.cpp */; };
-		7135DC55264EBCD0005D6AA6 /* dynamic.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091522644D44E003413C3 /* dynamic.cpp */; };
 		7135DC56264EBCD0005D6AA6 /* lazyFlags.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD8B2433BBBE003F17F1 /* lazyFlags.cpp */; };
 		7135DC57264EBCD0005D6AA6 /* kunixsocket.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE1D2433BBBE003F17F1 /* kunixsocket.cpp */; };
 		7135DC58264EBCD0005D6AA6 /* devzero.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE272433BBBE003F17F1 /* devzero.cpp */; };
@@ -1459,7 +1453,6 @@
 		710091392644D42C003413C3 /* knativeaudio.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = knativeaudio.cpp; path = ../../../platform/sdl/knativeaudio.cpp; sourceTree = "<group>"; };
 		7100913A2644D42C003413C3 /* sdlcallback.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = sdlcallback.cpp; path = ../../../platform/sdl/sdlcallback.cpp; sourceTree = "<group>"; };
 		7100913B2644D42C003413C3 /* sdlcallback.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = sdlcallback.h; path = ../../../platform/sdl/sdlcallback.h; sourceTree = "<group>"; };
-		710091522644D44E003413C3 /* dynamic.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = dynamic.cpp; path = ../../../platform/linux/dynamic.cpp; sourceTree = "<group>"; };
 		710091532644D44E003413C3 /* memory64.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = memory64.cpp; path = ../../../platform/linux/memory64.cpp; sourceTree = "<group>"; };
 		710091542644D44E003413C3 /* platform.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = platform.cpp; path = ../../../platform/linux/platform.cpp; sourceTree = "<group>"; };
 		710091552644D44E003413C3 /* platformThreads.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = platformThreads.cpp; path = ../../../platform/linux/platformThreads.cpp; sourceTree = "<group>"; };
@@ -2164,7 +2157,6 @@
 			isa = PBXGroup;
 			children = (
 				1AC5F2F92772D9D6001D0FCA /* platformThreads-armv8.cpp */,
-				710091522644D44E003413C3 /* dynamic.cpp */,
 				710091532644D44E003413C3 /* memory64.cpp */,
 				710091542644D44E003413C3 /* platform.cpp */,
 				710091562644D44E003413C3 /* platformThreads-x64.cpp */,
@@ -3169,7 +3161,6 @@
 				1A80EE49276EBCC70032A70A /* ksocketobject.cpp in Sources */,
 				1A80EE54276EBCC70032A70A /* glfunctions_ext1.cpp in Sources */,
 				1A80EE57276EBCC70032A70A /* okDlg.cpp in Sources */,
-				1A80EE59276EBCC70032A70A /* dynamic.cpp in Sources */,
 				1A80EE5A276EBCC70032A70A /* zip.c in Sources */,
 				1A80EE5C276EBCC70032A70A /* glshim.c in Sources */,
 				1A80EE5F276EBCC70032A70A /* kfilelock.cpp in Sources */,
@@ -3555,7 +3546,6 @@
 				1AC5F2D82772D957001D0FCA /* armv8btOps_fpu.cpp in Sources */,
 				1A80F225276EBF170032A70A /* common_fpu.cpp in Sources */,
 				1A80F235276EBF170032A70A /* glext.cpp in Sources */,
-				1A80F237276EBF170032A70A /* dynamic.cpp in Sources */,
 				1A80F239276EBF170032A70A /* spinnerControl.cpp in Sources */,
 				1A80F240276EBF170032A70A /* log.cpp in Sources */,
 				1AC96020278FB69600107ED0 /* vulkancommon.cpp in Sources */,
@@ -3692,7 +3682,6 @@
 				71222B802435169100CDBABD /* soft_native_page.cpp in Sources */,
 				71222B7A2435169100CDBABD /* soft_code_page.cpp in Sources */,
 				71222BC12435169100CDBABD /* glext.cpp in Sources */,
-				710091592644D44E003413C3 /* dynamic.cpp in Sources */,
 				71222B662435169100CDBABD /* lazyFlags.cpp in Sources */,
 				71222B9E2435169100CDBABD /* kunixsocket.cpp in Sources */,
 				71222BA62435169100CDBABD /* devzero.cpp in Sources */,
@@ -3939,7 +3928,6 @@
 				71222C4624351CBA00CDBABD /* common_fpu.cpp in Sources */,
 				1AC5F2FB2772D9D6001D0FCA /* platformThreads-armv8.cpp in Sources */,
 				71222C4724351CBA00CDBABD /* glext.cpp in Sources */,
-				710091582644D44E003413C3 /* dynamic.cpp in Sources */,
 				71222C4824351CBA00CDBABD /* spinnerControl.cpp in Sources */,
 				71222C4924351CBA00CDBABD /* log.cpp in Sources */,
 				71222C4A24351CBA00CDBABD /* common_sse.cpp in Sources */,
@@ -4077,7 +4065,6 @@
 				1AC5F2C82772D957001D0FCA /* armv8btOps_shift.cpp in Sources */,
 				7135DC53264EBCD0005D6AA6 /* soft_code_page.cpp in Sources */,
 				7135DC54264EBCD0005D6AA6 /* glext.cpp in Sources */,
-				7135DC55264EBCD0005D6AA6 /* dynamic.cpp in Sources */,
 				7135DC56264EBCD0005D6AA6 /* lazyFlags.cpp in Sources */,
 				7135DC57264EBCD0005D6AA6 /* kunixsocket.cpp in Sources */,
 				1AC5F2FF2772D9D6001D0FCA /* platformThreads-armv8.cpp in Sources */,
@@ -4164,7 +4151,6 @@
 				71FBFEC02433BBBE003F17F1 /* ksocketobject.cpp in Sources */,
 				71FBFEDC2433BBBE003F17F1 /* glfunctions_ext1.cpp in Sources */,
 				715F348A2440D7D20038F5A4 /* okDlg.cpp in Sources */,
-				710091572644D44E003413C3 /* dynamic.cpp in Sources */,
 				1A155105263261DF006E0C8A /* zip.c in Sources */,
 				71FBFEE62433BBBE003F17F1 /* glshim.c in Sources */,
 				71FBFEBB2433BBBE003F17F1 /* kfilelock.cpp in Sources */,

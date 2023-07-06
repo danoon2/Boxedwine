@@ -325,6 +325,9 @@ void Platform::releaseNativeMemory(void* address, U64 len) {
 }
 
 void Platform::commitNativeMemory(void* address, U64 len) {
+    if (((U64)address % getPageAllocationGranularity()) != 0) {
+        kpanic("TODO: handle commitHostAddressSpaceMapping address not aligned");
+    }
     if (mprotect(address, len, PAGE_READ | PROT_WRITE) < 0) {
         kpanic("commitHostAddressSpaceMapping mprotect failed: %s", strerror(errno));
     }
@@ -349,7 +352,7 @@ void* Platform::reserveNativeMemory(bool large) {
         if (isAddressRangeInUse(p, len)) {
             continue;
         }
-        if (mmap(p, 0x100000000l, PROT_NONE, MAP_ANONYMOUS | MAP_FIXED | MAP_PRIVATE, -1, 0) == p) {
+        if (mmap(p, len, PROT_NONE, MAP_ANONYMOUS | MAP_FIXED | MAP_PRIVATE, -1, 0) == p) {
             break;
         }
     }

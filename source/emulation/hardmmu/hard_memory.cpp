@@ -126,31 +126,17 @@ void Memory::releaseNativeMemory() {
 }
 
 void Memory::commitHostAddressSpaceMapping(U32 page, U32 pageCount, U64 defaultValue) {
-    U64 granPage;
-    U64 granCount;
-    U32 gran = Platform::getPageAllocationGranularity();
-    U64 hostPage = page * sizeof(void*);
-    U64 hostPageCount = pageCount * sizeof(void*);
-
-    granPage = hostPage & ~((U64)gran - 1);
-    granCount = ((gran - 1) + hostPageCount + (hostPage - granPage)) / gran;
-    for (U32 i = 0; i < granCount; i++) {
-        if (!this->isEipPageCommitted((U32)(granPage / sizeof(void*)))) {
-            U8* address = (U8*)this->eipToHostInstructionAddressSpaceMapping + (granPage << K_PAGE_SHIFT);
-            Platform::commitNativeMemory(address, (gran << K_PAGE_SHIFT));
-
+    for (U32 i=0;i<pageCount;i++) {
+        if (!this->isEipPageCommitted(page+i)) {
+            U8* address = (U8*)this->eipToHostInstructionAddressSpaceMapping+((U64)(page+i))*K_PAGE_SIZE*sizeof(void*);
+            // won't worry about granularity size (Platform::getPageAllocationGranularity()) since Platform::commitNativeMemory doesn't require a multiple of it
+            Platform::commitNativeMemory(address, (sizeof(void*) << K_PAGE_SHIFT));
             U64* address64 = (U64*)address;
-            U32 count = (gran << K_PAGE_SHIFT) / sizeof(void*); // 8K
-            for (U32 j = 0; j < count; j++, address64++) {
+            for (U32 j=0;j<K_PAGE_SIZE;j++, address64++) {
                 *address64 = defaultValue;
             }
-            U32 startPage = (U32)(granPage / sizeof(void*));
-            U32 pageCount = (U32)((granCount * gran) / sizeof(void*));
-            for (U32 j = 0; j < pageCount; j++) {
-                this->setEipPageCommitted(startPage + j);
-            }
+            this->setEipPageCommitted(page+i);
         }
-        granPage += gran;
     }
 }
 
