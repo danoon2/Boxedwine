@@ -535,8 +535,13 @@ bool ContainersView::saveChanges() {
             }
             this->currentContainer->setWineVersion(this->containerWineVersionControl->getSelectionStringValue());
             this->currentContainer->setWindowsVersion(BoxedwineData::getWinVersions()[this->containerWindowsVersionControl->getSelection()]);
-            this->currentContainer->setGDI(containerGdiControl->isChecked());
-            this->currentContainer->setRenderer(containerRendererControl->getSelectionStringValue());
+            if (this->currentContainer->getWineVersionAsNumber() > 500) {
+                this->currentContainer->setGDI(containerRendererControl->getSelectionStringValue() == "gdi");
+                this->currentContainer->setRenderer(containerRendererControl->getSelectionStringValue());
+            } else {
+                this->currentContainer->setGDI(containerGdiControl->isChecked());
+                this->currentContainer->setRenderer(containerGdiControl->isChecked()?"gdi":"gl");
+            }
             this->currentContainer->setMouseWarpOverride(containerMouseWarpControl->getSelectionStringValue());
             this->currentContainer->saveContainer();
             this->currentContainerChanged = false;            

@@ -116,12 +116,12 @@ void OPCALL normal_jmpFar(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_retf16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    cpu->eip.u32+=op->len; cpu->ret(0, op->imm);
+    cpu->ret(0, op->imm);
     NEXT_DONE();
 }
 void OPCALL normal_retf32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    cpu->eip.u32+=op->len; cpu->ret(1, op->imm);
+    cpu->ret(1, op->imm);
     NEXT_DONE();
 }
 void OPCALL normal_iret(CPU* cpu, DecodedOp* op) {

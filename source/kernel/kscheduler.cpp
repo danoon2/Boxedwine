@@ -171,7 +171,11 @@ bool runSlice() {
     if (scheduledThreads.isEmpty())
         return false;
     
-    flipFB();	
+    flipFB();
+    std::shared_ptr<KNativeWindow> window = KNativeWindow::getNativeWindow();
+    if (window) {
+        window->flipFB();
+    }
     U64 elapsedTime = 0;
 
     contextTimeRemaining = contextTime;
