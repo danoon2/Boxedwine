@@ -544,6 +544,12 @@
     <ClCompile Include="..\..\..\..\lib\tiny-process\process_win.cpp">
       <Filter>process</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCpu.cpp">
+      <Filter>source\emulation\cpu\binaryTranslation</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btData.cpp">
+      <Filter>source\emulation\cpu\binaryTranslation</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -1226,6 +1232,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\lib\tiny-process\process.hpp">
       <Filter>process</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btData.h">
+      <Filter>source\emulation\cpu\binaryTranslation</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

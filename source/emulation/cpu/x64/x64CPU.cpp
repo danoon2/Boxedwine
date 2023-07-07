@@ -7,9 +7,6 @@
 #include "../../hardmmu/hard_memory.h"
 #include "x64CodeChunk.h"
 #include "../normal/normalCPU.h"
-#include "ksignal.h"
-#include "knativethread.h"
-#include "knativesystem.h"
 #include "../binaryTranslation/btCodeMemoryWrite.h"
 
 CPU* CPU::allocCPU() {
@@ -20,58 +17,16 @@ CPU* CPU::allocCPU() {
 bool x64CPU::hasBMI2 = true;
 bool x64Intialized = false;
 
-x64CPU::x64CPU() : exitToStartThreadLoop(0) {
+x64CPU::x64CPU() {
     if (!x64Intialized) {
         x64Intialized = true;
         x64CPU::hasBMI2 = platformHasBMI2();
     }
 }
 
-typedef void (*StartCPU)();
-
 void x64CPU::setSeg(U32 index, U32 address, U32 value) {
     CPU::setSeg(index, address, value);
     this->negSegAddress[index] = (U32)(-((S32)(this->seg[index].address)));
-}
-
-void x64CPU::run() {    
-    while (true) {
-        this->memOffset = this->thread->process->memory->id;
-        this->negMemOffset = (U64)(-(S64)this->memOffset);
-        for (int i=0;i<6;i++) {
-            this->negSegAddress[i] = (U32)(-((S32)(this->seg[i].address)));
-        }
-		this->exitToStartThreadLoop = 0;
-        if (setjmp(this->runBlockJump)==0) {
-            StartCPU start = (StartCPU)this->init();
-            start();
-#ifdef __TEST
-            return;
-#endif
-        }		
-		if (this->thread->terminating) {
-			break;
-		}
-		if (this->exitToStartThreadLoop) {
-			Memory* previousMemory = this->thread->process->previousMemory;
-			if (previousMemory && previousMemory->getRefCount() == 1) {
-				// :TODO: this seem like a bad dependency that memory will access KThread::currentThread()
-				Memory* currentMemory = this->thread->process->memory;
-				this->thread->process->memory = previousMemory;
-				this->thread->memory = previousMemory;
-				delete previousMemory;
-				this->thread->process->memory = currentMemory;
-				this->thread->memory = currentMemory;
-			}
-			else {
-				previousMemory->decRefCount();
-			}
-			this->thread->process->previousMemory = NULL;
-		}
-        if (this->inException) {
-            this->inException = false;
-        }		
-    }
 }
 
 void x64CPU::restart() {
@@ -83,15 +38,16 @@ void x64CPU::restart() {
 	this->exitToStartThreadLoop = true;
 }
 
-DecodedBlock* x64CPU::getNextBlock() {
-    return NULL;
-}
-
 void* x64CPU::init() {
     X64Asm data(this);
     void* result;
     Memory* memory = this->thread->memory;
     x64CPU* cpu = this;
+
+    this->negMemOffset = (U64)(-(S64)this->memOffset);
+    for (int i = 0; i < 6; i++) {
+        this->negSegAddress[i] = (U32)(-((S32)(this->seg[i].address)));
+    }
 
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->executableMemoryMutex);
     this->eipToHostInstructionAddressSpaceMapping = this->thread->memory->eipToHostInstructionAddressSpaceMapping;
@@ -217,6 +173,10 @@ std::shared_ptr<BtCodeChunk> x64CPU::translateChunk(X64Asm* parent, U32 ip) {
     }    
 }
 
+void* x64CPU::translateEipInternal(U32 ip) {
+    return translateEipInternal(NULL, ip);
+}
+
 void* x64CPU::translateEipInternal(X64Asm* parent, U32 ip) {
     if (!this->isBig()) {
         ip = ip & 0xFFFF;
@@ -329,44 +289,8 @@ void x64CPU::link(X64Asm* data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 off
     markCodePageReadOnly(data);
 }
 
-void x64CPU::markCodePageReadOnly(X64Asm* data) {
-    U32 pageStart = this->thread->memory->getNativePage((data->startOfDataIp+this->seg[CS].address) >> K_PAGE_SHIFT);
-    if (pageStart == 0) {
-        return; // x64CPU::init()
-    }
-    U32 pageEnd = this->thread->memory->getNativePage((data->ip+this->seg[CS].address-1) >> K_PAGE_SHIFT);
-    S32 pageCount = pageEnd-pageStart+1;
-
-#ifndef __TEST
-    for (int i=0;i<pageCount;i++) {        
-        pendingCodePages.push_back(pageStart+i);        
-    }
-#endif    
-}
-
-void x64CPU::makePendingCodePagesReadOnly() {
-    for (int i=0;i<(int)this->pendingCodePages.size();i++) {
-        // the chunk could cross a page and be a mix of dynamic and non dynamic code
-        if (this->thread->memory->dynamicCodePageUpdateCount[this->pendingCodePages[i]]!=MAX_DYNAMIC_CODE_PAGE_COUNT) {
-            this->thread->memory->makeCodePageReadOnly(this->pendingCodePages[i]);
-        }
-    }
-    this->pendingCodePages.clear();
-}
-
-void* x64CPU::translateEip(U32 ip) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->thread->memory->executableMemoryMutex);
-
-    void* result = translateEipInternal(NULL, ip);
-    makePendingCodePagesReadOnly();
-    return result;
-}
-
 void x64CPU::translateInstruction(X64Asm* data, X64Asm* firstPass) {
     data->startOfOpIp = data->ip;  
-    if (data->ip == 0x40CB1B) {
-        data->logOp(data->ip);
-    }
     data->useSingleMemOffset = !data->cpu->thread->memory->doesInstructionNeedMemoryOffset(data->ip);
 #ifdef _DEBUG
     //data->logOp(data->ip);
@@ -440,27 +364,6 @@ void x64CPU::translateData(X64Asm* data, X64Asm* firstPass) {
         }
         data->resetForNewOp();
     }     
-}
-
-static U8 fetchByte(U32 *eip) {
-    return readb((*eip)++);
-}
-
-DecodedOp* x64CPU::getOp(U32 eip, bool existing) {
-    if (this->isBig()) {
-        eip+=this->seg[CS].address;
-    } else {
-        eip=this->seg[CS].address + (eip & 0xFFFF);
-    }        
-    if (!existing || this->thread->memory->getExistingHostAddress(eip)) {
-        THREAD_LOCAL static DecodedBlock* block;
-        if (!block) {
-            block = new DecodedBlock();
-        }
-        decodeBlock(fetchByte, eip, this->isBig(), 4, 64, 1, block);
-        return block->op;
-    }
-    return NULL;
 }
 
 // for string instruction, we modify (add memory offset and segment) rdi and rsi so that the native string instruction can be used, this code will revert it back to the original values
@@ -574,51 +477,6 @@ U64 x64CPU::handleCodePatch(U64 rip, U32 address, U64 rsi, U64 rdi, std::functio
     return 0;
 }
 
-U64 x64CPU::handleChangedUnpatchedCode(U64 rip) {
-#ifndef __TEST
-    // only one thread at a time can update the host code pages and related date like opToAddressPages
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->thread->memory->executableMemoryMutex);
-#endif
-                        
-    unsigned char* hostAddress = (unsigned char*)rip;
-    std::shared_ptr<BtCodeChunk> chunk = this->thread->memory->getCodeChunkContainingHostAddress(hostAddress);
-    if (!chunk) {
-        kpanic("x64CPU::handleChangedUnpatchedCode: could not find chunk");
-    }
-    U32 startOfEip = chunk->getEipThatContainsHostAddress(hostAddress, NULL, NULL);
-    if (!chunk->isDynamicAware() || !chunk->retranslateSingleInstruction(this, hostAddress)) {        
-        chunk->releaseAndRetranslate();   
-    }
-    U64 result = (U64)this->thread->memory->getExistingHostAddress(startOfEip);
-    if (result==0) {
-        result = (U64)this->translateEip(startOfEip-this->seg[CS].address);
-    }
-    if (result==0) {
-        kpanic("x64CPU::handleChangedUnpatchedCode failed to translate code in exception");
-    }
-    return result;
-}
-
-U64 x64CPU::reTranslateChunk() {
-#ifndef __TEST
-    // only one thread at a time can update the host code pages and related date like opToAddressPages
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->thread->memory->executableMemoryMutex);
-#endif
-    std::shared_ptr<BtCodeChunk> chunk = this->thread->memory->getCodeChunkContainingEip(this->eip.u32 + this->seg[CS].address);
-    if (chunk) {
-        chunk->releaseAndRetranslate();
-    }    
-
-    U64 result = (U64)this->thread->memory->getExistingHostAddress(this->eip.u32 + this->seg[CS].address);
-    if (result == 0) {
-        result = (U64)this->translateEip(this->eip.u32);
-    }
-    if (result == 0) {
-        kpanic("x64CPU::reTranslateChunk failed to translate code in exception");
-    }
-    return result;
-}
-
 U64 x64CPU::handleMissingCode(U64 r8, U64 r9, U32 inst) {
     U32 page = (U32)r8;
     U32 offset = (U32)r9;
@@ -630,23 +488,6 @@ U64 x64CPU::handleMissingCode(U64 r8, U64 r9, U32 inst) {
     } else {
         return (U64)(this->eipToHostInstructionPages[page][offset]);
     }
-}
-
-U64 x64CPU::handleIllegalInstruction(U64 rip) {    
-    if (*((U8*)rip)==0xce) {            
-        return this->handleChangedUnpatchedCode(rip);
-    } 
-    if (*((U8*)rip)==0xcd) { 
-        // free'd chunks are filled in with 0xcd, if this one is free'd, it is possible another thread replaced the chunk
-        // while this thread jumped to it and this thread waited in the critical section at the top of this function.
-        void* host = this->thread->memory->getExistingHostAddress(this->eip.u32+this->seg[CS].address);
-        if (host) {
-            return (U64)host;
-        } else {
-            kpanic("x64CPU::handleIllegalInstruction tried to run code in a free'd chunk");
-        }
-    }
-    return 0;
 }
 
 U32 dynamicCodeExceptionCount;
@@ -734,111 +575,6 @@ U64 x64CPU::handleAccessException(U64 rip, U64 address, bool readAddress, std::f
         }
         return result;
     }
-}
-
-U64 x64CPU::handleFpuException(int code, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo) {
-    if (doSyncFrom) {
-        doSyncFrom(NULL);
-    }
-    if (code == K_FPE_INTDIV) {
-        this->prepareException(EXCEPTION_DIVIDE, 0);
-    } else if (code == K_FPE_INTOVF) {
-        this->prepareException(EXCEPTION_DIVIDE, 1);
-    } else {
-        this->prepareFpuException(code);
-    }
-    if (doSyncTo) {
-        doSyncTo(NULL);
-    }
-    U64 result = (U64)this->translateEip(this->eip.u32); 
-    if (result==0) {
-        kpanic("x64CPU::handleFpuException failed to translate code");
-    }
-    return result;
-}
-
-
-U64 x64CPU::startException(U64 address, bool readAddress, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo) {
-    if (this->thread->terminating) {
-        return (U64)this->returnToLoopAddress;                
-    }
-    if (this->inException) {
-        if (doSyncFrom) {
-            doSyncFrom(NULL);
-        }
-        this->thread->seg_mapper((U32)address, readAddress, !readAddress);
-        if (doSyncTo) {
-            doSyncTo(NULL);
-        }
-        U64 result = (U64)this->translateEip(this->eip.u32); 
-        if (result==0) {
-            kpanic("x64CPU::startException failed to translate code in exception");
-        }
-        return result;
-    } 
-    return 0;
-}
-
-extern U32 platformThreadCount;
-
-void x64CPU::startThread() {
-    jmp_buf jmpBuf;
-    KThread::setCurrentThread(thread);       
-
-    // :TODO: hopefully this will eventually go away.  For now this prevents a signal from being generated which isn't handled yet
-    KNativeThread::sleep(50);   
-
-    if (!setjmp(jmpBuf)) {
-        this->jmpBuf = &jmpBuf;
-        this->run();
-    }
-    std::shared_ptr<KProcess> process = thread->process;
-	process->deleteThread(thread);
-
-    platformThreadCount--;
-    if (platformThreadCount==0) {
-        KSystem::shutingDown = true;
-        KNativeSystem::postQuit();
-    }
-}
-
-// called from another thread
-void x64CPU::wakeThreadIfWaiting() {
-    BoxedWineCondition* cond = thread->waitingCond;
-
-	// wait up the thread if it is waiting
-    if (cond) {
-        cond->lock();
-        cond->signal();
-        cond->unlock();
-    }    
-}
-
-void terminateOtherThread(const std::shared_ptr<KProcess>&  process, U32 threadId) {
-	process->threadsCondition.lock();
-	KThread* thread = process->getThreadById(threadId);
-	if (thread) {
-		thread->terminating = true;
-		((x64CPU*)thread->cpu)->exitToStartThreadLoop = true;
-		((x64CPU*)thread->cpu)->wakeThreadIfWaiting();
-	}
-	process->threadsCondition.unlock();
-
-	while (true) {
-		BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(process->threadsCondition);		
-		if (!process->getThreadById(threadId)) {
-			break;
-		}
-		BOXEDWINE_CONDITION_WAIT_TIMEOUT(process->threadsCondition, 1000);
-	}
-}
-
-void terminateCurrentThread(KThread* thread) {
-	thread->terminating = true;
-	((x64CPU*)thread->cpu)->exitToStartThreadLoop = true;
-}
-
-void unscheduleThread(KThread* thread) {
 }
 
 #endif

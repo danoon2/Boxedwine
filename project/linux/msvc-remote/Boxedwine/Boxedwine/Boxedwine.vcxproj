@@ -190,6 +190,8 @@
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8\llvm_helper.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeChunk.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeMemoryWrite.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btCpu.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btData.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\common\common_arith.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\common\common_bit.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\common\common_fpu.cpp" />
@@ -706,6 +708,7 @@
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeChunk.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeMemoryWrite.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btCpu.h" />
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btData.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\common\common_arith.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\common\common_bit.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\common\common_fpu.h" />

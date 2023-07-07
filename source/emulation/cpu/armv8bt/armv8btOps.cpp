@@ -3148,9 +3148,8 @@ static void doRetn32(Armv8btAsm* data, U32 bytes) {
 }
 static void doRetf(Armv8btAsm* data, U32 big) {
     // kpanic("Need to test");
-    // cpu->eip.u32 += op->len; cpu->ret(0, op->imm);
-    data->startOfOpIp = data->ip;
-    data->syncRegsFromHost(); // syncRegsFromHost stores startOfOpIp into cpu->eip, which already needs to point to the next instruction
+    // cpu->ret(0, op->imm);
+    data->syncRegsFromHost();
     // void common_ret(CPU* cpu, U32 big, U32 bytes)
     data->mov64(0, xCPU); // param 1 (CPU)
     data->loadConst(1, big); // param 2

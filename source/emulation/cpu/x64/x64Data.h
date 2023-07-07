@@ -4,6 +4,7 @@
 #ifdef BOXEDWINE_X64
 
 #include "x64CPU.h"
+#include "../binaryTranslation/btData.h"
 
 #define REX_BASE 0x40
 #define REX_MOD_RM 0x1
@@ -38,42 +39,18 @@
 
 #define HOST_TMP4         7
 
-class TodoJump {
-public:
-    TodoJump() : eip(0), bufferPos(0), offsetSize(0), sameChunk(true) {}
-    TodoJump(U32 eip, U32 bufferPos, U8 offsetSize, bool sameChunk, U32 opIndex) : eip(eip), bufferPos(bufferPos), offsetSize(offsetSize), sameChunk(sameChunk), opIndex(opIndex) {}
-    U32 eip;
-    U32 bufferPos;
-    U8 offsetSize;
-    bool sameChunk;
-    U32 opIndex;
-};
-
-class X64Data {
+class X64Data : public BtData {
 public:
     X64Data(x64CPU* cpu);
-    virtual ~X64Data();
     
-    void mapAddress(U32 ip, U32 bufferPos);
-
     U8 fetch8();
     U16 fetch16();
     U32 fetch32();    
     U64 fetch64();
 
-    void write8(U8 data);
-    void write16(U16 data);
-    void write32(U32 data);
-    void write64(U64 data);
-
     void resetForNewOp();
     std::shared_ptr<X64CodeChunk> commit(bool makeLive);
-
-    U32 ip;
-    U32 startOfDataIp;
-    U32 startOfOpIp;
-    U32 calculatedEipLen;
-    bool done;
+    
     U32 op;
     U32 inst; // full op, like 0x200 while op would be 0x00
     bool addressPrefix;
@@ -106,25 +83,8 @@ public:
     U8 immSize;
     U32 imm;
 
-    x64CPU* cpu;
-
-    std::vector<TodoJump> todoJump;
-    S32 stopAfterInstruction;
-
-    U8 calculateEipLen(U32 eip);
-
-    U32* ipAddress;
-    U32* ipAddressBufferPos;
-    U32 ipAddressCount;
-    U32 ipAddressBufferSize;
-    U32 ipAddressBuffer[64];
-    U32 ipAddressBufferPosBuffer[64];
-    U8* buffer;
-    U32 bufferSize;
-    U32 bufferPos;
-    U8 bufferInternal[256];
-    bool dynamic;
-    bool useSingleMemOffset;
+    x64CPU* cpu;    
+    
     bool skipWriteOp;
     bool isG8bitWritten;
 };
