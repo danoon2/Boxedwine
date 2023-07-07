@@ -598,6 +598,18 @@
 		1AC96020278FB69600107ED0 /* vulkancommon.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AC96016278FB69600107ED0 /* vulkancommon.cpp */; };
 		1AC96021278FB69600107ED0 /* vulkancommon.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AC96016278FB69600107ED0 /* vulkancommon.cpp */; };
 		1AC96022278FB69600107ED0 /* vulkancommon.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AC96016278FB69600107ED0 /* vulkancommon.cpp */; };
+		1AD3FA8E2A57D2C2002EA550 /* btData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AD3FA8B2A57D2A6002EA550 /* btData.cpp */; };
+		1AD3FA8F2A57D2C2002EA550 /* btData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AD3FA8B2A57D2A6002EA550 /* btData.cpp */; };
+		1AD3FA902A57D2C3002EA550 /* btData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AD3FA8B2A57D2A6002EA550 /* btData.cpp */; };
+		1AD3FA912A57D2C4002EA550 /* btData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AD3FA8B2A57D2A6002EA550 /* btData.cpp */; };
+		1AD3FA922A57D2C5002EA550 /* btData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AD3FA8B2A57D2A6002EA550 /* btData.cpp */; };
+		1AD3FA932A57D2C6002EA550 /* btData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AD3FA8B2A57D2A6002EA550 /* btData.cpp */; };
+		1AD3FA942A57D2C9002EA550 /* btCpu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AD3FA8C2A57D2A6002EA550 /* btCpu.cpp */; };
+		1AD3FA952A57D2CA002EA550 /* btCpu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AD3FA8C2A57D2A6002EA550 /* btCpu.cpp */; };
+		1AD3FA962A57D2CB002EA550 /* btCpu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AD3FA8C2A57D2A6002EA550 /* btCpu.cpp */; };
+		1AD3FA972A57D2CC002EA550 /* btCpu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AD3FA8C2A57D2A6002EA550 /* btCpu.cpp */; };
+		1AD3FA982A57D2CC002EA550 /* btCpu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AD3FA8C2A57D2A6002EA550 /* btCpu.cpp */; };
+		1AD3FA992A57D2CD002EA550 /* btCpu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AD3FA8C2A57D2A6002EA550 /* btCpu.cpp */; };
 		1AFC4768264096CB00EE5FCC /* armv8CPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4764264096CB00EE5FCC /* armv8CPU.cpp */; };
 		1AFC4769264096CB00EE5FCC /* llvm_helper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4765264096CB00EE5FCC /* llvm_helper.cpp */; };
 		1AFC476D26409EB200EE5FCC /* armv8CPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4764264096CB00EE5FCC /* armv8CPU.cpp */; };
@@ -1431,6 +1443,9 @@
 		1AC96014278FB69600107ED0 /* vk_host.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = vk_host.h; path = vulkan/vk_host.h; sourceTree = "<group>"; };
 		1AC96015278FB69600107ED0 /* vkdef.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = vkdef.h; path = vulkan/vkdef.h; sourceTree = "<group>"; };
 		1AC96016278FB69600107ED0 /* vulkancommon.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = vulkancommon.cpp; path = vulkan/vulkancommon.cpp; sourceTree = "<group>"; };
+		1AD3FA8B2A57D2A6002EA550 /* btData.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = btData.cpp; path = binaryTranslation/btData.cpp; sourceTree = "<group>"; };
+		1AD3FA8C2A57D2A6002EA550 /* btCpu.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = btCpu.cpp; path = binaryTranslation/btCpu.cpp; sourceTree = "<group>"; };
+		1AD3FA8D2A57D2A6002EA550 /* btData.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = btData.h; path = binaryTranslation/btData.h; sourceTree = "<group>"; };
 		1AFC4764264096CB00EE5FCC /* armv8CPU.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = armv8CPU.cpp; sourceTree = "<group>"; };
 		1AFC4765264096CB00EE5FCC /* llvm_helper.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = llvm_helper.cpp; sourceTree = "<group>"; };
 		1AFC4766264096CB00EE5FCC /* armv8CPU.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = armv8CPU.h; sourceTree = "<group>"; };
@@ -2541,6 +2556,9 @@
 		71FBFD5C2433BBBE003F17F1 /* cpu */ = {
 			isa = PBXGroup;
 			children = (
+				1AD3FA8C2A57D2A6002EA550 /* btCpu.cpp */,
+				1AD3FA8B2A57D2A6002EA550 /* btData.cpp */,
+				1AD3FA8D2A57D2A6002EA550 /* btData.h */,
 				1AC5F2882772D93B001D0FCA /* armv8bt */,
 				1AFC47632640965500EE5FCC /* armv8 */,
 				1A9193342551B6D3005A798A /* btCodeChunk.cpp */,
@@ -3279,6 +3297,7 @@
 				1A80EF70276EBCC70032A70A /* pugixml.cpp in Sources */,
 				1AC5F2D12772D957001D0FCA /* armv8btOps_sse_convert.cpp in Sources */,
 				1AC5F2BF2772D957001D0FCA /* armv8btData.cpp in Sources */,
+				1AD3FA962A57D2CB002EA550 /* btCpu.cpp in Sources */,
 				1A80EF75276EBCC70032A70A /* threadedMainloop.cpp in Sources */,
 				1A80EF78276EBCC70032A70A /* bufferaccess.cpp in Sources */,
 				1A80EF79276EBCC70032A70A /* uiSettings.cpp in Sources */,
@@ -3328,6 +3347,7 @@
 				1A80F004276EBCC70032A70A /* glew.cpp in Sources */,
 				1A80F006276EBCC70032A70A /* soft_ondemand_page.cpp in Sources */,
 				1A80F00A276EBCC70032A70A /* appChooserDlg.cpp in Sources */,
+				1AD3FA902A57D2C3002EA550 /* btData.cpp in Sources */,
 				1A80F00D276EBCC70032A70A /* coremidi.cpp in Sources */,
 				1A80F00E276EBCC70032A70A /* kfiledescriptor.cpp in Sources */,
 				1A55D6372A0841E2002B7021 /* inffast.c in Sources */,
@@ -3399,6 +3419,7 @@
 				1AC5F2BA2772D957001D0FCA /* armv8btOps_sse_minmax.cpp in Sources */,
 				1A80F0C5276EBF170032A70A /* decoder.cpp in Sources */,
 				1A80F0C8276EBF170032A70A /* testCPU.cpp in Sources */,
+				1AD3FA972A57D2CC002EA550 /* btCpu.cpp in Sources */,
 				1AC5F2AE2772D957001D0FCA /* armv8btOps_sse_shuffle.cpp in Sources */,
 				1A80F0D1276EBF170032A70A /* ksocket.cpp in Sources */,
 				1A80F0D4276EBF170032A70A /* cpuinfo.cpp in Sources */,
@@ -3466,6 +3487,7 @@
 				1A80F17C276EBF170032A70A /* sdlcallback.cpp in Sources */,
 				1A80F17D276EBF170032A70A /* boxedwineData.cpp in Sources */,
 				1A80F17E276EBF170032A70A /* boxedTranslation.cpp in Sources */,
+				1AD3FA912A57D2C4002EA550 /* btData.cpp in Sources */,
 				1A80F180276EBF170032A70A /* ksystem.cpp in Sources */,
 				1A80F183276EBF170032A70A /* soft_native_page.cpp in Sources */,
 				1A55D65A2A08428F002B7021 /* zutil.c in Sources */,
@@ -3642,6 +3664,7 @@
 				71222B742435169100CDBABD /* instructions.cpp in Sources */,
 				71222BB62435169100CDBABD /* ksocket.cpp in Sources */,
 				71222B6E2435169100CDBABD /* fpu.cpp in Sources */,
+				1AD3FA922A57D2C5002EA550 /* btData.cpp in Sources */,
 				1AC5F2F72772D957001D0FCA /* armv8btCPU.cpp in Sources */,
 				71222B3D2435163100CDBABD /* testSSE2.cpp in Sources */,
 				71222B852435169100CDBABD /* fsfileopennode.cpp in Sources */,
@@ -3724,6 +3747,7 @@
 				1AC96021278FB69600107ED0 /* vulkancommon.cpp in Sources */,
 				1A1551BA26326273006E0C8A /* pugixml.cpp in Sources */,
 				1AFC480C2663FFC000EE5FCC /* pixelformat.cpp in Sources */,
+				1AD3FA982A57D2CC002EA550 /* btCpu.cpp in Sources */,
 				1AC5F2B52772D957001D0FCA /* armv8btCodeChunk.cpp in Sources */,
 				71222B752435169100CDBABD /* normal_strings.cpp in Sources */,
 				71222B782435169100CDBABD /* soft_ondemand_page.cpp in Sources */,
@@ -3885,6 +3909,7 @@
 				1AC5F2D02772D957001D0FCA /* armv8btOps_sse_convert.cpp in Sources */,
 				71222C2B24351CBA00CDBABD /* threadedMainloop.cpp in Sources */,
 				1AC5F2BE2772D957001D0FCA /* armv8btData.cpp in Sources */,
+				1AD3FA952A57D2CA002EA550 /* btCpu.cpp in Sources */,
 				71222C2C24351CBA00CDBABD /* bufferaccess.cpp in Sources */,
 				71222C2D24351CBA00CDBABD /* uiSettings.cpp in Sources */,
 				71222C2E24351CBA00CDBABD /* devtty.cpp in Sources */,
@@ -3934,6 +3959,7 @@
 				71222C4B24351CBA00CDBABD /* soft_copy_on_write_page.cpp in Sources */,
 				71222C4E24351CBA00CDBABD /* fs.cpp in Sources */,
 				1A155113263261E7006E0C8A /* unzip.c in Sources */,
+				1AD3FA8F2A57D2C2002EA550 /* btData.cpp in Sources */,
 				71222C5024351CBA00CDBABD /* soft_ondemand_page.cpp in Sources */,
 				71222C5124351CBA00CDBABD /* appChooserDlg.cpp in Sources */,
 				1A55D6362A0841E2002B7021 /* inffast.c in Sources */,
@@ -4058,6 +4084,7 @@
 				7135DC4D264EBCD0005D6AA6 /* main.cpp in Sources */,
 				1AB0D6DF26CB4AAF00E18A08 /* fsdynamiclinknode.cpp in Sources */,
 				7135DC4E264EBCD0005D6AA6 /* soft_file_map.cpp in Sources */,
+				1AD3FA992A57D2CD002EA550 /* btCpu.cpp in Sources */,
 				7135DC4F264EBCD0005D6AA6 /* common_other.cpp in Sources */,
 				7135DC50264EBCD0005D6AA6 /* kfiledescriptor.cpp in Sources */,
 				7135DC51264EBCD0005D6AA6 /* loader.cpp in Sources */,
@@ -4084,6 +4111,7 @@
 				7135DC63264EBCD0005D6AA6 /* memory64.cpp in Sources */,
 				7135DC64264EBCD0005D6AA6 /* mainloop.cpp in Sources */,
 				7135DC65264EBCD0005D6AA6 /* knativesystem.cpp in Sources */,
+				1AD3FA932A57D2C6002EA550 /* btData.cpp in Sources */,
 				7135DC66264EBCD0005D6AA6 /* cpuinfo.cpp in Sources */,
 				7135DC67264EBCD0005D6AA6 /* kfile.cpp in Sources */,
 				7135DC68264EBCD0005D6AA6 /* common_bit.cpp in Sources */,
@@ -4259,6 +4287,7 @@
 				710091632644D44E003413C3 /* platformThreads-x64.cpp in Sources */,
 				71FBFECC2433BBBE003F17F1 /* knativesocket.cpp in Sources */,
 				71FBFE982433BBBE003F17F1 /* soft_code_page.cpp in Sources */,
+				1AD3FA942A57D2C9002EA550 /* btCpu.cpp in Sources */,
 				71B2D2FD2668178700010AB6 /* osmesa.cpp in Sources */,
 				711F834924527273008E6A0C /* boxedTexture.cpp in Sources */,
 				71FBFE6A2433BBBE003F17F1 /* containersView.cpp in Sources */,
@@ -4352,6 +4381,7 @@
 				71FBFEC22433BBBE003F17F1 /* devsequencer.cpp in Sources */,
 				71FBFEBF2433BBBE003F17F1 /* kprocess.cpp in Sources */,
 				7100914E2644D42C003413C3 /* sdlcallback.cpp in Sources */,
+				1AD3FA8E2A57D2C2002EA550 /* btData.cpp in Sources */,
 				1AFC480A2663FFC000EE5FCC /* pixelformat.cpp in Sources */,
 				71FBFE912433BBBE003F17F1 /* normalCPU.cpp in Sources */,
 				71FBFEDD2433BBBE003F17F1 /* glfunctions_ext3.cpp in Sources */,
