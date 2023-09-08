@@ -180,13 +180,20 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
 static PVOID pHandler;
 U32 platformThreadCount = 0;
 
+#ifdef __TEST
+void initThreadForTesting() {
+    if (!pHandler) {
+        pHandler = AddVectoredExceptionHandler(1, seh_filter);
+    }
+}
+#endif
 DWORD WINAPI platformThreadProc(LPVOID lpThreadParameter) {
     KThread* thread = (KThread*)lpThreadParameter;
     BtCPU* cpu = (BtCPU*)thread->cpu;
     
     if (!pHandler) {
         pHandler = AddVectoredExceptionHandler(1,seh_filter);
-    }       
+    }
     cpu->startThread();
     return 0;
 }

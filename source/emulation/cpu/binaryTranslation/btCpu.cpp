@@ -158,11 +158,9 @@ void BtCPU::markCodePageReadOnly(BtData* data) {
     U32 pageEnd = this->thread->memory->getNativePage((data->ip + this->seg[CS].address - 1) >> K_PAGE_SHIFT);
     S32 pageCount = pageEnd - pageStart + 1;
 
-#ifndef __TEST
     for (int i = 0; i < pageCount; i++) {
         pendingCodePages.push_back(pageStart + i);
-    }
-#endif    
+    }  
 }
 
 U64 BtCPU::startException(U64 address, bool readAddress, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo) {

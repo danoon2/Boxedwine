@@ -35,6 +35,10 @@
 #include "testSSE.h"
 #include "testSSE2.h"
 
+#ifdef BOXEDWINE_MULTI_THREADED
+void initThreadForTesting();
+#endif
+
 static int cseip;
 
 #define G(rm) ((rm >> 3) & 7)
@@ -86,6 +90,9 @@ void setup() {
         process->memory->allocPages((STACK_ADDRESS >> K_PAGE_SHIFT)-PAGES_PER_SEG, PAGES_PER_SEG, PAGE_READ|PAGE_WRITE, 0, 0, 0);
         process->memory->allocPages(CODE_ADDRESS >> K_PAGE_SHIFT, PAGES_PER_SEG, PAGE_READ|PAGE_WRITE|PAGE_EXEC, 0, 0, 0);
         process->memory->allocPages(HEAP_ADDRESS >> K_PAGE_SHIFT, PAGES_PER_SEG, PAGE_READ|PAGE_WRITE, 0, 0, 0);
+#ifdef BOXEDWINE_MULTI_THREADED
+        initThreadForTesting();
+#endif
     }
 
     for (int i=0;i<6;i++) {
@@ -177,6 +184,9 @@ void runTestCPU() {
     cpu->nextBlock = cpu->getNextBlock();    
     while (cpu->nextBlock->op->inst != JumpO && (cpu->nextBlock->op->inst != Custom1 || cpu->nextBlock->op->next->inst != JumpO)) {
         cpu->run();
+        if (!cpu->nextBlock) {
+            cpu->nextBlock = cpu->getNextBlock();
+        }
     }
 #endif    
 #ifdef BOXEDWINE_64BIT_MMU
@@ -9178,8 +9188,159 @@ void test16BitMemoryAccess() {
         initMem16(); BX = 0xFFFF; runLeaGw(7<<3|0x87, 0, true, 0xFFFF, 0xFFFE, DS);
 }
 
+void testSelfModifying() {
+    // initialize
+    newInstruction(0);
 
-int main(int argc, char **argv) {	
+    // add eax, 0x20 (3 bytes)
+    pushCode8(0x83);
+    pushCode8(0xc0);
+    pushCode8(0x20);
+
+    // test ecx, ecx (2 bytes)
+    pushCode8(0x85);
+    pushCode8(0xc9);
+
+    // jnz (2 bytes)
+    pushCode8(0x75);
+    pushCode8(0xb);
+    
+    // inc ecx (1 byte)
+    pushCode8(0x41);
+
+    // modify previous block
+    // mov dword ptr cs:[0x2], 0x40 (8 bytes)
+    pushCode8(0x2e);
+    pushCode8(0xc6);
+    pushCode8(0x05);
+    pushCode32(0x2);
+    pushCode8(0x40);
+
+    // jmp (2 bytes)
+    pushCode8(0xeb);
+    pushCode8(0xee); // jmp -18
+
+    runTestCPU();
+
+    assertTrue(ECX == 1);
+    assertTrue(EAX == 0x60); // 0x20 from first run + 0x40 from second run
+}
+
+void testSelfModifyingMovsb() {
+    // initialize
+    newInstruction(0);
+
+    EDI = 0;
+    ESI = 512;
+    ECX = 3; // 3 bytes to copy
+
+    // code to copy
+    // sub eax, 0x05
+    writeb(CODE_ADDRESS+512, 0x83);
+    writeb(CODE_ADDRESS + 513, 0xe8);
+    writeb(CODE_ADDRESS + 514, 0x05);
+
+    cpu->setSeg(ES, CODE_ADDRESS, 1);
+
+    // add eax, 0x20 (3 bytes)
+    pushCode8(0x83);
+    pushCode8(0xc0);
+    pushCode8(0x20);
+
+    // test edx, edx (2 bytes)
+    pushCode8(0x85);
+    pushCode8(0xd2);
+
+    // jnz (2 bytes)
+    pushCode8(0x75);
+    pushCode8(0x6);
+
+    // inc edx (1 byte)
+    pushCode8(0x42);
+
+    // modify previous block
+    // movsb es:edi cs:esi (3 bytes)
+
+    pushCode8(0xf3); // repeat
+    pushCode8(0x2e); // CS source
+    pushCode8(0xa4); // movsb    
+
+    // jmp (2 bytes)
+    pushCode8(0xeb);
+    pushCode8(0xf3); // jmp -13
+
+    runTestCPU();
+
+    assertTrue(EDX == 1);
+    assertTrue(EAX == 0x1b); // 0x20 from first run - 0x05 from second run
+}
+
+void testSelfModifyingFront() {
+    // initialize
+    newInstruction(0);
+
+    // add eax, 0x20 (3 bytes)
+    pushCode8(0x83);
+    pushCode8(0xc0);
+    pushCode8(0x20);
+
+    // modify this block, previous instruction for future jump to block
+    // mov dword ptr cs:[0x2], 0x40 (8 bytes)
+    pushCode8(0x2e);
+    pushCode8(0xc6);
+    pushCode8(0x05);
+    pushCode32(0x2);
+    pushCode8(0x40);
+
+    // test ecx, ecx (2 bytes)
+    pushCode8(0x85);
+    pushCode8(0xc9);
+
+    // jnz (2 bytes)
+    pushCode8(0x75);
+    pushCode8(0x3);
+
+    // inc ecx (1 byte)
+    pushCode8(0x41);    
+
+    // jmp (2 bytes)
+    pushCode8(0xeb);
+    pushCode8(0xee); // jmp -18
+
+    runTestCPU();
+
+    assertTrue(ECX == 1);
+    assertTrue(EAX == 0x60); // 0x20 from first run + 0x40 from second run
+}
+
+void testSelfModifyingBack() {
+    // initialize
+    newInstruction(0);
+
+    // add eax, 0x20 (3 bytes)
+    pushCode8(0x83);
+    pushCode8(0xc0);
+    pushCode8(0x20);
+
+    // modify this block, next instruction
+    // mov dword ptr cs:[0xd], 0x40 (8 bytes)
+    pushCode8(0x2e);
+    pushCode8(0xc6);
+    pushCode8(0x05);
+    pushCode32(0xd);
+    pushCode8(0x40);
+
+    // add eax, 0x20 (3 bytes)
+    pushCode8(0x83);
+    pushCode8(0xc0);
+    pushCode8(0x20);
+
+    runTestCPU();
+
+    assertTrue(EAX == 0x60); // 0x20 from first run + 0x40 from second run
+}
+
+int runCpuTests() {
     printf("Please wait, these first 2 tests can take a while\n");
     run(test32BitMemoryAccess, "32-bit Memory Access");
     run(test16BitMemoryAccess, "16-bit Memory Access");
@@ -9981,7 +10142,15 @@ int main(int argc, char **argv) {
     run(testSse2Paddd1fe, "PADDD 1FE (sse2)");
     run(testMmxPaddd, "PADDD 3fe (mmx)");                                  
             
-
+    run(testSelfModifying, "Self Modifiying Code");
+    run(testSelfModifyingMovsb, "Self Modifiying Code using movsb");
+    run(testSelfModifyingFront, "Self Modifying Code Same Block(Previous)");
+    // BOXEDWINE_DYNAMIC has no way to exit early out of its current block
+#ifdef BOXEDWINE_DYNAMIC
+    printf("Self Modifying Code Same Block(Next) ... Skipping\n");
+#else
+    run(testSelfModifyingBack, "Self Modifying Code Same Block(Next)");
+#endif
     printf("%d tests FAILED\n", totalFails);
     KNativeThread::sleep(5000);
     if (totalFails)
@@ -9989,4 +10158,7 @@ int main(int argc, char **argv) {
     return 0;
 }
 
+int main(int argc, char** argv) {
+    return runCpuTests();
+}
 #endif

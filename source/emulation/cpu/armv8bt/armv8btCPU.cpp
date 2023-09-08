@@ -491,7 +491,6 @@ U64 Armv8btCPU::handleCodePatch(U64 rip, U32 address) {
         U32 addressStart = address;
         U32 len = instructionInfo[op->inst].writeMemWidth / 8;
 
-        // Fix string will set EDI and ESI back to their correct values so we can re-enter this instruction
         if (isStringOp(op)) {
             if (op->repNotZero || op->repZero) {
                 len = len * (isBig() ? THIS_ECX : THIS_CX);
