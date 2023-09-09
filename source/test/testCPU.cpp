@@ -994,12 +994,16 @@ void GbEw(int instruction, struct Data* data) {
         int gw;
         int rm;
 
-        for (ew = 0; ew < 8; ew++) {
+        for (ew = 0; ew < 8; ew++) {            
             for (gw = 0; gw < 8; gw++) {
                 Reg* e;
                 Reg* g;
                 U8* g8;
                 
+                if (gw == 4) {
+                    continue;
+                }
+
                 rm = ew | (gw << 3) | 0xC0;
                 newInstructionWithRM(instruction, rm, data->flags);
                 pushConstant(data);
@@ -1054,6 +1058,9 @@ void GbEd(int instruction, struct Data* data) {
                 Reg* g;
                 U8* g8;
                 
+                if (gw == 4) {
+                    continue;
+                }
                 rm = ew | (gw << 3) | 0xC0;
                 newInstructionWithRM(instruction, rm, data->flags);
                 pushConstant(data);
