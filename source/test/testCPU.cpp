@@ -988,6 +988,162 @@ void EwGw(int instruction, struct Data* data) {
     }
 }
 
+void GbEw(int instruction, struct Data* data) {
+    while (data->valid) {
+        int ew;
+        int gw;
+        int rm;
+
+        for (ew = 0; ew < 8; ew++) {
+            for (gw = 0; gw < 8; gw++) {
+                Reg* e;
+                Reg* g;
+                U8* g8;
+                
+                rm = ew | (gw << 3) | 0xC0;
+                newInstructionWithRM(instruction, rm, data->flags);
+                pushConstant(data);
+                e = &cpu->reg[G(rm)];
+                g = &cpu->reg[E(rm)];
+                g8 = cpu->reg8[E(rm)];
+                
+                e->u32 = DEFAULT;
+                g->u32 = DEFAULT;
+                e->u16 = data->var1;
+                *g8 = data->var2;
+                runTestCPU();
+                assertResult(data, cpu, instruction, e->u16, g->u16, E(rm), G(rm), 0, 16);
+            }
+        }
+
+        for (gw = 0; gw < 8; gw++) {
+            Reg* g;
+
+            rm = (gw << 3);
+            if (cpu->big)
+                rm += 5;
+            else
+                rm += 6;
+            newInstructionWithRM(instruction, rm, data->flags);
+            if (cpu->big)
+                pushCode32(200);
+            else
+                pushCode16(200);
+            pushConstant(data);
+            writed(cpu->seg[DS].address + 200, DEFAULT);
+            writeb(cpu->seg[DS].address + 200, data->var2);
+            g = &cpu->reg[G(rm)];
+            g->u32 = DEFAULT;
+            g->u16 = data->var1;
+            runTestCPU();
+            assertResult(data, cpu, instruction, g->u16, 0, G(rm), -1, cpu->seg[DS].address + 200, 16);
+        }
+        data++;
+    }
+}
+
+void GbEd(int instruction, struct Data* data) {
+    while (data->valid) {
+        int ew;
+        int gw;
+        int rm;
+
+        for (ew = 0; ew < 8; ew++) {
+            for (gw = 0; gw < 8; gw++) {
+                Reg* e;
+                Reg* g;
+                U8* g8;
+                
+                rm = ew | (gw << 3) | 0xC0;
+                newInstructionWithRM(instruction, rm, data->flags);
+                pushConstant(data);
+                e = &cpu->reg[G(rm)];
+                g = &cpu->reg[E(rm)];
+                g8 = cpu->reg8[E(rm)];
+                
+                g->u32 = DEFAULT;
+                e->u32 = data->var1;
+                *g8 = data->var2;
+                runTestCPU();
+                assertResult(data, cpu, instruction, e->u32, g->u32, E(rm), G(rm), 0, 32);
+            }
+        }
+
+        for (gw = 0; gw < 8; gw++) {
+            Reg* g;
+
+            rm = (gw << 3);
+            if (cpu->big)
+                rm += 5;
+            else
+                rm += 6;
+            newInstructionWithRM(instruction, rm, data->flags);
+            if (cpu->big)
+                pushCode32(200);
+            else
+                pushCode16(200);
+            pushConstant(data);
+            writed(cpu->seg[DS].address + 200, DEFAULT);
+            writeb(cpu->seg[DS].address + 200, data->var2);
+            g = &cpu->reg[G(rm)];
+            g->u32 = data->var1;
+            runTestCPU();
+            assertResult(data, cpu, instruction, g->u32, 0, G(rm), -1, cpu->seg[DS].address + 200, 32);
+        }
+        data++;
+    }
+}
+
+void GwEd(int instruction, struct Data* data) {
+    while (data->valid) {
+        int ew;
+        int gw;
+        int rm;
+
+        for (ew = 0; ew < 8; ew++) {
+            for (gw = 0; gw < 8; gw++) {
+                Reg* e;
+                Reg* g;
+                
+                rm = ew | (gw << 3) | 0xC0;
+                newInstructionWithRM(instruction, rm, data->flags);
+                pushConstant(data);
+                e = &cpu->reg[G(rm)];
+                g = &cpu->reg[E(rm)];
+                
+                g->u32 = DEFAULT;
+                e->u32 = data->var1;
+                g->u16 = data->var2;
+                runTestCPU();
+                assertResult(data, cpu, instruction, e->u32, g->u32, E(rm), G(rm), 0, 32);
+            }
+        }
+
+        for (gw = 0; gw < 8; gw++) {
+            Reg* g;
+
+            rm = (gw << 3);
+            if (cpu->big)
+                rm += 5;
+            else
+                rm += 6;
+            newInstructionWithRM(instruction, rm, data->flags);
+            if (cpu->big)
+                pushCode32(200);
+            else
+                pushCode16(200);
+            pushConstant(data);
+            writed(cpu->seg[DS].address + 200, DEFAULT);
+            writew(cpu->seg[DS].address + 200, data->var2);
+            g = &cpu->reg[G(rm)];
+            g->u32 = data->var1;
+            runTestCPU();
+            assertResult(data, cpu, instruction, g->u32, 0, G(rm), -1, cpu->seg[DS].address + 200, 32);
+        }
+        data++;
+    }
+}
+
 void EwGwCl(int instruction, struct Data* data) {
     while (data->valid) {
         int ew;
@@ -3748,6 +3904,42 @@ static struct Data xadd[] = {
     endData()
 };
 
+static struct Data movZeroExtend8to16[] = {
+        allocData(0, 2, 2, 0, false, false),
+        allocData(0, 0xCF, 0xCF, 0, false, false),
+        endData()
+};
+
+static struct Data movZeroExtend8to32[] = {
+        allocData(0, 2, 2, 0, false, false),
+        allocData(0, 0xCF, 0xCF, 0, false, false),
+        endData()
+};
+
+static struct Data movZeroExtend16to32[] = {
+        allocData(0, 0xCF, 0xCF, 0, false, false),
+        allocData(0, 0xCFff, 0xCFff, 0, false, false),
+        endData()
+};
+
+static struct Data movSignExtend8to16[] = {
+        allocData(0, 2, 2, 0, false, false),
+        allocData(0, 0xCF, 0xFFCF, 0, false, false),
+        endData()
+};
+
+static struct Data movSignExtend8to32[] = {
+        allocData(0, 2, 2, 0, false, false),
+        allocData(0, 0xCF, 0xFFFFFFCF, 0, false, false),
+        endData()
+};
+
+static struct Data movSignExtend16to32[] = {
+        allocData(0, 0xCF, 0xCF, 0, false, false),
+        allocData(0, 0xCFff, 0xFFFFCFff, 0, false, false),
+        endData()
+};
+
 #if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
 #define X86_TEST(op, d, a, c)                  \
     {                                           \
@@ -4585,6 +4777,26 @@ void testCmpsd0x2a7() {
     strTest(4, 0xf3, 0xa7, DF, "abcdefghijklmnop", 16, "abcdefghijklmnoq", 16, 0x00000010, 0x00000020, 0x00000010, 0x00000000, 0x00000010, 0x0000000C, true, true, false, HEAP_ADDRESS+256);    
 }
 
+void testTestAlIb0xa8() {
+    cpu->big = false;
+    AlIb(0xa8, testb);
+}
+
+void testTestAlIb0x2a8() {
+    cpu->big = true;
+    AlIb(0xa8, testb);
+}
+
+void testTestAxIw0xa9() {
+    cpu->big = false;
+    AxIw(0xa9, testw);
+}
+
+void testTestEaxId0x2a9() {
+    cpu->big = true;
+    EaxId(0xa9, testd);
+}
+
 void testScasb0x0ae() {
     cpu->big = false;
 
@@ -4686,6 +4898,101 @@ void testScasd0x2af() {
 
     // repz (DF)
     strTest(4, 0xf3, 0xaf, DF, NULL, 0, "1234123412341235", 16, 0x00000010, 0x00000020, 0x00000010, 0x00000010, 0x00000010, 0x0000000C, true, true, false, HEAP_ADDRESS + 256, 0x31323334);
+}
+
+void testMovAlOb() {
+    writed(HEAP_ADDRESS+(cpu->big?0x10123:0x0123), 0x12345678);
+    
+    newInstruction(0xa0, 0);
+    if (cpu->big) {
+        pushCode32(0x10123);
+    } else {
+        pushCode16(0x0123);
+    }
+    EAX = DEFAULT;
+    runTestCPU();
+    assertTrue(EAX == ((DEFAULT & 0xFFFFFF00) | 0x78));
+}
+
+void testMovAlOb0xa0() {
+    cpu->big = false;
+    testMovAlOb();
+}
+
+void testMovAlOb0x2a0() {
+    cpu->big = true;
+    testMovAlOb();
+}
+
+void testMovAxOw0xa1() {
+    cpu->big = false;
+    writed(HEAP_ADDRESS+0x0123, 0x12345678);
+    
+    newInstruction(0xa1, 0);
+    pushCode16(0x0123);
+    EAX = DEFAULT;
+    runTestCPU();
+    assertTrue(EAX == ((DEFAULT & 0xFFFF0000) | 0x5678));
+}
+
+void testMovEaxOd0x2a1() {
+    cpu->big = true;
+    writed(HEAP_ADDRESS+0x10123, 0x12345678);
+    
+    newInstruction(0xa1, 0);
+    pushCode32(0x10123);
+    EAX = DEFAULT;
+    runTestCPU();
+    assertTrue(EAX == 0x12345678);
+}
+
+void testMovObAl() {
+    U32 address = HEAP_ADDRESS+(cpu->big?0x10123:0x0123);
+    writed(address, DEFAULT);
+    
+    newInstruction(0xa2, 0);
+    if (cpu->big) {
+        pushCode32(0x10123);
+    } else {
+        pushCode16(0x0123);
+    }
+    EAX = 0x12345678;
+    runTestCPU();
+    assertTrue(readd(address) == ((DEFAULT & 0xFFFFFF00) | 0x78));
+}
+
+void testMovObAl0xa2() {
+    cpu->big = false;
+    testMovObAl();
+}
+
+void testMovObAl0x2a2() {
+    cpu->big = true;
+    testMovObAl();
+}
+
+void testMovOwAx0xa3() {
+    cpu->big = false;
+    U32 address = HEAP_ADDRESS+0x0123;
+    writed(address, DEFAULT);
+    
+    newInstruction(0xa3, 0);
+    pushCode16(0x0123);
+    EAX = 0x12345678;
+    runTestCPU();
+    assertTrue(readd(address) == ((DEFAULT & 0xFFFF0000) | 0x5678));
+}
+
+void testMovOdEax0x2a3() {
+    cpu->big = true;
+    U32 address = HEAP_ADDRESS+0x10123;
+    writed(address, DEFAULT);
+    
+    newInstruction(0xa3, 0);
+    pushCode32(0x10123);
+    EAX = 0x12345678;
+    runTestCPU();
+    assertTrue(readd(address) == 0x12345678);
 }
 
 void testMovsb0x0a4() {
@@ -7526,6 +7833,36 @@ void testCmpXchg0x3b1() {
 #endif
 }
 
+void testMovGwXz80x1b6() {
+    cpu->big = false;
+    GbEw(0x1b6, movZeroExtend8to16);
+}
+
+void testMovGdXz80x3b6() {
+    cpu->big = true;
+    GbEd(0x1b6, movZeroExtend8to32);
+}
+
+void testMovGdXz160x3b7() {
+    cpu->big = true;
+    GwEd(0x1b7, movZeroExtend16to32);
+}
+
+void testMovGwSx80x1be() {
+    cpu->big = false;
+    GbEw(0x1be, movSignExtend8to16);
+}
+
+void testMovGdSx80x3be() {
+    cpu->big = true;
+    GbEd(0x1be, movSignExtend8to32);
+}
+
+void testMovGdSx160x3bf() {
+    cpu->big = true;
+    GwEd(0x1bf, movSignExtend16to32);
+}
+
 void testCmpXchg8b0x3c7() {
     cpu->big = true;
     // test with and without the flag being needed, dynamic cores may optimize the solution if ZF will be ignored
@@ -9623,7 +9960,14 @@ int runCpuTests() {
     run(testLahf0x09f, "Lahf 09f");
     run(testLahf0x29f, "Lahf 29f");
 
-    // :TODO: 0xa0 - 0xaf
+    run(testMovAlOb0xa0, "MovAlOb 0a0");
+    run(testMovAlOb0x2a0, "MovAlOb 2a0");
+    run(testMovAxOw0xa1, "MovAxOw 0a1");
+    run(testMovEaxOd0x2a1, "MovEaxOd 2a1");
+    run(testMovObAl0xa2, "MovObAl 0a2");
+    run(testMovObAl0x2a2, "MovObAl 2a2");
+    run(testMovOwAx0xa3, "MovOwAx 0a3");
+    run(testMovOdEax0x2a3, "MovOdEax 2a3");
     run(testMovsb0x0a4, "Movsb 0a4");
     run(testMovsb0x2a4, "Movsb 2a4");
     run(testMovsw0x0a5, "Movsw 0a5");
@@ -9633,6 +9977,11 @@ int runCpuTests() {
     run(testCmpsb0x2a6, "Cmpsb 2a6");
     run(testCmpsw0x0a7, "Cmpsw 0a7");
     run(testCmpsd0x2a7, "Cmpsd 2a7");
+    
+    run(testTestAlIb0xa8, "TestAlIb 0a8");
+    run(testTestAlIb0x2a8, "TestAlIb 2a8");
+    run(testTestAxIw0xa9, "TestAxIw 0a9");
+    run(testTestEaxId0x2a9, "TestEaxId 2a9");
     
     run(testStosb0x0aa, "Stosb 0aa");
     run(testStosb0x2aa, "Stosb 2aa");
@@ -10011,6 +10360,14 @@ int runCpuTests() {
     run(testCmpXchg0x3b0, "CMPXCHG 3b0");
     run(testCmpXchg0x1b1, "CMPXCHG 1b1");
     run(testCmpXchg0x3b1, "CMPXCHG 3b1");
+    
+    run(testMovGwXz80x1b6, "MovGwXz8 1b6");
+    run(testMovGdXz80x3b6, "MovGdXz8 3b6");
+    run(testMovGdXz160x3b7, "MovGdXz16 3b7");
+    run(testMovGwSx80x1be, "MovGwSx8 1be");
+    run(testMovGdSx80x3be, "MovGdSx8 3be");
+    run(testMovGdSx160x3bf, "MovGdSx16 3bf");
+    
     run(testBtr0x1b3, "BTR 1b3");
     run(testBtr0x3b3, "BTR 3b3");
     run(testGroup80x1ba, "GROUP 8 1ba");
