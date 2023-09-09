@@ -1001,7 +1001,7 @@ void GbEw(int instruction, struct Data* data) {
                 U8* g8;
                 
                 if (gw == 4) {
-                    continue;
+                    continue; // x64 doesn't code for the valid test
                 }
 
                 rm = ew | (gw << 3) | 0xC0;
@@ -1059,7 +1059,7 @@ void GbEd(int instruction, struct Data* data) {
                 U8* g8;
                 
                 if (gw == 4) {
-                    continue;
+                    continue; // x64 doesn't code for the valid test
                 }
                 rm = ew | (gw << 3) | 0xC0;
                 newInstructionWithRM(instruction, rm, data->flags);
@@ -7440,6 +7440,142 @@ void testJcxz0x2e3() {
     doJcxz(0xe3, true);
 }
 
+void testCallJw0x0e8() {
+    newInstruction(0);
+
+    cpu->big = false;
+
+    writed(cpu->seg[SS].address + 4092, DEFAULT);
+
+    EAX = 0;
+
+    // add ax, 0x10
+    pushCode8(0x83);
+    pushCode8(0xc0);
+    pushCode8(0x10);
+
+    // callJw
+    pushCode8(0xe8);
+    pushCode16(0x123);
+
+    for (int i = 0; i < 0x123; i++) {
+        pushCode8(0xcd);
+    }
+    // call will jump to here
+    // add ax, 0x1
+    pushCode8(0x83);
+    pushCode8(0xc0);
+    pushCode8(0x1);
+
+    runTestCPU();
+
+    assertTrue(AX == 0x11);
+    assertTrue(readw(cpu->seg[SS].address + 4094) == 0x6); // eip after first add + calljw
+    assertTrue(SP == 4094);
+}
+
+void testJmpJw0x0e9() {
+    newInstruction(0);
+
+    cpu->big = false;
+
+    writed(cpu->seg[SS].address + 4092, DEFAULT);
+
+    EAX = 0;
+
+    // add ax, 0x10
+    pushCode8(0x83);
+    pushCode8(0xc0);
+    pushCode8(0x10);
+
+    // JmpJw
+    pushCode8(0xe9);
+    pushCode16(0x123);
+
+    for (int i = 0; i < 0x123; i++) {
+        pushCode8(0xcd);
+    }
+    // will jump to here
+    // add ax, 0x1
+    pushCode8(0x83);
+    pushCode8(0xc0);
+    pushCode8(0x1);
+
+    runTestCPU();
+
+    assertTrue(AX == 0x11);
+    assertTrue(readd(cpu->seg[SS].address + 4092) == DEFAULT);
+    assertTrue(SP == 4096); // shouldn't have touched it
+}
+
+void testCallJd0x2e8() {
+    newInstruction(0);
+
+    cpu->big = true;
+
+    writed(cpu->seg[SS].address + 4092, DEFAULT);
+
+    EAX = 0;
+
+    // add eax, 0x10
+    pushCode8(0x83);
+    pushCode8(0xc0);
+    pushCode8(0x10);
+
+    // CallJd
+    pushCode8(0xe8);
+    pushCode32(0x123);
+
+    for (int i = 0; i < 0x123; i++) {
+        pushCode8(0xcd);
+    }
+    // call will jump to here
+    // add eax, 0x1
+    pushCode8(0x83);
+    pushCode8(0xc0);
+    pushCode8(0x1);
+
+    runTestCPU();
+
+    assertTrue(EAX == 0x11);
+    assertTrue(readd(cpu->seg[SS].address + 4092) == 0x8);
+    assertTrue(ESP == 4092);
+}
+
+void testJmpJd0x2e9() {
+    newInstruction(0);
+
+    cpu->big = true;
+
+    writed(cpu->seg[SS].address + 4092, DEFAULT);
+
+    EAX = 0;
+
+    // add eax, 0x10
+    pushCode8(0x83);
+    pushCode8(0xc0);
+    pushCode8(0x10);
+
+    // jmpJd
+    pushCode8(0xe9);
+    pushCode32(0x123);
+
+    for (int i = 0; i < 0x123; i++) {
+        pushCode8(0xcd);
+    }
+    // will jump to here
+    // add eax, 0x1
+    pushCode8(0x83);
+    pushCode8(0xc0);
+    pushCode8(0x1);
+
+    runTestCPU();
+
+    assertTrue(EAX == 0x11);
+    assertTrue(readd(cpu->seg[SS].address + 4092) == DEFAULT);
+    assertTrue(ESP == 4096); // shouldn't have touched it
+}
+
 void testCmc0x0f5() {cpu->big=false;EbReg(0xf5, 0, cmc);}
 void testCmc0x2f5() {cpu->big=true;EbReg(0xf5, 0, cmc);}
 
@@ -10081,6 +10217,11 @@ int runCpuTests() {
     run(testLoop0x2e2, "Loop 2e2");
     run(testJcxz0x0e3, "Jcxz 0e3");
     run(testJcxz0x2e3, "Jcxz 2e3");
+
+    run(testCallJw0x0e8, "CallJw 0e8");
+    run(testCallJd0x2e8, "CallJd 2e8");
+    run(testJmpJw0x0e9, "JmpJw 0e9");
+    run(testJmpJd0x2e9, "JmpJd 2e9");
 
     run(testCmc0x0f5, "Cmc 0f5");
     run(testCmc0x2f5, "Cmc 2f5");
