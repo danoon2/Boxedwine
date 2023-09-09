@@ -610,6 +610,10 @@
 		1AD3FA972A57D2CC002EA550 /* btCpu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AD3FA8C2A57D2A6002EA550 /* btCpu.cpp */; };
 		1AD3FA982A57D2CC002EA550 /* btCpu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AD3FA8C2A57D2A6002EA550 /* btCpu.cpp */; };
 		1AD3FA992A57D2CD002EA550 /* btCpu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AD3FA8C2A57D2A6002EA550 /* btCpu.cpp */; };
+		1AEBC3A02AABC111007ECB08 /* BoxedwineUnitTestsMain.m in Sources */ = {isa = PBXBuildFile; fileRef = 1AEBC39B2AABC108007ECB08 /* BoxedwineUnitTestsMain.m */; };
+		1AEBC3A42AABC1AC007ECB08 /* BoxedwineUnitTestsMain.m in Sources */ = {isa = PBXBuildFile; fileRef = 1AEBC39B2AABC108007ECB08 /* BoxedwineUnitTestsMain.m */; };
+		1AEBC3A72AABC248007ECB08 /* BoxedwineUnitTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 1AEBC3A62AABC248007ECB08 /* BoxedwineUnitTests.m */; };
+		1AEBC3BA2AABC52B007ECB08 /* BoxedwineUnitTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 1AEBC3A62AABC248007ECB08 /* BoxedwineUnitTests.m */; };
 		1AFC4768264096CB00EE5FCC /* armv8CPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4764264096CB00EE5FCC /* armv8CPU.cpp */; };
 		1AFC4769264096CB00EE5FCC /* llvm_helper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4765264096CB00EE5FCC /* llvm_helper.cpp */; };
 		1AFC476D26409EB200EE5FCC /* armv8CPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4764264096CB00EE5FCC /* armv8CPU.cpp */; };
@@ -1265,6 +1269,37 @@
 		71FBFEE72433BBBE003F17F1 /* glMarshalSize.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE592433BBBE003F17F1 /* glMarshalSize.cpp */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		1AEBC3962AABC0A9007ECB08 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 71FBFCA52433B815003F17F1 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 71FBFCAC2433B815003F17F1;
+			remoteInfo = BoxedwineSlow;
+		};
+		1AEBC3AB2AABC485007ECB08 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 71FBFCA52433B815003F17F1 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 71222B182435140100CDBABD;
+			remoteInfo = BoxedwineTestSlow;
+		};
+		1AEBC3B52AABC519007ECB08 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 71FBFCA52433B815003F17F1 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 71222B182435140100CDBABD;
+			remoteInfo = BoxedwineTestSlow;
+		};
+		1AEBC3BB2AABC5DA007ECB08 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 71FBFCA52433B815003F17F1 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7135DC10264EBCD0005D6AA6;
+			remoteInfo = BoxedwineTest;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXCopyFilesBuildPhase section */
 		1A1551F726326724006E0C8A /* Embed Frameworks */ = {
 			isa = PBXCopyFilesBuildPhase;
@@ -1446,6 +1481,10 @@
 		1AD3FA8B2A57D2A6002EA550 /* btData.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = btData.cpp; path = binaryTranslation/btData.cpp; sourceTree = "<group>"; };
 		1AD3FA8C2A57D2A6002EA550 /* btCpu.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = btCpu.cpp; path = binaryTranslation/btCpu.cpp; sourceTree = "<group>"; };
 		1AD3FA8D2A57D2A6002EA550 /* btData.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = btData.h; path = binaryTranslation/btData.h; sourceTree = "<group>"; };
+		1AEBC3922AABC0A9007ECB08 /* BoxedwineUnitTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BoxedwineUnitTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		1AEBC39B2AABC108007ECB08 /* BoxedwineUnitTestsMain.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = BoxedwineUnitTestsMain.m; sourceTree = "<group>"; };
+		1AEBC3A62AABC248007ECB08 /* BoxedwineUnitTests.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = BoxedwineUnitTests.m; sourceTree = "<group>"; };
+		1AEBC3B12AABC519007ECB08 /* BoxedwineSlowUnitTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BoxedwineSlowUnitTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		1AFC4764264096CB00EE5FCC /* armv8CPU.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = armv8CPU.cpp; sourceTree = "<group>"; };
 		1AFC4765264096CB00EE5FCC /* llvm_helper.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = llvm_helper.cpp; sourceTree = "<group>"; };
 		1AFC4766264096CB00EE5FCC /* armv8CPU.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = armv8CPU.h; sourceTree = "<group>"; };
@@ -1928,6 +1967,20 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		1AEBC38F2AABC0A9007ECB08 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1AEBC3AE2AABC519007ECB08 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		71222B162435140100CDBABD /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -2120,6 +2173,22 @@
 			name = vulkan;
 			sourceTree = "<group>";
 		};
+		1AEBC3932AABC0A9007ECB08 /* BoxedwineUnitTests */ = {
+			isa = PBXGroup;
+			children = (
+				1AEBC3A62AABC248007ECB08 /* BoxedwineUnitTests.m */,
+				1AEBC39B2AABC108007ECB08 /* BoxedwineUnitTestsMain.m */,
+			);
+			path = BoxedwineUnitTests;
+			sourceTree = "<group>";
+		};
+		1AEBC3B22AABC519007ECB08 /* BoxedwineSlowUnitTests */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = BoxedwineSlowUnitTests;
+			sourceTree = "<group>";
+		};
 		1AFC47632640965500EE5FCC /* armv8 */ = {
 			isa = PBXGroup;
 			children = (
@@ -2280,6 +2349,8 @@
 				71FBFCD72433BBAD003F17F1 /* include */,
 				71FBFCAF2433B815003F17F1 /* Boxedwine */,
 				71222B1A2435140100CDBABD /* BoxedwineTest */,
+				1AEBC3932AABC0A9007ECB08 /* BoxedwineUnitTests */,
+				1AEBC3B22AABC519007ECB08 /* BoxedwineSlowUnitTests */,
 				71FBFCAE2433B815003F17F1 /* Products */,
 				712227752433E8C400CDBABD /* Frameworks */,
 			);
@@ -2294,6 +2365,8 @@
 				7135DCA6264EBCD0005D6AA6 /* BoxedwineTest.app */,
 				1A80F08F276EBCC70032A70A /* BoxedwineAutomationSlow.app */,
 				1A80F2E1276EBF170032A70A /* BoxedwineAutomation.app */,
+				1AEBC3922AABC0A9007ECB08 /* BoxedwineUnitTests.xctest */,
+				1AEBC3B12AABC519007ECB08 /* BoxedwineSlowUnitTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -2996,6 +3069,44 @@
 			productReference = 1A80F2E1276EBF170032A70A /* BoxedwineAutomation.app */;
 			productType = "com.apple.product-type.application";
 		};
+		1AEBC3912AABC0A9007ECB08 /* BoxedwineUnitTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1AEBC39A2AABC0A9007ECB08 /* Build configuration list for PBXNativeTarget "BoxedwineUnitTests" */;
+			buildPhases = (
+				1AEBC38E2AABC0A9007ECB08 /* Sources */,
+				1AEBC38F2AABC0A9007ECB08 /* Frameworks */,
+				1AEBC3902AABC0A9007ECB08 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				1AEBC3972AABC0A9007ECB08 /* PBXTargetDependency */,
+				1AEBC3AC2AABC485007ECB08 /* PBXTargetDependency */,
+				1AEBC3BC2AABC5DA007ECB08 /* PBXTargetDependency */,
+			);
+			name = BoxedwineUnitTests;
+			productName = BoxedwineUnitTests;
+			productReference = 1AEBC3922AABC0A9007ECB08 /* BoxedwineUnitTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		1AEBC3B02AABC519007ECB08 /* BoxedwineSlowUnitTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1AEBC3B72AABC519007ECB08 /* Build configuration list for PBXNativeTarget "BoxedwineSlowUnitTests" */;
+			buildPhases = (
+				1AEBC3AD2AABC519007ECB08 /* Sources */,
+				1AEBC3AE2AABC519007ECB08 /* Frameworks */,
+				1AEBC3AF2AABC519007ECB08 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				1AEBC3B62AABC519007ECB08 /* PBXTargetDependency */,
+			);
+			name = BoxedwineSlowUnitTests;
+			productName = BoxedwineSlowUnitTests;
+			productReference = 1AEBC3B12AABC519007ECB08 /* BoxedwineSlowUnitTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		71222B182435140100CDBABD /* BoxedwineTestSlow */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 71222B292435140300CDBABD /* Build configuration list for PBXNativeTarget "BoxedwineTestSlow" */;
@@ -3078,6 +3189,14 @@
 				LastUpgradeCheck = 1130;
 				ORGANIZATIONNAME = Boxedwine;
 				TargetAttributes = {
+					1AEBC3912AABC0A9007ECB08 = {
+						CreatedOnToolsVersion = 14.2;
+						TestTargetID = 7135DC10264EBCD0005D6AA6;
+					};
+					1AEBC3B02AABC519007ECB08 = {
+						CreatedOnToolsVersion = 14.2;
+						TestTargetID = 71222B182435140100CDBABD;
+					};
 					71222B182435140100CDBABD = {
 						CreatedOnToolsVersion = 11.3.1;
 					};
@@ -3105,6 +3224,8 @@
 				1A80F091276EBF170032A70A /* BoxedwineAutomation */,
 				71222B182435140100CDBABD /* BoxedwineTestSlow */,
 				7135DC10264EBCD0005D6AA6 /* BoxedwineTest */,
+				1AEBC3912AABC0A9007ECB08 /* BoxedwineUnitTests */,
+				1AEBC3B02AABC519007ECB08 /* BoxedwineSlowUnitTests */,
 			);
 		};
 /* End PBXProject section */
@@ -3127,6 +3248,20 @@
 				1A80F2D3276EBF170032A70A /* Assets.xcassets in Resources */,
 				1A55D6342A0841E2002B7021 /* make_vms.com in Resources */,
 				1A80F2D4276EBF170032A70A /* Media.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1AEBC3902AABC0A9007ECB08 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1AEBC3AF2AABC519007ECB08 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -3621,6 +3756,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		1AEBC38E2AABC0A9007ECB08 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1AEBC3A72AABC248007ECB08 /* BoxedwineUnitTests.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1AEBC3AD2AABC519007ECB08 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1AEBC3BA2AABC52B007ECB08 /* BoxedwineUnitTests.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		71222B152435140100CDBABD /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -3647,6 +3798,7 @@
 				71222BC42435169100CDBABD /* glMarshalSize.cpp in Sources */,
 				1AC5F2C72772D957001D0FCA /* armv8btOps_shift.cpp in Sources */,
 				71222B422435163F00CDBABD /* player.cpp in Sources */,
+				1AEBC3A42AABC1AC007ECB08 /* BoxedwineUnitTestsMain.m in Sources */,
 				1AFC48122665728600EE5FCC /* boxedwineGL.cpp in Sources */,
 				71222B792435169100CDBABD /* soft_no_page.cpp in Sources */,
 				1AC5F2AF2772D957001D0FCA /* armv8btOps_sse_shuffle.cpp in Sources */,
@@ -4089,6 +4241,7 @@
 				7135DC50264EBCD0005D6AA6 /* kfiledescriptor.cpp in Sources */,
 				7135DC51264EBCD0005D6AA6 /* loader.cpp in Sources */,
 				7135DC52264EBCD0005D6AA6 /* soft_native_page.cpp in Sources */,
+				1AEBC3A02AABC111007ECB08 /* BoxedwineUnitTestsMain.m in Sources */,
 				1AC5F2C82772D957001D0FCA /* armv8btOps_shift.cpp in Sources */,
 				7135DC53264EBCD0005D6AA6 /* soft_code_page.cpp in Sources */,
 				7135DC54264EBCD0005D6AA6 /* glext.cpp in Sources */,
@@ -4395,6 +4548,29 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		1AEBC3972AABC0A9007ECB08 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 71FBFCAC2433B815003F17F1 /* BoxedwineSlow */;
+			targetProxy = 1AEBC3962AABC0A9007ECB08 /* PBXContainerItemProxy */;
+		};
+		1AEBC3AC2AABC485007ECB08 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 71222B182435140100CDBABD /* BoxedwineTestSlow */;
+			targetProxy = 1AEBC3AB2AABC485007ECB08 /* PBXContainerItemProxy */;
+		};
+		1AEBC3B62AABC519007ECB08 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 71222B182435140100CDBABD /* BoxedwineTestSlow */;
+			targetProxy = 1AEBC3B52AABC519007ECB08 /* PBXContainerItemProxy */;
+		};
+		1AEBC3BC2AABC5DA007ECB08 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7135DC10264EBCD0005D6AA6 /* BoxedwineTest */;
+			targetProxy = 1AEBC3BB2AABC5DA007ECB08 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin PBXVariantGroup section */
 		71222B202435140300CDBABD /* MainMenu.xib */ = {
 			isa = PBXVariantGroup;
@@ -4613,6 +4789,82 @@
 					"$(SRCROOT)/../../../lib/poco/NetSSL_OpenSSL/include",
 					"$(SRCROOT)/../../../lib/poco/Crypto/include",
 				);
+			};
+			name = Release;
+		};
+		1AEBC3982AABC0A9007ECB08 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = S9HH8A437X;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.1;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = boxedwine.org.BoxedwineUnitTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/BoxedwineTest.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/BoxedwineTest";
+			};
+			name = Debug;
+		};
+		1AEBC3992AABC0A9007ECB08 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = S9HH8A437X;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.1;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = boxedwine.org.BoxedwineUnitTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/BoxedwineTest.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/BoxedwineTest";
+			};
+			name = Release;
+		};
+		1AEBC3B82AABC519007ECB08 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = S9HH8A437X;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.1;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = boxedwine.org.BoxedwineSlowUnitTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/BoxedwineTestSlow.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/BoxedwineTestSlow";
+			};
+			name = Debug;
+		};
+		1AEBC3B92AABC519007ECB08 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = S9HH8A437X;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.1;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = boxedwine.org.BoxedwineSlowUnitTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/BoxedwineTestSlow.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/BoxedwineTestSlow";
 			};
 			name = Release;
 		};
@@ -5093,6 +5345,24 @@
 			buildConfigurations = (
 				1A80F2DF276EBF170032A70A /* Debug */,
 				1A80F2E0276EBF170032A70A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		1AEBC39A2AABC0A9007ECB08 /* Build configuration list for PBXNativeTarget "BoxedwineUnitTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1AEBC3982AABC0A9007ECB08 /* Debug */,
+				1AEBC3992AABC0A9007ECB08 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		1AEBC3B72AABC519007ECB08 /* Build configuration list for PBXNativeTarget "BoxedwineSlowUnitTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1AEBC3B82AABC519007ECB08 /* Debug */,
+				1AEBC3B92AABC519007ECB08 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

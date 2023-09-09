@@ -10158,7 +10158,17 @@ int runCpuTests() {
     return 0;
 }
 
+#ifdef __MACH__
+extern "C" {
+    int runCpuTestsMac(void);
+}
+int runCpuTestsMac(void) {
+    return runCpuTests();
+}
+#else
 int main(int argc, char** argv) {
     return runCpuTests();
 }
+#endif
+
 #endif
