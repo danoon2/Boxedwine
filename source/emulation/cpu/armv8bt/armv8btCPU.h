@@ -41,7 +41,6 @@ public:
 
     void translateInstruction(Armv8btAsm* data, Armv8btAsm* firstPass);
     void link(Armv8btAsm* data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 offsetIntoChunk=0);
-    S32 preLinkCheck(Armv8btAsm* data); // returns the index of the jump that failed    
     void translateData(Armv8btAsm* data, Armv8btAsm* firstPass=NULL);
 
     U64 handleCodePatch(U64 rip, U32 address);

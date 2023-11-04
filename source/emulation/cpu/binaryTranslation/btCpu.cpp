@@ -246,6 +246,28 @@ DecodedBlock* BtCPU::getNextBlock() {
     return NULL;
 }
 
+S32 BtCPU::preLinkCheck(BtData* data) {
+    for (S32 i = 0; i < (S32)data->todoJump.size(); i++) {
+        U32 eip = this->seg[CS].address + data->todoJump[i].eip;
+        U8 size = data->todoJump[i].offsetSize;
+
+        if (size == 4 && data->todoJump[i].sameChunk) {
+            bool found = false;
+
+            for (U32 ip = 0; ip < data->ipAddressCount; ip++) {
+                if (data->ipAddress[ip] == eip) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                return data->todoJump[i].opIndex;
+            }
+        }
+    }
+    return -1;
+}
+
 void terminateOtherThread(const std::shared_ptr<KProcess>& process, U32 threadId) {
     process->threadsCondition.lock();
     KThread* thread = process->getThreadById(threadId);

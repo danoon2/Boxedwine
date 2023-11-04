@@ -213,28 +213,6 @@ void Armv8btCPU::addReturnFromTest() {
 }
 #endif
 
-S32 Armv8btCPU::preLinkCheck(Armv8btAsm* data) {
-    for (S32 i=0;i<(S32)data->todoJump.size();i++) {
-        U32 eip = this->seg[CS].address+data->todoJump[i].eip;        
-        U8 size = data->todoJump[i].offsetSize;
-
-        if (size==4 && data->todoJump[i].sameChunk) {
-            bool found = false;
-
-            for (U32 ip=0;ip<data->ipAddressCount;ip++) {
-                if (data->ipAddress[ip] == eip) {
-                    found = true;
-                    break;
-                }
-            }
-            if (!found && !this->translateEip(data->todoJump[i].eip)) {
-                return data->todoJump[i].opIndex;
-            }
-        }
-    }
-    return -1;
-}
-
 void Armv8btCPU::writeJumpAmount(Armv8btAsm* data, U32 pos, U32 toLocation, U8* offset) {
     S32 amount = (S32)(toLocation) >> 2;
     if (offset[pos + 3] == 0x14) {

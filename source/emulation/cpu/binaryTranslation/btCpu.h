@@ -59,6 +59,7 @@ public:
     U64 handleFpuException(int code, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo);
     void startThread();
     void wakeThreadIfWaiting();    
+    S32 preLinkCheck(BtData* data); // returns the index of the jump that failed
 };
 #endif
 
