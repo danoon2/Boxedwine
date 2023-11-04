@@ -51,6 +51,7 @@ public:
     U64 reTranslateChunk();
     U64 handleChangedUnpatchedCode(U64 rip);
     U64 handleIllegalInstruction(U64 ip);
+    U64 handleMissingCode(U32 page, U32 offset);
     DecodedOp* getOp(U32 eip, bool existing);
     void* translateEip(U32 ip);
     void markCodePageReadOnly(BtData* data);

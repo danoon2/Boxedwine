@@ -296,6 +296,11 @@ U64 BtCPU::getIpFromEip() {
     return result;
 }
 
+U64 BtCPU::handleMissingCode(U32 page, U32 offset) {
+    this->eip.u32 = ((page << K_PAGE_SHIFT) | offset) - this->seg[CS].address;
+    return (U64)this->translateEip(this->eip.u32);
+}
+
 void terminateOtherThread(const std::shared_ptr<KProcess>& process, U32 threadId) {
     process->threadsCondition.lock();
     KThread* thread = process->getThreadById(threadId);

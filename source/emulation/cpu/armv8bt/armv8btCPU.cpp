@@ -453,14 +453,6 @@ U64 Armv8btCPU::handleCodePatch(U64 rip, U32 address) {
     return 0;
 }
 
-U64 Armv8btCPU::handleMissingCode(U64 regPage, U64 regOffset, U32 inst) {
-    U32 page = (U32)regPage;
-    U32 offset = (U32)regOffset;
-
-    this->eip.u32 = ((page << K_PAGE_SHIFT) | offset) - this->seg[CS].address;
-    return (U64)this->translateEip(this->eip.u32);  
-}
-
 U32 dynamicCodeExceptionCount;
 
 #define JMP_PAGE_EXCEPTION 0xf86f7929
@@ -498,7 +490,7 @@ U64 Armv8btCPU::handleAccessException(U64 ip, U64 address, bool readAddress) {
     if (inst == 0xf8400149 && thread->memory->isValidReadAddress(this->destEip, 1)) { // ldur x9, [x9]
         return (U64) this->translateEip(this->destEip - this->seg[CS].address);
     } else if (inst == JMP_OFFSET_EXCEPTION || inst == JMP_PAGE_EXCEPTION) {
-        return this->handleMissingCode(this->regPage, this->regOffset, inst);
+        return this->handleMissingCode((U32)this->regPage, (U32)this->regOffset);
     } else if (inst==0xcdcdcdcd) {
         // this thread was waiting on the critical section and the thread that was currently in this handler removed the code we were running
         void* host = this->thread->memory->getExistingHostAddress(this->eip.u32+this->seg[CS].address);

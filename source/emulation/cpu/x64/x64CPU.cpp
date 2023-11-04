@@ -415,19 +415,6 @@ U64 x64CPU::handleCodePatch(U64 rip, U32 address, U64 rsi, U64 rdi, std::functio
     return 0;
 }
 
-U64 x64CPU::handleMissingCode(U64 r8, U64 r9, U32 inst) {
-    U32 page = (U32)r8;
-    U32 offset = (U32)r9;
-
-    this->eip.u32 = ((page << K_PAGE_SHIFT) | offset) - this->seg[CS].address;
-    this->translateEip(this->eip.u32);  
-    if (inst==0xCA148B4F) {
-        return (U64)(this->eipToHostInstructionPages[page]);
-    } else {
-        return (U64)(this->eipToHostInstructionPages[page][offset]);
-    }
-}
-
 U32 dynamicCodeExceptionCount;
 
 U64 x64CPU::handleAccessException(U64 rip, U64 address, bool readAddress, std::function<U64(U32 reg)>getReg, std::function<void(U32 reg, U64 value)>setReg, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo) {
@@ -469,9 +456,7 @@ U64 x64CPU::handleAccessException(U64 rip, U64 address, bool readAddress, std::f
         this->translateEip((U32)r9 - this->seg[CS].address);
         return 0;
     } else if ((inst==0x0A8B4566 || inst==0xCA148B4F) && (r8 || r9)) { // if these constants change, update handleMissingCode too     
-        // rip is not adjusted so we don't need to check for stack alignment
-        setReg(10, this->handleMissingCode(r8, r9, inst));
-        return 0;
+        return this->handleMissingCode((U32)r8, (U32)r9); // useLargeAddressSpace = false
     } else if (inst==0xcdcdcdcd) {
         // this thread was waiting on the critical section and the thread that was currently in this handler removed the code we were running
         void* host = this->thread->memory->getExistingHostAddress(this->eip.u32+this->seg[CS].address);

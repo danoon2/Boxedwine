@@ -51,7 +51,6 @@ public:
     void translateData(X64Asm* data, X64Asm* firstPass=NULL);    
     
     U64 handleCodePatch(U64 rip, U32 address, U64 rsi, U64 rdi, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo);
-    U64 handleMissingCode(U64 r8, U64 r9, U32 inst);
     U64 handleAccessException(U64 ip, U64 address, bool readAddress, std::function<U64(U32 reg)>getReg, std::function<void(U32 reg, U64 value)>setReg, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo); // returns new ip, if 0 then don't set ip, but continue execution
     bool fixStringOp(DecodedOp* op, U64 rsi, U64 rdi);
 
