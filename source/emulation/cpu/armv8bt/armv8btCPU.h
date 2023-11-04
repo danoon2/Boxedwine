@@ -12,7 +12,6 @@ public:
     
     virtual void restart();
     virtual void* init();
-    virtual void* translateEipInternal(U32 ip);   	
 
     U32 destEip;    
     U8* parity_lookup;                
@@ -55,8 +54,7 @@ public:
     virtual void postTestRun() {};
 #endif
 private:      
-    void writeJumpAmount(Armv8btAsm* data, U32 pos, U32 toLocation, U8* offset);
-    U64 getIpFromEip();
+    void writeJumpAmount(Armv8btAsm* data, U32 pos, U32 toLocation, U8* offset);    
     bool isStringOp(DecodedOp* op);
 };
 #endif

@@ -165,21 +165,6 @@ std::shared_ptr<BtCodeChunk> x64CPU::translateChunk(U32 ip) {
     }    
 }
 
-void* x64CPU::translateEipInternal(U32 ip) {
-    if (!this->isBig()) {
-        ip = ip & 0xFFFF;
-    }
-    U32 address = this->seg[CS].address+ip;
-    void* result = this->thread->memory->getExistingHostAddress(address);
-
-    if (!result) {
-        std::shared_ptr<BtCodeChunk> chunk = this->translateChunk(ip);
-        result = chunk->getHostAddress();
-        chunk->makeLive();
-    }
-    return result;
-}
-
 #ifdef __TEST
 void x64CPU::postTestRun() {
     for (int i = 0; i < 8; i++) {
@@ -366,19 +351,6 @@ bool x64CPU::fixStringOp(DecodedOp* op, U64 rsi, U64 rdi) {
     return false;
 }
 
-U64 x64CPU::getRipFromEip() {
-    U32 a = this->getEipAddress();
-    U64 result = (U64)this->thread->memory->getExistingHostAddress(a);
-    if (!result) {
-        this->translateEip(this->eip.u32);
-        result = (U64)this->thread->memory->getExistingHostAddress(a);
-    }
-    if (result == 0) {
-        kpanic("x64::getRipFromEip failed to translate code");
-    }
-    return result;
-}
-
 // if the page we are writing to has code that we have cached, then it will be marked NATIVE_FLAG_CODEPAGE_READONLY
 //
 // 1) This function will clear the page of all cached code
@@ -398,7 +370,7 @@ U64 x64CPU::handleCodePatch(U64 rip, U32 address, U64 rsi, U64 rdi, std::functio
 
     // make sure it wasn't changed before we got the executableMemoryMutex lock
     if (!(memory->nativeFlags[nativePage] & NATIVE_FLAG_CODEPAGE_READONLY)) {
-        return getRipFromEip();
+        return getIpFromEip();
     }    
 
     // get the emulated op that caused the write
@@ -436,7 +408,7 @@ U64 x64CPU::handleCodePatch(U64 rip, U32 address, U64 rsi, U64 rdi, std::functio
         U32 endPage = (addressStart + len - 1) >> K_PAGE_SHIFT;
         memory->clearHostCodeForWriting(memory->getNativePage(startPage), memory->getNativePage(endPage - startPage + 1));            
         op->dealloc(true);
-        return getRipFromEip();
+        return getIpFromEip();
     } else {                        
         kpanic("Threw an exception from a host location that doesn't map to an emulated instruction");
     }
@@ -475,7 +447,7 @@ U64 x64CPU::handleAccessException(U64 rip, U64 address, bool readAddress, std::f
                 DecodedOp* op = this->getOp(this->eip.u32, true);
                 fixStringOp(op, getReg(6), getReg(7)); // if we were in the middle of a string op, then reset RSI and RDI so that we can re-enter the same op
                 chunk->releaseAndRetranslate();
-                return getRipFromEip();
+                return getIpFromEip();
             }
             else {
                 if (!readAddress && (flags & PAGE_WRITE) && !(this->thread->memory->nativeFlags[this->thread->memory->getNativePage(page)] & NATIVE_FLAG_CODEPAGE_READONLY)) {

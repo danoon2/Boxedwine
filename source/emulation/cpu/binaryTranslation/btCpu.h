@@ -43,7 +43,7 @@ public:
     jmp_buf* jmpBuf;
 
     virtual std::shared_ptr<BtCodeChunk> translateChunk(U32 ip) = 0;
-    virtual void* translateEipInternal(U32 ip) = 0;
+    void* translateEipInternal(U32 ip);
 #ifdef __TEST
     virtual void postTestRun() = 0;
 #endif
@@ -60,6 +60,9 @@ public:
     void startThread();
     void wakeThreadIfWaiting();    
     S32 preLinkCheck(BtData* data); // returns the index of the jump that failed
+
+protected:
+    U64 getIpFromEip();
 };
 #endif
 

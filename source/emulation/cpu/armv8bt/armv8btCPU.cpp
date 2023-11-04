@@ -190,21 +190,6 @@ std::shared_ptr<BtCodeChunk> Armv8btCPU::translateChunk(U32 ip) {
     }    
 }
 
-void* Armv8btCPU::translateEipInternal(U32 ip) {
-    if (!this->isBig()) {
-        ip = ip & 0xFFFF;
-    }
-    U32 address = this->seg[CS].address+ip;
-    void* result = this->thread->memory->getExistingHostAddress(address);
-
-    if (!result) {
-        std::shared_ptr<BtCodeChunk> chunk = this->translateChunk(ip);
-        result = chunk->getHostAddress();
-        chunk->makeLive();
-    }
-    return result;
-}
-
 #ifdef __TEST
 void Armv8btCPU::addReturnFromTest() {
     Armv8btAsm data(this);
@@ -399,19 +384,6 @@ void Armv8btCPU::translateData(Armv8btAsm* data, Armv8btAsm* firstPass) {
     }     
     block.op->dealloc(true);
     data->currentBlock = NULL;
-}
-
-U64 Armv8btCPU::getIpFromEip() {
-    U32 a = this->getEipAddress();
-    U64 result = (U64)this->thread->memory->getExistingHostAddress(a);
-    if (!result) {
-        this->translateEip(this->eip.u32);
-        result = (U64)this->thread->memory->getExistingHostAddress(a);
-    }
-    if (result == 0) {
-        kpanic("Armv8btCPU::getIpFromEip failed to translate code");
-    }
-    return result;
 }
 
 bool Armv8btCPU::isStringOp(DecodedOp* op) {

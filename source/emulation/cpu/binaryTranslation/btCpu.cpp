@@ -132,6 +132,21 @@ DecodedOp* BtCPU::getOp(U32 eip, bool existing) {
     return NULL;
 }
 
+void* BtCPU::translateEipInternal(U32 ip) {
+    if (!this->isBig()) {
+        ip = ip & 0xFFFF;
+    }
+    U32 address = this->seg[CS].address + ip;
+    void* result = this->thread->memory->getExistingHostAddress(address);
+
+    if (!result) {
+        std::shared_ptr<BtCodeChunk> chunk = this->translateChunk(ip);
+        result = chunk->getHostAddress();
+        chunk->makeLive();
+    }
+    return result;
+}
+
 void* BtCPU::translateEip(U32 ip) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->thread->memory->executableMemoryMutex);
 
@@ -266,6 +281,19 @@ S32 BtCPU::preLinkCheck(BtData* data) {
         }
     }
     return -1;
+}
+
+U64 BtCPU::getIpFromEip() {
+    U32 a = this->getEipAddress();
+    U64 result = (U64)this->thread->memory->getExistingHostAddress(a);
+    if (!result) {
+        this->translateEip(this->eip.u32);
+        result = (U64)this->thread->memory->getExistingHostAddress(a);
+    }
+    if (result == 0) {
+        kpanic("BtCPU::getIpFromEip failed to translate code");
+    }
+    return result;
 }
 
 void terminateOtherThread(const std::shared_ptr<KProcess>& process, U32 threadId) {
