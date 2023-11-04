@@ -4057,8 +4057,6 @@ void X64Asm::createCodeForRunSignal() {
     callHost((void*)signalHandler);
     syncRegsToHost();
     
-    writeToRegFromMem(6, false, HOST_CPU, true, -1, false, 0, (U32)(offsetof(x64CPU, exceptionRSI)), 8, false);
-    writeToRegFromMem(7, false, HOST_CPU, true, -1, false, 0, (U32)(offsetof(x64CPU, exceptionRDI)), 8, false);
     writeToRegFromMem(0, true, HOST_CPU, true, -1, false, 0, (U32)(offsetof(x64CPU, exceptionR8)), 8, false);
     writeToRegFromMem(1, true, HOST_CPU, true, -1, false, 0, (U32)(offsetof(x64CPU, exceptionR9)), 8, false);
     writeToRegFromMem(2, true, HOST_CPU, true, -1, false, 0, (U32)(offsetof(x64CPU, exceptionR10)), 8, false);
