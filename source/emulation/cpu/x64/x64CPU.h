@@ -61,10 +61,7 @@ public:
     virtual void setSeg(U32 index, U32 address, U32 value);
 #ifdef __TEST
     virtual void postTestRun();
-#endif
-private:      
-    std::shared_ptr<BtCodeChunk> translateChunk(X64Asm* parent, U32 ip);
-    void* translateEipInternal(X64Asm* parent, U32 ip);                
+#endif           
 };
 #endif
 #endif

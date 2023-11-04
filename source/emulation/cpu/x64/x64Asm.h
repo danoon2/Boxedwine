@@ -44,8 +44,6 @@ class X64Asm : public X64Data {
 public:  
     X64Asm(x64CPU* cpu);
 
-    X64Asm* parent;
-
     void translateRM(U8 rm, bool checkG, bool checkE, bool isG8bit, bool isE8bit, U8 immWidth);
     void writeOp(bool isG8bit=false);
     void addDynamicCheck(bool panic);

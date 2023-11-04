@@ -154,21 +154,15 @@ void* Armv8btCPU::init() {
 }
 
 std::shared_ptr<BtCodeChunk> Armv8btCPU::translateChunk(U32 ip) {
-    return translateChunk(NULL, ip);
-}
-
-std::shared_ptr<BtCodeChunk> Armv8btCPU::translateChunk(Armv8btAsm* parent, U32 ip) {
     Armv8btAsm data1(this);
     data1.ip = ip;
     data1.startOfDataIp = ip;       
-    data1.parent = parent;
     translateData(&data1);
 
     Armv8btAsm data(this);
     data.ip = ip;
     data.startOfDataIp = ip;  
     data.calculatedEipLen = data1.ip - data1.startOfDataIp;
-    data.parent = parent;
     translateData(&data, &data1);        
     S32 failedJumpOpIndex = this->preLinkCheck(&data);
 
@@ -180,7 +174,6 @@ std::shared_ptr<BtCodeChunk> Armv8btCPU::translateChunk(Armv8btAsm* parent, U32 
         Armv8btAsm data2(this);
         data2.ip = ip;
         data2.startOfDataIp = ip;       
-        data2.parent = parent;
         data2.stopAfterInstruction = failedJumpOpIndex;
         translateData(&data2);
 
@@ -188,7 +181,6 @@ std::shared_ptr<BtCodeChunk> Armv8btCPU::translateChunk(Armv8btAsm* parent, U32 
         data3.ip = ip;
         data3.startOfDataIp = ip;  
         data3.calculatedEipLen = data2.ip - data2.startOfDataIp;
-        data3.parent = parent;
         data3.stopAfterInstruction = failedJumpOpIndex;
         translateData(&data3, &data2);
 
@@ -199,10 +191,6 @@ std::shared_ptr<BtCodeChunk> Armv8btCPU::translateChunk(Armv8btAsm* parent, U32 
 }
 
 void* Armv8btCPU::translateEipInternal(U32 ip) {
-    return translateEipInternal(NULL, ip);
-}
-
-void* Armv8btCPU::translateEipInternal(Armv8btAsm* parent, U32 ip) {
     if (!this->isBig()) {
         ip = ip & 0xFFFF;
     }
@@ -210,7 +198,7 @@ void* Armv8btCPU::translateEipInternal(Armv8btAsm* parent, U32 ip) {
     void* result = this->thread->memory->getExistingHostAddress(address);
 
     if (!result) {
-        std::shared_ptr<BtCodeChunk> chunk = this->translateChunk(parent, ip);
+        std::shared_ptr<BtCodeChunk> chunk = this->translateChunk(ip);
         result = chunk->getHostAddress();
         chunk->makeLive();
     }

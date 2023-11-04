@@ -170,8 +170,6 @@ class Armv8btAsm : public Armv8btData {
 public:  
     Armv8btAsm(Armv8btCPU* cpu);
 
-    Armv8btAsm* parent;
-
     U32 flagsNeeded();
     U8 getTmpReg();
     void releaseTmpReg(U8 reg);

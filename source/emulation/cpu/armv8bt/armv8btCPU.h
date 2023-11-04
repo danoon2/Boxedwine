@@ -43,7 +43,6 @@ public:
     void link(Armv8btAsm* data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 offsetIntoChunk=0);
     S32 preLinkCheck(Armv8btAsm* data); // returns the index of the jump that failed    
     void translateData(Armv8btAsm* data, Armv8btAsm* firstPass=NULL);
-    std::shared_ptr<BtCodeChunk> translateChunk(Armv8btAsm* parent, U32 ip);
 
     U64 handleCodePatch(U64 rip, U32 address);
     U64 handleMissingCode(U64 r8, U64 r9, U32 inst);
@@ -57,7 +56,6 @@ public:
     virtual void postTestRun() {};
 #endif
 private:      
-    void* translateEipInternal(Armv8btAsm* parent, U32 ip);            
     void writeJumpAmount(Armv8btAsm* data, U32 pos, U32 toLocation, U8* offset);
     U64 getIpFromEip();
     bool isStringOp(DecodedOp* op);

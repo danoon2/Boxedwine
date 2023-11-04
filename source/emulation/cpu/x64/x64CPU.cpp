@@ -129,21 +129,15 @@ void* x64CPU::init() {
 }
 
 std::shared_ptr<BtCodeChunk> x64CPU::translateChunk(U32 ip) {
-    return this->translateChunk(NULL, ip);
-}
-
-std::shared_ptr<BtCodeChunk> x64CPU::translateChunk(X64Asm* parent, U32 ip) {
     X64Asm data1(this);
     data1.ip = ip;
     data1.startOfDataIp = ip;       
-    data1.parent = parent;
     translateData(&data1);
 
     X64Asm data(this);
     data.ip = ip;
     data.startOfDataIp = ip;  
     data.calculatedEipLen = data1.ip - data1.startOfDataIp;
-    data.parent = parent;
     translateData(&data, &data1);        
     S32 failedJumpOpIndex = this->preLinkCheck(&data);
 
@@ -155,7 +149,6 @@ std::shared_ptr<BtCodeChunk> x64CPU::translateChunk(X64Asm* parent, U32 ip) {
         X64Asm data2(this);
         data2.ip = ip;
         data2.startOfDataIp = ip;       
-        data2.parent = parent;
         data2.stopAfterInstruction = failedJumpOpIndex;
         translateData(&data2);
 
@@ -163,7 +156,6 @@ std::shared_ptr<BtCodeChunk> x64CPU::translateChunk(X64Asm* parent, U32 ip) {
         data3.ip = ip;
         data3.startOfDataIp = ip;  
         data3.calculatedEipLen = data2.ip - data2.startOfDataIp;
-        data3.parent = parent;
         data3.stopAfterInstruction = failedJumpOpIndex;
         translateData(&data3, &data2);
 
@@ -174,10 +166,6 @@ std::shared_ptr<BtCodeChunk> x64CPU::translateChunk(X64Asm* parent, U32 ip) {
 }
 
 void* x64CPU::translateEipInternal(U32 ip) {
-    return translateEipInternal(NULL, ip);
-}
-
-void* x64CPU::translateEipInternal(X64Asm* parent, U32 ip) {
     if (!this->isBig()) {
         ip = ip & 0xFFFF;
     }
@@ -185,7 +173,7 @@ void* x64CPU::translateEipInternal(X64Asm* parent, U32 ip) {
     void* result = this->thread->memory->getExistingHostAddress(address);
 
     if (!result) {
-        std::shared_ptr<BtCodeChunk> chunk = this->translateChunk(parent, ip);
+        std::shared_ptr<BtCodeChunk> chunk = this->translateChunk(ip);
         result = chunk->getHostAddress();
         chunk->makeLive();
     }
