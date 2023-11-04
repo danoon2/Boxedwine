@@ -206,7 +206,7 @@ void signalHandler() {
     KThread* currentThread = KThread::currentThread();
     Armv8btCPU* cpu = (Armv8btCPU*)currentThread->cpu;
 
-    U64 result = cpu->startException(cpu->exceptionAddress, cpu->exceptionReadAddress, NULL, NULL);
+    U64 result = cpu->startException(cpu->exceptionAddress, cpu->exceptionReadAddress);
     if (result) {
         cpu->returnHostAddress = result;
         return;
@@ -231,7 +231,7 @@ void signalHandler() {
         return;
     } else if (cpu->exceptionSigNo == SIGFPE) {
         int code = getFPUCode(cpu->exceptionSigCode);
-        cpu->returnHostAddress = cpu->handleFpuException(code, NULL, NULL);
+        cpu->returnHostAddress = cpu->handleFpuException(code);
         return;
     } else if (*((U8*)cpu->exceptionIp) == 0xce || *((U8*)cpu->exceptionIp) == 0xcd) {
         U64 rip = cpu->handleIllegalInstruction(cpu->exceptionIp);

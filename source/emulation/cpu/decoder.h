@@ -1450,6 +1450,7 @@ public:
     void log(CPU* cpu);
     bool needsToSetFlags();
     bool isFpuOp();
+    bool isStringOp();
     const char* name();
 
     static U32 getNeededFlags(DecodedBlock* block, DecodedOp* op, U32 flags, U32 depth=2);

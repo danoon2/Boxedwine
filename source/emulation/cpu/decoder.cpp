@@ -6007,6 +6007,18 @@ void DecodedOp::dealloc(bool deallocNext) {
     freeOps = this;
 }
 
+bool DecodedOp::isStringOp() {
+    if (this->inst == Lodsb || this->inst == Lodsw || this->inst == Lodsd ||
+        this->inst == Stosb || this->inst == Stosw || this->inst == Stosd ||
+        this->inst == Scasb || this->inst == Scasw || this->inst == Scasd ||
+        this->inst == Movsb || this->inst == Movsw || this->inst == Movsd ||
+        this->inst == Cmpsb || this->inst == Cmpsw || this->inst == Cmpsd) {
+
+        return true;
+    }
+    return false;
+}
+
 bool DecodedOp::isFpuOp() {
    return (this->inst>=FADD_ST0_STj && this->inst<=FISTP_QWORD_INTEGER);
 }

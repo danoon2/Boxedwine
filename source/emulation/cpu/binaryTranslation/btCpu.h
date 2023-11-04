@@ -52,12 +52,14 @@ public:
     U64 handleChangedUnpatchedCode(U64 rip);
     U64 handleIllegalInstruction(U64 ip);
     U64 handleMissingCode(U32 page, U32 offset);
+    U64 handleCodePatch(U64 rip, U32 address);
+    virtual bool handleStringOp(DecodedOp* op);
     DecodedOp* getOp(U32 eip, bool existing);
     void* translateEip(U32 ip);
     void markCodePageReadOnly(BtData* data);
     void makePendingCodePagesReadOnly();
-    U64 startException(U64 address, bool readAddress, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo);
-    U64 handleFpuException(int code, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo);
+    U64 startException(U64 address, bool readAddress);
+    U64 handleFpuException(int code);
     void startThread();
     void wakeThreadIfWaiting();    
     S32 preLinkCheck(BtData* data); // returns the index of the jump that failed

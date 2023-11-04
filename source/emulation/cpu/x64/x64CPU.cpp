@@ -318,9 +318,9 @@ void x64CPU::translateData(X64Asm* data, X64Asm* firstPass) {
 }
 
 // for string instruction, we modify (add memory offset and segment) rdi and rsi so that the native string instruction can be used, this code will revert it back to the original values
-bool x64CPU::fixStringOp(DecodedOp* op, U64 rsi, U64 rdi) {
+bool x64CPU::handleStringOp(DecodedOp* op) {
     if (op->inst == Lodsb || op->inst == Lodsw || op->inst == Lodsd) {
-        THIS_ESI = (U32)(rsi - this->memOffset);
+        THIS_ESI = (U32)(this->exceptionRSI - this->memOffset);
         if (this->thread->process->hasSetSeg[op->base]) {
             THIS_ESI -= this->seg[op->base].address;
         }
@@ -329,7 +329,7 @@ bool x64CPU::fixStringOp(DecodedOp* op, U64 rsi, U64 rdi) {
     // uses di (Examples: diablo 1 will trigger this in the middle of the Stosd when creating a new game)
     else if (op->inst == Stosb || op->inst == Stosw || op->inst == Stosd ||
         op->inst == Scasb || op->inst == Scasw || op->inst == Scasd) {
-        THIS_EDI = (U32)(rdi - this->memOffset);
+        THIS_EDI = (U32)(this->exceptionRDI - this->memOffset);
         if (this->thread->process->hasSetSeg[ES]) {
             THIS_EDI -= this->seg[ES].address;
         }
@@ -338,8 +338,8 @@ bool x64CPU::fixStringOp(DecodedOp* op, U64 rsi, U64 rdi) {
     // uses si and di
     else if (op->inst == Movsb || op->inst == Movsw || op->inst == Movsd ||
         op->inst == Cmpsb || op->inst == Cmpsw || op->inst == Cmpsd) {
-        THIS_ESI = (U32)(rsi - this->memOffset);
-        THIS_EDI = (U32)(rdi - this->memOffset);
+        THIS_ESI = (U32)(this->exceptionRSI - this->memOffset);
+        THIS_EDI = (U32)(this->exceptionRDI - this->memOffset);
         if (this->thread->process->hasSetSeg[ES]) {
             THIS_EDI -= this->seg[ES].address;
         }
@@ -351,73 +351,9 @@ bool x64CPU::fixStringOp(DecodedOp* op, U64 rsi, U64 rdi) {
     return false;
 }
 
-// if the page we are writing to has code that we have cached, then it will be marked NATIVE_FLAG_CODEPAGE_READONLY
-//
-// 1) This function will clear the page of all cached code
-// 2) Mark all the old cached code with "0xce" so that if the program tries to run it again, it will re-compile it
-// 3) NATIVE_FLAG_CODEPAGE_READONLY will be removed
-U64 x64CPU::handleCodePatch(U64 rip, U32 address, U64 rsi, U64 rdi, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo) {
-#ifndef __TEST
-    // only one thread at a time can update the host code pages and related date like opToAddressPages
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->thread->memory->executableMemoryMutex);
-#endif
-    Memory* memory = this->thread->memory;
-    U32 nativePage = memory->getNativePage(address >> K_PAGE_SHIFT);
-    // get the emulated eip of the op that corresponds to the host address where the exception happened
-    std::shared_ptr<BtCodeChunk> chunk = this->thread->memory->getCodeChunkContainingHostAddress((void*)rip);
-    
-    this->eip.u32 = chunk->getEipThatContainsHostAddress((void*)rip, NULL, NULL) - this->seg[CS].address;
-
-    // make sure it wasn't changed before we got the executableMemoryMutex lock
-    if (!(memory->nativeFlags[nativePage] & NATIVE_FLAG_CODEPAGE_READONLY)) {
-        return getIpFromEip();
-    }    
-
-    // get the emulated op that caused the write
-    DecodedOp* op = this->getOp(this->eip.u32, true);
-    if (op) {  
-        if (doSyncFrom) {
-            doSyncFrom(op);
-        }
-        if (this->flags & DF) {
-            this->df = -1;
-        } else {
-            this->df = 1;
-        }
-        U32 addressStart = address;
-        U32 len = instructionInfo[op->inst].writeMemWidth / 8;
-
-        // Fix string will set EDI and ESI back to their correct values so we can re-enter this instruction
-        if (fixStringOp(op, rsi, rdi)) {
-            if (op->repNotZero || op->repZero) {
-                len = len * (isBig() ? THIS_ECX : THIS_CX);
-            }
-
-            if (this->df == 1) {
-                addressStart = (this->isBig() ? THIS_EDI : THIS_DI) + this->seg[ES].address;
-            } else {
-                addressStart = (this->isBig() ? THIS_EDI : THIS_DI) + this->seg[ES].address + (instructionInfo[op->inst].writeMemWidth / 8) - len;
-            }
-
-            // only need to sync back if we changed ESI or EDI for string op
-            if (doSyncTo) {
-                doSyncTo(op);
-            }
-        }
-        U32 startPage = addressStart >> K_PAGE_SHIFT;
-        U32 endPage = (addressStart + len - 1) >> K_PAGE_SHIFT;
-        memory->clearHostCodeForWriting(memory->getNativePage(startPage), memory->getNativePage(endPage - startPage + 1));            
-        op->dealloc(true);
-        return getIpFromEip();
-    } else {                        
-        kpanic("Threw an exception from a host location that doesn't map to an emulated instruction");
-    }
-    return 0;
-}
-
 U32 dynamicCodeExceptionCount;
 
-U64 x64CPU::handleAccessException(U64 rip, U64 address, bool readAddress, std::function<U64(U32 reg)>getReg, std::function<void(U32 reg, U64 value)>setReg, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo) {
+U64 x64CPU::handleAccessException(U64 rip, U64 address, bool readAddress) {
     if ((address & 0xFFFFFFFF00000000l) == this->thread->memory->id) {
         U32 emulatedAddress = (U32)address;
         U32 page = emulatedAddress >> K_PAGE_SHIFT;
@@ -432,7 +368,7 @@ U64 x64CPU::handleAccessException(U64 rip, U64 address, bool readAddress, std::f
             if (flags & PAGE_MAPPED_HOST && (((flags & PAGE_READ) && readAddress) || ((flags & PAGE_WRITE) && !readAddress))) {
                 m->setNeedsMemoryOffset(getEipAddress());
                 DecodedOp* op = this->getOp(this->eip.u32, true);
-                fixStringOp(op, getReg(6), getReg(7)); // if we were in the middle of a string op, then reset RSI and RDI so that we can re-enter the same op
+                handleStringOp(op); // if we were in the middle of a string op, then reset RSI and RDI so that we can re-enter the same op
                 chunk->releaseAndRetranslate();
                 return getIpFromEip();
             }
@@ -449,14 +385,12 @@ U64 x64CPU::handleAccessException(U64 rip, U64 address, bool readAddress, std::f
     }
 
     U32 inst = *((U32*)rip);
-    U64 r9 = getReg(9);
-    U64 r8 = getReg(8);
 
-    if (inst == 0xCE24FF43 && this->thread->memory->isValidReadAddress((U32)r9, 1)) { // useLargeAddressSpace = true
-        this->translateEip((U32)r9 - this->seg[CS].address);
+    if (inst == 0xCE24FF43 && this->thread->memory->isValidReadAddress((U32)this->exceptionR9, 1)) { // useLargeAddressSpace = true
+        this->translateEip((U32)this->exceptionR9 - this->seg[CS].address);
         return 0;
-    } else if ((inst==0x0A8B4566 || inst==0xCA148B4F) && (r8 || r9)) { // if these constants change, update handleMissingCode too     
-        return this->handleMissingCode((U32)r8, (U32)r9); // useLargeAddressSpace = false
+    } else if ((inst==0x0A8B4566 || inst==0xCA148B4F) && (this->exceptionR8 || this->exceptionR9)) { // if these constants change, update handleMissingCode too     
+        return this->handleMissingCode((U32)this->exceptionR8, (U32)this->exceptionR9); // useLargeAddressSpace = false
     } else if (inst==0xcdcdcdcd) {
         // this thread was waiting on the critical section and the thread that was currently in this handler removed the code we were running
         void* host = this->thread->memory->getExistingHostAddress(this->eip.u32+this->seg[CS].address);
@@ -477,21 +411,15 @@ U64 x64CPU::handleAccessException(U64 rip, U64 address, bool readAddress, std::f
             // check if emulated memory that caused the exception is a page that has code
             if (this->thread->memory->nativeFlags[this->thread->memory->getNativePage(page)] & NATIVE_FLAG_CODEPAGE_READONLY) {
                 dynamicCodeExceptionCount++;                    
-                return this->handleCodePatch(rip, emulatedAddress, getReg(6), getReg(7), doSyncFrom, doSyncTo);                    
+                return this->handleCodePatch(rip, emulatedAddress);                    
             }
         }   
 #ifdef _DEBUG
         void* fromHost = this->thread->memory->getExistingHostAddress(this->fromEip);
         std::shared_ptr<BtCodeChunk> chunk = this->thread->memory->getCodeChunkContainingHostAddress((void*)rip);
 #endif
-        if (doSyncFrom) {
-            doSyncFrom(NULL);
-        }
         // this can be exercised with Wine 5.0 and CC95 demo installer, it is triggered in strlen as it tries to grow the stack
         this->thread->seg_mapper((U32)address, readAddress, !readAddress, false);
-        if (doSyncTo) {
-            doSyncTo(NULL);
-        }
         U64 result = (U64)this->translateEip(this->eip.u32); 
         if (result==0) {
             kpanic("x64CPU::handleAccessException failed to translate code");

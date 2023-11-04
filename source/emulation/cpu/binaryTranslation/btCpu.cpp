@@ -5,6 +5,7 @@
 #include "ksignal.h"
 #include "knativethread.h"
 #include "knativesystem.h"
+#include "../../hardmmu/hard_memory.h"
 
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
 
@@ -178,18 +179,12 @@ void BtCPU::markCodePageReadOnly(BtData* data) {
     }  
 }
 
-U64 BtCPU::startException(U64 address, bool readAddress, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo) {
+U64 BtCPU::startException(U64 address, bool readAddress) {
     if (this->thread->terminating) {
         return (U64)this->returnToLoopAddress;
     }
     if (this->inException) {
-        if (doSyncFrom) {
-            doSyncFrom(NULL);
-        }
         this->thread->seg_mapper((U32)address, readAddress, !readAddress);
-        if (doSyncTo) {
-            doSyncTo(NULL);
-        }
         U64 result = (U64)this->translateEip(this->eip.u32);
         if (result == 0) {
             kpanic("Armv8btCPU::startException failed to translate code in exception");
@@ -199,10 +194,7 @@ U64 BtCPU::startException(U64 address, bool readAddress, std::function<void(Deco
     return 0;
 }
 
-U64 BtCPU::handleFpuException(int code, std::function<void(DecodedOp*)> doSyncFrom, std::function<void(DecodedOp*)> doSyncTo) {
-    if (doSyncFrom) {
-        doSyncFrom(NULL);
-    }
+U64 BtCPU::handleFpuException(int code) {
     if (code == K_FPE_INTDIV) {
         this->prepareException(EXCEPTION_DIVIDE, 0);
     }
@@ -211,9 +203,6 @@ U64 BtCPU::handleFpuException(int code, std::function<void(DecodedOp*)> doSyncFr
     }
     else {
         this->prepareFpuException(code);
-    }
-    if (doSyncTo) {
-        doSyncTo(NULL);
     }
     U64 result = (U64)this->translateEip(this->eip.u32);
     if (result == 0) {
@@ -299,6 +288,69 @@ U64 BtCPU::getIpFromEip() {
 U64 BtCPU::handleMissingCode(U32 page, U32 offset) {
     this->eip.u32 = ((page << K_PAGE_SHIFT) | offset) - this->seg[CS].address;
     return (U64)this->translateEip(this->eip.u32);
+}
+
+bool BtCPU::handleStringOp(DecodedOp* op) {
+    return op->isStringOp();
+}
+
+// if the page we are writing to has code that we have cached, then it will be marked NATIVE_FLAG_CODEPAGE_READONLY
+//
+// 1) This function will clear the page of all cached code
+// 2) Mark all the old cached code with "0xce" so that if the program tries to run it again, it will re-compile it
+// 3) NATIVE_FLAG_CODEPAGE_READONLY will be removed
+U64 BtCPU::handleCodePatch(U64 rip, U32 address) {
+#ifndef __TEST
+    // only one thread at a time can update the host code pages and related date like opToAddressPages
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->thread->memory->executableMemoryMutex);
+#endif
+    Memory* memory = this->thread->memory;
+    U32 nativePage = memory->getNativePage(address >> K_PAGE_SHIFT);
+    // get the emulated eip of the op that corresponds to the host address where the exception happened
+    std::shared_ptr<BtCodeChunk> chunk = this->thread->memory->getCodeChunkContainingHostAddress((void*)rip);
+
+    this->eip.u32 = chunk->getEipThatContainsHostAddress((void*)rip, NULL, NULL) - this->seg[CS].address;
+
+    // make sure it wasn't changed before we got the executableMemoryMutex lock
+    if (!(memory->nativeFlags[nativePage] & NATIVE_FLAG_CODEPAGE_READONLY)) {
+        return getIpFromEip();
+    }
+
+    // get the emulated op that caused the write
+    DecodedOp* op = this->getOp(this->eip.u32, true);
+    if (op) {
+        if (this->flags & DF) {
+            this->df = -1;
+        }
+        else {
+            this->df = 1;
+        }
+        U32 addressStart = address;
+        U32 len = instructionInfo[op->inst].writeMemWidth / 8;
+
+        // Fix string will set EDI and ESI back to their correct values so we can re-enter this instruction
+        if (handleStringOp(op)) {
+            if (op->repNotZero || op->repZero) {
+                len = len * (isBig() ? THIS_ECX : THIS_CX);
+            }
+
+            if (this->df == 1) {
+                addressStart = (this->isBig() ? THIS_EDI : THIS_DI) + this->seg[ES].address;
+            }
+            else {
+                addressStart = (this->isBig() ? THIS_EDI : THIS_DI) + this->seg[ES].address + (instructionInfo[op->inst].writeMemWidth / 8) - len;
+            }
+        }
+        U32 startPage = addressStart >> K_PAGE_SHIFT;
+        U32 endPage = (addressStart + len - 1) >> K_PAGE_SHIFT;
+        memory->clearHostCodeForWriting(memory->getNativePage(startPage), memory->getNativePage(endPage - startPage + 1));
+        op->dealloc(true);
+        return getIpFromEip();
+    }
+    else {
+        kpanic("Threw an exception from a host location that doesn't map to an emulated instruction");
+    }
+    return 0;
 }
 
 void terminateOtherThread(const std::shared_ptr<KProcess>& process, U32 threadId) {
