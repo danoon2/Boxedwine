@@ -368,7 +368,8 @@ void Armv8btCPU::translateData(Armv8btAsm* data, Armv8btAsm* firstPass) {
     Memory* memory = data->cpu->thread->memory;
 
     U32 codePage = (data->ip+data->cpu->seg[CS].address) >> K_PAGE_SHIFT;
-    if (memory->dynamicCodePageUpdateCount[codePage]==MAX_DYNAMIC_CODE_PAGE_COUNT) {
+    U32 nativePage = this->thread->memory->getNativePage(codePage);
+    if (memory->dynamicCodePageUpdateCount[nativePage]==MAX_DYNAMIC_CODE_PAGE_COUNT) {
         data->dynamic = true;
     }
     DecodedBlock block;
@@ -388,14 +389,15 @@ void Armv8btCPU::translateData(Armv8btAsm* data, Armv8btAsm* firstPass) {
 
             if (page!=codePage) {
                 codePage = page;
+                nativePage = this->thread->memory->getNativePage(codePage);
                 if (data->dynamic) {                    
-                    if (memory->dynamicCodePageUpdateCount[codePage] == MAX_DYNAMIC_CODE_PAGE_COUNT) {
+                    if (memory->dynamicCodePageUpdateCount[nativePage] == MAX_DYNAMIC_CODE_PAGE_COUNT) {
                         // continue to cross from my dynamic page into another dynamic page
                     } else {
                         // we will continue to emit code that will self check for modified code, even though the page we spill into is not dynamic
                     }
                 } else {
-                    if (memory->dynamicCodePageUpdateCount[codePage] == MAX_DYNAMIC_CODE_PAGE_COUNT) {
+                    if (memory->dynamicCodePageUpdateCount[nativePage] == MAX_DYNAMIC_CODE_PAGE_COUNT) {
                         // we crossed a page boundry from a non dynamic page to a dynamic page
                         data->dynamic = true; // the instructions from this point on will do their own check
                     } else {
