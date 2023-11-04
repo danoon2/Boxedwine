@@ -343,7 +343,7 @@ U64 BtCPU::handleCodePatch(U64 rip, U32 address) {
         }
         U32 startPage = addressStart >> K_PAGE_SHIFT;
         U32 endPage = (addressStart + len - 1) >> K_PAGE_SHIFT;
-        memory->clearHostCodeForWriting(memory->getNativePage(startPage), memory->getNativePage(endPage - startPage + 1));
+        memory->clearHostCodeForWriting(memory->getNativePage(startPage), memory->getNativePage(endPage - startPage) + 1);
         op->dealloc(true);
         return getIpFromEip();
     }
