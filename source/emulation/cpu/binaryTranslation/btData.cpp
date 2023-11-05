@@ -3,6 +3,7 @@
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
 
 #include "btData.h"
+#include "btCodeChunk.h"
 
 BtData::BtData() {
     this->ipAddress = this->ipAddressBuffer;
@@ -21,6 +22,8 @@ BtData::BtData() {
     this->stopAfterInstruction = -1;
     this->dynamic = false;
     this->useSingleMemOffset = true;
+    this->decodedOp = nullptr;
+    this->currentBlock = nullptr;
 }
 
 BtData::~BtData() {
@@ -71,6 +74,30 @@ void BtData::write64(U64 data) {
     this->write8((U8)(data >> 56));
 }
 
+void BtData::write64Buffer(U8* buffer, U64 value) {
+    buffer[0] = (U8)value;
+    buffer[1] = (U8)(value >> 8);
+    buffer[2] = (U8)(value >> 16);
+    buffer[3] = (U8)(value >> 24);
+    buffer[4] = (U8)(value >> 32);
+    buffer[5] = (U8)(value >> 40);
+    buffer[6] = (U8)(value >> 48);
+    buffer[7] = (U8)(value >> 56);
+}
+
+void BtData::write32Buffer(U8* buffer, U32 value) {
+    buffer[0] = (U8)value;
+    buffer[1] = (U8)(value >> 8);
+    buffer[2] = (U8)(value >> 16);
+    buffer[3] = (U8)(value >> 24);
+}
+
+void BtData::write16Buffer(U8* buffer, U16 value) {
+    buffer[0] = (U8)value;
+    buffer[1] = (U8)(value >> 8);
+
+}
+
 U8 BtData::calculateEipLen(U32 eip) {
     for (U32 i = 0; i < this->ipAddressCount; i++) {
         if (this->ipAddress[i] == eip) {
@@ -104,6 +131,14 @@ void BtData::mapAddress(U32 ip, U32 bufferPos) {
     }
     this->ipAddress[this->ipAddressCount] = ip;
     this->ipAddressBufferPos[this->ipAddressCount++] = bufferPos;
+}
+
+std::shared_ptr<BtCodeChunk> BtData::commit(bool makeLive) {
+    std::shared_ptr<BtCodeChunk> chunk = createChunk(this->ipAddressCount, this->ipAddress, this->ipAddressBufferPos, this->buffer, this->bufferPos, this->startOfDataIp, this->ip - this->startOfDataIp, this->dynamic);
+    if (makeLive) {
+        chunk->makeLive();
+    }
+    return chunk;
 }
 
 #endif

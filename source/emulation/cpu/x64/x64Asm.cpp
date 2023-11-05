@@ -3,6 +3,7 @@
 #ifdef BOXEDWINE_X64
 
 #include "x64Asm.h"
+#include "x64Ops.h"
 #include "../common/common_other.h"
 #include "../../../../source/emulation/hardmmu/hard_memory.h"
 #include "../normal/normalCPU.h"
@@ -2217,30 +2218,6 @@ void X64Asm::jumpConditional(U8 condition, U32 eip) {
     }
 }
 
-void X64Asm::write64Buffer(U8* buffer, U64 value) {
-    buffer[0] = (U8)value;
-    buffer[1] = (U8)(value >> 8);
-    buffer[2] = (U8)(value >> 16);
-    buffer[3] = (U8)(value >> 24);
-    buffer[4] = (U8)(value >> 32);
-    buffer[5] = (U8)(value >> 40);
-    buffer[6] = (U8)(value >> 48);
-    buffer[7] = (U8)(value >> 56);
-}
-
-void X64Asm::write32Buffer(U8* buffer, U32 value) {
-    buffer[0] = (U8)value;
-    buffer[1] = (U8)(value >> 8);
-    buffer[2] = (U8)(value >> 16);
-    buffer[3] = (U8)(value >> 24);
-}
-
-void X64Asm::write16Buffer(U8* buffer, U16 value) {
-    buffer[0] = (U8)value;
-    buffer[1] = (U8)(value >> 8);
-
-}
-
 void X64Asm::addTodoLinkJump(U32 eip, U32 size, bool sameChunk) {
     this->todoJump.push_back(TodoJump(eip, this->bufferPos-(size==4?4:11), size, sameChunk, this->ipAddressCount));
 }
@@ -4346,6 +4323,36 @@ void X64Asm::fpu7(U8 rm) {
             case 7: callFpuWithAddressWrite(common_FISTP_QWORD_INTEGER, rm, 8); break;
         }
     }
+}
+
+void X64Asm::translateInstruction() {
+    this->startOfOpIp = this->ip;
+    this->useSingleMemOffset = !this->cpu->thread->memory->doesInstructionNeedMemoryOffset(this->ip);
+#ifdef _DEBUG
+    //data->logOp(data->ip);
+    // just makes debugging the asm output easier
+#ifndef __TEST
+    this->writeToMemFromValue(this->ip, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EIP, 4, false);
+#endif
+#endif
+    if (this->dynamic) {
+        this->addDynamicCheck(false);
+    }
+    else {
+#ifdef _DEBUG
+        //this->addDynamicCheck(true);
+#endif
+    }
+    while (1) {
+        this->op = this->fetch8();
+        this->inst = this->baseOp + this->op;
+        if (!x64Decoder[this->inst](this)) {
+            break;
+        }
+    }
+    this->tmp1InUse = false;
+    this->tmp2InUse = false;
+    this->tmp3InUse = false;
 }
 
 #ifdef __TEST

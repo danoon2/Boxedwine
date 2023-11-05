@@ -48,9 +48,8 @@ public:
     U32 fetch32();    
     U64 fetch64();
 
-    void resetForNewOp();
-    std::shared_ptr<X64CodeChunk> commit(bool makeLive);
-    
+    virtual void resetForNewOp();
+
     U32 op;
     U32 inst; // full op, like 0x200 while op would be 0x00
     bool addressPrefix;
@@ -87,6 +86,9 @@ public:
     
     bool skipWriteOp;
     bool isG8bitWritten;
+
+protected:
+    virtual std::shared_ptr<BtCodeChunk> createChunk(U32 instructionCount, U32* eipInstructionAddress, U32* hostInstructionIndex, U8* hostInstructionBuffer, U32 hostInstructionBufferLen, U32 eip, U32 eipLen, bool dynamic);
 };
 #endif
 #endif

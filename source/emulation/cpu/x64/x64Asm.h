@@ -43,6 +43,7 @@ typedef void (*PFN_FPU)(CPU* cpu);
 class X64Asm : public X64Data {
 public:  
     X64Asm(x64CPU* cpu);
+    virtual void translateInstruction();
 
     void translateRM(U8 rm, bool checkG, bool checkE, bool isG8bit, bool isE8bit, U8 immWidth);
     void writeOp(bool isG8bit=false);
@@ -96,7 +97,7 @@ public:
     void loop(U32 eip, bool ea16);
     void loopz(U32 eip, bool ea16);
     void loopnz(U32 eip, bool ea16);
-    void jumpTo(U32 eip);
+    virtual void jumpTo(U32 eip);
     void jmp(bool big, U32 sel, U32 offset, U32 oldEip);
     void call(bool big, U32 sel, U32 offset, U32 oldEip);
     void retn16(U32 bytes);
@@ -134,10 +135,7 @@ public:
     void invalidOp(U32 op);
     void errorMsg(const char* msg);
     void cpuid();
-    void setNativeFlags(U32 flags, U32 mask);
-    void write64Buffer(U8* buffer, U64 value);
-    void write32Buffer(U8* buffer, U32 value); 
-    void write16Buffer(U8* buffer, U16 value); 
+    void setNativeFlags(U32 flags, U32 mask);    
     void pushNativeFlags();
     void popNativeFlags();
     void logOp(U32 eip);

@@ -168,7 +168,8 @@ enum DoIfOperator {
 
 class Armv8btAsm : public Armv8btData {
 public:  
-    Armv8btAsm(Armv8btCPU* cpu);
+    Armv8btAsm(Armv8btCPU* cpu);    
+    virtual void translateInstruction();
 
     U32 flagsNeeded();
     U8 getTmpReg();
@@ -242,7 +243,7 @@ public:
     void writeJumpAmount(U32 pos, U32 toLocation);
     void doJmp(bool mightNeedCS); // jump to current cpu->eip
     void jmpReg(U8 reg, bool mightNeedCS);
-    void jumpTo(U32 eip); // a jump that could be within the same chunk, this will be filled out when the entire chunk is encoded
+    virtual void jumpTo(U32 eip); // a jump that could be within the same chunk, this will be filled out when the entire chunk is encoded
     void addTodoLinkJump(U32 eip, U32 size, bool sameChunk);
     U8 getRegWithConst(U64 value);
     void branchNativeRegister(U8 reg);
@@ -548,6 +549,7 @@ public:
 #ifdef __TEST
     void addReturnFromTest();
 #endif
+
 private:
     void vMemMultiple(U8 dst, U8 base, U32 numberOfRegs, U8 thirdByte, bool is1128);
     void vIns(U8 rd, U8 rn, U8 imm4, U8 imm5);

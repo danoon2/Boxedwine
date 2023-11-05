@@ -83,7 +83,7 @@ void* x64CPU::init() {
     data.doJmp(false);
     std::shared_ptr<BtCodeChunk> chunk = data.commit(true);
     result = chunk->getHostAddress();
-    link(&data, chunk);
+    //link(&data, chunk);
     this->pendingCodePages.clear();    
     this->eipToHostInstructionPages = this->thread->memory->eipToHostInstructionPages;
 
@@ -92,7 +92,7 @@ void* x64CPU::init() {
         returnData.restoreNativeState();
         returnData.write8(0xfc); // cld
         returnData.write8(0xc3); // retn
-        std::shared_ptr<X64CodeChunk> chunk2 = returnData.commit(true);
+        std::shared_ptr<BtCodeChunk> chunk2 = returnData.commit(true);
         this->thread->process->returnToLoopAddress = chunk2->getHostAddress();
     }
     this->returnToLoopAddress = this->thread->process->returnToLoopAddress;
@@ -100,14 +100,14 @@ void* x64CPU::init() {
     if (!this->thread->process->reTranslateChunkAddress) {
         X64Asm translateData(this);
         translateData.createCodeForRetranslateChunk();
-        std::shared_ptr<X64CodeChunk> chunk3 = translateData.commit(true);
+        std::shared_ptr<BtCodeChunk> chunk3 = translateData.commit(true);
         this->thread->process->reTranslateChunkAddress = chunk3->getHostAddress();
     }
     this->reTranslateChunkAddress = this->thread->process->reTranslateChunkAddress;
     if (!this->thread->process->reTranslateChunkAddressFromReg) {
         X64Asm translateData(this);
         translateData.createCodeForRetranslateChunk(true);
-        std::shared_ptr<X64CodeChunk> chunk3 = translateData.commit(true);
+        std::shared_ptr<BtCodeChunk> chunk3 = translateData.commit(true);
         this->thread->process->reTranslateChunkAddressFromReg = chunk3->getHostAddress();
     }
     this->reTranslateChunkAddressFromReg = this->thread->process->reTranslateChunkAddressFromReg;
@@ -115,7 +115,7 @@ void* x64CPU::init() {
     if (!this->thread->process->jmpAndTranslateIfNecessary) {
         X64Asm translateData(this);
         translateData.createCodeForJmpAndTranslateIfNecessary(true);
-        std::shared_ptr<X64CodeChunk> chunk3 = translateData.commit(true);
+        std::shared_ptr<BtCodeChunk> chunk3 = translateData.commit(true);
         this->thread->process->jmpAndTranslateIfNecessary = chunk3->getHostAddress();
     }
     this->jmpAndTranslateIfNecessary = this->thread->process->jmpAndTranslateIfNecessary;
@@ -124,48 +124,15 @@ void* x64CPU::init() {
     if (!this->thread->process->runSignalAddress) {
         X64Asm translateData(this);
         translateData.createCodeForRunSignal();
-        std::shared_ptr<X64CodeChunk> chunk3 = translateData.commit(true);
+        std::shared_ptr<BtCodeChunk> chunk3 = translateData.commit(true);
         this->thread->process->runSignalAddress = chunk3->getHostAddress();
     }
 #endif
     return result;
 }
 
-std::shared_ptr<BtCodeChunk> x64CPU::translateChunk(U32 ip) {
-    X64Asm data1(this);
-    data1.ip = ip;
-    data1.startOfDataIp = ip;       
-    translateData(&data1);
-
-    X64Asm data(this);
-    data.ip = ip;
-    data.startOfDataIp = ip;  
-    data.calculatedEipLen = data1.ip - data1.startOfDataIp;
-    translateData(&data, &data1);        
-    S32 failedJumpOpIndex = this->preLinkCheck(&data);
-
-    if (failedJumpOpIndex==-1) {
-        std::shared_ptr<BtCodeChunk> chunk = data.commit(false);
-        link(&data, chunk);
-        return chunk;
-    } else {
-        X64Asm data2(this);
-        data2.ip = ip;
-        data2.startOfDataIp = ip;       
-        data2.stopAfterInstruction = failedJumpOpIndex;
-        translateData(&data2);
-
-        X64Asm data3(this);
-        data3.ip = ip;
-        data3.startOfDataIp = ip;  
-        data3.calculatedEipLen = data2.ip - data2.startOfDataIp;
-        data3.stopAfterInstruction = failedJumpOpIndex;
-        translateData(&data3, &data2);
-
-        std::shared_ptr<BtCodeChunk> chunk = data3.commit(false);
-        link(&data3, chunk);
-        return chunk;
-    }    
+std::shared_ptr<BtData> x64CPU::createData() {
+    return std::make_shared<X64Asm>(this);
 }
 
 #ifdef __TEST
@@ -186,7 +153,7 @@ void x64CPU::addReturnFromTest() {
 }
 #endif
 
-void x64CPU::link(X64Asm* data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 offsetIntoChunk) {
+void x64CPU::link(const std::shared_ptr<BtData>& data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 offsetIntoChunk) {
     U32 i;
     if (!fromChunk) {
         kpanic("x64CPU::link fromChunk missing");
@@ -240,54 +207,25 @@ void x64CPU::link(X64Asm* data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 off
             kpanic("x64CPU::link unexpected patch size");
         }
     }
-    markCodePageReadOnly(data);
+    markCodePageReadOnly(data.get());
 }
 
-void x64CPU::translateInstruction(X64Asm* data, X64Asm* firstPass) {
-    data->startOfOpIp = data->ip;  
-    data->useSingleMemOffset = !data->cpu->thread->memory->doesInstructionNeedMemoryOffset(data->ip);
-#ifdef _DEBUG
-    //data->logOp(data->ip);
-    // just makes debugging the asm output easier
-#ifndef __TEST
-    data->writeToMemFromValue(data->ip, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EIP, 4, false);
-#endif
-#endif
-    if (data->dynamic) {
-        data->addDynamicCheck(false);
-    } else {
-#ifdef _DEBUG
-        //data->addDynamicCheck(true);
-#endif
-    }   
-    while (1) {  
-        data->op = data->fetch8();            
-        data->inst = data->baseOp + data->op;        
-        if (!x64Decoder[data->inst](data)) {                
-            break;
-        }            
-    }
-    data->tmp1InUse = false;
-    data->tmp2InUse = false;
-    data->tmp3InUse = false;
-}
-
-void x64CPU::translateData(X64Asm* data, X64Asm* firstPass) {
-    U32 codePage = (data->ip+data->cpu->seg[CS].address) >> K_PAGE_SHIFT;
+void x64CPU::translateData(const std::shared_ptr<BtData>& data, const std::shared_ptr<BtData>& firstPass) {
+    U32 codePage = (data->ip+this->seg[CS].address) >> K_PAGE_SHIFT;
     U32 nativePage = this->thread->memory->getNativePage(codePage);
     if (this->thread->memory->dynamicCodePageUpdateCount[nativePage]==MAX_DYNAMIC_CODE_PAGE_COUNT) {
         data->dynamic = true;
     }
     while (1) {  
-        U32 address = data->cpu->seg[CS].address+data->ip;
+        U32 address = this->seg[CS].address+data->ip;
         void* hostAddress = this->thread->memory->getExistingHostAddress(address);
         if (hostAddress) {
             data->jumpTo(data->ip);
             break;
         }
         if (firstPass) {
-            U32 nextEipLen = firstPass->calculateEipLen(data->ip+data->cpu->seg[CS].address);
-            U32 page = (data->ip+data->cpu->seg[CS].address+nextEipLen) >> K_PAGE_SHIFT;
+            U32 nextEipLen = firstPass->calculateEipLen(data->ip+this->seg[CS].address);
+            U32 page = (data->ip+this->seg[CS].address+nextEipLen) >> K_PAGE_SHIFT;
 
             if (page!=codePage) {
                 codePage = page;
@@ -309,7 +247,7 @@ void x64CPU::translateData(X64Asm* data, X64Asm* firstPass) {
             }
         }
         data->mapAddress(address, data->bufferPos);
-        translateInstruction(data, firstPass);
+        data->translateInstruction();
         if (data->done) {
             break;
         }

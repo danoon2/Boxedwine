@@ -75,12 +75,8 @@ void X64Data::resetForNewOp() {
     this->isG8bitWritten = false;
 }
 
-std::shared_ptr<X64CodeChunk> X64Data::commit(bool makeLive) {
-    std::shared_ptr<X64CodeChunk> chunk = std::make_shared<X64CodeChunk>(this->ipAddressCount, this->ipAddress, this->ipAddressBufferPos, this->buffer, this->bufferPos, this->startOfDataIp, this->ip-this->startOfDataIp, this->dynamic);
-    if (makeLive) {
-        chunk->makeLive();
-    }
-    return chunk;
+std::shared_ptr<BtCodeChunk> X64Data::createChunk(U32 instructionCount, U32* eipInstructionAddress, U32* hostInstructionIndex, U8* hostInstructionBuffer, U32 hostInstructionBufferLen, U32 eip, U32 eipLen, bool dynamic) {
+    return std::make_shared<X64CodeChunk>(instructionCount, eipInstructionAddress, hostInstructionIndex, hostInstructionBuffer, hostInstructionBufferLen, eip, eipLen, dynamic);
 }
 
 #endif

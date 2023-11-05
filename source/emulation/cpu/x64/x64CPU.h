@@ -45,17 +45,17 @@ public:
     void addReturnFromTest();
 #endif
 
-    void translateInstruction(X64Asm* data, X64Asm* firstPass);    
-    void link(X64Asm* data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 offsetIntoChunk=0);
-    virtual std::shared_ptr<BtCodeChunk> translateChunk(U32 ip);
-    void translateData(X64Asm* data, X64Asm* firstPass=NULL);    
+    virtual void link(const std::shared_ptr<BtData>& data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 offsetIntoChunk=0);    
+    virtual void translateData(const std::shared_ptr<BtData>& data, const std::shared_ptr<BtData>& firstPass = nullptr);
         
     virtual bool handleStringOp(DecodedOp* op);
 
     virtual void setSeg(U32 index, U32 address, U32 value);
 #ifdef __TEST
     virtual void postTestRun();
-#endif           
+#endif    
+protected:
+    virtual std::shared_ptr<BtData> createData();
 };
 #endif
 #endif

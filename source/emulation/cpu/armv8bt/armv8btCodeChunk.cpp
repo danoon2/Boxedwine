@@ -12,7 +12,7 @@ bool Armv8CodeChunk::retranslateSingleInstruction(BtCPU* btCPU, void* address) {
     data.ip = eip;
     data.startOfDataIp = eip;
     data.dynamic = this->dynamic;
-    cpu->translateInstruction(&data, NULL);
+    data.translateInstruction();
     U32 eipLen = data.ip - data.startOfOpIp;
     U32 hostLen = data.bufferPos;
     if (eipLen == this->emulatedInstructionLen[index]) {

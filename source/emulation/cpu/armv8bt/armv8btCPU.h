@@ -34,20 +34,18 @@ public:
     void addReturnFromTest();
 #endif
 
-    void translateInstruction(Armv8btAsm* data, Armv8btAsm* firstPass);
-    void link(Armv8btAsm* data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 offsetIntoChunk=0);
-    void translateData(Armv8btAsm* data, Armv8btAsm* firstPass=NULL);
-
-    virtual std::shared_ptr<BtCodeChunk> translateChunk(U32 ip);
+    virtual void link(const std::shared_ptr<BtData>& data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 offsetIntoChunk = 0);
+    virtual void translateData(const std::shared_ptr<BtData>& data, const std::shared_ptr<BtData>& firstPass = nullptr);
 
     virtual void setSeg(U32 index, U32 address, U32 value);
 
 #ifdef __TEST
     virtual void postTestRun() {};
 #endif
+protected:
+    virtual std::shared_ptr<BtData> createData();
 private:      
-    void writeJumpAmount(Armv8btAsm* data, U32 pos, U32 toLocation, U8* offset);    
-    bool isStringOp(DecodedOp* op);
+    void writeJumpAmount(const std::shared_ptr<BtData>& data, U32 pos, U32 toLocation, U8* offset);
 };
 #endif
 #endif

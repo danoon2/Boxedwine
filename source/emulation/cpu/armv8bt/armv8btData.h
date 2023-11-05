@@ -11,11 +11,7 @@ class Armv8btData : public BtData {
 public:
     Armv8btData(Armv8btCPU* cpu);    
 
-    void resetForNewOp();
-    std::shared_ptr<BtCodeChunk> commit(bool makeLive);
-
-    DecodedOp* decodedOp;
-    DecodedBlock* currentBlock;
+    void resetForNewOp();    
 
     Armv8btCPU* cpu;
 
@@ -23,6 +19,9 @@ public:
     bool fpuOffsetRegSet;
     bool isFpuRegCached[8];
     void clearCachedFpuRegs();
+
+protected:
+    virtual std::shared_ptr<BtCodeChunk> createChunk(U32 instructionCount, U32* eipInstructionAddress, U32* hostInstructionIndex, U8* hostInstructionBuffer, U32 hostInstructionBufferLen, U32 eip, U32 eipLen, bool dynamic);
 };
 #endif
 #endif

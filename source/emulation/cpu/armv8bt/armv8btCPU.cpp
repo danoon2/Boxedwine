@@ -58,6 +58,10 @@ Armv8btCPU::Armv8btCPU() {
     pageOffsetJumpInstruction = 0x38400131;
 }
 
+std::shared_ptr<BtData> Armv8btCPU::createData() {
+    return std::make_shared<Armv8btAsm>(this);
+}
+
 void Armv8btCPU::setSeg(U32 index, U32 address, U32 value) {
     CPU::setSeg(index, address, value);
 }
@@ -110,7 +114,7 @@ void* Armv8btCPU::init() {
     data.doJmp(false);
     std::shared_ptr<BtCodeChunk> chunk = data.commit(true);
     result = chunk->getHostAddress();
-    link(&data, chunk);
+    //link(&data, chunk);
     this->pendingCodePages.clear();    
     this->eipToHostInstructionPages = this->thread->memory->eipToHostInstructionPages;
 
@@ -157,43 +161,6 @@ void* Armv8btCPU::init() {
     return result;
 }
 
-std::shared_ptr<BtCodeChunk> Armv8btCPU::translateChunk(U32 ip) {
-    Armv8btAsm data1(this);
-    data1.ip = ip;
-    data1.startOfDataIp = ip;       
-    translateData(&data1);
-
-    Armv8btAsm data(this);
-    data.ip = ip;
-    data.startOfDataIp = ip;  
-    data.calculatedEipLen = data1.ip - data1.startOfDataIp;
-    translateData(&data, &data1);        
-    S32 failedJumpOpIndex = this->preLinkCheck(&data);
-
-    if (failedJumpOpIndex==-1) {
-        std::shared_ptr<BtCodeChunk> chunk = data.commit(false);
-        link(&data, chunk);
-        return chunk;
-    } else {
-        Armv8btAsm data2(this);
-        data2.ip = ip;
-        data2.startOfDataIp = ip;       
-        data2.stopAfterInstruction = failedJumpOpIndex;
-        translateData(&data2);
-
-        Armv8btAsm data3(this);
-        data3.ip = ip;
-        data3.startOfDataIp = ip;  
-        data3.calculatedEipLen = data2.ip - data2.startOfDataIp;
-        data3.stopAfterInstruction = failedJumpOpIndex;
-        translateData(&data3, &data2);
-
-        std::shared_ptr<BtCodeChunk> chunk = data3.commit(false);
-        link(&data3, chunk);
-        return chunk;
-    }    
-}
-
 #ifdef __TEST
 void Armv8btCPU::addReturnFromTest() {
     Armv8btAsm data(this);
@@ -202,7 +169,7 @@ void Armv8btCPU::addReturnFromTest() {
 }
 #endif
 
-void Armv8btCPU::writeJumpAmount(Armv8btAsm* data, U32 pos, U32 toLocation, U8* offset) {
+void Armv8btCPU::writeJumpAmount(const std::shared_ptr<BtData>& data, U32 pos, U32 toLocation, U8* offset) {
     S32 amount = (S32)(toLocation) >> 2;
     if (offset[pos + 3] == 0x14) {
         if (amount > 0xFFFFFF) {
@@ -224,7 +191,7 @@ void Armv8btCPU::writeJumpAmount(Armv8btAsm* data, U32 pos, U32 toLocation, U8* 
     }
 }
 
-void Armv8btCPU::link(Armv8btAsm* data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 offsetIntoChunk) {
+void Armv8btCPU::link(const std::shared_ptr<BtData>& data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 offsetIntoChunk) {
     U32 i;
     if (!fromChunk) {
         kpanic("Armv8btCPU::link fromChunk missing");
@@ -288,41 +255,17 @@ void Armv8btCPU::link(Armv8btAsm* data, std::shared_ptr<BtCodeChunk>& fromChunk,
     if (data->todoJump.size()) {
 
     }
-    markCodePageReadOnly(data);
+    markCodePageReadOnly(data.get());
 }
 
 static U8 fetchByte(U32* eip) {
     return readb((*eip)++);
 }
 
-void Armv8btCPU::translateInstruction(Armv8btAsm* data, Armv8btAsm* firstPass) {
-    data->startOfOpIp = data->ip;
-    data->useSingleMemOffset = !data->cpu->thread->memory->doesInstructionNeedMemoryOffset(data->ip);
-    data->ip += data->decodedOp->len;
-#ifdef _DEBUG
-    if (this->logFile) {
-        data->logOp(data->startOfOpIp);
-    }
-    // just makes debugging the asm output easier
-#ifndef __TEST
-    data->loadConst(14, data->startOfOpIp);
-    //data->writeMem32ValueOffset(xTmp5, xCPU, CPU_OFFSET_EIP);
-#endif
-#endif
-    if (data->dynamic) {
-        data->addDynamicCheck(false);
-    } else {
-#ifdef _DEBUG
-        //data->addDynamicCheck(true);
-#endif
-    }   
-    armv8btEncoder[data->decodedOp->inst](data);
-}
+void Armv8btCPU::translateData(const std::shared_ptr<BtData>& data, const std::shared_ptr<BtData>& firstPass) {
+    Memory* memory = this->thread->memory;
 
-void Armv8btCPU::translateData(Armv8btAsm* data, Armv8btAsm* firstPass) {
-    Memory* memory = data->cpu->thread->memory;
-
-    U32 codePage = (data->ip+data->cpu->seg[CS].address) >> K_PAGE_SHIFT;
+    U32 codePage = (data->ip+ this->seg[CS].address) >> K_PAGE_SHIFT;
     U32 nativePage = this->thread->memory->getNativePage(codePage);
     if (memory->dynamicCodePageUpdateCount[nativePage]==MAX_DYNAMIC_CODE_PAGE_COUNT) {
         data->dynamic = true;
@@ -332,15 +275,15 @@ void Armv8btCPU::translateData(Armv8btAsm* data, Armv8btAsm* firstPass) {
     decodeBlock(fetchByte, data->startOfDataIp + this->seg[CS].address, this->isBig(), 0, 0, 0, &block);
     DecodedOp* op = block.op;
     while (op) {  
-        U32 address = data->cpu->seg[CS].address+data->ip;
+        U32 address = this->seg[CS].address+data->ip;
         void* hostAddress = memory->getExistingHostAddress(address);
         if (hostAddress) {
             data->jumpTo(data->ip);
             break;
         }
         if (firstPass) {
-            U32 nextEipLen = firstPass->calculateEipLen(data->ip+data->cpu->seg[CS].address);
-            U32 page = (data->ip+data->cpu->seg[CS].address+nextEipLen) >> K_PAGE_SHIFT;
+            U32 nextEipLen = firstPass->calculateEipLen(data->ip + this->seg[CS].address);
+            U32 page = (data->ip+ this->seg[CS].address+nextEipLen) >> K_PAGE_SHIFT;
 
             if (page!=codePage) {
                 codePage = page;
@@ -361,24 +304,23 @@ void Armv8btCPU::translateData(Armv8btAsm* data, Armv8btAsm* firstPass) {
                 }
             }
         }
-        data->mapAddress(address, data->bufferPos);
-        if (firstPass && firstPass->fpuTopRegSet && !data->fpuOffsetRegSet) {
-            data->getFpuTopReg();
+        data->mapAddress(address, data->bufferPos);        
+        if (firstPass) {
+            // :TODO: find a way without a cast
+            std::shared_ptr<Armv8btAsm> a = std::dynamic_pointer_cast<Armv8btAsm>(firstPass);
+            if (a->fpuTopRegSet && !a->fpuOffsetRegSet) {
+                a->getFpuTopReg();
+            }
         }
         data->decodedOp = op;
-        translateInstruction(data, firstPass);
+        data->translateInstruction();
         op = op->next;
         if (data->done) {
             break;
         }
         if (data->stopAfterInstruction!=-1 && (int)data->ipAddressCount==data->stopAfterInstruction) {
             break;
-        }
-        for (int i = 0; i < xNumberOfTmpRegs; i++) {
-            if (data->tmpRegInUse[i]) {
-                kpanic("op(%x) leaked tmp reg", data->decodedOp->originalOp);
-            }
-        }        
+        }               
         data->resetForNewOp();
         if (!op) {
             block.op->dealloc(true);

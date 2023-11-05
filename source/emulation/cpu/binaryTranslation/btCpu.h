@@ -42,7 +42,9 @@ public:
     
     jmp_buf* jmpBuf;
 
-    virtual std::shared_ptr<BtCodeChunk> translateChunk(U32 ip) = 0;
+    std::shared_ptr<BtCodeChunk> translateChunk(U32 ip);
+    virtual void translateData(const std::shared_ptr<BtData>& data, const std::shared_ptr<BtData>& firstPass = nullptr) = 0;
+    virtual void link(const std::shared_ptr<BtData>& data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 offsetIntoChunk = 0) = 0;
     void* translateEipInternal(U32 ip);
 #ifdef __TEST
     virtual void postTestRun() = 0;
@@ -75,6 +77,7 @@ public:
     U32 pageOffsetJumpInstruction;
 protected:
     U64 getIpFromEip();
+    virtual std::shared_ptr<BtData> createData() = 0;
 };
 #endif
 

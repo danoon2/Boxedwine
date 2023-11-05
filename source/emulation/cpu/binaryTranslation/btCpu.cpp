@@ -47,6 +47,44 @@ void BtCPU::run() {
     }
 }
 
+std::shared_ptr<BtCodeChunk> BtCPU::translateChunk(U32 ip) {
+    std::shared_ptr<BtData> firstPass = createData();
+    firstPass->ip = ip;
+    firstPass->startOfDataIp = ip;
+    translateData(firstPass);
+
+    std::shared_ptr<BtData> secondPass = createData();
+    secondPass->ip = ip;
+    secondPass->startOfDataIp = ip;
+    secondPass->calculatedEipLen = firstPass->ip - firstPass->startOfDataIp;
+    translateData(secondPass, firstPass);
+    S32 failedJumpOpIndex = this->preLinkCheck(secondPass.get());
+
+    if (failedJumpOpIndex == -1) {
+        std::shared_ptr<BtCodeChunk> chunk = secondPass->commit(false);
+        link(secondPass, chunk);
+        return chunk;
+    }
+    else {
+        firstPass = createData();
+        firstPass->ip = ip;
+        firstPass->startOfDataIp = ip;
+        firstPass->stopAfterInstruction = failedJumpOpIndex;
+        translateData(firstPass);
+
+        secondPass = createData();
+        secondPass->ip = ip;
+        secondPass->startOfDataIp = ip;
+        secondPass->calculatedEipLen = firstPass->ip - firstPass->startOfDataIp;
+        secondPass->stopAfterInstruction = failedJumpOpIndex;
+        translateData(secondPass, firstPass);
+
+        std::shared_ptr<BtCodeChunk> chunk = secondPass->commit(false);
+        link(secondPass, chunk);
+        return chunk;
+    }
+}
+
 U64 BtCPU::reTranslateChunk() {
 #ifndef __TEST
     // only one thread at a time can update the host code pages and related date like opToAddressPages

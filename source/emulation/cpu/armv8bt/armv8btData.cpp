@@ -10,7 +10,6 @@
 Armv8btData::Armv8btData(Armv8btCPU* cpu) : cpu(cpu) {
     this->resetForNewOp();
 
-    this->currentBlock = NULL;
     this->fpuTopRegSet = false;
     this->fpuOffsetRegSet = false;
     this->clearCachedFpuRegs();
@@ -24,12 +23,8 @@ void Armv8btData::resetForNewOp() {
     this->startOfOpIp = this->ip;
 }
 
-std::shared_ptr<BtCodeChunk> Armv8btData::commit(bool makeLive) {
-    std::shared_ptr<BtCodeChunk> chunk = std::make_shared<Armv8CodeChunk>(this->ipAddressCount, this->ipAddress, this->ipAddressBufferPos, this->buffer, this->bufferPos, this->startOfDataIp, this->ip-this->startOfDataIp, this->dynamic);
-    if (makeLive) {
-        chunk->makeLive();
-    }
-    return chunk;
+std::shared_ptr<BtCodeChunk> Armv8btData::createChunk(U32 instructionCount, U32* eipInstructionAddress, U32* hostInstructionIndex, U8* hostInstructionBuffer, U32 hostInstructionBufferLen, U32 eip, U32 eipLen, bool dynamic) {
+    return std::make_shared<Armv8CodeChunk>(instructionCount, eipInstructionAddress, hostInstructionIndex, hostInstructionBuffer, hostInstructionBufferLen, eip, eipLen, dynamic);
 }
 
 #endif

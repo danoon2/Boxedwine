@@ -3,10 +3,13 @@
 #ifdef BOXEDWINE_ARMV8BT
 
 #include "armv8btAsm.h"
+#include "armv8btOps.h"
+
 #include "../common/common_other.h"
 #include "../../../../source/emulation/hardmmu/hard_memory.h"
 #include "../normal/normalCPU.h"
 #include "../armv8/llvm_helper.h"
+#include "armv8btCodeChunk.h"
 
 static bool isWidthVector(VectorWidth width) {
     if (width == D_scaler || width == S_scaler) {
@@ -4895,6 +4898,37 @@ void Armv8btAsm::signalIllegalInstruction(int code) {
     callHost((void*)common_signalIllegalInstruction);
     syncRegsToHost();
     doJmp(true);
+}
+
+void Armv8btAsm::translateInstruction() {
+    this->startOfOpIp = this->ip;
+    this->useSingleMemOffset = !this->cpu->thread->memory->doesInstructionNeedMemoryOffset(this->ip);
+    this->ip += this->decodedOp->len;
+#ifdef _DEBUG
+    if (this->cpu->logFile) {
+        this->logOp(this->startOfOpIp);
+    }
+    // just makes debugging the asm output easier
+#ifndef __TEST
+    this->loadConst(14, this->startOfOpIp);
+    //data->writeMem32ValueOffset(xTmp5, xCPU, CPU_OFFSET_EIP);
+#endif
+#endif
+    if (this->dynamic) {
+        this->addDynamicCheck(false);
+    }
+    else {
+#ifdef _DEBUG
+        //data->addDynamicCheck(true);
+#endif
+    }
+    armv8btEncoder[this->decodedOp->inst](this);
+
+    for (int i = 0; i < xNumberOfTmpRegs; i++) {
+        if (this->tmpRegInUse[i]) {
+            kpanic("op(%x) leaked tmp reg", this->decodedOp->originalOp);
+        }
+    }
 }
 
 #ifdef __TEST
