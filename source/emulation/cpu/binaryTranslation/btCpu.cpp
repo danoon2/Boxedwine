@@ -259,6 +259,15 @@ U64 BtCPU::handleAccessException(U64 ip, U64 address, bool readAddress) {
         U32 flags = m->flags[page];
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->thread->memory->executableMemoryMutex);
 
+        // do we need to dynamicly grow the stack?
+        if (page >= this->thread->stackPageStart && page < this->thread->stackPageStart + this->thread->stackPageCount) {
+            U32 startPage = m->getEmulatedPage(m->getNativePage(page - INITIAL_STACK_PAGES)); // stack grows down
+            U32 endPage = this->thread->stackPageStart + this->thread->stackPageCount - this->thread->stackPageSize;
+            U32 pageCount = endPage - startPage;
+            m->allocPages(startPage, pageCount, PAGE_READ | PAGE_WRITE, 0, 0, 0);
+            this->thread->stackPageSize += pageCount;
+            return 0;
+        }
         std::shared_ptr<BtCodeChunk> chunk = m->getCodeChunkContainingHostAddress((void*)ip);
         if (chunk) {
             this->eip.u32 = chunk->getEipThatContainsHostAddress((void*)ip, NULL, NULL) - this->seg[CS].address;

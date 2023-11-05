@@ -70,8 +70,7 @@ void KThread::reset() {
 
 void KThread::setupStack() {
     U32 page = 0;
-    U32 pageCount = MAX_STACK_SIZE >> K_PAGE_SHIFT; // 1MB for max stack
-    pageCount+=K_NATIVE_PAGES_PER_PAGE*2; // guard pages
+    U32 pageCount = MAX_STACK_SIZE >> K_PAGE_SHIFT;
     if (!this->memory->findFirstAvailablePage(ADDRESS_PROCESS_STACK_START, pageCount, &page, false, true)) {
 		if (!this->memory->findFirstAvailablePage(0xC0000, pageCount, &page, false, true)) {
 			if (!this->memory->findFirstAvailablePage(0x80000, pageCount, &page, false, true)) {
@@ -79,13 +78,18 @@ void KThread::setupStack() {
             }
         }
     }
-    this->memory->allocPages(page+K_NATIVE_PAGES_PER_PAGE, pageCount-2*K_NATIVE_PAGES_PER_PAGE, PAGE_READ|PAGE_WRITE, 0, 0, 0);
-    // 1 page above (catch stack underrun)
-    this->memory->allocPages(page+pageCount-K_NATIVE_PAGES_PER_PAGE, K_NATIVE_PAGES_PER_PAGE, 0, 0, 0, 0);
-    // 1 page below (catch stack overrun)
-    this->memory->allocPages(page, K_NATIVE_PAGES_PER_PAGE, 0, 0, 0, 0);
+    // top of stack guard page
+    this->memory->allocPages(page + pageCount - K_NATIVE_PAGES_PER_PAGE, K_NATIVE_PAGES_PER_PAGE, 0, 0, 0, 0);
+
+    // initial allocated stack of 64k
+    this->memory->allocPages(page + pageCount - K_NATIVE_PAGES_PER_PAGE - INITIAL_STACK_PAGES, INITIAL_STACK_PAGES, PAGE_READ|PAGE_WRITE, 0, 0, 0);
+
+    // reserve memory but don't allocate rest of stack
+    this->memory->allocPages(page, pageCount - K_NATIVE_PAGES_PER_PAGE - INITIAL_STACK_PAGES, 0, 0, 0, 0);
+
     this->stackPageCount = pageCount;
     this->stackPageStart = page;
+    this->stackPageSize = INITIAL_STACK_PAGES + K_NATIVE_PAGES_PER_PAGE;
     this->cpu->reg[4].u32 = (this->stackPageStart + this->stackPageCount - K_NATIVE_PAGES_PER_PAGE) << K_PAGE_SHIFT;  
 }
 
@@ -98,6 +102,7 @@ KThread::KThread(U32 id, const std::shared_ptr<KProcess>& process) :
     cpu(NULL),
     stackPageStart(0),
     stackPageCount(0),
+    stackPageSize(0),
     process(process),
     memory(0),
     interrupted(false),
@@ -858,6 +863,7 @@ void KThread::clone(KThread* from) {
     this->sigMask = from->sigMask;
     this->stackPageStart = from->stackPageStart;
     this->stackPageCount = from->stackPageCount;
+    this->stackPageSize = from->stackPageSize;
     this->waitingForSignalToEndMaskToRestore = from->waitingForSignalToEndMaskToRestore;
     this->cpu->clone(from->cpu);
     this->cpu->thread = this;
