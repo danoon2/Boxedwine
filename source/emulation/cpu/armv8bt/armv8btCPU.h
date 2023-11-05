@@ -11,9 +11,8 @@ public:
     Armv8btCPU();
     
     virtual void restart();
-    virtual void* init();
+    virtual void* init();    
 
-    U32 destEip;    
     U8* parity_lookup;                
 	void*** eipToHostInstructionPages;    
 
@@ -24,9 +23,6 @@ public:
 	U64 originalCpuRegs[16];	
     void* reTranslateChunkAddress;
     void* reTranslateChunkAddressFromReg;
-    // for use with exceptions caused by jumping to an eip that isn't translated yet
-    U64 regPage;
-    U64 regOffset;
 #ifdef BOXEDWINE_BT_DEBUG_NO_EXCEPTIONS
     void* jmpAndTranslateIfNecessary;
 #endif
@@ -41,8 +37,6 @@ public:
     void translateInstruction(Armv8btAsm* data, Armv8btAsm* firstPass);
     void link(Armv8btAsm* data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 offsetIntoChunk=0);
     void translateData(Armv8btAsm* data, Armv8btAsm* firstPass=NULL);
-
-    U64 handleAccessException(U64 ip, U64 address, bool readAddress); // returns new ip, if 0 then don't set ip, but continue execution
 
     virtual std::shared_ptr<BtCodeChunk> translateChunk(U32 ip);
 

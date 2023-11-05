@@ -22,6 +22,9 @@ x64CPU::x64CPU() {
         x64Intialized = true;
         x64CPU::hasBMI2 = platformHasBMI2();
     }
+    largeAddressJumpInstruction = 0xCE24FF43;
+    pageJumpInstruction = 0x0A8B4566;
+    pageOffsetJumpInstruction = 0xCA148B4F;
 }
 
 void x64CPU::setSeg(U32 index, U32 address, U32 value) {
@@ -349,83 +352,6 @@ bool x64CPU::handleStringOp(DecodedOp* op) {
         return true;
     }
     return false;
-}
-
-U32 dynamicCodeExceptionCount;
-
-U64 x64CPU::handleAccessException(U64 rip, U64 address, bool readAddress) {
-    if ((address & 0xFFFFFFFF00000000l) == this->thread->memory->id) {
-        U32 emulatedAddress = (U32)address;
-        U32 page = emulatedAddress >> K_PAGE_SHIFT;
-        Memory* m = this->thread->memory;
-        U32 flags = m->flags[page];
-        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->thread->memory->executableMemoryMutex);
-
-        std::shared_ptr<BtCodeChunk> chunk = m->getCodeChunkContainingHostAddress((void*)rip);
-        if (chunk) {
-            this->eip.u32 = chunk->getEipThatContainsHostAddress((void*)rip, NULL, NULL) - this->seg[CS].address;
-            // if the page we are trying to access needs a special memory offset and this instruction isn't flagged to looked at that special memory offset, then flag it
-            if (flags & PAGE_MAPPED_HOST && (((flags & PAGE_READ) && readAddress) || ((flags & PAGE_WRITE) && !readAddress))) {
-                m->setNeedsMemoryOffset(getEipAddress());
-                DecodedOp* op = this->getOp(this->eip.u32, true);
-                handleStringOp(op); // if we were in the middle of a string op, then reset RSI and RDI so that we can re-enter the same op
-                chunk->releaseAndRetranslate();
-                return getIpFromEip();
-            }
-            else {
-                if (!readAddress && (flags & PAGE_WRITE) && !(this->thread->memory->nativeFlags[this->thread->memory->getNativePage(page)] & NATIVE_FLAG_CODEPAGE_READONLY)) {
-                    // :TODO: this is a hack, why is it necessary
-                    m->updatePagePermission(page, 1);
-                    return 0;
-                } else {
-                    int ii = 0;
-                }
-            }
-        }
-    }
-
-    U32 inst = *((U32*)rip);
-
-    if (inst == 0xCE24FF43 && this->thread->memory->isValidReadAddress((U32)this->exceptionR9, 1)) { // useLargeAddressSpace = true
-        this->translateEip((U32)this->exceptionR9 - this->seg[CS].address);
-        return 0;
-    } else if ((inst==0x0A8B4566 || inst==0xCA148B4F) && (this->exceptionR8 || this->exceptionR9)) { // if these constants change, update handleMissingCode too     
-        return this->handleMissingCode((U32)this->exceptionR8, (U32)this->exceptionR9); // useLargeAddressSpace = false
-    } else if (inst==0xcdcdcdcd) {
-        // this thread was waiting on the critical section and the thread that was currently in this handler removed the code we were running
-        void* host = this->thread->memory->getExistingHostAddress(this->eip.u32+this->seg[CS].address);
-        if (host) {
-            return (U64)host;
-        } else {
-            U64 result = (U64)this->translateEip(this->eip.u32); 
-            if (!result) {
-                kpanic("x64CPU::handleAccessException tried to run code in a free'd chunk");
-            }
-            return result;
-        }
-    } else {          
-        // check if the emulated memory caused the exception
-        if ((address & 0xFFFFFFFF00000000l) == this->thread->memory->id) {                
-            U32 emulatedAddress = (U32)address;
-            U32 page = emulatedAddress >> K_PAGE_SHIFT;
-            // check if emulated memory that caused the exception is a page that has code
-            if (this->thread->memory->nativeFlags[this->thread->memory->getNativePage(page)] & NATIVE_FLAG_CODEPAGE_READONLY) {
-                dynamicCodeExceptionCount++;                    
-                return this->handleCodePatch(rip, emulatedAddress);                    
-            }
-        }   
-#ifdef _DEBUG
-        void* fromHost = this->thread->memory->getExistingHostAddress(this->fromEip);
-        std::shared_ptr<BtCodeChunk> chunk = this->thread->memory->getCodeChunkContainingHostAddress((void*)rip);
-#endif
-        // this can be exercised with Wine 5.0 and CC95 demo installer, it is triggered in strlen as it tries to grow the stack
-        this->thread->seg_mapper((U32)address, readAddress, !readAddress, false);
-        U64 result = (U64)this->translateEip(this->eip.u32); 
-        if (result==0) {
-            kpanic("x64CPU::handleAccessException failed to translate code");
-        }
-        return result;
-    }
 }
 
 #endif

@@ -307,6 +307,9 @@ void platformHandler(int sig, siginfo_t* info, void* vcontext) {
     x64Cpu->exceptionR8 = context->CONTEXT_R8;
     x64Cpu->exceptionR9 = context->CONTEXT_R9;
     x64Cpu->exceptionR10 = context->CONTEXT_R10;
+    x64Cpu->destEip = (U32)context->CONTEXT_R9;
+    x64Cpu->regPage = context->CONTEXT_R8;
+    x64Cpu->regOffset = context->CONTEXT_R9;
     if (cpu->thread->memory->isAddressExecutable((void*)context->CONTEXT_RIP)) {
         unsigned char* hostAddress = (unsigned char*)context->CONTEXT_RIP;
         std::shared_ptr<BtCodeChunk> chunk = cpu->thread->memory->getCodeChunkContainingHostAddress(hostAddress);

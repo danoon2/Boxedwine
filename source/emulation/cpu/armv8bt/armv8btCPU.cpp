@@ -16,7 +16,7 @@ CPU* CPU::allocCPU() {
     return new Armv8btCPU();
 }
 
-Armv8btCPU::Armv8btCPU() : regPage(0), regOffset(0) {
+Armv8btCPU::Armv8btCPU() {
     sseConstants[SSE_MAX_INT32_PLUS_ONE_AS_DOUBLE].pd.f64[0] = 2147483648.0;
     sseConstants[SSE_MAX_INT32_PLUS_ONE_AS_DOUBLE].pd.f64[1] = 2147483648.0;
     sseConstants[SSE_MIN_INT32_MINUS_ONE_AS_DOUBLE].pd.f64[0] = -2147483649.0;
@@ -52,6 +52,10 @@ Armv8btCPU::Armv8btCPU() : regPage(0), regOffset(0) {
     sseConstants[SSE_BYTE8_BIT_MASK].ps.u8[13] = 32;
     sseConstants[SSE_BYTE8_BIT_MASK].ps.u8[14] = 64;
     sseConstants[SSE_BYTE8_BIT_MASK].ps.u8[15] = 128;
+
+    largeAddressJumpInstruction = 0xf8400149;
+    pageJumpInstruction = 0xf86f7929;
+    pageOffsetJumpInstruction = 0x38400131;
 }
 
 void Armv8btCPU::setSeg(U32 index, U32 address, U32 value) {
@@ -384,97 +388,6 @@ void Armv8btCPU::translateData(Armv8btAsm* data, Armv8btAsm* firstPass) {
     }     
     block.op->dealloc(true);
     data->currentBlock = NULL;
-}
-
-U32 dynamicCodeExceptionCount;
-
-#define JMP_PAGE_EXCEPTION 0xf86f7929
-#define JMP_OFFSET_EXCEPTION 0x38400131
-
-U64 Armv8btCPU::handleAccessException(U64 ip, U64 address, bool readAddress) {
-    if ((address & 0xFFFFFFFF00000000l) == this->thread->memory->id) {
-        U32 emulatedAddress = (U32)address;
-        U32 page = emulatedAddress >> K_PAGE_SHIFT;
-        Memory* m = this->thread->memory;
-        U32 flags = m->flags[page];
-        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->thread->memory->executableMemoryMutex);
-
-        std::shared_ptr<BtCodeChunk> chunk = m->getCodeChunkContainingHostAddress((void*)ip);
-        if (chunk) {
-            this->eip.u32 = chunk->getEipThatContainsHostAddress((void*)ip, NULL, NULL) - this->seg[CS].address;
-            // if the page we are trying to access needs a special memory offset and this instruction isn't flagged to looked at that special memory offset, then flag it
-            if ((flags & PAGE_MAPPED_HOST) && (((flags & PAGE_READ) && readAddress) || ((flags & PAGE_WRITE) && !readAddress))) {
-                m->setNeedsMemoryOffset(getEipAddress());
-                chunk->releaseAndRetranslate();
-                return getIpFromEip();
-            } else {
-                U32 nativeFlags = this->thread->memory->nativeFlags[this->thread->memory->getNativePage(page)];
-                if (!readAddress && (flags & PAGE_WRITE) && !(nativeFlags & NATIVE_FLAG_CODEPAGE_READONLY)) {
-                    // :TODO: this is a hack, why is it necessary
-                    m->updatePagePermission(page, 1);
-                    return 0;
-                }
-            }
-        }
-    }
-    
-    U32 inst = *((U32*)ip);
-
-    if (inst == 0xf8400149 && thread->memory->isValidReadAddress(this->destEip, 1)) { // ldur x9, [x9]
-        return (U64) this->translateEip(this->destEip - this->seg[CS].address);
-    } else if (inst == JMP_OFFSET_EXCEPTION || inst == JMP_PAGE_EXCEPTION) {
-        return this->handleMissingCode((U32)this->regPage, (U32)this->regOffset);
-    } else if (inst==0xcdcdcdcd) {
-        // this thread was waiting on the critical section and the thread that was currently in this handler removed the code we were running
-        void* host = this->thread->memory->getExistingHostAddress(this->eip.u32+this->seg[CS].address);
-        if (host) {
-            return (U64)host;
-        } else {
-            U64 result = (U64)this->translateEip(this->eip.u32); 
-            if (!result) {
-                kpanic("Armv8btCPU::handleAccessException tried to run code in a free'd chunk");
-            }
-            return result;
-        }
-    } else {          
-        // check if the emulated memory caused the exception
-        if ((address & 0xFFFFFFFF00000000l) == this->thread->memory->id) {                
-            U32 emulatedAddress = (U32)address;
-            U32 page = emulatedAddress >> K_PAGE_SHIFT;
-            Memory* m = this->thread->memory;
-            U32 nativeFlags = m->nativeFlags[m->getNativePage(page)];
-            U32 flags = m->flags[page];
-            // check if emulated memory that caused the exception is a page that has code
-            if ((flags & PAGE_MAPPED_HOST) || (flags & (PAGE_READ | PAGE_WRITE)) != (nativeFlags & (PAGE_READ | PAGE_WRITE))) {
-                dynamicCodeExceptionCount++;                    
-                return this->handleCodePatch(ip, emulatedAddress);                    
-            }
-        }   
-#ifdef _DEBUG
-        //void* fromHost = this->thread->memory->getExistingHostAddress(this->fromEip);
-        //std::shared_ptr<BtCodeChunk> chunk = this->thread->memory->getCodeChunkContainingHostAddress((void*)rip);
-#endif
-        
-        U32 emulatedAddress = (U32)address;
-        U32 page = emulatedAddress >> K_PAGE_SHIFT;        
-        Memory* m = this->thread->memory;
-        U32 nativeFlags = m->nativeFlags[m->getNativePage(page)];
-        U32 flags = m->flags[page];
-        if ((address & 0xFFFFFFFF00000000l) == this->thread->memory->id) {
-            // check if emulated memory that caused the exception is a page that has code
-            if ((flags & PAGE_MAPPED_HOST) || (flags & (PAGE_READ | PAGE_WRITE)) != (nativeFlags & (PAGE_READ | PAGE_WRITE))) {
-                dynamicCodeExceptionCount++;
-                return this->handleCodePatch(ip, emulatedAddress);
-            }
-        }
-        // this can be exercised with Wine 5.0 and CC95 demo installer, it is triggered in strlen as it tries to grow the stack
-        this->thread->seg_mapper((U32)address, readAddress, !readAddress, false);
-        U64 result = (U64)this->translateEip(this->eip.u32); 
-        if (result==0) {
-            kpanic("Armv8btCPU::handleAccessException failed to translate code");
-        }
-        return result;
-    }
 }
 
 #endif

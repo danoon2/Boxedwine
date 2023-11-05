@@ -211,6 +211,89 @@ U64 BtCPU::handleFpuException(int code) {
     return result;
 }
 
+U32 dynamicCodeExceptionCount;
+
+U64 BtCPU::handleAccessException(U64 ip, U64 address, bool readAddress) {
+    if ((address & 0xFFFFFFFF00000000l) == this->thread->memory->id) {
+        U32 emulatedAddress = (U32)address;
+        U32 page = emulatedAddress >> K_PAGE_SHIFT;
+        Memory* m = this->thread->memory;
+        U32 flags = m->flags[page];
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->thread->memory->executableMemoryMutex);
+
+        std::shared_ptr<BtCodeChunk> chunk = m->getCodeChunkContainingHostAddress((void*)ip);
+        if (chunk) {
+            this->eip.u32 = chunk->getEipThatContainsHostAddress((void*)ip, NULL, NULL) - this->seg[CS].address;
+            // if the page we are trying to access needs a special memory offset and this instruction isn't flagged to looked at that special memory offset, then flag it
+            if (flags & PAGE_MAPPED_HOST && (((flags & PAGE_READ) && readAddress) || ((flags & PAGE_WRITE) && !readAddress))) {
+                m->setNeedsMemoryOffset(getEipAddress());
+                DecodedOp* op = this->getOp(this->eip.u32, true);
+                handleStringOp(op); // if we were in the middle of a string op, then reset RSI and RDI so that we can re-enter the same op
+                chunk->releaseAndRetranslate();
+                return getIpFromEip();
+            }
+            else {
+                if (!readAddress && (flags & PAGE_WRITE) && !(this->thread->memory->nativeFlags[this->thread->memory->getNativePage(page)] & NATIVE_FLAG_CODEPAGE_READONLY)) {
+                    // :TODO: this is a hack, why is it necessary
+                    m->updatePagePermission(page, 1);
+                    return 0;
+                }
+                else {
+                    int ii = 0;
+                }
+            }
+        }
+    }
+
+    U32 inst = *((U32*)ip);
+
+    if (inst == largeAddressJumpInstruction && this->thread->memory->isValidReadAddress((U32)this->destEip, 1)) { // useLargeAddressSpace = true
+        return (U64)this->translateEip((U32)this->destEip - this->seg[CS].address);
+    }
+    else if ((inst == pageJumpInstruction || inst == pageOffsetJumpInstruction) && (this->regPage || this->regOffset)) { // if these constants change, update handleMissingCode too     
+        return this->handleMissingCode((U32)this->regPage, (U32)this->regOffset); // useLargeAddressSpace = false
+    }
+    else if (inst == 0xcdcdcdcd) {
+        // this thread was waiting on the critical section and the thread that was currently in this handler removed the code we were running
+        void* host = this->thread->memory->getExistingHostAddress(this->eip.u32 + this->seg[CS].address);
+        if (host) {
+            return (U64)host;
+        }
+        else {
+            U64 result = (U64)this->translateEip(this->eip.u32);
+            if (!result) {
+                kpanic("x64CPU::handleAccessException tried to run code in a free'd chunk");
+            }
+            return result;
+        }
+    }
+    else {
+        // check if the emulated memory caused the exception
+        if ((address & 0xFFFFFFFF00000000l) == this->thread->memory->id) {
+            U32 emulatedAddress = (U32)address;
+            U32 page = emulatedAddress >> K_PAGE_SHIFT;
+            // check if emulated memory that caused the exception is a page that has code
+            if (this->thread->memory->nativeFlags[this->thread->memory->getNativePage(page)] & NATIVE_FLAG_CODEPAGE_READONLY) {
+                dynamicCodeExceptionCount++;
+                return this->handleCodePatch(ip, emulatedAddress);
+            }
+            Memory* m = this->thread->memory;
+            U32 nativeFlags = m->nativeFlags[m->getNativePage(page)];
+            if ((flags & PAGE_MAPPED_HOST) || (flags & (PAGE_READ | PAGE_WRITE)) != (nativeFlags & (PAGE_READ | PAGE_WRITE))) {
+                int ii=0;
+            }
+        }
+
+        // this can be exercised with Wine 5.0 and CC95 demo installer, it is triggered in strlen as it tries to grow the stack
+        this->thread->seg_mapper((U32)address, readAddress, !readAddress, false);
+        U64 result = (U64)this->translateEip(this->eip.u32);
+        if (result == 0) {
+            kpanic("x64CPU::handleAccessException failed to translate code");
+        }
+        return result;
+    }
+}
+
 extern U32 platformThreadCount;
 
 void BtCPU::startThread() {

@@ -23,6 +23,9 @@ void syncFromException(struct _EXCEPTION_POINTERS *ep, bool includeFPU) {
     cpu->exceptionR8 = (U32)ep->ContextRecord->R8;
     cpu->exceptionR9 = (U32)ep->ContextRecord->R9;
     cpu->exceptionR10 = (U32)ep->ContextRecord->R10;
+    cpu->destEip = (U32)ep->ContextRecord->R9;
+    cpu->regPage = ep->ContextRecord->R8;
+    cpu->regOffset = ep->ContextRecord->R9;
 
     cpu->flags = ep->ContextRecord->EFlags;
     cpu->lazyFlags = FLAGS_NONE;

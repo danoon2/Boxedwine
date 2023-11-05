@@ -53,6 +53,7 @@ public:
     U64 handleIllegalInstruction(U64 ip);
     U64 handleMissingCode(U32 page, U32 offset);
     U64 handleCodePatch(U64 rip, U32 address);
+    U64 handleAccessException(U64 ip, U64 address, bool readAddress); // returns new ip, if 0 then don't set ip, but continue execution
     virtual bool handleStringOp(DecodedOp* op);
     DecodedOp* getOp(U32 eip, bool existing);
     void* translateEip(U32 ip);
@@ -64,6 +65,14 @@ public:
     void wakeThreadIfWaiting();    
     S32 preLinkCheck(BtData* data); // returns the index of the jump that failed
 
+    // used by handleAccessException
+    U32 destEip;
+    U64 regPage;
+    U64 regOffset;
+
+    U32 largeAddressJumpInstruction;
+    U32 pageJumpInstruction;
+    U32 pageOffsetJumpInstruction;
 protected:
     U64 getIpFromEip();
 };

@@ -49,8 +49,7 @@ public:
     void link(X64Asm* data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 offsetIntoChunk=0);
     virtual std::shared_ptr<BtCodeChunk> translateChunk(U32 ip);
     void translateData(X64Asm* data, X64Asm* firstPass=NULL);    
-    
-    U64 handleAccessException(U64 ip, U64 address, bool readAddress); // returns new ip, if 0 then don't set ip, but continue execution
+        
     virtual bool handleStringOp(DecodedOp* op);
 
     virtual void setSeg(U32 index, U32 address, U32 value);
