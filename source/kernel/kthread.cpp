@@ -77,15 +77,26 @@ void KThread::setupStack() {
 				kpanic("Failed to allocate stack for thread");
             }
         }
-    }
+    }    
+#ifdef BOXEDWINE_DEFAULT_MMU
+    // 1 page above
+    this->memory->allocPages(page + pageCount - K_NATIVE_PAGES_PER_PAGE, K_NATIVE_PAGES_PER_PAGE, 0, 0, 0, 0);
+
+    // its ok to allocate all of the stack, the pages will be on demand
+    this->memory->allocPages(page + K_NATIVE_PAGES_PER_PAGE, pageCount - 2 * K_NATIVE_PAGES_PER_PAGE, PAGE_READ | PAGE_WRITE, 0, 0, 0);
+
+    // 1 page below (catch stack overrun)
+    this->memory->allocPages(page, K_NATIVE_PAGES_PER_PAGE, 0, 0, 0, 0);
+#else
     // top of stack guard page
     this->memory->allocPages(page + pageCount - K_NATIVE_PAGES_PER_PAGE, K_NATIVE_PAGES_PER_PAGE, 0, 0, 0, 0);
 
-    // initial allocated stack of 64k
-    this->memory->allocPages(page + pageCount - K_NATIVE_PAGES_PER_PAGE - INITIAL_STACK_PAGES, INITIAL_STACK_PAGES, PAGE_READ|PAGE_WRITE, 0, 0, 0);
+    // allocate initial stack, if the stack needs to grow an exception will happen and the exception handler will allocate the necessary pages
+    this->memory->allocPages(page + pageCount - K_NATIVE_PAGES_PER_PAGE - INITIAL_STACK_PAGES, INITIAL_STACK_PAGES, PAGE_READ | PAGE_WRITE, 0, 0, 0);
 
     // reserve memory but don't allocate rest of stack
     this->memory->allocPages(page, pageCount - K_NATIVE_PAGES_PER_PAGE - INITIAL_STACK_PAGES, 0, 0, 0, 0);
+#endif
 
     this->stackPageCount = pageCount;
     this->stackPageStart = page;
