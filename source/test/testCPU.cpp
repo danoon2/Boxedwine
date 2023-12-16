@@ -11654,7 +11654,16 @@ extern "C" {
     int runCpuTestsMac(void);
 }
 int runCpuTestsMac(void) {
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+    int result = runCpuTests();
+    KSystem::useSingleMemOffset = false;
+    tearDown();
+    printf("Starting second run with useSingleMemOffset = false\n");
+    result |= runCpuTests();
+    return result;
+#else
     return runCpuTests();
+#endif
 }
 #else
 int main(int argc, char** argv) {

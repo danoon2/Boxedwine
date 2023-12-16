@@ -62,6 +62,8 @@ typedef enum {
 #define xFS 26
 #define xGS 27
 #define xStackMask 28
+// calleeSavedReg must only be used between syncRegFromHost and syncRegToHost
+#define calleeSavedReg 28
 
 // x29 is the frame register
 // x30 is the link register (used to return from subroutines)

@@ -3524,11 +3524,10 @@ void doLoadSegment(Armv8btAsm* data, bool big) {
     //     NEXT_DONE();
     // }
     U8 addressReg = data->getAddressReg();
-    U8 valReg = data->getTmpReg();
 
     data->syncRegsFromHost();
-
-    data->readMemory(addressReg, valReg, (big?32:16), true);
+    // we need this an not a tmpReg because it needs to survive callHost
+    data->readMemory(addressReg, calleeSavedReg, (big?32:16), true);
     data->addValue32(addressReg, addressReg, (big?4:2));
 
     // U32 common_setSegment(CPU * cpu, U32 seg, U32 value)
@@ -3538,7 +3537,9 @@ void doLoadSegment(Armv8btAsm* data, bool big) {
 
     data->releaseTmpReg(addressReg);
     data->callHost((void*)common_setSegment);
-
+    U8 valReg = data->getTmpReg();
+    // must move out of calleeSavedReg before syncRegsToHost
+    data->movRegToReg(valReg, calleeSavedReg, 32, 0);
     data->doIf(0, 0, DO_IF_EQUAL, [data]() {
         data->doJmp(true);
         }, [data, valReg, big]() {
