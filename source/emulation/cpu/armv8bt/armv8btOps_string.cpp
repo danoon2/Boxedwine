@@ -646,8 +646,8 @@ void movs(Armv8btAsm* data, U32 width) {
             // }
             U8 dBaseReg = data->getSegReg(ES);
             U8 sBaseReg = data->getSegReg(data->decodedOp->base);
-            U8 siReg = data->getTmpReg();
-            U8 diReg = data->getTmpReg();
+            U8 siReg = xSrc;
+            U8 diReg = xDst;
             U8 addressReg = data->getTmpReg();
             U8 incReg = data->getTmpReg();
             // S32 inc = cpu->df
@@ -687,8 +687,6 @@ void movs(Armv8btAsm* data, U32 width) {
 
             data->writeJumpAmount(skipPos, data->bufferPos);
 
-            data->releaseTmpReg(siReg);
-            data->releaseTmpReg(diReg);
             data->releaseTmpReg(addressReg);
             data->releaseTmpReg(incReg);
             data->releaseTmpReg(tmpReg);
@@ -703,8 +701,8 @@ void movs(Armv8btAsm* data, U32 width) {
 
             U8 dBaseReg = data->getSegReg(ES);
             U8 sBaseReg = data->getSegReg(data->decodedOp->base);            
-            U8 siReg = data->getTmpReg();
-            U8 diReg = data->getTmpReg();
+            U8 siReg = xSrc;
+            U8 diReg = xDst;
             U8 addressReg = data->getTmpReg();            
             U8 tmpReg = data->getTmpReg();
 
@@ -733,8 +731,6 @@ void movs(Armv8btAsm* data, U32 width) {
             data->addRegs32(siReg, siReg, incReg);
             data->movRegToReg(xESI, siReg, 16, false);
 
-            data->releaseTmpReg(siReg);
-            data->releaseTmpReg(diReg);
             data->releaseTmpReg(incReg);
         }
     } else {

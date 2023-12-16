@@ -287,7 +287,7 @@ public:
     void signExtend64(U8 dst, U8 src, U32 width);
     void notReg32(U8 dst, U8 src);
 
-    U8 getHostMem(U8 regEmulatedAddress);
+    U8 getHostMem(U8 regEmulatedAddress, S8 tmpReg = -1);
     U8 getHostMemWithOffset(U8 regEmulatedAddress, U32 offset);
     U8 getHostMemFromAddress(U32 address);
     void releaseHostMem(U8 reg);

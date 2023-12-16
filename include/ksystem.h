@@ -79,6 +79,7 @@ public:
     static std::string title;
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
     static bool useLargeAddressSpace;
+    static bool useSingleMemOffset;
 #endif
 #ifdef BOXEDWINE_MULTI_THREADED
     static U32 cpuAffinityCountForApp;

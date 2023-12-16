@@ -912,7 +912,7 @@ U32 KThread::modify_ldt(U32 func, U32 ptr, U32 count) {
         return 16;
     } else {
         kpanic("syscall_modify_ldt unknown func: %d", func);
-        return -1;
+        return -K_ENOSYS;
     }
 }
 

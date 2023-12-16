@@ -6,8 +6,6 @@
 #include "x64Asm.h"
 #include "../../hardmmu/hard_memory.h"
 #include "x64CodeChunk.h"
-#include "../normal/normalCPU.h"
-#include "../binaryTranslation/btCodeMemoryWrite.h"
 
 CPU* CPU::allocCPU() {
     return new x64CPU();

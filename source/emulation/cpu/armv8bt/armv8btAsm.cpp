@@ -1385,17 +1385,24 @@ U8 Armv8btAsm::getAddressReg() {
     return tmp;
 }
 
-U8 Armv8btAsm::getHostMem(U8 regEmulatedAddress) {
+U8 Armv8btAsm::getHostMem(U8 regEmulatedAddress, S8 tmpReg) {
     if (this->useSingleMemOffset) {
         return xMem;
     } else {
         U8 resultReg = getTmpReg();
-        U8 tmpReg = getTmpReg();
+        bool needToReleaseTmpReg = false;
+
+        if (tmpReg == -1) {
+            tmpReg = getTmpReg();
+            needToReleaseTmpReg = true;
+        }
 
         shiftRegRightWithValue32(tmpReg, regEmulatedAddress, 12); // get page
         readMem64ValueOffset(resultReg, xCPU, CPU_OFFSET_MEMOFFSET);
         readMem64RegOffset(resultReg, resultReg, tmpReg, 3); // read memOffset, shift page << 3 (page*8), since sizeof(U64)==8 to get the value in memOffsets[page]        
-        releaseTmpReg(tmpReg);
+        if (needToReleaseTmpReg) {
+            releaseTmpReg(tmpReg);
+        }
         return resultReg;
     }
 }
@@ -1450,7 +1457,7 @@ void Armv8btAsm::readMemory(U8 addressReg, U8 dst, U32 width, bool addMemOffsetT
         if (lock) {
             kpanic("ArmV8bt: readMemory lock not implement for addMemOffsetToAddress = true");
         }
-        U8 memReg = getHostMem(addressReg);
+        U8 memReg = getHostMem(addressReg, (addressReg != dst) ? dst : -1);
         if (width == 64) {
             readMem64RegOffset(dst, addressReg, memReg, 0);
         } else if (width == 32) {
@@ -4902,7 +4909,7 @@ void Armv8btAsm::signalIllegalInstruction(int code) {
 
 void Armv8btAsm::translateInstruction() {
     this->startOfOpIp = this->ip;
-    this->useSingleMemOffset = !this->cpu->thread->memory->doesInstructionNeedMemoryOffset(this->ip);
+    this->useSingleMemOffset = KSystem::useSingleMemOffset && !this->cpu->thread->memory->doesInstructionNeedMemoryOffset(this->ip);
     this->ip += this->decodedOp->len;
 #ifdef _DEBUG
     if (this->cpu->logFile) {

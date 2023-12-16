@@ -862,28 +862,28 @@ void CPU::fillFlagsNoOF() {
     }
 }
 
-U32 CPU::getCF() {
-    return this->lazyFlags->getCF(this);
+bool CPU::getCF() {
+    return this->lazyFlags->getCF(this) != 0;
 }
 
-U32 CPU::getSF() {
-    return this->lazyFlags->getSF(this);
+bool CPU::getSF() {
+    return this->lazyFlags->getSF(this) != 0;
 }
 
-U32 CPU::getZF() {
-    return this->lazyFlags->getZF(this);
+bool CPU::getZF() {
+    return this->lazyFlags->getZF(this) != 0;
 }
 
-U32 CPU::getOF() {
-    return this->lazyFlags->getOF(this);
+bool CPU::getOF() {
+    return this->lazyFlags->getOF(this) != 0;
 }
 
-U32 CPU::getAF() {
-    return this->lazyFlags->getAF(this);
+bool CPU::getAF() {
+    return this->lazyFlags->getAF(this) != 0;
 }
 
-U32 CPU::getPF() {
-    return this->lazyFlags->getPF(this);
+bool CPU::getPF() {
+    return this->lazyFlags->getPF(this) != 0;
 }
 
 void CPU::setCF(U32 value) {
@@ -1196,71 +1196,71 @@ void common_prepareException(CPU* cpu, int code, int error) {
 }
 
 U32 common_getCF(CPU* cpu) {
-    return cpu->getCF();
+    return cpu->getCF() ? 1 : 0;
 }
 
 U32 common_condition_o(CPU* cpu) {
-    return cpu->getOF();
+    return cpu->getOF() ? 1 : 0;
 }
 
 U32 common_condition_no(CPU* cpu) {
-    return !cpu->getOF();
+    return cpu->getOF() ? 0 : 1;
 }
 
 U32 common_condition_b(CPU* cpu) {
-    return cpu->getCF();
+    return cpu->getCF() ? 1 : 0;
 }
 
 U32 common_condition_nb(CPU* cpu) {
-    return !cpu->getCF();
+    return cpu->getCF() ? 0 : 1;
 }
 
 U32 common_condition_z(CPU* cpu) {
-    return cpu->getZF();
+    return cpu->getZF() ? 1 : 0;
 }
 
 U32 common_condition_nz(CPU* cpu) {
-    return !cpu->getZF();
+    return cpu->getZF() ? 0 : 1;
 }
 
 U32 common_condition_be(CPU* cpu) {
-    return cpu->getZF() || cpu->getCF();
+    return (cpu->getZF() || cpu->getCF()) ? 1 : 0;
 }
 
 U32 common_condition_nbe(CPU* cpu) {
-    return !cpu->getZF() && !cpu->getCF();
+    return (!cpu->getZF() && !cpu->getCF()) ? 1 : 0;
 }
 
 U32 common_condition_s(CPU* cpu) {
-    return cpu->getSF();
+    return cpu->getSF() ? 1 : 0;
 }
 
 U32 common_condition_ns(CPU* cpu) {
-    return !cpu->getSF();
+    return cpu->getSF() ? 0 : 1;
 }
 
 U32 common_condition_p(CPU* cpu) {
-    return cpu->getPF();
+    return cpu->getPF() ? 1 : 0;
 }
 
 U32 common_condition_np(CPU* cpu) {
-    return !cpu->getPF();
+    return cpu->getPF() ? 0 : 1;
 }
 
 U32 common_condition_l(CPU* cpu) {
-    return cpu->getSF()!=cpu->getOF();
+    return (cpu->getSF()!=cpu->getOF()) ? 1 : 0;
 }
 
 U32 common_condition_nl(CPU* cpu) {
-    return cpu->getSF()==cpu->getOF();
+    return (cpu->getSF()==cpu->getOF()) ? 1 : 0;
 }
 
 U32 common_condition_le(CPU* cpu) {
-    return cpu->getZF() || cpu->getSF()!=cpu->getOF();
+    return (cpu->getZF() || cpu->getSF()!=cpu->getOF()) ? 1 : 0;
 }
 
 U32 common_condition_nle(CPU* cpu) {
-    return !cpu->getZF() && cpu->getSF()==cpu->getOF();
+    return (!cpu->getZF() && cpu->getSF()==cpu->getOF()) ? 1 : 0;
 }
 
 U32 common_pop32(CPU* cpu) {

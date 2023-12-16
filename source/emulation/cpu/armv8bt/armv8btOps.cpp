@@ -2187,7 +2187,7 @@ void pushA16_reg(Armv8btAsm* data, U8 inESP, U8 outESP, U8 reg) {
     data->andRegs32(addressReg, outESP, xStackMask);
     data->addRegs32(addressReg, addressReg, xSS);
     U8 memReg = data->getHostMem(addressReg);
-    data->writeMem32RegOffset(reg, memReg, addressReg);
+    data->writeMem16RegOffset(reg, memReg, addressReg);
     data->releaseHostMem(memReg);
     data->releaseTmpReg(addressReg);
 }
@@ -2256,7 +2256,6 @@ void popA16_reg(Armv8btAsm* data, U8 inESP, U8 outESP, U8 reg) {
 
 void opPopA16(Armv8btAsm* data) {
     U8 tmpSP = data->getTmpReg();
-    U8 addressReg = data->getTmpReg();
 
     popA16_reg(data, xESP, tmpSP, xEDI);
     popA16_reg(data, tmpSP, tmpSP, xESI);
@@ -2269,7 +2268,6 @@ void opPopA16(Armv8btAsm* data) {
 
     data->movRegToReg(xESP, tmpSP, 16, false);
     data->releaseTmpReg(tmpSP);
-    data->releaseTmpReg(addressReg);
 }
 
 void popA32_reg(Armv8btAsm* data, U8 inESP, U8 outESP, U8 reg) {
@@ -2282,7 +2280,7 @@ void popA32_reg(Armv8btAsm* data, U8 inESP, U8 outESP, U8 reg) {
 
         // this->seg[SS].address + (THIS_ESP & this->stackMask)
         data->andRegs32(tmpReg, inESP, xStackMask);
-        data->addRegs32(tmpReg, tmpReg, inESP);
+        data->addRegs32(tmpReg, tmpReg, xSS);
 
         U8 memReg = data->getHostMem(tmpReg);
         data->readMem32RegOffset(reg, memReg, tmpReg);
@@ -2294,7 +2292,6 @@ void popA32_reg(Armv8btAsm* data, U8 inESP, U8 outESP, U8 reg) {
 
 void opPopA32(Armv8btAsm* data) {
     U8 tmpSP = data->getTmpReg();
-    U8 addressReg = data->getTmpReg();
 
     // EDI = cpu->pop32();
     popA32_reg(data, xESP, tmpSP, xEDI);
@@ -2308,7 +2305,6 @@ void opPopA32(Armv8btAsm* data) {
 
     data->movRegToReg(xESP, tmpSP, 32, false);
     data->releaseTmpReg(tmpSP);
-    data->releaseTmpReg(addressReg);
 }
 
 void opPush16(Armv8btAsm* data) {
@@ -3037,6 +3033,7 @@ void opCallAp(Armv8btAsm* data) {
     data->callHost((void*)common_call);    
     data->syncRegsToHost();
     data->doJmp(true);
+    data->done = true;
 }
 
 void opCallFar(Armv8btAsm* data) {
@@ -3054,6 +3051,7 @@ void opCallFar(Armv8btAsm* data) {
     data->callHost((void*)common_call);
     data->syncRegsToHost();
     data->doJmp(true);
+    data->done = true;
 }
 
 void opJmpAp(Armv8btAsm* data) {
@@ -3070,6 +3068,7 @@ void opJmpAp(Armv8btAsm* data) {
     data->callHost((void*)common_jmp);
     data->syncRegsToHost();
     data->doJmp(true);
+    data->done = true;
 }
 void opJmpFar(Armv8btAsm* data) {
     kpanic("Need to test");
@@ -3085,6 +3084,7 @@ void opJmpFar(Armv8btAsm* data) {
     data->callHost((void*)common_jmp);
     data->syncRegsToHost();
     data->doJmp(true);
+    data->done = true;
 }
 void opWait(Armv8btAsm* data) {
     // :TODO: nop?
