@@ -992,7 +992,7 @@ void KNativeWindowSdl::bltWnd(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32
 #ifdef BOXEDWINE_FLIP_MANUALLY
             SDL_UpdateTexture(sdlTexture, NULL, sdlBuffer, pitch);
 #else
-            SDL_UpdateTexture(sdlTexture, NULL, getNativeAddress(KThread::currentThread()->process->memory, bits), pitch);            
+            SDL_UpdateTexture(sdlTexture, NULL, getNativeAddress(thread->memory, bits), pitch);            
 #endif
         }
         DISPATCH_MAIN_THREAD_BLOCK_END

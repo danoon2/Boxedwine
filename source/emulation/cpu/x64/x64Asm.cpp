@@ -3293,7 +3293,7 @@ void X64Asm::callJmp(bool big, U8 rm, bool jmp) {
      
     // calling convention RCX, RDX, R8, R9 for first 4 parameters
     U8 tmpReg = getParamSafeTmpReg();
-    getAddressInRegFromE(tmpReg, true, rm);
+    getAddressInRegFromE(tmpReg, true, rm, true);
 
     writeToMemFromValue(this->ip, HOST_CPU, true, -1, false, 0, CPU_OFFSET_ARG5, 4, false); // next ip
 
@@ -3909,7 +3909,7 @@ void X64Asm::callFpuWithAddress(PFN_FPU_ADDRESS pfn, U8 rm) {
 
 void X64Asm::callFpuWithAddressWrite(PFN_FPU_ADDRESS pfn, U8 rm, U32 len) {
     syncRegsFromHost();
-    getAddressInRegFromE(0, true, rm);
+    getAddressInRegFromE(PARAM_3_REG, PARAM_4_REX, rm);
 
     lockParamReg(PARAM_1_REG, PARAM_1_REX);
     writeToRegFromReg(PARAM_1_REG, PARAM_1_REX, HOST_CPU, true, 8); // CPU* param
@@ -3917,8 +3917,8 @@ void X64Asm::callFpuWithAddressWrite(PFN_FPU_ADDRESS pfn, U8 rm, U32 len) {
     lockParamReg(PARAM_2_REG, PARAM_2_REX);
     writeToRegFromValue(PARAM_2_REG, PARAM_2_REX, (U64)pfn, 8);
 
-    lockParamReg(PARAM_3_REG, PARAM_3_REX);
-    writeToRegFromValue(PARAM_3_REG, PARAM_3_REX, len, 4);
+    lockParamReg(PARAM_4_REG, PARAM_4_REX);
+    writeToRegFromValue(PARAM_4_REG, PARAM_4_REX, len, 4);
 
     callHost((void*)common_fpu_write_address);
     syncRegsToHost();
