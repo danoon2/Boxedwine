@@ -401,11 +401,11 @@ void movToRegFromReg(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidt
             if (srcWidth==DYN_16bit) {
                 outb(0x0f);
                 outb(0xb7);
-                outb(0xC0 | (src << 3) | dst);
+                outb(0xC0 | (dst << 3) | src);
             } else if (srcWidth==DYN_8bit) {
                 outb(0x0f);
                 outb(0xb6);
-                outb(0xC0 | (src << 3) | dst);
+                outb(0xC0 | (dst << 3) | src);
             } else {
                 kpanic("unknown width in x32CPU::movToRegFromReg %d <= %d", dstWidth, srcWidth);
             }
@@ -414,7 +414,7 @@ void movToRegFromReg(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidt
                 outb(0x66);
                 outb(0x0f);
                 outb(0xb6);
-                outb(0xC0 | (src << 3) | dst);
+                outb(0xC0 | (dst << 3) | src);
             } else {
                 kpanic("unknown width in x32CPU::movToRegFromReg %d <= %d", dstWidth, srcWidth);
             }           

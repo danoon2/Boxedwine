@@ -3783,22 +3783,29 @@ void opJmpJb(Armv8btAsm* data) {
 }
 void opCallR16(Armv8btAsm* data) {
     // kpanic("Need to test");
+    // U16 dest = cpu->reg[op->reg].u16;
     // cpu->push16(cpu->eip.u32 + op->len);
-    // cpu->eip.u32 = cpu->reg[op->reg].u16;
-    U8 tmpReg = data->getRegWithConst(data->ip);
-    data->pushNativeReg16(tmpReg);
+    // cpu->eip.u32 = dest;
+    U8 tmpReg2 = data->getRegWithConst(data->ip);    
+    U8 tmpReg = data->getTmpReg();
     data->movRegToReg(tmpReg, data->getNativeReg(data->decodedOp->reg), 16, true);
+    data->pushNativeReg16(tmpReg2);
+    data->releaseTmpReg(tmpReg2);
     data->jmpReg(tmpReg, false);
-    data->releaseTmpReg(tmpReg);
+    data->releaseTmpReg(tmpReg);    
     data->done = true;
 }
 void opCallR32(Armv8btAsm* data) {
     // kpanic("Need to test");
+    // U32 dest = cpu->reg[op->reg].u32;
     // cpu->push32(cpu->eip.u32 + op->len);
-    // cpu->eip.u32 = cpu->reg[op->reg].u32;
-    U8 tmpReg = data->getRegWithConst(data->ip);
-    data->pushNativeReg32(tmpReg);
-    data->jmpReg(data->getNativeReg(data->decodedOp->reg), false);
+    // cpu->eip.u32 = dest;
+    U8 tmpReg2 = data->getRegWithConst(data->ip);
+    U8 tmpReg = data->getTmpReg();
+    data->movRegToReg(tmpReg, data->getNativeReg(data->decodedOp->reg), 32, false);
+    data->pushNativeReg32(tmpReg2);
+    data->releaseTmpReg(tmpReg2);
+    data->jmpReg(tmpReg, false);
     data->releaseTmpReg(tmpReg);
     data->done = true;
 }

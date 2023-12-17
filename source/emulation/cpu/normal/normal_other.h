@@ -452,14 +452,16 @@ void OPCALL normal_jmp32(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_callR16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
+    U16 dest = cpu->reg[op->reg].u16;
     cpu->push16(cpu->eip.u32+op->len);
-    cpu->eip.u32 = cpu->reg[op->reg].u16;
+    cpu->eip.u32 = dest;
     NEXT_DONE();
 }
 void OPCALL normal_callR32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
+    U32 dest = cpu->reg[op->reg].u32;
     cpu->push32(cpu->eip.u32+op->len);
-    cpu->eip.u32 = cpu->reg[op->reg].u32;
+    cpu->eip.u32 = dest;
     NEXT_DONE();
 }
 void OPCALL normal_callE16(CPU* cpu, DecodedOp* op) {
