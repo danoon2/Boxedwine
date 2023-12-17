@@ -3863,7 +3863,7 @@ void opCallFarE16(Armv8btAsm* data) {
     data->done = true;
 }
 void opCallFarE32(Armv8btAsm* data) {
-    kpanic("Need to test");
+    // kpanic("Need to test");
     // U32 eaa = eaa(cpu, op);
     // U32 newip = readd(eaa);
     // U16 newcs = readw(eaa + 4);
@@ -3948,7 +3948,7 @@ void opJmpFarE16(Armv8btAsm* data) {
     data->done = true;
 }
 void opJmpFarE32(Armv8btAsm* data) {
-    kpanic("Need to test");
+    // kpanic("Need to test");
     // U32 eaa = eaa(cpu, op);
     // U32 newip = readd(eaa);
     // U16 newcs = readw(eaa + 4);

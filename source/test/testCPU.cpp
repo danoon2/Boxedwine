@@ -8915,19 +8915,283 @@ void testCallE32() {
     assertTrue(ESP == 4092);
 }
 
+void testCallFarE16() {
+    cpu->big = false;
+    U8 rm = (3 << 3);
+    rm += 6;
+
+    newInstructionWithRM(0xff, rm, 0);
+    pushCode16(200);
+
+    pushCode8(0xcd);
+    pushCode8(0xcd);
+
+    cseip = CODE_ADDRESS + 0x128;
+
+    EAX = 0;
+
+    // add ax, 0x10
+    pushCode8(0x83);
+    pushCode8(0xc0);
+    pushCode8(0x10);
+
+    U32 esp = ESP;
+
+    writew(cpu->seg[DS].address + 200, 0x128);
+    writew(cpu->seg[DS].address + 202, CODE_SEG_16);
+
+    runTestCPU();
+
+    assertTrue(AX == 0x10);
+    assertTrue(readw(cpu->seg[SS].address + esp - 2) == CODE_SEG);
+    assertTrue(readw(cpu->seg[SS].address + esp - 4) == 4);
+    assertTrue(SP == 4092);
+    assertTrue(cpu->big == false);
+    setup();// re-init segs for next unit test
+}
+
+void testCallFarE32() {
+    cpu->big = true;
+    U8 rm = (3 << 3);
+    rm += 5;
+
+    newInstructionWithRM(0xff, rm, 0);
+    pushCode32(200);
+
+    pushCode8(0xcd);
+    pushCode8(0xcd);
+
+    cseip = CODE_ADDRESS + 0x128;
+
+    EAX = 0;
+
+    // add ax, 0x10
+    pushCode8(0x83);
+    pushCode8(0xc0);
+    pushCode8(0x10);
+
+    U32 esp = ESP;
+
+    writed(cpu->seg[DS].address + 200, 0x128);
+    writed(cpu->seg[DS].address + 204, CODE_SEG_16);
+
+    runTestCPU();
+
+    assertTrue(AX == 0x10);
+    assertTrue(readd(cpu->seg[SS].address + esp - 4) == CODE_SEG);
+    assertTrue(readd(cpu->seg[SS].address + esp - 8) == 6);
+    assertTrue(SP == 4088);
+    assertTrue(cpu->big == false);
+    cpu->big = true;
+    setup();// re-init segs for next unit test
+}
+
+void testJmpE16() {
+    for (int i = 0; i < 8; i++) {
+        U8 rm = i | (4 << 3) | 0xC0;
+
+        newInstruction(0);
+        writed(cpu->seg[SS].address + 4092, DEFAULT);
+
+        cpu->reg[0].u32 = 0x102;
+        cpu->reg[i].u16 = 0x102;
+
+        // call
+        pushCode8(0xff);
+        pushCode8(rm);
+
+        for (int i = 0; i < 0x100; i++) {
+            pushCode8(0xcd);
+        }
+        // will jump to here
+        // add ax, 0x1
+        pushCode8(0x83);
+        pushCode8(0xc0);
+        pushCode8(0x1);
+
+        runTestCPU();
+
+        assertTrue(AX == 0x103);
+        if (i == 4) {
+            assertTrue(SP == 0x102);
+        }
+        else {
+            assertTrue(SP == 4096);
+        }
+    }
+
+    U8 rm = (4 << 3);
+    if (cpu->big)
+        rm += 5;
+    else
+        rm += 6;
+    newInstructionWithRM(0xff, rm, 0);
+    pushCode16(200);
+
+    for (int i = 0; i < 0x100; i++) {
+        pushCode8(0xcd);
+    }
+    // call will jump to here
+    // add ax, 0x1
+    pushCode8(0x83);
+    pushCode8(0xc0);
+    pushCode8(0x1);
+
+    writew(cpu->seg[DS].address + 200, 0x104);
+    EAX = 0x10;
+    runTestCPU();
+
+    assertTrue(AX == 0x11);
+    assertTrue(SP == 4096);
+}
+
+void testJmpE32() {
+    for (int i = 0; i < 8; i++) {
+        U8 rm = i | (4 << 3) | 0xC0;
+
+        newInstruction(0);
+        writed(cpu->seg[SS].address + 4092, DEFAULT);
+
+        cpu->reg[0].u32 = 0x104;
+        cpu->reg[i].u32 = 0x104;
+
+        // call
+        pushCode8(0xff);
+        pushCode8(rm);
+
+        for (int i = 0; i < 0x102; i++) {
+            pushCode8(0xcd);
+        }
+        // call will jump to here
+        // add ax, 0x1
+        pushCode8(0x83);
+        pushCode8(0xc0);
+        pushCode8(0x1);
+
+        runTestCPU();
+
+        assertTrue(EAX == 0x105);
+        if (i == 4) {
+            assertTrue(ESP == 0x104);
+        }
+        else {
+            assertTrue(SP == 4096);
+        }
+    }
+
+    U8 rm = (4 << 3);
+    if (cpu->big)
+        rm += 5;
+    else
+        rm += 6;
+    newInstructionWithRM(0xff, rm, 0);
+    pushCode32(200);
+
+    for (int i = 0; i < 0x100; i++) {
+        pushCode8(0xcd);
+    }
+    // call will jump to here
+    // add ax, 0x1
+    pushCode8(0x83);
+    pushCode8(0xc0);
+    pushCode8(0x1);
+
+    writed(cpu->seg[DS].address + 200, 0x106);
+    EAX = 0x10;
+    runTestCPU();
+
+    assertTrue(EAX == 0x11);
+    assertTrue(ESP == 4096);
+}
+
+void testJmpFarE16() {
+    cpu->big = false;
+    U8 rm = (5 << 3);
+    rm += 6;
+
+    newInstructionWithRM(0xff, rm, 0);
+    pushCode16(200);
+
+    pushCode8(0xcd);
+    pushCode8(0xcd);
+
+    cseip = CODE_ADDRESS + 0x128;
+
+    EAX = 0;
+
+    // add ax, 0x10
+    pushCode8(0x83);
+    pushCode8(0xc0);
+    pushCode8(0x10);
+
+    U32 esp = ESP;
+
+    writew(cpu->seg[DS].address + 200, 0x128);
+    writew(cpu->seg[DS].address + 202, CODE_SEG_16);
+
+    runTestCPU();
+
+    assertTrue(AX == 0x10);
+    assertTrue(SP == 4096);
+    assertTrue(cpu->seg[CS].value == CODE_SEG_16);
+    assertTrue(cpu->big == false);
+    setup();// re-init segs for next unit test
+}
+
+void testJmpFarE32() {
+    cpu->big = true;
+    U8 rm = (5 << 3);
+    rm += 5;
+
+    newInstructionWithRM(0xff, rm, 0);
+    pushCode32(200);
+
+    pushCode8(0xcd);
+    pushCode8(0xcd);
+
+    cseip = CODE_ADDRESS + 0x128;
+
+    EAX = 0;
+
+    // add ax, 0x10
+    pushCode8(0x83);
+    pushCode8(0xc0);
+    pushCode8(0x10);
+
+    U32 esp = ESP;
+
+    writed(cpu->seg[DS].address + 200, 0x128);
+    writed(cpu->seg[DS].address + 204, CODE_SEG_16);
+
+    runTestCPU();
+
+    assertTrue(AX == 0x10);
+    assertTrue(SP == 4096);
+    assertTrue(cpu->big == false);
+    assertTrue(cpu->seg[CS].value == CODE_SEG_16);
+    cpu->big = true;
+    setup();// re-init segs for next unit test
+}
+
 void testGrp50x0ff() {
     cpu->big=false;
     Ew(0xff, 0, incw);
     Ew(0xff, 1, decw);
     testCallE16(); // 2
+    testCallFarE16(); // 3
+    testJmpE16(); // 4
+    testJmpFarE16(); // 4
     testPushE16(); // 6
 }
 
 void testGrp50x2ff() {
     cpu->big=true;
     Ed(0xff, 0, incd);
-    Ed(0xff, 1, decd);
+    Ed(0xff, 1, decd);    
     testCallE32(); // 2
+    testCallFarE32(); // 3
+    testJmpE32(); // 4
+    testJmpFarE32(); // 5
     testPushE32(); // 6
 }
 
