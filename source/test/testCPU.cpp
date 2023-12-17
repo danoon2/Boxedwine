@@ -393,6 +393,20 @@ void Eb(int instruction, int which, struct Data* data) {
             *reg = (U8)data->var1;
             runTestCPU();
             assertResult(data, cpu, instruction, *reg, 0, E8(rm), -1, 0, 8);
+            
+            newInstructionWithRM(instruction, rm, data->flags);
+            
+            // this will generate flags so the above code can ignore flag generation
+            // cmp eax, 0
+            pushCode8(0x83);
+            pushCode8(0xf8);
+            pushCode8(0);
+            
+            reg = cpu->reg8[E(rm)];
+            cpu->reg[E8(rm)].u32 = DEFAULT;
+            *reg = (U8)data->var1;
+            runTestCPU();
+            assertResult(data, cpu, instruction, *reg, 0, E8(rm), -1, 0, 8, true);
         }
 
         rm = (which << 3);
@@ -410,6 +424,24 @@ void Eb(int instruction, int which, struct Data* data) {
         runTestCPU();
         result = readb(cpu->seg[DS].address + 200);
         assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + 200, 8);
+        
+        newInstructionWithRM(instruction, rm, data->flags);
+        if (cpu->big)
+            pushCode32(200);
+        else
+            pushCode16(200);
+        
+        // this will generate flags so the above code can ignore flag generation
+        // cmp eax, 0
+        pushCode8(0x83);
+        pushCode8(0xf8);
+        pushCode8(0);
+        
+        writed(cpu->seg[DS].address + 200, DEFAULT);
+        writeb(cpu->seg[DS].address + 200, data->var1);
+        runTestCPU();
+        result = readb(cpu->seg[DS].address + 200);
+        assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + 200, 8, true);
         data++;
     }
 }
@@ -787,6 +819,20 @@ void Ew(int instruction, int which, struct Data* data) {
             reg->u16=data->var1;
             runTestCPU();
             assertResult(data, cpu, instruction, reg->u16, 0, E(rm), -1, 0, 16);
+            
+            newInstructionWithRM(instruction, rm, data->flags);
+            
+            // this will generate flags so the above code can ignore flag generation
+            // cmp eax, 0
+            pushCode8(0x83);
+            pushCode8(0xf8);
+            pushCode8(0);
+            
+            reg = &cpu->reg[E(rm)];
+            reg->u32 = DEFAULT;
+            reg->u16=data->var1;
+            runTestCPU();
+            assertResult(data, cpu, instruction, reg->u16, 0, E(rm), -1, 0, 16, true);
         }
 
         rm = (which << 3);
@@ -804,6 +850,25 @@ void Ew(int instruction, int which, struct Data* data) {
         runTestCPU();
         result = readw(cpu->seg[DS].address + 200);
         assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + 200, 16);
+        
+        newInstructionWithRM(instruction, rm, data->flags);
+        if (cpu->big)
+            pushCode32(200);
+        else
+            pushCode16(200);
+        
+        // this will generate flags so the above code can ignore flag generation
+        // cmp eax, 0
+        pushCode8(0x83);
+        pushCode8(0xf8);
+        pushCode8(0);
+        
+        writed(cpu->seg[DS].address + 200, DEFAULT);
+        writew(cpu->seg[DS].address + 200, data->var1);
+        runTestCPU();
+        result = readw(cpu->seg[DS].address + 200);
+        assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + 200, 16, true);
+        
         data++;
     }
 }
@@ -1569,6 +1634,19 @@ void Ed(int instruction, int which, struct Data* data) {
             reg->u32 = data->var1;
             runTestCPU();
             assertResult(data, cpu, instruction, reg->u32, 0, ed, -1, 0, 32);
+            
+            newInstructionWithRM(instruction, rm, data->flags);
+            
+            // this will generate flags so the above code can ignore flag generation
+            // cmp eax, 0
+            pushCode8(0x83);
+            pushCode8(0xf8);
+            pushCode8(0);
+            
+            reg = &cpu->reg[ed];
+            reg->u32 = data->var1;
+            runTestCPU();
+            assertResult(data, cpu, instruction, reg->u32, 0, ed, -1, 0, 32, true);
         }
 
         rm = (which << 3);
@@ -1585,6 +1663,24 @@ void Ed(int instruction, int which, struct Data* data) {
         runTestCPU();
         result = readd(cpu->seg[DS].address + 200);
         assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + 200, 32);
+        
+        newInstructionWithRM(instruction, rm, data->flags);
+        if (cpu->big)
+            pushCode32(200);
+        else
+            pushCode16(200);
+        
+        // this will generate flags so the above code can ignore flag generation
+        // cmp eax, 0
+        pushCode8(0x83);
+        pushCode8(0xf8);
+        pushCode8(0);
+        
+        writed(cpu->seg[DS].address + 200, data->var1);
+        runTestCPU();
+        result = readd(cpu->seg[DS].address + 200);
+        assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + 200, 32, true);
+        
         data++;
     }
 }
@@ -2091,6 +2187,21 @@ void AlIb(int instruction, struct Data* data) {
         AL = data->var1;
         runTestCPU();
         assertResult(data, cpu, instruction, AL, 0, 0, -1, 0, 8);
+        
+        newInstruction(instruction, data->flags);
+        pushCode8(data->var2);
+        
+        // this will generate flags so the above code can ignore flag generation
+        // cmp eax, 0
+        pushCode8(0x83);
+        pushCode8(0xf8);
+        pushCode8(0);
+        
+        EAX = DEFAULT;
+        AL = data->var1;
+        runTestCPU();
+        assertResult(data, cpu, instruction, AL, 0, 0, -1, 0, 8, true);
+        
         data++;
     }
 }
@@ -2103,17 +2214,48 @@ void AxIw(int instruction, struct Data* data) {
         AX = data->var1;
         runTestCPU();
         assertResult(data, cpu, instruction, AX, 0, 0, -1, 0, 16);
+        
+        newInstruction(instruction, data->flags);
+        pushCode16(data->var2);
+        
+        // this will generate flags so the above code can ignore flag generation
+        // cmp eax, 0
+        pushCode8(0x83);
+        pushCode8(0xf8);
+        pushCode8(0);
+        
+        EAX = DEFAULT;
+        AX = data->var1;
+        runTestCPU();
+        assertResult(data, cpu, instruction, AX, 0, 0, -1, 0, 16, true);
+        
         data++;
     }
 }
 
 void EaxId(int instruction, struct Data* data) {
     while (data->valid) {
+        // this will verify flags will be set correctly
         newInstruction(instruction, data->flags);
         pushCode32(data->var2);
         EAX = data->var1;
         runTestCPU();
         assertResult(data, cpu, instruction, EAX, 0, -1, -1, 0, 0);
+       
+        // this will ignore flags, might take a different path
+        newInstruction(instruction, data->flags);
+        pushCode32(data->var2);
+        
+        // this will generate flags so the above code can ignore flag generation
+        // cmp eax, 0
+        pushCode8(0x83);
+        pushCode8(0xf8);
+        pushCode8(0);
+        
+        EAX = data->var1;
+        runTestCPU();
+        assertResult(data, cpu, instruction, EAX, 0, -1, -1, 0, 0, true);
+        
         data++;
     }
 }
@@ -2126,6 +2268,19 @@ void EwReg(int instruction, int ew, struct Data* data) {
         reg->u16 = data->var1;
         runTestCPU();
         assertResult(data, cpu, instruction, reg->u16, 0, ew, -1, 0, 16);
+        
+        newInstruction(instruction, data->flags);
+        
+        // this will generate flags so the above code can ignore flag generation
+        // cmp eax, 0
+        pushCode8(0x83);
+        pushCode8(0xf8);
+        pushCode8(0);
+        
+        reg->u32 = DEFAULT;
+        reg->u16 = data->var1;
+        runTestCPU();
+        assertResult(data, cpu, instruction, reg->u16, 0, ew, -1, 0, 16, true);
         data++;
     }
 }
@@ -2140,6 +2295,20 @@ void EbReg(int instruction, int eb, struct Data* data) {
         *e = data->var1;
         runTestCPU();
         assertResult(data, cpu, instruction, reg->u8, 0, eb, -1, 0, 8);
+        
+        newInstruction(instruction, data->flags);
+        
+        // this will generate flags so the above code can ignore flag generation
+        // cmp eax, 0
+        pushCode8(0x83);
+        pushCode8(0xf8);
+        pushCode8(0);
+        
+        reg->u32 = DEFAULT;
+        *e = data->var1;
+        runTestCPU();
+        assertResult(data, cpu, instruction, reg->u8, 0, eb, -1, 0, 8, true);
+        
         data++;
     }
 }
@@ -2194,6 +2363,19 @@ void EdReg(int instruction, int ed, struct Data* data) {
         reg->u32 = data->var1;
         runTestCPU();
         assertResult(data, cpu, instruction, reg->u32, 0, -1, -1, 0, 0);
+        
+        newInstruction(instruction, data->flags);
+        
+        // this will generate flags so the above code can ignore flag generation
+        // cmp eax, 0
+        pushCode8(0x83);
+        pushCode8(0xf8);
+        pushCode8(0);
+        
+        reg->u32 = data->var1;
+        runTestCPU();
+        assertResult(data, cpu, instruction, reg->u32, 0, -1, -1, 0, 0, true);
+        
         data++;
     }
 }

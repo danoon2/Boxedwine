@@ -1662,13 +1662,6 @@ void opXchgE32R32(Armv8btAsm* data) {
 //     cpu->addFlag(CF | OF);
 // }
 // cpu->reg[regResult].u16 = (U16)res;
-void doDimulR16R16(Armv8btAsm* data, U8 dst, U8 src1, U8 src2) {
-    U8 tmpReg = data->getTmpReg();
-    data->signExtend(tmpReg, data->getNativeReg(data->decodedOp->reg), 16);
-    imul16(data, tmpReg, data->getNativeReg(data->decodedOp->rm), data->getNativeReg(data->decodedOp->reg), 0, false);
-    data->releaseTmpReg(tmpReg);
-}
-
 void opDimulR16R16(Armv8btAsm* data) {
     U8 tmpReg = data->getTmpReg();
     data->signExtend(tmpReg, data->getNativeReg(data->decodedOp->reg), 16);
