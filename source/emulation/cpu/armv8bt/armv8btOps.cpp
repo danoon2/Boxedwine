@@ -3488,7 +3488,7 @@ void opEnter16(Armv8btAsm* data) {
     doEnter(data, false, data->decodedOp->imm, data->decodedOp->disp);
 }
 void opEnter32(Armv8btAsm* data) {
-    kpanic("Need to test");
+    //kpanic("Need to test");
     doEnter(data, true, data->decodedOp->imm, data->decodedOp->disp);
 }
 void opLeave16(Armv8btAsm* data) {
