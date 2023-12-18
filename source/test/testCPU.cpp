@@ -6490,13 +6490,42 @@ void testMovEbIb0x2c6() {cpu->big = true;EbIb(0xc6, 0, movb);}
 void testMovEwIw0x0c7() {cpu->big = false;EwIw(0xc7, 0, movw);}
 void testMovEdId0x2c7() {cpu->big = true;EdId(0xc7, 0, movd);}
 
+void testEnter0x0c8() {
+    cpu->big = false;
+    newInstruction(0xc8, 0);
+    pushCode16(0x200);
+    pushCode8(0);
+
+    ESP -= 16;
+    EBP = 0xabcd1234;
+    U32 esp = ESP;
+    runTestCPU();
+    assertTrue(EBP == 0xabcd0fee);
+    assertTrue(ESP == 0xdee);    
+}
+
+void testEnter0x2c8() {
+    cpu->big = true;
+
+    newInstruction(0xc8, 0);
+    pushCode16(0x200);
+    pushCode8(0);
+
+    ESP -= 16;
+    EBP = 0xabcd1234;
+    U32 esp = ESP;
+    runTestCPU();
+    assertTrue(EBP == 0xfec);
+    assertTrue(ESP == 0xdec);
+}
+
 void testLeave0x0c9() {
     cpu->big = false;
     newInstruction(0xc9, 0);
 
     U32 sp = SP;
     SP -= 2;
-    writed(cpu->seg[SS].address + SP, 0x5678);    
+    writed(cpu->seg[SS].address + SP, 0x5678);
     EBP = 0xdeadbeef;
     BP = SP;
     ESP = 0xdeadbeef;
@@ -6524,6 +6553,36 @@ void testLeave0x2c9() {
 
     assertTrue(EBP == 0x12345678);
     assertTrue(ESP == esp);
+}
+
+// not a complete test of iret, just the part that seems to get used
+void testIRet0x2cf() {
+    cpu->big = true;
+    newInstruction(0xcf, 0);
+
+    U32 esp = ESP;
+    ESP -= 12;
+    writed(cpu->seg[SS].address + ESP, 0x128);
+    writed(cpu->seg[SS].address + ESP + 4, CODE_SEG_16);
+    writed(cpu->seg[SS].address + ESP + 8, CF|OF|ZF);
+
+    pushCode8(0xcd);
+    pushCode8(0xcd);
+
+    cseip = CODE_ADDRESS + 0x128;
+
+    EAX = 0xabcd0000;
+
+    // add ax, 0x10
+    pushCode8(0x83);
+    pushCode8(0xc0);
+    pushCode8(0x10);
+
+    runTestCPU();
+
+    assertTrue(EAX == 0xabcd0010);
+    assertTrue(ESP == 4096);
+    assertTrue(cpu->big == false);
 }
 
 void testGrp20x0d0() {
@@ -11610,7 +11669,7 @@ int runCpuTests() {
     run(testOpSizePrefix0x066, "Operand size prefix 066");
     run(testOpSizePrefix0x266, "Operand size prefix 266");
     run(testAddressPrefix0x067, "Address prefix 067");
-    run(testAddressPrefix0x267, "Address prefix 267");
+    run(testAddressPrefix0x267, "Address prefix 267");    
 
     run(testPush0x068, "Push 068");
     run(testPush0x268, "Push 268");
@@ -11623,6 +11682,11 @@ int runCpuTests() {
 
     run(testIMul0x06b, "IMul 06b");
     run(testIMul0x26b, "IMul 26b");
+
+    // 6c insb
+    // 6d insw
+    // 6e outsb
+    // 6f outsw
 
     run(testJO0x70, "JO 070");
     run(testJO0x270, "JO 270");
@@ -11823,10 +11887,18 @@ int runCpuTests() {
     run(testMovEwIw0x0c7, "Mov 0c7");
     run(testMovEdId0x2c7, "Mov 2c7");
     
-    // c8 enter
+    run(testEnter0x0c8, "Enter 0c8");
+    run(testEnter0x2c8, "Enter 2c8");
 
     run(testLeave0x0c9, "Leave 0c9");
     run(testLeave0x2c9, "Leave 2c9");
+
+    // ca RetfIw16
+    // cb Retf16
+    // cc Int3
+    // cd IntIb
+    // ce IntO
+    run(testIRet0x2cf, "IRet 2cf");
 
     run(testGrp20x0d0, "Grp2 0d0");
     run(testGrp20x2d0, "Grp2 2d0");
