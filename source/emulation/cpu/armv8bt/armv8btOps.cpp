@@ -4470,6 +4470,110 @@ void opLMSW(Armv8btAsm* data) {
 void opINVLPG(Armv8btAsm* data) {
     klog("ARMv8: INVLPG not implemented");
 }
+// data->movReg8ToReg(untranslatedReg, flagReg);
+// readReg = data->getReadNativeReg8(untranslatedReg);
+void opXaddR8R8(Armv8btAsm* data) {
+    // cpu->src.u8 = *cpu->reg8[op->reg];
+    // cpu->dst.u8 = *cpu->reg8[op->rm];
+    // cpu->result.u8 = cpu->dst.u8 + cpu->src.u8;
+    // cpu->lazyFlags = FLAGS_ADD8;
+    // *cpu->reg8[op->reg] = cpu->dst.u8;
+    // *cpu->reg8[op->rm] = cpu->result.u8;
+    U32 flags = data->flagsNeeded();
+
+    data->movReg8ToReg(data->decodedOp->rm, xDst);
+    data->movReg8ToReg(data->decodedOp->reg, xSrc);
+    data->addRegs32(xResult, xDst, xSrc);
+    if (flags) {
+        data->zeroExtend(xResult, xResult, 8);
+    }
+    data->movRegToReg8(xDst, data->decodedOp->reg);
+    data->movRegToReg8(xResult, data->decodedOp->rm);
+    ARM8BT_FLAGS_ADD8->setFlags(data, flags);
+}
+void opXaddR8E8(Armv8btAsm* data) {
+    // cpu->src.u8 = *cpu->reg8[op->reg];
+    // cpu->dst.u8 = readb(address);
+    // cpu->result.u8 = cpu->dst.u8 + cpu->src.u8;
+    // cpu->lazyFlags = FLAGS_ADD8;
+    // *cpu->reg8[op->reg] = cpu->dst.u8;
+    // writeb(address, cpu->result.u8);
+    U32 flags = data->flagsNeeded();
+    
+    data->movReg8ToReg(data->decodedOp->reg, xSrc);
+
+    U8 addressReg = data->getAddressReg();
+    U8 memReg = data->getHostMem(addressReg);
+    data->addRegs64(addressReg, addressReg, memReg);
+    data->releaseHostMem(memReg);
+
+    U32 restartPos = data->bufferPos;
+    data->readMemory(addressReg, xDst, 8, false, data->decodedOp->lock != 0);
+    data->addRegs32(xResult, xSrc, xDst);
+    if (flags) {
+        data->zeroExtend(xResult, xResult, 8);
+    }
+    data->writeMemory(addressReg, xResult, 8, false, data->decodedOp->lock != 0, xDst, restartPos);
+    data->movRegToReg8(xDst, data->decodedOp->reg);
+    data->releaseTmpReg(addressReg);
+    ARM8BT_FLAGS_ADD8->setFlags(data, flags);
+}
+
+void opXaddR16R16(Armv8btAsm* data) {
+    // cpu->src.u16 = cpu->reg[op->reg].u16;
+    // cpu->dst.u16 = cpu->reg[op->rm].u16;
+    // cpu->result.u16 = cpu->dst.u16 + cpu->src.u16;
+    // cpu->lazyFlags = FLAGS_ADD16;
+    // cpu->reg[op->reg].u16 = cpu->dst.u16;
+    // cpu->reg[op->rm].u16 = cpu->result.u16;
+    U32 flags = data->flagsNeeded();
+    bool needsHardwareFlags = false;
+
+    if (ARM8BT_FLAGS_ADD16->usesDst(flags)) {
+        data->movRegToReg(xDst, data->getNativeReg(data->decodedOp->rm), 16, false);
+    }
+    if (ARM8BT_FLAGS_ADD16->usesSrc(flags)) {
+        data->movRegToReg(xSrc, data->getNativeReg(data->decodedOp->reg), 16, false);
+    }
+    needsHardwareFlags = ARM8BT_FLAGS_ADD16->usesHardwareFlags(flags);
+    data->addRegs32(xResult, data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->rm), 0, needsHardwareFlags);
+    if (flags) {
+        data->zeroExtend(xResult, xResult, 16);
+    }
+    data->movRegToReg(data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->rm), 16, false);
+    data->movRegToReg(data->getNativeReg(data->decodedOp->rm), xResult, 16, false);
+    ARM8BT_FLAGS_ADD16->setFlags(data, flags);
+}
+void opXaddR16E16(Armv8btAsm* data) {
+    // cpu->src.u16 = cpu->reg[op->reg].u16;
+    // cpu->dst.u16 = readw(address);
+    // cpu->result.u16 = cpu->dst.u16 + cpu->src.u16;
+    // cpu->lazyFlags = FLAGS_ADD16;
+    // cpu->reg[op->reg].u16 = cpu->dst.u16;
+    // writew(address, cpu->result.u16);
+    U32 flags = data->flagsNeeded();
+    bool needsHardwareFlags = false;
+
+    if (ARM8BT_FLAGS_ADD16->usesSrc(flags)) {
+        data->movRegToReg(xSrc, data->getNativeReg(data->decodedOp->reg), 16, false);
+    }
+    needsHardwareFlags = ARM8BT_FLAGS_ADD16->usesHardwareFlags(flags);
+    U8 addressReg = data->getAddressReg();
+    U8 memReg = data->getHostMem(addressReg);
+    data->addRegs64(addressReg, addressReg, memReg);
+    data->releaseHostMem(memReg);
+
+    U32 restartPos = data->bufferPos;
+    data->readMemory(addressReg, xDst, 16, false, data->decodedOp->lock != 0);
+    data->addRegs32(xResult, data->getNativeReg(data->decodedOp->reg), xDst, 0, needsHardwareFlags);
+    if (flags) {
+        data->zeroExtend(xResult, xResult, 16);
+    }
+    data->writeMemory(addressReg, xResult, 16, false, data->decodedOp->lock != 0, xDst, restartPos);
+    data->movRegToReg(data->getNativeReg(data->decodedOp->reg), xDst, 16, false);
+    data->releaseTmpReg(addressReg);
+    ARM8BT_FLAGS_ADD16->setFlags(data, flags);
+}
 
 void opXaddR32R32(Armv8btAsm* data) {
     // cpu->src.u32 = cpu->reg[op->r1].u32;
@@ -7341,6 +7445,10 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opLMSW,
     opINVLPG,
 
+    opXaddR8R8,
+    opXaddR8E8,
+    opXaddR16R16,
+    opXaddR16E16,
     opXaddR32R32,
     opXaddR32E32,
     opCmpXchg8b,

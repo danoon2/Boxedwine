@@ -4163,7 +4163,19 @@ static struct Data shrd32[] = {
         endData()
 };
 
-static struct Data xadd[] = {
+static struct Data xaddb[] = {
+    {1, 10, 20, 30, 10, 0, 0, 0, 0, 0, 0, 0, 1, 0, true, 0, 0, 1, 0, 0},
+    {1, 0xFF, 1, 0, 0xFF, 0, 0, 1, 0, 0, 0, 0, 1, 0, true, 0, 0, 1, 0, 0},
+    endData()
+};
+
+static struct Data xaddw[] = {
+    {1, 1000, 2002, 3002, 1000, 0, 0, 0, 0, 0, 0, 0, 1, 0, true, 0, 0, 1, 0, 0},
+    {1, 0xFFFF, 1, 0, 0xFFFF, 0, 0, 1, 0, 0, 0, 0, 1, 0, true, 0, 0, 1, 0, 0},
+    endData()
+};
+
+static struct Data xaddd[] = {
     {1, 100000, 200200, 300200, 100000, 0, 0, 0, 0, 0, 0, 0, 1, 0, true, 0, 0, 1, 0, 0},
     {1, 0xFFFFFFFF, 1, 0, 0xFFFFFFFF, 0, 0, 1, 0, 0, 0, 0, 1, 0, true, 0, 0, 1, 0, 0},
     endData()
@@ -9683,10 +9695,25 @@ void testCmpXchg8b0x3c7() {
     }
 }
 
-void testXadd0x3c1() {
-    cpu->big=true;
-    EdGd(0x3c1, xadd);
-    X86_TEST(xadd, xadd, eax, ecx)
+void testXaddb0x1c0() {
+    cpu->big = false;
+    EbGb(0x1c0, xaddb);
+}
+
+void testXaddb0x3c0() {
+    cpu->big = true;
+    EbGb(0x3c0, xaddb);
+}
+
+void testXaddw0x1c1() {
+    cpu->big = false;
+    EwGw(0x1c1, xaddw);
+}
+
+void testXaddd0x3c1() {
+    cpu->big = true;
+    EdGd(0x3c1, xaddd);
+    X86_TEST(xadd, xaddd, eax, ecx)
 }
 
 void testPushSeg16(int inst, U8 seg) {
@@ -12246,8 +12273,10 @@ int runCpuTests() {
     run(testMovGdSx80x3be, "MovGdSx8 3be");
     run(testMovGdSx160x3bf, "MovGdSx16 3bf");
 
-
-    run(testXadd0x3c1, "XADD 3c1");    
+    run(testXaddb0x1c0, "XADD 1c0");
+    run(testXaddb0x3c0, "XADD 3c0");
+    run(testXaddw0x1c1, "XADD 1c1");
+    run(testXaddd0x3c1, "XADD 3c1");
     run(testSse2Cmppd1c2, "CMPPD 1C2 (sse2)");
     run(testCmpps0x3c2, "CMPPS 3C2 (sse1)");
     run(testSse2Cmpsd3c2, "CMPSD F2 3C2 (sse2)");

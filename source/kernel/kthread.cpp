@@ -842,7 +842,7 @@ void KThread::seg_mapper(U32 address, bool readFault, bool writeFault, bool thro
 #ifdef BOXEDWINE_HAS_SETJMP
             longjmp(this->cpu->runBlockJump, 1);		
 #else
-            kpanic("setjmp is required for this app but it was compiled into boxedwine");
+            kpanic("setjmp is required for this app but it wasn't compiled into boxedwine");
 #endif
         }
     } else {

@@ -901,6 +901,10 @@ enum Instruction {
     LMSW,
     INVLPG,
 
+    XaddR8R8,
+    XaddR8E8,
+    XaddR16R16,
+    XaddR16E16,
     XaddR32R32, 
     XaddR32E32,
     CmpXchg8b,
