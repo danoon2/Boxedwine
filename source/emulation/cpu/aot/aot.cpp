@@ -1075,7 +1075,7 @@ static void blockDone() {
 
 // next block is also set in common_other.cpp for loop instructions, so don't use this as a hook for something else
 static void writeNext1() {
-    out("void nextBlock1(CPU* cpu) {\r\n");
+    out("inline void nextBlock1(CPU* cpu) {\r\n");
     outStartLine();
     out("if (!DecodedBlock::currentBlock->next1) {\r\n");
     indentLevel++;
@@ -1097,7 +1097,7 @@ static void blockNext1() {
 }
 
 static void writeNext2() {
-    out("void nextBlock2(CPU* cpu) {\r\n");
+    out("inline void nextBlock2(CPU* cpu) {\r\n");
     outStartLine();
     out("if (!DecodedBlock::currentBlock->next2) {\r\n");
     indentLevel++;
