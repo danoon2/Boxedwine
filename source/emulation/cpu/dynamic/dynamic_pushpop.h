@@ -1,5 +1,5 @@
 void dynamic_pushEw_reg(DynamicData* data, DecodedOp* op) {
-    callHostFunction(DYN_HOST_FN(common_push16), false, 2, 0, DYN_PARAM_CPU, false, (U32)CPU_OFFSET_OF_REG16(op->reg), DYN_PARAM_CPU_ADDRESS_16, false);
+    callHostFunction(DYN_HOST_FN(common_push16), false, 2, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)CPU_OFFSET_OF_REG16(op->reg), DYN_PARAM_CPU_ADDRESS_16, false);
     INCREMENT_EIP(data, op);
 }
 void dynamic_popEw_reg(DynamicData* data, DecodedOp* op) {
@@ -27,7 +27,7 @@ void dynamic_pushEd_reg(DynamicData* data, DecodedOp* op) {
         movToMemFromReg(DYN_ADDRESS, DYN_SRC, DYN_32bit, false, true);
         movToCpuFromReg(CPU_OFFSET_OF_REG32(4), DYN_ADDRESS, DYN_32bit, true);
     } else {
-        callHostFunction(DYN_HOST_FN(common_push32), false, 2, 0, DYN_PARAM_CPU, false, (U32)CPU_OFFSET_OF_REG32(op->reg), DYN_PARAM_CPU_ADDRESS_32, false);
+        callHostFunction(DYN_HOST_FN(common_push32), false, 2, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)CPU_OFFSET_OF_REG32(op->reg), DYN_PARAM_CPU_ADDRESS_32, false);
     }
     INCREMENT_EIP(data, op);
 }
@@ -70,7 +70,7 @@ void dynamic_popEd_mem(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_pushSeg16(DynamicData* data, DecodedOp* op) {
-    callHostFunction(DYN_HOST_FN(common_push16), false, 2, 0, DYN_PARAM_CPU, false, (U32)CPU_OFFSET_OF_SEG_VALUE(op->reg), DYN_PARAM_CPU_ADDRESS_16, false);
+    callHostFunction(DYN_HOST_FN(common_push16), false, 2, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)CPU_OFFSET_OF_SEG_VALUE(op->reg), DYN_PARAM_CPU_ADDRESS_16, false);
     INCREMENT_EIP(data, op);
 }
 void dynamic_popSeg16(DynamicData* data, DecodedOp* op) {
@@ -91,7 +91,7 @@ void dynamic_popSeg16(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_pushSeg32(DynamicData* data, DecodedOp* op) {
-    callHostFunction(DYN_HOST_FN(common_push32), false, 2, 0, DYN_PARAM_CPU, false, (U32)CPU_OFFSET_OF_SEG_VALUE(op->reg), DYN_PARAM_CPU_ADDRESS_32, false);
+    callHostFunction(DYN_HOST_FN(common_push32), false, 2, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)CPU_OFFSET_OF_SEG_VALUE(op->reg), DYN_PARAM_CPU_ADDRESS_32, false);
     INCREMENT_EIP(data, op);
 }
 void dynamic_popSeg32(DynamicData* data, DecodedOp* op) {

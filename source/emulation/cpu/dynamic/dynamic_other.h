@@ -114,7 +114,7 @@ void dynamic_iret32(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_sahf(DynamicData* data, DecodedOp* op) {
     dynamic_fillFlags(data);
-    callHostFunction(DYN_HOST_FN(common_setFlags), false, 3, 0, DYN_PARAM_CPU, false, (U32)OFFSET_REG8(4), DYN_PARAM_CPU_ADDRESS_8, false, FMASK_ALL & 0xFF, DYN_PARAM_CONST_32, false);
+    callHostFunction(DYN_HOST_FN(common_setFlags), false, 3, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)OFFSET_REG8(4), DYN_PARAM_CPU_ADDRESS_8, false, FMASK_ALL & 0xFF, DYN_PARAM_CONST_32, false);
     INCREMENT_EIP(data, op);
 }
 void dynamic_lahf(DynamicData* data, DecodedOp* op) {
