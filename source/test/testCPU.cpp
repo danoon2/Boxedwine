@@ -12407,7 +12407,7 @@ int runCpuTests() {
     run(testSelfModifyingBack, "Self Modifying Code Same Block(Next)");
 #endif
 #ifdef BOXEDWINE_GENERATE_SOURCE        
-    writeSource("gen.cpp");
+    writeSource("../../../../source/emulation/cpu/aot/gen.cpp");
 #endif
     printf("%d tests FAILED\n", totalFails);
     KNativeThread::sleep(5000);

@@ -1,5 +1,6 @@
 #include "boxedwine.h"
 #include "decoder.h"
+#include "normal/normalCPU.h"
 
 #define G(rm) ((rm >> 3) & 7)
 #define E(rm) (rm & 7)
@@ -5428,22 +5429,22 @@ DecodeInst decodeJcxz(Jcxz, 8, 32);                       // JCXZ
 
 DecodeInst decodeInAlIb(InAlIb, 8);                              // IN AL,Ib
 DecodeInst decodeInAxIb(InAxIb, 8);                              // IN AX,Ib
-DecodeInst decodeInEaxIb(InEaxIb, 8);                              // IN EAX,Ib
+DecodeInst decodeInEaxIb(InEaxIb, 8);                            // IN EAX,Ib
 DecodeInst decodeOutIbAl(OutIbAl, 8);                            // OUT Ib,AL
 DecodeInst decodeOutIbAx(OutIbAx, 8);                            // OUT Ib,AX
-DecodeInst decodeOutIbEax(OutIbEax, 8);                            // OUT Ib,EAX
+DecodeInst decodeOutIbEax(OutIbEax, 8);                          // OUT Ib,EAX
 DecodeInst decodeInAlDx(InAlDx);                                 // IN AL,Dx
 DecodeInst decodeInAxDx(InAxDx);                                 // IN AX,Dx
-DecodeInst decodeInEaxDx(InEaxDx);                                 // IN EAX,Dx
+DecodeInst decodeInEaxDx(InEaxDx);                               // IN EAX,Dx
 DecodeInst decodeOutDxAl(OutDxAl);                               // OUT Dx,AL
 DecodeInst decodeOutDxAx(OutDxAx);                               // OUT Dx,AX
-DecodeInst decodeOutDxEax(OutDxEax);                               // OUT Dx,EAX
+DecodeInst decodeOutDxEax(OutDxEax);                             // OUT Dx,EAX
 
-DecodeInst decodeCallJw(CallJw, 16);                             // CALL Jw 
+DecodeInst decodeCallJw(CallJw, 16, 32);                         // CALL Jw 
 DecodeInst decodeCallJd(CallJd, 32);                             // CALL Jd 
 DecodeInst decodeJmpJd(JmpJd, 32);                               // JMP Jd 
-DecodeInst decodeJmpJw(JmpJw, 16);                               // JMP Jw 
-DecodeInst decodeJmpJb(JmpJb, 8);                                // JMP Jb 
+DecodeInst decodeJmpJw(JmpJw, 16, 32);                           // JMP Jw 
+DecodeInst decodeJmpJb(JmpJb, 8, 32);                            // JMP Jb 
 
 DecodeLock decodeLock;                                           // LOCK
 DecodeRepNZ decodeRepNZ;                                         // REPNZ
@@ -6050,19 +6051,40 @@ U32 DecodedOp::getNeededFlags(DecodedBlock* block, DecodedOp* op, U32 flags, U32
         n = n->next;
     }
     if (flags && (instructionInfo[lastOp->inst].branch & DECODE_BRANCH_1) && depth>0) {
-        // :TODO: maybe decode the missing branch?
-        if (block->next1 && (block->next2 || !(instructionInfo[lastOp->inst].branch & DECODE_BRANCH_2))) {
-            U32 needsToSet1 = DecodedOp::getNeededFlags(block->next1, block->next1->op, flags, depth-1);          
+        CPU* cpu = KThread::currentThread()->cpu;
+        DecodedBlock* next1 = block->next1;
+        DecodedBlock* next2 = block->next2;
+        bool next1Alloc = false;
+        bool next2Alloc = false;
+        if (!next1) {
+            U32 eip = block->getEip(lastOp) + lastOp->len + lastOp->imm;
+            next1 = NormalCPU::getBlockForInspectionButNotUsed(eip, cpu->isBig());
+            next1Alloc = true;
+        }
+        if (!next2 && (instructionInfo[lastOp->inst].branch & DECODE_BRANCH_2)) {
+            U32 eip = block->getEip(lastOp) + lastOp->len;
+            next2 = NormalCPU::getBlockForInspectionButNotUsed(eip, cpu->isBig());
+            next2Alloc = true;
+        }
+        // :TODO: maybe decode the missing branch?  but how to figure out the jump amount, for example jump8 is "op->len+(S32)((S8)op->imm))", maybe hardcode jmp8, jmp16 and call16
+        if (next1 && (next2 || !(instructionInfo[lastOp->inst].branch & DECODE_BRANCH_2))) {
+            U32 needsToSet1 = DecodedOp::getNeededFlags(next1, next1->op, flags, depth-1);          
 
             U32 needsToSet2 = 0;
             if ((instructionInfo[lastOp->inst].branch & DECODE_BRANCH_2)) {
                 needsToSet2 = flags;
                 // :TODO: maybe decode the missing branch?
-                if (block->next2) {
-                    needsToSet2 = (DecodedOp::getNeededFlags(block->next2, block->next2->op, flags, depth-1));
+                if (next2) {
+                    needsToSet2 = (DecodedOp::getNeededFlags(next2, next2->op, flags, depth-1));
                 }
             }
             flags = needsToSet1 | needsToSet2;
+        }
+        if (next1Alloc) {
+            next1->dealloc(false);
+        }
+        if (next2Alloc) {
+            next2->dealloc(false);
         }
     }
     return flags;
@@ -6115,6 +6137,22 @@ DecodedOp* DecodedBlock::getOp(U32 eip) {
         }
         opEip += op->len;
         op = op->next;
+    }
+    return NULL;
+}
+
+U32 DecodedBlock::getEip(DecodedOp* op) {
+    U32 eip = this->address;
+    DecodedOp* o = this->op;
+    if (o->len == 0) {
+        o = o->next;
+    }
+    while (o) {
+        if (o == op) {
+            return eip;
+        }
+        eip += o->len;
+        o = o->next;
     }
     return NULL;
 }

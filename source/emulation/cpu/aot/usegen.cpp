@@ -8,7 +8,11 @@
 static U32 count;
 
 void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
+#ifdef __TEST
+    if (DecodedBlock::currentBlock->runCount == 0) {
+#else
     if (DecodedBlock::currentBlock->runCount == 50) {
+#endif
         U32 len = DecodedBlock::currentBlock->bytes;
         unsigned char* bytes = new unsigned char[len];
         memcopyToNative(DecodedBlock::currentBlock->address, bytes, len);

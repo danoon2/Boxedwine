@@ -342,26 +342,26 @@ void dynamic_callJw(DynamicData* data, DecodedOp* op) {
     movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(eip.u32), DYN_32bit);
     instRegImm('+', DYN_SRC, DYN_32bit, op->len);
     callHostFunction(DYN_HOST_FN(common_push16), false, 2, 0, DYN_PARAM_CPU, false, DYN_SRC, DYN_PARAM_REG_32, true);
-    INCREMENT_EIP(data, op->len+(S32)((S16)op->imm));
+    INCREMENT_EIP(data, op->len+op->imm);
     blockNext1();
 }
 void dynamic_callJd(DynamicData* data, DecodedOp* op) {
     movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(eip.u32), DYN_32bit);
     instRegImm('+', DYN_SRC, DYN_32bit, op->len);
     dynamic_pushReg32(data, DYN_SRC, true);;
-    INCREMENT_EIP(data, op->len+(S32)op->imm);
+    INCREMENT_EIP(data, op->len+op->imm);
     blockNext1();
 }
 void dynamic_jmp8(DynamicData* data, DecodedOp* op) {
-    INCREMENT_EIP(data, op->len+(S32)((S8)op->imm));
+    INCREMENT_EIP(data, op->len+op->imm);
     blockNext1();
 }
 void dynamic_jmp16(DynamicData* data, DecodedOp* op) {
-    INCREMENT_EIP(data, op->len+(S32)((S16)op->imm));
+    INCREMENT_EIP(data, op->len+op->imm);
     blockNext1();
 }
 void dynamic_jmp32(DynamicData* data, DecodedOp* op) {
-    INCREMENT_EIP(data, op->len+(S32)op->imm);
+    INCREMENT_EIP(data, op->len+op->imm);
     blockNext1();
 }
 void dynamic_callR16(DynamicData* data, DecodedOp* op) {

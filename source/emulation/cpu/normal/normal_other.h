@@ -426,7 +426,7 @@ void OPCALL normal_OutDxEax(CPU* cpu, DecodedOp* op) {
 void OPCALL normal_callJw(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     cpu->push16(cpu->eip.u32 + op->len);
-    cpu->eip.u32 += (S16)op->imm;
+    cpu->eip.u32 += op->imm;
     NEXT_BRANCH1();
 }
 void OPCALL normal_callJd(CPU* cpu, DecodedOp* op) {
@@ -437,17 +437,17 @@ void OPCALL normal_callJd(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_jmp8(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    cpu->eip.u32 += (S8)op->imm;
+    cpu->eip.u32 += op->imm;
     NEXT_BRANCH1();
 }
 void OPCALL normal_jmp16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    cpu->eip.u32 += (S16)op->imm;
+    cpu->eip.u32 += op->imm;
     NEXT_BRANCH1();
 }
 void OPCALL normal_jmp32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    cpu->eip.u32 += (S32)op->imm;
+    cpu->eip.u32 += op->imm;
     NEXT_BRANCH1();
 }
 void OPCALL normal_callR16(CPU* cpu, DecodedOp* op) {

@@ -639,7 +639,7 @@ void genCF(const LazyFlags* flags, DynReg reg) {
     }
 }
 
-void genOF(const LazyFlags* flags, DynReg reg) {
+bool genOF(const LazyFlags* flags, DynReg reg, bool ignoreIfZero) {
     if (reg == DYN_SRC || reg == DYN_DEST) {
         kpanic("genOF expects reg not to be DYN_SRC or DYN_DEST");
     }
@@ -681,22 +681,40 @@ void genOF(const LazyFlags* flags, DynReg reg) {
         movToRegFromReg(reg, DYN_32bit, reg, DYN_32bit, false);
     } else if (flags == FLAGS_OR8) {
         // 0
-        movToReg(reg, DYN_32bit, 0);
+        if (!ignoreIfZero) {
+            movToReg(reg, DYN_32bit, 0);
+        }
+        return true;
     } else if (flags == FLAGS_OR16) {
         // 0
-        movToReg(reg, DYN_32bit, 0);
+        if (!ignoreIfZero) {
+            movToReg(reg, DYN_32bit, 0);
+        }
+        return true;
     } else if (flags == FLAGS_OR32) {
         // 0
-        movToReg(reg, DYN_32bit, 0);
+        if (!ignoreIfZero) {
+            movToReg(reg, DYN_32bit, 0);
+        }
+        return true;
     } else if (flags == FLAGS_AND8) {
         // 0
-        movToReg(reg, DYN_32bit, 0);
+        if (!ignoreIfZero) {
+            movToReg(reg, DYN_32bit, 0);
+        }
+        return true;
     } else if (flags == FLAGS_AND16) {
         // 0
-        movToReg(reg, DYN_32bit, 0);
+        if (!ignoreIfZero) {
+            movToReg(reg, DYN_32bit, 0);
+        }
+        return true;
     } else if (flags == FLAGS_AND32) {
         // 0
-        movToReg(reg, DYN_32bit, 0);
+        if (!ignoreIfZero) {
+            movToReg(reg, DYN_32bit, 0);
+        }
+        return true;
     } else if (flags == FLAGS_SUB8 || flags == FLAGS_SBB8 || flags == FLAGS_CMP8) {
         // ((cpu->dst.u8 ^ cpu->src.u8) & (cpu->dst.u8 ^ cpu->result.u8)) & 0x80;
         movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u8), DYN_8bit);
@@ -728,13 +746,22 @@ void genOF(const LazyFlags* flags, DynReg reg) {
         instRegImm('&', reg, DYN_32bit, 0x80000000);
     } else if (flags == FLAGS_XOR8) {
         // 0
-        movToReg(reg, DYN_32bit, 0);
+        if (!ignoreIfZero) {
+            movToReg(reg, DYN_32bit, 0);
+        }
+        return true;
     } else if (flags == FLAGS_XOR16) {
         // 0
-        movToReg(reg, DYN_32bit, 0);
+        if (!ignoreIfZero) {
+            movToReg(reg, DYN_32bit, 0);
+        }
+        return true;
     } else if (flags == FLAGS_XOR32) {
         // 0
-        movToReg(reg, DYN_32bit, 0);
+        if (!ignoreIfZero) {
+            movToReg(reg, DYN_32bit, 0);
+        }
+        return true;
     } else if (flags == FLAGS_INC8) {
         // cpu->result.u8 == 0x80;
         movToRegFromCpu(reg, CPU_OFFSET_OF(result.u8), DYN_8bit);
@@ -820,30 +847,55 @@ void genOF(const LazyFlags* flags, DynReg reg) {
     } else if (flags == FLAGS_SHR8_N1) {
         // 0
         movToReg(reg, DYN_32bit, 0);
+        return true;
     } else if (flags == FLAGS_SHR16_N1) {
         // 0
-        movToReg(reg, DYN_32bit, 0);
+        if (!ignoreIfZero) {
+            movToReg(reg, DYN_32bit, 0);
+        }
+        return true;
     } else if (flags == FLAGS_SHR32_N1) {
         // 0
-        movToReg(reg, DYN_32bit, 0);
+        if (!ignoreIfZero) {
+            movToReg(reg, DYN_32bit, 0);
+        }
+        return true;
     } else if (flags == FLAGS_SAR8) {
         // 0
-        movToReg(reg, DYN_32bit, 0);
+        if (!ignoreIfZero) {
+            movToReg(reg, DYN_32bit, 0);
+        }
+        return true;
     } else if (flags == FLAGS_SAR16) {
         // 0
-        movToReg(reg, DYN_32bit, 0);
+        if (!ignoreIfZero) {
+            movToReg(reg, DYN_32bit, 0);
+        }
+        return true;
     } else if (flags == FLAGS_SAR32) {
         // 0
-        movToReg(reg, DYN_32bit, 0);
+        if (!ignoreIfZero) {
+            movToReg(reg, DYN_32bit, 0);
+        }
+        return true;
     } else if (flags == FLAGS_TEST8) {
         // 0
-        movToReg(reg, DYN_32bit, 0);
+        if (!ignoreIfZero) {
+            movToReg(reg, DYN_32bit, 0);
+        }
+        return true;
     } else if (flags == FLAGS_TEST16) {
         // 0
-        movToReg(reg, DYN_32bit, 0);
+        if (!ignoreIfZero) {
+            movToReg(reg, DYN_32bit, 0);
+        }
+        return true;
     } else if (flags == FLAGS_TEST32) {
         // 0
-        movToReg(reg, DYN_32bit, 0);
+        if (!ignoreIfZero) {
+            movToReg(reg, DYN_32bit, 0);
+        }
+        return true;
     } else if (flags == FLAGS_DSHL16 || flags == FLAGS_DSHR16) {
         // (cpu->result.u16 ^ cpu->dst.u16) & 0x8000;
         movToRegFromCpu(reg, CPU_OFFSET_OF(result.u16), DYN_16bit);
@@ -870,6 +922,7 @@ void genOF(const LazyFlags* flags, DynReg reg) {
         movToRegFromCpu(reg, CPU_OFFSET_OF(src.u32), DYN_32bit);
         evaluateToReg(reg, DYN_32bit, reg, true, DYN_NOT_SET, 0x80000000, DYN_32bit, DYN_EQUALS, false, false);
     }
+    return false;
 }
 
 DynWidth getWidthOfCondition(const LazyFlags* flags) {
@@ -967,7 +1020,7 @@ void setConditionInReg(DynamicData* data, DynConditional condition, DynReg reg) 
         genCF(data->currentLazyFlags, reg);
         return;
     } else if (data->currentLazyFlags && condition==O) {
-        genOF(data->currentLazyFlags, reg);
+        genOF(data->currentLazyFlags, reg, false);
         return;
     } else if (data->currentLazyFlags && condition==BE) {
         if (data->currentLazyFlags==FLAGS_SUB8) {
@@ -1005,35 +1058,67 @@ void setConditionInReg(DynamicData* data, DynConditional condition, DynReg reg) 
             evaluateToReg(reg, DYN_32bit, DYN_DEST, false, DYN_SRC, 0, DYN_32bit, DYN_LESS_THAN_SIGNED, true, true);
         } else {
             // cpu->getSF()!=cpu->getOF()        
-            genOF(data->currentLazyFlags, reg);
-            genS(data->currentLazyFlags, DYN_SRC);
-            evaluateToReg(reg, DYN_32bit, reg, true, DYN_NOT_SET, 0, DYN_32bit, DYN_EQUALS, false, false);
-            evaluateToReg(DYN_SRC, DYN_32bit, DYN_SRC, true, DYN_NOT_SET, 0, DYN_32bit, DYN_EQUALS, false, false);
-            evaluateToReg(reg, DYN_32bit, reg, false, DYN_SRC, 0, DYN_32bit, DYN_NOT_EQUALS, false, true);
+            bool isZero = genOF(data->currentLazyFlags, reg, true);
+            if (isZero) {
+                DynWidth width;
+                if (data->currentLazyFlags->width == 8) {
+                    movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(result.u8), DYN_8bit);
+                    width = DYN_8bit;
+                } else if (data->currentLazyFlags->width == 16) {
+                    movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(result.u16), DYN_16bit);
+                    width = DYN_16bit;
+                } else if (data->currentLazyFlags->width == 32) {
+                    movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(result.u32), DYN_32bit);
+                    width = DYN_32bit;
+                }                
+                evaluateToReg(reg, DYN_32bit, DYN_SRC, true, DYN_NOT_SET, 0, width, DYN_LESS_THAN_SIGNED, true, true);
+            } else {
+                genS(data->currentLazyFlags, DYN_SRC);
+                evaluateToReg(DYN_SRC, DYN_32bit, DYN_SRC, true, DYN_NOT_SET, 0, DYN_32bit, DYN_EQUALS, false, false);
+                evaluateToReg(reg, DYN_32bit, reg, true, DYN_NOT_SET, 0, DYN_32bit, DYN_EQUALS, false, false);
+                evaluateToReg(reg, DYN_32bit, reg, false, DYN_SRC, 0, DYN_32bit, DYN_NOT_EQUALS, false, true);
+            }
         }
         return;
     } else if (data->currentLazyFlags && condition==LE) {
-        if (data->currentLazyFlags==FLAGS_SUB8) {
+        if (data->currentLazyFlags==FLAGS_SUB8 || data->currentLazyFlags == FLAGS_CMP8) {
             movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u8), DYN_8bit);
             movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(dst.u8), DYN_8bit);
             evaluateToReg(reg, DYN_32bit, DYN_DEST, false, DYN_SRC, 0, DYN_8bit, DYN_LESS_THAN_EQUAL_SIGNED, true, true);
-        } else if (data->currentLazyFlags==FLAGS_SUB16) {
+        } else if (data->currentLazyFlags==FLAGS_SUB16 || data->currentLazyFlags == FLAGS_CMP16) {
             movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u16), DYN_16bit);
             movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(dst.u16), DYN_16bit);
             evaluateToReg(reg, DYN_32bit, DYN_DEST, false, DYN_SRC, 0, DYN_16bit, DYN_LESS_THAN_EQUAL_SIGNED, true, true);
-        } else if (data->currentLazyFlags==FLAGS_SUB32) {
+        } else if (data->currentLazyFlags==FLAGS_SUB32 || data->currentLazyFlags == FLAGS_CMP32) {
             movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u32), DYN_32bit);
             movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(dst.u32), DYN_32bit);
             evaluateToReg(reg, DYN_32bit, DYN_DEST, false, DYN_SRC, 0, DYN_32bit, DYN_LESS_THAN_EQUAL_SIGNED, true, true);
         } else {
             // cpu->getZF() || cpu->getSF()!=cpu->getOF()       
-            genOF(data->currentLazyFlags, reg);
-            genS(data->currentLazyFlags, DYN_SRC);
-            evaluateToReg(reg, DYN_32bit, reg, true, DYN_NOT_SET, 0, DYN_32bit, DYN_EQUALS, false, false);
-            evaluateToReg(DYN_SRC, DYN_32bit, DYN_SRC, true, DYN_NOT_SET, 0, DYN_32bit, DYN_EQUALS, false, false);
-            evaluateToReg(reg, DYN_32bit, reg, false, DYN_SRC, 0, DYN_32bit, DYN_NOT_EQUALS, false, true);
-            genZ(data->currentLazyFlags, DYN_SRC);
-            instRegReg('|', reg, DYN_SRC, DYN_32bit, true);
+            bool isZero = genOF(data->currentLazyFlags, reg, true);
+            if (isZero) {
+                DynWidth width;
+                if (data->currentLazyFlags->width == 8) {
+                    movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(result.u8), DYN_8bit);
+                    width = DYN_8bit;
+                }
+                else if (data->currentLazyFlags->width == 16) {
+                    movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(result.u16), DYN_16bit);
+                    width = DYN_16bit;
+                }
+                else if (data->currentLazyFlags->width == 32) {
+                    movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(result.u32), DYN_32bit);
+                    width = DYN_32bit;
+                }
+                evaluateToReg(reg, DYN_32bit, DYN_SRC, true, DYN_NOT_SET, 0, width, DYN_LESS_THAN_EQUAL_SIGNED, true, true);
+            } else {
+                genS(data->currentLazyFlags, DYN_SRC);
+                evaluateToReg(DYN_SRC, DYN_32bit, DYN_SRC, true, DYN_NOT_SET, 0, DYN_32bit, DYN_EQUALS, false, false);
+                evaluateToReg(reg, DYN_32bit, reg, true, DYN_NOT_SET, 0, DYN_32bit, DYN_EQUALS, false, false);
+                evaluateToReg(reg, DYN_32bit, reg, false, DYN_SRC, 0, DYN_32bit, DYN_NOT_EQUALS, false, true);
+                genZ(data->currentLazyFlags, DYN_SRC);
+                instRegReg('|', reg, DYN_SRC, DYN_32bit, true);
+            }
         }
         return;
     }
