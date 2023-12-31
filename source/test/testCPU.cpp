@@ -1985,6 +1985,7 @@ void EwGwAx(int instruction, struct Data* data) {
                 pushConstant(data);
                 e = &cpu->reg[ew];
                 g = &cpu->reg[gw];
+                EAX = 0xCDCDCDCD;
                 e->u32 = data->var1;
                 g->u32 = data->var2;
                 AX = data->constant;
@@ -2038,6 +2039,7 @@ void EbGbAl(int instruction, struct Data* data) {
                 pushConstant(data);
                 e = cpu->reg8[eb];
                 g = cpu->reg8[gb];
+                EAX = 0xCDCDCDCD;
                 *e = (U8)data->var1;
                 *g = (U8)data->var2;
                 AL = data->constant;
