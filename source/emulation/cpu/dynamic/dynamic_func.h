@@ -1044,81 +1044,53 @@ void setConditionInReg(DynamicData* data, DynConditional condition, DynReg reg) 
         }
         return;
     } else if (data->currentLazyFlags && condition==L) {
-        if (data->currentLazyFlags==FLAGS_SUB8) {
-            movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u8), DYN_8bit);
-            movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(dst.u8), DYN_8bit);
-            evaluateToReg(reg, DYN_32bit, DYN_DEST, false, DYN_SRC, 0, DYN_8bit, DYN_LESS_THAN_SIGNED, true, true);
-        } else if (data->currentLazyFlags==FLAGS_SUB16) {
-            movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u16), DYN_16bit);
-            movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(dst.u16), DYN_16bit);
-            evaluateToReg(reg, DYN_32bit, DYN_DEST, false, DYN_SRC, 0, DYN_16bit, DYN_LESS_THAN_SIGNED, true, true);
-        } else if (data->currentLazyFlags==FLAGS_SUB32) {
-            movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u32), DYN_32bit);
-            movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(dst.u32), DYN_32bit);
-            evaluateToReg(reg, DYN_32bit, DYN_DEST, false, DYN_SRC, 0, DYN_32bit, DYN_LESS_THAN_SIGNED, true, true);
+        // cpu->getSF()!=cpu->getOF()        
+        bool isZero = genOF(data->currentLazyFlags, reg, true);
+        if (isZero) {
+            DynWidth width;
+            if (data->currentLazyFlags->width == 8) {
+                movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(result.u8), DYN_8bit);
+                width = DYN_8bit;
+            } else if (data->currentLazyFlags->width == 16) {
+                movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(result.u16), DYN_16bit);
+                width = DYN_16bit;
+            } else if (data->currentLazyFlags->width == 32) {
+                movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(result.u32), DYN_32bit);
+                width = DYN_32bit;
+            }                
+            evaluateToReg(reg, DYN_32bit, DYN_SRC, true, DYN_NOT_SET, 0, width, DYN_LESS_THAN_SIGNED, true, false);
         } else {
-            // cpu->getSF()!=cpu->getOF()        
-            bool isZero = genOF(data->currentLazyFlags, reg, true);
-            if (isZero) {
-                DynWidth width;
-                if (data->currentLazyFlags->width == 8) {
-                    movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(result.u8), DYN_8bit);
-                    width = DYN_8bit;
-                } else if (data->currentLazyFlags->width == 16) {
-                    movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(result.u16), DYN_16bit);
-                    width = DYN_16bit;
-                } else if (data->currentLazyFlags->width == 32) {
-                    movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(result.u32), DYN_32bit);
-                    width = DYN_32bit;
-                }                
-                evaluateToReg(reg, DYN_32bit, DYN_SRC, true, DYN_NOT_SET, 0, width, DYN_LESS_THAN_SIGNED, true, true);
-            } else {
-                genS(data->currentLazyFlags, DYN_SRC);
-                evaluateToReg(DYN_SRC, DYN_32bit, DYN_SRC, true, DYN_NOT_SET, 0, DYN_32bit, DYN_EQUALS, false, false);
-                evaluateToReg(reg, DYN_32bit, reg, true, DYN_NOT_SET, 0, DYN_32bit, DYN_EQUALS, false, false);
-                evaluateToReg(reg, DYN_32bit, reg, false, DYN_SRC, 0, DYN_32bit, DYN_NOT_EQUALS, false, true);
-            }
+            genS(data->currentLazyFlags, DYN_SRC);
+            evaluateToReg(DYN_SRC, DYN_32bit, DYN_SRC, true, DYN_NOT_SET, 0, DYN_32bit, DYN_EQUALS, false, false);
+            evaluateToReg(reg, DYN_32bit, reg, true, DYN_NOT_SET, 0, DYN_32bit, DYN_EQUALS, false, false);
+            evaluateToReg(reg, DYN_32bit, reg, false, DYN_SRC, 0, DYN_32bit, DYN_NOT_EQUALS, false, true);
         }
         return;
     } else if (data->currentLazyFlags && condition==LE) {
-        if (data->currentLazyFlags==FLAGS_SUB8 || data->currentLazyFlags == FLAGS_CMP8) {
-            movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u8), DYN_8bit);
-            movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(dst.u8), DYN_8bit);
-            evaluateToReg(reg, DYN_32bit, DYN_DEST, false, DYN_SRC, 0, DYN_8bit, DYN_LESS_THAN_EQUAL_SIGNED, true, true);
-        } else if (data->currentLazyFlags==FLAGS_SUB16 || data->currentLazyFlags == FLAGS_CMP16) {
-            movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u16), DYN_16bit);
-            movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(dst.u16), DYN_16bit);
-            evaluateToReg(reg, DYN_32bit, DYN_DEST, false, DYN_SRC, 0, DYN_16bit, DYN_LESS_THAN_EQUAL_SIGNED, true, true);
-        } else if (data->currentLazyFlags==FLAGS_SUB32 || data->currentLazyFlags == FLAGS_CMP32) {
-            movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u32), DYN_32bit);
-            movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(dst.u32), DYN_32bit);
-            evaluateToReg(reg, DYN_32bit, DYN_DEST, false, DYN_SRC, 0, DYN_32bit, DYN_LESS_THAN_EQUAL_SIGNED, true, true);
-        } else {
-            // cpu->getZF() || cpu->getSF()!=cpu->getOF()       
-            bool isZero = genOF(data->currentLazyFlags, reg, true);
-            if (isZero) {
-                DynWidth width;
-                if (data->currentLazyFlags->width == 8) {
-                    movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(result.u8), DYN_8bit);
-                    width = DYN_8bit;
-                }
-                else if (data->currentLazyFlags->width == 16) {
-                    movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(result.u16), DYN_16bit);
-                    width = DYN_16bit;
-                }
-                else if (data->currentLazyFlags->width == 32) {
-                    movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(result.u32), DYN_32bit);
-                    width = DYN_32bit;
-                }
-                evaluateToReg(reg, DYN_32bit, DYN_SRC, true, DYN_NOT_SET, 0, width, DYN_LESS_THAN_EQUAL_SIGNED, true, true);
-            } else {
-                genS(data->currentLazyFlags, DYN_SRC);
-                evaluateToReg(DYN_SRC, DYN_32bit, DYN_SRC, true, DYN_NOT_SET, 0, DYN_32bit, DYN_EQUALS, false, false);
-                evaluateToReg(reg, DYN_32bit, reg, true, DYN_NOT_SET, 0, DYN_32bit, DYN_EQUALS, false, false);
-                evaluateToReg(reg, DYN_32bit, reg, false, DYN_SRC, 0, DYN_32bit, DYN_NOT_EQUALS, false, true);
-                genZ(data->currentLazyFlags, DYN_SRC);
-                instRegReg('|', reg, DYN_SRC, DYN_32bit, true);
+        // cpu->getZF() || cpu->getSF()!=cpu->getOF()       
+        bool isZero = genOF(data->currentLazyFlags, reg, true);
+        if (isZero) {
+            DynWidth width;
+            if (data->currentLazyFlags->width == 8) {
+                movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(result.u8), DYN_8bit);
+                width = DYN_8bit;
             }
+            else if (data->currentLazyFlags->width == 16) {
+                movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(result.u16), DYN_16bit);
+                width = DYN_16bit;
+            }
+            else if (data->currentLazyFlags->width == 32) {
+                movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(result.u32), DYN_32bit);
+                width = DYN_32bit;
+            }
+            evaluateToReg(reg, DYN_32bit, DYN_SRC, true, DYN_NOT_SET, 0, width, DYN_LESS_THAN_EQUAL_SIGNED, true, false);
+        } else {
+            genS(data->currentLazyFlags, DYN_SRC);
+            evaluateToReg(DYN_SRC, DYN_32bit, DYN_SRC, true, DYN_NOT_SET, 0, DYN_32bit, DYN_EQUALS, false, false);
+            evaluateToReg(reg, DYN_32bit, reg, true, DYN_NOT_SET, 0, DYN_32bit, DYN_EQUALS, false, false);
+            evaluateToReg(reg, DYN_32bit, reg, false, DYN_SRC, 0, DYN_32bit, DYN_NOT_EQUALS, false, true);
+            genZ(data->currentLazyFlags, DYN_SRC);
+            instRegReg('|', reg, DYN_SRC, DYN_32bit, true);
         }
         return;
     }
