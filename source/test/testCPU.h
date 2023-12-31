@@ -15,6 +15,10 @@ extern CPU* cpu;
 #define STACK_ADDRESS 0xE0000000
 #define HEAP_ADDRESS 0xF0000000
 #define CODE_ADDRESS 0xD0000000
+#define HEAP_SEG 0x213
+#define CODE_SEG 0x223
+#define STACK_SEG 0x233
+#define CODE_SEG_16 0x243
 
 #define DEFAULT 0xDEADBEEF
 

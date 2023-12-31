@@ -155,7 +155,6 @@ void arithRI(Armv8btAsm* data, arithReg32 pfnReg, arithValue32 pfnValue, Arm8BtF
     U32 flags;
     bool hardwareFlags, usesSrc, usesDst, usesResult;
     setupFlagsForArith(data, lazyFlags, flags, hardwareFlags, usesSrc, usesDst, usesResult, resultNeedsZeroExtends);
-    bool needToReleaseReadReg = false;
     U8 readRegDst = setupRegForArith(data, data->decodedOp->reg, usesDst || needRegZeroExtended, xDst, width);
 
     if (needsResult && !usesResult && width == 32 && !usesSrc && !usesDst) {
@@ -183,7 +182,6 @@ void arithIR(Armv8btAsm* data, arithReg32 pfnReg, arithValue32 pfnValue, Arm8BtF
     U32 flags;
     bool hardwareFlags, usesSrc, usesDst, usesResult;
     setupFlagsForArith(data, lazyFlags, flags, hardwareFlags, usesSrc, usesDst, usesResult, resultNeedsZeroExtends);
-    bool needToReleaseReadReg = false;
     U8 readRegSrc = setupRegForArith(data, data->decodedOp->reg, usesSrc, xSrc, width);
 
     if (needsResult && !usesResult && width == 32 && !usesSrc) {
@@ -1664,13 +1662,6 @@ void opXchgE32R32(Armv8btAsm* data) {
 //     cpu->addFlag(CF | OF);
 // }
 // cpu->reg[regResult].u16 = (U16)res;
-void doDimulR16R16(Armv8btAsm* data, U8 dst, U8 src1, U8 src2) {
-    U8 tmpReg = data->getTmpReg();
-    data->signExtend(tmpReg, data->getNativeReg(data->decodedOp->reg), 16);
-    imul16(data, tmpReg, data->getNativeReg(data->decodedOp->rm), data->getNativeReg(data->decodedOp->reg), 0, false);
-    data->releaseTmpReg(tmpReg);
-}
-
 void opDimulR16R16(Armv8btAsm* data) {
     U8 tmpReg = data->getTmpReg();
     data->signExtend(tmpReg, data->getNativeReg(data->decodedOp->reg), 16);
@@ -2189,7 +2180,7 @@ void pushA16_reg(Armv8btAsm* data, U8 inESP, U8 outESP, U8 reg) {
     data->andRegs32(addressReg, outESP, xStackMask);
     data->addRegs32(addressReg, addressReg, xSS);
     U8 memReg = data->getHostMem(addressReg);
-    data->writeMem32RegOffset(reg, memReg, addressReg);
+    data->writeMem16RegOffset(reg, memReg, addressReg);
     data->releaseHostMem(memReg);
     data->releaseTmpReg(addressReg);
 }
@@ -2258,7 +2249,6 @@ void popA16_reg(Armv8btAsm* data, U8 inESP, U8 outESP, U8 reg) {
 
 void opPopA16(Armv8btAsm* data) {
     U8 tmpSP = data->getTmpReg();
-    U8 addressReg = data->getTmpReg();
 
     popA16_reg(data, xESP, tmpSP, xEDI);
     popA16_reg(data, tmpSP, tmpSP, xESI);
@@ -2271,7 +2261,6 @@ void opPopA16(Armv8btAsm* data) {
 
     data->movRegToReg(xESP, tmpSP, 16, false);
     data->releaseTmpReg(tmpSP);
-    data->releaseTmpReg(addressReg);
 }
 
 void popA32_reg(Armv8btAsm* data, U8 inESP, U8 outESP, U8 reg) {
@@ -2284,7 +2273,7 @@ void popA32_reg(Armv8btAsm* data, U8 inESP, U8 outESP, U8 reg) {
 
         // this->seg[SS].address + (THIS_ESP & this->stackMask)
         data->andRegs32(tmpReg, inESP, xStackMask);
-        data->addRegs32(tmpReg, tmpReg, inESP);
+        data->addRegs32(tmpReg, tmpReg, xSS);
 
         U8 memReg = data->getHostMem(tmpReg);
         data->readMem32RegOffset(reg, memReg, tmpReg);
@@ -2296,7 +2285,6 @@ void popA32_reg(Armv8btAsm* data, U8 inESP, U8 outESP, U8 reg) {
 
 void opPopA32(Armv8btAsm* data) {
     U8 tmpSP = data->getTmpReg();
-    U8 addressReg = data->getTmpReg();
 
     // EDI = cpu->pop32();
     popA32_reg(data, xESP, tmpSP, xEDI);
@@ -2310,7 +2298,6 @@ void opPopA32(Armv8btAsm* data) {
 
     data->movRegToReg(xESP, tmpSP, 32, false);
     data->releaseTmpReg(tmpSP);
-    data->releaseTmpReg(addressReg);
 }
 
 void opPush16(Armv8btAsm* data) {
@@ -2613,7 +2600,11 @@ static void doCMov(Armv8btAsm* data, Conditional conditional, bool mem, U32 widt
 static void doJump(Armv8btAsm* data, Conditional conditional) {
     std::function f = [data]() {
         // :TODO: use a local jump if possible
-        data->loadConst(xBranch, data->ip + data->decodedOp->imm);
+        U32 eip = data->ip + data->decodedOp->imm;
+        if (!data->cpu->isBig()) {
+            eip &= 0xFFFF;
+        }
+        data->loadConst(xBranch, eip);
         data->jmpReg(xBranch, false);
     };
     doCondition(data, conditional, f);
@@ -3035,6 +3026,7 @@ void opCallAp(Armv8btAsm* data) {
     data->callHost((void*)common_call);    
     data->syncRegsToHost();
     data->doJmp(true);
+    data->done = true;
 }
 
 void opCallFar(Armv8btAsm* data) {
@@ -3052,6 +3044,7 @@ void opCallFar(Armv8btAsm* data) {
     data->callHost((void*)common_call);
     data->syncRegsToHost();
     data->doJmp(true);
+    data->done = true;
 }
 
 void opJmpAp(Armv8btAsm* data) {
@@ -3062,12 +3055,13 @@ void opJmpAp(Armv8btAsm* data) {
     data->mov64(0, xCPU); // param 1 (CPU)
     data->loadConst(1, 0); // param 2 (big = false)
     data->loadConst(2, data->decodedOp->imm); // param 3 (selector)
-    data->peekNativeReg16(3, data->decodedOp->disp); // param 4 (offset)
+    data->loadConst(3, data->decodedOp->disp); // param 4 (offset)
     data->loadConst(4, data->ip); // param 5 (oldEip)
 
     data->callHost((void*)common_jmp);
     data->syncRegsToHost();
     data->doJmp(true);
+    data->done = true;
 }
 void opJmpFar(Armv8btAsm* data) {
     kpanic("Need to test");
@@ -3077,12 +3071,13 @@ void opJmpFar(Armv8btAsm* data) {
     data->mov64(0, xCPU); // param 1 (CPU)
     data->loadConst(1, 1); // param 2 (big = true)
     data->loadConst(2, data->decodedOp->imm); // param 3 (selector)
-    data->peekNativeReg16(3, data->decodedOp->disp); // param 4 (offset)
+    data->loadConst(3, data->decodedOp->disp); // param 4 (offset)
     data->loadConst(4, data->ip); // param 5 (oldEip)
 
     data->callHost((void*)common_jmp);
     data->syncRegsToHost();
     data->doJmp(true);
+    data->done = true;
 }
 void opWait(Armv8btAsm* data) {
     // :TODO: nop?
@@ -3146,13 +3141,12 @@ static void doRetn32(Armv8btAsm* data, U32 bytes) {
 }
 static void doRetf(Armv8btAsm* data, U32 big) {
     // kpanic("Need to test");
-    // cpu->eip.u32 += op->len; cpu->ret(0, op->imm);    
+    // cpu->ret(0, op->imm);
     data->syncRegsFromHost();
     // void common_ret(CPU* cpu, U32 big, U32 bytes)
     data->mov64(0, xCPU); // param 1 (CPU)
     data->loadConst(1, big); // param 2
     data->loadConst(2, data->decodedOp->imm); // param 3 (bytes)
-    data->startOfOpIp = data->ip;
     data->callHost((void*)common_ret);
     data->syncRegsToHost();
     data->doJmp(true);
@@ -3494,7 +3488,7 @@ void opEnter16(Armv8btAsm* data) {
     doEnter(data, false, data->decodedOp->imm, data->decodedOp->disp);
 }
 void opEnter32(Armv8btAsm* data) {
-    kpanic("Need to test");
+    //kpanic("Need to test");
     doEnter(data, true, data->decodedOp->imm, data->decodedOp->disp);
 }
 void opLeave16(Armv8btAsm* data) {
@@ -3523,11 +3517,10 @@ void doLoadSegment(Armv8btAsm* data, bool big) {
     //     NEXT_DONE();
     // }
     U8 addressReg = data->getAddressReg();
-    U8 valReg = data->getTmpReg();
 
     data->syncRegsFromHost();
-
-    data->readMemory(addressReg, valReg, (big?32:16), true);
+    // we need this an not a tmpReg because it needs to survive callHost
+    data->readMemory(addressReg, calleeSavedReg, (big?32:16), true);
     data->addValue32(addressReg, addressReg, (big?4:2));
 
     // U32 common_setSegment(CPU * cpu, U32 seg, U32 value)
@@ -3537,7 +3530,9 @@ void doLoadSegment(Armv8btAsm* data, bool big) {
 
     data->releaseTmpReg(addressReg);
     data->callHost((void*)common_setSegment);
-
+    U8 valReg = data->getTmpReg();
+    // must move out of calleeSavedReg before syncRegsToHost
+    data->movRegToReg(valReg, calleeSavedReg, 32, 0);
     data->doIf(0, 0, DO_IF_EQUAL, [data]() {
         data->doJmp(true);
         }, [data, valReg, big]() {
@@ -3745,7 +3740,7 @@ void opCallJw(Armv8btAsm* data) {
     // cpu->eip.u32 += (S16)op->imm;
     U8 tmpReg = data->getRegWithConst(data->ip);
     data->pushNativeReg16(tmpReg);
-    data->loadConst(tmpReg, data->ip + (S32)((S16)data->decodedOp->imm));
+    data->loadConst(tmpReg, (data->ip + (S16)data->decodedOp->imm) & 0xFFFF);
     data->jmpReg(tmpReg, false);
     data->releaseTmpReg(tmpReg);
     data->done = true;
@@ -3764,45 +3759,46 @@ void opCallJd(Armv8btAsm* data) {
 void opJmpJw(Armv8btAsm* data) {
     //kpanic("Need to test");
     // cpu->eip.u32 += (S16)op->imm;
-    U8 tmpReg = data->getRegWithConst(data->ip + (S32)((S16)(data->decodedOp->imm)));
-    data->jmpReg(tmpReg, false);
-    data->releaseTmpReg(tmpReg);
+    data->jumpTo(data->ip + (S16)(data->decodedOp->imm));
     data->done = true;
 }
 void opJmpJd(Armv8btAsm* data) {
     // kpanic("Need to test");
     // cpu->eip.u32 += (S32)op->imm;
-    U8 tmpReg = data->getRegWithConst(data->ip + (S32)(data->decodedOp->imm));
-    data->jmpReg(tmpReg, false);
-    data->releaseTmpReg(tmpReg);
+    data->jumpTo(data->ip + (S32)(data->decodedOp->imm));
     data->done = true;
 }
 void opJmpJb(Armv8btAsm* data) {
     // kpanic("Need to test");
     // cpu->eip.u32 += (S8)op->imm;
-    U8 tmpReg = data->getRegWithConst(data->ip + (S32)((S8)(data->decodedOp->imm)));
-    data->jmpReg(tmpReg, false);
-    data->releaseTmpReg(tmpReg);
+    data->jumpTo(data->ip + (S8)(data->decodedOp->imm));
     data->done = true;
 }
 void opCallR16(Armv8btAsm* data) {
     // kpanic("Need to test");
+    // U16 dest = cpu->reg[op->reg].u16;
     // cpu->push16(cpu->eip.u32 + op->len);
-    // cpu->eip.u32 = cpu->reg[op->reg].u16;
-    U8 tmpReg = data->getRegWithConst(data->ip);
-    data->pushNativeReg16(tmpReg);
+    // cpu->eip.u32 = dest;
+    U8 tmpReg2 = data->getRegWithConst(data->ip);    
+    U8 tmpReg = data->getTmpReg();
     data->movRegToReg(tmpReg, data->getNativeReg(data->decodedOp->reg), 16, true);
+    data->pushNativeReg16(tmpReg2);
+    data->releaseTmpReg(tmpReg2);
     data->jmpReg(tmpReg, false);
-    data->releaseTmpReg(tmpReg);
+    data->releaseTmpReg(tmpReg);    
     data->done = true;
 }
 void opCallR32(Armv8btAsm* data) {
     // kpanic("Need to test");
+    // U32 dest = cpu->reg[op->reg].u32;
     // cpu->push32(cpu->eip.u32 + op->len);
-    // cpu->eip.u32 = cpu->reg[op->reg].u32;
-    U8 tmpReg = data->getRegWithConst(data->ip);
-    data->pushNativeReg32(tmpReg);
-    data->jmpReg(data->getNativeReg(data->decodedOp->reg), false);
+    // cpu->eip.u32 = dest;
+    U8 tmpReg2 = data->getRegWithConst(data->ip);
+    U8 tmpReg = data->getTmpReg();
+    data->movRegToReg(tmpReg, data->getNativeReg(data->decodedOp->reg), 32, false);
+    data->pushNativeReg32(tmpReg2);
+    data->releaseTmpReg(tmpReg2);
+    data->jmpReg(tmpReg, false);
     data->releaseTmpReg(tmpReg);
     data->done = true;
 }
@@ -3867,7 +3863,7 @@ void opCallFarE16(Armv8btAsm* data) {
     data->done = true;
 }
 void opCallFarE32(Armv8btAsm* data) {
-    kpanic("Need to test");
+    // kpanic("Need to test");
     // U32 eaa = eaa(cpu, op);
     // U32 newip = readd(eaa);
     // U16 newcs = readw(eaa + 4);
@@ -3892,7 +3888,7 @@ void opCallFarE32(Armv8btAsm* data) {
 void opJmpR16(Armv8btAsm* data) {
     // kpanic("Need to test");
     // cpu->eip.u32 = cpu->reg[op->reg].u16;
-    U8 tmpReg = data->getRegWithConst(data->ip);
+    U8 tmpReg = data->getTmpReg();
     data->movRegToReg(tmpReg, data->getNativeReg(data->decodedOp->reg), 16, true);
     data->jmpReg(tmpReg, false);
     data->releaseTmpReg(tmpReg);
@@ -3952,7 +3948,7 @@ void opJmpFarE16(Armv8btAsm* data) {
     data->done = true;
 }
 void opJmpFarE32(Armv8btAsm* data) {
-    kpanic("Need to test");
+    // kpanic("Need to test");
     // U32 eaa = eaa(cpu, op);
     // U32 newip = readd(eaa);
     // U16 newcs = readw(eaa + 4);
@@ -4473,6 +4469,110 @@ void opLMSW(Armv8btAsm* data) {
 }
 void opINVLPG(Armv8btAsm* data) {
     klog("ARMv8: INVLPG not implemented");
+}
+// data->movReg8ToReg(untranslatedReg, flagReg);
+// readReg = data->getReadNativeReg8(untranslatedReg);
+void opXaddR8R8(Armv8btAsm* data) {
+    // cpu->src.u8 = *cpu->reg8[op->reg];
+    // cpu->dst.u8 = *cpu->reg8[op->rm];
+    // cpu->result.u8 = cpu->dst.u8 + cpu->src.u8;
+    // cpu->lazyFlags = FLAGS_ADD8;
+    // *cpu->reg8[op->reg] = cpu->dst.u8;
+    // *cpu->reg8[op->rm] = cpu->result.u8;
+    U32 flags = data->flagsNeeded();
+
+    data->movReg8ToReg(data->decodedOp->rm, xDst);
+    data->movReg8ToReg(data->decodedOp->reg, xSrc);
+    data->addRegs32(xResult, xDst, xSrc);
+    if (flags) {
+        data->zeroExtend(xResult, xResult, 8);
+    }
+    data->movRegToReg8(xDst, data->decodedOp->reg);
+    data->movRegToReg8(xResult, data->decodedOp->rm);
+    ARM8BT_FLAGS_ADD8->setFlags(data, flags);
+}
+void opXaddR8E8(Armv8btAsm* data) {
+    // cpu->src.u8 = *cpu->reg8[op->reg];
+    // cpu->dst.u8 = readb(address);
+    // cpu->result.u8 = cpu->dst.u8 + cpu->src.u8;
+    // cpu->lazyFlags = FLAGS_ADD8;
+    // *cpu->reg8[op->reg] = cpu->dst.u8;
+    // writeb(address, cpu->result.u8);
+    U32 flags = data->flagsNeeded();
+    
+    data->movReg8ToReg(data->decodedOp->reg, xSrc);
+
+    U8 addressReg = data->getAddressReg();
+    U8 memReg = data->getHostMem(addressReg);
+    data->addRegs64(addressReg, addressReg, memReg);
+    data->releaseHostMem(memReg);
+
+    U32 restartPos = data->bufferPos;
+    data->readMemory(addressReg, xDst, 8, false, data->decodedOp->lock != 0);
+    data->addRegs32(xResult, xSrc, xDst);
+    if (flags) {
+        data->zeroExtend(xResult, xResult, 8);
+    }
+    data->writeMemory(addressReg, xResult, 8, false, data->decodedOp->lock != 0, xDst, restartPos);
+    data->movRegToReg8(xDst, data->decodedOp->reg);
+    data->releaseTmpReg(addressReg);
+    ARM8BT_FLAGS_ADD8->setFlags(data, flags);
+}
+
+void opXaddR16R16(Armv8btAsm* data) {
+    // cpu->src.u16 = cpu->reg[op->reg].u16;
+    // cpu->dst.u16 = cpu->reg[op->rm].u16;
+    // cpu->result.u16 = cpu->dst.u16 + cpu->src.u16;
+    // cpu->lazyFlags = FLAGS_ADD16;
+    // cpu->reg[op->reg].u16 = cpu->dst.u16;
+    // cpu->reg[op->rm].u16 = cpu->result.u16;
+    U32 flags = data->flagsNeeded();
+    bool needsHardwareFlags = false;
+
+    if (ARM8BT_FLAGS_ADD16->usesDst(flags)) {
+        data->movRegToReg(xDst, data->getNativeReg(data->decodedOp->rm), 16, true);
+    }
+    if (ARM8BT_FLAGS_ADD16->usesSrc(flags)) {
+        data->movRegToReg(xSrc, data->getNativeReg(data->decodedOp->reg), 16, true);
+    }
+    needsHardwareFlags = ARM8BT_FLAGS_ADD16->usesHardwareFlags(flags);
+    data->addRegs32(xResult, data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->rm), 0, needsHardwareFlags);
+    if (flags) {
+        data->zeroExtend(xResult, xResult, 16);
+    }
+    data->movRegToReg(data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->rm), 16, false);
+    data->movRegToReg(data->getNativeReg(data->decodedOp->rm), xResult, 16, false);
+    ARM8BT_FLAGS_ADD16->setFlags(data, flags);
+}
+void opXaddR16E16(Armv8btAsm* data) {
+    // cpu->src.u16 = cpu->reg[op->reg].u16;
+    // cpu->dst.u16 = readw(address);
+    // cpu->result.u16 = cpu->dst.u16 + cpu->src.u16;
+    // cpu->lazyFlags = FLAGS_ADD16;
+    // cpu->reg[op->reg].u16 = cpu->dst.u16;
+    // writew(address, cpu->result.u16);
+    U32 flags = data->flagsNeeded();
+    bool needsHardwareFlags = false;
+
+    if (ARM8BT_FLAGS_ADD16->usesSrc(flags)) {
+        data->movRegToReg(xSrc, data->getNativeReg(data->decodedOp->reg), 16, true);
+    }
+    needsHardwareFlags = ARM8BT_FLAGS_ADD16->usesHardwareFlags(flags);
+    U8 addressReg = data->getAddressReg();
+    U8 memReg = data->getHostMem(addressReg);
+    data->addRegs64(addressReg, addressReg, memReg);
+    data->releaseHostMem(memReg);
+
+    U32 restartPos = data->bufferPos;
+    data->readMemory(addressReg, xDst, 16, false, data->decodedOp->lock != 0);
+    data->addRegs32(xResult, data->getNativeReg(data->decodedOp->reg), xDst, 0, needsHardwareFlags);
+    if (flags) {
+        data->zeroExtend(xResult, xResult, 16);
+    }
+    data->writeMemory(addressReg, xResult, 16, false, data->decodedOp->lock != 0, xDst, restartPos);
+    data->movRegToReg(data->getNativeReg(data->decodedOp->reg), xDst, 16, false);
+    data->releaseTmpReg(addressReg);
+    ARM8BT_FLAGS_ADD16->setFlags(data, flags);
 }
 
 void opXaddR32R32(Armv8btAsm* data) {
@@ -7345,6 +7445,10 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opLMSW,
     opINVLPG,
 
+    opXaddR8R8,
+    opXaddR8E8,
+    opXaddR16R16,
+    opXaddR16E16,
     opXaddR32R32,
     opXaddR32E32,
     opCmpXchg8b,

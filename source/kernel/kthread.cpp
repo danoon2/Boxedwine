@@ -70,22 +70,37 @@ void KThread::reset() {
 
 void KThread::setupStack() {
     U32 page = 0;
-    U32 pageCount = MAX_STACK_SIZE >> K_PAGE_SHIFT; // 1MB for max stack
-    pageCount+=K_NATIVE_PAGES_PER_PAGE*2; // guard pages
+    U32 pageCount = MAX_STACK_SIZE >> K_PAGE_SHIFT;
     if (!this->memory->findFirstAvailablePage(ADDRESS_PROCESS_STACK_START, pageCount, &page, false, true)) {
 		if (!this->memory->findFirstAvailablePage(0xC0000, pageCount, &page, false, true)) {
 			if (!this->memory->findFirstAvailablePage(0x80000, pageCount, &page, false, true)) {
 				kpanic("Failed to allocate stack for thread");
             }
         }
-    }
-    this->memory->allocPages(page+K_NATIVE_PAGES_PER_PAGE, pageCount-2*K_NATIVE_PAGES_PER_PAGE, PAGE_READ|PAGE_WRITE, 0, 0, 0);
-    // 1 page above (catch stack underrun)
-    this->memory->allocPages(page+pageCount-K_NATIVE_PAGES_PER_PAGE, K_NATIVE_PAGES_PER_PAGE, 0, 0, 0, 0);
+    }    
+#ifdef BOXEDWINE_DEFAULT_MMU
+    // 1 page above
+    this->memory->allocPages(page + pageCount - K_NATIVE_PAGES_PER_PAGE, K_NATIVE_PAGES_PER_PAGE, 0, 0, 0, 0);
+
+    // its ok to allocate all of the stack, the pages will be on demand
+    this->memory->allocPages(page + K_NATIVE_PAGES_PER_PAGE, pageCount - 2 * K_NATIVE_PAGES_PER_PAGE, PAGE_READ | PAGE_WRITE, 0, 0, 0);
+
     // 1 page below (catch stack overrun)
     this->memory->allocPages(page, K_NATIVE_PAGES_PER_PAGE, 0, 0, 0, 0);
+#else
+    // top of stack guard page
+    this->memory->allocPages(page + pageCount - K_NATIVE_PAGES_PER_PAGE, K_NATIVE_PAGES_PER_PAGE, 0, 0, 0, 0);
+
+    // allocate initial stack, if the stack needs to grow an exception will happen and the exception handler will allocate the necessary pages
+    this->memory->allocPages(page + pageCount - K_NATIVE_PAGES_PER_PAGE - INITIAL_STACK_PAGES, INITIAL_STACK_PAGES, PAGE_READ | PAGE_WRITE, 0, 0, 0);
+
+    // reserve memory but don't allocate rest of stack
+    this->memory->allocPages(page, pageCount - K_NATIVE_PAGES_PER_PAGE - INITIAL_STACK_PAGES, 0, 0, 0, 0);
+#endif
+
     this->stackPageCount = pageCount;
     this->stackPageStart = page;
+    this->stackPageSize = INITIAL_STACK_PAGES + K_NATIVE_PAGES_PER_PAGE;
     this->cpu->reg[4].u32 = (this->stackPageStart + this->stackPageCount - K_NATIVE_PAGES_PER_PAGE) << K_PAGE_SHIFT;  
 }
 
@@ -98,6 +113,7 @@ KThread::KThread(U32 id, const std::shared_ptr<KProcess>& process) :
     cpu(NULL),
     stackPageStart(0),
     stackPageCount(0),
+    stackPageSize(0),
     process(process),
     memory(0),
     interrupted(false),
@@ -199,8 +215,6 @@ U32 KThread::signal(U32 signal, bool wait) {
                     if (waitingCond) {
                         this->startSignal = true;
                         this->runSignal(K_SIGQUIT, -1, 0);
-                    } else {
-                        int ii = 0;
                     }
                     waitCond->signalAll();
                     waitCond->unlock();
@@ -828,7 +842,7 @@ void KThread::seg_mapper(U32 address, bool readFault, bool writeFault, bool thro
 #ifdef BOXEDWINE_HAS_SETJMP
             longjmp(this->cpu->runBlockJump, 1);		
 #else
-            kpanic("setjmp is required for this app but it was compiled into boxedwine");
+            kpanic("setjmp is required for this app but it wasn't compiled into boxedwine");
 #endif
         }
     } else {
@@ -860,6 +874,7 @@ void KThread::clone(KThread* from) {
     this->sigMask = from->sigMask;
     this->stackPageStart = from->stackPageStart;
     this->stackPageCount = from->stackPageCount;
+    this->stackPageSize = from->stackPageSize;
     this->waitingForSignalToEndMaskToRestore = from->waitingForSignalToEndMaskToRestore;
     this->cpu->clone(from->cpu);
     this->cpu->thread = this;
@@ -897,7 +912,7 @@ U32 KThread::modify_ldt(U32 func, U32 ptr, U32 count) {
         return 16;
     } else {
         kpanic("syscall_modify_ldt unknown func: %d", func);
-        return -1;
+        return -K_ENOSYS;
     }
 }
 

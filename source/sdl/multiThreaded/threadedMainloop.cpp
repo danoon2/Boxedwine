@@ -15,7 +15,6 @@ extern U32 platformThreadCount;
 extern U32 exceptionCount;
 extern U32 dynamicCodeExceptionCount;
 static U32 lastTitleUpdate = 0;
-extern U32 nativeMemoryPagesAllocated;
 
 static THREAD_LOCAL bool isMainThread;
 bool isMainthread() {
@@ -75,7 +74,7 @@ bool doMainLoop() {
             if (KSystem::title.length()) {
                 snprintf(tmp, sizeof(tmp), "%s", KSystem::title.c_str());
             } else {
-                snprintf(tmp, sizeof(tmp), "BoxedWine " BOXEDWINE_VERSION_DISPLAY " %dMB", (int)(nativeMemoryPagesAllocated >> 8)*K_NATIVE_PAGES_PER_PAGE);
+                snprintf(tmp, sizeof(tmp), "BoxedWine " BOXEDWINE_VERSION_DISPLAY);
             }
             KNativeWindow::getNativeWindow()->setTitle(tmp);
         }

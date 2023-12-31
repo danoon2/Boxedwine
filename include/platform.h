@@ -132,6 +132,10 @@ public:
     static U32 allocateNativeMemory(U64 address); // page must be aligned to Platform::getAllocationGranularity
     static U32 freeNativeMemory(U64 address); // page  must be aligned to Platform::getAllocationGranularity
     static U32 updateNativePermission(U64 address, U32 permission, U32 len = 0); // page must be aligned to Platform::getPagePermissionGranularity.  when len == 0, it will default to getPagePermissionGranularity() << K_PAGE_SHIFT
+    static void* reserveNativeMemory(bool large);
+    static void releaseNativeMemory(void* address, U64 len);
+    static void commitNativeMemory(void* address, U64 len);
+    static void* allocExecutable64kBlock(U32 count);
 
 #ifdef BOXEDWINE_MULTI_THREADED
     static void setCpuAffinityForThread(KThread* thread, U32 count);
@@ -163,15 +167,6 @@ INLINE void safe_strcat(char* dest, const char* src, int bufferSize) {
     strcat(dest, src);
 }
 
-#if defined BOXEDWINE_DYNAMIC
-void freeExecutable64kBlock(void* p);
-void* allocExecutable64kBlock(int count);
-#endif
-
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-class Memory;
-void* allocExecutable64kBlock(Memory* memory, U32 count);
-#endif
 #ifdef BOXEDWINE_X64
 bool platformHasBMI2();
 #endif

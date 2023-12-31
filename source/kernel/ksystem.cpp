@@ -62,6 +62,7 @@ bool KSystem::useLargeAddressSpace = false;
 #else
 bool KSystem::useLargeAddressSpace = true;
 #endif
+bool KSystem::useSingleMemOffset = true;
 #endif
 #ifdef BOXEDWINE_MULTI_THREADED
 U32 KSystem::cpuAffinityCountForApp = 0;

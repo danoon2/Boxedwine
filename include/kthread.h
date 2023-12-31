@@ -89,6 +89,7 @@ public:
     CPU* cpu;
     U32 stackPageStart;
     U32 stackPageCount;
+    U32 stackPageSize;
     std::shared_ptr<KProcess> process;
     Memory* memory;
     bool interrupted;

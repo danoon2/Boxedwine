@@ -8,7 +8,7 @@
 #ifdef BOXEDWINE_MULTI_THREADED
 
 void syncFromException(struct _EXCEPTION_POINTERS *ep, bool includeFPU) {
-    BtCPU* cpu = (BtCPU*)KThread::currentThread()->cpu;
+    x64CPU* cpu = (x64CPU*)KThread::currentThread()->cpu;
     EAX = (U32)ep->ContextRecord->Rax;
     ECX = (U32)ep->ContextRecord->Rcx;
     EDX = (U32)ep->ContextRecord->Rdx;
@@ -17,6 +17,16 @@ void syncFromException(struct _EXCEPTION_POINTERS *ep, bool includeFPU) {
     EBP = (U32)ep->ContextRecord->Rbp;
     ESI = (U32)ep->ContextRecord->Rsi;
     EDI = (U32)ep->ContextRecord->Rdi;
+
+    cpu->exceptionRSI = (U32)ep->ContextRecord->Rsi;
+    cpu->exceptionRDI = (U32)ep->ContextRecord->Rdi;
+    cpu->exceptionR8 = (U32)ep->ContextRecord->R8;
+    cpu->exceptionR9 = (U32)ep->ContextRecord->R9;
+    cpu->exceptionR10 = (U32)ep->ContextRecord->R10;
+    cpu->destEip = (U32)ep->ContextRecord->R9;
+    cpu->regPage = ep->ContextRecord->R8;
+    cpu->regOffset = ep->ContextRecord->R9;
+
     cpu->flags = ep->ContextRecord->EFlags;
     cpu->lazyFlags = FLAGS_NONE;
     for (int i=0;i<8;i++) {
@@ -113,15 +123,10 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
         return EXCEPTION_CONTINUE_SEARCH;
     }	
 
-    std::function<void(DecodedOp*)> doSyncFrom = [ep] (DecodedOp* op) {
-            syncFromException(ep, op?op->isFpuOp():true);
-        };
-    std::function<void(DecodedOp*)> doSyncTo = [ep] (DecodedOp* op) {
-            syncToException(ep, op?op->isFpuOp():true);
-        };
-
-    U64 result = cpu->startException(ep->ExceptionRecord->ExceptionInformation[1], ep->ExceptionRecord->ExceptionInformation[0]==0, doSyncFrom, doSyncTo);
+    syncFromException(ep, true);
+    U64 result = cpu->startException(ep->ExceptionRecord->ExceptionInformation[1], ep->ExceptionRecord->ExceptionInformation[0]==0);
     if (result) {
+        syncToException(ep, true);
         ep->ContextRecord->Rip = result;
         return EXCEPTION_CONTINUE_EXECUTION;
     }
@@ -136,29 +141,10 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
             ep->ContextRecord->Rip = rip;
             return EXCEPTION_CONTINUE_EXECUTION;
         }
-    } else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION && cpu->thread->memory->isAddressExecutable((void*)ep->ContextRecord->Rip)) {
-        std::function<U64(U32 reg)> getReg = [ep] (U32 reg) {
-            if (reg == 8)
-                return ep->ContextRecord->R8;
-            if (reg == 9)
-                return ep->ContextRecord->R9;
-            if (reg == 6)
-                return ep->ContextRecord->Rsi;
-            if (reg == 7)
-                return ep->ContextRecord->Rdi;
-            kpanic("Unhandled reg: getReg: %d", reg);
-            return (U64)0;
-        };
-        std::function<void(U32 reg, U64 value)> setReg = [ep](U32 reg, U64 value) {
-            if (reg == 10) {
-                ep->ContextRecord->R10 = value;
-            } else {
-                kpanic("Unhandled reg: setReg: %d", reg);
-            }
-        };
-
-        U64 rip = cpu->handleAccessException(ep->ContextRecord->Rip, ep->ExceptionRecord->ExceptionInformation[1], ep->ExceptionRecord->ExceptionInformation[0]==0, getReg, setReg, doSyncFrom, doSyncTo);
+    } else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION && cpu->thread->memory->isAddressExecutable((void*)ep->ContextRecord->Rip)) {        
+        U64 rip = cpu->handleAccessException(ep->ContextRecord->Rip, ep->ExceptionRecord->ExceptionInformation[1], ep->ExceptionRecord->ExceptionInformation[0]==0);        
         if (rip) {
+            syncToException(ep, true);
             ep->ContextRecord->Rip = rip;
         }
         return EXCEPTION_CONTINUE_EXECUTION;
@@ -167,7 +153,8 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
     } else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_FLT_DIVIDE_BY_ZERO) {
         int code = getFpuException(ep->ContextRecord->FltSave.ControlWord, ep->ContextRecord->FltSave.StatusWord);
 
-        ep->ContextRecord->Rip = cpu->handleFpuException(code, doSyncFrom, doSyncTo);
+        ep->ContextRecord->Rip = cpu->handleFpuException(code);
+        syncToException(ep, true);
         return EXCEPTION_CONTINUE_EXECUTION;
     } else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_DATATYPE_MISALIGNMENT) {
 		// :TODO: figure out how AC got set, I've only seen this while op logging
@@ -180,13 +167,20 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
 static PVOID pHandler;
 U32 platformThreadCount = 0;
 
+#ifdef __TEST
+void initThreadForTesting() {
+    if (!pHandler) {
+        pHandler = AddVectoredExceptionHandler(1, seh_filter);
+    }
+}
+#endif
 DWORD WINAPI platformThreadProc(LPVOID lpThreadParameter) {
     KThread* thread = (KThread*)lpThreadParameter;
     BtCPU* cpu = (BtCPU*)thread->cpu;
     
     if (!pHandler) {
         pHandler = AddVectoredExceptionHandler(1,seh_filter);
-    }       
+    }
     cpu->startThread();
     return 0;
 }

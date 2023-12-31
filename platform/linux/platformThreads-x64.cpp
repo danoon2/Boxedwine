@@ -307,6 +307,9 @@ void platformHandler(int sig, siginfo_t* info, void* vcontext) {
     x64Cpu->exceptionR8 = context->CONTEXT_R8;
     x64Cpu->exceptionR9 = context->CONTEXT_R9;
     x64Cpu->exceptionR10 = context->CONTEXT_R10;
+    x64Cpu->destEip = (U32)context->CONTEXT_R9;
+    x64Cpu->regPage = context->CONTEXT_R8;
+    x64Cpu->regOffset = context->CONTEXT_R9;
     if (cpu->thread->memory->isAddressExecutable((void*)context->CONTEXT_RIP)) {
         unsigned char* hostAddress = (unsigned char*)context->CONTEXT_RIP;
         std::shared_ptr<BtCodeChunk> chunk = cpu->thread->memory->getCodeChunkContainingHostAddress(hostAddress);
@@ -335,7 +338,7 @@ void signalHandler() {
     KThread* currentThread = KThread::currentThread();
     x64CPU* cpu = (x64CPU*)currentThread->cpu;
 
-    U64 result = cpu->startException(cpu->exceptionAddress, cpu->exceptionReadAddress, NULL, NULL);
+    U64 result = cpu->startException(cpu->exceptionAddress, cpu->exceptionReadAddress);
     if (result) {
         cpu->returnHostAddress = result;
         return;
@@ -358,26 +361,7 @@ void signalHandler() {
         cpu->returnHostAddress = cpu->exceptionIp;
         return;
     } else if ((cpu->exceptionSigNo == SIGBUS || cpu->exceptionSigNo == SIGSEGV) && cpu->thread->memory->isAddressExecutable((void*)cpu->exceptionIp)) {
-        std::function<U64(U32 reg)> getReg = [cpu](U32 reg) {
-            if (reg == 8)
-                return cpu->exceptionR8;
-            if (reg == 9)
-                return cpu->exceptionR9;
-            if (reg == 6)
-                return cpu->exceptionRSI;
-            if (reg == 7)
-                return cpu->exceptionRDI;
-            kpanic("Unhandled reg: getReg: %d", reg);
-            return (U64)0;
-        };
-        std::function<void(U32 reg, U64 value)> setReg = [cpu](U32 reg, U64 value) {
-            if (reg == 10) {
-                cpu->exceptionR10 = value;
-            } else {
-                kpanic("Unhandled reg: setReg: %d", reg);
-            }
-        };
-        U64 rip = cpu->handleAccessException(cpu->exceptionIp, cpu->exceptionAddress, cpu->exceptionReadAddress, getReg, setReg, NULL, NULL);
+        U64 rip = cpu->handleAccessException(cpu->exceptionIp, cpu->exceptionAddress, cpu->exceptionReadAddress);
         if (rip) {
             cpu->returnHostAddress = rip;
             return;
@@ -387,7 +371,7 @@ void signalHandler() {
         return;
     } else if (cpu->exceptionSigNo == SIGFPE) {
         int code = getFPUCode(cpu->exceptionSigCode);
-        cpu->returnHostAddress = cpu->handleFpuException(code, NULL, NULL);
+        cpu->returnHostAddress = cpu->handleFpuException(code);
         return;
     }
     kpanic("unhandled exception %d", cpu->exceptionSigNo);

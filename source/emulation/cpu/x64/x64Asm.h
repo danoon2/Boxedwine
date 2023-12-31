@@ -43,10 +43,9 @@ typedef void (*PFN_FPU)(CPU* cpu);
 class X64Asm : public X64Data {
 public:  
     X64Asm(x64CPU* cpu);
+    virtual void translateInstruction();
 
-    X64Asm* parent;
-
-    void translateRM(U8 rm, bool checkG, bool checkE, bool isG8bit, bool isE8bit, U8 immWidth);
+    void translateRM(U8 rm, bool checkG, bool checkE, bool isG8bit, bool isE8bit, U8 immWidth, bool calculateHostAddress = true);
     void writeOp(bool isG8bit=false);
     void addDynamicCheck(bool panic);
 	void saveNativeState();
@@ -98,7 +97,7 @@ public:
     void loop(U32 eip, bool ea16);
     void loopz(U32 eip, bool ea16);
     void loopnz(U32 eip, bool ea16);
-    void jumpTo(U32 eip);
+    virtual void jumpTo(U32 eip);
     void jmp(bool big, U32 sel, U32 offset, U32 oldEip);
     void call(bool big, U32 sel, U32 offset, U32 oldEip);
     void retn16(U32 bytes);
@@ -136,10 +135,7 @@ public:
     void invalidOp(U32 op);
     void errorMsg(const char* msg);
     void cpuid();
-    void setNativeFlags(U32 flags, U32 mask);
-    void write64Buffer(U8* buffer, U64 value);
-    void write32Buffer(U8* buffer, U32 value); 
-    void write16Buffer(U8* buffer, U16 value); 
+    void setNativeFlags(U32 flags, U32 mask);    
     void pushNativeFlags();
     void popNativeFlags();
     void logOp(U32 eip);
@@ -211,20 +207,20 @@ private:
     void callHost(void* pfn);
     void callJmp(bool big, U8 rm, bool jmp);
 
-    void translateMemory(U32 rm, bool checkG, bool isG8bit, bool isE8bit);
+    void translateMemory(U32 rm, bool checkG, bool isG8bit, bool isE8bit, bool calculateHostAddress);
     void setRM(U8 rm, bool checkG, bool checkE, bool isG8bit, bool isE8bit);
     void setSib(U8 sib, bool checkBase);
 
     void addWithLea(U8 reg1, bool isReg1Rex, U8 reg2, bool isReg2Rex, S32 reg3, bool isReg3Rex, U8 reg3Shift, S32 displacement, U32 bytes);
     void zeroReg(U8 reg, bool isRexReg, bool keepFlags);
     void doMemoryInstruction(U8 op, U8 reg1, bool isReg1Rex, U8 reg2, bool isReg2Rex, S8 reg3, bool isReg3Rex, U8 reg3Shift, S32 displacement, U8 bytes);
-    void writeHostPlusTmp(U8 rm, bool checkG, bool isG8bit, bool isE8bit, U8 tmpReg);
+    void writeHostPlusTmp(U8 rm, bool checkG, bool isG8bit, bool isE8bit, U8 tmpReg, bool calculateHostAddress);
     U8 getHostMem(U8 regEmulatedAddress, bool isRex);
     U8 getHostMemFromAddress(U32 address);
     void releaseHostMem(U8 reg);
     U8 getRegForSeg(U8 base, U8 tmpReg);
     U8 getRegForNegSeg(U8 base, U8 tmpReg);
-    void translateMemory16(U32 rm, bool checkG, bool isG8bit, bool isE8bit, S8 r1, S8 r2, S16 disp, U8 seg);    
+    void translateMemory16(U32 rm, bool checkG, bool isG8bit, bool isE8bit, S8 r1, S8 r2, S16 disp, U8 seg, bool calculateHostAddress);
 
     void setDisplacement32(U32 disp32);
     void setDisplacement8(U8 disp8);  
@@ -239,7 +235,7 @@ private:
     void andReg(U8 reg, bool isRegRex, U32 mask);
     void writeToEFromReg(U8 rm, U8 reg, bool isRegRex, U8 bytes); // will trash current op data
     void writeToRegFromE(U8 reg, bool isRegRex, U8 rm, U8 bytes); // will trash current op data
-    void getNativeAddressInRegFromE(U8 reg, bool isRegRex, U8 rm); // will trash current op data    
+    void getAddressInRegFromE(U8 reg, bool isRegRex, U8 rm, bool calculateHostAddress = false); // will trash current op data    
 
     void pushFlagsToReg(U8 reg, bool isRexReg, bool includeOF);
     void popFlagsFromReg(U8 reg, bool isRexReg, bool includeOF);

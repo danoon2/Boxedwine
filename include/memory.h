@@ -196,6 +196,12 @@ private:
 public:
     std::shared_ptr<BtCodeChunk> getCodeChunkContainingHostAddress(void* hostAddress);
     void clearHostCodeForWriting(U32 nativePage, U32 count);
+    bool clearCodePageReadOnly(U32 nativePage);
+    void makeCodePageReadOnly(U32 nativePage);
+    void reserveNativeMemory();
+    void releaseNativeMemory();
+    void commitHostAddressSpaceMapping(U32 page, U32 pageCount, U64 defaultValue);
+
     std::shared_ptr<BtCodeChunk> getCodeChunkContainingEip(U32 eip);
     void addCodeChunk(const std::shared_ptr<BtCodeChunk>& chunk);
     void removeCodeChunk(const std::shared_ptr<BtCodeChunk>& chunk);

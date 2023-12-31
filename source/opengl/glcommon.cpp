@@ -134,9 +134,11 @@ void glcommon_glViewport(CPU* cpu) {
     GL_FUNC(pglViewport)(x, y, width, height);
 }
 
+#ifndef BOXEDWINE_64BIT_MMU
 static GLfloat* feedbackBuffer;
 static GLsizei feedbackBufferSize;
 static U32 feedbackBufferAddress;
+#endif
 
 void glcommon_glFeedbackBuffer(CPU* cpu) {
     GLsizei size = ARG1;

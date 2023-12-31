@@ -38,7 +38,7 @@ void logsyscall(const char* fmt, ...) {
     va_start(args, fmt);
     if (1) {
         char tmp[256];
-        vsprintf(tmp, fmt, args);       
+        vsnprintf(tmp, sizeof(tmp), fmt, args);
     }
     va_end(args);
 }

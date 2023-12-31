@@ -3,6 +3,7 @@
 #ifdef BOXEDWINE_X64
 
 #include "x64Asm.h"
+#include "x64Ops.h"
 #include "../common/common_other.h"
 #include "../../../../source/emulation/hardmmu/hard_memory.h"
 #include "../normal/normalCPU.h"
@@ -64,7 +65,7 @@
 #define PARAM_4_REX false
 #endif
 
-X64Asm::X64Asm(x64CPU* cpu) : X64Data(cpu), parent(NULL), tmp1InUse(false), tmp2InUse(false), tmp3InUse(false), tmp4InUse(false), param1InUse(false), param2InUse(false), param3InUse(false), param4InUse(false)  {
+X64Asm::X64Asm(x64CPU* cpu) : X64Data(cpu), tmp1InUse(false), tmp2InUse(false), tmp3InUse(false), tmp4InUse(false), param1InUse(false), param2InUse(false), param3InUse(false), param4InUse(false)  {
 }
 
 void X64Asm::setDisplacement32(U32 disp32) {
@@ -259,10 +260,16 @@ void X64Asm::writeToRegFromValue(U8 reg, bool isRexReg, U64 value, U8 bytes) {
     }
 }
 
-void X64Asm::writeHostPlusTmp(U8 rm, bool checkG, bool isG8bit, bool isE8bit, U8 tmpReg) {
+void X64Asm::writeHostPlusTmp(U8 rm, bool checkG, bool isG8bit, bool isE8bit, U8 tmpReg, bool calculateHostAddress) {
     this->rex |= REX_BASE | REX_SIB_INDEX|REX_MOD_RM;    
     setRM(rm, checkG, false, isG8bit, isE8bit);
-    U8 hostReg = getHostMem(tmpReg, true);
+    U8 hostReg;
+    if (calculateHostAddress) {
+        hostReg = getHostMem(tmpReg, true);
+    } else {
+        hostReg = getTmpReg();
+        zeroReg(hostReg, true, true);
+    }
     setSib(hostReg | (tmpReg << 3), false);
     if (hostReg != HOST_MEM) {
         autoReleaseTmpAfterWriteOp.push_back(hostReg);
@@ -405,7 +412,7 @@ U8 X64Asm::getRegForNegSeg(U8 base, U8 tmpReg) {
     return 0;
 }
 
-void X64Asm::translateMemory16(U32 rm, bool checkG, bool isG8bit, bool isE8bit, S8 r1, S8 r2, S16 disp, U8 seg) {
+void X64Asm::translateMemory16(U32 rm, bool checkG, bool isG8bit, bool isE8bit, S8 r1, S8 r2, S16 disp, U8 seg, bool calculateHostAddress) {
     U32 tmpReg = getTmpReg();
     U32 tmpReg2 = getTmpReg();
 
@@ -421,12 +428,12 @@ void X64Asm::translateMemory16(U32 rm, bool checkG, bool isG8bit, bool isE8bit, 
     addWithLea(tmpReg, true, tmpReg, true, getRegForSeg(seg, tmpReg2), true, 0, 0, 4);
 
     // [HOST_MEM + tmpReg]
-    writeHostPlusTmp((rm & (7<<3)) | 4, checkG, isG8bit, isE8bit, tmpReg);
+    writeHostPlusTmp((rm & (7<<3)) | 4, checkG, isG8bit, isE8bit, tmpReg, calculateHostAddress);
 
     releaseTmpReg(tmpReg2);
 }
 
-void X64Asm::translateMemory(U32 rm, bool checkG, bool isG8bit, bool isE8bit) {
+void X64Asm::translateMemory(U32 rm, bool checkG, bool isG8bit, bool isE8bit, bool calculateHostAddress) {
     if (this->ea16) {
         S16 disp = 0;
         U32 leaDisp = 0;
@@ -448,7 +455,7 @@ void X64Asm::translateMemory(U32 rm, bool checkG, bool isG8bit, bool isE8bit) {
                 addWithLea(G(rm), false, 3, false, 6, false, 0, disp, 2);
                 this->skipWriteOp = true;
             } else {                
-                translateMemory16(rm, checkG, isG8bit, isE8bit, 3, 6, disp, this->ds);
+                translateMemory16(rm, checkG, isG8bit, isE8bit, 3, 6, disp, this->ds, calculateHostAddress);
             }
             break;
         case 0x01: // bx + di           
@@ -456,7 +463,7 @@ void X64Asm::translateMemory(U32 rm, bool checkG, bool isG8bit, bool isE8bit) {
                 addWithLea(G(rm), false, 3, false, 7, false, 0, disp, 2);
                 this->skipWriteOp = true;
             } else {        
-                translateMemory16(rm, checkG, isG8bit, isE8bit, 3, 7, disp, this->ds);
+                translateMemory16(rm, checkG, isG8bit, isE8bit, 3, 7, disp, this->ds, calculateHostAddress);
             }
             break;
         case 0x02: // bp+si     
@@ -464,7 +471,7 @@ void X64Asm::translateMemory(U32 rm, bool checkG, bool isG8bit, bool isE8bit) {
                 addWithLea(G(rm), false, 5, false, 6, false, 0, disp, 2);
                 this->skipWriteOp = true;
             } else {          
-                translateMemory16(rm, checkG, isG8bit, isE8bit, 5, 6, disp, this->ss);
+                translateMemory16(rm, checkG, isG8bit, isE8bit, 5, 6, disp, this->ss, calculateHostAddress);
             }
             break;
         case 0x03: // bp+di             
@@ -472,7 +479,7 @@ void X64Asm::translateMemory(U32 rm, bool checkG, bool isG8bit, bool isE8bit) {
                 addWithLea(G(rm), false, 5, false, 7, false, 0, disp, 2);
                 this->skipWriteOp = true;
             } else {             
-                translateMemory16(rm, checkG, isG8bit, isE8bit, 5, 7, disp, this->ss);
+                translateMemory16(rm, checkG, isG8bit, isE8bit, 5, 7, disp, this->ss, calculateHostAddress);
             }
             break;
         case 0x04: // si
@@ -480,7 +487,7 @@ void X64Asm::translateMemory(U32 rm, bool checkG, bool isG8bit, bool isE8bit) {
                 addWithLea(G(rm), false, 6, false, -1, false, 0, disp, 2);
                 this->skipWriteOp = true;
             } else {    
-                translateMemory16(rm, checkG, isG8bit, isE8bit, 6, -1, disp, this->ds);
+                translateMemory16(rm, checkG, isG8bit, isE8bit, 6, -1, disp, this->ds, calculateHostAddress);
             }
             break;
         case 0x05: // di
@@ -488,7 +495,7 @@ void X64Asm::translateMemory(U32 rm, bool checkG, bool isG8bit, bool isE8bit) {
                 addWithLea(G(rm), false, 7, false, -1, false, 0, disp, 2);
                 this->skipWriteOp = true;
             } else {            
-                translateMemory16(rm, checkG, isG8bit, isE8bit, 7, -1, disp, this->ds);
+                translateMemory16(rm, checkG, isG8bit, isE8bit, 7, -1, disp, this->ds, calculateHostAddress);
             }
             break;
         case 0x06: // disp16 or bp
@@ -504,9 +511,9 @@ void X64Asm::translateMemory(U32 rm, bool checkG, bool isG8bit, bool isE8bit) {
                 this->skipWriteOp = true;
             } else {  
                 if (leaDisp==0) {
-                    translateMemory16(rm, checkG, isG8bit, isE8bit, -1, -1, (S16)this->fetch16(), this->ds);
+                    translateMemory16(rm, checkG, isG8bit, isE8bit, -1, -1, (S16)this->fetch16(), this->ds, calculateHostAddress);
                 } else {
-                    translateMemory16(rm, checkG, isG8bit, isE8bit, 5, -1, disp, this->ss);
+                    translateMemory16(rm, checkG, isG8bit, isE8bit, 5, -1, disp, this->ss, calculateHostAddress);
                 }
             }
             break;
@@ -516,7 +523,7 @@ void X64Asm::translateMemory(U32 rm, bool checkG, bool isG8bit, bool isE8bit) {
                 addWithLea(G(rm), false, 3, false, -1, false, 0, disp, 2);
                 this->skipWriteOp = true;
             } else {   
-                translateMemory16(rm, checkG, isG8bit, isE8bit, 3, -1, disp, this->ds);
+                translateMemory16(rm, checkG, isG8bit, isE8bit, 3, -1, disp, this->ds, calculateHostAddress);
             }
             break;
         }
@@ -551,7 +558,7 @@ void X64Asm::translateMemory(U32 rm, bool checkG, bool isG8bit, bool isE8bit) {
                         addWithLea(tmpReg, true, E(rm), false, getRegForSeg(this->ds, tmpReg), true, 0, 0, 4);
 
                         // [HOST_MEM + HOST_TMP]
-                        writeHostPlusTmp((rm & ~(7)) | 4, checkG, isG8bit, isE8bit, tmpReg);
+                        writeHostPlusTmp((rm & ~(7)) | 4, checkG, isG8bit, isE8bit, tmpReg, calculateHostAddress);
                     }                    
                 }
                 break;
@@ -582,7 +589,7 @@ void X64Asm::translateMemory(U32 rm, bool checkG, bool isG8bit, bool isE8bit) {
                         addWithLea(tmpReg, true, getRegForSeg(this->ds, tmpReg), true, -1, false, 0, disp, 4);
 
                         // [HOST_MEM + HOST_TMP]
-                        writeHostPlusTmp((rm & ~(7)) | 4, checkG, isG8bit, isE8bit, tmpReg);
+                        writeHostPlusTmp((rm & ~(7)) | 4, checkG, isG8bit, isE8bit, tmpReg, calculateHostAddress);
                     }
                 }                
                 break;
@@ -604,7 +611,7 @@ void X64Asm::translateMemory(U32 rm, bool checkG, bool isG8bit, bool isE8bit) {
                             addWithLea(tmpReg, true, getRegForSeg(this->ds, tmpReg), true, (index==4?-1:index), false, sib >> 6, this->fetch32(), 4);
 
                             // [HOST_MEM + HOST_TMP]
-                            writeHostPlusTmp((rm & ~(7)) | 4, checkG, isG8bit, isE8bit, tmpReg);
+                            writeHostPlusTmp((rm & ~(7)) | 4, checkG, isG8bit, isE8bit, tmpReg, calculateHostAddress);
                         }                        
                     } else { // [base + index << shift]
                         if (this->ds == SEG_ZERO) {
@@ -629,7 +636,7 @@ void X64Asm::translateMemory(U32 rm, bool checkG, bool isG8bit, bool isE8bit) {
                                     // HOST_TMP=[base+index<<shift];
                                     addWithLea(tmpReg, true, base, false, index, false, sib >> 6, 0, 4);
                                     // [HOST_MEM + HOST_TMP]
-                                    writeHostPlusTmp((rm & ~(7)) | 4, checkG, isG8bit, isE8bit, tmpReg);
+                                    writeHostPlusTmp((rm & ~(7)) | 4, checkG, isG8bit, isE8bit, tmpReg, calculateHostAddress);
                                 }                                
                             } else {
                                 U32 tmpReg = getTmpReg();
@@ -642,7 +649,7 @@ void X64Asm::translateMemory(U32 rm, bool checkG, bool isG8bit, bool isE8bit) {
                                 }
 
                                 // [HOST_MEM + HOST_TMP]
-                                writeHostPlusTmp((rm & ~(7)) | 4, checkG, isG8bit, isE8bit, tmpReg);
+                                writeHostPlusTmp((rm & ~(7)) | 4, checkG, isG8bit, isE8bit, tmpReg, calculateHostAddress);
                             }
                         }
                     }    
@@ -680,7 +687,7 @@ void X64Asm::translateMemory(U32 rm, bool checkG, bool isG8bit, bool isE8bit) {
                         addWithLea(tmpReg, true, E(rm), false, getRegForSeg(seg, tmpReg), true, 0, (rm<0x80?(S8)this->fetch8():this->fetch32()), 4);                        
                     }
                     // [HOST_MEM + HOST_TMP]
-                    writeHostPlusTmp((rm & ~(0xC7)) | 4, checkG, isG8bit, isE8bit, tmpReg);
+                    writeHostPlusTmp((rm & ~(0xC7)) | 4, checkG, isG8bit, isE8bit, tmpReg, calculateHostAddress);
                 }
                 break;
             }
@@ -721,7 +728,7 @@ void X64Asm::translateMemory(U32 rm, bool checkG, bool isG8bit, bool isE8bit) {
                             }
                         }
                         // [HOST_MEM + HOST_TMP]
-                        writeHostPlusTmp((rm & ~(0xC7)) | 4, checkG, isG8bit, isE8bit, tmpReg);
+                        writeHostPlusTmp((rm & ~(0xC7)) | 4, checkG, isG8bit, isE8bit, tmpReg, calculateHostAddress);
                     }
                 }
                 break;
@@ -750,9 +757,9 @@ void X64Asm::setRM(U8 rm, bool checkG, bool checkE, bool isG8bit, bool isE8bit) 
 }
 
 // rm could be set to use the rexReg in tmpReg
-void X64Asm::translateRM(U8 rm, bool checkG, bool checkE, bool isG8bit, bool isE8bit, U8 immWidth) {        
+void X64Asm::translateRM(U8 rm, bool checkG, bool checkE, bool isG8bit, bool isE8bit, U8 immWidth, bool calculateHostAddress) {
     if (rm<0xC0) {
-        translateMemory(rm, checkG, isG8bit, isE8bit);
+        translateMemory(rm, checkG, isG8bit, isE8bit, calculateHostAddress);
     } else {
         setRM(rm, checkG, checkE, isG8bit, isE8bit);
     }
@@ -833,7 +840,7 @@ void X64Asm::writeToRegFromE(U8 reg, bool isRegRex, U8 rm, U8 bytes) {
 }
 
 // it is ok to trash current op data
-void X64Asm::getNativeAddressInRegFromE(U8 reg, bool isRegRex, U8 rm) {
+void X64Asm::getAddressInRegFromE(U8 reg, bool isRegRex, U8 rm, bool calculateHostAddress) {
     this->op = 0x8d;
     this->multiBytePrefix = false;
     if (this->cpu->isBig()) {
@@ -846,7 +853,7 @@ void X64Asm::getNativeAddressInRegFromE(U8 reg, bool isRegRex, U8 rm) {
         this->rex |= REX_MOD_REG;
     }
     rm = (rm & ~0x38) | (reg << 3);
-    translateRM(rm, false, true, false, false, 0);
+    translateRM(rm, false, true, false, false, 0, calculateHostAddress);
 }
 
 void X64Asm::xlat() {
@@ -871,7 +878,7 @@ void X64Asm::xlat() {
     releaseTmpReg(tmpReg2);
 
     // [HOST_MEM + HOST_TMP]
-    writeHostPlusTmp(4, false, true, true, tmpReg);
+    writeHostPlusTmp(4, false, true, true, tmpReg, true);
     for (auto& tmpReg : this->autoReleaseTmpAfterWriteOp) {
         releaseTmpReg(tmpReg);
     }
@@ -2217,30 +2224,6 @@ void X64Asm::jumpConditional(U8 condition, U32 eip) {
     }
 }
 
-void X64Asm::write64Buffer(U8* buffer, U64 value) {
-    buffer[0] = (U8)value;
-    buffer[1] = (U8)(value >> 8);
-    buffer[2] = (U8)(value >> 16);
-    buffer[3] = (U8)(value >> 24);
-    buffer[4] = (U8)(value >> 32);
-    buffer[5] = (U8)(value >> 40);
-    buffer[6] = (U8)(value >> 48);
-    buffer[7] = (U8)(value >> 56);
-}
-
-void X64Asm::write32Buffer(U8* buffer, U32 value) {
-    buffer[0] = (U8)value;
-    buffer[1] = (U8)(value >> 8);
-    buffer[2] = (U8)(value >> 16);
-    buffer[3] = (U8)(value >> 24);
-}
-
-void X64Asm::write16Buffer(U8* buffer, U16 value) {
-    buffer[0] = (U8)value;
-    buffer[1] = (U8)(value >> 8);
-
-}
-
 void X64Asm::addTodoLinkJump(U32 eip, U32 size, bool sameChunk) {
     this->todoJump.push_back(TodoJump(eip, this->bufferPos-(size==4?4:11), size, sameChunk, this->ipAddressCount));
 }
@@ -3121,7 +3104,7 @@ void X64Asm::DsEdiMmxOrSSE(U8 rm) {
     U8 tmpReg = getTmpReg();
     addWithLea(7, false, 7, false, getRegForSeg(this->ds, tmpReg), true, 0, 0, 4);
     U8 hostReg = getHostMem(7, false);
-    addWithLea(7, false, 7, false, HOST_MEM, true, 0, 0, 8);    
+    addWithLea(7, false, 7, false, hostReg, true, 0, 0, 8);
 
     this->translateRM(rm, false, false, false, false, 0);
 
@@ -3134,6 +3117,7 @@ void X64Asm::DsEdiMmxOrSSE(U8 rm) {
         write8(0xf7);
         write8(0xd8 + hostReg);
         popFlagsFromReg(tmpReg, true, true);
+        writeToRegFromReg(tmpReg, true, hostReg, true, 8);
     }
 
     releaseHostMem(hostReg);
@@ -3194,7 +3178,7 @@ void X64Asm::loadSeg(U8 seg, U8 rm, bool b32) {
         syncRegsFromHost(); 
 
         U8 tmpReg = getParamSafeTmpReg();
-        getNativeAddressInRegFromE(tmpReg, true, rm);
+        getAddressInRegFromE(tmpReg, true, rm, true);
 
         // read selector and put it into PARAM_3 for function call
         lockParamReg(PARAM_3_REG, PARAM_3_REX);
@@ -3309,7 +3293,7 @@ void X64Asm::callJmp(bool big, U8 rm, bool jmp) {
      
     // calling convention RCX, RDX, R8, R9 for first 4 parameters
     U8 tmpReg = getParamSafeTmpReg();
-    getNativeAddressInRegFromE(tmpReg, true, rm);
+    getAddressInRegFromE(tmpReg, true, rm, true);
 
     writeToMemFromValue(this->ip, HOST_CPU, true, -1, false, 0, CPU_OFFSET_ARG5, 4, false); // next ip
 
@@ -3811,7 +3795,7 @@ void X64Asm::bound16(U8 rm) {
     syncRegsFromHost();
 
     lockParamReg(PARAM_3_REG, PARAM_3_REX);
-    getNativeAddressInRegFromE(PARAM_3_REG, PARAM_3_REX, rm);
+    getAddressInRegFromE(PARAM_3_REG, PARAM_3_REX, rm);
 
     lockParamReg(PARAM_2_REG, PARAM_2_REX);
     writeToRegFromValue(PARAM_2_REG, PARAM_2_REX, G(rm), 4);
@@ -3834,7 +3818,7 @@ void X64Asm::bound32(U8 rm) {
     syncRegsFromHost();
     
     lockParamReg(PARAM_3_REG, PARAM_3_REX);
-    getNativeAddressInRegFromE(PARAM_3_REG, PARAM_3_REX, rm);
+    getAddressInRegFromE(PARAM_3_REG, PARAM_3_REX, rm);
 
     lockParamReg(PARAM_2_REG, PARAM_2_REX);
     writeToRegFromValue(PARAM_2_REG, PARAM_2_REX, G(rm), 4);
@@ -3914,7 +3898,7 @@ void X64Asm::callFpuWithAddress(PFN_FPU_ADDRESS pfn, U8 rm) {
     syncRegsFromHost();
 
     lockParamReg(PARAM_2_REG, PARAM_2_REX);
-    getNativeAddressInRegFromE(PARAM_2_REG, PARAM_2_REX, rm);    
+    getAddressInRegFromE(PARAM_2_REG, PARAM_2_REX, rm);
 
     lockParamReg(PARAM_1_REG, PARAM_1_REX);
     writeToRegFromReg(PARAM_1_REG, PARAM_1_REX, HOST_CPU, true, 8); // CPU* param
@@ -3925,7 +3909,7 @@ void X64Asm::callFpuWithAddress(PFN_FPU_ADDRESS pfn, U8 rm) {
 
 void X64Asm::callFpuWithAddressWrite(PFN_FPU_ADDRESS pfn, U8 rm, U32 len) {
     syncRegsFromHost();
-    getNativeAddressInRegFromE(0, true, rm);  
+    getAddressInRegFromE(PARAM_3_REG, PARAM_4_REX, rm);
 
     lockParamReg(PARAM_1_REG, PARAM_1_REX);
     writeToRegFromReg(PARAM_1_REG, PARAM_1_REX, HOST_CPU, true, 8); // CPU* param
@@ -3933,8 +3917,8 @@ void X64Asm::callFpuWithAddressWrite(PFN_FPU_ADDRESS pfn, U8 rm, U32 len) {
     lockParamReg(PARAM_2_REG, PARAM_2_REX);
     writeToRegFromValue(PARAM_2_REG, PARAM_2_REX, (U64)pfn, 8);
 
-    lockParamReg(PARAM_3_REG, PARAM_3_REX);
-    writeToRegFromValue(PARAM_3_REG, PARAM_3_REX, len, 4);
+    lockParamReg(PARAM_4_REG, PARAM_4_REX);
+    writeToRegFromValue(PARAM_4_REG, PARAM_4_REX, len, 4);
 
     callHost((void*)common_fpu_write_address);
     syncRegsToHost();
@@ -4057,8 +4041,6 @@ void X64Asm::createCodeForRunSignal() {
     callHost((void*)signalHandler);
     syncRegsToHost();
     
-    // :TODO: full rsi and rdi too?
-
     writeToRegFromMem(0, true, HOST_CPU, true, -1, false, 0, (U32)(offsetof(x64CPU, exceptionR8)), 8, false);
     writeToRegFromMem(1, true, HOST_CPU, true, -1, false, 0, (U32)(offsetof(x64CPU, exceptionR9)), 8, false);
     writeToRegFromMem(2, true, HOST_CPU, true, -1, false, 0, (U32)(offsetof(x64CPU, exceptionR10)), 8, false);
@@ -4348,6 +4330,36 @@ void X64Asm::fpu7(U8 rm) {
             case 7: callFpuWithAddressWrite(common_FISTP_QWORD_INTEGER, rm, 8); break;
         }
     }
+}
+
+void X64Asm::translateInstruction() {
+    this->startOfOpIp = this->ip;
+    this->useSingleMemOffset = KSystem::useSingleMemOffset && !this->cpu->thread->memory->doesInstructionNeedMemoryOffset(this->ip);
+#ifdef _DEBUG
+    //data->logOp(data->ip);
+    // just makes debugging the asm output easier
+#ifndef __TEST
+    this->writeToMemFromValue(this->ip, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EIP, 4, false);
+#endif
+#endif
+    if (this->dynamic) {
+        this->addDynamicCheck(false);
+    }
+    else {
+#ifdef _DEBUG
+        //this->addDynamicCheck(true);
+#endif
+    }
+    while (1) {
+        this->op = this->fetch8();
+        this->inst = this->baseOp + this->op;
+        if (!x64Decoder[this->inst](this)) {
+            break;
+        }
+    }
+    this->tmp1InUse = false;
+    this->tmp2InUse = false;
+    this->tmp3InUse = false;
 }
 
 #ifdef __TEST

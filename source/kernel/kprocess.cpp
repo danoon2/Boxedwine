@@ -1407,7 +1407,7 @@ U32 KProcess::mmap(U32 addr, U32 len, S32 prot, S32 flags, FD fildes, U64 off) {
             return -K_ENOMEM;
         if (pageStart == 0)
             pageStart = ADDRESS_PROCESS_MMAP_START;
-        if (!this->memory->findFirstAvailablePage(pageStart, pageCount, &pageStart, addr!=0)) {
+        if (!this->memory->findFirstAvailablePage(pageStart, pageCount, &pageStart, addr!=0, true)) {
             // :TODO: what erro
             return -K_EINVAL;
         }
@@ -1468,9 +1468,6 @@ U32 KProcess::mmap(U32 addr, U32 len, S32 prot, S32 flags, FD fildes, U64 off) {
             KThread::currentThread()->process->mappedFiles[mappedFile->address] = mappedFile;
             this->memory->allocPages(pageStart, pageCount, permissions, fildes, off, mappedFile);
         } else {
-            if (shared) {
-                int ii = 0;
-            }
             this->memory->allocPages(pageStart, pageCount, permissions, 0, 0, NULL);
         }		
     }

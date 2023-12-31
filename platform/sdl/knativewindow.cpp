@@ -124,7 +124,7 @@ public:
         }
         if (primarySurface) {
             BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(primarySurface->mutex);
-            primarySurface->done;
+            primarySurface->done = true;
             // thread will delete primarySurface
         }
         this->cursors.clear();
@@ -992,7 +992,7 @@ void KNativeWindowSdl::bltWnd(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32
 #ifdef BOXEDWINE_FLIP_MANUALLY
             SDL_UpdateTexture(sdlTexture, NULL, sdlBuffer, pitch);
 #else
-            SDL_UpdateTexture(sdlTexture, NULL, getNativeAddress(KThread::currentThread()->process->memory, bits), pitch);            
+            SDL_UpdateTexture(sdlTexture, NULL, getNativeAddress(thread->memory, bits), pitch);            
 #endif
         }
         DISPATCH_MAIN_THREAD_BLOCK_END
@@ -1773,9 +1773,6 @@ int KNativeWindowSdl::key(U32 key, U32 down) {
     std::shared_ptr<WndSdl> wnd = getFirstVisibleWnd();
     std::shared_ptr<KProcess> process;
 
-    if (!wnd) {
-        int ii = 0;
-    }
     if (wnd) {
         process = KSystem::getProcess(wnd->processId);
     } else if (lastProcessId) {

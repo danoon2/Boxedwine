@@ -95,7 +95,6 @@
 		1A80EE49276EBCC70032A70A /* ksocketobject.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE202433BBBE003F17F1 /* ksocketobject.cpp */; };
 		1A80EE54276EBCC70032A70A /* glfunctions_ext1.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE432433BBBE003F17F1 /* glfunctions_ext1.cpp */; };
 		1A80EE57276EBCC70032A70A /* okDlg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F34812440D7D10038F5A4 /* okDlg.cpp */; };
-		1A80EE59276EBCC70032A70A /* dynamic.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091522644D44E003413C3 /* dynamic.cpp */; };
 		1A80EE5A276EBCC70032A70A /* zip.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A155101263261DF006E0C8A /* zip.c */; };
 		1A80EE5C276EBCC70032A70A /* glshim.c in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE572433BBBE003F17F1 /* glshim.c */; };
 		1A80EE5F276EBCC70032A70A /* kfilelock.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE1B2433BBBE003F17F1 /* kfilelock.cpp */; };
@@ -429,7 +428,6 @@
 		1A80F224276EBF170032A70A /* appFile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71205460244FDA2400C3CB1B /* appFile.cpp */; };
 		1A80F225276EBF170032A70A /* common_fpu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD912433BBBE003F17F1 /* common_fpu.cpp */; };
 		1A80F235276EBF170032A70A /* glext.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE4A2433BBBE003F17F1 /* glext.cpp */; };
-		1A80F237276EBF170032A70A /* dynamic.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091522644D44E003413C3 /* dynamic.cpp */; };
 		1A80F239276EBF170032A70A /* spinnerControl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD212433BBBE003F17F1 /* spinnerControl.cpp */; };
 		1A80F240276EBF170032A70A /* log.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD502433BBBE003F17F1 /* log.cpp */; };
 		1A80F246276EBF170032A70A /* common_sse.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD9A2433BBBE003F17F1 /* common_sse.cpp */; };
@@ -600,6 +598,22 @@
 		1AC96020278FB69600107ED0 /* vulkancommon.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AC96016278FB69600107ED0 /* vulkancommon.cpp */; };
 		1AC96021278FB69600107ED0 /* vulkancommon.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AC96016278FB69600107ED0 /* vulkancommon.cpp */; };
 		1AC96022278FB69600107ED0 /* vulkancommon.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AC96016278FB69600107ED0 /* vulkancommon.cpp */; };
+		1AD3FA8E2A57D2C2002EA550 /* btData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AD3FA8B2A57D2A6002EA550 /* btData.cpp */; };
+		1AD3FA8F2A57D2C2002EA550 /* btData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AD3FA8B2A57D2A6002EA550 /* btData.cpp */; };
+		1AD3FA902A57D2C3002EA550 /* btData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AD3FA8B2A57D2A6002EA550 /* btData.cpp */; };
+		1AD3FA912A57D2C4002EA550 /* btData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AD3FA8B2A57D2A6002EA550 /* btData.cpp */; };
+		1AD3FA922A57D2C5002EA550 /* btData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AD3FA8B2A57D2A6002EA550 /* btData.cpp */; };
+		1AD3FA932A57D2C6002EA550 /* btData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AD3FA8B2A57D2A6002EA550 /* btData.cpp */; };
+		1AD3FA942A57D2C9002EA550 /* btCpu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AD3FA8C2A57D2A6002EA550 /* btCpu.cpp */; };
+		1AD3FA952A57D2CA002EA550 /* btCpu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AD3FA8C2A57D2A6002EA550 /* btCpu.cpp */; };
+		1AD3FA962A57D2CB002EA550 /* btCpu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AD3FA8C2A57D2A6002EA550 /* btCpu.cpp */; };
+		1AD3FA972A57D2CC002EA550 /* btCpu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AD3FA8C2A57D2A6002EA550 /* btCpu.cpp */; };
+		1AD3FA982A57D2CC002EA550 /* btCpu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AD3FA8C2A57D2A6002EA550 /* btCpu.cpp */; };
+		1AD3FA992A57D2CD002EA550 /* btCpu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AD3FA8C2A57D2A6002EA550 /* btCpu.cpp */; };
+		1AEBC3A02AABC111007ECB08 /* BoxedwineUnitTestsMain.m in Sources */ = {isa = PBXBuildFile; fileRef = 1AEBC39B2AABC108007ECB08 /* BoxedwineUnitTestsMain.m */; };
+		1AEBC3A42AABC1AC007ECB08 /* BoxedwineUnitTestsMain.m in Sources */ = {isa = PBXBuildFile; fileRef = 1AEBC39B2AABC108007ECB08 /* BoxedwineUnitTestsMain.m */; };
+		1AEBC3A72AABC248007ECB08 /* BoxedwineUnitTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 1AEBC3A62AABC248007ECB08 /* BoxedwineUnitTests.m */; };
+		1AEBC3BA2AABC52B007ECB08 /* BoxedwineUnitTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 1AEBC3A62AABC248007ECB08 /* BoxedwineUnitTests.m */; };
 		1AFC4768264096CB00EE5FCC /* armv8CPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4764264096CB00EE5FCC /* armv8CPU.cpp */; };
 		1AFC4769264096CB00EE5FCC /* llvm_helper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4765264096CB00EE5FCC /* llvm_helper.cpp */; };
 		1AFC476D26409EB200EE5FCC /* armv8CPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4764264096CB00EE5FCC /* armv8CPU.cpp */; };
@@ -647,9 +661,6 @@
 		7100914E2644D42C003413C3 /* sdlcallback.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7100913A2644D42C003413C3 /* sdlcallback.cpp */; };
 		7100914F2644D42C003413C3 /* sdlcallback.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7100913A2644D42C003413C3 /* sdlcallback.cpp */; };
 		710091502644D42C003413C3 /* sdlcallback.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7100913A2644D42C003413C3 /* sdlcallback.cpp */; };
-		710091572644D44E003413C3 /* dynamic.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091522644D44E003413C3 /* dynamic.cpp */; };
-		710091582644D44E003413C3 /* dynamic.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091522644D44E003413C3 /* dynamic.cpp */; };
-		710091592644D44E003413C3 /* dynamic.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091522644D44E003413C3 /* dynamic.cpp */; };
 		7100915A2644D44E003413C3 /* memory64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091532644D44E003413C3 /* memory64.cpp */; };
 		7100915B2644D44E003413C3 /* memory64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091532644D44E003413C3 /* memory64.cpp */; };
 		7100915C2644D44E003413C3 /* memory64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091532644D44E003413C3 /* memory64.cpp */; };
@@ -1016,7 +1027,6 @@
 		7135DC52264EBCD0005D6AA6 /* soft_native_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDDD2433BBBE003F17F1 /* soft_native_page.cpp */; };
 		7135DC53264EBCD0005D6AA6 /* soft_code_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDD12433BBBE003F17F1 /* soft_code_page.cpp */; };
 		7135DC54264EBCD0005D6AA6 /* glext.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE4A2433BBBE003F17F1 /* glext.cpp */; };
-		7135DC55264EBCD0005D6AA6 /* dynamic.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091522644D44E003413C3 /* dynamic.cpp */; };
 		7135DC56264EBCD0005D6AA6 /* lazyFlags.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD8B2433BBBE003F17F1 /* lazyFlags.cpp */; };
 		7135DC57264EBCD0005D6AA6 /* kunixsocket.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE1D2433BBBE003F17F1 /* kunixsocket.cpp */; };
 		7135DC58264EBCD0005D6AA6 /* devzero.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE272433BBBE003F17F1 /* devzero.cpp */; };
@@ -1259,6 +1269,37 @@
 		71FBFEE72433BBBE003F17F1 /* glMarshalSize.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE592433BBBE003F17F1 /* glMarshalSize.cpp */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		1AEBC3962AABC0A9007ECB08 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 71FBFCA52433B815003F17F1 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 71FBFCAC2433B815003F17F1;
+			remoteInfo = BoxedwineSlow;
+		};
+		1AEBC3AB2AABC485007ECB08 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 71FBFCA52433B815003F17F1 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 71222B182435140100CDBABD;
+			remoteInfo = BoxedwineTestSlow;
+		};
+		1AEBC3B52AABC519007ECB08 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 71FBFCA52433B815003F17F1 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 71222B182435140100CDBABD;
+			remoteInfo = BoxedwineTestSlow;
+		};
+		1AEBC3BB2AABC5DA007ECB08 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 71FBFCA52433B815003F17F1 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7135DC10264EBCD0005D6AA6;
+			remoteInfo = BoxedwineTest;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXCopyFilesBuildPhase section */
 		1A1551F726326724006E0C8A /* Embed Frameworks */ = {
 			isa = PBXCopyFilesBuildPhase;
@@ -1437,6 +1478,13 @@
 		1AC96014278FB69600107ED0 /* vk_host.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = vk_host.h; path = vulkan/vk_host.h; sourceTree = "<group>"; };
 		1AC96015278FB69600107ED0 /* vkdef.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = vkdef.h; path = vulkan/vkdef.h; sourceTree = "<group>"; };
 		1AC96016278FB69600107ED0 /* vulkancommon.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = vulkancommon.cpp; path = vulkan/vulkancommon.cpp; sourceTree = "<group>"; };
+		1AD3FA8B2A57D2A6002EA550 /* btData.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = btData.cpp; path = binaryTranslation/btData.cpp; sourceTree = "<group>"; };
+		1AD3FA8C2A57D2A6002EA550 /* btCpu.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = btCpu.cpp; path = binaryTranslation/btCpu.cpp; sourceTree = "<group>"; };
+		1AD3FA8D2A57D2A6002EA550 /* btData.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = btData.h; path = binaryTranslation/btData.h; sourceTree = "<group>"; };
+		1AEBC3922AABC0A9007ECB08 /* BoxedwineUnitTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BoxedwineUnitTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		1AEBC39B2AABC108007ECB08 /* BoxedwineUnitTestsMain.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = BoxedwineUnitTestsMain.m; sourceTree = "<group>"; };
+		1AEBC3A62AABC248007ECB08 /* BoxedwineUnitTests.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = BoxedwineUnitTests.m; sourceTree = "<group>"; };
+		1AEBC3B12AABC519007ECB08 /* BoxedwineSlowUnitTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BoxedwineSlowUnitTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		1AFC4764264096CB00EE5FCC /* armv8CPU.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = armv8CPU.cpp; sourceTree = "<group>"; };
 		1AFC4765264096CB00EE5FCC /* llvm_helper.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = llvm_helper.cpp; sourceTree = "<group>"; };
 		1AFC4766264096CB00EE5FCC /* armv8CPU.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = armv8CPU.h; sourceTree = "<group>"; };
@@ -1459,7 +1507,6 @@
 		710091392644D42C003413C3 /* knativeaudio.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = knativeaudio.cpp; path = ../../../platform/sdl/knativeaudio.cpp; sourceTree = "<group>"; };
 		7100913A2644D42C003413C3 /* sdlcallback.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = sdlcallback.cpp; path = ../../../platform/sdl/sdlcallback.cpp; sourceTree = "<group>"; };
 		7100913B2644D42C003413C3 /* sdlcallback.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = sdlcallback.h; path = ../../../platform/sdl/sdlcallback.h; sourceTree = "<group>"; };
-		710091522644D44E003413C3 /* dynamic.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = dynamic.cpp; path = ../../../platform/linux/dynamic.cpp; sourceTree = "<group>"; };
 		710091532644D44E003413C3 /* memory64.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = memory64.cpp; path = ../../../platform/linux/memory64.cpp; sourceTree = "<group>"; };
 		710091542644D44E003413C3 /* platform.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = platform.cpp; path = ../../../platform/linux/platform.cpp; sourceTree = "<group>"; };
 		710091552644D44E003413C3 /* platformThreads.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = platformThreads.cpp; path = ../../../platform/linux/platformThreads.cpp; sourceTree = "<group>"; };
@@ -1920,6 +1967,20 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		1AEBC38F2AABC0A9007ECB08 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1AEBC3AE2AABC519007ECB08 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		71222B162435140100CDBABD /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -2112,6 +2173,22 @@
 			name = vulkan;
 			sourceTree = "<group>";
 		};
+		1AEBC3932AABC0A9007ECB08 /* BoxedwineUnitTests */ = {
+			isa = PBXGroup;
+			children = (
+				1AEBC3A62AABC248007ECB08 /* BoxedwineUnitTests.m */,
+				1AEBC39B2AABC108007ECB08 /* BoxedwineUnitTestsMain.m */,
+			);
+			path = BoxedwineUnitTests;
+			sourceTree = "<group>";
+		};
+		1AEBC3B22AABC519007ECB08 /* BoxedwineSlowUnitTests */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = BoxedwineSlowUnitTests;
+			sourceTree = "<group>";
+		};
 		1AFC47632640965500EE5FCC /* armv8 */ = {
 			isa = PBXGroup;
 			children = (
@@ -2164,7 +2241,6 @@
 			isa = PBXGroup;
 			children = (
 				1AC5F2F92772D9D6001D0FCA /* platformThreads-armv8.cpp */,
-				710091522644D44E003413C3 /* dynamic.cpp */,
 				710091532644D44E003413C3 /* memory64.cpp */,
 				710091542644D44E003413C3 /* platform.cpp */,
 				710091562644D44E003413C3 /* platformThreads-x64.cpp */,
@@ -2273,6 +2349,8 @@
 				71FBFCD72433BBAD003F17F1 /* include */,
 				71FBFCAF2433B815003F17F1 /* Boxedwine */,
 				71222B1A2435140100CDBABD /* BoxedwineTest */,
+				1AEBC3932AABC0A9007ECB08 /* BoxedwineUnitTests */,
+				1AEBC3B22AABC519007ECB08 /* BoxedwineSlowUnitTests */,
 				71FBFCAE2433B815003F17F1 /* Products */,
 				712227752433E8C400CDBABD /* Frameworks */,
 			);
@@ -2287,6 +2365,8 @@
 				7135DCA6264EBCD0005D6AA6 /* BoxedwineTest.app */,
 				1A80F08F276EBCC70032A70A /* BoxedwineAutomationSlow.app */,
 				1A80F2E1276EBF170032A70A /* BoxedwineAutomation.app */,
+				1AEBC3922AABC0A9007ECB08 /* BoxedwineUnitTests.xctest */,
+				1AEBC3B12AABC519007ECB08 /* BoxedwineSlowUnitTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -2549,6 +2629,9 @@
 		71FBFD5C2433BBBE003F17F1 /* cpu */ = {
 			isa = PBXGroup;
 			children = (
+				1AD3FA8C2A57D2A6002EA550 /* btCpu.cpp */,
+				1AD3FA8B2A57D2A6002EA550 /* btData.cpp */,
+				1AD3FA8D2A57D2A6002EA550 /* btData.h */,
 				1AC5F2882772D93B001D0FCA /* armv8bt */,
 				1AFC47632640965500EE5FCC /* armv8 */,
 				1A9193342551B6D3005A798A /* btCodeChunk.cpp */,
@@ -2986,6 +3069,44 @@
 			productReference = 1A80F2E1276EBF170032A70A /* BoxedwineAutomation.app */;
 			productType = "com.apple.product-type.application";
 		};
+		1AEBC3912AABC0A9007ECB08 /* BoxedwineUnitTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1AEBC39A2AABC0A9007ECB08 /* Build configuration list for PBXNativeTarget "BoxedwineUnitTests" */;
+			buildPhases = (
+				1AEBC38E2AABC0A9007ECB08 /* Sources */,
+				1AEBC38F2AABC0A9007ECB08 /* Frameworks */,
+				1AEBC3902AABC0A9007ECB08 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				1AEBC3972AABC0A9007ECB08 /* PBXTargetDependency */,
+				1AEBC3AC2AABC485007ECB08 /* PBXTargetDependency */,
+				1AEBC3BC2AABC5DA007ECB08 /* PBXTargetDependency */,
+			);
+			name = BoxedwineUnitTests;
+			productName = BoxedwineUnitTests;
+			productReference = 1AEBC3922AABC0A9007ECB08 /* BoxedwineUnitTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		1AEBC3B02AABC519007ECB08 /* BoxedwineSlowUnitTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1AEBC3B72AABC519007ECB08 /* Build configuration list for PBXNativeTarget "BoxedwineSlowUnitTests" */;
+			buildPhases = (
+				1AEBC3AD2AABC519007ECB08 /* Sources */,
+				1AEBC3AE2AABC519007ECB08 /* Frameworks */,
+				1AEBC3AF2AABC519007ECB08 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				1AEBC3B62AABC519007ECB08 /* PBXTargetDependency */,
+			);
+			name = BoxedwineSlowUnitTests;
+			productName = BoxedwineSlowUnitTests;
+			productReference = 1AEBC3B12AABC519007ECB08 /* BoxedwineSlowUnitTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		71222B182435140100CDBABD /* BoxedwineTestSlow */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 71222B292435140300CDBABD /* Build configuration list for PBXNativeTarget "BoxedwineTestSlow" */;
@@ -3068,6 +3189,14 @@
 				LastUpgradeCheck = 1130;
 				ORGANIZATIONNAME = Boxedwine;
 				TargetAttributes = {
+					1AEBC3912AABC0A9007ECB08 = {
+						CreatedOnToolsVersion = 14.2;
+						TestTargetID = 7135DC10264EBCD0005D6AA6;
+					};
+					1AEBC3B02AABC519007ECB08 = {
+						CreatedOnToolsVersion = 14.2;
+						TestTargetID = 71222B182435140100CDBABD;
+					};
 					71222B182435140100CDBABD = {
 						CreatedOnToolsVersion = 11.3.1;
 					};
@@ -3095,6 +3224,8 @@
 				1A80F091276EBF170032A70A /* BoxedwineAutomation */,
 				71222B182435140100CDBABD /* BoxedwineTestSlow */,
 				7135DC10264EBCD0005D6AA6 /* BoxedwineTest */,
+				1AEBC3912AABC0A9007ECB08 /* BoxedwineUnitTests */,
+				1AEBC3B02AABC519007ECB08 /* BoxedwineSlowUnitTests */,
 			);
 		};
 /* End PBXProject section */
@@ -3117,6 +3248,20 @@
 				1A80F2D3276EBF170032A70A /* Assets.xcassets in Resources */,
 				1A55D6342A0841E2002B7021 /* make_vms.com in Resources */,
 				1A80F2D4276EBF170032A70A /* Media.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1AEBC3902AABC0A9007ECB08 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1AEBC3AF2AABC519007ECB08 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -3169,7 +3314,6 @@
 				1A80EE49276EBCC70032A70A /* ksocketobject.cpp in Sources */,
 				1A80EE54276EBCC70032A70A /* glfunctions_ext1.cpp in Sources */,
 				1A80EE57276EBCC70032A70A /* okDlg.cpp in Sources */,
-				1A80EE59276EBCC70032A70A /* dynamic.cpp in Sources */,
 				1A80EE5A276EBCC70032A70A /* zip.c in Sources */,
 				1A80EE5C276EBCC70032A70A /* glshim.c in Sources */,
 				1A80EE5F276EBCC70032A70A /* kfilelock.cpp in Sources */,
@@ -3288,6 +3432,7 @@
 				1A80EF70276EBCC70032A70A /* pugixml.cpp in Sources */,
 				1AC5F2D12772D957001D0FCA /* armv8btOps_sse_convert.cpp in Sources */,
 				1AC5F2BF2772D957001D0FCA /* armv8btData.cpp in Sources */,
+				1AD3FA962A57D2CB002EA550 /* btCpu.cpp in Sources */,
 				1A80EF75276EBCC70032A70A /* threadedMainloop.cpp in Sources */,
 				1A80EF78276EBCC70032A70A /* bufferaccess.cpp in Sources */,
 				1A80EF79276EBCC70032A70A /* uiSettings.cpp in Sources */,
@@ -3337,6 +3482,7 @@
 				1A80F004276EBCC70032A70A /* glew.cpp in Sources */,
 				1A80F006276EBCC70032A70A /* soft_ondemand_page.cpp in Sources */,
 				1A80F00A276EBCC70032A70A /* appChooserDlg.cpp in Sources */,
+				1AD3FA902A57D2C3002EA550 /* btData.cpp in Sources */,
 				1A80F00D276EBCC70032A70A /* coremidi.cpp in Sources */,
 				1A80F00E276EBCC70032A70A /* kfiledescriptor.cpp in Sources */,
 				1A55D6372A0841E2002B7021 /* inffast.c in Sources */,
@@ -3408,6 +3554,7 @@
 				1AC5F2BA2772D957001D0FCA /* armv8btOps_sse_minmax.cpp in Sources */,
 				1A80F0C5276EBF170032A70A /* decoder.cpp in Sources */,
 				1A80F0C8276EBF170032A70A /* testCPU.cpp in Sources */,
+				1AD3FA972A57D2CC002EA550 /* btCpu.cpp in Sources */,
 				1AC5F2AE2772D957001D0FCA /* armv8btOps_sse_shuffle.cpp in Sources */,
 				1A80F0D1276EBF170032A70A /* ksocket.cpp in Sources */,
 				1A80F0D4276EBF170032A70A /* cpuinfo.cpp in Sources */,
@@ -3475,6 +3622,7 @@
 				1A80F17C276EBF170032A70A /* sdlcallback.cpp in Sources */,
 				1A80F17D276EBF170032A70A /* boxedwineData.cpp in Sources */,
 				1A80F17E276EBF170032A70A /* boxedTranslation.cpp in Sources */,
+				1AD3FA912A57D2C4002EA550 /* btData.cpp in Sources */,
 				1A80F180276EBF170032A70A /* ksystem.cpp in Sources */,
 				1A80F183276EBF170032A70A /* soft_native_page.cpp in Sources */,
 				1A55D65A2A08428F002B7021 /* zutil.c in Sources */,
@@ -3555,7 +3703,6 @@
 				1AC5F2D82772D957001D0FCA /* armv8btOps_fpu.cpp in Sources */,
 				1A80F225276EBF170032A70A /* common_fpu.cpp in Sources */,
 				1A80F235276EBF170032A70A /* glext.cpp in Sources */,
-				1A80F237276EBF170032A70A /* dynamic.cpp in Sources */,
 				1A80F239276EBF170032A70A /* spinnerControl.cpp in Sources */,
 				1A80F240276EBF170032A70A /* log.cpp in Sources */,
 				1AC96020278FB69600107ED0 /* vulkancommon.cpp in Sources */,
@@ -3609,6 +3756,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		1AEBC38E2AABC0A9007ECB08 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1AEBC3A72AABC248007ECB08 /* BoxedwineUnitTests.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1AEBC3AD2AABC519007ECB08 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1AEBC3BA2AABC52B007ECB08 /* BoxedwineUnitTests.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		71222B152435140100CDBABD /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -3635,6 +3798,7 @@
 				71222BC42435169100CDBABD /* glMarshalSize.cpp in Sources */,
 				1AC5F2C72772D957001D0FCA /* armv8btOps_shift.cpp in Sources */,
 				71222B422435163F00CDBABD /* player.cpp in Sources */,
+				1AEBC3A42AABC1AC007ECB08 /* BoxedwineUnitTestsMain.m in Sources */,
 				1AFC48122665728600EE5FCC /* boxedwineGL.cpp in Sources */,
 				71222B792435169100CDBABD /* soft_no_page.cpp in Sources */,
 				1AC5F2AF2772D957001D0FCA /* armv8btOps_sse_shuffle.cpp in Sources */,
@@ -3652,6 +3816,7 @@
 				71222B742435169100CDBABD /* instructions.cpp in Sources */,
 				71222BB62435169100CDBABD /* ksocket.cpp in Sources */,
 				71222B6E2435169100CDBABD /* fpu.cpp in Sources */,
+				1AD3FA922A57D2C5002EA550 /* btData.cpp in Sources */,
 				1AC5F2F72772D957001D0FCA /* armv8btCPU.cpp in Sources */,
 				71222B3D2435163100CDBABD /* testSSE2.cpp in Sources */,
 				71222B852435169100CDBABD /* fsfileopennode.cpp in Sources */,
@@ -3692,7 +3857,6 @@
 				71222B802435169100CDBABD /* soft_native_page.cpp in Sources */,
 				71222B7A2435169100CDBABD /* soft_code_page.cpp in Sources */,
 				71222BC12435169100CDBABD /* glext.cpp in Sources */,
-				710091592644D44E003413C3 /* dynamic.cpp in Sources */,
 				71222B662435169100CDBABD /* lazyFlags.cpp in Sources */,
 				71222B9E2435169100CDBABD /* kunixsocket.cpp in Sources */,
 				71222BA62435169100CDBABD /* devzero.cpp in Sources */,
@@ -3735,6 +3899,7 @@
 				1AC96021278FB69600107ED0 /* vulkancommon.cpp in Sources */,
 				1A1551BA26326273006E0C8A /* pugixml.cpp in Sources */,
 				1AFC480C2663FFC000EE5FCC /* pixelformat.cpp in Sources */,
+				1AD3FA982A57D2CC002EA550 /* btCpu.cpp in Sources */,
 				1AC5F2B52772D957001D0FCA /* armv8btCodeChunk.cpp in Sources */,
 				71222B752435169100CDBABD /* normal_strings.cpp in Sources */,
 				71222B782435169100CDBABD /* soft_ondemand_page.cpp in Sources */,
@@ -3896,6 +4061,7 @@
 				1AC5F2D02772D957001D0FCA /* armv8btOps_sse_convert.cpp in Sources */,
 				71222C2B24351CBA00CDBABD /* threadedMainloop.cpp in Sources */,
 				1AC5F2BE2772D957001D0FCA /* armv8btData.cpp in Sources */,
+				1AD3FA952A57D2CA002EA550 /* btCpu.cpp in Sources */,
 				71222C2C24351CBA00CDBABD /* bufferaccess.cpp in Sources */,
 				71222C2D24351CBA00CDBABD /* uiSettings.cpp in Sources */,
 				71222C2E24351CBA00CDBABD /* devtty.cpp in Sources */,
@@ -3939,13 +4105,13 @@
 				71222C4624351CBA00CDBABD /* common_fpu.cpp in Sources */,
 				1AC5F2FB2772D9D6001D0FCA /* platformThreads-armv8.cpp in Sources */,
 				71222C4724351CBA00CDBABD /* glext.cpp in Sources */,
-				710091582644D44E003413C3 /* dynamic.cpp in Sources */,
 				71222C4824351CBA00CDBABD /* spinnerControl.cpp in Sources */,
 				71222C4924351CBA00CDBABD /* log.cpp in Sources */,
 				71222C4A24351CBA00CDBABD /* common_sse.cpp in Sources */,
 				71222C4B24351CBA00CDBABD /* soft_copy_on_write_page.cpp in Sources */,
 				71222C4E24351CBA00CDBABD /* fs.cpp in Sources */,
 				1A155113263261E7006E0C8A /* unzip.c in Sources */,
+				1AD3FA8F2A57D2C2002EA550 /* btData.cpp in Sources */,
 				71222C5024351CBA00CDBABD /* soft_ondemand_page.cpp in Sources */,
 				71222C5124351CBA00CDBABD /* appChooserDlg.cpp in Sources */,
 				1A55D6362A0841E2002B7021 /* inffast.c in Sources */,
@@ -4070,14 +4236,15 @@
 				7135DC4D264EBCD0005D6AA6 /* main.cpp in Sources */,
 				1AB0D6DF26CB4AAF00E18A08 /* fsdynamiclinknode.cpp in Sources */,
 				7135DC4E264EBCD0005D6AA6 /* soft_file_map.cpp in Sources */,
+				1AD3FA992A57D2CD002EA550 /* btCpu.cpp in Sources */,
 				7135DC4F264EBCD0005D6AA6 /* common_other.cpp in Sources */,
 				7135DC50264EBCD0005D6AA6 /* kfiledescriptor.cpp in Sources */,
 				7135DC51264EBCD0005D6AA6 /* loader.cpp in Sources */,
 				7135DC52264EBCD0005D6AA6 /* soft_native_page.cpp in Sources */,
+				1AEBC3A02AABC111007ECB08 /* BoxedwineUnitTestsMain.m in Sources */,
 				1AC5F2C82772D957001D0FCA /* armv8btOps_shift.cpp in Sources */,
 				7135DC53264EBCD0005D6AA6 /* soft_code_page.cpp in Sources */,
 				7135DC54264EBCD0005D6AA6 /* glext.cpp in Sources */,
-				7135DC55264EBCD0005D6AA6 /* dynamic.cpp in Sources */,
 				7135DC56264EBCD0005D6AA6 /* lazyFlags.cpp in Sources */,
 				7135DC57264EBCD0005D6AA6 /* kunixsocket.cpp in Sources */,
 				1AC5F2FF2772D9D6001D0FCA /* platformThreads-armv8.cpp in Sources */,
@@ -4097,6 +4264,7 @@
 				7135DC63264EBCD0005D6AA6 /* memory64.cpp in Sources */,
 				7135DC64264EBCD0005D6AA6 /* mainloop.cpp in Sources */,
 				7135DC65264EBCD0005D6AA6 /* knativesystem.cpp in Sources */,
+				1AD3FA932A57D2C6002EA550 /* btData.cpp in Sources */,
 				7135DC66264EBCD0005D6AA6 /* cpuinfo.cpp in Sources */,
 				7135DC67264EBCD0005D6AA6 /* kfile.cpp in Sources */,
 				7135DC68264EBCD0005D6AA6 /* common_bit.cpp in Sources */,
@@ -4164,7 +4332,6 @@
 				71FBFEC02433BBBE003F17F1 /* ksocketobject.cpp in Sources */,
 				71FBFEDC2433BBBE003F17F1 /* glfunctions_ext1.cpp in Sources */,
 				715F348A2440D7D20038F5A4 /* okDlg.cpp in Sources */,
-				710091572644D44E003413C3 /* dynamic.cpp in Sources */,
 				1A155105263261DF006E0C8A /* zip.c in Sources */,
 				71FBFEE62433BBBE003F17F1 /* glshim.c in Sources */,
 				71FBFEBB2433BBBE003F17F1 /* kfilelock.cpp in Sources */,
@@ -4273,6 +4440,7 @@
 				710091632644D44E003413C3 /* platformThreads-x64.cpp in Sources */,
 				71FBFECC2433BBBE003F17F1 /* knativesocket.cpp in Sources */,
 				71FBFE982433BBBE003F17F1 /* soft_code_page.cpp in Sources */,
+				1AD3FA942A57D2C9002EA550 /* btCpu.cpp in Sources */,
 				71B2D2FD2668178700010AB6 /* osmesa.cpp in Sources */,
 				711F834924527273008E6A0C /* boxedTexture.cpp in Sources */,
 				71FBFE6A2433BBBE003F17F1 /* containersView.cpp in Sources */,
@@ -4366,6 +4534,7 @@
 				71FBFEC22433BBBE003F17F1 /* devsequencer.cpp in Sources */,
 				71FBFEBF2433BBBE003F17F1 /* kprocess.cpp in Sources */,
 				7100914E2644D42C003413C3 /* sdlcallback.cpp in Sources */,
+				1AD3FA8E2A57D2C2002EA550 /* btData.cpp in Sources */,
 				1AFC480A2663FFC000EE5FCC /* pixelformat.cpp in Sources */,
 				71FBFE912433BBBE003F17F1 /* normalCPU.cpp in Sources */,
 				71FBFEDD2433BBBE003F17F1 /* glfunctions_ext3.cpp in Sources */,
@@ -4378,6 +4547,29 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		1AEBC3972AABC0A9007ECB08 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 71FBFCAC2433B815003F17F1 /* BoxedwineSlow */;
+			targetProxy = 1AEBC3962AABC0A9007ECB08 /* PBXContainerItemProxy */;
+		};
+		1AEBC3AC2AABC485007ECB08 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 71222B182435140100CDBABD /* BoxedwineTestSlow */;
+			targetProxy = 1AEBC3AB2AABC485007ECB08 /* PBXContainerItemProxy */;
+		};
+		1AEBC3B62AABC519007ECB08 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 71222B182435140100CDBABD /* BoxedwineTestSlow */;
+			targetProxy = 1AEBC3B52AABC519007ECB08 /* PBXContainerItemProxy */;
+		};
+		1AEBC3BC2AABC5DA007ECB08 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7135DC10264EBCD0005D6AA6 /* BoxedwineTest */;
+			targetProxy = 1AEBC3BB2AABC5DA007ECB08 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
 		71222B202435140300CDBABD /* MainMenu.xib */ = {
@@ -4398,9 +4590,10 @@
 				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
 				CODE_SIGN_ENTITLEMENTS = "Boxedwine/Boxedwine-Automation.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				DEVELOPMENT_TEAM = NHYAMS3B9Z;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
 				FRAMEWORK_SEARCH_PATHS = "$(PROJECT_DIR)/../../../lib/mac";
 				GCC_PREPROCESSOR_DEFINITIONS = (
@@ -4448,9 +4641,10 @@
 				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
 				CODE_SIGN_ENTITLEMENTS = "Boxedwine/Boxedwine-Automation.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				DEVELOPMENT_TEAM = NHYAMS3B9Z;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
 				FRAMEWORK_SEARCH_PATHS = "$(PROJECT_DIR)/../../../lib/mac";
 				GCC_PREPROCESSOR_DEFINITIONS = (
@@ -4598,6 +4792,82 @@
 			};
 			name = Release;
 		};
+		1AEBC3982AABC0A9007ECB08 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = S9HH8A437X;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.1;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = boxedwine.org.BoxedwineUnitTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/BoxedwineTest.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/BoxedwineTest";
+			};
+			name = Debug;
+		};
+		1AEBC3992AABC0A9007ECB08 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = S9HH8A437X;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.1;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = boxedwine.org.BoxedwineUnitTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/BoxedwineTest.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/BoxedwineTest";
+			};
+			name = Release;
+		};
+		1AEBC3B82AABC519007ECB08 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = S9HH8A437X;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.1;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = boxedwine.org.BoxedwineSlowUnitTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/BoxedwineTestSlow.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/BoxedwineTestSlow";
+			};
+			name = Debug;
+		};
+		1AEBC3B92AABC519007ECB08 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = S9HH8A437X;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.1;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = boxedwine.org.BoxedwineSlowUnitTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/BoxedwineTestSlow.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/BoxedwineTestSlow";
+			};
+			name = Release;
+		};
 		71222B272435140300CDBABD /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -4612,7 +4882,6 @@
 					BOXEDWINE_HAS_SETJMP,
 					BOXEDWINE_64,
 					"SDL2=1",
-					BOXEDWINE_64BIT_MMU,
 					"GLH=<SDL_opengl.h>",
 					BOXEDWINE_OPENGL_SDL,
 					BOXEDWINE_GLHANDLE_ARB_POINTER,
@@ -4647,7 +4916,6 @@
 					BOXEDWINE_HAS_SETJMP,
 					BOXEDWINE_64,
 					"SDL2=1",
-					BOXEDWINE_64BIT_MMU,
 					"GLH=<SDL_opengl.h>",
 					BOXEDWINE_OPENGL_SDL,
 					BOXEDWINE_GLHANDLE_ARB_POINTER,
@@ -4965,9 +5233,10 @@
 				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
 				CODE_SIGN_ENTITLEMENTS = Boxedwine/Boxedwine.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				DEVELOPMENT_TEAM = NHYAMS3B9Z;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
 				FRAMEWORK_SEARCH_PATHS = "$(PROJECT_DIR)/../../../lib/mac";
 				GCC_PREPROCESSOR_DEFINITIONS = (
@@ -5015,9 +5284,10 @@
 				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
 				CODE_SIGN_ENTITLEMENTS = Boxedwine/Boxedwine.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				DEVELOPMENT_TEAM = NHYAMS3B9Z;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
 				FRAMEWORK_SEARCH_PATHS = "$(PROJECT_DIR)/../../../lib/mac";
 				GCC_PREPROCESSOR_DEFINITIONS = (
@@ -5075,6 +5345,24 @@
 			buildConfigurations = (
 				1A80F2DF276EBF170032A70A /* Debug */,
 				1A80F2E0276EBF170032A70A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		1AEBC39A2AABC0A9007ECB08 /* Build configuration list for PBXNativeTarget "BoxedwineUnitTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1AEBC3982AABC0A9007ECB08 /* Debug */,
+				1AEBC3992AABC0A9007ECB08 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		1AEBC3B72AABC519007ECB08 /* Build configuration list for PBXNativeTarget "BoxedwineSlowUnitTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1AEBC3B82AABC519007ECB08 /* Debug */,
+				1AEBC3B92AABC519007ECB08 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

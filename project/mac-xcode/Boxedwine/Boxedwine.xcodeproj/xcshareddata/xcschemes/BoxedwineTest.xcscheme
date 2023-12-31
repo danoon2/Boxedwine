@@ -26,8 +26,30 @@
       buildConfiguration = "Debug"
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
-      shouldUseLaunchSchemeArgsEnv = "YES">
+      shouldUseLaunchSchemeArgsEnv = "YES"
+      codeCoverageEnabled = "YES">
       <Testables>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "1AEBC3912AABC0A9007ECB08"
+               BuildableName = "BoxedwineUnitTests.xctest"
+               BlueprintName = "BoxedwineUnitTests"
+               ReferencedContainer = "container:Boxedwine.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "YES"
+            parallelizable = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "1AEBC3B02AABC519007ECB08"
+               BuildableName = "BoxedwineSlowUnitTests.xctest"
+               BlueprintName = "BoxedwineSlowUnitTests"
+               ReferencedContainer = "container:Boxedwine.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction

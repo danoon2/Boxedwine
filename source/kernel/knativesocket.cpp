@@ -781,9 +781,9 @@ U32 KNativeSocketObject::setsockopt(KFileDescriptor* fd, U32 level, U32 name, U3
                     kpanic("KNativeSocketObject::setsockopt SO_SNDTIMEO expecting len of 8");
                 }
                 {
+#ifdef BOXEDWINE_MSVC
                     U32 sec = readd(value);
                     U32 usec = readd(value+4);
-#ifdef BOXEDWINE_MSVC
                     DWORD v = sec * 1000 + usec / 1000;
                     len = 4;
 #else
@@ -800,9 +800,9 @@ U32 KNativeSocketObject::setsockopt(KFileDescriptor* fd, U32 level, U32 name, U3
                     kpanic("KNativeSocketObject::setsockopt SO_RCVTIMEO expecting len of 8");
                 }
                 {
+#ifdef BOXEDWINE_MSVC
                     U32 sec = readd(value);
                     U32 usec = readd(value + 4);
-#ifdef BOXEDWINE_MSVC
                     DWORD v = sec * 1000 + usec / 1000;
                     len = 4;
 #else
@@ -1103,7 +1103,7 @@ FsOpenNode* openHosts(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
     char buf[256];
     name[0] = 0;
     gethostname(name, 256);
-    sprintf(buf, "127.0.0.1\tlocalhost\n127.0.1.1\t%s\n::1\tip6-localhost ip6-loopback", name);
+    snprintf(buf, sizeof(buf), "127.0.0.1\tlocalhost\n127.0.1.1\t%s\n::1\tip6-localhost ip6-loopback", name);
     return new BufferAccess(node, flags, buf);
 }
 

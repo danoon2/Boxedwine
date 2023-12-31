@@ -872,8 +872,12 @@ const InstructionInfo instructionInfo[] = {
     {0, 16, 0, 0, 0, 0, 1}, // LMSW
     {0, 0, 0, 0, 0, 0, 0}, // INVLPG
 
-    {0, 0, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // XaddR32R32 
-    {0, 32, 32, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // XaddR32E32
+    { 0, 0, 0, CF | AF | ZF | SF | OF | PF, 0, 0, 0 }, // XaddR8R8 
+    { 0, 8, 8, CF | AF | ZF | SF | OF | PF, 0, 0, 0 }, // XaddR8E8
+    { 0, 0, 0, CF | AF | ZF | SF | OF | PF, 0, 0, 0 }, // XaddR16R16 
+    { 0, 16, 16, CF | AF | ZF | SF | OF | PF, 0, 0, 0 }, // XaddR16E16
+    { 0, 0, 0, CF | AF | ZF | SF | OF | PF, 0, 0, 0 }, // XaddR32R32 
+    { 0, 32, 32, CF | AF | ZF | SF | OF | PF, 0, 0, 0 }, // XaddR32E32
     {0, 64, 64, ZF, 0, 0, 0}, // CmpXchg8b
     {0, 0, 0, 0, 0, 0, 0}, // Bswap32
 
@@ -2654,6 +2658,10 @@ const LogInstruction instructionLog[] = {
     {"LMSW", 16, logE},
     {"INVLPG", 0, logName},
 
+    { "Xadd", 8, logRR },
+    { "Xadd", 8, logRE },
+    { "Xadd", 16, logRR },
+    { "Xadd", 16, logRE },
     {"Xadd", 32, logRR},
     {"Xadd", 32, logRE},
     {"CmpXchg8b", 64, logE},
@@ -5507,6 +5515,8 @@ DecodeRM decodeSetNL(SetNL_R8, SetNL_E8);                        // SETNL
 DecodeRM decodeSetLE(SetLE_R8, SetLE_E8);                        // SETLE
 DecodeRM decodeSetNLE(SetNLE_R8, SetNLE_E8);                     // SETNLE
 
+DecodeRMr decodeXadd8(XaddR8R8, XaddR8E8); // XADD
+DecodeRMr decodeXadd16(XaddR16R16, XaddR16E16); // XADD
 DecodeRMr decodeXadd32(XaddR32R32, XaddR32E32); // XADD
 DecodeGroup decodeCmpXchg8b(Invalid, CmpXchg8b, Invalid, Invalid, Invalid, Invalid, Invalid, Invalid); // CMPXCHG8B
 
@@ -5822,10 +5832,10 @@ const Decode* const decoder[] = {
     &decodePushFs16, &decodePopFs16, &decodeCPUID, &decodeBtEwGw, &decodeDshlEwGw, &decodeDshlClEwGw, 0, 0,
     &decodePushGs16, &decodePopGs16, 0, &decodeBtsEwGw, &decodeDshrEwGw, &decodeDshrClEwGw, 0, &decodeDimulGwEw,
     // 0x1b0
-    &decodeCmpXchgEbGb, &decodeCmpXchgEwGw, &decodeLss, &decodeBtrEwGw, &decodeLfs, &decodeLgs, &decodeMovGwXz8, 0,
+    &decodeCmpXchgEbGb, &decodeCmpXchgEwGw, &decodeLss, &decodeBtrEwGw, &decodeLfs, &decodeLgs, &decodeMovGwXz8, &decodeMovEwGw,
     0, 0, &decodeGroup8_16, &decodeBtcEwGw, &decodeBsfGwEw, &decodeBsrGwEw, &decodeMovGwSx8, 0,
     // 0x1c0
-    0, 0, &sse0x1c2, 0, &ssePinsrwXmm, &ssePextrwXmm, &sse0x1c6, 0,
+    &decodeXadd8, &decodeXadd16, &sse0x1c2, 0, &ssePinsrwXmm, &ssePextrwXmm, &sse0x1c6, 0,
     0, 0, 0, 0, 0, 0, 0, 0,
     // 0x1d0
     0, &sse0x1d1, &sse0x1d2, &sse0x1d3, &sse0x1d4, &sse0x1d5, &sse0x1d6, &ssePmovmskbXmm,
@@ -5921,7 +5931,7 @@ const Decode* const decoder[] = {
     &decodeCmpXchgEbGb, &decodeCmpXchgEdGd, &decodeLss32, &decodeBtrEdGd, &decodeLfs32, &decodeLgs32, &decodeMovGdXz8, &decodeMovGdXz16,
     0, 0, &decodeGroup8_32, &decodeBtcEdGd, &decodeBsfGdEd, &decodeBsrGdEd, &decodeMovGdSx8, &decodeMovGdSx16,
     // 0x3c0
-    0, &decodeXadd32, &sseCmp, &sse0x3c3, &ssePinsrwMmx, &ssePextrwMmx, &sseShufp, &decodeCmpXchg8b,
+    &decodeXadd8, &decodeXadd32, &sseCmp, &sse0x3c3, &ssePinsrwMmx, &ssePextrwMmx, &sseShufp, &decodeCmpXchg8b,
     &decodeBswapEAX, &decodeBswapECX, &decodeBswapEDX, &decodeBswapEBX, &decodeBswapESP, &decodeBswapEBP, &decodeBswapESI, &decodeBswapEDI,
     // 0x3d0
     0, &decodePsrlw, &decodePsrld, &decodePsrlq, &sse0x3d4, &decodePmullw, &sse0x3d6, &ssePmovmskbMmx,
@@ -6005,6 +6015,18 @@ void DecodedOp::dealloc(bool deallocNext) {
     this->next = freeOps;
     this->inst = InstructionCount;
     freeOps = this;
+}
+
+bool DecodedOp::isStringOp() {
+    if (this->inst == Lodsb || this->inst == Lodsw || this->inst == Lodsd ||
+        this->inst == Stosb || this->inst == Stosw || this->inst == Stosd ||
+        this->inst == Scasb || this->inst == Scasw || this->inst == Scasd ||
+        this->inst == Movsb || this->inst == Movsw || this->inst == Movsd ||
+        this->inst == Cmpsb || this->inst == Cmpsw || this->inst == Cmpsd) {
+
+        return true;
+    }
+    return false;
 }
 
 bool DecodedOp::isFpuOp() {

@@ -15,12 +15,13 @@ void platformHandler(int sig, siginfo_t* info, void* vcontext);
 #include <mach/mach_init.h>
 #include <mach/mach_port.h>
 #endif
-void* platformThreadProc(void* param) {
+
+void initHandlers() {
     static bool initializedHandler = false;
     if (!initializedHandler) {
         struct sigaction sa;
-        sa.sa_sigaction= platformHandler;
-        sa.sa_flags=SA_SIGINFO;
+        sa.sa_sigaction = platformHandler;
+        sa.sa_flags = SA_SIGINFO;
         struct sigaction oldsa;
         sigaction(SIGBUS, &sa, &oldsa);
         sigaction(SIGSEGV, &sa, &oldsa);
@@ -35,11 +36,21 @@ void* platformThreadProc(void* param) {
         // proc hand -p true -s false SIGILL
         // proc hand -p true -s false SIGBUS
         // in the debug out put window, (lldb) enter the above 2 commands in order to run while debugging on Mac
-        
+
         // set a break point on this line then enter the above commands.
         task_set_exception_ports(mach_task_self(), EXC_MASK_BAD_ACCESS | EXC_MASK_BAD_INSTRUCTION, MACH_PORT_NULL, EXCEPTION_DEFAULT, 0);
 #endif
     }
+}
+
+#ifdef __TEST
+void initThreadForTesting() {
+    initHandlers();
+}
+#endif
+
+void* platformThreadProc(void* param) {
+    initHandlers();
     KThread* thread = (KThread*)param;
     BtCPU* cpu = (BtCPU*)thread->cpu;
     cpu->startThread();

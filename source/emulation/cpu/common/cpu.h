@@ -266,12 +266,12 @@ public:
 
     jmp_buf runBlockJump;
 
-    U32 getCF();
-    U32 getSF();
-    U32 getZF();
-    U32 getOF();
-    U32 getAF();
-    U32 getPF();
+    bool getCF();
+    bool getSF();
+    bool getZF();
+    bool getOF();
+    bool getAF();
+    bool getPF();
 
     void setCF(U32 value);
     void setOF(U32 value);

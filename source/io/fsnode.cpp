@@ -144,7 +144,6 @@ U32 FsNode::addLock(KFileLock* lock) {
 U32 FsNode::addLockAndWait(KFileLock* lock, bool otherProcess) {
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->locksCS);
     KFileLock* found = getLock(lock, otherProcess);
-    bool result = false;
 
     while (found) {
         BOXEDWINE_CONDITION_WAIT(this->locksCS);

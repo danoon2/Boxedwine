@@ -3,10 +3,13 @@
 #ifdef BOXEDWINE_ARMV8BT
 
 #include "armv8btAsm.h"
+#include "armv8btOps.h"
+
 #include "../common/common_other.h"
 #include "../../../../source/emulation/hardmmu/hard_memory.h"
 #include "../normal/normalCPU.h"
 #include "../armv8/llvm_helper.h"
+#include "armv8btCodeChunk.h"
 
 static bool isWidthVector(VectorWidth width) {
     if (width == D_scaler || width == S_scaler) {
@@ -1382,17 +1385,24 @@ U8 Armv8btAsm::getAddressReg() {
     return tmp;
 }
 
-U8 Armv8btAsm::getHostMem(U8 regEmulatedAddress) {
+U8 Armv8btAsm::getHostMem(U8 regEmulatedAddress, S8 tmpReg) {
     if (this->useSingleMemOffset) {
         return xMem;
     } else {
         U8 resultReg = getTmpReg();
-        U8 tmpReg = getTmpReg();
+        bool needToReleaseTmpReg = false;
+
+        if (tmpReg == -1) {
+            tmpReg = getTmpReg();
+            needToReleaseTmpReg = true;
+        }
 
         shiftRegRightWithValue32(tmpReg, regEmulatedAddress, 12); // get page
         readMem64ValueOffset(resultReg, xCPU, CPU_OFFSET_MEMOFFSET);
         readMem64RegOffset(resultReg, resultReg, tmpReg, 3); // read memOffset, shift page << 3 (page*8), since sizeof(U64)==8 to get the value in memOffsets[page]        
-        releaseTmpReg(tmpReg);
+        if (needToReleaseTmpReg) {
+            releaseTmpReg(tmpReg);
+        }
         return resultReg;
     }
 }
@@ -1447,7 +1457,7 @@ void Armv8btAsm::readMemory(U8 addressReg, U8 dst, U32 width, bool addMemOffsetT
         if (lock) {
             kpanic("ArmV8bt: readMemory lock not implement for addMemOffsetToAddress = true");
         }
-        U8 memReg = getHostMem(addressReg);
+        U8 memReg = getHostMem(addressReg, (addressReg != dst) ? dst : -1);
         if (width == 64) {
             readMem64RegOffset(dst, addressReg, memReg, 0);
         } else if (width == 32) {
@@ -2009,6 +2019,7 @@ void Armv8btAsm::jmpReg(U8 reg, bool mightNeedCS) {
 }
 
 void Armv8btAsm::doJmp(bool mightNeedCS) {
+    // ok to call 32-bit read for 16-bit instruction, cpu->eip.u32 will be properly masked by this point
     readMem32ValueOffset(xBranch, xCPU, CPU_OFFSET_EIP);
     jmpReg(xBranch, mightNeedCS);
 }
@@ -2234,6 +2245,7 @@ void Armv8btAsm::jumpTo(U32 eip) {
         // it is not possible to modify the executable code directly in an atomic way, so instead of embedding
         // where we will jump directly into the instruction, we will encode an instruction that reads the jump
         // address from memory (data).  That memory location can be atomically updated.
+        /*
         if (0) {
             // this can result in random crashes for dynamic code, Quake 2 will see this
             // b
@@ -2242,7 +2254,7 @@ void Armv8btAsm::jumpTo(U32 eip) {
             write8(0);
             write8(0x14);
             addTodoLinkJump(eip, 4, false);
-        } else {
+        } else */{
             loadConst(xBranch, eip);
             jmpReg(xBranch, false);
         }
@@ -2435,6 +2447,9 @@ void Armv8btAsm::doIfBitSet(U8 reg, U32 bitPos, std::function<void(void)> ifBloc
 }
 
 void Armv8btAsm::compareZeroAndBranch(U8 reg, bool isZero, U32 eip) {
+    if (!cpu->isBig()) {
+        eip &= 0xFFFF;
+    }
     if (!isEipInChunk(eip)) {
         doIf(reg, 0, isZero? DO_IF_EQUAL:DO_IF_NOT_EQUAL, [eip, this] {
             U8 tmpReg = this->getRegWithConst(eip);
@@ -2469,7 +2484,7 @@ void Armv8btAsm::doIf(U8 reg, U32 value, DoIfOperator op, std::function<void(voi
         afterCmpBeforeBranchBlock();
     }
     if (!elseBlock) {
-        U32 pos;
+        U32 pos = 0;
         if (op == DO_IF_EQUAL) {
             pos = branchNE();
         } else if (op == DO_IF_NOT_EQUAL) {
@@ -2572,7 +2587,7 @@ void Armv8btAsm::vMemMultiple(U8 dst, U8 base, U32 numberOfRegs, U8 thirdByte, b
     // ld1.16b{ v0, v1, v2, v3 }, [x0], x0
     // st1.16b{ v0, v1, v2, v3 }, [x0], x0
     write8(dst | (U8)(base << 5));
-    U8 regCount;
+    U8 regCount = 0;
     if (numberOfRegs == 2) {
         regCount = 0xa0;
     } else if (numberOfRegs == 3) {
@@ -2903,8 +2918,6 @@ void Armv8btAsm::vMov32ToScaler(U8 dst, U8 src, U32 srcIndex) {
 }
 
 void Armv8btAsm::vLoadConst(U8 dst, U64 value, VectorWidth width) {
-    int count = 16 / width;
-
     // movi v0.16b, 0
     if (width == B16) {
         write8(dst | (U8)(value << 5));
@@ -2986,7 +2999,7 @@ void Armv8btAsm::vExtractVectorFromPair(U8 dst, U8 src1, U8 src2, U32 startIndex
 void Armv8btAsm::vZipFromLow128(U8 dst, U8 src1, U8 src2, VectorWidth width) {    
     write8(dst | (U8)(src1 << 5));
     write8(0x38 | (U8)(src1 >> 3));
-    U8 type;
+
     if (width == B16) {
         // zip1 v0.16b, v0.16b, v0.16b
         write8(src2);
@@ -3023,7 +3036,7 @@ void Armv8btAsm::vZipFromHigh128(U8 dst, U8 src1, U8 src2, VectorWidth width) {
     // zip2 v0.4s, v0.4s, v1.4s
     write8(dst | (U8)(src1 << 5));
     write8(0x78 | (U8)(src1 >> 3));
-    U8 type;
+    U8 type = 0;
     if (width == B16) {
         type = 0;
     } else if (width == H8) {
@@ -3134,7 +3147,7 @@ void Armv8btAsm::vCmpGreaterThan(U8 dst, U8 src1, U8 src2, VectorWidth width) {
     } else {        
         write8(dst | (U8)(src1 << 5));
         write8(0x34 | (U8)(src1 >> 3));
-        U8 type;
+        U8 type = 0;
         if (width == D_scaler) {
             // CMGT d0, d0, d0
             type = 0xe0;
@@ -3150,7 +3163,7 @@ void Armv8btAsm::vCmpEqual(U8 dst, U8 src1, U8 src2, VectorWidth width) {
     if (isWidthVector(width)) {
         write8(dst | (U8)(src1 << 5));
         write8(0x8C | (U8)(src1 >> 3));
-        U8 type;
+        U8 type = 0;
         if (width == B16) {
             // CMEQ v0.16b, v0.16b, v0.16b
             type = 0x20;
@@ -3171,7 +3184,7 @@ void Armv8btAsm::vCmpEqual(U8 dst, U8 src1, U8 src2, VectorWidth width) {
     } else {
         write8(dst | (U8)(src1 << 5));
         write8(0x8C | (U8)(src1 >> 3));
-        U8 type;
+        U8 type = 0;
         if (width == D_scaler) {
             // CMEQ d0, d0, d0
             type = 0xe0;
@@ -4892,6 +4905,37 @@ void Armv8btAsm::signalIllegalInstruction(int code) {
     callHost((void*)common_signalIllegalInstruction);
     syncRegsToHost();
     doJmp(true);
+}
+
+void Armv8btAsm::translateInstruction() {
+    this->startOfOpIp = this->ip;
+    this->useSingleMemOffset = KSystem::useSingleMemOffset && !this->cpu->thread->memory->doesInstructionNeedMemoryOffset(this->ip);
+    this->ip += this->decodedOp->len;
+#ifdef _DEBUG
+    if (this->cpu->logFile) {
+        this->logOp(this->startOfOpIp);
+    }
+    // just makes debugging the asm output easier
+#ifndef __TEST
+    this->loadConst(14, this->startOfOpIp);
+    //data->writeMem32ValueOffset(xTmp5, xCPU, CPU_OFFSET_EIP);
+#endif
+#endif
+    if (this->dynamic) {
+        this->addDynamicCheck(false);
+    }
+    else {
+#ifdef _DEBUG
+        //data->addDynamicCheck(true);
+#endif
+    }
+    armv8btEncoder[this->decodedOp->inst](this);
+
+    for (int i = 0; i < xNumberOfTmpRegs; i++) {
+        if (this->tmpRegInUse[i]) {
+            kpanic("op(%x) leaked tmp reg", this->decodedOp->originalOp);
+        }
+    }
 }
 
 #ifdef __TEST

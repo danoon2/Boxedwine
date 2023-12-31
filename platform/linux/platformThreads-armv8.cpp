@@ -99,6 +99,37 @@ public:
 
 U32 exceptionCount;
 
+#ifdef __MACH__
+
+#ifndef ESR_ELx_WNR
+#define ESR_ELx_WNR        ((U32)(1) << 6)
+#endif
+
+static bool Aarch64GetESR(ucontext_t *ucontext, bool* isWrite) {
+    __darwin_mcontext64* machineContext = ucontext->uc_mcontext;
+    U64 esr = machineContext->__es.__esr;
+    *isWrite = (esr & ESR_ELx_WNR) != 0;
+    return true;
+}
+#else
+
+static bool Aarch64GetESR(ucontext_t *ucontext, bool* isWrite) {
+    U8 *aux = ucontext->uc_mcontext.__reserved;
+    while (true) {
+        _aarch64_ctx *ctx = (_aarch64_ctx *)aux;
+        if (ctx->size == 0) break;
+        if (ctx->magic == ESR_MAGIC) {
+            U64 esr = ((struct esr_context*)ctx)->esr;
+            U64 ESR_ELx_WNR = 1U << 6;
+            *isWrite = (esr & ESR_ELx_WNR) != 0;
+            return true;
+        }
+        aux += ctx->size;
+    }
+    return false;
+}
+#endif
+
 // this will quickly store the info then exit to signalHandler() to perform the logic there
 void platformHandler(int sig, siginfo_t* info, void* vcontext) {
     exceptionCount++;
@@ -116,13 +147,34 @@ void platformHandler(int sig, siginfo_t* info, void* vcontext) {
 
     syncFromException(armCpu, context);
 
-    // :TODO:
-    //cpu->exceptionReadAddress = mc->error_code == 0;
+    cpu->exceptionReadAddress = true;
+    
     cpu->exceptionAddress = (U64)info->si_addr;
     cpu->exceptionSigNo = info->si_signo;
     cpu->exceptionSigCode = info->si_code;
     armCpu->exceptionIp = context->CONTEXT_PC;
 
+    if ((cpu->exceptionSigNo == SIGBUS || cpu->exceptionSigNo == SIGSEGV) && cpu->thread->memory->isAddressExecutable((void*)cpu->exceptionIp)) {
+        U32 insn = *(U32*)(cpu->exceptionIp);
+        
+        bool isWrite = false;
+        if (!Aarch64GetESR(context, &isWrite)) {
+            // is_write logic from QEMU (GPL2)
+            isWrite = (  (insn & 0xbfff0000) == 0x0c000000   /* C3.3.1 */
+                       || (insn & 0xbfe00000) == 0x0c800000   /* C3.3.2 */
+                       || (insn & 0xbfdf0000) == 0x0d000000   /* C3.3.3 */
+                       || (insn & 0xbfc00000) == 0x0d800000   /* C3.3.4 */
+                       || (insn & 0x3f400000) == 0x08000000   /* C3.3.6 */
+                       || (insn & 0x3bc00000) == 0x39000000   /* C3.3.13 */
+                       || (insn & 0x3fc00000) == 0x3d800000   /* ... 128bit */
+                       /* Ingore bits 10, 11 & 21, controlling indexing.  */
+                       || (insn & 0x3bc00000) == 0x38000000   /* C3.3.8-12 */
+                       || (insn & 0x3fe00000) == 0x3c800000   /* ... 128bit */
+                       /* Ignore bits 23 & 24, controlling indexing.  */
+                       || (insn & 0x3a400000) == 0x28000000); /* C3.3.7,14-16 */
+        }
+        cpu->exceptionReadAddress = !isWrite;
+    }
     if (armCpu->exceptionIp == 0) {
         kpanic("oops jumps to 0");
     }
@@ -154,16 +206,13 @@ void signalHandler() {
     KThread* currentThread = KThread::currentThread();
     Armv8btCPU* cpu = (Armv8btCPU*)currentThread->cpu;
 
-    U64 result = cpu->startException(cpu->exceptionAddress, cpu->exceptionReadAddress, NULL, NULL);
+    U64 result = cpu->startException(cpu->exceptionAddress, cpu->exceptionReadAddress);
     if (result) {
         cpu->returnHostAddress = result;
         return;
     }
     InException e(cpu);
     if (cpu->exceptionSigNo == SIGILL || cpu->exceptionSigNo == SIGTRAP) {
-        //if (cpu->exceptionRSP & 0xf) {
-        //    kpanic("seh_filter: bad stack alignment");
-        //}
         U64 rip = cpu->handleIllegalInstruction(cpu->exceptionIp);
         if (rip) {
             cpu->returnHostAddress = rip;
@@ -182,7 +231,7 @@ void signalHandler() {
         return;
     } else if (cpu->exceptionSigNo == SIGFPE) {
         int code = getFPUCode(cpu->exceptionSigCode);
-        cpu->returnHostAddress = cpu->handleFpuException(code, NULL, NULL);
+        cpu->returnHostAddress = cpu->handleFpuException(code);
         return;
     } else if (*((U8*)cpu->exceptionIp) == 0xce || *((U8*)cpu->exceptionIp) == 0xcd) {
         U64 rip = cpu->handleIllegalInstruction(cpu->exceptionIp);

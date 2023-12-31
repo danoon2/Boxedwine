@@ -249,7 +249,7 @@ static void RGB2Hex( unsigned char const aRGB [ 3 ] ,
 	{
 		if ( aRGB )
 		{
-			sprintf(aoResultHexRGB,"#%02hhx%02hhx%02hhx",
+			snprintf(aoResultHexRGB, 8, "#%02hhx%02hhx%02hhx",
 						aRGB[0],aRGB[1],aRGB[2]);
 			/* printf("aoResultHexRGB %s\n", aoResultHexRGB); //*/
 		}
@@ -2178,24 +2178,24 @@ static int tkinter2Present ( )
     if ( lTkinter2Present < 0 )
     {
 		strcpy(gPython2Name , "python" ) ;
-		sprintf ( lPythonCommand , "%s %s" , gPython2Name , lPythonParams ) ;
+		snprintf ( lPythonCommand , sizeof(lPythonCommand), "%s %s" , gPython2Name , lPythonParams ) ;
 	    lTkinter2Present = tryCommand(lPythonCommand);		
         if ( ! lTkinter2Present )
 	    {
 			strcpy(gPython2Name , "python2" ) ;
 			if ( detectPresence(gPython2Name) )
 			{
-sprintf ( lPythonCommand , "%s %s" , gPython2Name , lPythonParams ) ;
+snprintf ( lPythonCommand , sizeof(lPythonCommand), "%s %s" , gPython2Name , lPythonParams ) ;
 				lTkinter2Present = tryCommand(lPythonCommand);
 			}
 			else
 			{
 				for ( i = 9 ; i >= 0 ; i -- )
 				{
-					sprintf ( gPython2Name , "python2.%d" , i ) ;
+					snprintf ( gPython2Name , sizeof(gPython2Name), "python2.%d" , i ) ;
 					if ( detectPresence(gPython2Name) )
 					{
-sprintf ( lPythonCommand , "%s %s" , gPython2Name , lPythonParams ) ;
+snprintf ( lPythonCommand , sizeof(lPythonCommand), "%s %s" , gPython2Name , lPythonParams ) ;
 						lTkinter2Present = tryCommand(lPythonCommand);
 						break ;
 					}
@@ -4029,13 +4029,13 @@ char const * colorChooser(
     	lWasOsascript = 1 ;
 		strcpy ( lDialogString , "osascript -e 'tell app (path to frontmost \
 application as Unicode text) to set mycolor to choose color default color {");
-		sprintf(lTmp, "%d", 256 * lDefaultRGB[0] ) ;
+		snprintf(lTmp, sizeof(lTmp), "%d", 256 * lDefaultRGB[0] ) ;
 		strcat(lDialogString, lTmp ) ;
 		strcat(lDialogString, "," ) ;
-		sprintf(lTmp, "%d", 256 * lDefaultRGB[1] ) ;
+		snprintf(lTmp, sizeof(lTmp), "%d", 256 * lDefaultRGB[1] ) ;
 		strcat(lDialogString, lTmp ) ;
 		strcat(lDialogString, "," ) ;
-		sprintf(lTmp, "%d", 256 * lDefaultRGB[2] ) ;
+		snprintf(lTmp, sizeof(lTmp), "%d", 256 * lDefaultRGB[2] ) ;
 		strcat(lDialogString, lTmp ) ;
 		strcat(lDialogString, "}' " ) ;
 		strcat ( lDialogString ,
@@ -4051,7 +4051,7 @@ application as Unicode text) to set mycolor to choose color default color {");
     else if ( zenity3Present() )
 	{
 		lWasZenity3 = 1 ;
-        sprintf ( lDialogString ,
+        snprintf ( lDialogString , sizeof(lDialogString),
 "zenity --color-selection --show-palette --color=%s" , lpDefaultHexRGB ) ;
 		if ( aTitle && strlen(aTitle) ) 
 		{
@@ -4062,7 +4062,7 @@ application as Unicode text) to set mycolor to choose color default color {");
 	}
 	else if ( kdialogPresent() )
 	{
-        sprintf ( lDialogString ,
+        snprintf ( lDialogString , sizeof(lDialogString),
 "kdialog --getcolor --default '%s'" , lpDefaultHexRGB ) ;
 		if ( aTitle && strlen(aTitle) )
 		{
@@ -4080,7 +4080,7 @@ application as Unicode text) to set mycolor to choose color default color {");
 			strcat(lDialogString, aTitle) ;
 		}
 		strcat(lDialogString, "\" 0 60 ") ;
-		sprintf(lTmp,"%hhu %hhu %hhu",lDefaultRGB[0],
+		snprintf(lTmp, sizeof(lTmp), "%hhu %hhu %hhu",lDefaultRGB[0],
 				lDefaultRGB[1],lDefaultRGB[2]);
 		strcat(lDialogString, lTmp) ;
 		strcat(lDialogString, " 2>&1");
