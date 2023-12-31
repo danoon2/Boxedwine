@@ -456,10 +456,13 @@ bool StartUpArgs::apply() {
                     args.push_back("/bin/wine");
                     args.push_back("explorer");
                     args.push_back("t:\\");
-                } else {                
+                } else {
                     std::string fileName = Fs::getFileNameFromNativePath(args[0]);
                     args.erase(args.begin());
-                    args.insert(args.begin(), "t:\\"+fileName);
+                    args.insert(args.begin(), "t:\\" + fileName);
+                    if (stringHasEnding(fileName, ".msi", true)) {
+                        args.insert(args.begin(), "start");
+                    }
                     args.insert(args.begin(), "/bin/wine");
                 }
             }
