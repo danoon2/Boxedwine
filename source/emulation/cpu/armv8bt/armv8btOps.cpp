@@ -4530,10 +4530,10 @@ void opXaddR16R16(Armv8btAsm* data) {
     bool needsHardwareFlags = false;
 
     if (ARM8BT_FLAGS_ADD16->usesDst(flags)) {
-        data->movRegToReg(xDst, data->getNativeReg(data->decodedOp->rm), 16, false);
+        data->movRegToReg(xDst, data->getNativeReg(data->decodedOp->rm), 16, true);
     }
     if (ARM8BT_FLAGS_ADD16->usesSrc(flags)) {
-        data->movRegToReg(xSrc, data->getNativeReg(data->decodedOp->reg), 16, false);
+        data->movRegToReg(xSrc, data->getNativeReg(data->decodedOp->reg), 16, true);
     }
     needsHardwareFlags = ARM8BT_FLAGS_ADD16->usesHardwareFlags(flags);
     data->addRegs32(xResult, data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->rm), 0, needsHardwareFlags);
@@ -4555,7 +4555,7 @@ void opXaddR16E16(Armv8btAsm* data) {
     bool needsHardwareFlags = false;
 
     if (ARM8BT_FLAGS_ADD16->usesSrc(flags)) {
-        data->movRegToReg(xSrc, data->getNativeReg(data->decodedOp->reg), 16, false);
+        data->movRegToReg(xSrc, data->getNativeReg(data->decodedOp->reg), 16, true);
     }
     needsHardwareFlags = ARM8BT_FLAGS_ADD16->usesHardwareFlags(flags);
     U8 addressReg = data->getAddressReg();
