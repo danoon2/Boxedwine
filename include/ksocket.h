@@ -66,6 +66,7 @@
 #define K_SO_DETACH_FILTER  27
 #define K_SO_PEERNAME  28
 #define K_SO_TIMESTAMP 29
+#define K_SO_ACCEPTCONN 30
 
 #define K_IPPROTO_IP 0
 #define K_SOL_SOCKET  1

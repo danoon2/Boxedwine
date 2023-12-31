@@ -822,6 +822,12 @@ U32 KNativeSocketObject::setsockopt(KFileDescriptor* fd, U32 level, U32 name, U3
                 this->recvLen = readd(value);
                 ::setsockopt(this->nativeSocket, SOL_SOCKET, SO_KEEPALIVE, (const char*)&this->recvLen, 4);
                 break;
+            case K_SO_BROADCAST:
+                if (len != 4)
+                    kpanic("KNativeSocketObject::setsockopt SO_BROADCAST expecting len of 4");
+                this->recvLen = readd(value);
+                ::setsockopt(this->nativeSocket, SOL_SOCKET, SO_BROADCAST, (const char*)&this->recvLen, 4);
+                break;
             default:
                 kwarn("KNativeSocketObject::setsockopt SOL_SOCKET name %d not implemented", name);
                 return -K_EINVAL;
@@ -912,6 +918,22 @@ U32 KNativeSocketObject::getsockopt(KFileDescriptor* fd, U32 level, U32 name, U3
             if (!result) {
                 writed(value, sec);
                 writed(value + 4, usec);
+            }
+        } else if (name == K_SO_BROADCAST) {
+            if (len != 4)
+                kpanic("KNativeSocketObject::getsockopt SO_BROADCAST expecting len of 4");
+            U32 result = 0;
+            result = ::getsockopt(this->nativeSocket, SOL_SOCKET, SO_BROADCAST, (char*)&result, &len);
+            if (!result) {
+                writed(value, result);
+            }
+        } else if (name == K_SO_ACCEPTCONN) {
+            if (len != 4)
+                kpanic("KNativeSocketObject::getsockopt SO_ACCEPTCONN expecting len of 4");
+            U32 result = 0;
+            result = ::getsockopt(this->nativeSocket, SOL_SOCKET, SO_ACCEPTCONN, (char*)&result, &len);
+            if (!result) {
+                writed(value, result);
             }
         } else {
             kwarn("KNativeSocketObject::getsockopt name %d not implemented", name);

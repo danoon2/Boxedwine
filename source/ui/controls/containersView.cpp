@@ -95,6 +95,9 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
                     std::vector<std::string> args;
                     args.push_back("/bin/wine");
                     args.push_back(app.getCmd());
+                    for (auto& arg : app.args) {
+                        args.push_back(arg);
+                    }
                     this->currentContainer->launch(args, app.getCmd());
                     GlobalSettings::startUpArgs.title = app.getName();
                     GlobalSettings::startUpArgs.setWorkingDir(app.getPath());
