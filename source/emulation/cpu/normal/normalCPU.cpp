@@ -143,6 +143,7 @@ void NormalBlock::run(CPU* cpu) {
 }
 
 static NormalBlock* freeBlocks;
+static BOXEDWINE_MUTEX freeBlocksMutex;
 
 void NormalBlock::init() {
     this->next = 0;
@@ -164,6 +165,7 @@ void NormalBlock::clearCache() {
 }
 
 NormalBlock* NormalBlock::alloc() {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(freeBlocksMutex);
     NormalBlock* result;
 
     if (freeBlocks) {
@@ -177,6 +179,7 @@ NormalBlock* NormalBlock::alloc() {
 }
 
 void NormalBlock::dealloc(bool delayed) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(freeBlocksMutex);
     KThread* thread = KThread::currentThread();
     if (thread) {
         CPU* cpu = thread->cpu;
