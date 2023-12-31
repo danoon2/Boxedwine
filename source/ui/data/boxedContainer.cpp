@@ -203,6 +203,13 @@ void BoxedContainer::getWineApps(std::vector<BoxedApp>& apps) {
             }
         }
         });
+    BoxedApp app;
+    app.container = this;
+    app.name = "wineboot -u";
+    app.path = "/bin";
+    app.cmd = "wineboot";
+    app.args.push_back("-u");
+    apps.push_back(app);
     std::sort(apps.begin(), apps.end(), compareApps);
 }
 
