@@ -19,20 +19,20 @@ enum DynArg {
     DYN_None,
 };
 
-U32 cpuOffset(U32 r, DynWidth width) {
+CPU_OFFSET_TYPE cpuOffset(U32 r, DynWidth width) {
     if (width==DYN_8bit)
         return OFFSET_REG8(r);
     else if (width==DYN_16bit)
-        return CPU_OFFSET_OF(reg[r].u16);
+        return CPU_OFFSET_OF_REG16(r);
     else if (width==DYN_32bit)
-        return CPU_OFFSET_OF(reg[r].u32);
+        return CPU_OFFSET_OF_REG32(r);
     else {
         kpanic("dynamic cpuOffset unexpected width: %d", width);
         return 0;
     }
 }
 
-U32 cpuOffsetResult(DynWidth width) {
+CPU_OFFSET_TYPE cpuOffsetResult(DynWidth width) {
     if (width==DYN_8bit)
         return CPU_OFFSET_OF(result.u8);
     else if (width==DYN_16bit)
@@ -45,7 +45,7 @@ U32 cpuOffsetResult(DynWidth width) {
     }
 }
 
-U32 cpuOffsetDst(DynWidth width) {
+CPU_OFFSET_TYPE cpuOffsetDst(DynWidth width) {
     if (width==DYN_8bit)
         return CPU_OFFSET_OF(dst.u8);
     else if (width==DYN_16bit)
@@ -58,7 +58,7 @@ U32 cpuOffsetDst(DynWidth width) {
     }
 }
 
-U32 cpuOffsetSrc(DynWidth width) {
+CPU_OFFSET_TYPE cpuOffsetSrc(DynWidth width) {
     if (width==DYN_8bit)
         return CPU_OFFSET_OF(src.u8);
     else if (width==DYN_16bit)
@@ -305,7 +305,7 @@ void dynamic_arith(DynamicData* data, DecodedOp* op, DynArg src, DynArg dst, Dyn
                 }
             }
         }
-        movToCpuPtr(CPU_OFFSET_OF(lazyFlags), (DYN_PTR_SIZE)flags);
+        movToCpuLazyFlags(CPU_OFFSET_OF(lazyFlags), DYN_LAZY_FLAG(flags));
         data->currentLazyFlags = flags;
     }
 
@@ -453,17 +453,17 @@ void genCF(const LazyFlags* flags, DynReg reg) {
     } else if (flags == FLAGS_AND32) {
         // 0
         movToReg(reg, DYN_32bit, 0);
-    } else if (flags == FLAGS_SUB8) {
+    } else if (flags == FLAGS_SUB8 || flags == FLAGS_CMP8) {
         // cpu->dst.u8<cpu->src.u8;
         movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u8), DYN_8bit);
         movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(dst.u8), DYN_8bit);
         evaluateToReg(reg, DYN_32bit, DYN_DEST, false, DYN_SRC, 0, DYN_8bit, DYN_LESS_THAN_UNSIGNED, true, true);
-    } else if (flags == FLAGS_SUB16) {
+    } else if (flags == FLAGS_SUB16 || flags == FLAGS_CMP16) {
         // cpu->dst.u16<cpu->src.u16;
         movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u16), DYN_16bit);
         movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(dst.u16), DYN_16bit);
         evaluateToReg(reg, DYN_32bit, DYN_DEST, false, DYN_SRC, 0, DYN_16bit, DYN_LESS_THAN_UNSIGNED, true, true);
-    } else if (flags == FLAGS_SUB32) {
+    } else if (flags == FLAGS_SUB32 || flags == FLAGS_CMP32) {
         // cpu->dst.u32<cpu->src.u32;
         movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(src.u32), DYN_32bit);
         movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(dst.u32), DYN_32bit);
@@ -1038,22 +1038,22 @@ void setConditionInReg(DynamicData* data, DynConditional condition, DynReg reg) 
         return;
     }
     switch (condition) {
-    case O: callHostFunction((void*)common_condition_o, true, 1, 0, DYN_PARAM_CPU, false); break;
-    case NO: callHostFunction((void*)common_condition_no, true, 1, 0, DYN_PARAM_CPU, false); break;
-    case B: callHostFunction((void*)common_condition_b, true, 1, 0, DYN_PARAM_CPU, false); break;
-    case NB: callHostFunction((void*)common_condition_nb, true, 1, 0, DYN_PARAM_CPU, false); break;
-    case Z: callHostFunction((void*)common_condition_z, true, 1, 0, DYN_PARAM_CPU, false); break;
-    case NZ: callHostFunction((void*)common_condition_nz, true, 1, 0, DYN_PARAM_CPU, false); break;
-    case BE: callHostFunction((void*)common_condition_be, true, 1, 0, DYN_PARAM_CPU, false); break;
-    case NBE: callHostFunction((void*)common_condition_nbe, true, 1, 0, DYN_PARAM_CPU, false); break;
-    case S: callHostFunction((void*)common_condition_s, true, 1, 0, DYN_PARAM_CPU, false); break;
-    case NS: callHostFunction((void*)common_condition_ns, true, 1, 0, DYN_PARAM_CPU, false); break;
-    case P: callHostFunction((void*)common_condition_p, true, 1, 0, DYN_PARAM_CPU, false); break;
-    case NP: callHostFunction((void*)common_condition_np, true, 1, 0, DYN_PARAM_CPU, false); break;
-    case L: callHostFunction((void*)common_condition_l, true, 1, 0, DYN_PARAM_CPU, false); break;
-    case NL: callHostFunction((void*)common_condition_nl, true, 1, 0, DYN_PARAM_CPU, false); break;
-    case LE: callHostFunction((void*)common_condition_le, true, 1, 0, DYN_PARAM_CPU, false); break;
-    case NLE: callHostFunction((void*)common_condition_nle, true, 1, 0, DYN_PARAM_CPU, false); break;
+    case O: callHostFunction(DYN_HOST_FN(common_condition_o), true, 1, 0, DYN_PARAM_CPU, false); break;
+    case NO: callHostFunction(DYN_HOST_FN(common_condition_no), true, 1, 0, DYN_PARAM_CPU, false); break;
+    case B: callHostFunction(DYN_HOST_FN(common_condition_b), true, 1, 0, DYN_PARAM_CPU, false); break;
+    case NB: callHostFunction(DYN_HOST_FN(common_condition_nb), true, 1, 0, DYN_PARAM_CPU, false); break;
+    case Z: callHostFunction(DYN_HOST_FN(common_condition_z), true, 1, 0, DYN_PARAM_CPU, false); break;
+    case NZ: callHostFunction(DYN_HOST_FN(common_condition_nz), true, 1, 0, DYN_PARAM_CPU, false); break;
+    case BE: callHostFunction(DYN_HOST_FN(common_condition_be), true, 1, 0, DYN_PARAM_CPU, false); break;
+    case NBE: callHostFunction(DYN_HOST_FN(common_condition_nbe), true, 1, 0, DYN_PARAM_CPU, false); break;
+    case S: callHostFunction(DYN_HOST_FN(common_condition_s), true, 1, 0, DYN_PARAM_CPU, false); break;
+    case NS: callHostFunction(DYN_HOST_FN(common_condition_ns), true, 1, 0, DYN_PARAM_CPU, false); break;
+    case P: callHostFunction(DYN_HOST_FN(common_condition_p), true, 1, 0, DYN_PARAM_CPU, false); break;
+    case NP: callHostFunction(DYN_HOST_FN(common_condition_np), true, 1, 0, DYN_PARAM_CPU, false); break;
+    case L: callHostFunction(DYN_HOST_FN(common_condition_l), true, 1, 0, DYN_PARAM_CPU, false); break;
+    case NL: callHostFunction(DYN_HOST_FN(common_condition_nl), true, 1, 0, DYN_PARAM_CPU, false); break;
+    case LE: callHostFunction(DYN_HOST_FN(common_condition_le), true, 1, 0, DYN_PARAM_CPU, false); break;
+    case NLE: callHostFunction(DYN_HOST_FN(common_condition_nle), true, 1, 0, DYN_PARAM_CPU, false); break;
     default:
         kpanic("setConditionInReg: unknown condition %d", condition);
     }
@@ -1061,28 +1061,28 @@ void setConditionInReg(DynamicData* data, DynConditional condition, DynReg reg) 
 
 void dynamic_pushReg32(DynamicData* data, DynReg reg, bool doneWithReg) {    
     if (!data->cpu->thread->process->hasSetStackMask && !data->cpu->thread->process->hasSetSeg[SS]) {
-        movToRegFromCpu(DYN_ADDRESS, CPU_OFFSET_OF(reg[4].u32), DYN_32bit);
+        movToRegFromCpu(DYN_ADDRESS, CPU_OFFSET_OF_REG32(4), DYN_32bit);
         instRegImm('-', DYN_ADDRESS, DYN_32bit, 4);
         movToMemFromReg(DYN_ADDRESS, reg, DYN_32bit, false, doneWithReg);
-        movToCpuFromReg(CPU_OFFSET_OF(reg[4].u32), DYN_ADDRESS, DYN_32bit, true);
+        movToCpuFromReg(CPU_OFFSET_OF_REG32(4), DYN_ADDRESS, DYN_32bit, true);
     } else {
-        callHostFunction((void*)common_push32, false, 2, 0, DYN_PARAM_CPU, false, DYN_SRC, DYN_PARAM_REG_32, doneWithReg);
+        callHostFunction(DYN_HOST_FN(common_push32), false, 2, 0, DYN_PARAM_CPU, false, DYN_SRC, DYN_PARAM_REG_32, doneWithReg);
     }
 }
 
 void dynamic_pop32(DynamicData* data) {
     if (!data->cpu->thread->process->hasSetStackMask && !data->cpu->thread->process->hasSetSeg[SS]) {
-        movToRegFromCpu(DYN_ADDRESS, CPU_OFFSET_OF(reg[4].u32), DYN_32bit);
+        movToRegFromCpu(DYN_ADDRESS, CPU_OFFSET_OF_REG32(4), DYN_32bit);
         movFromMem(DYN_32bit, DYN_ADDRESS, true);
-        instCPUImm('+', CPU_OFFSET_OF(reg[4].u32), DYN_32bit, 4);
+        instCPUImm('+', CPU_OFFSET_OF_REG32(4), DYN_32bit, 4);
     } else {
-        callHostFunction((void*)common_pop32, true, 1, 0, DYN_PARAM_CPU, false);
+        callHostFunction(DYN_HOST_FN(common_pop32), true, 1, 0, DYN_PARAM_CPU, false);
     }    
 }
 
 void dynamic_fillFlags(DynamicData* data) {
     if (data->currentLazyFlags!=FLAGS_NONE) {
-        callHostFunction((void*)common_fillFlags, false, 1, 0, DYN_PARAM_CPU, false);
+        callHostFunction(DYN_HOST_FN(common_fillFlags), false, 1, 0, DYN_PARAM_CPU, false);
     }
     data->currentLazyFlags=FLAGS_NONE;
 }
@@ -1091,6 +1091,6 @@ void dynamic_getCF(DynamicData* data) {
     if (data->currentLazyFlags) {
         genCF(data->currentLazyFlags, DYN_CALL_RESULT);
     } else {
-        callHostFunction((void*)common_getCF, true, 1, 0, DYN_PARAM_CPU, false);
+        callHostFunction(DYN_HOST_FN(common_getCF), true, 1, 0, DYN_PARAM_CPU, false);
     }
 }

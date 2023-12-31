@@ -313,9 +313,6 @@
     <ClCompile Include="..\..\..\..\source\emulation\cpu\x64\x64CodeChunk.cpp">
       <Filter>source\emulation\cpu\x64</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\source\emulation\cpu\srcgen.cpp">
-      <Filter>source\emulation\cpu</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\source\emulation\cpu\common\common_sse.cpp">
       <Filter>source\emulation\cpu\common</Filter>
     </ClCompile>
@@ -549,6 +546,15 @@
     </ClCompile>
     <ClCompile Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btData.cpp">
       <Filter>source\emulation\cpu\binaryTranslation</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\aot\aot.cpp">
+      <Filter>source\emulation\cpu\aot</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\aot\gen.cpp">
+      <Filter>source\emulation\cpu\aot</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\aot\usegen.cpp">
+      <Filter>source\emulation\cpu\aot</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -1236,6 +1242,15 @@
     <ClInclude Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btData.h">
       <Filter>source\emulation\cpu\binaryTranslation</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\aot\aot.h">
+      <Filter>source\emulation\cpu\aot</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\aot\gen.h">
+      <Filter>source\emulation\cpu\aot</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\aot\usegen.h">
+      <Filter>source\emulation\cpu\aot</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
@@ -1360,6 +1375,9 @@
     </Filter>
     <Filter Include="process">
       <UniqueIdentifier>{fbbdcd0b-4e4a-409c-bc7f-0b7e5b5c3909}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\emulation\cpu\aot">
+      <UniqueIdentifier>{afcf1a2f-8f21-4753-9812-7287ab217dc5}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

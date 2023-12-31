@@ -25,6 +25,7 @@
 #include "../emulation/hardmmu/hard_memory.h"
 #include "../emulation/cpu/binaryTranslation/btCpu.h"
 #include "knativethread.h"
+#include "../emulation/cpu/aot/aot.h"
 
 #ifdef BOXEDWINE_MSVC
 #include <nmmintrin.h>
@@ -12404,6 +12405,9 @@ int runCpuTests() {
     printf("Self Modifying Code Same Block(Next) ... Skipping\n");
 #else
     run(testSelfModifyingBack, "Self Modifying Code Same Block(Next)");
+#endif
+#ifdef BOXEDWINE_GENERATE_SOURCE        
+    writeSource("gen.cpp");
 #endif
     printf("%d tests FAILED\n", totalFails);
     KNativeThread::sleep(5000);

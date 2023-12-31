@@ -1381,17 +1381,6 @@ const InstructionInfo instructionInfo[] = {
 
 // for now, kept out of emscript to keep size down
 #ifndef __EMSCRIPTEN__
-struct LogInstruction;
-
-typedef void (*LogFormat)(const LogInstruction* inst, DecodedOp* op, CPU* cpu);
-
-struct LogInstruction {
-    const char* name;
-    S32 width;
-    LogFormat pfnFormat;
-    bool imm;
-    const char* postfix;
-};
 
 static void outR32(U32 r, CPU* cpu) {
     switch (r) {

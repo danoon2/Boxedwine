@@ -15,6 +15,7 @@
 
 #define OFFSET_REG8(x) (x>=4?offsetof(CPU, reg[x-4].h8):offsetof(CPU, reg[x].u8))
 #define CPU_OFFSET_OF(x) offsetof(CPU, x)
+#define DYN_LAZY_FLAG(x) x
 
 // DynReg is a required type, but the values inside are local to this file
 // Used only these 4 because it is possible to use 8-bit calls with them, like add al, cl
@@ -62,10 +63,7 @@ enum DynCallParamType {
     DYN_PARAM_CONST_8,
     DYN_PARAM_CONST_16,
     DYN_PARAM_CONST_32,
-    DYN_PARAM_CONST_PTR,
-    DYN_PARAM_ABSOLUTE_ADDRESS_8,
-    DYN_PARAM_ABSOLUTE_ADDRESS_16,
-    DYN_PARAM_ABSOLUTE_ADDRESS_32,
+    DYN_PARAM_OP,
     DYN_PARAM_CPU_ADDRESS_8,
     DYN_PARAM_CPU_ADDRESS_16,
     DYN_PARAM_CPU_ADDRESS_32,
@@ -110,7 +108,7 @@ void movToReg(DynReg reg, DynWidth width, U32 imm);
 // to CPU
 void movToCpuFromReg(U32 dstOffset, DynReg reg, DynWidth width, bool doneWithReg);
 void movToCpu(U32 dstOffset, DynWidth dstWidth, U32 imm);
-void movToCpuPtr(U32 dstOffset, DYN_PTR_SIZE imm) {movToCpu(dstOffset, DYN_32bit, imm);}
+void movToCpuLazyFlags(U32 dstOffset, const LazyFlags* lazyFlags) {movToCpu(dstOffset, DYN_32bit, (DYN_PTR_SIZE)lazyFlags);}
 
 // from CPU
 void movToRegFromCpu(DynReg reg, U32 srcOffset, DynWidth width);
@@ -748,38 +746,8 @@ void pushValue(U32 arg, DynCallParamType argType) {
         outb(0x68);
         outd(arg);
         break;
-    case DYN_PARAM_CONST_PTR:
+    case DYN_PARAM_OP:
         outb(0x68);
-        outd(arg);
-        break;
-    case DYN_PARAM_ABSOLUTE_ADDRESS_8:
-        // :TODO: enforce that EAX wasn't used in the callHostFunction
-        // mov al, [arg]
-        outb(0xa0);
-        outd(arg);
-        // movzx eax, al
-        outb(0x0f);
-        outb(0xb6);
-        outb(0xc0);
-        // push eax
-        outb(0x50);
-        break;
-    case DYN_PARAM_ABSOLUTE_ADDRESS_16:
-        // :TODO: enforce that EAX wasn't used in the callHostFunction
-        // mov ax, [arg]
-        outb(0x66);
-        outb(0xa1);
-        outd(arg);
-        // movzx eax, ax
-        outb(0x0f);
-        outb(0xb7);
-        outb(0xc0);
-        // push eax
-        outb(0x50);
-        break;
-    case DYN_PARAM_ABSOLUTE_ADDRESS_32:
-        outb(0xff);
-        outb(0x35);
         outd(arg);
         break;
     case DYN_PARAM_CPU_ADDRESS_8:
@@ -2209,7 +2177,7 @@ void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
             memset(regUsed, 0, sizeof(regUsed));
 #ifndef __TEST
 #ifdef _DEBUG
-            callHostFunction(common_log, false, 2, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)o, DYN_PARAM_CONST_PTR, false);
+            callHostFunction(common_log, false, 2, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)o, DYN_PARAM_OP, false);
 #endif
 #endif
             x32Ops[o->inst](&data, o); 
@@ -2223,7 +2191,7 @@ void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
 #ifndef __TEST
 #ifdef _DEBUG
                 if (o->next)
-                    callHostFunction(common_log, false, 2, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)o->next, DYN_PARAM_CONST_PTR, false);
+                    callHostFunction(common_log, false, 2, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)o->next, DYN_PARAM_OP, false);
 #endif
 #endif
                 break;
