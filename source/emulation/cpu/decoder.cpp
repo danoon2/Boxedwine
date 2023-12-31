@@ -6058,19 +6058,11 @@ U32 DecodedOp::getNeededFlags(DecodedBlock* block, DecodedOp* op, U32 flags, U32
         bool next2Alloc = false;
         if (!next1) {
             U32 eip =  block->getEip(lastOp) + lastOp->len + lastOp->imm;
-            if (!cpu->isBig()) {
-                eip = eip & 0xFFFF;
-            }
-            eip += cpu->seg[CS].address;
             next1 = NormalCPU::getBlockForInspectionButNotUsed(eip, cpu->isBig());
             next1Alloc = true;
         }
         if (!next2 && (instructionInfo[lastOp->inst].branch & DECODE_BRANCH_2)) {
             U32 eip = block->getEip(lastOp) + lastOp->len;
-            if (!cpu->isBig()) {
-                eip = eip & 0xFFFF;
-            }
-            eip += cpu->seg[CS].address;
             next2 = NormalCPU::getBlockForInspectionButNotUsed(eip, cpu->isBig());
             next2Alloc = true;
         }
