@@ -710,10 +710,9 @@ static OSStatus ca_render_cb(void *user, AudioUnitRenderActionFlags *flags, cons
     KNativeAudioCoreAudioData* This = (KNativeAudioCoreAudioData*)user;
     U32 to_copy_bytes, to_copy_frames, chunk_bytes, lcl_offs_bytes;
 
-    BOXEDWINE_CONDITION_LOCK(KSystem::processesCond);
+    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(KSystem::processesCond);
     if (This->process->terminated) {
         silence_buffer(This, ((U8 *)data->mBuffers[0].mData), nframes);
-        BOXEDWINE_CONDITION_UNLOCK(KSystem::processesCond);
         return noErr;
     }
     os_unfair_lock_lock(&This->lock);
@@ -756,7 +755,6 @@ static OSStatus ca_render_cb(void *user, AudioUnitRenderActionFlags *flags, cons
         }
     }
     os_unfair_lock_unlock(&This->lock);
-    BOXEDWINE_CONDITION_UNLOCK(KSystem::processesCond);
     return noErr;
 }
 
