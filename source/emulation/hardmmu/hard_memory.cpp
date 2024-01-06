@@ -225,8 +225,7 @@ U32 Memory::mapNativeMemory(void* hostAddress, U32 size) {
     return (result << K_PAGE_SHIFT) + ((U32)((U64)hostAddress) & K_PAGE_MASK);
 }
 
-void Memory::allocPages(U32 page, U32 pageCount, U8 permissions, FD fd, U64 offset, const BoxedPtr<MappedFile>& mappedFile) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(pageMutex);
+void Memory::allocPages(U32 page, U32 pageCount, U8 permissions, FD fd, U64 offset, const BoxedPtr<MappedFile>& mappedFile) {    
     for (U32 i = 0; i < pageCount; i++) {
         this->clearCodePageFromCache(page + i);
     }

@@ -87,6 +87,7 @@ private:
     BOXEDWINE_CONDITION locksCS;    
 
     void loadChildren();
+    KFileLock* internalGetLock(KFileLock* lock, bool otherProcess);
 };
 
 #endif

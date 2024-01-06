@@ -40,7 +40,10 @@ KThread::~KThread() {
 }
 
 void KThread::cleanup() {
-    BOXEDWINE_CONDITION_SIGNAL_ALL_NEED_LOCK(this->waitingForSignalToEndCond);
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->waitingForSignalToEndCond);
+        BOXEDWINE_CONDITION_SIGNAL_ALL(this->waitingForSignalToEndCond);
+    }
     if (!KSystem::shutingDown && this->clear_child_tid && this->process && this->process->memory->isValidWriteAddress(this->clear_child_tid, 4)) {
         writed(this->clear_child_tid, 0);
         this->futex(this->clear_child_tid, 1, 1, 0, 0, 0);        
@@ -71,6 +74,7 @@ void KThread::reset() {
 void KThread::setupStack() {
     U32 page = 0;
     U32 pageCount = MAX_STACK_SIZE >> K_PAGE_SHIFT;
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->pageMutex);
     if (!this->memory->findFirstAvailablePage(ADDRESS_PROCESS_STACK_START, pageCount, &page, false, true)) {
 		if (!this->memory->findFirstAvailablePage(0xC0000, pageCount, &page, false, true)) {
 			if (!this->memory->findFirstAvailablePage(0x80000, pageCount, &page, false, true)) {
@@ -209,30 +213,25 @@ U32 KThread::signal(U32 signal, bool wait) {
                     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->pendingSignalsMutex);
                     this->pendingSignals |= ((U64)1 << (signal - 1));
                 }
-                BOXEDWINE_CONDITION* waitCond = waitingCond;
-                if (signal == K_SIGQUIT && waitCond) {                    
-                    waitCond->lock();
+                if (signal == K_SIGQUIT && waitingCond) {
+                    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->waitingCondSync);
                     if (waitingCond) {
                         this->startSignal = true;
                         this->runSignal(K_SIGQUIT, -1, 0);
                     }
-                    waitCond->signalAll();
-                    waitCond->unlock();
                 }
             }
             if (wait) {
-                BOXEDWINE_CONDITION_LOCK(this->waitingForSignalToEndCond);            
+                BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->waitingForSignalToEndCond);
                 BOXEDWINE_CONDITION_WAIT(this->waitingForSignalToEndCond);
-                BOXEDWINE_CONDITION_UNLOCK(this->waitingForSignalToEndCond);
             }
             return 0;
         }
 #endif
         this->runSignal(signal, -1, 0);
         if (wait && KThread::currentThread()!=this) {
-            BOXEDWINE_CONDITION_LOCK(this->waitingForSignalToEndCond);
+            BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->waitingForSignalToEndCond);
             BOXEDWINE_CONDITION_WAIT(this->waitingForSignalToEndCond);
-            BOXEDWINE_CONDITION_UNLOCK(this->waitingForSignalToEndCond);
         }        
     } else {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->pendingSignalsMutex);
@@ -710,7 +709,10 @@ void OPCALL onExitSignal(CPU* cpu, DecodedOp* op) {
         cpu->thread->waitingForSignalToEndMaskToRestore = SIGSUSPEND_RETURN;
     }
 
-    BOXEDWINE_CONDITION_SIGNAL_ALL_NEED_LOCK(cpu->thread->waitingForSignalToEndCond);    
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(cpu->thread->waitingForSignalToEndCond);
+        BOXEDWINE_CONDITION_SIGNAL_ALL(cpu->thread->waitingForSignalToEndCond);
+    }
 
     cpu->nextBlock = cpu->getNextBlock();
 
@@ -818,8 +820,10 @@ void KThread::runSignal(U32 signal, U32 trapNo, U32 errorNo) {
 #ifdef BOXEDWINE_MULTI_THREADED
         BOXEDWINE_CONDITION* cond = this->waitingCond;
         if (cond) {
+            BOXEDWINE_CONDITION& c = *cond;
             this->startSignal = true;
-            BOXEDWINE_CONDITION_SIGNAL_ALL_NEED_LOCK(*cond);
+            BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(c);
+            BOXEDWINE_CONDITION_SIGNAL_ALL(c);
         }
 #endif
     }        
@@ -947,9 +951,10 @@ U32 KThread::sleep(U32 ms) {
             ms-=diff;
         }
 
-        BOXEDWINE_CONDITION_LOCK(this->sleepCond);
-        BOXEDWINE_CONDITION_WAIT_TIMEOUT(this->sleepCond, ms);
-        BOXEDWINE_CONDITION_UNLOCK(this->sleepCond);
+        {
+            BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->sleepCond);
+            BOXEDWINE_CONDITION_WAIT_TIMEOUT(this->sleepCond, ms);
+        }
 #ifdef BOXEDWINE_MULTI_THREADED
 		if (this->terminating) {
 			return -K_EINTR;
@@ -1013,9 +1018,8 @@ U32 KThread::sigsuspend(U32 mask, U32 sigsetSize) {
     } else {
         klog("sigsuspend: can't handle sigsetSize=%d", sigsetSize);
     }
-    BOXEDWINE_CONDITION_LOCK(this->waitingForSignalToEndCond);
+    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->waitingForSignalToEndCond);
     BOXEDWINE_CONDITION_WAIT(this->waitingForSignalToEndCond);
-    BOXEDWINE_CONDITION_UNLOCK(this->waitingForSignalToEndCond);
 #ifdef BOXEDWINE_MULTI_THREADED
     this->startSignal = false;
     return -K_CONTINUE; // so that cpu.eip is not incremented by syscall

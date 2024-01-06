@@ -264,6 +264,7 @@ U64 BtCPU::handleAccessException(U64 ip, U64 address, bool readAddress) {
             U32 startPage = m->getEmulatedPage(m->getNativePage(page - INITIAL_STACK_PAGES)); // stack grows down
             U32 endPage = this->thread->stackPageStart + this->thread->stackPageCount - this->thread->stackPageSize;
             U32 pageCount = endPage - startPage;
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(m->pageMutex);
             m->allocPages(startPage, pageCount, PAGE_READ | PAGE_WRITE, 0, 0, 0);
             this->thread->stackPageSize += pageCount;
             return 0;
@@ -484,21 +485,19 @@ U64 BtCPU::handleCodePatch(U64 rip, U32 address) {
 }
 
 void terminateOtherThread(const std::shared_ptr<KProcess>& process, U32 threadId) {
-    process->threadsCondition.lock();
-    KThread* thread = process->getThreadById(threadId);
+    KThread* thread = process->getThreadById(threadId);        
     if (thread) {
         thread->terminating = true;
         ((BtCPU*)thread->cpu)->exitToStartThreadLoop = true;
         ((BtCPU*)thread->cpu)->wakeThreadIfWaiting();
     }
-    process->threadsCondition.unlock();
 
     while (true) {
-        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(process->threadsCondition);
+        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(process->threadRemovedCondition);
         if (!process->getThreadById(threadId)) {
             break;
         }
-        BOXEDWINE_CONDITION_WAIT_TIMEOUT(process->threadsCondition, 1000);
+        BOXEDWINE_CONDITION_WAIT_TIMEOUT(process->threadRemovedCondition, 1000);
     }
 }
 

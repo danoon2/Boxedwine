@@ -396,7 +396,7 @@ U32 KSystem::waitpid(S32 pid, U32 statusAddress, U32 options) {
         writed(statusAddress, s);
     }
     result = process->id;
-    KSystem::eraseProcess(result);
+    KSystem::internalEraseProcess(result);
     return result;
 }
 
@@ -828,9 +828,13 @@ void KSystem::setFileCache(const std::string& name, const BoxedPtr<MappedFileCac
     KSystem::fileCache[name] = fileCache;
 }
 
+void KSystem::internalEraseProcess(U32 id) {
+    KSystem::processes.erase(id);
+}
+
 void KSystem::eraseProcess(U32 id) {
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(processesCond);
-    KSystem::processes.erase(id);
+    KSystem::internalEraseProcess(id);
 }
 
 void KSystem::addProcess(U32 id, const std::shared_ptr<KProcess>& process) {

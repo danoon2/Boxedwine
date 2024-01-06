@@ -21,6 +21,13 @@
 #include "kpoll.h"
 #include "kscheduler.h"
 
+static void clearPollData(KPollData* data, U32 count) {
+    KThread* thread = KThread::currentThread();
+    for (int i = 0; i < count; i++, data++) {
+        data->pFD->kobject->waitForEvents(thread->pollCond, 0);
+    }
+}
+
 S32 internal_poll(KPollData* data, U32 count, U32 timeout) {
     KPollData* firstData=data;
 
@@ -40,13 +47,16 @@ S32 internal_poll(KPollData* data, U32 count, U32 timeout) {
             KFileDescriptor* fd = thread->process->getFileDescriptor(data->fd);
             if (fd) {
                 fd->kobject->waitForEvents(thread->pollCond, data->events);
+                data->pFD = fd;
                 data++;
+            } else {
+                int ii = 0;
             }
         } 
 
         data = firstData;
         for (i=0;i<count;i++) {
-            KFileDescriptor* fd = thread->process->getFileDescriptor(data->fd);
+            KFileDescriptor* fd = data->pFD;
             data->revents = 0;
             if (fd) {
                 if (!fd->kobject->isOpen()) {
@@ -68,16 +78,16 @@ S32 internal_poll(KPollData* data, U32 count, U32 timeout) {
         }
         if (result>0) {	
             thread->condStartWaitTime = 0;
-            thread->pollCond.unlockAndRemoveChildren();
+            clearPollData(firstData, count);
             return result;
         }
         if (timeout==0) {
-            thread->pollCond.unlockAndRemoveChildren();
+            clearPollData(firstData, count);
             return 0;
         }	
         if (interrupted) {
             thread->condStartWaitTime = 0;
-            thread->pollCond.unlockAndRemoveChildren();
+            clearPollData(firstData, count);
             return -K_EINTR;
         }
         if (!thread->condStartWaitTime) {
@@ -86,7 +96,7 @@ S32 internal_poll(KPollData* data, U32 count, U32 timeout) {
             U32 diff = KSystem::getMilliesSinceStart()-thread->condStartWaitTime;
             if (diff>timeout) {
                 thread->condStartWaitTime = 0;
-                thread->pollCond.unlockAndRemoveChildren();
+                clearPollData(firstData, count);
                 return 0;
             }
             timeout-=diff;
@@ -96,6 +106,7 @@ S32 internal_poll(KPollData* data, U32 count, U32 timeout) {
         } else {
             BOXEDWINE_CONDITION_WAIT_TIMEOUT(thread->pollCond, timeout);
         }
+        clearPollData(firstData, count);
 #ifdef BOXEDWINE_MULTI_THREADED
 		if (KThread::currentThread()->terminating) {
 			return -K_EINTR;
@@ -104,7 +115,7 @@ S32 internal_poll(KPollData* data, U32 count, U32 timeout) {
             KThread::currentThread()->startSignal = false;
             return -K_CONTINUE;
         }
-#endif
+#endif        
     }
 }
 

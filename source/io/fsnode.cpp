@@ -37,8 +37,11 @@ void FsNode::removeNodeFromParent() {
 }
 
 void FsNode::loadChildren() {
-    // don't need to protect from threads since this is private
     if (!this->hasLoadedChildrenFromFileSystem) {
+        BOXEDWINE_CRITICAL_SECTION;
+        if (this->hasLoadedChildrenFromFileSystem) {
+            return;
+        }
         this->hasLoadedChildrenFromFileSystem = true;
         if (this->nativePath.length()) {
             std::vector<Platform::ListNodeResult> results;
@@ -70,17 +73,17 @@ void FsNode::loadChildren() {
     }
 }
 
-BoxedPtr<FsNode> FsNode::getChildByName(const std::string& name) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->childrenByNameMutex);
+BoxedPtr<FsNode> FsNode::getChildByName(const std::string& name) {    
     this->loadChildren();
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->childrenByNameMutex);
     if (this->childrenByName.count(name))
         return this->childrenByName[name];
     return NULL;
 }
 
-BoxedPtr<FsNode> FsNode::getChildByNameIgnoreCase(const std::string& name) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->childrenByNameMutex);
+BoxedPtr<FsNode> FsNode::getChildByNameIgnoreCase(const std::string& name) {    
     this->loadChildren();
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->childrenByNameMutex);
     for (auto& n : this->childrenByName) {
         if (stringCaseInSensativeEquals(n.first, name)) {
             return n.second;
@@ -89,27 +92,27 @@ BoxedPtr<FsNode> FsNode::getChildByNameIgnoreCase(const std::string& name) {
     return NULL;
 }
 
-U32 FsNode::getChildCount() {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->childrenByNameMutex);
+U32 FsNode::getChildCount() {    
     this->loadChildren();
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->childrenByNameMutex);
     return (U32)this->childrenByName.size();
 }
 
-void FsNode::addChild(BoxedPtr<FsNode> node) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->childrenByNameMutex);
+void FsNode::addChild(BoxedPtr<FsNode> node) {    
     this->loadChildren();
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->childrenByNameMutex);
     this->childrenByName[node->name] = node;
 }
 
-void FsNode::removeChildByName(const std::string& name) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->childrenByNameMutex);
+void FsNode::removeChildByName(const std::string& name) {    
     this->loadChildren();
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->childrenByNameMutex);
     this->childrenByName.erase(name);
 }
 
-void FsNode::getAllChildren(std::vector<BoxedPtr<FsNode> > & results) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->childrenByNameMutex);
+void FsNode::getAllChildren(std::vector<BoxedPtr<FsNode> > & results) {    
     this->loadChildren();
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->childrenByNameMutex);
     for (auto& n : this->childrenByName) {
         results.push_back(n.second);
     }
@@ -117,12 +120,12 @@ void FsNode::getAllChildren(std::vector<BoxedPtr<FsNode> > & results) {
 
 bool FsNode::unlock(KFileLock* lock) {
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->locksCS);
-    KFileLock* found = getLock(lock, false);
+    KFileLock* found = internalGetLock(lock, false);
     bool result = false;
 
     while (found) {
         this->locks.erase(std::remove(locks.begin(), locks.end(), *found), locks.end());
-        found = getLock(lock, false);
+        found = internalGetLock(lock, false);
         result = true;
     }
     if (result) {
@@ -133,7 +136,7 @@ bool FsNode::unlock(KFileLock* lock) {
 
 U32 FsNode::addLock(KFileLock* lock) {
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->locksCS);
-    KFileLock* found = getLock(lock, true);
+    KFileLock* found = internalGetLock(lock, true);
     if (found) {
         return -K_EAGAIN;
     }
@@ -143,11 +146,11 @@ U32 FsNode::addLock(KFileLock* lock) {
 
 U32 FsNode::addLockAndWait(KFileLock* lock, bool otherProcess) {
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->locksCS);
-    KFileLock* found = getLock(lock, otherProcess);
+    KFileLock* found = internalGetLock(lock, otherProcess);
 
     while (found) {
         BOXEDWINE_CONDITION_WAIT(this->locksCS);
-        found = getLock(lock, otherProcess);
+        found = internalGetLock(lock, otherProcess);
     }
     this->locks.push_back(*lock);
     return 0;
@@ -175,6 +178,10 @@ void FsNode::unlockAll(U32 pid) {
 
 KFileLock* FsNode::getLock(KFileLock* lock, bool otherProcess) {
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->locksCS);
+    return internalGetLock(lock, otherProcess);
+}
+
+KFileLock* FsNode::internalGetLock(KFileLock* lock, bool otherProcess) {    
     U64 l1 = lock->l_start;
     U64 l2 = l1+lock->l_len;
     U32 pid = KThread::currentThread()->process->id;

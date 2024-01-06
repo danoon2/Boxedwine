@@ -45,7 +45,8 @@ KUnixSocketObject::~KUnixSocketObject() {
         std::shared_ptr<KUnixSocketObject> s = weakSocket.lock();
         if (s) {
             s->connecting.reset();
-            BOXEDWINE_CONDITION_SIGNAL_ALL_NEED_LOCK(s->lockCond);
+            BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(s->lockCond);
+            BOXEDWINE_CONDITION_SIGNAL_ALL(s->lockCond);
         }
     }    
     BOXEDWINE_CONDITION_SIGNAL_ALL(this->lockCond);
@@ -96,24 +97,27 @@ void KUnixSocketObject::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 
     bool addedLock = false;
 
     if (events & K_POLLIN) {
-        BOXEDWINE_CONDITION_ADD_CHILD_CONDITION(parentCondition, this->lockCond, nullptr);
+        BOXEDWINE_CONDITION_SET_PARENT(this->lockCond, &parentCondition);
         addedLock = true;
     }
     if (events & K_POLLOUT) {
         std::shared_ptr<KUnixSocketObject> con = this->connection.lock();
         if (con) {
-            BOXEDWINE_CONDITION_ADD_CHILD_CONDITION(parentCondition, con->lockCond, nullptr);
+            BOXEDWINE_CONDITION_SET_PARENT(con->lockCond, &parentCondition);
         } else {
             if (!addedLock) {
-                BOXEDWINE_CONDITION_ADD_CHILD_CONDITION(parentCondition, this->lockCond, nullptr);
+                BOXEDWINE_CONDITION_SET_PARENT(this->lockCond, &parentCondition);
                 addedLock = true;
             }
         }
     }
-    if ((events & ~(K_POLLIN | K_POLLOUT)) || this->listening) {
+    if (events && ((events & ~(K_POLLIN | K_POLLOUT)) || this->listening)) {
         if (!addedLock) {
-            BOXEDWINE_CONDITION_ADD_CHILD_CONDITION(parentCondition, this->lockCond, nullptr);
+            BOXEDWINE_CONDITION_SET_PARENT(this->lockCond, &parentCondition);
         }
+    }
+    if (events == 0) {
+        BOXEDWINE_CONDITION_SET_PARENT(this->lockCond, nullptr);
     }
 }
 
@@ -455,11 +459,12 @@ U32 KUnixSocketObject::connect(KFileDescriptor* fd, U32 address, U32 len) {
                 std::shared_ptr<KUnixSocketObject> destination = std::dynamic_pointer_cast<KUnixSocketObject>(node->kobject.lock());
 
                 this->connecting = destination;
-                BOXEDWINE_CONDITION_LOCK(destination->lockCond);
-                std::shared_ptr< KUnixSocketObject> t = std::dynamic_pointer_cast<KUnixSocketObject>(shared_from_this());
-                destination->pendingConnections.push_back(t);
-                BOXEDWINE_CONDITION_SIGNAL_ALL(destination->lockCond);
-                BOXEDWINE_CONDITION_UNLOCK(destination->lockCond);
+                {
+                    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(destination->lockCond);
+                    std::shared_ptr< KUnixSocketObject> t = std::dynamic_pointer_cast<KUnixSocketObject>(shared_from_this());
+                    destination->pendingConnections.push_back(t);
+                    BOXEDWINE_CONDITION_SIGNAL_ALL(destination->lockCond);
+                }
 
                 if (!this->blocking) {
                     return -K_EINPROGRESS;
@@ -507,28 +512,29 @@ U32 KUnixSocketObject::listen(KFileDescriptor* fd, U32 backlog) {
 }
 
 U32 KUnixSocketObject::accept(KFileDescriptor* fd, U32 address, U32 len, U32 flags) {
-    BOXEDWINE_CONDITION_LOCK(this->lockCond);
-    while (!this->pendingConnections.size()) {
-        if (!this->blocking) {
-            BOXEDWINE_CONDITION_UNLOCK(this->lockCond);
-            return -K_EWOULDBLOCK;
+    std::shared_ptr<KUnixSocketObject> pendingConnection;
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->lockCond);
+        while (!this->pendingConnections.size()) {
+            if (!this->blocking) {
+                return -K_EWOULDBLOCK;
+            }
+            BOXEDWINE_CONDITION_WAIT(this->lockCond);
+    #ifdef BOXEDWINE_MULTI_THREADED
+            if (KThread::currentThread()->terminating) {
+                return -K_EINTR;
+            }
+            if (KThread::currentThread()->startSignal) {
+                KThread::currentThread()->startSignal = false;
+                return -K_CONTINUE;
+            }
+    #endif
         }
-        BOXEDWINE_CONDITION_WAIT(this->lockCond);
-#ifdef BOXEDWINE_MULTI_THREADED
-		if (KThread::currentThread()->terminating) {
-			return -K_EINTR;
-		}
-        if (KThread::currentThread()->startSignal) {
-            KThread::currentThread()->startSignal = false;
-            return -K_CONTINUE;
-        }
-#endif
+
+        pendingConnection = this->pendingConnections.front().lock();
+        this->pendingConnections.pop_front();
     }
     
-    std::shared_ptr<KUnixSocketObject> pendingConnection = this->pendingConnections.front().lock();
-    this->pendingConnections.pop_front();
-
-    BOXEDWINE_CONDITION_UNLOCK(this->lockCond);
 
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(pendingConnection->lockCond);
     std::shared_ptr<KUnixSocketObject> resultSocket = std::make_shared<KUnixSocketObject>(this->pid, domain, type, protocol);
@@ -601,19 +607,23 @@ U32 KUnixSocketObject::shutdown(KFileDescriptor* fd, U32 how) {
     if (how == K_SHUT_RD) {
         this->inClosed=true;
         con->outClosed=true;
-        BOXEDWINE_CONDITION_SIGNAL_ALL_NEED_LOCK(con->lockCond);
+        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(con->lockCond);
+        BOXEDWINE_CONDITION_SIGNAL_ALL(con->lockCond);
     } else if (how == K_SHUT_WR) {
         this->outClosed=true;
         con->inClosed=true;
-        BOXEDWINE_CONDITION_SIGNAL_ALL_NEED_LOCK(con->lockCond);
+        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(con->lockCond);
+        BOXEDWINE_CONDITION_SIGNAL_ALL(con->lockCond);
     } else if (how == K_SHUT_RDWR) {
         this->outClosed=true;
         this->inClosed=true;
         con->outClosed=true;
         con->inClosed=true;
-        BOXEDWINE_CONDITION_SIGNAL_ALL_NEED_LOCK(con->lockCond);
+        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(con->lockCond);
+        BOXEDWINE_CONDITION_SIGNAL_ALL(con->lockCond);
     }
-    BOXEDWINE_CONDITION_SIGNAL_ALL_NEED_LOCK(this->lockCond);
+    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->lockCond);
+    BOXEDWINE_CONDITION_SIGNAL_ALL(this->lockCond);
     return 0;
 }
 
@@ -624,10 +634,12 @@ U32 KUnixSocketObject::setsockopt(KFileDescriptor* fd, U32 level, U32 name, U32 
                 if (len!=4)
                     kpanic("KUnixSocketObject::setsockopt SO_RCVBUF expecting len of 4");
                 this->recvLen = readd(value);
+                break;
             case K_SO_SNDBUF:
                 if (len != 4)
                     kpanic("KUnixSocketObject::setsockopt SO_SNDBUF expecting len of 4");
                 this->sendLen = readd(value);
+                break;
             case K_SO_PASSCRED:
                 break;
             case K_SO_ATTACH_FILTER:

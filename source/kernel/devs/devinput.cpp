@@ -170,7 +170,9 @@ U32 DevInput::writeNative(U8* buffer, U32 len) {
 
 void DevInput::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) {
     if (events & K_POLLIN) {
-        BOXEDWINE_CONDITION_ADD_CHILD_CONDITION(parentCondition, this->bufferCond, nullptr);
+        BOXEDWINE_CONDITION_SET_PARENT(this->bufferCond, &parentCondition);
+    } else {
+        BOXEDWINE_CONDITION_SET_PARENT(this->bufferCond, nullptr);
     }
 }
 
@@ -685,9 +687,8 @@ void postSendEvent(DevInput* events, U64 time) {
             process->signalIO(K_POLL_IN, 0, events->asyncProcessFd);		
         }
     }
-    BOXEDWINE_CONDITION_LOCK(events->bufferCond);
+    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(events->bufferCond);
     BOXEDWINE_CONDITION_SIGNAL_ALL(events->bufferCond);
-    BOXEDWINE_CONDITION_UNLOCK(events->bufferCond);
 }
 
 void onMouseButtonUp(U32 button) {

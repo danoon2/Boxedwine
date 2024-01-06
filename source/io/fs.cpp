@@ -15,8 +15,7 @@
 #include UNISTD
 #include MKDIR_INCLUDE
 
-U32 Fs::nextNodeId=1;
-BOXEDWINE_MUTEX Fs::nextNodeIdMutex;
+std::atomic_int Fs::nextNodeId=1;
 
 BoxedPtr<FsFileNode> Fs::rootNode;
 std::string Fs::nativePathSeperator;
@@ -88,14 +87,12 @@ std::string Fs::nativeFromLocal(const std::string& path) {
 }
 
 BoxedPtr<FsNode> Fs::addVirtualFile(const std::string& path, OpenVirtualNode func, U32 mode, U32 rdev, const BoxedPtr<FsNode>& parent, U32 data) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(Fs::nextNodeIdMutex);
     BoxedPtr<FsNode> result = new FsVirtualNode(Fs::nextNodeId++, rdev, path, func, mode, parent, data);
     parent->addChild(result);
     return result;
 }
 
 BoxedPtr<FsNode> Fs::addDynamicLinkFile(const std::string& path, U32 rdev, const BoxedPtr<FsNode>& parent, bool isDirectory, std::function<std::string(void)> fnGetLink) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(Fs::nextNodeIdMutex);
     BoxedPtr<FsNode> result = new FsDynamicLinkNode(Fs::nextNodeId++, rdev, path, parent, isDirectory, fnGetLink);
     parent->addChild(result);
     return result;
@@ -203,14 +200,12 @@ BoxedPtr<FsNode> Fs::getNodeFromLocalPath(const std::string& currentDirectory, c
 }
 
 BoxedPtr<FsNode> Fs::addFileNode(const std::string& path, const std::string& link, const std::string& nativePath, bool isDirectory, const BoxedPtr<FsNode>& parent) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(Fs::nextNodeIdMutex);
     BoxedPtr<FsFileNode> result = new FsFileNode(Fs::nextNodeId++, 0, path, link, nativePath, isDirectory, false, parent);
     parent->addChild(result);
     return result;
 }
 
 BoxedPtr<FsNode> Fs::addRootDirectoryNode(const std::string& path, const std::string& nativePath, const BoxedPtr<FsNode>& parent) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(Fs::nextNodeIdMutex);
     BoxedPtr<FsFileNode> result = new FsFileNode(Fs::nextNodeId++, 0, path, "", nativePath, true, false, parent);
     parent->addChild(result);
     result->isRootPath = true;

@@ -26,7 +26,7 @@ static PFN_vkGetInstanceProcAddr pvkGetInstanceProcAddr = NULL;
 
 static U32 freePtrMaps;
 
-BoxedWineMutex freeVulkanPtrMutex;
+BOXEDWINE_MUTEX freeVulkanPtrMutex;
 
 U32 createVulkanPtr(U64 value, BoxedVulkanInfo* info) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(freeVulkanPtrMutex);

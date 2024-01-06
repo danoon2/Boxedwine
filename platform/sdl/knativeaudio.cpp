@@ -38,17 +38,15 @@ static void audioCallback(void* userdata, U8* stream, S32 len) {
 	} else {
 		blockAlign = data->fmt.nBlockAlign * data->cvt.len_mult;
 	}
-	BOXEDWINE_CONDITION_LOCK(KSystem::processesCond);
+	BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(KSystem::processesCond);
 	if (data->process->terminated) {
 		memset(stream, data->got.silence, len);
-		BOXEDWINE_CONDITION_UNLOCK(KSystem::processesCond);
 		return;
 	}
 	U32 nframes = len / blockAlign;
 	U32 to_copy_bytes, to_copy_frames, chunk_bytes, lcl_offs_bytes;
 	if (!data->process->memory->isValidReadAddress(data->address_lcl_offs_frames, 4)) {
 		memset(stream, data->got.silence, len);
-		BOXEDWINE_CONDITION_UNLOCK(KSystem::processesCond);
 		return;
 	}
 	U32 lcl_offs_frames = data->process->readd(data->address_lcl_offs_frames);
@@ -105,7 +103,6 @@ static void audioCallback(void* userdata, U8* stream, S32 len) {
 			fd->kobject->writeNative(&c, 1);
 		}
 	}
-	BOXEDWINE_CONDITION_UNLOCK(KSystem::processesCond);
 }
 
 bool KNativeAudioSDL::load() {

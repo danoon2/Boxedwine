@@ -13,6 +13,8 @@
 #include <set>
 #include <list>
 #include <filesystem>
+#include <mutex>
+#include <condition_variable>
 
 #include <errno.h>
 

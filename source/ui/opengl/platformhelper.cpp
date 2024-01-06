@@ -19,9 +19,9 @@ void* dx9MakeRGBATexture(const unsigned char* data, int width, int height) {
     D3DLOCKED_RECT r;
 
     if (g_pd3dDevice->CreateTexture(width, height, 1, D3DUSAGE_DYNAMIC, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &texture, NULL) != D3D_OK)
-        return false;
+        return nullptr;
     if (texture->LockRect(0, &r, NULL, D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE) != D3D_OK)
-        return false;
+        return nullptr;
     for (int y = 0; y < height; y++)
     {
         BYTE* dest = ((BYTE*)r.pBits + r.Pitch*y);

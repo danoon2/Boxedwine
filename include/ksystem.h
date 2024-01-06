@@ -142,6 +142,7 @@ public:
     static PixelFormat* getPixelFormat(U32 index);
 private:
     static void initDisplayModes();
+    static void internalEraseProcess(U32 id);
 
     static U32 nextThreadId;
     static bool adjustClock;

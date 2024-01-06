@@ -36,10 +36,11 @@ U32 sdlDispatch(std::function<U32()> p) {
     }
     SdlCallback* callback = allocSdlCallback();
     callback->pfn = p;
-    BOXEDWINE_CONDITION_LOCK(callback->cond);
-    SDL_PushEvent(&callback->sdlEvent);
-    BOXEDWINE_CONDITION_WAIT(callback->cond);
-    BOXEDWINE_CONDITION_UNLOCK(callback->cond);
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(callback->cond);
+        SDL_PushEvent(&callback->sdlEvent);
+        BOXEDWINE_CONDITION_WAIT(callback->cond);
+    }
     U32 result = callback->result;
     freeSdlCallback(callback);    
     return result;

@@ -175,9 +175,8 @@ void audioCallback(void* userdata, U8* stream, S32 len) {
 		memset(stream, data->got.silence, len);
 	}
 
-	BOXEDWINE_CONDITION_LOCK(data->bufferCond);
+	BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(data->bufferCond);
 	BOXEDWINE_CONDITION_SIGNAL_ALL(data->bufferCond);
-	BOXEDWINE_CONDITION_UNLOCK(data->bufferCond);
 }
 
 void KDspAudioSdl::openAudio(U32 format, U32 freq, U32 channels) {
@@ -259,9 +258,10 @@ void KDspAudioSdl::onClose() {
 
 void KDspAudioSdl::writeAudio(U8* data, U32 len) {
 	SDL_LockAudio();
-	BOXEDWINE_CONDITION_LOCK(this->bufferCond);
-	audioBuffer.insert(this->audioBuffer.end(), data, data + len);
-	BOXEDWINE_CONDITION_UNLOCK(this->bufferCond);
+	{
+		BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->bufferCond);
+		audioBuffer.insert(this->audioBuffer.end(), data, data + len);
+	}
 	SDL_UnlockAudio();
 }
 
