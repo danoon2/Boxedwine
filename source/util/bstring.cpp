@@ -458,8 +458,6 @@ void BString::split(char c, std::vector<BString>& results) const {
     if (!isEmpty()) {
         char* s = data->str;
         char* p = s;
-        int start = 0;
-        int end = 0;
 
         while ((p = strchr(s, c))) {
             int startIndex = (int)(s - data->str);
@@ -475,8 +473,6 @@ void BString::split(const char* c, std::vector<BString>& results) const {
     if (!isEmpty()) {
         char* s = data->str;
         char* p = s;
-        int start = 0;
-        int end = 0;
         int cLen = (int)strlen(c);
 
         while ((p = strstr(s, c))) {
@@ -855,6 +851,9 @@ BString BString::operator^(const char* s) const {
 }
 
 BString BString::copy(const char* s) {
+    if (!s) {
+        return empty;
+    }
     BString result(allocNewData());
 
     result.data->len = (int)strlen(s);
@@ -865,6 +864,9 @@ BString BString::copy(const char* s) {
 }
 
 BString BString::copy(const char* s, int len) {
+    if (!s) {
+        return empty;
+    }
     BString result(allocNewData());
 
     result.data->len = len;

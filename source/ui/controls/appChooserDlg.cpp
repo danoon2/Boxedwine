@@ -51,9 +51,9 @@ void AppChooserDlg::run() {
     pos.x += getOuterFramePadding();
     ImGui::SetCursorPos(pos);
     if (this->items.size()==0) {
-        SAFE_IMGUI_TEXT(getTranslation(APPCHOOSER_DLG_NO_APPS_LABEL));
+        SAFE_IMGUI_TEXT(c_getTranslation(APPCHOOSER_DLG_NO_APPS_LABEL));
     } else {
-        SAFE_IMGUI_TEXT(getTranslation(this->labelId));
+        SAFE_IMGUI_TEXT(c_getTranslation(this->labelId));
     }
     ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing));
     pos = ImGui::GetCursorPos();
@@ -66,7 +66,7 @@ void AppChooserDlg::run() {
     ImGui::Columns(1);
     if (this->wineApps.size()) {
         ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing * 4));
-        SAFE_IMGUI_TEXT(getTranslation(APPCHOOSER_DLG_WINE_APPS_LABEL));
+        SAFE_IMGUI_TEXT(c_getTranslation(APPCHOOSER_DLG_WINE_APPS_LABEL));
         ImGui::Separator();
         ImGui::Columns(3);
         drawItems(this->wineApps, (int)this->items.size());

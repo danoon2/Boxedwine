@@ -37,7 +37,7 @@ void InstallView::createDemoTab() {
 void InstallView::runApps(std::vector<AppFile>& apps) {
     ImGui::PushFont(GlobalSettings::largeFont);
     ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing));
-    SAFE_IMGUI_TEXT(getTranslation(INSTALLVIEW_DEMO_TITLE));
+    SAFE_IMGUI_TEXT(c_getTranslation(INSTALLVIEW_DEMO_TITLE));
     ImGui::PopFont();
 
     ImVec2 size = ImGui::GetWindowContentRegionMax();

@@ -53,7 +53,7 @@ void drawListViewItem(const ListViewItem& item) {
         int i=0;
         while (p<end && i<UiSettings::MAX_NUMBER_OF_LINES_FOR_APP_LIST_VIEW_TEXT-1) {
             i++;
-            BString line = BString::copy(text, p-text).trim();
+            BString line = BString::copy(text, (int)(p - text)).trim();
             textSize = ImGui::CalcTextSize(line.c_str());
             ImGui::SetCursorPosX(ImGui::GetCursorPosX()+(width/2-textSize.x/2));
             SAFE_IMGUI_TEXT(line.c_str());
@@ -72,7 +72,7 @@ void drawListViewItem(const ListViewItem& item) {
                 line = BString::copy(text);
             } else {
                 float w = width - ImGui::CalcTextSize("...").x;
-                line = BString::copy(text, getTextThatFits(text, w) - text);
+                line = BString::copy(text, (int)(getTextThatFits(text, w) - text));
                 line = line + "...";
             }
             line = line.trim();

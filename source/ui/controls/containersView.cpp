@@ -349,7 +349,7 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
     affinity.push_back(ComboboxItem(getTranslation(GENERIC_COMBOBOX_ALL), 0));
 #ifdef __MACH__
     // Platform::setCpuAffinityForThread
-    affinity.push_back(ComboboxItem("1", 1));
+    affinity.push_back(ComboboxItem(B("1"), 1));
 #else
     for (U32 i = 1; i < Platform::getCpuCount(); i++) {
         affinity.push_back(ComboboxItem(BString::valueOf(i), i));

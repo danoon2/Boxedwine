@@ -168,12 +168,12 @@ void MacPlatformOpenFileLocation(const char* str);
 const char* MacPlatformGetResourcePath(const char* pName);
 }
 
-void Platform::openFileLocation(const std::string& location) {
+void Platform::openFileLocation(BString location) {
     MacPlatformOpenFileLocation(location.c_str());
 }
 
-const char* Platform::getResourceFilePath(const std::string& location) {
-    return MacPlatformGetResourcePath(location.c_str());
+BString Platform::getResourceFilePath(BString location) {
+    return BString::copy(MacPlatformGetResourcePath(location.c_str()));
 }
 
 void Platform::setCurrentThreadPriorityHigh() {
