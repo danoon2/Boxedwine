@@ -2,7 +2,7 @@
 
 #include "kstat.h"
 
-FsNode::FsNode(Type type, U32 id, U32 rdev, const std::string& path, const std::string& link, const std::string& nativePath, bool isDirectory, BoxedPtr<FsNode> parent) : 
+FsNode::FsNode(Type type, U32 id, U32 rdev, BString path, BString link, BString nativePath, bool isDirectory, BoxedPtr<FsNode> parent) : 
     path(path),
     nativePath(nativePath),
     name(Fs::getFileNameFromPath(path)),    
@@ -13,7 +13,7 @@ FsNode::FsNode(Type type, U32 id, U32 rdev, const std::string& path, const std::
     type(type),  
     parent(parent),
     isDir(isDirectory),  
-    locksCS("FsNode.lockCS"),
+    locksCS(B("FsNode.lockCS")),
     hasLoadedChildrenFromFileSystem(false)
  {   
 }
@@ -47,17 +47,18 @@ void FsNode::loadChildren() {
             std::vector<Platform::ListNodeResult> results;
             Platform::listNodes(nativePath, results);
             for (auto& n : results) {
-                std::string localPath = this->path;
-                std::string remotePath = this->nativePath+Fs::nativePathSeperator+n.name;
-                if (!stringHasEnding(localPath, "/"))
-                    localPath+="/";
+                BString localPath = this->path;
+                BString remotePath = this->nativePath ^ n.name;
+                if (!localPath.endsWith("/")) {
+                    localPath += "/";
+                }
                 Fs::remoteNameToLocal(n.name);
                 localPath+=n.name;
-                if (stringHasEnding(localPath, ".mixed")) {
-                    localPath = localPath.substr(0, localPath.length()-6);
+                if (localPath.endsWith(".mixed")) {
+                    localPath.remove(localPath.length() - 6);
                 }
-                if (!stringHasEnding(localPath, ".link")) {
-                    Fs::addFileNode(localPath, "", remotePath, n.isDirectory, this);
+                if (!localPath.endsWith(".link")) {
+                    Fs::addFileNode(localPath, B(""), remotePath, n.isDirectory, this);
                 } else {
                     U8 tmp[MAX_FILEPATH_LEN];
                     U32 result = Fs::readNativeFile(remotePath, tmp, MAX_FILEPATH_LEN-1);
@@ -66,14 +67,15 @@ void FsNode::loadChildren() {
                         kwarn("Could not read link file from filesystem: %s", localPath.c_str());
                     }
                     localPath = localPath.substr(0, localPath.length()-5);
-                    Fs::addFileNode(localPath, (const char*)tmp, remotePath, n.isDirectory, this);
+                    Fs::addFileNode(localPath, BString::copy((const char*)tmp), remotePath, n.isDirectory, this);
                 }           
             }
         }
     }
 }
 
-BoxedPtr<FsNode> FsNode::getChildByName(const std::string& name) {    
+
+BoxedPtr<FsNode> FsNode::getChildByName(BString name) {
     this->loadChildren();
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->childrenByNameMutex);
     if (this->childrenByName.count(name))
@@ -81,11 +83,11 @@ BoxedPtr<FsNode> FsNode::getChildByName(const std::string& name) {
     return NULL;
 }
 
-BoxedPtr<FsNode> FsNode::getChildByNameIgnoreCase(const std::string& name) {    
+BoxedPtr<FsNode> FsNode::getChildByNameIgnoreCase(BString name) {
     this->loadChildren();
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->childrenByNameMutex);
     for (auto& n : this->childrenByName) {
-        if (stringCaseInSensativeEquals(n.first, name)) {
+        if (n.first.compareTo(name, true) == 0) {
             return n.second;
         }
     }
@@ -104,7 +106,7 @@ void FsNode::addChild(BoxedPtr<FsNode> node) {
     this->childrenByName[node->name] = node;
 }
 
-void FsNode::removeChildByName(const std::string& name) {    
+void FsNode::removeChildByName(BString name) {
     this->loadChildren();
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->childrenByNameMutex);
     this->childrenByName.erase(name);

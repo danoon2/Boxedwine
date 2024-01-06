@@ -42,18 +42,18 @@ class BoxedContainer;
 
 class WineVersion {
 public:
-    WineVersion(const std::string& name, const std::string& fsVersion, const std::string& filePath, const std::string& filePathBackup, const std::string& depend, U32 size=0):name(name), filePath(filePath), filePathBackup(filePathBackup), fsVersion(fsVersion), depend(depend), size(size)  {}
+    WineVersion(BString name, BString fsVersion, BString filePath, BString filePathBackup, BString depend, U32 size=0):name(name), filePath(filePath), filePathBackup(filePathBackup), fsVersion(fsVersion), depend(depend), size(size)  {}
     WineVersion* getMissingDependency() const;
-    std::string getLocalFilePath() const;
-    std::string getDependFilePath() const;
+    BString getLocalFilePath() const;
+    BString getDependFilePath() const;
 
-    std::string name;
-    std::string filePath;
-    std::string filePathBackup;
-    std::string fsVersion;
-    std::string depend;
-    std::string data;
-    std::string data2;
+    BString name;
+    BString filePath;
+    BString filePathBackup;
+    BString fsVersion;
+    BString depend;
+    BString data;
+    BString data2;
     U32 size;
     bool operator<(const WineVersion& rhs) const { return name < rhs.name; }
 };
@@ -65,25 +65,25 @@ public:
     static void init(int argc, const char **argv);
     
     static void reloadWineVersions();
-    static std::string getFileFromWineName(const std::string& name);    
-    static WineVersion* getAvailableWineFromName(const std::string& name);
-    static WineVersion* getInstalledWineFromName(const std::string& name);
-    static std::string getContainerFolder();
-    static std::string getFileSystemFolder();    
-    static std::string getAppFolder(BoxedContainer* container);
-    static std::string getAutomationFolder(BoxedContainer* container);
-    static std::string getRootFolder(BoxedContainer* container);    
-    static std::string getDemoFolder();
-    static std::string getExePath() {return GlobalSettings::exePath;}
-    static std::string getExeFilePath() { return GlobalSettings::exeFilePath; }
+    static BString getFileFromWineName(BString name);
+    static WineVersion* getAvailableWineFromName(BString name);
+    static WineVersion* getInstalledWineFromName(BString name);
+    static BString getContainerFolder();
+    static BString getFileSystemFolder();
+    static BString getAppFolder(BoxedContainer* container);
+    static BString getAutomationFolder(BoxedContainer* container);
+    static BString getRootFolder(BoxedContainer* container);
+    static BString getDemoFolder();
+    static BString getExePath() {return GlobalSettings::exePath;}
+    static BString getExeFilePath() { return GlobalSettings::exeFilePath; }
     static const std::vector<WineVersion>& getWineVersions() {return GlobalSettings::wineVersions;}
     static const std::vector<WineVersion>& getAvailableWineVersions() { return GlobalSettings::availableWineVersions; }
     static const std::vector<WineVersion>& getAvailableWinetricksVersions() { return GlobalSettings::availableWinetricksVersions; }
     static const std::vector<WineVersion>& getInstalledWinetricksVersions() { return GlobalSettings::winetricksVersions; }
-    static std::string getDataFolder() {return GlobalSettings::dataFolderLocation;}
-    static void setDataFolder(const std::string& location) {GlobalSettings::dataFolderLocation = location;}
-    static void setTheme(const std::string& theme);
-    static std::string getTheme() {return GlobalSettings::theme;}
+    static BString getDataFolder() {return GlobalSettings::dataFolderLocation;}
+    static void setDataFolder(BString location) {GlobalSettings::dataFolderLocation = location;}
+    static void setTheme(BString theme);
+    static BString getTheme() {return GlobalSettings::theme;}
     static void saveConfig();
     static void saveScreenSize(int x, int y, int cx, int cy);
     static void loadTheme();
@@ -99,10 +99,10 @@ public:
     static U32 getFrameDelayMillies();
     static void useFastFrameRate(bool useFast);
     static void updateLastFrameDelayChange();
-    static const std::vector<std::string>& getAvailableResolutions() { return GlobalSettings::availableResolutions;}
+    static const std::vector<BString>& getAvailableResolutions() { return GlobalSettings::availableResolutions;}
     static const int getDefaultScale() { return GlobalSettings::defaultScale; }
     static const int getDefaultVsync() { return GlobalSettings::defaultVsync; }
-    static const std::string& getDefaultResolution() { return GlobalSettings::defaultResolution; }
+    static const BString getDefaultResolution() { return GlobalSettings::defaultResolution; }
     static U32 getDefaultOpenGL() { return GlobalSettings::defaultOpenGL; }
     static int getScreenCx() { return GlobalSettings::screenCx; }
     static int getScreenCy() { return GlobalSettings::screenCy; }
@@ -110,9 +110,9 @@ public:
     static bool hasIconsFont() {return GlobalSettings::iconFontsLoaded;}
     static std::vector<AppFile>& getDemos() {return GlobalSettings::demos;}
     static std::vector<AppFile>& getComponents() { return GlobalSettings::components; }
-    static AppFile* getComponentByOptionName(const std::string& name);
-    static void downloadFile(const std::string& url, const std::string& filePath, const std::string& name, U32 sizeMB, std::function<void(bool)> onCompleted);
-    static std::string createUniqueContainerPath(const std::string& name);
+    static AppFile* getComponentByOptionName(BString name);
+    static void downloadFile(BString url, BString filePath, BString name, U32 sizeMB, std::function<void(bool)> onCompleted);
+    static BString createUniqueContainerPath(BString name);
     static bool isDpiAware() {return GlobalSettings::scale != 100;}
     static int getPreviousScreenWidth() {return GlobalSettings::lastScreenCx;}
     static int getPreviousScreenHeight() { return GlobalSettings::lastScreenCy;}
@@ -133,20 +133,20 @@ public:
     static float extraVerticalSpacing;
 private:    
     static void initWineVersions();
-    static void lookForFileSystems(const std::string& path);    
+    static void lookForFileSystems(BString path);    
     static void loadFileLists();
-    static void updateFileList(const std::string& fileLocation);
+    static void updateFileList(BString fileLocation);
     static bool checkFileListForUpdate();
 
     static int iconSize;
     static U32 scale;
-    static std::string dataFolderLocation;
+    static BString dataFolderLocation;
     static std::vector<WineVersion> wineVersions;
     static std::vector<WineVersion> winetricksVersions;
-    static std::string exePath;
-    static std::string exeFilePath;
-    static std::string theme;
-    static std::string configFilePath;
+    static BString exePath;
+    static BString exeFilePath;
+    static BString theme;
+    static BString configFilePath;
 
     friend class OptionsView;
     friend class WineVersion;
@@ -159,15 +159,15 @@ private:
     static U32 frameDelayMillies; // decrease if we are animating, else this can be pretty large
     static U32 fastFrameRateCount;
     static U64 lastFrameDelayChange;
-    static std::vector<std::string> availableResolutions;
-    static std::string defaultResolution;
+    static std::vector<BString> availableResolutions;
+    static BString defaultResolution;
     static int defaultScale;
     static int defaultVsync;
     static int screenCx;
     static int screenCy;
     static float fontScale;
     static bool iconFontsLoaded;
-    static std::vector<std::string> fileUrls;
+    static std::vector<BString> fileUrls;
     static int lastScreenCx;
     static int lastScreenCy;
     static int lastScreenX;

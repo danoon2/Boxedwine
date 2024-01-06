@@ -2,7 +2,7 @@
 #include "../boxedwineui.h"
 #include "knativesystem.h"
 
-bool showMessageBox(const std::string& id, bool open, const char* title, const char* msg) {    
+bool showMessageBox(BString id, bool open, const char* title, const char* msg) {
     bool result = true;
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(GlobalSettings::scaleFloatUI(8.0f), GlobalSettings::scaleFloatUI(8.0f)));
     ImGui::PushID(id.c_str());
@@ -14,7 +14,7 @@ bool showMessageBox(const std::string& id, bool open, const char* title, const c
         SAFE_IMGUI_TEXT(msg);
         ImGui::Separator();
 
-        if (ImGui::Button(getTranslation(GENERIC_DLG_OK), ImVec2(120, 0))) {
+        if (ImGui::Button(c_getTranslation(GENERIC_DLG_OK), ImVec2(120, 0))) {
             ImGui::CloseCurrentPopup(); 
             result = false;
         }
@@ -26,7 +26,7 @@ bool showMessageBox(const std::string& id, bool open, const char* title, const c
     return result;
 }
 
-bool showYesNoMessageBox(const std::string& id, bool open, const char* title, const char* msg, bool* yes) {
+bool showYesNoMessageBox(BString id, bool open, const char* title, const char* msg, bool* yes) {
     bool result = true;
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(GlobalSettings::scaleFloatUI(8.0f), GlobalSettings::scaleFloatUI(8.0f)));
     ImGui::PushID(id.c_str());
@@ -38,13 +38,13 @@ bool showYesNoMessageBox(const std::string& id, bool open, const char* title, co
         SAFE_IMGUI_TEXT(msg);
         ImGui::Separator();
 
-        if (ImGui::Button(getTranslation(GENERIC_DLG_YES), ImVec2(GlobalSettings::scaleFloatUIAndFont(120.0f), 0))) {
+        if (ImGui::Button(c_getTranslation(GENERIC_DLG_YES), ImVec2(GlobalSettings::scaleFloatUIAndFont(120.0f), 0))) {
             ImGui::CloseCurrentPopup();
             result = false;
             *yes = true;
         }
         ImGui::SameLine();
-        if (ImGui::Button(getTranslation(GENERIC_DLG_NO), ImVec2(GlobalSettings::scaleFloatUIAndFont(120.0f), 0))) {
+        if (ImGui::Button(c_getTranslation(GENERIC_DLG_NO), ImVec2(GlobalSettings::scaleFloatUIAndFont(120.0f), 0))) {
             ImGui::CloseCurrentPopup();
             result = false;
         }
@@ -56,20 +56,20 @@ bool showYesNoMessageBox(const std::string& id, bool open, const char* title, co
     return result;
 }
 
-std::string getReadableSize(U64 bytes) {
+BString getReadableSize(U64 bytes) {
     if (bytes < 4096) {
-        return std::to_string(bytes)+"  B";
+        return BString::valueOf(bytes)+"  B";
     }
     bytes /= 1024;
     if (bytes < 4096) {
-        return std::to_string(bytes)+" KB";
+        return BString::valueOf(bytes)+" KB";
     }
     bytes /= 1024;
     if (bytes < 4096) {
-        return std::to_string(bytes)+" MB";
+        return BString::valueOf(bytes)+" MB";
     }
     bytes /= 1024;
-    return std::to_string(bytes)+" GB";
+    return BString::valueOf(bytes)+" GB";
 }
 
 void alignNextTextRightInColumn(const char* text) {
@@ -89,7 +89,7 @@ void askToDownloadDefaultWine() {
             GlobalSettings::downloadWine(GlobalSettings::getAvailableWineVersions().front(), [](bool success) {
                 });
         } else {
-            gotoView(VIEW_OPTIONS, "Wine");
+            gotoView(VIEW_OPTIONS, B("Wine"));
         }
         });
 }

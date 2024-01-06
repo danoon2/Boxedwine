@@ -4,20 +4,20 @@
 #ifdef BOXEDWINE_RECORDER
 class Player {
 public:
-    static bool start(std::string directory);
+    static bool start(BString directory);
     static Player* instance;
 
-    void initCommandLine(std::string root, const std::vector<std::string>& zips, std::string working, const std::vector<std::string>& args);
+    void initCommandLine(BString root, const std::vector<BString>& zips, BString working, const std::vector<BString>& args);
     void runSlice();
 
     FILE* file;
-    std::string directory;
-    std::string version;
+    BString directory;
+    BString version;
     U64 lastCommandTime;
     U64 lastScreenRead;
-    std::string nextCommand;
+    BString nextCommand;
 private:    
-    std::string nextValue;
+    BString nextValue;
     void readCommand();
 };
 #endif

@@ -7,7 +7,7 @@ static int sdl_start_thread(void* ptr) {
 	return thread->pfn(thread->data);
 }
 
-KNativeThread* KNativeThread::createAndStartThread(KNativeThreadFunction pfn, const std::string& name, void* data) {
+KNativeThread* KNativeThread::createAndStartThread(KNativeThreadFunction pfn, BString name, void* data) {
 	KNativeThread* result = new KNativeThread(pfn, name, data);
 
 	result->nativeThread = SDL_CreateThread(sdl_start_thread, name.c_str(), result);

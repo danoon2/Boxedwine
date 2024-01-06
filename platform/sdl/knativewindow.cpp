@@ -85,7 +85,7 @@ public:
         return true;
     }
 
-    std::string text;
+    BString text;
     PixelFormat* pixelFormat;
     U32 pixelFormatIndex;
     void* openGlContext;
@@ -139,7 +139,7 @@ public:
     U32 scaleYOffset;
     U32 sdlDesktopWidth;
     U32 sdlDesktopHeight;
-    std::string scaleQuality;
+    BString scaleQuality;
     U32 fullScreen;
     U32 vsync;
 
@@ -159,8 +159,8 @@ public:
     U32 lastChildWndCreated;
     Boxed_Surface* primarySurface;
 
-    std::string delayedCreateWindowMsg; // the ui will watch for this message
-    std::unordered_map<std::string, SDL_Cursor*> cursors;
+    BString delayedCreateWindowMsg; // the ui will watch for this message
+    std::unordered_map<BString, SDL_Cursor*> cursors;
     std::unordered_map<U32, std::shared_ptr<WndSdl>> hwndToWnd;
     BOXEDWINE_MUTEX hwndToWndMutex;
 
@@ -203,7 +203,7 @@ public:
 #endif
     virtual void setPrimarySurface(KThread* thread, U32 bits, U32 width, U32 height, U32 pitch, U32 flags, U32 palette);
     virtual void drawAllWindows(KThread* thread, U32 hWnd, int count);
-    virtual void setTitle(const std::string& title);
+    virtual void setTitle(BString title);
 
     virtual U32 getGammaRamp(U32 ramp);
 
@@ -215,8 +215,8 @@ public:
     virtual void glUpdateContextForThread(KThread* thread);
     virtual void preOpenGLCall(U32 index);
 
-    virtual bool partialScreenShot(std::string filepath, U32 x, U32 y, U32 w, U32 h, U32* crc);
-    virtual bool screenShot(std::string filepath, U32* crc);    
+    virtual bool partialScreenShot(BString filepath, U32 x, U32 y, U32 w, U32 h, U32* crc);
+    virtual bool screenShot(BString filepath, U32* crc);    
 
     virtual bool waitForEvent(U32 ms);
     virtual bool processEvents();
@@ -236,7 +236,7 @@ public:
     void displayChanged(KThread* thread);
     KThreadGlContext* getGlContextByIdInUnknownThread(const std::shared_ptr<KProcess>& process, U32 id);
     std::shared_ptr<WndSdl> getWndSdl(U32 hwnd);        
-    std::string getCursorName(char* moduleName, char* resourceName, int resource);
+    BString getCursorName(char* moduleName, char* resourceName, int resource);
 #ifdef BOXEDWINE_RECORDER
     SDL_Texture* screenCopyTexture;
     virtual void pushWindowSurface();
@@ -244,7 +244,7 @@ public:
     virtual void drawRectOnPushedSurfaceAndDisplay(U32 x, U32 y, U32 w, U32 h, U8 r, U8 g, U8 b, U8 a);
     virtual void processCustomEvents(std::function<bool(bool isKeyDown, int key, bool isF11)> onKey, std::function<bool(bool isButtonDown, int button, int x, int y)> onMouseButton, std::function<bool(int x, int y)> onMouseMove);
 #endif
-    bool internalScreenShot(std::string filepath, SDL_Rect* r, U32* crc);
+    bool internalScreenShot(BString filepath, SDL_Rect* r, U32* crc);
     bool isShutdownWindowIsOpen();
     void updateShutdownWindow();
     void updatePrimarySurface(KThread* thread, U32 bits, U32 width, U32 height, U32 pitch, U32 flags, SDL_Color* palette);
@@ -292,7 +292,7 @@ bool KNativeWindowSdl::processEvents() {
         timeToHideUI = 0;
         if (delayedCreateWindowMsg.length()) {
             klog(delayedCreateWindowMsg.c_str());
-            delayedCreateWindowMsg = "";
+            delayedCreateWindowMsg = B("");
         }
     }
 #endif
@@ -316,7 +316,7 @@ bool KNativeWindowSdl::processEvents() {
     return true;
 }
 
-void KNativeWindow::init(U32 cx, U32 cy, U32 bpp, int scaleX, int scaleY, const std::string& scaleQuality, U32 fullScreen, U32 vsync) {
+void KNativeWindow::init(U32 cx, U32 cy, U32 bpp, int scaleX, int scaleY, BString scaleQuality, U32 fullScreen, U32 vsync) {
     if (!sdlCustomEvent) {
         sdlCustomEvent = SDL_RegisterEvents(1);
     }
@@ -385,7 +385,7 @@ void KNativeWindowSdl::destroyScreen(KThread* thread) {
     timeToHideUI = 0;
     timeWindowWasCreated = 0;
     windowIsHidden = false;
-    delayedCreateWindowMsg = "";
+    delayedCreateWindowMsg = B("");
     {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(hwndToWndMutex);
         for (auto& n : hwndToWnd) {
@@ -524,7 +524,7 @@ U32 KNativeWindowSdl::glMakeCurrent(KThread* thread, U32 arg) {
 #endif
             return 1;
         } else {
-            std::string lastError = BoxedwineGL::current->getLastError();
+            BString lastError = BoxedwineGL::current->getLastError();
             klog("sdlMakeCurrent failed: %s", lastError.c_str());
         }
     } else if (arg == 0) {
@@ -619,7 +619,7 @@ U32 sdlCreateOpenglWindow_main_thread(KThread* thread, std::shared_ptr<WndSdl> w
     screen->scaleY = 100;
     screen->scaleXOffset = 0;
     screen->scaleYOffset = 0;
-    screen->delayedCreateWindowMsg = "Creating Window for OpenGL: "+std::to_string(cx) + "x" + std::to_string(cy);
+    screen->delayedCreateWindowMsg = "Creating Window for OpenGL: "+BString::valueOf(cx) + "x" + BString::valueOf(cy);
     fflush(stdout);
     DISPATCH_MAIN_THREAD_BLOCK_BEGIN
     screen->window = SDL_CreateWindow("OpenGL Window", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, cx, cy, sdlFlags);
@@ -716,7 +716,7 @@ U32 KNativeWindowSdl::glCreateContext(KThread* thread, std::shared_ptr<Wnd> w, i
         BoxedwineGL::current->makeCurrent(context, window);
 #endif
         if (!context) {
-            std::string lastError = BoxedwineGL::current->getLastError();
+            BString lastError = BoxedwineGL::current->getLastError();
             kwarn("Couldn't create context: %s", lastError.c_str());
             DISPATCH_MAIN_THREAD_BLOCK_BEGIN_RETURN
             displayChanged(thread);
@@ -862,7 +862,7 @@ void KNativeWindowSdl::displayChanged(KThread* thread) {
             }
         }
         
-        delayedCreateWindowMsg = "Creating Window: " + std::to_string(cx) + "x" + std::to_string(cy);
+        delayedCreateWindowMsg = "Creating Window: " + BString::valueOf(cx) + "x" + BString::valueOf(cy);
         fflush(stdout);
         window = SDL_CreateWindow("BoxedWine", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, cx, cy, flags);
         if (window && (flags & SDL_WINDOW_VULKAN)) {
@@ -1225,7 +1225,7 @@ void KNativeWindowSdl::flipFB() {
     }
 }
 #endif
-void KNativeWindowSdl::setTitle(const std::string& title) {
+void KNativeWindowSdl::setTitle(BString title) {
     if (window)
         SDL_SetWindowTitle(window, title.c_str());
 }
@@ -1653,8 +1653,8 @@ int KNativeWindowSdl::mouseButton(U32 down, U32 button, int x, int y) {
     return 1;
 }
 
-std::string KNativeWindowSdl::getCursorName(char* moduleName, char* resourceName, int resource) {
-    std::string result;
+BString KNativeWindowSdl::getCursorName(char* moduleName, char* resourceName, int resource) {
+    BString result;
     if (moduleName) {
         result += moduleName;
     }
@@ -1662,7 +1662,7 @@ std::string KNativeWindowSdl::getCursorName(char* moduleName, char* resourceName
     if (resourceName && strlen(resourceName)) {
         result += resourceName;
     } else {
-        result += toHexString(resource);
+        result += BString::valueOf(resource, 16);
     }
     return result;
 }
@@ -1674,7 +1674,7 @@ bool KNativeWindowSdl::setCursor(char* moduleName, char* resourceName, int resou
         DISPATCH_MAIN_THREAD_BLOCK_END
         return 1;
     } else {
-        std::string name = getCursorName(moduleName, resourceName, resource);
+        BString name = getCursorName(moduleName, resourceName, resource);
         if (cursors.count(name) && !relativeMouse) {
             SDL_Cursor* cursor = cursors[name];
             if (!cursor)
@@ -1743,7 +1743,7 @@ void KNativeWindowSdl::createAndSetCursor(char* moduleName, char* resourceName, 
     DISPATCH_MAIN_THREAD_BLOCK_BEGIN
     SDL_Cursor* cursor = SDL_CreateCursor(data_bits, mask_bits, width, height, hotX, hotY);
     if (cursor) {
-        std::string name = getCursorName(moduleName, resourceName, resource);
+        BString name = getCursorName(moduleName, resourceName, resource);
         cursors[name] = cursor;
         SDL_SetCursor(cursor);
     }
@@ -2346,7 +2346,7 @@ void KNativeWindowSdl::processCustomEvents(std::function<bool(bool isKeyDown, in
 
 #endif
 
-bool KNativeWindowSdl::internalScreenShot(std::string filepath, SDL_Rect* r, U32* crc) {
+bool KNativeWindowSdl::internalScreenShot(BString filepath, SDL_Rect* r, U32* crc) {
 #ifdef BOXEDWINE_RECORDER
      if (!recorderBuffer) {
         if (filepath.length()) {
@@ -2416,7 +2416,7 @@ bool KNativeWindowSdl::internalScreenShot(std::string filepath, SDL_Rect* r, U32
 #endif
 }
 
-bool KNativeWindowSdl::partialScreenShot(std::string filepath, U32 x, U32 y, U32 w, U32 h, U32* crc) {
+bool KNativeWindowSdl::partialScreenShot(BString filepath, U32 x, U32 y, U32 w, U32 h, U32* crc) {
     SDL_Rect r;
     r.x = x;
     r.y = y;
@@ -2425,7 +2425,7 @@ bool KNativeWindowSdl::partialScreenShot(std::string filepath, U32 x, U32 y, U32
     return internalScreenShot(filepath, &r, crc);
 }
 
-bool KNativeWindowSdl::screenShot(std::string filepath, U32* crc) {
+bool KNativeWindowSdl::screenShot(BString filepath, U32* crc) {
     return internalScreenShot(filepath, NULL, crc);
 
 }

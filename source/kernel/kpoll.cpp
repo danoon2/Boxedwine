@@ -23,7 +23,7 @@
 
 static void clearPollData(KPollData* data, U32 count) {
     KThread* thread = KThread::currentThread();
-    for (int i = 0; i < count; i++, data++) {
+    for (U32 i = 0; i < count; i++, data++) {
         data->pFD->kobject->waitForEvents(thread->pollCond, 0);
     }
 }

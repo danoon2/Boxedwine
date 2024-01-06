@@ -20,17 +20,17 @@ private:
 class BoxedApp {
 public:
     BoxedApp() : openGlType(OPENGL_TYPE_NOT_SET), bpp(32), fullScreen(FULLSCREEN_NOTSET), vsync(VSYNC_NOT_SET), dpiAware(false), showWindowImmediately(false), autoRefresh(false), scale(0), scaleQuality(0), cpuAffinity(0), pollRate(DEFAULT_POLL_RATE), skipFramesFPS(0), container(NULL) {}
-    BoxedApp(const std::string& name, const std::string& path, const std::string& cmd, BoxedContainer* container) : name(name), path(path), cmd(cmd), bpp(0), fullScreen(FULLSCREEN_NOTSET), vsync(VSYNC_NOT_SET), dpiAware(false), showWindowImmediately(false), autoRefresh(false), scale(0), scaleQuality(0), cpuAffinity(0), pollRate(DEFAULT_POLL_RATE), skipFramesFPS(0), container(container) {}
+    BoxedApp(BString name, BString path, BString cmd, BoxedContainer* container) : name(name), path(path), cmd(cmd), bpp(0), fullScreen(FULLSCREEN_NOTSET), vsync(VSYNC_NOT_SET), dpiAware(false), showWindowImmediately(false), autoRefresh(false), scale(0), scaleQuality(0), cpuAffinity(0), pollRate(DEFAULT_POLL_RATE), skipFramesFPS(0), container(container) {}
     
-    bool load(BoxedContainer* container, const std::string& iniFilepath);
+    bool load(BoxedContainer* container, BString iniFilepath);
 
-    const std::string& getName() {return this->name;}
-    const std::string& getPath() {return this->path;}
-    const std::string& getCmd() { return this->cmd;}
-    const std::string& getIniFilePath() {return this->iniFilePath;}
+    BString getName() {return this->name;}
+    BString getPath() {return this->path;}
+    BString getCmd() { return this->cmd;}
+    BString getIniFilePath() {return this->iniFilePath;}
 
-    void setName(const std::string& name) {this->name = name;}
-    void setArgs(const std::vector<std::string>& args) {this->args = args;}
+    void setName(BString name) {this->name = name;}
+    void setArgs(const std::vector<BString>& args) {this->args = args;}
     void launch();
     void createAutomation();
     void runAutomation();
@@ -49,24 +49,24 @@ private:
     friend class ContainersView;
     friend class AppFile;
 
-    std::string name;
-    std::string path;
+    BString name;
+    BString path;
     std::unordered_map<int, BoxedAppIcon*> iconsBySize;
-    std::string iconPath;
-    std::string link;
-    std::string cmd;    
-    std::vector<std::string> args;
+    BString iconPath;
+    BString link;
+    BString cmd;    
+    std::vector<BString> args;
     U32 openGlType;
 
     // Boxedwine command line options
-    std::string resolution;
+    BString resolution;
     int bpp;
     U32 fullScreen;
     U32 vsync;
     bool dpiAware;
     bool showWindowImmediately;
     bool autoRefresh;
-    std::string glExt;
+    BString glExt;
     int scale;
     int scaleQuality;
     int cpuAffinity;
@@ -74,7 +74,7 @@ private:
     int skipFramesFPS;
     
     BoxedContainer* container;
-    std::string iniFilePath;
+    BString iniFilePath;
 };
 
 #endif

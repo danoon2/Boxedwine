@@ -68,7 +68,7 @@ public:
         version(0),
         mask(0),
         prop(0),
-        bufferCond("DevInput::bufferCond"),
+        bufferCond(B("DevInput::bufferCond")),
         clearOnExit(0) {}
 
     virtual ~DevInput() {
@@ -91,7 +91,7 @@ public:
     U16 vendor;
     U16 product;
     U16 version;
-    std::string name;
+    BString name;
     U32 mask;
     U32 prop;
     BOXEDWINE_CONDITION bufferCond;
@@ -347,7 +347,7 @@ DevInputTouch::DevInputTouch(const BoxedPtr<FsNode>& node, U32 flags) : DevInput
     this->product = 0;
     this->version = 1;
     this->prop = (1 << INPUT_PROP_DIRECT) | (1<<INPUT_PROP_POINTER);
-    this->name = "BoxedWine touchpad";
+    this->name = B("BoxedWine touchpad");
     this->mask = (1<<K_EV_SYN)|(1<<K_EV_KEY)|(1<<K_EV_ABS);
 }
 
@@ -412,7 +412,7 @@ DevInputMouse::DevInputMouse(const BoxedPtr<FsNode>& node, U32 flags) : DevInput
     this->vendor = 0x046d;
     this->product = 0xc52b;
     this->version = 0x0111;
-    this->name = "BoxedWine mouse";
+    this->name = B("BoxedWine mouse");
     this->mask = (1<<K_EV_SYN)|(1<<K_EV_KEY)|(1<<K_EV_REL);
 }
 
@@ -480,7 +480,7 @@ DevInputKeyboard::DevInputKeyboard(const BoxedPtr<FsNode>& node, U32 flags) : De
     this->vendor = 1;
     this->product = 1;
     this->version = 0xab41;
-    this->name = "BoxedWine Keyboard";
+    this->name = B("BoxedWine Keyboard");
     this->mask = (1<<K_EV_SYN)|(1<<K_EV_KEY);
 }
 

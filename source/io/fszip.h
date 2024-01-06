@@ -16,8 +16,8 @@ extern "C"
 class fsZipInfo {
 public:
     fsZipInfo() : isLink(false), isDirectory(false), length(0), lastModified(0), offset(0) {}
-    std::string filename;
-    std::string link;
+    BString filename;
+    BString link;
     bool isLink;
     bool isDirectory;
     U64 length;
@@ -28,22 +28,22 @@ public:
 class FsZip : public std::enable_shared_from_this<FsZip> {
 public:
     ~FsZip();
-    bool init(const std::string& zipPath, const std::string& mount);
+    bool init(BString zipPath, BString mount);
     unzFile zipfile;
 
     U64 lastZipOffset = 0xFFFFFFFFFFFFFFFFl;
     U64 lastZipFileOffset;
 
     void setupZipRead(U64 zipOffset, U64 zipFileOffset);
-    void remove(const std::string& localPath);
+    void remove(BString localPath);
 
-    static bool readFileFromZip(const std::string& zipFile, const std::string& file, std::string& result);
-    static bool extractFileFromZip(const std::string& zipFile, const std::string& file, const std::string& path);
-    static std::string unzip(const std::string& zipFile, const std::string& path, std::function<void(U32, std::string)> percentDone);
-    static bool iterateFiles(const std::string& zipFile, std::function<void(const std::string&)> it);
+    static bool readFileFromZip(BString zipFile, BString file, BString& result);
+    static bool extractFileFromZip(BString zipFile, BString file, BString path);
+    static BString unzip(BString zipFile, BString path, std::function<void(U32, BString)> percentDone);
+    static bool iterateFiles(BString zipFile, std::function<void(BString)> it);
 
 private:
-    std::string deleteFilePath;
+    BString deleteFilePath;
 };
 #endif
 #endif

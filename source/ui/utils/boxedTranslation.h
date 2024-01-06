@@ -208,9 +208,10 @@ ERROR_MISSING_WINE,
 ERROR_NO_FILE_LIST
 };
 
-const char* getTranslation(int msg, bool useDefaultIfMissing=true);
-std::string getTranslationWithFormat(int msg, bool useDefaultIfMissing, const std::vector<std::string>& replacements);
-std::string getTranslationWithFormat(int msg, bool useDefaultIfMissing, const std::string& string1);
-std::string getTranslationWithFormat(int msg, bool useDefaultIfMissing, const std::string& string1, const std::string& string2);
+const char* c_getTranslation(int msg, bool useDefaultIfMissing = true);
+BString getTranslation(int msg, bool useDefaultIfMissing=true);
+BString getTranslationWithFormat(int msg, bool useDefaultIfMissing, const std::vector<BString>& replacements);
+BString getTranslationWithFormat(int msg, bool useDefaultIfMissing, BString string1);
+BString getTranslationWithFormat(int msg, bool useDefaultIfMissing, BString string1, BString string2);
 
 #endif

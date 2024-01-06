@@ -13,7 +13,7 @@ public:
 #ifdef BOXEDWINE_MULTI_THREADED
 class BoxedWineCondition {
 public:
-    BoxedWineCondition(std::string name);
+    BoxedWineCondition(BString name);
     BoxedWineCondition();
 
     bool tryLock();
@@ -25,7 +25,7 @@ public:
     void unlock();
     void setParentCondition(BoxedWineCondition* parent);
 
-    const std::string name;
+    const BString name;
 
     std::mutex m;
     std::condition_variable c;
@@ -82,7 +82,7 @@ public:
 
 class BoxedWineCondition {
 public:
-    BoxedWineCondition(std::string name);
+    BoxedWineCondition(BString name);
     ~BoxedWineCondition();
 
     void signal();
@@ -93,7 +93,7 @@ public:
 
     void setParentCondition(BoxedWineCondition* parent);
 
-    const std::string name;
+    const BString name;
     BoxedWineCondition* parent;
 private:
     KList<KThread*> waitingThreads;    

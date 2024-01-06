@@ -7,8 +7,8 @@ class FsMemOpenNode;
 
 class FsMemNode : public FsNode {
 public:
-    FsMemNode(U32 id, U32 rdev, const std::string& path);
-    virtual U32 rename(const std::string& path); //return 0 if success, else errno
+    FsMemNode(U32 id, U32 rdev, BString path);
+    virtual U32 rename(BString path); //return 0 if success, else errno
     virtual bool remove();
     virtual U64 lastModified();
     virtual U64 length();

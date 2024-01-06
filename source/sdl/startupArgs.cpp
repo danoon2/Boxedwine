@@ -38,7 +38,7 @@
 
 #define mdev(x,y) ((x << 8) | y)
 
-void gl_init(const std::string& allowExtensions);
+void gl_init(BString allowExtensions);
 void vulkan_init();
 void initWine();
 void initWineAudio();
@@ -46,7 +46,7 @@ void initWineAudio();
 U32 StartUpArgs::uiType;
 
 FsOpenNode* openKernelCommandLine(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
-    return new BufferAccess(node, flags, "");
+    return new BufferAccess(node, flags, B(""));
 }
 
 // This parses a resolution given as a string in the format of: '800x600'
@@ -84,159 +84,159 @@ int StartUpArgs::parse_resolution(const char *resolutionString, U32 *width, U32 
 }
 
 void StartUpArgs::buildVirtualFileSystem() {
-    Fs::makeLocalDirs("/dev");
-    Fs::makeLocalDirs("/proc");
-    Fs::makeLocalDirs("/mnt");
+    Fs::makeLocalDirs(B("/dev"));
+    Fs::makeLocalDirs(B("/proc"));
+    Fs::makeLocalDirs(B("/mnt"));
 
-    BoxedPtr<FsNode> rootNode = Fs::getNodeFromLocalPath("", "/", true);
-    BoxedPtr<FsNode> devNode = Fs::addFileNode("/dev", "", rootNode->nativePath+Fs::nativePathSeperator+"dev", true, rootNode);
-    BoxedPtr<FsNode> inputNode = Fs::addFileNode("/dev/input", "", "", true, devNode);
-    BoxedPtr<FsNode> procNode = Fs::addFileNode("/proc", "", "", true, rootNode);
-    BoxedPtr<FsNode> procSelfNode = Fs::addFileNode("/proc/self", "", "", true, procNode);
-    BoxedPtr<FsNode> sysNode = Fs::getNodeFromLocalPath("", "/sys", true); 
-    BoxedPtr<FsNode> etcNode = Fs::getNodeFromLocalPath("", "/etc", true);
+    BoxedPtr<FsNode> rootNode = Fs::getNodeFromLocalPath(B(""), B("/"), true);
+    BoxedPtr<FsNode> devNode = Fs::addFileNode(B("/dev"), B(""), rootNode->nativePath ^ "dev", true, rootNode);
+    BoxedPtr<FsNode> inputNode = Fs::addFileNode(B("/dev/input"), B(""), B(""), true, devNode);
+    BoxedPtr<FsNode> procNode = Fs::addFileNode(B("/proc"), B(""), B(""), true, rootNode);
+    BoxedPtr<FsNode> procSelfNode = Fs::addFileNode(B("/proc/self"), B(""), B(""), true, procNode);
+    BoxedPtr<FsNode> sysNode = Fs::getNodeFromLocalPath(B(""), B("/sys"), true); 
+    BoxedPtr<FsNode> etcNode = Fs::getNodeFromLocalPath(B(""), B("/etc"), true);
 
     if (!sysNode) {
-        sysNode = Fs::addFileNode("/sys", "", "", true, rootNode);
+        sysNode = Fs::addFileNode(B("/sys"), B(""), B(""), true, rootNode);
     }
-    BoxedPtr<FsNode> devicesNode = Fs::getNodeFromLocalPath("", "/sys/devices", true); 
+    BoxedPtr<FsNode> devicesNode = Fs::getNodeFromLocalPath(B(""), B("/sys/devices"), true); 
     if (!devicesNode) {
-        devicesNode = Fs::addFileNode("/sys/devices", "", "", true, sysNode);
+        devicesNode = Fs::addFileNode(B("/sys/devices"), B(""), B(""), true, sysNode);
     }
-    BoxedPtr<FsNode> devicesSystemNode = Fs::addFileNode("/sys/devices/system", "", "", true, devicesNode);
-    BoxedPtr<FsNode> cpuNode = Fs::addFileNode("/sys/devices/system/cpu", "", "", true, devicesSystemNode);    
+    BoxedPtr<FsNode> devicesSystemNode = Fs::addFileNode(B("/sys/devices/system"), B(""), B(""), true, devicesNode);
+    BoxedPtr<FsNode> cpuNode = Fs::addFileNode(B("/sys/devices/system/cpu"), B(""), B(""), true, devicesSystemNode);    
 
-    Fs::addVirtualFile("/dev/tty0", openDevTTY, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, mdev(4, 0), devNode);
-    Fs::addVirtualFile("/dev/tty", openDevTTY, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, mdev(4, 0), devNode);
-    Fs::addVirtualFile("/dev/tty2", openDevTTY, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, mdev(4, 2), devNode); // used by XOrg
-    Fs::addVirtualFile("/dev/urandom", openDevURandom, K__S_IREAD|K__S_IFCHR, mdev(1, 9), devNode);
-    Fs::addVirtualFile("/dev/random", openDevURandom, K__S_IREAD|K__S_IFCHR, mdev(1, 8), devNode);
-    Fs::addVirtualFile("/dev/null", openDevNull, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, mdev(1, 3), devNode);
-    Fs::addVirtualFile("/dev/zero", openDevZero, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, mdev(1, 5), devNode);
-    Fs::addVirtualFile("/proc/meminfo", openMemInfo, K__S_IREAD, mdev(0, 0), procNode);
-    Fs::addVirtualFile("/proc/uptime", openUptime, K__S_IREAD, mdev(0, 0), procNode);
-    Fs::addVirtualFile("/proc/cpuinfo", openCpuInfo, K__S_IREAD, mdev(0, 0), procNode);
-    Fs::addDynamicLinkFile("/proc/self", mdev(0, 0), procNode, true, [] {
-        return std::to_string(KThread::currentThread()->process->id);
+    Fs::addVirtualFile(B("/dev/tty0"), openDevTTY, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, mdev(4, 0), devNode);
+    Fs::addVirtualFile(B("/dev/tty"), openDevTTY, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, mdev(4, 0), devNode);
+    Fs::addVirtualFile(B("/dev/tty2"), openDevTTY, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, mdev(4, 2), devNode); // used by XOrg
+    Fs::addVirtualFile(B("/dev/urandom"), openDevURandom, K__S_IREAD|K__S_IFCHR, mdev(1, 9), devNode);
+    Fs::addVirtualFile(B("/dev/random"), openDevURandom, K__S_IREAD|K__S_IFCHR, mdev(1, 8), devNode);
+    Fs::addVirtualFile(B("/dev/null"), openDevNull, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, mdev(1, 3), devNode);
+    Fs::addVirtualFile(B("/dev/zero"), openDevZero, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, mdev(1, 5), devNode);
+    Fs::addVirtualFile(B("/proc/meminfo"), openMemInfo, K__S_IREAD, mdev(0, 0), procNode);
+    Fs::addVirtualFile(B("/proc/uptime"), openUptime, K__S_IREAD, mdev(0, 0), procNode);
+    Fs::addVirtualFile(B("/proc/cpuinfo"), openCpuInfo, K__S_IREAD, mdev(0, 0), procNode);
+    Fs::addDynamicLinkFile(B("/proc/self"), mdev(0, 0), procNode, true, [] {
+        return BString::valueOf(KThread::currentThread()->process->id);
         });
-    Fs::addVirtualFile("/proc/self/exe", openProcSelfExe, K__S_IREAD, mdev(0, 0), procSelfNode);
-    Fs::addVirtualFile("/proc/cmdline", openKernelCommandLine, K__S_IREAD, mdev(0, 0), procNode); // kernel command line
-    Fs::addVirtualFile("/dev/fb0", openDevFB, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, mdev(0x1d, 0), devNode);
-    Fs::addVirtualFile("/dev/input/event3", openDevInputTouch, K__S_IWRITE|K__S_IREAD|K__S_IFCHR, mdev(0xd, 0x43), inputNode);
-    Fs::addVirtualFile("/dev/input/event4", openDevInputKeyboard, K__S_IWRITE|K__S_IREAD|K__S_IFCHR, mdev(0xd, 0x44), inputNode);
-	Fs::addVirtualFile("/dev/dsp", openDevDsp, K__S_IWRITE | K__S_IREAD | K__S_IFCHR, mdev(14, 3), devNode);
-	Fs::addVirtualFile("/dev/mixer", openDevMixer, K__S_IWRITE | K__S_IREAD | K__S_IFCHR, mdev(14, 0), devNode);
-    Fs::addVirtualFile("/dev/sequencer", openDevSequencer, K__S_IWRITE | K__S_IREAD | K__S_IFCHR, mdev(14, 1), devNode);    
-    Fs::addVirtualFile("/sys/devices/system/cpu/online", openSysCpuOnline, K__S_IREAD, mdev(0, 0), cpuNode);
+    Fs::addVirtualFile(B("/proc/self/exe"), openProcSelfExe, K__S_IREAD, mdev(0, 0), procSelfNode);
+    Fs::addVirtualFile(B("/proc/cmdline"), openKernelCommandLine, K__S_IREAD, mdev(0, 0), procNode); // kernel command line
+    Fs::addVirtualFile(B("/dev/fb0"), openDevFB, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, mdev(0x1d, 0), devNode);
+    Fs::addVirtualFile(B("/dev/input/event3"), openDevInputTouch, K__S_IWRITE|K__S_IREAD|K__S_IFCHR, mdev(0xd, 0x43), inputNode);
+    Fs::addVirtualFile(B("/dev/input/event4"), openDevInputKeyboard, K__S_IWRITE|K__S_IREAD|K__S_IFCHR, mdev(0xd, 0x44), inputNode);
+	Fs::addVirtualFile(B("/dev/dsp"), openDevDsp, K__S_IWRITE | K__S_IREAD | K__S_IFCHR, mdev(14, 3), devNode);
+	Fs::addVirtualFile(B("/dev/mixer"), openDevMixer, K__S_IWRITE | K__S_IREAD | K__S_IFCHR, mdev(14, 0), devNode);
+    Fs::addVirtualFile(B("/dev/sequencer"), openDevSequencer, K__S_IWRITE | K__S_IREAD | K__S_IFCHR, mdev(14, 1), devNode);    
+    Fs::addVirtualFile(B("/sys/devices/system/cpu/online"), openSysCpuOnline, K__S_IREAD, mdev(0, 0), cpuNode);
 
-    Fs::addVirtualFile("/etc/hostname", openHosts, K__S_IREAD, mdev(0, 0), etcNode);
-    Fs::addVirtualFile("/etc/hosts", openHostname, K__S_IREAD, mdev(0, 0), etcNode);
+    Fs::addVirtualFile(B("/etc/hostname"), openHosts, K__S_IREAD, mdev(0, 0), etcNode);
+    Fs::addVirtualFile(B("/etc/hosts"), openHostname, K__S_IREAD, mdev(0, 0), etcNode);
 
     if (Platform::getCpuFreqMHz()) {        
         for (U32 i=0;i<Platform::getCpuCount();i++) {
-            BoxedPtr<FsNode> cpuCoreNode = Fs::addFileNode("/sys/devices/system/cpu/cpu"+std::to_string(i), "", "", true, cpuNode);    
-            Fs::addVirtualFile("/sys/devices/system/cpu"+std::to_string(i)+"/scaling_cur_freq", openSysCpuScalingCurrentFrequency, K__S_IREAD, mdev(0, 0), cpuCoreNode, i);
-            Fs::addVirtualFile("/sys/devices/system/cpu"+std::to_string(i)+"/cpuinfo_max_freq", openSysCpuMaxFrequency, K__S_IREAD, mdev(0, 0), cpuCoreNode, i);
-            Fs::addVirtualFile("/sys/devices/system/cpu"+std::to_string(i)+"/scaling_max_freq", openSysCpuScalingMaxFrequency, K__S_IREAD, mdev(0, 0), cpuCoreNode, i);
+            BoxedPtr<FsNode> cpuCoreNode = Fs::addFileNode("/sys/devices/system/cpu/cpu"+BString::valueOf(i), B(""), B(""), true, cpuNode);    
+            Fs::addVirtualFile("/sys/devices/system/cpu"+BString::valueOf(i)+"/scaling_cur_freq", openSysCpuScalingCurrentFrequency, K__S_IREAD, mdev(0, 0), cpuCoreNode, i);
+            Fs::addVirtualFile("/sys/devices/system/cpu"+BString::valueOf(i)+"/cpuinfo_max_freq", openSysCpuMaxFrequency, K__S_IREAD, mdev(0, 0), cpuCoreNode, i);
+            Fs::addVirtualFile("/sys/devices/system/cpu"+BString::valueOf(i)+"/scaling_max_freq", openSysCpuScalingMaxFrequency, K__S_IREAD, mdev(0, 0), cpuCoreNode, i);
         }
     }
 }
 
-std::vector<std::string> StartUpArgs::buildArgs() {
-    std::vector<std::string> args;
+std::vector<BString> StartUpArgs::buildArgs() {
+    std::vector<BString> args;
 
     if (root.length()) {
-        args.push_back("-root");
+        args.push_back(B("-root"));
         args.push_back(root);
     }
     for (auto& z : zips) {
-        args.push_back("-zip");
+        args.push_back(B("-zip"));
         args.push_back(z);
     }
     if (title.length()) {
-        args.push_back("-title");
+        args.push_back(B("-title"));
         args.push_back(title);
     }
     if (nozip) {
-        args.push_back("-nozip");
+        args.push_back(B("-nozip"));
     }
     if (workingDir.length()) {
-        args.push_back("-w");
+        args.push_back(B("-w"));
         args.push_back(workingDir);
     }
     if (sdlFullScreen == FULLSCREEN_STRETCH) {
-        args.push_back("-fullscreen");
+        args.push_back(B("-fullscreen"));
     }
     if (vsync != VSYNC_DEFAULT) {
-        args.push_back("-vsync");
-        args.push_back(std::to_string(vsync));
+        args.push_back(B("-vsync"));
+        args.push_back(BString::valueOf(vsync));
     }
     if (sdlFullScreen == FULLSCREEN_ASPECT) {
-        args.push_back("-fullscreenAspect");
+        args.push_back(B("-fullscreenAspect"));
     }
     if (sdlScaleX != 100) {
-        args.push_back("-scale");
-        args.push_back(std::to_string(sdlScaleX));
+        args.push_back(B("-scale"));
+        args.push_back(BString::valueOf(sdlScaleX));
     }
     if (sdlScaleQuality.length() && sdlScaleQuality != "0") {
-        args.push_back("-scale_quality");
+        args.push_back(B("-scale_quality"));
         args.push_back(sdlScaleQuality);
     }
-    args.push_back("-resolution");
-    args.push_back(std::to_string(screenCx) + "x" + std::to_string(screenCy));
+    args.push_back(B("-resolution"));
+    args.push_back(BString::valueOf(screenCx) + "x" + BString::valueOf(screenCy));
     if (screenBpp != 32) {
-        args.push_back("-bpp");
-        args.push_back(std::to_string(screenBpp));
+        args.push_back(B("-bpp"));
+        args.push_back(BString::valueOf(screenBpp));
     }
     if (glExt.length()) {
-        args.push_back("-glext");
+        args.push_back(B("-glext"));
         args.push_back(glExt);
     }
     if (dpiAware) {
-        args.push_back("-dpiAware");
+        args.push_back(B("-dpiAware"));
     }
     if (openGlType == OPENGL_TYPE_OSMESA) {
-        args.push_back("-mesa");
+        args.push_back(B("-mesa"));
     }
     if (ttyPrepend) {
-        args.push_back("-ttyPrepend");
+        args.push_back(B("-ttyPrepend"));
     }
     if (recordAutomation.length()) {
-        args.push_back("-record");
+        args.push_back(B("-record"));
         args.push_back(recordAutomation);
     }
     if (runAutomation.length()) {
-        args.push_back("-automation");
+        args.push_back(B("-automation"));
         args.push_back(runAutomation);
     }
     if (showWindowImmediately) {
-        args.push_back("-showWindowImmediately");
+        args.push_back(B("-showWindowImmediately"));
     }
     if (skipFrameFPS) {
-        args.push_back("-skipFrameFPS");
-        args.push_back(std::to_string(skipFrameFPS));
+        args.push_back(B("-skipFrameFPS"));
+        args.push_back(BString::valueOf(skipFrameFPS));
     }
     if (cpuAffinity) {
-        args.push_back("-cpuAffinity");
-        args.push_back(std::to_string(cpuAffinity));
+        args.push_back(B("-cpuAffinity"));
+        args.push_back(BString::valueOf(cpuAffinity));
     }
     if (pollRate > 0) {
-        args.push_back("-pollRate");
-        args.push_back(std::to_string(this->pollRate));
+        args.push_back(B("-pollRate"));
+        args.push_back(BString::valueOf(this->pollRate));
     }
     for (auto& e : envValues) {
-        args.push_back("-env");
+        args.push_back(B("-env"));
         args.push_back(e);
     }
     if (logPath.c_str()) {
-        args.push_back("-log");
+        args.push_back(B("-log"));
         args.push_back(logPath);
     }
     for (auto& m : mountInfo) {
         if (m.wine) {
-            args.push_back("-mount_drive");            
+            args.push_back(B("-mount_drive"));
         } else {
-            args.push_back("-mount");
+            args.push_back(B("-mount"));
         }
         args.push_back(m.nativePath);
         args.push_back(m.localPath);
@@ -283,23 +283,23 @@ bool StartUpArgs::apply() {
 
     klog("Using root directory: %s", root.c_str());
 #ifdef BOXEDWINE_ZLIB
-    std::vector<std::string> fullfilled;
+    std::vector<BString> fullfilled;
     for (auto& zip : zips) {
-        std::string fullfills;
-        FsZip::readFileFromZip(zip, "fullfills.txt", fullfills);
+        BString fullfills;
+        FsZip::readFileFromZip(zip, B("fullfills.txt"), fullfills);
         if (fullfills.length()) {
             fullfilled.push_back(fullfills);
         }
     }
-    std::vector<std::string> depends;
+    std::vector<BString> depends;
     for (auto& zip : zips) {
-        std::string depend;
-        FsZip::readFileFromZip(zip, "depends.txt", depend);
+        BString depend;
+        FsZip::readFileFromZip(zip, B("depends.txt"), depend);
         if (depend.length() && !vectorContainsIgnoreCase(depends, depend) && !vectorContainsIgnoreCase(zips, depend) && !vectorContainsIgnoreCase(fullfilled, depend)) {
-            std::string originalDepend = depend;
+            BString originalDepend = depend;
             if (!Fs::doesNativePathExist(depend)) {
-                std::string parentPath = Fs::getNativeParentPath(zip);
-                depend = parentPath + Fs::nativePathSeperator + depend;
+                BString parentPath = Fs::getNativeParentPath(zip);
+                depend = parentPath ^ depend;
             }
             if (!Fs::doesNativePathExist(depend)) {
                 klog("%s depends on %s, and %s could not be found", zip.c_str(), originalDepend.c_str(), originalDepend.c_str());
@@ -326,22 +326,22 @@ bool StartUpArgs::apply() {
     for (auto& zip : zips) {
         U64 startTime = KSystem::getMicroCounter();
         std::shared_ptr<FsZip> fsZip = std::make_shared<FsZip>();
-        fsZip->init(zip, "");
+        fsZip->init(zip, B(""));
         openZips.push_back(fsZip);
         U64 endTime = KSystem::getMicroCounter();
         klog("Loaded %s in %d ms", zip.c_str(), (U32)(endTime - startTime) / 1000);
     }
 
-    BoxedPtr<FsNode> wineVersionNode = Fs::getNodeFromLocalPath("", "/wineVersion.txt", false);
+    BoxedPtr<FsNode> wineVersionNode = Fs::getNodeFromLocalPath(B(""), B("/wineVersion.txt"), false);
     if (wineVersionNode) {
         FsOpenNode* openNode = wineVersionNode->open(K_O_RDONLY);
         if (openNode) {
             U8 tmp[64];
             if (openNode->readNative(tmp, 64) > 5) {
                 if (tmp[5] == '2' || tmp[5] == '1') {
-                    BoxedPtr<FsNode> freeTypeNode = Fs::getNodeFromLocalPath("", "/usr/lib/i386-linux-gnu/libfreetype.so.6", false);
+                    BoxedPtr<FsNode> freeTypeNode = Fs::getNodeFromLocalPath(B(""), B("/usr/lib/i386-linux-gnu/libfreetype.so.6"), false);
                     if (freeTypeNode) {
-                        freeTypeNode->link = "libfreetype.so.6.12.3";
+                        freeTypeNode->link = B("libfreetype.so.6.12.3");
                     }
                 }
             }
@@ -353,14 +353,14 @@ bool StartUpArgs::apply() {
 
     buildVirtualFileSystem();
 
-    envValues.push_back("HOME=/home/username");
-    envValues.push_back("LOGNAME=username");
-    envValues.push_back("USERNAME=username");
-    envValues.push_back("USER=username");
+    envValues.push_back(B("HOME=/home/username"));
+    envValues.push_back(B("LOGNAME=username"));
+    envValues.push_back(B("USERNAME=username"));
+    envValues.push_back(B("USER=username"));
     envValues.push_back("PWD="+this->workingDir);
-    envValues.push_back("DISPLAY=:0");
-    envValues.push_back("WINE_FAKE_WAIT_VBLANK=60");
-    envValues.push_back("WINEDLLOVERRIDES=mscoree,mshtml=");
+    envValues.push_back(B("DISPLAY=:0"));
+    envValues.push_back(B("WINE_FAKE_WAIT_VBLANK=60"));
+    envValues.push_back(B("WINEDLLOVERRIDES=mscoree,mshtml="));
     //envValues.push_back("WINEDEBUG=+ddraw");
                             
     // if this strlen is more than 88 (1 more character than now), then diablo demo will crash before we get to the menu
@@ -372,26 +372,25 @@ bool StartUpArgs::apply() {
     //works
     //envValues.push_back("LD_LIBRARY_PATH=/lib:/usr/lib:/usr/local/lib:/lib/i386-linux-gnu:/usr/lib/i386-linux-gnu");        
     if (userId==0) {
-        envValues.push_back("PATH=/bin:/usr/bin:/usr/local/bin:/sbin:/usr/sbin");
+        envValues.push_back(B("PATH=/bin:/usr/bin:/usr/local/bin:/sbin:/usr/sbin"));
     } else {
-        envValues.push_back("PATH=/bin:/usr/bin:/usr/local/bin");
+        envValues.push_back(B("PATH=/bin:/usr/bin:/usr/local/bin"));
     }
 
     for(auto&& info: this->mountInfo) {
         if (info.wine) {
-            BoxedPtr<FsNode> mntDir = Fs::getNodeFromLocalPath("", "/mnt", true);
+            BoxedPtr<FsNode> mntDir = Fs::getNodeFromLocalPath(B(""), B("/mnt"), true);
             BoxedPtr<FsNode> drive_d = Fs::addRootDirectoryNode("/mnt/drive_"+info.localPath, info.nativePath, mntDir);
-            BoxedPtr<FsNode> parent = Fs::getNodeFromLocalPath("", "/home/username/.wine/dosdevices", true);
-            Fs::addFileNode("/home/username/.wine/dosdevices/"+info.localPath+":", "/mnt/drive_"+info.localPath, "", false, parent); 
+            BoxedPtr<FsNode> parent = Fs::getNodeFromLocalPath(B(""), B("/home/username/.wine/dosdevices"), true);
+            Fs::addFileNode("/home/username/.wine/dosdevices/"+info.localPath+":", "/mnt/drive_"+info.localPath, B(""), false, parent); 
         } else {
-            std::string ext = info.nativePath.substr(info.nativePath.length()-4);
-            stringToLower(ext);
+            BString ext = info.nativePath.substr(info.nativePath.length()-4).toLowerCase();
             if (ext == ".zip") {
     #ifdef BOXEDWINE_ZLIB
                 U64 startTime = KSystem::getMicroCounter();
                 std::shared_ptr<FsZip> fsZip = std::make_shared<FsZip>();
-                if (!stringHasEnding(info.localPath, "/", false)) {
-                    info.localPath+="/";
+                if (!info.localPath.endsWith("/", false)) {
+                    info.localPath= info.localPath+"/";
                 }
                 fsZip->init(info.nativePath, info.localPath);
                 openZips.push_back(fsZip);
@@ -401,26 +400,26 @@ bool StartUpArgs::apply() {
                 klog("% not mounted because zlib was not compiled in", info.nativePath.c_str());
     #endif
             } else {
-                BoxedPtr<FsNode> parent = Fs::getNodeFromLocalPath("", Fs::getParentPath(info.localPath), true);
+                BoxedPtr<FsNode> parent = Fs::getNodeFromLocalPath(B(""), Fs::getParentPath(info.localPath), true);
                 Fs::addRootDirectoryNode(info.localPath, info.nativePath, parent);
             }
         }
     }
 
     if (this->args.size()==0) {
-        args.push_back("/bin/wine");
-        args.push_back("explorer");
-        args.push_back("/desktop=shell");
+        args.push_back(B("/bin/wine"));
+        args.push_back(B("explorer"));
+        args.push_back(B("/desktop=shell"));
     }
     if (this->args.size()) {
         BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath(workingDir, this->args[0], true);        
 
         bool validLinuxCommand = false;
         if (node) {
-            std::string interpreter;
-            std::string loader;
-            std::vector<std::string> interpreterArgs;
-            std::vector<std::string> args;
+            BString interpreter;
+            BString loader;
+            std::vector<BString> interpreterArgs;
+            std::vector<BString> args;
 
             FsOpenNode* openNode=ElfLoader::inspectNode(workingDir, node, loader, interpreter, interpreterArgs);
             if (openNode) {
@@ -430,40 +429,38 @@ bool StartUpArgs::apply() {
         }
         if (!validLinuxCommand) {
             if (Fs::doesNativePathExist(args[0])) {
-                std::string dir = args[0];
-                if (args[0][dir.length()-1]=='/' || args[0][dir.length()-1]=='\\') {
-                    dir = dir.substr(0, dir.length()-1);
-                }
+                BString dir = args[0];
+                dir = Fs::trimTrailingSlash(dir);
                 bool isDir = Fs::isNativePathDirectory(dir);
-                BoxedPtr<FsNode> mntDir = Fs::getNodeFromLocalPath("", "/mnt", true);
+                BoxedPtr<FsNode> mntDir = Fs::getNodeFromLocalPath(B(""), B("/mnt"), true);
 
                 if (!isDir) {
                     dir = Fs::getNativeParentPath(dir);
                 }
                 
-                BoxedPtr<FsNode> drive_d = Fs::addRootDirectoryNode("/mnt/drive_t", dir, mntDir);
-                BoxedPtr<FsNode> parent = Fs::getNodeFromLocalPath("", "/home/username/.wine/dosdevices", true);
+                BoxedPtr<FsNode> drive_d = Fs::addRootDirectoryNode(B("/mnt/drive_t"), dir, mntDir);
+                BoxedPtr<FsNode> parent = Fs::getNodeFromLocalPath(B(""), B("/home/username/.wine/dosdevices"), true);
                 if (parent) {
-                    Fs::addFileNode("/home/username/.wine/dosdevices/t:", "/mnt/drive_t", "", false, parent);
+                    Fs::addFileNode(B("/home/username/.wine/dosdevices/t:"), B("/mnt/drive_t"), B(""), false, parent);
                 }
 
                 if (!workingDirSet) {
-                    workingDir = "/mnt/drive_t";
+                    workingDir = B("/mnt/drive_t");
                 }
             
                 if (isDir) {
                     args.clear();
-                    args.push_back("/bin/wine");
-                    args.push_back("explorer");
-                    args.push_back("t:\\");
+                    args.push_back(B("/bin/wine"));
+                    args.push_back(B("explorer"));
+                    args.push_back(B("t:\\"));
                 } else {
-                    std::string fileName = Fs::getFileNameFromNativePath(args[0]);
+                    BString fileName = Fs::getFileNameFromNativePath(args[0]);
                     args.erase(args.begin());
                     args.insert(args.begin(), "t:\\" + fileName);
-                    if (stringHasEnding(fileName, ".msi", true)) {
-                        args.insert(args.begin(), "start");
+                    if (fileName.endsWith(".msi", true)) {
+                        args.insert(args.begin(), B("start"));
                     }
-                    args.insert(args.begin(), "/bin/wine");
+                    args.insert(args.begin(), B("/bin/wine"));
                 }
             }
         }
@@ -528,20 +525,20 @@ bool StartUpArgs::apply() {
 }
 
 bool StartUpArgs::loadDefaultResource(const char* app) {
-    const char* cmd = Platform::getResourceFilePath("cmd.txt");
-    static std::vector<std::string> lines;
+    BString cmd = Platform::getResourceFilePath(B("cmd.txt"));
+    static std::vector<BString> lines;
     lines.clear();
-    lines.push_back(app);
-    if (cmd && readLinesFromFile(cmd, lines)) {
+    lines.push_back(BString::copy(app));
+    if (!cmd.isEmpty() && readLinesFromFile(cmd, lines)) {
         const char** ppArgs = new const char*[lines.size()];
         for (int i=0;i<(int)lines.size();i++) {
             ppArgs[i] = lines[i].c_str();
             if (lines[i] == "-zip" && i+1<(int)lines.size()) {
                 if (!Fs::doesNativePathExist(lines[i+1])) {
-                    const char* zip = Platform::getResourceFilePath(lines[i+1].c_str());
-                    if (zip && Fs::doesNativePathExist(zip)) {
+                    BString zip = Platform::getResourceFilePath(lines[i+1]);
+                    if (!zip.isEmpty() && Fs::doesNativePathExist(zip)) {
                         i++;
-                        ppArgs[i] = strdup(zip); // I'm not worried about leaking this
+                        ppArgs[i] = strdup(zip.c_str()); // I'm not worried about leaking this
                     }
                 }
             }
@@ -556,7 +553,7 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
     // look for -log as soon as possible so that logging is enabled as soon as possible
     for (i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "-log") && i + 1 < argc) {
-            this->logPath = argv[i + 1];
+            this->logPath = BString::copy(argv[i + 1]);
             KSystem::logFile = fopen(this->logPath.c_str(), "w");
             i++;
         }
@@ -568,17 +565,17 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
     klog_nonewline("\n");
     for (i=1;i<argc;i++) {
         if (!strcmp(argv[i], "-root") && i+1<argc) {
-            this->setRoot(argv[i+1]);
+            this->setRoot(BString::copy(argv[i+1]));
             i++;
         } else if (!strcmp(argv[i], "-zip") && i+1<argc) {
 #ifdef BOXEDWINE_ZLIB
-            this->addZip(argv[i+1]);
+            this->addZip(BString::copy(argv[i+1]));
 #else
             kwarn("BoxedWine wasn't compiled with zlib support");
 #endif
             i++;
         } else if (!strcmp(argv[i], "-title") && i + 1 < argc) {
-            this->title = argv[i + 1];
+            this->title = BString::copy(argv[i + 1]);
             i++;
         } else if (!strcmp(argv[i], "-nozip") && i + 1 < argc) {
             this->nozip = true;
@@ -601,7 +598,7 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
             this->effectiveGroupId = atoi(argv[i+1]);
             i++;
         } else if (!strcmp(argv[i], "-w") && i+1<argc) {
-            this->setWorkingDir(argv[i+1]);
+            this->setWorkingDir(BString::copy(argv[i+1]));
             i++;
             this->workingDirSet = true;
         } else if (!strcmp(argv[i], "-nosound")) {
@@ -609,7 +606,7 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
         } else if (!strcmp(argv[i], "-novideo")) {
 			this->videoEnabled = false;
         } else if (!strcmp(argv[i], "-env")) {
-			this->envValues.push_back(argv[i+1]);
+			this->envValues.push_back(BString::copy(argv[i+1]));
             i++;
         } else if (!strcmp(argv[i], "-fullscreen")) {
 			this->setFullscreen(FULLSCREEN_STRETCH);
@@ -630,10 +627,10 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
             }
             i++;
         } else if (!strcmp(argv[i], "-scale_quality")) {
-			this->setScaleQuality(argv[i+1]);
+			this->setScaleQuality(BString::copy(argv[i+1]));
             i++;
         } else if (!strcmp(argv[i], "-resolution")) {
-            setResolution(argv[i+1]);
+            setResolution(BString::copy(argv[i+1]));
             i++;
         } else if (!strcmp(argv[i], "-bpp")) {
             setBpp(atoi(argv[i+1]));
@@ -643,14 +640,14 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
                 this->screenBpp = 32;
             }
         } else if (!strcmp(argv[i], "-noexecfiles")) {
-            stringSplit(this->nonExecFileFullPaths, argv[i+1], ':');            
+            B(argv[i + 1]).split(':', this->nonExecFileFullPaths);        
             i++;
         } else if (!strcmp(argv[i], "-p2")) {
             this->pentiumLevel = 2;
         } else if (!strcmp(argv[i], "-p3")) {
             this->pentiumLevel = 3;
         } else if (!strcmp(argv[i], "-glext")) {
-            this->setAllowedGlExtension(argv[i+1]);
+            this->setAllowedGlExtension(BString::copy(argv[i+1]));
             i++;
         } else if (!strcmp(argv[i], "-rel_mouse_sensitivity")) {
             this->rel_mouse_sensitivity = atoi(argv[i+1]);
@@ -660,7 +657,7 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
                 klog("-mount_drive expects 2 parameters: <host directory to mount> <drive letter to use for wine>");
                 klog("  example: -mount_drive \"c:\\my games\" d");
             } else {
-                this->mountInfo.push_back(MountInfo(argv[i+2], argv[i+1], true));
+                this->mountInfo.push_back(MountInfo(BString::copy(argv[i+2]), BString::copy(argv[i+1]), true));
             }
             i+=2;
         } else if (!strcmp(argv[i], "-mount")) {
@@ -669,11 +666,11 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
                 klog("example: -mount \"c:\\my games\" \"/home/username/my games\"");
                 klog("example: -mount_zip \"c:\\my games\\mygame.zip\" /mnt/game");
             } else {
-                if (Fs::doesNativePathExist(argv[i + 2])) {
+                if (Fs::doesNativePathExist(BString::copy(argv[i + 2]))) {
                     klog("mount directory/file does not exist: %s", argv[i + 2]);
                     return false;
                 }
-                this->mountInfo.push_back(MountInfo(argv[i+2], argv[i+1], false));
+                this->mountInfo.push_back(MountInfo(BString::copy(argv[i+2]), BString::copy(argv[i+1]), false));
             }
             i+=2;
         } else if (!strcmp(argv[i], "-showStartupWindow")) {
@@ -706,26 +703,26 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
             this->skipFrameFPS = atoi(argv[i+1]);
             i++;
         } else if (!strcmp(argv[i], "-log") && i + 1 < argc) {
-            this->logPath = argv[i + 1];
+            this->logPath = BString::copy(argv[i + 1]);
             i++;
         } 
 #ifdef BOXEDWINE_RECORDER
         else if (!strcmp(argv[i], "-record")) {
-            if (!Fs::doesNativePathExist(argv[i+1])) {
+            if (!Fs::doesNativePathExist(BString::copy(argv[i+1]))) {
                 MKDIR(argv[i+1]);
-                if (!Fs::doesNativePathExist(argv[i+1])) {
+                if (!Fs::doesNativePathExist(BString::copy(argv[i+1]))) {
                     klog("-record path does not exist and could not be created: %s", argv[i+1]);
                     return false;
                 }
             }
-            this->recordAutomation = argv[i + 1];
+            this->recordAutomation = BString::copy(argv[i + 1]);
             i++;
         }  else if (!strcmp(argv[i], "-automation")) {
-            if (!Fs::doesNativePathExist(argv[i+1])) {
+            if (!Fs::doesNativePathExist(BString::copy(argv[i+1]))) {
                 klog("-automation directory does not exist %s", argv[i+1]);
                 return false;
             }
-            this->runAutomation = argv[i + 1];
+            this->runAutomation = BString::copy(argv[i + 1]);
             i++;
         }
 #endif
@@ -743,15 +740,15 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
         pathSeperator = '/';
     }
     if (KNativeSystem::getAppDirectory().length()) {
-        std::string base2 = KNativeSystem::getAppDirectory();
+        BString base2 = KNativeSystem::getAppDirectory();
         base2 = base2.substr(0, base2.length()-1); 
         if (zips.size()==0 && !nozip) {
             std::vector<Platform::ListNodeResult> results;
             if (base) {
-                Platform::listNodes(base, results);
+                Platform::listNodes(BString::copy(base), results);
                 for (auto&& item : results) {
                     if (strstr(item.name.c_str(), "Wine") && strstr(item.name.c_str(), ".zip")) {
-                        this->zips.push_back(std::string(base) + pathSeperator + item.name);
+                        this->zips.push_back(base + pathSeperator + item.name);
                         break;
                     }
                 }
@@ -761,7 +758,7 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
                 Platform::listNodes(base2, results);
                 for (auto&& item : results) {
                     if (strstr(item.name.c_str(), "Wine") && strstr(item.name.c_str(), ".zip")) {
-                        this->zips.push_back(std::string(base2) + pathSeperator + item.name);
+                        this->zips.push_back(BString(base2) + pathSeperator + item.name);
                     }
                 }
             }
@@ -780,12 +777,12 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
     argv = &argv[i];
         
     for (i=0;i<argc;i++) {
-        args.push_back(argv[i]);
+        args.push_back(BString::copy(argv[i]));
     }
     return true;
 }
 
-void StartUpArgs::setResolution(const std::string& resolution) {
+void StartUpArgs::setResolution(BString resolution) {
     U32 width;
     U32 height;
 

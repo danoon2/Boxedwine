@@ -56,23 +56,23 @@ bool KNativeSystem::getScreenDimensions(U32* width, U32* height) {
     return false;
 }
 
-std::string KNativeSystem::getAppDirectory() {
+BString KNativeSystem::getAppDirectory() {
     char* s = SDL_GetBasePath();
-    std::string result;
+    BString result;
 
     if (s) {
-        result = s;
+        result = BString::copy(s);
         SDL_free(s);
     }
     return result;
 }
 
-std::string KNativeSystem::getLocalDirectory() {
+BString KNativeSystem::getLocalDirectory() {
     char* s = SDL_GetPrefPath("", "Boxedwine");
-    std::string result;
+    BString result;
 
     if (s) {
-        result = s;
+        result = BString::copy(s);
         SDL_free(s);
     }
     return result;
@@ -82,17 +82,17 @@ bool KNativeSystem::clipboardHasText() {
     return SDL_HasClipboardText()?true:false;
 }
 
-std::string KNativeSystem::clipboardGetText() {
+BString KNativeSystem::clipboardGetText() {
     char* s = SDL_GetClipboardText();
-    std::string result;
+    BString result;
     if (s) {
-        result = s;
+        result = BString::copy(s);
         SDL_free(s);
     }
     return result;
 }
 
-bool KNativeSystem::clipboardSetText(const std::string& text) {
+bool KNativeSystem::clipboardSetText(BString text) {
     return SDL_SetClipboardText(text.c_str()) ? true : false;
 }
 

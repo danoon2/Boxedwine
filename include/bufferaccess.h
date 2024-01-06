@@ -21,7 +21,7 @@
 
 class BufferAccess : public FsOpenNode {
 public:
-    BufferAccess(const BoxedPtr<FsNode>& node, U32 flags, const std::string& buffer);
+    BufferAccess(const BoxedPtr<FsNode>& node, U32 flags, BString buffer);
     virtual S64  length();
     virtual bool setLength(S64 length);
     virtual S64  getFilePointer();
@@ -40,7 +40,7 @@ public:
     virtual void reopen();
     virtual bool isOpen();
 
-    std::string buffer;
+    BString buffer;
 private:
     S32 pos;
 };

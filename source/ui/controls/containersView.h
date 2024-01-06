@@ -3,7 +3,7 @@
 
 class ContainersView : public BaseView {
 public:
-	ContainersView(std::string tab, std::string app);
+	ContainersView(BString tab, BString app);
 
 	virtual bool saveChanges();
     
@@ -13,7 +13,7 @@ private:
     void rebuildShortcutsCombobox();
     void showAppSection(bool show);
     void deleteContainer(BoxedContainer* container);
-    void winetricks(const WineVersion& winetricks, const std::string& verb);
+    void winetricks(const WineVersion& winetricks, BString verb);
 
     BoxedContainer* currentContainer;
     bool currentContainerChanged;
@@ -21,7 +21,7 @@ private:
 
     BoxedApp* currentApp;
     bool currentAppChanged;
-    std::string gotoApp;
+    BString gotoApp;
 
     std::shared_ptr<LayoutSection> section;
     std::shared_ptr<LayoutTextInputControl> containerNameControl;

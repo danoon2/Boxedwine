@@ -23,9 +23,9 @@ class KFile;
 
 class MappedFileCache : public BoxedPtrBase {
 public:
-    MappedFileCache(const std::string& name) : name(name), data(NULL), dataSize(0) {}
+    MappedFileCache(BString name) : name(name), data(NULL), dataSize(0) {}
     virtual ~MappedFileCache();
-    const std::string name;
+    const BString name;
     std::shared_ptr<KFile> file;
     U8** data;
     U32 dataSize;
@@ -62,6 +62,7 @@ U8* getPhysicalWriteAddress(U32 address, U32 len);
 U8* getPhysicalAddress(U32 address, U32 len);
 
 char* getNativeString(U32 address, char* buffer, U32 cbBuffer);
+BString getNativeStringB(U32 address, char* buffer, U32 cbBuffer);
 char* getNativeStringW(U32 address, char* buffer, U32 cbBuffer);
 void writeNativeString(U32 address, const char* str);
 U32 writeNativeString2(U32 address, const char* str, U32 len);

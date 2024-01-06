@@ -13,10 +13,10 @@
 #endif
 class Recorder {
 public:
-    static void start(std::string directory);
+    static void start(BString directory);
     static Recorder* instance;
 
-    void initCommandLine(std::string root, const std::vector<std::string>& zips, std::string working, const std::vector<std::string>& args);
+    void initCommandLine(BString root, const std::vector<BString>& zips, BString working, const std::vector<BString>& args);
     void takeScreenShot();
     void onMouseMove(U32 x, U32 y);
     void onMouseButton(U32 down, U32 button, U32 x, U32 y);
@@ -24,7 +24,7 @@ public:
     void close();
 
     FILE* file;
-    std::string directory;
+    BString directory;
 private:
     void out(const char* s);
     int screenShotCount;
@@ -39,7 +39,7 @@ bool BOXEDWINE_RECORDER_HANDLE_KEY_DOWN(int key, bool isF11);
 bool BOXEDWINE_RECORDER_HANDLE_KEY_UP(int key, bool isF11);
 U32 BOXEDWINE_RECORDER_QUIT();
 void BOXEDWINE_RECORDER_RUN_SLICE();
-void BOXEDWINE_RECORDER_INIT(std::string root, const std::vector<std::string>& zips, std::string working, const std::vector<std::string>& args);
+void BOXEDWINE_RECORDER_INIT(BString root, const std::vector<BString>& zips, BString working, const std::vector<BString>& args);
 #else
 #define BOXEDWINE_RECORDER_HANDLE_MOUSE_MOVE(x, y)
 #define BOXEDWINE_RECORDER_HANDLE_MOUSE_BUTTON_DOWN(b, x, y)

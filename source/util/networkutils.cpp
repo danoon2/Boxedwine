@@ -60,7 +60,7 @@ public:
 };
 
 
-bool downloadFile(const std::string& url, const std::string& filePath, std::function<void(U64 bytesCompleted)> f, NetworkProxy* proxy, std::string& errorMsg, bool* cancel) {
+bool downloadFile(BString url, BString filePath, std::function<void(U64 bytesCompleted)> f, NetworkProxy* proxy, BString& errorMsg, bool* cancel) {
     DownloadProgress progress;
     progress.cancel = cancel;
     progress.f = f;
@@ -69,7 +69,7 @@ bool downloadFile(const std::string& url, const std::string& filePath, std::func
     if (hr != S_OK) {
         LPSTR messageBuffer = NULL;
         size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, hr, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
-        errorMsg = messageBuffer;
+        errorMsg = BString::copy(messageBuffer);
         LocalFree(messageBuffer);
     }
     return hr == S_OK;
@@ -100,7 +100,7 @@ static int xferinfo(void* p, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ul
     return 0;
 }
 
-bool downloadFile(const std::string& url, const std::string& filePath, std::function<void(U64 bytesCompleted)> f, NetworkProxy* proxy, std::string& errorMsg, bool* cancel) {
+bool downloadFile(BString url, BString filePath, std::function<void(U64 bytesCompleted)> f, NetworkProxy* proxy, BString& errorMsg, bool* cancel) {
     CURL* curl;
     CURLcode res = CURLE_OK;
     ProgressData data;

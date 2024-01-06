@@ -2,37 +2,37 @@
 #include "../boxedwineui.h"
 #include "../../io/fszip.h"
 
-bool BoxedApp::load(BoxedContainer* container, const std::string& iniFilePath) {
+bool BoxedApp::load(BoxedContainer* container, BString iniFilePath) {
     this->container = container;
     this->iniFilePath = iniFilePath;
     ConfigFile config(iniFilePath);
 
-    this->name = config.readString("Name", "");
-    this->link = config.readString("Link", "");
-    this->cmd = config.readString("Cmd", "");
-    this->iconPath = config.readString("Icon", "");
-    this->path = config.readString("Path", "");
-    this->resolution = config.readString("Resolution","");
-    this->bpp = config.readInt("BPP",32);
-    this->fullScreen = config.readInt("Fullscreen",FULLSCREEN_NOTSET);
-    this->vsync = config.readInt("VSync", VSYNC_NOT_SET);
-    this->dpiAware = config.readBool("DpiAware", false);
-    this->showWindowImmediately = config.readBool("ShowWindowImmediately", false);
-    this->autoRefresh = config.readBool("AutoRefresh", false);
-    this->glExt = config.readString("AllowedGlExt","");
-    this->scale = config.readInt("Scale",100);
-    this->scaleQuality = config.readInt("ScaleQuality",0);    
-    this->cpuAffinity = config.readInt("CpuAffinity", 0);
-    this->pollRate = config.readInt("PollRate", 0);
-    this->skipFramesFPS = config.readInt("SkipFramesFPS", 0);
-    this->openGlType = config.readInt("OpenGL", OPENGL_TYPE_NOT_SET);
+    this->name = config.readString(B("Name"), B(""));
+    this->link = config.readString(B("Link"), B(""));
+    this->cmd = config.readString(B("Cmd"), B(""));
+    this->iconPath = config.readString(B("Icon"), B(""));
+    this->path = config.readString(B("Path"), B(""));
+    this->resolution = config.readString(B("Resolution"),B(""));
+    this->bpp = config.readInt(B("BPP"),32);
+    this->fullScreen = config.readInt(B("Fullscreen"),FULLSCREEN_NOTSET);
+    this->vsync = config.readInt(B("VSync"), VSYNC_NOT_SET);
+    this->dpiAware = config.readBool(B("DpiAware"), false);
+    this->showWindowImmediately = config.readBool(B("ShowWindowImmediately"), false);
+    this->autoRefresh = config.readBool(B("AutoRefresh"), false);
+    this->glExt = config.readString(B("AllowedGlExt"),B(""));
+    this->scale = config.readInt(B("Scale"),100);
+    this->scaleQuality = config.readInt(B("ScaleQuality"),0);    
+    this->cpuAffinity = config.readInt(B("CpuAffinity"), 0);
+    this->pollRate = config.readInt(B("PollRate"), 0);
+    this->skipFramesFPS = config.readInt(B("SkipFramesFPS"), 0);
+    this->openGlType = config.readInt(B("OpenGL"), OPENGL_TYPE_NOT_SET);
     
     int i = 1;
     this->args.clear();
     while (true) {
-        std::string key = "Arg";
+        BString key = B("Arg");
         key += i;
-        std::string arg = config.readString(key, "");
+        BString arg = config.readString(key, B(""));
         if (arg.length() == 0) {
             break;
         }
@@ -44,14 +44,14 @@ bool BoxedApp::load(BoxedContainer* container, const std::string& iniFilePath) {
 
 bool BoxedApp::saveApp() {
     if (this->iniFilePath.length()==0) {
-        std::string appDir = GlobalSettings::getAppFolder(this->container);
+        BString appDir = GlobalSettings::getAppFolder(this->container);
         if (!Fs::doesNativePathExist(appDir)) {
             if (!Fs::makeNativeDirs(appDir)) {
                 return false;
             }
         }
         for (int i=0;i<10000;i++) {
-            std::string iniPath = appDir + Fs::nativePathSeperator + std::to_string(i) + ".ini";
+            BString iniPath = appDir ^ BString::valueOf(i) + ".ini";
             if (!Fs::doesNativePathExist(iniPath)) {
                 this->iniFilePath = iniPath;
                 break;
@@ -59,28 +59,29 @@ bool BoxedApp::saveApp() {
         }
     }
     ConfigFile config(iniFilePath);
-    config.writeString("Name", this->name);
-    config.writeString("Link", this->link);
-    config.writeString("Cmd", this->cmd);
-    config.writeString("Icon", this->iconPath);
-    config.writeString("Path", this->path);
-    config.writeString("Resolution",this->resolution);
-    config.writeInt("BPP",this->bpp);
-    config.writeInt("Fullscreen",this->fullScreen);
-    config.writeInt("VSync", this->vsync);
-    config.writeBool("DpiAware", this->dpiAware);
-    config.writeBool("ShowWindowImmediately", this->showWindowImmediately);
-    config.writeBool("AutoRefresh", this->autoRefresh);
-    config.writeString("AllowedGlExt",this->glExt);
-    config.writeInt("Scale",this->scale);
-    config.writeInt("ScaleQuality",this->scaleQuality);
-    config.writeInt("CpuAffinity",this->cpuAffinity);
-    config.writeInt("PollRate", this->pollRate);
-    config.writeInt("SkipFramesFPS", this->skipFramesFPS);
-    config.writeInt("OpenGL", this->openGlType);
+    config.writeString(B("Name"), this->name);
+    config.writeString(B("Link"), this->link);
+    config.writeString(B("Cmd"), this->cmd);
+    config.writeString(B("Icon"), this->iconPath);
+    config.writeString(B("Path"), this->path);
+    config.writeString(B("Resolution"),this->resolution);
+    config.writeInt(B("BPP"),this->bpp);
+    config.writeInt(B("Fullscreen"),this->fullScreen);
+    config.writeInt(B("VSync"), this->vsync);
+    config.writeBool(B("DpiAware"), this->dpiAware);
+    config.writeBool(B("ShowWindowImmediately"), this->showWindowImmediately);
+    config.writeBool(B("AutoRefresh"), this->autoRefresh);
+    config.writeString(B("AllowedGlExt"),this->glExt);
+    config.writeInt(B("Scale"),this->scale);
+    config.writeInt(B("ScaleQuality"),this->scaleQuality);
+    config.writeInt(B("CpuAffinity"),this->cpuAffinity);
+    config.writeInt(B("PollRate"), this->pollRate);
+    config.writeInt(B("SkipFramesFPS"), this->skipFramesFPS);
+    config.writeInt(B("OpenGL"), this->openGlType);
 
+    BString key;
     for (int i = 0; i < (int)this->args.size(); i++) {
-        std::string key = "Arg";
+        key = "Arg";
         key += (i + 1);
         config.writeString(key, this->args[i]);
     }
@@ -89,7 +90,7 @@ bool BoxedApp::saveApp() {
 }
 
 void BoxedApp::createAutomation() {
-    std::string path = GlobalSettings::getAutomationFolder(this->container);
+    BString path = GlobalSettings::getAutomationFolder(this->container);
     if (!Fs::doesNativePathExist(path)) {
         Fs::makeNativeDirs(path);
     }
@@ -104,7 +105,7 @@ void BoxedApp::runAutomation() {
 
 bool BoxedApp::hasAutomation() {
 #ifdef BOXEDWINE_RECORDER
-    std::string path = GlobalSettings::getAutomationFolder(this->container) + Fs::nativePathSeperator + RECORDER_SCRIPT;
+    BString path = GlobalSettings::getAutomationFolder(this->container) ^ RECORDER_SCRIPT;
     return Fs::doesNativePathExist(path);
 #else
     return false;
@@ -112,8 +113,8 @@ bool BoxedApp::hasAutomation() {
 }
 
 void BoxedApp::launch() {
-    std::string launchCmd;
-    std::string args;
+    BString launchCmd;
+    BString args;
 
     GlobalSettings::startUpArgs = StartUpArgs();
 
@@ -138,7 +139,7 @@ void BoxedApp::launch() {
         GlobalSettings::startUpArgs.showWindowImmediately = true;
     }
     if (this->autoRefresh) {
-        GlobalSettings::startUpArgs.envValues.push_back("BOXED_DD_AUTOREFRESH=1");
+        GlobalSettings::startUpArgs.envValues.push_back(B("BOXED_DD_AUTOREFRESH=1"));
     }
     if (this->cpuAffinity) {
         GlobalSettings::startUpArgs.setCpuAffinity(this->cpuAffinity);
@@ -157,7 +158,7 @@ void BoxedApp::launch() {
         GlobalSettings::startUpArgs.setVsync(this->vsync);
     }
     if (this->scaleQuality) {
-        GlobalSettings::startUpArgs.setScaleQuality(std::to_string(this->scaleQuality));
+        GlobalSettings::startUpArgs.setScaleQuality(BString::valueOf(this->scaleQuality));
     }
     if (this->pollRate >= 0) {
         GlobalSettings::startUpArgs.pollRate = this->pollRate;
@@ -167,9 +168,9 @@ void BoxedApp::launch() {
     }
     GlobalSettings::startUpArgs.title = this->name;
 
-    GlobalSettings::startUpArgs.addArg("/bin/wine");
+    GlobalSettings::startUpArgs.addArg(B("/bin/wine"));
     if (this->link.length()>0) {        
-        GlobalSettings::startUpArgs.addArg("C:\\windows\\command\\start.exe");
+        GlobalSettings::startUpArgs.addArg(B("C:\\windows\\command\\start.exe"));
         GlobalSettings::startUpArgs.addArg(this->link);
     } else {
         GlobalSettings::startUpArgs.addArg(this->cmd);
@@ -205,14 +206,14 @@ const BoxedAppIcon* BoxedApp::getIconTexture(int iconSize) {
         int width = 0;
         int height = 0;
         const unsigned char* data = NULL;
-        std::string nativeExePath = this->container->getNativePathForApp(*this);
+        BString nativeExePath = this->container->getNativePathForApp(*this);
 
         if (Fs::doesNativePathExist(nativeExePath)) {
             data = extractIconFromExe(this->container->getNativePathForApp(*this), iconSize, &width, &height);
         } else {
-            std::string nativeDir = this->container->getDir() + Fs::nativePathSeperator + "tmp";
+            BString nativeDir = this->container->getDir() ^ "tmp";
             FsZip::extractFileFromZip(GlobalSettings::getFileFromWineName(container->getWineVersion()), this->path.substr(1) + "/" + this->cmd, nativeDir);
-            std::string nativePath = nativeDir + Fs::nativePathSeperator + this->cmd;
+            BString nativePath = nativeDir ^ this->cmd;
             data = extractIconFromExe(nativePath, iconSize, &width, &height);
             Fs::deleteNativeFile(nativePath);
         }

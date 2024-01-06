@@ -99,15 +99,15 @@ U32 FsOpenNode::getDirectoryEntryCount() {
     return (U32)this->dirEntries.size();
 }
 
-BoxedPtr<FsNode> FsOpenNode::getDirectoryEntry(U32 index, std::string& name) {
+BoxedPtr<FsNode> FsOpenNode::getDirectoryEntry(U32 index, BString& name) {
     if (!this->node) {
         return NULL;
     }
     this->loadDirEntries();
     if (index==0)
-        name = ".";
+        name = B(".");
     else if (index==1 && this->node->getParent())
-        name = "..";
+        name = B("..");
     else
         name = this->dirEntries[index]->name;
     return this->dirEntries[index];

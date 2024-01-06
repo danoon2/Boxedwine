@@ -16,7 +16,7 @@ void drawAppBar(const std::vector<AppButton>& buttons, int selected, ImFont* fon
         } else {
             ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetColorU32(ImGuiCol_MenuBarBg));
         }        
-        std::string name = " "+buttons[i].name + " ";
+        BString name = " "+buttons[i].name + " ";
         if (ImGui::Button(name.c_str(), ImVec2(0.0, buttonHeight))) {
             selectedButton = i; // don't call onSelect here because the styles were changed
         }        

@@ -9,7 +9,7 @@ BoxedWineCriticalSectionCond::~BoxedWineCriticalSectionCond() {
     this->cond->unlock();
 }
 
-BoxedWineCondition::BoxedWineCondition(std::string name) : name(name), lockOwner(0), parent(nullptr) {
+BoxedWineCondition::BoxedWineCondition(BString name) : name(name), lockOwner(0), parent(nullptr) {
 }
 
 BoxedWineCondition::BoxedWineCondition() {
@@ -108,7 +108,7 @@ bool BoxedWineConditionTimer::run() {
     return false; // signal will remove timer
 }
 
-BoxedWineCondition::BoxedWineCondition(std::string name) : name(name), parent(nullptr) {
+BoxedWineCondition::BoxedWineCondition(BString name) : name(name), parent(nullptr) {
 }
 
 BoxedWineCondition::~BoxedWineCondition() {

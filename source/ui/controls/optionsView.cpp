@@ -6,7 +6,7 @@
 bool isMesaOpenglAvailable();
 #endif
 
-OptionsView::OptionsView(std::string tab) : BaseView("OptionsView") {
+OptionsView::OptionsView(BString tab) : BaseView(B("OptionsView")) {
     if (tab.length()) {
         if (tab == "Wine") {
             this->tabIndex = 2;
@@ -15,12 +15,12 @@ OptionsView::OptionsView(std::string tab) : BaseView("OptionsView") {
         }
 
     }
-    this->wineTitle = getTranslation(OPTIONSVIEW_TITLE_WINE_VERSISONS);
+    this->wineTitle = c_getTranslation(OPTIONSVIEW_TITLE_WINE_VERSISONS);
 
     createGeneralTab();
     createThemeTab();
     
-    std::string name;
+    BString name;
     if (GlobalSettings::hasIconsFont()) {
         name += OPTION_WINE_ICON;
         name += " ";
@@ -38,9 +38,9 @@ void OptionsView::createThemeTab() {
     std::shared_ptr<LayoutSection> section = model->addSection(OPTIONSVIEW_TITLE_DISPLAY);
     
     std::vector<ComboboxItem> themes;
-    themes.push_back(ComboboxItem(getTranslation(OPTIONSVIEW_THEME_DARK), "Dark"));
-    themes.push_back(ComboboxItem(getTranslation(OPTIONSVIEW_THEME_LIGHT), "Light"));
-    themes.push_back(ComboboxItem(getTranslation(OPTIONSVIEW_THEME_CLASSIC), "Classic"));
+    themes.push_back(ComboboxItem(getTranslation(OPTIONSVIEW_THEME_DARK), B("Dark")));
+    themes.push_back(ComboboxItem(getTranslation(OPTIONSVIEW_THEME_LIGHT), B("Light")));
+    themes.push_back(ComboboxItem(getTranslation(OPTIONSVIEW_THEME_CLASSIC), B("Classic")));
 
     themeControl = section->addComboboxRow(OPTIONSVIEW_THEME_LABEL, OPTIONSVIEW_THEME_HELP, themes);
     themeControl->setWidth((int)GlobalSettings::scaleFloatUIAndFont(150));
@@ -52,12 +52,12 @@ void OptionsView::createThemeTab() {
     };
 
     std::vector<ComboboxItem> fontScales;
-    fontScales.push_back(ComboboxItem("50%", 50));
-    fontScales.push_back(ComboboxItem("75%", 75));
-    fontScales.push_back(ComboboxItem("100%", 100));
-    fontScales.push_back(ComboboxItem("125%", 125));
-    fontScales.push_back(ComboboxItem("150%", 150));
-    fontScales.push_back(ComboboxItem("200%", 200));
+    fontScales.push_back(ComboboxItem(B("50%"), 50));
+    fontScales.push_back(ComboboxItem(B("75%"), 75));
+    fontScales.push_back(ComboboxItem(B("100%"), 100));
+    fontScales.push_back(ComboboxItem(B("125%"), 125));
+    fontScales.push_back(ComboboxItem(B("150%"), 150));
+    fontScales.push_back(ComboboxItem(B("200%"), 200));
     std::shared_ptr<LayoutComboboxControl> fontScale = section->addComboboxRow(OPTIONSVIEW_DEFAULT_FONT_SCALE_LABEL, OPTIONSVIEW_DEFAULT_FONT_SCALE_HELP, fontScales);
     fontScale->setWidth((int)GlobalSettings::scaleFloatUIAndFont(150));
     fontScale->setSelectionIntValue((int)(GlobalSettings::fontScale * 100+.5f));
@@ -67,13 +67,13 @@ void OptionsView::createThemeTab() {
             GlobalSettings::saveConfig();
             GlobalSettings::restartUI = true;
             GlobalSettings::startUpArgs.runOnRestartUI = []() {
-                gotoView(VIEW_OPTIONS, "Display");
+                gotoView(VIEW_OPTIONS, B("Display"));
             };
             return false;
         });
     };
 
-    std::string name;
+    BString name;
     if (GlobalSettings::hasIconsFont()) {
         name += OPTION_DISPLAY_ICON;
         name += " ";
@@ -104,9 +104,9 @@ void OptionsView::createGeneralTab() {
     };
 
     std::vector<ComboboxItem> vsync;
-    vsync.push_back(ComboboxItem("Disabled", VSYNC_DISABLED));
-    vsync.push_back(ComboboxItem("Enabled", VSYNC_ENABLED));
-    vsync.push_back(ComboboxItem("Adaptive", VSYNC_ADAPTIVE));
+    vsync.push_back(ComboboxItem(B("Disabled"), VSYNC_DISABLED));
+    vsync.push_back(ComboboxItem(B("Enabled"), VSYNC_ENABLED));
+    vsync.push_back(ComboboxItem(B("Adaptive"), VSYNC_ADAPTIVE));
     vsyncControl = section->addComboboxRow(OPTIONS_VIEW_VSYNC_LABEL, OPTIONS_VIEW_VSYNC_HELP, vsync, GlobalSettings::defaultVsync);
     vsyncControl->setWidth((int)GlobalSettings::scaleFloatUIAndFont(150));
     vsyncControl->onChange = [this]() {
@@ -115,10 +115,10 @@ void OptionsView::createGeneralTab() {
     };
 
     std::vector<ComboboxItem> scales;
-    scales.push_back(ComboboxItem("1/2x", 50));
-    scales.push_back(ComboboxItem("1x", 100));
-    scales.push_back(ComboboxItem("2x", 200));
-    scales.push_back(ComboboxItem("3x", 300));
+    scales.push_back(ComboboxItem(B("1/2x"), 50));
+    scales.push_back(ComboboxItem(B("1x"), 100));
+    scales.push_back(ComboboxItem(B("2x"), 200));
+    scales.push_back(ComboboxItem(B("3x"), 300));
     scaleControl = section->addComboboxRow(OPTIONSVIEW_DEFAULT_SCALE_LABEL, OPTIONSVIEW_DEFAULT_SCALE_HELP, scales, GlobalSettings::getDefaultScale()/100);
     scaleControl->setWidth((int)GlobalSettings::scaleFloatUIAndFont(150));
     scaleControl->onChange = [this]() {
@@ -129,8 +129,8 @@ void OptionsView::createGeneralTab() {
 #if defined(BOXEDWINE_OPENGL_OSMESA) && defined(BOXEDWINE_OPENGL_SDL)
     if (isMesaOpenglAvailable()) {
         std::vector<ComboboxItem> glOptions;
-        glOptions.push_back(ComboboxItem("Native", OPENGL_TYPE_SDL));
-        glOptions.push_back(ComboboxItem("Mesa - OpenGL in Software", OPENGL_TYPE_OSMESA));
+        glOptions.push_back(ComboboxItem(B("Native"), OPENGL_TYPE_SDL));
+        glOptions.push_back(ComboboxItem(B("Mesa - OpenGL in Software"), OPENGL_TYPE_OSMESA));
         openGlControl = section->addComboboxRow(OPTIONSVIEW_DEFAULT_OPENGL_LABEL, OPTIONSVIEW_DEFAULT_OPENGL_HELP, glOptions, GlobalSettings::defaultOpenGL);
         openGlControl->setWidth((int)GlobalSettings::scaleFloatUIAndFont(250));
         openGlControl->setSelectionIntValue(GlobalSettings::defaultOpenGL);
@@ -151,7 +151,7 @@ void OptionsView::createGeneralTab() {
 
     std::shared_ptr<LayoutSection> bottomSection = model->addSection();
     bottomSection->addSeparator();
-    std::string deleteLabel = "";
+    BString deleteLabel;
     if (GlobalSettings::hasIconsFont()) {
         deleteLabel += TRASH_ICON;
         deleteLabel += " ";
@@ -174,7 +174,7 @@ void OptionsView::createGeneralTab() {
             });
     };
 
-    std::string name;
+    BString name;
     if (GlobalSettings::hasIconsFont()) {
         name += OPTIONS_GENERAL;
         name += " ";
@@ -200,7 +200,7 @@ void OptionsView::loadWineVersions() {
         if (dep) {
             size += dep->size;
         }
-        v.size = std::to_string(size);
+        v.size = BString::valueOf(size);
         this->wineVersions[v.name] = v;
     }
 
@@ -221,7 +221,7 @@ void OptionsView::loadWineVersions() {
             if (dep) {
                 size += dep->size;
             }
-            v.size = std::to_string(size);
+            v.size = BString::valueOf(size);
             this->wineVersions[v.name] = v;
         }
     }
@@ -232,20 +232,20 @@ void OptionsView::loadWineVersions() {
     for (auto& wine : this->wineVersions) {
         float width = 0.0f;
         if (wine.second.availableVersion && !wine.second.currentVersion) {
-            width += ImGui::CalcTextSize(getTranslation(OPTIONSVIEW_WINE_VERSION_INSTALL)).x;            
+            width += ImGui::CalcTextSize(c_getTranslation(OPTIONSVIEW_WINE_VERSION_INSTALL)).x;            
             width += ImGui::GetStyle().FramePadding.x * 2;
             if (width > leftColumn) {
                 leftColumn = width;
             }
         } else if (wine.second.availableVersion && wine.second.currentVersion && wine.second.currentVersion->fsVersion != wine.second.availableVersion->fsVersion) {
-            width += ImGui::CalcTextSize(getTranslation(OPTIONSVIEW_WINE_VERSION_UPDATE)).x;
+            width += ImGui::CalcTextSize(c_getTranslation(OPTIONSVIEW_WINE_VERSION_UPDATE)).x;
             width += ImGui::GetStyle().FramePadding.x * 2;
             if (width > leftColumn) {
                 leftColumn = width;
             }
         }
         if (wine.second.currentVersion) {
-            width = ImGui::CalcTextSize(getTranslation(OPTIONSVIEW_WINE_VERSION_DELETE)).x;
+            width = ImGui::CalcTextSize(c_getTranslation(OPTIONSVIEW_WINE_VERSION_DELETE)).x;
             width += ImGui::GetStyle().FramePadding.x * 2;
             if (width > rightColumn) {
                 rightColumn = width;
@@ -288,15 +288,17 @@ void OptionsView::runWineOptions() {
         pos.y += this->extraVerticalSpacing;
         ImGui::SetCursorPos(pos);
         if (wine.second.availableVersion && !wine.second.currentVersion) {
-            std::string buttonLabel = getTranslation(OPTIONSVIEW_WINE_VERSION_INSTALL);
-            buttonLabel += "##" + wine.first;
+            BString buttonLabel = getTranslation(OPTIONSVIEW_WINE_VERSION_INSTALL);
+            buttonLabel += "##";
+            buttonLabel += wine.first;
             if (ImGui::Button(buttonLabel.c_str())) {
                 download(wine.second.availableVersion);
             }
             ImGui::SameLine();
         } else if (wine.second.availableVersion && wine.second.currentVersion && wine.second.currentVersion->fsVersion!=wine.second.availableVersion->fsVersion){
-            std::string buttonLabel = getTranslation(OPTIONSVIEW_WINE_VERSION_UPDATE);
-            buttonLabel += "##" + wine.first;
+            BString buttonLabel = getTranslation(OPTIONSVIEW_WINE_VERSION_UPDATE);
+            buttonLabel += "##";
+            buttonLabel += wine.first;
             if (ImGui::Button(buttonLabel.c_str())) {
                 download(wine.second.availableVersion);
             }
@@ -305,14 +307,15 @@ void OptionsView::runWineOptions() {
         if (wine.second.currentVersion) {
             ImGui::SameLine(pos.x + this->wineButtonFirstColumnWidth);
             bool buttonPressed = false;
-            std::string buttonLabel = getTranslation(OPTIONSVIEW_WINE_VERSION_DELETE);
-            buttonLabel += "##" + wine.first;
+            BString buttonLabel = getTranslation(OPTIONSVIEW_WINE_VERSION_DELETE);
+            buttonLabel += "##";
+            buttonLabel += wine.first;
             if (ImGui::Button(buttonLabel.c_str())) {
                 buttonPressed = true;
             }
             bool yes = false;
-            std::string label = getTranslationWithFormat(OPTIONSVIEW_WINE_VERSION_DELETE_CONFIRM_LABEL, true, wine.first);
-            if (!showYesNoMessageBox("confirm"+wine.first, buttonPressed, getTranslation(GENERIC_DLG_CONFIRM_TITLE), label.c_str(), &yes)) {
+            BString label = getTranslationWithFormat(OPTIONSVIEW_WINE_VERSION_DELETE_CONFIRM_LABEL, true, wine.first);
+            if (!showYesNoMessageBox("confirm"+wine.first, buttonPressed, c_getTranslation(GENERIC_DLG_CONFIRM_TITLE), label.c_str(), &yes)) {
                 if (yes) {
                     Fs::deleteNativeFile(wine.second.currentVersion->filePath);
                     // run later, we don't want to change versions while we are iterating them
@@ -326,8 +329,8 @@ void OptionsView::runWineOptions() {
             ImGui::SameLine();
         }     
         ImGui::SameLine(pos.x+this->wineButtonTotalColumnWidth);
-        std::string name = wine.first;
-        std::string name2;
+        BString name = wine.first;
+        BString name2;
         OptionsViewWineVersion& version = wine.second;
 
         if (version.currentVersion) {
@@ -378,17 +381,17 @@ void OptionsView::download(WineVersion* version) {
 }
 
 bool OptionsView::saveChanges() {
-    this->errorMsg = NULL;
+    this->errorMsg = B("");
     if (!Fs::doesNativePathExist(this->saveLocationControl->getText())) {
         this->errorMsg = getTranslation(OPTIONSVIEW_ERROR_DATA_DIR_NOT_FOUND);
     }
-    if (!this->errorMsg) {
+    if (this->errorMsg.isEmpty()) {
         GlobalSettings::setDataFolder(this->saveLocationControl->getText());
         GlobalSettings::saveConfig();
     }
 
-    if (this->errorMsg) {
+    if (!this->errorMsg.isEmpty()) {
         runErrorMsg(true);
     }
-    return this->errorMsg == NULL;
+    return this->errorMsg.isEmpty();
 }

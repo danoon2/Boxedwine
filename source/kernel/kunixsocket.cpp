@@ -5,7 +5,7 @@
 #include "kstat.h"
 
 KUnixSocketObject::KUnixSocketObject(U32 pid, U32 domain, U32 type, U32 protocol) : KSocketObject(KTYPE_UNIX_SOCKET, domain, type, protocol), 
-    lockCond("KUnixSocketObject::lockCond")
+    lockCond(B("KUnixSocketObject::lockCond"))
 {
 }
 
@@ -322,7 +322,7 @@ U32 KUnixSocketObject::read(U32 buffer, U32 len) {
 }
 
 U32 KUnixSocketObject::stat(U32 address, bool is64) {
-    KSystem::writeStat("", address, is64, true, (this->node?this->node->id:0), K_S_IFSOCK|K__S_IWRITE|K__S_IREAD, (this->node?this->node->rdev:0), 0, 4096, 0, this->lastModifiedTime, 1);
+    KSystem::writeStat(B(""), address, is64, true, (this->node?this->node->id:0), K_S_IFSOCK|K__S_IWRITE|K__S_IREAD, (this->node?this->node->rdev:0), 0, 4096, 0, this->lastModifiedTime, 1);
     return 0;
 }
 
@@ -356,8 +356,8 @@ S64 KUnixSocketObject::length() {
 
 class UnixSocketNode : public FsNode {
 public:
-    UnixSocketNode(U32 id, U32 rdev, const std::string& path, BoxedPtr<FsNode> parent) : FsNode(Socket, id, rdev, path, "", "", false, parent) {}
-    U32 rename(const std::string& path) {return -K_EIO;}
+    UnixSocketNode(U32 id, U32 rdev, BString path, BoxedPtr<FsNode> parent) : FsNode(Socket, id, rdev, path, B(""), B(""), false, parent) {}
+    U32 rename(BString path) {return -K_EIO;}
     bool remove() {if (!this->parent) return false; this->removeNodeFromParent(); return true;}
     U64 lastModified() {return 0;}
     U64 length() {return 0;}
@@ -372,17 +372,18 @@ U32 KUnixSocketObject::bind(KFileDescriptor* fd, U32 address, U32 len) {
     U32 family = readw(address);
     if (family==K_AF_UNIX) {
         char tmp[MAX_FILEPATH_LEN];
-        const char* name = socketAddressName(address, len, tmp, sizeof(tmp));
+        const char* socketName = socketAddressName(address, len, tmp, sizeof(tmp));
 
-        if (!name || !name[0]) {
+        if (!socketName || !socketName[0]) {
             return 0; // :TODO: why does XOrg need this
         }
+        BString name = BString::copy(socketName);
         BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath(KThread::currentThread()->process->currentDirectory, name, true);
         if (node) {
             return -K_EADDRINUSE;
         }        
-        std::string fullpath = Fs::getFullPath(KThread::currentThread()->process->currentDirectory, name);
-        BoxedPtr<FsNode> parentNode = Fs::getNodeFromLocalPath("", Fs::getParentPath(fullpath), true);
+        BString fullpath = Fs::getFullPath(KThread::currentThread()->process->currentDirectory, name);
+        BoxedPtr<FsNode> parentNode = Fs::getNodeFromLocalPath(B(""), Fs::getParentPath(fullpath), true);
         BoxedPtr<UnixSocketNode> socketNode = new UnixSocketNode(0, 2, fullpath, parentNode);
         parentNode->addChild(socketNode);
         std::shared_ptr<KUnixSocketObject> s = std::dynamic_pointer_cast<KUnixSocketObject>(fd->kobject);
@@ -417,7 +418,7 @@ U32 KUnixSocketObject::connect(KFileDescriptor* fd, U32 address, U32 len) {
             return -K_ENOENT;
         }
         if (this->domain==K_AF_UNIX) {
-            BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath(thread->process->currentDirectory, this->destAddress.data, true);
+            BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath(thread->process->currentDirectory, BString::copy(this->destAddress.data), true);
             std::shared_ptr<KObject> kobject;
             if (node) {
                 kobject = node->kobject.lock();

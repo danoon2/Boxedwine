@@ -106,7 +106,7 @@ void LayoutRow::draw(float toolTipWidth, float labelOffset, float valueOffset) {
 	}
 }
 
-void LayoutRow::drawToolTip(const std::string& help) {
+void LayoutRow::drawToolTip(BString help) {
 	ImGui::AlignTextToFramePadding();
 	if (GlobalSettings::hasIconsFont()) {
 		SAFE_IMGUI_TEXT_DISABLED(QUESTION_ICON);
@@ -159,7 +159,7 @@ void LayoutTextInputControl::draw(int width) {
 	bool browseButton = this->browseButtonType != BROWSE_BUTTON_NONE;
 
 	if (browseButton && !this->browseButtonLabel) {
-		this->browseButtonLabel = getTranslation(GENERIC_BROWSE_BUTTON);
+		this->browseButtonLabel = c_getTranslation(GENERIC_BROWSE_BUTTON);
 		this->browseButtonWidth = ImGui::CalcTextSize(this->browseButtonLabel).x + ImGui::GetStyle().FramePadding.x * 2 + ImGui::GetStyle().ItemSpacing.x;
 	}
 	if (this->isReadOnly()) {
@@ -197,7 +197,7 @@ void LayoutTextInputControl::draw(int width) {
 					types[i] = (char*)alloca(this->browseFileTypes[i].length() + 1);
 					strcpy(types[i], this->browseFileTypes[i].c_str());
 				}
-				const char* result = tfd::openFileDialog(getTranslation(INSTALLVIEW_OPEN_SETUP_FILE_TITLE), this->text, 1, types, NULL, 0);
+				const char* result = tfd::openFileDialog(c_getTranslation(INSTALLVIEW_OPEN_SETUP_FILE_TITLE), this->text, 1, types, NULL, 0);
 				if (result) {
 					strcpy(this->text, result);
 					if (this->onChange) {
@@ -208,7 +208,7 @@ void LayoutTextInputControl::draw(int width) {
 					}
 				}
 			} else {
-				const char* result = tfd::selectFolderDialog(getTranslation(GENERIC_OPEN_FOLDER_TITLE), this->text);
+				const char* result = tfd::selectFolderDialog(c_getTranslation(GENERIC_OPEN_FOLDER_TITLE), this->text);
 				if (result) {
 					strcpy(this->text, result);
 					if (this->onChange) {
@@ -275,16 +275,13 @@ std::shared_ptr<LayoutRow> LayoutSection::addRow(int labelId, int helpId) {
 		row->label = getTranslation(labelId);
 	}
 	if (helpId) {
-		const char* p = getTranslation(helpId, false);
-		if (p) {
-			row->help = p;
-		}
+		row->help = getTranslation(helpId, false);
 	}
 	this->rows.push_back(row);
 	return row;
 }
 
-std::shared_ptr<LayoutTextInputControl> LayoutSection::addTextInputRow(int labelId, int helpId, const std::string& initialValue, bool readOnly) {
+std::shared_ptr<LayoutTextInputControl> LayoutSection::addTextInputRow(int labelId, int helpId, BString initialValue, bool readOnly) {
 	std::shared_ptr<LayoutRow> row = this->addRow(labelId, helpId);
 	return row->addTextInput(initialValue, readOnly);
 }
@@ -299,7 +296,7 @@ std::shared_ptr< LayoutCheckboxControl> LayoutSection::addCheckbox(int labelId, 
 	return row->addCheckbox(value);
 }
 
-std::shared_ptr<LayoutTextControl> LayoutSection::addText(int labelId, int helpId, const std::string& text) {
+std::shared_ptr<LayoutTextControl> LayoutSection::addText(int labelId, int helpId, BString text) {
 	std::shared_ptr<LayoutRow> row = this->addRow(labelId, helpId);
 	return row->addText(text);
 }
@@ -309,12 +306,12 @@ std::shared_ptr<LayoutSeparatorControl> LayoutSection::addSeparator() {
 	return row->addSeparator();
 }
 
-std::shared_ptr<LayoutButtonControl> LayoutSection::addButton(int labelId, int helpId, const std::string& buttonLabel) {
+std::shared_ptr<LayoutButtonControl> LayoutSection::addButton(int labelId, int helpId, BString buttonLabel) {
 	std::shared_ptr<LayoutRow> row = this->addRow(labelId, helpId);
 	return row->addButton(buttonLabel);
 }
 
-std::shared_ptr<LayoutTextInputControl> LayoutRow::addTextInput(const std::string& initialValue, bool readOnly) {
+std::shared_ptr<LayoutTextInputControl> LayoutRow::addTextInput(BString initialValue, bool readOnly) {
 	std::shared_ptr<LayoutTextInputControl> control = std::make_shared<LayoutTextInputControl>(shared_from_this());
 	if (readOnly) {
 		control->setReadOnly(true);
@@ -359,7 +356,7 @@ std::shared_ptr<LayoutCustomControl> LayoutRow::addCustomControl(std::function<v
 	return control;
 }
 
-std::shared_ptr<LayoutTextControl> LayoutRow::addText(const std::string& text) {
+std::shared_ptr<LayoutTextControl> LayoutRow::addText(BString text) {
 	std::shared_ptr<LayoutTextControl> control = std::make_shared<LayoutTextControl>(shared_from_this());
 	control->setText(text);
 	this->controls.push_back(control);
@@ -372,7 +369,7 @@ std::shared_ptr<LayoutSeparatorControl> LayoutRow::addSeparator() {
 	return control;
 }
 
-std::shared_ptr<LayoutButtonControl> LayoutRow::addButton(const std::string& label) {
+std::shared_ptr<LayoutButtonControl> LayoutRow::addButton(BString label) {
 	std::shared_ptr<LayoutButtonControl> control = std::make_shared<LayoutButtonControl>(shared_from_this());
 	if (label.length()) {
 		control->setLabel(label);
@@ -386,7 +383,7 @@ void LayoutComboboxControl::setOptions(const std::vector<ComboboxItem>& options)
 	this->options.dataChanged();
 }
 
-bool LayoutComboboxControl::setSelectionByLabel(const std::string& label) {
+bool LayoutComboboxControl::setSelectionByLabel(BString label) {
 	for (int i = 0; i < (int)this->options.data.size(); i++) {
 		if (this->options.data[i].label == label) {
 			this->setSelection(i);
@@ -396,7 +393,7 @@ bool LayoutComboboxControl::setSelectionByLabel(const std::string& label) {
 	return false;
 }
 
-bool LayoutComboboxControl::setSelectionStringValue(const std::string& value) {
+bool LayoutComboboxControl::setSelectionStringValue(BString value) {
 	for (int i = 0; i < (int)this->options.data.size(); i++) {
 		if (this->options.data[i].strValue == value) {
 			this->setSelection(i);
@@ -440,14 +437,14 @@ int LayoutButtonControl::getRecommendedWidth() {
 
 void LinkCallback(ImGui::MarkdownLinkCallbackData data_)
 {
-	std::string url(data_.link, data_.linkLength);
+	BString url = BString::copy(data_.link, data_.linkLength);
 	if (!data_.isImage)
 	{
 		Platform::openFileLocation(url);
 	}
 }
 
-void Markdown(const std::string& markdown_)
+void Markdown(BString markdown_)
 {
 	// You can make your own Markdown function with your prefered string container and markdown config.
 	// > C++14 can use ImGui::MarkdownConfig mdConfig{ LinkCallback, NULL, ImageCallback, ICON_FA_LINK, { { H1, true }, { H2, true }, { H3, false } }, NULL };

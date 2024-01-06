@@ -523,7 +523,7 @@ U32 getDoubleWord(FILE* f) {
     return result;
 }
 
-const unsigned char* extractIconFromExe(const std::string& nativeExePath, int size, int* width, int* height) {    
+const unsigned char* extractIconFromExe(BString nativeExePath, int size, int* width, int* height) {
     FILE* f = fopen(nativeExePath.c_str(), "rb");
     if (!f) {
         return NULL;

@@ -31,7 +31,7 @@ class SdlBoxedwineGL : public BoxedwineGL {
 public:
     virtual void deleteContext(void* context);
     virtual bool makeCurrent(void* context, void* window);
-    virtual std::string getLastError();
+    virtual BString getLastError();
     virtual void* createContext(void* window, std::shared_ptr<Wnd> wnd, PixelFormat* pixelFormat, U32 width, U32 height, int major, int minor, int profile);
     virtual void swapBuffer(void* window);
     virtual void setSwapInterval(U32 vsync);
@@ -46,8 +46,8 @@ bool SdlBoxedwineGL::makeCurrent(void* context, void* window) {
     return SDL_GL_MakeCurrent((SDL_Window*)window, context) == 0;
 }
 
-std::string SdlBoxedwineGL::getLastError() {
-    return SDL_GetError();
+BString SdlBoxedwineGL::getLastError() {
+    return BString::copy(SDL_GetError());
 }
 
 void* SdlBoxedwineGL::createContext(void* window, std::shared_ptr<Wnd> wnd, PixelFormat* pixelFormat, U32 width, U32 height, int major, int minor, int profile) {

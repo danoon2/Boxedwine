@@ -37,7 +37,7 @@
 #include "../emulation/hardmmu/hard_memory.h"
 #endif
 
-static std::string glExt;
+THREAD_LOCAL static BString glExt;
 
 float fARG(CPU* cpu, U32 arg) {
     struct int2Float i;
@@ -209,11 +209,11 @@ void glcommon_glGetString(CPU* cpu) {
             memset(ext, 0, len);
         }
         if (ext[0]==0) {
-            std::vector<std::string> hardwareExt;
-            std::vector<std::string> supportedExt;
-            stringSplit(hardwareExt, result, ' ');
+            std::vector<BString> hardwareExt;
+            std::vector<BString> supportedExt;
+            B(result).split(' ', hardwareExt);
             for (U32 i=0;i<sizeof(extentions)/sizeof(char*);i++) {
-                supportedExt.push_back(extentions[i]);
+                supportedExt.push_back(BString::copy(extentions[i]));
             }
             cpu->thread->process->numberOfExtensions = 0;
             for (U32 i=0;i<hardwareExt.size();i++) {
@@ -546,7 +546,7 @@ Int99Callback* int99Callback;
 U32 int99CallbackSize;
 U32 lastGlCallTime;
 
-void gl_init(const std::string& allowExtensions) {    
+void gl_init(BString allowExtensions) {
     int99Callback=gl_callback;
     int99CallbackSize=GL_FUNC_COUNT;
     glExt = allowExtensions;

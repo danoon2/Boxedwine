@@ -6,7 +6,7 @@
 bool isMesaOpenglAvailable();
 #endif
 
-ContainersView::ContainersView(std::string tab, std::string app) : BaseView("ContainersView"), currentContainer(NULL), currentContainerChanged(false), currentContainerMountChanged(false), currentApp(NULL), currentAppChanged(false) {
+ContainersView::ContainersView(BString tab, BString app) : BaseView(B("ContainersView")), currentContainer(NULL), currentContainerChanged(false), currentContainerMountChanged(false), currentApp(NULL), currentAppChanged(false) {
     std::shared_ptr<ImGuiLayout> model = std::make_shared<ImGuiLayout>();        
     section = model->addSection();
 
@@ -40,9 +40,9 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
     };
 
     std::vector<ComboboxItem> rendererOptions;
-    rendererOptions.push_back(ComboboxItem("OpenGL", "gl"));
-    rendererOptions.push_back(ComboboxItem("Vulkan", "vulkan"));
-    rendererOptions.push_back(ComboboxItem("GDI", "gdi"));
+    rendererOptions.push_back(ComboboxItem(B("OpenGL"), B("gl")));
+    rendererOptions.push_back(ComboboxItem(B("Vulkan"), B("vulkan")));
+    rendererOptions.push_back(ComboboxItem(B("GDI"), B("gdi")));
     containerRendererControl = section->addComboboxRow(CONTAINER_VIEW_RENDERER_LABEL, CONTAINER_VIEW_RENDERER_HELP, rendererOptions);
     containerRendererControl->onChange = [this]() {
         this->currentContainerChanged = true;
@@ -50,9 +50,9 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
     containerRendererControl->setWidth((int)GlobalSettings::scaleFloatUIAndFont(150));
 
     std::vector<ComboboxItem> mouseOptions;
-    mouseOptions.push_back(ComboboxItem("Enable", "enable"));
-    mouseOptions.push_back(ComboboxItem("Disable", "disable"));
-    mouseOptions.push_back(ComboboxItem("Force", "force"));
+    mouseOptions.push_back(ComboboxItem(B("Enable"), B("enable")));
+    mouseOptions.push_back(ComboboxItem(B("Disable"), B("disable")));
+    mouseOptions.push_back(ComboboxItem(B("Force"), B("force")));
     containerMouseWarpControl = section->addComboboxRow(CONTAINER_VIEW_MOUSE_WARP_LABEL, CONTAINER_VIEW_MOUSE_WARP_HELP, mouseOptions);    
     containerMouseWarpControl->onChange = [this]() {
         this->currentContainerChanged = true;
@@ -60,9 +60,9 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
     containerMouseWarpControl->setWidth((int)GlobalSettings::scaleFloatUIAndFont(150));
 
     std::vector<ComboboxItem> mountDrives;
-    mountDrives.push_back(ComboboxItem(" "));
+    mountDrives.push_back(ComboboxItem(B(" ")));
     for (int i = 3; i < 26; i++) {
-        mountDrives.push_back(ComboboxItem(std::string(1, (char)('A' + i)) + ":", std::string(1, (char)('a' + i))));
+        mountDrives.push_back(ComboboxItem(BString((char)('A' + i)) + ":", BString((char)('a' + i))));
     }
     std::shared_ptr<LayoutRow> row = section->addRow(CONTAINER_VIEW_MOUNT_DIR_LABEL, CONTAINER_VIEW_MOUNT_DIR_HELP);
     containerMountDriveControl = row->addComboBox(mountDrives);
@@ -79,7 +79,7 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
     };
 
     row = section->addRow(CONTAINER_VIEW_CONTAINER_LOCATION_LABEL, 0);
-    containerLocationControl = row->addTextInput("", true);
+    containerLocationControl = row->addTextInput(B(""), true);
     std::shared_ptr<LayoutButtonControl> showButtonControl = row->addButton(getTranslation(GENERIC_OPEN_BUTTON));
     showButtonControl->onChange = [this]() {
         Platform::openFileLocation(currentContainer->getDir());
@@ -92,8 +92,8 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
                 std::vector<BoxedApp> wineApps;
                 this->currentContainer->getWineApps(wineApps);
                 AppChooserDlg* dlg = new AppChooserDlg(wineApps, [this](BoxedApp app) {
-                    std::vector<std::string> args;
-                    args.push_back("/bin/wine");
+                    std::vector<BString> args;
+                    args.push_back(B("/bin/wine"));
                     args.push_back(app.getCmd());
                     for (auto& arg : app.args) {
                         args.push_back(arg);
@@ -101,7 +101,7 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
                     this->currentContainer->launch(args, app.getCmd());
                     GlobalSettings::startUpArgs.title = app.getName();
                     GlobalSettings::startUpArgs.setWorkingDir(app.getPath());
-                    std::string containerPath = this->currentContainer->getDir();
+                    BString containerPath = this->currentContainer->getDir();
                     GlobalSettings::startUpArgs.runOnRestartUI = [containerPath]() {
                         gotoView(VIEW_CONTAINERS, containerPath);
                     };
@@ -140,7 +140,7 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
         WineVersion version = GlobalSettings::getAvailableWinetricksVersions()[0];        
         if (GlobalSettings::getInstalledWinetricksVersions().size() == 0) {
             row = section->addRow(CONTAINER_VIEW_WINETRICKS_LABEL, 0);
-            std::shared_ptr<LayoutButtonControl> selectWineAppButton = row->addButton(getTranslationWithFormat(GENERIC_DOWNLOAD, true, std::to_string(GlobalSettings::getAvailableWinetricksVersions()[0].size)));
+            std::shared_ptr<LayoutButtonControl> selectWineAppButton = row->addButton(getTranslationWithFormat(GENERIC_DOWNLOAD, true, BString::valueOf(GlobalSettings::getAvailableWinetricksVersions()[0].size)));
             selectWineAppButton->setHelpId(CONTAINER_OPTIONS_DOWNLOAD_WINETRICKS);
             selectWineAppButton->onChange = [this, version]() {
                 if (this->saveChanges()) {
@@ -159,19 +159,18 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
             row = section->addRow(CONTAINER_VIEW_WINETRICKS_FONTS_LABEL, 0);
             WineVersion version = GlobalSettings::getInstalledWinetricksVersions()[0];
             std::vector<ComboboxItem> fonts;
-            std::vector<std::string> lines;
-            stringSplit(lines, version.data, '\n');
+            std::vector<BString> lines;
+            version.data.split('\n', lines);
             for (auto& line : lines) {
-                std::string verb = line.substr(0, line.find(' '));
-                stringReplaceAll(line, "[downloadable]", "");
-                fonts.push_back(ComboboxItem(line, verb));
+                BString verb = line.substr(0, line.indexOf(' '));
+                fonts.push_back(ComboboxItem(line.replace("[downloadable]", ""), verb));
             }
             fontsControl = row->addComboBox(fonts, 0);
 
             std::shared_ptr<LayoutButtonControl> installButton = row->addButton(getTranslation(INSTALLVIEW_INSTALL_BUTTON_LABEL));
             installButton->onChange = [version, this]() {
                 if (this->saveChanges()) {
-                    std::string verb = fontsControl->getSelectionStringValue();
+                    BString verb = fontsControl->getSelectionStringValue();
                     this->winetricks(version, verb);
                 }
             };
@@ -180,18 +179,17 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
             row = section->addRow(CONTAINER_VIEW_WINETRICKS_DLLS_LABEL, 0);
             std::vector<ComboboxItem> dlls;
             lines.clear();
-            stringSplit(lines, version.data2, '\n');
+            version.data2.split('\n', lines);
             for (auto& line : lines) {
-                std::string verb = line.substr(0, line.find(' '));
-                stringReplaceAll(line, "[downloadable]", "");
-                dlls.push_back(ComboboxItem(line, verb));
+                BString verb = line.substr(0, line.indexOf(' '));
+                dlls.push_back(ComboboxItem(line.replace("[downloadable]", ""), verb));
             }
             dllsControl = row->addComboBox(dlls, 0);
 
             std::shared_ptr<LayoutButtonControl> installButton2 = row->addButton(getTranslation(INSTALLVIEW_INSTALL_BUTTON_LABEL));
             installButton2->onChange = [version, this]() {
                 if (this->saveChanges()) {
-                    std::string verb = dllsControl->getSelectionStringValue();
+                    BString verb = dllsControl->getSelectionStringValue();
                     this->winetricks(version, verb);
                 }
             };
@@ -209,7 +207,7 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
                 this->currentContainer->getNewApps(items);
                 this->currentContainer->getWineApps(wineApps);
                 new AppChooserDlg(items, wineApps, [this](BoxedApp app) {
-                    std::string iniPath = app.getIniFilePath();
+                    BString iniPath = app.getIniFilePath();
                     this->setCurrentApp(app.getContainer()->getAppByIniFile(iniPath));
                     rebuildShortcutsCombobox();
                     showAppSection(true);
@@ -231,7 +229,7 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
         }
     };
 
-    std::string label;
+    BString label;
     /*
     if (GlobalSettings::hasIconsFont()) {
         label += DELETE_ICON;
@@ -241,7 +239,7 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
     label += getTranslation(CONTAINER_VIEW_DELETE_SHORTCUT);
     std::shared_ptr<LayoutButtonControl> deleteButton = row->addButton(label);
     deleteButton->onChange = [this]() {
-        std::string label = getTranslationWithFormat(CONTAINER_VIEW_DELETE_SHORTCUT_CONFIRMATION, true, this->currentApp->getName());
+        BString label = getTranslationWithFormat(CONTAINER_VIEW_DELETE_SHORTCUT_CONFIRMATION, true, this->currentApp->getName());
         runOnMainUI([label, this]() {
             new YesNoDlg(GENERIC_DLG_CONFIRM_TITLE, label, [this](bool yes) {
                 if (yes) {
@@ -282,18 +280,18 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
         rebuildShortcutsCombobox();
     };
 
-    appPathControl = appSection->addTextInputRow(CONTAINER_VIEW_SHORTCUT_PATH_LABEL, CONTAINER_VIEW_SHORTCUT_PATH_HELP, "", true);
+    appPathControl = appSection->addTextInputRow(CONTAINER_VIEW_SHORTCUT_PATH_LABEL, CONTAINER_VIEW_SHORTCUT_PATH_HELP, B(""), true);
     appArgumentsControl = appSection->addTextInputRow(CONTAINER_VIEW_SHORTCUT_ARGUMENTS_LABEL, CONTAINER_VIEW_SHORTCUT_ARGUMENTS_HELP);
     appArgumentsControl->setNumberOfLines(1);
     appArgumentsControl->onChange = [this]() {
         this->currentAppChanged = true;
-        std::vector<std::string> args;
-        stringSplit(args, appArgumentsControl->getText(), '\n');
+        std::vector<BString> args;
+        appArgumentsControl->getText().split('\n', args);
         appArgumentsControl->setNumberOfLines((int)args.size() + 1);
     };
 
     std::vector<ComboboxItem> resolutions;
-    resolutions.push_back(ComboboxItem(getTranslation(GENERIC_DEFAULT), ""));
+    resolutions.push_back(ComboboxItem(getTranslation(GENERIC_DEFAULT), B("")));
     for (auto& res : GlobalSettings::getAvailableResolutions()) {
         resolutions.push_back(ComboboxItem(res));
     }
@@ -303,28 +301,28 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
     };
 
     std::vector<ComboboxItem> bpp;
-    bpp.push_back(ComboboxItem("32-bit (default)", 32));
-    bpp.push_back(ComboboxItem("16-bit", 16));
-    bpp.push_back(ComboboxItem("8-bit (256 colors)", 8));
+    bpp.push_back(ComboboxItem(B("32-bit (default)"), 32));
+    bpp.push_back(ComboboxItem(B("16-bit"), 16));
+    bpp.push_back(ComboboxItem(B("8-bit (256 colors))"), 8));
     appBppControl = appSection->addComboboxRow(CONTAINER_VIEW_BPP_LABEL, CONTAINER_VIEW_BPP_HELP, bpp);
     appBppControl->onChange = [this]() {
         this->currentAppChanged = true;
     };
 
     std::vector<ComboboxItem> fullscreen;
-    fullscreen.push_back(ComboboxItem("Not Set", FULLSCREEN_NOTSET));
-    fullscreen.push_back(ComboboxItem("Stretch", FULLSCREEN_STRETCH));
-    fullscreen.push_back(ComboboxItem("Letterbox (maintain aspect ratio)", FULLSCREEN_ASPECT));
+    fullscreen.push_back(ComboboxItem(B("Not Set"), FULLSCREEN_NOTSET));
+    fullscreen.push_back(ComboboxItem(B("Stretch"), FULLSCREEN_STRETCH));
+    fullscreen.push_back(ComboboxItem(B("Letterbox (maintain aspect ratio)"), FULLSCREEN_ASPECT));
     appFullScreenControl = appSection->addComboboxRow(CONTAINER_VIEW_FULL_SCREEN_LABEL, CONTAINER_VIEW_FULL_SCREEN_HELP, fullscreen);
     appFullScreenControl->onChange = [this]() {
         this->currentAppChanged = true;
     };
 
     std::vector<ComboboxItem> vsync;
-    vsync.push_back(ComboboxItem("Not Set", VSYNC_NOT_SET));
-    vsync.push_back(ComboboxItem("Disabled", VSYNC_DISABLED));
-    vsync.push_back(ComboboxItem("Enabled", VSYNC_ENABLED));
-    vsync.push_back(ComboboxItem("Adaptive", VSYNC_ADAPTIVE));
+    vsync.push_back(ComboboxItem(B("Not Set"), VSYNC_NOT_SET));
+    vsync.push_back(ComboboxItem(B("Disabled"), VSYNC_DISABLED));
+    vsync.push_back(ComboboxItem(B("Enabled"), VSYNC_ENABLED));
+    vsync.push_back(ComboboxItem(B("Adaptive"), VSYNC_ADAPTIVE));
     appVSyncControl = appSection->addComboboxRow(CONTAINER_VIEW_VSYNC_LABEL, CONTAINER_VIEW_VSYNC_HELP, vsync);
     appVSyncControl->onChange = [this]() {
         this->currentAppChanged = true;
@@ -351,10 +349,10 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
     affinity.push_back(ComboboxItem(getTranslation(GENERIC_COMBOBOX_ALL), 0));
 #ifdef __MACH__
     // Platform::setCpuAffinityForThread
-    affinity.push_back(ComboboxItem("1", 1));
+    affinity.push_back(ComboboxItem(B("1"), 1));
 #else
     for (U32 i = 1; i < Platform::getCpuCount(); i++) {
-        affinity.push_back(ComboboxItem(std::to_string(i), i));
+        affinity.push_back(ComboboxItem(BString::valueOf(i), i));
     }
 #endif
     appCpuAffinityControl = appSection->addComboboxRow(CONTAINER_VIEW_CPU_AFFINITY_LABEL, CONTAINER_VIEW_CPU_AFFINITY_HELP, affinity);
@@ -364,18 +362,18 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
 #endif
     std::vector<ComboboxItem> scales;
     scales.push_back(ComboboxItem(getTranslation(GENERIC_DEFAULT), 0));
-    scales.push_back(ComboboxItem("1/2x", 50));
-    scales.push_back(ComboboxItem("1x", 100));
-    scales.push_back(ComboboxItem("2x", 200));
-    scales.push_back(ComboboxItem("3x", 300));
+    scales.push_back(ComboboxItem(B("1/2x"), 50));
+    scales.push_back(ComboboxItem(B("1x"), 100));
+    scales.push_back(ComboboxItem(B("2x"), 200));
+    scales.push_back(ComboboxItem(B("3x"), 300));
     appScaleControl = appSection->addComboboxRow(CONTAINER_VIEW_SCALE_LABEL, CONTAINER_VIEW_SCALE_HELP, scales);
     appScaleControl->onChange = [this]() {
         this->currentAppChanged = true;
     };
 
     std::vector<ComboboxItem> quality;
-    quality.push_back(ComboboxItem("Nearest Pixel Sampling (default)"));
-    quality.push_back(ComboboxItem("Linear Filtering"));
+    quality.push_back(ComboboxItem(B("Nearest Pixel Sampling (default)")));
+    quality.push_back(ComboboxItem(B("Linear Filtering")));
     appScaleQualityControl = appSection->addComboboxRow(CONTAINER_VIEW_SCALE_QUALITY_LABEL, CONTAINER_VIEW_SCALE_QUALITY_HELP, quality);
     appScaleQualityControl->onChange = [this]() {
         this->currentAppChanged = true;
@@ -384,8 +382,8 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
 #if defined(BOXEDWINE_OPENGL_OSMESA) && defined(BOXEDWINE_OPENGL_SDL)
     std::vector<ComboboxItem> glOptions;
     glOptions.push_back(ComboboxItem(getTranslation(GENERIC_DEFAULT), OPENGL_TYPE_NOT_SET));
-    glOptions.push_back(ComboboxItem("Native", OPENGL_TYPE_SDL));
-    glOptions.push_back(ComboboxItem("Mesa - OpenGL in Software", OPENGL_TYPE_OSMESA));
+    glOptions.push_back(ComboboxItem(B("Native"), OPENGL_TYPE_SDL));
+    glOptions.push_back(ComboboxItem(B("Mesa - OpenGL in Software"), OPENGL_TYPE_OSMESA));
     appOpenGlControl = appSection->addComboboxRow(OPTIONSVIEW_DEFAULT_OPENGL_LABEL, OPTIONSVIEW_DEFAULT_OPENGL_HELP, glOptions);
     appOpenGlControl->setWidth((int)GlobalSettings::scaleFloatUIAndFont(250));
     appOpenGlControl->onChange = [this]() {
@@ -402,7 +400,7 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
     
     std::shared_ptr<LayoutButtonControl> setButtonControl = row->addButton(getTranslation(CONTAINER_VIEW_GL_EXT_SET_BUTTON_LABEL));
     setButtonControl->onChange = [this]() {
-        appGlExControl->setText("GL_EXT_multi_draw_arrays GL_ARB_vertex_program\nGL_ARB_fragment_program GL_ARB_multitexture\nGL_EXT_secondary_color GL_EXT_texture_lod_bias\nGL_NV_texture_env_combine4 GL_ATI_texture_env_combine3\nGL_EXT_texture_filter_anisotropic GL_ARB_texture_env_combine\nGL_EXT_texture_env_combine GL_EXT_texture_compression_s3tc\nGL_ARB_texture_compression GL_EXT_paletted_texture");
+        appGlExControl->setText(B("GL_EXT_multi_draw_arrays GL_ARB_vertex_program\nGL_ARB_fragment_program GL_ARB_multitexture\nGL_EXT_secondary_color GL_EXT_texture_lod_bias\nGL_NV_texture_env_combine4 GL_ATI_texture_env_combine3\nGL_EXT_texture_filter_anisotropic GL_ARB_texture_env_combine\nGL_EXT_texture_env_combine GL_EXT_texture_compression_s3tc\nGL_ARB_texture_compression GL_EXT_paletted_texture"));
         this->currentAppChanged = true;
     };    
 
@@ -427,7 +425,7 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
                             break;
                         }
                     }
-                    gotoApp = "";
+                    gotoApp = B("");
                 }
             }
             }, [item]() {
@@ -452,7 +450,7 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
                     ImGui::PushStyleColor(ImGuiCol_PopupBg, ImGui::GetColorU32(ImGuiCol_ScrollbarGrab) | 0xFF000000);
                     bool result = false;
                     if (ImGui::BeginPopup("ContainerOptionsPopup")) {
-                        if (ImGui::Selectable(getTranslation(CONTAINER_VIEW_DELETE_BUTTON_LABEL))) {
+                        if (ImGui::Selectable(c_getTranslation(CONTAINER_VIEW_DELETE_BUTTON_LABEL))) {
                             this->deleteContainer(item);
                         }
                         ImGui::EndPopup();
@@ -484,7 +482,7 @@ ContainersView::ContainersView(std::string tab, std::string app) : BaseView("Con
 }
 
 void ContainersView::deleteContainer(BoxedContainer* container) {
-    std::string label;
+    BString label;
     if (!container->getApps().size()) {
         label = getTranslationWithFormat(CONTAINER_VIEW_DELETE_CONFIRMATION, true, container->getName());
     } else {
@@ -503,7 +501,7 @@ void ContainersView::deleteContainer(BoxedContainer* container) {
             if (yes) {
                 runOnMainUI([this, container]() {
                     container->deleteContainerFromFilesystem();
-                    std::string containerDir;
+                    BString containerDir;
 
                     if (currentContainer != container) {
                         containerDir = currentContainer->getDir();
@@ -528,7 +526,7 @@ bool ContainersView::saveChanges() {
     } else if (this->currentApp && appNameControl->getText().length()==0) {
         this->errorMsg = getTranslation(CONTAINER_VIEW_NAME_REQUIRED);
     }
-    if (!this->errorMsg) {
+    if (this->errorMsg.isEmpty()) {
         if (this->currentContainer && this->currentContainerChanged) {
             if (this->currentContainerMountChanged) {
                 this->currentContainer->clearMounts();
@@ -543,21 +541,21 @@ bool ContainersView::saveChanges() {
                 this->currentContainer->setRenderer(containerRendererControl->getSelectionStringValue());
             } else {
                 this->currentContainer->setGDI(containerGdiControl->isChecked());
-                this->currentContainer->setRenderer(containerGdiControl->isChecked()?"gdi":"gl");
+                this->currentContainer->setRenderer(B(containerGdiControl->isChecked()?"gdi":"gl"));
             }
             this->currentContainer->setMouseWarpOverride(containerMouseWarpControl->getSelectionStringValue());
             this->currentContainer->saveContainer();
             this->currentContainerChanged = false;            
         }
         if (this->currentApp && this->currentAppChanged) {
-            std::string ext = this->appGlExControl->getText();
-            stringReplaceAll(ext, "\n", " ");
-            stringReplaceAll(ext, "  ", " ");
-            stringReplaceAll(ext, "  ", " ");
+            BString ext = this->appGlExControl->getText();
+            ext = ext.replace('\n', ' ');
+            ext = ext.replace("  ", " ");
+            ext = ext.replace("  ", " ");
             this->currentApp->glExt = ext;
             this->currentApp->name = appNameControl->getText();
             this->currentApp->args.clear();
-            stringSplit(this->currentApp->args, appArgumentsControl->getText(), '\n');
+            appArgumentsControl->getText().split('\n', this->currentApp->args);
             
             this->currentApp->resolution = appResolutionControl->getSelectionStringValue();
             this->currentApp->bpp = appBppControl->getSelectionIntValue();
@@ -581,7 +579,7 @@ bool ContainersView::saveChanges() {
             GlobalSettings::reloadApps();
         }
     }
-    return this->errorMsg == NULL;
+    return this->errorMsg.isEmpty();
 }
 
 void ContainersView::setCurrentApp(BoxedApp* app) {
@@ -595,7 +593,7 @@ void ContainersView::setCurrentApp(BoxedApp* app) {
     } else {
         appPathControl->setText(app->path+"/"+app->cmd);
     }
-    std::string args;
+    BString args;
     for (auto& arg : app->args) {
         if (args.length()) {
             args += "\n";
@@ -620,8 +618,8 @@ void ContainersView::setCurrentApp(BoxedApp* app) {
     appFullScreenControl->setSelectionIntValue(app->fullScreen);
     appVSyncControl->setSelectionIntValue(app->vsync);
     appDpiAwareControl->setCheck(app->dpiAware);
-    appPollRateControl->setText(std::to_string(app->pollRate));
-    appSkipFramesControl->setText(std::to_string(app->skipFramesFPS));
+    appPollRateControl->setText(BString::valueOf(app->pollRate));
+    appSkipFramesControl->setText(BString::valueOf(app->skipFramesFPS));
     appShowWindowImmediatelyControl->setCheck(app->showWindowImmediately);
     appDirectDrawAutoRefreshControl->setCheck(app->autoRefresh);
     WineVersion* wine = GlobalSettings::getInstalledWineFromName(this->containerWineVersionControl->getSelectionStringValue());
@@ -655,11 +653,10 @@ void ContainersView::setCurrentContainer(BoxedContainer* container) {
 
     if (!container->getMounts().size() || !container->getMounts()[0].wine || container->getMounts()[0].localPath.length() != 1) {
         containerMountDriveControl->setSelection(0);
-        containerMountPathControl->setText("");
+        containerMountPathControl->setText(B(""));
     } else {
         const MountInfo& mount = container->getMounts()[0];
-        std::string lowerCase = mount.localPath;
-        stringToLower(lowerCase);
+        BString lowerCase = mount.localPath.toLowerCase();
         containerMountDriveControl->setSelectionStringValue(lowerCase);
         containerMountPathControl->setText(mount.nativePath);
     }
@@ -693,13 +690,13 @@ void ContainersView::showAppSection(bool show) {
     appPickerControl->setRowHidden(!show);
 }
 
-void ContainersView::winetricks(const WineVersion& winetricks, const std::string& verb) {
+void ContainersView::winetricks(const WineVersion& winetricks, BString verb) {
     GlobalSettings::startUpArgs = StartUpArgs();
     GlobalSettings::startUpArgs.addZip(winetricks.filePath);
     currentContainer->launch();     
     GlobalSettings::startUpArgs.title = "Winetricks " + verb;
-    GlobalSettings::startUpArgs.addArg("/bin/sh");
-    GlobalSettings::startUpArgs.addArg("/usr/bin/winetricks");
+    GlobalSettings::startUpArgs.addArg(B("/bin/sh"));
+    GlobalSettings::startUpArgs.addArg(B("/usr/bin/winetricks"));
     GlobalSettings::startUpArgs.addArg(verb);    
     GlobalSettings::startUpArgs.readyToLaunch = true;
 #ifndef BOXEDWINE_UI_LAUNCH_IN_PROCESS
@@ -707,7 +704,7 @@ void ContainersView::winetricks(const WineVersion& winetricks, const std::string
 #endif
     runOnMainUI([]() {
         WaitDlg* dlg = new WaitDlg(WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(WAITDLG_LAUNCH_APP_LABEL, true, GlobalSettings::startUpArgs.title));
-        KSystem::watchTTY = [dlg](const std::string& line) {
+        KSystem::watchTTY = [dlg](BString line) {
             if (!KThread::currentThread() || KThread::currentThread()->process->name != "curl") {
                 dlg->addSubLabel(line, 5);
             }

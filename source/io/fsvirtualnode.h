@@ -6,8 +6,8 @@
 
 class FsVirtualNode : public FsNode {
 public:
-    FsVirtualNode(U32 id, U32 rdev, const std::string& path, OpenVirtualNode openFunc, U32 mode, BoxedPtr<FsNode> parent, U32 openData=0) : FsNode(Virtual, id, rdev, path, "", "", false, parent), mode(mode), openData(openData), openFunc(openFunc) {}
-    virtual U32 rename(const std::string& path); //return 0 if success, else errno
+    FsVirtualNode(U32 id, U32 rdev, BString path, OpenVirtualNode openFunc, U32 mode, BoxedPtr<FsNode> parent, U32 openData=0) : FsNode(Virtual, id, rdev, path, B(""), B(""), false, parent), mode(mode), openData(openData), openFunc(openFunc) {}
+    virtual U32 rename(BString path); //return 0 if success, else errno
     virtual bool remove();
     virtual U64 lastModified();
     virtual U64 length();
@@ -17,7 +17,7 @@ public:
     virtual U32 removeDir();
     virtual U32 setTimes(U64 lastAccessTime, U32 lastAccessTimeNano, U64 lastModifiedTime, U32 lastModifiedTimeNano);
 
-    std::string data;
+    BString data;
 private:
     const U32 mode;
     const U32 openData;

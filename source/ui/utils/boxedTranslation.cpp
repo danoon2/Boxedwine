@@ -1,31 +1,34 @@
 #include "boxedwine.h"
 #include "boxedTranslation.h"
 #include <stdarg.h>
-const std::string& translateString(const std::string& s) {
+BString translateString(BString s) {
     return s;
 }
 
-std::string getTranslationWithFormat(int msg, bool useDefaultIfMissing, const std::string& string1) {
-    return getTranslationWithFormat(msg, useDefaultIfMissing, std::vector<std::string>(1, string1));
+BString getTranslationWithFormat(int msg, bool useDefaultIfMissing, BString string1) {
+    return getTranslationWithFormat(msg, useDefaultIfMissing, std::vector<BString>(1, string1));
 }
 
-std::string getTranslationWithFormat(int msg, bool useDefaultIfMissing, const std::string& string1, const std::string& string2) {
-    std::vector<std::string> values;
+BString getTranslationWithFormat(int msg, bool useDefaultIfMissing, BString string1, BString string2) {
+    std::vector<BString> values;
     values.push_back(string1);
     values.push_back(string2);
     return getTranslationWithFormat(msg, useDefaultIfMissing, values);
 }
 
-std::string getTranslationWithFormat(int msg, bool useDefaultIfMissing, const std::vector<std::string>& replacements) {
-    std::string result = getTranslation(msg, useDefaultIfMissing);
+BString getTranslationWithFormat(int msg, bool useDefaultIfMissing, const std::vector<BString>& replacements) {
+    BString result = getTranslation(msg, useDefaultIfMissing);
     for (int i=0;i<(int)replacements.size();i++) {
-        std::string findText = "{"+std::to_string(i)+"}";
-        stringReplaceAll(result, findText, replacements[i]);
+        BString findText;
+        findText += "{";
+        findText += i;
+        findText += "}";
+        result.replace(findText, replacements[i]);
     }
     return result;
 }
 
-const char* getTranslation(int msg, bool useDefaultIfMissing) {
+const char* c_getTranslation(int msg, bool useDefaultIfMissing) {
     switch (msg) {
     case INSTALLVIEW_INSTALL_TITLE:
         return "Install";
@@ -415,4 +418,8 @@ const char* getTranslation(int msg, bool useDefaultIfMissing) {
         }
         return NULL;
     }
+}
+
+BString getTranslation(int msg, bool useDefaultIfMissing) {
+    return B(c_getTranslation(msg, useDefaultIfMissing));
 }

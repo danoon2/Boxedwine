@@ -53,8 +53,7 @@ void drawListViewItem(const ListViewItem& item) {
         int i=0;
         while (p<end && i<UiSettings::MAX_NUMBER_OF_LINES_FOR_APP_LIST_VIEW_TEXT-1) {
             i++;
-            std::string line = std::string(text, p);
-            stringTrim(line);
+            BString line = BString::copy(text, (int)(p - text)).trim();
             textSize = ImGui::CalcTextSize(line.c_str());
             ImGui::SetCursorPosX(ImGui::GetCursorPosX()+(width/2-textSize.x/2));
             SAFE_IMGUI_TEXT(line.c_str());
@@ -68,15 +67,15 @@ void drawListViewItem(const ListViewItem& item) {
             }
         }
         if (text<end) {
-            std::string line;
+            BString line;
             if (p == end) {
-                line = std::string(text);
+                line = BString::copy(text);
             } else {
                 float w = width - ImGui::CalcTextSize("...").x;
-                line = std::string(text, getTextThatFits(text, w));
-                line+="...";
+                line = BString::copy(text, (int)(getTextThatFits(text, w) - text));
+                line = line + "...";
             }
-            stringTrim(line);
+            line = line.trim();
             textSize = ImGui::CalcTextSize(line.c_str());
             ImGui::SetCursorPosX(ImGui::GetCursorPosX()+(width/2-textSize.x/2));
             SAFE_IMGUI_TEXT(line.c_str());

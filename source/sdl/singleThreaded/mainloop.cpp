@@ -39,11 +39,12 @@ bool doMainLoop() {
         if (lastTitleUpdate+5000 < t) {            
             lastTitleUpdate = t;
             if (KSystem::title.length()) {
-                KNativeWindow::getNativeWindow()->setTitle(KSystem::title.c_str());
+                KNativeWindow::getNativeWindow()->setTitle(KSystem::title);
             } else {
-                char tmp[256];
-                snprintf(tmp, sizeof(tmp), "BoxedWine " BOXEDWINE_VERSION_DISPLAY " %u MIPS", getMIPS());
-                KNativeWindow::getNativeWindow()->setTitle(tmp);
+                BString title = B("BoxedWine " BOXEDWINE_VERSION_DISPLAY );
+                title.append(" MIPS");
+                title.append(getMIPS());
+                KNativeWindow::getNativeWindow()->setTitle(title);
             }            
             checkWaitingNativeSockets(0); // just so it doesn't starve if the system is busy
         }

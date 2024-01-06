@@ -1,27 +1,27 @@
 #include "boxedwine.h"
 #include "../boxedwineui.h"
 
-AppFile::AppFile(const std::string& name, const std::string& installType, const std::string& iconPath, const std::string& filePath, U32 size, const std::string& exe, const std::string& exeOptions, const std::string& help, const std::string& optionsName, const std::string& installOptions, const std::string& installExe, const std::vector<std::string>& args) : name(name), optionsName(optionsName), installType(installType), filePath(filePath), iconPath(iconPath), size(size), exe(exe), args(args), installExe(installExe), help(help), iconTexture(NULL) {
+AppFile::AppFile(BString name, BString installType, BString iconPath, BString filePath, U32 size, BString exe, BString exeOptions, BString help, BString optionsName, BString installOptions, BString installExe, const std::vector<BString>& args) : name(name), optionsName(optionsName), installType(installType), filePath(filePath), iconPath(iconPath), size(size), exe(exe), args(args), installExe(installExe), help(help), iconTexture(NULL) {
     if (iconPath.length()) {
-        size_t pos = iconPath.rfind("/");
-        if (pos != std::string::npos) {
-            localIconPath = GlobalSettings::getDemoFolder() + Fs::nativePathSeperator + iconPath.substr(pos + 1);
+        int pos = iconPath.lastIndexOf('/');
+        if (pos != -1) {
+            localIconPath = GlobalSettings::getDemoFolder() ^ iconPath.substr(pos + 1);
         }
     }
     if (filePath.length()) {
-        size_t pos = filePath.rfind("/");
-        if (pos != std::string::npos) {
-            localFilePath = GlobalSettings::getDemoFolder() + Fs::nativePathSeperator + filePath.substr(pos + 1);
+        int pos = filePath.lastIndexOf('/');
+        if (pos != -1) {
+            localFilePath = GlobalSettings::getDemoFolder() ^ filePath.substr(pos + 1);
         }
     }
 
-    stringSplit(this->exeOptions, exeOptions, ',');
+    exeOptions.split(',', this->exeOptions);
     for (auto& s : this->exeOptions) {
-        stringTrim(s);
+        s = s.trim();
     }
-    stringSplit(this->installOptions, installOptions, ',');
+    installOptions.split(',', this->installOptions);
     for (auto& s : this->installOptions) {
-        stringTrim(s);
+        s = s.trim();
     }
 }
 
@@ -38,10 +38,10 @@ void AppFile::buildIconTexture() {
     }
 }
 
-void AppFile::runOptions(BoxedContainer* container, BoxedApp* app, const std::vector<std::string>& options, std::list< std::function<bool() > >& runner, std::list<AppFile*>& downloads) {
+void AppFile::runOptions(BoxedContainer* container, BoxedApp* app, const std::vector<BString>& options, std::list< std::function<bool() > >& runner, std::list<AppFile*>& downloads) {
     // :TODO: find dependencies, if there are some then delay the other changes
     bool hasContainerOption = false;
-    std::string containerDir = container->getDir();
+    BString containerDir = container->getDir();
 
     for (auto& option : options) {
         BoxedWinVersion* ver = BoxedwineData::getWinVersionFromName(option);
@@ -50,9 +50,9 @@ void AppFile::runOptions(BoxedContainer* container, BoxedApp* app, const std::ve
             hasContainerOption = true;
         } else if (option=="GDI") {
             container->setGDI(true);
-            container->setRenderer("gdi");
+            container->setRenderer(B("gdi"));
             hasContainerOption = true;
-        } else if (stringStartsWith(option, "glext=")) {
+        } else if (option.startsWith("glext=")) {
             if (app) {
                 app->glExt = option.substr(6);
             }
@@ -60,12 +60,12 @@ void AppFile::runOptions(BoxedContainer* container, BoxedApp* app, const std::ve
             if (app) {
                 app->bpp = 16;
             }
-        } else if (stringStartsWith(option, "cpuAffinity=")) {
+        } else if (option.startsWith("cpuAffinity=")) {
             if (app) {
-                std::string s = option.substr(12);
+                BString s = option.substr(12);
                 app->cpuAffinity = atoi(s.c_str());
             }
-        } else if (stringStartsWith(option, "wine=")) {
+        } else if (option.startsWith("wine=")) {
             WineVersion* wineVer = GlobalSettings::getInstalledWineFromName(option.substr(5));
             if (wineVer) {
                 container->setWineVersion(wineVer->name);
@@ -80,7 +80,7 @@ void AppFile::runOptions(BoxedContainer* container, BoxedApp* app, const std::ve
                     );
                 }
             }
-        } else if (stringStartsWith(option, "resolution=")) {
+        } else if (option.startsWith("resolution=")) {
             if (app) {
                 app->resolution = option.substr(11);
             }
@@ -153,33 +153,33 @@ void AppFile::install(bool chooseShortCut, BoxedContainer* container) {
 
 void AppFile::install(bool chooseShortCut, BoxedContainer* container, std::list< std::function<bool() > >& runner, std::list<AppFile*>& downloads) {
     if (!container) {
-        std::string containerFilePath = GlobalSettings::createUniqueContainerPath(this->name);
+        BString containerFilePath = GlobalSettings::createUniqueContainerPath(this->name);
         container = BoxedContainer::createContainer(containerFilePath, this->name, GlobalSettings::getWineVersions()[0].name);
         BoxedwineData::addContainer(container);
         container->saveContainer();
     }
     runOptions(container, NULL, installOptions, runner, downloads);
 
-    std::string containerDir = container->getDir();
-    std::string cmd = this->exe;
-    std::string appName = this->name;
-    std::vector<std::string> exeOptions = this->exeOptions;
-    std::vector<std::string> args = this->args;
-    std::string appPath = localFilePath;
-    std::string mountPath;
+    BString containerDir = container->getDir();
+    BString cmd = this->exe;
+    BString appName = this->name;
+    std::vector<BString> exeOptions = this->exeOptions;
+    std::vector<BString> args = this->args;
+    BString appPath = localFilePath;
+    BString mountPath;
 
-    if (stringHasEnding(appPath, "zip", true)) {
+    if (appPath.endsWith("zip", true)) {
         if (this->installType == "Installer") {
             mountPath = appPath;
             appPath = this->installExe;
         } else {
-            std::string root = GlobalSettings::getRootFolder(container);
-            std::string fileName = Fs::getFileNameFromNativePath(appPath);
+            BString root = GlobalSettings::getRootFolder(container);
+            BString fileName = Fs::getFileNameFromNativePath(appPath);
             fileName = fileName.substr(0, fileName.length() - 4);
-            std::string path = root + Fs::nativePathSeperator + "home" + Fs::nativePathSeperator + "username" + Fs::nativePathSeperator + ".wine" + Fs::nativePathSeperator + "drive_c" + Fs::nativePathSeperator + fileName;
+            BString path = root ^ "home" ^ "username" ^ ".wine" ^ "drive_c" ^ fileName;
             if (!Fs::doesNativePathExist(path)) {
                 if (!Fs::makeNativeDirs(path)) {
-                    std::string errorMsg = getTranslationWithFormat(INSTALLVIEW_ERROR_FAILED_TO_CREATE_TEMP_DIR, true, path, strerror(errno));
+                    BString errorMsg = getTranslationWithFormat(INSTALLVIEW_ERROR_FAILED_TO_CREATE_TEMP_DIR, true, path, BString::copy(strerror(errno)));
                     runOnMainUI([errorMsg]() {
                         new OkDlg(GENERIC_DLG_ERROR_TITLE, errorMsg, nullptr, 500, 300);
                         return false;
@@ -187,7 +187,7 @@ void AppFile::install(bool chooseShortCut, BoxedContainer* container, std::list<
                     return;
                 }
             }
-            std::string destDir = path;
+            BString destDir = path;
             std::function<bool() > unzip = [containerDir, appPath, appName, destDir]() {
                 runOnMainUI([appPath, destDir, appName]() {
                     new UnzipDlg(UNZIP_DLG_TITLE, appName, appPath, destDir, [](bool success) {
@@ -201,7 +201,7 @@ void AppFile::install(bool chooseShortCut, BoxedContainer* container, std::list<
                 return false; // don't continue to the next part of the install until we are done unzipping
             };
             runner.push_back(unzip);
-            appPath = destDir + Fs::nativePathSeperator + this->installExe;
+            appPath = destDir ^ this->installExe;
         }
     }
 
@@ -215,9 +215,9 @@ void AppFile::install(bool chooseShortCut, BoxedContainer* container, std::list<
                 GlobalSettings::startUpArgs.setResolution(GlobalSettings::getDefaultResolution());
                 container->launch();
                 if (mountPath.length()) {
-                    GlobalSettings::startUpArgs.mountInfo.push_back(MountInfo("/mnt/demo", mountPath, false));
-                    GlobalSettings::startUpArgs.setWorkingDir("/mnt/demo");
-                    GlobalSettings::startUpArgs.addArg("/bin/wine");
+                    GlobalSettings::startUpArgs.mountInfo.push_back(MountInfo(B("/mnt/demo"), mountPath, false));
+                    GlobalSettings::startUpArgs.setWorkingDir(B("/mnt/demo"));
+                    GlobalSettings::startUpArgs.addArg(B("/bin/wine"));
                     GlobalSettings::startUpArgs.addArg("/mnt/demo/" + appPath);
                 } else {
                     GlobalSettings::startUpArgs.addArg(appPath);
@@ -225,7 +225,7 @@ void AppFile::install(bool chooseShortCut, BoxedContainer* container, std::list<
                 GlobalSettings::startUpArgs.readyToLaunch = true;
 
                 runOnMainUI([appName]() {
-                    new WaitDlg(WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(WAITDLG_LAUNCH_APP_LABEL, true, appName.c_str()));
+                    new WaitDlg(WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(WAITDLG_LAUNCH_APP_LABEL, true, appName));
                     return false;
                     });
                 return true;

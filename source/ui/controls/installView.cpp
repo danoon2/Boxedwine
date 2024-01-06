@@ -6,7 +6,7 @@
 #define INSTALL_TYPE_MOUNT 2
 #define INSTALL_TYPE_BLANK 3
 
-InstallView::InstallView(const std::string& initialFileOrDirPath, std::string tab) : BaseView("InstallView") {
+InstallView::InstallView(BString initialFileOrDirPath, BString tab) : BaseView(B("InstallView")) {
     createInstallTab(initialFileOrDirPath);
     if (GlobalSettings::getDemos().size()) {
         createDemoTab();
@@ -22,7 +22,7 @@ void InstallView::createDemoTab() {
     std::shared_ptr<ImGuiLayout> model = std::make_shared<ImGuiLayout>();
     std::shared_ptr<LayoutSection> section = model->addSection(0);
 
-    std::string name;
+    BString name;
     if (GlobalSettings::hasIconsFont()) {
         name += INSTALL_DEMO_ICON;
         name += " ";
@@ -37,7 +37,7 @@ void InstallView::createDemoTab() {
 void InstallView::runApps(std::vector<AppFile>& apps) {
     ImGui::PushFont(GlobalSettings::largeFont);
     ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing));
-    SAFE_IMGUI_TEXT(getTranslation(INSTALLVIEW_DEMO_TITLE));
+    SAFE_IMGUI_TEXT(c_getTranslation(INSTALLVIEW_DEMO_TITLE));
     ImGui::PopFont();
 
     ImVec2 size = ImGui::GetWindowContentRegionMax();
@@ -53,7 +53,7 @@ void InstallView::runApps(std::vector<AppFile>& apps) {
         pos.y += this->extraVerticalSpacing;
         ImGui::SetCursorPos(pos);
         
-        std::string buttonLabel = "Install";
+        BString buttonLabel = B("Install");
         ImGui::PushID(&app);            
         if (ImGui::Button(buttonLabel.c_str())) {
             if (Fs::doesNativePathExist(app.localFilePath)) {
@@ -68,12 +68,12 @@ void InstallView::runApps(std::vector<AppFile>& apps) {
         ImGui::SameLine();
         
         //ImGui::SameLine(pos.x + this->wineButtonTotalColumnWidth);
-        std::string name = app.name;
-        std::string name2;
+        BString name = app.name;
+        BString name2;
         if (!Fs::doesNativePathExist(app.localFilePath)) {
             name2 += "(";
             name2 += getTranslation(INSTALLVIEW_DEMO_DOWNLOAD_SIZE);
-            name2 += std::to_string(app.size);
+            name2 += app.size;
             name2 += " MB)";
         }
         if (app.iconTexture) {
@@ -102,7 +102,7 @@ void InstallView::runApps(std::vector<AppFile>& apps) {
     //ImGui::EndChildFrame();
 }
 
-void InstallView::createInstallTab(const std::string& initialFileOrDirPath) {
+void InstallView::createInstallTab(BString initialFileOrDirPath) {
     std::shared_ptr<ImGuiLayout> model = std::make_shared<ImGuiLayout>();
     std::shared_ptr<LayoutSection> section = model->addSection(INSTALLVIEW_INSTALL_TITLE);
 
@@ -118,10 +118,10 @@ void InstallView::createInstallTab(const std::string& initialFileOrDirPath) {
         locationControl->setRowHidden(type == INSTALL_TYPE_BLANK);
         containerControl->setReadOnly(type == INSTALL_TYPE_BLANK);
         if (type == INSTALL_TYPE_SETUP) {
-            std::vector<std::string> types;
-            types.push_back("*.exe");
+            std::vector<BString> types;
+            types.push_back(B("*.exe"));
 #ifndef BOXEDWINE_MSVC
-            types.push_back("*.EXE");
+            types.push_back(B("*.EXE"));
 #endif
             locationControl->setBrowseFileButton(types);
             locationControl->setHelpId(INSTALLVIEW_TYPE_SETUP_HELP);
@@ -191,7 +191,7 @@ void InstallView::createInstallTab(const std::string& initialFileOrDirPath) {
     }
     installTypeControl->onChange();
 
-    std::string name;
+    BString name;
     if (GlobalSettings::hasIconsFont()) {
         name += INSTALL_ICON;
         name += " ";
@@ -203,18 +203,18 @@ void InstallView::createInstallTab(const std::string& initialFileOrDirPath) {
 }
 
 void InstallView::setWindowsVersionDefault() {
-    std::string ver = wineVersionControl->getSelectionStringValue();
-    if (stringStartsWith(ver, "Wine ")) {
+    BString ver = wineVersionControl->getSelectionStringValue();
+    if (ver.startsWith("Wine ")) {
         ver = ver.substr(5);
-        std::vector<std::string> parts;
-        stringSplit(parts, ver, '.');
+        std::vector<BString> parts;
+        ver.split('.', parts);
         if (parts.size() > 1) {
-            std::string major = parts[0];
-            std::string minor = parts[1];
+            BString major = parts[0];
+            BString minor = parts[1];
             if (major < "2" || (major == "2" && minor < "2")) {
-                windowsVersionControl->setSelectionStringValue("Windows XP");
+                windowsVersionControl->setSelectionStringValue(B("Windows XP"));
             } else {
-                windowsVersionControl->setSelectionStringValue("Windows 7");
+                windowsVersionControl->setSelectionStringValue(B("Windows 7"));
             }
         }
     }
@@ -226,17 +226,17 @@ bool InstallView::saveChanges() {
 
 void InstallView::setContainerName() {
     int installType = installTypeControl->getSelection();
-    std::string location = locationControl->getText();
-    std::string dirName;
-    std::string name;
+    BString location = locationControl->getText();
+    BString dirName;
+    BString name;
 
     if (installType == INSTALL_TYPE_SETUP) {
-        std::string fileName = Fs::getFileNameFromNativePath(location);
-        if (stringContainsIgnoreCase(fileName, "setup")) {
+        BString fileName = Fs::getFileNameFromNativePath(location);
+        if (fileName.contains("setup", true)) {
             dirName = Fs::getNativeParentPath(location);
         } else {
-            std::vector<std::string> parts;
-            stringSplit(parts, fileName, '.');
+            std::vector<BString> parts;
+            fileName.split('.', parts);
             if (parts.size()) {
                 name = parts[0];
             }
@@ -245,18 +245,16 @@ void InstallView::setContainerName() {
         dirName = location;
     }
     if (dirName.length()) {
-        if (stringHasEnding(dirName, "/") || stringHasEnding(dirName, "\\")) {
-            dirName = dirName.substr(0, dirName.length() - 1);
-        }
+        dirName = Fs::trimTrailingSlash(dirName);
         name = Fs::getFileNameFromNativePath(dirName);        
     }
     containerNameControl->setText(name);
 }
 
 void InstallView::onInstall() {
-    std::string location = locationControl->getText();
+    BString location = locationControl->getText();
     int containerIndex = containerControl->getSelection();
-    std::string containerName = containerNameControl->getText();
+    BString containerName = containerNameControl->getText();
     int wineVersionIndex = wineVersionControl->getSelection();
     int windowsVersionIndex = windowsVersionControl->getSelection();
     int installType = installTypeControl->getSelection();
@@ -280,24 +278,24 @@ void InstallView::onInstall() {
 
     BoxedContainer* container = NULL;
 
-    if (!this->errorMsg) {
+    if (this->errorMsg.isEmpty()) {
         if (containerIndex != 0) {
             container = BoxedwineData::getContainers()[containerIndex - 1];
         } else if (containerName.length() == 0) {
             this->errorMsg = getTranslation(INSTALLVIEW_ERROR_CONTAINER_NAME_MISSING);
         }
     }
-    if (!this->errorMsg) {
+    if (this->errorMsg.isEmpty()) {
         GlobalSettings::startUpArgs = StartUpArgs(); // reset parameters
         GlobalSettings::startUpArgs.setScale(GlobalSettings::getDefaultScale());
         GlobalSettings::startUpArgs.setVsync(GlobalSettings::getDefaultVsync());
         GlobalSettings::startUpArgs.setResolution(GlobalSettings::getDefaultResolution());
         bool containerCreated = false;
         if (!container) {
-            std::string containerFilePath = GlobalSettings::createUniqueContainerPath(containerName);
+            BString containerFilePath = GlobalSettings::createUniqueContainerPath(containerName);
             if (!Fs::makeNativeDirs(containerFilePath)) {
-                this->errorMsgString = getTranslationWithFormat(INSTALLVIEW_ERROR_FAILED_TO_CREATE_CONTAINER_DIR, true, strerror(errno));
-                this->errorMsg = this->errorMsgString.c_str();
+                this->errorMsgString = getTranslationWithFormat(INSTALLVIEW_ERROR_FAILED_TO_CREATE_CONTAINER_DIR, true, BString::copy(strerror(errno)));
+                this->errorMsg = this->errorMsgString;
                 return;
             }
             container = BoxedContainer::createContainer(containerFilePath, containerName, GlobalSettings::getWineVersions()[wineVersionIndex].name);
@@ -311,31 +309,31 @@ void InstallView::onInstall() {
             GlobalSettings::startUpArgs.readyToLaunch = true;
             GlobalSettings::startUpArgs.showAppPickerForContainerDir = container->getDir();
         } else if (installType == INSTALL_TYPE_DIR) {
-            std::filesystem::path dest(GlobalSettings::getRootFolder(container));
-            dest = dest / "home" / "username" / ".wine" / "drive_c" / Fs::getFileNameFromNativePath(location);
+            std::filesystem::path dest(GlobalSettings::getRootFolder(container).c_str());
+            dest = dest / "home" / "username" / ".wine" / "drive_c" / Fs::getFileNameFromNativePath(location).c_str();
 
             if (!std::filesystem::exists(dest)) {
                 std::error_code ec;
                 if (!std::filesystem::create_directories(dest, ec)) {
-                    this->errorMsgString = getTranslationWithFormat(INSTALLVIEW_ERROR_FILESYSTEM_FAIL_TO_CREATE_DIRS, true, ec.message());
-                    this->errorMsg = this->errorMsgString.c_str();
+                    this->errorMsgString = getTranslationWithFormat(INSTALLVIEW_ERROR_FILESYSTEM_FAIL_TO_CREATE_DIRS, true, BString::copy(ec.message().c_str()));
+                    this->errorMsg = this->errorMsgString;
                 }
             }
-            if (!this->errorMsg) {
+            if (this->errorMsg.isEmpty()) {
                 std::error_code ec;
-                std::filesystem::copy(location, dest, std::filesystem::copy_options::recursive, ec);
+                std::filesystem::copy(location.c_str(), dest.c_str(), std::filesystem::copy_options::recursive, ec);
                 if (ec) {
-                    this->errorMsgString = getTranslationWithFormat(INSTALLVIEW_ERROR_FILESYSTEM_COPY_DIRECTORY, true, ec.message());
-                    this->errorMsg = this->errorMsgString.c_str();
+                    this->errorMsgString = getTranslationWithFormat(INSTALLVIEW_ERROR_FILESYSTEM_COPY_DIRECTORY, true, BString::copy(ec.message().c_str()));
+                    this->errorMsg = this->errorMsgString;
                 }
             }
-            if (!this->errorMsg) {
+            if (this->errorMsg.isEmpty()) {
                 if (GlobalSettings::startUpArgs.readyToLaunch) {
                     GlobalSettings::startUpArgs.showAppPickerForContainerDir = container->getDir();
                 } else {
                     runOnMainUI([container, dest]() {
                         std::vector<BoxedApp> items;
-                        container->getNewApps(items, NULL, dest.string());
+                        container->getNewApps(items, NULL, BString::copy(dest.string().c_str()));
                         new AppChooserDlg(items, [container](BoxedApp app) {
                             gotoView(VIEW_CONTAINERS, container->getDir(), app.getIniFilePath());
                             });
@@ -344,7 +342,7 @@ void InstallView::onInstall() {
                 }
             }
         } else if (installType == INSTALL_TYPE_MOUNT) {
-            if (!container->addNewMount(MountInfo("t", location, true))) {
+            if (!container->addNewMount(MountInfo(B("t"), location, true))) {
                 this->errorMsg = getTranslation(INSTALLVIEW_ERROR_FAILED_TO_MOUNT);
             } else {
                 container->saveContainer();
@@ -352,7 +350,7 @@ void InstallView::onInstall() {
                     GlobalSettings::startUpArgs.showAppPickerForContainerDir = container->getDir();
                 } else {
                     runOnMainUI([container, location]() {
-                        MountInfo mount("t", location, true);
+                        MountInfo mount(B("t"), location, true);
                         std::vector<BoxedApp> items;
                         container->getNewApps(items, &mount);
                         new AppChooserDlg(items, [container](BoxedApp app) {
@@ -362,14 +360,14 @@ void InstallView::onInstall() {
                         });
                 }
             }
-        } else if (!this->errorMsg) {
+        } else if (this->errorMsg.isEmpty()) {
             runOnMainUI([container]() {
                 gotoView(VIEW_CONTAINERS, container->getDir());
                 return false;
                 });
         }
         if (containerCreated) {
-            if (this->errorMsg) {
+            if (!this->errorMsg.isEmpty()) {
                 container->deleteContainerFromFilesystem();
                 delete container;
             } else {
@@ -377,11 +375,11 @@ void InstallView::onInstall() {
             }
         }
 
-        if (!this->errorMsg && GlobalSettings::startUpArgs.readyToLaunch) {
-            static std::string name;
+        if (this->errorMsg.isEmpty() && GlobalSettings::startUpArgs.readyToLaunch) {
+            static BString name;
             name = Fs::getFileNameFromNativePath(location);
             runOnMainUI([]() {
-                new WaitDlg(WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(WAITDLG_LAUNCH_APP_LABEL, true, name.c_str()));
+                new WaitDlg(WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(WAITDLG_LAUNCH_APP_LABEL, true, name));
                 return false;
                 });
         }

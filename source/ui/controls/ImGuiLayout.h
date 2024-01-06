@@ -14,11 +14,11 @@ enum class LayoutControlType {
 
 class ComboboxItem {
 public:
-	ComboboxItem(const std::string& label, const std::string& value) : label(label), strValue(value), intValue(0) {};
-	ComboboxItem(const std::string& label, int value) : label(label), intValue(value) {};
-	ComboboxItem(const std::string& label) : label(label), strValue(label), intValue(0) {};
-	std::string label;
-	std::string strValue;
+	ComboboxItem(BString label, BString value) : label(label), strValue(value), intValue(0) {};
+	ComboboxItem(BString label, int value) : label(label), intValue(value) {};
+	ComboboxItem(BString label) : label(label), strValue(label), intValue(0) {};
+	BString label;
+	BString strValue;
 	int intValue;
 };
 
@@ -71,10 +71,10 @@ private:
 class LayoutTextInputControl : public LayoutControl {
 public:
 	LayoutTextInputControl(std::shared_ptr<LayoutRow> row) : LayoutControl(row, LayoutControlType::TextInput), onBrowseFinished(nullptr), numberOfLines(1), browseButtonType(BROWSE_BUTTON_NONE), browseButtonWidth(0.0f), browseButtonLabel(NULL) {this->text[0]=0;}
-	void setText(const std::string& text) { strncpy(this->text, text.c_str(), sizeof(this->text)); }
-	std::string getText() {return this->text;}
+	void setText(BString text) { strncpy(this->text, text.c_str(), sizeof(this->text)); }
+	BString getText() { return BString::copy(this->text); }
 
-	void setBrowseFileButton(const std::vector<std::string>& browseFileTypes) {this->browseButtonType = BROWSE_BUTTON_FILE; this->browseFileTypes = browseFileTypes;}
+	void setBrowseFileButton(const std::vector<BString>& browseFileTypes) {this->browseButtonType = BROWSE_BUTTON_FILE; this->browseFileTypes = browseFileTypes;}
 	void setBrowseDirButton() {this->browseButtonType = BROWSE_BUTTON_DIR;}
 	void removeBrowseButton() {this->browseButtonType = BROWSE_BUTTON_NONE;}
 
@@ -88,19 +88,19 @@ private:
 	int browseButtonType;
 	float browseButtonWidth;
 	const char* browseButtonLabel;
-	std::vector<std::string> browseFileTypes;
-	char text[1024];	
+	std::vector<BString> browseFileTypes;
+	char text[1024];
 };
 
 class LayoutTextControl : public LayoutControl {
 public:
 	LayoutTextControl(std::shared_ptr<LayoutRow> row) : LayoutControl(row, LayoutControlType::Text) {}
-	void setText(const std::string& text) { this->text = text; }
-	std::string getText() { return this->text; }
+	void setText(BString text) { this->text = text; }
+	BString getText() { return this->text; }
 
 	virtual void draw(int width);
 private:
-	std::string text;
+	BString text;
 };
 
 class LayoutComboboxControl : public LayoutControl {
@@ -110,11 +110,11 @@ public:
 	void setSelection(int selection) { this->options.currentSelectedIndex = selection;}
 	int getSelection() {return this->options.currentSelectedIndex;}
 
-	bool setSelectionByLabel(const std::string& label);
-	bool setSelectionStringValue(const std::string& value);
+	bool setSelectionByLabel(BString label);
+	bool setSelectionStringValue(BString value);
 	bool setSelectionIntValue(int value);
 	int getSelectionIntValue() {return this->options.data[this->options.currentSelectedIndex].intValue;}
-	std::string getSelectionStringValue() { return this->options.data[this->options.currentSelectedIndex].strValue; }
+	BString getSelectionStringValue() { return this->options.data[this->options.currentSelectedIndex].strValue; }
 
 	void setOptions(const std::vector<ComboboxItem>& options);
 
@@ -146,13 +146,13 @@ class LayoutButtonControl : public LayoutControl {
 public:
 	LayoutButtonControl(std::shared_ptr<LayoutRow> row) : LayoutControl(row, LayoutControlType::Button) {}
 
-	void setLabel(const std::string& label) { this->label = label; }
-	const std::string& getLabel() { return this->label; }
+	void setLabel(BString label) { this->label = label; }
+	BString getLabel() { return this->label; }
 
 	virtual void draw(int width);
 	virtual int getRecommendedWidth();
 private:
-	std::string label;
+	BString label;
 };
 
 class LayoutCustomControl : public LayoutControl {
@@ -172,16 +172,16 @@ public:
 	LayoutRow() : hidden(false), topMargin(GlobalSettings::extraVerticalSpacing) {}
 
 	void draw(float toolTipWidth, float labelOffset, float valueOffset);
-	void drawToolTip(const std::string& help);
+	void drawToolTip(BString help);
 
-	std::shared_ptr<LayoutTextInputControl> addTextInput(const std::string& initialValue = "", bool readOnly = false);
+	std::shared_ptr<LayoutTextInputControl> addTextInput(BString initialValue = BString(), bool readOnly = false);
 	std::shared_ptr<LayoutComboboxControl> addComboBox(const std::vector<ComboboxItem>& options, int selected=0);
 	std::shared_ptr<LayoutComboboxControl> addComboBox();
 	std::shared_ptr<LayoutSeparatorControl> addSeparator();
-	std::shared_ptr<LayoutButtonControl> addButton(const std::string& label);
+	std::shared_ptr<LayoutButtonControl> addButton(BString label);
 	std::shared_ptr< LayoutCheckboxControl> addCheckbox(bool checked);
 	std::shared_ptr<LayoutCustomControl> addCustomControl(std::function<void()> onDraw);
-	std::shared_ptr<LayoutTextControl> addText(const std::string& text);
+	std::shared_ptr<LayoutTextControl> addText(BString text);
 
 	void setHidden(bool hidden) { this->hidden = hidden; }
 	bool isHidden() { return this->hidden; }
@@ -190,8 +190,8 @@ public:
 	void setTopMargin(float margin) {this->topMargin = margin;}
 private:
 	friend class LayoutSection;
-	std::string label;
-	std::string help;
+	BString label;
+	BString help;
 	std::vector<std::shared_ptr<LayoutControl>> controls;
 	bool hidden;
 	float topMargin;
@@ -206,15 +206,15 @@ public:
 	std::shared_ptr<LayoutRow> addRow(int labelId, int helpId);
 
 	// convenience functions
-	std::shared_ptr<LayoutTextInputControl> addTextInputRow(int labelId, int helpId, const std::string& initialValue="", bool readOnly=false);
+	std::shared_ptr<LayoutTextInputControl> addTextInputRow(int labelId, int helpId, BString initialValue=BString(), bool readOnly=false);
 	std::shared_ptr<LayoutComboboxControl> addComboboxRow(int labelId, int helpId, const std::vector<ComboboxItem>& options, int selected = 0);
 	std::shared_ptr<LayoutSeparatorControl> addSeparator();
-	std::shared_ptr<LayoutButtonControl> addButton(int labelId, int helpId, const std::string& buttonLabel);
+	std::shared_ptr<LayoutButtonControl> addButton(int labelId, int helpId, BString buttonLabel);
 	std::shared_ptr< LayoutCheckboxControl> addCheckbox(int labelId, int helpId, bool value);
-	std::shared_ptr<LayoutTextControl>addText(int labelId, int helpId, const std::string& text);
+	std::shared_ptr<LayoutTextControl>addText(int labelId, int helpId, BString text);
 
-	void setTitle(const std::string& title) {this->title = title;}
-	const std::string& getTitle() {return this->title;}
+	void setTitle(BString title) {this->title = title;}
+	BString getTitle() {return this->title;}
 	void setIndent(bool b) { this->indent = b; }
 
 	void setHidden(bool hidden) { this->hidden = hidden; }
@@ -224,7 +224,7 @@ private:
 	friend class ImGuiLayout;
 	void doLayout();
 
-	std::string title;
+	BString title;
 	bool indent;
 	bool hidden;
 	std::vector<std::shared_ptr<LayoutRow>> rows;

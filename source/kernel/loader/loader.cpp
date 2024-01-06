@@ -50,7 +50,7 @@ bool isValidElf(struct k_Elf32_Ehdr* hdr) {
     return true;
 }
 
-std::string ElfLoader::getInterpreter(FsOpenNode* openNode, bool* isElf) {
+BString ElfLoader::getInterpreter(FsOpenNode* openNode, bool* isElf) {
     U8 buffer[sizeof(struct k_Elf32_Ehdr)];
     struct k_Elf32_Ehdr* hdr = (struct k_Elf32_Ehdr*)buffer;
     U32 len = openNode->readNative(buffer, sizeof(buffer));
@@ -84,7 +84,7 @@ std::string ElfLoader::getInterpreter(FsOpenNode* openNode, bool* isElf) {
                 }
             }
             shell_interp[pos++]=0;
-            return shell_interp;
+            return BString::copy(shell_interp);
         }
     } else {
         U32 i;
@@ -98,14 +98,14 @@ std::string ElfLoader::getInterpreter(FsOpenNode* openNode, bool* isElf) {
                 openNode->seek(phdr.p_offset);	
                 openNode->readNative((U8*)interp, phdr.p_filesz);
                 interp[phdr.p_filesz] = 0;
-                return interp;
+                return BString::copy(interp);
             }
         }
     }
-    return "";
+    return B("");
 }
 
-FsOpenNode* ElfLoader::inspectNode(const std::string& currentDirectory, const BoxedPtr<FsNode>& node, std::string& loader, std::string& interpreter, std::vector<std::string>& interpreterArgs) {
+FsOpenNode* ElfLoader::inspectNode(BString currentDirectory, const BoxedPtr<FsNode>& node, BString& loader, BString& interpreter, std::vector<BString>& interpreterArgs) {
     bool isElf = 0;
     FsOpenNode* openNode = 0;
     BoxedPtr<FsNode> interpreterNode;
@@ -118,9 +118,9 @@ FsOpenNode* ElfLoader::inspectNode(const std::string& currentDirectory, const Bo
         interpreter = getInterpreter(openNode, &isElf);
         if (isElf) {
             loader = interpreter;
-            interpreter = "";
+            interpreter = B("");
         } else if (interpreter.length()) {
-            stringSplit(interpreterArgs,interpreter,' ');
+            interpreter.split(' ', interpreterArgs);
             interpreter = interpreterArgs[0];
             interpreterArgs.erase(interpreterArgs.begin());
         }

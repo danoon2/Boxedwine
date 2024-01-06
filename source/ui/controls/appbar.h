@@ -3,8 +3,8 @@
 
 class AppButton {
 public:
-    AppButton(const std::string& name, std::function<void()> onSelect) : name(name), onSelect(onSelect) {}
-    std::string name;
+    AppButton(BString name, std::function<void()> onSelect) : name(name), onSelect(onSelect) {}
+    BString name;
 
     std::function<void()> onSelect;
 };

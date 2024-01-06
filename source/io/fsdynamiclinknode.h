@@ -5,8 +5,8 @@
 
 class FsDynamicLinkNode : public FsNode {
 public:
-    FsDynamicLinkNode(U32 id, U32 rdev, const std::string& path, BoxedPtr<FsNode> parent, bool isDirectory, std::function<std::string(void)> getLink);
-    virtual U32 rename(const std::string& path); //return 0 if success, else errno
+    FsDynamicLinkNode(U32 id, U32 rdev, BString path, BoxedPtr<FsNode> parent, bool isDirectory, std::function<BString(void)> getLink);
+    virtual U32 rename(BString path); //return 0 if success, else errno
     virtual bool remove();
     virtual U64 lastModified();
     virtual U64 length();
@@ -15,10 +15,10 @@ public:
     virtual U32 getMode();
     virtual U32 removeDir();
     virtual U32 setTimes(U64 lastAccessTime, U32 lastAccessTimeNano, U64 lastModifiedTime, U32 lastModifiedTimeNano);
-    virtual std::string getLink();
+    virtual BString getLink();
     virtual bool isLink();
 
-    std::function<std::string(void)> fnGetLink;
+    std::function<BString(void)> fnGetLink;
 };
 
 #endif

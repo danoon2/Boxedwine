@@ -19,7 +19,7 @@ void closeSdlAudio() {
 
 class KDspAudioSdl : public KDspAudio, public std::enable_shared_from_this<KDspAudioSdl> {
 public:
-	KDspAudioSdl() : bufferCond("KDspAudioSdl::bufferCond") {
+	KDspAudioSdl() : bufferCond(B("KDspAudioSdl::bufferCond")) {
 		memset(&this->want, 0, sizeof(this->want));
 		memset(&this->got, 0, sizeof(this->got));
 		this->cvtBufLen = 0;

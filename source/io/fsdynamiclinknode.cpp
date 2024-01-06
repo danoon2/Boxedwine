@@ -3,10 +3,10 @@
 #include "fsfilenode.h"
 #include "kstat.h"
 
-FsDynamicLinkNode::FsDynamicLinkNode(U32 id, U32 rdev, const std::string& path, BoxedPtr<FsNode> parent, bool isDirectory, std::function<std::string(void)> fnGetLink) : FsNode(FsNode::Type::Virtual, id, rdev, path, "", "", isDirectory, parent), fnGetLink(fnGetLink) {
+FsDynamicLinkNode::FsDynamicLinkNode(U32 id, U32 rdev, BString path, BoxedPtr<FsNode> parent, bool isDirectory, std::function<BString(void)> fnGetLink) : FsNode(FsNode::Type::Virtual, id, rdev, path, B(""), B(""), isDirectory, parent), fnGetLink(fnGetLink) {
 }
 
-U32 FsDynamicLinkNode::rename(const std::string& path) {
+U32 FsDynamicLinkNode::rename(BString path) {
     return -1;
 }
 
@@ -46,6 +46,6 @@ U32 FsDynamicLinkNode::setTimes(U64 lastAccessTime, U32 lastAccessTimeNano, U64 
     return 0;
 }
 
-std::string FsDynamicLinkNode::getLink() {
+BString FsDynamicLinkNode::getLink() {
     return this->fnGetLink();
 }

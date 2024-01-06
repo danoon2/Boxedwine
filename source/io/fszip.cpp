@@ -31,12 +31,12 @@ void FsZip::setupZipRead(U64 zipOffset, U64 zipFileOffset) {
 #endif
 }
 
-bool FsZip::init(const std::string& zipPath, const std::string& mount) {
+bool FsZip::init(BString zipPath, BString mount) {
 #ifdef BOXEDWINE_ZLIB
-    std::string strippedMount;
+    BString strippedMount;
 
-    BoxedPtr<FsNode> root = Fs::getNodeFromLocalPath("", "", true);
-    deleteFilePath = root->nativePath + Fs::nativePathSeperator + Fs::getFileNameFromNativePath(zipPath) + ".deleted";
+    BoxedPtr<FsNode> root = Fs::getNodeFromLocalPath(B(""), B(""), true);
+    deleteFilePath = root->nativePath ^ Fs::getFileNameFromNativePath(zipPath) + ".deleted";
     if (mount.length()) {
         Fs::makeLocalDirs(mount);
         strippedMount = mount.substr(0, mount.length() - 1);
@@ -63,28 +63,28 @@ bool FsZip::init(const std::string& zipPath, const std::string& mount) {
             struct tm tm={0};
             char tmp[MAX_FILEPATH_LEN];
 
-            zipInfo[i].filename="/";
-            if ( unzGetCurrentFileInfo(this->zipfile, &file_info, tmp, MAX_FILEPATH_LEN, NULL, 0, NULL, 0 ) != UNZ_OK ) {
+            tmp[0] = '/';
+            if ( unzGetCurrentFileInfo(this->zipfile, &file_info, tmp + 1, MAX_FILEPATH_LEN - 1, NULL, 0, NULL, 0 ) != UNZ_OK ) {
                 klog("Could not read file info from zip file: %s", zipPath.c_str());
                 unzClose( zipfile );
                 return false;
             }
-            zipInfo[i].filename.append(tmp);
+            zipInfo[i].filename = BString::copy(tmp);
             zipInfo[i].offset = unzGetOffset64(this->zipfile);
             Fs::remoteNameToLocal(zipInfo[i].filename); // converts special characters like :
-            if (stringHasEnding(zipInfo[i].filename, ".link")) {
+            if (zipInfo[i].filename.endsWith(".link")) {
                 U32 read;
 
-                zipInfo[i].filename.resize(zipInfo[i].filename.length()-5);
+                zipInfo[i].filename = zipInfo[i].filename.substr(0, zipInfo[i].filename.length() - 5);
                 zipInfo[i].isLink = true;
                 unzOpenCurrentFile(zipfile);
                 read = unzReadCurrentFile(this->zipfile, tmp, MAX_FILEPATH_LEN);
                 tmp[read]=0;
-                zipInfo[i].link = tmp;                
+                zipInfo[i].link = BString::copy(tmp);                
                 unzCloseCurrentFile(this->zipfile);
             }                       
-            if (stringHasEnding(zipInfo[i].filename, "/")) {
-                zipInfo[i].filename.resize(zipInfo[i].filename.length()-1);
+            if (zipInfo[i].filename.endsWith("/")) {
+                zipInfo[i].filename = zipInfo[i].filename.substr(0, zipInfo[i].filename.length() - 1);
                 zipInfo[i].isDirectory = true;
             } else {
                 zipInfo[i].length = file_info.uncompressed_size;
@@ -103,20 +103,20 @@ bool FsZip::init(const std::string& zipPath, const std::string& mount) {
             unzGoToNextFile(this->zipfile);
         }
 
-        std::vector<std::string> deletedLocalPaths;
+        std::vector<BString> deletedLocalPaths;
         readLinesFromFile(deleteFilePath, deletedLocalPaths);
 
         for (i = 0; i < global_info.number_entry; ++i) {
-            std::string localZipPart = zipInfo[i].filename;
+            BString localZipPart = zipInfo[i].filename;
             Fs::remoteNameToLocal(localZipPart);
-            std::string localPath = strippedMount + localZipPart;
+            BString localPath = strippedMount + localZipPart;
             if (vectorIndexOf(deletedLocalPaths, localPath) != -1) {
                 continue;
             }
-            std::string parentPath = Fs::getParentPath(localPath);
-            BoxedPtr<FsNode> parent = Fs::getNodeFromLocalPath("", parentPath, true);            
-            std::string localFileName = Fs::getFileNameFromPath(localPath);
-            std::string nativePath = Fs::getNativePathFromParentAndLocalFilename(parent, localFileName);
+            BString parentPath = Fs::getParentPath(localPath);
+            BoxedPtr<FsNode> parent = Fs::getNodeFromLocalPath(B(""), parentPath, true);            
+            BString localFileName = Fs::getFileNameFromPath(localPath);
+            BString nativePath = Fs::getNativePathFromParentAndLocalFilename(parent, localFileName);
             BoxedPtr<FsFileNode> node = (FsFileNode*)Fs::addFileNode(localPath, zipInfo[i].link, nativePath, zipInfo[i].isDirectory, parent).get();
             std::shared_ptr<FsZip> thisShared = shared_from_this();
             node->zipNode = std::make_shared<FsZipNode>(zipInfo[i], thisShared);
@@ -133,8 +133,8 @@ FsZip::~FsZip() {
 #endif
 }
 
-void FsZip::remove(const std::string& localPath) {
-    std::vector<std::string> lines;
+void FsZip::remove(BString localPath) {
+    std::vector<BString> lines;
     readLinesFromFile(deleteFilePath, lines);
     if (vectorIndexOf(lines, localPath) == -1) {
         lines.push_back(localPath);
@@ -142,7 +142,7 @@ void FsZip::remove(const std::string& localPath) {
     }
 }
 
-bool FsZip::readFileFromZip(const std::string& zipFile, const std::string& file, std::string& result) {
+bool FsZip::readFileFromZip(BString zipFile, BString file, BString& result) {
     unzFile z = unzOpen(zipFile.c_str());
     unz_global_info global_info;
     if (!z) {
@@ -169,7 +169,7 @@ bool FsZip::readFileFromZip(const std::string& zipFile, const std::string& file,
             buffer[read]=0;
             unzCloseCurrentFile(z);
             unzClose(z);
-            result = buffer;
+            result = BString::copy(buffer);
             delete[] buffer;
             return true;
         }
@@ -179,7 +179,7 @@ bool FsZip::readFileFromZip(const std::string& zipFile, const std::string& file,
     return false;
 }
 
-bool FsZip::extractFileFromZip(const std::string& zipFile, const std::string& file, const std::string& path) {
+bool FsZip::extractFileFromZip(BString zipFile, BString file, BString path) {
     unzFile z = unzOpen(zipFile.c_str());
     unz_global_info global_info;
     if (!z) {
@@ -203,7 +203,7 @@ bool FsZip::extractFileFromZip(const std::string& zipFile, const std::string& fi
             if (!Fs::doesNativePathExist(path)) {
                 Fs::makeNativeDirs(path);
             }
-            std::string outPath = path+Fs::nativePathSeperator+Fs::getFileNameFromPath(file);
+            BString outPath = path ^ Fs::getFileNameFromPath(file);
             FILE* f = fopen(outPath.c_str(), "wb");
             if (f) {
                 U32 totalRead = 0;
@@ -233,7 +233,7 @@ bool FsZip::extractFileFromZip(const std::string& zipFile, const std::string& fi
     return false;
 }
 
-bool FsZip::iterateFiles(const std::string& zipFile, std::function<void(const std::string&)> it) {
+bool FsZip::iterateFiles(BString zipFile, std::function<void(BString)> it) {
     unzFile z = unzOpen(zipFile.c_str());
     unz_global_info global_info;
     if (!z) {
@@ -253,14 +253,14 @@ bool FsZip::iterateFiles(const std::string& zipFile, std::function<void(const st
             unzClose(z);
             return false;
         }
-        it(tmp);
+        it(BString::copy(tmp));
         unzGoToNextFile(z);
     }
     unzClose(z);
     return true;
 }
 
-std::string FsZip::unzip(const std::string& zipFile, const std::string& path, std::function<void(U32, std::string fileName)> percentDone) {
+BString FsZip::unzip(BString zipFile, BString path, std::function<void(U32, BString fileName)> percentDone) {
     unzFile z = unzOpen(zipFile.c_str());
     unz_global_info global_info;
     if (!z) {
@@ -286,9 +286,9 @@ std::string FsZip::unzip(const std::string& zipFile, const std::string& path, st
             unzClose(z);
             return "Could not read file info from zip file: "+zipFile;
         }
-        std::string fileName = tmp;
-        if (stringHasEnding(fileName, "/")) {
-            std::string dirPath = path + Fs::nativePathSeperator + fileName;
+        BString fileName = BString::copy(tmp);
+        if (fileName.endsWith("/")) {
+            BString dirPath = path ^ fileName;
             if (!Fs::doesNativePathExist(dirPath)) {
                 if (!Fs::makeNativeDirs(dirPath)) {
                     unzClose(z);
@@ -299,11 +299,11 @@ std::string FsZip::unzip(const std::string& zipFile, const std::string& path, st
             continue;
         }
         if (Fs::nativePathSeperator != "/") {
-            stringReplaceAll(fileName, "/", Fs::nativePathSeperator);
+            fileName = fileName.replace("/", Fs::nativePathSeperator);
         }
         unzOpenCurrentFile(z);        
         percentDone((U32)(compressedFileSizeProcessed * 100 / fileSize), fileName);
-        std::string outPath = path + Fs::nativePathSeperator + fileName;
+        BString outPath = path ^ fileName;
         FILE* f = fopen(outPath.c_str(), "wb");
         if (f) {
             U32 totalRead = 0;
@@ -328,6 +328,6 @@ std::string FsZip::unzip(const std::string& zipFile, const std::string& path, st
         unzGoToNextFile(z);
     }
     unzClose(z);
-    return "";
+    return B("");
 }
 #endif

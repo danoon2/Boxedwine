@@ -127,16 +127,16 @@ static U32 syscall_write(CPU* cpu, U32 eipCount) {
     return result;
 }
 
-BoxedPtr<FsNode> findNode(BoxedPtr<FsNode> parent, const std::string& name);
+BoxedPtr<FsNode> findNode(BoxedPtr<FsNode> parent, BString name);
 
 static U32 syscall_open(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];
     SYS_LOG1(SYSCALL_FILE, cpu, "open: name=%s flags=%x", getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
-    U32 result = cpu->thread->process->open(getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+    U32 result = cpu->thread->process->open(getNativeStringB(ARG1, tmp, sizeof(tmp)), ARG2);
 #ifdef _DEBUG
     if (result>1000) {
-        std::string filename = Fs::getFileNameFromPath(getNativeString(ARG1, tmp, sizeof(tmp)));
-        BoxedPtr<FsNode> found = findNode(Fs::getNodeFromLocalPath("", "/", false), filename);
+        BString filename = Fs::getFileNameFromPath(getNativeStringB(ARG1, tmp, sizeof(tmp)));
+        BoxedPtr<FsNode> found = findNode(Fs::getNodeFromLocalPath(B(""), B("/"), false), filename);
         if (!found) {
             printf("open: name=%s flags=%x result=%X\n", getNativeString(ARG1, tmp, sizeof(tmp)), ARG2, result);
         }
@@ -164,7 +164,7 @@ static U32 syscall_link(CPU* cpu, U32 eipCount) {
     char tmp1[MAX_FILEPATH_LEN];
     char tmp2[MAX_FILEPATH_LEN];
     SYS_LOG1(SYSCALL_FILE, cpu, "link: path1=%X(%s) path2=%X(%s)", ARG1, getNativeString(ARG1, tmp1, sizeof(tmp1)), ARG2, getNativeString(ARG2, tmp2, sizeof(tmp2)));
-    U32 result = cpu->thread->process->link(getNativeString(ARG1, tmp1, sizeof(tmp1)), getNativeString(ARG2, tmp2, sizeof(tmp2)));
+    U32 result = cpu->thread->process->link(getNativeStringB(ARG1, tmp1, sizeof(tmp1)), getNativeStringB(ARG2, tmp2, sizeof(tmp2)));
     SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }
@@ -172,12 +172,12 @@ static U32 syscall_link(CPU* cpu, U32 eipCount) {
 static U32 syscall_unlink(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];
     SYS_LOG1(SYSCALL_FILE, cpu, "unlink: path=%X(%s)", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)));
-    U32 result = cpu->thread->process->unlinkFile(getNativeString(ARG1, tmp, sizeof(tmp)));
+    U32 result = cpu->thread->process->unlinkFile(getNativeStringB(ARG1, tmp, sizeof(tmp)));
     SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }
 
-static void readStringArray(U32 address, std::vector<std::string>& results) {
+static void readStringArray(U32 address, std::vector<BString>& results) {
     char tmp2[MAX_FILEPATH_LEN];
 
     while (true) {
@@ -186,20 +186,20 @@ static void readStringArray(U32 address, std::vector<std::string>& results) {
             break;
         char* str = getNativeString(p, tmp2, sizeof(tmp2));
         address+=4;	
-        results.push_back(str);
+        results.push_back(BString::copy(str));
     }
 }
 
 static U32 syscall_execve(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];
-    std::vector<std::string> args;
-    std::vector<std::string> envs;
+    std::vector<BString> args;
+    std::vector<BString> envs;
 
     readStringArray(ARG2, args);
     readStringArray(ARG3, envs);
 
     SYS_LOG1(SYSCALL_PROCESS, cpu, "execve: path=%X(%s) argv=%X envp=%X", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)), ARG2, ARG3);
-    if (cpu->thread->process->execve(getNativeString(ARG1, tmp, sizeof(tmp)), args, envs)) {
+    if (cpu->thread->process->execve(getNativeStringB(ARG1, tmp, sizeof(tmp)), args, envs)) {
         SYS_LOG(SYSCALL_PROCESS, cpu, "\n");
         return -K_CONTINUE;
     }
@@ -210,7 +210,7 @@ static U32 syscall_execve(CPU* cpu, U32 eipCount) {
 static U32 syscall_chdir(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];
     SYS_LOG1(SYSCALL_PROCESS, cpu, "chdir: path=%X(%s)", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)));
-    U32 result = cpu->thread->process->chdir(getNativeString(ARG1, tmp, sizeof(tmp)));
+    U32 result = cpu->thread->process->chdir(getNativeStringB(ARG1, tmp, sizeof(tmp)));
     SYS_LOG(SYSCALL_PROCESS, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }
@@ -226,7 +226,7 @@ static U32 syscall_time(CPU* cpu, U32 eipCount) {
 static U32 syscall_chmod(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];
     SYS_LOG1(SYSCALL_FILE, cpu, "chmod: path=%X (%s) mode=%o", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
-    U32 result = cpu->thread->process->chmod(getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+    U32 result = cpu->thread->process->chmod(getNativeStringB(ARG1, tmp, sizeof(tmp)), ARG2);
     SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }
@@ -272,7 +272,7 @@ static U32 syscall_utime(CPU* cpu, U32 eipCount) {
 static U32 syscall_access(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];
     SYS_LOG1(SYSCALL_FILE, cpu, "access: filename=%s flags=0x%X", getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
-    U32 result = cpu->thread->process->access(getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+    U32 result = cpu->thread->process->access(getNativeStringB(ARG1, tmp, sizeof(tmp)), ARG2);
     SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }
@@ -296,7 +296,7 @@ static U32 syscall_rename(CPU* cpu, U32 eipCount) {
     char tmp2[MAX_FILEPATH_LEN];
 
     SYS_LOG1(SYSCALL_FILE, cpu, "rename: oldName=%X(%s) newName=%X(%s)", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)), ARG2, getNativeString(ARG2, tmp2, sizeof(tmp2)));
-    U32 result = cpu->thread->process->rename(getNativeString(ARG1, tmp, sizeof(tmp)), getNativeString(ARG2, tmp2, sizeof(tmp2)));
+    U32 result = cpu->thread->process->rename(getNativeStringB(ARG1, tmp, sizeof(tmp)), getNativeStringB(ARG2, tmp2, sizeof(tmp2)));
     SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }
@@ -304,7 +304,7 @@ static U32 syscall_rename(CPU* cpu, U32 eipCount) {
 static U32 syscall_mkdir(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];
     SYS_LOG1(SYSCALL_FILE, cpu, "mkdir: path=%X (%s) mode=%X", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
-    U32 result = cpu->thread->process->mkdir(getNativeString(ARG1, tmp, sizeof(tmp)));
+    U32 result = cpu->thread->process->mkdir(getNativeStringB(ARG1, tmp, sizeof(tmp)));
     SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }
@@ -312,7 +312,7 @@ static U32 syscall_mkdir(CPU* cpu, U32 eipCount) {
 static U32 syscall_rmdir(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];
     SYS_LOG1(SYSCALL_FILE, cpu, "rmdir: path=%X(%s)", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)));
-    U32 result = cpu->thread->process->rmdir(getNativeString(ARG1, tmp, sizeof(tmp)));
+    U32 result = cpu->thread->process->rmdir(getNativeStringB(ARG1, tmp, sizeof(tmp)));
     SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }
@@ -445,7 +445,7 @@ static U32 syscall_symlink(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];
     char tmp2[MAX_FILEPATH_LEN];
     SYS_LOG1(SYSCALL_FILE, cpu, "symlink: path1=%X(%s) path2=%X(%s)", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)), ARG2, getNativeString(ARG2, tmp2, sizeof(tmp2)));
-    U32 result = cpu->thread->process->symlink(getNativeString(ARG1, tmp, sizeof(tmp)), getNativeString(ARG2, tmp2, sizeof(tmp2)));
+    U32 result = cpu->thread->process->symlink(getNativeStringB(ARG1, tmp, sizeof(tmp)), getNativeStringB(ARG2, tmp2, sizeof(tmp2)));
     SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }
@@ -454,7 +454,7 @@ static U32 syscall_readlink(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];    
     char tmp2[MAX_FILEPATH_LEN];    
 
-    U32 result = cpu->thread->process->readlink(getNativeString(ARG1, tmp, sizeof(tmp)), ARG2, ARG3);
+    U32 result = cpu->thread->process->readlink(getNativeStringB(ARG1, tmp, sizeof(tmp)), ARG2, ARG3);
     SYS_LOG1(SYSCALL_FILE, cpu, "readlink: path=%X (%s) buffer=%X (%s) bufSize=%d result=%d(0x%X)\n", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)), ARG2, (((int)result)>0?getNativeString(ARG2, tmp2, sizeof(tmp2)):""), ARG3, result, result);
     return result;
 }
@@ -501,7 +501,7 @@ static U32 syscall_setpriority(CPU* cpu, U32 eipCount) {
 static U32 syscall_statfs(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];
     SYS_LOG1(SYSCALL_FILE, cpu, "statfs: path=%X(%s) buf=%X", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
-    U32 result = cpu->thread->process->statfs(getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+    U32 result = cpu->thread->process->statfs(getNativeStringB(ARG1, tmp, sizeof(tmp)), ARG2);
     SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }
@@ -929,7 +929,7 @@ static U32 syscall_ftruncate64(CPU* cpu, U32 eipCount) {
 static U32 syscall_stat64(CPU* cpu, U32 eipCount) {    
     char tmp[MAX_FILEPATH_LEN];
     SYS_LOG1(SYSCALL_FILE, cpu, "stat64: path=%s buf=%X", getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
-    U32 result = cpu->thread->process->stat64(getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+    U32 result = cpu->thread->process->stat64(getNativeStringB(ARG1, tmp, sizeof(tmp)), ARG2);
     SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }
@@ -937,7 +937,7 @@ static U32 syscall_stat64(CPU* cpu, U32 eipCount) {
 static U32 syscall_lstat64(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];
     SYS_LOG1(SYSCALL_FILE, cpu, "lstat64: path=%s buf=%X", getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
-    U32 result = cpu->thread->process->lstat64(getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+    U32 result = cpu->thread->process->lstat64(getNativeStringB(ARG1, tmp, sizeof(tmp)), ARG2);
     SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }
@@ -1158,8 +1158,8 @@ static const char* getFutexOp(U32 op) {
     if (op==129) return "WAKE PRIVATE";
     if (op == 137) return "WAIT BITSET PRIVATE";
     if (op == 138) return "WAKE BITSET PRIVATE";
-    static std::string tmp;
-    tmp = std::to_string(op);
+    static BString tmp;
+    tmp = BString::valueOf(op);
     return tmp.c_str();
 }
 
@@ -1259,7 +1259,7 @@ static U32 syscall_clock_getres_time64(CPU* cpu, U32 eipCount) {
 static U32 syscall_statfs64(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];
     SYS_LOG1(SYSCALL_FILE, cpu, "fstatfs64: path=%X(%s) len=%d buf=%X", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)), ARG2, ARG3);
-    U32 result = cpu->thread->process->statfs64(getNativeString(ARG1, tmp, sizeof(tmp)), ARG3);
+    U32 result = cpu->thread->process->statfs64(getNativeStringB(ARG1, tmp, sizeof(tmp)), ARG3);
     SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }
@@ -1281,7 +1281,7 @@ static U32 syscall_tgkill(CPU* cpu, U32 eipCount) {
 static U32 syscall_utimes(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];
     SYS_LOG1(SYSCALL_FILE, cpu, "utimes: fileName=%s times=%X", getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
-    U32 result = cpu->thread->process->utimes(getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+    U32 result = cpu->thread->process->utimes(getNativeStringB(ARG1, tmp, sizeof(tmp)), ARG2);
     SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }
@@ -1298,7 +1298,7 @@ static U32 syscall_inotify_init(CPU* cpu, U32 eipCount) {
     return result;
 }
 
-BoxedPtr<FsNode> findNode(BoxedPtr<FsNode> parent, const std::string& name) {
+BoxedPtr<FsNode> findNode(BoxedPtr<FsNode> parent, BString name) {
     if (parent->name==name) {
         return parent;
     }
@@ -1316,11 +1316,11 @@ BoxedPtr<FsNode> findNode(BoxedPtr<FsNode> parent, const std::string& name) {
 static U32 syscall_openat(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];
     SYS_LOG1(SYSCALL_FILE, cpu, "openat: dirfd=%d name=%s flags=%x", ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3);
-    U32 result = cpu->thread->process->openat(ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3);
+    U32 result = cpu->thread->process->openat(ARG1, getNativeStringB(ARG2, tmp, sizeof(tmp)), ARG3);
 #ifdef _DEBUG
     if (result>1000) {
-        std::string filename = Fs::getFileNameFromPath(getNativeString(ARG2, tmp, sizeof(tmp)));
-        BoxedPtr<FsNode> found = findNode(Fs::getNodeFromLocalPath("", "/", false), filename);
+        BString filename = Fs::getFileNameFromPath(getNativeStringB(ARG2, tmp, sizeof(tmp)));
+        BoxedPtr<FsNode> found = findNode(Fs::getNodeFromLocalPath(B(""), B("/"), false), filename);
         if (!found) {
             printf("openat: dirfd=%d name=%s flags=%x result=%x\n", ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, result);
         }
@@ -1333,7 +1333,7 @@ static U32 syscall_openat(CPU* cpu, U32 eipCount) {
 static U32 syscall_mkdirat(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];
     SYS_LOG1(SYSCALL_FILE, cpu, "mkdirat: dirfd=%d path=%s mode=%x", ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3);
-    U32 result = cpu->thread->process->mkdirat(ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3);
+    U32 result = cpu->thread->process->mkdirat(ARG1, getNativeStringB(ARG2, tmp, sizeof(tmp)), ARG3);
     SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }
@@ -1348,7 +1348,7 @@ static U32 syscall_fchownat(CPU* cpu, U32 eipCount) {
 static U32 syscall_fstatat64(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];
     SYS_LOG1(SYSCALL_FILE, cpu, "statat64: dirfd=%d path=%s buf=%X flags=%x", ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, ARG4);
-    U32 result = cpu->thread->process->fstatat64(ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, ARG4);
+    U32 result = cpu->thread->process->fstatat64(ARG1, getNativeStringB(ARG2, tmp, sizeof(tmp)), ARG3, ARG4);
     SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }
@@ -1356,7 +1356,7 @@ static U32 syscall_fstatat64(CPU* cpu, U32 eipCount) {
 static U32 syscall_unlinkat(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];
     SYS_LOG1(SYSCALL_FILE, cpu, "unlinkat: dirfd=%d path=%s flags=%x", ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3);
-    U32 result = cpu->thread->process->unlinkat(ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3);
+    U32 result = cpu->thread->process->unlinkat(ARG1, getNativeStringB(ARG2, tmp, sizeof(tmp)), ARG3);
     SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }
@@ -1365,7 +1365,7 @@ static U32 syscall_symlinkat(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];
     char tmp2[MAX_FILEPATH_LEN];
     SYS_LOG1(SYSCALL_FILE, cpu, "symlinkat: oldpath=%x(%s) dirfd=%d newpath=%X(%s)", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)), ARG2, ARG3, getNativeString(ARG3, tmp2, sizeof(tmp2)));
-    U32 result = cpu->thread->process->symlinkat(getNativeString(ARG1, tmp, sizeof(tmp)), ARG2, getNativeString(ARG3, tmp2, sizeof(tmp2)));
+    U32 result = cpu->thread->process->symlinkat(getNativeStringB(ARG1, tmp, sizeof(tmp)), ARG2, getNativeStringB(ARG3, tmp2, sizeof(tmp2)));
     SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }
@@ -1374,7 +1374,7 @@ static U32 syscall_readlinkat(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];    
     char tmp2[MAX_FILEPATH_LEN];    
     SYS_LOG1(SYSCALL_FILE, cpu, "readlinkat: dirfd=%d pathname=%X(%s) buf=%X(%s) bufsiz=%d", ARG1, ARG2, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, getNativeString(ARG3, tmp2, sizeof(tmp2)), ARG4);
-    U32 result = cpu->thread->process->readlinkat(ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, ARG4);    
+    U32 result = cpu->thread->process->readlinkat(ARG1, getNativeStringB(ARG2, tmp, sizeof(tmp)), ARG3, ARG4);
     SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }
@@ -1389,7 +1389,7 @@ static U32 syscall_fchmodat(CPU* cpu, U32 eipCount) {
 static U32 syscall_faccessat(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];
     SYS_LOG1(SYSCALL_FILE, cpu, "faccessat dirfd=%X pathname=%X(%s) mode=%X flags=%X", ARG1, ARG2, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, ARG4);
-    U32 result = cpu->thread->process->faccessat(ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, ARG4);
+    U32 result = cpu->thread->process->faccessat(ARG1, getNativeStringB(ARG2, tmp, sizeof(tmp)), ARG3, ARG4);
     SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }
@@ -1412,7 +1412,7 @@ static U32 syscall_sync_file_range(CPU* cpu, U32 eipCount) {
 static U32 syscall_utimensat(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];
     SYS_LOG1(SYSCALL_FILE, cpu, "utimensat dirfd=%d path=%X(%s) times=%X flags=%X", ARG1, ARG2, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, ARG4);
-    U32 result = cpu->thread->process->utimesat(ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, ARG4);
+    U32 result = cpu->thread->process->utimesat(ARG1, getNativeStringB(ARG2, tmp, sizeof(tmp)), ARG3, ARG4);
     SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }
@@ -1420,7 +1420,7 @@ static U32 syscall_utimensat(CPU* cpu, U32 eipCount) {
 static U32 syscall_utimensat_time64(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];
     SYS_LOG1(SYSCALL_FILE, cpu, "utimensat_time64 dirfd=%d path=%X(%s) times=%X flags=%X", ARG1, ARG2, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, ARG4);
-    U32 result = cpu->thread->process->utimesat(ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, ARG4);
+    U32 result = cpu->thread->process->utimesat(ARG1, getNativeStringB(ARG2, tmp, sizeof(tmp)), ARG3, ARG4);
     SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }
@@ -1464,7 +1464,7 @@ static U32 syscall_renameat(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];
     char tmp2[MAX_FILEPATH_LEN];
     SYS_LOG1(SYSCALL_FILE, cpu, "renameat olddirfd=%d oldpath=%X(%s) newdirfd=%d newpath=%X(%s)", ARG1, ARG2, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, ARG4, getNativeString(ARG4, tmp2, sizeof(tmp2)));
-    U32 result = cpu->thread->process->renameat(ARG1, getNativeString(ARG2, tmp, sizeof(tmp)), ARG3, getNativeString(ARG4, tmp2, sizeof(tmp2)));
+    U32 result = cpu->thread->process->renameat(ARG1, getNativeStringB(ARG2, tmp, sizeof(tmp)), ARG3, getNativeStringB(ARG4, tmp2, sizeof(tmp2)));
     SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }
@@ -1486,7 +1486,7 @@ static U32 syscall_getrandom(CPU* cpu, U32 eipCount) {
 static U32 syscall_memfd_create(CPU* cpu, U32 eipCount) {
     char tmp[MAX_FILEPATH_LEN];
     SYS_LOG1(SYSCALL_FILE, cpu, "name=%X(%s) flags=%X", ARG1, getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
-    U32 result = cpu->thread->process->memfd_create(getNativeString(ARG1, tmp, sizeof(tmp)), ARG2);
+    U32 result = cpu->thread->process->memfd_create(getNativeStringB(ARG1, tmp, sizeof(tmp)), ARG2);
     SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }

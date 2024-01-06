@@ -68,7 +68,7 @@ void Memory::log_pf(KThread* thread, U32 address) {
     U32 i;
     CPU* cpu = thread->cpu;
 
-    std::string name = thread->process->getModuleName(cpu->seg[CS].address+cpu->eip.u32);
+    BString name = thread->process->getModuleName(cpu->seg[CS].address+cpu->eip.u32);
     klog("%.8X EAX=%.8X ECX=%.8X EDX=%.8X EBX=%.8X ESP=%.8X EBP=%.8X ESI=%.8X EDI=%.8X %s at %.8X\n", cpu->seg[CS].address + cpu->eip.u32, cpu->reg[0].u32, cpu->reg[1].u32, cpu->reg[2].u32, cpu->reg[3].u32, cpu->reg[4].u32, cpu->reg[5].u32, cpu->reg[6].u32, cpu->reg[7].u32, name.c_str(), thread->process->getModuleEip(cpu->seg[CS].address+cpu->eip.u32));
 
     klog("Page Fault at %.8X\n", address);

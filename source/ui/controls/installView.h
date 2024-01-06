@@ -3,12 +3,12 @@
 
 class InstallView : public BaseView {
 public:
-	InstallView(const std::string& initialFileOrDirPath, std::string tab="");
+	InstallView(BString initialFileOrDirPath, BString tab=BString());
 
 	virtual bool saveChanges();
 
 private:
-    void createInstallTab(const std::string& initialFileOrDirPath);
+    void createInstallTab(BString initialFileOrDirPath);
     void createDemoTab();
     void runApps(std::vector<AppFile>& apps);
     void setContainerName();

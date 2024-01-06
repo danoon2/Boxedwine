@@ -12,7 +12,7 @@ public:
     U32 write(U32 address, U32 len); // will call into writeNative
 
     U32 getDirectoryEntryCount();
-    BoxedPtr<FsNode> getDirectoryEntry(U32 index, std::string& name);
+    BoxedPtr<FsNode> getDirectoryEntry(U32 index, BString& name);
 
     virtual ~FsOpenNode();
 
@@ -36,7 +36,7 @@ public:
 
     BoxedPtr<FsNode> const node;
     const U32 flags;     
-    std::string openedPath; // when call fchdir, we should set the current directory to what was passed in, not what was linked to
+    BString openedPath; // when call fchdir, we should set the current directory to what was passed in, not what was linked to
 
 private:
     std::vector<BoxedPtr<FsNode> > dirEntries;

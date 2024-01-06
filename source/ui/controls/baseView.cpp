@@ -1,7 +1,7 @@
 #include "boxedwine.h"
 #include "../boxedwineui.h"
 
-BaseView::BaseView(const std::string& viewName) : errorMsg(NULL), tabIndex(0), viewName(viewName), errorMsgOpen(false), tabChanged(true) {
+BaseView::BaseView(BString viewName) : tabIndex(0), viewName(viewName), errorMsgOpen(false), tabChanged(true) {
     this->toolTipWidth = (float)ImGui::CalcTextSize("(?)").x + ImGui::GetStyle().ItemSpacing.x;
     this->extraVerticalSpacing = (float)GlobalSettings::scaleIntUI(5);
 }
@@ -13,7 +13,7 @@ void BaseView::addTab(const BaseViewTab& tab, int index) {
     ImVec2 s = ImGui::CalcTextSize(tab.name.c_str(), NULL, true);
     s.x = 0;
     s.y += this->extraVerticalSpacing * 2;
-    std::string nameId = "##" + tab. name;
+    BString nameId = "##" + tab. name;
     ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetColorU32(ImGuiCol_WindowBg) | 0xFF000000);
     ImGui::PushID(tab.id.c_str());
     if (ImGui::Selectable(nameId.c_str(), tabIndex == index, ImGuiSelectableFlags_AllowRightClick, s)) {
@@ -76,7 +76,7 @@ void BaseView::run(const ImVec2& size) {
     ImGui::EndChild();
     ImGui::EndChild();
     ImGui::PopStyleColor();
-    if (this->errorMsg) {
+    if (!this->errorMsg.isEmpty()) {
         runErrorMsg(!errorMsgOpen);
     }
 }
@@ -86,14 +86,14 @@ void BaseView::runErrorMsg(bool open) {
         this->errorMsgOpen = true;
     }
     ImGui::PushFont(GlobalSettings::mediumFont);
-    if (!showMessageBox(this->viewName + "ErrorMsg", open, getTranslation(GENERIC_DLG_ERROR_TITLE), this->errorMsg)) {
+    if (!showMessageBox(this->viewName + "ErrorMsg", open, c_getTranslation(GENERIC_DLG_ERROR_TITLE), this->errorMsg.c_str())) {
         this->errorMsgOpen = false;
-        this->errorMsg = NULL;
+        this->errorMsg = B("");
     }
     ImGui::PopFont();
 }
 
-void BaseView::addTab(const std::string& id, const std::string& name, const std::shared_ptr<ImGuiLayout>& model, std::function<void(bool buttonPressed, BaseViewTab& tab)> drawTab, std::function<void()> drawTabIcon, std::function<void()> onRightClick) {
+void BaseView::addTab(BString id, BString name, const std::shared_ptr<ImGuiLayout>& model, std::function<void(bool buttonPressed, BaseViewTab& tab)> drawTab, std::function<void()> drawTabIcon, std::function<void()> onRightClick) {
     if (model) {
         model->doLayout();
     }
@@ -121,7 +121,7 @@ std::shared_ptr<LayoutComboboxControl> BaseView::createWineVersionCombobox(const
     return result;
 }
 
-void BaseView::drawToolTip(const std::string& help) {
+void BaseView::drawToolTip(BString help) {
     ImGui::AlignTextToFramePadding();
     if (GlobalSettings::hasIconsFont()) {
         SAFE_IMGUI_TEXT_DISABLED(QUESTION_ICON);

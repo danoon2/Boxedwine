@@ -1,7 +1,7 @@
 #include "boxedwine.h"
 #include "../boxedwineui.h"
 
-HelpView::HelpView(std::string tab) : BaseView("HelpView") {
+HelpView::HelpView(BString tab) : BaseView(B("HelpView")) {
     if (tab.length()) {
         if (tab == "Wine") {
             this->tabIndex = 2;
@@ -24,7 +24,7 @@ void HelpView::createAboutTab() {
 
     section->addText(0, 0, getTranslation(HELPVIEW_ABOUT_LABEL));
 
-    std::string name;
+    BString name;
     if (GlobalSettings::hasIconsFont()) {
         name += ABOUT_ICON;
         name += " ";
@@ -41,7 +41,7 @@ void HelpView::createHelpInstallTab() {
 
     section->addText(0, 0, getTranslation(HELPVIEW_HELP_INSTALL_LABEL));
 
-    std::string name;
+    BString name;
     if (GlobalSettings::hasIconsFont()) {
         name += QUESTION_ICON;
         name += " ";
@@ -58,7 +58,7 @@ void HelpView::createHelpTroubleshootingTab() {
 
     section->addText(0, 0, getTranslation(HELPVIEW_HELP_TROUBLESHOOTING_LABEL));
 
-    std::string name;
+    BString name;
     if (GlobalSettings::hasIconsFont()) {
         name += QUESTION_ICON;
         name += " ";

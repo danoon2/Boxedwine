@@ -68,15 +68,15 @@ bool doMainLoop() {
             uiLoop();
         }
 #endif                
-        if (lastTitleUpdate+5000 < t) {
-            char tmp[256];
+        if (lastTitleUpdate+5000 < t) {            
             lastTitleUpdate = t;
+            BString title;
             if (KSystem::title.length()) {
-                snprintf(tmp, sizeof(tmp), "%s", KSystem::title.c_str());
+                title = KSystem::title;
             } else {
-                snprintf(tmp, sizeof(tmp), "BoxedWine " BOXEDWINE_VERSION_DISPLAY);
+                title = B("BoxedWine " BOXEDWINE_VERSION_DISPLAY);
             }
-            KNativeWindow::getNativeWindow()->setTitle(tmp);
+            KNativeWindow::getNativeWindow()->setTitle(title);
         }
         if (!KNativeWindow::getNativeWindow()->processEvents()) {
             return true;

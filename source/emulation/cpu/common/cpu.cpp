@@ -257,44 +257,44 @@ void CPU::prepareException(int code, int error) {
 
 class TTYBufferAccess : public BufferAccess {
 public:
-    TTYBufferAccess(const BoxedPtr<FsNode>& node, U32 flags, const std::string& buffer) : BufferAccess(node, flags, buffer) {}
+    TTYBufferAccess(const BoxedPtr<FsNode>& node, U32 flags, BString buffer) : BufferAccess(node, flags, buffer) {}
     virtual U32 writeNative(U8* buffer, U32 len);
 };
 
-static std::string tty9Buffer;
+static BString tty9Buffer;
 
 U32 TTYBufferAccess::writeNative(U8* buffer, U32 len) {
-    tty9Buffer+=std::string((char*)buffer, len);
+    tty9Buffer.append((char*)buffer, len);
     return len;
 }
 
 FsOpenNode* openTTY9(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
-    return new TTYBufferAccess(node, flags, "");
+    return new TTYBufferAccess(node, flags, B(""));
 }
 
-std::string getFunctionName(const std::string& name, U32 moduleEip) {    
+BString getFunctionName(BString name, U32 moduleEip) {    
     KThread* thread;
     std::shared_ptr<KProcess> process = KProcess::create();
-    std::vector<std::string> args;
-    std::vector<std::string> env;
+    std::vector<BString> args;
+    std::vector<BString> env;
     KFileDescriptor* fd = NULL;
 
     if (!name.length())
-        return "Unknown";
-    args.push_back("/usr/bin/addr2line");
-    args.push_back("-e");
+        return B("Unknown");
+    args.push_back(B("/usr/bin/addr2line"));
+    args.push_back(B("-e"));
     args.push_back(name);
-    args.push_back("-f");
-    args.push_back(toHexString(moduleEip));
-    thread = process->startProcess("/usr/bin", args, env, 0, 0, 0, 0);
+    args.push_back(B("-f"));
+    args.push_back(BString::valueOf(moduleEip, 16));
+    thread = process->startProcess(B("/usr/bin"), args, env, 0, 0, 0, 0);
     if (!thread)
-        return "";
+        return B("");
 
     tty9Buffer="";
-    BoxedPtr<FsNode> parent = Fs::getNodeFromLocalPath("", "/dev", true);
-    BoxedPtr<FsNode> node = Fs::addVirtualFile("/dev/tty9", openTTY9, K__S_IWRITE, (4<<8) | 9, parent);
+    BoxedPtr<FsNode> parent = Fs::getNodeFromLocalPath(B(""), B("/dev"), true);
+    BoxedPtr<FsNode> node = Fs::addVirtualFile(B("/dev/tty9"), openTTY9, K__S_IWRITE, (4<<8) | 9, parent);
     process = thread->process;
-    process->openFile("", "/dev/tty9", K_O_WRONLY, &fd); 
+    process->openFile(B(""), B("/dev/tty9"), K_O_WRONLY, &fd); 
     if (fd) {
         thread->log = false;
         thread->process->dup2(fd->handle, 1); // replace stdout with tty9    
@@ -302,9 +302,9 @@ std::string getFunctionName(const std::string& name, U32 moduleEip) {
     }
     ChangeThread c(thread);
     KSystem::eraseProcess(process->id);
-    const char* p = strstr(tty9Buffer.c_str(), "\r\n");
-    if (p) {
-        return tty9Buffer.substr(0, p - tty9Buffer.c_str());
+    int pos = tty9Buffer.indexOf("\r\n");
+    if (pos>=0) {
+        return tty9Buffer.substr(0, pos-1);
     }
     return tty9Buffer;
 }
@@ -313,8 +313,8 @@ void CPU::walkStack(U32 eip, U32 ebp, U32 indent) {
     U32 prevEbp;
     U32 returnEip;
     U32 moduleEip = this->thread->process->getModuleEip(this->seg[CS].address+eip);
-    std::string name = this->thread->process->getModuleName(this->seg[CS].address+eip);
-    std::string functionName = getFunctionName(name, moduleEip);    
+    BString name = this->thread->process->getModuleName(this->seg[CS].address+eip);
+    BString functionName = getFunctionName(name, moduleEip);    
 
     name = Fs::getFileNameFromPath(name);
 

@@ -159,7 +159,7 @@ void startNativeSocketsThread() {
         Platform::nativeSocketPair(nativeSocketPipe);
         setNativeBlocking(nativeSocketPipe[0], false);
         setNativeBlocking(nativeSocketPipe[1], false);
-        checkWaitingNativeSocketsThread = KNativeThread::createAndStartThread(checkWaitingNativeSockets_thread, "NativeSockeThread", (void *)NULL);
+        checkWaitingNativeSocketsThread = KNativeThread::createAndStartThread(checkWaitingNativeSockets_thread, B("NativeSockeThread"), (void *)NULL);
     }    
 }
 
@@ -280,8 +280,8 @@ S32 handleNativeSocketError(const std::shared_ptr<KNativeSocketObject>& s, bool 
 
 KNativeSocketObject::KNativeSocketObject(U32 domain, U32 type, U32 protocol) : KSocketObject(KTYPE_NATIVE_SOCKET, domain, type, protocol), 
     connecting(false),
-    readingCond("KNativeSocketObject::readingCond"),
-    writingCond("KNativeSocketObject::writingCond") {
+    readingCond(B("KNativeSocketObject::readingCond")),
+    writingCond(B("KNativeSocketObject::writingCond")) {
 #ifdef WIN32
     if (!winsock_intialized) {
         WSADATA wsaData;
@@ -504,7 +504,7 @@ U32 KNativeSocketObject::readNative(U8* buffer, U32 len) {
 }
 
 U32 KNativeSocketObject::stat(U32 address, bool is64) {
-    KSystem::writeStat("", address, is64, 1, 0, K_S_IFSOCK|K__S_IWRITE|K__S_IREAD, 0, 0, 4096, 0, 0, 1);
+    KSystem::writeStat(B(""), address, is64, 1, 0, K_S_IFSOCK|K__S_IWRITE|K__S_IREAD, 0, 0, 4096, 0, 0, 1);
     return 0;
 }
 
@@ -1138,12 +1138,12 @@ FsOpenNode* openHosts(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
     name[0] = 0;
     gethostname(name, 256);
     snprintf(buf, sizeof(buf), "127.0.0.1\tlocalhost\n127.0.1.1\t%s\n::1\tip6-localhost ip6-loopback", name);
-    return new BufferAccess(node, flags, buf);
+    return new BufferAccess(node, flags, BString::copy(buf));
 }
 
 FsOpenNode* openHostname(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
     char buf[256];
     buf[0] = 0;
     gethostname(buf, 256);
-    return new BufferAccess(node, flags, buf);
+    return new BufferAccess(node, flags, BString::copy(buf));
 }

@@ -13,11 +13,11 @@ public:
 	static void postQuit();
 	static U32 getTicks();
 	static bool getScreenDimensions(U32* width, U32* height);
-	static std::string getAppDirectory();
-	static std::string getLocalDirectory(); // ends with path separator
+	static BString getAppDirectory();
+	static BString getLocalDirectory(); // ends with path separator
 	static bool clipboardHasText();
-	static std::string clipboardGetText();
-	static bool clipboardSetText(const std::string& text);
+	static BString clipboardGetText();
+	static bool clipboardSetText(BString text);
 	static U32 getDpiScale(); // returns 1/1000th of the scale, so a result of 1000 would mean no scaling
 };
 

@@ -491,6 +491,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x86'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\util\bstring.cpp" />
     <ClCompile Include="..\..\..\..\..\source\util\crc.cpp" />
     <ClCompile Include="..\..\..\..\..\source\util\fileutils.cpp" />
     <ClCompile Include="..\..\..\..\..\source\util\log.cpp" />
@@ -1032,6 +1033,8 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x64'">true</ExcludedFromBuild>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\util\boxedptr.h" />
+    <ClInclude Include="..\..\..\..\..\source\util\bstring.h" />
+    <ClInclude Include="..\..\..\..\..\source\util\concurrentqueue.h" />
     <ClInclude Include="..\..\..\..\..\source\util\fileutils.h" />
     <ClInclude Include="..\..\..\..\..\source\util\karray.h" />
     <ClInclude Include="..\..\..\..\..\source\util\klist.h" />

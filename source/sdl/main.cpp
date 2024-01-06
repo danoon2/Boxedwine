@@ -43,11 +43,11 @@ int boxedmain(int argc, const char **argv) {
 
     klog("Starting ...");    
     KSystem::startMicroCounter();
-    KSystem::exePath = argv[0];
-    if (stringContains(KSystem::exePath, "\\")) {
-        KSystem::exePath = KSystem::exePath.substr(0, KSystem::exePath.rfind('\\')+1);
+    KSystem::exePath = BString::copy(argv[0]);
+    if (KSystem::exePath.contains("\\")) {
+        KSystem::exePath = KSystem::exePath.substr(0, KSystem::exePath.lastIndexOf('\\')+1);
     } else {
-        KSystem::exePath = KSystem::exePath.substr(0, KSystem::exePath.rfind('/')+1);
+        KSystem::exePath = KSystem::exePath.substr(0, KSystem::exePath.lastIndexOf('/')+1);
     }
     if (argc == 1) {
         if (!startupArgs.loadDefaultResource(argv[0])) {

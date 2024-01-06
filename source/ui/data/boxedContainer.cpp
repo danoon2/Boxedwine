@@ -2,21 +2,21 @@
 #include "../boxedwineui.h"
 #include "../../io/fszip.h"
 
-bool BoxedContainer::load(const std::string& dirPath) {
+bool BoxedContainer::load(BString dirPath) {
     this->dirPath = dirPath;
-    std::string iniFilePath = this->dirPath + Fs::nativePathSeperator + "container.ini";
+    BString iniFilePath = this->dirPath ^ "container.ini";
     ConfigFile config(iniFilePath);
-    this->name = config.readString("Name", "");
-    this->wineVersion = config.readString("WineVersion", "");
+    this->name = config.readString(B("Name"), B(""));
+    this->wineVersion = config.readString(B("WineVersion"), B(""));
 
     int i = 1;
     while (true) {
-        std::string mount = config.readString("Mount" + std::to_string(i), "");
+        BString mount = config.readString("Mount" + BString::valueOf(i), B(""));
         if (mount.length() == 0) {
             break;
         }
-        std::vector<std::string> parts;
-        stringSplit(parts, mount, '|');
+        std::vector<BString> parts;
+        mount.split('|', parts);
         if (parts.size() != 2) {
             kwarn("Failed to parse container %s mount command %s", this->name.c_str(), mount.c_str());
             break;
@@ -37,7 +37,7 @@ BoxedContainer::~BoxedContainer() {
     }
 }
 
-BoxedContainer* BoxedContainer::createContainer(const std::string& dirPath, const std::string& name, const std::string& wineVersion) {
+BoxedContainer* BoxedContainer::createContainer(BString dirPath, BString name, BString wineVersion) {
     BoxedContainer* container = new BoxedContainer();
     container->name = name;
     container->wineVersion = wineVersion;
@@ -54,12 +54,12 @@ BoxedContainer* BoxedContainer::createContainer(const std::string& dirPath, cons
 }
 
 bool BoxedContainer::saveContainer() {
-    std::string iniFilePath = dirPath + Fs::nativePathSeperator + "container.ini";
+    BString iniFilePath = dirPath ^ "container.ini";
     ConfigFile config(iniFilePath);
-    config.writeString("Name", this->name);
-    config.writeString("WineVersion", this->wineVersion);
+    config.writeString(B("Name"), this->name);
+    config.writeString(B("WineVersion"), this->wineVersion);
     for (int i = 0; i < (int)this->mounts.size(); i++) {
-        config.writeString("Mount" + std::to_string(i + 1), this->mounts[i].localPath + "|" + this->mounts[i].nativePath);
+        config.writeString("Mount" + BString::valueOf(i + 1), this->mounts[i].localPath + "|" + this->mounts[i].nativePath);
     }
     config.saveChanges();
     return true;
@@ -74,12 +74,12 @@ void BoxedContainer::reload() {
 }
 
 void BoxedContainer::loadApps() {
-    std::string appDirPath = GlobalSettings::getAppFolder(this);
+    BString appDirPath = GlobalSettings::getAppFolder(this);
 
     this->apps.clear();
 
-    Fs::iterateAllNativeFiles(appDirPath, true, false, [this] (const std::string& filepath, bool isDir)->U32 {
-        if (stringHasEnding(filepath, ".ini", true)) {            
+    Fs::iterateAllNativeFiles(appDirPath, true, false, [this] (BString filepath, bool isDir)->U32 {
+        if (filepath.endsWith(".ini", true)) {
             BoxedApp* app = new BoxedApp();
             if (app->load(this, filepath)) {
                 this->apps.push_back(app);
@@ -102,14 +102,14 @@ int BoxedContainer::getWineVersionAsNumber() {
     return getWineVersionAsNumber(this->wineVersion);
 }
 
-int BoxedContainer::getWineVersionAsNumber(const std::string& wineVersion) {
-    std::string ver = wineVersion;
+int BoxedContainer::getWineVersionAsNumber(BString wineVersion) {
+    BString ver = wineVersion;
     ver = ver.substr(5);
-    std::vector<std::string> parts;
-    stringSplit(parts, ver, '.');
+    std::vector<BString> parts;
+    ver.split('.', parts);
     if (parts.size() > 1) {
-        std::string major = parts[0];
-        std::string minor = parts[1];
+        BString major = parts[0];
+        BString minor = parts[1];
         return atoi(major.c_str()) * 100 + atoi(minor.c_str());
     }
     return 0;
@@ -119,7 +119,7 @@ bool BoxedContainer::doesWineVersionExist() {
     return Fs::doesNativePathExist(GlobalSettings::getFileFromWineName(this->wineVersion));
 }
 
-void BoxedContainer::launch(const std::vector<std::string>& args, const std::string& labelForWaitDlg) {
+void BoxedContainer::launch(const std::vector<BString>& args, BString labelForWaitDlg) {
     GlobalSettings::startUpArgs = StartUpArgs();
     GlobalSettings::startUpArgs.setScale(GlobalSettings::getDefaultScale());
     GlobalSettings::startUpArgs.setVsync(GlobalSettings::getDefaultVsync());
@@ -129,7 +129,7 @@ void BoxedContainer::launch(const std::vector<std::string>& args, const std::str
     GlobalSettings::startUpArgs.readyToLaunch = true;
 
     runOnMainUI([labelForWaitDlg]() {
-        new WaitDlg(WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(WAITDLG_LAUNCH_APP_LABEL, true, labelForWaitDlg.c_str()));
+        new WaitDlg(WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(WAITDLG_LAUNCH_APP_LABEL, true, labelForWaitDlg));
         return false;
         });
 }
@@ -139,7 +139,7 @@ void BoxedContainer::launch() {
     GlobalSettings::startUpArgs.setVsync(GlobalSettings::getDefaultVsync());
     GlobalSettings::startUpArgs.setResolution(GlobalSettings::getDefaultResolution());
     GlobalSettings::startUpArgs.addZip(GlobalSettings::getFileFromWineName(this->wineVersion));
-    std::string root = GlobalSettings::getRootFolder(this);
+    BString root = GlobalSettings::getRootFolder(this);
 
     if (!Fs::doesNativePathExist(root)) {
         Fs::makeNativeDirs(root);
@@ -149,11 +149,11 @@ void BoxedContainer::launch() {
     GlobalSettings::startUpArgs.logPath = getLogPath();
 }
 
-void BoxedContainer::getNewApps(std::vector<BoxedApp>& apps, MountInfo* mount, const std::string& nativeDirectory) {
+void BoxedContainer::getNewApps(std::vector<BoxedApp>& apps, MountInfo* mount, BString nativeDirectory) {
     //getNewDesktopLinkApps(apps);
     if (!mount && nativeDirectory.length()==0) {
         for (auto& m : this->mounts) {
-            getNewExeApps(apps, &m, "");
+            getNewExeApps(apps, &m, B(""));
         }
     }
     getNewExeApps(apps, mount, nativeDirectory);
@@ -165,25 +165,25 @@ bool compareApps(BoxedApp& a1, BoxedApp& a2)
 }
 
 void BoxedContainer::getWineApps(std::vector<BoxedApp>& apps) {
-    std::set<std::string> wineApps;
-    wineApps.insert("taskmgr.exe");
-    wineApps.insert("winecfg.exe");
-    wineApps.insert("clock.exe");
+    std::set<BString> wineApps;
+    wineApps.insert(B("taskmgr.exe"));
+    wineApps.insert(B("winecfg.exe"));
+    wineApps.insert(B("clock.exe"));
     //wineApps.insert("winefile.exe");
-    wineApps.insert("winemine.exe");
+    wineApps.insert(B("winemine.exe"));
     //wineApps.insert("cmd.exe");
-    wineApps.insert("explorer.exe");
-    wineApps.insert("iexplore.exe");
+    wineApps.insert(B("explorer.exe"));
+    wineApps.insert(B("iexplore.exe"));
     //wineApps.insert("hh.exe");
-    wineApps.insert("notepad.exe");
-    wineApps.insert("regedit.exe");
-    wineApps.insert("wordpad.exe");
+    wineApps.insert(B("notepad.exe"));
+    wineApps.insert(B("regedit.exe"));
+    wineApps.insert(B("wordpad.exe"));
     //wineApps.insert("wmplayer.exe");
-    FsZip::iterateFiles(GlobalSettings::getFileFromWineName(this->wineVersion), [this, &apps, &wineApps](const std::string& fileName) {
-        if (fileName[fileName.length() - 1] != '/') {
-            std::string name = Fs::getFileNameFromPath(fileName);
-            std::string lname = name;
-            stringToLower(lname);
+    FsZip::iterateFiles(GlobalSettings::getFileFromWineName(this->wineVersion), [this, &apps, &wineApps](BString fileName) {
+        if (!fileName.endsWith('/')) {
+            BString name = Fs::getFileNameFromPath(fileName);
+            BString lname = name.toLowerCase();
+
             if (wineApps.count(lname)) {
                 bool found = false;
                 for (auto& a : apps) {
@@ -205,17 +205,17 @@ void BoxedContainer::getWineApps(std::vector<BoxedApp>& apps) {
         });
     BoxedApp app;
     app.container = this;
-    app.name = "wineboot -u";
-    app.path = "/bin";
-    app.cmd = "wineboot";
-    app.args.push_back("-u");
+    app.name = B("wineboot -u");
+    app.path = B("/bin");
+    app.cmd = B("wineboot");
+    app.args.push_back(B("-u"));
     apps.push_back(app);
     std::sort(apps.begin(), apps.end(), compareApps);
 }
 
-void BoxedContainer::getNewExeApps(std::vector<BoxedApp>& apps, MountInfo* mount, std::string nativeDirectory) {
-    std::string root;
-    std::string path;
+void BoxedContainer::getNewExeApps(std::vector<BoxedApp>& apps, MountInfo* mount, BString nativeDirectory) {
+    BString root;
+    BString path;
 
     if (mount) {
         path = mount->nativePath;
@@ -225,16 +225,17 @@ void BoxedContainer::getNewExeApps(std::vector<BoxedApp>& apps, MountInfo* mount
         root = GlobalSettings::getRootFolder(this);
     } else {        
         root = GlobalSettings::getRootFolder(this);
-        path = root + Fs::nativePathSeperator + "home" + Fs::nativePathSeperator + "username" + Fs::nativePathSeperator + ".wine" + Fs::nativePathSeperator + "drive_c";
+        path = root ^ "home" ^ "username" ^ ".wine" ^ "drive_c";
     }
-    Fs::iterateAllNativeFiles(path, true, true, [this, &apps, root, mount] (const std::string& filepath, bool isDir)->U32 {
-        if (stringHasEnding(filepath, ".exe", true) && !stringContains(filepath, "drive_c"+Fs::nativePathSeperator+"windows")) {                        
-            std::string localPath = filepath.substr(root.length());
+    BString winDir = B("drive_c") ^ "windows";
+    Fs::iterateAllNativeFiles(path, true, true, [this, &apps, root, mount, winDir] (BString filepath, bool isDir)->U32 {
+        if (filepath.endsWith(".exe", true) && !filepath.contains(winDir)) {
+            BString localPath = filepath.substr(root.length());
             if (mount) {
                 localPath = mount->getFullLocalPath() + localPath;
             }
             Fs::remoteNameToLocal(localPath);            
-            std::string name = Fs::getFileNameFromPath(localPath);
+            BString name = Fs::getFileNameFromPath(localPath);
 
             bool found = false;
             for (auto& a : this->apps) {
@@ -257,14 +258,14 @@ void BoxedContainer::getNewExeApps(std::vector<BoxedApp>& apps, MountInfo* mount
 }
 
 void BoxedContainer::getNewDesktopLinkApps(std::vector<BoxedApp>& apps) {
-    std::string root = GlobalSettings::getRootFolder(this);
-    std::string path = root + Fs::nativePathSeperator + "home" + Fs::nativePathSeperator + "username" + Fs::nativePathSeperator + ".wine" + Fs::nativePathSeperator + "drive_c" + Fs::nativePathSeperator + "users" + Fs::nativePathSeperator + "username" + Fs::nativePathSeperator + "Start Menu";
+    BString root = GlobalSettings::getRootFolder(this);
+    BString path = root ^ "home" ^ "username" ^ ".wine" ^ "drive_c" ^ "users" ^ "username" ^ "Start Menu";
 
-    Fs::iterateAllNativeFiles(path, true, true, [this, &apps, root] (const std::string& filepath, bool isDir)->U32 {
-        if (stringHasEnding(filepath, ".lnk", true)) {            
-            std::string localPath = filepath.substr(root.length());
+    Fs::iterateAllNativeFiles(path, true, true, [this, &apps, root] (BString filepath, bool isDir)->U32 {
+        if (filepath.endsWith(".lnk", true)) {
+            BString localPath = filepath.substr(root.length());
             Fs::remoteNameToLocal(localPath);            
-            std::string name = Fs::getFileNameFromPath(localPath);
+            BString name = Fs::getFileNameFromPath(localPath);
 
             // :TODO: parse link to get name
             bool found = false;
@@ -291,11 +292,11 @@ void BoxedContainer::updateCachedSize() {
     this->cachedSize = getReadableSize(Fs::getNativeDirectorySize(this->getDir(), true));
 }
 
-std::string BoxedContainer::getNativePathForApp(const BoxedApp& app) {
+BString BoxedContainer::getNativePathForApp(const BoxedApp& app) {
     for (auto& mount : mounts) {
-        std::string path = mount.getFullLocalPath();
-        if (stringStartsWith(app.path, path)) {
-            std::string result = app.path;
+        BString path = mount.getFullLocalPath();
+        if (app.path.startsWith(path)) {
+            BString result = app.path;
             return mount.nativePath + Fs::nativeFromLocal(app.path.substr(path.length())+"/"+app.cmd);
         }
     }
@@ -312,7 +313,7 @@ bool BoxedContainer::addNewMount(const MountInfo& mountInfo) {
     return true;
 }
 
-BoxedApp* BoxedContainer::getAppByIniFile(const std::string& iniFile) {
+BoxedApp* BoxedContainer::getAppByIniFile(BString iniFile) {
     for (auto& app : this->apps) {
         if (app->iniFilePath == iniFile) {
             return app;
@@ -321,13 +322,13 @@ BoxedApp* BoxedContainer::getAppByIniFile(const std::string& iniFile) {
     return NULL;
 }
 
-void BoxedContainer::setName(const std::string& name) {
+void BoxedContainer::setName(BString name) {
     this->name = name;
 }
 
 bool BoxedContainer::isGDI() {
     BoxedReg reg(this, false);
-    std::string value;
+    BString value;
 
     return (reg.readKey("Software\\Wine\\Direct3D", "DirectDrawRenderer", value) && value == "gdi");
 }
@@ -338,32 +339,32 @@ void BoxedContainer::setGDI(bool gdi) {
     reg.save();
 }
 
-std::string BoxedContainer::getRenderer() {
+BString BoxedContainer::getRenderer() {
     BoxedReg reg(this, false);
-    std::string value;
+    BString value;
 
     reg.readKey("Software\\Wine\\Direct3D", "renderer", value);
     if (value.length() == 0) {
-        value = "gl";
+        value = B("gl");
     }
     return value;
 }
 
-void BoxedContainer::setRenderer(const std::string& renderer) {
+void BoxedContainer::setRenderer(BString renderer) {
     BoxedReg reg(this, false);
     reg.writeKey("Software\\Wine\\Direct3D", "renderer", renderer.c_str());
     reg.save();
 }
 
-std::string BoxedContainer::getMouseWarpOverride() {
+BString BoxedContainer::getMouseWarpOverride() {
     BoxedReg reg(this, false);
-    std::string value = "enable";
+    BString value = B("enable");
 
     reg.readKey("Software\\Wine\\DirectInput", "MouseWarpOverride", value);
     return value;
 }
 
-void BoxedContainer::setMouseWarpOverride(const std::string& value) {
+void BoxedContainer::setMouseWarpOverride(BString value) {
     BoxedReg reg(this, false);
     reg.writeKey("Software\\Wine\\DirectInput", "MouseWarpOverride", value.c_str());
     reg.save();
@@ -375,17 +376,17 @@ static const char szKeyProdNT[] = "System\\CurrentControlSet\\Control\\ProductOp
 static const char szKeyWindNT[] = "System\\CurrentControlSet\\Control\\Windows";
 static const char szKeyEnvNT[] = "System\\CurrentControlSet\\Control\\Session Manager\\Environment";
 
-std::string BoxedContainer::getWindowsVersion2() {
+BString BoxedContainer::getWindowsVersion2() {
     BoxedReg reg(this, false);
-    std::string value;
+    BString value;
     if (reg.readKey("Software\\Wine", "Version", value)) {
         return value;
     }
-    return "";
+    return B("");
 }
 
-std::string BoxedContainer::getWindowsVersion() {    
-    std::string userVer = getWindowsVersion2();
+BString BoxedContainer::getWindowsVersion() {    
+    BString userVer = getWindowsVersion2();
     if (userVer.length()) {
         for (auto& winVer : BoxedwineData::getWinVersions()) {
             if (winVer.szVersion == userVer) {
@@ -396,17 +397,17 @@ std::string BoxedContainer::getWindowsVersion() {
     BoxedReg reg(this, true);    
     int platform = VER_PLATFORM_WIN32s, major = 0, minor = 0, build = 0;
 
-    std::string ver;    
-    std::string type;
-    std::string build_str;
-    std::string best;
+    BString ver;    
+    BString type;
+    BString build_str;
+    BString best;
 
     reg.readKey(szKeyNT, "CurrentVersion", ver);    
 
     if (ver.length()) {
         reg.readKey(szKeyNT, "CurrentBuildNumber", build_str);
         platform = VER_PLATFORM_WIN32_NT;
-        build = std::stoi(build_str);
+        build = build_str.toInt();
         reg.readKey(szKeyProdNT, "ProductType", type);
     } else {
         reg.readKey(szKey9x, "VersionNumber", ver);
@@ -415,19 +416,19 @@ std::string BoxedContainer::getWindowsVersion() {
         }
     }
     if (ver.length()) {
-        if (!stringContains(ver, ".")) {
-            major = std::stoi(ver);
+        if (!ver.contains('.')) {
+            major = ver.toInt();
         } else {
-            std::vector<std::string> parts;
-            stringSplit(parts, ver, '.');
+            std::vector<BString> parts;
+            ver.split('.', parts);
             if (parts.size() >= 2) {
-                major = std::stoi(parts[0]);
-                minor = std::stoi(parts[1]);
+                major = parts[0].toInt();
+                minor = parts[1].toInt();
             } else {
-                return "";
+                return B("");
             }
             if (parts.size() >= 3) {
-                build = std::stoi(parts[2]);
+                build = parts[2].toInt();
             }
         }
     }
@@ -447,10 +448,10 @@ void BoxedContainer::setWindowsVersion(const BoxedWinVersion& version) {
     BoxedReg userReg(this, false);
     BoxedReg systemReg(this, true);
     
-    std::string build = std::to_string(version.dwBuildNumber);
+    BString build = BString::valueOf(version.dwBuildNumber);
     if (version.dwPlatformId == VER_PLATFORM_WIN32_NT) {
-        std::string ver = std::to_string(version.dwMajorVersion) + "." + std::to_string(version.dwMinorVersion);
-        std::string product = "Microsoft " + version.szDescription;
+        BString ver = BString::valueOf(version.dwMajorVersion) + "." + BString::valueOf(version.dwMinorVersion);
+        BString product = "Microsoft " + version.szDescription;
 
         systemReg.writeKey(szKeyNT, "CurrentVersion", ver.c_str());
         systemReg.writeKey(szKeyNT, "CSDVersion", version.szCSDVersion.c_str());
@@ -466,8 +467,8 @@ void BoxedContainer::setWindowsVersion(const BoxedWinVersion& version) {
         systemReg.writeKey(szKey9x, "ProductName", NULL);
         userReg.writeKey("Software\\Wine", "Version", NULL);
     } else if (version.dwPlatformId == VER_PLATFORM_WIN32_WINDOWS) {
-        std::string ver = std::to_string(version.dwMajorVersion) + "." + std::to_string(version.dwMinorVersion) + "." + std::to_string(version.dwBuildNumber);
-        std::string product = "Microsoft " + version.szDescription;
+        BString ver = BString::valueOf(version.dwMajorVersion) + "." + BString::valueOf(version.dwMinorVersion) + "." + BString::valueOf(version.dwBuildNumber);
+        BString product = "Microsoft " + version.szDescription;
 
         systemReg.writeKey(szKeyNT, "CurrentVersion", NULL);
         systemReg.writeKey(szKeyNT, "CSDVersion", NULL);
@@ -502,6 +503,6 @@ void BoxedContainer::setWindowsVersion(const BoxedWinVersion& version) {
     systemReg.save();
 }
 
-std::string BoxedContainer::getLogPath() {
-    return this->dirPath + Fs::nativePathSeperator + "lastLog.txt";    
+BString BoxedContainer::getLogPath() {
+    return this->dirPath ^ "lastLog.txt";    
 }

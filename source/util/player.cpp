@@ -8,17 +8,17 @@ void Player::readCommand() {
     char tmp[256];
     U32 count=0;
 
-    this->nextCommand="";
-    this->nextValue="";
+    this->nextCommand=B("");
+    this->nextValue=B("");
     while (true) {
         U32 result = (U32)fread(&tmp[count], 1, 1, this->file);
         if (!result) {
             tmp[count] = 0;
             if (count>0) {
-                if (this->nextCommand.size()==0) {
-                    this->nextCommand = tmp;
+                if (this->nextCommand.length()==0) {
+                    this->nextCommand = BString::copy(tmp);
                 } else {
-                    this->nextValue = tmp;
+                    this->nextValue = BString::copy(tmp);
                 }
                 break;
             }
@@ -28,7 +28,7 @@ void Player::readCommand() {
         count++;
         if (tmp[count-1]=='=') {
             tmp[count-1] = 0;
-            this->nextCommand = tmp;
+            this->nextCommand = BString::copy(tmp);
             count = 0;
             continue;
         }
@@ -38,21 +38,21 @@ void Player::readCommand() {
             } else {
                 tmp[count-1] = 0;
             }
-            this->nextValue=tmp;
+            this->nextValue=BString::copy(tmp);
             break;
         }
     }
     this->lastCommandTime = KSystem::getMicroCounter();
     if (this->nextCommand.length()==0) {
         klog("script did not finish properly: failed");
-        KNativeWindow::getNativeWindow()->screenShot("failed.bmp", NULL);
+        KNativeWindow::getNativeWindow()->screenShot(B("failed.bmp"), NULL);
         exit(99);
     }
 }
 
-bool Player::start(std::string directory) {
+bool Player::start(BString directory) {
     Player::instance = new Player();
-    std::string script = std::string(directory+"/"+RECORDER_SCRIPT);
+    BString script = BString(directory+"/"+RECORDER_SCRIPT);
     instance->directory = directory;
     instance->file = fopen(script.c_str(), "rb");
     instance->lastCommandTime = 0;
@@ -73,8 +73,8 @@ bool Player::start(std::string directory) {
     return true;
 }
 
-void Player::initCommandLine(std::string root, const std::vector<std::string>& zips, std::string working, const std::vector<std::string>& args) {
-    while (this->nextCommand=="ROOT" || this->nextCommand=="ZIP" || this->nextCommand=="CWD" || this->nextCommand=="ARGC" || stringStartsWith(this->nextCommand, "ARG")) {
+void Player::initCommandLine(BString root, const std::vector<BString>& zips, BString working, const std::vector<BString>& args) {
+    while (this->nextCommand=="ROOT" || this->nextCommand=="ZIP" || this->nextCommand=="CWD" || this->nextCommand=="ARGC" || this->nextCommand.startsWith("ARG")) {
         instance->readCommand();
     }
 }
@@ -84,8 +84,8 @@ void Player::runSlice() {
     if (KSystem::getMicroCounter()<this->lastCommandTime+10000)
         return;
     if (this->nextCommand=="MOVETO") {
-        std::vector<std::string> items;
-        stringSplit(items, this->nextValue, ',');
+        std::vector<BString> items;
+        this->nextValue.split(',', items);
         if (items.size()!=2) {
             klog("script: %s MOVETO should have 2 values: %s", this->directory.c_str(), this->nextValue.c_str());
             exit(99);
@@ -101,8 +101,8 @@ void Player::runSlice() {
     if (KSystem::getMicroCounter()<this->lastCommandTime+100000)
         return;
     if (this->nextCommand=="MOUSEDOWN" || this->nextCommand=="MOUSEUP") {
-        std::vector<std::string> items;
-        stringSplit(items, this->nextValue, ',');
+        std::vector<BString> items;
+        this->nextValue.split(',', items);
         if (items.size()!=3) {
             klog("script: %s %s should have 3 values: %s", this->directory.c_str(), this->nextCommand.c_str(), this->nextValue.c_str());
             exit(99);
@@ -129,8 +129,8 @@ void Player::runSlice() {
         if (KSystem::getMicroCounter()<this->lastScreenRead+1000000) {
             return;
         }
-        std::vector<std::string> items;
-        stringSplit(items, this->nextValue, ',');
+        std::vector<BString> items;
+        this->nextValue.split(',', items);
         if (items.size()>4) {
             U32 x = atoi(items[0].c_str());
             U32 y = atoi(items[1].c_str());
@@ -139,7 +139,7 @@ void Player::runSlice() {
             U32 expectedCRC = atoi(items[4].c_str());
             U32 currentCRC = 0;
 
-            KNativeWindow::getNativeWindow()->partialScreenShot("", x, y, w, h, &currentCRC);
+            KNativeWindow::getNativeWindow()->partialScreenShot(B(""), x, y, w, h, &currentCRC);
             if (currentCRC==expectedCRC) {
                 klog("script: screen shot matched");
                 instance->readCommand();
@@ -149,7 +149,7 @@ void Player::runSlice() {
         } else if (items.size()>0) {
             U32 expectedCRC = atoi(items[0].c_str());
             U32 currentCRC = 0;
-            KNativeWindow::getNativeWindow()->screenShot("", &currentCRC);
+            KNativeWindow::getNativeWindow()->screenShot(B(""), &currentCRC);
             if (currentCRC==expectedCRC) {
                 klog("script: screen shot matched");
                 instance->readCommand();
@@ -160,7 +160,7 @@ void Player::runSlice() {
     }
     if (KSystem::getMicroCounter()>this->lastCommandTime+1000000*60*10) {
         klog("script timed out %s", this->directory.c_str());
-        KNativeWindow::getNativeWindow()->screenShot("failed.bmp", NULL);
+        KNativeWindow::getNativeWindow()->screenShot(B("failed.bmp"), NULL);
         exit(2);
     }
 }
