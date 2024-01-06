@@ -304,9 +304,8 @@ bool KNativeWindowSdl::processEvents() {
         if (e.type == sdlCustomEvent) {
             SdlCallback* callback = (SdlCallback*)e.user.data1;
             callback->result = (U32)callback->pfn();
-            BOXEDWINE_CONDITION_LOCK(callback->cond);
+            BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(callback->cond);
             BOXEDWINE_CONDITION_SIGNAL(callback->cond);
-            BOXEDWINE_CONDITION_UNLOCK(callback->cond);
         } else 
 #endif
         
@@ -2337,9 +2336,8 @@ void KNativeWindowSdl::processCustomEvents(std::function<bool(bool isKeyDown, in
         else if (e.type == sdlCustomEvent) {
             SdlCallback* callback = (SdlCallback*)e.user.data1;
             callback->result = (U32)callback->pfn();
-            BOXEDWINE_CONDITION_LOCK(callback->cond);
+            BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(callback->cond);
             BOXEDWINE_CONDITION_SIGNAL(callback->cond);
-            BOXEDWINE_CONDITION_UNLOCK(callback->cond);
         }
 #endif
     }

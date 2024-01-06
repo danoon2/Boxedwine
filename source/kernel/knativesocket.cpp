@@ -63,12 +63,12 @@ void updateWaitingList() {
             kpanic("updateWaitingList %s socket is too large to select on", s->nativeSocket);
         }
 #endif
-        if (s->readingCond.waitCount()) {
+        if (s->readingCond.parent) {
             FD_SET(s->nativeSocket, &waitingReadset);
             FD_SET(s->nativeSocket, &waitingErrorset);
             errorSet = true;
         }
-        if (s->writingCond.waitCount()) {
+        if (s->writingCond.parent) {
             FD_SET(s->nativeSocket, &waitingWriteset);
             if (!errorSet)
                 FD_SET(s->nativeSocket, &waitingErrorset);
@@ -110,10 +110,10 @@ bool checkWaitingNativeSockets(int timeout) {
                 BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(waitingNodeMutex);                
 
                 for (auto& s : waitingNativeSockets) {
-                    if (FD_ISSET(s->nativeSocket, &waitingReadset) && s->readingCond.waitCount()) {
+                    if (FD_ISSET(s->nativeSocket, &waitingReadset) && s->readingCond.parent) {
                         if (conditionCount<1024) conditions[conditionCount++]=&s->readingCond;
                     }
-                    if (FD_ISSET(s->nativeSocket, &waitingWriteset) && s->writingCond.waitCount()) {                    
+                    if (FD_ISSET(s->nativeSocket, &waitingWriteset) && s->writingCond.parent) {                    
                         if (conditionCount<1024) conditions[conditionCount++]=&s->writingCond;
                     }
                     if (FD_ISSET(s->nativeSocket, &waitingErrorset)) {
@@ -123,7 +123,9 @@ bool checkWaitingNativeSockets(int timeout) {
                 }
             }
             for (U32 i=0;i<conditionCount;i++) {
-                BOXEDWINE_CONDITION_SIGNAL_ALL_NEED_LOCK(*conditions[i]);
+                BOXEDWINE_CONDITION& c = *conditions[i];
+                BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(c);
+                BOXEDWINE_CONDITION_SIGNAL_ALL(c);
             }
         }
         return true;
@@ -336,8 +338,14 @@ KNativeSocketObject::~KNativeSocketObject() {
     closesocket(this->nativeSocket);    
     removeWaitingSocket(this->nativeSocket);
     this->nativeSocket = 0;
-    BOXEDWINE_CONDITION_SIGNAL_ALL_NEED_LOCK(this->readingCond);
-    BOXEDWINE_CONDITION_SIGNAL_ALL_NEED_LOCK(this->writingCond);
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->readingCond);
+        BOXEDWINE_CONDITION_SIGNAL_ALL(this->readingCond);
+    }
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->writingCond);
+        BOXEDWINE_CONDITION_SIGNAL_ALL(this->writingCond);
+    }
 }
 
 U32 KNativeSocketObject::ioctl(U32 request) {
@@ -458,17 +466,21 @@ bool KNativeSocketObject::isWriteReady() {
 
 void KNativeSocketObject::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) {
     if (events & K_POLLIN) {
-        BOXEDWINE_CONDITION_ADD_CHILD_CONDITION(parentCondition, this->readingCond, [this]() {
-            removeWaitingSocket(this->nativeSocket);
-        });
+        BOXEDWINE_CONDITION_SET_PARENT(this->readingCond, &parentCondition);
+    } else {
+        BOXEDWINE_CONDITION_SET_PARENT(this->readingCond, nullptr);
     }
     if (events & K_POLLOUT) {
-        BOXEDWINE_CONDITION_ADD_CHILD_CONDITION(parentCondition, this->writingCond, [this]() {
-            removeWaitingSocket(this->nativeSocket);
-        });
+        BOXEDWINE_CONDITION_SET_PARENT(this->writingCond, &parentCondition);
+    } else {
+        BOXEDWINE_CONDITION_SET_PARENT(this->writingCond, nullptr);
     }
-    std::shared_ptr< KNativeSocketObject> t = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
-    addWaitingNativeSocket(t);
+    if (events == 0) {
+        removeWaitingSocket(this->nativeSocket);
+    } else {
+        std::shared_ptr< KNativeSocketObject> t = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
+        addWaitingNativeSocket(t);
+    }
 }
 
 U32 KNativeSocketObject::writeNative(U8* buffer, U32 len) {

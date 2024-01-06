@@ -19,6 +19,8 @@
 #ifndef __KPOLL_H__
 #define __KPOLL_H__
 
+class KFileDescriptor;
+
 class KPollData {
 public:
     U32 address;
@@ -26,6 +28,7 @@ public:
     U32 events;
     U32 revents;
     U64 data;
+    KFileDescriptor* pFD;
 };
 
 S32 internal_poll(KPollData* data, U32 count, U32 timeout);

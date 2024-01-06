@@ -128,6 +128,7 @@ public:
     bool isSystemProcess() {return this->systemProcess;}
 
     void iterateThreads(std::function<bool(KThread*)> callback);
+    void iterateThreadIds(std::function<bool(U32)> callback);
 
     U32 readd(U32 address);
     U16 readw(U32 address);
@@ -284,8 +285,9 @@ private:
     BOXEDWINE_MUTEX mappedFilesMutex;
 
     std::unordered_map<U32, KThread*> threads;
+    BOXEDWINE_MUTEX threadsMutex;
 public:
-    BOXEDWINE_CONDITION threadsCondition; // will signal when a thread is removed
+    BOXEDWINE_CONDITION threadRemovedCondition; // will signal when a thread is removed
 private:
 
     U32 usedTLS[TLS_ENTRIES];

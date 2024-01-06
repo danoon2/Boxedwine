@@ -81,7 +81,9 @@ bool KSignal::isOpen() {
 
 void KSignal::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) {
     if (events & K_POLLIN) {
-        BOXEDWINE_CONDITION_ADD_CHILD_CONDITION(parentCondition, this->lockCond, nullptr);
+        BOXEDWINE_CONDITION_SET_PARENT(this->lockCond, &parentCondition);
+    } else {
+        BOXEDWINE_CONDITION_SET_PARENT(this->lockCond, nullptr);
     }
     if (events & K_POLLOUT) {
         kpanic("waiting on a signal not implemented yet");
@@ -187,9 +189,11 @@ U32 KSignal::readNative(U8* buffer, U32 len) {
         if (!this->blocking) {
             break;
         }
-        BOXEDWINE_CONDITION_LOCK(this->lockCond);
-        BOXEDWINE_CONDITION_WAIT(this->lockCond);
-        BOXEDWINE_CONDITION_UNLOCK(this->lockCond);
+        {
+            BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->lockCond);
+            BOXEDWINE_CONDITION_WAIT(this->lockCond);
+        }
+
 #ifdef BOXEDWINE_MULTI_THREADED
 		if (KThread::currentThread()->terminating) {
 			return -K_EINTR;
