@@ -15,7 +15,7 @@ static void closesocket(int socket) { close(socket); }
 
 DownloadDlg::DownloadDlg(int title, const std::vector<DownloadItem>& items, std::function<void(bool)> onCompleted) : BaseDlg(title, 400, 175), items(items), currentItem(0), percentDone(0), onCompleted(onCompleted), cancelled(false), downloadDone(false), hasSize(false) {    
     runInBackgroundThread([this]() {
-        std::string errorMsg; 
+        BString errorMsg; 
         U64 totalSize = 0;
         U64 completedSize = 0;
         for (auto& item : this->items) {
@@ -26,7 +26,7 @@ DownloadDlg::DownloadDlg(int title, const std::vector<DownloadItem>& items, std:
         }
         bool result = false;
         for (auto& item : this->items) {
-            std::string tmpFilePath = item.filePath + ".part";
+            BString tmpFilePath = item.filePath + ".part";
             this->currentLabel = item.label;
 
             if (Fs::doesNativePathExist(tmpFilePath)) {
@@ -97,7 +97,7 @@ void DownloadDlg::downloadCompleted() {
     this->done();
 }
 
-void DownloadDlg::downloadFailed(const std::string& errorMsg) {
+void DownloadDlg::downloadFailed(BString errorMsg) {
     if (this->cancelled) {
         this->done();
     } else {
@@ -107,7 +107,7 @@ void DownloadDlg::downloadFailed(const std::string& errorMsg) {
 }
 
 void DownloadDlg::showErrorMsg(bool open) {
-    std::string error = this->errorMsg;
+    BString error = this->errorMsg;
 
     runOnMainUI([error]() {
         new OkDlg(GENERIC_DLG_ERROR_TITLE, error, nullptr);
@@ -132,15 +132,15 @@ void DownloadDlg::run() {
         ImGui::ProgressBar(this->percentDone / 100.0f, ImVec2(this->width - this->extraVerticalSpacing*4, 0));
         ImGui::PopStyleColor();
     }
-    float buttonWidth = ImGui::CalcTextSize(getTranslation(GENERIC_DLG_CANCEL)).x + ImGui::GetStyle().FramePadding.x * 2;
+    float buttonWidth = ImGui::CalcTextSize(c_getTranslation(GENERIC_DLG_CANCEL)).x + ImGui::GetStyle().FramePadding.x * 2;
     ImGui::SetCursorPosX(this->width/2-buttonWidth/2);
     ImGui::SetCursorPosY(this->height - ImGui::GetFrameHeightWithSpacing() - ImGui::GetStyle().ItemSpacing.y);
-    if (ImGui::Button(getTranslation(GENERIC_DLG_CANCEL))) {
+    if (ImGui::Button(c_getTranslation(GENERIC_DLG_CANCEL))) {
         // :TODO: what if the socket is stuck, this will only work if the socket is just too slow
         this->cancelled = true;
         this->currentLabel = getTranslation(DOWNLOADDLG_CANCELLING_LABEL);
     }
-    if (this->errorMsg.length()) {
+    if (!this->errorMsg.isEmpty()) {
         showErrorMsg(false);
     }
 }

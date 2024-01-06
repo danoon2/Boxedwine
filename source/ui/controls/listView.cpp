@@ -1,7 +1,7 @@
 #include "boxedwine.h"
 #include "../boxedwineui.h"
 
-void drawListView(const std::string& listViewId, const std::vector<ListViewItem>& items, const ImVec2& size) {
+void drawListView(BString listViewId, const std::vector<ListViewItem>& items, const ImVec2& size) {
     ImGui::SetCursorPosX(0);    
     ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetColorU32(ImGuiCol_WindowBg) | 0xFF000000);
     ImGui::BeginChild(1, size, false, 0);

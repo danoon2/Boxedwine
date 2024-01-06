@@ -131,7 +131,7 @@ KThread::KThread(U32 id, const std::shared_ptr<KProcess>& process) :
     userTime(0),
     kernelTime(0),
     inSysCall(0),
-    waitingForSignalToEndCond("KThread::waitingForSignalToEndCond"),
+    waitingForSignalToEndCond(B("KThread::waitingForSignalToEndCond")),
     waitingForSignalToEndMaskToRestore(0),
     pendingSignals(0),
     hasContextBeenMadeCurrentSinceCreation(false),
@@ -139,13 +139,13 @@ KThread::KThread(U32 id, const std::shared_ptr<KProcess>& process) :
     currentContext(0),
     log(false),
     waitingCond(0),
-    pollCond("KThread::pollCond"),
+    pollCond(B("KThread::pollCond")),
 #ifndef BOXEDWINE_MULTI_THREADED
     scheduledThreadNode(this),
     waitThreadNode(this),            
 #endif
     condStartWaitTime(0),
-    sleepCond("KThread::sleepCond")
+    sleepCond(B("KThread::sleepCond"))
     {
     int i;
 
@@ -251,7 +251,7 @@ U32 KThread::signal(U32 signal, bool wait) {
 
 struct futex {
 public:
-    futex() : cond("futex") {}
+    futex() : cond(B("futex")) {}
     KThread* thread;
     U8* address;  
     U32 expireTimeInMillies;

@@ -3,38 +3,38 @@
 #include "../../source/io/fszip.h"
 
 BoxedReg::BoxedReg(BoxedContainer* container, bool system) {
-	std::string root = GlobalSettings::getRootFolder(container);
-	this->filePath = root + Fs::nativePathSeperator + "home" + Fs::nativePathSeperator + "username" + Fs::nativePathSeperator + ".wine" + Fs::nativePathSeperator + (system?"system.reg":"user.reg");
+	BString root = GlobalSettings::getRootFolder(container);
+	this->filePath = root ^ "home" ^ "username" ^ ".wine" ^ (system?"system.reg":"user.reg");
 	if (!Fs::doesNativePathExist(this->filePath)) {
-		FsZip::extractFileFromZip(GlobalSettings::getFileFromWineName(container->getWineVersion()), (system?"home/username/.wine/system.reg":"home/username/.wine/user.reg"), Fs::getNativeParentPath(this->filePath));
+		FsZip::extractFileFromZip(GlobalSettings::getFileFromWineName(container->getWineVersion()), B(system?"home/username/.wine/system.reg":"home/username/.wine/user.reg"), Fs::getNativeParentPath(this->filePath));
 	}
 	readLinesFromFile(this->filePath, lines);
 }
 
-bool BoxedReg::readKey(const char* path, const char* key, std::string& value) {
+bool BoxedReg::readKey(const char* path, const char* key, BString& value) {
     bool found = false;
-    std::string section = "[";
+    BString section = B("[");
     section += path;
     section += "]";
-    stringReplaceAll(section, "\\", "\\\\");
-    std::string searchKey = "\"";
+    section.replace("\\", "\\\\");
+    BString searchKey = B("\"");
     searchKey += key;
     searchKey += "\"=";
 
     for (int i = 0; i < (int)lines.size(); i++) {
-        std::string& line = lines[i];
+        BString line = lines[i];
         if (!found) {
-            if (stringStartsWith(line, section)) {
+            if (line.startsWith(section)) {
                 found = true;
             }
         } else {
-            if (stringStartsWith(line, "[")) {
+            if (line.startsWith("[")) {
                 return false;
             }
-            if (stringStartsWith(line, searchKey)) {
+            if (line.startsWith(searchKey)) {
                 value = line.substr(searchKey.length());
-                stringTrim(value);
-                stringReplaceAll(value, "\"", "");
+                value = value.trim();
+                value = value.replace("\"", "");
                 return true;
             }
         }
@@ -43,33 +43,31 @@ bool BoxedReg::readKey(const char* path, const char* key, std::string& value) {
 }
 
 void BoxedReg::writeKeyDword(const char* path, const char* key, U32 value) {
-    std::string v = "dword:";
-    char tmp[16];
-    snprintf(tmp, sizeof(tmp), "%08x", value);
-    v += tmp;
+    BString v = B("dword:");
+    v.append(value, 16);
     writeKey(path, key, v.c_str(), false);
 }
 
 void BoxedReg::writeKey(const char* path, const char* key, const char* value, bool useQuotesAroundValue) {
     bool found = false;
-    std::string section = "[";    
+    BString section = B("[");
     section += path;
     section += "]";
-    stringReplaceAll(section, "\\", "\\\\");
-    std::string searchKey = "\"";
+    section.replace("\\", "\\\\");
+    BString searchKey = B("\"");
     searchKey += key;
     searchKey += "\"=";
 
     for (int i = 0; i < (int)lines.size(); i++) {
-        std::string& line = lines[i];
+        BString line = lines[i];
         if (!found) {
-            if (stringStartsWith(line, section)) {
+            if (line.startsWith(section)) {
                 found = true;
             }
         } else {
-            if (stringStartsWith(line, "[")) {
+            if (line.startsWith("[")) {
                 if (value) {
-                    std::string p = "\"";
+                    BString p = B("\"");
                     p += key;
                     p += "\"=";
                     if (useQuotesAroundValue) {
@@ -83,7 +81,7 @@ void BoxedReg::writeKey(const char* path, const char* key, const char* value, bo
                 }
                 return;
             }
-            if (stringStartsWith(line, searchKey)) {
+            if (line.startsWith(searchKey)) {
                 if (value) {
                     line = "\"";
                     line += key;
@@ -104,7 +102,7 @@ void BoxedReg::writeKey(const char* path, const char* key, const char* value, bo
         }
     }
     if (value) {
-        std::string line = "\"";
+        BString line = B("\"");
         line += key;
         line += "\"=";
         if (useQuotesAroundValue) {
@@ -115,7 +113,7 @@ void BoxedReg::writeKey(const char* path, const char* key, const char* value, bo
             line += "\"";
         }        
         if (!found) {
-            lines.push_back("");
+            lines.push_back(B(""));
             lines.push_back(section);
         }
         lines.push_back(line);    

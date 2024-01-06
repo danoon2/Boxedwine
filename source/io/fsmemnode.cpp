@@ -3,10 +3,10 @@
 #include "fsmemopennode.h"
 #include "kstat.h"
 
-FsMemNode::FsMemNode(U32 id, U32 rdev, const std::string& path) : FsNode(FsNode::Memory, id, rdev, path, "", "", false, NULL), openNode(NULL) {
+FsMemNode::FsMemNode(U32 id, U32 rdev, BString path) : FsNode(FsNode::Memory, id, rdev, path, B(""), B(""), false, NULL), openNode(NULL) {
 }
 
-U32 FsMemNode::rename(const std::string& path) {
+U32 FsMemNode::rename(BString path) {
     kpanic("FsMemNode::rename not supported");
     return -1;
 }

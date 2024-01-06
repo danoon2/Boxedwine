@@ -3,12 +3,12 @@
 
 class NetworkProxy {
 public:
-	std::string host;
+	BString host;
 	U32 port;
-	std::string username;
-	std::string password;
+	BString username;
+	BString password;
 };
 
-bool downloadFile(const std::string& url, const std::string& filePath, std::function<void(U64 bytesCompleted)> f, NetworkProxy* proxy, std::string& errorMsg, bool* cancel=NULL);
+bool downloadFile(BString url, BString filePath, std::function<void(U64 bytesCompleted)> f, NetworkProxy* proxy, BString& errorMsg, bool* cancel=NULL);
 
 #endif

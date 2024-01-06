@@ -8,13 +8,13 @@ public:
 	OptionsViewWineVersion() : currentVersion(NULL), availableVersion(NULL) {}
 	WineVersion* currentVersion;
 	WineVersion* availableVersion;
-	std::string name;
-	std::string size;
+	BString name;
+	BString size;
 };
 
 class OptionsView : public BaseView {
 public:
-	OptionsView(std::string tab);
+	OptionsView(BString tab);
 
 	virtual bool saveChanges();
 
@@ -31,7 +31,7 @@ private:
 	float rightColumnWidth;	
 	float wineButtonTotalColumnWidth;
 	float wineButtonFirstColumnWidth;
-	std::map<std::string, OptionsViewWineVersion, std::greater<std::string>> wineVersions;
+	std::map<BString, OptionsViewWineVersion, std::greater<BString>> wineVersions;
 
 	// General
 	std::shared_ptr<LayoutTextInputControl> saveLocationControl;

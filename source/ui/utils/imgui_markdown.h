@@ -94,7 +94,7 @@ static ImFont* H3 = NULL;
 
 void LinkCallback( ImGui::MarkdownLinkCallbackData data_ )
 {
-    std::string url( data_.link, data_.linkLength );
+    BString url( data_.link, data_.linkLength );
     if( !data_.isImage )
     {
         ShellExecuteA( NULL, "open", url.c_str(), NULL, NULL, SW_SHOWNORMAL );
@@ -128,7 +128,7 @@ void LoadFonts( float fontSize_ = 12.0f )
     H1 = io.Fonts->AddFontFromFileTTF( "myfont-bold.ttf", fontSizeH1 );
 }
 
-void Markdown( const std::string& markdown_ )
+void Markdown( const BString& markdown_ )
 {
     // You can make your own Markdown function with your prefered string container and markdown config.
     // > C++14 can use ImGui::MarkdownConfig mdConfig{ LinkCallback, NULL, ImageCallback, ICON_FA_LINK, { { H1, true }, { H2, true }, { H3, false } }, NULL };
@@ -146,7 +146,7 @@ void Markdown( const std::string& markdown_ )
 
 void MarkdownExample()
 {
-    const std::string markdownText = u8R"(
+    const BString markdownText = u8R"(
 # H1 Header: Text and Links
 You can add [links like this one to enkisoftware](https://www.enkisoftware.com/) and lines will wrap well.
 ## H2 Header: indented text.

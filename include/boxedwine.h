@@ -4,7 +4,6 @@
 #define BOXEDWINE_VERSION_STR "231"
 #define BOXEDWINE_VERSION_DISPLAY "23.0.2 (beta)"
 
-#include <string>
 #include <vector>
 #include <unordered_map>
 #include <memory>
@@ -54,8 +53,11 @@
 #endif
 
 #include "../source/util/boxedptr.h"
+#include "platformtypes.h"
+#include "../source/util/bstring.h"
 
 #include "platform.h"
+
 #include "log.h"
 
 #include "../source/util/klist.h"

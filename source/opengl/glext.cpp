@@ -4,7 +4,7 @@
 #include GLH
 #include "glcommon.h"
 
-extern std::unordered_map<std::string, void*> glFunctionMap;
+extern std::unordered_map<BString, void*> glFunctionMap;
 
 const char* glIsLoaded[GL_FUNC_COUNT];
 
@@ -24,7 +24,7 @@ void glExtensionsLoaded() {
 #include "glfunctions.h"
     for (i=0;i<GL_FUNC_COUNT;i++) {
         if (glIsLoaded[i])
-            glFunctionMap[glIsLoaded[i]] = pfn;
+            glFunctionMap[B(glIsLoaded[i])] = pfn;
     }
 
 }

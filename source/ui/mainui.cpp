@@ -123,7 +123,7 @@ void uiDraw() {
     if (currentViewDeprecated == VIEW_OPTIONS || currentViewDeprecated == VIEW_INSTALL || currentViewDeprecated == VIEW_CONTAINERS || currentViewDeprecated == VIEW_HELP) {
         currentView->run(size);
     } else {        
-        drawListView("Apps", appListViewItems, size);
+        drawListView(B("Apps"), appListViewItems, size);
     }
     ImGui::PopStyleColor();
     
@@ -135,7 +135,7 @@ void uiDraw() {
     ImGui::PopStyleVar(1);    
 }
 
-void gotoView(int viewId, std::string tab, std::string param1) {
+void gotoView(int viewId, BString tab, BString param1) {
     if (!currentView || currentView->saveChanges()) {
         if (currentView) {
             delete currentView;
@@ -156,7 +156,7 @@ void gotoView(int viewId, std::string tab, std::string param1) {
 
 void createButton() {
     appButtons.clear();
-    std::string name;
+    BString name;
     
     if (GlobalSettings::hasIconsFont()) {
         name += " ";
@@ -225,11 +225,11 @@ void loadApps() {
                         ImGui::PushStyleColor(ImGuiCol_PopupBg, ImGui::GetColorU32(ImGuiCol_ScrollbarGrab) | 0xFF000000);
                         bool result = false;
                         if (ImGui::BeginPopup("AppOptionsPopup")) {
-                            if (ImGui::Selectable(getTranslation(MAIN_BUTTON_SETTINGS))) {
+                            if (ImGui::Selectable(c_getTranslation(MAIN_BUTTON_SETTINGS))) {
                                 gotoView(VIEW_CONTAINERS, app->getContainer()->getDir(), app->getIniFilePath());
                             }     
-                            if (ImGui::Selectable(getTranslation(CONTAINER_VIEW_DELETE_SHORTCUT))) {
-                                std::string label = getTranslationWithFormat(CONTAINER_VIEW_DELETE_SHORTCUT_CONFIRMATION, true, app->getName());
+                            if (ImGui::Selectable(c_getTranslation(CONTAINER_VIEW_DELETE_SHORTCUT))) {
+                                BString label = getTranslationWithFormat(CONTAINER_VIEW_DELETE_SHORTCUT_CONFIRMATION, true, app->getName());
                                 runOnMainUI([label, app]() {
                                     new YesNoDlg(GENERIC_DLG_CONFIRM_TITLE, label, [app](bool yes) {
                                         if (yes) {
@@ -245,14 +245,14 @@ void loadApps() {
                             }
 #ifdef BOXEDWINE_RECORDER
                             if (GlobalSettings::isAutomationEnabled()) {
-                                if (ImGui::Selectable(getTranslation(CONTAINER_VIEW_CREATE_AUTOMATION))) {
+                                if (ImGui::Selectable(c_getTranslation(CONTAINER_VIEW_CREATE_AUTOMATION))) {
                                     runOnMainUI([app]() {
                                         new WaitDlg(WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(WAITDLG_LAUNCH_APP_LABEL, true, app->getName()));
                                         app->createAutomation();
                                         return false;
                                         });
                                 }
-                                if (ImGui::Selectable(getTranslation(CONTAINER_VIEW_RUN_AUTOMATION), false, app->hasAutomation()? 0 : ImGuiSelectableFlags_Disabled)) {
+                                if (ImGui::Selectable(c_getTranslation(CONTAINER_VIEW_RUN_AUTOMATION), false, app->hasAutomation()? 0 : ImGuiSelectableFlags_Disabled)) {
                                     runOnMainUI([app]() {
                                         new WaitDlg(WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(WAITDLG_LAUNCH_APP_LABEL, true, app->getName()));
                                         app->runAutomation();
@@ -275,8 +275,8 @@ void loadApps() {
                             app->launch();
                         } else {
                             if (GlobalSettings::getWineVersions().size()) {                                
-                                std::string label = getTranslationWithFormat(ERROR_MISSING_WINE, true, app->getContainer()->getWineVersion(), GlobalSettings::getWineVersions()[0].name);
-                                new YesNoDlg(GENERIC_DLG_ERROR_TITLE, label.c_str(), [app](bool yes) {
+                                BString label = getTranslationWithFormat(ERROR_MISSING_WINE, true, app->getContainer()->getWineVersion(), GlobalSettings::getWineVersions()[0].name);
+                                new YesNoDlg(GENERIC_DLG_ERROR_TITLE, label, [app](bool yes) {
                                     if (yes) {
                                         app->getContainer()->setWineVersion(GlobalSettings::getWineVersions()[0].name);
                                         app->getContainer()->saveContainer();
@@ -296,7 +296,7 @@ void loadApps() {
                                             }
                                             });
                                     } else {
-                                        gotoView(VIEW_OPTIONS, "Wine");
+                                        gotoView(VIEW_OPTIONS, B("Wine"));
                                     }
                                     });
                             } else {
@@ -309,7 +309,7 @@ void loadApps() {
         }
     }
     std::sort(appListViewItems.begin(), appListViewItems.end(), [](ListViewItem& a, ListViewItem& b) {
-        return stringIsLessCaseInsensative(a.text, b.text);
+        return a.text.compareTo(b.text, true) == -1;
         });
 }
 
@@ -381,11 +381,11 @@ bool uiLoop() {
             break;
         } else if (event.type == SDL_DROPFILE) {
             char* droppedFileOrDir = event.drop.file;
-            static std::string staticFilePath;
+            static BString staticFilePath;
             
-            staticFilePath = droppedFileOrDir;
+            staticFilePath = BString::copy(droppedFileOrDir);
             runOnMainUI([]() {
-                gotoView(VIEW_INSTALL, "Install", staticFilePath);
+                gotoView(VIEW_INSTALL, B("Install"), staticFilePath);
                 return false;
                 });
             SDL_free(droppedFileOrDir);    // Free dropped_filedir memory
@@ -455,7 +455,7 @@ bool uiLoop() {
     return done;
 }
 
-bool uiShow(const std::string& basePath) {
+bool uiShow(BString basePath) {
     // Setup SDL
     // (Some versions of SDL before <2.0.10 appears to have performance/stalling issues on a minority of Windows systems,
     // depending on whether SDL_INIT_GAMECONTROLLER is enabled or disabled.. updating to latest version of SDL is recommended!)
@@ -612,7 +612,7 @@ bool uiShow(const std::string& basePath) {
                     gotoView(VIEW_CONTAINERS, container->getDir(), app.getIniFilePath());
                     });
             }
-            GlobalSettings::startUpArgs.showAppPickerForContainerDir = "";
+            GlobalSettings::startUpArgs.showAppPickerForContainerDir = B("");
             return false;
         });
 

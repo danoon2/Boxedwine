@@ -1034,17 +1034,14 @@ void marshalBackhandle(CPU* cpu, U32 address, GLhandleARB* buffer, U32 count) {
 #endif
 
 const char* glcommon_glLightv_print_name(GLenum e) {
-    THREAD_LOCAL static std::string* buffer;
-    if (!buffer) {
-        buffer = new std::string();
-    }
+    THREAD_LOCAL static BString buffer;
     if (e >= GL_LIGHT0 && e < GL_LIGHT0 + GL_MAX_LIGHTS) {
-        *buffer = "GL_LIGHT" + std::to_string(e - GL_LIGHT0);
+        buffer = "GL_LIGHT" + BString::valueOf(e - GL_LIGHT0);
     }
     else {
-        *buffer = std::to_string(e);
+        buffer = BString::valueOf(e);
     }
-    return (*buffer).c_str();
+    return buffer.c_str();
 }
 
 const char* glcommon_glLightv_print_buffer(GLenum e, GLfloat* buffer) {
@@ -1086,52 +1083,47 @@ const char* glcommon_glLightv_print_pname(GLenum e)
     case GL_SPECULAR: return "GL_SPECULAR";
     case GL_POSITION: return "GL_POSITION";
     default: {
-        THREAD_LOCAL static std::string* buffer;
-        if (!buffer) {
-            buffer = new std::string();
-        }
-        *buffer = std::to_string(e);
-        return (*buffer).c_str();
+        THREAD_LOCAL static BString buffer;
+        buffer = BString::valueOf(e);
+        return buffer.c_str();
     }
     }
 }
 
 const char* glcommon_glClear_mask(GLbitfield mask) {
-    THREAD_LOCAL static std::string* buffer;
-    if (!buffer) {
-        buffer = new std::string();
-    }
+    THREAD_LOCAL static BString buffer;
+    buffer = "";
     if (mask & GL_COLOR_BUFFER_BIT) {
         mask &= ~GL_COLOR_BUFFER_BIT;
-        *buffer = "GL_COLOR_BUFFER_BIT";
+        buffer += "GL_COLOR_BUFFER_BIT";
     }
     if (mask & GL_DEPTH_BUFFER_BIT) {
         mask &= ~GL_DEPTH_BUFFER_BIT;
-        if (buffer->length()) {
-            *buffer += "|";
+        if (buffer.length()) {
+            buffer += "|";
         }
-        *buffer = "GL_DEPTH_BUFFER_BIT";
+        buffer += "GL_DEPTH_BUFFER_BIT";
     }
     if (mask & GL_ACCUM_BUFFER_BIT) {
         mask &= ~GL_ACCUM_BUFFER_BIT;
-        if (buffer->length()) {
-            *buffer += "|";
+        if (buffer.length()) {
+            buffer += "|";
         }
-        *buffer = "GL_ACCUM_BUFFER_BIT";
+        buffer += "GL_ACCUM_BUFFER_BIT";
     }
     if (mask & GL_STENCIL_BUFFER_BIT) {
         mask &= ~GL_STENCIL_BUFFER_BIT;
-        if (buffer->length()) {
-            *buffer += "|";
+        if (buffer.length()) {
+            buffer += "|";
         }
-        *buffer = "GL_STENCIL_BUFFER_BIT";
+        buffer += "GL_STENCIL_BUFFER_BIT";
     }
     if (mask) {
-        if (buffer->length()) {
-            *buffer += "|";
+        if (buffer.length()) {
+            buffer += "|";
         }
-        *buffer = std::to_string(mask);
+        buffer += BString::valueOf(mask);
     }
-    return buffer->c_str();
+    return buffer.c_str();
 }
 #endif

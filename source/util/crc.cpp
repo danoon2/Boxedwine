@@ -32,7 +32,7 @@ unsigned int crc32b(unsigned char *message, int len) {
     return h;
 }
 
-unsigned int crc32File(const std::string& filePath) {
+unsigned int crc32File(BString filePath) {
     PLATFORM_STAT_STRUCT buf;
     if (PLATFORM_STAT(filePath.c_str(), &buf) == 0 && buf.st_size) {
         FILE* fp = fopen(filePath.c_str(), "rb");

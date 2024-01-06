@@ -195,9 +195,10 @@ void scheduleThread(KThread* thread) {
     }
 #endif
 #ifdef _DEBUG
-    std::string s = std::to_string(thread->id) + " " + thread->process->name;
-    std::wstring w(s.begin(), s.end());
-    SetThreadDescription((HANDLE)cpu->nativeHandle, w.c_str());
+    BString s = BString::valueOf(thread->id) + " " + thread->process->name;
+    wchar_t tmp[256];
+    s.w_str(tmp, 256);
+    SetThreadDescription((HANDLE)cpu->nativeHandle, tmp);
 #endif
     ResumeThread((HANDLE)cpu->nativeHandle);
 }

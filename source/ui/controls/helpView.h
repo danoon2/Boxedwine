@@ -3,7 +3,7 @@
 
 class HelpView : public BaseView {
 public:
-	HelpView(std::string tab);
+	HelpView(BString tab);
 
 	virtual bool saveChanges();
 

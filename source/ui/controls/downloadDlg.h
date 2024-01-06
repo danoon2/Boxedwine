@@ -3,11 +3,11 @@
 
 class DownloadItem {
 public:
-    DownloadItem(const std::string& label, const std::string& url, const std::string& urlBackup, const std::string filePath, U64 size) : label(label), url(url), urlBackup(urlBackup), filePath(filePath), size(size) {}
-    std::string label;
-    std::string url;
-    std::string urlBackup;
-    std::string filePath;
+    DownloadItem(BString label, BString url, BString urlBackup, const BString filePath, U64 size) : label(label), url(url), urlBackup(urlBackup), filePath(filePath), size(size) {}
+    BString label;
+    BString url;
+    BString urlBackup;
+    BString filePath;
     U64 size;
 };
 
@@ -21,18 +21,18 @@ protected:
 
 private:
     void downloadCompleted();
-    void downloadFailed(const std::string& errorMsg);
+    void downloadFailed(BString errorMsg);
     void showErrorMsg(bool open);
 
     std::vector<DownloadItem> items;
     U32 currentItem;
 
-    std::string errorMsg;
+    BString errorMsg;
     U32 percentDone;
     std::function<void(bool)> onCompleted;
     bool cancelled;
     bool downloadDone;
-    std::string currentLabel;
+    BString currentLabel;
     bool hasSize;
 };
 

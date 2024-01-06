@@ -42,7 +42,7 @@ bool KSystem::soundEnabled = true;
 unsigned int KSystem::nextThreadId=10;
 std::unordered_map<void*, SHM*> KSystem::shm;
 std::unordered_map<U32, std::shared_ptr<KProcess> > KSystem::processes;
-std::unordered_map<std::string, BoxedPtr<MappedFileCache> > KSystem::fileCache;
+std::unordered_map<BString, BoxedPtr<MappedFileCache> > KSystem::fileCache;
 BOXEDWINE_MUTEX KSystem::fileCacheMutex;
 U32 KSystem::pentiumLevel = 4;
 bool KSystem::shutingDown;
@@ -52,7 +52,7 @@ U32 KSystem::adjustClockFactor=100;
 U32 KSystem::startTimeTicks;
 U64 KSystem::startTimeMicroCounter;
 U64 KSystem::startTimeSystemTime;
-std::string KSystem::title;
+BString KSystem::title;
 // some simple opengl apps seem to have a hard time starting if this is false
 // Not sure if this is a Boxedwine issue or if its normal for Windows to behave different for OpenGL if the window is hidden
 bool KSystem::showWindowImmediately = false;
@@ -69,11 +69,11 @@ U32 KSystem::cpuAffinityCountForApp = 0;
 #endif
 U32 KSystem::pollRate = DEFAULT_POLL_RATE;
 FILE* KSystem::logFile;
-std::function<void(const std::string& line)> KSystem::watchTTY;
+std::function<void(BString line)> KSystem::watchTTY;
 bool KSystem::ttyPrepend;
-std::string KSystem::exePath;
+BString KSystem::exePath;
 
-BOXEDWINE_CONDITION KSystem::processesCond("KSystem::processesCond");
+BOXEDWINE_CONDITION KSystem::processesCond(B("KSystem::processesCond"));
 
 void KSystem::init() {
     KSystem::adjustClock = false;
@@ -453,11 +453,11 @@ U32 KSystem::gettimeofday(U32 tv, U32 tz) {
     return 0;
 }
 
-void KSystem::writeStat(const std::string& path, U32 buf, bool is64, U64 st_dev, U64 st_ino, U32 st_mode, U64 st_rdev, U64 st_size, U32 st_blksize, U64 st_blocks, U64 mtime, U32 linkCount) {
-    if (!path.compare("/tmp/.X11-unix")) {
+void KSystem::writeStat(BString path, U32 buf, bool is64, U64 st_dev, U64 st_ino, U32 st_mode, U64 st_rdev, U64 st_size, U32 st_blksize, U64 st_blocks, U64 mtime, U32 linkCount) {
+    if (path == "/tmp/.X11-unix") {
         st_mode= K__S_IFDIR |K__S_ISVTX | K__S_IRWXU | K__S_IRWXG | K__S_IRWXO;
     }
-    if (!path.compare("/var/run/samba/msg.lock") || !path.compare("/run/samba/msg.lock")) {
+    if (path == "/var/run/samba/msg.lock" || path == "/run/samba/msg.lock") {
         st_mode = K__S_IFDIR | 0x1ED; // 755
     }
 
@@ -470,7 +470,7 @@ void KSystem::writeStat(const std::string& path, U32 buf, bool is64, U64 st_dev,
         writed(buf, (U32)st_ino); buf += 4;//__st_ino     // 12
         writed(buf, st_mode); buf += 4;//st_mode          // 16
         writed(buf, linkCount); buf += 4;//st_nlink       // 20
-        if (!path.compare("/etc/sudoers") || !path.compare("/tmp/.X11-unix")) {
+        if (path == "/etc/sudoers" || path == "/tmp/.X11-unix") {
             writed(buf, 0); buf += 4;//st_uid             // 24
             writed(buf, 0); buf += 4;//st_gid               // 28
         } else {
@@ -495,7 +495,7 @@ void KSystem::writeStat(const std::string& path, U32 buf, bool is64, U64 st_dev,
         writed(buf, (U32)st_ino); buf += 4;//st_ino
         writed(buf, st_mode); buf += 4;//st_mode
         writed(buf, linkCount); buf += 4;//st_nlink
-        if (!path.compare("/etc/sudoers") || !path.compare("/tmp/.X11-unix")) {
+        if (path == "/etc/sudoers" || path == "/tmp/.X11-unix") {
             writed(buf, 0); buf += 4;//st_uid
             writed(buf, 0); buf += 4;//st_gid
         } else {
@@ -811,19 +811,19 @@ std::shared_ptr<KProcess> KSystem::getProcess(U32 id) {
     return NULL;
 }
 
-void KSystem::eraseFileCache(const std::string& name) {
+void KSystem::eraseFileCache(BString name) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(KSystem::fileCacheMutex);
     KSystem::fileCache.erase(name);
 }
 
-BoxedPtr<MappedFileCache> KSystem::getFileCache(const std::string& name) {
+BoxedPtr<MappedFileCache> KSystem::getFileCache(BString name) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(KSystem::fileCacheMutex);
     if (KSystem::fileCache.count(name))
         return KSystem::fileCache[name];
     return NULL;
 }
 
-void KSystem::setFileCache(const std::string& name, const BoxedPtr<MappedFileCache>& fileCache) {
+void KSystem::setFileCache(BString name, const BoxedPtr<MappedFileCache>& fileCache) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(KSystem::fileCacheMutex);
     KSystem::fileCache[name] = fileCache;
 }

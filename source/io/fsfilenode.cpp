@@ -16,36 +16,36 @@
 #include "fszipnode.h"
 #include "knativethread.h"
 
-std::set<std::string> FsFileNode::nonExecFileFullPaths;
+std::set<BString> FsFileNode::nonExecFileFullPaths;
 
-FsFileNode::FsFileNode(U32 id, U32 rdev, const std::string& path, const std::string& link, const std::string& nativePath, bool isDirectory, bool isRootPath, BoxedPtr<FsNode> parent) : FsNode(File, id, rdev, path, link, nativePath, isDirectory, parent), isRootPath(isRootPath) {
+FsFileNode::FsFileNode(U32 id, U32 rdev, BString path, BString link, BString nativePath, bool isDirectory, bool isRootPath, BoxedPtr<FsNode> parent) : FsNode(File, id, rdev, path, link, nativePath, isDirectory, parent), isRootPath(isRootPath) {
 }
 
-std::string FsFileNode::getNativeTmpPath() {
-    std::string localPath;
-    std::string nativePath;
+BString FsFileNode::getNativeTmpPath() {
+    BString localPath;
+    BString nativePath;
     getTmpPath(nativePath, localPath);
     return nativePath;
 }
 
-std::string FsFileNode::getLocalTmpPath() {
-    std::string localPath;
-    std::string nativePath;
+BString FsFileNode::getLocalTmpPath() {
+    BString localPath;
+    BString nativePath;
     getTmpPath(nativePath, localPath);
     return localPath;
 }
 
 static U32 nextTmpId;
 
-void FsFileNode::getTmpPath(std::string& nativePath, std::string& localPath) {
+void FsFileNode::getTmpPath(BString& nativePath, BString& localPath) {
     BOXEDWINE_CRITICAL_SECTION;
-    Fs::makeLocalDirs("/tmp/del");
-    BoxedPtr<FsNode> delDir = Fs::getNodeFromLocalPath("", "/tmp/del", true);
+    Fs::makeLocalDirs(B("/tmp/del"));
+    BoxedPtr<FsNode> delDir = Fs::getNodeFromLocalPath(B(""), B("/tmp/del"), true);
 
     for (;nextTmpId<100000000;nextTmpId++) {
-        std::string name = "del"+std::to_string(nextTmpId)+".tmp";
+        BString name = "del"+BString::valueOf(nextTmpId)+".tmp";
         Fs::localNameToRemote(name);
-        nativePath = delDir->nativePath+Fs::nativePathSeperator+name;
+        nativePath = delDir->nativePath ^ name;
         if (!Fs::doesNativePathExist(nativePath)) {
             localPath = "/tmp/del/"+name;
             break;
@@ -83,10 +83,10 @@ bool FsFileNode::remove() {
             }
         });
         
-        Fs::makeLocalDirs("/tmp/del");
-        BoxedPtr<FsNode> delDir = Fs::getNodeFromLocalPath("", "/tmp/del", true);
+        Fs::makeLocalDirs(B("/tmp/del"));
+        BoxedPtr<FsNode> delDir = Fs::getNodeFromLocalPath(B(""), B("/tmp/del"), true);
 
-        std::string newNativePath = FsFileNode::getNativeTmpPath();
+        BString newNativePath = FsFileNode::getNativeTmpPath();
 
         if (::rename(nativePath.c_str(), newNativePath.c_str())!=0) {
             klog("could not rename %s", nativePath.c_str());
@@ -143,12 +143,12 @@ void FsFileNode::ensurePathIsLocal() {
         if (this->isDirectory()) {
             Fs::makeLocalDirs(this->path);
         } else {
-            std::string parentPath = Fs::getParentPath(this->path);
-            Fs::makeLocalDirs(parentPath.c_str());
+            BString parentPath = Fs::getParentPath(this->path);
+            Fs::makeLocalDirs(parentPath);
             this->zipNode->moveToFileSystem(this);
         }
     } else if (this->parent->type==File) {
-        std::string parentPath = Fs::getParentPath(this->path);
+        BString parentPath = Fs::getParentPath(this->path);
         Fs::makeLocalDirs(parentPath);
     }
 #endif
@@ -159,7 +159,7 @@ FsOpenNode* FsFileNode::open(U32 flags) {
     U32 f;
             
     if (this->isDirectory()) {
-        BoxedPtr<FsNode> n = Fs::getNodeFromLocalPath("", this->path, true);
+        BoxedPtr<FsNode> n = Fs::getNodeFromLocalPath(B(""), this->path, true);
         if (!n) {
             return NULL;
         }
@@ -173,7 +173,7 @@ FsOpenNode* FsFileNode::open(U32 flags) {
         } else {
             openFlags|=O_RDWR;            
         }
-        std::string parentPath = Fs::getNativeParentPath(this->nativePath);
+        BString parentPath = Fs::getNativeParentPath(this->nativePath);
         if (!Fs::doesNativePathExist(parentPath)) {
             ensurePathIsLocal();
         }
@@ -219,7 +219,7 @@ U32 FsFileNode::getMode() {
     if (!FsFileNode::nonExecFileFullPaths.count(this->path)) {
         result|=K__S_IEXEC;
     }
-    if (KThread::currentThread()->process->userId == 0 ||  stringStartsWith(this->path, "/tmp") ||  stringStartsWith(this->path, "/var") ||  stringStartsWith(this->path, "/home")) {
+    if (KThread::currentThread()->process->userId == 0 ||  this->path.startsWith("/tmp") ||  this->path.startsWith("/var") ||  this->path.startsWith("/home")) {
         result|=K__S_IWRITE;
     }
     return result;
@@ -266,7 +266,7 @@ S32 translateErr(U32 e) {
     }
 }
 
-U32 FsFileNode::rename(const std::string& path) {
+U32 FsFileNode::rename(BString path) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->openNodesMutex);
     U32 result=0;
     S64* tmpPos = NULL;
@@ -288,22 +288,23 @@ U32 FsFileNode::rename(const std::string& path) {
         });
     }
 
-    BoxedPtr<FsNode> parent = Fs::getNodeFromLocalPath("", Fs::getParentPath(path), true);
+    BoxedPtr<FsNode> parent = Fs::getNodeFromLocalPath(B(""), Fs::getParentPath(path), true);
     if (!parent) {
         return -K_ENOENT;
     }
 
-    std::string fileName = Fs::getFileNameFromPath(path);
+    BString fileName = Fs::getFileNameFromPath(path);
     Fs::localNameToRemote(fileName);
-    std::string nativePath = parent->nativePath+Fs::nativePathSeperator+fileName;
-    std::string originalPath;
+    BString nativePath = parent->nativePath ^ fileName;
+    BString originalPath;
 
-    if (this->isLink())
-        nativePath+=".link";
+    if (this->isLink()) {
+        nativePath = nativePath + ".link";
+    }
 
     for (U32 i=0;i<3;i++) {
         if (Fs::doesNativePathExist(nativePath)) {
-            BoxedPtr<FsNode> existingNode = Fs::getNodeFromLocalPath("", path, false);
+            BoxedPtr<FsNode> existingNode = Fs::getNodeFromLocalPath(B(""), path, false);
             if (!existingNode) {
                 // we must be on windows, nativePath and path are case insensitive the same, but are different case
                 //            
@@ -332,8 +333,8 @@ U32 FsFileNode::rename(const std::string& path) {
             this->path = path;
             this->nativePath = nativePath;
             this->name = Fs::getFileNameFromPath(path);
-            std::string parentPath = Fs::getParentPath(path);
-            BoxedPtr<FsNode> parentNode = Fs::getNodeFromLocalPath("", parentPath, false);
+            BString parentPath = Fs::getParentPath(path);
+            BoxedPtr<FsNode> parentNode = Fs::getNodeFromLocalPath(B(""), parentPath, false);
             parentNode->addChild(this);
             this->parent = parentNode;
         } else {

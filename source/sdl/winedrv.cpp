@@ -395,7 +395,7 @@ void boxeddrv_DestroyWindow(CPU* cpu) {
 
 // void CDECL drv_EmptyClipboard(void)
 void boxeddrv_EmptyClipboard(CPU* cpu) {
-    KNativeSystem::clipboardSetText("");
+    KNativeSystem::clipboardSetText(B(""));
 }
 
 //void CDECL drv_EndClipboardUpdate(void)
@@ -571,7 +571,7 @@ void boxeddrv_GetClipboardData(CPU* cpu) {
     U32 format = ARG1;
 
     if ((format == CF_TEXT || format == CF_UNICODETEXT) && KNativeSystem::clipboardHasText()) {
-        std::string text = KNativeSystem::clipboardGetText();
+        BString text = KNativeSystem::clipboardGetText();
         int len = (int)text.length();
         if (format == CF_TEXT) {
             if (len+1>(int)ARG3)
@@ -878,7 +878,7 @@ void boxeddrv_SetClipboardData(CPU* cpu) {
         text = getNativeStringW(ARG2, tmp, sizeof(tmp));
     }
     if (text) {
-        if (KNativeSystem::clipboardSetText(text))
+        if (KNativeSystem::clipboardSetText(BString::copy(text)))
             EAX = 1;
         else
             EAX = 0;
@@ -1679,10 +1679,10 @@ void boxeddrv_wglGetPixelFormat(CPU* cpu) {
 }
 
 #ifdef BOXEDWINE_OPENGL
-std::unordered_map<std::string, void*> glFunctionMap;
+std::unordered_map<BString, void*> glFunctionMap;
 void boxeddrv_wglGetProcAddress(CPU* cpu) {
     char tmp[1024];
-    char* name = getNativeString(ARG1, tmp, sizeof(tmp));
+    BString name = getNativeStringB(ARG1, tmp, sizeof(tmp));
 
     if (glFunctionMap.count(name))
         EAX = 1;

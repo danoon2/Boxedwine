@@ -76,7 +76,7 @@ public:
     static U32 pentiumLevel;
 	static bool shutingDown;
     static U32 killTime;
-    static std::string title;
+    static BString title;
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
     static bool useLargeAddressSpace;
     static bool useSingleMemOffset;
@@ -88,20 +88,20 @@ public:
     static bool showWindowImmediately;
     static U32 skipFrameFPS;
     static FILE* logFile;
-    static std::function<void(const std::string& line)> watchTTY;
+    static std::function<void(BString line)> watchTTY;
     static bool ttyPrepend;
-    static std::string exePath;
+    static BString exePath;
     
     static void init();
 	static void destroy();
     static U32 getNextThreadId();
 
     // helpers
-    static void writeStat(const std::string& path, U32 buf, bool is64, U64 st_dev, U64 st_ino, U32 st_mode, U64 st_rdev, U64 st_size, U32 st_blksize, U64 st_blocks, U64 mtime, U32 linkCount);    
+    static void writeStat(BString path, U32 buf, bool is64, U64 st_dev, U64 st_ino, U32 st_mode, U64 st_rdev, U64 st_size, U32 st_blksize, U64 st_blocks, U64 mtime, U32 linkCount);    
     static std::shared_ptr<KProcess> getProcess(U32 id);
-    static void eraseFileCache(const std::string& name);
-    static BoxedPtr<MappedFileCache> getFileCache(const std::string& name);
-    static void setFileCache(const std::string& name, const BoxedPtr<MappedFileCache>& fileCache);
+    static void eraseFileCache(BString name);
+    static BoxedPtr<MappedFileCache> getFileCache(BString name);
+    static void setFileCache(BString name, const BoxedPtr<MappedFileCache>& fileCache);
     static void eraseProcess(U32 id);
     static void addProcess(U32 id, const std::shared_ptr<KProcess>& process);
     static KThread* getThreadById(U32 threadId);
@@ -154,7 +154,7 @@ private:
     
     static std::unordered_map<void*, SHM*> shm;
     static std::unordered_map<U32, std::shared_ptr<KProcess> > processes;
-    static std::unordered_map<std::string, BoxedPtr<MappedFileCache> > fileCache;
+    static std::unordered_map<BString, BoxedPtr<MappedFileCache> > fileCache;
     static BOXEDWINE_MUTEX fileCacheMutex;
 };
 

@@ -3,13 +3,13 @@
 
 class YesNoDlg : public BaseDlg {
 public:
-    YesNoDlg(int title, const std::string& label, std::function<void(bool)> onCompleted);
+    YesNoDlg(int title, BString label, std::function<void(bool)> onCompleted);
 
 protected:
     virtual void run();
 
 private:
-    std::string label;
+    BString label;
     std::function<void(bool)> onCompleted;
 };
 

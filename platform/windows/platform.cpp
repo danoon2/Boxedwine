@@ -21,6 +21,11 @@
 #include "pixelformat.h"
 #include "../source/emulation/cpu/binaryTranslation/btCpu.h"
 #include <VersionHelpers.h>
+#include <Shlwapi.h>
+
+char* platform_strcasestr(const char* s1, const char* s2) {
+    return StrStrIA(s1, s2);
+}
 
 LONGLONG PCFreq;
 LONGLONG CounterStart;
@@ -73,8 +78,8 @@ ULONGLONG Platform::getSystemTimeAsMicroSeconds() {
     return t;
 }
 
-void Platform::listNodes(const std::string& nativePath, std::vector<ListNodeResult>& results) {
-    std::string path;
+void Platform::listNodes(BString nativePath, std::vector<ListNodeResult>& results) {
+    BString path;
     WIN32_FIND_DATA findData;
     HANDLE hFind;
 
@@ -83,7 +88,7 @@ void Platform::listNodes(const std::string& nativePath, std::vector<ListNodeResu
     if(hFind != INVALID_HANDLE_VALUE)  { 		
         do  { 
             if (strcmp(findData.cFileName, ".") && strcmp(findData.cFileName, ".."))  {
-                results.push_back(ListNodeResult(findData.cFileName, (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)!=0));
+                results.push_back(ListNodeResult(BString::copy(findData.cFileName), (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)!=0));
             }
         } while(FindNextFile(hFind, &findData)); 
         FindClose(hFind); 
@@ -355,11 +360,11 @@ int getPixelFormats(PixelFormat* pfd, int maxPfs) {
     return result;
 }
 
-const char* Platform::getResourceFilePath(const std::string& location) {
-    return NULL;
+BString Platform::getResourceFilePath(BString location) {
+    return BString::empty;
 }
 
-void Platform::openFileLocation(const std::string& location) {
+void Platform::openFileLocation(BString location) {
     ShellExecute(NULL, "open", location.c_str(), NULL, NULL, SW_SHOWNORMAL);
 }
 

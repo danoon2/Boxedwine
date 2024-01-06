@@ -20,7 +20,7 @@
 
 #include "bufferaccess.h"
 
-BufferAccess::BufferAccess(const BoxedPtr<FsNode>& node, U32 flags, const std::string& buffer) : FsOpenNode(node, flags) {	
+BufferAccess::BufferAccess(const BoxedPtr<FsNode>& node, U32 flags, BString buffer) : FsOpenNode(node, flags) {	
     this->buffer = buffer;
     this->pos = 0;
 }
@@ -45,7 +45,7 @@ S64 BufferAccess::seek(S64 pos) {
 
 U32 BufferAccess::readNative(U8* buffer, U32 len) {
     U32 pos = (U32)this->pos;
-    if (pos+len>this->buffer.length())
+    if (pos+len>(U32)this->buffer.length())
         len = (U32)this->buffer.length()-pos;
     memcpy(buffer, this->buffer.c_str()+pos, len);
     this->pos+=len;
@@ -53,7 +53,7 @@ U32 BufferAccess::readNative(U8* buffer, U32 len) {
 }
 
 U32 BufferAccess::writeNative(U8* buffer, U32 len) {    
-    this->buffer+=std::string((char*)buffer, len);
+    this->buffer.append((char*)buffer, len);
     this->pos+=len;
     return len;
 }

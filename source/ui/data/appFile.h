@@ -7,21 +7,21 @@ class BoxedApp;
 
 class AppFile {
 public:
-    AppFile(const std::string& name, const std::string& installType, const std::string& iconPath, const std::string& filePath, U32 size, const std::string& exe, const std::string& exeOptions, const std::string& help, const std::string& optionsName, const std::string& installOptions, const std::string& installExe, const std::vector<std::string>& args);
-    std::string name;
-    std::string optionsName;
-    std::string installType;
-    std::string filePath;
-    std::string iconPath;
-    std::string localIconPath;
-    std::string localFilePath;
+    AppFile(BString name, BString installType, BString iconPath, BString filePath, U32 size, BString exe, BString exeOptions, BString help, BString optionsName, BString installOptions, BString installExe, const std::vector<BString>& args);
+    BString name;
+    BString optionsName;
+    BString installType;
+    BString filePath;
+    BString iconPath;
+    BString localIconPath;
+    BString localFilePath;
     U32 size;
-    std::string exe;
-    std::vector<std::string> args;
-    std::string installExe;
-    std::vector<std::string> installOptions;
-    std::vector<std::string> exeOptions;
-    std::string help;
+    BString exe;
+    std::vector<BString> args;
+    BString installExe;
+    std::vector<BString> installOptions;
+    std::vector<BString> exeOptions;
+    BString help;
 
     std::shared_ptr<BoxedTexture> iconTexture;
 
@@ -31,7 +31,7 @@ public:
     bool operator<(const AppFile& rhs) const { return name < rhs.name; }
 
 private:
-    static void runOptions(BoxedContainer* container, BoxedApp* app, const std::vector<std::string>& options, std::list< std::function<bool() > >& runner, std::list<AppFile*>& downloads);
+    static void runOptions(BoxedContainer* container, BoxedApp* app, const std::vector<BString>& options, std::list< std::function<bool() > >& runner, std::list<AppFile*>& downloads);
     void install(bool chooseShortCut, BoxedContainer* container, std::list< std::function<bool() > >& runner, std::list<AppFile*>& downloads);
 };
 

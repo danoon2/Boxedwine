@@ -19,9 +19,9 @@ public:
         Socket,
         Memory
     };
-    FsNode(Type type, U32 id, U32 rdev, const std::string& path, const std::string& link, const std::string& nativePath, bool isDirectory, BoxedPtr<FsNode> parent);
+    FsNode(Type type, U32 id, U32 rdev, BString path, BString link, BString nativePath, bool isDirectory, BoxedPtr<FsNode> parent);
 
-    virtual U32 rename(const std::string& path)=0; //return 0 if success, else errno
+    virtual U32 rename(BString path)=0; //return 0 if success, else errno
     virtual bool remove()=0;
     virtual U64 lastModified()=0; // returns ms since 1970
     virtual U64 length()=0;
@@ -34,8 +34,8 @@ public:
     virtual bool canRead();
     virtual bool canWrite();
 
-    virtual std::string getLink() {return this->link;}
-    virtual bool isLink() { return this->link.size() > 0; }
+    virtual BString getLink() {return this->link;}
+    virtual bool isLink() { return this->link.length() > 0; }
 
     U32 getHardLinkCount() {return this->hardLinkCount;}    
     bool isDirectory() {return this->isDir;}
@@ -44,22 +44,22 @@ public:
     void removeOpenNode(FsOpenNode* node);
     void removeNodeFromParent();
 
-    std::string path; 
-    std::string nativePath;
-    std::string name;
-    std::string link;
+    BString path; 
+    BString nativePath;
+    BString name;
+    BString link;
     const U32 id;
     const U32 rdev;  
     U32 hardLinkCount;    
     const Type type;
     std::weak_ptr<KObject> kobject;
 
-    BoxedPtr<FsNode> getChildByName(const std::string& name);
-    BoxedPtr<FsNode> getChildByNameIgnoreCase(const std::string& name);
+    BoxedPtr<FsNode> getChildByName(BString name);
+    BoxedPtr<FsNode> getChildByNameIgnoreCase(BString name);
 
     U32 getChildCount();
     void addChild(BoxedPtr<FsNode> node);
-    void removeChildByName(const std::string& name);
+    void removeChildByName(BString name);
     void getAllChildren(std::vector<BoxedPtr<FsNode> > & results);
 
     U32 addLock(KFileLock* lock);
@@ -80,7 +80,7 @@ private:
     const bool isDir;
     bool hasLoadedChildrenFromFileSystem;    
 
-    std::unordered_map<std::string, BoxedPtr<FsNode> > childrenByName;
+    std::unordered_map<BString, BoxedPtr<FsNode> > childrenByName;
     BOXEDWINE_MUTEX childrenByNameMutex;
 
     std::vector<KFileLock> locks;       

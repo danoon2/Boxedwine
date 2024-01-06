@@ -49,45 +49,45 @@ class FsFileNode;
 
 class Fs {
 public:   
-    static bool initFileSystem(const std::string& rootPath);
-    static BoxedPtr<FsNode> getNodeFromLocalPath(const std::string& currentDirectory, const std::string& path, bool followLink, bool* isLink=NULL);    
-    static BoxedPtr<FsNode> addFileNode(const std::string& path, const std::string& link, const std::string& nativePath, bool isDirectory, const BoxedPtr<FsNode>& parent);
-    static BoxedPtr<FsNode> addVirtualFile(const std::string& path, OpenVirtualNode func, U32 mode, U32 rdev, const BoxedPtr<FsNode>& parent, U32 data=0);
-    static BoxedPtr<FsNode> addDynamicLinkFile(const std::string& path, U32 rdev, const BoxedPtr<FsNode>& parent, bool isDirectory, std::function<std::string(void)> fnGetLink);
-    static BoxedPtr<FsNode> addRootDirectoryNode(const std::string& path, const std::string& nativePath, const BoxedPtr<FsNode>& parent);
-    static void remoteNameToLocal(std::string& path);
-    static void localNameToRemote(std::string& path);
-    static std::string localFromNative(const std::string& path);
-    static std::string nativeFromLocal(const std::string& path);
-    static U32 makeLocalDirs(const std::string& path);
-    static bool makeNativeDirs(const std::string& path);
-    static U32 deleteNativeFile(const std::string& path);
-    static U32 deleteNativeDirAndAllFilesInDir(const std::string& path);
-    static U32 iterateAllNativeFiles(const std::string& path, bool recursive, bool includeDirs, std::function<U32(const std::string& filePath,bool isDir)> f);
-    static std::string getParentPath(const std::string& path);
-    static std::string getNativeParentPath(const std::string& path);
-    static std::string getFileNameFromPath(const std::string& path);
-    static std::string getFileNameFromNativePath(const std::string& path);
-    static U32 readNativeFile(const std::string& nativePath, U8* buffer, U32 bufferLen);
-    static void splitPath(const std::string& path, std::vector<std::string>& parts);
-    static bool doesNativePathExist(const std::string& path);
-    static bool isNativeDirectoryEmpty(const std::string& path);
-    static U64 getNativeDirectorySize(const std::string& path, bool recursive);
-    static U64 getNativeFileSize(const std::string& path);
-    static bool isNativePathDirectory(const std::string& path);
-    static std::string getFullPath(const std::string& currentDirectory, const std::string& path);
-    static std::string getNativePathFromParentAndLocalFilename(const BoxedPtr<FsNode>& parent, const std::string fileName);    
-    static std::vector<std::string> getFilesInNativeDirectoryWhereFileMatches(const std::string& dirPath, const std::string& startsWith, const std::string& endsWith, bool ignoreCase);
-    static void trimTrailingSlash(std::string& s);
+    static bool initFileSystem(BString rootPath);
+    static BoxedPtr<FsNode> getNodeFromLocalPath(BString currentDirectory, BString path, bool followLink, bool* isLink=NULL);    
+    static BoxedPtr<FsNode> addFileNode(BString path, BString link, BString nativePath, bool isDirectory, const BoxedPtr<FsNode>& parent);
+    static BoxedPtr<FsNode> addVirtualFile(BString path, OpenVirtualNode func, U32 mode, U32 rdev, const BoxedPtr<FsNode>& parent, U32 data=0);
+    static BoxedPtr<FsNode> addDynamicLinkFile(BString path, U32 rdev, const BoxedPtr<FsNode>& parent, bool isDirectory, std::function<BString(void)> fnGetLink);
+    static BoxedPtr<FsNode> addRootDirectoryNode(BString path, BString nativePath, const BoxedPtr<FsNode>& parent);
+    static void remoteNameToLocal(BString& path);
+    static void localNameToRemote(BString& path);
+    static BString localFromNative(const BString& path);
+    static BString nativeFromLocal(const BString& path);
+    static U32 makeLocalDirs(BString path);
+    static bool makeNativeDirs(BString path);
+    static U32 deleteNativeFile(BString path);
+    static U32 deleteNativeDirAndAllFilesInDir(BString path);
+    static U32 iterateAllNativeFiles(BString path, bool recursive, bool includeDirs, std::function<U32(BString filePath,bool isDir)> f);
+    static BString getParentPath(BString path);
+    static BString getNativeParentPath(BString path);
+    static BString getFileNameFromPath(BString path);
+    static BString getFileNameFromNativePath(BString path);
+    static U32 readNativeFile(BString nativePath, U8* buffer, U32 bufferLen);
+    static void splitPath(BString path, std::vector<BString>& parts);
+    static bool doesNativePathExist(BString path);
+    static bool isNativeDirectoryEmpty(BString path);
+    static U64 getNativeDirectorySize(BString path, bool recursive);
+    static U64 getNativeFileSize(BString path);
+    static bool isNativePathDirectory(BString path);
+    static BString getFullPath(BString currentDirectory, BString path);
+    static BString getNativePathFromParentAndLocalFilename(const BoxedPtr<FsNode>& parent, const BString fileName);    
+    static std::vector<BString> getFilesInNativeDirectoryWhereFileMatches(BString dirPath, BString startsWith, BString endsWith, bool ignoreCase);
+    static BString trimTrailingSlash(BString s);
 
-    static std::string nativePathSeperator;
+    static BString nativePathSeperator;
 
     static BoxedPtr<FsFileNode> rootNode;
 	static void shutDown();
 private:
     friend class KUnixSocketObject;
 
-    static BoxedPtr<FsNode> getNodeFromLocalPath(const std::string& currentDirectory, const std::string& path, BoxedPtr<FsNode>& lastNode, std::vector<std::string>& missingParts, bool followLink, bool* isLink=NULL);
+    static BoxedPtr<FsNode> getNodeFromLocalPath(BString currentDirectory, BString path, BoxedPtr<FsNode>& lastNode, std::vector<BString>& missingParts, bool followLink, bool* isLink=NULL);
 
     static std::atomic_int nextNodeId;
 };

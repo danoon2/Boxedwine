@@ -45,7 +45,7 @@ void KSigAction::readSigAction(U32 address, U32 sigsetSize) {
         klog("readSigAction: can't handle sigsetSize=%d", sigsetSize);
 }
 
-KSignal::KSignal() : KObject(KTYPE_SIGNAL), blocking(false), mask(0), signalingPid(0), signalingUid(0), lockCond("KSignal::lockCond") {
+KSignal::KSignal() : KObject(KTYPE_SIGNAL), blocking(false), mask(0), signalingPid(0), signalingUid(0), lockCond(B("KSignal::lockCond")) {
 }
 
 void KSignal::setBlocking(bool blocking) {

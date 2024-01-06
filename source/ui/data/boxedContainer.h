@@ -6,9 +6,9 @@ public:
     BoxedContainer() {}
     ~BoxedContainer();
 
-    static BoxedContainer* createContainer(const std::string& dirPath, const std::string& name, const std::string& wineVersion);
+    static BoxedContainer* createContainer(BString dirPath, BString name, BString wineVersion);
 
-    bool load(const std::string& dirPath);
+    bool load(BString dirPath);
     bool saveContainer();
 
     void reload();
@@ -17,54 +17,54 @@ public:
     void deleteApp(BoxedApp* app);
     void deleteContainerFromFilesystem();
     void launch(); // will set StartUpArgs to use this container
-    void launch(const std::vector<std::string>& args, const std::string& labelForWaitDlg); // will create new StartUpArgs and set it to use this container and the args
+    void launch(const std::vector<BString>& args, BString labelForWaitDlg); // will create new StartUpArgs and set it to use this container and the args
     bool doesWineVersionExist();
 
-    BoxedApp* getAppByIniFile(const std::string& iniFile);
+    BoxedApp* getAppByIniFile(BString iniFile);
 
-    const std::string& getName() {return this->name;}
-    const std::string& getDir() {return this->dirPath;}
-    const std::string& getWineVersion() {return this->wineVersion;}
+    BString getName() {return this->name;}
+    BString getDir() {return this->dirPath;}
+    BString getWineVersion() {return this->wineVersion;}
     int getWineVersionAsNumber();
-    int getWineVersionAsNumber(const std::string& wineVersion);
-    const std::string& getSize() {return this->cachedSize;}
+    int getWineVersionAsNumber(BString wineVersion);
+    BString getSize() {return this->cachedSize;}
 
-    void setName(const std::string& name);
+    void setName(BString name);
 
-    std::string getNativePathForApp(const BoxedApp& app);
+    BString getNativePathForApp(const BoxedApp& app);
 
-    void getNewApps(std::vector<BoxedApp>& apps, MountInfo* mount=NULL, const std::string& nativeDirectory="");
+    void getNewApps(std::vector<BoxedApp>& apps, MountInfo* mount=NULL, BString nativeDirectory=BString());
     void getWineApps(std::vector<BoxedApp>& apps);
     void updateCachedSize();
 
-    void setWineVersion(const std::string& wineVersion) {this->wineVersion = wineVersion;}
+    void setWineVersion(BString wineVersion) {this->wineVersion = wineVersion;}
     bool addNewMount(const MountInfo& mountInfo);
     void clearMounts() {this->mounts.clear();}
     const std::vector<MountInfo>& getMounts() {return this->mounts;}
 
     bool isGDI();
     void setGDI(bool gdi);
-    std::string getRenderer();
-    void setRenderer(const std::string& renderer);
-    std::string getMouseWarpOverride();
-    void setMouseWarpOverride(const std::string& value);
-    std::string getWindowsVersion();
+    BString getRenderer();
+    void setRenderer(BString renderer);
+    BString getMouseWarpOverride();
+    void setMouseWarpOverride(BString value);
+    BString getWindowsVersion();
     void setWindowsVersion(const BoxedWinVersion& version);    
-    std::string getLogPath();
+    BString getLogPath();
 
 private:
     void loadApps();
     void getNewDesktopLinkApps(std::vector<BoxedApp>& apps);
-    void getNewExeApps(std::vector<BoxedApp>& apps, MountInfo* mount, std::string nativeDirectory);
-    std::string getWindowsVersion2();
+    void getNewExeApps(std::vector<BoxedApp>& apps, MountInfo* mount, BString nativeDirectory);
+    BString getWindowsVersion2();
 
     std::vector<BoxedApp*> apps;
-    std::string name;
-    std::string wineVersion;
-    std::string cachedSize;
+    BString name;
+    BString wineVersion;
+    BString cachedSize;
 
     friend class GlobalSettings;
-    std::string dirPath;
+    BString dirPath;
     std::vector<MountInfo> mounts;
 };
 

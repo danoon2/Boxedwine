@@ -547,6 +547,9 @@
     <ClCompile Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btData.cpp">
       <Filter>source\emulation\cpu\binaryTranslation</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\util\bstring.cpp">
+      <Filter>source\util</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -1229,6 +1232,12 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btData.h">
       <Filter>source\emulation\cpu\binaryTranslation</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\util\bstring.h">
+      <Filter>source\util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\util\concurrentqueue.h">
+      <Filter>source\util</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

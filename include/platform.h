@@ -69,6 +69,10 @@
 #define OPENGL_CALL_TYPE __stdcall
 #define PACKED( s ) __pragma( pack(push, 1) ) s __pragma( pack(pop) )
 #define ALIGN(t, x) __declspec(align(x)) t
+#define strcasecmp stricmp
+#define strncasecmp strnicmp
+char* platform_strcasestr(const char* s1, const char* s2);
+#define strcasestr platform_strcasestr
 #else
 #pragma clang diagnostic ignored "-Winvalid-offsetof"
 #include <limits.h>
@@ -110,20 +114,20 @@ class Platform {
 public:
     class ListNodeResult {
     public:
-        ListNodeResult(const std::string& name, bool isDirectory) : name(name), isDirectory(isDirectory) {}
-        std::string name;
+        ListNodeResult(BString name, bool isDirectory) : name(name), isDirectory(isDirectory) {}
+        BString name;
         bool isDirectory;
     };
     static void init();
-    static void listNodes(const std::string& nativePath, std::vector<ListNodeResult>& results);    
+    static void listNodes(BString nativePath, std::vector<ListNodeResult>& results);    
     static int nativeSocketPair(S32 socks[2]);
     static U32 getCpuFreqMHz();
     static U32 getCpuCurScalingFreqMHz(U32 cpuIndex);
     static U32 getCpuMaxScalingFreqMHz(U32 cpuIndex);
     static U32 getCpuCount();
-    static void openFileLocation(const std::string& location);
+    static void openFileLocation(BString location);
     static bool supportsOpenFileLocation() {return true;}
-    static const char* getResourceFilePath(const std::string& location);
+    static BString getResourceFilePath(BString location);
     static void setCurrentThreadPriorityHigh();
     static void writeCodeToMemory(void* address, U32 len, std::function<void()> callback);
     static U32 nanoSleep(U64 nano);

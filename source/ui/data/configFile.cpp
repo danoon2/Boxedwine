@@ -4,40 +4,40 @@
 #include "../../util/fileutils.h"
 #include "../../util/stringutil.h"
 
-ConfigFile::ConfigFile(const std::string& fileName) {
-    std::vector<std::string> lines;
+ConfigFile::ConfigFile(BString fileName) {
+    std::vector<BString> lines;
     readLinesFromFile(fileName, lines);
     this->fileName = fileName;
     for (auto& line : lines) {
-        std::vector<std::string> parts;
-        stringSplit(parts, line, '=', 2);
-        if (parts.size()!=2) {
+        std::vector<BString> parts;
+        line.split('=', parts);
+        if (parts.size() < 2) {
             kwarn("%s has a malformed key/value pair", fileName.c_str());
         } else {
-            stringTrim(parts[0]);
-            stringTrim(parts[1]);
+            parts[0] = parts[0].trim();
+            parts[1] = parts[1].trim();
             this->values[parts[0]] = parts[1];
         }
     }
 }
 
-std::string ConfigFile::readString(const std::string& name, const std::string& defaultValue) {
+BString ConfigFile::readString(BString name, BString defaultValue) {
     if (this->values.count(name)) {
         return this->values[name];
     }
     return defaultValue;
 }
 
-bool ConfigFile::readBool(const std::string& name, bool defaultValue) {
+bool ConfigFile::readBool(BString name, bool defaultValue) {
     if (this->values.count(name)) {
         return this->values[name]!="0";
     }
     return defaultValue;
 }
 
-int ConfigFile::readInt(const std::string& name, int defaultValue) {
+int ConfigFile::readInt(BString name, int defaultValue) {
     if (this->values.count(name)) {
-        std::string& value = this->values[name];
+        BString value = this->values[name];
         if (value.length()==0) {
             return 0;
         }
@@ -46,20 +46,20 @@ int ConfigFile::readInt(const std::string& name, int defaultValue) {
     return defaultValue;
 }
 
-void ConfigFile::writeString(const std::string& name, const std::string& value) {
+void ConfigFile::writeString(BString name, BString value) {
     this->values[name] = value;
 }
 
-void ConfigFile::writeBool(const std::string& name, bool value) {
-    this->values[name] = value?"1":"0";
+void ConfigFile::writeBool(BString name, bool value) {
+    this->values[name] = B(value?"1":"0");
 }
 
-void ConfigFile::writeInt(const std::string& name, int value) {
-    this->values[name] = std::to_string(value);
+void ConfigFile::writeInt(BString name, int value) {
+    this->values[name] = BString::valueOf(value);
 }
 
 bool ConfigFile::saveChanges() {
-    std::vector<std::string> lines;
+    std::vector<BString> lines;
     for (auto& n : this->values) {
         lines.push_back(n.first+"="+n.second);
     }

@@ -9,18 +9,18 @@ class BoxedContainer;
 
 class BoxedWinVersion {
 public:
-    BoxedWinVersion(const std::string& ver, const std::string& desc, U32 major, U32 minor, U32 build, U32 id, const std::string& csd, U16 majorPack, U16 minorPack, const std::string& product);
+    BoxedWinVersion(BString ver, BString desc, U32 major, U32 minor, U32 build, U32 id, BString csd, U16 majorPack, U16 minorPack, BString product);
 
-    std::string szVersion;
-    std::string szDescription;
+    BString szVersion;
+    BString szDescription;
     U32       dwMajorVersion;
     U32       dwMinorVersion;
     U32       dwBuildNumber;
     U32       dwPlatformId;
-    std::string szCSDVersion;
+    BString szCSDVersion;
     U16        wServicePackMajor;
     U16        wServicePackMinor;
-    std::string szProductType;
+    BString szProductType;
 };
 
 class BoxedwineData {
@@ -31,11 +31,11 @@ public:
 
     static const std::vector<BoxedContainer*> getContainers() {return BoxedwineData::containers;}
     static void addContainer(BoxedContainer* container);
-    static BoxedContainer* getContainerByDir(const std::string& dir);
+    static BoxedContainer* getContainerByDir(BString dir);
     static void reloadContainers();
     static const std::vector<BoxedWinVersion>& getWinVersions() { return BoxedwineData::winVersions; }
     static int getDefaultWindowsVersionIndex() {return 4;} // windows 7
-    static BoxedWinVersion* getWinVersionFromName(const std::string& name);
+    static BoxedWinVersion* getWinVersionFromName(BString name);
 private:
     static void sortContainers();
     static void loadContainers();

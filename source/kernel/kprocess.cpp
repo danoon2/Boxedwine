@@ -81,9 +81,9 @@ KProcess::KProcess(U32 id) : id(id),
     phentsize(0),
     entry(0),
     eventQueueFD(0),
-    exitOrExecCond("KProcess::exitOrExecCond"),
+    exitOrExecCond(B("KProcess::exitOrExecCond")),
     hasSetStackMask(false),
-    threadRemovedCondition("KProcess::threadRemovedCondition"),
+    threadRemovedCondition(B("KProcess::threadRemovedCondition")),
     systemProcess(false) {
 
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
@@ -280,26 +280,26 @@ FsOpenNode* openCommandLine(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
 void KProcess::setupCommandlineNode() {
     // :TODO: this will replace the previous one if it exists and leak memory 
     if (!this->procNode) {
-        BoxedPtr<FsNode> proc = Fs::getNodeFromLocalPath("", "/proc", true);
-        this->procNode = Fs::addFileNode(std::string("/proc/")+std::to_string(this->id), "", "", true, proc);
+        BoxedPtr<FsNode> proc = Fs::getNodeFromLocalPath(B(""), B("/proc"), true);
+        this->procNode = Fs::addFileNode("/proc/"+BString::valueOf(this->id), B(""), B(""), true, proc);
     }
-    this->commandLineNode = Fs::addVirtualFile(std::string("/proc/")+std::to_string(this->id)+std::string("/cmdline"), openCommandLine, K__S_IREAD, 0, this->procNode);
-    std::string exePath = std::string("/proc/") + std::to_string(this->id) + std::string("/exe");
-    BoxedPtr<FsNode> exeNode = Fs::getNodeFromLocalPath("", exePath, true);
+    this->commandLineNode = Fs::addVirtualFile("/proc/"+BString::valueOf(this->id)+"/cmdline", openCommandLine, K__S_IREAD, 0, this->procNode);
+    BString exePath = "/proc/" + BString::valueOf(this->id) + "/exe";
+    BoxedPtr<FsNode> exeNode = Fs::getNodeFromLocalPath(B(""), exePath, true);
     if (!exeNode) {
         U32 id = this->id;
         Fs::addDynamicLinkFile(exePath, 0, this->procNode, false, [id] {
             std::shared_ptr<KProcess> p = KSystem::getProcess(id);
             if (p) {
-                return Fs::getNodeFromLocalPath("", p->exe, true)->path;
+                return Fs::getNodeFromLocalPath(B(""), p->exe, true)->path;
             }
-            return std::string("(deleted)");
+            return B("(deleted)");
             });
     }
 }
 
-std::string KProcess::getAbsoluteExePath() { 
-    std::string path = Fs::getNodeFromLocalPath("", this->exe, true)->path;
+BString KProcess::getAbsoluteExePath() { 
+    BString path = Fs::getNodeFromLocalPath(B(""), this->exe, true)->path;
     return Fs::getParentPath(path);
 }
 void KProcess::clone(const std::shared_ptr<KProcess>& from) {
@@ -449,7 +449,7 @@ static void pushThreadStack(KThread* thread, CPU* cpu, int argc, U32* a, int env
     cpu->push32(argc);
 }
 
-static void setupThreadStack(KThread* thread, CPU* cpu, const std::string& programName, const std::vector<std::string>& args, const std::vector<std::string>& env) {
+static void setupThreadStack(KThread* thread, CPU* cpu, BString programName, const std::vector<BString>& args, const std::vector<BString>& env) {
     U32 a[MAX_ARG_COUNT];
     U32 e[MAX_ARG_COUNT];
     int i;
@@ -466,7 +466,7 @@ static void setupThreadStack(KThread* thread, CPU* cpu, const std::string& progr
     for (i=0;i<(int)env.size();i++) {
         writeStackString(thread, cpu, env[i].c_str());
         if (strncmp(env[i].c_str(), "PATH=", 5)==0) {
-            stringSplit(cpu->thread->process->path,env[i].substr(5),':');
+            env[i].substr(5).split(':', cpu->thread->process->path);
         }
         //klog("    %s", env[i]);
         e[i]=ESP;
@@ -517,7 +517,7 @@ U32 translateOpenError() {
     return -K_EINVAL;
 }
 
-U32 KProcess::openFileDescriptor(const std::string& currentDirectory, std::string localPath, U32 accessFlags, U32 descriptorFlags, S32 handle, U32 afterHandle, KFileDescriptor** result) {
+U32 KProcess::openFileDescriptor(BString currentDirectory, BString localPath, U32 accessFlags, U32 descriptorFlags, S32 handle, U32 afterHandle, KFileDescriptor** result) {
     BoxedPtr<FsNode> node;
     FsOpenNode* openNode;
     std::shared_ptr<KObject> kobject;
@@ -543,14 +543,14 @@ U32 KProcess::openFileDescriptor(const std::string& currentDirectory, std::strin
         }
     }
     if (!node) {
-        std::string fullPath = Fs::getFullPath(currentDirectory, localPath);
-        std::string parentPath = Fs::getParentPath(fullPath);
-        std::string fileName = Fs::getFileNameFromPath(fullPath);
-        BoxedPtr<FsNode> parent = Fs::getNodeFromLocalPath("", parentPath, true);
+        BString fullPath = Fs::getFullPath(currentDirectory, localPath);
+        BString parentPath = Fs::getParentPath(fullPath);
+        BString fileName = Fs::getFileNameFromPath(fullPath);
+        BoxedPtr<FsNode> parent = Fs::getNodeFromLocalPath(B(""), parentPath, true);
         if (!parent) {
             return -K_ENOENT;
         }       
-        std::string nativePath = Fs::getNativePathFromParentAndLocalFilename(parent, fileName);
+        BString nativePath = Fs::getNativePathFromParentAndLocalFilename(parent, fileName);
         BoxedPtr<FsNode> mixedSibling = parent->getChildByNameIgnoreCase(fileName);
         if (mixedSibling) {
             nativePath = nativePath + ".mixed";
@@ -558,7 +558,7 @@ U32 KProcess::openFileDescriptor(const std::string& currentDirectory, std::strin
                 kwarn("KProcess::openFileDescriptor mixed file already exists");
             }
         }
-        node = Fs::addFileNode(parent->path+"/"+fileName, "", nativePath, false, parent);
+        node = Fs::addFileNode(parent->path+"/"+fileName, B(""), nativePath, false, parent);
         Fs::makeLocalDirs(parent->path);
     }
     std::shared_ptr<KObject> nodeObject = node->kobject.lock();
@@ -580,23 +580,23 @@ U32 KProcess::openFileDescriptor(const std::string& currentDirectory, std::strin
     return 0;
 }
 
-U32 KProcess::openFile(const std::string& currentDirectory, const std::string& localPath, U32 accessFlags, KFileDescriptor** result) {
+U32 KProcess::openFile(BString currentDirectory, BString localPath, U32 accessFlags, KFileDescriptor** result) {
     return this->openFileDescriptor( currentDirectory, localPath, accessFlags, (accessFlags & K_O_CLOEXEC)?FD_CLOEXEC:0, -1, 0, result);
 }
 
 void KProcess::initStdio() {
     if (!this->getFileDescriptor(0)) {
-        this->openFileDescriptor("", "/dev/tty0", K_O_RDONLY, 0, 0, 0, NULL);
+        this->openFileDescriptor(B(""), B("/dev/tty0"), K_O_RDONLY, 0, 0, 0, NULL);
     }
     if (!this->getFileDescriptor(1)) {
-        this->openFileDescriptor("", "/dev/tty0", K_O_WRONLY, 0, 1, 0, NULL);
+        this->openFileDescriptor(B(""), B("/dev/tty0"), K_O_WRONLY, 0, 1, 0, NULL);
     }
     if (!this->getFileDescriptor(2)) {
-        this->openFileDescriptor("", "/dev/tty0", K_O_WRONLY, 0, 2, 0, NULL);
+        this->openFileDescriptor(B(""), B("/dev/tty0"), K_O_WRONLY, 0, 2, 0, NULL);
     }
 }
 
-KThread* KProcess::startProcess(const std::string& currentDirectory, const std::vector<std::string>& argValues, const std::vector<std::string>& envValues, int userId, int groupId, int effectiveUserId, int effectiveGroupId) {
+KThread* KProcess::startProcess(BString currentDirectory, const std::vector<BString>& argValues, const std::vector<BString>& envValues, int userId, int groupId, int effectiveUserId, int effectiveGroupId) {
     BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath(currentDirectory, argValues[0], true);
 
     if (!node) {
@@ -604,16 +604,16 @@ KThread* KProcess::startProcess(const std::string& currentDirectory, const std::
         return 0;
     }
 
-    std::string interpreter;
-    std::string loader;
-    std::vector<std::string> interpreterArgs;
-    std::vector<std::string> args;
-    std::vector<std::string> env;
+    BString interpreter;
+    BString loader;
+    std::vector<BString> interpreterArgs;
+    std::vector<BString> args;
+    std::vector<BString> env;
     this->memory = new Memory();		
     KThread* thread = this->createThread();
     U32 i;
     FsOpenNode* openNode = NULL;
-    std::string name;
+    BString name;
 
     thread->setupStack();
     this->parentId = 1;
@@ -645,7 +645,7 @@ KThread* KProcess::startProcess(const std::string& currentDirectory, const std::
             args.push_back(loader);
         if (interpreter.length())
             args.push_back(interpreter);        
-        args.push_back(std::string(Fs::getFullPath(currentDirectory, argValues[0])));
+        args.push_back(BString(Fs::getFullPath(currentDirectory, argValues[0])));
         for (i=1;i<argValues.size();i++) {
             args.push_back(argValues[i]);
         }
@@ -702,7 +702,7 @@ bool KProcess::isTerminated() {
     return this->terminated;
 }
 
-std::string KProcess::getModuleName(U32 eip) {
+BString KProcess::getModuleName(U32 eip) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mappedFilesMutex);
     for (auto& n : this->mappedFiles) {
         BoxedPtr<MappedFile> mappedFile = n.second;
@@ -710,7 +710,7 @@ std::string KProcess::getModuleName(U32 eip) {
             return mappedFile->file->openFile->node->name;
         }
     }
-    return "Unknown";
+    return B("Unknown");
 }
 
 U32 KProcess::getModuleEip(U32 eip) {    
@@ -747,10 +747,10 @@ U32 KProcess::alarm(U32 seconds) {
     return 0;
 }
 
-BoxedPtr<FsNode> KProcess::findInPath(const std::string& path) {
+BoxedPtr<FsNode> KProcess::findInPath(BString path) {
     BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath(this->currentDirectory, path, true);
 
-    if (!node && !stringStartsWith(path, "/")) {
+    if (!node && !path.startsWith('/')) {
         for( const auto& n : this->path ) {
             node = Fs::getNodeFromLocalPath(n, path, true);
             if (node)
@@ -760,30 +760,30 @@ BoxedPtr<FsNode> KProcess::findInPath(const std::string& path) {
     return node;
 }
 
-U32 KProcess::execve(const std::string& path, std::vector<std::string>& args, const std::vector<std::string>& envs) {
+U32 KProcess::execve(BString path, std::vector<BString>& args, const std::vector<BString>& envs) {
     BoxedPtr<FsNode> node;
     FsOpenNode* openNode = 0;
-    std::string interpreter;
-    std::vector<std::string> interpreterArgs;
-    std::string loader;
-    std::string name;
-    std::vector<std::string> cmdLine;
+    BString interpreter;
+    std::vector<BString> interpreterArgs;
+    BString loader;
+    BString name;
+    std::vector<BString> cmdLine;
 
     this->systemProcess = false;
     for (auto& s : args) {
-        if (stringHasEnding(s, "wineboot.exe", true)) {
+        if (s.endsWith("wineboot.exe", true)) {
             this->systemProcess = true;
-        } else if (stringHasEnding(s, "winemenubuilder.exe", true)) {
+        } else if (s.endsWith("winemenubuilder.exe", true)) {
             this->systemProcess = true;
-        } else if (stringHasEnding(s, "services.exe", true)) {
+        } else if (s.endsWith("services.exe", true)) {
             this->systemProcess = true;
-        } else if (stringHasEnding(s, "plugplay.exe", true)) {
+        } else if (s.endsWith("plugplay.exe", true)) {
             this->systemProcess = true;
-        } else if (stringHasEnding(s, "winedevice.exe", true)) {
+        } else if (s.endsWith("winedevice.exe", true)) {
             this->systemProcess = true;
-        } else if (stringHasEnding(s, "explorer.exe", true)) {
+        } else if (s.endsWith("explorer.exe", true)) {
             this->systemProcess = true;
-        } else if (stringHasEnding(s, "wineserver", true)) {
+        } else if (s.endsWith("wineserver", true)) {
             Platform::setCurrentThreadPriorityHigh();
             this->systemProcess = true;
         }
@@ -801,7 +801,7 @@ U32 KProcess::execve(const std::string& path, std::vector<std::string>& args, co
         Platform::setCpuAffinityForThread(KThread::currentThread(), this->isSystemProcess()?0:KSystem::cpuAffinityCountForApp);
     }
 #endif
-    args[0] = std::string(Fs::getFullPath(currentDirectory, path)); // if path is a link, we should use the link not the actual path       
+    args[0] = BString(Fs::getFullPath(currentDirectory, path)); // if path is a link, we should use the link not the actual path       
     if (interpreter.length()) {
         args.insert(args.begin(), interpreterArgs.begin(), interpreterArgs.end());
         args.insert(args.begin(), interpreter);
@@ -812,12 +812,12 @@ U32 KProcess::execve(const std::string& path, std::vector<std::string>& args, co
     this->exe = path; // if path is a link, we should use the link not the actual path       
     this->name = Fs::getFileNameFromPath(path);
     
-    this->commandLine = stringJoin(args, "\0");
+    this->commandLine = BString::join("\0", args);
             
     this->path.clear();
     for (U32 i=0;i<envs.size();i++) {
         if (strncmp(envs[i].c_str(), "PATH=", 5)==0) {
-            stringSplit(this->path,envs[i].substr(5),':');
+            envs[i].substr(5).split(':', this->path);
         }
     }
 
@@ -843,7 +843,7 @@ U32 KProcess::execve(const std::string& path, std::vector<std::string>& args, co
     this->onExec();
 
     // not sure why x64 doesn't catch setting the CS segment this in time
-    if (stringContainsIgnoreCase(this->name, "winevdm.exe") || vectorContainsIgnoreCase(args, "winevdm.exe")) {
+    if (this->name.contains("winevdm.exe", true) || vectorContainsIgnoreCase(args, B("winevdm.exe"))) {
         for (int i=0;i<6;i++) {
             this->hasSetSeg[i] = true;
             this->hasSetStackMask = true;
@@ -940,7 +940,7 @@ U32 KProcess::dup(U32 fildes) {
     return this->allocFileDescriptor(fd->kobject, fd->accessFlags, 0, -1, 0)->handle; // do not copy file descriptor flags
 }
 
-U32 KProcess::rmdir(const std::string& path) {
+U32 KProcess::rmdir(BString path) {
     BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath(this->currentDirectory, path, false);
 
     if (!node)
@@ -948,30 +948,30 @@ U32 KProcess::rmdir(const std::string& path) {
     return node->removeDir();
 }
 
-U32 KProcess::mkdir(const std::string& path) {
+U32 KProcess::mkdir(BString path) {
     BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath(this->currentDirectory, path, false);   
     if (node) {
         return -K_EEXIST;
     }
-    std::string fullpath = Fs::getFullPath(this->currentDirectory, path);
-    std::string parentPath = Fs::getParentPath(fullpath);
-    node = Fs::getNodeFromLocalPath("", parentPath, false); 
+    BString fullpath = Fs::getFullPath(this->currentDirectory, path);
+    BString parentPath = Fs::getParentPath(fullpath);
+    node = Fs::getNodeFromLocalPath(B(""), parentPath, false); 
     if (!node) {
         return -K_ENOENT;
     }
     return Fs::makeLocalDirs(fullpath);
 }
 
-U32 KProcess::rename(const std::string& from, const std::string& to) {
+U32 KProcess::rename(BString from, BString to) {
     BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath(this->currentDirectory, from, false);    
     if (!node)
         return -K_ENOENT;
-    std::string fullPath = Fs::getFullPath(this->currentDirectory, to);
+    BString fullPath = Fs::getFullPath(this->currentDirectory, to);
     return node->rename(fullPath);
 }
 
-U32 KProcess::renameat(FD olddirfd, const std::string& from, FD newdirfd, const std::string& to) {
-    std::string currentDirectory;
+U32 KProcess::renameat(FD olddirfd, BString from, FD newdirfd, BString to) {
+    BString currentDirectory;
     U32 result = this->getCurrentDirectoryFromDirFD(olddirfd, currentDirectory);
     if (result)
         return result;
@@ -982,7 +982,7 @@ U32 KProcess::renameat(FD olddirfd, const std::string& from, FD newdirfd, const 
     result = this->getCurrentDirectoryFromDirFD(newdirfd, currentDirectory);
     if (result)
         return result;
-    std::string fullPath = Fs::getFullPath(currentDirectory, to);
+    BString fullPath = Fs::getFullPath(currentDirectory, to);
     return node->rename(fullPath);
 }
 
@@ -1008,7 +1008,7 @@ static S32 internalAccess(BoxedPtr<FsNode> node, U32 flags) {
     return 0;
 }
 
-U32 KProcess::access(const std::string& path, U32 mode) {
+U32 KProcess::access(BString path, U32 mode) {
     BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath(this->currentDirectory, path, true);
     return internalAccess(node, mode); 
 }
@@ -1032,31 +1032,31 @@ U32 KProcess::lseek(FD fildes, S32 offset, U32 whence) {
     return (U32)fd->kobject->seek(pos);
 }
 
-U32 KProcess::chmod(const std::string& path, U32 mode) {
+U32 KProcess::chmod(BString path, U32 mode) {
     BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath(this->currentDirectory, path, true);
     if (!node)
         return -K_ENOENT;
     return 0;
 }
 
-U32 KProcess::chdir(const std::string& path) {
+U32 KProcess::chdir(BString path) {
     BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath(this->currentDirectory, path, true);
     if (!node)
         return -K_ENOENT;
     if (!node->isDirectory())
         return -K_ENOTDIR;
-    if (stringStartsWith(path, "/")) {
+    if (path.startsWith('/')) {
         this->currentDirectory = path;
     } else {
         this->currentDirectory = this->currentDirectory+"/"+path;
     }
-    if (stringHasEnding(this->currentDirectory, "/")) {
+    if (this->currentDirectory.endsWith('/')) {
         this->currentDirectory = this->currentDirectory.substr(0, this->currentDirectory.length()-1);
     }
     return 0;
 }
 
-U32 KProcess::unlinkFile(const std::string& path) {
+U32 KProcess::unlinkFile(BString path) {
     BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath(this->currentDirectory, path, false);
     if (!node) {
         return -K_ENOENT;
@@ -1068,7 +1068,7 @@ U32 KProcess::unlinkFile(const std::string& path) {
     return 0;
 }
 
-U32 KProcess::link(const std::string& from, const std::string& to) {
+U32 KProcess::link(BString from, BString to) {
     BoxedPtr<FsNode> fromNode = Fs::getNodeFromLocalPath(this->currentDirectory, from, false);
     BoxedPtr<FsNode> toNode = Fs::getNodeFromLocalPath(this->currentDirectory, to, false);
 
@@ -1091,7 +1091,7 @@ U32 KProcess::link(const std::string& from, const std::string& to) {
     if (!toParentNode)
         return -K_ENOENT;
 
-    toNode = Fs::addFileNode(to, "", Fs::getNativePathFromParentAndLocalFilename(toParentNode, Fs::getFileNameFromPath(to)), false, toParentNode);
+    toNode = Fs::addFileNode(to, B(""), Fs::getNativePathFromParentAndLocalFilename(toParentNode, Fs::getFileNameFromPath(to)), false, toParentNode);
     FsOpenNode* toOpenNode = toNode->open(K_O_WRONLY|K_O_CREAT);
     if (!toOpenNode) {
         fromOpenNode->close();
@@ -1122,7 +1122,7 @@ U32 KProcess::close(FD fildes) {
     return 0;
 }
 
-U32 KProcess::open(const std::string& path, U32 flags) {
+U32 KProcess::open(BString path, U32 flags) {
     KFileDescriptor* fd = NULL;
         
     U32 result = this->openFile(this->currentDirectory, path, flags, &fd);
@@ -1263,7 +1263,7 @@ U32 KProcess::getrusuage(U32 who, U32 usage) {
     return 0;
 }
 
-U32 symlinkInDirectory(const std::string& currentDirectory, const std::string& target, const std::string& linkpath) {
+U32 symlinkInDirectory(BString currentDirectory, BString target, BString linkpath) {
     BoxedPtr<FsNode> node;
     FsOpenNode* openNode;
 
@@ -1271,9 +1271,9 @@ U32 symlinkInDirectory(const std::string& currentDirectory, const std::string& t
     if (node) {
         return -K_EEXIST;
     }
-    std::string fullPath = Fs::getFullPath(currentDirectory, linkpath);
-    std::string parentPath = Fs::getParentPath(fullPath);
-    BoxedPtr<FsNode> parentNode = Fs::getNodeFromLocalPath("", parentPath, true);
+    BString fullPath = Fs::getFullPath(currentDirectory, linkpath);
+    BString parentPath = Fs::getParentPath(fullPath);
+    BoxedPtr<FsNode> parentNode = Fs::getNodeFromLocalPath(B(""), parentPath, true);
 
     if (!parentNode) {
         return -K_ENOENT;
@@ -1294,28 +1294,28 @@ U32 symlinkInDirectory(const std::string& currentDirectory, const std::string& t
     return 0;
 }
 
-U32 KProcess::symlinkat(const std::string& target, FD dirfd, const std::string& linkpath) {
-    std::string currentDirectory;
+U32 KProcess::symlinkat(BString target, FD dirfd, BString linkpath) {
+    BString currentDirectory;
     U32 result = this->getCurrentDirectoryFromDirFD(dirfd, currentDirectory);
     if (result)
         return result;
     return symlinkInDirectory(currentDirectory, target, linkpath);
 }
 
-U32 KProcess::symlink(const std::string& target, const std::string& linkpath) {
+U32 KProcess::symlink(BString target, BString linkpath) {
     return symlinkInDirectory(this->currentDirectory, target, linkpath);
 }
 
-U32 KProcess::readlinkInDirectory(const std::string& currentDirectory, const std::string& path, U32 buffer, U32 bufSize) {
+U32 KProcess::readlinkInDirectory(BString currentDirectory, BString path, U32 buffer, U32 bufSize) {
     // :TODO: move these to the virtual filesystem
     if (!strcmp(path.c_str(), "/proc/self/exe")) {
-        const std::string& exe = KThread::currentThread()->process->exe;
+        BString exe = KThread::currentThread()->process->exe;
         U32 len = (U32)exe.length();
         if (len>bufSize)
             len = bufSize;
         memcopyFromNative(buffer, exe.c_str(), len);
         return len;
-    } else if (stringStartsWith(path, "/proc/self/fd/")) {
+    } else if (path.startsWith("/proc/self/fd/")) {
         FD h = atoi(path.c_str()+14);
         KFileDescriptor* fd = this->getFileDescriptor(h);
 
@@ -1325,7 +1325,7 @@ U32 KProcess::readlinkInDirectory(const std::string& currentDirectory, const std
             return -K_EINVAL;
         }
         std::shared_ptr<KFile> p = std::dynamic_pointer_cast<KFile>(fd->kobject);
-        const std::string& fdpath =  p->openFile->node->path;
+        BString fdpath =  p->openFile->node->path;
         U32 len = (U32)fdpath.length();
         if ((int)fdpath.length()>(int)bufSize)
             len=bufSize;
@@ -1343,15 +1343,15 @@ U32 KProcess::readlinkInDirectory(const std::string& currentDirectory, const std
     return len; 
 }
 
-U32 KProcess::readlinkat(FD dirfd, const std::string& path, U32 buf, U32 bufsiz) {
-    std::string currentDirectory;
+U32 KProcess::readlinkat(FD dirfd, BString path, U32 buf, U32 bufsiz) {
+    BString currentDirectory;
     U32 result = this->getCurrentDirectoryFromDirFD(dirfd, currentDirectory);
     if (result)
         return result;
     return readlinkInDirectory(currentDirectory, path, buf, bufsiz);
 }
 
-U32 KProcess::readlink(const std::string& path, U32 buffer, U32 bufSize) {
+U32 KProcess::readlink(BString path, U32 buffer, U32 bufSize) {
     return readlinkInDirectory(this->currentDirectory, path, buffer, bufSize);
 }
 
@@ -1510,7 +1510,7 @@ U32 KProcess::ftruncate64(FD fildes, U64 length) {
 #define FS_SIZE 107374182400l
 #define FS_FREE_SIZE 96636764160l
 
-U32 KProcess::statfs(const std::string& path, U32 address) {
+U32 KProcess::statfs(BString path, U32 address) {
     BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath(this->currentDirectory, path, true);
     if (!node) {
         return -K_ENOENT;
@@ -1529,7 +1529,7 @@ U32 KProcess::statfs(const std::string& path, U32 address) {
     return 0;
 }
 
-U32 KProcess::statfs64(const std::string& path, U32 address) {
+U32 KProcess::statfs64(BString path, U32 address) {
     BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath(this->currentDirectory, path, true);
     if (!node) {
         return -K_ENOENT;
@@ -1841,7 +1841,7 @@ U32 KProcess::fchdir(FD fildes) {
         this->currentDirectory = p->openFile->openedPath;
     else
         this->currentDirectory = p->openFile->node->path;
-    if (stringHasEnding(this->currentDirectory, "/")) {
+    if (this->currentDirectory.endsWith("/")) {
         this->currentDirectory = this->currentDirectory.substr(0, this->currentDirectory.length()-1);
     }
     return 0;
@@ -1925,7 +1925,7 @@ U32 KProcess::getdents(FD fildes, U32 dirp, U32 count, bool is64) {
     U32 len = 0;
 
     for (U32 i=(U32)openNode->getFilePointer();i<entries;i++) {
-        std::string name;
+        BString name;
         BoxedPtr<FsNode> entry = openNode->getDirectoryEntry(i, name);
         U32 recordLen = writeRecord(dirp, len, count, i + 2, is64, name.c_str(), entry->id, entry->getType(true));
         if (recordLen>0) {
@@ -1965,7 +1965,7 @@ U32 KProcess::writev(FD handle, U32 iov, S32 iovcnt) {
     return fd->kobject->writev(iov, iovcnt);    
 }
 
-U32 KProcess::memfd_create(const std::string& name, U32 flags) {
+U32 KProcess::memfd_create(BString name, U32 flags) {
     FsMemNode* node = new FsMemNode(1, 1, name);
     FsMemOpenNode* openNode = new FsMemOpenNode(flags, node);
 
@@ -2048,7 +2048,7 @@ U32 KProcess::mremap(U32 oldaddress, U32 oldsize, U32 newsize, U32 flags) {
 U32 KProcess::prctl(U32 option, U32 arg2) {
     if (option == 15) { // PR_SET_NAME
         char tmp[MAX_FILEPATH_LEN];
-        this->name = getNativeString(arg2, tmp, sizeof(tmp));
+        this->name = BString::copy(getNativeString(arg2, tmp, sizeof(tmp)));
         return 0;
     } else if (option == 38) { // PR_SET_NO_NEW_PRIVS
         return 0;
@@ -2126,17 +2126,17 @@ U32 KProcess::getcwd(U32 buffer, U32 size) {
     if (!this->memory->isValidWriteAddress(buffer, size)) {
         return -K_EFAULT;
     }
-    BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath("", this->currentDirectory, true);
+    BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath(B(""), this->currentDirectory, true);
     if (!node || !node->isDirectory()) {
         return -K_ENOENT;
     }
-    if (this->currentDirectory.length()+1>size)
+    if ((U32)this->currentDirectory.length()+1>size)
         return -K_ERANGE;
     writeNativeString(buffer, this->currentDirectory.c_str());
     return (U32)this->currentDirectory.length()+1;
 }
 
-U32 KProcess::stat64(const std::string& path, U32 buffer) {
+U32 KProcess::stat64(BString path, U32 buffer) {
     bool isLink = false;
     BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath(this->currentDirectory, path, true, &isLink);
     if (!node) {
@@ -2147,7 +2147,7 @@ U32 KProcess::stat64(const std::string& path, U32 buffer) {
     return 0;
 }
 
-U32 KProcess::lstat64(const std::string& path, U32 buffer) {
+U32 KProcess::lstat64(BString path, U32 buffer) {
     BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath(this->currentDirectory, path, false);
     if (!node) {
         return -K_ENOENT;
@@ -2353,7 +2353,7 @@ U32 KProcess::epollwait(FD epfd, U32 events, U32 maxevents, U32 timeout) {
     return p->wait(events, maxevents, timeout);
 }
 
-U32 KProcess::utimes(const std::string& path, U32 times) {
+U32 KProcess::utimes(BString path, U32 times) {
     BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath(this->currentDirectory, path, true);
 
     if (!node) {
@@ -2376,7 +2376,7 @@ U32 KProcess::utimes(const std::string& path, U32 times) {
     }
 }
 
-U32 KProcess::getCurrentDirectoryFromDirFD(FD dirfd, std::string& currentDirectory) {
+U32 KProcess::getCurrentDirectoryFromDirFD(FD dirfd, BString& currentDirectory) {
     U32 result = 0;
     if (dirfd==-100) { // AT_FDCWD
         currentDirectory = this->currentDirectory;
@@ -2394,11 +2394,11 @@ U32 KProcess::getCurrentDirectoryFromDirFD(FD dirfd, std::string& currentDirecto
     return result;
 }
 
-U32 KProcess::openat(FD dirfd, const std::string& path, U32 flags) {
-    std::string dir;
+U32 KProcess::openat(FD dirfd, BString path, U32 flags) {
+    BString dir;
     U32 result = 0;
     
-    if (path[0]!='/')
+    if (path.charAt(0)!='/')
         result = getCurrentDirectoryFromDirFD(dirfd, dir);
 
     if (result)
@@ -2411,24 +2411,24 @@ U32 KProcess::openat(FD dirfd, const std::string& path, U32 flags) {
     return fd->handle;
 }
 
-U32 KProcess::mkdirat(U32 dirfd, const std::string& path, U32 mode) {
-    std::string dir;
+U32 KProcess::mkdirat(U32 dirfd, BString path, U32 mode) {
+    BString dir;
     U32 result = 0;
     
-    if (path[0]!='/')
+    if (path.charAt(0) != '/')
         result = getCurrentDirectoryFromDirFD(dirfd, dir);
 
     if (result)
         return result;
-    std::string fullPath = Fs::getFullPath(dir, path);
+    BString fullPath = Fs::getFullPath(dir, path);
     return this->mkdir(fullPath);
 }
 
-U32 KProcess::fstatat64(FD dirfd, const std::string& path, U32 buf, U32 flag) {
-    std::string dir;
+U32 KProcess::fstatat64(FD dirfd, BString path, U32 buf, U32 flag) {
+    BString dir;
     U32 result = 0;
     
-    if (path[0]!='/')
+    if (path.charAt(0) != '/')
         result = getCurrentDirectoryFromDirFD(dirfd, dir);
 
     if (result)
@@ -2450,11 +2450,11 @@ U32 KProcess::fstatat64(FD dirfd, const std::string& path, U32 buf, U32 flag) {
     return 0;    
 }
 
-U32 KProcess::unlinkat(FD dirfd, const std::string& path, U32 flags) {
-    std::string dir;
+U32 KProcess::unlinkat(FD dirfd, BString path, U32 flags) {
+    BString dir;
     U32 result = 0;
     
-    if (path[0]!='/')
+    if (path.charAt(0) != '/')
         result = getCurrentDirectoryFromDirFD(dirfd, dir);
 
     if (result)
@@ -2479,11 +2479,11 @@ U32 KProcess::unlinkat(FD dirfd, const std::string& path, U32 flags) {
     }
 }
 
-U32 KProcess::faccessat(U32 dirfd, const std::string& path, U32 mode, U32 flags) {    
-    std::string dir;
+U32 KProcess::faccessat(U32 dirfd, BString path, U32 mode, U32 flags) {    
+    BString dir;
     U32 result = 0;
     
-    if (path[0]!='/')
+    if (path.charAt(0) != '/')
         result = getCurrentDirectoryFromDirFD(dirfd, dir);
 
     if (result)
@@ -2498,11 +2498,11 @@ U32 KProcess::faccessat(U32 dirfd, const std::string& path, U32 mode, U32 flags)
 #define K_UTIME_NOW 0x3fffffff
 #define K_UTIME_OMIT 0x3ffffffe
 
-U32 KProcess::utimesat(FD dirfd, const std::string& path, U32 times, U32 flags) {
-    std::string dir;
+U32 KProcess::utimesat(FD dirfd, BString path, U32 times, U32 flags) {
+    BString dir;
     U32 result = 0;
     
-    if (path[0]!='/')
+    if (path.charAt(0) != '/')
         result = getCurrentDirectoryFromDirFD(dirfd, dir);
 
     if (result)
@@ -2537,11 +2537,11 @@ U32 KProcess::utimesat(FD dirfd, const std::string& path, U32 times, U32 flags) 
     return node->setTimes(lastAccessTime, lastAccessTimeNano, lastModifiedTime, lastAccessTimeNano);
 }
 
-U32 KProcess::utimesat64(FD dirfd, const std::string& path, U32 times, U32 flags) {
-    std::string dir;
+U32 KProcess::utimesat64(FD dirfd, BString path, U32 times, U32 flags) {
+    BString dir;
     U32 result = 0;
 
-    if (path[0] != '/')
+    if (path.charAt(0) != '/')
         result = getCurrentDirectoryFromDirFD(dirfd, dir);
 
     if (result)
@@ -2669,7 +2669,7 @@ void KProcess::printStack() {
             klog("  thread %X WAITING %s", thread->id, thread->waitingCond->name.c_str());
         } else {
             klog("  thread %X RUNNING", thread->id);
-            std::string name = this->getModuleName(cpu->seg[CS].address+cpu->eip.u32);
+            BString name = this->getModuleName(cpu->seg[CS].address+cpu->eip.u32);
 
             klog("    0x%08d %s", this->getModuleEip(cpu->seg[CS].address+cpu->eip.u32), name.length()?name.c_str():"Unknown");
         }

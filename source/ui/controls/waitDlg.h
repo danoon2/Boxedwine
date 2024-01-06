@@ -3,19 +3,19 @@
 
 class WaitDlg : public BaseDlg {
 public:
-    WaitDlg(int title, const std::string& label);
-    WaitDlg(int title, const std::string& label, std::function<bool()> checkIfShouldContinue);
+    WaitDlg(int title, BString label);
+    WaitDlg(int title, BString label, std::function<bool()> checkIfShouldContinue);
     virtual ~WaitDlg();
 
-    void addSubLabel(const std::string& subLabel, int max);
+    void addSubLabel(BString subLabel, int max);
 
     std::function<void()> onDone;
 protected:
     virtual void run();
 
 private:
-    std::string label;
-    std::deque<std::string> subLabels;
+    BString label;
+    std::deque<BString> subLabels;
     std::function<bool()> checkIfShouldContinue;
 };
 

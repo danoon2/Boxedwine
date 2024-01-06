@@ -1,11 +1,11 @@
 #include "boxedwine.h"
 #include "../boxedwineui.h"
 
-WaitDlg::WaitDlg(int title, const std::string& label) : BaseDlg(title, 400, 150), label(label) {
+WaitDlg::WaitDlg(int title, BString label) : BaseDlg(title, 400, 150), label(label) {
     GlobalSettings::useFastFrameRate(true);
 }
 
-WaitDlg::WaitDlg(int title, const std::string& label, std::function<bool()> checkIfShouldContinue) : BaseDlg(title, 400, 150), label(label), checkIfShouldContinue(checkIfShouldContinue) {
+WaitDlg::WaitDlg(int title, BString label, std::function<bool()> checkIfShouldContinue) : BaseDlg(title, 400, 150), label(label), checkIfShouldContinue(checkIfShouldContinue) {
     GlobalSettings::useFastFrameRate(true);
 }
 
@@ -36,7 +36,7 @@ void WaitDlg::run() {
     }
 }
 
-void WaitDlg::addSubLabel(const std::string& subLabel, int max) {
+void WaitDlg::addSubLabel(BString subLabel, int max) {
     while (subLabels.size() > max) {
         subLabels.pop_front();
     }

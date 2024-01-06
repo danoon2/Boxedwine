@@ -44,7 +44,7 @@ FsOpenNode* FsVirtualNode::open(U32 flags) {
     if (flags & K_O_APPEND) {
         kdebug("What about appending a virtual file");
     }
-    BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath("", this->path, true);
+    BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath(B(""), this->path, true);
     return this->openFunc(node, flags, this->openData);
 }
 
@@ -61,7 +61,7 @@ U32 FsVirtualNode::getType(bool checkForLink) {
     return 8; // DT_REG
 }
 
-U32 FsVirtualNode::rename(const std::string& path) {
+U32 FsVirtualNode::rename(BString path) {
     return -K_EIO;
 }
 

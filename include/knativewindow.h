@@ -37,7 +37,7 @@ public:
 class KNativeWindow {
 public:
 	static std::shared_ptr<KNativeWindow> getNativeWindow();
-    static void init(U32 cx, U32 cy, U32 bpp, int scaleX, int scaleY, const std::string& scaleQuality, U32 fullScreen, U32 vsync);
+    static void init(U32 cx, U32 cy, U32 bpp, int scaleX, int scaleY, BString scaleQuality, U32 fullScreen, U32 vsync);
     static void shutdown();
 
 	static U32 defaultScreenWidth;
@@ -70,7 +70,7 @@ public:
 #endif
     virtual void setPrimarySurface(KThread* thread, U32 bits, U32 width, U32 height, U32 pitch, U32 flags, U32 palette) = 0;    
     virtual void drawAllWindows(KThread* thread, U32 hWnd, int count) = 0;
-    virtual void setTitle(const std::string& title) = 0;
+    virtual void setTitle(BString title) = 0;
 
     virtual U32 getGammaRamp(U32 ramp) = 0;
 
@@ -82,8 +82,8 @@ public:
     virtual void glUpdateContextForThread(KThread* thread) = 0;
     virtual void preOpenGLCall(U32 index) = 0;
 
-    virtual bool partialScreenShot(std::string filepath, U32 x, U32 y, U32 w, U32 h, U32* crc) = 0;
-    virtual bool screenShot(std::string filepath, U32* crc) = 0;
+    virtual bool partialScreenShot(BString filepath, U32 x, U32 y, U32 w, U32 h, U32* crc) = 0;
+    virtual bool screenShot(BString filepath, U32* crc) = 0;
 
     virtual bool waitForEvent(U32 ms) = 0; // if return is true, then event is available
     virtual bool processEvents() = 0; // if return is false, then shutdown    

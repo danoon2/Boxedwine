@@ -28,5 +28,5 @@ FsOpenNode* openUptime(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
     float up = KSystem::getMilliesSinceStart() / 1000.0f;
     float idle = up/2; // :TODO: get from system
     snprintf(info, sizeof(info), "%0.2f %0.2f\n", up, idle);
-    return new BufferAccess(node, flags, info);
+    return new BufferAccess(node, flags, BString::copy(info));
 }

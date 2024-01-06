@@ -3,7 +3,7 @@
 
 class UnzipDlg : public BaseDlg {
 public:
-    UnzipDlg(int title, const std::string& label, const std::string& zipFilePath, const std::string& destDirPath, std::function<void(bool)> onCompleted);
+    UnzipDlg(int title, BString label, BString zipFilePath, BString destDirPath, std::function<void(bool)> onCompleted);
     virtual ~UnzipDlg();
 
 protected:
@@ -11,10 +11,10 @@ protected:
 
 private:
     void unzipCompleted();
-    void unzipFailed(const std::string& errorMsg);
+    void unzipFailed(BString errorMsg);
 
-    std::string label;
-    std::string currentFile;
+    BString label;
+    BString currentFile;
     U32 percentDone;
     std::function<void(bool)> onCompleted;
 };

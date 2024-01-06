@@ -103,13 +103,13 @@ void DevTTY::writeTermios(U32 address) {
 }
 
 U32 DevTTY::writeNative(U8* buffer, U32 len) {
-    std::string s((char*)buffer, len);
+    BString s = BString::copy((char*)buffer, len);
     // winemenubuilder was removed because it is not necessary and this will speed up start time
-    if (stringContains(s, "winemenubuilder")) {
+    if (s.contains("winemenubuilder")) {
         return len;
     }
     // for now I don't want users seeing this and assuming its a problem
-    if (stringContains(s, "WS_getaddrinfo Failed to resolve your host name IP")) {
+    if (s.contains("WS_getaddrinfo Failed to resolve your host name IP")) {
         return len;
     }
     if (KSystem::logFile) {
@@ -122,7 +122,7 @@ U32 DevTTY::writeNative(U8* buffer, U32 len) {
         THREAD_LOCAL static bool newLine = true;
         if (newLine) {
             ::write(1, "TTY:", 4);
-            std::string name = KThread::currentThread()->process->name;
+            BString name = KThread::currentThread()->process->name;
             ::write(1, name.c_str(), (U32)name.length());
             ::write(1, ":", 1);
             newLine = false;

@@ -81,7 +81,7 @@ unsigned long long int Platform::getMicroCounter()
 }
 #endif
 
-void Platform::listNodes(const std::string& nativePath, std::vector<ListNodeResult>& results) {
+void Platform::listNodes(BString nativePath, std::vector<ListNodeResult>& results) {
 	DIR *dp = NULL;
 	struct dirent *dptr = NULL;
 
@@ -89,7 +89,7 @@ void Platform::listNodes(const std::string& nativePath, std::vector<ListNodeResu
 	if (dp) {
         	while(NULL != (dptr = readdir(dp))) {
 			if (strcmp(dptr->d_name, ".") && strcmp(dptr->d_name, ".."))  {
-				results.push_back(ListNodeResult(dptr->d_name, (dptr->d_type & DT_DIR)!=0));
+				results.push_back(ListNodeResult(BString::copy(dptr->d_name), (dptr->d_type & DT_DIR)!=0));
 			}
         	}
         	closedir(dp);
@@ -182,12 +182,12 @@ void Platform::setCurrentThreadPriorityHigh() {
 #endif
 }
 #else
-const char* Platform::getResourceFilePath(const std::string& location) {
-    return NULL;
+BString Platform::getResourceFilePath(BString location) {
+    return BString::empty;
 }
 
-void Platform::openFileLocation(const std::string& location) {
-    std::string cmd = "xdg-open \"";
+void Platform::openFileLocation(BString location) {
+    BString cmd = B("xdg-open \"");
     cmd+=location;
     cmd+="\"";
     system(cmd.c_str());

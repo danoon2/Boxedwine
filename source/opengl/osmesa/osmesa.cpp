@@ -85,7 +85,7 @@ class MesaBoxedwineGL : public BoxedwineGL {
 public:
     virtual void deleteContext(void* context);
     virtual bool makeCurrent(void* context, void* window);
-    virtual std::string getLastError();
+    virtual BString getLastError();
     virtual void* createContext(void* window, std::shared_ptr<Wnd> wnd, PixelFormat* pixelFormat, U32 width, U32 height, int major, int minor, int profile);
     virtual void swapBuffer(void* window);
     virtual void setSwapInterval(U32 vsync);
@@ -116,8 +116,8 @@ bool MesaBoxedwineGL::makeCurrent(void* context, void* window) {
     return false;
 }
 
-std::string MesaBoxedwineGL::getLastError() {
-    return "";
+BString MesaBoxedwineGL::getLastError() {
+    return B("");
 }
 
 void* MesaBoxedwineGL::createContext(void* window, std::shared_ptr<Wnd> wnd, PixelFormat* pixelFormat, U32 width, U32 height, int major, int minor, int profile) {
@@ -204,7 +204,7 @@ static bool isAvailableInitialized = false;
 bool isMesaOpenglAvailable() {
     if (!isAvailableInitialized) {
         isAvailableInitialized = true;
-        std::string libPath = KSystem::exePath + LIBRARY_NAME;
+        BString libPath = KSystem::exePath + LIBRARY_NAME;
         void* dll = SDL_LoadObject(libPath.c_str());
         if (dll) {
             isAvailable = true;
@@ -275,7 +275,7 @@ void initMesaOpenGL() {
         BoxedwineGL::current = &mesaBoxedwineGL;
         mesaOpenGlExtensionsLoaded = false;
         if (!pDLL) {
-            std::string libPath = KSystem::exePath + LIBRARY_NAME;
+            BString libPath = KSystem::exePath + LIBRARY_NAME;
             pDLL = SDL_LoadObject(libPath.c_str());
             if (!pDLL) {
                 klog("Failed to load %s", libPath.c_str());

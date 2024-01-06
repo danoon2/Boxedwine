@@ -3,20 +3,20 @@
 
 class ConfigFile {
 public:
-    ConfigFile(const std::string& fileName);
+    ConfigFile(BString fileName);
 
-    std::string readString(const std::string& name, const std::string& defaultValue);
-    bool readBool(const std::string& name, bool defaultValue);
-    int readInt(const std::string& name, int defaultValue);
+    BString readString(BString name, BString defaultValue);
+    bool readBool(BString name, bool defaultValue);
+    int readInt(BString name, int defaultValue);
 
-    void writeString(const std::string& name, const std::string& value);
-    void writeBool(const std::string& name, bool value);
-    void writeInt(const std::string& name, int value);
+    void writeString(BString name, BString value);
+    void writeBool(BString name, bool value);
+    void writeInt(BString name, int value);
 
     bool saveChanges();
 
 private:
-    std::unordered_map<std::string,std::string> values;
-    std::string fileName;
+    std::unordered_map<BString,BString> values;
+    BString fileName;
 };
 #endif

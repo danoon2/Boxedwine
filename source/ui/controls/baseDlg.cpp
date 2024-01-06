@@ -52,7 +52,7 @@ BaseDlg::BaseDlg(int title, int width, int height, ImFont* font, BaseDlg* parent
     this->height = GlobalSettings::scaleIntUI(height);
     this->toolTipWidth = (float)GlobalSettings::scaleIntUI(28);
     this->extraVerticalSpacing = (float)GlobalSettings::scaleIntUI(5);
-    this->title = getTranslation(title);
+    this->title = c_getTranslation(title);
     ImGui::OpenPopup(this->title);
     if (parent) {
         parent->child = this;
@@ -100,12 +100,12 @@ void BaseDlg::toolTip(const char* desc) {
 }
 
 void BaseDlg::addOkAndCancelButtons() {
-    float buttonArea = ImGui::CalcTextSize(getTranslation(GENERIC_DLG_OK)).x+ImGui::CalcTextSize(getTranslation(GENERIC_DLG_CANCEL)).x;
+    float buttonArea = ImGui::CalcTextSize(c_getTranslation(GENERIC_DLG_OK)).x+ImGui::CalcTextSize(c_getTranslation(GENERIC_DLG_CANCEL)).x;
     ImGui::SetCursorPos(ImVec2((float)(this->width-buttonArea-35),(float)(this->height-32)));
 
-    this->onOk(ImGui::Button(getTranslation(GENERIC_DLG_OK)));
+    this->onOk(ImGui::Button(c_getTranslation(GENERIC_DLG_OK)));
     ImGui::SameLine();
-    if (ImGui::Button(getTranslation(GENERIC_DLG_CANCEL))) {
+    if (ImGui::Button(c_getTranslation(GENERIC_DLG_CANCEL))) {
         this->done();
     }
 }
@@ -123,10 +123,10 @@ float BaseDlg::getOuterFramePadding() {
 }
 
 void BaseDlg::addCancelButton() {
-    float buttonArea = ImGui::CalcTextSize(getTranslation(GENERIC_DLG_CANCEL)).x+ImGui::GetStyle().FramePadding.x*2;
+    float buttonArea = ImGui::CalcTextSize(c_getTranslation(GENERIC_DLG_CANCEL)).x+ImGui::GetStyle().FramePadding.x*2;
     ImGui::SetCursorPos(ImVec2((float)(this->width - buttonArea - getOuterFramePadding()), getButtonRowY()));
 
-    if (ImGui::Button(getTranslation(GENERIC_DLG_CANCEL))) {
+    if (ImGui::Button(c_getTranslation(GENERIC_DLG_CANCEL))) {
         this->done();
     }
 }
