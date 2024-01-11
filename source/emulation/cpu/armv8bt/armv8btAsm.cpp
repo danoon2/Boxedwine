@@ -6,7 +6,7 @@
 #include "armv8btOps.h"
 
 #include "../common/common_other.h"
-#include "../../../../source/emulation/hardmmu/hard_memory.h"
+#include "../../../../source/emulation/hardmmu/kmemory_hard.h"
 #include "../normal/normalCPU.h"
 #include "../armv8/llvm_helper.h"
 #include "armv8btCodeChunk.h"
@@ -2097,12 +2097,12 @@ void Armv8btAsm::callRetranslateChunk() {
 
 // :TODO: assming code is not in shared memory
 void Armv8btAsm::internal_addDynamicCheck(U32 address, U32 len) {
-    U8 addressReg = getRegWithConst(address);
+    U8 addressReg = getRegWithConst(address);    
     switch (len) {
     case 1: {
         U8 tmpReg = getTmpReg();
         readMem8RegOffset(tmpReg, xMem, addressReg);
-        doIf(tmpReg, readb(address), DO_IF_NOT_EQUAL, [this] {
+        doIf(tmpReg, cpu->memory->readb(address), DO_IF_NOT_EQUAL, [this] {
             write32(0xcececece);
             }, nullptr);
         releaseTmpReg(tmpReg);
@@ -2111,7 +2111,7 @@ void Armv8btAsm::internal_addDynamicCheck(U32 address, U32 len) {
     case 2: {
         U8 tmpReg = getTmpReg();
         readMem16RegOffset(tmpReg, xMem, addressReg);
-        doIf(tmpReg, readw(address), DO_IF_NOT_EQUAL, [this] {
+        doIf(tmpReg, cpu->memory->readw(address), DO_IF_NOT_EQUAL, [this] {
             write32(0xcececece);
             }, nullptr);
         releaseTmpReg(tmpReg);
@@ -2121,7 +2121,7 @@ void Armv8btAsm::internal_addDynamicCheck(U32 address, U32 len) {
         U8 tmpReg = getTmpReg();
         readMem32RegOffset(tmpReg, xMem, addressReg);
         andValue32(tmpReg, tmpReg, 0xFFFFFF);
-        doIf(tmpReg, readd(address) & 0x00FFFFFF, DO_IF_NOT_EQUAL, [this] {
+        doIf(tmpReg, cpu->memory->readd(address) & 0x00FFFFFF, DO_IF_NOT_EQUAL, [this] {
             write32(0xcececece);
             }, nullptr);
         releaseTmpReg(tmpReg);
@@ -2130,7 +2130,7 @@ void Armv8btAsm::internal_addDynamicCheck(U32 address, U32 len) {
     case 4: {
         U8 tmpReg = getTmpReg();
         readMem32RegOffset(tmpReg, xMem, addressReg);
-        doIf(tmpReg, readd(address), DO_IF_NOT_EQUAL, [this] {
+        doIf(tmpReg, cpu->memory->readd(address), DO_IF_NOT_EQUAL, [this] {
             write32(0xcececece);
             }, nullptr);
         releaseTmpReg(tmpReg);
@@ -2138,7 +2138,7 @@ void Armv8btAsm::internal_addDynamicCheck(U32 address, U32 len) {
     }
     case 5: {
         U8 tmpReg = getTmpReg();
-        U8 valueReg = getRegWithConst(readq(address) & 0xFFFFFFFFFF);
+        U8 valueReg = getRegWithConst(cpu->memory->readq(address) & 0xFFFFFFFFFF);
 
         readMem64RegOffset(tmpReg, xMem, addressReg);
         andValue64(tmpReg, tmpReg, 0xFFFFFFFFFF);
@@ -2152,7 +2152,7 @@ void Armv8btAsm::internal_addDynamicCheck(U32 address, U32 len) {
     }
     case 6: {
         U8 tmpReg = getTmpReg();
-        U8 valueReg = getRegWithConst(readq(address) & 0xFFFFFFFFFFFF);
+        U8 valueReg = getRegWithConst(cpu->memory->readq(address) & 0xFFFFFFFFFFFF);
 
         readMem64RegOffset(tmpReg, xMem, addressReg);
         andValue64(tmpReg, tmpReg, 0xFFFFFFFFFFFF);
@@ -2166,7 +2166,7 @@ void Armv8btAsm::internal_addDynamicCheck(U32 address, U32 len) {
     }
     case 7: {
         U8 tmpReg = getTmpReg();
-        U8 valueReg = getRegWithConst(readq(address) & 0xFFFFFFFFFFFFFF);
+        U8 valueReg = getRegWithConst(cpu->memory->readq(address) & 0xFFFFFFFFFFFFFF);
 
         readMem64RegOffset(tmpReg, xMem, addressReg);
         andValue64(tmpReg, tmpReg, 0xFFFFFFFFFFFFFF);
@@ -2180,7 +2180,7 @@ void Armv8btAsm::internal_addDynamicCheck(U32 address, U32 len) {
     }
     case 8: {
         U8 tmpReg = getTmpReg();
-        U8 valueReg = getRegWithConst(readq(address));
+        U8 valueReg = getRegWithConst(cpu->memory->readq(address));
 
         readMem64RegOffset(tmpReg, xMem, addressReg);
         cmpRegs64(tmpReg, valueReg);
@@ -2198,7 +2198,7 @@ void Armv8btAsm::internal_addDynamicCheck(U32 address, U32 len) {
 }
 
 void Armv8btAsm::addDynamicCheck(bool panic) {
-    DecodedBlock* block = NormalCPU::getBlockForInspectionButNotUsed(this->ip + this->cpu->seg[CS].address, this->cpu->isBig());
+    DecodedBlock* block = NormalCPU::getBlockForInspectionButNotUsed(cpu, this->ip + this->cpu->seg[CS].address, this->cpu->isBig());
     U32 len = block->op->len;
     U32 address = this->startOfOpIp + this->cpu->seg[CS].address;
 
@@ -2218,7 +2218,8 @@ void Armv8btAsm::addTodoLinkJump(U32 eip, U32 size, bool sameChunk) {
 }
 
 bool Armv8btAsm::isEipInChunk(U32 eip) {
-    if (this->cpu->thread->memory->getExistingHostAddress(eip)) {
+    KMemoryData* mem = getMemData(cpu->memory);
+    if (mem->getExistingHostAddress(eip)) {
         return false;
     }
     return (this->stopAfterInstruction != (S32)this->ipAddressCount && (this->calculatedEipLen == 0 || (eip >= this->startOfDataIp && eip < this->startOfDataIp + this->calculatedEipLen)));
@@ -4873,15 +4874,16 @@ void Armv8btAsm::invalidOp(U32 op) {
     doJmp(true);
 }
 
-static U8 fetchByte(U32* eip) {
-    return readb((*eip)++);
+static U8 fetchByte(void* p, U32* eip) {
+    KMemory* memory = (KMemory*)p;
+    return memory->readb((*eip)++);
 }
 
 static void arm64log(CPU* cpu) {
     if (!cpu->logFile)
         return;
     thread_local static DecodedBlock* block = new DecodedBlock();
-    decodeBlock(fetchByte, cpu->eip.u32 + cpu->seg[CS].address, cpu->isBig(), 1, K_PAGE_SIZE, 0, block);
+    decodeBlock(fetchByte, cpu->memory, cpu->eip.u32 + cpu->seg[CS].address, cpu->isBig(), 1, K_PAGE_SIZE, 0, block);
     block->op->log(cpu);
     block->op->dealloc(false);
 }
@@ -4905,8 +4907,9 @@ void Armv8btAsm::signalIllegalInstruction(int code) {
 }
 
 void Armv8btAsm::translateInstruction() {
+    KMemoryData* mem = getMemData(cpu->memory);
     this->startOfOpIp = this->ip;
-    this->useSingleMemOffset = KSystem::useSingleMemOffset && !this->cpu->thread->memory->doesInstructionNeedMemoryOffset(this->ip);
+    this->useSingleMemOffset = KSystem::useSingleMemOffset && !mem->doesInstructionNeedMemoryOffset(this->ip);
     this->ip += this->decodedOp->len;
 #ifdef _DEBUG
     if (this->cpu->logFile) {

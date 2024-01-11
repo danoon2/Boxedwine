@@ -21,8 +21,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "../emulation/softmmu/soft_memory.h"
-#include "../emulation/hardmmu/hard_memory.h"
+#include "../emulation/hardmmu/kmemory_hard.h"
 #include "../emulation/cpu/binaryTranslation/btCpu.h"
 #include "knativethread.h"
 
@@ -95,21 +94,7 @@ void setup() {
         process->memory->mmap(thread, ((STACK_ADDRESS >> K_PAGE_SHIFT)-PAGES_PER_SEG) << K_PAGE_SHIFT, PAGES_PER_SEG << K_PAGE_SHIFT, K_PROT_WRITE | K_PROT_READ|K_PROT_READ, K_MAP_FIXED | K_MAP_PRIVATE, -1, 0);
         process->memory->mmap(thread, CODE_ADDRESS, PAGES_PER_SEG << K_PAGE_SHIFT, K_PROT_WRITE | K_PROT_READ | K_PROT_READ | K_PROT_EXEC, K_MAP_FIXED | K_MAP_PRIVATE, -1, 0);
         
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-        if (KSystem::useSingleMemOffset) {
-            process->memory->allocPages(HEAP_ADDRESS >> K_PAGE_SHIFT, PAGES_PER_SEG, PAGE_READ | PAGE_WRITE, 0, 0, 0);
-        } else {
-            U32 startHeapPage = HEAP_ADDRESS >> K_PAGE_SHIFT;
-            U8* hostStart = new U8[PAGES_PER_SEG * K_PAGE_SIZE];
-            U64 offset = (U64)hostStart - HEAP_ADDRESS;
-            for (int i = 0; i < PAGES_PER_SEG; i++) {
-                process->memory->memOffsets[startHeapPage + i] = offset;
-                process->memory->flags[startHeapPage + i] = PAGE_MAPPED_HOST | PAGE_READ | PAGE_WRITE;
-            }
-        }
-#else
-        process->memory->mmap(thread, HEAP_ADDRESS, PAGES_PER_SEG << K_PAGE_SHIFT, K_PROT_WRITE | K_PROT_READ | K_PROT_READ, K_MAP_FIXED | K_MAP_PRIVATE, -1, 0);
-#endif
+        memory->mmap(thread, HEAP_ADDRESS, PAGES_PER_SEG << K_PAGE_SHIFT, K_PROT_READ | K_PROT_WRITE, K_MAP_FIXED | K_MAP_PRIVATE, -1, 0);
 
 #ifdef BOXEDWINE_MULTI_THREADED
         initThreadForTesting();
@@ -254,7 +239,8 @@ void runTestCPU() {
 
 #endif    
 #ifdef BOXEDWINE_64BIT_MMU
-    KThread::currentThread()->memory->clearCodePageFromCache(CODE_ADDRESS>>K_PAGE_SHIFT);    
+    KMemoryData* mem = getMemData(memory);
+    mem->clearCodePageFromCache(CODE_ADDRESS>>K_PAGE_SHIFT);    
 #endif
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
     BtCPU* c = (BtCPU*)cpu;

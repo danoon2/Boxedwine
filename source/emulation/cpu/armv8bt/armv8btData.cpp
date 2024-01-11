@@ -4,7 +4,6 @@
 
 #include "armv8btAsm.h"
 #include "../binaryTranslation/btCodeChunk.h"
-#include "../../hardmmu/hard_memory.h"
 #include "armv8btCodeChunk.h"
 
 Armv8btData::Armv8btData(Armv8btCPU* cpu) : cpu(cpu) {

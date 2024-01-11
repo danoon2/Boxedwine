@@ -21,8 +21,6 @@
 #include <string.h>
 #include <errno.h>
 
-#include "../../source/emulation/hardmmu/hard_memory.h"
-
 #ifdef BOXEDWINE_64BIT_MMU
 
 #include <unistd.h>

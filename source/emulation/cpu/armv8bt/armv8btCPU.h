@@ -8,7 +8,7 @@ class Armv8btAsm;
 
 class Armv8btCPU : public BtCPU {
 public:
-    Armv8btCPU();
+    Armv8btCPU(KMemory* memory);
     
     virtual void restart();
     virtual void* init();    

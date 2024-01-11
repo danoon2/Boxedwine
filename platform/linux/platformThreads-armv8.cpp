@@ -2,6 +2,7 @@
 
 #ifdef BOXEDWINE_ARMV8BT
 #include "ksignal.h"
+#include "../../source/emulation/hardmmu/kmemory_hard.h"
 #include "../../source/emulation/cpu/armv8bt/armv8btCPU.h"
 #include "../../source/emulation/cpu/armv8bt/armv8btAsm.h"
 #include "../../source/emulation/cpu/binaryTranslation/btCodeChunk.h"
@@ -134,6 +135,7 @@ static bool Aarch64GetESR(ucontext_t *ucontext, bool* isWrite) {
 void platformHandler(int sig, siginfo_t* info, void* vcontext) {
     exceptionCount++;
     KThread* currentThread = KThread::currentThread();
+    KMemoryData* mem = getMemData(currentThread->memory);
     if (!currentThread) {
         return;
     }
@@ -154,7 +156,7 @@ void platformHandler(int sig, siginfo_t* info, void* vcontext) {
     cpu->exceptionSigCode = info->si_code;
     armCpu->exceptionIp = context->CONTEXT_PC;
 
-    if ((cpu->exceptionSigNo == SIGBUS || cpu->exceptionSigNo == SIGSEGV) && cpu->thread->memory->isAddressExecutable((void*)cpu->exceptionIp)) {
+    if ((cpu->exceptionSigNo == SIGBUS || cpu->exceptionSigNo == SIGSEGV) && mem->isAddressExecutable((void*)cpu->exceptionIp)) {
         U32 insn = *(U32*)(cpu->exceptionIp);
         
         bool isWrite = false;
@@ -178,9 +180,9 @@ void platformHandler(int sig, siginfo_t* info, void* vcontext) {
     if (armCpu->exceptionIp == 0) {
         kpanic("oops jumps to 0");
     }
-    if (cpu->thread->memory->isAddressExecutable((void*)armCpu->exceptionIp)) {
+    if (mem->isAddressExecutable((void*)armCpu->exceptionIp)) {
         unsigned char* hostAddress = (unsigned char*)armCpu->exceptionIp;
-        std::shared_ptr<BtCodeChunk> chunk = cpu->thread->memory->getCodeChunkContainingHostAddress(hostAddress);
+        std::shared_ptr<BtCodeChunk> chunk = mem->getCodeChunkContainingHostAddress(hostAddress);
         if (chunk && chunk->getEipLen()) { // during start up eip is already set
             cpu->eip.u32 = chunk->getEipThatContainsHostAddress(hostAddress, NULL, NULL) - cpu->seg[CS].address;
         }
@@ -205,6 +207,7 @@ void signalHandler() {
     BOXEDWINE_CRITICAL_SECTION;
     KThread* currentThread = KThread::currentThread();
     Armv8btCPU* cpu = (Armv8btCPU*)currentThread->cpu;
+    KMemoryData* mem = getMemData(currentThread->memory);
 
     U64 result = cpu->startException(cpu->exceptionAddress, cpu->exceptionReadAddress);
     if (result) {
@@ -221,7 +224,7 @@ void signalHandler() {
         cpu->translateEip(cpu->eip.u32);
         cpu->returnHostAddress = cpu->exceptionIp;
         return;
-    } else if ((cpu->exceptionSigNo == SIGBUS || cpu->exceptionSigNo == SIGSEGV) && cpu->thread->memory->isAddressExecutable((void*)cpu->exceptionIp)) {
+    } else if ((cpu->exceptionSigNo == SIGBUS || cpu->exceptionSigNo == SIGSEGV) && mem->isAddressExecutable((void*)cpu->exceptionIp)) {
         U64 rip = cpu->handleAccessException(cpu->exceptionIp, cpu->exceptionAddress, cpu->exceptionReadAddress);
         if (rip) {
             cpu->returnHostAddress = rip;

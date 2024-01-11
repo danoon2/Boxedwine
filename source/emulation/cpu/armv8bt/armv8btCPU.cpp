@@ -4,7 +4,7 @@
 #include "armv8btCPU.h"
 #include "armv8btAsm.h"
 #include "armv8btOps.h"
-#include "../../hardmmu/hard_memory.h"
+#include "../../hardmmu/kmemory_hard.h"
 #include "../normal/normalCPU.h"
 #include "../binaryTranslation/btCodeChunk.h"
 #include "armv8btCodeChunk.h"
@@ -12,11 +12,11 @@
 
 #undef u8
 
-CPU* CPU::allocCPU() {
-    return new Armv8btCPU();
+CPU* CPU::allocCPU(KMemory* memory) {
+    return new Armv8btCPU(memory);
 }
 
-Armv8btCPU::Armv8btCPU() {
+Armv8btCPU::Armv8btCPU(KMemory* memory) : BtCPU(memory) {
     sseConstants[SSE_MAX_INT32_PLUS_ONE_AS_DOUBLE].pd.f64[0] = 2147483648.0;
     sseConstants[SSE_MAX_INT32_PLUS_ONE_AS_DOUBLE].pd.f64[1] = 2147483648.0;
     sseConstants[SSE_MIN_INT32_MINUS_ONE_AS_DOUBLE].pd.f64[0] = -2147483649.0;
@@ -67,19 +67,20 @@ void Armv8btCPU::setSeg(U32 index, U32 address, U32 value) {
 }
 
 void Armv8btCPU::restart() {
-	this->memOffset = this->thread->process->memory->id;
+    KMemoryData* mem = getMemData(memory);
+	this->memOffset = mem->id;
 	this->exitToStartThreadLoop = true;
 }
 
 void* Armv8btCPU::init() {
     Armv8btAsm data(this);
     void* result;
-    Memory* memory = this->thread->memory;
+    KMemoryData* mem = getMemData(memory);
     Armv8btCPU* cpu = this;
 
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->executableMemoryMutex);
-    this->eipToHostInstructionAddressSpaceMapping = this->thread->memory->eipToHostInstructionAddressSpaceMapping;
-    this->memOffsets = memory->memOffsets;
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mem->executableMemoryMutex);
+    this->eipToHostInstructionAddressSpaceMapping = mem->eipToHostInstructionAddressSpaceMapping;
+    this->memOffsets = mem->memOffsets;
 
 	data.saveNativeState();
 
@@ -116,7 +117,7 @@ void* Armv8btCPU::init() {
     result = chunk->getHostAddress();
     //link(&data, chunk);
     this->pendingCodePages.clear();    
-    this->eipToHostInstructionPages = this->thread->memory->eipToHostInstructionPages;
+    this->eipToHostInstructionPages = mem->eipToHostInstructionPages;
 
     if (!this->thread->process->returnToLoopAddress) {
         Armv8btAsm returnData(this);
@@ -193,6 +194,8 @@ void Armv8btCPU::writeJumpAmount(const std::shared_ptr<BtData>& data, U32 pos, U
 
 void Armv8btCPU::link(const std::shared_ptr<BtData>& data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 offsetIntoChunk) {
     U32 i;
+    KMemoryData* mem = getMemData(memory);
+
     if (!fromChunk) {
         kpanic("Armv8btCPU::link fromChunk missing");
     }
@@ -215,7 +218,7 @@ void Armv8btCPU::link(const std::shared_ptr<BtData>& data, std::shared_ptr<BtCod
         }
 #endif
         } else if (size==4) {
-            U8* toHostAddress = (U8*)this->thread->memory->getExistingHostAddress(eip);
+            U8* toHostAddress = (U8*)mem->getExistingHostAddress(eip);
 
             if (!toHostAddress) {
                 U8 op = 0xce;
@@ -224,14 +227,14 @@ void Armv8btCPU::link(const std::shared_ptr<BtData>& data, std::shared_ptr<BtCod
                 chunk->makeLive();
                 toHostAddress = (U8*)chunk->getHostAddress();            
             }
-            std::shared_ptr<BtCodeChunk> toChunk = this->thread->memory->getCodeChunkContainingHostAddress(toHostAddress);
+            std::shared_ptr<BtCodeChunk> toChunk = mem->getCodeChunkContainingHostAddress(toHostAddress);
             if (!toChunk) {
                 kpanic("Armv8btCPU::link to chunk missing");
             }
             std::shared_ptr<BtCodeChunkLink> link = toChunk->addLinkFrom(fromChunk, eip, toHostAddress, offset, false);
             writeJumpAmount(data, data->todoJump[i].bufferPos, (U32)(toHostAddress - offset), (U8*)fromChunk->getHostAddress() + offsetIntoChunk);
         } else if (size==8 && !data->todoJump[i].sameChunk) {
-            U8* toHostAddress = (U8*)this->thread->memory->getExistingHostAddress(eip);
+            U8* toHostAddress = (U8*)mem->getExistingHostAddress(eip);
 
             if (!toHostAddress) {
                 Armv8btAsm returnData(this);
@@ -242,7 +245,7 @@ void Armv8btCPU::link(const std::shared_ptr<BtData>& data, std::shared_ptr<BtCod
                 chunk->makeLive();
                 toHostAddress = (U8*)chunk->getHostAddress();
             }
-            std::shared_ptr<BtCodeChunk> toChunk = this->thread->memory->getCodeChunkContainingHostAddress(toHostAddress);
+            std::shared_ptr<BtCodeChunk> toChunk = mem->getCodeChunkContainingHostAddress(toHostAddress);
             if (!toChunk) {
                 kpanic("Armv8btCPU::link to chunk missing");
             }
@@ -258,25 +261,26 @@ void Armv8btCPU::link(const std::shared_ptr<BtData>& data, std::shared_ptr<BtCod
     markCodePageReadOnly(data.get());
 }
 
-static U8 fetchByte(U32* eip) {
-    return readb((*eip)++);
+static U8 fetchByte(void* p, U32* eip) {
+    KMemory* memory = (KMemory*)p;
+    return memory->readb((*eip)++);
 }
 
 void Armv8btCPU::translateData(const std::shared_ptr<BtData>& data, const std::shared_ptr<BtData>& firstPass) {
-    Memory* memory = this->thread->memory;
+    KMemoryData* mem = getMemData(memory);
 
     U32 codePage = (data->ip+ this->seg[CS].address) >> K_PAGE_SHIFT;
-    U32 nativePage = this->thread->memory->getNativePage(codePage);
-    if (memory->dynamicCodePageUpdateCount[nativePage]==MAX_DYNAMIC_CODE_PAGE_COUNT) {
+    U32 nativePage = mem->getNativePage(codePage);
+    if (mem->dynamicCodePageUpdateCount[nativePage]==MAX_DYNAMIC_CODE_PAGE_COUNT) {
         data->dynamic = true;
     }
     DecodedBlock block;
     data->currentBlock = &block;
-    decodeBlock(fetchByte, data->startOfDataIp + this->seg[CS].address, this->isBig(), 0, 0, 0, &block);
+    decodeBlock(fetchByte, memory, data->startOfDataIp + this->seg[CS].address, this->isBig(), 0, 0, 0, &block);
     DecodedOp* op = block.op;
     while (op) {  
         U32 address = this->seg[CS].address+data->ip;
-        void* hostAddress = memory->getExistingHostAddress(address);
+        void* hostAddress = mem->getExistingHostAddress(address);
         if (hostAddress) {
             data->jumpTo(data->ip);
             break;
@@ -287,15 +291,15 @@ void Armv8btCPU::translateData(const std::shared_ptr<BtData>& data, const std::s
 
             if (page!=codePage) {
                 codePage = page;
-                nativePage = this->thread->memory->getNativePage(codePage);
+                nativePage = mem->getNativePage(codePage);
                 if (data->dynamic) {                    
-                    if (memory->dynamicCodePageUpdateCount[nativePage] == MAX_DYNAMIC_CODE_PAGE_COUNT) {
+                    if (mem->dynamicCodePageUpdateCount[nativePage] == MAX_DYNAMIC_CODE_PAGE_COUNT) {
                         // continue to cross from my dynamic page into another dynamic page
                     } else {
                         // we will continue to emit code that will self check for modified code, even though the page we spill into is not dynamic
                     }
                 } else {
-                    if (memory->dynamicCodePageUpdateCount[nativePage] == MAX_DYNAMIC_CODE_PAGE_COUNT) {
+                    if (mem->dynamicCodePageUpdateCount[nativePage] == MAX_DYNAMIC_CODE_PAGE_COUNT) {
                         // we crossed a page boundry from a non dynamic page to a dynamic page
                         data->dynamic = true; // the instructions from this point on will do their own check
                     } else {
@@ -324,7 +328,7 @@ void Armv8btCPU::translateData(const std::shared_ptr<BtData>& data, const std::s
         data->resetForNewOp();
         if (!op) {
             block.op->dealloc(true);
-            decodeBlock(fetchByte, data->startOfOpIp + this->seg[CS].address, this->isBig(), 0, 0, 0, &block);
+            decodeBlock(fetchByte, memory, data->startOfOpIp + this->seg[CS].address, this->isBig(), 0, 0, 0, &block);
             op = block.op;
         }
     }     

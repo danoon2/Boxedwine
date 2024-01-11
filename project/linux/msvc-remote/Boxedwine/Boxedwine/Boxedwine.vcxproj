@@ -215,13 +215,12 @@
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\x64\x64CPU.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\x64\x64Data.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\x64\x64Ops.cpp" />
-    <ClCompile Include="..\..\..\..\..\source\emulation\hardmmu\hard_memory.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\emulation\hardmmu\kmemory_hard.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\kmemory_soft.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\soft_code_page.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\soft_copy_on_write_page.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\soft_file_map.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\soft_invalid_page.cpp" />
-    <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\soft_memory.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\soft_native_page.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\soft_no_page.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\soft_ondemand_page.cpp" />
@@ -549,7 +548,6 @@
     <ClInclude Include="..\..\..\..\..\include\loader.h" />
     <ClInclude Include="..\..\..\..\..\include\log.h" />
     <ClInclude Include="..\..\..\..\..\include\meminfo.h" />
-    <ClInclude Include="..\..\..\..\..\include\memory.h" />
     <ClInclude Include="..\..\..\..\..\include\pixelformat.h" />
     <ClInclude Include="..\..\..\..\..\include\platform.h" />
     <ClInclude Include="..\..\..\..\..\include\platformtypes.h" />
@@ -791,13 +789,12 @@
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\x64\x64CPU.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\x64\x64Data.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\x64\x64Ops.h" />
-    <ClInclude Include="..\..\..\..\..\source\emulation\hardmmu\hard_memory.h" />
+    <ClInclude Include="..\..\..\..\..\source\emulation\hardmmu\kmemory_hard.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\kmemory_soft.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\soft_code_page.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\soft_copy_on_write_page.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\soft_file_map.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\soft_invalid_page.h" />
-    <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\soft_memory.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\soft_native_page.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\soft_no_page.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\soft_ondemand_page.h" />
