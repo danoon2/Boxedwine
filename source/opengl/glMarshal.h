@@ -11,6 +11,7 @@
 // be used
 
 #ifdef BOXEDWINE_64BIT_MMU
+#define getPhysicalAddress(p, len) cpu->memory->getIntPtr(p)
 #define marshald(cpu, address, count) (GLdouble*)getPhysicalAddress(address, 0)
 #define marshalf(cpu, address, count) (GLfloat*)getPhysicalAddress(address, 0)
 #define marshali(cpu, address, count) (GLint*)getPhysicalAddress(address, 0)

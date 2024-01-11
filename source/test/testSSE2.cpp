@@ -9,6 +9,8 @@
 #include "testCPU.h"
 #include "testSSE.h"
 
+extern KMemory* memory;
+
 void testSse2MovUps110() {  
     testSse128(0, 0x66, 0x10, SSE_MEM_VALUE128_DEFAULT1, SSE_MEM_VALUE128_DEFAULT2, SSE_MEM_VALUE128_LOW, SSE_MEM_VALUE128_HIGH, SSE_MEM_VALUE128_LOW, SSE_MEM_VALUE128_HIGH);
 }
@@ -2860,14 +2862,14 @@ void testSse2Movnti3c3() {
     for (U8 m=0;m<8;m++) {
         newInstruction(0);
         cpu->reg[m].u32 = 0x12348765;
-        writed(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET, 0xcdcdcdcd);        
+        memory->writed(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET, 0xcdcdcdcd);
         pushCode8(0x0f);
         pushCode8(0xc3);
         pushCode8(0x04 | (m<<3));
         pushCode8(0x25);
         pushCode32(SSE_MEM_VALUE_TMP_OFFSET);
         runTestCPU();
-        if (readd(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET)!=0x12348765) {
+        if (memory->readd(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET)!=0x12348765) {
             failed("movnti failed");
         }
     }    
@@ -3986,15 +3988,15 @@ void testSse2Maskmovdqu1f7() {
             loadSSE(m, 0, 0x1122334455667788, 0x99aabbccddeeff00);
             loadSSE(from, 1, 0x8000800080008000, 0x0080808000008080);
             EDI = SSE_MEM_VALUE_TMP_OFFSET+64;
-            writeq(cpu->seg[DS].address+EDI, 0x9999999999999999);
-            writeq(cpu->seg[DS].address+EDI+8, 0x9999999999999999);
+            memory->writeq(cpu->seg[DS].address+EDI, 0x9999999999999999);
+            memory->writeq(cpu->seg[DS].address+EDI+8, 0x9999999999999999);
             pushCode8(0x66);
             pushCode8(0x0f);            
             pushCode8(0xf7);
             pushCode8(0xC0 | (m << 3) | from);            
             runTestCPU();
-            U64 result1 = readq(cpu->seg[DS].address+EDI);
-            U64 result2 = readq(cpu->seg[DS].address+EDI+8);
+            U64 result1 = memory->readq(cpu->seg[DS].address+EDI);
+            U64 result2 = memory->readq(cpu->seg[DS].address+EDI+8);
             if (result1!=0x1199339955997799 || result2!=0x99aabbcc9999ff00) {
                 failed("maskmovq failed");
             }

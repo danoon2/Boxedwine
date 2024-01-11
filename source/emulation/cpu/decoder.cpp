@@ -3174,6 +3174,7 @@ public:
     U32 fetch32();
 
     pfnFetchByte fetchByte;
+    void* fetchByteData;
     U32 eip;
     U32 opCountSoFarInThisBlock;
     U8 opLen;
@@ -5946,7 +5947,7 @@ const Decode* const decoder[] = {
 
 U8 DecodeData::fetch8() {
     this->opLen++;
-    return this->fetchByte(&this->eip);
+    return this->fetchByte(this->fetchByteData, &this->eip);
 }
 
 U16 DecodeData::fetch16() {
@@ -6154,11 +6155,12 @@ void DecodedBlock::removeReferenceFrom(DecodedBlock* block) {
 
 DecodedBlock* DecodedBlock::currentBlock;
 
-void decodeBlock(pfnFetchByte fetchByte, U32 eip, bool isBig, U32 maxInstructions, U32 maxLen, U32 stopIfThrowsException, DecodedBlock* block) {
+void decodeBlock(pfnFetchByte fetchByte, void* fetchByteData, U32 eip, bool isBig, U32 maxInstructions, U32 maxLen, U32 stopIfThrowsException, DecodedBlock* block) {
     DecodeData d;    
     DecodedOp* op = DecodedOp::alloc();
 
     d.fetchByte = fetchByte;
+    d.fetchByteData = fetchByteData;
     d.eip = eip;
     d.opCountSoFarInThisBlock = 0;
 

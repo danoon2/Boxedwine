@@ -68,9 +68,9 @@
 #include "../source/util/vectorutils.h"
 #include "../source/util/fileutils.h"
 
+#include "kmemory.h"
 #include "../source/emulation/cpu/common/cpu.h"
 #include "kpoll.h"
-#include "memory.h"
 #include "kthread.h"
 #include "kfilelock.h"
 #include "kobject.h"

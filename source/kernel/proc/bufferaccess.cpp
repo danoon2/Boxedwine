@@ -58,7 +58,7 @@ U32 BufferAccess::writeNative(U8* buffer, U32 len) {
     return len;
 }
 
-U32 BufferAccess::ioctl( U32 request) {
+U32 BufferAccess::ioctl(KThread* thread, U32 request) {
     return -K_ENODEV;
 }
 
@@ -75,7 +75,7 @@ void BufferAccess::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 event
     kpanic("BufferAccess::waitForEvents not implemented");
 }
 
-U32 BufferAccess::map(U32 address, U32 len, S32 prot, S32 flags, U64 off) {
+U32 BufferAccess::map(KThread* thread, U32 address, U32 len, S32 prot, S32 flags, U64 off) {
     return 0;
 }
 

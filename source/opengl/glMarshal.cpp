@@ -5,9 +5,10 @@
 #include "glcommon.h"
 #include "glMarshal.h"
 
-#define MARSHAL_TYPE(type, p, m, s) type* buffer##p; U32 buffer##p##_len; type* marshal##p(CPU* cpu, U32 address, U32 count) {U32 i; if (!address) return NULL; if (buffer##p && buffer##p##_len<count) { delete[] buffer##p; buffer##p=NULL;} if (!buffer##p) {buffer##p = new type[count]; buffer##p##_len = count;}for (i=0;i<count;i++) {buffer##p[i] = read##m(address);address+=s;} return buffer##p;}
+#define MARSHAL_TYPE(type, p, m, s) type* buffer##p; U32 buffer##p##_len; type* marshal##p(CPU* cpu, U32 address, U32 count) {U32 i; if (!address) return NULL; if (buffer##p && buffer##p##_len<count) { delete[] buffer##p; buffer##p=NULL;} if (!buffer##p) {buffer##p = new type[count]; buffer##p##_len = count;}for (i=0;i<count;i++) {buffer##p[i] = cpu->memory->read##m(address);address+=s;} return buffer##p;}
 
 #ifdef BOXEDWINE_64BIT_MMU
+#include "../emulation/hardmmu/kmemory_hard.h"
 
 #define getSize(pname) 0
 
@@ -33,7 +34,7 @@ GLvoid** marshalpp(CPU* cpu, U32 buffer, U32 count, U32 sizes, S32 bytesPerCount
         bufferpp_len = count;
     }
     for (i=0;i<count;i++) {
-        bufferpp[i] = (GLvoid*)getPhysicalAddress(readd(buffer+i*4), 0);
+        bufferpp[i] = (GLvoid*)getPhysicalAddress(cpu->memory->readd(buffer+i*4), 0);
     }
     return bufferpp;
 }
@@ -48,7 +49,7 @@ GLvoid* marshalp_and_check_array_buffer(CPU* cpu, U32 instance, U32 buffer, U32 
 GLvoid* marshalp(CPU* cpu, U32 instance, U32 buffer, U32 len) {
     if (buffer == 0)
         return NULL;
-    if (!cpu->thread->memory->isValidReadAddress(buffer, 4)) {
+    if (!cpu->thread->memory->canRead(buffer, 4)) {
         return (GLvoid*)(U64)buffer;
     }
     return (GLvoid*)getPhysicalAddress(buffer, 0);
@@ -56,7 +57,8 @@ GLvoid* marshalp(CPU* cpu, U32 instance, U32 buffer, U32 len) {
 
 // this won't marshal the data, but rather map it into the address space, reserving "size" amount of address space
 U32 marshalBackp(CPU* cpu, GLvoid* buffer, U32 size) {
-    return cpu->thread->memory->mapNativeMemory(buffer, size);
+    KMemoryData* data = getMemData(cpu->memory);
+    return data->mapNativeMemory(buffer, size);
 }
 
 class BufferedTarget {
@@ -75,21 +77,21 @@ U32 mapBufferRange(CPU* cpu, GLenum target, GLvoid* buffer, U32 offset, U32 size
     if (bufferedTargets[target].bufferedAddress) {
         kpanic("mapBufferRange already mapped");
     }
-    U32 result = cpu->thread->process->mmap(0, size, K_PROT_WRITE|K_PROT_READ, K_MAP_PRIVATE|K_MAP_ANONYMOUS, -1, 0);
-    memcopyFromNative(result, buffer, size);
+    U32 result = cpu->memory->mmap(cpu->thread, 0, size, K_PROT_WRITE|K_PROT_READ, K_MAP_PRIVATE|K_MAP_ANONYMOUS, -1, 0);
+    cpu->memory->memcpy(result, buffer, size);
     bufferedTargets[target] = BufferedTarget(result, (S8*)buffer, size);
     return result;
 }
 
 void flushBufferRange(CPU* cpu, GLenum target, U32 offset, U32 size) {
     BufferedTarget t = bufferedTargets[target];
-    memcopyToNative(t.bufferedAddress+offset, t.originalBufferedAddress+offset, size);
+    cpu->memory->memcpy(t.originalBufferedAddress+offset, t.bufferedAddress + offset, size);
 }
 
 void unmapBuffer(CPU* cpu, GLenum target) {
     BufferedTarget t = bufferedTargets[target];
-    memcopyToNative(t.bufferedAddress, t.originalBufferedAddress, t.size);
-    cpu->thread->process->unmap(t.bufferedAddress, t.size);
+    cpu->memory->memcpy(t.originalBufferedAddress, t.bufferedAddress, t.size);
+    cpu->memory->unmap(t.bufferedAddress, t.size);
     bufferedTargets.erase(target);
 }
 
@@ -156,7 +158,7 @@ const GLchar** marshalszArray(CPU* cpu, U32 count, U32 address, U32 addressLengt
         bufferszArray_len = count;
     }
     for (U32 i = 0; i < count; i++) {
-        U32 strAddress = readd(address + i * 4);
+        U32 strAddress = cpu->memory->readd(address + i * 4);
         bufferszArray[i] = (GLchar*)getPhysicalAddress(strAddress, 0);
     }
     return (const GLchar**)bufferszArray;
@@ -174,14 +176,14 @@ const GLcharARB** marshalszArrayARB(CPU* cpu, U32 count, U32 address, U32 addres
         bufferszArrayARB_len = count;
     }
     for (U32 i = 0; i < count; i++) {
-        U32 strAddress = readd(address + i * 4);
+        U32 strAddress = cpu->memory->readd(address + i * 4);
         bufferszArray[i] = (GLcharARB*)getPhysicalAddress(strAddress, 0);
     }
     return (const GLcharARB**)bufferszArrayARB;
 }
 
 #else 
-#define MARSHAL_TYPE_CUSTOM(type, p, m, s, conv, get, set) type* buffer##p; U32 buffer##p##_len; type* marshal##p(CPU* cpu, U32 address, U32 count) {U32 i; if (!address) return NULL; if (buffer##p && buffer##p##_len<count) { delete[] buffer##p; buffer##p=NULL;} if (!buffer##p) {buffer##p = new type[count]; buffer##p##_len = count;}for (i=0;i<count;i++) {struct conv d; get = read##m(address);address+=s;buffer##p[i] = set;} return buffer##p;}
+#define MARSHAL_TYPE_CUSTOM(type, p, m, s, conv, get, set) type* buffer##p; U32 buffer##p##_len; type* marshal##p(CPU* cpu, U32 address, U32 count) {U32 i; if (!address) return NULL; if (buffer##p && buffer##p##_len<count) { delete[] buffer##p; buffer##p=NULL;} if (!buffer##p) {buffer##p = new type[count]; buffer##p##_len = count;}for (i=0;i<count;i++) {struct conv d; get = cpu->memory->read##m(address);address+=s;buffer##p[i] = set;} return buffer##p;}
 
 MARSHAL_TYPE(GLbyte, b, b, 1)
 MARSHAL_TYPE(GLbyte, 2b, b, 1)
@@ -268,7 +270,7 @@ void marshalBackd(CPU* cpu, U32 address, GLdouble* buffer, U32 count) {
         for (i=0;i<count;i++) {
             struct long2Double d;
             d.d = buffer[i];
-            writeq(address, d.l);
+            cpu->memory->writeq(address, d.l);
             address+=8;
         }
     }
@@ -281,7 +283,7 @@ void marshalBackf(CPU* cpu, U32 address, GLfloat* buffer, U32 count) {
         for (i=0;i<count;i++) {
             struct int2Float f;
             f.f = buffer[i];
-            writed(address, f.i);
+            cpu->memory->writed(address, f.i);
             address+=4;
         }
     }
@@ -292,7 +294,7 @@ void marshalBacki(CPU* cpu, U32 address, GLint* buffer, U32 count) {
 
     if (address) {
         for (i=0;i<count;i++) {
-            writed(address, buffer[i]);
+            cpu->memory->writed(address, buffer[i]);
             address+=4;
         }
     }
@@ -307,7 +309,7 @@ void marshalBacki64(CPU* cpu, U32 address, GLint64* buffer, U32 count) {
 
     if (address) {
         for (i=0;i<count;i++) {
-            writeq(address, buffer[i]);
+            cpu->memory->writeq(address, buffer[i]);
             address+=8;
         }
     }
@@ -322,7 +324,7 @@ void marshalBackus(CPU* cpu, U32 address, GLushort* buffer, U32 count) {
 
     if (address) {
         for (i=0;i<count;i++) {
-            writew(address, buffer[i]);
+            cpu->memory->writew(address, buffer[i]);
             address+=2;
         }
     }
@@ -333,27 +335,27 @@ void marshalBacks(CPU* cpu, U32 address, GLshort* buffer, U32 count) {
 }
 
 void marshalBackb(CPU* cpu, U32 address, GLbyte* buffer, U32 count) {
-    memcopyFromNative(address, buffer, count);
+    cpu->memory->memcpy(address, buffer, count);
 }
 
 void marshalBackc(CPU* cpu, U32 address, GLchar* buffer, U32 count) {
-    memcopyFromNative(address, buffer, count*sizeof(GLchar));
+    cpu->memory->memcpy(address, buffer, count*sizeof(GLchar));
 }
 
 void marshalBacke(CPU* cpu, U32 address, GLenum* buffer, U32 count) {
-    memcopyFromNative(address, buffer, count*sizeof(GLenum));
+    cpu->memory->memcpy(address, buffer, count*sizeof(GLenum));
 }
 
 void marshalBackac(CPU* cpu, U32 address, GLcharARB* buffer, U32 count) {
-    memcopyFromNative(address, buffer, count*sizeof(GLcharARB));
+    cpu->memory->memcpy(address, buffer, count*sizeof(GLcharARB));
 }
 
 void marshalBackub(CPU* cpu, U32 address, GLubyte* buffer, U32 count) {
-    memcopyFromNative(address, buffer, count);
+    cpu->memory->memcpy(address, buffer, count);
 }
 
 void marshalBackbool(CPU* cpu, U32 address, GLboolean* buffer, U32 count) {
-    memcopyFromNative(address, buffer, count);
+    cpu->memory->memcpy(address, buffer, count);
 }
 
 GLvoid* marshalType(CPU* cpu, U32 type, U32 count, U32 address) {
@@ -704,7 +706,11 @@ void marshalBackPixels(CPU* cpu, U32 is3d, GLsizei width, GLsizei height, GLsize
 }
 
 U32 marshalBackp(CPU* cpu, GLvoid* buffer, U32 size) { 
-    return cpu->thread->memory->mapNativeMemory(buffer, size);
+    if (size == 0) {
+        kpanic("bad OpenGL marshalBackp");
+    }
+    kpanic("need to implement marshalBackp");
+    return 0;
 }
 
 // instance is in the instance number within the function, so if the same function calls this 3 times, each call will have a difference instance
@@ -719,7 +725,7 @@ GLvoid* marshalp(CPU* cpu, U32 instance, U32 buffer, U32 len) {
     }
     // :TODO: a lot of work needs to be done here, marshalp needs to be removed and instead marshal the correct type of array, like marshalf.
     // This is also important to make things work with UNALIGNED_MEMORY
-    return (GLvoid*)getPhysicalAddress(buffer, 1);
+    return (GLvoid*)cpu->memory->getIntPtr(buffer);
 }
 
 U32 marshalBackSync(CPU* cpu, GLsync sync) {
@@ -758,14 +764,14 @@ GLvoid** marshalpp(CPU* cpu, U32 buffer, U32 count, U32 sizes, S32 bytesPerCount
     }
     for (i=0;i<count;i++) {
         S32 len = 0;
-        U32 p = readd(buffer+i*4);
+        U32 p = cpu->memory->readd(buffer+i*4);
         if (sizes) {
-            U32 address = readd(sizes+i*4);
-            len = (S32)readd(address);
+            U32 address = cpu->memory->readd(sizes+i*4);
+            len = (S32)cpu->memory->readd(address);
         }
         if (bytesPerCount) {
             if (bytesPerCount==-1 && len<=0) {
-                len = getNativeStringLen(p)+1;
+                len = cpu->memory->strlen(p)+1;
             } else {
                 len*=bytesPerCount;
             }
@@ -776,18 +782,18 @@ GLvoid** marshalpp(CPU* cpu, U32 buffer, U32 count, U32 sizes, S32 bytesPerCount
     return bufferpp;
 }
 
-// :TODO: not thread safe
 const GLchar* marshalsz(CPU* cpu, U32 address) {
-    static char* tmp;
-    static U32 tmpLen;
-    U32 len = getNativeStringLen(address)+1;
+    thread_local static char* tmp;
+    thread_local static U32 tmpLen;
+    U32 len = cpu->memory->strlen(address)+1;
     if (len>tmpLen) {
         if (tmpLen!=0)
             delete[] tmp;
         tmp = new char[len];
         tmpLen = len;
     }
-    return getNativeString(address, tmp, tmpLen);
+    cpu->memory->memcpy(tmp, address, tmpLen);
+    return tmp;
 }
 
 GLchar** bufferszArray;
@@ -811,17 +817,17 @@ const GLchar** marshalszArray(CPU* cpu, U32 count, U32 address, U32 addressLengt
     }
     for (U32 i = 0; i < count; i++) {
         U32 len;
-        U32 strAddress = readd(address + i * 4);
+        U32 strAddress = cpu->memory->readd(address + i * 4);
         if (addressLengths) {
-            len = readd(addressLengths + i * 4);
+            len = cpu->memory->readd(addressLengths + i * 4);
         } else {
             if (sizeof(GLchar) != 1) {
                 kpanic("marshalszArray sizeof(GLchar)!=1");
             }
-            len = getNativeStringLen(strAddress);
+            len = cpu->memory->strlen(strAddress);
         }
         bufferszArray[i] = new GLchar[len + 1];
-        memcopyToNative(strAddress, bufferszArray[i], len*sizeof(GLchar));
+        cpu->memory->memcpy(bufferszArray[i], strAddress, len*sizeof(GLchar));
         bufferszArray[i][len] = 0;
     }
     return (const GLchar **)bufferszArray;
@@ -848,17 +854,17 @@ const GLcharARB** marshalszArrayARB(CPU* cpu, U32 count, U32 address, U32 addres
     }
     for (U32 i = 0; i < count; i++) {
         U32 len;
-        U32 strAddress = readd(address + i * 4);
+        U32 strAddress = cpu->memory->readd(address + i * 4);
         if (addressLengths) {
-            len = readd(addressLengths + i * 4);
+            len = cpu->memory->readd(addressLengths + i * 4);
         } else {
             if (sizeof(GLcharARB) != 1) {
                 kpanic("marshalszArrayARB sizeof(GLcharARB)!=1");
             }
-            len = getNativeStringLen(strAddress);
+            len = cpu->memory->strlen(strAddress);
         }
         bufferszArrayARB[i] = new GLcharARB[len + 1];
-        memcopyToNative(strAddress, bufferszArrayARB[i], len*sizeof(GLcharARB));
+        cpu->memory->memcpy(bufferszArrayARB[i], strAddress, len*sizeof(GLcharARB));
         bufferszArrayARB[i][len] = 0;
     }
     return (const GLcharARB**)bufferszArrayARB;
@@ -1027,14 +1033,14 @@ void marshalBackhandle(CPU* cpu, U32 address, GLhandleARB* buffer, U32 count) {
     if (sizeof(GLhandleARB)!=4)
         kpanic("marshalBackhandle not supported on this platform");
     for (i=0;i<count;i++) {
-        writed(address, buffer[i]);
+        cpu->memory->writed(address, buffer[i]);
         address+=4;
     }
 }
 #endif
 
 const char* glcommon_glLightv_print_name(GLenum e) {
-    THREAD_LOCAL static BString buffer;
+    thread_local static BString buffer; // static so that c_str can be returned
     if (e >= GL_LIGHT0 && e < GL_LIGHT0 + GL_MAX_LIGHTS) {
         buffer = "GL_LIGHT" + BString::valueOf(e - GL_LIGHT0);
     }
@@ -1045,7 +1051,7 @@ const char* glcommon_glLightv_print_name(GLenum e) {
 }
 
 const char* glcommon_glLightv_print_buffer(GLenum e, GLfloat* buffer) {
-    THREAD_LOCAL static char tmp[64];
+    thread_local static char tmp[64]; // static so that it can be returned
 
     switch (e) {
     case GL_SPOT_EXPONENT:
@@ -1083,7 +1089,7 @@ const char* glcommon_glLightv_print_pname(GLenum e)
     case GL_SPECULAR: return "GL_SPECULAR";
     case GL_POSITION: return "GL_POSITION";
     default: {
-        THREAD_LOCAL static BString buffer;
+        thread_local static BString buffer; // static so it can return c_str
         buffer = BString::valueOf(e);
         return buffer.c_str();
     }
@@ -1091,7 +1097,7 @@ const char* glcommon_glLightv_print_pname(GLenum e)
 }
 
 const char* glcommon_glClear_mask(GLbitfield mask) {
-    THREAD_LOCAL static BString buffer;
+    thread_local static BString buffer; // static so that it can return c_str
     buffer = "";
     if (mask & GL_COLOR_BUFFER_BIT) {
         mask &= ~GL_COLOR_BUFFER_BIT;

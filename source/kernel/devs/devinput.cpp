@@ -76,14 +76,16 @@ public:
             *clearOnExit = NULL;
         }
     }
-    virtual U32 ioctl(U32 request);
-    virtual U32 readNative(U8* buffer, U32 len);
-    virtual U32 writeNative(U8* buffer, U32 len);
-    virtual void waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events);
-    virtual void setAsync(bool isAsync);
-    virtual bool isAsync();
-    virtual bool isWriteReady();
-    virtual bool isReadReady();
+
+    // From FsOpenNode
+    virtual U32 ioctl(KThread* thread, U32 request) override;
+    virtual U32 readNative(U8* buffer, U32 len) override;
+    virtual U32 writeNative(U8* buffer, U32 len) override;
+    virtual void waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) override;
+    virtual void setAsync(bool isAsync) override;
+    virtual bool isAsync() override;
+    virtual bool isWriteReady() override;
+    virtual bool isReadReady() override;
 
     U32 asyncProcessId;
     U32 asyncProcessFd;
@@ -102,7 +104,7 @@ public:
 class DevInputTouch : public DevInput {
 public:
     DevInputTouch(const BoxedPtr<FsNode>& node, U32 flags);
-    virtual U32 ioctl( U32 request);
+    virtual U32 ioctl(KThread* thread, U32 request) override;
 
     U32 lastX;
     U32 lastY;
@@ -111,13 +113,13 @@ public:
 class DevInputMouse : public DevInput {
 public:
     DevInputMouse(const BoxedPtr<FsNode>& node, U32 flags);
-    virtual U32 ioctl(U32 request);
+    virtual U32 ioctl(KThread* thread, U32 request) override;
 };
 
 class DevInputKeyboard : public DevInput {
 public:
     DevInputKeyboard(const BoxedPtr<FsNode>& node, U32 flags);
-    virtual U32 ioctl(U32 request);
+    virtual U32 ioctl(KThread* thread, U32 request) override;
 };
 
 static DevInputTouch* touchEvents;
@@ -176,12 +178,12 @@ void DevInput::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) {
     }
 }
 
-void writeBit(U32 address, U32 bit) {
+static void writeBit(KMemory* memory, U32 address, U32 bit) {
     U32 b = bit/8;
     U32 p = bit % 8;
-    U32 value = readb(address+b);
+    U32 value = memory->readb(address+b);
     value|=(1<<p);
-    writeb(address+b, value);
+    memory->writeb(address+b, value);
 }
 
 //    struct input_absinfo {
@@ -192,18 +194,19 @@ void writeBit(U32 address, U32 bit) {
 //        __s32 flat;
 //        __s32 resolution;
 //    };
-void writeAbs(U32 address, U32 value, U32 min, U32 max) {
-    writed(address, value);
-    writed(address+4, min);
-    writed(address+8, max);
-    writed(address+12, 0);
-    writed(address+16, 0);
-    writed(address+20, 96);
+static void writeAbs(KMemory* memory, U32 address, U32 value, U32 min, U32 max) {
+    memory->writed(address, value);
+    memory->writed(address+4, min);
+    memory->writed(address+8, max);
+    memory->writed(address+12, 0);
+    memory->writed(address+16, 0);
+    memory->writed(address+20, 96);
 }
 
-U32 DevInput::ioctl(U32 request) {
-    CPU* cpu = KThread::currentThread()->cpu;
+U32 DevInput::ioctl(KThread* thread, U32 request) {
+    CPU* cpu = thread->cpu;
     U32 cmd = request & 0xFFFF;
+    KMemory* memory = thread->memory;
 
     switch (cmd) {
         case 0x4501: { // EVIOCGVERSION
@@ -211,7 +214,7 @@ U32 DevInput::ioctl(U32 request) {
             U32 buffer = IOCTL_ARG1;
             if (len<4)
                 kpanic("Bad length for EVIOCGVERSION: %d", len);
-            writed(buffer, this->version);
+            memory->writed(buffer, this->version);
             return 4;
         }
         case 0x4502: { // EVIOCGID
@@ -225,51 +228,57 @@ U32 DevInput::ioctl(U32 request) {
             U32 buffer = IOCTL_ARG1;
             if (len!=8)
                 kpanic("Bad length for EVIOCGID: %d",len);
-            writew(buffer, this->bustype);
-            writew(buffer + 2, this->vendor);
-            writew(buffer + 4, this->product);
-            writew(buffer + 6, this->version);
+            memory->writew(buffer, this->bustype);
+            memory->writew(buffer + 2, this->vendor);
+            memory->writew(buffer + 4, this->product);
+            memory->writew(buffer + 6, this->version);
             return 0;
         }
         case 0x4506: { // EVIOCGNAME
             U32 len = (request & 0x1fff0000) >> 16;
             U32 buffer = IOCTL_ARG1;
-            return writeNativeString2(buffer, this->name.c_str(), len);
+            U32 todo = std::min((U32)name.length(), len);
+            memory->memcpy(buffer, this->name.c_str(), todo);
+            return todo;
         }
        case 0x4507: { // EVIOCGPHYS
             U32 len = (request & 0x1fff0000) >> 16;
             U32 buffer = IOCTL_ARG1;
-            return writeNativeString2(buffer, this->name.c_str(), len);
+            U32 todo = std::min((U32)name.length(), len);
+            memory->memcpy(buffer, this->name.c_str(), todo);
+            return todo;
         }
         case 0x4508: { //  EVIOCGUNIQ
             U32 len = (request & 0x1fff0000) >> 16;
             U32 buffer = IOCTL_ARG1;
-            return writeNativeString2(buffer, this->name.c_str(), len);
+            U32 todo = std::min((U32)name.length(), len);
+            memory->memcpy(buffer, this->name.c_str(), todo);
+            return todo;
         }
         case 0x4509: { // EVIOCGPROP
             U32 len = (request & 0x1fff0000) >> 16;
             U32 buffer = IOCTL_ARG1;
             if (len<4)
                 kpanic("Bad length for EVIOCGBIT: %d", len);
-            writed(buffer, this->prop);
+            memory->writed(buffer, this->prop);
             return 4;
         }
         case 0x4518: { // EVIOCGKEY
             U32 len = (request & 0x1fff0000) >> 16;
             U32 buffer = IOCTL_ARG1;
-            zeroMemory(buffer, len);
+            memory->memset(buffer, 0, len);
             return 0;
         }
         case 0x4519: { // EVIOCGLED
             U32 len = (request & 0x1fff0000) >> 16;
             U32 buffer = IOCTL_ARG1;
-            zeroMemory(buffer, len);
+            memory->memset(buffer, 0, len);
             return 0;
         }
         case 0x451b: { // EVIOCGSW
             U32 len = (request & 0x1fff0000) >> 16;
             U32 buffer = IOCTL_ARG1;
-            zeroMemory(buffer, len);
+            memory->memset(buffer, 0, len);
             return 0;
         }
         case 0x4520: { // EVIOCGBIT
@@ -277,31 +286,31 @@ U32 DevInput::ioctl(U32 request) {
             U32 buffer = IOCTL_ARG1;
             if (len<4)
                 kpanic("Bad length for EVIOCGBIT: %d", len);
-            writed(buffer, this->mask);
+            memory->writed(buffer, this->mask);
             return 4;
         }
         case 0x4524: { // EVIOCGBIT(EV_MSC)
             U32 len = (request & 0x1fff0000) >> 16;
             U32 buffer = IOCTL_ARG1;
-            zeroMemory(buffer, len);
+            memory->memset(buffer, 0, len);
             return 0;
         }
         case 0x4525: { // EVIOCGBIT(EV_SW) - Switches
             U32 len = (request & 0x1fff0000) >> 16;
             U32 buffer = IOCTL_ARG1;
-            zeroMemory(buffer, len);
+            memory->memset(buffer, 0, len);
             return 0;
         }
         case 0x4532: { // EVIOCGBIT(EV_SND) - Sound Effects
             U32 len = (request & 0x1fff0000) >> 16;
             U32 buffer = IOCTL_ARG1;
-            zeroMemory(buffer, len);
+            memory->memset(buffer, 0, len);
             return 0;
         }
         case 0x4535: { // EVIOCGBIT(EV_FF) - Force Feedback
             U32 len = (request & 0x1fff0000) >> 16;
             U32 buffer = IOCTL_ARG1;
-            zeroMemory(buffer, len);
+            memory->memset(buffer, 0, len);
             return 0;
         }
         case 0x540B: // TCFLSH
@@ -351,8 +360,9 @@ DevInputTouch::DevInputTouch(const BoxedPtr<FsNode>& node, U32 flags) : DevInput
     this->mask = (1<<K_EV_SYN)|(1<<K_EV_KEY)|(1<<K_EV_ABS);
 }
 
-U32 DevInputTouch::ioctl(U32 request) {
+U32 DevInputTouch::ioctl(KThread* thread, U32 request) {
     CPU* cpu = KThread::currentThread()->cpu;
+    KMemory* memory = thread->memory;
 
     switch (request & 0xFFFF) {
         case 0x4521: { // EVIOCGBIT, EV_KEY
@@ -360,29 +370,29 @@ U32 DevInputTouch::ioctl(U32 request) {
             U32 buffer = IOCTL_ARG1;
             U32 result = K_BTN_MIDDLE;
             result = (result+7)/8;
-            zeroMemory(buffer, len);
-            writeBit(buffer, K_BTN_LEFT);
-            writeBit(buffer, K_BTN_MIDDLE);
-            writeBit(buffer, K_BTN_RIGHT);
+            memory->memset(buffer, 0, len);
+            writeBit(memory, buffer, K_BTN_LEFT);
+            writeBit(memory, buffer, K_BTN_MIDDLE);
+            writeBit(memory, buffer, K_BTN_RIGHT);
             return result;
         }
         case 0x4522: { // EVIOCGBIT, EV_REL
             U32 len = (request & 0x1fff0000) >> 16;
             U32 buffer = IOCTL_ARG1;
-            zeroMemory(buffer, len);
+            memory->memset(buffer, 0, len);
             return 1;
         }
         case 0x4523: { // EVIOCGBIT, EV_ABS
             U32 len = (request & 0x1fff0000) >> 16;
             U32 buffer = IOCTL_ARG1;
-            zeroMemory(buffer, len);
-            writeb(buffer, (1 << K_ABS_X) | (1 << K_ABS_Y));
+            memory->memset(buffer, 0, len);
+            memory->writeb(buffer, (1 << K_ABS_X) | (1 << K_ABS_Y));
             return 1;
         }
         case 0x4531: { // EVIOCGBIT, EV_LED
             U32 len = (request & 0x1fff0000) >> 16;
             U32 buffer = IOCTL_ARG1;
-            zeroMemory(buffer, len);
+            memory->memset(buffer, 0, len);
             return 1;
         }
         case 0x4540: { // EVIOCGABS (ABS_X)
@@ -390,7 +400,7 @@ U32 DevInputTouch::ioctl(U32 request) {
             U32 address = IOCTL_ARG1;
             if (len<24)
                 kpanic("Bad length for EVIOCGABS (ABS_X)");
-            writeAbs(address, this->lastX, 0, KNativeWindow::getNativeWindow()->screenWidth());
+            writeAbs(memory, address, this->lastX, 0, KNativeWindow::getNativeWindow()->screenWidth());
             return 0;
         }
         case 0x4541: { // EVIOCGABS (ABS_Y)
@@ -398,11 +408,11 @@ U32 DevInputTouch::ioctl(U32 request) {
             int address = IOCTL_ARG1;
             if (len<24)
                 kpanic("Bad length for EVIOCGABS (ABS_X)");
-            writeAbs(address, this->lastY, 0, KNativeWindow::getNativeWindow()->screenHeight());
+            writeAbs(memory, address, this->lastY, 0, KNativeWindow::getNativeWindow()->screenHeight());
             return 0;
         }
         default:
-            return DevInput::ioctl(request);
+            return DevInput::ioctl(thread, request);
     }
     return -1;
 }
@@ -416,8 +426,9 @@ DevInputMouse::DevInputMouse(const BoxedPtr<FsNode>& node, U32 flags) : DevInput
     this->mask = (1<<K_EV_SYN)|(1<<K_EV_KEY)|(1<<K_EV_REL);
 }
 
-U32 DevInputMouse::ioctl( U32 request) {
-    CPU* cpu = KThread::currentThread()->cpu;
+U32 DevInputMouse::ioctl(KThread* thread, U32 request) {
+    CPU* cpu = thread->cpu;
+    KMemory* memory = thread->memory;
 
     switch (request & 0xFFFF) {
         case 0x4521: { // EVIOCGBIT, EV_KEY
@@ -425,31 +436,31 @@ U32 DevInputMouse::ioctl( U32 request) {
             U32 buffer = IOCTL_ARG1;
             U32 result = K_BTN_MIDDLE;
             result = (result+7)/8;
-            zeroMemory(buffer, len);
-            writeBit(buffer, K_BTN_LEFT);
-            writeBit(buffer, K_BTN_MIDDLE);
-            writeBit(buffer, K_BTN_RIGHT);
-            writeBit(buffer, K_BTN_MOUSEWHEEL_UP);
-            writeBit(buffer, K_BTN_MOUSEWHEEL_DOWN);
+            memory->memset(buffer, 0, len);
+            writeBit(memory, buffer, K_BTN_LEFT);
+            writeBit(memory, buffer, K_BTN_MIDDLE);
+            writeBit(memory, buffer, K_BTN_RIGHT);
+            writeBit(memory, buffer, K_BTN_MOUSEWHEEL_UP);
+            writeBit(memory, buffer, K_BTN_MOUSEWHEEL_DOWN);
             return result;
         }
         case 0x4522: { // EVIOCGBIT, EV_REL
             U32 len = (request & 0x1fff0000) >> 16;
             U32 buffer = IOCTL_ARG1;
-            zeroMemory(buffer, len);
-            writeb(buffer, (1 << K_REL_X) | (1 << K_REL_Y));
+            memory->memset(buffer, 0, len);
+            memory->writeb(buffer, (1 << K_REL_X) | (1 << K_REL_Y));
             return 1;
         }
         case 0x4523: { // EVIOCGBIT, EV_ABS
             U32 len = (request & 0x1fff0000) >> 16;
             U32 buffer = IOCTL_ARG1;
-            zeroMemory(buffer, len);
+            memory->memset(buffer, 0, len);
             return 1;
         }
         case 0x4531: { // EVIOCGBIT, EV_LED
             U32 len = (request & 0x1fff0000) >> 16;
             U32 buffer = IOCTL_ARG1;
-            zeroMemory(buffer, len);
+            memory->memset(buffer, 0, len);
             return 1;
         }
         case 0x4540: { // EVIOCGABS (ABS_X)
@@ -457,7 +468,7 @@ U32 DevInputMouse::ioctl( U32 request) {
             U32 address = IOCTL_ARG1;
             if (len<24)
                 kpanic("Bad length for EVIOCGABS (ABS_X)");
-            writeAbs(address, 0, 0, 0);
+            writeAbs(memory, address, 0, 0, 0);
             return 0;
         }
         case 0x4541: { // EVIOCGABS (ABS_Y)
@@ -465,11 +476,11 @@ U32 DevInputMouse::ioctl( U32 request) {
             int address = IOCTL_ARG1;
             if (len<24)
                 kpanic("Bad length for EVIOCGABS (ABS_X)");
-            writeAbs(address, 0, 0, 0);
+            writeAbs(memory, address, 0, 0, 0);
             return 0;
         }
         default:
-            return DevInput::ioctl(request);
+            return DevInput::ioctl(thread, request);
     }
     return -1;
 }
@@ -484,123 +495,124 @@ DevInputKeyboard::DevInputKeyboard(const BoxedPtr<FsNode>& node, U32 flags) : De
     this->mask = (1<<K_EV_SYN)|(1<<K_EV_KEY);
 }
 
-U32 DevInputKeyboard::ioctl(U32 request) {
-    CPU* cpu = KThread::currentThread()->cpu;
+U32 DevInputKeyboard::ioctl(KThread* thread, U32 request) {
+    CPU* cpu = thread->cpu;
+    KMemory* memory = thread->memory;
 
     switch (request & 0xFFFF) {
         case 0x4521: { // EVIOCGBIT, EV_KEY
             U32 len = (request & 0x1fff0000) >> 16;
             U32 buffer = IOCTL_ARG1;
-            zeroMemory(buffer, len);
-            writeBit(buffer, K_KEY_ESC);
-            writeBit(buffer, K_KEY_1);
-            writeBit(buffer, K_KEY_2);
-            writeBit(buffer, K_KEY_3);
-            writeBit(buffer, K_KEY_4);
-            writeBit(buffer, K_KEY_5);
-            writeBit(buffer, K_KEY_6);
-            writeBit(buffer, K_KEY_7);
-            writeBit(buffer, K_KEY_8);
-            writeBit(buffer, K_KEY_9);
-            writeBit(buffer, K_KEY_0);
-            writeBit(buffer, K_KEY_MINUS);
-            writeBit(buffer, K_KEY_EQUAL);
-            writeBit(buffer, K_KEY_BACKSPACE);
-            writeBit(buffer, K_KEY_TAB);
-            writeBit(buffer, K_KEY_Q);
-            writeBit(buffer, K_KEY_W);
-            writeBit(buffer, K_KEY_E);
-            writeBit(buffer, K_KEY_R);
-            writeBit(buffer, K_KEY_T);
-            writeBit(buffer, K_KEY_Y);
-            writeBit(buffer, K_KEY_U);
-            writeBit(buffer, K_KEY_I);
-            writeBit(buffer, K_KEY_O);
-            writeBit(buffer, K_KEY_P);
-            writeBit(buffer, K_KEY_LEFTBRACE);
-            writeBit(buffer, K_KEY_RIGHTBRACE);
-            writeBit(buffer, K_KEY_ENTER);
-            writeBit(buffer, K_KEY_LEFTCTRL);
-            writeBit(buffer, K_KEY_A);
-            writeBit(buffer, K_KEY_S);
-            writeBit(buffer, K_KEY_D);
-            writeBit(buffer, K_KEY_F);
-            writeBit(buffer, K_KEY_G);
-            writeBit(buffer, K_KEY_H);
-            writeBit(buffer, K_KEY_J);
-            writeBit(buffer, K_KEY_K);
-            writeBit(buffer, K_KEY_L);
-            writeBit(buffer, K_KEY_SEMICOLON);
-            writeBit(buffer, K_KEY_APOSTROPHE);
-            writeBit(buffer, K_KEY_GRAVE);
-            writeBit(buffer, K_KEY_LEFTSHIFT);
-            writeBit(buffer, K_KEY_BACKSLASH);
-            writeBit(buffer, K_KEY_Z);
-            writeBit(buffer, K_KEY_X);
-            writeBit(buffer, K_KEY_C);
-            writeBit(buffer, K_KEY_V);
-            writeBit(buffer, K_KEY_B);
-            writeBit(buffer, K_KEY_N);
-            writeBit(buffer, K_KEY_M);
-            writeBit(buffer, K_KEY_COMMA);
-            writeBit(buffer, K_KEY_DOT);
-            writeBit(buffer, K_KEY_SLASH);
-            writeBit(buffer, K_KEY_RIGHTSHIFT);
-            writeBit(buffer, K_KEY_LEFTALT);
-            writeBit(buffer, K_KEY_SPACE);
-            writeBit(buffer, K_KEY_CAPSLOCK);
-            writeBit(buffer, K_KEY_F1);
-            writeBit(buffer, K_KEY_F2);
-            writeBit(buffer, K_KEY_F3);
-            writeBit(buffer, K_KEY_F4);
-            writeBit(buffer, K_KEY_F5);
-            writeBit(buffer, K_KEY_F6);
-            writeBit(buffer, K_KEY_F7);
-            writeBit(buffer, K_KEY_F8);
-            writeBit(buffer, K_KEY_F9);
-            writeBit(buffer, K_KEY_F10);
-            writeBit(buffer, K_KEY_NUMLOCK);
-            writeBit(buffer, K_KEY_SCROLLLOCK);
+            memory->memset(buffer, 0, len);
+            writeBit(memory, buffer, K_KEY_ESC);
+            writeBit(memory, buffer, K_KEY_1);
+            writeBit(memory, buffer, K_KEY_2);
+            writeBit(memory, buffer, K_KEY_3);
+            writeBit(memory, buffer, K_KEY_4);
+            writeBit(memory, buffer, K_KEY_5);
+            writeBit(memory, buffer, K_KEY_6);
+            writeBit(memory, buffer, K_KEY_7);
+            writeBit(memory, buffer, K_KEY_8);
+            writeBit(memory, buffer, K_KEY_9);
+            writeBit(memory, buffer, K_KEY_0);
+            writeBit(memory, buffer, K_KEY_MINUS);
+            writeBit(memory, buffer, K_KEY_EQUAL);
+            writeBit(memory, buffer, K_KEY_BACKSPACE);
+            writeBit(memory, buffer, K_KEY_TAB);
+            writeBit(memory, buffer, K_KEY_Q);
+            writeBit(memory, buffer, K_KEY_W);
+            writeBit(memory, buffer, K_KEY_E);
+            writeBit(memory, buffer, K_KEY_R);
+            writeBit(memory, buffer, K_KEY_T);
+            writeBit(memory, buffer, K_KEY_Y);
+            writeBit(memory, buffer, K_KEY_U);
+            writeBit(memory, buffer, K_KEY_I);
+            writeBit(memory, buffer, K_KEY_O);
+            writeBit(memory, buffer, K_KEY_P);
+            writeBit(memory, buffer, K_KEY_LEFTBRACE);
+            writeBit(memory, buffer, K_KEY_RIGHTBRACE);
+            writeBit(memory, buffer, K_KEY_ENTER);
+            writeBit(memory, buffer, K_KEY_LEFTCTRL);
+            writeBit(memory, buffer, K_KEY_A);
+            writeBit(memory, buffer, K_KEY_S);
+            writeBit(memory, buffer, K_KEY_D);
+            writeBit(memory, buffer, K_KEY_F);
+            writeBit(memory, buffer, K_KEY_G);
+            writeBit(memory, buffer, K_KEY_H);
+            writeBit(memory, buffer, K_KEY_J);
+            writeBit(memory, buffer, K_KEY_K);
+            writeBit(memory, buffer, K_KEY_L);
+            writeBit(memory, buffer, K_KEY_SEMICOLON);
+            writeBit(memory, buffer, K_KEY_APOSTROPHE);
+            writeBit(memory, buffer, K_KEY_GRAVE);
+            writeBit(memory, buffer, K_KEY_LEFTSHIFT);
+            writeBit(memory, buffer, K_KEY_BACKSLASH);
+            writeBit(memory, buffer, K_KEY_Z);
+            writeBit(memory, buffer, K_KEY_X);
+            writeBit(memory, buffer, K_KEY_C);
+            writeBit(memory, buffer, K_KEY_V);
+            writeBit(memory, buffer, K_KEY_B);
+            writeBit(memory, buffer, K_KEY_N);
+            writeBit(memory, buffer, K_KEY_M);
+            writeBit(memory, buffer, K_KEY_COMMA);
+            writeBit(memory, buffer, K_KEY_DOT);
+            writeBit(memory, buffer, K_KEY_SLASH);
+            writeBit(memory, buffer, K_KEY_RIGHTSHIFT);
+            writeBit(memory, buffer, K_KEY_LEFTALT);
+            writeBit(memory, buffer, K_KEY_SPACE);
+            writeBit(memory, buffer, K_KEY_CAPSLOCK);
+            writeBit(memory, buffer, K_KEY_F1);
+            writeBit(memory, buffer, K_KEY_F2);
+            writeBit(memory, buffer, K_KEY_F3);
+            writeBit(memory, buffer, K_KEY_F4);
+            writeBit(memory, buffer, K_KEY_F5);
+            writeBit(memory, buffer, K_KEY_F6);
+            writeBit(memory, buffer, K_KEY_F7);
+            writeBit(memory, buffer, K_KEY_F8);
+            writeBit(memory, buffer, K_KEY_F9);
+            writeBit(memory, buffer, K_KEY_F10);
+            writeBit(memory, buffer, K_KEY_NUMLOCK);
+            writeBit(memory, buffer, K_KEY_SCROLLLOCK);
 
-            writeBit(buffer, K_KEY_F11);
-            writeBit(buffer, K_KEY_F12);
-            writeBit(buffer, K_KEY_RIGHTCTRL);
-            writeBit(buffer, K_KEY_RIGHTALT);
-            writeBit(buffer, K_KEY_HOME);
-            writeBit(buffer, K_KEY_UP);
-            writeBit(buffer, K_KEY_PAGEUP);
-            writeBit(buffer, K_KEY_LEFT);
-            writeBit(buffer, K_KEY_RIGHT);
-            writeBit(buffer, K_KEY_END);
-            writeBit(buffer, K_KEY_DOWN);
-            writeBit(buffer, K_KEY_PAGEDOWN);
-            writeBit(buffer, K_KEY_INSERT);
-            writeBit(buffer, K_KEY_DELETE);
-            writeBit(buffer, K_KEY_PAUSE);
+            writeBit(memory, buffer, K_KEY_F11);
+            writeBit(memory, buffer, K_KEY_F12);
+            writeBit(memory, buffer, K_KEY_RIGHTCTRL);
+            writeBit(memory, buffer, K_KEY_RIGHTALT);
+            writeBit(memory, buffer, K_KEY_HOME);
+            writeBit(memory, buffer, K_KEY_UP);
+            writeBit(memory, buffer, K_KEY_PAGEUP);
+            writeBit(memory, buffer, K_KEY_LEFT);
+            writeBit(memory, buffer, K_KEY_RIGHT);
+            writeBit(memory, buffer, K_KEY_END);
+            writeBit(memory, buffer, K_KEY_DOWN);
+            writeBit(memory, buffer, K_KEY_PAGEDOWN);
+            writeBit(memory, buffer, K_KEY_INSERT);
+            writeBit(memory, buffer, K_KEY_DELETE);
+            writeBit(memory, buffer, K_KEY_PAUSE);
             return (K_KEY_PAUSE+7)/8;
         }
         case 0x4522: { // EVIOCGBIT, EV_REL
             U32 len = (request & 0x1fff0000) >> 16;
             U32 buffer = IOCTL_ARG1;
-            zeroMemory(buffer, len);
-            writeb(buffer, 0);
+            memory->memset(buffer, 0, len);
+            memory->writeb(buffer, 0);
             return 1;
         }
         case 0x4523: { // EVIOCGBIT, EV_ABS
             U32 len = (request & 0x1fff0000) >> 16;
             U32 buffer = IOCTL_ARG1;
-            zeroMemory(buffer, len);
-            writeb(buffer, 0);
+            memory->memset(buffer, 0, len);
+            memory->writeb(buffer, 0);
             return 1;
         }
         case 0x4531: { // EVIOCGBIT, EV_LED
             int len = (request & 0x1fff0000) >> 16;
             U32 buffer = IOCTL_ARG1;
-            zeroMemory(buffer, len);
+            memory->memset(buffer, 0, len);
             return 1;
         }
         default:
-            return DevInput::ioctl(request);
+            return DevInput::ioctl(thread, request);
     }
     return -1;
 }

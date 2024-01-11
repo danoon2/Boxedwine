@@ -91,7 +91,7 @@ public:
     U32 stackPageCount;
     U32 stackPageSize;
     std::shared_ptr<KProcess> process;
-    Memory* memory;
+    KMemory* const memory;
     bool interrupted;
     U32 inSignal;    
 #ifdef BOXEDWINE_MULTI_THREADED
@@ -131,7 +131,7 @@ public:
     OpenGLVetexPointer glInterleavedArray;
 
     inline static KThread* currentThread() {return runningThread;}
-	inline static void setCurrentThread(KThread* thread) { runningThread = thread; if (thread) { thread->memory->onThreadChanged(); } }
+	inline static void setCurrentThread(KThread* thread) { runningThread = thread; }
 
     BOXEDWINE_CONDITION *waitingCond;    
     BOXEDWINE_CONDITION pollCond;
@@ -148,10 +148,7 @@ public:
 private:
     void clearFutexes();
 
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-    THREAD_LOCAL
-#endif
-    static KThread* runningThread;
+    thread_local static KThread* runningThread;
 
     BOXEDWINE_CONDITION sleepCond;      
 

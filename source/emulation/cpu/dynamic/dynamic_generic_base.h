@@ -1,6 +1,8 @@
 #ifndef __DYNAMIC_GENERIC_BASE_H__
 #define __DYNAMIC_GENERIC_BASE_H__
 
+#include "dynamic_memory.h"
+
 // Functions that need to be implemented in the platform/chip specific file
 /*
 void clearTop16(U8 reg);
@@ -264,6 +266,30 @@ void movToReg(DynReg reg, DynWidth width, U32 imm) {
 void movToRegPtr(DynReg reg, U64 imm) {
     setRegUsed(reg);
     loadConstPtr(reg, imm);
+}
+
+static U32 readd(U32 address) {
+    return KThread::currentThread()->memory->readd(address);
+}
+
+static U32 readw(U32 address) {
+    return KThread::currentThread()->memory->readw(address);
+}
+
+static U32 readb(U32 address) {
+    return KThread::currentThread()->memory->readb(address);
+}
+
+static void writed(U32 address, U32 value) {
+    KThread::currentThread()->memory->writed(address, value);
+}
+
+static void writew(U32 address, U16 value) {
+    KThread::currentThread()->memory->writew(address, value);
+}
+
+static void writeb(U32 address, U8 value) {
+    KThread::currentThread()->memory->writeb(address, value);
 }
 
 void movFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg) {    
@@ -998,7 +1024,11 @@ void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
         }
         endBlock();
 
-        Memory* memory = cpu->thread->process->memory;
+        DynamicMemory* memory = (DynamicMemory*)cpu->memory->extraData;
+        if (!memory) {
+            memory = new DynamicMemory();
+            cpu->memory->extraData = memory;
+        }
         void* mem = NULL;
 
         if (memory->dynamicExecutableMemory.size() == 0) {
@@ -1006,15 +1036,15 @@ void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
             memory->dynamicExecutableMemoryLen = blocks * 0x10000;
             mem = Platform::allocExecutable64kBlock(blocks);
             memory->dynamicExecutableMemoryPos = 0;
-            memory->dynamicExecutableMemory.push_back(mem);
+            memory->dynamicExecutableMemory.push_back(DynamicMemoryData(mem, blocks * 0x10000));
         } else {
-            mem = memory->dynamicExecutableMemory[memory->dynamicExecutableMemory.size() - 1];
+            mem = memory->dynamicExecutableMemory[memory->dynamicExecutableMemory.size() - 1].p;
             if (memory->dynamicExecutableMemoryPos + outBufferPos >= memory->dynamicExecutableMemoryLen) {
                 int blocks = (outBufferPos + 0xffff) / 0x10000;
                 memory->dynamicExecutableMemoryLen = blocks * 0x10000;
                 mem = Platform::allocExecutable64kBlock(blocks);
                 memory->dynamicExecutableMemoryPos = 0;
-                memory->dynamicExecutableMemory.push_back(mem);
+                memory->dynamicExecutableMemory.push_back(DynamicMemoryData(mem, blocks * 0x10000));
             }
         }
         U8* begin = (U8*)mem + memory->dynamicExecutableMemoryPos;

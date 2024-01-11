@@ -29,10 +29,10 @@ void OPCALL normal_inc8_mem32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     U32 eaa = eaa(cpu, op);
     cpu->oldCF=cpu->getCF();
-    cpu->dst.u8=readb(eaa);
+    cpu->dst.u8= cpu->memory->readb(eaa);
     cpu->result.u8=cpu->dst.u8 + 1;
     cpu->lazyFlags = FLAGS_INC8;
-    writeb(eaa, cpu->result.u8);
+    cpu->memory->writeb(eaa, cpu->result.u8);
     NEXT();
 }
 void OPCALL normal_inc16_reg(CPU* cpu, DecodedOp* op) {
@@ -48,10 +48,10 @@ void OPCALL normal_inc16_mem32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     U32 eaa = eaa(cpu, op);
     cpu->oldCF=cpu->getCF();
-    cpu->dst.u16=readw(eaa);
+    cpu->dst.u16= cpu->memory->readw(eaa);
     cpu->result.u16=cpu->dst.u16 + 1;
     cpu->lazyFlags = FLAGS_INC16;
-    writew(eaa, cpu->result.u16);
+    cpu->memory->writew(eaa, cpu->result.u16);
     NEXT();
 }
 void OPCALL normal_inc32_reg(CPU* cpu, DecodedOp* op) {
@@ -67,10 +67,10 @@ void OPCALL normal_inc32_mem32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     U32 eaa = eaa(cpu, op);
     cpu->oldCF=cpu->getCF();
-    cpu->dst.u32=readd(eaa);
+    cpu->dst.u32= cpu->memory->readd(eaa);
     cpu->result.u32=cpu->dst.u32 + 1;
     cpu->lazyFlags = FLAGS_INC32;
-    writed(eaa, cpu->result.u32);
+    cpu->memory->writed(eaa, cpu->result.u32);
     NEXT();
 }
 void OPCALL normal_dec8_reg(CPU* cpu, DecodedOp* op) {
@@ -86,10 +86,10 @@ void OPCALL normal_dec8_mem32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     U32 eaa = eaa(cpu, op);
     cpu->oldCF=cpu->getCF();
-    cpu->dst.u8=readb(eaa);
+    cpu->dst.u8= cpu->memory->readb(eaa);
     cpu->result.u8=cpu->dst.u8 - 1;
     cpu->lazyFlags = FLAGS_DEC8;
-    writeb(eaa, cpu->result.u8);
+    cpu->memory->writeb(eaa, cpu->result.u8);
     NEXT();
 }
 void OPCALL normal_dec16_reg(CPU* cpu, DecodedOp* op) {
@@ -105,10 +105,10 @@ void OPCALL normal_dec16_mem32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     U32 eaa = eaa(cpu, op);
     cpu->oldCF=cpu->getCF();
-    cpu->dst.u16=readw(eaa);
+    cpu->dst.u16= cpu->memory->readw(eaa);
     cpu->result.u16=cpu->dst.u16 - 1;
     cpu->lazyFlags = FLAGS_DEC16;
-    writew(eaa, cpu->result.u16);
+    cpu->memory->writew(eaa, cpu->result.u16);
     NEXT();
 }
 void OPCALL normal_dec32_reg(CPU* cpu, DecodedOp* op) {
@@ -124,9 +124,9 @@ void OPCALL normal_dec32_mem32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     U32 eaa = eaa(cpu, op);
     cpu->oldCF=cpu->getCF();
-    cpu->dst.u32=readd(eaa);
+    cpu->dst.u32= cpu->memory->readd(eaa);
     cpu->result.u32=cpu->dst.u32 - 1;
     cpu->lazyFlags = FLAGS_DEC32;
-    writed(eaa, cpu->result.u32);
+    cpu->memory->writed(eaa, cpu->result.u32);
     NEXT();
 }

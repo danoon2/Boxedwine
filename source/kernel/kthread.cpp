@@ -25,10 +25,7 @@
 #include <string.h>
 #include <setjmp.h>
 
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-THREAD_LOCAL
-#endif
-KThread* KThread::runningThread;
+thread_local KThread* KThread::runningThread;
 
 BOXEDWINE_MUTEX KThread::futexesMutex;
 
@@ -44,8 +41,8 @@ void KThread::cleanup() {
         BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->waitingForSignalToEndCond);
         BOXEDWINE_CONDITION_SIGNAL_ALL(this->waitingForSignalToEndCond);
     }
-    if (!KSystem::shutingDown && this->clear_child_tid && this->process && this->process->memory->isValidWriteAddress(this->clear_child_tid, 4)) {
-        writed(this->clear_child_tid, 0);
+    if (!KSystem::shutingDown && this->clear_child_tid && this->process && memory->canWrite(this->clear_child_tid, 4)) {
+        memory->writed(this->clear_child_tid, 0);
         this->futex(this->clear_child_tid, 1, 1, 0, 0, 0);        
     }
 	this->clear_child_tid = 0;
@@ -71,40 +68,22 @@ void KThread::reset() {
     this->setupStack();    
 }
 
-void KThread::setupStack() {
-    U32 page = 0;
-    U32 pageCount = MAX_STACK_SIZE >> K_PAGE_SHIFT;
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->pageMutex);
-    if (!this->memory->findFirstAvailablePage(ADDRESS_PROCESS_STACK_START, pageCount, &page, false, true)) {
-		if (!this->memory->findFirstAvailablePage(0xC0000, pageCount, &page, false, true)) {
-			if (!this->memory->findFirstAvailablePage(0x80000, pageCount, &page, false, true)) {
-				kpanic("Failed to allocate stack for thread");
-            }
-        }
-    }    
+void KThread::setupStack() {  
+    U32 stack = memory->mmap(this, 0, MAX_STACK_SIZE, K_PROT_NONE, K_MAP_ANONYMOUS|K_MAP_PRIVATE, -1, 0);
 #ifdef BOXEDWINE_DEFAULT_MMU
-    // 1 page above
-    this->memory->allocPages(page + pageCount - K_NATIVE_PAGES_PER_PAGE, K_NATIVE_PAGES_PER_PAGE, 0, 0, 0, 0);
-
-    // its ok to allocate all of the stack, the pages will be on demand
-    this->memory->allocPages(page + K_NATIVE_PAGES_PER_PAGE, pageCount - 2 * K_NATIVE_PAGES_PER_PAGE, PAGE_READ | PAGE_WRITE, 0, 0, 0);
-
-    // 1 page below (catch stack overrun)
-    this->memory->allocPages(page, K_NATIVE_PAGES_PER_PAGE, 0, 0, 0, 0);
+    // will all by on demand
+    memory->mprotect(this, stack + K_PAGE_SIZE, MAX_STACK_SIZE - 2 * K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE);
 #else
-    // top of stack guard page
-    this->memory->allocPages(page + pageCount - K_NATIVE_PAGES_PER_PAGE, K_NATIVE_PAGES_PER_PAGE, 0, 0, 0, 0);
-
-    // allocate initial stack, if the stack needs to grow an exception will happen and the exception handler will allocate the necessary pages
-    this->memory->allocPages(page + pageCount - K_NATIVE_PAGES_PER_PAGE - INITIAL_STACK_PAGES, INITIAL_STACK_PAGES, PAGE_READ | PAGE_WRITE, 0, 0, 0);
-
-    // reserve memory but don't allocate rest of stack
-    this->memory->allocPages(page, pageCount - K_NATIVE_PAGES_PER_PAGE - INITIAL_STACK_PAGES, 0, 0, 0, 0);
+    // only reserver a small amount to start with, it will grow when it generates an exception
+    // stack + MAX_STACK_SIZE = top of stack
+    // count down K_NATIVE_PAGES_PER_PAGE
+    // count down INITIAL_STACK_PAGES
+    // then allocate that back up INITIAL_STACK_PAGES
+    memory->mprotect(this, stack + MAX_STACK_SIZE - ((K_NATIVE_PAGES_PER_PAGE + INITIAL_STACK_PAGES) << K_PAGE_SHIFT), INITIAL_STACK_PAGES << K_PAGE_SHIFT, K_PROT_READ | K_PROT_WRITE);
 #endif
-
-    this->stackPageCount = pageCount;
-    this->stackPageStart = page;
-    this->stackPageSize = INITIAL_STACK_PAGES + K_NATIVE_PAGES_PER_PAGE;
+    this->stackPageCount = MAX_STACK_SIZE >> K_PAGE_SHIFT;
+    this->stackPageStart = stack >> K_PAGE_SHIFT;
+    this->stackPageSize = INITIAL_STACK_PAGES + K_NATIVE_PAGES_PER_PAGE; //how far down from the top we allocated, the K_NATIVE_PAGES_PER_PAGE is for the guard page
     this->cpu->reg[4].u32 = (this->stackPageStart + this->stackPageCount - K_NATIVE_PAGES_PER_PAGE) << K_PAGE_SHIFT;  
 }
 
@@ -119,7 +98,7 @@ KThread::KThread(U32 id, const std::shared_ptr<KProcess>& process) :
     stackPageCount(0),
     stackPageSize(0),
     process(process),
-    memory(0),
+    memory(process->memory),
     interrupted(false),
     inSignal(0),
 #ifdef BOXEDWINE_MULTI_THREADED
@@ -154,9 +133,8 @@ KThread::KThread(U32 id, const std::shared_ptr<KProcess>& process) :
         this->tls[i].seg_not_present = 1;
         this->tls[i].read_exec_only = 1;
     }
-    this->cpu = CPU::allocCPU();
+    this->cpu = CPU::allocCPU(memory);
     this->cpu->thread = this;
-    this->memory = process->memory;
     if (process->name=="services.exe") {
         this->log=true;
     }
@@ -310,7 +288,7 @@ void KThread::clearFutexes() {
 }
 
 U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3) {
-    U8* ramAddress = getPhysicalReadAddress(addr, 4);
+    U8* ramAddress = memory->getIntPtr(addr);
 
     if (ramAddress==0) {
         kpanic("Could not find futex address: %0.8X", addr);
@@ -323,8 +301,8 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3) {
         if (pTime == 0) {
             expireTime = 0xFFFFFFFF;
         } else {
-            U32 seconds = readd(pTime);
-            U32 nano = readd(pTime + 4);
+            U32 seconds = memory->readd(pTime);
+            U32 nano = memory->readd(pTime + 4);
             expireTime = seconds * 1000 + nano / 1000000 + KSystem::getMilliesSinceStart();
         }
         bool checkValue = false;
@@ -340,7 +318,7 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3) {
             BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(f->cond);
             if (checkValue) {
                 checkValue = false;
-                if (readd(addr) != value) { // needs to be protected
+                if (memory->readd(addr) != value) { // needs to be protected
                     freeFutex(f);
                     return -K_EWOULDBLOCK;
                 } 
@@ -393,15 +371,16 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3) {
     }
 }
 
-static U8 fetchByte(U32* eip) {
-    return readb((*eip)++);
+static U8 fetchByte(void* data, U32* eip) {
+    KMemory* memory = (KMemory*)data;
+    return memory->readb((*eip)++);
 }
 
 void KThread::signalIllegalInstruction(int code) {
     KSigAction* action = &this->process->sigActions[K_SIGILL];
     if (action->handlerAndSigAction == K_SIG_DFL) {
         DecodedBlock block;
-        decodeBlock(fetchByte, cpu->eip.u32 + cpu->seg[CS].address, cpu->isBig(), 1, K_PAGE_SIZE, 0, &block);
+        decodeBlock(fetchByte, memory, cpu->eip.u32 + cpu->seg[CS].address, cpu->isBig(), 1, K_PAGE_SIZE, 0, &block);
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
         kpanic("%s tid=%04X eip=%08X Illegal instruction but no signal handler set up for it: %s: (%X)", process->name.c_str(), cpu->thread->id, cpu->eip.u32, block.op->name(), block.op->originalOp);
 #else
@@ -623,62 +602,65 @@ struct ucontext_ia32 {
 
 void writeToContext(KThread* thread, U32 stack, U32 context, bool altStack, U32 trapNo, U32 errorNo) {	
     CPU* cpu = thread->cpu;
+    KMemory* memory = thread->memory;
 
     if (altStack) {
-        writed(context+0x8, thread->alternateStack);
-        writed(context+0xC, K_SS_ONSTACK);
-        writed(context+0x10, thread->alternateStackSize);
+        memory->writed(context+0x8, thread->alternateStack);
+        memory->writed(context+0xC, K_SS_ONSTACK);
+        memory->writed(context+0x10, thread->alternateStackSize);
     } else {
-        writed(context+0x8, thread->alternateStack);
-        writed(context+0xC, K_SS_DISABLE);
-        writed(context+0x10, 0);
+        memory->writed(context+0x8, thread->alternateStack);
+        memory->writed(context+0xC, K_SS_DISABLE);
+        memory->writed(context+0x10, 0);
     }
-    writed(context+0x14, cpu->seg[GS].value);
-    writed(context+0x18, cpu->seg[FS].value);
-    writed(context+0x1C, cpu->seg[ES].value);
-    writed(context+0x20, cpu->seg[DS].value);
-    writed(context+0x24, cpu->reg[7].u32); // EDI
-    writed(context+0x28, cpu->reg[6].u32); // ESI
-    writed(context+0x2C, cpu->reg[5].u32); // EBP
-    writed(context+0x30, stack); // ESP
-    writed(context+0x34, cpu->reg[3].u32); // EBX
-    writed(context+0x38, cpu->reg[2].u32); // EDX
-    writed(context+0x3C, cpu->reg[1].u32); // ECX
-    writed(context+0x40, cpu->reg[0].u32); // EAX
-    writed(context+0x44, trapNo); // REG_TRAPNO
-    writed(context+0x48, errorNo); // REG_ERR
-    writed(context+0x4C, cpu->isBig()?cpu->eip.u32:cpu->eip.u16);
-    writed(context+0x50, cpu->seg[CS].value);
-    writed(context+0x54, cpu->flags);
-    writed(context+0x58, 0); // REG_UESP
-    writed(context+0x5C, cpu->seg[SS].value);	
-    writed(context+0x60, 0); // fpu save state
+    memory->writed(context+0x14, cpu->seg[GS].value);
+    memory->writed(context+0x18, cpu->seg[FS].value);
+    memory->writed(context+0x1C, cpu->seg[ES].value);
+    memory->writed(context+0x20, cpu->seg[DS].value);
+    memory->writed(context+0x24, cpu->reg[7].u32); // EDI
+    memory->writed(context+0x28, cpu->reg[6].u32); // ESI
+    memory->writed(context+0x2C, cpu->reg[5].u32); // EBP
+    memory->writed(context+0x30, stack); // ESP
+    memory->writed(context+0x34, cpu->reg[3].u32); // EBX
+    memory->writed(context+0x38, cpu->reg[2].u32); // EDX
+    memory->writed(context+0x3C, cpu->reg[1].u32); // ECX
+    memory->writed(context+0x40, cpu->reg[0].u32); // EAX
+    memory->writed(context+0x44, trapNo); // REG_TRAPNO
+    memory->writed(context+0x48, errorNo); // REG_ERR
+    memory->writed(context+0x4C, cpu->isBig()?cpu->eip.u32:cpu->eip.u16);
+    memory->writed(context+0x50, cpu->seg[CS].value);
+    memory->writed(context+0x54, cpu->flags);
+    memory->writed(context+0x58, 0); // REG_UESP
+    memory->writed(context+0x5C, cpu->seg[SS].value);
+    memory->writed(context+0x60, 0); // fpu save state
 }
 
 void readFromContext(CPU* cpu, U32 context) {
-    cpu->setSegment(GS, readd(context+0x14));
-    cpu->setSegment(FS, readd(context+0x18));
-    cpu->setSegment(ES, readd(context+0x1C));
-    cpu->setSegment(DS, readd(context+0x20));
+    KMemory* memory = (KMemory*)cpu->memory;
 
-    cpu->reg[7].u32 = readd(context+0x24); // EDI
-    cpu->reg[6].u32 = readd(context+0x28); // ESI
-    cpu->reg[5].u32 = readd(context+0x2C); // EBP
-    cpu->reg[4].u32 = readd(context+0x30); // ESP
+    cpu->setSegment(GS, memory->readd(context+0x14));
+    cpu->setSegment(FS, memory->readd(context+0x18));
+    cpu->setSegment(ES, memory->readd(context+0x1C));
+    cpu->setSegment(DS, memory->readd(context+0x20));
 
-    cpu->reg[3].u32 = readd(context+0x34); // EBX
-    cpu->reg[2].u32 = readd(context+0x38); // EDX
-    cpu->reg[1].u32 = readd(context+0x3C); // ECX
-    cpu->reg[0].u32 = readd(context+0x40); // EAX
+    cpu->reg[7].u32 = memory->readd(context+0x24); // EDI
+    cpu->reg[6].u32 = memory->readd(context+0x28); // ESI
+    cpu->reg[5].u32 = memory->readd(context+0x2C); // EBP
+    cpu->reg[4].u32 = memory->readd(context+0x30); // ESP
+
+    cpu->reg[3].u32 = memory->readd(context+0x34); // EBX
+    cpu->reg[2].u32 = memory->readd(context+0x38); // EDX
+    cpu->reg[1].u32 = memory->readd(context+0x3C); // ECX
+    cpu->reg[0].u32 = memory->readd(context+0x40); // EAX
     
-    cpu->eip.u32 = readd(context+0x4C);
-    cpu->setSegment(CS, readd(context+0x50));
-    cpu->flags = readd(context+0x54);
-    cpu->setSegment(SS, readd(context+0x5C));
+    cpu->eip.u32 = memory->readd(context+0x4C);
+    cpu->setSegment(CS, memory->readd(context+0x50));
+    cpu->flags = memory->readd(context+0x54);
+    cpu->setSegment(SS, memory->readd(context+0x5C));
 }
 
 U32 KThread::sigreturn() {
-    memcopyToNative(this->cpu->reg[4].u32, &this->cpu, sizeof(CPU));
+    memory->memcpy(&this->cpu, this->cpu->reg[4].u32, sizeof(CPU));
     //klog("signal return (threadId=%d)", thread->id);
     return -K_CONTINUE;
 }
@@ -783,7 +765,7 @@ void KThread::runSignal(U32 signal, U32 trapNo, U32 errorNo) {
             this->cpu->reg[4].u32-=INFO_SIZE;
             address = this->cpu->reg[4].u32;
             for (i=0;i<K_SIG_INFO_SIZE;i++) {
-                writed(address+i*4, this->process->sigActions[signal].sigInfo[i]);
+                memory->writed(address+i*4, this->process->sigActions[signal].sigInfo[i]);
             }
                         
             this->cpu->push32(interrupted);
@@ -850,7 +832,7 @@ void KThread::seg_mapper(U32 address, bool readFault, bool writeFault, bool thro
 #endif
         }
     } else {
-        this->memory->log_pf(this, address);
+        this->memory->logPageFault(this, address);
     }
 }
 
@@ -870,7 +852,7 @@ void KThread::seg_access(U32 address, bool readFault, bool writeFault, bool thro
 #endif
         }
     } else {
-        this->memory->log_pf(this, address);
+        this->memory->logPageFault(this, address);
     }
 }
 
@@ -886,10 +868,10 @@ void KThread::clone(KThread* from) {
 
 U32 KThread::modify_ldt(U32 func, U32 ptr, U32 count) {
     if (func == 1 || func == 0x11) {
-        int index = readd(ptr);
-        U32 address = readd(ptr + 4);
-        U32 limit = readd(ptr + 8);
-        U32 flags = readd(ptr + 12);
+        int index = memory->readd(ptr);
+        U32 address = memory->readd(ptr + 4);
+        U32 limit = memory->readd(ptr + 8);
+        U32 flags = memory->readd(ptr + 12);
 
         if (index>=0 && index<LDT_ENTRIES) {
             struct user_desc* ldt = this->getLDT(index);            
@@ -903,13 +885,13 @@ U32 KThread::modify_ldt(U32 func, U32 ptr, U32 count) {
         }
         return 0;
     } else if (func == 0) {
-        int index = readd(ptr);
+        int index = memory->readd(ptr);
         if (index>=0 && index<LDT_ENTRIES) {
             struct user_desc* ldt = this->getLDT(index);
 
-            writed(ptr + 4, ldt->base_addr);
-            writed(ptr + 8, ldt->limit);
-            writed(ptr + 12, ldt->flags);
+            memory->writed(ptr + 4, ldt->base_addr);
+            memory->writed(ptr + 8, ldt->limit);
+            memory->writed(ptr + 12, ldt->flags);
         } else {
             kpanic("syscall_modify_ldt invalid index: %d", index);
         }
@@ -970,9 +952,9 @@ U32 KThread::sleep(U32 ms) {
 U32 KThread::sigprocmask(U32 how, U32 set, U32 oset, U32 sigsetSize) {
     if (oset!=0) {
         if (sigsetSize==4) {
-            writed(oset, (U32)this->sigMask);
+            memory->writed(oset, (U32)this->sigMask);
         } else if (sigsetSize==8) {
-            writeq(oset, this->sigMask);
+            memory->writeq(oset, this->sigMask);
         } else {
             klog("sigprocmask: can't handle sigsetSize=%d", sigsetSize);
         }
@@ -982,9 +964,9 @@ U32 KThread::sigprocmask(U32 how, U32 set, U32 oset, U32 sigsetSize) {
         U64 mask;
         
         if (sigsetSize==4) {
-            mask = readd(set);
+            mask = memory->readd(set);
         } else if (sigsetSize==8) {
-            mask = readq(set);
+            mask = memory->readq(set);
         } else {
             klog("sigprocmask: can't handle sigsetSize=%d", sigsetSize);
             mask = 0; // removes warning
@@ -1012,9 +994,9 @@ U32 KThread::sigsuspend(U32 mask, U32 sigsetSize) {
     }
     this->waitingForSignalToEndMaskToRestore = this->sigMask | RESTORE_SIGNAL_MASK;
     if (sigsetSize==4) {
-        this->sigMask = readd(mask);
+        this->sigMask = memory->readd(mask);
     } else if (sigsetSize==8) {
-        this->sigMask = readq(mask);
+        this->sigMask = memory->readq(mask);
     } else {
         klog("sigsuspend: can't handle sigsetSize=%d", sigsetSize);
     }
@@ -1028,27 +1010,27 @@ U32 KThread::sigsuspend(U32 mask, U32 sigsetSize) {
 
 U32 KThread::signalstack(U32 ss, U32 oss) {
     if (oss!=0) {
-        if (!this->memory->isValidWriteAddress(oss, 12)) {
+        if (!this->memory->canWrite(oss, 12)) {
             return -K_EFAULT;
         }
-        writed(oss, this->alternateStack);
-        writed(oss + 4, (this->alternateStack && this->inSignal) ? K_SS_ONSTACK : K_SS_DISABLE);
-        writed(oss + 8, this->alternateStackSize);
+        memory->writed(oss, this->alternateStack);
+        memory->writed(oss + 4, (this->alternateStack && this->inSignal) ? K_SS_ONSTACK : K_SS_DISABLE);
+        memory->writed(oss + 8, this->alternateStackSize);
     }
     if (ss!=0) {
-        if (!this->memory->isValidReadAddress(ss, 12)) {
+        if (!this->memory->canRead(ss, 12)) {
             return -K_EFAULT;
         }
         if (this->alternateStack && this->inSignal) {
             return -K_EPERM;
         }
-        U32 flags = readd(ss + 4);
+        U32 flags = memory->readd(ss + 4);
         if (flags & K_SS_DISABLE) {
             this->alternateStack = 0;
             this->alternateStackSize = 0;
         } else {
-            this->alternateStack = readd(ss);
-            this->alternateStackSize = readd(ss + 8);
+            this->alternateStack = memory->readd(ss);
+            this->alternateStackSize = memory->readd(ss + 8);
         }
     }
     return 0;

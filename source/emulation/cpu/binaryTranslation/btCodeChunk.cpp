@@ -1,6 +1,7 @@
 #include "boxedwine.h"
 #include "btCodeChunk.h"
 #include "btCpu.h"
+#include "../../hardmmu/kmemory_hard.h"
 
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
 
@@ -9,7 +10,7 @@ BtCodeChunk::BtCodeChunk(U32 instructionCount, U32* eipInstructionAddress, U32* 
     this->instructionCount = instructionCount;
     this->emulatedAddress = eip + cpu->seg[CS].address;
     this->emulatedLen = eipLen;
-    this->hostAddress = cpu->thread->memory->allocateExcutableMemory(hostInstructionBufferLen + 4, &this->hostAddressSize); // +4 for a guard
+    this->hostAddress = getMemData(cpu->memory)->allocateExcutableMemory(hostInstructionBufferLen + 4, &this->hostAddressSize); // +4 for a guard
     this->hostLen = hostInstructionBufferLen;
     this->emulatedInstructionLen = new U8[instructionCount];
     this->hostInstructionLen = new U32[instructionCount];
@@ -41,18 +42,19 @@ void BtCodeChunk::makeLive() {
     CPU* cpu = KThread::currentThread()->cpu;
     U32 eip = this->emulatedAddress;
     U8* host = (U8*)this->hostAddress;
+    KMemoryData* mem = getMemData(cpu->memory);
 
     for (U32 i = 0; i < instructionCount; i++) {
         if (KSystem::useLargeAddressSpace) {
-            cpu->thread->memory->setEipForHostMapping(eip, host);
+            mem->setEipForHostMapping(eip, host);
         } else {
             U32 page = eip >> K_PAGE_SHIFT;
             U32 offset = eip & K_PAGE_MASK;
-            void** table = cpu->thread->memory->eipToHostInstructionPages[page];
+            void** table = mem->eipToHostInstructionPages[page];
             if (!table) {
                 table = new void* [K_PAGE_SIZE];
                 memset(table, 0, sizeof(void*) * K_PAGE_SIZE);
-                cpu->thread->memory->eipToHostInstructionPages[page] = table;
+                mem->eipToHostInstructionPages[page] = table;
             }
             if (table[offset]) {
                 kpanic("BtCodeChunk::allocChunk eip already mapped");
@@ -62,14 +64,15 @@ void BtCodeChunk::makeLive() {
         eip += this->emulatedInstructionLen[i];
         host += this->hostInstructionLen[i];
     }
-    cpu->thread->memory->addCodeChunk(shared_from_this());
+    mem->addCodeChunk(shared_from_this());
     this->clearInstructionCache((U8*)this->hostAddress, this->hostLen);
 }
 
-void BtCodeChunk::detachFromHost(Memory* memory) {
+void BtCodeChunk::detachFromHost(KMemory* memory) {
     U32 eip = this->emulatedAddress;
     KThread* thread = KThread::currentThread();
     std::shared_ptr<KProcess> process;
+    KMemoryData* mem = getMemData(memory);
 
     if (thread) {
         process = thread->process;
@@ -77,24 +80,25 @@ void BtCodeChunk::detachFromHost(Memory* memory) {
 
     for (U32 i = 0; i < this->instructionCount; i++) {
         if (KSystem::useLargeAddressSpace) {
-            memory->setEipForHostMapping(eip, process ? process->reTranslateChunkAddressFromReg : NULL);
+            mem->setEipForHostMapping(eip, process ? process->reTranslateChunkAddressFromReg : NULL);
         } else {
-            if (memory->eipToHostInstructionPages[eip >> K_PAGE_SHIFT]) { // might span multiple pages and the other pages are already deleted
-                memory->eipToHostInstructionPages[eip >> K_PAGE_SHIFT][eip & K_PAGE_MASK] = NULL;
+            if (mem->eipToHostInstructionPages[eip >> K_PAGE_SHIFT]) { // might span multiple pages and the other pages are already deleted
+                mem->eipToHostInstructionPages[eip >> K_PAGE_SHIFT][eip & K_PAGE_MASK] = NULL;
             }
         }
         eip += this->emulatedInstructionLen[i];
     }
-    memory->removeCodeChunk(shared_from_this());
+    mem->removeCodeChunk(shared_from_this());
 }
 
-void BtCodeChunk::release(Memory* memory) {
+void BtCodeChunk::release(KMemory* memory) {
     this->detachFromHost(memory);
     this->internalDealloc();
 }
 
 void BtCodeChunk::internalDealloc() {
-    KThread::currentThread()->memory->freeExcutableMemory(this->hostAddress, this->hostAddressSize);
+    KMemoryData* mem = getMemData(KThread::currentThread()->memory);
+    mem->freeExcutableMemory(this->hostAddress, this->hostAddressSize);
     this->hostAddress = NULL;
     delete[] this->emulatedInstructionLen;
     this->emulatedInstructionLen = NULL;
@@ -172,7 +176,8 @@ void BtCodeChunk::releaseAndRetranslate() {
             chunk->linksFrom.push_back(link);
             if (link->direct) {
                 U32 fromInstructionIndex;
-                std::shared_ptr<BtCodeChunk> fromChunk = cpu->thread->memory->getCodeChunkContainingHostAddress(link->fromHostOffset);
+                KMemoryData* mem = getMemData(cpu->memory);
+                std::shared_ptr<BtCodeChunk> fromChunk = mem->getCodeChunkContainingHostAddress(link->fromHostOffset);
                 void* srcHostInstruction = NULL;
                 fromChunk->getEipThatContainsHostAddress(link->fromHostOffset, &srcHostInstruction, &fromInstructionIndex);
                 U64 srcHost = (U64)srcHostInstruction;

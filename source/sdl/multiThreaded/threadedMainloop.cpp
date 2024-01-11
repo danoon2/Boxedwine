@@ -1,13 +1,11 @@
 #include "boxedwine.h"
 #ifdef BOXEDWINE_MULTI_THREADED
-#include "devfb.h"
 #if !defined(BOXEDWINE_DISABLE_UI) && !defined(__TEST)
 #include "../../ui/mainui.h"
 #endif
 #include "knativesystem.h"
 #include "knativewindow.h"
 
-bool isFbReady();
 U32 getNextTimer();
 void runTimers();
 
@@ -16,7 +14,8 @@ extern U32 exceptionCount;
 extern U32 dynamicCodeExceptionCount;
 static U32 lastTitleUpdate = 0;
 
-static THREAD_LOCAL bool isMainThread;
+static thread_local bool isMainThread;
+
 bool isMainthread() {
     return isMainThread;
 }
@@ -39,12 +38,6 @@ bool doMainLoop() {
 #if !defined(BOXEDWINE_DISABLE_UI) && !defined(__TEST)
         if (uiIsRunning()) {
             timeout = 33;
-        }
-#endif
-#ifdef BOXEDWINE_64BIT_MMU
-        if (isFbReady()) {
-            timeout = 17;
-            flipFB();
         }
 #endif
         U32 nextTimer = getNextTimer();

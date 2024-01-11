@@ -2,7 +2,7 @@
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
 #include "btCodeMemoryWrite.h"
 #include "btCpu.h"
-#include "../../hardmmu/hard_memory.h"
+#include "../../hardmmu/kmemory_hard.h"
 
 BtCodeMemoryWrite::BtCodeMemoryWrite(BtCPU* cpu, U32 address, U32 len) : cpu(cpu) {
     this->invalidateCode(address, len);
@@ -30,13 +30,14 @@ void BtCodeMemoryWrite::invalidateStringWriteToDi(bool repeat, U32 size) {
 }
 
 void BtCodeMemoryWrite::invalidateCode(U32 addressStart, U32 addressLen) {
-    U32 pageStart = this->cpu->thread->memory->getNativePage(addressStart >> K_PAGE_SHIFT);
-    U32 pageStop = this->cpu->thread->memory->getNativePage((addressStart + addressLen - 1) >> K_PAGE_SHIFT);
+    KMemoryData* mem = getMemData(cpu->memory);
+    U32 pageStart = mem->getNativePage(addressStart >> K_PAGE_SHIFT);
+    U32 pageStop = mem->getNativePage((addressStart + addressLen - 1) >> K_PAGE_SHIFT);
 
     for (U32 page = pageStart; page <= pageStop; page++) {
-        if (cpu->thread->memory->nativeFlags[page] & NATIVE_FLAG_CODEPAGE_READONLY) {
-            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(cpu->thread->memory->executableMemoryMutex);
-            this->cpu->thread->memory->clearHostCodeForWriting(pageStart, pageStop - pageStart + 1);
+        if (mem->nativeFlags[page] & NATIVE_FLAG_CODEPAGE_READONLY) {
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mem->executableMemoryMutex);
+            mem->clearHostCodeForWriting(pageStart, pageStop - pageStart + 1);
             return;
         }
     }    

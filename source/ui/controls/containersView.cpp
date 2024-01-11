@@ -136,13 +136,13 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
         };
     }
 
-    if (GlobalSettings::getAvailableWinetricksVersions().size() > 0) {
-        WineVersion version = GlobalSettings::getAvailableWinetricksVersions()[0];        
+    if (GlobalSettings::getAvailableWinetricksVersions().size() > 0) {        
         if (GlobalSettings::getInstalledWinetricksVersions().size() == 0) {
+            WineVersion version = GlobalSettings::getAvailableWinetricksVersions()[0];
             row = section->addRow(CONTAINER_VIEW_WINETRICKS_LABEL, 0);
-            std::shared_ptr<LayoutButtonControl> selectWineAppButton = row->addButton(getTranslationWithFormat(GENERIC_DOWNLOAD, true, BString::valueOf(GlobalSettings::getAvailableWinetricksVersions()[0].size)));
-            selectWineAppButton->setHelpId(CONTAINER_OPTIONS_DOWNLOAD_WINETRICKS);
-            selectWineAppButton->onChange = [this, version]() {
+            std::shared_ptr<LayoutButtonControl> selectWineTricksButton = row->addButton(getTranslationWithFormat(GENERIC_DOWNLOAD, true, BString::valueOf(GlobalSettings::getAvailableWinetricksVersions()[0].size)));
+            selectWineTricksButton->setHelpId(CONTAINER_OPTIONS_DOWNLOAD_WINETRICKS);
+            selectWineTricksButton->onChange = [this, version]() {
                 if (this->saveChanges()) {
                     GlobalSettings::downloadWine(version, [this](bool success) {
                         if (success) {

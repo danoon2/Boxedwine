@@ -57,7 +57,7 @@ __m128i floatTo128(float f1, float f2, float f3, float f4) {
 
 #define PAGES_PER_SEG 32
 
-static Memory* memory;
+KMemory* memory;
 CPU* cpu;
 static std::shared_ptr<KProcess> process;
 static int didFail;
@@ -87,15 +87,13 @@ void setup() {
         //KSystem::useLargeAddressSpace = false;
 #endif
         process = KProcess::create();
-        memory = new Memory();
+        memory = KMemory::create(process.get());
         process->memory = memory;
         KThread* thread = new KThread(KSystem::getNextThreadId(), process);
         cpu = thread->cpu;
-        thread->memory = memory;
-        memory->incRefCount();
         KThread::setCurrentThread(thread);
-        process->memory->allocPages((STACK_ADDRESS >> K_PAGE_SHIFT)-PAGES_PER_SEG, PAGES_PER_SEG, PAGE_READ|PAGE_WRITE, 0, 0, 0);
-        process->memory->allocPages(CODE_ADDRESS >> K_PAGE_SHIFT, PAGES_PER_SEG, PAGE_READ|PAGE_WRITE|PAGE_EXEC, 0, 0, 0);
+        process->memory->mmap(thread, ((STACK_ADDRESS >> K_PAGE_SHIFT)-PAGES_PER_SEG) << K_PAGE_SHIFT, PAGES_PER_SEG << K_PAGE_SHIFT, K_PROT_WRITE | K_PROT_READ|K_PROT_READ, K_MAP_FIXED | K_MAP_PRIVATE, -1, 0);
+        process->memory->mmap(thread, CODE_ADDRESS, PAGES_PER_SEG << K_PAGE_SHIFT, K_PROT_WRITE | K_PROT_READ | K_PROT_READ | K_PROT_EXEC, K_MAP_FIXED | K_MAP_PRIVATE, -1, 0);
         
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
         if (KSystem::useSingleMemOffset) {
@@ -110,7 +108,7 @@ void setup() {
             }
         }
 #else
-        process->memory->allocPages(HEAP_ADDRESS >> K_PAGE_SHIFT, PAGES_PER_SEG, PAGE_READ | PAGE_WRITE, 0, 0, 0);
+        process->memory->mmap(thread, HEAP_ADDRESS, PAGES_PER_SEG << K_PAGE_SHIFT, K_PROT_WRITE | K_PROT_READ | K_PROT_READ, K_MAP_FIXED | K_MAP_PRIVATE, -1, 0);
 #endif
 
 #ifdef BOXEDWINE_MULTI_THREADED
@@ -167,25 +165,25 @@ void setup() {
     cpu->thread->process->hasSetSeg[DS] = true;
     cpu->thread->process->hasSetSeg[SS] = true;
 
-    zeroMemory(CODE_ADDRESS, K_PAGE_SIZE*PAGES_PER_SEG);
-    zeroMemory(STACK_ADDRESS-K_PAGE_SIZE*PAGES_PER_SEG, K_PAGE_SIZE*PAGES_PER_SEG);
-    zeroMemory(HEAP_ADDRESS, K_PAGE_SIZE*PAGES_PER_SEG);
+    memory->memset(CODE_ADDRESS, 0, K_PAGE_SIZE*PAGES_PER_SEG);
+    memory->memset(STACK_ADDRESS-K_PAGE_SIZE*PAGES_PER_SEG, 0, K_PAGE_SIZE*PAGES_PER_SEG);
+    memory->memset(HEAP_ADDRESS, 0, K_PAGE_SIZE*PAGES_PER_SEG);
 
     ESP=4096;
 }
 
 void pushCode8(int value) {
-    writeb(cseip, value);
+    memory->writeb(cseip, value);
     cseip++;
 }
 
 void pushCode16(int value) {
-    writew(cseip, value);
+    memory->writew(cseip, value);
     cseip+=2;
 }
 
 void pushCode32(int value) {
-    writed(cseip, value);
+    memory->writed(cseip, value);
     cseip+=4;
 }
 
@@ -361,14 +359,14 @@ void assertResult(struct Data* data, CPU* cpu, int instruction, U32 resultvar1, 
     }
     if (bits == 8) {
         if (address!=0) {
-            if ((readd(address) & 0xFFFFFF00) != (DEFAULT & 0xFFFFFF00)) {
+            if ((memory->readd(address) & 0xFFFFFF00) != (DEFAULT & 0xFFFFFF00)) {
                 failed("instruction: %d memory overwrite %d", instruction, address);
             }
         }
     }
     if (bits==16) {
         if (address!=0) {
-            if ((readd(address) & 0xFFFF0000) != (DEFAULT & 0xFFFF0000)) {
+            if ((memory->readd(address) & 0xFFFF0000) != (DEFAULT & 0xFFFF0000)) {
                 failed("instruction: %d memory overwrite %d", instruction, address);
             }
         }
@@ -419,10 +417,10 @@ void Eb(int instruction, int which, struct Data* data) {
             pushCode32(200);
         else
             pushCode16(200);
-        writed(cpu->seg[DS].address + 200, DEFAULT);
-        writeb(cpu->seg[DS].address + 200, data->var1);
+        memory->writed(cpu->seg[DS].address + 200, DEFAULT);
+        memory->writeb(cpu->seg[DS].address + 200, data->var1);
         runTestCPU();
-        result = readb(cpu->seg[DS].address + 200);
+        result = memory->readb(cpu->seg[DS].address + 200);
         assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + 200, 8);
         
         newInstructionWithRM(instruction, rm, data->flags);
@@ -437,10 +435,10 @@ void Eb(int instruction, int which, struct Data* data) {
         pushCode8(0xf8);
         pushCode8(0);
         
-        writed(cpu->seg[DS].address + 200, DEFAULT);
-        writeb(cpu->seg[DS].address + 200, data->var1);
+        memory->writed(cpu->seg[DS].address + 200, DEFAULT);
+        memory->writeb(cpu->seg[DS].address + 200, data->var1);
         runTestCPU();
-        result = readb(cpu->seg[DS].address + 200);
+        result = memory->readb(cpu->seg[DS].address + 200);
         assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + 200, 8, true);
         data++;
     }
@@ -486,8 +484,8 @@ void EbAlAx(int instruction, int which, struct Data* data, int useAX) {
             AX = data->var1;
         else
             AL = data->var1;
-        writed(cpu->seg[DS].address + 200, DEFAULT);
-        writeb(cpu->seg[DS].address + 200, data->var2);
+        memory->writed(cpu->seg[DS].address + 200, DEFAULT);
+        memory->writeb(cpu->seg[DS].address + 200, data->var2);
         runTestCPU();
         assertResult(data, cpu, instruction, AX, 0, 0, -1, 0, 16);
         data++;
@@ -533,8 +531,8 @@ void EwAxDx(int instruction, int which, struct Data* data, int useDX) {
         EDX = DEFAULT;
         AX = data->var2;
         DX = data->var1;
-        writed(cpu->seg[DS].address + 200, DEFAULT);
-        writew(cpu->seg[DS].address + 200, data->constant);
+        memory->writed(cpu->seg[DS].address + 200, DEFAULT);
+        memory->writew(cpu->seg[DS].address + 200, data->constant);
         runTestCPU();
         assertResult(data, cpu, instruction, AX, DX, 0, 2, 0, 16);
         data++;
@@ -576,8 +574,8 @@ void EdEaxEdx(int instruction, int which, struct Data* data, int useEdx) {
             pushCode16(200);
         EAX=data->var2;
         EDX=data->var1;
-        writed(cpu->seg[DS].address + 200, DEFAULT);
-        writed(cpu->seg[DS].address + 200, data->constant);
+        memory->writed(cpu->seg[DS].address + 200, DEFAULT);
+        memory->writed(cpu->seg[DS].address + 200, data->constant);
         runTestCPU();
         assertResult(data, cpu, instruction, EAX, EDX, 0, 2, 0, 32);
         data++;
@@ -623,13 +621,13 @@ void EbCl(int instruction, int which, struct Data* data) {
                 pushCode32(200);
             else
                 pushCode16(200);
-            writed(cpu->seg[DS].address + 200, DEFAULT);
-            writeb(cpu->seg[DS].address + 200, data->var1);
+            memory->writed(cpu->seg[DS].address + 200, DEFAULT);
+            memory->writeb(cpu->seg[DS].address + 200, data->var1);
             if (i == 1) {
                 useFlags();  // for dynamic core, this will result in a different code path because the flags won't be needed
             }
             runTestCPU();
-            result = readb(cpu->seg[DS].address + 200);
+            result = memory->readb(cpu->seg[DS].address + 200);
             assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + 200, 8, i==1);
             data++;
         }
@@ -670,10 +668,10 @@ void EbIb(int instruction, int which, struct Data* data, bool address32) {
             pushCode16(200);
         }
         pushCode8(data->var2);
-        writed(cpu->seg[DS].address + 200, DEFAULT);
-        writeb(cpu->seg[DS].address + 200, data->var1);
+        memory->writed(cpu->seg[DS].address + 200, DEFAULT);
+        memory->writeb(cpu->seg[DS].address + 200, data->var1);
         runTestCPU();
-        result = readb(cpu->seg[DS].address + 200);
+        result = memory->readb(cpu->seg[DS].address + 200);
         assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + 200, 8);
         data++;
     }
@@ -737,13 +735,13 @@ void EbGb(int instruction, struct Data* data) {
             else
                 pushCode16(200);
             pushConstant(data);
-            writed(cpu->seg[DS].address + 200, DEFAULT);
-            writeb(cpu->seg[DS].address + 200, data->var1);
+            memory->writed(cpu->seg[DS].address + 200, DEFAULT);
+            memory->writeb(cpu->seg[DS].address + 200, data->var1);
             g = cpu->reg8[G(rm)];
             cpu->reg[G8(rm)].u32 = DEFAULT;
             *g=data->var2;
             runTestCPU();
-            result = readb(cpu->seg[DS].address + 200);
+            result = memory->readb(cpu->seg[DS].address + 200);
             assertResult(data, cpu, instruction, result, *g, G8(rm), -1, cpu->seg[DS].address + 200, 8);
         }
         data++;
@@ -791,13 +789,13 @@ void GbEb(int instruction, struct Data* data) {
             else
                 pushCode16(200);
             pushConstant(data);
-            writed(cpu->seg[DS].address + 200, DEFAULT);
-            writeb(cpu->seg[DS].address + 200, data->var2);
+            memory->writed(cpu->seg[DS].address + 200, DEFAULT);
+            memory->writeb(cpu->seg[DS].address + 200, data->var2);
             g = cpu->reg8[G(rm)];
             cpu->reg[G8(rm)].u32 = DEFAULT;
             *g=data->var1;
             runTestCPU();
-            assertResult(data, cpu, instruction, *g, readb(cpu->seg[DS].address + 200), G8(rm), -1, cpu->seg[DS].address + 200, 8);
+            assertResult(data, cpu, instruction, *g, memory->readb(cpu->seg[DS].address + 200), G8(rm), -1, cpu->seg[DS].address + 200, 8);
         }
         data++;
     }
@@ -845,10 +843,10 @@ void Ew(int instruction, int which, struct Data* data) {
             pushCode32(200);
         else
             pushCode16(200);
-        writed(cpu->seg[DS].address + 200, DEFAULT);
-        writew(cpu->seg[DS].address + 200, data->var1);
+        memory->writed(cpu->seg[DS].address + 200, DEFAULT);
+        memory->writew(cpu->seg[DS].address + 200, data->var1);
         runTestCPU();
-        result = readw(cpu->seg[DS].address + 200);
+        result = memory->readw(cpu->seg[DS].address + 200);
         assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + 200, 16);
         
         newInstructionWithRM(instruction, rm, data->flags);
@@ -863,10 +861,10 @@ void Ew(int instruction, int which, struct Data* data) {
         pushCode8(0xf8);
         pushCode8(0);
         
-        writed(cpu->seg[DS].address + 200, DEFAULT);
-        writew(cpu->seg[DS].address + 200, data->var1);
+        memory->writed(cpu->seg[DS].address + 200, DEFAULT);
+        memory->writew(cpu->seg[DS].address + 200, data->var1);
         runTestCPU();
-        result = readw(cpu->seg[DS].address + 200);
+        result = memory->readw(cpu->seg[DS].address + 200);
         assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + 200, 16, true);
         
         data++;
@@ -912,13 +910,13 @@ void EwCl(int instruction, int which, struct Data* data) {
                 pushCode32(200);
             else
                 pushCode16(200);
-            writed(cpu->seg[DS].address + 200, DEFAULT);
-            writew(cpu->seg[DS].address + 200, data->var1);
+            memory->writed(cpu->seg[DS].address + 200, DEFAULT);
+            memory->writew(cpu->seg[DS].address + 200, data->var1);
             if (i == 1) {
                 useFlags();  // for dynamic core, this will result in a different code path because the flags won't be needed
             }
             runTestCPU();
-            result = readw(cpu->seg[DS].address + 200);
+            result = memory->readw(cpu->seg[DS].address + 200);
             assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + 200, 16, i==1);
             data++;
         }
@@ -960,10 +958,10 @@ void EwIx(int instruction, int which, struct Data* data) {
         else
             pushCode16(200);
         pushCode8(data->var2);
-        writed(cpu->seg[DS].address + 200, DEFAULT);
-        writew(cpu->seg[DS].address + 200, data->var1);
+        memory->writed(cpu->seg[DS].address + 200, DEFAULT);
+        memory->writew(cpu->seg[DS].address + 200, data->var1);
         runTestCPU();
-        result = readw(cpu->seg[DS].address + 200);
+        result = memory->readw(cpu->seg[DS].address + 200);
         assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + 200, 16);
         data++;
     }
@@ -1024,10 +1022,10 @@ void EwIb(int instruction, int which, struct Data* data) {
         else
             pushCode16(200);
         pushCode8(data->var2);
-        writed(cpu->seg[DS].address + 200, DEFAULT);
-        writew(cpu->seg[DS].address + 200, data->var1);
+        memory->writed(cpu->seg[DS].address + 200, DEFAULT);
+        memory->writew(cpu->seg[DS].address + 200, data->var1);
         runTestCPU();
-        result = readw(cpu->seg[DS].address + 200);
+        result = memory->readw(cpu->seg[DS].address + 200);
         assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + 200, 16);
         data++;
     }
@@ -1063,10 +1061,10 @@ void EwIw(int instruction, int which, struct Data* data) {
         else
             pushCode16(200);
         pushCode16(data->var2);
-        writed(cpu->seg[DS].address + 200, DEFAULT);
-        writew(cpu->seg[DS].address + 200, data->var1);
+        memory->writed(cpu->seg[DS].address + 200, DEFAULT);
+        memory->writew(cpu->seg[DS].address + 200, data->var1);
         runTestCPU();
-        result = readw(cpu->seg[DS].address + 200);
+        result = memory->readw(cpu->seg[DS].address + 200);
         assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + 200, 16);
         data++;
     }
@@ -1114,13 +1112,13 @@ void EwGw(int instruction, struct Data* data, U8 prefix = 0) {
             else
                 pushCode16(200);
             pushConstant(data);
-            writed(cpu->seg[DS].address + 200, DEFAULT);
-            writew(cpu->seg[DS].address + 200, data->var1);
+            memory->writed(cpu->seg[DS].address + 200, DEFAULT);
+            memory->writew(cpu->seg[DS].address + 200, data->var1);
             g = &cpu->reg[G(rm)];
             g->u32 = DEFAULT;
             g->u16 = data->var2;
             runTestCPU();
-            result = readw(cpu->seg[DS].address + 200);
+            result = memory->readw(cpu->seg[DS].address + 200);
             assertResult(data, cpu, instruction, result, g->u16, G(rm), -1, cpu->seg[DS].address + 200, 16);
         }
         data++;
@@ -1173,8 +1171,8 @@ void GbEw(int instruction, struct Data* data) {
             else
                 pushCode16(200);
             pushConstant(data);
-            writed(cpu->seg[DS].address + 200, DEFAULT);
-            writeb(cpu->seg[DS].address + 200, data->var2);
+            memory->writed(cpu->seg[DS].address + 200, DEFAULT);
+            memory->writeb(cpu->seg[DS].address + 200, data->var2);
             g = &cpu->reg[G(rm)];
             g->u32 = DEFAULT;
             g->u16 = data->var1;
@@ -1229,8 +1227,8 @@ void GbEd(int instruction, struct Data* data) {
             else
                 pushCode16(200);
             pushConstant(data);
-            writed(cpu->seg[DS].address + 200, DEFAULT);
-            writeb(cpu->seg[DS].address + 200, data->var2);
+            memory->writed(cpu->seg[DS].address + 200, DEFAULT);
+            memory->writeb(cpu->seg[DS].address + 200, data->var2);
             g = &cpu->reg[G(rm)];
             g->u32 = data->var1;
             runTestCPU();
@@ -1279,8 +1277,8 @@ void GwEd(int instruction, struct Data* data) {
             else
                 pushCode16(200);
             pushConstant(data);
-            writed(cpu->seg[DS].address + 200, DEFAULT);
-            writew(cpu->seg[DS].address + 200, data->var2);
+            memory->writed(cpu->seg[DS].address + 200, DEFAULT);
+            memory->writew(cpu->seg[DS].address + 200, data->var2);
             g = &cpu->reg[G(rm)];
             g->u32 = data->var1;
             runTestCPU();
@@ -1336,13 +1334,13 @@ void EwGwCl(int instruction, struct Data* data) {
                 pushCode16(200);
             ECX=DEFAULT;
             CL=data->constant;
-            writed(cpu->seg[DS].address + 200, DEFAULT);
-            writew(cpu->seg[DS].address + 200, data->var1);
+            memory->writed(cpu->seg[DS].address + 200, DEFAULT);
+            memory->writew(cpu->seg[DS].address + 200, data->var1);
             g = &cpu->reg[G(rm)];
             g->u32 = DEFAULT;
             g->u16 = data->var2;
             runTestCPU();
-            result = readw(cpu->seg[DS].address + 200);
+            result = memory->readw(cpu->seg[DS].address + 200);
             assertResult(data, cpu, instruction, result, g->u16, G(rm), -1, cpu->seg[DS].address + 200, 16);
         }
         data++;
@@ -1395,13 +1393,13 @@ void EwGwEffective(int instruction, struct Data* data) {
             else
                 pushCode16(200);
             pushConstant(data);
-            writed(cpu->seg[DS].address + 200+offset, DEFAULT);
-            writew(cpu->seg[DS].address + 200+offset, data->var1);
+            memory->writed(cpu->seg[DS].address + 200+offset, DEFAULT);
+            memory->writew(cpu->seg[DS].address + 200+offset, data->var1);
             g = &cpu->reg[G(rm)];
             g->u32 = DEFAULT;
             g->u16 = data->var2;
             runTestCPU();
-            result = readw(cpu->seg[DS].address + 200 + offset);
+            result = memory->readw(cpu->seg[DS].address + 200 + offset);
             assertResult(data, cpu, instruction, result, g->u16, G(rm), -1, cpu->seg[DS].address + 200 + offset, 16);
         }
         data++;
@@ -1452,11 +1450,11 @@ void EdGdEffective(int instruction, struct Data* data) {
             else
                 pushCode16(200);
             pushConstant(data);
-            writed(cpu->seg[DS].address + 200+offset, data->var1);
+            memory->writed(cpu->seg[DS].address + 200+offset, data->var1);
             g = &cpu->reg[G(rm)];
             g->u32 = data->var2;
             runTestCPU();
-            result = readd(cpu->seg[DS].address + 200 + offset);
+            result = memory->readd(cpu->seg[DS].address + 200 + offset);
             assertResult(data, cpu, instruction, result, g->u32, G(rm), -1, cpu->seg[DS].address + 200 + offset, 32);
         }
         data++;
@@ -1502,12 +1500,12 @@ void EwSw(int instruction, struct Data* data) {
             else
                 pushCode16(200);
             pushConstant(data);
-            writed(cpu->seg[DS].address + 200, DEFAULT);
-            writew(cpu->seg[DS].address + 200, data->var1);
+            memory->writed(cpu->seg[DS].address + 200, DEFAULT);
+            memory->writew(cpu->seg[DS].address + 200, data->var1);
             g = &cpu->seg[gw].value;
             *g = data->var2;
             runTestCPU();
-            result = readw(cpu->seg[DS].address + 200);
+            result = memory->readw(cpu->seg[DS].address + 200);
             assertResult(data, cpu, instruction, result, *g, -1, -1, cpu->seg[DS].address + 200, 16);
         }
         data++;
@@ -1552,12 +1550,12 @@ void EdSw(int instruction, struct Data* data) {
             else
                 pushCode16(200);
             pushConstant(data);
-            writed(cpu->seg[DS].address + 200, DEFAULT);
-            writew(cpu->seg[DS].address + 200, data->var1);
+            memory->writed(cpu->seg[DS].address + 200, DEFAULT);
+            memory->writew(cpu->seg[DS].address + 200, data->var1);
             g = &cpu->seg[gw].value;
             *g = data->var2;
             runTestCPU();
-            result = readw(cpu->seg[DS].address + 200);
+            result = memory->readw(cpu->seg[DS].address + 200);
             assertResult(data, cpu, instruction, result, *g, -1, -1, cpu->seg[DS].address + 200, 32);
         }
         data++;
@@ -1606,13 +1604,13 @@ void GwEw(int instruction, struct Data* data) {
             else
                 pushCode16(200);
             pushConstant(data);
-            writed(cpu->seg[DS].address + 200, DEFAULT);
-            writew(cpu->seg[DS].address + 200, data->var2);
+            memory->writed(cpu->seg[DS].address + 200, DEFAULT);
+            memory->writew(cpu->seg[DS].address + 200, data->var2);
             g = &cpu->reg[gw];
             g->u32 = DEFAULT;
             g->u16 = data->var1;
             runTestCPU();
-            result = readw(cpu->seg[DS].address + 200);
+            result = memory->readw(cpu->seg[DS].address + 200);
             assertResult(data, cpu, instruction, g->u16, result, gw, -1, cpu->seg[DS].address + 200, 16);
         }
         data++;
@@ -1659,9 +1657,9 @@ void Ed(int instruction, int which, struct Data* data) {
             pushCode32(200);
         else
             pushCode16(200);
-        writed(cpu->seg[DS].address + 200, data->var1);
+        memory->writed(cpu->seg[DS].address + 200, data->var1);
         runTestCPU();
-        result = readd(cpu->seg[DS].address + 200);
+        result = memory->readd(cpu->seg[DS].address + 200);
         assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + 200, 32);
         
         newInstructionWithRM(instruction, rm, data->flags);
@@ -1676,9 +1674,9 @@ void Ed(int instruction, int which, struct Data* data) {
         pushCode8(0xf8);
         pushCode8(0);
         
-        writed(cpu->seg[DS].address + 200, data->var1);
+        memory->writed(cpu->seg[DS].address + 200, data->var1);
         runTestCPU();
-        result = readd(cpu->seg[DS].address + 200);
+        result = memory->readd(cpu->seg[DS].address + 200);
         assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + 200, 32, true);
         
         data++;
@@ -1723,12 +1721,12 @@ void EdCl(int instruction, int which, struct Data* data) {
                 pushCode32(200);
             else
                 pushCode16(200);
-            writed(cpu->seg[DS].address + 200, data->var1);
+            memory->writed(cpu->seg[DS].address + 200, data->var1);
             if (i == 1) {
                 useFlags();  // for dynamic core, this will result in a different code path because the flags won't be needed
             }
             runTestCPU();
-            result = readd(cpu->seg[DS].address + 200);
+            result = memory->readd(cpu->seg[DS].address + 200);
             assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + 200, 32, i == 1);
             data++;
         }
@@ -1769,9 +1767,9 @@ void EdIx(int instruction, int which, struct Data* data) {
         else
             pushCode16(200);
         pushCode8(data->var2);
-        writed(cpu->seg[DS].address + 200, data->var1);
+        memory->writed(cpu->seg[DS].address + 200, data->var1);
         runTestCPU();
-        result = readd(cpu->seg[DS].address + 200);
+        result = memory->readd(cpu->seg[DS].address + 200);
         assertResult(data, cpu, instruction, result, 0, -1, -1, 0, 0);
         data++;
     }
@@ -1806,10 +1804,10 @@ void EdIb(int instruction, int which, struct Data* data) {
         else
             pushCode16(200);
         pushCode8(data->var2);
-        writed(cpu->seg[DS].address + 200, DEFAULT);
-        writed(cpu->seg[DS].address + 200, data->var1);
+        memory->writed(cpu->seg[DS].address + 200, DEFAULT);
+        memory->writed(cpu->seg[DS].address + 200, data->var1);
         runTestCPU();
-        result = readd(cpu->seg[DS].address + 200);
+        result = memory->readd(cpu->seg[DS].address + 200);
         assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + 200, 32);
         data++;
     }
@@ -1855,9 +1853,9 @@ void EdId(int instruction, int which, struct Data* data) {
         else
             pushCode16(200);
         pushCode32(data->var2);
-        writed(cpu->seg[DS].address + 200, data->var1);
+        memory->writed(cpu->seg[DS].address + 200, data->var1);
         runTestCPU();
-        result = readd(cpu->seg[DS].address + 200);
+        result = memory->readd(cpu->seg[DS].address + 200);
         assertResult(data, cpu, instruction, result, 0, -1, -1, 0, 0);
         data++;
     }
@@ -1903,11 +1901,11 @@ void EdGd(int instruction, struct Data* data, U8 prefix = 0) {
             else
                 pushCode16(200);
             pushConstant(data);
-            writed(cpu->seg[DS].address + 200, data->var1);
+            memory->writed(cpu->seg[DS].address + 200, data->var1);
             g = &cpu->reg[gd];
             g->u32 = data->var2;
             runTestCPU();
-            result = readd(cpu->seg[DS].address + 200);
+            result = memory->readd(cpu->seg[DS].address + 200);
             assertResult(data, cpu, instruction, result, g->u32, -1, -1, 0, 0);
         }
         data++;
@@ -1955,12 +1953,12 @@ void EdGdEax(int instruction, struct Data* data) {
             else
                 pushCode16(200);
             pushConstant(data);
-            writed(cpu->seg[DS].address + 200, data->var1);
+            memory->writed(cpu->seg[DS].address + 200, data->var1);
             g = &cpu->reg[gd];
             g->u32 = data->var2;
             EAX = data->constant;
             runTestCPU();
-            result = readd(cpu->seg[DS].address + 200);
+            result = memory->readd(cpu->seg[DS].address + 200);
             assertResult(data, cpu, instruction, result, EAX, -1, -1, 0, 0);
         }
         data++;
@@ -2009,12 +2007,12 @@ void EwGwAx(int instruction, struct Data* data) {
             else
                 pushCode16(200);
             pushConstant(data);
-            writed(cpu->seg[DS].address + 200, data->var1);
+            memory->writed(cpu->seg[DS].address + 200, data->var1);
             g = &cpu->reg[gw];
             g->u32 = data->var2;
             AX = data->constant;
             runTestCPU();
-            result = readw(cpu->seg[DS].address + 200);
+            result = memory->readw(cpu->seg[DS].address + 200);
             assertResult(data, cpu, instruction, result, AX, -1, -1, 0, 0);
         }
         data++;
@@ -2063,12 +2061,12 @@ void EbGbAl(int instruction, struct Data* data) {
             else
                 pushCode16(200);
             pushConstant(data);
-            writed(cpu->seg[DS].address + 200, data->var1);
+            memory->writed(cpu->seg[DS].address + 200, data->var1);
             g = cpu->reg8[gb];
             *g = (U8)data->var2;
             AL = data->constant;
             runTestCPU();
-            result = readb(cpu->seg[DS].address + 200);
+            result = memory->readb(cpu->seg[DS].address + 200);
             assertResult(data, cpu, instruction, result, AL, -1, -1, 0, 0);
         }
         data++;
@@ -2119,11 +2117,11 @@ void EdGdCl(int instruction, struct Data* data) {
                 pushCode16(200);
             ECX = DEFAULT;
             CL = data->constant;
-            writed(cpu->seg[DS].address + 200, data->var1);
+            memory->writed(cpu->seg[DS].address + 200, data->var1);
             g = &cpu->reg[gd];
             g->u32 = data->var2;
             runTestCPU();
-            result = readd(cpu->seg[DS].address + 200);
+            result = memory->readd(cpu->seg[DS].address + 200);
             assertResult(data, cpu, instruction, result, g->u32, -1, -1, 0, 0);
         }
         data++;
@@ -2170,11 +2168,11 @@ void GdEd(int instruction, struct Data* data) {
             else
                 pushCode16(200);
             pushConstant(data);
-            writed(cpu->seg[DS].address + 200, data->var2);
+            memory->writed(cpu->seg[DS].address + 200, data->var2);
             g = &cpu->reg[gd];
             g->u32 = data->var1;
             runTestCPU();
-            result = readd(cpu->seg[DS].address + 200);
+            result = memory->readd(cpu->seg[DS].address + 200);
             assertResult(data, cpu, instruction, g->u32, result, -1, -1, 0, 0);
         }
         data++;
@@ -2415,28 +2413,28 @@ void push16Reg(int instruction, Reg* reg) {
     } else {
         reg->u32 = value;
     }    
-    writew(cpu->seg[SS].address+ESP, 0xAAAA);
-    writew(cpu->seg[SS].address+ESP-2, 0xCCCC);
-    writew(cpu->seg[SS].address+ESP-4, 0xBBBB);
+    memory->writew(cpu->seg[SS].address+ESP, 0xAAAA);
+    memory->writew(cpu->seg[SS].address+ESP-2, 0xCCCC);
+    memory->writew(cpu->seg[SS].address+ESP-4, 0xBBBB);
     runTestCPU();
     assertTrue(ESP==4092);
-    assertTrue(readw(cpu->seg[SS].address+ESP)==(U16)value);
-    assertTrue(readw(cpu->seg[SS].address+ESP+2)==0xAAAA);
-    assertTrue(readw(cpu->seg[SS].address+ESP-2)==0xBBBB);
+    assertTrue(memory->readw(cpu->seg[SS].address+ESP)==(U16)value);
+    assertTrue(memory->readw(cpu->seg[SS].address+ESP+2)==0xAAAA);
+    assertTrue(memory->readw(cpu->seg[SS].address+ESP-2)==0xBBBB);
 }
 
 void Pushf(int instruction) {
     newInstruction(instruction, 0);
     cpu->flags = FMASK_TEST;
     ESP-=2;
-    writew(cpu->seg[SS].address+ESP, 0xAAAA);
-    writew(cpu->seg[SS].address+ESP-2, 0xCCCC);
-    writew(cpu->seg[SS].address+ESP-4, 0xBBBB);
+    memory->writew(cpu->seg[SS].address+ESP, 0xAAAA);
+    memory->writew(cpu->seg[SS].address+ESP-2, 0xCCCC);
+    memory->writew(cpu->seg[SS].address+ESP-4, 0xBBBB);
     runTestCPU();
     assertTrue(ESP==4092);
-    assertTrue((readw(cpu->seg[SS].address+ESP) & (FMASK_TEST|2))==(FMASK_TEST|2)); // bit 1 is always set
-    assertTrue(readw(cpu->seg[SS].address+ESP+2)==0xAAAA);
-    assertTrue(readw(cpu->seg[SS].address+ESP-2)==0xBBBB);
+    assertTrue((memory->readw(cpu->seg[SS].address+ESP) & (FMASK_TEST|2))==(FMASK_TEST|2)); // bit 1 is always set
+    assertTrue(memory->readw(cpu->seg[SS].address+ESP+2)==0xAAAA);
+    assertTrue(memory->readw(cpu->seg[SS].address+ESP-2)==0xBBBB);
 }
 
 void push32Reg(int instruction, Reg* reg) {
@@ -2448,43 +2446,43 @@ void push32Reg(int instruction, Reg* reg) {
     } else {
         reg->u32 = value;
     }
-    writed(cpu->seg[SS].address+ESP, 0xAAAAAAAA);
-    writed(cpu->seg[SS].address+ESP-4, 0xCCCCCCCC);
-    writed(cpu->seg[SS].address+ESP-8, 0xBBBBBBBB);
+    memory->writed(cpu->seg[SS].address+ESP, 0xAAAAAAAA);
+    memory->writed(cpu->seg[SS].address+ESP-4, 0xCCCCCCCC);
+    memory->writed(cpu->seg[SS].address+ESP-8, 0xBBBBBBBB);
     runTestCPU();
     assertTrue(ESP==4088);
-    assertTrue(readd(cpu->seg[SS].address+ESP)==value);
-    assertTrue(readd(cpu->seg[SS].address+ESP+4)==0xAAAAAAAA);
-    assertTrue(readd(cpu->seg[SS].address+ESP-4)==0xBBBBBBBB);
+    assertTrue(memory->readd(cpu->seg[SS].address+ESP)==value);
+    assertTrue(memory->readd(cpu->seg[SS].address+ESP+4)==0xAAAAAAAA);
+    assertTrue(memory->readd(cpu->seg[SS].address+ESP-4)==0xBBBBBBBB);
 }
 
 void Pushfd(int instruction) {
     newInstruction(instruction, 0);
     cpu->flags = FMASK_TEST;
     ESP-=4;
-    writed(cpu->seg[SS].address+ESP, 0xAAAAAAAA);
-    writed(cpu->seg[SS].address+ESP-4, 0xCCCCCCCC);
-    writed(cpu->seg[SS].address+ESP-8, 0xBBBBBBBB);
+    memory->writed(cpu->seg[SS].address+ESP, 0xAAAAAAAA);
+    memory->writed(cpu->seg[SS].address+ESP-4, 0xCCCCCCCC);
+    memory->writed(cpu->seg[SS].address+ESP-8, 0xBBBBBBBB);
     runTestCPU();
     assertTrue(ESP==4088);
-    assertTrue((readd(cpu->seg[SS].address+ESP) & (FMASK_TEST|2))==(FMASK_TEST | 2)); // bit 1 is always set
-    assertTrue(readd(cpu->seg[SS].address+ESP+4)==0xAAAAAAAA);
-    assertTrue(readd(cpu->seg[SS].address+ESP-4)==0xBBBBBBBB);
+    assertTrue((memory->readd(cpu->seg[SS].address+ESP) & (FMASK_TEST|2))==(FMASK_TEST | 2)); // bit 1 is always set
+    assertTrue(memory->readd(cpu->seg[SS].address+ESP+4)==0xAAAAAAAA);
+    assertTrue(memory->readd(cpu->seg[SS].address+ESP-4)==0xBBBBBBBB);
 }
 
 void Pop16(int instruction, Reg* reg) {
     newInstruction(instruction, 0);
     SP-=2;
     reg->u32=0xDDDDDDDD;
-    writew(cpu->seg[SS].address+SP, 0xAAAA);
-    writew(cpu->seg[SS].address+SP-2, 0x1234);
-    writew(cpu->seg[SS].address+SP-4, 0xBBBB);
+    memory->writew(cpu->seg[SS].address+SP, 0xAAAA);
+    memory->writew(cpu->seg[SS].address+SP-2, 0x1234);
+    memory->writew(cpu->seg[SS].address+SP-4, 0xBBBB);
     SP-=2;
     runTestCPU();
     assertTrue(SP==4094);
     assertTrue(reg->u32 == 0xDDDD1234);
-    assertTrue(readw(cpu->seg[SS].address+SP)==0xAAAA);
-    assertTrue(readw(cpu->seg[SS].address+SP-4)==0xBBBB);
+    assertTrue(memory->readw(cpu->seg[SS].address+SP)==0xAAAA);
+    assertTrue(memory->readw(cpu->seg[SS].address+SP-4)==0xBBBB);
 }
 
 void Pop16_SP(int instruction, Reg* reg) {
@@ -2495,15 +2493,15 @@ void Pop16_SP(int instruction, Reg* reg) {
     cpu->stackNotMask=0xffff0000;
     cpu->thread->process->hasSetSeg[SS]=true;
     reg->h16=0xDDDD;
-    writew(cpu->seg[SS].address+SP, 0xAAAA);
-    writew(cpu->seg[SS].address+SP-2, value);
-    writew(cpu->seg[SS].address+SP-4, 0xBBBB);
+    memory->writew(cpu->seg[SS].address+SP, 0xAAAA);
+    memory->writew(cpu->seg[SS].address+SP-2, value);
+    memory->writew(cpu->seg[SS].address+SP-4, 0xBBBB);
     SP-=2;
     runTestCPU();
     assertTrue(SP==4092);
     assertTrue(reg->u32 == ((U32)(0xDDDD << 16) | value));
-    assertTrue(readw(cpu->seg[SS].address+4094)==0xAAAA);
-    assertTrue(readw(cpu->seg[SS].address+4090)==0xBBBB);
+    assertTrue(memory->readw(cpu->seg[SS].address+4094)==0xAAAA);
+    assertTrue(memory->readw(cpu->seg[SS].address+4090)==0xBBBB);
     cpu->stackMask=0xffffffff;
     cpu->stackNotMask=0;
 }
@@ -2512,57 +2510,57 @@ void Popf(int instruction) {
     newInstruction(instruction, 0);
     ESP-=2;
     cpu->flags=0;
-    writew(cpu->seg[SS].address+ESP, 0xAAAA);
-    writew(cpu->seg[SS].address+ESP-2, FMASK_TEST);
-    writew(cpu->seg[SS].address+ESP-4, 0xBBBB);
+    memory->writew(cpu->seg[SS].address+ESP, 0xAAAA);
+    memory->writew(cpu->seg[SS].address+ESP-2, FMASK_TEST);
+    memory->writew(cpu->seg[SS].address+ESP-4, 0xBBBB);
     ESP-=2;
     runTestCPU();
     assertTrue(ESP==4094);
     assertTrue((cpu->flags & (FMASK_TEST | 2)) == (FMASK_TEST | 2));
-    assertTrue(readw(cpu->seg[SS].address+ESP)==0xAAAA);
-    assertTrue(readw(cpu->seg[SS].address+ESP-4)==0xBBBB);
+    assertTrue(memory->readw(cpu->seg[SS].address+ESP)==0xAAAA);
+    assertTrue(memory->readw(cpu->seg[SS].address+ESP-4)==0xBBBB);
 }
 
 void Pop32(int instruction, Reg* reg) {
     newInstruction(instruction, 0);
     ESP-=4;
-    writed(cpu->seg[SS].address+ESP, 0xAAAAAAAA);
-    writed(cpu->seg[SS].address+ESP-4, 0x56781234);
-    writed(cpu->seg[SS].address+ESP-8, 0xBBBBBBBB);
+    memory->writed(cpu->seg[SS].address+ESP, 0xAAAAAAAA);
+    memory->writed(cpu->seg[SS].address+ESP-4, 0x56781234);
+    memory->writed(cpu->seg[SS].address+ESP-8, 0xBBBBBBBB);
     ESP-=4;
     runTestCPU();
     assertTrue(ESP==4092);
     assertTrue(reg->u32 == 0x56781234);
-    assertTrue(readd(cpu->seg[SS].address+ESP)==0xAAAAAAAA);
-    assertTrue(readd(cpu->seg[SS].address+ESP-8)==0xBBBBBBBB);
+    assertTrue(memory->readd(cpu->seg[SS].address+ESP)==0xAAAAAAAA);
+    assertTrue(memory->readd(cpu->seg[SS].address+ESP-8)==0xBBBBBBBB);
 }
 
 void Pop32_SP(int instruction, Reg* reg) {
     newInstruction(instruction, 0);
     ESP-=4;
-    writed(cpu->seg[SS].address+ESP, 0xAAAAAAAA);
-    writed(cpu->seg[SS].address+ESP-4, ESP-4);
-    writed(cpu->seg[SS].address+ESP-8, 0xBBBBBBBB);
+    memory->writed(cpu->seg[SS].address+ESP, 0xAAAAAAAA);
+    memory->writed(cpu->seg[SS].address+ESP-4, ESP-4);
+    memory->writed(cpu->seg[SS].address+ESP-8, 0xBBBBBBBB);
     ESP-=4;
     runTestCPU();
     assertTrue(ESP==4088);
-    assertTrue(readd(cpu->seg[SS].address+4092)==0xAAAAAAAA);
-    assertTrue(readd(cpu->seg[SS].address+4084)==0xBBBBBBBB);
+    assertTrue(memory->readd(cpu->seg[SS].address+4092)==0xAAAAAAAA);
+    assertTrue(memory->readd(cpu->seg[SS].address+4084)==0xBBBBBBBB);
 }
 
 void Popfd(int instruction) {
     newInstruction(instruction, 0);
     ESP-=4;
     cpu->flags=0;
-    writed(cpu->seg[SS].address+ESP, 0xAAAAAAAA);
-    writed(cpu->seg[SS].address+ESP-4, FMASK_TEST);
-    writed(cpu->seg[SS].address+ESP-8, 0xBBBBBBBB);
+    memory->writed(cpu->seg[SS].address+ESP, 0xAAAAAAAA);
+    memory->writed(cpu->seg[SS].address+ESP-4, FMASK_TEST);
+    memory->writed(cpu->seg[SS].address+ESP-8, 0xBBBBBBBB);
     ESP-=4;
     runTestCPU();
     assertTrue(ESP==4092);
     assertTrue((cpu->flags & (FMASK_TEST|2)) == (FMASK_TEST | 2));
-    assertTrue(readd(cpu->seg[SS].address+ESP)==0xAAAAAAAA);
-    assertTrue(readd(cpu->seg[SS].address+ESP-8)==0xBBBBBBBB);
+    assertTrue(memory->readd(cpu->seg[SS].address+ESP)==0xAAAAAAAA);
+    assertTrue(memory->readd(cpu->seg[SS].address+ESP-8)==0xBBBBBBBB);
 }
 
 void flags(int instruction, struct Data* data, Reg* reg) {
@@ -2601,7 +2599,7 @@ void MovSwEw() {
             cpu->seg[sw].value = 0;
             cpu->seg[sw].address = 0;
 
-            writed(HEAP_ADDRESS, 0xAAAA1112);
+            memory->writed(HEAP_ADDRESS, 0xAAAA1112);
 
             // read seg:[0] into AX to verify that segment can be used    
             switch (sw) {
@@ -2661,8 +2659,8 @@ void MovSwEw() {
         cpu->seg[sw].value = 0;
         cpu->seg[sw].address = 0;
 
-        writed(HEAP_ADDRESS, 0xAAAA1112);
-        writed(HEAP_ADDRESS+200, 0xAAAA0107);
+        memory->writed(HEAP_ADDRESS, 0xAAAA1112);
+        memory->writed(HEAP_ADDRESS+200, 0xAAAA0107);
 
         // read seg:[0] into AX to verify that segment can be used    
         switch (sw) {
@@ -2704,33 +2702,33 @@ void PopEw() {
         reg = &cpu->reg[i];
         ESP-=2;
         reg->u32=0xDDDDDDDD;
-        writew(cpu->seg[SS].address+ESP, 0xAAAA);
-        writew(cpu->seg[SS].address+ESP-2, 0x1234);
-        writew(cpu->seg[SS].address+ESP-4, 0xBBBB);
+        memory->writew(cpu->seg[SS].address+ESP, 0xAAAA);
+        memory->writew(cpu->seg[SS].address+ESP-2, 0x1234);
+        memory->writew(cpu->seg[SS].address+ESP-4, 0xBBBB);
         ESP-=2;
         runTestCPU();
         assertTrue(ESP==4094);
         assertTrue(reg->u32 == 0xDDDD1234);
-        assertTrue(readw(cpu->seg[SS].address+ESP)==0xAAAA);
-        assertTrue(readw(cpu->seg[SS].address+ESP-4)==0xBBBB);
+        assertTrue(memory->readw(cpu->seg[SS].address+ESP)==0xAAAA);
+        assertTrue(memory->readw(cpu->seg[SS].address+ESP-4)==0xBBBB);
     }
 
     newInstruction(0x8f, 0);
     pushCode8(6);
     pushCode16(200);
-    writed(cpu->seg[DS].address + 200, DEFAULT);
+    memory->writed(cpu->seg[DS].address + 200, DEFAULT);
 
     ESP-=2;
-    writew(cpu->seg[SS].address+ESP, 0xAAAA);
-    writew(cpu->seg[SS].address+ESP-2, 0x1234);
-    writew(cpu->seg[SS].address+ESP-4, 0xBBBB);
+    memory->writew(cpu->seg[SS].address+ESP, 0xAAAA);
+    memory->writew(cpu->seg[SS].address+ESP-2, 0x1234);
+    memory->writew(cpu->seg[SS].address+ESP-4, 0xBBBB);
     ESP-=2;
     runTestCPU();
 
     assertTrue(ESP==4094);
-    assertTrue(readd(cpu->seg[DS].address + 200) == ((DEFAULT & 0xFFFF0000) | 0x1234));
-    assertTrue(readw(cpu->seg[SS].address+ESP)==0xAAAA);
-    assertTrue(readw(cpu->seg[SS].address+ESP-4)==0xBBBB);
+    assertTrue(memory->readd(cpu->seg[DS].address + 200) == ((DEFAULT & 0xFFFF0000) | 0x1234));
+    assertTrue(memory->readw(cpu->seg[SS].address+ESP)==0xAAAA);
+    assertTrue(memory->readw(cpu->seg[SS].address+ESP-4)==0xBBBB);
 }
 
 void PopEd() {
@@ -2744,89 +2742,89 @@ void PopEd() {
         pushCode8(i|0xC0);
         reg = &cpu->reg[i];
         ESP-=4;
-        writed(cpu->seg[SS].address+ESP, 0xAAAAAAAA);
-        writed(cpu->seg[SS].address+ESP-4, 0x56781234);
-        writed(cpu->seg[SS].address+ESP-8, 0xBBBBBBBB);
+        memory->writed(cpu->seg[SS].address+ESP, 0xAAAAAAAA);
+        memory->writed(cpu->seg[SS].address+ESP-4, 0x56781234);
+        memory->writed(cpu->seg[SS].address+ESP-8, 0xBBBBBBBB);
         ESP-=4;
         runTestCPU();
         assertTrue(ESP==4092);
         assertTrue(reg->u32 == 0x56781234);
-        assertTrue(readd(cpu->seg[SS].address+ESP)==0xAAAAAAAA);
-        assertTrue(readd(cpu->seg[SS].address+ESP-8)==0xBBBBBBBB);
+        assertTrue(memory->readd(cpu->seg[SS].address+ESP)==0xAAAAAAAA);
+        assertTrue(memory->readd(cpu->seg[SS].address+ESP-8)==0xBBBBBBBB);
     }
 
     newInstruction(0x8f, 0);
     pushCode8(5);
     pushCode32(200);
-    writed(cpu->seg[DS].address + 200, DEFAULT);
+    memory->writed(cpu->seg[DS].address + 200, DEFAULT);
 
     ESP-=4;
-    writed(cpu->seg[SS].address + ESP, 0xAAAAAAAA);
-    writed(cpu->seg[SS].address + ESP - 4, 0x56781234);
-    writed(cpu->seg[SS].address + ESP - 8, 0xBBBBBBBB);
+    memory->writed(cpu->seg[SS].address + ESP, 0xAAAAAAAA);
+    memory->writed(cpu->seg[SS].address + ESP - 4, 0x56781234);
+    memory->writed(cpu->seg[SS].address + ESP - 8, 0xBBBBBBBB);
     ESP-=4;
     runTestCPU();
 
     assertTrue(ESP==4092);
-    assertTrue(readd(cpu->seg[DS].address + 200) == 0x56781234);
-    assertTrue(readd(cpu->seg[SS].address + ESP)==0xAAAAAAAA);
-    assertTrue(readd(cpu->seg[SS].address + ESP - 8)==0xBBBBBBBB);
+    assertTrue(memory->readd(cpu->seg[DS].address + 200) == 0x56781234);
+    assertTrue(memory->readd(cpu->seg[SS].address + ESP)==0xAAAAAAAA);
+    assertTrue(memory->readd(cpu->seg[SS].address + ESP - 8)==0xBBBBBBBB);
 }
 
 void push16(int instruction) {
     newInstruction(instruction, 0);
     pushCode16(0x1234);
     ESP-=2;
-    writew(cpu->seg[SS].address+ESP, 0xAAAA);
-    writew(cpu->seg[SS].address+ESP-2, 0xCCCC);
-    writew(cpu->seg[SS].address+ESP-4, 0xBBBB);
+    memory->writew(cpu->seg[SS].address+ESP, 0xAAAA);
+    memory->writew(cpu->seg[SS].address+ESP-2, 0xCCCC);
+    memory->writew(cpu->seg[SS].address+ESP-4, 0xBBBB);
     runTestCPU();
     assertTrue(ESP==4092);
-    assertTrue(readw(cpu->seg[SS].address+ESP)==0x1234);
-    assertTrue(readw(cpu->seg[SS].address+ESP+2)==0xAAAA);
-    assertTrue(readw(cpu->seg[SS].address+ESP-2)==0xBBBB);
+    assertTrue(memory->readw(cpu->seg[SS].address+ESP)==0x1234);
+    assertTrue(memory->readw(cpu->seg[SS].address+ESP+2)==0xAAAA);
+    assertTrue(memory->readw(cpu->seg[SS].address+ESP-2)==0xBBBB);
 }
 
 void push32(int instruction) {
     newInstruction(instruction, 0);
     pushCode32(0x56781234);
     ESP-=4;
-    writed(cpu->seg[SS].address+ESP, 0xAAAAAAAA);
-    writed(cpu->seg[SS].address+ESP-4, 0xCCCCCCCC);
-    writed(cpu->seg[SS].address+ESP-8, 0xBBBBBBBB);
+    memory->writed(cpu->seg[SS].address+ESP, 0xAAAAAAAA);
+    memory->writed(cpu->seg[SS].address+ESP-4, 0xCCCCCCCC);
+    memory->writed(cpu->seg[SS].address+ESP-8, 0xBBBBBBBB);
     runTestCPU();
     assertTrue(ESP==4088);
-    assertTrue(readd(cpu->seg[SS].address+ESP)==0x56781234);
-    assertTrue(readd(cpu->seg[SS].address+ESP+4)==0xAAAAAAAA);
-    assertTrue(readd(cpu->seg[SS].address+ESP-4)==0xBBBBBBBB);
+    assertTrue(memory->readd(cpu->seg[SS].address+ESP)==0x56781234);
+    assertTrue(memory->readd(cpu->seg[SS].address+ESP+4)==0xAAAAAAAA);
+    assertTrue(memory->readd(cpu->seg[SS].address+ESP-4)==0xBBBBBBBB);
 }
 
 void push16s8(int instruction) {
     newInstruction(instruction, 0);
     pushCode8(0xFC); // -4
     ESP-=2;
-    writew(cpu->seg[SS].address+ESP, 0xAAAA);
-    writew(cpu->seg[SS].address+ESP-2, 0xCCCC);
-    writew(cpu->seg[SS].address+ESP-4, 0xBBBB);
+    memory->writew(cpu->seg[SS].address+ESP, 0xAAAA);
+    memory->writew(cpu->seg[SS].address+ESP-2, 0xCCCC);
+    memory->writew(cpu->seg[SS].address+ESP-4, 0xBBBB);
     runTestCPU();
     assertTrue(ESP==4092);
-    assertTrue(readw(cpu->seg[SS].address+ESP)==0xFFFC);
-    assertTrue(readw(cpu->seg[SS].address+ESP+2)==0xAAAA);
-    assertTrue(readw(cpu->seg[SS].address+ESP-2)==0xBBBB);
+    assertTrue(memory->readw(cpu->seg[SS].address+ESP)==0xFFFC);
+    assertTrue(memory->readw(cpu->seg[SS].address+ESP+2)==0xAAAA);
+    assertTrue(memory->readw(cpu->seg[SS].address+ESP-2)==0xBBBB);
 }
 
 void push32s8(int instruction) {
     newInstruction(instruction, 0);
     pushCode8(0xFC); // -4
     ESP-=4;
-    writed(cpu->seg[SS].address+ESP, 0xAAAAAAAA);
-    writed(cpu->seg[SS].address+ESP-4, 0xCCCCCCCC);
-    writed(cpu->seg[SS].address+ESP-8, 0xBBBBBBBB);
+    memory->writed(cpu->seg[SS].address+ESP, 0xAAAAAAAA);
+    memory->writed(cpu->seg[SS].address+ESP-4, 0xCCCCCCCC);
+    memory->writed(cpu->seg[SS].address+ESP-8, 0xBBBBBBBB);
     runTestCPU();
     assertTrue(ESP==4088);
-    assertTrue(readd(cpu->seg[SS].address+ESP)==0xFFFFFFFC);
-    assertTrue(readd(cpu->seg[SS].address+ESP+4)==0xAAAAAAAA);
-    assertTrue(readd(cpu->seg[SS].address+ESP-4)==0xBBBBBBBB);
+    assertTrue(memory->readd(cpu->seg[SS].address+ESP)==0xFFFFFFFC);
+    assertTrue(memory->readd(cpu->seg[SS].address+ESP+4)==0xAAAAAAAA);
+    assertTrue(memory->readd(cpu->seg[SS].address+ESP-4)==0xBBBBBBBB);
 }        
 
 #define false 0
@@ -4677,7 +4675,7 @@ void testPushA16() {
     cpu->big = false;
 
     newInstruction(0x60, 0);
-    zeroMemory(cpu->seg[SS].address + ESP-16, 16);
+    memory->memset(cpu->seg[SS].address + ESP-16, 0, 16);
 
     EAX = 0xFFFF1111;
     ECX = 0xFFFF2222;
@@ -4691,21 +4689,21 @@ void testPushA16() {
     runTestCPU();
     U32 newEsp = esp - 16;
     assertTrue(ESP == newEsp);
-    assertTrue(readw(cpu->seg[SS].address + newEsp) == 0x8888);
-    assertTrue(readw(cpu->seg[SS].address + newEsp + 2) == 0x7777);
-    assertTrue(readw(cpu->seg[SS].address + newEsp + 4) == 0x6666);
-    assertTrue(readw(cpu->seg[SS].address + newEsp + 6) == (esp & 0xFFFF));
-    assertTrue(readw(cpu->seg[SS].address + newEsp + 8) == 0x4444);
-    assertTrue(readw(cpu->seg[SS].address + newEsp + 10) == 0x3333);
-    assertTrue(readw(cpu->seg[SS].address + newEsp + 12) == 0x2222);
-    assertTrue(readw(cpu->seg[SS].address + newEsp + 14) == 0x1111);
+    assertTrue(memory->readw(cpu->seg[SS].address + newEsp) == 0x8888);
+    assertTrue(memory->readw(cpu->seg[SS].address + newEsp + 2) == 0x7777);
+    assertTrue(memory->readw(cpu->seg[SS].address + newEsp + 4) == 0x6666);
+    assertTrue(memory->readw(cpu->seg[SS].address + newEsp + 6) == (esp & 0xFFFF));
+    assertTrue(memory->readw(cpu->seg[SS].address + newEsp + 8) == 0x4444);
+    assertTrue(memory->readw(cpu->seg[SS].address + newEsp + 10) == 0x3333);
+    assertTrue(memory->readw(cpu->seg[SS].address + newEsp + 12) == 0x2222);
+    assertTrue(memory->readw(cpu->seg[SS].address + newEsp + 14) == 0x1111);
 }
 
 void testPushA32() {
     cpu->big = true;
 
     newInstruction(0x60, 0);
-    zeroMemory(cpu->seg[SS].address + ESP - 32, 32);
+    memory->memset(cpu->seg[SS].address + ESP - 32, 0, 32);
 
     EAX = 0xFFFF1111;
     ECX = 0xEEEE2222;
@@ -4719,14 +4717,14 @@ void testPushA32() {
     runTestCPU();
     U32 newEsp = esp - 32;
     assertTrue(ESP == newEsp);
-    assertTrue(readd(cpu->seg[SS].address + newEsp) == 0x99998888);
-    assertTrue(readd(cpu->seg[SS].address + newEsp + 4) == 0xAAAA7777);
-    assertTrue(readd(cpu->seg[SS].address + newEsp + 8) == 0xBBBB6666);
-    assertTrue(readd(cpu->seg[SS].address + newEsp + 12) == esp);
-    assertTrue(readd(cpu->seg[SS].address + newEsp + 16) == 0xCCCC4444);
-    assertTrue(readd(cpu->seg[SS].address + newEsp + 20) == 0xDDDD3333);
-    assertTrue(readd(cpu->seg[SS].address + newEsp + 24) == 0xEEEE2222);
-    assertTrue(readd(cpu->seg[SS].address + newEsp + 28) == 0xFFFF1111);
+    assertTrue(memory->readd(cpu->seg[SS].address + newEsp) == 0x99998888);
+    assertTrue(memory->readd(cpu->seg[SS].address + newEsp + 4) == 0xAAAA7777);
+    assertTrue(memory->readd(cpu->seg[SS].address + newEsp + 8) == 0xBBBB6666);
+    assertTrue(memory->readd(cpu->seg[SS].address + newEsp + 12) == esp);
+    assertTrue(memory->readd(cpu->seg[SS].address + newEsp + 16) == 0xCCCC4444);
+    assertTrue(memory->readd(cpu->seg[SS].address + newEsp + 20) == 0xDDDD3333);
+    assertTrue(memory->readd(cpu->seg[SS].address + newEsp + 24) == 0xEEEE2222);
+    assertTrue(memory->readd(cpu->seg[SS].address + newEsp + 28) == 0xFFFF1111);
 }
 
 void testPopA16() {
@@ -4742,14 +4740,14 @@ void testPopA16() {
     EBP = 0xBBBBBBBB;
     ESI = 0xAAAAAAAA;
     EDI = 0x99999999;
-    writew(cpu->seg[SS].address + SP, 0x8888);
-    writew(cpu->seg[SS].address + SP + 2, 0x7777);
-    writew(cpu->seg[SS].address + SP + 4, 0x6666);
-    writew(cpu->seg[SS].address + SP + 6, 0x5555);
-    writew(cpu->seg[SS].address + SP + 8, 0x4444);
-    writew(cpu->seg[SS].address + SP + 10, 0x3333);
-    writew(cpu->seg[SS].address + SP + 12, 0x2222);
-    writew(cpu->seg[SS].address + SP + 14, 0x1111);
+    memory->writew(cpu->seg[SS].address + SP, 0x8888);
+    memory->writew(cpu->seg[SS].address + SP + 2, 0x7777);
+    memory->writew(cpu->seg[SS].address + SP + 4, 0x6666);
+    memory->writew(cpu->seg[SS].address + SP + 6, 0x5555);
+    memory->writew(cpu->seg[SS].address + SP + 8, 0x4444);
+    memory->writew(cpu->seg[SS].address + SP + 10, 0x3333);
+    memory->writew(cpu->seg[SS].address + SP + 12, 0x2222);
+    memory->writew(cpu->seg[SS].address + SP + 14, 0x1111);
     runTestCPU();
     assertTrue(EAX == 0xFFFF1111);
     assertTrue(ECX == 0xEEEE2222);
@@ -4767,14 +4765,14 @@ void testPopA32() {
     newInstruction(0x61, 0);
     U32 esp = ESP;
     ESP -= 32;
-    writed(cpu->seg[SS].address + ESP, 0x99998888);
-    writed(cpu->seg[SS].address + ESP + 4, 0xAAAA7777);
-    writed(cpu->seg[SS].address + ESP + 8, 0xBBBB6666);
-    writed(cpu->seg[SS].address + ESP + 12, 0xDEADBEEF);
-    writed(cpu->seg[SS].address + ESP + 16, 0xCCCC5555);    
-    writed(cpu->seg[SS].address + ESP + 20, 0xDDDD3333);
-    writed(cpu->seg[SS].address + ESP + 24, 0xEEEE2222);
-    writed(cpu->seg[SS].address + ESP + 28, 0xFFFF1111);
+    memory->writed(cpu->seg[SS].address + ESP, 0x99998888);
+    memory->writed(cpu->seg[SS].address + ESP + 4, 0xAAAA7777);
+    memory->writed(cpu->seg[SS].address + ESP + 8, 0xBBBB6666);
+    memory->writed(cpu->seg[SS].address + ESP + 12, 0xDEADBEEF);
+    memory->writed(cpu->seg[SS].address + ESP + 16, 0xCCCC5555);    
+    memory->writed(cpu->seg[SS].address + ESP + 20, 0xDDDD3333);
+    memory->writed(cpu->seg[SS].address + ESP + 24, 0xEEEE2222);
+    memory->writed(cpu->seg[SS].address + ESP + 28, 0xFFFF1111);
     runTestCPU();
     assertTrue(EAX == 0xFFFF1111);
     assertTrue(ECX == 0xEEEE2222);
@@ -4796,11 +4794,11 @@ void testBound0x062() {
         pushCode16(200);
 
         if (gw == 1) {
-            writew(cpu->seg[DS].address + 200, -20);
-            writew(cpu->seg[DS].address + 202, -10);
+            memory->writew(cpu->seg[DS].address + 200, -20);
+            memory->writew(cpu->seg[DS].address + 202, -10);
         } else {
-            writew(cpu->seg[DS].address + 200, 10);
-            writew(cpu->seg[DS].address + 202, 20);
+            memory->writew(cpu->seg[DS].address + 200, 10);
+            memory->writew(cpu->seg[DS].address + 202, 20);
         }
 
         for (U8 i = 0; i < 8; i++) {
@@ -4826,11 +4824,11 @@ void testBound0x262() {
         pushCode32(200);
 
         if (gd == 1) {
-            writed(cpu->seg[DS].address + 200, -20000);
-            writed(cpu->seg[DS].address + 204, -10000);
+            memory->writed(cpu->seg[DS].address + 200, -20000);
+            memory->writed(cpu->seg[DS].address + 204, -10000);
         } else {
-            writed(cpu->seg[DS].address + 200, 10000);
-            writed(cpu->seg[DS].address + 204, 20000);
+            memory->writed(cpu->seg[DS].address + 200, 10000);
+            memory->writed(cpu->seg[DS].address + 204, 20000);
         }
 
         for (U8 i = 0; i < 8; i++) {
@@ -5424,8 +5422,8 @@ void testCallFar0x09a() {
     runTestCPU();
 
     assertTrue(AX == 0x10);
-    assertTrue(readw(cpu->seg[SS].address + esp-2) == CODE_SEG);
-    assertTrue(readw(cpu->seg[SS].address + esp-4) == 5);
+    assertTrue(memory->readw(cpu->seg[SS].address + esp-2) == CODE_SEG);
+    assertTrue(memory->readw(cpu->seg[SS].address + esp-4) == 5);
     assertTrue(SP == 4092);
     assertTrue(cpu->big == false);
 
@@ -5449,8 +5447,8 @@ void testCallFar0x09a() {
     runTestCPU();
 
     assertTrue(EAX == 0x10000);
-    assertTrue(readw(cpu->seg[SS].address + esp - 2) == CODE_SEG_16); // previous test above set it to this
-    assertTrue(readw(cpu->seg[SS].address + esp - 4) == 5);
+    assertTrue(memory->readw(cpu->seg[SS].address + esp - 2) == CODE_SEG_16); // previous test above set it to this
+    assertTrue(memory->readw(cpu->seg[SS].address + esp - 4) == 5);
     assertTrue(SP == 4092);
     assertTrue(cpu->big == true);
 }
@@ -5477,8 +5475,8 @@ void testCallFar0x29a() {
     runTestCPU();
 
     assertTrue(EAX == 0);
-    assertTrue(readd(cpu->seg[SS].address + esp - 4) == CODE_SEG);
-    assertTrue(readd(cpu->seg[SS].address + esp - 8) == 7);
+    assertTrue(memory->readd(cpu->seg[SS].address + esp - 4) == CODE_SEG);
+    assertTrue(memory->readd(cpu->seg[SS].address + esp - 8) == 7);
     assertTrue(SP == 4088);
     assertTrue(cpu->big == false);
 
@@ -5502,8 +5500,8 @@ void testCallFar0x29a() {
     runTestCPU();
 
     assertTrue(EAX == 0x10000);
-    assertTrue(readw(cpu->seg[SS].address + esp - 2) == CODE_SEG_16); // previous test above set it to this
-    assertTrue(readw(cpu->seg[SS].address + esp - 4) == 5);
+    assertTrue(memory->readw(cpu->seg[SS].address + esp - 2) == CODE_SEG_16); // previous test above set it to this
+    assertTrue(memory->readw(cpu->seg[SS].address + esp - 4) == 5);
     assertTrue(SP == 4092);
     assertTrue(cpu->big == true);
 }
@@ -5538,16 +5536,16 @@ void strTest(U8 width, U8 prefix, U8 inst, U32 startFlags, const char* str1, U32
         else if (width==4)
             offset = 3;
         for (U32 i=0;i<str1Len;i++) {
-            writeb(cpu->seg[DS].address + (cpu->big ? ESI : SI) -i + offset, str1[i]);
+            memory->writeb(cpu->seg[DS].address + (cpu->big ? ESI : SI) -i + offset, str1[i]);
         }
         for (U32 i=0;i<str2Len;i++) {
-            writeb(cpu->seg[ES].address + (cpu->big ? EDI : DI) -i + offset, str2[i]);
+            memory->writeb(cpu->seg[ES].address + (cpu->big ? EDI : DI) -i + offset, str2[i]);
         }
     } else {
         if (str1)
-            memcopyFromNative(cpu->seg[DS].address + (cpu->big ? ESI : SI), str1, str1Len);
+            memory->memcpy(cpu->seg[DS].address + (cpu->big ? ESI : SI), str1, str1Len);
         if (str2)
-            memcopyFromNative(cpu->seg[ES].address + (cpu->big ? EDI : DI), str2, str2Len);
+            memory->memcpy(cpu->seg[ES].address + (cpu->big ? EDI : DI), str2, str2Len);
     }
 
     runTestCPU();
@@ -5798,7 +5796,7 @@ void testScasd0x2af() {
 }
 
 void testMovAlOb() {
-    writed(HEAP_ADDRESS+(cpu->big?0x10123:0x0123), 0x12345678);
+    memory->writed(HEAP_ADDRESS+(cpu->big?0x10123:0x0123), 0x12345678);
     
     newInstruction(0xa0, 0);
     if (cpu->big) {
@@ -5823,7 +5821,7 @@ void testMovAlOb0x2a0() {
 
 void testMovAxOw0xa1() {
     cpu->big = false;
-    writed(HEAP_ADDRESS+0x0123, 0x12345678);
+    memory->writed(HEAP_ADDRESS+0x0123, 0x12345678);
     
     newInstruction(0xa1, 0);
     pushCode16(0x0123);
@@ -5834,7 +5832,7 @@ void testMovAxOw0xa1() {
 
 void testMovEaxOd0x2a1() {
     cpu->big = true;
-    writed(HEAP_ADDRESS+0x10123, 0x12345678);
+    memory->writed(HEAP_ADDRESS+0x10123, 0x12345678);
     
     newInstruction(0xa1, 0);
     pushCode32(0x10123);
@@ -5845,7 +5843,7 @@ void testMovEaxOd0x2a1() {
 
 void testMovObAl() {
     U32 address = HEAP_ADDRESS+(cpu->big?0x10123:0x0123);
-    writed(address, DEFAULT);
+    memory->writed(address, DEFAULT);
     
     newInstruction(0xa2, 0);
     if (cpu->big) {
@@ -5855,7 +5853,7 @@ void testMovObAl() {
     }
     EAX = 0x12345678;
     runTestCPU();
-    assertTrue(readd(address) == ((DEFAULT & 0xFFFFFF00) | 0x78));
+    assertTrue(memory->readd(address) == ((DEFAULT & 0xFFFFFF00) | 0x78));
 }
 
 void testMovObAl0xa2() {
@@ -5871,25 +5869,25 @@ void testMovObAl0x2a2() {
 void testMovOwAx0xa3() {
     cpu->big = false;
     U32 address = HEAP_ADDRESS+0x0123;
-    writed(address, DEFAULT);
+    memory->writed(address, DEFAULT);
     
     newInstruction(0xa3, 0);
     pushCode16(0x0123);
     EAX = 0x12345678;
     runTestCPU();
-    assertTrue(readd(address) == ((DEFAULT & 0xFFFF0000) | 0x5678));
+    assertTrue(memory->readd(address) == ((DEFAULT & 0xFFFF0000) | 0x5678));
 }
 
 void testMovOdEax0x2a3() {
     cpu->big = true;
     U32 address = HEAP_ADDRESS+0x10123;
-    writed(address, DEFAULT);
+    memory->writed(address, DEFAULT);
     
     newInstruction(0xa3, 0);
     pushCode32(0x10123);
     EAX = 0x12345678;
     runTestCPU();
-    assertTrue(readd(address) == 0x12345678);
+    assertTrue(memory->readd(address) == 0x12345678);
 }
 
 void testMovsb0x0a4() {
@@ -5897,23 +5895,23 @@ void testMovsb0x0a4() {
 
     // DF
     strTest(1, 0, 0xa4, DF, "1", 1, "0", 1, 0x12340010, 0x12340020, 0, 0x1234000F, 0x1234001F, 0, false, false, false, HEAP_ADDRESS + 256);
-    assertTrue(readb(HEAP_ADDRESS + 256 + 0x20) == '1');
+    assertTrue(memory->readb(HEAP_ADDRESS + 256 + 0x20) == '1');
 
     // Not DF
     strTest(1, 0, 0xa4, 0, "1", 1, "0", 1, 0x12340010, 0x12340020, 0, 0x12340011, 0x12340021, 0, false, false, false, HEAP_ADDRESS + 256);
-    assertTrue(readb(HEAP_ADDRESS + 256 + 0x20) == '1');
+    assertTrue(memory->readb(HEAP_ADDRESS + 256 + 0x20) == '1');
 
     // repz
     strTest(1, 0xf3, 0xa4, 0, "abcd", 4, "0000", 4, 0x12340000, 0x12340000, 0x12340004, 0x12340004, 0x12340004, 0x12340000, false, false, false, HEAP_ADDRESS + 256);
-    assertTrue(readd(HEAP_ADDRESS + 256) == 0x64636261);
+    assertTrue(memory->readd(HEAP_ADDRESS + 256) == 0x64636261);
 
     // repnz
     strTest(1, 0xf2, 0xa4, 0, "abcd", 4, "0000", 4, 0x12340000, 0x12340000, 0x12340004, 0x12340004, 0x12340004, 0x12340000, false, false, false, HEAP_ADDRESS + 256);
-    assertTrue(readd(HEAP_ADDRESS + 256) == 0x64636261);
+    assertTrue(memory->readd(HEAP_ADDRESS + 256) == 0x64636261);
 
     // repnz (DF)
     strTest(1, 0xf2, 0xa4, DF, "abcd", 4, "0000", 4, 0x12340020, 0x12340010, 0x12340004, 0x1234001C, 0x1234000C, 0x12340000, false, false, false, HEAP_ADDRESS + 256);
-    assertTrue(readd(HEAP_ADDRESS + 256 + 0x10 - 3) == 0x61626364);
+    assertTrue(memory->readd(HEAP_ADDRESS + 256 + 0x10 - 3) == 0x61626364);
 }
 
 void testMovsb0x2a4() {
@@ -5922,23 +5920,23 @@ void testMovsb0x2a4() {
     // DF
     cpu->seg[DS].address = HEAP_ADDRESS - 0x40000;
     strTest(1, 0, 0xa4, DF, "1", 1, "0", 1, 0x40010, 0x40020, 0, 0x4000F, 0x4001F, 0, false, false, false, HEAP_ADDRESS + 256 - 0x40000);
-    assertTrue(readb(HEAP_ADDRESS + 256 + 0x20) == '1');
+    assertTrue(memory->readb(HEAP_ADDRESS + 256 + 0x20) == '1');
 
     // Not DF
     strTest(1, 0, 0xa4, 0, "1", 1, "0", 1, 0x40010, 0x40020, 0, 0x40011, 0x40021, 0, false, false, false, HEAP_ADDRESS + 256 - 0x40000);
-    assertTrue(readb(HEAP_ADDRESS + 256 + 0x20) == '1');
+    assertTrue(memory->readb(HEAP_ADDRESS + 256 + 0x20) == '1');
 
     // repz
     strTest(1, 0xf3, 0xa4, 0, "abcd", 4, "0000", 4, 0x40000, 0x40000, 4, 0x40004, 0x40004, 0, false, false, false, HEAP_ADDRESS + 256 - 0x40000);
-    assertTrue(readd(HEAP_ADDRESS + 256) == 0x64636261);
+    assertTrue(memory->readd(HEAP_ADDRESS + 256) == 0x64636261);
 
     // repnz
     strTest(1, 0xf2, 0xa4, 0, "abcd", 4, "0000", 4, 0x40000, 0x40000, 4, 0x40004, 0x40004, 0, false, false, false, HEAP_ADDRESS + 256 - 0x40000);
-    assertTrue(readd(HEAP_ADDRESS + 256) == 0x64636261);
+    assertTrue(memory->readd(HEAP_ADDRESS + 256) == 0x64636261);
 
     // repnz (DF)
     strTest(1, 0xf2, 0xa4, DF, "abcd", 4, "0000", 4, 0x40020, 0x40010, 4, 0x4001C, 0x4000C, 0, false, false, false, HEAP_ADDRESS + 256 - 0x40000);
-    assertTrue(readd(HEAP_ADDRESS + 256 + 0x10 - 3) == 0x61626364);
+    assertTrue(memory->readd(HEAP_ADDRESS + 256 + 0x10 - 3) == 0x61626364);
 }
 
 void testMovsw0x0a5() {
@@ -5946,23 +5944,23 @@ void testMovsw0x0a5() {
 
     // DF
     strTest(2, 0, 0xa5, DF, "12", 2, "00", 2, 0x12340010, 0x12340020, 0, 0x1234000E, 0x1234001E, 0, false, false, false, HEAP_ADDRESS + 256);
-    assertTrue(readw(HEAP_ADDRESS + 256 + 0x20) == 0x3132);
+    assertTrue(memory->readw(HEAP_ADDRESS + 256 + 0x20) == 0x3132);
 
     // Not DF
     strTest(2, 0, 0xa5, 0, "12", 2, "00", 2, 0x12340010, 0x12340030, 0, 0x12340012, 0x12340032, 0, false, false, false, HEAP_ADDRESS + 256);
-    assertTrue(readw(HEAP_ADDRESS + 256 + 0x30) == 0x3231);
+    assertTrue(memory->readw(HEAP_ADDRESS + 256 + 0x30) == 0x3231);
 
     // repz
     strTest(2, 0xf3, 0xa5, 0, "abcd", 4, "0000", 4, 0x12340000, 0x12340000, 0x12340002, 0x12340004, 0x12340004, 0x12340000, false, false, false, HEAP_ADDRESS + 256);
-    assertTrue(readd(HEAP_ADDRESS + 256) == 0x64636261);
+    assertTrue(memory->readd(HEAP_ADDRESS + 256) == 0x64636261);
 
     // repnz
     strTest(2, 0xf2, 0xa5, 0, "abcd", 4, "0000", 4, 0x12340000, 0x12340000, 0x12340002, 0x12340004, 0x12340004, 0x12340000, false, false, false, HEAP_ADDRESS + 256);
-    assertTrue(readd(HEAP_ADDRESS + 256) == 0x64636261);
+    assertTrue(memory->readd(HEAP_ADDRESS + 256) == 0x64636261);
 
     // repnz (DF)
     strTest(2, 0xf2, 0xa5, DF, "abcd", 4, "0000", 4, 0x12340020, 0x12340010, 0x12340002, 0x1234001C, 0x1234000C, 0x12340000, false, false, false, HEAP_ADDRESS + 256);
-    assertTrue(readd(HEAP_ADDRESS + 256 + 0x10 - 2) == 0x61626364);
+    assertTrue(memory->readd(HEAP_ADDRESS + 256 + 0x10 - 2) == 0x61626364);
 }
 
 void testMovsd0x2a5() {
@@ -5971,26 +5969,26 @@ void testMovsd0x2a5() {
     // DF
     cpu->seg[DS].address = HEAP_ADDRESS - 0x40000;
     strTest(4, 0, 0xa5, DF, "1234", 4, "0000", 4, 0x40010, 0x40020, 0, 0x4000C, 0x4001C, 0, false, false, false, HEAP_ADDRESS + 256 - 0x40000);
-    assertTrue(readd(HEAP_ADDRESS + 256 + 0x20) == 0x31323334);
+    assertTrue(memory->readd(HEAP_ADDRESS + 256 + 0x20) == 0x31323334);
 
     // Not DF
     strTest(4, 0, 0xa5, 0, "1234", 4, "0000", 4, 0x40010, 0x40030, 0, 0x40014, 0x40034, 0, false, false, false, HEAP_ADDRESS + 256 - 0x40000);
-    assertTrue(readd(HEAP_ADDRESS + 256 + 0x30) == 0x34333231);
+    assertTrue(memory->readd(HEAP_ADDRESS + 256 + 0x30) == 0x34333231);
 
     // repz
     strTest(4, 0xf3, 0xa5, 0, "abcdefgh", 8, "00000000", 8, 0x40000, 0x40000, 2, 0x40008, 0x40008, 0, false, false, false, HEAP_ADDRESS + 256 - 0x40000);
-    assertTrue(readd(HEAP_ADDRESS + 256) == 0x64636261);
-    assertTrue(readd(HEAP_ADDRESS + 256 + 4) == 0x68676665);
+    assertTrue(memory->readd(HEAP_ADDRESS + 256) == 0x64636261);
+    assertTrue(memory->readd(HEAP_ADDRESS + 256 + 4) == 0x68676665);
 
     // repnz
     strTest(4, 0xf2, 0xa5, 0, "abcdefgh", 8, "00000000", 8, 0x40000, 0x40000, 2, 0x40008, 0x40008, 0, false, false, false, HEAP_ADDRESS + 256 - 0x40000);
-    assertTrue(readd(HEAP_ADDRESS + 256) == 0x64636261);
-    assertTrue(readd(HEAP_ADDRESS + 256 + 4) == 0x68676665);
+    assertTrue(memory->readd(HEAP_ADDRESS + 256) == 0x64636261);
+    assertTrue(memory->readd(HEAP_ADDRESS + 256 + 4) == 0x68676665);
 
     // repnz (DF)
     strTest(4, 0xf2, 0xa5, DF, "abcdefgh", 8, "00000000", 8, 0x40020, 0x40010, 2, 0x40018, 0x40008, 0, false, false, false, HEAP_ADDRESS + 256 - 0x40000);
-    assertTrue(readd(HEAP_ADDRESS + 256 + 0x10) == 0x61626364);
-    assertTrue(readd(HEAP_ADDRESS + 256 + 0x10 - 4) == 0x65666768);
+    assertTrue(memory->readd(HEAP_ADDRESS + 256 + 0x10) == 0x61626364);
+    assertTrue(memory->readd(HEAP_ADDRESS + 256 + 0x10 - 4) == 0x65666768);
 }
 
 void testStosb0x0aa() {
@@ -5998,23 +5996,23 @@ void testStosb0x0aa() {
 
     // DF
     strTest(1, 0, 0xaa, DF, NULL, 0, "0", 1, 0x12340010, 0x12340020, 0, 0x12340010, 0x1234001F, 0, false, false, false, HEAP_ADDRESS + 256, 0x99887732);
-    assertTrue(readb(HEAP_ADDRESS + 256 + 0x20) == '2');
+    assertTrue(memory->readb(HEAP_ADDRESS + 256 + 0x20) == '2');
 
     // Not DF
     strTest(1, 0, 0xaa, 0, NULL, 0, "0", 1, 0x12340010, 0x12340020, 0, 0x12340010, 0x12340021, 0, false, false, false, HEAP_ADDRESS + 256, 0x99887732);
-    assertTrue(readb(HEAP_ADDRESS + 256 + 0x20) == '2');
+    assertTrue(memory->readb(HEAP_ADDRESS + 256 + 0x20) == '2');
 
     // repz
     strTest(1, 0xf3, 0xaa, 0, NULL, 0, "0000", 4, 0x12340000, 0x12340000, 0x12340004, 0x12340000, 0x12340004, 0x12340000, false, false, false, HEAP_ADDRESS + 256, 0x99887732);
-    assertTrue(readd(HEAP_ADDRESS + 256) == 0x32323232);
+    assertTrue(memory->readd(HEAP_ADDRESS + 256) == 0x32323232);
 
     // repnz
     strTest(1, 0xf2, 0xaa, 0, NULL, 0, "0000", 4, 0x12340000, 0x12340000, 0x12340004, 0x12340000, 0x12340004, 0x12340000, false, false, false, HEAP_ADDRESS + 256, 0x99887732);
-    assertTrue(readd(HEAP_ADDRESS + 256) == 0x32323232);
+    assertTrue(memory->readd(HEAP_ADDRESS + 256) == 0x32323232);
 
     // repnz (DF)
     strTest(1, 0xf2, 0xaa, DF, NULL, 0, "0000", 4, 0x12340020, 0x12340010, 0x12340004, 0x12340020, 0x1234000C, 0x12340000, false, false, false, HEAP_ADDRESS + 256, 0x99887732);
-    assertTrue(readd(HEAP_ADDRESS + 256 + 0x10 - 3) == 0x32323232);
+    assertTrue(memory->readd(HEAP_ADDRESS + 256 + 0x10 - 3) == 0x32323232);
 }
 
 void testStosb0x2aa() {
@@ -6023,23 +6021,23 @@ void testStosb0x2aa() {
     // DF
     cpu->seg[DS].address = HEAP_ADDRESS - 0x40000;
     strTest(1, 0, 0xaa, DF, NULL, 0, "0", 1, 0x40010, 0x40020, 0, 0x40010, 0x4001F, 0, false, false, false, HEAP_ADDRESS + 256 - 0x40000, 0x99887732);
-    assertTrue(readb(HEAP_ADDRESS + 256 + 0x20) == '2');
+    assertTrue(memory->readb(HEAP_ADDRESS + 256 + 0x20) == '2');
 
     // Not DF
     strTest(1, 0, 0xaa, 0, NULL, 0, "0", 1, 0x40010, 0x40020, 0, 0x40010, 0x40021, 0, false, false, false, HEAP_ADDRESS + 256 - 0x40000, 0x99887732);
-    assertTrue(readb(HEAP_ADDRESS + 256 + 0x20) == '2');
+    assertTrue(memory->readb(HEAP_ADDRESS + 256 + 0x20) == '2');
 
     // repz
     strTest(1, 0xf3, 0xaa, 0, NULL, 0, "0000", 4, 0x40000, 0x40000, 4, 0x40000, 0x40004, 0, false, false, false, HEAP_ADDRESS + 256 - 0x40000, 0x99887732);
-    assertTrue(readd(HEAP_ADDRESS + 256) == 0x32323232);
+    assertTrue(memory->readd(HEAP_ADDRESS + 256) == 0x32323232);
 
     // repnz
     strTest(1, 0xf2, 0xaa, 0, NULL, 0, "0000", 4, 0x40000, 0x40000, 4, 0x40000, 0x40004, 0, false, false, false, HEAP_ADDRESS + 256 - 0x40000, 0x99887732);
-    assertTrue(readd(HEAP_ADDRESS + 256) == 0x32323232);
+    assertTrue(memory->readd(HEAP_ADDRESS + 256) == 0x32323232);
 
     // repnz (DF)
     strTest(1, 0xf2, 0xaa, DF, NULL, 0, "0000", 4, 0x40020, 0x40010, 4, 0x40020, 0x4000C, 0, false, false, false, HEAP_ADDRESS + 256 - 0x40000, 0x99887732);
-    assertTrue(readd(HEAP_ADDRESS + 256 + 0x10 - 3) == 0x32323232);
+    assertTrue(memory->readd(HEAP_ADDRESS + 256 + 0x10 - 3) == 0x32323232);
 }
 
 void testStosw0x0ab() {
@@ -6047,23 +6045,23 @@ void testStosw0x0ab() {
 
     // DF
     strTest(2, 0, 0xab, DF, NULL, 0, "00", 2, 0x12340010, 0x12340020, 0, 0x12340010, 0x1234001E, 0, false, false, false, HEAP_ADDRESS + 256, 0x99991234);
-    assertTrue(readw(HEAP_ADDRESS + 256 + 0x20) == 0x1234);
+    assertTrue(memory->readw(HEAP_ADDRESS + 256 + 0x20) == 0x1234);
 
     // Not DF
     strTest(2, 0, 0xab, 0, NULL, 0, "00", 2, 0x12340010, 0x12340030, 0, 0x12340010, 0x12340032, 0, false, false, false, HEAP_ADDRESS + 256, 0x99991234);
-    assertTrue(readw(HEAP_ADDRESS + 256 + 0x30) == 0x1234);
+    assertTrue(memory->readw(HEAP_ADDRESS + 256 + 0x30) == 0x1234);
 
     // repz
     strTest(2, 0xf3, 0xab, 0, NULL, 0, "0000", 4, 0x12340000, 0x12340000, 0x12340002, 0x12340000, 0x12340004, 0x12340000, false, false, false, HEAP_ADDRESS + 256, 0x99991234);
-    assertTrue(readd(HEAP_ADDRESS + 256) == 0x12341234);
+    assertTrue(memory->readd(HEAP_ADDRESS + 256) == 0x12341234);
 
     // repnz
     strTest(2, 0xf2, 0xab, 0, NULL, 0, "0000", 4, 0x12340000, 0x12340000, 0x12340002, 0x12340000, 0x12340004, 0x12340000, false, false, false, HEAP_ADDRESS + 256, 0x99991234);
-    assertTrue(readd(HEAP_ADDRESS + 256) == 0x12341234);
+    assertTrue(memory->readd(HEAP_ADDRESS + 256) == 0x12341234);
 
     // repnz (DF)
     strTest(2, 0xf2, 0xab, DF, NULL, 0, "0000", 4, 0x12340020, 0x12340010, 0x12340002, 0x12340020, 0x1234000C, 0x12340000, false, false, false, HEAP_ADDRESS + 256, 0x99991234);
-    assertTrue(readd(HEAP_ADDRESS + 256 + 0x10 - 2) == 0x12341234);
+    assertTrue(memory->readd(HEAP_ADDRESS + 256 + 0x10 - 2) == 0x12341234);
 }
 
 void testStosd0x2ab() {
@@ -6072,26 +6070,26 @@ void testStosd0x2ab() {
     // DF
     cpu->seg[DS].address = HEAP_ADDRESS - 0x40000;
     strTest(4, 0, 0xab, DF, NULL, 0, "0000", 4, 0x40010, 0x40020, 0, 0x40010, 0x4001C, 0, false, false, false, HEAP_ADDRESS + 256 - 0x40000, 0x31323334);
-    assertTrue(readd(HEAP_ADDRESS + 256 + 0x20) == 0x31323334);
+    assertTrue(memory->readd(HEAP_ADDRESS + 256 + 0x20) == 0x31323334);
 
     // Not DF
     strTest(4, 0, 0xab, 0, NULL, 0, "0000", 4, 0x40010, 0x40030, 0, 0x40010, 0x40034, 0, false, false, false, HEAP_ADDRESS + 256 - 0x40000, 0x31323334);
-    assertTrue(readd(HEAP_ADDRESS + 256 + 0x30) == 0x31323334);
+    assertTrue(memory->readd(HEAP_ADDRESS + 256 + 0x30) == 0x31323334);
 
     // repz
     strTest(4, 0xf3, 0xab, 0, NULL, 0, "00000000", 8, 0x40000, 0x40000, 2, 0x40000, 0x40008, 0, false, false, false, HEAP_ADDRESS + 256 - 0x40000, 0x31323334);
-    assertTrue(readd(HEAP_ADDRESS + 256) == 0x31323334);
-    assertTrue(readd(HEAP_ADDRESS + 256 + 4) == 0x31323334);
+    assertTrue(memory->readd(HEAP_ADDRESS + 256) == 0x31323334);
+    assertTrue(memory->readd(HEAP_ADDRESS + 256 + 4) == 0x31323334);
 
     // repnz
     strTest(4, 0xf2, 0xab, 0, NULL, 0, "00000000", 8, 0x40000, 0x40000, 2, 0x40000, 0x40008, 0, false, false, false, HEAP_ADDRESS + 256 - 0x40000, 0x31323334);
-    assertTrue(readd(HEAP_ADDRESS + 256) == 0x31323334);
-    assertTrue(readd(HEAP_ADDRESS + 256 + 4) == 0x31323334);
+    assertTrue(memory->readd(HEAP_ADDRESS + 256) == 0x31323334);
+    assertTrue(memory->readd(HEAP_ADDRESS + 256 + 4) == 0x31323334);
 
     // repnz (DF)
     strTest(4, 0xf2, 0xab, DF, NULL, 0, "00000000", 8, 0x40020, 0x40010, 2, 0x40020, 0x40008, 0, false, false, false, HEAP_ADDRESS + 256 - 0x40000, 0x31323334);
-    assertTrue(readd(HEAP_ADDRESS + 256 + 0x10) == 0x31323334);
-    assertTrue(readd(HEAP_ADDRESS + 256 + 0x10 - 4) == 0x31323334);
+    assertTrue(memory->readd(HEAP_ADDRESS + 256 + 0x10) == 0x31323334);
+    assertTrue(memory->readd(HEAP_ADDRESS + 256 + 0x10 - 4) == 0x31323334);
 }
 
 void testLodsb0x0ac() {
@@ -6366,7 +6364,7 @@ void testRetn16Iw0x0c2() {
     ESP -= 16; // simulates params pass on the stack to the function
 
     ESP -= 2;
-    writew(cpu->seg[SS].address + SP, 0x128);    
+    memory->writew(cpu->seg[SS].address + SP, 0x128);    
     
     runTestCPU();
     assertTrue(ESP == esp);
@@ -6389,7 +6387,7 @@ void testRetn32Iw0x2c2() {
     ESP -= 16; // simulates params pass on the stack to the function
 
     ESP -= 4;
-    writed(cpu->seg[SS].address + ESP, 0x128);
+    memory->writed(cpu->seg[SS].address + ESP, 0x128);
 
     runTestCPU();
     assertTrue(ESP == esp);
@@ -6409,7 +6407,7 @@ void testRetn160x0c3() {
     U32 esp = ESP;
 
     ESP -= 2;
-    writew(cpu->seg[SS].address + SP, 0x128);
+    memory->writew(cpu->seg[SS].address + SP, 0x128);
 
     runTestCPU();
     assertTrue(ESP == esp);
@@ -6429,7 +6427,7 @@ void testRetn320x2c3() {
     U32 esp = ESP;
 
     ESP -= 4;
-    writed(cpu->seg[SS].address + ESP, 0x128);
+    memory->writed(cpu->seg[SS].address + ESP, 0x128);
 
     runTestCPU();
     assertTrue(ESP == esp);
@@ -6449,8 +6447,8 @@ void testSegment16(U8 instruction, U32 seg, U16 selector) {
             pushCode32(200);
         else
             pushCode16(200);
-        writew(cpu->seg[DS].address + 200, 0xabcd);
-        writew(cpu->seg[DS].address + 202, selector);
+        memory->writew(cpu->seg[DS].address + 200, 0xabcd);
+        memory->writew(cpu->seg[DS].address + 202, selector);
         cpu->reg[i].u32 = 0x12345678;
         runTestCPU();
         assertTrue(cpu->reg[i].u32 == 0x1234abcd);
@@ -6471,8 +6469,8 @@ void testSegment32(U8 instruction, U32 seg, U16 selector) {
             pushCode32(200);
         else
             pushCode16(200);
-        writed(cpu->seg[DS].address + 200, 0x1234abcd);
-        writew(cpu->seg[DS].address + 204, selector);
+        memory->writed(cpu->seg[DS].address + 200, 0x1234abcd);
+        memory->writew(cpu->seg[DS].address + 204, selector);
         runTestCPU();
         assertTrue(cpu->reg[i].u32 == 0x1234abcd);
         assertTrue(cpu->seg[seg].value == selector);
@@ -6539,7 +6537,7 @@ void testLeave0x0c9() {
 
     U32 sp = SP;
     SP -= 2;
-    writed(cpu->seg[SS].address + SP, 0x5678);
+    memory->writed(cpu->seg[SS].address + SP, 0x5678);
     EBP = 0xdeadbeef;
     BP = SP;
     ESP = 0xdeadbeef;
@@ -6560,7 +6558,7 @@ void testLeave0x2c9() {
 
     U32 esp = ESP;
     SP -= 4;
-    writed(cpu->seg[SS].address + ESP, 0x12345678);    
+    memory->writed(cpu->seg[SS].address + ESP, 0x12345678);    
     EBP = ESP;
     ESP = 0xdeadbeef;
     runTestCPU();
@@ -6576,9 +6574,9 @@ void testIRet0x2cf() {
 
     U32 esp = ESP;
     ESP -= 12;
-    writed(cpu->seg[SS].address + ESP, 0x128);
-    writed(cpu->seg[SS].address + ESP + 4, CODE_SEG_16);
-    writed(cpu->seg[SS].address + ESP + 8, CF|OF|ZF);
+    memory->writed(cpu->seg[SS].address + ESP, 0x128);
+    memory->writed(cpu->seg[SS].address + ESP + 4, CODE_SEG_16);
+    memory->writed(cpu->seg[SS].address + ESP + 8, CF|OF|ZF);
 
     pushCode8(0xcd);
     pushCode8(0xcd);
@@ -6711,12 +6709,12 @@ void testXlat0x0d7() {
     newInstruction(0xd7, 0);
     EBX = DEFAULT;
     EAX = DEFAULT;
-    writed(cpu->seg[DS].address + 2000, DEFAULT);
-    writed(cpu->seg[DS].address + 2004, DEFAULT);
-    writed(cpu->seg[DS].address + 2008, DEFAULT);
+    memory->writed(cpu->seg[DS].address + 2000, DEFAULT);
+    memory->writed(cpu->seg[DS].address + 2004, DEFAULT);
+    memory->writed(cpu->seg[DS].address + 2008, DEFAULT);
     BX = 2000;
     AL=4;
-    writeb(cpu->seg[DS].address + 2004, 0x08);
+    memory->writeb(cpu->seg[DS].address + 2004, 0x08);
     runTestCPU();
     result = DEFAULT;
     result&=~0xFF;
@@ -6730,12 +6728,12 @@ void testXlat0x2d7() {
     cpu->big=true;
     newInstruction(0xd7, 0);
     EAX = DEFAULT;
-    writed(cpu->seg[DS].address + 2000, DEFAULT);
-    writed(cpu->seg[DS].address + 2004, DEFAULT);
-    writed(cpu->seg[DS].address + 2008, DEFAULT);
+    memory->writed(cpu->seg[DS].address + 2000, DEFAULT);
+    memory->writed(cpu->seg[DS].address + 2004, DEFAULT);
+    memory->writed(cpu->seg[DS].address + 2008, DEFAULT);
     EBX=2000;
     AL=4;
-    writeb(cpu->seg[DS].address + 2004, 0x08);
+    memory->writeb(cpu->seg[DS].address + 2004, 0x08);
     runTestCPU();
     result = DEFAULT;
     result&=~0xFF;
@@ -6801,7 +6799,7 @@ void writeTopFloat(int index) {
 void writeF(float f, int index) {
     struct FPU_Float value;
     value.f = f;    
-    writed(HEAP_ADDRESS+4*index, value.i);
+    memory->writed(HEAP_ADDRESS+4*index, value.i);
 }
 
 void fldf32(float f, int index) {
@@ -6845,7 +6843,7 @@ void doF32Instruction(int op1, int group1, int op2, int group2, float x, float y
     writeFPUStatusToAX();
     runTestCPU();
     struct FPU_Float result;
-    result.i = readd(HEAP_ADDRESS + 4*3);
+    result.i = memory->readd(HEAP_ADDRESS + 4*3);
 
     assertTrue((isnan(result.f) && isnan(r)) || result.f == r);
     assertTrue(getFPUStackPosFromAX() ==7); // nothing was popped
@@ -6861,7 +6859,7 @@ void doF32Instruction(int op1, int group1, int op2, int group2, float x, float y
     writeTopFloat(3);
     writeFPUStatusToAX();
     runTestCPU();
-    result.i = readd(HEAP_ADDRESS + 4*3);
+    result.i = memory->readd(HEAP_ADDRESS + 4*3);
     assertTrue((isnan(result.f) && isnan(r)) || result.f == r);
     assertTrue(getFPUStackPosFromAX() == 6); // nothing was popped
 }
@@ -7232,7 +7230,7 @@ void FSTFloat(int op, int group, float f, int pop) {
     fpu_init();
 
     fldf32(f, 1);
-    writed(HEAP_ADDRESS+4*2, 0xCDCDCDCD);
+    memory->writed(HEAP_ADDRESS+4*2, 0xCDCDCDCD);
 
     pushCode8(op);
     pushCode8(rm(true, group, cpu->big?5:6));
@@ -7242,7 +7240,7 @@ void FSTFloat(int op, int group, float f, int pop) {
         pushCode16(4*2);
     writeFPUStatusToAX();
     runTestCPU();
-    result.i = readd(HEAP_ADDRESS+4*2);
+    result.i = memory->readd(HEAP_ADDRESS+4*2);
     assertTrue(result.f==f || (isnan(result.f) && isnan(f)));
     assertTrue(getFPUStackPosFromAX()==(pop?0:7));
 }
@@ -7297,13 +7295,13 @@ void doFLDSti() {
     
     runTestCPU();
 
-    result.i = readd(HEAP_ADDRESS + 4 * 5);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 5);
     assertTrue(result.f == 1.0f);
-    result.i = readd(HEAP_ADDRESS + 4 * 6);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 6);
     assertTrue(result.f == 2.0f);
-    result.i = readd(HEAP_ADDRESS + 4 * 7);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 7);
     assertTrue(result.f == 3.0f);
-    result.i = readd(HEAP_ADDRESS + 4 * 8);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 8);
     assertTrue(result.f == 4.0f);
 }
 
@@ -7325,7 +7323,7 @@ void doFXCHSTi() {
     writeTopFloat(5);
     runTestCPU();
     struct FPU_Float result;
-    result.i = readd(HEAP_ADDRESS + 4 * 5);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 5);
     assertTrue(result.f==4.0f);
 }
 
@@ -7350,9 +7348,9 @@ void doFSTPSTi() {
     writeTopFloat(6);
     runTestCPU();
     struct FPU_Float result;
-    result.i = readd(HEAP_ADDRESS + 4 * 5);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 5);
     assertTrue(result.f == 2.0f);
-    result.i = readd(HEAP_ADDRESS + 4 * 6);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 6);
     assertTrue(result.f == 1.0f);
 }
 
@@ -7362,7 +7360,7 @@ void testFSTPSTi() {
 
 void doFCHS() {
     struct FPU_Float result;
-    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 2);
 
     newInstruction(0);
     fpu_init();
@@ -7371,7 +7369,7 @@ void doFCHS() {
     pushCode8(rm(false, 4, 0));
     writeTopFloat(2);
     runTestCPU();
-    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 2);
     assertTrue(result.f == -432.1f);
 
     newInstruction(0);
@@ -7381,7 +7379,7 @@ void doFCHS() {
     pushCode8(rm(false, 4, 0));
     writeTopFloat(2);
     runTestCPU();
-    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 2);
     assertTrue(result.f == 0.001234f);
 
     newInstruction(0);
@@ -7391,7 +7389,7 @@ void doFCHS() {
     pushCode8(rm(false, 4, 0));
     writeTopFloat(2);
     runTestCPU();
-    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 2);
     assertTrue(isnan(result.f));
 
     newInstruction(0);
@@ -7401,7 +7399,7 @@ void doFCHS() {
     pushCode8(rm(false, 4, 0));
     writeTopFloat(2);
     runTestCPU();
-    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 2);
     assertTrue(result.f == NEGATIVE_INFINITY);
 
     newInstruction(0);
@@ -7411,7 +7409,7 @@ void doFCHS() {
     pushCode8(rm(false, 4, 0));
     writeTopFloat(2);
     runTestCPU();
-    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 2);
     assertTrue(result.f == POSITIVE_INFINITY);
 }
 
@@ -7429,7 +7427,7 @@ void doFABS() {
     pushCode8(rm(false, 4, 1));
     writeTopFloat(2);
     runTestCPU();
-    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 2);
     assertTrue(result.f==432.1f);
 
     newInstruction(0);
@@ -7439,7 +7437,7 @@ void doFABS() {
     pushCode8(rm(false, 4, 1));
     writeTopFloat(2);
     runTestCPU();
-    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 2);
     assertTrue(result.f==0.001234f);
 
     newInstruction(0);
@@ -7449,7 +7447,7 @@ void doFABS() {
     pushCode8(rm(false, 4, 1));
     writeTopFloat(2);
     runTestCPU();
-    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 2);
     assertTrue(isnan(result.f));
 
     newInstruction(0);
@@ -7459,7 +7457,7 @@ void doFABS() {
     pushCode8(rm(false, 4, 1));
     writeTopFloat(2);
     runTestCPU();
-    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 2);
     assertTrue(result.f==POSITIVE_INFINITY);
 
     newInstruction(0);
@@ -7469,7 +7467,7 @@ void doFABS() {
     pushCode8(rm(false, 4, 1));
     writeTopFloat(2);
     runTestCPU();
-    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 2);
     assertTrue(result.f==POSITIVE_INFINITY);
 }
 
@@ -7606,7 +7604,7 @@ void doFLD1() {
     pushCode8(rm(false, 5, 0));
     writeTopFloat(2);
     runTestCPU();
-    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 2);
     assertTrue(result.f == 1.0f);
 }
 
@@ -7623,7 +7621,7 @@ void doFLDL2T() {
     pushCode8(rm(false, 5, 1));
     writeTopFloat(2);
     runTestCPU();
-    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 2);
     assertTrue(result.f == 3.321928f);
 }
 
@@ -7640,7 +7638,7 @@ void doFLDL2E() {
     pushCode8(rm(false, 5, 2));
     writeTopFloat(2);
     runTestCPU();
-    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 2);
     assertTrue(result.f == 1.442695f);
 }
 
@@ -7657,7 +7655,7 @@ void doFLDPI() {
     pushCode8(rm(false, 5, 3));
     writeTopFloat(2);
     runTestCPU();
-    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 2);
     assertTrue(result.f == 3.1415927f);
 }
 
@@ -7674,7 +7672,7 @@ void doFLDLG2() {
     pushCode8(rm(false, 5, 4));
     writeTopFloat(2);
     runTestCPU();
-    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 2);
     assertTrue(result.f == .30103f);
 }
 
@@ -7691,7 +7689,7 @@ void doFLDLN2() {
     pushCode8(rm(false, 5, 5));
     writeTopFloat(2);
     runTestCPU();
-    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 2);
     assertTrue(result.f == 0.6931472f);
 }
 
@@ -7708,7 +7706,7 @@ void doFLDZ() {
     pushCode8(rm(false, 5, 6));
     writeTopFloat(2);
     runTestCPU();
-    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 2);
     assertTrue(result.f == 0.0f);
 }
 
@@ -7726,7 +7724,7 @@ void doF2XM1() {
     pushCode8(rm(false, 6, 0));
     writeTopFloat(2);
     runTestCPU();
-    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 2);
     assertTrue(result.f == 0.0f);
 
     newInstruction(0);
@@ -7736,7 +7734,7 @@ void doF2XM1() {
     pushCode8(rm(false, 6, 0));
     writeTopFloat(2);
     runTestCPU();
-    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 2);
     assertTrue(isnan(result.f));
 
     newInstruction(0);
@@ -7746,7 +7744,7 @@ void doF2XM1() {
     pushCode8(rm(false, 6, 0));
     writeTopFloat(2);
     runTestCPU();
-    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 2);
     assertTrue(result.f == POSITIVE_INFINITY);
 
     newInstruction(0);
@@ -7756,7 +7754,7 @@ void doF2XM1() {
     pushCode8(rm(false, 6, 0));
     writeTopFloat(2);
     runTestCPU();
-    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 2);
     assertTrue(result.f == -1.0f);
 
     newInstruction(0);
@@ -7766,7 +7764,7 @@ void doF2XM1() {
     pushCode8(rm(false, 6, 0));
     writeTopFloat(2);
     runTestCPU();
-    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 2);
     assertTrue(result.f == -0.5f);
 
     newInstruction(0);
@@ -7776,7 +7774,7 @@ void doF2XM1() {
     pushCode8(rm(false, 6, 0));
     writeTopFloat(2);
     runTestCPU();
-    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 2);
     assertTrue(result.f == 1.0f);
 
     newInstruction(0);
@@ -7786,7 +7784,7 @@ void doF2XM1() {
     pushCode8(rm(false, 6, 0));
     writeTopFloat(2);
     runTestCPU();
-    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 2);
     assertTrue(result.f == -0.29289323f);
 }
 
@@ -7804,7 +7802,7 @@ void doFYL2X() {
     pushCode8(rm(false, 6, 1));
     writeTopFloat(3);
     runTestCPU();
-    result.i = readd(HEAP_ADDRESS + 4 * 3);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 3);
     assertTrue(result.f == NEGATIVE_INFINITY);
 
     newInstruction(0);
@@ -7815,7 +7813,7 @@ void doFYL2X() {
     pushCode8(rm(false, 6, 1));
     writeTopFloat(3);
     runTestCPU();
-    result.i = readd(HEAP_ADDRESS + 4 * 3);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 3);
     assertTrue(result.f == 0.0f);
 
     newInstruction(0);
@@ -7826,7 +7824,7 @@ void doFYL2X() {
     pushCode8(rm(false, 6, 1));
     writeTopFloat(3);
     runTestCPU();
-    result.i = readd(HEAP_ADDRESS + 4 * 3);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 3);
     assertTrue(result.f == 10.575425f);
 
     newInstruction(0);
@@ -7837,7 +7835,7 @@ void doFYL2X() {
     pushCode8(rm(false, 6, 1));
     writeTopFloat(3);
     runTestCPU();
-    result.i = readd(HEAP_ADDRESS + 4 * 3);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 3);
     assertTrue(result.f == 8.0f);
 
     newInstruction(0);
@@ -7848,7 +7846,7 @@ void doFYL2X() {
     pushCode8(rm(false, 6, 1));
     writeTopFloat(3);
     runTestCPU();
-    result.i = readd(HEAP_ADDRESS + 4 * 3);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 3);
     assertTrue(isnan(result.f));
 
     newInstruction(0);
@@ -7859,7 +7857,7 @@ void doFYL2X() {
     pushCode8(rm(false, 6, 1));
     writeTopFloat(3);
     runTestCPU();
-    result.i = readd(HEAP_ADDRESS + 4 * 3);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 3);
     assertTrue(result.f == 30.0f);
 
     newInstruction(0);
@@ -7870,7 +7868,7 @@ void doFYL2X() {
     pushCode8(rm(false, 6, 1));
     writeTopFloat(3);
     runTestCPU();
-    result.i = readd(HEAP_ADDRESS + 4 * 3);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 3);
     assertTrue(isnan(result.f));
 
     newInstruction(0);
@@ -7881,7 +7879,7 @@ void doFYL2X() {
     pushCode8(rm(false, 6, 1));
     writeTopFloat(3);
     runTestCPU();
-    result.i = readd(HEAP_ADDRESS + 4 * 3);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 3);
     assertTrue(result.f == POSITIVE_INFINITY);
 
     newInstruction(0);
@@ -7892,7 +7890,7 @@ void doFYL2X() {
     pushCode8(rm(false, 6, 1));
     writeTopFloat(3);
     runTestCPU();
-    result.i = readd(HEAP_ADDRESS + 4 * 3);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 3);
     assertTrue(isnan(result.f));
 }
 
@@ -7910,7 +7908,7 @@ void doFSQRT() {
     pushCode8(rm(false, 7, 2));
     writeTopFloat(2);
     runTestCPU();
-    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 2);
     assertTrue(result.f == 0.0f);
 
     newInstruction(0);
@@ -7920,7 +7918,7 @@ void doFSQRT() {
     pushCode8(rm(false, 7, 2));
     writeTopFloat(2);
     runTestCPU();
-    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 2);
     assertTrue(result.f == 1.0f);
 
     newInstruction(0);
@@ -7930,7 +7928,7 @@ void doFSQRT() {
     pushCode8(rm(false, 7, 2));
     writeTopFloat(2);
     runTestCPU();
-    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 2);
     assertTrue(result.f == 1.4142135f);
 
     newInstruction(0);
@@ -7940,7 +7938,7 @@ void doFSQRT() {
     pushCode8(rm(false, 7, 2));
     writeTopFloat(2);
     runTestCPU();
-    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 2);
     assertTrue(result.f == 2.0f);
 }
 
@@ -7978,7 +7976,7 @@ void doFSCALE_inst(FPU_Float* st0, FPU_Float* st1, FPU_Float* st0Result) {
     pushCode8(rm(false, 7, 5));
     writeTopFloat(2);
     runTestCPU();
-    result.i = readd(HEAP_ADDRESS + 4 * 2);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 2);
     if (st0Result->i == FLOAT_QUIET_NAN_BITS) {
         assertTrue(isnan(result.f));
     } else {
@@ -8267,7 +8265,7 @@ void testFpuCmov(U8 group, U8 flags) {
     pushCode8(rm(false, group, 1)); // cmov top-1 to top
     writeTopFloat(3);
     runTestCPU();
-    result.i = readd(HEAP_ADDRESS + 4 * 3);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 3);
     assertTrue(result.f == 3.0f); // top didn't change
 
     newInstruction(flags);
@@ -8278,7 +8276,7 @@ void testFpuCmov(U8 group, U8 flags) {
     pushCode8(rm(false, group, 1)); // cmov top-1 to top
     writeTopFloat(3);
     runTestCPU();
-    result.i = readd(HEAP_ADDRESS + 4 * 3);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 3);
     assertTrue(result.f == 2.0f); // top changed
 }
 
@@ -8299,7 +8297,7 @@ static void doFUCOMPPTest(float val1, float val2, U32 swResult) {
     pushCode8(0xe0);
 
     runTestCPU();
-    result.i = readd(HEAP_ADDRESS + 4 * 4);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 4);
     assertTrue(result.f == 100.0f); // stack popped twice, val1 and val2 were popped off and 100.0 is now on top
     assertTrue((AX & 0x4700) == swResult);
 }
@@ -8320,7 +8318,7 @@ static void doCOMIntTest(float val1, U32 val2, U32 swResult, bool pop, bool chec
     fldf32(100.0f, 1);
     fldf32(val1, 2);
 
-    writed(HEAP_ADDRESS + 4 * 3, val2);
+    memory->writed(HEAP_ADDRESS + 4 * 3, val2);
 
     pushCode8(0xda);
     pushCode8(rm(true, pop ? 3 : 2, cpu->big ? 5 : 6));
@@ -8337,7 +8335,7 @@ static void doCOMIntTest(float val1, U32 val2, U32 swResult, bool pop, bool chec
     pushCode8(0xe0);
 
     runTestCPU();
-    result.i = readd(HEAP_ADDRESS + 4 * 4);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 4);
     if (pop) {
         assertTrue(result.f == 100.0f);
     } else if (checkValue) {
@@ -8360,7 +8358,7 @@ void testFMemInt(U8 inst, U8 group, float val1, U32 val2, float fresult) {
     newInstruction(0);
     fpu_init();
     fldf32(val1, 1);
-    writed(HEAP_ADDRESS + 4 * 2, val2);
+    memory->writed(HEAP_ADDRESS + 4 * 2, val2);
     pushCode8(inst);
     pushCode8(rm(true, group, cpu->big ? 5 : 6));
     if (cpu->big) {
@@ -8370,7 +8368,7 @@ void testFMemInt(U8 inst, U8 group, float val1, U32 val2, float fresult) {
     }
     writeTopFloat(3);
     runTestCPU();
-    result.i = readd(HEAP_ADDRESS + 4 * 3);
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 3);
     assertTrue(result.f == fresult);
 }
 
@@ -8579,7 +8577,7 @@ void testCallJw0x0e8() {
 
     cpu->big = false;
 
-    writed(cpu->seg[SS].address + 4092, DEFAULT);
+    memory->writed(cpu->seg[SS].address + 4092, DEFAULT);
 
     EAX = 0;
 
@@ -8604,7 +8602,7 @@ void testCallJw0x0e8() {
     runTestCPU();
 
     assertTrue(AX == 0x11);
-    assertTrue(readw(cpu->seg[SS].address + 4094) == 0x6); // eip after first add + calljw
+    assertTrue(memory->readw(cpu->seg[SS].address + 4094) == 0x6); // eip after first add + calljw
     assertTrue(SP == 4094);
 }
 
@@ -8613,7 +8611,7 @@ void testJmpJw0x0e9() {
 
     cpu->big = false;
 
-    writed(cpu->seg[SS].address + 4092, DEFAULT);
+    memory->writed(cpu->seg[SS].address + 4092, DEFAULT);
 
     EAX = 0;
 
@@ -8638,7 +8636,7 @@ void testJmpJw0x0e9() {
     runTestCPU();
 
     assertTrue(AX == 0x11);
-    assertTrue(readd(cpu->seg[SS].address + 4092) == DEFAULT);
+    assertTrue(memory->readd(cpu->seg[SS].address + 4092) == DEFAULT);
     assertTrue(SP == 4096); // shouldn't have touched it
 }
 
@@ -8647,7 +8645,7 @@ void testCallJd0x2e8() {
 
     cpu->big = true;
 
-    writed(cpu->seg[SS].address + 4092, DEFAULT);
+    memory->writed(cpu->seg[SS].address + 4092, DEFAULT);
 
     EAX = 0;
 
@@ -8672,7 +8670,7 @@ void testCallJd0x2e8() {
     runTestCPU();
 
     assertTrue(EAX == 0x11);
-    assertTrue(readd(cpu->seg[SS].address + 4092) == 0x8);
+    assertTrue(memory->readd(cpu->seg[SS].address + 4092) == 0x8);
     assertTrue(ESP == 4092);
 }
 
@@ -8681,7 +8679,7 @@ void testJmpJd0x2e9() {
 
     cpu->big = true;
 
-    writed(cpu->seg[SS].address + 4092, DEFAULT);
+    memory->writed(cpu->seg[SS].address + 4092, DEFAULT);
 
     EAX = 0;
 
@@ -8706,7 +8704,7 @@ void testJmpJd0x2e9() {
     runTestCPU();
 
     assertTrue(EAX == 0x11);
-    assertTrue(readd(cpu->seg[SS].address + 4092) == DEFAULT);
+    assertTrue(memory->readd(cpu->seg[SS].address + 4092) == DEFAULT);
     assertTrue(ESP == 4096); // shouldn't have touched it
 }
 
@@ -8789,14 +8787,14 @@ void testPushE16() {
         } else {
             cpu->reg[i].u32 = value;
         }        
-        writew(cpu->seg[SS].address + ESP, 0xAAAA);
-        writew(cpu->seg[SS].address + ESP - 2, 0xCCCC);
-        writew(cpu->seg[SS].address + ESP - 4, 0xBBBB);
+        memory->writew(cpu->seg[SS].address + ESP, 0xAAAA);
+        memory->writew(cpu->seg[SS].address + ESP - 2, 0xCCCC);
+        memory->writew(cpu->seg[SS].address + ESP - 4, 0xBBBB);
         runTestCPU();
         assertTrue(ESP == 4092);
-        assertTrue(readw(cpu->seg[SS].address + ESP) == (U16)value);
-        assertTrue(readw(cpu->seg[SS].address + ESP + 2) == 0xAAAA);
-        assertTrue(readw(cpu->seg[SS].address + ESP - 2) == 0xBBBB);
+        assertTrue(memory->readw(cpu->seg[SS].address + ESP) == (U16)value);
+        assertTrue(memory->readw(cpu->seg[SS].address + ESP + 2) == 0xAAAA);
+        assertTrue(memory->readw(cpu->seg[SS].address + ESP - 2) == 0xBBBB);
     }
 
     U8 rm = (6 << 3);
@@ -8809,16 +8807,16 @@ void testPushE16() {
 
     ESP -= 2;
     U16 value = 0x1234;
-    writew(cpu->seg[DS].address + 200, value);
+    memory->writew(cpu->seg[DS].address + 200, value);
     
-    writew(cpu->seg[SS].address + ESP, 0xAAAA);
-    writew(cpu->seg[SS].address + ESP - 2, 0xCCCC);
-    writew(cpu->seg[SS].address + ESP - 4, 0xBBBB);
+    memory->writew(cpu->seg[SS].address + ESP, 0xAAAA);
+    memory->writew(cpu->seg[SS].address + ESP - 2, 0xCCCC);
+    memory->writew(cpu->seg[SS].address + ESP - 4, 0xBBBB);
     runTestCPU();
     assertTrue(ESP == 4092);
-    assertTrue(readw(cpu->seg[SS].address + ESP) == (U16)value);
-    assertTrue(readw(cpu->seg[SS].address + ESP + 2) == 0xAAAA);
-    assertTrue(readw(cpu->seg[SS].address + ESP - 2) == 0xBBBB);
+    assertTrue(memory->readw(cpu->seg[SS].address + ESP) == (U16)value);
+    assertTrue(memory->readw(cpu->seg[SS].address + ESP + 2) == 0xAAAA);
+    assertTrue(memory->readw(cpu->seg[SS].address + ESP - 2) == 0xBBBB);
 }
 
 void testPushE32() {
@@ -8833,14 +8831,14 @@ void testPushE32() {
         else {
             cpu->reg[i].u32 = value;
         }
-        writed(cpu->seg[SS].address + ESP, 0xAAAAAAAA);
-        writed(cpu->seg[SS].address + ESP - 4, 0xCCCCCCCC);
-        writed(cpu->seg[SS].address + ESP - 8, 0xBBBBBBBB);
+        memory->writed(cpu->seg[SS].address + ESP, 0xAAAAAAAA);
+        memory->writed(cpu->seg[SS].address + ESP - 4, 0xCCCCCCCC);
+        memory->writed(cpu->seg[SS].address + ESP - 8, 0xBBBBBBBB);
         runTestCPU();
         assertTrue(ESP == 4088);
-        assertTrue(readd(cpu->seg[SS].address + ESP) == value);
-        assertTrue(readd(cpu->seg[SS].address + ESP + 4) == 0xAAAAAAAA);
-        assertTrue(readd(cpu->seg[SS].address + ESP - 4) == 0xBBBBBBBB);
+        assertTrue(memory->readd(cpu->seg[SS].address + ESP) == value);
+        assertTrue(memory->readd(cpu->seg[SS].address + ESP + 4) == 0xAAAAAAAA);
+        assertTrue(memory->readd(cpu->seg[SS].address + ESP - 4) == 0xBBBBBBBB);
     }
 
     U8 rm = (6 << 3);
@@ -8853,16 +8851,16 @@ void testPushE32() {
 
     ESP -= 4;
     U32 value = 0x56781234;
-    writed(cpu->seg[DS].address + 200, value);
+    memory->writed(cpu->seg[DS].address + 200, value);
 
-    writed(cpu->seg[SS].address + ESP, 0xAAAAAAAA);
-    writed(cpu->seg[SS].address + ESP - 4, 0xCCCCCCCC);
-    writed(cpu->seg[SS].address + ESP - 8, 0xBBBBBBBB);
+    memory->writed(cpu->seg[SS].address + ESP, 0xAAAAAAAA);
+    memory->writed(cpu->seg[SS].address + ESP - 4, 0xCCCCCCCC);
+    memory->writed(cpu->seg[SS].address + ESP - 8, 0xBBBBBBBB);
     runTestCPU();
     assertTrue(ESP == 4088);
-    assertTrue(readd(cpu->seg[SS].address + ESP) == value);
-    assertTrue(readd(cpu->seg[SS].address + ESP + 4) == 0xAAAAAAAA);
-    assertTrue(readd(cpu->seg[SS].address + ESP - 4) == 0xBBBBBBBB);
+    assertTrue(memory->readd(cpu->seg[SS].address + ESP) == value);
+    assertTrue(memory->readd(cpu->seg[SS].address + ESP + 4) == 0xAAAAAAAA);
+    assertTrue(memory->readd(cpu->seg[SS].address + ESP - 4) == 0xBBBBBBBB);
 }
 
 void testCallE16() {
@@ -8870,7 +8868,7 @@ void testCallE16() {
         U8 rm = i | (2 << 3) | 0xC0;
 
         newInstruction(0);
-        writed(cpu->seg[SS].address + 4092, DEFAULT);
+        memory->writed(cpu->seg[SS].address + 4092, DEFAULT);
 
         cpu->reg[0].u32 = 0x102;
         cpu->reg[i].u16 = 0x102;
@@ -8892,10 +8890,10 @@ void testCallE16() {
 
         assertTrue(AX == 0x103);
         if (i == 4) {
-            assertTrue(readw(cpu->seg[SS].address + 0x100) == 0x2); // eip after calljw
+            assertTrue(memory->readw(cpu->seg[SS].address + 0x100) == 0x2); // eip after calljw
             assertTrue(SP == 0x100);
         } else {
-            assertTrue(readw(cpu->seg[SS].address + 4094) == 0x2); // eip after calljw
+            assertTrue(memory->readw(cpu->seg[SS].address + 4094) == 0x2); // eip after calljw
             assertTrue(SP == 4094);
         }
     }
@@ -8917,12 +8915,12 @@ void testCallE16() {
     pushCode8(0xc0);
     pushCode8(0x1);
 
-    writew(cpu->seg[DS].address + 200, 0x104);
+    memory->writew(cpu->seg[DS].address + 200, 0x104);
     EAX = 0x10;
     runTestCPU();
 
     assertTrue(AX == 0x11);
-    assertTrue(readw(cpu->seg[SS].address + 4094) == 0x4); // eip after calljw
+    assertTrue(memory->readw(cpu->seg[SS].address + 4094) == 0x4); // eip after calljw
     assertTrue(SP == 4094);
 }
 
@@ -8931,7 +8929,7 @@ void testCallE32() {
         U8 rm = i | (2 << 3) | 0xC0;
 
         newInstruction(0);
-        writed(cpu->seg[SS].address + 4092, DEFAULT);
+        memory->writed(cpu->seg[SS].address + 4092, DEFAULT);
 
         cpu->reg[0].u32 = 0x104;
         cpu->reg[i].u32 = 0x104;
@@ -8953,11 +8951,11 @@ void testCallE32() {
 
         assertTrue(EAX == 0x105);
         if (i == 4) {
-            assertTrue(readd(cpu->seg[SS].address + 0x100) == 0x2); // eip after calljw
+            assertTrue(memory->readd(cpu->seg[SS].address + 0x100) == 0x2); // eip after calljw
             assertTrue(ESP == 0x100);
         }
         else {
-            assertTrue(readw(cpu->seg[SS].address + 4092) == 0x2); // eip after calljw
+            assertTrue(memory->readw(cpu->seg[SS].address + 4092) == 0x2); // eip after calljw
             assertTrue(SP == 4092);
         }
     }
@@ -8979,12 +8977,12 @@ void testCallE32() {
     pushCode8(0xc0);
     pushCode8(0x1);
 
-    writed(cpu->seg[DS].address + 200, 0x106);
+    memory->writed(cpu->seg[DS].address + 200, 0x106);
     EAX = 0x10;
     runTestCPU();
 
     assertTrue(EAX == 0x11);
-    assertTrue(readd(cpu->seg[SS].address + 4092) == 0x6); // eip after calljw
+    assertTrue(memory->readd(cpu->seg[SS].address + 4092) == 0x6); // eip after calljw
     assertTrue(ESP == 4092);
 }
 
@@ -9010,14 +9008,14 @@ void testCallFarE16() {
 
     U32 esp = ESP;
 
-    writew(cpu->seg[DS].address + 200, 0x128);
-    writew(cpu->seg[DS].address + 202, CODE_SEG_16);
+    memory->writew(cpu->seg[DS].address + 200, 0x128);
+    memory->writew(cpu->seg[DS].address + 202, CODE_SEG_16);
 
     runTestCPU();
 
     assertTrue(AX == 0x10);
-    assertTrue(readw(cpu->seg[SS].address + esp - 2) == CODE_SEG);
-    assertTrue(readw(cpu->seg[SS].address + esp - 4) == 4);
+    assertTrue(memory->readw(cpu->seg[SS].address + esp - 2) == CODE_SEG);
+    assertTrue(memory->readw(cpu->seg[SS].address + esp - 4) == 4);
     assertTrue(SP == 4092);
     assertTrue(cpu->big == false);
     setup();// re-init segs for next unit test
@@ -9045,14 +9043,14 @@ void testCallFarE32() {
 
     U32 esp = ESP;
 
-    writed(cpu->seg[DS].address + 200, 0x128);
-    writed(cpu->seg[DS].address + 204, CODE_SEG_16);
+    memory->writed(cpu->seg[DS].address + 200, 0x128);
+    memory->writed(cpu->seg[DS].address + 204, CODE_SEG_16);
 
     runTestCPU();
 
     assertTrue(AX == 0x10);
-    assertTrue(readd(cpu->seg[SS].address + esp - 4) == CODE_SEG);
-    assertTrue(readd(cpu->seg[SS].address + esp - 8) == 6);
+    assertTrue(memory->readd(cpu->seg[SS].address + esp - 4) == CODE_SEG);
+    assertTrue(memory->readd(cpu->seg[SS].address + esp - 8) == 6);
     assertTrue(SP == 4088);
     assertTrue(cpu->big == false);
     cpu->big = true;
@@ -9064,7 +9062,7 @@ void testJmpE16() {
         U8 rm = i | (4 << 3) | 0xC0;
 
         newInstruction(0);
-        writed(cpu->seg[SS].address + 4092, DEFAULT);
+        memory->writed(cpu->seg[SS].address + 4092, DEFAULT);
 
         cpu->reg[0].u32 = 0x102;
         cpu->reg[i].u16 = 0x102;
@@ -9110,7 +9108,7 @@ void testJmpE16() {
     pushCode8(0xc0);
     pushCode8(0x1);
 
-    writew(cpu->seg[DS].address + 200, 0x104);
+    memory->writew(cpu->seg[DS].address + 200, 0x104);
     EAX = 0x10;
     runTestCPU();
 
@@ -9123,7 +9121,7 @@ void testJmpE32() {
         U8 rm = i | (4 << 3) | 0xC0;
 
         newInstruction(0);
-        writed(cpu->seg[SS].address + 4092, DEFAULT);
+        memory->writed(cpu->seg[SS].address + 4092, DEFAULT);
 
         cpu->reg[0].u32 = 0x104;
         cpu->reg[i].u32 = 0x104;
@@ -9169,7 +9167,7 @@ void testJmpE32() {
     pushCode8(0xc0);
     pushCode8(0x1);
 
-    writed(cpu->seg[DS].address + 200, 0x106);
+    memory->writed(cpu->seg[DS].address + 200, 0x106);
     EAX = 0x10;
     runTestCPU();
 
@@ -9199,8 +9197,8 @@ void testJmpFarE16() {
 
     U32 esp = ESP;
 
-    writew(cpu->seg[DS].address + 200, 0x128);
-    writew(cpu->seg[DS].address + 202, CODE_SEG_16);
+    memory->writew(cpu->seg[DS].address + 200, 0x128);
+    memory->writew(cpu->seg[DS].address + 202, CODE_SEG_16);
 
     runTestCPU();
 
@@ -9233,8 +9231,8 @@ void testJmpFarE32() {
 
     U32 esp = ESP;
 
-    writed(cpu->seg[DS].address + 200, 0x128);
-    writed(cpu->seg[DS].address + 204, CODE_SEG_16);
+    memory->writed(cpu->seg[DS].address + 200, 0x128);
+    memory->writed(cpu->seg[DS].address + 204, CODE_SEG_16);
 
     runTestCPU();
 
@@ -9646,9 +9644,9 @@ void testCmpXchg8b0x3c7() {
             EBX = 0x66666666;
             ECX = 0x77777777;
 
-            writeq(cpu->seg[DS].address + 200, 0x5555555544444444);
+            memory->writeq(cpu->seg[DS].address + 200, 0x5555555544444444);
             runTestCPU();
-            U64 result = readq(cpu->seg[DS].address + 200);
+            U64 result = memory->readq(cpu->seg[DS].address + 200);
             assertTrue(result == 0x7777777766666666);
             if (usesFlags) {
                 assertTrue(cpu->flags & ZF);
@@ -9681,9 +9679,9 @@ void testCmpXchg8b0x3c7() {
             EBX = 0x66666666;
             ECX = 0x77777777;
 
-            writeq(cpu->seg[DS].address + 200, 0x5555555044444440);
+            memory->writeq(cpu->seg[DS].address + 200, 0x5555555044444440);
             runTestCPU();
-            result = readq(cpu->seg[DS].address + 200);
+            result = memory->readq(cpu->seg[DS].address + 200);
             assertTrue(result == 0x5555555044444440);
             if (usesFlags) {
                 assertTrue((cpu->flags & ZF) == 0);
@@ -9718,7 +9716,7 @@ void testXaddd0x3c1() {
 
 void testPushSeg16(int inst, U8 seg) {
     U16 prevStack = cpu->reg[4].u16;
-    writew(cpu->seg[SS].address+cpu->reg[4].u16-2, 0x2222);
+    memory->writew(cpu->seg[SS].address+cpu->reg[4].u16-2, 0x2222);
     cpu->seg[seg].value = 0x107;
     cpu->big = 0;
     newInstruction(inst, 0);
@@ -9726,7 +9724,7 @@ void testPushSeg16(int inst, U8 seg) {
     if (cpu->reg[4].u16!=prevStack-2) {
         failed("stack wasn't decremented by 2");
     }
-    if (readw(cpu->seg[SS].address+cpu->reg[4].u16)!=0x107) {
+    if (memory->readw(cpu->seg[SS].address+cpu->reg[4].u16)!=0x107) {
         failed("seg value was not found");
     }
 }
@@ -9741,7 +9739,7 @@ void testPopSeg16(int inst, U8 seg) {
     newInstruction(inst, 0);
     cpu->reg[4].u32-=2;
     U32 prevStack = cpu->reg[4].u32;
-    writed(cpu->seg[SS].address+cpu->reg[4].u16, 0x107);
+    memory->writed(cpu->seg[SS].address+cpu->reg[4].u16, 0x107);
     cpu->seg[seg].value = 0;
     if (seg != SS) {
         cpu->seg[seg].address = 0;
@@ -9751,7 +9749,7 @@ void testPopSeg16(int inst, U8 seg) {
     bool checkReadValueIntoAX = false;
     // read seg:[0] into AX to verify that segment can be used    
     if (seg != SS && seg != DS) {
-        writed(HEAP_ADDRESS, 0x1112);
+        memory->writed(HEAP_ADDRESS, 0x1112);
         switch (seg) {
         case ES: pushCode8(0x26); break;
         case CS: pushCode8(0x2e); break;
@@ -9782,7 +9780,7 @@ void testPopSeg16(int inst, U8 seg) {
 
 void testPushSeg32(int inst, U8 seg) {
     U32 prevStack = cpu->reg[4].u32;
-    writed(cpu->seg[SS].address+cpu->reg[4].u32-4, 0x22222222);
+    memory->writed(cpu->seg[SS].address+cpu->reg[4].u32-4, 0x22222222);
     cpu->seg[seg].value = 0x107;
     cpu->big = 1;
     newInstruction(inst, 0);
@@ -9790,7 +9788,7 @@ void testPushSeg32(int inst, U8 seg) {
     if (cpu->reg[4].u32!=prevStack-4) {
         failed("stack wasn't decremented by 4");
     }
-    if (readd(cpu->seg[SS].address+cpu->reg[4].u32)!=0x107) {
+    if (memory->readd(cpu->seg[SS].address+cpu->reg[4].u32)!=0x107) {
         failed("seg value was not found");
     }
 }
@@ -9805,7 +9803,7 @@ void testPopSeg32(int inst, U8 seg) {
     newInstruction(inst, 0);
     cpu->reg[4].u32-=4;
     U32 prevStack = cpu->reg[4].u32;
-    writed(cpu->seg[SS].address+cpu->reg[4].u32, 0x107);
+    memory->writed(cpu->seg[SS].address+cpu->reg[4].u32, 0x107);
     cpu->seg[seg].value = 0;
     if (seg != SS) {
         cpu->seg[seg].address = 0;
@@ -9815,7 +9813,7 @@ void testPopSeg32(int inst, U8 seg) {
     bool checkReadValueIntoEAX = false;
     // read seg:[0] into EAX to verify that segment can be used    
     if (seg != SS && seg != DS) {
-        writed(HEAP_ADDRESS, 0x11122233);
+        memory->writed(HEAP_ADDRESS, 0x11122233);
         switch (seg) {
         case ES: pushCode8(0x26); break;
         case CS: pushCode8(0x2e); break;
@@ -9906,7 +9904,7 @@ void testSeg(int inst, U8 seg) {
         cpu->seg[seg].address = HEAP_ADDRESS+512;
     }
     EAX = 0;
-    writeb(cpu->seg[seg].address+offset, 0xbf);
+    memory->writeb(cpu->seg[seg].address+offset, 0xbf);
     newInstruction(inst, 0);
     pushCode8(0xa1);
     if (cpu->big) {
@@ -10128,7 +10126,7 @@ void doTestCmov(U32 instruction, bool isNotFlag, U32 flags, U32 cmpValueThatTrig
                 } else {
                     pushCode16(200);
                 }
-                writed(cpu->seg[DS].address + 200, 0x11112222);
+                memory->writed(cpu->seg[DS].address + 200, 0x11112222);
                 g = &cpu->reg[gd];
                 g->u32 = 0x33334444;
                 runTestCPU();
@@ -10415,9 +10413,9 @@ void doTestSet(U32 instruction, bool isNotFlag, U32 flags, U32 cmpValueThatTrigg
             } else {
                 pushCode16(200);
             }
-            writed(cpu->seg[DS].address + 200, 0x11112222);
+            memory->writed(cpu->seg[DS].address + 200, 0x11112222);
             runTestCPU();
-            U32 result = readd(cpu->seg[DS].address + 200);
+            U32 result = memory->readd(cpu->seg[DS].address + 200);
 
             bool wasChanged = useFlags;
 
@@ -10660,7 +10658,7 @@ void runLeaGd(int rm, int hasSib, U32 sib, int hasDisp8, int hasDisp32, S32 disp
 
     reg->u32 = originalValue;
     // MOV Gd,Ed
-    writed(cpu->seg[seg].address+result, 0x35792468);
+    memory->writed(cpu->seg[seg].address+result, 0x35792468);
 
     cseip=CODE_ADDRESS;
     cpu->eip.u32=0;   
@@ -10678,9 +10676,9 @@ void runLeaGd(int rm, int hasSib, U32 sib, int hasDisp8, int hasDisp32, S32 disp
 }
 
 void initMem32() {
-    zeroMemory(CODE_ADDRESS, K_PAGE_SIZE*PAGES_PER_SEG);
-    zeroMemory(STACK_ADDRESS-K_PAGE_SIZE*PAGES_PER_SEG, K_PAGE_SIZE*PAGES_PER_SEG);
-    zeroMemory(HEAP_ADDRESS, K_PAGE_SIZE*PAGES_PER_SEG);
+    memory->memset(CODE_ADDRESS, 0, K_PAGE_SIZE*PAGES_PER_SEG);
+    memory->memset(STACK_ADDRESS-K_PAGE_SIZE*PAGES_PER_SEG, 0, K_PAGE_SIZE*PAGES_PER_SEG);
+    memory->memset(HEAP_ADDRESS, 0, K_PAGE_SIZE*PAGES_PER_SEG);
 
     cpu->big = true;
     EAX = 0x12345678;
@@ -11075,7 +11073,7 @@ void runLeaGw(int rm, int hasDisp8, int hasDisp16, U32 d, U16 result, U32 seg) {
 
     reg->u16 = originalValue;
     // MOV Gw,Ew
-    writew(cpu->seg[seg].address+result, 0x3579);
+    memory->writew(cpu->seg[seg].address+result, 0x3579);
 
     cseip=CODE_ADDRESS;
     cpu->eip.u32=0;   
@@ -11091,9 +11089,9 @@ void runLeaGw(int rm, int hasDisp8, int hasDisp16, U32 d, U16 result, U32 seg) {
 }
 
 void initMem16() {
-    zeroMemory(CODE_ADDRESS, K_PAGE_SIZE*PAGES_PER_SEG);
-    zeroMemory(STACK_ADDRESS-K_PAGE_SIZE*PAGES_PER_SEG, K_PAGE_SIZE*PAGES_PER_SEG);
-    zeroMemory(HEAP_ADDRESS, K_PAGE_SIZE*PAGES_PER_SEG);
+    memory->memset(CODE_ADDRESS, 0, K_PAGE_SIZE*PAGES_PER_SEG);
+    memory->memset(STACK_ADDRESS-K_PAGE_SIZE*PAGES_PER_SEG, 0, K_PAGE_SIZE*PAGES_PER_SEG);
+    memory->memset(HEAP_ADDRESS, 0, K_PAGE_SIZE*PAGES_PER_SEG);
 
     cpu->big = false;
     EAX = 0x12345678;
@@ -11383,9 +11381,9 @@ void testSelfModifyingMovsb() {
 
     // code to copy
     // sub eax, 0x05
-    writeb(CODE_ADDRESS+512, 0x83);
-    writeb(CODE_ADDRESS + 513, 0xe8);
-    writeb(CODE_ADDRESS + 514, 0x05);
+    memory->writeb(CODE_ADDRESS+512, 0x83);
+    memory->writeb(CODE_ADDRESS + 513, 0xe8);
+    memory->writeb(CODE_ADDRESS + 514, 0x05);
 
     cpu->setSeg(ES, CODE_ADDRESS, 1);
 

@@ -226,9 +226,9 @@ union SSE {
 
 class CPU {
 public:
-    static CPU* allocCPU();
+    static CPU* allocCPU(KMemory* memory);
 
-    CPU();
+    CPU(KMemory* memory);
     virtual ~CPU() {}
     
     Reg reg[9];
@@ -259,6 +259,7 @@ public:
     U32 stackMask;
 
     KThread* thread;
+    KMemory* memory;
     void* logFile;
 
     DecodedBlock* nextBlock;

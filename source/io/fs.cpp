@@ -277,7 +277,8 @@ bool Fs::isNativePathDirectory(BString path) {
 
 #ifdef BOXEDWINE_MSVC
     if (path.length()<3) {
-        if (PLATFORM_STAT(BString(path+"\\").c_str(), &buf)==0) {
+        BString msvc = path + "\\";
+        if (PLATFORM_STAT(msvc.c_str(), &buf)==0) {
             return S_ISDIR(buf.st_mode);
         }
     }

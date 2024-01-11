@@ -19,8 +19,9 @@ U32 updateVertexPointer(CPU* cpu, OpenGLVetexPointer* p, U32 count) {
         if (count == 0 || available > datasize) {
             if (p->marshal_size) {
                 free(p->marshal);
-            }            
-            p->marshal = getPhysicalAddress(p->ptr, (datasize?datasize:available));
+            }         
+            // :TODO: will probably fail
+            p->marshal = cpu->memory->getIntPtr(p->ptr);
             p->marshal_size = 0;
             
             if (p->marshal) {
@@ -41,7 +42,7 @@ U32 updateVertexPointer(CPU* cpu, OpenGLVetexPointer* p, U32 count) {
             p->marshal = new unsigned char[datasize];
             p->marshal_size = datasize;
         }
-        memcopyToNative(p->ptr, p->marshal, datasize);
+        cpu->memory->memcpy(p->marshal, p->ptr, datasize);
     } else {
         if (p->marshal_size) {
             free(p->marshal);

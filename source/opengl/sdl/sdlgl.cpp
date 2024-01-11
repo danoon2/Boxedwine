@@ -139,9 +139,6 @@ void sdl_glFlush(CPU* cpu) {
     glFlush();	
 }
 
-void fbSetupScreenForOpenGL(int width, int height, int depth);
-void fbSetupScreen();
-
 // GLXContext glXCreateContext(Display *dpy, XVisualInfo *vis, GLXContext share_list, Bool direct)
 void sdl_glXCreateContext(CPU* cpu) {
     U32 doubleBuffered = ARG6;
@@ -182,9 +179,6 @@ void sdl_glXMakeCurrent(CPU* cpu) {
 
     if (ARG2) {
         loadSdlExtensions();
-        fbSetupScreenForOpenGL(ARG2, ARG3, ARG4);
-    } else {
-        fbSetupScreen();
     }
 }
 

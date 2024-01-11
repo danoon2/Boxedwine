@@ -10,7 +10,7 @@ class X64Asm;
 
 class x64CPU : public BtCPU {
 public:
-    x64CPU();
+    x64CPU(KMemory* memory);
     
     virtual void restart();
     virtual void* init();

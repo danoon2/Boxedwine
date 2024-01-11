@@ -316,42 +316,43 @@ void boxeddrv_Beep(CPU* cpu) {
 void boxeddrv_ChangeDisplaySettingsEx(CPU* cpu) {
     U32 devmode = ARG2;
     U32 flags = ARG4;
+    KMemory* memory = cpu->memory;
 
     if (devmode)
     {
         U32 dmFields;
-        U32 dmSize = readw(devmode + 68);
+        U32 dmSize = memory->readw(devmode + 68);
         U32 width = KNativeWindow::defaultScreenWidth;
         U32 height = KNativeWindow::defaultScreenHeight;
         U32 bpp = KNativeWindow::defaultScreenBpp;
 
         /* this is the minimal dmSize that XP accepts */
         if (dmSize < 44) {
-            writed(ARG6, DISP_CHANGE_FAILED);
+            memory->writed(ARG6, DISP_CHANGE_FAILED);
             return;
         }
 
-        dmFields = readd(devmode + 72);
+        dmFields = memory->readd(devmode + 72);
 
         if (dmFields & DM_BITSPERPEL) {
-            bpp = readd(devmode + 168);
+            bpp = memory->readd(devmode + 168);
             if (bpp < 8)
                 bpp = 32; // let the dib driver handle it
         }
         if (dmFields & DM_PELSWIDTH) {
-            width = readd(devmode + 172);
+            width = memory->readd(devmode + 172);
         }
         if (dmFields & DM_PELSHEIGHT) {
-            height = readd(devmode + 176);
+            height = memory->readd(devmode + 176);
         }
         if (!(flags & (CDS_TEST | CDS_NORESET))) {
             KNativeWindow::getNativeWindow()->screenChanged(cpu->thread, width, height, bpp);
         }
     }	    
-    writed(ARG6, DISP_CHANGE_SUCCESSFUL);	
-    writed(ARG7, KNativeWindow::getNativeWindow()->screenWidth());
-    writed(ARG8, KNativeWindow::getNativeWindow()->screenHeight());
-    writed(ARG9, KNativeWindow::getNativeWindow()->screenBpp());
+    memory->writed(ARG6, DISP_CHANGE_SUCCESSFUL);
+    memory->writed(ARG7, KNativeWindow::getNativeWindow()->screenWidth());
+    memory->writed(ARG8, KNativeWindow::getNativeWindow()->screenHeight());
+    memory->writed(ARG9, KNativeWindow::getNativeWindow()->screenBpp());
 }
 
 // BOOL CDECL drv_ClipCursor(LPCRECT clip)
@@ -445,6 +446,7 @@ void boxeddrv_EnumDisplaySettingsEx(CPU* cpu) {
     static DisplayModes* displayModes;
     static int displayModesCount;
     int i;
+    KMemory* memory = cpu->memory;
 
     if (!displayModesCount) {
         U32 desktopCx = 0;
@@ -527,48 +529,49 @@ void boxeddrv_EnumDisplaySettingsEx(CPU* cpu) {
         displayModes[displayModesCount].cx = 640;
         displayModes[displayModesCount++].cy = 480;
     }
-    zeroMemory(devmode, 188);
+    memory->memset(devmode, 0, 188);
 
-    writew(devmode + 64, 0x401); // dmSpecVersion
-    writew(devmode + 66, 0x401); // dmDriverVersion
-    writew(devmode + 68, 188); // dmSize
+    memory->writew(devmode + 64, 0x401); // dmSpecVersion
+    memory->writew(devmode + 66, 0x401); // dmDriverVersion
+    memory->writew(devmode + 68, 188); // dmSize
     for (i=0;i<17;i++) {
-        writew(devmode+i*2, dev_name[i]);
+        memory->writew(devmode+i*2, dev_name[i]);
     }
-    writed(devmode + 72, DM_POSITION | DM_DISPLAYORIENTATION | DM_DISPLAYFIXEDOUTPUT | DM_BITSPERPEL | DM_PELSWIDTH | DM_PELSHEIGHT | DM_DISPLAYFLAGS | DM_DISPLAYFREQUENCY);
+    memory->writed(devmode + 72, DM_POSITION | DM_DISPLAYORIENTATION | DM_DISPLAYFIXEDOUTPUT | DM_BITSPERPEL | DM_PELSWIDTH | DM_PELSHEIGHT | DM_DISPLAYFLAGS | DM_DISPLAYFREQUENCY);
 
-    writed(devmode + 76, 0); // dmPosition.x
-    writed(devmode + 80, 0); // dmPosition.y
-    writed(devmode + 84, 0); // dmDisplayOrientation
-    writed(devmode + 88, DMDFO_CENTER); // dmDisplayFixedOutput
+    memory->writed(devmode + 76, 0); // dmPosition.x
+    memory->writed(devmode + 80, 0); // dmPosition.y
+    memory->writed(devmode + 84, 0); // dmDisplayOrientation
+    memory->writed(devmode + 88, DMDFO_CENTER); // dmDisplayFixedOutput
     
     
     if (ARG2 == ENUM_REGISTRY_SETTINGS) {
-        writed(devmode + 168, KNativeWindow::defaultScreenBpp);
-        writed(devmode + 172, KNativeWindow::defaultScreenWidth);
-        writed(devmode + 176, KNativeWindow::defaultScreenHeight);
+        memory->writed(devmode + 168, KNativeWindow::defaultScreenBpp);
+        memory->writed(devmode + 172, KNativeWindow::defaultScreenWidth);
+        memory->writed(devmode + 176, KNativeWindow::defaultScreenHeight);
     }
     else if (ARG2 == ENUM_CURRENT_SETTINGS) {
-        writed(devmode + 168, KNativeWindow::getNativeWindow()->screenBpp());
-        writed(devmode + 172, KNativeWindow::getNativeWindow()->screenWidth());
-        writed(devmode + 176, KNativeWindow::getNativeWindow()->screenHeight());
+        memory->writed(devmode + 168, KNativeWindow::getNativeWindow()->screenBpp());
+        memory->writed(devmode + 172, KNativeWindow::getNativeWindow()->screenWidth());
+        memory->writed(devmode + 176, KNativeWindow::getNativeWindow()->screenHeight());
     } else if (ARG2>=0 && ARG2<(U32)displayModesCount) {
-        writed(devmode + 168, displayModes[ARG2].bpp);
-        writed(devmode + 172, displayModes[ARG2].cx);
-        writed(devmode + 176, displayModes[ARG2].cy);
+        memory->writed(devmode + 168, displayModes[ARG2].bpp);
+        memory->writed(devmode + 172, displayModes[ARG2].cx);
+        memory->writed(devmode + 176, displayModes[ARG2].cy);
     } else {
         EAX = 0;
         return;
     }
    
-    writed(devmode + 180, 0); // dmDisplayFlags
-    writed(devmode + 184, 60); // dmDisplayFrequency
+    memory->writed(devmode + 180, 0); // dmDisplayFlags
+    memory->writed(devmode + 184, 60); // dmDisplayFrequency
     EAX = 1;
 }
 
 // int CDECL drv_GetClipboardData(UINT desired_format, char* buffer, int bufferLen)
 void boxeddrv_GetClipboardData(CPU* cpu) {
     U32 format = ARG1;
+    KMemory* memory = cpu->memory;
 
     if ((format == CF_TEXT || format == CF_UNICODETEXT) && KNativeSystem::clipboardHasText()) {
         BString text = KNativeSystem::clipboardGetText();
@@ -576,10 +579,10 @@ void boxeddrv_GetClipboardData(CPU* cpu) {
         if (format == CF_TEXT) {
             if (len+1>(int)ARG3)
                 len = ARG3 - 1;
-            memcopyFromNative(ARG2, text.c_str(), len+1);
+            memory->memcpy(ARG2, text.c_str(), len+1);
             EAX = len+1;
         } else {
-            writeNativeStringW(ARG2, text.c_str());
+            memory->strcpy(ARG2, text.c_str());
             EAX = 2*(len+1);
         }        
     } else {
@@ -592,10 +595,11 @@ void boxeddrv_GetCursorPos(CPU* cpu) {
     U32 pos = ARG1;
     int x = 0;
     int y = 0;
+    KMemory* memory = cpu->memory;
 
     if (KNativeWindow::getNativeWindow()->getMousePos(&x, &y)) {
-        writed(pos, (U32)x);
-        writed(pos + 4, (U32)y);
+        memory->writed(pos, (U32)x);
+        memory->writed(pos + 4, (U32)y);
         EAX = 1;
     } else {
         EAX = 0;
@@ -610,7 +614,7 @@ void boxeddrv_GetKeyboardLayout(CPU* cpu) {
 
 // BOOL CDECL drv_GetKeyboardLayoutName(LPWSTR name)
 void boxeddrv_GetKeyboardLayoutName(CPU* cpu) {
-    writeNativeString(ARG1, "Unknown");
+    cpu->memory->strcpy(ARG1, "Unknown");
     EAX = 1;
     notImplemented("boxeddrv_GetKeyboardLayoutName not implemented");
 }
@@ -619,7 +623,7 @@ void boxeddrv_GetKeyboardLayoutName(CPU* cpu) {
 void boxeddrv_GetKeyNameText(CPU* cpu) {
     notImplemented("boxeddrv_GetKeyNameText not implemented");
     EAX = 6;
-    writeNativeString(ARG2, "bogus");
+    cpu->memory->strcpy(ARG2, "bogus");
 }
 
 // BOOL CDECL drv_GetMonitorInfo(HMONITOR monitor, LPMONITORINFO info)
@@ -868,23 +872,22 @@ void boxeddrv_SetCapture(CPU* cpu) {
 // BOOL CDECL drv_SetClipboardData(UINT format_id, char* data, int len, BOOL owner)
 void boxeddrv_SetClipboardData(CPU* cpu) {
     U32 format = ARG1;
-    char* text = 0;
+    BString text;
     //int len = ARG3;
-    char tmp[MAX_FILEPATH_LEN];
 
     if (format == CF_TEXT) {
-        text = getNativeString(ARG2, tmp, sizeof(tmp));
+        text = cpu->memory->readString(ARG2);
     } else if (format == CF_UNICODETEXT) {
-        text = getNativeStringW(ARG2, tmp, sizeof(tmp));
-    }
-    if (text) {
-        if (KNativeSystem::clipboardSetText(BString::copy(text)))
-            EAX = 1;
-        else
-            EAX = 0;
+        text = cpu->memory->readStringW(ARG2);
     } else {
         EAX = 0;
+        return;
     }
+
+    if (KNativeSystem::clipboardSetText(text))
+        EAX = 1;
+    else
+        EAX = 0;
 }
 
 // void CDECL drv_SetCursor(HCURSOR cursor)
@@ -894,18 +897,21 @@ void boxeddrv_SetCursor(CPU* cpu) {
     U32 wResName = ARG3;
     U32 resId = ARG4;
     U32 pFound = ARG5;
-    char tmp[MAX_FILEPATH_LEN];
-    char tmp2[MAX_FILEPATH_LEN];
+    KMemory* memory = cpu->memory;
 
     if (!hCursor && !wModuleName && !wResName && !resId) {
         KNativeWindow::getNativeWindow()->setCursor(NULL, NULL, 0);
         if (pFound) {
-            writed(ARG5, 1);
+            memory->writed(ARG5, 1);
         }
-    } else if (KNativeWindow::getNativeWindow()->setCursor(getNativeStringW(wModuleName, tmp, sizeof(tmp)), getNativeStringW(wResName, tmp2, sizeof(tmp2)), resId)) {
-        writed(ARG5, 1);
     } else {
-        writed(ARG5, 0);    
+        BString moduleName = memory->readStringW(wModuleName);
+        BString resName = memory->readStringW(wResName);
+        if (KNativeWindow::getNativeWindow()->setCursor(moduleName.c_str(), resName.c_str(), resId)) {
+            memory->writed(ARG5, 1);
+        } else {
+            memory->writed(ARG5, 0);
+        }
     }
 }
 
@@ -922,9 +928,8 @@ void boxeddrv_SetCursorBits(CPU* cpu) {
     int pitch = (width+31) / 32 *4;
     U8 data[64*64/8];
     U8 mask[64*64/8];
-    char tmp[MAX_FILEPATH_LEN];
-    char tmp2[MAX_FILEPATH_LEN];
     int size;
+    KMemory* memory = cpu->memory;
 
     if (height>0) {
         height/=2;
@@ -936,9 +941,9 @@ void boxeddrv_SetCursorBits(CPU* cpu) {
         klog("boxeddrv_SetCursorBits too large of cursor\n");
         return;
     }
-    memcopyToNative(bits, data, size);
-    memcopyToNative(bits+size, mask, size);
-    KNativeWindow::getNativeWindow()->createAndSetCursor(getNativeStringW(wModuleName, tmp, sizeof(tmp)), getNativeStringW(wResName, tmp2, sizeof(tmp2)), resId, data, mask, width, height, hotX, hotY);
+    memory->memcpy(data, bits, size);
+    memory->memcpy(mask, bits + size, size);
+    KNativeWindow::getNativeWindow()->createAndSetCursor(memory->readStringW(wModuleName).c_str(), memory->readStringW(wResName).c_str(), resId, data, mask, width, height, hotX, hotY);
 }
 
 // BOOL CDECL drv_SetCursorPos(INT x, INT y)
@@ -951,7 +956,7 @@ void boxeddrv_SetCursorPos(CPU* cpu) {
 void boxeddrv_SetFocus(CPU* cpu) {
     std::shared_ptr<Wnd> wnd = KNativeWindow::getNativeWindow()->getWnd(ARG1);
     if (wnd && wnd->setFocus()) {
-        writed(ARG2, 1);
+        cpu->memory->writed(ARG2, 1);
     }
 }
 
@@ -979,8 +984,7 @@ void boxeddrv_SetWindowStyle(CPU* cpu) {
 void boxeddrv_SetWindowText(CPU* cpu) {
     std::shared_ptr<Wnd> wnd = KNativeWindow::getNativeWindow()->getWnd(ARG1);
     if (wnd) {
-        char tmp[1024];
-        wnd->setText(getNativeStringW(ARG2, tmp, sizeof(tmp)));
+        wnd->setText(cpu->memory->readStringW(ARG2));
     }
 }
 
@@ -988,7 +992,7 @@ void boxeddrv_SetWindowText(CPU* cpu) {
 void boxeddrv_ShowWindow(CPU* cpu) {
     U32 swp = ARG4;
     notImplemented("boxeddrv_ShowWindow not implemented");
-    writed(ARG5, swp);
+    cpu->memory->writed(ARG5, swp);
 }
 
 // LRESULT CDECL macdrv_SysCommand(HWND hwnd, WPARAM wparam, LPARAM lparam)
@@ -1005,7 +1009,7 @@ void boxeddrv_SystemParametersInfo(CPU* cpu) {
     {
     case SPI_GETSCREENSAVEACTIVE:
         if (ARG3)
-            writed(ARG3, false);
+            cpu->memory->writed(ARG3, false);
         EAX = 1;
         return;
     case SPI_SETSCREENSAVEACTIVE:
@@ -1017,9 +1021,10 @@ void boxeddrv_SystemParametersInfo(CPU* cpu) {
 static U32 toUnicodeEx(KThread* thread, U32 virtKey, U32 scanCode, U32 lpKeyState, U32 bufW, U32 bufW_size, U32 flags, U32 hkl) {
     U32 ret = 0;
     U8 c = 0;
-    U32 shift = readb(lpKeyState + BOXED_VK_SHIFT) & 0x80;
-    U32 ctrl = readb(lpKeyState + BOXED_VK_CONTROL) & 0x80;
-    U32 menu = readb(lpKeyState + BOXED_VK_CONTROL) & 0x80;
+    KMemory* memory = thread->memory;
+    U32 shift = memory->readb(lpKeyState + BOXED_VK_SHIFT) & 0x80;
+    U32 ctrl = memory->readb(lpKeyState + BOXED_VK_CONTROL) & 0x80;
+    U32 menu = memory->readb(lpKeyState + BOXED_VK_CONTROL) & 0x80;
 
     if (scanCode & 0x8000) {
         return 0;
@@ -1072,7 +1077,7 @@ static U32 toUnicodeEx(KThread* thread, U32 virtKey, U32 scanCode, U32 lpKeyStat
 
         /* Control-Shift-<key>, Control-Alt-<key>, and Control-Alt-Shift-<key>
            for these keys. */
-        if (shift || (readb(lpKeyState + BOXED_VK_MENU)))
+        if (shift || (memory->readb(lpKeyState + BOXED_VK_MENU)))
         {
             switch (virtKey)
             {
@@ -1153,7 +1158,7 @@ static U32 toUnicodeEx(KThread* thread, U32 virtKey, U32 scanCode, U32 lpKeyStat
     }
     if (c && ctrl) {
         if (c == '@') {
-            writew(bufW, 0);
+            memory->writew(bufW, 0);
             ret = 1;
         } else if (c >= 'a' && c <= 'z') {
             c = c - 'a' + 1;
@@ -1173,14 +1178,14 @@ static U32 toUnicodeEx(KThread* thread, U32 virtKey, U32 scanCode, U32 lpKeyStat
     }
 
     if (c) {
-        writew(bufW, c);
+        memory->writew(bufW, c);
         ret = 1;
     }
 done:
     /* Null-terminate the buffer, if there's room.  MSDN clearly states that the
        caller must not assume this is done, but some programs (e.g. Audiosurf) do. */
     if (1 <= ret && ret < bufW_size)
-        writew(bufW + ret * 2, 0);
+        memory->writew(bufW + ret * 2, 0);
 
     return ret;
 }
@@ -1208,12 +1213,12 @@ void boxeddrv_WindowMessage(CPU* cpu) {
     EAX = 0;
 }
 
-static void writeRect(U32 address, wRECT* rect) {
+static void writeRect(KMemory* memory, U32 address, wRECT* rect) {
     if (address) {
-        writed(address, rect->left);
-        writed(address + 4, rect->top);
-        writed(address + 8, rect->right);
-        writed(address + 12, rect->bottom);
+        memory->writed(address, rect->left);
+        memory->writed(address + 4, rect->top);
+        memory->writed(address + 8, rect->right);
+        memory->writed(address + 12, rect->bottom);
     }
 }
 
@@ -1225,8 +1230,8 @@ void boxeddrv_WindowPosChanged(CPU* cpu) {
 
     if (!wnd)
         return;
-    writeRect(ARG4, &wnd->windowRect);
-    writeRect(ARG5, &wnd->clientRect);
+    writeRect(cpu->memory, ARG4, &wnd->windowRect);
+    writeRect(cpu->memory, ARG5, &wnd->clientRect);
     //wnd->surface = 0;
     if ((swp_flags & SWP_HIDEWINDOW) && !(style & WS_VISIBLE)) {
         wnd->show(false);
@@ -1255,25 +1260,26 @@ void boxeddrv_GetSurface(CPU* cpu) {
 void boxeddrv_WindowPosChanging(CPU* cpu) {
     std::shared_ptr<Wnd> wnd = KNativeWindow::getNativeWindow()->getWnd(ARG1);
     wRECT rect;
+    KMemory* memory = cpu->memory;
 
     if (!wnd) {
         wnd = KNativeWindow::getNativeWindow()->createWnd(cpu->thread, cpu->thread->process->id, ARG1, ARG4, ARG5);
     } else {
-        wnd->windowRect.readRect(ARG4);
-        wnd->clientRect.readRect(ARG5);
+        wnd->windowRect.readRect(memory, ARG4);
+        wnd->clientRect.readRect(memory, ARG5);
     }
 
     // *visible_rect = *window_rect;
-    rect.readRect(ARG4);
-    writeRect(ARG6, &rect);
+    rect.readRect(memory, ARG4);
+    writeRect(memory, ARG6, &rect);
 
     // *surface = wnd->surface;
-    writed(ARG7, wnd->surface);
+    memory->writed(ARG7, wnd->surface);
 }
 
 // BOOL drv_GetDeviceGammaRamp(PHYSDEV dev, LPVOID ramp)
 void boxeddrv_GetDeviceGammaRamp(CPU* cpu) {
-    EAX = KNativeWindow::getNativeWindow()->getGammaRamp(ARG2);
+    EAX = KNativeWindow::getNativeWindow()->getGammaRamp(cpu->thread, ARG2);
 }
 
 // BOOL drv_SetDeviceGammaRamp(PHYSDEV dev, LPVOID ramp)
@@ -1681,8 +1687,7 @@ void boxeddrv_wglGetPixelFormat(CPU* cpu) {
 #ifdef BOXEDWINE_OPENGL
 std::unordered_map<BString, void*> glFunctionMap;
 void boxeddrv_wglGetProcAddress(CPU* cpu) {
-    char tmp[1024];
-    BString name = getNativeStringB(ARG1, tmp, sizeof(tmp));
+    BString name = cpu->memory->readString(ARG1);
 
     if (glFunctionMap.count(name))
         EAX = 1;
@@ -1751,7 +1756,7 @@ public:
     BoxedVkApplicationInfo() : deleteApplicationName(false), deleteEngineName(false) {}
     ~BoxedVkApplicationInfo();
     VkApplicationInfo info;
-    void read(U32 address);
+    void read(KMemory* memory, U32 address);
 
     bool deleteApplicationName;
     bool deleteEngineName;
@@ -1769,9 +1774,9 @@ BoxedVkApplicationInfo::~BoxedVkApplicationInfo() {
     }
 }
 
-void BoxedVkApplicationInfo::read(U32 address) {
-    info.sType = (VkStructureType)readd(address); address += 4;
-    U32 address_next = readd(address); address += 4;
+void BoxedVkApplicationInfo::read(KMemory* memory, U32 address) {
+    info.sType = (VkStructureType)memory->readd(address); address += 4;
+    U32 address_next = memory->readd(address); address += 4;
     if (!address_next) {
         info.pNext = NULL;
     }
@@ -1779,7 +1784,7 @@ void BoxedVkApplicationInfo::read(U32 address) {
         // :TODO:
         kpanic("oops");
     }
-    U32 address_applicationName = readd(address); address += 4;
+    U32 address_applicationName = memory->readd(address); address += 4;
     if (!address_applicationName) {
         info.pApplicationName = NULL;
     }
@@ -2126,7 +2131,7 @@ void boxeddrv_FlushSurface(CPU* cpu) {
     for (i=0;i<ARG9;i++) {
         KNativeWindow::getNativeWindow()->bltWnd(cpu->thread, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG8+16*i);
     }
-    KNativeWindow::getNativeWindow()->drawAllWindows(cpu->thread, ARG7+4, readd(ARG7));
+    KNativeWindow::getNativeWindow()->drawAllWindows(cpu->thread, ARG7+4, cpu->memory->readd(ARG7));
 }
 
 void boxeddrv_CreateDC(CPU* cpu) {

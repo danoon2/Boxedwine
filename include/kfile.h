@@ -23,32 +23,34 @@ class KFile : public KObject {
 public:
     KFile(FsOpenNode* openFile);
     virtual ~KFile();
-    virtual U32  ioctl(U32 request);
-    virtual S64  seek(S64 pos);
-    virtual S64  length();
-    virtual S64  getPos();
-    virtual void setBlocking(bool blocking);
-    virtual bool isBlocking();
-    virtual void setAsync(bool isAsync);
-    virtual bool isAsync();
-    virtual KFileLock* getLock(KFileLock* lock);
-    virtual U32  setLock(KFileLock* lock, bool wait);
-    virtual void unlockAll(U32 pid);
-    virtual bool supportsLocks();
-    virtual bool isOpen();
-    virtual bool isReadReady();
-    virtual bool isWriteReady();
-    virtual void waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events);
-    virtual U32  write(U32 buffer, U32 len);
-    virtual U32  writeNative(U8* buffer, U32 len);
-    virtual U32  read(U32 buffer, U32 len);
-    virtual U32  readNative(U8* buffer, U32 len);
-    virtual U32  stat(U32 address, bool is64);
-    virtual U32  map(U32 address, U32 len, S32 prot, S32 flags, U64 off);
-    virtual bool canMap();
 
-    U32 pwrite(U32 buffer, S64 offset, U32 len);
-    U32 pread(U32 buffer,S64 offset,  U32 len);
+    // From KObject
+    virtual U32 ioctl(KThread* thread, U32 request) override;
+    virtual S64 seek(S64 pos) override;
+    virtual S64 length() override;
+    virtual S64 getPos() override;
+    virtual void setBlocking(bool blocking) override;
+    virtual bool isBlocking() override;
+    virtual void setAsync(bool isAsync) override;
+    virtual bool isAsync() override;
+    virtual KFileLock* getLock(KFileLock* lock) override;
+    virtual U32  setLock(KFileLock* lock, bool wait) override;
+    virtual void unlockAll(U32 pid) override;
+    virtual bool supportsLocks() override;
+    virtual bool isOpen() override;
+    virtual bool isReadReady() override;
+    virtual bool isWriteReady() override;
+    virtual void waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) override;
+    virtual U32  write(KThread* thread, U32 buffer, U32 len) override;
+    virtual U32  writeNative(U8* buffer, U32 len) override;
+    virtual U32  read(KThread* thread, U32 buffer, U32 len) override;
+    virtual U32  readNative(U8* buffer, U32 len) override;
+    virtual U32  stat(KProcess* process, U32 address, bool is64) override;
+    virtual U32  map(KThread* thread, U32 address, U32 len, S32 prot, S32 flags, U64 off) override;
+    virtual bool canMap() override;
+
+    U32 pwrite(KThread* thread, U32 buffer, S64 offset, U32 len);
+    U32 pread(KThread* thread, U32 buffer,S64 offset,  U32 len);
 
     FsOpenNode* openFile;
 

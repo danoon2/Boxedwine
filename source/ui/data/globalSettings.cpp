@@ -335,48 +335,48 @@ void GlobalSettings::loadFileLists() {
         }
         pugi::xml_node node = doc.child("XML");        
         for (pugi::xml_node wine : node.children("Wine")) {
-            BString name = BString::copy(wine.child("Name").text().as_string());
+            BString childName = BString::copy(wine.child("Name").text().as_string());
             BString ver = BString::copy(wine.child("FileVersion").text().as_string());
             BString file = BString::copy(wine.child("FileURL").text().as_string());
             BString file2 = BString::copy(wine.child("FileURL2").text().as_string());
             BString depend = BString::copy(wine.child("Depend").text().as_string());
             int fileSize = wine.child("FileSizeMB").text().as_int();
 
-            if (name.length() && ver.length() && file.length()) {
-                GlobalSettings::availableWineVersions.push_back(WineVersion(name, ver, file, file2, depend, fileSize));
+            if (childName.length() && ver.length() && file.length()) {
+                GlobalSettings::availableWineVersions.push_back(WineVersion(childName, ver, file, file2, depend, fileSize));
             }
             else {
                 break;
             }
         }    
         for (pugi::xml_node wine : node.children("Winetricks")) {
-            BString name = BString::copy(wine.child("Name").text().as_string());
+            BString childName = BString::copy(wine.child("Name").text().as_string());
             BString ver = BString::copy(wine.child("FileVersion").text().as_string());
             BString file = BString::copy(wine.child("FileURL").text().as_string());
             int fileSize = wine.child("FileSizeMB").text().as_int();
 
-            if (name.length() && ver.length() && file.length()) {
-                GlobalSettings::availableWinetricksVersions.push_back(WineVersion(name, ver, file, B(""), B(""), fileSize));
+            if (childName.length() && ver.length() && file.length()) {
+                GlobalSettings::availableWinetricksVersions.push_back(WineVersion(childName, ver, file, B(""), B(""), fileSize));
             }
             else {
                 break;
             }
         }
         for (pugi::xml_node wine : node.children("Dependency")) {
-            BString name = BString::copy(wine.child("Name").text().as_string());
+            BString childName = BString::copy(wine.child("Name").text().as_string());
             BString ver = BString::copy(wine.child("FileVersion").text().as_string());
             BString file = BString::copy(wine.child("FileURL").text().as_string());
             BString depend = BString::copy(wine.child("Depend").text().as_string());
             int fileSize = wine.child("FileSizeMB").text().as_int();
 
-            if (name.length() && ver.length() && file.length()) {
-                GlobalSettings::availableWineDependencies.push_back(WineVersion(name, ver, file, B(""), depend, fileSize));
+            if (childName.length() && ver.length() && file.length()) {
+                GlobalSettings::availableWineDependencies.push_back(WineVersion(childName, ver, file, B(""), depend, fileSize));
             } else {
                 break;
             }
         }        
         for (pugi::xml_node demo : node.children("Demo")) {
-            BString name = BString::copy(demo.child("Name").text().as_string());
+            BString childName = BString::copy(demo.child("Name").text().as_string());
             BString installType = BString::copy(demo.child("InstallType").text().as_string());
             BString icon = BString::copy(demo.child("IconURL").text().as_string());
             int fileSize = demo.child("FileSizeMB").text().as_int();
@@ -391,21 +391,21 @@ void GlobalSettings::loadFileLists() {
             help = help.replace("\\n", "\n");
             help = help.replace("\\t", "    ");
             for (int i = 1; i < 100; i++) {
-                BString name = "Arg" + BString::valueOf(i);
-                if (!demo.child(name.c_str()).empty()) {
-                    args.push_back(BString::copy(demo.child(name.c_str()).text().as_string()));
+                BString childName = "Arg" + BString::valueOf(i);
+                if (!demo.child(childName.c_str()).empty()) {
+                    args.push_back(BString::copy(demo.child(childName.c_str()).text().as_string()));
                 } else {
                     break;
                 }
             }
-            if (name.length() && file.length()) {
-                GlobalSettings::demos.push_back(AppFile(name, installType, icon, file, fileSize, exe, options, help, B(""), installOptions, installExe, args));
+            if (childName.length() && file.length()) {
+                GlobalSettings::demos.push_back(AppFile(childName, installType, icon, file, fileSize, exe, options, help, B(""), installOptions, installExe, args));
             } else {
                 break;
             }
         }        
         for (pugi::xml_node component : node.children("Component")) {
-            BString name = BString::copy(component.child("Name").text().as_string());
+            BString childName = BString::copy(component.child("Name").text().as_string());
             BString optionsName = BString::copy(component.child("OptionsName").text().as_string());
             BString installType = BString::copy(component.child("InstallType").text().as_string());
             BString icon = BString::copy(component.child("IconURL").text().as_string());
@@ -417,8 +417,8 @@ void GlobalSettings::loadFileLists() {
             BString installOptions = BString::copy(component.child("InstallOptions").text().as_string());
             std::vector<BString> args;
 
-            if (name.length() && file.length()) {
-                GlobalSettings::components.push_back(AppFile(name, installType, icon, file, fileSize, exe, options, help, optionsName, installOptions, B(""), args));
+            if (childName.length() && file.length()) {
+                GlobalSettings::components.push_back(AppFile(childName, installType, icon, file, fileSize, exe, options, help, optionsName, installOptions, B(""), args));
             } else {
                 break;
             }

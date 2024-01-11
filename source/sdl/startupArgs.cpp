@@ -5,7 +5,6 @@
 #include "devurandom.h"
 #include "devnull.h"
 #include "devzero.h"
-#include "devfb.h"
 #include "devinput.h"
 #include "devdsp.h"
 #include "procselfexe.h"
@@ -121,7 +120,6 @@ void StartUpArgs::buildVirtualFileSystem() {
         });
     Fs::addVirtualFile(B("/proc/self/exe"), openProcSelfExe, K__S_IREAD, mdev(0, 0), procSelfNode);
     Fs::addVirtualFile(B("/proc/cmdline"), openKernelCommandLine, K__S_IREAD, mdev(0, 0), procNode); // kernel command line
-    Fs::addVirtualFile(B("/dev/fb0"), openDevFB, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, mdev(0x1d, 0), devNode);
     Fs::addVirtualFile(B("/dev/input/event3"), openDevInputTouch, K__S_IWRITE|K__S_IREAD|K__S_IFCHR, mdev(0xd, 0x43), inputNode);
     Fs::addVirtualFile(B("/dev/input/event4"), openDevInputKeyboard, K__S_IWRITE|K__S_IREAD|K__S_IFCHR, mdev(0xd, 0x44), inputNode);
 	Fs::addVirtualFile(B("/dev/dsp"), openDevDsp, K__S_IWRITE | K__S_IREAD | K__S_IFCHR, mdev(14, 3), devNode);

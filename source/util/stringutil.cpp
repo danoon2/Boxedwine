@@ -7,10 +7,6 @@
 #include <string>
 #include <charconv>
 
-BString getNativeStringB(U32 address, char* buffer, U32 cbBuffer) { 
-    return BString::copy(getNativeString(address, buffer, cbBuffer)); 
-}
-
 bool vectorContainsIgnoreCase(const std::vector<BString>& strs, BString search) {
     for (auto& s : strs) {
         if (s.contains(search, true)) {

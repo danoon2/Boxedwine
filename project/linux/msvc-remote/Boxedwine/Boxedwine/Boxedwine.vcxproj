@@ -216,6 +216,7 @@
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\x64\x64Data.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\x64\x64Ops.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\hardmmu\hard_memory.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\kmemory_soft.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\soft_code_page.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\soft_copy_on_write_page.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\soft_file_map.cpp" />
@@ -242,7 +243,6 @@
     <ClCompile Include="..\..\..\..\..\source\io\fszipnode.cpp" />
     <ClCompile Include="..\..\..\..\..\source\io\fszipopennode.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\devs\devdsp.cpp" />
-    <ClCompile Include="..\..\..\..\..\source\kernel\devs\devfb.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\devs\devinput.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\devs\devmixer.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\devs\devnull.cpp" />
@@ -510,7 +510,6 @@
     <ClInclude Include="..\..\..\..\..\include\cpuinfo.h" />
     <ClInclude Include="..\..\..\..\..\include\crc.h" />
     <ClInclude Include="..\..\..\..\..\include\devdsp.h" />
-    <ClInclude Include="..\..\..\..\..\include\devfb.h" />
     <ClInclude Include="..\..\..\..\..\include\devinput.h" />
     <ClInclude Include="..\..\..\..\..\include\devmixer.h" />
     <ClInclude Include="..\..\..\..\..\include\devnull.h" />
@@ -527,6 +526,7 @@
     <ClInclude Include="..\..\..\..\..\include\kfile.h" />
     <ClInclude Include="..\..\..\..\..\include\kfiledescriptor.h" />
     <ClInclude Include="..\..\..\..\..\include\kfilelock.h" />
+    <ClInclude Include="..\..\..\..\..\include\kmemory.h" />
     <ClInclude Include="..\..\..\..\..\include\knativeaudio.h" />
     <ClInclude Include="..\..\..\..\..\include\knativesocket.h" />
     <ClInclude Include="..\..\..\..\..\include\knativesystem.h" />
@@ -742,6 +742,7 @@
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\dynamic\dynamic_generic_base.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\dynamic\dynamic_incdec.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\dynamic\dynamic_jump.h" />
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\dynamic\dynamic_memory.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\dynamic\dynamic_mmx.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\dynamic\dynamic_mov.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\dynamic\dynamic_other.h" />
@@ -791,6 +792,7 @@
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\x64\x64Data.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\x64\x64Ops.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\hardmmu\hard_memory.h" />
+    <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\kmemory_soft.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\soft_code_page.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\soft_copy_on_write_page.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\soft_file_map.h" />

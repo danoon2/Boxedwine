@@ -5,7 +5,7 @@
 #include "x64Asm.h"
 #include "x64Ops.h"
 #include "../common/common_other.h"
-#include "../../../../source/emulation/hardmmu/hard_memory.h"
+#include "../../../../source/emulation/hardmmu/kmemory_hard.h"
 #include "../normal/normalCPU.h"
 #include "../normal/instructions.h"
 #include "../binaryTranslation/btCodeMemoryWrite.h"
@@ -2343,7 +2343,7 @@ void X64Asm::internal_addDynamicCheck(U32 address, U32 len, U32 needsFlags, bool
 
         if (len<=4) {        
             if (len==1) {
-                U8 original = readb(address);
+                U8 original = cpu->memory->readb(address);
 
                 if (inlineCmp) {
                     write8(0x41);
@@ -2363,7 +2363,7 @@ void X64Asm::internal_addDynamicCheck(U32 address, U32 len, U32 needsFlags, bool
                     write8(original);
                 }
             } else if (len==2) {
-                U16 original = readw(address);
+                U16 original = cpu->memory->readw(address);
 
                 if (inlineCmp) {
                     write8(0x66);
@@ -2385,7 +2385,7 @@ void X64Asm::internal_addDynamicCheck(U32 address, U32 len, U32 needsFlags, bool
                     write16(original);
                 }
             } else {
-                U32 original = readd(address);
+                U32 original = cpu->memory->readd(address);
 
                 if (inlineCmp) {
                     write8(0x41);
@@ -2417,7 +2417,7 @@ void X64Asm::internal_addDynamicCheck(U32 address, U32 len, U32 needsFlags, bool
                 }
             }
         } else if (len<=8) {
-            U64 original = readq(address);
+            U64 original = cpu->memory->readq(address);
 
             if (len==5) {
                 original&=0x000000FFFFFFFFFFl;
@@ -2505,7 +2505,7 @@ void X64Asm::internal_addDynamicCheck(U32 address, U32 len, U32 needsFlags, bool
 }
 
 void X64Asm::addDynamicCheck(bool panic) {
-    DecodedBlock* block = NormalCPU::getBlockForInspectionButNotUsed(this->ip+this->cpu->seg[CS].address, this->cpu->isBig());
+    DecodedBlock* block = NormalCPU::getBlockForInspectionButNotUsed(this->cpu, this->ip+this->cpu->seg[CS].address, this->cpu->isBig());
     U32 len = block->op->len;
     U32 needsFlags = instructionInfo[block->op->inst].flagsUsed | DecodedOp::getNeededFlags(block, block->op, OF|SF|ZF|PF|AF|CF);
     U32 address = this->startOfOpIp + this->cpu->seg[CS].address;
@@ -2986,18 +2986,16 @@ void X64Asm::signalIllegalInstruction(int code) {
     doJmp(true);
 }
 
-static U8 fetchByte(U32 *eip) {
-    return readb((*eip)++);
+static U8 fetchByte(void* p, U32 *eip) {
+    KMemory* memory = (KMemory*)p;
+    return memory->readb((*eip)++);
 }
 
 static void x64log(CPU* cpu) {
     if (!cpu->logFile)
         return;
-    THREAD_LOCAL static DecodedBlock* block;
-    if (!block) {
-        block = new DecodedBlock();
-    }
-    decodeBlock(fetchByte, cpu->eip.u32+cpu->seg[CS].address, cpu->isBig(), 1, K_PAGE_SIZE, 0, block);
+    thread_local static DecodedBlock* block = new DecodedBlock();
+    decodeBlock(fetchByte, cpu->memory, cpu->eip.u32+cpu->seg[CS].address, cpu->isBig(), 1, K_PAGE_SIZE, 0, block);
     block->op->log(cpu);
     block->op->dealloc(false);
 }
@@ -4333,8 +4331,9 @@ void X64Asm::fpu7(U8 rm) {
 }
 
 void X64Asm::translateInstruction() {
+    KMemoryData* mem = getMemData(cpu->memory);
     this->startOfOpIp = this->ip;
-    this->useSingleMemOffset = KSystem::useSingleMemOffset && !this->cpu->thread->memory->doesInstructionNeedMemoryOffset(this->ip);
+    this->useSingleMemOffset = KSystem::useSingleMemOffset && !mem->doesInstructionNeedMemoryOffset(this->ip);
 #ifdef _DEBUG
     //data->logOp(data->ip);
     // just makes debugging the asm output easier

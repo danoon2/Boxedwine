@@ -39,7 +39,7 @@ bool FsZipOpenNode::isOpen() {
     return true;
 }
 
-U32 FsZipOpenNode::ioctl(U32 request) {
+U32 FsZipOpenNode::ioctl(KThread* thread, U32 request) {
     return -K_ENODEV;
 }
 
@@ -64,7 +64,7 @@ bool FsZipOpenNode::isReadReady() {
     return (this->flags & K_O_ACCMODE)!=K_O_WRONLY;
 }
 
-U32 FsZipOpenNode::map(U32 address, U32 len, S32 prot, S32 flags, U64 off) {
+U32 FsZipOpenNode::map(KThread* thread, U32 address, U32 len, S32 prot, S32 flags, U64 off) {
     return 0;
 }
 

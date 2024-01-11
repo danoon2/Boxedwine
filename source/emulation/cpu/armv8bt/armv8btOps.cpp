@@ -4713,7 +4713,7 @@ void opStmxcsr(Armv8btAsm* data) {
 void opXsave(Armv8btAsm* data) {} // Core 2+
 void opXrstor(Armv8btAsm* data) {} // Core 2+
 void opLfence(Armv8btAsm* data) {
-    data->fullMemoryBarrier(); // :TODO: is a full barrier necessary
+    data->fullMemoryBarrier(); // :TODO: is a full barrier necessary (dmb ishld)
 }
 void opMfence(Armv8btAsm* data) {
     data->fullMemoryBarrier();

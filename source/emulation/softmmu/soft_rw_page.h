@@ -25,26 +25,23 @@
 
 class RWPage : public Page {
 protected:
-    RWPage(U8* page, U32 address, U32 flags, Type type=RW_Page);
+    RWPage(KMemoryData* memory, U8* page, U32 address, U32 flags, Type type=RW_Page);
 public:    
-    static RWPage* alloc(U8* page, U32 address, U32 flags);
+    static RWPage* alloc(KMemoryData* memory, U8* page, U32 address, U32 flags);
 
     virtual ~RWPage();
 
-    U8 readb(U32 address);
-    void writeb(U32 address, U8 value);
-    U16 readw(U32 address);
-    void writew(U32 address, U16 value);
-    U32 readd(U32 address);
-    void writed(U32 address, U32 value);
-    U8* getCurrentReadPtr();
-    U8* getCurrentWritePtr();
-    U8* getReadAddress(U32 address, U32 len);
-    U8* getWriteAddress(U32 address, U32 len);
-    U8* getReadWriteAddress(U32 address, U32 len);
+    virtual U8 readb(U32 address) override;
+    virtual void writeb(U32 address, U8 value) override;
+    virtual U16 readw(U32 address) override;
+    virtual void writew(U32 address, U16 value) override;
+    virtual U32 readd(U32 address) override;
+    virtual void writed(U32 address, U32 value) override;
+    virtual U8* getReadPtr(U32 address, bool makeReady = false) override;
+    virtual U8* getWritePtr(U32 address, U32 len, bool makeReady = false) override;
 
-    bool inRam() {return true;}
-    void close() {delete this;}
+    virtual bool inRam() override {return true;}
+    virtual void close() override {delete this;}
 
     U8* page;
     U32 address;

@@ -66,7 +66,7 @@ void BoxedwineData::startApp() {
     BString out;
     bool windowCreated = false;
     TinyProcessLib::Process process(cmd.c_str(), "", [&out, &windowCreated](const char* bytes, size_t n) {
-        for (int i=0;i<n;i++) {
+        for (U32 i=0;i<n;i++) {
             out += bytes[i];
             if (bytes[i] != '\n') {
                 continue;

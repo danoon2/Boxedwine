@@ -28,9 +28,9 @@ void OPCALL normal_setO_reg(CPU* cpu, DecodedOp* op) {
 void OPCALL normal_setO_mem(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (cpu->getOF()) {
-        writeb(eaa(cpu, op), 1);
+        cpu->memory->writeb(eaa(cpu, op), 1);
     } else {
-        writeb(eaa(cpu, op), 0);
+        cpu->memory->writeb(eaa(cpu, op), 0);
     }
     NEXT();
 }
@@ -46,9 +46,9 @@ void OPCALL normal_setNO_reg(CPU* cpu, DecodedOp* op) {
 void OPCALL normal_setNO_mem(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (!cpu->getOF()) {
-        writeb(eaa(cpu, op), 1);
+        cpu->memory->writeb(eaa(cpu, op), 1);
     } else {
-        writeb(eaa(cpu, op), 0);
+        cpu->memory->writeb(eaa(cpu, op), 0);
     }
     NEXT();
 }
@@ -64,9 +64,9 @@ void OPCALL normal_setB_reg(CPU* cpu, DecodedOp* op) {
 void OPCALL normal_setB_mem(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (cpu->getCF()) {
-        writeb(eaa(cpu, op), 1);
+        cpu->memory->writeb(eaa(cpu, op), 1);
     } else {
-        writeb(eaa(cpu, op), 0);
+        cpu->memory->writeb(eaa(cpu, op), 0);
     }
     NEXT();
 }
@@ -82,9 +82,9 @@ void OPCALL normal_setNB_reg(CPU* cpu, DecodedOp* op) {
 void OPCALL normal_setNB_mem(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (!cpu->getCF()) {
-        writeb(eaa(cpu, op), 1);
+        cpu->memory->writeb(eaa(cpu, op), 1);
     } else {
-        writeb(eaa(cpu, op), 0);
+        cpu->memory->writeb(eaa(cpu, op), 0);
     }
     NEXT();
 }
@@ -100,9 +100,9 @@ void OPCALL normal_setZ_reg(CPU* cpu, DecodedOp* op) {
 void OPCALL normal_setZ_mem(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (cpu->getZF()) {
-        writeb(eaa(cpu, op), 1);
+        cpu->memory->writeb(eaa(cpu, op), 1);
     } else {
-        writeb(eaa(cpu, op), 0);
+        cpu->memory->writeb(eaa(cpu, op), 0);
     }
     NEXT();
 }
@@ -118,9 +118,9 @@ void OPCALL normal_setNZ_reg(CPU* cpu, DecodedOp* op) {
 void OPCALL normal_setNZ_mem(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (!cpu->getZF()) {
-        writeb(eaa(cpu, op), 1);
+        cpu->memory->writeb(eaa(cpu, op), 1);
     } else {
-        writeb(eaa(cpu, op), 0);
+        cpu->memory->writeb(eaa(cpu, op), 0);
     }
     NEXT();
 }
@@ -136,9 +136,9 @@ void OPCALL normal_setBE_reg(CPU* cpu, DecodedOp* op) {
 void OPCALL normal_setBE_mem(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (cpu->getZF() || cpu->getCF()) {
-        writeb(eaa(cpu, op), 1);
+        cpu->memory->writeb(eaa(cpu, op), 1);
     } else {
-        writeb(eaa(cpu, op), 0);
+        cpu->memory->writeb(eaa(cpu, op), 0);
     }
     NEXT();
 }
@@ -154,9 +154,9 @@ void OPCALL normal_setNBE_reg(CPU* cpu, DecodedOp* op) {
 void OPCALL normal_setNBE_mem(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (!cpu->getZF() && !cpu->getCF()) {
-        writeb(eaa(cpu, op), 1);
+        cpu->memory->writeb(eaa(cpu, op), 1);
     } else {
-        writeb(eaa(cpu, op), 0);
+        cpu->memory->writeb(eaa(cpu, op), 0);
     }
     NEXT();
 }
@@ -172,9 +172,9 @@ void OPCALL normal_setS_reg(CPU* cpu, DecodedOp* op) {
 void OPCALL normal_setS_mem(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (cpu->getSF()) {
-        writeb(eaa(cpu, op), 1);
+        cpu->memory->writeb(eaa(cpu, op), 1);
     } else {
-        writeb(eaa(cpu, op), 0);
+        cpu->memory->writeb(eaa(cpu, op), 0);
     }
     NEXT();
 }
@@ -190,9 +190,9 @@ void OPCALL normal_setNS_reg(CPU* cpu, DecodedOp* op) {
 void OPCALL normal_setNS_mem(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (!cpu->getSF()) {
-        writeb(eaa(cpu, op), 1);
+        cpu->memory->writeb(eaa(cpu, op), 1);
     } else {
-        writeb(eaa(cpu, op), 0);
+        cpu->memory->writeb(eaa(cpu, op), 0);
     }
     NEXT();
 }
@@ -208,9 +208,9 @@ void OPCALL normal_setP_reg(CPU* cpu, DecodedOp* op) {
 void OPCALL normal_setP_mem(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (cpu->getPF()) {
-        writeb(eaa(cpu, op), 1);
+        cpu->memory->writeb(eaa(cpu, op), 1);
     } else {
-        writeb(eaa(cpu, op), 0);
+        cpu->memory->writeb(eaa(cpu, op), 0);
     }
     NEXT();
 }
@@ -226,9 +226,9 @@ void OPCALL normal_setNP_reg(CPU* cpu, DecodedOp* op) {
 void OPCALL normal_setNP_mem(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (!cpu->getPF()) {
-        writeb(eaa(cpu, op), 1);
+        cpu->memory->writeb(eaa(cpu, op), 1);
     } else {
-        writeb(eaa(cpu, op), 0);
+        cpu->memory->writeb(eaa(cpu, op), 0);
     }
     NEXT();
 }
@@ -244,9 +244,9 @@ void OPCALL normal_setL_reg(CPU* cpu, DecodedOp* op) {
 void OPCALL normal_setL_mem(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (cpu->getSF()!=cpu->getOF()) {
-        writeb(eaa(cpu, op), 1);
+        cpu->memory->writeb(eaa(cpu, op), 1);
     } else {
-        writeb(eaa(cpu, op), 0);
+        cpu->memory->writeb(eaa(cpu, op), 0);
     }
     NEXT();
 }
@@ -262,9 +262,9 @@ void OPCALL normal_setNL_reg(CPU* cpu, DecodedOp* op) {
 void OPCALL normal_setNL_mem(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (cpu->getSF()==cpu->getOF()) {
-        writeb(eaa(cpu, op), 1);
+        cpu->memory->writeb(eaa(cpu, op), 1);
     } else {
-        writeb(eaa(cpu, op), 0);
+        cpu->memory->writeb(eaa(cpu, op), 0);
     }
     NEXT();
 }
@@ -280,9 +280,9 @@ void OPCALL normal_setLE_reg(CPU* cpu, DecodedOp* op) {
 void OPCALL normal_setLE_mem(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (cpu->getZF() || cpu->getSF()!=cpu->getOF()) {
-        writeb(eaa(cpu, op), 1);
+        cpu->memory->writeb(eaa(cpu, op), 1);
     } else {
-        writeb(eaa(cpu, op), 0);
+        cpu->memory->writeb(eaa(cpu, op), 0);
     }
     NEXT();
 }
@@ -298,9 +298,9 @@ void OPCALL normal_setNLE_reg(CPU* cpu, DecodedOp* op) {
 void OPCALL normal_setNLE_mem(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (!cpu->getZF() && cpu->getSF()==cpu->getOF()) {
-        writeb(eaa(cpu, op), 1);
+        cpu->memory->writeb(eaa(cpu, op), 1);
     } else {
-        writeb(eaa(cpu, op), 0);
+        cpu->memory->writeb(eaa(cpu, op), 0);
     }
     NEXT();
 }

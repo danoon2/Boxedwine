@@ -4,7 +4,6 @@
 
 #include "x64Data.h"
 #include "x64CodeChunk.h"
-#include "../../hardmmu/hard_memory.h"
 
 X64Data::X64Data(x64CPU* cpu) : cpu(cpu) {
     this->resetForNewOp();
@@ -21,7 +20,7 @@ U8 X64Data::fetch8() {
         this->ip++;
         this->ip &= 0xFFFF;
     }
-    return readb(address);
+    return cpu->memory->readb(address);
 }
 
 U16 X64Data::fetch16() {

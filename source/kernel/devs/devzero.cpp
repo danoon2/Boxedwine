@@ -23,10 +23,12 @@
 class DevZero : public FsVirtualOpenNode {
 public:
     DevZero(const BoxedPtr<FsNode>& node, U32 flags) : FsVirtualOpenNode(node, flags) {}
-    virtual U32  map(U32 address, U32 len, S32 prot, S32 flags, U64 off);
-    virtual bool canMap();
-    virtual U32 readNative(U8* buffer, U32 len);
-    virtual U32 writeNative(U8* buffer, U32 len);
+
+    // From FsOpenNode
+    virtual U32 map(KThread* thread, U32 address, U32 len, S32 prot, S32 flags, U64 off) override;
+    virtual bool canMap() override;
+    virtual U32 readNative(U8* buffer, U32 len) override;
+    virtual U32 writeNative(U8* buffer, U32 len) override;
 };
 
 U32 DevZero::readNative(U8* buffer, U32 len) {
@@ -38,8 +40,12 @@ U32 DevZero::writeNative(U8* buffer, U32 len) {
     return len;
 }
 
-U32 DevZero::map(U32 address, U32 len, S32 prot, S32 flags, U64 off) {
-    return KThread::currentThread()->process->mmap(address, len, prot, flags, -1, off);
+U32 DevZero::map(KThread* thread, U32 address, U32 len, S32 prot, S32 flags, U64 off) {
+    // :TODO: not correct, writing to this should just be ignored
+    return thread->memory->mmap(thread, address, len, prot, flags, -1, off);
+    if (prot & K_PROT_WRITE) {
+        kwarn("DevZero::map with PROT_WRITE not implemented, this will probably cause a problem");
+    }
 }
 
 bool DevZero::canMap() {

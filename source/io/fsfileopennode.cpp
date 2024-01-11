@@ -58,7 +58,7 @@ void FsFileOpenNode::reopen() {
     this->handle = ::open(this->fileNode->nativePath.c_str(), openFlags, 0666);
 }
 
-U32 FsFileOpenNode::ioctl(U32 request) {
+U32 FsFileOpenNode::ioctl(KThread* thread, U32 request) {
     return -K_ENODEV;
 }
 
@@ -83,7 +83,7 @@ bool FsFileOpenNode::isReadReady() {
     return (this->flags & K_O_ACCMODE)!=K_O_WRONLY;
 }
 
-U32 FsFileOpenNode::map(U32 address, U32 len, S32 prot, S32 flags, U64 off) {
+U32 FsFileOpenNode::map(KThread* thread, U32 address, U32 len, S32 prot, S32 flags, U64 off) {
     return 0;
 }
 

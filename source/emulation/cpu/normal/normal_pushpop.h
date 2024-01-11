@@ -29,12 +29,12 @@ void OPCALL normal_popEw_reg(CPU* cpu, DecodedOp* op){
 }
 void OPCALL normal_pushEw_mem(CPU* cpu, DecodedOp* op){
     START_OP(cpu, op);
-    cpu->push16(readw(eaa(cpu, op)));
+    cpu->push16(cpu->memory->readw(eaa(cpu, op)));
     NEXT();
 }
 void OPCALL normal_popEw_mem(CPU* cpu, DecodedOp* op){
     START_OP(cpu, op);
-    writew(eaa(cpu, op), cpu->pop16());
+    cpu->memory->writew(eaa(cpu, op), cpu->pop16());
     NEXT();
 }
 void OPCALL normal_pushEd_reg(CPU* cpu, DecodedOp* op){
@@ -49,12 +49,12 @@ void OPCALL normal_popEd_reg(CPU* cpu, DecodedOp* op){
 }
 void OPCALL normal_pushEd_mem(CPU* cpu, DecodedOp* op){
     START_OP(cpu, op);
-    cpu->push32(readd(eaa(cpu, op)));
+    cpu->push32(cpu->memory->readd(eaa(cpu, op)));
     NEXT();
 }
 void OPCALL normal_popEd_mem(CPU* cpu, DecodedOp* op){
     START_OP(cpu, op);
-    writed(eaa(cpu, op), cpu->pop32());
+    cpu->memory->writed(eaa(cpu, op), cpu->pop32());
     NEXT();
 }
 void OPCALL normal_pushSeg16(CPU* cpu, DecodedOp* op){

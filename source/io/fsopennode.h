@@ -8,8 +8,8 @@ class FsOpenNode {
 public:
     FsOpenNode(BoxedPtr<FsNode> node, U32 flags);
 
-    U32 read(U32 address, U32 len); // will call into readNative
-    U32 write(U32 address, U32 len); // will call into writeNative
+    U32 read(KThread* thread, U32 address, U32 len); // will call into readNative
+    U32 write(KThread* thread, U32 address, U32 len); // will call into writeNative
 
     U32 getDirectoryEntryCount();
     BoxedPtr<FsNode> getDirectoryEntry(U32 index, BString& name);
@@ -20,9 +20,9 @@ public:
     virtual bool setLength(S64 length)=0;
     virtual S64  getFilePointer()=0;
     virtual S64  seek(S64 pos)=0;	    
-    virtual U32  map(U32 address, U32 len, S32 prot, S32 flags, U64 off)=0;
+    virtual U32  map(KThread* thread, U32 address, U32 len, S32 prot, S32 flags, U64 off)=0;
     virtual bool canMap()=0;
-    virtual U32  ioctl(U32 request)=0;	
+    virtual U32  ioctl(KThread* thread, U32 request)=0;	
     virtual void setAsync(bool isAsync)=0;
     virtual bool isAsync()=0;
     virtual void waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events)=0;

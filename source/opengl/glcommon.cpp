@@ -33,11 +33,7 @@
 
 #include "glMarshal.h"
 
-#ifdef BOXEDWINE_64BIT_MMU
-#include "../emulation/hardmmu/hard_memory.h"
-#endif
-
-THREAD_LOCAL static BString glExt;
+thread_local static BString glExt;
 
 float fARG(CPU* cpu, U32 arg) {
     struct int2Float i;
@@ -47,7 +43,7 @@ float fARG(CPU* cpu, U32 arg) {
 
 double dARG(CPU* cpu, int address) {
     struct long2Double i;
-    i.l = readq(address);
+    i.l = cpu->memory->readq(address);
     return i.d;
 }
 
@@ -69,7 +65,7 @@ GLintptr* marshalip(CPU* cpu, U32 address, U32 count) {
         bufferip_len = count;
     }
     for (i=0;i<count;i++) {
-        bufferip[i] = (GLintptr)readd(address);
+        bufferip[i] = (GLintptr)cpu->memory->readd(address);
         address+=4;
     }
     return bufferip;
@@ -92,7 +88,7 @@ GLintptr* marshal2ip(CPU* cpu, U32 address, U32 count) {
         buffer2ip_len = count;
     }
     for (i=0;i<count;i++) {
-        buffer2ip[i] = (GLintptr)readd(address);
+        buffer2ip[i] = (GLintptr)cpu->memory->readd(address);
         address+=4;
     }
     return buffer2ip;
@@ -145,7 +141,7 @@ void glcommon_glFeedbackBuffer(CPU* cpu) {
     GLenum type = ARG2;
 #ifdef BOXEDWINE_64BIT_MMU
     U32 buffer = ARG3; // GLfloat*
-    GL_FUNC(pglFeedbackBuffer)(size, type, (GLfloat*)getNativeAddress(cpu->thread->process->memory, buffer));
+    GL_FUNC(pglFeedbackBuffer)(size, type, (GLfloat*)getPhysicalAddress(buffer, 0));
 #else
     if (size > feedbackBufferSize) {
         if (feedbackBuffer) {
@@ -165,7 +161,7 @@ static const char* addedExt[] = { "WGL_ARB_create_context_Invalid" };
 void glcommon_glGetIntegerv(CPU* cpu) {
     GLenum pname = ARG1;
     if (pname == GL_NUM_EXTENSIONS) {
-        writed(ARG2, cpu->thread->process->numberOfExtensions);
+        cpu->memory->writed(ARG2, cpu->thread->process->numberOfExtensions);
     } else {
         GLint* buffer = marshali(cpu, ARG2, getSize(ARG1));
         GL_FUNC(pglGetIntegerv)(pname, buffer);
@@ -194,7 +190,8 @@ void printOpenGLInfo() {
 void glcommon_glGetString(CPU* cpu) {
     U32 name = ARG1;
     const char* result = (const char*)GL_FUNC(pglGetString)(name);
-    
+    KProcess* process = cpu->thread->process.get();
+
     if (name == GL_EXTENSIONS) {
 #ifdef DISABLE_GL_EXTENSIONS
         result = "GL_EXT_texture3D";
@@ -215,7 +212,7 @@ void glcommon_glGetString(CPU* cpu) {
             for (U32 i=0;i<sizeof(extentions)/sizeof(char*);i++) {
                 supportedExt.push_back(BString::copy(extentions[i]));
             }
-            cpu->thread->process->numberOfExtensions = 0;
+            process->numberOfExtensions = 0;
             for (U32 i=0;i<hardwareExt.size();i++) {
                 if (std::find(supportedExt.begin(), supportedExt.end(), hardwareExt[i]) == supportedExt.end()) {
                     continue;
@@ -224,14 +221,14 @@ void glcommon_glGetString(CPU* cpu) {
                 if (!glExt.length() || strstr(glExt.c_str(), hardwareExt[i].c_str())) {
                     if (ext[0]!=0)
                         strcat(ext, " ");
-                    cpu->thread->process->numberOfExtensions++;
+                    process->numberOfExtensions++;
                     strcat(ext, hardwareExt[i].c_str());
                 }
             }
             for (U32 i = 0; i < sizeof(addedExt) / sizeof(*addedExt); i++) {
                 if (ext[0] != 0)
                     strcat(ext, " ");
-                cpu->thread->process->numberOfExtensions++;
+                process->numberOfExtensions++;
                 strcat(ext, addedExt[i]);
             }
 
@@ -241,51 +238,36 @@ void glcommon_glGetString(CPU* cpu) {
         GL_LOG("glGetString GLenum name=GL_EXTENSIONS ret=%s", result);
     } else {
     }
-#ifdef BOXEDWINE_64BIT_MMU
-    if (!cpu->thread->process->glStrings.count(name)) {
-        U32 len = (U32)strlen(result);
-        U32 address = cpu->thread->process->allocNative(len+1);
-        char* nativeResult = (char*)getNativeAddress(cpu->thread->process->memory, address);
-        strcpy(nativeResult, result);
-        cpu->thread->process->glStrings[name] = address;
 
-        if (name == GL_EXTENSIONS) {
-            address = cpu->thread->process->allocNative(len + 1);
-            cpu->thread->process->glStringsiExtensions = address;
-            nativeResult = (char*)getNativeAddress(cpu->thread->process->memory, address);
-            strcpy(nativeResult, result);
-            cpu->thread->process->glStringsiExtensionsOffset.push_back(0);
-            for (int i = 0; i < (int)len; i++) {
-                char c = nativeResult[i];
-                if (c == ' ') {
-                    nativeResult[i] = 0;
-                    cpu->thread->process->glStringsiExtensionsOffset.push_back(i + 1);
-                }
-            }
-        }
-    }
-    EAX = cpu->thread->process->glStrings[name];
-#else
     if (name == GL_EXTENSIONS && !cpu->thread->process->glStringsiExtensions) {
-        int len = strlen(result);
-        U32 pageCount = ((len + 1) + K_PAGE_MASK) >> K_PAGE_SHIFT;
-        U32 page = 0;
-        cpu->thread->memory->findFirstAvailablePage(ADDRESS_PROCESS_MMAP_START, pageCount, &page, false);
-        cpu->thread->memory->allocPages(page, pageCount, PAGE_READ | PAGE_WRITE, 0, 0, nullptr);
-        U32 address = page << K_PAGE_SHIFT;
+        U32 len = (U32)strlen(result)+1;
+        U32 address = cpu->memory->mmap(cpu->thread, 0, len, K_PROT_WRITE|K_PROT_READ, K_MAP_PRIVATE | K_MAP_ANONYMOUS, -1, 0);
+        cpu->memory->memcpy(address, (void*)result, len);
         cpu->thread->process->glStringsiExtensions = address;
-        memcopyFromNative(address, result, len + 1);
         cpu->thread->process->glStringsiExtensionsOffset.push_back(0);
+
         for (int i = 0; i < (int)len; i++) {
-            char c = readb(address+i);
+            char c = result[i];
             if (c == ' ') {
-                writeb(address+i, 0);
+                cpu->memory->writeb(address+i, 0);
                 cpu->thread->process->glStringsiExtensionsOffset.push_back(i + 1);
             }
         }
     }
-    EAX = cpu->thread->memory->mapNativeMemory((void*)result, (U32)(strlen(result)+1));
-#endif
+    if (process->glStrings.count(name)) {
+        U32 previousAddress = process->glStrings[name];
+        if (process->memory->memcmp(previousAddress, result, (U32)strlen(result)+1) == 0) {
+            EAX = previousAddress;
+            return;
+        }
+    }
+    U32 len = (U32)strlen(result) + 1;
+    U32 address = cpu->memory->mmap(cpu->thread, 0, len, K_PROT_WRITE|K_PROT_READ, K_MAP_PRIVATE | K_MAP_ANONYMOUS, -1, 0);
+    cpu->memory->memcpy(address, (void*)result, len + 1);
+    cpu->thread->process->glStringsiExtensions = address;
+
+    process->glStrings[name] = address;
+    EAX = address;
 }
 
 // GLAPI void APIENTRY glGetTexImage( GLenum target, GLint level, GLenum format, GLenum type, GLvoid *pixels ) {
@@ -456,17 +438,17 @@ void glcommon_glGetPointerv(CPU* cpu) {
         GL_FUNC(pglGetPointerv)(ARG1, &params);
         if ((U64)params>0xFFFFFFFFl)
             kwarn("problem with glGetPointerv");
-        writed(ARG2, (U32)(size_t)params);
+        cpu->memory->writed(ARG2, (U32)(size_t)params);
     }
 #else
     switch (ARG1) {
-    case GL_COLOR_ARRAY_POINTER: writed(readd(ARG2), cpu->thread->glColorPointer.ptr); break;
-    case GL_EDGE_FLAG_ARRAY_POINTER: writed(readd(ARG2), cpu->thread->glEdgeFlagPointer.ptr); break;
-    case GL_INDEX_ARRAY_POINTER: writed(readd(ARG2), cpu->thread->glIndexPointer.ptr); break;
-    case GL_NORMAL_ARRAY_POINTER: writed(readd(ARG2), cpu->thread->glNormalPointer.ptr); break;
-    case GL_TEXTURE_COORD_ARRAY_POINTER: writed(readd(ARG2), cpu->thread->glTexCoordPointer.ptr); break;
-    case GL_VERTEX_ARRAY_POINTER: writed(readd(ARG2), cpu->thread->glVertextPointer.ptr); break;
-    default: writed(readd(ARG2), 0);
+    case GL_COLOR_ARRAY_POINTER: cpu->memory->writed(cpu->memory->readd(ARG2), cpu->thread->glColorPointer.ptr); break;
+    case GL_EDGE_FLAG_ARRAY_POINTER: cpu->memory->writed(cpu->memory->readd(ARG2), cpu->thread->glEdgeFlagPointer.ptr); break;
+    case GL_INDEX_ARRAY_POINTER: cpu->memory->writed(cpu->memory->readd(ARG2), cpu->thread->glIndexPointer.ptr); break;
+    case GL_NORMAL_ARRAY_POINTER: cpu->memory->writed(cpu->memory->readd(ARG2), cpu->thread->glNormalPointer.ptr); break;
+    case GL_TEXTURE_COORD_ARRAY_POINTER: cpu->memory->writed(cpu->memory->readd(ARG2), cpu->thread->glTexCoordPointer.ptr); break;
+    case GL_VERTEX_ARRAY_POINTER: cpu->memory->writed(cpu->memory->readd(ARG2), cpu->thread->glVertextPointer.ptr); break;
+    default: cpu->memory->writed(cpu->memory->readd(ARG2), 0);
     }
 #endif
 }
@@ -477,7 +459,7 @@ void glcommon_glInterleavedArrays(CPU* cpu) {
     GLsizei stride = ARG2;
     U32 address = ARG3;
 #ifdef BOXEDWINE_64BIT_MMU
-    GL_FUNC(pglInterleavedArrays)(format, stride, getNativeAddress(cpu->thread->process->memory, address));
+    GL_FUNC(pglInterleavedArrays)(format, stride, getPhysicalAddress(address, 0));
 #else
     GL_FUNC(pglInterleavedArrays)(format, stride, marshalInterleavedPointer(cpu, format, stride, address));
 #endif    

@@ -9,6 +9,8 @@
 #include "testCPU.h"
 #include "testMMX.h"
 
+extern KMemory* memory;
+
 void testMmxEmms() {
 
 }
@@ -53,9 +55,9 @@ if (result!=tmp) {failed("failed");}}
 
 void initMmxTest() {    
     newInstruction(0);
-    writeq(cpu->seg[DS].address, MMX_MEM_VALUE64_DEFAULT);
-    writeq(cpu->seg[DS].address+MMX_MEM_VALUE64_OFFSET, MMX_MEM_VALUE64);
-    writed(cpu->seg[DS].address+MMX_MEM_VALUE32_OFFSET, MMX_MEM_VALUE32);
+    memory->writeq(cpu->seg[DS].address, MMX_MEM_VALUE64_DEFAULT);
+    memory->writeq(cpu->seg[DS].address+MMX_MEM_VALUE64_OFFSET, MMX_MEM_VALUE64);
+    memory->writed(cpu->seg[DS].address+MMX_MEM_VALUE32_OFFSET, MMX_MEM_VALUE32);
     for (int i=0;i<8;i++) {
         // movq  mm0, QWORD PTR ds:0x0
         pushCode8(0x0f);
@@ -68,7 +70,7 @@ void initMmxTest() {
 }
 
 void loadMMX(U8 reg, U32 index, U64 value) {
-    writeq(cpu->seg[DS].address+MMX_MEM_VALUE_TMP_OFFSET+index*16, value);
+    memory->writeq(cpu->seg[DS].address+MMX_MEM_VALUE_TMP_OFFSET+index*16, value);
     pushCode8(0x0f);
     pushCode8(0x6F);
     pushCode8(0x04 | (reg<<3));
@@ -163,14 +165,14 @@ void testMmxMovdToE() {
         }
         initMmxTest();      
         loadMMX(m, 1, MMX_MEM_VALUE64);
-        writed(cpu->seg[DS].address+MMX_MEM_VALUE_TMP_OFFSET, 0x11111111);
+        memory->writed(cpu->seg[DS].address+MMX_MEM_VALUE_TMP_OFFSET, 0x11111111);
         pushCode8(0x0f);
         pushCode8(0x7E);
         pushCode8(0x04 | (m<<3));
         pushCode8(0x25);
         pushCode32(MMX_MEM_VALUE_TMP_OFFSET);
         runTestCPU();
-        if (readd(cpu->seg[DS].address+MMX_MEM_VALUE_TMP_OFFSET)!=(U32)(MMX_MEM_VALUE64)) {
+        if (memory->readd(cpu->seg[DS].address+MMX_MEM_VALUE_TMP_OFFSET)!=(U32)(MMX_MEM_VALUE64)) {
             failed("movd failed");
         }
     }    
@@ -203,7 +205,7 @@ void testMmx64(U8 op, U64 value1, U64 value2, U64 result) {
         }
         initMmxTest();         
         loadMMX(m, 0, value1);
-        writeq(cpu->seg[DS].address+MMX_MEM_VALUE_TMP_OFFSET+16, value2);
+        memory->writeq(cpu->seg[DS].address+MMX_MEM_VALUE_TMP_OFFSET+16, value2);
         pushCode8(0x0f);
         pushCode8(op);
         pushCode8(0x04 | (m<<3));
@@ -275,7 +277,7 @@ void testMmx64Eimm8(U8 preOp1, U8 op, U64 value1, U32 value2, U64 result, U8 imm
         }
         initMmxTest();         
         loadMMX(m, 0, value1);
-        writed(cpu->seg[DS].address+MMX_MEM_VALUE_TMP_OFFSET+16, value2);
+        memory->writed(cpu->seg[DS].address+MMX_MEM_VALUE_TMP_OFFSET+16, value2);
         if (preOp1) {
             pushCode8(preOp1);
         }
@@ -355,7 +357,7 @@ void testMmx64imm8(U8 preOp1, U8 op, U64 value1, U64 value2, U64 result, U8 imm8
         }
         initMmxTest();         
         loadMMX(m, 0, value1);
-        writeq(cpu->seg[DS].address+MMX_MEM_VALUE_TMP_OFFSET+16, value2);
+        memory->writeq(cpu->seg[DS].address+MMX_MEM_VALUE_TMP_OFFSET+16, value2);
         if (preOp1) {
             pushCode8(preOp1);
         }
@@ -439,14 +441,14 @@ void testMmxMovqToE() {
         }
         initMmxTest();      
         loadMMX(m, 1, MMX_MEM_VALUE64);
-        writeq(cpu->seg[DS].address+MMX_MEM_VALUE_TMP_OFFSET, 0x1111111111111111l);
+        memory->writeq(cpu->seg[DS].address+MMX_MEM_VALUE_TMP_OFFSET, 0x1111111111111111l);
         pushCode8(0x0f);
         pushCode8(0x7F);
         pushCode8(0x04 | (m<<3));
         pushCode8(0x25);
         pushCode32(MMX_MEM_VALUE_TMP_OFFSET);
         runTestCPU();
-        if (readq(cpu->seg[DS].address+MMX_MEM_VALUE_TMP_OFFSET)!=MMX_MEM_VALUE64) {
+        if (memory->readq(cpu->seg[DS].address+MMX_MEM_VALUE_TMP_OFFSET)!=MMX_MEM_VALUE64) {
             failed("movd failed");
         }
     }    

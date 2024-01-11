@@ -39,11 +39,20 @@
 #define OPENGL_TYPE_SDL 2
 #define OPENGL_TYPE_OSMESA 3
 
-class MappedFileCache;
 class KTimer;
 class CPU;
 class KProcess;
 class KThread;
+
+class MappedFileCache : public BoxedPtrBase {
+public:
+    MappedFileCache(BString name) : name(name), data(NULL), dataSize(0) {}
+    virtual ~MappedFileCache();
+    const BString name;
+    std::shared_ptr<KFile> file;
+    U8** data;
+    U32 dataSize;
+};
 
 class SHM : public BoxedPtrBase {
 public:
@@ -97,7 +106,7 @@ public:
     static U32 getNextThreadId();
 
     // helpers
-    static void writeStat(BString path, U32 buf, bool is64, U64 st_dev, U64 st_ino, U32 st_mode, U64 st_rdev, U64 st_size, U32 st_blksize, U64 st_blocks, U64 mtime, U32 linkCount);    
+    static void writeStat(KProcess* process, BString path, U32 buf, bool is64, U64 st_dev, U64 st_ino, U32 st_mode, U64 st_rdev, U64 st_size, U32 st_blksize, U64 st_blocks, U64 mtime, U32 linkCount);
     static std::shared_ptr<KProcess> getProcess(U32 id);
     static void eraseFileCache(BString name);
     static BoxedPtr<MappedFileCache> getFileCache(BString name);
@@ -111,25 +120,25 @@ public:
     static void wakeThreadsWaitingOnProcessStateChanged();
 
     // syscalls
-    static U32 clock_getres(U32 clk_id, U32 timespecAddress);
-    static U32 clock_getres64(U32 clk_id, U32 timespecAddress);
-    static U32 clock_gettime(U32 clock_id, U32 tp);
-    static U32 clock_gettime64(U32 clock_id, U32 tp);
+    static U32 clock_getres(KThread* thread, U32 clk_id, U32 timespecAddress);
+    static U32 clock_getres64(KThread* thread, U32 clk_id, U32 timespecAddress);
+    static U32 clock_gettime(KThread* thread, U32 clock_id, U32 tp);
+    static U32 clock_gettime64(KThread* thread, U32 clock_id, U32 tp);
     static U32 getpgid(U32 pid);
-    static U32 gettimeofday(U32 tv, U32 tz);
+    static U32 gettimeofday(KThread* thread, U32 tv, U32 tz);
     static U32 kill(S32 pid, U32 signal);
-    static U32 prlimit64(U32 pid, U32 resource, U32 newlimit, U32 oldlimit);
+    static U32 prlimit64(KThread* thread, U32 pid, U32 resource, U32 newlimit, U32 oldlimit);
     static U32 setpgid(U32 pid, U32 gpid);
-    static U32 shmget(U32 key, U32 size, U32 flags);
-    static U32 shmat(U32 shmid, U32 shmaddr, U32 shmflg, U32 rtnAddr);
-    static U32 shmdt(U32 shmaddr);
-    static U32 shmctl(U32 shmid, U32 cmd, U32 buf);
-    static U32 sysinfo(U32 address);
-    static U32 times(U32 buf);
+    static U32 shmget(KThread* thread, U32 key, U32 size, U32 flags);
+    static U32 shmat(KThread* thread, U32 shmid, U32 shmaddr, U32 shmflg, U32 rtnAddr);
+    static U32 shmdt(KThread* thread, U32 shmaddr);
+    static U32 shmctl(KThread* thread, U32 shmid, U32 cmd, U32 buf);
+    static U32 sysinfo(KThread* thread, U32 address);
+    static U32 times(KThread* thread, U32 buf);
     static U32 tgkill(U32 threadGroupId, U32 threadId, U32 signal);
-    static U32 ugetrlimit(U32 resource, U32 rlim);
-    static U32 uname(U32 address);
-    static U32 waitpid(S32 pid, U32 statusAddress, U32 options);        
+    static U32 ugetrlimit(KThread* thread, U32 resource, U32 rlim);
+    static U32 uname(KThread* thread, U32 address);
+    static U32 waitpid(KThread* thread, S32 pid, U32 statusAddress, U32 options);
 
     static BOXEDWINE_CONDITION processesCond;
     

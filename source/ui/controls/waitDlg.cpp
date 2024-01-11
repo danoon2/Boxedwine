@@ -37,7 +37,7 @@ void WaitDlg::run() {
 }
 
 void WaitDlg::addSubLabel(BString subLabel, int max) {
-    while (subLabels.size() > max) {
+    while ((int)subLabels.size() > max) {
         subLabels.pop_front();
     }
     this->subLabels.push_back(subLabel);

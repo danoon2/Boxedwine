@@ -23,7 +23,7 @@ public:
 
     virtual bool retranslateSingleInstruction(BtCPU* cpu, void* address) = 0;
 
-    void release(Memory* memory);
+    void release(KMemory* memory);
     void releaseAndRetranslate();
     void invalidateStartingAt(U32 eipAddress);
     void makeLive();
@@ -46,7 +46,7 @@ public:
     U32 getStartOfInstructionByEip(U32 eip, U8** hostAddress, U32* index);
     
 protected:
-    void detachFromHost(Memory* memory);
+    void detachFromHost(KMemory* memory);
     void internalDealloc();
     virtual void clearInstructionCache(U8* hostAddress, U32 len);
 

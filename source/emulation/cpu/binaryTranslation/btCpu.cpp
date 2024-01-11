@@ -5,7 +5,7 @@
 #include "ksignal.h"
 #include "knativethread.h"
 #include "knativesystem.h"
-#include "../../hardmmu/hard_memory.h"
+#include "../../hardmmu/kmemory_hard.h"
 
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
 
@@ -13,7 +13,7 @@ typedef void (*StartCPU)();
 
 void BtCPU::run() {
     while (true) {
-        this->memOffset = this->thread->process->memory->id;
+        this->memOffset = getMemData(memory)->id;
         this->exitToStartThreadLoop = 0;
         if (setjmp(this->runBlockJump) == 0) {
             StartCPU start = (StartCPU)this->init();
@@ -25,22 +25,8 @@ void BtCPU::run() {
         if (this->thread->terminating) {
             break;
         }
-        if (this->exitToStartThreadLoop) {
-            Memory* previousMemory = this->thread->process->previousMemory;
-            if (previousMemory && previousMemory->getRefCount() == 1) {
-                // :TODO: this seem like a bad dependency that memory will access KThread::currentThread()
-                Memory* currentMemory = this->thread->process->memory;
-                this->thread->process->memory = previousMemory;
-                this->thread->memory = previousMemory;
-                delete previousMemory;
-                this->thread->process->memory = currentMemory;
-                this->thread->memory = currentMemory;
-            }
-            else {
-                previousMemory->decRefCount();
-            }
-            this->thread->process->previousMemory = NULL;
-        }
+        KMemoryData* mem = getMemData(memory);
+        mem->clearDelayedReset();
         if (this->inException) {
             this->inException = false;
         }
@@ -86,16 +72,17 @@ std::shared_ptr<BtCodeChunk> BtCPU::translateChunk(U32 ip) {
 }
 
 U64 BtCPU::reTranslateChunk() {
+    KMemoryData* mem = getMemData(memory);
 #ifndef __TEST
     // only one thread at a time can update the host code pages and related date like opToAddressPages
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->thread->memory->executableMemoryMutex);
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mem->executableMemoryMutex);
 #endif
-    std::shared_ptr<BtCodeChunk> chunk = this->thread->memory->getCodeChunkContainingEip(this->eip.u32 + this->seg[CS].address);
+    std::shared_ptr<BtCodeChunk> chunk = mem->getCodeChunkContainingEip(this->eip.u32 + this->seg[CS].address);
     if (chunk) {
         chunk->releaseAndRetranslate();
     }
 
-    U64 result = (U64)this->thread->memory->getExistingHostAddress(this->eip.u32 + this->seg[CS].address);
+    U64 result = (U64)mem->getExistingHostAddress(this->eip.u32 + this->seg[CS].address);
     if (result == 0) {
         result = (U64)this->translateEip(this->eip.u32);
     }
@@ -106,13 +93,14 @@ U64 BtCPU::reTranslateChunk() {
 }
 
 U64 BtCPU::handleChangedUnpatchedCode(U64 rip) {
+    KMemoryData* mem = getMemData(memory);
 #ifndef __TEST
     // only one thread at a time can update the host code pages and related date like opToAddressPages
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->thread->memory->executableMemoryMutex);
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mem->executableMemoryMutex);
 #endif
 
     unsigned char* hostAddress = (unsigned char*)rip;
-    std::shared_ptr<BtCodeChunk> chunk = this->thread->memory->getCodeChunkContainingHostAddress(hostAddress);
+    std::shared_ptr<BtCodeChunk> chunk = mem->getCodeChunkContainingHostAddress(hostAddress);
     if (!chunk) {
         kpanic("BtCPU::handleChangedUnpatchedCode: could not find chunk");
     }
@@ -120,7 +108,7 @@ U64 BtCPU::handleChangedUnpatchedCode(U64 rip) {
     if (!chunk->isDynamicAware() || !chunk->retranslateSingleInstruction(this, hostAddress)) {
         chunk->releaseAndRetranslate();
     }
-    U64 result = (U64)this->thread->memory->getExistingHostAddress(startOfEip);
+    U64 result = (U64)mem->getExistingHostAddress(startOfEip);
     if (result == 0) {
         result = (U64)this->translateEip(startOfEip - this->seg[CS].address);
     }
@@ -135,9 +123,10 @@ U64 BtCPU::handleIllegalInstruction(U64 rip) {
         return this->handleChangedUnpatchedCode(rip);
     }
     if (*((U8*)rip) == 0xcd) {
+        KMemoryData* mem = getMemData(memory);
         // free'd chunks are filled in with 0xcd, if this one is free'd, it is possible another thread replaced the chunk
         // while this thread jumped to it and this thread waited in the critical section at the top of this function.
-        void* host = this->thread->memory->getExistingHostAddress(this->eip.u32 + this->seg[CS].address);
+        void* host = mem->getExistingHostAddress(this->eip.u32 + this->seg[CS].address);
         if (host) {
             return (U64)host;
         }
@@ -149,23 +138,23 @@ U64 BtCPU::handleIllegalInstruction(U64 rip) {
     return 0;
 }
 
-static U8 fetchByte(U32* eip) {
-    return readb((*eip)++);
+static U8 fetchByte(void* p, U32* eip) {
+    KMemory* memory = (KMemory*)p;
+    return memory->readb((*eip)++);
 }
 
 DecodedOp* BtCPU::getOp(U32 eip, bool existing) {
+    KMemoryData* mem = getMemData(memory);
+
     if (this->isBig()) {
         eip += this->seg[CS].address;
     }
     else {
         eip = this->seg[CS].address + (eip & 0xFFFF);
     }
-    if (!existing || this->thread->memory->getExistingHostAddress(eip)) {
-        THREAD_LOCAL static DecodedBlock* block;
-        if (!block) {
-            block = new DecodedBlock();
-        }
-        decodeBlock(fetchByte, eip, this->isBig(), 4, 64, 1, block);
+    if (!existing || mem->getExistingHostAddress(eip)) {
+        thread_local static DecodedBlock* block = new DecodedBlock();
+        decodeBlock(fetchByte, memory, eip, this->isBig(), 4, 64, 1, block);
         return block->op;
     }
     return NULL;
@@ -176,7 +165,8 @@ void* BtCPU::translateEipInternal(U32 ip) {
         ip = ip & 0xFFFF;
     }
     U32 address = this->seg[CS].address + ip;
-    void* result = this->thread->memory->getExistingHostAddress(address);
+    KMemoryData* mem = getMemData(memory);
+    void* result = mem->getExistingHostAddress(address);
 
     if (!result) {
         std::shared_ptr<BtCodeChunk> chunk = this->translateChunk(ip);
@@ -187,7 +177,8 @@ void* BtCPU::translateEipInternal(U32 ip) {
 }
 
 void* BtCPU::translateEip(U32 ip) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->thread->memory->executableMemoryMutex);
+    KMemoryData* mem = getMemData(memory);
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mem->executableMemoryMutex);
 
     void* result = translateEipInternal(ip);
     makePendingCodePagesReadOnly();
@@ -195,21 +186,23 @@ void* BtCPU::translateEip(U32 ip) {
 }
 
 void BtCPU::makePendingCodePagesReadOnly() {
+    KMemoryData* mem = getMemData(memory);
     for (int i = 0; i < (int)this->pendingCodePages.size(); i++) {
         // the chunk could cross a page and be a mix of dynamic and non dynamic code
-        if (this->thread->memory->dynamicCodePageUpdateCount[this->pendingCodePages[i]] != MAX_DYNAMIC_CODE_PAGE_COUNT) {
-            this->thread->memory->makeCodePageReadOnly(this->pendingCodePages[i]);
+        if (mem->dynamicCodePageUpdateCount[this->pendingCodePages[i]] != MAX_DYNAMIC_CODE_PAGE_COUNT) {
+            mem->makeCodePageReadOnly(this->pendingCodePages[i]);
         }
     }
     this->pendingCodePages.clear();
 }
 
 void BtCPU::markCodePageReadOnly(BtData* data) {
-    U32 pageStart = this->thread->memory->getNativePage((data->startOfDataIp + this->seg[CS].address) >> K_PAGE_SHIFT);
+    KMemoryData* mem = getMemData(memory);
+    U32 pageStart = mem->getNativePage((data->startOfDataIp + this->seg[CS].address) >> K_PAGE_SHIFT);
     if (pageStart == 0) {
         return; // x64CPU::init()
     }
-    U32 pageEnd = this->thread->memory->getNativePage((data->ip + this->seg[CS].address - 1) >> K_PAGE_SHIFT);
+    U32 pageEnd = mem->getNativePage((data->ip + this->seg[CS].address - 1) >> K_PAGE_SHIFT);
     S32 pageCount = pageEnd - pageStart + 1;
 
     for (int i = 0; i < pageCount; i++) {
@@ -252,38 +245,38 @@ U64 BtCPU::handleFpuException(int code) {
 U32 dynamicCodeExceptionCount;
 
 U64 BtCPU::handleAccessException(U64 ip, U64 address, bool readAddress) {
-    if ((address & 0xFFFFFFFF00000000l) == this->thread->memory->id) {
+    KMemoryData* mem = getMemData(memory);
+
+    if ((address & 0xFFFFFFFF00000000l) == mem->id) {
         U32 emulatedAddress = (U32)address;
         U32 page = emulatedAddress >> K_PAGE_SHIFT;
-        Memory* m = this->thread->memory;
-        U32 flags = m->flags[page];
-        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->thread->memory->executableMemoryMutex);
+        U32 flags = mem->flags[page];
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mem->executableMemoryMutex);
 
         // do we need to dynamicly grow the stack?
         if (page >= this->thread->stackPageStart && page < this->thread->stackPageStart + this->thread->stackPageCount) {
-            U32 startPage = m->getEmulatedPage(m->getNativePage(page - INITIAL_STACK_PAGES)); // stack grows down
+            U32 startPage = mem->getEmulatedPage(mem->getNativePage(page - INITIAL_STACK_PAGES)); // stack grows down
             U32 endPage = this->thread->stackPageStart + this->thread->stackPageCount - this->thread->stackPageSize;
             U32 pageCount = endPage - startPage;
-            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(m->pageMutex);
-            m->allocPages(startPage, pageCount, PAGE_READ | PAGE_WRITE, 0, 0, 0);
+            mem->allocPages(thread, startPage, pageCount, PAGE_READ | PAGE_WRITE | PAGE_MAPPED, 0, 0, 0);
             this->thread->stackPageSize += pageCount;
             return 0;
         }
-        std::shared_ptr<BtCodeChunk> chunk = m->getCodeChunkContainingHostAddress((void*)ip);
+        std::shared_ptr<BtCodeChunk> chunk = mem->getCodeChunkContainingHostAddress((void*)ip);
         if (chunk) {
             this->eip.u32 = chunk->getEipThatContainsHostAddress((void*)ip, NULL, NULL) - this->seg[CS].address;
             // if the page we are trying to access needs a special memory offset and this instruction isn't flagged to looked at that special memory offset, then flag it
             if (flags & PAGE_MAPPED_HOST && (((flags & PAGE_READ) && readAddress) || ((flags & PAGE_WRITE) && !readAddress))) {
-                m->setNeedsMemoryOffset(getEipAddress());
+                mem->setNeedsMemoryOffset(getEipAddress());
                 DecodedOp* op = this->getOp(this->eip.u32, true);
                 handleStringOp(op); // if we were in the middle of a string op, then reset RSI and RDI so that we can re-enter the same op
                 chunk->releaseAndRetranslate();
                 return getIpFromEip();
             }
             else {
-                if (!readAddress && (flags & PAGE_WRITE) && !(this->thread->memory->nativeFlags[this->thread->memory->getNativePage(page)] & NATIVE_FLAG_CODEPAGE_READONLY)) {
+                if (!readAddress && (flags & PAGE_WRITE) && !(mem->nativeFlags[mem->getNativePage(page)] & NATIVE_FLAG_CODEPAGE_READONLY)) {
                     // :TODO: this is a hack, why is it necessary
-                    m->updatePagePermission(page, 1);
+                    mem->updatePagePermission(page, 1);
                     return 0;
                 }
                 else {
@@ -295,7 +288,7 @@ U64 BtCPU::handleAccessException(U64 ip, U64 address, bool readAddress) {
 
     U32 inst = *((U32*)ip);
 
-    if (inst == largeAddressJumpInstruction && this->thread->memory->isValidReadAddress((U32)this->destEip, 1)) { // useLargeAddressSpace = true
+    if (inst == largeAddressJumpInstruction && mem->isValidReadAddress((U32)this->destEip, 1)) { // useLargeAddressSpace = true
         return (U64)this->translateEip((U32)this->destEip - this->seg[CS].address);
     }
     else if ((inst == pageJumpInstruction || inst == pageOffsetJumpInstruction) && (this->regPage || this->regOffset)) { // if these constants change, update handleMissingCode too     
@@ -303,7 +296,7 @@ U64 BtCPU::handleAccessException(U64 ip, U64 address, bool readAddress) {
     }
     else if (inst == 0xcdcdcdcd) {
         // this thread was waiting on the critical section and the thread that was currently in this handler removed the code we were running
-        void* host = this->thread->memory->getExistingHostAddress(this->eip.u32 + this->seg[CS].address);
+        void* host = mem->getExistingHostAddress(this->eip.u32 + this->seg[CS].address);
         if (host) {
             return (U64)host;
         }
@@ -317,16 +310,15 @@ U64 BtCPU::handleAccessException(U64 ip, U64 address, bool readAddress) {
     }
     else {
         // check if the emulated memory caused the exception
-        if ((address & 0xFFFFFFFF00000000l) == this->thread->memory->id) {
+        if ((address & 0xFFFFFFFF00000000l) == mem->id) {
             U32 emulatedAddress = (U32)address;
             U32 page = emulatedAddress >> K_PAGE_SHIFT;
             // check if emulated memory that caused the exception is a page that has code
-            if (this->thread->memory->nativeFlags[this->thread->memory->getNativePage(page)] & NATIVE_FLAG_CODEPAGE_READONLY) {
+            if (mem->nativeFlags[mem->getNativePage(page)] & NATIVE_FLAG_CODEPAGE_READONLY) {
                 dynamicCodeExceptionCount++;
                 return this->handleCodePatch(ip, emulatedAddress);
             }
-            Memory* m = this->thread->memory;
-            U32 nativeFlags = m->nativeFlags[m->getNativePage(page)];
+            U32 nativeFlags = mem->nativeFlags[mem->getNativePage(page)];
             if ((flags & PAGE_MAPPED_HOST) || (flags & (PAGE_READ | PAGE_WRITE)) != (nativeFlags & (PAGE_READ | PAGE_WRITE))) {
                 int ii=0;
             }
@@ -405,10 +397,12 @@ S32 BtCPU::preLinkCheck(BtData* data) {
 
 U64 BtCPU::getIpFromEip() {
     U32 a = this->getEipAddress();
-    U64 result = (U64)this->thread->memory->getExistingHostAddress(a);
+    KMemoryData* mem = getMemData(memory);
+
+    U64 result = (U64)mem->getExistingHostAddress(a);
     if (!result) {
         this->translateEip(this->eip.u32);
-        result = (U64)this->thread->memory->getExistingHostAddress(a);
+        result = (U64)mem->getExistingHostAddress(a);
     }
     if (result == 0) {
         kpanic("BtCPU::getIpFromEip failed to translate code");
@@ -431,19 +425,19 @@ bool BtCPU::handleStringOp(DecodedOp* op) {
 // 2) Mark all the old cached code with "0xce" so that if the program tries to run it again, it will re-compile it
 // 3) NATIVE_FLAG_CODEPAGE_READONLY will be removed
 U64 BtCPU::handleCodePatch(U64 rip, U32 address) {
+    KMemoryData* mem = getMemData(memory);
 #ifndef __TEST
     // only one thread at a time can update the host code pages and related date like opToAddressPages
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->thread->memory->executableMemoryMutex);
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mem->executableMemoryMutex);
 #endif
-    Memory* memory = this->thread->memory;
-    U32 nativePage = memory->getNativePage(address >> K_PAGE_SHIFT);
+    U32 nativePage = mem->getNativePage(address >> K_PAGE_SHIFT);
     // get the emulated eip of the op that corresponds to the host address where the exception happened
-    std::shared_ptr<BtCodeChunk> chunk = this->thread->memory->getCodeChunkContainingHostAddress((void*)rip);
+    std::shared_ptr<BtCodeChunk> chunk = mem->getCodeChunkContainingHostAddress((void*)rip);
 
     this->eip.u32 = chunk->getEipThatContainsHostAddress((void*)rip, NULL, NULL) - this->seg[CS].address;
 
     // make sure it wasn't changed before we got the executableMemoryMutex lock
-    if (!(memory->nativeFlags[nativePage] & NATIVE_FLAG_CODEPAGE_READONLY)) {
+    if (!(mem->nativeFlags[nativePage] & NATIVE_FLAG_CODEPAGE_READONLY)) {
         return getIpFromEip();
     }
 
@@ -474,7 +468,7 @@ U64 BtCPU::handleCodePatch(U64 rip, U32 address) {
         }
         U32 startPage = addressStart >> K_PAGE_SHIFT;
         U32 endPage = (addressStart + len - 1) >> K_PAGE_SHIFT;
-        memory->clearHostCodeForWriting(memory->getNativePage(startPage), memory->getNativePage(endPage - startPage) + 1);
+        mem->clearHostCodeForWriting(mem->getNativePage(startPage), mem->getNativePage(endPage - startPage) + 1);
         op->dealloc(true);
         return getIpFromEip();
     }

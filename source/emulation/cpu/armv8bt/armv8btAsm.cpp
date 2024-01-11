@@ -4880,10 +4880,7 @@ static U8 fetchByte(U32* eip) {
 static void arm64log(CPU* cpu) {
     if (!cpu->logFile)
         return;
-    THREAD_LOCAL static DecodedBlock* block;
-    if (!block) {
-        block = new DecodedBlock();
-    }
+    thread_local static DecodedBlock* block = new DecodedBlock();
     decodeBlock(fetchByte, cpu->eip.u32 + cpu->seg[CS].address, cpu->isBig(), 1, K_PAGE_SIZE, 0, block);
     block->op->log(cpu);
     block->op->dealloc(false);

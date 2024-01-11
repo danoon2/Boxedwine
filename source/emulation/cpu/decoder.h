@@ -1491,7 +1491,7 @@ private:
     void init();
 };
 
-typedef U8 (*pfnFetchByte)(U32* pEip);
+typedef U8 (*pfnFetchByte)(void* data, U32* pEip);
 
 class DecodedBlockFromNode {
 public:
@@ -1527,6 +1527,6 @@ public:
 protected:
     DecodedBlockFromNode* referencedFrom;
 };
-void decodeBlock(pfnFetchByte fetchByte, U32 eip, bool isBig, U32 maxInstructions, U32 maxLen, U32 stopIfThrowsException, DecodedBlock* block);
+void decodeBlock(pfnFetchByte fetchByte, void* fetchByteData, U32 eip, bool isBig, U32 maxInstructions, U32 maxLen, U32 stopIfThrowsException, DecodedBlock* block);
 
 #endif

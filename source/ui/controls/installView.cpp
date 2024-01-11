@@ -268,7 +268,7 @@ void InstallView::onInstall() {
             this->errorMsg = getTranslation(INSTALLVIEW_ERROR_SETUP_FILE_NOT_FOUND);
         }
     } else if (installType == INSTALL_TYPE_DIR || installType == INSTALL_TYPE_MOUNT) {
-        Fs::trimTrailingSlash(location);
+        location = Fs::trimTrailingSlash(location);
         if (!location.length()) {
             this->errorMsg = getTranslation(INSTALLVIEW_ERROR_DIR_MISSING);
         } else if (!Fs::doesNativePathExist(location) || !Fs::isNativePathDirectory(location)) {

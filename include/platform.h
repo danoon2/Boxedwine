@@ -51,7 +51,6 @@
 #endif
 
 #ifdef BOXEDWINE_MSVC
-#define THREAD_LOCAL __declspec(thread)
 #define PLATFORM_STAT_STRUCT struct _stat32i64
 #define PLATFORM_STAT _stat32i64
 #define OPCALL __fastcall
@@ -76,7 +75,6 @@ char* platform_strcasestr(const char* s1, const char* s2);
 #else
 #pragma clang diagnostic ignored "-Winvalid-offsetof"
 #include <limits.h>
-#define THREAD_LOCAL thread_local
 #if ( __WORDSIZE == 64 )
 #define BOXEDWINE_64   1
 #endif

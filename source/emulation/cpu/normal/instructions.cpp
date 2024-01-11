@@ -158,7 +158,7 @@ void dshle16r16(CPU* cpu, U32 reg, U32 address, U32 imm) {
     U32 tmp;
 
     cpu->src.u32 = imm;
-    cpu->dst.u32 = readw(address);
+    cpu->dst.u32 = cpu->memory->readw(address);
     cpu->dst2.u32 = cpu->reg[reg].u16;
     tmp = (cpu->dst.u32<<16)|cpu->dst2.u32;
     result=tmp << cpu->src.u8;
@@ -167,7 +167,7 @@ void dshle16r16(CPU* cpu, U32 reg, U32 address, U32 imm) {
         result |= ((U32)(cpu->reg[reg].u16) << (imm - 16));
     }
     cpu->result.u16=(U16)(result >> 16);
-    writew(address, cpu->result.u16);
+    cpu->memory->writew(address, cpu->result.u16);
     cpu->lazyFlags=FLAGS_DSHL16;
 }
 
@@ -181,9 +181,9 @@ void dshlr32r32(CPU* cpu, U32 reg, U32 rm, U32 imm) {
 
 void dshle32r32(CPU* cpu, U32 reg, U32 address, U32 imm) {
     cpu->src.u32=imm;
-    cpu->dst.u32=readd(address);
+    cpu->dst.u32= cpu->memory->readd(address);
     cpu->result.u32=(cpu->dst.u32 << imm) | (cpu->reg[reg].u32 >> (32-imm));
-    writed(address, cpu->result.u32);
+    cpu->memory->writed(address, cpu->result.u32);
     cpu->lazyFlags=FLAGS_DSHL32;
 }
 
@@ -213,7 +213,7 @@ void dshlcle16r16(CPU* cpu, U32 reg, U32 address) {
         U32 tmp;
 
         cpu->src.u32 = CL & 0x1f;
-        cpu->dst.u32 = readw(address);
+        cpu->dst.u32 = cpu->memory->readw(address);
         cpu->dst2.u32 = cpu->reg[reg].u16;
         tmp = (cpu->dst.u32<<16)|cpu->dst2.u32;
         result=tmp << cpu->src.u8;
@@ -222,7 +222,7 @@ void dshlcle16r16(CPU* cpu, U32 reg, U32 address) {
             result |= ((U32)(cpu->reg[reg].u16) << (cpu->src.u32 - 16));
         }
         cpu->result.u16=(U16)(result >> 16);
-        writew(address, cpu->result.u16);
+        cpu->memory->writew(address, cpu->result.u16);
         cpu->lazyFlags=FLAGS_DSHL16;
     }
 }
@@ -241,10 +241,10 @@ void dshlclr32r32(CPU* cpu, U32 reg, U32 rm) {
 void dshlcle32r32(CPU* cpu, U32 reg, U32 address) {
     if (CL & 0x1f) {
         cpu->src.u32=CL & 0x1f;
-        cpu->dst.u32=readd(address);
+        cpu->dst.u32= cpu->memory->readd(address);
         cpu->result.u32=(cpu->dst.u32 << cpu->src.u32);
         cpu->result.u32|=(cpu->reg[reg].u32 >> (32-cpu->src.u32));
-        writed(address, cpu->result.u32);
+        cpu->memory->writed(address, cpu->result.u32);
         cpu->lazyFlags=FLAGS_DSHL32;
     }
 }
@@ -268,14 +268,14 @@ void dshre16r16(CPU* cpu, U32 reg, U32 address, U32 imm) {
     U32 result;
 
     cpu->src.u32 = imm;
-    cpu->dst.u32 = readw(address)|((U32)(cpu->reg[reg].u16)<<16);
+    cpu->dst.u32 = cpu->memory->readw(address)|((U32)(cpu->reg[reg].u16)<<16);
     result=cpu->dst.u32 >> cpu->src.u8;
     if (imm>16) {
         //klog("error: dshre16r16 imm=%x",imm);
         result |= ((U32)(cpu->reg[reg].u16) << (32 - imm));
     }
     cpu->result.u16=(U16)result;
-    writew(address, cpu->result.u16);
+    cpu->memory->writew(address, cpu->result.u16);
     cpu->lazyFlags=FLAGS_DSHR16;
 }
 
@@ -289,9 +289,9 @@ void dshrr32r32(CPU* cpu, U32 reg, U32 rm, U32 imm) {
 
 void dshre32r32(CPU* cpu, U32 reg, U32 address, U32 imm) {
     cpu->src.u32=imm;
-    cpu->dst.u32=readd(address);
+    cpu->dst.u32= cpu->memory->readd(address);
     cpu->result.u32=(cpu->dst.u32 >> imm) | (cpu->reg[reg].u32 << (32-imm));
-    writed(address, cpu->result.u32);
+    cpu->memory->writed(address, cpu->result.u32);
     cpu->lazyFlags=FLAGS_DSHR32;
 }
 
@@ -317,14 +317,14 @@ void dshrcle16r16(CPU* cpu, U32 reg, U32 address) {
         U32 result;
 
         cpu->src.u32 = CL & 0x1f;
-        cpu->dst.u32 = readw(address)|((U32)(cpu->reg[reg].u16)<<16);
+        cpu->dst.u32 = cpu->memory->readw(address)|((U32)(cpu->reg[reg].u16)<<16);
         result=cpu->dst.u32 >> cpu->src.u8;
         if (cpu->src.u32>16) {
             //klog("error: dshrcle16r16 cl=%x",CL);
             result |= ((U32)(cpu->reg[reg].u16) << (32 - cpu->src.u32));
         }
         cpu->result.u16=(U16)result;
-        writew(address, cpu->result.u16);
+        cpu->memory->writew(address, cpu->result.u16);
         cpu->lazyFlags=FLAGS_DSHR16;
     }
 }
@@ -343,10 +343,10 @@ void dshrclr32r32(CPU* cpu, U32 reg, U32 rm) {
 void dshrcle32r32(CPU* cpu, U32 reg, U32 address) {
     if (CL & 0x1f) {
         cpu->src.u32=CL & 0x1f;
-        cpu->dst.u32=readd(address);
+        cpu->dst.u32= cpu->memory->readd(address);
         cpu->result.u32=(cpu->dst.u32 >> cpu->src.u32);
         cpu->result.u32 |= (cpu->reg[reg].u32 << (32-cpu->src.u32));
-        writed(address, cpu->result.u32);
+        cpu->memory->writed(address, cpu->result.u32);
         cpu->lazyFlags=FLAGS_DSHR32;
     }
 }

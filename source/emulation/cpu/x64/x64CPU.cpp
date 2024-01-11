@@ -4,18 +4,18 @@
 #include "x64Ops.h"
 #include "x64CPU.h"
 #include "x64Asm.h"
-#include "../../hardmmu/hard_memory.h"
+#include "../../hardmmu/kmemory_hard.h"
 #include "x64CodeChunk.h"
 
-CPU* CPU::allocCPU() {
-    return new x64CPU();
+CPU* CPU::allocCPU(KMemory* memory) {
+    return new x64CPU(memory);
 }
 
 // hard to guage the benifit, seems like 1% to 3% with quake 2 and quake 3
 bool x64CPU::hasBMI2 = true;
 bool x64Intialized = false;
 
-x64CPU::x64CPU() {
+x64CPU::x64CPU(KMemory* memory) : BtCPU(memory) {
     if (!x64Intialized) {
         x64Intialized = true;
         x64CPU::hasBMI2 = platformHasBMI2();
@@ -31,7 +31,8 @@ void x64CPU::setSeg(U32 index, U32 address, U32 value) {
 }
 
 void x64CPU::restart() {
-	this->memOffset = this->thread->process->memory->id;
+    KMemoryData* mem = getMemData(memory);
+	this->memOffset = mem->id;
 	this->negMemOffset = (U64)(-(S64)this->memOffset);
 	for (int i = 0; i < 6; i++) {
 		this->negSegAddress[i] = (U32)(-((S32)(this->seg[i].address)));
@@ -42,7 +43,7 @@ void x64CPU::restart() {
 void* x64CPU::init() {
     X64Asm data(this);
     void* result;
-    Memory* memory = this->thread->memory;
+    KMemoryData* mem = getMemData(memory);
     x64CPU* cpu = this;
 
     this->negMemOffset = (U64)(-(S64)this->memOffset);
@@ -50,9 +51,9 @@ void* x64CPU::init() {
         this->negSegAddress[i] = (U32)(-((S32)(this->seg[i].address)));
     }
 
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->executableMemoryMutex);
-    this->eipToHostInstructionAddressSpaceMapping = this->thread->memory->eipToHostInstructionAddressSpaceMapping;
-    this->memOffsets = memory->memOffsets;
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mem->executableMemoryMutex);
+    this->eipToHostInstructionAddressSpaceMapping = mem->eipToHostInstructionAddressSpaceMapping;
+    this->memOffsets = mem->memOffsets;
 
 	// will push 15 regs, since it is odd, it will balance rip being pushed on the stack and give use a 16-byte alignment
 	data.saveNativeState(); // also sets HOST_CPU
@@ -83,7 +84,7 @@ void* x64CPU::init() {
     result = chunk->getHostAddress();
     //link(&data, chunk);
     this->pendingCodePages.clear();    
-    this->eipToHostInstructionPages = this->thread->memory->eipToHostInstructionPages;
+    this->eipToHostInstructionPages = mem->eipToHostInstructionPages;
 
     if (!this->thread->process->returnToLoopAddress) {
         X64Asm returnData(this);
@@ -153,6 +154,8 @@ void x64CPU::addReturnFromTest() {
 
 void x64CPU::link(const std::shared_ptr<BtData>& data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 offsetIntoChunk) {
     U32 i;
+    KMemoryData* mem = getMemData(memory);
+
     if (!fromChunk) {
         kpanic("x64CPU::link fromChunk missing");
     }
@@ -168,7 +171,7 @@ void x64CPU::link(const std::shared_ptr<BtData>& data, std::shared_ptr<BtCodeChu
             }
             data->write32Buffer(offset, (U32)(host - offset - 4));            
         } else if (size==4 && !data->todoJump[i].sameChunk) {
-            U8* toHostAddress = (U8*)this->thread->memory->getExistingHostAddress(eip);
+            U8* toHostAddress = (U8*)mem->getExistingHostAddress(eip);
 
             if (!toHostAddress) {
                 U8 op = 0xce;
@@ -177,14 +180,14 @@ void x64CPU::link(const std::shared_ptr<BtData>& data, std::shared_ptr<BtCodeChu
                 chunk->makeLive();
                 toHostAddress = (U8*)chunk->getHostAddress();            
             }
-            std::shared_ptr<BtCodeChunk> toChunk = this->thread->memory->getCodeChunkContainingHostAddress(toHostAddress);
+            std::shared_ptr<BtCodeChunk> toChunk = mem->getCodeChunkContainingHostAddress(toHostAddress);
             if (!toChunk) {
                 kpanic("x64CPU::link to chunk missing");
             }
             std::shared_ptr<BtCodeChunkLink> link = toChunk->addLinkFrom(fromChunk, eip, toHostAddress, offset, true);
             data->write32Buffer(offset, (U32)(toHostAddress - offset - 4));            
         } else if (size==8 && !data->todoJump[i].sameChunk) {
-            U8* toHostAddress = (U8*)this->thread->memory->getExistingHostAddress(eip);
+            U8* toHostAddress = (U8*)mem->getExistingHostAddress(eip);
 
             if (!toHostAddress) {
                 X64Asm returnData(this);
@@ -195,7 +198,7 @@ void x64CPU::link(const std::shared_ptr<BtData>& data, std::shared_ptr<BtCodeChu
                 chunk->makeLive();
                 toHostAddress = (U8*)chunk->getHostAddress();
             }
-            std::shared_ptr<BtCodeChunk> toChunk = this->thread->memory->getCodeChunkContainingHostAddress(toHostAddress);
+            std::shared_ptr<BtCodeChunk> toChunk = mem->getCodeChunkContainingHostAddress(toHostAddress);
             if (!toChunk) {
                 kpanic("x64CPU::link to chunk missing");
             }
@@ -210,13 +213,14 @@ void x64CPU::link(const std::shared_ptr<BtData>& data, std::shared_ptr<BtCodeChu
 
 void x64CPU::translateData(const std::shared_ptr<BtData>& data, const std::shared_ptr<BtData>& firstPass) {
     U32 codePage = (data->ip+this->seg[CS].address) >> K_PAGE_SHIFT;
-    U32 nativePage = this->thread->memory->getNativePage(codePage);
-    if (this->thread->memory->dynamicCodePageUpdateCount[nativePage]==MAX_DYNAMIC_CODE_PAGE_COUNT) {
+    KMemoryData* mem = getMemData(memory);
+    U32 nativePage = mem->getNativePage(codePage);
+    if (mem->dynamicCodePageUpdateCount[nativePage]==MAX_DYNAMIC_CODE_PAGE_COUNT) {
         data->dynamic = true;
     }
     while (1) {  
         U32 address = this->seg[CS].address+data->ip;
-        void* hostAddress = this->thread->memory->getExistingHostAddress(address);
+        void* hostAddress = mem->getExistingHostAddress(address);
         if (hostAddress) {
             data->jumpTo(data->ip);
             break;
@@ -227,15 +231,15 @@ void x64CPU::translateData(const std::shared_ptr<BtData>& data, const std::share
 
             if (page!=codePage) {
                 codePage = page;
-                nativePage = this->thread->memory->getNativePage(codePage);
+                nativePage = mem->getNativePage(codePage);
                 if (data->dynamic) {                    
-                    if (this->thread->memory->dynamicCodePageUpdateCount[nativePage] == MAX_DYNAMIC_CODE_PAGE_COUNT) {
+                    if (mem->dynamicCodePageUpdateCount[nativePage] == MAX_DYNAMIC_CODE_PAGE_COUNT) {
                         // continue to cross from my dynamic page into another dynamic page
                     } else {
                         // we will continue to emit code that will self check for modified code, even though the page we spill into is not dynamic
                     }
                 } else {
-                    if (this->thread->memory->dynamicCodePageUpdateCount[nativePage] == MAX_DYNAMIC_CODE_PAGE_COUNT) {
+                    if (mem->dynamicCodePageUpdateCount[nativePage] == MAX_DYNAMIC_CODE_PAGE_COUNT) {
                         // we crossed a page boundry from a non dynamic page to a dynamic page
                         data->dynamic = true; // the instructions from this point on will do their own check
                     } else {

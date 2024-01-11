@@ -4,8 +4,8 @@
 
 #include "soft_no_page.h"
 
-NOPage* NOPage::alloc(U8* page, U32 address, U32 flags) {
-    return new NOPage(page, address, flags);
+NOPage* NOPage::alloc(KMemoryData* memory, U8* page, U32 address, U32 flags) {
+    return new NOPage(memory, page, address, flags);
 }
 
 U8 NOPage::readb(U32 address) {
@@ -35,23 +35,11 @@ void NOPage::writed(U32 address, U32 value) {
     KThread::currentThread()->seg_access(address, false, true);
 }
 
-U8* NOPage::getCurrentReadPtr() {
+U8* NOPage::getReadPtr(U32 address, bool makeReady) {
     return NULL;
 }
 
-U8* NOPage::getCurrentWritePtr() {
-    return NULL;
-}
-
-U8* NOPage::getReadAddress(U32 address, U32 len) {    
-    return NULL;
-}
-
-U8* NOPage::getWriteAddress(U32 address, U32 len) {
-    return NULL;
-}
-
-U8* NOPage::getReadWriteAddress(U32 address, U32 len) {
+U8* NOPage::getWritePtr(U32 address, U32 len, bool makeReady) {
     return NULL;
 }
 

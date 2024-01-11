@@ -27,7 +27,6 @@
 #define ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS 0xF8000000
 
 class MappedFileCache;
-class Memory;
 
 class MappedFile : public BoxedPtrBase {
 public:
@@ -48,8 +47,8 @@ public:
     U32 restorer;
     U32 sigInfo[K_SIG_INFO_SIZE];
 
-    void writeSigAction(U32 address, U32 sigsetSize);
-    void readSigAction(U32 address, U32 sigsetSize);
+    void writeSigAction(KMemory* memory, U32 address, U32 sigsetSize);
+    void readSigAction(KMemory* memory, U32 address, U32 sigsetSize);
 };
 
 #define MAX_SIG_ACTIONS 64
@@ -103,8 +102,7 @@ public:
     KThread* getThreadById(U32 tid);
     U32 getThreadCount();
 	void deleteThread(KThread* thread);
-    void killAllThreadsExceptCurrent();
-    void killAllThreads();
+    void killAllThreads(KThread* exceptThisOne = nullptr);
     BString getAbsoluteExePath();
     void clone(const std::shared_ptr<KProcess>& from);
     U32 getNextFileDescriptorHandle(int after);
@@ -130,66 +128,53 @@ public:
     void iterateThreads(std::function<bool(KThread*)> callback);
     void iterateThreadIds(std::function<bool(U32)> callback);
 
-    U32 readd(U32 address);
-    U16 readw(U32 address);
-    U8  readb(U32 address);
-    void writed(U32 address, U32 value);
-    void writew(U32 address, U16 value);
-    void writeb(U32 address, U8 value);
-    void memcopyFromNative(U32 address, const void* p, U32 len);
-    void memcopyToNative(U32 address, void* p, U32 len);
-
     // syscalls    
     U32 access(BString path, U32 mode);
     U32 alarm(U32 seconds);    
-    U32 brk(U32 address);
+    U32 brk(KThread* thread, U32 address);
     U32 chdir(BString path);
     U32 chmod(BString path, U32 mode);
-    U32 clone(U32 flags, U32 child_stack, U32 ptid, U32 tls, U32 ctid);
+    U32 clone(KThread* thread, U32 flags, U32 child_stack, U32 ptid, U32 tls, U32 ctid);
     U32 close(FD fildes);
     U32 dup(U32 fildes);    
     U32 dup2(FD fildes, FD fildes2);
     U32 epollcreate(U32 size, U32 flags);
     U32 epollctl(FD epfd, U32 op, FD fd, U32 address);
-    U32 epollwait(FD epfd, U32 events, U32 maxevents, U32 timeout);
-    U32 execve(BString path, std::vector<BString>& args, const std::vector<BString>& envs);
-    U32 exit(U32 code);
-    U32 exitgroup(U32 code);
+    U32 epollwait(KThread* thread, FD epfd, U32 events, U32 maxevents, U32 timeout);
+    U32 execve(KThread* thread, BString path, std::vector<BString>& args, const std::vector<BString>& envs);
+    U32 exit(KThread* thread, U32 code);
+    U32 exitgroup(KThread* thread, U32 code);
     U32 faccessat(U32 dirfd, BString path, U32 mode, U32 flags);
     U32 fchdir(FD fildes);
-    U32 fcntrl(FD fildes, U32 cmd, U32 arg);
+    U32 fcntrl(KThread* thread, FD fildes, U32 cmd, U32 arg);
     U32 fstat64(FD handle, U32 buf);
     U32 fstatat64(FD dirfd, BString path, U32 buf, U32 flag);
     U32 fstatfs64(FD fildes, U32 address);    
     U32 ftruncate64(FD fildes, U64 length);
     U32 getcwd(U32 buffer, U32 size);
     U32 getdents(FD fildes, U32 dirp, U32 count, bool is64);
-    U32 getrusuage(U32 who, U32 usage);
-    U32 ioctl(FD fildes, U32 request);
+    U32 getrusuage(KThread* thread, U32 who, U32 usage);
+    U32 ioctl(KThread* thread, FD fildes, U32 request);
     U32 link(BString from, BString to);
     S64 llseek(FD fildes, S64 offset, U32 whence);
     U32 lseek(FD fd, S32 offset, U32 whence);
     U32 lstat64(BString path, U32 buffer);
     U32 mkdir(BString path);    
     U32 mkdirat(U32 dirfd, BString path, U32 mode);
-    U32 mincore(U32 address, U32 length, U32 vec);
-    U32 mlock(U32 addr, U32 len);
-    U32 mmap(U32 addr, U32 len, S32 prot, S32 flags, FD fildes, U64 off);
-    U32 mprotect(U32 address, U32 len, U32 prot);
-    U32 mremap(U32 oldaddress, U32 oldsize, U32 newsize, U32 flags);
+    U32 mincore(U32 address, U32 length, U32 vec);    
     U32 msync(U32 addr, U32 len, U32 flags);
     U32 open(BString path, U32 flags);
     U32 openat(FD dirfd, BString path, U32 flags);
     U32 prctl(U32 option, U32 arg2);
-    U32 pread64(FD fildes, U32 address, U32 len, U64 offset);
-    U32 pwrite64(FD fildes, U32 address, U32 len, U64 offset);
-    U32 read(FD fildes, U32 bufferAddress, U32 bufferLen);
+    U32 pread64(KThread* thread, FD fildes, U32 address, U32 len, U64 offset);
+    U32 pwrite64(KThread* thread, FD fildes, U32 address, U32 len, U64 offset);
+    U32 read(KThread* thread, FD fildes, U32 bufferAddress, U32 bufferLen);
     U32 readlink(BString path, U32 buffer, U32 bufSize);
     U32 readlinkat(FD dirfd, BString path, U32 buf, U32 bufsiz);
     U32 rename(BString from, BString to);
     U32 renameat(FD olddirfd, BString from, FD newdirfd, BString to);
     U32 rmdir(BString path);        
-    U32 set_thread_area(U32 info);
+    U32 set_thread_area(KThread* thread, U32 info);
     U32 setitimer(U32 which, U32 newValue, U32 oldValue);
     U32 shmdt(U32 shmaddr);
     U32 sigaction(U32 sig, U32 act, U32 oact, U32 sigsetSize);    
@@ -200,13 +185,12 @@ public:
     U32 symlinkat(BString, FD dirfd, BString linkpath);
     U32 umask(U32 umask);
     U32 unlinkFile(BString path);
-    U32 unlinkat(FD dirfd, BString path, U32 flags);
-    U32 unmap(U32 address, U32 len);
+    U32 unlinkat(FD dirfd, BString path, U32 flags);    
     U32 utimes(BString path, U32 times);
     U32 utimesat(FD dirfd, BString path, U32 times, U32 flags);
     U32 utimesat64(FD dirfd, BString path, U32 times, U32 flags);
-    U32 write(FD fildes, U32 bufferAddress, U32 bufferLen);
-    U32 writev(FD handle, U32 iov, S32 iovcnt);
+    U32 write(KThread* thread, FD fildes, U32 bufferAddress, U32 bufferLen);
+    U32 writev(KThread* thread, FD handle, U32 iov, S32 iovcnt);
     U32 memfd_create(BString name, U32 flags);
 
     user_desc* getLDT(U32 index);
@@ -227,7 +211,8 @@ public:
     U32 exitCode;
     U32 umaskValue;
     bool terminated;
-    Memory* memory;
+    KMemory* memory;
+
     BString currentDirectory;
     U32 brkEnd;    
     KSigAction sigActions[MAX_SIG_ACTIONS];
@@ -247,12 +232,7 @@ public:
 
     bool hasSetStackMask;
     bool hasSetSeg[6];
-#ifdef BOXEDWINE_64BIT_MMU
-	Memory* previousMemory;
-    U32 nextNativeAddress;
     std::unordered_map<U32, U32> glStrings;    
-    U32 allocNative(U32 len);    
-#endif
     U32 glStringsiExtensions;
     std::vector<U32> glStringsiExtensionsOffset;
     U32 numberOfExtensions;
@@ -281,6 +261,7 @@ private:
     std::unordered_map<U32, BoxedPtr<AttachedSHM> > attachedShm; // key is attached address
     BOXEDWINE_MUTEX attachedShmMutex;
 
+    friend class KMemory;
     std::unordered_map<U32, BoxedPtr<MappedFile> > mappedFiles; // key is address
     BOXEDWINE_MUTEX mappedFilesMutex;
 
@@ -299,7 +280,7 @@ private:
     void initStdio();
     BoxedPtr<FsNode> findInPath(BString path);
     U32 readlinkInDirectory(BString currentDirectory, BString path, U32 buffer, U32 bufSize);
-    void onExec();
+    void onExec(KThread* thread);
     U32 getCurrentDirectoryFromDirFD(FD dirfd, BString& currentDirectory);
 
     BoxedPtr<FsNode> commandLineNode;

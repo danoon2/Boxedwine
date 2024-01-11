@@ -892,8 +892,8 @@ BString BString::join(BString delimiter, const std::vector<BString>& values) {
 
 BString BString::join(const char* delimiter, const std::vector<BString>& values) {
     BString result;
-    for (int i = 0; i < values.size(); i++) {
-        if (1 != 0) {
+    for (int i = 0; i < (int)values.size(); i++) {
+        if (i != 0) {
             result += delimiter;
         }
         result += values[i];

@@ -27,6 +27,7 @@ static void closeSdlAudio() {
 
 static void audioCallback(void* userdata, U8* stream, S32 len) {
 	KNativeSDLAudioData* data = (KNativeSDLAudioData*)userdata;
+	KMemory* memory = data->process->memory;
 
 	if (!data->isPlaying) {
 		memset(stream, data->got.silence, len);
@@ -45,12 +46,12 @@ static void audioCallback(void* userdata, U8* stream, S32 len) {
 	}
 	U32 nframes = len / blockAlign;
 	U32 to_copy_bytes, to_copy_frames, chunk_bytes, lcl_offs_bytes;
-	if (!data->process->memory->isValidReadAddress(data->address_lcl_offs_frames, 4)) {
+	if (!data->process->memory->canRead(data->address_lcl_offs_frames, 4)) {
 		memset(stream, data->got.silence, len);
 		return;
 	}
-	U32 lcl_offs_frames = data->process->readd(data->address_lcl_offs_frames);
-	U32 held_frames = data->process->readd(data->address_held_frames);
+	U32 lcl_offs_frames = data->process->memory->readd(data->address_lcl_offs_frames);
+	U32 held_frames = data->process->memory->readd(data->address_held_frames);
 
 	lcl_offs_bytes = lcl_offs_frames * data->fmt.nBlockAlign;
 	to_copy_frames = nframes < held_frames ? nframes : held_frames;
@@ -60,10 +61,10 @@ static void audioCallback(void* userdata, U8* stream, S32 len) {
 
 	if (data->sameFormat) {
 		if (to_copy_bytes > chunk_bytes) {
-			data->process->memcopyToNative(data->address_local_buffer + lcl_offs_bytes, stream, chunk_bytes);
-			data->process->memcopyToNative(data->address_local_buffer, stream + chunk_bytes, to_copy_bytes - chunk_bytes);
+			memory->memcpy(stream, data->address_local_buffer + lcl_offs_bytes, chunk_bytes);
+			memory->memcpy(stream + chunk_bytes, data->address_local_buffer, to_copy_bytes - chunk_bytes);
 		} else {
-			data->process->memcopyToNative(data->address_local_buffer + lcl_offs_bytes, stream, to_copy_bytes);
+			memory->memcpy(stream, data->address_local_buffer + lcl_offs_bytes, to_copy_bytes);
 		}
 		stream += to_copy_bytes;
 	} else {		
@@ -77,11 +78,11 @@ static void audioCallback(void* userdata, U8* stream, S32 len) {
 			data->cvtBufSize = bufSize;
 		}
 		if (to_copy_bytes > chunk_bytes) {
-			data->process->memcopyToNative(data->address_local_buffer + lcl_offs_bytes, data->cvtBuf, chunk_bytes);
-			data->process->memcopyToNative(data->address_local_buffer, data->cvtBuf + chunk_bytes, to_copy_bytes - chunk_bytes);
+			memory->memcpy(data->cvtBuf, data->address_local_buffer + lcl_offs_bytes, chunk_bytes);
+			memory->memcpy(data->cvtBuf + chunk_bytes, data->address_local_buffer, to_copy_bytes - chunk_bytes);
 		}
 		else {
-			data->process->memcopyToNative(data->address_local_buffer + lcl_offs_bytes, data->cvtBuf, to_copy_bytes);
+			memory->memcpy(data->cvtBuf, data->address_local_buffer + lcl_offs_bytes, to_copy_bytes);
 		}
 		data->cvt.buf = data->cvtBuf;
 		SDL_ConvertAudio(&data->cvt);
@@ -90,9 +91,9 @@ static void audioCallback(void* userdata, U8* stream, S32 len) {
 	}
 	lcl_offs_frames += to_copy_frames;
 	lcl_offs_frames %= data->bufsize_frames;
-	data->process->writed(data->address_lcl_offs_frames, lcl_offs_frames);
+	data->process->memory->writed(data->address_lcl_offs_frames, lcl_offs_frames);
 	held_frames -= to_copy_frames;
-	data->process->writed(data->address_held_frames, held_frames);
+	data->process->memory->writed(data->address_held_frames, held_frames);
 	if (nframes > to_copy_frames) {
 		memset(stream, data->got.silence, (nframes - to_copy_frames) * blockAlign);
 	}
@@ -183,20 +184,20 @@ U32 KNativeAudioSDL::getSdlFormat(BoxedWaveFormatExtensible* pFmt) {
 	}
 }
 
-U32 KNativeAudioSDL::init(bool isRender, U32 boxedAudioId, U32 addressFmt, U32 addressPeriodFrames, U32 addressLocalBuffer, U32 addressWriOffsFrames, U32 addressHeldFrames, U32 addressLclOffsFrames, U32 bufsizeFrames) {
+U32 KNativeAudioSDL::init(KProcess* process, bool isRender, U32 boxedAudioId, U32 addressFmt, U32 addressPeriodFrames, U32 addressLocalBuffer, U32 addressWriOffsFrames, U32 addressHeldFrames, U32 addressLclOffsFrames, U32 bufsizeFrames) {
 	KNativeSDLAudioData* data = getDataFromId(boxedAudioId);
 	if (!data) {
 		return E_FAIL;
-	}
-	data->process = KThread::currentThread()->process;
+	}	
+	data->process = process;
 
 	data->bufsize_frames = bufsizeFrames;
-	data->period_frames = readd(addressPeriodFrames);
+	data->period_frames = data->process->memory->readd(addressPeriodFrames);
 	data->address_local_buffer = addressLocalBuffer;
 	data->address_wri_offs_frames = addressWriOffsFrames;
 	data->address_held_frames = addressHeldFrames;
 	data->address_lcl_offs_frames = addressLclOffsFrames;
-	data->fmt.read(addressFmt);
+	data->fmt.read(process->memory, addressFmt);
 
 	data->want.callback = audioCallback;
 	data->want.format = getSdlFormat(&data->fmt);
@@ -248,8 +249,12 @@ void KNativeAudioSDL::unlock(U32 boxedAudioId) {
 }
 
 U32 KNativeAudioSDL::isFormatSupported(U32 boxedAudioId, U32 addressWaveFormat) {
+	KNativeSDLAudioData* data = getDataFromId(boxedAudioId);
+	if (!data) {
+		return E_FAIL;
+	}
 	BoxedWaveFormatExtensible fmt;
-	fmt.read(addressWaveFormat);
+	fmt.read(KThread::currentThread()->memory, addressWaveFormat);
 	if (getSdlFormat(&fmt) != 0) {
 		return S_OK;
 	}
@@ -272,7 +277,7 @@ U32 KNativeAudioSDL::getMixFormat(U32 boxedAudioId, U32 addressWaveFormat) {
 	fmt.wValidBitsPerSample = fmt.wBitsPerSample;
 	fmt.dwChannelMask = KSAUDIO_SPEAKER_STEREO;
 	fmt.SubFormat = SDL_KSDATAFORMAT_SUBTYPE_PCM;
-	fmt.write(addressWaveFormat);
+	fmt.write(KThread::currentThread()->memory, addressWaveFormat);
 	return S_OK;
 }
 
@@ -280,7 +285,7 @@ void KNativeAudioSDL::setVolume(U32 boxedAudioId, float level, U32 channel) {
 
 }
 
-U32 KNativeAudioSDL::midiOutOpen(U32 wDevID, U32 lpDesc, U32 dwFlags, U32 fd) {
+U32 KNativeAudioSDL::midiOutOpen(KProcess* process, U32 wDevID, U32 lpDesc, U32 dwFlags, U32 fd) {
 	return E_FAIL;
 }
 
@@ -304,7 +309,7 @@ U32 KNativeAudioSDL::midiOutUnprepare(U32 wDevID, U32 lpMidiHdr, U32 dwSize) {
 	return E_FAIL;
 }
 
-U32 KNativeAudioSDL::midiOutGetDevCaps(U32 wDevID, U32 lpCaps, U32 dwSize) {
+U32 KNativeAudioSDL::midiOutGetDevCaps(KThread* thread, U32 wDevID, U32 lpCaps, U32 dwSize) {
 	return E_FAIL;
 }
 

@@ -65,17 +65,17 @@ public:
 		}
 		return memcmp(Data4, other.Data4, 8) == 0;
 	}
-	void read(U32 address) {
-		Data1 = readd(address); address += 4;
-		Data2 = readd(address); address += 2;
-		Data3 = readd(address); address += 2;
-		memcopyToNative(address, Data4, 8);
+	void read(KMemory* memory, U32 address) {
+		Data1 = memory->readd(address); address += 4;
+		Data2 = memory->readd(address); address += 2;
+		Data3 = memory->readd(address); address += 2;
+		memory->memcpy(Data4, address, 8);
 	}
-	void write(U32 address) {
-		writed(address, Data1); address += 4;
-		writew(address, Data2); address += 2;
-		writew(address, Data3); address += 2;
-		memcopyFromNative(address, Data4, 8);
+	void write(KMemory* memory, U32 address) {
+		memory->writed(address, Data1); address += 4;
+		memory->writew(address, Data2); address += 2;
+		memory->writew(address, Data3); address += 2;
+		memory->memcpy(address, Data4, 8);
 	}
 	U32  Data1;
 	U16  Data2;
@@ -86,26 +86,26 @@ public:
 class BoxedWaveFormatEx {
 public:
 	BoxedWaveFormatEx() : wFormatTag(0), nChannels(0), nSamplesPerSec(0), nAvgBytesPerSec(0), nBlockAlign(0), wBitsPerSample(0), cbSize(0) {}
-	U32 read(U32 address) {
-		wFormatTag = readw(address); address += 2;
-		nChannels = readw(address); address += 2;
+	U32 read(KMemory* memory, U32 address) {
+		wFormatTag = memory->readw(address); address += 2;
+		nChannels = memory->readw(address); address += 2;
 
-		nSamplesPerSec = readd(address); address += 4;
-		nAvgBytesPerSec = readd(address); address += 4;
+		nSamplesPerSec = memory->readd(address); address += 4;
+		nAvgBytesPerSec = memory->readd(address); address += 4;
 
-		nBlockAlign = readw(address); address += 2;
-		wBitsPerSample = readw(address); address += 2;
-		cbSize = readw(address); address += 2;
+		nBlockAlign = memory->readw(address); address += 2;
+		wBitsPerSample = memory->readw(address); address += 2;
+		cbSize = memory->readw(address); address += 2;
 		return address;
 	}
-	U32 write(U32 address) {
-		writew(address, wFormatTag); address += 2;
-		writew(address, nChannels); address += 2;
-		writed(address, nSamplesPerSec); address += 4;
-		writed(address, nAvgBytesPerSec); address += 4;
-		writew(address, nBlockAlign); address += 2;
-		writew(address, wBitsPerSample); address += 2;
-		writew(address, cbSize); address += 2;
+	U32 write(KMemory* memory, U32 address) {
+		memory->writew(address, wFormatTag); address += 2;
+		memory->writew(address, nChannels); address += 2;
+		memory->writed(address, nSamplesPerSec); address += 4;
+		memory->writed(address, nAvgBytesPerSec); address += 4;
+		memory->writew(address, nBlockAlign); address += 2;
+		memory->writew(address, wBitsPerSample); address += 2;
+		memory->writew(address, cbSize); address += 2;
 		return address;
 	}
 
@@ -121,20 +121,20 @@ public:
 class BoxedWaveFormatExtensible : public BoxedWaveFormatEx {
 public:
 	BoxedWaveFormatExtensible() : BoxedWaveFormatEx(), wValidBitsPerSample(0), dwChannelMask(0) {}
-	void read(U32 address) {
-		address = BoxedWaveFormatEx::read(address);
+	void read(KMemory* memory, U32 address) {
+		address = BoxedWaveFormatEx::read(memory, address);
 		if (this->cbSize == 0 || this->cbSize >= 22) {
-			wValidBitsPerSample = readw(address); address += 2;
-			dwChannelMask = readd(address); address += 4;
-			SubFormat.read(address);
+			wValidBitsPerSample = memory->readw(address); address += 2;
+			dwChannelMask = memory->readd(address); address += 4;
+			SubFormat.read(memory, address);
 		}
 	}
-	void write(U32 address) {
-		address = BoxedWaveFormatEx::write(address);
+	void write(KMemory* memory, U32 address) {
+		address = BoxedWaveFormatEx::write(memory, address);
 		if (this->cbSize == 0 || this->cbSize >= 22) {
-			writew(address, wValidBitsPerSample); address += 2;
-			writed(address, dwChannelMask); address += 4;
-			SubFormat.write(address);
+			memory->writew(address, wValidBitsPerSample); address += 2;
+			memory->writed(address, dwChannelMask); address += 4;
+			SubFormat.write(memory, address);
 		}
 	}
 	U16 wValidBitsPerSample; // union with wSamplesPerBlock
@@ -149,6 +149,7 @@ public:
     static void init();
 	static void shutdown();
 
+	KNativeAudio() : memory(nullptr) {}
 	virtual ~KNativeAudio() {}
 
 	virtual bool load() = 0;
@@ -162,7 +163,7 @@ public:
 	virtual U32 getEndPoint(bool isRender, U32 adevid) = 0;
 	virtual void release(U32 boxedAudioId) = 0;
 	virtual void captureResample(U32 boxedAudioId) = 0;
-	virtual U32 init(bool isRender, U32 boxedAudioId, U32 addressFmt, U32 addressPeriodFrames, U32 addressLocalBuffer, U32 addressWriOffsFrames, U32 addressHeldFrames, U32 addressLclOffsFrames, U32 bufsizeFrames) = 0;
+	virtual U32 init(KProcess* process, bool isRender, U32 boxedAudioId, U32 addressFmt, U32 addressPeriodFrames, U32 addressLocalBuffer, U32 addressWriOffsFrames, U32 addressHeldFrames, U32 addressLclOffsFrames, U32 bufsizeFrames) = 0;
 	virtual U32 getLatency(U32 boxedAudioId, U32* latency) = 0;
 	virtual void lock(U32 boxedAudioId) = 0;
 	virtual void unlock(U32 boxedAudioId) = 0;
@@ -171,13 +172,13 @@ public:
 	virtual void setVolume(U32 boxedAudioId, float level, U32 channel) = 0;
     virtual void cleanup() = 0;
     
-	virtual U32 midiOutOpen(U32 wDevID, U32 lpDesc, U32 dwFlags, U32 fd) = 0;
+	virtual U32 midiOutOpen(KProcess* process, U32 wDevID, U32 lpDesc, U32 dwFlags, U32 fd) = 0;
 	virtual U32 midiOutClose(U32 wDevID) = 0;
 	virtual U32 midiOutData(U32 wDevID, U32 dwParam) = 0;
 	virtual U32 midiOutLongData(U32 wDevID, U32 lpMidiHdr, U32 dwSize) = 0;
 	virtual U32 midiOutPrepare(U32 wDevID, U32 lpMidiHdr, U32 dwSize) = 0;
 	virtual U32 midiOutUnprepare(U32 wDevID, U32 lpMidiHdr, U32 dwSize) = 0;
-	virtual U32 midiOutGetDevCaps(U32 wDevID, U32 lpCaps, U32 dwSize) = 0;
+	virtual U32 midiOutGetDevCaps(KThread* thread, U32 wDevID, U32 lpCaps, U32 dwSize) = 0;
 	virtual U32 midiOutGetNumDevs() = 0;
 	virtual U32 midiOutGetVolume(U32 wDevID, U32 lpdwVolume) = 0;
 	virtual U32 midiOutSetVolume(U32 wDevID, U32 dwVolume) = 0;
@@ -193,6 +194,9 @@ public:
 	virtual U32 midiInStart(U32 wDevID) = 0;
 	virtual U32 midiInStop(U32 wDevID) = 0;
 	virtual U32 midiInReset(U32 wDevID) = 0;
+
+protected:
+	KMemory* memory;
 };
 
 #endif

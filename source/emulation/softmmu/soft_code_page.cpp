@@ -2,6 +2,8 @@
 
 #ifdef BOXEDWINE_DEFAULT_MMU
 #include "soft_code_page.h"
+#include "soft_ram.h"
+#include "kmemory_soft.h"
 
 CodePage::CodePageEntry* CodePage::freeCodePageEntries;
 
@@ -51,11 +53,11 @@ void CodePage::freeCodePageEntry(CodePageEntry* entry) {
     freeCodePageEntries = entry; 
 }
 
-CodePage* CodePage::alloc(U8* page, U32 address, U32 flags) {
-    return new CodePage(page, address, flags);
+CodePage* CodePage::alloc(KMemoryData* memory, U8* page, U32 address, U32 flags) {
+    return new CodePage(memory, page, address, flags);
 }
 
-CodePage::CodePage(U8* page, U32 address, U32 flags) : RWPage(page, address, flags, Code_Page) {
+CodePage::CodePage(KMemoryData* memory, U8* page, U32 address, U32 flags) : RWPage(memory, page, address, flags, Code_Page) {
     memset(this->entries, 0, sizeof(this->entries));
 }
 
@@ -174,9 +176,22 @@ DecodedBlock* CodePage::getCode(U32 eip) {
     return 0;
 }
 
+void CodePage::copyOnWrite() {
+    U8* ram;
+
+    if (!mapShared() && ramPageRefCount(page) > 1) {
+        ram = ramPageAlloc();
+        memcpy(ram, page, K_PAGE_SIZE);
+        ramPageDecRef(page);
+        page = ram;
+        memory->setPage(address >> K_PAGE_SHIFT, this);        
+    }
+}
+
 void CodePage::writeb(U32 address, U8 value) {    
     if (value!=this->readb(address)) {
         removeBlockAt(address, 1);
+        copyOnWrite();
         RWPage::writeb(address, value);
     }
 }
@@ -184,6 +199,7 @@ void CodePage::writeb(U32 address, U8 value) {
 void CodePage::writew(U32 address, U16 value) {
     if (value!=this->readw(address)) {
         removeBlockAt(address, 2);
+        copyOnWrite();
         RWPage::writew(address, value);
     }
 }
@@ -191,27 +207,23 @@ void CodePage::writew(U32 address, U16 value) {
 void CodePage::writed(U32 address, U32 value) {
     if (value!=this->readd(address)) {
         removeBlockAt(address, 4);
+        copyOnWrite();
         RWPage::writed(address, value);
     }
 }
 
-U8* CodePage::getCurrentReadPtr() {
-    return this->page;
-}
-
-U8* CodePage::getCurrentWritePtr() {
+U8* CodePage::getReadPtr(U32 address, bool makeReady) {
+    if (canRead()) {
+        return this->page;
+    }
     return NULL;
 }
 
-U8* CodePage::getReadAddress(U32 address, U32 len) {    
-    return &this->page[address - this->address];
-}
-
-U8* CodePage::getWriteAddress(U32 address, U32 len) {
-    return NULL;
-}
-
-U8* CodePage::getReadWriteAddress(U32 address, U32 len) {
+U8* CodePage::getWritePtr(U32 address, U32 len, bool makeReady) {
+    if (canWrite() && makeReady) {
+        removeBlockAt(address, len);
+        return this->page;
+    }
     return NULL;
 }
 

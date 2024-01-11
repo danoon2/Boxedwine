@@ -3,7 +3,7 @@
 
 class KNativeSDLAudioData {
 public:
-	KNativeSDLAudioData() : cvtBuf(0), cvtBufSize(0), sameFormat(false), open(false), isRender(false), isPlaying(false), eventFd(0), adevid(0), cap_held_frames(0), resamp_bufsize_frames(0), resamp_buffer(0), cap_offs_frames(0), bufsize_frames(0), address_local_buffer(0), address_wri_offs_frames(0), address_held_frames(0), address_lcl_offs_frames(0), period_frames(0) {}
+	KNativeSDLAudioData() : cvtBuf(0), cvtBufSize(0), sameFormat(false), open(false), process(nullptr), isRender(false), isPlaying(false), eventFd(0), adevid(0), cap_held_frames(0), resamp_bufsize_frames(0), resamp_buffer(0), cap_offs_frames(0), bufsize_frames(0), address_local_buffer(0), address_wri_offs_frames(0), address_held_frames(0), address_lcl_offs_frames(0), period_frames(0) {}
 	~KNativeSDLAudioData() {
 		if (resamp_buffer) {
 			delete[] resamp_buffer;
@@ -21,7 +21,7 @@ public:
 
 	bool sameFormat;
 	bool open;
-	std::shared_ptr<KProcess> process;
+	KProcess* process;
 
 	bool isRender;
 	bool isPlaying;
@@ -59,7 +59,7 @@ public:
 	virtual U32 getEndPoint(bool isRender, U32 adevid);
 	virtual void release(U32 boxedAudioId);
 	virtual void captureResample(U32 boxedAudioId);
-	virtual U32 init(bool isRender, U32 boxedAudioId, U32 addressFmt, U32 addressPeriodFrames, U32 addressLocalBuffer, U32 addressWriOffsFrames, U32 addressHeldFrames, U32 addressLclOffsFrames, U32 bufsizeFrames);
+	virtual U32 init(KProcess* process, bool isRender, U32 boxedAudioId, U32 addressFmt, U32 addressPeriodFrames, U32 addressLocalBuffer, U32 addressWriOffsFrames, U32 addressHeldFrames, U32 addressLclOffsFrames, U32 bufsizeFrames);
 	virtual U32 getLatency(U32 boxedAudioId, U32* latency);
 	virtual void lock(U32 boxedAudioId);
 	virtual void unlock(U32 boxedAudioId);
@@ -68,13 +68,13 @@ public:
 	virtual void setVolume(U32 boxedAudioId, float level, U32 channel);
 	virtual void cleanup();
 
-	virtual U32 midiOutOpen(U32 wDevID, U32 lpDesc, U32 dwFlags, U32 fd);
+	virtual U32 midiOutOpen(KProcess* process, U32 wDevID, U32 lpDesc, U32 dwFlags, U32 fd);
 	virtual U32 midiOutClose(U32 wDevID);
 	virtual U32 midiOutData(U32 wDevID, U32 dwParam);
 	virtual U32 midiOutLongData(U32 wDevID, U32 lpMidiHdr, U32 dwSize);
 	virtual U32 midiOutPrepare(U32 wDevID, U32 lpMidiHdr, U32 dwSize);
 	virtual U32 midiOutUnprepare(U32 wDevID, U32 lpMidiHdr, U32 dwSize);
-	virtual U32 midiOutGetDevCaps(U32 wDevID, U32 lpCaps, U32 dwSize);
+	virtual U32 midiOutGetDevCaps(KThread* thread, U32 wDevID, U32 lpCaps, U32 dwSize);
 	virtual U32 midiOutGetNumDevs();
 	virtual U32 midiOutGetVolume(U32 wDevID, U32 lpdwVolume);
 	virtual U32 midiOutSetVolume(U32 wDevID, U32 dwVolume);

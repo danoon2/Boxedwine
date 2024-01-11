@@ -161,7 +161,6 @@ typedef struct _PROCESSOR_POWER_INFORMATION
     ULONG CurrentIdleState;
 } PROCESSOR_POWER_INFORMATION, *PPROCESSOR_POWER_INFORMATION;
 typedef LONG (WINAPI *CNPI)(POWER_INFORMATION_LEVEL,PVOID,ULONG,PVOID,ULONG);
-static CNPI Pwrinfo;
 static U32 cachedCpuMaxFreq;
 
 U32 Platform::getCpuFreqMHz() {
@@ -419,7 +418,7 @@ void Platform::releaseNativeMemory(void* address, U64 len) {
 }
 
 void Platform::commitNativeMemory(void* address, U64 len) {
-    if (!VirtualAlloc(address, len, MEM_COMMIT, PAGE_READWRITE)) {
+    if (!VirtualAlloc(address, (SIZE_T)len, MEM_COMMIT, PAGE_READWRITE)) {
         LPSTR messageBuffer = NULL;
         size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
         kpanic("allocNativeMemory: failed to commit memory: %s", messageBuffer);
@@ -467,7 +466,7 @@ void* Platform::reserveNativeMemory(bool large) {
     U64 len = large ? 0x800000000l : 0x100000000l;
 
     p = (void*)(i << 32);
-    while (VirtualAlloc(p, len, MEM_RESERVE, PAGE_READWRITE) == 0) {
+    while (VirtualAlloc(p, (SIZE_T)len, MEM_RESERVE, PAGE_READWRITE) == 0) {
         i++;
         p = (void*)(i << 32);
     }

@@ -38,7 +38,7 @@ unsigned int crc32File(BString filePath) {
         FILE* fp = fopen(filePath.c_str(), "rb");
         if (fp) {
             unsigned char* buffer = new unsigned char[(int)buf.st_size];
-            if ((U64)fread(buffer, 1, buf.st_size, fp) == (U64)buf.st_size) {
+            if ((U64)fread(buffer, 1, (size_t)buf.st_size, fp) == (U64)buf.st_size) {
                 unsigned int result = crc32b(buffer, (int)buf.st_size);
                 delete[] buffer;
                 fclose(fp);

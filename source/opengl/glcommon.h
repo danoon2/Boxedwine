@@ -130,14 +130,14 @@ struct long2Double {
 #define ipARG7 ARG7
 #define ipARG8 ARG8
 
-#define llARG1 readq(ARG1)
-#define llARG2 readq(ARG2)
-#define llARG3 readq(ARG3)
-#define llARG4 readq(ARG4)
-#define llARG5 readq(ARG5)
-#define llARG6 readq(ARG6)
-#define llARG7 readq(ARG7)
-#define llARG8 readq(ARG8)
+#define llARG1 cpu->memory->readq(ARG1)
+#define llARG2 cpu->memory->readq(ARG2)
+#define llARG3 cpu->memory->readq(ARG3)
+#define llARG4 cpu->memory->readq(ARG4)
+#define llARG5 cpu->memory->readq(ARG5)
+#define llARG6 cpu->memory->readq(ARG6)
+#define llARG7 cpu->memory->readq(ARG7)
+#define llARG8 cpu->memory->readq(ARG8)
 
 #define fARG1 fARG(cpu, ARG1)
 #define fARG2 fARG(cpu, ARG2)

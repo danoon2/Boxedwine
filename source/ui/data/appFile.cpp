@@ -71,10 +71,10 @@ void AppFile::runOptions(BoxedContainer* container, BoxedApp* app, const std::ve
                 container->setWineVersion(wineVer->name);
                 hasContainerOption = true;
             } else {
-                WineVersion* wineVer = GlobalSettings::getAvailableWineFromName(option.substr(5));
-                if (wineVer) {
-                    GlobalSettings::downloadWine(*wineVer, [container, wineVer](bool success) {
-                        container->setWineVersion(wineVer->name);
+                WineVersion* availableWineVer = GlobalSettings::getAvailableWineFromName(option.substr(5));
+                if (availableWineVer) {
+                    GlobalSettings::downloadWine(*availableWineVer, [container, availableWineVer](bool success) {
+                        container->setWineVersion(availableWineVer->name);
                         container->saveContainer();
                         }
                     );

@@ -233,7 +233,7 @@ U32 getPELoadAddress(struct FsOpenNode* openNode, U32* section, U32* numberOfSec
     return buffer[offset + 0x34] | ((U32)buffer[offset + 0x35] << 8) | ((U32)buffer[offset + 0x36] << 16) | ((U32)buffer[offset + 0x37] << 24);
 }
 #endif
-bool ElfLoader::loadProgram(const std::shared_ptr<KProcess>& process, FsOpenNode* openNode, U32* eip) {
+bool ElfLoader::loadProgram(KThread* thread, FsOpenNode* openNode, U32* eip) {
     U8 buffer[sizeof(struct k_Elf32_Ehdr)];
     struct k_Elf32_Ehdr* hdr = (struct k_Elf32_Ehdr*)buffer;
     U32 len = openNode->readNative(buffer, sizeof(buffer));
@@ -269,10 +269,10 @@ bool ElfLoader::loadProgram(const std::shared_ptr<KProcess>& process, FsOpenNode
     }
 
     if (reloc)
-        address = process->mmap(address, len, K_PROT_READ | K_PROT_WRITE | K_PROT_EXEC, K_MAP_PRIVATE | K_MAP_ANONYMOUS | K_MAP_FIXED, -1, 0);
-    process->loaderBaseAddress = address;
-    process->brkEnd = address+len;
-    process->phdr = 0;
+        address = thread->memory->mmap(thread, address, len, K_PROT_READ | K_PROT_WRITE | K_PROT_EXEC, K_MAP_PRIVATE | K_MAP_ANONYMOUS | K_MAP_FIXED, -1, 0);
+    thread->process->loaderBaseAddress = address;
+    thread->process->brkEnd = address+len;
+    thread->process->phdr = 0;
 
     for (i=0;i<hdr->e_phnum;i++) {
         struct k_Elf32_Phdr phdr;		
@@ -287,21 +287,21 @@ bool ElfLoader::loadProgram(const std::shared_ptr<KProcess>& process, FsOpenNode
                     addr &= 0xFFFFF000;
                     sectionLen+=(phdr.p_memsz+(phdr.p_paddr-addr));
                 }
-                process->mmap(addr, sectionLen, K_PROT_READ | K_PROT_WRITE | K_PROT_EXEC, K_MAP_PRIVATE | K_MAP_ANONYMOUS | K_MAP_FIXED, -1, 0);
+                thread->memory->mmap(thread, addr, sectionLen, K_PROT_READ | K_PROT_WRITE | K_PROT_EXEC, K_MAP_PRIVATE | K_MAP_ANONYMOUS | K_MAP_FIXED, -1, 0);
             }
             if (phdr.p_filesz>0) {
                 if (phdr.p_offset<=hdr->e_phoff && hdr->e_phoff<phdr.p_offset+phdr.p_filesz) {
-                    process->phdr = reloc+phdr.p_paddr+hdr->e_phoff-phdr.p_offset;
+                    thread->process->phdr = reloc+phdr.p_paddr+hdr->e_phoff-phdr.p_offset;
                 }
                 openNode->seek(phdr.p_offset);                
-                openNode->read(reloc+phdr.p_paddr, phdr.p_filesz);		
+                openNode->read(thread, reloc+phdr.p_paddr, phdr.p_filesz);		
             }
         }
     }
-    process->phentsize=hdr->e_phentsize;
-    process->phnum=hdr->e_phnum;
+    thread->process->phentsize=hdr->e_phentsize;
+    thread->process->phnum=hdr->e_phnum;
 
     *eip = hdr->e_entry+reloc;
-    process->entry = *eip; 
+    thread->process->entry = *eip;
     return true;
 }

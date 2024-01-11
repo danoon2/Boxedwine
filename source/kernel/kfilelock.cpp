@@ -20,33 +20,37 @@
 #include "kfilelock.h"
 
 void KFileLock::writeFileLock(KThread* thread, U32 address, bool is64) {
+    KMemory* memory = thread->memory;
+
     if (!is64) {
-        writew(address, this->l_type);address+=2;
-        writew(address, this->l_whence); address += 2;
-        writed(address, (U32)this->l_start); address += 4;
-        writed(address, (U32)this->l_len); address += 4;
-        writed(address, (U32)this->l_pid);
+        memory->writew(address, this->l_type);address+=2;
+        memory->writew(address, this->l_whence); address += 2;
+        memory->writed(address, (U32)this->l_start); address += 4;
+        memory->writed(address, (U32)this->l_len); address += 4;
+        memory->writed(address, (U32)this->l_pid);
     } else {
-        writew(address, this->l_type); address += 2;
-        writew(address, this->l_whence); address += 2;
-        writeq(address, this->l_start); address += 8;
-        writeq(address, this->l_len); address += 8;
-        writed(address, this->l_pid);
+        memory->writew(address, this->l_type); address += 2;
+        memory->writew(address, this->l_whence); address += 2;
+        memory->writeq(address, this->l_start); address += 8;
+        memory->writeq(address, this->l_len); address += 8;
+        memory->writed(address, this->l_pid);
     }
 }
 
 void KFileLock::readFileLock(KThread* thread, U32 address, bool is64) {
+    KMemory* memory = thread->memory;
+
     if (!is64) {
-        this->l_type = readw(address); address += 2;
-        this->l_whence = readw(address); address += 2;
-        this->l_start = readd(address); address += 4;
-        this->l_len = readd(address); address += 4;
-        this->l_pid = readd(address);
+        this->l_type = memory->readw(address); address += 2;
+        this->l_whence = memory->readw(address); address += 2;
+        this->l_start = memory->readd(address); address += 4;
+        this->l_len = memory->readd(address); address += 4;
+        this->l_pid = memory->readd(address);
     } else {
-        this->l_type = readw(address); address += 2;
-        this->l_whence = readw(address); address += 2;
-        this->l_start = readq(address); address += 8;
-        this->l_len = readq(address); address += 8;
-        this->l_pid = readd(address);
+        this->l_type = memory->readw(address); address += 2;
+        this->l_whence = memory->readw(address); address += 2;
+        this->l_start = memory->readq(address); address += 8;
+        this->l_len = memory->readq(address); address += 8;
+        this->l_pid = memory->readd(address);
     }
 }

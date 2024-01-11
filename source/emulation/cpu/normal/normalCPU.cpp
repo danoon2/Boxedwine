@@ -43,8 +43,8 @@ static U32 normalOpsInitialized;
 void OPCALL normal_sidt(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);    
     U32 eaa = eaa(cpu, op);
-    writew(eaa, 1023); // limit
-    writed(eaa, 0); // base
+    cpu->memory->writew(eaa, 1023); // limit
+    cpu->memory->writed(eaa, 0); // base
 #ifdef _DEBUG
     klog("sidt not implemented");
 #endif
@@ -93,7 +93,7 @@ OpCallback NormalCPU::getFunctionForOp(DecodedOp* op) {
     return normalOps[op->inst];
 }
 
-NormalCPU::NormalCPU() {   
+NormalCPU::NormalCPU(KMemory* memory) : CPU(memory) {   
     initNormalOps();
 #ifdef BOXEDWINE_DYNAMIC
     this->firstOp = firstDynamicOp;
@@ -102,11 +102,12 @@ NormalCPU::NormalCPU() {
 #endif
 }
 
-U8 fetchByte(U32 *eip) {
-    if (*eip - KThread::currentThread()->cpu->seg[CS].address == 0xFFFF && !KThread::currentThread()->cpu->isBig()) {
+U8 fetchByte(void* data, U32 *eip) {
+    CPU* cpu = (CPU*)data;
+    if (*eip - cpu->seg[CS].address == 0xFFFF && !cpu->isBig()) {
         kpanic("eip wrapped around.");
     }
-    return readb((*eip)++);
+    return cpu->memory->readb((*eip)++);
 }
 
 class NormalBlock : public DecodedBlock {
@@ -220,9 +221,9 @@ void NormalBlock::dealloc(bool delayed) {
     this->referencedFrom = NULL;
 }
 
-DecodedBlock* NormalCPU::getBlockForInspectionButNotUsed(U32 address, bool big) {
+DecodedBlock* NormalCPU::getBlockForInspectionButNotUsed(CPU* cpu, U32 address, bool big) {
     DecodedBlock* block = NormalBlock::alloc();
-    decodeBlock(fetchByte, address, big, 0, K_PAGE_SIZE, 0, block);
+    decodeBlock(fetchByte, cpu, address, big, 0, K_PAGE_SIZE, 0, block);
     block->address = address;
     return block;
 }
@@ -236,7 +237,7 @@ DecodedBlock* NormalCPU::getNextBlock() {
 
     if (!block) {
         block = NormalBlock::alloc();
-        decodeBlock(fetchByte, startIp, this->isBig(), 0, K_PAGE_SIZE, 0, block);
+        decodeBlock(fetchByte, this, startIp, this->isBig(), 0, K_PAGE_SIZE, 0, block);
         block->address = startIp;
         
         DecodedOp* op = block->op;

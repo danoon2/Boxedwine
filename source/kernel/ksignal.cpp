@@ -21,26 +21,26 @@
 #include "ksignal.h"
 #include "kscheduler.h"
 
-void KSigAction::writeSigAction(U32 address, U32 sigsetSize) {
-    writed(address, this->handlerAndSigAction);
-    writed(address + 4, this->flags);
-    writed(address + 8, this->restorer);
+void KSigAction::writeSigAction(KMemory* memory, U32 address, U32 sigsetSize) {
+    memory->writed(address, this->handlerAndSigAction);
+    memory->writed(address + 4, this->flags);
+    memory->writed(address + 8, this->restorer);
     if (sigsetSize==4)
-        writed(address + 12, (U32)this->mask);
+        memory->writed(address + 12, (U32)this->mask);
     else if (sigsetSize==8)
-        writeq(address + 12, this->mask);
+        memory->writeq(address + 12, this->mask);
     else
         klog("writeSigAction: can't handle sigsetSize=%d", sigsetSize);
 }
 
-void KSigAction::readSigAction(U32 address, U32 sigsetSize) {
-    this->handlerAndSigAction = readd(address);
-    this->flags = readd(address + 4);
-    this->restorer = readd(address + 8);
+void KSigAction::readSigAction(KMemory* memory, U32 address, U32 sigsetSize) {
+    this->handlerAndSigAction = memory->readd(address);
+    this->flags = memory->readd(address + 4);
+    this->restorer = memory->readd(address + 8);
     if (sigsetSize==4)
-        this->mask = readd(address + 12);
+        this->mask = memory->readd(address + 12);
     else if (sigsetSize==8)
-        this->mask = readq(address + 12);
+        this->mask = memory->readq(address + 12);
     else
         klog("readSigAction: can't handle sigsetSize=%d", sigsetSize);
 }
@@ -207,12 +207,12 @@ U32 KSignal::readNative(U8* buffer, U32 len) {
     return 0;
 }
 
-U32 KSignal::stat(U32 address, bool is64) {
+U32 KSignal::stat(KProcess* process, U32 address, bool is64) {
     kpanic("KSignal::stat not implemented yet");
     return 0;
 }
 
-U32 KSignal::map(U32 address, U32 len, S32 prot, S32 flags, U64 off) {
+U32 KSignal::map(KThread* thread, U32 address, U32 len, S32 prot, S32 flags, U64 off) {
     return 0;
 }
 
@@ -228,7 +228,7 @@ S64 KSignal::getPos() {
     return 0;
 }
 
-U32 KSignal::ioctl(U32 request) {
+U32 KSignal::ioctl(KThread* thread, U32 request) {
     return -K_ENOTTY;
 }
 
@@ -240,9 +240,9 @@ S64 KSignal::length() {
     return -1;
 }
 
-U32 syscall_signalfd4(S32 fildes, U32 mask, U32 maskSize, U32 flags) {
+U32 syscall_signalfd4(KThread* thread, S32 fildes, U32 mask, U32 maskSize, U32 flags) {
     KFileDescriptor* fd;
-    KThread* thread = KThread::currentThread();
+    KMemory* memory = thread->memory;
 
     if (fildes>=0) {
         fd = thread->process->getFileDescriptor(fildes);
@@ -262,9 +262,9 @@ U32 syscall_signalfd4(S32 fildes, U32 mask, U32 maskSize, U32 flags) {
     }
     std::shared_ptr<KSignal> s = std::dynamic_pointer_cast<KSignal>(fd->kobject);
     if (maskSize==4) {
-        s->mask = readd(mask);
+        s->mask = memory->readd(mask);
     } else if (maskSize==8) {
-        s->mask = readq(mask);
+        s->mask = memory->readq(mask);
     } else {
         kpanic("syscall_signalfd4 unknown mask size: %d", maskSize);
     }

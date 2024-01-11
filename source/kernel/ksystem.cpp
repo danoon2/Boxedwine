@@ -110,7 +110,7 @@ void KSystem::destroy() {
         if (!p) {
             break;
         }
-        p->killAllThreadsExceptCurrent();
+        p->killAllThreads();
     }
 	KSystem::processes.clear();
     KSystem::shm.clear();
@@ -132,52 +132,55 @@ U32 KSystem::getProcessCount() {
     return (U32)KSystem::processes.size();
 }
 
-U32 KSystem::uname(U32 address) {
-    writeNativeString(address, "Linux"); // sysname
-    writeNativeString(address + 65, "Linux"); // nodename
-    writeNativeString(address + 130, "4.15.0-20-generic"); // release
+U32 KSystem::uname(KThread* thread, U32 address) {
+    KMemory* memory = thread->memory;
+    memory->strcpy(address, "Linux"); // sysname
+    memory->strcpy(address + 65, "Linux"); // nodename
+    memory->strcpy(address + 130, "4.15.0-20-generic"); // release
 #ifdef BOXEDWINE_MULTI_THREADED
     if (Platform::getCpuCount() > 1 && KSystem::cpuAffinityCountForApp != 1) {
-        writeNativeString(address + 105, "SMP Boxedwine"); // version
+        memory->strcpy(address + 105, "SMP Boxedwine"); // version
     } else {
-        writeNativeString(address + 105, "Boxedwine"); // version
+        memory->strcpy(address + 105, "Boxedwine"); // version
     }
 #else
-    writeNativeString(address + 105, "Boxedwine"); // version
+    memory->strcpy(address + 105, "Boxedwine"); // version
 #endif
-    writeNativeString(address + 260, "i686"); // machine
+    memory->strcpy(address + 260, "i686"); // machine
     return 0;
 }
 
-U32 KSystem::ugetrlimit(U32 resource, U32 rlim) {
+U32 KSystem::ugetrlimit(KThread * thread, U32 resource, U32 rlim) {
+    KMemory* memory = thread->memory;
+
     switch (resource) {
         case 2: // RLIMIT_DATA
-            writed(rlim, MAX_DATA_SIZE);
-            writed(rlim + 4, MAX_DATA_SIZE);
+            memory->writed(rlim, MAX_DATA_SIZE);
+            memory->writed(rlim + 4, MAX_DATA_SIZE);
             break;
         case 3: // RLIMIT_STACK
-            writed(rlim, MAX_STACK_SIZE);
-            writed(rlim + 4, MAX_STACK_SIZE);
+            memory->writed(rlim, MAX_STACK_SIZE);
+            memory->writed(rlim + 4, MAX_STACK_SIZE);
             break;
         case 4: // RLIMIT_CORE
-            writed(rlim, 1024 * 1024 * 4);
-            writed(rlim + 4, 1024 * 1024 * 4);
+            memory->writed(rlim, 1024 * 1024 * 4);
+            memory->writed(rlim + 4, 1024 * 1024 * 4);
             break;
         case 5: // RLIMIT_DATA
-            writed(rlim, MAX_DATA_SIZE);
-            writed(rlim + 4, MAX_DATA_SIZE);
+            memory->writed(rlim, MAX_DATA_SIZE);
+            memory->writed(rlim + 4, MAX_DATA_SIZE);
             break;
         case 6: // RLIMIT_MEMLOCK
-            writed(rlim, 64 * 1024 * 1024);
-            writed(rlim + 4, 64 * 1024 * 1024);
+            memory->writed(rlim, 64 * 1024 * 1024);
+            memory->writed(rlim + 4, 64 * 1024 * 1024);
             break;
         case 7: // RLIMIT_NOFILE
-            writed(rlim, MAX_NUMBER_OF_FILES);
-            writed(rlim + 4, MAX_NUMBER_OF_FILES);
+            memory->writed(rlim, MAX_NUMBER_OF_FILES);
+            memory->writed(rlim + 4, MAX_NUMBER_OF_FILES);
             break;
         case 9: // RLIMIT_AS
-            writed(rlim, MAX_ADDRESS_SPACE);
-            writed(rlim + 4, MAX_ADDRESS_SPACE);
+            memory->writed(rlim, MAX_ADDRESS_SPACE);
+            memory->writed(rlim + 4, MAX_ADDRESS_SPACE);
             break;
         default:
             kpanic("ugetrlimit resource %d not implemented", resource);
@@ -185,31 +188,35 @@ U32 KSystem::ugetrlimit(U32 resource, U32 rlim) {
     return 0;
 }
 
-U32 KSystem::clock_gettime(U32 clock_id, U32 tp) {    
+U32 KSystem::clock_gettime(KThread* thread, U32 clock_id, U32 tp) {
+    KMemory* memory = thread->memory;
+
     if (clock_id==0 || clock_id==5) { // CLOCK_REALTIME / CLOCK_REALTIME_COARSE
         U64 m = KSystem::getSystemTimeAsMicroSeconds();
-        writed(tp, (U32)(m / 1000000l));
-        writed(tp + 4, (U32)(m % 1000000l) * 1000);
+        memory->writed(tp, (U32)(m / 1000000l));
+        memory->writed(tp + 4, (U32)(m % 1000000l) * 1000);
     } else if (clock_id==1 || clock_id==2 || clock_id==4 || clock_id==6) { // CLOCK_MONOTONIC_RAW, CLOCK_PROCESS_CPUTIME_ID , CLOCK_MONOTONIC_COARSE
         U64 diff = KSystem::getMicroCounter();
-        writed(tp, (U32)(diff / 1000000l));
-        writed(tp + 4, (U32)(diff % 1000000l) * 1000);
+        memory->writed(tp, (U32)(diff / 1000000l));
+        memory->writed(tp + 4, (U32)(diff % 1000000l) * 1000);
     } else {
         kpanic("Unknown clock id for clock_gettime: %d",clock_id);
     }
     return 0;
 }
 
-U32 KSystem::clock_gettime64(U32 clock_id, U32 tp) {
+U32 KSystem::clock_gettime64(KThread* thread, U32 clock_id, U32 tp) {
+    KMemory* memory = thread->memory;
+
     if (clock_id == 0 || clock_id == 5) { // CLOCK_REALTIME / CLOCK_REALTIME_COARSE
         U64 m = KSystem::getSystemTimeAsMicroSeconds();
-        writeq(tp, m / 1000000l);
-        writed(tp + 4, (U32)(m % 1000000l) * 1000);
+        memory->writeq(tp, m / 1000000l);
+        memory->writed(tp + 4, (U32)(m % 1000000l) * 1000);
     }
     else if (clock_id == 1 || clock_id == 2 || clock_id == 4 || clock_id == 6) { // CLOCK_MONOTONIC_RAW, CLOCK_PROCESS_CPUTIME_ID , CLOCK_MONOTONIC_COARSE
         U64 diff = KSystem::getMicroCounter();
-        writeq(tp, diff / 1000000l);
-        writed(tp + 4, (U32)(diff % 1000000l) * 1000);
+        memory->writeq(tp, diff / 1000000l);
+        memory->writed(tp + 4, (U32)(diff % 1000000l) * 1000);
     }
     else {
         kpanic("Unknown clock id for clock_gettime64: %d", clock_id);
@@ -217,15 +224,19 @@ U32 KSystem::clock_gettime64(U32 clock_id, U32 tp) {
     return 0;
 }
 
-U32 KSystem::clock_getres(U32 clk_id, U32 timespecAddress) {
-    writed(timespecAddress, 0);
-    writed(timespecAddress+4, 1000000);
+U32 KSystem::clock_getres(KThread* thread, U32 clk_id, U32 timespecAddress) {
+    KMemory* memory = thread->memory;
+
+    memory->writed(timespecAddress, 0);
+    memory->writed(timespecAddress+4, 1000000);
     return 0;
 }
 
-U32 KSystem::clock_getres64(U32 clk_id, U32 timespecAddress) {
-    writeq(timespecAddress, 0);
-    writed(timespecAddress + 4, 1000000);
+U32 KSystem::clock_getres64(KThread* thread, U32 clk_id, U32 timespecAddress) {
+    KMemory* memory = thread->memory;
+
+    memory->writeq(timespecAddress, 0);
+    memory->writed(timespecAddress + 4, 1000000);
     return 0;
 }
 
@@ -273,23 +284,23 @@ U32 KSystem::tgkill(U32 threadGroupId, U32 threadId, U32 signal) {
 };
 */
 
-U32 KSystem::sysinfo(U32 address) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(processesCond);
+U32 KSystem::sysinfo(KThread* thread, U32 address) {
+    KMemory* memory = thread->memory;
 
-    writed(address, KSystem::getMilliesSinceStart()/1000); address+=4;
-    writed(address, 0); address+=4;
-    writed(address, 0); address+=4;
-    writed(address, 0); address+=4;
-    writed(address, 262144); address+=4; // 1 GB
-    writed(address, 196608); address+=4;
-    writed(address, 0); address+=4;
-    writed(address, 0); address+=4;
-    writed(address, 0); address+=4;
-    writed(address, 0); address+=4;
-    writew(address, (U16)KSystem::processes.size()); address+=2;
-    writed(address, 0); address+=4;
-    writed(address, 0); address+=4;
-    writed(address, K_PAGE_SIZE);
+    memory->writed(address, KSystem::getMilliesSinceStart()/1000); address+=4;
+    memory->writed(address, 0); address+=4;
+    memory->writed(address, 0); address+=4;
+    memory->writed(address, 0); address+=4;
+    memory->writed(address, 262144); address+=4; // 1 GB
+    memory->writed(address, 196608); address+=4;
+    memory->writed(address, 0); address+=4;
+    memory->writed(address, 0); address+=4;
+    memory->writed(address, 0); address+=4;
+    memory->writed(address, 0); address+=4;
+    memory->writew(address, (U16)KSystem::processes.size()); address+=2;
+    memory->writed(address, 0); address+=4;
+    memory->writed(address, 0); address+=4;
+    memory->writed(address, K_PAGE_SIZE);
     return 0;
 }
 
@@ -332,10 +343,11 @@ void KSystem::wakeThreadsWaitingOnProcessStateChanged() {
     BOXEDWINE_CONDITION_SIGNAL_ALL(processesCond);
 }
 
-U32 KSystem::waitpid(S32 pid, U32 statusAddress, U32 options) {    
+U32 KSystem::waitpid(KThread* thread, S32 pid, U32 statusAddress, U32 options) {
     std::shared_ptr<KProcess> process;
     U32 result;
-    KThread* thread = KThread::currentThread();
+    KMemory* memory = thread->memory;
+
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(processesCond);
 
     while (!process) {
@@ -393,20 +405,21 @@ U32 KSystem::waitpid(S32 pid, U32 statusAddress, U32 options) {
             s|=((process->exitCode & 0xFF) << 8);
             s|=(process->signaled & 0x7F);
         }
-        writed(statusAddress, s);
+        memory->writed(statusAddress, s);
     }
     result = process->id;
     KSystem::internalEraseProcess(result);
     return result;
 }
 
-U32 KSystem::times(U32 buf) {
+U32 KSystem::times(KThread* thread, U32 buf) {
     if (buf) {
-        KThread* thread = KThread::currentThread();
-        writed(buf, (U32)thread->userTime * 10); // user time
-        writed(buf + 4, (U32)thread->kernelTime * 10); // system time
-        writed(buf + 8, 0); // user time of children
-        writed(buf + 12, 0); // system time of children
+        KMemory* memory = thread->memory;
+
+        memory->writed(buf, (U32)thread->userTime * 10); // user time
+        memory->writed(buf + 4, (U32)thread->kernelTime * 10); // system time
+        memory->writed(buf + 8, 0); // user time of children
+        memory->writed(buf + 12, 0); // system time of children
     }
     return (U32)Platform::getMicroCounter()*10;
 }
@@ -445,15 +458,18 @@ U32 KSystem::getpgid(U32 pid) {
     return process->groupId;
 }
 
-U32 KSystem::gettimeofday(U32 tv, U32 tz) {
+U32 KSystem::gettimeofday(KThread* thread, U32 tv, U32 tz) {
     U64 m = Platform::getSystemTimeAsMicroSeconds();
-    
-    writed(tv, (U32)(m / 1000000l));
-    writed(tv + 4, (U32)(m % 1000000l));
+    KMemory* memory = thread->memory;
+
+    memory->writed(tv, (U32)(m / 1000000l));
+    memory->writed(tv + 4, (U32)(m % 1000000l));
     return 0;
 }
 
-void KSystem::writeStat(BString path, U32 buf, bool is64, U64 st_dev, U64 st_ino, U32 st_mode, U64 st_rdev, U64 st_size, U32 st_blksize, U64 st_blocks, U64 mtime, U32 linkCount) {
+void KSystem::writeStat(KProcess* process, BString path, U32 buf, bool is64, U64 st_dev, U64 st_ino, U32 st_mode, U64 st_rdev, U64 st_size, U32 st_blksize, U64 st_blocks, U64 mtime, U32 linkCount) {
+    KMemory* memory = process->memory;
+
     if (path == "/tmp/.X11-unix") {
         st_mode= K__S_IFDIR |K__S_ISVTX | K__S_IRWXU | K__S_IRWXG | K__S_IRWXO;
     }
@@ -465,50 +481,50 @@ void KSystem::writeStat(BString path, U32 buf, bool is64, U64 st_dev, U64 st_ino
         U32 t = (U32)(mtime/1000); // ms to sec
         U32 n = (U32)(mtime % 1000) * 1000000;
         
-        writeq(buf, st_dev);buf+=8;//st_dev               // 0
+        memory->writeq(buf, st_dev);buf+=8;//st_dev               // 0
         buf+=4; // padding                                          // 8
-        writed(buf, (U32)st_ino); buf += 4;//__st_ino     // 12
-        writed(buf, st_mode); buf += 4;//st_mode          // 16
-        writed(buf, linkCount); buf += 4;//st_nlink       // 20
+        memory->writed(buf, (U32)st_ino); buf += 4;//__st_ino     // 12
+        memory->writed(buf, st_mode); buf += 4;//st_mode          // 16
+        memory->writed(buf, linkCount); buf += 4;//st_nlink       // 20
         if (path == "/etc/sudoers" || path == "/tmp/.X11-unix") {
-            writed(buf, 0); buf += 4;//st_uid             // 24
-            writed(buf, 0); buf += 4;//st_gid               // 28
+            memory->writed(buf, 0); buf += 4;//st_uid             // 24
+            memory->writed(buf, 0); buf += 4;//st_gid               // 28
         } else {
-            writed(buf, KThread::currentThread()->process->userId); buf += 4;//st_uid           // 24
-            writed(buf, KThread::currentThread()->process->groupId); buf += 4;//st_gid               // 28
+            memory->writed(buf, process->userId); buf += 4;//st_uid           // 24
+            memory->writed(buf, process->groupId); buf += 4;//st_gid               // 28
         }        
-        writeq(buf, st_rdev); buf += 8;//st_rdev          // 32
+        memory->writeq(buf, st_rdev); buf += 8;//st_rdev          // 32
         buf+=4;                                                     // 40
-        writeq(buf, st_size); buf += 8;//st_size          // 44
-        writed(buf, st_blksize); buf += 4;//st_blksize    // 52
-        writeq(buf, st_blocks); buf += 8; //st_blocks     // 56
-        writed(buf, t); buf += 4; // st_atime             // 64
-        writed(buf, n); buf += 4; // st_atime_nsec        // 68
-        writed(buf, t); buf += 4; // st_mtime             // 72
-        writed(buf, n); buf += 4; // st_mtime_nsec        // 76
-        writed(buf, t); buf += 4; // st_ctime             // 80
-        writed(buf, n); buf += 4; // st_ctime_nsec        // 84
-        writeq(buf, st_ino); // st_ino                    // 88
+        memory->writeq(buf, st_size); buf += 8;//st_size          // 44
+        memory->writed(buf, st_blksize); buf += 4;//st_blksize    // 52
+        memory->writeq(buf, st_blocks); buf += 8; //st_blocks     // 56
+        memory->writed(buf, t); buf += 4; // st_atime             // 64
+        memory->writed(buf, n); buf += 4; // st_atime_nsec        // 68
+        memory->writed(buf, t); buf += 4; // st_mtime             // 72
+        memory->writed(buf, n); buf += 4; // st_mtime_nsec        // 76
+        memory->writed(buf, t); buf += 4; // st_ctime             // 80
+        memory->writed(buf, n); buf += 4; // st_ctime_nsec        // 84
+        memory->writeq(buf, st_ino); // st_ino                    // 88
      } else {
         U32 t = (U32)(mtime/1000); // ms to sec
-        writed(buf, (U32)st_dev); buf += 4;//st_dev
-        writed(buf, (U32)st_ino); buf += 4;//st_ino
-        writed(buf, st_mode); buf += 4;//st_mode
-        writed(buf, linkCount); buf += 4;//st_nlink
+        memory->writed(buf, (U32)st_dev); buf += 4;//st_dev
+        memory->writed(buf, (U32)st_ino); buf += 4;//st_ino
+        memory->writed(buf, st_mode); buf += 4;//st_mode
+        memory->writed(buf, linkCount); buf += 4;//st_nlink
         if (path == "/etc/sudoers" || path == "/tmp/.X11-unix") {
-            writed(buf, 0); buf += 4;//st_uid
-            writed(buf, 0); buf += 4;//st_gid
+            memory->writed(buf, 0); buf += 4;//st_uid
+            memory->writed(buf, 0); buf += 4;//st_gid
         } else {
-            writed(buf, KThread::currentThread()->process->userId); buf += 4;//st_uid
-            writed(buf, KThread::currentThread()->process->groupId); buf += 4;//st_gid
+            memory->writed(buf, process->userId); buf += 4;//st_uid
+            memory->writed(buf, process->groupId); buf += 4;//st_gid
         } 
-        writed(buf, (U32)st_rdev); buf += 4;//st_rdev
-        writed(buf, (U32)st_size); buf += 4;//st_size
-        writed(buf, t); buf += 4;//st_atime
-        writed(buf, t); buf += 4;//st_mtime
-        writed(buf, t); buf += 4;//st_ctime
-        writed(buf, st_blksize); buf += 4;//st_blksize (not used on wine)
-        writed(buf, (U32)st_blocks);//st_blocks
+        memory->writed(buf, (U32)st_rdev); buf += 4;//st_rdev
+        memory->writed(buf, (U32)st_size); buf += 4;//st_size
+        memory->writed(buf, t); buf += 4;//st_atime
+        memory->writed(buf, t); buf += 4;//st_mtime
+        memory->writed(buf, t); buf += 4;//st_ctime
+        memory->writed(buf, st_blksize); buf += 4;//st_blksize (not used on wine)
+        memory->writed(buf, (U32)st_blocks);//st_blocks
      }
 }
 
@@ -526,8 +542,7 @@ SHM::~SHM() {
     }
 }
 
-U32 KSystem::shmget(U32 key, U32 size, U32 flags) {
-    KThread* thread = KThread::currentThread();
+U32 KSystem::shmget(KThread* thread, U32 key, U32 size, U32 flags) {
     S32 index = -1;
     BoxedPtr<SHM> result;
 
@@ -569,9 +584,7 @@ U32 KSystem::shmget(U32 key, U32 size, U32 flags) {
 #define SHM_REMAP       040000  /* take-over region on attach */
 #define SHM_EXEC        0100000 /* execution access */
 
-U32 KSystem::shmat(U32 shmid, U32 shmaddr, U32 shmflg, U32 rtnAddr) {	
-    KThread* thread = KThread::currentThread();
-    U32 result = 0;
+U32 KSystem::shmat(KThread* thread, U32 shmid, U32 shmaddr, U32 shmflg, U32 rtnAddr) {
     U32 permissions;
     BoxedPtr<SHM> shm;
 
@@ -595,22 +608,22 @@ U32 KSystem::shmat(U32 shmid, U32 shmaddr, U32 shmflg, U32 rtnAddr) {
     if (!shmaddr) {
         shmaddr = ADDRESS_PROCESS_MMAP_START << K_PAGE_SHIFT;
     }
-    if (thread->process->memory->findFirstAvailablePage(shmaddr >> K_PAGE_SHIFT, (shm->len + K_PAGE_SIZE - 1) / K_PAGE_SIZE, &result, 0)) {
+    if (shmflg & SHM_RDONLY) {
+        permissions = K_PROT_READ;
+    } else {
+        permissions = K_PROT_READ | K_PROT_WRITE;
+    }
+    U32 result = thread->process->memory->mapPages(thread, 0, shm->pages, permissions);    
+    if (result == 0) {
         return -K_EINVAL;
     }
-    if (shmflg & SHM_RDONLY) {
-        permissions = PAGE_READ;
-    } else {
-        permissions = PAGE_READ|PAGE_WRITE;
-    }
-    thread->process->memory->map(result >> K_PAGE_SHIFT, shm->pages, permissions);    
     thread->process->attachSHM(result, shm);
     return 0;
 }
 
 
-U32 KSystem::shmdt(U32 shmaddr) {
-   return KThread::currentThread()->process->shmdt(shmaddr);
+U32 KSystem::shmdt(KThread* thread, U32 shmaddr) {
+   return thread->process->shmdt(shmaddr);
 }
 
 #define IPC_RMID 0     /* remove resource */
@@ -629,9 +642,9 @@ U32 KSystem::shmdt(U32 shmaddr) {
 #define IPC_64  0x0100  /* New version (support 32-bit UIDs, bigger
                            message sizes, etc. */
 
-U32 KSystem::shmctl(U32 shmid, U32 cmd, U32 buf) {	
+U32 KSystem::shmctl(KThread* thread, U32 shmid, U32 cmd, U32 buf) {
     BoxedPtr<SHM> shm;
-    KThread* thread = KThread::currentThread();
+    KMemory* memory = thread->memory;
 
     if (shmid & PRIVATE_SHMID)
         shm = thread->process->getSHM(shmid);
@@ -646,26 +659,26 @@ U32 KSystem::shmctl(U32 shmid, U32 cmd, U32 buf) {
         return -K_EFAULT;
     if (cmd == (IPC_64 | IPC_STAT)) {
         // ipc_perm
-        writed(buf, shm->key); buf+=4;
-        writed(buf, shm->cuid); buf += 4;
-        writed(buf, shm->cgid); buf += 4;
-        writed(buf, shm->cuid); buf += 4;
-        writed(buf, shm->cgid); buf += 4;
-        writew(buf, 0777); buf += 2;
-        writew(buf, 0); buf += 2;
-        writew(buf, shmid); buf += 2;
-        writew(buf, 0); buf += 2;
-        writed(buf, 0); buf += 4;
-        writed(buf, 0); buf += 4;
-        writed(buf, shm->len); buf += 4;
-        writed(buf, (U32)(shm->atime / 1000000)); buf += 4;
-        writed(buf, (U32)(shm->dtime / 1000000)); buf += 4;
-        writed(buf, (U32)(shm->ctime / 1000000)); buf += 4;
-        writed(buf, shm->cpid); buf += 4;
-        writed(buf, shm->lpid); buf += 4;
-        writew(buf, shm->nattch); buf += 2;
-        writew(buf, 0); buf += 2;
-        writed(buf, 0);
+        memory->writed(buf, shm->key); buf+=4;
+        memory->writed(buf, shm->cuid); buf += 4;
+        memory->writed(buf, shm->cgid); buf += 4;
+        memory->writed(buf, shm->cuid); buf += 4;
+        memory->writed(buf, shm->cgid); buf += 4;
+        memory->writew(buf, 0777); buf += 2;
+        memory->writew(buf, 0); buf += 2;
+        memory->writew(buf, shmid); buf += 2;
+        memory->writew(buf, 0); buf += 2;
+        memory->writed(buf, 0); buf += 4;
+        memory->writed(buf, 0); buf += 4;
+        memory->writed(buf, shm->len); buf += 4;
+        memory->writed(buf, (U32)(shm->atime / 1000000)); buf += 4;
+        memory->writed(buf, (U32)(shm->dtime / 1000000)); buf += 4;
+        memory->writed(buf, (U32)(shm->ctime / 1000000)); buf += 4;
+        memory->writed(buf, shm->cpid); buf += 4;
+        memory->writed(buf, shm->lpid); buf += 4;
+        memory->writew(buf, shm->nattch); buf += 2;
+        memory->writew(buf, 0); buf += 2;
+        memory->writed(buf, 0);
     }  else if (cmd == (IPC_64 | IPC_RMID)) {
         shm->markedForDelete = 1;
     } else {
@@ -676,11 +689,12 @@ U32 KSystem::shmctl(U32 shmid, U32 cmd, U32 buf) {
 
 #define K_RLIM_INFINITY 0xFFFFFFFF
 
-U32 KSystem::prlimit64(U32 pid, U32 resource, U32 newlimit, U32 oldlimit) {
+U32 KSystem::prlimit64(KThread* thread, U32 pid, U32 resource, U32 newlimit, U32 oldlimit) {
     std::shared_ptr<KProcess> process;
+    KMemory* memory = thread->memory;
 
     if (pid==0) {
-        process = KThread::currentThread()->process;
+        process = thread->process;
     } else {
         BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(processesCond);
         process = processes[pid];
@@ -690,111 +704,111 @@ U32 KSystem::prlimit64(U32 pid, U32 resource, U32 newlimit, U32 oldlimit) {
     switch (resource) {
         case 0: // RLIMIT_CPU
             if (oldlimit!=0) {
-                writeq(oldlimit, 0x7FFFFFFF);
-                writeq(oldlimit + 8, 0x7FFFFFFF);
+                memory->writeq(oldlimit, 0x7FFFFFFF);
+                memory->writeq(oldlimit + 8, 0x7FFFFFFF);
             }
 #ifdef _DEBUG
             if (newlimit!=0) {
-                klog("prlimit64 RLIMIT_CPU set=%d ignored", (U32)readq(newlimit));
+                klog("prlimit64 RLIMIT_CPU set=%d ignored", (U32)memory->readq(newlimit));
             }
 #endif
             break;
         case 1: // RLIMIT_FSIZE
             if (oldlimit!=0) {
-                writeq(oldlimit, 0x800000000);
-                writeq(oldlimit + 8, 0x800000000);
+                memory->writeq(oldlimit, 0x800000000);
+                memory->writeq(oldlimit + 8, 0x800000000);
             }
 #ifdef _DEBUG
             if (newlimit!=0) {
-                klog("prlimit64 RLIMIT_FSIZE set=%d ignored", (U32)readq(newlimit));
+                klog("prlimit64 RLIMIT_FSIZE set=%d ignored", (U32)memory->readq(newlimit));
             }
 #endif
             break;
         case 2: // RLIMIT_DATA
             if (oldlimit!=0) {
-                writeq(oldlimit, MAX_DATA_SIZE);
-                writeq(oldlimit + 8, MAX_DATA_SIZE);
+                memory->writeq(oldlimit, MAX_DATA_SIZE);
+                memory->writeq(oldlimit + 8, MAX_DATA_SIZE);
             }
 #ifdef _DEBUG
             if (newlimit!=0) {
-                klog("prlimit64 RLIMIT_DATA set=%d ignored", (U32)readq(newlimit));
+                klog("prlimit64 RLIMIT_DATA set=%d ignored", (U32)memory->readq(newlimit));
             }
 #endif
             break;
         case 3: // RLIMIT_STACK
             if (oldlimit!=0) {
-                writeq(oldlimit, MAX_STACK_SIZE);
-                writeq(oldlimit + 8, MAX_STACK_SIZE);
+                memory->writeq(oldlimit, MAX_STACK_SIZE);
+                memory->writeq(oldlimit + 8, MAX_STACK_SIZE);
             }
 #ifdef _DEBUG
             if (newlimit!=0) {
-                klog("prlimit64 RLIMIT_STACK set=%d ignored", (U32)readq(newlimit));
+                klog("prlimit64 RLIMIT_STACK set=%d ignored", (U32)memory->readq(newlimit));
             }
 #endif
             break;
         case 4: // RLIMIT_CORE
             if (oldlimit!=0) {
-                writeq(oldlimit, K_RLIM_INFINITY);
-                writeq(oldlimit + 8, K_RLIM_INFINITY);
+                memory->writeq(oldlimit, K_RLIM_INFINITY);
+                memory->writeq(oldlimit + 8, K_RLIM_INFINITY);
             }
 #ifdef _DEBUG
             if (newlimit!=0) {
-                klog("prlimit64 RLIMIT_CORE set=%d ignored", (U32)readq(newlimit));
+                klog("prlimit64 RLIMIT_CORE set=%d ignored", (U32)memory->readq(newlimit));
             }
 #endif
             break;
         case 5: // RLIMIT_RSS
             if (oldlimit!=0) {
-                writeq(oldlimit, MAX_DATA_SIZE);
-                writeq(oldlimit + 8, MAX_DATA_SIZE);
+                memory->writeq(oldlimit, MAX_DATA_SIZE);
+                memory->writeq(oldlimit + 8, MAX_DATA_SIZE);
             }
 #ifdef _DEBUG
             if (newlimit!=0) {
-                klog("prlimit64 RLIMIT_RSS set=%d ignored", (U32)readq(newlimit));
+                klog("prlimit64 RLIMIT_RSS set=%d ignored", (U32)memory->readq(newlimit));
             }
 #endif
             break;
         case 6: // RLIMIT_NPROC
             if (oldlimit!=0) {
-                writeq(oldlimit, 4096);
-                writeq(oldlimit + 8, 4096);
+                memory->writeq(oldlimit, 4096);
+                memory->writeq(oldlimit + 8, 4096);
             }
 #ifdef _DEBUG
             if (newlimit!=0) {
-                klog("prlimit64 RLIMIT_NPROC set=%d ignored", (U32)readq(newlimit));
+                klog("prlimit64 RLIMIT_NPROC set=%d ignored", (U32)memory->readq(newlimit));
             }
 #endif
             break;
         case 7: // RLIMIT_NOFILE
             if (oldlimit!=0) {
-                writeq(oldlimit, 16*1024); // some apps might iterate all the possible file handles, so don't make this too big
-                writeq(oldlimit + 8, 16*1024);
+                memory->writeq(oldlimit, 16*1024); // some apps might iterate all the possible file handles, so don't make this too big
+                memory->writeq(oldlimit + 8, 16*1024);
             }
 #ifdef _DEBUG
             if (newlimit!=0) {
-                klog("prlimit64 RLIMIT_NOFILE set=%d ignored", (U32)readq(newlimit));
+                klog("prlimit64 RLIMIT_NOFILE set=%d ignored", (U32)memory->readq(newlimit));
             }
 #endif
             break;
         case 9: // RLIMIT_AS
             if (oldlimit!=0) {
-                writeq(oldlimit, K_RLIM_INFINITY);
-                writeq(oldlimit + 8, K_RLIM_INFINITY);
+                memory->writeq(oldlimit, K_RLIM_INFINITY);
+                memory->writeq(oldlimit + 8, K_RLIM_INFINITY);
             }
 #ifdef _DEBUG
             if (newlimit!=0) {
-                klog("prlimit64 RLIMIT_AS set=%d ignored", (U32)readq(newlimit));
+                klog("prlimit64 RLIMIT_AS set=%d ignored", (U32)memory->readq(newlimit));
             }
 #endif
             break;
         case 15: // RLIMIT_RTTIME
             if (oldlimit!=0) {
-                writeq(oldlimit, 200);
-                writeq(oldlimit + 8, 200);
+                memory->writeq(oldlimit, 200);
+                memory->writeq(oldlimit + 8, 200);
             }
 #ifdef _DEBUG
             if (newlimit!=0) {
-                klog("prlimit64 RLIMIT_AS set=%d ignored", (U32)readq(newlimit));
+                klog("prlimit64 RLIMIT_AS set=%d ignored", (U32)memory->readq(newlimit));
             }
 #endif
             break;
@@ -919,6 +933,8 @@ PixelFormat* KSystem::getPixelFormat(U32 index) {
 
 U32 KSystem::describePixelFormat(KThread* thread, U32 hdc, U32 fmt, U32 size, U32 descr)
 {
+    KMemory* memory = thread->memory;
+
     initDisplayModes();
 
     if (!descr) return numberOfPfs;
@@ -927,32 +943,32 @@ U32 KSystem::describePixelFormat(KThread* thread, U32 hdc, U32 fmt, U32 size, U3
         return 0;
     }
 
-    writew(descr, pfs[fmt].nSize); descr += 2;
-    writew(descr, pfs[fmt].nVersion); descr += 2;
-    writed(descr, pfs[fmt].dwFlags); descr += 4;
-    writeb(descr, pfs[fmt].iPixelType); descr++;
-    writeb(descr, pfs[fmt].cColorBits); descr++;
-    writeb(descr, pfs[fmt].cRedBits); descr++;
-    writeb(descr, pfs[fmt].cRedShift); descr++;
-    writeb(descr, pfs[fmt].cGreenBits); descr++;
-    writeb(descr, pfs[fmt].cGreenShift); descr++;
-    writeb(descr, pfs[fmt].cBlueBits); descr++;
-    writeb(descr, pfs[fmt].cBlueShift); descr++;
-    writeb(descr, pfs[fmt].cAlphaBits); descr++;
-    writeb(descr, pfs[fmt].cAlphaShift); descr++;
-    writeb(descr, pfs[fmt].cAccumBits); descr++;
-    writeb(descr, pfs[fmt].cAccumRedBits); descr++;
-    writeb(descr, pfs[fmt].cAccumGreenBits); descr++;
-    writeb(descr, pfs[fmt].cAccumBlueBits); descr++;
-    writeb(descr, pfs[fmt].cAccumAlphaBits); descr++;
-    writeb(descr, pfs[fmt].cDepthBits); descr++;
-    writeb(descr, pfs[fmt].cStencilBits); descr++;
-    writeb(descr, pfs[fmt].cAuxBuffers); descr++;
-    writeb(descr, pfs[fmt].iLayerType); descr++;
-    writeb(descr, pfs[fmt].bReserved); descr++;
-    writed(descr, pfs[fmt].dwLayerMask); descr += 4;
-    writed(descr, pfs[fmt].dwVisibleMask); descr += 4;
-    writed(descr, pfs[fmt].dwDamageMask);
+    memory->writew(descr, pfs[fmt].nSize); descr += 2;
+    memory->writew(descr, pfs[fmt].nVersion); descr += 2;
+    memory->writed(descr, pfs[fmt].dwFlags); descr += 4;
+    memory->writeb(descr, pfs[fmt].iPixelType); descr++;
+    memory->writeb(descr, pfs[fmt].cColorBits); descr++;
+    memory->writeb(descr, pfs[fmt].cRedBits); descr++;
+    memory->writeb(descr, pfs[fmt].cRedShift); descr++;
+    memory->writeb(descr, pfs[fmt].cGreenBits); descr++;
+    memory->writeb(descr, pfs[fmt].cGreenShift); descr++;
+    memory->writeb(descr, pfs[fmt].cBlueBits); descr++;
+    memory->writeb(descr, pfs[fmt].cBlueShift); descr++;
+    memory->writeb(descr, pfs[fmt].cAlphaBits); descr++;
+    memory->writeb(descr, pfs[fmt].cAlphaShift); descr++;
+    memory->writeb(descr, pfs[fmt].cAccumBits); descr++;
+    memory->writeb(descr, pfs[fmt].cAccumRedBits); descr++;
+    memory->writeb(descr, pfs[fmt].cAccumGreenBits); descr++;
+    memory->writeb(descr, pfs[fmt].cAccumBlueBits); descr++;
+    memory->writeb(descr, pfs[fmt].cAccumAlphaBits); descr++;
+    memory->writeb(descr, pfs[fmt].cDepthBits); descr++;
+    memory->writeb(descr, pfs[fmt].cStencilBits); descr++;
+    memory->writeb(descr, pfs[fmt].cAuxBuffers); descr++;
+    memory->writeb(descr, pfs[fmt].iLayerType); descr++;
+    memory->writeb(descr, pfs[fmt].bReserved); descr++;
+    memory->writed(descr, pfs[fmt].dwLayerMask); descr += 4;
+    memory->writed(descr, pfs[fmt].dwVisibleMask); descr += 4;
+    memory->writed(descr, pfs[fmt].dwDamageMask);
 
     return numberOfPfs;
 }

@@ -4,10 +4,6 @@
 
 #include "soft_invalid_page.h"
 
-static InvalidPage _invalidPage;
-InvalidPage* invalidPage = &_invalidPage;;
-
-
 U8 InvalidPage::readb(U32 address) {	
     KThread::currentThread()->seg_mapper(address, true, false);
     return 0;
@@ -35,23 +31,11 @@ void InvalidPage::writed(U32 address, U32 value) {
     KThread::currentThread()->seg_mapper(address, false, true);
 }
 
-U8* InvalidPage::getCurrentReadPtr() {
+U8* InvalidPage::getReadPtr(U32 address, bool makeReady) {
     return NULL;
 }
 
-U8* InvalidPage::getCurrentWritePtr() {
-    return NULL;
-}
-
-U8* InvalidPage::getReadAddress(U32 address, U32 len) {    
-    return NULL;
-}
-
-U8* InvalidPage::getWriteAddress(U32 address, U32 len) {
-    return NULL;
-}
-
-U8* InvalidPage::getReadWriteAddress(U32 address, U32 len) {
+U8* InvalidPage::getWritePtr(U32 address, U32 len, bool makeReady) {
     return NULL;
 }
 

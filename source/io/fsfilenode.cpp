@@ -269,14 +269,13 @@ S32 translateErr(U32 e) {
 U32 FsFileNode::rename(BString path) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->openNodesMutex);
     U32 result=0;
-    S64* tmpPos = NULL;
+    std::vector<S64> tmpPos;
 
     this->ensurePathIsLocal();
     if (this->openNodes.size()) {
         int i=0;
-        tmpPos = new S64[this->openNodes.size()];
         for (U32 x=0;x<this->openNodes.size();x++) {
-            tmpPos[x]=-1;
+            tmpPos.push_back(-1);
         }
         this->openNodes.for_each([&tmpPos,&i](KListNode<FsOpenNode*>* n) {
             FsOpenNode* openNode = n->data;
@@ -346,10 +345,12 @@ U32 FsFileNode::rename(BString path) {
     }
     int i=0;
     this->openNodes.for_each([&tmpPos,&i](KListNode<FsOpenNode*>* n) {
-        if (tmpPos[i]!=-1) {
+        if (i<(int)tmpPos.size() && tmpPos.at(i)!=-1) {
             FsOpenNode* openNode = n->data;
-            openNode->reopen();
-            openNode->seek(tmpPos[i]);
+            if (openNode) {
+                openNode->reopen();
+                openNode->seek(tmpPos.at(i));
+            }
         }
         i++;
     });

@@ -59,7 +59,7 @@ void BoxedReg::writeKey(const char* path, const char* key, const char* value, bo
     searchKey += "\"=";
 
     for (int i = 0; i < (int)lines.size(); i++) {
-        BString line = lines[i];
+        BString& line = lines[i];
         if (!found) {
             if (line.startsWith(section)) {
                 found = true;

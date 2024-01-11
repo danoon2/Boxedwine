@@ -33,7 +33,7 @@ bool FsDirOpenNode::isOpen() {
     return true;
 }
 
-U32 FsDirOpenNode::ioctl(U32 request) {
+U32 FsDirOpenNode::ioctl(KThread* thread, U32 request) {
     return -K_ENODEV;
 }
 
@@ -58,7 +58,7 @@ bool FsDirOpenNode::isReadReady() {
     return false;
 }
 
-U32 FsDirOpenNode::map(U32 address, U32 len, S32 prot, S32 flags, U64 off) {
+U32 FsDirOpenNode::map(KThread* thread, U32 address, U32 len, S32 prot, S32 flags, U64 off) {
     return 0;
 }
 

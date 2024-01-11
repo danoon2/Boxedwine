@@ -6,11 +6,11 @@
 
 
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
-#include "../../hardmmu/hard_memory.h"
+#include "../../hardmmu/kmemory_hard.h"
 #else
 #include "../normal/normalCPU.h"
-CPU* CPU::allocCPU() {
-    return new NormalCPU();
+CPU* CPU::allocCPU(KMemory* memory) {
+    return new NormalCPU(memory);
 }
 #endif
 
@@ -23,7 +23,7 @@ U32 CPU_CHECK_COND(CPU* cpu, U32 cond, const char* msg, int exc, int sel) {
     return 0;
 }
 
-CPU::CPU() {    
+CPU::CPU(KMemory* memory) : memory(memory) {    
     this->reg8[0] = &this->reg[0].u8;
     this->reg8[1] = &this->reg[1].u8;
     this->reg8[2] = &this->reg[2].u8;
@@ -320,9 +320,9 @@ void CPU::walkStack(U32 eip, U32 ebp, U32 indent) {
 
     klog("%*s %-20s %-40s %08x / %08x", indent, "", name.length()?name.c_str():"Unknown", functionName.c_str(), eip, moduleEip);        
 
-    if (this->thread->memory->isValidReadAddress(ebp, 8)) {
-        prevEbp = readd(ebp); 
-        returnEip = readd(ebp+4); 
+    if (this->memory->canRead(ebp, 8)) {
+        prevEbp = memory->readd(ebp); 
+        returnEip = memory->readd(ebp+4);
         if (prevEbp==0)
             return;
         walkStack(returnEip, prevEbp, indent);
@@ -386,7 +386,7 @@ void CPU::enter(U32 big, U32 bytes, U32 level) {
         U32 bp_index=EBP & cpu->stackMask;
 
         sp_index-=4;
-        writed(cpu->seg[SS].address + sp_index, EBP);
+        memory->writed(cpu->seg[SS].address + sp_index, EBP);
         EBP = ESP - 4;
         if (level!=0) {
             U32 i;
@@ -394,10 +394,10 @@ void CPU::enter(U32 big, U32 bytes, U32 level) {
             for (i=1;i<level;i++) {
                 sp_index-=4;
                 bp_index-=4;
-                writed(cpu->seg[SS].address + sp_index, readd(cpu->seg[SS].address + bp_index));
+                memory->writed(cpu->seg[SS].address + sp_index, memory->readd(cpu->seg[SS].address + bp_index));
             }
             sp_index-=4;
-            writed(cpu->seg[SS].address + sp_index, EBP);
+            memory->writed(cpu->seg[SS].address + sp_index, EBP);
         }
         sp_index-=bytes;
         ESP = (ESP & cpu->stackNotMask) | (sp_index & cpu->stackMask);
@@ -406,17 +406,17 @@ void CPU::enter(U32 big, U32 bytes, U32 level) {
         U32 bp_index=EBP & cpu->stackMask;
 
         sp_index-=2;
-        writew(cpu->seg[SS].address + sp_index, BP);
+        memory->writew(cpu->seg[SS].address + sp_index, BP);
         BP = SP - 2;
         if (level!=0) {
             U32 i;
 
             for (i=1;i<level;i++) {
                 sp_index-=2;bp_index-=2;
-                writew(cpu->seg[SS].address + sp_index, readw(cpu->seg[SS].address + bp_index));
+                memory->writew(cpu->seg[SS].address + sp_index, memory->readw(cpu->seg[SS].address + bp_index));
             }
             sp_index-=2;
-            writew(cpu->seg[SS].address + sp_index, BP);
+            memory->writew(cpu->seg[SS].address + sp_index, BP);
         }
 
         sp_index-=bytes;
@@ -1043,28 +1043,28 @@ void CPU::removeOF() {
 }
 
 U32 CPU::pop32() {
-    U32 val = readd(this->seg[SS].address + (THIS_ESP & this->stackMask));
+    U32 val = memory->readd(this->seg[SS].address + (THIS_ESP & this->stackMask));
     THIS_ESP = (THIS_ESP & this->stackNotMask) | ((THIS_ESP + 4 ) & this->stackMask);
     return val;
 }
 
 U16 CPU::pop16() {
-    U16 val = readw(this->seg[SS].address + (THIS_ESP & this->stackMask));
+    U16 val = memory->readw(this->seg[SS].address + (THIS_ESP & this->stackMask));
     THIS_ESP = (THIS_ESP & this->stackNotMask) | ((THIS_ESP + 2 ) & this->stackMask);
     return val;
 }
 
 U32 CPU::peek32(U32 index) {
-    return readd(this->seg[SS].address + ((THIS_ESP+index*4) & this->stackMask));
+    return memory->readd(this->seg[SS].address + ((THIS_ESP+index*4) & this->stackMask));
 }
 
 U16 CPU::peek16(U32 index) {
-    return readw(this->seg[SS].address+ ((THIS_ESP+index*2) & this->stackMask));
+    return memory->readw(this->seg[SS].address+ ((THIS_ESP+index*2) & this->stackMask));
 }
 
 void CPU::push16(U16 value) {
     U32 new_esp=(THIS_ESP & this->stackNotMask) | ((THIS_ESP - 2) & this->stackMask);
-    writew(this->seg[SS].address + (new_esp & this->stackMask) ,value);
+    memory->writew(this->seg[SS].address + (new_esp & this->stackMask) ,value);
     THIS_ESP = new_esp;
 }
 
@@ -1072,22 +1072,23 @@ U32 CPU::push16_r(U32 esp, U16 value) {
     U32 new_esp=(esp & this->stackNotMask) | ((esp - 2) & this->stackMask);
     U32 address = this->seg[SS].address + (new_esp & this->stackMask);
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
-    U32 nativePage = this->thread->memory->getNativePage(address>>K_PAGE_SHIFT);
-    if (this->thread->memory->nativeFlags[nativePage] & NATIVE_FLAG_CODEPAGE_READONLY) {
-        this->thread->memory->clearCodePageReadOnly(nativePage);
-        writew(address ,value);
-        this->thread->memory->makeCodePageReadOnly(nativePage);
+    KMemoryData* mem = getMemData(memory);
+    U32 nativePage = mem->getNativePage(address>>K_PAGE_SHIFT);
+    if (mem->nativeFlags[nativePage] & NATIVE_FLAG_CODEPAGE_READONLY) {
+        mem->clearCodePageReadOnly(nativePage);
+        memory->writew(address ,value);
+        mem->makeCodePageReadOnly(nativePage);
     } else 
 #endif
     {
-        writew(address ,value);
+        memory->writew(address ,value);
     }
     return new_esp;
 }
 
 void CPU::push32(U32 value) {
     U32 new_esp=(THIS_ESP & this->stackNotMask) | ((THIS_ESP - 4) & this->stackMask);
-    writed(this->seg[SS].address + (new_esp & this->stackMask) ,value);
+    memory->writed(this->seg[SS].address + (new_esp & this->stackMask) ,value);
     THIS_ESP = new_esp;
 }
 
@@ -1096,15 +1097,16 @@ U32 CPU::push32_r(U32 esp, U32 value) {
     U32 address = this->seg[SS].address + (new_esp & this->stackMask);
 
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
-    U32 nativePage = this->thread->memory->getNativePage(address>>K_PAGE_SHIFT);
-    if (this->thread->memory->nativeFlags[nativePage] & NATIVE_FLAG_CODEPAGE_READONLY) {
-        this->thread->memory->clearCodePageReadOnly(nativePage);
-        writed(address ,value);
-        this->thread->memory->makeCodePageReadOnly(nativePage);
+    KMemoryData* mem = getMemData(memory);
+    U32 nativePage = mem->getNativePage(address>>K_PAGE_SHIFT);
+    if (mem->nativeFlags[nativePage] & NATIVE_FLAG_CODEPAGE_READONLY) {
+        mem->clearCodePageReadOnly(nativePage);
+        memory->writed(address ,value);
+        mem->makeCodePageReadOnly(nativePage);
     } else 
 #endif
     {
-        writed(address ,value);
+        memory->writed(address ,value);
     }
     return new_esp;
 }

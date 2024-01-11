@@ -3,10 +3,10 @@
 
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
 class BtData;
-
+class BtCodeChunk;
 class BtCPU : public CPU {
 public:
-    BtCPU() : nativeHandle(0), 
+    BtCPU(KMemory* memory) : CPU(memory), nativeHandle(0),
         exceptionAddress(0), 
         inException(false), 
         exceptionReadAddress(false), 

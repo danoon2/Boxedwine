@@ -28,7 +28,7 @@ S64 FsMemOpenNode::seek(S64 pos) {
     return this->pos;
 }
 
-U32 FsMemOpenNode::map(U32 address, U32 len, S32 prot, S32 flags, U64 off) {
+U32 FsMemOpenNode::map(KThread* thread, U32 address, U32 len, S32 prot, S32 flags, U64 off) {
     return 0;
 }
 
@@ -36,7 +36,7 @@ bool FsMemOpenNode::canMap() {
     return true;
 }
 
-U32 FsMemOpenNode::ioctl(U32 request) {
+U32 FsMemOpenNode::ioctl(KThread* thread, U32 request) {
     return -K_ENODEV;
 }
 

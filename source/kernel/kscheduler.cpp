@@ -67,7 +67,6 @@ void removeTimer(KTimer* timer) {
     timer->active = false;
 }
 #else
-#include "devfb.h"
 #include "kscheduler.h"
 #include "knativewindow.h"
 
@@ -171,7 +170,6 @@ bool runSlice() {
     if (scheduledThreads.isEmpty())
         return false;
     
-    flipFB();
     std::shared_ptr<KNativeWindow> window = KNativeWindow::getNativeWindow();
     if (window) {
         window->flipFB();

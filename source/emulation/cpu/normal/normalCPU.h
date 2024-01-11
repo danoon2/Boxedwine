@@ -5,7 +5,7 @@
 
 class NormalCPU : public CPU {
 public:
-    NormalCPU();
+    NormalCPU(KMemory* memory);
 
     static void clearCache();
 
@@ -14,7 +14,7 @@ public:
 
     static OpCallback getFunctionForOp(DecodedOp* op);
 
-    static DecodedBlock* getBlockForInspectionButNotUsed(U32 address, bool big);
+    static DecodedBlock* getBlockForInspectionButNotUsed(CPU* cpu, U32 address, bool big);
 
     OpCallback firstOp;
 };

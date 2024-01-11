@@ -1,7 +1,6 @@
 #include "boxedwine.h"
 #ifndef BOXEDWINE_MULTI_THREADED
 #include "recorder.h"
-#include "devfb.h"
 #include "knativesocket.h"
 #include "knativewindow.h"
 #include "knativethread.h"

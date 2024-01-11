@@ -124,15 +124,11 @@ KProcess::KProcess(U32 id) : id(id),
     this->hasSetSeg[GS] = true;
     this->hasSetSeg[FS] = true;    
 
-#ifdef BOXEDWINE_64BIT_MMU
-    this->nextNativeAddress = ADDRESS_PROCESS_NATIVE;  
-	this->previousMemory = NULL;
-#endif
     this->glStringsiExtensions = 0;
     this->numberOfExtensions = 0;
 }
 
-void KProcess::onExec() {
+void KProcess::onExec(KThread* thread) {
     std::unordered_map<U32, KFileDescriptor*> fdsToClose = this->fds; // make a copy since we can't remove from it while iterating
     for( const auto& n : fdsToClose ) {
         KFileDescriptor* fd = n.second;
@@ -153,16 +149,15 @@ void KProcess::onExec() {
 
     std::vector<KThread*> toDelete;
     for (auto& n : this->threads) {
-        KThread* thread = n.second;
-        if (thread!=KThread::currentThread()) {
-            toDelete.push_back(thread);
+        if (thread!= n.second) {
+            toDelete.push_back(n.second);
         }
     }
-    for (auto& thread : toDelete) {
-        terminateOtherThread(shared_from_this(), thread->id);
+    for (auto& otherThread : toDelete) {
+        terminateOtherThread(shared_from_this(), otherThread->id);
     }
     this->threads.clear();
-    this->threads[KThread::currentThread()->id] = KThread::currentThread();
+    this->threads[thread->id] = thread;
 
     this->initStdio();
     
@@ -205,11 +200,8 @@ void KProcess::onExec() {
 }
 
 KProcess::~KProcess() {
-    killAllThreadsExceptCurrent();
+    killAllThreads(KThread::currentThread());
     this->cleanupProcess();
-	if (this->memory) {
-		this->memory->decRefCount();
-	}
 }
 
 void KProcess::cleanupProcess() {    
@@ -257,10 +249,7 @@ U32 KProcess::getThreadCount() {
 void KProcess::deleteThread(KThread* thread) {
     thread->cleanup();
     if (this->threads.size() == 0) {
-        if (this->memory) {
-            this->memory->decRefCount();
-            this->memory = NULL;
-        }
+        this->memory = NULL;
     }
     delete thread;
     
@@ -356,7 +345,7 @@ static void writeStackString(KThread* thread, CPU * cpu, const char* s) {
     for (i=0;i<count;i++) {
         cpu->push32(0);
     }
-    writeNativeString(ESP, s);
+    thread->memory->strcpy(ESP, s);
 }
 
 #define HWCAP_I386_FPU   1 << 0
@@ -609,7 +598,7 @@ KThread* KProcess::startProcess(BString currentDirectory, const std::vector<BStr
     std::vector<BString> interpreterArgs;
     std::vector<BString> args;
     std::vector<BString> env;
-    this->memory = new Memory();		
+    this->memory = KMemory::create(this);
     KThread* thread = this->createThread();
     U32 i;
     FsOpenNode* openNode = NULL;
@@ -637,7 +626,7 @@ KThread* KProcess::startProcess(BString currentDirectory, const std::vector<BStr
     if (!openNode) {
         return 0;
     }    
-    if (ElfLoader::loadProgram(shared_from_this(), openNode, &thread->cpu->eip.u32)) {
+    if (ElfLoader::loadProgram(thread, openNode, &thread->cpu->eip.u32)) {
         // :TODO: why will it crash in strchr libc if I remove this
         //syscall_mmap64(thread, ADDRESS_PROCESS_LOADER << PAGE_SHIFT, 4096, K_PROT_READ | K_PROT_WRITE, K_MAP_ANONYMOUS|K_MAP_PRIVATE, -1, 0);
         
@@ -670,14 +659,14 @@ KThread* KProcess::startProcess(BString currentDirectory, const std::vector<BStr
     return thread;
 }
 
-U32 KProcess::exit(U32 code) {
+U32 KProcess::exit(KThread* thread, U32 code) {
     this->exitCode = code;
     if (this->getThreadCount()==1)
-        return this->exitgroup(code);    
+        return this->exitgroup(thread, code);    
 
-    KThread::currentThread()->cpu->yield = true;
-    KThread::currentThread()->cleanup(); // will unschedule the thread
-	terminateCurrentThread(KThread::currentThread());
+    thread->cpu->yield = true;
+    thread->cleanup(); // will unschedule the thread
+	terminateCurrentThread(thread);
 
     return 0;
 }
@@ -760,7 +749,7 @@ BoxedPtr<FsNode> KProcess::findInPath(BString path) {
     return node;
 }
 
-U32 KProcess::execve(BString path, std::vector<BString>& args, const std::vector<BString>& envs) {
+U32 KProcess::execve(KThread* thread, BString path, std::vector<BString>& args, const std::vector<BString>& envs) {
     BoxedPtr<FsNode> node;
     FsOpenNode* openNode = 0;
     BString interpreter;
@@ -798,7 +787,7 @@ U32 KProcess::execve(BString path, std::vector<BString>& args, const std::vector
     }
 #ifdef BOXEDWINE_MULTI_THREADED
     if (KSystem::cpuAffinityCountForApp) {
-        Platform::setCpuAffinityForThread(KThread::currentThread(), this->isSystemProcess()?0:KSystem::cpuAffinityCountForApp);
+        Platform::setCpuAffinityForThread(thread, this->isSystemProcess()?0:KSystem::cpuAffinityCountForApp);
     }
 #endif
     args[0] = BString(Fs::getFullPath(currentDirectory, path)); // if path is a link, we should use the link not the actual path       
@@ -822,25 +811,10 @@ U32 KProcess::execve(BString path, std::vector<BString>& args, const std::vector
     }
 
     // reset memory must come after we grab the args and env
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-	this->previousMemory = this->memory;
-	this->memory = new Memory();
-	this->memory->onThreadChanged();
-	KThread::currentThread()->memory = this->memory;
-#else
-	if (this->memory->getRefCount() == 1) {
-		this->memory->reset();
-	}
-	else {
-		this->memory->decRefCount();
-		this->memory = new Memory();
-		this->memory->onThreadChanged();
-		KThread::currentThread()->memory = this->memory;
-	}
-#endif    
+    this->memory->execvReset();  
 
-    KThread::currentThread()->reset();
-    this->onExec();
+    thread->reset();
+    this->onExec(thread);
 
     // not sure why x64 doesn't catch setting the CS segment this in time
     if (this->name.contains("winevdm.exe", true) || vectorContainsIgnoreCase(args, B("winevdm.exe"))) {
@@ -850,12 +824,12 @@ U32 KProcess::execve(BString path, std::vector<BString>& args, const std::vector
         }
     }
 
-    if (!ElfLoader::loadProgram(shared_from_this(), openNode, &KThread::currentThread()->cpu->eip.u32)) {
+    if (!ElfLoader::loadProgram(thread, openNode, &thread->cpu->eip.u32)) {
         // :TODO: maybe alloc a new memory object and keep the old one until we know we are loaded
         kpanic("program failed to load, but memory was already reset");
     }	
     // must come after loadProgram because of process->phdr
-    setupThreadStack(KThread::currentThread(), KThread::currentThread()->cpu, this->name, args, envs);
+    setupThreadStack(thread, thread->cpu, this->name, args, envs);
     openNode->close();
     delete openNode;
 
@@ -864,7 +838,7 @@ U32 KProcess::execve(BString path, std::vector<BString>& args, const std::vector
 
     //klog("%d/%d exec %s (cwd=%s)", KThread::currentThread()->id, this->id, this->commandLine.c_str(), this->currentDirectory.c_str());
 
-    KThread::currentThread()->cpu->restart();
+    thread->cpu->restart();
     
     return 1;
 }
@@ -1132,7 +1106,7 @@ U32 KProcess::open(BString path, U32 flags) {
     return fd->handle;
 }
 
-U32 KProcess::read(FD fildes, U32 bufferAddress, U32 bufferLen) {
+U32 KProcess::read(KThread* thread, FD fildes, U32 bufferAddress, U32 bufferLen) {
     KFileDescriptor* fd = this->getFileDescriptor(fildes);
     if (!fd) {
         return -K_EBADF;
@@ -1141,12 +1115,12 @@ U32 KProcess::read(FD fildes, U32 bufferAddress, U32 bufferLen) {
         return -K_EINVAL;
     }
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
-    BtCodeMemoryWrite w((BtCPU*)KThread::currentThread()->cpu, bufferAddress, bufferLen);
+    BtCodeMemoryWrite w((BtCPU*)thread->cpu, bufferAddress, bufferLen);
 #endif
-    return fd->kobject->read(bufferAddress, bufferLen);
+    return fd->kobject->read(thread, bufferAddress, bufferLen);
 }
 
-U32 KProcess::write(FD fildes, U32 bufferAddress, U32 bufferLen) {
+U32 KProcess::write(KThread* thread, FD fildes, U32 bufferAddress, U32 bufferLen) {
     KFileDescriptor* fd = this->getFileDescriptor(fildes);
     if (!fd) {
         return -K_EBADF;
@@ -1154,10 +1128,10 @@ U32 KProcess::write(FD fildes, U32 bufferAddress, U32 bufferLen) {
     if (!fd->canWrite()) {
         return -K_EINVAL;
     }
-    return fd->kobject->write(bufferAddress, bufferLen);
+    return fd->kobject->write(thread, bufferAddress, bufferLen);
 }
 
-U32 KProcess::brk(U32 address) {    
+U32 KProcess::brk(KThread* thread, U32 address) {    
     // :TODO: why is this 1MB limit required, without it debian stretch "dpkg -i /var/local/python-crypto_2.6.1-7_i386.deb" will fail
     if (address!=0 && address-this->loaderBaseAddress>0x00100000) {
         return this->brkEnd;
@@ -1178,26 +1152,26 @@ U32 KProcess::brk(U32 address) {
                     return -K_ENOMEM;
                 }
             }
-            if (this->mmap(aligned, len - alreadyAllocated, K_PROT_READ | K_PROT_WRITE | K_PROT_EXEC, K_MAP_PRIVATE|K_MAP_ANONYMOUS|K_MAP_FIXED, -1, 0)==aligned) {
+            if (memory->mmap(thread, aligned, len - alreadyAllocated, K_PROT_READ | K_PROT_WRITE | K_PROT_EXEC, K_MAP_PRIVATE|K_MAP_ANONYMOUS|K_MAP_FIXED, -1, 0)==aligned) {
                 this->brkEnd+=len;
             }				
         }
     } else if (address!=0 && address < this->brkEnd) {
         U32 startAddress = (address+4095) & 0xFFFFF000;
         U32 len = this->brkEnd - startAddress;
-        this->unmap(startAddress, len);
+        memory->unmap(startAddress, len);
         this->brkEnd = startAddress;
     }
     return this->brkEnd; // intentional, should return the new end, even though the libc brk returns the old value
 }
 
-U32 KProcess::ioctl(FD fildes, U32 request) {
+U32 KProcess::ioctl(KThread* thread, FD fildes, U32 request) {
     KFileDescriptor* fd = this->getFileDescriptor(fildes);
 
     if (fd==0) {
         return -K_EBADF;
     }
-    return fd->kobject->ioctl(request);
+    return fd->kobject->ioctl(thread, request);
 }
 
 U32 KProcess::umask(U32 umask) {	
@@ -1227,7 +1201,7 @@ U32 KProcess::dup2(FD fildes, FD fildes2) {
     return fildes2;
 }
 
-U32 KProcess::getrusuage(U32 who, U32 usage) {    
+U32 KProcess::getrusuage(KThread* thread, U32 who, U32 usage) {    
     U32 userSeconds = 0;
     U32 userMicroSeconds = 0;
     U32 kernelSeconds = 0;
@@ -1236,17 +1210,16 @@ U32 KProcess::getrusuage(U32 who, U32 usage) {
     if (who==0) { // RUSAGE_SELF
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(threadsMutex);
         for (auto& t : this->threads ) {
-            KThread* thread = t.second;
-            userSeconds += (U32)(thread->userTime / 1000000l);
-            userMicroSeconds += (U32)(thread->userTime % 1000000l);
-            kernelSeconds += (U32)(thread->kernelTime / 1000000l);
-            kernelMicroSeconds += (U32)(thread->kernelTime % 1000000l);
+            KThread* otherThread = t.second;
+            userSeconds += (U32)(otherThread->userTime / 1000000l);
+            userMicroSeconds += (U32)(otherThread->userTime % 1000000l);
+            kernelSeconds += (U32)(otherThread->kernelTime / 1000000l);
+            kernelMicroSeconds += (U32)(otherThread->kernelTime % 1000000l);
         }
         
     } else if ((S32)who < 0) { // RUSAGE_CHILDREN
         klog("getrusuage: RUSAGE_CHILDREN not implemented");
     } else { // RUSAGE_THREAD
-        KThread* thread = KThread::currentThread();
         userSeconds = (U32)(thread->userTime / 1000000l);
         userMicroSeconds = (U32)(thread->userTime % 1000000l);
         kernelSeconds = (U32)(thread->kernelTime / 1000000l);
@@ -1254,12 +1227,12 @@ U32 KProcess::getrusuage(U32 who, U32 usage) {
     }
 
     // user time
-    writed(usage, userSeconds);
-    writed(usage + 4, userMicroSeconds);
+    memory->writed(usage, userSeconds);
+    memory->writed(usage + 4, userMicroSeconds);
     // system time
-    writed(usage + 8, kernelSeconds);
-    writed(usage + 12, kernelMicroSeconds);
-    zeroMemory(usage+16, 56);
+    memory->writed(usage + 8, kernelSeconds);
+    memory->writed(usage + 12, kernelMicroSeconds);
+    memory->memset(usage+16, 0, 56);
     return 0;
 }
 
@@ -1309,11 +1282,10 @@ U32 KProcess::symlink(BString target, BString linkpath) {
 U32 KProcess::readlinkInDirectory(BString currentDirectory, BString path, U32 buffer, U32 bufSize) {
     // :TODO: move these to the virtual filesystem
     if (!strcmp(path.c_str(), "/proc/self/exe")) {
-        BString exe = KThread::currentThread()->process->exe;
         U32 len = (U32)exe.length();
         if (len>bufSize)
             len = bufSize;
-        memcopyFromNative(buffer, exe.c_str(), len);
+        memory->memcpy(buffer, exe.c_str(), len);
         return len;
     } else if (path.startsWith("/proc/self/fd/")) {
         FD h = atoi(path.c_str()+14);
@@ -1329,7 +1301,7 @@ U32 KProcess::readlinkInDirectory(BString currentDirectory, BString path, U32 bu
         U32 len = (U32)fdpath.length();
         if ((int)fdpath.length()>(int)bufSize)
             len=bufSize;
-        memcopyFromNative(buffer, fdpath.c_str(), len);
+        memory->memcpy(buffer, fdpath.c_str(), len);
         return len;        
     }
 
@@ -1339,7 +1311,7 @@ U32 KProcess::readlinkInDirectory(BString currentDirectory, BString path, U32 bu
     U32 len = (U32)node->getLink().length();
     if (len>bufSize)
         len = bufSize;
-    memcopyFromNative(buffer, node->getLink().c_str(), len);
+    memory->memcpy(buffer, node->getLink().c_str(), len);
     return len; 
 }
 
@@ -1353,134 +1325,6 @@ U32 KProcess::readlinkat(FD dirfd, BString path, U32 buf, U32 bufsiz) {
 
 U32 KProcess::readlink(BString path, U32 buffer, U32 bufSize) {
     return readlinkInDirectory(this->currentDirectory, path, buffer, bufSize);
-}
-
-U32 KProcess::mmap(U32 addr, U32 len, S32 prot, S32 flags, FD fildes, U64 off) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->pageMutex); // race condition between findFirstAvailablePage and setting the flags
-    bool shared = (flags & K_MAP_SHARED)!=0;
-    bool priv = (flags & K_MAP_PRIVATE)!=0;
-    bool read = (prot & K_PROT_READ)!=0;
-    bool write = (prot & K_PROT_WRITE)!=0;
-    bool exec = (prot & K_PROT_EXEC)!=0;
-    U32 pageStart = addr >> K_PAGE_SHIFT;
-    U32 pageCount = (len+K_PAGE_SIZE-1)>>K_PAGE_SHIFT;
-    KFileDescriptor* fd = 0;
-
-    if (0xFFFFFFFF-addr<len) {
-        return -K_EINVAL;
-    }
-    if ((shared && priv) || (!shared && !priv)) {
-        return -K_EINVAL;
-    }
-
-    if (!(flags & K_MAP_ANONYMOUS) && fildes>=0) {
-        fd = this->getFileDescriptor(fildes);
-        if (!fd) {
-            return -K_EBADF;
-        }
-        if (!fd->kobject->canMap()) {
-            return -K_EACCES;
-        }
-        if (len==0 || (off & 0xFFF)!=0) {
-            return -K_EINVAL;
-        }
-        if ((!fd->canRead() && read) || (!priv && (!fd->canWrite() && write))) {
-            return -K_EACCES;
-        }
-    }        
-    if (flags & (K_MAP_FIXED | K_MAP_FIXED_NOREPLACE)) {
-        if (addr & (K_PAGE_SIZE-1)) {
-            klog("tried to call mmap with invalid address: %X", addr);
-            return -K_EINVAL;
-        }
-        if (flags & K_MAP_FIXED_NOREPLACE) {
-            if (addr != 0 && pageStart + pageCount > ADDRESS_PROCESS_MMAP_START) {
-                return -K_ENOMEM;
-            }
-            for (U32 page = pageStart; page < pageStart + pageCount; page++) {
-                if (memory->isPageMapped(page)) {
-                    return -K_EEXIST;
-                }
-            }
-        }
-    } else {		
-        if (pageStart + pageCount> ADDRESS_PROCESS_MMAP_START)
-            return -K_ENOMEM;
-        if (pageStart == 0)
-            pageStart = ADDRESS_PROCESS_MMAP_START;
-        if (!this->memory->findFirstAvailablePage(pageStart, pageCount, &pageStart, addr!=0, true)) {
-            // :TODO: what erro
-            return -K_EINVAL;
-        }
-        if (addr!=0 && pageStart+pageCount> ADDRESS_PROCESS_MMAP_START)
-            return -K_ENOMEM;
-        addr = pageStart << K_PAGE_SHIFT;	
-    }
-    if (fd) {
-        U32 result = fd->kobject->map(addr, len, prot, flags, off);
-        if (result) {
-            return result;
-        }
-    }
-
-	// even if there are no permissions, it is important for MAP_ANONYMOUS|MAP_FIXED existing memory to be 0'd out
-    // if (write || read || exec)
-	{		
-        U32 permissions = PAGE_MAPPED;
-
-        if (write)
-            permissions|=PAGE_WRITE;
-        if (read)
-            permissions|=PAGE_READ;
-        if (exec)
-            permissions|=PAGE_EXEC;
-        if (shared)
-            permissions|=PAGE_SHARED;
-        if (fd) {	
-            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mappedFilesMutex);
-            BoxedPtr<MappedFile> mappedFile = new MappedFile();
-
-            mappedFile->address = pageStart << K_PAGE_SHIFT;
-            mappedFile->len = ((U64)pageCount) << K_PAGE_SHIFT;
-            mappedFile->offset = off;     
-            mappedFile->file = std::dynamic_pointer_cast<KFile>(fd->kobject);            
-#ifdef BOXEDWINE_DEFAULT_MMU
-            bool addFileToSystemCache = true;
-#else
-            bool addFileToSystemCache = shared;
-#endif
-            if (addFileToSystemCache) {
-                BoxedPtr<MappedFileCache> cache = KSystem::getFileCache(mappedFile->file->openFile->node->path);
-                if (!cache) {
-                    cache = new MappedFileCache(mappedFile->file->openFile->node->path);
-                    KSystem::setFileCache(mappedFile->file->openFile->node->path, cache);
-                    cache->file = mappedFile->file;
-#ifdef BOXEDWINE_DEFAULT_MMU
-                    U32 size = ((U32)((fd->kobject->length() + K_PAGE_SIZE - 1) >> K_PAGE_SHIFT));
-#else
-                    U32 size = 1;
-#endif
-                    cache->data = new U8 * [size];
-                    cache->dataSize = size;
-                    memset(cache->data, 0, size * sizeof(U8*));
-                }
-                mappedFile->systemCacheEntry = cache;
-            }
-            KThread::currentThread()->process->mappedFiles[mappedFile->address] = mappedFile;
-            this->memory->allocPages(pageStart, pageCount, permissions, fildes, off, mappedFile);
-        } else {
-            this->memory->allocPages(pageStart, pageCount, permissions, 0, 0, NULL);
-        }		
-    }
-    return addr;
-}
-
-U32 KProcess::unmap(U32 address, U32 len) {
-    U32 pageStart = address >> K_PAGE_SHIFT;
-    U32 pageCount = (len+K_PAGE_SIZE-1)>>K_PAGE_SHIFT;
-    
-    this->memory->reset(pageStart, pageCount);
-    return 0;
 }
 
 U32 KProcess::ftruncate64(FD fildes, U64 length) {
@@ -1515,17 +1359,17 @@ U32 KProcess::statfs(BString path, U32 address) {
     if (!node) {
         return -K_ENOENT;
     }
-    writed(address, 0xEF53); // f_type (EXT3)
-    writed(address + 4, FS_BLOCK_SIZE); // f_bsize
-    writed(address + 8, FS_SIZE / FS_BLOCK_SIZE); // f_blocks
-    writed(address + 16, FS_FREE_SIZE / FS_BLOCK_SIZE); // f_bfree
-    writed(address + 24, FS_FREE_SIZE / FS_BLOCK_SIZE); // f_bavail
-    writed(address + 32, 1024 * 1024); // f_files
-    writed(address + 40, 1024 * 1024); // f_ffree
-    writed(address + 48, 1278601602); // f_fsid
-    writed(address + 56, MAX_FILEPATH_LEN); // f_namelen
-    writed(address + 60, FS_BLOCK_SIZE); // f_frsize
-    writed(address + 64, 4096); // f_flags
+    memory->writed(address, 0xEF53); // f_type (EXT3)
+    memory->writed(address + 4, FS_BLOCK_SIZE); // f_bsize
+    memory->writed(address + 8, FS_SIZE / FS_BLOCK_SIZE); // f_blocks
+    memory->writed(address + 16, FS_FREE_SIZE / FS_BLOCK_SIZE); // f_bfree
+    memory->writed(address + 24, FS_FREE_SIZE / FS_BLOCK_SIZE); // f_bavail
+    memory->writed(address + 32, 1024 * 1024); // f_files
+    memory->writed(address + 40, 1024 * 1024); // f_ffree
+    memory->writed(address + 48, 1278601602); // f_fsid
+    memory->writed(address + 56, MAX_FILEPATH_LEN); // f_namelen
+    memory->writed(address + 60, FS_BLOCK_SIZE); // f_frsize
+    memory->writed(address + 64, 4096); // f_flags
     return 0;
 }
 
@@ -1534,17 +1378,17 @@ U32 KProcess::statfs64(BString path, U32 address) {
     if (!node) {
         return -K_ENOENT;
     }
-    writed(address, 0xEF53); // f_type (EXT3)
-    writed(address + 4, FS_BLOCK_SIZE); // f_bsize
-    writeq(address + 8, FS_SIZE / FS_BLOCK_SIZE); // f_blocks
-    writeq(address + 16, FS_FREE_SIZE / FS_BLOCK_SIZE); // f_bfree
-    writeq(address + 24, FS_FREE_SIZE / FS_BLOCK_SIZE); // f_bavail
-    writeq(address + 32, 1024 * 1024); // f_files
-    writeq(address + 40, 1024 * 1024); // f_ffree
-    writeq(address + 48, 1278601602); // f_fsid
-    writed(address + 56, MAX_FILEPATH_LEN); // f_namelen
-    writed(address + 60, FS_BLOCK_SIZE); // f_frsize
-    writed(address + 64, 4096); // f_flags
+    memory->writed(address, 0xEF53); // f_type (EXT3)
+    memory->writed(address + 4, FS_BLOCK_SIZE); // f_bsize
+    memory->writeq(address + 8, FS_SIZE / FS_BLOCK_SIZE); // f_blocks
+    memory->writeq(address + 16, FS_FREE_SIZE / FS_BLOCK_SIZE); // f_bfree
+    memory->writeq(address + 24, FS_FREE_SIZE / FS_BLOCK_SIZE); // f_bavail
+    memory->writeq(address + 32, 1024 * 1024); // f_files
+    memory->writeq(address + 40, 1024 * 1024); // f_ffree
+    memory->writeq(address + 48, 1278601602); // f_fsid
+    memory->writed(address + 56, MAX_FILEPATH_LEN); // f_namelen
+    memory->writed(address + 60, FS_BLOCK_SIZE); // f_frsize
+    memory->writed(address + 64, 4096); // f_flags
     return 0;
 }
 
@@ -1554,17 +1398,17 @@ U32 KProcess::fstatfs64(FD fildes, U32 address) {
     if (!fd) {
         return -K_EBADF;
     }
-    writed(address, 0xEF53); // f_type (EXT3)
-    writed(address + 4, FS_BLOCK_SIZE); // f_bsize
-    writeq(address + 8, FS_SIZE / FS_BLOCK_SIZE); // f_blocks
-    writeq(address + 16, FS_FREE_SIZE / FS_BLOCK_SIZE); // f_bfree
-    writeq(address + 24, FS_FREE_SIZE / FS_BLOCK_SIZE); // f_bavail
-    writeq(address + 32, 1024 * 1024); // f_files
-    writeq(address + 40, 1024 * 1024); // f_ffree
-    writeq(address + 48, 12719298601114463092ull); // f_fsid
-    writed(address + 56, MAX_FILEPATH_LEN); // f_namelen
-    writed(address + 60, FS_BLOCK_SIZE); // f_frsize
-    writed(address + 64, 4096); // f_flags
+    memory->writed(address, 0xEF53); // f_type (EXT3)
+    memory->writed(address + 4, FS_BLOCK_SIZE); // f_bsize
+    memory->writeq(address + 8, FS_SIZE / FS_BLOCK_SIZE); // f_blocks
+    memory->writeq(address + 16, FS_FREE_SIZE / FS_BLOCK_SIZE); // f_bfree
+    memory->writeq(address + 24, FS_FREE_SIZE / FS_BLOCK_SIZE); // f_bavail
+    memory->writeq(address + 32, 1024 * 1024); // f_files
+    memory->writeq(address + 40, 1024 * 1024); // f_ffree
+    memory->writeq(address + 48, 12719298601114463092ull); // f_fsid
+    memory->writed(address + 56, MAX_FILEPATH_LEN); // f_namelen
+    memory->writed(address + 60, FS_BLOCK_SIZE); // f_frsize
+    memory->writed(address + 64, 4096); // f_flags
     return 0;
 }
 
@@ -1576,14 +1420,14 @@ U32 KProcess::setitimer(U32 which, U32 newValue, U32 oldValue) {
     if (oldValue) {
         U32 remaining = this->timer.millies - KSystem::getMilliesSinceStart();
 
-        writed(oldValue, this->timer.resetMillies / 1000);
-        writed(oldValue, (this->timer.resetMillies % 1000) * 1000);
-        writed(oldValue + 8, remaining / 1000);
-        writed(oldValue + 12, (remaining % 1000) * 1000);
+        memory->writed(oldValue, this->timer.resetMillies / 1000);
+        memory->writed(oldValue, (this->timer.resetMillies % 1000) * 1000);
+        memory->writed(oldValue + 8, remaining / 1000);
+        memory->writed(oldValue + 12, (remaining % 1000) * 1000);
     }
     if (newValue) {
-        U32 millies = readd(newValue + 8) * 1000 + readd(newValue + 12) / 1000;
-        U32 resetMillies = readd(newValue) * 1000 + readd(newValue + 4) / 1000;
+        U32 millies = memory->readd(newValue + 8) * 1000 + memory->readd(newValue + 12) / 1000;
+        U32 resetMillies = memory->readd(newValue) * 1000 + memory->readd(newValue + 4) / 1000;
 
         if (millies == 0) {
             if (this->timer.millies!=0) {
@@ -1629,7 +1473,7 @@ and is now available for re-use. */
 #define K_CLONE_NEWNET            0x40000000      /* New network namespace */
 #define K_CLONE_IO                0x80000000      /* Clone io context */
 
-U32 KProcess::clone(U32 flags, U32 child_stack, U32 ptid, U32 tls, U32 ctid) {    
+U32 KProcess::clone(KThread* thread, U32 flags, U32 child_stack, U32 ptid, U32 tls, U32 ctid) {    
     flags &= ~CSIGNAL;
     
     if (!(flags & K_CLONE_THREAD)) { // new thread group (process)
@@ -1649,9 +1493,8 @@ U32 KProcess::clone(U32 flags, U32 child_stack, U32 ptid, U32 tls, U32 ctid) {
         std::shared_ptr<KProcess> newProcess = KProcess::create();
         if (vm) {
             newProcess->memory = this->memory;
-            newProcess->memory->incRefCount();
         } else {            
-            newProcess->memory = new Memory();
+            newProcess->memory = KMemory::create(newProcess.get());
             newProcess->memory->clone(this->memory);
         }
         KThread* newThread = newProcess->createThread();
@@ -1659,16 +1502,14 @@ U32 KProcess::clone(U32 flags, U32 child_stack, U32 ptid, U32 tls, U32 ctid) {
         newProcess->parentId = this->id;        
         
         newProcess->clone(shared_from_this());
-        newThread->clone(KThread::currentThread());
-        newThread->memory = newProcess->memory;
+        newThread->clone(thread);
 
         // will only create them if they are missing
         //newProcess->initStdio();
         
         if ((flags & K_CLONE_CHILD_SETTID)!=0) {
             if (ctid!=0) {
-                ChangeThread c(newThread); // so that writed will go to the new memory space
-                 ::writed(ctid, newThread->id);
+                 newThread->memory->writed(ctid, newThread->id);
             }
         }
         if ((flags & K_CLONE_CHILD_CLEARTID)!=0) {
@@ -1676,9 +1517,9 @@ U32 KProcess::clone(U32 flags, U32 child_stack, U32 ptid, U32 tls, U32 ctid) {
         }
         if ((flags & K_CLONE_PARENT_SETTID)!=0) {
             if (ptid) {                
-                writed(ptid, newThread->id);
+                memory->writed(ptid, newThread->id);
                 ChangeThread c(newThread); // so that writed will go to the new memory space
-                writed(ptid, newThread->id);
+                memory->writed(ptid, newThread->id);
             }
         }
         if (child_stack!=0) {
@@ -1695,8 +1536,8 @@ U32 KProcess::clone(U32 flags, U32 child_stack, U32 ptid, U32 tls, U32 ctid) {
         if (vFork) {
 #ifndef BOXEDWINE_MULTI_THREADED
             // don't re-enter when we wake up
-            KThread::currentThread()->cpu->eip.u32+=2; // don't re-enter
-            KThread::currentThread()->cpu->reg[0].u32 = newProcess->id;
+            thread->cpu->eip.u32+=2; // don't re-enter
+            thread->cpu->reg[0].u32 = newProcess->id;
 #endif
             {
                 BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(newProcess->exitOrExecCond);
@@ -1704,7 +1545,7 @@ U32 KProcess::clone(U32 flags, U32 child_stack, U32 ptid, U32 tls, U32 ctid) {
                 BOXEDWINE_CONDITION_WAIT(newProcess->exitOrExecCond);
             }
 #ifdef BOXEDWINE_MULTI_THREADED
-			if (KThread::currentThread()->terminating) {
+			if (thread->terminating) {
 				return -K_EINTR;
 			}
 #endif
@@ -1717,7 +1558,7 @@ U32 KProcess::clone(U32 flags, U32 child_stack, U32 ptid, U32 tls, U32 ctid) {
         KThread* newThread = this->createThread();
         struct user_desc desc;
 
-        readMemory((U8*)&desc, tls, sizeof(struct user_desc));
+        memory->memcpy(&desc, tls, sizeof(struct user_desc));
 
         if (desc.base_addr!=0 && desc.entry_number!=0) {
             struct user_desc* ldt = newThread->getLDT(desc.entry_number);
@@ -1725,7 +1566,7 @@ U32 KProcess::clone(U32 flags, U32 child_stack, U32 ptid, U32 tls, U32 ctid) {
             newThread->cpu->setSegment(GS, desc.entry_number << 3);
         }
         newThread->clear_child_tid = ctid;
-        writed(ptid, newThread->id);
+        memory->writed(ptid, newThread->id);
         newThread->cpu->reg[4].u32 = child_stack;
         newThread->cpu->reg[4].u32+=8;
         newThread->cpu->eip.u32 = newThread->cpu->peek32(0);
@@ -1739,30 +1580,16 @@ U32 KProcess::clone(U32 flags, U32 child_stack, U32 ptid, U32 tls, U32 ctid) {
     return -K_ENOSYS;
 }
 
-void KProcess::killAllThreadsExceptCurrent() {
-    U32 currentThreadId = 0;
-
-    KThread* currentThread = KThread::currentThread();
-    if (currentThread) {
-        currentThreadId = currentThread->id;
-    }
-
-    iterateThreadIds([this, currentThreadId](U32 id) {
-        if (id != currentThreadId) {
+void KProcess::killAllThreads(KThread* exceptThisThread) {
+    iterateThreadIds([this, exceptThisThread](U32 id) {
+        if (!exceptThisThread || exceptThisThread->id != id) {
             terminateOtherThread(shared_from_this(), id);
         }
         return true;
         });
 }
 
-void KProcess::killAllThreads() {        
-    iterateThreadIds([this](U32 id) {        
-        terminateOtherThread(shared_from_this(), id);
-        return true;
-        });
-}
-
-U32 KProcess::exitgroup(U32 code) {
+U32 KProcess::exitgroup(KThread* thread, U32 code) {
     std::shared_ptr<KProcess> parent = KSystem::getProcess(this->parentId);
     if (parent && parent->sigActions[K_SIGCHLD].handlerAndSigAction!=K_SIG_DFL) {
         if (parent->sigActions[K_SIGCHLD].handlerAndSigAction!=K_SIG_IGN) {
@@ -1770,14 +1597,14 @@ U32 KProcess::exitgroup(U32 code) {
         }
     }
 
-    killAllThreadsExceptCurrent();
+    killAllThreads(thread);
 
     {
         BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(KSystem::processesCond);
         this->terminated = true;
     }
 
-    KThread::currentThread()->cleanup(); // must happen before we clear memory
+    thread->cleanup(); // must happen before we clear memory
     this->threads.clear();
     this->cleanupProcess(); // release RAM, sockets, etc now.  No reason to wait to do that until waitpid is called
     this->exitCode = code;
@@ -1796,31 +1623,8 @@ U32 KProcess::exitgroup(U32 code) {
         KSystem::wakeThreadsWaitingOnProcessStateChanged(); // after this the process could be deleted
     }
      
-	terminateCurrentThread(KThread::currentThread());
+	terminateCurrentThread(thread);
     return -K_CONTINUE;
-}
-
-U32 KProcess::mprotect(U32 address, U32 len, U32 prot) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->pageMutex);
-    bool read = (prot & K_PROT_READ)!=0;
-    bool write = (prot & K_PROT_WRITE)!=0;
-    bool exec = (prot & K_PROT_EXEC)!=0;
-    U32 pageStart = address >> K_PAGE_SHIFT;
-    U32 pageCount = (len+K_PAGE_SIZE-1)>>K_PAGE_SHIFT;
-    U32 permissions = 0;
-    U32 i;
-
-    if (write)
-        permissions|=PAGE_WRITE;
-    if (read)
-        permissions|=PAGE_READ;
-    if (exec)
-        permissions|=PAGE_EXEC;
-
-    for (i=pageStart;i<pageStart+pageCount;i++) {
-        this->memory->protectPage(i, permissions);
-    }
-    return 0;
 }
 
 U32 KProcess::fchdir(FD fildes) {
@@ -1872,7 +1676,7 @@ S64 KProcess::llseek(FD fildes, S64 offset, U32 whence) {
     return fd->kobject->seek(pos);
 }
 
-U32 writeRecord(U32 dirp, U32 len, U32 count, U32 pos, bool is64, const char* name, U32 id, U32 type) {
+U32 writeRecord(KMemory* memory, U32 dirp, U32 len, U32 count, U32 pos, bool is64, const char* name, U32 id, U32 type) {
     U32 recordLen;
 
     if (is64) {
@@ -1883,11 +1687,11 @@ U32 writeRecord(U32 dirp, U32 len, U32 count, U32 pos, bool is64, const char* na
                 return -K_EINVAL;
             return 0;
         }
-        writeq(dirp, id);
-        writeq(dirp + 8, pos);
-        writew(dirp + 16, recordLen);
-        writeb(dirp + 18, type);
-        writeNativeString(dirp + 19, name);
+        memory->writeq(dirp, id);
+        memory->writeq(dirp + 8, pos);
+        memory->writew(dirp + 16, recordLen);
+        memory->writeb(dirp + 18, type);
+        memory->strcpy(dirp + 19, name);
     } else {
         recordLen = 12+(U32)strlen(name);
         recordLen=(recordLen+3) / 4 * 4;
@@ -1896,11 +1700,11 @@ U32 writeRecord(U32 dirp, U32 len, U32 count, U32 pos, bool is64, const char* na
                 return -K_EINVAL;
             return 0;
         }
-        writed(dirp, id);
-        writed(dirp + 4, pos);
-        writew(dirp + 8, recordLen);
-        writeNativeString(dirp + 10, name);
-        writeb(dirp + recordLen - 1, type);
+        memory->writed(dirp, id);
+        memory->writed(dirp + 4, pos);
+        memory->writew(dirp + 8, recordLen);
+        memory->strcpy(dirp + 10, name);
+        memory->writeb(dirp + recordLen - 1, type);
     }
     return recordLen;
 }
@@ -1927,7 +1731,7 @@ U32 KProcess::getdents(FD fildes, U32 dirp, U32 count, bool is64) {
     for (U32 i=(U32)openNode->getFilePointer();i<entries;i++) {
         BString name;
         BoxedPtr<FsNode> entry = openNode->getDirectoryEntry(i, name);
-        U32 recordLen = writeRecord(dirp, len, count, i + 2, is64, name.c_str(), entry->id, entry->getType(true));
+        U32 recordLen = writeRecord(memory, dirp, len, count, i + 2, is64, name.c_str(), entry->id, entry->getType(true));
         if (recordLen>0) {
             dirp+=recordLen;
             len+=recordLen;
@@ -1953,7 +1757,7 @@ U32 KProcess::msync(U32 addr, U32 len, U32 flags) {
     return -K_ENOMEM;
 }
 
-U32 KProcess::writev(FD handle, U32 iov, S32 iovcnt) {
+U32 KProcess::writev(KThread* thread, FD handle, U32 iov, S32 iovcnt) {
     KFileDescriptor* fd = this->getFileDescriptor(handle);
 
     if (fd==0) {
@@ -1962,7 +1766,7 @@ U32 KProcess::writev(FD handle, U32 iov, S32 iovcnt) {
     if (!fd->canWrite()) {
         return -K_EINVAL;
     }
-    return fd->kobject->writev(iov, iovcnt);    
+    return fd->kobject->writev(thread, iov, iovcnt);    
 }
 
 U32 KProcess::memfd_create(BString name, U32 flags) {
@@ -1983,72 +1787,9 @@ U32 KProcess::memfd_create(BString name, U32 flags) {
     return this->allocFileDescriptor(kobject, K_O_RDWR, descriptorFlags, -1, 0)->handle;
 }
 
-U32 KProcess::mlock(U32 addr, U32 len) {
-    return 0;
-}
-
-
-U32 KProcess::mremap(U32 oldaddress, U32 oldsize, U32 newsize, U32 flags) {
-    if (flags > 1) {
-        kpanic("mremap not implemented: flags=%X", flags);
-    }
-    // is page aligned
-    if (oldaddress & 0xFFF) {
-        return -K_EINVAL;
-    }
-    if (newsize==0) {
-        return -K_EINVAL;
-    }
-    if (oldsize==0) {
-        kpanic("mremap not implemented for oldsize==0");
-    }
-    U32 oldPageCount = oldsize>>K_PAGE_SHIFT;
-    U32 pageFlags = this->memory->getPageFlags(oldaddress >> K_PAGE_SHIFT);
-
-    for (U32 i=0;i<oldPageCount;i++) {
-        if (this->memory->getPageFlags((oldaddress >> K_PAGE_SHIFT)+i)!=pageFlags) {
-            return -K_EFAULT;
-        }
-    }
-    if (newsize<oldsize) {
-        this->unmap(oldaddress+newsize, oldsize-newsize);
-        return oldaddress;
-    } else {
-        U32 result;
-        U32 prot=0;        
-        U32 f = K_MAP_FIXED;
-        if (pageFlags & PAGE_READ) {
-            prot|=K_PROT_READ;
-        }
-        if (pageFlags & PAGE_WRITE) {
-            prot|=K_PROT_WRITE;
-        }
-        if (pageFlags & PAGE_EXEC) {
-            prot|=K_PROT_EXEC;
-        }
-        if (pageFlags & PAGE_SHARED) {
-            f|=K_MAP_SHARED;
-        } else {
-            f|=K_MAP_PRIVATE;
-        }
-        result = this->mmap(oldaddress+oldsize, newsize-oldsize, prot, f, -1, 0);
-        if (result==oldaddress+oldsize) {
-            return oldaddress;
-        }
-       
-        if ((flags & 1)!=0) { // MREMAP_MAYMOVE
-            kpanic("__NR_mremap not implemented");
-            return -K_ENOMEM;
-        } else {
-            return -K_ENOMEM;
-        }
-    }
-}
-
 U32 KProcess::prctl(U32 option, U32 arg2) {
     if (option == 15) { // PR_SET_NAME
-        char tmp[MAX_FILEPATH_LEN];
-        this->name = BString::copy(getNativeString(arg2, tmp, sizeof(tmp)));
+        this->name = memory->readString(arg2);
         return 0;
     } else if (option == 38) { // PR_SET_NO_NEW_PRIVS
         return 0;
@@ -2063,15 +1804,15 @@ U32 KProcess::sigaction(U32 sig, U32 act, U32 oact, U32 sigsetSize) {
         return -K_EINVAL;
     }
     if (oact!=0) {
-        this->sigActions[sig].writeSigAction(oact, sigsetSize);
+        this->sigActions[sig].writeSigAction(memory, oact, sigsetSize);
     }
     if (act!=0) {
-        this->sigActions[sig].readSigAction(act, sigsetSize);
+        this->sigActions[sig].readSigAction(memory, act, sigsetSize);
     }
     return 0;
 }
 
-U32 KProcess::pread64(FD fildes, U32 address, U32 len, U64 offset) {
+U32 KProcess::pread64(KThread* thread, FD fildes, U32 address, U32 len, U64 offset) {
     KFileDescriptor* fd = this->getFileDescriptor(fildes);
 
     if (!fd) {
@@ -2089,13 +1830,13 @@ U32 KProcess::pread64(FD fildes, U32 address, U32 len, U64 offset) {
     if (openNode->node->isDirectory()) {
         return -K_EISDIR;
     }
-    if (!this->memory->isValidWriteAddress(address, len)) {
+    if (!this->memory->canWrite(address, len)) {
         return -K_EFAULT;
     }
-    return p->pread(address, (S64)offset, len);
+    return p->pread(thread, address, (S64)offset, len);
 }
 
-U32 KProcess::pwrite64(FD fildes, U32 address, U32 len, U64 offset) {
+U32 KProcess::pwrite64(KThread* thread, FD fildes, U32 address, U32 len, U64 offset) {
     KFileDescriptor* fd = this->getFileDescriptor(fildes);
 
     if (!fd) {
@@ -2113,17 +1854,17 @@ U32 KProcess::pwrite64(FD fildes, U32 address, U32 len, U64 offset) {
     if (openNode->node->isDirectory()) {
         return -K_EISDIR;
     }
-    if (!this->memory->isValidReadAddress(address, len)) {
+    if (!this->memory->canRead(address, len)) {
         return -K_EFAULT;
     }
-    return p->pwrite(address, (S64)offset, len);
+    return p->pwrite(thread, address, (S64)offset, len);
 }
 
 U32 KProcess::getcwd(U32 buffer, U32 size) {
     if (size==0) {
         return -K_EINVAL;
     }
-    if (!this->memory->isValidWriteAddress(buffer, size)) {
+    if (!this->memory->canWrite(buffer, size)) {
         return -K_EFAULT;
     }
     BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath(B(""), this->currentDirectory, true);
@@ -2132,7 +1873,7 @@ U32 KProcess::getcwd(U32 buffer, U32 size) {
     }
     if ((U32)this->currentDirectory.length()+1>size)
         return -K_ERANGE;
-    writeNativeString(buffer, this->currentDirectory.c_str());
+    memory->strcpy(buffer, this->currentDirectory.c_str());
     return (U32)this->currentDirectory.length()+1;
 }
 
@@ -2143,7 +1884,7 @@ U32 KProcess::stat64(BString path, U32 buffer) {
         return -K_ENOENT;
     }
     U64 len = node->length();
-    KSystem::writeStat(node->path, buffer, true, 1, node->id, node->getMode(), node->rdev, len, 4096, (len + 4095) / 4096, node->lastModified(), node->getHardLinkCount());
+    KSystem::writeStat(this, node->path, buffer, true, 1, node->id, node->getMode(), node->rdev, len, 4096, (len + 4095) / 4096, node->lastModified(), node->getHardLinkCount());
     return 0;
 }
 
@@ -2163,7 +1904,7 @@ U32 KProcess::lstat64(BString path, U32 buffer) {
         len = node->length();
         mode = node->getMode();
     }
-    KSystem::writeStat(node->path, buffer, true, 1, node->id, mode, node->rdev, len, 4096, (len + 4095) / 4096, node->lastModified(), node->getHardLinkCount());
+    KSystem::writeStat(this, node->path, buffer, true, 1, node->id, mode, node->rdev, len, 4096, (len + 4095) / 4096, node->lastModified(), node->getHardLinkCount());
     return 0;
 }
 
@@ -2173,7 +1914,7 @@ U32 KProcess::fstat64(FD handle, U32 buf) {
     if (!fd) {
         return -K_EBADF;
     }
-    return fd->kobject->stat(buf, true);
+    return fd->kobject->stat(this, buf, true);
 }
 
 U32 KProcess::mincore(U32 address, U32 length, U32 vec) {
@@ -2185,15 +1926,15 @@ U32 KProcess::mincore(U32 address, U32 length, U32 vec) {
         if (page+i>=K_NUMBER_OF_PAGES)
             return -K_ENOMEM;
         if (this->memory->isPageAllocated(page+i))
-            writeb(vec, 1);
+            memory->writeb(vec, 1);
         else
-            writeb(vec, 0);
+            memory->writeb(vec, 0);
         vec++;
     }
     return 0;
 }
 
-U32 KProcess::fcntrl(FD fildes, U32 cmd, U32 arg) {
+U32 KProcess::fcntrl(KThread* thread, FD fildes, U32 cmd, U32 arg) {
     KFileDescriptor* fd = this->getFileDescriptor(fildes);
 
     if (!fd) {
@@ -2236,12 +1977,12 @@ U32 KProcess::fcntrl(FD fildes, U32 cmd, U32 arg) {
             if (fd->kobject->supportsLocks()) {
                 KFileLock lock;				
                 KFileLock* result;
-                lock.readFileLock(KThread::currentThread(), arg, cmd==K_F_GETLK64);
+                lock.readFileLock(thread, arg, cmd==K_F_GETLK64);
                 result = fd->kobject->getLock(&lock);
                 if (!result) {
-                    writew(arg, K_F_UNLCK);
+                    memory->writew(arg, K_F_UNLCK);
                 } else {
-                    result->writeFileLock(KThread::currentThread(), arg, K_F_GETLK64 == cmd);
+                    result->writeFileLock(thread, arg, K_F_GETLK64 == cmd);
                 }
                 return 0;
             } else {
@@ -2254,7 +1995,7 @@ U32 KProcess::fcntrl(FD fildes, U32 cmd, U32 arg) {
             if (fd->kobject->supportsLocks()) {
                 KFileLock lock;
 
-                lock.readFileLock(KThread::currentThread(), arg, cmd == K_F_SETLK64 || cmd == K_F_SETLKW64);
+                lock.readFileLock(thread, arg, cmd == K_F_SETLK64 || cmd == K_F_SETLKW64);
                 lock.l_pid = this->id;
                 if ((lock.l_type == K_F_WRLCK && !fd->canWrite()) || (lock.l_type == K_F_RDLCK && !fd->canRead())) {
                     return -K_EBADF;
@@ -2295,11 +2036,11 @@ U32 KProcess::fcntrl(FD fildes, U32 cmd, U32 arg) {
     }
 }
 
-U32 KProcess::set_thread_area(U32 info) {
+U32 KProcess::set_thread_area(KThread* thread, U32 info) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(usedTlsMutex);
     struct user_desc desc;    
 
-    readMemory((U8*)&desc, info, sizeof(struct user_desc));
+    memory->memcpy((U8*)&desc, info, sizeof(struct user_desc));
     if (desc.entry_number==(U32)(-1)) {
         U32 i;
 
@@ -2313,7 +2054,7 @@ U32 KProcess::set_thread_area(U32 info) {
             kwarn("__NR_set_thread_area ran out of TLS slots");
             return -K_ESRCH;
         }
-        writeMemory(info, (U8*)&desc, sizeof(struct user_desc));
+        memory->memcpy(info, (U8*)&desc, sizeof(struct user_desc));
     }
     if (desc.base_addr!=0) {
         if (desc.entry_number<TLS_ENTRY_START_INDEX || desc.entry_number>=TLS_ENTRIES+TLS_ENTRY_START_INDEX) {
@@ -2321,7 +2062,7 @@ U32 KProcess::set_thread_area(U32 info) {
         }
         this->usedTLS[desc.entry_number-TLS_ENTRY_START_INDEX]=1;
 
-        KThread::currentThread()->setTLS(&desc);
+        thread->setTLS(&desc);
     }
     return 0;
 }
@@ -2338,10 +2079,10 @@ U32 KProcess::epollctl(FD epfd, U32 op, FD fd, U32 address) {
         return -K_EINVAL;
     }
     std::shared_ptr<KEPoll> p = std::dynamic_pointer_cast<KEPoll>(epollFD->kobject);
-    return p->ctl(op, fd, address);
+    return p->ctl(memory, op, fd, address);
 }
 
-U32 KProcess::epollwait(FD epfd, U32 events, U32 maxevents, U32 timeout) {
+U32 KProcess::epollwait(KThread* thread, FD epfd, U32 events, U32 maxevents, U32 timeout) {
     KFileDescriptor* epollFD = this->getFileDescriptor(epfd);
     if (!epollFD) {
         return -K_EBADF;
@@ -2350,7 +2091,7 @@ U32 KProcess::epollwait(FD epfd, U32 events, U32 maxevents, U32 timeout) {
         return -K_EINVAL;
     }
     std::shared_ptr<KEPoll> p = std::dynamic_pointer_cast<KEPoll>(epollFD->kobject);
-    return p->wait(events, maxevents, timeout);
+    return p->wait(thread, events, maxevents, timeout);
 }
 
 U32 KProcess::utimes(BString path, U32 times) {
@@ -2367,10 +2108,10 @@ U32 KProcess::utimes(BString path, U32 times) {
             lastAccessTime = time(NULL);
             lastModifiedTime = time(NULL);
         } else {
-            lastAccessTime = readd(times);
-            lastAccessTimeNano = readd(times+4)*1000;
-            lastModifiedTime = readd(times+8);
-            lastModifiedTimeNano = readd(times+12)*1000;
+            lastAccessTime = memory->readd(times);
+            lastAccessTimeNano = memory->readd(times+4)*1000;
+            lastModifiedTime = memory->readd(times+8);
+            lastModifiedTimeNano = memory->readd(times+12)*1000;
         }
         return node->setTimes(lastAccessTime, lastAccessTimeNano, lastModifiedTime, lastModifiedTimeNano);
     }
@@ -2446,7 +2187,7 @@ U32 KProcess::fstatat64(FD dirfd, BString path, U32 buf, U32 flag) {
         mode|=K__S_IFLNK;
     }
     len = node->length();
-    KSystem::writeStat(path, buf, true, 1, node->id, mode, node->rdev, len, 4096, (len + 4095) / 4096, node->lastModified(), node->getHardLinkCount());
+    KSystem::writeStat(this, path, buf, true, 1, node->id, mode, node->rdev, len, 4096, (len + 4095) / 4096, node->lastModified(), node->getHardLinkCount());
     return 0;    
 }
 
@@ -2517,10 +2258,10 @@ U32 KProcess::utimesat(FD dirfd, BString path, U32 times, U32 flags) {
     U32 lastModifiedTimeNano = 0;
 
     if (times) {
-        lastAccessTime = readd(times);
-        lastAccessTimeNano = readd(times+4);
-        lastModifiedTime = readd(times+8);
-        lastModifiedTimeNano = readd(times+12);
+        lastAccessTime = memory->readd(times);
+        lastAccessTimeNano = memory->readd(times+4);
+        lastModifiedTime = memory->readd(times+8);
+        lastModifiedTimeNano = memory->readd(times+12);
     }
     if (lastAccessTimeNano != K_UTIME_OMIT) {
         if (lastAccessTimeNano == K_UTIME_NOW) {
@@ -2556,10 +2297,10 @@ U32 KProcess::utimesat64(FD dirfd, BString path, U32 times, U32 flags) {
     U32 lastModifiedTimeNano = 0;
 
     if (times) {
-        lastAccessTime = readq(times);
-        lastAccessTimeNano = readd(times + 8);
-        lastModifiedTime = readq(times + 12);
-        lastModifiedTimeNano = readd(times + 20);
+        lastAccessTime = memory->readq(times);
+        lastAccessTimeNano = memory->readd(times + 8);
+        lastModifiedTime = memory->readq(times + 12);
+        lastModifiedTimeNano = memory->readd(times + 20);
     }
     if (lastAccessTimeNano != K_UTIME_OMIT) {
         if (lastAccessTimeNano == K_UTIME_NOW) {
@@ -2616,7 +2357,7 @@ U32 KProcess::shmdt(U32 shmaddr) {
     if (this->attachedShm.count(shmaddr)) {
         BoxedPtr<AttachedSHM> attached = this->attachedShm[shmaddr];
         if (attached) {
-            this->memory->reset(shmaddr >> K_PAGE_SHIFT, (U32)attached->shm->pages.size());
+            memory->unmap(shmaddr, (U32)attached->shm->pages.size());
             this->attachedShm.erase(shmaddr);
             return 0;
         }
@@ -2715,137 +2456,3 @@ void KProcess::printMappedFiles() {
         klog("    %.8X - %.8X %s\n", mappedFile->address, mappedFile->address+(int)mappedFile->len, mappedFile->file->openFile->node->path.c_str());
     }
 }
-
-#ifdef BOXEDWINE_64BIT_MMU
-#include "../emulation/hardmmu/hard_memory.h"
-U32 KProcess::allocNative(U32 len) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->pageMutex);
-    U32 page = this->nextNativeAddress;
-    U32 pageCount = (len+K_PAGE_SIZE-1) >> K_PAGE_SHIFT;
-    this->memory->allocNativeMemory(page, pageCount, PAGE_READ|PAGE_WRITE);
-    this->nextNativeAddress+=pageCount;
-    return page << K_PAGE_SHIFT;
-}
-
-U32 KProcess::readd(U32 address) {
-    return *(U32*)getNativeAddress(memory, address);
-}
-
-U16 KProcess::readw(U32 address) {
-    return *(U16*)getNativeAddress(memory, address);
-}
-
-U8 KProcess::readb(U32 address) {
-    return *(U8*)getNativeAddress(memory, address);
-}
-
-void KProcess::writed(U32 address, U32 value) {
-    *(U32*)getNativeAddress(memory, address) = value;
-}
-
-void KProcess::writew(U32 address, U16 value) {
-    *(U16*)getNativeAddress(memory, address) = value;
-}
-
-void KProcess::writeb(U32 address, U8 value) {
-    *(U8*)getNativeAddress(memory, address) = value;
-}
-
-void KProcess::memcopyFromNative(U32 address, const void* p, U32 len) {
-    memcpy(getNativeAddress(memory, address), p, len);
-}
-
-void KProcess::memcopyToNative( U32 address, void* p, U32 len) {
-    memcpy(p, getNativeAddress(memory, address), len);
-}
-
-#else
-
-U32 KProcess::readd(U32 address) {
-    if ((address & 0xFFF) < 0xFFD) {
-        int index = address >> 12;
-#ifndef UNALIGNED_MEMORY
-        if (memory->mmuReadPtr[index])
-            return *(U32*)(&memory->mmuReadPtr[index][address & 0xFFF]);
-#endif
-        return memory->mmu[index]->readd(address);
-    } else {
-        return readb(address) | (readb(address+1) << 8) | (readb(address+2) << 16) | (readb(address+3) << 24);
-    }
-}
-
-U16 KProcess::readw(U32 address) {
-    if ((address & 0xFFF) < 0xFFF) {
-        int index = address >> 12;
-#ifndef UNALIGNED_MEMORY
-        if (memory->mmuReadPtr[index])
-            return *(U16*)(&memory->mmuReadPtr[index][address & 0xFFF]);
-#endif
-        return memory->mmu[index]->readw(address);
-    }
-    return readb(address) | (readb(address+1) << 8);
-}
-
-U8 KProcess::readb(U32 address) {
-    int index = address >> 12;
-    if (memory->mmuReadPtr[index])
-        return memory->mmuReadPtr[index][address & 0xFFF];
-    return memory->mmu[index]->readb(address);
-}
-
-void KProcess::writed(U32 address, U32 value) {
-    if ((address & 0xFFF) < 0xFFD) {
-        int index = address >> 12;
-#ifndef UNALIGNED_MEMORY
-        if (memory->mmuWritePtr[index])
-            *(U32*)(&memory->mmuWritePtr[index][address & 0xFFF]) = value;
-        else
-#endif
-            memory->mmu[index]->writed(address, value);
-    } else {
-        writeb(address, value);
-        writeb(address+1, value >> 8);
-        writeb(address+2, value >> 16);
-        writeb(address+3, value >> 24);
-    }
-}
-
-void KProcess::writew(U32 address, U16 value) {
-    if ((address & 0xFFF) < 0xFFF) {
-        int index = address >> 12;
-#ifndef UNALIGNED_MEMORY
-        if (memory->mmuWritePtr[index])
-            *(U16*)(&memory->mmuWritePtr[index][address & 0xFFF]) = value;
-        else
-#endif
-            memory->mmu[index]->writew(address, value);
-    } else {
-        writeb(address, (U8)value);
-        writeb(address+1, (U8)(value >> 8));
-    }
-}
-
-void KProcess::writeb(U32 address, U8 value) {
-    int index = address >> 12;
-    if (memory->mmuWritePtr[index])
-        memory->mmuWritePtr[index][address & 0xFFF] = value;
-    else
-        memory->mmu[index]->writeb(address, value);
-}
-
-void KProcess::memcopyFromNative(U32 address, const void* pv, U32 len) {
-    U32 i;
-    U8* p = (U8*)pv;
-    for (i=0;i<len;i++) {
-        writeb(address+i, p[i]);
-    }
-}
-
-void KProcess::memcopyToNative(U32 address, void* pv, U32 len) {
-    U8* p = (U8*)pv;
-    for (U32 i=0;i<len;i++) {
-        p[i] = readb(address+i);
-    }
-}
-
-#endif

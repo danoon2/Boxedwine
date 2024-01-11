@@ -1,6 +1,6 @@
 #include "boxedwine.h"
 #include <windows.h>
-#include "../source/emulation/hardmmu/hard_memory.h"
+#include "../source/emulation/hardmmu/kmemory_hard.h"
 #include "../source/emulation/cpu/normal/normalCPU.h"
 #include "ksignal.h"
 #include "../source/emulation/cpu/x64/x64CPU.h"
@@ -132,6 +132,8 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
     }
     
     InException inException(cpu);
+    KMemoryData* mem = getMemData(cpu->memory);
+
     if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_ILLEGAL_INSTRUCTION) {
         if (ep->ContextRecord->Rsp & 0xf) {
             kpanic("seh_filter: bad stack alignment");
@@ -141,7 +143,7 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
             ep->ContextRecord->Rip = rip;
             return EXCEPTION_CONTINUE_EXECUTION;
         }
-    } else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION && cpu->thread->memory->isAddressExecutable((void*)ep->ContextRecord->Rip)) {        
+    } else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION && mem->isAddressExecutable((void*)ep->ContextRecord->Rip)) {        
         U64 rip = cpu->handleAccessException(ep->ContextRecord->Rip, ep->ExceptionRecord->ExceptionInformation[1], ep->ExceptionRecord->ExceptionInformation[0]==0);        
         if (rip) {
             syncToException(ep, true);
