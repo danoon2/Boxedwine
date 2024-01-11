@@ -4,6 +4,7 @@
 
 #include "ksignal.h"
 #include "../../source/emulation/cpu/x64/x64CPU.h"
+#include "../../source/emulation/hardmmu/kmemory_hard.h"
 
 #ifdef __MACH__
 #define __USE_GNU
@@ -284,6 +285,8 @@ U32 exceptionCount;
 void platformHandler(int sig, siginfo_t* info, void* vcontext) {
     exceptionCount++;
     KThread* currentThread = KThread::currentThread();
+    KMemoryData* mem = getMemData(currentThread->memory);
+
     if (!currentThread) {
         return;
     }
@@ -310,9 +313,9 @@ void platformHandler(int sig, siginfo_t* info, void* vcontext) {
     x64Cpu->destEip = (U32)context->CONTEXT_R9;
     x64Cpu->regPage = context->CONTEXT_R8;
     x64Cpu->regOffset = context->CONTEXT_R9;
-    if (cpu->thread->memory->isAddressExecutable((void*)context->CONTEXT_RIP)) {
+    if (mem->isAddressExecutable((void*)context->CONTEXT_RIP)) {
         unsigned char* hostAddress = (unsigned char*)context->CONTEXT_RIP;
-        std::shared_ptr<BtCodeChunk> chunk = cpu->thread->memory->getCodeChunkContainingHostAddress(hostAddress);
+        std::shared_ptr<BtCodeChunk> chunk = mem->getCodeChunkContainingHostAddress(hostAddress);
         if (chunk && chunk->getEipLen()) { // during start up eip is already set
             cpu->eip.u32 = chunk->getEipThatContainsHostAddress(hostAddress, NULL, NULL) - cpu->seg[CS].address;
         }
@@ -337,7 +340,7 @@ void signalHandler() {
     BOXEDWINE_CRITICAL_SECTION;
     KThread* currentThread = KThread::currentThread();
     x64CPU* cpu = (x64CPU*)currentThread->cpu;
-
+    KMemoryData* mem = getMemData(currentThread->memory);
     U64 result = cpu->startException(cpu->exceptionAddress, cpu->exceptionReadAddress);
     if (result) {
         cpu->returnHostAddress = result;
@@ -360,7 +363,7 @@ void signalHandler() {
         cpu->flags &= ~AC;
         cpu->returnHostAddress = cpu->exceptionIp;
         return;
-    } else if ((cpu->exceptionSigNo == SIGBUS || cpu->exceptionSigNo == SIGSEGV) && cpu->thread->memory->isAddressExecutable((void*)cpu->exceptionIp)) {
+    } else if ((cpu->exceptionSigNo == SIGBUS || cpu->exceptionSigNo == SIGSEGV) && mem->isAddressExecutable((void*)cpu->exceptionIp)) {
         U64 rip = cpu->handleAccessException(cpu->exceptionIp, cpu->exceptionAddress, cpu->exceptionReadAddress);
         if (rip) {
             cpu->returnHostAddress = rip;
