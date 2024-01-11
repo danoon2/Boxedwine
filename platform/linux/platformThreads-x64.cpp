@@ -314,8 +314,6 @@ void platformHandler(int sig, siginfo_t* info, void* vcontext) {
     x64Cpu->regPage = context->CONTEXT_R8;
     x64Cpu->regOffset = context->CONTEXT_R9;
 
-    KMemoryData* mem = getMemData(cpu->memory);
-
     if (mem->isAddressExecutable((void*)context->CONTEXT_RIP)) {
         unsigned char* hostAddress = (unsigned char*)context->CONTEXT_RIP;
         std::shared_ptr<BtCodeChunk> chunk = mem->getCodeChunkContainingHostAddress(hostAddress);
