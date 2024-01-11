@@ -313,6 +313,9 @@ void platformHandler(int sig, siginfo_t* info, void* vcontext) {
     x64Cpu->destEip = (U32)context->CONTEXT_R9;
     x64Cpu->regPage = context->CONTEXT_R8;
     x64Cpu->regOffset = context->CONTEXT_R9;
+
+    KMemoryData* mem = getMemData(cpu->memory);
+
     if (mem->isAddressExecutable((void*)context->CONTEXT_RIP)) {
         unsigned char* hostAddress = (unsigned char*)context->CONTEXT_RIP;
         std::shared_ptr<BtCodeChunk> chunk = mem->getCodeChunkContainingHostAddress(hostAddress);
@@ -341,6 +344,7 @@ void signalHandler() {
     KThread* currentThread = KThread::currentThread();
     x64CPU* cpu = (x64CPU*)currentThread->cpu;
     KMemoryData* mem = getMemData(currentThread->memory);
+
     U64 result = cpu->startException(cpu->exceptionAddress, cpu->exceptionReadAddress);
     if (result) {
         cpu->returnHostAddress = result;

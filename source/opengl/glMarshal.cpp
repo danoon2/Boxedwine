@@ -1018,7 +1018,7 @@ void marshalBackhandle(CPU* cpu, U32 address, GLhandleARB* buffer, U32 count) {
     U32 i;
     
     for (i=0;i<count;i++) {
-        writed(address, HANDLE_TO_INDEX(buffer[i]));
+        cpu->memory->writed(address, HANDLE_TO_INDEX(buffer[i]));
         address+=4;
     }
 }

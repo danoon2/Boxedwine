@@ -248,20 +248,20 @@ void KNativeAudioSDL::unlock(U32 boxedAudioId) {
 	SDL_UnlockAudio();
 }
 
-U32 KNativeAudioSDL::isFormatSupported(U32 boxedAudioId, U32 addressWaveFormat) {
+U32 KNativeAudioSDL::isFormatSupported(KThread* thread, U32 boxedAudioId, U32 addressWaveFormat) {
 	KNativeSDLAudioData* data = getDataFromId(boxedAudioId);
 	if (!data) {
 		return E_FAIL;
 	}
 	BoxedWaveFormatExtensible fmt;
-	fmt.read(KThread::currentThread()->memory, addressWaveFormat);
+	fmt.read(thread->memory, addressWaveFormat);
 	if (getSdlFormat(&fmt) != 0) {
 		return S_OK;
 	}
 	return E_FAIL;
 }
 
-U32 KNativeAudioSDL::getMixFormat(U32 boxedAudioId, U32 addressWaveFormat) {
+U32 KNativeAudioSDL::getMixFormat(KThread* thread, U32 boxedAudioId, U32 addressWaveFormat) {
 	KNativeSDLAudioData* data = getDataFromId(boxedAudioId);
 	if (!data) {
 		return E_FAIL;
@@ -277,7 +277,7 @@ U32 KNativeAudioSDL::getMixFormat(U32 boxedAudioId, U32 addressWaveFormat) {
 	fmt.wValidBitsPerSample = fmt.wBitsPerSample;
 	fmt.dwChannelMask = KSAUDIO_SPEAKER_STEREO;
 	fmt.SubFormat = SDL_KSDATAFORMAT_SUBTYPE_PCM;
-	fmt.write(KThread::currentThread()->memory, addressWaveFormat);
+	fmt.write(thread->memory, addressWaveFormat);
 	return S_OK;
 }
 
@@ -297,15 +297,15 @@ U32 KNativeAudioSDL::midiOutData(U32 wDevID, U32 dwParam) {
 	return E_FAIL;
 }
 
-U32 KNativeAudioSDL::midiOutLongData(U32 wDevID, U32 lpMidiHdr, U32 dwSize) {
+U32 KNativeAudioSDL::midiOutLongData(KThread* thread, U32 wDevID, U32 lpMidiHdr, U32 dwSize) {
 	return E_FAIL;
 }
 
-U32 KNativeAudioSDL::midiOutPrepare(U32 wDevID, U32 lpMidiHdr, U32 dwSize) {
+U32 KNativeAudioSDL::midiOutPrepare(KThread* thread, U32 wDevID, U32 lpMidiHdr, U32 dwSize) {
 	return E_FAIL;
 }
 
-U32 KNativeAudioSDL::midiOutUnprepare(U32 wDevID, U32 lpMidiHdr, U32 dwSize) {
+U32 KNativeAudioSDL::midiOutUnprepare(KThread* thread, U32 wDevID, U32 lpMidiHdr, U32 dwSize) {
 	return E_FAIL;
 }
 
@@ -317,7 +317,7 @@ U32 KNativeAudioSDL::midiOutGetNumDevs() {
 	return 0;
 }
 
-U32 KNativeAudioSDL::midiOutGetVolume(U32 wDevID, U32 lpdwVolume) {
+U32 KNativeAudioSDL::midiOutGetVolume(KThread* thread, U32 wDevID, U32 lpdwVolume) {
 	return E_FAIL;
 }
 

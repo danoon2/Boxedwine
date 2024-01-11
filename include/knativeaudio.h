@@ -167,20 +167,20 @@ public:
 	virtual U32 getLatency(U32 boxedAudioId, U32* latency) = 0;
 	virtual void lock(U32 boxedAudioId) = 0;
 	virtual void unlock(U32 boxedAudioId) = 0;
-	virtual U32 isFormatSupported(U32 boxedAudioId, U32 addressWaveFormat) = 0;
-	virtual U32 getMixFormat(U32 boxedAudioId, U32 addressWaveFormat) = 0;
+	virtual U32 isFormatSupported(KThread* thread, U32 boxedAudioId, U32 addressWaveFormat) = 0;
+	virtual U32 getMixFormat(KThread* thread, U32 boxedAudioId, U32 addressWaveFormat) = 0;
 	virtual void setVolume(U32 boxedAudioId, float level, U32 channel) = 0;
     virtual void cleanup() = 0;
     
 	virtual U32 midiOutOpen(KProcess* process, U32 wDevID, U32 lpDesc, U32 dwFlags, U32 fd) = 0;
 	virtual U32 midiOutClose(U32 wDevID) = 0;
 	virtual U32 midiOutData(U32 wDevID, U32 dwParam) = 0;
-	virtual U32 midiOutLongData(U32 wDevID, U32 lpMidiHdr, U32 dwSize) = 0;
-	virtual U32 midiOutPrepare(U32 wDevID, U32 lpMidiHdr, U32 dwSize) = 0;
-	virtual U32 midiOutUnprepare(U32 wDevID, U32 lpMidiHdr, U32 dwSize) = 0;
+	virtual U32 midiOutLongData(KThread* thread, U32 wDevID, U32 lpMidiHdr, U32 dwSize) = 0;
+	virtual U32 midiOutPrepare(KThread* thread, U32 wDevID, U32 lpMidiHdr, U32 dwSize) = 0;
+	virtual U32 midiOutUnprepare(KThread* thread, U32 wDevID, U32 lpMidiHdr, U32 dwSize) = 0;
 	virtual U32 midiOutGetDevCaps(KThread* thread, U32 wDevID, U32 lpCaps, U32 dwSize) = 0;
 	virtual U32 midiOutGetNumDevs() = 0;
-	virtual U32 midiOutGetVolume(U32 wDevID, U32 lpdwVolume) = 0;
+	virtual U32 midiOutGetVolume(KThread* thread, U32 wDevID, U32 lpdwVolume) = 0;
 	virtual U32 midiOutSetVolume(U32 wDevID, U32 dwVolume) = 0;
 	virtual U32 midiOutReset(U32 wDevID) = 0;
 

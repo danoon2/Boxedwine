@@ -161,21 +161,21 @@ static void boxedaudio_midi_out_long_data(CPU* cpu) {
 	U32 wDevID = ARG1;
 	U32 lpMidiHdr = ARG2; // LPMIDIHDR
 	U32 dwSize = ARG3;
-	EAX = audio->midiOutLongData(wDevID, lpMidiHdr, dwSize);
+	EAX = audio->midiOutLongData(cpu->thread, wDevID, lpMidiHdr, dwSize);
 }
 
 static void boxedaudio_midi_out_prepare(CPU* cpu) {
 	U32 wDevID = ARG1;
 	U32 lpMidiHdr = ARG2; // LPMIDIHDR
 	U32 dwSize = ARG3;
-	EAX = audio->midiOutPrepare(wDevID, lpMidiHdr, dwSize);
+	EAX = audio->midiOutPrepare(cpu->thread, wDevID, lpMidiHdr, dwSize);
 }
 
 static void boxedaudio_midi_out_unprepare(CPU* cpu) {
 	U32 wDevID = ARG1;
 	U32 lpMidiHdr = ARG2; // LPMIDIHDR
 	U32 dwSize = ARG3;
-	EAX = audio->midiOutUnprepare(wDevID, lpMidiHdr, dwSize);
+	EAX = audio->midiOutUnprepare(cpu->thread, wDevID, lpMidiHdr, dwSize);
 }
 
 static void boxedaudio_midi_out_get_device_caps(CPU* cpu) {
@@ -192,7 +192,7 @@ static void boxedaudio_midi_out_get_number_of_devices(CPU* cpu) {
 static void boxedaudio_midi_out_get_volume(CPU* cpu) {
 	U32 wDevID = ARG1;
 	U32 lpdwVolume = ARG2; // DWORD*
-	EAX = audio->midiOutGetVolume(wDevID, lpdwVolume);
+	EAX = audio->midiOutGetVolume(cpu->thread, wDevID, lpdwVolume);
 }
 
 static void boxedaudio_midi_out_set_volume(CPU* cpu) {
@@ -294,13 +294,13 @@ static void boxedaudio_drv_set_volume(CPU* cpu) {
 static void boxedaudio_drv_is_format_supported(CPU* cpu) {
 	U32 boxedAudioId = ARG1;
 	U32 addressWaveFormat = ARG2;
-	EAX = audio->isFormatSupported(boxedAudioId, addressWaveFormat);
+	EAX = audio->isFormatSupported(cpu->thread, boxedAudioId, addressWaveFormat);
 }
 
 static void boxedaudio_drv_get_mix_format(CPU* cpu) {
 	U32 boxedAudioId = ARG1;
 	U32 addressWaveFormat = ARG2;
-	EAX = audio->getMixFormat(boxedAudioId, addressWaveFormat);
+	EAX = audio->getMixFormat(cpu->thread, boxedAudioId, addressWaveFormat);
 }
 
 static void boxedaudio_drv_lock(CPU* cpu) {
