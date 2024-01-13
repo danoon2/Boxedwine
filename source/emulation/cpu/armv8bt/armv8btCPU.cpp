@@ -67,8 +67,10 @@ void Armv8btCPU::setSeg(U32 index, U32 address, U32 value) {
 }
 
 void Armv8btCPU::restart() {
+#ifdef BOXEDWINE_64BIT_MMU
     KMemoryData* mem = getMemData(memory);
 	this->memOffset = mem->id;
+#endif
 	this->exitToStartThreadLoop = true;
 }
 
@@ -79,18 +81,20 @@ void* Armv8btCPU::init() {
     Armv8btCPU* cpu = this;
 
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mem->executableMemoryMutex);
+#ifdef BOXEDWINE_64BIT_MMU
     this->eipToHostInstructionAddressSpaceMapping = mem->eipToHostInstructionAddressSpaceMapping;
     this->memOffsets = mem->memOffsets;
-
+#endif
 	data.saveNativeState();
 
     data.writeToRegFromValue(xCPU, (U64)this);
+#ifdef BOXEDWINE_64BIT_MMU
     data.writeToRegFromValue(xMem, cpu->memOffset);
 
     if (KSystem::useLargeAddressSpace) {
         data.writeToRegFromValue(xLargeAddress, (U64)cpu->eipToHostInstructionAddressSpaceMapping);
     }
-
+#endif
     data.writeToRegFromValue(xES, (U32)cpu->seg[ES].address);    
     data.writeToRegFromValue(xCS, (U32)cpu->seg[CS].address);
     data.writeToRegFromValue(xSS, (U32)cpu->seg[SS].address);
@@ -258,7 +262,9 @@ void Armv8btCPU::link(const std::shared_ptr<BtData>& data, std::shared_ptr<BtCod
     if (data->todoJump.size()) {
 
     }
+#ifdef BOXEDWINE_64BIT_MMU
     markCodePageReadOnly(data.get());
+#endif
 }
 
 static U8 fetchByte(void* p, U32* eip) {
@@ -267,6 +273,7 @@ static U8 fetchByte(void* p, U32* eip) {
 }
 
 void Armv8btCPU::translateData(const std::shared_ptr<BtData>& data, const std::shared_ptr<BtData>& firstPass) {
+#ifdef BOXEDWINE_64BIT_MMU
     KMemoryData* mem = getMemData(memory);
 
     U32 codePage = (data->ip+ this->seg[CS].address) >> K_PAGE_SHIFT;
@@ -274,6 +281,7 @@ void Armv8btCPU::translateData(const std::shared_ptr<BtData>& data, const std::s
     if (mem->dynamicCodePageUpdateCount[nativePage]==MAX_DYNAMIC_CODE_PAGE_COUNT) {
         data->dynamic = true;
     }
+#endif
     DecodedBlock block;
     data->currentBlock = &block;
     decodeBlock(fetchByte, memory, data->startOfDataIp + this->seg[CS].address, this->isBig(), 0, 0, 0, &block);
@@ -285,6 +293,7 @@ void Armv8btCPU::translateData(const std::shared_ptr<BtData>& data, const std::s
             data->jumpTo(data->ip);
             break;
         }
+#ifdef BOXEDWINE_64BIT_MMU
         if (firstPass) {
             U32 nextEipLen = firstPass->calculateEipLen(data->ip + this->seg[CS].address);
             U32 page = (data->ip+ this->seg[CS].address+nextEipLen) >> K_PAGE_SHIFT;
@@ -308,6 +317,7 @@ void Armv8btCPU::translateData(const std::shared_ptr<BtData>& data, const std::s
                 }
             }
         }
+#endif
         data->mapAddress(address, data->bufferPos);        
         if (firstPass) {
             // :TODO: find a way without a cast

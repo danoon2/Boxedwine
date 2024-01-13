@@ -90,7 +90,12 @@ KProcess::KProcess(U32 id) : id(id),
     emulateFPU=false;
     returnToLoopAddress = NULL;
     reTranslateChunkAddress = NULL;
+    syncToHostAddress = NULL;
+    syncFromHostAddress = NULL;
+    doSingleOpAddress = NULL;
+#ifdef BOXEDWINE_64BIT_MMU
     reTranslateChunkAddressFromReg = NULL;
+#endif
 #ifdef BOXEDWINE_BT_DEBUG_NO_EXCEPTIONS
     jmpAndTranslateIfNecessary = NULL;
 #endif
@@ -189,7 +194,12 @@ void KProcess::onExec(KThread* thread) {
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
     returnToLoopAddress = NULL;
     reTranslateChunkAddress = NULL;
+    syncToHostAddress = NULL;
+    syncFromHostAddress = NULL;
+    doSingleOpAddress = NULL;
+#ifdef BOXEDWINE_64BIT_MMU
     reTranslateChunkAddressFromReg = NULL;
+#endif
 #ifdef BOXEDWINE_BT_DEBUG_NO_EXCEPTIONS
     jmpAndTranslateIfNecessary = NULL;
 #endif
@@ -1114,7 +1124,7 @@ U32 KProcess::read(KThread* thread, FD fildes, U32 bufferAddress, U32 bufferLen)
     if (!fd->canRead()) {
         return -K_EINVAL;
     }
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
+#ifdef BOXEDWINE_64BIT_MMU
     BtCodeMemoryWrite w((BtCPU*)thread->cpu, bufferAddress, bufferLen);
 #endif
     return fd->kobject->read(thread, bufferAddress, bufferLen);

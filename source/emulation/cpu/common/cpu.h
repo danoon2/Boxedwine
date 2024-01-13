@@ -236,18 +236,17 @@ public:
     U32 flags;
     Reg eip;    
     U8* reg8[9];
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
+#ifdef BOXEDWINE_64BIT_MMU
     U64* memOffsets; // ARM will use one less instruction for shared memory access if the offset of this is in the first 256 bytes
 #endif
     MMX_reg reg_mmx[8];
-    SSE xmm[8]; // :TODO: alignment?
+    ALIGN(SSE xmm[8], 16);
 
     Reg  src;
     Reg  dst;
     Reg  dst2;
     Reg  result;
     LazyFlags const * lazyFlags;
-    U32	        df;
     U32         oldCF;
     FPU         fpu;
     U64		    instructionCount;
@@ -296,7 +295,7 @@ public:
     void removeAF();
     void addOF();
     void removeOF();
-
+    int getDirection() {return (this->flags & DF) ? -1 : 1;}
     U32 pop32();
     U16 pop16();
     U32 peek32(U32 index);

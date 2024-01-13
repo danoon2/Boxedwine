@@ -60,11 +60,15 @@ void syncToException(struct _EXCEPTION_POINTERS *ep, bool includeFPU) {
     ep->ContextRecord->Rbp = EBP;
     ep->ContextRecord->Rsi = ESI;
     ep->ContextRecord->Rdi = EDI;
+#ifdef BOXEDWINE_64BIT_MMU
     if (KSystem::useLargeAddressSpace) {
         ep->ContextRecord->R14 = (U64)cpu->eipToHostInstructionAddressSpaceMapping;
     } else {
         ep->ContextRecord->R14 = cpu->seg[SS].address;
     }
+#else
+    ep->ContextRecord->R14 = cpu->seg[SS].address;
+#endif
     ep->ContextRecord->R15 = cpu->seg[DS].address;
     cpu->fillFlags();
     ep->ContextRecord->EFlags = cpu->flags;
@@ -143,14 +147,18 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
             ep->ContextRecord->Rip = rip;
             return EXCEPTION_CONTINUE_EXECUTION;
         }
-    } else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION && mem->isAddressExecutable((void*)ep->ContextRecord->Rip)) {        
+    } 
+#ifdef BOXEDWINE_64BIT_MMU
+    else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION && mem->isAddressExecutable((void*)ep->ContextRecord->Rip)) {        
         U64 rip = cpu->handleAccessException(ep->ContextRecord->Rip, ep->ExceptionRecord->ExceptionInformation[1], ep->ExceptionRecord->ExceptionInformation[0]==0);        
         if (rip) {
             syncToException(ep, true);
             ep->ContextRecord->Rip = rip;
         }
         return EXCEPTION_CONTINUE_EXECUTION;
-    } else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_FLT_STACK_CHECK) {
+    } 
+#endif
+    else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_FLT_STACK_CHECK) {
         kpanic("EXCEPTION_FLT_STACK_CHECK");
     } else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_FLT_DIVIDE_BY_ZERO) {
         int code = getFpuException(ep->ContextRecord->FltSave.ControlWord, ep->ContextRecord->FltSave.StatusWord);

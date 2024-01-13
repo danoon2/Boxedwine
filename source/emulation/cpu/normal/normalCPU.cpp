@@ -229,6 +229,9 @@ DecodedBlock* NormalCPU::getBlockForInspectionButNotUsed(CPU* cpu, U32 address, 
 }
 
 DecodedBlock* NormalCPU::getNextBlock() {
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+    return NULL;
+#else
     if (!this->thread->process) // exit was called, don't need to pre-cache the next block
         return NULL;
 
@@ -256,6 +259,7 @@ DecodedBlock* NormalCPU::getNextBlock() {
         }
     }
     return block;
+#endif
 }
 
 void NormalCPU::run() {    

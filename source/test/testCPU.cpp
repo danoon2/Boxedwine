@@ -176,10 +176,6 @@ void newInstruction(int flags) {
     cseip=CODE_ADDRESS;
     cpu->lazyFlags = FLAGS_NONE;
     cpu->flags = flags;
-    if (flags & DF)
-        cpu->df = -1;
-    else
-        cpu->df = 1;
     //cpu.blocks.clear();
     EAX=0;
     ECX=0;
@@ -10622,7 +10618,7 @@ void run(void (*functionPtr)(), const char* name) {
 // 00 	[DS:EAX]           [DS:ECX]           [SS:EDX]           [DS:EBX]           SIB0   [DS:disp32]         [DS:ESI]            [DS:EDI]
 // 01 	[DS:EAX + disp8]   [DS:ECX + disp8]   [SS:EDX + disp8]   [DS:EBX + disp8]   SIB1   [SS:EBP + disp8]    [DS:ESI + disp8]    [DS:EDI + disp8]
 // 10 	[DS:EAS + disp32]  [DS:ECX + disp32]  [SS:EDX + disp32]  [DS:EBX + disp32]  SIB1   [SS:EBP + disp32]   [DS:ESI + disp32]   [DS:EDI + disp32]
-
+void initMem32();
 void runLeaGd(int rm, int hasSib, U32 sib, int hasDisp8, int hasDisp32, S32 disp, U32 result, U32 seg) {
     Reg* reg = &cpu->reg[G(rm)];    
     U32 originalValue = reg->u32;
@@ -11096,227 +11092,227 @@ void test16BitMemoryAccess() {
         initMem16(); BX = 0;      SI = 0;      runLeaGw(0, 0, 0, 0, 0, DS);
         initMem16(); BX = 1;      SI = 0;      runLeaGw(1<<3, 0, 0, 0, 1, DS);
         initMem16(); BX = 0;      SI = 1;      runLeaGw(2<<3, 0, 0, 0, 1, DS);
-        initMem16(); BX = 0xFFFF; SI = 0;      runLeaGw(3<<3, 0, 0, 0, 0xFFFF, DS);
-        initMem16(); BX = 0;      SI = 0xFFFF; runLeaGw(4<<3, 0, 0, 0, 0xFFFF, DS);
-        initMem16(); BX = 0xFFFF; SI = 1;      runLeaGw(5<<3, 0, 0, 0, 0, DS);
-        initMem16(); BX = 1;      SI = 0xFFFF; runLeaGw(6<<3, 0, 0, 0, 0, DS);
-        initMem16(); BX = 0xFFFF; SI = 0xFFFF; runLeaGw(7<<3, 0, 0, 0, 0xFFFE, DS);
+        initMem16(); BX = 0xFFFE; SI = 0;      runLeaGw(3<<3, 0, 0, 0, 0xFFFE, DS);
+        initMem16(); BX = 0;      SI = 0xFFFE; runLeaGw(4<<3, 0, 0, 0, 0xFFFE, DS);
+        initMem16(); BX = 0xFFFE; SI = 2;      runLeaGw(5<<3, 0, 0, 0, 0, DS);
+        initMem16(); BX = 2;      SI = 0xFFFE; runLeaGw(6<<3, 0, 0, 0, 0, DS);
+        initMem16(); BX = 0xFFFE; SI = 0xFFFE; runLeaGw(7<<3, 0, 0, 0, 0xFFFC, DS);
 
         // [DS:BX + DI]
         initMem16(); BX = 0;      DI = 0;      runLeaGw(0<<3|1, 0, 0, 0, 0, DS);
-        initMem16(); BX = 1;      DI = 0;      runLeaGw(1<<3|1, 0, 0, 0, 1, DS);
-        initMem16(); BX = 0;      DI = 1;      runLeaGw(2<<3|1, 0, 0, 0, 1, DS);
-        initMem16(); BX = 0xFFFF; DI = 0;      runLeaGw(3<<3|1, 0, 0, 0, 0xFFFF, DS);
-        initMem16(); BX = 0;      DI = 0xFFFF; runLeaGw(4<<3|1, 0, 0, 0, 0xFFFF, DS);
-        initMem16(); BX = 0xFFFF; DI = 1;      runLeaGw(5<<3|1, 0, 0, 0, 0, DS);
-        initMem16(); BX = 1;      DI = 0xFFFF; runLeaGw(6<<3|1, 0, 0, 0, 0, DS);
-        initMem16(); BX = 0xFFFF; DI = 0xFFFF; runLeaGw(7<<3|1, 0, 0, 0, 0xFFFE, DS);
+        initMem16(); BX = 2;      DI = 0;      runLeaGw(1<<3|1, 0, 0, 0, 2, DS);
+        initMem16(); BX = 0;      DI = 2;      runLeaGw(2<<3|1, 0, 0, 0, 2, DS);
+        initMem16(); BX = 0xFFFE; DI = 0;      runLeaGw(3<<3|1, 0, 0, 0, 0xFFFE, DS);
+        initMem16(); BX = 0;      DI = 0xFFFE; runLeaGw(4<<3|1, 0, 0, 0, 0xFFFE, DS);
+        initMem16(); BX = 0xFFFE; DI = 2;      runLeaGw(5<<3|1, 0, 0, 0, 0, DS);
+        initMem16(); BX = 2;      DI = 0xFFFE; runLeaGw(6<<3|1, 0, 0, 0, 0, DS);
+        initMem16(); BX = 0xFFFE; DI = 0xFFFE; runLeaGw(7<<3|1, 0, 0, 0, 0xFFFC, DS);
 
         // [SS:BP + SI]  
         initMem16(); BP = 0;      SI = 0;      runLeaGw(0<<3|2, 0, 0, 0, 0, SS);
-        initMem16(); BP = 1;      SI = 0;      runLeaGw(1<<3|2, 0, 0, 0, 1, SS);
-        initMem16(); BP = 0;      SI = 1;      runLeaGw(2<<3|2, 0, 0, 0, 1, SS);
-        initMem16(); BP = 0xFFFF; SI = 0;      runLeaGw(3<<3|2, 0, 0, 0, 0xFFFF, SS);
-        initMem16(); BP = 0;      SI = 0xFFFF; runLeaGw(4<<3|2, 0, 0, 0, 0xFFFF, SS);
-        initMem16(); BP = 0xFFFF; SI = 1;      runLeaGw(5<<3|2, 0, 0, 0, 0, SS);
-        initMem16(); BP = 1;      SI = 0xFFFF; runLeaGw(6<<3|2, 0, 0, 0, 0, SS);
-        initMem16(); BP = 0xFFFF; SI = 0xFFFF; runLeaGw(7<<3|2, 0, 0, 0, 0xFFFE, SS);
+        initMem16(); BP = 2;      SI = 0;      runLeaGw(1<<3|2, 0, 0, 0, 2, SS);
+        initMem16(); BP = 0;      SI = 2;      runLeaGw(2<<3|2, 0, 0, 0, 2, SS);
+        initMem16(); BP = 0xFFFE; SI = 0;      runLeaGw(3<<3|2, 0, 0, 0, 0xFFFE, SS);
+        initMem16(); BP = 0;      SI = 0xFFFE; runLeaGw(4<<3|2, 0, 0, 0, 0xFFFE, SS);
+        initMem16(); BP = 0xFFFE; SI = 2;      runLeaGw(5<<3|2, 0, 0, 0, 0, SS);
+        initMem16(); BP = 2;      SI = 0xFFFE; runLeaGw(6<<3|2, 0, 0, 0, 0, SS);
+        initMem16(); BP = 0xFFFE; SI = 0xFFFE; runLeaGw(7<<3|2, 0, 0, 0, 0xFFFC, SS);
 
         // [SS:BP + DI]
         initMem16(); BP = 0;      DI = 0;      runLeaGw(0<<3|3, 0, 0, 0, 0, SS);
-        initMem16(); BP = 1;      DI = 0;      runLeaGw(1<<3|3, 0, 0, 0, 1, SS);
-        initMem16(); BP = 0;      DI = 1;      runLeaGw(2<<3|3, 0, 0, 0, 1, SS);
-        initMem16(); BP = 0xFFFF; DI = 0;      runLeaGw(3<<3|3, 0, 0, 0, 0xFFFF, SS);
-        initMem16(); BP = 0;      DI = 0xFFFF; runLeaGw(4<<3|3, 0, 0, 0, 0xFFFF, SS);
-        initMem16(); BP = 0xFFFF; DI = 1;      runLeaGw(5<<3|3, 0, 0, 0, 0, SS);
-        initMem16(); BP = 1;      DI = 0xFFFF; runLeaGw(6<<3|3, 0, 0, 0, 0, SS);
-        initMem16(); BP = 0xFFFF; DI = 0xFFFF; runLeaGw(7<<3|3, 0, 0, 0, 0xFFFE, SS);
+        initMem16(); BP = 2;      DI = 0;      runLeaGw(1<<3|3, 0, 0, 0, 2, SS);
+        initMem16(); BP = 0;      DI = 2;      runLeaGw(2<<3|3, 0, 0, 0, 2, SS);
+        initMem16(); BP = 0xFFFE; DI = 0;      runLeaGw(3<<3|3, 0, 0, 0, 0xFFFE, SS);
+        initMem16(); BP = 0;      DI = 0xFFFE; runLeaGw(4<<3|3, 0, 0, 0, 0xFFFE, SS);
+        initMem16(); BP = 0xFFFE; DI = 2;      runLeaGw(5<<3|3, 0, 0, 0, 0, SS);
+        initMem16(); BP = 2;      DI = 0xFFFE; runLeaGw(6<<3|3, 0, 0, 0, 0, SS);
+        initMem16(); BP = 0xFFFE; DI = 0xFFFE; runLeaGw(7<<3|3, 0, 0, 0, 0xFFFC, SS);
 
         // [DS:SI]  
         initMem16(); SI = 0;      runLeaGw(0<<3|4, 0, 0, 0, 0, DS);
-        initMem16(); SI = 1;      runLeaGw(1<<3|4, 0, 0, 0, 1, DS);
+        initMem16(); SI = 2;      runLeaGw(1<<3|4, 0, 0, 0, 2, DS);
         initMem16(); SI = 0x2468; runLeaGw(2<<3|4, 0, 0, 0, 0x2468, DS);
-        initMem16(); SI = 0xFFFF; runLeaGw(3<<3|4, 0, 0, 0, 0xFFFF, DS);
+        initMem16(); SI = 0xFFFE; runLeaGw(3<<3|4, 0, 0, 0, 0xFFFE, DS);
 
         // [DS:DI]  
         initMem16(); DI = 0;      runLeaGw(0<<3|5, 0, 0, 0, 0, DS);
-        initMem16(); DI = 1;      runLeaGw(1<<3|5, 0, 0, 0, 1, DS);
+        initMem16(); DI = 2;      runLeaGw(1<<3|5, 0, 0, 0, 2, DS);
         initMem16(); DI = 0x2468; runLeaGw(2<<3|5, 0, 0, 0, 0x2468, DS);
-        initMem16(); DI = 0xFFFF; runLeaGw(3<<3|5, 0, 0, 0, 0xFFFF, DS);
+        initMem16(); DI = 0xFFFE; runLeaGw(3<<3|5, 0, 0, 0, 0xFFFE, DS);
 
         // [DS:disp16]
         initMem16(); runLeaGw(0<<3|6, 0, true, 0, 0, DS);
-        initMem16(); runLeaGw(1<<3|6, 0, true, 1, 1, DS);
+        initMem16(); runLeaGw(1<<3|6, 0, true, 2, 2, DS);
         initMem16(); runLeaGw(2<<3|6, 0, true, 0x2468, 0x2468, DS);
-        initMem16(); runLeaGw(3<<3|6, 0, true, 0xFFFF, 0xFFFF, DS);
+        initMem16(); runLeaGw(3<<3|6, 0, true, 0xFFFE, 0xFFFE, DS);
 
         // [DS:BX]
         initMem16(); BX = 0;      runLeaGw(0<<3|7, 0, 0, 0, 0, DS);
-        initMem16(); BX = 1;      runLeaGw(1<<3|7, 0, 0, 0, 1, DS);
+        initMem16(); BX = 2;      runLeaGw(1<<3|7, 0, 0, 0, 2, DS);
         initMem16(); BX = 0x2468; runLeaGw(2<<3|7, 0, 0, 0, 0x2468, DS);
-        initMem16(); BX = 0xFFFF; runLeaGw(3<<3|7, 0, 0, 0, 0xFFFF, DS);
+        initMem16(); BX = 0xFFFE; runLeaGw(3<<3|7, 0, 0, 0, 0xFFFE, DS);
 
     // Mod 01
         // [DS:BX + SI + disp8]
         initMem16(); BX = 0;      SI = 0;      runLeaGw(0|0x40, true, 0, 0, 0, DS);
-        initMem16(); BX = 1;      SI = 0;      runLeaGw(1<<3|0x40, true, 0, 1, 2, DS);
-        initMem16(); BX = 1;      SI = 1;      runLeaGw(2<<3|0x40, true, 0, 1, 3, DS);
-        initMem16(); BX = 0;      SI = 0;      runLeaGw(3<<3|0x40, true, 0, 0xFF, 0xFFFF, DS);
-        initMem16(); BX = 0;      SI = 0xFFFF; runLeaGw(4<<3|0x40, true, 0, 0xFF, 0xFFFE, DS);
-        initMem16(); BX = 0xFFFE; SI = 1;      runLeaGw(5<<3|0x40, true, 0, 1, 0, DS);
-        initMem16(); BX = 1;      SI = 0xFFFF; runLeaGw(6<<3|0x40, true, 0, 1, 1, DS);
-        initMem16(); BX = 0xFFFF; SI = 0xFFFF; runLeaGw(7<<3|0x40, true, 0, 0xFF, 0xFFFD, DS);
+        initMem16(); BX = 2;      SI = 0;      runLeaGw(1<<3|0x40, true, 0, 2, 4, DS);
+        initMem16(); BX = 2;      SI = 2;      runLeaGw(2<<3|0x40, true, 0, 2, 6, DS);
+        initMem16(); BX = 0;      SI = 0;      runLeaGw(3<<3|0x40, true, 0, 0xFE, 0xFFFE, DS);
+        initMem16(); BX = 0;      SI = 0xFFFE; runLeaGw(4<<3|0x40, true, 0, 0xFE, 0xFFFC, DS);
+        initMem16(); BX = 0xFFFC; SI = 2;      runLeaGw(5<<3|0x40, true, 0, 2, 0, DS);
+        initMem16(); BX = 2;      SI = 0xFFFE; runLeaGw(6<<3|0x40, true, 0, 2, 2, DS);
+        initMem16(); BX = 0xFFFE; SI = 0xFFFE; runLeaGw(7<<3|0x40, true, 0, 0xFE, 0xFFFA, DS);
 
         // [DS:BX + DI + disp8]
         initMem16(); BX = 0;      DI = 0;      runLeaGw(0|0x41, true, 0, 0, 0, DS);
-        initMem16(); BX = 1;      DI = 0;      runLeaGw(1<<3|0x41, true, 0, 1, 2, DS);
-        initMem16(); BX = 1;      DI = 1;      runLeaGw(2<<3|0x41, true, 0, 1, 3, DS);
-        initMem16(); BX = 0;      DI = 0;      runLeaGw(3<<3|0x41, true, 0, 0xFF, 0xFFFF, DS);
-        initMem16(); BX = 0;      DI = 0xFFFF; runLeaGw(4<<3|0x41, true, 0, 0xFF, 0xFFFE, DS);
-        initMem16(); BX = 0xFFFE; DI = 1;      runLeaGw(5<<3|0x41, true, 0, 1, 0, DS);
-        initMem16(); BX = 1;      DI = 0xFFFF; runLeaGw(6<<3|0x41, true, 0, 1, 1, DS);
-        initMem16(); BX = 0xFFFF; DI = 0xFFFF; runLeaGw(7<<3|0x41, true, 0, 0xFF, 0xFFFD, DS);
+        initMem16(); BX = 2;      DI = 0;      runLeaGw(1<<3|0x41, true, 0, 2, 4, DS);
+        initMem16(); BX = 2;      DI = 2;      runLeaGw(2<<3|0x41, true, 0, 2, 6, DS);
+        initMem16(); BX = 0;      DI = 0;      runLeaGw(3<<3|0x41, true, 0, 0xFE, 0xFFFE, DS);
+        initMem16(); BX = 0;      DI = 0xFFFE; runLeaGw(4<<3|0x41, true, 0, 0xFE, 0xFFFC, DS);
+        initMem16(); BX = 0xFFFC; DI = 2;      runLeaGw(5<<3|0x41, true, 0, 2, 0, DS);
+        initMem16(); BX = 2;      DI = 0xFFFE; runLeaGw(6<<3|0x41, true, 0, 2, 2, DS);
+        initMem16(); BX = 0xFFFE; DI = 0xFFFE; runLeaGw(7<<3|0x41, true, 0, 0xFE, 0xFFFA, DS);
 
         // [SS:BP + SI + disp8]
         initMem16(); BP = 0;      SI = 0;      runLeaGw(0|0x42, true, 0, 0, 0, SS);
-        initMem16(); BP = 1;      SI = 0;      runLeaGw(1<<3|0x42, true, 0, 1, 2, SS);
-        initMem16(); BP = 1;      SI = 1;      runLeaGw(2<<3|0x42, true, 0, 1, 3, SS);
-        initMem16(); BP = 0;      SI = 0;      runLeaGw(3<<3|0x42, true, 0, 0xFF, 0xFFFF, SS);
-        initMem16(); BP = 0;      SI = 0xFFFF; runLeaGw(4<<3|0x42, true, 0, 0xFF, 0xFFFE, SS);
-        initMem16(); BP = 0xFFFE; SI = 1;      runLeaGw(5<<3|0x42, true, 0, 1, 0, SS);
-        initMem16(); BP = 1;      SI = 0xFFFF; runLeaGw(6<<3|0x42, true, 0, 1, 1, SS);
-        initMem16(); BP = 0xFFFF; SI = 0xFFFF; runLeaGw(7<<3|0x42, true, 0, 0xFF, 0xFFFD, SS);
+        initMem16(); BP = 2;      SI = 0;      runLeaGw(1<<3|0x42, true, 0, 2, 4, SS);
+        initMem16(); BP = 2;      SI = 2;      runLeaGw(2<<3|0x42, true, 0, 2, 6, SS);
+        initMem16(); BP = 0;      SI = 0;      runLeaGw(3<<3|0x42, true, 0, 0xFE, 0xFFFE, SS);
+        initMem16(); BP = 0;      SI = 0xFFFE; runLeaGw(4<<3|0x42, true, 0, 0xFE, 0xFFFC, SS);
+        initMem16(); BP = 0xFFFC; SI = 2;      runLeaGw(5<<3|0x42, true, 0, 2, 0, SS);
+        initMem16(); BP = 2;      SI = 0xFFFE; runLeaGw(6<<3|0x42, true, 0, 2, 2, SS);
+        initMem16(); BP = 0xFFFE; SI = 0xFFFE; runLeaGw(7<<3|0x42, true, 0, 0xFE, 0xFFFA, SS);
 
         // [SS:BP + DI + disp8]
         initMem16(); BP = 0;      DI = 0;      runLeaGw(0|0x43, true, 0, 0, 0, SS);
-        initMem16(); BP = 1;      DI = 0;      runLeaGw(1<<3|0x43, true, 0, 1, 2, SS);
-        initMem16(); BP = 1;      DI = 1;      runLeaGw(2<<3|0x43, true, 0, 1, 3, SS);
-        initMem16(); BP = 0;      DI = 0;      runLeaGw(3<<3|0x43, true, 0, 0xFF, 0xFFFF, SS);
-        initMem16(); BP = 0;      DI = 0xFFFF; runLeaGw(4<<3|0x43, true, 0, 0xFF, 0xFFFE, SS);
-        initMem16(); BP = 0xFFFE; DI = 1;      runLeaGw(5<<3|0x43, true, 0, 1, 0, SS);
-        initMem16(); BP = 1;      DI = 0xFFFF; runLeaGw(6<<3|0x43, true, 0, 1, 1, SS);
-        initMem16(); BP = 0xFFFF; DI = 0xFFFF; runLeaGw(7<<3|0x43, true, 0, 0xFF, 0xFFFD, SS);
+        initMem16(); BP = 2;      DI = 0;      runLeaGw(1<<3|0x43, true, 0, 2, 4, SS);
+        initMem16(); BP = 2;      DI = 2;      runLeaGw(2<<3|0x43, true, 0, 2, 6, SS);
+        initMem16(); BP = 0;      DI = 0;      runLeaGw(3<<3|0x43, true, 0, 0xFE, 0xFFFE, SS);
+        initMem16(); BP = 0;      DI = 0xFFFE; runLeaGw(4<<3|0x43, true, 0, 0xFE, 0xFFFC, SS);
+        initMem16(); BP = 0xFFFC; DI = 2;      runLeaGw(5<<3|0x43, true, 0, 2, 0, SS);
+        initMem16(); BP = 2;      DI = 0xFFFE; runLeaGw(6<<3|0x43, true, 0, 2, 2, SS);
+        initMem16(); BP = 0xFFFE; DI = 0xFFFE; runLeaGw(7<<3|0x43, true, 0, 0xFE, 0xFFFA, SS);
 
         // [DS:SI + disp8]
         initMem16(); SI = 0;      runLeaGw(0|0x44, true, 0, 0, 0, DS);
-        initMem16(); SI = 0;      runLeaGw(1<<3|0x44, true, 0, 1, 1, DS);
-        initMem16(); SI = 1;      runLeaGw(2<<3|0x44, true, 0, 0, 1, DS);
-        initMem16(); SI = 0;      runLeaGw(3<<3|0x44, true, 0, 0xFF, 0xFFFF, DS);
-        initMem16(); SI = 0xFFFF; runLeaGw(4<<3|0x44, true, 0, 0, 0xFFFF, DS);
-        initMem16(); SI = 1;      runLeaGw(5<<3|0x44, true, 0, 0xFF, 0, DS);
-        initMem16(); SI = 0xFFFF; runLeaGw(6<<3|0x44, true, 0, 1, 0, DS);
-        initMem16(); SI = 0xFFFF; runLeaGw(7<<3|0x44, true, 0, 0xFF, 0xFFFE, DS);
+        initMem16(); SI = 0;      runLeaGw(1<<3|0x44, true, 0, 2, 2, DS);
+        initMem16(); SI = 2;      runLeaGw(2<<3|0x44, true, 0, 0, 2, DS);
+        initMem16(); SI = 0;      runLeaGw(3<<3|0x44, true, 0, 0xFE, 0xFFFE, DS);
+        initMem16(); SI = 0xFFFE; runLeaGw(4<<3|0x44, true, 0, 0, 0xFFFE, DS);
+        initMem16(); SI = 2;      runLeaGw(5<<3|0x44, true, 0, 0xFE, 0, DS);
+        initMem16(); SI = 0xFFFE; runLeaGw(6<<3|0x44, true, 0, 2, 0, DS);
+        initMem16(); SI = 0xFFFE; runLeaGw(7<<3|0x44, true, 0, 0xFE, 0xFFFC, DS);
 
         // [DS:DI + disp8]
         initMem16(); DI = 0;      runLeaGw(0|0x45, true, 0, 0, 0, DS);
-        initMem16(); DI = 0;      runLeaGw(1<<3|0x45, true, 0, 1, 1, DS);
-        initMem16(); DI = 1;      runLeaGw(2<<3|0x45, true, 0, 0, 1, DS);
-        initMem16(); DI = 0;      runLeaGw(3<<3|0x45, true, 0, 0xFF, 0xFFFF, DS);
-        initMem16(); DI = 0xFFFF; runLeaGw(4<<3|0x45, true, 0, 0, 0xFFFF, DS);
-        initMem16(); DI = 1;      runLeaGw(5<<3|0x45, true, 0, 0xFF, 0, DS);
-        initMem16(); DI = 0xFFFF; runLeaGw(6<<3|0x45, true, 0, 1, 0, DS);
-        initMem16(); DI = 0xFFFF; runLeaGw(7<<3|0x45, true, 0, 0xFF, 0xFFFE, DS);
+        initMem16(); DI = 0;      runLeaGw(1<<3|0x45, true, 0, 2, 2, DS);
+        initMem16(); DI = 2;      runLeaGw(2<<3|0x45, true, 0, 0, 2, DS);
+        initMem16(); DI = 0;      runLeaGw(3<<3|0x45, true, 0, 0xFE, 0xFFFE, DS);
+        initMem16(); DI = 0xFFFE; runLeaGw(4<<3|0x45, true, 0, 0, 0xFFFE, DS);
+        initMem16(); DI = 2;      runLeaGw(5<<3|0x45, true, 0, 0xFE, 0, DS);
+        initMem16(); DI = 0xFFFE; runLeaGw(6<<3|0x45, true, 0, 2, 0, DS);
+        initMem16(); DI = 0xFFFE; runLeaGw(7<<3|0x45, true, 0, 0xFE, 0xFFFC, DS);
 
         // [SS:BP + disp8]
         initMem16(); BP = 0;      runLeaGw(0|0x46, true, 0, 0, 0, SS);
-        initMem16(); BP = 0;      runLeaGw(1<<3|0x46, true, 0, 1, 1, SS);
-        initMem16(); BP = 1;      runLeaGw(2<<3|0x46, true, 0, 0, 1, SS);
-        initMem16(); BP = 0;      runLeaGw(3<<3|0x46, true, 0, 0xFF, 0xFFFF, SS);
-        initMem16(); BP = 0xFFFF; runLeaGw(4<<3|0x46, true, 0, 0, 0xFFFF, SS);
-        initMem16(); BP = 1;      runLeaGw(5<<3|0x46, true, 0, 0xFF, 0, SS);
-        initMem16(); BP = 0xFFFF; runLeaGw(6<<3|0x46, true, 0, 1, 0, SS);
-        initMem16(); BP = 0xFFFF; runLeaGw(7<<3|0x46, true, 0, 0xFF, 0xFFFE, SS);
+        initMem16(); BP = 0;      runLeaGw(1<<3|0x46, true, 0, 2, 2, SS);
+        initMem16(); BP = 2;      runLeaGw(2<<3|0x46, true, 0, 0, 2, SS);
+        initMem16(); BP = 0;      runLeaGw(3<<3|0x46, true, 0, 0xFE, 0xFFFE, SS);
+        initMem16(); BP = 0xFFFE; runLeaGw(4<<3|0x46, true, 0, 0, 0xFFFE, SS);
+        initMem16(); BP = 2;      runLeaGw(5<<3|0x46, true, 0, 0xFE, 0, SS);
+        initMem16(); BP = 0xFFFE; runLeaGw(6<<3|0x46, true, 0, 2, 0, SS);
+        initMem16(); BP = 0xFFFE; runLeaGw(7<<3|0x46, true, 0, 0xFE, 0xFFFC, SS);
 
         // [DS:BX + disp8]
         initMem16(); BX = 0;      runLeaGw(0|0x47, true, 0, 0, 0, DS);
-        initMem16(); BX = 0;      runLeaGw(1<<3|0x47, true, 0, 1, 1, DS);
-        initMem16(); BX = 1;      runLeaGw(2<<3|0x47, true, 0, 0, 1, DS);
-        initMem16(); BX = 0;      runLeaGw(3<<3|0x47, true, 0, 0xFF, 0xFFFF, DS);
-        initMem16(); BX = 0xFFFF; runLeaGw(4<<3|0x47, true, 0, 0, 0xFFFF, DS);
-        initMem16(); BX = 1;      runLeaGw(5<<3|0x47, true, 0, 0xFF, 0, DS);
-        initMem16(); BX = 0xFFFF; runLeaGw(6<<3|0x47, true, 0, 1, 0, DS);
-        initMem16(); BX = 0xFFFF; runLeaGw(7<<3|0x47, true, 0, 0xFF, 0xFFFE, DS);
+        initMem16(); BX = 0;      runLeaGw(1<<3|0x47, true, 0, 2, 2, DS);
+        initMem16(); BX = 2;      runLeaGw(2<<3|0x47, true, 0, 0, 2, DS);
+        initMem16(); BX = 0;      runLeaGw(3<<3|0x47, true, 0, 0xFE, 0xFFFE, DS);
+        initMem16(); BX = 0xFFFE; runLeaGw(4<<3|0x47, true, 0, 0, 0xFFFE, DS);
+        initMem16(); BX = 2;      runLeaGw(5<<3|0x47, true, 0, 0xFE, 0, DS);
+        initMem16(); BX = 0xFFFE; runLeaGw(6<<3|0x47, true, 0, 2, 0, DS);
+        initMem16(); BX = 0xFFFE; runLeaGw(7<<3|0x47, true, 0, 0xFE, 0xFFFC, DS);
 
     // Mod 02
         // [DS:BX + SI + disp16]
         initMem16(); BX = 0;      SI = 0;      runLeaGw(0|0x80, 0, true, 0, 0, DS);
-        initMem16(); BX = 1;      SI = 0;      runLeaGw(1<<3|0x80, 0, true, 1, 2, DS);
-        initMem16(); BX = 1;      SI = 1;      runLeaGw(2<<3|0x80, 0, true, 1, 3, DS);
-        initMem16(); BX = 0;      SI = 0;      runLeaGw(3<<3|0x80, 0, true, 0xFF, 0xFF, DS);
-        initMem16(); BX = 0;      SI = 0xFFFF; runLeaGw(4<<3|0x80, 0, true, 0xFFFF, 0xFFFE, DS);
-        initMem16(); BX = 0xFFFE; SI = 1;      runLeaGw(5<<3|0x80, 0, true, 1, 0, DS);
-        initMem16(); BX = 1;      SI = 0xFFFF; runLeaGw(6<<3|0x80, 0, true, 1, 1, DS);
-        initMem16(); BX = 0xFFFF; SI = 0xFFFF; runLeaGw(7<<3|0x80, 0, true, 0xFFFF, 0xFFFD, DS);
+        initMem16(); BX = 2;      SI = 0;      runLeaGw(1<<3|0x80, 0, true, 2, 4, DS);
+        initMem16(); BX = 2;      SI = 2;      runLeaGw(2<<3|0x80, 0, true, 2, 6, DS);
+        initMem16(); BX = 0;      SI = 0;      runLeaGw(3<<3|0x80, 0, true, 0xFE, 0xFE, DS);
+        initMem16(); BX = 0;      SI = 0xFFFE; runLeaGw(4<<3|0x80, 0, true, 0xFFFE, 0xFFFC, DS);
+        initMem16(); BX = 0xFFFC; SI = 2;      runLeaGw(5<<3|0x80, 0, true, 2, 0, DS);
+        initMem16(); BX = 2;      SI = 0xFFFE; runLeaGw(6<<3|0x80, 0, true, 2, 2, DS);
+        initMem16(); BX = 0xFFFE; SI = 0xFFFE; runLeaGw(7<<3|0x80, 0, true, 0xFFFE, 0xFFFA, DS);
 
         // [DS:BX + DI + disp16]
         initMem16(); BX = 0;      DI = 0;      runLeaGw(0|0x81, 0, true, 0, 0, DS);
-        initMem16(); BX = 1;      DI = 0;      runLeaGw(1<<3|0x81, 0, true, 1, 2, DS);
-        initMem16(); BX = 1;      DI = 1;      runLeaGw(2<<3|0x81, 0, true, 1, 3, DS);
-        initMem16(); BX = 0;      DI = 0;      runLeaGw(3<<3|0x81, 0, true, 0xFF, 0xFF, DS);
-        initMem16(); BX = 0;      DI = 0xFFFF; runLeaGw(4<<3|0x81, 0, true, 0xFFFF, 0xFFFE, DS);
-        initMem16(); BX = 0xFFFE; DI = 1;      runLeaGw(5<<3|0x81, 0, true, 1, 0, DS);
-        initMem16(); BX = 1;      DI = 0xFFFF; runLeaGw(6<<3|0x81, 0, true, 1, 1, DS);
-        initMem16(); BX = 0xFFFF; DI = 0xFFFF; runLeaGw(7<<3|0x81, 0, true, 0xFFFF, 0xFFFD, DS);
+        initMem16(); BX = 2;      DI = 0;      runLeaGw(1<<3|0x81, 0, true, 2, 4, DS);
+        initMem16(); BX = 2;      DI = 2;      runLeaGw(2<<3|0x81, 0, true, 2, 6, DS);
+        initMem16(); BX = 0;      DI = 0;      runLeaGw(3<<3|0x81, 0, true, 0xFE, 0xFE, DS);
+        initMem16(); BX = 0;      DI = 0xFFFE; runLeaGw(4<<3|0x81, 0, true, 0xFFFE, 0xFFFC, DS);
+        initMem16(); BX = 0xFFFC; DI = 2;      runLeaGw(5<<3|0x81, 0, true, 2, 0, DS);
+        initMem16(); BX = 2;      DI = 0xFFFE; runLeaGw(6<<3|0x81, 0, true, 2, 2, DS);
+        initMem16(); BX = 0xFFFE; DI = 0xFFFE; runLeaGw(7<<3|0x81, 0, true, 0xFFFE, 0xFFFA, DS);
 
         // [SS:BP + SI + disp16]
         initMem16(); BP = 0;      SI = 0;      runLeaGw(0|0x82, 0, true, 0, 0, SS);
-        initMem16(); BP = 1;      SI = 0;      runLeaGw(1<<3|0x82, 0, true, 1, 2, SS);
-        initMem16(); BP = 1;      SI = 1;      runLeaGw(2<<3|0x82, 0, true, 1, 3, SS);
-        initMem16(); BP = 0;      SI = 0;      runLeaGw(3<<3|0x82, 0, true, 0xFF, 0xFF, SS);
-        initMem16(); BP = 0;      SI = 0xFFFF; runLeaGw(4<<3|0x82, 0, true, 0xFFFF, 0xFFFE, SS);
-        initMem16(); BP = 0xFFFE; SI = 1;      runLeaGw(5<<3|0x82, 0, true, 1, 0, SS);
-        initMem16(); BP = 1;      SI = 0xFFFF; runLeaGw(6<<3|0x82, 0, true, 1, 1, SS);
-        initMem16(); BP = 0xFFFF; SI = 0xFFFF; runLeaGw(7<<3|0x82, 0, true, 0xFFFF, 0xFFFD, SS);
+        initMem16(); BP = 2;      SI = 0;      runLeaGw(1<<3|0x82, 0, true, 2, 4, SS);
+        initMem16(); BP = 2;      SI = 2;      runLeaGw(2<<3|0x82, 0, true, 2, 6, SS);
+        initMem16(); BP = 0;      SI = 0;      runLeaGw(3<<3|0x82, 0, true, 0xFE, 0xFE, SS);
+        initMem16(); BP = 0;      SI = 0xFFFE; runLeaGw(4<<3|0x82, 0, true, 0xFFFE, 0xFFFC, SS);
+        initMem16(); BP = 0xFFFC; SI = 2;      runLeaGw(5<<3|0x82, 0, true, 2, 0, SS);
+        initMem16(); BP = 2;      SI = 0xFFFE; runLeaGw(6<<3|0x82, 0, true, 2, 2, SS);
+        initMem16(); BP = 0xFFFE; SI = 0xFFFE; runLeaGw(7<<3|0x82, 0, true, 0xFFFE, 0xFFFA, SS);
 
         // [SS:BP + DI + disp16]
         initMem16(); BP = 0;      DI = 0;      runLeaGw(0|0x83, 0, true, 0, 0, SS);
-        initMem16(); BP = 1;      DI = 0;      runLeaGw(1<<3|0x83, 0, true, 1, 2, SS);
-        initMem16(); BP = 1;      DI = 1;      runLeaGw(2<<3|0x83, 0, true, 1, 3, SS);
-        initMem16(); BP = 0;      DI = 0;      runLeaGw(3<<3|0x83, 0, true, 0xFF, 0xFF, SS);
-        initMem16(); BP = 0;      DI = 0xFFFF; runLeaGw(4<<3|0x83, 0, true, 0xFFFF, 0xFFFE, SS);
-        initMem16(); BP = 0xFFFE; DI = 1;      runLeaGw(5<<3|0x83, 0, true, 1, 0, SS);
-        initMem16(); BP = 1;      DI = 0xFFFF; runLeaGw(6<<3|0x83, 0, true, 1, 1, SS);
-        initMem16(); BP = 0xFFFF; DI = 0xFFFF; runLeaGw(7<<3|0x83, 0, true, 0xFFFF, 0xFFFD, SS);
+        initMem16(); BP = 2;      DI = 0;      runLeaGw(1<<3|0x83, 0, true, 2, 4, SS);
+        initMem16(); BP = 2;      DI = 2;      runLeaGw(2<<3|0x83, 0, true, 2, 6, SS);
+        initMem16(); BP = 0;      DI = 0;      runLeaGw(3<<3|0x83, 0, true, 0xFE, 0xFE, SS);
+        initMem16(); BP = 0;      DI = 0xFFFE; runLeaGw(4<<3|0x83, 0, true, 0xFFFE, 0xFFFC, SS);
+        initMem16(); BP = 0xFFFC; DI = 2;      runLeaGw(5<<3|0x83, 0, true, 2, 0, SS);
+        initMem16(); BP = 2;      DI = 0xFFFE; runLeaGw(6<<3|0x83, 0, true, 2, 2, SS);
+        initMem16(); BP = 0xFFFE; DI = 0xFFFE; runLeaGw(7<<3|0x83, 0, true, 0xFFFE, 0xFFFA, SS);
 
         // [DS:SI + disp16]
         initMem16(); SI = 0;      runLeaGw(0|0x84, 0, true, 0, 0, DS);
-        initMem16(); SI = 0;      runLeaGw(1<<3|0x84, 0, true, 1, 1, DS);
-        initMem16(); SI = 1;      runLeaGw(2<<3|0x84, 0, true, 0, 1, DS);
-        initMem16(); SI = 0;      runLeaGw(3<<3|0x84, 0, true, 0xFF, 0xFF, DS);
-        initMem16(); SI = 0xFFFF; runLeaGw(4<<3|0x84, 0, true, 0, 0xFFFF, DS);
-        initMem16(); SI = 1;      runLeaGw(5<<3|0x84, 0, true, 0xFFFF, 0, DS);
-        initMem16(); SI = 0xFFFF; runLeaGw(6<<3|0x84, 0, true, 1, 0, DS);
-        initMem16(); SI = 0xFFFF; runLeaGw(7<<3|0x84, 0, true, 0xFFFF, 0xFFFE, DS);
+        initMem16(); SI = 0;      runLeaGw(1<<3|0x84, 0, true, 2, 2, DS);
+        initMem16(); SI = 2;      runLeaGw(2<<3|0x84, 0, true, 0, 2, DS);
+        initMem16(); SI = 0;      runLeaGw(3<<3|0x84, 0, true, 0xFE, 0xFE, DS);
+        initMem16(); SI = 0xFFFE; runLeaGw(4<<3|0x84, 0, true, 0, 0xFFFE, DS);
+        initMem16(); SI = 2;      runLeaGw(5<<3|0x84, 0, true, 0xFFFE, 0, DS);
+        initMem16(); SI = 0xFFFE; runLeaGw(6<<3|0x84, 0, true, 2, 0, DS);
+        initMem16(); SI = 0xFFFE; runLeaGw(7<<3|0x84, 0, true, 0xFFFE, 0xFFFC, DS);
 
         // [DS:DI + disp16]
         initMem16(); DI = 0;      runLeaGw(0|0x85, 0, true, 0, 0, DS);
-        initMem16(); DI = 0;      runLeaGw(1<<3|0x85, 0, true, 1, 1, DS);
-        initMem16(); DI = 1;      runLeaGw(2<<3|0x85, 0, true, 0, 1, DS);
-        initMem16(); DI = 0;      runLeaGw(3<<3|0x85, 0, true, 0xFF, 0xFF, DS);
-        initMem16(); DI = 0xFFFF; runLeaGw(4<<3|0x85, 0, true, 0, 0xFFFF, DS);
-        initMem16(); DI = 1;      runLeaGw(5<<3|0x85, 0, true, 0xFFFF, 0, DS);
-        initMem16(); DI = 0xFFFF; runLeaGw(6<<3|0x85, 0, true, 1, 0, DS);
-        initMem16(); DI = 0xFFFF; runLeaGw(7<<3|0x85, 0, true, 0xFFFF, 0xFFFE, DS);
+        initMem16(); DI = 0;      runLeaGw(1<<3|0x85, 0, true, 2, 2, DS);
+        initMem16(); DI = 2;      runLeaGw(2<<3|0x85, 0, true, 0, 2, DS);
+        initMem16(); DI = 0;      runLeaGw(3<<3|0x85, 0, true, 0xFE, 0xFE, DS);
+        initMem16(); DI = 0xFFFE; runLeaGw(4<<3|0x85, 0, true, 0, 0xFFFE, DS);
+        initMem16(); DI = 2;      runLeaGw(5<<3|0x85, 0, true, 0xFFFE, 0, DS);
+        initMem16(); DI = 0xFFFE; runLeaGw(6<<3|0x85, 0, true, 2, 0, DS);
+        initMem16(); DI = 0xFFFE; runLeaGw(7<<3|0x85, 0, true, 0xFFFE, 0xFFFC, DS);
 
         // [SS:BP + disp16]
         initMem16(); BP = 0;      runLeaGw(0|0x86, 0, true, 0, 0, SS);
-        initMem16(); BP = 0;      runLeaGw(1<<3|0x86, 0, true, 1, 1, SS);
-        initMem16(); BP = 1;      runLeaGw(2<<3|0x86, 0, true, 0, 1, SS);
-        initMem16(); BP = 0;      runLeaGw(3<<3|0x86, 0, true, 0xFF, 0xFF, SS);
-        initMem16(); BP = 0xFFFF; runLeaGw(4<<3|0x86, 0, true, 0, 0xFFFF, SS);
-        initMem16(); BP = 1;      runLeaGw(5<<3|0x86, 0, true, 0xFFFF, 0, SS);
-        initMem16(); BP = 0xFFFF; runLeaGw(6<<3|0x86, 0, true, 1, 0, SS);
-        initMem16(); BP = 0xFFFF; runLeaGw(7<<3|0x86, 0, true, 0xFFFF, 0xFFFE, SS);
+        initMem16(); BP = 0;      runLeaGw(1<<3|0x86, 0, true, 2, 2, SS);
+        initMem16(); BP = 2;      runLeaGw(2<<3|0x86, 0, true, 0, 2, SS);
+        initMem16(); BP = 0;      runLeaGw(3<<3|0x86, 0, true, 0xFE, 0xFE, SS);
+        initMem16(); BP = 0xFFFE; runLeaGw(4<<3|0x86, 0, true, 0, 0xFFFE, SS);
+        initMem16(); BP = 2;      runLeaGw(5<<3|0x86, 0, true, 0xFFFE, 0, SS);
+        initMem16(); BP = 0xFFFE; runLeaGw(6<<3|0x86, 0, true, 2, 0, SS);
+        initMem16(); BP = 0xFFFE; runLeaGw(7<<3|0x86, 0, true, 0xFFFE, 0xFFFC, SS);
 
         // [DS:BX + disp16]
         initMem16(); BX = 0;      runLeaGw(0|0x87, 0, true, 0, 0, DS);
-        initMem16(); BX = 0;      runLeaGw(1<<3|0x87, 0, true, 1, 1, DS);
-        initMem16(); BX = 1;      runLeaGw(2<<3|0x87, 0, true, 0, 1, DS);
-        initMem16(); BX = 0;      runLeaGw(3<<3|0x87, 0, true, 0xFF, 0xFF, DS);
-        initMem16(); BX = 0xFFFF; runLeaGw(4<<3|0x87, 0, true, 0, 0xFFFF, DS);
-        initMem16(); BX = 1;      runLeaGw(5<<3|0x87, 0, true, 0xFFFF, 0, DS);
-        initMem16(); BX = 0xFFFF; runLeaGw(6<<3|0x87, 0, true, 1, 0, DS);
-        initMem16(); BX = 0xFFFF; runLeaGw(7<<3|0x87, 0, true, 0xFFFF, 0xFFFE, DS);
+        initMem16(); BX = 0;      runLeaGw(1<<3|0x87, 0, true, 2, 2, DS);
+        initMem16(); BX = 2;      runLeaGw(2<<3|0x87, 0, true, 0, 2, DS);
+        initMem16(); BX = 0;      runLeaGw(3<<3|0x87, 0, true, 0xFE, 0xFE, DS);
+        initMem16(); BX = 0xFFFE; runLeaGw(4<<3|0x87, 0, true, 0, 0xFFFE, DS);
+        initMem16(); BX = 2;      runLeaGw(5<<3|0x87, 0, true, 0xFFFE, 0, DS);
+        initMem16(); BX = 0xFFFE; runLeaGw(6<<3|0x87, 0, true, 2, 0, DS);
+        initMem16(); BX = 0xFFFE; runLeaGw(7<<3|0x87, 0, true, 0xFFFE, 0xFFFC, DS);
 }
 
 void testSelfModifying() {
@@ -11404,6 +11400,33 @@ void testSelfModifyingMovsb() {
 
     assertTrue(EDX == 1);
     assertTrue(EAX == 0x1b); // 0x20 from first run - 0x05 from second run
+}
+
+void testSplitPageWrite() {
+    // initialize
+    newInstruction(0);
+
+    // mov dword ptr[4094], 0x12345678
+    pushCode8(0xc7);
+    pushCode8(0x05);
+    pushCode32(4094);
+    pushCode32(0x12345678);
+
+    // mov ax, word ptr[4094]
+    pushCode8(0x66);
+    pushCode8(0xa1);
+    pushCode32(4094);
+
+    // mov cx, word ptr[4096]
+    pushCode8(0x66);
+    pushCode8(0x8b);
+    pushCode8(0x0d);
+    pushCode32(4096);
+
+    runTestCPU();
+
+    assertTrue(CX == 0x1234);
+    assertTrue(AX == 0x5678);
 }
 
 void testSelfModifyingFront() {
@@ -12382,13 +12405,14 @@ int runCpuTests() {
             
     run(testSelfModifying, "Self Modifiying Code");
     run(testSelfModifyingMovsb, "Self Modifiying Code using movsb");
-    run(testSelfModifyingFront, "Self Modifying Code Same Block(Previous)");
+    run(testSelfModifyingFront, "Self Modifying Code Same Block(Previous)");    
     // BOXEDWINE_DYNAMIC has no way to exit early out of its current block
 #ifdef BOXEDWINE_DYNAMIC
     printf("Self Modifying Code Same Block(Next) ... Skipping\n");
 #else
     run(testSelfModifyingBack, "Self Modifying Code Same Block(Next)");
 #endif
+    run(testSplitPageWrite, "Split Page Write");
     printf("%d tests FAILED\n", totalFails);
     KNativeThread::sleep(5000);
     if (totalFails)
@@ -12414,7 +12438,7 @@ int runCpuTestsMac(void) {
 }
 #else
 int main(int argc, char** argv) {
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
+#if defined(BOXEDWINE_BINARY_TRANSLATOR) && defined(BOXEDWINE_64BIT_MMU)
     int result = runCpuTests();
     KSystem::useSingleMemOffset = false;
     tearDown();

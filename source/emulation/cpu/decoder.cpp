@@ -1393,6 +1393,19 @@ struct LogInstruction {
     const char* postfix;
 };
 
+static void outXMM(U32 r, CPU* cpu) {
+    switch (r) {
+    case 0: fwrite("xmm0", 4, 1, (FILE*)cpu->logFile); break;
+    case 1: fwrite("xmm1", 4, 1, (FILE*)cpu->logFile); break;
+    case 2: fwrite("xmm2", 4, 1, (FILE*)cpu->logFile); break;
+    case 3: fwrite("xmm3", 4, 1, (FILE*)cpu->logFile); break;
+    case 4: fwrite("xmm4", 4, 1, (FILE*)cpu->logFile); break;
+    case 5: fwrite("xmm5", 4, 1, (FILE*)cpu->logFile); break;
+    case 6: fwrite("xmm6", 4, 1, (FILE*)cpu->logFile); break;
+    case 7: fwrite("xmm7", 4, 1, (FILE*)cpu->logFile); break;
+    }
+}
+
 static void outR32(U32 r, CPU* cpu) {
     switch (r) {
         case 0: fwrite("EAX", 3, 1, (FILE*)cpu->logFile); break;
@@ -1759,7 +1772,10 @@ static void logEM(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
 }
 
 static void logXmmXmm(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
+    fprintf((FILE*)cpu->logFile, "%s ", inst->name);
+    outXMM(op->reg, cpu);
+    fwrite(",", 1, 1, (FILE*)cpu->logFile);
+    outXMM(op->rm, cpu);
 }
 
 static void logXmmI(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
@@ -1767,7 +1783,15 @@ static void logXmmI(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
 }
 
 static void logXmmE(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
+    fprintf((FILE*)cpu->logFile, "%s ", inst->name);
+
+    outXMM(op->reg, cpu);        
+    fwrite(",", 1, 1, (FILE*)cpu->logFile);
+    if (op->ea16) {
+        outE16(op, cpu);
+    } else {
+        outE32(op, cpu);
+    }
 }
 
 static void logRXmm(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
@@ -1775,7 +1799,15 @@ static void logRXmm(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
 }
 
 static void logEXmm(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
+    fprintf((FILE*)cpu->logFile, "%s ", inst->name);
+    
+    if (op->ea16) {
+        outE16(op, cpu);
+    } else {
+        outE32(op, cpu);
+    }
+    fwrite(",", 1, 1, (FILE*)cpu->logFile);
+    outXMM(op->reg, cpu);
 }
 
 static void logXmmR(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
@@ -2212,8 +2244,7 @@ const LogInstruction instructionLog[] = {
     {"Ret", 16, logName},
     {"Ret", 32, logName},
     {"Retf", 16, logName},
-    {"Retf", 32, logName},
-    
+    {"Retf", 32, logName},    
     {"Invalid", 0, logName},
     {"Int3", 0, logName},
     {"Int80 Syscall", 0, logName},
@@ -2222,7 +2253,6 @@ const LogInstruction instructionLog[] = {
     {"Int9A Vulkan", 0, logName },
     {"Int", 0, logName, true},
     {"Int0", 0, logName},
-
     {"IRet", 16, logName},
     {"IRet", 32, logName},
     {"Xlat", 0, logName},
@@ -2713,7 +2743,8 @@ const LogInstruction instructionLog[] = {
     {"Emms", 0, logName},
     {"Mov", 32, logRM},
     {"Mov", 32, logEM},
-    {"Mov", 64, logEM},
+    {"Mov", 64, logMM},
+    {"Mov", 64, logEM },
     {"Psrlw", 0, logMM},
     {"Psrlw", 0, logME},
     {"Psrld", 0, logMM},
@@ -2772,6 +2803,7 @@ const LogInstruction instructionLog[] = {
     {"Paddw", 0, logME},
     {"Paddd", 0, logMM},
     {"Paddd", 0, logME},
+
     {"FXSAVE", 0, logName},
     {"FXRSTOR", 0, logName},
     {"LDMXCSR", 0, logName},
@@ -2921,6 +2953,7 @@ const LogInstruction instructionLog[] = {
     {"Comiss", 32, logXmmE},
     {"Ucomiss", 0, logXmmXmm},
     {"Ucomiss", 32, logXmmE},
+
 
     {"Addpd", 0, logXmmXmm},
     {"Addpd", 128, logXmmE},
@@ -6153,7 +6186,7 @@ void DecodedBlock::removeReferenceFrom(DecodedBlock* block) {
 	}
 }
 
-DecodedBlock* DecodedBlock::currentBlock;
+thread_local DecodedBlock* DecodedBlock::currentBlock;
 
 void decodeBlock(pfnFetchByte fetchByte, void* fetchByteData, U32 eip, bool isBig, U32 maxInstructions, U32 maxLen, U32 stopIfThrowsException, DecodedBlock* block) {
     DecodeData d;    
@@ -6247,7 +6280,7 @@ void DecodedOp::log(CPU* cpu) {
         if (endPos-pos<55) {
             fwrite("                                                       ", 55-(endPos-pos), 1, (FILE*)cpu->logFile);
         }
-        fprintf((FILE*)cpu->logFile, " EAX=%.8X ECX=%.8X EDX=%.8X EBX=%.8X ESP=%.8X EBP=%.8X ESI=%.8X EDI=%.8X SS=%.8X DS=%.8X", EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI, cpu->seg[SS].address, cpu->seg[DS].address);
+        fprintf((FILE*)cpu->logFile, " EAX=%.8X ECX=%.8X EDX=%.8X EBX=%.8X ESP=%.8X EBP=%.8X ESI=%.8X EDI=%.8X SS=%.8X DS=%.8X FLAGS=%.8X", EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI, cpu->seg[SS].address, cpu->seg[DS].address, cpu->flags);
         fwrite("\n", 1, 1, (FILE*)cpu->logFile);
         fflush((FILE*)cpu->logFile);
     }

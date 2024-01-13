@@ -52,8 +52,13 @@ typedef enum {
 // x19 to x29 callee saved
 // These should be one that won't need to be reloaded after a function call
 #define xCPU 19
+#ifdef BOXEDWINE_64BIT_MMU
 #define xMem 20
 #define xLargeAddress 21
+#else
+#define xMemRead 20
+#define xMemWrite 21
+#endif
 // addresses, not values
 #define xES 22
 #define xCS 23
@@ -192,12 +197,16 @@ public:
     void logOp(U32 eip);
     void signalIllegalInstruction(int code);
 
+#ifdef BOXEDWINE_64BIT_MMU
     void addDynamicCheck(bool panic);
+#endif
 	void saveNativeState();
 	void restoreNativeState();
     void addReturn();
+#ifdef BOXEDWINE_64BIT_MMU
     void createCodeForRetranslateChunk();
     void createCodeForJmpAndTranslateIfNecessary();
+#endif
     void callRetranslateChunk();
 #ifdef BOXEDWINE_POSIX
     void createCodeForRunSignal();
@@ -259,7 +268,11 @@ public:
     U32 branchSignedLessThanOrEqual();
     U32 branch();
     void syncRegsToHost();
+#ifdef BOXEDWINE_64BIT_MMU
     void syncRegsFromHost(bool eipInBranchReg = false);
+#else
+    void syncRegsFromHost();
+#endif
     void callHost(void* pfn);
 
     // stack
@@ -289,12 +302,17 @@ public:
     void signExtend64(U8 dst, U8 src, U32 width);
     void notReg32(U8 dst, U8 src);
 
+#ifdef BOXEDWINE_64BIT_MMU
     U8 getHostMem(U8 regEmulatedAddress, S8 tmpReg = -1);
     U8 getHostMemWithOffset(U8 regEmulatedAddress, U32 offset);
     U8 getHostMemFromAddress(U32 address);
     void releaseHostMem(U8 reg);
+#else
+    void readEmulatedMemory(U8 addressReg, U8 dst, U32 width);
+#endif
 
     // mov to/from memory
+    void readWriteMemory(U8 addressReg, U8 readDst, U8 writeSrc, U32 width, std::function<void(void)> pfn, bool lock = false, bool doWrite = true);
     void readMemory(U8 addressReg, U8 dst, U32 width, bool addMemOffsetToAddress, bool lock = false, bool signExtend = false);
     void writeMemory(U8 addressReg, U8 src, U32 width, bool addMemOffsetToAddress, bool lock = false, U8 regWithOriginalValue = 0, U32 restartPos = 0, bool generateMemoryBarrierForLock = true);
     void fullMemoryBarrier();
@@ -556,7 +574,9 @@ private:
     void vMemMultiple(U8 dst, U8 base, U32 numberOfRegs, U8 thirdByte, bool is1128);
     void vIns(U8 rd, U8 rn, U8 imm4, U8 imm5);
 
+#ifdef BOXEDWINE_64BIT_MMU
     void internal_addDynamicCheck(U32 address, U32 len);
+#endif
     bool isEipInChunk(U32 eip);
 };
 

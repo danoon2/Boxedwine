@@ -232,6 +232,7 @@ public:
 
     bool hasSetStackMask;
     bool hasSetSeg[6];
+
     std::unordered_map<U32, U32> glStrings;    
     U32 glStringsiExtensions;
     std::vector<U32> glStringsiExtensionsOffset;
@@ -239,7 +240,12 @@ public:
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
     bool emulateFPU;
     void* reTranslateChunkAddress; // will be called when the program tries to jump to memory that hasn't been translated yet or needs to be retranslated
+    void* syncToHostAddress;
+    void* syncFromHostAddress;
+    void* doSingleOpAddress;
+#ifdef BOXEDWINE_64BIT_MMU
     void* reTranslateChunkAddressFromReg; // will be called when the program tries to jump to memory that hasn't been translated yet or needs to be retranslated
+#endif
     void* returnToLoopAddress; // will be called after a syscall if x64CPU.exitToStartThreadLoop is set to true.  This return will cause the program to return to x64CPU::run()
 #ifdef BOXEDWINE_BT_DEBUG_NO_EXCEPTIONS
     void* jmpAndTranslateIfNecessary;

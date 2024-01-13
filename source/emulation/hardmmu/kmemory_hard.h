@@ -3,14 +3,14 @@
 
 #ifdef BOXEDWINE_64BIT_MMU
 
+#include "../cpu/binaryTranslation/btMemory.h"
+
 class BtCodeChunk;
 
 #define NATIVE_FLAG_COMMITTED 0x08
 #define NATIVE_FLAG_CODEPAGE_READONLY 0x10
 
-#define K_MAX_X86_OP_LEN 15
-
-class KMemoryData {
+class KMemoryData : public BtMemory {
 public:
     KMemoryData(KMemory* memory);
     ~KMemoryData();
@@ -25,9 +25,9 @@ public:
     void allocPages(KThread* thread, U32 page, U32 pageCount, U8 permissions, FD fd, U64 offset, const BoxedPtr<MappedFile>& mappedFile, U8** ramPages = nullptr);
     void protectPage(KThread* thread, U32 i, U32 permissions);
     void setPagesInvalid(U32 page, U32 pageCount);
-    U32 getPageFlags(U32 page);
     void execvReset();
     void clearDelayedReset();
+    U32 getPageFlags(U32 page);    
     bool reserveAddress(U32 startingPage, U32 pageCount, U32* result, bool canBeReMapped, bool alignNative, U32 reservedFlag);
     
     U8 flags[K_NUMBER_OF_PAGES];
@@ -67,36 +67,18 @@ public:
 
 #define MAX_DYNAMIC_CODE_PAGE_COUNT 0xFF
     U8 dynamicCodePageUpdateCount[K_NATIVE_NUMBER_OF_PAGES];
-
-    BOXEDWINE_MUTEX executableMemoryMutex;
-private:
-#define EXECUTABLE_MIN_SIZE_POWER 7
-#define EXECUTABLE_MAX_SIZE_POWER 22
-#define EXECUTABLE_SIZES 16
-
-    std::unordered_map<U32, std::shared_ptr< std::list< std::shared_ptr<BtCodeChunk> > >> codeChunksByHostPage;
-    std::unordered_map<U32, std::shared_ptr< std::list< std::shared_ptr<BtCodeChunk> > >> codeChunksByEmulationPage;
-
-    std::list<void*> freeExecutableMemory[EXECUTABLE_SIZES];
-public:
-    std::shared_ptr<BtCodeChunk> getCodeChunkContainingHostAddress(void* hostAddress);
+    
+public:    
+    void clearCodePageFromCache(U32 page);
     void clearHostCodeForWriting(U32 nativePage, U32 count);
     bool clearCodePageReadOnly(U32 nativePage);
     void makeCodePageReadOnly(U32 nativePage);
     void reserveNativeMemory();
-    void releaseNativeMemory();
-    void commitHostAddressSpaceMapping(U32 page, U32 pageCount, U64 defaultValue);
+    void releaseNativeMemory();    
     void* getNativeAddress(U32 address);
-
-    std::shared_ptr<BtCodeChunk> getCodeChunkContainingEip(U32 eip);
-    void addCodeChunk(const std::shared_ptr<BtCodeChunk>& chunk);
-    void removeCodeChunk(const std::shared_ptr<BtCodeChunk>& chunk);
+    
     void makeNativePageDynamic(U32 nativePage);
-    void* getExistingHostAddress(U32 eip);
-    void* allocateExcutableMemory(U32 size, U32* allocatedSize);
-    void freeExcutableMemory(void* hostMemory, U32 size);
-    void executableMemoryReleased();
-    bool isAddressExecutable(void* address);
+    
 
     void allocNativeMemory(U32 page, U32 pageCount, U32 flags);
     void freeNativeMemory(U32 page, U32 pageCount);
@@ -107,33 +89,15 @@ public:
     bool isValidWriteAddress(U32 address, U32 len);
 
     void unmapNativeMemory(U32 address, U32 size);
-    U32 mapNativeMemory(void* hostAddress, U32 size);
-
-    class AllocatedMemory {
-    public:
-        AllocatedMemory(void* memory, U32 size) : memory(memory), size(size) {}
-        void* memory;
-        U32 size;
-    };
-    std::list<AllocatedMemory> allocatedExecutableMemory;
-private:
-    bool committedEipPages[K_NUMBER_OF_PAGES];
+    U32 mapNativeMemory(void* hostAddress, U32 size);    
 
 public:
-    void*** eipToHostInstructionPages;
-    void* eipToHostInstructionAddressSpaceMapping;
-    bool isEipPageCommitted(U32 page);
-    void setEipPageCommitted(U32 page) { this->committedEipPages[page] = true; }
-    void setEipForHostMapping(U32 eip, void* host);
-    void clearCodePageFromCache(U32 page);
-
-    bool isShared(U32 page);
+    bool isShared(U32 page);           
 
 private:
     U32 callbackPos;
-    KMemory* memory;
+    KMemory* memory;        
     KMemoryData* delayedReset;
-    BOXEDWINE_MUTEX mutex;
 
     void addCallback(OpCallback func);
 };

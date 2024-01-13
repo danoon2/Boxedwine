@@ -1503,8 +1503,8 @@ public:
 };
 
 class DecodedBlock {
-public:   
-    static DecodedBlock* currentBlock;
+public:       
+    thread_local static DecodedBlock* currentBlock;
     virtual ~DecodedBlock() {}
 
     DecodedBlock() : op(NULL), opCount(0), bytes(0), runCount(0), address(0), next1(NULL), next2(NULL), referencedFrom(NULL) {}

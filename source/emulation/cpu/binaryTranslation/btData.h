@@ -24,9 +24,10 @@ public:
     U32 startOfOpIp;
     U32 calculatedEipLen;
     bool done;
+#ifdef BOXEDWINE_64BIT_MMU
     bool dynamic;
-    bool useSingleMemOffset;
-
+    bool useSingleMemOffset;   
+#endif
     U32* ipAddress;
     U32* ipAddressBufferPos;
     U32 ipAddressCount;
@@ -43,6 +44,9 @@ public:
 
     DecodedOp* decodedOp;
     DecodedBlock* currentBlock;
+
+    std::shared_ptr<BtData> firstPass;
+    bool needLargeIfJmpReg;
 
     void mapAddress(U32 ip, U32 bufferPos);
     U8 calculateEipLen(U32 eip);

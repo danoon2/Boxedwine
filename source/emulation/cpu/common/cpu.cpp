@@ -85,7 +85,6 @@ void CPU::reset() {
     }
     this->lazyFlags = 0;
     this->setIsBig(1);
-    this->df = 1;
     this->seg[CS].value = 0xF; // index 1, LDT, rpl=3
     this->seg[SS].value = 0x17; // index 2, LDT, rpl=3
     this->seg[DS].value = 0x17; // index 2, LDT, rpl=3
@@ -949,7 +948,6 @@ void CPU::setFlags(U32 flags, U32 mask) {
     }
 #endif
     this->flags=(this->flags & ~mask)|(flags & mask)|2;
-    this->df=1-((this->flags & DF) >> 9);
 }
 
 void CPU::addFlag(U32 flags) {
@@ -1071,7 +1069,7 @@ void CPU::push16(U16 value) {
 U32 CPU::push16_r(U32 esp, U16 value) {
     U32 new_esp=(esp & this->stackNotMask) | ((esp - 2) & this->stackMask);
     U32 address = this->seg[SS].address + (new_esp & this->stackMask);
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
+#ifdef BOXEDWINE_64BIT_MMU
     KMemoryData* mem = getMemData(memory);
     U32 nativePage = mem->getNativePage(address>>K_PAGE_SHIFT);
     if (mem->nativeFlags[nativePage] & NATIVE_FLAG_CODEPAGE_READONLY) {
@@ -1096,7 +1094,7 @@ U32 CPU::push32_r(U32 esp, U32 value) {
     U32 new_esp=(esp & this->stackNotMask) | ((esp - 4) & this->stackMask);
     U32 address = this->seg[SS].address + (new_esp & this->stackMask);
 
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
+#ifdef BOXEDWINE_64BIT_MMU
     KMemoryData* mem = getMemData(memory);
     U32 nativePage = mem->getNativePage(address>>K_PAGE_SHIFT);
     if (mem->nativeFlags[nativePage] & NATIVE_FLAG_CODEPAGE_READONLY) {
@@ -1128,7 +1126,6 @@ void CPU::clone(CPU* from) {
     this->dst2 = from->dst2;
     this->result = from->result;
     this->lazyFlags = from->lazyFlags;
-    this->df = from->df;
     this->oldCF = from->oldCF;
     this->fpu = from->fpu;
     //U64		    instructionCount;

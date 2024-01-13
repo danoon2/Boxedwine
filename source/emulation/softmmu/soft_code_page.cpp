@@ -24,9 +24,13 @@ void CodePage::freeCodePageEntry(CodePageEntry* entry) {
     U32 offset = entry->offset >> CODE_ENTRIES_SHIFT;
     CodePageEntry** entries = entry->page->entries;
    
-    if (entry->block)
+    if (entry->block) {
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+        entry->block->release(KThread::currentThread()->memory);
+#else
         entry->block->dealloc(false);
-
+#endif
+    }
     // remove any entries linked to this one from other pages
     if (entry->linkedPrev) {
         entry->linkedPrev->linkedNext = NULL;
@@ -50,7 +54,8 @@ void CodePage::freeCodePageEntry(CodePageEntry* entry) {
     }
     // add the entry to the free list
     entry->next = freeCodePageEntries;
-    freeCodePageEntries = entry; 
+    entry->block = NULL;
+    freeCodePageEntries = entry;     
 }
 
 CodePage* CodePage::alloc(KMemoryData* memory, U8* page, U32 address, U32 flags) {
@@ -59,6 +64,7 @@ CodePage* CodePage::alloc(KMemoryData* memory, U8* page, U32 address, U32 flags)
 
 CodePage::CodePage(KMemoryData* memory, U8* page, U32 address, U32 flags) : RWPage(memory, page, address, flags, Code_Page) {
     memset(this->entries, 0, sizeof(this->entries));
+    entryCount = 0;
 }
 
 CodePage::~CodePage() {
@@ -102,6 +108,7 @@ void CodePage::removeBlockAt(U32 address, U32 len) {
     CodePageEntry* entry = findCode(address, len);
 
     while (entry) {
+#ifndef BOXEDWINE_BINARY_TRANSLATOR
         if (entry->block==DecodedBlock::currentBlock) {
             KThread* thread = KThread::currentThread();
             U32 ip;
@@ -122,12 +129,14 @@ void CodePage::removeBlockAt(U32 address, U32 len) {
             entry->block->dealloc(true);
             entry->block = NULL; // so that freeCodePageEntry won't dealloc it
         }
+#endif
+        entryCount--;
         freeCodePageEntry(entry);
         entry = findCode(address, len);
     }
 }
 
-void CodePage::addCode(U32 eip, DecodedBlock* block, U32 len, CodePageEntry* link) {
+void CodePage::addCode(U32 eip, CodeBlock block, U32 len, CodePageEntry* link) {
     U32 offset = eip & K_PAGE_MASK;
 
     CodePageEntry** entry = &this->entries[offset >> CODE_ENTRIES_SHIFT];
@@ -152,20 +161,21 @@ void CodePage::addCode(U32 eip, DecodedBlock* block, U32 len, CodePageEntry* lin
 		(*entry)->linkedPrev = link;
 		link->linkedNext = (*entry);
         if (link->linkedPrev) {
-            kpanic("Code block too big");
+            //kpanic("Code block too big");
         }
 	}
+    entryCount++;
 	if (offset + len > K_PAGE_SIZE) {
-		U32 nextPage = (eip + 0xFFF) & 0xFFFFF000;
+        U32 nextPage = eip + (*entry)->len;
 		this->addCode(nextPage, NULL, len - (nextPage - eip), *entry);
 	}
 }
 
-void CodePage::addCode(U32 eip, DecodedBlock* op, U32 len) {
+void CodePage::addCode(U32 eip, CodeBlock op, U32 len) {
     this->addCode(eip, op, len, NULL);
 }
 
-DecodedBlock* CodePage::getCode(U32 eip) {
+CodeBlock CodePage::getCode(U32 eip) {
     U32 offset = eip & K_PAGE_MASK;
     CodePageEntry* entry = this->entries[offset >> CODE_ENTRIES_SHIFT];
     while (entry) {
@@ -177,10 +187,8 @@ DecodedBlock* CodePage::getCode(U32 eip) {
 }
 
 void CodePage::copyOnWrite() {
-    U8* ram;
-
     if (!mapShared() && ramPageRefCount(page) > 1) {
-        ram = ramPageAlloc();
+        U8* ram = ramPageAlloc();
         memcpy(ram, page, K_PAGE_SIZE);
         ramPageDecRef(page);
         page = ram;

@@ -1117,6 +1117,17 @@ void common_maskmovdquE128XmmXmm(CPU* cpu, U32 r1, U32 r2, U32 address) {
     cpu->memory->memcpy(address, (U8*)result, 16);
 }
 
+#define G(rm) ((rm >> 3) & 7)
+#define E(rm) (rm & 7)
+
+void common_maskmovdquE128XmmXmmRM(CPU* cpu, U32 rm, U32 base, U32 bigAddress) {
+    int8_t result[16];
+    U32 address = (bigAddress ? EDI : DI) + cpu->seg[base].address;
+    cpu->memory->memcpy((U8*)result, address, 16);
+    simde_mm_maskmoveu_si128(cpu->xmm[G(rm)].pi, cpu->xmm[E(rm)].pi, result);
+    cpu->memory->memcpy(address, (U8*)result, 16);
+}
+
 void common_pshufdXmmXmm(CPU* cpu, U32 r1, U32 r2, U8 imm) {
     cpu->xmm[r1].pi = simde_mm_shuffle_epi32(cpu->xmm[r2].pi, imm);
 }

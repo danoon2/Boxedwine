@@ -257,13 +257,11 @@ void OPCALL normal_sti(CPU* cpu, DecodedOp* op) {
 void OPCALL normal_cld(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     cpu->removeFlag(DF);
-    cpu->df=1;
     NEXT();
 }
 void OPCALL normal_std(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     cpu->addFlag(DF);
-    cpu->df=-1;
     NEXT();
 }
 void OPCALL normal_rdtsc(CPU* cpu, DecodedOp* op) {

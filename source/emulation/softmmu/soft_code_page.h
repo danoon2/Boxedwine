@@ -40,12 +40,12 @@ public:
     virtual U8* getReadPtr(U32 address, bool makeReady = false) override;
     virtual U8* getWritePtr(U32 address, U32 len, bool makeReady = false) override;
 
-    void addCode(U32 eip, DecodedBlock* block, U32 len);
-    DecodedBlock* getCode(U32 eip);
+    void addCode(U32 eip, CodeBlock block, U32 len);
+    CodeBlock getCode(U32 eip);
 private:
     class CodePageEntry {
     public:
-        DecodedBlock* block;
+        CodeBlock block;
         U32 offset;
 	    U32 len;
         CodePageEntry* next;
@@ -56,9 +56,11 @@ private:
     };
     void removeBlockAt(U32 address, U32 len);
     CodePageEntry* findCode(U32 address, U32 len);
-    void addCode(U32 eip, DecodedBlock* block, U32 len, CodePageEntry* link);
-    CodePageEntry* entries[CODE_ENTRIES];
+    void addCode(U32 eip, CodeBlock block, U32 len, CodePageEntry* link);
     void copyOnWrite();
+
+    CodePageEntry* entries[CODE_ENTRIES];
+    int entryCount;
 
     static CodePageEntry* freeCodePageEntries;
     static CodePageEntry* allocCodePageEntry();

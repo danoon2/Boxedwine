@@ -905,6 +905,14 @@ U32 KNativeSocketObject::getsockopt(KThread* thread, KFileDescriptor* fd, U32 le
             if (!result) {
                 memory->writed(value, result);
             }
+        } else if (name == K_SO_BROADCAST) {
+            if (len != 4)
+                kpanic("KNativeSocketObject::getsockopt SO_BROADCAST expecting len of 4");
+            U32 result = 0;
+            result = ::getsockopt(this->nativeSocket, SOL_SOCKET, SO_BROADCAST, (char*)&result, &len);
+            if (!result) {
+                memory->writed(value, result);
+            }
         } else if (name == K_SO_RCVTIMEO) {
             if (len != 8)
                 kpanic("KNativeSocketObject::getsockopt SO_RCVTIMEO expecting len of 8");            

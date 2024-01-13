@@ -20,10 +20,18 @@ class KMemory;
 
 #define GET_PAGE_PERMISSIONS(flags) (flags & PAGE_PERMISSION_MASK)
 
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+#include "../source/emulation/cpu/binaryTranslation/btCodeChunk.h"
+#define CodeBlock std::shared_ptr<BtCodeChunk>
+#else
+#define CodeBlock DecodedBlock*
+#endif
+
 class DecodedBlock;
 class Page;
 class KMemoryData;
 class KProcess;
+class BtMemory;
 
 class KMemoryExtraData {
 public:
@@ -89,13 +97,14 @@ public:
     
 
     // normal core
-    DecodedBlock* getCodeBlock(U32 address);
-    void addCodeBlock(U32 address, DecodedBlock* block);
+    CodeBlock getCodeBlock(U32 address);
+    void addCodeBlock(U32 address, CodeBlock block);
 
     KMemoryExtraData* extraData;
 private:
     friend KMemoryData* getMemData(KMemory* memory);
     friend KMemoryData;
+    friend BtMemory;
 
     KMemoryData* data;
     KProcess* process;

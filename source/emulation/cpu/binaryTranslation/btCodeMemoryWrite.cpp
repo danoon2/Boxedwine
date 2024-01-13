@@ -1,5 +1,5 @@
 #include "boxedwine.h"
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
+#if defined (BOXEDWINE_BINARY_TRANSLATOR) && defined (BOXEDWINE_64BIT_MMU)
 #include "btCodeMemoryWrite.h"
 #include "btCpu.h"
 #include "../../hardmmu/kmemory_hard.h"
@@ -21,7 +21,7 @@ void BtCodeMemoryWrite::invalidateStringWriteToDi(bool repeat, U32 size) {
         addressLen = size;
     }
 
-    if (cpu->df == 1) {
+    if (cpu->getDirection() == 1) {
         addressStart = (this->cpu->isBig() ? EDI : DI) + cpu->seg[ES].address;
     } else {
         addressStart = (this->cpu->isBig() ? EDI : DI) + cpu->seg[ES].address + size - addressLen;

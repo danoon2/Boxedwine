@@ -72,7 +72,9 @@ void syncFromException(Armv8btCPU* cpu, ucontext_t* context) {
         cpu->exceptionRegs[i] = context->CONTEXT_REG(i);
     }
 #endif
+#ifdef BOXEDWINE_64BIT_MMU
     cpu->destEip = (U32)((context->CONTEXT_REG(xBranchLargeAddressOffset) - (U64)cpu->eipToHostInstructionAddressSpaceMapping) >> 3);
+#endif
     cpu->flags = (U32)context->CONTEXT_REG(xFLAGS);
     cpu->lazyFlags = FLAGS_NONE;
 
@@ -156,6 +158,7 @@ void platformHandler(int sig, siginfo_t* info, void* vcontext) {
     cpu->exceptionSigCode = info->si_code;
     armCpu->exceptionIp = context->CONTEXT_PC;
 
+#ifdef BOXEDWINE_64BIT_MMU
     if ((cpu->exceptionSigNo == SIGBUS || cpu->exceptionSigNo == SIGSEGV) && mem->isAddressExecutable((void*)cpu->exceptionIp)) {
         U32 insn = *(U32*)(cpu->exceptionIp);
         
@@ -177,9 +180,11 @@ void platformHandler(int sig, siginfo_t* info, void* vcontext) {
         }
         cpu->exceptionReadAddress = !isWrite;
     }
+#endif
     if (armCpu->exceptionIp == 0) {
         kpanic("oops jumps to 0");
     }
+#ifdef BOXEDWINE_64BIT_MMU
     if (mem->isAddressExecutable((void*)armCpu->exceptionIp)) {
         unsigned char* hostAddress = (unsigned char*)armCpu->exceptionIp;
         std::shared_ptr<BtCodeChunk> chunk = mem->getCodeChunkContainingHostAddress(hostAddress);
@@ -187,6 +192,7 @@ void platformHandler(int sig, siginfo_t* info, void* vcontext) {
             cpu->eip.u32 = chunk->getEipThatContainsHostAddress(hostAddress, NULL, NULL) - cpu->seg[CS].address;
         }
     }
+#endif
     context->CONTEXT_PC = (U64)cpu->thread->process->runSignalAddress;
 }
 
@@ -224,7 +230,9 @@ void signalHandler() {
         cpu->translateEip(cpu->eip.u32);
         cpu->returnHostAddress = cpu->exceptionIp;
         return;
-    } else if ((cpu->exceptionSigNo == SIGBUS || cpu->exceptionSigNo == SIGSEGV) && mem->isAddressExecutable((void*)cpu->exceptionIp)) {
+    } 
+#ifdef BOXEDWINE_64BIT_MMU
+    else if ((cpu->exceptionSigNo == SIGBUS || cpu->exceptionSigNo == SIGSEGV) && mem->isAddressExecutable((void*)cpu->exceptionIp)) {
         U64 rip = cpu->handleAccessException(cpu->exceptionIp, cpu->exceptionAddress, cpu->exceptionReadAddress);
         if (rip) {
             cpu->returnHostAddress = rip;
@@ -232,7 +240,9 @@ void signalHandler() {
         }
         cpu->returnHostAddress = cpu->exceptionIp;
         return;
-    } else if (cpu->exceptionSigNo == SIGFPE) {
+    } 
+#endif
+    else if (cpu->exceptionSigNo == SIGFPE) {
         int code = getFPUCode(cpu->exceptionSigCode);
         cpu->returnHostAddress = cpu->handleFpuException(code);
         return;

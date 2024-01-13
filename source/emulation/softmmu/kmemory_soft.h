@@ -3,9 +3,16 @@
 
 #ifdef BOXEDWINE_DEFAULT_MMU
 
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+#include "../cpu/binaryTranslation/btMemory.h"
+
+class KMemoryData : public BtMemory {
+#else
 class KMemoryData {
+#endif
 public:
     KMemoryData(KMemory* memory);
+    ~KMemoryData();
 
     void setPage(U32 index, Page* page);
     void addCallback(OpCallback func);
@@ -18,7 +25,7 @@ public:
     U32 getPageFlags(U32 page);
     void setPagesInvalid(U32 page, U32 pageCount);
     bool isPageAllocated(U32 page);
-    void execvReset();
+    void execvReset();    
 
     KMemory* memory;
 
@@ -26,7 +33,21 @@ public:
 
     U8* mmuReadPtr[K_NUMBER_OF_PAGES];
     U8* mmuWritePtr[K_NUMBER_OF_PAGES];
+
+    // you need to add the full emulated address to the page to get the host page instead of just an offset
+    // this will speed things up in the binary translator
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+    U8* mmuReadPtrAdjusted[K_NUMBER_OF_PAGES];
+    U8* mmuWritePtrAdjusted[K_NUMBER_OF_PAGES];
+
+    void clearDelayedReset();
+private:
+    KMemoryData* delayedReset;
+#endif   
 };
+
+KMemoryData* getMemData(KMemory* memory);
+
 #endif
 
 #endif

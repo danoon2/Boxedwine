@@ -4,8 +4,9 @@
 #include "x64Ops.h"
 #include "x64CPU.h"
 #include "x64Asm.h"
-#include "../../hardmmu/kmemory_hard.h"
 #include "x64CodeChunk.h"
+#include "../../softmmu/kmemory_soft.h"
+#include "../../hardmmu/kmemory_hard.h"
 
 CPU* CPU::allocCPU(KMemory* memory) {
     return new x64CPU(memory);
@@ -31,9 +32,11 @@ void x64CPU::setSeg(U32 index, U32 address, U32 value) {
 }
 
 void x64CPU::restart() {
+#ifdef BOXEDWINE_64BIT_MMU
     KMemoryData* mem = getMemData(memory);
 	this->memOffset = mem->id;
 	this->negMemOffset = (U64)(-(S64)this->memOffset);
+#endif
 	for (int i = 0; i < 6; i++) {
 		this->negSegAddress[i] = (U32)(-((S32)(this->seg[i].address)));
 	}
@@ -46,27 +49,36 @@ void* x64CPU::init() {
     KMemoryData* mem = getMemData(memory);
     x64CPU* cpu = this;
 
+#ifdef BOXEDWINE_64BIT_MMU
+    this->memOffsets = mem->memOffsets;
     this->negMemOffset = (U64)(-(S64)this->memOffset);
+#endif
     for (int i = 0; i < 6; i++) {
         this->negSegAddress[i] = (U32)(-((S32)(this->seg[i].address)));
     }
 
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mem->executableMemoryMutex);
+#ifdef BOXEDWINE_64BIT_MMU
     this->eipToHostInstructionAddressSpaceMapping = mem->eipToHostInstructionAddressSpaceMapping;
     this->memOffsets = mem->memOffsets;
+#endif
 
 	// will push 15 regs, since it is odd, it will balance rip being pushed on the stack and give use a 16-byte alignment
 	data.saveNativeState(); // also sets HOST_CPU
 
     //data.writeToRegFromValue(HOST_CPU, true, (U64)this, 8);
+#ifdef BOXEDWINE_64BIT_MMU
     data.writeToRegFromValue(HOST_MEM, true, cpu->memOffset, 8);
-
     if (KSystem::useLargeAddressSpace) {
         data.writeToRegFromValue(HOST_LARGE_ADDRESS_SPACE_MAPPING, true, (U64)cpu->eipToHostInstructionAddressSpaceMapping, 8);
     } else {
         data.writeToRegFromValue(HOST_SMALL_ADDRESS_SPACE_SS, true, (U32)cpu->seg[SS].address, 4);
     }
-
+#else 
+    KMemoryData* memData = getMemData(memory);
+    data.writeToRegFromValue(HOST_MEM_READ, true, (U64)memData->mmuReadPtrAdjusted, 8);
+    data.writeToRegFromValue(HOST_MEM_WRITE, true, (U64)memData->mmuWritePtrAdjusted, 8);
+#endif
     data.setNativeFlags(this->flags, FMASK_TEST|DF);
 
     data.writeToRegFromValue(0, false, EAX, 4);
@@ -103,6 +115,28 @@ void* x64CPU::init() {
         this->thread->process->reTranslateChunkAddress = chunk3->getHostAddress();
     }
     this->reTranslateChunkAddress = this->thread->process->reTranslateChunkAddress;
+    if (!this->thread->process->syncToHostAddress) {
+        X64Asm translateData(this);
+        translateData.createCodeForSyncToHost();
+        std::shared_ptr<BtCodeChunk> chunk3 = translateData.commit(true);
+        this->thread->process->syncToHostAddress = chunk3->getHostAddress();
+    }
+    this->syncToHostAddress = this->thread->process->syncToHostAddress;
+    if (!this->thread->process->syncFromHostAddress) {
+        X64Asm translateData(this);
+        translateData.createCodeForSyncFromHost();
+        std::shared_ptr<BtCodeChunk> chunk3 = translateData.commit(true);
+        this->thread->process->syncFromHostAddress = chunk3->getHostAddress();
+    }
+    this->syncFromHostAddress = this->thread->process->syncFromHostAddress;
+    if (!this->thread->process->doSingleOpAddress) {
+        X64Asm translateData(this);
+        translateData.createCodeForDoSingleOp();
+        std::shared_ptr<BtCodeChunk> chunk3 = translateData.commit(true);
+        this->thread->process->doSingleOpAddress = chunk3->getHostAddress();
+    }
+    this->doSingleOpAddress = this->thread->process->doSingleOpAddress;
+#ifdef BOXEDWINE_64BIT_MMU
     if (!this->thread->process->reTranslateChunkAddressFromReg) {
         X64Asm translateData(this);
         translateData.createCodeForRetranslateChunk(true);
@@ -110,6 +144,7 @@ void* x64CPU::init() {
         this->thread->process->reTranslateChunkAddressFromReg = chunk3->getHostAddress();
     }
     this->reTranslateChunkAddressFromReg = this->thread->process->reTranslateChunkAddressFromReg;
+#endif
 #ifdef BOXEDWINE_BT_DEBUG_NO_EXCEPTIONS
     if (!this->thread->process->jmpAndTranslateIfNecessary) {
         X64Asm translateData(this);
@@ -208,16 +243,21 @@ void x64CPU::link(const std::shared_ptr<BtData>& data, std::shared_ptr<BtCodeChu
             kpanic("x64CPU::link unexpected patch size");
         }
     }
+#ifdef BOXEDWINE_64BIT_MMU
     markCodePageReadOnly(data.get());
+#endif
 }
 
 void x64CPU::translateData(const std::shared_ptr<BtData>& data, const std::shared_ptr<BtData>& firstPass) {
-    U32 codePage = (data->ip+this->seg[CS].address) >> K_PAGE_SHIFT;
     KMemoryData* mem = getMemData(memory);
+#ifdef BOXEDWINE_64BIT_MMU
+    U32 codePage = (data->ip+this->seg[CS].address) >> K_PAGE_SHIFT;    
     U32 nativePage = mem->getNativePage(codePage);
     if (mem->dynamicCodePageUpdateCount[nativePage]==MAX_DYNAMIC_CODE_PAGE_COUNT) {
         data->dynamic = true;
     }
+#endif
+    data->firstPass = firstPass;
     while (1) {  
         U32 address = this->seg[CS].address+data->ip;
         void* hostAddress = mem->getExistingHostAddress(address);
@@ -225,6 +265,7 @@ void x64CPU::translateData(const std::shared_ptr<BtData>& data, const std::share
             data->jumpTo(data->ip);
             break;
         }
+#ifdef BOXEDWINE_64BIT_MMU
         if (firstPass) {
             U32 nextEipLen = firstPass->calculateEipLen(data->ip+this->seg[CS].address);
             U32 page = (data->ip+this->seg[CS].address+nextEipLen) >> K_PAGE_SHIFT;
@@ -248,6 +289,7 @@ void x64CPU::translateData(const std::shared_ptr<BtData>& data, const std::share
                 }
             }
         }
+#endif
         data->mapAddress(address, data->bufferPos);
         data->translateInstruction();
         if (data->done) {
@@ -260,6 +302,7 @@ void x64CPU::translateData(const std::shared_ptr<BtData>& data, const std::share
     }     
 }
 
+#ifdef BOXEDWINE_64BIT_MMU
 // for string instruction, we modify (add memory offset and segment) rdi and rsi so that the native string instruction can be used, this code will revert it back to the original values
 bool x64CPU::handleStringOp(DecodedOp* op) {
     if (op->inst == Lodsb || op->inst == Lodsw || op->inst == Lodsd) {
@@ -293,5 +336,5 @@ bool x64CPU::handleStringOp(DecodedOp* op) {
     }
     return false;
 }
-
+#endif
 #endif

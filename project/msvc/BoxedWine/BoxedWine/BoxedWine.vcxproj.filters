@@ -547,6 +547,9 @@
     <ClCompile Include="..\..\..\..\source\emulation\hardmmu\kmemory_hard.cpp">
       <Filter>source\emulation\hardmmu</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btMemory.cpp">
+      <Filter>source\emulation\cpu\binaryTranslation</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -1238,6 +1241,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\emulation\hardmmu\kmemory_hard.h">
       <Filter>source\emulation\hardmmu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btMemory.h">
+      <Filter>source\emulation\cpu\binaryTranslation</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

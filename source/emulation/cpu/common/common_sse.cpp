@@ -592,6 +592,22 @@ void common_maskmovqEDIMmxMmx(CPU* cpu, U32 r1, U32 r2, U32 address) {
     cpu->memory->memcpy(address, result, 8);
 }
 
+#define G(rm) ((rm >> 3) & 7)
+#define E(rm) (rm & 7)
+
+void common_maskmovqEDIMmxMmxRM(CPU* cpu, U32 rm, U32 base, U32 bigAddress) {
+    simde__m64 a;
+    simde__m64 mask;
+    U32 address = (bigAddress ? EDI : DI) + cpu->seg[base].address;
+    U8 result[8];
+    a.u64[0] = cpu->reg_mmx[G(rm)].q;
+    mask.u64[0] = cpu->reg_mmx[E(rm)].q;
+
+    cpu->memory->memcpy(result, address, 8);
+    simde_mm_maskmove_si64(a, mask, (int8_t*)result);
+    cpu->memory->memcpy(address, result, 8);
+}
+
 void common_movntpsE128Xmm(CPU* cpu, U32 reg, U32 address) {
     cpu->memory->writeq(address, cpu->xmm[reg].ps.u64[0]);
     cpu->memory->writeq(address+8, cpu->xmm[reg].ps.u64[1]);

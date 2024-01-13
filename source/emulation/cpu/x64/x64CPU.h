@@ -17,7 +17,10 @@ public:
 
     U32 negSegAddress[6];
 
+#ifdef BOXEDWINE_64BIT_MMU
     U64 negMemOffset;
+    virtual bool handleStringOp(DecodedOp* op);
+#endif
     U64 exceptionRSP;
     U64 exceptionRSI;
     U64 exceptionRDI;
@@ -32,7 +35,12 @@ public:
 	ALIGN(U8 originalFpuState[512], 16);
 	U64 originalCpuRegs[16];
     void* reTranslateChunkAddress;
+    void* syncToHostAddress;
+    void* syncFromHostAddress;
+    void* doSingleOpAddress;
+#ifdef BOXEDWINE_64BIT_MMU
     void* reTranslateChunkAddressFromReg;
+#endif
 #ifdef BOXEDWINE_BT_DEBUG_NO_EXCEPTIONS
     void* jmpAndTranslateIfNecessary;
 #endif
@@ -46,9 +54,7 @@ public:
 #endif
 
     virtual void link(const std::shared_ptr<BtData>& data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 offsetIntoChunk=0);    
-    virtual void translateData(const std::shared_ptr<BtData>& data, const std::shared_ptr<BtData>& firstPass = nullptr);
-        
-    virtual bool handleStringOp(DecodedOp* op);
+    virtual void translateData(const std::shared_ptr<BtData>& data, const std::shared_ptr<BtData>& firstPass = nullptr);        
 
     virtual void setSeg(U32 index, U32 address, U32 value);
 #ifdef __TEST

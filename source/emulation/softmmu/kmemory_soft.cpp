@@ -21,7 +21,15 @@ static InvalidPage* invalidPage = &_invalidPage;
 static U8* callbackRam;
 static U32 callbackRamPos;
 
+KMemoryData* getMemData(KMemory* memory) {
+    return memory->data;
+}
+
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+KMemoryData::KMemoryData(KMemory* memory) : BtMemory(memory), memory(memory), mmuReadPtr{ 0 }, mmuWritePtr{ 0 }, mmuReadPtrAdjusted{ 0 }, mmuWritePtrAdjusted{ 0 }, delayedReset(nullptr)
+#else
 KMemoryData::KMemoryData(KMemory* memory) : memory(memory), mmuReadPtr{ 0 }, mmuWritePtr{ 0 }
+#endif
 {
     for (int i = 0; i < K_NUMBER_OF_PAGES; i++) {
         this->mmu[i] = invalidPage;
@@ -33,6 +41,14 @@ KMemoryData::KMemoryData(KMemory* memory) : memory(memory), mmuReadPtr{ 0 }, mmu
     this->allocPages(nullptr, CALL_BACK_ADDRESS >> K_PAGE_SHIFT, 1, K_PROT_READ | K_PROT_EXEC, -1, 0, nullptr, &callbackRam);
 }
 
+KMemoryData::~KMemoryData() {
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+    if (delayedReset) {
+        delete delayedReset;
+    }
+#endif
+}
+
 void KMemoryData::setPage(U32 index, Page* page) {
     Page* p = this->mmu[index];
     this->mmu[index] = page;
@@ -42,6 +58,26 @@ void KMemoryData::setPage(U32 index, Page* page) {
     if (p != page) {
         p->close();
     }
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+    U8* readPtr = page->getReadPtr(address);
+    if (readPtr) {
+        if (readPtr - (index << K_PAGE_SHIFT) == 0) {
+            kpanic("Memory::setPage r logic mistake");
+        }
+        this->mmuReadPtrAdjusted[index] = readPtr - (index << K_PAGE_SHIFT);
+    } else {
+        this->mmuReadPtrAdjusted[index] = 0;
+    }
+    U8* writePtr = page->getWritePtr(address, K_PAGE_SHIFT);
+    if (writePtr) {
+        if (writePtr - (index << K_PAGE_SHIFT) == 0) {
+            kpanic("Memory::setPage w logic mistake");
+        }
+        this->mmuWritePtrAdjusted[index] = writePtr - (index << K_PAGE_SHIFT);
+    } else {
+        this->mmuWritePtrAdjusted[index] = 0;
+    }
+#endif
 }
 
 void KMemoryData::addCallback(OpCallback func) {
@@ -236,9 +272,24 @@ void KMemoryData::setPagesInvalid(U32 page, U32 pageCount) {
     }
 }
 
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+void KMemoryData::clearDelayedReset() {
+    if (delayedReset) {
+        delete delayedReset;
+        delayedReset = nullptr;
+    }
+}
+#endif
+
 void KMemoryData::execvReset() {
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+    KMemoryData* newData = new KMemoryData(memory);
+    newData->delayedReset = this;
+    memory->data = newData;
+#else
     setPagesInvalid(0, K_NUMBER_OF_PAGES);
     this->allocPages(nullptr, CALL_BACK_ADDRESS >> K_PAGE_SHIFT, 1, K_PROT_READ | K_PROT_EXEC, -1, 0, nullptr, &callbackRam);
+#endif    
 }
 
 U64 KMemory::readq(U32 address) {
@@ -404,7 +455,7 @@ void KMemory::clone(KMemory* from) {
 }
 
 // normal core
-DecodedBlock* KMemory::getCodeBlock(U32 address) {
+CodeBlock KMemory::getCodeBlock(U32 address) {
     Page* page = data->getPage(address >> K_PAGE_SHIFT);
     if (page->type == Page::Type::Code_Page) {
         CodePage* codePage = (CodePage*)page;
@@ -413,7 +464,7 @@ DecodedBlock* KMemory::getCodeBlock(U32 address) {
     return NULL;
 }
 
-void KMemory::addCodeBlock(U32 address, DecodedBlock* block) {
+void KMemory::addCodeBlock(U32 address, CodeBlock block) {
     Page* page = data->getPage(address >> K_PAGE_SHIFT);
 
     CodePage* codePage;
@@ -424,12 +475,22 @@ void KMemory::addCodeBlock(U32 address, DecodedBlock* block) {
             RWPage* p = (RWPage*)page;
             codePage = CodePage::alloc(data, p->page, p->address, p->flags);
             data->setPage(address >> K_PAGE_SHIFT, codePage);
+        } else if (page->type == Page::Type::File_Page) {
+            // code probably linked to a block that didn't exist and we created a place holder instruction there to re-translate (see callRetranslateChunk)
+            FilePage* p = (FilePage*)page;
+            p->ondemmandFile(address);
+            addCodeBlock(address, block);
+            return;
         } else {
             kpanic("Unhandled code caching page type: %d", page->type);
             codePage = nullptr;
         }
     }
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+    codePage->addCode(address, block, block->getEipLen());
+#else
     codePage->addCode(address, block, block->bytes);
+#endif
 }
 
 void KMemory::logPageFault(KThread* thread, U32 address) {

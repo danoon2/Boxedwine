@@ -136,7 +136,7 @@ static U32 inst16RM(X64Asm* data) {
 static U32 inst16RMBit(X64Asm* data) {
     U8 rm = data->fetch8();
 
-#ifndef _TEST
+#ifndef __TEST
     if (rm < 0xC0 && data->ea16) {
         static bool hasWarned = false;
         if (!hasWarned) {
@@ -1431,6 +1431,7 @@ static U32 bswapEsp(X64Asm* data) {
 }
 
 static U32 movsb(X64Asm* data) {
+#ifdef BOXEDWINE_64BIT_MMU 
     if (!data->ea16 && data->useSingleMemOffset) {
         data->string32(true, true);
     } else {
@@ -1440,10 +1441,14 @@ static U32 movsb(X64Asm* data) {
             data->movs((void*)(data->ea16 ? movsb16 : movsb32), 1, false, data->ds);
         }
     }
+#else
+    data->emulateSingleOp();
+#endif
     return 0;
 }
 
 static U32 movsw(X64Asm* data) {
+#ifdef BOXEDWINE_64BIT_MMU 
     if (!data->ea16 && data->useSingleMemOffset) {
         data->string32(true, true);
     } else {
@@ -1453,10 +1458,14 @@ static U32 movsw(X64Asm* data) {
             data->movs((void*)(data->ea16 ? movsw16 : movsw32), 2, false, data->ds);
         }
     }
+#else
+    data->emulateSingleOp();
+#endif
     return 0;
 }
 
 static U32 movsd(X64Asm* data) {
+#ifdef BOXEDWINE_64BIT_MMU 
     if (!data->ea16 && data->useSingleMemOffset) {
         data->string32(true, true);
     } else {
@@ -1466,10 +1475,14 @@ static U32 movsd(X64Asm* data) {
             data->movs((void*)(data->ea16 ? movsd16 : movsd32), 4, false, data->ds);
         }
     }
+#else
+    data->emulateSingleOp();
+#endif
     return 0;
 }
 
 static U32 cmpsb(X64Asm* data) {
+#ifdef BOXEDWINE_64BIT_MMU 
     if (!data->ea16 && data->useSingleMemOffset) {
         data->string32(true, true);
     } else {
@@ -1479,10 +1492,14 @@ static U32 cmpsb(X64Asm* data) {
             data->cmps((void*)(data->ea16 ? cmpsb16 : cmpsb32), 1, false, data->repZeroPrefix, data->ds);
         }
     }
+#else
+    data->emulateSingleOp();
+#endif
     return 0;
 }
 
 static U32 cmpsw(X64Asm* data) {
+#ifdef BOXEDWINE_64BIT_MMU 
     if (!data->ea16 && data->useSingleMemOffset) {
         data->string32(true, true);
     } else {
@@ -1492,10 +1509,14 @@ static U32 cmpsw(X64Asm* data) {
             data->cmps((void*)(data->ea16 ? cmpsw16 : cmpsw32), 2, false, data->repZeroPrefix, data->ds);
         }
     }
+#else
+    data->emulateSingleOp();
+#endif
     return 0;
 }
 
 static U32 cmpsd(X64Asm* data) {
+#ifdef BOXEDWINE_64BIT_MMU 
     if (!data->ea16 && data->useSingleMemOffset) {
         data->string32(true, true);
     } else {
@@ -1505,10 +1526,14 @@ static U32 cmpsd(X64Asm* data) {
             data->cmps((void*)(data->ea16 ? cmpsd16 :cmpsd32), 4, false, data->repZeroPrefix, data->ds);
         }
     }
+#else
+    data->emulateSingleOp();
+#endif
     return 0;
 }
 
 static U32 stosb(X64Asm* data) {
+#ifdef BOXEDWINE_64BIT_MMU 
     if (!data->ea16 && data->useSingleMemOffset) {
         data->string32(false, true);
     } else {
@@ -1518,10 +1543,14 @@ static U32 stosb(X64Asm* data) {
             data->stos((void*)(data->ea16 ? stosb16 : stosb32), 1, false);
         }
     }
+#else
+    data->emulateSingleOp();
+#endif
     return 0;
 }
 
 static U32 stosw(X64Asm* data) {
+#ifdef BOXEDWINE_64BIT_MMU 
     if (!data->ea16 && data->useSingleMemOffset) {
         data->string32(false, true);
     } else {
@@ -1531,10 +1560,14 @@ static U32 stosw(X64Asm* data) {
             data->stos((void*)(data->ea16 ? stosw16 : stosw32), 2, false);
         }
     }
+#else
+    data->emulateSingleOp();
+#endif
     return 0;
 }
 
 static U32 stosd(X64Asm* data) {
+#ifdef BOXEDWINE_64BIT_MMU 
     if (!data->ea16 && data->useSingleMemOffset) {
         data->string32(false, true);
     } else {
@@ -1544,10 +1577,14 @@ static U32 stosd(X64Asm* data) {
             data->stos((void*)(data->ea16 ? stosd16 : stosd32), 4, false);
         }
     }
+#else
+    data->emulateSingleOp();
+#endif
     return 0;
 }
 
 static U32 lodsb(X64Asm* data) {
+#ifdef BOXEDWINE_64BIT_MMU 
     if (!data->ea16 && data->useSingleMemOffset) {
         data->string32(true, false);
     } else {
@@ -1557,10 +1594,14 @@ static U32 lodsb(X64Asm* data) {
             data->lods((void*)(data->ea16 ? lodsb16 : lodsb32), 1, false, data->ds);
         }
     }
+#else
+    data->emulateSingleOp();
+#endif
     return 0;
 }
 
 static U32 lodsw(X64Asm* data) {
+#ifdef BOXEDWINE_64BIT_MMU 
     if (!data->ea16 && data->useSingleMemOffset) {
         data->string32(true, false);
     } else {
@@ -1570,10 +1611,14 @@ static U32 lodsw(X64Asm* data) {
             data->lods((void*)(data->ea16 ? lodsw16 : lodsw32), 2, false, data->ds);
         }
     }
+#else
+    data->emulateSingleOp();
+#endif
     return 0;
 }
 
 static U32 lodsd(X64Asm* data) {
+#ifdef BOXEDWINE_64BIT_MMU 
     if (!data->ea16 && data->useSingleMemOffset) {
         data->string32(true, false);
     } else {
@@ -1583,10 +1628,14 @@ static U32 lodsd(X64Asm* data) {
             data->lods((void*)(data->ea16 ? lodsd16 : lodsd32), 4, false, data->ds);
         }
     }
+#else
+    data->emulateSingleOp();
+#endif
     return 0;
 }
 
 static U32 scasb(X64Asm* data) {
+#ifdef BOXEDWINE_64BIT_MMU 
     if (!data->ea16 && data->useSingleMemOffset) {
         data->string32(false, true);
     } else {
@@ -1596,10 +1645,14 @@ static U32 scasb(X64Asm* data) {
             data->scas((void*)(data->ea16 ? scasb16 : scasb32), 1, false, data->repZeroPrefix);
         }
     }
+#else
+    data->emulateSingleOp();
+#endif
     return 0;
 }
 
 static U32 scasw(X64Asm* data) {
+#ifdef BOXEDWINE_64BIT_MMU 
     if (!data->ea16 && data->useSingleMemOffset) {
         data->string32(false, true);
     } else {
@@ -1609,10 +1662,14 @@ static U32 scasw(X64Asm* data) {
             data->scas((void*)(data->ea16 ? scasw16 : scasw32), 2, false, data->repZeroPrefix);
         }
     }
+#else
+    data->emulateSingleOp();
+#endif
     return 0;
 }
 
 static U32 scasd(X64Asm* data) {
+#ifdef BOXEDWINE_64BIT_MMU 
     if (!data->ea16 && data->useSingleMemOffset) {
         data->string32(false, true);
     } else {
@@ -1622,6 +1679,9 @@ static U32 scasd(X64Asm* data) {
             data->scas((void*)(data->ea16 ? scasd16 : scasd32), 4, false, data->repZeroPrefix);
         }
     }
+#else
+    data->emulateSingleOp();
+#endif
     return 0;
 }
 

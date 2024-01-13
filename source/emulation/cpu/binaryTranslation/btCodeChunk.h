@@ -42,7 +42,11 @@ public:
     void* getHostFromEip(U32 eip) { U8* result = NULL; if (this->getStartOfInstructionByEip(eip, &result, NULL) == eip) { return result; } else { return 0; } }
     U32 getEip() { return emulatedAddress; }
     U32 getEipLen() { return emulatedLen; }
+#ifdef BOXEDWINE_64BIT_MMU
     bool isDynamicAware() { return this->dynamic; }
+#else
+    bool isDynamicAware() { return false; }
+#endif
     U32 getStartOfInstructionByEip(U32 eip, U8** hostAddress, U32* index);
     
 protected:
@@ -64,7 +68,9 @@ protected:
     std::list<std::shared_ptr<BtCodeChunkLink>> linksTo;
     std::list<std::shared_ptr<BtCodeChunkLink>> linksFrom;
 
+#ifdef BOXEDWINE_64BIT_MMU
     bool dynamic; // will include a check of the original vs current code bytes to make sure it is still valid at a per instruction level
+#endif
 };
 
 #endif

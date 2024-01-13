@@ -14,9 +14,13 @@ public:
         exceptionSigNo(0), 
         exceptionSigCode(0), 
         exceptionIp(0), 
+#ifdef BOXEDWINE_64BIT_MMU
         eipToHostInstructionAddressSpaceMapping(NULL),
+#endif
         returnToLoopAddress(NULL),
+#ifdef BOXEDWINE_64BIT_MMU
         memOffset(0),
+#endif
         exitToStartThreadLoop(0) {}
 
     // from CPU
@@ -32,10 +36,8 @@ public:
     U64 returnHostAddress; // after returning from the signalHandler, this will contain the host address we should jump to
     int exceptionSigNo;
     int exceptionSigCode;
-    U64 exceptionIp;
-    void* eipToHostInstructionAddressSpaceMapping;    
-    void* returnToLoopAddress;
-    U64 memOffset;
+    U64 exceptionIp;    
+    void* returnToLoopAddress;    
     int exitToStartThreadLoop; // this will be checked after a syscall, if set to 1 then then x64CPU.returnToLoopAddress will be called
 
     std::vector<U32> pendingCodePages;
@@ -50,16 +52,21 @@ public:
     virtual void postTestRun() = 0;
 #endif
 
+#ifdef BOXEDWINE_64BIT_MMU
+    U64 memOffset;
+    void markCodePageReadOnly(BtData* data);
+    U64 handleAccessException(U64 ip, U64 address, bool readAddress); // returns new ip, if 0 then don't set ip, but continue execution
+    U64 handleCodePatch(U64 rip, U32 address);
+    virtual bool handleStringOp(DecodedOp* op);
+    void* eipToHostInstructionAddressSpaceMapping;
+#endif
+
     U64 reTranslateChunk();
     U64 handleChangedUnpatchedCode(U64 rip);
     U64 handleIllegalInstruction(U64 ip);
-    U64 handleMissingCode(U32 page, U32 offset);
-    U64 handleCodePatch(U64 rip, U32 address);
-    U64 handleAccessException(U64 ip, U64 address, bool readAddress); // returns new ip, if 0 then don't set ip, but continue execution
-    virtual bool handleStringOp(DecodedOp* op);
+    U64 handleMissingCode(U32 page, U32 offset);        
     DecodedOp* getOp(U32 eip, bool existing);
-    void* translateEip(U32 ip);
-    void markCodePageReadOnly(BtData* data);
+    void* translateEip(U32 ip);    
     void makePendingCodePagesReadOnly();
     U64 startException(U64 address, bool readAddress);
     U64 handleFpuException(int code);
