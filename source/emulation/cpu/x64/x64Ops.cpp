@@ -1443,6 +1443,7 @@ static U32 movsb(X64Asm* data) {
     }
 #else
     data->emulateSingleOp();
+    data->done = true;
 #endif
     return 0;
 }
@@ -1460,6 +1461,7 @@ static U32 movsw(X64Asm* data) {
     }
 #else
     data->emulateSingleOp();
+    data->done = true;
 #endif
     return 0;
 }
@@ -1477,6 +1479,7 @@ static U32 movsd(X64Asm* data) {
     }
 #else
     data->emulateSingleOp();
+    data->done = true;
 #endif
     return 0;
 }
@@ -1494,6 +1497,7 @@ static U32 cmpsb(X64Asm* data) {
     }
 #else
     data->emulateSingleOp();
+    data->done = true;
 #endif
     return 0;
 }
@@ -1511,6 +1515,7 @@ static U32 cmpsw(X64Asm* data) {
     }
 #else
     data->emulateSingleOp();
+    data->done = true;
 #endif
     return 0;
 }
@@ -1528,6 +1533,7 @@ static U32 cmpsd(X64Asm* data) {
     }
 #else
     data->emulateSingleOp();
+    data->done = true;
 #endif
     return 0;
 }
@@ -1545,6 +1551,7 @@ static U32 stosb(X64Asm* data) {
     }
 #else
     data->emulateSingleOp();
+    data->done = true;
 #endif
     return 0;
 }
@@ -1562,6 +1569,7 @@ static U32 stosw(X64Asm* data) {
     }
 #else
     data->emulateSingleOp();
+    data->done = true;
 #endif
     return 0;
 }
@@ -1579,6 +1587,7 @@ static U32 stosd(X64Asm* data) {
     }
 #else
     data->emulateSingleOp();
+    data->done = true;
 #endif
     return 0;
 }
@@ -1596,6 +1605,7 @@ static U32 lodsb(X64Asm* data) {
     }
 #else
     data->emulateSingleOp();
+    data->done = true;
 #endif
     return 0;
 }
@@ -1613,6 +1623,7 @@ static U32 lodsw(X64Asm* data) {
     }
 #else
     data->emulateSingleOp();
+    data->done = true;
 #endif
     return 0;
 }
@@ -1630,6 +1641,7 @@ static U32 lodsd(X64Asm* data) {
     }
 #else
     data->emulateSingleOp();
+    data->done = true;
 #endif
     return 0;
 }
@@ -1647,6 +1659,7 @@ static U32 scasb(X64Asm* data) {
     }
 #else
     data->emulateSingleOp();
+    data->done = true;
 #endif
     return 0;
 }
@@ -1664,6 +1677,7 @@ static U32 scasw(X64Asm* data) {
     }
 #else
     data->emulateSingleOp();
+    data->done = true;
 #endif
     return 0;
 }
@@ -1681,6 +1695,7 @@ static U32 scasd(X64Asm* data) {
     }
 #else
     data->emulateSingleOp();
+    data->done = true;
 #endif
     return 0;
 }
@@ -2148,10 +2163,18 @@ static U32 instFPU(X64Asm* data) {
     return 0;
 }
 
+static U32 wait(X64Asm* data) {
+    if (!data->cpu->thread->process->emulateFPU) {
+        keepSame(data);
+    }
+    return 0;
+}
 
 static U32 instFPU0(X64Asm* data) {
     if (data->cpu->thread->process->emulateFPU) {
-        data->fpu0(data->fetch8());
+        //data->fpu0(data->fetch8());
+        data->emulateSingleOp();
+        data->done = true;
     } else {
         return instFPU(data);
     }
@@ -2160,7 +2183,9 @@ static U32 instFPU0(X64Asm* data) {
 
 static U32 instFPU1(X64Asm* data) {
     if (data->cpu->thread->process->emulateFPU) {
-        data->fpu1(data->fetch8());
+        //data->fpu1(data->fetch8());
+        data->emulateSingleOp();
+        data->done = true;
     } else {
         return instFPU(data);
     }
@@ -2169,7 +2194,9 @@ static U32 instFPU1(X64Asm* data) {
 
 static U32 instFPU2(X64Asm* data) {
     if (data->cpu->thread->process->emulateFPU) {
-        data->fpu2(data->fetch8());
+        //data->fpu2(data->fetch8());
+        data->emulateSingleOp();
+        data->done = true;
     } else {
         return instFPU(data);
     }
@@ -2178,7 +2205,9 @@ static U32 instFPU2(X64Asm* data) {
 
 static U32 instFPU3(X64Asm* data) {
     if (data->cpu->thread->process->emulateFPU) {
-        data->fpu3(data->fetch8());
+        //data->fpu3(data->fetch8());
+        data->emulateSingleOp();
+        data->done = true;
     } else {
         return instFPU(data);
     }
@@ -2187,7 +2216,9 @@ static U32 instFPU3(X64Asm* data) {
 
 static U32 instFPU4(X64Asm* data) {
     if (data->cpu->thread->process->emulateFPU) {
-        data->fpu4(data->fetch8());
+        //data->fpu4(data->fetch8());
+        data->emulateSingleOp();
+        data->done = true;
     } else {
         return instFPU(data);
     }
@@ -2196,7 +2227,9 @@ static U32 instFPU4(X64Asm* data) {
 
 static U32 instFPU5(X64Asm* data) {
     if (data->cpu->thread->process->emulateFPU) {
-        data->fpu5(data->fetch8());
+        //data->fpu5(data->fetch8());
+        data->emulateSingleOp();
+        data->done = true;
     } else {
         return instFPU(data);
     }
@@ -2205,7 +2238,9 @@ static U32 instFPU5(X64Asm* data) {
 
 static U32 instFPU6(X64Asm* data) {
     if (data->cpu->thread->process->emulateFPU) {
-        data->fpu6(data->fetch8());
+        //data->fpu6(data->fetch8());
+        data->emulateSingleOp();
+        data->done = true;
     } else {
         return instFPU(data);
     }
@@ -2214,7 +2249,9 @@ static U32 instFPU6(X64Asm* data) {
 
 static U32 instFPU7(X64Asm* data) {
     if (data->cpu->thread->process->emulateFPU) {
-        data->fpu7(data->fetch8());
+        //data->fpu7(data->fetch8());
+        data->emulateSingleOp();
+        data->done = true;
     } else {
         return instFPU(data);
     }
@@ -2486,7 +2523,7 @@ X64Decoder x64Decoder[1024] = {
     inst8RM, inst16RM, inst8RMGWritten, inst16RM, movEwSw, leaGw, movSwEw, popEw,
     // 90
     keepSame, keepSame, keepSame, keepSame, xchgSpAx, keepSame, keepSame, keepSame,
-    keepSame, keepSame, callAp, keepSame, pushFlags16, popFlags16, keepSame, keepSame,
+    keepSame, keepSame, callAp, wait, pushFlags16, popFlags16, keepSame, keepSame,
     // A0
     movAlOb, movAxOw, movObAl, movOwAx, movsb, movsw, cmpsb, cmpsw,
     keepSameImm8, keepSameImm16, stosb, stosw, lodsb, lodsw, scasb, scasw,

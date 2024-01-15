@@ -201,7 +201,8 @@ void common_fxsave(CPU* cpu, U32 address) {
         }
     } else {
         for (int i=0;i<8;i++) {
-            cpu->fpu.ST80(cpu, address+32+i*16, i);
+            U32 index = (i - cpu->fpu.GetTop()) & 7;
+            cpu->fpu.ST80(cpu, address+32+index*16, i);
         }
     }
     for (int i=0;i<8;i++) {
@@ -216,7 +217,8 @@ void common_fxrstor(CPU* cpu, U32 address) {
     cpu->fpu.SetTagFromAbridged(cpu->memory->readb(address+4));
     for (int i=0;i<8;i++) {
         cpu->reg_mmx[i].q = cpu->memory->readq(address+32+i*16);
-        cpu->fpu.FLD_F80(cpu->memory->readq(address+32+i*16), (S16)cpu->memory->readw(address+40+i*16));
+        U32 index = (i - cpu->fpu.GetTop()) & 7;
+        cpu->fpu.regs[i].d = cpu->fpu.FLD80(cpu->memory->readq(address+32+index*16), (S16)cpu->memory->readw(address+40+index*16));
     }
     for (int i=0;i<8;i++) {
         cpu->xmm[i].pi.u64[0] = cpu->memory->readq(address+160+i*16);

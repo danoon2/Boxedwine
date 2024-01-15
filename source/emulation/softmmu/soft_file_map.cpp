@@ -39,7 +39,9 @@ void FilePage::ondemmandFile(U32 address) {
 
     address = address & (~K_PAGE_MASK);
     if (1) {
-        ram = mapped->systemCacheEntry->data[this->index];   
+        if (index < mapped->systemCacheEntry->dataSize) {
+            ram = mapped->systemCacheEntry->data[this->index];
+        }
     } 
     if (!ram) {
         ram = ramPageAlloc();
@@ -47,7 +49,9 @@ void FilePage::ondemmandFile(U32 address) {
         this->mapped->file->seek(((U64)this->index) << K_PAGE_SHIFT);
         this->mapped->file->readNative(ram, K_PAGE_SIZE);
         this->mapped->file->seek(pos);
-        mapped->systemCacheEntry->data[this->index] = ram;
+        if (index < mapped->systemCacheEntry->dataSize) {
+            mapped->systemCacheEntry->data[this->index] = ram;
+        }
     }
 
     memory->setPageRamWithFlags(ram, page, flags, true);

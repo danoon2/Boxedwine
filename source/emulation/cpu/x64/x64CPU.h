@@ -8,6 +8,53 @@
 
 class X64Asm;
 
+union X87OrMMXRegister {
+    using X87Register = uint8_t[10];
+    union {
+        struct {
+            X87Register st;
+            uint8_t st_reserved[6];
+        };
+        struct {
+            uint8_t mm_value[8];
+            uint8_t mm_reserved[8];
+        };
+        struct {
+            uint64_t low;
+            uint64_t high;
+        };
+    };
+};
+
+union XMMRegister {
+    uint8_t bytes[16];
+    struct {
+        uint64_t low;
+        uint64_t high;
+    };
+};
+
+
+struct FxsaveStruct {
+    uint16_t fcw;  // FPU control word
+    uint16_t fsw;  // FPU status word
+    uint8_t ftw;  // abridged FPU tag word
+    uint8_t reserved_1;
+    uint16_t fop;  // FPU opcode
+    uint32_t fpu_ip;  // FPU instruction pointer offset
+    uint16_t fpu_cs;  // FPU instruction pointer segment selector
+    uint16_t reserved_2;
+    uint32_t fpu_dp;  // FPU data pointer offset
+    uint16_t fpu_ds;  // FPU data pointer segment selector
+    uint16_t reserved_3;
+    uint32_t mxcsr;  // multimedia extensions status and control register
+    uint32_t mxcsr_mask;  // valid bits in mxcsr
+    X87OrMMXRegister st_mm[8];
+    XMMRegister xmm[8];
+    uint8_t reserved_4[176];
+    uint8_t available[48];
+};
+
 class x64CPU : public BtCPU {
 public:
     x64CPU(KMemory* memory);
@@ -31,8 +78,8 @@ public:
     U32 stringRepeat;
     U32 stringWritesToDi;
     U32 arg5;
-    ALIGN(U8 fpuState[512], 16);
-	ALIGN(U8 originalFpuState[512], 16);
+    ALIGN(FxsaveStruct fpuState, 16);
+	ALIGN(FxsaveStruct originalFpuState, 16);
 	U64 originalCpuRegs[16];
     void* reTranslateChunkAddress;
     void* syncToHostAddress;

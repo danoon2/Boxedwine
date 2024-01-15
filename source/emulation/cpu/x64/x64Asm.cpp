@@ -1048,8 +1048,12 @@ void X64Asm::checkMemory(U8 reg, bool isRex, bool isWrite, U32 width, U8 memReg,
 
     // if hostMemReg is 0, then we don't have permission            
     writeToRegFromMem(memReg, isRex, (isWrite ? HOST_MEM_WRITE : HOST_MEM_READ), true, pageReg, true, 3, 0, 8, false); // shift page << 3 (page*8), since sizeof(U64)==8 to get the value in memOffsets[page]        
-    releaseTmpReg(pageReg);
-    pushNativeFlags();
+    releaseTmpReg(pageReg);    
+
+    U8 flagsReg = getTmpReg();
+    pushFlagsToReg(flagsReg, true, true);
+    pushNativeReg(flagsReg, true);
+    releaseTmpReg(flagsReg);
 
     U8 testReg = memReg;
     U8 testRegReleaseAfterCmp = memRegNeedsRelease;
@@ -1072,7 +1076,6 @@ void X64Asm::checkMemory(U8 reg, bool isRex, bool isWrite, U32 width, U8 memReg,
             testRegReleaseAfterCmp = true;
         }
 
-        U32 mask = width - 1;
         U8 tmp = getTmpReg();
 
         writeToRegFromReg(tmp, true, reg, isRex, 4);
@@ -1097,21 +1100,18 @@ void X64Asm::checkMemory(U8 reg, bool isRex, bool isWrite, U32 width, U8 memReg,
     }    
     
     doIf(testReg, true, 0, [=] {
-        // :TODO: can't use emulateSingleOp() because we need to store flags, maybe pass it in?
-        popNativeFlags();
+        U8 flagsReg = getTmpReg();
+        popNativeReg(flagsReg, true);
+        popFlagsFromReg(flagsReg, true, true);
+        releaseTmpReg(flagsReg);
+        emulateSingleOp();
+        }, nullptr, false, true, testRegReleaseAfterCmp);
 
-        syncRegsFromHost();
-        //writeToMemFromReg(flagsReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_FLAGS, 4, false);
+    flagsReg = getTmpReg();
+    popNativeReg(flagsReg, true);
+    popFlagsFromReg(flagsReg, true, true);
+    releaseTmpReg(flagsReg);
 
-        // don't call single op from this code, because this code could be delete before the call returns, instead put the actual call in permanent process memory
-        // unit test for self modifying code will test this
-        U8 jmpReg = getTmpReg();
-        writeToRegFromMem(jmpReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_DO_SINGLE_OP_ADDRESS, 8, false);
-        jmpNativeReg(jmpReg, true);
-        releaseTmpReg(jmpReg);
-        }, [=] {
-            popNativeFlags();
-            }, false, true, testRegReleaseAfterCmp);
     //releaseTmpReg(flagsReg);
 }
 #endif
@@ -1932,13 +1932,10 @@ void X64Asm::minSyncRegsToHost() {
 
 void X64Asm::syncRegsFromHost(bool eipInR9) {    
     if (eipInR9) {
-#ifdef BOXEDWINE_64BIT_MMU
 #ifdef _DEBUG
         writeToMemFromReg(1, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EIP_FROM, 4, false);
 #endif
         writeToMemFromReg(1, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EIP, 4, false);
-#endif
-        int ii = 0;
     } else {
         writeToMemFromValue(this->startOfOpIp, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EIP, 4, false);
     }
@@ -1958,17 +1955,16 @@ void X64Asm::syncRegsFromHost(bool eipInR9) {
     writeToMemFromReg(tmpReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_FLAGS, 4, false);
     releaseTmpReg(tmpReg);
 
-    if (!this->cpu->thread->process->emulateFPU) {
-        // fxsave
-        write8(0x41);
-        write8(0x0f);
-        write8(0xae);
-        write8(0x80 | HOST_CPU);
-        write32(CPU_OFFSET_FPU_STATE);
-    }
+    // fxsave
+    write8(0x41);
+    write8(0x0f);
+    write8(0xae);
+    write8(0x80 | HOST_CPU);
+    write32(CPU_OFFSET_FPU_STATE);
 }
 
 void X64Asm::createCodeForDoSingleOp() {
+    syncRegsFromHost(true);
     lockParamReg(PARAM_1_REG, PARAM_1_REX);
     writeToRegFromReg(PARAM_1_REG, PARAM_1_REX, HOST_CPU, true, 8);
     callHost(common_runSingleOp);
@@ -1991,39 +1987,15 @@ void X64Asm::createCodeForSyncFromHost() {
     writeToMemFromReg(tmpReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_FLAGS, 4, false);
     releaseTmpReg(tmpReg);
 
-    if (!this->cpu->thread->process->emulateFPU) {
-        // fxsave
-        write8(0x41);
-        write8(0x0f);
-        write8(0xae);
-        write8(0x80 | HOST_CPU);
-        write32(CPU_OFFSET_FPU_STATE);
-    }
+    write8(0x41);
+    write8(0x0f);
+    write8(0xae);
+    write8(0x80 | HOST_CPU);
+    write32(CPU_OFFSET_FPU_STATE);
 
     if (HOST_CPU == 4) {
         kpanic("oops"); // not encoded correctly by movups code below
     }
-    /*
-    // movups xmmword ptr [HOST_CPU + offsetof(CPU, xmm[i])], xmm0
-    for (int i = 0; i < 8; i++) {
-        write8(0x41);
-        write8(0x0f);
-        write8(0x11);
-        write8(0x80 | (i << 3) | HOST_CPU);
-        write32((U32)(offsetof(CPU, xmm[i])));
-    }
-    */
-    // :TODO: only do if we need it, this is also in fpu state since it shares registers with the fpu
-    // movq qword ptr[HOST_CPU + offsetof(CPU, reg_mmx[i])]], mm0
-    /*
-    for (int i = 0; i < 8; i++) {
-        write8(0x41);
-        write8(0x0f);
-        write8(0x7f);
-        write8(0x80 | (i << 3) | HOST_CPU);
-        write32((U32)(offsetof(CPU, reg_mmx[i])));
-    }
-    */
     write8(0xc3); // ret
 }
 
@@ -2056,42 +2028,11 @@ void X64Asm::createCodeForSyncToHost() {
     popNativeFlags();
     releaseTmpReg(tmpReg);
 
-    if (!cpu->thread->process->emulateFPU) {
-        // fninit
-        write8(0xDB);
-        write8(0xE3);
-
-        // fxrstor
-        write8(0x41);
-        write8(0x0f);
-        write8(0xae);
-        write8(0x88 | HOST_CPU);
-        write32(CPU_OFFSET_FPU_STATE);
-    }
-    if (HOST_CPU == 4) {
-        kpanic("oops"); // not encoded correctly by movups code below
-    }
-    /*
-    // movups xmm0, xmmword ptr [HOST_CPU + offsetof(CPU, xmm[i])]
-    for (int i = 0; i < 8; i++) {
-        write8(0x41);
-        write8(0x0f);
-        write8(0x10);
-        write8(0x80 | (i << 3) | HOST_CPU);
-        write32((U32)(offsetof(CPU, xmm[i])));
-    }
-    */
-    // :TODO: only do if we need it, this is also in fpu state since it shares registers with the fpu
-    // movq mm0, qword ptr[HOST_CPU + offsetof(CPU, reg_mmx[i])]]
-    /*
-    for (int i = 0; i < 8; i++) {
-        write8(0x41);
-        write8(0x0f);
-        write8(0x6f);
-        write8(0x80 | (i << 3) | HOST_CPU);
-        write32((U32)(offsetof(CPU, reg_mmx[i])));
-    }
-    */
+    write8(0x41);
+    write8(0x0f);
+    write8(0xae);
+    write8(0x88 | HOST_CPU);
+    write32(CPU_OFFSET_FPU_STATE);
 
     write8(0xc3); // ret
 }
@@ -2147,18 +2088,12 @@ void X64Asm::syncRegsToHost(S8 excludeReg) {
     popNativeFlags();
     releaseTmpReg(tmpReg);
 
-    if (!cpu->thread->process->emulateFPU) {
-        // fninit
-        write8(0xDB);
-        write8(0xE3);
-
-        // fxrstor
-        write8(0x41);
-        write8(0x0f);
-        write8(0xae);
-        write8(0x88 | HOST_CPU);
-        write32(CPU_OFFSET_FPU_STATE);
-    }    
+    // fxrstor
+    write8(0x41);
+    write8(0x0f);
+    write8(0xae);
+    write8(0x88 | HOST_CPU);
+    write32(CPU_OFFSET_FPU_STATE);  
 }
 
 void badStack(CPU* cpu) {
@@ -2336,6 +2271,10 @@ void X64Asm::doJmp(bool mightNeedCS) {
 //    NEXT_DONE();
 //}
 void X64Asm::popSeg(U8 seg, U8 bytes) {
+#ifndef BOXEDWINE_64BIT_MMU
+    emulateSingleOp();
+    done = true;
+#else
     // in case an exception is thrown, the exception will need to store the regs
     // also this will help will saving ECX and EDX as required by Window ABI
     syncRegsFromHost(); 
@@ -2364,9 +2303,14 @@ void X64Asm::popSeg(U8 seg, U8 bytes) {
         releaseTmpReg(tmpReg);
     });   
     this->cpu->thread->process->hasSetSeg[seg] = true;
+#endif
 }
 
 void X64Asm::setSeg(U8 seg, U8 rm) {
+#ifndef BOXEDWINE_64BIT_MMU
+    emulateSingleOp();
+    done = true;
+#else
     // in case an exception is thrown, the exception will need to store the regs
     // also this will help will saving ECX and EDX as required by Window ABI
     syncRegsFromHost();  
@@ -2392,6 +2336,7 @@ void X64Asm::setSeg(U8 seg, U8 rm) {
         syncRegsToHost();
     });   
     this->cpu->thread->process->hasSetSeg[seg] = true;
+#endif
 }
 
 void X64Asm::setSF_onAL(U8 flagReg) {
@@ -2600,29 +2545,47 @@ void X64Asm::daa() {
 
 // :TODO: maybe make native versions
 void X64Asm::das() {
+#ifndef BOXEDWINE_64BIT_MMU
+    emulateSingleOp();
+    done = true;
+#else
     syncRegsFromHost(); 
     lockParamReg(PARAM_1_REG, PARAM_1_REX);
     writeToRegFromReg(PARAM_1_REG, PARAM_1_REX, HOST_CPU, true, 8); // CPU* param    
     callHost((void*)::das);
     syncRegsToHost();
+#endif
 }
 
 void X64Asm::aaa() {
+#ifndef BOXEDWINE_64BIT_MMU
+    emulateSingleOp();
+    done = true;
+#else
     syncRegsFromHost(); 
     lockParamReg(PARAM_1_REG, PARAM_1_REX);
     writeToRegFromReg(PARAM_1_REG, PARAM_1_REX, HOST_CPU, true, 8); // CPU* param    
     callHost((void*)::aaa);
     syncRegsToHost();
+#endif
 }
 
 void X64Asm::aas() {
+#ifndef BOXEDWINE_64BIT_MMU
+    emulateSingleOp();
+    done = true;
+#else
     syncRegsFromHost(); 
     writeToRegFromReg(PARAM_1_REG, PARAM_1_REX, HOST_CPU, true, 8); // CPU* param    
     callHost((void*)::aas);
     syncRegsToHost();
+#endif
 }
 
 void X64Asm::aad(U8 value) {
+#ifndef BOXEDWINE_64BIT_MMU
+    emulateSingleOp();
+#else
     syncRegsFromHost(); 
 
     lockParamReg(PARAM_2_REG, PARAM_2_REX);
@@ -2633,6 +2596,7 @@ void X64Asm::aad(U8 value) {
 
     callHost((void*)::aad);
     syncRegsToHost();  
+#endif
 }
 
 /*
@@ -3276,6 +3240,10 @@ void x64_jmp(x64CPU* cpu, U32 big, U32 selector, U32 offset) {
 }
 
 void X64Asm::jmp(bool big, U32 sel, U32 offset, U32 oldEip) {
+#ifndef BOXEDWINE_64BIT_MMU
+    emulateSingleOp();
+    done = true;
+#else
     syncRegsFromHost(); 
 
     writeToMemFromValue(oldEip, HOST_CPU, true, -1, false, 0, CPU_OFFSET_ARG5, 4, false);
@@ -3295,6 +3263,7 @@ void X64Asm::jmp(bool big, U32 sel, U32 offset, U32 oldEip) {
     callHost((void*)x64_jmp);
     syncRegsToHost();
     doJmp(true);
+#endif
 }
 
 void x64_call(x64CPU* cpu, U32 big, U32 selector, U32 offset) {
@@ -3303,6 +3272,10 @@ void x64_call(x64CPU* cpu, U32 big, U32 selector, U32 offset) {
 
 // common_jmp(cpu, false, sel, offset, oldEip);
 void X64Asm::call(bool big, U32 sel, U32 offset, U32 oldEip) {
+#ifndef BOXEDWINE_64BIT_MMU
+    emulateSingleOp();
+    done = true;
+#else
     syncRegsFromHost(); 
 
     writeToMemFromValue(oldEip, HOST_CPU, true, -1, false, 0, CPU_OFFSET_ARG5, 4, false);
@@ -3323,6 +3296,7 @@ void X64Asm::call(bool big, U32 sel, U32 offset, U32 oldEip) {
     callHost((void*)x64_call);
     syncRegsToHost();
     doJmp(true);
+#endif
 }
 
 void X64Asm::shiftRightReg(U8 reg, bool isRegRex, U8 shiftAmount) {
@@ -3576,6 +3550,10 @@ void X64Asm::retn32(U32 bytes) {
 }
 
 void X64Asm::retf(U32 big, U32 bytes) {
+#ifndef BOXEDWINE_64BIT_MMU
+    emulateSingleOp();
+    done = true;
+#else
     syncRegsFromHost(); 
 
     // call void common_ret(CPU* cpu, U32 big, U32 bytes)
@@ -3591,9 +3569,14 @@ void X64Asm::retf(U32 big, U32 bytes) {
     callHost((void*)common_ret);
     syncRegsToHost();
     doJmp(true);
+#endif
 }
 
 void X64Asm::iret(U32 big, U32 oldEip) {
+#ifndef BOXEDWINE_64BIT_MMU
+    emulateSingleOp();
+    done = true;
+#else
     syncRegsFromHost(); 
 
     // call void common_iret(CPU* cpu, U32 big, U32 oldEip)
@@ -3609,9 +3592,14 @@ void X64Asm::iret(U32 big, U32 oldEip) {
     callHost((void*)common_iret);
     syncRegsToHost();
     doJmp(true);
+#endif
 }
 
 void X64Asm::signalIllegalInstruction(int code) {
+#ifndef BOXEDWINE_64BIT_MMU
+    emulateSingleOp();
+    done = true;
+#else
     syncRegsFromHost(); 
 
     // void common_signalIllegalInstruction(CPU* cpu, int code)
@@ -3624,6 +3612,7 @@ void X64Asm::signalIllegalInstruction(int code) {
     callHost((void*)common_signalIllegalInstruction);
     syncRegsToHost();
     doJmp(true);
+#endif
 }
 
 static U8 fetchByte(void* p, U32 *eip) {
@@ -3662,6 +3651,7 @@ void X64Asm::syscall(U32 opLen) {
     writeToRegFromValue(PARAM_2_REG, PARAM_2_REX, opLen, 4); // opLen param
     
     callHost((void*)ksyscall);
+
     syncRegsToHost();
 	
 	U8 tmpReg = getTmpReg();
@@ -3680,6 +3670,10 @@ void X64Asm::syscall(U32 opLen) {
 }
 
 void X64Asm::int98(U32 opLen) {
+#ifndef BOXEDWINE_64BIT_MMU
+    emulateSingleOp();
+    done = true;
+#else
     minSyncRegsFromHost();
 
     // void common_int98(CPU* cpu)
@@ -3690,9 +3684,14 @@ void X64Asm::int98(U32 opLen) {
 
     minSyncRegsToHost();
     //doJmp();
+#endif
 }
 
 void X64Asm::int99(U32 opLen) {
+#ifndef BOXEDWINE_64BIT_MMU
+    emulateSingleOp();
+    done = true;
+#else
     minSyncRegsFromHost();
 
     // void common_int99(CPU* cpu)
@@ -3702,9 +3701,14 @@ void X64Asm::int99(U32 opLen) {
     callHost((void*)common_int99);
     minSyncRegsToHost();
     //doJmp();
+#endif
 }
 
 void X64Asm::int9A(U32 opLen) {
+#ifndef BOXEDWINE_64BIT_MMU
+    emulateSingleOp();
+    done = true;
+#else
     minSyncRegsFromHost();
 
     // void common_int9A(CPU* cpu)
@@ -3714,6 +3718,7 @@ void X64Asm::int9A(U32 opLen) {
     callHost((void*)common_int9A);
     minSyncRegsToHost();
     //doJmp();
+#endif
 }
 
 void X64Asm::writeXchgEspEax() {
@@ -3739,30 +3744,8 @@ void X64Asm::bswapSp() {
 }
 
 #ifndef BOXEDWINE_64BIT_MMU
-void common_maskmovdquE128XmmXmmRM(CPU* cpu, U32 rm, U32 base, U32 bigAddress);
-void common_maskmovqEDIMmxMmxRM(CPU* cpu, U32 rm, U32 base, U32 bigAddress);
 void X64Asm::DsEdiMmxOrSSE(U8 rm) {
-    syncRegsFromHostCall();
-
-    lockParamReg(PARAM_4_REG, PARAM_4_REX);
-    writeToRegFromValue(PARAM_4_REG, PARAM_4_REX, (ea16 ? 0 : 1), 4);
-
-    lockParamReg(PARAM_3_REG, PARAM_3_REX);
-    writeToRegFromValue(PARAM_3_REG, PARAM_3_REX, ds, 4);
-
-    lockParamReg(PARAM_2_REG, PARAM_2_REX);
-    writeToRegFromValue(PARAM_2_REG, PARAM_2_REX, rm, 4);
-
-    lockParamReg(PARAM_1_REG, PARAM_1_REX);
-    writeToRegFromReg(PARAM_1_REG, PARAM_1_REX, HOST_CPU, true, 8); // CPU* param
-
-    if (decodedOp->inst == MaskmovqEDIMmxMmx) {
-        callHost((void*)common_maskmovqEDIMmxMmxRM);
-    } else {
-        callHost((void*)common_maskmovdquE128XmmXmmRM);
-    }
-    syncRegsToHostCall();
-    
+    emulateSingleOp();
 }
 #endif
 
@@ -3839,6 +3822,10 @@ void X64Asm::string32(bool hasSi, bool hasDi) {
 // if (cpu->setSegment(op->imm, selector)) {
 //    cpu->reg[op->reg].u16 = val;
 void X64Asm::loadSeg(U8 seg, U8 rm, bool b32) {
+#ifndef BOXEDWINE_64BIT_MMU
+    emulateSingleOp();
+    done = true;
+#else
     if (rm<0xC0) {
         // in case an exception is thrown, the exception will need to store the regs
         // also this will help will saving ECX and EDX as required by Window ABI
@@ -3887,10 +3874,15 @@ void X64Asm::loadSeg(U8 seg, U8 rm, bool b32) {
         this->invalidOp(this->inst);
         this->done = true;
     }
+#endif
 }
 
 void X64Asm::enter(bool big, U32 bytes, U32 level) {
     if (level!=0) {
+#ifndef BOXEDWINE_64BIT_MMU
+        emulateSingleOp();
+        done = true;
+#else
         // in case an exception is thrown, the exception will need to store the regs
         // also this will help will saving ECX and EDX as required by Window ABI
         syncRegsFromHost(); 
@@ -3912,6 +3904,7 @@ void X64Asm::enter(bool big, U32 bytes, U32 level) {
         callHost((void*)common_enter);
     
         syncRegsToHost();
+#endif
     } else {
         if (big) {
             // push EBP
@@ -3956,6 +3949,9 @@ void X64Asm::callE(bool big, U8 rm) {
 }
 
 void X64Asm::callJmp(bool big, U8 rm, bool jmp) {
+#ifndef BOXEDWINE_64BIT_MMU 
+    emulateSingleOp();
+#else
     syncRegsFromHost(); 
      
     // calling convention RCX, RDX, R8, R9 for first 4 parameters
@@ -3995,6 +3991,7 @@ void X64Asm::callJmp(bool big, U8 rm, bool jmp) {
     }
     syncRegsToHost();
     doJmp(true);  
+#endif
 }
 
 void X64Asm::callFar(bool big, U8 rm) {    
@@ -4032,6 +4029,10 @@ void X64Asm::callCallback(void* pfn) {
 }
 
 void X64Asm::lsl(bool big, U8 rm) {
+#ifndef BOXEDWINE_64BIT_MMU
+    emulateSingleOp();
+    done = true;
+#else
     syncRegsFromHost(); 
 
     // call U32 common_lsl(CPU* cpu, U32 selector, U32 limit)
@@ -4074,9 +4075,14 @@ void X64Asm::lsl(bool big, U8 rm) {
         releaseTmpReg(tmpReg);
     }
     syncRegsToHost(G(rm));
+#endif
 }
 
 void X64Asm::lar(bool big, U8 rm) {
+#ifndef BOXEDWINE_64BIT_MMU
+    emulateSingleOp();
+    done = true;
+#else
     syncRegsFromHost(); 
 
     // call U32 common_lar(CPU* cpu, U32 selector, U32 limit)
@@ -4119,9 +4125,14 @@ void X64Asm::lar(bool big, U8 rm) {
         releaseTmpReg(tmpReg);
     }
     syncRegsToHost(G(rm));
+#endif
 }
 
 void X64Asm::verw(U8 rm) {
+#ifndef BOXEDWINE_64BIT_MMU
+    emulateSingleOp();
+    done = true;
+#else
     syncRegsFromHost(); 
 
     // call void common_verw(CPU* cpu, U32 selector)
@@ -4134,9 +4145,14 @@ void X64Asm::verw(U8 rm) {
             
     callHost((void*)common_verw);
     syncRegsToHost();
+#endif
 }
 
 void X64Asm::verr(U8 rm) {
+#ifndef BOXEDWINE_64BIT_MMU
+    emulateSingleOp();
+    done = true;
+#else
     syncRegsFromHost(); 
 
     // call void common_verr(CPU* cpu, U32 selector)
@@ -4149,6 +4165,7 @@ void X64Asm::verr(U8 rm) {
             
     callHost((void*)common_verr);
     syncRegsToHost();
+#endif
 }
 
 static void x64_invalidOp(CPU* cpu, U32 op) {
@@ -4159,6 +4176,10 @@ static void x64_invalidOp(CPU* cpu, U32 op) {
 }
 
 void X64Asm::invalidOp(U32 op) {
+#ifndef BOXEDWINE_64BIT_MMU
+    emulateSingleOp();
+    done = true;
+#else
     syncRegsFromHost(); 
     lockParamReg(PARAM_2_REG, PARAM_2_REX);
     writeToRegFromValue(PARAM_2_REG, PARAM_2_REX, op, 4);
@@ -4167,6 +4188,7 @@ void X64Asm::invalidOp(U32 op) {
     callHost((void*)x64_invalidOp);
     syncRegsToHost();
     doJmp(true);
+#endif
 }
 
 static void x64_errorMsg(const char* msg) {
@@ -4183,6 +4205,10 @@ void X64Asm::errorMsg(const char* msg) {
 }
 
 void X64Asm::cpuid() {
+#ifndef BOXEDWINE_64BIT_MMU
+    emulateSingleOp();
+    done = true;
+#else
     syncRegsFromHost(); 
 
     // calling convention RCX, RDX, R8, R9 for first 4 parameters
@@ -4193,6 +4219,7 @@ void X64Asm::cpuid() {
             
     callHost((void*)common_cpuid);
     syncRegsToHost();
+#endif
 }
 
 void X64Asm::setNativeFlags(U32 flags, U32 mask) {
@@ -4347,12 +4374,9 @@ void x64_string2Arg(x64CPU* cpu, pfnString2Arg pfn, U32 arg1, U32 arg2) {
 }
 
 void X64Asm::emulateSingleOp() {
-    syncRegsFromHost();
-
-    U8 tmpReg = getTmpReg();
-    writeToRegFromMem(tmpReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_DO_SINGLE_OP_ADDRESS, 8, false);
-    jmpNativeReg(tmpReg, true);
-    releaseTmpReg(tmpReg);
+    writeToRegFromValue(HOST_TMP, true, startOfOpIp, 4);
+    writeToRegFromMem(HOST_TMP2, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_DO_SINGLE_OP_ADDRESS, 8, false);
+    jmpNativeReg(HOST_TMP2, true);
 }
 
 void X64Asm::stos(void* pfn, U32 size, bool repeat) {
@@ -4460,6 +4484,10 @@ void X64Asm::cmps(void* pfn, U32 size, bool repeat, bool repeatZero, U32 base) {
 // :TODO: could be inlined
 // U32 common_bound16(CPU* cpu, U32 reg, U32 address)
 void X64Asm::bound16(U8 rm) {
+#ifndef BOXEDWINE_64BIT_MMU
+    emulateSingleOp();
+    done = true;
+#else
     syncRegsFromHost();
 
     lockParamReg(PARAM_3_REG, PARAM_3_REX);
@@ -4479,10 +4507,15 @@ void X64Asm::bound16(U8 rm) {
     }, [this]() {
         syncRegsToHost();
     });
+#endif
 }
 
 // U32 common_bound32(CPU* cpu, U32 reg, U32 address)
 void X64Asm::bound32(U8 rm) {
+#ifndef BOXEDWINE_64BIT_MMU
+    emulateSingleOp();
+    done = true;
+#else
     syncRegsFromHost();
     
     lockParamReg(PARAM_3_REG, PARAM_3_REX);
@@ -4501,10 +4534,15 @@ void X64Asm::bound32(U8 rm) {
         doJmp(true);
     }, [this]() {
         syncRegsToHost();
-    }); 
+    });
+#endif
 }
 
 void X64Asm::movRdCrx(U32 which, U32 reg) {
+#ifndef BOXEDWINE_64BIT_MMU
+    emulateSingleOp();
+    done = true;
+#else
     syncRegsFromHost();
 
     lockParamReg(PARAM_3_REG, PARAM_3_REX);
@@ -4523,9 +4561,14 @@ void X64Asm::movRdCrx(U32 which, U32 reg) {
     }, [this]() {
         syncRegsToHost();
     }); 
+#endif
 }
 
 void X64Asm::movCrxRd(U32 which, U32 reg) {
+#ifndef BOXEDWINE_64BIT_MMU
+    emulateSingleOp();
+    done = true;
+#else
     syncRegsFromHost();
 
     lockParamReg(PARAM_3_REG, PARAM_3_REX);
@@ -4545,6 +4588,7 @@ void X64Asm::movCrxRd(U32 which, U32 reg) {
     }, [this]() {
         syncRegsToHost();
     }); 
+#endif
 }
 
 void common_fpu_write_address(x64CPU* cpu, PFN_FPU_ADDRESS pfn, U32 address, U32 len) {

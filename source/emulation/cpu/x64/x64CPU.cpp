@@ -172,11 +172,11 @@ std::shared_ptr<BtData> x64CPU::createData() {
 #ifdef __TEST
 void x64CPU::postTestRun() {
     for (int i = 0; i < 8; i++) {
-        reg_mmx[i].q = *((U64*)(fpuState + 32 + i * 16));
+        reg_mmx[i].q = fpuState.st_mm[i].low;
     }
     for (int i = 0; i < 8; i++) {
-        xmm[i].pi.u64[0] = *((U64*)(fpuState + 160 + i * 16));
-        xmm[i].pi.u64[1] = *((U64*)(fpuState + 160 + i * 16 + 8));
+        xmm[i].pi.u64[0] = fpuState.xmm[i].low;
+        xmm[i].pi.u64[1] = fpuState.xmm[i].high;
     }
 }
 
