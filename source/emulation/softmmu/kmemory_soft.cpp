@@ -114,8 +114,8 @@ void KMemoryData::setPageRamWithFlags(U8* ram, U32 pageIndex, U8 flags, bool cop
     page->flags = flags;
     bool read = page->canRead() || page->canExec();
     bool write = page->canWrite();
-
-    if (copyOnWrite) {
+    
+    if (copyOnWrite && !page->mapShared()) {
         setPage(pageIndex, CopyOnWritePage::alloc(this, ram, pageIndex << K_PAGE_SHIFT, page->flags));
     } else if (read && write) {
         setPage(pageIndex, RWPage::alloc(this, ram, pageIndex << K_PAGE_SHIFT, page->flags));
@@ -133,9 +133,6 @@ bool KMemoryData::isPageMapped(U32 page) {
 }
 
 void KMemoryData::allocPages(KThread* thread, U32 page, U32 pageCount, U8 permissions, FD fd, U64 offset, const BoxedPtr<MappedFile>& mappedFile, U8** ramPages) {
-    if (!page) {
-        reserveAddress(0, pageCount, &page, false, false, PAGE_MAPPED);
-    }
     if (ramPages) {
         bool read = permissions & K_PROT_READ;
         bool write = permissions & K_PROT_WRITE;
@@ -423,8 +420,18 @@ void KMemory::clone(KMemory* from) {
         if (page->type == Page::Type::RO_Page || page->type == Page::Type::RW_Page || page->type == Page::Type::WO_Page || page->type == Page::Type::NO_Page) {
             RWPage* p = (RWPage*)page;
             if (!page->mapShared()) {
-                data->setPage(i, CopyOnWritePage::alloc(data, p->page, p->address, p->flags));
-                from->data->setPage(i, CopyOnWritePage::alloc(from->data, p->page, p->address, p->flags));
+                if (page->type == Page::Type::WO_Page) {
+                    U8* ram = ramPageAlloc();
+                    ::memcpy(ram, p->page, K_PAGE_SIZE);
+                    data->setPage(i, WOPage::alloc(data, ram, p->address, p->flags));
+                } else if (page->type == Page::Type::NO_Page) {
+                    U8* ram = ramPageAlloc();
+                    ::memcpy(ram, p->page, K_PAGE_SIZE);
+                    data->setPage(i, NOPage::alloc(data, ram, p->address, p->flags));
+                } else {
+                    data->setPage(i, CopyOnWritePage::alloc(data, p->page, p->address, p->flags));
+                    from->data->setPage(i, CopyOnWritePage::alloc(from->data, p->page, p->address, p->flags));
+                }
             } else {
                 if (page->type == Page::Type::RO_Page) {
                     data->setPage(i, ROPage::alloc(data, p->page, p->address, p->flags));
@@ -553,7 +560,6 @@ void KMemory::performOnMemory(U32 address, U32 len, bool readOnly, std::function
         if (!callback(ram, K_PAGE_SIZE)) {
             return;
         }
-        U32* i = (U32*)&ram[0xf2c];
         address += K_PAGE_SIZE;
         len -= K_PAGE_SIZE;
     }
