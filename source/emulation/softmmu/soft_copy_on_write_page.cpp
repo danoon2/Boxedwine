@@ -13,7 +13,7 @@ CopyOnWritePage* CopyOnWritePage::alloc(KMemoryData* memory, U8* page, U32 addre
 void CopyOnWritePage::copyOnWrite(U32 address) {	
     U8* ram;
 
-    if (ramPageRefCount(this->page)>1) {
+    if (!mapShared() && ramPageRefCount(this->page)>1) {
         ram = ramPageAlloc();
         memcpy(ram, this->page, K_PAGE_SIZE);
     } else {
