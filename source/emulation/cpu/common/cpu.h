@@ -242,10 +242,12 @@ public:
     MMX_reg reg_mmx[8];
     ALIGN(SSE xmm[8], 16);
 
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
     U64 memcheckq[K_PAGE_SIZE];
     U64 memcheckd[K_PAGE_SIZE];
     U64 memcheckw[K_PAGE_SIZE];
     U64 memcheckqq[K_PAGE_SIZE];
+#endif
 
     Reg  src;
     Reg  dst;
