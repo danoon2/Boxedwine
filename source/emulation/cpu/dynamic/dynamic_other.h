@@ -226,12 +226,10 @@ void dynamic_sti(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_cld(DynamicData* data, DecodedOp* op) {
     instCPUImm('&', CPU_OFFSET_OF(flags), DYN_32bit, ~DF);
-    movToCpu(CPU_OFFSET_OF(df), DYN_32bit, 1);
     INCREMENT_EIP(data, op);
 }
 void dynamic_std(DynamicData* data, DecodedOp* op) {
     instCPUImm('|', CPU_OFFSET_OF(flags), DYN_32bit, DF);
-    movToCpu(CPU_OFFSET_OF(df), DYN_32bit, -1);
     INCREMENT_EIP(data, op);
 }
 void dynamic_rdtsc(DynamicData* data, DecodedOp* op) {

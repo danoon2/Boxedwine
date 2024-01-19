@@ -291,10 +291,10 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>BOXEDWINE_HAS_OPENGL_MESA;BOXEDWINE_IMGUI_DX9;BOXEDWINE_HIGHDPI;GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;INCLUDE_CYCLES;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_DYNAMIC32;BOXEDWINE_DYNAMIC;BOXEDWINE_HAS_OPENGL_MESA;BOXEDWINE_IMGUI_DX9;BOXEDWINE_HIGHDPI;GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;INCLUDE_CYCLES;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\..\..\lib\soloud\include;..\..\..\..\include;..\..\..\..\lib\glew\include;..\..\..\..\lib\imgui;..\..\..\..\lib\poco\Net\include;..\..\..\..\lib\poco\Foundation\include;..\..\..\..\lib\poco\NetSSL_Win\include;;..\..\..\..\lib\poco\Util\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
-      <UndefinePreprocessorDefinitions>BOXEDWINE_DYNAMIC32;BOXEDWINE_DYNAMIC;%(UndefinePreprocessorDefinitions)</UndefinePreprocessorDefinitions>
+      <UndefinePreprocessorDefinitions>%(UndefinePreprocessorDefinitions)</UndefinePreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <PrecompiledHeaderFile>boxedwine.h</PrecompiledHeaderFile>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>

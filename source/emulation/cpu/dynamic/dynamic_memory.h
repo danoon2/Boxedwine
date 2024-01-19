@@ -9,7 +9,7 @@ public:
     U32 len;
 };
 
-class DynamicMemory : public KMemoryExtraData {
+class DynamicMemory {
 public:
     DynamicMemory() : dynamicExecutableMemoryPos(0), dynamicExecutableMemoryLen(0) {}
     ~DynamicMemory() {

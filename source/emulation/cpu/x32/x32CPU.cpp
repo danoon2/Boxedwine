@@ -527,10 +527,6 @@ void movToReg(DynReg reg, DynWidth width, U32 imm) {
     }
 }
 
-KMemoryData* getMemData(KMemory* memory) {
-    return memory->data;
-};
-
 static U32 readd(U32 address) {
     return KThread::currentThread()->memory->readd(address);
 }
@@ -2264,10 +2260,10 @@ void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
         outb(0x5f); // pop edi
         outb(0x5b); // pop ebx
         outb(0xc3); // ret
-        DynamicMemory* memory = (DynamicMemory*)cpu->memory->extraData;
+        DynamicMemory* memory = cpu->memory->dynamicMemory;
         if (!memory) {
             memory = new DynamicMemory();
-            cpu->memory->extraData = memory;
+            cpu->memory->dynamicMemory = memory;
         }
         void* mem = NULL;
 

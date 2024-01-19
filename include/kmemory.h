@@ -2,6 +2,9 @@
 #define __KMEMORY_H__
 
 class KMemory;
+#ifdef BOXEDWINE_DYNAMIC
+class DynamicMemory;
+#endif
 
 #define K_PAGE_SIZE 4096
 #define K_PAGE_MASK 0xFFF
@@ -96,6 +99,10 @@ public:
     CodeBlock findCodeBlockContaining(U32 address, U32 len);
     void addCodeBlock(U32 address, CodeBlock block);
     void removeCodeBlock(U32 address, U32 len);
+
+#ifdef BOXEDWINE_DYNAMIC
+    DynamicMemory* dynamicMemory = nullptr;
+#endif
 private:
     friend KMemoryData* getMemData(KMemory* memory);
     friend KMemoryData;
